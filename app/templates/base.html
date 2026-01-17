@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}BDDAT - Gestión de Expedientes{% endblock %}</title>
+    
+    <!-- 1. Estilos de la Junta de Andalucía (Bootstrap 5.3 + Personalización) -->
+    <!-- Carga la fuente corporativa y los iconos -->
+    <link href="https://cdn.juntadeandalucia.es/components/sass/latest/css/fonts.css" rel="stylesheet">
+    <!-- Carga FontAwesome (iconos) -->
+    <link href="https://cdn.juntadeandalucia.es/components/sass/latest/css/all.css" rel="stylesheet">
+    <!-- Carga el Bootstrap personalizado con colores y estilos JdA -->
+    <link href="https://cdn.juntadeandalucia.es/components/sass/latest/css/custom-jda-bootstrap.css" rel="stylesheet">
+    
+    <!-- Aquí podríamos añadir nuestros estilos propios en el futuro -->
+    <!-- <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet"> -->
+</head>
+<body class="d-flex flex-column min-vh-100">
+    
+    <!-- 2. Barra de Navegación (Navbar) -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-success mb-4">
+        <div class="container-fluid">
+            <!-- Marca / Logo -->
+            <a class="navbar-brand" href="#">
+                <i class="fas fa-bolt me-2"></i>BDDAT
+            </a>
+            
+            <!-- Botón hamburguesa para móviles -->
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMain">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            
+            <!-- Enlaces del menú -->
+            <div class="collapse navbar-collapse" id="navbarMain">
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                    <li class="nav-item">
+                        <a class="nav-link" href="#">Inicio</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#">Expedientes</a>
+                    </li>
+                    <!-- Enlace a Usuarios (nuestra prueba de hoy) -->
+                    <li class="nav-item">
+                        <!-- Nota: url_for requiere que exista el endpoint 'usuarios.index' -->
+                        <a class="nav-link" href="{{ url_for('usuarios.index') }}">Usuarios</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 3. Contenido Principal -->
+    <main class="container flex-grow-1">
+        <!-- Bloque para mensajes flash (errores, confirmaciones) -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Aquí se inyectará el contenido de cada página hija -->
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- 4. Pie de página (Footer) -->
+    <footer class="bg-light text-center py-3 mt-4 border-top">
+        <div class="container">
+            <span class="text-muted small">© 2026 Junta de Andalucía - BDDAT v0.1</span>
+        </div>
+    </footer>
+
+    <!-- 5. Scripts JS (Bootstrap Bundle incluye Popper) -->
+    <script src="https://cdn.juntadeandalucia.es/components/sass/latest/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.juntadeandalucia.es/components/sass/latest/js/jda-js.js"></script>
+    
+    <!-- Bloque para scripts específicos de cada página -->
+    {% block scripts %}{% endblock %}
+</body>
+</html>
