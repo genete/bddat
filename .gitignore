@@ -1,0 +1,8 @@
+venv/
+instance/
+*.pyc
+__pycache__/
+.env
+*.db
+migrations/versions/
+app/static/uploads/*
