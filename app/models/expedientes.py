@@ -1,3 +1,4 @@
+# En desarrollo
 from app import db
 
 class Expediente(db.Model):
