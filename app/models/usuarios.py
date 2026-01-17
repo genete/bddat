@@ -12,8 +12,8 @@ class Rol(db.Model):
     __tablename__ = 'roles'
     
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    nombre = db.Column("NOMBRE", db.String(50), unique=True, nullable=False)  # ADMIN, TECNICO...
-    descripcion = db.Column("DESCRIPCION", db.String(200))
+    nombre = db.Column(db.String(50), unique=True, nullable=False)  # ADMIN, TECNICO...
+    descripcion = db.Column(db.String(200))
     
     def __repr__(self):
         return f'<Rol {self.nombre}>'
@@ -29,7 +29,7 @@ class Usuario(db.Model):
     activo = db.Column(db.Boolean, default=True)
     
     # Seguridad y Roles
-    password_hash = db.Column("PASSWORD_HASH", db.String(256))
+    password_hash = db.Column(db.String(256))
     
     # Relación M:N con Roles
     roles = db.relationship('Rol', secondary=usuarios_roles, backref=db.backref('usuarios', lazy='dynamic'))
