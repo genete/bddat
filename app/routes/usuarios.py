@@ -1,4 +1,5 @@
 from flask import Blueprint, render_template, request, flash, redirect, url_for
+from flask_login import login_required, current_user
 from app import db
 from app.models.usuarios import Usuario, Rol
 
@@ -6,6 +7,7 @@ from app.models.usuarios import Usuario, Rol
 bp = Blueprint('usuarios', __name__, url_prefix='/usuarios')
 
 @bp.route('/', methods=['GET', 'POST'])
+@login_required
 def index():
     # Recuperamos todos los roles para el formulario
     todos_los_roles = Rol.query.all()
