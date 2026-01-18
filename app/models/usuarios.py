@@ -2,6 +2,7 @@
 from app import db
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, timedelta
+from flask_login import UserMixin
 import secrets
 
 # Tabla de asociación Muchos-a-Muchos (Usuario <-> Rol)
@@ -20,7 +21,7 @@ class Rol(db.Model):
     def __repr__(self):
         return f'<Rol {self.nombre}>'
 
-class Usuario(db.Model):
+class Usuario(UserMixin, db.Model):
     __tablename__ = 'usuarios'
     
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -28,7 +29,7 @@ class Usuario(db.Model):
     nombre = db.Column(db.String(100), nullable=False, default='Usuario')
     apellido1 = db.Column(db.String(50), nullable=False, default='no asignado')
     apellido2 = db.Column(db.String(50))
-    email = db.Column(db.String(120), unique=True, nullable=False)
+    email = db.Column(db.String(120), unique=True, nullable=True)
     activo = db.Column(db.Boolean, default=True)
     
     # Seguridad y Roles
@@ -40,6 +41,11 @@ class Usuario(db.Model):
     
     # Relación M:N con Roles
     roles = db.relationship('Rol', secondary=usuarios_roles, backref=db.backref('usuarios', lazy='dynamic'))
+
+    # Flask-Login: sobrescribir is_active para usar nuestro campo activo
+    @property
+    def is_active(self):
+        return self.activo
 
     # Gestión de contraseña
     def set_password(self, password):
