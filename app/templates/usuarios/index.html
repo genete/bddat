@@ -33,7 +33,12 @@
                 {% for usuario in usuarios %}
                 <tr>
                     <td>{{ usuario.id }}</td>
-                    <td><strong>{{ usuario.siglas }}</strong></td>
+                    <td>
+                        <strong>{{ usuario.siglas }}</strong>
+                        {% if usuario.id == current_user.id %}
+                            <span class="badge bg-primary ms-1">Tú</span>
+                        {% endif %}
+                    </td>
                     <td>{{ usuario.nombre }} {{ usuario.apellido1 }} {{ usuario.apellido2 or '' }}</td>
                     <td>
                         {% for rol in usuario.roles %}
@@ -50,6 +55,7 @@
                                 <input class="form-check-input" type="checkbox" role="switch" 
                                        id="switch_{{ usuario.id }}"
                                        {% if usuario.activo %}checked{% endif %}
+                                       {% if usuario.id == current_user.id %}disabled{% endif %}
                                        onchange="if(confirm('¿Cambiar estado de {{ usuario.siglas }}?')) this.form.submit();">
                                 <label class="form-check-label" for="switch_{{ usuario.id }}">
                                     {% if usuario.activo %}
