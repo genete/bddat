@@ -2,12 +2,14 @@ from flask import Blueprint, render_template, request, flash, redirect, url_for
 from flask_login import login_required, current_user
 from app import db
 from app.models.usuarios import Usuario, Rol
+from app.decorators import role_required
 
 # Definimos el Blueprint
 bp = Blueprint('usuarios', __name__, url_prefix='/usuarios')
 
 @bp.route('/', methods=['GET', 'POST'])
 @login_required
+@role_required('ADMIN', 'SUPERVISOR')
 def index():
     # Recuperamos todos los roles para el formulario
     todos_los_roles = Rol.query.all()
@@ -60,5 +62,4 @@ def index():
 
     # GET: Listar todos los usuarios
     usuarios = Usuario.query.all()
-    # Pasamos 'roles' al template para los checkboxes
     return render_template('usuarios/index.html', usuarios=usuarios, roles=todos_los_roles)
