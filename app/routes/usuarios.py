@@ -7,6 +7,14 @@ from app.decorators import role_required
 # Definimos el Blueprint
 bp = Blueprint('usuarios', __name__, url_prefix='/usuarios')
 
+def usuario_es_admin(usuario):
+    """Verifica si un usuario tiene el rol ADMIN"""
+    return any(rol.nombre == 'ADMIN' for rol in usuario.roles)
+
+def current_user_es_admin():
+    """Verifica si el usuario actual tiene el rol ADMIN"""
+    return any(rol.nombre == 'ADMIN' for rol in current_user.roles)
+
 @bp.route('/', methods=['GET', 'POST'])
 @login_required
 @role_required('ADMIN', 'SUPERVISOR')
@@ -32,6 +40,14 @@ def index():
             
             # Recuperar roles seleccionados (lista de IDs)
             roles_ids = request.form.getlist('roles')
+            
+            # NUEVA VALIDACIÓN: SUPERVISOR no puede asignar rol ADMIN
+            if not current_user_es_admin():
+                rol_admin = Rol.query.filter_by(nombre='ADMIN').first()
+                if rol_admin and str(rol_admin.id) in roles_ids:
+                    flash('No tienes permisos para asignar el rol ADMIN', 'danger')
+                    usuarios = Usuario.query.all()
+                    return render_template('usuarios/index.html', usuarios=usuarios, roles=todos_los_roles)
             
             # Crear instancia del modelo
             nuevo_usuario = Usuario(
@@ -72,6 +88,11 @@ def editar(id):
     usuario = Usuario.query.get_or_404(id)
     todos_los_roles = Rol.query.all()
     
+    # NUEVA VALIDACIÓN: SUPERVISOR no puede editar usuarios ADMIN
+    if not current_user_es_admin() and usuario_es_admin(usuario):
+        flash('No tienes permisos para editar usuarios ADMIN', 'danger')
+        return redirect(url_for('usuarios.index'))
+    
     if request.method == 'POST':
         try:
             # VALIDACIÓN 1: No permitir quitar rol ADMIN al último ADMIN
@@ -81,6 +102,21 @@ def editar(id):
             
             # Si el usuario actual es ADMIN y se está quitando el rol
             user_roles_actuales = [rol.nombre for rol in usuario.roles]
+            
+            # NUEVA VALIDACIÓN: SUPERVISOR no puede asignar/quitar rol ADMIN
+            if not current_user_es_admin():
+                rol_admin = Rol.query.filter_by(nombre='ADMIN').first()
+                
+                # Verificar si intenta asignar ADMIN
+                if rol_admin and str(rol_admin.id) in roles_ids and not usuario_es_admin(usuario):
+                    flash('No tienes permisos para asignar el rol ADMIN', 'danger')
+                    return render_template('usuarios/editar.html', usuario=usuario, roles=todos_los_roles)
+                
+                # Verificar si intenta quitar ADMIN
+                if usuario_es_admin(usuario) and (not rol_admin or str(rol_admin.id) not in roles_ids):
+                    flash('No tienes permisos para quitar el rol ADMIN', 'danger')
+                    return render_template('usuarios/editar.html', usuario=usuario, roles=todos_los_roles)
+            
             if 'ADMIN' in user_roles_actuales and 'ADMIN' not in roles_nombres_nuevos:
                 # Contar cuántos ADMIN hay en total (activos e inactivos)
                 admins_totales = Usuario.query.join(Usuario.roles).filter(
@@ -152,6 +188,11 @@ def editar(id):
 def toggle_estado(id):
     """Toggle rápido del estado activo/inactivo"""
     usuario = Usuario.query.get_or_404(id)
+    
+    # NUEVA VALIDACIÓN: SUPERVISOR no puede desactivar usuarios ADMIN
+    if not current_user_es_admin() and usuario_es_admin(usuario):
+        flash('No tienes permisos para modificar el estado de usuarios ADMIN', 'danger')
+        return redirect(url_for('usuarios.index'))
     
     # VALIDACIÓN 1: No permitir desactivarse a sí mismo
     if usuario.id == current_user.id:
