@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+
+{% block title %}Mi Perfil - BDDAT{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8 mx-auto">
+        <h2 class="mb-4">
+            <i class="fas fa-user-circle me-2"></i>Mi Perfil
+        </h2>
+
+        <!-- Card: Datos Personales -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0"><i class="fas fa-id-card me-2"></i>Datos Personales</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('perfil.editar') }}">
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Siglas</label>
+                            <input type="text" class="form-control" value="{{ usuario.siglas }}" disabled>
+                            <small class="text-muted">Solo el supervisor puede modificar las siglas</small>
+                        </div>
+                        <div class="col-md-8">
+                            <label for="nombre" class="form-label">Nombre *</label>
+                            <input type="text" class="form-control" id="nombre" name="nombre" value="{{ usuario.nombre }}" required maxlength="100">
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="apellido1" class="form-label">Primer Apellido *</label>
+                            <input type="text" class="form-control" id="apellido1" name="apellido1" value="{{ usuario.apellido1 }}" required maxlength="50">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="apellido2" class="form-label">Segundo Apellido</label>
+                            <input type="text" class="form-control" id="apellido2" name="apellido2" value="{{ usuario.apellido2 or '' }}" maxlength="50">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Email</label>
+                        <input type="email" class="form-control" id="email" name="email" value="{{ usuario.email or '' }}" maxlength="120">
+                        <small class="text-muted">Necesario para recuperación de contraseña</small>
+                    </div>
+
+                    <div class="text-end">
+                        <button type="submit" class="btn btn-success">
+                            <i class="fas fa-save me-2"></i>Guardar Cambios
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Card: Roles Asignados -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0"><i class="fas fa-user-tag me-2"></i>Roles Asignados</h5>
+            </div>
+            <div class="card-body">
+                {% if usuario.roles %}
+                    <div class="d-flex flex-wrap gap-2 mb-3">
+                        {% for rol in usuario.roles %}
+                            <span class="badge bg-info fs-6 px-3 py-2">
+                                {{ rol.nombre }}
+                            </span>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p class="text-muted">No tienes roles asignados</p>
+                {% endif %}
+                
+                <form method="POST" action="{{ url_for('perfil.solicitar_cambio_rol') }}">
+                    <button type="submit" class="btn btn-outline-info btn-sm">
+                        <i class="fas fa-paper-plane me-2"></i>Solicitar Cambio de Rol
+                    </button>
+                </form>
+                <small class="text-muted d-block mt-2">
+                    Solo los supervisores pueden modificar roles. Usa este botón para solicitar cambios.
+                </small>
+            </div>
+        </div>
+
+        <!-- Card: Cambiar Contraseña -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-warning">
+                <h5 class="mb-0"><i class="fas fa-key me-2"></i>Cambiar Contraseña</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('perfil.cambiar_contrasena') }}">
+                    <div class="mb-3">
+                        <label for="password_actual" class="form-label">Contraseña Actual *</label>
+                        <input type="password" class="form-control" id="password_actual" name="password_actual" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="password_nueva" class="form-label">Nueva Contraseña *</label>
+                        <input type="password" class="form-control" id="password_nueva" name="password_nueva" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="password_confirmar" class="form-label">Confirmar Nueva Contraseña *</label>
+                        <input type="password" class="form-control" id="password_confirmar" name="password_confirmar" required>
+                    </div>
+
+                    <div class="text-end">
+                        <button type="submit" class="btn btn-warning">
+                            <i class="fas fa-lock me-2"></i>Cambiar Contraseña
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Volver -->
+        <div class="text-center mb-4">
+            <a href="{{ url_for('usuarios.index') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left me-2"></i>Volver
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}
