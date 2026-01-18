@@ -43,34 +43,29 @@
                         {% endfor %}
                     </td>
                     <td>
-                        {% if usuario.activo %}
-                            <span class="badge bg-success">Activo</span>
-                        {% else %}
-                            <span class="badge bg-secondary">Inactivo</span>
-                        {% endif %}
+                        <!-- Switch toggle moderno -->
+                        <form action="{{ url_for('usuarios.toggle_estado', id=usuario.id) }}" 
+                              method="POST" style="display: inline;">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" role="switch" 
+                                       id="switch_{{ usuario.id }}"
+                                       {% if usuario.activo %}checked{% endif %}
+                                       onchange="if(confirm('¿Cambiar estado de {{ usuario.siglas }}?')) this.form.submit();">
+                                <label class="form-check-label" for="switch_{{ usuario.id }}">
+                                    {% if usuario.activo %}
+                                        <span class="badge bg-success">Activo</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">Inactivo</span>
+                                    {% endif %}
+                                </label>
+                            </div>
+                        </form>
                     </td>
                     <td>
                         <a href="{{ url_for('usuarios.editar', id=usuario.id) }}" 
                            class="btn btn-sm btn-outline-primary" title="Editar">
                             <i class="fas fa-edit"></i>
                         </a>
-                        
-                        <form action="{{ url_for('usuarios.toggle_estado', id=usuario.id) }}" 
-                              method="POST" style="display: inline;">
-                            {% if usuario.activo %}
-                            <button type="submit" class="btn btn-sm btn-outline-warning" 
-                                    title="Desactivar usuario"
-                                    onclick="return confirm('¿Desactivar usuario {{ usuario.siglas }}?')">
-                                <i class="fas fa-user-slash"></i>
-                            </button>
-                            {% else %}
-                            <button type="submit" class="btn btn-sm btn-outline-success" 
-                                    title="Activar usuario"
-                                    onclick="return confirm('¿Activar usuario {{ usuario.siglas }}?')">
-                                <i class="fas fa-user-check"></i>
-                            </button>
-                            {% endif %}
-                        </form>
                     </td>
                 </tr>
                 {% else %}
