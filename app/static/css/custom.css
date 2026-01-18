@@ -1,53 +1,13 @@
 /* ========================================
    BDDAT - Estilos Personalizados
    Los colores oficiales de la Junta vienen del CDN
-   custom-jda-bootstrap.css - Solo personalizamos
-   componentes específicos no estándar
+   custom-jda-bootstrap.css
    ======================================== */
 
-/* Toast notification ancho completo en parte inferior
-   Componente personalizado no incluido en Bootstrap estándar */
-.toast-bottom-full {
+/* Contenedor de toasts en esquina inferior derecha */
+.toast-container {
     position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
+    bottom: 1rem;
+    right: 1rem;
     z-index: 1080;
-    width: 100%;
-    border-radius: 8px;
-    border: none;
-    border-top: 3px solid;
-    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
-    cursor: pointer;
-}
-
-.toast-bottom-full .toast-body {
-    padding: 1rem 1.5rem;
-    font-size: 1rem;
-}
-
-/* Colores para toasts - usando variables CSS del tema JdA si existen,
-   fallback a colores acordes con la identidad corporativa */
-.toast-success {
-    border-top-color: var(--bs-success, #087021);
-    background-color: var(--bs-success-bg-subtle, #C4DDCA);
-    color: var(--bs-success-text-emphasis, #087021);
-}
-
-.toast-danger {
-    border-top-color: var(--bs-danger, #D4403A);
-    background-color: var(--bs-danger-bg-subtle, #fce4e4);
-    color: var(--bs-danger-text-emphasis, #D4403A);
-}
-
-.toast-warning {
-    border-top-color: var(--bs-warning, #F57C00);
-    background-color: var(--bs-warning-bg-subtle, #FFF3E0);
-    color: var(--bs-warning-text-emphasis, #8B4000);
-}
-
-.toast-info {
-    border-top-color: var(--bs-info, #0288D1);
-    background-color: var(--bs-info-bg-subtle, #E1F5FE);
-    color: var(--bs-info-text-emphasis, #01579B);
 }
