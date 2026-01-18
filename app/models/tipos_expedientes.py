@@ -5,7 +5,8 @@ class TipoExpediente(db.Model):
     __table_args__ = {'schema': 'estructura'}
     
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    # Campos adicionales se añadirán posteriormente
+    tipo = db.Column(db.String(100))
+    descripcion = db.Column(db.String(200))
     
     def __repr__(self):
-        return f'<TipoExpediente {self.id}>'
+        return f'<TipoExpediente {self.id}: {self.tipo}>'
