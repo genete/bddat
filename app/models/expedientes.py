@@ -7,7 +7,7 @@ class Expediente(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     numero_at = db.Column(db.Integer, nullable=False, unique=True)
     responsable_id = db.Column(db.Integer, db.ForeignKey('usuarios.id'), nullable=False)
-    tipo_expediente_id = db.Column(db.Integer, db.ForeignKey('tipos_expedientes.id'))
+    tipo_expediente_id = db.Column(db.Integer, db.ForeignKey('estructura.tipos_expedientes.id'))
     heredado = db.Column(db.Boolean)
     proyecto_id = db.Column(db.Integer, db.ForeignKey('proyectos.id'), nullable=False, unique=True)
     
