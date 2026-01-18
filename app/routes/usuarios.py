@@ -74,6 +74,42 @@ def editar(id):
     
     if request.method == 'POST':
         try:
+            # VALIDACIÓN 1: No permitir quitar rol ADMIN al último ADMIN
+            roles_ids = request.form.getlist('roles')
+            roles_seleccionados = Rol.query.filter(Rol.id.in_(roles_ids)).all()
+            roles_nombres_nuevos = [r.nombre for r in roles_seleccionados]
+            
+            # Si el usuario actual es ADMIN y se está quitando el rol
+            user_roles_actuales = [rol.nombre for rol in usuario.roles]
+            if 'ADMIN' in user_roles_actuales and 'ADMIN' not in roles_nombres_nuevos:
+                # Contar cuántos ADMIN hay en total (activos e inactivos)
+                admins_totales = Usuario.query.join(Usuario.roles).filter(
+                    Rol.nombre == 'ADMIN'
+                ).count()
+                
+                if admins_totales <= 1:
+                    flash('No puedes quitar el rol ADMIN del último administrador', 'danger')
+                    return redirect(url_for('usuarios.editar', id=id))
+            
+            # VALIDACIÓN 2: No permitir desactivarse a sí mismo
+            activo_nuevo = 'activo' in request.form
+            if usuario.id == current_user.id and not activo_nuevo:
+                flash('No puedes desactivar tu propia cuenta', 'warning')
+                return redirect(url_for('usuarios.editar', id=id))
+            
+            # VALIDACIÓN 3: No permitir desactivar el último ADMIN activo
+            if usuario.activo and not activo_nuevo:  # Si está intentando desactivar
+                if 'ADMIN' in user_roles_actuales:
+                    # Contar cuántos ADMIN activos hay
+                    admins_activos = Usuario.query.join(Usuario.roles).filter(
+                        Rol.nombre == 'ADMIN',
+                        Usuario.activo == True
+                    ).count()
+                    
+                    if admins_activos <= 1:
+                        flash('No puedes desactivar el último administrador activo del sistema', 'danger')
+                        return redirect(url_for('usuarios.editar', id=id))
+            
             # Actualizar datos personales
             usuario.siglas = request.form['siglas']
             usuario.nombre = request.form['nombre']
@@ -82,13 +118,11 @@ def editar(id):
             usuario.email = request.form.get('email')
             
             # Actualizar estado activo
-            usuario.activo = 'activo' in request.form
+            usuario.activo = activo_nuevo
             
             # Actualizar roles
-            roles_ids = request.form.getlist('roles')
-            usuario.roles = []  # Limpiar roles actuales
+            usuario.roles = []
             if roles_ids:
-                roles_seleccionados = Rol.query.filter(Rol.id.in_(roles_ids)).all()
                 usuario.roles.extend(roles_seleccionados)
             
             # Cambiar contraseña solo si se proporciona
@@ -118,6 +152,25 @@ def editar(id):
 def toggle_estado(id):
     """Toggle rápido del estado activo/inactivo"""
     usuario = Usuario.query.get_or_404(id)
+    
+    # VALIDACIÓN 1: No permitir desactivarse a sí mismo
+    if usuario.id == current_user.id:
+        flash('No puedes desactivar tu propia cuenta', 'warning')
+        return redirect(url_for('usuarios.index'))
+    
+    # VALIDACIÓN 2: No permitir desactivar el último ADMIN
+    if usuario.activo:  # Si está intentando desactivar
+        user_roles = [rol.nombre for rol in usuario.roles]
+        if 'ADMIN' in user_roles:
+            # Contar cuántos ADMIN activos hay
+            admins_activos = Usuario.query.join(Usuario.roles).filter(
+                Rol.nombre == 'ADMIN',
+                Usuario.activo == True
+            ).count()
+            
+            if admins_activos <= 1:
+                flash('No puedes desactivar el último administrador del sistema', 'danger')
+                return redirect(url_for('usuarios.index'))
     
     try:
         usuario.activo = not usuario.activo
