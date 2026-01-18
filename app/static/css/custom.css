@@ -10,7 +10,7 @@
     right: 0;
     z-index: 1080;
     width: 100%;
-    border-radius: 0;
+    border-radius: 8px;
     border: none;
     border-top: 3px solid;
     box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
