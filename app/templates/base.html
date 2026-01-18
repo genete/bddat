@@ -5,31 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}BDDAT - Gestión de Expedientes{% endblock %}</title>
     
-    <!-- === FALLBACK TEMPORAL POR CAÍDA DE SERVIDORES JDA === -->
-    <!-- Bootstrap 5.3 Estándar -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- FontAwesome -->
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    
-    <!-- Estilos manuales para simular Junta de Andalucía mientras vuelve el servidor -->
-    <style>
-        .bg-success { background-color: #007A33 !important; }
-        .btn-success { background-color: #007A33; border-color: #007A33; }
-        .btn-success:hover { background-color: #005c26; border-color: #005c26; }
-        .text-success { color: #007A33 !important; }
-        .navbar-dark .navbar-brand { font-weight: bold; }
-    </style>
-
-    <!-- 
-    === ESTILOS OFICIALES (DESCOMENTAR CUANDO VUELVAN) ===
+    <!-- Bootstrap 5 + Estilos Junta de Andalucía -->
     <link href="https://cdn.juntadeandalucia.es/components/sass/latest/css/fonts.css" rel="stylesheet">
     <link href="https://cdn.juntadeandalucia.es/components/sass/latest/css/all.css" rel="stylesheet">
     <link href="https://cdn.juntadeandalucia.es/components/sass/latest/css/custom-jda-bootstrap.css" rel="stylesheet">
-    -->
 </head>
 <body class="d-flex flex-column min-vh-100">
     
-    <!-- 2. Barra de Navegación (Navbar) -->
+    <!-- Barra de Navegación (Navbar) -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-success mb-4">
         <div class="container-fluid">
             <!-- Marca / Logo -->
@@ -51,7 +34,6 @@
                     <li class="nav-item">
                         <a class="nav-link text-white" href="#">Expedientes</a>
                     </li>
-                    <!-- Enlace a Usuarios (nuestra prueba de hoy) -->
                     <li class="nav-item">
                         <a class="nav-link text-white" href="{{ url_for('usuarios.index') }}">Usuarios</a>
                     </li>
@@ -60,7 +42,7 @@
         </div>
     </nav>
 
-    <!-- 3. Contenido Principal -->
+    <!-- Contenido Principal -->
     <main class="container flex-grow-1">
         <!-- Bloque para mensajes flash (errores, confirmaciones) -->
         {% with messages = get_flashed_messages(with_categories=true) %}
@@ -78,21 +60,16 @@
         {% block content %}{% endblock %}
     </main>
 
-    <!-- 4. Pie de página (Footer) -->
+    <!-- Pie de página (Footer) -->
     <footer class="bg-light text-center py-3 mt-4 border-top">
         <div class="container">
             <span class="text-muted small">© 2026 Junta de Andalucía - BDDAT v0.1</span>
         </div>
     </footer>
 
-    <!-- 5. Scripts JS Fallback -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    
-    <!-- 
-    === SCRIPTS OFICIALES (DESCOMENTAR CUANDO VUELVAN) ===
+    <!-- Scripts JS -->
     <script src="https://cdn.juntadeandalucia.es/components/sass/latest/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.juntadeandalucia.es/components/sass/latest/js/jda-js.js"></script>
-    -->
     
     <!-- Bloque para scripts específicos de cada página -->
     {% block scripts %}{% endblock %}
