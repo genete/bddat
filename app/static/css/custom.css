@@ -1,24 +1,12 @@
 /* ========================================
    BDDAT - Estilos Personalizados
-   Colores oficiales Junta de Andalucía
+   Los colores oficiales de la Junta vienen del CDN
+   custom-jda-bootstrap.css - Solo personalizamos
+   componentes específicos no estándar
    ======================================== */
 
-/* Variables de colores oficiales Junta de Andalucía */
-:root {
-    --jda-verde-principal: #087021;
-    --jda-verde-claro: #C4DDCA;
-    --jda-verde-hover: #065a1a;
-    --jda-rojo-alerta: #D4403A;
-    --jda-rojo-hover: #b83630;
-    --jda-naranja-warning: #F57C00;
-    --jda-naranja-warning-bg: #FFF3E0;
-    --jda-azul-info: #0288D1;
-    --jda-azul-info-bg: #E1F5FE;
-    --jda-negro: #111111;
-    --jda-gris-texto: #555555;
-}
-
-/* Toast notification ancho completo en parte inferior */
+/* Toast notification ancho completo en parte inferior
+   Componente personalizado no incluido en Bootstrap estándar */
 .toast-bottom-full {
     position: fixed;
     bottom: 0;
@@ -38,90 +26,28 @@
     font-size: 1rem;
 }
 
-/* Colores según categoría de mensaje - Paleta oficial JdA */
+/* Colores para toasts - usando variables CSS del tema JdA si existen,
+   fallback a colores acordes con la identidad corporativa */
 .toast-success {
-    border-top-color: var(--jda-verde-principal);
-    background-color: var(--jda-verde-claro);
-    color: var(--jda-verde-principal);
+    border-top-color: var(--bs-success, #087021);
+    background-color: var(--bs-success-bg-subtle, #C4DDCA);
+    color: var(--bs-success-text-emphasis, #087021);
 }
 
 .toast-danger {
-    border-top-color: var(--jda-rojo-alerta);
-    background-color: #fce4e4;
-    color: var(--jda-rojo-alerta);
+    border-top-color: var(--bs-danger, #D4403A);
+    background-color: var(--bs-danger-bg-subtle, #fce4e4);
+    color: var(--bs-danger-text-emphasis, #D4403A);
 }
 
 .toast-warning {
-    border-top-color: var(--jda-naranja-warning);
-    background-color: var(--jda-naranja-warning-bg);
-    color: #8B4000;
+    border-top-color: var(--bs-warning, #F57C00);
+    background-color: var(--bs-warning-bg-subtle, #FFF3E0);
+    color: var(--bs-warning-text-emphasis, #8B4000);
 }
 
 .toast-info {
-    border-top-color: var(--jda-azul-info);
-    background-color: var(--jda-azul-info-bg);
-    color: #01579B;
-}
-
-/* Sobrescritura de colores Bootstrap con paleta JdA */
-.bg-success {
-    background-color: var(--jda-verde-principal) !important;
-}
-
-.btn-success {
-    background-color: var(--jda-verde-principal);
-    border-color: var(--jda-verde-principal);
-}
-
-.btn-success:hover {
-    background-color: var(--jda-verde-hover);
-    border-color: var(--jda-verde-hover);
-}
-
-.bg-danger,
-.alert-danger {
-    background-color: #fce4e4 !important;
-    color: var(--jda-rojo-alerta) !important;
-    border-color: var(--jda-rojo-alerta) !important;
-}
-
-.btn-danger {
-    background-color: var(--jda-rojo-alerta);
-    border-color: var(--jda-rojo-alerta);
-}
-
-.btn-danger:hover {
-    background-color: var(--jda-rojo-hover);
-    border-color: var(--jda-rojo-hover);
-}
-
-.bg-warning,
-.btn-warning {
-    background-color: var(--jda-naranja-warning) !important;
-    border-color: var(--jda-naranja-warning) !important;
-    color: white !important;
-}
-
-.btn-warning:hover {
-    background-color: #E65100 !important;
-    border-color: #E65100 !important;
-}
-
-.bg-info {
-    background-color: var(--jda-azul-info) !important;
-}
-
-.btn-info,
-.btn-outline-info {
-    color: var(--jda-azul-info);
-    border-color: var(--jda-azul-info);
-}
-
-.btn-info:hover {
-    background-color: var(--jda-azul-info);
-    border-color: var(--jda-azul-info);
-}
-
-.badge.bg-info {
-    background-color: var(--jda-azul-info) !important;
+    border-top-color: var(--bs-info, #0288D1);
+    background-color: var(--bs-info-bg-subtle, #E1F5FE);
+    color: var(--bs-info-text-emphasis, #01579B);
 }
