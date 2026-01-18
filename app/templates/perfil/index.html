@@ -11,7 +11,7 @@
 
         <!-- Card: Datos Personales -->
         <div class="card shadow-sm mb-4">
-            <div class="card-header bg-primary-subtle">
+            <div class="card-header">
                 <h5 class="mb-0"><i class="fas fa-id-card me-2"></i>Datos Personales</h5>
             </div>
             <div class="card-body">
@@ -46,7 +46,7 @@
                     </div>
 
                     <div class="text-end">
-                        <button type="submit" class="btn btn-primary">
+                        <button type="submit" class="btn btn-success">
                             <i class="fas fa-save me-2"></i>Guardar Cambios
                         </button>
                     </div>
@@ -56,14 +56,14 @@
 
         <!-- Card: Roles Asignados -->
         <div class="card shadow-sm mb-4">
-            <div class="card-header bg-info-subtle">
+            <div class="card-header">
                 <h5 class="mb-0"><i class="fas fa-user-tag me-2"></i>Roles Asignados</h5>
             </div>
             <div class="card-body">
                 {% if usuario.roles %}
                     <div class="d-flex flex-wrap gap-2 mb-3">
                         {% for rol in usuario.roles %}
-                            <span class="badge bg-info fs-6 px-3 py-2">
+                            <span class="badge bg-secondary fs-6 px-3 py-2">
                                 {{ rol.nombre }}
                             </span>
                         {% endfor %}
@@ -73,7 +73,7 @@
                 {% endif %}
                 
                 <form method="POST" action="{{ url_for('perfil.solicitar_cambio_rol') }}">
-                    <button type="submit" class="btn btn-outline-info btn-sm">
+                    <button type="submit" class="btn btn-outline-secondary btn-sm">
                         <i class="fas fa-paper-plane me-2"></i>Solicitar Cambio de Rol
                     </button>
                 </form>
@@ -85,7 +85,7 @@
 
         <!-- Card: Cambiar Contraseña -->
         <div class="card shadow-sm mb-4">
-            <div class="card-header bg-warning-subtle">
+            <div class="card-header">
                 <h5 class="mb-0"><i class="fas fa-key me-2"></i>Cambiar Contraseña</h5>
             </div>
             <div class="card-body">
