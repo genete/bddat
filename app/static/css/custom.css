@@ -1,0 +1,98 @@
+/* ========================================
+   BDDAT - Toasts Personalizados
+   Colores sutiles y profesionales
+   ======================================== */
+
+/* Contenedor de toasts */
+.toast-container {
+    z-index: 1080;
+}
+
+/* Base toast - fondo blanco con sombra */
+.toast {
+    min-width: 300px;
+    background-color: #ffffff;
+    border: none;
+    border-left: 4px solid;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+
+/* Toast Success - Verde */
+.toast-success {
+    border-left-color: #0f5132;
+    background-color: #d1e7dd;
+}
+
+.toast-success .toast-header {
+    background-color: #d1e7dd;
+    color: #0f5132;
+    border-bottom: none;
+}
+
+.toast-success .toast-body {
+    color: #0f5132;
+}
+
+.toast-success .toast-header i {
+    color: #0f5132;
+}
+
+/* Toast Danger - Rojo */
+.toast-danger {
+    border-left-color: #842029;
+    background-color: #f8d7da;
+}
+
+.toast-danger .toast-header {
+    background-color: #f8d7da;
+    color: #842029;
+    border-bottom: none;
+}
+
+.toast-danger .toast-body {
+    color: #842029;
+}
+
+.toast-danger .toast-header i {
+    color: #842029;
+}
+
+/* Toast Warning - Amarillo */
+.toast-warning {
+    border-left-color: #997404;
+    background-color: #fff3cd;
+}
+
+.toast-warning .toast-header {
+    background-color: #fff3cd;
+    color: #997404;
+    border-bottom: none;
+}
+
+.toast-warning .toast-body {
+    color: #997404;
+}
+
+.toast-warning .toast-header i {
+    color: #997404;
+}
+
+/* Toast Info - Azul */
+.toast-info {
+    border-left-color: #084298;
+    background-color: #cfe2ff;
+}
+
+.toast-info .toast-header {
+    background-color: #cfe2ff;
+    color: #084298;
+    border-bottom: none;
+}
+
+.toast-info .toast-body {
+    color: #084298;
+}
+
+.toast-info .toast-header i {
+    color: #084298;
+}

@@ -9,6 +9,9 @@
     <link href="https://cdn.juntadeandalucia.es/components/sass/latest/css/fonts.css" rel="stylesheet">
     <link href="https://cdn.juntadeandalucia.es/components/sass/latest/css/all.css" rel="stylesheet">
     <link href="https://cdn.juntadeandalucia.es/components/sass/latest/css/custom-jda-bootstrap.css" rel="stylesheet">
+    
+    <!-- CSS Personalizado BDDAT -->
+    <link href="{{ url_for('static', filename='css/custom.css') }}" rel="stylesheet">
 </head>
 <body class="d-flex flex-column min-vh-100">
     
@@ -86,24 +89,24 @@
         </div>
     </footer>
 
-    <!-- Contenedor de toasts en esquina inferior derecha (Bootstrap estándar) -->
+    <!-- Contenedor de toasts en esquina inferior derecha -->
     <div class="toast-container position-fixed bottom-0 end-0 p-3">
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
-                <div class="toast" role="alert" aria-live="assertive" aria-atomic="true" data-bs-autohide="true" data-bs-delay="5000">
+                <div class="toast toast-{{ category }}" role="alert" aria-live="assertive" aria-atomic="true" data-bs-autohide="true" data-bs-delay="5000">
                     <div class="toast-header">
                         {% if category == 'success' %}
-                            <i class="fas fa-check-circle text-success me-2"></i>
+                            <i class="fas fa-check-circle me-2"></i>
                             <strong class="me-auto">Correcto</strong>
                         {% elif category == 'danger' %}
-                            <i class="fas fa-exclamation-circle text-danger me-2"></i>
+                            <i class="fas fa-exclamation-circle me-2"></i>
                             <strong class="me-auto">Error</strong>
                         {% elif category == 'warning' %}
-                            <i class="fas fa-exclamation-triangle text-warning me-2"></i>
+                            <i class="fas fa-exclamation-triangle me-2"></i>
                             <strong class="me-auto">Atención</strong>
                         {% elif category == 'info' %}
-                            <i class="fas fa-info-circle text-info me-2"></i>
+                            <i class="fas fa-info-circle me-2"></i>
                             <strong class="me-auto">Información</strong>
                         {% endif %}
                         <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
