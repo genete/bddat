@@ -35,4 +35,7 @@ def create_app(config_name='default'):
     from app.routes.auth import bp as auth_bp
     app.register_blueprint(auth_bp)
     
+    from app.routes.perfil import bp as perfil_bp
+    app.register_blueprint(perfil_bp)
+    
     return app
