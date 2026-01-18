@@ -37,9 +37,16 @@
                     <li class="nav-item">
                         <a class="nav-link text-white" href="#">Expedientes</a>
                     </li>
+                    
+                    <!-- Solo visible para ADMIN y SUPERVISOR -->
+                    {% if current_user.is_authenticated %}
+                        {% set user_roles = current_user.roles | map(attribute='nombre') | list %}
+                        {% if 'ADMIN' in user_roles or 'SUPERVISOR' in user_roles %}
                     <li class="nav-item">
                         <a class="nav-link text-white" href="{{ url_for('usuarios.index') }}">Usuarios</a>
                     </li>
+                        {% endif %}
+                    {% endif %}
                 </ul>
                 
                 <!-- Menú de usuario (derecha) -->
