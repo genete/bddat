@@ -9,6 +9,9 @@
     <link href="https://cdn.juntadeandalucia.es/components/sass/latest/css/fonts.css" rel="stylesheet">
     <link href="https://cdn.juntadeandalucia.es/components/sass/latest/css/all.css" rel="stylesheet">
     <link href="https://cdn.juntadeandalucia.es/components/sass/latest/css/custom-jda-bootstrap.css" rel="stylesheet">
+    
+    <!-- CSS Personalizado BDDAT -->
+    <link href="{{ url_for('static', filename='css/custom.css') }}" rel="stylesheet">
 </head>
 <body class="d-flex flex-column min-vh-100">
     
@@ -75,18 +78,6 @@
 
     <!-- Contenido Principal -->
     <main class="container flex-grow-1">
-        <!-- Bloque para mensajes flash (errores, confirmaciones) -->
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-                        {{ message }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                    </div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
-
         <!-- Aquí se inyectará el contenido de cada página hija -->
         {% block content %}{% endblock %}
     </main>
@@ -98,9 +89,40 @@
         </div>
     </footer>
 
+    <!-- Toast de notificaciones (ancho completo, parte inferior) -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+            <div class="toast toast-bottom-full toast-{{ category }} show" role="alert" aria-live="assertive" aria-atomic="true" data-bs-autohide="true" data-bs-delay="5000" onclick="this.classList.remove('show')">
+                <div class="toast-body d-flex justify-content-between align-items-center">
+                    <span>
+                        {% if category == 'success' %}<i class="fas fa-check-circle me-2"></i>{% endif %}
+                        {% if category == 'danger' %}<i class="fas fa-exclamation-circle me-2"></i>{% endif %}
+                        {% if category == 'warning' %}<i class="fas fa-exclamation-triangle me-2"></i>{% endif %}
+                        {% if category == 'info' %}<i class="fas fa-info-circle me-2"></i>{% endif %}
+                        {{ message }}
+                    </span>
+                    <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close" onclick="event.stopPropagation()"></button>
+                </div>
+            </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
     <!-- Scripts JS -->
     <script src="https://cdn.juntadeandalucia.es/components/sass/latest/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.juntadeandalucia.es/components/sass/latest/js/jda-js.js"></script>
+    
+    <script>
+        // Auto-inicializar toasts al cargar la página
+        document.addEventListener('DOMContentLoaded', function() {
+            var toastElList = [].slice.call(document.querySelectorAll('.toast'));
+            toastElList.forEach(function(toastEl) {
+                var toast = new bootstrap.Toast(toastEl);
+                toast.show();
+            });
+        });
+    </script>
     
     <!-- Bloque para scripts específicos de cada página -->
     {% block scripts %}{% endblock %}
