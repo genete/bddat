@@ -23,52 +23,46 @@
     </div>
 </div>
 
-<!-- Layout Vertical: Info General arriba, Proyecto abajo -->
-<div class="row">
-    <div class="col-12">
-        <!-- Información General -->
-        <div class="card shadow-sm mb-3">
+<!-- FILA 1: Información General (estrecha) + Proyecto (ancha) -->
+<div class="row mb-3">
+    <div class="col-lg-3 col-md-4">
+        <div class="card shadow-sm h-100">
             <div class="card-header bg-success text-white">
                 <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>Información General</h5>
             </div>
             <div class="card-body">
-                <dl class="mb-0">
-                    <dt style="font-weight: bold; margin-top: 0;">Número AT:</dt>
-                    <dd style="margin-left: 2rem; margin-bottom: 0.5rem;">
-                        <strong class="text-primary">{{ expediente.numero_at }}</strong>
-                    </dd>
-                    
-                    <dt style="font-weight: bold; margin-top: 0.5rem;">Tipo:</dt>
-                    <dd style="margin-left: 2rem; margin-bottom: 0.5rem;">
+                <!-- Número AT -->
+                <div class="mb-3">
+                    <div class="text-muted small" style="white-space: nowrap;">Número AT:</div>
+                    <div><strong class="text-primary">{{ expediente.numero_at }}</strong></div>
+                </div>
+                
+                <!-- Tipo -->
+                <div class="mb-3">
+                    <div class="text-muted small" style="white-space: nowrap;">Tipo:</div>
+                    <div>
                         {% if expediente.tipo_expediente %}
                             <span class="badge bg-info text-dark">{{ expediente.tipo_expediente.tipo }}</span>
                         {% else %}
                             <span class="text-muted">Sin tipo</span>
                         {% endif %}
-                    </dd>
-                    
-                    <dt style="font-weight: bold; margin-top: 0.5rem;">Responsable:</dt>
-                    <dd style="margin-left: 2rem; margin-bottom: 0.5rem;">
-                        <strong>{{ expediente.responsable.siglas }}</strong><br>
-                        <small class="text-muted">
-                            {{ expediente.responsable.nombre }} {{ expediente.responsable.apellido1 }}
-                        </small>
-                    </dd>
-                    
-                    <dt style="font-weight: bold; margin-top: 0.5rem;">Heredado:</dt>
-                    <dd style="margin-left: 2rem; margin-bottom: 0;">
-                        {% if expediente.heredado %}
-                            <span class="badge bg-warning text-dark">Sí</span>
-                        {% else %}
-                            <span class="badge bg-secondary">No</span>
-                        {% endif %}
-                    </dd>
-                </dl>
+                    </div>
+                </div>
+                
+                <!-- Responsable -->
+                <div>
+                    <div class="text-muted small" style="white-space: nowrap;">Responsable:</div>
+                    <div>
+                        <strong>{{ expediente.responsable.siglas }}</strong> - 
+                        {{ expediente.responsable.nombre }} {{ expediente.responsable.apellido1 }}
+                    </div>
+                </div>
             </div>
         </div>
-        
-        <!-- Proyecto -->
-        <div class="card shadow-sm mb-3">
+    </div>
+    
+    <div class="col-lg-9 col-md-8">
+        <div class="card shadow-sm h-100">
             <div class="card-header bg-primary text-white">
                 <h5 class="mb-0"><i class="fas fa-project-diagram me-2"></i>Proyecto</h5>
             </div>
@@ -94,7 +88,7 @@
                 {% if expediente.proyecto.ia %}
                 <div class="alert alert-warning mb-0">
                     <i class="fas fa-exclamation-triangle me-2"></i>
-                    <strong>Instalación de Alta Tensión:</strong> {{ expediente.proyecto.ia.nombre }}
+                    <strong>Instalación de Alta Tensión:</strong> {{ expediente.proyecto.ia.siglas }} - {{ expediente.proyecto.ia.descripcion }}
                 </div>
                 {% endif %}
             </div>
