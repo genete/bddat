@@ -69,17 +69,23 @@
                 
                 <div class="mb-3">
                     <h6 class="text-muted">Descripción</h6>
-                    <p class="mb-0">{{ expediente.proyecto.descripcion or 'Sin descripción' }}</p>
+                    <p class="mb-0" style="max-height: 300px; overflow-y: auto; white-space: pre-wrap;">
+                        {{- expediente.proyecto.descripcion or 'Sin descripción' -}}
+                    </p>
                 </div>
                 
                 <div class="row">
                     <div class="col-md-6 mb-3">
                         <h6 class="text-muted">Finalidad</h6>
-                        <p class="mb-0">{{ expediente.proyecto.finalidad or 'Sin finalidad' }}</p>
+                        <p class="mb-0" style="max-height: 150px; overflow-y: auto; white-space: pre-wrap;">
+                            {{- expediente.proyecto.finalidad or 'Sin finalidad' -}}
+                        </p>
                     </div>
                     <div class="col-md-6 mb-3">
                         <h6 class="text-muted">Emplazamiento</h6>
-                        <p class="mb-0">{{ expediente.proyecto.emplazamiento or 'Sin emplazamiento' }}</p>
+                        <p class="mb-0" style="max-height: 150px; overflow-y: auto; white-space: pre-wrap;">
+                            {{- expediente.proyecto.emplazamiento or 'Sin emplazamiento' -}}
+                        </p>
                     </div>
                 </div>
                 
