@@ -36,7 +36,7 @@
                             {% for tipo in tipos_expedientes %}
                                 <option value="{{ tipo.id }}" 
                                         {% if expediente.tipo_expediente_id == tipo.id %}selected{% endif %}>
-                                    {{ tipo.nombre }}
+                                    {{ tipo.tipo }}
                                 </option>
                             {% endfor %}
                         </select>
@@ -116,7 +116,7 @@
                             {% for tipo_ia in tipos_ia %}
                                 <option value="{{ tipo_ia.id }}" 
                                         {% if expediente.proyecto.ia_id == tipo_ia.id %}selected{% endif %}>
-                                    {{ tipo_ia.nombre }}
+                                    {{ tipo_ia.siglas }} - {{ tipo_ia.descripcion }}
                                 </option>
                             {% endfor %}
                         </select>
