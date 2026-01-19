@@ -23,22 +23,23 @@
     </div>
 </div>
 
-<!-- FILA 1: Información General (estrecha) + Proyecto (ancha) -->
-<div class="row mb-3">
-    <div class="col-lg-3 col-md-4">
-        <div class="card shadow-sm h-100">
+<!-- Layout Vertical: Info General arriba, Proyecto abajo -->
+<div class="row">
+    <div class="col-12">
+        <!-- Información General -->
+        <div class="card shadow-sm mb-3">
             <div class="card-header bg-success text-white">
                 <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>Información General</h5>
             </div>
             <div class="card-body">
-                <dl class="row mb-0">
-                    <!-- Número AT: 2 columnas -->
-                    <dt class="col-sm-5 text-end" style="white-space: nowrap;">Número AT:</dt>
-                    <dd class="col-sm-7"><strong class="text-primary">{{ expediente.numero_at }}</strong></dd>
+                <dl class="mb-0">
+                    <dt style="font-weight: bold; margin-top: 0;">Número AT:</dt>
+                    <dd style="margin-left: 2rem; margin-bottom: 0.5rem;">
+                        <strong class="text-primary">{{ expediente.numero_at }}</strong>
+                    </dd>
                     
-                    <!-- Tipo: 2 columnas -->
-                    <dt class="col-sm-5 text-end" style="white-space: nowrap;">Tipo:</dt>
-                    <dd class="col-sm-7">
+                    <dt style="font-weight: bold; margin-top: 0.5rem;">Tipo:</dt>
+                    <dd style="margin-left: 2rem; margin-bottom: 0.5rem;">
                         {% if expediente.tipo_expediente %}
                             <span class="badge bg-info text-dark">{{ expediente.tipo_expediente.tipo }}</span>
                         {% else %}
@@ -46,18 +47,16 @@
                         {% endif %}
                     </dd>
                     
-                    <!-- Responsable: etiqueta arriba, valor abajo -->
-                    <dt class="col-12 mt-2" style="white-space: nowrap;">Responsable:</dt>
-                    <dd class="col-12">
+                    <dt style="font-weight: bold; margin-top: 0.5rem;">Responsable:</dt>
+                    <dd style="margin-left: 2rem; margin-bottom: 0.5rem;">
                         <strong>{{ expediente.responsable.siglas }}</strong><br>
                         <small class="text-muted">
                             {{ expediente.responsable.nombre }} {{ expediente.responsable.apellido1 }}
                         </small>
                     </dd>
                     
-                    <!-- Heredado: 2 columnas -->
-                    <dt class="col-sm-5 text-end" style="white-space: nowrap;">Heredado:</dt>
-                    <dd class="col-sm-7">
+                    <dt style="font-weight: bold; margin-top: 0.5rem;">Heredado:</dt>
+                    <dd style="margin-left: 2rem; margin-bottom: 0;">
                         {% if expediente.heredado %}
                             <span class="badge bg-warning text-dark">Sí</span>
                         {% else %}
@@ -67,10 +66,9 @@
                 </dl>
             </div>
         </div>
-    </div>
-    
-    <div class="col-lg-9 col-md-8">
-        <div class="card shadow-sm h-100">
+        
+        <!-- Proyecto -->
+        <div class="card shadow-sm mb-3">
             <div class="card-header bg-primary text-white">
                 <h5 class="mb-0"><i class="fas fa-project-diagram me-2"></i>Proyecto</h5>
             </div>
