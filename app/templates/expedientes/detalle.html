@@ -32,26 +32,24 @@
             </div>
             <div class="card-body">
                 <!-- Número AT -->
-                <div class="mb-3">
-                    <div class="text-muted small" style="white-space: nowrap;">Número AT:</div>
-                    <div><strong class="text-primary">{{ expediente.numero_at }}</strong></div>
+                <div class="mb-2">
+                    <span class="text-muted small" style="white-space: nowrap;">Número AT:</span>
+                    <strong class="text-primary ms-2">{{ expediente.numero_at }}</strong>
                 </div>
                 
                 <!-- Tipo -->
                 <div class="mb-3">
-                    <div class="text-muted small" style="white-space: nowrap;">Tipo:</div>
-                    <div>
-                        {% if expediente.tipo_expediente %}
-                            <span class="badge bg-info text-dark">{{ expediente.tipo_expediente.tipo }}</span>
-                        {% else %}
-                            <span class="text-muted">Sin tipo</span>
-                        {% endif %}
-                    </div>
+                    <span class="text-muted small" style="white-space: nowrap;">Tipo:</span>
+                    {% if expediente.tipo_expediente %}
+                        <span class="badge bg-info text-dark ms-2">{{ expediente.tipo_expediente.tipo }}</span>
+                    {% else %}
+                        <span class="text-muted ms-2">Sin tipo</span>
+                    {% endif %}
                 </div>
                 
                 <!-- Responsable -->
                 <div>
-                    <div class="text-muted small" style="white-space: nowrap;">Responsable:</div>
+                    <div class="text-muted small mb-1" style="white-space: nowrap;">Responsable:</div>
                     <div>
                         <strong>{{ expediente.responsable.siglas }}</strong> - 
                         {{ expediente.responsable.nombre }} {{ expediente.responsable.apellido1 }}
