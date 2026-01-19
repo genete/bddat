@@ -32,7 +32,7 @@
                         <select class="form-select" id="tipo_expediente_id" name="tipo_expediente_id">
                             <option value="">-- Sin tipo --</option>
                             {% for tipo in tipos_expedientes %}
-                                <option value="{{ tipo.id }}">{{ tipo.nombre }}</option>
+                                <option value="{{ tipo.id }}">{{ tipo.tipo }}</option>
                             {% endfor %}
                         </select>
                     </div>
@@ -105,7 +105,7 @@
                         <select class="form-select" id="ia_id" name="ia_id">
                             <option value="">-- Sin tipo IA --</option>
                             {% for tipo_ia in tipos_ia %}
-                                <option value="{{ tipo_ia.id }}">{{ tipo_ia.nombre }}</option>
+                                <option value="{{ tipo_ia.id }}">{{ tipo_ia.siglas }} - {{ tipo_ia.descripcion }}</option>
                             {% endfor %}
                         </select>
                     </div>
