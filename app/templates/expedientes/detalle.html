@@ -23,10 +23,10 @@
     </div>
 </div>
 
-<!-- Información del Expediente -->
-<div class="row">
-    <div class="col-md-4">
-        <div class="card shadow-sm mb-3">
+<!-- FILA 1: Información General (estrecha) + Proyecto (ancha) -->
+<div class="row mb-3">
+    <div class="col-lg-3 col-md-4">
+        <div class="card shadow-sm h-100">
             <div class="card-header bg-success text-white">
                 <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>Información General</h5>
             </div>
@@ -65,9 +65,8 @@
         </div>
     </div>
     
-    <div class="col-md-8">
-        <!-- Datos del Proyecto -->
-        <div class="card shadow-sm mb-3">
+    <div class="col-lg-9 col-md-8">
+        <div class="card shadow-sm h-100">
             <div class="card-header bg-primary text-white">
                 <h5 class="mb-0"><i class="fas fa-project-diagram me-2"></i>Proyecto</h5>
             </div>
@@ -98,30 +97,31 @@
                 {% endif %}
             </div>
         </div>
-        
-        <!-- Secciones futuras (placeholders) -->
-        <div class="row">
-            <div class="col-md-6">
-                <div class="card shadow-sm mb-3">
-                    <div class="card-header bg-light">
-                        <h6 class="mb-0"><i class="fas fa-tasks me-2"></i>Tramitación</h6>
-                    </div>
-                    <div class="card-body text-center text-muted py-4">
-                        <i class="fas fa-clipboard-list fa-2x mb-2"></i>
-                        <p class="mb-0 small">Próximamente</p>
-                    </div>
-                </div>
+    </div>
+</div>
+
+<!-- FILA 2: Tramitación (50%) + Documentos (50%) -->
+<div class="row">
+    <div class="col-md-6">
+        <div class="card shadow-sm">
+            <div class="card-header bg-light">
+                <h6 class="mb-0"><i class="fas fa-tasks me-2"></i>Tramitación</h6>
             </div>
-            <div class="col-md-6">
-                <div class="card shadow-sm mb-3">
-                    <div class="card-header bg-light">
-                        <h6 class="mb-0"><i class="fas fa-file-alt me-2"></i>Documentos</h6>
-                    </div>
-                    <div class="card-body text-center text-muted py-4">
-                        <i class="fas fa-folder fa-2x mb-2"></i>
-                        <p class="mb-0 small">Próximamente</p>
-                    </div>
-                </div>
+            <div class="card-body text-center text-muted py-4">
+                <i class="fas fa-clipboard-list fa-2x mb-2"></i>
+                <p class="mb-0 small">Próximamente</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card shadow-sm">
+            <div class="card-header bg-light">
+                <h6 class="mb-0"><i class="fas fa-file-alt me-2"></i>Documentos</h6>
+            </div>
+            <div class="card-body text-center text-muted py-4">
+                <i class="fas fa-folder fa-2x mb-2"></i>
+                <p class="mb-0 small">Próximamente</p>
             </div>
         </div>
     </div>
