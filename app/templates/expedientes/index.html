@@ -1,0 +1,110 @@
+{% extends 'base.html' %}
+
+{% block title %}Expedientes - BDDAT{% endblock %}
+
+{% block content %}
+<div class="row mb-3">
+    <div class="col-md-8">
+        <h2><i class="fas fa-folder-open me-2"></i>Expedientes</h2>
+        <p class="text-muted">
+            {% if current_user.tiene_rol('ADMIN', 'SUPERVISOR') %}
+                Vista completa de todos los expedientes del sistema
+            {% else %}
+                Tus expedientes asignados
+            {% endif %}
+        </p>
+    </div>
+    <div class="col-md-4 text-end">
+        <a href="{{ url_for('expedientes.nuevo') }}" class="btn btn-success">
+            <i class="fas fa-plus me-1"></i> Nuevo Expediente
+        </a>
+    </div>
+</div>
+
+<!-- Tabla de Expedientes con columnas responsive -->
+<div class="card shadow-sm">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover table-striped mb-0">
+                <thead class="table-success">
+                    <tr>
+                        <th>Número AT</th>
+                        <th>Proyecto</th>
+                        <th class="d-none d-md-table-cell">Tipo</th>
+                        <th class="d-none d-lg-table-cell">Responsable</th>
+                        <th class="d-none d-xl-table-cell">Estado</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for expediente in expedientes %}
+                    <tr>
+                        <td>
+                            <strong class="text-primary">AT-{{ expediente.numero_at }}</strong>
+                            {% if expediente.heredado %}
+                                <span class="badge bg-warning text-dark ms-1" title="Expediente heredado">
+                                    <i class="fas fa-history"></i>
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="text-truncate" style="max-width: 300px;" title="{{ expediente.proyecto.titulo }}">
+                                {{ expediente.proyecto.titulo }}
+                            </div>
+                            <small class="text-muted">{{ expediente.proyecto.finalidad or 'Sin finalidad' }}</small>
+                        </td>
+                        <td class="d-none d-md-table-cell">
+                            {% if expediente.tipo_expediente %}
+                                <span class="badge bg-info text-dark">{{ expediente.tipo_expediente.nombre }}</span>
+                            {% else %}
+                                <span class="text-muted small">Sin tipo</span>
+                            {% endif %}
+                        </td>
+                        <td class="d-none d-lg-table-cell">
+                            <span title="{{ expediente.responsable.nombre }} {{ expediente.responsable.apellido1 }}">
+                                {{ expediente.responsable.siglas }}
+                            </span>
+                            {% if expediente.responsable_id == current_user.id %}
+                                <span class="badge bg-primary ms-1">Tú</span>
+                            {% endif %}
+                        </td>
+                        <td class="d-none d-xl-table-cell">
+                            <span class="badge bg-secondary">En tramitación</span>
+                        </td>
+                        <td>
+                            <a href="{{ url_for('expedientes.detalle', id=expediente.id) }}" 
+                               class="btn btn-sm btn-outline-primary me-1" title="Ver detalle">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                            <a href="{{ url_for('expedientes.editar', id=expediente.id) }}" 
+                               class="btn btn-sm btn-outline-secondary" title="Editar">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="text-center py-4 text-muted">
+                            <i class="fas fa-folder-open fa-3x mb-3 d-block"></i>
+                            No hay expedientes disponibles. ¡Crea el primero!
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Estadísticas rápidas (opcional) -->
+{% if expedientes %}
+<div class="row mt-4">
+    <div class="col-md-12">
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle me-2"></i>
+            Total de expedientes: <strong>{{ expedientes|length }}</strong>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
