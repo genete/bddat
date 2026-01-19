@@ -29,6 +29,7 @@ def create_app(config_name='default'):
     
     from app import models
     
+    # Registrar blueprints
     from app.routes.usuarios import bp as usuarios_bp
     app.register_blueprint(usuarios_bp)
     
@@ -37,5 +38,8 @@ def create_app(config_name='default'):
     
     from app.routes.perfil import bp as perfil_bp
     app.register_blueprint(perfil_bp)
+    
+    from app.routes.expedientes import bp as expedientes_bp
+    app.register_blueprint(expedientes_bp)
     
     return app
