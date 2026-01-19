@@ -1,0 +1,141 @@
+{% extends 'base.html' %}
+
+{% block title %}Editar Expediente AT-{{ expediente.numero_at }} - BDDAT{% endblock %}
+
+{% block content %}
+<div class="row mb-3">
+    <div class="col-md-12">
+        <h2>
+            <i class="fas fa-edit me-2"></i>Editar Expediente AT-{{ expediente.numero_at }}
+        </h2>
+        <p class="text-muted">Modificar datos del expediente y su proyecto asociado</p>
+    </div>
+</div>
+
+<form action="{{ url_for('expedientes.editar', id=expediente.id) }}" method="POST">
+    <div class="row">
+        <!-- Columna Izquierda: Datos del Expediente -->
+        <div class="col-md-4">
+            <div class="card shadow-sm mb-3">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="fas fa-folder me-2"></i>Datos del Expediente</h5>
+                </div>
+                <div class="card-body">
+                    <!-- Número AT (bloqueado) -->
+                    <div class="mb-3">
+                        <label class="form-label">Número AT</label>
+                        <input type="text" class="form-control" value="AT-{{ expediente.numero_at }}" disabled>
+                        <small class="form-text text-muted">No se puede modificar</small>
+                    </div>
+                    
+                    <!-- Tipo Expediente -->
+                    <div class="mb-3">
+                        <label for="tipo_expediente_id" class="form-label">Tipo de Expediente</label>
+                        <select class="form-select" id="tipo_expediente_id" name="tipo_expediente_id">
+                            <option value="">-- Sin tipo --</option>
+                            {% for tipo in tipos_expedientes %}
+                                <option value="{{ tipo.id }}" 
+                                        {% if expediente.tipo_expediente_id == tipo.id %}selected{% endif %}>
+                                    {{ tipo.nombre }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <!-- Responsable -->
+                    <div class="mb-3">
+                        <label for="responsable_id" class="form-label">Responsable</label>
+                        <select class="form-select" id="responsable_id" name="responsable_id" 
+                                {% if not current_user.tiene_rol('ADMIN', 'SUPERVISOR') %}disabled{% endif %}>
+                            {% for usuario in usuarios %}
+                                <option value="{{ usuario.id }}" 
+                                        {% if expediente.responsable_id == usuario.id %}selected{% endif %}>
+                                    {{ usuario.siglas }} - {{ usuario.nombre }} {{ usuario.apellido1 }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                        {% if not current_user.tiene_rol('ADMIN', 'SUPERVISOR') %}
+                            <small class="form-text text-muted">Solo ADMIN/SUPERVISOR puede cambiar responsable</small>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Heredado -->
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="heredado" name="heredado" 
+                                   {% if expediente.heredado %}checked{% endif %}>
+                            <label class="form-check-label" for="heredado">
+                                Expediente Heredado
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Columna Derecha: Datos del Proyecto -->
+        <div class="col-md-8">
+            <div class="card shadow-sm mb-3">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="fas fa-project-diagram me-2"></i>Datos del Proyecto</h5>
+                </div>
+                <div class="card-body">
+                    <!-- Título -->
+                    <div class="mb-3">
+                        <label for="titulo_proyecto" class="form-label">Título del Proyecto</label>
+                        <input type="text" class="form-control" id="titulo_proyecto" name="titulo_proyecto" 
+                               value="{{ expediente.proyecto.titulo }}">
+                    </div>
+                    
+                    <!-- Descripción -->
+                    <div class="mb-3">
+                        <label for="descripcion_proyecto" class="form-label">Descripción</label>
+                        <textarea class="form-control" id="descripcion_proyecto" name="descripcion_proyecto" 
+                                  rows="3">{{ expediente.proyecto.descripcion }}</textarea>
+                    </div>
+                    
+                    <!-- Finalidad -->
+                    <div class="mb-3">
+                        <label for="finalidad" class="form-label">Finalidad</label>
+                        <input type="text" class="form-control" id="finalidad" name="finalidad" 
+                               value="{{ expediente.proyecto.finalidad }}">
+                    </div>
+                    
+                    <!-- Emplazamiento -->
+                    <div class="mb-3">
+                        <label for="emplazamiento" class="form-label">Emplazamiento</label>
+                        <input type="text" class="form-control" id="emplazamiento" name="emplazamiento" 
+                               value="{{ expediente.proyecto.emplazamiento }}">
+                    </div>
+                    
+                    <!-- Tipo IA -->
+                    <div class="mb-3">
+                        <label for="ia_id" class="form-label">Tipo de Instalación de Alta Tensión</label>
+                        <select class="form-select" id="ia_id" name="ia_id">
+                            <option value="">-- Sin tipo IA --</option>
+                            {% for tipo_ia in tipos_ia %}
+                                <option value="{{ tipo_ia.id }}" 
+                                        {% if expediente.proyecto.ia_id == tipo_ia.id %}selected{% endif %}>
+                                    {{ tipo_ia.nombre }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Botones de Acción -->
+    <div class="row">
+        <div class="col-md-12 text-end">
+            <a href="{{ url_for('expedientes.detalle', id=expediente.id) }}" class="btn btn-secondary me-2">
+                <i class="fas fa-times me-1"></i> Cancelar
+            </a>
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-save me-1"></i> Guardar Cambios
+            </button>
+        </div>
+    </div>
+</form>
+{% endblock %}
