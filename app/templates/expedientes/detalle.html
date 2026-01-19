@@ -32,27 +32,31 @@
             </div>
             <div class="card-body">
                 <dl class="row mb-0">
-                    <dt class="col-sm-5">Número AT:</dt>
+                    <!-- Número AT: 2 columnas -->
+                    <dt class="col-sm-5 text-end" style="white-space: nowrap;">Número AT:</dt>
                     <dd class="col-sm-7"><strong class="text-primary">{{ expediente.numero_at }}</strong></dd>
                     
-                    <dt class="col-sm-5">Tipo:</dt>
+                    <!-- Tipo: 2 columnas -->
+                    <dt class="col-sm-5 text-end" style="white-space: nowrap;">Tipo:</dt>
                     <dd class="col-sm-7">
                         {% if expediente.tipo_expediente %}
-                            <span class="badge bg-info text-dark">{{ expediente.tipo_expediente.nombre }}</span>
+                            <span class="badge bg-info text-dark">{{ expediente.tipo_expediente.tipo }}</span>
                         {% else %}
                             <span class="text-muted">Sin tipo</span>
                         {% endif %}
                     </dd>
                     
-                    <dt class="col-sm-5">Responsable:</dt>
-                    <dd class="col-sm-7">
+                    <!-- Responsable: etiqueta arriba, valor abajo -->
+                    <dt class="col-12 mt-2" style="white-space: nowrap;">Responsable:</dt>
+                    <dd class="col-12">
                         <strong>{{ expediente.responsable.siglas }}</strong><br>
                         <small class="text-muted">
                             {{ expediente.responsable.nombre }} {{ expediente.responsable.apellido1 }}
                         </small>
                     </dd>
                     
-                    <dt class="col-sm-5">Heredado:</dt>
+                    <!-- Heredado: 2 columnas -->
+                    <dt class="col-sm-5 text-end" style="white-space: nowrap;">Heredado:</dt>
                     <dd class="col-sm-7">
                         {% if expediente.heredado %}
                             <span class="badge bg-warning text-dark">Sí</span>
