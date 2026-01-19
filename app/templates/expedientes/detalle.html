@@ -1,0 +1,129 @@
+{% extends 'base.html' %}
+
+{% block title %}Expediente AT-{{ expediente.numero_at }} - BDDAT{% endblock %}
+
+{% block content %}
+<div class="row mb-3">
+    <div class="col-md-8">
+        <h2>
+            <i class="fas fa-folder-open me-2"></i>
+            Expediente AT-{{ expediente.numero_at }}
+            {% if expediente.heredado %}
+                <span class="badge bg-warning text-dark ms-2">Heredado</span>
+            {% endif %}
+        </h2>
+    </div>
+    <div class="col-md-4 text-end">
+        <a href="{{ url_for('expedientes.index') }}" class="btn btn-secondary me-2">
+            <i class="fas fa-arrow-left me-1"></i> Volver
+        </a>
+        <a href="{{ url_for('expedientes.editar', id=expediente.id) }}" class="btn btn-primary">
+            <i class="fas fa-edit me-1"></i> Editar
+        </a>
+    </div>
+</div>
+
+<!-- Información del Expediente -->
+<div class="row">
+    <div class="col-md-4">
+        <div class="card shadow-sm mb-3">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>Información General</h5>
+            </div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-5">Número AT:</dt>
+                    <dd class="col-sm-7"><strong class="text-primary">{{ expediente.numero_at }}</strong></dd>
+                    
+                    <dt class="col-sm-5">Tipo:</dt>
+                    <dd class="col-sm-7">
+                        {% if expediente.tipo_expediente %}
+                            <span class="badge bg-info text-dark">{{ expediente.tipo_expediente.nombre }}</span>
+                        {% else %}
+                            <span class="text-muted">Sin tipo</span>
+                        {% endif %}
+                    </dd>
+                    
+                    <dt class="col-sm-5">Responsable:</dt>
+                    <dd class="col-sm-7">
+                        <strong>{{ expediente.responsable.siglas }}</strong><br>
+                        <small class="text-muted">
+                            {{ expediente.responsable.nombre }} {{ expediente.responsable.apellido1 }}
+                        </small>
+                    </dd>
+                    
+                    <dt class="col-sm-5">Heredado:</dt>
+                    <dd class="col-sm-7">
+                        {% if expediente.heredado %}
+                            <span class="badge bg-warning text-dark">Sí</span>
+                        {% else %}
+                            <span class="badge bg-secondary">No</span>
+                        {% endif %}
+                    </dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-8">
+        <!-- Datos del Proyecto -->
+        <div class="card shadow-sm mb-3">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-project-diagram me-2"></i>Proyecto</h5>
+            </div>
+            <div class="card-body">
+                <h5 class="card-title">{{ expediente.proyecto.titulo }}</h5>
+                
+                <div class="mb-3">
+                    <h6 class="text-muted">Descripción</h6>
+                    <p class="mb-0">{{ expediente.proyecto.descripcion or 'Sin descripción' }}</p>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <h6 class="text-muted">Finalidad</h6>
+                        <p class="mb-0">{{ expediente.proyecto.finalidad or 'Sin finalidad' }}</p>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <h6 class="text-muted">Emplazamiento</h6>
+                        <p class="mb-0">{{ expediente.proyecto.emplazamiento or 'Sin emplazamiento' }}</p>
+                    </div>
+                </div>
+                
+                {% if expediente.proyecto.ia %}
+                <div class="alert alert-warning mb-0">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>Instalación de Alta Tensión:</strong> {{ expediente.proyecto.ia.nombre }}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Secciones futuras (placeholders) -->
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card shadow-sm mb-3">
+                    <div class="card-header bg-light">
+                        <h6 class="mb-0"><i class="fas fa-tasks me-2"></i>Tramitación</h6>
+                    </div>
+                    <div class="card-body text-center text-muted py-4">
+                        <i class="fas fa-clipboard-list fa-2x mb-2"></i>
+                        <p class="mb-0 small">Próximamente</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card shadow-sm mb-3">
+                    <div class="card-header bg-light">
+                        <h6 class="mb-0"><i class="fas fa-file-alt me-2"></i>Documentos</h6>
+                    </div>
+                    <div class="card-body text-center text-muted py-4">
+                        <i class="fas fa-folder fa-2x mb-2"></i>
+                        <p class="mb-0 small">Próximamente</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
