@@ -78,8 +78,21 @@ class Usuario(UserMixin, db.Model):
         self.reset_token_expiry = None
 
     # Helpers de permisos
-    def tiene_rol(self, nombre_rol):
-        return any(rol.nombre == nombre_rol for rol in self.roles)
+    def tiene_rol(self, *nombres_roles):
+        """Verifica si el usuario tiene al menos uno de los roles especificados
+        
+        Args:
+            *nombres_roles: Uno o más nombres de roles a verificar
+            
+        Returns:
+            bool: True si el usuario tiene al menos uno de los roles
+            
+        Ejemplos:
+            usuario.tiene_rol('ADMIN')
+            usuario.tiene_rol('ADMIN', 'SUPERVISOR')
+            usuario.tiene_rol('ADMIN', 'SUPERVISOR', 'TRAMITADOR')
+        """
+        return any(rol.nombre in nombres_roles for rol in self.roles)
 
     @property
     def es_admin(self):
