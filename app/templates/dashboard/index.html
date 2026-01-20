@@ -14,7 +14,7 @@
                 Bienvenido/a, <strong>{{ current_user.nombre }} {{ current_user.apellido1 }}</strong>
                 <span class="badge bg-secondary ms-2">{{ current_user.siglas }}</span>
                 {% for rol in current_user.roles %}
-                <span class="badge bg-info ms-1">{{ rol.nombre }}</span>
+                <span class="badge ms-1" style="background-color: #e6e6e5; color: #54585a;">{{ rol.nombre }}</span>
                 {% endfor %}
             </p>
         </div>
@@ -51,18 +51,6 @@
                             </a>
                             {% else %}
                             <span class="text-muted">{{ item.nombre }}</span>
-                            {% endif %}
-                            
-                            {% if item.color is defined %}
-                                {% if item.color == 'warning' %}
-                                <span class="badge bg-warning text-dark ms-2" title="Requiere precaución">
-                                    <i class="fas fa-exclamation-triangle"></i>
-                                </span>
-                                {% elif item.color == 'danger' %}
-                                <span class="badge bg-danger ms-2" title="Operación crítica">
-                                    <i class="fas fa-exclamation-circle"></i>
-                                </span>
-                                {% endif %}
                             {% endif %}
                         </li>
                         {% endfor %}
