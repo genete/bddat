@@ -42,4 +42,7 @@ def create_app(config_name='default'):
     from app.routes.expedientes import bp as expedientes_bp
     app.register_blueprint(expedientes_bp)
     
+    from app.routes.dashboard import bp as dashboard_bp
+    app.register_blueprint(dashboard_bp)
+    
     return app
