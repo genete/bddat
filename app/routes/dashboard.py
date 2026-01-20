@@ -27,12 +27,6 @@ def index():
                 {'nombre': 'Documentos', 'url': '#', 'roles': ['TRAMITADOR', 'ADMINISTRATIVO', 'SUPERVISOR', 'ADMIN']},
             ]
         },
-        'Usuarios': {
-            'items': [
-                {'nombre': 'Consultar usuarios', 'url': 'usuarios.index', 'roles': ['TRAMITADOR', 'ADMINISTRATIVO', 'SUPERVISOR', 'ADMIN']},
-                {'nombre': 'Gestión de usuarios', 'url': 'usuarios.index', 'roles': ['SUPERVISOR', 'ADMIN']},
-            ]
-        },
         'Configuración': {
             'items': [
                 {'nombre': 'Tablas maestras', 'url': '#', 'roles': ['SUPERVISOR', 'ADMIN'], 'color': 'warning'},
