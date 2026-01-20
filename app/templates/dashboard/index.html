@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - BDDAT{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Encabezado del Dashboard -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="h3">
+                <i class="fas fa-th-large me-2"></i>Panel de Control
+            </h1>
+            <p class="text-muted">
+                Bienvenido/a, <strong>{{ current_user.nombre }} {{ current_user.apellido1 }}</strong>
+                <span class="badge bg-secondary ms-2">{{ current_user.siglas }}</span>
+                {% for rol in current_user.roles %}
+                <span class="badge bg-info ms-1">{{ rol.nombre }}</span>
+                {% endfor %}
+            </p>
+        </div>
+    </div>
+
+    <!-- Bloques del Dashboard -->
+    <div class="row g-4">
+        {% for bloque_nombre, bloque_data in bloques.items() %}
+        <div class="col-12 col-lg-6 col-xl-4">
+            <div class="card h-100 shadow-sm">
+                <div class="card-header bg-success text-white">
+                    <h5 class="card-title mb-0">
+                        {% if bloque_nombre == 'Tramitación' %}
+                        <i class="fas fa-folder-open me-2"></i>
+                        {% elif bloque_nombre == 'Usuarios' %}
+                        <i class="fas fa-users me-2"></i>
+                        {% elif bloque_nombre == 'Configuración' %}
+                        <i class="fas fa-cog me-2"></i>
+                        {% elif bloque_nombre == 'Datos Legacy' %}
+                        <i class="fas fa-database me-2"></i>
+                        {% elif bloque_nombre == 'Sistema' %}
+                        <i class="fas fa-server me-2"></i>
+                        {% endif %}
+                        {{ bloque_nombre }}
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <ul class="list-group list-group-flush">
+                        {% for item in bloque_data.items %}
+                        <li class="list-group-item px-0">
+                            {% if item.url != '#' %}
+                            <a href="{{ url_for(item.url) }}" class="text-decoration-none">
+                                {{ item.nombre }}
+                            </a>
+                            {% else %}
+                            <span class="text-muted">{{ item.nombre }}</span>
+                            {% endif %}
+                            
+                            {% if item.color is defined %}
+                                {% if item.color == 'warning' %}
+                                <span class="badge bg-warning text-dark ms-2" title="Requiere precaución">
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                </span>
+                                {% elif item.color == 'danger' %}
+                                <span class="badge bg-danger ms-2" title="Operación crítica">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                </span>
+                                {% endif %}
+                            {% endif %}
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
