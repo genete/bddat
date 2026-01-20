@@ -29,19 +29,19 @@ def index():
         },
         'Configuración': {
             'items': [
-                {'nombre': 'Tablas maestras', 'url': '#', 'roles': ['SUPERVISOR', 'ADMIN'], 'color': 'warning'},
-                {'nombre': 'Gestión estructura', 'url': '#', 'roles': ['SUPERVISOR', 'ADMIN'], 'color': 'danger'},
+                {'nombre': 'Tablas maestras', 'url': '#', 'roles': ['SUPERVISOR', 'ADMIN']},
+                {'nombre': 'Gestión estructura', 'url': '#', 'roles': ['SUPERVISOR', 'ADMIN']},
             ]
         },
         'Datos Legacy': {
             'items': [
                 {'nombre': 'Consultar legacy', 'url': '#', 'roles': ['TRAMITADOR', 'ADMINISTRATIVO', 'SUPERVISOR', 'ADMIN']},
-                {'nombre': 'Gestión legacy', 'url': '#', 'roles': ['ADMIN'], 'color': 'danger'},
+                {'nombre': 'Gestión legacy', 'url': '#', 'roles': ['ADMIN']},
             ]
         },
         'Sistema': {
             'items': [
-                {'nombre': 'Migraciones BD', 'url': '#', 'roles': ['ADMIN'], 'color': 'danger'},
+                {'nombre': 'Migraciones BD', 'url': '#', 'roles': ['ADMIN']},
                 {'nombre': 'Logs del sistema', 'url': '#', 'roles': ['SUPERVISOR', 'ADMIN']},
             ]
         },
