@@ -17,42 +17,73 @@
                     <div class="row mb-3">
                         <div class="col-md-4">
                             <label for="siglas" class="form-label">Siglas *</label>
-                            <input type="text" class="form-control" id="siglas" name="siglas" 
-                                   value="{{ usuario.siglas }}" required maxlength="50">
+                            <input type="text" 
+                                   class="form-control {% if error_siglas %}is-invalid{% endif %}" 
+                                   id="siglas" 
+                                   name="siglas" 
+                                   value="{{ form_data.siglas if form_data else usuario.siglas }}" 
+                                   required 
+                                   maxlength="50">
+                            {% if error_siglas %}
+                            <div class="invalid-feedback">
+                                {{ error_siglas }}
+                            </div>
+                            {% endif %}
                         </div>
                         <div class="col-md-8">
                             <label for="nombre" class="form-label">Nombre *</label>
-                            <input type="text" class="form-control" id="nombre" name="nombre" 
-                                   value="{{ usuario.nombre }}" required maxlength="100">
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="nombre" 
+                                   name="nombre" 
+                                   value="{{ form_data.nombre if form_data else usuario.nombre }}" 
+                                   required 
+                                   maxlength="100">
                         </div>
                     </div>
                     
                     <div class="row mb-3">
                         <div class="col-md-6">
                             <label for="apellido1" class="form-label">Primer Apellido *</label>
-                            <input type="text" class="form-control" id="apellido1" name="apellido1" 
-                                   value="{{ usuario.apellido1 }}" required maxlength="50">
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="apellido1" 
+                                   name="apellido1" 
+                                   value="{{ form_data.apellido1 if form_data else usuario.apellido1 }}" 
+                                   required 
+                                   maxlength="50">
                         </div>
                         <div class="col-md-6">
                             <label for="apellido2" class="form-label">Segundo Apellido</label>
-                            <input type="text" class="form-control" id="apellido2" name="apellido2" 
-                                   value="{{ usuario.apellido2 or '' }}" maxlength="50">
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="apellido2" 
+                                   name="apellido2" 
+                                   value="{{ form_data.apellido2 if form_data else (usuario.apellido2 or '') }}" 
+                                   maxlength="50">
                         </div>
                     </div>
                     
                     <div class="row mb-3">
                         <div class="col-md-12">
                             <label for="email" class="form-label">Email</label>
-                            <input type="email" class="form-control" id="email" name="email" 
-                                   value="{{ usuario.email or '' }}" placeholder="usuario@ejemplo.com">
+                            <input type="email" 
+                                   class="form-control" 
+                                   id="email" 
+                                   name="email" 
+                                   value="{{ form_data.email if form_data else (usuario.email or '') }}" 
+                                   placeholder="usuario@ejemplo.com">
                         </div>
                     </div>
 
                     <!-- Estado -->
                     <h6 class="border-bottom pb-2 mb-3 mt-4">Estado del Usuario</h6>
                     <div class="form-check form-switch mb-3">
-                        <input class="form-check-input" type="checkbox" id="activo" name="activo" 
-                               {% if usuario.activo %}checked{% endif %}>
+                        <input class="form-check-input" 
+                               type="checkbox" 
+                               id="activo" 
+                               name="activo" 
+                               {% if form_data %}{{ 'checked' if form_data.activo else '' }}{% else %}{{ 'checked' if usuario.activo else '' }}{% endif %}>
                         <label class="form-check-label" for="activo">
                             <strong>Usuario activo</strong>
                             <small class="text-muted d-block">Desactivar impide el acceso sin eliminar datos</small>
@@ -83,9 +114,12 @@
                             {% for rol in roles %}
                             <div class="col-md-6">
                                 <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" name="roles" 
-                                           value="{{ rol.id }}" id="rol_{{ rol.id }}"
-                                           {% if rol in usuario.roles %}checked{% endif %}>
+                                    <input class="form-check-input" 
+                                           type="checkbox" 
+                                           name="roles" 
+                                           value="{{ rol.id }}" 
+                                           id="rol_{{ rol.id }}"
+                                           {% if form_data %}{{ 'checked' if (rol.id|string) in form_data.roles_ids else '' }}{% else %}{{ 'checked' if rol in usuario.roles else '' }}{% endif %}>
                                     <label class="form-check-label" for="rol_{{ rol.id }}">
                                         <strong>{{ rol.nombre }}</strong>
                                         <small class="text-muted d-block">{{ rol.descripcion }}</small>
