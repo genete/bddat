@@ -101,21 +101,50 @@
                     <div class="row mb-3">
                         <div class="col-md-4">
                             <label for="siglas" class="form-label">Siglas *</label>
-                            <input type="text" class="form-control" id="siglas" name="siglas" required maxlength="50" placeholder="Ej: CGL">
+                            <input type="text" 
+                                   class="form-control {% if error_siglas %}is-invalid{% endif %}" 
+                                   id="siglas" 
+                                   name="siglas" 
+                                   required 
+                                   maxlength="50" 
+                                   placeholder="Ej: CGL"
+                                   value="{{ form_data.siglas if form_data else '' }}">
+                            {% if error_siglas %}
+                            <div class="invalid-feedback">
+                                {{ error_siglas }}
+                            </div>
+                            {% endif %}
                         </div>
                         <div class="col-md-8">
                             <label for="nombre" class="form-label">Nombre *</label>
-                            <input type="text" class="form-control" id="nombre" name="nombre" required maxlength="100">
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="nombre" 
+                                   name="nombre" 
+                                   required 
+                                   maxlength="100"
+                                   value="{{ form_data.nombre if form_data else '' }}">
                         </div>
                     </div>
                     <div class="row mb-3">
                         <div class="col-md-6">
                             <label for="apellido1" class="form-label">Primer Apellido *</label>
-                            <input type="text" class="form-control" id="apellido1" name="apellido1" required maxlength="50">
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="apellido1" 
+                                   name="apellido1" 
+                                   required 
+                                   maxlength="50"
+                                   value="{{ form_data.apellido1 if form_data else '' }}">
                         </div>
                         <div class="col-md-6">
                             <label for="apellido2" class="form-label">Segundo Apellido</label>
-                            <input type="text" class="form-control" id="apellido2" name="apellido2" maxlength="50">
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="apellido2" 
+                                   name="apellido2" 
+                                   maxlength="50"
+                                   value="{{ form_data.apellido2 if form_data else '' }}">
                         </div>
                     </div>
 
@@ -147,7 +176,12 @@
                                 {% for rol in roles %}
                                 <div class="col-md-6">
                                     <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="roles" value="{{ rol.id }}" id="rol_{{ rol.id }}">
+                                        <input class="form-check-input" 
+                                               type="checkbox" 
+                                               name="roles" 
+                                               value="{{ rol.id }}" 
+                                               id="rol_{{ rol.id }}"
+                                               {% if form_data and (rol.id|string) in form_data.roles_ids %}checked{% endif %}>
                                         <label class="form-check-label" for="rol_{{ rol.id }}">
                                             <strong>{{ rol.nombre }}</strong> <small class="text-muted d-block">{{ rol.descripcion }}</small>
                                         </label>
@@ -173,5 +207,13 @@ function togglePassword(fieldId) {
     const field = document.getElementById(fieldId);
     field.type = field.type === 'password' ? 'text' : 'password';
 }
+
+// Abrir modal automáticamente si hay errores
+{% if show_modal %}
+document.addEventListener('DOMContentLoaded', function() {
+    var modal = new bootstrap.Modal(document.getElementById('crearUsuarioModal'));
+    modal.show();
+});
+{% endif %}
 </script>
 {% endblock %}
