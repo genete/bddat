@@ -33,6 +33,12 @@ def index():
             password = request.form['password']
             confirm_password = request.form['confirm_password']
             
+            # VALIDACIÓN PREVENTIVA: Verificar si las siglas ya existen
+            if Usuario.query.filter_by(siglas=siglas).first():
+                flash(f'Las siglas "{siglas}" ya están en uso. Por favor, elige otras.', 'warning')
+                usuarios = Usuario.query.all()
+                return render_template('usuarios/index.html', usuarios=usuarios, roles=todos_los_roles)
+            
             # Validación de contraseñas
             if password != confirm_password:
                 flash('Las contraseñas no coinciden', 'danger')
@@ -95,6 +101,14 @@ def editar(id):
     
     if request.method == 'POST':
         try:
+            # VALIDACIÓN PREVENTIVA: Verificar si las siglas ya existen (excepto el usuario actual)
+            nuevas_siglas = request.form['siglas']
+            if nuevas_siglas != usuario.siglas:  # Solo validar si cambiaron las siglas
+                usuario_existente = Usuario.query.filter_by(siglas=nuevas_siglas).first()
+                if usuario_existente:
+                    flash(f'Las siglas "{nuevas_siglas}" ya están en uso. Por favor, elige otras.', 'warning')
+                    return render_template('usuarios/editar.html', usuario=usuario, roles=todos_los_roles)
+            
             # VALIDACIÓN 1: No permitir quitar rol ADMIN al último ADMIN
             roles_ids = request.form.getlist('roles')
             roles_seleccionados = Rol.query.filter(Rol.id.in_(roles_ids)).all()
@@ -147,7 +161,7 @@ def editar(id):
                         return redirect(url_for('usuarios.editar', id=id))
             
             # Actualizar datos personales
-            usuario.siglas = request.form['siglas']
+            usuario.siglas = nuevas_siglas
             usuario.nombre = request.form['nombre']
             usuario.apellido1 = request.form['apellido1']
             usuario.apellido2 = request.form.get('apellido2')
