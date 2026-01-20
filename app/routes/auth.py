@@ -23,9 +23,9 @@ def login():
             login_user(usuario)
             flash(f'Bienvenido, {usuario.nombre}!', 'success')
             
-            # Redirigir a la página solicitada o al inicio
+            # Redirigir a la página solicitada o al dashboard
             next_page = request.args.get('next')
-            return redirect(next_page) if next_page else redirect(url_for('usuarios.index'))
+            return redirect(next_page) if next_page else redirect(url_for('dashboard.index'))
         else:
             flash('Siglas o contraseña incorrectos.', 'danger')
     
