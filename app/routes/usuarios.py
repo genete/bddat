@@ -21,6 +21,11 @@ def current_user_es_admin():
 def index():
     # Recuperamos todos los roles para el formulario
     todos_los_roles = Rol.query.all()
+    usuarios = Usuario.query.all()
+    
+    # Variable para controlar si mostrar modal y preservar datos
+    form_data = None
+    error_siglas = None
 
     if request.method == 'POST':
         # Lógica para crear usuario
@@ -33,27 +38,47 @@ def index():
             password = request.form['password']
             confirm_password = request.form['confirm_password']
             
+            # Capturar roles seleccionados para preservarlos
+            roles_ids = request.form.getlist('roles')
+            
+            # Preparar datos del formulario para devolver en caso de error
+            form_data = {
+                'siglas': siglas,
+                'nombre': nombre,
+                'apellido1': apellido1,
+                'apellido2': apellido2,
+                'roles_ids': roles_ids
+            }
+            
             # VALIDACIÓN PREVENTIVA: Verificar si las siglas ya existen
             if Usuario.query.filter_by(siglas=siglas).first():
-                flash(f'Las siglas "{siglas}" ya están en uso. Por favor, elige otras.', 'warning')
-                usuarios = Usuario.query.all()
-                return render_template('usuarios/index.html', usuarios=usuarios, roles=todos_los_roles)
+                error_siglas = f'Las siglas "{siglas}" ya están en uso. Por favor, elige otras.'
+                return render_template('usuarios/index.html', 
+                                     usuarios=usuarios, 
+                                     roles=todos_los_roles,
+                                     form_data=form_data,
+                                     error_siglas=error_siglas,
+                                     show_modal=True)
             
             # Validación de contraseñas
             if password != confirm_password:
                 flash('Las contraseñas no coinciden', 'danger')
-                return redirect(url_for('usuarios.index'))
-            
-            # Recuperar roles seleccionados (lista de IDs)
-            roles_ids = request.form.getlist('roles')
+                return render_template('usuarios/index.html', 
+                                     usuarios=usuarios, 
+                                     roles=todos_los_roles,
+                                     form_data=form_data,
+                                     show_modal=True)
             
             # NUEVA VALIDACIÓN: SUPERVISOR no puede asignar rol ADMIN
             if not current_user_es_admin():
                 rol_admin = Rol.query.filter_by(nombre='ADMIN').first()
                 if rol_admin and str(rol_admin.id) in roles_ids:
                     flash('No tienes permisos para asignar el rol ADMIN', 'danger')
-                    usuarios = Usuario.query.all()
-                    return render_template('usuarios/index.html', usuarios=usuarios, roles=todos_los_roles)
+                    return render_template('usuarios/index.html', 
+                                         usuarios=usuarios, 
+                                         roles=todos_los_roles,
+                                         form_data=form_data,
+                                         show_modal=True)
             
             # Crear instancia del modelo
             nuevo_usuario = Usuario(
@@ -81,9 +106,13 @@ def index():
         except Exception as e:
             db.session.rollback()
             flash(f'Error al crear usuario: {str(e)}', 'danger')
+            return render_template('usuarios/index.html', 
+                                 usuarios=usuarios, 
+                                 roles=todos_los_roles,
+                                 form_data=form_data,
+                                 show_modal=True)
 
     # GET: Listar todos los usuarios
-    usuarios = Usuario.query.all()
     return render_template('usuarios/index.html', usuarios=usuarios, roles=todos_los_roles)
 
 
@@ -99,6 +128,9 @@ def editar(id):
         flash('No tienes permisos para editar usuarios ADMIN', 'danger')
         return redirect(url_for('usuarios.index'))
     
+    # Variable para error de siglas
+    error_siglas = None
+    
     if request.method == 'POST':
         try:
             # VALIDACIÓN PREVENTIVA: Verificar si las siglas ya existen (excepto el usuario actual)
@@ -106,8 +138,22 @@ def editar(id):
             if nuevas_siglas != usuario.siglas:  # Solo validar si cambiaron las siglas
                 usuario_existente = Usuario.query.filter_by(siglas=nuevas_siglas).first()
                 if usuario_existente:
-                    flash(f'Las siglas "{nuevas_siglas}" ya están en uso. Por favor, elige otras.', 'warning')
-                    return render_template('usuarios/editar.html', usuario=usuario, roles=todos_los_roles)
+                    error_siglas = f'Las siglas "{nuevas_siglas}" ya están en uso. Por favor, elige otras.'
+                    # Preparar form_data para mantener los valores
+                    form_data = {
+                        'siglas': nuevas_siglas,
+                        'nombre': request.form['nombre'],
+                        'apellido1': request.form['apellido1'],
+                        'apellido2': request.form.get('apellido2'),
+                        'email': request.form.get('email'),
+                        'activo': 'activo' in request.form,
+                        'roles_ids': request.form.getlist('roles')
+                    }
+                    return render_template('usuarios/editar.html', 
+                                         usuario=usuario, 
+                                         roles=todos_los_roles,
+                                         error_siglas=error_siglas,
+                                         form_data=form_data)
             
             # VALIDACIÓN 1: No permitir quitar rol ADMIN al último ADMIN
             roles_ids = request.form.getlist('roles')
