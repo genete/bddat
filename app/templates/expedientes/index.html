@@ -6,12 +6,15 @@
 <div class="row mb-3">
     <div class="col-md-8">
         <h2><i class="fas fa-folder-open me-2"></i>Expedientes</h2>
-        <p class="text-muted">
-            {% if current_user.tiene_rol('ADMIN', 'SUPERVISOR') %}
-                Vista completa de todos los expedientes del sistema
+        <!-- Estadísticas y resumen (ampliable en el futuro con más métricas) -->
+        <p class="text-muted mb-0">
+            {% if vista_filtrada %}
+                <strong>{{ current_user.siglas }}</strong> - {{ current_user.nombre }} {{ current_user.apellido1 }} 
+                | Total: <strong>{{ expedientes|length }}</strong> expediente(s) asignado(s)
             {% else %}
-                Tus expedientes asignados
+                Vista completa del sistema | Total: <strong>{{ expedientes|length }}</strong> expediente(s)
             {% endif %}
+            <!-- Futuras estadísticas: expedientes activos, heredados, por tipo, etc. -->
         </p>
     </div>
     <div class="col-md-4 text-end">
@@ -28,10 +31,10 @@
             <table class="table table-hover table-striped mb-0">
                 <thead class="table-success">
                     <tr>
-                        <th>Número AT</th>
+                        <th>Número<br>AT</th>
                         <th>Proyecto</th>
-                        <th class="d-none d-md-table-cell">Tipo Expediente</th>
-                        <th class="d-none d-lg-table-cell">Instrumento Ambiental</th>
+                        <th class="d-none d-md-table-cell">Tipo<br>Expediente</th>
+                        <th class="d-none d-lg-table-cell">Instrumento<br>Ambiental</th>
                         <th class="d-none d-xl-table-cell text-center">Heredado</th>
                         <th class="d-none d-xxl-table-cell">Responsable</th>
                         <th>Acciones</th>
@@ -47,12 +50,14 @@
                             </a>
                         </td>
                         
-                        <!-- Proyecto (Título + Finalidad) -->
+                        <!-- Proyecto (Título + Finalidad con elipsis) -->
                         <td>
-                            <div class="text-truncate" style="max-width: 300px;" title="{{ expediente.proyecto.titulo }}">
+                            <div class="text-truncate" style="max-width: 250px;" title="{{ expediente.proyecto.titulo }}">
                                 <strong>{{ expediente.proyecto.titulo }}</strong>
                             </div>
-                            <small class="text-muted">{{ expediente.proyecto.finalidad or 'Sin finalidad' }}</small>
+                            <small class="text-muted text-truncate d-block" style="max-width: 250px;" title="{{ expediente.proyecto.finalidad }}">
+                                {{ expediente.proyecto.finalidad or 'Sin finalidad' }}
+                            </small>
                         </td>
                         
                         <!-- Tipo Expediente -->
@@ -73,12 +78,10 @@
                             {% endif %}
                         </td>
                         
-                        <!-- Heredado -->
+                        <!-- Heredado (solo check si es heredado, vacío si no) -->
                         <td class="d-none d-xl-table-cell text-center">
                             {% if expediente.heredado %}
-                                <i class="fas fa-check-circle text-warning" title="Expediente heredado"></i>
-                            {% else %}
-                                <i class="fas fa-times-circle text-muted" title="No heredado"></i>
+                                <i class="fas fa-check-circle text-success" title="Expediente heredado del sistema anterior"></i>
                             {% endif %}
                         </td>
                         
@@ -112,7 +115,11 @@
                     <tr>
                         <td colspan="7" class="text-center py-4 text-muted">
                             <i class="fas fa-folder-open fa-3x mb-3 d-block"></i>
-                            No hay expedientes disponibles. ¡Crea el primero!
+                            {% if vista_filtrada %}
+                                No tienes expedientes asignados. ¡Crea el primero!
+                            {% else %}
+                                No hay expedientes disponibles. ¡Crea el primero!
+                            {% endif %}
                         </td>
                     </tr>
                     {% endfor %}
@@ -121,16 +128,4 @@
         </div>
     </div>
 </div>
-
-<!-- Estadísticas rápidas -->
-{% if expedientes %}
-<div class="row mt-4">
-    <div class="col-md-12">
-        <div class="alert alert-info">
-            <i class="fas fa-info-circle me-2"></i>
-            Total de expedientes: <strong>{{ expedientes|length }}</strong>
-        </div>
-    </div>
-</div>
-{% endif %}
 {% endblock %}
