@@ -50,12 +50,12 @@
                             </a>
                         </td>
                         
-                        <!-- Proyecto (Título + Finalidad con elipsis) -->
-                        <td>
-                            <div class="text-truncate" style="max-width: 400px;" title="{{ expediente.proyecto.titulo }}">
+                        <!-- Proyecto (elipsis se ajusta automáticamente al ancho del td) -->
+                        <td style="max-width: 0;">
+                            <div class="text-truncate" title="{{ expediente.proyecto.titulo }}">
                                 <strong>{{ expediente.proyecto.titulo }}</strong>
                             </div>
-                            <small class="text-muted text-truncate d-block" style="max-width: 400px;" title="{{ expediente.proyecto.finalidad }}">
+                            <small class="text-muted text-truncate d-block" title="{{ expediente.proyecto.finalidad }}">
                                 {{ expediente.proyecto.finalidad or 'Sin finalidad' }}
                             </small>
                         </td>
