@@ -1,150 +1,173 @@
-# Unificación de Tablas de Expedientes
+# Unificación y Mejora de Listado de Expedientes
 
 ## 🎯 Objetivo
-Unificar la estructura y presentación de las tablas de expedientes en **Listado General** y **Mis Expedientes** para mantener consistencia visual y funcional.
+Unificar **completamente** el listado de expedientes en una sola vista con filtrado opcional, eliminando duplicación de código y mejorando la experiencia de usuario.
 
-## 📊 Estructura Unificada
+## ✨ Mejoras Implementadas
 
-### Columnas Comunes (ambas tablas)
+### 1. 🔄 Unificación Total
+- **Eliminado** template `dashboard/mis_expedientes.html` (duplicado)
+- **Un solo listado** en `/expedientes` con parámetro opcional `?mis_expedientes=1`
+- **Redirección** desde dashboard a listado con filtro
+- **Lógica unificada** en `expedientes.index()`
 
-1. **Número AT**
-   - Formato: `AT-{numero_at}`
-   - Estilo: Texto bold azul (primary)
-   - Enlace a: Detalle del expediente
-   - Siempre visible
+### 2. 📊 Estadísticas en la Parte Superior
+- **Movidas** al inicio, debajo del título
+- Muestra: Siglas y nombre del usuario + Total de expedientes
+- **Preparado** para futuras métricas (activos, heredados, por tipo, etc.)
+- **No requiere scroll** para ver cuántos expedientes hay
 
-2. **Proyecto**
-   - Línea 1: **Título** (bold, truncado a 300px)
-   - Línea 2: Finalidad (texto pequeño gris)
-   - Tooltip: Título completo al hover
-   - Siempre visible
+### 3. 📝 Cabeceras Multilinea
+- Usa `<br>` para columnas estrechas:
+  - "Número AT" → "Número<br>AT"
+  - "Tipo Expediente" → "Tipo<br>Expediente"
+  - "Instrumento Ambiental" → "Instrumento<br>Ambiental"
 
-3. **Tipo Expediente**
-   - Badge azul info con nombre del tipo
-   - Texto "Sin tipo" si no tiene
-   - Responsive: `d-none d-md-table-cell`
+### 4. ✂️ Elipsis en Textos Largos
+- **Título proyecto:** max-width 250px con `text-truncate`
+- **Finalidad:** max-width 250px con `text-truncate` en línea secundaria
+- Tooltip muestra texto completo al hover
 
-4. **Instrumento Ambiental**
-   - Badge verde con siglas del IA (AAU, AAUS, CA, etc.)
-   - Guión "-" si no tiene
-   - Responsive: `d-none d-lg-table-cell`
+### 5. ✅ Columna Heredado Simplificada
+- **Solo muestra** icono check verde cuando ES heredado
+- **Celda vacía** cuando NO es heredado (más limpio)
+- Color verde (`text-success`) alineado con colores oficiales JA
 
-5. **Heredado**
-   - Icono check amarillo si es heredado
-   - Icono X gris si no lo es
-   - Centrado
-   - Responsive: `d-none d-xl-table-cell`
+### 6. 🎨 Colores Unificados
+- **Cabecera:** `table-success` (verde) en todas las vistas
+- **Badges:** Consistentes (info, success)
+- Eliminada confusión visual entre vistas
 
-6. **Acciones**
-   - Botón "Ver" (outline-primary, icono ojo)
-   - Botón "Editar" (outline-secondary, icono lápiz)
-   - Agrupados en btn-group
-   - Siempre visible
-
-### Columna Adicional (solo Listado General)
-
-7. **Responsable** (SOLO en `/expedientes`)
-   - Siglas del usuario responsable
-   - Badge "Tú" azul si es el usuario actual
-   - Tooltip: Nombre completo al hover
-   - Responsive: `d-none d-xxl-table-cell`
+### 7. 👥 Columna Responsable Restaurada
+- **Presente** en listado general
+- **Responsive:** `d-none d-xxl-table-cell` (≥1400px)
+- Badge "Tú" cuando es el usuario actual
 
 ---
 
-## ⚖️ Diferencias Entre Tablas
+## 🛣️ Arquitectura de Filtrado
 
-| Característica | Listado General (`/expedientes`) | Mis Expedientes (`/mis_expedientes`) |
-|------------------|----------------------------------|--------------------------------------|
-| **Columna Responsable** | ✅ Sí (d-none d-xxl-table-cell) | ❌ No (redundante, todos son del usuario) |
-| **Encabezado tabla** | `table-success` (verde) | `table-light` (gris claro) |
-| **Colspan vacío** | `colspan="7"` | `colspan="6"` |
-| **Footer** | Alert azul con total | Card-footer con total |
+### Rutas
+```python
+# Listado general (ADMIN/SUPERVISOR ven todos)
+GET /expedientes/
+
+# Listado filtrado (solo expedientes propios)
+GET /expedientes/?mis_expedientes=1
+
+# Redirección desde dashboard (compatibilidad)
+GET /mis_expedientes  →  redirect to /expedientes/?mis_expedientes=1
+```
+
+### Lógica de Filtrado
+```python
+if TRAMITADOR:
+    # Siempre ve solo sus expedientes
+    expedientes = filter_by(responsable_id=current_user.id)
+    vista_filtrada = True
+else:  # ADMIN/SUPERVISOR
+    if request.args.get('mis_expedientes') == '1':
+        # Filtro opcional activado
+        expedientes = filter_by(responsable_id=current_user.id)
+        vista_filtrada = True
+    else:
+        # Vista completa del sistema
+        expedientes = Expediente.query.all()
+        vista_filtrada = False
+```
 
 ---
 
-## 📝 Cambios Realizados
+## 📋 Estructura Final de Tabla
 
-### 1. `app/templates/dashboard/mis_expedientes.html`
-- ✅ **Añadida** columna "Instrumento Ambiental"
-- ✅ **Cambiada** columna "Proyecto" para mostrar Finalidad (antes mostraba Emplazamiento)
-- ✅ **Cambiada** columna "Heredado" de badge a icono check/X
-- ✅ **Unificado** formato "Número AT" a `AT-{numero}`
-- ✅ **Mantenida** responsive con breakpoints Bootstrap 5
-
-### 2. `app/templates/expedientes/index.html`
-- ✅ **Unificada** estructura de columnas con `mis_expedientes.html`
-- ✅ **Añadida** columna "Instrumento Ambiental"
-- ✅ **Cambiada** columna "Heredado" de badge a icono check/X
-- ✅ **Mantenida** columna "Responsable" (exclusiva de esta vista)
-- ✅ **Cambiados** botones de acciones a btn-group unificado
-- ✅ **Ajustado** colspan de fila vacía a 7 (6 + Responsable)
+| Columna | Ancho | Responsive | Descripción |
+|---------|-------|------------|-------------|
+| **Número AT** | Auto | Siempre | `AT-{numero}` enlace azul |
+| **Proyecto** | 250px | Siempre | Título bold + Finalidad gris (ambos con elipsis) |
+| **Tipo Expediente** | Auto | ≥768px | Badge azul info |
+| **Instrumento Ambiental** | Auto | ≥992px | Badge verde con siglas |
+| **Heredado** | Auto | ≥1200px | Check verde solo si heredado |
+| **Responsable** | Auto | ≥1400px | Siglas + badge "Tú" si aplica |
+| **Acciones** | Auto | Siempre | Ver/Editar agrupados |
 
 ---
 
-## 📦 Archivos Modificados
+## 💾 Archivos Modificados
 
 ```
+✅ MODIFICADOS:
+app/routes/
+├── expedientes.py          [Filtrado unificado con ?mis_expedientes=1]
+└── dashboard.py            [Redirección a listado con filtro]
+
 app/templates/
-├── dashboard/
-│   └── mis_expedientes.html    [MODIFICADO]
 └── expedientes/
-    └── index.html              [MODIFICADO]
+    └── index.html          [Template único mejorado]
+
+app/models/
+└── proyectos.py            [Relación ia agregada]
+
+❌ ELIMINADOS:
+app/templates/dashboard/
+└── mis_expedientes.html    [Ya no necesario]
 ```
+
+---
+
+## ✅ Ventajas de Esta Arquitectura
+
+1. ✅ **DRY:** Un solo template, una sola lógica
+2. ✅ **Mantenibilidad:** Cambios en UN lugar afectan todas las vistas
+3. ✅ **Consistencia:** UI/UX idéntica en filtrado y sin filtrar
+4. ✅ **SEO-friendly:** URL semántica con query parameter
+5. ✅ **Escalable:** Fácil agregar más filtros (por tipo, estado, etc.)
+6. ✅ **Performance:** Una sola consulta SQL optimizada
 
 ---
 
 ## 🔍 Testing Requerido
 
-### Listado General (`/expedientes`)
-- [ ] Columnas visibles según breakpoint responsive
-- [ ] Columna "Responsable" visible solo en pantallas XXL
+### Como TRAMITADOR
+- [ ] `/expedientes/` muestra solo mis expedientes
+- [ ] Dashboard "Mis expedientes" funciona
+- [ ] Estadísticas muestran mi nombre y total correcto
+- [ ] NO veo columna Responsable (siempre soy yo)
+
+### Como ADMIN/SUPERVISOR
+- [ ] `/expedientes/` muestra TODOS los expedientes
+- [ ] `/expedientes/?mis_expedientes=1` muestra solo míos
+- [ ] Dashboard "Mis expedientes" redirige con filtro
+- [ ] Columna Responsable visible en pantallas XXL
 - [ ] Badge "Tú" aparece en expedientes propios
-- [ ] Instrumento Ambiental muestra siglas correctas
-- [ ] Icono check amarillo en heredados
-- [ ] Enlaces y botones funcionan
 
-### Mis Expedientes (`/mis_expedientes`)
-- [ ] NO aparece columna "Responsable"
-- [ ] Columnas responsive funcionan correctamente
+### Generales
+- [ ] Título/Finalidad con elipsis a 250px
+- [ ] Heredado: solo check verde cuando aplica
 - [ ] Instrumento Ambiental muestra siglas correctas
-- [ ] Proyecto muestra Título + Finalidad
-- [ ] Icono check amarillo en heredados
-- [ ] Enlaces y botones funcionan
-
-### Ambas Tablas
-- [ ] Formato Número AT consistente: `AT-{numero}`
-- [ ] Proyecto trunca título a 300px con tooltip
-- [ ] Badges con colores consistentes
-- [ ] Botones de acción agrupados y funcionales
-- [ ] Responsive no rompe layout en móvil/tablet
+- [ ] Cabeceras multilinea legibles
+- [ ] Estadísticas arriba sin scroll
+- [ ] Responsive funciona en móvil/tablet
+- [ ] Colores consistentes (table-success)
 
 ---
 
-## 💡 Notas de Implementación
+## 💡 Futuras Mejoras Preparadas
 
-### Breakpoints Bootstrap 5 usados:
-- `d-none d-md-table-cell`: Tipo Expediente (≥768px)
-- `d-none d-lg-table-cell`: Instrumento Ambiental (≥992px)
-- `d-none d-xl-table-cell`: Heredado (≥1200px)
-- `d-none d-xxl-table-cell`: Responsable (≥1400px)
+El template tiene comentarios para expandir fácilmente:
 
-### Acceso a relaciones:
-- `expediente.proyecto.ia.siglas` requiere relación `ia` en modelo `Proyecto`
-- Si no existe, mostrará `-` en columna IA
+```html
+<!-- Futuras estadísticas: expedientes activos, heredados, por tipo, etc. -->
+```
 
----
-
-## ✅ Checklist de Merge
-
-- [ ] Probado en desarrollo local
-- [ ] Columnas responsive funcionan
-- [ ] Instrumento Ambiental muestra datos correctos
-- [ ] No hay errores en consola Flask
-- [ ] Templates renderizan correctamente
-- [ ] Listo para merge a `main`
+Posibles adiciones:
+- Total heredados vs. nuevos
+- Expedientes por tipo
+- Expedientes activos/cerrados
+- Últimos modificados
+- Gráficos inline
 
 ---
 
 **Fecha:** 21 de enero de 2026  
 **Rama:** `feature/tabla-expedientes-unificada`  
-**Base:** `main`  
+**Commits:** 7 (incluye fix relación IA y refactor completo)  
