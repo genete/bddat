@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template
 from flask_login import login_required, current_user
-from app.models.expediente import Expediente
+from app.models.expedientes import Expediente
 
 bp = Blueprint('dashboard', __name__, url_prefix='')
 
