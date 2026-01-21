@@ -213,7 +213,7 @@ def editar(id):
             usuario.apellido2 = request.form.get('apellido2')
             usuario.email = request.form.get('email')
             
-            # Actualizar estado activo
+            # Actualizar estado activo (sin mensaje flash - es reversible)
             usuario.activo = activo_nuevo
             
             # Actualizar roles
@@ -277,8 +277,7 @@ def toggle_estado(id):
         usuario.activo = not usuario.activo
         db.session.commit()
         
-        estado = "activado" if usuario.activo else "desactivado"
-        flash(f'Usuario {usuario.siglas} {estado} correctamente', 'success')
+        # Sin mensaje flash - acción reversible y no destructiva
     except Exception as e:
         db.session.rollback()
         flash(f'Error al cambiar estado: {str(e)}', 'danger')
