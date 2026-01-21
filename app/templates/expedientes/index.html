@@ -21,7 +21,7 @@
     </div>
 </div>
 
-<!-- Tabla de Expedientes con columnas responsive -->
+<!-- Tabla de Expedientes -->
 <div class="card shadow-sm">
     <div class="card-body p-0">
         <div class="table-responsive">
@@ -30,37 +30,60 @@
                     <tr>
                         <th>Número AT</th>
                         <th>Proyecto</th>
-                        <th class="d-none d-md-table-cell">Tipo</th>
-                        <th class="d-none d-lg-table-cell">Responsable</th>
-                        <th class="d-none d-xl-table-cell">Estado</th>
+                        <th class="d-none d-md-table-cell">Tipo Expediente</th>
+                        <th class="d-none d-lg-table-cell">Instrumento Ambiental</th>
+                        <th class="d-none d-xl-table-cell text-center">Heredado</th>
+                        <th class="d-none d-xxl-table-cell">Responsable</th>
                         <th>Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for expediente in expedientes %}
                     <tr>
+                        <!-- Número AT -->
                         <td>
-                            <strong class="text-primary">AT-{{ expediente.numero_at }}</strong>
-                            {% if expediente.heredado %}
-                                <span class="badge bg-warning text-dark ms-1" title="Expediente heredado">
-                                    <i class="fas fa-history"></i>
-                                </span>
-                            {% endif %}
+                            <a href="{{ url_for('expedientes.detalle', id=expediente.id) }}" class="text-decoration-none">
+                                <strong class="text-primary">AT-{{ expediente.numero_at }}</strong>
+                            </a>
                         </td>
+                        
+                        <!-- Proyecto (Título + Finalidad) -->
                         <td>
                             <div class="text-truncate" style="max-width: 300px;" title="{{ expediente.proyecto.titulo }}">
-                                {{ expediente.proyecto.titulo }}
+                                <strong>{{ expediente.proyecto.titulo }}</strong>
                             </div>
                             <small class="text-muted">{{ expediente.proyecto.finalidad or 'Sin finalidad' }}</small>
                         </td>
+                        
+                        <!-- Tipo Expediente -->
                         <td class="d-none d-md-table-cell">
                             {% if expediente.tipo_expediente %}
                                 <span class="badge bg-info text-dark">{{ expediente.tipo_expediente.tipo }}</span>
                             {% else %}
-                                <span class="text-muted small">Sin tipo</span>
+                                <span class="text-muted fst-italic">Sin tipo</span>
                             {% endif %}
                         </td>
+                        
+                        <!-- Instrumento Ambiental -->
                         <td class="d-none d-lg-table-cell">
+                            {% if expediente.proyecto.ia %}
+                                <span class="badge bg-success">{{ expediente.proyecto.ia.siglas }}</span>
+                            {% else %}
+                                <span class="text-muted fst-italic">-</span>
+                            {% endif %}
+                        </td>
+                        
+                        <!-- Heredado -->
+                        <td class="d-none d-xl-table-cell text-center">
+                            {% if expediente.heredado %}
+                                <i class="fas fa-check-circle text-warning" title="Expediente heredado"></i>
+                            {% else %}
+                                <i class="fas fa-times-circle text-muted" title="No heredado"></i>
+                            {% endif %}
+                        </td>
+                        
+                        <!-- Responsable -->
+                        <td class="d-none d-xxl-table-cell">
                             <span title="{{ expediente.responsable.nombre }} {{ expediente.responsable.apellido1 }}">
                                 {{ expediente.responsable.siglas }}
                             </span>
@@ -68,23 +91,26 @@
                                 <span class="badge bg-primary ms-1">Tú</span>
                             {% endif %}
                         </td>
-                        <td class="d-none d-xl-table-cell">
-                            <span class="badge bg-secondary">En tramitación</span>
-                        </td>
+                        
+                        <!-- Acciones -->
                         <td>
-                            <a href="{{ url_for('expedientes.detalle', id=expediente.id) }}" 
-                               class="btn btn-sm btn-outline-primary me-1" title="Ver detalle">
-                                <i class="fas fa-eye"></i>
-                            </a>
-                            <a href="{{ url_for('expedientes.editar', id=expediente.id) }}" 
-                               class="btn btn-sm btn-outline-secondary" title="Editar">
-                                <i class="fas fa-edit"></i>
-                            </a>
+                            <div class="btn-group" role="group">
+                                <a href="{{ url_for('expedientes.detalle', id=expediente.id) }}" 
+                                   class="btn btn-sm btn-outline-primary" 
+                                   title="Ver detalle">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                <a href="{{ url_for('expedientes.editar', id=expediente.id) }}" 
+                                   class="btn btn-sm btn-outline-secondary" 
+                                   title="Editar">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                            </div>
                         </td>
                     </tr>
                     {% else %}
                     <tr>
-                        <td colspan="6" class="text-center py-4 text-muted">
+                        <td colspan="7" class="text-center py-4 text-muted">
                             <i class="fas fa-folder-open fa-3x mb-3 d-block"></i>
                             No hay expedientes disponibles. ¡Crea el primero!
                         </td>
@@ -96,7 +122,7 @@
     </div>
 </div>
 
-<!-- Estadísticas rápidas (opcional) -->
+<!-- Estadísticas rápidas -->
 {% if expedientes %}
 <div class="row mt-4">
     <div class="col-md-12">
