@@ -31,13 +31,13 @@
             <table class="table table-hover table-striped mb-0">
                 <thead class="table-success">
                     <tr>
-                        <th style="width: 100px;">Número<br>AT</th>
+                        <th>Número<br>AT</th>
                         <th>Proyecto</th>
-                        <th class="d-none d-md-table-cell" style="width: 140px;">Tipo<br>Expediente</th>
-                        <th class="d-none d-lg-table-cell" style="width: 120px;">Instrumento<br>Ambiental</th>
-                        <th class="d-none d-xl-table-cell text-center" style="width: 100px;">Heredado</th>
-                        <th class="d-none d-lg-table-cell" style="width: 110px;">Responsable</th>
-                        <th style="width: 110px;">Acciones</th>
+                        <th class="d-none d-md-table-cell">Tipo<br>Expediente</th>
+                        <th class="d-none d-lg-table-cell">Instrumento<br>Ambiental</th>
+                        <th class="d-none d-xl-table-cell text-center">Heredado</th>
+                        <th class="d-none d-lg-table-cell">Responsable</th>
+                        <th>Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -50,12 +50,12 @@
                             </a>
                         </td>
                         
-                        <!-- Proyecto (elipsis se ajusta automáticamente al ancho disponible) -->
+                        <!-- Proyecto (Título + Finalidad con elipsis) -->
                         <td>
-                            <div class="text-truncate" title="{{ expediente.proyecto.titulo }}">
+                            <div class="text-truncate" style="max-width: 400px;" title="{{ expediente.proyecto.titulo }}">
                                 <strong>{{ expediente.proyecto.titulo }}</strong>
                             </div>
-                            <small class="text-muted text-truncate d-block" title="{{ expediente.proyecto.finalidad }}">
+                            <small class="text-muted text-truncate d-block" style="max-width: 400px;" title="{{ expediente.proyecto.finalidad }}">
                                 {{ expediente.proyecto.finalidad or 'Sin finalidad' }}
                             </small>
                         </td>
