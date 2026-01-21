@@ -31,13 +31,13 @@
             <table class="table table-hover table-striped mb-0">
                 <thead class="table-success">
                     <tr>
-                        <th>Número<br>AT</th>
-                        <th>Proyecto</th>
-                        <th class="d-none d-md-table-cell">Tipo<br>Expediente</th>
-                        <th class="d-none d-lg-table-cell">Instrumento<br>Ambiental</th>
-                        <th class="d-none d-xl-table-cell text-center">Heredado</th>
-                        <th class="d-none d-lg-table-cell">Responsable</th>
-                        <th>Acciones</th>
+                        <th style="width: 10%;">Número<br>AT</th>
+                        <th style="width: 40%;">Proyecto</th>
+                        <th class="d-none d-md-table-cell" style="width: 12%;">Tipo<br>Expediente</th>
+                        <th class="d-none d-lg-table-cell" style="width: 10%;">Instrumento<br>Ambiental</th>
+                        <th class="d-none d-xl-table-cell text-center" style="width: 8%;">Heredado</th>
+                        <th class="d-none d-lg-table-cell" style="width: 10%;">Responsable</th>
+                        <th style="width: 10%;">Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -50,12 +50,12 @@
                             </a>
                         </td>
                         
-                        <!-- Proyecto (Título + Finalidad con elipsis) -->
+                        <!-- Proyecto (Título + Finalidad con elipsis responsiva) -->
                         <td>
-                            <div class="text-truncate" style="max-width: 250px;" title="{{ expediente.proyecto.titulo }}">
+                            <div class="text-truncate" title="{{ expediente.proyecto.titulo }}">
                                 <strong>{{ expediente.proyecto.titulo }}</strong>
                             </div>
-                            <small class="text-muted text-truncate d-block" style="max-width: 250px;" title="{{ expediente.proyecto.finalidad }}">
+                            <small class="text-muted text-truncate d-block" title="{{ expediente.proyecto.finalidad }}">
                                 {{ expediente.proyecto.finalidad or 'Sin finalidad' }}
                             </small>
                         </td>
@@ -73,7 +73,7 @@
                         <td class="d-none d-lg-table-cell">
                             {% if expediente.proyecto.ia %}
                                 <span class="badge bg-success">{{ expediente.proyecto.ia.siglas }}</span>
-                            {% else %}
+                            {% else %>
                                 <span class="text-muted fst-italic">-</span>
                             {% endif %}
                         </td>
