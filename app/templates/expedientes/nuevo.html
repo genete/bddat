@@ -99,11 +99,11 @@
                                placeholder="Ej: Polígono Industrial Los Olivares, Sevilla">
                     </div>
                     
-                    <!-- Tipo IA -->
+                    <!-- Instrumento Ambiental -->
                     <div class="mb-3">
-                        <label for="ia_id" class="form-label">Tipo de Instalación de Alta Tensión</label>
+                        <label for="ia_id" class="form-label">Instrumento Ambiental</label>
                         <select class="form-select" id="ia_id" name="ia_id">
-                            <option value="">-- Sin tipo IA --</option>
+                            <option value="">-- Sin instrumento ambiental --</option>
                             {% for tipo_ia in tipos_ia %}
                                 <option value="{{ tipo_ia.id }}">{{ tipo_ia.siglas }} - {{ tipo_ia.descripcion }}</option>
                             {% endfor %}

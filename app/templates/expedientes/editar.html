@@ -108,11 +108,11 @@
                                value="{{ expediente.proyecto.emplazamiento }}">
                     </div>
                     
-                    <!-- Tipo IA -->
+                    <!-- Instrumento Ambiental -->
                     <div class="mb-3">
-                        <label for="ia_id" class="form-label">Tipo de Instalación de Alta Tensión</label>
+                        <label for="ia_id" class="form-label">Instrumento Ambiental</label>
                         <select class="form-select" id="ia_id" name="ia_id">
-                            <option value="">-- Sin tipo IA --</option>
+                            <option value="">-- Sin instrumento ambiental --</option>
                             {% for tipo_ia in tipos_ia %}
                                 <option value="{{ tipo_ia.id }}" 
                                         {% if expediente.proyecto.ia_id == tipo_ia.id %}selected{% endif %}>
@@ -129,7 +129,7 @@
     <!-- Botones de Acción -->
     <div class="row">
         <div class="col-md-12 text-end">
-            <a href="{{ url_for('expedientes.detalle', id=expediente.id) }}" class="btn btn-secondary me-2">
+            <a href="{{ url_for('expedientes.index') }}" class="btn btn-secondary me-2">
                 <i class="fas fa-times me-1"></i> Cancelar
             </a>
             <button type="submit" class="btn btn-primary">
