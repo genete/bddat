@@ -53,16 +53,13 @@
                     </div>
                 </div>
                 
-                <!-- Heredado (switch como en editar) -->
+                <!-- Heredado (solo si aplica, como en listado) -->
+                {% if expediente.heredado %}
                 <div>
-                    <div class="form-check form-switch">
-                        <input class="form-check-input" type="checkbox" id="heredado_display" 
-                               {% if expediente.heredado %}checked{% endif %} disabled>
-                        <label class="form-check-label text-muted small" for="heredado_display">
-                            Expediente Heredado
-                        </label>
-                    </div>
+                    <i class="fas fa-check-circle text-success me-1"></i>
+                    <span class="text-muted small">Expediente Heredado</span>
                 </div>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -97,12 +94,18 @@
                     </div>
                 </div>
                 
-                {% if expediente.proyecto.ia %}
-                <div class="alert alert-success mb-0">
-                    <i class="fas fa-leaf me-2"></i>
-                    <strong>Instrumento Ambiental:</strong> {{ expediente.proyecto.ia.siglas }} - {{ expediente.proyecto.ia.descripcion }}
+                <!-- Instrumento Ambiental (campo normal como los demás) -->
+                <div>
+                    <h6 class="text-muted">Instrumento Ambiental</h6>
+                    {% if expediente.proyecto.ia %}
+                        <p class="mb-0">
+                            <span class="badge bg-success">{{ expediente.proyecto.ia.siglas }}</span>
+                            <span class="ms-2">{{ expediente.proyecto.ia.descripcion }}</span>
+                        </p>
+                    {% else %}
+                        <p class="text-muted mb-0">Sin instrumento ambiental</p>
+                    {% endif %}
                 </div>
-                {% endif %}
             </div>
         </div>
     </div>
