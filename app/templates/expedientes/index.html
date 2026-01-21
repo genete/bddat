@@ -50,8 +50,8 @@
                             </a>
                         </td>
                         
-                        <!-- Proyecto (elipsis se ajusta automáticamente al ancho del td) -->
-                        <td style="max-width: 0;">
+                        <!-- Proyecto (elipsis responsiva + ancho mínimo para pantallas anchas) -->
+                        <td style="max-width: 0; min-width: 350px;">
                             <div class="text-truncate" title="{{ expediente.proyecto.titulo }}">
                                 <strong>{{ expediente.proyecto.titulo }}</strong>
                             </div>
