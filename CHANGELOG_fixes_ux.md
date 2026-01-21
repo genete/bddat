@@ -27,22 +27,39 @@ app/templates/expedientes/
 
 ---
 
-### 2. 🎨 Alerta Instrumento Ambiental: Color Verde
+### 2. 📝 Instrumento Ambiental: Campo Normal (No Alert)
 
 **Problema:**
-- Alert beige (`alert-warning`) con icono de advertencia
-- Texto "Instalación de Alta Tensión" incorrecto
-- Color amarillo no alineado con identidad JA
+- En `detalle.html`: Mostrado como alert amarillo/verde destacado
+- Debería ser un campo más del proyecto, no una advertencia
 
 **Solución:**
-- ✅ Cambio a `alert-success` (verde oficial Junta Andalucía)
-- ✅ Icono `fa-leaf` (🍃 hoja) en vez de `fa-exclamation-triangle`
-- ✅ Texto correcto: "Instrumento Ambiental:"
+- ✅ Eliminado `<div class="alert ...">`
+- ✅ Añadido como campo estándar con `<h6>` + badge verde
+- ✅ Mismo estilo que Finalidad, Emplazamiento, Descripción
+- ✅ Badge verde con siglas + descripción en texto normal
+
+**Antes:**
+```html
+<div class="alert alert-warning">
+    <i class="fas fa-exclamation-triangle"></i>
+    <strong>Instalación de Alta Tensión:</strong> ...
+</div>
+```
+
+**Después:**
+```html
+<h6 class="text-muted">Instrumento Ambiental</h6>
+<p>
+    <span class="badge bg-success">AAU</span>
+    <span>Autorización Ambiental Unificada</span>
+</p>
+```
 
 **Archivos modificados:**
 ```
 app/templates/expedientes/
-└── detalle.html  [L100-102: alert-success, fa-leaf, texto]
+└── detalle.html  [L100-112: campo normal con h6, badge, texto]
 ```
 
 ---
@@ -77,38 +94,38 @@ app/templates/expedientes/
 
 ---
 
-### 4. 🔘 Visualización Heredado: Switch Consistente
+### 4. ✅ Visualización Heredado: Semántica del Listado
 
 **Problema:**
-- `detalle.html`: Badge amarillo "Heredado" en título (inconsistente)
-- `editar.html`: Switch elegante y claro
-- Diferencia visual confusa entre vistas
+- `detalle.html`: Mostraba switch deshabilitado (control de edición en vista de solo lectura)
+- Inconsistente con semántica del listado: solo mostrar si aplica
 
 **Solución:**
-- ✅ Eliminado badge del título en `detalle.html`
-- ✅ Añadido switch deshabilitado en card "Información General"
-- ✅ Estilo idéntico a `editar.html` (form-check-switch)
+- ✅ **Solo si `heredado == True`**: Mostrar check verde + etiqueta
+- ✅ **Si `heredado == False`**: No mostrar nada (no ocupar espacio innecesariamente)
+- ✅ Mismo estilo que en tabla listado: `fa-check-circle text-success`
 
-**Antes (detalle.html):**
+**Antes (incorrecto):**
 ```html
-<h2>
-    Expediente AT-1 
-    <span class="badge bg-warning">Heredado</span> ❌
-</h2>
+<!-- Siempre visible, incluso si no es heredado -->
+<div class="form-check form-switch">
+    <input type="checkbox" disabled>
+    <label>Expediente Heredado</label> ❌
+</div>
 ```
 
-**Después (detalle.html):**
+**Después (correcto):**
 ```html
-<div class="form-check form-switch">
-    <input type="checkbox" checked disabled>
-    <label>Expediente Heredado</label> ✅
-</div>
+{% if expediente.heredado %}
+    <i class="fas fa-check-circle text-success"></i>
+    <span class="text-muted small">Expediente Heredado</span> ✅
+{% endif %}
 ```
 
 **Archivos modificados:**
 ```
 app/templates/expedientes/
-└── detalle.html  [L11: eliminado badge, L60-68: switch añadido]
+└── detalle.html  [L60-65: check + label solo si heredado]
 ```
 
 ---
@@ -118,20 +135,20 @@ app/templates/expedientes/
 | Cambio | Archivos | Líneas |
 |--------|----------|--------|
 | Nomenclatura IA | nuevo.html, editar.html | 4 |
-| Alert verde IA | detalle.html | 3 |
+| IA campo normal | detalle.html | 13 |
 | Flujo cancelar | editar.html | 1 |
-| Switch heredado | detalle.html | 10 |
-| **TOTAL** | **3 templates** | **18** |
+| Heredado semántico | detalle.html | 6 |
+| **TOTAL** | **3 templates** | **24** |
 
 ---
 
 ## ✅ Ventajas
 
 1. ✅ **Consistencia terminológica**: "Instrumento Ambiental" en todo el sistema
-2. ✅ **Identidad visual**: Verde JA en vez de amarillo genérico
+2. ✅ **Semántica clara**: IA como campo, no como alert de advertencia
 3. ✅ **Navegación intuitiva**: Cancelar vuelve al origen
-4. ✅ **UI unificada**: Switch para "heredado" en todas las vistas
-5. ✅ **Menos clics**: Usuario no pasa por vista detalle innecesariamente
+4. ✅ **UI coherente**: Heredado con misma lógica que listado (solo si aplica)
+5. ✅ **Menos ruido visual**: No mostrar controles vacíos/innecesarios
 
 ---
 
@@ -150,10 +167,10 @@ app/templates/expedientes/
 - [ ] Switch "Heredado" guarda correctamente
 
 ### Ver Expediente
-- [ ] No hay badge amarillo en título
-- [ ] Switch "Heredado" deshabilitado visible
-- [ ] Alert IA es verde con icono hoja
-- [ ] Texto dice "Instrumento Ambiental:"
+- [ ] Campo "Instrumento Ambiental" como h6 + badge/texto
+- [ ] No hay alert amarillo/verde
+- [ ] **Heredado solo si aplica**: Check verde + etiqueta
+- [ ] **No heredado**: No muestra nada (espacio limpio)
 
 ### Flujos de Navegación
 - [ ] Listado → Nuevo → Cancelar → Listado ✅
@@ -165,5 +182,5 @@ app/templates/expedientes/
 
 **Fecha:** 21 de enero de 2026  
 **Rama:** `fix/expedientes-ux-improvements`  
-**Commits:** 3  
+**Commits:** 5  
 **Issue:** Mejoras UX solicitadas por usuario  
