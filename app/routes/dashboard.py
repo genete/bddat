@@ -1,5 +1,6 @@
 from flask import Blueprint, render_template
 from flask_login import login_required, current_user
+from app.models.expediente import Expediente
 
 bp = Blueprint('dashboard', __name__, url_prefix='')
 
@@ -17,7 +18,7 @@ def index():
     bloques = {
         'Tramitación': {
             'items': [
-                {'nombre': 'Mis expedientes', 'url': '#', 'roles': ['TRAMITADOR', 'ADMINISTRATIVO', 'SUPERVISOR', 'ADMIN']},
+                {'nombre': 'Mis expedientes', 'url': 'dashboard.mis_expedientes', 'roles': ['TRAMITADOR', 'ADMINISTRATIVO', 'SUPERVISOR', 'ADMIN']},
                 {'nombre': 'Listado expedientes', 'url': 'expedientes.index', 'roles': ['TRAMITADOR', 'ADMINISTRATIVO', 'SUPERVISOR', 'ADMIN']},
                 {'nombre': 'Nuevo expediente', 'url': 'expedientes.nuevo', 'roles': ['TRAMITADOR', 'ADMINISTRATIVO', 'SUPERVISOR', 'ADMIN']},
                 {'nombre': 'Solicitudes', 'url': '#', 'roles': ['TRAMITADOR', 'ADMINISTRATIVO', 'SUPERVISOR', 'ADMIN']},
@@ -61,3 +62,20 @@ def index():
             bloques_visibles[bloque_nombre] = {'items': items_visibles}
     
     return render_template('dashboard/index.html', bloques=bloques_visibles)
+
+
+@bp.route('/mis_expedientes')
+@login_required
+def mis_expedientes():
+    """
+    Lista expedientes asignados al usuario actual como responsable
+    """
+    expedientes = Expediente.query.filter_by(
+        responsable_id=current_user.id
+    ).order_by(Expediente.numero_at.desc()).all()
+    
+    return render_template(
+        'dashboard/mis_expedientes.html',
+        expedientes=expedientes,
+        titulo='Mis Expedientes'
+    )
