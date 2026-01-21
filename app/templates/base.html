@@ -37,9 +37,24 @@
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link text-white" href="{{ url_for('expedientes.index') }}">
-                            <i class="fas fa-folder-open me-1"></i>Expedientes
-                        </a>
+                        {% if current_user.is_authenticated %}
+                            {% set user_roles = current_user.roles | map(attribute='nombre') | list %}
+                            {% if 'ADMIN' in user_roles or 'SUPERVISOR' in user_roles %}
+                                {# ADMIN/SUPERVISOR: ven todos los expedientes #}
+                                <a class="nav-link text-white" href="{{ url_for('expedientes.index') }}">
+                                    <i class="fas fa-folder-open me-1"></i>Expedientes
+                                </a>
+                            {% else %}
+                                {# TRAMITADOR: solo sus expedientes #}
+                                <a class="nav-link text-white" href="{{ url_for('expedientes.index', mis_expedientes=1) }}">
+                                    <i class="fas fa-folder-open me-1"></i>Expedientes
+                                </a>
+                            {% endif %}
+                        {% else %}
+                            <a class="nav-link text-white" href="{{ url_for('expedientes.index') }}">
+                                <i class="fas fa-folder-open me-1"></i>Expedientes
+                            </a>
+                        {% endif %}
                     </li>
                     
                     <!-- Solo visible para ADMIN y SUPERVISOR -->
