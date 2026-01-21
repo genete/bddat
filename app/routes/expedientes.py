@@ -2,7 +2,7 @@
 Blueprint para gestión de expedientes.
 
 Rutas:
-- GET  /expedientes/        - Listar expedientes (filtrados por rol)
+- GET  /expedientes/        - Listar expedientes (filtrados por rol o parámetro)
 - GET  /expedientes/nuevo   - Formulario crear expediente
 - POST /expedientes/nuevo   - Crear expediente + proyecto
 - GET  /expedientes/<id>    - Ver detalle expediente
@@ -30,19 +30,44 @@ bp = Blueprint('expedientes', __name__, url_prefix='/expedientes')
 @bp.route('/')
 @login_required
 def index():
-    """Lista todos los expedientes (filtrados según rol del usuario)"""
-    # TRAMITADOR solo ve sus expedientes
+    """
+    Lista expedientes con filtrado inteligente.
+    
+    Parámetros URL:
+    - ?mis_expedientes=1  : Filtra solo expedientes del usuario actual
+    
+    Lógica de filtrado:
+    - Si parámetro mis_expedientes=1: Solo expedientes del usuario
+    - Si TRAMITADOR sin parámetro: Solo sus expedientes (restricción de rol)
+    - Si ADMIN/SUPERVISOR sin parámetro: Todos los expedientes
+    """
+    # Parámetro de filtro opcional
+    solo_mis_expedientes = request.args.get('mis_expedientes') == '1'
+    
+    # TRAMITADOR siempre ve solo sus expedientes
     if not current_user.tiene_rol('ADMIN', 'SUPERVISOR'):
         expedientes = Expediente.query.filter_by(
             responsable_id=current_user.id
         ).order_by(Expediente.numero_at.desc()).all()
+        vista_filtrada = True
     else:
-        # ADMIN/SUPERVISOR ven todos
-        expedientes = Expediente.query.order_by(
-            Expediente.numero_at.desc()
-        ).all()
+        # ADMIN/SUPERVISOR puede filtrar opcionalmente
+        if solo_mis_expedientes:
+            expedientes = Expediente.query.filter_by(
+                responsable_id=current_user.id
+            ).order_by(Expediente.numero_at.desc()).all()
+            vista_filtrada = True
+        else:
+            expedientes = Expediente.query.order_by(
+                Expediente.numero_at.desc()
+            ).all()
+            vista_filtrada = False
     
-    return render_template('expedientes/index.html', expedientes=expedientes)
+    return render_template(
+        'expedientes/index.html', 
+        expedientes=expedientes,
+        vista_filtrada=vista_filtrada
+    )
 
 
 @bp.route('/nuevo', methods=['GET', 'POST'])
