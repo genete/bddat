@@ -1,6 +1,5 @@
-from flask import Blueprint, render_template
+from flask import Blueprint, render_template, redirect, url_for
 from flask_login import login_required, current_user
-from app.models.expedientes import Expediente
 
 bp = Blueprint('dashboard', __name__, url_prefix='')
 
@@ -68,14 +67,7 @@ def index():
 @login_required
 def mis_expedientes():
     """
-    Lista expedientes asignados al usuario actual como responsable
+    Redirección a listado de expedientes con filtro 'mis_expedientes=1'.
+    Mantiene compatibilidad con enlaces del dashboard.
     """
-    expedientes = Expediente.query.filter_by(
-        responsable_id=current_user.id
-    ).order_by(Expediente.numero_at.desc()).all()
-    
-    return render_template(
-        'dashboard/mis_expedientes.html',
-        expedientes=expedientes,
-        titulo='Mis Expedientes'
-    )
+    return redirect(url_for('expedientes.index', mis_expedientes=1))
