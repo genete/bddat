@@ -18,5 +18,8 @@ class Proyecto(db.Model):
     emplazamiento = db.Column(db.String(200), nullable=False, default='⚠️ Falta el emplazamiento')
     ia_id = db.Column(db.Integer, db.ForeignKey('estructura.tipos_ia.id'), nullable=True)
     
+    # Relación con TipoIA
+    ia = db.relationship('TipoIA', foreign_keys=[ia_id], backref='proyectos')
+    
     def __repr__(self):
         return f'<Proyecto {self.id}: {self.titulo}>'
