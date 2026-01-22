@@ -68,11 +68,16 @@
                         <div class="col-md-12">
                             <label for="email" class="form-label">Email</label>
                             <input type="email" 
-                                   class="form-control" 
+                                   class="form-control {% if error_email %}is-invalid{% endif %}" 
                                    id="email" 
                                    name="email" 
                                    value="{{ form_data.email if form_data else (usuario.email or '') }}" 
                                    placeholder="usuario@ejemplo.com">
+                            {% if error_email %}
+                            <div class="invalid-feedback">
+                                {{ error_email }}
+                            </div>
+                            {% endif %}
                         </div>
                     </div>
 
