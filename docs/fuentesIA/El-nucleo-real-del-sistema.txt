@@ -1,0 +1,18 @@
+El núcleo real del sistema
+
+La tramitación administrativa se reduce a:
+- Documentos (qué se dice)
+- Fechas (cuándo se dice)
+- Plazos (cuánto tiempo hay para algo)
+- Destinatarios (a quién se dirige)
+
+Las tareas no son más que operaciones sobre documentos:
+- crearlos (REDACTAR)
+- validarlos (ANALISIS)
+- firmarlos (FIRMAR)
+- enviarlos (NOTIFICAR/PUBLICAR)
+- recibirlos (REGISTRAR)
+- o esperar su efecto temporal (ESPERAR_PLAZO)
+
+Replanteamiento: Sistema de almacenaje documental
+Diseño conceptual prioritario: Antes de definir cómo funcionan las tareas, necesitas diseñar el sistema de almacenaje de documentos y su relación con las tareas.

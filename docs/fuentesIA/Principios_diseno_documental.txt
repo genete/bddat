@@ -1,0 +1,39 @@
+Principios definitivos del diseño documental
+Fecha actualización: 15/01/2026
+
+0. Principio fundamental: Núcleo documental del sistema
+- La tramitación administrativa se reduce a documentos organizados por fechas
+- La aplicación NO gestiona "tareas abstractas" sino que es un gestor documental estructurado temporalmente
+- El procedimiento administrativo real consiste en: documentos (qué se dice), fechas (cuándo se dice), plazos (cuánto tiempo hay), destinatarios (a quién se dirige)
+- Las tareas son simplemente operaciones sobre documentos: REDACTAR (crearlos), ANALIZAR (validarlos), FIRMAR (autorizarlos), NOTIFICAR/PUBLICAR (enviarlos), REGISTRAR (recibirlos), ESPERAR_PLAZO (aguardar su efecto temporal)
+- La estructura EXPEDIENTE > SOLICITUD > FASE > TRÁMITE > TAREA es un contenedor organizativo que da contexto procedimental a los documentos y sus fechas administrativas
+
+1. Estructura minimalista
+- Documento pertenece al EXPEDIENTE y en sí mismo es agnóstico a: quién lo creó, quién lo consume, o si es un documento tipo proyecto o no. Solo es un pool de archivos del expediente.
+- Navegación principal: EXPEDIENTE → DOCUMENTO (vínculo directo mediante relación FK en documento hacia el expediente)
+- Navegación contextual: SOLICITUD → FASE → TRÁMITE → TAREA → DOCUMENTO (cuando el documento ya está procesado)
+- El documento no tiene campos intermedios redundantes (FASE_ID, TRAMITE_ID) - se deducen de la Tarea que apunta al documento consumido o generado
+
+2. Fechas administrativas
+- Definición: Fecha administrativa es la fecha del acto jurídico-administrativo que da valor procedimental a la acción, NO la fecha de gestión interna NI la fecha física del archivo.
+- Las fechas administrativas que se asocian a un documento viven en el documento. Las fechas que se asocian a un comienzo y fin de una tarea viven en la tarea.
+- NO son: fecha de creación del registro en BD, fecha en que el usuario empezó a trabajar, fecha automática del sistema
+- SÍ son: fecha de registro de entrada, fecha de firma oficial, fecha de notificación efectiva, fecha de análisis técnico-jurídico
+- Fechas de la Tarea vs Fechas del Documento: Coexistencia funcional
+  1. TAREA.FECHA_INICIO / FECHA_FIN: Fechas de cómputo de plazos y efectos administrativos (la verdad legal).
+  2. DOCUMENTO.FECHA: Fecha objetiva del archivo físico (registro, firma original, generación). Es un atributo informativo del documento necesario para:
+     a. Ordenar prioridades en la "Bandeja de Entrada"
+     b. Sugerir fechas al crear tareas
+     c. Identificar antigüedad del documento
+  3. No hay duplicación conceptual: La fecha del documento es un dato de origen; la fecha de la tarea es un dato de proceso. Ambas son necesarias y complementarias.
+- Introducción manual por usuario autorizado que verifica y certifica la fecha administrativa real. Es decir, la fecha de la tarea se introduce a mano en función de la fecha del documento o de lo que la genere, por ejemplo un plazo. Al incorporar un documento, la fecha administrativa del mismo se introduce a mano en el registro del documento. Quizá en el futuro sea automática.
+
+3. URLs/rutas de documentos
+- DOCUMENTO.RUTA_ARCHIVO: localización física en el administrador de archivos
+- Obligatoriedad controlada por REGLAS DE NEGOCIO, no por NOT NULL
+- Validación configurable según contexto (tipo tarea, tipo trámite, etc.)
+
+4. Motor de reglas
+- Toda lógica de validación (fechas obligatorias, documentos obligatorias) vive en tablas de reglas
+- Modificable sin tocar código
+- Validación no intrusiva: asteriscos + mensajes, no popups
