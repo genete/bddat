@@ -29,7 +29,7 @@ class Usuario(UserMixin, db.Model):
     nombre = db.Column(db.String(100), nullable=False, default='Usuario')
     apellido1 = db.Column(db.String(50), nullable=False, default='no asignado')
     apellido2 = db.Column(db.String(50))
-    email = db.Column(db.String(120), unique=True, nullable=True)
+    _email = db.Column('email', db.String(120), unique=True, nullable=True)
     activo = db.Column(db.Boolean, default=True)
     
     # Seguridad y Roles
@@ -41,6 +41,19 @@ class Usuario(UserMixin, db.Model):
     
     # Relación M:N con Roles
     roles = db.relationship('Rol', secondary=usuarios_roles, backref=db.backref('usuarios', lazy='dynamic'))
+
+    # Property para email que convierte cadenas vacías a None
+    @property
+    def email(self):
+        return self._email
+    
+    @email.setter
+    def email(self, value):
+        """Convierte cadenas vacías a None para evitar violación de constraint UNIQUE"""
+        if value == '' or (isinstance(value, str) and value.strip() == ''):
+            self._email = None
+        else:
+            self._email = value
 
     # Flask-Login: sobrescribir is_active para usar nuestro campo activo
     @property
