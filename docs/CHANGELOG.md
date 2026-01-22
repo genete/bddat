@@ -10,10 +10,337 @@ Registro de cambios del proyecto de tramitación administrativa de expedientes d
 
 ## Índice
 
+- [2026-01-22 - PR #19: Arquitectura v3.0 Tipos Individuales + Tabla Puente](#2026-01-22---pr-19-arquitectura-v30-tipos-individuales--tabla-puente)
 - [2026-01-22 - PR #18: Fix Email Duplicado en Usuarios](#2026-01-22---pr-18-fix-email-duplicado-en-usuarios)
 - [2026-01-21 - Mejoras UX en Módulo Expedientes](#2026-01-21---mejoras-ux-en-módulo-expedientes)
 - [2026-01-21 - Feature: Unificación Listado Expedientes](#2026-01-21---feature-unificación-listado-expedientes)
 - [2026-01-21 - Feature: Mis Expedientes](#2026-01-21---feature-mis-expedientes)
+
+---
+
+## 2026-01-22 - PR #19: Arquitectura v3.0 Tipos Individuales + Tabla Puente
+
+**Pull Request:** [#19](https://github.com/genete/bddat/pull/19)  
+**Autor:** Sistema IA (Perplexity) / genete  
+**Rama:** `docs/fuentes-ia-desde-space` → `main`  
+**Tipo:** Documentación (sin cambios en código)
+
+### Objetivo
+
+Implementar documentación completa de la **arquitectura v3.0 de tipos de solicitudes individuales**, sustituyendo el sistema de 20+ tipos combinados hardcodeados (AAP+AAC, AAP+DUP, AAP+AAC+DUP, etc.) por:
+
+- **17 tipos individuales** en tabla maestra `tipos_solicitudes`
+- **Tabla puente N:M** `solicitudes_tipos` para gestionar combinaciones flexibles
+- **Adaptabilidad a nuevas normativas:** RDL 7/2025 (división AAE), RADNE Andalucía, RAIPEE renovables
+
+### Archivos Nuevos
+
+#### 1. `docs/fuentesIA/datos_maestros.sql` (3.3 KB)
+
+**Propósito:** Script SQL con datos iniciales para poblar tablas maestras en BD limpia.
+
+**Contenido:**
+
+- **8 tipos de expedientes:**
+  - Particular Línea BT/MT/AT
+  - Distribuidora Línea AT
+  - Productor Generación Renovable
+  - Autoconsumo
+  - Transporte (Red Española)
+  - Almacenamiento Energético
+
+- **5 tipos de instrumento ambiental:**
+  - AAU (Autorización Ambiental Unificada)
+  - AAUS (AAU Simplificada)
+  - CA (Calificación Ambiental)
+  - No sujeto
+  - DIA (Declaración Impacto Ambiental - grandes proyectos)
+
+- **11 tipos de fases procedimentales:**
+  - ADMISIBILIDAD
+  - ANALISIS_TECNICO
+  - CONSULTAS
+  - INFORMACION_PUBLICA
+  - SUBSANACION
+  - AUDIENCIA_INTERESADOS
+  - RESOLUCION
+  - NOTIFICACION
+  - ARCHIVO
+  - SUSPENSION
+  - RECURSO
+
+- **17 tipos de solicitudes individuales (v3.0):**
+  - **Fase PREVIA:** AAP
+  - **Fase CONSTRUCCIÓN:** AAC
+  - **Declaración Utilidad Pública:** DUP
+  - **Fase EXPLOTACIÓN:** AAE_PROVISIONAL, AAE_DEFINITIVA (⭐ RDL 7/2025)
+  - **Transmisión:** AAT
+  - **RAIPEE Renovables:** RAIPEE_PREVIA, RAIPEE_DEFINITIVA
+  - **RADNE Autoconsumo:** RADNE (⭐ Obligatorio AT Andalucía desde 2024)
+  - **Cierre:** CIERRE
+  - **Actos administrativos:** DESISTIMIENTO, RENUNCIA, AMPLIACION_PLAZO, INTERESADO, RECURSO
+  - **Otros:** CORRECCION_ERRORES, OTRO
+
+**Uso:** Ejecutar después de `schema.sql` en nueva instalación.
+
+#### 2. `docs/fuentesIA/SOLICITUDES_TIPOS.md` (7.5 KB)
+
+**Propósito:** Documentación completa de tabla puente N:M `solicitudes_tipos`.
+
+**Contenido:**
+
+**Estructura tabla:**
+```sql
+CREATE TABLE solicitudes_tipos (
+  id SERIAL PRIMARY KEY,
+  solicitud_id INTEGER NOT NULL REFERENCES solicitudes(id) ON DELETE CASCADE,
+  tipo_solicitud_id INTEGER NOT NULL REFERENCES tipos_solicitudes(id),
+  UNIQUE (solicitud_id, tipo_solicitud_id)
+);
+```
+
+**Filosofía arquitectura v3.0:**
+- **Antes (v2.0):** Tipos combinados hardcodeados (AAP+AAC, AAP+DUP, AAP+AAC+DUP...)
+- **Ahora (v3.0):** Tipos individuales + tabla puente para combinaciones flexibles
+
+**Ejemplos SQL incluidos:**
+- Solicitud simple (AAP)
+- Solicitud combinada (AAP + AAC)
+- Solicitud triple (AAP + AAC + DUP)
+- Renovables con RAIPEE (AAP + RAIPEE_PREVIA, AAE_DEFINITIVA + RAIPEE_DEFINITIVA)
+- Autoconsumo Andalucía (AAP + AAC + RADNE)
+- Explotación RDL 7/2025 (AAE_PROVISIONAL, AAE_DEFINITIVA)
+
+**Consultas típicas documentadas:**
+- Obtener todos los tipos de una solicitud
+- Verificar si solicitud incluye tipo específico
+- Buscar solicitudes con combinación específica
+- Contar solicitudes por tipo individual (estadísticas)
+
+**Reglas de negocio:**
+- Validación de tipos incompatibles (AAE_PROVISIONAL y AAE_DEFINITIVA excluyentes)
+- Validación de secuencias temporales (RAIPEE_DEFINITIVA requiere PREVIA anterior)
+- Requisitos legales (DUP requiere AAP/AAC, RADNE obligatorio Andalucía)
+- Coherencia con tipo de expediente
+
+**Guía completa de migración desde v2.0:** Scripts SQL para convertir tipos combinados en individuales.
+
+**Ventajas arquitectura v3.0:**
+1. Flexibilidad total (cualquier combinación sin modificar maestras)
+2. Escalabilidad (nuevos tipos una sola vez, no 10+ combinaciones)
+3. Mantenibilidad (17 tipos vs 20+ combinaciones)
+4. Adaptabilidad normativa (RDL 7/2025 sin reestructuración)
+5. Estadísticas precisas (conteo individual AAP, AAC, DUP, etc.)
+6. Validaciones específicas (reglas por tipo, no por combinación)
+7. Trazabilidad (histórico claro de qué se solicitó)
+
+#### 3. `docs/fuentesIA/TIPOS_SOLICITUDES_v3.md` (10.2 KB)
+
+**Propósito:** Documentación actualizada de tabla maestra `tipos_solicitudes` con arquitectura v3.0.
+
+**Contenido:**
+
+**Cambio de filosofía:**
+- **v2.0:** 20+ tipos combinados (AAP, AAC, AAP+AAC, AAP+DUP, AAC+DUP, AAP+AAC+DUP, AAE+AAT...)
+- **v3.0:** 17 tipos individuales + combinaciones mediante tabla puente
+
+**Catálogo completo clasificado por bloques legales:**
+
+1. **Fase PREVIA (art. 53.1.a LSE 24/2013)**
+   - AAP: Autorización Administrativa Previa
+
+2. **Fase CONSTRUCCIÓN (art. 53.1.b LSE)**
+   - AAC: Autorización Administrativa de Construcción
+
+3. **Declaración Utilidad Pública (art. 54 LSE)**
+   - DUP: Declaración de Utilidad Pública (expropiación forzosa)
+
+4. **Fase EXPLOTACIÓN (art. 53.1.c LSE + RDL 7/2025)** ⭐ **NOVEDAD 2025**
+   - AAE_PROVISIONAL: Autorización Explotación Provisional para Pruebas (máx. 6 meses)
+   - AAE_DEFINITIVA: Autorización Explotación Definitiva (requiere PROVISIONAL previa)
+
+5. **Transmisión de Titularidad (art. 56 LSE)**
+   - AAT: Autorización de Transmisión de Titularidad
+
+6. **RAIPEE Renovables (RD 413/2014 art. 37-42)**
+   - RAIPEE_PREVIA: Inscripción Previa (reserva punto conexión)
+   - RAIPEE_DEFINITIVA: Inscripción Definitiva (instalación construida)
+
+7. **RADNE Autoconsumo (RD 244/2019)** ⭐ **Andalucía 2024: Obligatorio AT**
+   - RADNE: Inscripción en Registro de Autoconsumo
+
+8. **Cierre de Instalación (art. 53.1.d LSE)**
+   - CIERRE: Autorización de Cierre de Instalación
+9. **Actos sobre Solicitudes (art. 94 Ley 39/2015)**
+   - DESISTIMIENTO: Desistimiento de la Solicitud
+   - RENUNCIA: Renuncia de la Autorización
+
+10. **Gestión de Expedientes**
+    - AMPLIACION_PLAZO: Ampliación de Plazo de Ejecución
+    - INTERESADO: Condición de Interesado en el Expediente
+    - RECURSO: Recurso Administrativo
+
+11. **Otros Procedimientos**
+    - CORRECCION_ERRORES: Corrección de Errores en Resolución
+    - OTRO: Otro tipo de solicitud
+
+**Combinaciones típicas documentadas:**
+- Transporte/Distribución con DUP: AAP + AAC + DUP
+- Renovable con RAIPEE: AAP + RAIPEE_PREVIA / AAE_DEFINITIVA + RAIPEE_DEFINITIVA
+- Autoconsumo AT Andalucía: AAP + AAC + RADNE
+- Explotación nueva normativa: AAE_PROVISIONAL → AAE_DEFINITIVA
+
+**Tipos especiales:**
+- DESISTIMIENTO/RENUNCIA: Requieren `SOLICITUD_AFECTADA_ID` NOT NULL
+- RAIPEE: Secuencia PREVIA → DEFINITIVA obligatoria
+- AAE: Secuencia PROVISIONAL → DEFINITIVA obligatoria (RDL 7/2025)
+
+**Validaciones de combinaciones:**
+- DUP requiere AAP o AAC simultánea/previa
+- AAE_DEFINITIVA requiere AAE_PROVISIONAL previa
+- RAIPEE_DEFINITIVA requiere RAIPEE_PREVIA previa
+- RADNE solo para tipo_expediente = 'Autoconsumo'
+- RAIPEE solo para tipo_expediente = 'Renovable'
+
+**Marco legal actualizado:**
+- LSE 24/2013 (base autorizaciones eléctricas)
+- RDL 7/2025 (división AAE provisional/definitiva)
+- RD 1955/2000 (procedimiento transporte/distribución/producción)
+- RD 413/2014 (RAIPEE renovables)
+- RD 244/2019 (RADNE autoconsumo)
+- Ley 39/2015 (Procedimiento Administrativo Común)
+- Normativa autonómica Andalucía (RADNE obligatorio AT desde 2024)
+
+**Estrategia de migración v2.0 → v3.0:**
+- Mantener `SOLICITUDES.TIPO_SOLICITUD_ID` temporalmente
+- Poblar `SOLICITUDES_TIPOS` dividiendo combinados en individuales
+- Actualizar aplicación para consultar tabla puente
+- Deprecar y eliminar campo antiguo en versión futura
+
+### Cambios en Base de Datos (Futuro)
+
+**Nota:** Este PR **solo incluye documentación**. Los cambios en `schema.sql` y migraciones se aplicarán en PR separado posterior.
+
+**Tabla nueva planeada:**
+```sql
+CREATE TABLE solicitudes_tipos (
+  id SERIAL PRIMARY KEY,
+  solicitud_id INTEGER NOT NULL REFERENCES solicitudes(id) ON DELETE CASCADE,
+  tipo_solicitud_id INTEGER NOT NULL REFERENCES tipos_solicitudes(id),
+  UNIQUE (solicitud_id, tipo_solicitud_id)
+);
+
+CREATE INDEX idx_solicitudes_tipos_solicitud ON solicitudes_tipos(solicitud_id);
+CREATE INDEX idx_solicitudes_tipos_tipo ON solicitudes_tipos(tipo_solicitud_id);
+```
+
+**Datos maestros a actualizar:**
+- `tipos_solicitudes`: 17 tipos individuales (eliminar combinados)
+
+### Ventajas Arquitectura v3.0
+
+| Aspecto | v2.0 (Antes) | v3.0 (Ahora) |
+|---------|--------------|-------------|
+| **Número de tipos maestros** | 20+ combinaciones | 17 individuales |
+| **Nuevas combinaciones** | Modificar maestra (ej: AAP+AAC+DUP+AAT) | Automático (tabla puente) |
+| **Adaptación normativa** | Reestructuración completa | Añadir tipo individual |
+| **Estadísticas** | Por combinación completa | Por tipo individual |
+| **Validaciones** | Hardcoded por combo | Reglas por tipo |
+| **Mantenibilidad** | Baja (duplicación) | Alta (DRY) |
+| **Escalabilidad** | Limitada (crecimiento exponencial) | Infinita (crecimiento lineal) |
+| **Trazabilidad** | Combo completo | Cada tipo solicitado |
+
+### Novedades Normativas Incorporadas
+
+#### RDL 7/2025: División AAE Provisional/Definitiva
+
+**Problema anterior:** AAE única autorizaba explotación inmediata, pero instalación necesita pruebas previas.
+
+**Solución RDL 7/2025:**
+- **AAE_PROVISIONAL:** Autorización temporal (máximo 6 meses) para pruebas de funcionamiento. NO permite facturación comercial.
+- **AAE_DEFINITIVA:** Autorización permanente de explotación comercial. Requiere AAE_PROVISIONAL previa concedida.
+
+**Secuencia obligatoria:**
+```
+AAC concedida → Construcción → AAE_PROVISIONAL → Pruebas (6 meses) → AAE_DEFINITIVA → Explotación comercial
+```
+
+**Implementación en v3.0:** Dos tipos individuales independientes con validación de secuencia en motor de reglas.
+
+#### RADNE Autoconsumo Andalucía (Obligatorio desde 2024)
+
+**Contexto:** RD 244/2019 crea Registro Administrativo de Autoconsumo de Energía Eléctrica (RADNE).
+
+**Novedad Andalucía 2024:** Inscripción en RADNE pasa a ser **obligatoria** para instalaciones de autoconsumo en **alta tensión** (antes era voluntario o solo BT).
+
+**Combinación típica:**
+```
+AAP + AAC + RADNE (simultáneos para autoconsumo AT en Andalucía)
+```
+
+**Validación:** RADNE solo aplicable a `tipo_expediente = 'Autoconsumo'`.
+
+#### RAIPEE Renovables (RD 413/2014)
+
+**Contexto:** Registro Administrativo de Instalaciones de Producción de Energía Eléctrica (RAIPEE).
+
+**Secuencia normativa:**
+1. **RAIPEE_PREVIA (art. 37-39):** Inscripción previa que reserva punto de conexión. Se solicita con AAP o antes.
+2. **RAIPEE_DEFINITIVA (art. 40-42):** Inscripción definitiva tras instalación construida. Se solicita con AAE_DEFINITIVA.
+
+**Validación:** RAIPEE solo aplicable a `tipo_expediente = 'Renovable'`.
+
+### Impacto en Sistema
+
+#### Sin Cambios (Compatibilidad)
+- `SOLICITUDES.TIPO_SOLICITUD_ID` sigue funcionando
+- Tablas maestras actuales sin modificar
+- Formularios actuales sin cambios
+- Sin migraciones de BD
+
+#### Futuro (Próximos PRs)
+1. **PR Implementación BD:** Crear tabla `solicitudes_tipos`, migrar datos
+2. **PR Modelos y Rutas:** SQLAlchemy models, endpoints gestión tipos múltiples
+3. **PR Interfaz:** Formularios con selección múltiple, validaciones cliente/servidor
+4. **PR Motor de Reglas:** Validaciones de secuencias, incompatibilidades, coherencia con tipo expediente
+
+### Commits
+
+1. `3d9030a` - [DOCS] Añadir documentación tabla SOLICITUDES_TIPOS (puente N:M)
+2. `f540436` - [DOCS] Actualizar TIPOS_SOLICITUDES a arquitectura v3.0 (17 tipos individuales)
+3. `a0e75f3` - [MERGE] Merge PR #19 `docs/fuentes-ia-desde-space` a `main`
+
+### Testing
+
+**Nota:** Al ser solo documentación, no requiere testing funcional. Testing futuro cuando se implemente en BD:
+
+- [ ] Crear solicitud simple (AAP)
+- [ ] Crear solicitud combinada (AAP + AAC)
+- [ ] Crear solicitud triple (AAP + AAC + DUP)
+- [ ] Validar incompatibilidades (AAE_PROVISIONAL + AAE_DEFINITIVA simultáneas)
+- [ ] Validar secuencias (AAE_DEFINITIVA sin PROVISIONAL previa)
+- [ ] Validar coherencia tipo expediente (RAIPEE en expediente no-renovable)
+- [ ] Migrar datos v2.0 → v3.0 (tipos combinados → individuales)
+- [ ] Estadísticas por tipo individual
+- [ ] Consultas de combinaciones específicas
+
+### Documentación Actualizada
+
+- ✅ `docs/fuentesIA/datos_maestros.sql` - Datos iniciales tablas maestras
+- ✅ `docs/fuentesIA/SOLICITUDES_TIPOS.md` - Tabla puente N:M completa
+- ✅ `docs/fuentesIA/TIPOS_SOLICITUDES_v3.md` - Catálogo 17 tipos individuales
+- ✅ `docs/CHANGELOG.md` - Esta entrada
+
+### Referencias
+
+- **Pull Request:** https://github.com/genete/bddat/pull/19
+- **Marco Legal:**
+  - LSE 24/2013: Ley del Sector Eléctrico
+  - RDL 7/2025: División AAE provisional/definitiva
+  - RD 1955/2000: Procedimiento autorizaciones eléctricas
+  - RD 413/2014: Régimen económico renovables (RAIPEE)
+  - RD 244/2019: Autoconsumo eléctrico (RADNE)
+  - Ley 39/2015: Procedimiento Administrativo Común
 
 ---
 
