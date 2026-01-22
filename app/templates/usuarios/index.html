@@ -147,6 +147,22 @@
                                    value="{{ form_data.apellido2 if form_data else '' }}">
                         </div>
                     </div>
+                    <div class="row mb-3">
+                        <div class="col-md-12">
+                            <label for="email" class="form-label">Email</label>
+                            <input type="email" 
+                                   class="form-control {% if error_email %}is-invalid{% endif %}" 
+                                   id="email" 
+                                   name="email" 
+                                   placeholder="usuario@ejemplo.com"
+                                   value="{{ form_data.email if form_data else '' }}">
+                            {% if error_email %}
+                            <div class="invalid-feedback">
+                                {{ error_email }}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
 
                     <!-- Seguridad -->
                     <h6 class="border-bottom pb-2 mb-3 mt-4">Seguridad y Acceso</h6>
