@@ -1,5 +1,6 @@
 from flask import Blueprint, render_template, request, flash, redirect, url_for
 from flask_login import login_required, current_user
+from sqlalchemy.exc import IntegrityError
 from app import db
 from app.models.usuarios import Usuario, Rol
 from app.decorators import role_required
@@ -26,6 +27,7 @@ def index():
     # Variable para controlar si mostrar modal y preservar datos
     form_data = None
     error_siglas = None
+    error_email = None
 
     if request.method == 'POST':
         # Lógica para crear usuario
@@ -34,6 +36,7 @@ def index():
             nombre = request.form['nombre']
             apellido1 = request.form['apellido1']
             apellido2 = request.form.get('apellido2')
+            email = request.form.get('email')
             
             password = request.form['password']
             confirm_password = request.form['confirm_password']
@@ -47,6 +50,7 @@ def index():
                 'nombre': nombre,
                 'apellido1': apellido1,
                 'apellido2': apellido2,
+                'email': email,
                 'roles_ids': roles_ids
             }
             
@@ -88,6 +92,9 @@ def index():
                 apellido2=apellido2
             )
             
+            # Asignar email (el setter del modelo convertirá '' a None)
+            nuevo_usuario.email = email
+            
             # Establecer contraseña (hash)
             nuevo_usuario.set_password(password)
             
@@ -103,6 +110,24 @@ def index():
             flash('Usuario creado correctamente con roles y contraseña', 'success')
             return redirect(url_for('usuarios.index'))
             
+        except IntegrityError as e:
+            db.session.rollback()
+            # Detectar si es error de email duplicado
+            if 'usuarios_email_key' in str(e.orig):
+                error_email = 'Este email ya está registrado por otro usuario. Usa uno diferente o déjalo vacío.'
+                return render_template('usuarios/index.html', 
+                                     usuarios=usuarios, 
+                                     roles=todos_los_roles,
+                                     form_data=form_data,
+                                     error_email=error_email,
+                                     show_modal=True)
+            else:
+                flash(f'Error de integridad al crear usuario: {str(e)}', 'danger')
+                return render_template('usuarios/index.html', 
+                                     usuarios=usuarios, 
+                                     roles=todos_los_roles,
+                                     form_data=form_data,
+                                     show_modal=True)
         except Exception as e:
             db.session.rollback()
             flash(f'Error al crear usuario: {str(e)}', 'danger')
@@ -128,8 +153,9 @@ def editar(id):
         flash('No tienes permisos para editar usuarios ADMIN', 'danger')
         return redirect(url_for('usuarios.index'))
     
-    # Variable para error de siglas
+    # Variables para errores
     error_siglas = None
+    error_email = None
     
     if request.method == 'POST':
         try:
@@ -211,7 +237,7 @@ def editar(id):
             usuario.nombre = request.form['nombre']
             usuario.apellido1 = request.form['apellido1']
             usuario.apellido2 = request.form.get('apellido2')
-            usuario.email = request.form.get('email')
+            usuario.email = request.form.get('email')  # El setter del modelo convertirá '' a None
             
             # Actualizar estado activo (sin mensaje flash - es reversible)
             usuario.activo = activo_nuevo
@@ -226,14 +252,49 @@ def editar(id):
             if nueva_password:
                 confirm_password = request.form.get('confirm_password')
                 if nueva_password != confirm_password:
+                    # Preparar form_data y mantener diálogo abierto
+                    form_data = {
+                        'siglas': nuevas_siglas,
+                        'nombre': request.form['nombre'],
+                        'apellido1': request.form['apellido1'],
+                        'apellido2': request.form.get('apellido2'),
+                        'email': request.form.get('email'),
+                        'activo': activo_nuevo,
+                        'roles_ids': roles_ids
+                    }
                     flash('Las contraseñas no coinciden', 'danger')
-                    return redirect(url_for('usuarios.editar', id=id))
+                    return render_template('usuarios/editar.html',
+                                         usuario=usuario,
+                                         roles=todos_los_roles,
+                                         form_data=form_data)
                 usuario.set_password(nueva_password)
             
             db.session.commit()
             flash(f'Usuario {usuario.siglas} actualizado correctamente', 'success')
             return redirect(url_for('usuarios.index'))
             
+        except IntegrityError as e:
+            db.session.rollback()
+            # Detectar si es error de email duplicado
+            if 'usuarios_email_key' in str(e.orig):
+                error_email = 'Este email ya está registrado por otro usuario. Usa uno diferente o déjalo vacío.'
+                # Preparar form_data para mantener los valores
+                form_data = {
+                    'siglas': request.form['siglas'],
+                    'nombre': request.form['nombre'],
+                    'apellido1': request.form['apellido1'],
+                    'apellido2': request.form.get('apellido2'),
+                    'email': request.form.get('email'),
+                    'activo': 'activo' in request.form,
+                    'roles_ids': request.form.getlist('roles')
+                }
+                return render_template('usuarios/editar.html', 
+                                     usuario=usuario, 
+                                     roles=todos_los_roles,
+                                     error_email=error_email,
+                                     form_data=form_data)
+            else:
+                flash(f'Error de integridad al actualizar usuario: {str(e)}', 'danger')
         except Exception as e:
             db.session.rollback()
             flash(f'Error al actualizar usuario: {str(e)}', 'danger')
