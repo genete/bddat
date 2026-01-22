@@ -1,11 +1,38 @@
 ### TIPOS_SOLICITUDES (v3.0)
 
-Tipos **individuales** de actos administrativos. Combinaciones mediante tabla puente `SOLICITUDES_TIPOS`.
+Tabla maestra de tipos **individuales** de actos administrativos. Combinaciones mediante tabla puente `SOLICITUDES_TIPOS`.
+
+#### Modelo SQLAlchemy
+
+```python
+# app/models/tipo_solicitud.py
+from app import db
+
+class TipoSolicitud(db.Model):
+    __tablename__ = 'tipos_solicitudes'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    siglas = db.Column(db.String(100), unique=True, nullable=True)
+    descripcion = db.Column(db.String(200), nullable=True)
+    
+    def __repr__(self):
+        return f'<TipoSolicitud {self.siglas}>'
+```
+
+**Nota:** Esta tabla maestra ya existe. No requiere nueva migración, solo poblar con 17 tipos individuales (ver `datos_maestros.sql`).
+
+#### Estructura
+
+| Campo | Tipo | Descripción | Nullable |
+|:---|:---|:---|:---|
+| **ID** | INTEGER | Identificador único | NO |
+| **SIGLAS** | VARCHAR(100) | Código del tipo (AAP, AAC, DUP...) | SÍ |
+| **DESCRIPCION** | VARCHAR(200) | Descripción completa | SÍ |
 
 #### Filosofía v3.0
 
 **v2.0:** 20+ tipos combinados (AAP+AAC, AAP+DUP...)  
-**v3.0:** 17 tipos individuales + tabla puente
+**v3.0:** 17 tipos individuales + tabla puente `SOLICITUDES_TIPOS`
 
 #### Catálogo (17 Tipos)
 
@@ -64,7 +91,27 @@ Tipos **individuales** de actos administrativos. Combinaciones mediante tabla pu
 | 16 | CORRECCION_ERRORES | Corrección de Errores |
 | 17 | OTRO | Otro tipo |
 
-#### Combinaciones Típicas (vía SOLICITUDES_TIPOS)
+#### Uso en Python
+
+**Consultar tipo:**
+```python
+tipo_aap = TipoSolicitud.query.filter_by(siglas='AAP').first()
+print(tipo_aap.descripcion)  # "Autorización Administrativa Previa"
+```
+
+**Añadir tipos a solicitud (vía SOLICITUDES_TIPOS):**
+```python
+# AAP + AAC
+solicitud = Solicitud(expediente_id=1)
+solicitud.solicitudes_tipos = [
+    SolicitudTipo(tipo_solicitud_id=1),  # AAP
+    SolicitudTipo(tipo_solicitud_id=2),  # AAC
+]
+db.session.add(solicitud)
+db.session.commit()
+```
+
+#### Combinaciones Típicas
 
 **Transporte con DUP:**
 ```python
