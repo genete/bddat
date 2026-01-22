@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict ferRp7yM8gE0LVazBLNHnQgyTj7iFHTJuFht99ZjeelWmkOBbNQ36nCVcbNlpGJ
+\restrict d496LdFb2sltJRRHnW1Db0qgvnBFgScb8Xy1EFS0HfXojnIYtvQxi8pdsJSf6jH
 
 -- Dumped from database version 18.1
 -- Dumped by pg_dump version 18.1
@@ -65,6 +65,71 @@ ALTER SEQUENCE estructura.tipos_expedientes_id_seq OWNER TO postgres;
 --
 
 ALTER SEQUENCE estructura.tipos_expedientes_id_seq OWNED BY estructura.tipos_expedientes.id;
+
+
+--
+-- Name: tipos_fases; Type: TABLE; Schema: estructura; Owner: postgres
+--
+
+CREATE TABLE estructura.tipos_fases (
+    id integer NOT NULL,
+    codigo character varying(50) NOT NULL,
+    nombre character varying(200) NOT NULL
+);
+
+
+ALTER TABLE estructura.tipos_fases OWNER TO postgres;
+
+--
+-- Name: TABLE tipos_fases; Type: COMMENT; Schema: estructura; Owner: postgres
+--
+
+COMMENT ON TABLE estructura.tipos_fases IS 'Tabla maestra que define las fases procedimentales de tramitación administrativa. 
+Basadas en estructura normativa del procedimiento administrativo eléctrico.
+El CODIGO es inmutable y se usa en lógica de reglas de negocio.';
+
+
+--
+-- Name: COLUMN tipos_fases.id; Type: COMMENT; Schema: estructura; Owner: postgres
+--
+
+COMMENT ON COLUMN estructura.tipos_fases.id IS 'Identificador único del tipo de fase';
+
+
+--
+-- Name: COLUMN tipos_fases.codigo; Type: COMMENT; Schema: estructura; Owner: postgres
+--
+
+COMMENT ON COLUMN estructura.tipos_fases.codigo IS 'Código único identificativo de la fase (sin espacios, inmutable)';
+
+
+--
+-- Name: COLUMN tipos_fases.nombre; Type: COMMENT; Schema: estructura; Owner: postgres
+--
+
+COMMENT ON COLUMN estructura.tipos_fases.nombre IS 'Denominación completa de la fase para interfaz de usuario';
+
+
+--
+-- Name: tipos_fases_id_seq; Type: SEQUENCE; Schema: estructura; Owner: postgres
+--
+
+CREATE SEQUENCE estructura.tipos_fases_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE estructura.tipos_fases_id_seq OWNER TO postgres;
+
+--
+-- Name: tipos_fases_id_seq; Type: SEQUENCE OWNED BY; Schema: estructura; Owner: postgres
+--
+
+ALTER SEQUENCE estructura.tipos_fases_id_seq OWNED BY estructura.tipos_fases.id;
 
 
 --
@@ -287,6 +352,13 @@ ALTER TABLE ONLY estructura.tipos_expedientes ALTER COLUMN id SET DEFAULT nextva
 
 
 --
+-- Name: tipos_fases id; Type: DEFAULT; Schema: estructura; Owner: postgres
+--
+
+ALTER TABLE ONLY estructura.tipos_fases ALTER COLUMN id SET DEFAULT nextval('estructura.tipos_fases_id_seq'::regclass);
+
+
+--
 -- Name: tipos_ia id; Type: DEFAULT; Schema: estructura; Owner: postgres
 --
 
@@ -327,6 +399,22 @@ ALTER TABLE ONLY public.usuarios ALTER COLUMN id SET DEFAULT nextval('public.usu
 
 ALTER TABLE ONLY estructura.tipos_expedientes
     ADD CONSTRAINT tipos_expedientes_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: tipos_fases tipos_fases_codigo_key; Type: CONSTRAINT; Schema: estructura; Owner: postgres
+--
+
+ALTER TABLE ONLY estructura.tipos_fases
+    ADD CONSTRAINT tipos_fases_codigo_key UNIQUE (codigo);
+
+
+--
+-- Name: tipos_fases tipos_fases_pkey; Type: CONSTRAINT; Schema: estructura; Owner: postgres
+--
+
+ALTER TABLE ONLY estructura.tipos_fases
+    ADD CONSTRAINT tipos_fases_pkey PRIMARY KEY (id);
 
 
 --
@@ -485,5 +573,5 @@ ALTER TABLE ONLY public.usuarios_roles
 -- PostgreSQL database dump complete
 --
 
-\unrestrict ferRp7yM8gE0LVazBLNHnQgyTj7iFHTJuFht99ZjeelWmkOBbNQ36nCVcbNlpGJ
+\unrestrict d496LdFb2sltJRRHnW1Db0qgvnBFgScb8Xy1EFS0HfXojnIYtvQxi8pdsJSf6jH
 
