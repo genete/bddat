@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict d496LdFb2sltJRRHnW1Db0qgvnBFgScb8Xy1EFS0HfXojnIYtvQxi8pdsJSf6jH
+\restrict QhR9VqnBbRk7DC4AwMS9dXEZOpcLJWVgL1P11pseP7wFis8tgfgKFgGypGXj3DK
 
 -- Dumped from database version 18.1
 -- Dumped by pg_dump version 18.1
@@ -31,6 +31,64 @@ ALTER SCHEMA estructura OWNER TO postgres;
 SET default_tablespace = '';
 
 SET default_table_access_method = heap;
+
+--
+-- Name: solicitudes_tipos; Type: TABLE; Schema: estructura; Owner: postgres
+--
+
+CREATE TABLE estructura.solicitudes_tipos (
+    id integer NOT NULL,
+    solicitudid integer NOT NULL,
+    tiposolicitudid integer NOT NULL
+);
+
+
+ALTER TABLE estructura.solicitudes_tipos OWNER TO postgres;
+
+--
+-- Name: TABLE solicitudes_tipos; Type: COMMENT; Schema: estructura; Owner: postgres
+--
+
+COMMENT ON TABLE estructura.solicitudes_tipos IS 'Tabla puente que relaciona solicitudes con sus tipos individuales.
+Una solicitud puede tener múltiples tipos (AAP+AAC+DUP → 3 registros).
+Permite motor de reglas basado en tipos individuales sin duplicación de lógica.';
+
+
+--
+-- Name: COLUMN solicitudes_tipos.solicitudid; Type: COMMENT; Schema: estructura; Owner: postgres
+--
+
+COMMENT ON COLUMN estructura.solicitudes_tipos.solicitudid IS 'FK a estructura.solicitudes(id)';
+
+
+--
+-- Name: COLUMN solicitudes_tipos.tiposolicitudid; Type: COMMENT; Schema: estructura; Owner: postgres
+--
+
+COMMENT ON COLUMN estructura.solicitudes_tipos.tiposolicitudid IS 'FK a estructura.tipos_solicitudes(id)';
+
+
+--
+-- Name: solicitudes_tipos_id_seq; Type: SEQUENCE; Schema: estructura; Owner: postgres
+--
+
+CREATE SEQUENCE estructura.solicitudes_tipos_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE estructura.solicitudes_tipos_id_seq OWNER TO postgres;
+
+--
+-- Name: solicitudes_tipos_id_seq; Type: SEQUENCE OWNED BY; Schema: estructura; Owner: postgres
+--
+
+ALTER SEQUENCE estructura.solicitudes_tipos_id_seq OWNED BY estructura.solicitudes_tipos.id;
+
 
 --
 -- Name: tipos_expedientes; Type: TABLE; Schema: estructura; Owner: postgres
@@ -165,6 +223,72 @@ ALTER SEQUENCE estructura.tipos_ia_id_seq OWNER TO postgres;
 --
 
 ALTER SEQUENCE estructura.tipos_ia_id_seq OWNED BY estructura.tipos_ia.id;
+
+
+--
+-- Name: tipos_solicitudes; Type: TABLE; Schema: estructura; Owner: postgres
+--
+
+CREATE TABLE estructura.tipos_solicitudes (
+    id integer NOT NULL,
+    siglas character varying(100) NOT NULL,
+    descripcion character varying(200) NOT NULL
+);
+
+
+ALTER TABLE estructura.tipos_solicitudes OWNER TO postgres;
+
+--
+-- Name: TABLE tipos_solicitudes; Type: COMMENT; Schema: estructura; Owner: postgres
+--
+
+COMMENT ON TABLE estructura.tipos_solicitudes IS 'Tabla maestra de tipos de solicitudes individuales.
+Las combinaciones (AAP+AAC, etc.) se gestionan mediante tabla puente solicitudes_tipos.
+Motor de reglas aplica lógica sobre tipos individuales, no sobre combinaciones.
+Basada en nomenclatura legal establecida en normativa sectorial eléctrica (RD 1955/2000).';
+
+
+--
+-- Name: COLUMN tipos_solicitudes.id; Type: COMMENT; Schema: estructura; Owner: postgres
+--
+
+COMMENT ON COLUMN estructura.tipos_solicitudes.id IS 'Identificador único del tipo de solicitud';
+
+
+--
+-- Name: COLUMN tipos_solicitudes.siglas; Type: COMMENT; Schema: estructura; Owner: postgres
+--
+
+COMMENT ON COLUMN estructura.tipos_solicitudes.siglas IS 'Siglas normalizadas del acto administrativo (AAP, AAC, DUP, etc.)';
+
+
+--
+-- Name: COLUMN tipos_solicitudes.descripcion; Type: COMMENT; Schema: estructura; Owner: postgres
+--
+
+COMMENT ON COLUMN estructura.tipos_solicitudes.descripcion IS 'Descripción completa del acto administrativo solicitado';
+
+
+--
+-- Name: tipos_solicitudes_id_seq; Type: SEQUENCE; Schema: estructura; Owner: postgres
+--
+
+CREATE SEQUENCE estructura.tipos_solicitudes_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE estructura.tipos_solicitudes_id_seq OWNER TO postgres;
+
+--
+-- Name: tipos_solicitudes_id_seq; Type: SEQUENCE OWNED BY; Schema: estructura; Owner: postgres
+--
+
+ALTER SEQUENCE estructura.tipos_solicitudes_id_seq OWNED BY estructura.tipos_solicitudes.id;
 
 
 --
@@ -345,6 +469,13 @@ CREATE TABLE public.usuarios_roles (
 ALTER TABLE public.usuarios_roles OWNER TO postgres;
 
 --
+-- Name: solicitudes_tipos id; Type: DEFAULT; Schema: estructura; Owner: postgres
+--
+
+ALTER TABLE ONLY estructura.solicitudes_tipos ALTER COLUMN id SET DEFAULT nextval('estructura.solicitudes_tipos_id_seq'::regclass);
+
+
+--
 -- Name: tipos_expedientes id; Type: DEFAULT; Schema: estructura; Owner: postgres
 --
 
@@ -363,6 +494,13 @@ ALTER TABLE ONLY estructura.tipos_fases ALTER COLUMN id SET DEFAULT nextval('est
 --
 
 ALTER TABLE ONLY estructura.tipos_ia ALTER COLUMN id SET DEFAULT nextval('estructura.tipos_ia_id_seq'::regclass);
+
+
+--
+-- Name: tipos_solicitudes id; Type: DEFAULT; Schema: estructura; Owner: postgres
+--
+
+ALTER TABLE ONLY estructura.tipos_solicitudes ALTER COLUMN id SET DEFAULT nextval('estructura.tipos_solicitudes_id_seq'::regclass);
 
 
 --
@@ -391,6 +529,22 @@ ALTER TABLE ONLY public.roles ALTER COLUMN id SET DEFAULT nextval('public.roles_
 --
 
 ALTER TABLE ONLY public.usuarios ALTER COLUMN id SET DEFAULT nextval('public.usuarios_id_seq'::regclass);
+
+
+--
+-- Name: solicitudes_tipos solicitudes_tipos_pkey; Type: CONSTRAINT; Schema: estructura; Owner: postgres
+--
+
+ALTER TABLE ONLY estructura.solicitudes_tipos
+    ADD CONSTRAINT solicitudes_tipos_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: solicitudes_tipos solicitudes_tipos_solicitudid_tiposolicitudid_key; Type: CONSTRAINT; Schema: estructura; Owner: postgres
+--
+
+ALTER TABLE ONLY estructura.solicitudes_tipos
+    ADD CONSTRAINT solicitudes_tipos_solicitudid_tiposolicitudid_key UNIQUE (solicitudid, tiposolicitudid);
 
 
 --
@@ -431,6 +585,22 @@ ALTER TABLE ONLY estructura.tipos_ia
 
 ALTER TABLE ONLY estructura.tipos_ia
     ADD CONSTRAINT tipos_ia_siglas_key UNIQUE (siglas);
+
+
+--
+-- Name: tipos_solicitudes tipos_solicitudes_pkey; Type: CONSTRAINT; Schema: estructura; Owner: postgres
+--
+
+ALTER TABLE ONLY estructura.tipos_solicitudes
+    ADD CONSTRAINT tipos_solicitudes_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: tipos_solicitudes tipos_solicitudes_siglas_key; Type: CONSTRAINT; Schema: estructura; Owner: postgres
+--
+
+ALTER TABLE ONLY estructura.tipos_solicitudes
+    ADD CONSTRAINT tipos_solicitudes_siglas_key UNIQUE (siglas);
 
 
 --
@@ -522,6 +692,20 @@ ALTER TABLE ONLY public.usuarios
 
 
 --
+-- Name: idx_solicitudes_tipos_solicitud; Type: INDEX; Schema: estructura; Owner: postgres
+--
+
+CREATE INDEX idx_solicitudes_tipos_solicitud ON estructura.solicitudes_tipos USING btree (solicitudid);
+
+
+--
+-- Name: idx_solicitudes_tipos_tipo; Type: INDEX; Schema: estructura; Owner: postgres
+--
+
+CREATE INDEX idx_solicitudes_tipos_tipo ON estructura.solicitudes_tipos USING btree (tiposolicitudid);
+
+
+--
 -- Name: expedientes expedientes_proyecto_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -573,5 +757,5 @@ ALTER TABLE ONLY public.usuarios_roles
 -- PostgreSQL database dump complete
 --
 
-\unrestrict d496LdFb2sltJRRHnW1Db0qgvnBFgScb8Xy1EFS0HfXojnIYtvQxi8pdsJSf6jH
+\unrestrict QhR9VqnBbRk7DC4AwMS9dXEZOpcLJWVgL1P11pseP7wFis8tgfgKFgGypGXj3DK
 
