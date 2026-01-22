@@ -11,31 +11,28 @@
 **Rama principal:** `main`  
 **Propietario:** genete
 
----
-
-## 2. Stack Tecnológico
-
-**Backend:** Flask (Python) con SQLAlchemy  
-**Base de datos:** PostgreSQL  
-**Frontend:** Bootstrap 5  
-**Control de versiones:** Git/GitHub
+**Stack tecnológico:**
+- Backend: Flask (Python) con SQLAlchemy
+- Base de datos: PostgreSQL
+- Frontend: Bootstrap 5
+- Control de versiones: Git/GitHub
 
 ---
 
-## 3. Ubicación de Fuentes de Conocimiento
+## 2. Ubicación de Fuentes de Conocimiento
 
-### 3.1 Documentación de Referencia Principal
+### 2.1 Documentación de Referencia Principal
 
 **Ruta en repositorio:** `docs/fuentesIA/`
 
 **Documentos clave:**
 - `REGLAS_DESARROLLO.md` - Metodología completa de trabajo con IA
-- `Tablas.md` - Documentación de estructura de base de datos (pendiente migración)
+- `Tablas.md` - Documentación de estructura de base de datos
 - `SOLICITUDES_TIPOS.md` - Plantilla de referencia para documentación modular
 - `TIPOS_SOLICITUDES.md` - Plantilla de referencia para documentación modular
 - `ACCESO_RAPIDO_PROYECTO.md` - Este documento
 
-### 3.2 Estructura de BD Actual
+### 2.2 Estructura de BD Actual
 
 **Archivo de esquema:** `schema.sql` (raíz del proyecto)
 - Generado localmente por el usuario mediante script
@@ -43,7 +40,7 @@
 - **Fuente de verdad** para consultas sobre estructura de BD
 - Debe consultarse SIEMPRE antes de proponer cambios en BD
 
-### 3.3 Changelog
+### 2.3 Changelog
 
 **Ubicación:** `docs/CHANGELOG.md`
 - Registro cronológico de cambios
@@ -52,9 +49,9 @@
 
 ---
 
-## 4. Principios de Trabajo Esenciales
+## 3. Principios de Trabajo Esenciales
 
-### 4.1 Convención de Nombres (CRÍTICO)
+### 3.1 Convención de Nombres (CRÍTICO)
 
 **Regla general:** `snake_case` estricto
 
@@ -70,7 +67,7 @@
 **Única excepción:**
 - Clases de modelos SQLAlchemy: `CamelCase` (ej: `class Expediente`, `class Solicitud`)
 
-### 4.2 Workflow de Desarrollo
+### 3.2 Workflow de Desarrollo
 
 **IA (Asistente):**
 1. Crea rama de desarrollo (`feature/`, `bugfix/`, `hotfix/`, `refactor/`, `docs/`)
@@ -88,7 +85,7 @@
 4. Hace commits de migraciones locales y ajustes post-testing
 5. Da OK explícito para commits y PRs
 
-### 4.3 Formato de Commits
+### 3.3 Formato de Commits
 
 **Estructura:** `[CATEGORÍA] Descripción breve en imperativo`
 
@@ -114,7 +111,7 @@
 
 ---
 
-## 5. Estructura de Directorios del Proyecto
+## 4. Estructura de Directorios del Proyecto
 
 ```
 bddat/
@@ -136,7 +133,7 @@ bddat/
 
 ---
 
-## 6. Reglas de Prioridad
+## 5. Reglas de Prioridad
 
 1. **Los documentos en `docs/fuentesIA/` prevalecen** sobre otras fuentes de conocimiento
 2. **`schema.sql` es la fuente de verdad** para la estructura de BD
@@ -146,7 +143,7 @@ bddat/
 
 ---
 
-## 7. Comandos Esenciales de Consulta
+## 6. Comandos Esenciales de Consulta
 
 ### Para IA (antes de proponer cambios):
 - Leer `schema.sql` para conocer estructura actual de BD
@@ -163,18 +160,7 @@ flask db upgrade
 
 ---
 
-## 8. Tareas Pendientes Conocidas
-
-- **Migración de `Tablas.md`** a estructura modular:
-  - Crear `docs/fuentesIA/tablas/operacionales/`
-  - Crear `docs/fuentesIA/tablas/maestras/`
-  - Dividir `Tablas.md` en ~20 archivos pequeños
-  - Convertir `Tablas.md` en índice maestro
-  - Usar `SOLICITUDES_TIPOS.md` y `TIPOS_SOLICITUDES.md` como plantillas
-
----
-
-## 9. Resumen Ejecutivo
+## 7. Resumen Ejecutivo
 
 **Pregunta rápida:** ¿Qué repositorio usamos?  
 **Respuesta:** `https://github.com/genete/bddat` (rama `main`)
@@ -193,5 +179,5 @@ flask db upgrade
 
 ---
 
-**Última actualización:** 22 de enero de 2026, 18:45 CET  
-**Versión:** 1.0
+**Última actualización:** 22 de enero de 2026, 18:52 CET  
+**Versión:** 1.1
