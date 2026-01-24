@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict osGzSIHQ7azwPzahb0hVk1N2RCZUjXd7Mmd9jdqkDrTQ10TeIJjB0ypmWtkwX33
+\restrict yCpKnbyKogdNiJyFbfyFcEiXeGp7NluRHeElEdVJuMOt0Trp8ZFz70eEYoJBhC4
 
 -- Dumped from database version 18.1
 -- Dumped by pg_dump version 18.1
@@ -71,6 +71,12 @@ INSERT INTO estructura.tipos_ia (id, siglas, descripcion) VALUES (5, 'EXENTO', '
 -- Data for Name: tipos_resultados_fases; Type: TABLE DATA; Schema: estructura; Owner: -
 --
 
+INSERT INTO estructura.tipos_resultados_fases (id, codigo, nombre) VALUES (1, 'FAVORABLE', 'Favorable');
+INSERT INTO estructura.tipos_resultados_fases (id, codigo, nombre) VALUES (3, 'DESFAVORABLE', 'Desfavorable');
+INSERT INTO estructura.tipos_resultados_fases (id, codigo, nombre) VALUES (4, 'NO_PROCEDE', 'No Procede');
+INSERT INTO estructura.tipos_resultados_fases (id, codigo, nombre) VALUES (5, 'DESISTIDA', 'Desistida por el Solicitante');
+INSERT INTO estructura.tipos_resultados_fases (id, codigo, nombre) VALUES (6, 'ARCHIVADA', 'Archivada');
+INSERT INTO estructura.tipos_resultados_fases (id, codigo, nombre) VALUES (2, 'FAVORABLE_CONDICIONADO', 'Favorable con Condiciones');
 
 
 --
@@ -100,12 +106,49 @@ INSERT INTO estructura.tipos_solicitudes (id, siglas, descripcion) VALUES (17, '
 -- Data for Name: tipos_tareas; Type: TABLE DATA; Schema: estructura; Owner: -
 --
 
+INSERT INTO estructura.tipos_tareas (id, codigo, nombre) VALUES (1, 'ANALISIS', 'Revisión técnica o jurídica de documentación con generación de informe');
+INSERT INTO estructura.tipos_tareas (id, codigo, nombre) VALUES (2, 'REDACTAR', 'Creación de documento administrativo (borrador)');
+INSERT INTO estructura.tipos_tareas (id, codigo, nombre) VALUES (3, 'FIRMAR', 'Firma autorizada del documento');
+INSERT INTO estructura.tipos_tareas (id, codigo, nombre) VALUES (4, 'NOTIFICAR', 'Comunicación a destinatario identificado');
+INSERT INTO estructura.tipos_tareas (id, codigo, nombre) VALUES (5, 'PUBLICAR', 'Publicación en medios oficiales (BOE, BOP, tablón, portal)');
+INSERT INTO estructura.tipos_tareas (id, codigo, nombre) VALUES (6, 'ESPERAR_PLAZO', 'Suspensión temporal con fecha límite o indefinida');
+INSERT INTO estructura.tipos_tareas (id, codigo, nombre) VALUES (7, 'INCORPORAR', 'Incorporación de documentación externa al sistema');
 
 
 --
 -- Data for Name: tipos_tramites; Type: TABLE DATA; Schema: estructura; Owner: -
 --
 
+INSERT INTO estructura.tipos_tramites (id, codigo, nombre) VALUES (1, 'RECEPCION_SOLICITUD', 'Recepción de Solicitud');
+INSERT INTO estructura.tipos_tramites (id, codigo, nombre) VALUES (2, 'COMUNICACION_INICIO', 'Comunicación de Inicio');
+INSERT INTO estructura.tipos_tramites (id, codigo, nombre) VALUES (3, 'COMPROBACION_ADMISIBILIDAD', 'Comprobación de Admisibilidad Administrativa');
+INSERT INTO estructura.tipos_tramites (id, codigo, nombre) VALUES (4, 'REQUERIMIENTO_SUBSANACION', 'Requerimiento de Subsanación');
+INSERT INTO estructura.tipos_tramites (id, codigo, nombre) VALUES (5, 'COMPROBACION_DOCUMENTAL', 'Comprobación Documental');
+INSERT INTO estructura.tipos_tramites (id, codigo, nombre) VALUES (6, 'REQUERIMIENTO_MEJORA', 'Requerimiento de Mejora/Complemento');
+INSERT INTO estructura.tipos_tramites (id, codigo, nombre) VALUES (7, 'SOLICITUD_INFORME_MINISTERIO', 'Solicitud de Informe al Ministerio');
+INSERT INTO estructura.tipos_tramites (id, codigo, nombre) VALUES (8, 'RECEPCION_INFORME_MINISTERIO', 'Recepción de Informe del Ministerio');
+INSERT INTO estructura.tipos_tramites (id, codigo, nombre) VALUES (9, 'SOLICITUD_COMPATIBILIDAD', 'Solicitud de Compatibilidad Ambiental');
+INSERT INTO estructura.tipos_tramites (id, codigo, nombre) VALUES (10, 'AUDIENCIA_COMPATIBILIDAD', 'Audiencia por Incompatibilidad Ambiental');
+INSERT INTO estructura.tipos_tramites (id, codigo, nombre) VALUES (11, 'RECEPCION_INFORME_COMPATIBILIDAD', 'Recepción de Informe de Compatibilidad');
+INSERT INTO estructura.tipos_tramites (id, codigo, nombre) VALUES (12, 'ANALISIS_ADMISION', 'Análisis de Admisión a Trámite');
+INSERT INTO estructura.tipos_tramites (id, codigo, nombre) VALUES (13, 'ALEGACIONES_ADMISION', 'Alegaciones a Admisión');
+INSERT INTO estructura.tipos_tramites (id, codigo, nombre) VALUES (14, 'SEPARATAS', 'Generación y Traslado de Separatas a Organismos');
+INSERT INTO estructura.tipos_tramites (id, codigo, nombre) VALUES (15, 'RECEPCION_INFORME_ORGANISMO', 'Recepción de Informe de Organismo');
+INSERT INTO estructura.tipos_tramites (id, codigo, nombre) VALUES (16, 'TRASLADO_REPAROS', 'Traslado de Reparos al Organismo');
+INSERT INTO estructura.tipos_tramites (id, codigo, nombre) VALUES (17, 'ANUNCIO_BOE', 'Anuncio en Boletín Oficial del Estado');
+INSERT INTO estructura.tipos_tramites (id, codigo, nombre) VALUES (18, 'ANUNCIO_BOP', 'Anuncio en Boletín Oficial Provincial');
+INSERT INTO estructura.tipos_tramites (id, codigo, nombre) VALUES (19, 'ANUNCIO_PRENSA', 'Anuncio en Prensa de Mayor Difusión');
+INSERT INTO estructura.tipos_tramites (id, codigo, nombre) VALUES (20, 'TABLON_AYUNTAMIENTOS', 'Publicación en Tablón de Ayuntamientos');
+INSERT INTO estructura.tipos_tramites (id, codigo, nombre) VALUES (21, 'PORTAL_TRANSPARENCIA', 'Publicación en Portal de Transparencia');
+INSERT INTO estructura.tipos_tramites (id, codigo, nombre) VALUES (22, 'RECEPCION_ALEGACION', 'Recepción y Traslado de Alegación Individual');
+INSERT INTO estructura.tipos_tramites (id, codigo, nombre) VALUES (23, 'ANALISIS_ALEGACIONES', 'Análisis de Alegaciones e Informe Propuesta');
+INSERT INTO estructura.tipos_tramites (id, codigo, nombre) VALUES (24, 'SOLICITUD_FIGURA_AMBIENTAL', 'Solicitud de Instrumento Ambiental Externo');
+INSERT INTO estructura.tipos_tramites (id, codigo, nombre) VALUES (25, 'RECEPCION_FIGURA_AMBIENTAL', 'Recepción de Resolución Ambiental Externa');
+INSERT INTO estructura.tipos_tramites (id, codigo, nombre) VALUES (26, 'REMISION_MEDIO_AMBIENTE', 'Remisión a Medio Ambiente para Dictamen');
+INSERT INTO estructura.tipos_tramites (id, codigo, nombre) VALUES (27, 'RECEPCION_DICTAMEN_AMBIENTAL', 'Recepción de Dictamen Ambiental Integrado');
+INSERT INTO estructura.tipos_tramites (id, codigo, nombre) VALUES (28, 'ELABORACION_RESOLUCION', 'Elaboración de Resolución');
+INSERT INTO estructura.tipos_tramites (id, codigo, nombre) VALUES (29, 'NOTIFICACION_RESOLUCION', 'Notificación de Resolución a Interesados');
+INSERT INTO estructura.tipos_tramites (id, codigo, nombre) VALUES (30, 'PUBLICACION_RESOLUCION', 'Publicación de Resolución en Medios Oficiales');
 
 
 --
@@ -140,7 +183,7 @@ SELECT pg_catalog.setval('estructura.tipos_ia_id_seq', 5, true);
 -- Name: tipos_resultados_fases_id_seq; Type: SEQUENCE SET; Schema: estructura; Owner: -
 --
 
-SELECT pg_catalog.setval('estructura.tipos_resultados_fases_id_seq', 1, false);
+SELECT pg_catalog.setval('estructura.tipos_resultados_fases_id_seq', 6, true);
 
 
 --
@@ -154,19 +197,19 @@ SELECT pg_catalog.setval('estructura.tipos_solicitudes_id_seq', 17, true);
 -- Name: tipos_tareas_id_seq; Type: SEQUENCE SET; Schema: estructura; Owner: -
 --
 
-SELECT pg_catalog.setval('estructura.tipos_tareas_id_seq', 1, false);
+SELECT pg_catalog.setval('estructura.tipos_tareas_id_seq', 7, true);
 
 
 --
 -- Name: tipos_tramites_id_seq; Type: SEQUENCE SET; Schema: estructura; Owner: -
 --
 
-SELECT pg_catalog.setval('estructura.tipos_tramites_id_seq', 1, false);
+SELECT pg_catalog.setval('estructura.tipos_tramites_id_seq', 30, true);
 
 
 --
 -- PostgreSQL database dump complete
 --
 
-\unrestrict osGzSIHQ7azwPzahb0hVk1N2RCZUjXd7Mmd9jdqkDrTQ10TeIJjB0ypmWtkwX33
+\unrestrict yCpKnbyKogdNiJyFbfyFcEiXeGp7NluRHeElEdVJuMOt0Trp8ZFz70eEYoJBhC4
 
