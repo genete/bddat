@@ -42,8 +42,8 @@ class Expediente(db.Model):
         - responsable → USUARIOS (tramitador asignado)
         - tipo_expediente → TIPOS_EXPEDIENTES (clasificación normativa)
         - proyecto → PROYECTOS (relación 1:1, proyecto técnico único)
-        - solicitudes → SOLICITUDES (1:N, múltiples actos administrativos)
-        - documentos → DOCUMENTOS (1:N, pool de archivos del expediente)
+        - solicitudes ← SOLICITUDES (1:N, múltiples actos administrativos)
+        - documentos ← DOCUMENTOS (1:N, pool de archivos del expediente)
     
     REGLAS DE NEGOCIO:
         1. Cada expediente debe tener un responsable asignado
@@ -60,30 +60,37 @@ class Expediente(db.Model):
               apuntaba al expediente, ahora es inverso para mayor claridad.
     """
     __tablename__ = 'expedientes'
+    __table_args__ = (
+        db.Index('idx_expedientes_numero_at', 'numero_at'),
+        db.Index('idx_expedientes_responsable', 'responsable_id'),
+        db.Index('idx_expedientes_tipo', 'tipo_expediente_id'),
+        db.Index('idx_expedientes_proyecto', 'proyecto_id'),
+        {'schema': 'public'}
+    )
     
     id = db.Column(
-        db.Integer, 
-        primary_key=True, 
+        db.Integer,
+        primary_key=True,
         autoincrement=True,
         comment='Identificador técnico único autogenerado'
     )
     
     numero_at = db.Column(
-        db.Integer, 
-        nullable=False, 
+        db.Integer,
+        nullable=False,
         unique=True,
         comment='Número administrativo del expediente (formato legacy, único en organización)'
     )
     
     responsable_id = db.Column(
-        db.Integer, 
-        db.ForeignKey('usuarios.id'), 
+        db.Integer,
+        db.ForeignKey('public.usuarios.id'),
         nullable=False,
         comment='FK a USUARIOS. Tramitador asignado con permisos de gestión completa'
     )
     
     tipo_expediente_id = db.Column(
-        db.Integer, 
+        db.Integer,
         db.ForeignKey('estructura.tipos_expedientes.id'),
         comment='FK a TIPOS_EXPEDIENTES. Clasificación normativa que define procedimiento'
     )
@@ -94,16 +101,16 @@ class Expediente(db.Model):
     )
     
     proyecto_id = db.Column(
-        db.Integer, 
-        db.ForeignKey('proyectos.id'), 
-        nullable=False, 
+        db.Integer,
+        db.ForeignKey('public.proyectos.id'),
+        nullable=False,
         unique=True,
         comment='FK a PROYECTOS. Relación 1:1, un expediente tiene exactamente un proyecto'
     )
     
     # Relaciones SQLAlchemy
     responsable = db.relationship(
-        'Usuario', 
+        'Usuario',
         foreign_keys=[responsable_id],
         backref='expedientes_responsable'
     )
@@ -122,7 +129,7 @@ class Expediente(db.Model):
     
     def __repr__(self):
         """Representación técnica para debugging."""
-        return f'<Expediente {self.numero_at}>'
+        return f'<Expediente id={self.id} numero_at={self.numero_at}>'
     
     def __str__(self):
         """Representación legible para interfaz."""
