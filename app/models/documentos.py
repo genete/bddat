@@ -19,7 +19,7 @@ class Documento(db.Model):
         - Pool único de documentos por expediente, relaciones viven fuera
     
     CAMPO EXPEDIENTE_ID:
-        - ÚNICO FK del documento
+        - ÚNCO FK del documento
         - NOT NULL: Todo documento pertenece a un expediente
     
     CAMPO FECHA_ADMINISTRATIVA:
@@ -73,7 +73,7 @@ class Documento(db.Model):
     
     expediente_id = db.Column(
         db.Integer,
-        db.ForeignKey('public.expedientes.id', use_alter=True, name='fk_documentos_expediente'),
+        db.ForeignKey('public.expedientes.id'),
         nullable=False,
         comment='FK a EXPEDIENTES. ÚNCO FK del documento (tabla agnóstica)'
     )
@@ -134,7 +134,7 @@ class Documento(db.Model):
     )
     
     # Relación con expediente
-    expediente = db.relationship('Expediente', backref='documentos')
+    expediente = db.relationship('Expediente', foreign_keys=[expediente_id], backref='documentos')
     
     def __repr__(self):
         """Representación técnica para debugging."""

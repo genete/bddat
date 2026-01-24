@@ -4,21 +4,14 @@ Estructura de importaciones:
 - Modelos operacionales (public schema)
 - Modelos maestros (estructura schema)
 - Modelos auxiliares y relaciones
+
+ORDEN IMPORTANTE:
+- Primero modelos SIN foreign keys a otros modelos operacionales
+- Luego modelos CON foreign keys (respetando dependencias)
 """
 
-# Modelos operacionales (public)
-from app.models.expedientes import Expediente
-from app.models.proyectos import Proyecto
-from app.models.solicitudes import Solicitud
-from app.models.solicitudes_tipos import SolicitudTipo
-from app.models.documentos import Documento
-from app.models.documentos_proyecto import DocumentoProyecto
-from app.models.fases import Fase
-from app.models.tramites import Tramite
-from app.models.tareas import Tarea
-from app.models.municipios_proyecto import MunicipioProyecto
-
-# Modelos maestros (estructura)
+# Modelos maestros primero (no tienen FKs entre ellos)
+from app.models.usuarios import Usuario, Rol
 from app.models.municipios import Municipio
 from app.models.tipos_expedientes import TipoExpediente
 from app.models.tipos_fases import TipoFase
@@ -27,21 +20,29 @@ from app.models.tipos_resultados_fases import TipoResultadoFase
 from app.models.tipos_solicitudes import TipoSolicitud
 from app.models.tipos_tareas import TipoTarea
 from app.models.tipos_tramites import TipoTramite
-from app.models.usuarios import Usuario, Rol
+
+# Modelos operacionales sin dependencias operacionales
+from app.models.proyectos import Proyecto
+
+# Modelos operacionales con dependencias simples
+from app.models.expedientes import Expediente  # Depende de Proyecto, Usuario, TipoExpediente
+from app.models.documentos import Documento  # Depende de Expediente
+from app.models.solicitudes import Solicitud  # Depende de Expediente
+
+# Modelos operacionales con dependencias múltiples
+from app.models.solicitudes_tipos import SolicitudTipo  # Depende de Solicitud, TipoSolicitud
+from app.models.documentos_proyecto import DocumentoProyecto  # Depende de Documento, Proyecto
+from app.models.fases import Fase  # Depende de Solicitud, TipoFase, TipoResultadoFase, Documento
+from app.models.municipios_proyecto import MunicipioProyecto  # Depende de Municipio, Proyecto
+
+# Modelos operacionales con dependencias complejas (al final)
+from app.models.tramites import Tramite  # Depende de Fase, TipoTramite
+from app.models.tareas import Tarea  # Depende de Tramite, TipoTarea, Documento
 
 __all__ = [
-    # Operacionales
-    'Expediente',
-    'Proyecto',
-    'Solicitud',
-    'SolicitudTipo',
-    'Documento',
-    'DocumentoProyecto',
-    'Fase',
-    'Tramite',
-    'Tarea',
-    'MunicipioProyecto',
     # Maestros
+    'Usuario',
+    'Rol',
     'Municipio',
     'TipoExpediente',
     'TipoFase',
@@ -50,6 +51,15 @@ __all__ = [
     'TipoSolicitud',
     'TipoTarea',
     'TipoTramite',
-    'Usuario',
-    'Rol',
+    # Operacionales
+    'Proyecto',
+    'Expediente',
+    'Documento',
+    'Solicitud',
+    'SolicitudTipo',
+    'DocumentoProyecto',
+    'Fase',
+    'MunicipioProyecto',
+    'Tramite',
+    'Tarea',
 ]

@@ -44,9 +44,10 @@ class SolicitudTipo(db.Model):
         - Un tipo puede estar en N solicitudes
         - Al eliminar solicitud, se eliminan sus registros aquí (CASCADE)
     
-    NOTAS DE VERSIÓN:
-        v3.0: Tabla puente con PK autogenerado (no tabla simple db.Table).
-              Permite auditoría y control granular si es necesario en futuro.
+    CORRECCIÓN v3.1:
+        - Movida de schema 'estructura' a schema 'public'
+        - Razón: Es tabla OPERACIONAL (datos de instancias), no maestra (catálogos)
+        - Issue #21: https://github.com/genete/bddat/issues/21
     """
     __tablename__ = 'solicitudes_tipos'
     __table_args__ = (
@@ -54,7 +55,7 @@ class SolicitudTipo(db.Model):
                            name='solicitudes_tipos_solicitudid_tiposolicitudid_key'),
         db.Index('idx_solicitudes_tipos_solicitud', 'solicitudid'),
         db.Index('idx_solicitudes_tipos_tipo', 'tiposolicitudid'),
-        {'schema': 'estructura'}  # NOTA: Esta tabla está en estructura, no en public
+        {'schema': 'public'}  # CORRECCIÓN: Movida de 'estructura' a 'public' (Issue #21)
     )
     
     id = db.Column(
@@ -66,7 +67,7 @@ class SolicitudTipo(db.Model):
     
     solicitudid = db.Column(
         db.Integer,
-        db.ForeignKey('public.solicitudes.id', use_alter=True, name='fk_solicitudes_tipos_solicitud'),
+        db.ForeignKey('public.solicitudes.id', ondelete='CASCADE'),
         nullable=False,
         comment='FK a SOLICITUDES. Solicitud que contiene este tipo'
     )
@@ -79,7 +80,7 @@ class SolicitudTipo(db.Model):
     )
     
     # Relaciones explícitas
-    solicitud = db.relationship('Solicitud', foreign_keys=[solicitudid])
+    solicitud = db.relationship('Solicitud', foreign_keys=[solicitudid], backref='solicitud_tipos')
     tipo_solicitud = db.relationship('TipoSolicitud', foreign_keys=[tiposolicitudid])
     
     def __repr__(self):

@@ -76,6 +76,11 @@ class Proyecto(db.Model):
         v3.0: ACLARADO FECHA (fecha técnica, no administrativa)
     """
     __tablename__ = 'proyectos'
+    __table_args__ = (
+        db.Index('idx_proyectos_fecha', 'fecha'),
+        db.Index('idx_proyectos_ia', 'ia_id'),
+        {'schema': 'public'}
+    )
     
     id = db.Column(
         db.Integer, 
