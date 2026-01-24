@@ -19,7 +19,7 @@ class Documento(db.Model):
         - Pool único de documentos por expediente, relaciones viven fuera
     
     CAMPO EXPEDIENTE_ID:
-        - ÚNCO FK del documento
+        - ÚNICO FK del documento
         - NOT NULL: Todo documento pertenece a un expediente
     
     CAMPO FECHA_ADMINISTRATIVA:
@@ -73,7 +73,7 @@ class Documento(db.Model):
     
     expediente_id = db.Column(
         db.Integer,
-        db.ForeignKey('public.expedientes.id'),
+        db.ForeignKey('public.expedientes.id', use_alter=True, name='fk_documentos_expediente'),
         nullable=False,
         comment='FK a EXPEDIENTES. ÚNCO FK del documento (tabla agnóstica)'
     )
