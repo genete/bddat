@@ -7,10 +7,11 @@ import secrets
 # Tabla de asociación Muchos-a-Muchos (Usuario <-> Rol)
 # Relación N:M que permite asignar múltiples roles a cada usuario
 usuarios_roles = db.Table('usuarios_roles',
-    db.Column('usuario_id', db.Integer, db.ForeignKey('usuarios.id'), primary_key=True,
+    db.Column('usuario_id', db.Integer, db.ForeignKey('public.usuarios.id'), primary_key=True,
               comment='FK a USUARIOS. Usuario al que se asigna el rol'),
-    db.Column('rol_id', db.Integer, db.ForeignKey('roles.id'), primary_key=True,
-              comment='FK a ROLES. Rol asignado al usuario')
+    db.Column('rol_id', db.Integer, db.ForeignKey('public.roles.id'), primary_key=True,
+              comment='FK a ROLES. Rol asignado al usuario'),
+    schema='public'
 )
 
 class Rol(db.Model):
@@ -56,6 +57,7 @@ class Rol(db.Model):
         3. Un usuario sin roles tiene acceso mínimo de lectura
     """
     __tablename__ = 'roles'
+    __table_args__ = ({'schema': 'public'},)
     
     id = db.Column(
         db.Integer, 
@@ -183,6 +185,11 @@ class Usuario(UserMixin, db.Model):
         los campos deberían tener valores reales.
     """
     __tablename__ = 'usuarios'
+    __table_args__ = (
+        db.Index('idx_usuarios_siglas', 'siglas'),
+        db.Index('idx_usuarios_email', '_email'),
+        {'schema': 'public'}
+    )
     
     id = db.Column(
         db.Integer, 
