@@ -5,8 +5,8 @@
 **Repositorio:** https://github.com/genete/bddat  
 **Rama principal:** main  
 **Documento creado:** 17 de enero de 2026  
-**Última actualización:** 22 de enero de 2026  
-**Versión:** 2.0
+**Última actualización:** 24 de enero de 2026  
+**Versión:** 2.1
 
 ---
 
@@ -434,28 +434,60 @@ bddat/
 
 ---
 
-## 7. Cambios Documentales y Changelogs
+## 7. Gestión de Changelogs y Documentación de Cambios
 
-### 7.1 Changelogs
+### 7.1 Estrategia de Changelog
 
-Los cambios documentales se realizan mediante los changelogs en `docs/CHANGELOG.md`:
+**Decisión arquitectónica:** Los Pull Requests de GitHub son la **fuente de verdad** para el historial del proyecto.
 
-- Se describen **los cambios realizados** (hechos), no las intenciones
-- Se actualizan tras cada merge de PR a `main`
-- Se hace en commit separado con categoría `[CHANGELOG]`
-- Formato: fecha, PR, issue relacionado, cambios por categoría (BD, Modelos, Rutas, Templates, etc.)
+**Archivo `docs/CHANGELOG.md`:**
+- Contiene **solo los últimos 5 PRs** mergeados
+- Cada entrada incluye: fecha, enlace al PR, objetivo y cambios principales
+- Para detalles completos (commits, archivos, diffs): consultar el PR en GitHub
+- Se actualiza **tras cada merge de PR a main** en commit separado con categoría `[CHANGELOG]`
 
-**Ubicación:** `docs/CHANGELOG.md` (archivo único acumulativo)
+**Ventajas de esta estrategia:**
+- ✅ No duplica información (DRY principle)
+- ✅ Los PRs de GitHub contienen toda la metadata: commits, reviews, diff, archivos
+- ✅ El changelog es manejable y no crece infinitamente
+- ✅ La IA puede consultar rápidamente contexto reciente
+- ✅ Historial completo siempre accesible en GitHub
 
-**Estructura:**
-- Índice con enlaces a cada entrada
-- Entradas en orden cronológico inverso (más reciente arriba)
-- Cada entrada con nivel de título `##`
-- Subsecciones por tipo de cambio con nivel `###`
+### 7.2 Actualización del Changelog
 
----
+**Cuándo:** Tras cada merge de PR a `main`
 
-### 7.2 Documentación de Diseño
+**Proceso:**
+1. Identificar el PR mergeado (número, título, fecha)
+2. Extraer información clave del PR: objetivo, cambios principales, issues relacionados
+3. Añadir entrada al inicio de `docs/CHANGELOG.md` (orden cronológico inverso)
+4. Mantener solo últimos 5 PRs (eliminar el más antiguo si hay más de 5)
+5. Commit separado con mensaje `[CHANGELOG] Añadir entrada PR #XX`
+
+**Formato de entrada:**
+
+```markdown
+### YYYY-MM-DD - [PR #XX: Título del PR](URL_del_PR)
+
+**Objetivo:** Breve descripción del objetivo del PR.
+
+**Cambios principales:**
+- ✅ Cambio 1
+- ✅ Cambio 2
+- ✅ Cambio 3
+
+**Issues resueltos:** #XX, #YY (si aplica)
+**Tipo:** Feature/Bugfix/Docs/Refactor (si aplica)
+```
+
+### 7.3 Consulta de Historial Antiguo
+
+Para consultar PRs anteriores a los últimos 5:
+- Ir a: https://github.com/genete/bddat/pulls?q=is%3Apr+is%3Aclosed+sort%3Aupdated-desc
+- Usar filtros de GitHub por fecha, autor, label, milestone
+- Buscar por palabra clave en título/descripción
+
+### 7.4 Documentación de Diseño
 
 Cuando se realiza un cambio importante en el código que afecte a:
 
@@ -628,6 +660,6 @@ git status
 ---
 
 **Documento creado:** 17 de enero de 2026, 21:24 CET  
-**Última actualización:** 22 de enero de 2026, 11:40 CET  
-**Versión:** 2.0  
+**Última actualización:** 24 de enero de 2026, 10:38 CET  
+**Versión:** 2.1  
 **Referencia:** Repositorio oficial genete/bddat en GitHub
