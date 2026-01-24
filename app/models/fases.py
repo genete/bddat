@@ -2,70 +2,67 @@ from app import db
 
 class Fase(db.Model):
     """
-    Contenedor temporal de trámites con objetivo procedimental concreto.
+    Fases procedimentales instanciadas en expedientes.
     
     PROPÓSITO:
-        Representa una fase procedimental dentro de una solicitud administrativa.
-        Agrupa trámites relacionados con un objetivo común (ADMISIBILIDAD, CONSULTAS,
-        INFORMACION_PUBLICA, RESOLUCION, etc.).
+        Representa cada fase concreta del procedimiento administrativo que atraviesa
+        un expediente. Es una instancia de un TIPO_FASE con datos temporales y
+        resultado específicos.
     
     FILOSOFÍA:
-        - Campos mínimos: solo metadatos administrativos (fechas, tipo, resultado)
-        - Semántica en TIPO: lógica procedimental vive en TIPOS_FASES
-        - Resultado manual: técnico evalúa y registra tras analizar documentos
-        - Fecha fin sugestionable: puede calcularse como MAX(TRAMITES.fecha_fin)
+        - Instancia concreta de TIPOS_FASES (catálogo maestro)
+        - Captura fechas de inicio/fin y resultado de la fase
+        - Trazabilidad: Quién, cuándo, resultado
+        - Resultado condiciona fases siguientes según motor de reglas
     
-    CAMPO SOLICITUD_ID:
-        - NOT NULL: Toda fase pertenece a una solicitud
-        - Define contexto administrativo de la fase
+    CAMPO EXPEDIENTE_ID:
+        - NOT NULL: Toda fase pertenece a un expediente
+        - FK a EXPEDIENTES (public schema)
     
     CAMPO TIPO_FASE_ID:
-        - NOT NULL: Define tipo procedimental según catálogo
-        - Determina trámites obligatorios y secuencia administrativa
+        - NOT NULL: Define qué tipo de fase es (ADMISIBILIDAD, CONSULTAS, etc.)
+        - FK a TIPOS_FASES (estructura schema)
+        - Determina tareas y trámites obligatorios
+    
+    CAMPO FECHA_INICIO:
+        - NOT NULL: Marca inicio de la fase
+        - Determina plazos de resolución
+    
+    CAMPO FECHA_FIN:
+        - NULLABLE: Fase en curso si es NULL
+        - Marca finalización de la fase
     
     CAMPO RESULTADO_FASE_ID:
-        - Resultado o desenlace de la fase
-        - NULLABLE: Solo se rellena al cerrar fase
-        - Obligatorio cuando fecha_fin NOT NULL (validar en interfaz)
-        - Valores: FAVORABLE, DESFAVORABLE, CONDICIONADO, etc.
+        - NULLABLE: Se rellena al finalizar la fase
+        - FK a TIPOS_RESULTADOS_FASES (estructura schema)
+        - Determina continuidad del procedimiento (avanza, paraliza, archiva)
     
-    CAMPO DOCUMENTO_RESULTADO_ID:
-        - Documento oficial que formaliza el resultado
-        - NULLABLE: No todas las fases generan documento específico
-        - Ejemplos: informe favorable, resolución de inadmisión
-    
-    CAMPOS FECHA_INICIO / FECHA_FIN:
-        - fecha_inicio NULL = fase planificada no iniciada
-        - fecha_fin NULL = fase pendiente o en curso
-        - fecha_fin NOT NULL = fase completada (registro manual)
-    
-    ESTADOS DEDUCIBLES (no almacenados):
-        - PENDIENTE: fecha_inicio IS NULL
-        - EN_CURSO: fecha_inicio NOT NULL AND fecha_fin IS NULL
-        - COMPLETADA: fecha_fin NOT NULL
-        - EXITOSA: fecha_fin NOT NULL AND resultado indica éxito
+    CAMPO USUARIO_ID:
+        - NULLABLE: Técnico responsable de la fase
+        - FK a USUARIOS (estructura schema)
     
     RELACIONES:
-        - solicitud → SOLICITUDES.id (FK, solicitud contenedora)
-        - tipo_fase → TIPOS_FASES.id (FK, tipo procedimental)
-        - resultado_fase → TIPOS_RESULTADOS_FASES.id (FK opcional, resultado)
-        - documento_resultado → DOCUMENTOS.id (FK opcional, documento resultado)
-        - tramites ← TRAMITES.fase_id (trámites ejecutados en fase)
+        - expediente → EXPEDIENTES.id (FK, expediente contenedor)
+        - tipo_fase → TIPOS_FASES.id (FK, definición de la fase)
+        - resultado_fase → TIPOS_RESULTADOS_FASES.id (FK, resultado de la fase)
+        - usuario → USUARIOS.id (FK, responsable)
+        - tramites ← TRAMITES.fase_id (trámites realizados en esta fase)
     
     REGLAS DE NEGOCIO:
-        - No puede finalizarse si existen trámites asociados sin finalizar
-        - resultado_fase_id obligatorio al establecer fecha_fin
-        - Secuencias de fases determinadas por motor de reglas
+        - FECHA_FIN debe ser >= FECHA_INICIO
+        - RESULTADO_FASE_ID solo se rellena si FECHA_FIN NOT NULL
+        - Secuencia de fases condicionada por RESULTADO_FASE_ID según motor de reglas
+        - Un expediente puede tener múltiples instancias del mismo TIPO_FASE
     
     NOTAS DE VERSIÓN:
-        v3.0: Sin cambios estructurales. Diseño minimalista mantenido.
+        v3.0: Sin cambios estructurales. Tabla operacional estable.
     """
     __tablename__ = 'fases'
     __table_args__ = (
-        db.Index('idx_fases_solicitud', 'solicitud_id'),
+        db.Index('idx_fases_expediente', 'expediente_id'),
         db.Index('idx_fases_tipo', 'tipo_fase_id'),
-        db.Index('idx_fases_resultado', 'resultado_fase_id'),
-        db.Index('idx_fases_fechas', 'fecha_inicio', 'fecha_fin'),
+        db.Index('idx_fases_usuario', 'usuario_id'),
+        db.Index('idx_fases_fecha_inicio', 'fecha_inicio'),
         {'schema': 'public'}
     )
     
@@ -76,63 +73,62 @@ class Fase(db.Model):
         comment='Identificador único autogenerado de la fase'
     )
     
-    solicitud_id = db.Column(
+    expediente_id = db.Column(
         db.Integer,
-        db.ForeignKey('public.solicitudes.id', ondelete='CASCADE'),
+        db.ForeignKey('public.expedientes.id', use_alter=True, name='fk_fases_expediente'),
         nullable=False,
-        comment='FK a SOLICITUDES. Solicitud a la que pertenece la fase'
+        comment='FK a EXPEDIENTES. Expediente al que pertenece la fase'
     )
     
     tipo_fase_id = db.Column(
         db.Integer,
         db.ForeignKey('estructura.tipos_fases.id'),
         nullable=False,
-        comment='FK a TIPOS_FASES. Tipo procedimental de la fase'
+        comment='FK a TIPOS_FASES. Tipo de fase (ADMISIBILIDAD, CONSULTAS, etc.)'
     )
     
     fecha_inicio = db.Column(
         db.Date,
-        nullable=True,
-        comment='Fecha de inicio administrativo. NULL = fase planificada no iniciada'
+        nullable=False,
+        comment='Fecha de inicio de la fase'
     )
     
     fecha_fin = db.Column(
         db.Date,
         nullable=True,
-        comment='Fecha de finalización (registro manual). NULL = fase pendiente/en curso'
-    )
-    
-    observaciones = db.Column(
-        db.String(2000),
-        nullable=True,
-        comment='Notas o comentarios del técnico sobre la fase'
+        comment='Fecha de finalización de la fase. NULL si está en curso'
     )
     
     resultado_fase_id = db.Column(
         db.Integer,
         db.ForeignKey('estructura.tipos_resultados_fases.id'),
         nullable=True,
-        comment='FK a TIPOS_RESULTADOS_FASES. Resultado de la fase (obligatorio si fecha_fin NOT NULL)'
+        comment='FK a TIPOS_RESULTADOS_FASES. Resultado de la fase al finalizar'
     )
     
-    documento_resultado_id = db.Column(
+    usuario_id = db.Column(
         db.Integer,
-        db.ForeignKey('public.documentos.id'),
+        db.ForeignKey('estructura.usuarios.id'),
         nullable=True,
-        comment='FK a DOCUMENTOS. Documento oficial que formaliza el resultado'
+        comment='FK a USUARIOS. Técnico responsable de la fase'
+    )
+    
+    observaciones = db.Column(
+        db.String(2000),
+        nullable=True,
+        comment='Notas o comentarios adicionales del técnico'
     )
     
     # Relaciones
-    solicitud = db.relationship('Solicitud', backref='fases')
-    tipo_fase = db.relationship('TipoFase', backref='fases')
-    resultado_fase = db.relationship('TipoResultadoFase', backref='fases')
-    documento_resultado = db.relationship('Documento', backref='fases_resultado')
+    expediente = db.relationship('Expediente', backref='fases')
+    tipo_fase = db.relationship('TipoFase', backref='fases_instanciadas')
+    resultado_fase = db.relationship('TipoResultadoFase', backref='fases_con_resultado')
+    usuario = db.relationship('Usuario', backref='fases_responsable')
     
     def __repr__(self):
         """Representación técnica para debugging."""
-        return f'<Fase id={self.id} solicitud={self.solicitud_id} tipo={self.tipo_fase_id}>'
+        return f'<Fase id={self.id} tipo={self.tipo_fase_id} expediente={self.expediente_id}>'
     
     def __str__(self):
         """Representación legible para interfaz."""
-        estado = "Completada" if self.fecha_fin else ("En curso" if self.fecha_inicio else "Planificada")
-        return f'Fase {self.id} - {estado}'
+        return f'Fase {self.id} - {self.tipo_fase.nombre if self.tipo_fase else "Sin tipo"}'

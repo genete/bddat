@@ -2,63 +2,61 @@ from app import db
 
 class Tramite(db.Model):
     """
-    Contenedor organizativo de tareas dentro de una fase.
+    Trámites administrativos realizados dentro de fases.
     
     PROPÓSITO:
-        Representa un trámite administrativo dentro de una fase procedimental.
-        Agrupa tareas relacionadas con una actuación administrativa concreta
-        (SOLICITUD_INFORME, ANUNCIO_BOP, RECEPCION_ALEGACION, etc.).
+        Representa actuaciones administrativas concretas (solicitud de informe,
+        anuncio BOP, notificación, etc.) realizadas durante una fase.
+        Agrupa tareas atómicas bajo un patrón procedimental.
     
     FILOSOFÍA:
-        - Estructura mínima: solo fechas, tipo y observaciones
-        - Semántica en TIPO: patrones de tareas viven en TIPOS_TRAMITES
-        - Sin campos específicos: remitentes, destinatarios y documentos viven en tareas
-        - Fecha fin sugestionable: puede calcularse como MAX(TAREAS.fecha_fin)
+        - Instancia concreta de TIPOS_TRAMITES (catálogo maestro)
+        - Agrupa N tareas atómicas bajo un patrón procedimental
+        - Trazabilidad: Quién, cuándo, cómo
+        - Motor de reglas define patrón de tareas según TIPO_TRAMITE_ID
     
     CAMPO FASE_ID:
         - NOT NULL: Todo trámite pertenece a una fase
-        - Define contexto procedimental del trámite
+        - FK a FASES (public schema)
+        - Contexto procedimental del trámite
     
     CAMPO TIPO_TRAMITE_ID:
-        - NOT NULL: Define tipo de actuación administrativa
-        - Determina patrón de tareas esperadas (definido en motor de reglas)
+        - NOT NULL: Define qué tipo de trámite es
+        - FK a TIPOS_TRAMITES (estructura schema)
+        - Determina patrón de tareas obligatorias
     
-    CAMPOS FECHA_INICIO / FECHA_FIN:
-        - fecha_inicio NULL = trámite planificado no iniciado
-        - fecha_fin NULL = trámite pendiente o en curso
-        - fecha_fin NOT NULL = trámite completado (registro manual)
+    CAMPO FECHA_INICIO:
+        - NOT NULL: Marca inicio del trámite
+        - Determina plazos
     
-    ESTADOS DEDUCIBLES (no almacenados):
-        - PENDIENTE: fecha_inicio IS NULL
-        - EN_CURSO: fecha_inicio NOT NULL AND fecha_fin IS NULL
-        - COMPLETADO: fecha_fin NOT NULL
+    CAMPO FECHA_FIN:
+        - NULLABLE: Trámite en curso si es NULL
+        - Marca finalización del trámite
     
-    PATRONES DE TAREAS:
-        Cada TIPO_TRAMITE_ID define secuencia esperada (ejemplos):
-        - SOLICITUD_INFORME: REDACTAR → FIRMAR → NOTIFICAR → ESPERARPLAZO
-        - RECEPCION_INFORME: INCORPORAR → ANALISIS
-        - ANUNCIO_BOP: REDACTAR → FIRMAR → NOTIFICAR → ESPERARPLAZO → INCORPORAR → ESPERARPLAZO
-        
-        Patrones se combinan según reglas de negocio (no hardcoded).
+    CAMPO USUARIO_ID:
+        - NULLABLE: Técnico responsable del trámite
+        - FK a USUARIOS (estructura schema)
     
     RELACIONES:
         - fase → FASES.id (FK, fase contenedora)
-        - tipo_tramite → TIPOS_TRAMITES.id (FK, tipo de actuación)
-        - tareas ← TAREAS.tramite_id (tareas ejecutadas en trámite)
+        - tipo_tramite → TIPOS_TRAMITES.id (FK, definición del trámite)
+        - usuario → USUARIOS.id (FK, responsable)
+        - tareas ← TAREAS.tramite_id (tareas realizadas en este trámite)
     
     REGLAS DE NEGOCIO:
-        - No puede finalizarse si existen tareas asociadas sin finalizar
-        - Secuencias determinadas por motor de reglas
-        - Trámites pueden ejecutarse en paralelo dentro de una fase
+        - FECHA_FIN debe ser >= FECHA_INICIO
+        - Un trámite puede tener múltiples tareas
+        - Patrón de tareas definido por TIPO_TRAMITE_ID en motor de reglas
     
     NOTAS DE VERSIÓN:
-        v3.0: Sin cambios estructurales. Diseño minimalista mantenido.
+        v3.0: Sin cambios estructurales. Tabla operacional estable.
     """
     __tablename__ = 'tramites'
     __table_args__ = (
         db.Index('idx_tramites_fase', 'fase_id'),
         db.Index('idx_tramites_tipo', 'tipo_tramite_id'),
-        db.Index('idx_tramites_fechas', 'fecha_inicio', 'fecha_fin'),
+        db.Index('idx_tramites_usuario', 'usuario_id'),
+        db.Index('idx_tramites_fecha_inicio', 'fecha_inicio'),
         {'schema': 'public'}
     )
     
@@ -71,7 +69,7 @@ class Tramite(db.Model):
     
     fase_id = db.Column(
         db.Integer,
-        db.ForeignKey('public.fases.id', ondelete='CASCADE'),
+        db.ForeignKey('public.fases.id'),
         nullable=False,
         comment='FK a FASES. Fase a la que pertenece el trámite'
     )
@@ -80,36 +78,43 @@ class Tramite(db.Model):
         db.Integer,
         db.ForeignKey('estructura.tipos_tramites.id'),
         nullable=False,
-        comment='FK a TIPOS_TRAMITES. Tipo de actuación administrativa'
+        comment='FK a TIPOS_TRAMITES. Tipo de trámite'
     )
     
     fecha_inicio = db.Column(
         db.Date,
-        nullable=True,
-        comment='Fecha de inicio administrativo. NULL = trámite planificado no iniciado'
+        nullable=False,
+        comment='Fecha de inicio del trámite'
     )
     
     fecha_fin = db.Column(
         db.Date,
         nullable=True,
-        comment='Fecha de finalización (registro manual). NULL = trámite pendiente/en curso'
+        comment='Fecha de finalización del trámite. NULL si está en curso'
+    )
+    
+    usuario_id = db.Column(
+        db.Integer,
+        db.ForeignKey('estructura.usuarios.id'),
+        nullable=True,
+        comment='FK a USUARIOS. Técnico responsable del trámite'
     )
     
     observaciones = db.Column(
         db.String(2000),
         nullable=True,
-        comment='Notas o comentarios del técnico sobre el trámite'
+        comment='Notas o comentarios adicionales del técnico'
     )
     
     # Relaciones
     fase = db.relationship('Fase', backref='tramites')
-    tipo_tramite = db.relationship('TipoTramite', backref='tramites')
+    tipo_tramite = db.relationship('TipoTramite', backref='tramites_instanciados')
+    usuario = db.relationship('Usuario', backref='tramites_responsable')
     
     def __repr__(self):
         """Representación técnica para debugging."""
-        return f'<Tramite id={self.id} fase={self.fase_id} tipo={self.tipo_tramite_id}>'
+        return f'<Tramite id={self.id} tipo={self.tipo_tramite_id} fase={self.fase_id}>'
     
     def __str__(self):
         """Representación legible para interfaz."""
-        estado = "Completado" if self.fecha_fin else ("En curso" if self.fecha_inicio else "Planificado")
-        return f'Trámite {self.id} - {estado}'
+        return f'Trámite {self.id} - {self.tipo_tramite.nombre if self.tipo_tramite else "Sin tipo"}'

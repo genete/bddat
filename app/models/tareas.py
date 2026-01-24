@@ -2,68 +2,72 @@ from app import db
 
 class Tarea(db.Model):
     """
-    Unidad de trabajo registrable con entrada/salida documental.
+    Tareas atómicas que componen los trámites administrativos.
     
     PROPÓSITO:
-        Representa una tarea atómica dentro de un trámite administrativo.
-        Cada tarea tiene entrada/salida documental clara y tipo definido
-        (INCORPORAR, ANALISIS, REDACTAR, FIRMAR, NOTIFICAR, PUBLICAR, ESPERARPLAZO).
+        Representa operaciones atómicas (enviar, recibir, publicar, revisar, etc.)
+        que se realizan dentro de un trámite. Son las unidades mínimas de trabajo
+        que no pueden descomponerse en operaciones más simples.
     
     FILOSOFÍA:
-        - Relación unidireccional: TAREA → DOCUMENTO (no al revés)
-        - Documento agnóstico: no sabe de tareas, tareas apuntan a documentos
-        - Un documento, un productor: UNIQUE en documento_producido_id
-        - Un documento, múltiples consumidores: N tareas pueden usar mismo documento_usado_id
+        - Instancia concreta de TIPOS_TAREAS (7 tipos atómicos)
+        - Operación mínima indivisible
+        - Puede consumir documentos (documento_usado_id)
+        - Puede generar documentos (documento_producido_id)
+        - Trazabilidad: Quién, cuándo, cómo
     
     CAMPO TRAMITE_ID:
         - NOT NULL: Toda tarea pertenece a un trámite
-        - Define contexto administrativo de la tarea
+        - FK a TRAMITES (public schema)
+        - Contexto procedimental de la tarea
     
     CAMPO TIPO_TAREA_ID:
-        - NOT NULL: Define tipo atómico (uno de los 7 tipos)
-        - Determina semántica de entrada/salida documental
+        - NOT NULL: Define qué tipo de tarea atómica es
+        - FK a TIPOS_TAREAS (estructura schema)
+        - Solo 7 tipos atómicos posibles
     
     CAMPO DOCUMENTO_USADO_ID:
-        - Documento de entrada que consume la tarea
-        - NULLABLE: Tipos sin entrada (INCORPORAR, ESPERARPLAZO)
-        - Debe pertenecer al mismo expediente (validar en lógica)
+        - NULLABLE: Documento que se usa como input
+        - FK a DOCUMENTOS (public schema)
+        - Ej: Documento que se envía, revisa, publica
     
     CAMPO DOCUMENTO_PRODUCIDO_ID:
-        - Documento de salida que genera la tarea
-        - NULLABLE: Solo NOT NULL cuando tarea finaliza
-        - UNIQUE: Un documento solo puede ser producido por una tarea
+        - NULLABLE: Documento que se genera como output
+        - FK a DOCUMENTOS (public schema)
+        - Ej: Documento generado por la tarea (informe, resolución)
     
-    CAMPOS FECHA_INICIO / FECHA_FIN:
-        - fecha_inicio NULL = tarea planificada no iniciada
-        - fecha_fin NULL = tarea pendiente o en curso
-        - fecha_fin NOT NULL = tarea completada
+    CAMPO FECHA_TAREA:
+        - NOT NULL: Fecha de realización de la tarea
+        - Fecha administrativa con efectos jurídicos
     
-    CAMPO NOTAS:
-        - Campo libre para información específica según tipo
-        - Ejemplos: plazos (ESPERARPLAZO), referencia publicación (PUBLICAR)
+    CAMPO USUARIO_ID:
+        - NULLABLE: Usuario que realizó la tarea
+        - FK a USUARIOS (estructura schema)
     
     RELACIONES:
         - tramite → TRAMITES.id (FK, trámite contenedor)
         - tipo_tarea → TIPOS_TAREAS.id (FK, tipo atómico)
-        - documento_usado → DOCUMENTOS.id (FK opcional, entrada)
-        - documento_producido → DOCUMENTOS.id (FK UNIQUE opcional, salida)
+        - documento_usado → DOCUMENTOS.id (FK, input)
+        - documento_producido → DOCUMENTOS.id (FK, output)
+        - usuario → USUARIOS.id (FK, responsable)
     
     REGLAS DE NEGOCIO:
-        - Antes de fecha_fin NOT NULL: verificar documento_producido_id si obligatorio
-        - documento_usado_id debe pertenecer al mismo expediente
-        - Un documento solo puede ser producido por una tarea (UNIQUE)
-        - Varias tareas pueden usar el mismo documento de entrada
+        - DOCUMENTO_USADO_ID y DOCUMENTO_PRODUCIDO_ID pueden ser ambos NULL
+        - Tipo de tarea determina si requiere/genera documentos
+        - FECHA_TAREA debe estar dentro del rango del trámite
     
     NOTAS DE VERSIÓN:
-        v3.0: AÑADIDOS documento_usado_id y documento_producido_id.
-              Antes vivían en DOCUMENTOS (tarea_destino_id, tarea_origen_id).
+        v3.0: RENOMBRADO documento_origen_id → documento_usado_id.
+              RENOMBRADO documento_destino_id → documento_producido_id.
     """
     __tablename__ = 'tareas'
     __table_args__ = (
         db.Index('idx_tareas_tramite', 'tramite_id'),
         db.Index('idx_tareas_tipo', 'tipo_tarea_id'),
+        db.Index('idx_tareas_usuario', 'usuario_id'),
+        db.Index('idx_tareas_fecha', 'fecha_tarea'),
         db.Index('idx_tareas_documento_usado', 'documento_usado_id'),
-        db.Index('idx_tareas_fechas', 'fecha_inicio', 'fecha_fin'),
+        db.Index('idx_tareas_documento_producido', 'documento_producido_id'),
         {'schema': 'public'}
     )
     
@@ -76,7 +80,7 @@ class Tarea(db.Model):
     
     tramite_id = db.Column(
         db.Integer,
-        db.ForeignKey('public.tramites.id', ondelete='CASCADE'),
+        db.ForeignKey('public.tramites.id'),
         nullable=False,
         comment='FK a TRAMITES. Trámite al que pertenece la tarea'
     )
@@ -85,53 +89,53 @@ class Tarea(db.Model):
         db.Integer,
         db.ForeignKey('estructura.tipos_tareas.id'),
         nullable=False,
-        comment='FK a TIPOS_TAREAS. Tipo atómico de la tarea'
-    )
-    
-    fecha_inicio = db.Column(
-        db.Date,
-        nullable=True,
-        comment='Fecha de inicio administrativo. NULL = tarea planificada no iniciada'
-    )
-    
-    fecha_fin = db.Column(
-        db.Date,
-        nullable=True,
-        comment='Fecha de finalización. NULL = tarea pendiente/en curso'
-    )
-    
-    notas = db.Column(
-        db.String(2000),
-        nullable=True,
-        comment='Observaciones o información adicional específica del tipo'
+        comment='FK a TIPOS_TAREAS. Tipo de tarea atómica (7 tipos posibles)'
     )
     
     documento_usado_id = db.Column(
         db.Integer,
         db.ForeignKey('public.documentos.id'),
         nullable=True,
-        comment='FK a DOCUMENTOS. Documento de entrada. NULL para INCORPORAR/ESPERARPLAZO'
+        comment='FK a DOCUMENTOS. Documento usado como input de la tarea'
     )
     
     documento_producido_id = db.Column(
         db.Integer,
         db.ForeignKey('public.documentos.id'),
         nullable=True,
-        unique=True,
-        comment='FK UNIQUE a DOCUMENTOS. Documento de salida. Un documento = un productor'
+        comment='FK a DOCUMENTOS. Documento generado como output de la tarea'
+    )
+    
+    fecha_tarea = db.Column(
+        db.Date,
+        nullable=False,
+        comment='Fecha de realización de la tarea'
+    )
+    
+    usuario_id = db.Column(
+        db.Integer,
+        db.ForeignKey('estructura.usuarios.id'),
+        nullable=True,
+        comment='FK a USUARIOS. Usuario que realizó la tarea'
+    )
+    
+    observaciones = db.Column(
+        db.String(2000),
+        nullable=True,
+        comment='Notas o comentarios adicionales del técnico'
     )
     
     # Relaciones
     tramite = db.relationship('Tramite', backref='tareas')
-    tipo_tarea = db.relationship('TipoTarea', backref='tareas')
-    documento_usado = db.relationship('Documento', foreign_keys=[documento_usado_id], backref='tareas_consumidoras')
-    documento_producido = db.relationship('Documento', foreign_keys=[documento_producido_id], backref=db.backref('tarea_productora', uselist=False))
+    tipo_tarea = db.relationship('TipoTarea', backref='tareas_instanciadas')
+    documento_usado = db.relationship('Documento', foreign_keys=[documento_usado_id], backref='tareas_que_usan')
+    documento_producido = db.relationship('Documento', foreign_keys=[documento_producido_id], backref='tareas_que_producen')
+    usuario = db.relationship('Usuario', backref='tareas_realizadas')
     
     def __repr__(self):
         """Representación técnica para debugging."""
-        return f'<Tarea id={self.id} tramite={self.tramite_id} tipo={self.tipo_tarea_id}>'
+        return f'<Tarea id={self.id} tipo={self.tipo_tarea_id} tramite={self.tramite_id}>'
     
     def __str__(self):
         """Representación legible para interfaz."""
-        estado = "Finalizada" if self.fecha_fin else ("En curso" if self.fecha_inicio else "Planificada")
-        return f'Tarea {self.id} - {estado}'
+        return f'Tarea {self.id} - {self.tipo_tarea.nombre if self.tipo_tarea else "Sin tipo"}'
