@@ -187,7 +187,7 @@ class Usuario(UserMixin, db.Model):
     __tablename__ = 'usuarios'
     __table_args__ = (
         db.Index('idx_usuarios_siglas', 'siglas'),
-        db.Index('idx_usuarios_email', '_email'),
+        db.Index('idx_usuarios_email', 'email'),  # Corregido: 'email' no '_email'
         {'schema': 'public'}
     )
     
