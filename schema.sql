@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict lZf6Tf80m9dCOJKsm98Ra3rvkOx78oCuCDgKmBUL10dD1lsu0goMP6iruBSUzBZ
+\restrict rWpFTkSyHGIDchrjMzA6b5wj2MfqLuoxOfTuM3u8cHbiPFwy1kOWj6hCEr5NqMb
 
 -- Dumped from database version 18.1
 -- Dumped by pg_dump version 18.1
@@ -57,7 +57,7 @@ COMMENT ON COLUMN estructura.municipios.id IS 'Identificador único autogenerado
 -- Name: COLUMN municipios.codigo; Type: COMMENT; Schema: estructura; Owner: postgres
 --
 
-COMMENT ON COLUMN estructura.municipios.codigo IS 'Código INE oficial de 5 dígitos';
+COMMENT ON COLUMN estructura.municipios.codigo IS 'Código INE oficial del municipio (5 dígitos)';
 
 
 --
@@ -97,64 +97,6 @@ ALTER SEQUENCE estructura.municipios_id_seq OWNED BY estructura.municipios.id;
 
 
 --
--- Name: solicitudes_tipos; Type: TABLE; Schema: estructura; Owner: postgres
---
-
-CREATE TABLE estructura.solicitudes_tipos (
-    id integer NOT NULL,
-    solicitudid integer NOT NULL,
-    tiposolicitudid integer NOT NULL
-);
-
-
-ALTER TABLE estructura.solicitudes_tipos OWNER TO postgres;
-
---
--- Name: TABLE solicitudes_tipos; Type: COMMENT; Schema: estructura; Owner: postgres
---
-
-COMMENT ON TABLE estructura.solicitudes_tipos IS 'Tabla puente que relaciona solicitudes con sus tipos individuales.
-Una solicitud puede tener múltiples tipos (AAP+AAC+DUP → 3 registros).
-Permite motor de reglas basado en tipos individuales sin duplicación de lógica.';
-
-
---
--- Name: COLUMN solicitudes_tipos.solicitudid; Type: COMMENT; Schema: estructura; Owner: postgres
---
-
-COMMENT ON COLUMN estructura.solicitudes_tipos.solicitudid IS 'FK a estructura.solicitudes(id)';
-
-
---
--- Name: COLUMN solicitudes_tipos.tiposolicitudid; Type: COMMENT; Schema: estructura; Owner: postgres
---
-
-COMMENT ON COLUMN estructura.solicitudes_tipos.tiposolicitudid IS 'FK a estructura.tipos_solicitudes(id)';
-
-
---
--- Name: solicitudes_tipos_id_seq; Type: SEQUENCE; Schema: estructura; Owner: postgres
---
-
-CREATE SEQUENCE estructura.solicitudes_tipos_id_seq
-    AS integer
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
-ALTER SEQUENCE estructura.solicitudes_tipos_id_seq OWNER TO postgres;
-
---
--- Name: solicitudes_tipos_id_seq; Type: SEQUENCE OWNED BY; Schema: estructura; Owner: postgres
---
-
-ALTER SEQUENCE estructura.solicitudes_tipos_id_seq OWNED BY estructura.solicitudes_tipos.id;
-
-
---
 -- Name: tipos_expedientes; Type: TABLE; Schema: estructura; Owner: postgres
 --
 
@@ -166,6 +108,27 @@ CREATE TABLE estructura.tipos_expedientes (
 
 
 ALTER TABLE estructura.tipos_expedientes OWNER TO postgres;
+
+--
+-- Name: COLUMN tipos_expedientes.id; Type: COMMENT; Schema: estructura; Owner: postgres
+--
+
+COMMENT ON COLUMN estructura.tipos_expedientes.id IS 'Identificador único autogenerado del tipo de expediente';
+
+
+--
+-- Name: COLUMN tipos_expedientes.tipo; Type: COMMENT; Schema: estructura; Owner: postgres
+--
+
+COMMENT ON COLUMN estructura.tipos_expedientes.tipo IS 'Denominación del tipo según clasificación normativa';
+
+
+--
+-- Name: COLUMN tipos_expedientes.descripcion; Type: COMMENT; Schema: estructura; Owner: postgres
+--
+
+COMMENT ON COLUMN estructura.tipos_expedientes.descripcion IS 'Descripción detallada de características y particularidades procedimentales';
+
 
 --
 -- Name: tipos_expedientes_id_seq; Type: SEQUENCE; Schema: estructura; Owner: postgres
@@ -203,26 +166,17 @@ CREATE TABLE estructura.tipos_fases (
 ALTER TABLE estructura.tipos_fases OWNER TO postgres;
 
 --
--- Name: TABLE tipos_fases; Type: COMMENT; Schema: estructura; Owner: postgres
---
-
-COMMENT ON TABLE estructura.tipos_fases IS 'Tabla maestra que define las fases procedimentales de tramitación administrativa. 
-Basadas en estructura normativa del procedimiento administrativo eléctrico.
-El CODIGO es inmutable y se usa en lógica de reglas de negocio.';
-
-
---
 -- Name: COLUMN tipos_fases.id; Type: COMMENT; Schema: estructura; Owner: postgres
 --
 
-COMMENT ON COLUMN estructura.tipos_fases.id IS 'Identificador único del tipo de fase';
+COMMENT ON COLUMN estructura.tipos_fases.id IS 'Identificador único autogenerado del tipo de fase';
 
 
 --
 -- Name: COLUMN tipos_fases.codigo; Type: COMMENT; Schema: estructura; Owner: postgres
 --
 
-COMMENT ON COLUMN estructura.tipos_fases.codigo IS 'Código único identificativo de la fase (sin espacios, inmutable)';
+COMMENT ON COLUMN estructura.tipos_fases.codigo IS 'Código único inmutable de la fase (usado en lógica de reglas)';
 
 
 --
@@ -266,6 +220,27 @@ CREATE TABLE estructura.tipos_ia (
 
 
 ALTER TABLE estructura.tipos_ia OWNER TO postgres;
+
+--
+-- Name: COLUMN tipos_ia.id; Type: COMMENT; Schema: estructura; Owner: postgres
+--
+
+COMMENT ON COLUMN estructura.tipos_ia.id IS 'Identificador único autogenerado del tipo de instrumento ambiental';
+
+
+--
+-- Name: COLUMN tipos_ia.siglas; Type: COMMENT; Schema: estructura; Owner: postgres
+--
+
+COMMENT ON COLUMN estructura.tipos_ia.siglas IS 'Código del instrumento ambiental (ver datos_maestros.sql)';
+
+
+--
+-- Name: COLUMN tipos_ia.descripcion; Type: COMMENT; Schema: estructura; Owner: postgres
+--
+
+COMMENT ON COLUMN estructura.tipos_ia.descripcion IS 'Denominación completa del instrumento ambiental';
+
 
 --
 -- Name: tipos_ia_id_seq; Type: SEQUENCE; Schema: estructura; Owner: postgres
@@ -359,27 +334,17 @@ CREATE TABLE estructura.tipos_solicitudes (
 ALTER TABLE estructura.tipos_solicitudes OWNER TO postgres;
 
 --
--- Name: TABLE tipos_solicitudes; Type: COMMENT; Schema: estructura; Owner: postgres
---
-
-COMMENT ON TABLE estructura.tipos_solicitudes IS 'Tabla maestra de tipos de solicitudes individuales.
-Las combinaciones (AAP+AAC, etc.) se gestionan mediante tabla puente solicitudes_tipos.
-Motor de reglas aplica lógica sobre tipos individuales, no sobre combinaciones.
-Basada en nomenclatura legal establecida en normativa sectorial eléctrica (RD 1955/2000).';
-
-
---
 -- Name: COLUMN tipos_solicitudes.id; Type: COMMENT; Schema: estructura; Owner: postgres
 --
 
-COMMENT ON COLUMN estructura.tipos_solicitudes.id IS 'Identificador único del tipo de solicitud';
+COMMENT ON COLUMN estructura.tipos_solicitudes.id IS 'Identificador único autogenerado del tipo de solicitud';
 
 
 --
 -- Name: COLUMN tipos_solicitudes.siglas; Type: COMMENT; Schema: estructura; Owner: postgres
 --
 
-COMMENT ON COLUMN estructura.tipos_solicitudes.siglas IS 'Siglas normalizadas del acto administrativo (AAP, AAC, DUP, etc.)';
+COMMENT ON COLUMN estructura.tipos_solicitudes.siglas IS 'Código normalizado del acto administrativo (AAP, AAC, DUP, etc.)';
 
 
 --
@@ -743,6 +708,48 @@ CREATE TABLE public.expedientes (
 ALTER TABLE public.expedientes OWNER TO postgres;
 
 --
+-- Name: COLUMN expedientes.id; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN public.expedientes.id IS 'Identificador técnico único autogenerado';
+
+
+--
+-- Name: COLUMN expedientes.numero_at; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN public.expedientes.numero_at IS 'Número administrativo del expediente (formato legacy, único en organización)';
+
+
+--
+-- Name: COLUMN expedientes.responsable_id; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN public.expedientes.responsable_id IS 'FK a USUARIOS. Tramitador asignado con permisos de gestión completa';
+
+
+--
+-- Name: COLUMN expedientes.tipo_expediente_id; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN public.expedientes.tipo_expediente_id IS 'FK a TIPOS_EXPEDIENTES. Clasificación normativa que define procedimiento';
+
+
+--
+-- Name: COLUMN expedientes.heredado; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN public.expedientes.heredado IS 'TRUE si proviene del sistema anterior (datos incompletos posibles)';
+
+
+--
+-- Name: COLUMN expedientes.proyecto_id; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN public.expedientes.proyecto_id IS 'FK a PROYECTOS. Relación 1:1, un expediente tiene exactamente un proyecto';
+
+
+--
 -- Name: expedientes_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
 --
 
@@ -934,6 +941,55 @@ CREATE TABLE public.proyectos (
 ALTER TABLE public.proyectos OWNER TO postgres;
 
 --
+-- Name: COLUMN proyectos.id; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN public.proyectos.id IS 'Identificador técnico único autogenerado';
+
+
+--
+-- Name: COLUMN proyectos.titulo; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN public.proyectos.titulo IS 'Título descriptivo del proyecto técnico';
+
+
+--
+-- Name: COLUMN proyectos.descripcion; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN public.proyectos.descripcion IS 'Descripción técnica detallada del proyecto (texto libre extenso)';
+
+
+--
+-- Name: COLUMN proyectos.fecha; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN public.proyectos.fecha IS 'Fecha técnica del proyecto (firma/visado), NO fecha administrativa de presentación';
+
+
+--
+-- Name: COLUMN proyectos.finalidad; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN public.proyectos.finalidad IS 'Finalidad o uso previsto de la instalación eléctrica';
+
+
+--
+-- Name: COLUMN proyectos.emplazamiento; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN public.proyectos.emplazamiento IS 'Ubicación geográfica de la instalación (descripción textual)';
+
+
+--
+-- Name: COLUMN proyectos.ia_id; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN public.proyectos.ia_id IS 'FK a TIPOS_IA. Instrumento ambiental aplicable (AAI, AAU, AAUS, CA, EXENTO)';
+
+
+--
 -- Name: proyectos_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
 --
 
@@ -967,6 +1023,27 @@ CREATE TABLE public.roles (
 
 
 ALTER TABLE public.roles OWNER TO postgres;
+
+--
+-- Name: COLUMN roles.id; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN public.roles.id IS 'Identificador único autogenerado del rol';
+
+
+--
+-- Name: COLUMN roles.nombre; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN public.roles.nombre IS 'Nombre del rol (ADMIN, SUPERVISOR, TRAMITADOR, ADMINISTRATIVO)';
+
+
+--
+-- Name: COLUMN roles.descripcion; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN public.roles.descripcion IS 'Descripción del propósito y permisos del rol';
+
 
 --
 -- Name: roles_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
@@ -1068,6 +1145,62 @@ ALTER SEQUENCE public.solicitudes_id_seq OWNER TO postgres;
 --
 
 ALTER SEQUENCE public.solicitudes_id_seq OWNED BY public.solicitudes.id;
+
+
+--
+-- Name: solicitudes_tipos; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.solicitudes_tipos (
+    id integer NOT NULL,
+    solicitudid integer NOT NULL,
+    tiposolicitudid integer NOT NULL
+);
+
+
+ALTER TABLE public.solicitudes_tipos OWNER TO postgres;
+
+--
+-- Name: COLUMN solicitudes_tipos.id; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN public.solicitudes_tipos.id IS 'Identificador único autogenerado del registro puente';
+
+
+--
+-- Name: COLUMN solicitudes_tipos.solicitudid; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN public.solicitudes_tipos.solicitudid IS 'FK a SOLICITUDES. Solicitud que contiene este tipo';
+
+
+--
+-- Name: COLUMN solicitudes_tipos.tiposolicitudid; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN public.solicitudes_tipos.tiposolicitudid IS 'FK a TIPOS_SOLICITUDES. Tipo individual asignado a la solicitud';
+
+
+--
+-- Name: solicitudes_tipos_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE public.solicitudes_tipos_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.solicitudes_tipos_id_seq OWNER TO postgres;
+
+--
+-- Name: solicitudes_tipos_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE public.solicitudes_tipos_id_seq OWNED BY public.solicitudes_tipos.id;
 
 
 --
@@ -1267,6 +1400,76 @@ CREATE TABLE public.usuarios (
 ALTER TABLE public.usuarios OWNER TO postgres;
 
 --
+-- Name: COLUMN usuarios.id; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN public.usuarios.id IS 'Identificador único autogenerado del usuario';
+
+
+--
+-- Name: COLUMN usuarios.siglas; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN public.usuarios.siglas IS 'Código identificativo corto del usuario (único)';
+
+
+--
+-- Name: COLUMN usuarios.nombre; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN public.usuarios.nombre IS 'Nombre de pila del usuario';
+
+
+--
+-- Name: COLUMN usuarios.apellido1; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN public.usuarios.apellido1 IS 'Primer apellido del usuario';
+
+
+--
+-- Name: COLUMN usuarios.apellido2; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN public.usuarios.apellido2 IS 'Segundo apellido del usuario (opcional)';
+
+
+--
+-- Name: COLUMN usuarios.email; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN public.usuarios.email IS 'Email del usuario (opcional, único si no es NULL)';
+
+
+--
+-- Name: COLUMN usuarios.activo; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN public.usuarios.activo IS 'TRUE=habilitado, FALSE=desactivado (mantiene historial)';
+
+
+--
+-- Name: COLUMN usuarios.password_hash; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN public.usuarios.password_hash IS 'Hash bcrypt de la contraseña (nunca almacenar en texto plano)';
+
+
+--
+-- Name: COLUMN usuarios.reset_token; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN public.usuarios.reset_token IS 'Token temporal para recuperación de contraseña';
+
+
+--
+-- Name: COLUMN usuarios.reset_token_expiry; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN public.usuarios.reset_token_expiry IS 'Fecha de expiración del token de recuperación';
+
+
+--
 -- Name: usuarios_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
 --
 
@@ -1301,17 +1504,24 @@ CREATE TABLE public.usuarios_roles (
 ALTER TABLE public.usuarios_roles OWNER TO postgres;
 
 --
+-- Name: COLUMN usuarios_roles.usuario_id; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN public.usuarios_roles.usuario_id IS 'FK a USUARIOS. Usuario al que se asigna el rol';
+
+
+--
+-- Name: COLUMN usuarios_roles.rol_id; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN public.usuarios_roles.rol_id IS 'FK a ROLES. Rol asignado al usuario';
+
+
+--
 -- Name: municipios id; Type: DEFAULT; Schema: estructura; Owner: postgres
 --
 
 ALTER TABLE ONLY estructura.municipios ALTER COLUMN id SET DEFAULT nextval('estructura.municipios_id_seq'::regclass);
-
-
---
--- Name: solicitudes_tipos id; Type: DEFAULT; Schema: estructura; Owner: postgres
---
-
-ALTER TABLE ONLY estructura.solicitudes_tipos ALTER COLUMN id SET DEFAULT nextval('estructura.solicitudes_tipos_id_seq'::regclass);
 
 
 --
@@ -1420,6 +1630,13 @@ ALTER TABLE ONLY public.solicitudes ALTER COLUMN id SET DEFAULT nextval('public.
 
 
 --
+-- Name: solicitudes_tipos id; Type: DEFAULT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.solicitudes_tipos ALTER COLUMN id SET DEFAULT nextval('public.solicitudes_tipos_id_seq'::regclass);
+
+
+--
 -- Name: tareas id; Type: DEFAULT; Schema: public; Owner: postgres
 --
 
@@ -1454,22 +1671,6 @@ ALTER TABLE ONLY estructura.municipios
 
 ALTER TABLE ONLY estructura.municipios
     ADD CONSTRAINT municipios_pkey PRIMARY KEY (id);
-
-
---
--- Name: solicitudes_tipos solicitudes_tipos_pkey; Type: CONSTRAINT; Schema: estructura; Owner: postgres
---
-
-ALTER TABLE ONLY estructura.solicitudes_tipos
-    ADD CONSTRAINT solicitudes_tipos_pkey PRIMARY KEY (id);
-
-
---
--- Name: solicitudes_tipos solicitudes_tipos_solicitudid_tiposolicitudid_key; Type: CONSTRAINT; Schema: estructura; Owner: postgres
---
-
-ALTER TABLE ONLY estructura.solicitudes_tipos
-    ADD CONSTRAINT solicitudes_tipos_solicitudid_tiposolicitudid_key UNIQUE (solicitudid, tiposolicitudid);
 
 
 --
@@ -1689,6 +1890,22 @@ ALTER TABLE ONLY public.solicitudes
 
 
 --
+-- Name: solicitudes_tipos solicitudes_tipos_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.solicitudes_tipos
+    ADD CONSTRAINT solicitudes_tipos_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: solicitudes_tipos solicitudes_tipos_solicitudid_tiposolicitudid_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.solicitudes_tipos
+    ADD CONSTRAINT solicitudes_tipos_solicitudid_tiposolicitudid_key UNIQUE (solicitudid, tiposolicitudid);
+
+
+--
 -- Name: tareas tareas_documento_producido_id_key; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1745,41 +1962,6 @@ ALTER TABLE ONLY public.usuarios
 
 
 --
--- Name: idx_municipios_codigo; Type: INDEX; Schema: estructura; Owner: postgres
---
-
-CREATE INDEX idx_municipios_codigo ON estructura.municipios USING btree (codigo);
-
-
---
--- Name: idx_municipios_nombre; Type: INDEX; Schema: estructura; Owner: postgres
---
-
-CREATE INDEX idx_municipios_nombre ON estructura.municipios USING btree (nombre);
-
-
---
--- Name: idx_municipios_provincia; Type: INDEX; Schema: estructura; Owner: postgres
---
-
-CREATE INDEX idx_municipios_provincia ON estructura.municipios USING btree (provincia);
-
-
---
--- Name: idx_solicitudes_tipos_solicitud; Type: INDEX; Schema: estructura; Owner: postgres
---
-
-CREATE INDEX idx_solicitudes_tipos_solicitud ON estructura.solicitudes_tipos USING btree (solicitudid);
-
-
---
--- Name: idx_solicitudes_tipos_tipo; Type: INDEX; Schema: estructura; Owner: postgres
---
-
-CREATE INDEX idx_solicitudes_tipos_tipo ON estructura.solicitudes_tipos USING btree (tiposolicitudid);
-
-
---
 -- Name: idx_documentos_expediente; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -1812,6 +1994,34 @@ CREATE INDEX idx_documentos_proyecto_proyecto ON public.documentos_proyecto USIN
 --
 
 CREATE INDEX idx_documentos_proyecto_tipo ON public.documentos_proyecto USING btree (proyecto_id, tipo);
+
+
+--
+-- Name: idx_expedientes_numero_at; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_expedientes_numero_at ON public.expedientes USING btree (numero_at);
+
+
+--
+-- Name: idx_expedientes_proyecto; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_expedientes_proyecto ON public.expedientes USING btree (proyecto_id);
+
+
+--
+-- Name: idx_expedientes_responsable; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_expedientes_responsable ON public.expedientes USING btree (responsable_id);
+
+
+--
+-- Name: idx_expedientes_tipo; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_expedientes_tipo ON public.expedientes USING btree (tipo_expediente_id);
 
 
 --
@@ -1857,6 +2067,20 @@ CREATE INDEX idx_municipios_proyecto_proyecto ON public.municipios_proyecto USIN
 
 
 --
+-- Name: idx_proyectos_fecha; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_proyectos_fecha ON public.proyectos USING btree (fecha);
+
+
+--
+-- Name: idx_proyectos_ia; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_proyectos_ia ON public.proyectos USING btree (ia_id);
+
+
+--
 -- Name: idx_solicitudes_estado; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -1875,6 +2099,20 @@ CREATE INDEX idx_solicitudes_expediente ON public.solicitudes USING btree (exped
 --
 
 CREATE INDEX idx_solicitudes_fecha ON public.solicitudes USING btree (fecha_solicitud);
+
+
+--
+-- Name: idx_solicitudes_tipos_solicitud; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_solicitudes_tipos_solicitud ON public.solicitudes_tipos USING btree (solicitudid);
+
+
+--
+-- Name: idx_solicitudes_tipos_tipo; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_solicitudes_tipos_tipo ON public.solicitudes_tipos USING btree (tiposolicitudid);
 
 
 --
@@ -1927,6 +2165,28 @@ CREATE INDEX idx_tramites_tipo ON public.tramites USING btree (tipo_tramite_id);
 
 
 --
+-- Name: idx_usuarios_email; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_usuarios_email ON public.usuarios USING btree (email);
+
+
+--
+-- Name: idx_usuarios_siglas; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_usuarios_siglas ON public.usuarios USING btree (siglas);
+
+
+--
+-- Name: documentos documentos_expediente_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.documentos
+    ADD CONSTRAINT documentos_expediente_id_fkey FOREIGN KEY (expediente_id) REFERENCES public.expedientes(id);
+
+
+--
 -- Name: documentos_proyecto documentos_proyecto_documento_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1948,6 +2208,14 @@ ALTER TABLE ONLY public.expedientes
 
 ALTER TABLE ONLY public.expedientes
     ADD CONSTRAINT expedientes_responsable_id_fkey FOREIGN KEY (responsable_id) REFERENCES public.usuarios(id);
+
+
+--
+-- Name: expedientes expedientes_tipo_expediente_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.expedientes
+    ADD CONSTRAINT expedientes_tipo_expediente_id_fkey FOREIGN KEY (tipo_expediente_id) REFERENCES estructura.tipos_expedientes(id);
 
 
 --
@@ -1983,19 +2251,27 @@ ALTER TABLE ONLY public.fases
 
 
 --
--- Name: expedientes fk_expedientes_tipo_expediente; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: documentos_proyecto fk_documentos_proyecto_proyecto; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.expedientes
-    ADD CONSTRAINT fk_expedientes_tipo_expediente FOREIGN KEY (tipo_expediente_id) REFERENCES estructura.tipos_expedientes(id);
+ALTER TABLE ONLY public.documentos_proyecto
+    ADD CONSTRAINT fk_documentos_proyecto_proyecto FOREIGN KEY (proyecto_id) REFERENCES public.proyectos(id) ON DELETE CASCADE;
 
 
 --
--- Name: proyectos fk_proyectos_ia_id; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: municipios_proyecto fk_municipios_proyecto_proyecto; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.proyectos
-    ADD CONSTRAINT fk_proyectos_ia_id FOREIGN KEY (ia_id) REFERENCES estructura.tipos_ia(id);
+ALTER TABLE ONLY public.municipios_proyecto
+    ADD CONSTRAINT fk_municipios_proyecto_proyecto FOREIGN KEY (proyecto_id) REFERENCES public.proyectos(id) ON DELETE CASCADE;
+
+
+--
+-- Name: solicitudes fk_solicitudes_expediente; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.solicitudes
+    ADD CONSTRAINT fk_solicitudes_expediente FOREIGN KEY (expediente_id) REFERENCES public.expedientes(id);
 
 
 --
@@ -2007,11 +2283,35 @@ ALTER TABLE ONLY public.municipios_proyecto
 
 
 --
+-- Name: proyectos proyectos_ia_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.proyectos
+    ADD CONSTRAINT proyectos_ia_id_fkey FOREIGN KEY (ia_id) REFERENCES estructura.tipos_ia(id);
+
+
+--
 -- Name: solicitudes solicitudes_solicitud_afectada_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
 ALTER TABLE ONLY public.solicitudes
     ADD CONSTRAINT solicitudes_solicitud_afectada_id_fkey FOREIGN KEY (solicitud_afectada_id) REFERENCES public.solicitudes(id);
+
+
+--
+-- Name: solicitudes_tipos solicitudes_tipos_solicitudid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.solicitudes_tipos
+    ADD CONSTRAINT solicitudes_tipos_solicitudid_fkey FOREIGN KEY (solicitudid) REFERENCES public.solicitudes(id) ON DELETE CASCADE;
+
+
+--
+-- Name: solicitudes_tipos solicitudes_tipos_tiposolicitudid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.solicitudes_tipos
+    ADD CONSTRAINT solicitudes_tipos_tiposolicitudid_fkey FOREIGN KEY (tiposolicitudid) REFERENCES estructura.tipos_solicitudes(id);
 
 
 --
@@ -2082,5 +2382,5 @@ ALTER TABLE ONLY public.usuarios_roles
 -- PostgreSQL database dump complete
 --
 
-\unrestrict lZf6Tf80m9dCOJKsm98Ra3rvkOx78oCuCDgKmBUL10dD1lsu0goMP6iruBSUzBZ
+\unrestrict rWpFTkSyHGIDchrjMzA6b5wj2MfqLuoxOfTuM3u8cHbiPFwy1kOWj6hCEr5NqMb
 
