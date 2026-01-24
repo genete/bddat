@@ -1,4 +1,3 @@
-# En desarrollo
 from app import db
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, timedelta
@@ -6,41 +5,258 @@ from flask_login import UserMixin
 import secrets
 
 # Tabla de asociación Muchos-a-Muchos (Usuario <-> Rol)
+# Relación N:M que permite asignar múltiples roles a cada usuario
 usuarios_roles = db.Table('usuarios_roles',
-    db.Column('usuario_id', db.Integer, db.ForeignKey('usuarios.id'), primary_key=True),
-    db.Column('rol_id', db.Integer, db.ForeignKey('roles.id'), primary_key=True)
+    db.Column('usuario_id', db.Integer, db.ForeignKey('usuarios.id'), primary_key=True,
+              comment='FK a USUARIOS. Usuario al que se asigna el rol'),
+    db.Column('rol_id', db.Integer, db.ForeignKey('roles.id'), primary_key=True,
+              comment='FK a ROLES. Rol asignado al usuario')
 )
 
 class Rol(db.Model):
+    """
+    Catálogo de roles de sistema para control de acceso.
+    
+    PROPÓSITO:
+        Define los roles de usuario que determinan permisos y accesos en el sistema.
+        Implementa control de acceso basado en roles (RBAC).
+    
+    FILOSOFÍA:
+        - Un usuario puede tener múltiples roles (relación N:M)
+        - Los roles determinan permisos funcionales, no son jerárquicos
+        - Roles estándar: ADMIN, SUPERVISOR, TRAMITADOR, ADMINISTRATIVO
+    
+    ROLES ESTÁNDAR:
+        ADMIN:
+            - Acceso completo al sistema
+            - Gestión de usuarios y roles
+            - Configuración del sistema
+        
+        SUPERVISOR:
+            - Acceso a todos los expedientes
+            - Supervisión de tramitadores
+            - Gestión de asignaciones
+        
+        TRAMITADOR:
+            - Acceso a expedientes asignados
+            - Gestión completa de expedientes propios
+            - No puede gestionar usuarios ni configuración
+        
+        ADMINISTRATIVO:
+            - Acceso de lectura a expedientes
+            - Tareas de soporte administrativo
+            - Sin permisos de modificación
+    
+    RELACIONES:
+        - usuarios (N:M) ← tabla usuarios_roles → USUARIOS
+    
+    REGLAS DE NEGOCIO:
+        1. El nombre del rol debe ser único
+        2. Los roles estándar no deben eliminarse
+        3. Un usuario sin roles tiene acceso mínimo de lectura
+    """
     __tablename__ = 'roles'
     
-    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    nombre = db.Column(db.String(50), unique=True, nullable=False)  # ADMIN, SUPERVISOR, TRAMITADOR, ADMINISTRATIVO
-    descripcion = db.Column(db.String(200))
+    id = db.Column(
+        db.Integer, 
+        primary_key=True, 
+        autoincrement=True,
+        comment='Identificador único autogenerado del rol'
+    )
+    
+    nombre = db.Column(
+        db.String(50), 
+        unique=True, 
+        nullable=False,
+        comment='Nombre del rol (ADMIN, SUPERVISOR, TRAMITADOR, ADMINISTRATIVO)'
+    )
+    
+    descripcion = db.Column(
+        db.String(200),
+        comment='Descripción del propósito y permisos del rol'
+    )
     
     def __repr__(self):
+        """Representación técnica para debugging."""
         return f'<Rol {self.nombre}>'
+    
+    def __str__(self):
+        """Representación legible para interfaz."""
+        return self.nombre
 
 class Usuario(UserMixin, db.Model):
+    """
+    Usuarios del sistema de tramitación administrativa.
+    
+    PROPÓSITO:
+        Representa usuarios técnicos del sistema (tramitadores, supervisores, etc.).
+        Gestiona autenticación, autorización y datos personales básicos.
+        Integrado con Flask-Login para gestión de sesiones.
+    
+    FILOSOFÍA:
+        - Usuario = persona con acceso al sistema
+        - Identificación por SIGLAS (código corto interno)
+        - Autenticación mediante email + password
+        - Autorización mediante roles (relación N:M con ROLES)
+        - Usuarios desactivados (ACTIVO=FALSE) mantienen historial
+    
+    CARACTERÍSTICAS:
+        - Hereda de UserMixin (Flask-Login) para gestión de sesiones
+        - Password hasheado (werkzeug.security)
+        - Sistema de recuperación de contraseña con token temporal
+        - Email opcional (puede ser NULL, constraint UNIQUE)
+        - Campo ACTIVO para deshabilitar sin eliminar
+    
+    CAMPOS ESPECIALES:
+        SIGLAS:
+            - Código identificativo corto del usuario
+            - Único en el sistema
+            - Usado en referencias y visualizaciones compactas
+            - Default "NULO" permite creación rápida
+        
+        EMAIL:
+            - Property que convierte cadenas vacías a NULL
+            - Evita violación de constraint UNIQUE con múltiples strings vacíos
+            - Puede ser NULL si el usuario no tiene email
+        
+        ACTIVO:
+            - TRUE: Usuario habilitado, puede iniciar sesión
+            - FALSE: Usuario desactivado, no puede iniciar sesión
+            - Permite deshabilitar sin perder historial de expedientes asignados
+        
+        PASSWORD_HASH:
+            - Almacena hash bcrypt de la contraseña
+            - NUNCA se almacena la contraseña en texto plano
+            - Gestionado mediante métodos set_password() / check_password()
+        
+        RESET_TOKEN / RESET_TOKEN_EXPIRY:
+            - Sistema de recuperación de contraseña
+            - Token temporal con expiración (default 1 hora)
+            - Se limpia automáticamente tras cambio de contraseña
+    
+    RELACIONES:
+        - roles (N:M) → tabla usuarios_roles → ROLES
+        - expedientes_responsable (1:N) ← EXPEDIENTES.responsable_id
+    
+    MÉTODOS DE AUTENTICACIÓN:
+        set_password(password):
+            - Genera y almacena hash de la contraseña
+        
+        check_password(password):
+            - Verifica si la contraseña proporcionada es correcta
+        
+        generate_reset_token(expiry_hours=1):
+            - Genera token temporal para recuperación de contraseña
+        
+        verify_reset_token(token):
+            - Verifica si el token es válido y no ha expirado
+        
+        reset_password(new_password):
+            - Cambia la contraseña y limpia el token de recuperación
+    
+    MÉTODOS DE AUTORIZACIÓN:
+        tiene_rol(*nombres_roles):
+            - Verifica si el usuario tiene al menos uno de los roles especificados
+            - Ejemplo: usuario.tiene_rol('ADMIN', 'SUPERVISOR')
+        
+        es_admin (property):
+            - True si el usuario tiene rol ADMIN
+        
+        es_supervisor (property):
+            - True si el usuario tiene rol SUPERVISOR
+    
+    REGLAS DE NEGOCIO:
+        1. SIGLAS debe ser único en el sistema
+        2. EMAIL debe ser único si no es NULL
+        3. Un usuario desactivado no puede iniciar sesión
+        4. Los usuarios no se eliminan, solo se desactivan (historial)
+        5. Defaults con valores estándar permiten creación rápida
+    
+    USO ADMINISTRATIVO:
+        - EXPEDIENTES.responsable_id: Tramitador asignado
+        - Auditoría futura: CREADO_POR, MODIFICADO_POR en otras tablas
+        - Filtros por tramitador, asignaciones, estadísticas
+    
+    VALORES POR DEFECTO:
+        Los defaults ("NULO", "Usuario", "no asignado") permiten creación
+        rápida mientras se completa información, pero en producción todos
+        los campos deberían tener valores reales.
+    """
     __tablename__ = 'usuarios'
     
-    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    siglas = db.Column(db.String(50), nullable=False, unique=True, default='NULO')
-    nombre = db.Column(db.String(100), nullable=False, default='Usuario')
-    apellido1 = db.Column(db.String(50), nullable=False, default='no asignado')
-    apellido2 = db.Column(db.String(50))
-    _email = db.Column('email', db.String(120), unique=True, nullable=True)
-    activo = db.Column(db.Boolean, default=True)
+    id = db.Column(
+        db.Integer, 
+        primary_key=True, 
+        autoincrement=True,
+        comment='Identificador único autogenerado del usuario'
+    )
+    
+    siglas = db.Column(
+        db.String(50), 
+        nullable=False, 
+        unique=True, 
+        default='NULO',
+        comment='Código identificativo corto del usuario (único)'
+    )
+    
+    nombre = db.Column(
+        db.String(100), 
+        nullable=False, 
+        default='Usuario',
+        comment='Nombre de pila del usuario'
+    )
+    
+    apellido1 = db.Column(
+        db.String(50), 
+        nullable=False, 
+        default='no asignado',
+        comment='Primer apellido del usuario'
+    )
+    
+    apellido2 = db.Column(
+        db.String(50),
+        comment='Segundo apellido del usuario (opcional)'
+    )
+    
+    _email = db.Column(
+        'email', 
+        db.String(120), 
+        unique=True, 
+        nullable=True,
+        comment='Email del usuario (opcional, único si no es NULL)'
+    )
+    
+    activo = db.Column(
+        db.Boolean, 
+        default=True,
+        comment='TRUE=habilitado, FALSE=desactivado (mantiene historial)'
+    )
     
     # Seguridad y Roles
-    password_hash = db.Column(db.String(256))
+    password_hash = db.Column(
+        db.String(256),
+        comment='Hash bcrypt de la contraseña (nunca almacenar en texto plano)'
+    )
     
     # Recuperación de contraseña
-    reset_token = db.Column(db.String(100), nullable=True)
-    reset_token_expiry = db.Column(db.DateTime, nullable=True)
+    reset_token = db.Column(
+        db.String(100), 
+        nullable=True,
+        comment='Token temporal para recuperación de contraseña'
+    )
+    
+    reset_token_expiry = db.Column(
+        db.DateTime, 
+        nullable=True,
+        comment='Fecha de expiración del token de recuperación'
+    )
     
     # Relación M:N con Roles
-    roles = db.relationship('Rol', secondary=usuarios_roles, backref=db.backref('usuarios', lazy='dynamic'))
+    roles = db.relationship(
+        'Rol', 
+        secondary=usuarios_roles, 
+        backref=db.backref('usuarios', lazy='dynamic')
+    )
 
     # Property para email que convierte cadenas vacías a None
     @property
@@ -116,4 +332,9 @@ class Usuario(UserMixin, db.Model):
         return self.tiene_rol('SUPERVISOR')
     
     def __repr__(self):
+        """Representación técnica para debugging."""
         return f'<Usuario {self.siglas} - {self.nombre} {self.apellido1}>'
+    
+    def __str__(self):
+        """Representación legible para interfaz."""
+        return f'{self.nombre} {self.apellido1} ({self.siglas})'
