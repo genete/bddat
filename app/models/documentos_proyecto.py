@@ -65,7 +65,7 @@ class DocumentoProyecto(db.Model):
     
     proyecto_id = db.Column(
         db.Integer,
-        db.ForeignKey('public.proyectos.id', ondelete='CASCADE'),
+        db.ForeignKey('public.proyectos.id', ondelete='CASCADE', use_alter=True, name='fk_documentos_proyecto_proyecto'),
         nullable=False,
         comment='FK a PROYECTOS. Proyecto al que pertenece el documento'
     )
