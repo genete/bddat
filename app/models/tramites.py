@@ -2,18 +2,19 @@ from app import db
 
 class Tramite(db.Model):
     """
-    Trámites administrativos realizados dentro de fases.
+    Contenedor organizativo de tareas dentro de una fase.
     
     PROPÓSITO:
         Representa actuaciones administrativas concretas (solicitud de informe,
-        anuncio BOP, notificación, etc.) realizadas durante una fase.
+        anuncio BOP, recepción de alegación, etc.) realizadas durante una fase.
         Agrupa tareas atómicas bajo un patrón procedimental.
     
     FILOSOFÍA:
-        - Instancia concreta de TIPOS_TRAMITES (catálogo maestro)
-        - Agrupa N tareas atómicas bajo un patrón procedimental
-        - Trazabilidad: Quién, cuándo, cómo
-        - Motor de reglas define patrón de tareas según TIPO_TRAMITE_ID
+        - Contenedor organizativo de tareas
+        - Estructura mínima: Solo fechas, tipo y observaciones
+        - Semántica en TIPO: Patrones de tareas viven en TIPOS_TRAMITES
+        - Sin campos específicos: Remitentes, destinatarios, documentos viven en tareas
+        - Fecha fin sugerida: Puede calcularse como MAX(TAREAS.FECHA_FIN), pero se registra manualmente
     
     CAMPO FASE_ID:
         - NOT NULL: Todo trámite pertenece a una fase
@@ -26,37 +27,38 @@ class Tramite(db.Model):
         - Determina patrón de tareas obligatorias
     
     CAMPO FECHA_INICIO:
-        - NOT NULL: Marca inicio del trámite
-        - Determina plazos
+        - NULLABLE: NULL = trámite planificado no iniciado
+        - NOT NULL = trámite en curso o finalizado
     
     CAMPO FECHA_FIN:
-        - NULLABLE: Trámite en curso si es NULL
-        - Marca finalización del trámite
+        - NULLABLE: NULL = trámite pendiente o en curso
+        - NOT NULL = trámite completado
+        - Se deduce como MAX(TAREAS.FECHA_FIN), pero se registra manualmente
     
-    CAMPO USUARIO_ID:
-        - NULLABLE: Técnico responsable del trámite
-        - FK a USUARIOS (estructura schema)
+    ESTADOS DEDUCIBLES:
+        - PENDIENTE: FECHA_INICIO IS NULL
+        - EN_CURSO: FECHA_INICIO NOT NULL AND FECHA_FIN IS NULL
+        - COMPLETADO: FECHA_FIN IS NOT NULL
     
     RELACIONES:
-        - fase → FASES.id (FK, fase contenedora)
+        - fase → FASES.id (FK CASCADE, fase contenedora)
         - tipo_tramite → TIPOS_TRAMITES.id (FK, definición del trámite)
-        - usuario → USUARIOS.id (FK, responsable)
         - tareas ← TAREAS.tramite_id (tareas realizadas en este trámite)
     
     REGLAS DE NEGOCIO:
+        - No puede finalizarse si hay tareas sin finalizar
+        - Secuencias determinadas por motor de reglas
+        - Trámites pueden ejecutarse en paralelo dentro de una fase
         - FECHA_FIN debe ser >= FECHA_INICIO
-        - Un trámite puede tener múltiples tareas
-        - Patrón de tareas definido por TIPO_TRAMITE_ID en motor de reglas
     
     NOTAS DE VERSIÓN:
-        v3.0: Sin cambios estructurales. Tabla operacional estable.
+        v3.0: Sin cambios estructurales. Diseño minimalista mantenido.
     """
     __tablename__ = 'tramites'
     __table_args__ = (
         db.Index('idx_tramites_fase', 'fase_id'),
         db.Index('idx_tramites_tipo', 'tipo_tramite_id'),
-        db.Index('idx_tramites_usuario', 'usuario_id'),
-        db.Index('idx_tramites_fecha_inicio', 'fecha_inicio'),
+        db.Index('idx_tramites_fechas', 'fecha_inicio', 'fecha_fin'),
         {'schema': 'public'}
     )
     
@@ -69,7 +71,7 @@ class Tramite(db.Model):
     
     fase_id = db.Column(
         db.Integer,
-        db.ForeignKey('public.fases.id'),
+        db.ForeignKey('public.fases.id', ondelete='CASCADE'),
         nullable=False,
         comment='FK a FASES. Fase a la que pertenece el trámite'
     )
@@ -83,21 +85,14 @@ class Tramite(db.Model):
     
     fecha_inicio = db.Column(
         db.Date,
-        nullable=False,
-        comment='Fecha de inicio del trámite'
+        nullable=True,
+        comment='Fecha de inicio del trámite. NULL = trámite planificado no iniciado'
     )
     
     fecha_fin = db.Column(
         db.Date,
         nullable=True,
-        comment='Fecha de finalización del trámite. NULL si está en curso'
-    )
-    
-    usuario_id = db.Column(
-        db.Integer,
-        db.ForeignKey('estructura.usuarios.id'),
-        nullable=True,
-        comment='FK a USUARIOS. Técnico responsable del trámite'
+        comment='Fecha de finalización del trámite. NULL = trámite pendiente o en curso'
     )
     
     observaciones = db.Column(
@@ -109,7 +104,6 @@ class Tramite(db.Model):
     # Relaciones
     fase = db.relationship('Fase', backref='tramites')
     tipo_tramite = db.relationship('TipoTramite', backref='tramites_instanciados')
-    usuario = db.relationship('Usuario', backref='tramites_responsable')
     
     def __repr__(self):
         """Representación técnica para debugging."""
