@@ -65,16 +65,22 @@ class SolicitudTipo(db.Model):
     )
     
     solicitudid = db.Column(
-        db.Integer, 
+        db.Integer,
+        db.ForeignKey('estructura.solicitudes.id'),
         nullable=False,
         comment='FK a SOLICITUDES. Solicitud que contiene este tipo'
     )
     
     tiposolicitudid = db.Column(
-        db.Integer, 
+        db.Integer,
+        db.ForeignKey('estructura.tipos_solicitudes.id'),
         nullable=False,
         comment='FK a TIPOS_SOLICITUDES. Tipo individual asignado a la solicitud'
     )
+    
+    # Relaciones explícitas
+    solicitud = db.relationship('Solicitud', foreign_keys=[solicitudid])
+    tipo_solicitud = db.relationship('TipoSolicitud', foreign_keys=[tiposolicitudid])
     
     def __repr__(self):
         """Representación técnica para debugging."""
