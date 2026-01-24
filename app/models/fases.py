@@ -66,7 +66,7 @@ class Fase(db.Model):
         db.Index('idx_fases_tipo', 'tipo_fase_id'),
         db.Index('idx_fases_resultado', 'resultado_fase_id'),
         db.Index('idx_fases_fechas', 'fecha_inicio', 'fecha_fin'),
-        {'schema': 'estructura'}
+        {'schema': 'public'}
     )
     
     id = db.Column(
@@ -78,7 +78,7 @@ class Fase(db.Model):
     
     solicitud_id = db.Column(
         db.Integer,
-        db.ForeignKey('estructura.solicitudes.id', ondelete='CASCADE'),
+        db.ForeignKey('public.solicitudes.id', ondelete='CASCADE'),
         nullable=False,
         comment='FK a SOLICITUDES. Solicitud a la que pertenece la fase'
     )
@@ -117,7 +117,7 @@ class Fase(db.Model):
     
     documento_resultado_id = db.Column(
         db.Integer,
-        db.ForeignKey('estructura.documentos.id'),
+        db.ForeignKey('public.documentos.id'),
         nullable=True,
         comment='FK a DOCUMENTOS. Documento oficial que formaliza el resultado'
     )

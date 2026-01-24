@@ -64,7 +64,7 @@ class Tarea(db.Model):
         db.Index('idx_tareas_tipo', 'tipo_tarea_id'),
         db.Index('idx_tareas_documento_usado', 'documento_usado_id'),
         db.Index('idx_tareas_fechas', 'fecha_inicio', 'fecha_fin'),
-        {'schema': 'estructura'}
+        {'schema': 'public'}
     )
     
     id = db.Column(
@@ -76,7 +76,7 @@ class Tarea(db.Model):
     
     tramite_id = db.Column(
         db.Integer,
-        db.ForeignKey('estructura.tramites.id', ondelete='CASCADE'),
+        db.ForeignKey('public.tramites.id', ondelete='CASCADE'),
         nullable=False,
         comment='FK a TRAMITES. Trámite al que pertenece la tarea'
     )
@@ -108,14 +108,14 @@ class Tarea(db.Model):
     
     documento_usado_id = db.Column(
         db.Integer,
-        db.ForeignKey('estructura.documentos.id'),
+        db.ForeignKey('public.documentos.id'),
         nullable=True,
         comment='FK a DOCUMENTOS. Documento de entrada. NULL para INCORPORAR/ESPERARPLAZO'
     )
     
     documento_producido_id = db.Column(
         db.Integer,
-        db.ForeignKey('estructura.documentos.id'),
+        db.ForeignKey('public.documentos.id'),
         nullable=True,
         unique=True,
         comment='FK UNIQUE a DOCUMENTOS. Documento de salida. Un documento = un productor'

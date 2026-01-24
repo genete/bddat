@@ -53,7 +53,7 @@ class DocumentoProyecto(db.Model):
     __table_args__ = (
         db.Index('idx_documentos_proyecto_proyecto', 'proyecto_id'),
         db.Index('idx_documentos_proyecto_tipo', 'proyecto_id', 'tipo'),
-        {'schema': 'estructura'}
+        {'schema': 'public'}
     )
     
     id = db.Column(
@@ -72,7 +72,7 @@ class DocumentoProyecto(db.Model):
     
     documento_id = db.Column(
         db.Integer,
-        db.ForeignKey('estructura.documentos.id', ondelete='CASCADE'),
+        db.ForeignKey('public.documentos.id', ondelete='CASCADE'),
         nullable=False,
         unique=True,
         comment='FK UNIQUE a DOCUMENTOS. Un documento solo puede estar en un proyecto'

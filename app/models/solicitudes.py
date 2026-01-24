@@ -51,7 +51,7 @@ class Solicitud(db.Model):
         v3.0: AÑADIDO expediente_id. ELIMINADO proyecto_id (se deduce del expediente).
     """
     __tablename__ = 'solicitudes'
-    __table_args__ = {'schema': 'estructura'}
+    __table_args__ = {'schema': 'public'}
     
     id = db.Column(
         db.Integer, 
@@ -82,7 +82,7 @@ class Solicitud(db.Model):
     
     solicitud_afectada_id = db.Column(
         db.Integer,
-        db.ForeignKey('estructura.solicitudes.id'),
+        db.ForeignKey('public.solicitudes.id'),
         nullable=True,
         comment='FK autorreferencia. Solo para DESISTIMIENTO/RENUNCIA'
     )
@@ -98,7 +98,7 @@ class Solicitud(db.Model):
     
     tipos = db.relationship(
         'TipoSolicitud',
-        secondary='estructura.solicitudes_tipos',
+        secondary='public.solicitudes_tipos',
         backref=db.backref('solicitudes', lazy='dynamic')
     )
     

@@ -54,7 +54,7 @@ class SolicitudTipo(db.Model):
                            name='solicitudes_tipos_solicitudid_tiposolicitudid_key'),
         db.Index('idx_solicitudes_tipos_solicitud', 'solicitudid'),
         db.Index('idx_solicitudes_tipos_tipo', 'tiposolicitudid'),
-        {'schema': 'estructura'}
+        {'schema': 'public'}
     )
     
     id = db.Column(
@@ -66,7 +66,7 @@ class SolicitudTipo(db.Model):
     
     solicitudid = db.Column(
         db.Integer,
-        db.ForeignKey('estructura.solicitudes.id'),
+        db.ForeignKey('public.solicitudes.id'),
         nullable=False,
         comment='FK a SOLICITUDES. Solicitud que contiene este tipo'
     )

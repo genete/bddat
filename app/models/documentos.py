@@ -61,7 +61,7 @@ class Documento(db.Model):
         db.Index('idx_documentos_expediente', 'expediente_id'),
         db.Index('idx_documentos_fecha_administrativa', 'fecha_administrativa'),
         db.Index('idx_documentos_hash', 'hash_md5'),
-        {'schema': 'estructura'}
+        {'schema': 'public'}
     )
     
     id = db.Column(
