@@ -2,9 +2,51 @@ from app import db
 
 class SolicitudTipo(db.Model):
     """
-    Tabla puente que relaciona solicitudes con sus tipos individuales.
-    Una solicitud puede tener múltiples tipos (AAP+AAC+DUP → 3 registros).
-    Permite motor de reglas basado en tipos individuales sin duplicación de lógica.
+    Tabla puente N:M entre solicitudes y tipos de solicitudes.
+    
+    PROPÓSITO:
+        Permite que una solicitud tenga múltiples tipos simultáneamente
+        (ej: AAP+AAC+DUP se almacena como 3 registros en esta tabla).
+        Facilita motor de reglas basado en tipos individuales sin duplicación.
+    
+    FILOSOFÍA:
+        - Relación N:M explícita (no db.Table, sino modelo completo con PK)
+        - Cada combinación de solicitud+tipo es única (UNIQUE constraint)
+        - Motor de reglas procesa cada tipo individualmente
+        - Evita duplicación de lógica para combinaciones (AAP+AAC vs AAP+DUP)
+    
+    EJEMPLO:
+        Solicitud que requiere AAP + AAC + DUP:
+        - Registro 1: solicitudid=100, tiposolicitudid=1 (AAP)
+        - Registro 2: solicitudid=100, tiposolicitudid=2 (AAC)
+        - Registro 3: solicitudid=100, tiposolicitudid=3 (DUP)
+        
+        Motor de reglas aplica lógica sobre cada tipo individual.
+    
+    CONSTRAINT UNIQUE:
+        - (solicitudid, tiposolicitudid) debe ser única
+        - Impide asignar el mismo tipo dos veces a una solicitud
+        - Protección a nivel de base de datos independiente del interfaz
+        - Si se intenta duplicar: ERROR de violación de constraint
+    
+    RELACIONES:
+        - solicitud → SOLICITUDES.id (FK, solicitud que contiene estos tipos)
+        - tipo_solicitud → TIPOS_SOLICITUDES.id (FK, tipo individual)
+    
+    ÍNDICES:
+        - idx_solicitudes_tipos_solicitud: Búsqueda rápida de tipos por solicitud
+        - idx_solicitudes_tipos_tipo: Búsqueda de solicitudes por tipo
+        - UNIQUE (solicitudid, tiposolicitudid): Evita duplicados
+    
+    REGLAS DE NEGOCIO:
+        - No pueden existir duplicados (solicitud + tipo únicos)
+        - Una solicitud puede tener N tipos
+        - Un tipo puede estar en N solicitudes
+        - Al eliminar solicitud, se eliminan sus registros aquí (CASCADE)
+    
+    NOTAS DE VERSIÓN:
+        v3.0: Tabla puente con PK autogenerado (no tabla simple db.Table).
+              Permite auditoría y control granular si es necesario en futuro.
     """
     __tablename__ = 'solicitudes_tipos'
     __table_args__ = (
@@ -15,11 +57,29 @@ class SolicitudTipo(db.Model):
         {'schema': 'estructura'}
     )
     
-    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    solicitudid = db.Column(db.Integer, nullable=False,
-                           comment='FK a estructura.solicitudes(id)')
-    tiposolicitudid = db.Column(db.Integer, nullable=False,
-                               comment='FK a estructura.tipos_solicitudes(id)')
+    id = db.Column(
+        db.Integer, 
+        primary_key=True, 
+        autoincrement=True,
+        comment='Identificador único autogenerado del registro puente'
+    )
+    
+    solicitudid = db.Column(
+        db.Integer, 
+        nullable=False,
+        comment='FK a SOLICITUDES. Solicitud que contiene este tipo'
+    )
+    
+    tiposolicitudid = db.Column(
+        db.Integer, 
+        nullable=False,
+        comment='FK a TIPOS_SOLICITUDES. Tipo individual asignado a la solicitud'
+    )
     
     def __repr__(self):
+        """Representación técnica para debugging."""
         return f'<SolicitudTipo solicitud={self.solicitudid} tipo={self.tiposolicitudid}>'
+    
+    def __str__(self):
+        """Representación legible para interfaz."""
+        return f'Solicitud {self.solicitudid} - Tipo {self.tiposolicitudid}'
