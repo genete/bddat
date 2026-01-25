@@ -37,11 +37,15 @@ echo Datos exportados correctamente
 echo Archivo: datos_estructurales.sql
 echo ========================================
 echo.
-echo Subiendo a GitHub...
+echo Cambiando a rama develop...
 cd ..
+git checkout develop
+git pull origin develop
+
+echo Subiendo a GitHub (develop)...
 git add datos_estructurales.sql
-git commit -m "Update datos estructurales %date%"
-git push
+git commit -m "[BD] Update datos estructurales %date%"
+git push origin develop
 
 if %ERRORLEVEL% NEQ 0 (
     echo ERROR: Fallo al subir a GitHub
@@ -52,6 +56,7 @@ if %ERRORLEVEL% NEQ 0 (
 echo.
 echo ========================================
 echo COMPLETADO CON EXITO
+echo Archivo subido a rama develop
 echo ========================================
 echo.
 pause
