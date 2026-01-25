@@ -44,7 +44,7 @@
 
 **Ubicación:** `docs/CHANGELOG.md`
 - Registro cronológico de cambios
-- Actualizado tras cada merge de PR a `main`
+- **Actualizado en la misma rama de desarrollo** antes del PR
 - Formato: fecha, PR, issue, cambios por categoría
 
 ---
@@ -74,9 +74,9 @@
 2. Prepara cambios con descripción detallada
 3. **Espera aprobación explícita del usuario** antes de cada commit
 4. Hace commit y push remoto tras OK
-5. Crea Pull Request tras pruebas del usuario
-6. Hace merge del PR
-7. Actualiza `docs/CHANGELOG.md` en commit separado
+5. **Actualiza `docs/CHANGELOG.md` en la misma rama** antes del PR
+6. Crea Pull Request (incluye changelog)
+7. Hace merge del PR
 
 **Usuario:**
 1. Ejecuta `git pull` para traer cambios
@@ -106,6 +106,7 @@
 [BD] Añadir tabla expedientes_auditoría
 [MODELO] Crear modelo Solicitud con validaciones
 [RUTA] Implementar endpoint GET /expedientes/<id>
+[CHANGELOG] Documentar detección de proyectos interprovinciales
 [DOCS] Actualizar documentación tablas maestras
 ```
 
@@ -140,6 +141,7 @@ bddat/
 3. **No hacer commits remotos sin OK explícito** del usuario
 4. **Consultar `REGLAS_DESARROLLO.md`** para detalles completos del workflow
 5. **Mantener `snake_case` estricto** en todo el código (excepto clases de modelos)
+6. **Actualizar changelog en la misma rama** de desarrollo (no rama separada)
 
 ---
 
@@ -177,7 +179,10 @@ flask db upgrade
 **Pregunta rápida:** ¿Puedo hacer commits remotos directamente?  
 **Respuesta:** NO. Siempre esperar aprobación explícita del usuario.
 
+**Pregunta rápida:** ¿Cómo actualizo el changelog?  
+**Respuesta:** En la misma rama de desarrollo antes del PR, no en rama separada.
+
 ---
 
-**Última actualización:** 22 de enero de 2026, 18:52 CET  
-**Versión:** 1.1
+**Última actualización:** 25 de enero de 2026, 08:00 CET  
+**Versión:** 1.2
