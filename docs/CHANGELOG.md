@@ -16,6 +16,28 @@ Este archivo mantiene un **resumen de los últimos 5 PRs mergeados** para consul
 
 ## Últimos Cambios
 
+### 2026-01-25 - [PR #24: Detección de Proyectos Interprovinciales](https://github.com/genete/bddat/pull/24)
+
+**Objetivo:** Añadir lógica al modelo Proyecto para detectar automáticamente si afecta a más de una provincia.
+
+**Cambios principales:**
+- ✅ **Propiedad `es_interprovincial`**: Booleana, detecta proyectos con municipios de 2+ provincias
+- ✅ **Propiedad `provincias_afectadas`**: Lista ordenada de nombres de provincias únicas
+- ✅ **Lógica**: Usa primeros 2 dígitos del código INE (PPMMM) del municipio
+- ✅ **Sin migración**: Propiedades calculadas en runtime con `@property`
+
+**Uso:**
+```python
+if proyecto.es_interprovincial:
+    flash('⚠️ Proyecto interprovincial', 'warning')
+
+provincias = proyecto.provincias_afectadas  # ['Almería', 'Granada']
+```
+
+**Archivos:** app/models/proyectos.py
+
+---
+
 ### 2026-01-25 - Carga Inicial de Municipios de Andalucía
 
 **Objetivo:** Poblar tabla `estructura.municipios` con catálogo completo de municipios andaluces basado en datos oficiales del INE.
@@ -38,13 +60,6 @@ Este archivo mantiene un **resumen de los últimos 5 PRs mergeados** para consul
 - Detección de proyectos interprovinciales: `LEFT(codigo, 2)` extrae provincia
 - Validación de datos de localización en expedientes
 - Integración con sistemas externos que usen códigos INE
-
-**Proceso de carga:**
-1. Extracción de Excel oficial INE
-2. Generación de script SQL con 785 INSERT
-3. Ejecución en PostgreSQL local
-4. Regeneración automática con `utils/update_datos_estructurales.bat`
-5. Commit y subida a GitHub
 
 **Documentación:** [25codmun.xlsx](https://www.ine.es/daco/daco42/codmun/25codmun.xlsx)
 
@@ -89,18 +104,6 @@ Este archivo mantiene un **resumen de los últimos 5 PRs mergeados** para consul
 - ✅ Preservación de datos en formulario cuando hay error
 
 **Issues resueltos:** #12, #13
-
----
-
-### 2026-01-21 - Mejoras UX en Módulo Expedientes
-
-**Cambios principales:**
-- ✅ Nomenclatura consistente: "Instrumento Ambiental" en lugar de "Tipo de Instalación"
-- ✅ Campo Instrumento Ambiental normalizado en vista detalle (sin alert destacado)
-- ✅ Flujo navegación: botón Cancelar redirige a listado en lugar de detalle
-- ✅ Visualización heredado: solo muestra check verde cuando aplica
-
-**Archivos:** nuevo.html, editar.html, detalle.html
 
 ---
 
