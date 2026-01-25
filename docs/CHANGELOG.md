@@ -2,7 +2,7 @@
 
 **Repositorio:** https://github.com/genete/bddat  
 **Historial completo:** [Ver Pull Requests cerrados](https://github.com/genete/bddat/pulls?q=is%3Apr+is%3Aclosed)  
-**Última actualización:** 24 de enero de 2026
+**Última actualización:** 25 de enero de 2026
 
 ---
 
@@ -15,6 +15,40 @@ Este archivo mantiene un **resumen de los últimos 5 PRs mergeados** para consul
 ---
 
 ## Últimos Cambios
+
+### 2026-01-25 - Carga Inicial de Municipios de Andalucía
+
+**Objetivo:** Poblar tabla `estructura.municipios` con catálogo completo de municipios andaluces basado en datos oficiales del INE.
+
+**Cambios principales:**
+- ✅ **785 municipios cargados** en `estructura.municipios` (8 provincias andaluzas)
+- ✅ **Fuente oficial:** INE - Fichero 25codmun.xlsx a 1 de enero de 2025
+- ✅ **COMMENT añadido** a la tabla documentando fuente, fecha y trazabilidad
+- ✅ **Secuencia actualizada:** `estructura.municipios_id_seq` → 785
+- ✅ **datos_estructurales.sql regenerado** con pg_dump (commit c9de403)
+
+**Distribución por provincia:**
+- Almería (04): 103 municipios | Cádiz (11): 45 municipios
+- Córdoba (14): 77 municipios | Granada (18): 174 municipios  
+- Huelva (21): 80 municipios | Jaén (23): 97 municipios
+- Málaga (29): 103 municipios | Sevilla (41): 106 municipios
+
+**Utilidad:**
+- Códigos INE de 5 dígitos (CPRO + CMUN) para identificación única
+- Detección de proyectos interprovinciales: `LEFT(codigo, 2)` extrae provincia
+- Validación de datos de localización en expedientes
+- Integración con sistemas externos que usen códigos INE
+
+**Proceso de carga:**
+1. Extracción de Excel oficial INE
+2. Generación de script SQL con 785 INSERT
+3. Ejecución en PostgreSQL local
+4. Regeneración automática con `utils/update_datos_estructurales.bat`
+5. Commit y subida a GitHub
+
+**Documentación:** [25codmun.xlsx](https://www.ine.es/daco/daco42/codmun/25codmun.xlsx)
+
+---
 
 ### 2026-01-24 - [PR #20: Agregar 11 Tablas Faltantes](https://github.com/genete/bddat/pull/20)
 
@@ -67,21 +101,6 @@ Este archivo mantiene un **resumen de los últimos 5 PRs mergeados** para consul
 - ✅ Visualización heredado: solo muestra check verde cuando aplica
 
 **Archivos:** nuevo.html, editar.html, detalle.html
-
----
-
-### 2026-01-21 - Feature: Unificación Listado Expedientes
-
-**Objetivo:** Vista unificada de expedientes con filtrado opcional por responsable.
-
-**Cambios principales:**
-- ✅ Ruta index() unificada con parámetro `?mis_expedientes=1`
-- ✅ Estadísticas en parte superior (sin scroll)
-- ✅ Cabeceras multilinea, elipsis en textos largos
-- ✅ Columna Heredado simplificada (solo check verde cuando aplica)
-- ✅ Redirección desde `/mis_expedientes` a `/expedientes/?mis_expedientes=1`
-
-**Template eliminado:** dashboard/mis_expedientes.html (ya no necesario)
 
 ---
 
