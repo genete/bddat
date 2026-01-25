@@ -8,11 +8,21 @@ if %ERRORLEVEL% NEQ 0 (
     exit /b 1
 )
 
-echo Subiendo a GitHub...
+echo Cambiando a rama develop...
 cd ..
-git add schema.sql
-git commit -m "Update schema snapshot %date%"
-git push
+git checkout develop
+git pull origin develop
 
-echo Listo!
+echo Subiendo a GitHub (develop)...
+git add schema.sql
+git commit -m "[BD] Update schema snapshot %date%"
+git push origin develop
+
+if %ERRORLEVEL% NEQ 0 (
+    echo ERROR: Fallo al subir a GitHub
+    pause
+    exit /b 1
+)
+
+echo Listo! Schema actualizado en rama develop
 pause
