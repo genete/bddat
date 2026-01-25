@@ -74,6 +74,7 @@ class Proyecto(db.Model):
         v3.0: ELIMINADO EXPEDIENTE_ID (relación inversa desde expediente)
         v3.0: ELIMINADO TIPO_PROYECTO_ID (tipos viven en DOCUMENTOS_PROYECTO.TIPO)
         v3.0: ACLARADO FECHA (fecha técnica, no administrativa)
+        v3.1: AÑADIDAS propiedades es_interprovincial y provincias_afectadas (calculadas)
     """
     __tablename__ = 'proyectos'
     __table_args__ = (
@@ -137,6 +138,60 @@ class Proyecto(db.Model):
         foreign_keys=[ia_id], 
         backref='proyectos'
     )
+    
+    @property
+    def es_interprovincial(self):
+        """
+        Detecta si el proyecto afecta a más de una provincia.
+        
+        Utiliza los primeros 2 dígitos del código INE del municipio:
+        - Códigos INE: 5 dígitos (PPMMM donde PP=provincia, MMM=municipio)
+        - Ejemplo: '04001' = Almería (04), '18001' = Granada (18)
+        
+        RETORNO:
+            bool: True si afecta a 2+ provincias, False si 0-1 provincia
+        
+        CASOS:
+            - Sin municipios → False (sin afectación territorial)
+            - 1+ municipios de misma provincia → False (provincial)
+            - Municipios de 2+ provincias → True (INTERPROVINCIAL)
+        
+        USO:
+            if proyecto.es_interprovincial:
+                flash('⚠️ Proyecto interprovincial detectado', 'warning')
+        """
+        if not self.municipios:
+            return False
+        
+        provincias = {m.codigo[:2] for m in self.municipios}
+        return len(provincias) > 1
+    
+    @property
+    def provincias_afectadas(self):
+        """
+        Retorna lista ordenada de nombres de provincias afectadas por el proyecto.
+        
+        RETORNO:
+            list[str]: Lista de nombres de provincias únicas, ordenados alfabéticamente
+        
+        CASOS:
+            - Sin municipios → [] (lista vacía)
+            - 1 municipio → ['Provincia']
+            - N municipios misma provincia → ['Provincia']
+            - N municipios de M provincias → ['Prov1', 'Prov2', ...]
+        
+        USO:
+            provincias = proyecto.provincias_afectadas
+            # ['Almería', 'Granada']
+            
+            # En template Jinja2:
+            {{ proyecto.provincias_afectadas|join(', ') }}
+        """
+        if not self.municipios:
+            return []
+        
+        provincias = {m.provincia for m in self.municipios}
+        return sorted(provincias)
     
     def __repr__(self):
         """Representación técnica para debugging."""
