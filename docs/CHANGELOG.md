@@ -12,9 +12,33 @@ Este archivo mantiene un **resumen de los últimos 5 PRs mergeados** para consul
 
 **Fuente de verdad:** Los Pull Requests cerrados en GitHub contienen toda la información histórica del proyecto.
 
+**Actualización del changelog:** Se realiza **en la misma rama de desarrollo** (feature/bugfix/etc.) antes de crear el PR, no en rama separada. Esto reduce overhead de ramas/PRs/acciones.
+
 ---
 
 ## Últimos Cambios
+
+### 2026-01-25 - Unificar Actualización de Changelog en Rama de Feature
+
+**Objetivo:** Simplificar workflow eliminando ramas y PRs separados para actualizar el changelog.
+
+**Cambios principales:**
+- ✅ **Workflow simplificado**: Changelog se actualiza en la misma rama de desarrollo
+- ✅ **Menos overhead**: Elimina rama/PR/acciones separadas solo para changelog
+- ✅ **REGLAS_DESARROLLO.md actualizado**: Documenta nueva secuencia de trabajo
+- ✅ **ACCESO_RAPIDO_PROYECTO.md actualizado**: Añade regla en sección de workflow
+- ✅ **Aplicación inmediata**: Este mismo PR aplica la nueva regla
+
+**Workflow anterior:**
+1. Rama feature → commits → PR → merge
+2. Rama docs/changelog → commit changelog → PR → merge
+
+**Workflow nuevo:**
+1. Rama feature → commits + commit changelog → PR → merge
+
+**Archivos:** docs/fuentesIA/REGLAS_DESARROLLO.md, docs/fuentesIA/ACCESO_RAPIDO_PROYECTO.md, docs/CHANGELOG.md
+
+---
 
 ### 2026-01-25 - [PR #24: Detección de Proyectos Interprovinciales](https://github.com/genete/bddat/pull/24)
 
@@ -90,20 +114,6 @@ provincias = proyecto.provincias_afectadas  # ['Almería', 'Granada']
 - ✅ Incorporación normativa: RDL 7/2025 (AAE provisional/definitiva), RADNE Andalucía, RAIPEE renovables
 
 **Tipo:** Solo documentación (sin cambios en código)
-
----
-
-### 2026-01-22 - [PR #18: Fix Email Duplicado en Usuarios](https://github.com/genete/bddat/pull/18)
-
-**Objetivo:** Resolver error UNIQUE constraint cuando múltiples usuarios tienen email vacío.
-
-**Cambios principales:**
-- ✅ Modelo usuarios.py: Email convertido a property con setter que transforma '' → NULL
-- ✅ Rutas: Captura específica de IntegrityError con feedback visual
-- ✅ Templates: Validación Bootstrap con mensaje inline
-- ✅ Preservación de datos en formulario cuando hay error
-
-**Issues resueltos:** #12, #13
 
 ---
 

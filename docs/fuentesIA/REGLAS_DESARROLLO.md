@@ -5,8 +5,8 @@
 **Repositorio:** https://github.com/genete/bddat  
 **Rama principal:** main  
 **Documento creado:** 17 de enero de 2026  
-**Última actualización:** 24 de enero de 2026  
-**Versión:** 2.1
+**Última actualización:** 25 de enero de 2026  
+**Versión:** 2.2
 
 ---
 
@@ -33,7 +33,7 @@
   - Ejemplo: "OK, adelante con la migración" o "Perfecto, haz el commit"
   - No hago commits "a sorpresa": siempre espero tu revisión previa
 - Tras tus pruebas funcionales y tu OK, creo el Pull Request de la rama a `main`
-- Tras el merge del PR, genero el changelog correspondiente y lo subo a `docs/CHANGELOG.md` en commit separado
+- **Actualizo `docs/CHANGELOG.md` en la misma rama de desarrollo** antes del PR
 - Mantengo coherencia con documentación existente
 
 #### Usuario (Tú)
@@ -85,15 +85,16 @@
 - Confirmación de que todo funciona como se esperaba
 - Si hay ajustes inevitables, los realizas y haces `git push`
 
-#### Fase 3.1: Pull Request y Changelog (por IA)
+#### Fase 4: Pull Request y Changelog (por IA)
 
-- Finalmente, tras las pruebas funcionales y el OK del usuario, creo el Pull Request de esa rama a la rama `main`
-- Cuando el desarrollo responde a un issue, se indica en el commit y el changelog
-- Tras el merge del PR a `main`, genero el changelog correspondiente
-- Actualizo `docs/CHANGELOG.md` con la nueva entrada en **commit separado**
-- Formato del changelog: entrada con fecha, PR, issue relacionado, cambios por categoría
+- **Actualizo `docs/CHANGELOG.md` en la misma rama de desarrollo** con la nueva entrada
+- Genero commit del changelog: `[CHANGELOG] Documentar [descripción del cambio]`
+- Tras tu OK final, creo el Pull Request de la rama a `main`
+- Cuando el desarrollo responde a un issue, se indica en el PR
+- Hago merge del PR a `main`
+- **No se requiere rama/PR separado para el changelog** (ya va incluido en la rama de la feature/bugfix)
 
-#### Fase 4: Actualización de Documentación
+#### Fase 5: Actualización de Documentación
 
 - Se procurará que los documentos de referencia (como este) se subirán al repositorio en `docs/fuentesIA/`
 - Intentaremos que los documentos directos en las fuentes de conocimiento sean los estrictamente esenciales
@@ -113,6 +114,7 @@
 5. **Aprobación previa:** No hay commits remotos sin tu OK
 6. **Responsabilidad compartida:** Cada rol tiene tareas claras y no solapadas
 7. **Repositorio como fuente de verdad:** Documentos en `docs/fuentesIA/` prevalecen sobre otras fuentes
+8. **Changelog unificado:** Se actualiza en la misma rama de desarrollo, no en rama separada
 
 ---
 
@@ -336,7 +338,7 @@ bddat/
 - Actualización de requirements.txt
 - Cambios de configuración
 - Cambios en .gitignore u otros archivos de configuración
-- **Actualización de `docs/CHANGELOG.md`** tras merge de PR
+- **Actualización de `docs/CHANGELOG.md` en la misma rama de desarrollo**
 
 **Proceso:**
 
@@ -345,8 +347,9 @@ bddat/
 3. Te muestro exactamente qué archivos se tocan
 4. **Espero tu aprobación explícita para cada commit**
 5. Una vez apruebes, hago: `git add [archivos]` → `git commit -m "..."` → `git push`
-6. Tras tus pruebas y tu OK final, creo el Pull Request a `main`
-7. Tras el merge, actualizo el changelog en commit separado
+6. **Actualizo `docs/CHANGELOG.md` en la misma rama antes del PR**
+7. Tras tus pruebas y tu OK final, creo el Pull Request a `main`
+8. Hago merge del PR (el changelog ya va incluido)
 
 ---
 
@@ -399,7 +402,7 @@ bddat/
 [MIGA] Actualizar estructura de migraciones
 [TEST] Pruebas locales de flujo expediente
 [DOCS] Actualizar documentación tablas maestras
-[CHANGELOG] Añadir entrada PR #18 fix email duplicado
+[CHANGELOG] Documentar detección de proyectos interprovinciales
 [MERGE] Merge feature/nueva-funcionalidad a main
 ```
 
@@ -417,6 +420,7 @@ bddat/
 - [ ] No hay archivos innecesarios
 - [ ] Mensaje de commit es descriptivo con categoría correcta entre `[]`
 - [ ] He consultado `schema.sql` para cambios de BD
+- [ ] **Changelog actualizado en la misma rama** (si aplica)
 
 ---
 
@@ -444,7 +448,7 @@ bddat/
 - Contiene **solo los últimos 5 PRs** mergeados
 - Cada entrada incluye: fecha, enlace al PR, objetivo y cambios principales
 - Para detalles completos (commits, archivos, diffs): consultar el PR en GitHub
-- Se actualiza **tras cada merge de PR a main** en commit separado con categoría `[CHANGELOG]`
+- **Se actualiza en la misma rama de desarrollo** antes de crear el PR
 
 **Ventajas de esta estrategia:**
 - ✅ No duplica información (DRY principle)
@@ -452,17 +456,20 @@ bddat/
 - ✅ El changelog es manejable y no crece infinitamente
 - ✅ La IA puede consultar rápidamente contexto reciente
 - ✅ Historial completo siempre accesible en GitHub
+- ✅ **No requiere rama/PR separado** para actualizar el changelog
 
 ### 7.2 Actualización del Changelog
 
-**Cuándo:** Tras cada merge de PR a `main`
+**Cuándo:** En la misma rama de desarrollo, antes de crear el PR
 
 **Proceso:**
-1. Identificar el PR mergeado (número, título, fecha)
-2. Extraer información clave del PR: objetivo, cambios principales, issues relacionados
+1. Completar los cambios funcionales de la feature/bugfix
+2. Identificar la información clave: objetivo, cambios principales
 3. Añadir entrada al inicio de `docs/CHANGELOG.md` (orden cronológico inverso)
 4. Mantener solo últimos 5 PRs (eliminar el más antiguo si hay más de 5)
-5. Commit separado con mensaje `[CHANGELOG] Añadir entrada PR #XX`
+5. Commit en la misma rama: `[CHANGELOG] Documentar [descripción del cambio]`
+6. Crear PR que incluye tanto los cambios funcionales como el changelog
+7. Hacer merge del PR (todo en uno)
 
 **Formato de entrada:**
 
@@ -479,6 +486,11 @@ bddat/
 **Issues resueltos:** #XX, #YY (si aplica)
 **Tipo:** Feature/Bugfix/Docs/Refactor (si aplica)
 ```
+
+**Nota importante:** El número de PR aún no existe al actualizar el changelog (se genera al crear el PR). Por tanto:
+- Se puede dejar como `[PR #XX: Título]` temporalmente
+- O usar formato `### YYYY-MM-DD - [Título]` sin número de PR
+- El usuario puede actualizar el número de PR tras el merge si lo desea
 
 ### 7.3 Consulta de Historial Antiguo
 
@@ -553,10 +565,10 @@ Si hay conflictos en `git pull`:
 1. IA crea rama de desarrollo
 2. IA hace commits en la rama (con aprobación usuario)
 3. Usuario prueba localmente
-4. Usuario da OK final
-5. IA crea Pull Request a `main`
-6. IA hace merge del PR
-7. IA actualiza changelog en commit separado
+4. **IA actualiza changelog en la misma rama**
+5. Usuario da OK final
+6. IA crea Pull Request a `main` (incluye changelog)
+7. IA hace merge del PR
 
 ---
 
@@ -635,9 +647,9 @@ git status
 | Consultar schema.sql para cambios BD | ✅ | |
 | Esperar aprobación previa | ✅ | |
 | Hacer commits remotos (tras OK) | ✅ | |
+| **Actualizar changelog en misma rama** | ✅ | |
 | Crear Pull Requests | ✅ | |
 | Hacer merge de PRs | ✅ | |
-| Actualizar changelogs | ✅ | |
 | Actualizar documentación en docs/fuentesIA/ | ✅ | |
 | Hacer git pull | | ✅ |
 | Generar schema.sql y subirlo | | ✅ |
@@ -656,10 +668,11 @@ git status
 **Sincronización:** Después de cada sesión de desarrollo  
 **Documentación:** Actualizada en `docs/fuentesIA/` y `docs/CHANGELOG.md`  
 **Aprobación de cambios:** Explícita y previa a commits remotos  
+**Changelog:** Actualizado en la misma rama de desarrollo, no en rama separada
 
 ---
 
 **Documento creado:** 17 de enero de 2026, 21:24 CET  
-**Última actualización:** 24 de enero de 2026, 10:38 CET  
-**Versión:** 2.1  
+**Última actualización:** 25 de enero de 2026, 08:00 CET  
+**Versión:** 2.2  
 **Referencia:** Repositorio oficial genete/bddat en GitHub
