@@ -6,7 +6,7 @@
 **Rama principal:** main  
 **Documento creado:** 17 de enero de 2026  
 **Última actualización:** 25 de enero de 2026  
-**Versión:** 2.2
+**Versión:** 2.3
 
 ---
 
@@ -26,14 +26,16 @@
 
 - Preparo los cambios (código, modelos, rutas, templates) de forma clara y descriptiva
 - Describo exactamente qué ficheros se tocan y qué hace cada cambio
-- Creo las ramas necesarias para el desarrollo (`feature/`, `bugfix/`, etc.)
-- Genero los commits en la rama de desarrollo
+- **Evalúo si el cambio requiere rama o commit directo** (ver sección 12.1)
+- Creo las ramas necesarias para el desarrollo (`feature/`, `bugfix/`, etc.) cuando aplica
+- Genero los commits en la rama de desarrollo o directamente en `main`
 - **Espero tu aprobación explícita** antes de cada commit
 - **Realizo commits directamente en el repositorio remoto** únicamente tras tu comprobación/OK explícito
   - Ejemplo: "OK, adelante con la migración" o "Perfecto, haz el commit"
   - No hago commits "a sorpresa": siempre espero tu revisión previa
-- Tras tus pruebas funcionales y tu OK, creo el Pull Request de la rama a `main`
-- **Actualizo `docs/CHANGELOG.md` en la misma rama de desarrollo** antes del PR
+- Tras tus pruebas funcionales y tu OK, creo el Pull Request de la rama a `main` (cuando aplica)
+- **Actualizo `docs/CHANGELOG.md` en la misma rama de desarrollo** antes del PR (cuando aplica)
+- **Borro la rama remota inmediatamente tras merge del PR**
 - Mantengo coherencia con documentación existente
 
 #### Usuario (Tú)
@@ -50,12 +52,34 @@
   - Commits post-prueba con cambios derivados del testing
 - Cuando haces commits locales, ejecutas `git push` y confirmas el resultado
 - Das el OK final para que yo cree el Pull Request y haga el merge
+- **Borras las ramas locales** tras el merge del PR
 
 ---
 
 ### 2.2 Secuencia de Trabajo Estándar
 
-#### Fase 1: Análisis y Diseño
+**IMPORTANTE:** Evaluar primero si el cambio requiere rama o commit directo (ver sección 12.1).
+
+#### Cambios Simples (Commit Directo en Main)
+
+**Para:** Documentación, typos, cambios en 1-2 archivos sin testing funcional
+
+**Proceso:**
+1. IA describe el cambio
+2. Usuario da OK
+3. IA hace commit directo en `main`:
+   ```
+   [DOCS] Actualizar sección X de REGLAS_DESARROLLO
+   ```
+4. **FIN** - No rama, no PR, repositorio limpio
+
+---
+
+#### Cambios Complejos (Rama + PR)
+
+**Para:** Features, bugfixes, cambios que requieren testing
+
+##### Fase 1: Análisis y Diseño
 
 - Se revisan documentos existentes en la Knowledge Base (DOCX, JSON, TXT)
 - **La IA consulta el archivo `schema.sql`** que generas tú localmente mediante script y subes al repo manualmente
@@ -63,7 +87,7 @@
 - Se identifican cambios/mejoras necesarios
 - Se registra claramente en qué consisten
 
-#### Fase 2: Preparación Remota (por IA)
+##### Fase 2: Preparación Remota (por IA)
 
 - Creo la rama necesaria para el desarrollo:
   - `feature/descripcion-breve` - nuevas funcionalidades
@@ -77,7 +101,7 @@
 - **Espero tu OK explícito antes de hacer cada commit remoto**
 - Una vez apruebes, hago el commit y push en GitHub en la rama correspondiente
 
-#### Fase 3: Pruebas Locales (por Usuario)
+##### Fase 3: Pruebas Locales (por Usuario)
 
 - `git pull` para descargar los cambios
 - `flask run` y pruebas manuales en tu entorno
@@ -85,7 +109,7 @@
 - Confirmación de que todo funciona como se esperaba
 - Si hay ajustes inevitables, los realizas y haces `git push`
 
-#### Fase 4: Pull Request y Changelog (por IA)
+##### Fase 4: Pull Request y Changelog (por IA)
 
 - **Actualizo `docs/CHANGELOG.md` en la misma rama de desarrollo** con la nueva entrada
 - Genero commit del changelog: `[CHANGELOG] Documentar [descripción del cambio]`
@@ -94,7 +118,7 @@
 - Hago merge del PR a `main`
 - **No se requiere rama/PR separado para el changelog** (ya va incluido en la rama de la feature/bugfix)
 
-#### Fase 5: Actualización de Documentación
+##### Fase 5: Actualización de Documentación
 
 - Se procurará que los documentos de referencia (como este) se subirán al repositorio en `docs/fuentesIA/`
 - Intentaremos que los documentos directos en las fuentes de conocimiento sean los estrictamente esenciales
@@ -102,6 +126,20 @@
 - Se registran cambios mediante los changelogs en `docs/CHANGELOG.md`:
   - Descripción de lo que cambiamos (hechos)
   - No las intenciones (eso va en documentos de diseño de las fuentes IA)
+
+##### Fase 6: Limpieza Post-Merge
+
+- **IA:** Borro rama remota inmediatamente tras merge:
+  ```powershell
+  git push origin --delete nombre-rama
+  ```
+- **Usuario:** Actualizas local y borras rama:
+  ```powershell
+  git checkout main
+  git pull origin main
+  git branch -D nombre-rama
+  ```
+- **Verificación:** `git branch -vv` debe mostrar solo `* main`
 
 ---
 
@@ -114,7 +152,7 @@
 5. **Aprobación previa:** No hay commits remotos sin tu OK
 6. **Responsabilidad compartida:** Cada rol tiene tareas claras y no solapadas
 7. **Repositorio como fuente de verdad:** Documentos en `docs/fuentesIA/` prevalecen sobre otras fuentes
-8. **Changelog unificado:** Se actualiza en la misma rama de desarrollo, no en rama separada
+8. **Repositorio limpio:** Toda rama debe terminar mergeada o explícitamente descartada. No dejar ramas huérfanas. Borrado inmediato tras merge.
 
 ---
 
@@ -339,17 +377,21 @@ bddat/
 - Cambios de configuración
 - Cambios en .gitignore u otros archivos de configuración
 - **Actualización de `docs/CHANGELOG.md` en la misma rama de desarrollo**
+- **Commits directos en `main` para cambios simples** (ver sección 12.1)
 
 **Proceso:**
 
-1. Creo la rama de desarrollo correspondiente
-2. Preparo el cambio con descripción clara
-3. Te muestro exactamente qué archivos se tocan
-4. **Espero tu aprobación explícita para cada commit**
-5. Una vez apruebes, hago: `git add [archivos]` → `git commit -m "..."` → `git push`
-6. **Actualizo `docs/CHANGELOG.md` en la misma rama antes del PR**
-7. Tras tus pruebas y tu OK final, creo el Pull Request a `main`
-8. Hago merge del PR (el changelog ya va incluido)
+1. Evalúo si requiere rama o commit directo (ver sección 12.1)
+2. Si es commit directo: lo hago en `main` tras tu OK
+3. Si requiere rama: creo la rama de desarrollo correspondiente
+4. Preparo el cambio con descripción clara
+5. Te muestro exactamente qué archivos se tocan
+6. **Espero tu aprobación explícita para cada commit**
+7. Una vez apruebes, hago: `git add [archivos]` → `git commit -m "..."` → `git push`
+8. **Actualizo `docs/CHANGELOG.md` en la misma rama antes del PR** (si aplica)
+9. Tras tus pruebas y tu OK final, creo el Pull Request a `main` (si aplica)
+10. Hago merge del PR (el changelog ya va incluido)
+11. **Borro la rama remota inmediatamente tras merge**
 
 ---
 
@@ -364,6 +406,7 @@ bddat/
 - Scripts de inicialización local
 - Verificación y fixes derivados de testing
 - **Generación y subida de `schema.sql`** mediante script local
+- **Limpieza de ramas locales** tras merge
 
 **Proceso:**
 
@@ -371,6 +414,7 @@ bddat/
 2. Ejecutas pruebas en local
 3. Si necesitas cambios, los haces y ejecutas `git add` → `git commit` → `git push`
 4. Confirmas que el push fue exitoso
+5. Tras merge de PR, borras rama local: `git branch -D nombre-rama`
 
 ---
 
@@ -412,7 +456,8 @@ bddat/
 
 ### 6.1 Verificación IA (Antes de Solicitarte OK)
 
-- [ ] Rama de desarrollo creada con nombre apropiado
+- [ ] Evaluado si requiere rama o commit directo (sección 12.1)
+- [ ] Rama de desarrollo creada con nombre apropiado (si aplica)
 - [ ] Cambio está documentado y explicado
 - [ ] Afecta solo a archivos necesarios
 - [ ] Nombres en snake_case (excepto clases de modelos en CamelCase)
@@ -449,6 +494,7 @@ bddat/
 - Cada entrada incluye: fecha, enlace al PR, objetivo y cambios principales
 - Para detalles completos (commits, archivos, diffs): consultar el PR en GitHub
 - **Se actualiza en la misma rama de desarrollo** antes de crear el PR
+- **No se actualiza para commits directos en main** (cambios simples sin PR)
 
 **Ventajas de esta estrategia:**
 - ✅ No duplica información (DRY principle)
@@ -460,7 +506,7 @@ bddat/
 
 ### 7.2 Actualización del Changelog
 
-**Cuándo:** En la misma rama de desarrollo, antes de crear el PR
+**Cuándo:** En la misma rama de desarrollo, antes de crear el PR (solo para cambios con PR)
 
 **Proceso:**
 1. Completar los cambios funcionales de la feature/bugfix
@@ -533,9 +579,10 @@ Cuando se realiza un cambio importante en el código que afecte a:
 ```bash
 git status
 git log --oneline -5
+git branch -vv  # Verificar solo main activa
 ```
 
-**Resultado esperado:** `nothing to commit, working tree clean`
+**Resultado esperado:** `nothing to commit, working tree clean` y solo `* main`
 
 ---
 
@@ -562,13 +609,16 @@ Si hay conflictos en `git pull`:
 - `docs/` - solo documentación
 
 **Workflow:**
-1. IA crea rama de desarrollo
-2. IA hace commits en la rama (con aprobación usuario)
-3. Usuario prueba localmente
-4. **IA actualiza changelog en la misma rama**
-5. Usuario da OK final
-6. IA crea Pull Request a `main` (incluye changelog)
-7. IA hace merge del PR
+1. IA evalúa si requiere rama (ver sección 12.1)
+2. Si requiere rama: IA crea rama de desarrollo
+3. IA hace commits en la rama (con aprobación usuario)
+4. Usuario prueba localmente
+5. **IA actualiza changelog en la misma rama**
+6. Usuario da OK final
+7. IA crea Pull Request a `main` (incluye changelog)
+8. IA hace merge del PR
+9. **IA borra rama remota inmediatamente**
+10. **Usuario borra rama local**
 
 ---
 
@@ -580,6 +630,7 @@ Si hay conflictos en `git pull`:
 ```bash
 git status
 git log --oneline -10
+git branch -vv  # Ver ramas locales y su tracking remoto
 ```
 
 **Traer cambios remotos:**
@@ -598,6 +649,11 @@ git push origin main
 ```bash
 git diff
 git diff --staged
+```
+
+**Borrar rama local:**
+```bash
+git branch -D nombre-rama
 ```
 
 ---
@@ -635,6 +691,11 @@ git log --oneline -5
 git status
 ```
 
+**Borrar rama remota tras merge:**
+```bash
+git push origin --delete nombre-rama
+```
+
 ---
 
 ## 10. Resumen de Responsabilidades
@@ -642,6 +703,7 @@ git status
 | Actividad | IA | Usuario |
 |-----------|-------|------|
 | Preparar cambios de código | ✅ | |
+| Evaluar: rama vs commit directo | ✅ | |
 | Crear ramas de desarrollo | ✅ | |
 | Describir cambios claramente | ✅ | |
 | Consultar schema.sql para cambios BD | ✅ | |
@@ -650,6 +712,7 @@ git status
 | **Actualizar changelog en misma rama** | ✅ | |
 | Crear Pull Requests | ✅ | |
 | Hacer merge de PRs | ✅ | |
+| **Borrar ramas remotas tras merge** | ✅ | |
 | Actualizar documentación en docs/fuentesIA/ | ✅ | |
 | Hacer git pull | | ✅ |
 | Generar schema.sql y subirlo | | ✅ |
@@ -657,7 +720,9 @@ git status
 | Hacer migraciones locales | | ✅ |
 | Hacer commits de testing/ajustes | | ✅ |
 | Hacer git push (cambios locales) | | ✅ |
+| **Borrar ramas locales tras merge** | | ✅ |
 | Dar OK para commits y PRs | | ✅ |
+| Verificar repositorio limpio | | ✅ |
 
 ---
 
@@ -668,11 +733,212 @@ git status
 **Sincronización:** Después de cada sesión de desarrollo  
 **Documentación:** Actualizada en `docs/fuentesIA/` y `docs/CHANGELOG.md`  
 **Aprobación de cambios:** Explícita y previa a commits remotos  
-**Changelog:** Actualizado en la misma rama de desarrollo, no en rama separada
+**Changelog:** Actualizado en la misma rama de desarrollo, no en rama separada  
+**Limpieza:** Ramas borradas inmediatamente tras merge
+
+---
+
+## 12. Gestión de Ramas
+
+### 12.1 Cuándo Crear Rama vs Commit Directo en Main
+
+#### Commit Directo en Main (sin rama ni PR)
+
+**Usar para cambios simples que:**
+- Modifican 1-2 archivos solamente
+- No requieren testing funcional (solo revisión de texto/docs)
+- Son actualizaciones de documentación pura
+- Son typos o correcciones menores
+
+**Ejemplos:**
+- Actualizar `REGLAS_DESARROLLO.md`
+- Corregir typo en `CHANGELOG.md`
+- Actualizar `README.md`
+- Ajustar comentarios en código
+- Cambios en `.gitignore`
+- Actualizar documentación en `docs/fuentesIA/`
+
+**Proceso:**
+1. IA describe el cambio
+2. Usuario da OK
+3. IA hace commit directo en `main`
+4. No se crea rama, no se crea PR
+5. **Resultado:** 0 ramas sueltas, repositorio limpio
+
+---
+
+#### Rama + PR (workflow completo)
+
+**Usar para cambios complejos que:**
+- Modifican 3+ archivos
+- Requieren testing funcional (`flask run`)
+- Afectan modelos, rutas, templates
+- Implican migraciones de BD
+- Pueden tener efectos secundarios
+- Necesitan revisión detallada
+
+**Ejemplos:**
+- Nuevas features
+- Cambios en modelos SQLAlchemy
+- Nuevas rutas y templates
+- Refactorizaciones de lógica
+- Cambios que afectan múltiples módulos
+- Migraciones de base de datos
+
+**Proceso estándar:** Ver sección 2.2 (Cambios Complejos)
+
+---
+
+### 12.2 Regla de Oro: No Dejar Ramas Huérfanas
+
+**Principio fundamental:**
+> Toda rama creada debe terminar mergeada o explícitamente descartada. NUNCA dejar ramas "por si acaso".
+
+**Workflow obligatorio tras merge:**
+
+**IA (inmediatamente después del merge):**
+```bash
+git push origin --delete nombre-rama
+```
+
+**Usuario (tras actualizar main):**
+```bash
+git checkout main
+git pull origin main
+git branch -D nombre-rama
+```
+
+**Resultado:** 
+- ✅ Repositorio limpio
+- ✅ Solo `main` + ramas activas en desarrollo
+- ✅ No hay comprobaciones adicionales semanales
+- ✅ Historial claro
+
+---
+
+### 12.3 Limpieza Automática Post-Merge
+
+#### En GitHub (altamente recomendado)
+
+**Configurar una sola vez:**
+1. Ir a: Settings → General → Pull Requests
+2. Activar: ☑️ **Automatically delete head branches**
+3. **Resultado:** Rama remota se borra automáticamente tras merge del PR
+
+#### Manual (si no está configurado GitHub)
+
+**IA ejecuta tras merge:**
+```bash
+git push origin --delete nombre-rama
+```
+
+**Usuario ejecuta localmente:**
+```bash
+git checkout main
+git pull origin main
+git branch -D nombre-rama
+```
+
+**Verificar estado limpio:**
+```bash
+git branch -vv  # Solo debe aparecer * main
+```
+
+---
+
+### 12.4 Casos Especiales
+
+#### PR Rechazado o Cancelado
+
+**Si un PR no se aprueba o se cancela:**
+
+1. Cerrar PR en GitHub
+2. IA borra rama remota inmediatamente:
+   ```bash
+   git push origin --delete nombre-rama
+   ```
+3. Usuario borra rama local:
+   ```bash
+   git branch -D nombre-rama
+   ```
+4. Si los cambios son valiosos para futuro: crear tag antes de borrar
+   ```bash
+   git tag archivo/nombre-descriptivo nombre-rama
+   git push origin archivo/nombre-descriptivo
+   git branch -D nombre-rama
+   ```
+
+#### Experimentación sin Certeza de Merge
+
+**Si necesitas probar algo sin certeza de merge:**
+- Crea rama con prefijo `test/` o `experimental/`
+- Al finalizar: **Borra explícitamente** (aunque no se mergee)
+- Nunca dejarla huérfana
+
+---
+
+### 12.5 Verificación de Estado Limpio
+
+**Comando rápido para verificar (Usuario):**
+
+```bash
+# Ver solo ramas locales
+git branch
+
+# Ver ramas locales con tracking remoto
+git branch -vv
+
+# Ver ramas remotas
+git branch -r
+```
+
+**Resultado esperado:**
+
+```bash
+# git branch
+* main
+
+# git branch -r
+origin/HEAD -> origin/main
+origin/main
+# (Solo ramas activas en desarrollo, si las hay)
+```
+
+**Si aparecen ramas antiguas:**
+- Revisar si tienen PR merged → Borrar
+- Revisar si tienen PR abierto → Mantener
+- Revisar si no tienen PR → Borrar o mergear
+
+---
+
+### 12.6 Ramas que NUNCA se Deben Borrar
+
+**Protegidas permanentemente:**
+- `main` (rama principal del proyecto)
+- `master` (si existe como alias histórico)
+- `develop` (si se usa flujo GitFlow)
+
+**Verificar antes de borrar:**
+- Ramas con PRs abiertos y activos
+- Ramas de trabajo en curso con commits únicos
+- Ramas compartidas con otros desarrolladores (en proyectos colaborativos)
+
+---
+
+### 12.7 Responsabilidades en la Limpieza
+
+| Actividad | IA | Usuario |
+|-----------|-----|---------|
+| Decidir: rama vs commit directo | ✅ | ✅ |
+| Borrar rama remota tras merge | ✅ | |
+| Borrar rama local tras merge | | ✅ |
+| Mantener repositorio limpio | ✅ | ✅ |
+| Verificar ausencia de ramas huérfanas | | ✅ |
+| Configurar auto-delete en GitHub | | ✅ |
 
 ---
 
 **Documento creado:** 17 de enero de 2026, 21:24 CET  
-**Última actualización:** 25 de enero de 2026, 08:00 CET  
-**Versión:** 2.2  
+**Última actualización:** 25 de enero de 2026, 09:06 CET  
+**Versión:** 2.3  
 **Referencia:** Repositorio oficial genete/bddat en GitHub
