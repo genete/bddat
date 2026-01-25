@@ -3,162 +3,293 @@
 **Proyecto:** Sistema de tramitación administrativa de expedientes de autorización de instalaciones de alta tensión  
 **Stack:** PostgreSQL + Flask (SQLAlchemy) + Bootstrap 5  
 **Repositorio:** https://github.com/genete/bddat  
-**Rama principal:** main  
+**Ramas principales:** `main` (producción) + `develop` (integración)  
 **Documento creado:** 17 de enero de 2026  
 **Última actualización:** 25 de enero de 2026  
-**Versión:** 2.3
+**Versión:** 3.0
 
 ---
 
 ## 1. Repositorio Oficial
 
 **Ubicación:** https://github.com/genete/bddat  
-**Rama principal:** main  
+**Ramas permanentes:**
+- `main` - Código estable en producción, solo recibe merges de `develop`
+- `develop` - Rama de integración continua, rama por defecto para desarrollo
+
 **Descripción:** Sistema de tramitación administrativa de expedientes de autorización de instalaciones de alta tensión, construido con PostgreSQL, Flask (SQLAlchemy) y Bootstrap 5.
 
 ---
 
 ## 2. Metodología de Desarrollo
 
-### 2.1 Roles y Responsabilidades (Git)
+### 2.1 Workflow: GitHub Flow con Develop
 
-#### Asistente (IA)
+**Estructura de ramas:**
 
-- Preparo los cambios (código, modelos, rutas, templates) de forma clara y descriptiva
-- Describo exactamente qué ficheros se tocan y qué hace cada cambio
-- **Evalúo si el cambio requiere rama o commit directo** (ver sección 12.1)
-- Creo las ramas necesarias para el desarrollo (`feature/`, `bugfix/`, etc.) cuando aplica
-- Genero los commits en la rama de desarrollo o directamente en `main`
-- **Espero tu aprobación explícita** antes de cada commit
-- **Realizo commits directamente en el repositorio remoto** únicamente tras tu comprobación/OK explícito
-  - Ejemplo: "OK, adelante con la migración" o "Perfecto, haz el commit"
-  - No hago commits "a sorpresa": siempre espero tu revisión previa
-- Tras tus pruebas funcionales y tu OK, creo el Pull Request de la rama a `main` (cuando aplica)
-- **Actualizo `docs/CHANGELOG.md` en la misma rama de desarrollo** antes del PR (cuando aplica)
-- **Borro la rama remota inmediatamente tras merge del PR**
-- Mantengo coherencia con documentación existente
+```
+develop ──●──●────●────●──●────●  (desarrollo continuo, rama por defecto)
+           \      /    /    \  /
+feature/X   ●──●─┘    /      ●┘   (ramas temporales)
+bugfix/Y         ●──●┘            (ramas temporales)
+main ─────────────────●─v0.1.0──●─v0.2.0  (solo versiones estables + tags)
+```
 
-#### Usuario (Tú)
-
-- Realizas `git pull` para descargar mis commits y efectúas **pruebas exhaustivas en tu entorno local**
-  - Ejecutas `flask run`, pruebas formularios, migraciones, validaciones
-  - Verificas que la BD se comporta correctamente
-  - Confirmas resultados visualmente
-- Generas el archivo `schema.sql` localmente mediante script y lo subes al repositorio manualmente
-- Realizas tú los commits cuando el cambio **no puede hacerse desde remoto** o depende de tu máquina:
-  - Generación de migraciones locales (cuando hay ajustes específicos)
-  - Pruebas que fuerzan cambios en configuración local
-  - Verificaciones finales que requieren ejecución real
-  - Commits post-prueba con cambios derivados del testing
-- Cuando haces commits locales, ejecutas `git push` y confirmas el resultado
-- Das el OK final para que yo cree el Pull Request y haga el merge
-- **Borras las ramas locales** tras el merge del PR
+**Principios:**
+- **`develop`** es la rama por defecto donde se integran todos los cambios
+- **`main`** solo recibe merges de `develop` cuando hay versión estable
+- **Ramas temporales** (`feature/`, `bugfix/`) nacen de `develop` y vuelven a `develop`
+- **Tags** se crean en `main` al completar milestones
+- **Releases** se publican en GitHub al finalizar fases completas
 
 ---
 
-### 2.2 Secuencia de Trabajo Estándar
+### 2.2 Roles y Responsabilidades
 
-**IMPORTANTE:** Evaluar primero si el cambio requiere rama o commit directo (ver sección 12.1).
+#### Asistente (IA)
 
-#### Cambios Simples (Commit Directo en Main)
+- Evalúo si el cambio requiere rama temporal o commit directo en `develop` (ver sección 12.1)
+- Creo las ramas necesarias desde `develop` cuando aplica (`feature/`, `bugfix/`, etc.)
+- Preparo cambios con descripción clara de ficheros afectados
+- **Espero tu aprobación explícita** antes de cada commit
+- Hago commits en la rama de desarrollo o en `develop` directamente (según tipo de cambio)
+- Tras tus pruebas locales y OK, creo Pull Request a `develop`
+- **Actualizo `docs/CHANGELOG.md` en la misma rama de desarrollo** antes del PR
+- Hago merge del PR a `develop`
+- **Borro la rama remota inmediatamente tras merge**
+- Cuando completes un milestone, hago merge de `develop` → `main` y creo tag/release
+
+#### Usuario (Tú)
+
+- Realizas `git pull origin develop` para descargar cambios de integración
+- Pruebas exhaustivas en local: `flask run`, formularios, migraciones, BD
+- Si necesitas ajustes, los haces y ejecutas `git push origin [nombre-rama]`
+- Das OK final para que IA cree el PR y haga merge
+- Generas `schema.sql` localmente y lo subes manualmente
+- **Borras ramas locales** tras merge del PR: `git branch -D nombre-rama`
+- Verificas estado limpio del repositorio
+
+---
+
+### 2.3 Secuencia de Trabajo Estándar
+
+#### Cambios Simples (Commit Directo en Develop)
 
 **Para:** Documentación, typos, cambios en 1-2 archivos sin testing funcional
 
 **Proceso:**
 1. IA describe el cambio
 2. Usuario da OK
-3. IA hace commit directo en `main`:
+3. IA hace commit directo en `develop`:
    ```
    [DOCS] Actualizar sección X de REGLAS_DESARROLLO
    ```
-4. **FIN** - No rama, no PR, repositorio limpio
+4. **FIN** - No rama temporal, no PR
 
 ---
 
-#### Cambios Complejos (Rama + PR)
+#### Cambios Complejos (Rama Temporal + PR a Develop)
 
 **Para:** Features, bugfixes, cambios que requieren testing
 
 ##### Fase 1: Análisis y Diseño
 
-- Se revisan documentos existentes en la Knowledge Base (DOCX, JSON, TXT)
-- **La IA consulta el archivo `schema.sql`** que generas tú localmente mediante script y subes al repo manualmente
-- Se consulta la estructura actual de la BD (tablas, campos, relaciones) desde `schema.sql`
-- Se identifican cambios/mejoras necesarios
-- Se registra claramente en qué consisten
+- Se revisan documentos en Knowledge Base y `docs/fuentesIA/`
+- **IA consulta `schema.sql`** (generado por usuario localmente)
+- Se identifican cambios necesarios
+- Se registra claramente el alcance
 
 ##### Fase 2: Preparación Remota (por IA)
 
-- Creo la rama necesaria para el desarrollo:
-  - `feature/descripcion-breve` - nuevas funcionalidades
-  - `bugfix/descripcion-breve` - corrección de errores
-  - `hotfix/descripcion-breve` - correcciones urgentes en producción
-  - `refactor/descripcion-breve` - refactorizaciones sin cambio funcional
-  - `docs/descripcion-breve` - solo documentación
-- Preparo el código/cambios con explicación detallada
-- Descripción clara de archivos afectados y cambios en cada uno
-- Genero los commits en la rama de desarrollo
-- **Espero tu OK explícito antes de hacer cada commit remoto**
-- Una vez apruebes, hago el commit y push en GitHub en la rama correspondiente
+- Creo rama desde `develop`:
+  - `feature/issue-XX-descripcion` - nuevas funcionalidades
+  - `bugfix/issue-XX-descripcion` - corrección de errores
+  - `refactor/descripcion-breve` - refactorizaciones
+  - `docs/descripcion-breve` - solo documentación (si es complejo)
+- Preparo código con explicación detallada
+- Hago commits tras tu aprobación
+- **Actualizo `docs/CHANGELOG.md` en la misma rama**
 
 ##### Fase 3: Pruebas Locales (por Usuario)
 
-- `git pull` para descargar los cambios
-- `flask run` y pruebas manuales en tu entorno
-- Verificación de BD, migraciones, formularios
-- Confirmación de que todo funciona como se esperaba
-- Si hay ajustes inevitables, los realizas y haces `git push`
+- `git checkout nombre-rama`
+- `git pull origin nombre-rama`
+- `flask run` y pruebas funcionales
+- Si hay ajustes, los haces y ejecutas `git push origin nombre-rama`
 
-##### Fase 4: Pull Request y Changelog (por IA)
+##### Fase 4: Pull Request y Merge (por IA)
 
-- **Actualizo `docs/CHANGELOG.md` en la misma rama de desarrollo** con la nueva entrada
-- Genero commit del changelog: `[CHANGELOG] Documentar [descripción del cambio]`
-- Tras tu OK final, creo el Pull Request de la rama a `main`
-- Cuando el desarrollo responde a un issue, se indica en el PR
-- Hago merge del PR a `main`
-- **No se requiere rama/PR separado para el changelog** (ya va incluido en la rama de la feature/bugfix)
+- Tras tu OK final, creo PR: `nombre-rama` → `develop`
+- Referencio el issue si aplica: "Closes #XX"
+- Hago merge del PR (changelog incluido)
+- **Borro rama remota inmediatamente:** `git push origin --delete nombre-rama`
 
-##### Fase 5: Actualización de Documentación
+##### Fase 5: Limpieza (por Usuario)
 
-- Se procurará que los documentos de referencia (como este) se subirán al repositorio en `docs/fuentesIA/`
-- Intentaremos que los documentos directos en las fuentes de conocimiento sean los estrictamente esenciales
-- **Los documentos en el repositorio son la fuente de la verdad** para la IA en caso de conflicto con otras fuentes
-- Se registran cambios mediante los changelogs en `docs/CHANGELOG.md`:
-  - Descripción de lo que cambiamos (hechos)
-  - No las intenciones (eso va en documentos de diseño de las fuentes IA)
-
-##### Fase 6: Limpieza Post-Merge
-
-- **IA:** Borro rama remota inmediatamente tras merge:
-  ```powershell
-  git push origin --delete nombre-rama
-  ```
-- **Usuario:** Actualizas local y borras rama:
-  ```powershell
-  git checkout main
-  git pull origin main
-  git branch -D nombre-rama
-  ```
-- **Verificación:** `git branch -vv` debe mostrar solo `* main`
+- `git checkout develop`
+- `git pull origin develop`
+- `git branch -D nombre-rama` (borrar rama local)
+- Verificar: `git branch -vv` debe mostrar solo `* develop`
 
 ---
 
-### 2.3 Principios de Trabajo
+### 2.4 Creación de Versiones Estables (Main + Tags)
 
-1. **Documentación primero:** Se diseña en documentos antes de cambiar código
-2. **Incrementalidad:** Cambios pequeños, probados, sincronizados
-3. **Trazabilidad:** Git es la fuente de verdad del código
-4. **Conocimiento compartido:** Las fuentes de conocimiento están siempre al día
-5. **Aprobación previa:** No hay commits remotos sin tu OK
-6. **Responsabilidad compartida:** Cada rol tiene tareas claras y no solapadas
-7. **Repositorio como fuente de verdad:** Documentos en `docs/fuentesIA/` prevalecen sobre otras fuentes
-8. **Repositorio limpio:** Toda rama debe terminar mergeada o explícitamente descartada. No dejar ramas huérfanas. Borrado inmediato tras merge.
+**Cuándo:** Al completar un milestone completo y pasar todas las pruebas
+
+**Proceso:**
+
+1. **Usuario verifica** que `develop` está completamente funcional y probado
+2. **Usuario da OK** para crear versión estable
+3. **IA ejecuta:**
+   ```bash
+   # Crear PR de develop a main
+   # Título: "Release v0.X.0 - Milestone X.Y completado"
+   # Descripción: resumen de cambios del milestone
+   
+   # Merge del PR (tras aprobación usuario)
+   
+   # Crear tag anotado en main
+   git checkout main
+   git pull origin main
+   git tag -a v0.X.0 -m "Milestone X.Y: [Descripción]
+   
+   Cambios principales:
+   - Cambio 1
+   - Cambio 2
+   - Cambio 3"
+   
+   git push origin v0.X.0
+   ```
+
+4. **IA crea Release en GitHub:**
+   - Tag: `v0.X.0`
+   - Título: "Fase X - [Nombre del Milestone]"
+   - Descripción: Changelog del milestone
+   - Assets: `schema_vX.X.X.sql`, `datos_estructurales_vX.X.X.sql` (si aplica)
+
+5. **Usuario continúa trabajando** desde `develop` para siguiente milestone
 
 ---
 
-## 3. Convenciones de Código y Naming
+## 3. Milestones y Organización de Issues
 
-### 3.1 REGLA GENERAL: snake_case
+### 3.1 Estructura de Milestones
+
+Los milestones representan objetivos funcionales completos dentro de cada fase.
+
+#### Fase 1: Fundamentos y MVP Básico
+
+**Milestone 1.1 - Infraestructura base**
+- Tags: `infrastructure`, `database`, `setup`
+- Hito: "Aplicación arranca sin errores"
+- Issues ejemplo: #3, #4
+- Entregable: Flask funcional + BD desplegada + datos maestros
+
+**Milestone 1.2 - Gestión de solicitantes**
+- Tags: `solicitantes`, `crud-basico`, `forms`
+- Hito: "Registro de personas funcional"
+- Entregable: CRUD completo solicitantes/titulares + validación NIF/CIF
+
+**Milestone 1.3 - Expedientes básicos (MVP)**
+- Tags: `expedientes`, `crud-basico`, `mvp`
+- Hito: "Crear y consultar expediente"
+- Entregable: CRUD expedientes + asociación solicitante + listado + detalle
+- **Version:** `v0.1.0` - Primera release
+
+---
+
+#### Fase 2: Tramitación Administrativa
+
+**Milestone 2.1 - Control de fases**
+- Tags: `fases`, `transiciones`, `workflow`
+- Hito: "Flujo de tramitación operativo"
+- Entregable: Cambios de fase + validaciones + registro histórico
+
+**Milestone 2.2 - Actuaciones y trámites**
+- Tags: `actuaciones`, `tramites`, `historico`
+- Hito: "Registro de gestiones"
+- Entregable: Registrar actuaciones + asociar trámites + histórico cronológico
+- Issues ejemplo: #1 (auditoría)
+
+**Milestone 2.3 - Notificaciones básicas**
+- Tags: `notificaciones`, `alertas`, `messaging`
+- Hito: "Comunicación automática"
+- Entregable: Sistema notificaciones internas + alertas de fase
+- Issues ejemplo: #28
+- **Version:** `v0.2.0`
+
+---
+
+#### Fase 3: Gestión Avanzada
+
+**Milestone 3.1 - Documentación**
+- Tags: `documentos`, `adjuntos`, `storage`
+- Hito: "Gestión documental operativa"
+- Entregable: Upload archivos + asociación a expediente + versionado
+
+**Milestone 3.2 - Sistema de tareas**
+- Tags: `tareas`, `asignaciones`, `deadlines`
+- Hito: "Seguimiento de trabajo"
+- Entregable: Crear tareas + asignar responsables + control vencimientos
+
+**Milestone 3.3 - Búsqueda y filtros**
+- Tags: `busqueda`, `filtros`, `indices`
+- Hito: "Consultas eficientes"
+- Entregable: Búsqueda multi-criterio + filtros avanzados + índices BD
+- **Version:** `v0.3.0`
+
+**Milestone 3.4 - Visualización cartográfica**
+- Tags: `postgis`, `maps`, `geolocation`
+- Hito: "Visor geográfico operativo"
+- Entregable: PostGIS + Leaflet + visualización instalaciones + coordenadas editables
+- Issues ejemplo: #27
+- **Version:** `v0.4.0` (opcional si es muy grande)
+
+---
+
+#### Fase 4: Optimización y Producción
+
+**Milestone 4.1 - Reporting**
+- Tags: `reporting`, `dashboards`, `analytics`
+- Hito: "Informes y estadísticas"
+- Entregable: Panel estadísticas + informes predefinidos + exportación Excel/PDF
+
+**Milestone 4.2 - Auditoría**
+- Tags: `auditoria`, `logging`, `seguridad`
+- Hito: "Trazabilidad completa"
+- Entregable: Log acciones + histórico cambios + control permisos por rol
+
+**Milestone 4.3 - Despliegue producción**
+- Tags: `deployment`, `performance`, `backup`
+- Hito: "Sistema en producción"
+- Entregable: Configuración producción + backup automatizado + monitorización + docs usuario
+- **Version:** `v1.0.0` - Primera versión producción
+
+---
+
+### 3.2 Tags de Issues Recomendados
+
+**Por tipo:**
+- `bug`, `enhancement`, `feature`, `documentation`, `refactor`
+
+**Por área funcional:**
+- `expedientes`, `solicitantes`, `actuaciones`, `documentos`, `tareas`, `notificaciones`, `maps`
+
+**Por prioridad:**
+- `mvp` (mínimo viable), `critical`, `high`, `medium`, `low`
+
+**Por fase:**
+- `fase-1`, `fase-2`, `fase-3`, `fase-4`
+
+**Por estado técnico:**
+- `database`, `backend`, `frontend`, `api`, `forms`, `validation`
+
+---
+
+## 4. Convenciones de Código y Naming
+
+### 4.1 REGLA GENERAL: snake_case
 
 En este proyecto se usa **snake_case** como convención general: tablas, columnas, variables, funciones, rutas, plantillas y nombres de fichero.
 
@@ -202,18 +333,7 @@ class Solicitud(db.Model):
 - Nombre de clase: `CamelCase` (ej: `Expediente`, `Solicitud`, `DocumentoPuro`)
 - Todo lo demás (atributos, métodos, variables): `snake_case`
 
-**Incorrecto (no hacer):**
-
-```python
-class Expediente(db.Model):
-    __tablename__ = 'Expedientes'  # ❌ No
-    IdExpediente = db.Column(...)  # ❌ No
-    NumeroExpediente = db.Column(...)  # ❌ No
-```
-
 #### Variables y Funciones en Python
-
-**Correcto:**
 
 ```python
 def procesar_expediente(id_expediente):
@@ -222,203 +342,215 @@ def procesar_expediente(id_expediente):
     lista_solicitudes = db.session.query(Solicitud).filter_by(id_expediente=id_expediente).all()
 ```
 
-**Incorrecto (no hacer):**
-
-```python
-def procesarExpediente(IdExpediente):  # ❌ No
-    numeroExpediente = expediente.numeroExpediente  # ❌ No
-    listaSolicitudes = ...  # ❌ No
-```
-
-#### Variables JavaScript/Bootstrap
+#### Variables JavaScript
 
 ```javascript
-// Correcto
 const id_expediente = document.getElementById('expediente-id').value;
 const fecha_presentacion = new Date(expediente.fecha_presentacion);
 const numero_tramites = expedientes.length;
-const formulario_datos = { ... };
-
-// Incorrecto (no hacer)
-const idExpediente = ...  // ❌ No
-const fechaPresentacion = ...  // ❌ No
-const numeroTramites = ...  // ❌ No
 ```
 
 #### Rutas Flask
-
-**Correcto:**
 
 ```python
 @app.route('/expedientes/<int:id_expediente>')
 def ver_expediente(id_expediente):
     return render_template('expediente_detalle.html', id_expediente=id_expediente)
-
-@app.route('/solicitudes/<int:id_solicitud>/tramites')
-def listar_tramites(id_solicitud):
-    pass
-```
-
-**Incorrecto (no hacer):**
-
-```python
-@app.route('/expedientes/<int:IdExpediente>')  # ❌ No
-def verExpediente(IdExpediente):  # ❌ No
-    pass
-```
-
-#### Templates HTML/Jinja2
-
-**Correcto:**
-
-```html
-{{ expediente.numero_expediente }}
-<p>Fecha: {{ expediente.fecha_presentacion|strftime('%d/%m/%Y') }}</p>
-<button id="btn_procesar" class="btn btn-primary">Procesar</button>
-```
-
-**Incorrecto (no hacer):**
-
-```html
-{{ expediente.NumeroExpediente }}  <!-- ❌ No -->
-<input id="IdExpediente" ...>  <!-- ❌ No -->
 ```
 
 #### Nombres de Archivos
-
-**Correcto:**
 
 ```
 expediente_modelo.py
 solicitud_routes.py
 expediente_detalle.html
 funciones_validacion.js
-tablas_maestras_config.json
-```
-
-**Incorrecto (no hacer):**
-
-```
-ExpedienteModelo.py  # ❌ No
-SolicitudRoutes.py  # ❌ No
-expediente-detalle.html  # Evitar guiones (excepto en id HTML)
-FuncionesValidacion.js  # ❌ No
 ```
 
 ---
 
-### 3.2 Excepciones Permitidas
-
-Solo en estos casos se puede usar otro patrón:
-
-1. **Nombres de clases de modelos:** CamelCase (ej: `class Expediente`, `class Solicitud`)
-2. **Identificadores de Bootstrap/Librerías externas:** Si la librería lo exige
-3. **Valores de configuración predefinidos:** Si la especificación así lo requiere
-4. **Nombres de terceros:** Información del dominio (no se cambia)
-
----
-
-## 4. Estructura de Carpetas del Repositorio
+## 5. Estructura de Carpetas del Repositorio
 
 ```
 bddat/
 ├── app/
 │   ├── __init__.py
 │   ├── models/
-│   │   ├── __init__.py
-│   │   ├── expediente.py
-│   │   ├── solicitud.py
-│   │   └── documento.py
 │   ├── routes/
-│   │   ├── __init__.py
-│   │   ├── expedientes.py
-│   │   ├── solicitudes.py
-│   │   └── documentos.py
 │   ├── templates/
-│   │   ├── expediente_detalle.html
-│   │   ├── expediente_lista.html
-│   │   └── solicitud_form.html
 │   └── static/
 │       ├── css/
-│       │   └── estilo.css
 │       └── js/
-│           └── funciones_expediente.js
 ├── migrations/
-│   ├── alembic.ini
-│   ├── env.py
-│   ├── script.py.mako
 │   └── versions/
-│       └── *.py
 ├── docs/
 │   ├── CHANGELOG.md
 │   └── fuentesIA/
 │       ├── REGLAS_DESARROLLO.md
-│       └── [otros documentos de referencia]
+│       ├── GuiaGeneralNueva.md
+│       └── [otros documentos]
 ├── tests/
+├── utils/
 ├── config.py
 ├── run.py
 ├── schema.sql
+├── datos_estructurales.sql
 └── requirements.txt
 ```
 
 ---
 
-## 5. Workflow de Commits
+## 6. Workflow Detallado
 
-### 5.1 Commits que Hace la IA
+### 6.1 Cambios Simples (Commit Directo en Develop)
 
-**Ejemplos de cambios que puedo subir directamente (previa tu aprobación):**
-
-- Nuevos modelos SQLAlchemy completos
-- Nuevas rutas Flask sin dependencias complejas
-- Templates HTML/Jinja2 nuevos o modificados
-- Cambios en CSS/JavaScript
-- Actualización de requirements.txt
-- Cambios de configuración
-- Cambios en .gitignore u otros archivos de configuración
-- **Actualización de `docs/CHANGELOG.md` en la misma rama de desarrollo**
-- **Commits directos en `main` para cambios simples** (ver sección 12.1)
+**Para:** Documentación, typos, cambios en 1-2 archivos sin testing funcional
 
 **Proceso:**
-
-1. Evalúo si requiere rama o commit directo (ver sección 12.1)
-2. Si es commit directo: lo hago en `main` tras tu OK
-3. Si requiere rama: creo la rama de desarrollo correspondiente
-4. Preparo el cambio con descripción clara
-5. Te muestro exactamente qué archivos se tocan
-6. **Espero tu aprobación explícita para cada commit**
-7. Una vez apruebes, hago: `git add [archivos]` → `git commit -m "..."` → `git push`
-8. **Actualizo `docs/CHANGELOG.md` en la misma rama antes del PR** (si aplica)
-9. Tras tus pruebas y tu OK final, creo el Pull Request a `main` (si aplica)
-10. Hago merge del PR (el changelog ya va incluido)
-11. **Borro la rama remota inmediatamente tras merge**
+1. IA describe el cambio
+2. Usuario da OK
+3. IA hace commit directo en `develop`:
+   ```
+   [DOCS] Actualizar sección X de REGLAS_DESARROLLO
+   ```
+4. **FIN** - No rama, no PR
 
 ---
 
-### 5.2 Commits que Hace el Usuario
+### 6.2 Cambios Complejos (Rama Temporal + PR a Develop)
 
-**Ejemplos de cambios que haces localmente:**
+**Para:** Features, bugfixes, cambios que requieren testing
 
-- Migraciones locales (`flask db migrate`)
-- Pruebas de cambios que requieren `flask run`
-- Ajustes post-testing
-- Cambios en .env o configuración local
-- Scripts de inicialización local
-- Verificación y fixes derivados de testing
-- **Generación y subida de `schema.sql`** mediante script local
-- **Limpieza de ramas locales** tras merge
+#### Paso 1: Creación de Rama (IA)
 
-**Proceso:**
+```bash
+# IA crea rama desde develop
+git checkout develop
+git pull origin develop
+git checkout -b feature/issue-XX-descripcion
+git push origin feature/issue-XX-descripcion
+```
 
-1. Haces `git pull` para traer mis cambios
-2. Ejecutas pruebas en local
-3. Si necesitas cambios, los haces y ejecutas `git add` → `git commit` → `git push`
-4. Confirmas que el push fue exitoso
-5. Tras merge de PR, borras rama local: `git branch -D nombre-rama`
+**Convención de nombres de rama:**
+- `feature/issue-XX-descripcion` - nueva funcionalidad
+- `bugfix/issue-XX-descripcion` - corrección bug
+- `refactor/descripcion-breve` - refactorización sin cambio funcional
+- `docs/descripcion-breve` - documentación compleja
+
+#### Paso 2: Desarrollo (IA)
+
+- Preparo cambios en la rama
+- Describo archivos afectados
+- Espero aprobación explícita
+- Hago commits tras cada OK:
+  ```
+  [MODELO] Crear modelo Solicitud con validaciones
+  [RUTA] Implementar endpoint POST /solicitudes
+  [TEMPLATE] Crear formulario solicitud_form.html
+  ```
+- **Actualizo `docs/CHANGELOG.md` en esta rama**
+
+#### Paso 3: Pruebas Locales (Usuario)
+
+```bash
+git checkout feature/issue-XX-descripcion
+git pull origin feature/issue-XX-descripcion
+flask run
+# Pruebas exhaustivas...
+```
+
+Si necesitas ajustes:
+```bash
+git add [archivos]
+git commit -m "[TEST] Ajustar validación tras pruebas"
+git push origin feature/issue-XX-descripcion
+```
+
+#### Paso 4: Pull Request (IA)
+
+Tras tu OK final:
+- Creo PR: `feature/issue-XX-descripcion` → `develop`
+- Título: Breve descripción de la funcionalidad
+- Descripción: Objetivo, cambios principales, issues relacionados
+- Hago merge del PR (squash o merge commit según preferencia)
+
+#### Paso 5: Limpieza (IA + Usuario)
+
+**IA:**
+```bash
+git push origin --delete feature/issue-XX-descripcion
+```
+
+**Usuario:**
+```bash
+git checkout develop
+git pull origin develop
+git branch -D feature/issue-XX-descripcion
+git branch -vv  # Verificar limpieza
+```
 
 ---
 
-### 5.3 Mensajes de Commit
+### 6.3 Creación de Versiones Estables (Develop → Main)
+
+**Trigger:** Milestone completado y todas las pruebas pasadas
+
+**Proceso:**
+
+#### Paso 1: Verificación (Usuario)
+
+- Confirmas que `develop` está 100% funcional
+- Todas las pruebas pasadas
+- Milestone cerrado en GitHub
+- Das OK para crear versión estable
+
+#### Paso 2: Merge a Main (IA)
+
+```bash
+# Crear PR de develop a main
+# Título: "Release v0.X.0 - Milestone X.Y: [Nombre]"
+# Descripción: Resumen de funcionalidades del milestone
+
+# Merge del PR (tras tu aprobación)
+```
+
+#### Paso 3: Crear Tag (IA)
+
+```bash
+git checkout main
+git pull origin main
+git tag -a v0.X.0 -m "Milestone X.Y: [Descripción]
+
+Funcionalidades principales:
+- Funcionalidad 1
+- Funcionalidad 2
+- Funcionalidad 3
+
+Issues cerrados: #XX, #YY, #ZZ"
+
+git push origin v0.X.0
+```
+
+#### Paso 4: Crear Release en GitHub (IA)
+
+- **Tag:** v0.X.0
+- **Título:** "Fase X - [Nombre del Milestone]"
+- **Descripción:** Resumen ejecutivo del milestone con funcionalidades clave
+- **Assets:** 
+  - `schema_v0.X.0.sql` (si cambia BD)
+  - `datos_estructurales_v0.X.0.sql` (si cambian datos maestros)
+
+#### Paso 5: Continuar Desarrollo (Usuario)
+
+```bash
+git checkout develop
+git pull origin develop
+# Continuar con siguiente milestone
+```
+
+---
+
+## 7. Mensajes de Commit
 
 **Formato:** `[CATEGORÍA] Descripción breve en imperativo`
 
@@ -434,511 +566,496 @@ bddat/
 - `[DOCS]` - Cambios en documentación
 - `[CHANGELOG]` - Actualización de changelog
 - `[MERGE]` - Merge de pull requests
+- `[RELEASE]` - Preparación de releases
 
 **Ejemplos:**
 
 ```
-[BD] Añadir tabla expedientes_auditoría
-[MODELO] Crear modelo Solicitud con validaciones
+[BD] Añadir tabla expedientes_auditoria
+[MODELO] Crear modelo Solicitud con validaciones NIF/CIF
 [RUTA] Implementar endpoint GET /expedientes/<id>
-[TEMPLATE] Mejorar formulario solicitud con validación cliente
-[STYLE] Ajustar colores botones Bootstrap
-[MIGA] Actualizar estructura de migraciones
-[TEST] Pruebas locales de flujo expediente
-[DOCS] Actualizar documentación tablas maestras
-[CHANGELOG] Documentar detección de proyectos interprovinciales
-[MERGE] Merge feature/nueva-funcionalidad a main
+[TEMPLATE] Crear formulario solicitud con validación Bootstrap
+[STYLE] Ajustar colores mensajes informativos con hover
+[MIGA] Añadir campo geom_punto a tabla proyectos
+[TEST] Verificar flujo completo creación expediente
+[DOCS] Actualizar REGLAS_DESARROLLO con workflow develop
+[CHANGELOG] Documentar milestone 1.2 completado
+[MERGE] Merge feature/issue-3-mejorar-mensajes a develop
+[RELEASE] Preparar release v0.1.0 - MVP expedientes
 ```
 
 ---
 
-## 6. Checklist Antes de Cambios (IA) y Antes de Commits (Usuario)
+## 8. Gestión de Changelogs
 
-### 6.1 Verificación IA (Antes de Solicitarte OK)
-
-- [ ] Evaluado si requiere rama o commit directo (sección 12.1)
-- [ ] Rama de desarrollo creada con nombre apropiado (si aplica)
-- [ ] Cambio está documentado y explicado
-- [ ] Afecta solo a archivos necesarios
-- [ ] Nombres en snake_case (excepto clases de modelos en CamelCase)
-- [ ] Código sigue convenciones del proyecto
-- [ ] No hay archivos innecesarios
-- [ ] Mensaje de commit es descriptivo con categoría correcta entre `[]`
-- [ ] He consultado `schema.sql` para cambios de BD
-- [ ] **Changelog actualizado en la misma rama** (si aplica)
-
----
-
-### 6.2 Verificación Usuario (Antes de git push)
-
-- [ ] `git pull` completado correctamente
-- [ ] `flask run` funciona sin errores
-- [ ] Base de datos responde correctamente
-- [ ] Formularios se cargan y funcionan
-- [ ] Migraciones ejecutadas: `flask db upgrade`
-- [ ] Carpeta `migrations/` incluida en el commit
-- [ ] No hay archivos `.pyc`, `__pycache__`, `.env`
-- [ ] Todos los nombres en snake_case (excepto clases)
-- [ ] Mensaje de commit es descriptivo con categoría entre `[]`
-
----
-
-## 7. Gestión de Changelogs y Documentación de Cambios
-
-### 7.1 Estrategia de Changelog
-
-**Decisión arquitectónica:** Los Pull Requests de GitHub son la **fuente de verdad** para el historial del proyecto.
+### 8.1 Estrategia de Changelog
 
 **Archivo `docs/CHANGELOG.md`:**
-- Contiene **solo los últimos 5 PRs** mergeados
-- Cada entrada incluye: fecha, enlace al PR, objetivo y cambios principales
-- Para detalles completos (commits, archivos, diffs): consultar el PR en GitHub
-- **Se actualiza en la misma rama de desarrollo** antes de crear el PR
-- **No se actualiza para commits directos en main** (cambios simples sin PR)
+- Contiene **solo los últimos 5 PRs** mergeados a `develop` o `main`
+- Pull Requests de GitHub son la fuente de verdad para historial completo
+- Cada entrada incluye: fecha, enlace al PR, objetivo, cambios principales
+- **Se actualiza en la misma rama de desarrollo** antes de crear PR
+- **No se actualiza para commits directos en develop** (cambios simples)
 
-**Ventajas de esta estrategia:**
-- ✅ No duplica información (DRY principle)
-- ✅ Los PRs de GitHub contienen toda la metadata: commits, reviews, diff, archivos
-- ✅ El changelog es manejable y no crece infinitamente
-- ✅ La IA puede consultar rápidamente contexto reciente
-- ✅ Historial completo siempre accesible en GitHub
-- ✅ **No requiere rama/PR separado** para actualizar el changelog
+### 8.2 Proceso de Actualización
 
-### 7.2 Actualización del Changelog
+**En rama de desarrollo (antes del PR):**
 
-**Cuándo:** En la misma rama de desarrollo, antes de crear el PR (solo para cambios con PR)
-
-**Proceso:**
-1. Completar los cambios funcionales de la feature/bugfix
-2. Identificar la información clave: objetivo, cambios principales
-3. Añadir entrada al inicio de `docs/CHANGELOG.md` (orden cronológico inverso)
-4. Mantener solo últimos 5 PRs (eliminar el más antiguo si hay más de 5)
-5. Commit en la misma rama: `[CHANGELOG] Documentar [descripción del cambio]`
-6. Crear PR que incluye tanto los cambios funcionales como el changelog
-7. Hacer merge del PR (todo en uno)
+1. IA completa los cambios funcionales
+2. IA actualiza `docs/CHANGELOG.md`:
+   - Añade entrada al inicio
+   - Mantiene solo últimos 5 PRs
+   - Usa formato temporal para número de PR
+3. IA hace commit: `[CHANGELOG] Documentar [descripción]`
+4. IA crea PR (incluye changelog)
+5. Tras merge, el changelog queda integrado
 
 **Formato de entrada:**
 
 ```markdown
 ### YYYY-MM-DD - [PR #XX: Título del PR](URL_del_PR)
 
-**Objetivo:** Breve descripción del objetivo del PR.
+**Objetivo:** Descripción del objetivo.
 
 **Cambios principales:**
 - ✅ Cambio 1
 - ✅ Cambio 2
 - ✅ Cambio 3
 
-**Issues resueltos:** #XX, #YY (si aplica)
-**Tipo:** Feature/Bugfix/Docs/Refactor (si aplica)
+**Issues resueltos:** #XX, #YY
+**Milestone:** X.Y - Nombre
 ```
-
-**Nota importante:** El número de PR aún no existe al actualizar el changelog (se genera al crear el PR). Por tanto:
-- Se puede dejar como `[PR #XX: Título]` temporalmente
-- O usar formato `### YYYY-MM-DD - [Título]` sin número de PR
-- El usuario puede actualizar el número de PR tras el merge si lo desea
-
-### 7.3 Consulta de Historial Antiguo
-
-Para consultar PRs anteriores a los últimos 5:
-- Ir a: https://github.com/genete/bddat/pulls?q=is%3Apr+is%3Aclosed+sort%3Aupdated-desc
-- Usar filtros de GitHub por fecha, autor, label, milestone
-- Buscar por palabra clave en título/descripción
-
-### 7.4 Documentación de Diseño
-
-Cuando se realiza un cambio importante en el código que afecte a:
-
-- Estructura de tablas
-- Lógica de negocio
-- Flujos administrativos
-- Nuevas entidades o relaciones
-
-**Procedimiento:**
-
-1. Se actualiza el documento correspondiente en `docs/fuentesIA/`
-2. Se especifica claramente:
-   - Qué cambió exactamente
-   - Por qué cambió
-   - Fecha del cambio
-   - Versión afectada
-   - Impacto en otras tablas/lógica
-
-**Nota:** Los documentos en el repositorio (`docs/fuentesIA/`) son la fuente de verdad para la IA en caso de conflicto con otras fuentes de conocimiento.
 
 ---
 
-## 8. Sincronización y Comunicación
+## 9. Gestión de Tags y Releases
 
-### 8.1 Estado del Repositorio
+### 9.1 Tags Semánticos
 
-**Después de cada sesión:**
+**Formato:** `vMAJOR.MINOR.PATCH`
 
-**Tú ejecutas (para confirmar estado limpio):**
+**Criterios:**
+- `MAJOR` (1.0.0): Cambios que rompen compatibilidad, Fase completada
+- `MINOR` (0.1.0): Nuevas funcionalidades, Milestone completado
+- `PATCH` (0.1.1): Hotfixes, correcciones menores
 
-```bash
-git status
-git log --oneline -5
-git branch -vv  # Verificar solo main activa
-```
+**Ejemplos:**
+- `v0.1.0` - Milestone 1.3 completado (MVP expedientes)
+- `v0.2.0` - Milestone 2.3 completado (notificaciones)
+- `v0.2.1` - Hotfix validación NIF en producción
+- `v1.0.0` - Fase 4 completada (sistema en producción)
 
-**Resultado esperado:** `nothing to commit, working tree clean` y solo `* main`
+### 9.2 Releases en GitHub
 
----
+**Cuándo crear:**
+- Al finalizar cada milestone importante (1.3, 2.3, 3.4, 4.3)
+- Al completar cada fase completa
+- Solo en hotfixes críticos que requieren distribución urgente
 
-### 8.2 Resolución de Conflictos
-
-Si hay conflictos en `git pull`:
-
-1. Avísame inmediatamente con el detalle del conflicto
-2. Describimos juntos qué cambio prevalece
-3. Tú resuelves localmente (si es código que ejecutaste)
-4. O yo preparo la resolución (si es código que subí)
-
----
-
-### 8.3 Ramas y Pull Requests
-
-**Rama principal:** `main`
-
-**Ramas de desarrollo:** Se crean según necesidad con prefijos:
-- `feature/` - nuevas funcionalidades
-- `bugfix/` - corrección de errores
-- `hotfix/` - correcciones urgentes
-- `refactor/` - refactorizaciones
-- `docs/` - solo documentación
-
-**Workflow:**
-1. IA evalúa si requiere rama (ver sección 12.1)
-2. Si requiere rama: IA crea rama de desarrollo
-3. IA hace commits en la rama (con aprobación usuario)
-4. Usuario prueba localmente
-5. **IA actualiza changelog en la misma rama**
-6. Usuario da OK final
-7. IA crea Pull Request a `main` (incluye changelog)
-8. IA hace merge del PR
-9. **IA borra rama remota inmediatamente**
-10. **Usuario borra rama local**
+**Contenido:**
+- Basado en tag específico
+- Descripción ejecutiva del milestone/fase
+- Listado de funcionalidades clave
+- Issues cerrados
+- Assets SQL si cambia estructura BD
 
 ---
 
-## 9. Herramientas y Comandos Esenciales
+## 10. Comandos Git Esenciales
 
-### 9.1 Git (Usuario)
+### 10.1 Usuario (trabajo local)
 
-**Ver estado:**
+**Sincronizar con develop:**
 ```bash
-git status
-git log --oneline -10
-git branch -vv  # Ver ramas locales y su tracking remoto
+git checkout develop
+git pull origin develop
 ```
 
-**Traer cambios remotos:**
+**Trabajar en rama de feature:**
 ```bash
-git pull origin main
-```
-
-**Crear/subir cambios locales:**
-```bash
-git add [archivo]
+git checkout feature/issue-XX-descripcion
+git pull origin feature/issue-XX-descripcion
+# ... hacer cambios ...
+git add [archivos]
 git commit -m "[CATEGORÍA] Descripción"
-git push origin main
+git push origin feature/issue-XX-descripcion
 ```
 
-**Ver diferencias:**
+**Limpiar tras merge:**
 ```bash
-git diff
-git diff --staged
+git checkout develop
+git pull origin develop
+git branch -D feature/issue-XX-descripcion
 ```
 
-**Borrar rama local:**
+**Verificar estado:**
 ```bash
-git branch -D nombre-rama
-```
-
----
-
-### 9.2 Flask y BD (Usuario)
-
-**Activar entorno virtual:**
-```bash
-source venv/bin/activate  # Linux/Mac
-venv\Scripts\activate  # Windows
-```
-
-**Aplicar migraciones:**
-```bash
-flask db upgrade
-```
-
-**Crear migración:**
-```bash
-flask db migrate -m "Descripción del cambio"
-```
-
-**Ejecutar servidor:**
-```bash
-flask run
-```
-
----
-
-### 9.3 Ver Cambios en Remoto (IA)
-
-**Verificar que el push fue exitoso:**
-```bash
-git log --oneline -5
 git status
+git branch -vv
+git log --oneline -10
 ```
 
-**Borrar rama remota tras merge:**
+---
+
+### 10.2 IA (trabajo remoto)
+
+**Crear rama:**
 ```bash
-git push origin --delete nombre-rama
+git checkout develop
+git pull origin develop
+git checkout -b feature/issue-XX-descripcion
+git push origin feature/issue-XX-descripcion
+```
+
+**Commit en rama:**
+```bash
+git add [archivos]
+git commit -m "[CATEGORÍA] Descripción"
+git push origin feature/issue-XX-descripcion
+```
+
+**Borrar rama tras merge:**
+```bash
+git push origin --delete feature/issue-XX-descripcion
+```
+
+**Crear tag:**
+```bash
+git checkout main
+git pull origin main
+git tag -a v0.X.0 -m "Mensaje del tag"
+git push origin v0.X.0
 ```
 
 ---
 
-## 10. Resumen de Responsabilidades
+## 11. Uso de Git Stash
 
-| Actividad | IA | Usuario |
-|-----------|-------|------|
-| Preparar cambios de código | ✅ | |
-| Evaluar: rama vs commit directo | ✅ | |
-| Crear ramas de desarrollo | ✅ | |
-| Describir cambios claramente | ✅ | |
-| Consultar schema.sql para cambios BD | ✅ | |
-| Esperar aprobación previa | ✅ | |
-| Hacer commits remotos (tras OK) | ✅ | |
-| **Actualizar changelog en misma rama** | ✅ | |
-| Crear Pull Requests | ✅ | |
-| Hacer merge de PRs | ✅ | |
-| **Borrar ramas remotas tras merge** | ✅ | |
-| Actualizar documentación en docs/fuentesIA/ | ✅ | |
-| Hacer git pull | | ✅ |
-| Generar schema.sql y subirlo | | ✅ |
-| Probar en local (flask run) | | ✅ |
-| Hacer migraciones locales | | ✅ |
-| Hacer commits de testing/ajustes | | ✅ |
-| Hacer git push (cambios locales) | | ✅ |
-| **Borrar ramas locales tras merge** | | ✅ |
-| Dar OK para commits y PRs | | ✅ |
-| Verificar repositorio limpio | | ✅ |
+### 11.1 Cuándo Usar Stash
 
----
+**Casos válidos:**
+- Necesitas cambiar de rama urgentemente con trabajo sin terminar
+- Experimento que no quieres commitear todavía
+- Necesitas hacer `git pull` con cambios locales no commiteados
 
-## 11. Contacto y Sincronización Final
+**NO usar stash como:**
+- Sistema de versionado (para eso están los commits)
+- Almacenamiento de código "por si acaso" (para eso están las ramas)
 
-**Repositorio remoto:** https://github.com/genete/bddat  
-**Rama de trabajo:** main  
-**Sincronización:** Después de cada sesión de desarrollo  
-**Documentación:** Actualizada en `docs/fuentesIA/` y `docs/CHANGELOG.md`  
-**Aprobación de cambios:** Explícita y previa a commits remotos  
-**Changelog:** Actualizado en la misma rama de desarrollo, no en rama separada  
-**Limpieza:** Ramas borradas inmediatamente tras merge
+### 11.2 Comandos Básicos
+
+```bash
+# Guardar cambios temporalmente
+git stash save "WIP: formulario solicitud a medias"
+
+# Listar stashes
+git stash list
+
+# Recuperar último stash (lo elimina)
+git stash pop
+
+# Aplicar stash sin eliminarlo
+git stash apply stash@{0}
+
+# Eliminar stash
+git stash drop stash@{1}
+
+# Limpiar todos los stashes
+git stash clear
+```
+
+### 11.3 Ejemplo de Uso
+
+```bash
+# Trabajando en feature/formulario-actuaciones
+# Llega bug urgente que arreglar
+
+git stash save "WIP: validación formulario actuaciones"
+git checkout develop
+git checkout -b bugfix/issue-XX-validacion-nif
+
+# ... arreglar bug, commit, PR, merge ...
+
+git checkout feature/formulario-actuaciones
+git stash pop  # Recuperar trabajo
+
+# ... continuar con formulario ...
+```
 
 ---
 
 ## 12. Gestión de Ramas
 
-### 12.1 Cuándo Crear Rama vs Commit Directo en Main
+### 12.1 Cuándo Crear Rama Temporal vs Commit Directo en Develop
 
-#### Commit Directo en Main (sin rama ni PR)
+#### Commit Directo en Develop (sin rama ni PR)
 
 **Usar para cambios simples que:**
 - Modifican 1-2 archivos solamente
 - No requieren testing funcional (solo revisión de texto/docs)
 - Son actualizaciones de documentación pura
-- Son typos o correcciones menores
+- Son typos o correcciones menores en código sin lógica
+- No afectan modelos, BD o flujo de negocio
 
 **Ejemplos:**
 - Actualizar `REGLAS_DESARROLLO.md`
-- Corregir typo en `CHANGELOG.md`
+- Corregir typo en comentario de código
 - Actualizar `README.md`
-- Ajustar comentarios en código
-- Cambios en `.gitignore`
+- Ajustar `.gitignore`
 - Actualizar documentación en `docs/fuentesIA/`
+- Cambios en archivos de configuración menores
 
 **Proceso:**
-1. IA describe el cambio
+1. IA describe cambio
 2. Usuario da OK
-3. IA hace commit directo en `main`
-4. No se crea rama, no se crea PR
-5. **Resultado:** 0 ramas sueltas, repositorio limpio
+3. IA hace commit directo en `develop`
+4. **No rama, no PR**
 
 ---
 
-#### Rama + PR (workflow completo)
+#### Rama Temporal + PR (workflow completo)
 
 **Usar para cambios complejos que:**
 - Modifican 3+ archivos
 - Requieren testing funcional (`flask run`)
-- Afectan modelos, rutas, templates
+- Afectan modelos, rutas, templates conjuntamente
 - Implican migraciones de BD
 - Pueden tener efectos secundarios
 - Necesitan revisión detallada
+- Implementan features de issues
 
 **Ejemplos:**
-- Nuevas features
+- Nuevas features completas
 - Cambios en modelos SQLAlchemy
-- Nuevas rutas y templates
+- Nuevas rutas + templates coordinados
 - Refactorizaciones de lógica
-- Cambios que afectan múltiples módulos
 - Migraciones de base de datos
+- Issues que requieren múltiples commits
 
-**Proceso estándar:** Ver sección 2.2 (Cambios Complejos)
+**Proceso:** Ver sección 6.2
 
 ---
 
-### 12.2 Regla de Oro: No Dejar Ramas Huérfanas
+### 12.2 Regla de Oro: Repositorio Limpio
 
 **Principio fundamental:**
-> Toda rama creada debe terminar mergeada o explícitamente descartada. NUNCA dejar ramas "por si acaso".
+> Toda rama temporal creada debe terminar mergeada o explícitamente descartada. NUNCA dejar ramas huérfanas.
 
-**Workflow obligatorio tras merge:**
+**Limpieza obligatoria tras merge:**
 
-**IA (inmediatamente después del merge):**
+**IA (inmediatamente):**
 ```bash
 git push origin --delete nombre-rama
 ```
 
-**Usuario (tras actualizar main):**
+**Usuario (tras actualizar develop):**
 ```bash
-git checkout main
-git pull origin main
+git checkout develop
+git pull origin develop
 git branch -D nombre-rama
-```
-
-**Resultado:** 
-- ✅ Repositorio limpio
-- ✅ Solo `main` + ramas activas en desarrollo
-- ✅ No hay comprobaciones adicionales semanales
-- ✅ Historial claro
-
----
-
-### 12.3 Limpieza Automática Post-Merge
-
-#### En GitHub (altamente recomendado)
-
-**Configurar una sola vez:**
-1. Ir a: Settings → General → Pull Requests
-2. Activar: ☑️ **Automatically delete head branches**
-3. **Resultado:** Rama remota se borra automáticamente tras merge del PR
-
-#### Manual (si no está configurado GitHub)
-
-**IA ejecuta tras merge:**
-```bash
-git push origin --delete nombre-rama
-```
-
-**Usuario ejecuta localmente:**
-```bash
-git checkout main
-git pull origin main
-git branch -D nombre-rama
-```
-
-**Verificar estado limpio:**
-```bash
-git branch -vv  # Solo debe aparecer * main
-```
-
----
-
-### 12.4 Casos Especiales
-
-#### PR Rechazado o Cancelado
-
-**Si un PR no se aprueba o se cancela:**
-
-1. Cerrar PR en GitHub
-2. IA borra rama remota inmediatamente:
-   ```bash
-   git push origin --delete nombre-rama
-   ```
-3. Usuario borra rama local:
-   ```bash
-   git branch -D nombre-rama
-   ```
-4. Si los cambios son valiosos para futuro: crear tag antes de borrar
-   ```bash
-   git tag archivo/nombre-descriptivo nombre-rama
-   git push origin archivo/nombre-descriptivo
-   git branch -D nombre-rama
-   ```
-
-#### Experimentación sin Certeza de Merge
-
-**Si necesitas probar algo sin certeza de merge:**
-- Crea rama con prefijo `test/` o `experimental/`
-- Al finalizar: **Borra explícitamente** (aunque no se mergee)
-- Nunca dejarla huérfana
-
----
-
-### 12.5 Verificación de Estado Limpio
-
-**Comando rápido para verificar (Usuario):**
-
-```bash
-# Ver solo ramas locales
-git branch
-
-# Ver ramas locales con tracking remoto
-git branch -vv
-
-# Ver ramas remotas
-git branch -r
 ```
 
 **Resultado esperado:**
-
-```bash
-# git branch
-* main
-
-# git branch -r
-origin/HEAD -> origin/main
-origin/main
-# (Solo ramas activas en desarrollo, si las hay)
-```
-
-**Si aparecen ramas antiguas:**
-- Revisar si tienen PR merged → Borrar
-- Revisar si tienen PR abierto → Mantener
-- Revisar si no tienen PR → Borrar o mergear
+- ✅ Solo ramas permanentes: `main`, `develop`
+- ✅ Solo ramas temporales activas en desarrollo
+- ✅ Historial claro en PRs de GitHub
 
 ---
 
-### 12.6 Ramas que NUNCA se Deben Borrar
+### 12.3 Configuración Recomendada en GitHub
 
-**Protegidas permanentemente:**
-- `main` (rama principal del proyecto)
-- `master` (si existe como alias histórico)
-- `develop` (si se usa flujo GitFlow)
+**Una sola vez, configurar:**
 
-**Verificar antes de borrar:**
-- Ramas con PRs abiertos y activos
-- Ramas de trabajo en curso con commits únicos
-- Ramas compartidas con otros desarrolladores (en proyectos colaborativos)
+1. **Settings → Branches:**
+   - Default branch: `develop`
+   
+2. **Settings → General → Pull Requests:**
+   - ☑️ Automatically delete head branches
+   - ☑️ Allow squash merging (opcional, según preferencia)
+
+**Resultado:**
+- PRs se crean por defecto hacia `develop`
+- Ramas se borran automáticamente tras merge
 
 ---
 
-### 12.7 Responsabilidades en la Limpieza
+## 13. Checklist Pre-Commit
+
+### 13.1 IA (antes de solicitar OK)
+
+- [ ] Evaluado: ¿rama temporal o commit directo?
+- [ ] Rama creada con nombre apropiado (si aplica)
+- [ ] Cambio documentado y explicado
+- [ ] Nombres en snake_case (excepto clases en CamelCase)
+- [ ] Consultado `schema.sql` para cambios BD
+- [ ] Código sigue convenciones del proyecto
+- [ ] Mensaje de commit con categoría correcta
+- [ ] **Changelog actualizado en misma rama** (si aplica)
+
+---
+
+### 13.2 Usuario (antes de git push)
+
+- [ ] `git pull` completado
+- [ ] `flask run` funciona sin errores
+- [ ] BD responde correctamente
+- [ ] Formularios funcionan
+- [ ] Migraciones aplicadas: `flask db upgrade`
+- [ ] No hay archivos `.pyc`, `__pycache__`, `.env`
+- [ ] Nombres en snake_case
+- [ ] Mensaje de commit descriptivo
+
+---
+
+## 14. Resumen de Responsabilidades
 
 | Actividad | IA | Usuario |
-|-----------|-----|---------|
-| Decidir: rama vs commit directo | ✅ | ✅ |
-| Borrar rama remota tras merge | ✅ | |
-| Borrar rama local tras merge | | ✅ |
-| Mantener repositorio limpio | ✅ | ✅ |
-| Verificar ausencia de ramas huérfanas | | ✅ |
-| Configurar auto-delete en GitHub | | ✅ |
+|-----------|-------|------|
+| Evaluar: rama vs commit directo | ✅ | |
+| Crear ramas temporales desde develop | ✅ | |
+| Hacer commits remotos (tras OK) | ✅ | |
+| Actualizar changelog en rama desarrollo | ✅ | |
+| Crear PRs a develop | ✅ | |
+| Merge PRs a develop | ✅ | |
+| Borrar ramas remotas tras merge | ✅ | |
+| Crear PRs de develop a main (releases) | ✅ | |
+| Crear tags en main | ✅ | |
+| Crear GitHub Releases | ✅ | |
+| Hacer git pull | | ✅ |
+| Probar en local (flask run) | | ✅ |
+| Generar schema.sql y subirlo | | ✅ |
+| Hacer migraciones locales | | ✅ |
+| Commits de testing/ajustes | | ✅ |
+| Git push (cambios locales) | | ✅ |
+| Borrar ramas locales tras merge | | ✅ |
+| Dar OK para commits y PRs | | ✅ |
+| Dar OK para releases | | ✅ |
+| Verificar repositorio limpio | | ✅ |
+
+---
+
+## 15. Estrategia de Versionado
+
+### 15.1 Milestones → Versiones
+
+| Milestone | Versión | Fase | Release |
+|-----------|---------|------|---------|
+| 1.1 | - | Fase 1 | No |
+| 1.2 | - | Fase 1 | No |
+| 1.3 | **v0.1.0** | Fase 1 | ✅ MVP |
+| 2.1 | - | Fase 2 | No |
+| 2.2 | - | Fase 2 | No |
+| 2.3 | **v0.2.0** | Fase 2 | ✅ |
+| 3.1 | - | Fase 3 | No |
+| 3.2 | - | Fase 3 | No |
+| 3.3 | **v0.3.0** | Fase 3 | ✅ |
+| 3.4 | **v0.4.0** | Fase 3 | ✅ (PostGIS) |
+| 4.1 | - | Fase 4 | No |
+| 4.2 | - | Fase 4 | No |
+| 4.3 | **v1.0.0** | Fase 4 | ✅ PRODUCCIÓN |
+
+### 15.2 Hotfixes
+
+**Si hay bug crítico en `main`:**
+
+```bash
+# IA crea rama desde main
+git checkout main
+git checkout -b hotfix/fix-validacion-nif
+# ... arreglar ...
+# PR a main + PR a develop (o cherry-pick)
+# Tag nuevo: v0.1.1 (incrementa PATCH)
+```
+
+---
+
+## 16. Transición del Workflow Actual
+
+### 16.1 Estado Actual (25 enero 2026)
+
+- ✅ 1 rama: `main`
+- ✅ GitHub Flow básico funcionando
+- ✅ Ramas temporales se borran correctamente tras merge
+- ❌ Sin rama `develop`
+- ❌ Sin tags ni releases
+- ❌ Sin milestones asignados a issues
+
+### 16.2 Pasos de Migración
+
+**Paso 1: Crear rama develop (ahora)**
+
+```bash
+# IA ejecuta:
+git checkout main
+git pull origin main
+git checkout -b develop
+git push origin develop
+```
+
+**Paso 2: Configurar develop como rama por defecto en GitHub**
+
+Settings → Branches → Default branch → cambiar a `develop`
+
+**Paso 3: Crear milestones en GitHub**
+
+Issues → Milestones → New milestone:
+- Milestone 1.1 - Infraestructura base (fecha estimada)
+- Milestone 1.2 - Gestión solicitantes (fecha estimada)
+- Milestone 1.3 - Expedientes básicos MVP (fecha estimada)
+
+**Paso 4: Reasignar issues existentes**
+
+- Issue #3 → Milestone 1.1
+- Issue #4 → Milestone 1.1
+- Issue #1 → Milestone 2.2
+- Issue #28 → Milestone 2.3
+- Issue #27 → Milestone 3.4
+
+**Paso 5: Partir de develop para nuevos cambios**
+
+A partir de ahora:
+- Trabajo diario en `develop` o ramas desde `develop`
+- `main` solo recibe merges al completar milestones
+- Tags y releases solo en `main`
+
+---
+
+## 17. Documentación y Fuentes de Verdad
+
+### 17.1 Jerarquía de Documentación
+
+**Orden de prevalencia (mayor a menor):**
+
+1. **Código en el repositorio** (`app/`, `schema.sql`, `migrations/`)
+2. **Documentación en repositorio** (`docs/fuentesIA/`)
+3. **CHANGELOG.md** (últimos 5 PRs)
+4. **Pull Requests en GitHub** (historial completo)
+5. **Otras fuentes de conocimiento de IA**
+
+### 17.2 Documentos Clave en Repositorio
+
+- `docs/fuentesIA/REGLAS_DESARROLLO.md` - Este documento
+- `docs/fuentesIA/GuiaGeneralNueva.md` - Plan general del proyecto
+- `docs/fuentesIA/ACCESO_RAPIDO_PROYECTO.md` - Referencia rápida
+- `docs/CHANGELOG.md` - Últimos 5 PRs
+- `schema.sql` - Definición completa BD (generado por usuario)
+
+---
+
+## 18. Principios de Trabajo
+
+1. **Documentación primero:** Diseñar antes de codificar
+2. **Incrementalidad:** Cambios pequeños, probados, sincronizados
+3. **Trazabilidad:** Git es la fuente de verdad del código
+4. **Aprobación previa:** No commits remotos sin OK explícito del usuario
+5. **Repositorio limpio:** Borrado inmediato de ramas tras merge
+6. **Develop como hub:** Todo cambio pasa por `develop` antes de `main`
+7. **Main siempre estable:** Solo código probado y versionado
+8. **Milestones claros:** Issues organizados por objetivos funcionales
 
 ---
 
 **Documento creado:** 17 de enero de 2026, 21:24 CET  
-**Última actualización:** 25 de enero de 2026, 09:06 CET  
-**Versión:** 2.3  
+**Última actualización:** 25 de enero de 2026, 18:33 CET  
+**Versión:** 3.0  
 **Referencia:** Repositorio oficial genete/bddat en GitHub
