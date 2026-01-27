@@ -6,20 +6,36 @@
 /* Contenedor de toasts */
 .toast-container {
     z-index: 1080;
+    /* Ajustar ancho: 90% del viewport con márgenes de 5% a cada lado */
+    width: 90%;
+    left: 5% !important;
+    right: auto !important;
 }
 
-/* Base toast - fondo blanco con sombra */
+/* Base toast - fondo con transparencia inicial y transiciones */
 .toast {
-    min-width: 300px;
+    width: 100%;
     background-color: #ffffff;
+    /* Sin borde, solo fondo coloreado */
     border: none;
-    border-left: 4px solid;
     box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    opacity: 0.9;
+    cursor: pointer;
+    /* Transiciones suaves de 300ms */
+    transition: opacity 300ms ease-in-out, 
+                box-shadow 300ms ease-in-out, 
+                transform 300ms ease-in-out;
+}
+
+/* Efecto hover: oscurecer (opacidad total) y sombra más intensa */
+.toast:hover {
+    opacity: 1;
+    box-shadow: 0 0.75rem 1.5rem rgba(0, 0, 0, 0.25);
+    transform: translateY(-2px);
 }
 
 /* Toast Success - Verde */
 .toast-success {
-    border-left-color: #0f5132;
     background-color: #d1e7dd;
 }
 
@@ -37,9 +53,13 @@
     color: #0f5132;
 }
 
+/* Botón cerrar en verde oscuro para toast success */
+.toast-success .btn-close {
+    filter: invert(23%) sepia(18%) saturate(2456%) hue-rotate(93deg) brightness(95%) contrast(96%);
+}
+
 /* Toast Danger - Rojo */
 .toast-danger {
-    border-left-color: #842029;
     background-color: #f8d7da;
 }
 
@@ -57,9 +77,13 @@
     color: #842029;
 }
 
+/* Botón cerrar en rojo oscuro para toast danger */
+.toast-danger .btn-close {
+    filter: invert(13%) sepia(45%) saturate(2735%) hue-rotate(331deg) brightness(89%) contrast(94%);
+}
+
 /* Toast Warning - Amarillo */
 .toast-warning {
-    border-left-color: #997404;
     background-color: #fff3cd;
 }
 
@@ -77,9 +101,13 @@
     color: #997404;
 }
 
+/* Botón cerrar en amarillo oscuro para toast warning */
+.toast-warning .btn-close {
+    filter: invert(38%) sepia(82%) saturate(680%) hue-rotate(11deg) brightness(96%) contrast(98%);
+}
+
 /* Toast Info - Azul */
 .toast-info {
-    border-left-color: #084298;
     background-color: #cfe2ff;
 }
 
@@ -95,6 +123,43 @@
 
 .toast-info .toast-header i {
     color: #084298;
+}
+
+/* Botón cerrar en azul oscuro para toast info */
+.toast-info .btn-close {
+    filter: invert(17%) sepia(95%) saturate(2270%) hue-rotate(207deg) brightness(94%) contrast(98%);
+}
+
+/* Animaciones de entrada y salida */
+.toast.showing {
+    opacity: 0;
+    animation: fadeIn 300ms ease-in-out forwards;
+}
+
+.toast.hide {
+    animation: fadeOut 300ms ease-in-out forwards;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 0.9;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeOut {
+    from {
+        opacity: 0.9;
+        transform: translateY(0);
+    }
+    to {
+        opacity: 0;
+        transform: translateY(20px);
+    }
 }
 
 /* ========================================
