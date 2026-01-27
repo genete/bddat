@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict Pbotnqo8BD1MOrtXl9BhU0CPp9aR3ETeAdigEjeeqIagkb6XPXcvs0fyoGk81Lf
+\restrict 5aN64E4a6xVIgH9XfyoRAGZyuI7b4AZcf5FSmOP6NBgwKDApmfxjZdJk3Q1b2gN
 
 -- Dumped from database version 18.1
 -- Dumped by pg_dump version 18.1
@@ -996,5 +996,5 @@ SELECT pg_catalog.setval('estructura.tipos_tramites_id_seq', 30, true);
 -- PostgreSQL database dump complete
 --
 
-\unrestrict Pbotnqo8BD1MOrtXl9BhU0CPp9aR3ETeAdigEjeeqIagkb6XPXcvs0fyoGk81Lf
+\unrestrict 5aN64E4a6xVIgH9XfyoRAGZyuI7b4AZcf5FSmOP6NBgwKDApmfxjZdJk3Q1b2gN
 
