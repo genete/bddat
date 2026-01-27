@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict rWpFTkSyHGIDchrjMzA6b5wj2MfqLuoxOfTuM3u8cHbiPFwy1kOWj6hCEr5NqMb
+\restrict T6qwY3tPV9DFu7dGns5u1W7Rv0w59ItYad08nvtc7FiNBDyLkLJlMeLlnX2bqNj
 
 -- Dumped from database version 18.1
 -- Dumped by pg_dump version 18.1
@@ -45,6 +45,13 @@ CREATE TABLE estructura.municipios (
 
 
 ALTER TABLE estructura.municipios OWNER TO postgres;
+
+--
+-- Name: TABLE municipios; Type: COMMENT; Schema: estructura; Owner: postgres
+--
+
+COMMENT ON TABLE estructura.municipios IS 'Catálogo de municipios de Andalucía con códigos INE oficiales. Fuente: Instituto Nacional de Estadística (INE) - Fichero 25codmun.xlsx a 1 de enero de 2025. Ámbito: 785 municipios de 8 provincias andaluzas (Almería, Cádiz, Córdoba, Granada, Huelva, Jaén, Málaga, Sevilla). Última carga: 25 de enero de 2026. URL: https://www.ine.es/daco/daco42/codmun/25codmun.xlsx';
+
 
 --
 -- Name: COLUMN municipios.id; Type: COMMENT; Schema: estructura; Owner: postgres
@@ -2382,5 +2389,5 @@ ALTER TABLE ONLY public.usuarios_roles
 -- PostgreSQL database dump complete
 --
 
-\unrestrict rWpFTkSyHGIDchrjMzA6b5wj2MfqLuoxOfTuM3u8cHbiPFwy1kOWj6hCEr5NqMb
+\unrestrict T6qwY3tPV9DFu7dGns5u1W7Rv0w59ItYad08nvtc7FiNBDyLkLJlMeLlnX2bqNj
 
