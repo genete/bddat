@@ -2,7 +2,7 @@
 
 **Repositorio:** https://github.com/genete/bddat  
 **Historial completo:** [Ver Pull Requests cerrados](https://github.com/genete/bddat/pulls?q=is%3Apr+is%3Aclosed)  
-**Última actualización:** 25 de enero de 2026
+**Última actualización:** 27 de enero de 2026
 
 ---
 
@@ -17,6 +17,24 @@ Este archivo mantiene un **resumen de los últimos 5 PRs mergeados** para consul
 ---
 
 ## Últimos Cambios
+
+### 2026-01-27 - [PR #TBD: Mejorar Diseño de Mensajes Informativos](https://github.com/genete/bddat/pull/TBD)
+
+**Objetivo:** Mejorar el diseño visual y comportamiento de los mensajes informativos (toasts) implementando los cambios solicitados en el issue #3.
+
+**Cambios principales:**
+- ✅ **Ancho 90%**: Los toasts ocupan el 90% del ancho visible con márgenes del 5% a cada lado
+- ✅ **Borde uniforme**: Cambio de borde izquierdo de 4px a borde completo de 1px del color oscuro de cada tipo
+- ✅ **Botón cerrar coloreado**: La "X" de cerrar ahora tiene el mismo color que el texto/borde de cada tipo (verde, rojo, amarillo, azul)
+- ✅ **Transparencia inicial**: Los mensajes aparecen con opacity 0.9
+- ✅ **Efecto hover**: Al pasar el ratón, el mensaje se oscurece (opacity 1), la sombra se intensifica y se eleva ligeramente
+- ✅ **Tiempo ampliado**: El tiempo de auto-cierre aumenta de 5 a 8 segundos
+- ✅ **Animaciones fade**: Transiciones suaves de 300ms al aparecer y desaparecer con desplazamiento vertical
+
+**Issues resueltos:** #3  
+**Archivos:** app/static/css/custom.css, app/templates/base.html
+
+---
 
 ### 2026-01-25 - Unificar Actualización de Changelog en Rama de Feature
 
@@ -100,20 +118,6 @@ provincias = proyecto.provincias_afectadas  # ['Almería', 'Granada']
 - ✅ Actualizado schema.sql con 16 tablas totales
 
 **Estado final:** 16 tablas (9 en estructura + 14 en public)
-
----
-
-### 2026-01-22 - [PR #19: Arquitectura v3.0 Tipos Individuales](https://github.com/genete/bddat/pull/19)
-
-**Objetivo:** Documentar arquitectura v3.0 con tipos de solicitudes individuales y tabla puente N:M.
-
-**Cambios principales:**
-- ✅ Documentación tabla puente `solicitudes_tipos` (N:M)
-- ✅ Catálogo 17 tipos individuales de solicitudes vs 20+ tipos combinados anteriores
-- ✅ Datos maestros iniciales en SQL
-- ✅ Incorporación normativa: RDL 7/2025 (AAE provisional/definitiva), RADNE Andalucía, RAIPEE renovables
-
-**Tipo:** Solo documentación (sin cambios en código)
 
 ---
 
