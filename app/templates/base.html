@@ -117,12 +117,12 @@
         </div>
     </footer>
 
-    <!-- Contenedor de toasts en esquina inferior derecha -->
-    <div class="toast-container position-fixed bottom-0 end-0 p-3">
+    <!-- Contenedor de toasts en la parte inferior, centrado con 5% de margen a cada lado -->
+    <div class="toast-container position-fixed bottom-0 p-3">
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
-                <div class="toast toast-{{ category }}" role="alert" aria-live="assertive" aria-atomic="true" data-bs-autohide="true" data-bs-delay="5000">
+                <div class="toast toast-{{ category }}" role="alert" aria-live="assertive" aria-atomic="true" data-bs-autohide="true" data-bs-delay="8000">
                     <div class="toast-header">
                         {% if category == 'success' %}
                             <i class="fas fa-check-circle me-2"></i>
@@ -153,12 +153,25 @@
     <script src="https://cdn.juntadeandalucia.es/components/sass/latest/js/jda-js.js"></script>
     
     <script>
-        // Auto-inicializar toasts al cargar la página
+        // Auto-inicializar toasts al cargar la página con animaciones fade
         document.addEventListener('DOMContentLoaded', function() {
             var toastElList = [].slice.call(document.querySelectorAll('.toast'));
             toastElList.forEach(function(toastEl) {
+                // Añadir clase para animación de entrada
+                toastEl.classList.add('showing');
+                
                 var toast = new bootstrap.Toast(toastEl);
                 toast.show();
+                
+                // Remover clase después de la animación
+                setTimeout(function() {
+                    toastEl.classList.remove('showing');
+                }, 300);
+                
+                // Añadir animación de salida antes de ocultar
+                toastEl.addEventListener('hide.bs.toast', function() {
+                    toastEl.classList.add('hide');
+                });
             });
         });
     </script>
