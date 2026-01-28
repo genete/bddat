@@ -17,7 +17,7 @@ class Expediente(db.Model):
     
     CARACTERÍSTICAS:
         - Único en toda la organización (identificado por NUMERO_AT)
-        - Asignado a un responsable (tramitador con permisos completos)
+        - Puede estar sin responsable (huérfano) hasta asignación por supervisor
         - Clasificado por tipo (determina procedimiento aplicable)
         - Puede ser heredado del sistema anterior (datos incompletos)
     
@@ -27,6 +27,11 @@ class Expediente(db.Model):
             - NO es el ID técnico, sino identificador administrativo
             - Único en la organización
             - Usado en referencias y búsquedas
+        
+        RESPONSABLE_ID:
+            - NULL permitido: expediente "huérfano" sin asignar
+            - Supervisor puede asignar según carga de trabajo o especialización
+            - Una vez asignado, el tramitador tiene permisos completos
         
         HEREDADO:
             - TRUE: Expediente migrado del sistema anterior
@@ -39,14 +44,14 @@ class Expediente(db.Model):
             - El proyecto evoluciona mediante documentos en DOCUMENTOS_PROYECTO
     
     RELACIONES:
-        - responsable → USUARIOS (tramitador asignado)
+        - responsable → USUARIOS (tramitador asignado, nullable)
         - tipo_expediente → TIPOS_EXPEDIENTES (clasificación normativa)
         - proyecto → PROYECTOS (relación 1:1, proyecto técnico único)
         - solicitudes ← SOLICITUDES (1:N, múltiples actos administrativos)
         - documentos ← DOCUMENTOS (1:N, pool de archivos del expediente)
     
     REGLAS DE NEGOCIO:
-        1. Cada expediente debe tener un responsable asignado
+        1. Expediente puede crearse sin responsable (huérfano)
         2. NUMERO_AT debe ser único en la organización
         3. PROYECTO_ID es obligatorio y único (relación 1:1)
         4. El tipo de expediente determina:
@@ -58,6 +63,7 @@ class Expediente(db.Model):
     NOTAS DE VERSIÓN:
         v3.0: Añadido PROYECTO_ID (relación 1:1). Antes el proyecto
               apuntaba al expediente, ahora es inverso para mayor claridad.
+        v3.1: RESPONSABLE_ID ahora nullable para permitir expedientes huérfanos.
     """
     __tablename__ = 'expedientes'
     __table_args__ = (
@@ -85,8 +91,8 @@ class Expediente(db.Model):
     responsable_id = db.Column(
         db.Integer,
         db.ForeignKey('public.usuarios.id'),
-        nullable=False,
-        comment='FK a USUARIOS. Tramitador asignado con permisos de gestión completa'
+        nullable=True,  # ← CAMBIO: permite NULL para expedientes huérfanos
+        comment='FK a USUARIOS. Tramitador asignado con permisos de gestión completa. NULL = huérfano sin asignar'
     )
     
     tipo_expediente_id = db.Column(
