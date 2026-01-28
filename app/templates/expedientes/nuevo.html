@@ -41,13 +41,14 @@
                     <div class="mb-3">
                         <label for="responsable_id" class="form-label">Responsable</label>
                         <select class="form-select" id="responsable_id" name="responsable_id">
+                            <option value="">-- Sin asignar (huérfano) --</option>
                             {% for usuario in usuarios %}
                                 <option value="{{ usuario.id }}" {% if usuario.id == current_user.id %}selected{% endif %}>
                                     {{ usuario.siglas }} - {{ usuario.nombre }} {{ usuario.apellido1 }}
                                 </option>
                             {% endfor %}
                         </select>
-                        <small class="form-text text-muted">Por defecto: tú</small>
+                        <small class="form-text text-muted">Dejar sin asignar para posterior gestión por supervisor</small>
                     </div>
                     
                     <!-- Heredado -->
