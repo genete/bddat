@@ -47,6 +47,9 @@
                         <label for="responsable_id" class="form-label">Responsable</label>
                         <select class="form-select" id="responsable_id" name="responsable_id" 
                                 {% if not current_user.tiene_rol('ADMIN', 'SUPERVISOR') %}disabled{% endif %}>
+                            <option value="" {% if not expediente.responsable_id %}selected{% endif %}>
+                                -- Sin asignar (huérfano) --
+                            </option>
                             {% for usuario in usuarios %}
                                 <option value="{{ usuario.id }}" 
                                         {% if expediente.responsable_id == usuario.id %}selected{% endif %}>
@@ -56,6 +59,8 @@
                         </select>
                         {% if not current_user.tiene_rol('ADMIN', 'SUPERVISOR') %}
                             <small class="form-text text-muted">Solo ADMIN/SUPERVISOR puede cambiar responsable</small>
+                        {% else %}
+                            <small class="form-text text-muted">Dejar sin asignar para gestión posterior por supervisor</small>
                         {% endif %}
                     </div>
                     

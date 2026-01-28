@@ -87,11 +87,15 @@
                         
                         <!-- Responsable -->
                         <td class="d-none d-lg-table-cell">
-                            <span title="{{ expediente.responsable.nombre }} {{ expediente.responsable.apellido1 }}">
-                                {{ expediente.responsable.siglas }}
-                            </span>
-                            {% if expediente.responsable_id == current_user.id %}
-                                <span class="badge bg-primary ms-1">Tú</span>
+                            {% if expediente.responsable %}
+                                <span title="{{ expediente.responsable.nombre }} {{ expediente.responsable.apellido1 }}">
+                                    {{ expediente.responsable.siglas }}
+                                </span>
+                                {% if expediente.responsable_id == current_user.id %}
+                                    <span class="badge bg-primary ms-1">Tú</span>
+                                {% endif %}
+                            {% else %}
+                                <span class="badge bg-warning text-dark">Sin asignar</span>
                             {% endif %}
                         </td>
                         

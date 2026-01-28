@@ -48,8 +48,12 @@
                 <div class="mb-3">
                     <div class="text-muted small mb-1" style="white-space: nowrap;">Responsable:</div>
                     <div>
-                        <strong>{{ expediente.responsable.siglas }}</strong> - 
-                        {{ expediente.responsable.nombre }} {{ expediente.responsable.apellido1 }}
+                        {% if expediente.responsable %}
+                            <strong>{{ expediente.responsable.siglas }}</strong> - 
+                            {{ expediente.responsable.nombre }} {{ expediente.responsable.apellido1 }}
+                        {% else %}
+                            <span class="badge bg-warning text-dark">Sin asignar (huérfano)</span>
+                        {% endif %}
                     </div>
                 </div>
                 

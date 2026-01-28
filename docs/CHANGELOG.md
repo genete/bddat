@@ -2,7 +2,7 @@
 
 **Repositorio:** https://github.com/genete/bddat  
 **Historial completo:** [Ver Pull Requests cerrados](https://github.com/genete/bddat/pulls?q=is%3Apr+is%3Aclosed)  
-**Última actualización:** 27 de enero de 2026
+**Última actualización:** 28 de enero de 2026
 
 ---
 
@@ -17,6 +17,29 @@ Este archivo mantiene un **resumen de los últimos 5 PRs mergeados** para consul
 ---
 
 ## Últimos Cambios
+
+### 2026-01-28 - [PR #TBD: Permitir expedientes sin responsable asignado (huérfanos)](https://github.com/genete/bddat/pull/TBD)
+
+**Objetivo:** Modificar el modelo Expediente para permitir `responsable_id = NULL`, habilitando la creación de expedientes huérfanos que posteriormente pueden ser asignados por un supervisor según carga de trabajo o especialización.
+
+**Cambios principales:**
+- ✅ **Modelo expedientes.py**: `responsable_id` ahora acepta NULL
+- ✅ **Migración Alembic**: `ALTER TABLE expedientes ALTER COLUMN responsable_id DROP NOT NULL`
+- ✅ **Rutas expedientes.py**: Permitir crear y editar expedientes con `responsable_id = None`
+- ✅ **Templates nuevo.html/editar.html**: Opción "-- Sin asignar (huérfano) --" en select de responsable
+- ✅ **Templates detalle.html/index.html**: Badge visual "Sin asignar" cuando expediente sin responsable
+- ✅ **Documentación**: Actualizada docstring del modelo con reglas de negocio de expedientes huérfanos
+
+**Casos de uso:**
+- Supervisor crea expediente para posterior asignación según disponibilidad
+- Redistribución de carga: dejar expediente sin asignar temporalmente
+- Gestión flexible de recursos humanos
+
+**Issues resueltos:** #46  
+**Milestone:** 1.3 - Expedientes básicos (MVP)  
+**Archivos:** app/models/expedientes.py, migrations/versions/51fcf34d6955_*.py, app/routes/expedientes.py, app/templates/expedientes/*.html
+
+---
 
 ### 2026-01-27 - [PR #TBD: Mejorar Diseño de Mensajes Informativos](https://github.com/genete/bddat/pull/TBD)
 
@@ -104,20 +127,6 @@ provincias = proyecto.provincias_afectadas  # ['Almería', 'Granada']
 - Integración con sistemas externos que usen códigos INE
 
 **Documentación:** [25codmun.xlsx](https://www.ine.es/daco/daco42/codmun/25codmun.xlsx)
-
----
-
-### 2026-01-24 - [PR #20: Agregar 11 Tablas Faltantes](https://github.com/genete/bddat/pull/20)
-
-**Objetivo:** Completar la base de datos con las 11 tablas faltantes según diseño v3.0.
-
-**Cambios principales:**
-- ✅ 4 tablas maestras nuevas en schema `estructura`: municipios, tipos_resultados_fases, tipos_tareas, tipos_tramites
-- ✅ 7 tablas operacionales nuevas en schema `public`: documentos, solicitudes, fases, tramites, tareas, documentos_proyecto, municipios_proyecto
-- ✅ Correcciones en modelos: fases.py, tramites.py, tareas.py
-- ✅ Actualizado schema.sql con 16 tablas totales
-
-**Estado final:** 16 tablas (9 en estructura + 14 en public)
 
 ---
 

@@ -95,9 +95,11 @@ def nuevo():
             numero_at = ultimo_numero + 1
             
             # Crear EXPEDIENTE vinculado al proyecto
+            # responsable_id puede ser None (expediente huérfano sin asignar)
+            responsable_id = request.form.get('responsable_id')
             nuevo_expediente = Expediente(
                 numero_at=numero_at,
-                responsable_id=request.form.get('responsable_id') or current_user.id,
+                responsable_id=int(responsable_id) if responsable_id else None,
                 tipo_expediente_id=request.form.get('tipo_expediente_id') or None,
                 heredado=request.form.get('heredado') == 'on',
                 proyecto_id=nuevo_proyecto.id
@@ -157,10 +159,10 @@ def editar(id):
             expediente.heredado = request.form.get('heredado') == 'on'
             
             # Solo ADMIN/SUPERVISOR puede cambiar responsable (usando utilidad)
+            # Permitir establecer None (expediente huérfano) explícitamente
             if puede_cambiar_responsable():
                 nuevo_responsable_id = request.form.get('responsable_id')
-                if nuevo_responsable_id:
-                    expediente.responsable_id = nuevo_responsable_id
+                expediente.responsable_id = int(nuevo_responsable_id) if nuevo_responsable_id else None
             
             # Actualizar PROYECTO - PostgreSQL mantiene defaults si vienen None
             proyecto = expediente.proyecto
