@@ -195,14 +195,16 @@
               </td>
               <td class="text-center">
                 <div class="btn-group" role="group">
-                  <a href="{{ url_for('proyectos.detalle', id=proyecto.id) }}" 
-                     class="btn btn-sm btn-outline-primary"
-                     data-bs-toggle="tooltip" 
-                     title="Ver detalle">
+                  {# Botón Ver detalle - DESHABILITADO hasta issue #40 #}
+                  <button class="btn btn-sm btn-outline-secondary" 
+                          disabled
+                          data-bs-toggle="tooltip" 
+                          title="Próximamente (issue #40)">
                     <i class="bi bi-eye"></i>
-                  </a>
+                  </button>
+                  
                   <a href="{{ url_for('expedientes.editar', id=proyecto.expediente.id) }}#proyecto" 
-                     class="btn btn-sm btn-outline-secondary"
+                     class="btn btn-sm btn-outline-primary"
                      data-bs-toggle="tooltip" 
                      title="Editar proyecto">
                     <i class="bi bi-pencil"></i>
