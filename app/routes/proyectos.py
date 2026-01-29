@@ -215,4 +215,4 @@ def editar_proyecto(id):
             abort(403)
     
     # Redirigir a edición de expediente con anchor #proyecto
-    return redirect(url_for('expedientes.editar_expediente', id=proyecto.expediente.id) + '#proyecto')
+    return redirect(url_for('expedientes.editar', id=proyecto.expediente.id) + '#proyecto')
