@@ -18,6 +18,81 @@ Este archivo mantiene un **resumen de los últimos 5 PRs mergeados** para consul
 
 ## Últimos Cambios
 
+### 2026-01-29 - [PR #55: Vista detallada de proyecto con maquetas](https://github.com/genete/bddat/pull/55)
+
+**Objetivo:** Implementar vista detallada individual de proyecto con todas las secciones solicitadas, incluyendo maquetas visuales para Documentos y Solicitudes futuras.
+
+**Cambios principales:**
+- ✅ **Ruta detalle** (`app/routes/proyectos.py`):
+  - `GET /proyectos/<id>` con verificación de permisos
+  - TRAMITADOR: Solo ve proyectos de sus expedientes
+  - ADMIN/SUPERVISOR: Ve cualquier proyecto
+  - Manejo de errores 404 (no existe) y 403 (sin permisos)
+  - Query con joins: Expediente, Usuario, TipoIA
+- ✅ **Template detalle** (`app/templates/proyectos/detalle.html`):
+  - Layout responsive col-lg-8 (contenido) + col-lg-4 (sidebar)
+  - Breadcrumb: Inicio → Proyectos → Título proyecto
+  - Badge "Interprovincial" en header cuando aplica
+  - Botones header: Editar Proyecto, Volver
+- ✅ **Sección: Datos Básicos** (card verde):
+  - Título, Descripción, Finalidad, Emplazamiento
+  - Tipo de instalación AT (badge + descripción completa)
+  - Fecha de creación
+  - Manejo de campos opcionales vacíos ("No especificado/a")
+- ✅ **Sección: Localización** (card verde):
+  - Lista completa de municipios con provincia y código INE
+  - Badge "Proyecto Interprovincial" cuando `es_interprovincial == True`
+  - Alerta amarilla informativa con lista de provincias afectadas
+  - Resumen de provincias afectadas
+- ✅ **Sección: Documentos - MAQUETA** (card azul):
+  - Alerta info: "Funcionalidad en desarrollo"
+  - Vista preliminar al 50% opacidad (no funcional)
+  - Ejemplos visuales: Memoria_Tecnica.pdf, Plano_Situacion.dwg
+  - Preparado para futura gestión de archivos adjuntos
+- ✅ **Sección: Solicitudes - MAQUETA** (card amarilla):
+  - Alerta warning: "Funcionalidad pendiente (Milestone 4)"
+  - Vista preliminar al 50% opacidad (no funcional)
+  - Tabla ejemplo: Consulta Previa (Aprobada), Autorización Administrativa (En tramitación)
+  - Preparado para MS4 (CRUD solicitudes)
+- ✅ **Sidebar: Expediente Asociado** (card azul):
+  - Número AT con enlace a detalle expediente
+  - Tipo de expediente (badge info)
+  - Responsable: nombre, email, icono
+  - Badge "Tú" para usuario actual
+  - Badge "Sin asignar" para expedientes huérfanos
+  - Indicador de expediente heredado (check verde)
+  - Botón "Ver Expediente Completo"
+- ✅ **Sidebar: Acciones Rápidas** (card gris):
+  - Editar Proyecto (redirige a `/expedientes/<id>/editar#proyecto`)
+  - Editar Expediente
+  - Volver al Listado
+- ✅ **Botón "Ver detalle" habilitado** en listado de proyectos
+
+**Funcionalidades:**
+- Vista detallada accesible desde `/proyectos/<id>`
+- Botón "Ver detalle" funcional en listado (antes deshabilitado)
+- Navegación breadcrumb completa
+- Detección automática de proyectos interprovinciales
+- Visualización completa de municipios con datos INE
+- Maquetas visuales de secciones futuras (Documentos, Solicitudes)
+- Enlaces cruzados a expediente y formulario de edición
+- Tooltips en badges para información adicional
+
+**Estilo:**
+- Cards con `shadow-sm` y headers coloreados (colores JDA)
+- Maquetas con `opacity-50` para indicar no funcionalidad
+- Alertas con iconos `fa-2x` para mayor visibilidad
+- Textos "Sin datos" con `text-muted fst-italic`
+- Responsive con sidebar colapsable en móvil
+
+**Issues resueltos:** #40  
+**Milestone:** MS-2 - Fase 2.2 Gestión de Expedientes  
+**Archivos:** app/routes/proyectos.py, app/templates/proyectos/detalle.html (NUEVO), app/templates/proyectos/index.html, docs/CHANGELOG.md
+
+**Notas:** Se planea iteración posterior para mejoras de diseño según feedback.
+
+---
+
 ### 2026-01-29 - [PR #54: Listado de proyectos con filtros y ordenamiento](https://github.com/genete/bddat/pull/54)
 
 **Objetivo:** Implementar listado completo de proyectos de instalaciones AT con filtros, ordenamiento y visualización detallada.
@@ -139,28 +214,6 @@ Este archivo mantiene un **resumen de los últimos 5 PRs mergeados** para consul
 
 **Issues resueltos:** #3  
 **Archivos:** app/static/css/custom.css, app/templates/base.html
-
----
-
-### 2026-01-25 - [PR #24: Detección de Proyectos Interprovinciales](https://github.com/genete/bddat/pull/24)
-
-**Objetivo:** Añadir lógica al modelo Proyecto para detectar automáticamente si afecta a más de una provincia.
-
-**Cambios principales:**
-- ✅ **Propiedad `es_interprovincial`**: Booleana, detecta proyectos con municipios de 2+ provincias
-- ✅ **Propiedad `provincias_afectadas`**: Lista ordenada de nombres de provincias únicas
-- ✅ **Lógica**: Usa primeros 2 dígitos del código INE (PPMMM) del municipio
-- ✅ **Sin migración**: Propiedades calculadas en runtime con `@property`
-
-**Uso:**
-```python
-if proyecto.es_interprovincial:
-    flash('⚠️ Proyecto interprovincial', 'warning')
-
-provincias = proyecto.provincias_afectadas  # ['Almería', 'Granada']
-```
-
-**Archivos:** app/models/proyectos.py
 
 ---
 
