@@ -15,15 +15,21 @@ bp = Blueprint('proyectos', __name__, url_prefix='/proyectos')
 @login_required
 def index():
     """
-    Listado de proyectos con filtros opcionales.
+    Listado de proyectos con filtros y ordenamiento.
     
-    Filtros GET:
+    Parámetros GET:
     - tipo_ia: ID del tipo de instalación
     - provincia: Código de provincia (2 dígitos)
     - responsable: ID del usuario responsable (solo ADMIN/SUPERVISOR)
+    - sort: Campo de ordenamiento (titulo, tipo_ia, expediente, responsable, fecha_creacion)
+    - order: Dirección de ordenamiento (asc, desc)
     """
-    # Query base con joins necesarios
-    query = db.session.query(Proyecto).join(Expediente)
+    # Query base con joins necesarios para ordenamiento
+    query = db.session.query(Proyecto).join(Expediente).join(
+        Usuario, Expediente.id_responsable == Usuario.id
+    ).outerjoin(
+        TipoInstalacionAT, Proyecto.id_tipo_ia == TipoInstalacionAT.id
+    )
     
     # Aplicar filtro de permisos según rol
     if current_user.rol.nombre == 'TRAMITADOR':
@@ -55,8 +61,29 @@ def index():
         if responsable_id:
             query = query.filter(Expediente.id_responsable == responsable_id)
     
-    # Ordenamiento por defecto: fecha creación DESC
-    query = query.order_by(Proyecto.fecha_creacion.desc())
+    # Parámetros de ordenamiento
+    sort_by = request.args.get('sort', 'fecha_creacion')
+    order = request.args.get('order', 'desc')
+    
+    # Mapeo seguro de columnas para ordenamiento (prevenir SQL injection)
+    sort_columns = {
+        'titulo': Proyecto.titulo,
+        'tipo_ia': TipoInstalacionAT.nombre,
+        'expediente': Expediente.numero_at,
+        'responsable': Usuario.nombre,
+        'fecha_creacion': Proyecto.fecha_creacion
+    }
+    
+    # Aplicar ordenamiento
+    if sort_by in sort_columns:
+        column = sort_columns[sort_by]
+        if order == 'desc':
+            query = query.order_by(column.desc())
+        else:
+            query = query.order_by(column.asc())
+    else:
+        # Fallback a ordenamiento por defecto
+        query = query.order_by(Proyecto.fecha_creacion.desc())
     
     # Ejecutar query
     proyectos = query.all()
@@ -94,5 +121,7 @@ def index():
             'tipo_ia': tipo_ia_id,
             'provincia': provincia_codigo,
             'responsable': request.args.get('responsable', type=int)
-        }
+        },
+        sort_by=sort_by,
+        order=order
     )
