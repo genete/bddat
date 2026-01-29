@@ -27,7 +27,10 @@ def index():
     - order: Dirección de ordenamiento (asc, desc)
     """
     # Query base con joins necesarios para ordenamiento
-    query = db.session.query(Proyecto).join(Expediente).join(
+    # IMPORTANTE: outerjoin con Usuario para incluir expedientes sin responsable (NULL)
+    query = db.session.query(Proyecto).join(
+        Expediente
+    ).outerjoin(
         Usuario, Expediente.responsable_id == Usuario.id
     ).outerjoin(
         TipoIA, Proyecto.ia_id == TipoIA.id
@@ -37,7 +40,7 @@ def index():
     if current_user.tiene_rol('TRAMITADOR') and not current_user.tiene_rol('ADMIN', 'SUPERVISOR'):
         # TRAMITADOR puro: solo proyectos de sus expedientes
         query = query.filter(Expediente.responsable_id == current_user.id)
-    # ADMIN y SUPERVISOR ven todos los proyectos
+    # ADMIN y SUPERVISOR ven todos los proyectos (incluyendo huérfanos con responsable=NULL)
     
     # Filtro por tipo de instrumento ambiental
     tipo_ia_id = request.args.get('tipo_ia', type=int)
