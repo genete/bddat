@@ -7,7 +7,7 @@
   <!-- Header con breadcrumb y título -->
   <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
-      <li class="breadcrumb-item"><a href="{{ url_for('main.index') }}"><i class="fas fa-home"></i> Inicio</a></li>
+      <li class="breadcrumb-item"><a href="{{ url_for('dashboard.index') }}"><i class="fas fa-home"></i> Inicio</a></li>
       <li class="breadcrumb-item"><a href="{{ url_for('proyectos.index') }}"><i class="fas fa-bolt"></i> Proyectos</a></li>
       <li class="breadcrumb-item active" aria-current="page">{{ proyecto.titulo }}</li>
     </ol>
@@ -275,7 +275,7 @@
               {% if proyecto.expediente.heredado %}
                 <i class="fas fa-check-circle text-success"></i> Sí
                 <small class="text-muted d-block">Expediente del sistema anterior</small>
-              {% else %}
+              {% else %>
                 <i class="fas fa-times-circle text-muted"></i> No
               {% endif %}
             </dd>
