@@ -15,7 +15,11 @@
       </div>
       
       <!-- Formulario de filtros -->
-      <form method="GET" action="{{ url_for('proyectos.index') }}" class="row g-3">
+      <form method="GET" action="{{ url_for('proyectos.index') }}" class="row g-3" id="filtrosForm">
+        <!-- Mantener parámetros de ordenamiento al filtrar -->
+        <input type="hidden" name="sort" value="{{ sort_by }}">
+        <input type="hidden" name="order" value="{{ order }}">
+        
         <div class="col-md-3">
           <label for="tipo_ia" class="form-label">Tipo de Instalación</label>
           <select name="tipo_ia" id="tipo_ia" class="form-select">
@@ -71,21 +75,73 @@
     <div class="col-12">
       {% if proyectos %}
       <div class="table-responsive">
-        <table class="table table-hover table-striped" id="tablaProyectos">
+        <table class="table table-hover table-striped">
           <thead class="table-light">
             <tr>
-              <th scope="col" class="sortable" data-column="titulo">
-                Título Proyecto <i class="bi bi-arrow-down-up"></i>
+              <th scope="col">
+                <a href="{{ url_for('proyectos.index', 
+                                    sort='titulo', 
+                                    order='asc' if sort_by == 'titulo' and order == 'desc' else 'desc',
+                                    tipo_ia=filtros_activos.tipo_ia,
+                                    provincia=filtros_activos.provincia,
+                                    responsable=filtros_activos.responsable) }}" 
+                   class="text-decoration-none text-dark">
+                  Título Proyecto
+                  {% if sort_by == 'titulo' %}
+                    <i class="bi bi-arrow-{{ 'up' if order == 'asc' else 'down' }}"></i>
+                  {% else %}
+                    <i class="bi bi-arrow-down-up text-muted"></i>
+                  {% endif %}
+                </a>
               </th>
-              <th scope="col" class="sortable" data-column="tipo_ia">
-                Tipo Instalación <i class="bi bi-arrow-down-up"></i>
+              <th scope="col">
+                <a href="{{ url_for('proyectos.index', 
+                                    sort='tipo_ia', 
+                                    order='asc' if sort_by == 'tipo_ia' and order == 'desc' else 'desc',
+                                    tipo_ia=filtros_activos.tipo_ia,
+                                    provincia=filtros_activos.provincia,
+                                    responsable=filtros_activos.responsable) }}" 
+                   class="text-decoration-none text-dark">
+                  Tipo Instalación
+                  {% if sort_by == 'tipo_ia' %}
+                    <i class="bi bi-arrow-{{ 'up' if order == 'asc' else 'down' }}"></i>
+                  {% else %}
+                    <i class="bi bi-arrow-down-up text-muted"></i>
+                  {% endif %}
+                </a>
               </th>
               <th scope="col">Municipios</th>
-              <th scope="col" class="sortable" data-column="expediente">
-                Expediente AT <i class="bi bi-arrow-down-up"></i>
+              <th scope="col">
+                <a href="{{ url_for('proyectos.index', 
+                                    sort='expediente', 
+                                    order='asc' if sort_by == 'expediente' and order == 'desc' else 'desc',
+                                    tipo_ia=filtros_activos.tipo_ia,
+                                    provincia=filtros_activos.provincia,
+                                    responsable=filtros_activos.responsable) }}" 
+                   class="text-decoration-none text-dark">
+                  Expediente AT
+                  {% if sort_by == 'expediente' %}
+                    <i class="bi bi-arrow-{{ 'up' if order == 'asc' else 'down' }}"></i>
+                  {% else %}
+                    <i class="bi bi-arrow-down-up text-muted"></i>
+                  {% endif %}
+                </a>
               </th>
-              <th scope="col" class="sortable" data-column="responsable">
-                Responsable <i class="bi bi-arrow-down-up"></i>
+              <th scope="col">
+                <a href="{{ url_for('proyectos.index', 
+                                    sort='responsable', 
+                                    order='asc' if sort_by == 'responsable' and order == 'desc' else 'desc',
+                                    tipo_ia=filtros_activos.tipo_ia,
+                                    provincia=filtros_activos.provincia,
+                                    responsable=filtros_activos.responsable) }}" 
+                   class="text-decoration-none text-dark">
+                  Responsable
+                  {% if sort_by == 'responsable' %}
+                    <i class="bi bi-arrow-{{ 'up' if order == 'asc' else 'down' }}"></i>
+                  {% else %}
+                    <i class="bi bi-arrow-down-up text-muted"></i>
+                  {% endif %}
+                </a>
               </th>
               <th scope="col" class="text-center">Acciones</th>
             </tr>
