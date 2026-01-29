@@ -20,24 +20,29 @@ Este archivo mantiene un **resumen de los últimos 5 PRs mergeados** para consul
 
 ### 2026-01-29 - [PR #TBD: Vista de listado de proyectos](https://github.com/genete/bddat/pull/TBD)
 
-**Objetivo:** Implementar vista dedicada de listado de proyectos con tabla responsive, filtros opcionales y enlaces a detalle/edición.
+**Objetivo:** Implementar vista dedicada de listado de proyectos con tabla responsive, filtros opcionales y ordenamiento server-side.
 
 **Cambios principales:**
 - ✅ **Blueprint proyectos** (`app/routes/proyectos.py`):
   - Ruta `GET /proyectos/` con lógica de filtrado por permisos de rol
   - Filtros opcionales: tipo instalación, provincia, responsable
-  - Ordenamiento por fecha de creación (DESC)
+  - **Ordenamiento server-side** con parámetros `?sort=` y `?order=` en URL
+  - Mapeo seguro de columnas para prevenir SQL injection
   - Aplicación de permisos: TRAMITADOR ve solo sus proyectos, ADMIN/SUPERVISOR ven todos
+  - Joins optimizados para permitir ordenamiento por campos relacionados (tipo_ia, responsable)
 - ✅ **Template HTML** (`app/templates/proyectos/index.html`):
   - Tabla responsive Bootstrap 5 con 6 columnas
+  - **Headers ordenables como enlaces** que alternan asc/desc automáticamente
+  - Iconos de dirección de ordenamiento (flecha arriba/abajo)
   - Formulario de filtros con selectores provincia, tipo IA y responsable
+  - Preservación de filtros al cambiar ordenamiento (hidden inputs)
   - Badge visual para proyectos interprovinciales
   - Enlaces directos a expediente asociado y detalle de proyecto
   - Contador de proyectos visible
   - Manejo de casos edge: sin tipo_ia, sin municipios, >3 municipios
 - ✅ **JavaScript** (`app/static/js/proyectos_listado.js`):
-  - Ordenamiento de columnas clickeables (ascendente/descendente)
-  - Activación de tooltips Bootstrap 5
+  - **Simplificado**: Solo activación de tooltips Bootstrap 5
+  - **Ordenamiento delegado al servidor** (no client-side)
 - ✅ **Registro blueprint** en `app/__init__.py`
 
 **Funcionalidades:**
@@ -45,15 +50,30 @@ Este archivo mantiene un **resumen de los últimos 5 PRs mergeados** para consul
 - Filtrado por tipo de instalación AT (CT, Línea, Subestación, etc.)
 - Filtrado por provincia de Andalucía (8 provincias)
 - Filtrado por responsable del expediente (solo ADMIN/SUPERVISOR)
-- Ordenamiento client-side de columnas: Título, Tipo IA, Expediente AT, Responsable
+- **Ordenamiento server-side** de columnas: Título, Tipo IA, Expediente AT, Responsable
+- Ordenamiento persistente en URL (`/proyectos/?sort=titulo&order=asc`)
+- Compatibilidad con paginación futura (preparado para LIMIT/OFFSET)
 - Visualización de hasta 3 municipios en tabla (con contador "... y X más")
 - Badge "Interprovincial" automático cuando proyecto afecta a 2+ provincias
 - Botón "Ver detalle" preparado para issue #40
 - Botón "Editar" redirige a `/expedientes/<id>/editar#proyecto`
 
+**Decisión arquitectural:**
+- ❌ Descartado ordenamiento client-side JavaScript por:
+  - No escalable (problemas con >100 proyectos)
+  - Imposibilita paginación futura
+  - Ordenamiento se pierde al recargar página
+  - Duplicación de lógica si se crea API REST
+- ✅ Implementado ordenamiento server-side (PostgreSQL) por:
+  - Escalable a miles de registros con índices
+  - Compatible con paginación (LIMIT/OFFSET)
+  - Ordenamiento persistente en URL
+  - Reutilizable para API REST
+  - Funciona sin JavaScript habilitado
+
 **Issues resueltos:** #39  
 **Milestone:** MS-2 - Fase 2.2 Gestión de Expedientes  
-**Archivos:** app/routes/proyectos.py (NUEVO), app/templates/proyectos/index.html (NUEVO), app/static/js/proyectos_listado.js (NUEVO), app/__init__.py
+**Archivos:** app/routes/proyectos.py (NUEVO), app/templates/proyectos/index.html (NUEVO), app/static/js/proyectos_listado.js (NUEVO), app/__init__.py, docs/CHANGELOG.md
 
 ---
 
