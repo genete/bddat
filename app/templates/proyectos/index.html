@@ -21,12 +21,12 @@
         <input type="hidden" name="order" value="{{ order }}">
         
         <div class="col-md-3">
-          <label for="tipo_ia" class="form-label">Tipo de Instalación</label>
+          <label for="tipo_ia" class="form-label">Instrumento Ambiental</label>
           <select name="tipo_ia" id="tipo_ia" class="form-select">
             <option value="">Todos</option>
             {% for tipo in tipos_ia %}
             <option value="{{ tipo.id }}" {% if filtros_activos.tipo_ia == tipo.id %}selected{% endif %}>
-              {{ tipo.nombre }}
+              {{ tipo.siglas }}{% if tipo.descripcion %} - {{ tipo.descripcion }}{% endif %}
             </option>
             {% endfor %}
           </select>
@@ -102,7 +102,7 @@
                                     provincia=filtros_activos.provincia,
                                     responsable=filtros_activos.responsable) }}" 
                    class="text-decoration-none text-dark">
-                  Tipo Instalación
+                  Inst. Ambiental
                   {% if sort_by == 'tipo_ia' %}
                     <i class="bi bi-arrow-{{ 'up' if order == 'asc' else 'down' }}"></i>
                   {% else %}
@@ -160,10 +160,12 @@
                 {% endif %}
               </td>
               <td>
-                {% if proyecto.tipo_ia %}
-                {{ proyecto.tipo_ia.nombre }}
+                {% if proyecto.ia %}
+                <span data-bs-toggle="tooltip" title="{{ proyecto.ia.descripcion }}">
+                  {{ proyecto.ia.siglas }}
+                </span>
                 {% else %}
-                <span class="text-muted">No especificado</span>
+                <span class="text-muted">No determinado</span>
                 {% endif %}
               </td>
               <td>
