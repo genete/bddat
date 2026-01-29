@@ -32,8 +32,8 @@ def index():
     )
     
     # Aplicar filtro de permisos según rol
-    if current_user.rol.nombre == 'TRAMITADOR':
-        # TRAMITADOR: solo proyectos de sus expedientes
+    if current_user.tiene_rol('TRAMITADOR') and not current_user.tiene_rol('ADMIN', 'SUPERVISOR'):
+        # TRAMITADOR puro: solo proyectos de sus expedientes
         query = query.filter(Expediente.responsable_id == current_user.id)
     # ADMIN y SUPERVISOR ven todos los proyectos
     
@@ -56,7 +56,7 @@ def index():
         query = query.filter(Proyecto.id.in_(subquery))
     
     # Filtro por responsable (solo para ADMIN/SUPERVISOR)
-    if current_user.rol.nombre in ['ADMIN', 'SUPERVISOR']:
+    if current_user.tiene_rol('ADMIN', 'SUPERVISOR'):
         responsable_id = request.args.get('responsable', type=int)
         if responsable_id:
             query = query.filter(Expediente.responsable_id == responsable_id)
@@ -105,9 +105,11 @@ def index():
     
     # Responsables (solo para ADMIN/SUPERVISOR)
     responsables = []
-    if current_user.rol.nombre in ['ADMIN', 'SUPERVISOR']:
-        from app.models.roles import Rol
-        responsables = db.session.query(Usuario).join(Rol).filter(
+    if current_user.tiene_rol('ADMIN', 'SUPERVISOR'):
+        from app.models.usuarios import Rol
+        responsables = db.session.query(Usuario).join(
+            Usuario.roles
+        ).filter(
             Rol.nombre == 'TRAMITADOR'
         ).order_by(Usuario.nombre).all()
     
