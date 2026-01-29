@@ -5,8 +5,10 @@ from sqlalchemy import func
 from app import db
 from app.models.proyectos import Proyecto
 from app.models.expedientes import Expediente
-from app.models.usuarios import Usuario
+from app.models.usuarios import Usuario, Rol
 from app.models.tipos_ia import TipoIA
+from app.models.municipios import Municipio
+from app.models.municipios_proyecto import MunicipioProyecto
 
 bp = Blueprint('proyectos', __name__, url_prefix='/proyectos')
 
@@ -46,9 +48,8 @@ def index():
     provincia_codigo = request.args.get('provincia', type=str)
     if provincia_codigo:
         # Subconsulta para proyectos que tienen al menos un municipio de esa provincia
-        from app.models.municipios import Municipio, municipios_proyecto
-        subquery = db.session.query(municipios_proyecto.c.id_proyecto).join(
-            Municipio, municipios_proyecto.c.id_municipio == Municipio.id
+        subquery = db.session.query(MunicipioProyecto.proyecto_id).join(
+            Municipio, MunicipioProyecto.municipio_id == Municipio.id
         ).filter(
             func.substring(func.cast(Municipio.codigo, db.String), 1, 2) == provincia_codigo
         ).distinct()
@@ -104,14 +105,12 @@ def index():
     ]
     
     # Responsables (solo para ADMIN/SUPERVISOR)
+    # Obtener usuarios que son responsables de al menos un expediente
     responsables = []
     if current_user.tiene_rol('ADMIN', 'SUPERVISOR'):
-        from app.models.usuarios import Rol
         responsables = db.session.query(Usuario).join(
-            Usuario.roles
-        ).filter(
-            Rol.nombre == 'TRAMITADOR'
-        ).order_by(Usuario.nombre).all()
+            Expediente, Usuario.id == Expediente.responsable_id
+        ).distinct().order_by(Usuario.nombre).all()
     
     return render_template(
         'proyectos/index.html',
