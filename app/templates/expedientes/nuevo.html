@@ -10,7 +10,7 @@
     </div>
 </div>
 
-<form action="{{ url_for('expedientes.nuevo') }}" method="POST">
+<form id="form_expediente" action="{{ url_for('expedientes.nuevo') }}" method="POST">
     <div class="row">
         <!-- Columna Izquierda: Datos del Expediente -->
         <div class="col-md-4">
@@ -112,6 +112,69 @@
                     </div>
                 </div>
             </div>
+            
+            <!-- Card Municipios Afectados -->
+            <div class="card shadow-sm mb-3">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0">
+                        <i class="fas fa-map-marked-alt me-2"></i>Municipios Afectados
+                        <small id="campo_obligatorio" class="float-end">
+                            <span class="text-danger">*</span> Campo obligatorio
+                        </small>
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <!-- Selector Provincia -->
+                        <div class="col-md-6 mb-3">
+                            <label for="select_provincia" class="form-label">Provincia</label>
+                            <input type="text" class="form-control mb-2" id="buscador_provincia" 
+                                   placeholder="🔍 Buscar provincia...">
+                            <select class="form-select" id="select_provincia" size="5">
+                                <option value="">-- Cargando provincias... --</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Selector Municipio -->
+                        <div class="col-md-6 mb-3">
+                            <label for="select_municipio" class="form-label">Municipio</label>
+                            <input type="text" class="form-control mb-2" id="buscador_municipio" 
+                                   placeholder="🔍 Buscar municipio..." disabled>
+                            <select class="form-select" id="select_municipio" size="5" disabled>
+                                <option value="">-- Primero seleccione provincia --</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <!-- Botón Añadir -->
+                    <div class="row mb-3">
+                        <div class="col-md-12 text-end">
+                            <button type="button" class="btn btn-success" id="btn_anadir_municipio" disabled>
+                                <i class="fas fa-plus me-1"></i> Añadir Municipio
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Lista de Municipios Seleccionados -->
+                    <div class="row">
+                        <div class="col-md-12">
+                            <label class="form-label">Municipios Seleccionados:</label>
+                            <ul class="list-group" id="lista_municipios">
+                                <li class="list-group-item text-muted"><em>No hay municipios añadidos</em></li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <!-- Botón Borrar -->
+                    <div class="row mt-3">
+                        <div class="col-md-12 text-end">
+                            <button type="button" class="btn btn-danger" id="btn_borrar_municipios" disabled>
+                                <i class="fas fa-trash me-1"></i> Borrar Seleccionados
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
     
@@ -127,4 +190,8 @@
         </div>
     </div>
 </form>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/municipios_selector.js') }}"></script>
 {% endblock %}
