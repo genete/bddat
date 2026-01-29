@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+
+{% block title %}Listado de Proyectos - BDDAT{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+  <!-- Header con título y filtros -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2>
+          <i class="bi bi-lightning-charge"></i> Proyectos de Instalaciones AT
+        </h2>
+        <span class="badge bg-secondary">{{ proyectos|length }} proyecto(s)</span>
+      </div>
+      
+      <!-- Formulario de filtros -->
+      <form method="GET" action="{{ url_for('proyectos.index') }}" class="row g-3">
+        <div class="col-md-3">
+          <label for="tipo_ia" class="form-label">Tipo de Instalación</label>
+          <select name="tipo_ia" id="tipo_ia" class="form-select">
+            <option value="">Todos</option>
+            {% for tipo in tipos_ia %}
+            <option value="{{ tipo.id }}" {% if filtros_activos.tipo_ia == tipo.id %}selected{% endif %}>
+              {{ tipo.nombre }}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+        
+        <div class="col-md-3">
+          <label for="provincia" class="form-label">Provincia</label>
+          <select name="provincia" id="provincia" class="form-select">
+            <option value="">Todas</option>
+            {% for codigo, nombre in provincias %}
+            <option value="{{ codigo }}" {% if filtros_activos.provincia == codigo %}selected{% endif %}>
+              {{ nombre }}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+        
+        {% if current_user.rol.nombre in ['ADMIN', 'SUPERVISOR'] %}
+        <div class="col-md-3">
+          <label for="responsable" class="form-label">Responsable</label>
+          <select name="responsable" id="responsable" class="form-select">
+            <option value="">Todos</option>
+            {% for usuario in responsables %}
+            <option value="{{ usuario.id }}" {% if filtros_activos.responsable == usuario.id %}selected{% endif %}>
+              {{ usuario.siglas }} - {{ usuario.nombre }}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+        {% endif %}
+        
+        <div class="col-md-3 d-flex align-items-end">
+          <button type="submit" class="btn btn-primary me-2">
+            <i class="bi bi-funnel"></i> Filtrar
+          </button>
+          <a href="{{ url_for('proyectos.index') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-x-circle"></i> Limpiar
+          </a>
+        </div>
+      </form>
+    </div>
+  </div>
+  
+  <!-- Tabla de proyectos -->
+  <div class="row">
+    <div class="col-12">
+      {% if proyectos %}
+      <div class="table-responsive">
+        <table class="table table-hover table-striped" id="tablaProyectos">
+          <thead class="table-light">
+            <tr>
+              <th scope="col" class="sortable" data-column="titulo">
+                Título Proyecto <i class="bi bi-arrow-down-up"></i>
+              </th>
+              <th scope="col" class="sortable" data-column="tipo_ia">
+                Tipo Instalación <i class="bi bi-arrow-down-up"></i>
+              </th>
+              <th scope="col">Municipios</th>
+              <th scope="col" class="sortable" data-column="expediente">
+                Expediente AT <i class="bi bi-arrow-down-up"></i>
+              </th>
+              <th scope="col" class="sortable" data-column="responsable">
+                Responsable <i class="bi bi-arrow-down-up"></i>
+              </th>
+              <th scope="col" class="text-center">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for proyecto in proyectos %}
+            <tr>
+              <td>
+                <strong>{{ proyecto.titulo }}</strong>
+                {% if proyecto.es_interprovincial %}
+                <span class="badge bg-warning text-dark ms-2" 
+                      data-bs-toggle="tooltip" 
+                      title="Afecta a {{ proyecto.provincias_afectadas|length }} provincias">
+                  <i class="bi bi-geo-alt"></i> Interprovincial
+                </span>
+                {% endif %}
+              </td>
+              <td>
+                {% if proyecto.tipo_ia %}
+                {{ proyecto.tipo_ia.nombre }}
+                {% else %}
+                <span class="text-muted">No especificado</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if proyecto.municipios %}
+                  {% set municipios_lista = proyecto.municipios[:3] %}
+                  {% for municipio in municipios_lista %}
+                    {{ municipio.nombre }}{% if not loop.last %}, {% endif %}
+                  {% endfor %}
+                  {% if proyecto.municipios|length > 3 %}
+                    <span class="text-muted">... y {{ proyecto.municipios|length - 3 }} más</span>
+                  {% endif %}
+                {% else %}
+                <span class="text-muted">Sin municipios</span>
+                {% endif %}
+              </td>
+              <td>
+                <a href="{{ url_for('expedientes.detalle', id=proyecto.expediente.id) }}" 
+                   class="text-decoration-none">
+                  AT-{{ proyecto.expediente.numero_at }}
+                </a>
+                <br>
+                <small class="text-muted">{{ proyecto.expediente.tipo_expediente.nombre }}</small>
+              </td>
+              <td>
+                {{ proyecto.expediente.responsable.siglas }}<br>
+                <small class="text-muted">{{ proyecto.expediente.responsable.nombre }}</small>
+              </td>
+              <td class="text-center">
+                <div class="btn-group" role="group">
+                  <a href="{{ url_for('proyectos.detalle', id=proyecto.id) }}" 
+                     class="btn btn-sm btn-outline-primary"
+                     data-bs-toggle="tooltip" 
+                     title="Ver detalle">
+                    <i class="bi bi-eye"></i>
+                  </a>
+                  <a href="{{ url_for('expedientes.editar', id=proyecto.expediente.id) }}#proyecto" 
+                     class="btn btn-sm btn-outline-secondary"
+                     data-bs-toggle="tooltip" 
+                     title="Editar proyecto">
+                    <i class="bi bi-pencil"></i>
+                  </a>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="alert alert-info" role="alert">
+        <i class="bi bi-info-circle"></i> 
+        No se encontraron proyectos con los filtros aplicados.
+        <a href="{{ url_for('proyectos.index') }}" class="alert-link">Limpiar filtros</a>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/proyectos_listado.js') }}"></script>
+{% endblock %}
