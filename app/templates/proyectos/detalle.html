@@ -1,0 +1,330 @@
+{% extends "base.html" %}
+
+{% block title %}{{ proyecto.titulo }} - BDDAT{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+  <!-- Header con breadcrumb y título -->
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{{ url_for('main.index') }}"><i class="fas fa-home"></i> Inicio</a></li>
+      <li class="breadcrumb-item"><a href="{{ url_for('proyectos.index') }}"><i class="fas fa-bolt"></i> Proyectos</a></li>
+      <li class="breadcrumb-item active" aria-current="page">{{ proyecto.titulo }}</li>
+    </ol>
+  </nav>
+  
+  <div class="row mb-3">
+    <div class="col-md-8">
+      <h2><i class="fas fa-bolt me-2"></i>{{ proyecto.titulo }}</h2>
+      {% if proyecto.es_interprovincial %}
+      <span class="badge bg-warning text-dark ms-2" 
+            data-bs-toggle="tooltip" 
+            title="Afecta a {{ proyecto.provincias_afectadas|length }} provincias">
+        <i class="fas fa-map-marked-alt"></i> Proyecto Interprovincial
+      </span>
+      {% endif %}
+    </div>
+    <div class="col-md-4 text-end">
+      <a href="{{ url_for('expedientes.editar', id=proyecto.expediente.id) }}#proyecto" 
+         class="btn btn-primary me-2">
+        <i class="fas fa-edit"></i> Editar Proyecto
+      </a>
+      <a href="{{ url_for('proyectos.index') }}" class="btn btn-outline-secondary">
+        <i class="fas fa-arrow-left"></i> Volver
+      </a>
+    </div>
+  </div>
+  
+  <div class="row">
+    <!-- Columna principal -->
+    <div class="col-lg-8">
+      <!-- Sección: Datos Básicos -->
+      <div class="card shadow-sm mb-4">
+        <div class="card-header bg-success text-white">
+          <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>Datos Básicos</h5>
+        </div>
+        <div class="card-body">
+          <dl class="row mb-0">
+            <dt class="col-sm-3">Título:</dt>
+            <dd class="col-sm-9"><strong>{{ proyecto.titulo }}</strong></dd>
+            
+            <dt class="col-sm-3">Descripción:</dt>
+            <dd class="col-sm-9">
+              {% if proyecto.descripcion %}
+                {{ proyecto.descripcion }}
+              {% else %}
+                <span class="text-muted fst-italic">No especificada</span>
+              {% endif %}
+            </dd>
+            
+            <dt class="col-sm-3">Finalidad:</dt>
+            <dd class="col-sm-9">
+              {% if proyecto.finalidad %}
+                {{ proyecto.finalidad }}
+              {% else %}
+                <span class="text-muted fst-italic">No especificada</span>
+              {% endif %}
+            </dd>
+            
+            <dt class="col-sm-3">Emplazamiento:</dt>
+            <dd class="col-sm-9">
+              {% if proyecto.emplazamiento %}
+                {{ proyecto.emplazamiento }}
+              {% else %}
+                <span class="text-muted fst-italic">No especificado</span>
+              {% endif %}
+            </dd>
+            
+            <dt class="col-sm-3">Tipo Instalación:</dt>
+            <dd class="col-sm-9">
+              {% if proyecto.ia %}
+                <span class="badge bg-success">{{ proyecto.ia.siglas }}</span>
+                {% if proyecto.ia.descripcion %}
+                  - {{ proyecto.ia.descripcion }}
+                {% endif %}
+              {% else %}
+                <span class="text-muted fst-italic">No especificado</span>
+              {% endif %}
+            </dd>
+            
+            <dt class="col-sm-3">Fecha Creación:</dt>
+            <dd class="col-sm-9">
+              {% if proyecto.fecha %}
+                {{ proyecto.fecha.strftime('%d/%m/%Y %H:%M') }}
+              {% else %}
+                <span class="text-muted fst-italic">No registrada</span>
+              {% endif %}
+            </dd>
+          </dl>
+        </div>
+      </div>
+      
+      <!-- Sección: Localización -->
+      <div class="card shadow-sm mb-4">
+        <div class="card-header bg-success text-white">
+          <h5 class="mb-0"><i class="fas fa-map-marker-alt me-2"></i>Localización</h5>
+        </div>
+        <div class="card-body">
+          <h6>Municipios Afectados</h6>
+          {% if proyecto.municipios %}
+            <ul class="list-unstyled">
+              {% for municipio in proyecto.municipios %}
+              <li>
+                <i class="fas fa-map-pin text-success"></i> 
+                <strong>{{ municipio.nombre }}</strong>
+                <span class="text-muted"> 
+                  ({{ municipio.provincia_nombre }}, Código INE: {{ municipio.codigo }})
+                </span>
+              </li>
+              {% endfor %}
+            </ul>
+            
+            {% if proyecto.es_interprovincial %}
+            <div class="alert alert-warning d-flex align-items-center mt-3" role="alert">
+              <i class="fas fa-exclamation-triangle me-2"></i>
+              <div>
+                <strong>Proyecto Interprovincial</strong><br>
+                Este proyecto afecta a múltiples provincias: 
+                <strong>{{ proyecto.provincias_afectadas|join(', ') }}</strong>
+              </div>
+            </div>
+            {% endif %}
+          {% else %}
+            <p class="text-muted fst-italic">No hay municipios asociados a este proyecto.</p>
+          {% endif %}
+          
+          <h6 class="mt-3">Provincias Afectadas</h6>
+          {% if proyecto.provincias_afectadas %}
+            <p>{{ proyecto.provincias_afectadas|join(', ') }}</p>
+          {% else %}
+            <p class="text-muted fst-italic">No especificadas</p>
+          {% endif %}
+        </div>
+      </div>
+      
+      <!-- Sección: Documentos (MAQUETA) -->
+      <div class="card shadow-sm mb-4">
+        <div class="card-header bg-info text-white">
+          <h5 class="mb-0"><i class="fas fa-file-alt me-2"></i>Documentos</h5>
+        </div>
+        <div class="card-body">
+          <div class="alert alert-info d-flex align-items-center" role="alert">
+            <i class="fas fa-info-circle me-2 fa-2x"></i>
+            <div>
+              <strong>Funcionalidad en desarrollo</strong><br>
+              La gestión de documentos (memoria, proyecto técnico, planos, etc.) estará disponible en una próxima versión.
+            </div>
+          </div>
+          
+          <!-- Vista previa de cómo se verá -->
+          <div class="opacity-50">
+            <p class="text-muted mb-2">Vista preliminar (no funcional):</p>
+            <ul class="list-group">
+              <li class="list-group-item d-flex justify-content-between align-items-center">
+                <span>
+                  <i class="fas fa-file-pdf text-danger me-2"></i>
+                  Memoria_Tecnica.pdf
+                </span>
+                <span class="badge bg-secondary">1.2 MB</span>
+              </li>
+              <li class="list-group-item d-flex justify-content-between align-items-center">
+                <span>
+                  <i class="fas fa-file-image text-primary me-2"></i>
+                  Plano_Situacion.dwg
+                </span>
+                <span class="badge bg-secondary">850 KB</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Sección: Solicitudes (MAQUETA) -->
+      <div class="card shadow-sm mb-4">
+        <div class="card-header bg-warning text-dark">
+          <h5 class="mb-0"><i class="fas fa-clipboard-list me-2"></i>Solicitudes</h5>
+        </div>
+        <div class="card-body">
+          <div class="alert alert-warning d-flex align-items-center" role="alert">
+            <i class="fas fa-exclamation-circle me-2 fa-2x"></i>
+            <div>
+              <strong>Funcionalidad pendiente (Milestone 4)</strong><br>
+              La gestión de solicitudes (consulta previa, autorización administrativa, autorización de construcción, etc.) se implementará en el Milestone 4.
+            </div>
+          </div>
+          
+          <!-- Vista previa de cómo se verá -->
+          <div class="opacity-50">
+            <p class="text-muted mb-2">Vista preliminar (no funcional):</p>
+            <div class="table-responsive">
+              <table class="table table-sm table-striped">
+                <thead>
+                  <tr>
+                    <th>Tipo Solicitud</th>
+                    <th>Estado</th>
+                    <th>Fecha</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><span class="badge bg-primary">Consulta Previa</span></td>
+                    <td><span class="badge bg-success">Aprobada</span></td>
+                    <td>15/01/2026</td>
+                    <td><button class="btn btn-sm btn-outline-secondary" disabled><i class="fas fa-eye"></i></button></td>
+                  </tr>
+                  <tr>
+                    <td><span class="badge bg-primary">Autorización Administrativa</span></td>
+                    <td><span class="badge bg-warning text-dark">En tramitación</span></td>
+                    <td>22/01/2026</td>
+                    <td><button class="btn btn-sm btn-outline-secondary" disabled><i class="fas fa-eye"></i></button></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Columna lateral -->
+    <div class="col-lg-4">
+      <!-- Sección: Expediente Asociado -->
+      <div class="card shadow-sm mb-4">
+        <div class="card-header bg-primary text-white">
+          <h5 class="mb-0"><i class="fas fa-folder-open me-2"></i>Expediente Asociado</h5>
+        </div>
+        <div class="card-body">
+          <dl class="mb-0">
+            <dt>Número AT:</dt>
+            <dd>
+              <a href="{{ url_for('expedientes.detalle', id=proyecto.expediente.id) }}" 
+                 class="text-decoration-none">
+                <strong class="text-primary">AT-{{ proyecto.expediente.numero_at }}</strong>
+              </a>
+            </dd>
+            
+            <dt>Tipo Expediente:</dt>
+            <dd>
+              {% if proyecto.expediente.tipo_expediente %}
+                <span class="badge bg-info text-dark">{{ proyecto.expediente.tipo_expediente.tipo }}</span>
+              {% else %}
+                <span class="text-muted fst-italic">Sin tipo</span>
+              {% endif %}
+            </dd>
+            
+            <dt>Responsable:</dt>
+            <dd>
+              {% if proyecto.expediente.responsable %}
+                <i class="fas fa-user text-success"></i> 
+                {{ proyecto.expediente.responsable.nombre }} {{ proyecto.expediente.responsable.apellido1 }}
+                <br>
+                <small class="text-muted">
+                  <i class="fas fa-envelope"></i> {{ proyecto.expediente.responsable.email }}
+                </small>
+                {% if proyecto.expediente.responsable_id == current_user.id %}
+                  <span class="badge bg-primary ms-1">Tú</span>
+                {% endif %}
+              {% else %}
+                <span class="badge bg-warning text-dark">Sin asignar</span>
+              {% endif %}
+            </dd>
+            
+            <dt>Heredado:</dt>
+            <dd>
+              {% if proyecto.expediente.heredado %}
+                <i class="fas fa-check-circle text-success"></i> Sí
+                <small class="text-muted d-block">Expediente del sistema anterior</small>
+              {% else %}
+                <i class="fas fa-times-circle text-muted"></i> No
+              {% endif %}
+            </dd>
+          </dl>
+          
+          <div class="d-grid mt-3">
+            <a href="{{ url_for('expedientes.detalle', id=proyecto.expediente.id) }}" 
+               class="btn btn-primary">
+              <i class="fas fa-folder-open"></i> Ver Expediente Completo
+            </a>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Card de acciones rápidas -->
+      <div class="card shadow-sm">
+        <div class="card-header bg-secondary text-white">
+          <h6 class="mb-0"><i class="fas fa-bolt me-2"></i>Acciones Rápidas</h6>
+        </div>
+        <div class="card-body">
+          <div class="d-grid gap-2">
+            <a href="{{ url_for('expedientes.editar', id=proyecto.expediente.id) }}#proyecto" 
+               class="btn btn-outline-primary btn-sm">
+              <i class="fas fa-edit"></i> Editar Proyecto
+            </a>
+            <a href="{{ url_for('expedientes.editar', id=proyecto.expediente.id) }}" 
+               class="btn btn-outline-secondary btn-sm">
+              <i class="fas fa-folder"></i> Editar Expediente
+            </a>
+            <a href="{{ url_for('proyectos.index') }}" 
+               class="btn btn-outline-secondary btn-sm">
+              <i class="fas fa-list"></i> Volver al Listado
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // Inicializar tooltips de Bootstrap
+  document.addEventListener('DOMContentLoaded', function() {
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+      return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+  });
+</script>
+{% endblock %}
