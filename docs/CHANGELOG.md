@@ -2,7 +2,7 @@
 
 **Repositorio:** https://github.com/genete/bddat  
 **Historial completo:** [Ver Pull Requests cerrados](https://github.com/genete/bddat/pulls?q=is%3Apr+is%3Aclosed)  
-**Última actualización:** 28 de enero de 2026
+**Última actualización:** 29 de enero de 2026
 
 ---
 
@@ -17,6 +17,41 @@ Este archivo mantiene un **resumen de los últimos 5 PRs mergeados** para consul
 ---
 
 ## Últimos Cambios
+
+### 2026-01-29 - [PR #48: Gestión de municipios afectados en expedientes](https://github.com/genete/bddat/pull/48)
+
+**Objetivo:** Permitir asociar múltiples municipios a cada proyecto/expediente mediante interfaz intuitiva con búsqueda substring.
+
+**Cambios principales:**
+- ✅ **API REST** (`app/routes/api_municipios.py`):
+  - `GET /api/provincias?q=` - Búsqueda provincias con filtro substring case-insensitive
+  - `GET /api/municipios?provincia=&q=` - Búsqueda municipios filtrados por provincia
+- ✅ **Rutas expedientes.py**:
+  - Validación obligatoriedad municipios (server-side)
+  - Inserción transaccional en `municipios_proyecto`
+  - Actualización municipios en edición (DELETE + INSERT)
+- ✅ **JavaScript** (`app/static/js/municipios_selector.js`):
+  - Dropdowns dinámicos con búsqueda substring
+  - Lista acumulativa con checkboxes para borrado múltiple
+  - Validación client-side antes de submit
+  - Hidden inputs para POST del formulario
+- ✅ **Templates**:
+  - `nuevo.html` / `editar.html` - Card selector municipios con interfaz completa
+  - `detalle.html` - Visualización municipios + alerta proyecto interprovincial
+- ✅ **Sin cambios en BD**: Usa tabla `municipios_proyecto` existente
+
+**Funcionalidades:**
+- Selector de provincia con búsqueda instantánea
+- Dropdown municipio filtrado por provincia seleccionada
+- Lista acumulativa de municipios con borrado selectivo
+- Campo obligatorio (*) con validación dual (JS + Python)
+- Detección automática de proyectos interprovinciales en vista detalle
+
+**Issues resueltos:** #48  
+**Milestone:** 1.3 - Expedientes básicos (MVP)  
+**Archivos:** app/routes/api_municipios.py (NUEVO), app/static/js/municipios_selector.js (NUEVO), app/__init__.py, app/routes/expedientes.py, app/templates/expedientes/*.html
+
+---
 
 ### 2026-01-28 - [PR #TBD: Permitir expedientes sin responsable asignado (huérfanos)](https://github.com/genete/bddat/pull/TBD)
 
@@ -100,33 +135,6 @@ provincias = proyecto.provincias_afectadas  # ['Almería', 'Granada']
 ```
 
 **Archivos:** app/models/proyectos.py
-
----
-
-### 2026-01-25 - Carga Inicial de Municipios de Andalucía
-
-**Objetivo:** Poblar tabla `estructura.municipios` con catálogo completo de municipios andaluces basado en datos oficiales del INE.
-
-**Cambios principales:**
-- ✅ **785 municipios cargados** en `estructura.municipios` (8 provincias andaluzas)
-- ✅ **Fuente oficial:** INE - Fichero 25codmun.xlsx a 1 de enero de 2025
-- ✅ **COMMENT añadido** a la tabla documentando fuente, fecha y trazabilidad
-- ✅ **Secuencia actualizada:** `estructura.municipios_id_seq` → 785
-- ✅ **datos_estructurales.sql regenerado** con pg_dump (commit c9de403)
-
-**Distribución por provincia:**
-- Almería (04): 103 municipios | Cádiz (11): 45 municipios
-- Córdoba (14): 77 municipios | Granada (18): 174 municipios  
-- Huelva (21): 80 municipios | Jaén (23): 97 municipios
-- Málaga (29): 103 municipios | Sevilla (41): 106 municipios
-
-**Utilidad:**
-- Códigos INE de 5 dígitos (CPRO + CMUN) para identificación única
-- Detección de proyectos interprovinciales: `LEFT(codigo, 2)` extrae provincia
-- Validación de datos de localización en expedientes
-- Integración con sistemas externos que usen códigos INE
-
-**Documentación:** [25codmun.xlsx](https://www.ine.es/daco/daco42/codmun/25codmun.xlsx)
 
 ---
 
