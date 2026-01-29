@@ -143,7 +143,7 @@
                   {% endif %}
                 </a>
               </th>
-              <th scope="col" class="text-center">Acciones</th>
+              <th scope="col" style="width: 120px;" class="text-center">Acciones</th>
             </tr>
           </thead>
           <tbody>
@@ -193,13 +193,14 @@
                 {{ proyecto.expediente.responsable.siglas }}<br>
                 <small class="text-muted">{{ proyecto.expediente.responsable.nombre }}</small>
               </td>
-              <td class="text-center">
+              <td class="text-center" style="white-space: nowrap;">
                 <div class="btn-group" role="group">
                   {# Botón Ver detalle - DESHABILITADO hasta issue #40 #}
                   <button class="btn btn-sm btn-outline-secondary" 
                           disabled
                           data-bs-toggle="tooltip" 
-                          title="Próximamente (issue #40)">
+                          title="Próximamente (issue #40)"
+                          style="pointer-events: auto;">
                     <i class="bi bi-eye"></i>
                   </button>
                   
