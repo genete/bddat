@@ -6,7 +6,7 @@ from app import db
 from app.models.proyectos import Proyecto
 from app.models.expedientes import Expediente
 from app.models.usuarios import Usuario
-from app.models.tipos_instalacion_at import TipoInstalacionAT
+from app.models.tipos_ia import TipoIA
 
 bp = Blueprint('proyectos', __name__, url_prefix='/proyectos')
 
@@ -18,7 +18,7 @@ def index():
     Listado de proyectos con filtros y ordenamiento.
     
     Parámetros GET:
-    - tipo_ia: ID del tipo de instalación
+    - tipo_ia: ID del tipo de instalación (instrumento ambiental)
     - provincia: Código de provincia (2 dígitos)
     - responsable: ID del usuario responsable (solo ADMIN/SUPERVISOR)
     - sort: Campo de ordenamiento (titulo, tipo_ia, expediente, responsable, fecha_creacion)
@@ -28,7 +28,7 @@ def index():
     query = db.session.query(Proyecto).join(Expediente).join(
         Usuario, Expediente.id_responsable == Usuario.id
     ).outerjoin(
-        TipoInstalacionAT, Proyecto.id_tipo_ia == TipoInstalacionAT.id
+        TipoIA, Proyecto.ia_id == TipoIA.id
     )
     
     # Aplicar filtro de permisos según rol
@@ -37,10 +37,10 @@ def index():
         query = query.filter(Expediente.id_responsable == current_user.id)
     # ADMIN y SUPERVISOR ven todos los proyectos
     
-    # Filtro por tipo de instalación
+    # Filtro por tipo de instrumento ambiental
     tipo_ia_id = request.args.get('tipo_ia', type=int)
     if tipo_ia_id:
-        query = query.filter(Proyecto.id_tipo_ia == tipo_ia_id)
+        query = query.filter(Proyecto.ia_id == tipo_ia_id)
     
     # Filtro por provincia (a través de municipios)
     provincia_codigo = request.args.get('provincia', type=str)
@@ -62,16 +62,16 @@ def index():
             query = query.filter(Expediente.id_responsable == responsable_id)
     
     # Parámetros de ordenamiento
-    sort_by = request.args.get('sort', 'fecha_creacion')
+    sort_by = request.args.get('sort', 'fecha')
     order = request.args.get('order', 'desc')
     
     # Mapeo seguro de columnas para ordenamiento (prevenir SQL injection)
     sort_columns = {
         'titulo': Proyecto.titulo,
-        'tipo_ia': TipoInstalacionAT.nombre,
+        'tipo_ia': TipoIA.siglas,
         'expediente': Expediente.numero_at,
         'responsable': Usuario.nombre,
-        'fecha_creacion': Proyecto.fecha_creacion
+        'fecha': Proyecto.fecha
     }
     
     # Aplicar ordenamiento
@@ -83,13 +83,13 @@ def index():
             query = query.order_by(column.asc())
     else:
         # Fallback a ordenamiento por defecto
-        query = query.order_by(Proyecto.fecha_creacion.desc())
+        query = query.order_by(Proyecto.fecha.desc())
     
     # Ejecutar query
     proyectos = query.all()
     
     # Cargar datos para filtros
-    tipos_ia = db.session.query(TipoInstalacionAT).order_by(TipoInstalacionAT.nombre).all()
+    tipos_ia = db.session.query(TipoIA).order_by(TipoIA.siglas).all()
     
     # Provincias de Andalucía
     provincias = [
