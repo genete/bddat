@@ -94,7 +94,7 @@
         
         <!-- Columna Derecha: Datos del Proyecto -->
         <div class="col-md-8">
-            <div class="card shadow-sm mb-3">
+            <div class="card shadow-sm mb-3" id="proyecto">
                 <div class="card-header bg-primary text-white">
                     <h5 class="mb-0"><i class="fas fa-project-diagram me-2"></i>Datos del Proyecto</h5>
                 </div>
@@ -229,6 +229,17 @@
     document.addEventListener('DOMContentLoaded', () => {
         if (window.selectorMunicipios && window.municipiosExistentes) {
             window.selectorMunicipios.inicializar(window.municipiosExistentes);
+        }
+        
+        // Scroll automático a #proyecto si viene en la URL (issue #41)
+        if (window.location.hash === '#proyecto') {
+            const proyectoCard = document.getElementById('proyecto');
+            if (proyectoCard) {
+                // Scroll suave con offset para header
+                setTimeout(() => {
+                    proyectoCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }, 100);
+            }
         }
     });
 </script>
