@@ -1,5 +1,5 @@
 """Blueprint para gestión de proyectos de instalaciones de alta tensión."""
-from flask import Blueprint, render_template, request, flash, redirect, url_for
+from flask import Blueprint, render_template, request, flash, redirect, url_for, abort
 from flask_login import login_required, current_user
 from sqlalchemy import func
 from app import db
@@ -128,4 +128,48 @@ def index():
         },
         sort_by=sort_by,
         order=order
+    )
+
+
+@bp.route('/<int:id>')
+@login_required
+def detalle(id):
+    """
+    Vista detallada de un proyecto individual.
+    
+    Muestra toda la información del proyecto: datos básicos, localización,
+    expediente asociado, documentos (maqueta) y solicitudes futuras (maqueta).
+    
+    Parámetros:
+        id (int): ID del proyecto
+    
+    Permisos:
+        - TRAMITADOR: Solo ve proyectos de sus expedientes asignados
+        - ADMIN/SUPERVISOR: Ve cualquier proyecto
+    
+    Returns:
+        Template proyectos/detalle.html o 403/404
+    """
+    # Query con joins necesarios
+    proyecto = db.session.query(Proyecto).join(
+        Expediente
+    ).outerjoin(
+        Usuario, Expediente.responsable_id == Usuario.id
+    ).outerjoin(
+        TipoIA, Proyecto.ia_id == TipoIA.id
+    ).filter(Proyecto.id == id).first()
+    
+    # 404 si no existe
+    if not proyecto:
+        abort(404)
+    
+    # Verificar permisos
+    if current_user.tiene_rol('TRAMITADOR') and not current_user.tiene_rol('ADMIN', 'SUPERVISOR'):
+        # TRAMITADOR solo ve proyectos de sus expedientes
+        if proyecto.expediente.responsable_id != current_user.id:
+            abort(403)
+    
+    return render_template(
+        'proyectos/detalle.html',
+        proyecto=proyecto
     )
