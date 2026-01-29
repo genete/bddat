@@ -44,7 +44,7 @@
           </select>
         </div>
         
-        {% if current_user.rol.nombre in ['ADMIN', 'SUPERVISOR'] %}
+        {% if current_user.tiene_rol('ADMIN', 'SUPERVISOR') %}
         <div class="col-md-3">
           <label for="responsable" class="form-label">Responsable</label>
           <select name="responsable" id="responsable" class="form-select">
