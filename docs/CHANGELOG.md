@@ -18,62 +18,51 @@ Este archivo mantiene un **resumen de los últimos 5 PRs mergeados** para consul
 
 ## Últimos Cambios
 
-### 2026-01-29 - [PR #TBD: Vista de listado de proyectos](https://github.com/genete/bddat/pull/TBD)
+### 2026-01-29 - [PR #54: Listado de proyectos con filtros y ordenamiento](https://github.com/genete/bddat/pull/54)
 
-**Objetivo:** Implementar vista dedicada de listado de proyectos con tabla responsive, filtros opcionales y ordenamiento server-side.
+**Objetivo:** Implementar listado completo de proyectos de instalaciones AT con filtros, ordenamiento y visualización detallada.
 
 **Cambios principales:**
 - ✅ **Blueprint proyectos** (`app/routes/proyectos.py`):
-  - Ruta `GET /proyectos/` con lógica de filtrado por permisos de rol
-  - Filtros opcionales: tipo instalación, provincia, responsable
-  - **Ordenamiento server-side** con parámetros `?sort=` y `?order=` en URL
-  - Mapeo seguro de columnas para prevenir SQL injection
-  - Aplicación de permisos: TRAMITADOR ve solo sus proyectos, ADMIN/SUPERVISOR ven todos
-  - Joins optimizados para permitir ordenamiento por campos relacionados (tipo_ia, responsable)
+  - Ruta `GET /proyectos/` con filtros por Instrumento Ambiental, Provincia, Responsable
+  - Ordenamiento server-side por: Expediente AT, Título, Inst. Ambiental, Responsable, Fecha
+  - Permisos: TRAMITADOR ve solo sus proyectos, ADMIN/SUPERVISOR ven todos
+  - **outerjoin con Usuario** para incluir proyectos sin responsable asignado (huérfanos)
+  - Filtrado por provincia usando subconsulta con `municipios_proyecto`
+- ✅ **Modelo Proyecto** (`app/models/proyectos.py`):
+  - **Property `municipios`**: Acceso directo a lista de Municipios vía backref `municipios_afectados`
+  - Properties `es_interprovincial` y `provincias_afectadas` funcionando correctamente
+  - Documentación actualizada sobre relación N:M con Municipios
 - ✅ **Template HTML** (`app/templates/proyectos/index.html`):
-  - Tabla responsive Bootstrap 5 con 6 columnas
-  - **Headers ordenables como enlaces** que alternan asc/desc automáticamente
-  - Iconos de dirección de ordenamiento (flecha arriba/abajo)
-  - Formulario de filtros con selectores provincia, tipo IA y responsable
-  - Preservación de filtros al cambiar ordenamiento (hidden inputs)
-  - Badge visual para proyectos interprovinciales
-  - Enlaces directos a expediente asociado y detalle de proyecto
-  - Contador de proyectos visible
-  - Manejo de casos edge: sin tipo_ia, sin municipios, >3 municipios
-- ✅ **JavaScript** (`app/static/js/proyectos_listado.js`):
-  - **Simplificado**: Solo activación de tooltips Bootstrap 5
-  - **Ordenamiento delegado al servidor** (no client-side)
-- ✅ **Registro blueprint** en `app/__init__.py`
+  - Tabla responsive con columnas: Expediente AT, Título, Inst. Ambiental, Municipios, Provincias, Responsable, Acciones
+  - **Columna Expediente AT primera** (a la izquierda)
+  - **Columna Provincias** muestra nombres de provincias afectadas
+  - Formulario de filtros con selectores (Inst. Ambiental, Provincia, Responsable)
+  - Badge "Interprovincial" cuando afecta a múltiples provincias
+  - Badge "Sin asignar" para expedientes huérfanos (responsable NULL)
+  - Badge "Tú" para proyectos del usuario actual
+  - **Iconos Font Awesome** (fas) coherentes con listado de Expedientes
+  - **Estilo coherente** con Expedientes: card shadow-sm, thead table-success, badges con colores JDA
+  - Contador de proyectos en formato texto (igual que Expedientes)
+  - Tooltips en badges y botones
+  - Botones: Ver detalle (deshabilitado, issue #40), Editar proyecto
 
 **Funcionalidades:**
 - Vista independiente de proyectos accesible desde `/proyectos/`
-- Filtrado por tipo de instalación AT (CT, Línea, Subestación, etc.)
+- Filtrado por Instrumento Ambiental (AAI, AAU, AAUS, CA, EXENTO)
 - Filtrado por provincia de Andalucía (8 provincias)
-- Filtrado por responsable del expediente (solo ADMIN/SUPERVISOR)
-- **Ordenamiento server-side** de columnas: Título, Tipo IA, Expediente AT, Responsable
-- Ordenamiento persistente en URL (`/proyectos/?sort=titulo&order=asc`)
-- Compatibilidad con paginación futura (preparado para LIMIT/OFFSET)
+- Filtrado por responsable (solo ADMIN/SUPERVISOR)
+- Ordenamiento por columnas: Expediente AT, Título, Inst. Ambiental, Responsable, Fecha
 - Visualización de hasta 3 municipios en tabla (con contador "... y X más")
+- **Proyectos sin responsable visibles** con badge amarillo "Sin asignar"
 - Badge "Interprovincial" automático cuando proyecto afecta a 2+ provincias
-- Botón "Ver detalle" preparado para issue #40
+- Enlace directo a detalle de expediente desde número AT
 - Botón "Editar" redirige a `/expedientes/<id>/editar#proyecto`
 
-**Decisión arquitectural:**
-- ❌ Descartado ordenamiento client-side JavaScript por:
-  - No escalable (problemas con >100 proyectos)
-  - Imposibilita paginación futura
-  - Ordenamiento se pierde al recargar página
-  - Duplicación de lógica si se crea API REST
-- ✅ Implementado ordenamiento server-side (PostgreSQL) por:
-  - Escalable a miles de registros con índices
-  - Compatible con paginación (LIMIT/OFFSET)
-  - Ordenamiento persistente en URL
-  - Reutilizable para API REST
-  - Funciona sin JavaScript habilitado
-
 **Issues resueltos:** #39  
+**Issues relacionados:** #52 (Búsqueda por texto), #53 (Filtrado inline en columnas)  
 **Milestone:** MS-2 - Fase 2.2 Gestión de Expedientes  
-**Archivos:** app/routes/proyectos.py (NUEVO), app/templates/proyectos/index.html (NUEVO), app/static/js/proyectos_listado.js (NUEVO), app/__init__.py, docs/CHANGELOG.md
+**Archivos:** app/routes/proyectos.py (NUEVO), app/templates/proyectos/index.html (NUEVO), app/models/proyectos.py, app/__init__.py, docs/CHANGELOG.md
 
 ---
 
@@ -112,7 +101,7 @@ Este archivo mantiene un **resumen de los últimos 5 PRs mergeados** para consul
 
 ---
 
-### 2026-01-28 - [PR #TBD: Permitir expedientes sin responsable asignado (huérfanos)](https://github.com/genete/bddat/pull/TBD)
+### 2026-01-28 - [PR #46: Permitir expedientes sin responsable asignado (huérfanos)](https://github.com/genete/bddat/pull/46)
 
 **Objetivo:** Modificar el modelo Expediente para permitir `responsable_id = NULL`, habilitando la creación de expedientes huérfanos que posteriormente pueden ser asignados por un supervisor según carga de trabajo o especialización.
 
@@ -135,7 +124,7 @@ Este archivo mantiene un **resumen de los últimos 5 PRs mergeados** para consul
 
 ---
 
-### 2026-01-27 - [PR #TBD: Mejorar Diseño de Mensajes Informativos](https://github.com/genete/bddat/pull/TBD)
+### 2026-01-27 - [PR #3: Mejorar Diseño de Mensajes Informativos](https://github.com/genete/bddat/pull/3)
 
 **Objetivo:** Mejorar el diseño visual y comportamiento de los mensajes informativos (toasts) implementando los cambios solicitados en el issue #3.
 
