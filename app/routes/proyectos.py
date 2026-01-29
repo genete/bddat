@@ -173,3 +173,46 @@ def detalle(id):
         'proyectos/detalle.html',
         proyecto=proyecto
     )
+
+
+@bp.route('/<int:id>/editar')
+@login_required
+def editar_proyecto(id):
+    """
+    Redirige a la edición del expediente asociado con scroll automático a proyecto.
+    
+    ESTRATEGIA: Opción A - Redirección inteligente (issue #41)
+    En lugar de duplicar lógica de formulario, reutilizamos el formulario de
+    expediente existente y redirigimos con anchor #proyecto para scroll automático.
+    
+    Ventajas:
+    - Reutiliza lógica existente (DRY)
+    - Mantiene coherencia con relación 1:1 expediente-proyecto
+    - No duplica validaciones
+    - Implementación simple y mantenible
+    
+    Parámetros:
+        id (int): ID del proyecto
+    
+    Permisos:
+        Mismos que vista detalle (verificados en editar_expediente)
+    
+    Returns:
+        Redirect a /expedientes/<expediente_id>/editar#proyecto
+    """
+    # Buscar proyecto con expediente asociado
+    proyecto = db.session.query(Proyecto).join(
+        Expediente
+    ).filter(Proyecto.id == id).first()
+    
+    # 404 si no existe
+    if not proyecto:
+        abort(404)
+    
+    # Verificar permisos (mismo criterio que detalle)
+    if current_user.tiene_rol('TRAMITADOR') and not current_user.tiene_rol('ADMIN', 'SUPERVISOR'):
+        if proyecto.expediente.responsable_id != current_user.id:
+            abort(403)
+    
+    # Redirigir a edición de expediente con anchor #proyecto
+    return redirect(url_for('expedientes.editar', id=proyecto.expediente.id) + '#proyecto')

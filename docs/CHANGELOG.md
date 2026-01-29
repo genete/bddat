@@ -18,6 +18,52 @@ Este archivo mantiene un **resumen de los últimos 5 PRs mergeados** para consul
 
 ## Últimos Cambios
 
+### 2026-01-29 - [PR #XX: Edición de proyecto desde vista detalle (redirect inteligente)](https://github.com/genete/bddat/pull/XX)
+
+**Objetivo:** Habilitar edición de proyecto desde su vista detallada mediante redirección inteligente al formulario de expediente con scroll automático a la sección proyecto.
+
+**Estrategia:** Opción A - Redirección inteligente (issue #41)  
+En lugar de duplicar lógica de formulario, se reutiliza el formulario de expediente existente con anchor `#proyecto` para scroll automático.
+
+**Cambios principales:**
+- ✅ **Ruta editar** (`app/routes/proyectos.py`):
+  - `GET /proyectos/<id>/editar` redirige a `/expedientes/<expediente_id>/editar#proyecto`
+  - Verificación de permisos (mismos que vista detalle)
+  - Manejo 404/403 antes de redirigir
+- ✅ **Anchor HTML** (`app/templates/expedientes/editar.html`):
+  - Añadido `id="proyecto"` en card "Datos del Proyecto"
+  - Permite scroll directo a sección específica
+- ✅ **JavaScript scroll automático** (`app/templates/expedientes/editar.html`):
+  - Detecta `window.location.hash === '#proyecto'`
+  - Scroll suave (`scrollIntoView`) con timeout de 100ms
+  - Comportamiento: Al llegar desde botón "Editar Proyecto", scroll automático a sección
+- ✅ **Botones actualizados** (`app/templates/proyectos/detalle.html`):
+  - Botón header "Editar Proyecto" ahora usa `url_for('proyectos.editar_proyecto', id=proyecto.id)`
+  - Botón sidebar "Editar Proyecto" actualizado igualmente
+  - Experiencia consistente en toda la vista
+
+**Ventajas del enfoque elegido:**
+- ✅ Reutiliza lógica existente (DRY)
+- ✅ No duplica validaciones
+- ✅ Mantiene coherencia con relación 1:1 expediente-proyecto
+- ✅ Implementación simple y mantenible (15 minutos)
+- ✅ Experiencia de usuario fluida (scroll automático)
+
+**Funcionalidades:**
+- Botón "Editar Proyecto" en vista detalle totalmente funcional
+- Redirección automática a formulario de expediente
+- Scroll automático a sección proyecto al cargar
+- Permisos aplicados correctamente (TRAMITADOR vs ADMIN/SUPERVISOR)
+- Tras guardar, usuario puede volver a vista proyecto o expediente
+
+**Issues resueltos:** #41  
+**Milestone:** MS-2 - Fase 2.2 Gestión de Expedientes  
+**Archivos:** app/routes/proyectos.py, app/templates/expedientes/editar.html, app/templates/proyectos/detalle.html, docs/CHANGELOG.md
+
+**Nota:** Se descartó Opción B (formulario independiente) por pragmatismo y coherencia con modelo 1:1.
+
+---
+
 ### 2026-01-29 - [PR #55: Vista detallada de proyecto con maquetas](https://github.com/genete/bddat/pull/55)
 
 **Objetivo:** Implementar vista detallada individual de proyecto con todas las secciones solicitadas, incluyendo maquetas visuales para Documentos y Solicitudes futuras.
@@ -196,24 +242,6 @@ Este archivo mantiene un **resumen de los últimos 5 PRs mergeados** para consul
 **Issues resueltos:** #46  
 **Milestone:** 1.3 - Expedientes básicos (MVP)  
 **Archivos:** app/models/expedientes.py, migrations/versions/51fcf34d6955_*.py, app/routes/expedientes.py, app/templates/expedientes/*.html
-
----
-
-### 2026-01-27 - [PR #3: Mejorar Diseño de Mensajes Informativos](https://github.com/genete/bddat/pull/3)
-
-**Objetivo:** Mejorar el diseño visual y comportamiento de los mensajes informativos (toasts) implementando los cambios solicitados en el issue #3.
-
-**Cambios principales:**
-- ✅ **Ancho 90%**: Los toasts ocupan el 90% del ancho visible con márgenes del 5% a cada lado
-- ✅ **Borde uniforme**: Cambio de borde izquierdo de 4px a borde completo de 1px del color oscuro de cada tipo
-- ✅ **Botón cerrar coloreado**: La "X" de cerrar ahora tiene el mismo color que el texto/borde de cada tipo (verde, rojo, amarillo, azul)
-- ✅ **Transparencia inicial**: Los mensajes aparecen con opacity 0.9
-- ✅ **Efecto hover**: Al pasar el ratón, el mensaje se oscurece (opacity 1), la sombra se intensifica y se eleva ligeramente
-- ✅ **Tiempo ampliado**: El tiempo de auto-cierre aumenta de 5 a 8 segundos
-- ✅ **Animaciones fade**: Transiciones suaves de 300ms al aparecer y desaparecer con desplazamiento vertical
-
-**Issues resueltos:** #3  
-**Archivos:** app/static/css/custom.css, app/templates/base.html
 
 ---
 
