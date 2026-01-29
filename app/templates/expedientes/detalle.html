@@ -112,6 +112,45 @@
                 </div>
             </div>
         </div>
+        
+        <!-- Card Municipios Afectados -->
+        <div class="card shadow-sm mt-3">
+            <div class="card-header bg-warning text-dark">
+                <h5 class="mb-0">
+                    <i class="fas fa-map-marked-alt me-2"></i>Municipios Afectados
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if expediente.proyecto.municipios_afectados %}
+                    <!-- Detectar interprovincialidad -->
+                    {% set provincias_unicas = expediente.proyecto.municipios_afectados | map(attribute='municipio.provincia') | unique | list %}
+                    {% if provincias_unicas | length > 1 %}
+                        <div class="alert alert-info mb-3">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <strong>Proyecto Interprovincial</strong> - Afecta a {{ provincias_unicas | length }} provincias:
+                            {% for provincia in provincias_unicas %}
+                                <span class="badge bg-primary ms-1">{{ provincia }}</span>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                    
+                    <!-- Lista de municipios -->
+                    <ul class="list-group">
+                        {% for mp in expediente.proyecto.municipios_afectados %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>{{ mp.municipio.nombre }}</strong>
+                                <span class="badge bg-secondary ms-2">{{ mp.municipio.provincia }}</span>
+                            </div>
+                            <small class="text-muted">{{ mp.municipio.codigo }}</small>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p class="text-muted mb-0"><em>No hay municipios asociados</em></p>
+                {% endif %}
+            </div>
+        </div>
     </div>
 </div>
 
