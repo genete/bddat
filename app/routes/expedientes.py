@@ -189,17 +189,33 @@ def editar(id):
     
     if request.method == 'POST':
         try:
-            # Actualizar EXPEDIENTE
+            # ============================================
+            # 1. VALIDAR MUNICIPIOS (OBLIGATORIO)
+            # ============================================
+            municipios_ids = request.form.getlist('municipios[]')
+            if not municipios_ids:
+                flash('Debe añadir al menos un municipio afectado', 'danger')
+                return redirect(url_for('expedientes.editar', id=id))
+            
+            try:
+                municipios_ids = [int(mid) for mid in municipios_ids]
+            except ValueError:
+                flash('IDs de municipios inválidos', 'danger')
+                return redirect(url_for('expedientes.editar', id=id))
+            
+            # ============================================
+            # 2. ACTUALIZAR EXPEDIENTE
+            # ============================================
             expediente.tipo_expediente_id = request.form.get('tipo_expediente_id') or None
             expediente.heredado = request.form.get('heredado') == 'on'
             
-            # Solo ADMIN/SUPERVISOR puede cambiar responsable (usando utilidad)
-            # Permitir establecer None (expediente huérfano) explícitamente
             if puede_cambiar_responsable():
                 nuevo_responsable_id = request.form.get('responsable_id')
                 expediente.responsable_id = int(nuevo_responsable_id) if nuevo_responsable_id else None
             
-            # Actualizar PROYECTO - PostgreSQL mantiene defaults si vienen None
+            # ============================================
+            # 3. ACTUALIZAR PROYECTO
+            # ============================================
             proyecto = expediente.proyecto
             proyecto.titulo = request.form.get('titulo_proyecto') or None
             proyecto.descripcion = request.form.get('descripcion_proyecto') or None
@@ -207,6 +223,25 @@ def editar(id):
             proyecto.emplazamiento = request.form.get('emplazamiento') or None
             proyecto.ia_id = request.form.get('ia_id') or None
             
+            # ============================================
+            # 4. ACTUALIZAR MUNICIPIOS (REEMPLAZAR)
+            # ============================================
+            # Eliminar asociaciones actuales
+            MunicipioProyecto.query.filter_by(
+                proyecto_id=proyecto.id
+            ).delete()
+            
+            # Crear nuevas asociaciones
+            for municipio_id in municipios_ids:
+                mp = MunicipioProyecto(
+                    municipio_id=municipio_id,
+                    proyecto_id=proyecto.id
+                )
+                db.session.add(mp)
+            
+            # ============================================
+            # 5. COMMIT TRANSACCIONAL
+            # ============================================
             db.session.commit()
             
             flash(f'Expediente AT-{expediente.numero_at} actualizado correctamente', 'success')
