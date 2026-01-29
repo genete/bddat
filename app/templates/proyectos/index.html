@@ -80,6 +80,22 @@
             <tr>
               <th scope="col">
                 <a href="{{ url_for('proyectos.index', 
+                                    sort='expediente', 
+                                    order='asc' if sort_by == 'expediente' and order == 'desc' else 'desc',
+                                    tipo_ia=filtros_activos.tipo_ia,
+                                    provincia=filtros_activos.provincia,
+                                    responsable=filtros_activos.responsable) }}" 
+                   class="text-decoration-none text-dark">
+                  Expediente AT
+                  {% if sort_by == 'expediente' %}
+                    <i class="fas fa-arrow-{{ 'up' if order == 'asc' else 'down' }}"></i>
+                  {% else %}
+                    <i class="fas fa-sort text-muted"></i>
+                  {% endif %}
+                </a>
+              </th>
+              <th scope="col">
+                <a href="{{ url_for('proyectos.index', 
                                     sort='titulo', 
                                     order='asc' if sort_by == 'titulo' and order == 'desc' else 'desc',
                                     tipo_ia=filtros_activos.tipo_ia,
@@ -114,22 +130,6 @@
               <th scope="col">Provincias</th>
               <th scope="col">
                 <a href="{{ url_for('proyectos.index', 
-                                    sort='expediente', 
-                                    order='asc' if sort_by == 'expediente' and order == 'desc' else 'desc',
-                                    tipo_ia=filtros_activos.tipo_ia,
-                                    provincia=filtros_activos.provincia,
-                                    responsable=filtros_activos.responsable) }}" 
-                   class="text-decoration-none text-dark">
-                  Expediente AT
-                  {% if sort_by == 'expediente' %}
-                    <i class="fas fa-arrow-{{ 'up' if order == 'asc' else 'down' }}"></i>
-                  {% else %}
-                    <i class="fas fa-sort text-muted"></i>
-                  {% endif %}
-                </a>
-              </th>
-              <th scope="col">
-                <a href="{{ url_for('proyectos.index', 
                                     sort='responsable', 
                                     order='asc' if sort_by == 'responsable' and order == 'desc' else 'desc',
                                     tipo_ia=filtros_activos.tipo_ia,
@@ -150,6 +150,14 @@
           <tbody>
             {% for proyecto in proyectos %}
             <tr>
+              <td>
+                <a href="{{ url_for('expedientes.detalle', id=proyecto.expediente.id) }}" 
+                   class="text-decoration-none">
+                  AT-{{ proyecto.expediente.numero_at }}
+                </a>
+                <br>
+                <small class="text-muted">{{ proyecto.expediente.tipo_expediente.tipo }}</small>
+              </td>
               <td>
                 <strong>{{ proyecto.titulo }}</strong>
                 {% if proyecto.es_interprovincial %}
@@ -190,16 +198,12 @@
                 {% endif %}
               </td>
               <td>
-                <a href="{{ url_for('expedientes.detalle', id=proyecto.expediente.id) }}" 
-                   class="text-decoration-none">
-                  AT-{{ proyecto.expediente.numero_at }}
-                </a>
-                <br>
-                <small class="text-muted">{{ proyecto.expediente.tipo_expediente.tipo }}</small>
-              </td>
-              <td>
-                {{ proyecto.expediente.responsable.siglas }}<br>
-                <small class="text-muted">{{ proyecto.expediente.responsable.nombre }}</small>
+                {% if proyecto.expediente.responsable %}
+                  {{ proyecto.expediente.responsable.siglas }}<br>
+                  <small class="text-muted">{{ proyecto.expediente.responsable.nombre }}</small>
+                {% else %}
+                  <span class="badge bg-warning text-dark">Sin asignar</span>
+                {% endif %}
               </td>
               <td class="text-center" style="white-space: nowrap;">
                 <div class="btn-group" role="group">
