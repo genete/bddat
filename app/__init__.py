@@ -45,4 +45,8 @@ def create_app(config_name='default'):
     from app.routes.dashboard import bp as dashboard_bp
     app.register_blueprint(dashboard_bp)
     
+    # API endpoints
+    from app.routes.api_municipios import bp as api_municipios_bp
+    app.register_blueprint(api_municipios_bp)
+    
     return app
