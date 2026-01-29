@@ -18,6 +18,45 @@ Este archivo mantiene un **resumen de los últimos 5 PRs mergeados** para consul
 
 ## Últimos Cambios
 
+### 2026-01-29 - [PR #TBD: Vista de listado de proyectos](https://github.com/genete/bddat/pull/TBD)
+
+**Objetivo:** Implementar vista dedicada de listado de proyectos con tabla responsive, filtros opcionales y enlaces a detalle/edición.
+
+**Cambios principales:**
+- ✅ **Blueprint proyectos** (`app/routes/proyectos.py`):
+  - Ruta `GET /proyectos/` con lógica de filtrado por permisos de rol
+  - Filtros opcionales: tipo instalación, provincia, responsable
+  - Ordenamiento por fecha de creación (DESC)
+  - Aplicación de permisos: TRAMITADOR ve solo sus proyectos, ADMIN/SUPERVISOR ven todos
+- ✅ **Template HTML** (`app/templates/proyectos/index.html`):
+  - Tabla responsive Bootstrap 5 con 6 columnas
+  - Formulario de filtros con selectores provincia, tipo IA y responsable
+  - Badge visual para proyectos interprovinciales
+  - Enlaces directos a expediente asociado y detalle de proyecto
+  - Contador de proyectos visible
+  - Manejo de casos edge: sin tipo_ia, sin municipios, >3 municipios
+- ✅ **JavaScript** (`app/static/js/proyectos_listado.js`):
+  - Ordenamiento de columnas clickeables (ascendente/descendente)
+  - Activación de tooltips Bootstrap 5
+- ✅ **Registro blueprint** en `app/__init__.py`
+
+**Funcionalidades:**
+- Vista independiente de proyectos accesible desde `/proyectos/`
+- Filtrado por tipo de instalación AT (CT, Línea, Subestación, etc.)
+- Filtrado por provincia de Andalucía (8 provincias)
+- Filtrado por responsable del expediente (solo ADMIN/SUPERVISOR)
+- Ordenamiento client-side de columnas: Título, Tipo IA, Expediente AT, Responsable
+- Visualización de hasta 3 municipios en tabla (con contador "... y X más")
+- Badge "Interprovincial" automático cuando proyecto afecta a 2+ provincias
+- Botón "Ver detalle" preparado para issue #40
+- Botón "Editar" redirige a `/expedientes/<id>/editar#proyecto`
+
+**Issues resueltos:** #39  
+**Milestone:** MS-2 - Fase 2.2 Gestión de Expedientes  
+**Archivos:** app/routes/proyectos.py (NUEVO), app/templates/proyectos/index.html (NUEVO), app/static/js/proyectos_listado.js (NUEVO), app/__init__.py
+
+---
+
 ### 2026-01-29 - [PR #48: Gestión de municipios afectados en expedientes](https://github.com/genete/bddat/pull/48)
 
 **Objetivo:** Permitir asociar múltiples municipios a cada proyecto/expediente mediante interfaz intuitiva con búsqueda substring.
@@ -91,28 +130,6 @@ Este archivo mantiene un **resumen de los últimos 5 PRs mergeados** para consul
 
 **Issues resueltos:** #3  
 **Archivos:** app/static/css/custom.css, app/templates/base.html
-
----
-
-### 2026-01-25 - Unificar Actualización de Changelog en Rama de Feature
-
-**Objetivo:** Simplificar workflow eliminando ramas y PRs separados para actualizar el changelog.
-
-**Cambios principales:**
-- ✅ **Workflow simplificado**: Changelog se actualiza en la misma rama de desarrollo
-- ✅ **Menos overhead**: Elimina rama/PR/acciones separadas solo para changelog
-- ✅ **REGLAS_DESARROLLO.md actualizado**: Documenta nueva secuencia de trabajo
-- ✅ **ACCESO_RAPIDO_PROYECTO.md actualizado**: Añade regla en sección de workflow
-- ✅ **Aplicación inmediata**: Este mismo PR aplica la nueva regla
-
-**Workflow anterior:**
-1. Rama feature → commits → PR → merge
-2. Rama docs/changelog → commit changelog → PR → merge
-
-**Workflow nuevo:**
-1. Rama feature → commits + commit changelog → PR → merge
-
-**Archivos:** docs/fuentesIA/REGLAS_DESARROLLO.md, docs/fuentesIA/ACCESO_RAPIDO_PROYECTO.md, docs/CHANGELOG.md
 
 ---
 
