@@ -45,7 +45,8 @@ class Proyecto(db.Model):
         - expediente ← EXPEDIENTES (1:1 inversa, backref desde expediente)
         - ia → TIPOS_IA (instrumento ambiental aplicable)
         - documentos_proyecto → DOCUMENTOS_PROYECTO (N documentos versionados)
-        - municipios → MUNICIPIOS_PROYECTO → MUNICIPIOS (N:M, afecciones territoriales)
+        - municipios_afectados ← MUNICIPIOS_PROYECTO (backref desde MunicipioProyecto)
+        - municipios → Property calculada que accede a lista directa de Municipios
     
     GESTIÓN DE VERSIONES:
         NO se crean múltiples registros de proyecto. La evolución se gestiona así:
@@ -75,6 +76,7 @@ class Proyecto(db.Model):
         v3.0: ELIMINADO TIPO_PROYECTO_ID (tipos viven en DOCUMENTOS_PROYECTO.TIPO)
         v3.0: ACLARADO FECHA (fecha técnica, no administrativa)
         v3.1: AÑADIDAS propiedades es_interprovincial y provincias_afectadas (calculadas)
+        v3.2: AÑADIDA property municipios para acceso directo vía backref municipios_afectados
     """
     __tablename__ = 'proyectos'
     __table_args__ = (
@@ -138,6 +140,38 @@ class Proyecto(db.Model):
         foreign_keys=[ia_id], 
         backref='proyectos'
     )
+    
+    # IMPORTANTE: NO usar db.relationship('Municipio', secondary='public.municipios_proyecto')
+    # La relación N:M ya existe vía backref 'municipios_afectados' definido en MunicipioProyecto
+    # Esta property permite acceso directo a lista de Municipios sin pasar por MunicipioProyecto
+    
+    @property
+    def municipios(self):
+        """
+        Acceso directo a lista de objetos Municipio (sin MunicipioProyecto intermedio).
+        
+        PROPÓSITO:
+            Facilita acceso a municipios sin tener que navegar por municipios_afectados.
+            Convierte [MunicipioProyecto] → [Municipio]
+        
+        RETORNO:
+            list[Municipio]: Lista de objetos Municipio afectados por el proyecto
+        
+        USO:
+            # Acceso directo a municipios
+            for municipio in proyecto.municipios:
+                print(municipio.nombre, municipio.provincia)
+            
+            # Equivalente a:
+            for mp in proyecto.municipios_afectados:
+                print(mp.municipio.nombre, mp.municipio.provincia)
+        
+        NOTA:
+            Esta property usa el backref 'municipios_afectados' definido en:
+            - app/models/municipios_proyecto.py: MunicipioProyecto
+            - proyecto = db.relationship('Proyecto', backref='municipios_afectados')
+        """
+        return [mp.municipio for mp in self.municipios_afectados]
     
     @property
     def es_interprovincial(self):
