@@ -21,12 +21,12 @@ def index():
     - tipo_ia: ID del tipo de instalación (instrumento ambiental)
     - provincia: Código de provincia (2 dígitos)
     - responsable: ID del usuario responsable (solo ADMIN/SUPERVISOR)
-    - sort: Campo de ordenamiento (titulo, tipo_ia, expediente, responsable, fecha_creacion)
+    - sort: Campo de ordenamiento (titulo, tipo_ia, expediente, responsable, fecha)
     - order: Dirección de ordenamiento (asc, desc)
     """
     # Query base con joins necesarios para ordenamiento
     query = db.session.query(Proyecto).join(Expediente).join(
-        Usuario, Expediente.id_responsable == Usuario.id
+        Usuario, Expediente.responsable_id == Usuario.id
     ).outerjoin(
         TipoIA, Proyecto.ia_id == TipoIA.id
     )
@@ -34,7 +34,7 @@ def index():
     # Aplicar filtro de permisos según rol
     if current_user.rol.nombre == 'TRAMITADOR':
         # TRAMITADOR: solo proyectos de sus expedientes
-        query = query.filter(Expediente.id_responsable == current_user.id)
+        query = query.filter(Expediente.responsable_id == current_user.id)
     # ADMIN y SUPERVISOR ven todos los proyectos
     
     # Filtro por tipo de instrumento ambiental
@@ -59,7 +59,7 @@ def index():
     if current_user.rol.nombre in ['ADMIN', 'SUPERVISOR']:
         responsable_id = request.args.get('responsable', type=int)
         if responsable_id:
-            query = query.filter(Expediente.id_responsable == responsable_id)
+            query = query.filter(Expediente.responsable_id == responsable_id)
     
     # Parámetros de ordenamiento
     sort_by = request.args.get('sort', 'fecha')
