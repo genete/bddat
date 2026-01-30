@@ -18,43 +18,54 @@ Este archivo mantiene un **resumen de los últimos 5 PRs mergeados** para consul
 
 ## Últimos Cambios
 
-### 2026-01-30 - [PR #XX: Añadir navegación a proyectos en dashboard y listados](https://github.com/genete/bddat/pull/XX)
+### 2026-01-30 - [PR #XX: Añadir Proyectos al menú de navegación principal](https://github.com/genete/bddat/pull/XX)
 
-**Objetivo:** Habilitar navegación hacia el listado de proyectos desde el dashboard principal y establecer navegación bidireccional entre listados de expedientes y proyectos.
+**Objetivo:** Habilitar acceso directo a listado de proyectos desde cualquier página de la aplicación mediante ítem permanente en la barra de navegación superior.
 
 **Problema identificado:** Aunque las rutas y templates de proyectos estaban implementados y funcionales (`/proyectos/`, `/proyectos/<id>`), no existía ningún enlace de navegación hacia ellos desde la interfaz de usuario, convirtiéndolos en páginas "huérfanas" accesibles solo vía URL directa.
 
 **Cambios principales:**
+- ✅ **Navbar** (`app/templates/base.html`):
+  - Añadido ítem "Proyectos" en menú principal
+  - Ubicación: después de "Expedientes", antes de "Usuarios"
+  - Visible para todos los roles autenticados (TRAMITADOR, ADMIN, SUPERVISOR)
+  - Icono: `fa-bolt` (coherente con identidad visual del módulo proyectos)
+  - Accesible desde cualquier página del sistema
 - ✅ **Dashboard** (`app/routes/dashboard.py`):
-  - Añadido ítem "Listado proyectos" en bloque Tramitación
+  - Mantenido ítem "Listado proyectos" en bloque Tramitación (acceso directo adicional)
   - Ubicación: después de "Listado expedientes", antes de "Nuevo expediente"
   - Mismos permisos que expedientes: `['TRAMITADOR', 'ADMINISTRATIVO', 'SUPERVISOR', 'ADMIN']`
-  - URL: `proyectos.index`
-- ✅ **Template expedientes** (`app/templates/expedientes/index.html`):
-  - Botón "Ver Proyectos" en header (outline-primary)
-  - Ubicado a la izquierda del botón "Nuevo Expediente"
-  - Navegación directa a `/proyectos/`
-- ✅ **Template proyectos** (`app/templates/proyectos/index.html`):
-  - Botón "Ver Expedientes" en header (outline-primary)
-  - Navegación bidireccional completa
-  - Ubicado en col-md-4 text-end
+- ✅ **Limpieza de templates**:
+  - Eliminados botones cruzados "Ver Proyectos" / "Ver Expedientes" de headers
+  - Restaurado layout original limpio en `expedientes/index.html`
+  - Restaurado layout original limpio en `proyectos/index.html`
+  - Único botón principal: "Nuevo Expediente" (verde, sin distracciones visuales)
 
 **Funcionalidades:**
-- ✅ Navegación desde Dashboard → Listado Proyectos (bloque Tramitación)
-- ✅ Navegación desde Listado Expedientes ↔ Listado Proyectos (botones header)
-- ✅ Navegación consistente con mismo patrón visual (Bootstrap 5)
+- ✅ Navegación desde cualquier página → Proyectos (navbar siempre visible)
+- ✅ Acceso rápido desde Dashboard → Proyectos (bloque Tramitación)
+- ✅ Layout limpio sin botones redundantes en headers
+- ✅ Coherencia con estructura de navegación existente (Inicio, Expedientes, Proyectos, Usuarios)
 - ✅ Sin cambios en permisos ni lógica de negocio (solo presentación)
 
 **Estilo:**
-- Botones outline-primary para navegación cruzada (no acciones principales)
-- Iconos Font Awesome: `fa-bolt` (proyectos), `fa-folder-open` (expedientes)
-- Coherencia con patrón existente en otros templates
+- Navbar: texto blanco sobre fondo verde (bg-success JDA)
+- Icono Font Awesome: `fa-bolt` (proyectos específicamente)
+- Coherencia con patrón de navegación existente en otros módulos
+- Eliminación de botones outline-primary que rompian el diseño de headers
+
+**Decisión de diseño:**
+Se optó por navbar sobre botones cruzados porque:
+1. Acceso universal desde cualquier página (no solo listados)
+2. Coherencia con patrón de navegación existente
+3. No rompe el layout limpio de las páginas individuales
+4. Facilita descubribilidad de la funcionalidad
 
 **Issues resueltos:** #59  
 **Milestone:** MS-2 - Fase 2.2 Gestión de Expedientes  
-**Archivos:** app/routes/dashboard.py, app/templates/expedientes/index.html, app/templates/proyectos/index.html, docs/CHANGELOG.md
+**Archivos:** app/templates/base.html, app/templates/expedientes/index.html, app/templates/proyectos/index.html, app/routes/dashboard.py, docs/CHANGELOG.md
 
-**Notas:** Cambio mínimo de presentación. Las rutas y funcionalidad de proyectos ya existían desde issue #39.
+**Notas:** Las rutas y funcionalidad de proyectos ya existían desde issue #39. Este cambio solo mejora la accesibilidad desde la UI.
 
 ---
 
