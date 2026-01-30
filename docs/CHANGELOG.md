@@ -2,7 +2,7 @@
 
 **Repositorio:** https://github.com/genete/bddat  
 **Historial completo:** [Ver Pull Requests cerrados](https://github.com/genete/bddat/pulls?q=is%3Apr+is%3Aclosed)  
-**Última actualización:** 29 de enero de 2026
+**Última actualización:** 30 de enero de 2026
 
 ---
 
@@ -17,6 +17,46 @@ Este archivo mantiene un **resumen de los últimos 5 PRs mergeados** para consul
 ---
 
 ## Últimos Cambios
+
+### 2026-01-30 - [PR #XX: Añadir navegación a proyectos en dashboard y listados](https://github.com/genete/bddat/pull/XX)
+
+**Objetivo:** Habilitar navegación hacia el listado de proyectos desde el dashboard principal y establecer navegación bidireccional entre listados de expedientes y proyectos.
+
+**Problema identificado:** Aunque las rutas y templates de proyectos estaban implementados y funcionales (`/proyectos/`, `/proyectos/<id>`), no existía ningún enlace de navegación hacia ellos desde la interfaz de usuario, convirtiéndolos en páginas "huérfanas" accesibles solo vía URL directa.
+
+**Cambios principales:**
+- ✅ **Dashboard** (`app/routes/dashboard.py`):
+  - Añadido ítem "Listado proyectos" en bloque Tramitación
+  - Ubicación: después de "Listado expedientes", antes de "Nuevo expediente"
+  - Mismos permisos que expedientes: `['TRAMITADOR', 'ADMINISTRATIVO', 'SUPERVISOR', 'ADMIN']`
+  - URL: `proyectos.index`
+- ✅ **Template expedientes** (`app/templates/expedientes/index.html`):
+  - Botón "Ver Proyectos" en header (outline-primary)
+  - Ubicado a la izquierda del botón "Nuevo Expediente"
+  - Navegación directa a `/proyectos/`
+- ✅ **Template proyectos** (`app/templates/proyectos/index.html`):
+  - Botón "Ver Expedientes" en header (outline-primary)
+  - Navegación bidireccional completa
+  - Ubicado en col-md-4 text-end
+
+**Funcionalidades:**
+- ✅ Navegación desde Dashboard → Listado Proyectos (bloque Tramitación)
+- ✅ Navegación desde Listado Expedientes ↔ Listado Proyectos (botones header)
+- ✅ Navegación consistente con mismo patrón visual (Bootstrap 5)
+- ✅ Sin cambios en permisos ni lógica de negocio (solo presentación)
+
+**Estilo:**
+- Botones outline-primary para navegación cruzada (no acciones principales)
+- Iconos Font Awesome: `fa-bolt` (proyectos), `fa-folder-open` (expedientes)
+- Coherencia con patrón existente en otros templates
+
+**Issues resueltos:** #59  
+**Milestone:** MS-2 - Fase 2.2 Gestión de Expedientes  
+**Archivos:** app/routes/dashboard.py, app/templates/expedientes/index.html, app/templates/proyectos/index.html, docs/CHANGELOG.md
+
+**Notas:** Cambio mínimo de presentación. Las rutas y funcionalidad de proyectos ya existían desde issue #39.
+
+---
 
 ### 2026-01-29 - [PR #XX: Edición de proyecto desde vista detalle (redirect inteligente)](https://github.com/genete/bddat/pull/XX)
 
@@ -219,29 +259,6 @@ En lugar de duplicar lógica de formulario, se reutiliza el formulario de expedi
 **Issues resueltos:** #48  
 **Milestone:** 1.3 - Expedientes básicos (MVP)  
 **Archivos:** app/routes/api_municipios.py (NUEVO), app/static/js/municipios_selector.js (NUEVO), app/__init__.py, app/routes/expedientes.py, app/templates/expedientes/*.html
-
----
-
-### 2026-01-28 - [PR #46: Permitir expedientes sin responsable asignado (huérfanos)](https://github.com/genete/bddat/pull/46)
-
-**Objetivo:** Modificar el modelo Expediente para permitir `responsable_id = NULL`, habilitando la creación de expedientes huérfanos que posteriormente pueden ser asignados por un supervisor según carga de trabajo o especialización.
-
-**Cambios principales:**
-- ✅ **Modelo expedientes.py**: `responsable_id` ahora acepta NULL
-- ✅ **Migración Alembic**: `ALTER TABLE expedientes ALTER COLUMN responsable_id DROP NOT NULL`
-- ✅ **Rutas expedientes.py**: Permitir crear y editar expedientes con `responsable_id = None`
-- ✅ **Templates nuevo.html/editar.html**: Opción "-- Sin asignar (huérfano) --" en select de responsable
-- ✅ **Templates detalle.html/index.html**: Badge visual "Sin asignar" cuando expediente sin responsable
-- ✅ **Documentación**: Actualizada docstring del modelo con reglas de negocio de expedientes huérfanos
-
-**Casos de uso:**
-- Supervisor crea expediente para posterior asignación según disponibilidad
-- Redistribución de carga: dejar expediente sin asignar temporalmente
-- Gestión flexible de recursos humanos
-
-**Issues resueltos:** #46  
-**Milestone:** 1.3 - Expedientes básicos (MVP)  
-**Archivos:** app/models/expedientes.py, migrations/versions/51fcf34d6955_*.py, app/routes/expedientes.py, app/templates/expedientes/*.html
 
 ---
 
