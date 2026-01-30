@@ -57,6 +57,15 @@
                         {% endif %}
                     </li>
                     
+                    <!-- Proyectos - Visible para todos los roles autenticados -->
+                    {% if current_user.is_authenticated %}
+                    <li class="nav-item">
+                        <a class="nav-link text-white" href="{{ url_for('proyectos.index') }}">
+                            <i class="fas fa-bolt me-1"></i>Proyectos
+                        </a>
+                    </li>
+                    {% endif %}
+                    
                     <!-- Solo visible para ADMIN y SUPERVISOR -->
                     {% if current_user.is_authenticated %}
                         {% set user_roles = current_user.roles | map(attribute='nombre') | list %}
