@@ -1,8 +1,9 @@
-# Definiciones de Tablas Principales v3.0
+# Definiciones de Tablas Principales v3.1
 
 **Sistema de Tramitación de Expedientes de Alta Tensión (BDDAT)**  
 **Formato agnóstico a la base de datos**  
-**Fecha:** 30/12/2025
+**Fecha:** 31/01/2026  
+**Generado automáticamente:** 31/01/2026 21:28 por merge_tables.py
 
 ---
 
@@ -10,25 +11,28 @@
 
 - [Filosofía del Diseño](#filosofía-del-diseño)
 - [Tablas Operacionales](#tablas-operacionales)
+  - [DOCUMENTOS](#documentos)
+  - [DOCUMENTOS_PROYECTO](#documentosproyecto)
   - [EXPEDIENTES](#expedientes)
+  - [FASES](#fases)
+  - [MUNICIPIOS_PROYECTO](#municipiosproyecto)
   - [PROYECTOS](#proyectos)
   - [SOLICITUDES](#solicitudes)
-  - [DOCUMENTOS](#documentos)
-  - [DOCUMENTOS_PROYECTO](#documentos_proyecto)
+  - [SOLICITUDES_TIPOS](#solicitudestipos)
   - [TAREAS](#tareas)
-  - [FASES](#fases)
   - [TRAMITES](#tramites)
-  - [MUNICIPIOS_PROYECTO](#municipios_proyecto)
 - [Tablas Maestras](#tablas-maestras)
-  - [USUARIOS](#usuarios)
-  - [TIPOS_EXPEDIENTES](#tipos_expedientes)
-  - [TIPOS_SOLICITUDES](#tipos_solicitudes)
-  - [TIPOS_FASES](#tipos_fases)
-  - [TIPOS_TRAMITES](#tipos_tramites)
-  - [TIPOS_TAREAS](#tipos_tareas)
-  - [TIPOS_IA](#tipos_ia)
   - [MUNICIPIOS](#municipios)
-  - [TIPOS_RESULTADOS_FASES](#tipos_resultados_fases)
+  - [ROLES](#roles)
+  - [TIPOS_EXPEDIENTES](#tiposexpedientes)
+  - [TIPOS_FASES](#tiposfases)
+  - [TIPOS_IA](#tiposia)
+  - [TIPOS_RESULTADOS_FASES](#tiposresultadosfases)
+  - [TIPOS_SOLICITUDES](#tipossolicitudes)
+  - [TIPOS_TAREAS](#tipostareas)
+  - [TIPOS_TRAMITES](#tipostramites)
+  - [USUARIOS](#usuarios)
+  - [USUARIOS_ROLES](#usuariosroles)
 
 ---
 
@@ -214,109 +218,9 @@ TAREA ID=6 (TIPO='ESPERARPLAZO', TRAMITE_ID=6)
 
 ---
 
+---
+
 ## Tablas Operacionales
-
-### EXPEDIENTES
-
-Tabla principal que representa cada expediente de tramitación administrativa.
-
-#### Estructura
-
-| Campo | Tipo | Nullable | Descripción | Notas |
-|:---|:---|:---|:---|:---|
-| **ID** | INTEGER | NO | Identificador único del expediente | PK, autoincremental |
-| **NUMERO_AT** | INTEGER | NO | Número de expediente administrativo (formato legacy) | Único en la organización. No es el ID sino un número correlativo tomado del sistema anterior |
-| **RESPONSABLE_ID** | INTEGER | NO | Usuario responsable del expediente | FK → USUARIOS(ID). Usuario asignado con permisos de gestión completa |
-| **TIPO_EXPEDIENTE_ID** | INTEGER | SÍ | Tipo de expediente según clasificación normativa | FK → TIPOS_EXPEDIENTES(ID). Define lógica procedimental aplicable |
-| **HEREDADO** | BOOLEAN | SÍ | Indica si el expediente proviene del sistema anterior | TRUE = datos incompletos, solo metadatos heredados. FALSE/NULL = expediente gestionado completamente en este sistema |
-| **PROYECTO_ID** | INTEGER | NO | Proyecto técnico único asociado al expediente | FK → PROYECTOS(ID). **UNIQUE** (relación 1:1). **Nuevo campo v3.0** |
-
-#### Claves
-
-- **PK:** `ID`
-- **UNIQUE:** `NUMERO_AT`, `PROYECTO_ID`
-- **FK:**
-  - `RESPONSABLE_ID` → `USUARIOS(ID)`
-  - `TIPO_EXPEDIENTE_ID` → `TIPOS_EXPEDIENTES(ID)`
-  - `PROYECTO_ID` → `PROYECTOS(ID)`
-
-#### Notas de Versión
-
-- **v3.0:** Añadido campo `PROYECTO_ID` (relación 1:1 con proyecto). Un expediente tiene exactamente un proyecto técnico, que evoluciona mediante documentos versionados.
-
----
-
-### PROYECTOS
-
-Proyecto técnico único asociado a cada expediente.
-
-#### Estructura
-
-| Campo | Tipo | Descripción | Nullable | Notas |
-|:---|:---|:---|:---|:---|
-| **ID** | INTEGER | Identificador único del proyecto | NO | PK, autoincremental |
-| **TITULO** | VARCHAR(500) | Título del proyecto técnico | NO | Descripción breve. Default: "⚠️ Falta el título del proyecto" |
-| **DESCRIPCION** | VARCHAR(10000) | Descripción técnica del proyecto | NO | Texto libre extenso. Default: "⚠️ Falta la descripción del proyecto" |
-| **FECHA** | DATE | Fecha de firma o visado del proyecto | NO | Fecha técnica del documento de proyecto (NO es fecha de presentación administrativa). Ayuda a identificar y ordenar versiones cronológicamente |
-| **FINALIDAD** | VARCHAR(500) | Finalidad de la instalación | NO | Uso previsto. Default: "⚠️ Falta la finalidad del proyecto" |
-| **EMPLAZAMIENTO** | VARCHAR(200) | Ubicación geográfica de la instalación | NO | Descripción textual. Default: "⚠️ Falta el emplazamiento" |
-| **IA_ID** | INTEGER | Instrumento ambiental aplicable | SÍ | FK → TIPOS_IA(ID). Define figura ambiental (AAU, AAUS, CA, No sujeto) |
-
-#### Claves
-
-- **PK:** `ID`
-- **FK:**
-  - `IA_ID` → `TIPOS_IA(ID)`
-
-#### Notas de Versión
-
-- **v3.0:** **ELIMINADO** `EXPEDIENTE_ID`. Relación inversa (expediente apunta a proyecto).
-- **v3.0:** **ELIMINADO** `TIPO_PROYECTO_ID`. Tipos de versión viven en `DOCUMENTOS_PROYECTO.TIPO`.
-- **v3.0:** **ACLARADO** `FECHA`: Es fecha técnica del proyecto (firma/visado), NO fecha administrativa de presentación.
-
-#### Filosofía
-
-El proyecto es una **entidad técnica pura y única**. No tiene múltiples versiones en esta tabla. Las versiones documentales (proyecto inicial, modificados, refundidos) se gestionan mediante documentos vinculados en `DOCUMENTOS_PROYECTO`.
-
----
-
-### SOLICITUDES
-
-Actos administrativos solicitados dentro de un expediente.
-
-#### Estructura
-
-| Campo | Tipo | Descripción | Nullable | Notas |
-|:---|:---|:---|:---|:---|
-| **ID** | INTEGER | Identificador único de la solicitud | NO | PK, autoincremental |
-| **EXPEDIENTE_ID** | INTEGER | Expediente al que pertenece la solicitud | NO | FK → EXPEDIENTES(ID). **Nuevo campo v3.0**. Relación directa solicitud-expediente |
-| **TIPO_SOLICITUD_ID** | INTEGER | Tipo de solicitud según normativa | NO | FK → TIPOS_SOLICITUDES(ID). Define el acto administrativo solicitado (AAP, AAC, MOD, DUP, etc.) |
-| **FECHA** | DATE | Fecha de presentación de la solicitud | SÍ | Fecha administrativa oficial (registro de entrada). Puede ser NULL si está en preparación |
-| **SOLICITUD_AFECTADA_ID** | INTEGER | Solicitud sobre la que actúa (desistimiento/renuncia) | SÍ | FK → SOLICITUDES(ID). Solo para tipos DESISTIMIENTO o RENUNCIA. Apunta a la solicitud que se desiste/renuncia |
-| **FECHA_FIN** | DATE | Fecha de finalización/archivo de la solicitud | SÍ | Fecha de resolución, caducidad, archivo o cierre administrativo. NULL = solicitud en curso |
-
-#### Claves
-
-- **PK:** `ID`
-- **FK:**
-  - `EXPEDIENTE_ID` → `EXPEDIENTES(ID)`
-  - `TIPO_SOLICITUD_ID` → `TIPOS_SOLICITUDES(ID)`
-  - `SOLICITUD_AFECTADA_ID` → `SOLICITUDES(ID)` (autorreferencia)
-
-#### Notas de Versión
-
-- **v3.0:** **AÑADIDO** campo `EXPEDIENTE_ID`. Relación directa con expediente, elimina dependencia transitiva vía proyecto.
-- **v3.0:** **ELIMINADO** campo `PROYECTO_ID`. La solicitud ya no apunta a un proyecto específico. El proyecto se deduce del expediente (`EXPEDIENTE.PROYECTO_ID`). La solicitud actúa sobre el estado del proyecto en el momento de su presentación (determinado por documentos vigentes en `DOCUMENTOS_PROYECTO` con `FECHA_ADMINISTRATIVA <= SOLICITUD.FECHA`).
-
-#### Filosofía
-
-La solicitud es un **acto administrativo concreto** dentro de un expediente. No necesita apuntar directamente al proyecto porque:
-
-- Solo hay UN proyecto por expediente
-- La solicitud actúa sobre el **estado temporal del proyecto** en su momento de presentación
-- El estado se reconstruye consultando documentos del proyecto vigentes en esa fecha
-
----
 
 ### DOCUMENTOS
 
@@ -380,6 +284,8 @@ El documento es una **entidad pura del expediente**. Solo sabe a qué expediente
 - **Proyecto:** fecha de visado o firma del proyecto
 
 **Es la fecha que determina plazos, efectos jurídicos y secuencia administrativa**.
+
+---
 
 ---
 
@@ -470,6 +376,372 @@ La ordenación de los documentos del proyecto se basa en la **fecha administrati
 
 ---
 
+---
+
+### EXPEDIENTES
+
+Tabla principal que representa cada expediente de tramitación administrativa.
+
+#### Estructura
+
+| Campo | Tipo | Nullable | Descripción | Notas |
+|:---|:---|:---|:---|:---|
+| **ID** | INTEGER | NO | Identificador único del expediente | PK, autoincremental |
+| **NUMERO_AT** | INTEGER | NO | Número de expediente administrativo (formato legacy) | Único en la organización. No es el ID sino un número correlativo tomado del sistema anterior |
+| **RESPONSABLE_ID** | INTEGER | NO | Usuario responsable del expediente | FK → USUARIOS(ID). Usuario asignado con permisos de gestión completa |
+| **TIPO_EXPEDIENTE_ID** | INTEGER | SÍ | Tipo de expediente según clasificación normativa | FK → TIPOS_EXPEDIENTES(ID). Define lógica procedimental aplicable |
+| **HEREDADO** | BOOLEAN | SÍ | Indica si el expediente proviene del sistema anterior | TRUE = datos incompletos, solo metadatos heredados. FALSE/NULL = expediente gestionado completamente en este sistema |
+| **PROYECTO_ID** | INTEGER | NO | Proyecto técnico único asociado al expediente | FK → PROYECTOS(ID). **UNIQUE** (relación 1:1). **Nuevo campo v3.0** |
+
+#### Claves
+
+- **PK:** `ID`
+- **UNIQUE:** `NUMERO_AT`, `PROYECTO_ID`
+- **FK:**
+  - `RESPONSABLE_ID` → `USUARIOS(ID)`
+  - `TIPO_EXPEDIENTE_ID` → `TIPOS_EXPEDIENTES(ID)`
+  - `PROYECTO_ID` → `PROYECTOS(ID)`
+
+#### Notas de Versión
+
+- **v3.0:** Añadido campo `PROYECTO_ID` (relación 1:1 con proyecto). Un expediente tiene exactamente un proyecto técnico, que evoluciona mediante documentos versionados.
+
+---
+
+---
+
+### FASES
+
+Contenedor temporal de trámites con objetivo procedimental concreto.
+
+#### Estructura
+
+| Campo | Tipo | Descripción | Nullable | Notas |
+|:---|:---|:---|:---|:---|
+| **ID** | INTEGER | Identificador único de la fase | NO | PK, autoincremental |
+| **SOLICITUD_ID** | INTEGER | Solicitud a la que pertenece la fase | NO | FK → SOLICITUDES(ID). Cada fase se ejecuta dentro de una solicitud específica |
+| **TIPO_FASE_ID** | INTEGER | Tipo de fase según catálogo normativo | NO | FK → TIPOS_FASES(ID). Define la fase procedimental: ADMISIBILIDAD, CONSULTAS, INFORMACION_PUBLICA, RESOLUCION, etc. |
+| **FECHA_INICIO** | DATE | Fecha de inicio administrativo de la fase | SÍ | NULL = fase planificada pero no iniciada. NOT NULL = fase en curso o finalizada |
+| **FECHA_FIN** | DATE | Fecha de finalización de la fase | SÍ | NULL = fase pendiente o en curso. NOT NULL = fase completada. Se deduce como la última fecha de finalización de todos los trámites asociados, pero debe rellenarse manualmente |
+| **OBSERVACIONES** | VARCHAR(2000) | Notas o comentarios sobre la fase | SÍ | Campo libre para anotaciones del técnico sobre la ejecución de la fase |
+| **RESULTADO_FASE_ID** | INTEGER | Resultado o desenlace de la fase | SÍ | FK → TIPOS_RESULTADOS_FASES(ID). Indica el resultado: FAVORABLE, DESFAVORABLE, CONDICIONADO, etc. Debe rellenarse manualmente al cerrar la fase |
+| **DOCUMENTO_RESULTADO_ID** | INTEGER | Documento oficial que formaliza el resultado | SÍ | FK → DOCUMENTOS(ID). Documento clave que define el resultado (ej: informe favorable, resolución de inadmisión). Puede ser NULL si el resultado no genera documento específico |
+
+#### Claves
+
+- **PK:** `ID`
+- **FK:**
+  - `SOLICITUD_ID` → `SOLICITUDES(ID)` ON DELETE CASCADE
+  - `TIPO_FASE_ID` → `TIPOS_FASES(ID)`
+  - `RESULTADO_FASE_ID` → `TIPOS_RESULTADOS_FASES(ID)`
+  - `DOCUMENTO_RESULTADO_ID` → `DOCUMENTOS(ID)`
+
+#### Índices Recomendados
+
+- `SOLICITUD_ID` (fases de una solicitud)
+- `TIPO_FASE_ID` (filtros por tipo de fase)
+- `RESULTADO_FASE_ID` (consultas por resultado)
+- `(FECHA_INICIO, FECHA_FIN)` (estado temporal y secuencia)
+
+#### Notas de Versión
+
+- **v3.0:** Sin cambios estructurales respecto a v2.0. Mantiene diseño minimalista.
+
+#### Filosofía
+
+La fase es un **contenedor temporal de trámites** con un objetivo procedimental concreto:
+
+- **Campos mínimos:** Solo metadatos administrativos (fechas, tipo, resultado)
+- **Semántica en TIPO:** La lógica procedimental vive en `TIPOS_FASES`, no en campos específicos
+- **Resultado manual:** El técnico debe evaluar y registrar el resultado tras analizar documentos
+- **Fecha fin sugestionable:** Puede calcularse automáticamente como MAX(TRAMITES.FECHA_FIN), pero siempre se registra manualmente para control administrativo
+
+#### Estados Deducibles (no almacenados)
+
+- **PENDIENTE:** `FECHA_INICIO IS NULL`
+- **EN_CURSO:** `FECHA_INICIO IS NOT NULL AND FECHA_FIN IS NULL`
+- **COMPLETADA:** `FECHA_FIN IS NOT NULL`
+- **EXITOSA:** `FECHA_FIN IS NOT NULL AND RESULTADO_FASE_ID indica éxito`
+
+#### Reglas de Negocio
+
+1. **No puede finalizarse** (`FECHA_FIN` NOT NULL) si existen trámites asociados sin finalizar (`TRAMITES.FECHA_FIN IS NULL`)
+2. `RESULTADO_FASE_ID obligatorio` al establecer `FECHA_FIN` (validación de interfaz)
+3. **Secuencias de fases:** Determinadas por motor de reglas según `TIPO_FASE_ID` y `TIPO_SOLICITUD_ID`
+
+---
+
+---
+
+### MUNICIPIOS_PROYECTO
+
+Relación muchos a muchos entre proyectos y municipios afectados.
+
+#### Estructura
+
+| Campo | Tipo | Descripción | Nullable | Notas |
+|:---|:---|:---|:---|:---|
+| **ID** | INTEGER | Identificador único del registro | NO | PK, autoincremental |
+| **MUNICIPIO_ID** | INTEGER | Municipio afectado por el proyecto | NO | FK → MUNICIPIOS(ID). Municipio por donde discurre la instalación o donde se ubica |
+| **PROYECTO_ID** | INTEGER | Proyecto que afecta al municipio | NO | FK → PROYECTOS(ID). Proyecto técnico del expediente |
+
+#### Claves
+
+- **PK:** `ID`
+- **UNIQUE:** `(MUNICIPIO_ID, PROYECTO_ID)` - Un municipio no puede vincularse dos veces al mismo proyecto
+- **FK:**
+  - `MUNICIPIO_ID` → `MUNICIPIOS(ID)`
+  - `PROYECTO_ID` → `PROYECTOS(ID)` ON DELETE CASCADE
+
+#### Índices Recomendados
+
+- `PROYECTO_ID` (municipios de un proyecto)
+- `MUNICIPIO_ID` (proyectos que afectan a un municipio)
+
+#### Notas de Versión
+
+- **v3.0:** Sin cambios estructurales. Continúa siendo relación N:M entre proyectos y municipios.
+
+#### Filosofía
+
+Tabla intermedia que gestiona la relación **muchos a muchos** entre proyectos y municipios:
+
+- Un proyecto puede afectar múltiples municipios (línea que atraviesa varios términos)
+- Un municipio puede tener múltiples proyectos que lo afectan
+- Necesaria para determinar publicaciones en tablones, consultas a ayuntamientos y análisis territorial
+
+#### Uso Administrativo
+
+**Derivaciones:**
+
+- Determinar qué ayuntamientos deben ser consultados
+- Publicaciones en tablones municipales (fase INFORMACION_PUBLICA)
+- Generación de separatas por término municipal
+- Evaluación ambiental diferente según afecte a más de un municipio
+
+**Consultas típicas:**
+
+**Municipios de un expediente:**
+```
+EXPEDIENTES → PROYECTO_ID → MUNICIPIOS_PROYECTO → MUNICIPIOS
+```
+
+**Expedientes que afectan a un municipio:**
+```
+MUNICIPIOS → MUNICIPIOS_PROYECTO → PROYECTOS → EXPEDIENTES
+```
+
+---
+
+## Tablas Maestras
+
+---
+
+### PROYECTOS
+
+Proyecto técnico único asociado a cada expediente.
+
+#### Estructura
+
+| Campo | Tipo | Descripción | Nullable | Notas |
+|:---|:---|:---|:---|:---|
+| **ID** | INTEGER | Identificador único del proyecto | NO | PK, autoincremental |
+| **TITULO** | VARCHAR(500) | Título del proyecto técnico | NO | Descripción breve. Default: "⚠️ Falta el título del proyecto" |
+| **DESCRIPCION** | VARCHAR(10000) | Descripción técnica del proyecto | NO | Texto libre extenso. Default: "⚠️ Falta la descripción del proyecto" |
+| **FECHA** | DATE | Fecha de firma o visado del proyecto | NO | Fecha técnica del documento de proyecto (NO es fecha de presentación administrativa). Ayuda a identificar y ordenar versiones cronológicamente |
+| **FINALIDAD** | VARCHAR(500) | Finalidad de la instalación | NO | Uso previsto. Default: "⚠️ Falta la finalidad del proyecto" |
+| **EMPLAZAMIENTO** | VARCHAR(200) | Ubicación geográfica de la instalación | NO | Descripción textual. Default: "⚠️ Falta el emplazamiento" |
+| **IA_ID** | INTEGER | Instrumento ambiental aplicable | SÍ | FK → TIPOS_IA(ID). Define figura ambiental (AAU, AAUS, CA, No sujeto) |
+
+#### Claves
+
+- **PK:** `ID`
+- **FK:**
+  - `IA_ID` → `TIPOS_IA(ID)`
+
+#### Notas de Versión
+
+- **v3.0:** **ELIMINADO** `EXPEDIENTE_ID`. Relación inversa (expediente apunta a proyecto).
+- **v3.0:** **ELIMINADO** `TIPO_PROYECTO_ID`. Tipos de versión viven en `DOCUMENTOS_PROYECTO.TIPO`.
+- **v3.0:** **ACLARADO** `FECHA`: Es fecha técnica del proyecto (firma/visado), NO fecha administrativa de presentación.
+
+#### Filosofía
+
+El proyecto es una **entidad técnica pura y única**. No tiene múltiples versiones en esta tabla. Las versiones documentales (proyecto inicial, modificados, refundidos) se gestionan mediante documentos vinculados en `DOCUMENTOS_PROYECTO`.
+
+---
+
+---
+
+### SOLICITUDES
+
+Actos administrativos solicitados dentro de un expediente.
+
+#### Estructura
+
+| Campo | Tipo | Descripción | Nullable | Notas |
+|:---|:---|:---|:---|:---|
+| **ID** | INTEGER | Identificador único de la solicitud | NO | PK, autoincremental |
+| **EXPEDIENTE_ID** | INTEGER | Expediente al que pertenece la solicitud | NO | FK → EXPEDIENTES(ID). Relación directa solicitud-expediente |
+| **SOLICITUD_AFECTADA_ID** | INTEGER | Solicitud sobre la que actúa (desistimiento/renuncia) | SÍ | FK → SOLICITUDES(ID). Solo para tipos DESISTIMIENTO o RENUNCIA. Apunta a la solicitud que se desiste/renuncia |
+| **FECHA_SOLICITUD** | DATE | Fecha de presentación de la solicitud | NO | Fecha administrativa oficial (registro de entrada) |
+| **ESTADO** | VARCHAR(20) | Estado actual de la solicitud | NO | Valores: `EN_TRAMITE`, `RESUELTA`, `DESISTIDA`, `ARCHIVADA`. Default: `EN_TRAMITE` |
+| **OBSERVACIONES** | VARCHAR(2000) | Notas o comentarios adicionales | SÍ | Campo libre para anotaciones del técnico |
+
+#### Claves
+
+- **PK:** `ID`
+- **FK:**
+  - `EXPEDIENTE_ID` → `EXPEDIENTES(ID)`
+  - `SOLICITUD_AFECTADA_ID` → `SOLICITUDES(ID)` (autorreferencia)
+
+#### Índices Recomendados
+
+- `EXPEDIENTE_ID` (consultas frecuentes por expediente)
+- `FECHA_SOLICITUD` (ordenación cronológica)
+- `ESTADO` (filtros por estado)
+
+#### Relaciones
+
+- **expediente**: EXPEDIENTES.id (FK, expediente contenedor)
+- **solicitud_afectada**: SOLICITUDES.id (FK self-referencia, para DESISTIMIENTO/RENUNCIA)
+- **solicitudes_tipos**: SOLICITUDES_TIPOS.solicitud_id → tipos de la solicitud (N:M)
+- **fases**: FASES.solicitud_id → fases de tramitación (1:N)
+
+#### Notas de Versión
+
+- **v3.0**: 
+  - AÑADIDO campo `EXPEDIENTE_ID`. Relación directa con expediente, elimina dependencia transitiva vía proyecto.
+  - ELIMINADO campo `PROYECTO_ID`. La solicitud ya no apunta a un proyecto específico. El proyecto se deduce del expediente (EXPEDIENTE.PROYECTO_ID). La solicitud actúa sobre el estado del proyecto en el momento de su presentación (determinado por documentos vigentes en DOCUMENTOS_PROYECTO con FECHA_ADMINISTRATIVA ≤ SOLICITUD.FECHA).
+  - AÑADIDO campo `SOLICITUD_AFECTADA_ID` para soportar desistimientos y renuncias.
+
+- **v3.1**:
+  - **ELIMINADO campo `TIPO_SOLICITUD_ID`**. Movido a tabla puente SOLICITUDES_TIPOS para permitir múltiples tipos por solicitud.
+  - **AÑADIDO campo `ESTADO`**. Estados: EN_TRAMITE, RESUELTA, DESISTIDA, ARCHIVADA.
+  - **RENOMBRADO `FECHA` → `FECHA_SOLICITUD`**. Mayor claridad semántica.
+  - **ELIMINADO campo `FECHA_FIN`**. Redundante con estado y fases.
+
+#### Filosofía
+
+La solicitud es un **acto administrativo concreto** dentro de un expediente. No necesita apuntar directamente al proyecto porque:
+- Solo hay **UN proyecto por expediente**
+- La solicitud actúa sobre el **estado temporal del proyecto** en su momento de presentación
+- El estado se reconstruye consultando documentos del proyecto vigentes en esa fecha
+
+#### Relación N:M con Tipos de Solicitud
+
+Una solicitud puede tener **múltiples tipos simultáneamente** (ej: AAP+AAC+DUP en una misma presentación):
+- Gestionado mediante tabla puente **SOLICITUDES_TIPOS**
+- Motor de reglas aplica lógica sobre tipos individuales, no combinaciones
+- Cada tipo determina fases procedimentales específicas
+- Permite modelar solicitudes complejas sin duplicación
+
+#### Estados de Solicitud
+
+| Estado | Significado | Transiciones permitidas |
+|:---|:---|:---|
+| **EN_TRAMITE** | Solicitud activa en procedimiento | → RESUELTA, DESISTIDA, ARCHIVADA |
+| **RESUELTA** | Resolución firme emitida | (Estado final) |
+| **DESISTIDA** | Peticionario desiste | (Estado final) |
+| **ARCHIVADA** | Procedimiento finalizado sin resolución (caducidad, etc.) | (Estado final) |
+
+#### Reglas de Negocio
+
+1. **Tipos múltiples**: Gestionados en tabla puente SOLICITUDES_TIPOS (N:M)
+2. **DESISTIMIENTO/RENUNCIA**: Requiere `SOLICITUD_AFECTADA_ID NOT NULL`
+3. **MOD**: Debe existir AAC previa concedida en el expediente (validar en interfaz)
+4. **Estado RESUELTA**: Debe existir al menos una fase completada con resultado favorable
+5. **Estado DESISTIDA**: Debe tener `SOLICITUD_AFECTADA_ID NOT NULL` si es desistimiento de otra solicitud
+6. **Validación de fecha**: `FECHA_SOLICITUD` debe ser ≥ fecha de creación del expediente
+
+---
+
+---
+
+### SOLICITUDES_TIPOS
+
+Tabla puente para la relación N:M entre solicitudes y tipos de solicitudes.
+
+#### Estructura
+
+| Campo | Tipo | Descripción | Nullable | Notas |
+|:---|:---|:---|:---|:---|
+| **ID** | INTEGER | Identificador único del registro | NO | PK, autoincremental |
+| **SOLICITUD_ID** | INTEGER | Solicitud que tiene el tipo | NO | FK → SOLICITUDES(ID). Parte de UNIQUE(solicitud_id, tipo_solicitud_id) |
+| **TIPO_SOLICITUD_ID** | INTEGER | Tipo de solicitud asignado | NO | FK → TIPOS_SOLICITUDES(ID). Parte de UNIQUE(solicitud_id, tipo_solicitud_id) |
+
+#### Claves
+
+- **PK:** `ID`
+- **UNIQUE:** `(SOLICITUD_ID, TIPO_SOLICITUD_ID)` - Una solicitud no puede tener el mismo tipo duplicado
+- **FK:**
+  - `SOLICITUD_ID` → `SOLICITUDES(ID)` ON DELETE CASCADE
+  - `TIPO_SOLICITUD_ID` → `TIPOS_SOLICITUDES(ID)` ON DELETE CASCADE
+
+#### Índices Recomendados
+
+- `SOLICITUD_ID` (consulta: ¿qué tipos tiene esta solicitud?)
+- `TIPO_SOLICITUD_ID` (consulta inversa: ¿qué solicitudes son de este tipo?)
+
+#### Relaciones
+
+- **solicitud**: SOLICITUDES.id (FK CASCADE, solicitud contenedora)
+- **tipo_solicitud**: TIPOS_SOLICITUDES.id (FK CASCADE, tipo asignado)
+
+#### Notas de Versión
+
+- **v3.1**: Tabla nueva. Reemplaza el campo `TIPO_SOLICITUD_ID` de SOLICITUDES para permitir múltiples tipos por solicitud.
+
+#### Filosofía
+
+Esta tabla puente permite modelar **solicitudes complejas** con múltiples actos administrativos simultáneos:
+
+- **Solicitud simple**: AAP (un solo registro en esta tabla)
+- **Solicitud múltiple**: AAP+AAC+DUP (tres registros en esta tabla, misma `solicitud_id`)
+- **Motor de reglas**: Aplica lógica sobre tipos individuales, no combinaciones
+- **Sin duplicación**: El constraint UNIQUE evita asignar el mismo tipo dos veces
+
+#### Casos de Uso
+
+**Solicitud con un solo tipo:**
+- Solicitud ID=1 (AAP)
+- 1 registro: (solicitud_id=1, tipo_solicitud_id=1)
+
+**Solicitud con múltiples tipos:**
+- Solicitud ID=2 (AAP + AAC + DUP)
+- 3 registros:
+  - (solicitud_id=2, tipo_solicitud_id=1) -- AAP
+  - (solicitud_id=2, tipo_solicitud_id=2) -- AAC
+  - (solicitud_id=2, tipo_solicitud_id=3) -- DUP
+
+**Consulta: ¿Qué tipos tiene la solicitud 2?**
+```sql
+SELECT ts.siglas, ts.descripcion
+FROM solicitudes_tipos st
+JOIN tipos_solicitudes ts ON st.tipo_solicitud_id = ts.id
+WHERE st.solicitud_id = 2;
+```
+
+**Consulta inversa: ¿Qué solicitudes son AAP?**
+```sql
+SELECT s.id, s.fecha_solicitud, s.estado
+FROM solicitudes s
+JOIN solicitudes_tipos st ON s.id = st.solicitud_id
+JOIN tipos_solicitudes ts ON st.tipo_solicitud_id = ts.id
+WHERE ts.siglas = 'AAP';
+```
+
+#### Reglas de Negocio
+
+1. **CASCADE en DELETE**: Si se borra una solicitud, se borran automáticamente sus tipos asociados
+2. **No duplicados**: El constraint UNIQUE evita asignar el mismo tipo dos veces a una solicitud
+3. **Al menos un tipo**: Toda solicitud debe tener al menos un tipo (validar en interfaz)
+4. **Tipos compatibles**: El motor de reglas valida que las combinaciones sean válidas (ej: MOD requiere AAC previa)
+
+---
+
+---
+
 ### TAREAS
 
 Unidad de trabajo registrable con entrada/salida documental.
@@ -538,65 +810,6 @@ La tarea es una **unidad de trabajo registrable** con entrada/salida documental 
 3. `DOCUMENTO_PRODUCIDO_ID`: Único constraint garantiza que no se duplica el productor
 
 ---
-
-### FASES
-
-Contenedor temporal de trámites con objetivo procedimental concreto.
-
-#### Estructura
-
-| Campo | Tipo | Descripción | Nullable | Notas |
-|:---|:---|:---|:---|:---|
-| **ID** | INTEGER | Identificador único de la fase | NO | PK, autoincremental |
-| **SOLICITUD_ID** | INTEGER | Solicitud a la que pertenece la fase | NO | FK → SOLICITUDES(ID). Cada fase se ejecuta dentro de una solicitud específica |
-| **TIPO_FASE_ID** | INTEGER | Tipo de fase según catálogo normativo | NO | FK → TIPOS_FASES(ID). Define la fase procedimental: ADMISIBILIDAD, CONSULTAS, INFORMACION_PUBLICA, RESOLUCION, etc. |
-| **FECHA_INICIO** | DATE | Fecha de inicio administrativo de la fase | SÍ | NULL = fase planificada pero no iniciada. NOT NULL = fase en curso o finalizada |
-| **FECHA_FIN** | DATE | Fecha de finalización de la fase | SÍ | NULL = fase pendiente o en curso. NOT NULL = fase completada. Se deduce como la última fecha de finalización de todos los trámites asociados, pero debe rellenarse manualmente |
-| **OBSERVACIONES** | VARCHAR(2000) | Notas o comentarios sobre la fase | SÍ | Campo libre para anotaciones del técnico sobre la ejecución de la fase |
-| **RESULTADO_FASE_ID** | INTEGER | Resultado o desenlace de la fase | SÍ | FK → TIPOS_RESULTADOS_FASES(ID). Indica el resultado: FAVORABLE, DESFAVORABLE, CONDICIONADO, etc. Debe rellenarse manualmente al cerrar la fase |
-| **DOCUMENTO_RESULTADO_ID** | INTEGER | Documento oficial que formaliza el resultado | SÍ | FK → DOCUMENTOS(ID). Documento clave que define el resultado (ej: informe favorable, resolución de inadmisión). Puede ser NULL si el resultado no genera documento específico |
-
-#### Claves
-
-- **PK:** `ID`
-- **FK:**
-  - `SOLICITUD_ID` → `SOLICITUDES(ID)` ON DELETE CASCADE
-  - `TIPO_FASE_ID` → `TIPOS_FASES(ID)`
-  - `RESULTADO_FASE_ID` → `TIPOS_RESULTADOS_FASES(ID)`
-  - `DOCUMENTO_RESULTADO_ID` → `DOCUMENTOS(ID)`
-
-#### Índices Recomendados
-
-- `SOLICITUD_ID` (fases de una solicitud)
-- `TIPO_FASE_ID` (filtros por tipo de fase)
-- `RESULTADO_FASE_ID` (consultas por resultado)
-- `(FECHA_INICIO, FECHA_FIN)` (estado temporal y secuencia)
-
-#### Notas de Versión
-
-- **v3.0:** Sin cambios estructurales respecto a v2.0. Mantiene diseño minimalista.
-
-#### Filosofía
-
-La fase es un **contenedor temporal de trámites** con un objetivo procedimental concreto:
-
-- **Campos mínimos:** Solo metadatos administrativos (fechas, tipo, resultado)
-- **Semántica en TIPO:** La lógica procedimental vive en `TIPOS_FASES`, no en campos específicos
-- **Resultado manual:** El técnico debe evaluar y registrar el resultado tras analizar documentos
-- **Fecha fin sugestionable:** Puede calcularse automáticamente como MAX(TRAMITES.FECHA_FIN), pero siempre se registra manualmente para control administrativo
-
-#### Estados Deducibles (no almacenados)
-
-- **PENDIENTE:** `FECHA_INICIO IS NULL`
-- **EN_CURSO:** `FECHA_INICIO IS NOT NULL AND FECHA_FIN IS NULL`
-- **COMPLETADA:** `FECHA_FIN IS NOT NULL`
-- **EXITOSA:** `FECHA_FIN IS NOT NULL AND RESULTADO_FASE_ID indica éxito`
-
-#### Reglas de Negocio
-
-1. **No puede finalizarse** (`FECHA_FIN` NOT NULL) si existen trámites asociados sin finalizar (`TRAMITES.FECHA_FIN IS NULL`)
-2. `RESULTADO_FASE_ID obligatorio` al establecer `FECHA_FIN` (validación de interfaz)
-3. **Secuencias de fases:** Determinadas por motor de reglas según `TIPO_FASE_ID` y `TIPO_SOLICITUD_ID`
 
 ---
 
@@ -668,119 +881,147 @@ Los patrones se combinan y adaptan según reglas de negocio, no están hardcoded
 
 ---
 
-### MUNICIPIOS_PROYECTO
-
-Relación muchos a muchos entre proyectos y municipios afectados.
-
-#### Estructura
-
-| Campo | Tipo | Descripción | Nullable | Notas |
-|:---|:---|:---|:---|:---|
-| **ID** | INTEGER | Identificador único del registro | NO | PK, autoincremental |
-| **MUNICIPIO_ID** | INTEGER | Municipio afectado por el proyecto | NO | FK → MUNICIPIOS(ID). Municipio por donde discurre la instalación o donde se ubica |
-| **PROYECTO_ID** | INTEGER | Proyecto que afecta al municipio | NO | FK → PROYECTOS(ID). Proyecto técnico del expediente |
-
-#### Claves
-
-- **PK:** `ID`
-- **UNIQUE:** `(MUNICIPIO_ID, PROYECTO_ID)` - Un municipio no puede vincularse dos veces al mismo proyecto
-- **FK:**
-  - `MUNICIPIO_ID` → `MUNICIPIOS(ID)`
-  - `PROYECTO_ID` → `PROYECTOS(ID)` ON DELETE CASCADE
-
-#### Índices Recomendados
-
-- `PROYECTO_ID` (municipios de un proyecto)
-- `MUNICIPIO_ID` (proyectos que afectan a un municipio)
-
-#### Notas de Versión
-
-- **v3.0:** Sin cambios estructurales. Continúa siendo relación N:M entre proyectos y municipios.
-
-#### Filosofía
-
-Tabla intermedia que gestiona la relación **muchos a muchos** entre proyectos y municipios:
-
-- Un proyecto puede afectar múltiples municipios (línea que atraviesa varios términos)
-- Un municipio puede tener múltiples proyectos que lo afectan
-- Necesaria para determinar publicaciones en tablones, consultas a ayuntamientos y análisis territorial
-
-#### Uso Administrativo
-
-**Derivaciones:**
-
-- Determinar qué ayuntamientos deben ser consultados
-- Publicaciones en tablones municipales (fase INFORMACION_PUBLICA)
-- Generación de separatas por término municipal
-- Evaluación ambiental diferente según afecte a más de un municipio
-
-**Consultas típicas:**
-
-**Municipios de un expediente:**
-```
-EXPEDIENTES → PROYECTO_ID → MUNICIPIOS_PROYECTO → MUNICIPIOS
-```
-
-**Expedientes que afectan a un municipio:**
-```
-MUNICIPIOS → MUNICIPIOS_PROYECTO → PROYECTOS → EXPEDIENTES
-```
-
 ---
 
 ## Tablas Maestras
 
-### USUARIOS
+### MUNICIPIOS
 
-Usuarios del sistema con datos personales básicos.
+Catálogo de municipios.
 
 #### Estructura
 
 | Campo | Tipo | Descripción | Nullable | Notas |
 |:---|:---|:---|:---|:---|
-| **ID** | INTEGER | Identificador único del usuario | NO | PK, autoincremental |
-| **SIGLAS** | VARCHAR(50) | Siglas o código identificativo del usuario | NO | Identificador corto para uso interno. Default: "NULO" |
-| **NOMBRE** | VARCHAR(100) | Nombre del usuario | NO | Nombre de pila. Default: "Usuario" |
-| **APELLIDO1** | VARCHAR(50) | Primer apellido | NO | Default: "no asignado" |
-| **APELLIDO2** | VARCHAR(50) | Segundo apellido | SÍ | Puede ser NULL si no aplica |
-| **ACTIVO** | BOOLEAN | Indica si el usuario está activo en el sistema | SÍ | TRUE = usuario habilitado. FALSE = usuario desactivado (no eliminado). Default: TRUE |
+| **ID** | INTEGER | Identificador único del municipio | NO | PK, autoincremental |
+| **CODIGO** | VARCHAR(10) | Código INE del municipio | NO | Código oficial de 5 dígitos |
+| **NOMBRE** | VARCHAR(200) | Nombre del municipio | NO | Denominación oficial |
+| **PROVINCIA** | VARCHAR(100) | Provincia a la que pertenece | NO | Nombre de provincia |
 
 #### Claves
 
 - **PK:** `ID`
-- **UNIQUE:** `SIGLAS` (recomendado, aunque no está explícito en schema actual)
+- **UNIQUE:** `CODIGO`
 
 #### Índices Recomendados
 
-- `SIGLAS` (búsqueda rápida por código)
-- `ACTIVO` (filtrar usuarios activos)
+- `CODIGO` (búsqueda por código INE)
+- `NOMBRE` (búsqueda alfabética)
+- `PROVINCIA` (filtros por provincia)
 
 #### Notas de Versión
 
-- **v3.0:** Sin cambios estructurales respecto a versiones anteriores.
+- **v3.0:** Sin cambios estructurales.
 
 #### Filosofía
 
-Tabla maestra de usuarios del sistema:
+Tabla maestra con el catálogo oficial de municipios:
 
-- Usuarios técnicos (tramitadores, supervisores)
-- Identificación personal para responsabilidad y auditoría
-- **No contiene credenciales** (gestionadas por motor de BD PostgreSQL)
-- `ACTIVO=FALSE` permite deshabilitar usuarios sin perder historial (expedientes asignados, tareas realizadas)
+- Basado en códigos INE oficiales
+- Necesario para gestionar afecciones territoriales de proyectos
+- Determina competencias administrativas y publicaciones en tablones
 
-#### Roles de Sistema
+#### Relación con Otras Tablas
 
-Los roles se gestionan a nivel de base de datos PostgreSQL. Consultar documento `Roles.md` para más información.
+Usado en:
+- `MUNICIPIOS_PROYECTO.MUNICIPIO_ID` (municipios afectados por proyectos)
 
-#### Uso Administrativo
+---
 
-- `RESPONSABLE_ID` en `EXPEDIENTES`: Usuario asignado como responsable del expediente completo
-- Auditoría: Posibilidad futura de campos `CREADO_POR`, `MODIFICADO_POR` en tablas operacionales
-- Interfaz: Filtros por tramitador, asignaciones de trabajo, estadísticas por usuario
+---
 
-#### Valores por Defecto
+### ROLES
 
-Los defaults permiten crear registros temporales de usuarios mientras se completa información, pero en producción todos los campos deberían tener valores reales.
+Tabla maestra que define los roles del sistema (RBAC - Role-Based Access Control).
+
+#### Estructura
+
+| Campo | Tipo | Descripción | Nullable | Notas |
+|:---|:---|:---|:---|:---|
+| **ID** | INTEGER | Identificador único del rol | NO | PK, autoincremental |
+| **CODIGO** | VARCHAR(50) | Código único identificativo del rol | NO | UNIQUE. Inmutable. Usado en lógica de negocio |
+| **NOMBRE** | VARCHAR(100) | Nombre descriptivo del rol | NO | Para mostrar en interfaz |
+| **DESCRIPCION** | VARCHAR(500) | Descripción detallada de permisos | SÍ | Explicación de qué puede hacer este rol |
+
+#### Claves
+
+- **PK:** `ID`
+- **UNIQUE:** `CODIGO`
+
+#### Índices Recomendados
+
+- `CODIGO` (consultas frecuentes para validación de permisos)
+
+#### Relaciones
+
+- **usuarios_roles**: USUARIOS_ROLES.rol_id → asignaciones de usuarios (N:M)
+
+#### Notas de Versión
+
+- **v3.1**: Tabla nueva. Define roles para sistema RBAC (antes gestionado solo en Flask).
+
+#### Filosofía
+
+Los roles definen **niveles de acceso** en el sistema:
+
+- **CODIGO**: Referencia estable para código Python (no cambiar en producción)
+- **NOMBRE**: Etiqueta legible para interfaz de usuario
+- **N:M con usuarios**: Un usuario puede tener múltiples roles
+- **Permisos derivados**: El rol determina qué schemas/tablas/operaciones están permitidas
+
+#### Roles Definidos
+
+| Código | Nombre | Permisos principales |
+|:---|:---|:---|
+| **ADMIN** | Administrador | Acceso total: schemas (public, estructura, legacy), gestión de usuarios, configuración |
+| **SUPERVISOR** | Supervisor | Gestión de usuarios, asignación de expedientes, visión global, schemas (public, estructura) |
+| **TRAMITADOR** | Tramitador | Tramitación completa de expedientes asignados, schema public (lectura/escritura) |
+| **ADMINISTRATIVO** | Administrativo | Solo lectura y consulta, schema public (solo SELECT) |
+
+#### Permisos por Rol
+
+**ADMIN:**
+- GRANT ALL en schemas: `public`, `estructura`, `legacy`
+- Gestión de usuarios y roles
+- Configuración del sistema
+- Acceso a auditoría completa
+
+**SUPERVISOR:**
+- GRANT SELECT, INSERT, UPDATE en schemas: `public`, `estructura`
+- Asignación de expedientes a tramitadores
+- Creación/modificación de usuarios (excepto ADMIN)
+- Visión global de todos los expedientes
+
+**TRAMITADOR:**
+- GRANT SELECT, INSERT, UPDATE, DELETE en schema: `public`
+- Solo expedientes asignados (filtro por `responsable_id`)
+- Gestión completa de solicitudes, fases, trámites, documentos
+- No puede modificar tipos/maestras
+
+**ADMINISTRATIVO:**
+- GRANT SELECT en schema: `public`
+- Solo lectura: expedientes, proyectos, solicitudes, documentos
+- No puede crear ni modificar datos
+
+#### Reglas de Negocio
+
+1. **CODIGO inmutable**: No cambiar en producción (ruptura de lógica)
+2. **Al menos TRAMITADOR**: Todo usuario activo debe tener al menos un rol
+3. **Roles múltiples**: Un usuario puede ser TRAMITADOR + SUPERVISOR
+4. **Sin auto-asignación ADMIN**: Solo otro ADMIN puede asignar rol ADMIN
+5. **Roles preestablecidos**: Tabla inmutable (INSERT inicial, no modificar)
+
+#### Datos Maestros
+
+```sql
+INSERT INTO roles (codigo, nombre, descripcion) VALUES
+('ADMIN', 'Administrador', 'Acceso total al sistema: gestión de usuarios, configuración, schemas completos'),
+('SUPERVISOR', 'Supervisor', 'Gestión de usuarios, asignación de expedientes, visión global'),
+('TRAMITADOR', 'Tramitador', 'Tramitación completa de expedientes asignados'),
+('ADMINISTRATIVO', 'Administrativo', 'Solo lectura y consulta de expedientes');
+```
+
+---
 
 ---
 
@@ -833,6 +1074,168 @@ Usado en:
 
 Relacionado con motor de reglas:
 - Tablas de configuración de lógica de negocio que determinan flujos según tipo
+
+---
+
+---
+
+### TIPOS_FASES
+
+Catálogo de fases procedimentales.
+
+#### Estructura
+
+| Campo | Tipo | Descripción | Nullable | Notas |
+|:---|:---|:---|:---|:---|
+| **ID** | INTEGER | Identificador único del tipo de fase | NO | PK, autoincremental |
+| **CODIGO** | VARCHAR(50) | Código único identificativo de la fase | NO | Código normalizado sin espacios: ADMISIBILIDAD, CONSULTAS, INFORMACION_PUBLICA, etc. |
+| **NOMBRE** | VARCHAR(200) | Denominación completa de la fase | NO | Nombre descriptivo legible para interfaz de usuario |
+
+#### Claves
+
+- **PK:** `ID`
+- **UNIQUE:** `CODIGO`
+
+#### Índices Recomendados
+
+- `CODIGO` (búsqueda rápida y validaciones)
+
+#### Notas de Versión
+
+- **v3.0:** Sin cambios estructurales. Tabla maestra estable.
+
+#### Filosofía
+
+Tabla maestra que define las fases procedimentales de tramitación administrativa:
+
+- Basadas en estructura normativa del procedimiento administrativo eléctrico
+- Cada fase agrupa trámites relacionados con un objetivo procedimental concreto
+- El `CODIGO` es la referencia estable para reglas de negocio (no cambiar una vez en producción)
+
+#### Uso en Reglas de Negocio
+
+El `TIPO_FASE_ID` determina:
+
+- Secuencia obligatoria de fases según `TIPO_SOLICITUD_ID`
+- Trámites posibles dentro de la fase
+- Requisitos de finalización
+- Dependencias con fases anteriores
+
+#### Relación con Otras Tablas
+
+Usado en:
+- `FASES.TIPO_FASE_ID` (clasificación de la fase)
+
+Relacionado con motor de reglas:
+- Tablas de configuración que definen secuencias y dependencias de fases
+
+---
+
+---
+
+### TIPOS_IA
+
+Tipos de instrumentos ambientales aplicables.
+
+#### Estructura
+
+| Campo | Tipo | Descripción | Nullable | Notas |
+|:---|:---|:---|:---|:---|
+| **ID** | INTEGER | Identificador único del tipo de IA | NO | PK, autoincremental |
+| **SIGLAS** | VARCHAR(50) | Siglas del instrumento ambiental | NO | AAU, AAUS, CA, NO_SUJETO, etc. |
+| **NOMBRE** | VARCHAR(200) | Denominación completa del instrumento | NO | Autorización Ambiental Unificada, Comunicación Ambiental, etc. |
+
+#### Claves
+
+- **PK:** `ID`
+- **UNIQUE:** `SIGLAS`
+
+#### Índices Recomendados
+
+- `SIGLAS` (búsqueda rápida)
+
+#### Notas de Versión
+
+- **v3.0:** Sin cambios estructurales.
+
+#### Filosofía
+
+Tabla maestra que define los instrumentos ambientales según normativa vigente:
+
+- Determina qué trámites ambientales son necesarios
+- Define organismos competentes
+- Establece plazos y requisitos documentales específicos
+
+#### Relación con Otras Tablas
+
+Usado en:
+- `PROYECTOS.IA_ID` (instrumento ambiental del proyecto)
+
+---
+
+---
+
+### TIPOS_RESULTADOS_FASES
+
+Catálogo de resultados posibles de fases.
+
+#### Estructura
+
+| Campo | Tipo | Descripción | Nullable | Notas |
+|:---|:---|:---|:---|:---|
+| **ID** | INTEGER | Identificador único del tipo de resultado | NO | PK, autoincremental |
+| **CODIGO** | VARCHAR(50) | Código del resultado | NO | FAVORABLE, DESFAVORABLE, CONDICIONADO, SIN_PRONUNCIAMIENTO, etc. |
+| **NOMBRE** | VARCHAR(200) | Denominación del resultado | NO | Descripción legible |
+
+#### Claves
+
+- **PK:** `ID`
+- **UNIQUE:** `CODIGO`
+
+#### Índices Recomendados
+
+- `CODIGO` (búsqueda rápida)
+
+#### Notas de Versión
+
+- **v3.0:** Sin cambios estructurales.
+
+#### Filosofía
+
+Tabla maestra que define los posibles resultados de las fases:
+
+- Determina si la fase tuvo éxito procedimental
+- Condiciona las fases siguientes según reglas de negocio
+- El técnico debe evaluar manualmente el resultado tras analizar documentos
+
+#### Relación con Otras Tablas
+
+Usado en:
+- `FASES.RESULTADO_FASE_ID` (resultado de la fase)
+
+---
+
+## Resumen Final
+
+**Tablas Operacionales:** 9  
+**Tablas Maestras:** 9  
+**Total:** 18 tablas
+
+### Principios v3.0
+
+1. **Minimalismo estructural:** Tablas con campos mínimos, semántica en tipos
+2. **Documento agnóstico:** Solo `EXPEDIENTE_ID` como FK
+3. **Relaciones unidireccionales:** TAREA → DOCUMENTO (no al revés)
+4. **Estados deducibles:** No almacenar lo que se puede calcular
+5. **Fechas administrativas:** Fechas con efectos legales, no técnicas
+6. **Fuente de verdad única:** No duplicar información
+7. **Configurabilidad:** Lógica de negocio en motor de reglas, no hardcoded
+
+---
+
+**Versión:** 3.0  
+**Fecha:** 30 de diciembre de 2025  
+**Proyecto:** BDDAT - Sistema de Tramitación de Expedientes de Alta Tensión
 
 ---
 
@@ -898,17 +1301,19 @@ Relacionado con motor de reglas:
 
 ---
 
-### TIPOS_FASES
+---
 
-Catálogo de fases procedimentales.
+### TIPOS_TAREAS
+
+Catálogo de tipos atómicos de tareas.
 
 #### Estructura
 
 | Campo | Tipo | Descripción | Nullable | Notas |
 |:---|:---|:---|:---|:---|
-| **ID** | INTEGER | Identificador único del tipo de fase | NO | PK, autoincremental |
-| **CODIGO** | VARCHAR(50) | Código único identificativo de la fase | NO | Código normalizado sin espacios: ADMISIBILIDAD, CONSULTAS, INFORMACION_PUBLICA, etc. |
-| **NOMBRE** | VARCHAR(200) | Denominación completa de la fase | NO | Nombre descriptivo legible para interfaz de usuario |
+| **ID** | INTEGER | Identificador único del tipo de tarea | NO | PK, autoincremental |
+| **CODIGO** | VARCHAR(50) | Código único identificativo de la tarea | NO | Valores: INCORPORAR, ANALISIS, REDACTAR, FIRMAR, NOTIFICAR, PUBLICAR, ESPERARPLAZO |
+| **NOMBRE** | VARCHAR(200) | Denominación completa de la tarea | NO | Nombre descriptivo |
 
 #### Claves
 
@@ -917,36 +1322,32 @@ Catálogo de fases procedimentales.
 
 #### Índices Recomendados
 
-- `CODIGO` (búsqueda rápida y validaciones)
+- `CODIGO` (búsqueda rápida)
 
 #### Notas de Versión
 
-- **v3.0:** Sin cambios estructurales. Tabla maestra estable.
+- **v3.0:** Sin cambios estructurales. **Solo 7 tipos atómicos**.
 
 #### Filosofía
 
-Tabla maestra que define las fases procedimentales de tramitación administrativa:
+Tabla maestra que define los **7 tipos atómicos** de tareas:
 
-- Basadas en estructura normativa del procedimiento administrativo eléctrico
-- Cada fase agrupa trámites relacionados con un objetivo procedimental concreto
-- El `CODIGO` es la referencia estable para reglas de negocio (no cambiar una vez en producción)
+1. **INCORPORAR:** Incorpora documento externo al sistema
+2. **ANALISIS:** Analiza documento y genera informe
+3. **REDACTAR:** Redacta borrador de documento
+4. **FIRMAR:** Firma documento (transforma borrador en oficial)
+5. **NOTIFICAR:** Notifica documento y genera justificante
+6. **PUBLICAR:** Publica documento y genera justificante
+7. **ESPERARPLAZO:** Espera transcurso de plazo administrativo
 
-#### Uso en Reglas de Negocio
-
-El `TIPO_FASE_ID` determina:
-
-- Secuencia obligatoria de fases según `TIPO_SOLICITUD_ID`
-- Trámites posibles dentro de la fase
-- Requisitos de finalización
-- Dependencias con fases anteriores
+Estos 7 tipos cubren todas las operaciones administrativas posibles en la tramitación.
 
 #### Relación con Otras Tablas
 
 Usado en:
-- `FASES.TIPO_FASE_ID` (clasificación de la fase)
+- `TAREAS.TIPO_TAREA_ID` (clasificación de la tarea)
 
-Relacionado con motor de reglas:
-- Tablas de configuración que definen secuencias y dependencias de fases
+---
 
 ---
 
@@ -998,193 +1399,166 @@ Usado en:
 
 ---
 
-### TIPOS_TAREAS
+---
 
-Catálogo de tipos atómicos de tareas.
+### USUARIOS
+
+Usuarios del sistema con datos personales básicos.
 
 #### Estructura
 
 | Campo | Tipo | Descripción | Nullable | Notas |
 |:---|:---|:---|:---|:---|
-| **ID** | INTEGER | Identificador único del tipo de tarea | NO | PK, autoincremental |
-| **CODIGO** | VARCHAR(50) | Código único identificativo de la tarea | NO | Valores: INCORPORAR, ANALISIS, REDACTAR, FIRMAR, NOTIFICAR, PUBLICAR, ESPERARPLAZO |
-| **NOMBRE** | VARCHAR(200) | Denominación completa de la tarea | NO | Nombre descriptivo |
+| **ID** | INTEGER | Identificador único del usuario | NO | PK, autoincremental |
+| **SIGLAS** | VARCHAR(50) | Siglas o código identificativo del usuario | NO | Identificador corto para uso interno. Default: "NULO" |
+| **NOMBRE** | VARCHAR(100) | Nombre del usuario | NO | Nombre de pila. Default: "Usuario" |
+| **APELLIDO1** | VARCHAR(50) | Primer apellido | NO | Default: "no asignado" |
+| **APELLIDO2** | VARCHAR(50) | Segundo apellido | SÍ | Puede ser NULL si no aplica |
+| **ACTIVO** | BOOLEAN | Indica si el usuario está activo en el sistema | SÍ | TRUE = usuario habilitado. FALSE = usuario desactivado (no eliminado). Default: TRUE |
 
 #### Claves
 
 - **PK:** `ID`
-- **UNIQUE:** `CODIGO`
+- **UNIQUE:** `SIGLAS` (recomendado, aunque no está explícito en schema actual)
 
 #### Índices Recomendados
 
-- `CODIGO` (búsqueda rápida)
+- `SIGLAS` (búsqueda rápida por código)
+- `ACTIVO` (filtrar usuarios activos)
 
 #### Notas de Versión
 
-- **v3.0:** Sin cambios estructurales. **Solo 7 tipos atómicos**.
+- **v3.0:** Sin cambios estructurales respecto a versiones anteriores.
 
 #### Filosofía
 
-Tabla maestra que define los **7 tipos atómicos** de tareas:
+Tabla maestra de usuarios del sistema:
 
-1. **INCORPORAR:** Incorpora documento externo al sistema
-2. **ANALISIS:** Analiza documento y genera informe
-3. **REDACTAR:** Redacta borrador de documento
-4. **FIRMAR:** Firma documento (transforma borrador en oficial)
-5. **NOTIFICAR:** Notifica documento y genera justificante
-6. **PUBLICAR:** Publica documento y genera justificante
-7. **ESPERARPLAZO:** Espera transcurso de plazo administrativo
+- Usuarios técnicos (tramitadores, supervisores)
+- Identificación personal para responsabilidad y auditoría
+- **No contiene credenciales** (gestionadas por motor de BD PostgreSQL)
+- `ACTIVO=FALSE` permite deshabilitar usuarios sin perder historial (expedientes asignados, tareas realizadas)
 
-Estos 7 tipos cubren todas las operaciones administrativas posibles en la tramitación.
+#### Roles de Sistema
 
-#### Relación con Otras Tablas
+Los roles se gestionan a nivel de base de datos PostgreSQL. Consultar documento `Roles.md` para más información.
 
-Usado en:
-- `TAREAS.TIPO_TAREA_ID` (clasificación de la tarea)
+#### Uso Administrativo
+
+- `RESPONSABLE_ID` en `EXPEDIENTES`: Usuario asignado como responsable del expediente completo
+- Auditoría: Posibilidad futura de campos `CREADO_POR`, `MODIFICADO_POR` en tablas operacionales
+- Interfaz: Filtros por tramitador, asignaciones de trabajo, estadísticas por usuario
+
+#### Valores por Defecto
+
+Los defaults permiten crear registros temporales de usuarios mientras se completa información, pero en producción todos los campos deberían tener valores reales.
 
 ---
 
-### TIPOS_IA
+---
 
-Tipos de instrumentos ambientales aplicables.
+### USUARIOS_ROLES
+
+Tabla puente para la relación N:M entre usuarios y roles (RBAC).
 
 #### Estructura
 
 | Campo | Tipo | Descripción | Nullable | Notas |
 |:---|:---|:---|:---|:---|
-| **ID** | INTEGER | Identificador único del tipo de IA | NO | PK, autoincremental |
-| **SIGLAS** | VARCHAR(50) | Siglas del instrumento ambiental | NO | AAU, AAUS, CA, NO_SUJETO, etc. |
-| **NOMBRE** | VARCHAR(200) | Denominación completa del instrumento | NO | Autorización Ambiental Unificada, Comunicación Ambiental, etc. |
+| **ID** | INTEGER | Identificador único del registro | NO | PK, autoincremental |
+| **USUARIO_ID** | INTEGER | Usuario al que se asigna el rol | NO | FK → USUARIOS(ID). Parte de UNIQUE(usuario_id, rol_id) |
+| **ROL_ID** | INTEGER | Rol asignado al usuario | NO | FK → ROLES(ID). Parte de UNIQUE(usuario_id, rol_id) |
 
 #### Claves
 
 - **PK:** `ID`
-- **UNIQUE:** `SIGLAS`
+- **UNIQUE:** `(USUARIO_ID, ROL_ID)` - Un usuario no puede tener el mismo rol duplicado
+- **FK:**
+  - `USUARIO_ID` → `USUARIOS(ID)` ON DELETE CASCADE
+  - `ROL_ID` → `ROLES(ID)` ON DELETE CASCADE
 
 #### Índices Recomendados
 
-- `SIGLAS` (búsqueda rápida)
+- `USUARIO_ID` (consulta: ¿qué roles tiene este usuario?)
+- `ROL_ID` (consulta inversa: ¿qué usuarios tienen este rol?)
+
+#### Relaciones
+
+- **usuario**: USUARIOS.id (FK CASCADE, usuario contenedor)
+- **rol**: ROLES.id (FK CASCADE, rol asignado)
 
 #### Notas de Versión
 
-- **v3.0:** Sin cambios estructurales.
+- **v3.1**: Tabla nueva. Reemplaza el campo `rol` en USUARIOS (que antes era 1:1) para permitir roles múltiples.
 
 #### Filosofía
 
-Tabla maestra que define los instrumentos ambientales según normativa vigente:
+Esta tabla puente permite **roles múltiples por usuario**:
 
-- Determina qué trámites ambientales son necesarios
-- Define organismos competentes
-- Establece plazos y requisitos documentales específicos
+- **Un rol**: Usuario ID=1 con rol TRAMITADOR (1 registro)
+- **Roles múltiples**: Usuario ID=2 con TRAMITADOR + SUPERVISOR (2 registros)
+- **Flexibilidad**: Permite promoción sin perder permisos anteriores
+- **Sin duplicados**: El constraint UNIQUE evita asignar el mismo rol dos veces
 
-#### Relación con Otras Tablas
+#### Casos de Uso
 
-Usado en:
-- `PROYECTOS.IA_ID` (instrumento ambiental del proyecto)
+**Usuario con un solo rol (Tramitador):**
+- Usuario ID=1
+- 1 registro: (usuario_id=1, rol_id=3) -- TRAMITADOR
 
----
+**Usuario con roles múltiples (Tramitador + Supervisor):**
+- Usuario ID=2
+- 2 registros:
+  - (usuario_id=2, rol_id=3) -- TRAMITADOR
+  - (usuario_id=2, rol_id=2) -- SUPERVISOR
 
-### MUNICIPIOS
+**Administrador puro:**
+- Usuario ID=3
+- 1 registro: (usuario_id=3, rol_id=1) -- ADMIN
 
-Catálogo de municipios.
+**Consulta: ¿Qué roles tiene el usuario 2?**
+```sql
+SELECT r.codigo, r.nombre
+FROM usuarios_roles ur
+JOIN roles r ON ur.rol_id = r.id
+WHERE ur.usuario_id = 2;
+```
 
-#### Estructura
+**Consulta inversa: ¿Qué usuarios son SUPERVISOR?**
+```sql
+SELECT u.username, u.nombre, u.apellidos
+FROM usuarios u
+JOIN usuarios_roles ur ON u.id = ur.usuario_id
+JOIN roles r ON ur.rol_id = r.id
+WHERE r.codigo = 'SUPERVISOR';
+```
 
-| Campo | Tipo | Descripción | Nullable | Notas |
-|:---|:---|:---|:---|:---|
-| **ID** | INTEGER | Identificador único del municipio | NO | PK, autoincremental |
-| **CODIGO** | VARCHAR(10) | Código INE del municipio | NO | Código oficial de 5 dígitos |
-| **NOMBRE** | VARCHAR(200) | Nombre del municipio | NO | Denominación oficial |
-| **PROVINCIA** | VARCHAR(100) | Provincia a la que pertenece | NO | Nombre de provincia |
+**Verificar si usuario tiene permiso ADMIN:**
+```sql
+SELECT COUNT(*) > 0 AS es_admin
+FROM usuarios_roles ur
+JOIN roles r ON ur.rol_id = r.id
+WHERE ur.usuario_id = ? AND r.codigo = 'ADMIN';
+```
 
-#### Claves
+#### Reglas de Negocio
 
-- **PK:** `ID`
-- **UNIQUE:** `CODIGO`
+1. **CASCADE en DELETE**: Si se borra un usuario, se borran automáticamente sus roles
+2. **No duplicados**: El constraint UNIQUE evita asignar el mismo rol dos veces
+3. **Al menos un rol**: Todo usuario activo debe tener al menos un rol (validar en interfaz)
+4. **Sin auto-asignación ADMIN**: Solo un ADMIN puede asignar rol ADMIN a otro usuario
+5. **Roles acumulativos**: Los permisos se suman (TRAMITADOR + SUPERVISOR = permisos de ambos)
 
-#### Índices Recomendados
+#### Combinaciones Típicas
 
-- `CODIGO` (búsqueda por código INE)
-- `NOMBRE` (búsqueda alfabética)
-- `PROVINCIA` (filtros por provincia)
-
-#### Notas de Versión
-
-- **v3.0:** Sin cambios estructurales.
-
-#### Filosofía
-
-Tabla maestra con el catálogo oficial de municipios:
-
-- Basado en códigos INE oficiales
-- Necesario para gestionar afecciones territoriales de proyectos
-- Determina competencias administrativas y publicaciones en tablones
-
-#### Relación con Otras Tablas
-
-Usado en:
-- `MUNICIPIOS_PROYECTO.MUNICIPIO_ID` (municipios afectados por proyectos)
-
----
-
-### TIPOS_RESULTADOS_FASES
-
-Catálogo de resultados posibles de fases.
-
-#### Estructura
-
-| Campo | Tipo | Descripción | Nullable | Notas |
-|:---|:---|:---|:---|:---|
-| **ID** | INTEGER | Identificador único del tipo de resultado | NO | PK, autoincremental |
-| **CODIGO** | VARCHAR(50) | Código del resultado | NO | FAVORABLE, DESFAVORABLE, CONDICIONADO, SIN_PRONUNCIAMIENTO, etc. |
-| **NOMBRE** | VARCHAR(200) | Denominación del resultado | NO | Descripción legible |
-
-#### Claves
-
-- **PK:** `ID`
-- **UNIQUE:** `CODIGO`
-
-#### Índices Recomendados
-
-- `CODIGO` (búsqueda rápida)
-
-#### Notas de Versión
-
-- **v3.0:** Sin cambios estructurales.
-
-#### Filosofía
-
-Tabla maestra que define los posibles resultados de las fases:
-
-- Determina si la fase tuvo éxito procedimental
-- Condiciona las fases siguientes según reglas de negocio
-- El técnico debe evaluar manualmente el resultado tras analizar documentos
-
-#### Relación con Otras Tablas
-
-Usado en:
-- `FASES.RESULTADO_FASE_ID` (resultado de la fase)
+| Combinación | Uso típico |
+|:---|:---|
+| **TRAMITADOR** | Técnico que solo tramita sus expedientes asignados |
+| **TRAMITADOR + SUPERVISOR** | Jefe de sección: tramita + coordina equipo |
+| **SUPERVISOR** | Coordinador que solo supervisa, no tramita |
+| **ADMIN** | Administrador del sistema (no necesita otros roles) |
+| **ADMINISTRATIVO** | Personal auxiliar de consulta |
 
 ---
 
-## Resumen Final
-
-**Tablas Operacionales:** 9  
-**Tablas Maestras:** 9  
-**Total:** 18 tablas
-
-### Principios v3.0
-
-1. **Minimalismo estructural:** Tablas con campos mínimos, semántica en tipos
-2. **Documento agnóstico:** Solo `EXPEDIENTE_ID` como FK
-3. **Relaciones unidireccionales:** TAREA → DOCUMENTO (no al revés)
-4. **Estados deducibles:** No almacenar lo que se puede calcular
-5. **Fechas administrativas:** Fechas con efectos legales, no técnicas
-6. **Fuente de verdad única:** No duplicar información
-7. **Configurabilidad:** Lógica de negocio en motor de reglas, no hardcoded
-
 ---
-
-**Versión:** 3.0  
-**Fecha:** 30 de diciembre de 2025  
-**Proyecto:** BDDAT - Sistema de Tramitación de Expedientes de Alta Tensión
