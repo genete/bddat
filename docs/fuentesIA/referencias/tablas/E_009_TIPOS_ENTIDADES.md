@@ -1,12 +1,12 @@
 <!--
-Tabla: TIPOS_ENTIDAD
+Tabla: TIPOS_ENTIDADES
 Generado manualmente
 Fecha de creación: 01/02/2026
 IMPORTANTE: No editar Tablas.md directamente.
             Editar este archivo y ejecutar merge_tables.py para regenerar.
 -->
 
-### TIPOS_ENTIDAD
+### TIPOS_ENTIDADES
 
 Catálogo de tipos de entidades del sistema con definición de roles permitidos.
 
@@ -52,9 +52,9 @@ Tabla maestra que define los tipos de entidades del sistema y sus **capacidades 
 |:---|:---|:---|:---:|:---:|:---:|
 | **ADMINISTRADO** | Administrado | entidades_administrados | ✅ | ❌ | ❌ |
 | **EMPRESA_SERVICIO_PUBLICO** | Empresa Servicio Público | entidades_empresas_servicio_publico | ✅ | ✅ | ❌ |
-| **ORGANISMO_PUBLICO** | Organismo Público | entidades_organismos_publicos | ❌ | ✅ | ❌ |
+| **ORGANISMO_PUBLICO** | Organismo Público | entidades_organismos_publicos | ✅ | ✅ | ❌ |
 | **AYUNTAMIENTO** | Ayuntamiento | entidades_ayuntamientos | ✅ | ✅ | ✅ |
-| **DIPUTACION** | Diputación Provincial | entidades_diputaciones | ❌ | ✅ | ✅ |
+| **DIPUTACION** | Diputación Provincial | entidades_diputaciones | ✅ | ✅ | ✅ |
 
 #### Descripción de Tipos
 
@@ -72,9 +72,10 @@ Tabla maestra que define los tipos de entidades del sistema y sus **capacidades 
 
 **ORGANISMO_PUBLICO:**
 - Administraciones públicas y organismos oficiales
-- Roles: Solo organismo consultado (informes técnicos/administrativos)
+- Roles: Organismo consultado + Solicitante ocasional (casos excepcionales)
 - Ejemplos: Consejerías Junta Andalucía, Ministerios, Confederaciones Hidrográficas, ADIF, Defensa, AESA, Patrimonio
-- Notificaciones: Sistema SIR (codigo_dir3) o BandeJA
+- Casos solicitante: Consejería Medio Ambiente autoriza instalación eléctrica en depuradora propia
+- Notificaciones: Sistema SIR (codigo_dir3) o BandeJA cuando actúan como organismo; Notifica cuando actúan como solicitante
 
 **AYUNTAMIENTO:**
 - Corporaciones locales municipales
@@ -84,9 +85,9 @@ Tabla maestra que define los tipos de entidades del sistema y sus **capacidades 
 
 **DIPUTACION:**
 - Corporaciones provinciales
-- Roles: Organismo consultado + Publicador (Boletín Oficial Provincial)
-- No suelen ser solicitantes
-- Notificaciones: SIR (codigo_dir3)
+- Roles: Solicitante ocasional + Organismo consultado + Publicador (Boletín Oficial Provincial)
+- Casos solicitante: Construye infraestructuras para ayuntamientos (da servicio a municipios)
+- Notificaciones: SIR (codigo_dir3) cuando actúa como organismo, Notifica cuando actúa como solicitante
 
 #### Uso en Filtrado de Interfaz
 
@@ -95,7 +96,7 @@ Tabla maestra que define los tipos de entidades del sistema y sus **capacidades 
 -- Cargar solo entidades que pueden ser solicitantes
 SELECT e.* 
 FROM entidades e
-JOIN tipos_entidad te ON e.tipo_entidad_id = te.id
+JOIN tipos_entidades te ON e.tipo_entidad_id = te.id
 WHERE te.puede_ser_solicitante = TRUE
 AND e.activo = TRUE
 ORDER BY e.nombre_completo;
@@ -106,7 +107,7 @@ ORDER BY e.nombre_completo;
 -- Cargar solo entidades que pueden emitir informes
 SELECT e.* 
 FROM entidades e
-JOIN tipos_entidad te ON e.tipo_entidad_id = te.id
+JOIN tipos_entidades te ON e.tipo_entidad_id = te.id
 WHERE te.puede_ser_consultado = TRUE
 AND e.activo = TRUE
 ORDER BY te.codigo, e.nombre_completo;
@@ -117,7 +118,7 @@ ORDER BY te.codigo, e.nombre_completo;
 -- Cargar solo ayuntamientos
 SELECT e.* 
 FROM entidades e
-JOIN tipos_entidad te ON e.tipo_entidad_id = te.id
+JOIN tipos_entidades te ON e.tipo_entidad_id = te.id
 WHERE te.codigo = 'AYUNTAMIENTO'
 AND e.activo = TRUE
 ORDER BY e.nombre_completo;
@@ -128,7 +129,7 @@ ORDER BY e.nombre_completo;
 -- Cargar solo diputaciones
 SELECT e.* 
 FROM entidades e
-JOIN tipos_entidad te ON e.tipo_entidad_id = te.id
+JOIN tipos_entidades te ON e.tipo_entidad_id = te.id
 WHERE te.codigo = 'DIPUTACION'
 AND e.activo = TRUE
 ORDER BY e.nombre_completo;
@@ -160,7 +161,7 @@ if not entidad_publicadora.tipo_entidad.puede_publicar:
 #### Datos Maestros
 
 ```sql
-INSERT INTO tipos_entidad (codigo, nombre, tabla_metadatos, puede_ser_solicitante, puede_ser_consultado, puede_publicar, descripcion) VALUES
+INSERT INTO tipos_entidades (codigo, nombre, tabla_metadatos, puede_ser_solicitante, puede_ser_consultado, puede_publicar, descripcion) VALUES
 (
     'ADMINISTRADO', 
     'Administrado', 
@@ -183,10 +184,10 @@ INSERT INTO tipos_entidad (codigo, nombre, tabla_metadatos, puede_ser_solicitant
     'ORGANISMO_PUBLICO', 
     'Organismo Público', 
     'entidades_organismos_publicos', 
-    FALSE, 
+    TRUE, 
     TRUE, 
     FALSE,
-    'Administraciones públicas (Junta, Ministerios, Confederaciones, ADIF, Defensa, AESA). Solo emiten informes. Notificaciones vía SIR/BandeJA (DIR3).'
+    'Administraciones públicas (Junta, Ministerios, Confederaciones, ADIF, Defensa, AESA). Emiten informes. Excepcionalmente solicitantes (ej: depuradoras). Notificaciones vía SIR/BandeJA (DIR3) como organismo, Notifica como solicitante.'
 ),
 (
     'AYUNTAMIENTO', 
@@ -195,16 +196,16 @@ INSERT INTO tipos_entidad (codigo, nombre, tabla_metadatos, puede_ser_solicitant
     TRUE, 
     TRUE, 
     TRUE,
-    'Corporaciones locales. Múltiples roles: solicitante ocasional, organismo consultado, publicador (tablón edictos). Notificaciones vía SIR (DIR3) o Notifica según rol.'
+    'Corporaciones locales. Múltiples roles: solicitante ocasional, organismo consultado, publicador (tablón edictos). Notificaciones vía SIR (DIR3) como organismo, Notifica como solicitante.'
 ),
 (
     'DIPUTACION', 
     'Diputación Provincial', 
     'entidades_diputaciones', 
-    FALSE, 
+    TRUE, 
     TRUE, 
     TRUE,
-    'Corporaciones provinciales. Roles: organismo consultado, publicador BOP. Notificaciones vía SIR (DIR3).'
+    'Corporaciones provinciales. Roles: solicitante ocasional (construyen para ayuntamientos), organismo consultado, publicador BOP. Notificaciones vía SIR (DIR3) como organismo, Notifica como solicitante.'
 );
 ```
 
@@ -214,7 +215,7 @@ Usado en:
 - `ENTIDADES.TIPO_ENTIDAD_ID` (clasificación de entidad)
 
 Relacionado con:
-- `ENTIDADES_ADMINISTRADOS.ENTIDAD_ID` (metadatos si tipo = ADMINISTRADO)
+- `ENTIDADES_ADMINISTRADOS.ENTIDAD_ID` (metadatos si tipo = ADMINISTRADO o cualquier tipo que actúe como solicitante)
 - `ENTIDADES_EMPRESAS_SERVICIO_PUBLICO.ENTIDAD_ID` (metadatos si tipo = EMPRESA_SERVICIO_PUBLICO)
 - `ENTIDADES_ORGANISMOS_PUBLICOS.ENTIDAD_ID` (metadatos si tipo = ORGANISMO_PUBLICO)
 - `ENTIDADES_AYUNTAMIENTOS.ENTIDAD_ID` (metadatos si tipo = AYUNTAMIENTO)
@@ -224,7 +225,7 @@ Relacionado con:
 
 1. **Tabla inmutable:** Los 5 tipos son parte de la lógica de negocio. No añadir/eliminar tipos en runtime
 2. **Código estable:** `CODIGO` no debe cambiar (ruptura de lógica en código Python)
-3. **Una entidad, múltiples roles:** Una misma entidad puede tener registro en múltiples tablas `entidades_*` si su tipo lo permite (ej: Ayuntamiento puede estar en `entidades_ayuntamientos` Y en `entidades_administrados` si alguna vez actúa como solicitante)
+3. **Una entidad, múltiples roles:** Una misma entidad puede tener registro en múltiples tablas `entidades_*` si su tipo lo permite (ej: Consejería Medio Ambiente puede estar en `entidades_organismos_publicos` Y en `entidades_administrados` cuando solicita instalación en depuradora)
 4. **Validación obligatoria:** Siempre validar capacidades antes de asignar roles
 5. **Filtrado por defecto:** Interfaces deben filtrar automáticamente según contexto usando campos `PUEDE_SER_*`
 
