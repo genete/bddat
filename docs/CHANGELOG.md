@@ -2,7 +2,7 @@
 
 **Repositorio:** https://github.com/genete/bddat  
 **Historial completo:** [Ver Pull Requests cerrados](https://github.com/genete/bddat/pulls?q=is%3Apr+is%3Aclosed)  
-**Última actualización:** 30 de enero de 2026
+**Última actualización:** 01 de febrero de 2026
 
 ---
 
@@ -17,6 +17,124 @@ Este archivo mantiene un **resumen de los últimos 5 PRs mergeados** para consul
 ---
 
 ## Últimos Cambios
+
+### 2026-02-01 - [PR #XX: Arquitectura polímorfica ENTIDADES - Fase 1: Documentación](https://github.com/genete/bddat/pull/XX)
+
+**Objetivo:** Diseñar y documentar arquitectura unificada de entidades (administrados, organismos públicos, ayuntamientos, diputaciones, empresas de servicio público) mediante patrón de tablas inversas/puente.
+
+**Problema identificado:** Sistema original proponía tabla única `administrados`, pero el sistema real requiere gestionar múltiples tipos de entidades con metadatos muy diferentes (titulares, organismos consultados, ayuntamientos para tablón, diputaciones para BOP, empresas eléctricas).
+
+**Decisión arquitectónica:**
+Se adoptó **patrón de tablas inversas/puente** tras análisis documentado en Issue #62:
+- **Opción descartada:** Vistas actualizables sobre tabla única (muchos NULL, tabla muy ancha, validaciones complejas)
+- **Opción adoptada:** Tabla base `ENTIDADES` + tablas de metadatos específicos por tipo
+- **Ventajas:** Normalización, escalabilidad, validaciones modulares, compatibilidad SQLAlchemy, migraciones Alembic automáticas
+
+**Cambios principales:**
+
+**Añadido:**
+- ✅ **E_009 - TIPOS_ENTIDADES** (catálogo):
+  - Tabla de referencia con 5 tipos: ADMINISTRADO, EMPRESA_SERVICIO_PUBLICO, ORGANISMO_PUBLICO, AYUNTAMIENTO, DIPUTACION
+  - Campos rol: `puede_ser_solicitante`, `puede_ser_consultado`, `puede_publicar`
+  - Filtrado automático en UI según contexto (solicitud vs consulta vs publicación)
+  - Incluye código, nombre, descripción, activo
+- ✅ **E_010 - ENTIDADES** (tabla base polímórfica):
+  - Campos comunes: CIF/NIF, nombre completo, email, teléfono, dirección, municipio
+  - FK a `TIPOS_ENTIDADES` para clasificación
+  - Relaciones 1:1 con tablas de metadatos específicos
+  - Sin campos específicos de ningún tipo (0% NULL irrelevantes)
+- ✅ **O_015 - ENTIDADES_ADMINISTRADOS**:
+  - Metadatos: tipo persona (FÍsica/Jurídica), representante (NIF+nombre), email notificaciones
+  - Sistema Notifica: email registrado + teléfono SMS opcional
+  - Puede actuar como titular, solicitante o autorizado
+  - Validaciones CIF/NIF (algoritmo oficial), email formato
+- ✅ **O_016 - ENTIDADES_EMPRESAS_SERVICIO_PUBLICO**:
+  - Empresas eléctricas (distribuidoras, transportistas) y telecos
+  - Campo DIR3 para comunicaciones SIR cuando actúan como organismos consultados
+  - Sin representante (gestión corporativa directa)
+  - Validación DIR3 formato alfanumérico 8-10 caracteres
+- ✅ **O_017 - ENTIDADES_ORGANISMOS_PUBLICOS**:
+  - Organismos AGE (Ministerios, Secretarías Estado) y CCAA (Consejerías, Delegaciones)
+  - DIR3 para notificaciones SIR, legislatura para versionado histórico
+  - Campos fecha_desde/fecha_hasta para cambios de estructura administrativa
+  - Sistema versionado: mismo organismo, múltiples registros por legislatura
+  - Ejemplo documentado: Bandeja SIR en ARIES-SIR para envío/recepción
+- ✅ **O_018 - ENTIDADES_AYUNTAMIENTOS**:
+  - CIF formato P+INE (7 dígitos) + control (ej: P2807901D - Madrid)
+  - DIR3 para notificaciones SIR cuando actúan como organismo consultado
+  - Múltiples roles: solicitante ocasional, consultado, publicador tablón
+  - Aclaración Ley 39/2015 Art. 45.4: tablón edictos es obligación vs administrados (no dato BDDAT)
+  - Flujo: BDDAT → SIR → Ayuntamiento publica en su tablón
+- ✅ **O_019 - ENTIDADES_DIPUTACIONES**:
+  - CIF formato P+provincia (2 dígitos)+00000+control (ej: P1100000B - Cádiz)
+  - DIR3 para notificaciones SIR como organismo consultado
+  - **EMAIL_PUBLICACION_BOP**: Método tradicional email (datos pagador + texto anuncio)
+  - Caso real verificado: BOP Cádiz gestionado por Asociación Prensa (concesionaria)
+  - Ejemplo email: `boletin@bopcadiz.org`
+  - Diferencia con ayuntamientos: BOP usa email, tablón usa SIR interno
+
+**Modificado:**
+- ✅ **Tablas.md**: Refactorizado completo con arquitectura polímórfica (7 tablas nuevas)
+  - Tabla base + catálogo + 5 tablas metadatos documentadas
+  - Estructura, claves, índices, relaciones, validaciones por tabla
+  - Consultas SQL frecuentes (7 por cada tabla de metadatos)
+  - Filosofía minimalista: solo campos que NO están en ENTIDADES
+
+**Documentación:**
+- ✅ **Issue #62**: Decisión arquitectónica completa con análisis Tablas Inversas vs Vistas Actualizables
+  - Tabla comparativa con 10 criterios técnicos
+  - Justificación: normalización, escalabilidad, compatibilidad SQLAlchemy, validaciones modulares
+  - Ejemplos de uso en código Python (crear entidades, consultas JOIN)
+- ✅ **Sistemas de notificación**:
+  - **Notifica**: Email registrado + CIF/NIF (administrados como solicitantes)
+  - **SIR**: DIR3 para comunicaciones interadministrativas (organismos consultados)
+  - Diferenciación clara: email general vs email notificaciones vs DIR3
+- ✅ **Validaciones documentadas**:
+  - CIF/NIF: Algoritmo oficial (NIF 8+letra, NIE X/Y/Z+7+letra, CIF letra+7+letra/dígito)
+  - DIR3: Formato alfanumérico 1-2 letras + 7-8 dígitos
+  - CIF ayuntamientos: P+INE(7)+control
+  - CIF diputaciones: P+provincia(2)+00000+control
+  - Email: Formato estándar usuario@dominio.ext
+- ✅ **Flujo UX**: Copia de datos entre roles (múltiples roles por entidad)
+  - Ejemplo: Diputación como consultada + solicitante + publicador BOP
+  - Sistema detecta roles activos y ofrece copiar datos
+- ✅ **Consultas SQL**: 35+ consultas documentadas (5-7 por tabla)
+  - Listar por tipo, buscar por CIF/DIR3, verificar roles múltiples, filtrar por provincia/legislatura
+
+**Funcionalidades preparadas:**
+- ✅ Fuente única de verdad para todas las entidades (sin duplicaciones)
+- ✅ Múltiples roles por entidad (ayuntamiento puede ser solicitante Y consultado)
+- ✅ Versionado histórico de organismos públicos (legislatura + vigencia)
+- ✅ Validaciones específicas por tipo de entidad
+- ✅ Sistema de notificaciones dual (Notifica vs SIR)
+- ✅ Escalabilidad: añadir nuevos tipos sin modificar existentes
+
+**Archivos creados:**
+- `docs/fuentesIA/referencias/tablas/E_009_TIPOS_ENTIDADES.md`
+- `docs/fuentesIA/referencias/tablas/E_010_ENTIDADES.md`
+- `docs/fuentesIA/referencias/tablas/O_015_ENTIDADES_ADMINISTRADOS.md`
+- `docs/fuentesIA/referencias/tablas/O_016_ENTIDADES_EMPRESAS_SERVICIO_PUBLICO.md`
+- `docs/fuentesIA/referencias/tablas/O_017_ENTIDADES_ORGANISMOS_PUBLICOS.md`
+- `docs/fuentesIA/referencias/tablas/O_018_ENTIDADES_AYUNTAMIENTOS.md`
+- `docs/fuentesIA/referencias/tablas/O_019_ENTIDADES_DIPUTACIONES.md`
+
+**Archivos modificados:**
+- `docs/fuentesIA/referencias/Tablas.md` (refactorizado completo)
+- `docs/CHANGELOG.md`
+
+**Issues resueltos:** #62 (Fase 1 - Documentación)  
+**Issues relacionados:** #78 (Ampliar municipios toda España - bloqueado por este)  
+**Milestone:** MS-3 - Alineación Administrativa  
+
+**Próximas fases:**
+- Fase 2: Migraciones Alembic (crear tablas en BD)
+- Fase 3: Modelos SQLAlchemy (mapeo ORM)
+- Fase 4: Tests unitarios e integración
+- Fase 5: Interfaz CRUD entidades
+
+**Notas:** Esta fase solo documenta el diseño. No incluye código Python ni SQL ejecutable. El patrón arquitectónico adoptado (tablas inversas) permite escalabilidad y mantenibilidad superior a alternativas consideradas.
+
+---
 
 ### 2026-01-30 - [PR #XX: Añadir Proyectos al menú de navegación principal](https://github.com/genete/bddat/pull/XX)
 
@@ -235,41 +353,6 @@ En lugar de duplicar lógica de formulario, se reutiliza el formulario de expedi
 **Issues relacionados:** #52 (Búsqueda por texto), #53 (Filtrado inline en columnas)  
 **Milestone:** MS-2 - Fase 2.2 Gestión de Expedientes  
 **Archivos:** app/routes/proyectos.py (NUEVO), app/templates/proyectos/index.html (NUEVO), app/models/proyectos.py, app/__init__.py, docs/CHANGELOG.md
-
----
-
-### 2026-01-29 - [PR #48: Gestión de municipios afectados en expedientes](https://github.com/genete/bddat/pull/48)
-
-**Objetivo:** Permitir asociar múltiples municipios a cada proyecto/expediente mediante interfaz intuitiva con búsqueda substring.
-
-**Cambios principales:**
-- ✅ **API REST** (`app/routes/api_municipios.py`):
-  - `GET /api/provincias?q=` - Búsqueda provincias con filtro substring case-insensitive
-  - `GET /api/municipios?provincia=&q=` - Búsqueda municipios filtrados por provincia
-- ✅ **Rutas expedientes.py**:
-  - Validación obligatoriedad municipios (server-side)
-  - Inserción transaccional en `municipios_proyecto`
-  - Actualización municipios en edición (DELETE + INSERT)
-- ✅ **JavaScript** (`app/static/js/municipios_selector.js`):
-  - Dropdowns dinámicos con búsqueda substring
-  - Lista acumulativa con checkboxes para borrado múltiple
-  - Validación client-side antes de submit
-  - Hidden inputs para POST del formulario
-- ✅ **Templates**:
-  - `nuevo.html` / `editar.html` - Card selector municipios con interfaz completa
-  - `detalle.html` - Visualización municipios + alerta proyecto interprovincial
-- ✅ **Sin cambios en BD**: Usa tabla `municipios_proyecto` existente
-
-**Funcionalidades:**
-- Selector de provincia con búsqueda instantánea
-- Dropdown municipio filtrado por provincia seleccionada
-- Lista acumulativa de municipios con borrado selectivo
-- Campo obligatorio (*) con validación dual (JS + Python)
-- Detección automática de proyectos interprovinciales en vista detalle
-
-**Issues resueltos:** #48  
-**Milestone:** 1.3 - Expedientes básicos (MVP)  
-**Archivos:** app/routes/api_municipios.py (NUEVO), app/static/js/municipios_selector.js (NUEVO), app/__init__.py, app/routes/expedientes.py, app/templates/expedientes/*.html
 
 ---
 
