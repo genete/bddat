@@ -3,7 +3,7 @@
 **Sistema de Tramitación de Expedientes de Alta Tensión (BDDAT)**  
 **Formato agnóstico a la base de datos**  
 **Fecha:** 01/02/2026  
-**Generado automáticamente:** 01/02/2026 08:52 por merge_tables.py
+**Generado automáticamente:** 01/02/2026 11:22 por merge_tables.py
 
 ---
 
@@ -12,6 +12,7 @@
 - [Filosofía del Diseño](#filosofía-del-diseño)
 - [Tablas de Estructura](#tablas-de-estructura)
   - [MUNICIPIOS](#municipios)
+  - [TIPOS_ENTIDAD](#tiposentidad)
   - [TIPOS_EXPEDIENTES](#tiposexpedientes)
   - [TIPOS_FASES](#tiposfases)
   - [TIPOS_IA](#tiposia)
@@ -23,6 +24,7 @@
   - [DOCUMENTOS](#documentos)
   - [DOCUMENTOS_PROYECTO](#documentosproyecto)
   - [ENTIDADES](#entidades)
+  - [ENTIDADES_ADMINISTRADOS](#entidadesadministrados)
   - [EXPEDIENTES](#expedientes)
   - [FASES](#fases)
   - [MUNICIPIOS_PROYECTO](#municipiosproyecto)
@@ -263,6 +265,232 @@ Tabla maestra con el catálogo oficial de municipios:
 
 Usado en:
 - `MUNICIPIOS_PROYECTO.MUNICIPIO_ID` (municipios afectados por proyectos)
+
+---
+
+---
+
+### TIPOS_ENTIDAD
+
+Catálogo de tipos de entidades del sistema con definición de roles permitidos.
+
+#### Estructura
+
+| Campo | Tipo | Descripción | Nullable | Notas |
+|:---|:---|:---|:---|:---|
+| **ID** | INTEGER | Identificador único del tipo de entidad | NO | PK, autoincremental |
+| **CODIGO** | VARCHAR(50) | Código único identificativo del tipo | NO | UNIQUE. Valores: ADMINISTRADO, EMPRESA_SERVICIO_PUBLICO, ORGANISMO_PUBLICO, AYUNTAMIENTO, DIPUTACION |
+| **NOMBRE** | VARCHAR(100) | Nombre descriptivo del tipo | NO | Para mostrar en interfaz de usuario |
+| **TABLA_METADATOS** | VARCHAR(100) | Nombre de la tabla de metadatos asociada | NO | Tabla física donde residen metadatos específicos: entidades_administrados, entidades_empresas_servicio_publico, entidades_organismos_publicos, entidades_ayuntamientos, entidades_diputaciones |
+| **PUEDE_SER_SOLICITANTE** | BOOLEAN | Indica si puede actuar como solicitante | NO | Default: FALSE. TRUE para tipos que pueden presentar solicitudes |
+| **PUEDE_SER_CONSULTADO** | BOOLEAN | Indica si puede ser organismo consultado | NO | Default: FALSE. TRUE para tipos que pueden emitir informes en fase CONSULTAS |
+| **PUEDE_PUBLICAR** | BOOLEAN | Indica si puede publicar (tablón/BOP) | NO | Default: FALSE. TRUE para tipos que pueden publicar anuncios oficiales |
+| **DESCRIPCION** | TEXT | Descripción detallada del tipo de entidad | SÍ | Explicación de características y casos de uso |
+
+#### Claves
+
+- **PK:** `ID`
+- **UNIQUE:** `CODIGO`
+
+#### Índices Recomendados
+
+- `CODIGO` (búsqueda rápida por código)
+- `(PUEDE_SER_SOLICITANTE, PUEDE_SER_CONSULTADO, PUEDE_PUBLICAR)` (filtros por capacidades)
+
+#### Notas de Versión
+
+- **v1.0** (01/02/2026): Creación inicial con 5 tipos de entidad y campos de roles
+
+#### Filosofía
+
+Tabla maestra que define los tipos de entidades del sistema y sus **capacidades de rol**:
+
+- **Datos maestros estables:** Los 5 tipos no cambian, son parte de la lógica de negocio
+- **Filtrado automático:** Los campos booleanos permiten filtrar entidades según contexto
+- **Arquitectura tablas inversas:** Campo `TABLA_METADATOS` mapea tipo → tabla física de metadatos
+- **Validación en tiempo de diseño:** La interfaz carga solo tipos válidos según operación
+
+#### Tipos Definidos
+
+| Código | Nombre | Tabla Metadatos | Solicitante | Consultado | Publicar |
+|:---|:---|:---|:---:|:---:|:---:|
+| **ADMINISTRADO** | Administrado | entidades_administrados | ✅ | ❌ | ❌ |
+| **EMPRESA_SERVICIO_PUBLICO** | Empresa Servicio Público | entidades_empresas_servicio_publico | ✅ | ✅ | ❌ |
+| **ORGANISMO_PUBLICO** | Organismo Público | entidades_organismos_publicos | ❌ | ✅ | ❌ |
+| **AYUNTAMIENTO** | Ayuntamiento | entidades_ayuntamientos | ✅ | ✅ | ✅ |
+| **DIPUTACION** | Diputación Provincial | entidades_diputaciones | ❌ | ✅ | ✅ |
+
+#### Descripción de Tipos
+
+**ADMINISTRADO:**
+- Personas físicas o jurídicas privadas
+- Roles: Titular de expediente, Solicitante, Autorizado en solicitud
+- Ejemplos: Ciudadanos, empresas promotoras, comunidades de bienes
+- Notificaciones: Sistema Notifica (email_notificaciones)
+
+**EMPRESA_SERVICIO_PUBLICO:**
+- Operadores de infraestructuras críticas y servicios públicos
+- Roles: Solicitante (instalaciones propias) + Organismo consultado (afecciones)
+- Ejemplos: Enagas, E-Distribución, REE, Consorcios de Aguas, operadores ferroviarios
+- Características: Pueden tener instalaciones propias Y deben informar sobre afecciones a sus infraestructuras
+
+**ORGANISMO_PUBLICO:**
+- Administraciones públicas y organismos oficiales
+- Roles: Solo organismo consultado (informes técnicos/administrativos)
+- Ejemplos: Consejerías Junta Andalucía, Ministerios, Confederaciones Hidrográficas, ADIF, Defensa, AESA, Patrimonio
+- Notificaciones: Sistema SIR (codigo_dir3) o BandeJA
+
+**AYUNTAMIENTO:**
+- Corporaciones locales municipales
+- Roles: Solicitante (ocasional) + Organismo consultado + Publicador (tablón edictos)
+- Múltiples capacidades según contexto
+- Notificaciones: SIR (codigo_dir3) cuando actúa como organismo, Notifica cuando actúa como solicitante
+
+**DIPUTACION:**
+- Corporaciones provinciales
+- Roles: Organismo consultado + Publicador (Boletín Oficial Provincial)
+- No suelen ser solicitantes
+- Notificaciones: SIR (codigo_dir3)
+
+#### Uso en Filtrado de Interfaz
+
+**Contexto: Crear solicitud**
+```sql
+-- Cargar solo entidades que pueden ser solicitantes
+SELECT e.* 
+FROM entidades e
+JOIN tipos_entidad te ON e.tipo_entidad_id = te.id
+WHERE te.puede_ser_solicitante = TRUE
+AND e.activo = TRUE
+ORDER BY e.nombre_completo;
+```
+
+**Contexto: Fase CONSULTAS - Solicitar informe**
+```sql
+-- Cargar solo entidades que pueden emitir informes
+SELECT e.* 
+FROM entidades e
+JOIN tipos_entidad te ON e.tipo_entidad_id = te.id
+WHERE te.puede_ser_consultado = TRUE
+AND e.activo = TRUE
+ORDER BY te.codigo, e.nombre_completo;
+```
+
+**Contexto: Publicar en tablón municipal**
+```sql
+-- Cargar solo ayuntamientos
+SELECT e.* 
+FROM entidades e
+JOIN tipos_entidad te ON e.tipo_entidad_id = te.id
+WHERE te.codigo = 'AYUNTAMIENTO'
+AND e.activo = TRUE
+ORDER BY e.nombre_completo;
+```
+
+**Contexto: Publicar en BOP**
+```sql
+-- Cargar solo diputaciones
+SELECT e.* 
+FROM entidades e
+JOIN tipos_entidad te ON e.tipo_entidad_id = te.id
+WHERE te.codigo = 'DIPUTACION'
+AND e.activo = TRUE
+ORDER BY e.nombre_completo;
+```
+
+#### Validaciones en Lógica de Negocio
+
+**Al crear solicitud:**
+```python
+# Validar que tipo_entidad puede ser solicitante
+if not solicitante.tipo_entidad.puede_ser_solicitante:
+    raise ValidationError("Este tipo de entidad no puede ser solicitante")
+```
+
+**Al solicitar informe en fase CONSULTAS:**
+```python
+# Validar que tipo_entidad puede ser consultado
+if not organismo.tipo_entidad.puede_ser_consultado:
+    raise ValidationError("Este tipo de entidad no puede emitir informes")
+```
+
+**Al publicar en tablón:**
+```python
+# Validar que tipo_entidad puede publicar
+if not entidad_publicadora.tipo_entidad.puede_publicar:
+    raise ValidationError("Este tipo de entidad no puede publicar anuncios")
+```
+
+#### Datos Maestros
+
+```sql
+INSERT INTO tipos_entidad (codigo, nombre, tabla_metadatos, puede_ser_solicitante, puede_ser_consultado, puede_publicar, descripcion) VALUES
+(
+    'ADMINISTRADO', 
+    'Administrado', 
+    'entidades_administrados', 
+    TRUE, 
+    FALSE, 
+    FALSE,
+    'Personas físicas o jurídicas privadas. Roles: Titular, Solicitante, Autorizado. Notificaciones vía Notifica.'
+),
+(
+    'EMPRESA_SERVICIO_PUBLICO', 
+    'Empresa Servicio Público', 
+    'entidades_empresas_servicio_publico', 
+    TRUE, 
+    TRUE, 
+    FALSE,
+    'Operadores de infraestructuras críticas (Enagas, E-Distribución, REE, Consorcios Aguas). Pueden ser solicitantes Y emitir informes sobre afecciones.'
+),
+(
+    'ORGANISMO_PUBLICO', 
+    'Organismo Público', 
+    'entidades_organismos_publicos', 
+    FALSE, 
+    TRUE, 
+    FALSE,
+    'Administraciones públicas (Junta, Ministerios, Confederaciones, ADIF, Defensa, AESA). Solo emiten informes. Notificaciones vía SIR/BandeJA (DIR3).'
+),
+(
+    'AYUNTAMIENTO', 
+    'Ayuntamiento', 
+    'entidades_ayuntamientos', 
+    TRUE, 
+    TRUE, 
+    TRUE,
+    'Corporaciones locales. Múltiples roles: solicitante ocasional, organismo consultado, publicador (tablón edictos). Notificaciones vía SIR (DIR3) o Notifica según rol.'
+),
+(
+    'DIPUTACION', 
+    'Diputación Provincial', 
+    'entidades_diputaciones', 
+    FALSE, 
+    TRUE, 
+    TRUE,
+    'Corporaciones provinciales. Roles: organismo consultado, publicador BOP. Notificaciones vía SIR (DIR3).'
+);
+```
+
+#### Relación con Otras Tablas
+
+Usado en:
+- `ENTIDADES.TIPO_ENTIDAD_ID` (clasificación de entidad)
+
+Relacionado con:
+- `ENTIDADES_ADMINISTRADOS.ENTIDAD_ID` (metadatos si tipo = ADMINISTRADO)
+- `ENTIDADES_EMPRESAS_SERVICIO_PUBLICO.ENTIDAD_ID` (metadatos si tipo = EMPRESA_SERVICIO_PUBLICO)
+- `ENTIDADES_ORGANISMOS_PUBLICOS.ENTIDAD_ID` (metadatos si tipo = ORGANISMO_PUBLICO)
+- `ENTIDADES_AYUNTAMIENTOS.ENTIDAD_ID` (metadatos si tipo = AYUNTAMIENTO)
+- `ENTIDADES_DIPUTACIONES.ENTIDAD_ID` (metadatos si tipo = DIPUTACION)
+
+#### Reglas de Negocio
+
+1. **Tabla inmutable:** Los 5 tipos son parte de la lógica de negocio. No añadir/eliminar tipos en runtime
+2. **Código estable:** `CODIGO` no debe cambiar (ruptura de lógica en código Python)
+3. **Una entidad, múltiples roles:** Una misma entidad puede tener registro en múltiples tablas `entidades_*` si su tipo lo permite (ej: Ayuntamiento puede estar en `entidades_ayuntamientos` Y en `entidades_administrados` si alguna vez actúa como solicitante)
+4. **Validación obligatoria:** Siempre validar capacidades antes de asignar roles
+5. **Filtrado por defecto:** Interfaces deben filtrar automáticamente según contexto usando campos `PUEDE_SER_*`
 
 ---
 
@@ -950,6 +1178,325 @@ AND activo = TRUE
 SELECT * FROM entidades 
 WHERE tipo_entidad_id IN (:tipos_permitidos)
 AND activo = TRUE
+```
+
+---
+
+---
+
+### ENTIDADES_ADMINISTRADOS
+
+Metadatos específicos de personas físicas o jurídicas que actúan como administrados (titulares, solicitantes, autorizados) en el sistema.
+
+#### Estructura
+
+| Campo | Tipo | Descripción | Nullable | Notas |
+|:---|:---|:---|:---|:---|
+| **ENTIDAD_ID** | INTEGER | Referencia a entidad base | NO | PK y FK → ENTIDADES(ID), UNIQUE, CASCADE |
+| **EMAIL_NOTIFICACIONES** | VARCHAR(120) | Email oficial para sistema Notifica | NO | Email donde se reciben notificaciones electrónicas oficiales. Puede ser personal o corporativo |
+| **REPRESENTANTE_NIF_CIF** | VARCHAR(20) | NIF/CIF de quien representa/gestiona | SÍ | NULL si autorepresentado (persona física) o gestión corporativa directa. Normalizado como CIF/NIF |
+| **REPRESENTANTE_NOMBRE** | VARCHAR(200) | Nombre completo del representante | SÍ | NULL si autorepresentado. Puede ser persona física (administrador único) o jurídica (consultora contratada) |
+| **REPRESENTANTE_TELEFONO** | VARCHAR(20) | Teléfono del representante | SÍ | Contacto directo con quien gestiona |
+| **REPRESENTANTE_EMAIL** | VARCHAR(120) | Email del representante | SÍ | Email de contacto (NO oficial para notificaciones, solo coordinación) |
+| **NOTAS_REPRESENTACION** | TEXT | Observaciones sobre la representación | SÍ | Tipo de cargo o relación: "Administrador único", "Consultora ACME SL contratada", "Apoderado con poder notarial", etc. |
+
+#### Claves
+
+- **PK:** `ENTIDAD_ID`
+- **FK:**
+  - `ENTIDAD_ID` → `ENTIDADES(ID)` ON DELETE CASCADE
+
+#### Índices Recomendados
+
+- `REPRESENTANTE_NIF_CIF` (búsquedas por representante)
+- `EMAIL_NOTIFICACIONES` (búsquedas por email oficial)
+
+#### Constraints
+
+```sql
+-- Si hay representante_nif_cif, debe haber representante_nombre
+CONSTRAINT chk_representante_coherente
+    CHECK (
+        (representante_nif_cif IS NULL AND representante_nombre IS NULL)
+        OR
+        (representante_nif_cif IS NOT NULL AND representante_nombre IS NOT NULL)
+    )
+```
+
+#### Relaciones
+
+- **entidad**: ENTIDADES.id (FK, relación 1:1 con entidad base)
+
+#### Notas de Versión
+
+- **v1.0** (01/02/2026): Creación inicial con estructura simplificada de representación genérica
+
+#### Filosofía
+
+Tabla de metadatos para **administrados** (personas físicas o jurídicas privadas):
+
+- **Relación 1:1** con `ENTIDADES` mediante `ENTIDAD_ID` como PK y FK
+- **Representación simplificada:** Un solo campo `REPRESENTANTE_*` que cubre todos los casos (persona física, jurídica, consultora)
+- **Autorepresentación:** Si `REPRESENTANTE_NIF_CIF` es NULL, el administrado se representa a sí mismo
+- **Par obligatorio Notifica:** `(CIF/NIF, EMAIL_NOTIFICACIONES)` debe estar completo para poder notificar
+
+#### Casos de Uso
+
+**Caso A: Persona física autorepresentada**
+```sql
+-- ENTIDADES
+INSERT INTO entidades (tipo_entidad_id, cif_nif, nombre_completo, ...) 
+VALUES (1, '12345678A', 'Juan Pérez García', ...);
+
+-- ENTIDADES_ADMINISTRADOS
+INSERT INTO entidades_administrados (entidad_id, email_notificaciones, representante_nif_cif, representante_nombre)
+VALUES (1, 'juan.perez@gmail.com', NULL, NULL);
+
+-- Par Notifica: ('12345678A', 'juan.perez@gmail.com')
+```
+
+**Caso B: Persona jurídica con administrador único**
+```sql
+-- ENTIDADES
+INSERT INTO entidades (tipo_entidad_id, cif_nif, nombre_completo, ...) 
+VALUES (1, 'B12345678', 'Constructora García SL', ...);
+
+-- ENTIDADES_ADMINISTRADOS
+INSERT INTO entidades_administrados (
+    entidad_id, 
+    email_notificaciones, 
+    representante_nif_cif, 
+    representante_nombre,
+    notas_representacion
+)
+VALUES (
+    2, 
+    'notificaciones@constructoragarcia.com', 
+    '12345678A', 
+    'Juan García López',
+    'Administrador único'
+);
+
+-- Par Notifica: ('12345678A', 'notificaciones@constructoragarcia.com')
+```
+
+**Caso C: Persona jurídica con gestión corporativa directa**
+```sql
+-- ENTIDADES
+INSERT INTO entidades (tipo_entidad_id, cif_nif, nombre_completo, ...) 
+VALUES (1, 'B87654321', 'Gran Empresa Eléctrica SA', ...);
+
+-- ENTIDADES_ADMINISTRADOS
+INSERT INTO entidades_administrados (
+    entidad_id, 
+    email_notificaciones, 
+    representante_nif_cif, 
+    representante_nombre,
+    notas_representacion
+)
+VALUES (
+    3, 
+    'tramites.juridico@granempresa.com', 
+    NULL, 
+    NULL,
+    'Gestión corporativa directa'
+);
+
+-- Par Notifica: ('B87654321', 'tramites.juridico@granempresa.com')
+```
+
+**Caso D: Persona jurídica representada por consultora**
+```sql
+-- ENTIDADES
+INSERT INTO entidades (tipo_entidad_id, cif_nif, nombre_completo, ...) 
+VALUES (1, 'B11111111', 'Promotora Solar XXX SL', ...);
+
+-- ENTIDADES_ADMINISTRADOS
+INSERT INTO entidades_administrados (
+    entidad_id, 
+    email_notificaciones, 
+    representante_nif_cif, 
+    representante_nombre,
+    representante_telefono,
+    representante_email,
+    notas_representacion
+)
+VALUES (
+    4, 
+    'notifica@consultoraacme.com', 
+    'B22222222', 
+    'Consultora ACME SL',
+    '956123456',
+    'contacto@consultoraacme.com',
+    'Consultora contratada para tramitación completa'
+);
+
+-- Par Notifica: ('B22222222', 'notifica@consultoraacme.com')
+```
+
+#### Regla de Negocio: CIF/NIF para Notifica
+
+**Par obligatorio para notificar:** `(CIF/NIF, EMAIL_NOTIFICACIONES)`
+
+**Lógica de obtención del CIF/NIF:**
+
+```python
+def obtener_cif_notifica(administrado):
+    """
+    Devuelve el CIF/NIF que debe usarse para notificar.
+    
+    Regla:
+    - Si hay representante_nif_cif → usar ese (quien gestiona)
+    - Si representante_nif_cif es NULL → usar entidades.cif_nif (titular)
+    """
+    if administrado.representante_nif_cif:
+        return administrado.representante_nif_cif
+    else:
+        return administrado.entidad.cif_nif
+
+def obtener_par_notifica(administrado):
+    """
+    Devuelve el par (CIF/NIF, EMAIL) para sistema Notifica.
+    """
+    return (
+        obtener_cif_notifica(administrado),
+        administrado.email_notificaciones
+    )
+```
+
+**Consulta SQL:**
+```sql
+-- Obtener par para notificar
+SELECT 
+    COALESCE(ea.representante_nif_cif, e.cif_nif) AS cif_notifica,
+    ea.email_notificaciones
+FROM entidades_administrados ea
+JOIN entidades e ON ea.entidad_id = e.id
+WHERE ea.entidad_id = :id;
+```
+
+#### Visualización en Interfaz
+
+**Al crear/editar administrado:**
+
+```
+┌─────────────────────────────────────────────────┐
+│ DATOS DEL TITULAR                               │
+├─────────────────────────────────────────────────┤
+│ CIF/NIF: B12345678                              │
+│ Nombre: Constructora García SL                  │
+│ ...                                             │
+└─────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────┐
+│ NOTIFICACIONES ELECTRÓNICAS (Notifica)          │
+├─────────────────────────────────────────────────┤
+│ Email notificaciones: [_____________________]   │
+│   ⓘ Email oficial donde se recibirán las       │
+│     notificaciones electrónicas                 │
+└─────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────┐
+│ REPRESENTACIÓN (Opcional)                       │
+├─────────────────────────────────────────────────┤
+│ ☐ El titular se representa a sí mismo           │
+│                                                 │
+│ ☑ Hay representante/apoderado                   │
+│   NIF/CIF: [12345678A]                          │
+│   Nombre:  [Juan García López]                  │
+│   Teléfono: [____________]                      │
+│   Email:    [____________]                      │
+│   Notas:    [Administrador único]               │
+│                                                 │
+│ ⚠️ NOTIFICACIONES SE ENVIARÁN A:                │
+│    CIF/NIF: 12345678A  (representante)          │
+│    Email:   notificaciones@constructora...      │
+└─────────────────────────────────────────────────┘
+```
+
+#### Validaciones
+
+**Al guardar:**
+
+1. `EMAIL_NOTIFICACIONES` obligatorio (NOT NULL)
+2. Si `REPRESENTANTE_NIF_CIF` tiene valor → `REPRESENTANTE_NOMBRE` obligatorio
+3. Si `REPRESENTANTE_NIF_CIF` es NULL → `REPRESENTANTE_NOMBRE` debe ser NULL
+4. `REPRESENTANTE_NIF_CIF` debe pasar validación algoritmo NIF/CIF (si no es NULL)
+5. Par `(CIF_NOTIFICA, EMAIL_NOTIFICACIONES)` debe estar completo
+
+**Validación Python:**
+```python
+from models import Entidad, EntidadAdministrado
+
+def validar_administrado(administrado):
+    # Email notificaciones obligatorio
+    if not administrado.email_notificaciones:
+        raise ValidationError("Email de notificaciones es obligatorio")
+    
+    # Coherencia representante
+    tiene_cif = administrado.representante_nif_cif is not None
+    tiene_nombre = administrado.representante_nombre is not None
+    
+    if tiene_cif != tiene_nombre:
+        raise ValidationError(
+            "Si hay CIF de representante, debe haber nombre (y viceversa)"
+        )
+    
+    # Validar CIF representante
+    if tiene_cif:
+        if not Entidad.validar_cif_nif(administrado.representante_nif_cif):
+            raise ValidationError("CIF/NIF del representante no es válido")
+    
+    # Par Notifica completo
+    cif_notifica = administrado.representante_nif_cif or administrado.entidad.cif_nif
+    if not cif_notifica or not administrado.email_notificaciones:
+        raise ValidationError(
+            "No se puede determinar el par (CIF/NIF, email) para notificar"
+        )
+```
+
+#### Consultas Frecuentes
+
+**1. Listar administrados con sus datos de notificación:**
+```sql
+SELECT 
+    e.id,
+    e.cif_nif AS cif_titular,
+    e.nombre_completo AS nombre_titular,
+    COALESCE(ea.representante_nif_cif, e.cif_nif) AS cif_notifica,
+    COALESCE(ea.representante_nombre, e.nombre_completo) AS nombre_notifica,
+    ea.email_notificaciones
+FROM entidades e
+JOIN entidades_administrados ea ON e.id = ea.entidad_id
+WHERE e.activo = TRUE
+ORDER BY e.nombre_completo;
+```
+
+**2. Buscar por email de notificaciones:**
+```sql
+SELECT e.*, ea.*
+FROM entidades e
+JOIN entidades_administrados ea ON e.id = ea.entidad_id
+WHERE ea.email_notificaciones ILIKE '%@consultoraacme.com';
+```
+
+**3. Administrados representados por una consultora específica:**
+```sql
+SELECT e.*, ea.*
+FROM entidades e
+JOIN entidades_administrados ea ON e.id = ea.entidad_id
+WHERE ea.representante_nif_cif = 'B22222222'  -- CIF consultora
+AND e.activo = TRUE;
+```
+
+**4. Administrados autorepresentados (personas físicas):**
+```sql
+SELECT e.*, ea.*
+FROM entidades e
+JOIN entidades_administrados ea ON e.id = ea.entidad_id
+WHERE ea.representante_nif_cif IS NULL
+AND e.cif_nif LIKE '_________'  -- NIF (8 dígitos + letra)
+AND e.activo = TRUE;
 ```
 
 ---
