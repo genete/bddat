@@ -15,7 +15,7 @@ Tabla base que centraliza todas las personas físicas, jurídicas y organismos q
 | Campo | Tipo | Descripción | Nullable | Notas |
 |:---|:---|:---|:---|:---|
 | **ID** | INTEGER | Identificador único de la entidad | NO | PK, autoincremental |
-| **TIPO_ENTIDAD_ID** | INTEGER | Tipo de entidad que determina tabla de metadatos | NO | FK → TIPOS_ENTIDAD(ID). Define qué tabla `entidades_*` usar |
+| **TIPO_ENTIDAD_ID** | INTEGER | Tipo de entidad que determina tabla de metadatos | NO | FK → TIPOS_ENTIDADES(ID). Define qué tabla `entidades_*` usar |
 | **CIF_NIF** | VARCHAR(20) | CIF/NIF/NIE normalizado | SÍ | UNIQUE. Mayúsculas, sin espacios/guiones. Ej: "12345678A", "B12345678". NULL para algunos organismos históricos |
 | **NOMBRE_COMPLETO** | VARCHAR(200) | Razón social, nombre completo o nombre oficial | NO | Indexed. Personas físicas: nombre completo. Jurídicas/organismos: razón social/nombre oficial |
 | **EMAIL** | VARCHAR(120) | Email general de contacto | SÍ | NO es el email de notificaciones (va en `entidades_administrados`) |
@@ -33,7 +33,7 @@ Tabla base que centraliza todas las personas físicas, jurídicas y organismos q
 
 - **PK:** `ID`
 - **FK:**
-  - `TIPO_ENTIDAD_ID` → `TIPOS_ENTIDAD(ID)`
+  - `TIPO_ENTIDAD_ID` → `TIPOS_ENTIDADES(ID)`
   - `MUNICIPIO_ID` → `MUNICIPIOS(ID)`
 - **UNIQUE:** `CIF_NIF`
 
@@ -59,7 +59,7 @@ CONSTRAINT chk_direccion_estructurada_o_fallback
 
 #### Relaciones
 
-- **tipo_entidad**: TIPOS_ENTIDAD.id (FK, catálogo de tipos)
+- **tipo_entidad**: TIPOS_ENTIDADES.id (FK, catálogo de tipos)
 - **municipio**: MUNICIPIOS.id (FK, ubicación geográfica)
 - **datos_administrado**: ENTIDADES_ADMINISTRADOS.entidad_id (1:1, metadatos administrados)
 - **datos_organismo**: ENTIDADES_ORGANISMOS_PUBLICOS.entidad_id (1:1, metadatos organismos)
@@ -115,7 +115,7 @@ El campo `TIPO_ENTIDAD_ID` determina:
 - Qué formulario mostrar en la interfaz
 - Qué validaciones aplicar
 
-Tabla `TIPOS_ENTIDAD` contiene campo `tabla_metadatos` que mapea tipo → tabla física.
+Tabla `TIPOS_ENTIDADES` contiene campo `tabla_metadatos` que mapea tipo → tabla física.
 
 #### Reglas de Negocio
 
