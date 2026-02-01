@@ -15,7 +15,7 @@ Metadatos específicos de administraciones públicas y organismos oficiales que 
 | Campo | Tipo | Descripción | Nullable | Notas |
 |:---|:---|:---|:---|:---|
 | **ENTIDAD_ID** | INTEGER | Referencia a entidad base | NO | PK y FK → ENTIDADES(ID), UNIQUE, CASCADE |
-| **CODIGO_DIR3** | VARCHAR(10) | Código DIR3 oficial del organismo | NO | UNIQUE. Identificación única para notificaciones vía SIR/BandeJA. Formato: EA0044689, A12002696, etc. |
+| **CODIGO_DIR3** | VARCHAR(10) | Código DIR3 oficial del organismo | NO | UNIQUE. Identificación única para notificaciones vía SIR. Formato: EA0044689, A12002696, etc. |
 | **OBSERVACIONES** | TEXT | Notas sobre competencias y ámbito | SÍ | Ámbito territorial, materias específicas, contactos alternativos, etc. |
 
 #### Claves
@@ -46,7 +46,7 @@ Tabla de metadatos para **organismos públicos** (administraciones y entidades o
 - **CODIGO_DIR3 como clave de negocio:** Identificación oficial para comunicaciones interadministrativas
 - **Sin representante:** La entidad es el organismo en sí (persona jurídica pública)
 - **Roles múltiples posibles:** Un organismo puede ser consultado Y solicitante (doble entrada: esta tabla + `ENTIDADES_ADMINISTRADOS`)
-- **Notificaciones vía SIR/BandeJA:** No usan sistema Notifica (a diferencia de administrados)
+- **Notificaciones interadministrativas:** Sistema SIR (Servicio Integrado de Registro) usando CODIGO_DIR3
 
 #### Campos que YA están en ENTIDADES (no duplicar)
 
@@ -89,29 +89,11 @@ Tabla de metadatos para **organismos públicos** (administraciones y entidades o
 **Uso en BDDAT:**
 - Identificación única del organismo (más fiable que CIF)
 - Clave para enviar notificaciones vía **SIR** (Servicio Integrado de Registro)
-- Clave para enviar notificaciones vía **BandeJA** (Bandeja Electrónica de Justicia y Administración)
+- En Junta de Andalucía: Sistema **BandeJA** (Bandeja de la Junta de Andalucía) para comunicaciones interiores electrónicas
 
 **Consulta de códigos DIR3:**
 - Portal oficial: https://administracionelectronica.gob.es/ctt/dir3
 - Descargas: https://administracionelectronica.gob.es/ctt/dir3/descargas
-
-#### Ejemplos de Entidades (tipos)
-
-**Administración General del Estado:**
-- Ministerios (Transición Ecológica, Defensa, Fomento, etc.)
-- Organismos autónomos (ADIF, Puertos del Estado, AESA, etc.)
-- Confederaciones Hidrográficas
-- Demarcaciones de Carreteras
-
-**Comunidades Autónomas:**
-- Consejerías (Medio Ambiente, Agricultura, Cultura, etc.)
-- Direcciones Generales (Industria y Energía, Patrimonio, etc.)
-- Agencias autonómicas
-
-**Otros:**
-- Diputaciones Provinciales (aunque pueden usar `ENTIDADES_DIPUTACIONES`)
-- Consorcios interadministrativos
-- Entidades locales menores
 
 #### Roles Múltiples: Organismo Consultado Y Solicitante
 
@@ -166,7 +148,7 @@ WHERE e.activo = TRUE;
 2. **CIF_NIF opcional** en `ENTIDADES` (puede ser NULL o compartido)
 3. **Sin representante** (no aplican campos `REPRESENTANTE_*`)
 4. **Múltiples roles:** Un organismo puede estar en esta tabla Y en `ENTIDADES_ADMINISTRADOS`
-5. **Notificaciones interadministrativas:** Usar CODIGO_DIR3 para SIR/BandeJA, no email Notifica
+5. **Notificaciones interadministrativas:** Usar CODIGO_DIR3 para SIR, no email Notifica
 6. **Validación DIR3:** Formato alfanumérico, 8-10 caracteres
 
 #### Validaciones
