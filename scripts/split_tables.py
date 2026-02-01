@@ -6,10 +6,11 @@ split_tables.py - Divide Tablas.md en archivos individuales por tabla
 DESCRIPCIÓN:
     Toma el archivo monolítico Tablas.md y lo divide en archivos individuales,
     uno por cada tabla, más un archivo separado para la Filosofía del Diseño.
-    Cada archivo recibe un prefijo numérico para mantener el orden.
+    Cada archivo recibe un prefijo alfanumérico para mantener el orden.
 
-MEJORAS v2.0:
-    - Numeración con prefijos (01-19 operacionales, 20-39 maestras)
+MEJORAS v3.0:
+    - Nomenclatura E_nnn (Estructura) y O_nnn (Operacional)
+    - Escalabilidad infinita por categoría
     - Filosofía separada en 00_FILOSOFIA.md
     - Metadatos con timestamp de generación
     - Validación de estructura markdown
@@ -31,20 +32,19 @@ ENTRADA:
 SALIDA:
     docs/fuentesIA/referencias/tablas/
     ├── 00_FILOSOFIA.md
-    ├── 01_EXPEDIENTES.md
-    ├── 02_PROYECTOS.md
-    ├── 03_SOLICITUDES.md
-    ├── 04_SOLICITUDES_TIPOS.md (si existe)
-    ├── ...
-    └── 30_TIPOS_RESULTADOS_FASES.md
+    ├── E_001_TIPOS_EXPEDIENTES.md
+    ├── E_002_MUNICIPIOS.md
+    ├── O_001_EXPEDIENTES.md
+    ├── O_002_PROYECTOS.md
+    └── ...
 
 SIGUIENTE PASO:
     Después de editar archivos individuales, ejecutar merge_tables.py
     para regenerar Tablas.md completo.
 
 AUTOR: Sistema BDDAT
-VERSIÓN: 2.0
-FECHA: 2026-01-31
+VERSIÓN: 3.0
+FECHA: 2026-02-01
 """
 
 import re
@@ -57,32 +57,34 @@ from pathlib import Path
 # CONFIGURACIÓN
 # ============================================================================
 
-# Mapeo de tablas a números (para ordenación)
-# Operacionales: 01-19, Maestras: 20-39
+# Mapeo de tablas a códigos (para ordenación)
+# E_nnn: Estructura/Maestras, O_nnn: Operacionales
 TABLE_ORDER = {
-    # Operacionales
-    'EXPEDIENTES': '01',
-    'PROYECTOS': '02',
-    'SOLICITUDES': '03',
-    'SOLICITUDES_TIPOS': '04',
-    'DOCUMENTOS': '05',
-    'DOCUMENTOS_PROYECTO': '06',
-    'TAREAS': '07',
-    'FASES': '08',
-    'TRAMITES': '09',
-    'MUNICIPIOS_PROYECTO': '10',
-    # Maestras
-    'USUARIOS': '20',
-    'ROLES': '21',
-    'USUARIOS_ROLES': '22',
-    'TIPOS_EXPEDIENTES': '23',
-    'TIPOS_SOLICITUDES': '24',
-    'TIPOS_FASES': '25',
-    'TIPOS_TRAMITES': '26',
-    'TIPOS_TAREAS': '27',
-    'TIPOS_IA': '28',
-    'MUNICIPIOS': '29',
-    'TIPOS_RESULTADOS_FASES': '30',
+    # Estructura/Maestras (E_)
+    'TIPOS_EXPEDIENTES': 'E_001',
+    'TIPOS_SOLICITUDES': 'E_002',
+    'TIPOS_FASES': 'E_003',
+    'TIPOS_TRAMITES': 'E_004',
+    'TIPOS_TAREAS': 'E_005',
+    'TIPOS_IA': 'E_006',
+    'MUNICIPIOS': 'E_007',
+    'TIPOS_RESULTADOS_FASES': 'E_008',
+    
+    # Operacionales (O_)
+    'EXPEDIENTES': 'O_001',
+    'PROYECTOS': 'O_002',
+    'SOLICITUDES': 'O_003',
+    'SOLICITUDES_TIPOS': 'O_004',
+    'DOCUMENTOS': 'O_005',
+    'DOCUMENTOS_PROYECTO': 'O_006',
+    'TAREAS': 'O_007',
+    'FASES': 'O_008',
+    'TRAMITES': 'O_009',
+    'MUNICIPIOS_PROYECTO': 'O_010',
+    'USUARIOS': 'O_011',
+    'ROLES': 'O_012',
+    'ENTIDADES': 'O_013',
+    'USUARIOS_ROLES': 'O_014',
 }
 
 
@@ -114,8 +116,8 @@ def extract_header_and_philosophy(content):
         if line.strip().startswith('## Filosofía del Diseño'):
             philosophy_start = i
         
-        # Tablas Operacionales empieza (fin de filosofía)
-        if line.strip().startswith('## Tablas Operacionales'):
+        # Tablas de Estructura empieza (fin de filosofía)
+        if line.strip().startswith('## Tablas de Estructura') or line.strip().startswith('## Tablas Operacionales'):
             philosophy_end = i
             tables_start = i
             break
@@ -126,7 +128,7 @@ def extract_header_and_philosophy(content):
     # Header: desde inicio hasta filosofía
     header_content = '\n'.join(lines[:philosophy_start])
     
-    # Filosofía: desde "## Filosofía" hasta "## Tablas Operacionales"
+    # Filosofía: desde "## Filosofía" hasta "## Tablas..."
     philosophy_content = '\n'.join(lines[philosophy_start:philosophy_end])
     
     return header_content.strip(), philosophy_content.strip(), tables_start
@@ -230,17 +232,17 @@ Fecha: {datetime.now().strftime('%d/%m/%Y %H:%M')}
 
 def save_table(table_name, table_content, output_dir):
     """
-    Guarda una tabla individual con numeración.
+    Guarda una tabla individual con nomenclatura E_/O_.
     
     Args:
         table_name: Nombre de la tabla
         table_content: Contenido markdown de la tabla
         output_dir: Directorio de salida
     """
-    # Obtener prefijo numérico
-    prefix = TABLE_ORDER.get(table_name, '99')
+    # Obtener código (E_nnn u O_nnn)
+    code = TABLE_ORDER.get(table_name, 'O_999')
     
-    output_file = output_dir / f'{prefix}_{table_name}.md'
+    output_file = output_dir / f'{code}_{table_name}.md'
     
     metadata = create_metadata_header(table_name)
     
@@ -249,7 +251,8 @@ def save_table(table_name, table_content, output_dir):
         f.write(table_content)
         f.write('\n')
     
-    print(f"   ✓ {output_file.name}")
+    category = 'ESTRUCTURA' if code.startswith('E_') else 'OPERACIONAL'
+    print(f"   ✓ {output_file.name} [{category}]")
 
 
 # ============================================================================
@@ -297,17 +300,22 @@ def split_tables(input_file, output_dir):
     for table_name, table_content in sorted(tables.items()):
         save_table(table_name, table_content, output_dir)
     
+    # Contar por categoría
+    estructura_count = sum(1 for t in tables if TABLE_ORDER.get(t, 'O_').startswith('E_'))
+    operacional_count = len(tables) - estructura_count
+    
     # Resumen
     print(f"\n✅ Proceso completado:")
     print(f"   • Archivos generados: {len(tables) + 1}")
     print(f"     - 1 archivo de filosofía")
-    print(f"     - {len(tables)} tablas individuales")
+    print(f"     - {estructura_count} tablas de estructura (E_)")
+    print(f"     - {operacional_count} tablas operacionales (O_)")
     print(f"   • Directorio: {output_dir}/")
     
-    # Listar tablas no mapeadas (usarán prefijo 99_)
+    # Listar tablas no mapeadas (usarán prefijo O_999_)
     unmapped = [t for t in tables.keys() if t not in TABLE_ORDER]
     if unmapped:
-        print(f"\n⚠️  Tablas sin numeración definida (prefijo 99_):")
+        print(f"\n⚠️  Tablas sin numeración definida (prefijo O_999_):")
         for t in unmapped:
             print(f"   • {t}")
         print(f"\n💡 Añadir a TABLE_ORDER en split_tables.py si son permanentes")
