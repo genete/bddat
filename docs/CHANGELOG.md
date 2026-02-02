@@ -2,7 +2,7 @@
 
 **Repositorio:** https://github.com/genete/bddat  
 **Historial completo:** [Ver Pull Requests cerrados](https://github.com/genete/bddat/pulls?q=is%3Apr+is%3Aclosed)  
-**Última actualización:** 01 de febrero de 2026
+**Última actualización:** 02 de febrero de 2026
 
 ---
 
@@ -17,6 +17,136 @@ Este archivo mantiene un **resumen de los últimos 5 PRs mergeados** para consul
 ---
 
 ## Últimos Cambios
+
+### 2026-02-02 - [PR #XX: Arquitectura polimórfica ENTIDADES - Fase 2: Modelos SQLAlchemy + Migración](https://github.com/genete/bddat/pull/XX)
+
+**Objetivo:** Implementar modelos SQLAlchemy y migración Alembic de la arquitectura ENTIDADES diseñada en Fase 1, creando 7 tablas operativas en base de datos.
+
+**Continuación de:** PR #XX (Fase 1 - Documentación de arquitectura)
+
+**Cambios principales:**
+
+**Añadido - Modelos SQLAlchemy (7 archivos nuevos):**
+- ✅ **`app/models/tipo_entidad.py`** (TipoEntidad):
+  - Catálogo maestro en `estructura.tipos_entidades`
+  - Campos: codigo (UNIQUE), nombre, tabla_metadatos, puede_ser_solicitante/consultado/publicar
+  - Relación 1:N con Entidad
+  - Métodos estáticos: `get_by_codigo()`, `get_solicitantes()`, `get_consultados()`, `get_publicadores()`
+- ✅ **`app/models/entidad.py`** (Entidad):
+  - Tabla base polimórfica en `public.entidades`
+  - Campos comunes: cif_nif (UNIQUE), nombre_completo, email, teléfono, dirección, municipio_id
+  - FKs: `tipo_entidad_id` → `estructura.tipos_entidades`, `municipio_id` → `estructura.municipios`
+  - Relaciones 1:1 con 5 tablas de metadatos (cascade='all, delete-orphan')
+  - Métodos estáticos: `normalizar_cif_nif()`, `validar_cif_nif()`, `buscar_por_cif_nif()`, `buscar_por_nombre()`
+- ✅ **`app/models/entidad_administrado.py`** (EntidadAdministrado):
+  - Metadatos en `public.entidades_administrados`
+  - Campos: email_notificaciones, representante_nif_cif, representante_nombre, representante_telefono, representante_email
+  - CheckConstraint: coherencia representante (si hay CIF debe haber nombre)
+  - Métodos: `obtener_cif_notifica()`, `obtener_par_notifica()`, `validar_datos_notifica()`
+  - Properties: `tiene_representante`, `es_autorepresentado`
+- ✅ **`app/models/entidad_empresa_servicio_publico.py`** (EntidadEmpresaServicioPublico):
+  - Metadatos en `public.entidades_empresas_servicio_publico`
+  - Campos: nombre_comercial, sector, codigo_cnae, observaciones
+  - Sin validaciones especiales (campos opcionales)
+- ✅ **`app/models/entidad_organismo_publico.py`** (EntidadOrganismoPublico):
+  - Metadatos en `public.entidades_organismos_publicos`
+  - Campos: codigo_dir3 (NOT NULL), ambito (ESTATAL/AUTONOMICO/LOCAL/EUROPEO), tipo_organismo, url_sede_electronica
+  - Índice UNIQUE en codigo_dir3
+  - Métodos estáticos: `buscar_por_dir3()`, `listar_por_ambito()`
+- ✅ **`app/models/entidad_ayuntamiento.py`** (EntidadAyuntamiento):
+  - Metadatos en `public.entidades_ayuntamientos`
+  - Campos: codigo_dir3 (NOT NULL, UNIQUE), codigo_ine_municipio (5 dígitos), url_tablon_edictos
+  - Property: `provincia` (obtiene vía entidad.municipio.provincia)
+  - Métodos estáticos: `buscar_por_dir3()`, `buscar_por_ine()`, `listar_por_provincia()`
+- ✅ **`app/models/entidad_diputacion.py`** (EntidadDiputacion):
+  - Metadatos en `public.entidades_diputaciones`
+  - Campos: codigo_dir3 (NOT NULL, UNIQUE), codigo_ine_municipio_sede, url_bop, email_publicacion_bop, observaciones
+  - Property: `provincia` (obtiene vía entidad.municipio donde tiene sede)
+  - Métodos estáticos: `buscar_por_dir3()`, `buscar_por_codigo_ine_sede()`
+
+**Modificado:**
+- ✅ **`app/models/__init__.py`**:
+  - Importados 7 nuevos modelos en orden correcto (TipoEntidad primero, luego Entidad, luego metadatos)
+  - Comentarios de orden de dependencias actualizados
+  - Añadidos a `__all__` para exportación
+
+**Migración Alembic:**
+- ✅ **`migrations/versions/c21871f08bb2_añadir_arquitectura_entidades_.py`**:
+  - **Migr ación manual** (no autogenerate debido a complejidad cross-schema)
+  - Función `upgrade()`:
+    1. `estructura.tipos_entidades` (catálogo maestro)
+    2. `public.entidades` (tabla base con FKs a estructura)
+    3. `public.entidades_administrados` (FK CASCADE a entidades)
+    4. `public.entidades_empresas_servicio_publico` (FK CASCADE)
+    5. `public.entidades_organismos_publicos` (FK CASCADE)
+    6. `public.entidades_ayuntamientos` (FK CASCADE)
+    7. `public.entidades_diputaciones` (FK CASCADE)
+  - Todos los índices creados: cif_nif, nombre_completo, activo, tipo_entidad_id, codigo_dir3 (UNIQUE donde aplica)
+  - Comentarios PostgreSQL en todas las columnas
+  - Constraints: UNIQUE, CHECK, ForeignKey con ondelete='CASCADE'
+  - Función `downgrade()`: DROP en orden inverso (dependientes primero)
+  - **Probado**: upgrade + downgrade + upgrade exitosos
+
+**Correcciones realizadas durante implementación:**
+- ✅ **Corrección FK cross-schema en modelos:**
+  - `TipoEntidad`: Añadido `__table_args__ = {'schema': 'estructura'}` (faltaba)
+  - `Entidad.tipo_entidad_id`: FK corregida a `'estructura.tipos_entidades.id'` (faltaba prefijo esquema)
+  - `EntidadDiputacion`: Eliminado campo `provincia_id` inexistente, añadido `@property provincia`
+  - Todos los modelos verificados para consistencia de esquemas
+- ✅ **Corrección modelos según documentación:**
+  - `EntidadDiputacion.codigo_dir3`: Cambiado a NOT NULL (según O_019)
+  - `EntidadDiputacion.email_publicacion_bop`: VARCHAR(255) en lugar de 120
+  - `EntidadDiputacion.observaciones`: Añadido campo TEXT faltante
+  - Todos los modelos alineados con especificación de `docs/fuentesIA/referencias/tablas/`
+
+**Funcionalidades implementadas:**
+- ✅ 7 tablas operativas en base de datos PostgreSQL
+- ✅ Arquitectura polimórfica funcional (tabla base + metadatos específicos)
+- ✅ FKs cross-schema correctas (`public` ↔ `estructura`)
+- ✅ Validaciones y métodos de negocio en modelos
+- ✅ Properties calculadas (provincia, tiene_representante, etc.)
+- ✅ Métodos estáticos de búsqueda y filtrado
+- ✅ Cascada DELETE en metadatos (borrar entidad borra metadatos)
+- ✅ Migración reversible (upgrade/downgrade testeado)
+
+**Archivos creados:**
+- `app/models/tipo_entidad.py`
+- `app/models/entidad.py`
+- `app/models/entidad_administrado.py`
+- `app/models/entidad_empresa_servicio_publico.py`
+- `app/models/entidad_organismo_publico.py`
+- `app/models/entidad_ayuntamiento.py`
+- `app/models/entidad_diputacion.py`
+- `migrations/versions/c21871f08bb2_añadir_arquitectura_entidades_.py`
+
+**Archivos modificados:**
+- `app/models/__init__.py` (importación de 7 nuevos modelos)
+- `docs/CHANGELOG.md`
+
+**Verificaciones realizadas:**
+- ✅ `flask db current` → `c21871f08bb2 (head)`
+- ✅ Tablas creadas en PostgreSQL (7 tablas verificadas)
+- ✅ Foreign keys correctas (7 FKs verificadas)
+- ✅ Índices creados (12 índices verificados)
+- ✅ `flask run` → Sin errores
+- ✅ `flask db downgrade` → Rollback exitoso
+- ✅ `flask db upgrade` → Reaplicación exitosa
+
+**Issues resueltos:** #62 (Fase 2 - Modelos + Migración)  
+**Milestone:** MS-3 - Alineación Administrativa  
+
+**Próximas fases:**
+- Fase 3: Tests unitarios e integración
+- Fase 4: Interfaz CRUD entidades
+- Fase 5: Datos maestros (INSERT en tipos_entidades)
+- Fase 6: Migración de datos legacy (si aplica)
+
+**Notas técnicas:**
+- Migración manual preferida sobre autogenerate debido a complejidad de resolución de FKs cross-schema en SQLAlchemy/Alembic
+- Todos los modelos siguen patrón de arquitectura documentado en Fase 1
+- Sin cambios en tablas existentes, solo adición de nuevas
+
+---
 
 ### 2026-02-01 - [PR #XX: Arquitectura polímorfica ENTIDADES - Fase 1: Documentación](https://github.com/genete/bddat/pull/XX)
 
@@ -38,7 +168,7 @@ Se adoptó **patrón de tablas inversas/puente** tras análisis documentado en I
   - Campos rol: `puede_ser_solicitante`, `puede_ser_consultado`, `puede_publicar`
   - Filtrado automático en UI según contexto (solicitud vs consulta vs publicación)
   - Incluye código, nombre, descripción, activo
-- ✅ **E_010 - ENTIDADES** (tabla base polímórfica):
+- ✅ **E_010 - ENTIDADES** (tabla base polimórfica):
   - Campos comunes: CIF/NIF, nombre completo, email, teléfono, dirección, municipio
   - FK a `TIPOS_ENTIDADES` para clasificación
   - Relaciones 1:1 con tablas de metadatos específicos
@@ -74,7 +204,7 @@ Se adoptó **patrón de tablas inversas/puente** tras análisis documentado en I
   - Diferencia con ayuntamientos: BOP usa email, tablón usa SIR interno
 
 **Modificado:**
-- ✅ **Tablas.md**: Refactorizado completo con arquitectura polímórfica (7 tablas nuevas)
+- ✅ **Tablas.md**: Refactorizado completo con arquitectura polimórfica (7 tablas nuevas)
   - Tabla base + catálogo + 5 tablas metadatos documentadas
   - Estructura, claves, índices, relaciones, validaciones por tabla
   - Consultas SQL frecuentes (7 por cada tabla de metadatos)
@@ -230,129 +360,6 @@ En lugar de duplicar lógica de formulario, se reutiliza el formulario de expedi
 **Archivos:** app/routes/proyectos.py, app/templates/expedientes/editar.html, app/templates/proyectos/detalle.html, docs/CHANGELOG.md
 
 **Nota:** Se descartó Opción B (formulario independiente) por pragmatismo y coherencia con modelo 1:1.
-
----
-
-### 2026-01-29 - [PR #55: Vista detallada de proyecto con maquetas](https://github.com/genete/bddat/pull/55)
-
-**Objetivo:** Implementar vista detallada individual de proyecto con todas las secciones solicitadas, incluyendo maquetas visuales para Documentos y Solicitudes futuras.
-
-**Cambios principales:**
-- ✅ **Ruta detalle** (`app/routes/proyectos.py`):
-  - `GET /proyectos/<id>` con verificación de permisos
-  - TRAMITADOR: Solo ve proyectos de sus expedientes
-  - ADMIN/SUPERVISOR: Ve cualquier proyecto
-  - Manejo de errores 404 (no existe) y 403 (sin permisos)
-  - Query con joins: Expediente, Usuario, TipoIA
-- ✅ **Template detalle** (`app/templates/proyectos/detalle.html`):
-  - Layout responsive col-lg-8 (contenido) + col-lg-4 (sidebar)
-  - Breadcrumb: Inicio → Proyectos → Título proyecto
-  - Badge "Interprovincial" en header cuando aplica
-  - Botones header: Editar Proyecto, Volver
-- ✅ **Sección: Datos Básicos** (card verde):
-  - Título, Descripción, Finalidad, Emplazamiento
-  - Tipo de instalación AT (badge + descripción completa)
-  - Fecha de creación
-  - Manejo de campos opcionales vacíos ("No especificado/a")
-- ✅ **Sección: Localización** (card verde):
-  - Lista completa de municipios con provincia y código INE
-  - Badge "Proyecto Interprovincial" cuando `es_interprovincial == True`
-  - Alerta amarilla informativa con lista de provincias afectadas
-  - Resumen de provincias afectadas
-- ✅ **Sección: Documentos - MAQUETA** (card azul):
-  - Alerta info: "Funcionalidad en desarrollo"
-  - Vista preliminar al 50% opacidad (no funcional)
-  - Ejemplos visuales: Memoria_Tecnica.pdf, Plano_Situacion.dwg
-  - Preparado para futura gestión de archivos adjuntos
-- ✅ **Sección: Solicitudes - MAQUETA** (card amarilla):
-  - Alerta warning: "Funcionalidad pendiente (Milestone 4)"
-  - Vista preliminar al 50% opacidad (no funcional)
-  - Tabla ejemplo: Consulta Previa (Aprobada), Autorización Administrativa (En tramitación)
-  - Preparado para MS4 (CRUD solicitudes)
-- ✅ **Sidebar: Expediente Asociado** (card azul):
-  - Número AT con enlace a detalle expediente
-  - Tipo de expediente (badge info)
-  - Responsable: nombre, email, icono
-  - Badge "Tú" para usuario actual
-  - Badge "Sin asignar" para expedientes huérfanos
-  - Indicador de expediente heredado (check verde)
-  - Botón "Ver Expediente Completo"
-- ✅ **Sidebar: Acciones Rápidas** (card gris):
-  - Editar Proyecto (redirige a `/expedientes/<id>/editar#proyecto`)
-  - Editar Expediente
-  - Volver al Listado
-- ✅ **Botón "Ver detalle" habilitado** en listado de proyectos
-
-**Funcionalidades:**
-- Vista detallada accesible desde `/proyectos/<id>`
-- Botón "Ver detalle" funcional en listado (antes deshabilitado)
-- Navegación breadcrumb completa
-- Detección automática de proyectos interprovinciales
-- Visualización completa de municipios con datos INE
-- Maquetas visuales de secciones futuras (Documentos, Solicitudes)
-- Enlaces cruzados a expediente y formulario de edición
-- Tooltips en badges para información adicional
-
-**Estilo:**
-- Cards con `shadow-sm` y headers coloreados (colores JDA)
-- Maquetas con `opacity-50` para indicar no funcionalidad
-- Alertas con iconos `fa-2x` para mayor visibilidad
-- Textos "Sin datos" con `text-muted fst-italic`
-- Responsive con sidebar colapsable en móvil
-
-**Issues resueltos:** #40  
-**Milestone:** MS-2 - Fase 2.2 Gestión de Expedientes  
-**Archivos:** app/routes/proyectos.py, app/templates/proyectos/detalle.html (NUEVO), app/templates/proyectos/index.html, docs/CHANGELOG.md
-
-**Notas:** Se planea iteración posterior para mejoras de diseño según feedback.
-
----
-
-### 2026-01-29 - [PR #54: Listado de proyectos con filtros y ordenamiento](https://github.com/genete/bddat/pull/54)
-
-**Objetivo:** Implementar listado completo de proyectos de instalaciones AT con filtros, ordenamiento y visualización detallada.
-
-**Cambios principales:**
-- ✅ **Blueprint proyectos** (`app/routes/proyectos.py`):
-  - Ruta `GET /proyectos/` con filtros por Instrumento Ambiental, Provincia, Responsable
-  - Ordenamiento server-side por: Expediente AT, Título, Inst. Ambiental, Responsable, Fecha
-  - Permisos: TRAMITADOR ve solo sus proyectos, ADMIN/SUPERVISOR ven todos
-  - **outerjoin con Usuario** para incluir proyectos sin responsable asignado (huérfanos)
-  - Filtrado por provincia usando subconsulta con `municipios_proyecto`
-- ✅ **Modelo Proyecto** (`app/models/proyectos.py`):
-  - **Property `municipios`**: Acceso directo a lista de Municipios vía backref `municipios_afectados`
-  - Properties `es_interprovincial` y `provincias_afectadas` funcionando correctamente
-  - Documentación actualizada sobre relación N:M con Municipios
-- ✅ **Template HTML** (`app/templates/proyectos/index.html`):
-  - Tabla responsive con columnas: Expediente AT, Título, Inst. Ambiental, Municipios, Provincias, Responsable, Acciones
-  - **Columna Expediente AT primera** (a la izquierda)
-  - **Columna Provincias** muestra nombres de provincias afectadas
-  - Formulario de filtros con selectores (Inst. Ambiental, Provincia, Responsable)
-  - Badge "Interprovincial" cuando afecta a múltiples provincias
-  - Badge "Sin asignar" para expedientes huérfanos (responsable NULL)
-  - Badge "Tú" para proyectos del usuario actual
-  - **Iconos Font Awesome** (fas) coherentes con listado de Expedientes
-  - **Estilo coherente** con Expedientes: card shadow-sm, thead table-success, badges con colores JDA
-  - Contador de proyectos en formato texto (igual que Expedientes)
-  - Tooltips en badges y botones
-  - Botones: Ver detalle (deshabilitado, issue #40), Editar proyecto
-
-**Funcionalidades:**
-- Vista independiente de proyectos accesible desde `/proyectos/`
-- Filtrado por Instrumento Ambiental (AAI, AAU, AAUS, CA, EXENTO)
-- Filtrado por provincia de Andalucía (8 provincias)
-- Filtrado por responsable (solo ADMIN/SUPERVISOR)
-- Ordenamiento por columnas: Expediente AT, Título, Inst. Ambiental, Responsable, Fecha
-- Visualización de hasta 3 municipios en tabla (con contador "... y X más")
-- **Proyectos sin responsable visibles** con badge amarillo "Sin asignar"
-- Badge "Interprovincial" automático cuando proyecto afecta a 2+ provincias
-- Enlace directo a detalle de expediente desde número AT
-- Botón "Editar" redirige a `/expedientes/<id>/editar#proyecto`
-
-**Issues resueltos:** #39  
-**Issues relacionados:** #52 (Búsqueda por texto), #53 (Filtrado inline en columnas)  
-**Milestone:** MS-2 - Fase 2.2 Gestión de Expedientes  
-**Archivos:** app/routes/proyectos.py (NUEVO), app/templates/proyectos/index.html (NUEVO), app/models/proyectos.py, app/__init__.py, docs/CHANGELOG.md
 
 ---
 
