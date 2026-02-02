@@ -20,6 +20,9 @@ class EntidadDiputacion(db.Model):
     - Publicador BOP (Boletín Oficial Provincial)
     
     Notificaciones: SIR (DIR3) como organismo, Notifica como solicitante.
+    
+    NOTA: La provincia se obtiene indirectamente vía entidad.municipio.provincia
+          (la diputación tiene sede en la capital provincial).
     """
     
     __tablename__ = 'entidades_diputaciones'
@@ -35,53 +38,54 @@ class EntidadDiputacion(db.Model):
     codigo_dir3 = db.Column(
         db.String(20), 
         unique=True, 
-        nullable=True, 
+        nullable=False, 
         index=True,
-        comment='Código DIR3 para notificaciones SIR'
-    )
-    
-    provincia_id = db.Column(
-        db.Integer, 
-        db.ForeignKey('estructura.provincias.id'), 
-        unique=True, 
-        nullable=True, 
-        index=True,
-        comment='Provincia a la que pertenece (relación 1:1, una provincia = una diputación)'
+        comment='Código DIR3 oficial para notificaciones SIR como organismo consultado. Formato: 1-2 letras + 7-8 números. Ej: L01110002'
     )
     
     email_publicacion_bop = db.Column(
-        db.String(120), 
+        db.String(255), 
         nullable=True,
-        comment='Email para envío de publicaciones al BOP'
+        comment='Email para solicitar publicaciones en BOP. Ej: boletin@bopcadiz.org. Método tradicional: correo con datos pagador + texto'
+    )
+    
+    observaciones = db.Column(
+        db.Text, 
+        nullable=True,
+        comment='Notas sobre procedimientos publicación, tarifas, plataformas alternativas, contactos específicos. Ej: "Concesionaria: Asociación Prensa Cádiz"'
     )
     
     # Relación inversa con Entidad
     entidad = db.relationship('Entidad', back_populates='datos_diputacion')
-    provincia = db.relationship('Provincia', backref='diputacion')
     
     def __repr__(self):
-        return f'<EntidadDiputacion {self.entidad_id}: Prov {self.provincia_id or "?"}>'
+        return f'<EntidadDiputacion {self.entidad_id}: DIR3={self.codigo_dir3}>'
     
     def to_dict(self):
         """Serialización para API."""
         return {
             'entidad_id': self.entidad_id,
             'codigo_dir3': self.codigo_dir3,
-            'provincia_id': self.provincia_id,
-            'email_publicacion_bop': self.email_publicacion_bop
+            'email_publicacion_bop': self.email_publicacion_bop,
+            'observaciones': self.observaciones
         }
     
     @property
-    def tiene_dir3(self):
-        """Indica si tiene código DIR3."""
-        return bool(self.codigo_dir3)
+    def tiene_email_bop(self):
+        """Indica si tiene email para publicación en BOP."""
+        return bool(self.email_publicacion_bop)
+    
+    @property
+    def provincia(self):
+        """
+        Obtiene la provincia indirectamente vía municipio de la sede.
+        La diputación tiene su sede en la capital provincial.
+        """
+        if self.entidad and self.entidad.municipio:
+            return self.entidad.municipio.provincia
+        return None
     
     @staticmethod
     def buscar_por_dir3(codigo):
         """Buscar diputación por código DIR3."""
         return EntidadDiputacion.query.filter_by(codigo_dir3=codigo).first()
-    
-    @staticmethod
-    def buscar_por_provincia(provincia_id):
-        """Buscar diputación por provincia."""
-        return EntidadDiputacion.query.filter_by(provincia_id=provincia_id).first()
