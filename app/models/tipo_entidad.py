@@ -26,14 +26,58 @@ class TipoEntidad(db.Model):
     __tablename__ = 'tipos_entidades'
     
     # Campos
-    id = db.Column(db.Integer, primary_key=True)
-    codigo = db.Column(db.String(50), nullable=False, unique=True, index=True)
-    nombre = db.Column(db.String(100), nullable=False)
-    tabla_metadatos = db.Column(db.String(100), nullable=False)
-    puede_ser_solicitante = db.Column(db.Boolean, nullable=False, default=False)
-    puede_ser_consultado = db.Column(db.Boolean, nullable=False, default=False)
-    puede_publicar = db.Column(db.Boolean, nullable=False, default=False)
-    descripcion = db.Column(db.Text, nullable=True)
+    id = db.Column(
+        db.Integer, 
+        primary_key=True,
+        comment='Identificador único del tipo de entidad'
+    )
+    
+    codigo = db.Column(
+        db.String(50), 
+        nullable=False, 
+        unique=True, 
+        index=True,
+        comment='Código único del tipo (ADMINISTRADO, ORGANISMO_PUBLICO, AYUNTAMIENTO, DIPUTACION, EMPRESA_SERVICIO_PUBLICO)'
+    )
+    
+    nombre = db.Column(
+        db.String(100), 
+        nullable=False,
+        comment='Nombre descriptivo del tipo de entidad'
+    )
+    
+    tabla_metadatos = db.Column(
+        db.String(100), 
+        nullable=False,
+        comment='Nombre de la tabla entidades_* donde se almacenan los metadatos específicos (ej: entidades_administrados)'
+    )
+    
+    puede_ser_solicitante = db.Column(
+        db.Boolean, 
+        nullable=False, 
+        default=False,
+        comment='Indica si este tipo puede actuar como solicitante de solicitudes'
+    )
+    
+    puede_ser_consultado = db.Column(
+        db.Boolean, 
+        nullable=False, 
+        default=False,
+        comment='Indica si este tipo puede emitir informes como organismo consultado'
+    )
+    
+    puede_publicar = db.Column(
+        db.Boolean, 
+        nullable=False, 
+        default=False,
+        comment='Indica si este tipo puede publicar edictos (tablón ayuntamiento o BOP diputación)'
+    )
+    
+    descripcion = db.Column(
+        db.Text, 
+        nullable=True,
+        comment='Descripción detallada del tipo de entidad, roles y características'
+    )
     
     # Relaciones
     entidades = db.relationship('Entidad', back_populates='tipo_entidad', lazy='dynamic')

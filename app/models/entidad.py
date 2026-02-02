@@ -25,20 +25,101 @@ class Entidad(db.Model):
     __tablename__ = 'entidades'
     
     # Campos
-    id = db.Column(db.Integer, primary_key=True)
-    tipo_entidad_id = db.Column(db.Integer, db.ForeignKey('tipos_entidades.id'), nullable=False, index=True)
-    cif_nif = db.Column(db.String(20), unique=True, index=True, nullable=True)
-    nombre_completo = db.Column(db.String(200), nullable=False, index=True)
-    email = db.Column(db.String(120), nullable=True)
-    telefono = db.Column(db.String(20), nullable=True)
-    direccion = db.Column(db.Text, nullable=True)
-    codigo_postal = db.Column(db.String(10), nullable=True)
-    municipio_id = db.Column(db.Integer, db.ForeignKey('estructura.municipios.id'), nullable=True, index=True)
-    direccion_fallback = db.Column(db.Text, nullable=True)
-    activo = db.Column(db.Boolean, nullable=False, default=True, index=True)
-    notas = db.Column(db.Text, nullable=True)
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    id = db.Column(
+        db.Integer, 
+        primary_key=True,
+        comment='Identificador único de la entidad'
+    )
+    
+    tipo_entidad_id = db.Column(
+        db.Integer, 
+        db.ForeignKey('tipos_entidades.id'), 
+        nullable=False, 
+        index=True,
+        comment='Tipo de entidad que determina tabla de metadatos. Define qué tabla entidades_* usar'
+    )
+    
+    cif_nif = db.Column(
+        db.String(20), 
+        unique=True, 
+        index=True, 
+        nullable=True,
+        comment='CIF/NIF/NIE normalizado. Mayúsculas, sin espacios/guiones. Ej: "12345678A", "B12345678". NULL para algunos organismos históricos'
+    )
+    
+    nombre_completo = db.Column(
+        db.String(200), 
+        nullable=False, 
+        index=True,
+        comment='Razón social, nombre completo o nombre oficial. Personas físicas: nombre completo. Jurídicas/organismos: razón social/nombre oficial'
+    )
+    
+    email = db.Column(
+        db.String(120), 
+        nullable=True,
+        comment='Email general de contacto. NO es el email de notificaciones (va en entidades_administrados)'
+    )
+    
+    telefono = db.Column(
+        db.String(20), 
+        nullable=True,
+        comment='Teléfono de contacto general. Formato libre'
+    )
+    
+    direccion = db.Column(
+        db.Text, 
+        nullable=True,
+        comment='Calle, número, piso, puerta. Usar junto con codigo_postal y municipio_id (preferente para España)'
+    )
+    
+    codigo_postal = db.Column(
+        db.String(10), 
+        nullable=True,
+        comment='Código postal. Texto libre. Futuro: sugerencias desde tabla codigos_postales'
+    )
+    
+    municipio_id = db.Column(
+        db.Integer, 
+        db.ForeignKey('estructura.municipios.id'), 
+        nullable=True, 
+        index=True,
+        comment='Municipio de la dirección. Preferente sobre direccion_fallback'
+    )
+    
+    direccion_fallback = db.Column(
+        db.Text, 
+        nullable=True,
+        comment='Dirección completa en texto libre. Para casos excepcionales (extranjero, datos históricos). Ej: "23, Peny Lane, St, 34523, London, England"'
+    )
+    
+    activo = db.Column(
+        db.Boolean, 
+        nullable=False, 
+        default=True, 
+        index=True,
+        comment='Indica si la entidad está activa. Borrado lógico'
+    )
+    
+    notas = db.Column(
+        db.Text, 
+        nullable=True,
+        comment='Observaciones generales sobre la entidad. Campo libre para anotaciones'
+    )
+    
+    created_at = db.Column(
+        db.DateTime, 
+        nullable=False, 
+        default=datetime.utcnow,
+        comment='Fecha y hora de creación del registro'
+    )
+    
+    updated_at = db.Column(
+        db.DateTime, 
+        nullable=False, 
+        default=datetime.utcnow, 
+        onupdate=datetime.utcnow,
+        comment='Fecha y hora de última actualización'
+    )
     
     # Relaciones
     tipo_entidad = db.relationship('TipoEntidad', back_populates='entidades')
@@ -52,7 +133,7 @@ class Entidad(db.Model):
     datos_diputacion = db.relationship('EntidadDiputacion', uselist=False, back_populates='entidad', cascade='all, delete-orphan')
     
     # Relaciones inversas con tablas operacionales
-    # TODO: Descomentar cuando se migren las tablas EXPEDIENTES y SOLICITUDES para usar ENTIDADES
+    # TODO: Descomentar cuando se migren EXPEDIENTES y SOLICITUDES para usar ENTIDADES
     # expedientes_titular = db.relationship('Expediente', foreign_keys='Expediente.titular_id', backref='titular')
     # solicitudes_solicitante = db.relationship('Solicitud', foreign_keys='Solicitud.solicitante_id', backref='solicitante')
     # solicitudes_autorizado = db.relationship('Solicitud', foreign_keys='Solicitud.autorizado_id', backref='autorizado')
