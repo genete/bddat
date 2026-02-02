@@ -21,6 +21,16 @@ from app.models.tipos_solicitudes import TipoSolicitud
 from app.models.tipos_tareas import TipoTarea
 from app.models.tipos_tramites import TipoTramite
 
+# Arquitectura Entidades Polimórfica (nuevos modelos issue #62)
+# Orden: TipoEntidad primero, luego Entidad, luego metadatos
+from app.models.tipo_entidad import TipoEntidad
+from app.models.entidad import Entidad
+from app.models.entidad_administrado import EntidadAdministrado
+from app.models.entidad_empresa_servicio_publico import EntidadEmpresaServicioPublico
+from app.models.entidad_organismo_publico import EntidadOrganismoPublico
+from app.models.entidad_ayuntamiento import EntidadAyuntamiento
+from app.models.entidad_diputacion import EntidadDiputacion
+
 # Modelos operacionales sin dependencias operacionales
 from app.models.proyectos import Proyecto
 
@@ -51,6 +61,14 @@ __all__ = [
     'TipoSolicitud',
     'TipoTarea',
     'TipoTramite',
+    # Arquitectura Entidades
+    'TipoEntidad',
+    'Entidad',
+    'EntidadAdministrado',
+    'EntidadEmpresaServicioPublico',
+    'EntidadOrganismoPublico',
+    'EntidadAyuntamiento',
+    'EntidadDiputacion',
     # Operacionales
     'Proyecto',
     'Expediente',
