@@ -24,6 +24,7 @@ class TipoEntidad(db.Model):
     """
     
     __tablename__ = 'tipos_entidades'
+    __table_args__ = {'schema': 'estructura'}
     
     # Campos
     id = db.Column(
