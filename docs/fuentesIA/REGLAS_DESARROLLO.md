@@ -5,8 +5,8 @@
 **Repositorio:** https://github.com/genete/bddat  
 **Ramas principales:** `main` (producción) + `develop` (integración)  
 **Documento creado:** 17 de enero de 2026  
-**Última actualización:** 27 de enero de 2026  
-**Versión:** 3.1
+**Última actualización:** 2 de febrero de 2026  
+**Versión:** 3.2
 
 ---
 
@@ -1057,7 +1057,121 @@ A partir de ahora:
 
 ---
 
+## 19. Documentación de Decisiones Arquitectónicas
+
+### 19.1 ¿Por qué documentar decisiones?
+
+Cuando tomamos decisiones arquitectónicas importantes, no solo debemos implementarlas, sino también **documentar el razonamiento** detrás de ellas.
+
+**Beneficios:**
+- Mantener el contexto de **POR QUÉ** se tomó una decisión
+- Evitar revisar las mismas alternativas en el futuro
+- Facilitar onboarding de nuevos desarrolladores
+- Proporcionar trazabilidad histórica
+- Ayudar a asistentes IA a entender mejor las decisiones previas
+
+---
+
+### 19.2 ¿Cuándo documentar?
+
+Documenta cuando:
+- ✅ Se evalúan **múltiples alternativas técnicas** (ej: vistas vs tablas, REST vs GraphQL)
+- ✅ La decisión **afecta la arquitectura** del sistema (ej: estructura de base de datos, patrones de diseño)
+- ✅ Existen **trade-offs importantes** a considerar (ej: rendimiento vs mantenibilidad)
+- ✅ Se **rechaza un enfoque** que podría parecer "obvio" o "estándar"
+- ✅ La decisión tendrá **impacto a largo plazo** en el proyecto
+
+---
+
+### 19.3 ¿Dónde documentar?
+
+**En los issues de GitHub**, como comentarios en el issue relacionado.
+
+**NO crear documentos separados** para cada decisión (aumenta overhead de mantenimiento).
+
+**Opcionalmente**, si la decisión es muy relevante, crear un issue específico etiquetado con `documentation` que referencie la discusión original.
+
+---
+
+### 19.4 Formato Recomendado
+
+Usa esta estructura en los comentarios del issue:
+
+```markdown
+## 💬 Análisis de Alternativas de Diseño
+
+### Contexto
+[Explicar el problema que se está resolviendo]
+
+### Opciones Evaluadas
+1. **Opción A**: [Descripción breve]
+2. **Opción B**: [Descripción breve]
+
+---
+
+## Opción 1: [Nombre]
+
+### Estructura
+[Código, diagramas, ejemplos]
+
+### ✅ Ventajas
+- [Ventaja 1]
+- [Ventaja 2]
+
+### ❌ Desventajas
+- [Desventaja 1]
+- [Desventaja 2]
+
+---
+
+## Opción 2: [Nombre]
+
+[Misma estructura que Opción 1]
+
+---
+
+## ⚖️ Comparación
+
+[Tabla comparativa si es útil]
+
+---
+
+## 🎯 Decisión Final
+
+### ✅ Se adopta: **[Opción elegida]**
+
+### Razones
+1. [Razón 1]
+2. [Razón 2]
+
+### Implicaciones
+- [Implicación 1: qué hay que cambiar/crear]
+- [Implicación 2: efectos en otras partes del sistema]
+
+### Próximos Pasos
+- [ ] [Acción 1]
+- [ ] [Acción 2]
+```
+
+---
+
+### 19.5 Ejemplo Real
+
+Ver issue [#62](https://github.com/genete/bddat/issues/62), comentarios sobre "Análisis de Alternativas de Diseño" donde se documenta la decisión de usar tablas inversas vs vistas actualizables para el modelo de entidades.
+
+---
+
+### 19.6 Herramientas para Escalabilidad Futura
+
+Si el proyecto crece mucho, considerar herramientas formales como:
+- [ADR (Architecture Decision Records)](https://adr.github.io/)
+- Documentación en `docs/decisions/` con archivos Markdown numerados
+
+Pero **para BDDAT, documentar en issues es suficiente** por ahora.
+
+---
+
 **Documento creado:** 17 de enero de 2026, 21:24 CET  
-**Última actualización:** 27 de enero de 2026, 20:09 CET  
-**Versión:** 3.1  
+**Última actualización:** 2 de febrero de 2026, 05:59 CET  
+**Versión:** 3.2  
 **Referencia:** Repositorio oficial genete/bddat en GitHub
