@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict T6qwY3tPV9DFu7dGns5u1W7Rv0w59ItYad08nvtc7FiNBDyLkLJlMeLlnX2bqNj
+\restrict PatAXTO7TTSGcIvbj5nOo0QimOgtSMwhGsSgh3gabqKayH9p8nIJbzxYNtgO2pA
 
 -- Dumped from database version 18.1
 -- Dumped by pg_dump version 18.1
@@ -20,13 +20,29 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 --
--- Name: estructura; Type: SCHEMA; Schema: -; Owner: postgres
+-- Name: estructura; Type: SCHEMA; Schema: -; Owner: bddat_admin
 --
 
 CREATE SCHEMA estructura;
 
 
-ALTER SCHEMA estructura OWNER TO postgres;
+ALTER SCHEMA estructura OWNER TO bddat_admin;
+
+--
+-- Name: public; Type: SCHEMA; Schema: -; Owner: bddat_admin
+--
+
+-- *not* creating schema, since initdb creates it
+
+
+ALTER SCHEMA public OWNER TO bddat_admin;
+
+--
+-- Name: SCHEMA public; Type: COMMENT; Schema: -; Owner: bddat_admin
+--
+
+COMMENT ON SCHEMA public IS '';
+
 
 SET default_tablespace = '';
 
@@ -45,13 +61,6 @@ CREATE TABLE estructura.municipios (
 
 
 ALTER TABLE estructura.municipios OWNER TO postgres;
-
---
--- Name: TABLE municipios; Type: COMMENT; Schema: estructura; Owner: postgres
---
-
-COMMENT ON TABLE estructura.municipios IS 'Catálogo de municipios de Andalucía con códigos INE oficiales. Fuente: Instituto Nacional de Estadística (INE) - Fichero 25codmun.xlsx a 1 de enero de 2025. Ámbito: 785 municipios de 8 provincias andaluzas (Almería, Cádiz, Córdoba, Granada, Huelva, Jaén, Málaga, Sevilla). Última carga: 25 de enero de 2026. URL: https://www.ine.es/daco/daco42/codmun/25codmun.xlsx';
-
 
 --
 -- Name: COLUMN municipios.id; Type: COMMENT; Schema: estructura; Owner: postgres
@@ -101,6 +110,102 @@ ALTER SEQUENCE estructura.municipios_id_seq OWNER TO postgres;
 --
 
 ALTER SEQUENCE estructura.municipios_id_seq OWNED BY estructura.municipios.id;
+
+
+--
+-- Name: tipos_entidades; Type: TABLE; Schema: estructura; Owner: bddat_admin
+--
+
+CREATE TABLE estructura.tipos_entidades (
+    id integer NOT NULL,
+    codigo character varying(50) NOT NULL,
+    nombre character varying(100) NOT NULL,
+    tabla_metadatos character varying(100) NOT NULL,
+    puede_ser_solicitante boolean DEFAULT false NOT NULL,
+    puede_ser_consultado boolean DEFAULT false NOT NULL,
+    puede_publicar boolean DEFAULT false NOT NULL,
+    descripcion text
+);
+
+
+ALTER TABLE estructura.tipos_entidades OWNER TO bddat_admin;
+
+--
+-- Name: COLUMN tipos_entidades.id; Type: COMMENT; Schema: estructura; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN estructura.tipos_entidades.id IS 'Identificador único del tipo de entidad';
+
+
+--
+-- Name: COLUMN tipos_entidades.codigo; Type: COMMENT; Schema: estructura; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN estructura.tipos_entidades.codigo IS 'Código único del tipo (ADMINISTRADO, ORGANISMO_PUBLICO, AYUNTAMIENTO, DIPUTACION, EMPRESA_SERVICIO_PUBLICO)';
+
+
+--
+-- Name: COLUMN tipos_entidades.nombre; Type: COMMENT; Schema: estructura; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN estructura.tipos_entidades.nombre IS 'Nombre descriptivo del tipo de entidad';
+
+
+--
+-- Name: COLUMN tipos_entidades.tabla_metadatos; Type: COMMENT; Schema: estructura; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN estructura.tipos_entidades.tabla_metadatos IS 'Nombre de la tabla entidades_* donde se almacenan los metadatos específicos (ej: entidades_administrados)';
+
+
+--
+-- Name: COLUMN tipos_entidades.puede_ser_solicitante; Type: COMMENT; Schema: estructura; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN estructura.tipos_entidades.puede_ser_solicitante IS 'Indica si este tipo puede actuar como solicitante de solicitudes';
+
+
+--
+-- Name: COLUMN tipos_entidades.puede_ser_consultado; Type: COMMENT; Schema: estructura; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN estructura.tipos_entidades.puede_ser_consultado IS 'Indica si este tipo puede emitir informes como organismo consultado';
+
+
+--
+-- Name: COLUMN tipos_entidades.puede_publicar; Type: COMMENT; Schema: estructura; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN estructura.tipos_entidades.puede_publicar IS 'Indica si este tipo puede publicar edictos (tablón ayuntamiento o BOP diputación)';
+
+
+--
+-- Name: COLUMN tipos_entidades.descripcion; Type: COMMENT; Schema: estructura; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN estructura.tipos_entidades.descripcion IS 'Descripción detallada del tipo de entidad, roles y características';
+
+
+--
+-- Name: tipos_entidades_id_seq; Type: SEQUENCE; Schema: estructura; Owner: bddat_admin
+--
+
+CREATE SEQUENCE estructura.tipos_entidades_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE estructura.tipos_entidades_id_seq OWNER TO bddat_admin;
+
+--
+-- Name: tipos_entidades_id_seq; Type: SEQUENCE OWNED BY; Schema: estructura; Owner: bddat_admin
+--
+
+ALTER SEQUENCE estructura.tipos_entidades_id_seq OWNED BY estructura.tipos_entidades.id;
 
 
 --
@@ -699,13 +804,440 @@ ALTER SEQUENCE public.documentos_proyecto_id_seq OWNED BY public.documentos_proy
 
 
 --
+-- Name: entidades; Type: TABLE; Schema: public; Owner: bddat_admin
+--
+
+CREATE TABLE public.entidades (
+    id integer NOT NULL,
+    tipo_entidad_id integer NOT NULL,
+    cif_nif character varying(20),
+    nombre_completo character varying(200) NOT NULL,
+    email character varying(120),
+    telefono character varying(20),
+    direccion text,
+    codigo_postal character varying(10),
+    municipio_id integer,
+    direccion_fallback text,
+    activo boolean DEFAULT true NOT NULL,
+    notas text,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+
+ALTER TABLE public.entidades OWNER TO bddat_admin;
+
+--
+-- Name: COLUMN entidades.id; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.entidades.id IS 'Identificador único de la entidad';
+
+
+--
+-- Name: COLUMN entidades.tipo_entidad_id; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.entidades.tipo_entidad_id IS 'Tipo de entidad que determina tabla de metadatos. Define qué tabla entidades_* usar';
+
+
+--
+-- Name: COLUMN entidades.cif_nif; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.entidades.cif_nif IS 'CIF/NIF/NIE normalizado. Mayúsculas, sin espacios/guiones. Ej: "12345678A", "B12345678". NULL para algunos organismos históricos';
+
+
+--
+-- Name: COLUMN entidades.nombre_completo; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.entidades.nombre_completo IS 'Razón social, nombre completo o nombre oficial. Personas físicas: nombre completo. Jurídicas/organismos: razón social/nombre oficial';
+
+
+--
+-- Name: COLUMN entidades.email; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.entidades.email IS 'Email general de contacto. NO es el email de notificaciones (va en entidades_administrados)';
+
+
+--
+-- Name: COLUMN entidades.telefono; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.entidades.telefono IS 'Teléfono de contacto general. Formato libre';
+
+
+--
+-- Name: COLUMN entidades.direccion; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.entidades.direccion IS 'Calle, número, piso, puerta. Usar junto con codigo_postal y municipio_id (preferente para España)';
+
+
+--
+-- Name: COLUMN entidades.codigo_postal; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.entidades.codigo_postal IS 'Código postal. Texto libre. Futuro: sugerencias desde tabla codigos_postales';
+
+
+--
+-- Name: COLUMN entidades.municipio_id; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.entidades.municipio_id IS 'Municipio de la dirección. Preferente sobre direccion_fallback';
+
+
+--
+-- Name: COLUMN entidades.direccion_fallback; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.entidades.direccion_fallback IS 'Dirección completa en texto libre. Para casos excepcionales (extranjero, datos históricos). Ej: "23, Peny Lane, St, 34523, London, England"';
+
+
+--
+-- Name: COLUMN entidades.activo; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.entidades.activo IS 'Indica si la entidad está activa. Borrado lógico';
+
+
+--
+-- Name: COLUMN entidades.notas; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.entidades.notas IS 'Observaciones generales sobre la entidad. Campo libre para anotaciones';
+
+
+--
+-- Name: COLUMN entidades.created_at; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.entidades.created_at IS 'Fecha y hora de creación del registro';
+
+
+--
+-- Name: COLUMN entidades.updated_at; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.entidades.updated_at IS 'Fecha y hora de última actualización';
+
+
+--
+-- Name: entidades_administrados; Type: TABLE; Schema: public; Owner: bddat_admin
+--
+
+CREATE TABLE public.entidades_administrados (
+    entidad_id integer NOT NULL,
+    email_notificaciones character varying(120) NOT NULL,
+    representante_nif_cif character varying(20),
+    representante_nombre character varying(200),
+    representante_telefono character varying(20),
+    representante_email character varying(120),
+    notas_representacion text,
+    CONSTRAINT chk_representante_coherente CHECK ((((representante_nif_cif IS NULL) AND (representante_nombre IS NULL)) OR ((representante_nif_cif IS NOT NULL) AND (representante_nombre IS NOT NULL))))
+);
+
+
+ALTER TABLE public.entidades_administrados OWNER TO bddat_admin;
+
+--
+-- Name: COLUMN entidades_administrados.entidad_id; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.entidades_administrados.entidad_id IS 'Referencia a entidad base (PK y FK con CASCADE)';
+
+
+--
+-- Name: COLUMN entidades_administrados.email_notificaciones; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.entidades_administrados.email_notificaciones IS 'Email oficial para sistema Notifica. Puede ser personal o corporativo donde se reciben notificaciones electrónicas oficiales';
+
+
+--
+-- Name: COLUMN entidades_administrados.representante_nif_cif; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.entidades_administrados.representante_nif_cif IS 'NIF/CIF de quien representa/gestiona. NULL si autorepresentado (persona física) o gestión corporativa directa. Normalizado como CIF/NIF';
+
+
+--
+-- Name: COLUMN entidades_administrados.representante_nombre; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.entidades_administrados.representante_nombre IS 'Nombre completo del representante. NULL si autorepresentado. Puede ser persona física (administrador único) o jurídica (consultora contratada)';
+
+
+--
+-- Name: COLUMN entidades_administrados.representante_telefono; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.entidades_administrados.representante_telefono IS 'Teléfono del representante. Contacto directo con quien gestiona';
+
+
+--
+-- Name: COLUMN entidades_administrados.representante_email; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.entidades_administrados.representante_email IS 'Email del representante. Email de contacto (NO oficial para notificaciones, solo coordinación)';
+
+
+--
+-- Name: COLUMN entidades_administrados.notas_representacion; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.entidades_administrados.notas_representacion IS 'Observaciones sobre la representación. Tipo de cargo o relación: "Administrador único", "Consultora ACME SL contratada", "Apoderado con poder notarial", etc.';
+
+
+--
+-- Name: entidades_ayuntamientos; Type: TABLE; Schema: public; Owner: bddat_admin
+--
+
+CREATE TABLE public.entidades_ayuntamientos (
+    entidad_id integer NOT NULL,
+    codigo_dir3 character varying(20) NOT NULL,
+    codigo_ine_municipio character varying(5) NOT NULL,
+    url_tablon_edictos character varying(255),
+    observaciones text
+);
+
+
+ALTER TABLE public.entidades_ayuntamientos OWNER TO bddat_admin;
+
+--
+-- Name: COLUMN entidades_ayuntamientos.entidad_id; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.entidades_ayuntamientos.entidad_id IS 'Referencia a entidad base (PK y FK con CASCADE)';
+
+
+--
+-- Name: COLUMN entidades_ayuntamientos.codigo_dir3; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.entidades_ayuntamientos.codigo_dir3 IS 'Código DIR3 oficial del ayuntamiento. Obligatorio para identificación única en sistemas oficiales';
+
+
+--
+-- Name: COLUMN entidades_ayuntamientos.codigo_ine_municipio; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.entidades_ayuntamientos.codigo_ine_municipio IS 'Código INE de 5 dígitos del municipio. Relaciona con estructura.municipios';
+
+
+--
+-- Name: COLUMN entidades_ayuntamientos.url_tablon_edictos; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.entidades_ayuntamientos.url_tablon_edictos IS 'URL del tablón de anuncios/edictos electrónico. Para verificar publicaciones obligatorias';
+
+
+--
+-- Name: COLUMN entidades_ayuntamientos.observaciones; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.entidades_ayuntamientos.observaciones IS 'Notas adicionales sobre el ayuntamiento. Horarios especiales, contactos técnicos, particularidades de publicación';
+
+
+--
+-- Name: entidades_diputaciones; Type: TABLE; Schema: public; Owner: bddat_admin
+--
+
+CREATE TABLE public.entidades_diputaciones (
+    entidad_id integer NOT NULL,
+    codigo_dir3 character varying(20) NOT NULL,
+    codigo_ine_municipio_sede character varying(5) NOT NULL,
+    url_bop character varying(255),
+    email_publicacion_bop character varying(255),
+    observaciones text
+);
+
+
+ALTER TABLE public.entidades_diputaciones OWNER TO bddat_admin;
+
+--
+-- Name: COLUMN entidades_diputaciones.entidad_id; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.entidades_diputaciones.entidad_id IS 'Referencia a entidad base (PK y FK con CASCADE)';
+
+
+--
+-- Name: COLUMN entidades_diputaciones.codigo_dir3; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.entidades_diputaciones.codigo_dir3 IS 'Código DIR3 oficial de la diputación. Obligatorio';
+
+
+--
+-- Name: COLUMN entidades_diputaciones.codigo_ine_municipio_sede; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.entidades_diputaciones.codigo_ine_municipio_sede IS 'Código INE del municipio donde tiene sede (capital provincial). 5 dígitos';
+
+
+--
+-- Name: COLUMN entidades_diputaciones.url_bop; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.entidades_diputaciones.url_bop IS 'URL del Boletín Oficial de la Provincia (BOP) electrónico. Para consulta de publicaciones';
+
+
+--
+-- Name: COLUMN entidades_diputaciones.email_publicacion_bop; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.entidades_diputaciones.email_publicacion_bop IS 'Email para envío de solicitudes de publicación en BOP. Dirección de contacto del servicio de publicaciones';
+
+
+--
+-- Name: COLUMN entidades_diputaciones.observaciones; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.entidades_diputaciones.observaciones IS 'Notas adicionales sobre la diputación. Procedimientos de publicación, plazos, contactos específicos';
+
+
+--
+-- Name: entidades_empresas_servicio_publico; Type: TABLE; Schema: public; Owner: bddat_admin
+--
+
+CREATE TABLE public.entidades_empresas_servicio_publico (
+    entidad_id integer NOT NULL,
+    nombre_comercial character varying(200),
+    sector character varying(100),
+    codigo_cnae character varying(10),
+    observaciones text
+);
+
+
+ALTER TABLE public.entidades_empresas_servicio_publico OWNER TO bddat_admin;
+
+--
+-- Name: COLUMN entidades_empresas_servicio_publico.entidad_id; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.entidades_empresas_servicio_publico.entidad_id IS 'Referencia a entidad base (PK y FK con CASCADE)';
+
+
+--
+-- Name: COLUMN entidades_empresas_servicio_publico.nombre_comercial; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.entidades_empresas_servicio_publico.nombre_comercial IS 'Nombre comercial o marca si difiere de razón social. Ej: "Endesa Distribución" vs "Endesa Distribución Eléctrica S.L."';
+
+
+--
+-- Name: COLUMN entidades_empresas_servicio_publico.sector; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.entidades_empresas_servicio_publico.sector IS 'Sector de actividad. Ej: "Distribución eléctrica", "Telecomunicaciones", "Transporte ferroviario"';
+
+
+--
+-- Name: COLUMN entidades_empresas_servicio_publico.codigo_cnae; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.entidades_empresas_servicio_publico.codigo_cnae IS 'Código CNAE de actividad económica. 4 dígitos. Ej: "3511" (Producción de energía eléctrica)';
+
+
+--
+-- Name: COLUMN entidades_empresas_servicio_publico.observaciones; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.entidades_empresas_servicio_publico.observaciones IS 'Notas adicionales sobre la empresa. Relaciones con otras operadoras, particularidades técnicas, histórico de incidencias';
+
+
+--
+-- Name: entidades_id_seq; Type: SEQUENCE; Schema: public; Owner: bddat_admin
+--
+
+CREATE SEQUENCE public.entidades_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.entidades_id_seq OWNER TO bddat_admin;
+
+--
+-- Name: entidades_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: bddat_admin
+--
+
+ALTER SEQUENCE public.entidades_id_seq OWNED BY public.entidades.id;
+
+
+--
+-- Name: entidades_organismos_publicos; Type: TABLE; Schema: public; Owner: bddat_admin
+--
+
+CREATE TABLE public.entidades_organismos_publicos (
+    entidad_id integer NOT NULL,
+    codigo_dir3 character varying(20) NOT NULL,
+    ambito character varying(50) NOT NULL,
+    tipo_organismo character varying(100),
+    url_sede_electronica character varying(255),
+    observaciones text
+);
+
+
+ALTER TABLE public.entidades_organismos_publicos OWNER TO bddat_admin;
+
+--
+-- Name: COLUMN entidades_organismos_publicos.entidad_id; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.entidades_organismos_publicos.entidad_id IS 'Referencia a entidad base (PK y FK con CASCADE)';
+
+
+--
+-- Name: COLUMN entidades_organismos_publicos.codigo_dir3; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.entidades_organismos_publicos.codigo_dir3 IS 'Código DIR3 oficial (directorio común de unidades orgánicas). Identificador único de organismo público. Obligatorio';
+
+
+--
+-- Name: COLUMN entidades_organismos_publicos.ambito; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.entidades_organismos_publicos.ambito IS 'Ámbito administrativo. Valores: "ESTATAL", "AUTONOMICO", "LOCAL", "EUROPEO"';
+
+
+--
+-- Name: COLUMN entidades_organismos_publicos.tipo_organismo; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.entidades_organismos_publicos.tipo_organismo IS 'Clasificación del organismo. Ej: "Ministerio", "Consejería", "Dirección General", "Agencia", "Organismo Autónomo"';
+
+
+--
+-- Name: COLUMN entidades_organismos_publicos.url_sede_electronica; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.entidades_organismos_publicos.url_sede_electronica IS 'URL de la sede electrónica del organismo. Para envíos telemáticos y consulta de servicios';
+
+
+--
+-- Name: COLUMN entidades_organismos_publicos.observaciones; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.entidades_organismos_publicos.observaciones IS 'Notas adicionales sobre el organismo. Competencias específicas, particularidades procedimentales, contactos alternativos';
+
+
+--
 -- Name: expedientes; Type: TABLE; Schema: public; Owner: postgres
 --
 
 CREATE TABLE public.expedientes (
     id integer NOT NULL,
     numero_at integer NOT NULL,
-    responsable_id integer NOT NULL,
+    responsable_id integer,
     tipo_expediente_id integer,
     heredado boolean,
     proyecto_id integer NOT NULL
@@ -936,11 +1468,11 @@ ALTER SEQUENCE public.municipios_proyecto_id_seq OWNED BY public.municipios_proy
 
 CREATE TABLE public.proyectos (
     id integer NOT NULL,
-    titulo character varying(500) DEFAULT '⚠️ Falta el título del proyecto'::character varying NOT NULL,
-    descripcion character varying(10000) DEFAULT '⚠️ Falta la descripción del proyecto'::character varying NOT NULL,
-    fecha date DEFAULT CURRENT_DATE NOT NULL,
-    finalidad character varying(500) DEFAULT '⚠️ Falta la finalidad del proyecto'::character varying NOT NULL,
-    emplazamiento character varying(200) DEFAULT '⚠️ Falta el emplazamiento'::character varying NOT NULL,
+    titulo character varying(500) NOT NULL,
+    descripcion character varying(10000) NOT NULL,
+    fecha date NOT NULL,
+    finalidad character varying(500) NOT NULL,
+    emplazamiento character varying(200) NOT NULL,
     ia_id integer
 );
 
@@ -1532,6 +2064,13 @@ ALTER TABLE ONLY estructura.municipios ALTER COLUMN id SET DEFAULT nextval('estr
 
 
 --
+-- Name: tipos_entidades id; Type: DEFAULT; Schema: estructura; Owner: bddat_admin
+--
+
+ALTER TABLE ONLY estructura.tipos_entidades ALTER COLUMN id SET DEFAULT nextval('estructura.tipos_entidades_id_seq'::regclass);
+
+
+--
 -- Name: tipos_expedientes id; Type: DEFAULT; Schema: estructura; Owner: postgres
 --
 
@@ -1592,6 +2131,13 @@ ALTER TABLE ONLY public.documentos ALTER COLUMN id SET DEFAULT nextval('public.d
 --
 
 ALTER TABLE ONLY public.documentos_proyecto ALTER COLUMN id SET DEFAULT nextval('public.documentos_proyecto_id_seq'::regclass);
+
+
+--
+-- Name: entidades id; Type: DEFAULT; Schema: public; Owner: bddat_admin
+--
+
+ALTER TABLE ONLY public.entidades ALTER COLUMN id SET DEFAULT nextval('public.entidades_id_seq'::regclass);
 
 
 --
@@ -1678,6 +2224,22 @@ ALTER TABLE ONLY estructura.municipios
 
 ALTER TABLE ONLY estructura.municipios
     ADD CONSTRAINT municipios_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: tipos_entidades tipos_entidades_codigo_key; Type: CONSTRAINT; Schema: estructura; Owner: bddat_admin
+--
+
+ALTER TABLE ONLY estructura.tipos_entidades
+    ADD CONSTRAINT tipos_entidades_codigo_key UNIQUE (codigo);
+
+
+--
+-- Name: tipos_entidades tipos_entidades_pkey; Type: CONSTRAINT; Schema: estructura; Owner: bddat_admin
+--
+
+ALTER TABLE ONLY estructura.tipos_entidades
+    ADD CONSTRAINT tipos_entidades_pkey PRIMARY KEY (id);
 
 
 --
@@ -1814,6 +2376,62 @@ ALTER TABLE ONLY public.documentos_proyecto
 
 ALTER TABLE ONLY public.documentos_proyecto
     ADD CONSTRAINT documentos_proyecto_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: entidades_administrados entidades_administrados_pkey; Type: CONSTRAINT; Schema: public; Owner: bddat_admin
+--
+
+ALTER TABLE ONLY public.entidades_administrados
+    ADD CONSTRAINT entidades_administrados_pkey PRIMARY KEY (entidad_id);
+
+
+--
+-- Name: entidades_ayuntamientos entidades_ayuntamientos_pkey; Type: CONSTRAINT; Schema: public; Owner: bddat_admin
+--
+
+ALTER TABLE ONLY public.entidades_ayuntamientos
+    ADD CONSTRAINT entidades_ayuntamientos_pkey PRIMARY KEY (entidad_id);
+
+
+--
+-- Name: entidades entidades_cif_nif_key; Type: CONSTRAINT; Schema: public; Owner: bddat_admin
+--
+
+ALTER TABLE ONLY public.entidades
+    ADD CONSTRAINT entidades_cif_nif_key UNIQUE (cif_nif);
+
+
+--
+-- Name: entidades_diputaciones entidades_diputaciones_pkey; Type: CONSTRAINT; Schema: public; Owner: bddat_admin
+--
+
+ALTER TABLE ONLY public.entidades_diputaciones
+    ADD CONSTRAINT entidades_diputaciones_pkey PRIMARY KEY (entidad_id);
+
+
+--
+-- Name: entidades_empresas_servicio_publico entidades_empresas_servicio_publico_pkey; Type: CONSTRAINT; Schema: public; Owner: bddat_admin
+--
+
+ALTER TABLE ONLY public.entidades_empresas_servicio_publico
+    ADD CONSTRAINT entidades_empresas_servicio_publico_pkey PRIMARY KEY (entidad_id);
+
+
+--
+-- Name: entidades_organismos_publicos entidades_organismos_publicos_pkey; Type: CONSTRAINT; Schema: public; Owner: bddat_admin
+--
+
+ALTER TABLE ONLY public.entidades_organismos_publicos
+    ADD CONSTRAINT entidades_organismos_publicos_pkey PRIMARY KEY (entidad_id);
+
+
+--
+-- Name: entidades entidades_pkey; Type: CONSTRAINT; Schema: public; Owner: bddat_admin
+--
+
+ALTER TABLE ONLY public.entidades
+    ADD CONSTRAINT entidades_pkey PRIMARY KEY (id);
 
 
 --
@@ -1966,6 +2584,13 @@ ALTER TABLE ONLY public.usuarios_roles
 
 ALTER TABLE ONLY public.usuarios
     ADD CONSTRAINT usuarios_siglas_key UNIQUE (siglas);
+
+
+--
+-- Name: ix_estructura_tipos_entidades_codigo; Type: INDEX; Schema: estructura; Owner: bddat_admin
+--
+
+CREATE INDEX ix_estructura_tipos_entidades_codigo ON estructura.tipos_entidades USING btree (codigo);
 
 
 --
@@ -2186,6 +2811,90 @@ CREATE INDEX idx_usuarios_siglas ON public.usuarios USING btree (siglas);
 
 
 --
+-- Name: ix_public_entidades_activo; Type: INDEX; Schema: public; Owner: bddat_admin
+--
+
+CREATE INDEX ix_public_entidades_activo ON public.entidades USING btree (activo);
+
+
+--
+-- Name: ix_public_entidades_administrados_email_notificaciones; Type: INDEX; Schema: public; Owner: bddat_admin
+--
+
+CREATE INDEX ix_public_entidades_administrados_email_notificaciones ON public.entidades_administrados USING btree (email_notificaciones);
+
+
+--
+-- Name: ix_public_entidades_administrados_representante_nif_cif; Type: INDEX; Schema: public; Owner: bddat_admin
+--
+
+CREATE INDEX ix_public_entidades_administrados_representante_nif_cif ON public.entidades_administrados USING btree (representante_nif_cif);
+
+
+--
+-- Name: ix_public_entidades_ayuntamientos_codigo_dir3; Type: INDEX; Schema: public; Owner: bddat_admin
+--
+
+CREATE UNIQUE INDEX ix_public_entidades_ayuntamientos_codigo_dir3 ON public.entidades_ayuntamientos USING btree (codigo_dir3);
+
+
+--
+-- Name: ix_public_entidades_ayuntamientos_codigo_ine_municipio; Type: INDEX; Schema: public; Owner: bddat_admin
+--
+
+CREATE INDEX ix_public_entidades_ayuntamientos_codigo_ine_municipio ON public.entidades_ayuntamientos USING btree (codigo_ine_municipio);
+
+
+--
+-- Name: ix_public_entidades_cif_nif; Type: INDEX; Schema: public; Owner: bddat_admin
+--
+
+CREATE INDEX ix_public_entidades_cif_nif ON public.entidades USING btree (cif_nif);
+
+
+--
+-- Name: ix_public_entidades_diputaciones_codigo_dir3; Type: INDEX; Schema: public; Owner: bddat_admin
+--
+
+CREATE UNIQUE INDEX ix_public_entidades_diputaciones_codigo_dir3 ON public.entidades_diputaciones USING btree (codigo_dir3);
+
+
+--
+-- Name: ix_public_entidades_diputaciones_codigo_ine_municipio_sede; Type: INDEX; Schema: public; Owner: bddat_admin
+--
+
+CREATE INDEX ix_public_entidades_diputaciones_codigo_ine_municipio_sede ON public.entidades_diputaciones USING btree (codigo_ine_municipio_sede);
+
+
+--
+-- Name: ix_public_entidades_municipio_id; Type: INDEX; Schema: public; Owner: bddat_admin
+--
+
+CREATE INDEX ix_public_entidades_municipio_id ON public.entidades USING btree (municipio_id);
+
+
+--
+-- Name: ix_public_entidades_nombre_completo; Type: INDEX; Schema: public; Owner: bddat_admin
+--
+
+CREATE INDEX ix_public_entidades_nombre_completo ON public.entidades USING btree (nombre_completo);
+
+
+--
+-- Name: ix_public_entidades_organismos_publicos_codigo_dir3; Type: INDEX; Schema: public; Owner: bddat_admin
+--
+
+CREATE UNIQUE INDEX ix_public_entidades_organismos_publicos_codigo_dir3 ON public.entidades_organismos_publicos USING btree (codigo_dir3);
+
+
+--
+-- Name: ix_public_entidades_tipo_entidad_id; Type: INDEX; Schema: public; Owner: bddat_admin
+--
+
+CREATE INDEX ix_public_entidades_tipo_entidad_id ON public.entidades USING btree (tipo_entidad_id);
+
+
+--
 -- Name: documentos documentos_expediente_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -2199,6 +2908,62 @@ ALTER TABLE ONLY public.documentos
 
 ALTER TABLE ONLY public.documentos_proyecto
     ADD CONSTRAINT documentos_proyecto_documento_id_fkey FOREIGN KEY (documento_id) REFERENCES public.documentos(id) ON DELETE CASCADE;
+
+
+--
+-- Name: entidades_administrados entidades_administrados_entidad_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: bddat_admin
+--
+
+ALTER TABLE ONLY public.entidades_administrados
+    ADD CONSTRAINT entidades_administrados_entidad_id_fkey FOREIGN KEY (entidad_id) REFERENCES public.entidades(id) ON DELETE CASCADE;
+
+
+--
+-- Name: entidades_ayuntamientos entidades_ayuntamientos_entidad_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: bddat_admin
+--
+
+ALTER TABLE ONLY public.entidades_ayuntamientos
+    ADD CONSTRAINT entidades_ayuntamientos_entidad_id_fkey FOREIGN KEY (entidad_id) REFERENCES public.entidades(id) ON DELETE CASCADE;
+
+
+--
+-- Name: entidades_diputaciones entidades_diputaciones_entidad_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: bddat_admin
+--
+
+ALTER TABLE ONLY public.entidades_diputaciones
+    ADD CONSTRAINT entidades_diputaciones_entidad_id_fkey FOREIGN KEY (entidad_id) REFERENCES public.entidades(id) ON DELETE CASCADE;
+
+
+--
+-- Name: entidades_empresas_servicio_publico entidades_empresas_servicio_publico_entidad_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: bddat_admin
+--
+
+ALTER TABLE ONLY public.entidades_empresas_servicio_publico
+    ADD CONSTRAINT entidades_empresas_servicio_publico_entidad_id_fkey FOREIGN KEY (entidad_id) REFERENCES public.entidades(id) ON DELETE CASCADE;
+
+
+--
+-- Name: entidades entidades_municipio_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: bddat_admin
+--
+
+ALTER TABLE ONLY public.entidades
+    ADD CONSTRAINT entidades_municipio_id_fkey FOREIGN KEY (municipio_id) REFERENCES estructura.municipios(id);
+
+
+--
+-- Name: entidades_organismos_publicos entidades_organismos_publicos_entidad_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: bddat_admin
+--
+
+ALTER TABLE ONLY public.entidades_organismos_publicos
+    ADD CONSTRAINT entidades_organismos_publicos_entidad_id_fkey FOREIGN KEY (entidad_id) REFERENCES public.entidades(id) ON DELETE CASCADE;
+
+
+--
+-- Name: entidades entidades_tipo_entidad_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: bddat_admin
+--
+
+ALTER TABLE ONLY public.entidades
+    ADD CONSTRAINT entidades_tipo_entidad_id_fkey FOREIGN KEY (tipo_entidad_id) REFERENCES estructura.tipos_entidades(id);
 
 
 --
@@ -2255,30 +3020,6 @@ ALTER TABLE ONLY public.fases
 
 ALTER TABLE ONLY public.fases
     ADD CONSTRAINT fases_tipo_fase_id_fkey FOREIGN KEY (tipo_fase_id) REFERENCES estructura.tipos_fases(id);
-
-
---
--- Name: documentos_proyecto fk_documentos_proyecto_proyecto; Type: FK CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.documentos_proyecto
-    ADD CONSTRAINT fk_documentos_proyecto_proyecto FOREIGN KEY (proyecto_id) REFERENCES public.proyectos(id) ON DELETE CASCADE;
-
-
---
--- Name: municipios_proyecto fk_municipios_proyecto_proyecto; Type: FK CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.municipios_proyecto
-    ADD CONSTRAINT fk_municipios_proyecto_proyecto FOREIGN KEY (proyecto_id) REFERENCES public.proyectos(id) ON DELETE CASCADE;
-
-
---
--- Name: solicitudes fk_solicitudes_expediente; Type: FK CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.solicitudes
-    ADD CONSTRAINT fk_solicitudes_expediente FOREIGN KEY (expediente_id) REFERENCES public.expedientes(id);
 
 
 --
@@ -2386,8 +3127,337 @@ ALTER TABLE ONLY public.usuarios_roles
 
 
 --
+-- Name: SCHEMA public; Type: ACL; Schema: -; Owner: bddat_admin
+--
+
+REVOKE USAGE ON SCHEMA public FROM PUBLIC;
+
+
+--
+-- Name: TABLE municipios; Type: ACL; Schema: estructura; Owner: postgres
+--
+
+GRANT ALL ON TABLE estructura.municipios TO bddat_admin;
+
+
+--
+-- Name: SEQUENCE municipios_id_seq; Type: ACL; Schema: estructura; Owner: postgres
+--
+
+GRANT ALL ON SEQUENCE estructura.municipios_id_seq TO bddat_admin;
+
+
+--
+-- Name: TABLE tipos_expedientes; Type: ACL; Schema: estructura; Owner: postgres
+--
+
+GRANT ALL ON TABLE estructura.tipos_expedientes TO bddat_admin;
+
+
+--
+-- Name: SEQUENCE tipos_expedientes_id_seq; Type: ACL; Schema: estructura; Owner: postgres
+--
+
+GRANT ALL ON SEQUENCE estructura.tipos_expedientes_id_seq TO bddat_admin;
+
+
+--
+-- Name: TABLE tipos_fases; Type: ACL; Schema: estructura; Owner: postgres
+--
+
+GRANT ALL ON TABLE estructura.tipos_fases TO bddat_admin;
+
+
+--
+-- Name: SEQUENCE tipos_fases_id_seq; Type: ACL; Schema: estructura; Owner: postgres
+--
+
+GRANT ALL ON SEQUENCE estructura.tipos_fases_id_seq TO bddat_admin;
+
+
+--
+-- Name: TABLE tipos_ia; Type: ACL; Schema: estructura; Owner: postgres
+--
+
+GRANT ALL ON TABLE estructura.tipos_ia TO bddat_admin;
+
+
+--
+-- Name: SEQUENCE tipos_ia_id_seq; Type: ACL; Schema: estructura; Owner: postgres
+--
+
+GRANT ALL ON SEQUENCE estructura.tipos_ia_id_seq TO bddat_admin;
+
+
+--
+-- Name: TABLE tipos_resultados_fases; Type: ACL; Schema: estructura; Owner: postgres
+--
+
+GRANT ALL ON TABLE estructura.tipos_resultados_fases TO bddat_admin;
+
+
+--
+-- Name: SEQUENCE tipos_resultados_fases_id_seq; Type: ACL; Schema: estructura; Owner: postgres
+--
+
+GRANT ALL ON SEQUENCE estructura.tipos_resultados_fases_id_seq TO bddat_admin;
+
+
+--
+-- Name: TABLE tipos_solicitudes; Type: ACL; Schema: estructura; Owner: postgres
+--
+
+GRANT ALL ON TABLE estructura.tipos_solicitudes TO bddat_admin;
+
+
+--
+-- Name: SEQUENCE tipos_solicitudes_id_seq; Type: ACL; Schema: estructura; Owner: postgres
+--
+
+GRANT ALL ON SEQUENCE estructura.tipos_solicitudes_id_seq TO bddat_admin;
+
+
+--
+-- Name: TABLE tipos_tareas; Type: ACL; Schema: estructura; Owner: postgres
+--
+
+GRANT ALL ON TABLE estructura.tipos_tareas TO bddat_admin;
+
+
+--
+-- Name: SEQUENCE tipos_tareas_id_seq; Type: ACL; Schema: estructura; Owner: postgres
+--
+
+GRANT ALL ON SEQUENCE estructura.tipos_tareas_id_seq TO bddat_admin;
+
+
+--
+-- Name: TABLE tipos_tramites; Type: ACL; Schema: estructura; Owner: postgres
+--
+
+GRANT ALL ON TABLE estructura.tipos_tramites TO bddat_admin;
+
+
+--
+-- Name: SEQUENCE tipos_tramites_id_seq; Type: ACL; Schema: estructura; Owner: postgres
+--
+
+GRANT ALL ON SEQUENCE estructura.tipos_tramites_id_seq TO bddat_admin;
+
+
+--
+-- Name: TABLE alembic_version; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON TABLE public.alembic_version TO bddat_admin;
+
+
+--
+-- Name: TABLE documentos; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON TABLE public.documentos TO bddat_admin;
+
+
+--
+-- Name: SEQUENCE documentos_id_seq; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON SEQUENCE public.documentos_id_seq TO bddat_admin;
+
+
+--
+-- Name: TABLE documentos_proyecto; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON TABLE public.documentos_proyecto TO bddat_admin;
+
+
+--
+-- Name: SEQUENCE documentos_proyecto_id_seq; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON SEQUENCE public.documentos_proyecto_id_seq TO bddat_admin;
+
+
+--
+-- Name: TABLE expedientes; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON TABLE public.expedientes TO bddat_admin;
+
+
+--
+-- Name: SEQUENCE expedientes_id_seq; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON SEQUENCE public.expedientes_id_seq TO bddat_admin;
+
+
+--
+-- Name: TABLE fases; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON TABLE public.fases TO bddat_admin;
+
+
+--
+-- Name: SEQUENCE fases_id_seq; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON SEQUENCE public.fases_id_seq TO bddat_admin;
+
+
+--
+-- Name: TABLE municipios_proyecto; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON TABLE public.municipios_proyecto TO bddat_admin;
+
+
+--
+-- Name: SEQUENCE municipios_proyecto_id_seq; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON SEQUENCE public.municipios_proyecto_id_seq TO bddat_admin;
+
+
+--
+-- Name: TABLE proyectos; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON TABLE public.proyectos TO bddat_admin;
+
+
+--
+-- Name: SEQUENCE proyectos_id_seq; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON SEQUENCE public.proyectos_id_seq TO bddat_admin;
+
+
+--
+-- Name: TABLE roles; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON TABLE public.roles TO bddat_admin;
+
+
+--
+-- Name: SEQUENCE roles_id_seq; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON SEQUENCE public.roles_id_seq TO bddat_admin;
+
+
+--
+-- Name: TABLE solicitudes; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON TABLE public.solicitudes TO bddat_admin;
+
+
+--
+-- Name: SEQUENCE solicitudes_id_seq; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON SEQUENCE public.solicitudes_id_seq TO bddat_admin;
+
+
+--
+-- Name: TABLE solicitudes_tipos; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON TABLE public.solicitudes_tipos TO bddat_admin;
+
+
+--
+-- Name: SEQUENCE solicitudes_tipos_id_seq; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON SEQUENCE public.solicitudes_tipos_id_seq TO bddat_admin;
+
+
+--
+-- Name: TABLE tareas; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON TABLE public.tareas TO bddat_admin;
+
+
+--
+-- Name: SEQUENCE tareas_id_seq; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON SEQUENCE public.tareas_id_seq TO bddat_admin;
+
+
+--
+-- Name: TABLE tramites; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON TABLE public.tramites TO bddat_admin;
+
+
+--
+-- Name: SEQUENCE tramites_id_seq; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON SEQUENCE public.tramites_id_seq TO bddat_admin;
+
+
+--
+-- Name: TABLE usuarios; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON TABLE public.usuarios TO bddat_admin;
+
+
+--
+-- Name: SEQUENCE usuarios_id_seq; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON SEQUENCE public.usuarios_id_seq TO bddat_admin;
+
+
+--
+-- Name: TABLE usuarios_roles; Type: ACL; Schema: public; Owner: postgres
+--
+
+GRANT ALL ON TABLE public.usuarios_roles TO bddat_admin;
+
+
+--
+-- Name: DEFAULT PRIVILEGES FOR SEQUENCES; Type: DEFAULT ACL; Schema: estructura; Owner: postgres
+--
+
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA estructura GRANT ALL ON SEQUENCES TO bddat_admin;
+
+
+--
+-- Name: DEFAULT PRIVILEGES FOR TABLES; Type: DEFAULT ACL; Schema: estructura; Owner: postgres
+--
+
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA estructura GRANT ALL ON TABLES TO bddat_admin;
+
+
+--
+-- Name: DEFAULT PRIVILEGES FOR SEQUENCES; Type: DEFAULT ACL; Schema: public; Owner: postgres
+--
+
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON SEQUENCES TO bddat_admin;
+
+
+--
+-- Name: DEFAULT PRIVILEGES FOR TABLES; Type: DEFAULT ACL; Schema: public; Owner: postgres
+--
+
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON TABLES TO bddat_admin;
+
+
+--
 -- PostgreSQL database dump complete
 --
 
-\unrestrict T6qwY3tPV9DFu7dGns5u1W7Rv0w59ItYad08nvtc7FiNBDyLkLJlMeLlnX2bqNj
+\unrestrict PatAXTO7TTSGcIvbj5nOo0QimOgtSMwhGsSgh3gabqKayH9p8nIJbzxYNtgO2pA
 
