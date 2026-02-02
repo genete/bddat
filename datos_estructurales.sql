@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict ixb5FDeu5RRMAbtbf3O6oGX31AphIxemyVU3Vja0AtDCwoZ0GqcV2nPfoTZpEHR
+\restrict rpTlXLshREgBC9Q7lKSykWEqjrFHBA6sMQ3ef5KY8F5SeQC11iqGUTjWo5GmBP9
 
 -- Dumped from database version 18.1
 -- Dumped by pg_dump version 18.1
@@ -8158,6 +8158,17 @@ INSERT INTO estructura.municipios (id, codigo, nombre, provincia) VALUES (8132, 
 
 
 --
+-- Data for Name: tipos_entidades; Type: TABLE DATA; Schema: estructura; Owner: -
+--
+
+INSERT INTO estructura.tipos_entidades (id, codigo, nombre, tabla_metadatos, puede_ser_solicitante, puede_ser_consultado, puede_publicar, descripcion) VALUES (1, 'ADMINISTRADO', 'Administrado (Persona física/jurídica privada)', 'entidades_administrados', true, false, false, 'Personas físicas o jurídicas privadas. Roles: titular de expediente, solicitante de solicitud, autorizado para representar. Sistema de notificaciones: Notifica (par CIF/NIF + email).');
+INSERT INTO estructura.tipos_entidades (id, codigo, nombre, tabla_metadatos, puede_ser_solicitante, puede_ser_consultado, puede_publicar, descripcion) VALUES (2, 'EMPRESA_SERVICIO_PUBLICO', 'Empresa de servicio público', 'entidades_empresas_servicio_publico', true, true, false, 'Operadores de infraestructuras críticas y servicios públicos. Ejemplos: E-Distribución, Enagas, REE, Adif, Consorcios de Aguas. Roles: solicitante (proyectos propios) y organismo consultado (informes técnicos).');
+INSERT INTO estructura.tipos_entidades (id, codigo, nombre, tabla_metadatos, puede_ser_solicitante, puede_ser_consultado, puede_publicar, descripcion) VALUES (3, 'ORGANISMO_PUBLICO', 'Organismo público (Administración)', 'entidades_organismos_publicos', true, true, false, 'Administraciones públicas. Ejemplos: Consejerías Junta Andalucía, Ministerios AGE, Delegaciones Gobierno. Identificación: código DIR3. Roles: solicitante (proyectos propios) y organismo consultado (informes preceptivos).');
+INSERT INTO estructura.tipos_entidades (id, codigo, nombre, tabla_metadatos, puede_ser_solicitante, puede_ser_consultado, puede_publicar, descripcion) VALUES (4, 'AYUNTAMIENTO', 'Ayuntamiento (Corporación local)', 'entidades_ayuntamientos', true, true, true, 'Corporaciones locales. Identificación: código DIR3. Roles: solicitante (proyectos municipales), organismo consultado (informes urbanísticos), publicador (tablón de edictos municipal).');
+INSERT INTO estructura.tipos_entidades (id, codigo, nombre, tabla_metadatos, puede_ser_solicitante, puede_ser_consultado, puede_publicar, descripcion) VALUES (5, 'DIPUTACION', 'Diputación provincial', 'entidades_diputaciones', true, true, true, 'Corporaciones provinciales. Identificación: código DIR3. Roles: solicitante (proyectos propios), organismo consultado (informes), publicador (BOP - Boletín Oficial Provincial).');
+
+
+--
 -- Data for Name: tipos_expedientes; Type: TABLE DATA; Schema: estructura; Owner: -
 --
 
@@ -8291,6 +8302,13 @@ SELECT pg_catalog.setval('estructura.municipios_id_seq', 8132, true);
 
 
 --
+-- Name: tipos_entidades_id_seq; Type: SEQUENCE SET; Schema: estructura; Owner: -
+--
+
+SELECT pg_catalog.setval('estructura.tipos_entidades_id_seq', 5, true);
+
+
+--
 -- Name: tipos_expedientes_id_seq; Type: SEQUENCE SET; Schema: estructura; Owner: -
 --
 
@@ -8343,5 +8361,5 @@ SELECT pg_catalog.setval('estructura.tipos_tramites_id_seq', 30, true);
 -- PostgreSQL database dump complete
 --
 
-\unrestrict ixb5FDeu5RRMAbtbf3O6oGX31AphIxemyVU3Vja0AtDCwoZ0GqcV2nPfoTZpEHR
+\unrestrict rpTlXLshREgBC9Q7lKSykWEqjrFHBA6sMQ3ef5KY8F5SeQC11iqGUTjWo5GmBP9
 
