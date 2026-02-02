@@ -33,7 +33,7 @@ class Entidad(db.Model):
     
     tipo_entidad_id = db.Column(
         db.Integer, 
-        db.ForeignKey('tipos_entidades.id'), 
+        db.ForeignKey('estructura.tipos_entidades.id'), 
         nullable=False, 
         index=True,
         comment='Tipo de entidad que determina tabla de metadatos. Define qué tabla entidades_* usar'
