@@ -2,7 +2,7 @@
 
 **Repositorio:** https://github.com/genete/bddat  
 **Historial completo:** [Ver Pull Requests cerrados](https://github.com/genete/bddat/pulls?q=is%3Apr+is%3Aclosed)  
-**Última actualización:** 02 de febrero de 2026
+**Última actualización:** 03 de febrero de 2026
 
 ---
 
@@ -12,7 +12,26 @@ Este archivo mantiene un **resumen de los últimos 5 PRs mergeados** para consul
 
 **Fuente de verdad:** Los Pull Requests cerrados en GitHub contienen toda la información histórica del proyecto.
 
-**Actualización del changelog:** Se realiza **en la misma rama de desarrollo** (feature/bugfix/etc.) antes de crear el PR, no en rama separada. Esto reduce overhead de ramas/PRs/acciones.
+### Flujo de Actualización del CHANGELOG
+
+1. **Desarrollar feature** en rama `feature/XX-descripcion`
+2. **Crear Pull Request** hacia `develop` (se obtiene número #XX)
+3. **Revisar y mergear** el PR
+4. **DESPUÉS del merge**, actualizar `docs/CHANGELOG.md` con:
+   - Título del PR con su número real
+   - Enlace al PR cerrado
+   - Resumen de cambios principales
+   - Archivos modificados/creados
+   - Issues resueltos
+5. **Commit directo a `develop`**: `git commit -m "[DOCS] Actualizar CHANGELOG con PR #XX"`
+
+**Ventajas de este flujo:**
+- ✅ El CHANGELOG incluye el número real del PR (no placeholders)
+- ✅ Se puede copiar/referenciar el texto exacto del PR cerrado
+- ✅ No contamina la rama feature con commits de documentación
+- ✅ Facilita automatización futura (script que lee PR y genera entrada)
+
+**Nota:** Este cambio de flujo se aplicó a partir del 03/02/2026. PRs anteriores siguen el flujo antiguo (changelog antes del PR).
 
 ---
 
@@ -72,7 +91,7 @@ Este archivo mantiene un **resumen de los últimos 5 PRs mergeados** para consul
 
 **Migración Alembic:**
 - ✅ **`migrations/versions/c21871f08bb2_añadir_arquitectura_entidades_.py`**:
-  - **Migr ación manual** (no autogenerate debido a complejidad cross-schema)
+  - **Migración manual** (no autogenerate debido a complejidad cross-schema)
   - Función `upgrade()`:
     1. `estructura.tipos_entidades` (catálogo maestro)
     2. `public.entidades` (tabla base con FKs a estructura)
