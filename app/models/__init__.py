@@ -32,7 +32,7 @@ from app.models.entidad_ayuntamiento import EntidadAyuntamiento
 from app.models.entidad_diputacion import EntidadDiputacion
 
 # Relaciones N:N Entidades (issue #63)
-from app.models.autorizado_titular import AutorizadoTitular
+from app.models.autorizados_titular import AutorizadoTitular
 
 # Modelos operacionales sin dependencias operacionales
 from app.models.proyectos import Proyecto
