@@ -54,7 +54,7 @@ main ─────────────●─v0.1.0──●─v0.2.0  (sol
 - **Espero tu aprobación explícita** antes de cada commit
 - Hago commits en la rama de desarrollo o en `develop` directamente (según tipo de cambio)
 - Tras tus pruebas locales y OK, creo Pull Request a `develop`
-- **Actualizo `docs/CHANGELOG.md` en la misma rama de desarrollo** antes del PR
+- **Actualizo `docs/CHANGELOG.md` en la misma rama de desarrollo** después del PR
 - Hago merge del PR a `develop`
 - **Borro la rama remota inmediatamente tras merge**
 - Cuando completes un milestone, hago merge de `develop` → `main` y creo tag/release
@@ -108,7 +108,7 @@ main ─────────────●─v0.1.0──●─v0.2.0  (sol
   - `docs/descripcion-breve` - solo documentación (si es complejo)
 - Preparo código con explicación detallada
 - Hago commits tras tu aprobación
-- **Actualizo `docs/CHANGELOG.md` en la misma rama**
+
 
 ##### Fase 3: Pruebas Locales (por Usuario)
 
@@ -117,11 +117,12 @@ main ─────────────●─v0.1.0──●─v0.2.0  (sol
 - `flask run` y pruebas funcionales
 - Si hay ajustes, los haces y ejecutas `git push origin nombre-rama`
 
-##### Fase 4: Pull Request y Merge (por IA)
+##### Fase 4: Pull Request y Merge + Changelog (por IA)
 
 - Tras tu OK final, creo PR: `nombre-rama` → `develop`
 - Referencio el issue si aplica: "Closes #XX"
-- Hago merge del PR (changelog incluido)
+- Hago merge del PR 
+- **Actualizo `docs/CHANGELOG.md` en la misma rama** con el mismo contenido del PR
 - **Borro rama remota inmediatamente:** `git push origin --delete nombre-rama`
 
 ##### Fase 5: Limpieza (por Usuario)
@@ -448,7 +449,6 @@ git push origin feature/issue-XX-descripcion
   [RUTA] Implementar endpoint POST /solicitudes
   [TEMPLATE] Crear formulario solicitud_form.html
   ```
-- **Actualizo `docs/CHANGELOG.md` en esta rama**
 
 #### Paso 3: Pruebas Locales (Usuario)
 
@@ -466,13 +466,14 @@ git commit -m "[TEST] Ajustar validación tras pruebas"
 git push origin feature/issue-XX-descripcion
 ```
 
-#### Paso 4: Pull Request (IA)
+#### Paso 4: Pull Request + CHANGELOG (IA)
 
 Tras tu OK final:
 - Creo PR: `feature/issue-XX-descripcion` → `develop`
 - Título: Breve descripción de la funcionalidad
 - Descripción: Objetivo, cambios principales, issues relacionados
 - Hago merge del PR (squash o merge commit según preferencia)
+- **Actualizo `docs/CHANGELOG.md` en esta rama** con el mismo contenido del PR
 
 #### Paso 5: Limpieza (IA + Usuario)
 
@@ -594,21 +595,20 @@ git pull origin develop
 - Contiene **solo los últimos 5 PRs** mergeados a `develop` o `main`
 - Pull Requests de GitHub son la fuente de verdad para historial completo
 - Cada entrada incluye: fecha, enlace al PR, objetivo, cambios principales
-- **Se actualiza en la misma rama de desarrollo** antes de crear PR
+- **Se actualiza en la misma rama de desarrollo** después de crear PR
 - **No se actualiza para commits directos en develop** (cambios simples)
 
 ### 8.2 Proceso de Actualización
 
-**En rama de desarrollo (antes del PR):**
+**En rama de desarrollo (después del PR):**
 
-1. IA completa los cambios funcionales
+1. IA obtiene los cambios funcionales del PR mergeado
 2. IA actualiza `docs/CHANGELOG.md`:
    - Añade entrada al inicio
    - Mantiene solo últimos 5 PRs
-   - Usa formato temporal para número de PR
+   - Usa número de PR real
 3. IA hace commit: `[CHANGELOG] Documentar [descripción]`
-4. IA crea PR (incluye changelog)
-5. Tras merge, el changelog queda integrado
+5. Tras commit, el changelog queda integrado
 
 **Formato de entrada:**
 
