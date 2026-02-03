@@ -33,7 +33,7 @@ class Entidad(db.Model):
     
     tipo_entidad_id = db.Column(
         db.Integer, 
-        db.ForeignKey('estructura.tipos_entidades.id'), 
+        db.ForeignKey('tipos_entidades.id'), 
         nullable=False, 
         index=True,
         comment='Tipo de entidad que determina tabla de metadatos. Define qué tabla entidades_* usar'
@@ -80,7 +80,7 @@ class Entidad(db.Model):
     
     municipio_id = db.Column(
         db.Integer, 
-        db.ForeignKey('estructura.municipios.id'), 
+        db.ForeignKey('municipios.id'), 
         nullable=True, 
         index=True,
         comment='Municipio de la dirección. Preferente sobre direccion_fallback'
