@@ -1,4 +1,4 @@
-<img src="https://r2cdn.perplexity.ai/pplx-full-logo-primary-dark%402x.png" style="height:64px;margin-right:32px"/>
+<![CDATA[<img src="https://r2cdn.perplexity.ai/pplx-full-logo-primary-dark%402x.png" style="height:64px;margin-right:32px"/>
 
 # Guía Completa: Configurar BDDAT en un PC Nuevo
 
@@ -72,7 +72,7 @@ ALTER USER bddat_admin CREATEDB;
 
 **Anotar estas credenciales** para usarlas en el archivo `.env`.
 
-### Paso 2: Crear base de datos como el usuario bddat_admin
+### Paso 2: Crear base de datos y esquemas como bddat_admin
 
 ```bash
 # Conectar como bddat_admin
@@ -87,12 +87,35 @@ CREATE DATABASE bddat;
 \q
 ```
 
-O alternativamente desde la línea de comandos:
+Ahora crear el esquema `estructura` y asegurar ownership:
 
 ```bash
-createdb -U bddat_admin bddat
+# Conectar a la BD bddat como bddat_admin
+psql -U bddat_admin -d bddat
 ```
 
+```sql
+-- Crear esquema estructura
+CREATE SCHEMA estructura;
+
+-- Salir
+\q
+```
+
+Como usuario postgres, dar permisos completos sobre los schemas:
+
+```bash
+psql -U postgres -d bddat
+```
+
+```sql
+-- Dar ownership completo a bddat_admin
+GRANT ALL ON SCHEMA public TO bddat_admin;
+GRANT ALL ON SCHEMA estructura TO bddat_admin;
+
+-- Salir
+\q
+```
 
 ### Paso 3: Verificar que todo está correcto
 
@@ -104,6 +127,7 @@ psql -U bddat_admin -d bddat
 ```sql
 -- Deberías estar conectado sin errores
 \l  -- Lista bases de datos
+\dn -- Lista esquemas (debe aparecer estructura y public)
 \q  -- Salir
 ```
 
@@ -184,11 +208,22 @@ flask db upgrade
 
 Esto crea automáticamente:
 
-- **Esquema `estructura`** con tablas: `municipios`, `tipos_ia`, `tipos_fases`, `tipos_tramites`, `tipos_tareas`, `tipos_solicitudes`, `tipos_expedientes`, `tipos_resultados_fases`
-- **Esquema `public`** con tablas: `usuarios`, `roles`, `usuarios_roles`, `expedientes`, `proyectos`, `municipios_proyecto`, `solicitudes`, `solicitudes_tipos`, `documentos`, `documentos_proyecto`, `fases`, `tramites`, `tareas`
+- **Esquema `estructura`** con tablas: `municipios`, `tipos_entidades`, `tipos_ia`, `tipos_fases`, `tipos_tramites`, `tipos_tareas`, `tipos_solicitudes`, `tipos_expedientes`, `tipos_resultados_fases`
+- **Esquema `public`** con tablas: `usuarios`, `roles`, `usuarios_roles`, `expedientes`, `proyectos`, `municipios_proyecto`, `solicitudes`, `solicitudes_tipos`, `documentos`, `documentos_proyecto`, `fases`, `tramites`, `tareas`, `entidades`, `entidades_administrados`, `entidades_ayuntamientos`, `entidades_diputaciones`, `entidades_empresas_servicio_publico`, `entidades_organismos_publicos`
 - Todas las relaciones, índices y constraints
 
 **Las tablas están creadas pero VACÍAS** (sin datos).
+
+### Verificar FK crítica
+
+```bash
+# Verificar que la FK crítica se creó correctamente
+psql -U bddat_admin -d bddat -c "SELECT conname FROM pg_constraint WHERE conname = 'fk_documentos_proyecto_proyecto';"
+```
+
+Debe devolver: `fk_documentos_proyecto_proyecto`
+
+Si no aparece, revisar la sección **Problema 5** más adelante.
 
 ***
 
@@ -197,20 +232,21 @@ Esto crea automáticamente:
 ### Cargar datos estructurales
 
 ```bash
-psql -U bddat_admin -d bddat -f datos_estructurales.sql
+psql -U bddat_admin -d bddat -f bd/scripts/datos_estructurales.sql
 ```
 
 O desde pgAdmin:
 
 1. Conectar con usuario `bddat_admin`
 2. Clic derecho en base de datos `bddat` → Query Tool
-3. Abrir archivo `datos_estructurales.sql`
+3. Abrir archivo `bd/scripts/datos_estructurales.sql`
 4. Ejecutar (botón play o F5)
 
 Esto inserta:
 
 - 773 municipios de Andalucía con códigos INE
 - Provincias
+- 5 tipos de entidades (ADMINISTRADO, EMPRESA_SERVICIO_PUBLICO, ORGANISMO_PUBLICO, AYUNTAMIENTO, DIPUTACION)
 - Tipos de instalaciones AT
 - Tipos de instrumentos ambientales (AAI, AAU, AAUS, CA, EXENTO)
 - Tipos de fases, trámites, tareas, solicitudes
@@ -219,7 +255,7 @@ Esto inserta:
 ### Cargar roles del sistema
 
 ```bash
-psql -U bddat_admin -d bddat -f datos_roles.sql
+psql -U bddat_admin -d bddat -f bd/scripts/datos_roles.sql
 ```
 
 Esto inserta los 4 roles:
@@ -239,6 +275,9 @@ psql -U bddat_admin -d bddat
 -- Verificar municipios
 SELECT COUNT(*) FROM estructura.municipios;  -- Debe devolver 773
 
+-- Verificar tipos de entidades
+SELECT COUNT(*) FROM estructura.tipos_entidades;  -- Debe devolver 5
+
 -- Verificar roles
 SELECT * FROM public.roles;  -- Debe mostrar 4 roles
 
@@ -254,7 +293,7 @@ SELECT * FROM public.roles;  -- Debe mostrar 4 roles
 ### Opción A: Usar script preparado (recomendado)
 
 ```bash
-psql -U bddat_admin -d bddat -f crear_usuario_admin.sql
+psql -U bddat_admin -d bddat -f bd/scripts/crear_usuario_admin.sql
 ```
 
 Este script crea automáticamente un usuario con rol ADMIN asignado.
@@ -504,6 +543,7 @@ GRANT ALL PRIVILEGES ON SCHEMA estructura TO bddat_admin;
 GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO bddat_admin;
 GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA estructura TO bddat_admin;
 GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO bddat_admin;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA estructura TO bddat_admin;
 
 \q
 ```
@@ -521,6 +561,7 @@ psql -U bddat_admin -d bddat
 
 ```sql
 SELECT COUNT(*) FROM estructura.municipios;  -- Debe ser 773
+SELECT COUNT(*) FROM estructura.tipos_entidades;  -- Debe ser 5
 SELECT COUNT(*) FROM estructura.tipos_ia;    -- Debe ser 5
 SELECT COUNT(*) FROM public.roles;           -- Debe ser 4
 ```
@@ -528,10 +569,49 @@ SELECT COUNT(*) FROM public.roles;           -- Debe ser 4
 **Solución**: Si los conteos son 0 o menores:
 
 ```bash
-psql -U bddat_admin -d bddat -f datos_estructurales.sql
-psql -U bddat_admin -d bddat -f datos_roles.sql
+psql -U bddat_admin -d bddat -f bd/scripts/datos_estructurales.sql
+psql -U bddat_admin -d bddat -f bd/scripts/datos_roles.sql
 ```
 
+***
+
+### Problema 5: FK faltante documentos_proyecto ⚠️
+
+**Síntoma**:
+
+```
+ERROR: insert or update on table "documentos_proyecto" violates foreign key constraint
+```
+
+O la FK `fk_documentos_proyecto_proyecto` no aparece al verificar.
+
+**Diagnóstico**:
+
+```bash
+psql -U bddat_admin -d bddat
+```
+
+```sql
+SELECT conname 
+FROM pg_constraint 
+WHERE conname = 'fk_documentos_proyecto_proyecto';
+```
+
+Si no devuelve resultados, falta la FK.
+
+**Solución**:
+
+```bash
+# Verificar que estás en la última migración
+flask db current
+
+# Debe mostrar: 8d33446946ff (o posterior)
+# Si no, actualizar migraciones:
+flask db upgrade
+
+# Verificar nuevamente la FK
+psql -U bddat_admin -d bddat -c "SELECT conname FROM pg_constraint WHERE conname = 'fk_documentos_proyecto_proyecto';"
+```
 
 ***
 
@@ -542,13 +622,16 @@ psql -U bddat_admin -d bddat -f datos_roles.sql
 2. Crear usuario PostgreSQL: CREATE USER bddat_admin WITH PASSWORD '...';
 3. Dar privilegios: ALTER USER bddat_admin CREATEDB;
 4. Crear BD: CREATE DATABASE bddat; (como bddat_admin)
+4b. Crear schema estructura: CREATE SCHEMA estructura;
+4c. Dar ownership: GRANT ALL ON SCHEMA public/estructura TO bddat_admin; (como postgres)
 5. Clonar repositorio: git clone + git checkout develop
 6. Crear entorno virtual: python -m venv venv
 7. Activar entorno: venv\Scripts\activate
 8. Instalar dependencias: pip install -r requirements.txt
 9. Crear .env con DATABASE_URL (usuario bddat_admin)
 10. ✅ Aplicar migraciones: flask db upgrade
-11. ✅ Cargar datos: psql -U bddat_admin -f datos_estructurales.sql
+10b. ✅ Verificar FK crítica: fk_documentos_proyecto_proyecto
+11. ✅ Cargar datos estructurales: psql -U bddat_admin -f datos_estructurales.sql
 12. ✅ Cargar roles: psql -U bddat_admin -f datos_roles.sql
 13. Generar password hash: flask shell → generate_password_hash()
 14. Crear usuario app: INSERT INTO usuarios
@@ -568,13 +651,17 @@ psql -U bddat_admin -d bddat -f datos_roles.sql
 - [ ] PostgreSQL instalado y corriendo
 - [ ] Usuario PostgreSQL `bddat_admin` creado con password
 - [ ] Base de datos `bddat` creada
+- [ ] Esquema `estructura` creado con ownership bddat_admin
 - [ ] Python 3.9+ instalado
 - [ ] Repositorio clonado (rama develop)
 - [ ] Entorno virtual creado y activado
 - [ ] Dependencias instaladas
 - [ ] Archivo `.env` con `DATABASE_URL` correcto (usuario bddat_admin)
 - [ ] Migraciones aplicadas: `flask db upgrade`
-- [ ] `datos_estructurales.sql` cargado (773 municipios)
+- [ ] Migración actual es 8d33446946ff o posterior
+- [ ] FK `fk_documentos_proyecto_proyecto` verificada
+- [ ] Ownership verificado (todas las tablas son de bddat_admin)
+- [ ] `datos_estructurales.sql` cargado (773 municipios, 5 tipos entidades)
 - [ ] `datos_roles.sql` cargado (4 roles)
 - [ ] Usuario aplicación creado con password hash
 - [ ] **Rol ADMIN asignado en `usuarios_roles`**
@@ -591,10 +678,97 @@ psql -U bddat_admin -d bddat -f datos_roles.sql
 
 ***
 
-¡Con esta guía completa y corregida deberías tener todo funcionando! La clave es crear el usuario PostgreSQL `bddat_admin` primero y usarlo en toda la configuración.
+## 16. ⚠️ CRÍTICO: Ownership de Tablas
+
+### Por qué es importante
+
+Todas las tablas DEBEN pertenecer al usuario `bddat_admin`. Si pertenecen a `postgres`, las migraciones futuras fallarán con errores de permisos como:
+
+```
+ERROR: debe ser dueño de la tabla [nombre_tabla]
+```
+
+### Verificar ownership
+
+```bash
+psql -U postgres -d bddat -c "
+SELECT schemaname, tablename, tableowner 
+FROM pg_tables 
+WHERE schemaname IN ('public', 'estructura')
+  AND tableowner != 'bddat_admin'
+ORDER BY schemaname, tablename;"
+```
+
+**Si devuelve filas**, hay tablas con owner incorrecto.
+
+### Corregir ownership
+
+Si restauraste desde un backup o tienes tablas con owner `postgres`:
+
+```bash
+psql -U postgres -d bddat -f bd/scripts/fix_owners.sql
+```
+
+**Contenido de `bd/scripts/fix_owners.sql`:**
+
+```sql
+-- fix_owners.sql: Corregir owners después de restaurar backup
+-- Ejecutar como usuario postgres
+
+DO $$
+DECLARE
+    r RECORD;
+BEGIN
+    -- Cambiar owner de todas las tablas en estructura
+    FOR r IN SELECT tablename FROM pg_tables WHERE schemaname = 'estructura'
+    LOOP
+        EXECUTE 'ALTER TABLE estructura.' || quote_ident(r.tablename) || ' OWNER TO bddat_admin';
+    END LOOP;
+    
+    -- Cambiar owner de todas las tablas en public
+    FOR r IN SELECT tablename FROM pg_tables WHERE schemaname = 'public'
+    LOOP
+        EXECUTE 'ALTER TABLE public.' || quote_ident(r.tablename) || ' OWNER TO bddat_admin';
+    END LOOP;
+    
+    -- Cambiar owner de todas las secuencias
+    FOR r IN SELECT sequence_name, sequence_schema FROM information_schema.sequences 
+             WHERE sequence_schema IN ('public', 'estructura')
+    LOOP
+        EXECUTE 'ALTER SEQUENCE ' || quote_ident(r.sequence_schema) || '.' || 
+                quote_ident(r.sequence_name) || ' OWNER TO bddat_admin';
+    END LOOP;
+END $$;
+```
+
+### Verificación final
+
+```bash
+# Todas las tablas deben ser de bddat_admin
+psql -U postgres -d bddat -c "
+SELECT DISTINCT tableowner 
+FROM pg_tables 
+WHERE schemaname IN ('public', 'estructura');"
+```
+
+**Resultado esperado**: Solo debe aparecer `bddat_admin`.
+
+### Crear el script fix_owners.sql
+
+Si no existe, créalo en `bd/scripts/fix_owners.sql` con el contenido anterior.
+
+***
+
+¡Con esta guía completa y corregida deberías tener todo funcionando! La clave es:
+
+1. Crear el usuario PostgreSQL `bddat_admin` primero
+2. Usarlo en toda la configuración
+3. Verificar ownership de todas las tablas
+4. Verificar la FK crítica `fk_documentos_proyecto_proyecto`
+
 <span style="display:none">[^1]</span>
 
 <div align="center">⁂</div>
 
 [^1]: ACCESO_RAPIDO_PROYECTO.md
-
+]]>
