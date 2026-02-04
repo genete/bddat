@@ -44,6 +44,17 @@ target_db = current_app.extensions['migrate'].db
 # my_important_option = config.get_main_option("my_important_option")
 # ... etc.
 
+# IMPORTANTE: Importar todos los modelos para que Alembic los vea correctamente
+# Esto es necesario para que autogenerate resuelva las FK entre tablas
+# Sin estas importaciones, Alembic puede fallar con NoReferencedTableError
+from app.models.expedientes import Expediente
+from app.models.entidad import Entidad
+from app.models.tipo_entidad import TipoEntidad
+from app.models.usuario import Usuario
+from app.models.propietario import Propietario
+from app.models.documento import Documento
+from app.models.tramite import Tramite
+from app.models.actuacion import Actuacion
 
 def get_metadata():
     if hasattr(target_db, 'metadatas'):
@@ -87,8 +98,7 @@ def run_migrations_online():
         if getattr(config.cmd_opts, 'autogenerate', False):
             script = directives[0]
             if script.upgrade_ops.is_empty():
-                directives[:] = []
-                logger.info('No changes in schema detected.')
+                directives[:] = []\n                logger.info('No changes in schema detected.')
 
     conf_args = current_app.extensions['migrate'].configure_args
     if conf_args.get("process_revision_directives") is None:
