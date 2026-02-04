@@ -44,15 +44,6 @@ target_db = current_app.extensions['migrate'].db
 # my_important_option = config.get_main_option("my_important_option")
 # ... etc.
 
-# IMPORTANTE: Importar todos los modelos para que Alembic los vea correctamente
-# Esto es necesario para que autogenerate resuelva las FK entre tablas
-# Sin estas importaciones, Alembic puede fallar con NoReferencedTableError
-from app.models.expedientes import Expediente
-from app.models.entidad import Entidad
-from app.models.tipo_entidad import TipoEntidad
-from app.models.usuarios import Usuario
-from app.models.documentos import Documento
-from app.models.tramites import Tramite
 
 def get_metadata():
     if hasattr(target_db, 'metadatas'):
