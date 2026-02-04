@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict s6meIxCFDfZKIKhS7yuKJ36nGao8QZaC21gnfmprqHFlBgNZfaAFRD6hxic9YiI
+\restrict kchQnkcZ2chM9It1QPbIX008TFQfDMaDUpf6upRJaFU0FEj74HR94HsKodV3DeC
 
 -- Dumped from database version 18.1
 -- Dumped by pg_dump version 18.1
@@ -612,6 +612,95 @@ CREATE TABLE public.alembic_version (
 ALTER TABLE public.alembic_version OWNER TO bddat_admin;
 
 --
+-- Name: autorizados_titular; Type: TABLE; Schema: public; Owner: bddat_admin
+--
+
+CREATE TABLE public.autorizados_titular (
+    id integer NOT NULL,
+    titular_entidad_id integer NOT NULL,
+    autorizado_entidad_id integer NOT NULL,
+    activo boolean DEFAULT true NOT NULL,
+    observaciones text,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    CONSTRAINT chk_no_autoautorizacion CHECK ((titular_entidad_id <> autorizado_entidad_id))
+);
+
+
+ALTER TABLE public.autorizados_titular OWNER TO bddat_admin;
+
+--
+-- Name: COLUMN autorizados_titular.id; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.autorizados_titular.id IS 'Identificador único del registro de autorización';
+
+
+--
+-- Name: COLUMN autorizados_titular.titular_entidad_id; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.autorizados_titular.titular_entidad_id IS 'Administrado titular que concede la autorización. Debe tener entrada en entidades_administrados';
+
+
+--
+-- Name: COLUMN autorizados_titular.autorizado_entidad_id; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.autorizados_titular.autorizado_entidad_id IS 'Administrado autorizado para representar al titular. Debe tener entrada en entidades_administrados';
+
+
+--
+-- Name: COLUMN autorizados_titular.activo; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.autorizados_titular.activo IS 'Indica si la autorización está vigente. FALSE = revocada/suspendida';
+
+
+--
+-- Name: COLUMN autorizados_titular.observaciones; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.autorizados_titular.observaciones IS 'Notas libres del tramitador. Usos: ámbito (expediente específico/general), vigencia temporal, motivo desactivación, tipo de poder';
+
+
+--
+-- Name: COLUMN autorizados_titular.created_at; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.autorizados_titular.created_at IS 'Fecha y hora de creación del registro';
+
+
+--
+-- Name: COLUMN autorizados_titular.updated_at; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.autorizados_titular.updated_at IS 'Fecha y hora de última actualización';
+
+
+--
+-- Name: autorizados_titular_id_seq; Type: SEQUENCE; Schema: public; Owner: bddat_admin
+--
+
+CREATE SEQUENCE public.autorizados_titular_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.autorizados_titular_id_seq OWNER TO bddat_admin;
+
+--
+-- Name: autorizados_titular_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: bddat_admin
+--
+
+ALTER SEQUENCE public.autorizados_titular_id_seq OWNED BY public.autorizados_titular.id;
+
+
+--
 -- Name: documentos; Type: TABLE; Schema: public; Owner: bddat_admin
 --
 
@@ -998,10 +1087,7 @@ COMMENT ON COLUMN public.entidades_administrados.notas_representacion IS 'Observ
 
 CREATE TABLE public.entidades_ayuntamientos (
     entidad_id integer NOT NULL,
-    codigo_dir3 character varying(20) NOT NULL,
-    codigo_ine_municipio character varying(5) NOT NULL,
-    url_tablon_edictos character varying(255),
-    observaciones text
+    codigo_dir3 character varying(20)
 );
 
 
@@ -1018,28 +1104,7 @@ COMMENT ON COLUMN public.entidades_ayuntamientos.entidad_id IS 'Referencia a ent
 -- Name: COLUMN entidades_ayuntamientos.codigo_dir3; Type: COMMENT; Schema: public; Owner: bddat_admin
 --
 
-COMMENT ON COLUMN public.entidades_ayuntamientos.codigo_dir3 IS 'Código DIR3 oficial del ayuntamiento. Obligatorio para identificación única en sistemas oficiales';
-
-
---
--- Name: COLUMN entidades_ayuntamientos.codigo_ine_municipio; Type: COMMENT; Schema: public; Owner: bddat_admin
---
-
-COMMENT ON COLUMN public.entidades_ayuntamientos.codigo_ine_municipio IS 'Código INE de 5 dígitos del municipio. Relaciona con estructura.municipios';
-
-
---
--- Name: COLUMN entidades_ayuntamientos.url_tablon_edictos; Type: COMMENT; Schema: public; Owner: bddat_admin
---
-
-COMMENT ON COLUMN public.entidades_ayuntamientos.url_tablon_edictos IS 'URL del tablón de anuncios/edictos electrónico. Para verificar publicaciones obligatorias';
-
-
---
--- Name: COLUMN entidades_ayuntamientos.observaciones; Type: COMMENT; Schema: public; Owner: bddat_admin
---
-
-COMMENT ON COLUMN public.entidades_ayuntamientos.observaciones IS 'Notas adicionales sobre el ayuntamiento. Horarios especiales, contactos técnicos, particularidades de publicación';
+COMMENT ON COLUMN public.entidades_ayuntamientos.codigo_dir3 IS 'Código DIR3 para notificaciones SIR';
 
 
 --
@@ -1049,8 +1114,6 @@ COMMENT ON COLUMN public.entidades_ayuntamientos.observaciones IS 'Notas adicion
 CREATE TABLE public.entidades_diputaciones (
     entidad_id integer NOT NULL,
     codigo_dir3 character varying(20) NOT NULL,
-    codigo_ine_municipio_sede character varying(5) NOT NULL,
-    url_bop character varying(255),
     email_publicacion_bop character varying(255),
     observaciones text
 );
@@ -1069,35 +1132,21 @@ COMMENT ON COLUMN public.entidades_diputaciones.entidad_id IS 'Referencia a enti
 -- Name: COLUMN entidades_diputaciones.codigo_dir3; Type: COMMENT; Schema: public; Owner: bddat_admin
 --
 
-COMMENT ON COLUMN public.entidades_diputaciones.codigo_dir3 IS 'Código DIR3 oficial de la diputación. Obligatorio';
-
-
---
--- Name: COLUMN entidades_diputaciones.codigo_ine_municipio_sede; Type: COMMENT; Schema: public; Owner: bddat_admin
---
-
-COMMENT ON COLUMN public.entidades_diputaciones.codigo_ine_municipio_sede IS 'Código INE del municipio donde tiene sede (capital provincial). 5 dígitos';
-
-
---
--- Name: COLUMN entidades_diputaciones.url_bop; Type: COMMENT; Schema: public; Owner: bddat_admin
---
-
-COMMENT ON COLUMN public.entidades_diputaciones.url_bop IS 'URL del Boletín Oficial de la Provincia (BOP) electrónico. Para consulta de publicaciones';
+COMMENT ON COLUMN public.entidades_diputaciones.codigo_dir3 IS 'Código DIR3 oficial para notificaciones SIR como organismo consultado. Formato: 1-2 letras + 7-8 números. Ej: L01110002';
 
 
 --
 -- Name: COLUMN entidades_diputaciones.email_publicacion_bop; Type: COMMENT; Schema: public; Owner: bddat_admin
 --
 
-COMMENT ON COLUMN public.entidades_diputaciones.email_publicacion_bop IS 'Email para envío de solicitudes de publicación en BOP. Dirección de contacto del servicio de publicaciones';
+COMMENT ON COLUMN public.entidades_diputaciones.email_publicacion_bop IS 'Email para solicitar publicaciones en BOP. Ej: boletin@bopcadiz.org. Método tradicional: correo con datos pagador + texto';
 
 
 --
 -- Name: COLUMN entidades_diputaciones.observaciones; Type: COMMENT; Schema: public; Owner: bddat_admin
 --
 
-COMMENT ON COLUMN public.entidades_diputaciones.observaciones IS 'Notas adicionales sobre la diputación. Procedimientos de publicación, plazos, contactos específicos';
+COMMENT ON COLUMN public.entidades_diputaciones.observaciones IS 'Notas sobre procedimientos publicación, tarifas, plataformas alternativas, contactos específicos. Ej: "Concesionaria: Asociación Prensa Cádiz"';
 
 
 --
@@ -1106,10 +1155,7 @@ COMMENT ON COLUMN public.entidades_diputaciones.observaciones IS 'Notas adiciona
 
 CREATE TABLE public.entidades_empresas_servicio_publico (
     entidad_id integer NOT NULL,
-    nombre_comercial character varying(200),
-    sector character varying(100),
-    codigo_cnae character varying(10),
-    observaciones text
+    codigo_dir3 character varying(20)
 );
 
 
@@ -1123,31 +1169,10 @@ COMMENT ON COLUMN public.entidades_empresas_servicio_publico.entidad_id IS 'Refe
 
 
 --
--- Name: COLUMN entidades_empresas_servicio_publico.nombre_comercial; Type: COMMENT; Schema: public; Owner: bddat_admin
+-- Name: COLUMN entidades_empresas_servicio_publico.codigo_dir3; Type: COMMENT; Schema: public; Owner: bddat_admin
 --
 
-COMMENT ON COLUMN public.entidades_empresas_servicio_publico.nombre_comercial IS 'Nombre comercial o marca si difiere de razón social. Ej: "Endesa Distribución" vs "Endesa Distribución Eléctrica S.L."';
-
-
---
--- Name: COLUMN entidades_empresas_servicio_publico.sector; Type: COMMENT; Schema: public; Owner: bddat_admin
---
-
-COMMENT ON COLUMN public.entidades_empresas_servicio_publico.sector IS 'Sector de actividad. Ej: "Distribución eléctrica", "Telecomunicaciones", "Transporte ferroviario"';
-
-
---
--- Name: COLUMN entidades_empresas_servicio_publico.codigo_cnae; Type: COMMENT; Schema: public; Owner: bddat_admin
---
-
-COMMENT ON COLUMN public.entidades_empresas_servicio_publico.codigo_cnae IS 'Código CNAE de actividad económica. 4 dígitos. Ej: "3511" (Producción de energía eléctrica)';
-
-
---
--- Name: COLUMN entidades_empresas_servicio_publico.observaciones; Type: COMMENT; Schema: public; Owner: bddat_admin
---
-
-COMMENT ON COLUMN public.entidades_empresas_servicio_publico.observaciones IS 'Notas adicionales sobre la empresa. Relaciones con otras operadoras, particularidades técnicas, histórico de incidencias';
+COMMENT ON COLUMN public.entidades_empresas_servicio_publico.codigo_dir3 IS 'Código DIR3 para notificaciones SIR (opcional, no todas las empresas tienen)';
 
 
 --
@@ -1178,11 +1203,12 @@ ALTER SEQUENCE public.entidades_id_seq OWNED BY public.entidades.id;
 
 CREATE TABLE public.entidades_organismos_publicos (
     entidad_id integer NOT NULL,
-    codigo_dir3 character varying(20) NOT NULL,
-    ambito character varying(50) NOT NULL,
-    tipo_organismo character varying(100),
-    url_sede_electronica character varying(255),
-    observaciones text
+    codigo_dir3 character varying(20),
+    ambito character varying(50),
+    tipo_organismo character varying(50),
+    legislatura character varying(50),
+    fecha_desde date,
+    fecha_hasta date
 );
 
 
@@ -1199,35 +1225,42 @@ COMMENT ON COLUMN public.entidades_organismos_publicos.entidad_id IS 'Referencia
 -- Name: COLUMN entidades_organismos_publicos.codigo_dir3; Type: COMMENT; Schema: public; Owner: bddat_admin
 --
 
-COMMENT ON COLUMN public.entidades_organismos_publicos.codigo_dir3 IS 'Código DIR3 oficial (directorio común de unidades orgánicas). Identificador único de organismo público. Obligatorio';
+COMMENT ON COLUMN public.entidades_organismos_publicos.codigo_dir3 IS 'Código DIR3 para notificaciones SIR/BandeJA';
 
 
 --
 -- Name: COLUMN entidades_organismos_publicos.ambito; Type: COMMENT; Schema: public; Owner: bddat_admin
 --
 
-COMMENT ON COLUMN public.entidades_organismos_publicos.ambito IS 'Ámbito administrativo. Valores: "ESTATAL", "AUTONOMICO", "LOCAL", "EUROPEO"';
+COMMENT ON COLUMN public.entidades_organismos_publicos.ambito IS 'Ámbito del organismo: ESTATAL, AUTONOMICO, LOCAL';
 
 
 --
 -- Name: COLUMN entidades_organismos_publicos.tipo_organismo; Type: COMMENT; Schema: public; Owner: bddat_admin
 --
 
-COMMENT ON COLUMN public.entidades_organismos_publicos.tipo_organismo IS 'Clasificación del organismo. Ej: "Ministerio", "Consejería", "Dirección General", "Agencia", "Organismo Autónomo"';
+COMMENT ON COLUMN public.entidades_organismos_publicos.tipo_organismo IS 'Tipo específico: Consejería, Ministerio, Confederación, Entidad Pública, etc.';
 
 
 --
--- Name: COLUMN entidades_organismos_publicos.url_sede_electronica; Type: COMMENT; Schema: public; Owner: bddat_admin
+-- Name: COLUMN entidades_organismos_publicos.legislatura; Type: COMMENT; Schema: public; Owner: bddat_admin
 --
 
-COMMENT ON COLUMN public.entidades_organismos_publicos.url_sede_electronica IS 'URL de la sede electrónica del organismo. Para envíos telemáticos y consulta de servicios';
+COMMENT ON COLUMN public.entidades_organismos_publicos.legislatura IS 'Legislatura asociada. Ej: "2019-2023", "2023-2027"';
 
 
 --
--- Name: COLUMN entidades_organismos_publicos.observaciones; Type: COMMENT; Schema: public; Owner: bddat_admin
+-- Name: COLUMN entidades_organismos_publicos.fecha_desde; Type: COMMENT; Schema: public; Owner: bddat_admin
 --
 
-COMMENT ON COLUMN public.entidades_organismos_publicos.observaciones IS 'Notas adicionales sobre el organismo. Competencias específicas, particularidades procedimentales, contactos alternativos';
+COMMENT ON COLUMN public.entidades_organismos_publicos.fecha_desde IS 'Fecha inicio vigencia del organismo';
+
+
+--
+-- Name: COLUMN entidades_organismos_publicos.fecha_hasta; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.entidades_organismos_publicos.fecha_hasta IS 'Fecha fin vigencia del organismo (NULL si sigue activo)';
 
 
 --
@@ -1240,7 +1273,8 @@ CREATE TABLE public.expedientes (
     responsable_id integer,
     tipo_expediente_id integer,
     heredado boolean,
-    proyecto_id integer NOT NULL
+    proyecto_id integer NOT NULL,
+    titular_id integer
 );
 
 
@@ -1264,7 +1298,7 @@ COMMENT ON COLUMN public.expedientes.numero_at IS 'Número administrativo del ex
 -- Name: COLUMN expedientes.responsable_id; Type: COMMENT; Schema: public; Owner: bddat_admin
 --
 
-COMMENT ON COLUMN public.expedientes.responsable_id IS 'FK a USUARIOS. Tramitador asignado con permisos de gestión completa';
+COMMENT ON COLUMN public.expedientes.responsable_id IS 'FK a USUARIOS. Tramitador asignado con permisos de gestión completa. NULL = huérfano sin asignar';
 
 
 --
@@ -1286,6 +1320,13 @@ COMMENT ON COLUMN public.expedientes.heredado IS 'TRUE si proviene del sistema a
 --
 
 COMMENT ON COLUMN public.expedientes.proyecto_id IS 'FK a PROYECTOS. Relación 1:1, un expediente tiene exactamente un proyecto';
+
+
+--
+-- Name: COLUMN expedientes.titular_id; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.expedientes.titular_id IS 'FK a ENTIDADES. Titular actual del expediente (snapshot del histórico). NULL = sin titular asignado (anómalo transitorio)';
 
 
 --
@@ -2120,6 +2161,13 @@ ALTER TABLE ONLY estructura.tipos_tramites ALTER COLUMN id SET DEFAULT nextval('
 
 
 --
+-- Name: autorizados_titular id; Type: DEFAULT; Schema: public; Owner: bddat_admin
+--
+
+ALTER TABLE ONLY public.autorizados_titular ALTER COLUMN id SET DEFAULT nextval('public.autorizados_titular_id_seq'::regclass);
+
+
+--
 -- Name: documentos id; Type: DEFAULT; Schema: public; Owner: bddat_admin
 --
 
@@ -2224,14 +2272,6 @@ ALTER TABLE ONLY estructura.municipios
 
 ALTER TABLE ONLY estructura.municipios
     ADD CONSTRAINT municipios_pkey PRIMARY KEY (id);
-
-
---
--- Name: tipos_entidades tipos_entidades_codigo_key; Type: CONSTRAINT; Schema: estructura; Owner: bddat_admin
---
-
-ALTER TABLE ONLY estructura.tipos_entidades
-    ADD CONSTRAINT tipos_entidades_codigo_key UNIQUE (codigo);
 
 
 --
@@ -2355,6 +2395,14 @@ ALTER TABLE ONLY public.alembic_version
 
 
 --
+-- Name: autorizados_titular autorizados_titular_pkey; Type: CONSTRAINT; Schema: public; Owner: bddat_admin
+--
+
+ALTER TABLE ONLY public.autorizados_titular
+    ADD CONSTRAINT autorizados_titular_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: documentos documentos_pkey; Type: CONSTRAINT; Schema: public; Owner: bddat_admin
 --
 
@@ -2392,14 +2440,6 @@ ALTER TABLE ONLY public.entidades_administrados
 
 ALTER TABLE ONLY public.entidades_ayuntamientos
     ADD CONSTRAINT entidades_ayuntamientos_pkey PRIMARY KEY (entidad_id);
-
-
---
--- Name: entidades entidades_cif_nif_key; Type: CONSTRAINT; Schema: public; Owner: bddat_admin
---
-
-ALTER TABLE ONLY public.entidades
-    ADD CONSTRAINT entidades_cif_nif_key UNIQUE (cif_nif);
 
 
 --
@@ -2555,6 +2595,14 @@ ALTER TABLE ONLY public.tramites
 
 
 --
+-- Name: autorizados_titular uq_titular_autorizado; Type: CONSTRAINT; Schema: public; Owner: bddat_admin
+--
+
+ALTER TABLE ONLY public.autorizados_titular
+    ADD CONSTRAINT uq_titular_autorizado UNIQUE (titular_entidad_id, autorizado_entidad_id);
+
+
+--
 -- Name: usuarios usuarios_email_key; Type: CONSTRAINT; Schema: public; Owner: bddat_admin
 --
 
@@ -2590,7 +2638,7 @@ ALTER TABLE ONLY public.usuarios
 -- Name: ix_estructura_tipos_entidades_codigo; Type: INDEX; Schema: estructura; Owner: bddat_admin
 --
 
-CREATE INDEX ix_estructura_tipos_entidades_codigo ON estructura.tipos_entidades USING btree (codigo);
+CREATE UNIQUE INDEX ix_estructura_tipos_entidades_codigo ON estructura.tipos_entidades USING btree (codigo);
 
 
 --
@@ -2654,6 +2702,13 @@ CREATE INDEX idx_expedientes_responsable ON public.expedientes USING btree (resp
 --
 
 CREATE INDEX idx_expedientes_tipo ON public.expedientes USING btree (tipo_expediente_id);
+
+
+--
+-- Name: idx_expedientes_titular; Type: INDEX; Schema: public; Owner: bddat_admin
+--
+
+CREATE INDEX idx_expedientes_titular ON public.expedientes USING btree (titular_id);
 
 
 --
@@ -2776,6 +2831,13 @@ CREATE INDEX idx_tareas_tramite ON public.tareas USING btree (tramite_id);
 
 
 --
+-- Name: idx_titular_activo; Type: INDEX; Schema: public; Owner: bddat_admin
+--
+
+CREATE INDEX idx_titular_activo ON public.autorizados_titular USING btree (titular_entidad_id, activo);
+
+
+--
 -- Name: idx_tramites_fase; Type: INDEX; Schema: public; Owner: bddat_admin
 --
 
@@ -2811,6 +2873,27 @@ CREATE INDEX idx_usuarios_siglas ON public.usuarios USING btree (siglas);
 
 
 --
+-- Name: ix_public_autorizados_titular_activo; Type: INDEX; Schema: public; Owner: bddat_admin
+--
+
+CREATE INDEX ix_public_autorizados_titular_activo ON public.autorizados_titular USING btree (activo);
+
+
+--
+-- Name: ix_public_autorizados_titular_autorizado_entidad_id; Type: INDEX; Schema: public; Owner: bddat_admin
+--
+
+CREATE INDEX ix_public_autorizados_titular_autorizado_entidad_id ON public.autorizados_titular USING btree (autorizado_entidad_id);
+
+
+--
+-- Name: ix_public_autorizados_titular_titular_entidad_id; Type: INDEX; Schema: public; Owner: bddat_admin
+--
+
+CREATE INDEX ix_public_autorizados_titular_titular_entidad_id ON public.autorizados_titular USING btree (titular_entidad_id);
+
+
+--
 -- Name: ix_public_entidades_activo; Type: INDEX; Schema: public; Owner: bddat_admin
 --
 
@@ -2839,17 +2922,10 @@ CREATE UNIQUE INDEX ix_public_entidades_ayuntamientos_codigo_dir3 ON public.enti
 
 
 --
--- Name: ix_public_entidades_ayuntamientos_codigo_ine_municipio; Type: INDEX; Schema: public; Owner: bddat_admin
---
-
-CREATE INDEX ix_public_entidades_ayuntamientos_codigo_ine_municipio ON public.entidades_ayuntamientos USING btree (codigo_ine_municipio);
-
-
---
 -- Name: ix_public_entidades_cif_nif; Type: INDEX; Schema: public; Owner: bddat_admin
 --
 
-CREATE INDEX ix_public_entidades_cif_nif ON public.entidades USING btree (cif_nif);
+CREATE UNIQUE INDEX ix_public_entidades_cif_nif ON public.entidades USING btree (cif_nif);
 
 
 --
@@ -2860,10 +2936,10 @@ CREATE UNIQUE INDEX ix_public_entidades_diputaciones_codigo_dir3 ON public.entid
 
 
 --
--- Name: ix_public_entidades_diputaciones_codigo_ine_municipio_sede; Type: INDEX; Schema: public; Owner: bddat_admin
+-- Name: ix_public_entidades_empresas_servicio_publico_codigo_dir3; Type: INDEX; Schema: public; Owner: bddat_admin
 --
 
-CREATE INDEX ix_public_entidades_diputaciones_codigo_ine_municipio_sede ON public.entidades_diputaciones USING btree (codigo_ine_municipio_sede);
+CREATE UNIQUE INDEX ix_public_entidades_empresas_servicio_publico_codigo_dir3 ON public.entidades_empresas_servicio_publico USING btree (codigo_dir3);
 
 
 --
@@ -2881,10 +2957,24 @@ CREATE INDEX ix_public_entidades_nombre_completo ON public.entidades USING btree
 
 
 --
+-- Name: ix_public_entidades_organismos_publicos_ambito; Type: INDEX; Schema: public; Owner: bddat_admin
+--
+
+CREATE INDEX ix_public_entidades_organismos_publicos_ambito ON public.entidades_organismos_publicos USING btree (ambito);
+
+
+--
 -- Name: ix_public_entidades_organismos_publicos_codigo_dir3; Type: INDEX; Schema: public; Owner: bddat_admin
 --
 
-CREATE UNIQUE INDEX ix_public_entidades_organismos_publicos_codigo_dir3 ON public.entidades_organismos_publicos USING btree (codigo_dir3);
+CREATE INDEX ix_public_entidades_organismos_publicos_codigo_dir3 ON public.entidades_organismos_publicos USING btree (codigo_dir3);
+
+
+--
+-- Name: ix_public_entidades_organismos_publicos_legislatura; Type: INDEX; Schema: public; Owner: bddat_admin
+--
+
+CREATE INDEX ix_public_entidades_organismos_publicos_legislatura ON public.entidades_organismos_publicos USING btree (legislatura);
 
 
 --
@@ -2892,6 +2982,22 @@ CREATE UNIQUE INDEX ix_public_entidades_organismos_publicos_codigo_dir3 ON publi
 --
 
 CREATE INDEX ix_public_entidades_tipo_entidad_id ON public.entidades USING btree (tipo_entidad_id);
+
+
+--
+-- Name: autorizados_titular autorizados_titular_autorizado_entidad_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: bddat_admin
+--
+
+ALTER TABLE ONLY public.autorizados_titular
+    ADD CONSTRAINT autorizados_titular_autorizado_entidad_id_fkey FOREIGN KEY (autorizado_entidad_id) REFERENCES public.entidades(id) ON DELETE CASCADE;
+
+
+--
+-- Name: autorizados_titular autorizados_titular_titular_entidad_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: bddat_admin
+--
+
+ALTER TABLE ONLY public.autorizados_titular
+    ADD CONSTRAINT autorizados_titular_titular_entidad_id_fkey FOREIGN KEY (titular_entidad_id) REFERENCES public.entidades(id) ON DELETE CASCADE;
 
 
 --
@@ -2991,6 +3097,14 @@ ALTER TABLE ONLY public.expedientes
 
 
 --
+-- Name: expedientes expedientes_titular_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: bddat_admin
+--
+
+ALTER TABLE ONLY public.expedientes
+    ADD CONSTRAINT expedientes_titular_id_fkey FOREIGN KEY (titular_id) REFERENCES public.entidades(id);
+
+
+--
 -- Name: fases fases_documento_resultado_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: bddat_admin
 --
 
@@ -3036,6 +3150,14 @@ ALTER TABLE ONLY public.documentos_proyecto
 
 ALTER TABLE ONLY public.municipios_proyecto
     ADD CONSTRAINT municipios_proyecto_municipio_id_fkey FOREIGN KEY (municipio_id) REFERENCES estructura.municipios(id);
+
+
+--
+-- Name: municipios_proyecto municipios_proyecto_proyecto_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: bddat_admin
+--
+
+ALTER TABLE ONLY public.municipios_proyecto
+    ADD CONSTRAINT municipios_proyecto_proyecto_id_fkey FOREIGN KEY (proyecto_id) REFERENCES public.proyectos(id) ON DELETE CASCADE;
 
 
 --
@@ -3173,5 +3295,5 @@ ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON TABLES 
 -- PostgreSQL database dump complete
 --
 
-\unrestrict s6meIxCFDfZKIKhS7yuKJ36nGao8QZaC21gnfmprqHFlBgNZfaAFRD6hxic9YiI
+\unrestrict kchQnkcZ2chM9It1QPbIX008TFQfDMaDUpf6upRJaFU0FEj74HR94HsKodV3DeC
 
