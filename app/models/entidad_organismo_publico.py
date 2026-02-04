@@ -29,7 +29,7 @@ class EntidadOrganismoPublico(db.Model):
     # Campos
     entidad_id = db.Column(
         db.Integer, 
-        db.ForeignKey('entidades.id', ondelete='CASCADE'), 
+        db.ForeignKey('public.entidades.id', ondelete='CASCADE'), 
         primary_key=True,
         comment='Referencia a entidad base (PK y FK con CASCADE)'
     )
@@ -79,6 +79,7 @@ class EntidadOrganismoPublico(db.Model):
             "ambito IN ('ESTATAL', 'AUTONOMICO', 'LOCAL')",
             name='chk_organismos_ambito'
         ),
+        {'schema': 'public'}
     )
     
     # Relación inversa con Entidad
