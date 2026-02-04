@@ -1,8 +1,8 @@
-"""Migración inicial limpia
+"""Initial schema - multi-schema setup
 
-Revision ID: 3daee4b13400
+Revision ID: dfdeb43518d6
 Revises: 
-Create Date: 2026-01-28 16:42:34.046841
+Create Date: 2026-02-04 18:54:45.038858
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = '3daee4b13400'
+revision = 'dfdeb43518d6'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -27,6 +27,21 @@ def upgrade():
     sa.UniqueConstraint('codigo'),
     schema='estructura'
     )
+    op.create_table('tipos_entidades',
+    sa.Column('id', sa.Integer(), nullable=False, comment='Identificador único del tipo de entidad'),
+    sa.Column('codigo', sa.String(length=50), nullable=False, comment='Código único del tipo (ADMINISTRADO, ORGANISMO_PUBLICO, AYUNTAMIENTO, DIPUTACION, EMPRESA_SERVICIO_PUBLICO)'),
+    sa.Column('nombre', sa.String(length=100), nullable=False, comment='Nombre descriptivo del tipo de entidad'),
+    sa.Column('tabla_metadatos', sa.String(length=100), nullable=False, comment='Nombre de la tabla entidades_* donde se almacenan los metadatos específicos (ej: entidades_administrados)'),
+    sa.Column('puede_ser_solicitante', sa.Boolean(), nullable=False, comment='Indica si este tipo puede actuar como solicitante de solicitudes'),
+    sa.Column('puede_ser_consultado', sa.Boolean(), nullable=False, comment='Indica si este tipo puede emitir informes como organismo consultado'),
+    sa.Column('puede_publicar', sa.Boolean(), nullable=False, comment='Indica si este tipo puede publicar edictos (tablón ayuntamiento o BOP diputación)'),
+    sa.Column('descripcion', sa.Text(), nullable=True, comment='Descripción detallada del tipo de entidad, roles y características'),
+    sa.PrimaryKeyConstraint('id'),
+    schema='estructura'
+    )
+    with op.batch_alter_table('tipos_entidades', schema='estructura') as batch_op:
+        batch_op.create_index(batch_op.f('ix_estructura_tipos_entidades_codigo'), ['codigo'], unique=True)
+
     op.create_table('tipos_expedientes',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False, comment='Identificador único autogenerado del tipo de expediente'),
     sa.Column('tipo', sa.String(length=100), nullable=True, comment='Denominación del tipo según clasificación normativa'),
@@ -127,6 +142,33 @@ def upgrade():
         batch_op.create_index('idx_usuarios_email', ['email'], unique=False)
         batch_op.create_index('idx_usuarios_siglas', ['siglas'], unique=False)
 
+    op.create_table('entidades',
+    sa.Column('id', sa.Integer(), nullable=False, comment='Identificador único de la entidad'),
+    sa.Column('tipo_entidad_id', sa.Integer(), nullable=False, comment='Tipo de entidad que determina tabla de metadatos. Define qué tabla entidades_* usar'),
+    sa.Column('cif_nif', sa.String(length=20), nullable=True, comment='CIF/NIF/NIE normalizado. Mayúsculas, sin espacios/guiones. Ej: "12345678A", "B12345678". NULL para algunos organismos históricos'),
+    sa.Column('nombre_completo', sa.String(length=200), nullable=False, comment='Razón social, nombre completo o nombre oficial. Personas físicas: nombre completo. Jurídicas/organismos: razón social/nombre oficial'),
+    sa.Column('email', sa.String(length=120), nullable=True, comment='Email general de contacto. NO es el email de notificaciones (va en entidades_administrados)'),
+    sa.Column('telefono', sa.String(length=20), nullable=True, comment='Teléfono de contacto general. Formato libre'),
+    sa.Column('direccion', sa.Text(), nullable=True, comment='Calle, número, piso, puerta. Usar junto con codigo_postal y municipio_id (preferente para España)'),
+    sa.Column('codigo_postal', sa.String(length=10), nullable=True, comment='Código postal. Texto libre. Futuro: sugerencias desde tabla codigos_postales'),
+    sa.Column('municipio_id', sa.Integer(), nullable=True, comment='Municipio de la dirección. Preferente sobre direccion_fallback'),
+    sa.Column('direccion_fallback', sa.Text(), nullable=True, comment='Dirección completa en texto libre. Para casos excepcionales (extranjero, datos históricos). Ej: "23, Peny Lane, St, 34523, London, England"'),
+    sa.Column('activo', sa.Boolean(), nullable=False, comment='Indica si la entidad está activa. Borrado lógico'),
+    sa.Column('notas', sa.Text(), nullable=True, comment='Observaciones generales sobre la entidad. Campo libre para anotaciones'),
+    sa.Column('created_at', sa.DateTime(), nullable=False, comment='Fecha y hora de creación del registro'),
+    sa.Column('updated_at', sa.DateTime(), nullable=False, comment='Fecha y hora de última actualización'),
+    sa.ForeignKeyConstraint(['municipio_id'], ['estructura.municipios.id'], ),
+    sa.ForeignKeyConstraint(['tipo_entidad_id'], ['estructura.tipos_entidades.id'], ),
+    sa.PrimaryKeyConstraint('id'),
+    schema='public'
+    )
+    with op.batch_alter_table('entidades', schema=None) as batch_op:
+        batch_op.create_index(batch_op.f('ix_public_entidades_activo'), ['activo'], unique=False)
+        batch_op.create_index(batch_op.f('ix_public_entidades_cif_nif'), ['cif_nif'], unique=True)
+        batch_op.create_index(batch_op.f('ix_public_entidades_municipio_id'), ['municipio_id'], unique=False)
+        batch_op.create_index(batch_op.f('ix_public_entidades_nombre_completo'), ['nombre_completo'], unique=False)
+        batch_op.create_index(batch_op.f('ix_public_entidades_tipo_entidad_id'), ['tipo_entidad_id'], unique=False)
+
     op.create_table('municipios_proyecto',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False, comment='Identificador único autogenerado del registro puente'),
     sa.Column('municipio_id', sa.Integer(), nullable=False, comment='FK a MUNICIPIOS. Municipio afectado por el proyecto'),
@@ -179,16 +221,107 @@ def upgrade():
     sa.PrimaryKeyConstraint('usuario_id', 'rol_id'),
     schema='public'
     )
+    op.create_table('autorizados_titular',
+    sa.Column('id', sa.Integer(), nullable=False, comment='Identificador único del registro de autorización'),
+    sa.Column('titular_entidad_id', sa.Integer(), nullable=False, comment='Administrado titular que concede la autorización. Debe tener entrada en entidades_administrados'),
+    sa.Column('autorizado_entidad_id', sa.Integer(), nullable=False, comment='Administrado autorizado para representar al titular. Debe tener entrada en entidades_administrados'),
+    sa.Column('activo', sa.Boolean(), nullable=False, comment='Indica si la autorización está vigente. FALSE = revocada/suspendida'),
+    sa.Column('observaciones', sa.Text(), nullable=True, comment='Notas libres del tramitador. Usos: ámbito (expediente específico/general), vigencia temporal, motivo desactivación, tipo de poder'),
+    sa.Column('created_at', sa.DateTime(), nullable=False, comment='Fecha y hora de creación del registro'),
+    sa.Column('updated_at', sa.DateTime(), nullable=False, comment='Fecha y hora de última actualización'),
+    sa.CheckConstraint('titular_entidad_id != autorizado_entidad_id', name='chk_no_autoautorizacion'),
+    sa.ForeignKeyConstraint(['autorizado_entidad_id'], ['public.entidades.id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['titular_entidad_id'], ['public.entidades.id'], ondelete='CASCADE'),
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('titular_entidad_id', 'autorizado_entidad_id', name='uq_titular_autorizado'),
+    schema='public'
+    )
+    with op.batch_alter_table('autorizados_titular', schema=None) as batch_op:
+        batch_op.create_index('idx_titular_activo', ['titular_entidad_id', 'activo'], unique=False)
+        batch_op.create_index(batch_op.f('ix_public_autorizados_titular_activo'), ['activo'], unique=False)
+        batch_op.create_index(batch_op.f('ix_public_autorizados_titular_autorizado_entidad_id'), ['autorizado_entidad_id'], unique=False)
+        batch_op.create_index(batch_op.f('ix_public_autorizados_titular_titular_entidad_id'), ['titular_entidad_id'], unique=False)
+
+    op.create_table('entidades_administrados',
+    sa.Column('entidad_id', sa.Integer(), nullable=False, comment='Referencia a entidad base (PK y FK con CASCADE)'),
+    sa.Column('email_notificaciones', sa.String(length=120), nullable=False, comment='Email oficial para sistema Notifica. Puede ser personal o corporativo donde se reciben notificaciones electrónicas oficiales'),
+    sa.Column('representante_nif_cif', sa.String(length=20), nullable=True, comment='NIF/CIF de quien representa/gestiona. NULL si autorepresentado (persona física) o gestión corporativa directa. Normalizado como CIF/NIF'),
+    sa.Column('representante_nombre', sa.String(length=200), nullable=True, comment='Nombre completo del representante. NULL si autorepresentado. Puede ser persona física (administrador único) o jurídica (consultora contratada)'),
+    sa.Column('representante_telefono', sa.String(length=20), nullable=True, comment='Teléfono del representante. Contacto directo con quien gestiona'),
+    sa.Column('representante_email', sa.String(length=120), nullable=True, comment='Email del representante. Email de contacto (NO oficial para notificaciones, solo coordinación)'),
+    sa.Column('notas_representacion', sa.Text(), nullable=True, comment='Observaciones sobre la representación. Tipo de cargo o relación: "Administrador único", "Consultora ACME SL contratada", "Apoderado con poder notarial", etc.'),
+    sa.CheckConstraint('(representante_nif_cif IS NULL AND representante_nombre IS NULL)\n               OR\n               (representante_nif_cif IS NOT NULL AND representante_nombre IS NOT NULL)', name='chk_representante_coherente'),
+    sa.ForeignKeyConstraint(['entidad_id'], ['public.entidades.id'], ondelete='CASCADE'),
+    sa.PrimaryKeyConstraint('entidad_id'),
+    schema='public'
+    )
+    with op.batch_alter_table('entidades_administrados', schema=None) as batch_op:
+        batch_op.create_index(batch_op.f('ix_public_entidades_administrados_email_notificaciones'), ['email_notificaciones'], unique=False)
+        batch_op.create_index(batch_op.f('ix_public_entidades_administrados_representante_nif_cif'), ['representante_nif_cif'], unique=False)
+
+    op.create_table('entidades_ayuntamientos',
+    sa.Column('entidad_id', sa.Integer(), nullable=False, comment='Referencia a entidad base (PK y FK con CASCADE)'),
+    sa.Column('codigo_dir3', sa.String(length=20), nullable=True, comment='Código DIR3 para notificaciones SIR'),
+    sa.Column('observaciones', sa.Text(), nullable=True, comment='Observaciones sobre el ayuntamiento'),
+    sa.ForeignKeyConstraint(['entidad_id'], ['public.entidades.id'], ondelete='CASCADE'),
+    sa.PrimaryKeyConstraint('entidad_id'),
+    schema='public'
+    )
+    with op.batch_alter_table('entidades_ayuntamientos', schema=None) as batch_op:
+        batch_op.create_index(batch_op.f('ix_public_entidades_ayuntamientos_codigo_dir3'), ['codigo_dir3'], unique=True)
+
+    op.create_table('entidades_diputaciones',
+    sa.Column('entidad_id', sa.Integer(), nullable=False, comment='Referencia a entidad base (PK y FK con CASCADE)'),
+    sa.Column('codigo_dir3', sa.String(length=20), nullable=False, comment='Código DIR3 oficial para notificaciones SIR como organismo consultado. Formato: 1-2 letras + 7-8 números. Ej: L01110002'),
+    sa.Column('email_publicacion_bop', sa.String(length=255), nullable=True, comment='Email para solicitar publicaciones en BOP. Ej: boletin@bopcadiz.org. Método tradicional: correo con datos pagador + texto'),
+    sa.Column('observaciones', sa.Text(), nullable=True, comment='Notas sobre procedimientos publicación, tarifas, plataformas alternativas, contactos específicos. Ej: "Concesionaria: Asociación Prensa Cádiz"'),
+    sa.ForeignKeyConstraint(['entidad_id'], ['public.entidades.id'], ondelete='CASCADE'),
+    sa.PrimaryKeyConstraint('entidad_id'),
+    schema='public'
+    )
+    with op.batch_alter_table('entidades_diputaciones', schema=None) as batch_op:
+        batch_op.create_index(batch_op.f('ix_public_entidades_diputaciones_codigo_dir3'), ['codigo_dir3'], unique=True)
+
+    op.create_table('entidades_empresas_servicio_publico',
+    sa.Column('entidad_id', sa.Integer(), nullable=False, comment='Referencia a entidad base (PK y FK con CASCADE)'),
+    sa.Column('codigo_dir3', sa.String(length=20), nullable=True, comment='Código DIR3 para notificaciones SIR (opcional, no todas las empresas tienen)'),
+    sa.ForeignKeyConstraint(['entidad_id'], ['public.entidades.id'], ondelete='CASCADE'),
+    sa.PrimaryKeyConstraint('entidad_id'),
+    schema='public'
+    )
+    with op.batch_alter_table('entidades_empresas_servicio_publico', schema=None) as batch_op:
+        batch_op.create_index(batch_op.f('ix_public_entidades_empresas_servicio_publico_codigo_dir3'), ['codigo_dir3'], unique=True)
+
+    op.create_table('entidades_organismos_publicos',
+    sa.Column('entidad_id', sa.Integer(), nullable=False, comment='Referencia a entidad base (PK y FK con CASCADE)'),
+    sa.Column('codigo_dir3', sa.String(length=20), nullable=True, comment='Código DIR3 para notificaciones SIR/BandeJA'),
+    sa.Column('legislatura', sa.String(length=50), nullable=True, comment='Legislatura asociada. Ej: "2019-2023", "2023-2027"'),
+    sa.Column('fecha_desde', sa.Date(), nullable=True, comment='Fecha inicio vigencia del organismo'),
+    sa.Column('fecha_hasta', sa.Date(), nullable=True, comment='Fecha fin vigencia del organismo (NULL si sigue activo)'),
+    sa.Column('ambito', sa.String(length=50), nullable=True, comment='Ámbito del organismo: ESTATAL, AUTONOMICO, LOCAL'),
+    sa.Column('tipo_organismo', sa.String(length=50), nullable=True, comment='Tipo específico: Consejería, Ministerio, Confederación, Entidad Pública, etc.'),
+    sa.CheckConstraint("ambito IN ('ESTATAL', 'AUTONOMICO', 'LOCAL')", name='chk_organismos_ambito'),
+    sa.ForeignKeyConstraint(['entidad_id'], ['public.entidades.id'], ondelete='CASCADE'),
+    sa.PrimaryKeyConstraint('entidad_id'),
+    schema='public'
+    )
+    with op.batch_alter_table('entidades_organismos_publicos', schema=None) as batch_op:
+        batch_op.create_index(batch_op.f('ix_public_entidades_organismos_publicos_ambito'), ['ambito'], unique=False)
+        batch_op.create_index(batch_op.f('ix_public_entidades_organismos_publicos_codigo_dir3'), ['codigo_dir3'], unique=False)
+        batch_op.create_index(batch_op.f('ix_public_entidades_organismos_publicos_legislatura'), ['legislatura'], unique=False)
+
     op.create_table('expedientes',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False, comment='Identificador técnico único autogenerado'),
     sa.Column('numero_at', sa.Integer(), nullable=False, comment='Número administrativo del expediente (formato legacy, único en organización)'),
-    sa.Column('responsable_id', sa.Integer(), nullable=False, comment='FK a USUARIOS. Tramitador asignado con permisos de gestión completa'),
+    sa.Column('responsable_id', sa.Integer(), nullable=True, comment='FK a USUARIOS. Tramitador asignado con permisos de gestión completa. NULL = huérfano sin asignar'),
     sa.Column('tipo_expediente_id', sa.Integer(), nullable=True, comment='FK a TIPOS_EXPEDIENTES. Clasificación normativa que define procedimiento'),
     sa.Column('heredado', sa.Boolean(), nullable=True, comment='TRUE si proviene del sistema anterior (datos incompletos posibles)'),
     sa.Column('proyecto_id', sa.Integer(), nullable=False, comment='FK a PROYECTOS. Relación 1:1, un expediente tiene exactamente un proyecto'),
+    sa.Column('titular_id', sa.Integer(), nullable=True, comment='FK a ENTIDADES. Titular actual del expediente (snapshot del histórico). NULL = sin titular asignado (anómalo transitorio)'),
     sa.ForeignKeyConstraint(['proyecto_id'], ['public.proyectos.id'], ),
     sa.ForeignKeyConstraint(['responsable_id'], ['public.usuarios.id'], ),
     sa.ForeignKeyConstraint(['tipo_expediente_id'], ['estructura.tipos_expedientes.id'], ),
+    sa.ForeignKeyConstraint(['titular_id'], ['public.entidades.id'], ),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('numero_at'),
     sa.UniqueConstraint('proyecto_id'),
@@ -199,6 +332,7 @@ def upgrade():
         batch_op.create_index('idx_expedientes_proyecto', ['proyecto_id'], unique=False)
         batch_op.create_index('idx_expedientes_responsable', ['responsable_id'], unique=False)
         batch_op.create_index('idx_expedientes_tipo', ['tipo_expediente_id'], unique=False)
+        batch_op.create_index('idx_expedientes_titular', ['titular_id'], unique=False)
 
     op.create_table('documentos',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False, comment='Identificador único autogenerado del documento'),
@@ -336,12 +470,43 @@ def downgrade():
 
     op.drop_table('documentos', schema='public')
     with op.batch_alter_table('expedientes', schema=None) as batch_op:
+        batch_op.drop_index('idx_expedientes_titular')
         batch_op.drop_index('idx_expedientes_tipo')
         batch_op.drop_index('idx_expedientes_responsable')
         batch_op.drop_index('idx_expedientes_proyecto')
         batch_op.drop_index('idx_expedientes_numero_at')
 
     op.drop_table('expedientes', schema='public')
+    with op.batch_alter_table('entidades_organismos_publicos', schema=None) as batch_op:
+        batch_op.drop_index(batch_op.f('ix_public_entidades_organismos_publicos_legislatura'))
+        batch_op.drop_index(batch_op.f('ix_public_entidades_organismos_publicos_codigo_dir3'))
+        batch_op.drop_index(batch_op.f('ix_public_entidades_organismos_publicos_ambito'))
+
+    op.drop_table('entidades_organismos_publicos', schema='public')
+    with op.batch_alter_table('entidades_empresas_servicio_publico', schema=None) as batch_op:
+        batch_op.drop_index(batch_op.f('ix_public_entidades_empresas_servicio_publico_codigo_dir3'))
+
+    op.drop_table('entidades_empresas_servicio_publico', schema='public')
+    with op.batch_alter_table('entidades_diputaciones', schema=None) as batch_op:
+        batch_op.drop_index(batch_op.f('ix_public_entidades_diputaciones_codigo_dir3'))
+
+    op.drop_table('entidades_diputaciones', schema='public')
+    with op.batch_alter_table('entidades_ayuntamientos', schema=None) as batch_op:
+        batch_op.drop_index(batch_op.f('ix_public_entidades_ayuntamientos_codigo_dir3'))
+
+    op.drop_table('entidades_ayuntamientos', schema='public')
+    with op.batch_alter_table('entidades_administrados', schema=None) as batch_op:
+        batch_op.drop_index(batch_op.f('ix_public_entidades_administrados_representante_nif_cif'))
+        batch_op.drop_index(batch_op.f('ix_public_entidades_administrados_email_notificaciones'))
+
+    op.drop_table('entidades_administrados', schema='public')
+    with op.batch_alter_table('autorizados_titular', schema=None) as batch_op:
+        batch_op.drop_index(batch_op.f('ix_public_autorizados_titular_titular_entidad_id'))
+        batch_op.drop_index(batch_op.f('ix_public_autorizados_titular_autorizado_entidad_id'))
+        batch_op.drop_index(batch_op.f('ix_public_autorizados_titular_activo'))
+        batch_op.drop_index('idx_titular_activo')
+
+    op.drop_table('autorizados_titular', schema='public')
     op.drop_table('usuarios_roles', schema='public')
     with op.batch_alter_table('solicitudes_tipos', schema=None) as batch_op:
         batch_op.drop_index('idx_solicitudes_tipos_tipo')
@@ -358,6 +523,14 @@ def downgrade():
         batch_op.drop_index('idx_municipios_proyecto_municipio')
 
     op.drop_table('municipios_proyecto', schema='public')
+    with op.batch_alter_table('entidades', schema=None) as batch_op:
+        batch_op.drop_index(batch_op.f('ix_public_entidades_tipo_entidad_id'))
+        batch_op.drop_index(batch_op.f('ix_public_entidades_nombre_completo'))
+        batch_op.drop_index(batch_op.f('ix_public_entidades_municipio_id'))
+        batch_op.drop_index(batch_op.f('ix_public_entidades_cif_nif'))
+        batch_op.drop_index(batch_op.f('ix_public_entidades_activo'))
+
+    op.drop_table('entidades', schema='public')
     with op.batch_alter_table('usuarios', schema=None) as batch_op:
         batch_op.drop_index('idx_usuarios_siglas')
         batch_op.drop_index('idx_usuarios_email')
@@ -377,5 +550,9 @@ def downgrade():
     op.drop_table('tipos_ia', schema='estructura')
     op.drop_table('tipos_fases', schema='estructura')
     op.drop_table('tipos_expedientes', schema='estructura')
+    with op.batch_alter_table('tipos_entidades', schema='estructura') as batch_op:
+        batch_op.drop_index(batch_op.f('ix_estructura_tipos_entidades_codigo'))
+
+    op.drop_table('tipos_entidades', schema='estructura')
     op.drop_table('municipios', schema='estructura')
     # ### end Alembic commands ###
