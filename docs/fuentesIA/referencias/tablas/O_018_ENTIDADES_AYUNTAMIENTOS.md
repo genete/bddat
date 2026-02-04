@@ -2,6 +2,7 @@
 Tabla: ENTIDADES_AYUNTAMIENTOS
 Generado manualmente
 Fecha de creación: 01/02/2026
+Última actualización: 04/02/2026
 IMPORTANTE: No editar Tablas.md directamente.
             Editar este archivo y ejecutar merge_tables.py para regenerar.
 -->
@@ -15,19 +16,17 @@ Metadatos específicos de corporaciones locales (ayuntamientos) que pueden actua
 | Campo | Tipo | Descripción | Nullable | Notas |
 |:---|:---|:---|:---|:---|
 | **ENTIDAD_ID** | INTEGER | Referencia a entidad base | NO | PK y FK → ENTIDADES(ID), UNIQUE, CASCADE |
-| **CODIGO_DIR3** | VARCHAR(10) | Código DIR3 oficial del ayuntamiento | NO | UNIQUE. Para notificaciones SIR cuando actúa como organismo consultado |
-| **OBSERVACIONES** | TEXT | Notas adicionales | SÍ | Horarios atención, contactos específicos, etc. |
+| **CODIGO_DIR3** | VARCHAR(20) | Código DIR3 oficial del ayuntamiento | SÍ | UNIQUE (cuando no es NULL). Para notificaciones SIR cuando actúa como organismo consultado |
 
 #### Claves
 
 - **PK:** `ENTIDAD_ID`
-- **UNIQUE:** `CODIGO_DIR3`
 - **FK:**
   - `ENTIDAD_ID` → `ENTIDADES(ID)` ON DELETE CASCADE
 
-#### Índices Recomendados
+#### Índices
 
-- `CODIGO_DIR3` (único, búsqueda rápida por código oficial)
+- `ix_public_entidades_ayuntamientos_codigo_dir3` (único, sobre `CODIGO_DIR3`)
 
 #### Relaciones
 
@@ -35,15 +34,16 @@ Metadatos específicos de corporaciones locales (ayuntamientos) que pueden actua
 
 #### Notas de Versión
 
-- **v1.0** (01/02/2026): Creación inicial con estructura minimalista (solo DIR3 + observaciones)
+- **v1.0** (01/02/2026): Creación inicial con estructura minimalista
+- **v1.1** (04/02/2026): Sincronización con schema.sql - codigo_dir3 es VARCHAR(20) y NULLABLE, eliminar campo observaciones
 
 #### Filosofía
 
 Tabla de metadatos para **ayuntamientos** (corporaciones locales municipales):
 
 - **Relación 1:1** con `ENTIDADES` mediante `ENTIDAD_ID` como PK y FK
-- **Estructura minimalista:** Solo campos que NO están en `ENTIDADES`
-- **CODIGO_DIR3 como clave de negocio:** Identificación oficial para comunicaciones interadministrativas
+- **Estructura minimalista:** Solo código DIR3 (opcional)
+- **CODIGO_DIR3 opcional:** Puede ser NULL (ayuntamientos pequeños sin código DIR3, o datos históricos)
 - **Sin representante:** La entidad es la corporación en sí (persona jurídica pública)
 - **Múltiples roles posibles:** Solicitante + Consultado + Publicador (triple entrada posible)
 - **Notificaciones:** SIR (DIR3) cuando actúa como organismo, Notifica cuando actúa como solicitante
@@ -58,8 +58,9 @@ Tabla de metadatos para **ayuntamientos** (corporaciones locales municipales):
 - `TELEFONO`: Teléfono general
 - `DIRECCION`, `CODIGO_POSTAL`: Sede del ayuntamiento (Casa Consistorial)
 - `MUNICIPIO_ID`: FK a MUNICIPIOS → **El ayuntamiento ES el municipio que gestiona**
+- `NOTAS`: Observaciones generales (horarios, contactos específicos, etc.)
 
-**Si se necesitan contactos específicos (email urbanismo, teléfono medio ambiente), usar campo `OBSERVACIONES`.**
+**Para contactos específicos (email urbanismo, teléfono medio ambiente), usar campo `NOTAS` en `ENTIDADES`.**
 
 #### CIF de Ayuntamientos
 
@@ -91,6 +92,11 @@ Tabla de metadatos para **ayuntamientos** (corporaciones locales municipales):
 - Identificación única para notificaciones vía **SIR** cuando el ayuntamiento actúa como **organismo consultado** (emite informe)
 - NO se usa para notificar cuando actúa como **solicitante** (ahí usa Notifica con email)
 
+**Campo NULLABLE:**
+- Ayuntamientos pequeños pueden no tener código DIR3 registrado
+- Datos históricos de ayuntamientos sin código DIR3
+- Ayuntamientos en proceso de registro
+
 **Consulta de códigos DIR3:**
 - Portal oficial: https://administracionelectronica.gob.es/ctt/dir3
 - Descargas: https://administracionelectronica.gob.es/ctt/dir3/descargas
@@ -106,10 +112,10 @@ Tabla de metadatos para **ayuntamientos** (corporaciones locales municipales):
    - `nombre_completo`: "Ayuntamiento de Alcorcón"
    - `tipo_entidad_id`: AYUNTAMIENTO
    - `municipio_id`: FK al municipio de Alcorcón
+   - `notas`: "Horario: L-V 9-14h. Email urbanismo: urbanismo@aytoalcorcon.es"
 
 2. **ENTIDADES_AYUNTAMIENTOS** (rol: consultado + publicador):
    - `codigo_dir3`: "L01280061" (código oficial)
-   - `observaciones`: "Horario: L-V 9-14h. Email urbanismo: urbanismo@aytoalcorcon.es"
 
 3. **ENTIDADES_ADMINISTRADOS** (rol: solicitante ocasional):
    - `email_notificaciones`: "notifica@aytoalcorcon.es"
@@ -123,7 +129,8 @@ Tabla de metadatos para **ayuntamientos** (corporaciones locales municipales):
 -- Aparecen ayuntamientos con tipo AYUNTAMIENTO
 SELECT e.* FROM entidades e
 JOIN tipos_entidades te ON e.tipo_entidad_id = te.id
-WHERE te.puede_ser_consultado = TRUE;
+WHERE te.puede_ser_consultado = TRUE
+AND e.activo = TRUE;
 
 -- Contexto: Crear solicitud (ayto. solicita instalación propia)
 -- Solo aparecen entidades con registro en ENTIDADES_ADMINISTRADOS
@@ -152,15 +159,15 @@ AND e.activo = TRUE;
 
 #### Reglas de Negocio
 
-1. **CODIGO_DIR3 obligatorio** (NOT NULL, UNIQUE)
+1. **CODIGO_DIR3 opcional** (puede ser NULL)
 2. **CIF_NIF obligatorio** en `ENTIDADES` (formato P+INE+control)
 3. **Sin representante** (no aplican campos `REPRESENTANTE_*`)
 4. **Múltiples roles:** Un ayuntamiento puede estar en esta tabla Y en `ENTIDADES_ADMINISTRADOS`
 5. **Notificaciones duales:**
-   - Como **organismo consultado**: SIR (usa CODIGO_DIR3)
+   - Como **organismo consultado**: SIR (usa CODIGO_DIR3 si existe)
    - Como **solicitante**: Notifica (usa email de `ENTIDADES_ADMINISTRADOS`)
 6. **Publicación anuncios:** Tablón edictos propio según Ley 39/2015 Art. 45.4 (obligación vs administrados, no dato BDDAT)
-7. **Validación DIR3:** Formato alfanumérico, 8-10 caracteres
+7. **Validación DIR3:** Formato alfanumérico, 8-10 caracteres (si no es NULL)
 8. **MUNICIPIO_ID en ENTIDADES:** El ayuntamiento gestiona el municipio al que pertenece (relación 1:1)
 
 #### Tablón de Edictos Electrónico: Aclaración Legal
@@ -186,9 +193,9 @@ BDDAT → Sistema SIR (Servicio Integrado de Registro) → Ayuntamiento recibe n
 
 **Conclusión:**
 - **NO almacenamos URL del tablón** (no es dato estructurado que necesitemos)
-- **Usamos SIR** para enviar anuncios al ayuntamiento
+- **Usamos SIR** para enviar anuncios al ayuntamiento (si tiene DIR3)
 - **El ayuntamiento** es responsable de publicar en su tablón (sede electrónica)
-- **Campo URL_TABLON_EDICTOS no existe** (estaría NULL eternamente)
+- **Si no tiene DIR3:** Métodos tradicionales (correo postal, email general)
 
 #### Validaciones
 
@@ -217,7 +224,7 @@ def validar_codigo_dir3(codigo):
     Ejemplos válidos: L01410084, A12002696
     """
     if not codigo:
-        return False
+        return True  # Nullable
     
     # Patrón: 1-2 letras mayúsculas + 7-8 dígitos
     patron = r'^[A-Z]{1,2}\d{7,8}$'
@@ -229,7 +236,7 @@ class EntidadAyuntamiento(db.Model):
     @validates('codigo_dir3')
     def validate_codigo_dir3(self, key, value):
         if not value:
-            raise ValueError("Código DIR3 es obligatorio")
+            return None  # Nullable
         
         value_upper = value.upper().strip()
         
@@ -252,6 +259,7 @@ function validarCIFAyuntamiento(cif) {
 }
 
 function validarDIR3(codigo) {
+    if (!codigo || codigo.trim() === '') return true; // Nullable
     const patron = /^[A-Z]{1,2}\d{7,8}$/;
     return patron.test(codigo.toUpperCase());
 }
@@ -272,7 +280,7 @@ SELECT
     m.nombre AS municipio
 FROM entidades e
 JOIN entidades_ayuntamientos ea ON e.id = ea.entidad_id
-JOIN municipios m ON e.municipio_id = m.id
+JOIN estructura.municipios m ON e.municipio_id = m.id
 WHERE e.activo = TRUE
 ORDER BY e.nombre_completo;
 ```
@@ -310,32 +318,50 @@ WHERE e.activo = TRUE
 ORDER BY e.nombre_completo;
 ```
 
-**5. Ayuntamientos de una provincia específica:**
+**5. Ayuntamientos sin código DIR3 (métodos tradicionales):**
+
+```sql
+SELECT 
+    e.nombre_completo,
+    e.cif_nif,
+    e.email,
+    e.telefono,
+    m.nombre AS municipio
+FROM entidades e
+JOIN entidades_ayuntamientos ea ON e.id = ea.entidad_id
+JOIN estructura.municipios m ON e.municipio_id = m.id
+WHERE ea.codigo_dir3 IS NULL
+AND e.activo = TRUE
+ORDER BY e.nombre_completo;
+```
+
+**6. Ayuntamientos de una provincia específica:**
 
 ```sql
 SELECT 
     e.nombre_completo,
     m.nombre AS municipio,
-    p.nombre AS provincia,
+    m.provincia,
     ea.codigo_dir3
 FROM entidades e
 JOIN entidades_ayuntamientos ea ON e.id = ea.entidad_id
-JOIN municipios m ON e.municipio_id = m.id
-JOIN provincias p ON m.provincia_id = p.id
-WHERE p.codigo = '28'  -- Madrid
+JOIN estructura.municipios m ON e.municipio_id = m.id
+WHERE m.provincia = 'Ourense'
 AND e.activo = TRUE
 ORDER BY m.nombre;
 ```
 
-**6. Verificar si un ayuntamiento puede actuar como solicitante:**
+**7. Verificar si un ayuntamiento puede actuar como solicitante:**
 
 ```sql
 SELECT 
     e.nombre_completo,
+    e.cif_nif,
     CASE 
         WHEN ead.entidad_id IS NOT NULL THEN 'SÍ'
         ELSE 'NO'
-    END AS puede_solicitar
+    END AS puede_solicitar,
+    ead.email_notificaciones
 FROM entidades e
 JOIN entidades_ayuntamientos ea ON e.id = ea.entidad_id
 LEFT JOIN entidades_administrados ead ON e.id = ead.entidad_id
