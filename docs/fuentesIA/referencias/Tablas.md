@@ -2,8 +2,8 @@
 
 **Sistema de Tramitación de Expedientes de Alta Tensión (BDDAT)**  
 **Formato agnóstico a la base de datos**  
-**Fecha:** 01/02/2026  
-**Generado automáticamente:** 01/02/2026 18:05 por merge_tables.py
+**Fecha:** 04/02/2026  
+**Generado automáticamente:** 04/02/2026 10:06 por merge_tables.py
 
 ---
 
@@ -12,6 +12,7 @@
 - [Filosofía del Diseño](#filosofía-del-diseño)
 - [Tablas de Estructura](#tablas-de-estructura)
   - [MUNICIPIOS](#municipios)
+  - [TIPOS_ENTIDAD](#tiposentidad)
   - [TIPOS_ENTIDADES](#tiposentidades)
   - [TIPOS_EXPEDIENTES](#tiposexpedientes)
   - [TIPOS_FASES](#tiposfases)
@@ -21,6 +22,7 @@
   - [TIPOS_TAREAS](#tipostareas)
   - [TIPOS_TRAMITES](#tipostramites)
 - [Tablas Operacionales](#tablas-operacionales)
+  - [AUTORIZADOS_TITULAR](#autorizadostitular)
   - [DOCUMENTOS](#documentos)
   - [DOCUMENTOS_PROYECTO](#documentosproyecto)
   - [ENTIDADES](#entidades)
@@ -269,6 +271,232 @@ Tabla maestra con el catálogo oficial de municipios:
 
 Usado en:
 - `MUNICIPIOS_PROYECTO.MUNICIPIO_ID` (municipios afectados por proyectos)
+
+---
+
+---
+
+### TIPOS_ENTIDAD
+
+Catálogo de tipos de entidades del sistema con definición de roles permitidos.
+
+#### Estructura
+
+| Campo | Tipo | Descripción | Nullable | Notas |
+|:---|:---|:---|:---|:---|
+| **ID** | INTEGER | Identificador único del tipo de entidad | NO | PK, autoincremental |
+| **CODIGO** | VARCHAR(50) | Código único identificativo del tipo | NO | UNIQUE. Valores: ADMINISTRADO, EMPRESA_SERVICIO_PUBLICO, ORGANISMO_PUBLICO, AYUNTAMIENTO, DIPUTACION |
+| **NOMBRE** | VARCHAR(100) | Nombre descriptivo del tipo | NO | Para mostrar en interfaz de usuario |
+| **TABLA_METADATOS** | VARCHAR(100) | Nombre de la tabla de metadatos asociada | NO | Tabla física donde residen metadatos específicos: entidades_administrados, entidades_empresas_servicio_publico, entidades_organismos_publicos, entidades_ayuntamientos, entidades_diputaciones |
+| **PUEDE_SER_SOLICITANTE** | BOOLEAN | Indica si puede actuar como solicitante | NO | Default: FALSE. TRUE para tipos que pueden presentar solicitudes |
+| **PUEDE_SER_CONSULTADO** | BOOLEAN | Indica si puede ser organismo consultado | NO | Default: FALSE. TRUE para tipos que pueden emitir informes en fase CONSULTAS |
+| **PUEDE_PUBLICAR** | BOOLEAN | Indica si puede publicar (tablón/BOP) | NO | Default: FALSE. TRUE para tipos que pueden publicar anuncios oficiales |
+| **DESCRIPCION** | TEXT | Descripción detallada del tipo de entidad | SÍ | Explicación de características y casos de uso |
+
+#### Claves
+
+- **PK:** `ID`
+- **UNIQUE:** `CODIGO`
+
+#### Índices Recomendados
+
+- `CODIGO` (búsqueda rápida por código)
+- `(PUEDE_SER_SOLICITANTE, PUEDE_SER_CONSULTADO, PUEDE_PUBLICAR)` (filtros por capacidades)
+
+#### Notas de Versión
+
+- **v1.0** (01/02/2026): Creación inicial con 5 tipos de entidad y campos de roles
+
+#### Filosofía
+
+Tabla maestra que define los tipos de entidades del sistema y sus **capacidades de rol**:
+
+- **Datos maestros estables:** Los 5 tipos no cambian, son parte de la lógica de negocio
+- **Filtrado automático:** Los campos booleanos permiten filtrar entidades según contexto
+- **Arquitectura tablas inversas:** Campo `TABLA_METADATOS` mapea tipo → tabla física de metadatos
+- **Validación en tiempo de diseño:** La interfaz carga solo tipos válidos según operación
+
+#### Tipos Definidos
+
+| Código | Nombre | Tabla Metadatos | Solicitante | Consultado | Publicar |
+|:---|:---|:---|:---:|:---:|:---:|
+| **ADMINISTRADO** | Administrado | entidades_administrados | ✅ | ❌ | ❌ |
+| **EMPRESA_SERVICIO_PUBLICO** | Empresa Servicio Público | entidades_empresas_servicio_publico | ✅ | ✅ | ❌ |
+| **ORGANISMO_PUBLICO** | Organismo Público | entidades_organismos_publicos | ❌ | ✅ | ❌ |
+| **AYUNTAMIENTO** | Ayuntamiento | entidades_ayuntamientos | ✅ | ✅ | ✅ |
+| **DIPUTACION** | Diputación Provincial | entidades_diputaciones | ❌ | ✅ | ✅ |
+
+#### Descripción de Tipos
+
+**ADMINISTRADO:**
+- Personas físicas o jurídicas privadas
+- Roles: Titular de expediente, Solicitante, Autorizado en solicitud
+- Ejemplos: Ciudadanos, empresas promotoras, comunidades de bienes
+- Notificaciones: Sistema Notifica (email_notificaciones)
+
+**EMPRESA_SERVICIO_PUBLICO:**
+- Operadores de infraestructuras críticas y servicios públicos
+- Roles: Solicitante (instalaciones propias) + Organismo consultado (afecciones)
+- Ejemplos: Enagas, E-Distribución, REE, Consorcios de Aguas, operadores ferroviarios
+- Características: Pueden tener instalaciones propias Y deben informar sobre afecciones a sus infraestructuras
+
+**ORGANISMO_PUBLICO:**
+- Administraciones públicas y organismos oficiales
+- Roles: Solo organismo consultado (informes técnicos/administrativos)
+- Ejemplos: Consejerías Junta Andalucía, Ministerios, Confederaciones Hidrográficas, ADIF, Defensa, AESA, Patrimonio
+- Notificaciones: Sistema SIR (codigo_dir3) o BandeJA
+
+**AYUNTAMIENTO:**
+- Corporaciones locales municipales
+- Roles: Solicitante (ocasional) + Organismo consultado + Publicador (tablón edictos)
+- Múltiples capacidades según contexto
+- Notificaciones: SIR (codigo_dir3) cuando actúa como organismo, Notifica cuando actúa como solicitante
+
+**DIPUTACION:**
+- Corporaciones provinciales
+- Roles: Organismo consultado + Publicador (Boletín Oficial Provincial)
+- No suelen ser solicitantes
+- Notificaciones: SIR (codigo_dir3)
+
+#### Uso en Filtrado de Interfaz
+
+**Contexto: Crear solicitud**
+```sql
+-- Cargar solo entidades que pueden ser solicitantes
+SELECT e.* 
+FROM entidades e
+JOIN tipos_entidad te ON e.tipo_entidad_id = te.id
+WHERE te.puede_ser_solicitante = TRUE
+AND e.activo = TRUE
+ORDER BY e.nombre_completo;
+```
+
+**Contexto: Fase CONSULTAS - Solicitar informe**
+```sql
+-- Cargar solo entidades que pueden emitir informes
+SELECT e.* 
+FROM entidades e
+JOIN tipos_entidad te ON e.tipo_entidad_id = te.id
+WHERE te.puede_ser_consultado = TRUE
+AND e.activo = TRUE
+ORDER BY te.codigo, e.nombre_completo;
+```
+
+**Contexto: Publicar en tablón municipal**
+```sql
+-- Cargar solo ayuntamientos
+SELECT e.* 
+FROM entidades e
+JOIN tipos_entidad te ON e.tipo_entidad_id = te.id
+WHERE te.codigo = 'AYUNTAMIENTO'
+AND e.activo = TRUE
+ORDER BY e.nombre_completo;
+```
+
+**Contexto: Publicar en BOP**
+```sql
+-- Cargar solo diputaciones
+SELECT e.* 
+FROM entidades e
+JOIN tipos_entidad te ON e.tipo_entidad_id = te.id
+WHERE te.codigo = 'DIPUTACION'
+AND e.activo = TRUE
+ORDER BY e.nombre_completo;
+```
+
+#### Validaciones en Lógica de Negocio
+
+**Al crear solicitud:**
+```python
+# Validar que tipo_entidad puede ser solicitante
+if not solicitante.tipo_entidad.puede_ser_solicitante:
+    raise ValidationError("Este tipo de entidad no puede ser solicitante")
+```
+
+**Al solicitar informe en fase CONSULTAS:**
+```python
+# Validar que tipo_entidad puede ser consultado
+if not organismo.tipo_entidad.puede_ser_consultado:
+    raise ValidationError("Este tipo de entidad no puede emitir informes")
+```
+
+**Al publicar en tablón:**
+```python
+# Validar que tipo_entidad puede publicar
+if not entidad_publicadora.tipo_entidad.puede_publicar:
+    raise ValidationError("Este tipo de entidad no puede publicar anuncios")
+```
+
+#### Datos Maestros
+
+```sql
+INSERT INTO tipos_entidad (codigo, nombre, tabla_metadatos, puede_ser_solicitante, puede_ser_consultado, puede_publicar, descripcion) VALUES
+(
+    'ADMINISTRADO', 
+    'Administrado', 
+    'entidades_administrados', 
+    TRUE, 
+    FALSE, 
+    FALSE,
+    'Personas físicas o jurídicas privadas. Roles: Titular, Solicitante, Autorizado. Notificaciones vía Notifica.'
+),
+(
+    'EMPRESA_SERVICIO_PUBLICO', 
+    'Empresa Servicio Público', 
+    'entidades_empresas_servicio_publico', 
+    TRUE, 
+    TRUE, 
+    FALSE,
+    'Operadores de infraestructuras críticas (Enagas, E-Distribución, REE, Consorcios Aguas). Pueden ser solicitantes Y emitir informes sobre afecciones.'
+),
+(
+    'ORGANISMO_PUBLICO', 
+    'Organismo Público', 
+    'entidades_organismos_publicos', 
+    FALSE, 
+    TRUE, 
+    FALSE,
+    'Administraciones públicas (Junta, Ministerios, Confederaciones, ADIF, Defensa, AESA). Solo emiten informes. Notificaciones vía SIR/BandeJA (DIR3).'
+),
+(
+    'AYUNTAMIENTO', 
+    'Ayuntamiento', 
+    'entidades_ayuntamientos', 
+    TRUE, 
+    TRUE, 
+    TRUE,
+    'Corporaciones locales. Múltiples roles: solicitante ocasional, organismo consultado, publicador (tablón edictos). Notificaciones vía SIR (DIR3) o Notifica según rol.'
+),
+(
+    'DIPUTACION', 
+    'Diputación Provincial', 
+    'entidades_diputaciones', 
+    FALSE, 
+    TRUE, 
+    TRUE,
+    'Corporaciones provinciales. Roles: organismo consultado, publicador BOP. Notificaciones vía SIR (DIR3).'
+);
+```
+
+#### Relación con Otras Tablas
+
+Usado en:
+- `ENTIDADES.TIPO_ENTIDAD_ID` (clasificación de entidad)
+
+Relacionado con:
+- `ENTIDADES_ADMINISTRADOS.ENTIDAD_ID` (metadatos si tipo = ADMINISTRADO)
+- `ENTIDADES_EMPRESAS_SERVICIO_PUBLICO.ENTIDAD_ID` (metadatos si tipo = EMPRESA_SERVICIO_PUBLICO)
+- `ENTIDADES_ORGANISMOS_PUBLICOS.ENTIDAD_ID` (metadatos si tipo = ORGANISMO_PUBLICO)
+- `ENTIDADES_AYUNTAMIENTOS.ENTIDAD_ID` (metadatos si tipo = AYUNTAMIENTO)
+- `ENTIDADES_DIPUTACIONES.ENTIDAD_ID` (metadatos si tipo = DIPUTACION)
+
+#### Reglas de Negocio
+
+1. **Tabla inmutable:** Los 5 tipos son parte de la lógica de negocio. No añadir/eliminar tipos en runtime
+2. **Código estable:** `CODIGO` no debe cambiar (ruptura de lógica en código Python)
+3. **Una entidad, múltiples roles:** Una misma entidad puede tener registro en múltiples tablas `entidades_*` si su tipo lo permite (ej: Ayuntamiento puede estar en `entidades_ayuntamientos` Y en `entidades_administrados` si alguna vez actúa como solicitante)
+4. **Validación obligatoria:** Siempre validar capacidades antes de asignar roles
+5. **Filtrado por defecto:** Interfaces deben filtrar automáticamente según contexto usando campos `PUEDE_SER_*`
 
 ---
 
@@ -878,6 +1106,174 @@ Usado en:
 ---
 
 ## Tablas Operacionales
+
+### AUTORIZADOS_TITULAR
+
+Tabla de relación N:N que registra las autorizaciones entre administrados. Permite que un titular (administrado) autorice a otro administrado para actuar en su nombre en la tramitación de expedientes. Sustituye el concepto legacy de la tabla `administrados` en las relaciones de autorización.
+
+#### Estructura
+
+| Campo | Tipo | Descripción | Nullable | Notas |
+|:---|:---|:---|:---|:---|
+| **ID** | INTEGER | Identificador único del registro de autorización | NO | PK, autoincremental |
+| **TITULAR_ENTIDAD_ID** | INTEGER | Administrado titular que concede la autorización | NO | FK → ENTIDADES(ID). Debe tener entrada en ENTIDADES_ADMINISTRADOS |
+| **AUTORIZADO_ENTIDAD_ID** | INTEGER | Administrado autorizado para representar al titular | NO | FK → ENTIDADES(ID). Debe tener entrada en ENTIDADES_ADMINISTRADOS |
+| **ACTIVO** | BOOLEAN | Indica si la autorización está vigente | NO | Default: TRUE. Permite revocación sin borrar historial |
+| **OBSERVACIONES** | TEXT | Notas libres del tramitador sobre la autorización | SÍ | Usos: ámbito (expediente específico/general), periodo de vigencia, motivo de desactivación |
+| **CREATED_AT** | TIMESTAMP | Fecha y hora de creación del registro | NO | Default: NOW() |
+| **UPDATED_AT** | TIMESTAMP | Fecha y hora de última actualización | NO | Default: NOW(), auto-update |
+
+#### Claves
+
+- **PK:** `ID`
+- **FK:**
+  - `TITULAR_ENTIDAD_ID` → `ENTIDADES(ID)` ON DELETE CASCADE
+  - `AUTORIZADO_ENTIDAD_ID` → `ENTIDADES(ID)` ON DELETE CASCADE
+- **UNIQUE:** `(TITULAR_ENTIDAD_ID, AUTORIZADO_ENTIDAD_ID)`
+
+#### Índices Recomendados
+
+- `TITULAR_ENTIDAD_ID` (consulta "¿quién puede actuar por este titular?")
+- `AUTORIZADO_ENTIDAD_ID` (consulta "¿por quién puede actuar este autorizado?")
+- `ACTIVO` (filtros por estado)
+- `(TITULAR_ENTIDAD_ID, ACTIVO)` (consultas combinadas más frecuentes)
+
+#### Constraints
+
+```sql
+-- No puede autorizarse a sí mismo
+CONSTRAINT chk_no_autoautorizacion 
+    CHECK (titular_entidad_id != autorizado_entidad_id)
+
+-- Evitar duplicados
+CONSTRAINT uq_titular_autorizado 
+    UNIQUE (titular_entidad_id, autorizado_entidad_id)
+```
+
+#### Relaciones
+
+- **titular**: ENTIDADES.id (FK, administrado que concede autorización)
+- **autorizado**: ENTIDADES.id (FK, administrado que recibe autorización)
+
+#### Notas de Versión
+
+- **v1.0** (03/02/2026): Creación inicial. Sustituye relaciones legacy de tabla `administrados`
+
+#### Filosofía
+
+Esta tabla implementa el concepto de **representación legal/comercial** en el sistema:
+
+- **Relación N:N**: Un titular puede autorizar a múltiples administrados, y un administrado puede estar autorizado por múltiples titulares
+- **Borrado lógico**: `ACTIVO = FALSE` permite revocar sin perder historial
+- **Validación en lógica de negocio**: Ambas entidades deben tener entrada en `ENTIDADES_ADMINISTRADOS`
+- **Autoautorización implícita**: El titular SIEMPRE puede actuar por sí mismo (no requiere entrada en esta tabla)
+
+#### Casos de Uso
+
+**1. Consultora autorizada permanentemente**
+```sql
+INSERT INTO autorizados_titular (titular_entidad_id, autorizado_entidad_id, activo, observaciones)
+VALUES (
+    123,  -- E-Distribución
+    456,  -- Consultora ACME SL
+    TRUE,
+    'Autorización general permanente para todos los expedientes'
+);
+```
+
+**2. Autorización específica para un expediente**
+```sql
+INSERT INTO autorizados_titular (titular_entidad_id, autorizado_entidad_id, activo, observaciones)
+VALUES (
+    789,  -- Empresa Solar XYZ
+    456,  -- Consultora ACME SL
+    TRUE,
+    'Autorización específica para expediente AT-2024-1234 (Planta fotovoltaica)'
+);
+```
+
+**3. Revocación de autorización**
+```sql
+UPDATE autorizados_titular
+SET activo = FALSE,
+    observaciones = observaciones || ' | REVOCADA el 2026-02-03 por cambio de contrato',
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = 42;
+```
+
+#### Consultas Frecuentes
+
+**¿Quién puede actuar en nombre del titular X?**
+```sql
+SELECT 
+    e.id,
+    e.nombre_completo,
+    e.cif_nif,
+    at.created_at AS autorizado_desde,
+    at.observaciones
+FROM autorizados_titular at
+JOIN entidades e ON e.id = at.autorizado_entidad_id
+WHERE at.titular_entidad_id = 123
+  AND at.activo = TRUE;
+```
+
+**¿En nombre de qué titulares puede actuar el autorizado Y?**
+```sql
+SELECT 
+    e.id,
+    e.nombre_completo,
+    e.cif_nif,
+    at.created_at AS autorizado_desde,
+    at.observaciones
+FROM autorizados_titular at
+JOIN entidades e ON e.id = at.titular_entidad_id
+WHERE at.autorizado_entidad_id = 456
+  AND at.activo = TRUE;
+```
+
+#### Reglas de Negocio
+
+1. **Validación de administrados**: Antes de insertar, validar que ambas entidades tengan entrada en `ENTIDADES_ADMINISTRADOS`
+2. **Autoautorización implícita**: El titular puede actuar por sí mismo sin entrada en esta tabla
+   ```python
+   def puede_actuar_como(entidad_id, titular_id):
+       if entidad_id == titular_id:
+           return True  # Autoautorización implícita
+       return AutorizadoTitular.query.filter_by(
+           titular_entidad_id=titular_id,
+           autorizado_entidad_id=entidad_id,
+           activo=True
+       ).first() is not None
+   ```
+3. **Borrado lógico**: Nunca DELETE físico, siempre `ACTIVO = FALSE`
+4. **Auditoría**: Mantener historial de autorizaciones revocadas
+5. **Campo OBSERVACIONES flexible**: Permite registrar metadatos sin modificar schema:
+   - Ámbito: "Expediente AT-2024-1234" vs "General"
+   - Vigencia temporal: "Válida hasta 31/12/2026"
+   - Motivo de desactivación: "Fin de contrato"
+   - Tipo de poder: "Apoderado con poder notarial nº 123/2024"
+
+#### Flujo UX de Gestión
+
+**Alta de autorización:**
+1. Usuario selecciona titular (selector de administrados)
+2. Usuario selecciona autorizado (selector de administrados, excluyendo titular)
+3. Usuario especifica observaciones (opcional)
+4. Sistema crea registro con `ACTIVO = TRUE`
+
+**Revocación:**
+1. Usuario marca autorización como inactiva
+2. Sistema solicita motivo (obligatorio)
+3. Sistema actualiza `ACTIVO = FALSE` y concatena motivo en `OBSERVACIONES`
+
+**Consulta:**
+- Listar autorizaciones activas de un titular
+- Listar titulares de un autorizado
+- Filtrar por texto libre en observaciones
+
+---
+
+---
 
 ### DOCUMENTOS
 
@@ -2721,13 +3117,14 @@ Tabla principal que representa cada expediente de tramitación administrativa.
 #### Estructura
 
 | Campo | Tipo | Nullable | Descripción | Notas |
-|:---|:---|:---|:---|:---|
+|:---|:---|:---|:---|:------|
 | **ID** | INTEGER | NO | Identificador único del expediente | PK, autoincremental |
 | **NUMERO_AT** | INTEGER | NO | Número de expediente administrativo (formato legacy) | Único en la organización. No es el ID sino un número correlativo tomado del sistema anterior |
 | **RESPONSABLE_ID** | INTEGER | NO | Usuario responsable del expediente | FK → USUARIOS(ID). Usuario asignado con permisos de gestión completa |
 | **TIPO_EXPEDIENTE_ID** | INTEGER | SÍ | Tipo de expediente según clasificación normativa | FK → TIPOS_EXPEDIENTES(ID). Define lógica procedimental aplicable |
 | **HEREDADO** | BOOLEAN | SÍ | Indica si el expediente proviene del sistema anterior | TRUE = datos incompletos, solo metadatos heredados. FALSE/NULL = expediente gestionado completamente en este sistema |
 | **PROYECTO_ID** | INTEGER | NO | Proyecto técnico único asociado al expediente | FK → PROYECTOS(ID). **UNIQUE** (relación 1:1). **Nuevo campo v3.0** |
+| **TITULAR_ID** | INTEGER | SÍ | Titular actual del expediente | FK → ENTIDADES(ID). Nullable para expedientes en creación. **Nuevo campo v3.1** - Issue #64 |
 
 #### Claves
 
@@ -2737,10 +3134,63 @@ Tabla principal que representa cada expediente de tramitación administrativa.
   - `RESPONSABLE_ID` → `USUARIOS(ID)`
   - `TIPO_EXPEDIENTE_ID` → `TIPOS_EXPEDIENTES(ID)`
   - `PROYECTO_ID` → `PROYECTOS(ID)`
+  - `TITULAR_ID` → `ENTIDADES(ID)` ON DELETE SET NULL
+
+#### Índices
+
+- `idx_expedientes_titular` sobre `TITULAR_ID`
+- `idx_expedientes_numero_at` sobre `NUMERO_AT`
+- `idx_expedientes_proyecto` sobre `PROYECTO_ID`
+- `idx_expedientes_responsable` sobre `RESPONSABLE_ID`
+- `idx_expedientes_tipo` sobre `TIPO_EXPEDIENTE_ID`
+
+#### Decisiones de Diseño
+
+##### Campo TITULAR_ID (v3.1 - Issue #64)
+
+**Contexto:**  
+Los expedientes administrativos tienen un titular legal que evoluciona durante su vida útil. Cambios de titularidad pueden ocurrir por transmisión de instalación, herencia, fusión empresarial, etc.
+
+**Problema resuelto:**  
+- **Consulta eficiente del titular actual** sin joins constantes a tabla de histórico
+- **Punto de referencia** para modelo temporal de titularidad
+- **Validación:** expediente sin titular = expediente incompleto (estado transitorio válido durante creación)
+
+**Decisiones:**
+
+1. **Nullable = TRUE**
+   - **Motivo:** Permite flujo de creación por etapas (expediente → proyecto → solicitud inicial)
+   - **Regla:** `titular_id` debe asignarse antes de tramitar primera solicitud de autorización
+   - **Validación:** En capa de negocio, no constraint CHECK (permite estados transitorios)
+
+2. **FK a ENTIDADES (no ENTIDADES_ADMINISTRADOS)**
+   - **Motivo:** Entidad es tabla base polimórfica. Validación de rol "administrado" se realiza en capa de aplicación
+   - **Ventaja:** Preparado para casos excepcionales (ej: organismos públicos titulares temporales de instalaciones)
+   - **Referencia:** Tabla `ESTRUCTURA.TIPOS_ENTIDADES` define qué tipos pueden ser titulares via flag `puede_ser_solicitante`
+
+3. **ON DELETE SET NULL (no CASCADE)**
+   - **Motivo:** Preservar integridad histórica del expediente aunque se elimine la entidad
+   - **Impacto:** Expediente con titular NULL por borrado = estado excepcional que requiere corrección administrativa
+
+4. **Campo redundante con histórico**
+   - **Motivo:** Optimización de rendimiento. El 99% de consultas acceden al titular actual, no al histórico
+   - **Coste:** Sincronización titular_id ↔ HISTORICO_TITULARES_EXPEDIENTE gestionada mediante triggers o lógica aplicación
+   - **Alternativa descartada:** Consultar siempre `MAX(fecha_desde) WHERE fecha_hasta IS NULL` en histórico (costoso en queries recurrentes)
+
+**Relación con tabla HISTORICO_TITULARES_EXPEDIENTE:**
+
+El campo `titular_id` representa una **caché desnormalizada** del titular actual. La tabla `HISTORICO_TITULARES_EXPEDIENTE` (Issue #64) almacena:
+- Todos los titulares históricos con vigencia temporal
+- Motivo del cambio (INICIAL, VENTA, HERENCIA, FUSION, etc.)
+- Solicitud que originó el cambio de titularidad
+
+**Regla de consistencia:**  
+`expedientes.titular_id` DEBE coincidir con el registro de `historico_titulares_expediente` donde `expediente_id = expedientes.id AND fecha_hasta IS NULL`
 
 #### Notas de Versión
 
 - **v3.0:** Añadido campo `PROYECTO_ID` (relación 1:1 con proyecto). Un expediente tiene exactamente un proyecto técnico, que evoluciona mediante documentos versionados.
+- **v3.1 (Issue #64):** Añadido campo `TITULAR_ID` para gestión de titularidad. Campo nullable que almacena el titular actual del expediente. Relacionado con nueva tabla `HISTORICO_TITULARES_EXPEDIENTE` para trazabilidad completa de cambios.
 
 ---
 
