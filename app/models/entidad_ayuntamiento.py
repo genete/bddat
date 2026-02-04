@@ -41,6 +41,12 @@ class EntidadAyuntamiento(db.Model):
         comment='Código DIR3 para notificaciones SIR'
     )
     
+    observaciones = db.Column(
+        db.Text,
+        nullable=True,
+        comment='Observaciones sobre el ayuntamiento'
+    )
+    
     # Relación inversa con Entidad
     entidad = db.relationship('Entidad', back_populates='datos_ayuntamiento')
     
@@ -52,7 +58,8 @@ class EntidadAyuntamiento(db.Model):
         """Serialización para API."""
         return {
             'entidad_id': self.entidad_id,
-            'codigo_dir3': self.codigo_dir3
+            'codigo_dir3': self.codigo_dir3,
+            'observaciones': self.observaciones
         }
     
     @property
