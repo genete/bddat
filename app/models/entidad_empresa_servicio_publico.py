@@ -25,11 +25,12 @@ class EntidadEmpresaServicioPublico(db.Model):
     """
     
     __tablename__ = 'entidades_empresas_servicio_publico'
+    __table_args__ = {'schema': 'public'}
     
     # Campos
     entidad_id = db.Column(
         db.Integer, 
-        db.ForeignKey('entidades.id', ondelete='CASCADE'), 
+        db.ForeignKey('public.entidades.id', ondelete='CASCADE'), 
         primary_key=True,
         comment='Referencia a entidad base (PK y FK con CASCADE)'
     )
