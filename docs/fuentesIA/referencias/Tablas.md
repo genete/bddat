@@ -3,7 +3,7 @@
 **Sistema de Tramitación de Expedientes de Alta Tensión (BDDAT)**  
 **Formato agnóstico a la base de datos**  
 **Fecha:** 04/02/2026  
-**Generado automáticamente:** 04/02/2026 10:06 por merge_tables.py
+**Generado automáticamente:** 04/02/2026 17:14 por merge_tables.py
 
 ---
 
@@ -1913,19 +1913,17 @@ Metadatos específicos de corporaciones locales (ayuntamientos) que pueden actua
 | Campo | Tipo | Descripción | Nullable | Notas |
 |:---|:---|:---|:---|:---|
 | **ENTIDAD_ID** | INTEGER | Referencia a entidad base | NO | PK y FK → ENTIDADES(ID), UNIQUE, CASCADE |
-| **CODIGO_DIR3** | VARCHAR(10) | Código DIR3 oficial del ayuntamiento | NO | UNIQUE. Para notificaciones SIR cuando actúa como organismo consultado |
-| **OBSERVACIONES** | TEXT | Notas adicionales | SÍ | Horarios atención, contactos específicos, etc. |
+| **CODIGO_DIR3** | VARCHAR(20) | Código DIR3 oficial del ayuntamiento | SÍ | UNIQUE (cuando no es NULL). Para notificaciones SIR cuando actúa como organismo consultado |
 
 #### Claves
 
 - **PK:** `ENTIDAD_ID`
-- **UNIQUE:** `CODIGO_DIR3`
 - **FK:**
   - `ENTIDAD_ID` → `ENTIDADES(ID)` ON DELETE CASCADE
 
-#### Índices Recomendados
+#### Índices
 
-- `CODIGO_DIR3` (único, búsqueda rápida por código oficial)
+- `ix_public_entidades_ayuntamientos_codigo_dir3` (único, sobre `CODIGO_DIR3`)
 
 #### Relaciones
 
@@ -1933,15 +1931,16 @@ Metadatos específicos de corporaciones locales (ayuntamientos) que pueden actua
 
 #### Notas de Versión
 
-- **v1.0** (01/02/2026): Creación inicial con estructura minimalista (solo DIR3 + observaciones)
+- **v1.0** (01/02/2026): Creación inicial con estructura minimalista
+- **v1.1** (04/02/2026): Sincronización con schema.sql - codigo_dir3 es VARCHAR(20) y NULLABLE, eliminar campo observaciones
 
 #### Filosofía
 
 Tabla de metadatos para **ayuntamientos** (corporaciones locales municipales):
 
 - **Relación 1:1** con `ENTIDADES` mediante `ENTIDAD_ID` como PK y FK
-- **Estructura minimalista:** Solo campos que NO están en `ENTIDADES`
-- **CODIGO_DIR3 como clave de negocio:** Identificación oficial para comunicaciones interadministrativas
+- **Estructura minimalista:** Solo código DIR3 (opcional)
+- **CODIGO_DIR3 opcional:** Puede ser NULL (ayuntamientos pequeños sin código DIR3, o datos históricos)
 - **Sin representante:** La entidad es la corporación en sí (persona jurídica pública)
 - **Múltiples roles posibles:** Solicitante + Consultado + Publicador (triple entrada posible)
 - **Notificaciones:** SIR (DIR3) cuando actúa como organismo, Notifica cuando actúa como solicitante
@@ -1956,8 +1955,9 @@ Tabla de metadatos para **ayuntamientos** (corporaciones locales municipales):
 - `TELEFONO`: Teléfono general
 - `DIRECCION`, `CODIGO_POSTAL`: Sede del ayuntamiento (Casa Consistorial)
 - `MUNICIPIO_ID`: FK a MUNICIPIOS → **El ayuntamiento ES el municipio que gestiona**
+- `NOTAS`: Observaciones generales (horarios, contactos específicos, etc.)
 
-**Si se necesitan contactos específicos (email urbanismo, teléfono medio ambiente), usar campo `OBSERVACIONES`.**
+**Para contactos específicos (email urbanismo, teléfono medio ambiente), usar campo `NOTAS` en `ENTIDADES`.**
 
 #### CIF de Ayuntamientos
 
@@ -1989,6 +1989,11 @@ Tabla de metadatos para **ayuntamientos** (corporaciones locales municipales):
 - Identificación única para notificaciones vía **SIR** cuando el ayuntamiento actúa como **organismo consultado** (emite informe)
 - NO se usa para notificar cuando actúa como **solicitante** (ahí usa Notifica con email)
 
+**Campo NULLABLE:**
+- Ayuntamientos pequeños pueden no tener código DIR3 registrado
+- Datos históricos de ayuntamientos sin código DIR3
+- Ayuntamientos en proceso de registro
+
 **Consulta de códigos DIR3:**
 - Portal oficial: https://administracionelectronica.gob.es/ctt/dir3
 - Descargas: https://administracionelectronica.gob.es/ctt/dir3/descargas
@@ -2004,10 +2009,10 @@ Tabla de metadatos para **ayuntamientos** (corporaciones locales municipales):
    - `nombre_completo`: "Ayuntamiento de Alcorcón"
    - `tipo_entidad_id`: AYUNTAMIENTO
    - `municipio_id`: FK al municipio de Alcorcón
+   - `notas`: "Horario: L-V 9-14h. Email urbanismo: urbanismo@aytoalcorcon.es"
 
 2. **ENTIDADES_AYUNTAMIENTOS** (rol: consultado + publicador):
    - `codigo_dir3`: "L01280061" (código oficial)
-   - `observaciones`: "Horario: L-V 9-14h. Email urbanismo: urbanismo@aytoalcorcon.es"
 
 3. **ENTIDADES_ADMINISTRADOS** (rol: solicitante ocasional):
    - `email_notificaciones`: "notifica@aytoalcorcon.es"
@@ -2021,7 +2026,8 @@ Tabla de metadatos para **ayuntamientos** (corporaciones locales municipales):
 -- Aparecen ayuntamientos con tipo AYUNTAMIENTO
 SELECT e.* FROM entidades e
 JOIN tipos_entidades te ON e.tipo_entidad_id = te.id
-WHERE te.puede_ser_consultado = TRUE;
+WHERE te.puede_ser_consultado = TRUE
+AND e.activo = TRUE;
 
 -- Contexto: Crear solicitud (ayto. solicita instalación propia)
 -- Solo aparecen entidades con registro en ENTIDADES_ADMINISTRADOS
@@ -2050,15 +2056,15 @@ AND e.activo = TRUE;
 
 #### Reglas de Negocio
 
-1. **CODIGO_DIR3 obligatorio** (NOT NULL, UNIQUE)
+1. **CODIGO_DIR3 opcional** (puede ser NULL)
 2. **CIF_NIF obligatorio** en `ENTIDADES` (formato P+INE+control)
 3. **Sin representante** (no aplican campos `REPRESENTANTE_*`)
 4. **Múltiples roles:** Un ayuntamiento puede estar en esta tabla Y en `ENTIDADES_ADMINISTRADOS`
 5. **Notificaciones duales:**
-   - Como **organismo consultado**: SIR (usa CODIGO_DIR3)
+   - Como **organismo consultado**: SIR (usa CODIGO_DIR3 si existe)
    - Como **solicitante**: Notifica (usa email de `ENTIDADES_ADMINISTRADOS`)
 6. **Publicación anuncios:** Tablón edictos propio según Ley 39/2015 Art. 45.4 (obligación vs administrados, no dato BDDAT)
-7. **Validación DIR3:** Formato alfanumérico, 8-10 caracteres
+7. **Validación DIR3:** Formato alfanumérico, 8-10 caracteres (si no es NULL)
 8. **MUNICIPIO_ID en ENTIDADES:** El ayuntamiento gestiona el municipio al que pertenece (relación 1:1)
 
 #### Tablón de Edictos Electrónico: Aclaración Legal
@@ -2084,9 +2090,9 @@ BDDAT → Sistema SIR (Servicio Integrado de Registro) → Ayuntamiento recibe n
 
 **Conclusión:**
 - **NO almacenamos URL del tablón** (no es dato estructurado que necesitemos)
-- **Usamos SIR** para enviar anuncios al ayuntamiento
+- **Usamos SIR** para enviar anuncios al ayuntamiento (si tiene DIR3)
 - **El ayuntamiento** es responsable de publicar en su tablón (sede electrónica)
-- **Campo URL_TABLON_EDICTOS no existe** (estaría NULL eternamente)
+- **Si no tiene DIR3:** Métodos tradicionales (correo postal, email general)
 
 #### Validaciones
 
@@ -2115,7 +2121,7 @@ def validar_codigo_dir3(codigo):
     Ejemplos válidos: L01410084, A12002696
     """
     if not codigo:
-        return False
+        return True  # Nullable
     
     # Patrón: 1-2 letras mayúsculas + 7-8 dígitos
     patron = r'^[A-Z]{1,2}\d{7,8}$'
@@ -2127,7 +2133,7 @@ class EntidadAyuntamiento(db.Model):
     @validates('codigo_dir3')
     def validate_codigo_dir3(self, key, value):
         if not value:
-            raise ValueError("Código DIR3 es obligatorio")
+            return None  # Nullable
         
         value_upper = value.upper().strip()
         
@@ -2150,6 +2156,7 @@ function validarCIFAyuntamiento(cif) {
 }
 
 function validarDIR3(codigo) {
+    if (!codigo || codigo.trim() === '') return true; // Nullable
     const patron = /^[A-Z]{1,2}\d{7,8}$/;
     return patron.test(codigo.toUpperCase());
 }
@@ -2170,7 +2177,7 @@ SELECT
     m.nombre AS municipio
 FROM entidades e
 JOIN entidades_ayuntamientos ea ON e.id = ea.entidad_id
-JOIN municipios m ON e.municipio_id = m.id
+JOIN estructura.municipios m ON e.municipio_id = m.id
 WHERE e.activo = TRUE
 ORDER BY e.nombre_completo;
 ```
@@ -2208,32 +2215,50 @@ WHERE e.activo = TRUE
 ORDER BY e.nombre_completo;
 ```
 
-**5. Ayuntamientos de una provincia específica:**
+**5. Ayuntamientos sin código DIR3 (métodos tradicionales):**
+
+```sql
+SELECT 
+    e.nombre_completo,
+    e.cif_nif,
+    e.email,
+    e.telefono,
+    m.nombre AS municipio
+FROM entidades e
+JOIN entidades_ayuntamientos ea ON e.id = ea.entidad_id
+JOIN estructura.municipios m ON e.municipio_id = m.id
+WHERE ea.codigo_dir3 IS NULL
+AND e.activo = TRUE
+ORDER BY e.nombre_completo;
+```
+
+**6. Ayuntamientos de una provincia específica:**
 
 ```sql
 SELECT 
     e.nombre_completo,
     m.nombre AS municipio,
-    p.nombre AS provincia,
+    m.provincia,
     ea.codigo_dir3
 FROM entidades e
 JOIN entidades_ayuntamientos ea ON e.id = ea.entidad_id
-JOIN municipios m ON e.municipio_id = m.id
-JOIN provincias p ON m.provincia_id = p.id
-WHERE p.codigo = '28'  -- Madrid
+JOIN estructura.municipios m ON e.municipio_id = m.id
+WHERE m.provincia = 'Ourense'
 AND e.activo = TRUE
 ORDER BY m.nombre;
 ```
 
-**6. Verificar si un ayuntamiento puede actuar como solicitante:**
+**7. Verificar si un ayuntamiento puede actuar como solicitante:**
 
 ```sql
 SELECT 
     e.nombre_completo,
+    e.cif_nif,
     CASE 
         WHEN ead.entidad_id IS NOT NULL THEN 'SÍ'
         ELSE 'NO'
-    END AS puede_solicitar
+    END AS puede_solicitar,
+    ead.email_notificaciones
 FROM entidades e
 JOIN entidades_ayuntamientos ea ON e.id = ea.entidad_id
 LEFT JOIN entidades_administrados ead ON e.id = ead.entidad_id
@@ -2660,19 +2685,14 @@ AND e.activo = TRUE;
 
 ### ENTIDADES_EMPRESAS_SERVICIO_PUBLICO
 
-Metadatos específicos de empresas operadoras de infraestructuras críticas y servicios públicos que pueden actuar simultáneamente como solicitantes (instalaciones propias) y como organismos consultados (informes sobre afecciones a sus infraestructuras).
+Metadatos específicos de empresas operadoras de infraestructuras críticas y servicios públicos que actúan como organismos consultados (informes sobre afecciones a sus infraestructuras). A diferencia de otras entidades, estas empresas pueden actuar simultáneamente como solicitantes (necesitan entrada en ENTIDADES_ADMINISTRADOS) y consultados.
 
 #### Estructura
 
 | Campo | Tipo | Descripción | Nullable | Notas |
 |:---|:---|:---|:---|:---|
 | **ENTIDAD_ID** | INTEGER | Referencia a entidad base | NO | PK y FK → ENTIDADES(ID), UNIQUE, CASCADE |
-| **EMAIL_NOTIFICACIONES** | VARCHAR(120) | Email oficial para sistema Notifica | NO | Email donde se reciben notificaciones electrónicas oficiales cuando actúan como solicitantes. Puede ser corporativo |
-| **REPRESENTANTE_NIF_CIF** | VARCHAR(20) | NIF/CIF de quien representa/gestiona | SÍ | NULL si gestión corporativa directa. Normalizado como CIF/NIF |
-| **REPRESENTANTE_NOMBRE** | VARCHAR(200) | Nombre completo del representante | SÍ | NULL si gestión corporativa. Puede ser persona física (responsable) o jurídica (consultora contratada) |
-| **REPRESENTANTE_TELEFONO** | VARCHAR(20) | Teléfono del representante | SÍ | Contacto directo con quien gestiona |
-| **REPRESENTANTE_EMAIL** | VARCHAR(120) | Email del representante | SÍ | Email de contacto (NO oficial para notificaciones, solo coordinación) |
-| **NOTAS_REPRESENTACION** | TEXT | Observaciones sobre la representación | SÍ | Tipo de cargo o relación: "Responsable zona sur", "Dpto. Afecciones", etc. |
+| **CODIGO_DIR3** | VARCHAR(20) | Código DIR3 para notificaciones SIR | SÍ | Opcional, no todas las empresas tienen. Para comunicaciones interadministrativas |
 
 #### Claves
 
@@ -2680,22 +2700,9 @@ Metadatos específicos de empresas operadoras de infraestructuras críticas y se
 - **FK:**
   - `ENTIDAD_ID` → `ENTIDADES(ID)` ON DELETE CASCADE
 
-#### Índices Recomendados
+#### Índices
 
-- `REPRESENTANTE_NIF_CIF` (búsquedas por representante)
-- `EMAIL_NOTIFICACIONES` (búsquedas por email oficial)
-
-#### Constraints
-
-```sql
--- Si hay representante_nif_cif, debe haber representante_nombre
-CONSTRAINT chk_representante_coherente
-    CHECK (
-        (representante_nif_cif IS NULL AND representante_nombre IS NULL)
-        OR
-        (representante_nif_cif IS NOT NULL AND representante_nombre IS NOT NULL)
-    )
-```
+- `ix_public_entidades_empresas_servicio_publico_codigo_dir3` (único, sobre `CODIGO_DIR3`)
 
 #### Relaciones
 
@@ -2703,160 +2710,278 @@ CONSTRAINT chk_representante_coherente
 
 #### Notas de Versión
 
-- **v1.0** (01/02/2026): Creación inicial con estructura idéntica a ENTIDADES_ADMINISTRADOS (diferenciación semántica por tipo)
+- **v1.0** (01/02/2026): Creación inicial con estructura minimalista (solo DIR3 opcional)
+- **v1.1** (04/02/2026): Sincronización con schema.sql - Eliminar campos de representante que NO existen en la tabla real
 
 #### Filosofía
 
 Tabla de metadatos para **empresas de servicio público** (operadores de infraestructuras críticas):
 
 - **Relación 1:1** con `ENTIDADES` mediante `ENTIDAD_ID` como PK y FK
-- **Estructura idéntica a ENTIDADES_ADMINISTRADOS:** Los campos son los mismos, la diferencia es **semántica**
+- **Estructura minimalista:** Solo código DIR3 opcional
 - **Doble rol simultáneo:**
-  - Como **solicitante**: Presentan solicitudes para sus propias instalaciones (ej: nueva subestación eléctrica)
-  - Como **organismo consultado**: Emiten informes sobre afecciones a sus infraestructuras existentes
-- **Notificaciones vía Notifica:** Cuando actúan como solicitantes, usan sistema Notifica (como administrados)
-- **Par obligatorio Notifica:** `(CIF/NIF, EMAIL_NOTIFICACIONES)` debe estar completo
+  - Como **organismo consultado**: Emiten informes sobre afecciones a sus infraestructuras existentes (uso DIR3 si lo tienen)
+  - Como **solicitante**: Si necesitan presentar solicitudes propias, deben tener entrada adicional en `ENTIDADES_ADMINISTRADOS`
+- **DIR3 opcional:** No todas las empresas privadas tienen código DIR3 (solo si son operadores de infraestructuras con convenios interadministrativos)
 
-#### ¿Por qué tabla separada si campos son iguales?
+#### Campos que YA están en ENTIDADES (no duplicar)
 
-**La diferencia es SEMÁNTICA, no estructural:**
+**Todos estos datos viven en `ENTIDADES`:**
 
-1. **Tipo de entidad diferente** en `TIPOS_ENTIDADES`:
-   - `ADMINISTRADO`: Puede ser solicitante, NO puede ser consultado
-   - `EMPRESA_SERVICIO_PUBLICO`: Puede ser solicitante Y consultado
+- `CIF_NIF`: CIF de la empresa operadora
+- `NOMBRE_COMPLETO`: Razón social (ej: "E-Distribución Redes Digitales S.L.U.", "Gas Natural Distribución SDG S.A.")
+- `EMAIL`: Email general corporativo
+- `TELEFONO`: Teléfono general
+- `DIRECCION`, `CODIGO_POSTAL`, `MUNICIPIO_ID`: Domicilio social
+- `ACTIVO`: Borrado lógico
 
-2. **Filtrado automático en interfaz:**
-   ```sql
-   -- Fase CONSULTAS: Solicitar informe sobre afecciones
-   -- Solo aparecen empresas servicio público + organismos + ayuntamientos
-   SELECT e.* FROM entidades e
-   JOIN tipos_entidades te ON e.tipo_entidad_id = te.id
-   WHERE te.puede_ser_consultado = TRUE;
-   ```
+**Para contactos específicos o representantes, usar campo `NOTAS` en `ENTIDADES`.**
 
-3. **Lógica de negocio distinta:**
-   - Administrado: Solo recibe notificaciones
-   - Empresa servicio público: Recibe Y emite documentos oficiales (informes)
+#### Representación y Notificaciones
 
-4. **Facilidad para el tramitador:**
-   - Al crear consulta a organismo → Solo aparecen entidades con capacidad de emisión de informes
-   - El filtrado es automático según `tipos_entidades.puede_ser_consultado`
+**A DIFERENCIA de las tablas MD anteriores:**
+
+Esta tabla **NO tiene campos de representante** (`representante_nif_cif`, `representante_nombre`, etc.). 
+
+**¿Por qué?**
+
+1. **Cuando actúan como consultadas:** No necesitan notificaciones vía Notifica (emiten informes, no los reciben)
+2. **Cuando actúan como solicitantes:** Deben tener entrada en `ENTIDADES_ADMINISTRADOS` donde SÍ están los campos de representante
+
+**Patrón real:**
+```
+Empresa X (ENTIDADES)
+│
+├─ ENTIDADES_EMPRESAS_SERVICIO_PUBLICO (rol: consultada)
+│   └─ codigo_dir3 (opcional)
+│
+└─ ENTIDADES_ADMINISTRADOS (rol: solicitante)
+    ├─ email_notificaciones
+    ├─ representante_nif_cif
+    └─ representante_nombre
+```
 
 #### Ejemplos de Entidades (tipos)
 
 **Sector energético:**
-- Operadores de redes eléctricas (distribución, transporte)
-- Operadores de redes de gas
-- Empresas de servicios energéticos
+- E-Distribución Redes Digitales S.L.U. (distribuidora eléctrica)
+- Red Eléctrica de España S.A.U. (transporte eléctrica)
+- Gas Natural Distribución SDG S.A. (distribuidora gas)
 
 **Sector agua:**
-- Consorcios de Aguas provinciales
-- Empresas metropolitanas de abastecimiento
+- Consorcio de Aguas de la provincia
+- Empresa Metropolitana de Abastecimiento
 
 **Sector transporte:**
-- Operadores de infraestructuras ferroviarias
+- ADIF (Administrador de Infraestructuras Ferroviarias)
 - Operadores de transporte por cable
 
 **Sector telecomunicaciones:**
-- Operadores de telecomunicaciones
+- Telefónica de España S.A.U.
 - Operadores de fibra óptica
 
-#### Regla de Negocio: CIF/NIF para Notifica
+#### Sistema DIR3: Empresas de Servicio Público
 
-**Idéntica a `ENTIDADES_ADMINISTRADOS`** (ver O_015):
+**¿Qué es DIR3 para empresas privadas?**
+- Código opcional que algunas empresas de servicio público tienen cuando operan infraestructuras con convenios interadministrativos
+- Formato: 1-2 letras + 7-8 números (ej: `E12345678`)
+- **NO todas las empresas lo tienen** (mayormente empresas públicas o con participación pública)
 
-- Si hay `representante_nif_cif` → usar ese (quien gestiona)
-- Si `representante_nif_cif` es NULL → usar `entidades.cif_nif` (empresa titular)
+**Uso en BDDAT:**
+- Identificación para notificaciones vía **SIR** cuando actúan como **organismos consultados**
+- Si no tienen DIR3, se usan métodos tradicionales (email, correo postal)
 
-**Consulta SQL:**
+**Campo nullable:**
+- TRUE (no obligatorio)
+- Mayoría de empresas privadas no tienen DIR3
+
+#### Regla de Negocio: Doble Entrada Posible
+
+**Una empresa puede estar en DOS tablas de metadatos:**
+
+1. **Esta tabla** (`ENTIDADES_EMPRESAS_SERVICIO_PUBLICO`):
+   - Para actuar como consultada (emitir informes)
+   - Solo necesita `codigo_dir3` (opcional)
+
+2. **`ENTIDADES_ADMINISTRADOS`**:
+   - Para actuar como solicitante (presentar solicitudes)
+   - Necesita `email_notificaciones`, `representante_*`, etc.
+
+**Ejemplo real:**
 ```sql
--- Obtener par para notificar
-SELECT 
-    COALESCE(ees.representante_nif_cif, e.cif_nif) AS cif_notifica,
-    ees.email_notificaciones
-FROM entidades_empresas_servicio_publico ees
-JOIN entidades e ON ees.entidad_id = e.id
-WHERE ees.entidad_id = :id;
+-- E-Distribución solicita autorización para nueva subestación
+-- Y también es consultada sobre afecciones en proyectos de terceros
+
+-- 1. ENTIDADES (base)
+INSERT INTO entidades (tipo_entidad_id, cif_nif, nombre_completo)
+VALUES (tipo_empresa_servicio_publico_id, 'B12345678', 'E-Distribución Redes Digitales S.L.U.');
+
+-- 2. ENTIDADES_EMPRESAS_SERVICIO_PUBLICO (rol: consultada)
+INSERT INTO entidades_empresas_servicio_publico (entidad_id, codigo_dir3)
+VALUES (entidad_id, NULL);  -- Sin DIR3
+
+-- 3. ENTIDADES_ADMINISTRADOS (rol: solicitante)
+INSERT INTO entidades_administrados (
+    entidad_id, 
+    email_notificaciones,
+    representante_nif_cif,
+    representante_nombre
+) VALUES (
+    entidad_id,
+    'notificaciones@edistribucion.com',
+    'B98765432',
+    'Consultora ACME Proyectos S.L.'
+);
 ```
 
-#### Flujo UX: Copia de Datos entre Roles
+#### Filtrado Automático en Interfaz
 
-**Escenario:** Una empresa ya existe con un rol, se añade segundo rol
-
-**Flujo:**
-1. Usuario introduce CIF que ya existe en el sistema
-2. Sistema detecta que CIF ya tiene uno o más roles activos
-3. Sistema ofrece copiar datos de representación de rol existente
-4. Usuario selecciona de qué rol copiar o introduce datos nuevos
-
-**Interfaz (mockup):**
-```
-┌─────────────────────────────────────────────────┐
-│ AÑADIR ROL: Empresa Servicio Público            │
-├─────────────────────────────────────────────────┤
-│ Entidad: [Nombre detectado del CIF]             │
-│ CIF: [CIF introducido]                          │
-│                                                 │
-│ ⓘ Este CIF ya tiene roles activos:             │
-│    • [Lista de roles existentes]               │
-│                                                 │
-│ [📋 Copiar datos del rol: [Selector] ▼]        │
-│                                                 │
-├─────────────────────────────────────────────────┤
-│ Email notificaciones:                           │
-│ [campo autocompletado o vacío]                  │
-│                                                 │
-│ Representante NIF/CIF:                          │
-│ [campo autocompletado o vacío]                  │
-│                                                 │
-│ Representante nombre:                           │
-│ [campo autocompletado o vacío]                  │
-│                                                 │
-│ ...                                             │
-└─────────────────────────────────────────────────┘
+**Contexto 1: Solicitar informe sobre afecciones (fase CONSULTAS)**
+```sql
+-- Solo aparecen empresas servicio público + organismos + ayuntamientos
+SELECT e.* FROM entidades e
+JOIN tipos_entidades te ON e.tipo_entidad_id = te.id
+WHERE te.puede_ser_consultado = TRUE
+AND e.activo = TRUE;
 ```
 
-**Lógica Python:**
+**Contexto 2: Crear solicitud (empresa solicita autorización propia)**
+```sql
+-- Solo aparecen entidades con registro en ENTIDADES_ADMINISTRADOS
+SELECT e.* FROM entidades e
+JOIN entidades_administrados ea ON e.id = ea.entidad_id
+WHERE e.activo = TRUE;
+```
+
+#### Validaciones
+
+**Validación Python:**
+
 ```python
-def sugerir_copia_datos(cif_nif):
+import re
+
+def validar_codigo_dir3(codigo):
     """
-    Al añadir nuevo rol, detecta roles existentes y sugiere copia.
-    Retorna lista de roles disponibles para copiar datos.
+    Valida formato de código DIR3.
+    Formato: 1-2 letras + 7-8 números
+    Ejemplos válidos: E12345678, EA0044689
     """
-    entidad = Entidad.query.filter_by(cif_nif=cif_nif).first()
-    if not entidad:
-        return None  # CIF nuevo, no sugerir nada
+    if not codigo:
+        return True  # Nullable, válido si es None/vacío
     
-    roles_existentes = []
+    # Patrón: 1-2 letras mayúsculas + 7-8 dígitos
+    patron = r'^[A-Z]{1,2}\d{7,8}$'
+    return re.match(patron, codigo.upper()) is not None
+
+class EntidadEmpresaServicioPublico(db.Model):
+    # ...
     
-    # Detectar roles con metadatos de representación
-    if entidad.datos_administrado:
-        roles_existentes.append({
-            'tipo': 'Administrado',
-            'datos': entidad.datos_administrado
-        })
-    
-    if entidad.datos_empresa_servicio:
-        roles_existentes.append({
-            'tipo': 'Empresa Servicio Público',
-            'datos': entidad.datos_empresa_servicio
-        })
-    
-    # ... otros roles con representación
-    
-    return roles_existentes
+    @validates('codigo_dir3')
+    def validate_codigo_dir3(self, key, value):
+        if not value:
+            return None  # Nullable
+        
+        value_upper = value.upper().strip()
+        
+        if not validar_codigo_dir3(value_upper):
+            raise ValueError(
+                f"Código DIR3 inválido: {value}. "
+                "Formato esperado: 1-2 letras + 7-8 dígitos (ej: E12345678)"
+            )
+        
+        return value_upper
 ```
 
-#### Validaciones y Reglas de Negocio
+**Validación en interfaz:**
 
-**Las validaciones son idénticas a `ENTIDADES_ADMINISTRADOS`** (ver O_015):
+```javascript
+// Validación cliente (JavaScript)
+function validarDIR3(codigo) {
+    if (!codigo || codigo.trim() === '') return true; // Nullable
+    const patron = /^[A-Z]{1,2}\d{7,8}$/;
+    return patron.test(codigo.toUpperCase());
+}
+```
 
-1. `EMAIL_NOTIFICACIONES` obligatorio (NOT NULL)
-2. Coherencia representante: si hay CIF, debe haber nombre (constraint)
-3. Validación algoritmo CIF/NIF (si no es NULL)
-4. Par `(CIF_NOTIFICA, EMAIL_NOTIFICACIONES)` debe estar completo
+#### Consultas Frecuentes
 
-**Consultar O_015_ENTIDADES_ADMINISTRADOS.md** para detalles completos de validaciones Python y consultas SQL.
+**1. Listar empresas de servicio público con DIR3:**
+
+```sql
+SELECT 
+    e.id,
+    e.nombre_completo,
+    e.cif_nif,
+    ees.codigo_dir3,
+    e.email,
+    e.telefono
+FROM entidades e
+JOIN entidades_empresas_servicio_publico ees ON e.id = ees.entidad_id
+WHERE e.activo = TRUE
+ORDER BY e.nombre_completo;
+```
+
+**2. Empresas que son consultadas Y solicitantes:**
+
+```sql
+SELECT 
+    e.nombre_completo,
+    e.cif_nif,
+    ees.codigo_dir3,
+    ea.email_notificaciones,
+    ea.representante_nombre
+FROM entidades e
+JOIN entidades_empresas_servicio_publico ees ON e.id = ees.entidad_id
+JOIN entidades_administrados ea ON e.id = ea.entidad_id
+WHERE e.activo = TRUE
+ORDER BY e.nombre_completo;
+```
+
+**3. Empresas sin DIR3 (solo métodos tradicionales):**
+
+```sql
+SELECT 
+    e.nombre_completo,
+    e.cif_nif,
+    e.email,
+    e.telefono
+FROM entidades e
+JOIN entidades_empresas_servicio_publico ees ON e.id = ees.entidad_id
+WHERE ees.codigo_dir3 IS NULL
+AND e.activo = TRUE
+ORDER BY e.nombre_completo;
+```
+
+**4. Verificar si empresa puede actuar como solicitante:**
+
+```sql
+SELECT 
+    e.nombre_completo,
+    CASE 
+        WHEN ea.entidad_id IS NOT NULL THEN 'SÍ'
+        ELSE 'NO'
+    END AS puede_solicitar,
+    ea.email_notificaciones
+FROM entidades e
+JOIN entidades_empresas_servicio_publico ees ON e.id = ees.entidad_id
+LEFT JOIN entidades_administrados ea ON e.id = ea.entidad_id
+WHERE e.cif_nif = :cif;
+```
+
+**5. Empresas por sector (usando notas o clasificación):**
+
+```sql
+-- Asumiendo que el sector está en campo NOTAS o en un futuro campo sector
+SELECT 
+    e.nombre_completo,
+    e.cif_nif,
+    ees.codigo_dir3
+FROM entidades e
+JOIN entidades_empresas_servicio_publico ees ON e.id = ees.entidad_id
+WHERE e.notas ILIKE '%energía%'  -- Filtro ejemplo
+AND e.activo = TRUE
+ORDER BY e.nombre_completo;
+```
 
 ---
 
@@ -2864,26 +2989,31 @@ def sugerir_copia_datos(cif_nif):
 
 ### ENTIDADES_ORGANISMOS_PUBLICOS
 
-Metadatos específicos de administraciones públicas y organismos oficiales que actúan como organismos consultados (informes técnicos/administrativos) en procedimientos de autorización.
+Metadatos específicos de administraciones públicas y organismos oficiales que actúan como organismos consultados (informes técnicos/administrativos) en procedimientos de autorización. Incluye información sobre ámbito territorial, tipo de organismo y vigencia temporal.
 
 #### Estructura
 
 | Campo | Tipo | Descripción | Nullable | Notas |
 |:---|:---|:---|:---|:---|
 | **ENTIDAD_ID** | INTEGER | Referencia a entidad base | NO | PK y FK → ENTIDADES(ID), UNIQUE, CASCADE |
-| **CODIGO_DIR3** | VARCHAR(10) | Código DIR3 oficial del organismo | NO | UNIQUE. Identificación única para notificaciones vía SIR. Formato: EA0044689, A12002696, etc. |
-| **OBSERVACIONES** | TEXT | Notas sobre competencias y ámbito | SÍ | Ámbito territorial, materias específicas, contactos alternativos, etc. |
+| **CODIGO_DIR3** | VARCHAR(20) | Código DIR3 oficial del organismo | SÍ | Identificación para notificaciones vía SIR/BandeJA. Formato: EA0044689, A12002696 |
+| **AMBITO** | VARCHAR(50) | Ámbito del organismo | SÍ | ESTATAL, AUTONOMICO, LOCAL |
+| **TIPO_ORGANISMO** | VARCHAR(50) | Tipo específico de organismo | SÍ | Consejería, Ministerio, Confederación, Entidad Pública, etc. |
+| **LEGISLATURA** | VARCHAR(50) | Legislatura asociada | SÍ | Ej: "2019-2023", "2023-2027" |
+| **FECHA_DESDE** | DATE | Fecha inicio vigencia del organismo | SÍ | Desde cuando está operativo |
+| **FECHA_HASTA** | DATE | Fecha fin vigencia del organismo | SÍ | NULL si sigue activo |
 
 #### Claves
 
 - **PK:** `ENTIDAD_ID`
-- **UNIQUE:** `CODIGO_DIR3`
 - **FK:**
   - `ENTIDAD_ID` → `ENTIDADES(ID)` ON DELETE CASCADE
 
-#### Índices Recomendados
+#### Índices
 
-- `CODIGO_DIR3` (único, búsqueda rápida por código oficial)
+- `ix_public_entidades_organismos_publicos_codigo_dir3` (sobre `CODIGO_DIR3`)
+- `ix_public_entidades_organismos_publicos_ambito` (sobre `AMBITO`)
+- `ix_public_entidades_organismos_publicos_legislatura` (sobre `LEGISLATURA`)
 
 #### Relaciones
 
@@ -2891,17 +3021,19 @@ Metadatos específicos de administraciones públicas y organismos oficiales que 
 
 #### Notas de Versión
 
-- **v1.0** (01/02/2026): Creación inicial con estructura minimalista (solo DIR3 + observaciones)
+- **v1.0** (01/02/2026): Creación inicial con estructura minimalista
+- **v1.1** (04/02/2026): Sincronización con schema.sql - Agregar campos ambito, tipo_organismo, legislatura, fechas. codigo_dir3 nullable y VARCHAR(20)
 
 #### Filosofía
 
 Tabla de metadatos para **organismos públicos** (administraciones y entidades oficiales):
 
 - **Relación 1:1** con `ENTIDADES` mediante `ENTIDAD_ID` como PK y FK
-- **Estructura minimalista:** Solo campos que NO están en `ENTIDADES`
-- **CODIGO_DIR3 como clave de negocio:** Identificación oficial para comunicaciones interadministrativas
+- **Estructura enriquecida:** Campos de clasificación y vigencia temporal
+- **CODIGO_DIR3 opcional:** Puede ser NULL (organismos históricos o sin código)
 - **Sin representante:** La entidad es el organismo en sí (persona jurídica pública)
 - **Roles múltiples posibles:** Un organismo puede ser consultado Y solicitante (doble entrada: esta tabla + `ENTIDADES_ADMINISTRADOS`)
+- **Vigencia temporal:** Organismos que cambian con legislaturas o reorganizaciones administrativas
 - **Notificaciones interadministrativas:** Sistema SIR (Servicio Integrado de Registro) usando CODIGO_DIR3
 
 #### Campos que YA están en ENTIDADES (no duplicar)
@@ -2913,8 +3045,96 @@ Tabla de metadatos para **organismos públicos** (administraciones y entidades o
 - `EMAIL`: Email general del organismo
 - `TELEFONO`: Teléfono general
 - `DIRECCION`, `CODIGO_POSTAL`, `MUNICIPIO_ID`: Sede del organismo
+- `ACTIVO`: Borrado lógico
+- `NOTAS`: Observaciones generales
 
-**Si se necesitan contactos específicos (email técnico diferente, teléfono consultas), usar campo `OBSERVACIONES`.**
+#### Campo: AMBITO
+
+**Valores típicos:**
+
+- `ESTATAL`: Organismos de la Administración General del Estado (AGE)
+  - Ministerios, Direcciones Generales, Organismos Autónomos
+  - Ejemplos: Ministerio para la Transición Ecológica, MITECO, Confederación Hidrográfica
+  
+- `AUTONOMICO`: Organismos de Comunidades Autónomas
+  - Consejerías, Direcciones Generales, Agencias autonómicas
+  - Ejemplos: Junta de Andalucía, Xunta de Galicia
+  
+- `LOCAL`: Organismos de Administración Local (no ayuntamientos individuales)
+  - Diputaciones, Consorcios, Mancomunidades
+  - **Nota:** Ayuntamientos usan tabla `ENTIDADES_AYUNTAMIENTOS`
+
+**Uso:**
+- Clasificación para estadísticas
+- Filtrado en interfaces de consulta
+- Asignación automática de competencias según ámbito
+
+#### Campo: TIPO_ORGANISMO
+
+**Ejemplos de valores:**
+
+- `Ministerio`: Ministerio para la Transición Ecológica y el Reto Demográfico
+- `Dirección General`: Dirección General de Política Energética y Minas
+- `Organismo Autónomo`: ADIF, Puertos del Estado
+- `Consejería`: Consejería de Agricultura, Agua y Desarrollo Rural
+- `Viceconsejería`: Viceconsejería de Medio Ambiente
+- `Confederación`: Confederación Hidrográfica del Miño-Sil
+- `Agencia`: Agencia Andaluza de la Energía
+- `Entidad Pública`: Entidad Pública Empresarial de X
+
+**Uso:**
+- Clasificación fina para organización administrativa
+- Ayuda en autocompletado de formularios
+- Filtrado por nivel jerárquico
+
+#### Campo: LEGISLATURA
+
+**Formato:** "YYYY-YYYY" (año inicio - año fin)
+
+**Ejemplos:**
+- `2019-2023`: XIV Legislatura
+- `2023-2027`: XV Legislatura (actual)
+- `2015-2019`: Legislatura anterior
+
+**Uso:**
+- Tracking de reorganizaciones administrativas tras cambios de gobierno
+- Consulta de organismos vigentes en momento histórico
+- Auditoría de cambios de competencias
+
+**Nota:** Puede ser NULL si el organismo no está vinculado a legislaturas (ej: organismos técnicos permanentes)
+
+#### Campos: FECHA_DESDE / FECHA_HASTA
+
+**FECHA_DESDE:**
+- Fecha en que el organismo comenzó a operar
+- Puede coincidir con inicio de legislatura o ser independiente
+- NULL si no se conoce fecha exacta (organismos históricos)
+
+**FECHA_HASTA:**
+- NULL = organismo activo actualmente
+- Fecha = organismo cesado/reorganizado/fusionado
+- Permite mantener histórico de organismos que ya no existen
+
+**Ejemplos:**
+
+```sql
+-- Organismo actual (Ministerio actual)
+fecha_desde = '2020-01-13'  -- Formación gobierno
+fecha_hasta = NULL           -- Activo
+
+-- Organismo histórico (Ministerio anterior, reorganizado)
+fecha_desde = '2016-11-04'
+fecha_hasta = '2020-01-13'   -- Reorganización
+
+-- Consejería tras cambio autonómico
+fecha_desde = '2022-07-20'  -- Nueva legislatura
+fecha_hasta = NULL           -- Activa
+```
+
+**Uso:**
+- Mantener histórico de informes emitidos por organismos desaparecidos
+- Validar competencias según fecha de solicitud
+- Migración automática a nuevo organismo competente
 
 #### CIF de Organismos Públicos: Casos Especiales
 
@@ -2947,6 +3167,11 @@ Tabla de metadatos para **organismos públicos** (administraciones y entidades o
 - Clave para enviar notificaciones vía **SIR** (Servicio Integrado de Registro)
 - En Junta de Andalucía: Sistema **BandeJA** (Bandeja de la Junta de Andalucía) para comunicaciones interiores electrónicas
 
+**Campo NULLABLE:**
+- Organismos históricos pueden no tener DIR3
+- Organismos extranjeros o especiales sin código DIR3
+- Organismos en proceso de registro
+
 **Consulta de códigos DIR3:**
 - Portal oficial: https://administracionelectronica.gob.es/ctt/dir3
 - Descargas: https://administracionelectronica.gob.es/ctt/dir3/descargas
@@ -2964,7 +3189,11 @@ Tabla de metadatos para **organismos públicos** (administraciones y entidades o
 
 2. **ENTIDADES_ORGANISMOS_PUBLICOS** (rol: consultado):
    - `codigo_dir3`: "A12002696" (código oficial)
-   - `observaciones`: "Competencias: medio ambiente, agua, agricultura. Ámbito: Andalucía"
+   - `ambito`: "AUTONOMICO"
+   - `tipo_organismo`: "Consejería"
+   - `legislatura`: "2023-2027"
+   - `fecha_desde`: "2022-07-20"
+   - `fecha_hasta`: NULL
 
 3. **ENTIDADES_ADMINISTRADOS** (rol: solicitante):
    - `email_notificaciones`: "notifica.medioambiente@juntadeandalucia.es"
@@ -2978,7 +3207,8 @@ Tabla de metadatos para **organismos públicos** (administraciones y entidades o
 -- Solo aparecen organismos con tipo ORGANISMO_PUBLICO + otros consultables
 SELECT e.* FROM entidades e
 JOIN tipos_entidades te ON e.tipo_entidad_id = te.id
-WHERE te.puede_ser_consultado = TRUE;
+WHERE te.puede_ser_consultado = TRUE
+AND e.activo = TRUE;
 
 -- Contexto: Crear solicitud
 -- Solo aparecen entidades con registro en ENTIDADES_ADMINISTRADOS
@@ -2987,25 +3217,15 @@ JOIN entidades_administrados ea ON e.id = ea.entidad_id
 WHERE e.activo = TRUE;
 ```
 
-#### Flujo UX: Copia de Datos entre Roles
-
-**Aplica la misma lógica que `ENTIDADES_EMPRESAS_SERVICIO_PUBLICO`:**
-
-1. Usuario introduce CIF o nombre que ya existe
-2. Sistema detecta roles activos
-3. Sistema ofrece copiar datos de rol existente (si aplica)
-4. Usuario selecciona o introduce datos nuevos
-
-**Nota:** En organismos públicos, el campo más relevante para copiar es `email_notificaciones` (si actúa como solicitante).
-
 #### Reglas de Negocio
 
-1. **CODIGO_DIR3 obligatorio** (NOT NULL, UNIQUE)
+1. **CODIGO_DIR3 opcional** (puede ser NULL)
 2. **CIF_NIF opcional** en `ENTIDADES` (puede ser NULL o compartido)
 3. **Sin representante** (no aplican campos `REPRESENTANTE_*`)
 4. **Múltiples roles:** Un organismo puede estar en esta tabla Y en `ENTIDADES_ADMINISTRADOS`
 5. **Notificaciones interadministrativas:** Usar CODIGO_DIR3 para SIR, no email Notifica
-6. **Validación DIR3:** Formato alfanumérico, 8-10 caracteres
+6. **Vigencia temporal:** `fecha_hasta` NULL = organismo activo
+7. **Reorganizaciones:** Crear nuevo registro con nuevo `entidad_id` y cerrar anterior con `fecha_hasta`
 
 #### Validaciones
 
@@ -3013,6 +3233,7 @@ WHERE e.activo = TRUE;
 
 ```python
 import re
+from datetime import date
 
 def validar_codigo_dir3(codigo):
     """
@@ -3021,11 +3242,25 @@ def validar_codigo_dir3(codigo):
     Ejemplos válidos: EA0044689, A12002696
     """
     if not codigo:
-        return False
+        return True  # Nullable
     
     # Patrón: 1-2 letras mayúsculas + 7-8 dígitos
     patron = r'^[A-Z]{1,2}\d{7,8}$'
     return re.match(patron, codigo.upper()) is not None
+
+def validar_legislatura(legislatura):
+    """
+    Valida formato de legislatura: YYYY-YYYY
+    """
+    if not legislatura:
+        return True  # Nullable
+    
+    patron = r'^\d{4}-\d{4}$'
+    if not re.match(patron, legislatura):
+        return False
+    
+    inicio, fin = legislatura.split('-')
+    return int(inicio) < int(fin)
 
 class EntidadOrganismoPublico(db.Model):
     # ...
@@ -3033,7 +3268,7 @@ class EntidadOrganismoPublico(db.Model):
     @validates('codigo_dir3')
     def validate_codigo_dir3(self, key, value):
         if not value:
-            raise ValueError("Código DIR3 es obligatorio")
+            return None  # Nullable
         
         value_upper = value.upper().strip()
         
@@ -3044,33 +3279,68 @@ class EntidadOrganismoPublico(db.Model):
             )
         
         return value_upper
-```
-
-**Validación en interfaz:**
-
-```javascript
-// Validación cliente (JavaScript)
-function validarDIR3(codigo) {
-    const patron = /^[A-Z]{1,2}\d{7,8}$/;
-    return patron.test(codigo.toUpperCase());
-}
+    
+    @validates('ambito')
+    def validate_ambito(self, key, value):
+        if not value:
+            return None
+        
+        ambitos_validos = ['ESTATAL', 'AUTONOMICO', 'LOCAL']
+        value_upper = value.upper().strip()
+        
+        if value_upper not in ambitos_validos:
+            raise ValueError(
+                f"Ámbito inválido: {value}. "
+                f"Valores permitidos: {', '.join(ambitos_validos)}"
+            )
+        
+        return value_upper
+    
+    @validates('legislatura')
+    def validate_legislatura(self, key, value):
+        if not value:
+            return None
+        
+        if not validar_legislatura(value):
+            raise ValueError(
+                f"Legislatura inválida: {value}. "
+                "Formato esperado: YYYY-YYYY (ej: 2023-2027)"
+            )
+        
+        return value
+    
+    @validates('fecha_hasta')
+    def validate_fecha_hasta(self, key, value):
+        if not value:
+            return None  # NULL = activo
+        
+        if self.fecha_desde and value < self.fecha_desde:
+            raise ValueError(
+                "fecha_hasta no puede ser anterior a fecha_desde"
+            )
+        
+        return value
 ```
 
 #### Consultas Frecuentes
 
-**1. Listar organismos con su DIR3:**
+**1. Listar organismos activos con su clasificación:**
 
 ```sql
 SELECT 
     e.id,
     e.nombre_completo,
     eop.codigo_dir3,
+    eop.ambito,
+    eop.tipo_organismo,
+    eop.legislatura,
     e.email,
     e.telefono
 FROM entidades e
 JOIN entidades_organismos_publicos eop ON e.id = eop.entidad_id
 WHERE e.activo = TRUE
-ORDER BY e.nombre_completo;
+AND (eop.fecha_hasta IS NULL OR eop.fecha_hasta > CURRENT_DATE)
+ORDER BY eop.ambito, e.nombre_completo;
 ```
 
 **2. Buscar organismo por código DIR3:**
@@ -3082,27 +3352,80 @@ JOIN entidades_organismos_publicos eop ON e.id = eop.entidad_id
 WHERE eop.codigo_dir3 = :codigo_dir3;
 ```
 
-**3. Organismos que son consultados Y solicitantes:**
+**3. Organismos de ámbito ESTATAL activos:**
 
 ```sql
 SELECT 
     e.nombre_completo,
     eop.codigo_dir3,
+    eop.tipo_organismo
+FROM entidades e
+JOIN entidades_organismos_publicos eop ON e.id = eop.entidad_id
+WHERE eop.ambito = 'ESTATAL'
+AND e.activo = TRUE
+AND (eop.fecha_hasta IS NULL OR eop.fecha_hasta > CURRENT_DATE)
+ORDER BY e.nombre_completo;
+```
+
+**4. Organismos de legislatura actual:**
+
+```sql
+SELECT 
+    e.nombre_completo,
+    eop.codigo_dir3,
+    eop.ambito,
+    eop.legislatura,
+    eop.fecha_desde
+FROM entidades e
+JOIN entidades_organismos_publicos eop ON e.id = eop.entidad_id
+WHERE eop.legislatura = '2023-2027'
+AND e.activo = TRUE
+ORDER BY eop.ambito, e.nombre_completo;
+```
+
+**5. Organismos que cesaron (histórico):**
+
+```sql
+SELECT 
+    e.nombre_completo,
+    eop.codigo_dir3,
+    eop.ambito,
+    eop.fecha_desde,
+    eop.fecha_hasta,
+    eop.legislatura
+FROM entidades e
+JOIN entidades_organismos_publicos eop ON e.id = eop.entidad_id
+WHERE eop.fecha_hasta IS NOT NULL
+ORDER BY eop.fecha_hasta DESC;
+```
+
+**6. Organismos que son consultados Y solicitantes:**
+
+```sql
+SELECT 
+    e.nombre_completo,
+    eop.codigo_dir3,
+    eop.ambito,
     ea.email_notificaciones
 FROM entidades e
 JOIN entidades_organismos_publicos eop ON e.id = eop.entidad_id
 JOIN entidades_administrados ea ON e.id = ea.entidad_id
-WHERE e.activo = TRUE;
+WHERE e.activo = TRUE
+AND (eop.fecha_hasta IS NULL OR eop.fecha_hasta > CURRENT_DATE);
 ```
 
-**4. Organismos de la Administración General del Estado (AGE):**
+**7. Organismos por tipo (ej: Consejerías):**
 
 ```sql
-SELECT e.*, eop.*
+SELECT 
+    e.nombre_completo,
+    eop.codigo_dir3,
+    eop.legislatura
 FROM entidades e
 JOIN entidades_organismos_publicos eop ON e.id = eop.entidad_id
-WHERE e.cif_nif = 'S2833011F'  -- CIF único AGE
-OR eop.codigo_dir3 LIKE 'E%'    -- Códigos DIR3 estatales
+WHERE eop.tipo_organismo = 'Consejería'
+AND e.activo = TRUE
+AND (eop.fecha_hasta IS NULL OR eop.fecha_hasta > CURRENT_DATE)
 ORDER BY e.nombre_completo;
 ```
 
@@ -3120,7 +3443,7 @@ Tabla principal que representa cada expediente de tramitación administrativa.
 |:---|:---|:---|:---|:------|
 | **ID** | INTEGER | NO | Identificador único del expediente | PK, autoincremental |
 | **NUMERO_AT** | INTEGER | NO | Número de expediente administrativo (formato legacy) | Único en la organización. No es el ID sino un número correlativo tomado del sistema anterior |
-| **RESPONSABLE_ID** | INTEGER | NO | Usuario responsable del expediente | FK → USUARIOS(ID). Usuario asignado con permisos de gestión completa |
+| **RESPONSABLE_ID** | INTEGER | SÍ | Usuario responsable del expediente | FK → USUARIOS(ID). Usuario asignado con permisos de gestión completa. NULL = expediente huérfano sin asignar |
 | **TIPO_EXPEDIENTE_ID** | INTEGER | SÍ | Tipo de expediente según clasificación normativa | FK → TIPOS_EXPEDIENTES(ID). Define lógica procedimental aplicable |
 | **HEREDADO** | BOOLEAN | SÍ | Indica si el expediente proviene del sistema anterior | TRUE = datos incompletos, solo metadatos heredados. FALSE/NULL = expediente gestionado completamente en este sistema |
 | **PROYECTO_ID** | INTEGER | NO | Proyecto técnico único asociado al expediente | FK → PROYECTOS(ID). **UNIQUE** (relación 1:1). **Nuevo campo v3.0** |
@@ -3131,10 +3454,10 @@ Tabla principal que representa cada expediente de tramitación administrativa.
 - **PK:** `ID`
 - **UNIQUE:** `NUMERO_AT`, `PROYECTO_ID`
 - **FK:**
-  - `RESPONSABLE_ID` → `USUARIOS(ID)`
+  - `RESPONSABLE_ID` → `USUARIOS(ID)` (sin CASCADE, usuarios nunca se borran, solo se desactivan)
   - `TIPO_EXPEDIENTE_ID` → `TIPOS_EXPEDIENTES(ID)`
   - `PROYECTO_ID` → `PROYECTOS(ID)`
-  - `TITULAR_ID` → `ENTIDADES(ID)` ON DELETE SET NULL
+  - `TITULAR_ID` → `ENTIDADES(ID)` (sin CASCADE, entidades nunca se borran, solo se desactivan)
 
 #### Índices
 
@@ -3145,6 +3468,13 @@ Tabla principal que representa cada expediente de tramitación administrativa.
 - `idx_expedientes_tipo` sobre `TIPO_EXPEDIENTE_ID`
 
 #### Decisiones de Diseño
+
+##### Campo RESPONSABLE_ID
+
+**Nullable = TRUE**
+- **Motivo:** Permite expedientes huérfanos sin usuario asignado temporalmente
+- **Regla de negocio:** Los usuarios nunca se borran físicamente, solo se desactivan mediante campo `activo`
+- **Sin CASCADE:** No hay riesgo de borrado accidental de expedientes por gestión de usuarios
 
 ##### Campo TITULAR_ID (v3.1 - Issue #64)
 
@@ -3168,9 +3498,13 @@ Los expedientes administrativos tienen un titular legal que evoluciona durante s
    - **Ventaja:** Preparado para casos excepcionales (ej: organismos públicos titulares temporales de instalaciones)
    - **Referencia:** Tabla `ESTRUCTURA.TIPOS_ENTIDADES` define qué tipos pueden ser titulares via flag `puede_ser_solicitante`
 
-3. **ON DELETE SET NULL (no CASCADE)**
-   - **Motivo:** Preservar integridad histórica del expediente aunque se elimine la entidad
-   - **Impacto:** Expediente con titular NULL por borrado = estado excepcional que requiere corrección administrativa
+3. **Gestión de desactivación de entidades (sin CASCADE)**
+   - **Regla de negocio:** Las entidades nunca se borran físicamente, solo se desactivan mediante campo `activo`
+   - **Comportamiento al desactivar titular:**
+     - **Expediente en tramitación:** Reglas de negocio impiden desactivar entidad si tiene expedientes activos con titular_id apuntando a ella
+     - **Expediente en construcción:** Se permite pasar titular_id a NULL si el expediente aún no ha iniciado tramitación formal
+   - **Sin ON DELETE:** No hay constraint CASCADE/SET NULL porque no hay borrados físicos
+   - **Validación:** En capa de aplicación según estado del expediente
 
 4. **Campo redundante con histórico**
    - **Motivo:** Optimización de rendimiento. El 99% de consultas acceden al titular actual, no al histórico
