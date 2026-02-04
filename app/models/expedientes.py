@@ -14,12 +14,14 @@ class Expediente(db.Model):
         - Relación 1:1 con PROYECTO (un expediente, un proyecto técnico)
         - El proyecto evoluciona mediante documentos versionados
         - NUMERO_AT es identificador legacy del sistema anterior
+        - Titular actual almacenado en TITULAR_ID (desnormalizado para rendimiento)
     
     CARACTERÍSTICAS:
         - Único en toda la organización (identificado por NUMERO_AT)
         - Puede estar sin responsable (huérfano) hasta asignación por supervisor
         - Clasificado por tipo (determina procedimiento aplicable)
         - Puede ser heredado del sistema anterior (datos incompletos)
+        - Tiene un titular actual (snapshot del histórico)
     
     CAMPOS ESPECIALES:
         NUMERO_AT:
@@ -42,11 +44,23 @@ class Expediente(db.Model):
             - UNIQUE constraint garantiza relación 1:1
             - Un expediente tiene exactamente un proyecto técnico
             - El proyecto evoluciona mediante documentos en DOCUMENTOS_PROYECTO
+        
+        TITULAR_ID:
+            - FK a ENTIDADES (nullable)
+            - Snapshot del titular actual del expediente
+            - Desnormalización para rendimiento (evita JOIN con histórico)
+            - NULL cuando expediente sin titular asignado (situación anómala transitoria)
+            - Al cambiar titular:
+              1. Se crea registro en HISTORICO_TITULARES_EXPEDIENTE
+              2. Se actualiza TITULAR_ID con el nuevo valor
+            - Histórico completo en HISTORICO_TITULARES_EXPEDIENTE
     
     RELACIONES:
         - responsable → USUARIOS (tramitador asignado, nullable)
         - tipo_expediente → TIPOS_EXPEDIENTES (clasificación normativa)
         - proyecto → PROYECTOS (relación 1:1, proyecto técnico único)
+        - titular → ENTIDADES (titular actual, nullable, snapshot)
+        - historico_titulares ← HISTORICO_TITULARES_EXPEDIENTE (1:N, histórico completo)
         - solicitudes ← SOLICITUDES (1:N, múltiples actos administrativos)
         - documentos ← DOCUMENTOS (1:N, pool de archivos del expediente)
     
@@ -54,7 +68,8 @@ class Expediente(db.Model):
         1. Expediente puede crearse sin responsable (huérfano)
         2. NUMERO_AT debe ser único en la organización
         3. PROYECTO_ID es obligatorio y único (relación 1:1)
-        4. El tipo de expediente determina:
+        4. TITULAR_ID es snapshot del titular actual (puede ser NULL temporalmente)
+        5. El tipo de expediente determina:
            - Procedimientos aplicables
            - Solicitudes permitidas
            - Fases obligatorias
@@ -64,6 +79,8 @@ class Expediente(db.Model):
         v3.0: Añadido PROYECTO_ID (relación 1:1). Antes el proyecto
               apuntaba al expediente, ahora es inverso para mayor claridad.
         v3.1: RESPONSABLE_ID ahora nullable para permitir expedientes huérfanos.
+        v3.2: Añadido TITULAR_ID (snapshot) + tabla HISTORICO_TITULARES_EXPEDIENTE
+              para gestión completa de cambios de titularidad.
     """
     __tablename__ = 'expedientes'
     __table_args__ = (
@@ -71,6 +88,7 @@ class Expediente(db.Model):
         db.Index('idx_expedientes_responsable', 'responsable_id'),
         db.Index('idx_expedientes_tipo', 'tipo_expediente_id'),
         db.Index('idx_expedientes_proyecto', 'proyecto_id'),
+        db.Index('idx_expedientes_titular', 'titular_id'),
         {'schema': 'public'}
     )
     
@@ -114,6 +132,13 @@ class Expediente(db.Model):
         comment='FK a PROYECTOS. Relación 1:1, un expediente tiene exactamente un proyecto'
     )
     
+    titular_id = db.Column(
+        db.Integer,
+        db.ForeignKey('public.entidades.id'),
+        nullable=True,
+        comment='FK a ENTIDADES. Titular actual del expediente (snapshot del histórico). NULL = sin titular asignado (anómalo transitorio)'
+    )
+    
     # Relaciones SQLAlchemy
     responsable = db.relationship(
         'Usuario',
@@ -131,6 +156,13 @@ class Expediente(db.Model):
         'TipoExpediente',
         foreign_keys=[tipo_expediente_id],
         backref='expedientes'
+    )
+    
+    titular = db.relationship(
+        'Entidad',
+        foreign_keys=[titular_id],
+        lazy='joined',  # ← Carga eager por defecto (titular se usa casi siempre)
+        backref='expedientes_como_titular'
     )
     
     def __repr__(self):
