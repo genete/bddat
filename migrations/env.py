@@ -50,11 +50,9 @@ target_db = current_app.extensions['migrate'].db
 from app.models.expedientes import Expediente
 from app.models.entidad import Entidad
 from app.models.tipo_entidad import TipoEntidad
-from app.models.usuario import Usuario
-from app.models.propietario import Propietario
-from app.models.documento import Documento
-from app.models.tramite import Tramite
-from app.models.actuacion import Actuacion
+from app.models.usuarios import Usuario
+from app.models.documentos import Documento
+from app.models.tramites import Tramite
 
 def get_metadata():
     if hasattr(target_db, 'metadatas'):
