@@ -23,6 +23,7 @@ class Entidad(db.Model):
     """
     
     __tablename__ = 'entidades'
+    __table_args__ = {'schema': 'public'}
     
     # Campos
     id = db.Column(
