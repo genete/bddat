@@ -13,7 +13,18 @@ def create_app(config_name='default'):
     app.config.from_object(config[config_name])
     
     db.init_app(app)
-    migrate.init_app(app, db)
+    
+    # Configurar Flask-Migrate para soportar múltiples schemas
+    # include_schemas=True: permite reflejar y comparar tablas de todos los schemas (public + estructura)
+    # version_table_schema='public': mantiene alembic_version en schema public (buena práctica)
+    # Crítico para resolver FK cross-schema correctamente
+    migrate.init_app(
+        app, 
+        db, 
+        include_schemas=True,
+        version_table_schema='public'
+    )
+    
     login_manager.init_app(app)
     
     # Configuración de Flask-Login
