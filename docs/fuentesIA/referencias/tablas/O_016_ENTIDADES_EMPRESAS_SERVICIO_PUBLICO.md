@@ -2,25 +2,21 @@
 Tabla: ENTIDADES_EMPRESAS_SERVICIO_PUBLICO
 Generado manualmente
 Fecha de creación: 01/02/2026
+Última actualización: 04/02/2026
 IMPORTANTE: No editar Tablas.md directamente.
             Editar este archivo y ejecutar merge_tables.py para regenerar.
 -->
 
 ### ENTIDADES_EMPRESAS_SERVICIO_PUBLICO
 
-Metadatos específicos de empresas operadoras de infraestructuras críticas y servicios públicos que pueden actuar simultáneamente como solicitantes (instalaciones propias) y como organismos consultados (informes sobre afecciones a sus infraestructuras).
+Metadatos específicos de empresas operadoras de infraestructuras críticas y servicios públicos que actúan como organismos consultados (informes sobre afecciones a sus infraestructuras). A diferencia de otras entidades, estas empresas pueden actuar simultáneamente como solicitantes (necesitan entrada en ENTIDADES_ADMINISTRADOS) y consultados.
 
 #### Estructura
 
 | Campo | Tipo | Descripción | Nullable | Notas |
 |:---|:---|:---|:---|:---|
 | **ENTIDAD_ID** | INTEGER | Referencia a entidad base | NO | PK y FK → ENTIDADES(ID), UNIQUE, CASCADE |
-| **EMAIL_NOTIFICACIONES** | VARCHAR(120) | Email oficial para sistema Notifica | NO | Email donde se reciben notificaciones electrónicas oficiales cuando actúan como solicitantes. Puede ser corporativo |
-| **REPRESENTANTE_NIF_CIF** | VARCHAR(20) | NIF/CIF de quien representa/gestiona | SÍ | NULL si gestión corporativa directa. Normalizado como CIF/NIF |
-| **REPRESENTANTE_NOMBRE** | VARCHAR(200) | Nombre completo del representante | SÍ | NULL si gestión corporativa. Puede ser persona física (responsable) o jurídica (consultora contratada) |
-| **REPRESENTANTE_TELEFONO** | VARCHAR(20) | Teléfono del representante | SÍ | Contacto directo con quien gestiona |
-| **REPRESENTANTE_EMAIL** | VARCHAR(120) | Email del representante | SÍ | Email de contacto (NO oficial para notificaciones, solo coordinación) |
-| **NOTAS_REPRESENTACION** | TEXT | Observaciones sobre la representación | SÍ | Tipo de cargo o relación: "Responsable zona sur", "Dpto. Afecciones", etc. |
+| **CODIGO_DIR3** | VARCHAR(20) | Código DIR3 para notificaciones SIR | SÍ | Opcional, no todas las empresas tienen. Para comunicaciones interadministrativas |
 
 #### Claves
 
@@ -28,22 +24,9 @@ Metadatos específicos de empresas operadoras de infraestructuras críticas y se
 - **FK:**
   - `ENTIDAD_ID` → `ENTIDADES(ID)` ON DELETE CASCADE
 
-#### Índices Recomendados
+#### Índices
 
-- `REPRESENTANTE_NIF_CIF` (búsquedas por representante)
-- `EMAIL_NOTIFICACIONES` (búsquedas por email oficial)
-
-#### Constraints
-
-```sql
--- Si hay representante_nif_cif, debe haber representante_nombre
-CONSTRAINT chk_representante_coherente
-    CHECK (
-        (representante_nif_cif IS NULL AND representante_nombre IS NULL)
-        OR
-        (representante_nif_cif IS NOT NULL AND representante_nombre IS NOT NULL)
-    )
-```
+- `ix_public_entidades_empresas_servicio_publico_codigo_dir3` (único, sobre `CODIGO_DIR3`)
 
 #### Relaciones
 
@@ -51,159 +34,277 @@ CONSTRAINT chk_representante_coherente
 
 #### Notas de Versión
 
-- **v1.0** (01/02/2026): Creación inicial con estructura idéntica a ENTIDADES_ADMINISTRADOS (diferenciación semántica por tipo)
+- **v1.0** (01/02/2026): Creación inicial con estructura minimalista (solo DIR3 opcional)
+- **v1.1** (04/02/2026): Sincronización con schema.sql - Eliminar campos de representante que NO existen en la tabla real
 
 #### Filosofía
 
 Tabla de metadatos para **empresas de servicio público** (operadores de infraestructuras críticas):
 
 - **Relación 1:1** con `ENTIDADES` mediante `ENTIDAD_ID` como PK y FK
-- **Estructura idéntica a ENTIDADES_ADMINISTRADOS:** Los campos son los mismos, la diferencia es **semántica**
+- **Estructura minimalista:** Solo código DIR3 opcional
 - **Doble rol simultáneo:**
-  - Como **solicitante**: Presentan solicitudes para sus propias instalaciones (ej: nueva subestación eléctrica)
-  - Como **organismo consultado**: Emiten informes sobre afecciones a sus infraestructuras existentes
-- **Notificaciones vía Notifica:** Cuando actúan como solicitantes, usan sistema Notifica (como administrados)
-- **Par obligatorio Notifica:** `(CIF/NIF, EMAIL_NOTIFICACIONES)` debe estar completo
+  - Como **organismo consultado**: Emiten informes sobre afecciones a sus infraestructuras existentes (uso DIR3 si lo tienen)
+  - Como **solicitante**: Si necesitan presentar solicitudes propias, deben tener entrada adicional en `ENTIDADES_ADMINISTRADOS`
+- **DIR3 opcional:** No todas las empresas privadas tienen código DIR3 (solo si son operadores de infraestructuras con convenios interadministrativos)
 
-#### ¿Por qué tabla separada si campos son iguales?
+#### Campos que YA están en ENTIDADES (no duplicar)
 
-**La diferencia es SEMÁNTICA, no estructural:**
+**Todos estos datos viven en `ENTIDADES`:**
 
-1. **Tipo de entidad diferente** en `TIPOS_ENTIDADES`:
-   - `ADMINISTRADO`: Puede ser solicitante, NO puede ser consultado
-   - `EMPRESA_SERVICIO_PUBLICO`: Puede ser solicitante Y consultado
+- `CIF_NIF`: CIF de la empresa operadora
+- `NOMBRE_COMPLETO`: Razón social (ej: "E-Distribución Redes Digitales S.L.U.", "Gas Natural Distribución SDG S.A.")
+- `EMAIL`: Email general corporativo
+- `TELEFONO`: Teléfono general
+- `DIRECCION`, `CODIGO_POSTAL`, `MUNICIPIO_ID`: Domicilio social
+- `ACTIVO`: Borrado lógico
 
-2. **Filtrado automático en interfaz:**
-   ```sql
-   -- Fase CONSULTAS: Solicitar informe sobre afecciones
-   -- Solo aparecen empresas servicio público + organismos + ayuntamientos
-   SELECT e.* FROM entidades e
-   JOIN tipos_entidades te ON e.tipo_entidad_id = te.id
-   WHERE te.puede_ser_consultado = TRUE;
-   ```
+**Para contactos específicos o representantes, usar campo `NOTAS` en `ENTIDADES`.**
 
-3. **Lógica de negocio distinta:**
-   - Administrado: Solo recibe notificaciones
-   - Empresa servicio público: Recibe Y emite documentos oficiales (informes)
+#### Representación y Notificaciones
 
-4. **Facilidad para el tramitador:**
-   - Al crear consulta a organismo → Solo aparecen entidades con capacidad de emisión de informes
-   - El filtrado es automático según `tipos_entidades.puede_ser_consultado`
+**A DIFERENCIA de las tablas MD anteriores:**
+
+Esta tabla **NO tiene campos de representante** (`representante_nif_cif`, `representante_nombre`, etc.). 
+
+**¿Por qué?**
+
+1. **Cuando actúan como consultadas:** No necesitan notificaciones vía Notifica (emiten informes, no los reciben)
+2. **Cuando actúan como solicitantes:** Deben tener entrada en `ENTIDADES_ADMINISTRADOS` donde SÍ están los campos de representante
+
+**Patrón real:**
+```
+Empresa X (ENTIDADES)
+│
+├─ ENTIDADES_EMPRESAS_SERVICIO_PUBLICO (rol: consultada)
+│   └─ codigo_dir3 (opcional)
+│
+└─ ENTIDADES_ADMINISTRADOS (rol: solicitante)
+    ├─ email_notificaciones
+    ├─ representante_nif_cif
+    └─ representante_nombre
+```
 
 #### Ejemplos de Entidades (tipos)
 
 **Sector energético:**
-- Operadores de redes eléctricas (distribución, transporte)
-- Operadores de redes de gas
-- Empresas de servicios energéticos
+- E-Distribución Redes Digitales S.L.U. (distribuidora eléctrica)
+- Red Eléctrica de España S.A.U. (transporte eléctrica)
+- Gas Natural Distribución SDG S.A. (distribuidora gas)
 
 **Sector agua:**
-- Consorcios de Aguas provinciales
-- Empresas metropolitanas de abastecimiento
+- Consorcio de Aguas de la provincia
+- Empresa Metropolitana de Abastecimiento
 
 **Sector transporte:**
-- Operadores de infraestructuras ferroviarias
+- ADIF (Administrador de Infraestructuras Ferroviarias)
 - Operadores de transporte por cable
 
 **Sector telecomunicaciones:**
-- Operadores de telecomunicaciones
+- Telefónica de España S.A.U.
 - Operadores de fibra óptica
 
-#### Regla de Negocio: CIF/NIF para Notifica
+#### Sistema DIR3: Empresas de Servicio Público
 
-**Idéntica a `ENTIDADES_ADMINISTRADOS`** (ver O_015):
+**¿Qué es DIR3 para empresas privadas?**
+- Código opcional que algunas empresas de servicio público tienen cuando operan infraestructuras con convenios interadministrativos
+- Formato: 1-2 letras + 7-8 números (ej: `E12345678`)
+- **NO todas las empresas lo tienen** (mayormente empresas públicas o con participación pública)
 
-- Si hay `representante_nif_cif` → usar ese (quien gestiona)
-- Si `representante_nif_cif` es NULL → usar `entidades.cif_nif` (empresa titular)
+**Uso en BDDAT:**
+- Identificación para notificaciones vía **SIR** cuando actúan como **organismos consultados**
+- Si no tienen DIR3, se usan métodos tradicionales (email, correo postal)
 
-**Consulta SQL:**
+**Campo nullable:**
+- TRUE (no obligatorio)
+- Mayoría de empresas privadas no tienen DIR3
+
+#### Regla de Negocio: Doble Entrada Posible
+
+**Una empresa puede estar en DOS tablas de metadatos:**
+
+1. **Esta tabla** (`ENTIDADES_EMPRESAS_SERVICIO_PUBLICO`):
+   - Para actuar como consultada (emitir informes)
+   - Solo necesita `codigo_dir3` (opcional)
+
+2. **`ENTIDADES_ADMINISTRADOS`**:
+   - Para actuar como solicitante (presentar solicitudes)
+   - Necesita `email_notificaciones`, `representante_*`, etc.
+
+**Ejemplo real:**
 ```sql
--- Obtener par para notificar
-SELECT 
-    COALESCE(ees.representante_nif_cif, e.cif_nif) AS cif_notifica,
-    ees.email_notificaciones
-FROM entidades_empresas_servicio_publico ees
-JOIN entidades e ON ees.entidad_id = e.id
-WHERE ees.entidad_id = :id;
+-- E-Distribución solicita autorización para nueva subestación
+-- Y también es consultada sobre afecciones en proyectos de terceros
+
+-- 1. ENTIDADES (base)
+INSERT INTO entidades (tipo_entidad_id, cif_nif, nombre_completo)
+VALUES (tipo_empresa_servicio_publico_id, 'B12345678', 'E-Distribución Redes Digitales S.L.U.');
+
+-- 2. ENTIDADES_EMPRESAS_SERVICIO_PUBLICO (rol: consultada)
+INSERT INTO entidades_empresas_servicio_publico (entidad_id, codigo_dir3)
+VALUES (entidad_id, NULL);  -- Sin DIR3
+
+-- 3. ENTIDADES_ADMINISTRADOS (rol: solicitante)
+INSERT INTO entidades_administrados (
+    entidad_id, 
+    email_notificaciones,
+    representante_nif_cif,
+    representante_nombre
+) VALUES (
+    entidad_id,
+    'notificaciones@edistribucion.com',
+    'B98765432',
+    'Consultora ACME Proyectos S.L.'
+);
 ```
 
-#### Flujo UX: Copia de Datos entre Roles
+#### Filtrado Automático en Interfaz
 
-**Escenario:** Una empresa ya existe con un rol, se añade segundo rol
-
-**Flujo:**
-1. Usuario introduce CIF que ya existe en el sistema
-2. Sistema detecta que CIF ya tiene uno o más roles activos
-3. Sistema ofrece copiar datos de representación de rol existente
-4. Usuario selecciona de qué rol copiar o introduce datos nuevos
-
-**Interfaz (mockup):**
-```
-┌─────────────────────────────────────────────────┐
-│ AÑADIR ROL: Empresa Servicio Público            │
-├─────────────────────────────────────────────────┤
-│ Entidad: [Nombre detectado del CIF]             │
-│ CIF: [CIF introducido]                          │
-│                                                 │
-│ ⓘ Este CIF ya tiene roles activos:             │
-│    • [Lista de roles existentes]               │
-│                                                 │
-│ [📋 Copiar datos del rol: [Selector] ▼]        │
-│                                                 │
-├─────────────────────────────────────────────────┤
-│ Email notificaciones:                           │
-│ [campo autocompletado o vacío]                  │
-│                                                 │
-│ Representante NIF/CIF:                          │
-│ [campo autocompletado o vacío]                  │
-│                                                 │
-│ Representante nombre:                           │
-│ [campo autocompletado o vacío]                  │
-│                                                 │
-│ ...                                             │
-└─────────────────────────────────────────────────┘
+**Contexto 1: Solicitar informe sobre afecciones (fase CONSULTAS)**
+```sql
+-- Solo aparecen empresas servicio público + organismos + ayuntamientos
+SELECT e.* FROM entidades e
+JOIN tipos_entidades te ON e.tipo_entidad_id = te.id
+WHERE te.puede_ser_consultado = TRUE
+AND e.activo = TRUE;
 ```
 
-**Lógica Python:**
+**Contexto 2: Crear solicitud (empresa solicita autorización propia)**
+```sql
+-- Solo aparecen entidades con registro en ENTIDADES_ADMINISTRADOS
+SELECT e.* FROM entidades e
+JOIN entidades_administrados ea ON e.id = ea.entidad_id
+WHERE e.activo = TRUE;
+```
+
+#### Validaciones
+
+**Validación Python:**
+
 ```python
-def sugerir_copia_datos(cif_nif):
+import re
+
+def validar_codigo_dir3(codigo):
     """
-    Al añadir nuevo rol, detecta roles existentes y sugiere copia.
-    Retorna lista de roles disponibles para copiar datos.
+    Valida formato de código DIR3.
+    Formato: 1-2 letras + 7-8 números
+    Ejemplos válidos: E12345678, EA0044689
     """
-    entidad = Entidad.query.filter_by(cif_nif=cif_nif).first()
-    if not entidad:
-        return None  # CIF nuevo, no sugerir nada
+    if not codigo:
+        return True  # Nullable, válido si es None/vacío
     
-    roles_existentes = []
+    # Patrón: 1-2 letras mayúsculas + 7-8 dígitos
+    patron = r'^[A-Z]{1,2}\d{7,8}$'
+    return re.match(patron, codigo.upper()) is not None
+
+class EntidadEmpresaServicioPublico(db.Model):
+    # ...
     
-    # Detectar roles con metadatos de representación
-    if entidad.datos_administrado:
-        roles_existentes.append({
-            'tipo': 'Administrado',
-            'datos': entidad.datos_administrado
-        })
-    
-    if entidad.datos_empresa_servicio:
-        roles_existentes.append({
-            'tipo': 'Empresa Servicio Público',
-            'datos': entidad.datos_empresa_servicio
-        })
-    
-    # ... otros roles con representación
-    
-    return roles_existentes
+    @validates('codigo_dir3')
+    def validate_codigo_dir3(self, key, value):
+        if not value:
+            return None  # Nullable
+        
+        value_upper = value.upper().strip()
+        
+        if not validar_codigo_dir3(value_upper):
+            raise ValueError(
+                f"Código DIR3 inválido: {value}. "
+                "Formato esperado: 1-2 letras + 7-8 dígitos (ej: E12345678)"
+            )
+        
+        return value_upper
 ```
 
-#### Validaciones y Reglas de Negocio
+**Validación en interfaz:**
 
-**Las validaciones son idénticas a `ENTIDADES_ADMINISTRADOS`** (ver O_015):
+```javascript
+// Validación cliente (JavaScript)
+function validarDIR3(codigo) {
+    if (!codigo || codigo.trim() === '') return true; // Nullable
+    const patron = /^[A-Z]{1,2}\d{7,8}$/;
+    return patron.test(codigo.toUpperCase());
+}
+```
 
-1. `EMAIL_NOTIFICACIONES` obligatorio (NOT NULL)
-2. Coherencia representante: si hay CIF, debe haber nombre (constraint)
-3. Validación algoritmo CIF/NIF (si no es NULL)
-4. Par `(CIF_NOTIFICA, EMAIL_NOTIFICACIONES)` debe estar completo
+#### Consultas Frecuentes
 
-**Consultar O_015_ENTIDADES_ADMINISTRADOS.md** para detalles completos de validaciones Python y consultas SQL.
+**1. Listar empresas de servicio público con DIR3:**
+
+```sql
+SELECT 
+    e.id,
+    e.nombre_completo,
+    e.cif_nif,
+    ees.codigo_dir3,
+    e.email,
+    e.telefono
+FROM entidades e
+JOIN entidades_empresas_servicio_publico ees ON e.id = ees.entidad_id
+WHERE e.activo = TRUE
+ORDER BY e.nombre_completo;
+```
+
+**2. Empresas que son consultadas Y solicitantes:**
+
+```sql
+SELECT 
+    e.nombre_completo,
+    e.cif_nif,
+    ees.codigo_dir3,
+    ea.email_notificaciones,
+    ea.representante_nombre
+FROM entidades e
+JOIN entidades_empresas_servicio_publico ees ON e.id = ees.entidad_id
+JOIN entidades_administrados ea ON e.id = ea.entidad_id
+WHERE e.activo = TRUE
+ORDER BY e.nombre_completo;
+```
+
+**3. Empresas sin DIR3 (solo métodos tradicionales):**
+
+```sql
+SELECT 
+    e.nombre_completo,
+    e.cif_nif,
+    e.email,
+    e.telefono
+FROM entidades e
+JOIN entidades_empresas_servicio_publico ees ON e.id = ees.entidad_id
+WHERE ees.codigo_dir3 IS NULL
+AND e.activo = TRUE
+ORDER BY e.nombre_completo;
+```
+
+**4. Verificar si empresa puede actuar como solicitante:**
+
+```sql
+SELECT 
+    e.nombre_completo,
+    CASE 
+        WHEN ea.entidad_id IS NOT NULL THEN 'SÍ'
+        ELSE 'NO'
+    END AS puede_solicitar,
+    ea.email_notificaciones
+FROM entidades e
+JOIN entidades_empresas_servicio_publico ees ON e.id = ees.entidad_id
+LEFT JOIN entidades_administrados ea ON e.id = ea.entidad_id
+WHERE e.cif_nif = :cif;
+```
+
+**5. Empresas por sector (usando notas o clasificación):**
+
+```sql
+-- Asumiendo que el sector está en campo NOTAS o en un futuro campo sector
+SELECT 
+    e.nombre_completo,
+    e.cif_nif,
+    ees.codigo_dir3
+FROM entidades e
+JOIN entidades_empresas_servicio_publico ees ON e.id = ees.entidad_id
+WHERE e.notas ILIKE '%energía%'  -- Filtro ejemplo
+AND e.activo = TRUE
+ORDER BY e.nombre_completo;
+```
 
 ---
