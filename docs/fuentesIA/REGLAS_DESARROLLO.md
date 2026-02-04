@@ -6,7 +6,7 @@
 **Ramas principales:** `main` (producción) + `develop` (integración)  
 **Documento creado:** 17 de enero de 2026  
 **Última actualización:** 4 de febrero de 2026  
-**Versión:** 3.3
+**Versión:** 3.4
 
 ---
 
@@ -48,7 +48,7 @@ main ─────────────●─v0.1.0──●─v0.2.0  (sol
 
 #### Asistente (IA)
 
-- Evalúo si el cambio requiere rama temporal o commit directo en `develop` (ver sección 12.1)
+- Evalúo si el cambio requiere rama temporal o commit directo en `develop` (ver sección 13.1)
 - Creo las ramas necesarias desde `develop` cuando aplica (`feature/`, `bugfix/`, etc.)
 - Preparo cambios con descripción clara de ficheros afectados
 - **Espero tu aprobación explícita** antes de cada commit
@@ -580,7 +580,49 @@ git pull origin develop
 
 ---
 
-## 8. Historial de Cambios
+## 8. Migraciones de Base de Datos (Alembic)
+
+### 8.1 Workflow Obligatorio para Multi-Schema PostgreSQL
+
+**NO usar migraciones automáticas**. Alembic tiene un bug conocido con `include_schemas` que regenera todas las FK en cada migración.
+
+#### 8.2 Procedimiento para Cambios en la BD
+
+```powershell
+# 1. Crear migración vacía
+flask db revision -m "Descripción breve del cambio"
+
+# 2. Editar el archivo generado en migrations/versions/
+#    - Añadir solo los cambios necesarios (add_column, create_table, etc.)
+#    - NO tocar FK existentes
+#    - Respetar schemas: referent_schema='estructura' o 'public'
+
+# 3. Aplicar
+flask db upgrade
+
+# 4. Verificar que la app arranca
+flask run
+```
+
+#### 8.3 Ejemplo de Migración Manual
+
+```python
+def upgrade():
+    op.add_column('entidades_ayuntamientos', 
+        sa.Column('observaciones', sa.Text(), nullable=True),
+        schema='public')
+
+def downgrade():
+    op.drop_column('entidades_ayuntamientos', 'observaciones', schema='public')
+```
+
+#### 8.4 Regla de Oro
+
+`env.py` debe estar **sin `include_schemas`** (estado por defecto del repo).
+
+---
+
+## 9. Historial de Cambios
 
 **Fuente de verdad:** Pull Requests cerrados en GitHub
 
@@ -596,9 +638,9 @@ git pull origin develop
 
 ---
 
-## 9. Gestión de Tags y Releases
+## 10. Gestión de Tags y Releases
 
-### 9.1 Tags Semánticos
+### 10.1 Tags Semánticos
 
 **Formato:** `vMAJOR.MINOR.PATCH`
 
@@ -613,7 +655,7 @@ git pull origin develop
 - `v0.2.1` - Hotfix validación NIF en producción
 - `v1.0.0` - Fase 4 completada (sistema en producción)
 
-### 9.2 Releases en GitHub
+### 10.2 Releases en GitHub
 
 **Cuándo crear:**
 - Al finalizar cada milestone importante (1.3, 2.3, 3.4, 4.3)
@@ -629,9 +671,9 @@ git pull origin develop
 
 ---
 
-## 10. Comandos Git Esenciales
+## 11. Comandos Git Esenciales
 
-### 10.1 Usuario (trabajo local)
+### 11.1 Usuario (trabajo local)
 
 **Sincronizar con develop:**
 ```bash
@@ -665,7 +707,7 @@ git log --oneline -10
 
 ---
 
-### 10.2 IA (trabajo remoto)
+### 11.2 IA (trabajo remoto)
 
 **Crear rama:**
 ```bash
@@ -697,9 +739,9 @@ git push origin v0.X.0
 
 ---
 
-## 11. Uso de Git Stash
+## 12. Uso de Git Stash
 
-### 11.1 Cuándo Usar Stash
+### 12.1 Cuándo Usar Stash
 
 **Casos válidos:**
 - Necesitas cambiar de rama urgentemente con trabajo sin terminar
@@ -710,7 +752,7 @@ git push origin v0.X.0
 - Sistema de versionado (para eso están los commits)
 - Almacenamiento de código "por si acaso" (para eso están las ramas)
 
-### 11.2 Comandos Básicos
+### 12.2 Comandos Básicos
 
 ```bash
 # Guardar cambios temporalmente
@@ -732,7 +774,7 @@ git stash drop stash@{1}
 git stash clear
 ```
 
-### 11.3 Ejemplo de Uso
+### 12.3 Ejemplo de Uso
 
 ```bash
 # Trabajando en feature/formulario-actuaciones
@@ -752,9 +794,9 @@ git stash pop  # Recuperar trabajo
 
 ---
 
-## 12. Gestión de Ramas
+## 13. Gestión de Ramas
 
-### 12.1 Cuándo Crear Rama Temporal vs Commit Directo en Develop
+### 13.1 Cuándo Crear Rama Temporal vs Commit Directo en Develop
 
 #### Commit Directo en Develop (sin rama ni PR)
 
@@ -804,7 +846,7 @@ git stash pop  # Recuperar trabajo
 
 ---
 
-### 12.2 Regla de Oro: Repositorio Limpio
+### 13.2 Regla de Oro: Repositorio Limpio
 
 **Principio fundamental:**
 > Toda rama temporal creada debe terminar mergeada o explícitamente descartada. NUNCA dejar ramas huérfanas.
@@ -830,7 +872,7 @@ git branch -D nombre-rama
 
 ---
 
-### 12.3 Configuración Recomendada en GitHub
+### 13.3 Configuración Recomendada en GitHub
 
 **Una sola vez, configurar:**
 
@@ -849,9 +891,9 @@ git branch -D nombre-rama
 
 ---
 
-## 13. Checklist Pre-Commit
+## 14. Checklist Pre-Commit
 
-### 13.1 IA (antes de solicitar OK)
+### 14.1 IA (antes de solicitar OK)
 
 - [ ] Evaluado: ¿rama temporal o commit directo?
 - [ ] Rama creada con nombre apropiado (si aplica)
@@ -863,7 +905,7 @@ git branch -D nombre-rama
 
 ---
 
-### 13.2 Usuario (antes de git push)
+### 14.2 Usuario (antes de git push)
 
 - [ ] `git pull` completado
 - [ ] `flask run` funciona sin errores
@@ -876,7 +918,7 @@ git branch -D nombre-rama
 
 ---
 
-## 14. Resumen de Responsabilidades
+## 15. Resumen de Responsabilidades
 
 | Actividad | IA | Usuario |
 |-----------|-------|------|
@@ -902,9 +944,9 @@ git branch -D nombre-rama
 
 ---
 
-## 15. Estrategia de Versionado
+## 16. Estrategia de Versionado
 
-### 15.1 Milestones → Versiones
+### 16.1 Milestones → Versiones
 
 | Milestone | Versión | Fase | Release |
 |-----------|---------|------|---------|
@@ -922,7 +964,7 @@ git branch -D nombre-rama
 | 4.2 | - | Fase 4 | No |
 | 4.3 | **v1.0.0** | Fase 4 | ✅ PRODUCCIÓN |
 
-### 15.2 Hotfixes
+### 16.2 Hotfixes
 
 **Si hay bug crítico en `main`:**
 
@@ -937,9 +979,9 @@ git checkout -b hotfix/fix-validacion-nif
 
 ---
 
-## 16. Transición del Workflow Actual
+## 17. Transición del Workflow Actual
 
-### 16.1 Estado Actual (25 enero 2026)
+### 17.1 Estado Actual (25 enero 2026)
 
 - ✅ 1 rama: `main`
 - ✅ GitHub Flow básico funcionando
@@ -948,7 +990,7 @@ git checkout -b hotfix/fix-validacion-nif
 - ❌ Sin tags ni releases
 - ❌ Sin milestones asignados a issues
 
-### 16.2 Pasos de Migración
+### 17.2 Pasos de Migración
 
 **Paso 1: Crear rama develop (ahora)**
 
@@ -988,9 +1030,9 @@ A partir de ahora:
 
 ---
 
-## 17. Documentación y Fuentes de Verdad
+## 18. Documentación y Fuentes de Verdad
 
-### 17.1 Jerarquía de Documentación
+### 18.1 Jerarquía de Documentación
 
 **Orden de prevalencia (mayor a menor):**
 
@@ -999,7 +1041,7 @@ A partir de ahora:
 3. **Pull Requests en GitHub** (historial completo)
 4. **Otras fuentes de conocimiento de IA**
 
-### 17.2 Documentos Clave en Repositorio
+### 18.2 Documentos Clave en Repositorio
 
 - `docs/fuentesIA/REGLAS_DESARROLLO.md` - Este documento
 - `docs/fuentesIA/GuiaGeneralNueva.md` - Plan general del proyecto
@@ -1008,7 +1050,7 @@ A partir de ahora:
 
 ---
 
-## 18. Principios de Trabajo
+## 19. Principios de Trabajo
 
 1. **Documentación primero:** Diseñar antes de codificar
 2. **Incrementalidad:** Cambios pequeños, probados, sincronizados
@@ -1021,9 +1063,9 @@ A partir de ahora:
 
 ---
 
-## 19. Documentación de Decisiones Arquitectónicas
+## 20. Documentación de Decisiones Arquitectónicas
 
-### 19.1 ¿Por qué documentar decisiones?
+### 20.1 ¿Por qué documentar decisiones?
 
 Cuando tomamos decisiones arquitectónicas importantes, no solo debemos implementarlas, sino también **documentar el razonamiento** detrás de ellas.
 
@@ -1036,7 +1078,7 @@ Cuando tomamos decisiones arquitectónicas importantes, no solo debemos implemen
 
 ---
 
-### 19.2 ¿Cuándo documentar?
+### 20.2 ¿Cuándo documentar?
 
 Documenta cuando:
 - ✅ Se evalúan **múltiples alternativas técnicas** (ej: vistas vs tablas, REST vs GraphQL)
@@ -1047,7 +1089,7 @@ Documenta cuando:
 
 ---
 
-### 19.3 ¿Dónde documentar?
+### 20.3 ¿Dónde documentar?
 
 **En los issues de GitHub**, como comentarios en el issue relacionado.
 
@@ -1057,7 +1099,7 @@ Documenta cuando:
 
 ---
 
-### 19.4 Formato Recomendado
+### 20.4 Formato Recomendado
 
 Usa esta estructura en los comentarios del issue:
 
@@ -1119,13 +1161,13 @@ Usa esta estructura en los comentarios del issue:
 
 ---
 
-### 19.5 Ejemplo Real
+### 20.5 Ejemplo Real
 
 Ver issue [#62](https://github.com/genete/bddat/issues/62), comentarios sobre "Análisis de Alternativas de Diseño" donde se documenta la decisión de usar tablas inversas vs vistas actualizables para el modelo de entidades.
 
 ---
 
-### 19.6 Herramientas para Escalabilidad Futura
+### 20.6 Herramientas para Escalabilidad Futura
 
 Si el proyecto crece mucho, considerar herramientas formales como:
 - [ADR (Architecture Decision Records)](https://adr.github.io/)
@@ -1136,6 +1178,6 @@ Pero **para BDDAT, documentar en issues es suficiente** por ahora.
 ---
 
 **Documento creado:** 17 de enero de 2026, 21:24 CET  
-**Última actualización:** 4 de febrero de 2026, 06:41 CET  
-**Versión:** 3.3  
+**Última actualización:** 4 de febrero de 2026, 20:07 CET  
+**Versión:** 3.4  
 **Referencia:** Repositorio oficial genete/bddat en GitHub
