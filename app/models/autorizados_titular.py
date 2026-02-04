@@ -37,7 +37,7 @@ class AutorizadoTitular(db.Model):
     
     titular_entidad_id = db.Column(
         db.Integer, 
-        db.ForeignKey('entidades.id', ondelete='CASCADE'), 
+        db.ForeignKey('public.entidades.id', ondelete='CASCADE'), 
         nullable=False,
         index=True,
         comment='Administrado titular que concede la autorización. Debe tener entrada en entidades_administrados'
@@ -45,7 +45,7 @@ class AutorizadoTitular(db.Model):
     
     autorizado_entidad_id = db.Column(
         db.Integer, 
-        db.ForeignKey('entidades.id', ondelete='CASCADE'), 
+        db.ForeignKey('public.entidades.id', ondelete='CASCADE'), 
         nullable=False,
         index=True,
         comment='Administrado autorizado para representar al titular. Debe tener entrada en entidades_administrados'
@@ -95,6 +95,7 @@ class AutorizadoTitular(db.Model):
         ),
         # Índice compuesto para consultas frecuentes
         db.Index('idx_titular_activo', 'titular_entidad_id', 'activo'),
+        {'schema': 'public'}
     )
     
     # Relaciones
