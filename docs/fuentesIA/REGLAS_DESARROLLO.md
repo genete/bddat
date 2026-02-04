@@ -5,8 +5,8 @@
 **Repositorio:** https://github.com/genete/bddat  
 **Ramas principales:** `main` (producción) + `develop` (integración)  
 **Documento creado:** 17 de enero de 2026  
-**Última actualización:** 2 de febrero de 2026  
-**Versión:** 3.2
+**Última actualización:** 4 de febrero de 2026  
+**Versión:** 3.3
 
 ---
 
@@ -54,7 +54,6 @@ main ─────────────●─v0.1.0──●─v0.2.0  (sol
 - **Espero tu aprobación explícita** antes de cada commit
 - Hago commits en la rama de desarrollo o en `develop` directamente (según tipo de cambio)
 - Tras tus pruebas locales y OK, creo Pull Request a `develop`
-- **Actualizo `docs/CHANGELOG.md` en la misma rama de desarrollo** después del PR
 - Hago merge del PR a `develop`
 - **Borro la rama remota inmediatamente tras merge**
 - Cuando completes un milestone, hago merge de `develop` → `main` y creo tag/release
@@ -109,7 +108,6 @@ main ─────────────●─v0.1.0──●─v0.2.0  (sol
 - Preparo código con explicación detallada
 - Hago commits tras tu aprobación
 
-
 ##### Fase 3: Pruebas Locales (por Usuario)
 
 - `git checkout nombre-rama`
@@ -117,12 +115,11 @@ main ─────────────●─v0.1.0──●─v0.2.0  (sol
 - `flask run` y pruebas funcionales
 - Si hay ajustes, los haces y ejecutas `git push origin nombre-rama`
 
-##### Fase 4: Pull Request y Merge + Changelog (por IA)
+##### Fase 4: Pull Request y Merge (por IA)
 
 - Tras tu OK final, creo PR: `nombre-rama` → `develop`
 - Referencio el issue si aplica: "Closes #XX"
-- Hago merge del PR 
-- **Actualizo `docs/CHANGELOG.md` en la misma rama** con el mismo contenido del PR
+- Hago merge del PR
 - **Borro rama remota inmediatamente:** `git push origin --delete nombre-rama`
 
 ##### Fase 5: Limpieza (por Usuario)
@@ -385,7 +382,6 @@ bddat/
 ├── migrations/
 │   └── versions/
 ├── docs/
-│   ├── CHANGELOG.md
 │   └── fuentesIA/
 │       ├── REGLAS_DESARROLLO.md
 │       ├── GuiaGeneralNueva.md
@@ -466,14 +462,13 @@ git commit -m "[TEST] Ajustar validación tras pruebas"
 git push origin feature/issue-XX-descripcion
 ```
 
-#### Paso 4: Pull Request + CHANGELOG (IA)
+#### Paso 4: Pull Request (IA)
 
 Tras tu OK final:
 - Creo PR: `feature/issue-XX-descripcion` → `develop`
 - Título: Breve descripción de la funcionalidad
 - Descripción: Objetivo, cambios principales, issues relacionados
 - Hago merge del PR (squash o merge commit según preferencia)
-- **Actualizo `docs/CHANGELOG.md` en esta rama** con el mismo contenido del PR
 
 #### Paso 5: Limpieza (IA + Usuario)
 
@@ -565,7 +560,6 @@ git pull origin develop
 - `[MIGA]` - Cambios en migraciones
 - `[TEST]` - Pruebas y testing
 - `[DOCS]` - Cambios en documentación
-- `[CHANGELOG]` - Actualización de changelog
 - `[MERGE]` - Merge de pull requests
 - `[RELEASE]` - Preparación de releases
 
@@ -580,51 +574,25 @@ git pull origin develop
 [MIGA] Añadir campo geom_punto a tabla proyectos
 [TEST] Verificar flujo completo creación expediente
 [DOCS] Actualizar REGLAS_DESARROLLO con workflow develop
-[CHANGELOG] Documentar milestone 1.2 completado
 [MERGE] Merge feature/issue-3-mejorar-mensajes a develop
 [RELEASE] Preparar release v0.1.0 - MVP expedientes
 ```
 
 ---
 
-## 8. Gestión de Changelogs
+## 8. Historial de Cambios
 
-### 8.1 Estrategia de Changelog
+**Fuente de verdad:** Pull Requests cerrados en GitHub
 
-**Archivo `docs/CHANGELOG.md`:**
-- Contiene **solo los últimos 5 PRs** mergeados a `develop` o `main`
-- Pull Requests de GitHub son la fuente de verdad para historial completo
-- Cada entrada incluye: fecha, enlace al PR, objetivo, cambios principales
-- **Se actualiza en la misma rama de desarrollo** después de crear PR
-- **No se actualiza para commits directos en develop** (cambios simples)
+**Ver historial completo:** [Pull Requests cerrados](https://github.com/genete/bddat/pulls?q=is%3Apr+is%3Aclosed+sort%3Aupdated-desc)
 
-### 8.2 Proceso de Actualización
+**No se mantiene archivo CHANGELOG.md** porque:
+- ✅ GitHub ya tiene toda la información (commits, diffs, conversaciones)
+- ✅ Búsqueda y filtros superiores (por milestone, etiqueta, autor, fecha)
+- ✅ Elimina trabajo manual redundante
+- ✅ Evita desincronizaciones
 
-**En rama de desarrollo (después del PR):**
-
-1. IA obtiene los cambios funcionales del PR mergeado
-2. IA actualiza `docs/CHANGELOG.md`:
-   - Añade entrada al inicio
-   - Mantiene solo últimos 5 PRs
-   - Usa número de PR real
-3. IA hace commit: `[CHANGELOG] Documentar [descripción]`
-5. Tras commit, el changelog queda integrado
-
-**Formato de entrada:**
-
-```markdown
-### YYYY-MM-DD - [PR #XX: Título del PR](URL_del_PR)
-
-**Objetivo:** Descripción del objetivo.
-
-**Cambios principales:**
-- ✅ Cambio 1
-- ✅ Cambio 2
-- ✅ Cambio 3
-
-**Issues resueltos:** #XX, #YY
-**Milestone:** X.Y - Nombre
-```
+**Nota:** Decisión tomada 04/02/2026 tras análisis de coste/beneficio.
 
 ---
 
@@ -892,7 +860,6 @@ git branch -D nombre-rama
 - [ ] Consultado `schema.sql` para cambios BD
 - [ ] Código sigue convenciones del proyecto
 - [ ] Mensaje de commit con categoría correcta
-- [ ] **Changelog actualizado en misma rama** (si aplica)
 
 ---
 
@@ -916,7 +883,6 @@ git branch -D nombre-rama
 | Evaluar: rama vs commit directo | ✅ | |
 | Crear ramas temporales desde develop | ✅ | |
 | Hacer commits remotos (tras OK) | ✅ | |
-| Actualizar changelog en rama desarrollo | ✅ | |
 | Crear PRs a develop | ✅ | |
 | Merge PRs a develop | ✅ | |
 | Borrar ramas remotas tras merge | ✅ | |
@@ -1030,16 +996,14 @@ A partir de ahora:
 
 1. **Código en el repositorio** (`app/`, `schema.sql`, `migrations/`)
 2. **Documentación en repositorio** (`docs/fuentesIA/`)
-3. **CHANGELOG.md** (últimos 5 PRs)
-4. **Pull Requests en GitHub** (historial completo)
-5. **Otras fuentes de conocimiento de IA**
+3. **Pull Requests en GitHub** (historial completo)
+4. **Otras fuentes de conocimiento de IA**
 
 ### 17.2 Documentos Clave en Repositorio
 
 - `docs/fuentesIA/REGLAS_DESARROLLO.md` - Este documento
 - `docs/fuentesIA/GuiaGeneralNueva.md` - Plan general del proyecto
 - `docs/fuentesIA/ACCESO_RAPIDO_PROYECTO.md` - Referencia rápida
-- `docs/CHANGELOG.md` - Últimos 5 PRs
 - `schema.sql` - Definición completa BD (generado por usuario)
 
 ---
@@ -1172,6 +1136,6 @@ Pero **para BDDAT, documentar en issues es suficiente** por ahora.
 ---
 
 **Documento creado:** 17 de enero de 2026, 21:24 CET  
-**Última actualización:** 2 de febrero de 2026, 05:59 CET  
-**Versión:** 3.2  
+**Última actualización:** 4 de febrero de 2026, 06:41 CET  
+**Versión:** 3.3  
 **Referencia:** Repositorio oficial genete/bddat en GitHub
