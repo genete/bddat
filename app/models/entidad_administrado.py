@@ -28,7 +28,7 @@ class EntidadAdministrado(db.Model):
     # Campos
     entidad_id = db.Column(
         db.Integer, 
-        db.ForeignKey('entidades.id', ondelete='CASCADE'), 
+        db.ForeignKey('public.entidades.id', ondelete='CASCADE'), 
         primary_key=True,
         comment='Referencia a entidad base (PK y FK con CASCADE)'
     )
@@ -79,6 +79,7 @@ class EntidadAdministrado(db.Model):
                (representante_nif_cif IS NOT NULL AND representante_nombre IS NOT NULL)""",
             name='chk_representante_coherente'
         ),
+        {'schema': 'public'}
     )
     
     # Relación inversa con Entidad
