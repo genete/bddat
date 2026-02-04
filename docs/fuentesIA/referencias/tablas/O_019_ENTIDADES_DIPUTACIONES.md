@@ -2,6 +2,7 @@
 Tabla: ENTIDADES_DIPUTACIONES
 Generado manualmente
 Fecha de creación: 01/02/2026
+Última actualización: 04/02/2026
 IMPORTANTE: No editar Tablas.md directamente.
             Editar este archivo y ejecutar merge_tables.py para regenerar.
 -->
@@ -15,20 +16,19 @@ Metadatos específicos de diputaciones provinciales que pueden actuar con múlti
 | Campo | Tipo | Descripción | Nullable | Notas |
 |:---|:---|:---|:---|:---|
 | **ENTIDAD_ID** | INTEGER | Referencia a entidad base | NO | PK y FK → ENTIDADES(ID), UNIQUE, CASCADE |
-| **CODIGO_DIR3** | VARCHAR(10) | Código DIR3 oficial de la diputación | NO | UNIQUE. Para notificaciones SIR cuando actúa como organismo consultado |
+| **CODIGO_DIR3** | VARCHAR(20) | Código DIR3 oficial de la diputación | NO | UNIQUE. Para notificaciones SIR cuando actúa como organismo consultado. Formato: 1-2 letras + 7-8 números. Ej: L01110002 |
 | **EMAIL_PUBLICACION_BOP** | VARCHAR(255) | Email para solicitar publicaciones en BOP | SÍ | Ej: boletin@bopcadiz.org. Método tradicional: correo con datos pagador + texto a publicar |
-| **OBSERVACIONES** | TEXT | Notas adicionales | SÍ | Procedimientos publicación, tarifas, plataformas alternativas, contactos específicos |
+| **OBSERVACIONES** | TEXT | Notas sobre procedimientos y contactos | SÍ | Procedimientos publicación, tarifas, plataformas alternativas, contactos específicos. Ej: "Concesionaria: Asociación Prensa Cádiz" |
 
 #### Claves
 
 - **PK:** `ENTIDAD_ID`
-- **UNIQUE:** `CODIGO_DIR3`
 - **FK:**
   - `ENTIDAD_ID` → `ENTIDADES(ID)` ON DELETE CASCADE
 
-#### Índices Recomendados
+#### Índices
 
-- `CODIGO_DIR3` (único, búsqueda rápida por código oficial)
+- `ix_public_entidades_diputaciones_codigo_dir3` (único, sobre `CODIGO_DIR3`)
 
 #### Relaciones
 
@@ -36,15 +36,16 @@ Metadatos específicos de diputaciones provinciales que pueden actuar con múlti
 
 #### Notas de Versión
 
-- **v1.0** (01/02/2026): Creación inicial con estructura minimalista (DIR3 + email publicación BOP + observaciones)
+- **v1.0** (01/02/2026): Creación inicial con estructura minimalista
+- **v1.1** (04/02/2026): Sincronización con schema.sql - codigo_dir3 VARCHAR(20) NOT NULL, observaciones existe en schema
 
 #### Filosofía
 
 Tabla de metadatos para **diputaciones provinciales**:
 
 - **Relación 1:1** con `ENTIDADES` mediante `ENTIDAD_ID` como PK y FK
-- **Estructura minimalista:** Solo campos que NO están en `ENTIDADES`
-- **CODIGO_DIR3 como clave de negocio:** Identificación oficial para comunicaciones interadministrativas
+- **Estructura completa:** DIR3 obligatorio + email publicación BOP + observaciones
+- **CODIGO_DIR3 obligatorio:** NOT NULL, identificación oficial para comunicaciones interadministrativas
 - **EMAIL_PUBLICACION_BOP:** Método real de trabajo (al menos Cádiz y otras provincias)
 - **Sin representante:** La entidad es la corporación en sí (persona jurídica pública)
 - **Múltiples roles posibles:** Solicitante + Consultado + Publicador BOP
@@ -60,8 +61,9 @@ Tabla de metadatos para **diputaciones provinciales**:
 - `TELEFONO`: Teléfono general
 - `DIRECCION`, `CODIGO_POSTAL`: Sede de la diputación (Palacio Provincial)
 - `MUNICIPIO_ID`: FK a municipio donde tiene sede (capital provincia), pero NO gestiona ese municipio
+- `NOTAS`: Observaciones generales sobre la entidad
 
-**Si se necesitan contactos específicos (email área técnica, teléfono informática), usar campo `OBSERVACIONES`.**
+**El campo `OBSERVACIONES` de esta tabla es específico para temas de publicación BOP y procesos administrativos de la diputación.**
 
 #### CIF de Diputaciones
 
@@ -93,6 +95,10 @@ Tabla de metadatos para **diputaciones provinciales**:
 - Identificación única para notificaciones vía **SIR** cuando la diputación actúa como **organismo consultado** (emite informe)
 - NO se usa para notificar cuando actúa como **solicitante** (ahí usa Notifica con email)
 
+**Campo NOT NULL:**
+- Todas las diputaciones tienen código DIR3
+- Es obligatorio en la estructura real de la base de datos
+
 **Consulta de códigos DIR3:**
 - Portal oficial: https://administracionelectronica.gob.es/ctt/dir3
 - Descargas: https://administracionelectronica.gob.es/ctt/dir3/descargas
@@ -118,6 +124,32 @@ Tabla de metadatos para **diputaciones provinciales**:
 **Campo nullable:**
 - Algunas diputaciones pueden usar exclusivamente plataforma electrónica (SIR u otra)
 - Si existe método alternativo, se documenta en `OBSERVACIONES`
+
+#### Campo OBSERVACIONES
+
+**Propósito específico:**
+- Información sobre **procedimientos de publicación BOP**
+- Contactos específicos de departamentos
+- Tarifas y métodos de pago
+- Plataformas alternativas o complementarias
+- Datos de concesionarias (si el BOP está externalizado)
+
+**Ejemplos de contenido:**
+
+```
+"Concesionaria: Asociación Prensa Cádiz (CIF: G11013232). 
+Tarifas: consultar Ordenanza fiscal. 
+Publicación: L-V días hábiles. 
+Contacto técnico BOP: 956 213 861"
+
+"Plataforma electrónica: https://bop.dival.es/bop/
+Envío anuncios: solo vía SIR. 
+Email backup: bop.incidencias@dival.es"
+```
+
+**Diferencia con `ENTIDADES.NOTAS`:**
+- `ENTIDADES.NOTAS`: Observaciones generales de la entidad (horarios, contactos genéricos)
+- `ENTIDADES_DIPUTACIONES.OBSERVACIONES`: Específico para publicación BOP y procesos administrativos
 
 #### BOP Cádiz: Caso Real Verificado
 
@@ -166,7 +198,8 @@ Tabla de metadatos para **diputaciones provinciales**:
 -- Aparecen diputaciones con tipo DIPUTACION
 SELECT e.* FROM entidades e
 JOIN tipos_entidades te ON e.tipo_entidad_id = te.id
-WHERE te.puede_ser_consultado = TRUE;
+WHERE te.puede_ser_consultado = TRUE
+AND e.activo = TRUE;
 
 -- Contexto: Crear solicitud (diputación solicita instalación propia)
 -- Solo aparecen entidades con registro en ENTIDADES_ADMINISTRADOS
@@ -189,12 +222,14 @@ AND e.activo = TRUE;
 - BDDAT notifica vía **SIR** al ayuntamiento
 - Ayuntamiento publica en su sede electrónica
 - Sin campo `email_publicacion` (proceso interno del ayuntamiento)
+- `codigo_dir3` es NULLABLE (ayuntamientos pequeños sin DIR3)
 
 **DIPUTACIONES:**
 - Publican en **BOP** (Boletín Oficial Provincial)
 - BDDAT solicita publicación vía **email** tradicional (método real)
 - Campo `EMAIL_PUBLICACION_BOP` necesario (ej: `boletin@bopcadiz.org`)
 - BOP puede estar gestionado por concesionaria (caso Cádiz: Asociación Prensa)
+- `codigo_dir3` es NOT NULL (todas las diputaciones tienen DIR3)
 
 #### Flujo UX: Copia de Datos entre Roles
 
@@ -214,14 +249,15 @@ AND e.activo = TRUE;
 1. **CODIGO_DIR3 obligatorio** (NOT NULL, UNIQUE)
 2. **CIF_NIF obligatorio** en `ENTIDADES` (formato P+provincia+00000+control)
 3. **EMAIL_PUBLICACION_BOP opcional** (nullable, algunas usan solo plataforma electrónica)
-4. **Sin representante** (no aplican campos `REPRESENTANTE_*`)
-5. **Múltiples roles:** Una diputación puede estar en esta tabla Y en `ENTIDADES_ADMINISTRADOS`
-6. **Notificaciones duales:**
+4. **OBSERVACIONES opcional** (nullable, notas sobre procedimientos BOP)
+5. **Sin representante** (no aplican campos `REPRESENTANTE_*`)
+6. **Múltiples roles:** Una diputación puede estar en esta tabla Y en `ENTIDADES_ADMINISTRADOS`
+7. **Notificaciones duales:**
    - Como **organismo consultado**: SIR (usa CODIGO_DIR3)
    - Como **solicitante**: Notifica (usa email de `ENTIDADES_ADMINISTRADOS`)
-7. **Publicación BOP:** Método tradicional email (datos pagador + texto anuncio)
-8. **Validación DIR3:** Formato alfanumérico, 8-10 caracteres
-9. **MUNICIPIO_ID en ENTIDADES:** Sede de la diputación (capital), NO implica gestión de ese municipio
+8. **Publicación BOP:** Método tradicional email (datos pagador + texto anuncio)
+9. **Validación DIR3:** Formato alfanumérico, 8-10 caracteres
+10. **MUNICIPIO_ID en ENTIDADES:** Sede de la diputación (capital), NO implica gestión de ese municipio
 
 #### Validaciones
 
@@ -329,13 +365,12 @@ SELECT
     ed.email_publicacion_bop,
     e.email,
     e.telefono,
-    p.nombre AS provincia
+    m.provincia
 FROM entidades e
 JOIN entidades_diputaciones ed ON e.id = ed.entidad_id
-JOIN municipios m ON e.municipio_id = m.id
-JOIN provincias p ON m.provincia_id = p.id
+JOIN estructura.municipios m ON e.municipio_id = m.id
 WHERE e.activo = TRUE
-ORDER BY p.nombre;
+ORDER BY m.provincia;
 ```
 
 **2. Buscar diputación por código DIR3:**
@@ -376,15 +411,15 @@ ORDER BY e.nombre_completo;
 
 ```sql
 SELECT 
-    p.nombre AS provincia,
+    m.provincia,
     e.nombre_completo,
     ed.email_publicacion_bop,
+    ed.observaciones,
     e.telefono
 FROM entidades e
 JOIN entidades_diputaciones ed ON e.id = ed.entidad_id
-JOIN municipios m ON e.municipio_id = m.id
-JOIN provincias p ON m.provincia_id = p.id
-WHERE p.codigo = '11'  -- Cádiz
+JOIN estructura.municipios m ON e.municipio_id = m.id
+WHERE m.provincia = 'Ourense'
 AND e.activo = TRUE;
 ```
 
@@ -396,7 +431,8 @@ SELECT
     CASE 
         WHEN ead.entidad_id IS NOT NULL THEN 'SÍ'
         ELSE 'NO'
-    END AS puede_solicitar
+    END AS puede_solicitar,
+    ead.email_notificaciones
 FROM entidades e
 JOIN entidades_diputaciones ed ON e.id = ed.entidad_id
 LEFT JOIN entidades_administrados ead ON e.id = ead.entidad_id
@@ -413,7 +449,8 @@ SELECT
 FROM entidades e
 JOIN entidades_diputaciones ed ON e.id = ed.entidad_id
 WHERE ed.email_publicacion_bop IS NULL
-AND e.activo = TRUE;
+AND e.activo = TRUE
+ORDER BY e.nombre_completo;
 ```
 
 ---
