@@ -16,7 +16,7 @@ Tabla principal que representa cada expediente de tramitación administrativa.
 |:---|:---|:---|:---|:------|
 | **ID** | INTEGER | NO | Identificador único del expediente | PK, autoincremental |
 | **NUMERO_AT** | INTEGER | NO | Número de expediente administrativo (formato legacy) | Único en la organización. No es el ID sino un número correlativo tomado del sistema anterior |
-| **RESPONSABLE_ID** | INTEGER | NO | Usuario responsable del expediente | FK → USUARIOS(ID). Usuario asignado con permisos de gestión completa |
+| **RESPONSABLE_ID** | INTEGER | SÍ | Usuario responsable del expediente | FK → USUARIOS(ID). Usuario asignado con permisos de gestión completa. NULL = expediente huérfano sin asignar |
 | **TIPO_EXPEDIENTE_ID** | INTEGER | SÍ | Tipo de expediente según clasificación normativa | FK → TIPOS_EXPEDIENTES(ID). Define lógica procedimental aplicable |
 | **HEREDADO** | BOOLEAN | SÍ | Indica si el expediente proviene del sistema anterior | TRUE = datos incompletos, solo metadatos heredados. FALSE/NULL = expediente gestionado completamente en este sistema |
 | **PROYECTO_ID** | INTEGER | NO | Proyecto técnico único asociado al expediente | FK → PROYECTOS(ID). **UNIQUE** (relación 1:1). **Nuevo campo v3.0** |
@@ -27,10 +27,10 @@ Tabla principal que representa cada expediente de tramitación administrativa.
 - **PK:** `ID`
 - **UNIQUE:** `NUMERO_AT`, `PROYECTO_ID`
 - **FK:**
-  - `RESPONSABLE_ID` → `USUARIOS(ID)`
+  - `RESPONSABLE_ID` → `USUARIOS(ID)` (sin CASCADE, usuarios nunca se borran, solo se desactivan)
   - `TIPO_EXPEDIENTE_ID` → `TIPOS_EXPEDIENTES(ID)`
   - `PROYECTO_ID` → `PROYECTOS(ID)`
-  - `TITULAR_ID` → `ENTIDADES(ID)` ON DELETE SET NULL
+  - `TITULAR_ID` → `ENTIDADES(ID)` (sin CASCADE, entidades nunca se borran, solo se desactivan)
 
 #### Índices
 
@@ -41,6 +41,13 @@ Tabla principal que representa cada expediente de tramitación administrativa.
 - `idx_expedientes_tipo` sobre `TIPO_EXPEDIENTE_ID`
 
 #### Decisiones de Diseño
+
+##### Campo RESPONSABLE_ID
+
+**Nullable = TRUE**
+- **Motivo:** Permite expedientes huérfanos sin usuario asignado temporalmente
+- **Regla de negocio:** Los usuarios nunca se borran físicamente, solo se desactivan mediante campo `activo`
+- **Sin CASCADE:** No hay riesgo de borrado accidental de expedientes por gestión de usuarios
 
 ##### Campo TITULAR_ID (v3.1 - Issue #64)
 
@@ -64,9 +71,13 @@ Los expedientes administrativos tienen un titular legal que evoluciona durante s
    - **Ventaja:** Preparado para casos excepcionales (ej: organismos públicos titulares temporales de instalaciones)
    - **Referencia:** Tabla `ESTRUCTURA.TIPOS_ENTIDADES` define qué tipos pueden ser titulares via flag `puede_ser_solicitante`
 
-3. **ON DELETE SET NULL (no CASCADE)**
-   - **Motivo:** Preservar integridad histórica del expediente aunque se elimine la entidad
-   - **Impacto:** Expediente con titular NULL por borrado = estado excepcional que requiere corrección administrativa
+3. **Gestión de desactivación de entidades (sin CASCADE)**
+   - **Regla de negocio:** Las entidades nunca se borran físicamente, solo se desactivan mediante campo `activo`
+   - **Comportamiento al desactivar titular:**
+     - **Expediente en tramitación:** Reglas de negocio impiden desactivar entidad si tiene expedientes activos con titular_id apuntando a ella
+     - **Expediente en construcción:** Se permite pasar titular_id a NULL si el expediente aún no ha iniciado tramitación formal
+   - **Sin ON DELETE:** No hay constraint CASCADE/SET NULL porque no hay borrados físicos
+   - **Validación:** En capa de aplicación según estado del expediente
 
 4. **Campo redundante con histórico**
    - **Motivo:** Optimización de rendimiento. El 99% de consultas acceden al titular actual, no al histórico
