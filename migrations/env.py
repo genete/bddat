@@ -98,7 +98,8 @@ def run_migrations_online():
         if getattr(config.cmd_opts, 'autogenerate', False):
             script = directives[0]
             if script.upgrade_ops.is_empty():
-                directives[:] = []\n                logger.info('No changes in schema detected.')
+                directives[:] = []
+                logger.info('No changes in schema detected.')
 
     conf_args = current_app.extensions['migrate'].configure_args
     if conf_args.get("process_revision_directives") is None:
