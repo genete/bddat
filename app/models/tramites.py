@@ -78,7 +78,7 @@ class Tramite(db.Model):
     
     tipo_tramite_id = db.Column(
         db.Integer,
-        db.ForeignKey('estructura.tipos_tramites.id'),
+        db.ForeignKey('tipos_tramites.id'),
         nullable=False,
         comment='FK a TIPOS_TRAMITES. Tipo de trámite'
     )

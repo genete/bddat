@@ -129,7 +129,7 @@ class Proyecto(db.Model):
     
     ia_id = db.Column(
         db.Integer, 
-        db.ForeignKey('estructura.tipos_ia.id'), 
+        db.ForeignKey('tipos_ia.id'), 
         nullable=True,
         comment='FK a TIPOS_IA. Instrumento ambiental aplicable (AAI, AAU, AAUS, CA, EXENTO)'
     )

@@ -32,7 +32,7 @@ class TipoExpediente(db.Model):
         v3.0: Sin cambios estructurales. Tabla maestra estable.
     """
     __tablename__ = 'tipos_expedientes'
-    __table_args__ = {'schema': 'estructura'}
+    
     
     id = db.Column(
         db.Integer, 

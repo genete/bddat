@@ -29,7 +29,7 @@ class TipoIA(db.Model):
         v3.0: Sin cambios estructurales. Tabla maestra estable.
     """
     __tablename__ = 'tipos_ia'
-    __table_args__ = {'schema': 'estructura'}
+    
     
     id = db.Column(
         db.Integer, 

@@ -74,7 +74,7 @@ class SolicitudTipo(db.Model):
     
     tiposolicitudid = db.Column(
         db.Integer,
-        db.ForeignKey('estructura.tipos_solicitudes.id'),
+        db.ForeignKey('tipos_solicitudes.id'),
         nullable=False,
         comment='FK a TIPOS_SOLICITUDES. Tipo individual asignado a la solicitud'
     )

@@ -92,7 +92,7 @@ class Fase(db.Model):
     
     tipo_fase_id = db.Column(
         db.Integer,
-        db.ForeignKey('estructura.tipos_fases.id'),
+        db.ForeignKey('tipos_fases.id'),
         nullable=False,
         comment='FK a TIPOS_FASES. Tipo de fase (ADMISIBILIDAD, CONSULTAS, etc.)'
     )
@@ -111,7 +111,7 @@ class Fase(db.Model):
     
     resultado_fase_id = db.Column(
         db.Integer,
-        db.ForeignKey('estructura.tipos_resultados_fases.id'),
+        db.ForeignKey('tipos_resultados_fases.id'),
         nullable=True,
         comment='FK a TIPOS_RESULTADOS_FASES. Resultado de la fase al finalizar'
     )
