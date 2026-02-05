@@ -43,7 +43,7 @@ class TipoTarea(db.Model):
         v3.0: Solo 7 tipos atómicos. Catálogo cerrado y estable.
     """
     __tablename__ = 'tipos_tareas'
-    __table_args__ = {'schema': 'estructura'}
+    
     
     id = db.Column(
         db.Integer, 

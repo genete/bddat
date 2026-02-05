@@ -115,7 +115,7 @@ class Expediente(db.Model):
     
     tipo_expediente_id = db.Column(
         db.Integer,
-        db.ForeignKey('estructura.tipos_expedientes.id'),
+        db.ForeignKey('tipos_expedientes.id'),
         comment='FK a TIPOS_EXPEDIENTES. Clasificación normativa que define procedimiento'
     )
     
