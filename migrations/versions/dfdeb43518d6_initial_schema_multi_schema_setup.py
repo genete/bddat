@@ -24,8 +24,7 @@ def upgrade():
     sa.Column('nombre', sa.String(length=200), nullable=False, comment='Denominación oficial del municipio'),
     sa.Column('provincia', sa.String(length=100), nullable=False, comment='Provincia a la que pertenece el municipio'),
     sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('codigo'),
-    schema='estructura'
+    sa.UniqueConstraint('codigo')
     )
     op.create_table('tipos_entidades',
     sa.Column('id', sa.Integer(), nullable=False, comment='Identificador único del tipo de entidad'),
@@ -36,66 +35,58 @@ def upgrade():
     sa.Column('puede_ser_consultado', sa.Boolean(), nullable=False, comment='Indica si este tipo puede emitir informes como organismo consultado'),
     sa.Column('puede_publicar', sa.Boolean(), nullable=False, comment='Indica si este tipo puede publicar edictos (tablón ayuntamiento o BOP diputación)'),
     sa.Column('descripcion', sa.Text(), nullable=True, comment='Descripción detallada del tipo de entidad, roles y características'),
-    sa.PrimaryKeyConstraint('id'),
-    schema='estructura'
+    sa.PrimaryKeyConstraint('id')
     )
-    with op.batch_alter_table('tipos_entidades', schema='estructura') as batch_op:
-        batch_op.create_index(batch_op.f('ix_estructura_tipos_entidades_codigo'), ['codigo'], unique=True)
+    with op.batch_alter_table('tipos_entidades') as batch_op:
+        batch_op.create_index(batch_op.f('ix_tipos_entidades_codigo'), ['codigo'], unique=True)
 
     op.create_table('tipos_expedientes',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False, comment='Identificador único autogenerado del tipo de expediente'),
     sa.Column('tipo', sa.String(length=100), nullable=True, comment='Denominación del tipo según clasificación normativa'),
     sa.Column('descripcion', sa.String(length=200), nullable=True, comment='Descripción detallada de características y particularidades procedimentales'),
-    sa.PrimaryKeyConstraint('id'),
-    schema='estructura'
+    sa.PrimaryKeyConstraint('id')
     )
     op.create_table('tipos_fases',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False, comment='Identificador único autogenerado del tipo de fase'),
     sa.Column('codigo', sa.String(length=50), nullable=False, comment='Código único inmutable de la fase (usado en lógica de reglas)'),
     sa.Column('nombre', sa.String(length=200), nullable=False, comment='Denominación completa de la fase para interfaz de usuario'),
     sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('codigo'),
-    schema='estructura'
+    sa.UniqueConstraint('codigo')
     )
     op.create_table('tipos_ia',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False, comment='Identificador único autogenerado del tipo de instrumento ambiental'),
     sa.Column('siglas', sa.String(length=10), nullable=False, comment='Código del instrumento ambiental (ver datos_maestros.sql)'),
     sa.Column('descripcion', sa.String(length=200), nullable=True, comment='Denominación completa del instrumento ambiental'),
     sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('siglas'),
-    schema='estructura'
+    sa.UniqueConstraint('siglas')
     )
     op.create_table('tipos_resultados_fases',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False, comment='Identificador único autogenerado del tipo de resultado'),
     sa.Column('codigo', sa.String(length=50), nullable=False, comment='Código único inmutable del resultado (usado en lógica de reglas)'),
     sa.Column('nombre', sa.String(length=200), nullable=False, comment='Denominación completa del resultado para interfaz de usuario'),
     sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('codigo'),
-    schema='estructura'
+    sa.UniqueConstraint('codigo')
     )
     op.create_table('tipos_solicitudes',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False, comment='Identificador único autogenerado del tipo de solicitud'),
     sa.Column('siglas', sa.String(length=100), nullable=False, comment='Código normalizado del acto administrativo (AAP, AAC, DUP, etc.)'),
     sa.Column('descripcion', sa.String(length=200), nullable=False, comment='Descripción completa del acto administrativo solicitado'),
     sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('siglas'),
-    schema='estructura'
+    sa.UniqueConstraint('siglas')
     )
     op.create_table('tipos_tareas',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False, comment='Identificador único autogenerado del tipo de tarea'),
     sa.Column('codigo', sa.String(length=50), nullable=False, comment='Código único inmutable de la tarea (usado en lógica de reglas)'),
     sa.Column('nombre', sa.String(length=200), nullable=False, comment='Denominación completa de la tarea para interfaz de usuario'),
     sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('codigo'),
-    schema='estructura'
+    sa.UniqueConstraint('codigo')
     )
     op.create_table('tipos_tramites',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False, comment='Identificador único autogenerado del tipo de trámite'),
     sa.Column('codigo', sa.String(length=50), nullable=False, comment='Código único inmutable del trámite (usado en lógica de reglas)'),
     sa.Column('nombre', sa.String(length=200), nullable=False, comment='Denominación completa del trámite para interfaz de usuario'),
     sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('codigo'),
-    schema='estructura'
+    sa.UniqueConstraint('codigo')
     )
     op.create_table('roles',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False, comment='Identificador único autogenerado del rol'),
@@ -157,8 +148,8 @@ def upgrade():
     sa.Column('notas', sa.Text(), nullable=True, comment='Observaciones generales sobre la entidad. Campo libre para anotaciones'),
     sa.Column('created_at', sa.DateTime(), nullable=False, comment='Fecha y hora de creación del registro'),
     sa.Column('updated_at', sa.DateTime(), nullable=False, comment='Fecha y hora de última actualización'),
-    sa.ForeignKeyConstraint(['municipio_id'], ['estructura.municipios.id'], ),
-    sa.ForeignKeyConstraint(['tipo_entidad_id'], ['estructura.tipos_entidades.id'], ),
+    sa.ForeignKeyConstraint(['municipio_id'], ['municipios.id'], ),
+    sa.ForeignKeyConstraint(['tipo_entidad_id'], ['tipos_entidades.id'], ),
     sa.PrimaryKeyConstraint('id'),
     schema='public'
     )
@@ -173,7 +164,7 @@ def upgrade():
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False, comment='Identificador único autogenerado del registro puente'),
     sa.Column('municipio_id', sa.Integer(), nullable=False, comment='FK a MUNICIPIOS. Municipio afectado por el proyecto'),
     sa.Column('proyecto_id', sa.Integer(), nullable=False, comment='FK a PROYECTOS. Proyecto técnico que afecta al municipio'),
-    sa.ForeignKeyConstraint(['municipio_id'], ['estructura.municipios.id'], ),
+    sa.ForeignKeyConstraint(['municipio_id'], ['municipios.id'], ),
     sa.ForeignKeyConstraint(['proyecto_id'], ['public.proyectos.id'], name='fk_municipios_proyecto_proyecto', ondelete='CASCADE', use_alter=True),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('municipio_id', 'proyecto_id', name='municipios_proyecto_municipio_proyecto_key'),
@@ -191,7 +182,7 @@ def upgrade():
     sa.Column('finalidad', sa.String(length=500), nullable=False, comment='Finalidad o uso previsto de la instalación eléctrica'),
     sa.Column('emplazamiento', sa.String(length=200), nullable=False, comment='Ubicación geográfica de la instalación (descripción textual)'),
     sa.Column('ia_id', sa.Integer(), nullable=True, comment='FK a TIPOS_IA. Instrumento ambiental aplicable (AAI, AAU, AAUS, CA, EXENTO)'),
-    sa.ForeignKeyConstraint(['ia_id'], ['estructura.tipos_ia.id'], ),
+    sa.ForeignKeyConstraint(['ia_id'], ['tipos_ia.id'], ),
     sa.PrimaryKeyConstraint('id'),
     schema='public'
     )
@@ -204,7 +195,7 @@ def upgrade():
     sa.Column('solicitudid', sa.Integer(), nullable=False, comment='FK a SOLICITUDES. Solicitud que contiene este tipo'),
     sa.Column('tiposolicitudid', sa.Integer(), nullable=False, comment='FK a TIPOS_SOLICITUDES. Tipo individual asignado a la solicitud'),
     sa.ForeignKeyConstraint(['solicitudid'], ['public.solicitudes.id'], ondelete='CASCADE'),
-    sa.ForeignKeyConstraint(['tiposolicitudid'], ['estructura.tipos_solicitudes.id'], ),
+    sa.ForeignKeyConstraint(['tiposolicitudid'], ['tipos_solicitudes.id'], ),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('solicitudid', 'tiposolicitudid', name='solicitudes_tipos_solicitudid_tiposolicitudid_key'),
     schema='public'
@@ -320,7 +311,7 @@ def upgrade():
     sa.Column('titular_id', sa.Integer(), nullable=True, comment='FK a ENTIDADES. Titular actual del expediente (snapshot del histórico). NULL = sin titular asignado (anómalo transitorio)'),
     sa.ForeignKeyConstraint(['proyecto_id'], ['public.proyectos.id'], ),
     sa.ForeignKeyConstraint(['responsable_id'], ['public.usuarios.id'], ),
-    sa.ForeignKeyConstraint(['tipo_expediente_id'], ['estructura.tipos_expedientes.id'], ),
+    sa.ForeignKeyConstraint(['tipo_expediente_id'], ['tipos_expedientes.id'], ),
     sa.ForeignKeyConstraint(['titular_id'], ['public.entidades.id'], ),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('numero_at'),
@@ -381,9 +372,9 @@ def upgrade():
     sa.Column('documento_resultado_id', sa.Integer(), nullable=True, comment='FK a DOCUMENTOS. Documento oficial que formaliza el resultado'),
     sa.Column('observaciones', sa.String(length=2000), nullable=True, comment='Notas o comentarios adicionales del técnico'),
     sa.ForeignKeyConstraint(['documento_resultado_id'], ['public.documentos.id'], ),
-    sa.ForeignKeyConstraint(['resultado_fase_id'], ['estructura.tipos_resultados_fases.id'], ),
+    sa.ForeignKeyConstraint(['resultado_fase_id'], ['tipos_resultados_fases.id'], ),
     sa.ForeignKeyConstraint(['solicitud_id'], ['public.solicitudes.id'], ondelete='CASCADE'),
-    sa.ForeignKeyConstraint(['tipo_fase_id'], ['estructura.tipos_fases.id'], ),
+    sa.ForeignKeyConstraint(['tipo_fase_id'], ['tipos_fases.id'], ),
     sa.PrimaryKeyConstraint('id'),
     schema='public'
     )
@@ -401,7 +392,7 @@ def upgrade():
     sa.Column('fecha_fin', sa.Date(), nullable=True, comment='Fecha de finalización del trámite. NULL = trámite pendiente o en curso'),
     sa.Column('observaciones', sa.String(length=2000), nullable=True, comment='Notas o comentarios adicionales del técnico'),
     sa.ForeignKeyConstraint(['fase_id'], ['public.fases.id'], ondelete='CASCADE'),
-    sa.ForeignKeyConstraint(['tipo_tramite_id'], ['estructura.tipos_tramites.id'], ),
+    sa.ForeignKeyConstraint(['tipo_tramite_id'], ['tipos_tramites.id'], ),
     sa.PrimaryKeyConstraint('id'),
     schema='public'
     )
@@ -421,7 +412,7 @@ def upgrade():
     sa.Column('notas', sa.String(length=2000), nullable=True, comment='Observaciones o información adicional (plazos, referencia, remitente, etc.)'),
     sa.ForeignKeyConstraint(['documento_producido_id'], ['public.documentos.id'], ),
     sa.ForeignKeyConstraint(['documento_usado_id'], ['public.documentos.id'], ),
-    sa.ForeignKeyConstraint(['tipo_tarea_id'], ['estructura.tipos_tareas.id'], ),
+    sa.ForeignKeyConstraint(['tipo_tarea_id'], ['tipos_tareas.id'], ),
     sa.ForeignKeyConstraint(['tramite_id'], ['public.tramites.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('documento_producido_id'),
@@ -543,16 +534,16 @@ def downgrade():
 
     op.drop_table('solicitudes', schema='public')
     op.drop_table('roles', schema='public')
-    op.drop_table('tipos_tramites', schema='estructura')
-    op.drop_table('tipos_tareas', schema='estructura')
-    op.drop_table('tipos_solicitudes', schema='estructura')
-    op.drop_table('tipos_resultados_fases', schema='estructura')
-    op.drop_table('tipos_ia', schema='estructura')
-    op.drop_table('tipos_fases', schema='estructura')
-    op.drop_table('tipos_expedientes', schema='estructura')
-    with op.batch_alter_table('tipos_entidades', schema='estructura') as batch_op:
-        batch_op.drop_index(batch_op.f('ix_estructura_tipos_entidades_codigo'))
+    op.drop_table('tipos_tramites')
+    op.drop_table('tipos_tareas')
+    op.drop_table('tipos_solicitudes')
+    op.drop_table('tipos_resultados_fases')
+    op.drop_table('tipos_ia')
+    op.drop_table('tipos_fases')
+    op.drop_table('tipos_expedientes')
+    with op.batch_alter_table('tipos_entidades') as batch_op:
+        batch_op.drop_index(batch_op.f('ix_tipos_entidades_codigo'))
 
-    op.drop_table('tipos_entidades', schema='estructura')
-    op.drop_table('municipios', schema='estructura')
+    op.drop_table('tipos_entidades')
+    op.drop_table('municipios')
     # ### end Alembic commands ###
