@@ -104,7 +104,7 @@ class Tarea(db.Model):
     
     tipo_tarea_id = db.Column(
         db.Integer,
-        db.ForeignKey('estructura.tipos_tareas.id'),
+        db.ForeignKey('tipos_tareas.id'),
         nullable=False,
         comment='FK a TIPOS_TAREAS. Tipo de tarea atómica (7 tipos posibles)'
     )
