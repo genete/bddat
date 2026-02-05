@@ -9,8 +9,9 @@ DESCRIPCIÓN:
     correcto y regenerando el índice automático.
 
 CARACTERÍSTICAS:
-    - Lee archivos en orden numérico (01_, 02_, 20_...)
-    - Concatena: filosofía + tablas operacionales + tablas maestras
+    - Lee archivos con nomenclatura E_nnn (Estructura) y O_nnn (Operacional)
+    - Escalabilidad infinita por categoría
+    - Concatena: filosofía + tablas estructura + tablas operacionales
     - Genera índice automático con enlaces
     - Elimina metadatos de generación (comentarios HTML)
     - Añade header con fecha de regeneración
@@ -39,8 +40,8 @@ FLUJO RECOMENDADO:
     4. Commit de ambos: tablas/*.md y Tablas.md regenerado
 
 AUTOR: Sistema BDDAT
-VERSIÓN: 2.0
-FECHA: 2026-01-31
+VERSIÓN: 3.0
+FECHA: 2026-02-01
 """
 
 import re
@@ -85,18 +86,20 @@ def read_markdown_file(filepath):
 
 def extract_table_name_from_filename(filename):
     """
-    Extrae nombre de tabla desde nombre de archivo.
+    Extrae nombre de tabla desde nombre de archivo con nomenclatura E_/O_.
     
     Args:
-        filename: Nombre del archivo (ej: '03_SOLICITUDES.md')
+        filename: Nombre del archivo (ej: 'E_001_TIPOS_EXPEDIENTES.md', 'O_013_ENTIDADES.md')
     
     Returns:
-        str: Nombre de tabla (ej: 'SOLICITUDES') o None si formato inválido
+        tuple: (prefix, table_name) o (None, None) si formato inválido
+               prefix: 'E_001' u 'O_013'
+               table_name: 'TIPOS_EXPEDIENTES' o 'ENTIDADES'
     """
-    match = re.match(r'^\d+_([A-Z_]+)\.md$', filename)
+    match = re.match(r'^([EO]_\d{3})_([A-Z_]+)\.md$', filename)
     if match:
-        return match.group(1)
-    return None
+        return match.group(1), match.group(2)
+    return None, None
 
 
 def collect_tables(input_dir):
@@ -107,7 +110,7 @@ def collect_tables(input_dir):
         input_dir: Path al directorio con archivos .md
     
     Returns:
-        tuple: (philosophy_content, tables_operacionales, tables_maestras)
+        tuple: (philosophy_content, tables_estructura, tables_operacionales)
                donde tables_* son dicts {name: content} ordenados
     
     Raises:
@@ -118,8 +121,8 @@ def collect_tables(input_dir):
         raise FileNotFoundError(f"No existe directorio: {input_dir}")
     
     philosophy_content = None
-    tables_operacionales = {}  # {name: content}
-    tables_maestras = {}
+    tables_estructura = {}  # {name: content}
+    tables_operacionales = {}
     
     # Leer todos los archivos .md en orden
     for filepath in sorted(input_dir.glob('*.md')):
@@ -132,7 +135,7 @@ def collect_tables(input_dir):
             continue
         
         # Extraer nombre de tabla
-        table_name = extract_table_name_from_filename(filename)
+        prefix, table_name = extract_table_name_from_filename(filename)
         if not table_name:
             print(f"   ⚠️  Ignorado (formato no válido): {filename}")
             continue
@@ -140,20 +143,19 @@ def collect_tables(input_dir):
         # Leer contenido
         content = read_markdown_file(filepath)
         
-        # Clasificar operacional vs maestra (prefijo < 20 = operacional)
-        prefix = int(filename.split('_')[0])
-        if prefix < 20:
+        # Clasificar estructura vs operacional (prefijo E_ vs O_)
+        if prefix.startswith('E_'):
+            tables_estructura[table_name] = content
+            print(f"   ✓ {filename} [ESTRUCTURA]")
+        elif prefix.startswith('O_'):
             tables_operacionales[table_name] = content
             print(f"   ✓ {filename} [OPERACIONAL]")
-        else:
-            tables_maestras[table_name] = content
-            print(f"   ✓ {filename} [MAESTRA]")
     
     # Validar filosofía
     if not philosophy_content:
         raise ValueError("No se encontró archivo 00_FILOSOFIA.md")
     
-    return philosophy_content, tables_operacionales, tables_maestras
+    return philosophy_content, tables_estructura, tables_operacionales
 
 
 # ============================================================================
@@ -181,13 +183,13 @@ def generate_header():
 """
 
 
-def generate_table_index(tables_operacionales, tables_maestras):
+def generate_table_index(tables_estructura, tables_operacionales):
     """
     Genera índice markdown automático con enlaces internos.
     
     Args:
+        tables_estructura: Lista de nombres de tablas de estructura
         tables_operacionales: Lista de nombres de tablas operacionales
-        tables_maestras: Lista de nombres de tablas maestras
     
     Returns:
         str: Sección de índice en formato markdown
@@ -196,20 +198,20 @@ def generate_table_index(tables_operacionales, tables_maestras):
         '## Índice',
         '',
         '- [Filosofía del Diseño](#filosofía-del-diseño)',
-        '- [Tablas Operacionales](#tablas-operacionales)'
+        '- [Tablas de Estructura](#tablas-de-estructura)'
     ]
     
-    # Añadir tablas operacionales al índice
-    for table_name in tables_operacionales:
+    # Añadir tablas de estructura al índice
+    for table_name in tables_estructura:
         anchor = table_name.lower().replace('_', '')
         index_lines.append(f'  - [{table_name}](#{anchor})')
     
     index_lines.extend([
-        '- [Tablas Maestras](#tablas-maestras)'
+        '- [Tablas Operacionales](#tablas-operacionales)'
     ])
     
-    # Añadir tablas maestras al índice
-    for table_name in tables_maestras:
+    # Añadir tablas operacionales al índice
+    for table_name in tables_operacionales:
         anchor = table_name.lower().replace('_', '')
         index_lines.append(f'  - [{table_name}](#{anchor})')
     
@@ -220,18 +222,18 @@ def generate_table_index(tables_operacionales, tables_maestras):
 # VALIDACIÓN
 # ============================================================================
 
-def validate_tables(tables_operacionales, tables_maestras):
+def validate_tables(tables_estructura, tables_operacionales):
     """
     Valida que existan tablas críticas.
     
     Args:
+        tables_estructura: Dict de tablas de estructura
         tables_operacionales: Dict de tablas operacionales
-        tables_maestras: Dict de tablas maestras
     
     Returns:
         list: Nombres de tablas críticas faltantes (vacía si todo OK)
     """
-    all_tables = set(tables_operacionales.keys()) | set(tables_maestras.keys())
+    all_tables = set(tables_estructura.keys()) | set(tables_operacionales.keys())
     missing = [t for t in REQUIRED_TABLES if t not in all_tables]
     
     if missing:
@@ -262,13 +264,13 @@ def merge_tables(input_dir, output_file):
     
     # Recolectar contenido
     try:
-        philosophy, tables_oper, tables_maest = collect_tables(input_dir)
+        philosophy, tables_estr, tables_oper = collect_tables(input_dir)
     except (FileNotFoundError, ValueError) as e:
         print(f"❌ ERROR: {e}")
         return 1
     
     # Validar
-    missing = validate_tables(tables_oper, tables_maest)
+    missing = validate_tables(tables_estr, tables_oper)
     
     print(f"\n📝 Generando Tablas.md...")
     
@@ -280,8 +282,8 @@ def merge_tables(input_dir, output_file):
     
     # 2. Índice
     document_parts.append(generate_table_index(
-        sorted(tables_oper.keys()),
-        sorted(tables_maest.keys())
+        sorted(tables_estr.keys()),
+        sorted(tables_oper.keys())
     ))
     document_parts.append('\n---\n')
     
@@ -289,16 +291,16 @@ def merge_tables(input_dir, output_file):
     document_parts.append(philosophy)
     document_parts.append('\n---\n')
     
-    # 4. Tablas Operacionales
+    # 4. Tablas de Estructura
+    document_parts.append('## Tablas de Estructura\n')
+    for table_name in sorted(tables_estr.keys()):
+        document_parts.append(tables_estr[table_name])
+        document_parts.append('\n---\n')
+    
+    # 5. Tablas Operacionales
     document_parts.append('## Tablas Operacionales\n')
     for table_name in sorted(tables_oper.keys()):
         document_parts.append(tables_oper[table_name])
-        document_parts.append('\n---\n')
-    
-    # 5. Tablas Maestras
-    document_parts.append('## Tablas Maestras\n')
-    for table_name in sorted(tables_maest.keys()):
-        document_parts.append(tables_maest[table_name])
         document_parts.append('\n---\n')
     
     # Unir todo
@@ -312,9 +314,9 @@ def merge_tables(input_dir, output_file):
     # Resumen
     print(f"\n✅ Proceso completado:")
     print(f"   • Filosofía: ✓")
+    print(f"   • Tablas de estructura: {len(tables_estr)}")
     print(f"   • Tablas operacionales: {len(tables_oper)}")
-    print(f"   • Tablas maestras: {len(tables_maest)}")
-    print(f"   • Total secciones: {len(tables_oper) + len(tables_maest) + 1}")
+    print(f"   • Total secciones: {len(tables_estr) + len(tables_oper) + 1}")
     print(f"   • Tablas críticas faltantes: {len(missing)}")
     print(f"   • Archivo generado: {output_file}")
     print(f"   • Tamaño: {len(full_content):,} caracteres")
@@ -345,7 +347,7 @@ Ejemplos de uso:
   python scripts/merge_tables.py --help
 
 Flujo recomendado:
-  1. Editar archivos en tablas/ (ej: 03_SOLICITUDES.md)
+  1. Editar archivos en tablas/ (ej: O_003_SOLICITUDES.md)
   2. Ejecutar este script
   3. Commit de ambos: tablas/*.md y Tablas.md regenerado
         """

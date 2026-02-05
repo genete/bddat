@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guía Visual de Colores y Estilos - CDN Junta de Andalucía</title>
+
+    <!-- CDN Junta de Andalucía -->
+    <link href="https://cdn.juntadeandalucia.es/components/sass/latest/css/fonts.css" rel="stylesheet">
+    <link href="https://cdn.juntadeandalucia.es/components/sass/latest/css/all.css" rel="stylesheet">
+    <link href="https://cdn.juntadeandalucia.es/components/sass/latest/css/custom-jda-bootstrap.css" rel="stylesheet">
+
+    <style>
+        body {
+            padding: 2rem 0;
+            background-color: #f8f9fa;
+        }
+        .color-box {
+            height: 80px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+            border: 2px solid rgba(0,0,0,0.1);
+        }
+        .color-info {
+            font-size: 0.85rem;
+            margin-bottom: 0.25rem;
+        }
+        .section-card {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .gradient-demo {
+            height: 100px;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+        }
+        .shadow-demo {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+        code {
+            background: #f8f9fa;
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
+        .navbar-demo {
+            margin-bottom: 1rem;
+            border-radius: 8px;
+        }
+        h1 {
+            color: var(--bs-primary);
+            border-bottom: 3px solid var(--bs-primary);
+            padding-bottom: 0.5rem;
+            margin-bottom: 2rem;
+        }
+        h2 {
+            color: var(--bs-primary);
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+        }
+        h3 {
+            color: var(--bs-gris-principal);
+            margin-top: 1.5rem;
+            margin-bottom: 1rem;
+            font-size: 1.25rem;
+        }
+        .table-responsive {
+            margin-bottom: 1.5rem;
+        }
+        .btn-example {
+            margin: 0.25rem;
+        }
+        .alert-demo {
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Cabecera -->
+        <div class="section-card">
+            <h1 class="mb-3">
+                <i class="fas fa-palette me-2"></i>Guía Visual de Colores y Estilos
+            </h1>
+            <p class="lead mb-3">CDN Junta de Andalucía - Bootstrap 5 Personalizado</p>
+            <div class="alert alert-info">
+                <strong><i class="fas fa-info-circle me-2"></i>Información:</strong> Esta guía muestra todos los colores y efectos disponibles en el CDN oficial de la Junta de Andalucía con ejemplos visuales y código para copiar.
+            </div>
+            <p class="mb-0"><strong>CDN:</strong> <code>https://cdn.juntadeandalucia.es/components/sass/latest/</code></p>
+            <p class="mb-0"><strong>Fecha:</strong> 30 de enero de 2026</p>
+        </div>
+
+        <!-- Colores Corporativos Junta -->
+        <div class="section-card">
+            <h2><i class="fas fa-building me-2"></i>Colores Corporativos Junta de Andalucía</h2>
+
+            <div class="row">
+                <div class="col-md-4 mb-4">
+                    <div class="color-box" style="background-color: var(--bs-primary);">
+                        #087021
+                    </div>
+                    <p class="color-info"><strong>Variable:</strong> <code>--bs-primary</code></p>
+                    <p class="color-info"><strong>RGB:</strong> 8, 112, 33</p>
+                    <p class="color-info"><strong>Uso:</strong> Navbar, botones principales, enlaces</p>
+                    <p class="color-info"><strong>Clase:</strong> <code>.bg-primary</code></p>
+                </div>
+
+                <div class="col-md-4 mb-4">
+                    <div class="color-box" style="background-color: var(--bs-junta-hover);">
+                        #0b4c1a
+                    </div>
+                    <p class="color-info"><strong>Variable:</strong> <code>--bs-junta-hover</code></p>
+                    <p class="color-info"><strong>RGB:</strong> 11, 76, 26</p>
+                    <p class="color-info"><strong>Uso:</strong> Estados hover de botones y enlaces</p>
+                    <p class="color-info"><strong>Clase:</strong> <code>:hover</code></p>
+                </div>
+
+                <div class="col-md-4 mb-4">
+                    <div class="color-box" style="background-color: var(--bs-junta-apoyo); color: #111;">
+                        #c4ddca
+                    </div>
+                    <p class="color-info"><strong>Variable:</strong> <code>--bs-junta-apoyo</code></p>
+                    <p class="color-info"><strong>RGB:</strong> 196, 221, 202</p>
+                    <p class="color-info"><strong>Uso:</strong> Fondos sutiles, cards secundarias</p>
+                    <p class="color-info"><strong>Clase:</strong> Custom CSS</p>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 mb-4">
+                    <div class="color-box" style="background-color: var(--bs-junta-apoyo-especifico); color: #111;">
+                        #f7fbf8
+                    </div>
+                    <p class="color-info"><strong>Variable:</strong> <code>--bs-junta-apoyo-especifico</code></p>
+                    <p class="color-info"><strong>RGB:</strong> 247, 251, 248</p>
+                    <p class="color-info"><strong>Uso:</strong> Fondos muy claros, alternancia de filas</p>
+                </div>
+
+                <div class="col-md-6 mb-4">
+                    <div class="color-box bg-success">
+                        #198754
+                    </div>
+                    <p class="color-info"><strong>Variable:</strong> <code>--bs-success</code></p>
+                    <p class="color-info"><strong>RGB:</strong> 25, 135, 84</p>
+                    <p class="color-info"><strong>⚠️ NO usar para identidad corporativa</strong></p>
+                    <p class="color-info">Reservar solo para mensajes de éxito</p>
+                </div>
+            </div>
+
+            <h3>Ejemplos de Uso - Colores Corporativos</h3>
+
+            <!-- Navbar Demo -->
+            <p class="mb-2"><strong>Navbar Corporativa:</strong></p>
+            <nav class="navbar navbar-expand-lg navbar-dark bg-primary navbar-demo">
+                <div class="container-fluid">
+                    <a class="navbar-brand" href="#"><i class="fas fa-bolt me-2"></i>BDDAT</a>
+                    <button class="navbar-toggler" type="button">
+                        <span class="navbar-toggler-icon"></span>
+                    </button>
+                </div>
+            </nav>
+            <pre><code>&lt;nav class="navbar navbar-dark bg-primary"&gt;
+  &lt;a class="navbar-brand" href="#"&gt;BDDAT&lt;/a&gt;
+&lt;/nav&gt;</code></pre>
+
+            <!-- Navbar con Gradiente -->
+            <p class="mb-2 mt-3"><strong>Navbar con Gradiente:</strong></p>
+            <nav class="navbar navbar-expand-lg navbar-dark bg-primary bg-gradient navbar-demo">
+                <div class="container-fluid">
+                    <a class="navbar-brand" href="#"><i class="fas fa-bolt me-2"></i>BDDAT</a>
+                    <button class="navbar-toggler" type="button">
+                        <span class="navbar-toggler-icon"></span>
+                    </button>
+                </div>
+            </nav>
+            <pre><code>&lt;nav class="navbar navbar-dark bg-primary bg-gradient"&gt;
+  &lt;a class="navbar-brand" href="#"&gt;BDDAT&lt;/a&gt;
+&lt;/nav&gt;</code></pre>
+
+            <!-- Botones -->
+            <p class="mb-2 mt-3"><strong>Botones Corporativos:</strong></p>
+            <div class="mb-3">
+                <button class="btn btn-primary btn-example">Botón Principal</button>
+                <button class="btn btn-primary bg-gradient btn-example">Botón con Gradiente</button>
+                <button class="btn btn-outline-primary btn-example">Botón Outline</button>
+            </div>
+            <pre><code>&lt;button class="btn btn-primary"&gt;Botón Principal&lt;/button&gt;
+&lt;button class="btn btn-primary bg-gradient"&gt;Botón con Gradiente&lt;/button&gt;
+&lt;button class="btn btn-outline-primary"&gt;Botón Outline&lt;/button&gt;</code></pre>
+        </div>
+
+        <!-- Colores Semánticos -->
+        <div class="section-card">
+            <h2><i class="fas fa-traffic-light me-2"></i>Colores Semánticos (Estados)</h2>
+
+            <div class="row">
+                <div class="col-md-3 mb-4">
+                    <div class="color-box bg-success">
+                        Success
+                    </div>
+                    <p class="color-info"><strong>HEX:</strong> #198754</p>
+                    <p class="color-info"><strong>Uso:</strong> Éxito, validación correcta</p>
+                    <p class="color-info"><strong>Clase:</strong> <code>.bg-success</code></p>
+                </div>
+
+                <div class="col-md-3 mb-4">
+                    <div class="color-box bg-warning" style="color: #111;">
+                        Warning
+                    </div>
+                    <p class="color-info"><strong>HEX:</strong> #ffc107</p>
+                    <p class="color-info"><strong>Uso:</strong> Advertencias, pendientes</p>
+                    <p class="color-info"><strong>Clase:</strong> <code>.bg-warning</code></p>
+                </div>
+
+                <div class="col-md-3 mb-4">
+                    <div class="color-box bg-danger">
+                        Danger
+                    </div>
+                    <p class="color-info"><strong>HEX:</strong> #dc3545</p>
+                    <p class="color-info"><strong>Uso:</strong> Errores, validación incorrecta</p>
+                    <p class="color-info"><strong>Clase:</strong> <code>.bg-danger</code></p>
+                </div>
+
+                <div class="col-md-3 mb-4">
+                    <div class="color-box bg-info" style="color: #111;">
+                        Info
+                    </div>
+                    <p class="color-info"><strong>HEX:</strong> #0dcaf0</p>
+                    <p class="color-info"><strong>Uso:</strong> Información contextual</p>
+                    <p class="color-info"><strong>Clase:</strong> <code>.bg-info</code></p>
+                </div>
+            </div>
+
+            <h3>Ejemplos de Uso - Alertas</h3>
+            <div class="alert alert-success alert-demo">
+                <i class="fas fa-check-circle me-2"></i><strong>Éxito:</strong> Expediente creado correctamente
+            </div>
+            <pre><code>&lt;div class="alert alert-success"&gt;
+  &lt;i class="fas fa-check-circle me-2"&gt;&lt;/i&gt;
+  &lt;strong&gt;Éxito:&lt;/strong&gt; Expediente creado correctamente
+&lt;/div&gt;</code></pre>
+
+            <div class="alert alert-warning alert-demo">
+                <i class="fas fa-exclamation-triangle me-2"></i><strong>Advertencia:</strong> Faltan documentos por adjuntar
+            </div>
+            <pre><code>&lt;div class="alert alert-warning"&gt;
+  &lt;i class="fas fa-exclamation-triangle me-2"&gt;&lt;/i&gt;
+  &lt;strong&gt;Advertencia:&lt;/strong&gt; Faltan documentos por adjuntar
+&lt;/div&gt;</code></pre>
+
+            <div class="alert alert-danger alert-demo">
+                <i class="fas fa-exclamation-circle me-2"></i><strong>Error:</strong> No se pudo procesar la solicitud
+            </div>
+            <pre><code>&lt;div class="alert alert-danger"&gt;
+  &lt;i class="fas fa-exclamation-circle me-2"&gt;&lt;/i&gt;
+  &lt;strong&gt;Error:&lt;/strong&gt; No se pudo procesar la solicitud
+&lt;/div&gt;</code></pre>
+
+            <div class="alert alert-info alert-demo">
+                <i class="fas fa-info-circle me-2"></i><strong>Información:</strong> Recuerde presentar antes del 31/01/2026
+            </div>
+            <pre><code>&lt;div class="alert alert-info"&gt;
+  &lt;i class="fas fa-info-circle me-2"&gt;&lt;/i&gt;
+  &lt;strong&gt;Información:&lt;/strong&gt; Recuerde presentar antes del 31/01/2026
+&lt;/div&gt;</code></pre>
+
+            <h3>Ejemplos de Uso - Botones Semánticos</h3>
+            <div class="mb-3">
+                <button class="btn btn-success btn-example">Aprobar</button>
+                <button class="btn btn-warning btn-example">Pendiente</button>
+                <button class="btn btn-danger btn-example">Rechazar</button>
+                <button class="btn btn-info btn-example">Info</button>
+                <button class="btn btn-secondary btn-example">Cancelar</button>
+            </div>
+            <pre><code>&lt;button class="btn btn-success"&gt;Aprobar&lt;/button&gt;
+&lt;button class="btn btn-warning"&gt;Pendiente&lt;/button&gt;
+&lt;button class="btn btn-danger"&gt;Rechazar&lt;/button&gt;
+&lt;button class="btn btn-info"&gt;Info&lt;/button&gt;
+&lt;button class="btn btn-secondary"&gt;Cancelar&lt;/button&gt;</code></pre>
+        </div>
+
+        <!-- Grises Corporativos -->
+        <div class="section-card">
+            <h2><i class="fas fa-adjust me-2"></i>Grises Corporativos</h2>
+
+            <div class="row">
+                <div class="col-md-4 mb-4">
+                    <div class="color-box" style="background-color: var(--bs-gris-principal);">
+                        #111111
+                    </div>
+                    <p class="color-info"><strong>Variable:</strong> <code>--bs-gris-principal</code></p>
+                    <p class="color-info"><strong>Uso:</strong> Texto principal, headers oscuros</p>
+                </div>
+
+                <div class="col-md-4 mb-4">
+                    <div class="color-box" style="background-color: var(--bs-gris-apoyo);">
+                        #bebebe
+                    </div>
+                    <p class="color-info"><strong>Variable:</strong> <code>--bs-gris-apoyo</code></p>
+                    <p class="color-info"><strong>Uso:</strong> Texto deshabilitado, iconos secundarios</p>
+                </div>
+
+                <div class="col-md-4 mb-4">
+                    <div class="color-box" style="background-color: var(--bs-gris-contenedor); color: #111;">
+                        #eeeeee
+                    </div>
+                    <p class="color-info"><strong>Variable:</strong> <code>--bs-gris-contenedor</code></p>
+                    <p class="color-info"><strong>Uso:</strong> Fondos de contenedores</p>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 mb-4">
+                    <div class="color-box" style="background-color: var(--bs-gris-especifico); color: #111;">
+                        #f5f5f5
+                    </div>
+                    <p class="color-info"><strong>Variable:</strong> <code>--bs-gris-especifico</code></p>
+                    <p class="color-info"><strong>Uso:</strong> Fondos muy claros, alternancia</p>
+                </div>
+
+                <div class="col-md-6 mb-4">
+                    <div class="color-box bg-secondary">
+                        #111111
+                    </div>
+                    <p class="color-info"><strong>Variable:</strong> <code>--bs-secondary</code></p>
+                    <p class="color-info"><strong>Uso:</strong> Botones secundarios</p>
+                    <p class="color-info"><strong>Clase:</strong> <code>.bg-secondary</code></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Efectos Visuales -->
+        <div class="section-card">
+            <h2><i class="fas fa-magic me-2"></i>Efectos Visuales</h2>
+
+            <h3>Gradiente Corporativo</h3>
+            <p><strong>Variable:</strong> <code>--bs-gradient</code></p>
+            <p><strong>Valor:</strong> <code>linear-gradient(180deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0))</code></p>
+            <p><strong>Efecto:</strong> Brillo sutil de arriba hacia abajo</p>
+
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <p class="mb-2"><strong>Sin Gradiente:</strong></p>
+                    <div class="gradient-demo bg-primary"></div>
+                </div>
+                <div class="col-md-6">
+                    <p class="mb-2"><strong>Con Gradiente:</strong></p>
+                    <div class="gradient-demo bg-primary bg-gradient"></div>
+                </div>
+            </div>
+            <pre><code>&lt;!-- Sin gradiente --&gt;
+&lt;div class="bg-primary"&gt;&lt;/div&gt;
+
+&lt;!-- Con gradiente --&gt;
+&lt;div class="bg-primary bg-gradient"&gt;&lt;/div&gt;</code></pre>
+
+            <h3>Sombras (Box Shadows)</h3>
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <div class="shadow-demo shadow-sm">
+                        <strong>Sombra Pequeña</strong>
+                        <p class="mb-0 mt-2"><code>.shadow-sm</code></p>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <div class="shadow-demo shadow">
+                        <strong>Sombra Estándar</strong>
+                        <p class="mb-0 mt-2"><code>.shadow</code></p>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <div class="shadow-demo shadow-lg">
+                        <strong>Sombra Grande</strong>
+                        <p class="mb-0 mt-2"><code>.shadow-lg</code></p>
+                    </div>
+                </div>
+            </div>
+
+            <h3>Focus Ring (Anillo de Enfoque)</h3>
+            <p><strong>Variable:</strong> <code>--bs-focus-ring-color</code></p>
+            <p><strong>Valor:</strong> <code>rgba(8, 112, 33, 0.25)</code></p>
+            <p><strong>Efecto:</strong> Anillo verde corporativo al hacer foco con teclado</p>
+
+            <div class="mb-3">
+                <label for="demoInput" class="form-label">Haz clic aquí y presiona Tab para ver el focus ring:</label>
+                <input type="text" class="form-control" id="demoInput" placeholder="Pulsa Tab para ver el efecto">
+            </div>
+            <pre><code>&lt;input type="text" class="form-control" placeholder="Campo de texto"&gt;</code></pre>
+        </div>
+
+        <!-- Cards de Ejemplo -->
+        <div class="section-card">
+            <h2><i class="fas fa-layer-group me-2"></i>Ejemplos de Cards</h2>
+
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <div class="card">
+                        <div class="card-header bg-primary text-white">
+                            Card Corporativa
+                        </div>
+                        <div class="card-body">
+                            <p class="card-text">Card con header verde corporativo sin gradiente.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-4 mb-3">
+                    <div class="card">
+                        <div class="card-header bg-primary bg-gradient text-white">
+                            Card con Gradiente
+                        </div>
+                        <div class="card-body">
+                            <p class="card-text">Card con header verde corporativo y efecto gradiente.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-4 mb-3">
+                    <div class="card shadow">
+                        <div class="card-header bg-primary bg-gradient text-white">
+                            Card Elevada
+                        </div>
+                        <div class="card-body">
+                            <p class="card-text">Card con header, gradiente y sombra estándar.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <pre><code>&lt;!-- Card básica corporativa --&gt;
+&lt;div class="card"&gt;
+  &lt;div class="card-header bg-primary text-white"&gt;
+    Card Corporativa
+  &lt;/div&gt;
+  &lt;div class="card-body"&gt;
+    Contenido...
+  &lt;/div&gt;
+&lt;/div&gt;
+
+&lt;!-- Card con gradiente --&gt;
+&lt;div class="card"&gt;
+  &lt;div class="card-header bg-primary bg-gradient text-white"&gt;
+    Card con Gradiente
+  &lt;/div&gt;
+  &lt;div class="card-body"&gt;
+    Contenido...
+  &lt;/div&gt;
+&lt;/div&gt;
+
+&lt;!-- Card elevada --&gt;
+&lt;div class="card shadow"&gt;
+  &lt;div class="card-header bg-primary bg-gradient text-white"&gt;
+    Card Elevada
+  &lt;/div&gt;
+  &lt;div class="card-body"&gt;
+    Contenido...
+  &lt;/div&gt;
+&lt;/div&gt;</code></pre>
+        </div>
+
+        <!-- Tabla de Referencia Rápida -->
+        <div class="section-card">
+            <h2><i class="fas fa-table me-2"></i>Tabla de Referencia Rápida</h2>
+
+            <h3>Colores Corporativos Junta</h3>
+            <div class="table-responsive">
+                <table class="table table-striped table-bordered">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Variable CSS</th>
+                            <th>Valor HEX</th>
+                            <th>Clase</th>
+                            <th>Uso Principal</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>--bs-primary</code></td>
+                            <td>#087021</td>
+                            <td><code>.bg-primary</code></td>
+                            <td>Navbar, botones principales, identidad</td>
+                        </tr>
+                        <tr>
+                            <td><code>--bs-junta-hover</code></td>
+                            <td>#0b4c1a</td>
+                            <td>Custom CSS</td>
+                            <td>Estados hover</td>
+                        </tr>
+                        <tr>
+                            <td><code>--bs-junta-apoyo</code></td>
+                            <td>#c4ddca</td>
+                            <td>Custom CSS</td>
+                            <td>Fondos sutiles</td>
+                        </tr>
+                        <tr>
+                            <td><code>--bs-junta-apoyo-especifico</code></td>
+                            <td>#f7fbf8</td>
+                            <td>Custom CSS</td>
+                            <td>Fondos muy claros</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h3>Colores Semánticos</h3>
+            <div class="table-responsive">
+                <table class="table table-striped table-bordered">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Variable CSS</th>
+                            <th>Valor HEX</th>
+                            <th>Clase</th>
+                            <th>Uso Principal</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>--bs-success</code></td>
+                            <td>#198754</td>
+                            <td><code>.bg-success</code></td>
+                            <td>Mensajes de éxito, validaciones correctas</td>
+                        </tr>
+                        <tr>
+                            <td><code>--bs-warning</code></td>
+                            <td>#ffc107</td>
+                            <td><code>.bg-warning</code></td>
+                            <td>Advertencias, estados pendientes</td>
+                        </tr>
+                        <tr>
+                            <td><code>--bs-danger</code></td>
+                            <td>#dc3545</td>
+                            <td><code>.bg-danger</code></td>
+                            <td>Errores, validaciones incorrectas</td>
+                        </tr>
+                        <tr>
+                            <td><code>--bs-info</code></td>
+                            <td>#0dcaf0</td>
+                            <td><code>.bg-info</code></td>
+                            <td>Información contextual, ayudas</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h3>Efectos Visuales</h3>
+            <div class="table-responsive">
+                <table class="table table-striped table-bordered">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Variable CSS</th>
+                            <th>Clase</th>
+                            <th>Efecto</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>--bs-gradient</code></td>
+                            <td><code>.bg-gradient</code></td>
+                            <td>Brillo sutil de arriba hacia abajo</td>
+                        </tr>
+                        <tr>
+                            <td><code>--bs-box-shadow-sm</code></td>
+                            <td><code>.shadow-sm</code></td>
+                            <td>Sombra pequeña</td>
+                        </tr>
+                        <tr>
+                            <td><code>--bs-box-shadow</code></td>
+                            <td><code>.shadow</code></td>
+                            <td>Sombra estándar</td>
+                        </tr>
+                        <tr>
+                            <td><code>--bs-box-shadow-lg</code></td>
+                            <td><code>.shadow-lg</code></td>
+                            <td>Sombra grande</td>
+                        </tr>
+                        <tr>
+                            <td><code>--bs-focus-ring-color</code></td>
+                            <td>Automático</td>
+                            <td>Anillo verde corporativo al hacer foco</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Reglas Importantes -->
+        <div class="section-card">
+            <h2><i class="fas fa-exclamation-triangle me-2"></i>Reglas Importantes</h2>
+
+            <div class="alert alert-warning">
+                <h4 class="alert-heading"><i class="fas fa-ban me-2"></i>NO usar <code>.bg-success</code> para identidad corporativa</h4>
+                <p>El color <code>--bs-success</code> (#198754) es el verde Bootstrap estándar, más claro y "lavado".</p>
+                <p class="mb-0"><strong>Siempre usar <code>.bg-primary</code></strong> para elementos de identidad corporativa (navbar, headers, botones principales).</p>
+            </div>
+
+            <div class="alert alert-success">
+                <h4 class="alert-heading"><i class="fas fa-check me-2"></i>Usar <code>.bg-primary</code> para identidad</h4>
+                <p>El color <code>--bs-primary</code> (#087021) es el verde corporativo oficial de la Junta de Andalucía.</p>
+                <p class="mb-0">Es muy cercano al Pantone 356 C oficial (#007a33) y es el correcto para todos los elementos de identidad.</p>
+            </div>
+
+            <div class="alert alert-info">
+                <h4 class="alert-heading"><i class="fas fa-lightbulb me-2"></i>Añadir <code>.bg-gradient</code> para modernizar</h4>
+                <p>Combinar <code>.bg-primary</code> con <code>.bg-gradient</code> añade un efecto de brillo sutil que moderniza la interfaz.</p>
+                <p class="mb-0">Especialmente recomendado para navbar, headers de cards y botones importantes.</p>
+            </div>
+
+            <div class="alert alert-secondary">
+                <h4 class="alert-heading"><i class="fas fa-code me-2"></i>Usar variables CSS en lugar de valores hardcodeados</h4>
+                <p>Siempre que sea posible, usar <code>var(--bs-*)</code> en CSS personalizado para mantener consistencia.</p>
+                <p class="mb-0"><strong>Ejemplo:</strong> <code>background-color: var(--bs-primary);</code> en lugar de <code>background-color: #087021;</code></p>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="section-card">
+            <h2><i class="fas fa-link me-2"></i>Referencias y Enlaces</h2>
+            <ul>
+                <li><strong>CDN Junta de Andalucía:</strong> <a href="https://cdn.juntadeandalucia.es/components/sass/latest/" target="_blank">https://cdn.juntadeandalucia.es/components/sass/latest/</a></li>
+                <li><strong>Manual de Identidad Corporativa:</strong> <a href="https://www.juntadeandalucia.es/identidad" target="_blank">https://www.juntadeandalucia.es/identidad</a></li>
+                <li><strong>Documentación Bootstrap 5:</strong> <a href="https://getbootstrap.com/docs/5.3/" target="_blank">https://getbootstrap.com/docs/5.3/</a></li>
+                <li><strong>Tema Bootstrap Junta:</strong> <a href="https://desarrollo.juntadeandalucia.es/areas/interfaz-usuario-ui/diseno-construccion-interfaces/generador-hojas-estilo-sass" target="_blank">Portal de Desarrollo</a></li>
+            </ul>
+
+            <hr>
+
+            <p class="text-muted mb-0">
+                <small>
+                    <i class="fas fa-calendar me-2"></i>Actualizado: 30 de enero de 2026<br>
+                    <i class="fas fa-code me-2"></i>Repositorio: <a href="https://github.com/genete/bddat" target="_blank">genete/bddat</a><br>
+                    <i class="fas fa-file-code me-2"></i>Versión CDN: latest
+                </small>
+            </p>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.juntadeandalucia.es/components/sass/latest/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.juntadeandalucia.es/components/sass/latest/js/jda-js.js"></script>
+</body>
+</html>

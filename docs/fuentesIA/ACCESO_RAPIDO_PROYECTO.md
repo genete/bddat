@@ -22,7 +22,7 @@ Sistema de gestión de expedientes para la tramitación administrativa de instal
 
 ### Documentación
 - **`docs/fuentesIA/`** - Documentación de referencia para IA
-  - `REGLAS_DESARROLLO.md` - Metodología de trabajo
+  - `REGLAS_DESARROLLO.md` - Metodología de trabajo. **IMPORTANTE: CONSULTAR ANTES DE EMPEZAR A TRABAJAR EN EL REPOSITORIO**
 
 ---
 

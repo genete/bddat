@@ -5,8 +5,8 @@
 **Repositorio:** https://github.com/genete/bddat  
 **Ramas principales:** `main` (producción) + `develop` (integración)  
 **Documento creado:** 17 de enero de 2026  
-**Última actualización:** 25 de enero de 2026  
-**Versión:** 3.0
+**Última actualización:** 4 de febrero de 2026  
+**Versión:** 3.4
 
 ---
 
@@ -31,8 +31,8 @@
 develop ──●──●────●────●──●────●  (desarrollo continuo, rama por defecto)
            \      /    /    \  /
 feature/X   ●──●─┘    /      ●┘   (ramas temporales)
-bugfix/Y         ●──●┘            (ramas temporales)
-main ─────────────────●─v0.1.0──●─v0.2.0  (solo versiones estables + tags)
+bugfix/Y         ●──●─┘            (ramas temporales)
+main ─────────────●─v0.1.0──●─v0.2.0  (solo versiones estables + tags)
 ```
 
 **Principios:**
@@ -48,13 +48,12 @@ main ─────────────────●─v0.1.0──●─
 
 #### Asistente (IA)
 
-- Evalúo si el cambio requiere rama temporal o commit directo en `develop` (ver sección 12.1)
+- Evalúo si el cambio requiere rama temporal o commit directo en `develop` (ver sección 13.1)
 - Creo las ramas necesarias desde `develop` cuando aplica (`feature/`, `bugfix/`, etc.)
 - Preparo cambios con descripción clara de ficheros afectados
 - **Espero tu aprobación explícita** antes de cada commit
 - Hago commits en la rama de desarrollo o en `develop` directamente (según tipo de cambio)
 - Tras tus pruebas locales y OK, creo Pull Request a `develop`
-- **Actualizo `docs/CHANGELOG.md` en la misma rama de desarrollo** antes del PR
 - Hago merge del PR a `develop`
 - **Borro la rama remota inmediatamente tras merge**
 - Cuando completes un milestone, hago merge de `develop` → `main` y creo tag/release
@@ -108,7 +107,6 @@ main ─────────────────●─v0.1.0──●─
   - `docs/descripcion-breve` - solo documentación (si es complejo)
 - Preparo código con explicación detallada
 - Hago commits tras tu aprobación
-- **Actualizo `docs/CHANGELOG.md` en la misma rama**
 
 ##### Fase 3: Pruebas Locales (por Usuario)
 
@@ -121,7 +119,7 @@ main ─────────────────●─v0.1.0──●─
 
 - Tras tu OK final, creo PR: `nombre-rama` → `develop`
 - Referencio el issue si aplica: "Closes #XX"
-- Hago merge del PR (changelog incluido)
+- Hago merge del PR
 - **Borro rama remota inmediatamente:** `git push origin --delete nombre-rama`
 
 ##### Fase 5: Limpieza (por Usuario)
@@ -384,7 +382,6 @@ bddat/
 ├── migrations/
 │   └── versions/
 ├── docs/
-│   ├── CHANGELOG.md
 │   └── fuentesIA/
 │       ├── REGLAS_DESARROLLO.md
 │       ├── GuiaGeneralNueva.md
@@ -448,7 +445,6 @@ git push origin feature/issue-XX-descripcion
   [RUTA] Implementar endpoint POST /solicitudes
   [TEMPLATE] Crear formulario solicitud_form.html
   ```
-- **Actualizo `docs/CHANGELOG.md` en esta rama**
 
 #### Paso 3: Pruebas Locales (Usuario)
 
@@ -564,7 +560,6 @@ git pull origin develop
 - `[MIGA]` - Cambios en migraciones
 - `[TEST]` - Pruebas y testing
 - `[DOCS]` - Cambios en documentación
-- `[CHANGELOG]` - Actualización de changelog
 - `[MERGE]` - Merge de pull requests
 - `[RELEASE]` - Preparación de releases
 
@@ -579,58 +574,73 @@ git pull origin develop
 [MIGA] Añadir campo geom_punto a tabla proyectos
 [TEST] Verificar flujo completo creación expediente
 [DOCS] Actualizar REGLAS_DESARROLLO con workflow develop
-[CHANGELOG] Documentar milestone 1.2 completado
 [MERGE] Merge feature/issue-3-mejorar-mensajes a develop
 [RELEASE] Preparar release v0.1.0 - MVP expedientes
 ```
 
 ---
 
-## 8. Gestión de Changelogs
+## 8. Migraciones de Base de Datos (Alembic)
 
-### 8.1 Estrategia de Changelog
+### 8.1 Workflow Obligatorio para Multi-Schema PostgreSQL
 
-**Archivo `docs/CHANGELOG.md`:**
-- Contiene **solo los últimos 5 PRs** mergeados a `develop` o `main`
-- Pull Requests de GitHub son la fuente de verdad para historial completo
-- Cada entrada incluye: fecha, enlace al PR, objetivo, cambios principales
-- **Se actualiza en la misma rama de desarrollo** antes de crear PR
-- **No se actualiza para commits directos en develop** (cambios simples)
+**NO usar migraciones automáticas**. Alembic tiene un bug conocido con `include_schemas` que regenera todas las FK en cada migración.
 
-### 8.2 Proceso de Actualización
+#### 8.2 Procedimiento para Cambios en la BD
 
-**En rama de desarrollo (antes del PR):**
+```powershell
+# 1. Crear migración vacía
+flask db revision -m "Descripción breve del cambio"
 
-1. IA completa los cambios funcionales
-2. IA actualiza `docs/CHANGELOG.md`:
-   - Añade entrada al inicio
-   - Mantiene solo últimos 5 PRs
-   - Usa formato temporal para número de PR
-3. IA hace commit: `[CHANGELOG] Documentar [descripción]`
-4. IA crea PR (incluye changelog)
-5. Tras merge, el changelog queda integrado
+# 2. Editar el archivo generado en migrations/versions/
+#    - Añadir solo los cambios necesarios (add_column, create_table, etc.)
+#    - NO tocar FK existentes
+#    - Respetar schemas: referent_schema='estructura' o 'public'
 
-**Formato de entrada:**
+# 3. Aplicar
+flask db upgrade
 
-```markdown
-### YYYY-MM-DD - [PR #XX: Título del PR](URL_del_PR)
-
-**Objetivo:** Descripción del objetivo.
-
-**Cambios principales:**
-- ✅ Cambio 1
-- ✅ Cambio 2
-- ✅ Cambio 3
-
-**Issues resueltos:** #XX, #YY
-**Milestone:** X.Y - Nombre
+# 4. Verificar que la app arranca
+flask run
 ```
+
+#### 8.3 Ejemplo de Migración Manual
+
+```python
+def upgrade():
+    op.add_column('entidades_ayuntamientos', 
+        sa.Column('observaciones', sa.Text(), nullable=True),
+        schema='public')
+
+def downgrade():
+    op.drop_column('entidades_ayuntamientos', 'observaciones', schema='public')
+```
+
+#### 8.4 Regla de Oro
+
+`env.py` debe estar **sin `include_schemas`** (estado por defecto del repo).
 
 ---
 
-## 9. Gestión de Tags y Releases
+## 9. Historial de Cambios
 
-### 9.1 Tags Semánticos
+**Fuente de verdad:** Pull Requests cerrados en GitHub
+
+**Ver historial completo:** [Pull Requests cerrados](https://github.com/genete/bddat/pulls?q=is%3Apr+is%3Aclosed+sort%3Aupdated-desc)
+
+**No se mantiene archivo CHANGELOG.md** porque:
+- ✅ GitHub ya tiene toda la información (commits, diffs, conversaciones)
+- ✅ Búsqueda y filtros superiores (por milestone, etiqueta, autor, fecha)
+- ✅ Elimina trabajo manual redundante
+- ✅ Evita desincronizaciones
+
+**Nota:** Decisión tomada 04/02/2026 tras análisis de coste/beneficio.
+
+---
+
+## 10. Gestión de Tags y Releases
+
+### 10.1 Tags Semánticos
 
 **Formato:** `vMAJOR.MINOR.PATCH`
 
@@ -645,7 +655,7 @@ git pull origin develop
 - `v0.2.1` - Hotfix validación NIF en producción
 - `v1.0.0` - Fase 4 completada (sistema en producción)
 
-### 9.2 Releases en GitHub
+### 10.2 Releases en GitHub
 
 **Cuándo crear:**
 - Al finalizar cada milestone importante (1.3, 2.3, 3.4, 4.3)
@@ -661,9 +671,9 @@ git pull origin develop
 
 ---
 
-## 10. Comandos Git Esenciales
+## 11. Comandos Git Esenciales
 
-### 10.1 Usuario (trabajo local)
+### 11.1 Usuario (trabajo local)
 
 **Sincronizar con develop:**
 ```bash
@@ -697,7 +707,7 @@ git log --oneline -10
 
 ---
 
-### 10.2 IA (trabajo remoto)
+### 11.2 IA (trabajo remoto)
 
 **Crear rama:**
 ```bash
@@ -729,9 +739,9 @@ git push origin v0.X.0
 
 ---
 
-## 11. Uso de Git Stash
+## 12. Uso de Git Stash
 
-### 11.1 Cuándo Usar Stash
+### 12.1 Cuándo Usar Stash
 
 **Casos válidos:**
 - Necesitas cambiar de rama urgentemente con trabajo sin terminar
@@ -742,7 +752,7 @@ git push origin v0.X.0
 - Sistema de versionado (para eso están los commits)
 - Almacenamiento de código "por si acaso" (para eso están las ramas)
 
-### 11.2 Comandos Básicos
+### 12.2 Comandos Básicos
 
 ```bash
 # Guardar cambios temporalmente
@@ -764,7 +774,7 @@ git stash drop stash@{1}
 git stash clear
 ```
 
-### 11.3 Ejemplo de Uso
+### 12.3 Ejemplo de Uso
 
 ```bash
 # Trabajando en feature/formulario-actuaciones
@@ -784,9 +794,9 @@ git stash pop  # Recuperar trabajo
 
 ---
 
-## 12. Gestión de Ramas
+## 13. Gestión de Ramas
 
-### 12.1 Cuándo Crear Rama Temporal vs Commit Directo en Develop
+### 13.1 Cuándo Crear Rama Temporal vs Commit Directo en Develop
 
 #### Commit Directo en Develop (sin rama ni PR)
 
@@ -836,7 +846,7 @@ git stash pop  # Recuperar trabajo
 
 ---
 
-### 12.2 Regla de Oro: Repositorio Limpio
+### 13.2 Regla de Oro: Repositorio Limpio
 
 **Principio fundamental:**
 > Toda rama temporal creada debe terminar mergeada o explícitamente descartada. NUNCA dejar ramas huérfanas.
@@ -862,7 +872,7 @@ git branch -D nombre-rama
 
 ---
 
-### 12.3 Configuración Recomendada en GitHub
+### 13.3 Configuración Recomendada en GitHub
 
 **Una sola vez, configurar:**
 
@@ -871,17 +881,19 @@ git branch -D nombre-rama
    
 2. **Settings → General → Pull Requests:**
    - ☑️ Automatically delete head branches
-   - ☑️ Allow squash merging (opcional, según preferencia)
+   - ☐ Allow squash merging (**DESMARCAR** - preservar historial completo de commits)
+   - ☑️ Allow merge commits (este es el método que usamos)
 
 **Resultado:**
 - PRs se crean por defecto hacia `develop`
 - Ramas se borran automáticamente tras merge
+- **Todos los commits individuales se preservan en el historial**
 
 ---
 
-## 13. Checklist Pre-Commit
+## 14. Checklist Pre-Commit
 
-### 13.1 IA (antes de solicitar OK)
+### 14.1 IA (antes de solicitar OK)
 
 - [ ] Evaluado: ¿rama temporal o commit directo?
 - [ ] Rama creada con nombre apropiado (si aplica)
@@ -890,11 +902,10 @@ git branch -D nombre-rama
 - [ ] Consultado `schema.sql` para cambios BD
 - [ ] Código sigue convenciones del proyecto
 - [ ] Mensaje de commit con categoría correcta
-- [ ] **Changelog actualizado en misma rama** (si aplica)
 
 ---
 
-### 13.2 Usuario (antes de git push)
+### 14.2 Usuario (antes de git push)
 
 - [ ] `git pull` completado
 - [ ] `flask run` funciona sin errores
@@ -907,14 +918,13 @@ git branch -D nombre-rama
 
 ---
 
-## 14. Resumen de Responsabilidades
+## 15. Resumen de Responsabilidades
 
 | Actividad | IA | Usuario |
 |-----------|-------|------|
 | Evaluar: rama vs commit directo | ✅ | |
 | Crear ramas temporales desde develop | ✅ | |
 | Hacer commits remotos (tras OK) | ✅ | |
-| Actualizar changelog en rama desarrollo | ✅ | |
 | Crear PRs a develop | ✅ | |
 | Merge PRs a develop | ✅ | |
 | Borrar ramas remotas tras merge | ✅ | |
@@ -934,9 +944,9 @@ git branch -D nombre-rama
 
 ---
 
-## 15. Estrategia de Versionado
+## 16. Estrategia de Versionado
 
-### 15.1 Milestones → Versiones
+### 16.1 Milestones → Versiones
 
 | Milestone | Versión | Fase | Release |
 |-----------|---------|------|---------|
@@ -954,7 +964,7 @@ git branch -D nombre-rama
 | 4.2 | - | Fase 4 | No |
 | 4.3 | **v1.0.0** | Fase 4 | ✅ PRODUCCIÓN |
 
-### 15.2 Hotfixes
+### 16.2 Hotfixes
 
 **Si hay bug crítico en `main`:**
 
@@ -969,9 +979,9 @@ git checkout -b hotfix/fix-validacion-nif
 
 ---
 
-## 16. Transición del Workflow Actual
+## 17. Transición del Workflow Actual
 
-### 16.1 Estado Actual (25 enero 2026)
+### 17.1 Estado Actual (25 enero 2026)
 
 - ✅ 1 rama: `main`
 - ✅ GitHub Flow básico funcionando
@@ -980,7 +990,7 @@ git checkout -b hotfix/fix-validacion-nif
 - ❌ Sin tags ni releases
 - ❌ Sin milestones asignados a issues
 
-### 16.2 Pasos de Migración
+### 17.2 Pasos de Migración
 
 **Paso 1: Crear rama develop (ahora)**
 
@@ -1020,29 +1030,27 @@ A partir de ahora:
 
 ---
 
-## 17. Documentación y Fuentes de Verdad
+## 18. Documentación y Fuentes de Verdad
 
-### 17.1 Jerarquía de Documentación
+### 18.1 Jerarquía de Documentación
 
 **Orden de prevalencia (mayor a menor):**
 
 1. **Código en el repositorio** (`app/`, `schema.sql`, `migrations/`)
 2. **Documentación en repositorio** (`docs/fuentesIA/`)
-3. **CHANGELOG.md** (últimos 5 PRs)
-4. **Pull Requests en GitHub** (historial completo)
-5. **Otras fuentes de conocimiento de IA**
+3. **Pull Requests en GitHub** (historial completo)
+4. **Otras fuentes de conocimiento de IA**
 
-### 17.2 Documentos Clave en Repositorio
+### 18.2 Documentos Clave en Repositorio
 
 - `docs/fuentesIA/REGLAS_DESARROLLO.md` - Este documento
 - `docs/fuentesIA/GuiaGeneralNueva.md` - Plan general del proyecto
 - `docs/fuentesIA/ACCESO_RAPIDO_PROYECTO.md` - Referencia rápida
-- `docs/CHANGELOG.md` - Últimos 5 PRs
 - `schema.sql` - Definición completa BD (generado por usuario)
 
 ---
 
-## 18. Principios de Trabajo
+## 19. Principios de Trabajo
 
 1. **Documentación primero:** Diseñar antes de codificar
 2. **Incrementalidad:** Cambios pequeños, probados, sincronizados
@@ -1055,7 +1063,121 @@ A partir de ahora:
 
 ---
 
+## 20. Documentación de Decisiones Arquitectónicas
+
+### 20.1 ¿Por qué documentar decisiones?
+
+Cuando tomamos decisiones arquitectónicas importantes, no solo debemos implementarlas, sino también **documentar el razonamiento** detrás de ellas.
+
+**Beneficios:**
+- Mantener el contexto de **POR QUÉ** se tomó una decisión
+- Evitar revisar las mismas alternativas en el futuro
+- Facilitar onboarding de nuevos desarrolladores
+- Proporcionar trazabilidad histórica
+- Ayudar a asistentes IA a entender mejor las decisiones previas
+
+---
+
+### 20.2 ¿Cuándo documentar?
+
+Documenta cuando:
+- ✅ Se evalúan **múltiples alternativas técnicas** (ej: vistas vs tablas, REST vs GraphQL)
+- ✅ La decisión **afecta la arquitectura** del sistema (ej: estructura de base de datos, patrones de diseño)
+- ✅ Existen **trade-offs importantes** a considerar (ej: rendimiento vs mantenibilidad)
+- ✅ Se **rechaza un enfoque** que podría parecer "obvio" o "estándar"
+- ✅ La decisión tendrá **impacto a largo plazo** en el proyecto
+
+---
+
+### 20.3 ¿Dónde documentar?
+
+**En los issues de GitHub**, como comentarios en el issue relacionado.
+
+**NO crear documentos separados** para cada decisión (aumenta overhead de mantenimiento).
+
+**Opcionalmente**, si la decisión es muy relevante, crear un issue específico etiquetado con `documentation` que referencie la discusión original.
+
+---
+
+### 20.4 Formato Recomendado
+
+Usa esta estructura en los comentarios del issue:
+
+```markdown
+## 💬 Análisis de Alternativas de Diseño
+
+### Contexto
+[Explicar el problema que se está resolviendo]
+
+### Opciones Evaluadas
+1. **Opción A**: [Descripción breve]
+2. **Opción B**: [Descripción breve]
+
+---
+
+## Opción 1: [Nombre]
+
+### Estructura
+[Código, diagramas, ejemplos]
+
+### ✅ Ventajas
+- [Ventaja 1]
+- [Ventaja 2]
+
+### ❌ Desventajas
+- [Desventaja 1]
+- [Desventaja 2]
+
+---
+
+## Opción 2: [Nombre]
+
+[Misma estructura que Opción 1]
+
+---
+
+## ⚖️ Comparación
+
+[Tabla comparativa si es útil]
+
+---
+
+## 🎯 Decisión Final
+
+### ✅ Se adopta: **[Opción elegida]**
+
+### Razones
+1. [Razón 1]
+2. [Razón 2]
+
+### Implicaciones
+- [Implicación 1: qué hay que cambiar/crear]
+- [Implicación 2: efectos en otras partes del sistema]
+
+### Próximos Pasos
+- [ ] [Acción 1]
+- [ ] [Acción 2]
+```
+
+---
+
+### 20.5 Ejemplo Real
+
+Ver issue [#62](https://github.com/genete/bddat/issues/62), comentarios sobre "Análisis de Alternativas de Diseño" donde se documenta la decisión de usar tablas inversas vs vistas actualizables para el modelo de entidades.
+
+---
+
+### 20.6 Herramientas para Escalabilidad Futura
+
+Si el proyecto crece mucho, considerar herramientas formales como:
+- [ADR (Architecture Decision Records)](https://adr.github.io/)
+- Documentación en `docs/decisions/` con archivos Markdown numerados
+
+Pero **para BDDAT, documentar en issues es suficiente** por ahora.
+
+---
+
 **Documento creado:** 17 de enero de 2026, 21:24 CET  
-**Última actualización:** 25 de enero de 2026, 18:33 CET  
-**Versión:** 3.0  
+**Última actualización:** 4 de febrero de 2026, 20:07 CET  
+**Versión:** 3.4  
 **Referencia:** Repositorio oficial genete/bddat en GitHub

@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict rWpFTkSyHGIDchrjMzA6b5wj2MfqLuoxOfTuM3u8cHbiPFwy1kOWj6hCEr5NqMb
+\restrict kchQnkcZ2chM9It1QPbIX008TFQfDMaDUpf6upRJaFU0FEj74HR94HsKodV3DeC
 
 -- Dumped from database version 18.1
 -- Dumped by pg_dump version 18.1
@@ -20,20 +20,36 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 --
--- Name: estructura; Type: SCHEMA; Schema: -; Owner: postgres
+-- Name: estructura; Type: SCHEMA; Schema: -; Owner: bddat_admin
 --
 
 CREATE SCHEMA estructura;
 
 
-ALTER SCHEMA estructura OWNER TO postgres;
+ALTER SCHEMA estructura OWNER TO bddat_admin;
+
+--
+-- Name: public; Type: SCHEMA; Schema: -; Owner: bddat_admin
+--
+
+-- *not* creating schema, since initdb creates it
+
+
+ALTER SCHEMA public OWNER TO bddat_admin;
+
+--
+-- Name: SCHEMA public; Type: COMMENT; Schema: -; Owner: bddat_admin
+--
+
+COMMENT ON SCHEMA public IS '';
+
 
 SET default_tablespace = '';
 
 SET default_table_access_method = heap;
 
 --
--- Name: municipios; Type: TABLE; Schema: estructura; Owner: postgres
+-- Name: municipios; Type: TABLE; Schema: estructura; Owner: bddat_admin
 --
 
 CREATE TABLE estructura.municipios (
@@ -44,38 +60,38 @@ CREATE TABLE estructura.municipios (
 );
 
 
-ALTER TABLE estructura.municipios OWNER TO postgres;
+ALTER TABLE estructura.municipios OWNER TO bddat_admin;
 
 --
--- Name: COLUMN municipios.id; Type: COMMENT; Schema: estructura; Owner: postgres
+-- Name: COLUMN municipios.id; Type: COMMENT; Schema: estructura; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN estructura.municipios.id IS 'Identificador único autogenerado del municipio';
 
 
 --
--- Name: COLUMN municipios.codigo; Type: COMMENT; Schema: estructura; Owner: postgres
+-- Name: COLUMN municipios.codigo; Type: COMMENT; Schema: estructura; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN estructura.municipios.codigo IS 'Código INE oficial del municipio (5 dígitos)';
 
 
 --
--- Name: COLUMN municipios.nombre; Type: COMMENT; Schema: estructura; Owner: postgres
+-- Name: COLUMN municipios.nombre; Type: COMMENT; Schema: estructura; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN estructura.municipios.nombre IS 'Denominación oficial del municipio';
 
 
 --
--- Name: COLUMN municipios.provincia; Type: COMMENT; Schema: estructura; Owner: postgres
+-- Name: COLUMN municipios.provincia; Type: COMMENT; Schema: estructura; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN estructura.municipios.provincia IS 'Provincia a la que pertenece el municipio';
 
 
 --
--- Name: municipios_id_seq; Type: SEQUENCE; Schema: estructura; Owner: postgres
+-- Name: municipios_id_seq; Type: SEQUENCE; Schema: estructura; Owner: bddat_admin
 --
 
 CREATE SEQUENCE estructura.municipios_id_seq
@@ -87,17 +103,113 @@ CREATE SEQUENCE estructura.municipios_id_seq
     CACHE 1;
 
 
-ALTER SEQUENCE estructura.municipios_id_seq OWNER TO postgres;
+ALTER SEQUENCE estructura.municipios_id_seq OWNER TO bddat_admin;
 
 --
--- Name: municipios_id_seq; Type: SEQUENCE OWNED BY; Schema: estructura; Owner: postgres
+-- Name: municipios_id_seq; Type: SEQUENCE OWNED BY; Schema: estructura; Owner: bddat_admin
 --
 
 ALTER SEQUENCE estructura.municipios_id_seq OWNED BY estructura.municipios.id;
 
 
 --
--- Name: tipos_expedientes; Type: TABLE; Schema: estructura; Owner: postgres
+-- Name: tipos_entidades; Type: TABLE; Schema: estructura; Owner: bddat_admin
+--
+
+CREATE TABLE estructura.tipos_entidades (
+    id integer NOT NULL,
+    codigo character varying(50) NOT NULL,
+    nombre character varying(100) NOT NULL,
+    tabla_metadatos character varying(100) NOT NULL,
+    puede_ser_solicitante boolean DEFAULT false NOT NULL,
+    puede_ser_consultado boolean DEFAULT false NOT NULL,
+    puede_publicar boolean DEFAULT false NOT NULL,
+    descripcion text
+);
+
+
+ALTER TABLE estructura.tipos_entidades OWNER TO bddat_admin;
+
+--
+-- Name: COLUMN tipos_entidades.id; Type: COMMENT; Schema: estructura; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN estructura.tipos_entidades.id IS 'Identificador único del tipo de entidad';
+
+
+--
+-- Name: COLUMN tipos_entidades.codigo; Type: COMMENT; Schema: estructura; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN estructura.tipos_entidades.codigo IS 'Código único del tipo (ADMINISTRADO, ORGANISMO_PUBLICO, AYUNTAMIENTO, DIPUTACION, EMPRESA_SERVICIO_PUBLICO)';
+
+
+--
+-- Name: COLUMN tipos_entidades.nombre; Type: COMMENT; Schema: estructura; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN estructura.tipos_entidades.nombre IS 'Nombre descriptivo del tipo de entidad';
+
+
+--
+-- Name: COLUMN tipos_entidades.tabla_metadatos; Type: COMMENT; Schema: estructura; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN estructura.tipos_entidades.tabla_metadatos IS 'Nombre de la tabla entidades_* donde se almacenan los metadatos específicos (ej: entidades_administrados)';
+
+
+--
+-- Name: COLUMN tipos_entidades.puede_ser_solicitante; Type: COMMENT; Schema: estructura; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN estructura.tipos_entidades.puede_ser_solicitante IS 'Indica si este tipo puede actuar como solicitante de solicitudes';
+
+
+--
+-- Name: COLUMN tipos_entidades.puede_ser_consultado; Type: COMMENT; Schema: estructura; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN estructura.tipos_entidades.puede_ser_consultado IS 'Indica si este tipo puede emitir informes como organismo consultado';
+
+
+--
+-- Name: COLUMN tipos_entidades.puede_publicar; Type: COMMENT; Schema: estructura; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN estructura.tipos_entidades.puede_publicar IS 'Indica si este tipo puede publicar edictos (tablón ayuntamiento o BOP diputación)';
+
+
+--
+-- Name: COLUMN tipos_entidades.descripcion; Type: COMMENT; Schema: estructura; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN estructura.tipos_entidades.descripcion IS 'Descripción detallada del tipo de entidad, roles y características';
+
+
+--
+-- Name: tipos_entidades_id_seq; Type: SEQUENCE; Schema: estructura; Owner: bddat_admin
+--
+
+CREATE SEQUENCE estructura.tipos_entidades_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE estructura.tipos_entidades_id_seq OWNER TO bddat_admin;
+
+--
+-- Name: tipos_entidades_id_seq; Type: SEQUENCE OWNED BY; Schema: estructura; Owner: bddat_admin
+--
+
+ALTER SEQUENCE estructura.tipos_entidades_id_seq OWNED BY estructura.tipos_entidades.id;
+
+
+--
+-- Name: tipos_expedientes; Type: TABLE; Schema: estructura; Owner: bddat_admin
 --
 
 CREATE TABLE estructura.tipos_expedientes (
@@ -107,31 +219,31 @@ CREATE TABLE estructura.tipos_expedientes (
 );
 
 
-ALTER TABLE estructura.tipos_expedientes OWNER TO postgres;
+ALTER TABLE estructura.tipos_expedientes OWNER TO bddat_admin;
 
 --
--- Name: COLUMN tipos_expedientes.id; Type: COMMENT; Schema: estructura; Owner: postgres
+-- Name: COLUMN tipos_expedientes.id; Type: COMMENT; Schema: estructura; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN estructura.tipos_expedientes.id IS 'Identificador único autogenerado del tipo de expediente';
 
 
 --
--- Name: COLUMN tipos_expedientes.tipo; Type: COMMENT; Schema: estructura; Owner: postgres
+-- Name: COLUMN tipos_expedientes.tipo; Type: COMMENT; Schema: estructura; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN estructura.tipos_expedientes.tipo IS 'Denominación del tipo según clasificación normativa';
 
 
 --
--- Name: COLUMN tipos_expedientes.descripcion; Type: COMMENT; Schema: estructura; Owner: postgres
+-- Name: COLUMN tipos_expedientes.descripcion; Type: COMMENT; Schema: estructura; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN estructura.tipos_expedientes.descripcion IS 'Descripción detallada de características y particularidades procedimentales';
 
 
 --
--- Name: tipos_expedientes_id_seq; Type: SEQUENCE; Schema: estructura; Owner: postgres
+-- Name: tipos_expedientes_id_seq; Type: SEQUENCE; Schema: estructura; Owner: bddat_admin
 --
 
 CREATE SEQUENCE estructura.tipos_expedientes_id_seq
@@ -143,17 +255,17 @@ CREATE SEQUENCE estructura.tipos_expedientes_id_seq
     CACHE 1;
 
 
-ALTER SEQUENCE estructura.tipos_expedientes_id_seq OWNER TO postgres;
+ALTER SEQUENCE estructura.tipos_expedientes_id_seq OWNER TO bddat_admin;
 
 --
--- Name: tipos_expedientes_id_seq; Type: SEQUENCE OWNED BY; Schema: estructura; Owner: postgres
+-- Name: tipos_expedientes_id_seq; Type: SEQUENCE OWNED BY; Schema: estructura; Owner: bddat_admin
 --
 
 ALTER SEQUENCE estructura.tipos_expedientes_id_seq OWNED BY estructura.tipos_expedientes.id;
 
 
 --
--- Name: tipos_fases; Type: TABLE; Schema: estructura; Owner: postgres
+-- Name: tipos_fases; Type: TABLE; Schema: estructura; Owner: bddat_admin
 --
 
 CREATE TABLE estructura.tipos_fases (
@@ -163,31 +275,31 @@ CREATE TABLE estructura.tipos_fases (
 );
 
 
-ALTER TABLE estructura.tipos_fases OWNER TO postgres;
+ALTER TABLE estructura.tipos_fases OWNER TO bddat_admin;
 
 --
--- Name: COLUMN tipos_fases.id; Type: COMMENT; Schema: estructura; Owner: postgres
+-- Name: COLUMN tipos_fases.id; Type: COMMENT; Schema: estructura; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN estructura.tipos_fases.id IS 'Identificador único autogenerado del tipo de fase';
 
 
 --
--- Name: COLUMN tipos_fases.codigo; Type: COMMENT; Schema: estructura; Owner: postgres
+-- Name: COLUMN tipos_fases.codigo; Type: COMMENT; Schema: estructura; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN estructura.tipos_fases.codigo IS 'Código único inmutable de la fase (usado en lógica de reglas)';
 
 
 --
--- Name: COLUMN tipos_fases.nombre; Type: COMMENT; Schema: estructura; Owner: postgres
+-- Name: COLUMN tipos_fases.nombre; Type: COMMENT; Schema: estructura; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN estructura.tipos_fases.nombre IS 'Denominación completa de la fase para interfaz de usuario';
 
 
 --
--- Name: tipos_fases_id_seq; Type: SEQUENCE; Schema: estructura; Owner: postgres
+-- Name: tipos_fases_id_seq; Type: SEQUENCE; Schema: estructura; Owner: bddat_admin
 --
 
 CREATE SEQUENCE estructura.tipos_fases_id_seq
@@ -199,17 +311,17 @@ CREATE SEQUENCE estructura.tipos_fases_id_seq
     CACHE 1;
 
 
-ALTER SEQUENCE estructura.tipos_fases_id_seq OWNER TO postgres;
+ALTER SEQUENCE estructura.tipos_fases_id_seq OWNER TO bddat_admin;
 
 --
--- Name: tipos_fases_id_seq; Type: SEQUENCE OWNED BY; Schema: estructura; Owner: postgres
+-- Name: tipos_fases_id_seq; Type: SEQUENCE OWNED BY; Schema: estructura; Owner: bddat_admin
 --
 
 ALTER SEQUENCE estructura.tipos_fases_id_seq OWNED BY estructura.tipos_fases.id;
 
 
 --
--- Name: tipos_ia; Type: TABLE; Schema: estructura; Owner: postgres
+-- Name: tipos_ia; Type: TABLE; Schema: estructura; Owner: bddat_admin
 --
 
 CREATE TABLE estructura.tipos_ia (
@@ -219,31 +331,31 @@ CREATE TABLE estructura.tipos_ia (
 );
 
 
-ALTER TABLE estructura.tipos_ia OWNER TO postgres;
+ALTER TABLE estructura.tipos_ia OWNER TO bddat_admin;
 
 --
--- Name: COLUMN tipos_ia.id; Type: COMMENT; Schema: estructura; Owner: postgres
+-- Name: COLUMN tipos_ia.id; Type: COMMENT; Schema: estructura; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN estructura.tipos_ia.id IS 'Identificador único autogenerado del tipo de instrumento ambiental';
 
 
 --
--- Name: COLUMN tipos_ia.siglas; Type: COMMENT; Schema: estructura; Owner: postgres
+-- Name: COLUMN tipos_ia.siglas; Type: COMMENT; Schema: estructura; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN estructura.tipos_ia.siglas IS 'Código del instrumento ambiental (ver datos_maestros.sql)';
 
 
 --
--- Name: COLUMN tipos_ia.descripcion; Type: COMMENT; Schema: estructura; Owner: postgres
+-- Name: COLUMN tipos_ia.descripcion; Type: COMMENT; Schema: estructura; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN estructura.tipos_ia.descripcion IS 'Denominación completa del instrumento ambiental';
 
 
 --
--- Name: tipos_ia_id_seq; Type: SEQUENCE; Schema: estructura; Owner: postgres
+-- Name: tipos_ia_id_seq; Type: SEQUENCE; Schema: estructura; Owner: bddat_admin
 --
 
 CREATE SEQUENCE estructura.tipos_ia_id_seq
@@ -255,17 +367,17 @@ CREATE SEQUENCE estructura.tipos_ia_id_seq
     CACHE 1;
 
 
-ALTER SEQUENCE estructura.tipos_ia_id_seq OWNER TO postgres;
+ALTER SEQUENCE estructura.tipos_ia_id_seq OWNER TO bddat_admin;
 
 --
--- Name: tipos_ia_id_seq; Type: SEQUENCE OWNED BY; Schema: estructura; Owner: postgres
+-- Name: tipos_ia_id_seq; Type: SEQUENCE OWNED BY; Schema: estructura; Owner: bddat_admin
 --
 
 ALTER SEQUENCE estructura.tipos_ia_id_seq OWNED BY estructura.tipos_ia.id;
 
 
 --
--- Name: tipos_resultados_fases; Type: TABLE; Schema: estructura; Owner: postgres
+-- Name: tipos_resultados_fases; Type: TABLE; Schema: estructura; Owner: bddat_admin
 --
 
 CREATE TABLE estructura.tipos_resultados_fases (
@@ -275,31 +387,31 @@ CREATE TABLE estructura.tipos_resultados_fases (
 );
 
 
-ALTER TABLE estructura.tipos_resultados_fases OWNER TO postgres;
+ALTER TABLE estructura.tipos_resultados_fases OWNER TO bddat_admin;
 
 --
--- Name: COLUMN tipos_resultados_fases.id; Type: COMMENT; Schema: estructura; Owner: postgres
+-- Name: COLUMN tipos_resultados_fases.id; Type: COMMENT; Schema: estructura; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN estructura.tipos_resultados_fases.id IS 'Identificador único autogenerado del tipo de resultado';
 
 
 --
--- Name: COLUMN tipos_resultados_fases.codigo; Type: COMMENT; Schema: estructura; Owner: postgres
+-- Name: COLUMN tipos_resultados_fases.codigo; Type: COMMENT; Schema: estructura; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN estructura.tipos_resultados_fases.codigo IS 'Código único inmutable del resultado (usado en lógica de reglas)';
 
 
 --
--- Name: COLUMN tipos_resultados_fases.nombre; Type: COMMENT; Schema: estructura; Owner: postgres
+-- Name: COLUMN tipos_resultados_fases.nombre; Type: COMMENT; Schema: estructura; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN estructura.tipos_resultados_fases.nombre IS 'Denominación completa del resultado para interfaz de usuario';
 
 
 --
--- Name: tipos_resultados_fases_id_seq; Type: SEQUENCE; Schema: estructura; Owner: postgres
+-- Name: tipos_resultados_fases_id_seq; Type: SEQUENCE; Schema: estructura; Owner: bddat_admin
 --
 
 CREATE SEQUENCE estructura.tipos_resultados_fases_id_seq
@@ -311,17 +423,17 @@ CREATE SEQUENCE estructura.tipos_resultados_fases_id_seq
     CACHE 1;
 
 
-ALTER SEQUENCE estructura.tipos_resultados_fases_id_seq OWNER TO postgres;
+ALTER SEQUENCE estructura.tipos_resultados_fases_id_seq OWNER TO bddat_admin;
 
 --
--- Name: tipos_resultados_fases_id_seq; Type: SEQUENCE OWNED BY; Schema: estructura; Owner: postgres
+-- Name: tipos_resultados_fases_id_seq; Type: SEQUENCE OWNED BY; Schema: estructura; Owner: bddat_admin
 --
 
 ALTER SEQUENCE estructura.tipos_resultados_fases_id_seq OWNED BY estructura.tipos_resultados_fases.id;
 
 
 --
--- Name: tipos_solicitudes; Type: TABLE; Schema: estructura; Owner: postgres
+-- Name: tipos_solicitudes; Type: TABLE; Schema: estructura; Owner: bddat_admin
 --
 
 CREATE TABLE estructura.tipos_solicitudes (
@@ -331,31 +443,31 @@ CREATE TABLE estructura.tipos_solicitudes (
 );
 
 
-ALTER TABLE estructura.tipos_solicitudes OWNER TO postgres;
+ALTER TABLE estructura.tipos_solicitudes OWNER TO bddat_admin;
 
 --
--- Name: COLUMN tipos_solicitudes.id; Type: COMMENT; Schema: estructura; Owner: postgres
+-- Name: COLUMN tipos_solicitudes.id; Type: COMMENT; Schema: estructura; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN estructura.tipos_solicitudes.id IS 'Identificador único autogenerado del tipo de solicitud';
 
 
 --
--- Name: COLUMN tipos_solicitudes.siglas; Type: COMMENT; Schema: estructura; Owner: postgres
+-- Name: COLUMN tipos_solicitudes.siglas; Type: COMMENT; Schema: estructura; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN estructura.tipos_solicitudes.siglas IS 'Código normalizado del acto administrativo (AAP, AAC, DUP, etc.)';
 
 
 --
--- Name: COLUMN tipos_solicitudes.descripcion; Type: COMMENT; Schema: estructura; Owner: postgres
+-- Name: COLUMN tipos_solicitudes.descripcion; Type: COMMENT; Schema: estructura; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN estructura.tipos_solicitudes.descripcion IS 'Descripción completa del acto administrativo solicitado';
 
 
 --
--- Name: tipos_solicitudes_id_seq; Type: SEQUENCE; Schema: estructura; Owner: postgres
+-- Name: tipos_solicitudes_id_seq; Type: SEQUENCE; Schema: estructura; Owner: bddat_admin
 --
 
 CREATE SEQUENCE estructura.tipos_solicitudes_id_seq
@@ -367,17 +479,17 @@ CREATE SEQUENCE estructura.tipos_solicitudes_id_seq
     CACHE 1;
 
 
-ALTER SEQUENCE estructura.tipos_solicitudes_id_seq OWNER TO postgres;
+ALTER SEQUENCE estructura.tipos_solicitudes_id_seq OWNER TO bddat_admin;
 
 --
--- Name: tipos_solicitudes_id_seq; Type: SEQUENCE OWNED BY; Schema: estructura; Owner: postgres
+-- Name: tipos_solicitudes_id_seq; Type: SEQUENCE OWNED BY; Schema: estructura; Owner: bddat_admin
 --
 
 ALTER SEQUENCE estructura.tipos_solicitudes_id_seq OWNED BY estructura.tipos_solicitudes.id;
 
 
 --
--- Name: tipos_tareas; Type: TABLE; Schema: estructura; Owner: postgres
+-- Name: tipos_tareas; Type: TABLE; Schema: estructura; Owner: bddat_admin
 --
 
 CREATE TABLE estructura.tipos_tareas (
@@ -387,31 +499,31 @@ CREATE TABLE estructura.tipos_tareas (
 );
 
 
-ALTER TABLE estructura.tipos_tareas OWNER TO postgres;
+ALTER TABLE estructura.tipos_tareas OWNER TO bddat_admin;
 
 --
--- Name: COLUMN tipos_tareas.id; Type: COMMENT; Schema: estructura; Owner: postgres
+-- Name: COLUMN tipos_tareas.id; Type: COMMENT; Schema: estructura; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN estructura.tipos_tareas.id IS 'Identificador único autogenerado del tipo de tarea';
 
 
 --
--- Name: COLUMN tipos_tareas.codigo; Type: COMMENT; Schema: estructura; Owner: postgres
+-- Name: COLUMN tipos_tareas.codigo; Type: COMMENT; Schema: estructura; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN estructura.tipos_tareas.codigo IS 'Código único inmutable de la tarea (usado en lógica de reglas)';
 
 
 --
--- Name: COLUMN tipos_tareas.nombre; Type: COMMENT; Schema: estructura; Owner: postgres
+-- Name: COLUMN tipos_tareas.nombre; Type: COMMENT; Schema: estructura; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN estructura.tipos_tareas.nombre IS 'Denominación completa de la tarea para interfaz de usuario';
 
 
 --
--- Name: tipos_tareas_id_seq; Type: SEQUENCE; Schema: estructura; Owner: postgres
+-- Name: tipos_tareas_id_seq; Type: SEQUENCE; Schema: estructura; Owner: bddat_admin
 --
 
 CREATE SEQUENCE estructura.tipos_tareas_id_seq
@@ -423,17 +535,17 @@ CREATE SEQUENCE estructura.tipos_tareas_id_seq
     CACHE 1;
 
 
-ALTER SEQUENCE estructura.tipos_tareas_id_seq OWNER TO postgres;
+ALTER SEQUENCE estructura.tipos_tareas_id_seq OWNER TO bddat_admin;
 
 --
--- Name: tipos_tareas_id_seq; Type: SEQUENCE OWNED BY; Schema: estructura; Owner: postgres
+-- Name: tipos_tareas_id_seq; Type: SEQUENCE OWNED BY; Schema: estructura; Owner: bddat_admin
 --
 
 ALTER SEQUENCE estructura.tipos_tareas_id_seq OWNED BY estructura.tipos_tareas.id;
 
 
 --
--- Name: tipos_tramites; Type: TABLE; Schema: estructura; Owner: postgres
+-- Name: tipos_tramites; Type: TABLE; Schema: estructura; Owner: bddat_admin
 --
 
 CREATE TABLE estructura.tipos_tramites (
@@ -443,31 +555,31 @@ CREATE TABLE estructura.tipos_tramites (
 );
 
 
-ALTER TABLE estructura.tipos_tramites OWNER TO postgres;
+ALTER TABLE estructura.tipos_tramites OWNER TO bddat_admin;
 
 --
--- Name: COLUMN tipos_tramites.id; Type: COMMENT; Schema: estructura; Owner: postgres
+-- Name: COLUMN tipos_tramites.id; Type: COMMENT; Schema: estructura; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN estructura.tipos_tramites.id IS 'Identificador único autogenerado del tipo de trámite';
 
 
 --
--- Name: COLUMN tipos_tramites.codigo; Type: COMMENT; Schema: estructura; Owner: postgres
+-- Name: COLUMN tipos_tramites.codigo; Type: COMMENT; Schema: estructura; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN estructura.tipos_tramites.codigo IS 'Código único inmutable del trámite (usado en lógica de reglas)';
 
 
 --
--- Name: COLUMN tipos_tramites.nombre; Type: COMMENT; Schema: estructura; Owner: postgres
+-- Name: COLUMN tipos_tramites.nombre; Type: COMMENT; Schema: estructura; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN estructura.tipos_tramites.nombre IS 'Denominación completa del trámite para interfaz de usuario';
 
 
 --
--- Name: tipos_tramites_id_seq; Type: SEQUENCE; Schema: estructura; Owner: postgres
+-- Name: tipos_tramites_id_seq; Type: SEQUENCE; Schema: estructura; Owner: bddat_admin
 --
 
 CREATE SEQUENCE estructura.tipos_tramites_id_seq
@@ -479,17 +591,17 @@ CREATE SEQUENCE estructura.tipos_tramites_id_seq
     CACHE 1;
 
 
-ALTER SEQUENCE estructura.tipos_tramites_id_seq OWNER TO postgres;
+ALTER SEQUENCE estructura.tipos_tramites_id_seq OWNER TO bddat_admin;
 
 --
--- Name: tipos_tramites_id_seq; Type: SEQUENCE OWNED BY; Schema: estructura; Owner: postgres
+-- Name: tipos_tramites_id_seq; Type: SEQUENCE OWNED BY; Schema: estructura; Owner: bddat_admin
 --
 
 ALTER SEQUENCE estructura.tipos_tramites_id_seq OWNED BY estructura.tipos_tramites.id;
 
 
 --
--- Name: alembic_version; Type: TABLE; Schema: public; Owner: postgres
+-- Name: alembic_version; Type: TABLE; Schema: public; Owner: bddat_admin
 --
 
 CREATE TABLE public.alembic_version (
@@ -497,10 +609,99 @@ CREATE TABLE public.alembic_version (
 );
 
 
-ALTER TABLE public.alembic_version OWNER TO postgres;
+ALTER TABLE public.alembic_version OWNER TO bddat_admin;
 
 --
--- Name: documentos; Type: TABLE; Schema: public; Owner: postgres
+-- Name: autorizados_titular; Type: TABLE; Schema: public; Owner: bddat_admin
+--
+
+CREATE TABLE public.autorizados_titular (
+    id integer NOT NULL,
+    titular_entidad_id integer NOT NULL,
+    autorizado_entidad_id integer NOT NULL,
+    activo boolean DEFAULT true NOT NULL,
+    observaciones text,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    CONSTRAINT chk_no_autoautorizacion CHECK ((titular_entidad_id <> autorizado_entidad_id))
+);
+
+
+ALTER TABLE public.autorizados_titular OWNER TO bddat_admin;
+
+--
+-- Name: COLUMN autorizados_titular.id; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.autorizados_titular.id IS 'Identificador único del registro de autorización';
+
+
+--
+-- Name: COLUMN autorizados_titular.titular_entidad_id; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.autorizados_titular.titular_entidad_id IS 'Administrado titular que concede la autorización. Debe tener entrada en entidades_administrados';
+
+
+--
+-- Name: COLUMN autorizados_titular.autorizado_entidad_id; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.autorizados_titular.autorizado_entidad_id IS 'Administrado autorizado para representar al titular. Debe tener entrada en entidades_administrados';
+
+
+--
+-- Name: COLUMN autorizados_titular.activo; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.autorizados_titular.activo IS 'Indica si la autorización está vigente. FALSE = revocada/suspendida';
+
+
+--
+-- Name: COLUMN autorizados_titular.observaciones; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.autorizados_titular.observaciones IS 'Notas libres del tramitador. Usos: ámbito (expediente específico/general), vigencia temporal, motivo desactivación, tipo de poder';
+
+
+--
+-- Name: COLUMN autorizados_titular.created_at; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.autorizados_titular.created_at IS 'Fecha y hora de creación del registro';
+
+
+--
+-- Name: COLUMN autorizados_titular.updated_at; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.autorizados_titular.updated_at IS 'Fecha y hora de última actualización';
+
+
+--
+-- Name: autorizados_titular_id_seq; Type: SEQUENCE; Schema: public; Owner: bddat_admin
+--
+
+CREATE SEQUENCE public.autorizados_titular_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.autorizados_titular_id_seq OWNER TO bddat_admin;
+
+--
+-- Name: autorizados_titular_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: bddat_admin
+--
+
+ALTER SEQUENCE public.autorizados_titular_id_seq OWNED BY public.autorizados_titular.id;
+
+
+--
+-- Name: documentos; Type: TABLE; Schema: public; Owner: bddat_admin
 --
 
 CREATE TABLE public.documentos (
@@ -518,87 +719,87 @@ CREATE TABLE public.documentos (
 );
 
 
-ALTER TABLE public.documentos OWNER TO postgres;
+ALTER TABLE public.documentos OWNER TO bddat_admin;
 
 --
--- Name: COLUMN documentos.id; Type: COMMENT; Schema: public; Owner: postgres
+-- Name: COLUMN documentos.id; Type: COMMENT; Schema: public; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN public.documentos.id IS 'Identificador único autogenerado del documento';
 
 
 --
--- Name: COLUMN documentos.expediente_id; Type: COMMENT; Schema: public; Owner: postgres
+-- Name: COLUMN documentos.expediente_id; Type: COMMENT; Schema: public; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN public.documentos.expediente_id IS 'FK a EXPEDIENTES. ÚNCO FK del documento (tabla agnóstica)';
 
 
 --
--- Name: COLUMN documentos.url; Type: COMMENT; Schema: public; Owner: postgres
+-- Name: COLUMN documentos.url; Type: COMMENT; Schema: public; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN public.documentos.url IS 'Ruta o URL del archivo físico en sistema de archivos o repositorio';
 
 
 --
--- Name: COLUMN documentos.tipo_contenido; Type: COMMENT; Schema: public; Owner: postgres
+-- Name: COLUMN documentos.tipo_contenido; Type: COMMENT; Schema: public; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN public.documentos.tipo_contenido IS 'Tipo MIME del archivo (ej: application/pdf)';
 
 
 --
--- Name: COLUMN documentos.fecha_administrativa; Type: COMMENT; Schema: public; Owner: postgres
+-- Name: COLUMN documentos.fecha_administrativa; Type: COMMENT; Schema: public; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN public.documentos.fecha_administrativa IS 'Fecha con valor administrativo oficial (firma, registro, publicación)';
 
 
 --
--- Name: COLUMN documentos.asunto; Type: COMMENT; Schema: public; Owner: postgres
+-- Name: COLUMN documentos.asunto; Type: COMMENT; Schema: public; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN public.documentos.asunto IS 'Descripción o asunto del documento';
 
 
 --
--- Name: COLUMN documentos.origen; Type: COMMENT; Schema: public; Owner: postgres
+-- Name: COLUMN documentos.origen; Type: COMMENT; Schema: public; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN public.documentos.origen IS 'Procedencia del documento (EXTERNO, INTERNO, ORGANISMO_X, etc.)';
 
 
 --
--- Name: COLUMN documentos.prioridad; Type: COMMENT; Schema: public; Owner: postgres
+-- Name: COLUMN documentos.prioridad; Type: COMMENT; Schema: public; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN public.documentos.prioridad IS 'Nivel de prioridad o relevancia (default: 0)';
 
 
 --
--- Name: COLUMN documentos.nombre_display; Type: COMMENT; Schema: public; Owner: postgres
+-- Name: COLUMN documentos.nombre_display; Type: COMMENT; Schema: public; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN public.documentos.nombre_display IS 'Nombre legible para mostrar en interfaz';
 
 
 --
--- Name: COLUMN documentos.hash_md5; Type: COMMENT; Schema: public; Owner: postgres
+-- Name: COLUMN documentos.hash_md5; Type: COMMENT; Schema: public; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN public.documentos.hash_md5 IS 'Hash MD5 para verificación de integridad y detección de duplicados';
 
 
 --
--- Name: COLUMN documentos.observaciones; Type: COMMENT; Schema: public; Owner: postgres
+-- Name: COLUMN documentos.observaciones; Type: COMMENT; Schema: public; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN public.documentos.observaciones IS 'Notas o comentarios adicionales del técnico';
 
 
 --
--- Name: documentos_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+-- Name: documentos_id_seq; Type: SEQUENCE; Schema: public; Owner: bddat_admin
 --
 
 CREATE SEQUENCE public.documentos_id_seq
@@ -610,17 +811,17 @@ CREATE SEQUENCE public.documentos_id_seq
     CACHE 1;
 
 
-ALTER SEQUENCE public.documentos_id_seq OWNER TO postgres;
+ALTER SEQUENCE public.documentos_id_seq OWNER TO bddat_admin;
 
 --
--- Name: documentos_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+-- Name: documentos_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: bddat_admin
 --
 
 ALTER SEQUENCE public.documentos_id_seq OWNED BY public.documentos.id;
 
 
 --
--- Name: documentos_proyecto; Type: TABLE; Schema: public; Owner: postgres
+-- Name: documentos_proyecto; Type: TABLE; Schema: public; Owner: bddat_admin
 --
 
 CREATE TABLE public.documentos_proyecto (
@@ -632,45 +833,45 @@ CREATE TABLE public.documentos_proyecto (
 );
 
 
-ALTER TABLE public.documentos_proyecto OWNER TO postgres;
+ALTER TABLE public.documentos_proyecto OWNER TO bddat_admin;
 
 --
--- Name: COLUMN documentos_proyecto.id; Type: COMMENT; Schema: public; Owner: postgres
+-- Name: COLUMN documentos_proyecto.id; Type: COMMENT; Schema: public; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN public.documentos_proyecto.id IS 'Identificador único autogenerado del registro';
 
 
 --
--- Name: COLUMN documentos_proyecto.proyecto_id; Type: COMMENT; Schema: public; Owner: postgres
+-- Name: COLUMN documentos_proyecto.proyecto_id; Type: COMMENT; Schema: public; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN public.documentos_proyecto.proyecto_id IS 'FK a PROYECTOS. Proyecto al que pertenece el documento';
 
 
 --
--- Name: COLUMN documentos_proyecto.documento_id; Type: COMMENT; Schema: public; Owner: postgres
+-- Name: COLUMN documentos_proyecto.documento_id; Type: COMMENT; Schema: public; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN public.documentos_proyecto.documento_id IS 'FK UNIQUE a DOCUMENTOS. Un documento solo puede estar en un proyecto';
 
 
 --
--- Name: COLUMN documentos_proyecto.tipo; Type: COMMENT; Schema: public; Owner: postgres
+-- Name: COLUMN documentos_proyecto.tipo; Type: COMMENT; Schema: public; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN public.documentos_proyecto.tipo IS 'Tipo de documento: PRINCIPAL, MODIFICADO, REFUNDIDO, ANEXO';
 
 
 --
--- Name: COLUMN documentos_proyecto.observaciones; Type: COMMENT; Schema: public; Owner: postgres
+-- Name: COLUMN documentos_proyecto.observaciones; Type: COMMENT; Schema: public; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN public.documentos_proyecto.observaciones IS 'Notas del técnico sobre la incorporación del documento';
 
 
 --
--- Name: documentos_proyecto_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+-- Name: documentos_proyecto_id_seq; Type: SEQUENCE; Schema: public; Owner: bddat_admin
 --
 
 CREATE SEQUENCE public.documentos_proyecto_id_seq
@@ -682,75 +883,454 @@ CREATE SEQUENCE public.documentos_proyecto_id_seq
     CACHE 1;
 
 
-ALTER SEQUENCE public.documentos_proyecto_id_seq OWNER TO postgres;
+ALTER SEQUENCE public.documentos_proyecto_id_seq OWNER TO bddat_admin;
 
 --
--- Name: documentos_proyecto_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+-- Name: documentos_proyecto_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: bddat_admin
 --
 
 ALTER SEQUENCE public.documentos_proyecto_id_seq OWNED BY public.documentos_proyecto.id;
 
 
 --
--- Name: expedientes; Type: TABLE; Schema: public; Owner: postgres
+-- Name: entidades; Type: TABLE; Schema: public; Owner: bddat_admin
+--
+
+CREATE TABLE public.entidades (
+    id integer NOT NULL,
+    tipo_entidad_id integer NOT NULL,
+    cif_nif character varying(20),
+    nombre_completo character varying(200) NOT NULL,
+    email character varying(120),
+    telefono character varying(20),
+    direccion text,
+    codigo_postal character varying(10),
+    municipio_id integer,
+    direccion_fallback text,
+    activo boolean DEFAULT true NOT NULL,
+    notas text,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+
+ALTER TABLE public.entidades OWNER TO bddat_admin;
+
+--
+-- Name: COLUMN entidades.id; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.entidades.id IS 'Identificador único de la entidad';
+
+
+--
+-- Name: COLUMN entidades.tipo_entidad_id; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.entidades.tipo_entidad_id IS 'Tipo de entidad que determina tabla de metadatos. Define qué tabla entidades_* usar';
+
+
+--
+-- Name: COLUMN entidades.cif_nif; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.entidades.cif_nif IS 'CIF/NIF/NIE normalizado. Mayúsculas, sin espacios/guiones. Ej: "12345678A", "B12345678". NULL para algunos organismos históricos';
+
+
+--
+-- Name: COLUMN entidades.nombre_completo; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.entidades.nombre_completo IS 'Razón social, nombre completo o nombre oficial. Personas físicas: nombre completo. Jurídicas/organismos: razón social/nombre oficial';
+
+
+--
+-- Name: COLUMN entidades.email; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.entidades.email IS 'Email general de contacto. NO es el email de notificaciones (va en entidades_administrados)';
+
+
+--
+-- Name: COLUMN entidades.telefono; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.entidades.telefono IS 'Teléfono de contacto general. Formato libre';
+
+
+--
+-- Name: COLUMN entidades.direccion; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.entidades.direccion IS 'Calle, número, piso, puerta. Usar junto con codigo_postal y municipio_id (preferente para España)';
+
+
+--
+-- Name: COLUMN entidades.codigo_postal; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.entidades.codigo_postal IS 'Código postal. Texto libre. Futuro: sugerencias desde tabla codigos_postales';
+
+
+--
+-- Name: COLUMN entidades.municipio_id; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.entidades.municipio_id IS 'Municipio de la dirección. Preferente sobre direccion_fallback';
+
+
+--
+-- Name: COLUMN entidades.direccion_fallback; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.entidades.direccion_fallback IS 'Dirección completa en texto libre. Para casos excepcionales (extranjero, datos históricos). Ej: "23, Peny Lane, St, 34523, London, England"';
+
+
+--
+-- Name: COLUMN entidades.activo; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.entidades.activo IS 'Indica si la entidad está activa. Borrado lógico';
+
+
+--
+-- Name: COLUMN entidades.notas; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.entidades.notas IS 'Observaciones generales sobre la entidad. Campo libre para anotaciones';
+
+
+--
+-- Name: COLUMN entidades.created_at; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.entidades.created_at IS 'Fecha y hora de creación del registro';
+
+
+--
+-- Name: COLUMN entidades.updated_at; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.entidades.updated_at IS 'Fecha y hora de última actualización';
+
+
+--
+-- Name: entidades_administrados; Type: TABLE; Schema: public; Owner: bddat_admin
+--
+
+CREATE TABLE public.entidades_administrados (
+    entidad_id integer NOT NULL,
+    email_notificaciones character varying(120) NOT NULL,
+    representante_nif_cif character varying(20),
+    representante_nombre character varying(200),
+    representante_telefono character varying(20),
+    representante_email character varying(120),
+    notas_representacion text,
+    CONSTRAINT chk_representante_coherente CHECK ((((representante_nif_cif IS NULL) AND (representante_nombre IS NULL)) OR ((representante_nif_cif IS NOT NULL) AND (representante_nombre IS NOT NULL))))
+);
+
+
+ALTER TABLE public.entidades_administrados OWNER TO bddat_admin;
+
+--
+-- Name: COLUMN entidades_administrados.entidad_id; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.entidades_administrados.entidad_id IS 'Referencia a entidad base (PK y FK con CASCADE)';
+
+
+--
+-- Name: COLUMN entidades_administrados.email_notificaciones; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.entidades_administrados.email_notificaciones IS 'Email oficial para sistema Notifica. Puede ser personal o corporativo donde se reciben notificaciones electrónicas oficiales';
+
+
+--
+-- Name: COLUMN entidades_administrados.representante_nif_cif; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.entidades_administrados.representante_nif_cif IS 'NIF/CIF de quien representa/gestiona. NULL si autorepresentado (persona física) o gestión corporativa directa. Normalizado como CIF/NIF';
+
+
+--
+-- Name: COLUMN entidades_administrados.representante_nombre; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.entidades_administrados.representante_nombre IS 'Nombre completo del representante. NULL si autorepresentado. Puede ser persona física (administrador único) o jurídica (consultora contratada)';
+
+
+--
+-- Name: COLUMN entidades_administrados.representante_telefono; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.entidades_administrados.representante_telefono IS 'Teléfono del representante. Contacto directo con quien gestiona';
+
+
+--
+-- Name: COLUMN entidades_administrados.representante_email; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.entidades_administrados.representante_email IS 'Email del representante. Email de contacto (NO oficial para notificaciones, solo coordinación)';
+
+
+--
+-- Name: COLUMN entidades_administrados.notas_representacion; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.entidades_administrados.notas_representacion IS 'Observaciones sobre la representación. Tipo de cargo o relación: "Administrador único", "Consultora ACME SL contratada", "Apoderado con poder notarial", etc.';
+
+
+--
+-- Name: entidades_ayuntamientos; Type: TABLE; Schema: public; Owner: bddat_admin
+--
+
+CREATE TABLE public.entidades_ayuntamientos (
+    entidad_id integer NOT NULL,
+    codigo_dir3 character varying(20)
+);
+
+
+ALTER TABLE public.entidades_ayuntamientos OWNER TO bddat_admin;
+
+--
+-- Name: COLUMN entidades_ayuntamientos.entidad_id; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.entidades_ayuntamientos.entidad_id IS 'Referencia a entidad base (PK y FK con CASCADE)';
+
+
+--
+-- Name: COLUMN entidades_ayuntamientos.codigo_dir3; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.entidades_ayuntamientos.codigo_dir3 IS 'Código DIR3 para notificaciones SIR';
+
+
+--
+-- Name: entidades_diputaciones; Type: TABLE; Schema: public; Owner: bddat_admin
+--
+
+CREATE TABLE public.entidades_diputaciones (
+    entidad_id integer NOT NULL,
+    codigo_dir3 character varying(20) NOT NULL,
+    email_publicacion_bop character varying(255),
+    observaciones text
+);
+
+
+ALTER TABLE public.entidades_diputaciones OWNER TO bddat_admin;
+
+--
+-- Name: COLUMN entidades_diputaciones.entidad_id; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.entidades_diputaciones.entidad_id IS 'Referencia a entidad base (PK y FK con CASCADE)';
+
+
+--
+-- Name: COLUMN entidades_diputaciones.codigo_dir3; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.entidades_diputaciones.codigo_dir3 IS 'Código DIR3 oficial para notificaciones SIR como organismo consultado. Formato: 1-2 letras + 7-8 números. Ej: L01110002';
+
+
+--
+-- Name: COLUMN entidades_diputaciones.email_publicacion_bop; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.entidades_diputaciones.email_publicacion_bop IS 'Email para solicitar publicaciones en BOP. Ej: boletin@bopcadiz.org. Método tradicional: correo con datos pagador + texto';
+
+
+--
+-- Name: COLUMN entidades_diputaciones.observaciones; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.entidades_diputaciones.observaciones IS 'Notas sobre procedimientos publicación, tarifas, plataformas alternativas, contactos específicos. Ej: "Concesionaria: Asociación Prensa Cádiz"';
+
+
+--
+-- Name: entidades_empresas_servicio_publico; Type: TABLE; Schema: public; Owner: bddat_admin
+--
+
+CREATE TABLE public.entidades_empresas_servicio_publico (
+    entidad_id integer NOT NULL,
+    codigo_dir3 character varying(20)
+);
+
+
+ALTER TABLE public.entidades_empresas_servicio_publico OWNER TO bddat_admin;
+
+--
+-- Name: COLUMN entidades_empresas_servicio_publico.entidad_id; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.entidades_empresas_servicio_publico.entidad_id IS 'Referencia a entidad base (PK y FK con CASCADE)';
+
+
+--
+-- Name: COLUMN entidades_empresas_servicio_publico.codigo_dir3; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.entidades_empresas_servicio_publico.codigo_dir3 IS 'Código DIR3 para notificaciones SIR (opcional, no todas las empresas tienen)';
+
+
+--
+-- Name: entidades_id_seq; Type: SEQUENCE; Schema: public; Owner: bddat_admin
+--
+
+CREATE SEQUENCE public.entidades_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.entidades_id_seq OWNER TO bddat_admin;
+
+--
+-- Name: entidades_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: bddat_admin
+--
+
+ALTER SEQUENCE public.entidades_id_seq OWNED BY public.entidades.id;
+
+
+--
+-- Name: entidades_organismos_publicos; Type: TABLE; Schema: public; Owner: bddat_admin
+--
+
+CREATE TABLE public.entidades_organismos_publicos (
+    entidad_id integer NOT NULL,
+    codigo_dir3 character varying(20),
+    ambito character varying(50),
+    tipo_organismo character varying(50),
+    legislatura character varying(50),
+    fecha_desde date,
+    fecha_hasta date
+);
+
+
+ALTER TABLE public.entidades_organismos_publicos OWNER TO bddat_admin;
+
+--
+-- Name: COLUMN entidades_organismos_publicos.entidad_id; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.entidades_organismos_publicos.entidad_id IS 'Referencia a entidad base (PK y FK con CASCADE)';
+
+
+--
+-- Name: COLUMN entidades_organismos_publicos.codigo_dir3; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.entidades_organismos_publicos.codigo_dir3 IS 'Código DIR3 para notificaciones SIR/BandeJA';
+
+
+--
+-- Name: COLUMN entidades_organismos_publicos.ambito; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.entidades_organismos_publicos.ambito IS 'Ámbito del organismo: ESTATAL, AUTONOMICO, LOCAL';
+
+
+--
+-- Name: COLUMN entidades_organismos_publicos.tipo_organismo; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.entidades_organismos_publicos.tipo_organismo IS 'Tipo específico: Consejería, Ministerio, Confederación, Entidad Pública, etc.';
+
+
+--
+-- Name: COLUMN entidades_organismos_publicos.legislatura; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.entidades_organismos_publicos.legislatura IS 'Legislatura asociada. Ej: "2019-2023", "2023-2027"';
+
+
+--
+-- Name: COLUMN entidades_organismos_publicos.fecha_desde; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.entidades_organismos_publicos.fecha_desde IS 'Fecha inicio vigencia del organismo';
+
+
+--
+-- Name: COLUMN entidades_organismos_publicos.fecha_hasta; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.entidades_organismos_publicos.fecha_hasta IS 'Fecha fin vigencia del organismo (NULL si sigue activo)';
+
+
+--
+-- Name: expedientes; Type: TABLE; Schema: public; Owner: bddat_admin
 --
 
 CREATE TABLE public.expedientes (
     id integer NOT NULL,
     numero_at integer NOT NULL,
-    responsable_id integer NOT NULL,
+    responsable_id integer,
     tipo_expediente_id integer,
     heredado boolean,
-    proyecto_id integer NOT NULL
+    proyecto_id integer NOT NULL,
+    titular_id integer
 );
 
 
-ALTER TABLE public.expedientes OWNER TO postgres;
+ALTER TABLE public.expedientes OWNER TO bddat_admin;
 
 --
--- Name: COLUMN expedientes.id; Type: COMMENT; Schema: public; Owner: postgres
+-- Name: COLUMN expedientes.id; Type: COMMENT; Schema: public; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN public.expedientes.id IS 'Identificador técnico único autogenerado';
 
 
 --
--- Name: COLUMN expedientes.numero_at; Type: COMMENT; Schema: public; Owner: postgres
+-- Name: COLUMN expedientes.numero_at; Type: COMMENT; Schema: public; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN public.expedientes.numero_at IS 'Número administrativo del expediente (formato legacy, único en organización)';
 
 
 --
--- Name: COLUMN expedientes.responsable_id; Type: COMMENT; Schema: public; Owner: postgres
+-- Name: COLUMN expedientes.responsable_id; Type: COMMENT; Schema: public; Owner: bddat_admin
 --
 
-COMMENT ON COLUMN public.expedientes.responsable_id IS 'FK a USUARIOS. Tramitador asignado con permisos de gestión completa';
+COMMENT ON COLUMN public.expedientes.responsable_id IS 'FK a USUARIOS. Tramitador asignado con permisos de gestión completa. NULL = huérfano sin asignar';
 
 
 --
--- Name: COLUMN expedientes.tipo_expediente_id; Type: COMMENT; Schema: public; Owner: postgres
+-- Name: COLUMN expedientes.tipo_expediente_id; Type: COMMENT; Schema: public; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN public.expedientes.tipo_expediente_id IS 'FK a TIPOS_EXPEDIENTES. Clasificación normativa que define procedimiento';
 
 
 --
--- Name: COLUMN expedientes.heredado; Type: COMMENT; Schema: public; Owner: postgres
+-- Name: COLUMN expedientes.heredado; Type: COMMENT; Schema: public; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN public.expedientes.heredado IS 'TRUE si proviene del sistema anterior (datos incompletos posibles)';
 
 
 --
--- Name: COLUMN expedientes.proyecto_id; Type: COMMENT; Schema: public; Owner: postgres
+-- Name: COLUMN expedientes.proyecto_id; Type: COMMENT; Schema: public; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN public.expedientes.proyecto_id IS 'FK a PROYECTOS. Relación 1:1, un expediente tiene exactamente un proyecto';
 
 
 --
--- Name: expedientes_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+-- Name: COLUMN expedientes.titular_id; Type: COMMENT; Schema: public; Owner: bddat_admin
+--
+
+COMMENT ON COLUMN public.expedientes.titular_id IS 'FK a ENTIDADES. Titular actual del expediente (snapshot del histórico). NULL = sin titular asignado (anómalo transitorio)';
+
+
+--
+-- Name: expedientes_id_seq; Type: SEQUENCE; Schema: public; Owner: bddat_admin
 --
 
 CREATE SEQUENCE public.expedientes_id_seq
@@ -762,17 +1342,17 @@ CREATE SEQUENCE public.expedientes_id_seq
     CACHE 1;
 
 
-ALTER SEQUENCE public.expedientes_id_seq OWNER TO postgres;
+ALTER SEQUENCE public.expedientes_id_seq OWNER TO bddat_admin;
 
 --
--- Name: expedientes_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+-- Name: expedientes_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: bddat_admin
 --
 
 ALTER SEQUENCE public.expedientes_id_seq OWNED BY public.expedientes.id;
 
 
 --
--- Name: fases; Type: TABLE; Schema: public; Owner: postgres
+-- Name: fases; Type: TABLE; Schema: public; Owner: bddat_admin
 --
 
 CREATE TABLE public.fases (
@@ -787,66 +1367,66 @@ CREATE TABLE public.fases (
 );
 
 
-ALTER TABLE public.fases OWNER TO postgres;
+ALTER TABLE public.fases OWNER TO bddat_admin;
 
 --
--- Name: COLUMN fases.id; Type: COMMENT; Schema: public; Owner: postgres
+-- Name: COLUMN fases.id; Type: COMMENT; Schema: public; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN public.fases.id IS 'Identificador único autogenerado de la fase';
 
 
 --
--- Name: COLUMN fases.solicitud_id; Type: COMMENT; Schema: public; Owner: postgres
+-- Name: COLUMN fases.solicitud_id; Type: COMMENT; Schema: public; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN public.fases.solicitud_id IS 'FK a SOLICITUDES. Solicitud a la que pertenece la fase';
 
 
 --
--- Name: COLUMN fases.tipo_fase_id; Type: COMMENT; Schema: public; Owner: postgres
+-- Name: COLUMN fases.tipo_fase_id; Type: COMMENT; Schema: public; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN public.fases.tipo_fase_id IS 'FK a TIPOS_FASES. Tipo de fase (ADMISIBILIDAD, CONSULTAS, etc.)';
 
 
 --
--- Name: COLUMN fases.fecha_inicio; Type: COMMENT; Schema: public; Owner: postgres
+-- Name: COLUMN fases.fecha_inicio; Type: COMMENT; Schema: public; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN public.fases.fecha_inicio IS 'Fecha de inicio de la fase. NULL = fase planificada no iniciada';
 
 
 --
--- Name: COLUMN fases.fecha_fin; Type: COMMENT; Schema: public; Owner: postgres
+-- Name: COLUMN fases.fecha_fin; Type: COMMENT; Schema: public; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN public.fases.fecha_fin IS 'Fecha de finalización de la fase. NULL = fase pendiente o en curso';
 
 
 --
--- Name: COLUMN fases.resultado_fase_id; Type: COMMENT; Schema: public; Owner: postgres
+-- Name: COLUMN fases.resultado_fase_id; Type: COMMENT; Schema: public; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN public.fases.resultado_fase_id IS 'FK a TIPOS_RESULTADOS_FASES. Resultado de la fase al finalizar';
 
 
 --
--- Name: COLUMN fases.documento_resultado_id; Type: COMMENT; Schema: public; Owner: postgres
+-- Name: COLUMN fases.documento_resultado_id; Type: COMMENT; Schema: public; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN public.fases.documento_resultado_id IS 'FK a DOCUMENTOS. Documento oficial que formaliza el resultado';
 
 
 --
--- Name: COLUMN fases.observaciones; Type: COMMENT; Schema: public; Owner: postgres
+-- Name: COLUMN fases.observaciones; Type: COMMENT; Schema: public; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN public.fases.observaciones IS 'Notas o comentarios adicionales del técnico';
 
 
 --
--- Name: fases_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+-- Name: fases_id_seq; Type: SEQUENCE; Schema: public; Owner: bddat_admin
 --
 
 CREATE SEQUENCE public.fases_id_seq
@@ -858,17 +1438,17 @@ CREATE SEQUENCE public.fases_id_seq
     CACHE 1;
 
 
-ALTER SEQUENCE public.fases_id_seq OWNER TO postgres;
+ALTER SEQUENCE public.fases_id_seq OWNER TO bddat_admin;
 
 --
--- Name: fases_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+-- Name: fases_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: bddat_admin
 --
 
 ALTER SEQUENCE public.fases_id_seq OWNED BY public.fases.id;
 
 
 --
--- Name: municipios_proyecto; Type: TABLE; Schema: public; Owner: postgres
+-- Name: municipios_proyecto; Type: TABLE; Schema: public; Owner: bddat_admin
 --
 
 CREATE TABLE public.municipios_proyecto (
@@ -878,31 +1458,31 @@ CREATE TABLE public.municipios_proyecto (
 );
 
 
-ALTER TABLE public.municipios_proyecto OWNER TO postgres;
+ALTER TABLE public.municipios_proyecto OWNER TO bddat_admin;
 
 --
--- Name: COLUMN municipios_proyecto.id; Type: COMMENT; Schema: public; Owner: postgres
+-- Name: COLUMN municipios_proyecto.id; Type: COMMENT; Schema: public; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN public.municipios_proyecto.id IS 'Identificador único autogenerado del registro puente';
 
 
 --
--- Name: COLUMN municipios_proyecto.municipio_id; Type: COMMENT; Schema: public; Owner: postgres
+-- Name: COLUMN municipios_proyecto.municipio_id; Type: COMMENT; Schema: public; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN public.municipios_proyecto.municipio_id IS 'FK a MUNICIPIOS. Municipio afectado por el proyecto';
 
 
 --
--- Name: COLUMN municipios_proyecto.proyecto_id; Type: COMMENT; Schema: public; Owner: postgres
+-- Name: COLUMN municipios_proyecto.proyecto_id; Type: COMMENT; Schema: public; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN public.municipios_proyecto.proyecto_id IS 'FK a PROYECTOS. Proyecto técnico que afecta al municipio';
 
 
 --
--- Name: municipios_proyecto_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+-- Name: municipios_proyecto_id_seq; Type: SEQUENCE; Schema: public; Owner: bddat_admin
 --
 
 CREATE SEQUENCE public.municipios_proyecto_id_seq
@@ -914,83 +1494,83 @@ CREATE SEQUENCE public.municipios_proyecto_id_seq
     CACHE 1;
 
 
-ALTER SEQUENCE public.municipios_proyecto_id_seq OWNER TO postgres;
+ALTER SEQUENCE public.municipios_proyecto_id_seq OWNER TO bddat_admin;
 
 --
--- Name: municipios_proyecto_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+-- Name: municipios_proyecto_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: bddat_admin
 --
 
 ALTER SEQUENCE public.municipios_proyecto_id_seq OWNED BY public.municipios_proyecto.id;
 
 
 --
--- Name: proyectos; Type: TABLE; Schema: public; Owner: postgres
+-- Name: proyectos; Type: TABLE; Schema: public; Owner: bddat_admin
 --
 
 CREATE TABLE public.proyectos (
     id integer NOT NULL,
-    titulo character varying(500) DEFAULT '⚠️ Falta el título del proyecto'::character varying NOT NULL,
-    descripcion character varying(10000) DEFAULT '⚠️ Falta la descripción del proyecto'::character varying NOT NULL,
-    fecha date DEFAULT CURRENT_DATE NOT NULL,
-    finalidad character varying(500) DEFAULT '⚠️ Falta la finalidad del proyecto'::character varying NOT NULL,
-    emplazamiento character varying(200) DEFAULT '⚠️ Falta el emplazamiento'::character varying NOT NULL,
+    titulo character varying(500) NOT NULL,
+    descripcion character varying(10000) NOT NULL,
+    fecha date NOT NULL,
+    finalidad character varying(500) NOT NULL,
+    emplazamiento character varying(200) NOT NULL,
     ia_id integer
 );
 
 
-ALTER TABLE public.proyectos OWNER TO postgres;
+ALTER TABLE public.proyectos OWNER TO bddat_admin;
 
 --
--- Name: COLUMN proyectos.id; Type: COMMENT; Schema: public; Owner: postgres
+-- Name: COLUMN proyectos.id; Type: COMMENT; Schema: public; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN public.proyectos.id IS 'Identificador técnico único autogenerado';
 
 
 --
--- Name: COLUMN proyectos.titulo; Type: COMMENT; Schema: public; Owner: postgres
+-- Name: COLUMN proyectos.titulo; Type: COMMENT; Schema: public; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN public.proyectos.titulo IS 'Título descriptivo del proyecto técnico';
 
 
 --
--- Name: COLUMN proyectos.descripcion; Type: COMMENT; Schema: public; Owner: postgres
+-- Name: COLUMN proyectos.descripcion; Type: COMMENT; Schema: public; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN public.proyectos.descripcion IS 'Descripción técnica detallada del proyecto (texto libre extenso)';
 
 
 --
--- Name: COLUMN proyectos.fecha; Type: COMMENT; Schema: public; Owner: postgres
+-- Name: COLUMN proyectos.fecha; Type: COMMENT; Schema: public; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN public.proyectos.fecha IS 'Fecha técnica del proyecto (firma/visado), NO fecha administrativa de presentación';
 
 
 --
--- Name: COLUMN proyectos.finalidad; Type: COMMENT; Schema: public; Owner: postgres
+-- Name: COLUMN proyectos.finalidad; Type: COMMENT; Schema: public; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN public.proyectos.finalidad IS 'Finalidad o uso previsto de la instalación eléctrica';
 
 
 --
--- Name: COLUMN proyectos.emplazamiento; Type: COMMENT; Schema: public; Owner: postgres
+-- Name: COLUMN proyectos.emplazamiento; Type: COMMENT; Schema: public; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN public.proyectos.emplazamiento IS 'Ubicación geográfica de la instalación (descripción textual)';
 
 
 --
--- Name: COLUMN proyectos.ia_id; Type: COMMENT; Schema: public; Owner: postgres
+-- Name: COLUMN proyectos.ia_id; Type: COMMENT; Schema: public; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN public.proyectos.ia_id IS 'FK a TIPOS_IA. Instrumento ambiental aplicable (AAI, AAU, AAUS, CA, EXENTO)';
 
 
 --
--- Name: proyectos_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+-- Name: proyectos_id_seq; Type: SEQUENCE; Schema: public; Owner: bddat_admin
 --
 
 CREATE SEQUENCE public.proyectos_id_seq
@@ -1002,17 +1582,17 @@ CREATE SEQUENCE public.proyectos_id_seq
     CACHE 1;
 
 
-ALTER SEQUENCE public.proyectos_id_seq OWNER TO postgres;
+ALTER SEQUENCE public.proyectos_id_seq OWNER TO bddat_admin;
 
 --
--- Name: proyectos_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+-- Name: proyectos_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: bddat_admin
 --
 
 ALTER SEQUENCE public.proyectos_id_seq OWNED BY public.proyectos.id;
 
 
 --
--- Name: roles; Type: TABLE; Schema: public; Owner: postgres
+-- Name: roles; Type: TABLE; Schema: public; Owner: bddat_admin
 --
 
 CREATE TABLE public.roles (
@@ -1022,31 +1602,31 @@ CREATE TABLE public.roles (
 );
 
 
-ALTER TABLE public.roles OWNER TO postgres;
+ALTER TABLE public.roles OWNER TO bddat_admin;
 
 --
--- Name: COLUMN roles.id; Type: COMMENT; Schema: public; Owner: postgres
+-- Name: COLUMN roles.id; Type: COMMENT; Schema: public; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN public.roles.id IS 'Identificador único autogenerado del rol';
 
 
 --
--- Name: COLUMN roles.nombre; Type: COMMENT; Schema: public; Owner: postgres
+-- Name: COLUMN roles.nombre; Type: COMMENT; Schema: public; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN public.roles.nombre IS 'Nombre del rol (ADMIN, SUPERVISOR, TRAMITADOR, ADMINISTRATIVO)';
 
 
 --
--- Name: COLUMN roles.descripcion; Type: COMMENT; Schema: public; Owner: postgres
+-- Name: COLUMN roles.descripcion; Type: COMMENT; Schema: public; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN public.roles.descripcion IS 'Descripción del propósito y permisos del rol';
 
 
 --
--- Name: roles_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+-- Name: roles_id_seq; Type: SEQUENCE; Schema: public; Owner: bddat_admin
 --
 
 CREATE SEQUENCE public.roles_id_seq
@@ -1058,17 +1638,17 @@ CREATE SEQUENCE public.roles_id_seq
     CACHE 1;
 
 
-ALTER SEQUENCE public.roles_id_seq OWNER TO postgres;
+ALTER SEQUENCE public.roles_id_seq OWNER TO bddat_admin;
 
 --
--- Name: roles_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+-- Name: roles_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: bddat_admin
 --
 
 ALTER SEQUENCE public.roles_id_seq OWNED BY public.roles.id;
 
 
 --
--- Name: solicitudes; Type: TABLE; Schema: public; Owner: postgres
+-- Name: solicitudes; Type: TABLE; Schema: public; Owner: bddat_admin
 --
 
 CREATE TABLE public.solicitudes (
@@ -1081,52 +1661,52 @@ CREATE TABLE public.solicitudes (
 );
 
 
-ALTER TABLE public.solicitudes OWNER TO postgres;
+ALTER TABLE public.solicitudes OWNER TO bddat_admin;
 
 --
--- Name: COLUMN solicitudes.id; Type: COMMENT; Schema: public; Owner: postgres
+-- Name: COLUMN solicitudes.id; Type: COMMENT; Schema: public; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN public.solicitudes.id IS 'Identificador único autogenerado de la solicitud';
 
 
 --
--- Name: COLUMN solicitudes.expediente_id; Type: COMMENT; Schema: public; Owner: postgres
+-- Name: COLUMN solicitudes.expediente_id; Type: COMMENT; Schema: public; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN public.solicitudes.expediente_id IS 'FK a EXPEDIENTES. Expediente al que pertenece la solicitud';
 
 
 --
--- Name: COLUMN solicitudes.solicitud_afectada_id; Type: COMMENT; Schema: public; Owner: postgres
+-- Name: COLUMN solicitudes.solicitud_afectada_id; Type: COMMENT; Schema: public; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN public.solicitudes.solicitud_afectada_id IS 'FK a SOLICITUDES. Para DESISTIMIENTO/RENUNCIA, solicitud que se desiste';
 
 
 --
--- Name: COLUMN solicitudes.fecha_solicitud; Type: COMMENT; Schema: public; Owner: postgres
+-- Name: COLUMN solicitudes.fecha_solicitud; Type: COMMENT; Schema: public; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN public.solicitudes.fecha_solicitud IS 'Fecha oficial de presentación de la solicitud';
 
 
 --
--- Name: COLUMN solicitudes.estado; Type: COMMENT; Schema: public; Owner: postgres
+-- Name: COLUMN solicitudes.estado; Type: COMMENT; Schema: public; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN public.solicitudes.estado IS 'Estado: EN_TRAMITE, RESUELTA, DESISTIDA, ARCHIVADA';
 
 
 --
--- Name: COLUMN solicitudes.observaciones; Type: COMMENT; Schema: public; Owner: postgres
+-- Name: COLUMN solicitudes.observaciones; Type: COMMENT; Schema: public; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN public.solicitudes.observaciones IS 'Notas o comentarios adicionales del técnico';
 
 
 --
--- Name: solicitudes_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+-- Name: solicitudes_id_seq; Type: SEQUENCE; Schema: public; Owner: bddat_admin
 --
 
 CREATE SEQUENCE public.solicitudes_id_seq
@@ -1138,17 +1718,17 @@ CREATE SEQUENCE public.solicitudes_id_seq
     CACHE 1;
 
 
-ALTER SEQUENCE public.solicitudes_id_seq OWNER TO postgres;
+ALTER SEQUENCE public.solicitudes_id_seq OWNER TO bddat_admin;
 
 --
--- Name: solicitudes_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+-- Name: solicitudes_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: bddat_admin
 --
 
 ALTER SEQUENCE public.solicitudes_id_seq OWNED BY public.solicitudes.id;
 
 
 --
--- Name: solicitudes_tipos; Type: TABLE; Schema: public; Owner: postgres
+-- Name: solicitudes_tipos; Type: TABLE; Schema: public; Owner: bddat_admin
 --
 
 CREATE TABLE public.solicitudes_tipos (
@@ -1158,31 +1738,31 @@ CREATE TABLE public.solicitudes_tipos (
 );
 
 
-ALTER TABLE public.solicitudes_tipos OWNER TO postgres;
+ALTER TABLE public.solicitudes_tipos OWNER TO bddat_admin;
 
 --
--- Name: COLUMN solicitudes_tipos.id; Type: COMMENT; Schema: public; Owner: postgres
+-- Name: COLUMN solicitudes_tipos.id; Type: COMMENT; Schema: public; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN public.solicitudes_tipos.id IS 'Identificador único autogenerado del registro puente';
 
 
 --
--- Name: COLUMN solicitudes_tipos.solicitudid; Type: COMMENT; Schema: public; Owner: postgres
+-- Name: COLUMN solicitudes_tipos.solicitudid; Type: COMMENT; Schema: public; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN public.solicitudes_tipos.solicitudid IS 'FK a SOLICITUDES. Solicitud que contiene este tipo';
 
 
 --
--- Name: COLUMN solicitudes_tipos.tiposolicitudid; Type: COMMENT; Schema: public; Owner: postgres
+-- Name: COLUMN solicitudes_tipos.tiposolicitudid; Type: COMMENT; Schema: public; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN public.solicitudes_tipos.tiposolicitudid IS 'FK a TIPOS_SOLICITUDES. Tipo individual asignado a la solicitud';
 
 
 --
--- Name: solicitudes_tipos_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+-- Name: solicitudes_tipos_id_seq; Type: SEQUENCE; Schema: public; Owner: bddat_admin
 --
 
 CREATE SEQUENCE public.solicitudes_tipos_id_seq
@@ -1194,17 +1774,17 @@ CREATE SEQUENCE public.solicitudes_tipos_id_seq
     CACHE 1;
 
 
-ALTER SEQUENCE public.solicitudes_tipos_id_seq OWNER TO postgres;
+ALTER SEQUENCE public.solicitudes_tipos_id_seq OWNER TO bddat_admin;
 
 --
--- Name: solicitudes_tipos_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+-- Name: solicitudes_tipos_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: bddat_admin
 --
 
 ALTER SEQUENCE public.solicitudes_tipos_id_seq OWNED BY public.solicitudes_tipos.id;
 
 
 --
--- Name: tareas; Type: TABLE; Schema: public; Owner: postgres
+-- Name: tareas; Type: TABLE; Schema: public; Owner: bddat_admin
 --
 
 CREATE TABLE public.tareas (
@@ -1219,66 +1799,66 @@ CREATE TABLE public.tareas (
 );
 
 
-ALTER TABLE public.tareas OWNER TO postgres;
+ALTER TABLE public.tareas OWNER TO bddat_admin;
 
 --
--- Name: COLUMN tareas.id; Type: COMMENT; Schema: public; Owner: postgres
+-- Name: COLUMN tareas.id; Type: COMMENT; Schema: public; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN public.tareas.id IS 'Identificador único autogenerado de la tarea';
 
 
 --
--- Name: COLUMN tareas.tramite_id; Type: COMMENT; Schema: public; Owner: postgres
+-- Name: COLUMN tareas.tramite_id; Type: COMMENT; Schema: public; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN public.tareas.tramite_id IS 'FK a TRAMITES. Trámite al que pertenece la tarea';
 
 
 --
--- Name: COLUMN tareas.tipo_tarea_id; Type: COMMENT; Schema: public; Owner: postgres
+-- Name: COLUMN tareas.tipo_tarea_id; Type: COMMENT; Schema: public; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN public.tareas.tipo_tarea_id IS 'FK a TIPOS_TAREAS. Tipo de tarea atómica (7 tipos posibles)';
 
 
 --
--- Name: COLUMN tareas.documento_usado_id; Type: COMMENT; Schema: public; Owner: postgres
+-- Name: COLUMN tareas.documento_usado_id; Type: COMMENT; Schema: public; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN public.tareas.documento_usado_id IS 'FK a DOCUMENTOS. Documento usado como input de la tarea';
 
 
 --
--- Name: COLUMN tareas.documento_producido_id; Type: COMMENT; Schema: public; Owner: postgres
+-- Name: COLUMN tareas.documento_producido_id; Type: COMMENT; Schema: public; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN public.tareas.documento_producido_id IS 'FK UNIQUE a DOCUMENTOS. Documento generado como output de la tarea';
 
 
 --
--- Name: COLUMN tareas.fecha_inicio; Type: COMMENT; Schema: public; Owner: postgres
+-- Name: COLUMN tareas.fecha_inicio; Type: COMMENT; Schema: public; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN public.tareas.fecha_inicio IS 'Fecha de inicio de la tarea. NULL = tarea planificada no iniciada';
 
 
 --
--- Name: COLUMN tareas.fecha_fin; Type: COMMENT; Schema: public; Owner: postgres
+-- Name: COLUMN tareas.fecha_fin; Type: COMMENT; Schema: public; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN public.tareas.fecha_fin IS 'Fecha de finalización de la tarea. NULL = tarea pendiente o en curso';
 
 
 --
--- Name: COLUMN tareas.notas; Type: COMMENT; Schema: public; Owner: postgres
+-- Name: COLUMN tareas.notas; Type: COMMENT; Schema: public; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN public.tareas.notas IS 'Observaciones o información adicional (plazos, referencia, remitente, etc.)';
 
 
 --
--- Name: tareas_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+-- Name: tareas_id_seq; Type: SEQUENCE; Schema: public; Owner: bddat_admin
 --
 
 CREATE SEQUENCE public.tareas_id_seq
@@ -1290,17 +1870,17 @@ CREATE SEQUENCE public.tareas_id_seq
     CACHE 1;
 
 
-ALTER SEQUENCE public.tareas_id_seq OWNER TO postgres;
+ALTER SEQUENCE public.tareas_id_seq OWNER TO bddat_admin;
 
 --
--- Name: tareas_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+-- Name: tareas_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: bddat_admin
 --
 
 ALTER SEQUENCE public.tareas_id_seq OWNED BY public.tareas.id;
 
 
 --
--- Name: tramites; Type: TABLE; Schema: public; Owner: postgres
+-- Name: tramites; Type: TABLE; Schema: public; Owner: bddat_admin
 --
 
 CREATE TABLE public.tramites (
@@ -1313,52 +1893,52 @@ CREATE TABLE public.tramites (
 );
 
 
-ALTER TABLE public.tramites OWNER TO postgres;
+ALTER TABLE public.tramites OWNER TO bddat_admin;
 
 --
--- Name: COLUMN tramites.id; Type: COMMENT; Schema: public; Owner: postgres
+-- Name: COLUMN tramites.id; Type: COMMENT; Schema: public; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN public.tramites.id IS 'Identificador único autogenerado del trámite';
 
 
 --
--- Name: COLUMN tramites.fase_id; Type: COMMENT; Schema: public; Owner: postgres
+-- Name: COLUMN tramites.fase_id; Type: COMMENT; Schema: public; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN public.tramites.fase_id IS 'FK a FASES. Fase a la que pertenece el trámite';
 
 
 --
--- Name: COLUMN tramites.tipo_tramite_id; Type: COMMENT; Schema: public; Owner: postgres
+-- Name: COLUMN tramites.tipo_tramite_id; Type: COMMENT; Schema: public; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN public.tramites.tipo_tramite_id IS 'FK a TIPOS_TRAMITES. Tipo de trámite';
 
 
 --
--- Name: COLUMN tramites.fecha_inicio; Type: COMMENT; Schema: public; Owner: postgres
+-- Name: COLUMN tramites.fecha_inicio; Type: COMMENT; Schema: public; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN public.tramites.fecha_inicio IS 'Fecha de inicio del trámite. NULL = trámite planificado no iniciado';
 
 
 --
--- Name: COLUMN tramites.fecha_fin; Type: COMMENT; Schema: public; Owner: postgres
+-- Name: COLUMN tramites.fecha_fin; Type: COMMENT; Schema: public; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN public.tramites.fecha_fin IS 'Fecha de finalización del trámite. NULL = trámite pendiente o en curso';
 
 
 --
--- Name: COLUMN tramites.observaciones; Type: COMMENT; Schema: public; Owner: postgres
+-- Name: COLUMN tramites.observaciones; Type: COMMENT; Schema: public; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN public.tramites.observaciones IS 'Notas o comentarios adicionales del técnico';
 
 
 --
--- Name: tramites_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+-- Name: tramites_id_seq; Type: SEQUENCE; Schema: public; Owner: bddat_admin
 --
 
 CREATE SEQUENCE public.tramites_id_seq
@@ -1370,17 +1950,17 @@ CREATE SEQUENCE public.tramites_id_seq
     CACHE 1;
 
 
-ALTER SEQUENCE public.tramites_id_seq OWNER TO postgres;
+ALTER SEQUENCE public.tramites_id_seq OWNER TO bddat_admin;
 
 --
--- Name: tramites_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+-- Name: tramites_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: bddat_admin
 --
 
 ALTER SEQUENCE public.tramites_id_seq OWNED BY public.tramites.id;
 
 
 --
--- Name: usuarios; Type: TABLE; Schema: public; Owner: postgres
+-- Name: usuarios; Type: TABLE; Schema: public; Owner: bddat_admin
 --
 
 CREATE TABLE public.usuarios (
@@ -1397,80 +1977,80 @@ CREATE TABLE public.usuarios (
 );
 
 
-ALTER TABLE public.usuarios OWNER TO postgres;
+ALTER TABLE public.usuarios OWNER TO bddat_admin;
 
 --
--- Name: COLUMN usuarios.id; Type: COMMENT; Schema: public; Owner: postgres
+-- Name: COLUMN usuarios.id; Type: COMMENT; Schema: public; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN public.usuarios.id IS 'Identificador único autogenerado del usuario';
 
 
 --
--- Name: COLUMN usuarios.siglas; Type: COMMENT; Schema: public; Owner: postgres
+-- Name: COLUMN usuarios.siglas; Type: COMMENT; Schema: public; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN public.usuarios.siglas IS 'Código identificativo corto del usuario (único)';
 
 
 --
--- Name: COLUMN usuarios.nombre; Type: COMMENT; Schema: public; Owner: postgres
+-- Name: COLUMN usuarios.nombre; Type: COMMENT; Schema: public; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN public.usuarios.nombre IS 'Nombre de pila del usuario';
 
 
 --
--- Name: COLUMN usuarios.apellido1; Type: COMMENT; Schema: public; Owner: postgres
+-- Name: COLUMN usuarios.apellido1; Type: COMMENT; Schema: public; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN public.usuarios.apellido1 IS 'Primer apellido del usuario';
 
 
 --
--- Name: COLUMN usuarios.apellido2; Type: COMMENT; Schema: public; Owner: postgres
+-- Name: COLUMN usuarios.apellido2; Type: COMMENT; Schema: public; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN public.usuarios.apellido2 IS 'Segundo apellido del usuario (opcional)';
 
 
 --
--- Name: COLUMN usuarios.email; Type: COMMENT; Schema: public; Owner: postgres
+-- Name: COLUMN usuarios.email; Type: COMMENT; Schema: public; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN public.usuarios.email IS 'Email del usuario (opcional, único si no es NULL)';
 
 
 --
--- Name: COLUMN usuarios.activo; Type: COMMENT; Schema: public; Owner: postgres
+-- Name: COLUMN usuarios.activo; Type: COMMENT; Schema: public; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN public.usuarios.activo IS 'TRUE=habilitado, FALSE=desactivado (mantiene historial)';
 
 
 --
--- Name: COLUMN usuarios.password_hash; Type: COMMENT; Schema: public; Owner: postgres
+-- Name: COLUMN usuarios.password_hash; Type: COMMENT; Schema: public; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN public.usuarios.password_hash IS 'Hash bcrypt de la contraseña (nunca almacenar en texto plano)';
 
 
 --
--- Name: COLUMN usuarios.reset_token; Type: COMMENT; Schema: public; Owner: postgres
+-- Name: COLUMN usuarios.reset_token; Type: COMMENT; Schema: public; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN public.usuarios.reset_token IS 'Token temporal para recuperación de contraseña';
 
 
 --
--- Name: COLUMN usuarios.reset_token_expiry; Type: COMMENT; Schema: public; Owner: postgres
+-- Name: COLUMN usuarios.reset_token_expiry; Type: COMMENT; Schema: public; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN public.usuarios.reset_token_expiry IS 'Fecha de expiración del token de recuperación';
 
 
 --
--- Name: usuarios_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+-- Name: usuarios_id_seq; Type: SEQUENCE; Schema: public; Owner: bddat_admin
 --
 
 CREATE SEQUENCE public.usuarios_id_seq
@@ -1482,17 +2062,17 @@ CREATE SEQUENCE public.usuarios_id_seq
     CACHE 1;
 
 
-ALTER SEQUENCE public.usuarios_id_seq OWNER TO postgres;
+ALTER SEQUENCE public.usuarios_id_seq OWNER TO bddat_admin;
 
 --
--- Name: usuarios_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+-- Name: usuarios_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: bddat_admin
 --
 
 ALTER SEQUENCE public.usuarios_id_seq OWNED BY public.usuarios.id;
 
 
 --
--- Name: usuarios_roles; Type: TABLE; Schema: public; Owner: postgres
+-- Name: usuarios_roles; Type: TABLE; Schema: public; Owner: bddat_admin
 --
 
 CREATE TABLE public.usuarios_roles (
@@ -1501,164 +2081,185 @@ CREATE TABLE public.usuarios_roles (
 );
 
 
-ALTER TABLE public.usuarios_roles OWNER TO postgres;
+ALTER TABLE public.usuarios_roles OWNER TO bddat_admin;
 
 --
--- Name: COLUMN usuarios_roles.usuario_id; Type: COMMENT; Schema: public; Owner: postgres
+-- Name: COLUMN usuarios_roles.usuario_id; Type: COMMENT; Schema: public; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN public.usuarios_roles.usuario_id IS 'FK a USUARIOS. Usuario al que se asigna el rol';
 
 
 --
--- Name: COLUMN usuarios_roles.rol_id; Type: COMMENT; Schema: public; Owner: postgres
+-- Name: COLUMN usuarios_roles.rol_id; Type: COMMENT; Schema: public; Owner: bddat_admin
 --
 
 COMMENT ON COLUMN public.usuarios_roles.rol_id IS 'FK a ROLES. Rol asignado al usuario';
 
 
 --
--- Name: municipios id; Type: DEFAULT; Schema: estructura; Owner: postgres
+-- Name: municipios id; Type: DEFAULT; Schema: estructura; Owner: bddat_admin
 --
 
 ALTER TABLE ONLY estructura.municipios ALTER COLUMN id SET DEFAULT nextval('estructura.municipios_id_seq'::regclass);
 
 
 --
--- Name: tipos_expedientes id; Type: DEFAULT; Schema: estructura; Owner: postgres
+-- Name: tipos_entidades id; Type: DEFAULT; Schema: estructura; Owner: bddat_admin
+--
+
+ALTER TABLE ONLY estructura.tipos_entidades ALTER COLUMN id SET DEFAULT nextval('estructura.tipos_entidades_id_seq'::regclass);
+
+
+--
+-- Name: tipos_expedientes id; Type: DEFAULT; Schema: estructura; Owner: bddat_admin
 --
 
 ALTER TABLE ONLY estructura.tipos_expedientes ALTER COLUMN id SET DEFAULT nextval('estructura.tipos_expedientes_id_seq'::regclass);
 
 
 --
--- Name: tipos_fases id; Type: DEFAULT; Schema: estructura; Owner: postgres
+-- Name: tipos_fases id; Type: DEFAULT; Schema: estructura; Owner: bddat_admin
 --
 
 ALTER TABLE ONLY estructura.tipos_fases ALTER COLUMN id SET DEFAULT nextval('estructura.tipos_fases_id_seq'::regclass);
 
 
 --
--- Name: tipos_ia id; Type: DEFAULT; Schema: estructura; Owner: postgres
+-- Name: tipos_ia id; Type: DEFAULT; Schema: estructura; Owner: bddat_admin
 --
 
 ALTER TABLE ONLY estructura.tipos_ia ALTER COLUMN id SET DEFAULT nextval('estructura.tipos_ia_id_seq'::regclass);
 
 
 --
--- Name: tipos_resultados_fases id; Type: DEFAULT; Schema: estructura; Owner: postgres
+-- Name: tipos_resultados_fases id; Type: DEFAULT; Schema: estructura; Owner: bddat_admin
 --
 
 ALTER TABLE ONLY estructura.tipos_resultados_fases ALTER COLUMN id SET DEFAULT nextval('estructura.tipos_resultados_fases_id_seq'::regclass);
 
 
 --
--- Name: tipos_solicitudes id; Type: DEFAULT; Schema: estructura; Owner: postgres
+-- Name: tipos_solicitudes id; Type: DEFAULT; Schema: estructura; Owner: bddat_admin
 --
 
 ALTER TABLE ONLY estructura.tipos_solicitudes ALTER COLUMN id SET DEFAULT nextval('estructura.tipos_solicitudes_id_seq'::regclass);
 
 
 --
--- Name: tipos_tareas id; Type: DEFAULT; Schema: estructura; Owner: postgres
+-- Name: tipos_tareas id; Type: DEFAULT; Schema: estructura; Owner: bddat_admin
 --
 
 ALTER TABLE ONLY estructura.tipos_tareas ALTER COLUMN id SET DEFAULT nextval('estructura.tipos_tareas_id_seq'::regclass);
 
 
 --
--- Name: tipos_tramites id; Type: DEFAULT; Schema: estructura; Owner: postgres
+-- Name: tipos_tramites id; Type: DEFAULT; Schema: estructura; Owner: bddat_admin
 --
 
 ALTER TABLE ONLY estructura.tipos_tramites ALTER COLUMN id SET DEFAULT nextval('estructura.tipos_tramites_id_seq'::regclass);
 
 
 --
--- Name: documentos id; Type: DEFAULT; Schema: public; Owner: postgres
+-- Name: autorizados_titular id; Type: DEFAULT; Schema: public; Owner: bddat_admin
+--
+
+ALTER TABLE ONLY public.autorizados_titular ALTER COLUMN id SET DEFAULT nextval('public.autorizados_titular_id_seq'::regclass);
+
+
+--
+-- Name: documentos id; Type: DEFAULT; Schema: public; Owner: bddat_admin
 --
 
 ALTER TABLE ONLY public.documentos ALTER COLUMN id SET DEFAULT nextval('public.documentos_id_seq'::regclass);
 
 
 --
--- Name: documentos_proyecto id; Type: DEFAULT; Schema: public; Owner: postgres
+-- Name: documentos_proyecto id; Type: DEFAULT; Schema: public; Owner: bddat_admin
 --
 
 ALTER TABLE ONLY public.documentos_proyecto ALTER COLUMN id SET DEFAULT nextval('public.documentos_proyecto_id_seq'::regclass);
 
 
 --
--- Name: expedientes id; Type: DEFAULT; Schema: public; Owner: postgres
+-- Name: entidades id; Type: DEFAULT; Schema: public; Owner: bddat_admin
+--
+
+ALTER TABLE ONLY public.entidades ALTER COLUMN id SET DEFAULT nextval('public.entidades_id_seq'::regclass);
+
+
+--
+-- Name: expedientes id; Type: DEFAULT; Schema: public; Owner: bddat_admin
 --
 
 ALTER TABLE ONLY public.expedientes ALTER COLUMN id SET DEFAULT nextval('public.expedientes_id_seq'::regclass);
 
 
 --
--- Name: fases id; Type: DEFAULT; Schema: public; Owner: postgres
+-- Name: fases id; Type: DEFAULT; Schema: public; Owner: bddat_admin
 --
 
 ALTER TABLE ONLY public.fases ALTER COLUMN id SET DEFAULT nextval('public.fases_id_seq'::regclass);
 
 
 --
--- Name: municipios_proyecto id; Type: DEFAULT; Schema: public; Owner: postgres
+-- Name: municipios_proyecto id; Type: DEFAULT; Schema: public; Owner: bddat_admin
 --
 
 ALTER TABLE ONLY public.municipios_proyecto ALTER COLUMN id SET DEFAULT nextval('public.municipios_proyecto_id_seq'::regclass);
 
 
 --
--- Name: proyectos id; Type: DEFAULT; Schema: public; Owner: postgres
+-- Name: proyectos id; Type: DEFAULT; Schema: public; Owner: bddat_admin
 --
 
 ALTER TABLE ONLY public.proyectos ALTER COLUMN id SET DEFAULT nextval('public.proyectos_id_seq'::regclass);
 
 
 --
--- Name: roles id; Type: DEFAULT; Schema: public; Owner: postgres
+-- Name: roles id; Type: DEFAULT; Schema: public; Owner: bddat_admin
 --
 
 ALTER TABLE ONLY public.roles ALTER COLUMN id SET DEFAULT nextval('public.roles_id_seq'::regclass);
 
 
 --
--- Name: solicitudes id; Type: DEFAULT; Schema: public; Owner: postgres
+-- Name: solicitudes id; Type: DEFAULT; Schema: public; Owner: bddat_admin
 --
 
 ALTER TABLE ONLY public.solicitudes ALTER COLUMN id SET DEFAULT nextval('public.solicitudes_id_seq'::regclass);
 
 
 --
--- Name: solicitudes_tipos id; Type: DEFAULT; Schema: public; Owner: postgres
+-- Name: solicitudes_tipos id; Type: DEFAULT; Schema: public; Owner: bddat_admin
 --
 
 ALTER TABLE ONLY public.solicitudes_tipos ALTER COLUMN id SET DEFAULT nextval('public.solicitudes_tipos_id_seq'::regclass);
 
 
 --
--- Name: tareas id; Type: DEFAULT; Schema: public; Owner: postgres
+-- Name: tareas id; Type: DEFAULT; Schema: public; Owner: bddat_admin
 --
 
 ALTER TABLE ONLY public.tareas ALTER COLUMN id SET DEFAULT nextval('public.tareas_id_seq'::regclass);
 
 
 --
--- Name: tramites id; Type: DEFAULT; Schema: public; Owner: postgres
+-- Name: tramites id; Type: DEFAULT; Schema: public; Owner: bddat_admin
 --
 
 ALTER TABLE ONLY public.tramites ALTER COLUMN id SET DEFAULT nextval('public.tramites_id_seq'::regclass);
 
 
 --
--- Name: usuarios id; Type: DEFAULT; Schema: public; Owner: postgres
+-- Name: usuarios id; Type: DEFAULT; Schema: public; Owner: bddat_admin
 --
 
 ALTER TABLE ONLY public.usuarios ALTER COLUMN id SET DEFAULT nextval('public.usuarios_id_seq'::regclass);
 
 
 --
--- Name: municipios municipios_codigo_key; Type: CONSTRAINT; Schema: estructura; Owner: postgres
+-- Name: municipios municipios_codigo_key; Type: CONSTRAINT; Schema: estructura; Owner: bddat_admin
 --
 
 ALTER TABLE ONLY estructura.municipios
@@ -1666,7 +2267,7 @@ ALTER TABLE ONLY estructura.municipios
 
 
 --
--- Name: municipios municipios_pkey; Type: CONSTRAINT; Schema: estructura; Owner: postgres
+-- Name: municipios municipios_pkey; Type: CONSTRAINT; Schema: estructura; Owner: bddat_admin
 --
 
 ALTER TABLE ONLY estructura.municipios
@@ -1674,7 +2275,15 @@ ALTER TABLE ONLY estructura.municipios
 
 
 --
--- Name: tipos_expedientes tipos_expedientes_pkey; Type: CONSTRAINT; Schema: estructura; Owner: postgres
+-- Name: tipos_entidades tipos_entidades_pkey; Type: CONSTRAINT; Schema: estructura; Owner: bddat_admin
+--
+
+ALTER TABLE ONLY estructura.tipos_entidades
+    ADD CONSTRAINT tipos_entidades_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: tipos_expedientes tipos_expedientes_pkey; Type: CONSTRAINT; Schema: estructura; Owner: bddat_admin
 --
 
 ALTER TABLE ONLY estructura.tipos_expedientes
@@ -1682,7 +2291,7 @@ ALTER TABLE ONLY estructura.tipos_expedientes
 
 
 --
--- Name: tipos_fases tipos_fases_codigo_key; Type: CONSTRAINT; Schema: estructura; Owner: postgres
+-- Name: tipos_fases tipos_fases_codigo_key; Type: CONSTRAINT; Schema: estructura; Owner: bddat_admin
 --
 
 ALTER TABLE ONLY estructura.tipos_fases
@@ -1690,7 +2299,7 @@ ALTER TABLE ONLY estructura.tipos_fases
 
 
 --
--- Name: tipos_fases tipos_fases_pkey; Type: CONSTRAINT; Schema: estructura; Owner: postgres
+-- Name: tipos_fases tipos_fases_pkey; Type: CONSTRAINT; Schema: estructura; Owner: bddat_admin
 --
 
 ALTER TABLE ONLY estructura.tipos_fases
@@ -1698,7 +2307,7 @@ ALTER TABLE ONLY estructura.tipos_fases
 
 
 --
--- Name: tipos_ia tipos_ia_pkey; Type: CONSTRAINT; Schema: estructura; Owner: postgres
+-- Name: tipos_ia tipos_ia_pkey; Type: CONSTRAINT; Schema: estructura; Owner: bddat_admin
 --
 
 ALTER TABLE ONLY estructura.tipos_ia
@@ -1706,7 +2315,7 @@ ALTER TABLE ONLY estructura.tipos_ia
 
 
 --
--- Name: tipos_ia tipos_ia_siglas_key; Type: CONSTRAINT; Schema: estructura; Owner: postgres
+-- Name: tipos_ia tipos_ia_siglas_key; Type: CONSTRAINT; Schema: estructura; Owner: bddat_admin
 --
 
 ALTER TABLE ONLY estructura.tipos_ia
@@ -1714,7 +2323,7 @@ ALTER TABLE ONLY estructura.tipos_ia
 
 
 --
--- Name: tipos_resultados_fases tipos_resultados_fases_codigo_key; Type: CONSTRAINT; Schema: estructura; Owner: postgres
+-- Name: tipos_resultados_fases tipos_resultados_fases_codigo_key; Type: CONSTRAINT; Schema: estructura; Owner: bddat_admin
 --
 
 ALTER TABLE ONLY estructura.tipos_resultados_fases
@@ -1722,7 +2331,7 @@ ALTER TABLE ONLY estructura.tipos_resultados_fases
 
 
 --
--- Name: tipos_resultados_fases tipos_resultados_fases_pkey; Type: CONSTRAINT; Schema: estructura; Owner: postgres
+-- Name: tipos_resultados_fases tipos_resultados_fases_pkey; Type: CONSTRAINT; Schema: estructura; Owner: bddat_admin
 --
 
 ALTER TABLE ONLY estructura.tipos_resultados_fases
@@ -1730,7 +2339,7 @@ ALTER TABLE ONLY estructura.tipos_resultados_fases
 
 
 --
--- Name: tipos_solicitudes tipos_solicitudes_pkey; Type: CONSTRAINT; Schema: estructura; Owner: postgres
+-- Name: tipos_solicitudes tipos_solicitudes_pkey; Type: CONSTRAINT; Schema: estructura; Owner: bddat_admin
 --
 
 ALTER TABLE ONLY estructura.tipos_solicitudes
@@ -1738,7 +2347,7 @@ ALTER TABLE ONLY estructura.tipos_solicitudes
 
 
 --
--- Name: tipos_solicitudes tipos_solicitudes_siglas_key; Type: CONSTRAINT; Schema: estructura; Owner: postgres
+-- Name: tipos_solicitudes tipos_solicitudes_siglas_key; Type: CONSTRAINT; Schema: estructura; Owner: bddat_admin
 --
 
 ALTER TABLE ONLY estructura.tipos_solicitudes
@@ -1746,7 +2355,7 @@ ALTER TABLE ONLY estructura.tipos_solicitudes
 
 
 --
--- Name: tipos_tareas tipos_tareas_codigo_key; Type: CONSTRAINT; Schema: estructura; Owner: postgres
+-- Name: tipos_tareas tipos_tareas_codigo_key; Type: CONSTRAINT; Schema: estructura; Owner: bddat_admin
 --
 
 ALTER TABLE ONLY estructura.tipos_tareas
@@ -1754,7 +2363,7 @@ ALTER TABLE ONLY estructura.tipos_tareas
 
 
 --
--- Name: tipos_tareas tipos_tareas_pkey; Type: CONSTRAINT; Schema: estructura; Owner: postgres
+-- Name: tipos_tareas tipos_tareas_pkey; Type: CONSTRAINT; Schema: estructura; Owner: bddat_admin
 --
 
 ALTER TABLE ONLY estructura.tipos_tareas
@@ -1762,7 +2371,7 @@ ALTER TABLE ONLY estructura.tipos_tareas
 
 
 --
--- Name: tipos_tramites tipos_tramites_codigo_key; Type: CONSTRAINT; Schema: estructura; Owner: postgres
+-- Name: tipos_tramites tipos_tramites_codigo_key; Type: CONSTRAINT; Schema: estructura; Owner: bddat_admin
 --
 
 ALTER TABLE ONLY estructura.tipos_tramites
@@ -1770,7 +2379,7 @@ ALTER TABLE ONLY estructura.tipos_tramites
 
 
 --
--- Name: tipos_tramites tipos_tramites_pkey; Type: CONSTRAINT; Schema: estructura; Owner: postgres
+-- Name: tipos_tramites tipos_tramites_pkey; Type: CONSTRAINT; Schema: estructura; Owner: bddat_admin
 --
 
 ALTER TABLE ONLY estructura.tipos_tramites
@@ -1778,7 +2387,7 @@ ALTER TABLE ONLY estructura.tipos_tramites
 
 
 --
--- Name: alembic_version alembic_version_pkc; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: alembic_version alembic_version_pkc; Type: CONSTRAINT; Schema: public; Owner: bddat_admin
 --
 
 ALTER TABLE ONLY public.alembic_version
@@ -1786,7 +2395,15 @@ ALTER TABLE ONLY public.alembic_version
 
 
 --
--- Name: documentos documentos_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: autorizados_titular autorizados_titular_pkey; Type: CONSTRAINT; Schema: public; Owner: bddat_admin
+--
+
+ALTER TABLE ONLY public.autorizados_titular
+    ADD CONSTRAINT autorizados_titular_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: documentos documentos_pkey; Type: CONSTRAINT; Schema: public; Owner: bddat_admin
 --
 
 ALTER TABLE ONLY public.documentos
@@ -1794,7 +2411,7 @@ ALTER TABLE ONLY public.documentos
 
 
 --
--- Name: documentos_proyecto documentos_proyecto_documento_id_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: documentos_proyecto documentos_proyecto_documento_id_key; Type: CONSTRAINT; Schema: public; Owner: bddat_admin
 --
 
 ALTER TABLE ONLY public.documentos_proyecto
@@ -1802,7 +2419,7 @@ ALTER TABLE ONLY public.documentos_proyecto
 
 
 --
--- Name: documentos_proyecto documentos_proyecto_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: documentos_proyecto documentos_proyecto_pkey; Type: CONSTRAINT; Schema: public; Owner: bddat_admin
 --
 
 ALTER TABLE ONLY public.documentos_proyecto
@@ -1810,7 +2427,55 @@ ALTER TABLE ONLY public.documentos_proyecto
 
 
 --
--- Name: expedientes expedientes_numero_at_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: entidades_administrados entidades_administrados_pkey; Type: CONSTRAINT; Schema: public; Owner: bddat_admin
+--
+
+ALTER TABLE ONLY public.entidades_administrados
+    ADD CONSTRAINT entidades_administrados_pkey PRIMARY KEY (entidad_id);
+
+
+--
+-- Name: entidades_ayuntamientos entidades_ayuntamientos_pkey; Type: CONSTRAINT; Schema: public; Owner: bddat_admin
+--
+
+ALTER TABLE ONLY public.entidades_ayuntamientos
+    ADD CONSTRAINT entidades_ayuntamientos_pkey PRIMARY KEY (entidad_id);
+
+
+--
+-- Name: entidades_diputaciones entidades_diputaciones_pkey; Type: CONSTRAINT; Schema: public; Owner: bddat_admin
+--
+
+ALTER TABLE ONLY public.entidades_diputaciones
+    ADD CONSTRAINT entidades_diputaciones_pkey PRIMARY KEY (entidad_id);
+
+
+--
+-- Name: entidades_empresas_servicio_publico entidades_empresas_servicio_publico_pkey; Type: CONSTRAINT; Schema: public; Owner: bddat_admin
+--
+
+ALTER TABLE ONLY public.entidades_empresas_servicio_publico
+    ADD CONSTRAINT entidades_empresas_servicio_publico_pkey PRIMARY KEY (entidad_id);
+
+
+--
+-- Name: entidades_organismos_publicos entidades_organismos_publicos_pkey; Type: CONSTRAINT; Schema: public; Owner: bddat_admin
+--
+
+ALTER TABLE ONLY public.entidades_organismos_publicos
+    ADD CONSTRAINT entidades_organismos_publicos_pkey PRIMARY KEY (entidad_id);
+
+
+--
+-- Name: entidades entidades_pkey; Type: CONSTRAINT; Schema: public; Owner: bddat_admin
+--
+
+ALTER TABLE ONLY public.entidades
+    ADD CONSTRAINT entidades_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: expedientes expedientes_numero_at_key; Type: CONSTRAINT; Schema: public; Owner: bddat_admin
 --
 
 ALTER TABLE ONLY public.expedientes
@@ -1818,7 +2483,7 @@ ALTER TABLE ONLY public.expedientes
 
 
 --
--- Name: expedientes expedientes_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: expedientes expedientes_pkey; Type: CONSTRAINT; Schema: public; Owner: bddat_admin
 --
 
 ALTER TABLE ONLY public.expedientes
@@ -1826,7 +2491,7 @@ ALTER TABLE ONLY public.expedientes
 
 
 --
--- Name: expedientes expedientes_proyecto_id_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: expedientes expedientes_proyecto_id_key; Type: CONSTRAINT; Schema: public; Owner: bddat_admin
 --
 
 ALTER TABLE ONLY public.expedientes
@@ -1834,7 +2499,7 @@ ALTER TABLE ONLY public.expedientes
 
 
 --
--- Name: fases fases_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: fases fases_pkey; Type: CONSTRAINT; Schema: public; Owner: bddat_admin
 --
 
 ALTER TABLE ONLY public.fases
@@ -1842,7 +2507,7 @@ ALTER TABLE ONLY public.fases
 
 
 --
--- Name: municipios_proyecto municipios_proyecto_municipio_proyecto_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: municipios_proyecto municipios_proyecto_municipio_proyecto_key; Type: CONSTRAINT; Schema: public; Owner: bddat_admin
 --
 
 ALTER TABLE ONLY public.municipios_proyecto
@@ -1850,7 +2515,7 @@ ALTER TABLE ONLY public.municipios_proyecto
 
 
 --
--- Name: municipios_proyecto municipios_proyecto_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: municipios_proyecto municipios_proyecto_pkey; Type: CONSTRAINT; Schema: public; Owner: bddat_admin
 --
 
 ALTER TABLE ONLY public.municipios_proyecto
@@ -1858,7 +2523,7 @@ ALTER TABLE ONLY public.municipios_proyecto
 
 
 --
--- Name: proyectos proyectos_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: proyectos proyectos_pkey; Type: CONSTRAINT; Schema: public; Owner: bddat_admin
 --
 
 ALTER TABLE ONLY public.proyectos
@@ -1866,7 +2531,7 @@ ALTER TABLE ONLY public.proyectos
 
 
 --
--- Name: roles roles_nombre_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: roles roles_nombre_key; Type: CONSTRAINT; Schema: public; Owner: bddat_admin
 --
 
 ALTER TABLE ONLY public.roles
@@ -1874,7 +2539,7 @@ ALTER TABLE ONLY public.roles
 
 
 --
--- Name: roles roles_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: roles roles_pkey; Type: CONSTRAINT; Schema: public; Owner: bddat_admin
 --
 
 ALTER TABLE ONLY public.roles
@@ -1882,7 +2547,7 @@ ALTER TABLE ONLY public.roles
 
 
 --
--- Name: solicitudes solicitudes_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: solicitudes solicitudes_pkey; Type: CONSTRAINT; Schema: public; Owner: bddat_admin
 --
 
 ALTER TABLE ONLY public.solicitudes
@@ -1890,7 +2555,7 @@ ALTER TABLE ONLY public.solicitudes
 
 
 --
--- Name: solicitudes_tipos solicitudes_tipos_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: solicitudes_tipos solicitudes_tipos_pkey; Type: CONSTRAINT; Schema: public; Owner: bddat_admin
 --
 
 ALTER TABLE ONLY public.solicitudes_tipos
@@ -1898,7 +2563,7 @@ ALTER TABLE ONLY public.solicitudes_tipos
 
 
 --
--- Name: solicitudes_tipos solicitudes_tipos_solicitudid_tiposolicitudid_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: solicitudes_tipos solicitudes_tipos_solicitudid_tiposolicitudid_key; Type: CONSTRAINT; Schema: public; Owner: bddat_admin
 --
 
 ALTER TABLE ONLY public.solicitudes_tipos
@@ -1906,7 +2571,7 @@ ALTER TABLE ONLY public.solicitudes_tipos
 
 
 --
--- Name: tareas tareas_documento_producido_id_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: tareas tareas_documento_producido_id_key; Type: CONSTRAINT; Schema: public; Owner: bddat_admin
 --
 
 ALTER TABLE ONLY public.tareas
@@ -1914,7 +2579,7 @@ ALTER TABLE ONLY public.tareas
 
 
 --
--- Name: tareas tareas_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: tareas tareas_pkey; Type: CONSTRAINT; Schema: public; Owner: bddat_admin
 --
 
 ALTER TABLE ONLY public.tareas
@@ -1922,7 +2587,7 @@ ALTER TABLE ONLY public.tareas
 
 
 --
--- Name: tramites tramites_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: tramites tramites_pkey; Type: CONSTRAINT; Schema: public; Owner: bddat_admin
 --
 
 ALTER TABLE ONLY public.tramites
@@ -1930,7 +2595,15 @@ ALTER TABLE ONLY public.tramites
 
 
 --
--- Name: usuarios usuarios_email_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: autorizados_titular uq_titular_autorizado; Type: CONSTRAINT; Schema: public; Owner: bddat_admin
+--
+
+ALTER TABLE ONLY public.autorizados_titular
+    ADD CONSTRAINT uq_titular_autorizado UNIQUE (titular_entidad_id, autorizado_entidad_id);
+
+
+--
+-- Name: usuarios usuarios_email_key; Type: CONSTRAINT; Schema: public; Owner: bddat_admin
 --
 
 ALTER TABLE ONLY public.usuarios
@@ -1938,7 +2611,7 @@ ALTER TABLE ONLY public.usuarios
 
 
 --
--- Name: usuarios usuarios_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: usuarios usuarios_pkey; Type: CONSTRAINT; Schema: public; Owner: bddat_admin
 --
 
 ALTER TABLE ONLY public.usuarios
@@ -1946,7 +2619,7 @@ ALTER TABLE ONLY public.usuarios
 
 
 --
--- Name: usuarios_roles usuarios_roles_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: usuarios_roles usuarios_roles_pkey; Type: CONSTRAINT; Schema: public; Owner: bddat_admin
 --
 
 ALTER TABLE ONLY public.usuarios_roles
@@ -1954,7 +2627,7 @@ ALTER TABLE ONLY public.usuarios_roles
 
 
 --
--- Name: usuarios usuarios_siglas_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: usuarios usuarios_siglas_key; Type: CONSTRAINT; Schema: public; Owner: bddat_admin
 --
 
 ALTER TABLE ONLY public.usuarios
@@ -1962,224 +2635,373 @@ ALTER TABLE ONLY public.usuarios
 
 
 --
--- Name: idx_documentos_expediente; Type: INDEX; Schema: public; Owner: postgres
+-- Name: ix_estructura_tipos_entidades_codigo; Type: INDEX; Schema: estructura; Owner: bddat_admin
+--
+
+CREATE UNIQUE INDEX ix_estructura_tipos_entidades_codigo ON estructura.tipos_entidades USING btree (codigo);
+
+
+--
+-- Name: idx_documentos_expediente; Type: INDEX; Schema: public; Owner: bddat_admin
 --
 
 CREATE INDEX idx_documentos_expediente ON public.documentos USING btree (expediente_id);
 
 
 --
--- Name: idx_documentos_fecha_administrativa; Type: INDEX; Schema: public; Owner: postgres
+-- Name: idx_documentos_fecha_administrativa; Type: INDEX; Schema: public; Owner: bddat_admin
 --
 
 CREATE INDEX idx_documentos_fecha_administrativa ON public.documentos USING btree (fecha_administrativa);
 
 
 --
--- Name: idx_documentos_hash; Type: INDEX; Schema: public; Owner: postgres
+-- Name: idx_documentos_hash; Type: INDEX; Schema: public; Owner: bddat_admin
 --
 
 CREATE INDEX idx_documentos_hash ON public.documentos USING btree (hash_md5);
 
 
 --
--- Name: idx_documentos_proyecto_proyecto; Type: INDEX; Schema: public; Owner: postgres
+-- Name: idx_documentos_proyecto_proyecto; Type: INDEX; Schema: public; Owner: bddat_admin
 --
 
 CREATE INDEX idx_documentos_proyecto_proyecto ON public.documentos_proyecto USING btree (proyecto_id);
 
 
 --
--- Name: idx_documentos_proyecto_tipo; Type: INDEX; Schema: public; Owner: postgres
+-- Name: idx_documentos_proyecto_tipo; Type: INDEX; Schema: public; Owner: bddat_admin
 --
 
 CREATE INDEX idx_documentos_proyecto_tipo ON public.documentos_proyecto USING btree (proyecto_id, tipo);
 
 
 --
--- Name: idx_expedientes_numero_at; Type: INDEX; Schema: public; Owner: postgres
+-- Name: idx_expedientes_numero_at; Type: INDEX; Schema: public; Owner: bddat_admin
 --
 
 CREATE INDEX idx_expedientes_numero_at ON public.expedientes USING btree (numero_at);
 
 
 --
--- Name: idx_expedientes_proyecto; Type: INDEX; Schema: public; Owner: postgres
+-- Name: idx_expedientes_proyecto; Type: INDEX; Schema: public; Owner: bddat_admin
 --
 
 CREATE INDEX idx_expedientes_proyecto ON public.expedientes USING btree (proyecto_id);
 
 
 --
--- Name: idx_expedientes_responsable; Type: INDEX; Schema: public; Owner: postgres
+-- Name: idx_expedientes_responsable; Type: INDEX; Schema: public; Owner: bddat_admin
 --
 
 CREATE INDEX idx_expedientes_responsable ON public.expedientes USING btree (responsable_id);
 
 
 --
--- Name: idx_expedientes_tipo; Type: INDEX; Schema: public; Owner: postgres
+-- Name: idx_expedientes_tipo; Type: INDEX; Schema: public; Owner: bddat_admin
 --
 
 CREATE INDEX idx_expedientes_tipo ON public.expedientes USING btree (tipo_expediente_id);
 
 
 --
--- Name: idx_fases_fechas; Type: INDEX; Schema: public; Owner: postgres
+-- Name: idx_expedientes_titular; Type: INDEX; Schema: public; Owner: bddat_admin
+--
+
+CREATE INDEX idx_expedientes_titular ON public.expedientes USING btree (titular_id);
+
+
+--
+-- Name: idx_fases_fechas; Type: INDEX; Schema: public; Owner: bddat_admin
 --
 
 CREATE INDEX idx_fases_fechas ON public.fases USING btree (fecha_inicio, fecha_fin);
 
 
 --
--- Name: idx_fases_resultado; Type: INDEX; Schema: public; Owner: postgres
+-- Name: idx_fases_resultado; Type: INDEX; Schema: public; Owner: bddat_admin
 --
 
 CREATE INDEX idx_fases_resultado ON public.fases USING btree (resultado_fase_id);
 
 
 --
--- Name: idx_fases_solicitud; Type: INDEX; Schema: public; Owner: postgres
+-- Name: idx_fases_solicitud; Type: INDEX; Schema: public; Owner: bddat_admin
 --
 
 CREATE INDEX idx_fases_solicitud ON public.fases USING btree (solicitud_id);
 
 
 --
--- Name: idx_fases_tipo; Type: INDEX; Schema: public; Owner: postgres
+-- Name: idx_fases_tipo; Type: INDEX; Schema: public; Owner: bddat_admin
 --
 
 CREATE INDEX idx_fases_tipo ON public.fases USING btree (tipo_fase_id);
 
 
 --
--- Name: idx_municipios_proyecto_municipio; Type: INDEX; Schema: public; Owner: postgres
+-- Name: idx_municipios_proyecto_municipio; Type: INDEX; Schema: public; Owner: bddat_admin
 --
 
 CREATE INDEX idx_municipios_proyecto_municipio ON public.municipios_proyecto USING btree (municipio_id);
 
 
 --
--- Name: idx_municipios_proyecto_proyecto; Type: INDEX; Schema: public; Owner: postgres
+-- Name: idx_municipios_proyecto_proyecto; Type: INDEX; Schema: public; Owner: bddat_admin
 --
 
 CREATE INDEX idx_municipios_proyecto_proyecto ON public.municipios_proyecto USING btree (proyecto_id);
 
 
 --
--- Name: idx_proyectos_fecha; Type: INDEX; Schema: public; Owner: postgres
+-- Name: idx_proyectos_fecha; Type: INDEX; Schema: public; Owner: bddat_admin
 --
 
 CREATE INDEX idx_proyectos_fecha ON public.proyectos USING btree (fecha);
 
 
 --
--- Name: idx_proyectos_ia; Type: INDEX; Schema: public; Owner: postgres
+-- Name: idx_proyectos_ia; Type: INDEX; Schema: public; Owner: bddat_admin
 --
 
 CREATE INDEX idx_proyectos_ia ON public.proyectos USING btree (ia_id);
 
 
 --
--- Name: idx_solicitudes_estado; Type: INDEX; Schema: public; Owner: postgres
+-- Name: idx_solicitudes_estado; Type: INDEX; Schema: public; Owner: bddat_admin
 --
 
 CREATE INDEX idx_solicitudes_estado ON public.solicitudes USING btree (estado);
 
 
 --
--- Name: idx_solicitudes_expediente; Type: INDEX; Schema: public; Owner: postgres
+-- Name: idx_solicitudes_expediente; Type: INDEX; Schema: public; Owner: bddat_admin
 --
 
 CREATE INDEX idx_solicitudes_expediente ON public.solicitudes USING btree (expediente_id);
 
 
 --
--- Name: idx_solicitudes_fecha; Type: INDEX; Schema: public; Owner: postgres
+-- Name: idx_solicitudes_fecha; Type: INDEX; Schema: public; Owner: bddat_admin
 --
 
 CREATE INDEX idx_solicitudes_fecha ON public.solicitudes USING btree (fecha_solicitud);
 
 
 --
--- Name: idx_solicitudes_tipos_solicitud; Type: INDEX; Schema: public; Owner: postgres
+-- Name: idx_solicitudes_tipos_solicitud; Type: INDEX; Schema: public; Owner: bddat_admin
 --
 
 CREATE INDEX idx_solicitudes_tipos_solicitud ON public.solicitudes_tipos USING btree (solicitudid);
 
 
 --
--- Name: idx_solicitudes_tipos_tipo; Type: INDEX; Schema: public; Owner: postgres
+-- Name: idx_solicitudes_tipos_tipo; Type: INDEX; Schema: public; Owner: bddat_admin
 --
 
 CREATE INDEX idx_solicitudes_tipos_tipo ON public.solicitudes_tipos USING btree (tiposolicitudid);
 
 
 --
--- Name: idx_tareas_documento_usado; Type: INDEX; Schema: public; Owner: postgres
+-- Name: idx_tareas_documento_usado; Type: INDEX; Schema: public; Owner: bddat_admin
 --
 
 CREATE INDEX idx_tareas_documento_usado ON public.tareas USING btree (documento_usado_id);
 
 
 --
--- Name: idx_tareas_fechas; Type: INDEX; Schema: public; Owner: postgres
+-- Name: idx_tareas_fechas; Type: INDEX; Schema: public; Owner: bddat_admin
 --
 
 CREATE INDEX idx_tareas_fechas ON public.tareas USING btree (fecha_inicio, fecha_fin);
 
 
 --
--- Name: idx_tareas_tipo; Type: INDEX; Schema: public; Owner: postgres
+-- Name: idx_tareas_tipo; Type: INDEX; Schema: public; Owner: bddat_admin
 --
 
 CREATE INDEX idx_tareas_tipo ON public.tareas USING btree (tipo_tarea_id);
 
 
 --
--- Name: idx_tareas_tramite; Type: INDEX; Schema: public; Owner: postgres
+-- Name: idx_tareas_tramite; Type: INDEX; Schema: public; Owner: bddat_admin
 --
 
 CREATE INDEX idx_tareas_tramite ON public.tareas USING btree (tramite_id);
 
 
 --
--- Name: idx_tramites_fase; Type: INDEX; Schema: public; Owner: postgres
+-- Name: idx_titular_activo; Type: INDEX; Schema: public; Owner: bddat_admin
+--
+
+CREATE INDEX idx_titular_activo ON public.autorizados_titular USING btree (titular_entidad_id, activo);
+
+
+--
+-- Name: idx_tramites_fase; Type: INDEX; Schema: public; Owner: bddat_admin
 --
 
 CREATE INDEX idx_tramites_fase ON public.tramites USING btree (fase_id);
 
 
 --
--- Name: idx_tramites_fechas; Type: INDEX; Schema: public; Owner: postgres
+-- Name: idx_tramites_fechas; Type: INDEX; Schema: public; Owner: bddat_admin
 --
 
 CREATE INDEX idx_tramites_fechas ON public.tramites USING btree (fecha_inicio, fecha_fin);
 
 
 --
--- Name: idx_tramites_tipo; Type: INDEX; Schema: public; Owner: postgres
+-- Name: idx_tramites_tipo; Type: INDEX; Schema: public; Owner: bddat_admin
 --
 
 CREATE INDEX idx_tramites_tipo ON public.tramites USING btree (tipo_tramite_id);
 
 
 --
--- Name: idx_usuarios_email; Type: INDEX; Schema: public; Owner: postgres
+-- Name: idx_usuarios_email; Type: INDEX; Schema: public; Owner: bddat_admin
 --
 
 CREATE INDEX idx_usuarios_email ON public.usuarios USING btree (email);
 
 
 --
--- Name: idx_usuarios_siglas; Type: INDEX; Schema: public; Owner: postgres
+-- Name: idx_usuarios_siglas; Type: INDEX; Schema: public; Owner: bddat_admin
 --
 
 CREATE INDEX idx_usuarios_siglas ON public.usuarios USING btree (siglas);
 
 
 --
--- Name: documentos documentos_expediente_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: ix_public_autorizados_titular_activo; Type: INDEX; Schema: public; Owner: bddat_admin
+--
+
+CREATE INDEX ix_public_autorizados_titular_activo ON public.autorizados_titular USING btree (activo);
+
+
+--
+-- Name: ix_public_autorizados_titular_autorizado_entidad_id; Type: INDEX; Schema: public; Owner: bddat_admin
+--
+
+CREATE INDEX ix_public_autorizados_titular_autorizado_entidad_id ON public.autorizados_titular USING btree (autorizado_entidad_id);
+
+
+--
+-- Name: ix_public_autorizados_titular_titular_entidad_id; Type: INDEX; Schema: public; Owner: bddat_admin
+--
+
+CREATE INDEX ix_public_autorizados_titular_titular_entidad_id ON public.autorizados_titular USING btree (titular_entidad_id);
+
+
+--
+-- Name: ix_public_entidades_activo; Type: INDEX; Schema: public; Owner: bddat_admin
+--
+
+CREATE INDEX ix_public_entidades_activo ON public.entidades USING btree (activo);
+
+
+--
+-- Name: ix_public_entidades_administrados_email_notificaciones; Type: INDEX; Schema: public; Owner: bddat_admin
+--
+
+CREATE INDEX ix_public_entidades_administrados_email_notificaciones ON public.entidades_administrados USING btree (email_notificaciones);
+
+
+--
+-- Name: ix_public_entidades_administrados_representante_nif_cif; Type: INDEX; Schema: public; Owner: bddat_admin
+--
+
+CREATE INDEX ix_public_entidades_administrados_representante_nif_cif ON public.entidades_administrados USING btree (representante_nif_cif);
+
+
+--
+-- Name: ix_public_entidades_ayuntamientos_codigo_dir3; Type: INDEX; Schema: public; Owner: bddat_admin
+--
+
+CREATE UNIQUE INDEX ix_public_entidades_ayuntamientos_codigo_dir3 ON public.entidades_ayuntamientos USING btree (codigo_dir3);
+
+
+--
+-- Name: ix_public_entidades_cif_nif; Type: INDEX; Schema: public; Owner: bddat_admin
+--
+
+CREATE UNIQUE INDEX ix_public_entidades_cif_nif ON public.entidades USING btree (cif_nif);
+
+
+--
+-- Name: ix_public_entidades_diputaciones_codigo_dir3; Type: INDEX; Schema: public; Owner: bddat_admin
+--
+
+CREATE UNIQUE INDEX ix_public_entidades_diputaciones_codigo_dir3 ON public.entidades_diputaciones USING btree (codigo_dir3);
+
+
+--
+-- Name: ix_public_entidades_empresas_servicio_publico_codigo_dir3; Type: INDEX; Schema: public; Owner: bddat_admin
+--
+
+CREATE UNIQUE INDEX ix_public_entidades_empresas_servicio_publico_codigo_dir3 ON public.entidades_empresas_servicio_publico USING btree (codigo_dir3);
+
+
+--
+-- Name: ix_public_entidades_municipio_id; Type: INDEX; Schema: public; Owner: bddat_admin
+--
+
+CREATE INDEX ix_public_entidades_municipio_id ON public.entidades USING btree (municipio_id);
+
+
+--
+-- Name: ix_public_entidades_nombre_completo; Type: INDEX; Schema: public; Owner: bddat_admin
+--
+
+CREATE INDEX ix_public_entidades_nombre_completo ON public.entidades USING btree (nombre_completo);
+
+
+--
+-- Name: ix_public_entidades_organismos_publicos_ambito; Type: INDEX; Schema: public; Owner: bddat_admin
+--
+
+CREATE INDEX ix_public_entidades_organismos_publicos_ambito ON public.entidades_organismos_publicos USING btree (ambito);
+
+
+--
+-- Name: ix_public_entidades_organismos_publicos_codigo_dir3; Type: INDEX; Schema: public; Owner: bddat_admin
+--
+
+CREATE INDEX ix_public_entidades_organismos_publicos_codigo_dir3 ON public.entidades_organismos_publicos USING btree (codigo_dir3);
+
+
+--
+-- Name: ix_public_entidades_organismos_publicos_legislatura; Type: INDEX; Schema: public; Owner: bddat_admin
+--
+
+CREATE INDEX ix_public_entidades_organismos_publicos_legislatura ON public.entidades_organismos_publicos USING btree (legislatura);
+
+
+--
+-- Name: ix_public_entidades_tipo_entidad_id; Type: INDEX; Schema: public; Owner: bddat_admin
+--
+
+CREATE INDEX ix_public_entidades_tipo_entidad_id ON public.entidades USING btree (tipo_entidad_id);
+
+
+--
+-- Name: autorizados_titular autorizados_titular_autorizado_entidad_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: bddat_admin
+--
+
+ALTER TABLE ONLY public.autorizados_titular
+    ADD CONSTRAINT autorizados_titular_autorizado_entidad_id_fkey FOREIGN KEY (autorizado_entidad_id) REFERENCES public.entidades(id) ON DELETE CASCADE;
+
+
+--
+-- Name: autorizados_titular autorizados_titular_titular_entidad_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: bddat_admin
+--
+
+ALTER TABLE ONLY public.autorizados_titular
+    ADD CONSTRAINT autorizados_titular_titular_entidad_id_fkey FOREIGN KEY (titular_entidad_id) REFERENCES public.entidades(id) ON DELETE CASCADE;
+
+
+--
+-- Name: documentos documentos_expediente_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: bddat_admin
 --
 
 ALTER TABLE ONLY public.documentos
@@ -2187,7 +3009,7 @@ ALTER TABLE ONLY public.documentos
 
 
 --
--- Name: documentos_proyecto documentos_proyecto_documento_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: documentos_proyecto documentos_proyecto_documento_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: bddat_admin
 --
 
 ALTER TABLE ONLY public.documentos_proyecto
@@ -2195,7 +3017,63 @@ ALTER TABLE ONLY public.documentos_proyecto
 
 
 --
--- Name: expedientes expedientes_proyecto_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: entidades_administrados entidades_administrados_entidad_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: bddat_admin
+--
+
+ALTER TABLE ONLY public.entidades_administrados
+    ADD CONSTRAINT entidades_administrados_entidad_id_fkey FOREIGN KEY (entidad_id) REFERENCES public.entidades(id) ON DELETE CASCADE;
+
+
+--
+-- Name: entidades_ayuntamientos entidades_ayuntamientos_entidad_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: bddat_admin
+--
+
+ALTER TABLE ONLY public.entidades_ayuntamientos
+    ADD CONSTRAINT entidades_ayuntamientos_entidad_id_fkey FOREIGN KEY (entidad_id) REFERENCES public.entidades(id) ON DELETE CASCADE;
+
+
+--
+-- Name: entidades_diputaciones entidades_diputaciones_entidad_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: bddat_admin
+--
+
+ALTER TABLE ONLY public.entidades_diputaciones
+    ADD CONSTRAINT entidades_diputaciones_entidad_id_fkey FOREIGN KEY (entidad_id) REFERENCES public.entidades(id) ON DELETE CASCADE;
+
+
+--
+-- Name: entidades_empresas_servicio_publico entidades_empresas_servicio_publico_entidad_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: bddat_admin
+--
+
+ALTER TABLE ONLY public.entidades_empresas_servicio_publico
+    ADD CONSTRAINT entidades_empresas_servicio_publico_entidad_id_fkey FOREIGN KEY (entidad_id) REFERENCES public.entidades(id) ON DELETE CASCADE;
+
+
+--
+-- Name: entidades entidades_municipio_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: bddat_admin
+--
+
+ALTER TABLE ONLY public.entidades
+    ADD CONSTRAINT entidades_municipio_id_fkey FOREIGN KEY (municipio_id) REFERENCES estructura.municipios(id);
+
+
+--
+-- Name: entidades_organismos_publicos entidades_organismos_publicos_entidad_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: bddat_admin
+--
+
+ALTER TABLE ONLY public.entidades_organismos_publicos
+    ADD CONSTRAINT entidades_organismos_publicos_entidad_id_fkey FOREIGN KEY (entidad_id) REFERENCES public.entidades(id) ON DELETE CASCADE;
+
+
+--
+-- Name: entidades entidades_tipo_entidad_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: bddat_admin
+--
+
+ALTER TABLE ONLY public.entidades
+    ADD CONSTRAINT entidades_tipo_entidad_id_fkey FOREIGN KEY (tipo_entidad_id) REFERENCES estructura.tipos_entidades(id);
+
+
+--
+-- Name: expedientes expedientes_proyecto_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: bddat_admin
 --
 
 ALTER TABLE ONLY public.expedientes
@@ -2203,7 +3081,7 @@ ALTER TABLE ONLY public.expedientes
 
 
 --
--- Name: expedientes expedientes_responsable_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: expedientes expedientes_responsable_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: bddat_admin
 --
 
 ALTER TABLE ONLY public.expedientes
@@ -2211,7 +3089,7 @@ ALTER TABLE ONLY public.expedientes
 
 
 --
--- Name: expedientes expedientes_tipo_expediente_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: expedientes expedientes_tipo_expediente_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: bddat_admin
 --
 
 ALTER TABLE ONLY public.expedientes
@@ -2219,7 +3097,15 @@ ALTER TABLE ONLY public.expedientes
 
 
 --
--- Name: fases fases_documento_resultado_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: expedientes expedientes_titular_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: bddat_admin
+--
+
+ALTER TABLE ONLY public.expedientes
+    ADD CONSTRAINT expedientes_titular_id_fkey FOREIGN KEY (titular_id) REFERENCES public.entidades(id);
+
+
+--
+-- Name: fases fases_documento_resultado_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: bddat_admin
 --
 
 ALTER TABLE ONLY public.fases
@@ -2227,7 +3113,7 @@ ALTER TABLE ONLY public.fases
 
 
 --
--- Name: fases fases_resultado_fase_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: fases fases_resultado_fase_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: bddat_admin
 --
 
 ALTER TABLE ONLY public.fases
@@ -2235,7 +3121,7 @@ ALTER TABLE ONLY public.fases
 
 
 --
--- Name: fases fases_solicitud_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: fases fases_solicitud_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: bddat_admin
 --
 
 ALTER TABLE ONLY public.fases
@@ -2243,7 +3129,7 @@ ALTER TABLE ONLY public.fases
 
 
 --
--- Name: fases fases_tipo_fase_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: fases fases_tipo_fase_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: bddat_admin
 --
 
 ALTER TABLE ONLY public.fases
@@ -2251,7 +3137,7 @@ ALTER TABLE ONLY public.fases
 
 
 --
--- Name: documentos_proyecto fk_documentos_proyecto_proyecto; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: documentos_proyecto fk_documentos_proyecto_proyecto; Type: FK CONSTRAINT; Schema: public; Owner: bddat_admin
 --
 
 ALTER TABLE ONLY public.documentos_proyecto
@@ -2259,23 +3145,7 @@ ALTER TABLE ONLY public.documentos_proyecto
 
 
 --
--- Name: municipios_proyecto fk_municipios_proyecto_proyecto; Type: FK CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.municipios_proyecto
-    ADD CONSTRAINT fk_municipios_proyecto_proyecto FOREIGN KEY (proyecto_id) REFERENCES public.proyectos(id) ON DELETE CASCADE;
-
-
---
--- Name: solicitudes fk_solicitudes_expediente; Type: FK CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.solicitudes
-    ADD CONSTRAINT fk_solicitudes_expediente FOREIGN KEY (expediente_id) REFERENCES public.expedientes(id);
-
-
---
--- Name: municipios_proyecto municipios_proyecto_municipio_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: municipios_proyecto municipios_proyecto_municipio_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: bddat_admin
 --
 
 ALTER TABLE ONLY public.municipios_proyecto
@@ -2283,7 +3153,15 @@ ALTER TABLE ONLY public.municipios_proyecto
 
 
 --
--- Name: proyectos proyectos_ia_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: municipios_proyecto municipios_proyecto_proyecto_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: bddat_admin
+--
+
+ALTER TABLE ONLY public.municipios_proyecto
+    ADD CONSTRAINT municipios_proyecto_proyecto_id_fkey FOREIGN KEY (proyecto_id) REFERENCES public.proyectos(id) ON DELETE CASCADE;
+
+
+--
+-- Name: proyectos proyectos_ia_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: bddat_admin
 --
 
 ALTER TABLE ONLY public.proyectos
@@ -2291,7 +3169,7 @@ ALTER TABLE ONLY public.proyectos
 
 
 --
--- Name: solicitudes solicitudes_solicitud_afectada_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: solicitudes solicitudes_solicitud_afectada_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: bddat_admin
 --
 
 ALTER TABLE ONLY public.solicitudes
@@ -2299,7 +3177,7 @@ ALTER TABLE ONLY public.solicitudes
 
 
 --
--- Name: solicitudes_tipos solicitudes_tipos_solicitudid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: solicitudes_tipos solicitudes_tipos_solicitudid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: bddat_admin
 --
 
 ALTER TABLE ONLY public.solicitudes_tipos
@@ -2307,7 +3185,7 @@ ALTER TABLE ONLY public.solicitudes_tipos
 
 
 --
--- Name: solicitudes_tipos solicitudes_tipos_tiposolicitudid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: solicitudes_tipos solicitudes_tipos_tiposolicitudid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: bddat_admin
 --
 
 ALTER TABLE ONLY public.solicitudes_tipos
@@ -2315,7 +3193,7 @@ ALTER TABLE ONLY public.solicitudes_tipos
 
 
 --
--- Name: tareas tareas_documento_producido_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: tareas tareas_documento_producido_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: bddat_admin
 --
 
 ALTER TABLE ONLY public.tareas
@@ -2323,7 +3201,7 @@ ALTER TABLE ONLY public.tareas
 
 
 --
--- Name: tareas tareas_documento_usado_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: tareas tareas_documento_usado_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: bddat_admin
 --
 
 ALTER TABLE ONLY public.tareas
@@ -2331,7 +3209,7 @@ ALTER TABLE ONLY public.tareas
 
 
 --
--- Name: tareas tareas_tipo_tarea_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: tareas tareas_tipo_tarea_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: bddat_admin
 --
 
 ALTER TABLE ONLY public.tareas
@@ -2339,7 +3217,7 @@ ALTER TABLE ONLY public.tareas
 
 
 --
--- Name: tareas tareas_tramite_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: tareas tareas_tramite_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: bddat_admin
 --
 
 ALTER TABLE ONLY public.tareas
@@ -2347,7 +3225,7 @@ ALTER TABLE ONLY public.tareas
 
 
 --
--- Name: tramites tramites_fase_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: tramites tramites_fase_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: bddat_admin
 --
 
 ALTER TABLE ONLY public.tramites
@@ -2355,7 +3233,7 @@ ALTER TABLE ONLY public.tramites
 
 
 --
--- Name: tramites tramites_tipo_tramite_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: tramites tramites_tipo_tramite_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: bddat_admin
 --
 
 ALTER TABLE ONLY public.tramites
@@ -2363,7 +3241,7 @@ ALTER TABLE ONLY public.tramites
 
 
 --
--- Name: usuarios_roles usuarios_roles_rol_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: usuarios_roles usuarios_roles_rol_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: bddat_admin
 --
 
 ALTER TABLE ONLY public.usuarios_roles
@@ -2371,7 +3249,7 @@ ALTER TABLE ONLY public.usuarios_roles
 
 
 --
--- Name: usuarios_roles usuarios_roles_usuario_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: usuarios_roles usuarios_roles_usuario_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: bddat_admin
 --
 
 ALTER TABLE ONLY public.usuarios_roles
@@ -2379,8 +3257,43 @@ ALTER TABLE ONLY public.usuarios_roles
 
 
 --
+-- Name: SCHEMA public; Type: ACL; Schema: -; Owner: bddat_admin
+--
+
+REVOKE USAGE ON SCHEMA public FROM PUBLIC;
+
+
+--
+-- Name: DEFAULT PRIVILEGES FOR SEQUENCES; Type: DEFAULT ACL; Schema: estructura; Owner: postgres
+--
+
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA estructura GRANT ALL ON SEQUENCES TO bddat_admin;
+
+
+--
+-- Name: DEFAULT PRIVILEGES FOR TABLES; Type: DEFAULT ACL; Schema: estructura; Owner: postgres
+--
+
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA estructura GRANT ALL ON TABLES TO bddat_admin;
+
+
+--
+-- Name: DEFAULT PRIVILEGES FOR SEQUENCES; Type: DEFAULT ACL; Schema: public; Owner: postgres
+--
+
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON SEQUENCES TO bddat_admin;
+
+
+--
+-- Name: DEFAULT PRIVILEGES FOR TABLES; Type: DEFAULT ACL; Schema: public; Owner: postgres
+--
+
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON TABLES TO bddat_admin;
+
+
+--
 -- PostgreSQL database dump complete
 --
 
-\unrestrict rWpFTkSyHGIDchrjMzA6b5wj2MfqLuoxOfTuM3u8cHbiPFwy1kOWj6hCEr5NqMb
+\unrestrict kchQnkcZ2chM9It1QPbIX008TFQfDMaDUpf6upRJaFU0FEj74HR94HsKodV3DeC
 

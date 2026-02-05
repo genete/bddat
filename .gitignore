@@ -4,5 +4,4 @@ instance/
 __pycache__/
 .env
 *.db
-migrations/versions/
 app/static/uploads/*

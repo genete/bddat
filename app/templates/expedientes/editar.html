@@ -12,7 +12,21 @@
     </div>
 </div>
 
-<form action="{{ url_for('expedientes.editar', id=expediente.id) }}" method="POST">
+<!-- Script con municipios existentes para inicialización -->
+<script>
+    window.municipiosExistentes = [
+        {% for mp in expediente.proyecto.municipios_afectados %}
+        {
+            id: {{ mp.municipio.id }},
+            nombre: "{{ mp.municipio.nombre }}",
+            provincia: "{{ mp.municipio.provincia }}",
+            codigo: "{{ mp.municipio.codigo }}"
+        }{% if not loop.last %},{% endif %}
+        {% endfor %}
+    ];
+</script>
+
+<form id="form_expediente" action="{{ url_for('expedientes.editar', id=expediente.id) }}" method="POST">
     <div class="row">
         <!-- Columna Izquierda: Datos del Expediente -->
         <div class="col-md-4">
@@ -47,6 +61,9 @@
                         <label for="responsable_id" class="form-label">Responsable</label>
                         <select class="form-select" id="responsable_id" name="responsable_id" 
                                 {% if not current_user.tiene_rol('ADMIN', 'SUPERVISOR') %}disabled{% endif %}>
+                            <option value="" {% if not expediente.responsable_id %}selected{% endif %}>
+                                -- Sin asignar (huérfano) --
+                            </option>
                             {% for usuario in usuarios %}
                                 <option value="{{ usuario.id }}" 
                                         {% if expediente.responsable_id == usuario.id %}selected{% endif %}>
@@ -56,6 +73,8 @@
                         </select>
                         {% if not current_user.tiene_rol('ADMIN', 'SUPERVISOR') %}
                             <small class="form-text text-muted">Solo ADMIN/SUPERVISOR puede cambiar responsable</small>
+                        {% else %}
+                            <small class="form-text text-muted">Dejar sin asignar para gestión posterior por supervisor</small>
                         {% endif %}
                     </div>
                     
@@ -75,7 +94,7 @@
         
         <!-- Columna Derecha: Datos del Proyecto -->
         <div class="col-md-8">
-            <div class="card shadow-sm mb-3">
+            <div class="card shadow-sm mb-3" id="proyecto">
                 <div class="card-header bg-primary text-white">
                     <h5 class="mb-0"><i class="fas fa-project-diagram me-2"></i>Datos del Proyecto</h5>
                 </div>
@@ -123,6 +142,69 @@
                     </div>
                 </div>
             </div>
+            
+            <!-- Card Municipios Afectados -->
+            <div class="card shadow-sm mb-3">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0">
+                        <i class="fas fa-map-marked-alt me-2"></i>Municipios Afectados
+                        <small id="campo_obligatorio" class="float-end">
+                            <span class="text-danger">*</span> Campo obligatorio
+                        </small>
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <!-- Selector Provincia -->
+                        <div class="col-md-6 mb-3">
+                            <label for="select_provincia" class="form-label">Provincia</label>
+                            <input type="text" class="form-control mb-2" id="buscador_provincia" 
+                                   placeholder="🔍 Buscar provincia...">
+                            <select class="form-select" id="select_provincia" size="5">
+                                <option value="">-- Cargando provincias... --</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Selector Municipio -->
+                        <div class="col-md-6 mb-3">
+                            <label for="select_municipio" class="form-label">Municipio</label>
+                            <input type="text" class="form-control mb-2" id="buscador_municipio" 
+                                   placeholder="🔍 Buscar municipio..." disabled>
+                            <select class="form-select" id="select_municipio" size="5" disabled>
+                                <option value="">-- Primero seleccione provincia --</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <!-- Botón Añadir -->
+                    <div class="row mb-3">
+                        <div class="col-md-12 text-end">
+                            <button type="button" class="btn btn-success" id="btn_anadir_municipio" disabled>
+                                <i class="fas fa-plus me-1"></i> Añadir Municipio
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Lista de Municipios Seleccionados -->
+                    <div class="row">
+                        <div class="col-md-12">
+                            <label class="form-label">Municipios Seleccionados:</label>
+                            <ul class="list-group" id="lista_municipios">
+                                <li class="list-group-item text-muted"><em>No hay municipios añadidos</em></li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <!-- Botón Borrar -->
+                    <div class="row mt-3">
+                        <div class="col-md-12 text-end">
+                            <button type="button" class="btn btn-danger" id="btn_borrar_municipios" disabled>
+                                <i class="fas fa-trash me-1"></i> Borrar Seleccionados
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
     
@@ -138,4 +220,27 @@
         </div>
     </div>
 </form>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/municipios_selector.js') }}"></script>
+<script>
+    // Inicializar con municipios existentes
+    document.addEventListener('DOMContentLoaded', () => {
+        if (window.selectorMunicipios && window.municipiosExistentes) {
+            window.selectorMunicipios.inicializar(window.municipiosExistentes);
+        }
+        
+        // Scroll automático a #proyecto si viene en la URL (issue #41)
+        if (window.location.hash === '#proyecto') {
+            const proyectoCard = document.getElementById('proyecto');
+            if (proyectoCard) {
+                // Scroll suave con offset para header
+                setTimeout(() => {
+                    proyectoCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }, 100);
+            }
+        }
+    });
+</script>
 {% endblock %}

@@ -44,6 +44,14 @@ target_db = current_app.extensions['migrate'].db
 # my_important_option = config.get_main_option("my_important_option")
 # ... etc.
 
+# IMPORTANTE: Importar explícitamente app.models para garantizar que Alembic
+# cargue todos los modelos en el orden correcto ANTES de construir el grafo
+# de dependencias. Esto es crítico para FK cross-schema (public <-> estructura)
+# Referencias: 
+# - https://github.com/sqlalchemy/alembic/discussions/1571
+# - https://www.technetexperts.com/alembic-multitenant-fk-order/
+import app.models
+
 
 def get_metadata():
     if hasattr(target_db, 'metadatas'):
@@ -65,10 +73,7 @@ def run_migrations_offline():
     """
     url = config.get_main_option("sqlalchemy.url")
     context.configure(
-        url=url, 
-        target_metadata=get_metadata(), 
-        literal_binds=True,
-        include_schemas=True  # Añadido para soportar múltiples schemas
+        url=url, target_metadata=get_metadata(), literal_binds=True
     )
 
     with context.begin_transaction():
@@ -76,7 +81,7 @@ def run_migrations_offline():
 
 
 def run_migrations_online():
-    """Run migrations in 'online' mode.
+    """Run migrations in 'offline' mode.
 
     In this scenario we need to create an Engine
     and associate a connection with the context.
@@ -103,7 +108,6 @@ def run_migrations_online():
         context.configure(
             connection=connection,
             target_metadata=get_metadata(),
-            include_schemas=True,  # Añadido para soportar múltiples schemas
             **conf_args
         )
 

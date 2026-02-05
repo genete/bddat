@@ -57,6 +57,15 @@
                         {% endif %}
                     </li>
                     
+                    <!-- Proyectos - Visible para todos los roles autenticados -->
+                    {% if current_user.is_authenticated %}
+                    <li class="nav-item">
+                        <a class="nav-link text-white" href="{{ url_for('proyectos.index') }}">
+                            <i class="fas fa-bolt me-1"></i>Proyectos
+                        </a>
+                    </li>
+                    {% endif %}
+                    
                     <!-- Solo visible para ADMIN y SUPERVISOR -->
                     {% if current_user.is_authenticated %}
                         {% set user_roles = current_user.roles | map(attribute='nombre') | list %}
@@ -117,30 +126,25 @@
         </div>
     </footer>
 
-    <!-- Contenedor de toasts en esquina inferior derecha -->
-    <div class="toast-container position-fixed bottom-0 end-0 p-3">
+    <!-- Contenedor de toasts en la parte inferior, centrado con 5% de margen a cada lado -->
+    <div class="toast-container position-fixed bottom-0 p-3">
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
-                <div class="toast toast-{{ category }}" role="alert" aria-live="assertive" aria-atomic="true" data-bs-autohide="true" data-bs-delay="5000">
-                    <div class="toast-header">
-                        {% if category == 'success' %}
-                            <i class="fas fa-check-circle me-2"></i>
-                            <strong class="me-auto">Correcto</strong>
-                        {% elif category == 'danger' %}
-                            <i class="fas fa-exclamation-circle me-2"></i>
-                            <strong class="me-auto">Error</strong>
-                        {% elif category == 'warning' %}
-                            <i class="fas fa-exclamation-triangle me-2"></i>
-                            <strong class="me-auto">Atención</strong>
-                        {% elif category == 'info' %}
-                            <i class="fas fa-info-circle me-2"></i>
-                            <strong class="me-auto">Información</strong>
-                        {% endif %}
-                        <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
-                    </div>
-                    <div class="toast-body">
-                        {{ message }}
+                <div class="toast toast-{{ category }}" role="alert" aria-live="assertive" aria-atomic="true" data-bs-autohide="true" data-bs-delay="8000">
+                    <div class="d-flex align-items-center p-3">
+                        <div class="flex-grow-1">
+                            {% if category == 'success' %}
+                                <i class="fas fa-check-circle me-2"></i><strong>Correcto:</strong> {{ message }}
+                            {% elif category == 'danger' %}
+                                <i class="fas fa-exclamation-circle me-2"></i><strong>Error:</strong> {{ message }}
+                            {% elif category == 'warning' %}
+                                <i class="fas fa-exclamation-triangle me-2"></i><strong>Atención:</strong> {{ message }}
+                            {% elif category == 'info' %}
+                                <i class="fas fa-info-circle me-2"></i><strong>Información:</strong> {{ message }}
+                            {% endif %}
+                        </div>
+                        <button type="button" class="btn-close ms-3" data-bs-dismiss="toast" aria-label="Close"></button>
                     </div>
                 </div>
                 {% endfor %}
@@ -153,17 +157,38 @@
     <script src="https://cdn.juntadeandalucia.es/components/sass/latest/js/jda-js.js"></script>
     
     <script>
-        // Auto-inicializar toasts al cargar la página
+        // Auto-inicializar toasts al cargar la página con animaciones fade
         document.addEventListener('DOMContentLoaded', function() {
             var toastElList = [].slice.call(document.querySelectorAll('.toast'));
             toastElList.forEach(function(toastEl) {
+                // Añadir clase para animación de entrada
+                toastEl.classList.add('showing');
+                
                 var toast = new bootstrap.Toast(toastEl);
                 toast.show();
+                
+                // Remover clase después de la animación
+                setTimeout(function() {
+                    toastEl.classList.remove('showing');
+                }, 300);
+                
+                // Añadir animación de salida antes de ocultar
+                toastEl.addEventListener('hide.bs.toast', function() {
+                    toastEl.classList.add('hide');
+                });
+                
+                // Cerrar al hacer clic en cualquier parte del toast (excepto el botón close)
+                toastEl.addEventListener('click', function(e) {
+                    // Si no se hizo clic en el botón de cerrar, cerrar el toast
+                    if (!e.target.closest('.btn-close')) {
+                        toast.hide();
+                    }
+                });
             });
         });
     </script>
     
     <!-- Bloque para scripts específicos de cada página -->
-    {% block scripts %}{% endblock %}
+    {% block extra_js %}{% endblock %}
 </body>
 </html>

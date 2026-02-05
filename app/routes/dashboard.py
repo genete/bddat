@@ -19,6 +19,7 @@ def index():
             'items': [
                 {'nombre': 'Mis expedientes', 'url': 'dashboard.mis_expedientes', 'roles': ['TRAMITADOR', 'ADMINISTRATIVO', 'SUPERVISOR', 'ADMIN']},
                 {'nombre': 'Listado expedientes', 'url': 'expedientes.index', 'roles': ['TRAMITADOR', 'ADMINISTRATIVO', 'SUPERVISOR', 'ADMIN']},
+                {'nombre': 'Listado proyectos', 'url': 'proyectos.index', 'roles': ['TRAMITADOR', 'ADMINISTRATIVO', 'SUPERVISOR', 'ADMIN']},
                 {'nombre': 'Nuevo expediente', 'url': 'expedientes.nuevo', 'roles': ['TRAMITADOR', 'ADMINISTRATIVO', 'SUPERVISOR', 'ADMIN']},
                 {'nombre': 'Solicitudes', 'url': '#', 'roles': ['TRAMITADOR', 'ADMINISTRATIVO', 'SUPERVISOR', 'ADMIN']},
                 {'nombre': 'Fases', 'url': '#', 'roles': ['TRAMITADOR', 'ADMINISTRATIVO', 'SUPERVISOR', 'ADMIN']},
