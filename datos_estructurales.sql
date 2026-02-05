@@ -2,7 +2,6 @@
 -- PostgreSQL database dump
 --
 
-\restrict rpTlXLshREgBC9Q7lKSykWEqjrFHBA6sMQ3ef5KY8F5SeQC11iqGUTjWo5GmBP9
 
 -- Dumped from database version 18.1
 -- Dumped by pg_dump version 18.1
@@ -13,7 +12,7 @@ SET idle_in_transaction_session_timeout = 0;
 SET transaction_timeout = 0;
 SET client_encoding = 'UTF8';
 SET standard_conforming_strings = on;
-SELECT pg_catalog.set_config('search_path', '', false);
+--SELECT pg_catalog.set_config('search_path', 'public', false);
 SET check_function_bodies = false;
 SET xmloption = content;
 SET client_min_messages = warning;
@@ -8361,5 +8360,4 @@ SELECT pg_catalog.setval('tipos_tramites_id_seq', 30, true);
 -- PostgreSQL database dump complete
 --
 
-\unrestrict rpTlXLshREgBC9Q7lKSykWEqjrFHBA6sMQ3ef5KY8F5SeQC11iqGUTjWo5GmBP9
 
