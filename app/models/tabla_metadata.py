@@ -1,269 +1,337 @@
+"""Modelo para gestión de permisos por tabla mediante metadatos.
+
+Este modelo implementa un sistema de control de accesos basado en metadatos
+con tres niveles de permisos: lectura, escritura (INSERT+UPDATE) y eliminación (DELETE).
+
+Roles de la organización:
+- ADMIN (id=1): Control total sobre todas las tablas
+- SUPERVISOR (id=2): Control sobre tablas estructurales y operacionales, gestión de usuarios
+- TRAMITADOR (id=3): Lectura/escritura en tablas operacionales, sin eliminación
+- ADMINISTRATIVO (id=4): Lectura/escritura limitada en campos específicos de tablas operacionales
+- CONTROLADOR (id=5): Solo lectura para estadísticas
+
+Issue: #85
+"""
+
 from app import db
 from sqlalchemy.dialects.postgresql import ARRAY
-from sqlalchemy import CheckConstraint
+from sqlalchemy import event
+from datetime import datetime
+
 
 class TablaMetadata(db.Model):
-    """
-    Metadatos de configuración para tablas del sistema.
+    """Configuración de permisos por tabla para control de accesos.
     
     PROPÓSITO:
-        Define cómo se visualizan, ordenan y gestionan las tablas en la interfaz.
-        Centraliza la configuración de permisos de eliminación y visualización por rol.
-        
-    FILOSOFÍA:
-        - Configuración centralizada: Toda la metadata de tablas en un solo lugar
-        - Control granular por rol: Diferentes permisos para eliminar y visualizar
-        - Separación de concerns: Lógica de presentación separada de lógica de negocio
-        - Administrable: Los administradores pueden ajustar configuración sin código
-        
-    CARACTERÍSTICAS:
-        - nombre_tabla: Identificador único de la tabla (schema.tabla)
-        - titulo_singular/plural: Nombres legibles para la interfaz
-        - campo_orden_defecto: Campo por defecto para ordenar listados
-        - orden_asc: Dirección del orden (TRUE=ASC, FALSE=DESC)
-        - roles_pueden_eliminar: Array de role_id que pueden eliminar registros
-        - roles_pueden_visualizar: Array de role_id que pueden ver la tabla
-        
-    ROLES (IDs):
-        1 = ADMIN        - Acceso completo
-        2 = SUPERVISOR   - Supervisión y gestión
-        3 = TRAMITADOR   - Tramitación de expedientes
-        4 = ADMINISTRATIVO - Soporte administrativo
-        5 = CONTROLADOR  - Control y validación
-        
+        Define qué roles tienen permisos de lectura, escritura y eliminación
+        sobre cada tabla del sistema.
+    
+    TRES NIVELES DE PERMISOS:
+        - roles_lectura: Pueden hacer SELECT (ver registros)
+        - roles_escritura: Pueden hacer INSERT y UPDATE (crear y modificar registros)
+        - roles_eliminacion: Pueden hacer DELETE (borrar registros)
+    
+    INVARIANTES DE INTEGRIDAD:
+        - roles_escritura ⊆ roles_lectura (quien escribe debe poder leer)
+        - roles_eliminacion ⊆ roles_escritura (quien elimina debe poder escribir)
+        - Validación automática mediante hooks SQLAlchemy
+    
+    CATEGORÍAS:
+        - 'estructural': Tablas maestras (municipios, tipos_*, roles, usuarios)
+        - 'operacional': Tablas de trabajo (expedientes, documentos, solicitudes, etc.)
+        - 'sistema': Configuración interna (tabla_metadata, logs, etc.)
+    
     EJEMPLOS DE USO:
-        # Tabla de usuarios: solo ADMIN puede eliminar, todos pueden ver
-        TablaMetadata(
-            nombre_tabla='public.usuarios',
-            titulo_singular='Usuario',
-            titulo_plural='Usuarios',
-            campo_orden_defecto='apellido1',
-            orden_asc=True,
-            roles_pueden_eliminar=[1],  # Solo ADMIN
-            roles_pueden_visualizar=[1, 2, 3, 4, 5]  # Todos
-        )
+        # Verificar si un usuario puede leer expedientes
+        metadata = TablaMetadata.obtener_metadatos('expedientes')
+        if metadata and metadata.usuario_puede_leer(usuario.rol_id):
+            # Permitir acceso
+            pass
         
-        # Tabla de expedientes: ADMIN y SUPERVISOR pueden eliminar
-        TablaMetadata(
-            nombre_tabla='expedientes.expedientes',
-            titulo_singular='Expediente',
-            titulo_plural='Expedientes',
-            campo_orden_defecto='fecha_alta',
-            orden_asc=False,  # Más recientes primero
-            roles_pueden_eliminar=[1, 2],  # ADMIN y SUPERVISOR
-            roles_pueden_visualizar=[1, 2, 3, 5]  # No ADMINISTRATIVO
-        )
-        
-    VALIDACIONES:
-        - nombre_tabla debe ser único
-        - campos obligatorios no pueden ser NULL ni vacíos
-        - role_id en arrays deben ser únicos (no duplicados)
-        - roles_pueden_eliminar ⊆ roles_pueden_visualizar
-          (solo puedes eliminar lo que puedes ver)
-          
-    REGLAS DE NEGOCIO:
-        1. Una tabla sin metadata usa valores por defecto del sistema
-        2. Array vacío [] significa "ningún rol tiene permiso"
-        3. NULL en arrays se interpreta como "usar permisos por defecto"
-        4. ADMIN (role_id=1) siempre debe estar en roles_pueden_visualizar
-        5. Si una tabla tiene FK a otra, esa otra debe estar en metadata
-        
-    RELACIONES:
-        - Ninguna directa (tabla de configuración)
-        - Referencia indirecta a ROLES vía role_id en arrays
-        - Referencia indirecta a tablas del sistema vía nombre_tabla
-        
-    MANTENIMIENTO:
-        - Insertar metadata al crear nuevas tablas importantes
-        - Actualizar permisos cuando cambien requisitos de seguridad
-        - Revisar periódicamente consistencia con estructura real de BD
+        # Obtener todos los permisos de un usuario sobre una tabla
+        permisos = metadata.obtener_permisos(usuario.rol_id)
+        # {'leer': True, 'escribir': True, 'eliminar': False}
     """
+    
     __tablename__ = 'tabla_metadata'
-    __table_args__ = (
-        # Índices para consultas frecuentes
-        db.Index('idx_tabla_metadata_nombre', 'nombre_tabla'),
-        
-        # Constraints de validación
-        CheckConstraint(
-            "nombre_tabla IS NOT NULL AND TRIM(nombre_tabla) != ''",
-            name='chk_nombre_tabla_not_empty'
-        ),
-        CheckConstraint(
-            "titulo_singular IS NOT NULL AND TRIM(titulo_singular) != ''",
-            name='chk_titulo_singular_not_empty'
-        ),
-        CheckConstraint(
-            "titulo_plural IS NOT NULL AND TRIM(titulo_plural) != ''",
-            name='chk_titulo_plural_not_empty'
-        ),
-        CheckConstraint(
-            "campo_orden_defecto IS NOT NULL AND TRIM(campo_orden_defecto) != ''",
-            name='chk_campo_orden_not_empty'
-        ),
-        
-        {'schema': 'public'}
-    )
+    __table_args__ = ({'schema': 'public'},)
     
     id = db.Column(
-        db.Integer,
-        primary_key=True,
+        db.Integer, 
+        primary_key=True, 
         autoincrement=True,
         comment='Identificador único autogenerado'
     )
     
     nombre_tabla = db.Column(
-        db.String(100),
-        nullable=False,
-        unique=True,
-        comment='Nombre completo de la tabla (schema.tabla). Ejemplo: public.usuarios, expedientes.expedientes'
+        db.String(100), 
+        nullable=False, 
+        unique=True, 
+        index=True,
+        comment='Nombre completo de la tabla (schema.tabla o tabla). Ejemplo: public.expedientes, municipios'
     )
     
-    titulo_singular = db.Column(
-        db.String(100),
-        nullable=False,
-        comment='Nombre singular para mostrar en interfaz. Ejemplo: Usuario, Expediente, Provincia'
-    )
-    
-    titulo_plural = db.Column(
-        db.String(100),
-        nullable=False,
-        comment='Nombre plural para mostrar en interfaz. Ejemplo: Usuarios, Expedientes, Provincias'
-    )
-    
-    campo_orden_defecto = db.Column(
-        db.String(100),
-        nullable=False,
-        comment='Campo por defecto para ordenar listados. Ejemplo: apellido1, fecha_alta, nombre'
-    )
-    
-    orden_asc = db.Column(
-        db.Boolean,
-        nullable=False,
-        default=True,
-        comment='Dirección del orden por defecto. TRUE=Ascendente (A-Z, 0-9, antiguos primero), FALSE=Descendente (Z-A, 9-0, recientes primero)'
-    )
-    
-    roles_pueden_eliminar = db.Column(
-        ARRAY(db.Integer),
+    # Arrays de role_id para cada nivel de permiso
+    roles_lectura = db.Column(
+        ARRAY(db.Integer), 
         nullable=True,
-        comment='Array de role_id que tienen permiso para eliminar registros. Ejemplo: [1,2] = ADMIN y SUPERVISOR. NULL = usar permisos por defecto, [] = nadie puede eliminar'
+        comment='Array de role_id con permiso SELECT. NULL = nadie puede leer, [] = nadie, [1,2,3] = ADMIN, SUPERVISOR, TRAMITADOR'
     )
     
-    roles_pueden_visualizar = db.Column(
-        ARRAY(db.Integer),
+    roles_escritura = db.Column(
+        ARRAY(db.Integer), 
         nullable=True,
-        comment='Array de role_id que tienen permiso para visualizar la tabla. Ejemplo: [1,2,3,4,5] = todos. NULL = usar permisos por defecto, [] = nadie puede visualizar'
+        comment='Array de role_id con permiso INSERT+UPDATE. Debe ser subconjunto de roles_lectura'
+    )
+    
+    roles_eliminacion = db.Column(
+        ARRAY(db.Integer), 
+        nullable=True,
+        comment='Array de role_id con permiso DELETE. Debe ser subconjunto de roles_escritura'
+    )
+    
+    # Metadatos descriptivos
+    descripcion = db.Column(
+        db.Text,
+        comment='Descripción del propósito y contenido de la tabla'
+    )
+    
+    categoria = db.Column(
+        db.String(50),
+        comment="Categoría de la tabla: 'estructural', 'operacional', 'sistema'"
+    )
+    
+    # Auditoría
+    fecha_creacion = db.Column(
+        db.DateTime, 
+        default=datetime.utcnow, 
+        nullable=False,
+        comment='Fecha y hora de creación del registro'
+    )
+    
+    ultima_modificacion = db.Column(
+        db.DateTime, 
+        default=datetime.utcnow, 
+        onupdate=datetime.utcnow, 
+        nullable=False,
+        comment='Fecha y hora de última modificación'
     )
     
     def __repr__(self):
         """Representación técnica para debugging."""
-        return f'<TablaMetadata {self.nombre_tabla}>'
+        return f'<TablaMetadata {self.nombre_tabla} [{self.categoria}]>'
     
     def __str__(self):
         """Representación legible para interfaz."""
-        return f'{self.titulo_plural} ({self.nombre_tabla})'
+        return f'{self.nombre_tabla} ({self.categoria})'
     
-    def puede_eliminar(self, usuario):
-        """
-        Verifica si un usuario puede eliminar registros de esta tabla.
+    # ========================================================================
+    # MÉTODOS DE CONSULTA
+    # ========================================================================
+    
+    @classmethod
+    def obtener_metadatos(cls, nombre_tabla):
+        """Obtiene metadatos de una tabla específica.
         
         Args:
-            usuario: Instancia de Usuario con roles cargados
+            nombre_tabla (str): Nombre de la tabla a consultar
             
         Returns:
-            bool: True si el usuario tiene permiso para eliminar
-            
-        Lógica:
-            - Si roles_pueden_eliminar es None: usar lógica por defecto (solo ADMIN)
-            - Si roles_pueden_eliminar es []: nadie puede eliminar
-            - Si roles_pueden_eliminar tiene valores: verificar si algún rol del usuario está en la lista
-        """
-        if self.roles_pueden_eliminar is None:
-            # Permiso por defecto: solo ADMIN
-            return usuario.tiene_rol('ADMIN')
+            TablaMetadata: Objeto con configuración de permisos o None si no existe
         
-        if not self.roles_pueden_eliminar:
-            # Array vacío: nadie puede eliminar
-            return False
-        
-        # Verificar si algún rol del usuario está en la lista
-        role_ids_usuario = [rol.id for rol in usuario.roles]
-        return any(role_id in self.roles_pueden_eliminar for role_id in role_ids_usuario)
-    
-    def puede_visualizar(self, usuario):
-        """
-        Verifica si un usuario puede visualizar esta tabla.
-        
-        Args:
-            usuario: Instancia de Usuario con roles cargados
-            
-        Returns:
-            bool: True si el usuario tiene permiso para visualizar
-            
-        Lógica:
-            - Si roles_pueden_visualizar es None: usar lógica por defecto (todos los autenticados)
-            - Si roles_pueden_visualizar es []: nadie puede visualizar
-            - Si roles_pueden_visualizar tiene valores: verificar si algún rol del usuario está en la lista
-        """
-        if self.roles_pueden_visualizar is None:
-            # Permiso por defecto: todos los usuarios autenticados
-            return True
-        
-        if not self.roles_pueden_visualizar:
-            # Array vacío: nadie puede visualizar
-            return False
-        
-        # Verificar si algún rol del usuario está en la lista
-        role_ids_usuario = [rol.id for rol in usuario.roles]
-        return any(role_id in self.roles_pueden_visualizar for role_id in role_ids_usuario)
-    
-    @staticmethod
-    def validar_roles_unicos(role_ids):
-        """
-        Valida que no haya role_id duplicados en un array.
-        
-        Args:
-            role_ids: Lista de role_id a validar
-            
-        Returns:
-            tuple: (es_valido: bool, mensaje_error: str)
-            
         Ejemplo:
-            valido, error = TablaMetadata.validar_roles_unicos([1, 2, 3])
-            if not valido:
-                raise ValueError(error)
+            metadata = TablaMetadata.obtener_metadatos('expedientes')
+            if metadata:
+                print(metadata.descripcion)
         """
-        if role_ids is None:
-            return True, None
-        
-        if len(role_ids) != len(set(role_ids)):
-            duplicados = [r for r in role_ids if role_ids.count(r) > 1]
-            return False, f'role_id duplicados: {set(duplicados)}'
-        
-        return True, None
+        return cls.query.filter_by(nombre_tabla=nombre_tabla).first()
     
-    @staticmethod
-    def validar_eliminar_subset_visualizar(roles_eliminar, roles_visualizar):
-        """
-        Valida que roles_pueden_eliminar ⊆ roles_pueden_visualizar.
-        Solo puedes eliminar lo que puedes ver.
+    def usuario_puede_leer(self, usuario_rol_id):
+        """Verifica si un rol puede leer (SELECT) esta tabla.
         
         Args:
-            roles_eliminar: Array de role_id que pueden eliminar
-            roles_visualizar: Array de role_id que pueden visualizar
+            usuario_rol_id (int): ID del rol del usuario actual
             
         Returns:
-            tuple: (es_valido: bool, mensaje_error: str)
+            bool: True si tiene permiso de lectura
+        
+        Lógica:
+            - Si roles_lectura es None o []: nadie puede leer
+            - Si usuario_rol_id está en roles_lectura: puede leer
         """
-        if roles_eliminar is None or roles_visualizar is None:
-            # Si alguno es None, no validamos (usa defaults)
-            return True, None
+        if not self.roles_lectura:
+            return False  # Sin roles = nadie puede leer
+        return usuario_rol_id in self.roles_lectura
+    
+    def usuario_puede_escribir(self, usuario_rol_id):
+        """Verifica si un rol puede escribir (INSERT, UPDATE) en esta tabla.
         
-        set_eliminar = set(roles_eliminar)
-        set_visualizar = set(roles_visualizar)
+        Args:
+            usuario_rol_id (int): ID del rol del usuario actual
+            
+        Returns:
+            bool: True si tiene permiso de escritura
         
-        if not set_eliminar.issubset(set_visualizar):
-            no_pueden_ver = set_eliminar - set_visualizar
-            return False, f'Roles con permiso de eliminación pero sin visualización: {no_pueden_ver}'
+        Lógica:
+            - Si roles_escritura es None o []: nadie puede escribir
+            - Si usuario_rol_id está en roles_escritura: puede escribir
+        """
+        if not self.roles_escritura:
+            return False  # Sin roles = nadie puede escribir
+        return usuario_rol_id in self.roles_escritura
+    
+    def usuario_puede_eliminar(self, usuario_rol_id):
+        """Verifica si un rol puede eliminar (DELETE) registros de esta tabla.
         
-        return True, None
+        Args:
+            usuario_rol_id (int): ID del rol del usuario actual
+            
+        Returns:
+            bool: True si tiene permiso de eliminación
+        
+        Lógica:
+            - Si roles_eliminacion es None o []: nadie puede eliminar
+            - Si usuario_rol_id está en roles_eliminacion: puede eliminar
+        """
+        if not self.roles_eliminacion:
+            return False  # Sin roles = nadie puede eliminar
+        return usuario_rol_id in self.roles_eliminacion
+    
+    def obtener_permisos(self, usuario_rol_id):
+        """Obtiene todos los permisos de un rol sobre esta tabla.
+        
+        Args:
+            usuario_rol_id (int): ID del rol del usuario actual
+            
+        Returns:
+            dict: Diccionario con claves 'leer', 'escribir', 'eliminar'
+        
+        Ejemplo:
+            permisos = metadata.obtener_permisos(3)  # TRAMITADOR
+            # {'leer': True, 'escribir': True, 'eliminar': False}
+            
+            if permisos['eliminar']:
+                # Mostrar botón eliminar
+                pass
+        """
+        return {
+            'leer': self.usuario_puede_leer(usuario_rol_id),
+            'escribir': self.usuario_puede_escribir(usuario_rol_id),
+            'eliminar': self.usuario_puede_eliminar(usuario_rol_id)
+        }
+    
+    # ========================================================================
+    # VALIDACIONES
+    # ========================================================================
+    
+    def validar_coherencia_permisos(self):
+        """Valida que los permisos sean coherentes entre sí.
+        
+        Reglas de negocio:
+            1. roles_escritura ⊆ roles_lectura
+               (Todo rol que puede escribir debe poder leer)
+            
+            2. roles_eliminacion ⊆ roles_escritura
+               (Todo rol que puede eliminar debe poder escribir)
+        
+        Raises:
+            ValueError: Si hay incoherencias en los permisos con mensaje descriptivo
+        
+        Ejemplo:
+            try:
+                metadata.validar_coherencia_permisos()
+            except ValueError as e:
+                print(f"Error de coherencia: {e}")
+        """
+        # Convertir None a lista vacía para comparaciones
+        lectura = set(self.roles_lectura or [])
+        escritura = set(self.roles_escritura or [])
+        eliminacion = set(self.roles_eliminacion or [])
+        
+        # Validar: escritura ⊆ lectura
+        if not escritura.issubset(lectura):
+            roles_invalidos = escritura - lectura
+            raise ValueError(
+                f"Tabla '{self.nombre_tabla}': Roles en 'roles_escritura' deben estar en 'roles_lectura'. "
+                f"Roles inválidos: {roles_invalidos}"
+            )
+        
+        # Validar: eliminacion ⊆ escritura
+        if not eliminacion.issubset(escritura):
+            roles_invalidos = eliminacion - escritura
+            raise ValueError(
+                f"Tabla '{self.nombre_tabla}': Roles en 'roles_eliminacion' deben estar en 'roles_escritura'. "
+                f"Roles inválidos: {roles_invalidos}"
+            )
+    
+    def validar_roles_existen(self):
+        """Verifica que todos los role_id referenciados existan en la tabla roles.
+        
+        Raises:
+            ValueError: Si algún role_id no existe en la tabla public.roles
+        
+        Nota:
+            Solo valida si hay roles definidos. Si todos son None/[], no valida.
+        """
+        from app.models.usuarios import Rol
+        
+        # Recopilar todos los role_id mencionados
+        todos_roles = set()
+        if self.roles_lectura:
+            todos_roles.update(self.roles_lectura)
+        if self.roles_escritura:
+            todos_roles.update(self.roles_escritura)
+        if self.roles_eliminacion:
+            todos_roles.update(self.roles_eliminacion)
+        
+        if not todos_roles:
+            return  # Sin roles = sin validación necesaria
+        
+        # Consultar roles existentes
+        roles_existentes = {r.id for r in Rol.query.filter(Rol.id.in_(todos_roles)).all()}
+        roles_inexistentes = todos_roles - roles_existentes
+        
+        if roles_inexistentes:
+            raise ValueError(
+                f"Tabla '{self.nombre_tabla}': role_id inexistentes en 'public.roles': {roles_inexistentes}"
+            )
+    
+    def validar_todo(self):
+        """Ejecuta todas las validaciones.
+        
+        Validaciones:
+            1. Coherencia de permisos (subconjuntos)
+            2. Existencia de roles en la tabla roles
+        
+        Raises:
+            ValueError: Si alguna validación falla
+        
+        Nota:
+            Este método se ejecuta automáticamente antes de INSERT/UPDATE
+            mediante hooks SQLAlchemy.
+        """
+        self.validar_coherencia_permisos()
+        self.validar_roles_existen()
+
+
+# ============================================================================
+# HOOKS DE SQLALCHEMY - Validación automática antes de INSERT/UPDATE
+# ============================================================================
+
+@event.listens_for(TablaMetadata, 'before_insert')
+@event.listens_for(TablaMetadata, 'before_update')
+def validar_antes_guardar(mapper, connection, target):
+    """Valida coherencia de permisos antes de guardar en BD.
+    
+    Se ejecuta automáticamente antes de cada INSERT o UPDATE.
+    Si la validación falla, lanza excepción y cancela la operación.
+    
+    Args:
+        mapper: Mapper de SQLAlchemy
+        connection: Conexión a la BD
+        target: Instancia de TablaMetadata siendo guardada
+    
+    Raises:
+        ValueError: Si las validaciones fallan
+    """
+    target.validar_todo()
