@@ -105,9 +105,28 @@ def run_migrations_online():
     connectable = get_engine()
 
     with connectable.connect() as connection:
+        # SOLUCIÓN Issue #85: Evitar regeneración masiva de FKs en cada migración
+        # 
+        # Problema: Alembic detecta diferencias en nombres de constraints FK
+        # autogeneradas y quiere recrearlas en cada `flask db migrate`.
+        # 
+        # Causa: Los modelos no especifican `name=` en ForeignKey, entonces
+        # Alembic compara:
+        #   - BD: nombre autogenerado (ej: tabla_campo_fkey)
+        #   - Modelo: None
+        # Y detecta "diferencia" aunque sean funcionalmente idénticas.
+        # 
+        # Solución: Deshabilitar comparación de FKs. Solo se detectarán
+        # cambios reales (nuevas FKs, FKs eliminadas, cambios de ondelete).
+        # Las FKs existentes no se tocarán.
+        # 
+        # Referencia: https://alembic.sqlalchemy.org/en/latest/api/runtime.html#alembic.runtime.environment.EnvironmentContext.configure
         context.configure(
             connection=connection,
             target_metadata=get_metadata(),
+            compare_type=True,  # Comparar tipos de columnas
+            compare_server_default=True,  # Comparar valores por defecto
+            compare_foreign_keys=False,  # NO comparar FKs (evita regeneración masiva)
             **conf_args
         )
 
