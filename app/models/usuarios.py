@@ -7,9 +7,9 @@ import secrets
 # Tabla de asociación Muchos-a-Muchos (Usuario <-> Rol)
 # Relación N:M que permite asignar múltiples roles a cada usuario
 usuarios_roles = db.Table('usuarios_roles',
-    db.Column('usuario_id', db.Integer, db.ForeignKey('public.usuarios.id'), primary_key=True,
+    db.Column('usuario_id', db.Integer, db.ForeignKey('public.usuarios.id', referent_schema='public'), primary_key=True,
               comment='FK a USUARIOS. Usuario al que se asigna el rol'),
-    db.Column('rol_id', db.Integer, db.ForeignKey('public.roles.id'), primary_key=True,
+    db.Column('rol_id', db.Integer, db.ForeignKey('public.roles.id', referent_schema='public'), primary_key=True,
               comment='FK a ROLES. Rol asignado al usuario'),
     schema='public'
 )

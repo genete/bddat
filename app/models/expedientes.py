@@ -108,7 +108,7 @@ class Expediente(db.Model):
     
     responsable_id = db.Column(
         db.Integer,
-        db.ForeignKey('public.usuarios.id'),
+        db.ForeignKey('public.usuarios.id', referent_schema='public'),
         nullable=True,  # ← CAMBIO: permite NULL para expedientes huérfanos
         comment='FK a USUARIOS. Tramitador asignado con permisos de gestión completa. NULL = huérfano sin asignar'
     )
@@ -126,7 +126,7 @@ class Expediente(db.Model):
     
     proyecto_id = db.Column(
         db.Integer,
-        db.ForeignKey('public.proyectos.id'),
+        db.ForeignKey('public.proyectos.id', referent_schema='public'),
         nullable=False,
         unique=True,
         comment='FK a PROYECTOS. Relación 1:1, un expediente tiene exactamente un proyecto'
@@ -134,7 +134,7 @@ class Expediente(db.Model):
     
     titular_id = db.Column(
         db.Integer,
-        db.ForeignKey('public.entidades.id'),
+        db.ForeignKey('public.entidades.id', referent_schema='public'),
         nullable=True,
         comment='FK a ENTIDADES. Titular actual del expediente (snapshot del histórico). NULL = sin titular asignado (anómalo transitorio)'
     )

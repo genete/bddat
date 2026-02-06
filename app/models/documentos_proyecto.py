@@ -65,14 +65,14 @@ class DocumentoProyecto(db.Model):
     
     proyecto_id = db.Column(
         db.Integer,
-        db.ForeignKey('public.proyectos.id', ondelete='CASCADE', use_alter=True, name='fk_documentos_proyecto_proyecto'),
+        db.ForeignKey('public.proyectos.id', referent_schema='public', ondelete='CASCADE', use_alter=True, name='fk_documentos_proyecto_proyecto'),
         nullable=False,
         comment='FK a PROYECTOS. Proyecto al que pertenece el documento'
     )
     
     documento_id = db.Column(
         db.Integer,
-        db.ForeignKey('public.documentos.id', ondelete='CASCADE'),
+        db.ForeignKey('public.documentos.id', referent_schema='public', ondelete='CASCADE'),
         nullable=False,
         unique=True,
         comment='FK UNIQUE a DOCUMENTOS. Un documento solo puede estar en un proyecto'

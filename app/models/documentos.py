@@ -73,7 +73,7 @@ class Documento(db.Model):
     
     expediente_id = db.Column(
         db.Integer,
-        db.ForeignKey('public.expedientes.id'),
+        db.ForeignKey('public.expedientes.id', referent_schema='public'),
         nullable=False,
         comment='FK a EXPEDIENTES. ÚNCO FK del documento (tabla agnóstica)'
     )

@@ -85,7 +85,7 @@ class Fase(db.Model):
     
     solicitud_id = db.Column(
         db.Integer,
-        db.ForeignKey('public.solicitudes.id', ondelete='CASCADE'),
+        db.ForeignKey('public.solicitudes.id', referent_schema='public', ondelete='CASCADE'),
         nullable=False,
         comment='FK a SOLICITUDES. Solicitud a la que pertenece la fase'
     )
@@ -118,7 +118,7 @@ class Fase(db.Model):
     
     documento_resultado_id = db.Column(
         db.Integer,
-        db.ForeignKey('public.documentos.id'),
+        db.ForeignKey('public.documentos.id', referent_schema='public'),
         nullable=True,
         comment='FK a DOCUMENTOS. Documento oficial que formaliza el resultado'
     )
