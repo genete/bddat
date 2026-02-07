@@ -7,16 +7,18 @@
  * Colores: #58 (Junta de Andalucía)
  */
 
-/* ===== TABLA RESPONSIVE ===== */
+/* ===== TABLA RESPONSIVE (FULL-WIDTH) ===== */
 .expedientes-table {
   width: 100%;
   background: var(--bg-card);
-  border-radius: var(--border-radius-lg);
-  box-shadow: var(--shadow-sm);
+  border-radius: 0; /* Sin border-radius para full-width */
+  box-shadow: none; /* Sin sombra para full-width */
   border-collapse: separate;
   border-spacing: 0;
   /*overflow: hidden;*/  /* Comentado - bloqueaba sticky */
-  margin-bottom: 2rem;
+  margin-bottom: 0; /* Sin margen, controlamos fuera */
+  border-top: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
 }
 
 .expedientes-table thead {
@@ -24,7 +26,7 @@
 }
 
 .expedientes-table th {
-  padding: 1rem;
+  padding: 1rem var(--content-padding); /* Padding lateral usa variable */
   text-align: left;
   font-weight: 600;
   font-size: 0.875rem;
@@ -41,7 +43,7 @@
 }
 
 .expedientes-table td {
-  padding: 1rem;
+  padding: 1rem var(--content-padding); /* Padding lateral usa variable */
   border-bottom: 1px solid var(--border-color);
   font-size: 0.875rem;
 }
@@ -76,7 +78,7 @@
   
   .expedientes-table th,
   .expedientes-table td {
-    padding: 0.75rem 0.5rem;
+    padding: 0.75rem 1rem; /* Padding reducido en mobile */
     font-size: 0.8rem;
   }
   
