@@ -302,7 +302,7 @@
 /* ===== BOTÓN SCROLL TO TOP (BACK TO TOP) ===== */
 .scroll-to-top {
   position: fixed;
-  bottom: 2rem;
+  bottom: 5rem; /* Más arriba para evitar footer (antes 2rem) */
   right: 2rem;
   width: 3.5rem;
   height: 3.5rem;
@@ -343,7 +343,7 @@
 /* Responsive mobile: abajo centro */
 @media (max-width: 767px) {
   .scroll-to-top {
-    bottom: 1.5rem;
+    bottom: 4rem; /* También más arriba en mobile */
     right: 50%;
     transform: translateX(50%);
     width: 3rem;
