@@ -66,6 +66,7 @@ class Solicitud(db.Model):
               AÑADIDO solicitud_afectada_id.
         v3.1: AÑADIDO entidad_id (solicitante).
               AÑADIDO fecha_fin (finalización real).
+              AÑADIDO properties: activa, es_desistimiento_o_renuncia.
     """
     __tablename__ = 'solicitudes'
     __table_args__ = (
@@ -133,6 +134,38 @@ class Solicitud(db.Model):
     expediente = db.relationship('Expediente', backref='solicitudes')
     entidad = db.relationship('Entidad', backref='solicitudes')
     solicitud_afectada = db.relationship('Solicitud', remote_side=[id], backref='solicitudes_dependientes')
+    
+    # Properties
+    @property
+    def activa(self):
+        """
+        Determina si la solicitud está activa (en curso).
+        
+        Returns:
+            bool: True si estado es EN_TRAMITE, False en caso contrario.
+        
+        Uso:
+            if solicitud.activa:
+                # Solicitud aún en procedimiento
+        """
+        return self.estado == 'EN_TRAMITE'
+    
+    @property
+    def es_desistimiento_o_renuncia(self):
+        """
+        Determina si esta solicitud es un desistimiento o renuncia.
+        
+        Returns:
+            bool: True si tiene solicitud_afectada_id (referencia a otra solicitud).
+        
+        Regla de negocio:
+            Solo solicitudes de DESISTIMIENTO/RENUNCIA tienen solicitud_afectada_id.
+        
+        Uso:
+            if solicitud.es_desistimiento_o_renuncia:
+                solicitud_original = solicitud.solicitud_afectada
+        """
+        return self.solicitud_afectada_id is not None
     
     def __repr__(self):
         """Representación técnica para debugging."""
