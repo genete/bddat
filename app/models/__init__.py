@@ -21,6 +21,9 @@ from app.models.tipos_solicitudes import TipoSolicitud
 from app.models.tipos_tareas import TipoTarea
 from app.models.tipos_tramites import TipoTramite
 
+# Modelo de metadata del sistema (issue #85)
+from app.models.tabla_metadata import TablaMetadata
+
 # Arquitectura Entidades Polimórfica (nuevos modelos issue #62)
 # Orden: TipoEntidad primero, luego Entidad, luego metadatos
 from app.models.tipo_entidad import TipoEntidad
@@ -64,6 +67,8 @@ __all__ = [
     'TipoSolicitud',
     'TipoTarea',
     'TipoTramite',
+    # Metadata del sistema
+    'TablaMetadata',
     # Arquitectura Entidades
     'TipoEntidad',
     'Entidad',

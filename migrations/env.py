@@ -102,6 +102,22 @@ def run_migrations_online():
     if conf_args.get("process_revision_directives") is None:
         conf_args["process_revision_directives"] = process_revision_directives
 
+    # SOLUCIÓN Issue #85: Evitar regeneración masiva de FKs en cada migración
+    # 
+    # Problema: Alembic detecta diferencias entre:
+    #   - BD: FKs sin schema explícito (usa search_path, ej: REFERENCES tabla(id))
+    #   - Modelos: FKs con referent_schema='public' (ej: REFERENCES public.tabla(id))
+    # 
+    # Aunque son funcionalmente idénticas, Alembic las ve como "diferentes"
+    # y quiere recrearlas todas en cada migración.
+    # 
+    # Solución: Deshabilitar comparación de FKs. Solo se detectarán cambios
+    # reales cuando se añadan/eliminen FKs o cambien propiedades (ondelete, etc).
+    # Las FKs existentes no se tocarán.
+    # 
+    # Referencia: https://alembic.sqlalchemy.org/en/latest/api/runtime.html
+    conf_args['compare_foreign_keys'] = False
+
     connectable = get_engine()
 
     with connectable.connect() as connection:
