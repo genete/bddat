@@ -23,6 +23,10 @@
   background: var(--primary);
   background-image: var(--gradient); /* Gradiente corporativo */
   color: var(--text-inverse);
+  /* STICKY HEADER - Se mantiene visible al scrollear */
+  position: sticky;
+  top: 60px; /* Altura del app-header para que quede justo debajo */
+  z-index: 100; /* Por encima de tbody, por debajo de app-header (1000) */
 }
 
 .expedientes-table th {
@@ -73,6 +77,11 @@
   .expedientes-table td {
     padding: 0.75rem 0.5rem;
     font-size: 0.8rem;
+  }
+  
+  /* En mobile, sticky header justo debajo del header mobile (56px) */
+  .expedientes-table thead {
+    top: 56px;
   }
 }
 
