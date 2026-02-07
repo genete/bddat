@@ -2,8 +2,8 @@
 
 **Sistema de Tramitación de Expedientes de Alta Tensión (BDDAT)**  
 **Formato agnóstico a la base de datos**  
-**Fecha:** 04/02/2026  
-**Generado automáticamente:** 04/02/2026 17:14 por merge_tables.py
+**Fecha:** 07/02/2026  
+**Generado automáticamente:** 07/02/2026 08:48 por merge_tables.py
 
 ---
 
@@ -33,6 +33,7 @@
   - [ENTIDADES_ORGANISMOS_PUBLICOS](#entidadesorganismospublicos)
   - [EXPEDIENTES](#expedientes)
   - [FASES](#fases)
+  - [HISTORICO_TITULARES_EXPEDIENTE](#historicotitularesexpediente)
   - [MUNICIPIOS_PROYECTO](#municipiosproyecto)
   - [PROYECTOS](#proyectos)
   - [ROLES](#roles)
@@ -2278,20 +2279,19 @@ Metadatos específicos de diputaciones provinciales que pueden actuar con múlti
 | Campo | Tipo | Descripción | Nullable | Notas |
 |:---|:---|:---|:---|:---|
 | **ENTIDAD_ID** | INTEGER | Referencia a entidad base | NO | PK y FK → ENTIDADES(ID), UNIQUE, CASCADE |
-| **CODIGO_DIR3** | VARCHAR(10) | Código DIR3 oficial de la diputación | NO | UNIQUE. Para notificaciones SIR cuando actúa como organismo consultado |
+| **CODIGO_DIR3** | VARCHAR(20) | Código DIR3 oficial de la diputación | NO | UNIQUE. Para notificaciones SIR cuando actúa como organismo consultado. Formato: 1-2 letras + 7-8 números. Ej: L01110002 |
 | **EMAIL_PUBLICACION_BOP** | VARCHAR(255) | Email para solicitar publicaciones en BOP | SÍ | Ej: boletin@bopcadiz.org. Método tradicional: correo con datos pagador + texto a publicar |
-| **OBSERVACIONES** | TEXT | Notas adicionales | SÍ | Procedimientos publicación, tarifas, plataformas alternativas, contactos específicos |
+| **OBSERVACIONES** | TEXT | Notas sobre procedimientos y contactos | SÍ | Procedimientos publicación, tarifas, plataformas alternativas, contactos específicos. Ej: "Concesionaria: Asociación Prensa Cádiz" |
 
 #### Claves
 
 - **PK:** `ENTIDAD_ID`
-- **UNIQUE:** `CODIGO_DIR3`
 - **FK:**
   - `ENTIDAD_ID` → `ENTIDADES(ID)` ON DELETE CASCADE
 
-#### Índices Recomendados
+#### Índices
 
-- `CODIGO_DIR3` (único, búsqueda rápida por código oficial)
+- `ix_public_entidades_diputaciones_codigo_dir3` (único, sobre `CODIGO_DIR3`)
 
 #### Relaciones
 
@@ -2299,15 +2299,16 @@ Metadatos específicos de diputaciones provinciales que pueden actuar con múlti
 
 #### Notas de Versión
 
-- **v1.0** (01/02/2026): Creación inicial con estructura minimalista (DIR3 + email publicación BOP + observaciones)
+- **v1.0** (01/02/2026): Creación inicial con estructura minimalista
+- **v1.1** (04/02/2026): Sincronización con schema.sql - codigo_dir3 VARCHAR(20) NOT NULL, observaciones existe en schema
 
 #### Filosofía
 
 Tabla de metadatos para **diputaciones provinciales**:
 
 - **Relación 1:1** con `ENTIDADES` mediante `ENTIDAD_ID` como PK y FK
-- **Estructura minimalista:** Solo campos que NO están en `ENTIDADES`
-- **CODIGO_DIR3 como clave de negocio:** Identificación oficial para comunicaciones interadministrativas
+- **Estructura completa:** DIR3 obligatorio + email publicación BOP + observaciones
+- **CODIGO_DIR3 obligatorio:** NOT NULL, identificación oficial para comunicaciones interadministrativas
 - **EMAIL_PUBLICACION_BOP:** Método real de trabajo (al menos Cádiz y otras provincias)
 - **Sin representante:** La entidad es la corporación en sí (persona jurídica pública)
 - **Múltiples roles posibles:** Solicitante + Consultado + Publicador BOP
@@ -2323,8 +2324,9 @@ Tabla de metadatos para **diputaciones provinciales**:
 - `TELEFONO`: Teléfono general
 - `DIRECCION`, `CODIGO_POSTAL`: Sede de la diputación (Palacio Provincial)
 - `MUNICIPIO_ID`: FK a municipio donde tiene sede (capital provincia), pero NO gestiona ese municipio
+- `NOTAS`: Observaciones generales sobre la entidad
 
-**Si se necesitan contactos específicos (email área técnica, teléfono informática), usar campo `OBSERVACIONES`.**
+**El campo `OBSERVACIONES` de esta tabla es específico para temas de publicación BOP y procesos administrativos de la diputación.**
 
 #### CIF de Diputaciones
 
@@ -2356,6 +2358,10 @@ Tabla de metadatos para **diputaciones provinciales**:
 - Identificación única para notificaciones vía **SIR** cuando la diputación actúa como **organismo consultado** (emite informe)
 - NO se usa para notificar cuando actúa como **solicitante** (ahí usa Notifica con email)
 
+**Campo NOT NULL:**
+- Todas las diputaciones tienen código DIR3
+- Es obligatorio en la estructura real de la base de datos
+
 **Consulta de códigos DIR3:**
 - Portal oficial: https://administracionelectronica.gob.es/ctt/dir3
 - Descargas: https://administracionelectronica.gob.es/ctt/dir3/descargas
@@ -2381,6 +2387,32 @@ Tabla de metadatos para **diputaciones provinciales**:
 **Campo nullable:**
 - Algunas diputaciones pueden usar exclusivamente plataforma electrónica (SIR u otra)
 - Si existe método alternativo, se documenta en `OBSERVACIONES`
+
+#### Campo OBSERVACIONES
+
+**Propósito específico:**
+- Información sobre **procedimientos de publicación BOP**
+- Contactos específicos de departamentos
+- Tarifas y métodos de pago
+- Plataformas alternativas o complementarias
+- Datos de concesionarias (si el BOP está externalizado)
+
+**Ejemplos de contenido:**
+
+```
+"Concesionaria: Asociación Prensa Cádiz (CIF: G11013232). 
+Tarifas: consultar Ordenanza fiscal. 
+Publicación: L-V días hábiles. 
+Contacto técnico BOP: 956 213 861"
+
+"Plataforma electrónica: https://bop.dival.es/bop/
+Envío anuncios: solo vía SIR. 
+Email backup: bop.incidencias@dival.es"
+```
+
+**Diferencia con `ENTIDADES.NOTAS`:**
+- `ENTIDADES.NOTAS`: Observaciones generales de la entidad (horarios, contactos genéricos)
+- `ENTIDADES_DIPUTACIONES.OBSERVACIONES`: Específico para publicación BOP y procesos administrativos
 
 #### BOP Cádiz: Caso Real Verificado
 
@@ -2429,7 +2461,8 @@ Tabla de metadatos para **diputaciones provinciales**:
 -- Aparecen diputaciones con tipo DIPUTACION
 SELECT e.* FROM entidades e
 JOIN tipos_entidades te ON e.tipo_entidad_id = te.id
-WHERE te.puede_ser_consultado = TRUE;
+WHERE te.puede_ser_consultado = TRUE
+AND e.activo = TRUE;
 
 -- Contexto: Crear solicitud (diputación solicita instalación propia)
 -- Solo aparecen entidades con registro en ENTIDADES_ADMINISTRADOS
@@ -2452,12 +2485,14 @@ AND e.activo = TRUE;
 - BDDAT notifica vía **SIR** al ayuntamiento
 - Ayuntamiento publica en su sede electrónica
 - Sin campo `email_publicacion` (proceso interno del ayuntamiento)
+- `codigo_dir3` es NULLABLE (ayuntamientos pequeños sin DIR3)
 
 **DIPUTACIONES:**
 - Publican en **BOP** (Boletín Oficial Provincial)
 - BDDAT solicita publicación vía **email** tradicional (método real)
 - Campo `EMAIL_PUBLICACION_BOP` necesario (ej: `boletin@bopcadiz.org`)
 - BOP puede estar gestionado por concesionaria (caso Cádiz: Asociación Prensa)
+- `codigo_dir3` es NOT NULL (todas las diputaciones tienen DIR3)
 
 #### Flujo UX: Copia de Datos entre Roles
 
@@ -2477,14 +2512,15 @@ AND e.activo = TRUE;
 1. **CODIGO_DIR3 obligatorio** (NOT NULL, UNIQUE)
 2. **CIF_NIF obligatorio** en `ENTIDADES` (formato P+provincia+00000+control)
 3. **EMAIL_PUBLICACION_BOP opcional** (nullable, algunas usan solo plataforma electrónica)
-4. **Sin representante** (no aplican campos `REPRESENTANTE_*`)
-5. **Múltiples roles:** Una diputación puede estar en esta tabla Y en `ENTIDADES_ADMINISTRADOS`
-6. **Notificaciones duales:**
+4. **OBSERVACIONES opcional** (nullable, notas sobre procedimientos BOP)
+5. **Sin representante** (no aplican campos `REPRESENTANTE_*`)
+6. **Múltiples roles:** Una diputación puede estar en esta tabla Y en `ENTIDADES_ADMINISTRADOS`
+7. **Notificaciones duales:**
    - Como **organismo consultado**: SIR (usa CODIGO_DIR3)
    - Como **solicitante**: Notifica (usa email de `ENTIDADES_ADMINISTRADOS`)
-7. **Publicación BOP:** Método tradicional email (datos pagador + texto anuncio)
-8. **Validación DIR3:** Formato alfanumérico, 8-10 caracteres
-9. **MUNICIPIO_ID en ENTIDADES:** Sede de la diputación (capital), NO implica gestión de ese municipio
+8. **Publicación BOP:** Método tradicional email (datos pagador + texto anuncio)
+9. **Validación DIR3:** Formato alfanumérico, 8-10 caracteres
+10. **MUNICIPIO_ID en ENTIDADES:** Sede de la diputación (capital), NO implica gestión de ese municipio
 
 #### Validaciones
 
@@ -2592,13 +2628,12 @@ SELECT
     ed.email_publicacion_bop,
     e.email,
     e.telefono,
-    p.nombre AS provincia
+    m.provincia
 FROM entidades e
 JOIN entidades_diputaciones ed ON e.id = ed.entidad_id
-JOIN municipios m ON e.municipio_id = m.id
-JOIN provincias p ON m.provincia_id = p.id
+JOIN estructura.municipios m ON e.municipio_id = m.id
 WHERE e.activo = TRUE
-ORDER BY p.nombre;
+ORDER BY m.provincia;
 ```
 
 **2. Buscar diputación por código DIR3:**
@@ -2639,15 +2674,15 @@ ORDER BY e.nombre_completo;
 
 ```sql
 SELECT 
-    p.nombre AS provincia,
+    m.provincia,
     e.nombre_completo,
     ed.email_publicacion_bop,
+    ed.observaciones,
     e.telefono
 FROM entidades e
 JOIN entidades_diputaciones ed ON e.id = ed.entidad_id
-JOIN municipios m ON e.municipio_id = m.id
-JOIN provincias p ON m.provincia_id = p.id
-WHERE p.codigo = '11'  -- Cádiz
+JOIN estructura.municipios m ON e.municipio_id = m.id
+WHERE m.provincia = 'Ourense'
 AND e.activo = TRUE;
 ```
 
@@ -2659,7 +2694,8 @@ SELECT
     CASE 
         WHEN ead.entidad_id IS NOT NULL THEN 'SÍ'
         ELSE 'NO'
-    END AS puede_solicitar
+    END AS puede_solicitar,
+    ead.email_notificaciones
 FROM entidades e
 JOIN entidades_diputaciones ed ON e.id = ed.entidad_id
 LEFT JOIN entidades_administrados ead ON e.id = ead.entidad_id
@@ -2676,7 +2712,8 @@ SELECT
 FROM entidades e
 JOIN entidades_diputaciones ed ON e.id = ed.entidad_id
 WHERE ed.email_publicacion_bop IS NULL
-AND e.activo = TRUE;
+AND e.activo = TRUE
+ORDER BY e.nombre_completo;
 ```
 
 ---
@@ -3588,6 +3625,491 @@ La fase es un **contenedor temporal de trámites** con un objetivo procedimental
 1. **No puede finalizarse** (`FECHA_FIN` NOT NULL) si existen trámites asociados sin finalizar (`TRAMITES.FECHA_FIN IS NULL`)
 2. `RESULTADO_FASE_ID obligatorio` al establecer `FECHA_FIN` (validación de interfaz)
 3. **Secuencias de fases:** Determinadas por motor de reglas según `TIPO_FASE_ID` y `TIPO_SOLICITUD_ID`
+
+---
+
+---
+
+### HISTORICO_TITULARES_EXPEDIENTE
+
+Tabla de auditoría inmutable que registra todos los cambios de titularidad de expedientes a lo largo del tiempo. Mantiene trazabilidad completa de la cadena de titularidad desde el origen, permitiendo consultar quién fue titular en cualquier momento histórico.
+
+#### Estructura
+
+| Campo | Tipo | Descripción | Nullable | Notas |
+|:---|:---|:---|:---|:---|
+| **ID** | INTEGER | Identificador único del registro histórico | NO | PK, autoincremental |
+| **EXPEDIENTE_ID** | INTEGER | Expediente cuya titularidad cambia | NO | FK → EXPEDIENTES(ID), ondelete=CASCADE. Indexed |
+| **TITULAR_ID** | INTEGER | Titular durante este periodo de vigencia | NO | FK → ENTIDADES(ID). Indexed |
+| **FECHA_DESDE** | TIMESTAMP | Timestamp inicio vigencia de este titular | NO | UNIQUE(expediente_id, fecha_desde). Indexed |
+| **FECHA_HASTA** | TIMESTAMP | Timestamp fin vigencia | SÍ | NULL = titular actual vigente. Indexed |
+| **SOLICITUD_CAMBIO_ID** | INTEGER | Solicitud que motivó el cambio de titularidad | SÍ | FK → SOLICITUDES(ID). NULL para registro INICIAL |
+| **MOTIVO** | VARCHAR(50) | Motivo del cambio de titularidad | SÍ | Valores: INICIAL, VENTA, HERENCIA, FUSION, ESCISION, CAMBIO_TITULAR, OTRO |
+| **OBSERVACIONES** | TEXT | Observaciones adicionales sobre el cambio | SÍ | Campo libre para detalles |
+| **CREATED_AT** | TIMESTAMP | Timestamp de creación del registro (auditoría) | NO | Default: NOW() |
+
+#### Claves
+
+- **PK:** `ID`
+- **FK:**
+  - `EXPEDIENTE_ID` → `EXPEDIENTES(ID)` (CASCADE)
+  - `TITULAR_ID` → `ENTIDADES(ID)`
+  - `SOLICITUD_CAMBIO_ID` → `SOLICITUDES(ID)`
+- **UNIQUE:** `(EXPEDIENTE_ID, FECHA_DESDE)`
+
+#### Índices Recomendados
+
+- `EXPEDIENTE_ID` (consultas por expediente)
+- `TITULAR_ID` (consultas por titular)
+- `FECHA_HASTA` (filtrar registros vigentes: WHERE fecha_hasta IS NULL)
+- `(EXPEDIENTE_ID, FECHA_DESDE)` (UNIQUE constraint, evita duplicados)
+
+#### Constraints
+
+```sql
+-- Vigencia: fecha_hasta debe ser posterior a fecha_desde
+CONSTRAINT chk_vigencia_titular 
+    CHECK (fecha_hasta IS NULL OR fecha_hasta >= fecha_desde)
+
+-- Unicidad: solo un registro por expediente+timestamp
+CONSTRAINT uq_expediente_titular_desde 
+    UNIQUE (expediente_id, fecha_desde)
+```
+
+#### Relaciones
+
+- **expediente**: EXPEDIENTES.id (FK, expediente afectado)
+- **titular**: ENTIDADES.id (FK, titular en este periodo)
+- **solicitud_cambio**: SOLICITUDES.id (FK, acto administrativo que motivó el cambio)
+- **expediente.historico_titulares**: Relación inversa 1:N desde Expediente
+- **titular.historico_como_titular**: Relación inversa 1:N desde Entidad
+
+#### Notas de Versión
+
+- **v3.2** (07/02/2026): Creación inicial de la tabla (Issue #64)
+- **v3.3** (07/02/2026): Cambio DATE → DateTime para permitir múltiples cambios/día
+
+#### Filosofía
+
+Esta tabla implementa un **histórico inmutable** con las siguientes características:
+
+- **Auditoría completa**: Cada cambio queda registrado permanentemente
+- **Solo INSERT**: No se permite UPDATE ni DELETE (integridad histórica)
+- **Titular actual**: Solo un registro puede tener `FECHA_HASTA = NULL` por expediente
+- **Snapshot en expedientes**: `EXPEDIENTES.TITULAR_ID` almacena snapshot desnormalizado del titular actual (optimización de rendimiento)
+- **Fuente de verdad**: Esta tabla es la fuente autoritativa del histórico completo
+- **TIMESTAMP**: Permite múltiples cambios el mismo día (corrección de errores, regularizaciones)
+
+#### Relación con EXPEDIENTES.TITULAR_ID
+
+**Desnormalización intencional para rendimiento:**
+
+```
+EXPEDIENTES.TITULAR_ID = snapshot del titular actual
+↑
+MANTENIDO SINCRONIZADO AUTOMÁTICAMENTE
+↓
+HISTORICO_TITULARES_EXPEDIENTE (WHERE fecha_hasta IS NULL)
+```
+
+**¿Por qué duplicar el dato?**
+
+- Evita JOIN en consultas frecuentes (listar expedientes con titular)
+- Optimización: 95% de consultas solo necesitan titular actual
+- El histórico completo se consulta raramente (auditoría, informes)
+
+**Sincronización automática:**
+
+1. Al crear expediente con titular → signal crea registro histórico INICIAL
+2. Al cambiar titular → método `registrar_cambio()` actualiza ambos lugares
+3. Garantía: `expedientes.titular_id` siempre apunta al titular vigente en histórico
+
+#### Motivos de Cambio
+
+| Motivo | Descripción | Solicitud Requerida |
+|:---|:---|:---|
+| **INICIAL** | Primer titular del expediente | NO (automático) |
+| **VENTA** | Compraventa de la instalación | SÍ |
+| **HERENCIA** | Transmisión mortis causa | SÍ |
+| **FUSION** | Absorción o fusión empresarial | SÍ |
+| **ESCISION** | División empresarial | SÍ |
+| **CAMBIO_TITULAR** | Cambio genérico (especificar en observaciones) | SÍ |
+| **OTRO** | Otros motivos (detallar en observaciones) | SÍ |
+
+#### Uso de TIMESTAMP (no DATE)
+
+**Decisión de diseño: TIMESTAMP en lugar de DATE**
+
+**Casos de uso que justifican TIMESTAMP:**
+
+1. **Corrección inmediata de errores**
+   ```
+   09:00 - Se asigna titular erróneo por error
+   09:15 - Se detecta error y se corrige
+   → Dos cambios el mismo día, diferente hora
+   ```
+
+2. **Procesos de regularización**
+   ```
+   Expediente con múltiples titulares históricos sin registrar
+   Se regularizan todos el mismo día con horas secuenciales
+   ```
+
+3. **Auditoría precisa**
+   ```
+   Saber exactamente cuándo se realizó cada cambio (hora exacta)
+   ```
+
+**Con DATE esto fallaría:**
+```sql
+-- CONSTRAINT UNIQUE(expediente_id, fecha_desde) fallaría si:
+INSERT ... fecha_desde='2026-02-07'  -- OK
+INSERT ... fecha_desde='2026-02-07'  -- ERROR: duplicate key
+```
+
+**Con TIMESTAMP funciona:**
+```sql
+INSERT ... fecha_desde='2026-02-07 09:00:00'  -- OK
+INSERT ... fecha_desde='2026-02-07 09:15:00'  -- OK (diferente timestamp)
+```
+
+#### Reglas de Negocio
+
+1. **Inmutabilidad**: Los registros NO se actualizan ni eliminan (solo INSERT)
+2. **Registro inicial automático**: Al crear expediente con titular_id, signal crea registro con motivo INICIAL
+3. **Un único titular vigente**: Solo un registro puede tener `fecha_hasta = NULL` por expediente
+4. **Validación de fechas**: `fecha_hasta` debe ser posterior o igual a `fecha_desde`
+5. **Trazabilidad**: Cambios posteriores al inicial deben tener `solicitud_cambio_id` (recomendado)
+6. **Sincronización snapshot**: Al cambiar titular, actualizar `expedientes.titular_id` simultáneamente
+7. **Cierre de vigencia**: Al crear nuevo titular vigente, cerrar el anterior con `fecha_hasta`
+
+#### Flujo de Creación de Expediente
+
+**Caso 1: Expediente con titular desde el inicio**
+
+```python
+expediente = Expediente(
+    numero_at=123,
+    proyecto_id=45,
+    titular_id=10,  # ← Titular asignado
+    tipo_expediente_id=1
+)
+db.session.add(expediente)
+db.session.commit()
+
+# → Signal 'after_insert' ejecuta automáticamente:
+# INSERT INTO historico_titulares_expediente (
+#     expediente_id=123,
+#     titular_id=10,
+#     fecha_desde=NOW(),
+#     fecha_hasta=NULL,
+#     motivo='INICIAL'
+# )
+```
+
+**Caso 2: Expediente sin titular inicial**
+
+```python
+expediente = Expediente(
+    numero_at=124,
+    proyecto_id=46,
+    titular_id=None,  # ← Sin titular
+    tipo_expediente_id=1
+)
+db.session.add(expediente)
+db.session.commit()
+
+# → Signal no crea registro histórico (titular_id es NULL)
+# El titular se asignará posteriormente mediante solicitud
+```
+
+#### Flujo de Cambio de Titular
+
+**Cuando se aprueba solicitud de cambio de titularidad:**
+
+```python
+from datetime import datetime
+from app.models import HistoricoTitularExpediente
+
+# Usuario aprueba solicitud de cambio de titularidad
+solicitud = Solicitud.query.get(120)
+solicitud.estado = 'RESUELTA'
+
+# Registrar cambio de titular
+HistoricoTitularExpediente.registrar_cambio(
+    expediente_id=expediente.id,
+    nuevo_titular_id=15,  # Nueva entidad
+    fecha_cambio=datetime.now(),
+    motivo='VENTA',
+    solicitud_cambio_id=solicitud.id,
+    observaciones='Venta según escritura pública nº 1234'
+)
+
+db.session.commit()
+
+# → Método registrar_cambio() ejecuta:
+# 1. UPDATE historico_titulares_expediente 
+#    SET fecha_hasta=NOW() 
+#    WHERE expediente_id=X AND fecha_hasta IS NULL
+#
+# 2. INSERT INTO historico_titulares_expediente (
+#      expediente_id=X,
+#      titular_id=15,
+#      fecha_desde=NOW(),
+#      fecha_hasta=NULL,
+#      solicitud_cambio_id=120,
+#      motivo='VENTA'
+#    )
+#
+# 3. UPDATE expedientes 
+#    SET titular_id=15 
+#    WHERE id=X
+```
+
+#### Consultas Habituales
+
+**Obtener titular actual de un expediente:**
+
+```python
+# Opción 1: Snapshot (rápido, sin JOIN)
+expediente = Expediente.query.get(123)
+titular_actual = expediente.titular  # Relación eager loaded
+
+# Opción 2: Desde histórico (con metadatos)
+registro = HistoricoTitularExpediente.titular_actual(expediente_id=123)
+if registro:
+    titular = registro.titular
+    desde = registro.fecha_desde
+    motivo = registro.motivo
+```
+
+**Obtener histórico completo de un expediente:**
+
+```python
+historico = HistoricoTitularExpediente.query\
+    .filter_by(expediente_id=123)\
+    .order_by('fecha_desde')\
+    .all()
+
+for registro in historico:
+    print(f"{registro.titular.nombre_completo}: "
+          f"{registro.fecha_desde} - {registro.fecha_hasta or 'ACTUAL'} "
+          f"({registro.motivo})")
+```
+
+**Consultar quién era titular en una fecha concreta:**
+
+```sql
+SELECT e.nombre_completo, h.fecha_desde, h.fecha_hasta
+FROM historico_titulares_expediente h
+JOIN entidades e ON e.id = h.titular_id
+WHERE h.expediente_id = 123
+  AND h.fecha_desde <= '2025-06-15 10:30:00'
+  AND (h.fecha_hasta IS NULL OR h.fecha_hasta >= '2025-06-15 10:30:00')
+```
+
+**Obtener todos los expedientes de un titular (actual):**
+
+```sql
+-- Opción 1: Desde snapshot (rápido)
+SELECT * FROM expedientes WHERE titular_id = 10;
+
+-- Opción 2: Desde histórico (verifica vigencia)
+SELECT e.* 
+FROM expedientes e
+JOIN historico_titulares_expediente h ON h.expediente_id = e.id
+WHERE h.titular_id = 10 AND h.fecha_hasta IS NULL;
+```
+
+**Obtener expedientes donde una entidad FUE titular (histórico):**
+
+```sql
+SELECT DISTINCT e.numero_at, e.id
+FROM expedientes e
+JOIN historico_titulares_expediente h ON h.expediente_id = e.id
+WHERE h.titular_id = 10
+ORDER BY e.numero_at;
+```
+
+#### Property vs Método Estático
+
+**Property en Expediente:**
+
+```python
+expediente = Expediente.query.get(123)
+registro = expediente.titular_actual  # Property
+```
+
+**Método estático en HistoricoTitularExpediente:**
+
+```python
+registro = HistoricoTitularExpediente.titular_actual(expediente_id=123)
+```
+
+Ambos retornan el mismo objeto `HistoricoTitularExpediente` vigente.
+
+#### Métodos del Modelo
+
+**Método estático: titular_actual(expediente_id)**
+
+Obtiene el registro histórico del titular actual vigente.
+
+```python
+registro = HistoricoTitularExpediente.titular_actual(expediente_id=42)
+if registro:
+    print(f"Titular: {registro.titular.nombre_completo}")
+    print(f"Desde: {registro.fecha_desde}")
+    print(f"Motivo: {registro.motivo}")
+```
+
+**Método estático: registrar_cambio(...)**
+
+Registra un cambio de titularidad completo:
+1. Cierra registro actual (`fecha_hasta = fecha_cambio`)
+2. Crea nuevo registro vigente (`fecha_hasta = NULL`)
+3. Actualiza snapshot en `expedientes.titular_id`
+
+```python
+nuevo_registro = HistoricoTitularExpediente.registrar_cambio(
+    expediente_id=42,
+    nuevo_titular_id=15,
+    fecha_cambio=datetime.now(),
+    motivo='VENTA',
+    solicitud_cambio_id=120,
+    observaciones='Cambio aprobado por resolución favorable'
+)
+db.session.commit()
+```
+
+**Método estático: crear_inicial(...)**
+
+Crea el registro INICIAL del primer titular (usado por signal).
+
+```python
+registro = HistoricoTitularExpediente.crear_inicial(
+    expediente_id=42,
+    titular_id=10,
+    fecha_desde=datetime.now(),
+    observaciones='Titular original del expediente'
+)
+db.session.add(registro)
+db.session.commit()
+```
+
+#### Signals SQLAlchemy
+
+**Signal: after_insert en Expediente**
+
+Cuando se crea un expediente con `titular_id` asignado, automáticamente se crea el registro histórico inicial.
+
+```python
+@event.listens_for(Expediente, 'after_insert')
+def crear_registro_historico_inicial(mapper, connection, target):
+    if target.titular_id is None:
+        return  # Sin titular, no crear histórico
+    
+    # INSERT en historico_titulares_expediente
+    connection.execute(
+        insert(historico_table).values(
+            expediente_id=target.id,
+            titular_id=target.titular_id,
+            fecha_desde=datetime.now(),
+            fecha_hasta=None,
+            motivo='INICIAL',
+            observaciones='Titular inicial del expediente'
+        )
+    )
+```
+
+#### Validaciones
+
+**Prevenir múltiples titulares vigentes:**
+
+```python
+# Antes de insertar nuevo registro vigente, cerrar el anterior
+registro_actual = HistoricoTitularExpediente.titular_actual(expediente_id)
+if registro_actual:
+    registro_actual.fecha_hasta = datetime.now()
+```
+
+**Validar fecha_cambio no anterior a fecha_desde:**
+
+```python
+if fecha_cambio < registro_actual.fecha_desde:
+    raise ValueError(
+        f"Fecha cambio ({fecha_cambio}) anterior a vigencia actual "
+        f"({registro_actual.fecha_desde})"
+    )
+```
+
+#### Integración con Interfaz Web
+
+**Vista de histórico en detalle de expediente:**
+
+```html
+<h3>Histórico de Titularidad</h3>
+<table>
+    <tr>
+        <th>Titular</th>
+        <th>Desde</th>
+        <th>Hasta</th>
+        <th>Motivo</th>
+        <th>Solicitud</th>
+    </tr>
+    {% for registro in expediente.historico_titulares|sort(attribute='fecha_desde') %}
+    <tr>
+        <td>{{ registro.titular.nombre_completo }}</td>
+        <td>{{ registro.fecha_desde|datetime }}</td>
+        <td>{{ registro.fecha_hasta|datetime if registro.fecha_hasta else 'VIGENTE' }}</td>
+        <td>{{ registro.motivo }}</td>
+        <td>
+            {% if registro.solicitud_cambio %}
+                <a href="{{ url_for('solicitudes.detalle', id=registro.solicitud_cambio_id) }}">
+                    Solicitud {{ registro.solicitud_cambio_id }}
+                </a>
+            {% else %}
+                -
+            {% endif %}
+        </td>
+    </tr>
+    {% endfor %}
+</table>
+```
+
+**Formulario de cambio de titular:**
+
+```python
+@bp.route('/expediente/<int:id>/cambiar-titular', methods=['POST'])
+@login_required
+def cambiar_titular(id):
+    expediente = Expediente.query.get_or_404(id)
+    nuevo_titular_id = request.form.get('nuevo_titular_id')
+    motivo = request.form.get('motivo')
+    observaciones = request.form.get('observaciones')
+    
+    try:
+        HistoricoTitularExpediente.registrar_cambio(
+            expediente_id=expediente.id,
+            nuevo_titular_id=nuevo_titular_id,
+            fecha_cambio=datetime.now(),
+            motivo=motivo,
+            solicitud_cambio_id=None,  # O ID de solicitud aprobada
+            observaciones=observaciones
+        )
+        db.session.commit()
+        flash('Titular actualizado correctamente', 'success')
+    except ValueError as e:
+        db.session.rollback()
+        flash(f'Error: {str(e)}', 'danger')
+    
+    return redirect(url_for('expedientes.detalle', id=id))
+```
+
+#### Migraciones
+
+**Creación inicial:** `bf66f512eaf4_add_historico_titulares_expediente_table.py`
+
+**Cambio DATE → DateTime:** `0d6742443660_cambiar_fecha_desde_y_fecha_hasta_de.py`
 
 ---
 
