@@ -1,6 +1,6 @@
 from app import db
 from sqlalchemy import event
-from datetime import date
+from datetime import datetime  # ← CAMBIO: date → datetime
 
 class Expediente(db.Model):
     """
@@ -89,6 +89,7 @@ class Expediente(db.Model):
         v3.2: Añadido TITULAR_ID (snapshot) + tabla HISTORICO_TITULARES_EXPEDIENTE
               para gestión completa de cambios de titularidad.
         v3.3: Añadida property titular_actual + signal after_insert (Issue #64).
+        v3.4: Signal usa datetime.now() para consistencia con DateTime en histórico.
     """
     __tablename__ = 'expedientes'
     __table_args__ = (
@@ -190,7 +191,7 @@ class Expediente(db.Model):
             >>> expediente = Expediente.query.get(42)
             >>> registro = expediente.titular_actual
             >>> if registro:
-            >>>     print(f"Titular: {registro.titular.razon_social}")
+            >>>     print(f"Titular: {registro.titular.nombre_completo}")
             >>>     print(f"Desde: {registro.fecha_desde}")
             >>>     print(f"Motivo: {registro.motivo}")
         
@@ -228,7 +229,7 @@ def crear_registro_historico_inicial(mapper, connection, target):
         - Si titular_id tiene valor:
           1. Crea registro en historico_titulares_expediente
           2. Motivo = 'INICIAL'
-          3. fecha_desde = fecha actual
+          3. fecha_desde = datetime.now()
           4. fecha_hasta = NULL (vigente)
     
     Args:
@@ -251,6 +252,7 @@ def crear_registro_historico_inicial(mapper, connection, target):
         - Usa connection.execute() (nivel Core) porque el signal se ejecuta
           durante flush, antes de commit
         - No usar db.session.add() aquí (causaría recursividad infinita)
+        - Usa datetime.now() para consistencia con DateTime en histórico
     """
     # Solo crear histórico si hay titular asignado
     if target.titular_id is None:
@@ -274,12 +276,12 @@ def crear_registro_historico_inicial(mapper, connection, target):
         schema='public'
     )
     
-    # Insertar registro INICIAL
+    # Insertar registro INICIAL con datetime.now()
     connection.execute(
         insert(historico_table).values(
             expediente_id=target.id,
             titular_id=target.titular_id,
-            fecha_desde=date.today(),
+            fecha_desde=datetime.now(),  # ← CAMBIO: date.today() → datetime.now()
             fecha_hasta=None,  # Vigente actual
             solicitud_cambio_id=None,  # No hay solicitud para registro inicial
             motivo='INICIAL',
