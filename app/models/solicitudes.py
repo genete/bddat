@@ -10,7 +10,7 @@ class Solicitud(db.Model):
         solicitud con su estado propio, independiente del expediente global.
     
     FILOSOFÍA:
-        - Una solicitud puede tener MÚTIPLES TIPOS simultáneamente (vía SOLICITUDES_TIPOS)
+        - Una solicitud puede tener MÚLTIPLES TIPOS simultáneamente (vía SOLICITUDES_TIPOS)
         - Motor de reglas aplica lógica sobre tipos individuales, no combinaciones
         - Cada solicitud es una instancia independiente con estado y trazabilidad propios
         - Permite secuencias temporales (MOD requiere AAC previa)
@@ -153,15 +153,29 @@ class Solicitud(db.Model):
     @property
     def es_desistimiento_o_renuncia(self):
         """
-        Determina si esta solicitud es un desistimiento o renuncia.
+        IMPLEMENTACIÓN TEMPORAL - Fase "TODO VALE"
+        
+        Heurística simple: Si tiene solicitud_afectada_id, probablemente sea
+        desistimiento o renuncia de otra solicitud previa.
         
         Returns:
             bool: True si tiene solicitud_afectada_id (referencia a otra solicitud).
         
-        Regla de negocio:
-            Solo solicitudes de DESISTIMIENTO/RENUNCIA tienen solicitud_afectada_id.
+        LIMITACIÓN ACTUAL:
+            No verifica los tipos reales en solicitudes_tipos. Puede generar
+            falsos positivos si en el futuro hay otros tipos de solicitud
+            que también referencien otra solicitud (ej: MODIFICACIÓN, AMPLIACIÓN).
         
-        Uso:
+        Regla de negocio real (no implementada aún):
+            - Consultar solicitudes_tipos → obtener códigos de tipos
+            - Verificar si algún código IN ['DESISTIMIENTO', 'RENUNCIA']
+            - Validar que solicitud_afectada_id NOT NULL si aplica
+        
+        TODO (Fase Motor de Reglas):
+            Implementar verificación real consultando tipos asociados
+            cuando exista motor de validaciones configurables por tablas.
+        
+        Uso actual:
             if solicitud.es_desistimiento_o_renuncia:
                 solicitud_original = solicitud.solicitud_afectada
         """
