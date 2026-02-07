@@ -25,7 +25,7 @@
   color: var(--text-inverse);
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 1rem;
   padding: 0 var(--content-padding);
   box-shadow: var(--shadow);
   height: var(--header-height);
@@ -41,6 +41,7 @@
   align-items: center;
   gap: 0.5rem;
   transition: opacity 0.2s ease;
+  white-space: nowrap;
 }
 
 .app-header .logo:hover {
@@ -48,13 +49,14 @@
   text-decoration: none;
 }
 
-/* Breadcrumb */
+/* Breadcrumb (pegado al logo) */
 .app-header .breadcrumb {
   display: flex;
   align-items: center;
   gap: 0.5rem;
   margin: 0;
-  padding: 0;
+  padding: 0 0 0 1rem;
+  border-left: 2px solid rgba(255, 255, 255, 0.3);
   list-style: none;
   font-size: 0.875rem;
   color: rgba(255, 255, 255, 0.8);
@@ -73,6 +75,11 @@
 
 .app-header .breadcrumb span {
   color: rgba(255, 255, 255, 0.6);
+}
+
+/* Spacer (empuja user-menu a la derecha) */
+.app-header .spacer {
+  flex: 1;
 }
 
 /* User Menu */
@@ -135,7 +142,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 2rem;
+  margin-bottom: 1rem; /* Compacto: 2rem -> 1rem */
   flex-wrap: wrap;
   gap: 1rem;
 }
@@ -145,6 +152,7 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  font-size: 1.75rem;
 }
 
 /* ===== RESPONSIVE ===== */
@@ -166,6 +174,7 @@
   
   .app-header {
     padding: 0 1rem;
+    gap: 0.5rem;
   }
   
   .app-header .breadcrumb {
