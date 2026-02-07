@@ -1,0 +1,67 @@
+{% extends "layout/base_full_width.html" %}
+
+{% block title %}Gestión de Expedientes - BDDAT v2{% endblock %}
+
+{% block breadcrumb %}
+<span>Tramitación</span>
+{% endblock %}
+
+{% block content %}
+
+<!-- TODO #94 (Tarea 6): Implementar vista listado completa -->
+
+<!-- Banner prototipo (temporal) -->
+<div style="background: linear-gradient(135deg, #fef3c7 0%, #fed7aa 100%); 
+            border-left: 4px solid #f59e0b; 
+            padding: 1rem 2rem; 
+            margin-bottom: 2rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+  <div style="display: flex; align-items: center; justify-content: space-between;">
+    <div>
+      <h4 style="margin: 0; color: #92400e; font-weight: 600;">
+        🚧 PROTOTIPO UI v2 - Issue #94 (Fase 1)
+      </h4>
+      <p style="margin: 0.5rem 0 0 0; color: #78350f; font-size: 0.9rem;">
+        Datos ficticios. Vista experimental de listado con scroll infinito.
+        <a href="https://github.com/genete/bddat/issues/94" 
+           style="color: #92400e; text-decoration: underline;">
+          Ver Issue #94
+        </a>
+      </p>
+    </div>
+    <div style="display: flex; gap: 1rem;">
+      <a href="{{ url_for('expedientes.index') }}" class="btn btn-outline">
+        Ver Versión Actual
+      </a>
+      <a href="{{ url_for('dashboard.index') if 'dashboard' in url_for.__globals__ else '#' }}" class="btn btn-secondary">
+        ← Dashboard
+      </a>
+    </div>
+  </div>
+</div>
+
+<!-- Header página -->
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+  <h1>📂 Gestión de Expedientes</h1>
+  <button class="btn btn-primary">+ Nuevo</button>
+</div>
+
+<!-- TODO: Implementar filtros según diseño final (filtros en columnas) -->
+<!-- TODO: Implementar indicador "Mostrando X-Y de Z" -->
+<!-- TODO: Implementar tabla con 50 filas hardcodeadas -->
+<!-- TODO: Implementar badges estados -->
+<!-- TODO: Implementar botones acciones -->
+
+<p style="color: var(--text-secondary); padding: 2rem; text-align: center; border: 2px dashed var(--border-color); border-radius: 0.5rem;">
+  🚧 Contenido en construcción - Issue #94
+  <br><br>
+  <strong>Tareas pendientes:</strong>
+  <br>• Tabla con datos mock (50 expedientes)
+  <br>• Filtros (búsqueda global + columnas)
+  <br>• Scroll infinito funcional
+  <br>• Badges estados (4 tipos)
+  <br>• Botones acciones
+</p>
+
+{% endblock %}
