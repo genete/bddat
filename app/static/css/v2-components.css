@@ -236,16 +236,25 @@
   font-size: 0.75rem;
 }
 
-/* ===== FILTROS ===== */
-/* NOTA: Diseño final con filtros en columnas (hover) */
-/* Esta es la versión inicial, se refinará después */
+/* ===== FILTROS + PAGINACIÓN (COMPACTO) ===== */
 
+/* Contenedor que une filtros + paginación en 1 línea */
+.filters-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+/* Filtros (izquierda) */
 .filters {
   display: flex;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-  flex-wrap: wrap;
+  gap: 0.75rem;
   align-items: center;
+  flex: 1;
+  min-width: 300px;
 }
 
 .filters input[type="search"],
@@ -261,7 +270,7 @@
 
 .filters input[type="search"] {
   flex: 1;
-  min-width: 200px;
+  min-width: 180px;
 }
 
 .filters input[type="search"]:focus,
@@ -272,15 +281,15 @@
 }
 
 .filters select {
-  min-width: 180px;
+  min-width: 140px;
   cursor: pointer;
 }
 
-/* ===== INDICADOR PAGINACIÓN ===== */
+/* ===== INDICADOR PAGINACIÓN (derecha) ===== */
 .pagination-info {
-  margin-bottom: 1rem;
   color: var(--text-secondary);
   font-size: 0.875rem;
+  white-space: nowrap;
 }
 
 .pagination-info span {
@@ -307,9 +316,14 @@
 
 /* ===== RESPONSIVE FILTROS ===== */
 @media (max-width: 767px) {
-  .filters {
+  .filters-row {
     flex-direction: column;
     align-items: stretch;
+  }
+  
+  .filters {
+    flex-direction: column;
+    min-width: auto;
   }
   
   .filters input[type="search"],
@@ -317,5 +331,9 @@
   .filters .btn {
     width: 100%;
     min-width: auto;
+  }
+  
+  .pagination-info {
+    text-align: center;
   }
 }
