@@ -26,7 +26,7 @@ from app.models.tabla_metadata import TablaMetadata
 
 # Arquitectura Entidades Polimórfica (nuevos modelos issue #62)
 # Orden: TipoEntidad primero, luego Entidad, luego metadatos
-from app.models.tipo_entidad import TipoEntidad
+from app.models.tipos_entidades import TipoEntidad
 from app.models.entidad import Entidad
 from app.models.entidad_administrado import EntidadAdministrado
 from app.models.entidad_empresa_servicio_publico import EntidadEmpresaServicioPublico
@@ -44,6 +44,9 @@ from app.models.proyectos import Proyecto
 from app.models.expedientes import Expediente  # Depende de Proyecto, Usuario, TipoExpediente
 from app.models.documentos import Documento  # Depende de Expediente
 from app.models.solicitudes import Solicitud  # Depende de Expediente
+
+# Histórico de titulares (issue #64)
+from app.models.historico_titular_expediente import HistoricoTitularExpediente  # Depende de Expediente, Entidad, Solicitud
 
 # Modelos operacionales con dependencias múltiples
 from app.models.solicitudes_tipos import SolicitudTipo  # Depende de Solicitud, TipoSolicitud
@@ -84,6 +87,9 @@ __all__ = [
     'Expediente',
     'Documento',
     'Solicitud',
+    # Histórico
+    'HistoricoTitularExpediente',
+    # Operacionales (continuación)
     'SolicitudTipo',
     'DocumentoProyecto',
     'Fase',
