@@ -14,7 +14,7 @@ Panel principal tras el login. Fichas simples de acceso a áreas funcionales del
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │ HEADER (top fijo)                                                │
-│ Logo BDDAT                           Carlos López | 🔔 | Salir│
+│ Logo BDDAT | Inicio                  Carlos López | 🔔 | Salir│
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                  │
 │  📊 PANEL DE CONTROL - ¿Qué desea hacer?                        │
@@ -43,11 +43,9 @@ Panel principal tras el login. Fichas simples de acceso a áreas funcionales del
 │  │                    │                                         │
 │  └──────────────────┘                                         │
 │                                                                  │
-│  Estadísticas rápidas:                                           │
-│  📊 354 expedientes | 415 solicitudes | 103 finalizados          │
-│                                                                  │
 └──────────────────────────────────────────────────────────────────┤
-│ FOOTER (bottom fijo)                                             │
+│ FOOTER (bottom fijo, full ancho)                                 │
+│ 📊 354 expedientes | 415 solicitudes | 103 finalizados          │
 │ © 2026 BDDAT v0.3.2                                             │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -59,11 +57,11 @@ Panel principal tras el login. Fichas simples de acceso a áreas funcionales del
   - Administración: Usuarios, roles, configuración
   - Ayuda: Documentación, tutoriales, soporte
 - **Sin estadísticas complejas en las fichas** (propenso a errores y divergencias)
-- **Estadísticas simples al pie** (visibles o a demanda)
+- **Estadísticas fijas en footer** (aprovecha ancho completo, visibles en todas las vistas)
 - **Sin sidebar**
 
 ### Navegación
-- Header con breadcrumb simple: `Dashboard`
+- Header con breadcrumb simple: `Inicio`
 - Clic en ficha → Entra al área correspondiente (Vista 2 o Vista 3)
 - Sin duplicación de navegación
 - Cada área gestiona su propia complejidad
@@ -83,7 +81,7 @@ Ejemplo: Tras pulsar ficha "Tramitación" en dashboard → Aparece listado de ex
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │ HEADER (top fijo)                                                │
-│ Logo | Dashboard > Tramitación        Carlos López | 🔔 | Salir│
+│ Logo | Inicio > Tramitación          Carlos López | 🔔 | Salir│
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                  │
 │  📂 GESTIÓN DE EXPEDIENTES                      [+ Nuevo]       │
@@ -92,6 +90,8 @@ Ejemplo: Tras pulsar ficha "Tramitación" en dashboard → Aparece listado de ex
 │  │ 🔍 Buscar...        [Filtros ▼]  [Exportar CSV]    │       │
 │  └─────────────────────────────────────────────────────┘       │
 │                                                                  │
+│  Mostrando 1-25 de 354                                           │
+│                                                                  │
 │  ┌───────────────────────────────────────────────────────────┐ │
 │  │ N° AT   │ Titular  │ Sols │ Estado    │ Vencim. │ Acciones │ │
 │  ├───────────────────────────────────────────────────────────┤ │
@@ -99,12 +99,13 @@ Ejemplo: Tras pulsar ficha "Tramitación" en dashboard → Aparece listado de ex
 │  │ AT-124  │ Iberdrola│ 1    │ Resuelto  │ -       │ Ver      │ │
 │  │ AT-125  │ Sin tit. │ 0    │ Incomp.   │ -       │ Subsanar │ │
 │  │ ...                                                       │ │
+│  │ AT-149  │ Viesgo   │ 1    │ En trám.  │ 5 días   │ Tramitar │ │
+│  └───────────────────────────────────────────────────────────┘ │
+│  │  (scroll infinito: carga automática al llegar al final)  │ │
 │  └───────────────────────────────────────────────────────────┘ │
 │                                                                  │
-│  Mostrando 1-25 de 354    [◀] [1] [2] [3] ... [15] [▶]        │
-│                                                                  │
 └──────────────────────────────────────────────────────────────────┤
-│ FOOTER                                                           │
+│ FOOTER (bottom fijo, full ancho)                                 │
 │ 📊 354 expedientes | 415 solicitudes | 103 finalizados          │
 │ © 2026 BDDAT v0.3.2                                             │
 └─────────────────────────────────────────────────────────────────┘
@@ -119,15 +120,40 @@ Ejemplo: Tras pulsar ficha "Tramitación" en dashboard → Aparece listado de ex
   - Estado tramitación (lógica compleja)
   - Próximo vencimiento (MIN fecha límite)
   - Acciones (Tramitar / Ver / Subsanar)
+- **Indicador "Mostrando X-Y de Z"** en parte superior (fijo, siempre visible)
+- **Scroll infinito**: Carga automática de siguientes X registros al llegar al final
+  - Tamaño de lote (X) configurable por administrador
+  - Descarga primeros X de memoria al cargar siguientes X
+  - Actualiza indicador "Mostrando..." según posición scroll
+  - Funciona con filtros aplicados (cuenta total cambia)
 - **Filtros**: Por titular, estado, vencimientos, solicitudes activas
 - **Botón [Tramitar]**: Lleva a Vista 3 (Sidebar acordeón) con expediente seleccionado
 - **Botón [+ Nuevo]**: Crea expediente nuevo
 - **Sin sidebar lateral**
 
+### Paginación - Scroll infinito
+
+**Comportamiento:**
+
+1. **Carga inicial**: Muestra primeros X registros (ej: 25, configurable)
+2. **Scroll down**: Al llegar cerca del final (ej: últimos 5 elementos visibles)
+   - Carga siguientes X registros automáticamente
+   - Descarta primeros X de memoria (mantiene sólo ventana de 2X-3X en memoria)
+   - Actualiza indicador: `Mostrando 26-50 de 354`
+3. **Scroll up**: Si usuario sube mucho, recarga anteriores X
+4. **Con filtros**: Total cambia (ej: `Mostrando 1-25 de 87`)
+5. **Ordenación**: Usuario puede cambiar orden (por defecto: último expediente primero)
+
+**Ventajas:**
+- Sin "páginas" explícitas (UX fluida)
+- Indicador siempre visible arriba (sin scroll necesario)
+- Eficiente en memoria (ventana deslizante)
+- Compatible con filtros y ordenación
+
 ### Navegación
-- Header con breadcrumb: `Dashboard > Tramitación`
+- Header con breadcrumb: `Inicio > Tramitación`
 - Clic en [Tramitar] → Vista 3 (Detalle expediente CON sidebar)
-- Clic en breadcrumb → Vuelve a Dashboard
+- Clic en breadcrumb "Inicio" → Vuelve a Dashboard (Vista 1)
 - Esta vista es el "lobby" antes de entrar a la navegación jerárquica
 
 ---
@@ -184,7 +210,7 @@ Vista de detalle con navegación jerárquica mediante sidebar acordeón. Usada p
 │        │  - licencia_municipal.pdf (1.1 MB)                    │
 │        │                                                         │
 └────────┴─────────────────────────────────────────────────────────┤
-│ FOOTER                                                           │
+│ FOOTER (bottom fijo, full ancho)                                 │
 │ 📊 354 expedientes | 415 solicitudes | 103 finalizados          │
 │ © 2026 BDDAT v0.3.2                                             │
 └─────────────────────────────────────────────────────────────────┘
@@ -318,5 +344,5 @@ Estos 3 patrones son blueprints reutilizables para:
 ---
 
 **Última actualización:** 7 de febrero de 2026  
-**Versión:** 1.1  
+**Versión:** 1.2  
 **Issue relacionado:** #90
