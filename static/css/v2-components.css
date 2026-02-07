@@ -1,0 +1,47 @@
+/**
+ * v2-components.css
+ * Tabla, badges, botones, filtros
+ * 
+ * Issue: #94 (Fase 1)
+ * Epic: #93
+ */
+
+/* TODO #94: Implementar componentes (Tarea 4) */
+
+/* ===== TABLA RESPONSIVE ===== */
+.expedientes-table {
+  /* TODO: Estilos tabla base */
+}
+
+/* ===== BADGES ESTADOS ===== */
+.badge {
+  /* TODO: Badge base */
+}
+
+.badge-info { /* En trámite */ }
+.badge-success { /* Resuelto */ }
+.badge-warning { /* Incompleto */ }
+.badge-danger { /* Vencido */ }
+
+/* ===== BOTONES ===== */
+.btn {
+  /* TODO: Botón base */
+}
+
+.btn-primary { /* Tramitar */ }
+.btn-secondary { /* Ver */ }
+.btn-outline { /* Exportar */ }
+.btn-warning { /* Subsanar */ }
+.btn-danger { /* Urgente */ }
+
+/* ===== FILTROS ===== */
+/* NOTA: Diseño final con filtros en columnas (comentado en issue) */
+/* Implementar versión inicial, refinar después */
+
+.filters {
+  /* TODO: Contenedor filtros */
+}
+
+/* TODO: Input search global */
+/* TODO: Filtros en cabeceras (hover) */
+/* TODO: Iconos filtro activo */

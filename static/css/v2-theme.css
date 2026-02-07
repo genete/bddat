@@ -1,0 +1,68 @@
+/**
+ * v2-theme.css
+ * Variables CSS, colores, tipografía para UI v2
+ * 
+ * Issue: #94 (Fase 1 - Prototipo Vista Listado v2)
+ * Epic: #93 (Sistema de Navegación UI Modular)
+ * Referencia: #90 (Especificación Patrones UI)
+ */
+
+:root {
+  /* Layout */
+  --max-width: 100%;           /* Sin limitador max-width */
+  --content-padding: 2rem;
+  --header-height: 60px;
+  --footer-height: 50px;
+  
+  /* Colores principales */
+  --primary: #0ea5e9;          /* Sky 500 - Acciones primarias */
+  --secondary: #64748b;        /* Slate 500 - Secundario */
+  --success: #10b981;          /* Emerald 500 - Resuelto */
+  --warning: #f59e0b;          /* Amber 500 - Próximo vencimiento */
+  --danger: #ef4444;           /* Red 500 - Vencido */
+  --info: #3b82f6;             /* Blue 500 - En trámite */
+  
+  /* Backgrounds */
+  --bg-page: #f8fafc;          /* Slate 50 - Fondo página */
+  --bg-card: #ffffff;          /* Blanco - Tablas/cards */
+  --bg-header: #1e293b;        /* Slate 800 - Header oscuro */
+  --bg-footer: #334155;        /* Slate 700 - Footer */
+  
+  /* Texto */
+  --text-primary: #0f172a;     /* Slate 900 */
+  --text-secondary: #475569;   /* Slate 600 */
+  --text-inverse: #ffffff;     /* Texto sobre fondos oscuros */
+  
+  /* Bordes */
+  --border-color: #e2e8f0;     /* Slate 200 */
+  --border-radius: 0.5rem;
+  
+  /* Sombras */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+}
+
+/* Tipografía base */
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--text-primary);
+  background-color: var(--bg-page);
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 600;
+  line-height: 1.2;
+  margin: 0;
+}
+
+/* Resets */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* TODO #94: Añadir más estilos base si es necesario */

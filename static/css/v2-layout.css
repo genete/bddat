@@ -1,0 +1,45 @@
+/**
+ * v2-layout.css
+ * Grid principal (header/main/footer), responsive
+ * 
+ * Issue: #94 (Fase 1)
+ * Epic: #93
+ */
+
+/* TODO #94: Implementar grid principal (Tarea 3) */
+
+/* Grid principal */
+.app-container {
+  display: grid;
+  grid-template-rows: var(--header-height) 1fr var(--footer-height);
+  min-height: 100vh;
+  width: 100%;
+}
+
+/* TODO: Header fijo top */
+.app-header {
+  /* Implementar según especificación */
+}
+
+/* TODO: Main content scrollable */
+.app-main {
+  /* Implementar según especificación */
+}
+
+/* TODO: Footer fijo bottom */
+.app-footer {
+  /* Implementar según especificación */
+}
+
+/* TODO: Responsive breakpoints */
+@media (max-width: 768px) {
+  /* Mobile */
+}
+
+@media (min-width: 769px) and (max-width: 1199px) {
+  /* Tablet */
+}
+
+@media (min-width: 1200px) {
+  /* Desktop */
+}

@@ -1,0 +1,31 @@
+<!-- 
+_header.html
+Header reutilizable para layout v2
+
+Issue: #94 (Fase 1 - Tarea 5)
+Epic: #93
+-->
+
+<header class="app-header">
+    <!-- TODO #94: Implementar header completo -->
+    <div>
+        <a href="{{ url_for('dashboard.index') if 'dashboard' in url_for.__globals__ else '#' }}" class="logo">
+            BDDAT v2
+        </a>
+        <nav class="breadcrumb">
+            <a href="#">Inicio</a>
+            <span>›</span>
+            {% block breadcrumb %}
+            <span>Tramitación</span>
+            {% endblock %}
+        </nav>
+    </div>
+    
+    <div class="user-menu">
+        <span>{{ usuario|default('Usuario') }}</span>
+        <a href="#">🔔 <sup>{{ notificaciones|default(0) }}</sup></a>
+        <a href="#">Salir</a>
+    </div>
+</header>
+
+<!-- TODO: Añadir estilos completos en v2-layout.css -->
