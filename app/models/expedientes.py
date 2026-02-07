@@ -1,4 +1,6 @@
 from app import db
+from sqlalchemy import event
+from datetime import date
 
 class Expediente(db.Model):
     """
@@ -74,6 +76,11 @@ class Expediente(db.Model):
            - Solicitudes permitidas
            - Fases obligatorias
            - Organismos a consultar
+        6. Al crear expediente con titular_id:
+           - Se registra automáticamente en histórico con motivo INICIAL (signal)
+    
+    SIGNALS:
+        - after_insert: Crea registro histórico INICIAL si titular_id presente
     
     NOTAS DE VERSIÓN:
         v3.0: Añadido PROYECTO_ID (relación 1:1). Antes el proyecto
@@ -81,6 +88,7 @@ class Expediente(db.Model):
         v3.1: RESPONSABLE_ID ahora nullable para permitir expedientes huérfanos.
         v3.2: Añadido TITULAR_ID (snapshot) + tabla HISTORICO_TITULARES_EXPEDIENTE
               para gestión completa de cambios de titularidad.
+        v3.3: Añadida property titular_actual + signal after_insert (Issue #64).
     """
     __tablename__ = 'expedientes'
     __table_args__ = (
@@ -165,6 +173,34 @@ class Expediente(db.Model):
         backref='expedientes_como_titular'
     )
     
+    @property
+    def titular_actual(self):
+        """
+        Obtiene el registro histórico del titular actual vigente.
+        
+        DIFERENCIA con self.titular:
+            - self.titular: Entidad (snapshot desnormalizado, optimizado)
+            - self.titular_actual: HistoricoTitularExpediente (registro completo con fechas, motivo, etc.)
+        
+        Returns:
+            HistoricoTitularExpediente: Registro vigente (fecha_hasta = NULL)
+            None: Si no hay titular actual (situación anómala)
+        
+        Ejemplo:
+            >>> expediente = Expediente.query.get(42)
+            >>> registro = expediente.titular_actual
+            >>> if registro:
+            >>>     print(f"Titular: {registro.titular.razon_social}")
+            >>>     print(f"Desde: {registro.fecha_desde}")
+            >>>     print(f"Motivo: {registro.motivo}")
+        
+        Nota:
+            Para obtener solo la entidad titular, usar self.titular (más rápido).
+            Usar esta property cuando necesites fechas, motivo u observaciones.
+        """
+        from app.models.historico_titular_expediente import HistoricoTitularExpediente
+        return HistoricoTitularExpediente.titular_actual(self.id)
+    
     def __repr__(self):
         """Representación técnica para debugging."""
         return f'<Expediente id={self.id} numero_at={self.numero_at}>'
@@ -172,3 +208,82 @@ class Expediente(db.Model):
     def __str__(self):
         """Representación legible para interfaz."""
         return f'Expediente AT-{self.numero_at}'
+
+
+# =============================================================================
+# SIGNALS - SQLAlchemy Events
+# =============================================================================
+
+@event.listens_for(Expediente, 'after_insert')
+def crear_registro_historico_inicial(mapper, connection, target):
+    """
+    Signal que se ejecuta después de insertar un nuevo Expediente.
+    
+    PROPÓSITO:
+        Crea automáticamente el registro histórico INICIAL cuando se crea
+        un expediente con titular_id asignado.
+    
+    COMPORTAMIENTO:
+        - Si titular_id es NULL: no hace nada (expediente sin titular aún)
+        - Si titular_id tiene valor:
+          1. Crea registro en historico_titulares_expediente
+          2. Motivo = 'INICIAL'
+          3. fecha_desde = fecha actual
+          4. fecha_hasta = NULL (vigente)
+    
+    Args:
+        mapper: El mapper que maneja la clase Expediente
+        connection: Conexión de base de datos (nivel SQLAlchemy Core)
+        target: La instancia de Expediente recién insertada
+    
+    Ejemplo de creación de expediente:
+        >>> expediente = Expediente(
+        ...     numero_at=123,
+        ...     proyecto_id=45,
+        ...     titular_id=10,  # ← Dispara el signal
+        ...     tipo_expediente_id=1
+        ... )
+        >>> db.session.add(expediente)
+        >>> db.session.commit()
+        # → Automáticamente se crea registro en historico_titulares_expediente
+    
+    Notas:
+        - Usa connection.execute() (nivel Core) porque el signal se ejecuta
+          durante flush, antes de commit
+        - No usar db.session.add() aquí (causaría recursividad infinita)
+    """
+    # Solo crear histórico si hay titular asignado
+    if target.titular_id is None:
+        return
+    
+    # Importar tabla aquí para evitar dependencia circular
+    from sqlalchemy import table, column, insert
+    from sqlalchemy.sql import func
+    
+    # Definir tabla historico_titulares_expediente (nivel Core)
+    historico_table = table(
+        'historico_titulares_expediente',
+        column('expediente_id'),
+        column('titular_id'),
+        column('fecha_desde'),
+        column('fecha_hasta'),
+        column('solicitud_cambio_id'),
+        column('motivo'),
+        column('observaciones'),
+        column('created_at'),
+        schema='public'
+    )
+    
+    # Insertar registro INICIAL
+    connection.execute(
+        insert(historico_table).values(
+            expediente_id=target.id,
+            titular_id=target.titular_id,
+            fecha_desde=date.today(),
+            fecha_hasta=None,  # Vigente actual
+            solicitud_cambio_id=None,  # No hay solicitud para registro inicial
+            motivo='INICIAL',
+            observaciones='Titular inicial del expediente',
+            created_at=func.now()
+        )
+    )
