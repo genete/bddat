@@ -26,7 +26,7 @@ from app.models.tabla_metadata import TablaMetadata
 
 # Arquitectura Entidades Polimórfica (nuevos modelos issue #62)
 # Orden: TipoEntidad primero, luego Entidad, luego metadatos
-from app.models.tipo_entidad import TipoEntidad
+from app.models.tipos_entidades import TipoEntidad
 from app.models.entidad import Entidad
 from app.models.entidad_administrado import EntidadAdministrado
 from app.models.entidad_empresa_servicio_publico import EntidadEmpresaServicioPublico
