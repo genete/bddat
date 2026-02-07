@@ -99,7 +99,7 @@
 
 /* ===== MAIN CONTENT SCROLLABLE ===== */
 .app-main {
-  overflow-y: auto;
+  /*overflow-y: auto;*/  /* Comentado - bloqueaba sticky */
   padding: var(--content-padding);
   width: 100%;
   background-color: var(--bg-page);
