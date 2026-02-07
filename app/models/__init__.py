@@ -45,6 +45,9 @@ from app.models.expedientes import Expediente  # Depende de Proyecto, Usuario, T
 from app.models.documentos import Documento  # Depende de Expediente
 from app.models.solicitudes import Solicitud  # Depende de Expediente
 
+# Histórico de titulares (issue #64)
+from app.models.historico_titular_expediente import HistoricoTitularExpediente  # Depende de Expediente, Entidad, Solicitud
+
 # Modelos operacionales con dependencias múltiples
 from app.models.solicitudes_tipos import SolicitudTipo  # Depende de Solicitud, TipoSolicitud
 from app.models.documentos_proyecto import DocumentoProyecto  # Depende de Documento, Proyecto
@@ -84,6 +87,9 @@ __all__ = [
     'Expediente',
     'Documento',
     'Solicitud',
+    # Histórico
+    'HistoricoTitularExpediente',
+    # Operacionales (continuación)
     'SolicitudTipo',
     'DocumentoProyecto',
     'Fase',
