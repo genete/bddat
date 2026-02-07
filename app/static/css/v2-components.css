@@ -15,18 +15,12 @@
   box-shadow: var(--shadow-sm);
   border-collapse: separate;
   border-spacing: 0;
-  overflow: hidden;
+  /*overflow: hidden;*/  /* Comentado - bloqueaba sticky */
   margin-bottom: 2rem;
 }
 
 .expedientes-table thead {
-  background: var(--primary);
-  background-image: var(--gradient); /* Gradiente corporativo */
-  color: var(--text-inverse);
-  /* STICKY HEADER - Se mantiene visible al scrollear */
-  position: sticky;
-  top: 60px; /* Altura del app-header para que quede justo debajo */
-  z-index: 100; /* Por encima de tbody, por debajo de app-header (1000) */
+  /* Background se aplica en TH para que funcione sticky */
 }
 
 .expedientes-table th {
@@ -37,6 +31,13 @@
   text-transform: uppercase;
   letter-spacing: 0.05em;
   border-bottom: 2px solid rgba(0, 0, 0, 0.1);
+  /* STICKY HEADER */
+  position: sticky;
+  top: 60px;
+  z-index: 100;
+  background: var(--primary);
+  background-image: var(--gradient);
+  color: var(--text-inverse);
 }
 
 .expedientes-table td {
@@ -80,7 +81,7 @@
   }
   
   /* En mobile, sticky header justo debajo del header mobile (56px) */
-  .expedientes-table thead {
+  .expedientes-table th {
     top: 56px;
   }
 }
