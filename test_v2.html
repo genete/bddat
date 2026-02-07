@@ -30,6 +30,9 @@
                 <span>Expedientes</span>
             </nav>
             
+            <!-- Spacer: empuja user-menu a la derecha -->
+            <div class="spacer"></div>
+            
             <div class="user-menu">
                 <span>👤 Admin</span>
                 <a href="#"><i class="fas fa-sign-out-alt"></i> Salir</a>
@@ -51,24 +54,25 @@
                 </button>
             </div>
             
-            <!-- Filtros -->
-            <div class="filters">
-                <input type="search" placeholder="Buscar expedientes...">
-                <select>
-                    <option>Estado: Todos</option>
-                    <option>En trámite</option>
-                    <option>Resuelto</option>
-                    <option>Incompleto</option>
-                </select>
-                <button class="btn btn-outline">
-                    <i class="fas fa-filter"></i>
-                    Filtrar
-                </button>
-            </div>
-            
-            <!-- Paginación Info -->
-            <div class="pagination-info">
-                Mostrando <span>1-40</span> de <span>156</span> expedientes
+            <!-- Filtros + Paginación (compactos en 1 línea) -->
+            <div class="filters-row">
+                <div class="filters">
+                    <input type="search" placeholder="Buscar expedientes...">
+                    <select>
+                        <option>Estado: Todos</option>
+                        <option>En trámite</option>
+                        <option>Resuelto</option>
+                        <option>Incompleto</option>
+                    </select>
+                    <button class="btn btn-outline">
+                        <i class="fas fa-filter"></i>
+                        Filtrar
+                    </button>
+                </div>
+                
+                <div class="pagination-info">
+                    Mostrando <span>1-40</span> de <span>156</span> expedientes
+                </div>
             </div>
             
             <!-- Tabla -->
