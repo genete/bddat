@@ -67,14 +67,14 @@ class Solicitud(db.Model):
     
     expediente_id = db.Column(
         db.Integer,
-        db.ForeignKey('public.expedientes.id', referent_schema='public', use_alter=True, name='fk_solicitudes_expediente'),
+        db.ForeignKey('public.expedientes.id', use_alter=True, name='fk_solicitudes_expediente'),
         nullable=False,
         comment='FK a EXPEDIENTES. Expediente al que pertenece la solicitud'
     )
     
     solicitud_afectada_id = db.Column(
         db.Integer,
-        db.ForeignKey('public.solicitudes.id', referent_schema='public'),
+        db.ForeignKey('public.solicitudes.id'),
         nullable=True,
         comment='FK a SOLICITUDES. Para DESISTIMIENTO/RENUNCIA, solicitud que se desiste'
     )

@@ -71,7 +71,7 @@ class Tramite(db.Model):
     
     fase_id = db.Column(
         db.Integer,
-        db.ForeignKey('public.fases.id', referent_schema='public', ondelete='CASCADE'),
+        db.ForeignKey('public.fases.id', ondelete='CASCADE'),
         nullable=False,
         comment='FK a FASES. Fase a la que pertenece el trámite'
     )

@@ -67,7 +67,7 @@ class SolicitudTipo(db.Model):
     
     solicitudid = db.Column(
         db.Integer,
-        db.ForeignKey('public.solicitudes.id', referent_schema='public', ondelete='CASCADE'),
+        db.ForeignKey('public.solicitudes.id', ondelete='CASCADE'),
         nullable=False,
         comment='FK a SOLICITUDES. Solicitud que contiene este tipo'
     )

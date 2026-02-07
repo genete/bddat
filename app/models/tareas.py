@@ -97,7 +97,7 @@ class Tarea(db.Model):
     
     tramite_id = db.Column(
         db.Integer,
-        db.ForeignKey('public.tramites.id', referent_schema='public', ondelete='CASCADE'),
+        db.ForeignKey('public.tramites.id', ondelete='CASCADE'),
         nullable=False,
         comment='FK a TRAMITES. Trámite al que pertenece la tarea'
     )
@@ -111,14 +111,14 @@ class Tarea(db.Model):
     
     documento_usado_id = db.Column(
         db.Integer,
-        db.ForeignKey('public.documentos.id', referent_schema='public'),
+        db.ForeignKey('public.documentos.id'),
         nullable=True,
         comment='FK a DOCUMENTOS. Documento usado como input de la tarea'
     )
     
     documento_producido_id = db.Column(
         db.Integer,
-        db.ForeignKey('public.documentos.id', referent_schema='public'),
+        db.ForeignKey('public.documentos.id'),
         nullable=True,
         unique=True,
         comment='FK UNIQUE a DOCUMENTOS. Documento generado como output de la tarea'
