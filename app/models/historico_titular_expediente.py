@@ -1,5 +1,5 @@
 from app import db
-from datetime import date
+from datetime import datetime
 
 class HistoricoTitularExpediente(db.Model):
     """
@@ -15,16 +15,17 @@ class HistoricoTitularExpediente(db.Model):
         - Solo un registro puede tener FECHA_HASTA = NULL (titular actual)
         - EXPEDIENTES.TITULAR_ID es snapshot desnormalizado (rendimiento)
         - Esta tabla es la fuente de verdad del histórico
+        - TIMESTAMP permite múltiples cambios el mismo día (corrección errores)
     
     USO TÍPICO:
         1. Al crear expediente:
-           - Se crea registro INICIAL con fecha_desde = fecha creación
+           - Se crea registro INICIAL con fecha_desde = datetime.now()
            - FECHA_HASTA = NULL (titular actual)
            - EXPEDIENTES.TITULAR_ID = titular inicial
         
         2. Al cambiar titular (aprobación solicitud cambio titularidad):
-           - UPDATE registro actual: fecha_hasta = fecha aprobación
-           - INSERT nuevo registro: fecha_desde = fecha aprobación, fecha_hasta = NULL
+           - UPDATE registro actual: fecha_hasta = datetime.now()
+           - INSERT nuevo registro: fecha_desde = datetime.now(), fecha_hasta = NULL
            - UPDATE EXPEDIENTES: titular_id = nuevo titular
         
         3. Consultar histórico:
@@ -32,10 +33,13 @@ class HistoricoTitularExpediente(db.Model):
            - Muestra cadena completa de titularidad
     
     CAMPOS ESPECIALES:
-        FECHA_HASTA:
-            - NULL = titular actual vigente
-            - NOT NULL = titular histórico (ya no vigente)
-            - Constraint: solo un registro NULL por expediente
+        FECHA_DESDE / FECHA_HASTA:
+            - TIMESTAMP (no DATE) para permitir múltiples cambios el mismo día
+            - Casos de uso:
+              * Corrección inmediata de errores
+              * Múltiples cambios en proceso de regularización
+              * Auditoría precisa con hora exacta
+            - FECHA_HASTA = NULL indica titular actual vigente
         
         MOTIVO:
             - INICIAL: Primer titular del expediente
@@ -43,6 +47,7 @@ class HistoricoTitularExpediente(db.Model):
             - HERENCIA: Transmisión mortis causa
             - FUSION: Absorción/fusión empresarial
             - ESCISION: División empresarial
+            - CAMBIO_TITULAR: Genérico cuando se aprueba solicitud
             - OTRO: Otros motivos (especificar en OBSERVACIONES)
         
         SOLICITUD_CAMBIO_ID:
@@ -55,7 +60,7 @@ class HistoricoTitularExpediente(db.Model):
         - solicitud_cambio → SOLICITUDES (acto que motivó el cambio, nullable)
     
     CONSTRAINTS:
-        1. UQ_EXPEDIENTE_TITULAR_DESDE: Solo un registro por expediente+fecha_desde
+        1. UQ_EXPEDIENTE_TITULAR_DESDE: Solo un registro por expediente+fecha_desde (timestamp)
         2. CHK_VIGENCIA_TITULAR: fecha_hasta >= fecha_desde (cuando no es NULL)
         3. IMPLÍCITO: Solo un registro con fecha_hasta = NULL por expediente
            (se gestiona mediante lógica de negocio, no constraint DB)
@@ -64,10 +69,11 @@ class HistoricoTitularExpediente(db.Model):
         1. El primer registro debe tener motivo = 'INICIAL'
         2. Registros posteriores deben tener solicitud_cambio_id
         3. Al insertar nuevo titular actual:
-           - Actualizar registro anterior: fecha_hasta = fecha cambio
+           - Actualizar registro anterior: fecha_hasta = datetime.now()
            - Insertar nuevo registro: fecha_hasta = NULL
            - Actualizar expedientes.titular_id
         4. No se permite borrar registros (auditoría inmutable)
+        5. TIMESTAMP permite corrección inmediata de errores el mismo día
     
     MÉTODOS:
         - titular_actual(expediente_id): Obtiene registro vigente
@@ -76,6 +82,7 @@ class HistoricoTitularExpediente(db.Model):
     
     NOTAS DE VERSIÓN:
         v3.2: Creación inicial de la tabla (Issue #64)
+        v3.3: Cambio Date → DateTime para permitir múltiples cambios/día
     """
     __tablename__ = 'historico_titulares_expediente'
     __table_args__ = (
@@ -115,15 +122,15 @@ class HistoricoTitularExpediente(db.Model):
     )
     
     fecha_desde = db.Column(
-        db.Date,
+        db.DateTime,  # ← CAMBIO: Date → DateTime
         nullable=False,
-        comment='Fecha inicio vigencia de este titular. Para registro INICIAL = fecha creación expediente'
+        comment='Timestamp inicio vigencia. TIMESTAMP permite múltiples cambios/día para corrección de errores'
     )
     
     fecha_hasta = db.Column(
-        db.Date,
+        db.DateTime,  # ← CAMBIO: Date → DateTime
         nullable=True,
-        comment='Fecha fin vigencia. NULL = titular actual vigente. NOT NULL = titular histórico'
+        comment='Timestamp fin vigencia. NULL = titular actual vigente. NOT NULL = titular histórico'
     )
     
     solicitud_cambio_id = db.Column(
@@ -136,7 +143,7 @@ class HistoricoTitularExpediente(db.Model):
     motivo = db.Column(
         db.String(50),
         nullable=True,
-        comment='Motivo del cambio: INICIAL, VENTA, HERENCIA, FUSION, ESCISION, OTRO'
+        comment='Motivo del cambio: INICIAL, VENTA, HERENCIA, FUSION, ESCISION, CAMBIO_TITULAR, OTRO'
     )
     
     observaciones = db.Column(
@@ -186,7 +193,7 @@ class HistoricoTitularExpediente(db.Model):
         Ejemplo:
             >>> registro = HistoricoTitularExpediente.titular_actual(expediente_id=42)
             >>> if registro:
-            >>>     print(f"Titular actual: {registro.titular.razon_social}")
+            >>>     print(f"Titular actual: {registro.titular.nombre_completo}")
             >>>     print(f"Desde: {registro.fecha_desde}")
         """
         return HistoricoTitularExpediente.query.filter_by(
@@ -206,8 +213,8 @@ class HistoricoTitularExpediente(db.Model):
         Args:
             expediente_id (int): ID del expediente
             nuevo_titular_id (int): ID del nuevo titular
-            fecha_cambio (date): Fecha efectiva del cambio
-            motivo (str): VENTA, HERENCIA, FUSION, ESCISION, OTRO
+            fecha_cambio (datetime): Timestamp efectivo del cambio
+            motivo (str): VENTA, HERENCIA, FUSION, ESCISION, CAMBIO_TITULAR, OTRO
             solicitud_cambio_id (int, optional): ID de la solicitud que motivó el cambio
             observaciones (str, optional): Observaciones adicionales
         
@@ -218,11 +225,11 @@ class HistoricoTitularExpediente(db.Model):
             ValueError: Si no existe titular actual o fecha inválida
         
         Ejemplo:
-            >>> from datetime import date
+            >>> from datetime import datetime
             >>> nuevo_registro = HistoricoTitularExpediente.registrar_cambio(
             ...     expediente_id=42,
             ...     nuevo_titular_id=15,
-            ...     fecha_cambio=date(2026, 2, 7),
+            ...     fecha_cambio=datetime.now(),
             ...     motivo='VENTA',
             ...     solicitud_cambio_id=120,
             ...     observaciones='Venta de instalación según escritura pública'
@@ -272,18 +279,18 @@ class HistoricoTitularExpediente(db.Model):
         Args:
             expediente_id (int): ID del expediente
             titular_id (int): ID del titular inicial
-            fecha_desde (date): Fecha de inicio (típicamente fecha creación expediente)
+            fecha_desde (datetime): Timestamp de inicio (típicamente datetime.now())
             observaciones (str, optional): Observaciones adicionales
         
         Returns:
             HistoricoTitularExpediente: Registro inicial creado
         
         Ejemplo:
-            >>> from datetime import date
+            >>> from datetime import datetime
             >>> registro_inicial = HistoricoTitularExpediente.crear_inicial(
             ...     expediente_id=42,
             ...     titular_id=10,
-            ...     fecha_desde=date.today(),
+            ...     fecha_desde=datetime.now(),
             ...     observaciones='Titular original del expediente'
             ... )
             >>> db.session.add(registro_inicial)
@@ -308,6 +315,6 @@ class HistoricoTitularExpediente(db.Model):
     def __str__(self):
         """Representación legible para interfaz."""
         if self.fecha_hasta:
-            return f'Titular {self.titular_id} ({self.fecha_desde} - {self.fecha_hasta})'
+            return f'Titular {self.titular_id} ({self.fecha_desde.date()} - {self.fecha_hasta.date()})'
         else:
-            return f'Titular actual {self.titular_id} (desde {self.fecha_desde})'
+            return f'Titular actual {self.titular_id} (desde {self.fecha_desde.date()})'
