@@ -11,7 +11,8 @@
  * B.3: app-additional-content (contenido extra scrollable con B.2)
  * B.4: app-footer (sticky bottom)
  * 
- * B.2 + B.3 scrollean juntos en el espacio del grid
+ * B.2 + B.3 scrollean juntos en .app-content-wrapper
+ * C.2 tiene scroll interno independiente dentro de B.2
  */
 
 /* ===== GRID PRINCIPAL (3 FILAS) ===== */
@@ -28,7 +29,7 @@
 .app-content-wrapper {
   overflow-y: auto;
   overflow-x: hidden;
-  /* Este es el scrollable a nivel de ventana (A) */
+  /* Este es el scrollable a nivel de ventana (A) para B.2+B.3 */
 }
 
 /* ===== B.1: HEADER FIJO TOP ===== */
@@ -127,6 +128,9 @@
   overflow: hidden; /* Crítico: evita scroll duplicado, C.2 tiene su propio scroll */
   width: 100%;
   background-color: var(--bg-page);
+  /* Altura mínima = viewport - header - footer */
+  /* Esto fuerza que C.2 tenga scroll interno */
+  min-height: calc(100vh - var(--header-height) - var(--footer-height));
 }
 
 /* Contenedor con márgenes (para page-header, filtros, etc.) */
