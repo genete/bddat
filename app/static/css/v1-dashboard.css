@@ -10,7 +10,8 @@
 
 /* ===== PAGE HEADER ===== */
 .page-header {
-  padding: 2rem 0 1rem 0;
+  padding-top: 2rem;
+  padding-bottom: 1rem;
 }
 
 .page-header h1 {
@@ -162,7 +163,8 @@
 /* ===== RESPONSIVE AJUSTES ===== */
 @media (max-width: 767px) {
   .page-header {
-    padding: 1.5rem 0 1rem 0;
+    padding-top: 1.5rem;
+    padding-bottom: 1rem;
   }
   
   .page-header h1 {
