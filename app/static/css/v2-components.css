@@ -21,7 +21,7 @@
   flex: 1; /* Ocupa espacio disponible */
   overflow-y: auto;
   overflow-x: hidden;
-  position: relative; /* Contexto para sticky Y para botón scroll-to-top */
+  position: relative; /* Contexto para sticky Y para botón */
   background: white;
   /* Altura mínima: thead (~50px) + 3 filas (~165px) = 220px */
   /* Esto evita que C.2 colapse completamente al reducir ventana */
@@ -338,11 +338,11 @@
 }
 
 /* ===== BOTÓN SCROLL TO TOP PARA C.2 (TABLA) ===== */
-/* Botón posicionado dentro de C.2 (.lista-scroll-container) */
+/* Botón con position:sticky para mantenerse fijo visualmente en C.2 */
 #tabla-scroll-to-top {
-  position: absolute; /* Relativo a .lista-scroll-container (position: relative) */
-  bottom: 1rem;
-  right: 1rem;
+  position: sticky; /* Sticky respecto al scroll de C.2 */
+  bottom: 1rem; /* Siempre a 1rem del bottom visible de C.2 */
+  left: calc(100% - 3.75rem); /* Alineado a la derecha (ancho + margen) */
   width: 2.75rem;
   height: 2.75rem;
   background: rgba(8, 112, 33, 0.9); /* Verde corporativo semi-transparente */
@@ -359,12 +359,15 @@
   visibility: hidden;
   transition: all 0.3s ease;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  margin-top: -3.75rem; /* Negativo para no ocupar espacio en el flujo */
+  pointer-events: none; /* Desactiva mientras invisible */
 }
 
 /* Visible cuando se hace scroll en C.2 */
 #tabla-scroll-to-top.visible {
   opacity: 1;
   visibility: visible;
+  pointer-events: auto; /* Activa cuando visible */
 }
 
 /* Hover: más opaco y sube */
@@ -386,7 +389,8 @@
     height: 2.5rem;
     font-size: 0.875rem;
     bottom: 0.75rem;
-    right: 0.75rem;
+    left: calc(100% - 3.25rem);
+    margin-top: -3.25rem;
   }
 }
 
