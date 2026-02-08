@@ -1,0 +1,136 @@
+/**
+ * v2-theme.css
+ * Variables CSS, colores, tipografía para UI v2
+ * 
+ * Issue: #94 (Fase 1 - Prototipo Vista Listado v2)
+ * Epic: #93 (Sistema de Navegación UI Modular)
+ * Colores: #58 (Junta de Andalucía)
+ * Referencia: #90 (Especificación Patrones UI)
+ */
+
+:root {
+  /* ===== LAYOUT ===== */
+  --max-width: 100%;           /* Sin limitador max-width */
+  --content-padding: 2rem;
+  --header-height: 60px;
+  --footer-height: 50px;
+  
+  /* ===== COLORES CORPORATIVOS JUNTA DE ANDALUCÍA ===== */
+  /* Identidad corporativa */
+  --primary: #087021;          /* Verde corporativo Junta - Navbar, botones principales */
+  --primary-hover: #0b4c1a;    /* Verde hover (var(--bs-junta-hover) del CDN) */
+  --primary-light: #c4ddca;    /* Verde apoyo (var(--bs-junta-apoyo)) */
+  --primary-lighter: #f7fbf8;  /* Verde muy claro (var(--bs-junta-apoyo-especifico)) */
+  
+  /* Colores semánticos (estados) */
+  --success: #198754;          /* Bootstrap success - Resuelto, validación correcta */
+  --warning: #ffc107;          /* Bootstrap warning - Advertencias, próximo vencimiento */
+  --danger: #dc3545;           /* Bootstrap danger - Errores, vencido */
+  --info: #0dcaf0;             /* Bootstrap info - En trámite, información */
+  
+  /* Grises corporativos Junta */
+  --gris-principal: #111111;   /* Texto principal (var(--bs-gris-principal)) */
+  --gris-apoyo: #bebebe;       /* Texto deshabilitado (var(--bs-gris-apoyo)) */
+  --gris-contenedor: #eeeeee;  /* Fondos contenedores (var(--bs-gris-contenedor)) */
+  --gris-especifico: #f5f5f5;  /* Fondos muy claros (var(--bs-gris-especifico)) */
+  
+  /* ===== BACKGROUNDS ===== */
+  --bg-page: #f8f9fa;          /* Fondo página (gris muy claro Bootstrap) */
+  --bg-card: #ffffff;          /* Blanco - Tablas/cards */
+  --bg-header: var(--primary); /* Header verde corporativo */
+  --bg-footer: var(--gris-principal); /* Footer gris oscuro */
+  
+  /* ===== TEXTO ===== */
+  --text-primary: var(--gris-principal);   /* Texto principal */
+  --text-secondary: #6c757d;               /* Texto secundario Bootstrap */
+  --text-muted: var(--gris-apoyo);         /* Texto deshabilitado */
+  --text-inverse: #ffffff;                 /* Texto sobre fondos oscuros */
+  
+  /* ===== BORDES ===== */
+  --border-color: #dee2e6;     /* Border color Bootstrap */
+  --border-radius: 0.375rem;   /* Bootstrap default (6px) */
+  --border-radius-lg: 0.5rem;  /* 8px */
+  
+  /* ===== SOMBRAS (Bootstrap 5) ===== */
+  --shadow-sm: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+  --shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+  --shadow-lg: 0 1rem 3rem rgba(0, 0, 0, 0.175);
+  
+  /* ===== GRADIENTE CORPORATIVO ===== */
+  --gradient: linear-gradient(180deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0));
+  
+  /* ===== FOCUS RING (anillo de enfoque corporativo) ===== */
+  --focus-ring: rgba(8, 112, 33, 0.25); /* Verde corporativo con transparencia */
+}
+
+/* ===== TIPOGRAFÍA BASE ===== */
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--text-primary);
+  background-color: var(--bg-page);
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 600;
+  line-height: 1.2;
+  margin: 0;
+  color: var(--text-primary);
+}
+
+h1 { font-size: 2rem; }    /* 32px */
+h2 { font-size: 1.5rem; }  /* 24px */
+h3 { font-size: 1.25rem; } /* 20px */
+h4 { font-size: 1rem; }    /* 16px */
+
+/* ===== RESETS ===== */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+a {
+  color: var(--primary);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+a:hover {
+  color: var(--primary-hover);
+  text-decoration: underline;
+}
+
+/* ===== CLASES HELPER CORPORATIVAS ===== */
+.bg-junta-apoyo {
+  background-color: var(--primary-light) !important;
+}
+
+.bg-junta-apoyo-especifico {
+  background-color: var(--primary-lighter) !important;
+}
+
+.text-junta {
+  color: var(--primary) !important;
+}
+
+.border-junta {
+  border-color: var(--primary) !important;
+}
+
+/* ===== UTILIDADES ===== */
+.text-muted {
+  color: var(--text-muted) !important;
+}
+
+.text-secondary {
+  color: var(--text-secondary) !important;
+}
+
+/* Focus visible para accesibilidad */
+*:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 0.25rem var(--focus-ring);
+}

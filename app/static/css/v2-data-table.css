@@ -1,0 +1,233 @@
+/**
+ * v2-data-table.css
+ * Sistema reutilizable de tablas con DIVs + CSS Grid
+ * 
+ * Issue: #94 (Fase 1 - Robusto)
+ * Epic: #93
+ * Colores: #58 (Junta de Andalucía)
+ * 
+ * USO:
+ * - Aplicable a cualquier listado (expedientes, solicitudes, titulares, etc.)
+ * - Sticky header funcional sin JavaScript
+ * - Responsive por columna
+ * - Filtros inline preparados
+ */
+
+/* ===== BASE: CONTENEDOR TABLA ===== */
+.data-table {
+  width: 100%;
+  background: var(--bg-card);
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 2rem;
+  overflow: hidden; /* Solo para border-radius, no afecta sticky */
+}
+
+/* ===== HEADER STICKY ===== */
+.data-table__header {
+  position: sticky;
+  top: 60px; /* Altura del app-header */
+  z-index: 100;
+  background: var(--primary);
+  background-image: var(--gradient);
+  color: var(--text-inverse);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* ===== BODY SCROLLABLE ===== */
+.data-table__body {
+  background: var(--bg-card);
+}
+
+/* ===== FILAS ===== */
+.data-table__row {
+  display: grid;
+  align-items: center;
+  border-bottom: 1px solid var(--border-color);
+  transition: background-color 0.2s ease;
+}
+
+/* Header row (sin hover) */
+.data-table__header .data-table__row {
+  border-bottom: 2px solid rgba(0, 0, 0, 0.1);
+}
+
+/* Body row (con hover) */
+.data-table__body .data-table__row:hover {
+  background-color: var(--primary-lighter);
+}
+
+.data-table__body .data-table__row:last-child {
+  border-bottom: none;
+}
+
+/* ===== CELDAS ===== */
+.data-table__cell {
+  padding: 1rem;
+  font-size: 0.875rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Celdas header */
+.data-table__header .data-table__cell {
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 0.875rem;
+}
+
+/* Celdas body */
+.data-table__body .data-table__cell {
+  color: var(--text-primary);
+}
+
+/* ===== VARIANTE: EXPEDIENTES ===== */
+.data-table--expedientes .data-table__row {
+  grid-template-columns: 
+    minmax(120px, 1fr)   /* N° Expediente */
+    minmax(180px, 2fr)   /* Titular */
+    minmax(80px, 0.8fr)  /* Solicitudes */
+    minmax(120px, 1.2fr) /* Estado */
+    minmax(110px, 1fr)   /* Vencimiento */
+    minmax(100px, 1fr);  /* Acciones */
+  gap: 1rem;
+}
+
+/* ===== VARIANTE: SOLICITUDES ===== */
+.data-table--solicitudes .data-table__row {
+  grid-template-columns:
+    minmax(100px, 1fr)   /* N° Solicitud */
+    minmax(150px, 2fr)   /* Tipo */
+    minmax(100px, 1fr)   /* Fecha */
+    minmax(120px, 1.2fr) /* Estado */
+    minmax(100px, 1fr);  /* Acciones */
+  gap: 1rem;
+}
+
+/* ===== VARIANTE: TITULARES (Añadir cuando sea necesario) ===== */
+.data-table--titulares .data-table__row {
+  grid-template-columns:
+    minmax(180px, 2fr)   /* Nombre */
+    minmax(120px, 1.5fr) /* NIF/CIF */
+    minmax(150px, 2fr)   /* Domicilio */
+    minmax(100px, 1fr);  /* Acciones */
+  gap: 1rem;
+}
+
+/* ===== RESPONSIVE: TABLET (<992px) ===== */
+@media (max-width: 991px) {
+  /* Expedientes: Ocultar columna Solicitudes */
+  .data-table--expedientes .data-table__row {
+    grid-template-columns:
+      minmax(120px, 1fr)   /* N° Expediente */
+      minmax(180px, 2fr)   /* Titular */
+      minmax(120px, 1.2fr) /* Estado */
+      minmax(110px, 1fr)   /* Vencimiento */
+      minmax(100px, 1fr);  /* Acciones */
+  }
+  
+  .data-table--expedientes .data-table__cell:nth-child(3) {
+    display: none; /* Ocultar Solicitudes */
+  }
+}
+
+/* ===== RESPONSIVE: MOBILE (<768px) ===== */
+@media (max-width: 767px) {
+  /* Ajustar sticky top por header mobile más pequeño */
+  .data-table__header {
+    top: 56px;
+  }
+  
+  /* Expedientes: Solo Expediente + Titular + Acciones */
+  .data-table--expedientes .data-table__row {
+    grid-template-columns:
+      minmax(100px, 1.5fr) /* N° Expediente */
+      minmax(150px, 2fr)   /* Titular */
+      minmax(80px, 1fr);   /* Acciones */
+    gap: 0.5rem;
+  }
+  
+  .data-table--expedientes .data-table__cell:nth-child(3), /* Solicitudes */
+  .data-table--expedientes .data-table__cell:nth-child(4), /* Estado */
+  .data-table--expedientes .data-table__cell:nth-child(5)  /* Vencimiento */ {
+    display: none;
+  }
+  
+  /* Reducir padding */
+  .data-table__cell {
+    padding: 0.75rem 0.5rem;
+    font-size: 0.8rem;
+  }
+  
+  .data-table__header .data-table__cell {
+    font-size: 0.75rem;
+  }
+}
+
+/* ===== UTILIDADES PARA CELDAS ===== */
+
+/* Celda centrada */
+.data-table__cell--center {
+  text-align: center;
+  justify-content: center;
+}
+
+/* Celda derecha (números) */
+.data-table__cell--right {
+  text-align: right;
+  justify-content: flex-end;
+}
+
+/* Celda con peso (destacar) */
+.data-table__cell--strong {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* Celda acciones (botones) */
+.data-table__cell--actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+/* ===== INDICADOR VACIO ===== */
+.data-table__empty {
+  padding: 3rem 2rem;
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
+
+.data-table__empty i {
+  font-size: 2rem;
+  opacity: 0.5;
+  margin-bottom: 1rem;
+  display: block;
+}
+
+/* ===== LOADING STATE ===== */
+.data-table--loading {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.data-table--loading::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--primary);
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: translate(-50%, -50%) rotate(360deg); }
+}

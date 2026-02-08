@@ -1,4 +1,4 @@
-# app/models/tipo_entidad.py
+# app/models/tipos_entidades.py
 """
 Modelo TipoEntidad - Catálogo de tipos de entidades del sistema.
 

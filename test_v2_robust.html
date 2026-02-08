@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test CSS v2 Robusto - BDDAT</title>
+    
+    <!-- CSS v2 -->
+    <link rel="stylesheet" href="app/static/css/v2-theme.css">
+    <link rel="stylesheet" href="app/static/css/v2-layout.css">
+    <link rel="stylesheet" href="app/static/css/v2-components.css">
+    <link rel="stylesheet" href="app/static/css/v2-data-table.css">
+    
+    <!-- Font Awesome (iconos) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body>
+    <!-- Grid Principal -->
+    <div class="app-container">
+        
+        <!-- Header -->
+        <header class="app-header">
+            <a href="#" class="logo">
+                <i class="fas fa-bolt"></i>
+                BDDAT
+            </a>
+            
+            <nav class="breadcrumb">
+                <a href="#">Inicio</a>
+                <span>/</span>
+                <span>Expedientes</span>
+            </nav>
+            
+            <div class="user-menu">
+                <span>👤 Admin</span>
+                <a href="#"><i class="fas fa-sign-out-alt"></i> Salir</a>
+            </div>
+        </header>
+        
+        <!-- Main Content -->
+        <main class="app-main">
+            
+            <!-- Page Header -->
+            <div class="page-header">
+                <h1>
+                    <i class="fas fa-folder-open"></i>
+                    Expedientes
+                </h1>
+                <button class="btn btn-primary">
+                    <i class="fas fa-plus"></i>
+                    Nuevo Expediente
+                </button>
+            </div>
+            
+            <!-- Filtros -->
+            <div class="filters">
+                <input type="search" placeholder="Buscar expedientes...">
+                <select>
+                    <option>Estado: Todos</option>
+                    <option>En trámite</option>
+                    <option>Resuelto</option>
+                    <option>Incompleto</option>
+                </select>
+                <button class="btn btn-outline">
+                    <i class="fas fa-filter"></i>
+                    Filtrar
+                </button>
+            </div>
+            
+            <!-- Paginación Info -->
+            <div class="pagination-info">
+                Mostrando <span>1-40</span> de <span>156</span> expedientes
+            </div>
+            
+            <!-- DATA TABLE (Nueva estructura robusta) -->
+            <div class="data-table data-table--expedientes" role="table">
+                
+                <!-- HEADER (Sticky) -->
+                <div class="data-table__header" role="rowgroup">
+                    <div class="data-table__row" role="row">
+                        <div class="data-table__cell" role="columnheader">N° Expediente</div>
+                        <div class="data-table__cell" role="columnheader">Titular</div>
+                        <div class="data-table__cell data-table__cell--center" role="columnheader">Solicitudes</div>
+                        <div class="data-table__cell" role="columnheader">Estado</div>
+                        <div class="data-table__cell" role="columnheader">Vencimiento</div>
+                        <div class="data-table__cell data-table__cell--center" role="columnheader">Acciones</div>
+                    </div>
+                </div>
+                
+                <!-- BODY (Scrollable) -->
+                <div class="data-table__body" role="rowgroup">
+                    <!-- Fila 1 -->
+                    <div class="data-table__row" role="row">
+                        <div class="data-table__cell data-table__cell--strong" role="cell">EXP-2026-001</div>
+                        <div class="data-table__cell" role="cell">Endesa Energía S.A.</div>
+                        <div class="data-table__cell data-table__cell--center" role="cell">3</div>
+                        <div class="data-table__cell" role="cell"><span class="badge badge-info">En trámite</span></div>
+                        <div class="data-table__cell" role="cell">15/02/2026</div>
+                        <div class="data-table__cell data-table__cell--actions" role="cell">
+                            <button class="btn btn-sm btn-primary">Ver</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Fila 2 -->
+                    <div class="data-table__row" role="row">
+                        <div class="data-table__cell data-table__cell--strong" role="cell">EXP-2026-002</div>
+                        <div class="data-table__cell" role="cell">Iberdrola Distribución</div>
+                        <div class="data-table__cell data-table__cell--center" role="cell">1</div>
+                        <div class="data-table__cell" role="cell"><span class="badge badge-success">Resuelto</span></div>
+                        <div class="data-table__cell" role="cell">-</div>
+                        <div class="data-table__cell data-table__cell--actions" role="cell">
+                            <button class="btn btn-sm btn-primary">Ver</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Fila 3 -->
+                    <div class="data-table__row" role="row">
+                        <div class="data-table__cell data-table__cell--strong" role="cell">EXP-2026-003</div>
+                        <div class="data-table__cell" role="cell">Red Eléctrica de España</div>
+                        <div class="data-table__cell data-table__cell--center" role="cell">2</div>
+                        <div class="data-table__cell" role="cell"><span class="badge badge-warning">Incompleto</span></div>
+                        <div class="data-table__cell text-warning" role="cell">10/02/2026</div>
+                        <div class="data-table__cell data-table__cell--actions" role="cell">
+                            <button class="btn btn-sm btn-warning">Subsanar</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Fila 4 -->
+                    <div class="data-table__row" role="row">
+                        <div class="data-table__cell data-table__cell--strong" role="cell">EXP-2025-998</div>
+                        <div class="data-table__cell" role="cell">Naturgy Energy Group</div>
+                        <div class="data-table__cell data-table__cell--center" role="cell">4</div>
+                        <div class="data-table__cell" role="cell"><span class="badge badge-danger">Vencido</span></div>
+                        <div class="data-table__cell text-danger" role="cell">05/02/2026</div>
+                        <div class="data-table__cell data-table__cell--actions" role="cell">
+                            <button class="btn btn-sm btn-danger">Urgente</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Continuar con más filas (simplificado, repetir patrón) -->
+                    <div class="data-table__row" role="row">
+                        <div class="data-table__cell data-table__cell--strong" role="cell">EXP-2026-004</div>
+                        <div class="data-table__cell" role="cell">E.ON España</div>
+                        <div class="data-table__cell data-table__cell--center" role="cell">1</div>
+                        <div class="data-table__cell" role="cell"><span class="badge badge-info">En trámite</span></div>
+                        <div class="data-table__cell" role="cell">20/02/2026</div>
+                        <div class="data-table__cell data-table__cell--actions" role="cell">
+                            <button class="btn btn-sm btn-primary">Ver</button>
+                        </div>
+                    </div>
+                    
+                    <div class="data-table__row" role="row">
+                        <div class="data-table__cell data-table__cell--strong" role="cell">EXP-2026-005</div>
+                        <div class="data-table__cell" role="cell">Viesgo Infraestructuras</div>
+                        <div class="data-table__cell data-table__cell--center" role="cell">2</div>
+                        <div class="data-table__cell" role="cell"><span class="badge badge-info">En trámite</span></div>
+                        <div class="data-table__cell" role="cell">18/02/2026</div>
+                        <div class="data-table__cell data-table__cell--actions" role="cell">
+                            <button class="btn btn-sm btn-primary">Ver</button>
+                        </div>
+                    </div>
+                    
+                    <div class="data-table__row" role="row">
+                        <div class="data-table__cell data-table__cell--strong" role="cell">EXP-2026-006</div>
+                        <div class="data-table__cell" role="cell">EDP España</div>
+                        <div class="data-table__cell data-table__cell--center" role="cell">3</div>
+                        <div class="data-table__cell" role="cell"><span class="badge badge-success">Resuelto</span></div>
+                        <div class="data-table__cell" role="cell">-</div>
+                        <div class="data-table__cell data-table__cell--actions" role="cell">
+                            <button class="btn btn-sm btn-primary">Ver</button>
+                        </div>
+                    </div>
+                    
+                    <div class="data-table__row" role="row">
+                        <div class="data-table__cell data-table__cell--strong" role="cell">EXP-2026-007</div>
+                        <div class="data-table__cell" role="cell">Acciona Energía</div>
+                        <div class="data-table__cell data-table__cell--center" role="cell">1</div>
+                        <div class="data-table__cell" role="cell"><span class="badge badge-warning">Incompleto</span></div>
+                        <div class="data-table__cell text-warning" role="cell">12/02/2026</div>
+                        <div class="data-table__cell data-table__cell--actions" role="cell">
+                            <button class="btn btn-sm btn-warning">Subsanar</button>
+                        </div>
+                    </div>
+                    
+                    <div class="data-table__row" role="row">
+                        <div class="data-table__cell data-table__cell--strong" role="cell">EXP-2026-008</div>
+                        <div class="data-table__cell" role="cell">Gas Natural Fenosa</div>
+                        <div class="data-table__cell data-table__cell--center" role="cell">5</div>
+                        <div class="data-table__cell" role="cell"><span class="badge badge-info">En trámite</span></div>
+                        <div class="data-table__cell" role="cell">22/02/2026</div>
+                        <div class="data-table__cell data-table__cell--actions" role="cell">
+                            <button class="btn btn-sm btn-primary">Ver</button>
+                        </div>
+                    </div>
+                    
+                    <div class="data-table__row" role="row">
+                        <div class="data-table__cell data-table__cell--strong" role="cell">EXP-2026-009</div>
+                        <div class="data-table__cell" role="cell">HC Energía</div>
+                        <div class="data-table__cell data-table__cell--center" role="cell">2</div>
+                        <div class="data-table__cell" role="cell"><span class="badge badge-success">Resuelto</span></div>
+                        <div class="data-table__cell" role="cell">-</div>
+                        <div class="data-table__cell data-table__cell--actions" role="cell">
+                            <button class="btn btn-sm btn-primary">Ver</button>
+                        </div>
+                    </div>
+                    
+                    <div class="data-table__row" role="row">
+                        <div class="data-table__cell data-table__cell--strong" role="cell">EXP-2026-010</div>
+                        <div class="data-table__cell" role="cell">Cepsa Electricidad</div>
+                        <div class="data-table__cell data-table__cell--center" role="cell">1</div>
+                        <div class="data-table__cell" role="cell"><span class="badge badge-danger">Vencido</span></div>
+                        <div class="data-table__cell text-danger" role="cell">01/02/2026</div>
+                        <div class="data-table__cell data-table__cell--actions" role="cell">
+                            <button class="btn btn-sm btn-danger">Urgente</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Más filas para scroll (hasta 40) -->
+                    <div class="data-table__row" role="row">
+                        <div class="data-table__cell data-table__cell--strong" role="cell">EXP-2026-011</div>
+                        <div class="data-table__cell" role="cell">Repsol Electricidad</div>
+                        <div class="data-table__cell data-table__cell--center" role="cell">3</div>
+                        <div class="data-table__cell" role="cell"><span class="badge badge-info">En trámite</span></div>
+                        <div class="data-table__cell" role="cell">25/02/2026</div>
+                        <div class="data-table__cell data-table__cell--actions" role="cell">
+                            <button class="btn btn-sm btn-primary">Ver</button>
+                        </div>
+                    </div>
+                    
+                    <div class="data-table__row" role="row">
+                        <div class="data-table__cell data-table__cell--strong" role="cell">EXP-2026-012</div>
+                        <div class="data-table__cell" role="cell">Enagás</div>
+                        <div class="data-table__cell data-table__cell--center" role="cell">2</div>
+                        <div class="data-table__cell" role="cell"><span class="badge badge-warning">Incompleto</span></div>
+                        <div class="data-table__cell text-warning" role="cell">14/02/2026</div>
+                        <div class="data-table__cell data-table__cell--actions" role="cell">
+                            <button class="btn btn-sm btn-warning">Subsanar</button>
+                        </div>
+                    </div>
+                    
+                    <div class="data-table__row" role="row">
+                        <div class="data-table__cell data-table__cell--strong" role="cell">EXP-2026-013</div>
+                        <div class="data-table__cell" role="cell">Aldro Energía</div>
+                        <div class="data-table__cell data-table__cell--center" role="cell">1</div>
+                        <div class="data-table__cell" role="cell"><span class="badge badge-success">Resuelto</span></div>
+                        <div class="data-table__cell" role="cell">-</div>
+                        <div class="data-table__cell data-table__cell--actions" role="cell">
+                            <button class="btn btn-sm btn-primary">Ver</button>
+                        </div>
+                    </div>
+                    
+                    <div class="data-table__row" role="row">
+                        <div class="data-table__cell data-table__cell--strong" role="cell">EXP-2026-014</div>
+                        <div class="data-table__cell" role="cell">Audax Renovables</div>
+                        <div class="data-table__cell data-table__cell--center" role="cell">4</div>
+                        <div class="data-table__cell" role="cell"><span class="badge badge-info">En trámite</span></div>
+                        <div class="data-table__cell" role="cell">28/02/2026</div>
+                        <div class="data-table__cell data-table__cell--actions" role="cell">
+                            <button class="btn btn-sm btn-primary">Ver</button>
+                        </div>
+                    </div>
+                    
+                    <div class="data-table__row" role="row">
+                        <div class="data-table__cell data-table__cell--strong" role="cell">EXP-2026-015</div>
+                        <div class="data-table__cell" role="cell">Factor Energía</div>
+                        <div class="data-table__cell data-table__cell--center" role="cell">2</div>
+                        <div class="data-table__cell" role="cell"><span class="badge badge-info">En trámite</span></div>
+                        <div class="data-table__cell" role="cell">16/02/2026</div>
+                        <div class="data-table__cell data-table__cell--actions" role="cell">
+                            <button class="btn btn-sm btn-primary">Ver</button>
+                        </div>
+                    </div>
+                    
+                    <div class="data-table__row" role="row">
+                        <div class="data-table__cell data-table__cell--strong" role="cell">EXP-2026-016</div>
+                        <div class="data-table__cell" role="cell">Nexus Energía</div>
+                        <div class="data-table__cell data-table__cell--center" role="cell">1</div>
+                        <div class="data-table__cell" role="cell"><span class="badge badge-success">Resuelto</span></div>
+                        <div class="data-table__cell" role="cell">-</div>
+                        <div class="data-table__cell data-table__cell--actions" role="cell">
+                            <button class="btn btn-sm btn-primary">Ver</button>
+                        </div>
+                    </div>
+                    
+                    <div class="data-table__row" role="row">
+                        <div class="data-table__cell data-table__cell--strong" role="cell">EXP-2026-017</div>
+                        <div class="data-table__cell" role="cell">Holaluz</div>
+                        <div class="data-table__cell data-table__cell--center" role="cell">3</div>
+                        <div class="data-table__cell" role="cell"><span class="badge badge-warning">Incompleto</span></div>
+                        <div class="data-table__cell text-warning" role="cell">11/02/2026</div>
+                        <div class="data-table__cell data-table__cell--actions" role="cell">
+                            <button class="btn btn-sm btn-warning">Subsanar</button>
+                        </div>
+                    </div>
+                    
+                    <div class="data-table__row" role="row">
+                        <div class="data-table__cell data-table__cell--strong" role="cell">EXP-2026-018</div>
+                        <div class="data-table__cell" role="cell">Som Energia</div>
+                        <div class="data-table__cell data-table__cell--center" role="cell">2</div>
+                        <div class="data-table__cell" role="cell"><span class="badge badge-info">En trámite</span></div>
+                        <div class="data-table__cell" role="cell">19/02/2026</div>
+                        <div class="data-table__cell data-table__cell--actions" role="cell">
+                            <button class="btn btn-sm btn-primary">Ver</button>
+                        </div>
+                    </div>
+                    
+                    <div class="data-table__row" role="row">
+                        <div class="data-table__cell data-table__cell--strong" role="cell">EXP-2026-019</div>
+                        <div class="data-table__cell" role="cell">Gesternova</div>
+                        <div class="data-table__cell data-table__cell--center" role="cell">1</div>
+                        <div class="data-table__cell" role="cell"><span class="badge badge-success">Resuelto</span></div>
+                        <div class="data-table__cell" role="cell">-</div>
+                        <div class="data-table__cell data-table__cell--actions" role="cell">
+                            <button class="btn btn-sm btn-primary">Ver</button>
+                        </div>
+                    </div>
+                    
+                    <div class="data-table__row" role="row">
+                        <div class="data-table__cell data-table__cell--strong" role="cell">EXP-2026-020</div>
+                        <div class="data-table__cell" role="cell">Energía XXI</div>
+                        <div class="data-table__cell data-table__cell--center" role="cell">4</div>
+                        <div class="data-table__cell" role="cell"><span class="badge badge-danger">Vencido</span></div>
+                        <div class="data-table__cell text-danger" role="cell">03/02/2026</div>
+                        <div class="data-table__cell data-table__cell--actions" role="cell">
+                            <button class="btn btn-sm btn-danger">Urgente</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Duplicar 20 más para llegar a 40 -->
+                    <div class="data-table__row" role="row">
+                        <div class="data-table__cell data-table__cell--strong" role="cell">EXP-2026-021</div>
+                        <div class="data-table__cell" role="cell">Endesa Energía S.A.</div>
+                        <div class="data-table__cell data-table__cell--center" role="cell">3</div>
+                        <div class="data-table__cell" role="cell"><span class="badge badge-info">En trámite</span></div>
+                        <div class="data-table__cell" role="cell">15/02/2026</div>
+                        <div class="data-table__cell data-table__cell--actions" role="cell">
+                            <button class="btn btn-sm btn-primary">Ver</button>
+                        </div>
+                    </div>
+                    
+                    <div class="data-table__row" role="row">
+                        <div class="data-table__cell data-table__cell--strong" role="cell">EXP-2026-022</div>
+                        <div class="data-table__cell" role="cell">Iberdrola Distribución</div>
+                        <div class="data-table__cell data-table__cell--center" role="cell">1</div>
+                        <div class="data-table__cell" role="cell"><span class="badge badge-success">Resuelto</span></div>
+                        <div class="data-table__cell" role="cell">-</div>
+                        <div class="data-table__cell data-table__cell--actions" role="cell">
+                            <button class="btn btn-sm btn-primary">Ver</button>
+                        </div>
+                    </div>
+                    
+                    <div class="data-table__row" role="row">
+                        <div class="data-table__cell data-table__cell--strong" role="cell">EXP-2026-023</div>
+                        <div class="data-table__cell" role="cell">Red Eléctrica de España</div>
+                        <div class="data-table__cell data-table__cell--center" role="cell">2</div>
+                        <div class="data-table__cell" role="cell"><span class="badge badge-warning">Incompleto</span></div>
+                        <div class="data-table__cell text-warning" role="cell">10/02/2026</div>
+                        <div class="data-table__cell data-table__cell--actions" role="cell">
+                            <button class="btn btn-sm btn-warning">Subsanar</button>
+                        </div>
+                    </div>
+                    
+                    <div class="data-table__row" role="row">
+                        <div class="data-table__cell data-table__cell--strong" role="cell">EXP-2026-024</div>
+                        <div class="data-table__cell" role="cell">Naturgy Energy Group</div>
+                        <div class="data-table__cell data-table__cell--center" role="cell">4</div>
+                        <div class="data-table__cell" role="cell"><span class="badge badge-danger">Vencido</span></div>
+                        <div class="data-table__cell text-danger" role="cell">05/02/2026</div>
+                        <div class="data-table__cell data-table__cell--actions" role="cell">
+                            <button class="btn btn-sm btn-danger">Urgente</button>
+                        </div>
+                    </div>
+                    
+                    <div class="data-table__row" role="row">
+                        <div class="data-table__cell data-table__cell--strong" role="cell">EXP-2026-025</div>
+                        <div class="data-table__cell" role="cell">E.ON España</div>
+                        <div class="data-table__cell data-table__cell--center" role="cell">1</div>
+                        <div class="data-table__cell" role="cell"><span class="badge badge-info">En trámite</span></div>
+                        <div class="data-table__cell" role="cell">20/02/2026</div>
+                        <div class="data-table__cell data-table__cell--actions" role="cell">
+                            <button class="btn btn-sm btn-primary">Ver</button>
+                        </div>
+                    </div>
+                    
+                    <div class="data-table__row" role="row">
+                        <div class="data-table__cell data-table__cell--strong" role="cell">EXP-2026-026</div>
+                        <div class="data-table__cell" role="cell">Viesgo Infraestructuras</div>
+                        <div class="data-table__cell data-table__cell--center" role="cell">2</div>
+                        <div class="data-table__cell" role="cell"><span class="badge badge-info">En trámite</span></div>
+                        <div class="data-table__cell" role="cell">18/02/2026</div>
+                        <div class="data-table__cell data-table__cell--actions" role="cell">
+                            <button class="btn btn-sm btn-primary">Ver</button>
+                        </div>
+                    </div>
+                    
+                    <div class="data-table__row" role="row">
+                        <div class="data-table__cell data-table__cell--strong" role="cell">EXP-2026-027</div>
+                        <div class="data-table__cell" role="cell">EDP España</div>
+                        <div class="data-table__cell data-table__cell--center" role="cell">3</div>
+                        <div class="data-table__cell" role="cell"><span class="badge badge-success">Resuelto</span></div>
+                        <div class="data-table__cell" role="cell">-</div>
+                        <div class="data-table__cell data-table__cell--actions" role="cell">
+                            <button class="btn btn-sm btn-primary">Ver</button>
+                        </div>
+                    </div>
+                    
+                    <div class="data-table__row" role="row">
+                        <div class="data-table__cell data-table__cell--strong" role="cell">EXP-2026-028</div>
+                        <div class="data-table__cell" role="cell">Acciona Energía</div>
+                        <div class="data-table__cell data-table__cell--center" role="cell">1</div>
+                        <div class="data-table__cell" role="cell"><span class="badge badge-warning">Incompleto</span></div>
+                        <div class="data-table__cell text-warning" role="cell">12/02/2026</div>
+                        <div class="data-table__cell data-table__cell--actions" role="cell">
+                            <button class="btn btn-sm btn-warning">Subsanar</button>
+                        </div>
+                    </div>
+                    
+                    <div class="data-table__row" role="row">
+                        <div class="data-table__cell data-table__cell--strong" role="cell">EXP-2026-029</div>
+                        <div class="data-table__cell" role="cell">Gas Natural Fenosa</div>
+                        <div class="data-table__cell data-table__cell--center" role="cell">5</div>
+                        <div class="data-table__cell" role="cell"><span class="badge badge-info">En trámite</span></div>
+                        <div class="data-table__cell" role="cell">22/02/2026</div>
+                        <div class="data-table__cell data-table__cell--actions" role="cell">
+                            <button class="btn btn-sm btn-primary">Ver</button>
+                        </div>
+                    </div>
+                    
+                    <div class="data-table__row" role="row">
+                        <div class="data-table__cell data-table__cell--strong" role="cell">EXP-2026-030</div>
+                        <div class="data-table__cell" role="cell">HC Energía</div>
+                        <div class="data-table__cell data-table__cell--center" role="cell">2</div>
+                        <div class="data-table__cell" role="cell"><span class="badge badge-success">Resuelto</span></div>
+                        <div class="data-table__cell" role="cell">-</div>
+                        <div class="data-table__cell data-table__cell--actions" role="cell">
+                            <button class="btn btn-sm btn-primary">Ver</button>
+                        </div>
+                    </div>
+                    
+                    <div class="data-table__row" role="row">
+                        <div class="data-table__cell data-table__cell--strong" role="cell">EXP-2026-031</div>
+                        <div class="data-table__cell" role="cell">Cepsa Electricidad</div>
+                        <div class="data-table__cell data-table__cell--center" role="cell">1</div>
+                        <div class="data-table__cell" role="cell"><span class="badge badge-danger">Vencido</span></div>
+                        <div class="data-table__cell text-danger" role="cell">01/02/2026</div>
+                        <div class="data-table__cell data-table__cell--actions" role="cell">
+                            <button class="btn btn-sm btn-danger">Urgente</button>
+                        </div>
+                    </div>
+                    
+                    <div class="data-table__row" role="row">
+                        <div class="data-table__cell data-table__cell--strong" role="cell">EXP-2026-032</div>
+                        <div class="data-table__cell" role="cell">Repsol Electricidad</div>
+                        <div class="data-table__cell data-table__cell--center" role="cell">3</div>
+                        <div class="data-table__cell" role="cell"><span class="badge badge-info">En trámite</span></div>
+                        <div class="data-table__cell" role="cell">25/02/2026</div>
+                        <div class="data-table__cell data-table__cell--actions" role="cell">
+                            <button class="btn btn-sm btn-primary">Ver</button>
+                        </div>
+                    </div>
+                    
+                    <div class="data-table__row" role="row">
+                        <div class="data-table__cell data-table__cell--strong" role="cell">EXP-2026-033</div>
+                        <div class="data-table__cell" role="cell">Enagás</div>
+                        <div class="data-table__cell data-table__cell--center" role="cell">2</div>
+                        <div class="data-table__cell" role="cell"><span class="badge badge-warning">Incompleto</span></div>
+                        <div class="data-table__cell text-warning" role="cell">14/02/2026</div>
+                        <div class="data-table__cell data-table__cell--actions" role="cell">
+                            <button class="btn btn-sm btn-warning">Subsanar</button>
+                        </div>
+                    </div>
+                    
+                    <div class="data-table__row" role="row">
+                        <div class="data-table__cell data-table__cell--strong" role="cell">EXP-2026-034</div>
+                        <div class="data-table__cell" role="cell">Aldro Energía</div>
+                        <div class="data-table__cell data-table__cell--center" role="cell">1</div>
+                        <div class="data-table__cell" role="cell"><span class="badge badge-success">Resuelto</span></div>
+                        <div class="data-table__cell" role="cell">-</div>
+                        <div class="data-table__cell data-table__cell--actions" role="cell">
+                            <button class="btn btn-sm btn-primary">Ver</button>
+                        </div>
+                    </div>
+                    
+                    <div class="data-table__row" role="row">
+                        <div class="data-table__cell data-table__cell--strong" role="cell">EXP-2026-035</div>
+                        <div class="data-table__cell" role="cell">Audax Renovables</div>
+                        <div class="data-table__cell data-table__cell--center" role="cell">4</div>
+                        <div class="data-table__cell" role="cell"><span class="badge badge-info">En trámite</span></div>
+                        <div class="data-table__cell" role="cell">28/02/2026</div>
+                        <div class="data-table__cell data-table__cell--actions" role="cell">
+                            <button class="btn btn-sm btn-primary">Ver</button>
+                        </div>
+                    </div>
+                    
+                    <div class="data-table__row" role="row">
+                        <div class="data-table__cell data-table__cell--strong" role="cell">EXP-2026-036</div>
+                        <div class="data-table__cell" role="cell">Factor Energía</div>
+                        <div class="data-table__cell data-table__cell--center" role="cell">2</div>
+                        <div class="data-table__cell" role="cell"><span class="badge badge-info">En trámite</span></div>
+                        <div class="data-table__cell" role="cell">16/02/2026</div>
+                        <div class="data-table__cell data-table__cell--actions" role="cell">
+                            <button class="btn btn-sm btn-primary">Ver</button>
+                        </div>
+                    </div>
+                    
+                    <div class="data-table__row" role="row">
+                        <div class="data-table__cell data-table__cell--strong" role="cell">EXP-2026-037</div>
+                        <div class="data-table__cell" role="cell">Nexus Energía</div>
+                        <div class="data-table__cell data-table__cell--center" role="cell">1</div>
+                        <div class="data-table__cell" role="cell"><span class="badge badge-success">Resuelto</span></div>
+                        <div class="data-table__cell" role="cell">-</div>
+                        <div class="data-table__cell data-table__cell--actions" role="cell">
+                            <button class="btn btn-sm btn-primary">Ver</button>
+                        </div>
+                    </div>
+                    
+                    <div class="data-table__row" role="row">
+                        <div class="data-table__cell data-table__cell--strong" role="cell">EXP-2026-038</div>
+                        <div class="data-table__cell" role="cell">Holaluz</div>
+                        <div class="data-table__cell data-table__cell--center" role="cell">3</div>
+                        <div class="data-table__cell" role="cell"><span class="badge badge-warning">Incompleto</span></div>
+                        <div class="data-table__cell text-warning" role="cell">11/02/2026</div>
+                        <div class="data-table__cell data-table__cell--actions" role="cell">
+                            <button class="btn btn-sm btn-warning">Subsanar</button>
+                        </div>
+                    </div>
+                    
+                    <div class="data-table__row" role="row">
+                        <div class="data-table__cell data-table__cell--strong" role="cell">EXP-2026-039</div>
+                        <div class="data-table__cell" role="cell">Som Energia</div>
+                        <div class="data-table__cell data-table__cell--center" role="cell">2</div>
+                        <div class="data-table__cell" role="cell"><span class="badge badge-info">En trámite</span></div>
+                        <div class="data-table__cell" role="cell">19/02/2026</div>
+                        <div class="data-table__cell data-table__cell--actions" role="cell">
+                            <button class="btn btn-sm btn-primary">Ver</button>
+                        </div>
+                    </div>
+                    
+                    <div class="data-table__row" role="row">
+                        <div class="data-table__cell data-table__cell--strong" role="cell">EXP-2026-040</div>
+                        <div class="data-table__cell" role="cell">Gesternova</div>
+                        <div class="data-table__cell data-table__cell--center" role="cell">1</div>
+                        <div class="data-table__cell" role="cell"><span class="badge badge-success">Resuelto</span></div>
+                        <div class="data-table__cell" role="cell">-</div>
+                        <div class="data-table__cell data-table__cell--actions" role="cell">
+                            <button class="btn btn-sm btn-primary">Ver</button>
+                        </div>
+                    </div>
+                    
+                </div><!-- END data-table__body -->
+                
+            </div><!-- END data-table -->
+            
+            <!-- Ejemplo Botones -->
+            <div style="margin-top: 2rem;">
+                <h2 style="margin-bottom: 1rem;">Ejemplos de Botones</h2>
+                <button class="btn btn-primary">Primario (Junta)</button>
+                <button class="btn btn-secondary">Secundario</button>
+                <button class="btn btn-outline">Outline</button>
+                <button class="btn btn-warning">Warning</button>
+                <button class="btn btn-danger">Danger</button>
+            </div>
+            
+        </main>
+        
+        <!-- Footer -->
+        <footer class="app-footer">
+            <div>© 2026 Junta de Andalucía - BDDAT</div>
+            <div>
+                <a href="#">Ayuda</a> · 
+                <a href="#">Contacto</a>
+            </div>
+        </footer>
+        
+    </div>
+</body>
+</html>
