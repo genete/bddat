@@ -32,7 +32,8 @@
 <div class="dashboard-grid content-constrained">
     
     <!-- Card: Expedientes (V2 scroll infinito) -->
-    {% if any(rol in ['TRAMITADOR', 'ADMINISTRATIVO', 'SUPERVISOR', 'ADMIN'] for rol in [r.nombre for r in current_user.roles]) %}
+    {% set user_roles = current_user.roles | map(attribute='nombre') | list %}
+    {% if 'TRAMITADOR' in user_roles or 'ADMINISTRATIVO' in user_roles or 'SUPERVISOR' in user_roles or 'ADMIN' in user_roles %}
     <a href="{{ url_for('expedientes.listado_v2') }}" class="dashboard-card">
         <div class="card-icon">
             <i class="fas fa-folder-open"></i>
@@ -43,7 +44,7 @@
     {% endif %}
     
     <!-- Card: Usuarios -->
-    {% if any(rol in ['SUPERVISOR', 'ADMIN'] for rol in [r.nombre for r in current_user.roles]) %}
+    {% if 'SUPERVISOR' in user_roles or 'ADMIN' in user_roles %}
     <a href="{{ url_for('usuarios.index') }}" class="dashboard-card">
         <div class="card-icon">
             <i class="fas fa-users"></i>
@@ -54,7 +55,7 @@
     {% endif %}
     
     <!-- Card: Proyectos -->
-    {% if any(rol in ['TRAMITADOR', 'ADMINISTRATIVO', 'SUPERVISOR', 'ADMIN'] for rol in [r.nombre for r in current_user.roles]) %}
+    {% if 'TRAMITADOR' in user_roles or 'ADMINISTRATIVO' in user_roles or 'SUPERVISOR' in user_roles or 'ADMIN' in user_roles %}
     <a href="{{ url_for('proyectos.index') }}" class="dashboard-card">
         <div class="card-icon">
             <i class="fas fa-project-diagram"></i>
@@ -65,7 +66,7 @@
     {% endif %}
     
     <!-- Card: Mis Expedientes -->
-    {% if any(rol in ['TRAMITADOR', 'ADMINISTRATIVO', 'SUPERVISOR', 'ADMIN'] for rol in [r.nombre for r in current_user.roles]) %}
+    {% if 'TRAMITADOR' in user_roles or 'ADMINISTRATIVO' in user_roles or 'SUPERVISOR' in user_roles or 'ADMIN' in user_roles %}
     <a href="{{ url_for('dashboard.mis_expedientes') }}" class="dashboard-card">
         <div class="card-icon">
             <i class="fas fa-user-check"></i>
@@ -76,7 +77,7 @@
     {% endif %}
     
     <!-- Card: Nuevo Expediente -->
-    {% if any(rol in ['TRAMITADOR', 'ADMINISTRATIVO', 'SUPERVISOR', 'ADMIN'] for rol in [r.nombre for r in current_user.roles]) %}
+    {% if 'TRAMITADOR' in user_roles or 'ADMINISTRATIVO' in user_roles or 'SUPERVISOR' in user_roles or 'ADMIN' in user_roles %}
     <a href="{{ url_for('expedientes.nuevo') }}" class="dashboard-card">
         <div class="card-icon">
             <i class="fas fa-plus-circle"></i>
@@ -96,7 +97,7 @@
     </a>
     
     <!-- Cards futuras (deshabilitadas) -->
-    {% if any(rol in ['TRAMITADOR', 'ADMINISTRATIVO', 'SUPERVISOR', 'ADMIN'] for rol in [r.nombre for r in current_user.roles]) %}
+    {% if 'TRAMITADOR' in user_roles or 'ADMINISTRATIVO' in user_roles or 'SUPERVISOR' in user_roles or 'ADMIN' in user_roles %}
     <div class="dashboard-card disabled">
         <div class="card-icon">
             <i class="fas fa-tasks"></i>
@@ -114,7 +115,7 @@
     </div>
     {% endif %}
     
-    {% if any(rol in ['SUPERVISOR', 'ADMIN'] for rol in [r.nombre for r in current_user.roles]) %}
+    {% if 'SUPERVISOR' in user_roles or 'ADMIN' in user_roles %}
     <div class="dashboard-card disabled">
         <div class="card-icon">
             <i class="fas fa-chart-bar"></i>
