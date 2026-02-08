@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}BDDAT{% endblock %} - Junta de Andalucía</title>
+    
+    <!-- CSS v2 -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/v2-theme.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/v2-layout.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/v2-components.css') }}">
+    
+    <!-- Font Awesome (iconos) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- A: Grid Principal -->
+    <div class="app-container">
+        
+        <!-- B.1: Header (sticky, simplificado sin breadcrumb ni usuario) -->
+        <header class="app-header">
+            <div class="logo">
+                <i class="fas fa-bolt"></i>
+                BDDAT
+            </div>
+        </header>
+        
+        <!-- B.2: Main Content (scrollable) -->
+        <main class="app-main">
+            {% block content %}{% endblock %}
+        </main>
+        <!-- Fin B.2 -->
+        
+        <!-- B.3: Footer (sticky) -->
+        {% include 'layout/footer.html' %}
+        
+    </div>
+    <!-- Fin A -->
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

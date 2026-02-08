@@ -7,6 +7,9 @@ bp = Blueprint('auth', __name__, url_prefix='/auth')
 
 @bp.route('/login', methods=['GET', 'POST'])
 def login():
+    """
+    Vista V0 (Login) - Split-screen 60/40 con información y formulario
+    """
     if request.method == 'POST':
         siglas = request.form.get('siglas')
         password = request.form.get('password')
@@ -29,7 +32,7 @@ def login():
         else:
             flash('Siglas o contraseña incorrectos.', 'danger')
     
-    return render_template('auth/login.html')
+    return render_template('auth/login_v0.html')
 
 @bp.route('/logout')
 @login_required
