@@ -38,7 +38,7 @@ NOTAS:
     - Total count se calcula solo si hay filtros (para mantener cache)
     - Requiere autenticación (@login_required)
 
-VERSIÓN: 1.2
+VERSIÓN: 1.3
 FECHA: 2026-02-08
 """
 
@@ -80,7 +80,7 @@ def listar_expedientes():
                         "numero_at": 123,
                         "titular": "Empresa S.L.",
                         "tipo_expediente": "Línea Aérea",
-                        "responsable": "Juan Pérez",
+                        "responsable": "López García, Juan",
                         "heredado": false
                     },
                     ...
@@ -255,13 +255,23 @@ def listar_expedientes():
 
     data = []
     for exp in expedientes:
+        # Construir nombre completo del responsable
+        if exp.responsable:
+            nombre_responsable = f"{exp.responsable.apellido1 or ''} {exp.responsable.apellido2 or ''}, {exp.responsable.nombre or ''}".strip()
+            # Limpiar espacios múltiples y comas sobrantes
+            nombre_responsable = ' '.join(nombre_responsable.split())
+            if nombre_responsable.startswith(','):
+                nombre_responsable = nombre_responsable[1:].strip()
+        else:
+            nombre_responsable = 'Sin asignar'
+        
         # Serializar expediente
         expediente_dict = {
             'id': exp.id,
             'numero_at': exp.numero_at,
             'titular': exp.titular.nombre_completo if exp.titular else 'Sin titular',
             'tipo_expediente': exp.tipo_expediente.tipo if exp.tipo_expediente else 'Sin tipo',
-            'responsable': f"{exp.responsable.apellidos}, {exp.responsable.nombre}" if exp.responsable else 'Sin asignar',
+            'responsable': nombre_responsable,
             'heredado': exp.heredado if exp.heredado is not None else False,
             # Futuro: añadir campos de estado, fechas, etc.
             # 'estado': exp.fase_actual.tipo_fase.nombre if exp.fase_actual else 'Sin estado',
