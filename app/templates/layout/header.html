@@ -1,0 +1,28 @@
+<header class="app-header">
+    <a href="{{ url_for('dashboard.index') }}" class="logo">
+        <i class="fas fa-bolt"></i>
+        BDDAT
+    </a>
+    
+    <nav class="breadcrumb">
+        {% block breadcrumb %}
+        <a href="{{ url_for('dashboard.index') }}">Inicio</a>
+        {% endblock %}
+    </nav>
+    
+    <!-- Spacer: empuja user-menu a la derecha -->
+    <div class="spacer"></div>
+    
+    <div class="user-menu">
+        {% if current_user.is_authenticated %}
+            <span>👤 {{ current_user.nombre }} {{ current_user.apellidos }}</span>
+            <a href="{{ url_for('auth.logout') }}">
+                <i class="fas fa-sign-out-alt"></i> Salir
+            </a>
+        {% else %}
+            <a href="{{ url_for('auth.login') }}">
+                <i class="fas fa-sign-in-alt"></i> Iniciar Sesión
+            </a>
+        {% endif %}
+    </div>
+</header>
