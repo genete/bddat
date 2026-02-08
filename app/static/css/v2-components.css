@@ -21,7 +21,7 @@
   flex: 1; /* Ocupa espacio disponible */
   overflow-y: auto;
   overflow-x: hidden;
-  position: relative; /* Contexto para sticky */
+  position: relative; /* Contexto para sticky Y para botón scroll-to-top */
   background: white;
   /* Altura mínima: thead (~50px) + 3 filas (~165px) = 220px */
   /* Esto evita que C.2 colapse completamente al reducir ventana */
@@ -337,14 +337,15 @@
   color: var(--text-primary);
 }
 
-/* ===== BOTÓN SCROLL TO TOP (BACK TO TOP) ===== */
-.scroll-to-top {
-  position: fixed;
-  bottom: 5rem; /* Más arriba para evitar footer (antes 2rem) */
-  right: 2rem;
-  width: 3.5rem;
-  height: 3.5rem;
-  background: rgba(8, 112, 33, 0.85); /* Verde corporativo semi-transparente */
+/* ===== BOTÓN SCROLL TO TOP PARA C.2 (TABLA) ===== */
+/* Botón posicionado dentro de C.2 (.lista-scroll-container) */
+#tabla-scroll-to-top {
+  position: absolute; /* Relativo a .lista-scroll-container (position: relative) */
+  bottom: 1rem;
+  right: 1rem;
+  width: 2.75rem;
+  height: 2.75rem;
+  background: rgba(8, 112, 33, 0.9); /* Verde corporativo semi-transparente */
   color: var(--text-inverse);
   border: none;
   border-radius: 50%;
@@ -352,49 +353,40 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.25rem;
-  z-index: 1001; /* Por encima del footer (1000) y header (1000) */
+  font-size: 1rem;
+  z-index: 50; /* Por debajo de thead sticky (z-index: 100) */
   opacity: 0;
   visibility: hidden;
   transition: all 0.3s ease;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
-/* Visible cuando se hace scroll */
-.scroll-to-top.visible {
+/* Visible cuando se hace scroll en C.2 */
+#tabla-scroll-to-top.visible {
   opacity: 1;
   visibility: visible;
 }
 
 /* Hover: más opaco y sube */
-.scroll-to-top:hover {
+#tabla-scroll-to-top:hover {
   background: rgba(8, 112, 33, 1); /* Opaco completo */
-  transform: translateY(-4px);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+  transform: translateY(-3px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
 }
 
 /* Active: presionado */
-.scroll-to-top:active {
-  transform: translateY(-2px);
+#tabla-scroll-to-top:active {
+  transform: translateY(-1px);
 }
 
-/* Responsive mobile: abajo centro */
+/* Responsive mobile */
 @media (max-width: 767px) {
-  .scroll-to-top {
-    bottom: 4rem; /* También más arriba en mobile */
-    right: 50%;
-    transform: translateX(50%);
-    width: 3rem;
-    height: 3rem;
-    font-size: 1rem;
-  }
-  
-  .scroll-to-top.visible {
-    transform: translateX(50%);
-  }
-  
-  .scroll-to-top:hover {
-    transform: translateX(50%) translateY(-4px);
+  #tabla-scroll-to-top {
+    width: 2.5rem;
+    height: 2.5rem;
+    font-size: 0.875rem;
+    bottom: 0.75rem;
+    right: 0.75rem;
   }
 }
 
