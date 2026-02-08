@@ -8,7 +8,7 @@
 - `app/static/css/v2-components.css` - Tabla, badges, botones, filtros ✅
 
 ### JavaScript v2
-- `app/static/js/v2-scroll-to-top.js` - Botón scroll to top funcional ✅
+- `app/static/js/v2-tabla-scroll-to-top.js` - Botón scroll to top para C.2 (scroll interno tabla) ✅
 - `app/static/js/v2-scroll-infinito.js` - Carga automática al scrollear (pendiente)
 - `app/static/js/v2-filtros.js` - Filtros mock (UI sin backend) (pendiente)
 
@@ -30,7 +30,6 @@
 - [x] CSS: Variables y tema (Tarea 2) - Colores Junta Andalucía
 - [x] CSS: Layout grid (Tarea 3) - Header/main/footer responsive
 - [x] CSS: Componentes (Tarea 4) - Tabla, badges, botones
-- [x] Botón scroll-to-top funcional
 - [x] Test HTML funcional (test_v2.html)
 - [x] Documentación CSS v2
 
@@ -39,6 +38,8 @@
 - [x] Crear `.lista-cabecera` (C.1) - cabecera sin scroll
 - [x] Crear `.lista-scroll-container` (C.2) - contenedor con scroll propio
 - [x] Refactorizar test_v2.html con estructura C.1/C.2/D
+- [x] **Botón scroll-to-top para C.2** - `position: sticky` en scroll interno
+- [x] Añadir `min-height` a C.2 para mantener visibilidad
 - [x] Documentar patrón en CSS_v2_GUIA_USO.md
 - [x] Actualizar SCROLL_INFINITO.md con prerequisitos
 
@@ -100,14 +101,15 @@
 ```
 A: app-container (grid header/main/footer)
 ├── B.1: app-header (sticky top)
-├── B.2: app-main (flexbox vertical)
-│   ├── C.1: lista-cabecera (sin scroll)
+├── B.2: app-main (flexbox vertical, overflow:hidden)
+│   ├── C.1: lista-cabecera (flex-shrink:0, sin scroll)
 │   │   ├── page-header (título + botón)
 │   │   └── filters-row (filtros + paginación)
-│   └── C.2: lista-scroll-container (con overflow-y)
-│       └── D: expedientes-table (crece verticalmente)
-│           ├── thead (sticky respecto a C.2)
-│           └── tbody
+│   └── C.2: lista-scroll-container (flex:1, overflow-y:auto, min-height:220px)
+│       ├── D: expedientes-table (crece verticalmente)
+│       │   ├── thead (sticky top:0 respecto a C.2)
+│       │   └── tbody
+│       └── #tabla-scroll-to-top (position:sticky, bottom:1rem)
 └── B.3: app-footer (sticky bottom)
 ```
 
@@ -115,19 +117,58 @@ A: app-container (grid header/main/footer)
 
 - ✅ Scroll aislado solo en C.2 (no afecta a B.1, B.3, ni C.1)
 - ✅ Cabecera de tabla sticky funcional dentro de C.2
+- ✅ `min-height: 220px` en C.2 evita colapso completo al reducir ventana
+- ✅ Botón scroll-to-top con `position: sticky` dentro de C.2
 - ✅ Reutilizable en Vista 3 (árbol lateral + detalle)
 - ✅ Preparado para scroll infinito (observar solo C.2)
 - ✅ UX mejorada: filtros/título siempre visibles
+
+### Botón Scroll-to-Top (Fase 1.5)
+
+**Implementación:**
+- **Ubicación:** Dentro de `.lista-scroll-container` (C.2), hermano de `<table>`
+- **CSS:** `position: sticky; bottom: 1rem` → se mantiene fijo visualmente en C.2
+- **JavaScript:** `v2-tabla-scroll-to-top.js` escucha `scroll` en C.2 (no en `window`)
+- **Comportamiento:** Aparece al scrollear >200px en C.2, vuelve al inicio de C.2
+- **Ventaja:** Solo aparece en scroll largo (tabla), no en scroll de página (demasiado corto)
+
+**HTML:**
+```html
+<div class="lista-scroll-container">
+    <table class="expedientes-table">...</table>
+    <button id="tabla-scroll-to-top" aria-label="Volver arriba de la tabla">
+        <i class="fas fa-chevron-up"></i>
+    </button>
+</div>
+```
+
+**CSS clave:**
+```css
+#tabla-scroll-to-top {
+  position: sticky;           /* Fijo visualmente en C.2 */
+  bottom: 1rem;               /* Siempre a 1rem del borde inferior visible */
+  left: calc(100% - 3.75rem); /* Alineado derecha */
+  margin-top: -3.75rem;       /* No ocupa espacio en flujo */
+  pointer-events: none;       /* Desactiva mientras invisible */
+}
+
+#tabla-scroll-to-top.visible {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;       /* Activa cuando visible */
+}
+```
 
 ## Próximos Pasos
 
 1. ~~Implementar CSS completo (tareas 2-4)~~ ✅ COMPLETADO (Fase 1)
 2. ~~Refinar estructura layout (C.1/C.2/D)~~ ✅ COMPLETADO (Fase 1.5)
-3. Implementar templates completos (tarea 5-6) - Fase 2
-4. Implementar JavaScript scroll infinito (tarea 7) - Fase 2
-5. Implementar JavaScript filtros mock (tarea 8) - Fase 2
-6. Añadir ruta Flask (tarea 9) - Fase 2
-7. Testing y validación (tarea 10) - Fase 2
+3. ~~Botón scroll-to-top para C.2~~ ✅ COMPLETADO (Fase 1.5)
+4. Implementar templates completos (tarea 5-6) - Fase 2
+5. Implementar JavaScript scroll infinito (tarea 7) - Fase 2
+6. Implementar JavaScript filtros mock (tarea 8) - Fase 2
+7. Añadir ruta Flask (tarea 9) - Fase 2
+8. Testing y validación (tarea 10) - Fase 2
 
 ## Referencias
 
@@ -153,7 +194,13 @@ Comentar cambios en el issue cuando se llegue a esa implementación.
 **Scroll Independiente (Fase 1.5)**:
 - Problema resuelto: listado largo arrastraba scroll a todo B (header, footer)
 - Solución: C.2 con `overflow-y: auto` contiene el scroll del listado
+- Mejora: `min-height: 220px` mantiene C.2 visible (cabecera + 2-3 filas) al reducir ventana
 - Beneficio: reutilizable en cualquier contexto (Vista 3, modales, paneles)
+
+**Botón Scroll-to-Top (Fase 1.5)**:
+- Decisión: Solo en C.2 (scroll interno tabla), no en scroll de página (muy corto)
+- Razón: Scroll de página (B.2) es pequeño, no merece botón
+- Scroll de C.2 (tabla larga) sí merece botón para volver arriba rápidamente
 
 ## Convivencia No Destructiva
 
@@ -164,6 +211,12 @@ Comentar cambios en el issue cuando se llegue a esa implementación.
 
 ## Historial de Cambios
 
+**08/02/2026 - Fase 1.5 (refinamiento final):**
+- Implementado botón scroll-to-top para C.2 con `position: sticky`
+- Añadido `min-height: 220px` a C.2 (mantiene visibilidad al reducir ventana)
+- Creado `v2-tabla-scroll-to-top.js` (escucha scroll en C.2, no en window)
+- Actualizada documentación (CSS_v2_GUIA_USO.md, ISSUE_94_ESTRUCTURA.md)
+
 **08/02/2026 - Fase 1.5:**
 - Implementada estructura C.1/C.2/D para scroll independiente
 - Refactorizado test_v2.html con nuevo layout
@@ -173,6 +226,5 @@ Comentar cambios en el issue cuando se llegue a esa implementación.
 **07/02/2026 - Fase 1 (PR #95):**
 - Implementado CSS v2 modular completo
 - Creados v2-theme.css, v2-layout.css, v2-components.css
-- Botón scroll-to-top funcional
 - Test HTML completo
 - Documentación inicial
