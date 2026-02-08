@@ -1,6 +1,14 @@
 {% extends "layout/base_tramitacion.html" %}
 
-{% block title %}Tramitación - Expediente AT-{{ expediente.numeroat }} - BDDAT{% endblock %}
+{% block title %}Tramitación - Expediente AT-{{ expediente.numero_at }} - BDDAT{% endblock %}
+
+{% block breadcrumb %}
+<a href="{{ url_for('dashboard.index') }}">Inicio</a>
+<span>/</span>
+<a href="{{ url_for('expedientes.listado_v2') }}">Expedientes</a>
+<span>/</span>
+<span>AT-{{ expediente.numero_at }}</span>
+{% endblock %}
 
 {% block extra_css %}
 <!-- CSS adicional si necesario -->
@@ -15,7 +23,7 @@
     <li class="accordion-item" data-type="expediente" data-id="{{ expediente.id }}">
         <button class="accordion-button">
             <span class="accordion-icon">📁</span>
-            <span class="accordion-label">Expte AT-{{ expediente.numeroat }}</span>
+            <span class="accordion-label">Expte AT-{{ expediente.numero_at }}</span>
         </button>
     </li>
     
@@ -76,22 +84,13 @@
 {% block panel_detalle %}
 <!-- Panel Detalle -->
 
-<!-- Breadcrumb Dinámico -->
-<nav class="panel-breadcrumb" aria-label="Navegación">
-    <a href="#" data-navigate="expediente">Expedientes</a>
-    <span class="separator">&gt;</span>
-    <a href="#" data-navigate="expediente" data-id="{{ expediente.id }}">AT-{{ expediente.numeroat }}</a>
-    <span class="separator">&gt;</span>
-    <span>Solicitud AAP</span>
-</nav>
-
 <!-- Contexto fijo: Expediente/Proyecto (siempre visible) -->
 <div class="panel-context">
-    <div class="panel-context-title">📁 Contexto: Expediente AT-{{ expediente.numeroat }}</div>
+    <div class="panel-context-title">📁 Contexto: Expediente AT-{{ expediente.numero_at }}</div>
     <div class="panel-context-data">
         <div class="panel-context-item">
             <span class="panel-context-item-label">Nº Expediente</span>
-            <span class="panel-context-item-value">AT-{{ expediente.numeroat }}</span>
+            <span class="panel-context-item-value">AT-{{ expediente.numero_at }}</span>
         </div>
         <div class="panel-context-item">
             <span class="panel-context-item-label">Titular</span>
@@ -111,7 +110,7 @@
             <span class="panel-context-item-label">Proyecto</span>
             <span class="panel-context-item-value">
                 {% if expediente.proyecto %}
-                    {{ expediente.proyecto.denominacion }}
+                    {{ expediente.proyecto.titulo }}
                 {% else %}
                     Sin proyecto
                 {% endif %}
@@ -203,10 +202,9 @@
         </div>
     </div>
     
-    <!-- Listado de fases (reutilizar grupo C2.D de Vista 2) -->
-    <div class="panel-children-list">
-        <!-- MOCKUP: Tabla de fases usando estilos v2-data-table.css -->
-        <table class="data-table">
+    <!-- PATRÓN C2.D (Vista V2): Contenedor con scroll independiente + tabla sticky thead -->
+    <div class="lista-scroll-container" style="max-height: 300px;">
+        <table class="expedientes-table">
             <thead>
                 <tr>
                     <th>Fase</th>
@@ -263,7 +261,7 @@
         </div>
     </div>
     
-    <!-- Listado de documentos -->
+    <!-- Listado de documentos (sin patrón C2.D, lista simple suficiente) -->
     <div class="panel-children-list">
         <ul>
             <li>📄 proyecto_tecnico.pdf (2.3 MB) - 15/01/2026 <a href="#">Descargar</a></li>
@@ -307,12 +305,18 @@ document.addEventListener('DOMContentLoaded', function() {
 Vista V3 - Tramitación con Sidebar Acordeón
 
 MOCKUP Fase 1:
-- Layout base con header/footer reutilizados
+- Layout base con header/footer reutilizados V2
 - Sidebar con estructura jerárquica mockup
 - Panel detalle con tabs funcionales
 - Contexto fijo expediente/proyecto
 - Paneles de hijos directos (Fases, Documentos)
-- Estilos completos v3-tramitacion.css
+- Patrón C2.D aplicado al panel Fases (scroll independiente + thead sticky)
+
+Cambios Fase 1 - FIX:
+- Breadcrumb customizado para Vista V3
+- Panel Fases usa patrón C2.D de Vista V2
+- Atributo expediente.numero_at corregido (era numeroat)
+- Atributo expediente.proyecto.titulo corregido (era denominacion)
 
 Pendiente Fase 2+:
 - JavaScript acordeón funcional
@@ -323,5 +327,5 @@ Pendiente Fase 2+:
 
 Referencias:
 - Epic #93 - Sistema de Navegación UI Modular
-- docs/arquitectura/PATRONES_UI.md - Vista 3
+- docs/implementaciones/VISTA_V3_TRAMITACION.md
 -->
