@@ -21,7 +21,7 @@ PAGINACIÓN POR CURSOR:
     - Si cursor=0 o ausente: primera página (sin filtro WHERE)
 
 FILTROS:
-    - search: Búsqueda parcial en numero_at o nombre titular (ILIKE)
+    - search: Búsqueda parcial en numero_at o nombre_completo del titular (ILIKE)
     - estado: Filtro por estado del expediente (futuro: tabla estados)
 
 RESPUESTA JSON:
@@ -38,7 +38,7 @@ NOTAS:
     - Total count se calcula solo si hay filtros (para mantener cache)
     - Requiere autenticación (@login_required)
 
-VERSIÓN: 1.3
+VERSIÓN: 1.4
 FECHA: 2026-02-08
 """
 
@@ -66,7 +66,7 @@ def listar_expedientes():
                                Default: 0 (primera página)
         limit (int, opcional): Registros por página. Min 1, max 100.
                               Default: 50
-        search (str, opcional): Búsqueda parcial en numero_at o titular.
+        search (str, opcional): Búsqueda parcial en numero_at o nombre_completo titular.
                                Mínimo 2 caracteres.
         estado (str, opcional): Filtro por estado (futuro: integrar con tabla estados).
                                Por ahora: mock para testing frontend.
@@ -157,33 +157,28 @@ def listar_expedientes():
     # PASO 4: Aplicar filtros opcionales
     # ==========================================================================
 
-    # Filtro de búsqueda: numero_at o nombre titular
+    # Variable para tracking de search_numero (usado en count)
+    search_numero = None
+
+    # Filtro de búsqueda: numero_at o nombre_completo del titular
     if search_query:
         # Convertir búsqueda a número si es posible (para numero_at)
-        search_numero = None
         try:
             search_numero = int(search_query)
         except ValueError:
             pass
 
-        # Búsqueda en numero_at (exacto) o titular (parcial, case-insensitive)
+        # Búsqueda en numero_at (exacto) o nombre_completo titular (parcial, case-insensitive)
         filtros_busqueda = []
 
         if search_numero is not None:
             filtros_busqueda.append(Expediente.numero_at == search_numero)
 
-        # Búsqueda en nombre del titular (JOIN con Entidad)
-        # Nota: Entidad.nombre_completo es property, no columna
-        # Buscar en razon_social (empresas) o apellidos/nombre (personas)
+        # Búsqueda en nombre_completo del titular (columna indexada en Entidad)
         filtros_busqueda.append(
-            db.session.query(Entidad).filter(
-                Entidad.id == Expediente.titular_id,
-                or_(
-                    func.lower(Entidad.razon_social).contains(func.lower(search_query)),
-                    func.lower(Entidad.apellidos).contains(func.lower(search_query)),
-                    func.lower(Entidad.nombre).contains(func.lower(search_query))
-                )
-            ).exists()
+            Expediente.titular.has(
+                func.lower(Entidad.nombre_completo).contains(func.lower(search_query))
+            )
         )
 
         query = query.filter(or_(*filtros_busqueda))
@@ -229,24 +224,23 @@ def listar_expedientes():
     if search_query or estado_filter:
         # Recrear query sin limit para count
         count_query = db.session.query(func.count(Expediente.id))
+        
         if cursor > 0:
             count_query = count_query.filter(Expediente.id > cursor)
+        
         if search_query:
             # Replicar filtro de búsqueda
             filtros_busqueda = []
             if search_numero is not None:
                 filtros_busqueda.append(Expediente.numero_at == search_numero)
+            
             filtros_busqueda.append(
-                db.session.query(Entidad).filter(
-                    Entidad.id == Expediente.titular_id,
-                    or_(
-                        func.lower(Entidad.razon_social).contains(func.lower(search_query)),
-                        func.lower(Entidad.apellidos).contains(func.lower(search_query)),
-                        func.lower(Entidad.nombre).contains(func.lower(search_query))
-                    )
+                db.session.query(Expediente).join(Entidad, Expediente.titular_id == Entidad.id).filter(
+                    func.lower(Entidad.nombre_completo).contains(func.lower(search_query))
                 ).exists()
             )
             count_query = count_query.filter(or_(*filtros_busqueda))
+        
         total = count_query.scalar()
 
     # ==========================================================================
