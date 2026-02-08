@@ -2,7 +2,7 @@
  * v2-components.css
  * Tabla, badges, botones, filtros
  * 
- * Issue: #94 (Fase 1)
+ * Issue: #94 (Fase 1 y 1.5)
  * Epic: #93
  * Colores: #58 (Junta de Andalucía)
  */
@@ -23,6 +23,9 @@
   overflow-x: hidden;
   position: relative; /* Contexto para sticky */
   background: white;
+  /* Altura mínima: thead (~50px) + 3 filas (~165px) = 220px */
+  /* Esto evita que C.2 colapse completamente al reducir ventana */
+  min-height: 220px;
 }
 
 /* Ajuste sticky header dentro de C.2 (ya no relativo a viewport) */
@@ -115,6 +118,11 @@
   /* Ajuste sticky en C.2 mobile */
   .lista-scroll-container .expedientes-table thead th {
     top: 0; /* Dentro de C.2 siempre top: 0 */
+  }
+  
+  /* En mobile, min-height más pequeño (thead + 2 filas) */
+  .lista-scroll-container {
+    min-height: 150px;
   }
 }
 
