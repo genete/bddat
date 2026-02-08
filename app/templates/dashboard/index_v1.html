@@ -1,0 +1,137 @@
+{% extends "layout/base_fullwidth.html" %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/v1-dashboard.css') }}">
+{% endblock %}
+
+{% block breadcrumb %}
+<a href="{{ url_for('dashboard.index') }}">Inicio</a>
+{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="page-header content-constrained">
+    <div>
+        <h1>
+            <i class="fas fa-th-large"></i>
+            Panel de Control
+        </h1>
+        <p class="user-welcome">
+            Bienvenido/a, <strong>{{ current_user.nombre }} {{ current_user.apellido1 }}</strong>
+            <span class="badge badge-secondary">{{ current_user.siglas }}</span>
+            {% for rol in current_user.roles %}
+            <span class="badge badge-secondary">{{ rol.nombre }}</span>
+            {% endfor %}
+        </p>
+    </div>
+</div>
+
+<!-- Dashboard Grid -->
+<div class="dashboard-grid content-constrained">
+    
+    <!-- Card: Expedientes (V2 scroll infinito) -->
+    {% set user_roles = current_user.roles | map(attribute='nombre') | list %}
+    {% if 'TRAMITADOR' in user_roles or 'ADMINISTRATIVO' in user_roles or 'SUPERVISOR' in user_roles or 'ADMIN' in user_roles %}
+    <a href="{{ url_for('expedientes.listado_v2') }}" class="dashboard-card">
+        <div class="card-icon">
+            <i class="fas fa-folder-open"></i>
+        </div>
+        <h2 class="card-title">Expedientes</h2>
+        <p class="card-description">Listado con scroll infinito</p>
+    </a>
+    {% endif %}
+    
+    <!-- Card: Usuarios -->
+    {% if 'SUPERVISOR' in user_roles or 'ADMIN' in user_roles %}
+    <a href="{{ url_for('usuarios.index') }}" class="dashboard-card">
+        <div class="card-icon">
+            <i class="fas fa-users"></i>
+        </div>
+        <h2 class="card-title">Usuarios</h2>
+        <p class="card-description">Gestión de usuarios del sistema</p>
+    </a>
+    {% endif %}
+    
+    <!-- Card: Proyectos -->
+    {% if 'TRAMITADOR' in user_roles or 'ADMINISTRATIVO' in user_roles or 'SUPERVISOR' in user_roles or 'ADMIN' in user_roles %}
+    <a href="{{ url_for('proyectos.index') }}" class="dashboard-card">
+        <div class="card-icon">
+            <i class="fas fa-project-diagram"></i>
+        </div>
+        <h2 class="card-title">Proyectos</h2>
+        <p class="card-description">Instalaciones de alta tensión</p>
+    </a>
+    {% endif %}
+    
+    <!-- Card: Mis Expedientes -->
+    {% if 'TRAMITADOR' in user_roles or 'ADMINISTRATIVO' in user_roles or 'SUPERVISOR' in user_roles or 'ADMIN' in user_roles %}
+    <a href="{{ url_for('dashboard.mis_expedientes') }}" class="dashboard-card">
+        <div class="card-icon">
+            <i class="fas fa-user-check"></i>
+        </div>
+        <h2 class="card-title">Mis Expedientes</h2>
+        <p class="card-description">Expedientes asignados a mí</p>
+    </a>
+    {% endif %}
+    
+    <!-- Card: Nuevo Expediente -->
+    {% if 'TRAMITADOR' in user_roles or 'ADMINISTRATIVO' in user_roles or 'SUPERVISOR' in user_roles or 'ADMIN' in user_roles %}
+    <a href="{{ url_for('expedientes.nuevo') }}" class="dashboard-card">
+        <div class="card-icon">
+            <i class="fas fa-plus-circle"></i>
+        </div>
+        <h2 class="card-title">Nuevo Expediente</h2>
+        <p class="card-description">Crear expediente de tramitación</p>
+    </a>
+    {% endif %}
+    
+    <!-- Card: Mi Perfil -->
+    <a href="{{ url_for('perfil.index') }}" class="dashboard-card">
+        <div class="card-icon">
+            <i class="fas fa-user-circle"></i>
+        </div>
+        <h2 class="card-title">Mi Perfil</h2>
+        <p class="card-description">Configuración personal</p>
+    </a>
+    
+    <!-- Cards futuras (deshabilitadas) -->
+    {% if 'TRAMITADOR' in user_roles or 'ADMINISTRATIVO' in user_roles or 'SUPERVISOR' in user_roles or 'ADMIN' in user_roles %}
+    <div class="dashboard-card disabled">
+        <div class="card-icon">
+            <i class="fas fa-tasks"></i>
+        </div>
+        <h2 class="card-title">Tareas</h2>
+        <p class="card-description">Próximamente</p>
+    </div>
+    
+    <div class="dashboard-card disabled">
+        <div class="card-icon">
+            <i class="fas fa-file-alt"></i>
+        </div>
+        <h2 class="card-title">Documentos</h2>
+        <p class="card-description">Próximamente</p>
+    </div>
+    {% endif %}
+    
+    {% if 'SUPERVISOR' in user_roles or 'ADMIN' in user_roles %}
+    <div class="dashboard-card disabled">
+        <div class="card-icon">
+            <i class="fas fa-chart-bar"></i>
+        </div>
+        <h2 class="card-title">Estadísticas</h2>
+        <p class="card-description">Próximamente</p>
+    </div>
+    
+    <div class="dashboard-card disabled">
+        <div class="card-icon">
+            <i class="fas fa-cog"></i>
+        </div>
+        <h2 class="card-title">Configuración</h2>
+        <p class="card-description">Próximamente</p>
+    </div>
+    {% endif %}
+    
+</div>
+{% endblock %}
