@@ -3,6 +3,7 @@ Blueprint para gestión de expedientes.
 
 Rutas:
 - GET  /expedientes/        - Listar expedientes (filtrados por rol o parámetro)
+- GET  /expedientes/listado-v2  - Listado con scroll infinito (Fase 2)
 - GET  /expedientes/nuevo   - Formulario crear expediente
 - POST /expedientes/nuevo   - Crear expediente + proyecto
 - GET  /expedientes/<id>    - Ver detalle expediente
@@ -69,6 +70,28 @@ def index():
         expedientes=expedientes,
         vista_filtrada=vista_filtrada
     )
+
+
+@bp.route('/listado-v2')
+@login_required
+def listado_v2():
+    """
+    Listado de expedientes con scroll infinito (Fase 2).
+    
+    Usa estructura CSS v2 (Grid A/B/C) con carga dinámica de datos
+    mediante JavaScript + API /api/expedientes.
+    
+    Características:
+    - Scroll infinito con paginación cursor
+    - Filtros dinámicos (búsqueda, estado)
+    - Header/Footer sticky
+    - Tabla con thead sticky
+    - Botón scroll-to-top
+    
+    Nota: Esta ruta NO carga expedientes iniciales, solo renderiza
+          la estructura HTML. Los datos se cargan vía AJAX.
+    """
+    return render_template('expedientes/listado_v2.html')
 
 
 @bp.route('/nuevo', methods=['GET', 'POST'])
