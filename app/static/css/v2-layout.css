@@ -2,7 +2,7 @@
  * v2-layout.css
  * Grid principal (header/main/footer), responsive
  * 
- * Issue: #94 (Fase 1)
+ * Issue: #94 (Fase 1 y 1.5)
  * Epic: #93
  */
 
@@ -10,7 +10,7 @@
 .app-container {
   display: grid;
   grid-template-rows: var(--header-height) 1fr var(--footer-height);
-  min-height: 100vh;
+  height: 100vh; /* CAMBIADO: era min-height, ahora height fijo para forzar scroll interno */
   width: 100%;
   background-color: var(--bg-page);
 }
