@@ -53,4 +53,8 @@ def create_app(config_name='default'):
     from app.routes.api_municipios import bp as api_municipios_bp
     app.register_blueprint(api_municipios_bp)
     
+    # API expedientes (scroll infinito Fase 2)
+    from app.routes.api_expedientes import api_bp as api_expedientes_bp
+    app.register_blueprint(api_expedientes_bp)
+    
     return app
