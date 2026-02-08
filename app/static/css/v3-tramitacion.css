@@ -1,0 +1,420 @@
+/*
+ * v3-tramitacion.css
+ * 
+ * Estilos específicos para Vista V3 (Tramitación con Sidebar Acordeón)
+ * Reutiliza variables CSS de v2-theme.css
+ * 
+ * Estructura:
+ * - Grid 2 columnas con divisor redimensionable
+ * - Sidebar acordeón (250px default)
+ * - Panel detalle con tabs y paneles de hijos
+ */
+
+/* ========================================
+   A. CONTENEDOR PRINCIPAL TRAMITACIÓN
+   ======================================== */
+
+.tramitacion-container {
+    display: grid;
+    grid-template-columns: 250px auto 1fr;
+    grid-template-areas: "sidebar resizer panel";
+    height: 100%;
+    overflow: hidden;
+    background-color: var(--color-background);
+}
+
+/* Ajuste para app-main con sidebar */
+.app-main-with-sidebar {
+    overflow: hidden; /* Evita scroll en main */
+}
+
+/* ========================================
+   B. SIDEBAR ACORDEÓN
+   ======================================== */
+
+.tramitacion-sidebar {
+    grid-area: sidebar;
+    width: 250px; /* Ancho default */
+    min-width: 180px;
+    max-width: 500px;
+    overflow-x: auto;
+    overflow-y: auto;
+    background-color: var(--color-white);
+    border-right: 1px solid var(--color-border);
+    padding: 1rem 0;
+}
+
+/* Lista acordeón (lista plana, NO árbol indentado) */
+.sidebar-accordion {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+/* Elementos del acordeón */
+.accordion-item {
+    margin: 0;
+    border-bottom: 1px solid var(--color-border-light);
+}
+
+/* Botón/enlace del elemento */
+.accordion-button {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    padding: 0.75rem 1rem;
+    background: none;
+    border: none;
+    text-align: left;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    font-size: 0.95rem;
+    color: var(--color-text);
+}
+
+.accordion-button:hover {
+    background-color: var(--color-background);
+}
+
+/* Elemento seleccionado (marcado con ●) */
+.accordion-item.selected .accordion-button {
+    background-color: var(--color-primary-light);
+    color: var(--color-primary);
+    font-weight: 600;
+}
+
+.accordion-item.selected .accordion-button::before {
+    content: '● ';
+    margin-right: 0.5rem;
+    color: var(--color-primary);
+}
+
+/* Hijos directos (con indentación visual leve) */
+.accordion-item.child {
+    padding-left: 1.5rem;
+}
+
+.accordion-item.child .accordion-button {
+    font-size: 0.9rem;
+    color: var(--color-text-secondary);
+}
+
+/* Icono de tipo de elemento */
+.accordion-icon {
+    margin-right: 0.5rem;
+    font-size: 1rem;
+}
+
+/* Etiqueta del elemento */
+.accordion-label {
+    flex: 1;
+}
+
+/* Badge de estado */
+.accordion-badge {
+    font-size: 0.75rem;
+    padding: 0.2rem 0.5rem;
+    border-radius: var(--border-radius-sm);
+    background-color: var(--color-background);
+    color: var(--color-text-secondary);
+}
+
+/* ========================================
+   C. DIVISOR REDIMENSIONABLE
+   ======================================== */
+
+.sidebar-resizer {
+    grid-area: resizer;
+    width: 8px;
+    cursor: col-resize;
+    background-color: var(--color-border);
+    transition: background-color 0.2s ease;
+    position: relative;
+}
+
+.sidebar-resizer:hover {
+    background-color: var(--color-primary);
+}
+
+/* Símbolo visual del divisor (⋮) */
+.sidebar-resizer::after {
+    content: '⋮';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: var(--color-text-light);
+    font-size: 1.2rem;
+    pointer-events: none;
+}
+
+/* Estado activo (arrastrando) */
+.sidebar-resizer.resizing {
+    background-color: var(--color-primary);
+}
+
+/* ========================================
+   D. PANEL DETALLE
+   ======================================== */
+
+.tramitacion-panel {
+    grid-area: panel;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 1.5rem;
+    background-color: var(--color-white);
+}
+
+/* Breadcrumb dinámico */
+.panel-breadcrumb {
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+    color: var(--color-text-secondary);
+}
+
+.panel-breadcrumb a {
+    color: var(--color-primary);
+    text-decoration: none;
+}
+
+.panel-breadcrumb a:hover {
+    text-decoration: underline;
+}
+
+.panel-breadcrumb .separator {
+    margin: 0 0.5rem;
+    color: var(--color-text-light);
+}
+
+/* Contexto fijo de expediente/proyecto (encima de todo) */
+.panel-context {
+    background-color: var(--color-background);
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius);
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.panel-context-title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+    margin-bottom: 0.5rem;
+    text-transform: uppercase;
+}
+
+.panel-context-data {
+    display: flex;
+    gap: 2rem;
+    flex-wrap: wrap;
+}
+
+.panel-context-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.panel-context-item-label {
+    font-size: 0.8rem;
+    color: var(--color-text-secondary);
+    margin-bottom: 0.25rem;
+}
+
+.panel-context-item-value {
+    font-size: 0.95rem;
+    color: var(--color-text);
+    font-weight: 500;
+}
+
+/* Título del elemento seleccionado */
+.panel-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--color-text);
+    margin-bottom: 0.5rem;
+}
+
+.panel-subtitle {
+    font-size: 0.95rem;
+    color: var(--color-text-secondary);
+    margin-bottom: 1.5rem;
+}
+
+/* ========================================
+   E. TABS (DATOS / DOCUMENTOS / HISTORIAL)
+   ======================================== */
+
+.panel-tabs {
+    display: flex;
+    border-bottom: 2px solid var(--color-border);
+    margin-bottom: 1.5rem;
+    gap: 0.5rem;
+}
+
+.panel-tab {
+    padding: 0.75rem 1.5rem;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 0.95rem;
+    color: var(--color-text-secondary);
+    border-bottom: 3px solid transparent;
+    transition: all 0.2s ease;
+    font-weight: 500;
+}
+
+.panel-tab:hover {
+    color: var(--color-primary);
+    background-color: var(--color-background);
+}
+
+.panel-tab.active {
+    color: var(--color-primary);
+    border-bottom-color: var(--color-primary);
+    font-weight: 600;
+}
+
+/* Contenido de tabs */
+.panel-tab-content {
+    display: none;
+}
+
+.panel-tab-content.active {
+    display: block;
+}
+
+/* ========================================
+   F. PANELES DE HIJOS DIRECTOS
+   ======================================== */
+
+/* Panel de hijos (ej: FASES, TRÁMITES, TAREAS) */
+.panel-children {
+    margin-top: 2rem;
+    padding-top: 2rem;
+    border-top: 1px solid var(--color-border);
+}
+
+.panel-children-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.panel-children-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--color-text);
+}
+
+.panel-children-count {
+    font-size: 0.9rem;
+    color: var(--color-text-secondary);
+    margin-left: 0.5rem;
+}
+
+.panel-children-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+/* Botón [+ Crear] */
+.btn-create-child {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background-color: var(--color-primary);
+    color: var(--color-white);
+    border: none;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: background-color 0.2s ease;
+}
+
+.btn-create-child:hover {
+    background-color: var(--color-primary-dark);
+}
+
+/* Listado de hijos (reutiliza estilos de v2-data-table.css) */
+.panel-children-list {
+    /* Usar grupo C2.D de Vista 2 para listados */
+}
+
+/* Mensaje cuando no hay hijos */
+.panel-children-empty {
+    text-align: center;
+    padding: 2rem;
+    color: var(--color-text-secondary);
+    background-color: var(--color-background);
+    border-radius: var(--border-radius);
+    border: 1px dashed var(--color-border);
+}
+
+.panel-children-empty-icon {
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+    opacity: 0.5;
+}
+
+.panel-children-empty-text {
+    font-size: 0.95rem;
+    margin-bottom: 1rem;
+}
+
+/* ========================================
+   G. RESPONSIVE
+   ======================================== */
+
+/* Tablet y menor: sidebar más estrecho */
+@media (max-width: 1024px) {
+    .tramitacion-container {
+        grid-template-columns: 200px auto 1fr;
+    }
+    
+    .tramitacion-sidebar {
+        width: 200px;
+        min-width: 150px;
+    }
+}
+
+/* Móvil: sidebar no crítico (solo visualización) */
+@media (max-width: 768px) {
+    .tramitacion-container {
+        grid-template-columns: 1fr;
+        grid-template-areas: "panel";
+    }
+    
+    .tramitacion-sidebar,
+    .sidebar-resizer {
+        display: none; /* Ocultar sidebar en móvil */
+    }
+    
+    .tramitacion-panel {
+        padding: 1rem;
+    }
+}
+
+/* ========================================
+   H. ACCESIBILIDAD
+   ======================================== */
+
+/* Focus visible para teclado */
+.accordion-button:focus-visible,
+.panel-tab:focus-visible,
+.btn-create-child:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+}
+
+/* Reducción de movimiento */
+@media (prefers-reduced-motion: reduce) {
+    .accordion-button,
+    .panel-tab,
+    .sidebar-resizer,
+    .btn-create-child {
+        transition: none;
+    }
+}

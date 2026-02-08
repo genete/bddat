@@ -4,6 +4,7 @@ Blueprint para gestión de expedientes.
 Rutas:
 - GET  /expedientes/        - Listar expedientes (filtrados por rol o parámetro)
 - GET  /expedientes/listado-v2  - Listado con scroll infinito (Fase 2)
+- GET  /expedientes/tramitacion/<id>  - Tramitación Vista V3 con sidebar acordeón
 - GET  /expedientes/nuevo   - Formulario crear expediente
 - POST /expedientes/nuevo   - Crear expediente + proyecto
 - GET  /expedientes/<id>    - Ver detalle expediente
@@ -92,6 +93,38 @@ def listado_v2():
           la estructura HTML. Los datos se cargan vía AJAX.
     """
     return render_template('expedientes/listado_v2.html')
+
+
+@bp.route('/tramitacion/<int:id>')
+@login_required
+def tramitacion_v3(id):
+    """
+    Vista V3 - Tramitación con Sidebar Acordeón (MOCKUP Fase 1).
+    
+    Patrón de vista para navegación jerárquica dentro de UN expediente:
+    - Sidebar acordeón: Expediente > Solicitudes > Fases > Trámites > Tareas
+    - Panel detalle: Tabs [Datos] [Documentos] [Historial]
+    - Contexto fijo: Expediente/Proyecto siempre visible
+    - Paneles de hijos directos con listados (grupo C2.D de Vista 2)
+    
+    Fase 1 (actual): Mockup estático con estructura completa
+    Fase 2+: JavaScript funcional + APIs backend
+    
+    Referencias:
+    - Epic #93 - Sistema de Navegación UI Modular
+    - docs/arquitectura/PATRONES_UI.md - Patrón Vista 3
+    """
+    expediente = Expediente.query.get_or_404(id)
+    
+    # Verificación de acceso
+    resultado = verificar_acceso_expediente(expediente, 'ver')
+    if resultado:
+        return resultado
+    
+    return render_template(
+        'expedientes/tramitacion_v3.html',
+        expediente=expediente
+    )
 
 
 @bp.route('/nuevo', methods=['GET', 'POST'])
