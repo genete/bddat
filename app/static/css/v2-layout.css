@@ -104,10 +104,11 @@
   text-decoration: none;
 }
 
-/* ===== MAIN CONTENT SCROLLABLE ===== */
+/* ===== MAIN CONTENT FLEXBOX ===== */
 .app-main {
-  /*overflow-y: auto;*/  /* Comentado - bloqueaba sticky */
-  padding: 0; /* Sin padding, controlamos por elemento */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden; /* Crítico: evita scroll duplicado */
   width: 100%;
   background-color: var(--bg-page);
 }
