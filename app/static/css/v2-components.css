@@ -7,6 +7,31 @@
  * Colores: #58 (Junta de Andalucía)
  */
 
+/* ===== ESTRUCTURA C.1/C.2 (SCROLL INDEPENDIENTE) ===== */
+
+/* C.1: Super-cabecera del listado (sin scroll) */
+.lista-cabecera {
+  flex-shrink: 0; /* No se comprime */
+  background: var(--gris-especifico);
+  padding-bottom: 0; /* El contenido interno maneja su padding */
+}
+
+/* C.2: Contenedor con scroll independiente */
+.lista-scroll-container {
+  flex: 1; /* Ocupa espacio disponible */
+  overflow-y: auto;
+  overflow-x: hidden;
+  position: relative; /* Contexto para sticky */
+  background: white;
+}
+
+/* Ajuste sticky header dentro de C.2 (ya no relativo a viewport) */
+.lista-scroll-container .expedientes-table thead th {
+  position: sticky;
+  top: 0; /* Pegado al top de C.2, no al viewport */
+  z-index: 10;
+}
+
 /* ===== TABLA RESPONSIVE (FULL-WIDTH) ===== */
 .expedientes-table {
   width: 100%;
@@ -33,7 +58,7 @@
   text-transform: uppercase;
   letter-spacing: 0.05em;
   border-bottom: 2px solid rgba(0, 0, 0, 0.1);
-  /* STICKY HEADER */
+  /* STICKY HEADER (por defecto para uso sin C.2) */
   position: sticky;
   top: 60px;
   z-index: 100;
@@ -85,6 +110,11 @@
   /* En mobile, sticky header justo debajo del header mobile (56px) */
   .expedientes-table th {
     top: 56px;
+  }
+  
+  /* Ajuste sticky en C.2 mobile */
+  .lista-scroll-container .expedientes-table thead th {
+    top: 0; /* Dentro de C.2 siempre top: 0 */
   }
 }
 
