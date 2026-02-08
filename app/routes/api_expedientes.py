@@ -38,7 +38,7 @@ NOTAS:
     - Total count se calcula solo si hay filtros (para mantener cache)
     - Requiere autenticación (@login_required)
 
-VERSIÓN: 1.1
+VERSIÓN: 1.2
 FECHA: 2026-02-08
 """
 
@@ -260,7 +260,7 @@ def listar_expedientes():
             'id': exp.id,
             'numero_at': exp.numero_at,
             'titular': exp.titular.nombre_completo if exp.titular else 'Sin titular',
-            'tipo_expediente': exp.tipo_expediente.nombre if exp.tipo_expediente else 'Sin tipo',
+            'tipo_expediente': exp.tipo_expediente.tipo if exp.tipo_expediente else 'Sin tipo',
             'responsable': f"{exp.responsable.apellidos}, {exp.responsable.nombre}" if exp.responsable else 'Sin asignar',
             'heredado': exp.heredado if exp.heredado is not None else False,
             # Futuro: añadir campos de estado, fechas, etc.
