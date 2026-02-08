@@ -137,6 +137,11 @@
                         <tr><td><strong>EXP-2026-040</strong></td><td>Gesternova</td><td>1</td><td><span class="badge badge-success">Resuelto</span></td><td>-</td><td><button class="btn btn-sm btn-primary">Ver</button></td></tr>
                     </tbody>
                 </table>
+                
+                <!-- Botón Scroll to Top (dentro de C.2, scroll interno) -->
+                <button id="tabla-scroll-to-top" aria-label="Volver arriba de la tabla">
+                    <i class="fas fa-chevron-up"></i>
+                </button>
             </div>
             <!-- Fin C.2 -->
             
@@ -178,7 +183,8 @@
                 
                 <p style="margin-top: 1.5rem; color: var(--text-secondary); font-size: 0.875rem;">
                     <strong>Nota:</strong> Esta sección (C.3) scrollea junto con C.1 y C.2 dentro de B.2.
-                    C.2 tiene scroll interno independiente. Header (B.1) y footer (B.3) permanecen fijos.
+                    C.2 tiene scroll interno independiente con su propio botón "volver arriba".
+                    Header (B.1) y footer (B.3) permanecen fijos.
                 </p>
             </section>
             <!-- Fin C.3 -->
@@ -198,12 +204,7 @@
     </div>
     <!-- Fin A -->
     
-    <!-- Botón Scroll to Top (flotante) -->
-    <button id="scroll-to-top" class="scroll-to-top" aria-label="Volver arriba">
-        <i class="fas fa-chevron-up"></i>
-    </button>
-    
-    <!-- JavaScript -->
-    <script src="app/static/js/v2-scroll-to-top.js"></script>
+    <!-- JavaScript: Botón scroll-to-top para C.2 (tabla) -->
+    <script src="app/static/js/v2-tabla-scroll-to-top.js"></script>
 </body>
 </html>
