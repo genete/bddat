@@ -36,12 +36,14 @@ NOTAS:
     - Usa eager loading (joinedload) para evitar N+1 queries
     - Respeta convención snake_case en JSON
     - Total count se calcula solo si hay filtros (para mantener cache)
+    - Requiere autenticación (@login_required)
 
-VERSIÓN: 1.0
+VERSIÓN: 1.1
 FECHA: 2026-02-08
 """
 
 from flask import Blueprint, request, jsonify
+from flask_login import login_required
 from sqlalchemy.orm import joinedload
 from sqlalchemy import func, or_
 from app import db
@@ -54,6 +56,7 @@ api_bp = Blueprint('api', __name__, url_prefix='/api')
 
 
 @api_bp.route('/expedientes', methods=['GET'])
+@login_required
 def listar_expedientes():
     """
     Endpoint GET /api/expedientes - Listado paginado con cursor.
@@ -90,6 +93,7 @@ def listar_expedientes():
         HTTP Status:
             200: OK
             400: Bad Request (parámetros inválidos)
+            401: Unauthorized (no autenticado)
             500: Error interno del servidor
 
     Ejemplo de uso desde JavaScript:
