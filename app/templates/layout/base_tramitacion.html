@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Tramitación - BDDAT{% endblock %}</title>
+    
+    <!-- CSS v2 base (reutilización) -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/v2-theme.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/v2-layout.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/v2-components.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/v2-data-table.css') }}">
+    
+    <!-- CSS específico V3 -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/v3-tramitacion.css') }}">
+    
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header (reutilizado de V2) -->
+        {% include 'layout/_header.html' %}
+        
+        <!-- Main Content con Sidebar + Panel Detalle -->
+        <main class="app-main app-main-with-sidebar">
+            <div class="tramitacion-container">
+                <!-- Sidebar Acordeón (250px redimensionable) -->
+                <aside class="tramitacion-sidebar" id="sidebar">
+                    {% block sidebar %}
+                    <!-- Contenido del sidebar acordeón -->
+                    {% endblock %}
+                </aside>
+                
+                <!-- Divisor Redimensionable -->
+                <div class="sidebar-resizer" id="sidebarResizer"></div>
+                
+                <!-- Panel Detalle -->
+                <section class="tramitacion-panel" id="panelDetalle">
+                    {% block panel_detalle %}
+                    <!-- Contenido del panel detalle -->
+                    {% endblock %}
+                </section>
+            </div>
+        </main>
+        
+        <!-- Footer (reutilizado de V2) -->
+        {% include 'layout/_footer.html' %}
+    </div>
+    
+    <!-- JavaScript V3 -->
+    <script src="{{ url_for('static', filename='js/v3-sidebar-accordion.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/v3-sidebar-resizer.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/v3-tabs.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/v3-tramitacion-controller.js') }}"></script>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>
+
+<!-- 
+Vista V3 - Tramitación con Sidebar Acordeón
+
+Estructura:
+- Header/Footer: Reutilizados de V2 (includes)
+- Main: Grid 2 columnas con divisor redimensionable
+  - Sidebar: Navegación acordeón jerárquica (250px default)
+  - Panel: Detalle del elemento seleccionado + tabs
+
+Referencias:
+- Epic #93 - Sistema de Navegación UI Modular
+- docs/arquitectura/PATRONES_UI.md - Patrón Vista 3
+-->
