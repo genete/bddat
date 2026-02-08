@@ -1,27 +1,34 @@
 /**
  * v2-layout.css
- * Grid principal (header/main/additional/footer), responsive
+ * Grid principal (header/main/footer), responsive
  * 
  * Issue: #94 (Fase 1 y 1.5)
  * Epic: #93
+ * 
+ * Estructura:
+ * B.1: app-header (sticky top)
+ * B.2: app-main (flex con C.1/C.2, scroll interno en C.2)
+ * B.3: app-additional-content (contenido extra scrollable con B.2)
+ * B.4: app-footer (sticky bottom)
+ * 
+ * B.2 + B.3 scrollean juntos en el espacio del grid
  */
 
-/* ===== GRID PRINCIPAL (4 FILAS) ===== */
+/* ===== GRID PRINCIPAL (3 FILAS) ===== */
 .app-container {
   display: grid;
-  grid-template-rows: var(--header-height) 1fr auto var(--footer-height);
-  /*                   B.1 (header)        B.2  B.3   B.4 (footer)       */
+  grid-template-rows: var(--header-height) 1fr var(--footer-height);
+  /*                   B.1 (header)        B.2+B.3  B.4 (footer)  */
   height: 100vh;
   width: 100%;
   background-color: var(--bg-page);
-  overflow: hidden; /* Evita scroll en A */
 }
 
-/* Wrapper para B.2 + B.3 (scrollable juntos) */
-.app-scrollable-wrapper {
-  grid-row: 2 / 4; /* Ocupa filas 2 y 3 (B.2 y B.3) */
+/* Wrapper scrollable para B.2 + B.3 */
+.app-content-wrapper {
   overflow-y: auto;
   overflow-x: hidden;
+  /* Este es el scrollable a nivel de ventana (A) */
 }
 
 /* ===== B.1: HEADER FIJO TOP ===== */
@@ -127,11 +134,11 @@
   padding: 0 var(--content-padding);
 }
 
-/* ===== B.3: CONTENIDO ADICIONAL (scrollable con B.2) ===== */
+/* ===== B.3: CONTENIDO ADICIONAL (scrollable con B.2 en .app-content-wrapper) ===== */
 .app-additional-content {
   padding: var(--content-padding);
   background: var(--bg-page);
-  /* NO tiene overflow, scrollea dentro de .app-scrollable-wrapper */
+  /* Scrollea dentro de .app-content-wrapper */
 }
 
 /* ===== B.4: FOOTER FIJO BOTTOM ===== */
