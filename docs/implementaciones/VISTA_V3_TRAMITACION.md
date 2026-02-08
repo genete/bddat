@@ -14,10 +14,11 @@
 3. [Arquitectura de Layout](#arquitectura-de-layout)
 4. [Componentes Principales](#componentes-principales)
 5. [Navegación Jerárquica](#navegación-jerárquica)
-6. [Archivos del Proyecto](#archivos-del-proyecto)
-7. [Plan de Implementación](#plan-de-implementación)
-8. [Testing y Validación](#testing-y-validación)
-9. [Referencias](#referencias)
+6. [Mockup con Datos Hardcodeados](#mockup-con-datos-hardcodeados)
+7. [Archivos del Proyecto](#archivos-del-proyecto)
+8. [Plan de Implementación](#plan-de-implementación)
+9. [Testing y Validación](#testing-y-validación)
+10. [Referencias](#referencias)
 
 ---
 
@@ -42,7 +43,7 @@ Proporcionar una interfaz eficiente para la tramitación completa de expedientes
 
 ## Características Implementadas
 
-### ✅ Fase 1 - Estructura Base Layout (COMPLETADA)
+### ✅ Fase 1 - Estructura Base Layout + Mockup (COMPLETADA)
 
 #### Layout y CSS Base
 - ✅ Layout `base_tramitacion.html` con grid 2 columnas + divisor
@@ -50,14 +51,20 @@ Proporcionar una interfaz eficiente para la tramitación completa de expedientes
   - Grid sidebar + contenido principal
   - Estilos sidebar acordeón (lista plana)
   - Estilos panel detalle con tabs
-  - Divisor redimensionable
+  - Divisor redimensionable (visual, sin funcionalidad)
   - Responsive: sidebar colapsable en móvil
 
-#### Template Mockup
-- ✅ Template `tramitacion_v3.html` con datos mockup
-- ✅ Sidebar con estructura acordeón semántica
-- ✅ Panel detalle con tabs funcionales
-- ✅ Breadcrumb dinámico
+#### Template Mockup con Datos Hardcodeados
+- ✅ Template `tramitacion_v3.html` con **mockup completo**:
+  - **Sidebar**: Expediente AT-123 con Solicitud AAP seleccionada, 3 fases, Sol. DUP, Proyecto
+  - **Panel contexto**: Datos expediente siempre visibles (Nº AT, Titular, Estado, Proyecto)
+  - **Breadcrumb**: Expedientes > AT-123 > Solicitud AAP
+  - **Tabs funcionales**: [Datos] [Documentos] [Historial] con JavaScript básico
+  - **Tab Datos**: Información de Solicitud AAP (tipo, solicitante, fecha, estado)
+  - **Tab Documentos**: Listado 3 documentos PDF mockup
+  - **Tab Historial**: Placeholder "próximamente"
+  - **Panel Fases**: Tabla con 3 fases (Info. Pública, Resolución, Archivo) + botón [+ Nueva Fase]
+  - **Panel Documentos**: Lista 5 documentos PDF + botón [+ Subir documento]
 
 #### Ruta Flask
 - ✅ Ruta `/tramitacion/<id>` para acceder a Vista V3
@@ -119,6 +126,7 @@ A: app-container (grid header/main/footer)
 │   ├── C.divider: sidebar-divider (arrastrable para redimensionar)
 │   └── C.detail: tramitacion-detail (flex:1, scroll independiente)
 │       ├── detail-breadcrumb (navegación ancestros)
+│       ├── detail-context (expediente/proyecto siempre visible)
 │       ├── detail-tabs (Datos/Documentos/Historial)
 │       └── detail-content (contenido según tab)
 │           ├── detail-info (datos principales)
@@ -172,7 +180,7 @@ A: app-container (grid header/main/footer)
 4. **Hermanos** del seleccionado permanecen visibles
 5. **NO es árbol indentado**, es lista plana tipo acordeón
 
-#### Ejemplo de Estado
+#### Ejemplo de Estado (Mockup Fase 1)
 
 **Estado inicial - Solicitud AAP seleccionada:**
 ```
@@ -185,18 +193,15 @@ Solicitud DUP            ← Hermano
 Proyecto
 ```
 
-**Usuario hace clic en "Fase 1 - Información Pública":**
-```
-Expediente AT-123
-Solicitud AAP
-Fase Info. Pública ●     ← Nuevo seleccionado
-├ Trámite 1              ← Nuevos hijos visibles
-└ Trámite 2
-Fase Resolución          ← Hermano
-Fase Archivo             ← Hermano
-```
+### 2. Panel Contexto (Nuevo componente)
 
-### 2. Panel Detalle
+**Bloque fijo siempre visible** encima del panel detalle que muestra información del expediente/proyecto:
+
+- **Título**: "📁 Contexto: Expediente AT-123"
+- **Datos**: Nº Expediente, Titular, Estado, Proyecto
+- **Objetivo**: Mantener contexto del expediente completo mientras se navega por solicitudes/fases/trámites
+
+### 3. Panel Detalle
 
 #### Estructura de Tabs
 
@@ -221,12 +226,12 @@ Los paneles de hijos se muestran **siempre**, incluso si están vacíos:
 - **Con datos**: Listado + botón `[+ Crear]`
 - **Sin datos**: Mensaje informativo + botón `[+ Crear]`
 
-### 3. Breadcrumb Dinámico
+### 4. Breadcrumb Dinámico
 
 #### Características
 
 - Construcción dinámica según elemento seleccionado
-- Muestra la ruta completa desde raíz: `Expedientes > AT-123 > Solicitud AAP > Fase 1`
+- Muestra la ruta completa desde raíz: `Expedientes > AT-123 > Solicitud AAP`
 - Cada nivel es clickable para navegación rápida hacia ancestros
 - **NO hay botón [⟲ Volver]** (navegación por breadcrumb o sidebar)
 
@@ -236,14 +241,14 @@ Los paneles de hijos se muestran **siempre**, incluso si están vacíos:
 Expediente seleccionado:
 Expedientes > AT-123
 
-Solicitud seleccionada:
+Solicitud seleccionada (mockup Fase 1):
 Expedientes > AT-123 > Solicitud AAP
 
 Fase seleccionada:
 Expedientes > AT-123 > Solicitud AAP > Fase Info. Pública
 ```
 
-### 4. Divisor Redimensionable
+### 5. Divisor Redimensionable
 
 #### Características
 
@@ -253,21 +258,7 @@ Expedientes > AT-123 > Solicitud AAP > Fase Info. Pública
 - Si contenido excede ancho → scrollbar horizontal automático en sidebar
 - Al expandir suficiente → scrollbar desaparece
 
-#### Implementación
-
-```javascript
-// Lógica simplificada
-let isDragging = false;
-divider.addEventListener('mousedown', () => isDragging = true);
-document.addEventListener('mousemove', (e) => {
-    if (isDragging) {
-        const newWidth = e.clientX;
-        sidebar.style.width = `${newWidth}px`;
-        localStorage.setItem('sidebarWidth', newWidth);
-    }
-});
-document.addEventListener('mouseup', () => isDragging = false);
-```
+**⚠️ Fase 1:** Visual implementado, funcionalidad drag-and-drop pendiente Fase 2.
 
 ---
 
@@ -299,7 +290,7 @@ Los 3 componentes principales deben estar **siempre sincronizados**:
 2. **Breadcrumb** - Muestra ruta completa hasta elemento
 3. **Panel Detalle** - Muestra datos + paneles hijos directos
 
-**Evento de cambio:**
+**Evento de cambio (Fase 2+):**
 ```javascript
 function seleccionarElemento(tipo, id) {
     // 1. Actualizar sidebar (marcar ●, mostrar hijos)
@@ -314,6 +305,111 @@ function seleccionarElemento(tipo, id) {
     // 4. Actualizar URL (history API)
     history.pushState({tipo, id}, '', `/tramitacion/${id}`);
 }
+```
+
+---
+
+## Mockup con Datos Hardcodeados
+
+### Escenario del Mockup (Fase 1)
+
+El mockup simula el estado de **Solicitud AAP seleccionada** dentro del Expediente AT-123:
+
+#### Sidebar (jerarquía visible)
+
+```
+📁 Expediente AT-123
+📝 Solicitud AAP ● (SELECCIONADA)
+  ├ ⚙️ Fase 1 - Información Pública [En curso]
+  ├ ⚙️ Fase 2 - Resolución [Pendiente]
+  └ ⚙️ Fase 3 - Archivo [No iniciado]
+📝 Solicitud DUP [Pendiente]
+🏛️ Proyecto Técnico [Completo]
+```
+
+#### Panel Contexto (siempre visible)
+
+```
+📁 Contexto: Expediente AT-123
+
+Nº Expediente: AT-123
+Titular: (depende de datos reales)
+Estado: En tramitación
+Proyecto: (depende de datos reales)
+```
+
+#### Breadcrumb
+
+```
+Expedientes > AT-123 > Solicitud AAP
+```
+
+#### Panel Detalle - Tab [Datos]
+
+**Información de la Solicitud AAP:**
+- Tipo: AAP - Autorización Administrativa Previa
+- Solicitante: Endesa SA (CIF: A12345678)
+- Fecha de presentación: 15/01/2026
+- Estado: Completa ✅
+- Observaciones: Solicitud presentada de forma telemática. Documentación completa.
+
+#### Panel Detalle - Tab [Documentos]
+
+**Listado de 3 documentos mockup:**
+1. 📄 proyecto_tecnico.pdf (2.3 MB) - 15/01/2026
+2. 📄 licencia_municipal.pdf (1.1 MB) - 15/01/2026
+3. 📄 escritura_propiedad.pdf (0.8 MB) - 15/01/2026
+
+**Botón:** [+ Subir documento]
+
+#### Panel Detalle - Tab [Historial]
+
+**Placeholder:** "El historial de cambios estará disponible próximamente." 🗓️
+
+#### Panel Hijos Directos: Fases
+
+**Título:** Fases (3) | **Botón:** [+ Nueva Fase]
+
+**Tabla de fases:**
+
+| Fase | Estado | Inicio | Fin Previsto | Acciones |
+|------|--------|--------|--------------|----------|
+| ⚙️ Fase 1 - Información Pública | En curso ⚠️ | 20/01/2026 | 05/02/2026 (quedan 15 días) | [Ver detalle ▶] |
+| ⚙️ Fase 2 - Resolución | Pendiente | - | - | [Ver detalle ▶] |
+| ⚙️ Fase 3 - Archivo | No iniciado | - | - | [Ver detalle ▶] |
+
+#### Panel Hijos Directos: Documentos
+
+**Título:** Documentos (5) | **Botón:** [+ Subir documento]
+
+**Listado de 5 documentos:**
+1. 📄 proyecto_tecnico.pdf (2.3 MB) - 15/01/2026 [Descargar]
+2. 📄 licencia_municipal.pdf (1.1 MB) - 15/01/2026 [Descargar]
+3. 📄 escritura_propiedad.pdf (0.8 MB) - 15/01/2026 [Descargar]
+4. 📄 anejos_tecnicos.pdf (4.2 MB) - 15/01/2026 [Descargar]
+5. 📄 planos.pdf (6.5 MB) - 15/01/2026 [Descargar]
+
+### JavaScript Básico Tabs (Mockup Fase 1)
+
+```javascript
+// Funcionalidad básica de tabs
+document.addEventListener('DOMContentLoaded', function() {
+    const tabs = document.querySelectorAll('.panel-tab');
+    const tabContents = document.querySelectorAll('.panel-tab-content');
+    
+    tabs.forEach(tab => {
+        tab.addEventListener('click', function() {
+            // Remover active de todos
+            tabs.forEach(t => t.classList.remove('active'));
+            tabContents.forEach(tc => tc.classList.remove('active'));
+            
+            // Añadir active al clickeado
+            this.classList.add('active');
+            const tabId = this.getAttribute('data-tab');
+            document.getElementById('tab' + tabId.charAt(0).toUpperCase() + tabId.slice(1)).classList.add('active');
+        });
+    });
+});
 ```
 
 ---
@@ -340,7 +436,7 @@ function seleccionarElemento(tipo, id) {
 | Archivo | Descripción | Estado |
 |---------|-------------|--------|
 | `app/templates/layout/base_tramitacion.html` | Layout base V3 | ✅ Fase 1 |
-| `app/templates/expedientes/tramitacion_v3.html` | Vista tramitación mockup | ✅ Fase 1 |
+| `app/templates/expedientes/tramitacion_v3.html` | Vista tramitación con mockup completo | ✅ Fase 1 |
 
 ### Rutas Flask
 
@@ -352,19 +448,27 @@ function seleccionarElemento(tipo, id) {
 
 ## Plan de Implementación
 
-### Fase 1: Estructura Base Layout ✅ COMPLETADA
+### Fase 1: Estructura Base Layout + Mockup ✅ COMPLETADA
 
-**Duración estimada:** 2-3 días  
-**Estado:** ✅ Completada
+**Duración:** 2-3 días  
+**Estado:** ✅ Completada el 08/02/2026
 
 - [x] Crear `base_tramitacion.html` (layout V3)
 - [x] Crear `v3-tramitacion.css` con grid 2 columnas + divisor
 - [x] Estilos sidebar acordeón (lista plana)
 - [x] Estilos panel detalle con tabs
 - [x] Responsive: sidebar colapsable en móvil
-- [x] Template `tramitacion_v3.html` con mockup
+- [x] Template `tramitacion_v3.html` con **mockup completo hardcodeado**:
+  - Sidebar con jerarquía Expediente AT-123
+  - Panel contexto expediente (siempre visible)
+  - Breadcrumb: Expedientes > AT-123 > Solicitud AAP
+  - Tabs [Datos] [Documentos] [Historial] con JavaScript básico
+  - Datos mockup Solicitud AAP
+  - Panel Fases (3 fases en tabla)
+  - Panel Documentos (5 documentos)
 - [x] Ruta Flask `/tramitacion/<id>`
 - [x] Crear stubs JavaScript (Fase 2+)
+- [x] **Testing visual mockup completo**
 
 ### Fase 2: Sidebar Acordeón Dinámico 🔴 PENDIENTE
 
@@ -467,20 +571,39 @@ function seleccionarElemento(tipo, id) {
 
 ### Testing Visual (Fase 1) ✅ COMPLETADO
 
-- [x] Vista V3 carga correctamente con mockup
+- [x] Vista V3 carga correctamente con mockup en `/tramitacion/1`
 - [x] Grid 2 columnas funcional (sidebar + divisor + detalle)
-- [x] Sidebar con estructura acordeón visible
-- [x] Panel detalle con tabs visible
+- [x] Sidebar con estructura acordeón visible:
+  - Expediente AT-123 en raíz
+  - Solicitud AAP marcada como seleccionada
+  - 3 Fases visibles como hijos
+  - Sol. DUP y Proyecto visibles como hermanos
+- [x] Panel contexto expediente visible arriba del detalle
+- [x] Breadcrumb visible: "Expedientes > AT-123 > Solicitud AAP"
+- [x] Tabs [Datos] [Documentos] [Historial] visibles y funcionan con clic
+- [x] Tab [Datos]: Información Solicitud AAP visible
+- [x] Tab [Documentos]: Listado 3 documentos visible
+- [x] Tab [Historial]: Placeholder visible
+- [x] Panel Fases: Tabla con 3 fases + botón [+ Nueva Fase]
+- [x] Panel Documentos: Lista 5 documentos + botón [+ Subir documento]
 - [x] Header y footer V2 reutilizados correctamente
-- [x] Responsive: sidebar colapsable en móvil
+- [x] Responsive: sidebar visible en desktop (pendiente colapso móvil)
 
-### Testing Funcional (Fases 2-5) 🔴 PENDIENTE
+### Testing Funcional Básico (Fase 1) ✅ COMPLETADO
+
+- [x] Ruta `/tramitacion/1` accesible con autenticación
+- [x] Tabs [Datos] [Documentos] [Historial] cambian contenido al hacer clic
+- [x] JavaScript básico tabs funciona correctamente
+- [x] Botones mockup [Ver detalle ▶] visibles (sin funcionalidad)
+- [x] Botones mockup [+ Nueva Fase] [+ Subir documento] visibles (sin funcionalidad)
+
+### Testing Funcional Avanzado (Fases 2-5) 🔴 PENDIENTE
 
 - [ ] Sidebar acordeón: expandir/contraer funciona
 - [ ] Elemento seleccionado marcado con ●
 - [ ] Hijos directos visibles al seleccionar elemento
 - [ ] Divisor redimensionable drag-and-drop funciona
-- [ ] Tabs navegan correctamente
+- [ ] Tabs navegan correctamente con lazy loading
 - [ ] Paneles de hijos directos se actualizan según elemento
 - [ ] Breadcrumb construye ruta correctamente
 - [ ] Navegación hacia ancestros funciona
@@ -524,7 +647,7 @@ function seleccionarElemento(tipo, id) {
 - PR #97 - Vista V2 (Listado expedientes) ✅ Mergeado
 - PR #98 - Vista V1 (Dashboard) ✅ Mergeado
 - PR #99 - Vista V0 (Login) ✅ Mergeado
-- PR pendiente - Vista V3 (Tramitación) 🟡 En desarrollo
+- PR pendiente - Vista V3 (Tramitación Fase 1) 🟡 En desarrollo
 
 ---
 
@@ -551,6 +674,10 @@ function seleccionarElemento(tipo, id) {
 - ❌ **Descartado**: Mostrar todos los niveles anidados
 - **Razón**: Evita sobrecarga visual. Usuario navega jerárquicamente paso a paso.
 
+**Panel contexto expediente:**
+- ✅ **Elegido**: Bloque fijo siempre visible con datos expediente/proyecto
+- **Razón**: Mantiene contexto del expediente completo mientras se navega por elementos hijos.
+
 **Breadcrumb sin botón Volver:**
 - ✅ **Elegido**: Breadcrumb clickable para navegación
 - ❌ **Descartado**: Botón [⟲ Volver] adicional
@@ -572,6 +699,7 @@ Solo añade estilos específicos en `v3-tramitacion.css`:
 - Estilos sidebar acordeón
 - Estilos divisor redimensionable
 - Estilos tabs panel detalle
+- Estilos panel contexto
 
 ---
 
@@ -580,9 +708,16 @@ Solo añade estilos específicos en `v3-tramitacion.css`:
 **08/02/2026 - Fase 1 completada:**
 - Creado layout `base_tramitacion.html` con grid 2 columnas
 - Creado CSS `v3-tramitacion.css` completo
-- Creado template mockup `tramitacion_v3.html`
+- Creado template mockup `tramitacion_v3.html` con **datos hardcodeados completos**:
+  - Sidebar con jerarquía Expediente AT-123
+  - Panel contexto expediente (nuevo componente)
+  - Solicitud AAP seleccionada
+  - Tabs funcionales [Datos] [Documentos] [Historial]
+  - Panel Fases (3 fases en tabla)
+  - Panel Documentos (5 documentos)
 - Creada ruta Flask `/tramitacion/<id>`
 - Creados stubs JavaScript para Fase 2+
+- **Testing visual mockup completado**
 - Creado documento `VISTA_V3_TRAMITACION.md`
 
 ---
