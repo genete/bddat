@@ -109,7 +109,7 @@ class Entidad(db.Model):
     
     municipio_id = db.Column(
         db.Integer, 
-        db.ForeignKey('municipios.id'), 
+        db.ForeignKey('public.municipios.id'),
         nullable=True, 
         index=True,
         comment='Municipio de la dirección. Preferente sobre direccion_fallback. Permite deducir provincia'
