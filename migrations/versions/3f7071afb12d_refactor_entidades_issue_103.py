@@ -5,8 +5,9 @@ Revises: 4a972bf8399a
 Create Date: 2026-02-11 17:54:10.236751
 
 CAMBIOS:
-- DROP tablas obsoletas: tipos_entidades, entidades_* (administrados, empresas, organismos, ayuntamientos, diputaciones)
-- ALTER entidades: DROP tipo_entidad_id, RENAME cif_nif → nif, ADD roles booleanos
+- ALTER entidades: DROP FK y columna tipo_entidad_id, RENAME cif_nif → nif, ADD roles booleanos
+- MIGRACIÓN DE DATOS: Limpiar entidades existentes o asignar roles por defecto
+- DROP tablas obsoletas: tipos_entidades, entidades_* 
 - CREATE direcciones_notificacion con bit flags de roles
 """
 
@@ -23,41 +24,63 @@ depends_on = None
 
 def upgrade():
     # ========================================
-    # PASO 1: DROP TABLAS OBSOLETAS (en orden de dependencias)
-    # ========================================
-    
-    # Tablas de metadatos de entidades (dependen de entidades)
-    op.drop_table('entidades_administrados')
-    op.drop_table('entidades_empresas_servicio_publico')
-    op.drop_table('entidades_organismos_publicos')
-    op.drop_table('entidades_ayuntamientos')
-    op.drop_table('entidades_diputaciones')
-    
-    # Tabla de tipos (no tiene dependencias hacia arriba)
-    op.drop_table('tipos_entidades')
-    
-    # ========================================
-    # PASO 2: MODIFICAR TABLA ENTIDADES
+    # PASO 1: MODIFICAR TABLA ENTIDADES
     # ========================================
     
     with op.batch_alter_table('entidades', schema=None) as batch_op:
-        # Eliminar FK y columna tipo_entidad_id
+        # Eliminar FK a tipos_entidades
         batch_op.drop_constraint('entidades_tipo_entidad_id_fkey', type_='foreignkey')
         batch_op.drop_column('tipo_entidad_id')
         
         # Renombrar cif_nif → nif
         batch_op.alter_column('cif_nif', new_column_name='nif')
         
-        # Añadir columnas de roles booleanos
+        # Añadir columnas de roles booleanos (SIN constraint todavía)
         batch_op.add_column(sa.Column('rol_titular', sa.Boolean(), nullable=False, server_default='false'))
         batch_op.add_column(sa.Column('rol_consultado', sa.Boolean(), nullable=False, server_default='false'))
         batch_op.add_column(sa.Column('rol_publicador', sa.Boolean(), nullable=False, server_default='false'))
-        
-        # Añadir constraint: al menos un rol activo
+    
+    # ========================================
+    # PASO 1.5: LIMPIEZA DE DATOS (orden de dependencias)
+    # ========================================
+    
+    # Borrar datos operacionales en cascada
+    op.execute("DELETE FROM tareas")
+    op.execute("DELETE FROM tramites")
+    op.execute("DELETE FROM fases")
+    op.execute("DELETE FROM solicitudes_tipos")
+    op.execute("DELETE FROM solicitudes")
+    op.execute("DELETE FROM documentos_proyecto")
+    op.execute("DELETE FROM documentos")
+    op.execute("DELETE FROM historico_titulares_expediente")
+    op.execute("DELETE FROM autorizados_titular")
+    op.execute("DELETE FROM expedientes")
+    op.execute("DELETE FROM municipios_proyecto")
+    op.execute("DELETE FROM proyectos")
+    
+    # Ahora sí podemos borrar entidades
+    op.execute("DELETE FROM entidades")
+    
+    # ========================================
+    # PASO 1.6: AÑADIR CONSTRAINT
+    # ========================================
+    
+    with op.batch_alter_table('entidades', schema=None) as batch_op:
         batch_op.create_check_constraint(
             'chk_al_menos_un_rol',
             'rol_titular OR rol_consultado OR rol_publicador'
         )
+    
+    # ========================================
+    # PASO 2: DROP TABLAS OBSOLETAS
+    # ========================================
+    
+    op.drop_table('entidades_administrados')
+    op.drop_table('entidades_empresas_servicio_publico')
+    op.drop_table('entidades_organismos_publicos')
+    op.drop_table('entidades_ayuntamientos')
+    op.drop_table('entidades_diputaciones')
+    op.drop_table('tipos_entidades')
     
     # ========================================
     # PASO 3: CREAR TABLA DIRECCIONES_NOTIFICACION
@@ -70,7 +93,7 @@ def upgrade():
         sa.Column('entidad_id', sa.Integer(), nullable=False),
         sa.Column('descripcion', sa.Text(), nullable=True),
         
-        # Bit flags de roles (1=TITULAR, 2=CONSULTADO, 4=PUBLICADOR)
+        # Bit flags de roles
         sa.Column('tipo_rol', sa.SmallInteger(), nullable=False),
         
         # Canales digitales
@@ -79,7 +102,7 @@ def upgrade():
         sa.Column('codigo_sir', sa.String(length=50), nullable=True),
         sa.Column('codigo_dir3', sa.String(length=20), nullable=True),
         
-        # Dirección postal (campos separados)
+        # Dirección postal
         sa.Column('direccion', sa.Text(), nullable=True),
         sa.Column('codigo_postal', sa.String(length=10), nullable=True),
         sa.Column('municipio_id', sa.Integer(), nullable=True),
@@ -134,20 +157,7 @@ def downgrade():
     op.drop_index(op.f('ix_direcciones_notificacion_entidad_id'), table_name='direcciones_notificacion')
     op.drop_table('direcciones_notificacion')
     
-    # PASO 2 REVERSO: Revertir cambios en entidades
-    with op.batch_alter_table('entidades', schema=None) as batch_op:
-        # Eliminar constraint y columnas de roles
-        batch_op.drop_constraint('chk_al_menos_un_rol', type_='check')
-        batch_op.drop_column('rol_publicador')
-        batch_op.drop_column('rol_consultado')
-        batch_op.drop_column('rol_titular')
-        
-        # Renombrar nif → cif_nif
-        batch_op.alter_column('nif', new_column_name='cif_nif')
-        
-        # Restaurar tipo_entidad_id (requiere recrear tabla tipos_entidades primero)
-    
-    # PASO 1 REVERSO: Recrear tabla tipos_entidades
+    # PASO 2 REVERSO: Recrear tabla tipos_entidades PRIMERO
     op.create_table(
         'tipos_entidades',
         sa.Column('id', sa.Integer(), nullable=False),
@@ -161,12 +171,7 @@ def downgrade():
         sa.UniqueConstraint('codigo')
     )
     
-    # Recrear FK en entidades
-    with op.batch_alter_table('entidades', schema=None) as batch_op:
-        batch_op.add_column(sa.Column('tipo_entidad_id', sa.Integer(), nullable=True))
-        batch_op.create_foreign_key('entidades_tipo_entidad_id_fkey', 'tipos_entidades', ['tipo_entidad_id'], ['id'])
-    
-    # Recrear tablas de metadatos (NOTA: Datos se perderán)
+    # Recrear tablas de metadatos
     op.create_table(
         'entidades_administrados',
         sa.Column('id', sa.Integer(), nullable=False),
@@ -206,3 +211,18 @@ def downgrade():
         sa.PrimaryKeyConstraint('id'),
         sa.ForeignKeyConstraint(['entidad_id'], ['entidades.id'], ondelete='CASCADE')
     )
+    
+    # PASO 1 REVERSO: Revertir cambios en entidades
+    with op.batch_alter_table('entidades', schema=None) as batch_op:
+        # Eliminar constraint y columnas de roles
+        batch_op.drop_constraint('chk_al_menos_un_rol', type_='check')
+        batch_op.drop_column('rol_publicador')
+        batch_op.drop_column('rol_consultado')
+        batch_op.drop_column('rol_titular')
+        
+        # Renombrar nif → cif_nif
+        batch_op.alter_column('nif', new_column_name='cif_nif')
+        
+        # Restaurar tipo_entidad_id y FK
+        batch_op.add_column(sa.Column('tipo_entidad_id', sa.Integer(), nullable=True))
+        batch_op.create_foreign_key('entidades_tipo_entidad_id_fkey', 'tipos_entidades', ['tipo_entidad_id'], ['id'])
