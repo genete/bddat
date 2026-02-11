@@ -45,6 +45,7 @@ class Municipio(db.Model):
         v3.0: Sin cambios estructurales. Tabla maestra estable.
     """
     __tablename__ = 'municipios'
+    __table_args__ = {'schema': 'public'}
     
     
     id = db.Column(

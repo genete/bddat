@@ -70,7 +70,7 @@ class MunicipioProyecto(db.Model):
     
     municipio_id = db.Column(
         db.Integer,
-        db.ForeignKey('municipios.id'),
+        db.ForeignKey('public.municipios.id'),
         nullable=False,
         comment='FK a MUNICIPIOS. Municipio afectado por el proyecto'
     )

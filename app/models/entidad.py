@@ -1,14 +1,20 @@
 # app/models/entidad.py
 """
-Modelo Entidad - Tabla base polimórfica para todas las entidades del sistema.
+Modelo Entidad - Tabla base para todas las entidades del sistema.
 
 Tabla: ENTIDADES (O_013)
 Descripción: Centraliza personas físicas, jurídicas y organismos con campos comunes.
-             Usa arquitectura de tablas inversas para metadatos específicos.
+             Usa roles booleanos para determinar capacidad (titular/consultado/publicador).
+             
+Cambios Issue #103:
+- Eliminada jerarquía tipos_entidades (polimorfismo obsoleto)
+- Añadidos roles booleanos para capacidad operativa
+- Mantenida estructura de dirección separada para formateo elegante en oficios
 """
 
 from app import db
 from datetime import datetime
+from sqlalchemy import CheckConstraint
 import re
 
 
@@ -16,36 +22,34 @@ class Entidad(db.Model):
     """
     Tabla base que centraliza todas las entidades del sistema.
     
-    Arquitectura polimórfica:
+    Arquitectura simplificada (Issue #103):
     - Campos comunes en esta tabla
-    - Metadatos específicos en tablas entidades_* según tipo
-    - Relaciones 1:1 con tablas de metadatos
+    - Roles booleanos para capacidad (titular, consultado, publicador)
+    - Direcciones de notificación específicas en tabla direcciones_notificacion (1:N)
     """
     
     __tablename__ = 'entidades'
-    __table_args__ = {'schema': 'public'}
+    __table_args__ = (
+        CheckConstraint(
+            'rol_titular OR rol_consultado OR rol_publicador',
+            name='chk_al_menos_un_rol'
+        ),
+        {'schema': 'public'}
+    )
     
-    # Campos
+    # === IDENTIFICACIÓN ===
     id = db.Column(
         db.Integer, 
         primary_key=True,
         comment='Identificador único de la entidad'
     )
     
-    tipo_entidad_id = db.Column(
-        db.Integer, 
-        db.ForeignKey('tipos_entidades.id'), 
-        nullable=False, 
-        index=True,
-        comment='Tipo de entidad que determina tabla de metadatos. Define qué tabla entidades_* usar'
-    )
-    
-    cif_nif = db.Column(
+    nif = db.Column(
         db.String(20), 
         unique=True, 
         index=True, 
         nullable=True,
-        comment='CIF/NIF/NIE normalizado. Mayúsculas, sin espacios/guiones. Ej: "12345678A", "B12345678". NULL para algunos organismos históricos'
+        comment='NIF (DNI/NIE para personas físicas, antiguo CIF para jurídicas). Normalizado: mayúsculas, sin espacios/guiones. NULL permitido para organismos históricos'
     )
     
     nombre_completo = db.Column(
@@ -55,10 +59,33 @@ class Entidad(db.Model):
         comment='Razón social, nombre completo o nombre oficial. Personas físicas: nombre completo. Jurídicas/organismos: razón social/nombre oficial'
     )
     
+    # === ROLES OPERATIVOS ===
+    rol_titular = db.Column(
+        db.Boolean, 
+        nullable=False, 
+        default=False,
+        comment='Puede ser titular de expedientes. Ej: promotores de instalaciones, solicitantes de autorizaciones'
+    )
+    
+    rol_consultado = db.Column(
+        db.Boolean, 
+        nullable=False, 
+        default=False,
+        comment='Puede ser consultado en trámites. Ej: organismos afectados, empresas distribuidoras'
+    )
+    
+    rol_publicador = db.Column(
+        db.Boolean, 
+        nullable=False, 
+        default=False,
+        comment='Puede publicar anuncios/notificaciones. Ej: diputaciones, ayuntamientos'
+    )
+    
+    # === CONTACTO GENERAL ===
     email = db.Column(
         db.String(120), 
         nullable=True,
-        comment='Email general de contacto. NO es el email de notificaciones (va en entidades_administrados)'
+        comment='Email general de contacto. Para emails de notificación específicos ver tabla direcciones_notificacion'
     )
     
     telefono = db.Column(
@@ -67,6 +94,7 @@ class Entidad(db.Model):
         comment='Teléfono de contacto general. Formato libre'
     )
     
+    # === DIRECCIÓN PRINCIPAL (campos separados para formateo en oficios) ===
     direccion = db.Column(
         db.Text, 
         nullable=True,
@@ -81,10 +109,10 @@ class Entidad(db.Model):
     
     municipio_id = db.Column(
         db.Integer, 
-        db.ForeignKey('municipios.id'), 
+        db.ForeignKey('public.municipios.id'),
         nullable=True, 
         index=True,
-        comment='Municipio de la dirección. Preferente sobre direccion_fallback'
+        comment='Municipio de la dirección. Preferente sobre direccion_fallback. Permite deducir provincia'
     )
     
     direccion_fallback = db.Column(
@@ -93,6 +121,7 @@ class Entidad(db.Model):
         comment='Dirección completa en texto libre. Para casos excepcionales (extranjero, datos históricos). Ej: "23, Peny Lane, St, 34523, London, England"'
     )
     
+    # === CONTROL ===
     activo = db.Column(
         db.Boolean, 
         nullable=False, 
@@ -107,6 +136,7 @@ class Entidad(db.Model):
         comment='Observaciones generales sobre la entidad. Campo libre para anotaciones'
     )
     
+    # === AUDITORÍA ===
     created_at = db.Column(
         db.DateTime, 
         nullable=False, 
@@ -122,16 +152,20 @@ class Entidad(db.Model):
         comment='Fecha y hora de última actualización'
     )
     
-    # Relaciones
-    tipo_entidad = db.relationship('TipoEntidad', back_populates='entidades')
-    municipio = db.relationship('Municipio', backref='entidades')
+    # === RELACIONES ===
+    municipio = db.relationship(
+        'Municipio',
+        foreign_keys=[municipio_id],
+        backref='entidades'
+    )
     
-    # Relaciones polimórficas con tablas de metadatos (1:1)
-    datos_administrado = db.relationship('EntidadAdministrado', uselist=False, back_populates='entidad', cascade='all, delete-orphan')
-    datos_empresa = db.relationship('EntidadEmpresaServicioPublico', uselist=False, back_populates='entidad', cascade='all, delete-orphan')
-    datos_organismo = db.relationship('EntidadOrganismoPublico', uselist=False, back_populates='entidad', cascade='all, delete-orphan')
-    datos_ayuntamiento = db.relationship('EntidadAyuntamiento', uselist=False, back_populates='entidad', cascade='all, delete-orphan')
-    datos_diputacion = db.relationship('EntidadDiputacion', uselist=False, back_populates='entidad', cascade='all, delete-orphan')
+    # Relación 1:N con direcciones de notificación específicas
+    direcciones_notificacion = db.relationship(
+        'DireccionNotificacion', 
+        back_populates='entidad', 
+        cascade='all, delete-orphan',
+        order_by='DireccionNotificacion.activo.desc(), DireccionNotificacion.fecha_inicio.desc()'
+    )
     
     # Relaciones inversas con tablas operacionales
     # TODO: Descomentar cuando se migren EXPEDIENTES y SOLICITUDES para usar ENTIDADES
@@ -140,15 +174,21 @@ class Entidad(db.Model):
     # solicitudes_autorizado = db.relationship('Solicitud', foreign_keys='Solicitud.autorizado_id', backref='autorizado')
     
     def __repr__(self):
-        return f'<Entidad {self.id}: {self.nombre_completo} ({self.tipo_entidad.codigo if self.tipo_entidad else "?"})>'
+        roles = []
+        if self.rol_titular: roles.append('T')
+        if self.rol_consultado: roles.append('C')
+        if self.rol_publicador: roles.append('P')
+        return f'<Entidad {self.id}: {self.nombre_completo} [{"|".join(roles)}]>'
     
-    def to_dict(self, include_metadatos=False):
+    def to_dict(self, include_direcciones=False):
         """Serialización para API."""
         data = {
             'id': self.id,
-            'tipo_entidad': self.tipo_entidad.to_dict() if self.tipo_entidad else None,
-            'cif_nif': self.cif_nif,
+            'nif': self.nif,
             'nombre_completo': self.nombre_completo,
+            'rol_titular': self.rol_titular,
+            'rol_consultado': self.rol_consultado,
+            'rol_publicador': self.rol_publicador,
             'email': self.email,
             'telefono': self.telefono,
             'direccion': self.direccion,
@@ -161,35 +201,53 @@ class Entidad(db.Model):
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }
         
-        # Incluir metadatos específicos si se solicita
-        if include_metadatos:
-            if self.datos_administrado:
-                data['metadatos'] = self.datos_administrado.to_dict()
-            elif self.datos_empresa:
-                data['metadatos'] = self.datos_empresa.to_dict()
-            elif self.datos_organismo:
-                data['metadatos'] = self.datos_organismo.to_dict()
-            elif self.datos_ayuntamiento:
-                data['metadatos'] = self.datos_ayuntamiento.to_dict()
-            elif self.datos_diputacion:
-                data['metadatos'] = self.datos_diputacion.to_dict()
+        # Incluir direcciones de notificación si se solicita
+        if include_direcciones:
+            data['direcciones_notificacion'] = [
+                d.to_dict() for d in self.direcciones_notificacion
+            ]
         
         return data
     
+    def direccion_formateada(self):
+        """Devuelve la dirección principal en formato de oficio tradicional.
+        
+        Returns:
+            dict con claves: linea1 (dirección), linea2 (CP municipio), provincia
+        """
+        if self.direccion_fallback:
+            return {
+                'linea1': self.direccion_fallback,
+                'linea2': '',
+                'provincia': ''
+            }
+        
+        linea2_parts = []
+        if self.codigo_postal:
+            linea2_parts.append(self.codigo_postal)
+        if self.municipio:
+            linea2_parts.append(self.municipio.nombre)
+        
+        return {
+            'linea1': self.direccion or '',
+            'linea2': ' '.join(linea2_parts),
+            'provincia': self.municipio.provincia.nombre if self.municipio else ''
+        }
+    
     @staticmethod
-    def normalizar_cif_nif(valor):
-        """Normalizar CIF/NIF: mayúsculas, sin espacios/guiones."""
+    def normalizar_nif(valor):
+        """Normalizar NIF: mayúsculas, sin espacios/guiones."""
         if not valor:
             return None
         return re.sub(r'[\s\-]', '', valor.upper())
     
     @staticmethod
-    def validar_cif_nif(valor):
+    def validar_nif(valor):
         """
-        Validación básica de formato CIF/NIF/NIE español.
+        Validación básica de formato NIF/NIE español.
         
         TODO: Implementar validación completa con algoritmo oficial
-        (NIF: letra calculada, CIF: dígito de control, etc.)
+        (NIF: letra calculada, NIE: letra + número, etc.)
         """
         if not valor:
             return True  # Permitir NULL
@@ -199,10 +257,10 @@ class Entidad(db.Model):
         return bool(re.match(patron, valor))
     
     @staticmethod
-    def buscar_por_cif_nif(cif_nif):
-        """Buscar entidad por CIF/NIF normalizado."""
-        cif_nif_norm = Entidad.normalizar_cif_nif(cif_nif)
-        return Entidad.query.filter_by(cif_nif=cif_nif_norm).first()
+    def buscar_por_nif(nif):
+        """Buscar entidad por NIF normalizado."""
+        nif_norm = Entidad.normalizar_nif(nif)
+        return Entidad.query.filter_by(nif=nif_norm).first()
     
     @staticmethod
     def buscar_por_nombre(texto):
@@ -212,9 +270,24 @@ class Entidad(db.Model):
         ).filter_by(activo=True).all()
     
     @staticmethod
-    def listar_por_tipo(tipo_codigo, solo_activos=True):
-        """Listar entidades por tipo."""
-        query = Entidad.query.join(TipoEntidad).filter(TipoEntidad.codigo == tipo_codigo)
+    def listar_por_rol(titular=None, consultado=None, publicador=None, solo_activos=True):
+        """Listar entidades por roles.
+        
+        Args:
+            titular: True/False/None (None = no filtrar)
+            consultado: True/False/None
+            publicador: True/False/None
+            solo_activos: Filtrar solo entidades activas
+        """
+        query = Entidad.query
+        
+        if titular is not None:
+            query = query.filter(Entidad.rol_titular == titular)
+        if consultado is not None:
+            query = query.filter(Entidad.rol_consultado == consultado)
+        if publicador is not None:
+            query = query.filter(Entidad.rol_publicador == publicador)
         if solo_activos:
             query = query.filter(Entidad.activo == True)
+        
         return query.all()
