@@ -153,7 +153,11 @@ class Entidad(db.Model):
     )
     
     # === RELACIONES ===
-    municipio = db.relationship('Municipio', backref='entidades')
+    municipio = db.relationship(
+        'Municipio',
+        foreign_keys=[municipio_id],
+        backref='entidades'
+    )
     
     # Relación 1:N con direcciones de notificación específicas
     direcciones_notificacion = db.relationship(
