@@ -48,7 +48,7 @@ class DireccionNotificacion(db.Model):
     
     entidad_id = db.Column(
         db.Integer, 
-        db.ForeignKey('entidades.id', ondelete='CASCADE'), 
+        db.ForeignKey('public.entidades.id', ondelete='CASCADE'),
         nullable=False,
         index=True,
         comment='FK a ENTIDADES. Borrado en cascada'
@@ -103,7 +103,7 @@ class DireccionNotificacion(db.Model):
     
     municipio_id = db.Column(
         db.Integer, 
-        db.ForeignKey('municipios.id'),
+        db.ForeignKey('public.municipios.id'),
         index=True,
         comment='Municipio de la dirección. Permite deducir provincia'
     )
@@ -122,7 +122,7 @@ class DireccionNotificacion(db.Model):
     # === DOCUMENTO SOPORTE ===
     documento_autorizacion_id = db.Column(
         db.Integer, 
-        db.ForeignKey('documentos.id', ondelete='SET NULL'),
+        db.ForeignKey('public.documentos.id', ondelete='SET NULL'),
         comment='Documento que autoriza esta dirección (poder notarial, autorización de representación, etc.)'
     )
     
