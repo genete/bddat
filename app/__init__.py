@@ -67,9 +67,9 @@ def create_app(config_name='development'):
     # Registrar blueprints - APIs
     from app.routes import api_expedientes, api_municipios, vista3
     
-    app.register_blueprint(api_expedientes.api_bp)
-    app.register_blueprint(api_municipios.api_bp)
-    app.register_blueprint(vista3.bp)
+    app.register_blueprint(api_expedientes.api_bp)  # usa 'api_bp'
+    app.register_blueprint(api_municipios.bp)       # usa 'bp'
+    app.register_blueprint(vista3.bp)               # usa 'bp'
     
     # Configuración de Jinja2
     app.jinja_env.trim_blocks = True
