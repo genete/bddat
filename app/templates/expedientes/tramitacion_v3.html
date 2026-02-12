@@ -3,34 +3,28 @@
 {% block title %}Tramitación - EXP-{{ expediente.numero_at }}{% endblock %}
 
 {% block content %}
-<div class="container-fluid mt-4">
-    <div class="row">
-        <div class="col-12">
-            <h2>Vista 3 - Navegación Jerárquica</h2>
-            <p class="text-muted" id="breadcrumb">Expediente AT-{{ expediente.numero_at }}</p>
-            <hr>
-        </div>
+<div style="width: 95%; max-width: 95%; margin: 0 auto; padding-top: 1.5rem;">
+    <div class="mb-3">
+        <h2>Vista 3 - Navegación Jerárquica</h2>
+        <p class="text-muted" id="breadcrumb">Expediente AT-{{ expediente.numero_at }}</p>
+        <hr>
     </div>
     
-    <div class="row">
-        <div class="col-12">
-            {# Contenedor dinámico donde se renderiza el stack #}
-            <div id="vista3-container" class="accordion">
-                {# Nivel 0 inicial: Solo expediente #}
-                {% include 'vistas/vista3/_expediente_body.html' %}
-                
-                {# Acordeón inicial de solicitudes (colapsado) #}
-                <div class="accordion-item">
-                    <h2 class="accordion-header" id="heading-solicitudes-init">
-                        <button class="accordion-button collapsed" 
-                                type="button"
-                                onclick="expandSolicitudes()">
-                            <i class="bi bi-file-earmark-text"></i>
-                            &nbsp;Solicitudes
-                        </button>
-                    </h2>
-                </div>
-            </div>
+    {# Contenedor dinámico donde se renderiza el stack #}
+    <div id="vista3-container" class="accordion">
+        {# Nivel 0 inicial: Solo expediente #}
+        {% include 'vistas/vista3/_expediente_body.html' %}
+        
+        {# Acordeón inicial de solicitudes (colapsado) #}
+        <div class="accordion-item">
+            <h2 class="accordion-header" id="heading-solicitudes-init">
+                <button class="accordion-button collapsed" 
+                        type="button"
+                        onclick="expandSolicitudes()">
+                    <i class="bi bi-file-earmark-text"></i>
+                    &nbsp;Solicitudes
+                </button>
+            </h2>
         </div>
     </div>
 </div>
