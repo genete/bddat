@@ -1,17 +1,17 @@
 {# Acordeón de Fase específica - Nivel 3 #}
 <div class="accordion-item vista3-level-3" data-level-type="fase" data-level-id="{{ fase.id }}">
     <h2 class="accordion-header" id="heading-fase-{{ fase.id }}">
-        <button class="accordion-button {% if not is_active %}collapsed{% endif %}" 
+        <button class="accordion-button" 
                 type="button"
                 onclick="navigateToLevel({{ level_index }})">
             <i class="bi bi-list-task"></i>
             &nbsp;Fase: {{ fase.tipo_fase.nombre if fase.tipo_fase else 'Fase ' ~ fase.id }}
         </button>
     </h2>
-    <div class="accordion-collapse collapse {% if is_active %}show{% endif %}" 
+    <div class="accordion-collapse collapse show" 
          aria-labelledby="heading-fase-{{ fase.id }}">
         <div class="accordion-body">
-            {# Cuerpo fijo de la fase #}
+            {# Cuerpo fijo de la fase - SIEMPRE VISIBLE #}
             <div class="detalle-fase mb-3">
                 <div class="row">
                     <div class="col-md-6">
@@ -29,7 +29,7 @@
                 </div>
             </div>
             
-            {# Listado de trámites (solo si es nivel activo) #}
+            {# Listado de trámites - SOLO SI ES NIVEL ACTIVO #}
             {% if is_active and tramites %}
             <hr>
             <h6>Trámites de esta fase</h6>

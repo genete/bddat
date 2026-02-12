@@ -1,17 +1,17 @@
 {# Acordeón de Trámite específico - Nivel 4 #}
 <div class="accordion-item vista3-level-4" data-level-type="tramite" data-level-id="{{ tramite.id }}">
     <h2 class="accordion-header" id="heading-tramite-{{ tramite.id }}">
-        <button class="accordion-button {% if not is_active %}collapsed{% endif %}" 
+        <button class="accordion-button" 
                 type="button"
                 onclick="navigateToLevel({{ level_index }})">
-            <i class="bi bi-clipboard-check"></i>
+            <i class="bi bi-card-checklist"></i>
             &nbsp;Trámite: {{ tramite.tipo_tramite.nombre if tramite.tipo_tramite else 'Trámite ' ~ tramite.id }}
         </button>
     </h2>
-    <div class="accordion-collapse collapse {% if is_active %}show{% endif %}" 
+    <div class="accordion-collapse collapse show" 
          aria-labelledby="heading-tramite-{{ tramite.id }}">
         <div class="accordion-body">
-            {# Cuerpo fijo del trámite #}
+            {# Cuerpo fijo del trámite - SIEMPRE VISIBLE #}
             <div class="detalle-tramite mb-3">
                 <div class="row">
                     <div class="col-md-6">
@@ -19,6 +19,9 @@
                         <p class="mb-1"><strong>Fin:</strong> {{ tramite.fecha_fin.strftime('%d/%m/%Y') if tramite.fecha_fin else 'En curso' }}</p>
                     </div>
                     <div class="col-md-6">
+                        {% if tramite.responsable %}
+                        <p class="mb-1"><strong>Responsable:</strong> {{ tramite.responsable.siglas }}</p>
+                        {% endif %}
                         {% if tramite.observaciones %}
                         <p class="mb-1"><strong>Obs:</strong> {{ tramite.observaciones[:100] }}</p>
                         {% endif %}
@@ -26,7 +29,7 @@
                 </div>
             </div>
             
-            {# Listado de tareas (solo si es nivel activo) #}
+            {# Listado de tareas - SOLO SI ES NIVEL ACTIVO #}
             {% if is_active and tareas %}
             <hr>
             <h6>Tareas de este trámite</h6>
@@ -35,7 +38,7 @@
                     <tr>
                         <th>Tarea</th>
                         <th>Estado</th>
-                        <th>Docs</th>
+                        <th>Documentos</th>
                         <th>Fechas</th>
                         <th></th>
                     </tr>
@@ -44,7 +47,7 @@
                     {% for tarea_data in tareas %}
                     <tr>
                         <td>{{ tarea_data.nombre }}</td>
-                        <td><span class="badge bg-secondary">{{ tarea_data.estado }}</span></td>
+                        <td><span class="badge bg-dark">{{ tarea_data.estado }}</span></td>
                         <td>{{ tarea_data.documentos_count }}</td>
                         <td class="small">
                             {{ tarea_data.obj.fecha_inicio.strftime('%d/%m/%Y') if tarea_data.obj.fecha_inicio else '-' }}
