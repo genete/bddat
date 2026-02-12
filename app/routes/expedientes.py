@@ -4,7 +4,7 @@ Blueprint para gestión de expedientes.
 Rutas:
 - GET  /expedientes/        - Listar expedientes (filtrados por rol o parámetro)
 - GET  /expedientes/listado-v2  - Listado con scroll infinito (Fase 2)
-- GET  /expedientes/tramitacion/<id>  - Tramitación Vista V3 con sidebar acordeón
+- GET  /expedientes/<id>/tramitacion_v3  - Tramitación Vista V3 con sidebar acordeón
 - GET  /expedientes/nuevo   - Formulario crear expediente
 - POST /expedientes/nuevo   - Crear expediente + proyecto
 - GET  /expedientes/<id>    - Ver detalle expediente
@@ -95,11 +95,11 @@ def listado_v2():
     return render_template('expedientes/listado_v2.html')
 
 
-@bp.route('/tramitacion/<int:id>')
+@bp.route('/<int:id>/tramitacion_v3')
 @login_required
 def tramitacion_v3(id):
     """
-    Vista V3 - Tramitación con Sidebar Acordeón (MOCKUP Fase 1).
+    Vista V3 - Tramitación con Sidebar Acordeón (Fase 1).
     
     Patrón de vista para navegación jerárquica dentro de UN expediente:
     - Sidebar acordeón: Expediente > Solicitudes > Fases > Trámites > Tareas
