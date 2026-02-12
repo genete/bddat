@@ -1,0 +1,70 @@
+{# Acordeón de Trámite específico - Nivel 4 #}
+<div class="accordion-item vista3-level-4" data-level-type="tramite" data-level-id="{{ tramite.id }}">
+    <h2 class="accordion-header" id="heading-tramite-{{ tramite.id }}">
+        <button class="accordion-button {% if not is_active %}collapsed{% endif %}" 
+                type="button"
+                onclick="navigateToLevel({{ level_index }})">
+            <i class="bi bi-clipboard-check"></i>
+            &nbsp;Trámite: {{ tramite.tipo_tramite.nombre if tramite.tipo_tramite else 'Trámite ' ~ tramite.id }}
+        </button>
+    </h2>
+    <div class="accordion-collapse collapse {% if is_active %}show{% endif %}" 
+         aria-labelledby="heading-tramite-{{ tramite.id }}">
+        <div class="accordion-body">
+            {# Cuerpo fijo del trámite #}
+            <div class="detalle-tramite mb-3">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p class="mb-1"><strong>Inicio:</strong> {{ tramite.fecha_inicio.strftime('%d/%m/%Y') if tramite.fecha_inicio else 'Pendiente' }}</p>
+                        <p class="mb-1"><strong>Fin:</strong> {{ tramite.fecha_fin.strftime('%d/%m/%Y') if tramite.fecha_fin else 'En curso' }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        {% if tramite.observaciones %}
+                        <p class="mb-1"><strong>Obs:</strong> {{ tramite.observaciones[:100] }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            {# Listado de tareas (solo si es nivel activo) #}
+            {% if is_active and tareas %}
+            <hr>
+            <h6>Tareas de este trámite</h6>
+            <table class="table table-sm table-hover">
+                <thead class="table-success">
+                    <tr>
+                        <th>Tarea</th>
+                        <th>Estado</th>
+                        <th>Docs</th>
+                        <th>Fechas</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for tarea_data in tareas %}
+                    <tr>
+                        <td>{{ tarea_data.nombre }}</td>
+                        <td><span class="badge bg-secondary">{{ tarea_data.estado }}</span></td>
+                        <td>{{ tarea_data.documentos_count }}</td>
+                        <td class="small">
+                            {{ tarea_data.obj.fecha_inicio.strftime('%d/%m/%Y') if tarea_data.obj.fecha_inicio else '-' }}
+                            {% if tarea_data.obj.fecha_fin %}
+                            → {{ tarea_data.obj.fecha_fin.strftime('%d/%m/%Y') }}
+                            {% endif %}
+                        </td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary" 
+                                    onclick="drillDown('tarea', {{ tarea_data.obj.id }})">
+                                [...]
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% elif is_active %}
+            <p class="text-muted">No hay tareas en este trámite.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>

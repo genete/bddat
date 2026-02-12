@@ -1,0 +1,62 @@
+{# Acordeón de Tarea específica - Nivel 5 (FINAL, no tiene [...] en documentos) #}
+<div class="accordion-item vista3-level-5" data-level-type="tarea" data-level-id="{{ tarea.id }}">
+    <h2 class="accordion-header" id="heading-tarea-{{ tarea.id }}">
+        <button class="accordion-button {% if not is_active %}collapsed{% endif %}" 
+                type="button"
+                onclick="navigateToLevel({{ level_index }})">
+            <i class="bi bi-check-square"></i>
+            &nbsp;Tarea: {{ tarea.tipo_tarea.nombre if tarea.tipo_tarea else 'Tarea ' ~ tarea.id }}
+        </button>
+    </h2>
+    <div class="accordion-collapse collapse {% if is_active %}show{% endif %}" 
+         aria-labelledby="heading-tarea-{{ tarea.id }}">
+        <div class="accordion-body">
+            {# Cuerpo fijo de la tarea #}
+            <div class="detalle-tarea mb-3">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p class="mb-1"><strong>Inicio:</strong> {{ tarea.fecha_inicio.strftime('%d/%m/%Y') if tarea.fecha_inicio else 'Pendiente' }}</p>
+                        <p class="mb-1"><strong>Fin:</strong> {{ tarea.fecha_fin.strftime('%d/%m/%Y') if tarea.fecha_fin else 'En curso' }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        {% if tarea.notas %}
+                        <p class="mb-1"><strong>Notas:</strong> {{ tarea.notas[:100] }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            {# Listado de documentos (solo si es nivel activo) - SIN BOTÓN [...] #}
+            {% if is_active and documentos %}
+            <hr>
+            <h6>Documentos de esta tarea</h6>
+            <table class="table table-sm table-hover">
+                <thead class="table-success">
+                    <tr>
+                        <th>Relación</th>
+                        <th>Asunto</th>
+                        <th>Fecha</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for doc_data in documentos %}
+                    <tr>
+                        <td><span class="badge bg-info">{{ doc_data.tipo_relacion }}</span></td>
+                        <td>{{ doc_data.obj.asunto if doc_data.obj.asunto else 'Sin asunto' }}</td>
+                        <td>{{ doc_data.obj.fecha_administrativa.strftime('%d/%m/%Y') if doc_data.obj.fecha_administrativa else '-' }}</td>
+                        <td>
+                            <a href="{{ doc_data.obj.url }}" target="_blank" class="btn btn-sm btn-outline-success">
+                                <i class="bi bi-download"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% elif is_active %}
+            <p class="text-muted">No hay documentos asociados a esta tarea.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>

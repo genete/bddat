@@ -1,64 +1,44 @@
-{% extends "layout/base_acordeon.html" %}
+{% extends "base.html" %}
 
-{% block title %}Tramitación - Expediente AT-{{ expediente.numero_at }} - BDDAT{% endblock %}
-
-{% block breadcrumb %}
-<a href="{{ url_for('dashboard.index') }}">Inicio</a>
-<span>/</span>
-<a href="{{ url_for('expedientes.listado_v2') }}">Expedientes</a>
-<span>/</span>
-<span>AT-{{ expediente.numero_at }}</span>
-{% endblock %}
-
-{% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/v3-tramitacion.css') }}">
-{% endblock %}
+{% block title %}Tramitación - EXP-{{ expediente.numero_at }}{% endblock %}
 
 {% block content %}
-<!-- Indicador de carga -->
-<div id="loading-indicator" style="display: none; text-align: center; padding: 2rem;">
-    <div class="spinner-border text-primary" role="status">
-        <span class="visually-hidden">Cargando...</span>
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            <h2>Vista 3 - Navegación Jerárquica</h2>
+            <p class="text-muted" id="breadcrumb">Expediente AT-{{ expediente.numero_at }}</p>
+            <hr>
+        </div>
     </div>
-    <p class="mt-2">Cargando datos del expediente...</p>
+    
+    <div class="row">
+        <div class="col-12">
+            {# Contenedor dinámico donde se renderiza el stack #}
+            <div id="vista3-container" class="accordion">
+                {# Nivel 0 inicial: Solo expediente #}
+                {% include 'vistas/vista3/_expediente_body.html' %}
+                
+                {# Acordeón inicial de solicitudes (colapsado) #}
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="heading-solicitudes-init">
+                        <button class="accordion-button collapsed" 
+                                type="button"
+                                onclick="expandSolicitudes()">
+                            <i class="bi bi-file-earmark-text"></i>
+                            &nbsp;Solicitudes
+                        </button>
+                    </h2>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
-<!-- Contenedor Panel Contexto (Expediente + Proyecto) -->
-<div id="panel-contexto-expediente">
-    <!-- Se renderizará dinámicamente desde JavaScript -->
-</div>
-
-<!-- Contenedor Acordeón Solicitudes -->
-<div id="acordeon-solicitudes" class="mt-4">
-    <!-- Se renderizará dinámicamente desde JavaScript -->
-</div>
+<script src="{{ url_for('static', filename='js/vista3_navigation.js') }}"></script>
+<script>
+// Inicializar con expediente ID
+const EXPEDIENTE_ID = {{ expediente.id }};
+initVista3(EXPEDIENTE_ID);
+</script>
 {% endblock %}
-
-{% block extra_js %}
-<script src="{{ url_for('static', filename='js/v3-acordeon-tramitacion.js') }}"></script>
-{% endblock %}
-
-<!-- 
-Vista V3 - Tramitación con Acordeón (Fase 2)
-
-DISEÑO:
-- Usa base_acordeon.html (sin sidebar, 100% ancho)
-- Panel contexto fijo (expediente + proyecto) sticky
-- Acordeón Bootstrap 5 para solicitudes > fases
-- Carga completa (no lazy) con 1 petición HTTP
-
-RENDERIZADO:
-- JavaScript: v3-acordeon-tramitacion.js
-- API: /api/expedientes/<id>/jerarquia
-- Datos: Expediente + Proyecto + Solicitudes + Fases
-
-PENDIENTE FASE 3:
-- Trámites + Tareas (acordeones anidados nivel 3 y 4)
-- Botones funcionales (✏️ ➕ ...)
-- Modales para editar/añadir
-
-Referencias:
-- Epic #93
-- docs/implementaciones/VISTA_V3_TRAMITACION.md
-- Commit: [TEMPLATE] Actualizar tramitacion_v3 para usar base_acordeon.html
--->
