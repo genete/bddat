@@ -57,8 +57,9 @@ function refreshView() {
     const container = document.getElementById('vista3-container');
     const breadcrumb = document.getElementById('breadcrumb');
     
-    // Mostrar loading
-    container.innerHTML = '<div class="text-center p-5"><div class="spinner-border" role="status"><span class="visually-hidden">Cargando...</span></div></div>';
+    // Fade out suave (sin borrar contenido)
+    container.style.opacity = '0.5';
+    container.style.transition = 'opacity 0.15s ease';
     
     fetch('/api/vista3/context', {
         method: 'POST',
@@ -74,8 +75,13 @@ function refreshView() {
         return response.json();
     })
     .then(data => {
+        // Actualizar contenido y fade in
         container.innerHTML = data.html;
         breadcrumb.textContent = data.breadcrumb;
+        
+        // Forzar reflow para que la transición funcione
+        container.offsetHeight;
+        container.style.opacity = '1';
     })
     .catch(error => {
         console.error('Error:', error);
@@ -84,5 +90,6 @@ function refreshView() {
                 <strong>Error:</strong> No se pudo cargar el contenido. ${error.message}
             </div>
         `;
+        container.style.opacity = '1';
     });
 }
