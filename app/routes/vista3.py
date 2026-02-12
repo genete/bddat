@@ -91,11 +91,22 @@ def get_context():
         
         elif level['type'] == 'solicitud':
             solicitud = Solicitud.query.get_or_404(level['id'])
+            
+            # Obtener tipos de la solicitud
+            tipos_solicitud = (
+                TipoSolicitud.query
+                .join(SolicitudTipo, TipoSolicitud.id == SolicitudTipo.tiposolicitudid)
+                .filter(SolicitudTipo.solicitudid == solicitud.id)
+                .all()
+            )
+            tipos_str = '+'.join([ts.siglas for ts in tipos_solicitud]) if tipos_solicitud else 'SIN TIPO'
+            
             fases = _get_fases_con_stats(solicitud.id) if is_active else []
             html_sections.append(
                 render_template(
                     'vistas/vista3/_solicitud_accordion.html',
                     solicitud=solicitud,
+                    tipos_str=tipos_str,
                     fases=fases,
                     is_active=is_active,
                     level_index=level_index
