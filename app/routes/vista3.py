@@ -14,6 +14,8 @@ from app.models.fases import Fase
 from app.models.tramites import Tramite
 from app.models.tareas import Tarea
 from app.models.documentos import Documento
+from app.models.tipos_solicitudes import TipoSolicitud
+from app.models.solicitudes_tipos import SolicitudTipo
 from app.utils.permisos import verificar_acceso_expediente
 
 bp = Blueprint('vista3', __name__, url_prefix='/api/vista3')
@@ -177,8 +179,14 @@ def _get_solicitudes_con_stats(expediente_id):
             Tramite.fecha_fin.isnot(None)
         ).scalar() or 0
         
-        # Tipos de solicitud concatenados
-        tipos = '+'.join([ts.siglas for ts in sol.tipos_solicitudes]) if sol.tipos_solicitudes else 'SIN TIPO'
+        # Obtener tipos de solicitud usando join con tabla intermedia
+        tipos_solicitud = (
+            TipoSolicitud.query
+            .join(SolicitudTipo, TipoSolicitud.id == SolicitudTipo.tiposolicitudid)
+            .filter(SolicitudTipo.solicitudid == sol.id)
+            .all()
+        )
+        tipos = '+'.join([ts.siglas for ts in tipos_solicitud]) if tipos_solicitud else 'SIN TIPO'
         
         result.append({
             'obj': sol,
