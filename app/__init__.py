@@ -11,7 +11,7 @@ from flask import Flask, render_template
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_login import LoginManager
-from app.config import Config
+from app.config import config
 
 # Instancias de extensiones (sin vincular a app aún)
 db = SQLAlchemy()
@@ -19,18 +19,23 @@ migrate = Migrate()
 login_manager = LoginManager()
 
 
-def create_app(config_class=Config):
+def create_app(config_name='development'):
     """
     Factory para crear instancia de Flask con configuración.
     
     Args:
-        config_class: Clase de configuración (por defecto app.config.Config)
+        config_name: Nombre del entorno ('development', 'production') o clase de configuración
     
     Returns:
         Flask: Instancia configurada de la aplicación
     """
     app = Flask(__name__)
-    app.config.from_object(config_class)
+    
+    # Soporte para string o clase de configuración
+    if isinstance(config_name, str):
+        app.config.from_object(config[config_name])
+    else:
+        app.config.from_object(config_name)
     
     # Inicializar extensiones con la app
     db.init_app(app)
