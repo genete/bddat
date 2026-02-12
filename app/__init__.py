@@ -54,10 +54,8 @@ def create_app(config_name='development'):
     def load_user(user_id):
         return Usuario.query.get(int(user_id))
     
-    # Registrar blueprints
+    # Registrar blueprints - Rutas principales
     from app.routes import auth, dashboard, expedientes, proyectos, usuarios, perfil
-    from app.routes import api_expedientes, api_municipios
-    from app.routes import vista3
     
     app.register_blueprint(auth.bp)
     app.register_blueprint(dashboard.bp)
@@ -65,8 +63,12 @@ def create_app(config_name='development'):
     app.register_blueprint(proyectos.bp)
     app.register_blueprint(usuarios.bp)
     app.register_blueprint(perfil.bp)
-    app.register_blueprint(api_expedientes.bp)
-    app.register_blueprint(api_municipios.bp)
+    
+    # Registrar blueprints - APIs
+    from app.routes import api_expedientes, api_municipios, vista3
+    
+    app.register_blueprint(api_expedientes.api_bp)
+    app.register_blueprint(api_municipios.api_bp)
     app.register_blueprint(vista3.bp)
     
     # Configuración de Jinja2
