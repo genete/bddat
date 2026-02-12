@@ -1,30 +1,45 @@
-# VISTA V3 - TRAMITACIÓN CON SIDEBAR ACORDEÓN
+# VISTA V3 - TRAMITACIÓN CON ACORDEÓN JERÁRQUICO
 
 **Estado:** 🟡 En desarrollo (Fase 1 completada)  
-**Patrón UI:** Vista Tramitación con Sidebar  
+**Patrón UI:** Vista Tramitación con Acordeón  
 **Epic:** #93 - Sistema de Navegación UI Modular  
-**Última actualización:** 8 de febrero de 2026
+**Última actualización:** 12 de febrero de 2026
+
+---
+
+## ⚠️ CAMBIO ARQUITECTÓNICO (12/02/2026)
+
+**Decisión:** Eliminar arquitectura de **sidebar lateral** en favor de **acordeón completo en zona de contenido principal**.
+
+### Ventajas del Cambio
+
+1. **Mayor espacio horizontal**: 100% del ancho disponible para contenido vs 70% anterior
+2. **Menos código JavaScript**: No sincronización sidebar ↔ detalle
+3. **Bootstrap nativo**: Acordeones de Bootstrap 5 sin customización pesada
+4. **UX familiar**: Patrón Gmail/Trello (expandir/colapsar in-place)
+5. **Contexto visual**: Datos de expediente/proyecto siempre visibles arriba
 
 ---
 
 ## 📋 Índice
 
 1. [Descripción General](#descripción-general)
-2. [Características Implementadas](#características-implementadas)
-3. [Arquitectura de Layout](#arquitectura-de-layout)
-4. [Componentes Principales](#componentes-principales)
-5. [Navegación Jerárquica](#navegación-jerárquica)
-6. [Mockup con Datos Hardcodeados](#mockup-con-datos-hardcodeados)
-7. [Archivos del Proyecto](#archivos-del-proyecto)
-8. [Plan de Implementación](#plan-de-implementación)
-9. [Testing y Validación](#testing-y-validación)
-10. [Referencias](#referencias)
+2. [Mockup Visual](#mockup-visual)
+3. [Modelo de Datos Expediente/Proyecto/Solicitud](#modelo-de-datos-expedienteproyectosolicitud)
+4. [Características Implementadas](#características-implementadas)
+5. [Arquitectura de Layout](#arquitectura-de-layout)
+6. [Componentes Principales](#componentes-principales)
+7. [Navegación Jerárquica](#navegación-jerárquica)
+8. [Archivos del Proyecto](#archivos-del-proyecto)
+9. [Plan de Implementación](#plan-de-implementación)
+10. [Testing y Validación](#testing-y-validación)
+11. [Referencias](#referencias)
 
 ---
 
 ## Descripción General
 
-La Vista V3 (Tramitación) es un **patrón de interfaz con sidebar acordeón** diseñado para la navegación jerárquica dentro de un expediente específico. Permite al usuario moverse entre solicitudes, fases, trámites y tareas de forma fluida y contextual.
+La Vista V3 (Tramitación) es un **patrón de interfaz con acordeón jerárquico** diseñado para la navegación dentro de un expediente específico. Permite al usuario moverse entre solicitudes, fases, trámites y tareas de forma fluida mediante acordeones expandibles anidados.
 
 ### Objetivo
 
@@ -32,12 +47,102 @@ Proporcionar una interfaz eficiente para la tramitación completa de expedientes
 
 ### Características Clave
 
-- **Sidebar acordeón** (250px redimensionable) con lista plana tipo acordeón
-- **Panel de detalle** con tabs [Datos] [Documentos] [Historial]
-- **Regla de visualización**: Solo muestra paneles de hijos DIRECTOS del elemento seleccionado
-- **Navegación**: Breadcrumb dinámico sin botón "Volver"
-- **Divisor arrastrable** entre sidebar y contenido principal
-- **Scroll independiente** en sidebar y panel detalle
+- **Panel superior fijo** (sticky) con datos Expediente + Proyecto
+- **Acordeón principal** con solicitudes expandibles/colapsables
+- **Acordeones anidados** (Solicitudes → Fases → Trámites → Tareas)
+- **Columnas customizadas** en cabeceras de acordeón (ej: "Fases (1/2) | Trámites (1/5)")
+- **Botones de acción** en cada nivel: `[✏️]` Editar, `[➕]` Añadir, `[...]` Ver detalle
+- **Bootstrap 5 Accordion nativo** como base (menor complejidad JavaScript)
+- **100% ancho disponible** para contenido (no hay sidebar lateral)
+
+---
+
+## Mockup Visual
+
+### Diseño Completo
+
+![Diseño Vista 3 - Acordeón sin Sidebar](./mockups/vista3.svg)
+
+**Figura 1:** Estructura completa del acordeón jerárquico sin sidebar lateral.
+
+### Descripción del Mockup
+
+El mockup muestra dos estados de la Vista V3:
+
+#### Estado 1: Solicitudes Colapsadas (izquierda)
+```
+┌──────────────────────────────────────────────┐
+│ EXPEDIENTE + PROYECTO (fijo, sticky)         │
+│  [✏️] [➕] [...]                              │
+├──────────────────────────────────────────────┤
+│ ▷ Solicitudes (2)                            │
+│   (colapsadas, solo cabecera visible)        │
+└──────────────────────────────────────────────┘
+```
+
+#### Estado 2: Solicitudes Expandidas (centro/derecha)
+```
+┌──────────────────────────────────────────────┐
+│ EXPEDIENTE + PROYECTO (fijo, sticky)         │
+├──────────────────────────────────────────────┤
+│ ▼ Solicitudes Expandidas                     │
+│                                              │
+│   Cabecera Solicitudes (columnas custom)    │
+│   ├─ Solicitud 1: AAP+AAC | Fases 1/2  [...] │
+│   └─ Solicitud 2: DUP | Fases 0/2      [...] │
+│                                              │
+│   [Al expandir Solicitud 1 con ▼]           │
+│                                              │
+│   ┌─ Cuerpo Solicitud 1: detalle            │
+│   │  (etiquetas + campos)                   │
+│   │  [✏️] [➕] [...]                         │
+│   │                                          │
+│   │ ▼ Fases de Solicitud 1                  │
+│   │                                          │
+│   │   Cabecera Fases (columnas custom)      │
+│   │   ├─ Fase 1: ADMISIÓN | Trámites 1/1 [...]│
+│   │   └─ Fase 2: INFO PÚBLICA | Trámites 0/4 [...]│
+│   └──────────────────────────────────────────│
+└──────────────────────────────────────────────┘
+```
+
+---
+
+## Modelo de Datos Expediente/Proyecto/Solicitud
+
+### Relaciones Correctas
+
+```
+EXPEDIENTES ←──────────────→ PROYECTOS
+  ├─ id                       ├─ id
+  ├─ numero_at                ├─ expediente_id (FK)
+  ├─ proyecto_id (FK)         └─ titulo
+  └─ ...
+
+SOLICITUDES
+  ├─ id
+  ├─ expediente_id (FK → EXPEDIENTES)
+  └─ ... (NO tiene proyecto_id ❌)
+```
+
+### Puntos Clave
+
+1. **Expediente y Proyecto son entidades hermanas** ligadas bidireccionalmente (1:1)
+2. **Solicitudes solo conocen al Expediente**, acceden al proyecto vía `solicitud.expediente.proyecto`
+3. **En Vista 3:**
+   - Panel fijo superior muestra **Expediente + Proyecto** juntos (no en acordeón)
+   - Proyecto NO aparece en acordeón jerárquico (no es parte de la tramitación)
+   - Acordeón muestra: **Solicitudes → Fases → Trámites → Tareas**
+
+### Navegación en Código
+
+```python
+# ✅ CORRECTO - A través del expediente
+proyecto = solicitud.expediente.proyecto
+
+# ❌ INCORRECTO - Esta relación NO existe
+proyecto = solicitud.proyecto
+```
 
 ---
 
@@ -46,397 +151,343 @@ Proporcionar una interfaz eficiente para la tramitación completa de expedientes
 ### ✅ Fase 1 - Estructura Base Layout + Mockup (COMPLETADA)
 
 #### Layout y CSS Base
-- ✅ Layout `base_tramitacion.html` con grid 2 columnas + divisor
+- ✅ Layout `base_tramitacion.html` con estructura simple (sin grid 2 columnas)
 - ✅ CSS `v3-tramitacion.css` con:
-  - Grid sidebar + contenido principal
-  - Estilos sidebar acordeón (lista plana)
-  - Estilos panel detalle con tabs
-  - Divisor redimensionable (visual, sin funcionalidad)
-  - Responsive: sidebar colapsable en móvil
+  - Estilos panel contexto expediente/proyecto (sticky)
+  - Estilos acordeón lista colapsada/expandida
+  - Responsive básico
 
 #### Template Mockup con Datos Hardcodeados
-- ✅ Template `tramitacion_v3.html` con **mockup completo**:
-  - **Sidebar**: Expediente AT-123 con Solicitud AAP seleccionada, 3 fases, Sol. DUP, Proyecto
-  - **Panel contexto**: Datos expediente siempre visibles (Nº AT, Titular, Estado, Proyecto)
-  - **Breadcrumb**: Expedientes > AT-123 > Solicitud AAP
-  - **Tabs funcionales**: [Datos] [Documentos] [Historial] con JavaScript básico
-  - **Tab Datos**: Información de Solicitud AAP (tipo, solicitante, fecha, estado)
-  - **Tab Documentos**: Listado 3 documentos PDF mockup
-  - **Tab Historial**: Placeholder "próximamente"
-  - **Panel Fases**: Tabla con 3 fases (Info. Pública, Resolución, Archivo) + botón [+ Nueva Fase]
-  - **Panel Documentos**: Lista 5 documentos PDF + botón [+ Subir documento]
+- ✅ Template `tramitacion_v3.html` con **mockup básico**:
+  - Panel superior expediente/proyecto
+  - Lista solicitudes básica
 
 #### Ruta Flask
 - ✅ Ruta `/tramitacion/<id>` para acceder a Vista V3
 - ✅ Integración con sistema de autenticación
 
-#### Stubs JavaScript
-- ✅ Archivos JavaScript stub creados para Fase 2:
-  - `v3-sidebar-accordion.js` - Lógica acordeón
-  - `v3-tabs.js` - Sistema de tabs
-  - `v3-breadcrumb.js` - Breadcrumb dinámico
-  - `v3-tramitacion-controller.js` - Orquestador
+### 🔴 Fase 2 - Acordeón Principal con Bootstrap 5 (PENDIENTE)
 
-### 🔴 Fase 2 - Sidebar Acordeón Dinámico (PENDIENTE)
+**Cambio respecto a diseño original:** De "Sidebar Acordeón Dinámico" → "Acordeón Principal Bootstrap 5"
 
-- [ ] Componente JavaScript Sidebar completo
-- [ ] Lógica acordeón (expandir/contraer)
-- [ ] Gestión estado seleccionado (●)
-- [ ] Visibilidad hijos directos con indentación
-- [ ] Divisor redimensionable drag-and-drop
-- [ ] API Backend para estructura sidebar
+- [ ] Implementar acordeón Bootstrap 5 para solicitudes
+- [ ] Cabeceras con columnas customizadas (Tipo | Fases | Trámites | Estado)
+- [ ] Botones `[...]` en cada fila para expandir detalle
+- [ ] Cuerpo expandible con datos completos de solicitud
+- [ ] API Backend: `GET /api/expedientes/<id>/estructura_completa`
 
-### 🔴 Fase 3 - Panel Detalle con Tabs (PENDIENTE)
+### 🔴 Fase 3 - Acordeones Anidados (Fases, Trámites, Tareas) (PENDIENTE)
 
-- [ ] Sistema de tabs completo
-- [ ] Paneles de hijos directos dinámicos
-- [ ] Lazy loading de contenido
-- [ ] APIs Backend para datos detalle
+**Cambio respecto a diseño original:** De "Panel Detalle con Tabs" → "Acordeones Anidados"
 
-### 🔴 Fase 4 - Breadcrumb Dinámico (PENDIENTE)
+- [ ] Acordeón Fases dentro de cada Solicitud expandida
+- [ ] Acordeón Trámites dentro de cada Fase expandida
+- [ ] Acordeón Tareas dentro de cada Trámite expandido
+- [ ] Indentación visual con borde izquierdo para jerarquía
+- [ ] CSS customizado para acordeones anidados
 
-- [ ] Componente Breadcrumb completo
-- [ ] Construcción dinámica según elemento
-- [ ] Navegación hacia ancestros
-- [ ] API Backend para ancestros
+### 🔴 Fase 4 - Panel Contexto y Botones de Acción (PENDIENTE)
 
-### 🔴 Fase 5 - Integración y Testing (PENDIENTE)
+- [ ] Panel fijo superior (sticky) con Expediente + Proyecto
+- [ ] Botones `[✏️]` `[➕]` `[...]` en cada nivel
+- [ ] Modales o páginas para editar/ver detalle
+- [ ] Funcionalidad añadir (solicitud, fase, trámite, tarea)
 
-- [ ] Orquestador principal JavaScript
-- [ ] Conexión con Vista V2
-- [ ] History API para URLs navegables
-- [ ] Testing completo
+### 🔴 Fase 5 - Carga de Datos y APIs (PENDIENTE)
+
+- [ ] API `GET /api/expedientes/<id>/estructura_completa` con JSON completo
+- [ ] JavaScript para renderizar acordeón desde datos JSON
+- [ ] Carga lazy opcional (si performance es problema)
+- [ ] Caché en localStorage para navegación rápida
+
+### 🔴 Fase 6 - Integración y Testing (PENDIENTE)
+
+- [ ] Conexión con Vista V2 (botón [Tramitar])
+- [ ] Testing completo con expediente real (8 solicitudes × 6 fases)
+- [ ] Documentación actualizada
 
 ---
 
 ## Arquitectura de Layout
 
-### Estructura Jerárquica
+### Estructura Jerárquica (Nuevo Diseño)
 
 ```
 A: app-container (grid header/main/footer)
 ├── B.1: app-header (sticky top)
-├── B.2: app-main (grid 2 columnas: sidebar + contenido)
-│   ├── C.sidebar: tramitacion-sidebar (ancho fijo, scroll independiente)
-│   │   ├── sidebar-header (expediente seleccionado)
-│   │   └── sidebar-nav (lista acordeón)
-│   │       ├── nav-item (elemento)
-│   │       ├── nav-item.active ● (seleccionado)
-│   │       └── nav-item-children (hijos visibles)
-│   ├── C.divider: sidebar-divider (arrastrable para redimensionar)
-│   └── C.detail: tramitacion-detail (flex:1, scroll independiente)
-│       ├── detail-breadcrumb (navegación ancestros)
-│       ├── detail-context (expediente/proyecto siempre visible)
-│       ├── detail-tabs (Datos/Documentos/Historial)
-│       └── detail-content (contenido según tab)
-│           ├── detail-info (datos principales)
-│           ├── detail-panels (paneles hijos directos)
-│           │   ├── panel-hijos (lista + botón crear)
-│           │   └── panel-documentos (lista + botón subir)
-│           └── detail-historial (registro cambios)
+├── B.2: app-main (scroll simple, sin grid 2 columnas)
+│   ├── C.panel-contexto-fijo (expediente + proyecto, sticky)
+│   │   ├── expediente-info (datos expediente)
+│   │   └── proyecto-info (datos proyecto)
+│   ├── C.accordion-solicitudes (Bootstrap 5 accordion)
+│   │   └── accordion-item (solicitud)
+│   │       ├── accordion-header (cabecera con columnas)
+│   │       └── accordion-body (cuerpo expandible)
+│   │           ├── detalle-solicitud (datos completos)
+│   │           └── accordion-fases (acordeón anidado)
+│   │               └── accordion-item (fase)
+│   │                   ├── accordion-header
+│   │                   └── accordion-body
+│   │                       ├── detalle-fase
+│   │                       └── accordion-tramites (anidado)
+│   │                           └── accordion-item (trámite)
+│   │                               ├── accordion-header
+│   │                               └── accordion-body
+│   │                                   ├── detalle-tramite
+│   │                                   └── accordion-tareas (anidado)
 └── B.3: app-footer (sticky bottom)
 ```
 
-### Grid Principal App-Main
+### Sin Grid 2 Columnas
+
+**Cambio importante:** Ya NO hay grid con sidebar + divisor + detalle.
 
 ```css
+/* ANTES (diseño original con sidebar) */
 .app-main {
     display: grid;
     grid-template-columns: 250px 4px 1fr;
-    grid-template-areas: "sidebar divider detail";
-    overflow: hidden;
+}
+
+/* AHORA (diseño con acordeón) */
+.app-main {
+    padding: 1rem;
+    max-width: 1400px;
+    margin: 0 auto;
 }
 ```
-
-### Responsive Breakpoints
-
-| Breakpoint | Sidebar | Comportamiento |
-|------------|---------|----------------|
-| Desktop (>1200px) | 250px fijo | Visible siempre, redimensionable |
-| Tablet (768-1199px) | 200px fijo | Visible siempre, menos ancho |
-| Mobile (<768px) | Overlay | Colapsado, abre con botón hamburguesa |
 
 ---
 
 ## Componentes Principales
 
-### 1. Sidebar Acordeón
+### 1. Panel Contexto Expediente/Proyecto (Fijo, Sticky)
 
 #### Características
 
-- **Lista plana** (NO árbol indentado)
-- Elemento seleccionado marcado con **●**
-- Hijos directos del seleccionado visibles (con indentación visual)
-- Ancestros visibles pero compactos
-- Hermanos del seleccionado visibles
-- Ancho redimensionable con divisor arrastrable (250px por defecto)
-- Scrollbar horizontal automático si contenido excede ancho
+- **Posición**: Sticky top (debajo del header)
+- **Contenido**: Datos expediente + datos proyecto juntos
+- **Siempre visible**: Mantiene contexto mientras se navega por solicitudes/fases
+- **Botones de acción**: `[✏️]` Editar, `[➕]` Añadir solicitud, `[...]` Ver detalle completo
 
-#### Reglas de Visualización
+#### Estructura HTML
 
-1. **Solo el elemento seleccionado está expandido** (marcado con ●)
-2. **Hijos directos** del seleccionado se listan debajo (con indentación visual leve)
-3. **Ancestros** permanecen visibles en formato compacto
-4. **Hermanos** del seleccionado permanecen visibles
-5. **NO es árbol indentado**, es lista plana tipo acordeón
-
-#### Ejemplo de Estado (Mockup Fase 1)
-
-**Estado inicial - Solicitud AAP seleccionada:**
-```
-Expediente AT-123
-Solicitud AAP ●          ← Seleccionado
-├ Fase 1                 ← Hijos visibles
-├ Fase 2
-└ Fase 3
-Solicitud DUP            ← Hermano
-Proyecto
+```html
+<div class="panel-contexto-fijo">
+  <div class="expediente-info">
+    <h2>🗂️ Expediente AT-2024-0042</h2>
+    <p>Estado: En tramitación | Fecha: 15/01/2026</p>
+    <button>[✏️]</button>
+    <button>[➕]</button>
+    <button>[...]</button>
+  </div>
+  
+  <div class="proyecto-info">
+    <h3>🏗️ Proyecto: Línea 132 kV Sevilla-Córdoba</h3>
+    <p>Promotor: REE | Potencia: 132 kV</p>
+    <button>[✏️]</button>
+    <button>[...]</button>
+  </div>
+</div>
 ```
 
-### 2. Panel Contexto (Nuevo componente)
+#### CSS Necesario
 
-**Bloque fijo siempre visible** encima del panel detalle que muestra información del expediente/proyecto:
-
-- **Título**: "📁 Contexto: Expediente AT-123"
-- **Datos**: Nº Expediente, Titular, Estado, Proyecto
-- **Objetivo**: Mantener contexto del expediente completo mientras se navega por solicitudes/fases/trámites
-
-### 3. Panel Detalle
-
-#### Estructura de Tabs
-
-- **[Datos]** - Información principal del elemento
-- **[Documentos]** - Documentos asociados
-- **[Historial]** - Registro de cambios y acciones
-
-#### Regla: Solo Hijos DIRECTOS
-
-El panel detalle **solo muestra paneles de hijos DIRECTOS** del elemento seleccionado:
-
-| Elemento | Paneles Visibles | NO Visibles |
-|----------|------------------|-------------|
-| Expediente | Solicitudes, Documentos | Fases, Trámites, Tareas |
-| Solicitud | Fases, Documentos | Trámites, Tareas |
-| Fase | Trámites, Documentos | Tareas |
-| Trámite | Tareas, Documentos | - |
-
-#### Paneles Siempre Visibles
-
-Los paneles de hijos se muestran **siempre**, incluso si están vacíos:
-- **Con datos**: Listado + botón `[+ Crear]`
-- **Sin datos**: Mensaje informativo + botón `[+ Crear]`
-
-### 4. Breadcrumb Dinámico
-
-#### Características
-
-- Construcción dinámica según elemento seleccionado
-- Muestra la ruta completa desde raíz: `Expedientes > AT-123 > Solicitud AAP`
-- Cada nivel es clickable para navegación rápida hacia ancestros
-- **NO hay botón [⟲ Volver]** (navegación por breadcrumb o sidebar)
-
-#### Ejemplo de Evolución
-
-```
-Expediente seleccionado:
-Expedientes > AT-123
-
-Solicitud seleccionada (mockup Fase 1):
-Expedientes > AT-123 > Solicitud AAP
-
-Fase seleccionada:
-Expedientes > AT-123 > Solicitud AAP > Fase Info. Pública
-```
-
-### 5. Divisor Redimensionable
-
-#### Características
-
-- Divisor vertical arrastrable (⋮) entre sidebar y panel
-- Usuario puede arrastrar para expandir/contraer sidebar
-- Ancho persistente en localStorage
-- Si contenido excede ancho → scrollbar horizontal automático en sidebar
-- Al expandir suficiente → scrollbar desaparece
-
-**⚠️ Fase 1:** Visual implementado, funcionalidad drag-and-drop pendiente Fase 2.
-
----
-
-## Navegación Jerárquica
-
-### Flujo de Navegación Completo
-
-```
-Vista V2 (Listado expedientes)
-    ↓ [Clic en botón "Tramitar"]
-Vista V3 (Expediente AT-123)
-    ↓ [Clic en "Solicitud AAP" en sidebar]
-Vista V3 (Solicitud AAP)
-    ↓ [Clic en "Fase Info. Pública"]
-Vista V3 (Fase Info. Pública)
-    ↓ [Clic en "Trámite 1"]
-Vista V3 (Trámite 1)
-    ↓ [Clic en breadcrumb "Solicitud AAP"]
-Vista V3 (Solicitud AAP) - Vuelta rápida
-    ↓ [Clic en breadcrumb "Inicio > Tramitación"]
-Vista V2 (Listado expedientes) - Vuelta a listado
-```
-
-### Sincronización Componentes
-
-Los 3 componentes principales deben estar **siempre sincronizados**:
-
-1. **Sidebar** - Muestra elemento seleccionado con ●
-2. **Breadcrumb** - Muestra ruta completa hasta elemento
-3. **Panel Detalle** - Muestra datos + paneles hijos directos
-
-**Evento de cambio (Fase 2+):**
-```javascript
-function seleccionarElemento(tipo, id) {
-    // 1. Actualizar sidebar (marcar ●, mostrar hijos)
-    actualizarSidebar(tipo, id);
-    
-    // 2. Actualizar breadcrumb (construir ruta)
-    actualizarBreadcrumb(tipo, id);
-    
-    // 3. Actualizar panel detalle (cargar datos + paneles)
-    actualizarPanelDetalle(tipo, id);
-    
-    // 4. Actualizar URL (history API)
-    history.pushState({tipo, id}, '', `/tramitacion/${id}`);
+```css
+.panel-contexto-fijo {
+  position: sticky;
+  top: 60px; /* Altura del header */
+  z-index: 100;
+  background: #f8f9fa;
+  border-bottom: 2px solid #dee2e6;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
 }
 ```
 
 ---
 
-## Mockup con Datos Hardcodeados
+### 2. Acordeón Principal (Solicitudes)
 
-### Escenario del Mockup (Fase 1)
+#### Características
 
-El mockup simula el estado de **Solicitud AAP seleccionada** dentro del Expediente AT-123:
+- **Bootstrap 5 Accordion** como base
+- **Cabeceras con columnas customizadas**: Tipo | Fases | Trámites | Estado
+- **Botón expandir** `[...]` o icono `▷/▼` para mostrar/ocultar cuerpo
+- **Cuerpo expandible** con datos completos de solicitud + acordeón fases anidado
 
-#### Sidebar (jerarquía visible)
+#### Estructura HTML
 
-```
-📁 Expediente AT-123
-📝 Solicitud AAP ● (SELECCIONADA)
-  ├ ⚙️ Fase 1 - Información Pública [En curso]
-  ├ ⚙️ Fase 2 - Resolución [Pendiente]
-  └ ⚙️ Fase 3 - Archivo [No iniciado]
-📝 Solicitud DUP [Pendiente]
-🏛️ Proyecto Técnico [Completo]
-```
-
-#### Panel Contexto (siempre visible)
-
-```
-📁 Contexto: Expediente AT-123
-
-Nº Expediente: AT-123
-Titular: (depende de datos reales)
-Estado: En tramitación
-Proyecto: (depende de datos reales)
-```
-
-#### Breadcrumb
-
-```
-Expedientes > AT-123 > Solicitud AAP
-```
-
-#### Panel Detalle - Tab [Datos]
-
-**Información de la Solicitud AAP:**
-- Tipo: AAP - Autorización Administrativa Previa
-- Solicitante: Endesa SA (CIF: A12345678)
-- Fecha de presentación: 15/01/2026
-- Estado: Completa ✅
-- Observaciones: Solicitud presentada de forma telemática. Documentación completa.
-
-#### Panel Detalle - Tab [Documentos]
-
-**Listado de 3 documentos mockup:**
-1. 📄 proyecto_tecnico.pdf (2.3 MB) - 15/01/2026
-2. 📄 licencia_municipal.pdf (1.1 MB) - 15/01/2026
-3. 📄 escritura_propiedad.pdf (0.8 MB) - 15/01/2026
-
-**Botón:** [+ Subir documento]
-
-#### Panel Detalle - Tab [Historial]
-
-**Placeholder:** "El historial de cambios estará disponible próximamente." 🗓️
-
-#### Panel Hijos Directos: Fases
-
-**Título:** Fases (3) | **Botón:** [+ Nueva Fase]
-
-**Tabla de fases:**
-
-| Fase | Estado | Inicio | Fin Previsto | Acciones |
-|------|--------|--------|--------------|----------|
-| ⚙️ Fase 1 - Información Pública | En curso ⚠️ | 20/01/2026 | 05/02/2026 (quedan 15 días) | [Ver detalle ▶] |
-| ⚙️ Fase 2 - Resolución | Pendiente | - | - | [Ver detalle ▶] |
-| ⚙️ Fase 3 - Archivo | No iniciado | - | - | [Ver detalle ▶] |
-
-#### Panel Hijos Directos: Documentos
-
-**Título:** Documentos (5) | **Botón:** [+ Subir documento]
-
-**Listado de 5 documentos:**
-1. 📄 proyecto_tecnico.pdf (2.3 MB) - 15/01/2026 [Descargar]
-2. 📄 licencia_municipal.pdf (1.1 MB) - 15/01/2026 [Descargar]
-3. 📄 escritura_propiedad.pdf (0.8 MB) - 15/01/2026 [Descargar]
-4. 📄 anejos_tecnicos.pdf (4.2 MB) - 15/01/2026 [Descargar]
-5. 📄 planos.pdf (6.5 MB) - 15/01/2026 [Descargar]
-
-### JavaScript Básico Tabs (Mockup Fase 1)
-
-```javascript
-// Funcionalidad básica de tabs
-document.addEventListener('DOMContentLoaded', function() {
-    const tabs = document.querySelectorAll('.panel-tab');
-    const tabContents = document.querySelectorAll('.panel-tab-content');
+```html
+<div class="accordion" id="accordionSolicitudes">
+  
+  <div class="accordion-item">
+    <h2 class="accordion-header">
+      <button class="accordion-button collapsed" 
+              data-bs-toggle="collapse" 
+              data-bs-target="#collapseSol1">
+        <span class="col-tipo">Solicitud 1: AAP+AAC</span>
+        <span class="col-fases">Fases (1/2)</span>
+        <span class="col-tramites">Trámites (1/5)</span>
+        <span class="badge bg-success">Activa</span>
+      </button>
+    </h2>
     
-    tabs.forEach(tab => {
-        tab.addEventListener('click', function() {
-            // Remover active de todos
-            tabs.forEach(t => t.classList.remove('active'));
-            tabContents.forEach(tc => tc.classList.remove('active'));
-            
-            // Añadir active al clickeado
-            this.classList.add('active');
-            const tabId = this.getAttribute('data-tab');
-            document.getElementById('tab' + tabId.charAt(0).toUpperCase() + tabId.slice(1)).classList.add('active');
-        });
-    });
-});
+    <div id="collapseSol1" class="accordion-collapse collapse">
+      <div class="accordion-body">
+        
+        <!-- Detalle Solicitud 1 -->
+        <div class="detalle-solicitud">
+          <p>Fecha presentación: 15/01/2026</p>
+          <p>Promotor: Endesa</p>
+          <button>[✏️]</button>
+          <button>[...]</button>
+        </div>
+        
+        <!-- Acordeón anidado: Fases -->
+        <div class="accordion accordion-anidado" id="accordionFases-Sol1">
+          <!-- Items de fases aquí -->
+        </div>
+        
+      </div>
+    </div>
+  </div>
+  
+  <div class="accordion-item">
+    <!-- Solicitud 2 -->
+  </div>
+  
+</div>
 ```
+
+#### CSS Customización
+
+```css
+/* Botones acordeón con layout flexbox para columnas */
+.accordion-button {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.accordion-button > span {
+  flex: 0 0 auto;
+  margin-right: 1rem;
+}
+
+/* Columnas customizadas en cabecera acordeón */
+.col-tipo { width: 200px; }
+.col-fases { width: 100px; }
+.col-tramites { width: 100px; }
+```
+
+---
+
+### 3. Acordeones Anidados (Fases, Trámites, Tareas)
+
+#### Características
+
+- **Mismo patrón** que acordeón principal, pero anidado
+- **Indentación visual** con margen izquierdo + borde
+- **3 niveles de anidación**: Fases → Trámites → Tareas
+
+#### CSS para Anidación
+
+```css
+/* Indentación visual para acordeones anidados */
+.accordion .accordion {
+  margin-left: 2rem;
+  border-left: 3px solid #0d6efd;
+  padding-left: 1rem;
+}
+
+/* Segundo nivel anidado (trámites) */
+.accordion .accordion .accordion {
+  border-left-color: #198754;
+}
+
+/* Tercer nivel anidado (tareas) */
+.accordion .accordion .accordion .accordion {
+  border-left-color: #ffc107;
+}
+```
+
+---
+
+### 4. Botones de Acción
+
+#### Tipos de Botones
+
+- **`[✏️]`** - Editar elemento (modal o nueva página)
+- **`[➕]`** - Añadir hijo (modal con formulario)
+- **`[...]`** - Ver detalle completo (expandir o nueva página)
+
+#### Ubicación
+
+- **Panel contexto**: Editar expediente/proyecto, añadir solicitud
+- **Cabecera acordeón**: Expandir/colapsar (Bootstrap maneja automáticamente)
+- **Cuerpo acordeón**: Editar elemento, añadir hijo
+
+---
+
+## Navegación Jerárquica
+
+### Flujo de Navegación
+
+```
+Vista V2 (Listado expedientes)
+    ↓ [Clic en botón "Tramitar"]
+Vista V3 (Expediente AT-2024-0042)
+    ├─ Panel contexto: Expediente + Proyecto visible
+    └─ Acordeón: Solicitudes colapsadas
+        ↓ [Clic en ▷ Solicitud 1]
+Vista V3 (Solicitud 1 expandida)
+    ├─ Datos solicitud visibles
+    └─ Acordeón fases colapsado
+        ↓ [Clic en ▷ Fase 1]
+Vista V3 (Fase 1 expandida)
+    ├─ Datos fase visibles
+    └─ Acordeón trámites colapsado
+        ↓ [Clic en ▷ Trámite 1]
+Vista V3 (Trámite 1 expandido)
+    ├─ Datos trámite visibles
+    └─ Acordeón tareas visible
+```
+
+### Sin Sincronización Compleja
+
+**Ventaja del diseño acordeón:** Bootstrap 5 maneja toda la lógica de expandir/colapsar. NO necesitas:
+
+- ❌ Sincronizar sidebar con panel detalle
+- ❌ Gestionar estado seleccionado manualmente
+- ❌ Breadcrumb complejo (opcional: puede ir en panel contexto)
+- ❌ Divisor redimensionable
 
 ---
 
 ## Archivos del Proyecto
 
-### CSS Creados
+### CSS Creados/Actualizados
 
 | Archivo | Descripción | Estado |
 |---------|-------------|--------|
-| `app/static/css/v3-tramitacion.css` | Estilos completos Vista V3 | ✅ Fase 1 |
+| `app/static/css/v3-tramitacion.css` | Estilos Vista V3 (actualizar para acordeón) | 🔄 Fase 2 |
 
-### JavaScript Creados
-
-| Archivo | Descripción | Estado |
-|---------|-------------|--------|
-| `app/static/js/v3-sidebar-accordion.js` | Lógica acordeón sidebar | 🟡 Stub |
-| `app/static/js/v3-tabs.js` | Sistema de tabs | 🟡 Stub |
-| `app/static/js/v3-breadcrumb.js` | Breadcrumb dinámico | 🟡 Stub |
-| `app/static/js/v3-tramitacion-controller.js` | Orquestador principal | 🟡 Stub |
-
-### Templates Creados
+### JavaScript Creados/Actualizados
 
 | Archivo | Descripción | Estado |
 |---------|-------------|--------|
-| `app/templates/layout/base_tramitacion.html` | Layout base V3 | ✅ Fase 1 |
-| `app/templates/expedientes/tramitacion_v3.html` | Vista tramitación con mockup completo | ✅ Fase 1 |
+| `app/static/js/v3-accordion-main.js` | Lógica acordeón principal (nuevo) | 🔴 Fase 2 |
+| ~~`app/static/js/v3-sidebar-accordion.js`~~ | ~~Lógica sidebar~~ (deprecado) | ❌ Eliminado |
+| ~~`app/static/js/v3-tabs.js`~~ | ~~Sistema tabs~~ (deprecado) | ❌ Eliminado |
+| ~~`app/static/js/v3-breadcrumb.js`~~ | ~~Breadcrumb dinámico~~ (opcional) | ⚠️ Opcional |
+
+### Templates Creados/Actualizados
+
+| Archivo | Descripción | Estado |
+|---------|-------------|--------|
+| `app/templates/layout/base_tramitacion.html` | Layout base V3 (actualizar sin grid) | 🔄 Fase 2 |
+| `app/templates/expedientes/tramitacion_v3.html` | Vista tramitación (actualizar acordeón) | 🔄 Fase 2 |
 
 ### Rutas Flask
 
@@ -453,117 +504,103 @@ document.addEventListener('DOMContentLoaded', function() {
 **Duración:** 2-3 días  
 **Estado:** ✅ Completada el 08/02/2026
 
-- [x] Crear `base_tramitacion.html` (layout V3)
-- [x] Crear `v3-tramitacion.css` con grid 2 columnas + divisor
-- [x] Estilos sidebar acordeón (lista plana)
-- [x] Estilos panel detalle con tabs
-- [x] Responsive: sidebar colapsable en móvil
-- [x] Template `tramitacion_v3.html` con **mockup completo hardcodeado**:
-  - Sidebar con jerarquía Expediente AT-123
-  - Panel contexto expediente (siempre visible)
-  - Breadcrumb: Expedientes > AT-123 > Solicitud AAP
-  - Tabs [Datos] [Documentos] [Historial] con JavaScript básico
-  - Datos mockup Solicitud AAP
-  - Panel Fases (3 fases en tabla)
-  - Panel Documentos (5 documentos)
+- [x] Crear `base_tramitacion.html` (layout V3 básico)
+- [x] Crear `v3-tramitacion.css` con estilos básicos
+- [x] Template `tramitacion_v3.html` con mockup inicial
 - [x] Ruta Flask `/tramitacion/<id>`
-- [x] Crear stubs JavaScript (Fase 2+)
-- [x] **Testing visual mockup completo**
 
-### Fase 2: Sidebar Acordeón Dinámico 🔴 PENDIENTE
+### Fase 2: Acordeón Principal con Bootstrap 5 🔴 PENDIENTE
 
 **Duración estimada:** 3-4 días
 
-#### 2.1 Componente JavaScript Sidebar
-- [ ] Crear `v3-sidebar-accordion.js` completo:
-  - Lógica acordeón (expandir/contraer elementos)
-  - Gestión estado seleccionado (●)
-  - Visibilidad hijos directos con indentación
-  - Eventos clic en elementos
+#### 2.1 Panel Contexto Fijo
+- [ ] Implementar panel sticky superior
+- [ ] Mostrar datos expediente + proyecto juntos
+- [ ] Botones `[✏️]` `[➕]` `[...]` funcionales
 
-#### 2.2 Divisor Redimensionable
-- [ ] Implementar drag-and-drop del divisor ⋮
-- [ ] Persistencia ancho sidebar (localStorage)
-- [ ] Scrollbar horizontal automático si excede ancho
+#### 2.2 Acordeón Solicitudes
+- [ ] Implementar acordeón Bootstrap 5 para solicitudes
+- [ ] Cabeceras con columnas customizadas
+- [ ] CSS para layout flexbox en cabeceras
+- [ ] Cuerpo con datos completos de solicitud
 
-#### 2.3 API Backend para Sidebar
-- [ ] Endpoint `GET /api/expedientes/<id>/sidebar-data`:
-  - Estructura jerárquica completa del expediente
-  - IDs, tipos, etiquetas de todos los elementos
-  - Estado de cada elemento (completo, pendiente, etc.)
+#### 2.3 API Backend
+- [ ] Endpoint `GET /api/expedientes/<id>/estructura_completa`:
+  - Expediente + Proyecto anidado
+  - Solicitudes con fases/trámites/tareas incluidos
+  - Una sola petición HTTP (600 KB aprox)
 
-### Fase 3: Panel Detalle con Tabs 🔴 PENDIENTE
+### Fase 3: Acordeones Anidados (Fases, Trámites, Tareas) 🔴 PENDIENTE
 
 **Duración estimada:** 3-4 días
 
-#### 3.1 Sistema de Tabs
-- [ ] Crear `v3-tabs.js` completo:
-  - Navegación entre [Datos] [Documentos] [Historial]
-  - Lazy loading de contenido
-  - Estado activo persistente
+#### 3.1 Acordeón Fases
+- [ ] Implementar acordeón fases dentro de cada solicitud
+- [ ] CSS para indentación visual (margen + borde)
+- [ ] Cabeceras con columnas: Fase | Trámites | Estado
 
-#### 3.2 Paneles de Hijos Directos
-- [ ] Implementar lógica "solo hijos DIRECTOS":
-  - Expediente → muestra Solicitudes
-  - Solicitud → muestra Fases (NO Trámites)
-  - Fase → muestra Trámites (NO Tareas)
-  - Trámite → muestra Tareas
-- [ ] Paneles con botón [+ Crear] siempre visibles
-- [ ] Mensaje informativo cuando panel vacío
+#### 3.2 Acordeón Trámites
+- [ ] Implementar acordeón trámites dentro de cada fase
+- [ ] CSS para segundo nivel anidado
+- [ ] Cabeceras con columnas: Trámite | Tareas | Estado
 
-#### 3.3 APIs Backend Panel Detalle
-- [ ] `GET /api/expedientes/<id>/detalles` - Datos expediente
-- [ ] `GET /api/solicitudes/<id>/detalles` - Datos solicitud
-- [ ] `GET /api/fases/<id>/detalles` - Datos fase
-- [ ] `GET /api/tramites/<id>/detalles` - Datos trámite
-- [ ] `GET /api/tareas/<id>/detalles` - Datos tarea
-- [ ] `GET /api/<tipo>/<id>/hijos` - Lista hijos directos
+#### 3.3 Acordeón Tareas
+- [ ] Implementar acordeón tareas dentro de cada trámite
+- [ ] CSS para tercer nivel anidado
+- [ ] Listado simple de tareas
 
-### Fase 4: Breadcrumb Dinámico 🔴 PENDIENTE
+### Fase 4: Botones de Acción y Modales 🔴 PENDIENTE
 
-**Duración estimada:** 1-2 días
+**Duración estimada:** 2-3 días
 
-#### 4.1 Componente Breadcrumb
-- [ ] Crear `v3-breadcrumb.js` completo:
-  - Construcción dinámica según elemento seleccionado
-  - Navegación hacia ancestros (clic en cualquier nivel)
-  - Sincronización con sidebar y panel
+#### 4.1 Botones Editar `[✏️]`
+- [ ] Modal o página para editar expediente
+- [ ] Modal o página para editar solicitud/fase/trámite/tarea
+- [ ] Formularios con validación
 
-#### 4.2 API Backend Breadcrumb
-- [ ] Endpoint `GET /api/elementos/<id>/ancestros`:
-  - Cadena completa de ancestros desde raíz
-  - Tipo, ID y etiqueta de cada ancestro
+#### 4.2 Botones Añadir `[➕]`
+- [ ] Modal para añadir solicitud (desde panel contexto)
+- [ ] Modal para añadir fase (desde solicitud expandida)
+- [ ] Modal para añadir trámite (desde fase expandida)
+- [ ] Modal para añadir tarea (desde trámite expandido)
 
-### Fase 5: Integración y Navegación 🔴 PENDIENTE
+#### 4.3 Botones Ver Detalle `[...]`
+- [ ] Expandir acordeón (Bootstrap maneja automáticamente)
+- [ ] O modal con vista completa del elemento
+
+### Fase 5: Carga de Datos y Renderizado 🔴 PENDIENTE
 
 **Duración estimada:** 2 días
 
-#### 5.1 Orquestador Principal
-- [ ] Crear `v3-tramitacion-controller.js` completo:
-  - Coordina sidebar + panel + breadcrumb
-  - Estado global de navegación
-  - Gestión history API (URLs navegables)
+#### 5.1 JavaScript Renderizado
+- [ ] Crear `v3-accordion-main.js`:
+  - Cargar datos desde API `estructura_completa`
+  - Renderizar acordeón completo desde JSON
+  - Bootstrap maneja eventos expand/collapse
 
-#### 5.2 Conexión con Vista V2
+#### 5.2 Optimización Performance
+- [ ] Opción A: Carga completa (600 KB) en una petición
+- [ ] Opción B: Carga lazy por nivel (si performance problema)
+- [ ] Caché en localStorage para navegación rápida
+
+### Fase 6: Integración y Testing 🔴 PENDIENTE
+
+**Duración estimada:** 2 días
+
+#### 6.1 Integración con Vista V2
 - [ ] Botón [Tramitar] en V2 → carga V3 con expediente seleccionado
-- [ ] Breadcrumb "Tramitación" → vuelve a V2 (listado)
-- [ ] Paso de parámetros: `id_expediente` en URL
-
-### Fase 6: Documentación y Testing 🔴 PENDIENTE
-
-**Duración estimada:** 2 días
-
-#### 6.1 Documentación
-- [ ] Actualizar este documento con implementación completa
-- [ ] Ejemplos de uso APIs
-- [ ] Actualizar `docs/implementaciones/README.md`
-- [ ] Actualizar `docs/arquitectura/PATRONES_UI.md`
+- [ ] Breadcrumb opcional "← Volver a listado"
 
 #### 6.2 Testing
-- [ ] Testing visual: layout, acordeón, tabs, responsive
-- [ ] Testing funcional: navegación jerárquica, breadcrumb
-- [ ] Testing integración: flujo V2 → V3 → V2
-- [ ] Testing accesibilidad (semántica HTML, focus-visible)
+- [ ] Testing visual: panel contexto, acordeones anidados, responsive
+- [ ] Testing funcional: expandir/colapsar, botones acción
+- [ ] Testing con expediente real (8 solicitudes × 6 fases × 5 trámites)
+- [ ] Testing performance: 1440 registros carga en <500ms
+
+#### 6.3 Documentación
+- [ ] Actualizar este documento con implementación completa
+- [ ] Ejemplos de uso API
+- [ ] Screenshots finales
 
 ---
 
@@ -571,58 +608,43 @@ document.addEventListener('DOMContentLoaded', function() {
 
 ### Testing Visual (Fase 1) ✅ COMPLETADO
 
-- [x] Vista V3 carga correctamente con mockup en `/tramitacion/1`
-- [x] Grid 2 columnas funcional (sidebar + divisor + detalle)
-- [x] Sidebar con estructura acordeón visible:
-  - Expediente AT-123 en raíz
-  - Solicitud AAP marcada como seleccionada
-  - 3 Fases visibles como hijos
-  - Sol. DUP y Proyecto visibles como hermanos
-- [x] Panel contexto expediente visible arriba del detalle
-- [x] Breadcrumb visible: "Expedientes > AT-123 > Solicitud AAP"
-- [x] Tabs [Datos] [Documentos] [Historial] visibles y funcionan con clic
-- [x] Tab [Datos]: Información Solicitud AAP visible
-- [x] Tab [Documentos]: Listado 3 documentos visible
-- [x] Tab [Historial]: Placeholder visible
-- [x] Panel Fases: Tabla con 3 fases + botón [+ Nueva Fase]
-- [x] Panel Documentos: Lista 5 documentos + botón [+ Subir documento]
-- [x] Header y footer V2 reutilizados correctamente
-- [x] Responsive: sidebar visible en desktop (pendiente colapso móvil)
+- [x] Vista V3 carga correctamente en `/tramitacion/1`
+- [x] Layout básico funcional
 
-### Testing Funcional Básico (Fase 1) ✅ COMPLETADO
+### Testing Funcional (Fases 2-6) 🔴 PENDIENTE
 
-- [x] Ruta `/tramitacion/1` accesible con autenticación
-- [x] Tabs [Datos] [Documentos] [Historial] cambian contenido al hacer clic
-- [x] JavaScript básico tabs funciona correctamente
-- [x] Botones mockup [Ver detalle ▶] visibles (sin funcionalidad)
-- [x] Botones mockup [+ Nueva Fase] [+ Subir documento] visibles (sin funcionalidad)
+#### Fase 2
+- [ ] Panel contexto sticky funciona al hacer scroll
+- [ ] Botones `[✏️]` `[➕]` `[...]` en panel contexto funcionan
+- [ ] Acordeón solicitudes expande/colapsa correctamente
+- [ ] Cabeceras con columnas alineadas correctamente
 
-### Testing Funcional Avanzado (Fases 2-5) 🔴 PENDIENTE
+#### Fase 3
+- [ ] Acordeones anidados (fases, trámites, tareas) funcionan
+- [ ] Indentación visual correcta con bordes de colores
+- [ ] No hay conflictos entre niveles anidados
 
-- [ ] Sidebar acordeón: expandir/contraer funciona
-- [ ] Elemento seleccionado marcado con ●
-- [ ] Hijos directos visibles al seleccionar elemento
-- [ ] Divisor redimensionable drag-and-drop funciona
-- [ ] Tabs navegan correctamente con lazy loading
-- [ ] Paneles de hijos directos se actualizan según elemento
-- [ ] Breadcrumb construye ruta correctamente
-- [ ] Navegación hacia ancestros funciona
-- [ ] Integración V2 → V3 funciona
+#### Fase 4
+- [ ] Modales editar/añadir se abren correctamente
+- [ ] Formularios validan datos antes de enviar
+- [ ] Cambios se reflejan en acordeón tras guardar
 
-### Testing Integración (Fase 5) 🔴 PENDIENTE
+#### Fase 5
+- [ ] API `estructura_completa` devuelve JSON correcto
+- [ ] JavaScript renderiza acordeón desde JSON
+- [ ] Carga de 1440 registros en <500ms
+- [ ] Navegación fluida sin lag
 
-- [ ] Flujo completo V2 → V3 → navegación → V2
-- [ ] URLs navegables con history API
-- [ ] Persistencia ancho sidebar (localStorage)
-- [ ] Sincronización sidebar-breadcrumb-panel
+#### Fase 6
+- [ ] Integración V2 → V3 funciona correctamente
+- [ ] Volver a listado desde V3 funciona
+- [ ] Testing completo con expediente real
 
-### Testing Accesibilidad 🔴 PENDIENTE
+### Testing Responsive 🔴 PENDIENTE
 
-- [ ] Semántica HTML correcta
-- [ ] ARIA labels en elementos interactivos
-- [ ] Focus visible en sidebar y tabs
-- [ ] Navegación por teclado funcional
-- [ ] Contraste adecuado (colores corporativos)
+- [ ] Desktop (>1200px): Acordeón con columnas visibles
+- [ ] Tablet (768-1199px): Columnas apiladas si es necesario
+- [ ] Mobile (<768px): Acordeón compacto, columnas ocultas
 
 ---
 
@@ -631,93 +653,83 @@ document.addEventListener('DOMContentLoaded', function() {
 ### Epic y Issues
 
 - [Epic #93](https://github.com/genete/bddat/issues/93) - Sistema de Navegación UI Modular
-- [Issue #94](https://github.com/genete/bddat/issues/94) - Prototipo Vista Listado V2
-- [Issue #90](https://github.com/genete/bddat/issues/90) - Especificación Patrones UI
+- [Issue #101](https://github.com/genete/bddat/issues/101) - Vista V3 Tramitación (Fase 1+2)
+- [Comentario #101](https://github.com/genete/bddat/issues/101#issuecomment-3890255354) - Cambio arquitectónico acordeón
 
 ### Documentación Relacionada
 
-- [PATRONES_UI.md](../arquitectura/PATRONES_UI.md) - Patrones UI completos (3 vistas)
+- [PATRONES_UI.md](../arquitectura/PATRONES_UI.md) - Patrones UI completos
 - [ISSUE_94_ESTRUCTURA.md](ISSUE_94_ESTRUCTURA.md) - Sistema de vistas V0/V1/V2/V3
-- [VISTA_V0_LOGIN.md](VISTA_V0_LOGIN.md) - Vista V0 (Login)
-- [VISTA_V1_DASHBOARD.md](VISTA_V1_DASHBOARD.md) - Vista V1 (Dashboard)
-- [CSS_v2_GUIA_USO.md](../estilos/CSS_v2_GUIA_USO.md) - Guía CSS v2
+- [Bootstrap 5 Accordion](https://getbootstrap.com/docs/5.3/components/accordion/) - Documentación oficial
+- Mockup visual: [vista3.svg](./mockups/vista3.svg)
+- Modelo de datos: `schema.sql` + `docs/fuentesIA/referencias/tablas/O_003_SOLICITUDES.md`
 
 ### Pull Requests
 
-- PR #97 - Vista V2 (Listado expedientes) ✅ Mergeado
-- PR #98 - Vista V1 (Dashboard) ✅ Mergeado
-- PR #99 - Vista V0 (Login) ✅ Mergeado
-- PR pendiente - Vista V3 (Tramitación Fase 1) 🟡 En desarrollo
+- PR pendiente - Vista V3 (Tramitación Fase 1+2) 🔴 Pendiente
 
 ---
 
 ## Notas de Diseño
 
-### Diferencia con Vistas V0/V1/V2
+### Diferencia con Diseño Original
 
-| Vista | Estructura Main | Scroll | Sidebar |
-|-------|----------------|--------|---------|
-| V0 (Login) | Simple (pantalla completa) | B.2 scroll simple | NO |
-| V1 (Dashboard) | Simple (grid cards) | B.2 scroll simple | NO |
-| V2 (Listado) | C.1/C.2/D (tabla scroll) | C.2 scroll interno | NO |
-| **V3 (Tramitación)** | **Grid 2 columnas** | **Sidebar + Detail scroll independiente** | **SÍ** |
+| Aspecto | Diseño Original (Sidebar) | Diseño Nuevo (Acordeón) |
+|---------|---------------------------|-------------------------|
+| **Layout** | Grid 2 columnas (sidebar + detalle) | Layout simple (100% ancho) |
+| **Navegación** | Sidebar lateral 250px | Acordeón expandible in-place |
+| **Espacio** | 70% para contenido | 100% para contenido |
+| **Sincronización** | Sidebar ↔ Detalle | No necesaria (Bootstrap maneja) |
+| **JavaScript** | Complejo (3 componentes) | Simple (renderizado + Bootstrap) |
+| **Divisor** | Redimensionable | No existe |
+| **Breadcrumb** | Dinámico obligatorio | Opcional (panel contexto) |
+| **Tabs** | [Datos] [Docs] [Historial] | Acordeones anidados |
 
 ### Decisiones de Diseño
 
-**Lista plana vs Árbol indentado:**
-- ✅ **Elegido**: Lista plana tipo acordeón
-- ❌ **Descartado**: Árbol indentado con muchos niveles
-- **Razón**: Lista plana es más limpia y clara. Indentación solo para hijos directos del seleccionado.
+**Acordeón vs Sidebar:**
+- ✅ **Elegido**: Acordeón en contenido principal
+- ❌ **Descartado**: Sidebar lateral con sincronización
+- **Razón**: Más espacio, menos complejidad, UX familiar (Gmail/Trello)
 
-**Paneles de hijos directos:**
-- ✅ **Elegido**: Solo mostrar paneles de hijos DIRECTOS
-- ❌ **Descartado**: Mostrar todos los niveles anidados
-- **Razón**: Evita sobrecarga visual. Usuario navega jerárquicamente paso a paso.
+**Panel contexto fijo:**
+- ✅ **Elegido**: Expediente + Proyecto juntos en panel sticky
+- **Razón**: Mantiene contexto del expediente mientras se navega por solicitudes/fases. No son parte de la jerarquía de tramitación (no van en acordeón).
 
-**Panel contexto expediente:**
-- ✅ **Elegido**: Bloque fijo siempre visible con datos expediente/proyecto
-- **Razón**: Mantiene contexto del expediente completo mientras se navega por elementos hijos.
+**Bootstrap 5 Accordion nativo:**
+- ✅ **Elegido**: Usar componente Bootstrap como base
+- **Razón**: Maneja eventos expand/collapse automáticamente. Menos JavaScript custom. Accesibilidad incluida.
 
-**Breadcrumb sin botón Volver:**
-- ✅ **Elegido**: Breadcrumb clickable para navegación
-- ❌ **Descartado**: Botón [⟲ Volver] adicional
-- **Razón**: Breadcrumb ya permite navegación hacia ancestros. Botón redundante.
+**Carga completa vs Lazy:**
+- ✅ **Elegido**: Opción A por defecto (carga completa 600 KB)
+- **Razón**: Red local corporativa (100-300ms). Navegación instantánea tras carga inicial. Lazy solo si hay problemas de performance.
 
-**Divisor redimensionable:**
-- ✅ **Elegido**: Drag-and-drop para ajustar ancho sidebar
-- **Razón**: Flexibilidad para usuarios con pantallas grandes/pequeñas. Persistencia mejora UX.
+### Modelo Expediente/Proyecto
 
-### Reutilización de CSS v2
+**Corrección importante:** Expediente y Proyecto NO son padre-hijo en la jerarquía de tramitación. Son entidades hermanas (1:1) que se muestran juntas en el panel contexto.
 
-Vista V3 reutiliza variables y componentes de CSS v2:
-- `v2-theme.css` - Colores corporativos, tipografía
-- `v2-layout.css` - Grid principal, header, footer
-- `v2-components.css` - Badges, botones, formularios
-
-Solo añade estilos específicos en `v3-tramitacion.css`:
-- Grid 2 columnas sidebar + detalle
-- Estilos sidebar acordeón
-- Estilos divisor redimensionable
-- Estilos tabs panel detalle
-- Estilos panel contexto
+**Por qué NO van en acordeón:**
+- Proyecto es información técnica asociada al expediente, no una fase de tramitación
+- Solicitudes apuntan al expediente, no al proyecto
+- Mostrarlos juntos en panel fijo evita confusión jerárquica
 
 ---
 
 ## Historial de Cambios
 
-**08/02/2026 - Fase 1 completada:**
+**12/02/2026 - Cambio arquitectónico:**
+- ⚠️ **CAMBIO MAYOR**: De sidebar lateral → acordeón en contenido principal
+- Actualizado mockup visual: `vista3.svg` incluido
+- Corregido modelo de datos expediente/proyecto/solicitud
+- Rediseñadas Fases 2-6 acorde al nuevo diseño
+- Eliminadas referencias a sidebar, divisor, tabs, breadcrumb complejo
+- Actualizado plan de implementación completo
+
+**08/02/2026 - Fase 1 completada (diseño original):**
 - Creado layout `base_tramitacion.html` con grid 2 columnas
-- Creado CSS `v3-tramitacion.css` completo
-- Creado template mockup `tramitacion_v3.html` con **datos hardcodeados completos**:
-  - Sidebar con jerarquía Expediente AT-123
-  - Panel contexto expediente (nuevo componente)
-  - Solicitud AAP seleccionada
-  - Tabs funcionales [Datos] [Documentos] [Historial]
-  - Panel Fases (3 fases en tabla)
-  - Panel Documentos (5 documentos)
+- Creado CSS `v3-tramitacion.css` básico
+- Creado template mockup `tramitacion_v3.html`
 - Creada ruta Flask `/tramitacion/<id>`
-- Creados stubs JavaScript para Fase 2+
-- **Testing visual mockup completado**
 - Creado documento `VISTA_V3_TRAMITACION.md`
 
 ---
