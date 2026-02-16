@@ -1,6 +1,6 @@
 # Guía General del Proyecto BDDAT
 
-**Fecha de revisión:** 15/01/2026
+**Fecha de revisión:** 16/02/2026
 
 ---
 
@@ -16,9 +16,7 @@
   - [Proceso de Despliegue en Producción](#proceso-de-despliegue-en-producción)
 - [Lógica de la Tramitación de Expedientes](#lógica-de-la-tramitación-de-expedientes)
   - [Relación Expediente, Solicitud, Proyecto, Fase, Trámite y Tarea](#relación-expediente-solicitud-proyecto-fase-trámite-y-tarea)
-  - [Estructura de Negocio de la Tramitación](#estructura-de-negocio-de-la-tramitación)
-  - [Separación Datos Estructurales vs. Datos Lógica de Negocio](#separación-datos-estructurales-datos-lógica-negocio)
-  - [Lógica de Negocio - Enfoque Basado en Motor de Reglas](#lógica-de-negocio---enfoque-basado-en-motor-de-reglas)
+  - [Lógica de Negocio - Motor de Reglas](#lógica-de-negocio---motor-de-reglas)
 - [Estructura de Tablas y Tipos](#estructura-de-tablas-y-tipos)
   - [El Expediente y sus Tipos](#el-expediente-y-sus-tipos)
   - [La Solicitud y sus Tipos](#la-solicitud-y-sus-tipos)
@@ -205,142 +203,76 @@ Esta arquitectura mantiene la base de datos **limpia, adaptable y alineada con l
 
 ---
 
-### Estructura de Negocio de la Tramitación
+### Lógica de Negocio - Motor de Reglas
 
-En nuestro caso queremos que la lógica de negocio **no sea rígida**, restringiendo lo que se puede o no se puede hacer en cada solicitud, fase, trámite, etc. de forma que no exista margen de maniobra para el usuario en tomar decisiones dentro de lo posible.
+#### Principios Fundamentales
 
-Deseamos que la lógica sea definida de la siguiente forma:
+**1. Enfoque permisivo:** En cualquier estado del expediente, es posible hacer cualquier cosa que no esté expresamente prohibida. En lugar de listar lo únicamente permitido, se listan las prohibiciones expresas, permitiendo flexibilidad operativa dentro del marco legal.
 
-1. **En cualquier estado o situación del expediente, es posible hacer cualquier cosa que no esté expresamente prohibida.** En lugar de listar lo únicamente permitido, listar lo expresamente prohibido y permitir que se pueda hacer cualquier operación mientras no esté expresamente prohibida. Por ejemplo, una prohibición genérica sería que no se puede finalizar una fase si quedan trámites sin finalizar. Otra prohibición sería que no se puede iniciar la fase "resolver" si no se ha finalizado la fase "análisis solicitud".
+**2. Separación de datos y reglas:** Las tablas estructurales (`EXPEDIENTES`, `SOLICITUDES`, `PROYECTOS`, `FASES`, `TRAMITES`, `TAREAS`) contienen **únicamente datos sobre lo que existe y ha ocurrido**. Las prohibiciones, validaciones y flujos procedimentales se definen en **tablas separadas** de configuración de reglas.
 
-2. **Las prohibiciones que definen la lógica de la tramitación ha de obtenerse de valores definidos en tablas, no internamente escrito en el código.** De esta forma la modificación de un precepto legal (y por tanto la lógica del procedimiento) no requiere modificar macros si no que solo requiere modificar los datos de las prohibiciones del procedimiento. Esto hace que el sistema se adapte rápidamente a los cambios.
+**3. Reglas configurables:** Las reglas viven en tablas, no en código. Modificar el comportamiento del sistema implica modificar registros en tablas de reglas, no reescribir código. Esto permite adaptación ágil a cambios normativos.
 
-La implementación técnica de este enfoque mediante tablas de reglas separadas de las tablas estructurales se detalla en la sección "Lógica de Negocio - Enfoque basado en Motor de Reglas" más adelante.
+#### Implementación del Motor de Reglas
 
----
+**Cómo funcionan las reglas:**
 
-### Separación Datos Estructurales, Datos Lógica Negocio
+- El motor lee dinámicamente datos de las tablas estructurales
+- Evalúa condiciones basándose en valores de campos, existencia de registros relacionados y contexto del expediente
+- Produce acciones: **bloquear** (impedir acciones), **sugerir** (advertencias sin bloqueo), **obligar** (forzar creación/modificación), **calcular** (derivar valores) o **validar** (verificar consistencia)
 
-Las tablas estructurales (`EXPEDIENTES`, `SOLICITUDES`, `PROYECTOS`, `FASES`, `TRAMITES`, `TAREAS`) contienen **ÚNICAMENTE datos (hechos) sobre lo que existe y ha ocurrido**.
+**Ejemplos de reglas:**
 
-Estas tablas **NO contienen campos** que implementen reglas de negocio como `REQUIERE_X`, `PERMITIDO_SI`, `SECUENCIA_OBLIGATORIA`, etc.
+- No se puede finalizar una fase si quedan trámites sin finalizar
+- No se puede iniciar la fase "resolver" si no se ha finalizado la fase "análisis solicitud"
+- No se puede rellenar fecha de inicio de una fase si la fase precedente obligatoria no tiene fecha de finalización
 
-Las prohibiciones, validaciones, secuencias obligatorias y flujos procedimentales se definen en **tablas SEPARADAS** de configuración de reglas, que serán consultadas por el motor de reglas. Esta separación permite modificar el comportamiento del sistema sin alterar la estructura de datos ni el código.
-
-#### Ejemplos de lo que NO va en tablas estructurales:
+**Ejemplos de lo que NO va en tablas estructurales:**
 
 - `FASE.PERMITE_SIGUIENTE_FASE` → esto es una regla
 - `TRAMITE.REQUIERE_DESTINATARIO` → esto es una regla
 - `TIPO_SOLICITUD.FASES_OBLIGATORIAS` → esto es una regla
 
-Estos conceptos se implementarán mediante tablas de reglas del tipo (ejemplos):
-
-- `REGLAS_SECUENCIA_FASES`
-- `REGLAS_VALIDACION_TRAMITES`
-- `REGLAS_FLUJO_SOLICITUDES`
-
----
-
-### Lógica de Negocio - Enfoque Basado en Motor de Reglas
-
-#### Principio Fundamental
-
-La lógica de negocio de la aplicación **NO se implementa mediante código duro** (funciones, procedimientos almacenados, triggers con lógica específica). En su lugar, se basa en un **motor de reglas genérico** alimentado por tablas de configuración.
-
-#### Características del Sistema de Reglas
-
-**1. Las reglas viven en tablas, no en código**
-
-- Toda la lógica de validación, restricción y flujo se almacena como datos en tablas específicas
-- Modificar el comportamiento del sistema implica modificar registros en estas tablas, no reescribir código
-- Las reglas son versionables, auditables y reversibles como cualquier otro dato
-
-**2. Las reglas leen valores de tablas estructurales**
-
-- El motor de reglas consulta dinámicamente los datos de las tablas de estructura básica: `FASES`, `SOLICITUDES`, `EXPEDIENTES`, `PROYECTOS`, etc.
-- Las reglas evalúan condiciones basándose en:
-  - Valores de campos específicos (ej: `EXITO` de una fase)
-  - Existencia o ausencia de registros relacionados
-  - Relaciones entre entidades
-  - Contexto del expediente (tipo de suelo, instrumento ambiental, etc.)
-
-**3. Las reglas producen acciones**
-
-Las reglas pueden generar diferentes tipos de acciones:
-
-- **Bloquear:** Impedir al usuario realizar una acción (ej: crear una fase fuera de secuencia)
-- **Sugerir:** Mostrar advertencias o recomendaciones sin impedir la acción
-- **Obligar:** Forzar la creación/modificación de registros según condiciones
-- **Calcular:** Derivar valores automáticamente basándose en otros datos
-- **Validar:** Verificar la consistencia de los datos antes de confirmar cambios
-
-**4. Las reglas son modificables sin tocar código**
-
-- Los usuarios con permisos adecuados pueden modificar las reglas de negocio
-- No se requiere intervención de programadores para ajustar el comportamiento del sistema
-- Los cambios en las reglas tienen efecto inmediato
-- Esto permite adaptación ágil a cambios normativos o procedimentales
-
-#### Implicaciones para el Diseño Actual
-
-**Fase de desarrollo/despliegue:**
-
-**Fases 1 y 2 - Sin restricciones activas:**
-
-- El usuario tiene libertad total
-- **Indicadores visuales:** La interfaz muestra advertencias informativas (no bloqueantes) sobre datos incompletos o inconsistentes que son propios de la naturaleza de las tablas de datos (ej. dejar vacía un campo obligatorio)
-- **Educación progresiva:** Los usuarios se familiarizan con el "debería ser" antes de que se active el "debe ser"
-
-**Fase de producción con lógica activada (fases 3 y 4):**
-
-- **Restricciones automáticas:** El motor de reglas evalúa y aplica las reglas definidas
-- **Flujos guiados:** El sistema sugiere o impone el siguiente paso según el contexto. Se comenzará con el "sugiere" y en función de las decisiones de la dirección se implementa el "impone"
-- **Validación en tiempo real:** Se previenen inconsistencias antes de que se confirmen
-- **Flexibilidad mantenida:** Ajustar una regla no requiere nueva versión de software
-
-#### Principio de No Redundancia
-
-Los datos estructurales (como `EXITO` en `FASES`) no deben duplicar información que pueda deducirse de otros datos.
-
-El motor de reglas es responsable de:
-
-- Interpretar los datos básicos
-- Aplicar las reglas configuradas
-- Producir las acciones correspondientes
-
-Los campos estructurales contienen únicamente información primaria, nunca derivada. En ocasiones la información se podría duplicar pero la fuente de la verdad debe permanecer a un único campo/tabla.
+Estos conceptos se implementan mediante tablas como `REGLAS_SECUENCIA_FASES`, `REGLAS_VALIDACION_TRAMITES`, `REGLAS_FLUJO_SOLICITUDES`.
 
 #### Validación No Obstructiva en la Interfaz
 
-Las reglas de negocio se aplican mediante **validación en tiempo real** durante la edición de campos, sin interrumpir el flujo de trabajo del usuario.
+Las reglas se aplican mediante **validación en tiempo real** sin interrumpir el flujo de trabajo. El sistema **NO utiliza mensajes modales (MsgBox)** salvo riesgos de pérdidas de datos o rotura de estructura.
 
-El sistema **NO debe utilizar mensajes modales (MsgBox)** que bloqueen la interacción salvo riesgos de pérdidas de datos o rotura de la estructura del expediente o procedimiento.
+**Indicadores visuales discretos:**
 
-En su lugar, las validaciones producen **indicadores visuales discretos**:
+- **Validación exitosa:** Campo sin indicadores, guardado automático silencioso
+- **Advertencia:** Asterisco rojo junto al campo con texto explicativo en gris debajo
+- **Error (bloqueo):** Asterisco rojo más texto en rojo explicativo, campos dependientes deshabilitados hasta subsanar
 
-- **Validación exitosa:** El campo se muestra sin indicadores, guardado automático silencioso
-- **Advertencia:** Asterisco rojo junto al campo con texto explicativo en gris debajo del mismo
-- **Error (bloqueo):** Asterisco rojo más texto en rojo explicativo, y los campos dependientes se deshabilitan automáticamente hasta que se subsane el error
+**Ejemplo:** No se permite rellenar fecha de inicio de una fase si la fase precedente obligatoria no tiene fecha de finalización, pero el sistema lo comunica deshabilitando el campo y mostrando la explicación, no mediante popup.
 
-Este enfoque permite al usuario trabajar de forma natural (rellenando los campos administrativos -fechas de inicio y fin- directamente), mientras el motor de reglas valida en segundo plano y bloquea únicamente las acciones que violen restricciones fundamentales.
+Todas las modificaciones quedan registradas automáticamente en el cuaderno de bitácora del sistema.
 
-Por ejemplo, no se permite rellenar la fecha de inicio de una fase si la fase precedente obligatoria no tiene fecha de finalización, pero el sistema lo comunica deshabilitando el campo destino y mostrando la explicación, no mediante un popup intrusivo.
+#### Evolución por Fases
 
-Todas las modificaciones de fechas quedan registradas automáticamente en el cuaderno de bitácora del sistema para auditoría y trazabilidad.
+**Fases 1 y 2 - Sin restricciones activas:**
 
-#### Flexibilidad en Fechas de Inicio y Fin
+- Libertad total del usuario
+- Indicadores visuales informativos (no bloqueantes) sobre datos incompletos o inconsistentes propios de la naturaleza de las tablas
+- Educación progresiva: usuarios se familiarizan con el "debería ser" antes del "debe ser"
 
-Los campos `FECHA`, `FECHA_INICIO` y `FECHA_FIN` en las tablas `SOLICITUDES`, `FASES` y `TRAMITES` permiten valores nulos (`NULL`). Esto permite modelar tres estados claramente diferenciados:
+**Fase 3 en adelante - Con lógica activada:**
 
-- **Fechas IS NULL:** La solicitud/fase/trámite está planificada o preparada pero no ha comenzado o finalizado formalmente
-- **FECHA_INICIO NOT NULL y FECHA_FIN IS NULL:** La solicitud/fase/trámite está en curso
-- **FECHA_INICIO NOT NULL y FECHA_FIN NOT NULL:** La solicitud/fase/trámite ha finalizado
+- Restricciones automáticas según reglas definidas
+- Flujos guiados: sistema sugiere o impone siguiente paso según contexto
+- Validación en tiempo real previene inconsistencias
+- Flexibilidad mantenida: ajustar reglas no requiere nueva versión de software
 
-Esta flexibilidad permite al usuario crear estructuras preparatorias y planificar la tramitación antes de iniciarla formalmente.
+#### Flexibilidad en Fechas
 
-Las fechas representan las **fechas administrativas oficiales** (registro de entrada, cálculo de plazos, fechas de resoluciones) que deben introducirse manualmente o mediante macros de cálculo.
+Los campos `FECHA`, `FECHA_INICIO` y `FECHA_FIN` permiten valores nulos (`NULL`), modelando tres estados:
 
-Las reglas de negocio determinarán cuándo es obligatorio que una fecha tenga valor mediante validaciones no intrusivas en el interfaz (por ejemplo, no se puede iniciar una fase dependiente si la fase precedente no tiene fecha de finalización).
+- **IS NULL:** Planificada pero no iniciada/finalizada
+- **FECHA_INICIO NOT NULL y FECHA_FIN IS NULL:** En curso
+- **FECHA_INICIO NOT NULL y FECHA_FIN NOT NULL:** Finalizada
+
+Las fechas representan **fechas administrativas oficiales** que se introducen manualmente o mediante macros. Las reglas determinarán cuándo es obligatorio que tengan valor mediante validaciones no intrusivas.
 
 ---
 
@@ -482,4 +414,3 @@ Una fecha de fin no nula implica que se debe comprobar que las tareas con salida
 ---
 
 **Documento creado:** 15 de enero de 2026  
-**Versión:** Revisado 16 de febrero de 2026
