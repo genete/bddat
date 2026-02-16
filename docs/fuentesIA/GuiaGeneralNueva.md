@@ -52,7 +52,7 @@ Primero analizaremos las claves desde el punto de vista técnico, de implementac
 #### Entorno
 
 - **Usuarios:** Windows 11, máximo 15, ampliable en red, con servidor de archivos mantenido por el entorno empresarial.
-- **Base de datos:** PostgreSQL. El servidor de bases de datos se ejecuta inicialmente en el PC de un usuario en red y los clientes son otros usuarios en red. La base de datos y otros archivos se alojan en el mismo PC que corre el servidor. Se pretende que en el futuro el servidor de bases de datos se ejecute en el servidor central. Estoy, a fecha de hoy, negociando que me instalen PostgreSQL en modo servicio en mi PC corporativo pues la instalación portable falla al crear la base de datos.
+- **Base de datos:** PostgreSQL. El servidor de bases de datos se ejecuta inicialmente en el PC de un usuario en red y los clientes son otros usuarios en red. La base de datos y otros archivos se alojan en el mismo PC que corre el servidor. Se pretende que en el futuro el servidor de bases de datos se ejecute en el servidor central.
 - **Comunicación con la base de datos (Backend):** Se usará la extensión Flask-SQLAlchemy que permite comunicarse con la base de datos mediante Python de forma abstracta (SQLAlchemy) y generar los comandos GET/POST con la base de datos.
 - **Comunicación con el usuario (Frontend):** Se usará Bootstrap 5.3.3 (versión actual de la Junta). Implementación mediante CDNs oficiales.
 
@@ -64,77 +64,56 @@ El usuario interactúa con el frontend (HTML+Bootstrap) y el navegador genera un
 
 El servidor de datos PostgreSQL y el servidor de interfaz web (Flask) deben ejecutarse en la misma máquina. Además, los ficheros de la base de datos deben estar en el mismo ordenador que el servidor de bases de datos para asegurar una latencia casi 0 y así evitar corrupciones. Esto debe ser así en cualquier sistema, tanto en el PC de usuario o en el servidor central.
 
-#### Desarrollo
+#### Soporte desde la IA
 
-Se estructura la base de datos, se programan las macros y diseñan los formularios en el directorio `desarrollo` y luego para poner en producción hay que dar una serie de pasos que tenemos que definir más adelante.
-
-#### Soporte
-
-Para recibir soporte por parte de la IA para desarrollar la base de datos y su infraestructura, hay que proporcionarle un conjunto de ficheros a la misma. Se ubicarán en `desarrollo/fuentesIA`.
+Se usará Claude Code. Permite acceso directo al repositorio y junto con los complementos MCP de postgre, Windows, Playright y Github, se puede obtener soporte para cambios en el código, conocimiento de la estructura real de la base de datos (postgre MCP), redimentsionado de ventanas (Windows MCP) e interacción automática con el navegador (playright MCP). Con este conjunto de complementos se pueden desarrollar la base de datos las rutas, los modelos, las migraciones y realizar tests para comprobación de las funcionalidades.
 
 ---
 
 ### Control de Versiones
 
-El proyecto utiliza **Git** para control de versiones. Se hacen commits de los archivos principales cuando se consolidan cambios importantes. Esto permite:
+El proyecto utiliza **Git** para control de versiones y Github par ael alojamiento remoto. Esto permite:
 
-- Volver a versiones anteriores si algo falla
-- Tener historial de evolución del proyecto
-- Trabajar de forma segura en desarrollo sin miedo a perder trabajo
-
-Los archivos bajo control de versiones incluyen: **Pendiente de definir**
+- Volver a versiones anteriores si algo regresiones.
+- Tener historial de evolución del proyecto.
+- Documentar los errores o nuevas características. 
+- Realizar peticiones de mezcla con la rama de desarrollo.
+- En general todo el flujo git y Github
 
 ---
 
 ### Estructura de Ficheros
 
-> **Nota:** Esta estructura será revisada durante el desarrollo/migración a PostgreSQL + Flask-SQLAlchemy.
-
-| Directorio | Explicación |
-|:---|:---|
-| (Pendiente de definir) | ... |
+La estructura de ficheros aproximada es la que se muestra en el README.
+Ver https://github.com/genete/bddat?tab=readme-ov-file#-estructura-del-proyecto
 
 ---
 
 ### Documentos a Proporcionar a la IA
 
-> **Nota:** Estos documentos serán revisados durante el desarrollo/migración a PostgreSQL + Flask-SQLAlchemy.
-
-A la IA le debemos proporcionar los siguientes documentos para que nos proporcione soporte y constituya una fuente de conocimiento. Los documentos, su tipo y su procedencia (cómo se obtiene y utilidad) se listan a continuación:
-
-| Nombre | Tipo | Procedencia | Script | Qué hace el script | Utilidad |
-|:---|:---|:---|:---|:---|:---|
-| `???` | `???` | Base de datos PostgreSQL | `???` | Crea un volcado de la estructura de la base de datos, sin datos | Conocer estructura base datos |
-| `???.js` | `.js` | `???` | | | Proporciona los datos del interfaz y las reglas de los POST. Conocer estructura de formularios, controles, eventos y propiedades del interfaz |
-| `???.html` | `.html` | | | | |
-| `???.css` | `.css` | | | | |
-| `???.py` | `.py` | `???` | | | Proporciona los datos de las reglas GET. Conocer estructura de las reglas GET |
-| `Documentos.docx` | `.docx` | Ninguno. Editar y copiar en fuentesAI | Copia los `.docx` | | Documentos de resumen de las directrices de desarrollo del proyecto así como explicaciones de la estructura de las bases de datos, la lógica de los procedimientos, etc. |
-| `datosmaestros.sql.txt` | `.sql` | Base de datos PostgreSQL | `???` | Extrae los datos de las tablas indicadas en `tablasmaestras.txt` y lo coloca en `fuentesIA/datosmaestros.sql.txt` | Conocer los datos que definen la lógica de negocio: `TIPOS_EXPEDIENTES`, `TIPOS_SOLICITUDES`, etc. |
-| `tablasmaestras.txt` | `.txt` | Creada por el desarrollador | Edición manual en bloc de notas | Configuración del script `extraerdatosmaestros.py` | Contiene las tablas de datos maestros, que definen el negocio de la base de datos |
-| `Estructura_fases_tramites_tareas.json` | `.json` | Manual (creada de forma interactiva con la IA) | Ninguno | Nada | Proporciona a la IA y al usuario las abstracciones en los elementos principales de los expedientes y la forma de organizar las tablas, identificando los mínimos datos necesarios |
+Los documentos serán leídos directamente por Claude Code al encontrarse directamente en el repositorio. 
+Los documentos principales son:
+- /README.md
+- /docs/GuiaGeneralNueva.md (este documento)
+- /docs/ARQUITECTURA.md (documento de toma de decisiones arquitectónicas y sus cambios, si los hay)
 
 ---
 
 ### Proceso de Iteración de Desarrollo con la IA
 
-Para la ayuda desde la IA en el proceso de desarrollo del proyecto, debo proporcionarle los archivos actualizados a medida que avanzo. El proceso sigue este flujo:
+Para la ayuda desde la IA en el proceso de desarrollo del proyecto se sigue un flujo de trabajo que se detalla a continuación:
 
 #### Ciclo de Iteración
 
 1. Detecto necesidad
 2. Le explico a la IA la necesidad y me ayuda a resolverla según el contexto actual de desarrollo
-3. Realizo la implementación de la necesidad y la depuro de forma interactiva hasta que quedo satisfecho
-4. Actualizo los ficheros pertinentes en las fuentes de la IA
+3. La IA realiza la implementación de la necesidad y los tests qe sean necesarios.
+4. Superviso las implementaciones y se cierra la necesidad con un PR, merge a develop o incluso a main si el cambio es estable y permite un tag
 5. Fin de iteración
 
-#### Control de Versiones
+#### Fases del proyecto
 
-El proyecto está bajo control de versiones (Git). Hago commits cuando hay cambios importantes consolidados. Esto garantiza que puedo volver atrás si algo no funciona.
-
-#### Fases de Desarrollo
-
-Esta forma de iterar con la IA para ir desarrollando todo el sistema tiene cuatro fases:
+El proyecto en su desrrollo completo pasa por cuatro fases:
 
 **Fase 1 - Estructura de Datos**
 
@@ -146,7 +125,8 @@ Esta forma de iterar con la IA para ir desarrollando todo el sistema tiene cuatr
 **Fase 2 - Interfaz de Usuario**
 
 - Formularios de introducción de datos
-- Macros de ayuda: navegación, filtrado, plantillas, apertura documentos
+- Implementación de rutas, operaciones GET/POST, navegación, filtrado, generación de plantillas, apertura documentos, creación de expedientes, solicitudes, fases, trámites y tareas. 
+- Control de entrada de usuarios. Roles de usuarios.
 - Sin restricciones de lógica de negocio (el usuario controla qué hacer)
 - **Enfoque:** consolidar interfaz funcional paso a paso
 - Podría ponerse en producción al finalizar esta fase
@@ -155,7 +135,7 @@ Esta forma de iterar con la IA para ir desarrollando todo el sistema tiene cuatr
 
 - Definición de tablas que configuran la lógica de negocio
 - Interfaz para el supervisor del sistema (jefatura de servicio) para gestionar esas tablas
-- Macros de validación basadas en consultas (no hardcoded)
+- Scripts de validación basadas en consultas (no hardcoded)
 - Despliegue progresivo en producción de nuevas funcionalidades
 - **IMPORTANTE:** Aquí sí requiere mayor control porque ya hay usuarios y datos reales
 
@@ -164,10 +144,6 @@ Esta forma de iterar con la IA para ir desarrollando todo el sistema tiene cuatr
 - Mejoras y nuevas funcionalidades
 - Base de datos en producción con usuarios activos
 - Proceso de actualización y despliegue definido
-
-#### Dependencias entre Archivos Fuente IA
-
-Cuando modifico algo, debo actualizar los archivos correspondientes.
 
 ---
 
@@ -179,8 +155,6 @@ Para el despliegue en producción se necesitan tenemos los siguientes recursos:
 - Los scripts se encuentran en sus carpetas correspondientes.
 
 **Por definir.**
-
-> **Nota:** Va a depender de los motores de bases de datos y formularios elegidos.
 
 ---
 
@@ -400,7 +374,7 @@ La situación en la que se encuentra una solicitud depende de lo que hayan concl
 
 El campo `FECHA` es la fecha de entrada de la solicitud en la Administración.
 
-El campo `PROYECTO_ID` es la referencia al proyecto que se acompaña con la solicitud y que pertenece al expediente.
+La relación entre la solicitud y el proyecto se deduce de manera indirecta. El proyecto consta de documentos sucesivos en el tiempo: proyecto original, modificado_1, modificado_2, etc. Las solicitudes que se realicen se refieren al proyecto y sus modificaciones a fecha de la solicitud. De esta forma podemos saber que proyecto y sus modificados son sobre los que se solicita la solicitud. Si el modificado se produce con una solicitud en curso y requiere un inicio de la solicitud (porque el cambio invalida lo realizado) la solicitud incial se debe finalizar con resolución de archivo y la nueva se inicia con fecha posterior al modificado. Si el proyecto se modifica cuando se ha resuelto la solicitud inicial, se inicia una nueva solicitud conincidente con el modificado. 
 
 Hay tipos de solicitudes que se refieren a otras solicitudes que que hacen aquella se finalice. Estas son `DESISTIMIENTO` y `RENUNCIA`. El parámetro que las une es el campo `SOLICITUD_AFECTADA_ID` que es `NULL` por defecto para cualquier resolución, pero con la lógica de negocio será obligatorio dar un valor eligiendo la solicitud que se renuncia o desiste.
 
@@ -427,8 +401,8 @@ Una fase es un conjunto de trámites para obtener un requisito para alcanzar el 
 
 **Rellenado y flujo:**
 
-- La fecha fin de la fase debe ser rellenada **manualmente por el usuario autorizado**. En fases posteriores del desarrollo, se podrá añadir una sugerencia automática basada en la fecha del último trámite cerrado, pero nunca será obligatoria ni se aplicará automáticamente.
-- El éxito o no de la fase debe ser registrado **manualmente por el usuario autorizado** una vez analizada la documentación oficial correspondiente.
+- La fecha fin de la fase debe ser rellenada **manualmente por el usuario**. En fases posteriores del desarrollo, se podrá añadir una sugerencia automática basada en la fecha del último trámite cerrado, pero nunca será obligatoria ni se aplicará automáticamente.
+- El éxito o no de la fase debe ser registrado **manualmente por el usuario** una vez analizada la documentación oficial correspondiente.
 - Si `EXITO` es nulo, la fase está en curso o pendiente de cierre administrativo.
 - Al tener el valor de éxito relleno (SÍ/NO) la fase se considera concluida y se puede permitir la creación o activación de fases sucesivas según reglas de negocio.
 
@@ -462,11 +436,6 @@ Es por esto que un trámite es solo un **contenedor temporal y organizativo de t
 - Una tabla `TRAMITES` general que contenga los datos comunes a todos los tipos de trámites. Contiene instancias.
 - No se necesita una tabla `TRAMITES_XXXXXX` por cada tipo con los campos específicos de ese tipo de trámite porque se ha condensado todo en los trámites, en las tareas y las reglas de negocio.
 
-#### Implicaciones de la Solución Adoptada (consecuencias de la solución)
-
-- Hay una relación uno a uno entre el nombre de la tabla específica para un tipo de trámite y el tipo en si en la tabla `TIPOS_TRAMITES`. Si esa relación se rompe se emitiría un error.
-- Las instancias en `TRAMITES` sostienen la estructura real de los tramites que existan.
-
 #### Ventajas (lo que nos ofrece)
 
 - Integridad de datos fuerte
@@ -477,7 +446,7 @@ Es por esto que un trámite es solo un **contenedor temporal y organizativo de t
 #### Desventajas (lo que nos complica)
 
 - Las reglas de negocio lo gobiernan todo.
-- Cualquier desviación de un caso particular de esos patrones nos rompe la lógica. Hay que seguir estudiando casos particulares.
+- Cualquier desviación de un caso particular de esos patrones nos rompe la lógica. Habría que seguir estudiando casos particulares.
 
 ---
 
@@ -513,4 +482,4 @@ Una fecha de fin no nula implica que se debe comprobar que las tareas con salida
 ---
 
 **Documento creado:** 15 de enero de 2026  
-**Versión:** Pendiente de revisión (duplicados con Tablas.md)
+**Versión:** Revisado 16 de febrero de 2026
