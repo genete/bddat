@@ -5,12 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}BDDAT{% endblock %} - Junta de Andalucía</title>
 
-    {# CSS núcleo v2 de la aplicación #}
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/v2-theme.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/v2-layout.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/v2-components.css') }}">
-
-    {# Bootstrap 5 + Bootstrap Icons para componentes full-width (Vista 2, Vista 3, futuras vistas) #}
+    {# Bootstrap 5 + Bootstrap Icons PRIMERO (sus variables --bs-* se definen aquí) #}
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
           rel="stylesheet"
           integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN"
@@ -20,6 +15,11 @@
 
     {# Font Awesome (iconos legacy de la app) #}
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    {# CSS núcleo v2 DESPUÉS de Bootstrap: sobreescribe --bs-* con colores corporativos Junta #}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/v2-theme.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/v2-layout.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/v2-components.css') }}">
 
     {% block extra_css %}{% endblock %}
 </head>
