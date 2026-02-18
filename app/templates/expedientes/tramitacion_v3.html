@@ -1,331 +1,38 @@
-{% extends "layout/base_tramitacion.html" %}
+{% extends 'layout/base_fullwidth.html' %}
 
-{% block title %}Tramitación - Expediente AT-{{ expediente.numero_at }} - BDDAT{% endblock %}
+{% block title %}Tramitación - EXP-{{ expediente.numero_at }}{% endblock %}
 
-{% block breadcrumb %}
-<a href="{{ url_for('dashboard.index') }}">Inicio</a>
-<span>/</span>
-<a href="{{ url_for('expedientes.listado_v2') }}">Expedientes</a>
-<span>/</span>
-<span>AT-{{ expediente.numero_at }}</span>
-{% endblock %}
-
-{% block extra_css %}
-<!-- CSS adicional si necesario -->
-{% endblock %}
-
-{% block sidebar %}
-<!-- Sidebar Acordeón -->
-<ul class="sidebar-accordion" id="sidebarAccordion">
-    <!-- MOCKUP: Estructura jerárquica de ejemplo -->
-    
-    <!-- Expediente (raíz) -->
-    <li class="accordion-item" data-type="expediente" data-id="{{ expediente.id }}">
-        <button class="accordion-button">
-            <span class="accordion-icon">📁</span>
-            <span class="accordion-label">Expte AT-{{ expediente.numero_at }}</span>
-        </button>
-    </li>
-    
-    <!-- Solicitud AAP (seleccionada por defecto en mockup) -->
-    <li class="accordion-item selected child" data-type="solicitud" data-id="1">
-        <button class="accordion-button">
-            <span class="accordion-icon">📝</span>
-            <span class="accordion-label">Sol. AAP</span>
-            <span class="accordion-badge">Completa</span>
-        </button>
-    </li>
-    
-    <!-- Fases (hijos de Solicitud AAP seleccionada) -->
-    <li class="accordion-item child" data-type="fase" data-id="1">
-        <button class="accordion-button">
-            <span class="accordion-icon">⚙️</span>
-            <span class="accordion-label">Fase 1 - Información Pública</span>
-            <span class="accordion-badge">En curso</span>
-        </button>
-    </li>
-    
-    <li class="accordion-item child" data-type="fase" data-id="2">
-        <button class="accordion-button">
-            <span class="accordion-icon">⚙️</span>
-            <span class="accordion-label">Fase 2 - Resolución</span>
-            <span class="accordion-badge">Pendiente</span>
-        </button>
-    </li>
-    
-    <li class="accordion-item child" data-type="fase" data-id="3">
-        <button class="accordion-button">
-            <span class="accordion-icon">⚙️</span>
-            <span class="accordion-label">Fase 3 - Archivo</span>
-            <span class="accordion-badge">No iniciado</span>
-        </button>
-    </li>
-    
-    <!-- Solicitud DUP (hermano) -->
-    <li class="accordion-item" data-type="solicitud" data-id="2">
-        <button class="accordion-button">
-            <span class="accordion-icon">📝</span>
-            <span class="accordion-label">Sol. DUP</span>
-            <span class="accordion-badge">Pendiente</span>
-        </button>
-    </li>
-    
-    <!-- Proyecto (1:1 con expediente) -->
-    <li class="accordion-item" data-type="proyecto" data-id="1">
-        <button class="accordion-button">
-            <span class="accordion-icon">🏛️</span>
-            <span class="accordion-label">Proyecto Técnico</span>
-            <span class="accordion-badge">Completo</span>
-        </button>
-    </li>
-</ul>
-{% endblock %}
-
-{% block panel_detalle %}
-<!-- Panel Detalle -->
-
-<!-- Contexto fijo: Expediente/Proyecto (siempre visible) -->
-<div class="panel-context">
-    <div class="panel-context-title">📁 Contexto: Expediente AT-{{ expediente.numero_at }}</div>
-    <div class="panel-context-data">
-        <div class="panel-context-item">
-            <span class="panel-context-item-label">Nº Expediente</span>
-            <span class="panel-context-item-value">AT-{{ expediente.numero_at }}</span>
-        </div>
-        <div class="panel-context-item">
-            <span class="panel-context-item-label">Titular</span>
-            <span class="panel-context-item-value">
-                {% if expediente.titular %}
-                    {{ expediente.titular.nombre }}
-                {% else %}
-                    Sin titular
-                {% endif %}
-            </span>
-        </div>
-        <div class="panel-context-item">
-            <span class="panel-context-item-label">Estado</span>
-            <span class="panel-context-item-value">En tramitación</span>
-        </div>
-        <div class="panel-context-item">
-            <span class="panel-context-item-label">Proyecto</span>
-            <span class="panel-context-item-value">
-                {% if expediente.proyecto %}
-                    {{ expediente.proyecto.titulo }}
-                {% else %}
-                    Sin proyecto
-                {% endif %}
-            </span>
-        </div>
+{% block content %}
+<div style="width: 95%; max-width: 95%; margin: 0 auto; padding-top: 1.5rem;">
+    <div class="mb-3">
+        <h2>Vista 3 - Navegación Jerárquica</h2>
+        <p class="text-muted" id="breadcrumb">Expediente AT-{{ expediente.numero_at }}</p>
+        <hr>
     </div>
-</div>
-
-<!-- Título del elemento seleccionado -->
-<h1 class="panel-title">📝 Solicitud AAP</h1>
-<p class="panel-subtitle">Presentada el 15/01/2026</p>
-
-<!-- Tabs: DATOS / DOCUMENTOS / HISTORIAL -->
-<div class="panel-tabs">
-    <button class="panel-tab active" data-tab="datos">Datos</button>
-    <button class="panel-tab" data-tab="documentos">Documentos</button>
-    <button class="panel-tab" data-tab="historial">Historial</button>
-</div>
-
-<!-- Contenido Tab DATOS -->
-<div class="panel-tab-content active" id="tabDatos">
-    <h3>Información de la Solicitud</h3>
     
-    <!-- MOCKUP: Datos específicos de solicitud -->
-    <dl>
-        <dt>Tipo de solicitud:</dt>
-        <dd>AAP - Autorización Administrativa Previa</dd>
+    {# Contenedor dinámico donde se renderiza el stack #}
+    <div id="vista3-container" class="accordion">
+        {# Nivel 0 inicial: Solo expediente #}
+        {% include 'vistas/vista3/_expediente_body.html' %}
         
-        <dt>Solicitante:</dt>
-        <dd>Endesa SA (CIF: A12345678)</dd>
-        
-        <dt>Fecha de presentación:</dt>
-        <dd>15/01/2026</dd>
-        
-        <dt>Estado:</dt>
-        <dd><span class="badge bg-success">Completa</span></dd>
-        
-        <dt>Observaciones:</dt>
-        <dd>Solicitud presentada de forma telemática. Documentación completa.</dd>
-    </dl>
-</div>
-
-<!-- Contenido Tab DOCUMENTOS -->
-<div class="panel-tab-content" id="tabDocumentos">
-    <h3>Documentos Asociados</h3>
-    
-    <!-- MOCKUP: Listado de documentos de la solicitud -->
-    <div class="panel-children-list">
-        <p><em>Listado de documentos asociados a esta solicitud...</em></p>
-        <ul>
-            <li>📄 proyecto_tecnico.pdf (2.3 MB) - 15/01/2026</li>
-            <li>📄 licencia_municipal.pdf (1.1 MB) - 15/01/2026</li>
-            <li>📄 escritura_propiedad.pdf (0.8 MB) - 15/01/2026</li>
-        </ul>
-    </div>
-    
-    <button class="btn-create-child">
-        <span>+</span> Subir documento
-    </button>
-</div>
-
-<!-- Contenido Tab HISTORIAL -->
-<div class="panel-tab-content" id="tabHistorial">
-    <h3>Historial de Cambios</h3>
-    
-    <!-- PLACEHOLDER: Historial pendiente de definir -->
-    <div class="panel-children-empty">
-        <div class="panel-children-empty-icon">🗓️</div>
-        <div class="panel-children-empty-text">
-            El historial de cambios estará disponible próximamente.
+        {# Acordeón inicial de solicitudes (colapsado) #}
+        <div class="accordion-item">
+            <h2 class="accordion-header" id="heading-solicitudes-init">
+                <button class="accordion-button collapsed" 
+                        type="button"
+                        onclick="expandSolicitudes()">
+                    <i class="bi bi-file-earmark-text"></i>
+                    &nbsp;Solicitudes
+                </button>
+            </h2>
         </div>
     </div>
 </div>
 
-<!-- Separador -->
-<hr style="margin: 2rem 0;">
-
-<!-- PANEL DE HIJOS DIRECTOS: FASES (solo si solicitud seleccionada) -->
-<div class="panel-children">
-    <div class="panel-children-header">
-        <div>
-            <span class="panel-children-title">Fases</span>
-            <span class="panel-children-count">(3)</span>
-        </div>
-        <div class="panel-children-actions">
-            <button class="btn-create-child">
-                <span>+</span> Nueva Fase
-            </button>
-        </div>
-    </div>
-    
-    <!-- PATRÓN C2.D (Vista V2): Contenedor con scroll independiente + tabla sticky thead -->
-    <div class="lista-scroll-container" style="max-height: 300px;">
-        <table class="expedientes-table">
-            <thead>
-                <tr>
-                    <th>Fase</th>
-                    <th>Estado</th>
-                    <th>Inicio</th>
-                    <th>Fin Previsto</th>
-                    <th>Acciones</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td>⚙️ Fase 1 - Información Pública</td>
-                    <td><span class="badge bg-warning">En curso</span></td>
-                    <td>20/01/2026</td>
-                    <td>05/02/2026 (quedan 15 días)</td>
-                    <td>
-                        <button class="btn btn-sm btn-primary">Ver detalle ▶</button>
-                    </td>
-                </tr>
-                <tr>
-                    <td>⚙️ Fase 2 - Resolución</td>
-                    <td><span class="badge bg-secondary">Pendiente</span></td>
-                    <td>-</td>
-                    <td>-</td>
-                    <td>
-                        <button class="btn btn-sm btn-primary">Ver detalle ▶</button>
-                    </td>
-                </tr>
-                <tr>
-                    <td>⚙️ Fase 3 - Archivo</td>
-                    <td><span class="badge bg-secondary">No iniciado</span></td>
-                    <td>-</td>
-                    <td>-</td>
-                    <td>
-                        <button class="btn btn-sm btn-primary">Ver detalle ▶</button>
-                    </td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
-</div>
-
-<!-- PANEL DE HIJOS DIRECTOS: DOCUMENTOS (de la solicitud) -->
-<div class="panel-children">
-    <div class="panel-children-header">
-        <div>
-            <span class="panel-children-title">Documentos</span>
-            <span class="panel-children-count">(5)</span>
-        </div>
-        <div class="panel-children-actions">
-            <button class="btn-create-child">
-                <span>+</span> Subir documento
-            </button>
-        </div>
-    </div>
-    
-    <!-- Listado de documentos (sin patrón C2.D, lista simple suficiente) -->
-    <div class="panel-children-list">
-        <ul>
-            <li>📄 proyecto_tecnico.pdf (2.3 MB) - 15/01/2026 <a href="#">Descargar</a></li>
-            <li>📄 licencia_municipal.pdf (1.1 MB) - 15/01/2026 <a href="#">Descargar</a></li>
-            <li>📄 escritura_propiedad.pdf (0.8 MB) - 15/01/2026 <a href="#">Descargar</a></li>
-            <li>📄 anejos_tecnicos.pdf (4.2 MB) - 15/01/2026 <a href="#">Descargar</a></li>
-            <li>📄 planos.pdf (6.5 MB) - 15/01/2026 <a href="#">Descargar</a></li>
-        </ul>
-    </div>
-</div>
-
-{% endblock %}
-
-{% block extra_js %}
+<script src="{{ url_for('static', filename='js/vista3_navigation.js') }}"></script>
 <script>
-// MOCKUP: Inicialización básica de tabs (funcionalidad completa en Fase 3)
-document.addEventListener('DOMContentLoaded', function() {
-    // Tabs
-    const tabs = document.querySelectorAll('.panel-tab');
-    const tabContents = document.querySelectorAll('.panel-tab-content');
-    
-    tabs.forEach(tab => {
-        tab.addEventListener('click', function() {
-            // Remover active de todos
-            tabs.forEach(t => t.classList.remove('active'));
-            tabContents.forEach(tc => tc.classList.remove('active'));
-            
-            // Añadir active al clickeado
-            this.classList.add('active');
-            const tabId = this.getAttribute('data-tab');
-            document.getElementById('tab' + tabId.charAt(0).toUpperCase() + tabId.slice(1)).classList.add('active');
-        });
-    });
-    
-    console.log('Vista V3 (Tramitación) - Mockup cargado');
-});
+// Inicializar con expediente ID
+const EXPEDIENTE_ID = {{ expediente.id }};
+initVista3(EXPEDIENTE_ID);
 </script>
 {% endblock %}
-
-<!-- 
-Vista V3 - Tramitación con Sidebar Acordeón
-
-MOCKUP Fase 1:
-- Layout base con header/footer reutilizados V2
-- Sidebar con estructura jerárquica mockup
-- Panel detalle con tabs funcionales
-- Contexto fijo expediente/proyecto
-- Paneles de hijos directos (Fases, Documentos)
-- Patrón C2.D aplicado al panel Fases (scroll independiente + thead sticky)
-
-Cambios Fase 1 - FIX:
-- Breadcrumb customizado para Vista V3
-- Panel Fases usa patrón C2.D de Vista V2
-- Atributo expediente.numero_at corregido (era numeroat)
-- Atributo expediente.proyecto.titulo corregido (era denominacion)
-
-Pendiente Fase 2+:
-- JavaScript acordeón funcional
-- Divisor redimensionable
-- APIs backend para datos reales
-- Navegación breadcrumb dinámica
-- Integración con Vista V2
-
-Referencias:
-- Epic #93 - Sistema de Navegación UI Modular
-- docs/implementaciones/VISTA_V3_TRAMITACION.md
--->

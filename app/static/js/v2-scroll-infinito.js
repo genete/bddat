@@ -28,8 +28,9 @@
  *     threshold: 0.8
  *   });
  * 
- * VERSIÓN: 1.0
- * FECHA: 2026-02-08
+ * VERSIÓN: 1.1
+ * FECHA: 2026-02-12
+ * CAMBIOS: Botón Ver ahora apunta a /expedientes/<id>/tramitacion_v3
  */
 
 class ScrollInfinito {
@@ -349,13 +350,12 @@ class ScrollInfinito {
     }
     
     /**
-     * Navega a la vista de detalle de un expediente.
+     * Navega a la vista de tramitación jerárquica (Vista 3) de un expediente.
      * 
      * @param {number} id - ID del expediente
      */
     verExpediente(id) {
-        // TODO: Integrar con rutas Flask cuando estén listas
-        window.location.href = `/expedientes/${id}`;
+        window.location.href = `/expedientes/${id}/tramitacion_v3`;
     }
     
     /**

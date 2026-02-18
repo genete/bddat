@@ -1,45 +1,11 @@
-"""API REST para listado de expedientes con paginación por cursor.
-
-PROPÓSITO:
-    Proveer endpoint JSON para scroll infinito en frontend.
-    Usa paginación por cursor (ID) en lugar de offset para mejor rendimiento
-    en datasets grandes.
+"""API REST para expedientes.
 
 ENDPOINTS:
-    GET /api/expedientes - Listado paginado con filtros
+    1. GET /api/expedientes - Listado paginado con cursor (scroll infinito)
+    2. GET /api/expedientes/<id>/jerarquia - Estructura completa para Vista V3 Tramitación
 
-PAGINACIÓN POR CURSOR:
-    Ventajas vs OFFSET:
-    - Rendimiento constante O(1) incluso con millones de registros
-    - No sufre "page drift" si se insertan/borran registros durante navegación
-    - Utiliza índice PRIMARY KEY (id) para búsqueda eficiente
-
-    Funcionamiento:
-    - cursor: ID del último expediente recibido en llamada anterior
-    - limit: Número de registros a devolver (máx 100, default 50)
-    - Query: WHERE id > cursor ORDER BY id ASC LIMIT limit
-    - Si cursor=0 o ausente: primera página (sin filtro WHERE)
-
-FILTROS:
-    - search: Búsqueda parcial en numero_at o nombre_completo del titular (ILIKE)
-    - estado: Filtro por estado del expediente (futuro: tabla estados)
-
-RESPUESTA JSON:
-    {
-        "data": [expediente1, expediente2, ...],
-        "next_cursor": 156,  # ID del último expediente devuelto
-        "has_more": true,    # ¿Existen más registros?
-        "total": 523         # Total de expedientes (con filtros aplicados)
-    }
-
-NOTAS:
-    - Usa eager loading (joinedload) para evitar N+1 queries
-    - Respeta convención snake_case en JSON
-    - Total count se calcula solo si hay filtros (para mantener cache)
-    - Requiere autenticación (@login_required)
-
-VERSIÓN: 1.4
-FECHA: 2026-02-08
+VERSIÓN: 2.0
+FECHA: 2026-02-12
 """
 
 from flask import Blueprint, request, jsonify
@@ -50,10 +16,18 @@ from app import db
 from app.models.expedientes import Expediente
 from app.models.entidad import Entidad
 from app.models.tipos_expedientes import TipoExpediente
+from app.models import (
+    Solicitud, Fase, TipoSolicitud, TipoFase,
+    Proyecto, TipoIA, Usuario, SolicitudTipo
+)
 
 # Blueprint para API
 api_bp = Blueprint('api', __name__, url_prefix='/api')
 
+
+# =============================================================================
+# ENDPOINT 1: Listado paginado (scroll infinito)
+# =============================================================================
 
 @api_bp.route('/expedientes', methods=['GET'])
 @login_required
@@ -61,50 +35,44 @@ def listar_expedientes():
     """
     Endpoint GET /api/expedientes - Listado paginado con cursor.
 
+    PROPÓSITO:
+        Proveer endpoint JSON para scroll infinito en frontend.
+        Usa paginación por cursor (ID) en lugar de offset para mejor rendimiento
+        en datasets grandes.
+
+    PAGINACIÓN POR CURSOR:
+        Ventajas vs OFFSET:
+        - Rendimiento constante O(1) incluso con millones de registros
+        - No sufre "page drift" si se insertan/borran registros durante navegación
+        - Utiliza índice PRIMARY KEY (id) para búsqueda eficiente
+
+        Funcionamiento:
+        - cursor: ID del último expediente recibido en llamada anterior
+        - limit: Número de registros a devolver (máx 100, default 50)
+        - Query: WHERE id > cursor ORDER BY id ASC LIMIT limit
+        - Si cursor=0 o ausente: primera página (sin filtro WHERE)
+
+    FILTROS:
+        - search: Búsqueda parcial en numero_at o nombre_completo del titular (ILIKE)
+        - estado: Filtro por estado del expediente (futuro: tabla estados)
+
+    RESPUESTA JSON:
+        {
+            "data": [expediente1, expediente2, ...],
+            "next_cursor": 156,  # ID del último expediente devuelto
+            "has_more": true,    # ¿Existen más registros?
+            "total": 523         # Total de expedientes (con filtros aplicados)
+        }
+
     Query Parameters:
-        cursor (int, opcional): ID del último expediente recibido.
-                               Default: 0 (primera página)
-        limit (int, opcional): Registros por página. Min 1, max 100.
-                              Default: 50
-        search (str, opcional): Búsqueda parcial en numero_at o nombre_completo titular.
-                               Mínimo 2 caracteres.
-        estado (str, opcional): Filtro por estado (futuro: integrar con tabla estados).
-                               Por ahora: mock para testing frontend.
+        cursor (int, opcional): ID del último expediente recibido. Default: 0 (primera página)
+        limit (int, opcional): Registros por página. Min 1, max 100. Default: 50
+        search (str, opcional): Búsqueda parcial. Mínimo 2 caracteres.
+        estado (str, opcional): Filtro por estado (mock por ahora).
 
     Returns:
-        JSON:
-            {
-                "data": [
-                    {
-                        "id": 1,
-                        "numero_at": 123,
-                        "titular": "Empresa S.L.",
-                        "tipo_expediente": "Línea Aérea",
-                        "responsable": "López García, Juan",
-                        "heredado": false
-                    },
-                    ...
-                ],
-                "next_cursor": 156,
-                "has_more": true,
-                "total": 523
-            }
-
-        HTTP Status:
-            200: OK
-            400: Bad Request (parámetros inválidos)
-            401: Unauthorized (no autenticado)
-            500: Error interno del servidor
-
-    Ejemplo de uso desde JavaScript:
-        // Primera página
-        fetch('/api/expedientes?limit=50')
-
-        // Segunda página (usar next_cursor de respuesta anterior)
-        fetch('/api/expedientes?cursor=50&limit=50')
-
-        // Con filtros
-        fetch('/api/expedientes?search=empresa&estado=tramitacion&limit=30')
+        JSON con data, next_cursor, has_more, total (opcional)
+        HTTP Status: 200 OK, 400 Bad Request, 401 Unauthorized
     """
 
     # ==========================================================================
@@ -112,25 +80,20 @@ def listar_expedientes():
     # ==========================================================================
 
     try:
-        # Cursor: ID del último expediente (default 0 = primera página)
         cursor = int(request.args.get('cursor', 0))
         if cursor < 0:
             return jsonify({'error': 'Cursor debe ser >= 0'}), 400
 
-        # Limit: Registros por página (default 50, max 100)
         limit = int(request.args.get('limit', 50))
         if limit < 1:
             return jsonify({'error': 'Limit debe ser >= 1'}), 400
         if limit > 100:
-            limit = 100  # Cap máximo por seguridad
+            limit = 100
 
-        # Search: Búsqueda parcial (mínimo 2 caracteres)
         search_query = request.args.get('search', '').strip()
         if search_query and len(search_query) < 2:
             return jsonify({'error': 'Search debe tener al menos 2 caracteres'}), 400
 
-        # Estado: Filtro por estado (futuro: tabla estados)
-        # Por ahora mock para testing frontend
         estado_filter = request.args.get('estado', '').strip()
 
     except ValueError:
@@ -141,9 +104,9 @@ def listar_expedientes():
     # ==========================================================================
 
     query = db.session.query(Expediente).options(
-        joinedload(Expediente.titular),           # Eager load titular
-        joinedload(Expediente.tipo_expediente),   # Eager load tipo
-        joinedload(Expediente.responsable)        # Eager load responsable
+        joinedload(Expediente.titular),
+        joinedload(Expediente.tipo_expediente),
+        joinedload(Expediente.responsable)
     )
 
     # ==========================================================================
@@ -157,24 +120,19 @@ def listar_expedientes():
     # PASO 4: Aplicar filtros opcionales
     # ==========================================================================
 
-    # Variable para tracking de search_numero (usado en count)
     search_numero = None
 
-    # Filtro de búsqueda: numero_at o nombre_completo del titular
     if search_query:
-        # Convertir búsqueda a número si es posible (para numero_at)
         try:
             search_numero = int(search_query)
         except ValueError:
             pass
 
-        # Búsqueda en numero_at (exacto) o nombre_completo titular (parcial, case-insensitive)
         filtros_busqueda = []
 
         if search_numero is not None:
             filtros_busqueda.append(Expediente.numero_at == search_numero)
 
-        # Búsqueda en nombre_completo del titular (columna indexada en Entidad)
         filtros_busqueda.append(
             Expediente.titular.has(
                 func.lower(Entidad.nombre_completo).contains(func.lower(search_query))
@@ -183,53 +141,36 @@ def listar_expedientes():
 
         query = query.filter(or_(*filtros_busqueda))
 
-    # Filtro de estado (mock por ahora)
-    # TODO: Integrar con tabla tramitacion.fases cuando esté implementada
     if estado_filter:
-        # Por ahora no aplicamos filtro real, solo validamos valores conocidos
         estados_validos = ['borrador', 'tramitacion', 'finalizado', 'archivado']
         if estado_filter.lower() not in estados_validos:
             return jsonify({'error': f'Estado inválido. Válidos: {", ".join(estados_validos)}'}), 400
 
     # ==========================================================================
-    # PASO 5: Ejecutar query con limit + 1 (para detectar has_more)
+    # PASO 5: Ejecutar query con limit + 1
     # ==========================================================================
 
-    # Ordenar por ID ascendente (necesario para cursor)
     query = query.order_by(Expediente.id.asc())
-
-    # Obtener limit + 1 registros (el extra nos dice si hay más)
     expedientes = query.limit(limit + 1).all()
 
-    # Detectar si hay más páginas
     has_more = len(expedientes) > limit
-
-    # Ajustar a límite solicitado
     if has_more:
         expedientes = expedientes[:limit]
-
-    # ==========================================================================
-    # PASO 6: Calcular next_cursor
-    # ==========================================================================
 
     next_cursor = expedientes[-1].id if expedientes else cursor
 
     # ==========================================================================
-    # PASO 7: Calcular total (solo si hay filtros, para optimizar)
+    # PASO 6: Calcular total (solo si hay filtros)
     # ==========================================================================
 
-    # Total count es costoso en tablas grandes, solo calcularlo si hay filtros
-    # Si no hay filtros, frontend puede asumir "muchos" sin mostrar número exacto
     total = None
     if search_query or estado_filter:
-        # Recrear query sin limit para count
         count_query = db.session.query(func.count(Expediente.id))
         
         if cursor > 0:
             count_query = count_query.filter(Expediente.id > cursor)
         
         if search_query:
-            # Replicar filtro de búsqueda
             filtros_busqueda = []
             if search_numero is not None:
                 filtros_busqueda.append(Expediente.numero_at == search_numero)
@@ -244,38 +185,31 @@ def listar_expedientes():
         total = count_query.scalar()
 
     # ==========================================================================
-    # PASO 8: Serializar a JSON
+    # PASO 7: Serializar a JSON
     # ==========================================================================
 
     data = []
     for exp in expedientes:
-        # Construir nombre completo del responsable
         if exp.responsable:
             nombre_responsable = f"{exp.responsable.apellido1 or ''} {exp.responsable.apellido2 or ''}, {exp.responsable.nombre or ''}".strip()
-            # Limpiar espacios múltiples y comas sobrantes
             nombre_responsable = ' '.join(nombre_responsable.split())
             if nombre_responsable.startswith(','):
                 nombre_responsable = nombre_responsable[1:].strip()
         else:
             nombre_responsable = 'Sin asignar'
         
-        # Serializar expediente
         expediente_dict = {
             'id': exp.id,
             'numero_at': exp.numero_at,
             'titular': exp.titular.nombre_completo if exp.titular else 'Sin titular',
             'tipo_expediente': exp.tipo_expediente.tipo if exp.tipo_expediente else 'Sin tipo',
             'responsable': nombre_responsable,
-            'heredado': exp.heredado if exp.heredado is not None else False,
-            # Futuro: añadir campos de estado, fechas, etc.
-            # 'estado': exp.fase_actual.tipo_fase.nombre if exp.fase_actual else 'Sin estado',
-            # 'fecha_presentacion': exp.fecha_presentacion.isoformat() if exp.fecha_presentacion else None,
-            # 'vencimiento': calcular_vencimiento(exp)
+            'heredado': exp.heredado if exp.heredado is not None else False
         }
         data.append(expediente_dict)
 
     # ==========================================================================
-    # PASO 9: Respuesta JSON
+    # PASO 8: Respuesta JSON
     # ==========================================================================
 
     response = {
@@ -284,7 +218,6 @@ def listar_expedientes():
         'has_more': has_more
     }
 
-    # Añadir total solo si se calculó
     if total is not None:
         response['total'] = total
 
@@ -292,24 +225,194 @@ def listar_expedientes():
 
 
 # =============================================================================
-# HELPERS (futuro: mover a utils si crecen)
+# ENDPOINT 2: Jerarquía completa para Vista V3 Tramitación
 # =============================================================================
 
-def calcular_vencimiento(expediente):
+@api_bp.route('/expedientes/<int:expediente_id>/jerarquia', methods=['GET'])
+@login_required
+def get_jerarquia_expediente(expediente_id):
     """
-    Calcula fecha de vencimiento del expediente según normativa.
+    Endpoint GET /api/expedientes/<id>/jerarquia - Estructura jerárquica para Vista V3.
 
-    TODO: Implementar lógica real según:
-        - Tipo de expediente
-        - Fase actual
-        - Normativa aplicable (Ley 39/2015, etc.)
-        - Suspensiones/interrupciones del plazo
+    PROPÓSITO:
+        Devolver estructura completa de un expediente para renderizar acordeones de Vista V3:
+        - Panel contexto fijo: Expediente + Proyecto
+        - Acordeón principal: Solicitudes + Fases
 
-    Args:
-        expediente (Expediente): Instancia del expediente
+    ESTRUCTURA JSON:
+        {
+            "expediente": {
+                "id": 104,
+                "numero_at": 1,
+                "codigo": "AT-1",
+                "titular": {"id": 6, "nombre": "...", "nif": "..."},
+                "responsable": {"id": 2, "siglas": "CLG", "nombre_completo": "..."},
+                "tipo_expediente_id": null,
+                "heredado": false
+            },
+            "proyecto": {
+                "id": 105,
+                "titulo": "...",
+                "descripcion": "...",
+                "fecha": "2026-02-11",
+                "finalidad": "...",
+                "emplazamiento": "...",
+                "tipo_ia": {"id": 1, "siglas": "EIA", "descripcion": "..."}
+            },
+            "solicitudes": [
+                {
+                    "id": 1,
+                    "codigo": "SOL-1",
+                    "tipos": "AAP + AAC",
+                    "fecha_solicitud": "2025-06-15",
+                    "fecha_fin": "2025-09-20",
+                    "estado": "RESUELTA",
+                    "num_fases": 6,
+                    "fases": [
+                        {
+                            "id": 1,
+                            "codigo": "REGISTRO_SOLICITUD",
+                            "nombre": "Registro de Solicitud",
+                            "fecha_inicio": "2025-06-15",
+                            "fecha_fin": "2025-06-15",
+                            "estado": "completada",
+                            "observaciones": "..."
+                        }
+                    ]
+                }
+            ]
+        }
+
+    Path Parameters:
+        expediente_id (int): ID del expediente
 
     Returns:
-        str: Fecha en formato ISO (YYYY-MM-DD) o None
+        JSON con expediente, proyecto, solicitudes
+        HTTP Status: 200 OK, 404 Not Found, 401 Unauthorized
     """
-    # Por ahora retornar None (mock)
-    return None
+    
+    # Verificar que el expediente existe
+    expediente = Expediente.query.get_or_404(expediente_id)
+    
+    # =====================================================
+    # EXPEDIENTE - Datos básicos
+    # =====================================================
+    titular = None
+    if expediente.titular_id:
+        entidad = Entidad.query.get(expediente.titular_id)
+        if entidad:
+            titular = {
+                'id': entidad.id,
+                'nombre': entidad.nombre_completo,
+                'nif': entidad.nif
+            }
+    
+    responsable = None
+    if expediente.responsable_id:
+        usuario = Usuario.query.get(expediente.responsable_id)
+        if usuario:
+            responsable = {
+                'id': usuario.id,
+                'siglas': usuario.siglas,
+                'nombre_completo': f"{usuario.nombre} {usuario.apellido1 or ''}".strip()
+            }
+    
+    expediente_data = {
+        'id': expediente.id,
+        'numero_at': expediente.numero_at,
+        'codigo': f'AT-{expediente.numero_at}',
+        'titular': titular,
+        'responsable': responsable,
+        'tipo_expediente_id': expediente.tipo_expediente_id,
+        'heredado': expediente.heredado
+    }
+    
+    # =====================================================
+    # PROYECTO - Datos asociados al expediente (relación 1:1)
+    # =====================================================
+    proyecto_data = None
+    if expediente.proyecto_id:
+        proyecto = Proyecto.query.get(expediente.proyecto_id)
+        if proyecto:
+            tipo_ia = None
+            if proyecto.ia_id:
+                ia = TipoIA.query.get(proyecto.ia_id)
+                if ia:
+                    tipo_ia = {
+                        'id': ia.id,
+                        'siglas': ia.siglas,
+                        'descripcion': ia.descripcion
+                    }
+            
+            proyecto_data = {
+                'id': proyecto.id,
+                'titulo': proyecto.titulo,
+                'descripcion': proyecto.descripcion,
+                'fecha': proyecto.fecha.isoformat() if proyecto.fecha else None,
+                'finalidad': proyecto.finalidad,
+                'emplazamiento': proyecto.emplazamiento,
+                'tipo_ia': tipo_ia
+            }
+    
+    # =====================================================
+    # SOLICITUDES + FASES - Jerarquía para acordeón
+    # =====================================================
+    solicitudes = Solicitud.query.filter_by(
+        expediente_id=expediente_id
+    ).order_by(Solicitud.fecha_solicitud).all()
+    
+    solicitudes_data = []
+    for solicitud in solicitudes:
+        # Obtener tipos de solicitud (tabla many-to-many)
+        tipos_solicitud = (
+            TipoSolicitud.query
+            .join(SolicitudTipo, TipoSolicitud.id == SolicitudTipo.tiposolicitudid)
+            .filter(SolicitudTipo.solicitudid == solicitud.id)
+            .all()
+        )
+        
+        tipos_str = ' + '.join([ts.siglas for ts in tipos_solicitud]) if tipos_solicitud else 'Sin tipo'
+        
+        # Obtener fases de la solicitud
+        fases = Fase.query.filter_by(
+            solicitud_id=solicitud.id
+        ).order_by(Fase.fecha_inicio).all()
+        
+        fases_data = []
+        for fase in fases:
+            tipo_fase = TipoFase.query.get(fase.tipo_fase_id)
+            
+            fase_data = {
+                'id': fase.id,
+                'codigo': tipo_fase.codigo if tipo_fase else 'SIN_CODIGO',
+                'nombre': tipo_fase.nombre if tipo_fase else 'Sin nombre',
+                'fecha_inicio': fase.fecha_inicio.isoformat() if fase.fecha_inicio else None,
+                'fecha_fin': fase.fecha_fin.isoformat() if fase.fecha_fin else None,
+                'estado': 'completada' if fase.fecha_fin else 'en-curso',
+                'observaciones': fase.observaciones
+            }
+            fases_data.append(fase_data)
+        
+        # Construir objeto solicitud
+        solicitud_data = {
+            'id': solicitud.id,
+            'codigo': f'SOL-{solicitud.id}',
+            'tipos': tipos_str,
+            'fecha_solicitud': solicitud.fecha_solicitud.isoformat() if solicitud.fecha_solicitud else None,
+            'fecha_fin': solicitud.fecha_fin.isoformat() if solicitud.fecha_fin else None,
+            'estado': solicitud.estado,
+            'num_fases': len(fases_data),
+            'fases': fases_data
+        }
+        solicitudes_data.append(solicitud_data)
+    
+    # =====================================================
+    # RESPUESTA FINAL
+    # =====================================================
+    response = {
+        'expediente': expediente_data,
+        'proyecto': proyecto_data,
+        'solicitudes': solicitudes_data
+    }
+    
+    return jsonify(response), 200
