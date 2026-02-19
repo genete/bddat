@@ -1,0 +1,285 @@
+{% extends 'layout/base_full_width.html' %}
+
+{% block title %}Nuevo Expediente &mdash; Paso 3{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+
+    {# ------------------------------------------------------------------ #}
+    {# Migas de pan                                                         #}
+    {# ------------------------------------------------------------------ #}
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('dashboard.index') }}">Inicio</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('expedientes.listado_v2') }}">Expedientes</a></li>
+            <li class="breadcrumb-item active">Nuevo &mdash; Paso 3 de 3</li>
+        </ol>
+    </nav>
+
+    {# ------------------------------------------------------------------ #}
+    {# Título + indicador de pasos                                          #}
+    {# ------------------------------------------------------------------ #}
+    <div class="d-flex align-items-center mb-4 gap-3">
+        <h1 class="h3 mb-0">
+            <i class="fas fa-folder-plus me-2 text-primary"></i>Nuevo Expediente
+        </h1>
+        <span class="badge bg-primary fs-6">Paso 3 de 3</span>
+    </div>
+
+    <div class="progress mb-4" style="height: 6px;">
+        <div class="progress-bar bg-primary" style="width: 100%"
+             role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100">
+        </div>
+    </div>
+
+    {# ------------------------------------------------------------------ #}
+    {# Mensajes flash                                                       #}
+    {# ------------------------------------------------------------------ #}
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    {# ------------------------------------------------------------------ #}
+    {# Formulario                                                           #}
+    {# ------------------------------------------------------------------ #}
+    <div class="row justify-content-center">
+        <div class="col-lg-8 col-md-11">
+            <div class="card shadow-sm">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="fas fa-file-alt me-2 text-secondary"></i>Datos de la solicitud</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" action="{{ url_for('wizard_expediente.paso3') }}" novalidate>
+
+                        {# ------------------------------------------------------------------ #}
+                        {# Titular / solicitante (autocomplete)                               #}
+                        {# ------------------------------------------------------------------ #}
+                        <div class="mb-4">
+                            <label for="entidad-search" class="form-label fw-semibold">
+                                Titular / Solicitante <span class="text-danger">*</span>
+                            </label>
+
+                            {# Input oculto que envía el ID al servidor #}
+                            <input type="hidden" id="entidad_id" name="entidad_id">
+
+                            {# Input de búsqueda visible #}
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fas fa-search"></i></span>
+                                <input type="text" id="entidad-search"
+                                       class="form-control"
+                                       placeholder="Escriba nombre o NIF (mín. 2 caracteres)..."
+                                       autocomplete="off">
+                                <button type="button" class="btn btn-outline-secondary"
+                                        id="btn-limpiar-entidad" title="Limpiar" style="display:none;">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+
+                            {# Lista de sugerencias #}
+                            <ul id="entidad-suggestions"
+                                class="list-group mt-1"
+                                style="max-height: 220px; overflow-y: auto;
+                                       position: absolute; z-index: 1050;
+                                       width: calc(100% - 2rem); display: none;">
+                            </ul>
+
+                            <div class="form-text">Solo entidades activas con rol Titular. Si no aparece, créela primero en el catálogo.</div>
+                            <div id="entidad-error" class="text-danger small mt-1" style="display:none;">
+                                Debe seleccionar un titular/solicitante.
+                            </div>
+                        </div>
+
+                        {# Fecha de solicitud #}
+                        <div class="mb-4">
+                            <label for="fecha_solicitud" class="form-label fw-semibold">
+                                Fecha de solicitud <span class="text-danger">*</span>
+                            </label>
+                            <input type="date" id="fecha_solicitud" name="fecha_solicitud"
+                                   class="form-control w-auto"
+                                   required>
+                            <div class="form-text">Fecha oficial de presentación de la solicitud.</div>
+                        </div>
+
+                        {# Tipos de solicitud (checkboxes) #}
+                        <div class="mb-4">
+                            <label class="form-label fw-semibold">
+                                Tipo(s) de solicitud <span class="text-danger">*</span>
+                            </label>
+                            <div id="tipos-solicitud-error" class="text-danger small mb-1" style="display:none;">
+                                Debe seleccionar al menos un tipo.
+                            </div>
+                            <div class="row row-cols-1 row-cols-md-2 g-2">
+                                {% for ts in tipos_solicitudes %}
+                                    <div class="col">
+                                        <div class="form-check border rounded p-2 h-100">
+                                            <input class="form-check-input tipo-solicitud-check"
+                                                   type="checkbox"
+                                                   name="tipos_solicitud_ids[]"
+                                                   id="ts_{{ ts.id }}"
+                                                   value="{{ ts.id }}">
+                                            <label class="form-check-label" for="ts_{{ ts.id }}">
+                                                <span class="badge bg-secondary me-1">{{ ts.siglas }}</span>
+                                                {{ ts.descripcion }}
+                                            </label>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        {# Observaciones #}
+                        <div class="mb-4">
+                            <label for="observaciones" class="form-label fw-semibold">Observaciones</label>
+                            <textarea id="observaciones" name="observaciones"
+                                      class="form-control" rows="3"
+                                      maxlength="2000"
+                                      placeholder="Notas adicionales (opcional)"></textarea>
+                        </div>
+
+                        {# Botones #}
+                        <div class="d-flex justify-content-between pt-2">
+                            <div class="d-flex gap-2">
+                                <a href="{{ url_for('wizard_expediente.paso2') }}"
+                                   class="btn btn-outline-secondary">
+                                    <i class="fas fa-arrow-left me-1"></i>Atrás
+                                </a>
+                                <a href="{{ url_for('wizard_expediente.cancelar') }}"
+                                   class="btn btn-outline-danger">
+                                    <i class="fas fa-times me-1"></i>Cancelar
+                                </a>
+                            </div>
+                            <button type="submit" class="btn btn-success" id="btn-finalizar">
+                                <i class="fas fa-check me-1"></i>Crear expediente
+                            </button>
+                        </div>
+
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    'use strict';
+
+    // ================================================================
+    // Autocomplete entidad (solo activas con rol_titular=True)
+    // ================================================================
+    const entidadSearch     = document.getElementById('entidad-search');
+    const entidadIdInput    = document.getElementById('entidad_id');
+    const entidadSuggestions = document.getElementById('entidad-suggestions');
+    const btnLimpiarEntidad = document.getElementById('btn-limpiar-entidad');
+    const entidadError      = document.getElementById('entidad-error');
+
+    let debounceEntidad = null;
+
+    entidadSearch.addEventListener('input', function () {
+        clearTimeout(debounceEntidad);
+        const q = this.value.trim();
+        entidadIdInput.value = '';          // limpiar selección previa
+        btnLimpiarEntidad.style.display = 'none';
+        if (q.length < 2) {
+            entidadSuggestions.style.display = 'none';
+            entidadSuggestions.innerHTML = '';
+            return;
+        }
+        debounceEntidad = setTimeout(() => buscarEntidades(q), 250);
+    });
+
+    function buscarEntidades(q) {
+        fetch(`/api/entidades?q=${encodeURIComponent(q)}&rol=titular`)
+            .then(r => r.json())
+            .then(data => {
+                const resultados = data.results || [];
+                entidadSuggestions.innerHTML = '';
+                if (!resultados.length) {
+                    const li = document.createElement('li');
+                    li.className = 'list-group-item text-muted small';
+                    li.textContent = 'No se encontraron entidades con rol Titular.';
+                    entidadSuggestions.appendChild(li);
+                    entidadSuggestions.style.display = 'block';
+                    return;
+                }
+                resultados.forEach(e => {
+                    const li = document.createElement('li');
+                    li.className = 'list-group-item list-group-item-action';
+                    li.textContent = e.text;
+                    li.addEventListener('click', () => {
+                        seleccionarEntidad(e.id, e.text);
+                    });
+                    entidadSuggestions.appendChild(li);
+                });
+                entidadSuggestions.style.display = 'block';
+            })
+            .catch(() => { entidadSuggestions.style.display = 'none'; });
+    }
+
+    function seleccionarEntidad(id, texto) {
+        entidadIdInput.value    = id;
+        entidadSearch.value     = texto;
+        entidadSuggestions.style.display = 'none';
+        btnLimpiarEntidad.style.display  = 'inline-block';
+        entidadError.style.display = 'none';
+    }
+
+    btnLimpiarEntidad.addEventListener('click', function () {
+        entidadIdInput.value   = '';
+        entidadSearch.value    = '';
+        this.style.display     = 'none';
+        entidadSuggestions.style.display = 'none';
+    });
+
+    // Cerrar sugerencias al clicar fuera
+    document.addEventListener('click', function (e) {
+        if (!entidadSuggestions.contains(e.target) && e.target !== entidadSearch) {
+            entidadSuggestions.style.display = 'none';
+        }
+    });
+
+    // ================================================================
+    // Validación antes de enviar
+    // ================================================================
+    document.querySelector('form').addEventListener('submit', function (e) {
+        let valido = true;
+
+        // Titular
+        if (!entidadIdInput.value) {
+            entidadError.style.display = 'block';
+            valido = false;
+        }
+
+        // Tipos de solicitud
+        const tiposChecked = document.querySelectorAll('.tipo-solicitud-check:checked');
+        const tiposError   = document.getElementById('tipos-solicitud-error');
+        if (tiposChecked.length === 0) {
+            tiposError.style.display = 'block';
+            valido = false;
+        } else {
+            tiposError.style.display = 'none';
+        }
+
+        if (!valido) {
+            e.preventDefault();
+        } else {
+            // Deshabilitar botón para evitar doble envío
+            document.getElementById('btn-finalizar').disabled = true;
+            document.getElementById('btn-finalizar').innerHTML =
+                '<i class="fas fa-spinner fa-spin me-1"></i>Creando...';
+        }
+    });
+
+}());
+</script>
+{% endblock %}

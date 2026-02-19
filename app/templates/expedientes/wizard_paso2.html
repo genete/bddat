@@ -1,0 +1,323 @@
+{% extends 'layout/base_full_width.html' %}
+
+{% block title %}Nuevo Expediente &mdash; Paso 2{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+
+    {# ------------------------------------------------------------------ #}
+    {# Migas de pan                                                         #}
+    {# ------------------------------------------------------------------ #}
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('dashboard.index') }}">Inicio</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('expedientes.listado_v2') }}">Expedientes</a></li>
+            <li class="breadcrumb-item active">Nuevo &mdash; Paso 2 de 3</li>
+        </ol>
+    </nav>
+
+    {# ------------------------------------------------------------------ #}
+    {# Título + indicador de pasos                                          #}
+    {# ------------------------------------------------------------------ #}
+    <div class="d-flex align-items-center mb-4 gap-3">
+        <h1 class="h3 mb-0">
+            <i class="fas fa-folder-plus me-2 text-primary"></i>Nuevo Expediente
+        </h1>
+        <span class="badge bg-primary fs-6">Paso 2 de 3</span>
+    </div>
+
+    <div class="progress mb-4" style="height: 6px;">
+        <div class="progress-bar bg-primary" style="width: 66%"
+             role="progressbar" aria-valuenow="66" aria-valuemin="0" aria-valuemax="100">
+        </div>
+    </div>
+
+    {# ------------------------------------------------------------------ #}
+    {# Mensajes flash                                                       #}
+    {# ------------------------------------------------------------------ #}
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    {# ------------------------------------------------------------------ #}
+    {# Formulario                                                           #}
+    {# ------------------------------------------------------------------ #}
+    <div class="row justify-content-center">
+        <div class="col-lg-9 col-md-11">
+            <div class="card shadow-sm">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="fas fa-drafting-compass me-2 text-secondary"></i>Datos del proyecto técnico</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" action="{{ url_for('wizard_expediente.paso2') }}" novalidate id="form-paso2">
+
+                        {# Título #}
+                        <div class="mb-3">
+                            <label for="titulo" class="form-label fw-semibold">
+                                Título del proyecto <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" id="titulo" name="titulo"
+                                   class="form-control"
+                                   value="{{ paso2.get('titulo', '') }}"
+                                   maxlength="500" required>
+                        </div>
+
+                        {# Descripción #}
+                        <div class="mb-3">
+                            <label for="descripcion" class="form-label fw-semibold">
+                                Descripción <span class="text-danger">*</span>
+                            </label>
+                            <textarea id="descripcion" name="descripcion"
+                                      class="form-control" rows="4"
+                                      maxlength="10000" required>{{ paso2.get('descripcion', '') }}</textarea>
+                        </div>
+
+                        <div class="row">
+                            {# Finalidad #}
+                            <div class="col-md-6 mb-3">
+                                <label for="finalidad" class="form-label fw-semibold">
+                                    Finalidad <span class="text-danger">*</span>
+                                </label>
+                                <input type="text" id="finalidad" name="finalidad"
+                                       class="form-control"
+                                       value="{{ paso2.get('finalidad', '') }}"
+                                       maxlength="500" required>
+                            </div>
+
+                            {# Emplazamiento #}
+                            <div class="col-md-6 mb-3">
+                                <label for="emplazamiento" class="form-label fw-semibold">
+                                    Emplazamiento <span class="text-danger">*</span>
+                                </label>
+                                <input type="text" id="emplazamiento" name="emplazamiento"
+                                       class="form-control"
+                                       value="{{ paso2.get('emplazamiento', '') }}"
+                                       maxlength="200" required>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            {# Fecha técnica #}
+                            <div class="col-md-4 mb-3">
+                                <label for="fecha" class="form-label fw-semibold">
+                                    Fecha del proyecto <span class="text-danger">*</span>
+                                </label>
+                                <input type="date" id="fecha" name="fecha"
+                                       class="form-control"
+                                       value="{{ paso2.get('fecha', '') }}"
+                                       required>
+                                <div class="form-text">Fecha de firma/visado (no administrativa).</div>
+                            </div>
+
+                            {# Instrumento ambiental #}
+                            <div class="col-md-8 mb-3">
+                                <label for="ia_id" class="form-label fw-semibold">Instrumento ambiental</label>
+                                <select id="ia_id" name="ia_id" class="form-select">
+                                    <option value=""
+                                        {% if not paso2.get('ia_id') %}selected{% endif %}>
+                                        Sin determinar
+                                    </option>
+                                    {% for ia in tipos_ia %}
+                                        <option value="{{ ia.id }}"
+                                            {% if paso2.get('ia_id') == ia.id %}selected{% endif %}>
+                                            {{ ia.siglas }}{% if ia.descripcion %} &mdash; {{ ia.descripcion }}{% endif %}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+
+                        {# ------------------------------------------------------------------ #}
+                        {# Municipios afectados                                               #}
+                        {# ------------------------------------------------------------------ #}
+                        <div class="mb-4">
+                            <label class="form-label fw-semibold">
+                                Municipios afectados <span class="text-danger">*</span>
+                            </label>
+
+                            {# Buscador #}
+                            <div class="input-group mb-2">
+                                <span class="input-group-text"><i class="fas fa-search"></i></span>
+                                <input type="text" id="municipio-search"
+                                       class="form-control"
+                                       placeholder="Escriba nombre del municipio..."
+                                       autocomplete="off">
+                            </div>
+
+                            {# Lista de sugerencias #}
+                            <ul id="municipio-suggestions"
+                                class="list-group mb-2"
+                                style="max-height: 200px; overflow-y: auto; display: none;">
+                            </ul>
+
+                            {# Municipios seleccionados (badges) #}
+                            <div id="municipios-seleccionados" class="d-flex flex-wrap gap-2 mb-1">
+                                {# Se rellenan por JS, y al cargar la página si hay datos en sesión #}
+                            </div>
+                            <div id="municipios-error" class="text-danger small" style="display:none;">
+                                Debe añadir al menos un municipio.
+                            </div>
+                            <div id="municipios-hidden-inputs">
+                                {# Los inputs hidden se generan por JS #}
+                            </div>
+                        </div>
+
+                        {# Botones #}
+                        <div class="d-flex justify-content-between pt-2">
+                            <div class="d-flex gap-2">
+                                <a href="{{ url_for('wizard_expediente.paso1') }}"
+                                   class="btn btn-outline-secondary">
+                                    <i class="fas fa-arrow-left me-1"></i>Atrás
+                                </a>
+                                <a href="{{ url_for('wizard_expediente.cancelar') }}"
+                                   class="btn btn-outline-danger">
+                                    <i class="fas fa-times me-1"></i>Cancelar
+                                </a>
+                            </div>
+                            <button type="submit" class="btn btn-primary" id="btn-siguiente-paso2">
+                                Siguiente <i class="fas fa-arrow-right ms-1"></i>
+                            </button>
+                        </div>
+
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    'use strict';
+
+    // --- Municipios seleccionados en memoria ---
+    const municipiosSeleccionados = {}; // { id: nombre }
+
+    // Restaurar municipios de la sesión si los hay (pasados como data attribute)
+    // No procede en la primera visita; al volver del paso3 sí habría datos en sesión,
+    // pero el servidor no los re-envía en el GET (diseño simplificado).
+
+    const searchInput    = document.getElementById('municipio-search');
+    const suggestions    = document.getElementById('municipio-suggestions');
+    const badgesContainer = document.getElementById('municipios-seleccionados');
+    const hiddenContainer = document.getElementById('municipios-hidden-inputs');
+    const errorDiv        = document.getElementById('municipios-error');
+
+    let debounceTimer = null;
+
+    // ----------------------------------------------------------------
+    // Buscar municipios en la API
+    // ----------------------------------------------------------------
+    searchInput.addEventListener('input', function () {
+        clearTimeout(debounceTimer);
+        const q = this.value.trim();
+        if (q.length < 2) {
+            suggestions.style.display = 'none';
+            suggestions.innerHTML = '';
+            return;
+        }
+        debounceTimer = setTimeout(() => buscarMunicipios(q), 250);
+    });
+
+    function buscarMunicipios(q) {
+        fetch(`/api/municipios?q=${encodeURIComponent(q)}`)
+            .then(r => r.json())
+            .then(data => {
+                const resultados = data.results || data;
+                suggestions.innerHTML = '';
+                if (!resultados.length) {
+                    suggestions.style.display = 'none';
+                    return;
+                }
+                resultados.forEach(m => {
+                    const li = document.createElement('li');
+                    li.className = 'list-group-item list-group-item-action';
+                    li.textContent = m.text || m.nombre || m.nombre_completo;
+                    li.dataset.id = m.id;
+                    li.addEventListener('click', () => {
+                        agregarMunicipio(m.id, li.textContent);
+                        suggestions.style.display = 'none';
+                        searchInput.value = '';
+                    });
+                    suggestions.appendChild(li);
+                });
+                suggestions.style.display = 'block';
+            })
+            .catch(() => { suggestions.style.display = 'none'; });
+    }
+
+    // Cerrar sugerencias al hacer clic fuera
+    document.addEventListener('click', function (e) {
+        if (!suggestions.contains(e.target) && e.target !== searchInput) {
+            suggestions.style.display = 'none';
+        }
+    });
+
+    // ----------------------------------------------------------------
+    // Agregar municipio a la selección
+    // ----------------------------------------------------------------
+    function agregarMunicipio(id, nombre) {
+        if (municipiosSeleccionados[id]) return; // ya está
+        municipiosSeleccionados[id] = nombre;
+        renderizarMunicipios();
+        errorDiv.style.display = 'none';
+    }
+
+    function eliminarMunicipio(id) {
+        delete municipiosSeleccionados[id];
+        renderizarMunicipios();
+    }
+
+    function renderizarMunicipios() {
+        badgesContainer.innerHTML = '';
+        hiddenContainer.innerHTML = '';
+        Object.entries(municipiosSeleccionados).forEach(([id, nombre]) => {
+            // Badge visible
+            const span = document.createElement('span');
+            span.className = 'badge bg-primary d-flex align-items-center gap-1';
+            span.innerHTML = `${escapeHtml(nombre)}
+                <button type="button" class="btn-close btn-close-white btn-sm ms-1"
+                        aria-label="Eliminar" style="font-size:0.6rem;"></button>`;
+            span.querySelector('button').addEventListener('click', () => eliminarMunicipio(id));
+            badgesContainer.appendChild(span);
+
+            // Input hidden para el POST
+            const input = document.createElement('input');
+            input.type  = 'hidden';
+            input.name  = 'municipios_ids[]';
+            input.value = id;
+            hiddenContainer.appendChild(input);
+        });
+    }
+
+    // ----------------------------------------------------------------
+    // Validación antes de enviar
+    // ----------------------------------------------------------------
+    document.getElementById('form-paso2').addEventListener('submit', function (e) {
+        if (Object.keys(municipiosSeleccionados).length === 0) {
+            e.preventDefault();
+            errorDiv.style.display = 'block';
+            searchInput.focus();
+        }
+    });
+
+    // ----------------------------------------------------------------
+    // Helpers
+    // ----------------------------------------------------------------
+    function escapeHtml(str) {
+        return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+}());
+</script>
+{% endblock %}
