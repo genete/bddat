@@ -1,98 +1,54 @@
-{% extends 'layout/base_fullwidth.html' %}
+{% extends 'layout/lista_v2_base.html' %}
 
-{% block title %}Expedientes{% endblock %}
+{% block page_title %}Expedientes{% endblock %}
+{% block page_icon %}<i class="fas fa-folder-open"></i>{% endblock %}
+{% block entity_label_plural %}expedientes{% endblock %}
+{% block search_placeholder %}Buscar por N° AT o titular...{% endblock %}
 
-{% block breadcrumb %}
-<a href="{{ url_for('dashboard.index') }}">Inicio</a>
-<span>/</span>
-<span>Expedientes</span>
+{% block btn_nuevo %}
+<button class="btn btn-primary"
+        onclick="window.location.href='{{ url_for('expedientes.nuevo') }}'">
+    <i class="fas fa-plus"></i> Nuevo Expediente
+</button>
 {% endblock %}
 
-{% block content %}
-<!-- C.1: Super-cabecera del listado (sin scroll) -->
-<div class="lista-cabecera">
-    <!-- Page Header (CON margen) -->
-    <div class="page-header content-constrained">
-        <h1>
-            <i class="fas fa-folder-open"></i>
-            Expedientes
-        </h1>
-        <button class="btn btn-primary" onclick="window.location.href='{{ url_for('expedientes.nuevo') }}'">
-            <i class="fas fa-plus"></i>
-            Nuevo Expediente
-        </button>
-    </div>
-    
-    <!-- Filtros + Paginación (CON margen) -->
-    <div class="filters-row content-constrained">
-        <div class="filters">
-            <input type="search" placeholder="Buscar expedientes..." aria-label="Buscar expedientes">
-            <select aria-label="Filtrar por estado">
-                <option value="">Estado: Todos</option>
-                <option value="tramitacion">En trámite</option>
-                <option value="finalizado">Resuelto</option>
-                <option value="borrador">Incompleto</option>
-            </select>
-            <button class="btn btn-outline btn-filtrar">
-                <i class="fas fa-filter"></i>
-                Filtrar
-            </button>
-            <button class="btn btn-outline btn-limpiar">
-                <i class="fas fa-times"></i>
-                Limpiar
-            </button>
-        </div>
-        
-        <div class="pagination-info">
-            Mostrando <span>0</span> de <span>0</span> expedientes
-        </div>
-    </div>
-</div>
+{% block filtros_extra %}
+<select aria-label="Filtrar por estado">
+    <option value="">Estado: Todos</option>
+    <option value="tramitacion">En trámite</option>
+    <option value="finalizado">Resuelto</option>
+    <option value="borrador">Incompleto</option>
+</select>
+{% endblock %}
 
-<!-- C.2: Contenedor scrollable independiente -->
-<div class="lista-scroll-container">
-    <!-- D: Tabla (SIN margen, full-width, thead sticky) -->
-    <table class="expedientes-table">
-        <thead>
-            <tr>
-                <th>N° Expediente</th>
-                <th>Titular</th>
-                <th>Solicitudes</th>
-                <th>Estado</th>
-                <th>Vencimiento</th>
-                <th>Acciones</th>
-            </tr>
-        </thead>
-        <tbody>
-            <!-- Filas cargadas dinámicamente por JavaScript -->
-        </tbody>
-    </table>
-    
-    <!-- Botón Scroll to Top (hermano de table, position:absolute en C.2) -->
-    <button id="tabla-scroll-to-top" aria-label="Volver arriba de la tabla">
-        <i class="fas fa-chevron-up"></i>
-    </button>
-</div>
-<!-- Fin C.2 -->
+{% block tabla_clase %}expedientes-table{% endblock %}
+
+{% block thead_cols %}
+<th>N° Expediente</th>
+<th>Titular</th>
+<th>Tipo</th>
+<th>Responsable</th>
+<th></th>
 {% endblock %}
 
 {% block extra_js %}
-<!-- JavaScript: Scroll infinito y filtros -->
-<script src="{{ url_for('static', filename='js/v2-scroll-infinito.js') }}"></script>
-<script src="{{ url_for('static', filename='js/v2-filtros.js') }}"></script>
-<script src="{{ url_for('static', filename='js/v2-tabla-scroll-to-top.js') }}"></script>
-
+{{ super() }}
 <script>
-    // Inicializar scroll infinito
     const scrollInfinito = new ScrollInfinito({
-        apiUrl: '{{ url_for('api.listar_expedientes') }}',
-        limit: 50,
-        threshold: 0.8
+        apiUrl:      '{{ url_for("api.listar_expedientes") }}',
+        tableClass:  '.expedientes-table',
+        entityLabel: 'expedientes',
+        detailUrl:   id => `/expedientes/${id}/tramitacion_v3`,
+        columns: [
+            { key: 'codigo',          label: 'N° Expediente', type: 'text'     },
+            { key: 'titular',         label: 'Titular',       type: 'text'     },
+            { key: 'tipo_expediente', label: 'Tipo',          type: 'text'     },
+            { key: 'responsable',     label: 'Responsable',   type: 'text'     },
+            { key: '_acciones',       label: '',              type: 'acciones' }
+        ]
     });
-    
-    // Inicializar filtros
+
     const filtros = new FiltrosExpedientes(scrollInfinito);
-    
     console.log('Listado de expedientes v2 inicializado');
 </script>
 {% endblock %}
