@@ -11,6 +11,6 @@
   },
   "navigation": {
     "label": "Entidades",
-    "route": "entidades.listado"
+    "route": "entidades.index"
   }
 }
