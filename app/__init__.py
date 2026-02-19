@@ -55,11 +55,10 @@ def create_app(config_name='development'):
         return Usuario.query.get(int(user_id))
 
     # Registrar blueprints - Rutas principales
-    from app.routes import auth, dashboard, expedientes, proyectos, usuarios, perfil, entidades
+    from app.routes import auth, dashboard, proyectos, usuarios, perfil, entidades
 
     app.register_blueprint(auth.bp)
     app.register_blueprint(dashboard.bp)
-    app.register_blueprint(expedientes.bp)
     app.register_blueprint(proyectos.bp)
     app.register_blueprint(usuarios.bp)
     app.register_blueprint(perfil.bp)
