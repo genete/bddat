@@ -1,119 +1,78 @@
-# Contexto Issue #93 — Sprint Fase 3: Refactoring Modular
+# Contexto Issue #93 — Epic Sistema de Navegación UI Modular (CERRADO)
 
-**Fecha sesión:** 2026-02-19
-**Rama activa:** `feature/93-fase3-refactoring-modular`
-**Tag de partida:** `v0.4.0` (creado al inicio del sprint)
-
----
-
-## Lo que llevamos hecho en esta sesión
-
-### Previo al sprint (mini-sprint bugs)
-- **Bug #109** (commit `b051278`): Creados templates `errors/404.html` y `errors/500.html` + favicon vacío en bases. Probado con Playwright — OK.
-- **Bug #113** (commit `4bde7e8`): Wizard guarda `request.referrer` como `origen` en sesión; `cancelar()` vuelve al origen. Probado con Playwright desde listado y desde dashboard — OK.
-- Push de ambos commits a `origin/develop`.
-
-### Sprint #93 Fase 3
-- **Paso 0** (commit implícito en rama): Tag `v0.4.0` creado y subido. Rama `feature/93-fase3-refactoring-modular` creada desde `develop`.
-- **Paso 1** (commit `1593a27`): Limpieza legacy completada.
+**Estado:** CERRADO ✅
+**Fecha cierre:** 2026-02-19
+**PRs mergeados a develop:** #108, #110, #114, #115
 
 ---
 
-## Ficheros modificados y por qué
+## Resumen de fases completadas
 
-### Paso 1 — Limpieza legacy
+### Fase 1+2 — Prototipo HTML + Integración backend (PRs #108 + #110)
+- Vista V0 (Login), V1 (Dashboard), V2 (Listado scroll infinito)
+- API REST expedientes con paginación cursor
+- CSS sistema V2: `v2-theme.css`, `v2-layout.css`, `v2-components.css`
+- Base templates: `base_fullwidth.html`, `base_acordeon.html`, `base_login.html`
 
-| Fichero | Acción | Motivo |
-|---------|--------|--------|
-| `app/routes/expedientes.py` | Modificado | Eliminadas funciones `index()` y `nuevo()` (sustituidas por `listado_v2` y wizard). Eliminado import `current_user` (ya no se usa directamente). Actualizado docstring. |
-| `app/routes/dashboard.py` | Modificado | `mis_expedientes()` redirigía a `expedientes.index` → actualizado a `expedientes.listado_v2` |
-| `app/utils/permisos.py` | Modificado | `verificar_acceso_expediente()` redirigía a `expedientes.index` → actualizado a `expedientes.listado_v2` |
-| `app/templates/expedientes/detalle.html` | Modificado | Botón "Volver" apuntaba a `expedientes.index` → actualizado a `expedientes.listado_v2` |
-| `app/templates/expedientes/editar.html` | Modificado | Botón "Cancelar" apuntaba a `expedientes.index` → actualizado a `expedientes.listado_v2` |
-| `app/templates/expedientes/index.html` | **Eliminado** | Template pre-wizard, heredaba de `base.html` (obsoleto) |
-| `app/templates/expedientes/nuevo.html` | **Eliminado** | Template pre-wizard, reemplazado por el wizard de 3 pasos |
-| `app/templates/layout/base_full_width.html` | **Eliminado** | Duplicado de `base_fullwidth.html` con guión bajo, nadie lo heredaba |
-| `app/templates/layout/base_tramitacion.html` | **Eliminado** | Marcado legacy en CLAUDE.md, nadie lo heredaba |
+### Fase 3 — Refactoring modular (PR #114)
+- Limpieza templates y rutas legacy pre-wizard
+- Creación `app/modules/` con `ModuleRegistry`
+- Migración blueprint `expedientes` a `app/modules/expedientes/`
+- Migración blueprint `entidades` a `app/modules/entidades/`
+- Templates movidos junto al módulo (`template_folder='templates'`)
+- Fix `base.html`: referencias rotas a `expedientes.index` → `listado_v2`
 
----
-
-## Decisiones tomadas
-
-1. **Opción A para `detalle.html` y `editar.html`**: Se migran tal cual (incompletas) al módulo. Se abre issue separado para actualizarlas con los campos completos del wizard.
-
-2. **`metadata.json` — esquema mínimo para Fase 3**:
-```json
-{
-  "module": "expedientes",
-  "name": "Expedientes",
-  "icon": "fa-folder-open",
-  "order": 10,
-  "permissions": {
-    "list": ["ADMIN", "SUPERVISOR", "TRAMITADOR", "ADMINISTRATIVO"],
-    "create": ["ADMIN", "SUPERVISOR", "TRAMITADOR"],
-    "edit": ["ADMIN", "SUPERVISOR", "TRAMITADOR"],
-    "delete": ["ADMIN"]
-  },
-  "navigation": {
-    "label": "Expedientes",
-    "route": "expedientes.listado_v2"
-  }
-}
-```
-
-3. **`ModuleRegistry`**: Registro manual en Fase 3. Auto-discovery queda para Fase 4.
-
-4. **Alcance de módulos**: Solo `expedientes` y `entidades` en esta fase. El resto de blueprints (`auth`, `dashboard`, `usuarios`, `perfil`, `proyectos`, `vista3`, APIs) se quedan en `app/routes/`.
-
-5. **Modelos**: No se mueven. Permanecen en `app/models/`.
-
-6. **Vista V3** (`tramitacion_v3`): Ya existe y funciona en `/expedientes/<id>/tramitacion_v3`. Confirmado con Playwright en expediente id=104.
+### Fase 4 — Sistema metadata-driven (PR #115)
+- `ModuleRegistry`: auto-discovery por escaneo de `app/modules/`
+- `get_metadata()` con caché, `get_navigation(user_roles)` con filtro de permisos
+- Context processor `inject_module_nav()` → inyecta `module_nav` y `active_module`
+- `header.html` + `base_acordeon.html`: nav de módulos + breadcrumb automático
+- CSS `.module-nav` / `.module-nav-link` en `v2-layout.css`
 
 ---
 
-## Problemas pendientes / abiertos
+## Estructura final resultante
 
-- **Issue a crear**: Actualizar `detalle.html` y `editar.html` con campos completos del wizard (tipo expediente, titular, tramitador, heredado, municipios, proyecto). Actualmente muestran campos pre-wizard incompletos.
-
-- **`mis_expedientes`**: La ruta `/mis_expedientes` ahora redirige a `listado_v2` pero sin filtro por usuario (el filtro era de `index()`). Queda pendiente implementar filtrado en `listado_v2` / API. Anotarlo como deuda técnica.
-
-- **`base.html`**: Existe en `app/templates/base.html` y sigue referenciando `expedientes.index`. No se ha tocado porque solo la usan los templates legacy ya eliminados. Verificar si puede eliminarse también en el Paso 2.
-
----
-
-## Próximo paso exacto para continuar
-
-**Paso 2 — Crear estructura `app/modules/` con `ModuleRegistry` manual**
-
-1. Crear `app/modules/__init__.py` con clase `ModuleRegistry`:
-   - Registro manual de módulos (lista explícita)
-   - Método `register_all(app)` que registra los blueprints de cada módulo
-
-2. Crear esqueleto de directorios:
 ```
 app/modules/
-├── __init__.py          ← ModuleRegistry
+├── __init__.py              ← ModuleRegistry (auto-discovery + metadata)
 ├── expedientes/
-│   ├── __init__.py
-│   ├── metadata.json
-│   ├── routes.py        (vacío por ahora, se rellena en Paso 3)
-│   └── templates/
-│       └── expedientes/
+│   ├── routes.py            ← Blueprint activo (template_folder='templates')
+│   ├── metadata.json        ← order:10, permisos, navigation.route
+│   └── templates/expedientes/
+│       ├── listado_v2.html
+│       ├── tramitacion_v3.html
+│       ├── detalle.html     ← pendiente actualizar con campos wizard (#TBD)
+│       └── editar.html      ← pendiente actualizar con campos wizard (#TBD)
 └── entidades/
-    ├── __init__.py
-    ├── metadata.json
-    ├── routes.py        (vacío por ahora, se rellena en Paso 4)
-    └── templates/
-        └── entidades/
+    ├── routes.py
+    ├── metadata.json        ← order:20, permisos, navigation.route
+    └── templates/entidades/
+        ├── index.html
+        ├── nueva.html
+        └── detalle.html
 ```
 
-3. Actualizar `app/__init__.py` para usar `ModuleRegistry` en paralelo a los blueprints existentes (sin romper nada todavía).
+## Patrón para añadir un módulo nuevo
+1. Crear `app/modules/<nombre>/`
+2. Crear `routes.py` con `bp = Blueprint(...)` y `template_folder='templates'`
+3. Crear `metadata.json` con `order`, `permissions`, `navigation.route`
+4. Crear `templates/<nombre>/`
+5. **Sin tocar código central** — `ModuleRegistry` lo descubre automáticamente
+
+---
+
+## Deuda técnica pendiente (issues a crear)
+
+- `detalle.html` y `editar.html` de expedientes muestran campos pre-wizard incompletos.
+  Falta: tipo expediente, titular, tramitador, heredado, municipios, proyecto.
+- Filtro `mis_expedientes` (tramitador ve solo los suyos): `listado_v2` no lo implementa.
+  El filtro era de `index()` (eliminada). Pendiente en API.
+- `base.html` (legacy): solo la usan `detalle.html` y `editar.html`. Candidato a
+  eliminar cuando esas páginas se actualicen al sistema V2.
 
 ---
 
 ## Referencias
-
-- Issue #93: https://github.com/genete/bddat/issues/93
-- Rama: `feature/93-fase3-refactoring-modular`
-- Tag checkpoint: `v0.4.0`
-- Plan de trabajo completo: `memory/plan_trabajo.md`
+- Issue #93: https://github.com/genete/bddat/issues/93 (CERRADO)
+- Siguiente bloque: issue #61 Fase 3 → ver `CONTEXTO_ISSUE_61_FASE3.md`
