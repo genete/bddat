@@ -55,15 +55,13 @@ def create_app(config_name='development'):
         return Usuario.query.get(int(user_id))
 
     # Registrar blueprints - Rutas principales
-    from app.routes import auth, dashboard, expedientes, proyectos, usuarios, perfil, entidades
+    from app.routes import auth, dashboard, proyectos, usuarios, perfil
 
     app.register_blueprint(auth.bp)
     app.register_blueprint(dashboard.bp)
-    app.register_blueprint(expedientes.bp)
     app.register_blueprint(proyectos.bp)
     app.register_blueprint(usuarios.bp)
     app.register_blueprint(perfil.bp)
-    app.register_blueprint(entidades.bp)        # Issue #61
 
     # Registrar blueprints - Wizards
     from app.routes import wizard_expediente
@@ -77,6 +75,11 @@ def create_app(config_name='development'):
     app.register_blueprint(api_municipios.bp)               # usa 'bp'
     app.register_blueprint(vista3.bp)                       # usa 'bp'
     app.register_blueprint(api_entidades.api_entidades_bp)  # usa 'api_entidades_bp' — Issue #61
+
+    # Registrar módulos (app/modules/) — Fase 3: registro manual
+    # Los módulos con bp = None se omiten hasta completar su migración.
+    from app.modules import ModuleRegistry
+    ModuleRegistry.register_all(app)
 
     # Configuración de Jinja2
     app.jinja_env.trim_blocks = True

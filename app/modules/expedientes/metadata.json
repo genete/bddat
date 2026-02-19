@@ -1,0 +1,16 @@
+{
+  "module": "expedientes",
+  "name": "Expedientes",
+  "icon": "fa-folder-open",
+  "order": 10,
+  "permissions": {
+    "list":   ["ADMIN", "SUPERVISOR", "TRAMITADOR", "ADMINISTRATIVO"],
+    "create": ["ADMIN", "SUPERVISOR", "TRAMITADOR"],
+    "edit":   ["ADMIN", "SUPERVISOR", "TRAMITADOR"],
+    "delete": ["ADMIN"]
+  },
+  "navigation": {
+    "label": "Expedientes",
+    "route": "expedientes.listado_v2"
+  }
+}

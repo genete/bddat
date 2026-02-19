@@ -22,4 +22,4 @@ def mis_expedientes():
     Redirección a listado de expedientes con filtro 'mis_expedientes=1'.
     Mantiene compatibilidad con enlaces del dashboard.
     """
-    return redirect(url_for('expedientes.index', mis_expedientes=1))
+    return redirect(url_for('expedientes.listado_v2'))

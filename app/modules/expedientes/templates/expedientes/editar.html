@@ -1,16 +1,32 @@
 {% extends 'base.html' %}
 
-{% block title %}Nuevo Expediente - BDDAT{% endblock %}
+{% block title %}Editar Expediente AT-{{ expediente.numero_at }} - BDDAT{% endblock %}
 
 {% block content %}
 <div class="row mb-3">
     <div class="col-md-12">
-        <h2><i class="fas fa-plus-circle me-2"></i>Nuevo Expediente</h2>
-        <p class="text-muted">Crear un expediente genera automáticamente su proyecto asociado (relación 1:1)</p>
+        <h2>
+            <i class="fas fa-edit me-2"></i>Editar Expediente AT-{{ expediente.numero_at }}
+        </h2>
+        <p class="text-muted">Modificar datos del expediente y su proyecto asociado</p>
     </div>
 </div>
 
-<form id="form_expediente" action="{{ url_for('expedientes.nuevo') }}" method="POST">
+<!-- Script con municipios existentes para inicialización -->
+<script>
+    window.municipiosExistentes = [
+        {% for mp in expediente.proyecto.municipios_afectados %}
+        {
+            id: {{ mp.municipio.id }},
+            nombre: "{{ mp.municipio.nombre }}",
+            provincia: "{{ mp.municipio.provincia }}",
+            codigo: "{{ mp.municipio.codigo }}"
+        }{% if not loop.last %},{% endif %}
+        {% endfor %}
+    ];
+</script>
+
+<form id="form_expediente" action="{{ url_for('expedientes.editar', id=expediente.id) }}" method="POST">
     <div class="row">
         <!-- Columna Izquierda: Datos del Expediente -->
         <div class="col-md-4">
@@ -19,11 +35,11 @@
                     <h5 class="mb-0"><i class="fas fa-folder me-2"></i>Datos del Expediente</h5>
                 </div>
                 <div class="card-body">
-                    <!-- Número AT (auto) -->
+                    <!-- Número AT (bloqueado) -->
                     <div class="mb-3">
                         <label class="form-label">Número AT</label>
-                        <input type="text" class="form-control" value="Generación automática" disabled>
-                        <small class="form-text text-muted">Se asignará el siguiente número disponible</small>
+                        <input type="text" class="form-control" value="AT-{{ expediente.numero_at }}" disabled>
+                        <small class="form-text text-muted">No se puede modificar</small>
                     </div>
                     
                     <!-- Tipo Expediente -->
@@ -32,7 +48,10 @@
                         <select class="form-select" id="tipo_expediente_id" name="tipo_expediente_id">
                             <option value="">-- Sin tipo --</option>
                             {% for tipo in tipos_expedientes %}
-                                <option value="{{ tipo.id }}">{{ tipo.tipo }}</option>
+                                <option value="{{ tipo.id }}" 
+                                        {% if expediente.tipo_expediente_id == tipo.id %}selected{% endif %}>
+                                    {{ tipo.tipo }}
+                                </option>
                             {% endfor %}
                         </select>
                     </div>
@@ -40,26 +59,34 @@
                     <!-- Responsable -->
                     <div class="mb-3">
                         <label for="responsable_id" class="form-label">Responsable</label>
-                        <select class="form-select" id="responsable_id" name="responsable_id">
-                            <option value="">-- Sin asignar (huérfano) --</option>
+                        <select class="form-select" id="responsable_id" name="responsable_id" 
+                                {% if not current_user.tiene_rol('ADMIN', 'SUPERVISOR') %}disabled{% endif %}>
+                            <option value="" {% if not expediente.responsable_id %}selected{% endif %}>
+                                -- Sin asignar (huérfano) --
+                            </option>
                             {% for usuario in usuarios %}
-                                <option value="{{ usuario.id }}" {% if usuario.id == current_user.id %}selected{% endif %}>
+                                <option value="{{ usuario.id }}" 
+                                        {% if expediente.responsable_id == usuario.id %}selected{% endif %}>
                                     {{ usuario.siglas }} - {{ usuario.nombre }} {{ usuario.apellido1 }}
                                 </option>
                             {% endfor %}
                         </select>
-                        <small class="form-text text-muted">Dejar sin asignar para posterior gestión por supervisor</small>
+                        {% if not current_user.tiene_rol('ADMIN', 'SUPERVISOR') %}
+                            <small class="form-text text-muted">Solo ADMIN/SUPERVISOR puede cambiar responsable</small>
+                        {% else %}
+                            <small class="form-text text-muted">Dejar sin asignar para gestión posterior por supervisor</small>
+                        {% endif %}
                     </div>
                     
                     <!-- Heredado -->
                     <div class="mb-3">
                         <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" id="heredado" name="heredado">
+                            <input class="form-check-input" type="checkbox" id="heredado" name="heredado" 
+                                   {% if expediente.heredado %}checked{% endif %}>
                             <label class="form-check-label" for="heredado">
                                 Expediente Heredado
                             </label>
                         </div>
-                        <small class="form-text text-muted">Marcar si proviene de sistema anterior</small>
                     </div>
                 </div>
             </div>
@@ -67,7 +94,7 @@
         
         <!-- Columna Derecha: Datos del Proyecto -->
         <div class="col-md-8">
-            <div class="card shadow-sm mb-3">
+            <div class="card shadow-sm mb-3" id="proyecto">
                 <div class="card-header bg-primary text-white">
                     <h5 class="mb-0"><i class="fas fa-project-diagram me-2"></i>Datos del Proyecto</h5>
                 </div>
@@ -76,28 +103,28 @@
                     <div class="mb-3">
                         <label for="titulo_proyecto" class="form-label">Título del Proyecto</label>
                         <input type="text" class="form-control" id="titulo_proyecto" name="titulo_proyecto" 
-                               placeholder="Ej: Línea aérea de MT 20kV para suministro a CTARE">
+                               value="{{ expediente.proyecto.titulo }}">
                     </div>
                     
                     <!-- Descripción -->
                     <div class="mb-3">
                         <label for="descripcion_proyecto" class="form-label">Descripción</label>
                         <textarea class="form-control" id="descripcion_proyecto" name="descripcion_proyecto" 
-                                  rows="3" placeholder="Descripción detallada del proyecto"></textarea>
+                                  rows="3">{{ expediente.proyecto.descripcion }}</textarea>
                     </div>
                     
                     <!-- Finalidad -->
                     <div class="mb-3">
                         <label for="finalidad" class="form-label">Finalidad</label>
                         <input type="text" class="form-control" id="finalidad" name="finalidad" 
-                               placeholder="Ej: Suministro eléctrico a nueva industria">
+                               value="{{ expediente.proyecto.finalidad }}">
                     </div>
                     
                     <!-- Emplazamiento -->
                     <div class="mb-3">
                         <label for="emplazamiento" class="form-label">Emplazamiento</label>
                         <input type="text" class="form-control" id="emplazamiento" name="emplazamiento" 
-                               placeholder="Ej: Polígono Industrial Los Olivares, Sevilla">
+                               value="{{ expediente.proyecto.emplazamiento }}">
                     </div>
                     
                     <!-- Instrumento Ambiental -->
@@ -106,7 +133,10 @@
                         <select class="form-select" id="ia_id" name="ia_id">
                             <option value="">-- Sin instrumento ambiental --</option>
                             {% for tipo_ia in tipos_ia %}
-                                <option value="{{ tipo_ia.id }}">{{ tipo_ia.siglas }} - {{ tipo_ia.descripcion }}</option>
+                                <option value="{{ tipo_ia.id }}" 
+                                        {% if expediente.proyecto.ia_id == tipo_ia.id %}selected{% endif %}>
+                                    {{ tipo_ia.siglas }} - {{ tipo_ia.descripcion }}
+                                </option>
                             {% endfor %}
                         </select>
                     </div>
@@ -181,11 +211,11 @@
     <!-- Botones de Acción -->
     <div class="row">
         <div class="col-md-12 text-end">
-            <a href="{{ url_for('expedientes.index') }}" class="btn btn-secondary me-2">
+            <a href="{{ url_for('expedientes.listado_v2') }}" class="btn btn-secondary me-2">
                 <i class="fas fa-times me-1"></i> Cancelar
             </a>
-            <button type="submit" class="btn btn-success">
-                <i class="fas fa-save me-1"></i> Crear Expediente
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-save me-1"></i> Guardar Cambios
             </button>
         </div>
     </div>
@@ -194,4 +224,23 @@
 
 {% block extra_js %}
 <script src="{{ url_for('static', filename='js/municipios_selector.js') }}"></script>
+<script>
+    // Inicializar con municipios existentes
+    document.addEventListener('DOMContentLoaded', () => {
+        if (window.selectorMunicipios && window.municipiosExistentes) {
+            window.selectorMunicipios.inicializar(window.municipiosExistentes);
+        }
+        
+        // Scroll automático a #proyecto si viene en la URL (issue #41)
+        if (window.location.hash === '#proyecto') {
+            const proyectoCard = document.getElementById('proyecto');
+            if (proyectoCard) {
+                // Scroll suave con offset para header
+                setTimeout(() => {
+                    proyectoCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }, 100);
+            }
+        }
+    });
+</script>
 {% endblock %}

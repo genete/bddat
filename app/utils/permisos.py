@@ -70,5 +70,5 @@ def verificar_acceso_expediente(expediente, accion='acceder'):
     """
     if not puede_acceder_expediente(expediente):
         flash(f'No tienes permisos para {accion} este expediente', 'danger')
-        return redirect(url_for('expedientes.index'))
+        return redirect(url_for('expedientes.listado_v2'))
     return None

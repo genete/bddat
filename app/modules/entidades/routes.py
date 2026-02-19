@@ -16,7 +16,10 @@ from flask_login import login_required
 from app import db
 from app.models.entidad import Entidad
 
-bp = Blueprint('entidades', __name__, url_prefix='/entidades')
+# template_folder apunta a app/modules/entidades/templates/
+bp = Blueprint('entidades', __name__,
+               url_prefix='/entidades',
+               template_folder='templates')
 
 
 # =============================================================================
