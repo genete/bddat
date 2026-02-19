@@ -76,9 +76,9 @@
     </a>
     {% endif %}
     
-    <!-- Card: Nuevo Expediente -->
+    <!-- Card: Nuevo Expediente — apunta al wizard (Issue #67) -->
     {% if 'TRAMITADOR' in user_roles or 'ADMINISTRATIVO' in user_roles or 'SUPERVISOR' in user_roles or 'ADMIN' in user_roles %}
-    <a href="{{ url_for('expedientes.nuevo') }}" class="dashboard-card">
+    <a href="{{ url_for('wizard_expediente.paso1') }}" class="dashboard-card">
         <div class="card-icon">
             <i class="fas fa-plus-circle"></i>
         </div>
