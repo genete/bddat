@@ -228,3 +228,45 @@
     font-size: 1.25rem;
   }
 }
+
+/* ==========================================================================
+   Navegación de módulos (metadata-driven) — Fase 4 Issue #93
+   ========================================================================== */
+
+.app-header .module-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.125rem;
+  margin-left: 0.75rem;
+}
+
+.app-header .module-nav-link {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.375rem 0.75rem;
+  border-radius: 0.375rem;
+  color: rgba(255, 255, 255, 0.85);
+  text-decoration: none;
+  font-size: 0.875rem;
+  white-space: nowrap;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.app-header .module-nav-link:hover {
+  background-color: rgba(255, 255, 255, 0.15);
+  color: var(--text-inverse);
+}
+
+.app-header .module-nav-link.active {
+  background-color: rgba(255, 255, 255, 0.2);
+  color: var(--text-inverse);
+  font-weight: 600;
+}
+
+/* Ocultar module-nav en mobile (demasiado estrecho) */
+@media (max-width: 767px) {
+  .app-header .module-nav {
+    display: none;
+  }
+}
