@@ -7,10 +7,10 @@ Responsabilidades:
 - Configuración de Jinja2
 - Manejo de errores HTTP
 """
-from flask import Flask, render_template
+from flask import Flask, render_template, request
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
-from flask_login import LoginManager
+from flask_login import LoginManager, current_user
 from app.config import config
 
 # Instancias de extensiones (sin vincular a app aún)
@@ -76,10 +76,21 @@ def create_app(config_name='development'):
     app.register_blueprint(vista3.bp)                       # usa 'bp'
     app.register_blueprint(api_entidades.api_entidades_bp)  # usa 'api_entidades_bp' — Issue #61
 
-    # Registrar módulos (app/modules/) — Fase 3: registro manual
-    # Los módulos con bp = None se omiten hasta completar su migración.
+    # Registrar módulos (app/modules/) — Fase 4: auto-discovery
     from app.modules import ModuleRegistry
     ModuleRegistry.register_all(app)
+
+    # Context processor — inyecta navegación de módulos en todos los templates
+    @app.context_processor
+    def inject_module_nav():
+        user_roles = (
+            [r.nombre for r in current_user.roles]
+            if current_user.is_authenticated else []
+        )
+        return {
+            'module_nav':    ModuleRegistry.get_navigation(user_roles),
+            'active_module': request.blueprint,
+        }
 
     # Configuración de Jinja2
     app.jinja_env.trim_blocks = True
