@@ -68,10 +68,12 @@ def index():
 @bp.route('/cancelar')
 @login_required
 def cancelar():
-    """Limpia la sesión del wizard y vuelve al listado."""
+    """Limpia la sesión del wizard y vuelve al origen de la invocación."""
+    data = _get_wizard()
+    origen = data.get('origen', url_for('expedientes.listado_v2'))
     _reset_wizard()
     flash('Creación de expediente cancelada.', 'info')
-    return redirect(url_for('expedientes.listado_v2'))
+    return redirect(origen)
 
 
 @bp.route('/paso1', methods=['GET', 'POST'])
@@ -87,6 +89,11 @@ def paso1():
     """
     data = _get_wizard()
     paso1_data = data.get('paso1', {})
+
+    # En GET: guardar el origen solo si el wizard acaba de empezar (sin datos previos)
+    if request.method == 'GET' and 'origen' not in data:
+        data['origen'] = request.referrer or url_for('expedientes.listado_v2')
+        _save_wizard(data)
 
     if request.method == 'POST':
         tipo_expediente_id = request.form.get('tipo_expediente_id') or None
