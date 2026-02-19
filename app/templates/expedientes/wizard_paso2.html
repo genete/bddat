@@ -26,17 +26,6 @@
         </div>
     </div>
 
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            {% for category, message in messages %}
-                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-                    {{ message }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
-                </div>
-            {% endfor %}
-        {% endif %}
-    {% endwith %}
-
     <div class="row justify-content-center">
         <div class="col-lg-9 col-md-11">
             <div class="card shadow-sm">
@@ -164,7 +153,7 @@
                                 <div>
                                     <p class="small text-muted mb-2">Municipios seleccionados:</p>
                                     <div id="municipios-seleccionados" class="d-flex flex-wrap gap-2">
-                                        <span class="text-muted small" id="municipios-placeholder">Ninguno añadido todavía.</span>
+                                        <span class="text-muted small">Ninguno añadido todavía.</span>
                                     </div>
                                 </div>
 
@@ -225,7 +214,6 @@
     // ------------------------------------------------------------------
     provinciaSearch.addEventListener('input', function () {
         clearTimeout(tProv);
-        // Reset municipio al cambiar provincia
         provinciaActual = null;
         municipioSearch.disabled = true;
         municipioSearch.value = '';
@@ -298,7 +286,6 @@
                 const li = document.createElement('li');
                 li.className = 'list-group-item list-group-item-action py-2';
                 li.textContent = item.text;
-                // mousedown en lugar de click para que se dispare antes del blur
                 li.addEventListener('mousedown', e => {
                     e.preventDefault();
                     onSelect(item);
@@ -310,7 +297,6 @@
         ul.style.display = 'block';
     }
 
-    // Cerrar al perder el foco (con delay para que mousedown del item se ejecute primero)
     [provinciaSearch, municipioSearch].forEach(inp => {
         inp.addEventListener('blur', () => {
             setTimeout(() => {
@@ -324,7 +310,7 @@
     // Gestión de municipios seleccionados
     // ------------------------------------------------------------------
     function agregarMunicipio(id, etiqueta) {
-        if (municipiosSeleccionados[id]) return; // ya está
+        if (municipiosSeleccionados[id]) return;
         municipiosSeleccionados[id] = etiqueta;
         renderBadges();
         errorDiv.style.display = 'none';
@@ -345,7 +331,6 @@
         }
         ids.forEach(id => {
             const etiqueta = municipiosSeleccionados[id];
-
             const span = document.createElement('span');
             span.className = 'badge bg-primary d-inline-flex align-items-center gap-1';
             span.innerHTML = escapeHtml(etiqueta) +
