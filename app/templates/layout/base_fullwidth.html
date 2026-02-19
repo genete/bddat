@@ -21,6 +21,9 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/v2-layout.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/v2-components.css') }}">
 
+    {# Estilos del sistema de notificaciones (toasts) definidos en PR #44 #}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}">
+
     {% block extra_css %}{% endblock %}
 </head>
 <body>
@@ -42,10 +45,58 @@
     </div>
     <!-- Fin A -->
 
+    <!-- Sistema de notificaciones toast (flash messages de Flask) -->
+    <div class="toast-container position-fixed bottom-0 p-3">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                <div class="toast toast-{{ category }}" role="alert"
+                     aria-live="assertive" aria-atomic="true"
+                     data-bs-autohide="true" data-bs-delay="8000">
+                    <div class="d-flex align-items-center p-3">
+                        <div class="flex-grow-1">
+                            {% if category == 'success' %}
+                                <i class="fas fa-check-circle me-2"></i><strong>Correcto:</strong> {{ message }}
+                            {% elif category == 'danger' %}
+                                <i class="fas fa-exclamation-circle me-2"></i><strong>Error:</strong> {{ message }}
+                            {% elif category == 'warning' %}
+                                <i class="fas fa-exclamation-triangle me-2"></i><strong>Atención:</strong> {{ message }}
+                            {% elif category == 'info' %}
+                                <i class="fas fa-info-circle me-2"></i><strong>Información:</strong> {{ message }}
+                            {% endif %}
+                        </div>
+                        <button type="button" class="btn-close ms-3"
+                                data-bs-dismiss="toast" aria-label="Cerrar"></button>
+                    </div>
+                </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
+
     {# Bootstrap JS bundle para componentes interactivos (accordion, dropdowns, etc.) #}
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"
             integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL"
             crossorigin="anonymous"></script>
+
+    <script>
+        // Auto-inicializar toasts al cargar la página (patrón del PR #44)
+        document.addEventListener('DOMContentLoaded', function() {
+            var toastElList = [].slice.call(document.querySelectorAll('.toast'));
+            toastElList.forEach(function(toastEl) {
+                toastEl.classList.add('showing');
+                var toast = new bootstrap.Toast(toastEl);
+                toast.show();
+                setTimeout(function() { toastEl.classList.remove('showing'); }, 300);
+                toastEl.addEventListener('hide.bs.toast', function() {
+                    toastEl.classList.add('hide');
+                });
+                toastEl.addEventListener('click', function(e) {
+                    if (!e.target.closest('.btn-close')) { toast.hide(); }
+                });
+            });
+        });
+    </script>
 
     {% block extra_js %}{% endblock %}
 </body>

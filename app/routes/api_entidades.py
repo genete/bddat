@@ -4,10 +4,11 @@ ENDPOINTS:
     GET /api/entidades
         Modo scroll infinito : parámetros cursor + limit + search + activo
         Modo autocomplete    : parámetro ?q=texto (mín 2 chars, máx 10 resultados)
+                               Opcional: ?rol=titular|consultado|publicador
                                Devuelve {results: [{id, text}, ...]}
                                Pensado para selects de titular en wizard expediente.
 
-VERSIÓN: 1.0
+VERSIÓN: 1.1
 FECHA: 2026-02-19
 ISSUE: #61
 """
@@ -31,6 +32,12 @@ def listar_entidades():
         Activo cuando se pasa el parámetro 'q' (mín 2 chars).
         Devuelve máx. 10 resultados: [{"id": 1, "text": "Nombre (NIF)"}]
         Filtra solo entidades activas.
+
+        Parámetro opcional 'rol':
+            rol=titular    → solo entidades con rol_titular=True
+            rol=consultado → solo entidades con rol_consultado=True
+            rol=publicador → solo entidades con rol_publicador=True
+            (omitido o valor desconocido → sin filtro extra, retrocompatible)
 
     MODO SCROLL INFINITO (sin 'q'):
         Query Parameters:
@@ -69,19 +76,28 @@ def listar_entidades():
         if len(q) < 2:
             return jsonify({'results': []}), 200
 
-        entidades = (
+        rol = request.args.get('rol', '').strip().lower()
+
+        query = (
             Entidad.query
+            .filter(Entidad.activo == True)
             .filter(
                 or_(
                     func.lower(Entidad.nombre_completo).contains(func.lower(q)),
                     func.lower(Entidad.nif).contains(func.lower(q))
                 )
             )
-            .filter(Entidad.activo == True)
-            .order_by(Entidad.nombre_completo)
-            .limit(10)
-            .all()
         )
+
+        # Filtro opcional por rol (retrocompatible: sin rol = sin restricción)
+        if rol == 'titular':
+            query = query.filter(Entidad.rol_titular == True)
+        elif rol == 'consultado':
+            query = query.filter(Entidad.rol_consultado == True)
+        elif rol == 'publicador':
+            query = query.filter(Entidad.rol_publicador == True)
+
+        entidades = query.order_by(Entidad.nombre_completo).limit(10).all()
 
         results = []
         for e in entidades:

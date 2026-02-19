@@ -65,6 +65,11 @@ def create_app(config_name='development'):
     app.register_blueprint(perfil.bp)
     app.register_blueprint(entidades.bp)        # Issue #61
 
+    # Registrar blueprints - Wizards
+    from app.routes import wizard_expediente
+
+    app.register_blueprint(wizard_expediente.bp)  # Issue #67
+
     # Registrar blueprints - APIs
     from app.routes import api_expedientes, api_municipios, vista3, api_entidades
 
