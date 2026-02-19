@@ -167,10 +167,6 @@ class Entidad(db.Model):
         order_by='DireccionNotificacion.activo.desc(), DireccionNotificacion.fecha_inicio.desc()'
     )
     
-    # Relaciones inversas con tablas operacionales
-    expedientes_como_titular = db.relationship('Expediente', foreign_keys='Expediente.titular_id', back_populates='titular')
-    solicitudes = db.relationship('Solicitud', foreign_keys='Solicitud.entidad_id', back_populates='entidad')
-    
     def __repr__(self):
         roles = []
         if self.rol_titular: roles.append('T')
