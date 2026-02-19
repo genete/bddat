@@ -1,0 +1,126 @@
+{# lista_v2_base.html
+   Template base para listados V2 (scroll infinito + filtros).
+
+   BLOQUES DISPONIBLES:
+     {% block page_title %}        — Texto del <h1> y <title>
+     {% block page_icon %}         — Icono FontAwesome del <h1> (default: fa-list)
+     {% block btn_nuevo %}         — Botón "Nuevo" (omitir si no aplica)
+     {% block filtros_extra %}     — Selects/inputs adicionales tras el buscador
+     {% block search_placeholder %}— Placeholder del input búsqueda
+     {% block tabla_clase %}       — Clase CSS adicional de la <table>
+     {% block entity_label_plural %}— Texto plural del contador (default: registros)
+     {% block thead_cols %}        — Columnas del <thead> (OBLIGATORIO)
+     {% block extra_js %}          — Inicialización de ScrollInfinito (OBLIGATORIO)
+
+   USO MÍNIMO:
+     {% extends 'layout/lista_v2_base.html' %}
+
+     {% block page_title %}Entidades{% endblock %}
+     {% block page_icon %}<i class="fas fa-building"></i>{% endblock %}
+     {% block entity_label_plural %}entidades{% endblock %}
+
+     {% block btn_nuevo %}
+       <button class="btn btn-primary"
+               onclick="window.location.href='{{ url_for('entidades.nueva') }}'">
+         <i class="fas fa-plus"></i> Nueva Entidad
+       </button>
+     {% endblock %}
+
+     {% block thead_cols %}
+       <th>Nombre</th>
+       <th>NIF/CIF</th>
+       <th>Tipo</th>
+       <th>Activo</th>
+       <th></th>
+     {% endblock %}
+
+     {% block extra_js %}
+     {{ super() }}
+     <script>
+       const scrollInfinito = new ScrollInfinito({
+         apiUrl:      '{{ url_for("api_entidades.listar_entidades") }}',
+         tableClass:  '.entidades-table',
+         entityLabel: 'entidades',
+         detailUrl:   id => `/entidades/${id}`,
+         columns: [
+           { key: 'nombre_completo', label: 'Nombre',  type: 'text'     },
+           { key: 'cif_nif',         label: 'NIF/CIF', type: 'text'     },
+           { key: 'tipo_entidad',    label: 'Tipo',    type: 'badge'    },
+           { key: 'activo',          label: 'Activo',  type: 'bool'     },
+           { key: '_acciones',       label: '',        type: 'acciones' }
+         ]
+       });
+     </script>
+     {% endblock %}
+
+   VERSIÓN: 1.0
+   FECHA: 2026-02-19
+   EPIC: #93 (Fase 3 prep.) — Issue #61
+#}
+{% extends 'layout/base_fullwidth.html' %}
+
+{% block title %}{% block page_title %}Listado{% endblock %} — BDDAT{% endblock %}
+
+{% block content %}
+
+<!-- C.1: Super-cabecera del listado (sin scroll) -->
+<div class="lista-cabecera">
+
+    <!-- Page Header -->
+    <div class="page-header content-constrained">
+        <h1>
+            {% block page_icon %}<i class="fas fa-list"></i>{% endblock %}
+            {% block page_title_h1 %}{{ self.page_title() }}{% endblock %}
+        </h1>
+        {% block btn_nuevo %}{% endblock %}
+    </div>
+
+    <!-- Filtros + Contador -->
+    <div class="filters-row content-constrained">
+        <div class="filters">
+            <input type="search"
+                   placeholder="{% block search_placeholder %}Buscar...{% endblock %}"
+                   aria-label="Buscar">
+            {% block filtros_extra %}{% endblock %}
+            <button class="btn btn-outline btn-filtrar">
+                <i class="fas fa-filter"></i> Filtrar
+            </button>
+            <button class="btn btn-outline btn-limpiar">
+                <i class="fas fa-times"></i> Limpiar
+            </button>
+        </div>
+
+        <div class="pagination-info">
+            Mostrando <span>0</span> de <span>0</span>
+            {% block entity_label_plural %}registros{% endblock %}
+        </div>
+    </div>
+</div>
+
+<!-- C.2: Contenedor scrollable independiente -->
+<div class="lista-scroll-container">
+    <table class="lista-table {% block tabla_clase %}{% endblock %}">
+        <thead>
+            <tr>
+                {% block thead_cols %}{% endblock %}
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Filas cargadas dinámicamente por ScrollInfinito -->
+        </tbody>
+    </table>
+
+    <button id="tabla-scroll-to-top" aria-label="Volver arriba de la tabla">
+        <i class="fas fa-chevron-up"></i>
+    </button>
+</div>
+<!-- Fin C.2 -->
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/v2-scroll-infinito.js') }}"></script>
+<script src="{{ url_for('static', filename='js/v2-filtros.js') }}"></script>
+<script src="{{ url_for('static', filename='js/v2-tabla-scroll-to-top.js') }}"></script>
+{# Cada template hijo añade aquí su inicialización de ScrollInfinito con {{ super() }} #}
+{% endblock %}
