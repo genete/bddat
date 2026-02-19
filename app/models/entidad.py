@@ -168,10 +168,8 @@ class Entidad(db.Model):
     )
     
     # Relaciones inversas con tablas operacionales
-    # TODO: Descomentar cuando se migren EXPEDIENTES y SOLICITUDES para usar ENTIDADES
-    # expedientes_titular = db.relationship('Expediente', foreign_keys='Expediente.titular_id', backref='titular')
-    # solicitudes_solicitante = db.relationship('Solicitud', foreign_keys='Solicitud.solicitante_id', backref='solicitante')
-    # solicitudes_autorizado = db.relationship('Solicitud', foreign_keys='Solicitud.autorizado_id', backref='autorizado')
+    expedientes_como_titular = db.relationship('Expediente', foreign_keys='Expediente.titular_id', back_populates='titular')
+    solicitudes = db.relationship('Solicitud', foreign_keys='Solicitud.entidad_id', back_populates='entidad')
     
     def __repr__(self):
         roles = []
