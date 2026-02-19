@@ -1,0 +1,61 @@
+{% extends 'layout/base_fullwidth.html' %}
+
+{% block title %}{{ entidad.nombre_completo }} — BDDAT{% endblock %}
+
+{% block content %}
+<div class="content-constrained" style="max-width: 720px; padding: 2rem 1rem;">
+
+    <div class="page-header" style="margin-bottom: 1.5rem;">
+        <h1><i class="fas fa-building"></i> {{ entidad.nombre_completo }}</h1>
+        <a href="{{ url_for('entidades.index') }}" class="btn btn-outline">
+            <i class="fas fa-arrow-left"></i> Volver al listado
+        </a>
+    </div>
+
+    <!-- Flash messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        {% for category, message in messages %}
+        <div class="alert alert-{{ category }} alert-dismissible" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+        </div>
+        {% endfor %}
+    {% endif %}
+    {% endwith %}
+
+    <div class="alert alert-info">
+        <i class="fas fa-info-circle"></i>
+        <strong>Vista en desarrollo.</strong>
+        La edición completa, direcciones de notificación y relaciones
+        se implementarán en la fase 2 del Issue #61.
+    </div>
+
+    <dl class="row">
+        <dt class="col-sm-4">NIF</dt>
+        <dd class="col-sm-8">{{ entidad.nif or '—' }}</dd>
+
+        <dt class="col-sm-4">Roles</dt>
+        <dd class="col-sm-8">
+            {% if entidad.rol_titular %}<span class="badge badge-info">Titular</span>{% endif %}
+            {% if entidad.rol_consultado %}<span class="badge badge-info">Consultado</span>{% endif %}
+            {% if entidad.rol_publicador %}<span class="badge badge-info">Publicador</span>{% endif %}
+        </dd>
+
+        <dt class="col-sm-4">Email</dt>
+        <dd class="col-sm-8">{{ entidad.email or '—' }}</dd>
+
+        <dt class="col-sm-4">Teléfono</dt>
+        <dd class="col-sm-8">{{ entidad.telefono or '—' }}</dd>
+
+        <dt class="col-sm-4">Activo</dt>
+        <dd class="col-sm-8">{% if entidad.activo %}<i class="fas fa-check-circle text-success"></i> Sí{% else %}<i class="fas fa-times-circle text-danger"></i> No{% endif %}</dd>
+
+        {% if entidad.notas %}
+        <dt class="col-sm-4">Notas</dt>
+        <dd class="col-sm-8">{{ entidad.notas }}</dd>
+        {% endif %}
+    </dl>
+
+</div>
+{% endblock %}

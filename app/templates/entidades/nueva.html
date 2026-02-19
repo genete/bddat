@@ -1,0 +1,153 @@
+{% extends 'layout/base_fullwidth.html' %}
+
+{% block title %}Nueva Entidad — BDDAT{% endblock %}
+
+{% block content %}
+<div class="content-constrained" style="max-width: 720px; padding: 2rem 1rem;">
+
+    <!-- Cabecera -->
+    <div class="page-header" style="margin-bottom: 1.5rem;">
+        <h1><i class="fas fa-building"></i> Nueva Entidad</h1>
+        <a href="{{ url_for('entidades.index') }}" class="btn btn-outline">
+            <i class="fas fa-arrow-left"></i> Volver al listado
+        </a>
+    </div>
+
+    <!-- Flash messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        {% for category, message in messages %}
+        <div class="alert alert-{{ category }} alert-dismissible" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+        </div>
+        {% endfor %}
+    {% endif %}
+    {% endwith %}
+
+    <!-- Formulario -->
+    <form method="POST" action="{{ url_for('entidades.nueva') }}" novalidate>
+
+        <!-- Identificación -->
+        <fieldset class="mb-4">
+            <legend class="fs-6 fw-bold text-muted border-bottom pb-1 mb-3">
+                <i class="fas fa-id-card"></i> Identificación
+            </legend>
+
+            <div class="mb-3">
+                <label for="nombre_completo" class="form-label">
+                    Nombre / Razón Social <span class="text-danger">*</span>
+                </label>
+                <input type="text"
+                       class="form-control"
+                       id="nombre_completo"
+                       name="nombre_completo"
+                       maxlength="200"
+                       required
+                       placeholder="Nombre completo o razón social">
+            </div>
+
+            <div class="mb-3">
+                <label for="nif" class="form-label">NIF / CIF / NIE</label>
+                <input type="text"
+                       class="form-control"
+                       id="nif"
+                       name="nif"
+                       maxlength="20"
+                       placeholder="Ej: A82091102 · 12345678Z · X1234567L">
+                <div class="form-text">Opcional. Se normalizará automáticamente (mayúsculas, sin guiones ni espacios).</div>
+            </div>
+        </fieldset>
+
+        <!-- Roles -->
+        <fieldset class="mb-4">
+            <legend class="fs-6 fw-bold text-muted border-bottom pb-1 mb-3">
+                <i class="fas fa-tags"></i> Roles <span class="text-danger">*</span>
+            </legend>
+            <div class="form-text mb-2">Debe marcarse al menos un rol.</div>
+
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="rol_titular" name="rol_titular" value="1">
+                <label class="form-check-label" for="rol_titular">
+                    <strong>Titular</strong>
+                    <span class="text-muted">— Puede ser titular de expedientes (promotores, solicitantes)</span>
+                </label>
+            </div>
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="rol_consultado" name="rol_consultado" value="1">
+                <label class="form-check-label" for="rol_consultado">
+                    <strong>Consultado</strong>
+                    <span class="text-muted">— Puede ser consultado en trámites (organismos afectados, distribuidoras)</span>
+                </label>
+            </div>
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="rol_publicador" name="rol_publicador" value="1">
+                <label class="form-check-label" for="rol_publicador">
+                    <strong>Publicador</strong>
+                    <span class="text-muted">— Puede publicar anuncios/notificaciones (diputaciones, ayuntamientos)</span>
+                </label>
+            </div>
+        </fieldset>
+
+        <!-- Contacto -->
+        <fieldset class="mb-4">
+            <legend class="fs-6 fw-bold text-muted border-bottom pb-1 mb-3">
+                <i class="fas fa-phone"></i> Contacto
+            </legend>
+
+            <div class="row">
+                <div class="col-md-7 mb-3">
+                    <label for="email" class="form-label">Email</label>
+                    <input type="email"
+                           class="form-control"
+                           id="email"
+                           name="email"
+                           maxlength="120"
+                           placeholder="correo@ejemplo.com">
+                </div>
+                <div class="col-md-5 mb-3">
+                    <label for="telefono" class="form-label">Teléfono</label>
+                    <input type="tel"
+                           class="form-control"
+                           id="telefono"
+                           name="telefono"
+                           maxlength="20"
+                           placeholder="+34 600 000 000">
+                </div>
+            </div>
+        </fieldset>
+
+        <!-- Control -->
+        <fieldset class="mb-4">
+            <legend class="fs-6 fw-bold text-muted border-bottom pb-1 mb-3">
+                <i class="fas fa-cog"></i> Control
+            </legend>
+
+            <div class="form-check form-switch mb-3">
+                <input class="form-check-input" type="checkbox" id="activo" name="activo" value="1" checked>
+                <label class="form-check-label" for="activo">Entidad activa</label>
+            </div>
+
+            <div class="mb-3">
+                <label for="notas" class="form-label">Notas</label>
+                <textarea class="form-control"
+                          id="notas"
+                          name="notas"
+                          rows="3"
+                          placeholder="Observaciones generales..."></textarea>
+            </div>
+        </fieldset>
+
+        <!-- Botones -->
+        <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-save"></i> Crear Entidad
+            </button>
+            <a href="{{ url_for('entidades.index') }}" class="btn btn-outline">
+                Cancelar
+            </a>
+        </div>
+
+    </form>
+</div>
+{% endblock %}
