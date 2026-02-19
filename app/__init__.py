@@ -78,6 +78,11 @@ def create_app(config_name='development'):
     app.register_blueprint(vista3.bp)                       # usa 'bp'
     app.register_blueprint(api_entidades.api_entidades_bp)  # usa 'api_entidades_bp' — Issue #61
 
+    # Registrar módulos (app/modules/) — Fase 3: registro manual
+    # Los módulos con bp = None se omiten hasta completar su migración.
+    from app.modules import ModuleRegistry
+    ModuleRegistry.register_all(app)
+
     # Configuración de Jinja2
     app.jinja_env.trim_blocks = True
     app.jinja_env.lstrip_blocks = True

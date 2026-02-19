@@ -1,0 +1,16 @@
+{
+  "module": "entidades",
+  "name": "Entidades",
+  "icon": "fa-building",
+  "order": 20,
+  "permissions": {
+    "list":   ["ADMIN", "SUPERVISOR", "TRAMITADOR", "ADMINISTRATIVO"],
+    "create": ["ADMIN", "SUPERVISOR", "TRAMITADOR", "ADMINISTRATIVO"],
+    "edit":   ["ADMIN", "SUPERVISOR", "TRAMITADOR", "ADMINISTRATIVO"],
+    "delete": ["ADMIN"]
+  },
+  "navigation": {
+    "label": "Entidades",
+    "route": "entidades.listado"
+  }
+}
