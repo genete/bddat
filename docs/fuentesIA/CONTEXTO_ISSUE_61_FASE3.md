@@ -149,4 +149,3 @@ Expediente.titular_id → Entidad.id
 - Issue #72: https://github.com/genete/bddat/issues/72
 - Issue #73: https://github.com/genete/bddat/issues/73
 - Contexto #93 completado: `docs/fuentesIA/CONTEXTO_ISSUE_93.md`
-- Plan de trabajo: `memory/plan_trabajo.md`
