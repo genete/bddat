@@ -1,13 +1,10 @@
-{% extends 'layout/base_full_width.html' %}
+{% extends 'layout/base_fullwidth.html' %}
 
 {% block title %}Nuevo Expediente &mdash; Paso 1{% endblock %}
 
 {% block content %}
 <div class="container-fluid py-4">
 
-    {# ------------------------------------------------------------------ #}
-    {# Migas de pan                                                         #}
-    {# ------------------------------------------------------------------ #}
     <nav aria-label="breadcrumb" class="mb-3">
         <ol class="breadcrumb">
             <li class="breadcrumb-item"><a href="{{ url_for('dashboard.index') }}">Inicio</a></li>
@@ -16,9 +13,6 @@
         </ol>
     </nav>
 
-    {# ------------------------------------------------------------------ #}
-    {# Título + indicador de pasos                                          #}
-    {# ------------------------------------------------------------------ #}
     <div class="d-flex align-items-center mb-4 gap-3">
         <h1 class="h3 mb-0">
             <i class="fas fa-folder-plus me-2 text-primary"></i>Nuevo Expediente
@@ -26,16 +20,12 @@
         <span class="badge bg-primary fs-6">Paso 1 de 3</span>
     </div>
 
-    {# Indicador de progreso #}
     <div class="progress mb-4" style="height: 6px;">
         <div class="progress-bar bg-primary" style="width: 33%"
              role="progressbar" aria-valuenow="33" aria-valuemin="0" aria-valuemax="100">
         </div>
     </div>
 
-    {# ------------------------------------------------------------------ #}
-    {# Mensajes flash                                                       #}
-    {# ------------------------------------------------------------------ #}
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
             {% for category, message in messages %}
@@ -47,9 +37,6 @@
         {% endif %}
     {% endwith %}
 
-    {# ------------------------------------------------------------------ #}
-    {# Formulario                                                           #}
-    {# ------------------------------------------------------------------ #}
     <div class="row justify-content-center">
         <div class="col-lg-7 col-md-10">
             <div class="card shadow-sm">
@@ -59,7 +46,6 @@
                 <div class="card-body">
                     <form method="post" action="{{ url_for('wizard_expediente.paso1') }}" novalidate>
 
-                        {# Tipo de expediente #}
                         <div class="mb-4">
                             <label for="tipo_expediente_id" class="form-label fw-semibold">
                                 Tipo de expediente <span class="text-danger">*</span>
@@ -80,7 +66,6 @@
                             <div class="form-text">Define el procedimiento normativo aplicable.</div>
                         </div>
 
-                        {# Responsable #}
                         <div class="mb-4">
                             <label for="responsable_id" class="form-label fw-semibold">Tramitador responsable</label>
                             <select id="responsable_id" name="responsable_id" class="form-select">
@@ -98,7 +83,6 @@
                             <div class="form-text">Opcional. Puede asignarse después.</div>
                         </div>
 
-                        {# Heredado #}
                         <div class="mb-4">
                             <div class="form-check">
                                 <input class="form-check-input" type="checkbox"
@@ -108,10 +92,9 @@
                                     Expediente heredado del sistema anterior
                                 </label>
                             </div>
-                            <div class="form-text ms-4">Marcar solo si proviene del sistema legacy (puede tener datos incompletos).</div>
+                            <div class="form-text ms-4">Marcar solo si proviene del sistema legacy.</div>
                         </div>
 
-                        {# Botones #}
                         <div class="d-flex justify-content-between pt-2">
                             <a href="{{ url_for('wizard_expediente.cancelar') }}"
                                class="btn btn-outline-secondary">

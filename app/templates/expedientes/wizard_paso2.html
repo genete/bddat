@@ -1,4 +1,4 @@
-{% extends 'layout/base_full_width.html' %}
+{% extends 'layout/base_fullwidth.html' %}
 
 {% block title %}Nuevo Expediente &mdash; Paso 2{% endblock %}
 
@@ -61,7 +61,7 @@
                                 Descripción <span class="text-danger">*</span>
                             </label>
                             <textarea id="descripcion" name="descripcion"
-                                      class="form-control" rows="4"
+                                      class="form-control" rows="3"
                                       maxlength="10000" required>{{ paso2.get('descripcion', '') }}</textarea>
                         </div>
 
@@ -95,7 +95,7 @@
                                        class="form-control"
                                        value="{{ paso2.get('fecha', '') }}"
                                        required>
-                                <div class="form-text">Fecha de firma/visado (no administrativa).</div>
+                                <div class="form-text">Fecha de firma/visado.</div>
                             </div>
                             <div class="col-md-8 mb-3">
                                 <label for="ia_id" class="form-label fw-semibold">Instrumento ambiental</label>
@@ -114,57 +114,64 @@
                             </div>
                         </div>
 
-                        {# ============================================================ #}
-                        {# MUNICIPIOS AFECTADOS — selector dos pasos: provincia + muni  #}
-                        {# API: GET /api/provincias?q=   → ["Sevilla", ...]             #}
-                        {#      GET /api/municipios?provincia=X&q=Y                     #}
-                        {#           → [{id, nombre, codigo, provincia}]                #}
-                        {# ============================================================ #}
+                        {# ============================================================= #}
+                        {# MUNICIPIOS AFECTADOS                                          #}
+                        {# Paso A: provincia  →  GET /api/provincias?q=                  #}
+                        {#         respuesta: ["Sevilla", "Cádiz", ...]                   #}
+                        {# Paso B: municipio  →  GET /api/municipios?provincia=X&q=Y      #}
+                        {#         respuesta: [{id, nombre, codigo, provincia}]          #}
+                        {# ============================================================= #}
                         <div class="mb-4">
                             <label class="form-label fw-semibold">
                                 Municipios afectados <span class="text-danger">*</span>
                             </label>
 
-                            <div class="row g-2 align-items-start mb-2">
+                            <div class="card bg-light border-0 p-3">
 
-                                {# --- Columna 1: Provincia --- #}
-                                <div class="col-md-5" style="position: relative;">
-                                    <label for="provincia-search" class="form-label small text-muted mb-1">Provincia</label>
+                                {# Paso A: Provincia #}
+                                <div class="mb-3" style="position:relative;">
+                                    <label for="provincia-search" class="form-label small fw-semibold mb-1">
+                                        <span class="badge bg-secondary me-1">A</span> Provincia
+                                    </label>
                                     <input type="text" id="provincia-search"
-                                           class="form-control form-control-sm"
-                                           placeholder="Escriba la provincia..."
+                                           class="form-control"
+                                           placeholder="Escriba el nombre de la provincia..."
                                            autocomplete="off">
-                                    <ul id="provincia-suggestions"
-                                        class="list-group"
+                                    <ul id="provincia-suggestions" class="list-group shadow-sm"
                                         style="position:absolute; z-index:1050; width:100%;
-                                               max-height:180px; overflow-y:auto; display:none;">
+                                               max-height:200px; overflow-y:auto; display:none;">
                                     </ul>
                                 </div>
 
-                                {# --- Columna 2: Municipio (bloqueado hasta tener provincia) --- #}
-                                <div class="col-md-7" style="position: relative;">
-                                    <label for="municipio-search" class="form-label small text-muted mb-1">
+                                {# Paso B: Municipio (bloqueado hasta seleccionar provincia) #}
+                                <div class="mb-3" style="position:relative;">
+                                    <label for="municipio-search" class="form-label small fw-semibold mb-1">
+                                        <span class="badge bg-secondary me-1">B</span>
                                         Municipio
-                                        <span id="municipio-provincia-label" class="text-primary fw-semibold"></span>
+                                        <span id="municipio-provincia-label" class="text-primary fst-italic"></span>
                                     </label>
                                     <input type="text" id="municipio-search"
-                                           class="form-control form-control-sm"
+                                           class="form-control"
                                            placeholder="Seleccione primero una provincia..."
-                                           autocomplete="off"
-                                           disabled>
-                                    <ul id="municipio-suggestions"
-                                        class="list-group"
+                                           autocomplete="off" disabled>
+                                    <ul id="municipio-suggestions" class="list-group shadow-sm"
                                         style="position:absolute; z-index:1050; width:100%;
                                                max-height:220px; overflow-y:auto; display:none;">
                                     </ul>
                                 </div>
 
+                                {# Lista de municipios ya añadidos #}
+                                <div>
+                                    <p class="small text-muted mb-2">Municipios seleccionados:</p>
+                                    <div id="municipios-seleccionados" class="d-flex flex-wrap gap-2">
+                                        <span class="text-muted small" id="municipios-placeholder">Ninguno añadido todavía.</span>
+                                    </div>
+                                </div>
+
                             </div>
 
-                            {# Municipios ya añadidos (badges) #}
-                            <div id="municipios-seleccionados" class="d-flex flex-wrap gap-2 mb-1"></div>
                             <div id="municipios-error" class="text-danger small mt-1" style="display:none;">
-                                Debe añadir al menos un municipio.
+                                <i class="fas fa-exclamation-circle me-1"></i>Debe añadir al menos un municipio.
                             </div>
                             <div id="municipios-hidden-inputs"></div>
                         </div>
@@ -199,33 +206,26 @@
 (function () {
     'use strict';
 
-    // ================================================================
-    // Estado en memoria
-    // ================================================================
-    const municipiosSeleccionados = {};   // { id: 'Nombre (Provincia)' }
-    let provinciaActual = null;            // string nombre provincia seleccionada
+    const municipiosSeleccionados = {};  // { id: etiqueta }
+    let provinciaActual = null;
 
-    // ================================================================
-    // Referencias DOM
-    // ================================================================
-    const provinciaSearch    = document.getElementById('provincia-search');
-    const provinciaSugg      = document.getElementById('provincia-suggestions');
-    const municipioSearch    = document.getElementById('municipio-search');
-    const municipioSugg      = document.getElementById('municipio-suggestions');
-    const municipioLabel     = document.getElementById('municipio-provincia-label');
-    const badgesContainer    = document.getElementById('municipios-seleccionados');
-    const hiddenContainer    = document.getElementById('municipios-hidden-inputs');
-    const errorDiv           = document.getElementById('municipios-error');
+    const provinciaSearch = document.getElementById('provincia-search');
+    const provinciaSugg   = document.getElementById('provincia-suggestions');
+    const municipioSearch = document.getElementById('municipio-search');
+    const municipioSugg   = document.getElementById('municipio-suggestions');
+    const municipioLabel  = document.getElementById('municipio-provincia-label');
+    const badgesDiv       = document.getElementById('municipios-seleccionados');
+    const hiddenDiv       = document.getElementById('municipios-hidden-inputs');
+    const errorDiv        = document.getElementById('municipios-error');
 
-    let timerProvincia  = null;
-    let timerMunicipio  = null;
+    let tProv = null, tMuni = null;
 
-    // ================================================================
-    // PASO A: autocomplete de provincia  →  /api/provincias?q=
-    // ================================================================
+    // ------------------------------------------------------------------
+    // A) Autocomplete de provincia  →  /api/provincias?q=
+    // ------------------------------------------------------------------
     provinciaSearch.addEventListener('input', function () {
-        clearTimeout(timerProvincia);
-        // Al cambiar texto, desactivar municipio hasta nueva selección
+        clearTimeout(tProv);
+        // Reset municipio al cambiar provincia
         provinciaActual = null;
         municipioSearch.disabled = true;
         municipioSearch.value = '';
@@ -234,151 +234,145 @@
         municipioSugg.style.display = 'none';
 
         const q = this.value.trim();
-        if (q.length < 1) {
-            provinciaSugg.style.display = 'none';
-            return;
-        }
-        timerProvincia = setTimeout(() => buscarProvincias(q), 200);
-    });
+        if (!q) { provinciaSugg.style.display = 'none'; return; }
 
-    function buscarProvincias(q) {
-        fetch(`/api/provincias?q=${encodeURIComponent(q)}`)
-            .then(r => r.json())
-            .then(lista => {
-                provinciaSugg.innerHTML = '';
-                if (!lista.length) {
-                    provinciaSugg.style.display = 'none';
-                    return;
-                }
-                lista.forEach(nombre => {
-                    const li = document.createElement('li');
-                    li.className = 'list-group-item list-group-item-action py-1';
-                    li.textContent = nombre;
-                    li.addEventListener('click', () => seleccionarProvincia(nombre));
-                    provinciaSugg.appendChild(li);
-                });
-                provinciaSugg.style.display = 'block';
-            })
-            .catch(() => { provinciaSugg.style.display = 'none'; });
-    }
+        tProv = setTimeout(() => {
+            fetch(`/api/provincias?q=${encodeURIComponent(q)}`)
+                .then(r => r.json())
+                .then(lista => renderSugg(
+                    provinciaSugg,
+                    lista.map(n => ({ id: n, text: n })),
+                    item => seleccionarProvincia(item.text)
+                ))
+                .catch(() => { provinciaSugg.style.display = 'none'; });
+        }, 200);
+    });
 
     function seleccionarProvincia(nombre) {
         provinciaActual = nombre;
         provinciaSearch.value = nombre;
         provinciaSugg.style.display = 'none';
-        // Habilitar buscador de municipio
         municipioSearch.disabled = false;
-        municipioSearch.placeholder = 'Escriba el municipio...';
-        municipioLabel.textContent = ' (' + nombre + ')';
+        municipioSearch.placeholder = 'Escriba el nombre del municipio...';
+        municipioLabel.textContent = ' — ' + nombre;
         municipioSearch.focus();
     }
 
-    // ================================================================
-    // PASO B: autocomplete de municipio  →  /api/municipios?provincia=X&q=Y
-    // ================================================================
+    // ------------------------------------------------------------------
+    // B) Autocomplete de municipio  →  /api/municipios?provincia=X&q=Y
+    // ------------------------------------------------------------------
     municipioSearch.addEventListener('input', function () {
-        clearTimeout(timerMunicipio);
+        clearTimeout(tMuni);
         if (!provinciaActual) return;
         const q = this.value.trim();
-        if (q.length < 1) {
-            municipioSugg.style.display = 'none';
-            return;
-        }
-        timerMunicipio = setTimeout(() => buscarMunicipios(q), 200);
+        if (!q) { municipioSugg.style.display = 'none'; return; }
+
+        tMuni = setTimeout(() => {
+            const url = `/api/municipios?provincia=${encodeURIComponent(provinciaActual)}&q=${encodeURIComponent(q)}`;
+            fetch(url)
+                .then(r => r.json())
+                .then(lista => {
+                    if (!Array.isArray(lista)) lista = [];
+                    renderSugg(
+                        municipioSugg,
+                        lista.map(m => ({ id: m.id, text: m.nombre + ' (' + m.provincia + ')' })),
+                        item => { agregarMunicipio(item.id, item.text); municipioSearch.value = ''; }
+                    );
+                })
+                .catch(() => { municipioSugg.style.display = 'none'; });
+        }, 200);
     });
 
-    function buscarMunicipios(q) {
-        const url = `/api/municipios?provincia=${encodeURIComponent(provinciaActual)}&q=${encodeURIComponent(q)}`;
-        fetch(url)
-            .then(r => r.json())
-            .then(lista => {
-                municipioSugg.innerHTML = '';
-                if (!Array.isArray(lista) || !lista.length) {
-                    const li = document.createElement('li');
-                    li.className = 'list-group-item text-muted small py-1';
-                    li.textContent = 'Sin resultados';
-                    municipioSugg.appendChild(li);
-                    municipioSugg.style.display = 'block';
-                    return;
-                }
-                lista.forEach(m => {
-                    const li = document.createElement('li');
-                    li.className = 'list-group-item list-group-item-action py-1';
-                    li.textContent = m.nombre;
-                    li.addEventListener('click', () => {
-                        agregarMunicipio(m.id, m.nombre + ' (' + m.provincia + ')');
-                        municipioSearch.value = '';
-                        municipioSugg.style.display = 'none';
-                    });
-                    municipioSugg.appendChild(li);
+    // ------------------------------------------------------------------
+    // Render genérico de lista desplegable
+    // ------------------------------------------------------------------
+    function renderSugg(ul, items, onSelect) {
+        ul.innerHTML = '';
+        if (!items.length) {
+            const li = document.createElement('li');
+            li.className = 'list-group-item text-muted small py-2';
+            li.textContent = 'Sin resultados';
+            ul.appendChild(li);
+        } else {
+            items.forEach(item => {
+                const li = document.createElement('li');
+                li.className = 'list-group-item list-group-item-action py-2';
+                li.textContent = item.text;
+                // mousedown en lugar de click para que se dispare antes del blur
+                li.addEventListener('mousedown', e => {
+                    e.preventDefault();
+                    onSelect(item);
+                    ul.style.display = 'none';
                 });
-                municipioSugg.style.display = 'block';
-            })
-            .catch(() => { municipioSugg.style.display = 'none'; });
+                ul.appendChild(li);
+            });
+        }
+        ul.style.display = 'block';
     }
 
-    // Cerrar dropdowns al clicar fuera
-    document.addEventListener('click', function (e) {
-        if (!provinciaSugg.contains(e.target) && e.target !== provinciaSearch) {
-            provinciaSugg.style.display = 'none';
-        }
-        if (!municipioSugg.contains(e.target) && e.target !== municipioSearch) {
-            municipioSugg.style.display = 'none';
-        }
+    // Cerrar al perder el foco (con delay para que mousedown del item se ejecute primero)
+    [provinciaSearch, municipioSearch].forEach(inp => {
+        inp.addEventListener('blur', () => {
+            setTimeout(() => {
+                provinciaSugg.style.display = 'none';
+                municipioSugg.style.display = 'none';
+            }, 150);
+        });
     });
 
-    // ================================================================
-    // Gestionar lista de municipios seleccionados
-    // ================================================================
+    // ------------------------------------------------------------------
+    // Gestión de municipios seleccionados
+    // ------------------------------------------------------------------
     function agregarMunicipio(id, etiqueta) {
-        if (municipiosSeleccionados[id]) return;
+        if (municipiosSeleccionados[id]) return; // ya está
         municipiosSeleccionados[id] = etiqueta;
-        renderizarMunicipios();
+        renderBadges();
         errorDiv.style.display = 'none';
     }
 
     function eliminarMunicipio(id) {
         delete municipiosSeleccionados[id];
-        renderizarMunicipios();
+        renderBadges();
     }
 
-    function renderizarMunicipios() {
-        badgesContainer.innerHTML = '';
-        hiddenContainer.innerHTML = '';
-        Object.entries(municipiosSeleccionados).forEach(([id, etiqueta]) => {
+    function renderBadges() {
+        badgesDiv.innerHTML = '';
+        hiddenDiv.innerHTML = '';
+        const ids = Object.keys(municipiosSeleccionados);
+        if (!ids.length) {
+            badgesDiv.innerHTML = '<span class="text-muted small">Ninguno añadido todavía.</span>';
+            return;
+        }
+        ids.forEach(id => {
+            const etiqueta = municipiosSeleccionados[id];
+
             const span = document.createElement('span');
-            span.className = 'badge bg-primary d-inline-flex align-items-center gap-1 me-1 mb-1';
-            span.style.fontSize = '0.85em';
+            span.className = 'badge bg-primary d-inline-flex align-items-center gap-1';
             span.innerHTML = escapeHtml(etiqueta) +
                 `<button type="button" class="btn-close btn-close-white ms-1"
-                         aria-label="Eliminar" style="font-size:0.55rem;"></button>`;
+                         aria-label="Eliminar" style="font-size:0.5rem;"></button>`;
             span.querySelector('button').addEventListener('click', () => eliminarMunicipio(id));
-            badgesContainer.appendChild(span);
+            badgesDiv.appendChild(span);
 
             const inp = document.createElement('input');
-            inp.type  = 'hidden';
-            inp.name  = 'municipios_ids[]';
-            inp.value = id;
-            hiddenContainer.appendChild(inp);
+            inp.type = 'hidden'; inp.name = 'municipios_ids[]'; inp.value = id;
+            hiddenDiv.appendChild(inp);
         });
     }
 
-    // ================================================================
+    // ------------------------------------------------------------------
     // Validación pre-submit
-    // ================================================================
+    // ------------------------------------------------------------------
     document.getElementById('form-paso2').addEventListener('submit', function (e) {
-        if (Object.keys(municipiosSeleccionados).length === 0) {
+        if (!Object.keys(municipiosSeleccionados).length) {
             e.preventDefault();
             errorDiv.style.display = 'block';
             provinciaSearch.focus();
         }
     });
 
-    // ================================================================
-    // Helpers
-    // ================================================================
-    function escapeHtml(str) {
-        return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    function escapeHtml(s) {
+        return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
 
 }());
