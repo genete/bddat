@@ -2,15 +2,21 @@
    Template base para listados V2 (scroll infinito + filtros).
 
    BLOQUES DISPONIBLES:
-     {% block page_title %}        — Texto del <h1> y <title>
-     {% block page_icon %}         — Icono FontAwesome del <h1> (default: fa-list)
-     {% block btn_nuevo %}         — Botón "Nuevo" (omitir si no aplica)
-     {% block filtros_extra %}     — Selects/inputs adicionales tras el buscador
-     {% block search_placeholder %}— Placeholder del input búsqueda
-     {% block tabla_clase %}       — Clase CSS adicional de la <table>
+     {% block page_title %}         — Texto del <h1> y <title>
+     {% block page_icon %}          — Icono FontAwesome del <h1> (default: fa-list)
+     {% block btn_nuevo %}          — Botón "Nuevo" (omitir si no aplica)
+     {% block filtros_extra %}      — Selects/inputs adicionales tras el buscador
+     {% block search_placeholder %} — Placeholder del input búsqueda
+     {% block tabla_clase %}        — Clase CSS adicional de la <table>
      {% block entity_label_plural %}— Texto plural del contador (default: registros)
-     {% block thead_cols %}        — Columnas del <thead> (OBLIGATORIO)
-     {% block extra_js %}          — Inicialización de ScrollInfinito (OBLIGATORIO)
+     {% block thead_cols %}         — Columnas del <thead> (OBLIGATORIO)
+     {% block extra_js %}           — Inicialización de ScrollInfinito (OBLIGATORIO)
+
+   NOTA CSS:
+     La clase base de la tabla es 'expedientes-table' (clase con estilos definidos
+     en v2-components.css). En Epic #93 Fase 3 se renombrará a 'lista-table' y
+     se extraerán los estilos como clase genérica.
+     Cada módulo puede añadir su propia clase adicional via {% block tabla_clase %}.
 
    USO MÍNIMO:
      {% extends 'layout/lista_v2_base.html' %}
@@ -28,8 +34,8 @@
 
      {% block thead_cols %}
        <th>Nombre</th>
-       <th>NIF/CIF</th>
-       <th>Tipo</th>
+       <th>NIF</th>
+       <th>Roles</th>
        <th>Activo</th>
        <th></th>
      {% endblock %}
@@ -44,8 +50,8 @@
          detailUrl:   id => `/entidades/${id}`,
          columns: [
            { key: 'nombre_completo', label: 'Nombre',  type: 'text'     },
-           { key: 'cif_nif',         label: 'NIF/CIF', type: 'text'     },
-           { key: 'tipo_entidad',    label: 'Tipo',    type: 'badge'    },
+           { key: 'nif',             label: 'NIF',     type: 'text'     },
+           { key: 'roles',           label: 'Roles',   type: 'text'     },
            { key: 'activo',          label: 'Activo',  type: 'bool'     },
            { key: '_acciones',       label: '',        type: 'acciones' }
          ]
@@ -53,8 +59,9 @@
      </script>
      {% endblock %}
 
-   VERSIÓN: 1.0
+   VERSIÓN: 1.1
    FECHA: 2026-02-19
+   CAMBIOS v1.1: Clase base tabla cambiada de 'lista-table' a 'expedientes-table'
    EPIC: #93 (Fase 3 prep.) — Issue #61
 #}
 {% extends 'layout/base_fullwidth.html' %}
@@ -99,7 +106,11 @@
 
 <!-- C.2: Contenedor scrollable independiente -->
 <div class="lista-scroll-container">
-    <table class="lista-table {% block tabla_clase %}{% endblock %}">
+    {#
+       Clase base: 'expedientes-table' (estilos en v2-components.css).
+       TODO Epic #93 Fase 3: renombrar a 'lista-table' en CSS y aquí.
+    #}
+    <table class="expedientes-table {% block tabla_clase %}{% endblock %}">
         <thead>
             <tr>
                 {% block thead_cols %}{% endblock %}
