@@ -5,6 +5,7 @@ bp = Blueprint('dashboard', __name__, url_prefix='')
 
 @bp.route('/')
 @bp.route('/dashboard')
+@bp.route('/dashboard/')
 @login_required
 def index():
     """
