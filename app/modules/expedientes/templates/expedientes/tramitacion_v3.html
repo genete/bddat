@@ -5,8 +5,17 @@
 {% block content %}
 <div style="width: 95%; max-width: 95%; margin: 0 auto; padding-top: 1.5rem;">
     <div class="mb-3">
-        <h2>Vista 3 - Navegación Jerárquica</h2>
-        <p class="text-muted" id="breadcrumb">Expediente AT-{{ expediente.numero_at }}</p>
+        <div class="d-flex align-items-center justify-content-between mb-2">
+            <h2 class="mb-0">Vista 3 - Navegación Jerárquica</h2>
+            <a href="{{ url_for('expedientes.detalle', id=expediente.id) }}" class="btn btn-sm btn-outline-secondary">
+                <i class="fas fa-arrow-left me-1"></i> Volver al detalle
+            </a>
+        </div>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-0" id="breadcrumb-list">
+                <li class="breadcrumb-item active" aria-current="page">Expediente AT-{{ expediente.numero_at }}</li>
+            </ol>
+        </nav>
         <hr>
     </div>
     

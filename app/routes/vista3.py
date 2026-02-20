@@ -158,7 +158,8 @@ def get_context():
     
     return jsonify({
         'html': ''.join(html_sections),
-        'breadcrumb': ' > '.join(breadcrumb_parts)
+        'breadcrumb': ' > '.join(breadcrumb_parts),
+        'breadcrumb_items': breadcrumb_parts
     })
 
 

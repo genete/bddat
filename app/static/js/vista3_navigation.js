@@ -51,16 +51,29 @@ function navigateToLevel(levelIndex) {
 }
 
 /**
+ * Renderiza el breadcrumb clicable a partir del array de labels
+ */
+function renderBreadcrumb(items) {
+    const list = document.getElementById('breadcrumb-list');
+    if (!list) return;
+    list.innerHTML = items.map((label, idx) => {
+        if (idx === items.length - 1) {
+            return `<li class="breadcrumb-item active" aria-current="page">${label}</li>`;
+        }
+        return `<li class="breadcrumb-item"><a href="#" onclick="navigateToLevel(${idx}); return false;">${label}</a></li>`;
+    }).join('');
+}
+
+/**
  * Refresca la vista completa llamando al backend
  */
 function refreshView() {
     const container = document.getElementById('vista3-container');
-    const breadcrumb = document.getElementById('breadcrumb');
-    
+
     // Fade out suave (sin borrar contenido)
     container.style.opacity = '0.5';
     container.style.transition = 'opacity 0.15s ease';
-    
+
     fetch('/api/vista3/context', {
         method: 'POST',
         headers: {
@@ -77,8 +90,8 @@ function refreshView() {
     .then(data => {
         // Actualizar contenido y fade in
         container.innerHTML = data.html;
-        breadcrumb.textContent = data.breadcrumb;
-        
+        renderBreadcrumb(data.breadcrumb_items || [data.breadcrumb]);
+
         // Forzar reflow para que la transición funcione
         container.offsetHeight;
         container.style.opacity = '1';
