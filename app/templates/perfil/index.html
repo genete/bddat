@@ -1,138 +1,253 @@
 {% extends "layout/base_fullwidth.html" %}
 
-{% block title %}Mi Perfil - BDDAT{% endblock %}
-
-{% block page_breadcrumb %}
-<nav aria-label="breadcrumb" class="px-4 py-2 bg-light border-bottom">
-    <ol class="breadcrumb mb-0">
-        <li class="breadcrumb-item">
-            <a href="{{ url_for('dashboard.index') }}">Inicio</a>
-        </li>
-        <li class="breadcrumb-item active">Mi Perfil</li>
-    </ol>
-</nav>
-{% endblock %}
+{% block title %}Mi Perfil — BDDAT{% endblock %}
 
 {% block content %}
 <div class="p-4">
 <div class="row">
-    <div class="col-md-8 mx-auto">
-        <h2 class="mb-4">
-            <i class="fas fa-user-circle me-2"></i>Mi Perfil
-        </h2>
+<div class="col-lg-8 mx-auto">
 
-        <!-- Card: Datos Personales -->
-        <div class="card shadow-sm mb-4">
-            <div class="card-header">
-                <h5 class="mb-0"><i class="fas fa-id-card me-2"></i>Datos Personales</h5>
-            </div>
-            <div class="card-body">
-                <form method="POST" action="{{ url_for('perfil.editar') }}">
-                    <div class="row mb-3">
-                        <div class="col-md-4">
-                            <label class="form-label">Siglas</label>
-                            <input type="text" class="form-control" value="{{ usuario.siglas }}" disabled>
-                            <small class="text-muted">Solo el supervisor puede modificar las siglas</small>
-                        </div>
-                        <div class="col-md-8">
-                            <label for="nombre" class="form-label">Nombre *</label>
-                            <input type="text" class="form-control" id="nombre" name="nombre" value="{{ usuario.nombre }}" required maxlength="100">
-                        </div>
-                    </div>
-                    
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label for="apellido1" class="form-label">Primer Apellido *</label>
-                            <input type="text" class="form-control" id="apellido1" name="apellido1" value="{{ usuario.apellido1 }}" required maxlength="50">
-                        </div>
-                        <div class="col-md-6">
-                            <label for="apellido2" class="form-label">Segundo Apellido</label>
-                            <input type="text" class="form-control" id="apellido2" name="apellido2" value="{{ usuario.apellido2 or '' }}" maxlength="50">
-                        </div>
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="email" class="form-label">Email</label>
-                        <input type="email" class="form-control" id="email" name="email" value="{{ usuario.email or '' }}" maxlength="120">
-                        <small class="text-muted">Necesario para recuperación de contraseña</small>
-                    </div>
-
-                    <div class="text-end">
-                        <button type="submit" class="btn btn-success">
-                            <i class="fas fa-save me-2"></i>Guardar Cambios
-                        </button>
-                    </div>
-                </form>
-            </div>
+    <!-- Encabezado -->
+    <div class="row mb-3 align-items-center">
+        <div class="col">
+            <h2 class="mb-0">
+                <i class="fas fa-user-circle me-2"></i>Mi Perfil
+            </h2>
         </div>
-
-        <!-- Card: Roles Asignados -->
-        <div class="card shadow-sm mb-4">
-            <div class="card-header">
-                <h5 class="mb-0"><i class="fas fa-user-tag me-2"></i>Roles Asignados</h5>
-            </div>
-            <div class="card-body">
-                {% if usuario.roles %}
-                    <div class="d-flex flex-wrap gap-2 mb-3">
-                        {% for rol in usuario.roles %}
-                            <span class="badge bg-secondary fs-6 px-3 py-2">
-                                {{ rol.nombre }}
-                            </span>
-                        {% endfor %}
-                    </div>
-                {% else %}
-                    <p class="text-muted">No tienes roles asignados</p>
-                {% endif %}
-                
-                <form method="POST" action="{{ url_for('perfil.solicitar_cambio_rol') }}">
-                    <button type="submit" class="btn btn-outline-secondary btn-sm">
-                        <i class="fas fa-paper-plane me-2"></i>Solicitar Cambio de Rol
-                    </button>
-                </form>
-                <small class="text-muted d-block mt-2">
-                    Solo los supervisores pueden modificar roles. Usa este botón para solicitar cambios.
-                </small>
-            </div>
+        <div class="col-auto" id="barra-acciones-ver">
+            <button type="button" class="btn btn-primary" id="btn-editar-perfil">
+                <i class="fas fa-edit me-1"></i> Editar
+            </button>
         </div>
-
-        <!-- Card: Cambiar Contraseña -->
-        <div class="card shadow-sm mb-4">
-            <div class="card-header">
-                <h5 class="mb-0"><i class="fas fa-key me-2"></i>Cambiar Contraseña</h5>
-            </div>
-            <div class="card-body">
-                <form method="POST" action="{{ url_for('perfil.cambiar_contrasena') }}">
-                    <div class="mb-3">
-                        <label for="password_actual" class="form-label">Contraseña Actual *</label>
-                        <input type="password" class="form-control" id="password_actual" name="password_actual" required>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="password_nueva" class="form-label">Nueva Contraseña *</label>
-                        <input type="password" class="form-control" id="password_nueva" name="password_nueva" required>
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="password_confirmar" class="form-label">Confirmar Nueva Contraseña *</label>
-                        <input type="password" class="form-control" id="password_confirmar" name="password_confirmar" required>
-                    </div>
-
-                    <div class="text-end">
-                        <button type="submit" class="btn btn-warning">
-                            <i class="fas fa-lock me-2"></i>Cambiar Contraseña
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-
-        <!-- Volver -->
-        <div class="text-center mb-4">
-            <a href="{{ url_for('usuarios.index') }}" class="btn btn-secondary">
-                <i class="fas fa-arrow-left me-2"></i>Volver
+        <div class="col-auto d-none" id="barra-acciones-editar">
+            <a href="{{ url_for('perfil.index') }}" class="btn btn-secondary me-2">
+                <i class="fas fa-times me-1"></i> Cancelar
             </a>
+            <button type="submit" form="form-datos-personales" class="btn btn-primary">
+                <i class="fas fa-save me-1"></i> Guardar Cambios
+            </button>
         </div>
     </div>
+
+    <!-- =========================================================
+         FICHA 1: Datos Personales  (patrón V4 ver / editar)
+    ========================================================== -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header card-header-accent">
+            <h6 class="mb-0 fw-semibold">
+                <i class="fas fa-id-card me-2"></i>Datos Personales
+            </h6>
+        </div>
+        <div class="card-body card-body-tinted">
+            <form id="form-datos-personales"
+                  class="form-detail"
+                  method="POST"
+                  action="{{ url_for('perfil.editar') }}">
+
+                <div class="row mb-3">
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold">Siglas</label>
+                        <input type="text"
+                               class="form-control"
+                               value="{{ usuario.siglas }}"
+                               readonly
+                               data-bs-toggle="tooltip"
+                               title="Solo el supervisor puede modificar las siglas">
+                    </div>
+                    <div class="col-md-9">
+                        <label for="nombre" class="form-label fw-semibold">Nombre *</label>
+                        <input type="text"
+                               class="form-control campo-editable"
+                               id="nombre"
+                               name="nombre"
+                               value="{{ usuario.nombre }}"
+                               readonly
+                               required
+                               maxlength="100">
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label for="apellido1" class="form-label fw-semibold">Primer Apellido *</label>
+                        <input type="text"
+                               class="form-control campo-editable"
+                               id="apellido1"
+                               name="apellido1"
+                               value="{{ usuario.apellido1 }}"
+                               readonly
+                               required
+                               maxlength="50">
+                    </div>
+                    <div class="col-md-6">
+                        <label for="apellido2" class="form-label fw-semibold">Segundo Apellido</label>
+                        <input type="text"
+                               class="form-control campo-editable"
+                               id="apellido2"
+                               name="apellido2"
+                               value="{{ usuario.apellido2 or '' }}"
+                               readonly
+                               maxlength="50">
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="email" class="form-label fw-semibold">Email</label>
+                    <input type="email"
+                           class="form-control campo-editable"
+                           id="email"
+                           name="email"
+                           value="{{ usuario.email or '' }}"
+                           readonly
+                           maxlength="120"
+                           placeholder="usuario@juntadeandalucia.es">
+                </div>
+
+            </form>
+        </div>
+    </div>
+
+    <!-- =========================================================
+         FICHA 2: Roles y Acceso  (solo lectura)
+    ========================================================== -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header card-header-accent">
+            <h6 class="mb-0 fw-semibold">
+                <i class="fas fa-user-tag me-2"></i>Roles y Acceso
+            </h6>
+        </div>
+        <div class="card-body card-body-tinted">
+
+            {% if usuario.roles %}
+            <div class="d-flex flex-wrap gap-2 mb-3">
+                {% for rol in usuario.roles %}
+                <span class="badge fs-6 px-3 py-2" style="background-color: var(--primary);">
+                    {{ rol.nombre }}
+                </span>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="text-secondary mb-3">No tienes roles asignados.</p>
+            {% endif %}
+
+            <form method="POST" action="{{ url_for('perfil.solicitar_cambio_rol') }}">
+                <button type="submit" class="btn btn-outline-secondary btn-sm">
+                    <i class="fas fa-paper-plane me-2"></i>Solicitar Cambio de Rol
+                </button>
+            </form>
+            <small class="text-secondary d-block mt-2">
+                Solo los supervisores pueden modificar roles. Usa este botón para solicitar cambios.
+            </small>
+
+        </div>
+    </div>
+
+    <!-- =========================================================
+         FICHA 3: Seguridad — Cambiar Contraseña (acordeón)
+    ========================================================== -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header card-header-accent">
+            <h6 class="mb-0 fw-semibold">
+                <i class="fas fa-key me-2"></i>Seguridad
+            </h6>
+        </div>
+        <div class="card-body card-body-tinted p-0">
+            <div class="accordion accordion-flush" id="acordeonSeguridad">
+                <div class="accordion-item" style="background: transparent; border: 0;">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed"
+                                type="button"
+                                data-bs-toggle="collapse"
+                                data-bs-target="#collapseContrasena"
+                                aria-expanded="false"
+                                style="background: transparent;">
+                            <i class="fas fa-lock me-2 text-secondary"></i>
+                            Cambiar contraseña
+                        </button>
+                    </h2>
+                    <div id="collapseContrasena"
+                         class="accordion-collapse collapse"
+                         data-bs-parent="#acordeonSeguridad">
+                        <div class="accordion-body">
+                            <form method="POST"
+                                  action="{{ url_for('perfil.cambiar_contrasena') }}"
+                                  class="form-detail">
+
+                                <div class="mb-3">
+                                    <label for="password_actual" class="form-label fw-semibold">
+                                        Contraseña Actual *
+                                    </label>
+                                    <input type="password"
+                                           class="form-control"
+                                           id="password_actual"
+                                           name="password_actual"
+                                           required>
+                                </div>
+
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <label for="password_nueva" class="form-label fw-semibold">
+                                            Nueva Contraseña *
+                                        </label>
+                                        <input type="password"
+                                               class="form-control"
+                                               id="password_nueva"
+                                               name="password_nueva"
+                                               required>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="password_confirmar" class="form-label fw-semibold">
+                                            Confirmar Nueva Contraseña *
+                                        </label>
+                                        <input type="password"
+                                               class="form-control"
+                                               id="password_confirmar"
+                                               name="password_confirmar"
+                                               required>
+                                    </div>
+                                </div>
+
+                                <div class="text-end">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-lock me-1"></i> Cambiar Contraseña
+                                    </button>
+                                </div>
+
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
 </div>
 </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{{ super() }}
+<script>
+(function () {
+    // Inicializar tooltips (siglas bloqueadas)
+    document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
+        new bootstrap.Tooltip(el);
+    });
+
+    const btnEditar    = document.getElementById('btn-editar-perfil');
+    const barraVer     = document.getElementById('barra-acciones-ver');
+    const barraEditar  = document.getElementById('barra-acciones-editar');
+    const campos       = document.querySelectorAll('.campo-editable');
+
+    btnEditar.addEventListener('click', () => {
+        // Activar modo editar
+        campos.forEach(c => c.removeAttribute('readonly'));
+        barraVer.classList.add('d-none');
+        barraEditar.classList.remove('d-none');
+        // Foco en el primer campo editable
+        campos[0]?.focus();
+    });
+})();
+</script>
 {% endblock %}
