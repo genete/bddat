@@ -198,6 +198,11 @@ class ScrollInfinito {
                         ? '<i class="fas fa-check-circle text-success"></i>'
                         : '';
                     break;
+                case 'custom': {
+                    const val = item[col.key];
+                    td.innerHTML = col.renderFn ? col.renderFn(val, item) : (val ?? '-');
+                    break;
+                }
                 case 'acciones': {
                     const btn = document.createElement('button');
                     btn.className = 'btn btn-sm btn-primary';
