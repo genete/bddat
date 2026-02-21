@@ -1,8 +1,20 @@
-{% extends "base.html" %}
+{% extends "layout/base_fullwidth.html" %}
 
 {% block title %}Mi Perfil - BDDAT{% endblock %}
 
+{% block page_breadcrumb %}
+<nav aria-label="breadcrumb" class="px-4 py-2 bg-light border-bottom">
+    <ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item">
+            <a href="{{ url_for('dashboard.index') }}">Inicio</a>
+        </li>
+        <li class="breadcrumb-item active">Mi Perfil</li>
+    </ol>
+</nav>
+{% endblock %}
+
 {% block content %}
+<div class="p-4">
 <div class="row">
     <div class="col-md-8 mx-auto">
         <h2 class="mb-4">
@@ -121,5 +133,6 @@
             </a>
         </div>
     </div>
+</div>
 </div>
 {% endblock %}

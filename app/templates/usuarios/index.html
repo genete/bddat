@@ -1,8 +1,20 @@
-{% extends 'base.html' %}
+{% extends 'layout/base_fullwidth.html' %}
 
 {% block title %}Usuarios - BDDAT{% endblock %}
 
+{% block page_breadcrumb %}
+<nav aria-label="breadcrumb" class="px-4 py-2 bg-light border-bottom">
+    <ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item">
+            <a href="{{ url_for('dashboard.index') }}">Inicio</a>
+        </li>
+        <li class="breadcrumb-item active">Usuarios</li>
+    </ol>
+</nav>
+{% endblock %}
+
 {% block content %}
+<div class="p-4">
 <div class="row mb-3">
     <div class="col-md-8">
         <h2>Gestión de Usuarios</h2>
@@ -232,4 +244,5 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 {% endif %}
 </script>
+</div>
 {% endblock %}
