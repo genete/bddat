@@ -30,11 +30,20 @@
         background-color: #fff;
         cursor: default;
     }
-    /* Cabeceras de tarjeta con acento izquierdo en color corporativo */
+    /* Cabeceras de ficha en verde corporativo secundario (apoyo) */
     .card-header-accent {
-        background-color: #f8f9fa;
-        border-left: 4px solid var(--bs-primary, #087021);
-        padding-left: 1rem;
+        background-color: var(--primary-light, #c4ddca);
+        color: var(--gris-principal, #111);
+    }
+    /* Fondo gris claro en cuerpos de ficha para destacar los campos blancos */
+    .card-body-tinted {
+        background-color: var(--gris-especifico, #f5f5f5);
+    }
+    /* Borde verde corporativo al enfocar campos en modo edición */
+    #form_expediente .form-control:focus,
+    #form_expediente .form-select:focus {
+        border-color: var(--primary, #087021);
+        box-shadow: 0 0 0 0.25rem rgba(8, 112, 33, 0.25);
     }
 </style>
 {% endblock %}
@@ -102,8 +111,8 @@
             <div class="col-md-2">
                 <label class="form-label fw-semibold small">Número AT</label>
                 <input type="text" class="form-control form-control-sm"
-                       value="AT-{{ expediente.numero_at }}" disabled>
-                <small class="text-muted">No modificable</small>
+                       value="AT-{{ expediente.numero_at }}" disabled
+                       data-bs-toggle="tooltip" title="No modificable">
             </div>
 
             <!-- Tipo de Expediente -->
@@ -155,10 +164,8 @@
                 <label class="form-label fw-semibold small">Titular</label>
                 <input type="text" class="form-control form-control-sm" readonly
                        value="{{ expediente.titular.nombre_completo if expediente.titular else '' }}"
-                       placeholder="Sin titular">
-                {% if modo == 'editar' %}
-                    <small class="text-muted">Gestionar desde el wizard</small>
-                {% endif %}
+                       placeholder="Sin titular"
+                       {% if modo == 'editar' %}data-bs-toggle="tooltip" title="Gestionar desde el wizard"{% endif %}>
             </div>
 
             <!-- Heredado -->
@@ -182,7 +189,7 @@
         <div class="card shadow-sm h-100" id="proyecto">
             <div class="card-header card-header-accent d-flex justify-content-between align-items-center">
                 <h5 class="mb-0">
-                    <i class="fas fa-project-diagram me-2 text-primary"></i>Proyecto
+                    <i class="fas fa-project-diagram me-2"></i>Proyecto
                 </h5>
                 {% if modo == 'ver' %}
                 <a href="{{ url_for('proyectos.detalle', id=expediente.proyecto.id) }}"
@@ -191,7 +198,7 @@
                 </a>
                 {% endif %}
             </div>
-            <div class="card-body">
+            <div class="card-body card-body-tinted">
                 <!-- Título del Proyecto -->
                 <div class="mb-3">
                     <label for="titulo_proyecto" class="form-label fw-semibold">Título del Proyecto</label>
@@ -251,11 +258,11 @@
         <div class="card shadow-sm h-100">
             <div class="card-header card-header-accent">
                 <h5 class="mb-0">
-                    <i class="fas fa-map-marked-alt me-2 text-primary"></i>Municipios Afectados
-                    <small id="campo_obligatorio" class="float-end text-muted fw-normal"></small>
+                    <i class="fas fa-map-marked-alt me-2"></i>Municipios Afectados
+                    <small id="campo_obligatorio" class="float-end fw-normal"></small>
                 </h5>
             </div>
-            <div class="card-body">
+            <div class="card-body card-body-tinted">
                 {% if modo == 'ver' %}
                 <!-- Vista: lista estática de municipios -->
                 {% if expediente.proyecto.municipios_afectados %}
@@ -353,6 +360,14 @@
 
 {% block extra_js %}
 {{ super() }}
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // Inicializar tooltips Bootstrap
+        document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
+            new bootstrap.Tooltip(el);
+        });
+    });
+</script>
 {% if modo == 'editar' %}
 <script src="{{ url_for('static', filename='js/municipios_selector.js') }}"></script>
 <script>
