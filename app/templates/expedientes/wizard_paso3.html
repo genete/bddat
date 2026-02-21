@@ -146,6 +146,40 @@
     const entidadError   = document.getElementById('entidad-error');
 
     let timer = null;
+    let cursor = -1;
+
+    // Navegación de teclado en la lista de sugerencias
+    function itemsSugg() {
+        return Array.from(entidadSugg.querySelectorAll('li.list-group-item-action'));
+    }
+
+    function moverCursor(delta) {
+        const its = itemsSugg();
+        if (!its.length) return;
+        cursor = Math.max(-1, Math.min(its.length - 1, cursor + delta));
+        its.forEach((li, i) => li.classList.toggle('active', i === cursor));
+        if (cursor >= 0) its[cursor].scrollIntoView({ block: 'nearest' });
+    }
+
+    entidadSearch.addEventListener('keydown', function (e) {
+        if (entidadSugg.style.display === 'none') return;
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            moverCursor(1);
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            moverCursor(-1);
+        } else if (e.key === 'Enter') {
+            const its = itemsSugg();
+            if (cursor >= 0 && its[cursor]) {
+                e.preventDefault();
+                its[cursor].dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+            }
+        } else if (e.key === 'Escape') {
+            entidadSugg.style.display = 'none';
+            cursor = -1;
+        }
+    });
 
     entidadSearch.addEventListener('input', function () {
         clearTimeout(timer);
@@ -158,6 +192,7 @@
                 .then(r => r.json())
                 .then(data => {
                     const lista = data.results || [];
+                    cursor = -1;
                     entidadSugg.innerHTML = '';
                     if (!lista.length) {
                         const li = document.createElement('li');

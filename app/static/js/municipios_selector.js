@@ -44,22 +44,69 @@ class MunicipiosSelector {
         this.inputBuscadorProvincia.addEventListener('input', () => {
             this.filtrarProvincias();
         });
-        
+
+        // Teclado en buscador provincia: ArrowDown/Enter pasan el foco al select
+        this.inputBuscadorProvincia.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowDown' || e.key === 'Enter') {
+                e.preventDefault();
+                const primera = this.selectProvincia.querySelector('option:not([value=""])');
+                if (primera) {
+                    this.selectProvincia.value = primera.value;
+                    this.selectProvincia.dispatchEvent(new Event('change'));
+                    this.selectProvincia.focus();
+                }
+            }
+        });
+
         // Cambio provincia
         this.selectProvincia.addEventListener('change', () => {
             this.onCambioProvincia();
         });
-        
+
+        // Teclado en select provincia: Escape vuelve al buscador
+        this.selectProvincia.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                this.inputBuscadorProvincia.focus();
+            }
+        });
+
         // Búsqueda municipio
         this.inputBuscadorMunicipio.addEventListener('input', () => {
             this.filtrarMunicipios();
         });
-        
+
+        // Teclado en buscador municipio: ArrowDown/Enter pasan el foco al select
+        this.inputBuscadorMunicipio.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowDown' || e.key === 'Enter') {
+                e.preventDefault();
+                const primera = this.selectMunicipio.querySelector('option:not([value=""])');
+                if (primera) {
+                    this.selectMunicipio.value = primera.value;
+                    this.selectMunicipio.dispatchEvent(new Event('change'));
+                    this.selectMunicipio.focus();
+                }
+            }
+        });
+
         // Cambio municipio (habilitar botón añadir)
         this.selectMunicipio.addEventListener('change', () => {
             this.btnAnadir.disabled = !this.selectMunicipio.value;
         });
-        
+
+        // Teclado en select municipio: Enter añade; Escape vuelve al buscador
+        this.selectMunicipio.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                this.anadirMunicipio();
+                this.inputBuscadorMunicipio.focus();
+            }
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                this.inputBuscadorMunicipio.focus();
+            }
+        });
+
         // Botón añadir
         this.btnAnadir.addEventListener('click', () => {
             this.anadirMunicipio();

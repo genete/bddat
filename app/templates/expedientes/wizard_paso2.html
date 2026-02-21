@@ -210,6 +210,51 @@
     let tProv = null, tMuni = null;
 
     // ------------------------------------------------------------------
+    // Navegación de teclado para listas de sugerencias (<ul>)
+    // Devuelve un objeto con reset() para llamar al renderizar nueva lista.
+    // ------------------------------------------------------------------
+    function navTeclado(inputEl, ulEl) {
+        let cursor = -1;
+
+        function items() {
+            return Array.from(ulEl.querySelectorAll('li.list-group-item-action'));
+        }
+
+        function moverCursor(delta) {
+            const its = items();
+            if (!its.length) return;
+            cursor = Math.max(-1, Math.min(its.length - 1, cursor + delta));
+            its.forEach((li, i) => li.classList.toggle('active', i === cursor));
+            if (cursor >= 0) its[cursor].scrollIntoView({ block: 'nearest' });
+        }
+
+        inputEl.addEventListener('keydown', function (e) {
+            if (ulEl.style.display === 'none') return;
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                moverCursor(1);
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                moverCursor(-1);
+            } else if (e.key === 'Enter') {
+                const its = items();
+                if (cursor >= 0 && its[cursor]) {
+                    e.preventDefault();
+                    its[cursor].dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+                }
+            } else if (e.key === 'Escape') {
+                ulEl.style.display = 'none';
+                cursor = -1;
+            }
+        });
+
+        return { reset() { cursor = -1; } };
+    }
+
+    const navProv = navTeclado(provinciaSearch, provinciaSugg);
+    const navMuni = navTeclado(municipioSearch, municipioSugg);
+
+    // ------------------------------------------------------------------
     // A) Autocomplete de provincia  →  /api/provincias?q=
     // ------------------------------------------------------------------
     provinciaSearch.addEventListener('input', function () {
@@ -227,11 +272,14 @@
         tProv = setTimeout(() => {
             fetch(`/api/provincias?q=${encodeURIComponent(q)}`)
                 .then(r => r.json())
-                .then(lista => renderSugg(
-                    provinciaSugg,
-                    lista.map(n => ({ id: n, text: n })),
-                    item => seleccionarProvincia(item.text)
-                ))
+                .then(lista => {
+                    navProv.reset();
+                    renderSugg(
+                        provinciaSugg,
+                        lista.map(n => ({ id: n, text: n })),
+                        item => seleccionarProvincia(item.text)
+                    );
+                })
                 .catch(() => { provinciaSugg.style.display = 'none'; });
         }, 200);
     });
@@ -261,6 +309,7 @@
                 .then(r => r.json())
                 .then(lista => {
                     if (!Array.isArray(lista)) lista = [];
+                    navMuni.reset();
                     renderSugg(
                         municipioSugg,
                         lista.map(m => ({ id: m.id, text: m.nombre + ' (' + m.provincia + ')' })),
