@@ -10,7 +10,7 @@ CAMBIOS v2.1: Añadido campo 'codigo' ("AT-{numero_at}") a serialización del li
               para compatibilidad con ScrollInfinito genérico (Opción B, Issue #61).
 """
 
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, url_for
 from flask_login import login_required
 from sqlalchemy.orm import joinedload
 from sqlalchemy import func, or_
@@ -160,6 +160,23 @@ def listar_expedientes():
     next_cursor = expedientes[-1].id if expedientes else cursor
 
     # ==========================================================================
+    # PASO 5b: Obtener estadísticas de solicitudes para los IDs de esta página
+    # Una sola query adicional evita N+1 y no modifica el query principal
+    # ==========================================================================
+
+    ids_pagina = [e.id for e in expedientes]
+    sol_stats = {}
+    if ids_pagina:
+        rows = db.session.query(
+            Solicitud.expediente_id,
+            func.count(Solicitud.id).label('total'),
+            func.count(Solicitud.id).filter(Solicitud.estado == 'EN_TRAMITE').label('activas')
+        ).filter(
+            Solicitud.expediente_id.in_(ids_pagina)
+        ).group_by(Solicitud.expediente_id).all()
+        sol_stats = {row.expediente_id: row for row in rows}
+
+    # ==========================================================================
     # PASO 6: Calcular total (solo si hay filtros)
     # ==========================================================================
 
@@ -198,14 +215,30 @@ def listar_expedientes():
         else:
             nombre_responsable = 'Sin asignar'
 
+        # Datos de solicitudes de esta página
+        stats = sol_stats.get(exp.id)
+        num_solicitudes = stats.total if stats else 0
+        num_activas = stats.activas if stats else 0
+        if num_solicitudes == 0:
+            estado_tramitacion = 'SIN_SOLICITUDES'
+        elif num_activas > 0:
+            estado_tramitacion = 'EN_TRAMITE'
+        else:
+            estado_tramitacion = 'RESUELTO'
+
         expediente_dict = {
-            'id':             exp.id,
-            'codigo':         f'AT-{exp.numero_at}',   # Opción B Issue #61
-            'numero_at':      exp.numero_at,
-            'titular':        exp.titular.nombre_completo if exp.titular else 'Sin titular',
-            'tipo_expediente': exp.tipo_expediente.tipo if exp.tipo_expediente else 'Sin tipo',
-            'responsable':    nombre_responsable,
-            'heredado':       exp.heredado if exp.heredado is not None else False
+            'id':                  exp.id,
+            'codigo':              f'AT-{exp.numero_at}',   # Opción B Issue #61
+            'numero_at':           exp.numero_at,
+            'titular':             exp.titular.nombre_completo if exp.titular else 'Sin titular',
+            'tipo_expediente':     exp.tipo_expediente.tipo if exp.tipo_expediente else 'Sin tipo',
+            'responsable':         nombre_responsable,
+            'heredado':            exp.heredado if exp.heredado is not None else False,
+            # Campos SFTT (#70)
+            'num_solicitudes':     num_solicitudes,
+            'num_activas':         num_activas,
+            'estado_tramitacion':  estado_tramitacion,
+            'url_tramitacion':     url_for('expedientes.tramitacion_v3', id=exp.id)
         }
         data.append(expediente_dict)
 

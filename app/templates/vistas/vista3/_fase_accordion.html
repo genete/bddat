@@ -1,73 +1,125 @@
 {# Acordeón de Fase específica - Nivel 3 #}
 <div class="accordion-item vista3-level-3" data-level-type="fase" data-level-id="{{ fase.id }}">
     <h2 class="accordion-header" id="heading-fase-{{ fase.id }}">
-        <button class="accordion-button" 
+        <button class="accordion-button"
                 type="button"
                 onclick="navigateToLevel({{ level_index }})">
             <i class="bi bi-list-task"></i>
             &nbsp;Fase: {{ fase.tipo_fase.nombre if fase.tipo_fase else 'Fase ' ~ fase.id }}
         </button>
     </h2>
-    <div class="accordion-collapse collapse show" 
+    <div class="accordion-collapse collapse show"
          aria-labelledby="heading-fase-{{ fase.id }}">
-        <div class="accordion-body">
-            {# Cuerpo fijo de la fase - SIEMPRE VISIBLE #}
-            <div class="detalle-fase mb-3">
-                <div class="row">
-                    <div class="col-md-6">
-                        <p class="mb-1"><strong>Inicio:</strong> {{ fase.fecha_inicio.strftime('%d/%m/%Y') if fase.fecha_inicio else 'Pendiente' }}</p>
-                        <p class="mb-1"><strong>Fin:</strong> {{ fase.fecha_fin.strftime('%d/%m/%Y') if fase.fecha_fin else 'En curso' }}</p>
-                    </div>
-                    <div class="col-md-6">
-                        {% if fase.resultado_fase %}
-                        <p class="mb-1"><strong>Resultado:</strong> {{ fase.resultado_fase.nombre }}</p>
+        <div class="accordion-body p-0">
+
+            {# --- Tabs de navegación --- #}
+            <ul class="nav nav-tabs px-3 pt-2" id="tabs-fase-{{ fase.id }}" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="tab-fase-{{ fase.id }}-datos-btn"
+                            data-bs-toggle="tab"
+                            data-bs-target="#tab-fase-{{ fase.id }}-datos"
+                            type="button" role="tab">
+                        <i class="bi bi-info-circle me-1"></i>Datos
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="tab-fase-{{ fase.id }}-tramites-btn"
+                            data-bs-toggle="tab"
+                            data-bs-target="#tab-fase-{{ fase.id }}-tramites"
+                            type="button" role="tab">
+                        <i class="bi bi-card-checklist me-1"></i>Trámites
+                        {% if tramites %}
+                        <span class="badge bg-secondary ms-1">{{ tramites|length }}</span>
                         {% endif %}
-                        {% if fase.observaciones %}
-                        <p class="mb-1"><strong>Obs:</strong> {{ fase.observaciones[:100] }}</p>
-                        {% endif %}
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="tab-fase-{{ fase.id }}-docs-btn"
+                            data-bs-toggle="tab"
+                            data-bs-target="#tab-fase-{{ fase.id }}-docs"
+                            type="button" role="tab">
+                        <i class="bi bi-file-earmark me-1"></i>Documentos
+                    </button>
+                </li>
+            </ul>
+
+            {# --- Contenido de tabs --- #}
+            <div class="tab-content px-3 pb-3 pt-3">
+
+                {# Tab Datos #}
+                <div class="tab-pane fade show active"
+                     id="tab-fase-{{ fase.id }}-datos"
+                     role="tabpanel">
+                    <div class="detalle-fase">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <p class="mb-1"><strong>Inicio:</strong> {{ fase.fecha_inicio.strftime('%d/%m/%Y') if fase.fecha_inicio else 'Pendiente' }}</p>
+                                <p class="mb-1"><strong>Fin:</strong> {{ fase.fecha_fin.strftime('%d/%m/%Y') if fase.fecha_fin else 'En curso' }}</p>
+                            </div>
+                            <div class="col-md-6">
+                                {% if fase.resultado_fase %}
+                                <p class="mb-1"><strong>Resultado:</strong> {{ fase.resultado_fase.nombre }}</p>
+                                {% endif %}
+                                {% if fase.observaciones %}
+                                <p class="mb-1"><strong>Obs:</strong> {{ fase.observaciones[:100] }}</p>
+                                {% endif %}
+                            </div>
+                        </div>
                     </div>
                 </div>
+
+                {# Tab Trámites #}
+                <div class="tab-pane fade"
+                     id="tab-fase-{{ fase.id }}-tramites"
+                     role="tabpanel">
+                    {% if tramites %}
+                    <table class="table table-sm table-hover">
+                        <thead class="table-success">
+                            <tr>
+                                <th>Trámite</th>
+                                <th>Estado</th>
+                                <th>Tareas</th>
+                                <th>Fechas</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for tramite_data in tramites %}
+                            <tr>
+                                <td>{{ tramite_data.nombre }}</td>
+                                <td><span class="badge bg-primary">{{ tramite_data.estado }}</span></td>
+                                <td>{{ tramite_data.tareas_completadas }}/{{ tramite_data.total_tareas }}</td>
+                                <td class="small">
+                                    {{ tramite_data.obj.fecha_inicio.strftime('%d/%m/%Y') if tramite_data.obj.fecha_inicio else '-' }}
+                                    {% if tramite_data.obj.fecha_fin %}
+                                    → {{ tramite_data.obj.fecha_fin.strftime('%d/%m/%Y') }}
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if is_active %}
+                                    <button class="btn btn-sm btn-outline-primary"
+                                            onclick="drillDown('tramite', {{ tramite_data.obj.id }})">
+                                        [...]
+                                    </button>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% else %}
+                    <p class="text-muted mb-0">No hay trámites en esta fase.</p>
+                    {% endif %}
+                </div>
+
+                {# Tab Documentos #}
+                <div class="tab-pane fade"
+                     id="tab-fase-{{ fase.id }}-docs"
+                     role="tabpanel">
+                    <p class="text-muted mb-0">Sin documentos registrados.</p>
+                </div>
+
             </div>
-            
-            {# Listado de trámites - SOLO SI ES NIVEL ACTIVO #}
-            {% if is_active and tramites %}
-            <hr>
-            <h6>Trámites de esta fase</h6>
-            <table class="table table-sm table-hover">
-                <thead class="table-success">
-                    <tr>
-                        <th>Trámite</th>
-                        <th>Estado</th>
-                        <th>Tareas</th>
-                        <th>Fechas</th>
-                        <th></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for tramite_data in tramites %}
-                    <tr>
-                        <td>{{ tramite_data.nombre }}</td>
-                        <td><span class="badge bg-primary">{{ tramite_data.estado }}</span></td>
-                        <td>{{ tramite_data.tareas_completadas }}/{{ tramite_data.total_tareas }}</td>
-                        <td class="small">
-                            {{ tramite_data.obj.fecha_inicio.strftime('%d/%m/%Y') if tramite_data.obj.fecha_inicio else '-' }}
-                            {% if tramite_data.obj.fecha_fin %}
-                            → {{ tramite_data.obj.fecha_fin.strftime('%d/%m/%Y') }}
-                            {% endif %}
-                        </td>
-                        <td>
-                            <button class="btn btn-sm btn-outline-primary" 
-                                    onclick="drillDown('tramite', {{ tramite_data.obj.id }})">
-                                [...]
-                            </button>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-            {% elif is_active %}
-            <p class="text-muted">No hay trámites en esta fase.</p>
-            {% endif %}
         </div>
     </div>
 </div>

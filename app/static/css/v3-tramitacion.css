@@ -124,16 +124,52 @@
    DETALLES Y METADATOS
    ============================================================================= */
 
-.detalle-solicitud {
+.detalle-solicitud,
+.detalle-fase,
+.detalle-tramite,
+.detalle-tarea {
     background-color: #f8f9fa;
     border: 1px solid #dee2e6;
     border-radius: 6px;
     padding: 1rem;
 }
 
-.detalle-solicitud p {
+.detalle-solicitud p,
+.detalle-fase p,
+.detalle-tramite p,
+.detalle-tarea p {
     margin-bottom: 0.5rem;
     font-size: 0.95rem;
+}
+
+/* =============================================================================
+   TABS DENTRO DE ACORDEONES (Issues #71 + #72)
+   ============================================================================= */
+
+/* El accordion-body tiene p-0 cuando contiene tabs; los tabs aportan su propio padding */
+.vista3-level-2 .accordion-body,
+.vista3-level-3 .accordion-body,
+.vista3-level-4 .accordion-body,
+.vista3-level-5 .accordion-body {
+    padding: 0;
+}
+
+/* Borde inferior de nav-tabs alineado con el borde del acordeón */
+.vista3-level-2 .nav-tabs,
+.vista3-level-3 .nav-tabs,
+.vista3-level-4 .nav-tabs,
+.vista3-level-5 .nav-tabs {
+    border-bottom: 1px solid #dee2e6;
+    background-color: #f8f9fa;
+}
+
+/* Tab activo dentro de acordeón: fondo blanco para distinguirlo */
+.vista3-level-2 .nav-tabs .nav-link.active,
+.vista3-level-3 .nav-tabs .nav-link.active,
+.vista3-level-4 .nav-tabs .nav-link.active,
+.vista3-level-5 .nav-tabs .nav-link.active {
+    background-color: #fff;
+    border-bottom-color: #fff;
 }
 
 /* =============================================================================
