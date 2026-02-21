@@ -21,10 +21,28 @@
 </nav>
 {% endblock %}
 
+{% block extra_css %}
+{{ super() }}
+<style>
+    /* Campos de solo lectura con apariencia idéntica a los editables */
+    .form-control[readonly],
+    .form-control:read-only {
+        background-color: #fff;
+        cursor: default;
+    }
+    /* Cabeceras de tarjeta con acento izquierdo en color corporativo */
+    .card-header-accent {
+        background-color: #f8f9fa;
+        border-left: 4px solid var(--bs-primary, #087021);
+        padding-left: 1rem;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="p-4">
 
-{# Datos de municipios para el selector JS (solo en modo editar) #}
+{# Datos de municipios existentes para el selector JS (solo en edición) #}
 {% if modo == 'editar' %}
 <script>
     window.municipiosExistentes = [
@@ -41,7 +59,7 @@
 <form id="form_expediente" action="{{ url_for('expedientes.editar', id=expediente.id) }}" method="POST">
 {% endif %}
 
-<!-- Encabezado de página con botones de acción -->
+<!-- Encabezado de página -->
 <div class="row mb-3">
     <div class="col-md-8">
         <h2>
@@ -57,7 +75,7 @@
             <a href="{{ url_for('expedientes.tramitacion_v3', id=expediente.id) }}" class="btn btn-primary me-2">
                 <i class="fas fa-tasks me-1"></i> Tramitar
             </a>
-            <a href="{{ url_for('expedientes.editar', id=expediente.id) }}" class="btn btn-outline-primary">
+            <a href="{{ url_for('expedientes.editar', id=expediente.id) }}" class="btn btn-primary">
                 <i class="fas fa-edit me-1"></i> Editar
             </a>
         {% else %}
@@ -71,65 +89,31 @@
     </div>
 </div>
 
-<!-- BARRA INFO: datos del expediente (número AT, tipo, responsable, titular) -->
+<!-- BARRA INFO: Datos del Expediente -->
 <div class="card shadow-sm mb-3">
-    <div class="card-header bg-primary text-white py-2">
-        <h6 class="mb-0"><i class="fas fa-info-circle me-2"></i>Datos del Expediente</h6>
+    <div class="card-header bg-light border-bottom">
+        <h6 class="mb-0 text-secondary fw-semibold">
+            <i class="fas fa-info-circle me-2"></i>Datos del Expediente
+        </h6>
     </div>
     <div class="card-body py-3">
-        {% if modo == 'ver' %}
-        <!-- Vista de solo lectura: campos en fila horizontal -->
-        <div class="row g-3 align-items-start flex-wrap">
-            <div class="col-auto">
-                <div class="text-secondary small fw-semibold mb-1">Número AT</div>
-                <strong class="text-primary fs-5">AT-{{ expediente.numero_at }}</strong>
-            </div>
-            <div class="col-auto border-start ps-3">
-                <div class="text-secondary small fw-semibold mb-1">Tipo</div>
-                {% if expediente.tipo_expediente %}
-                    <span class="badge bg-info text-dark">{{ expediente.tipo_expediente.tipo }}</span>
-                {% else %}
-                    <span class="text-muted fst-italic">Sin tipo</span>
-                {% endif %}
-            </div>
-            <div class="col-auto border-start ps-3">
-                <div class="text-secondary small fw-semibold mb-1">Responsable</div>
-                {% if expediente.responsable %}
-                    <strong>{{ expediente.responsable.siglas }}</strong>
-                    <span class="ms-1 text-secondary">
-                        {{ expediente.responsable.nombre }} {{ expediente.responsable.apellido1 }}
-                    </span>
-                {% else %}
-                    <span class="badge bg-warning text-dark">Sin asignar (huérfano)</span>
-                {% endif %}
-            </div>
-            <div class="col-auto border-start ps-3">
-                <div class="text-secondary small fw-semibold mb-1">Titular</div>
-                {% if expediente.titular %}
-                    <span>{{ expediente.titular.nombre_completo }}</span>
-                {% else %}
-                    <span class="badge bg-secondary">Sin titular</span>
-                {% endif %}
-            </div>
-            {% if expediente.heredado %}
-            <div class="col-auto ms-auto">
-                <span class="badge bg-success">
-                    <i class="fas fa-check-circle me-1"></i> Expediente Heredado
-                </span>
-            </div>
-            {% endif %}
-        </div>
-        {% else %}
-        <!-- Modo edición: mismos campos con inputs editables -->
         <div class="row g-3 align-items-end">
+            <!-- Número AT (siempre bloqueado) -->
             <div class="col-md-2">
-                <label class="form-label small fw-semibold">Número AT</label>
+                <label class="form-label fw-semibold small">Número AT</label>
                 <input type="text" class="form-control form-control-sm"
                        value="AT-{{ expediente.numero_at }}" disabled>
                 <small class="text-muted">No modificable</small>
             </div>
+
+            <!-- Tipo de Expediente -->
             <div class="col-md-2">
-                <label for="tipo_expediente_id" class="form-label small fw-semibold">Tipo</label>
+                <label class="form-label fw-semibold small">Tipo</label>
+                {% if modo == 'ver' %}
+                <input type="text" class="form-control form-control-sm" readonly
+                       value="{{ expediente.tipo_expediente.tipo if expediente.tipo_expediente else '' }}"
+                       placeholder="Sin tipo">
+                {% else %}
                 <select class="form-select form-select-sm" id="tipo_expediente_id" name="tipo_expediente_id">
                     <option value="">-- Sin tipo --</option>
                     {% for tipo in tipos_expedientes %}
@@ -139,9 +123,17 @@
                         </option>
                     {% endfor %}
                 </select>
+                {% endif %}
             </div>
+
+            <!-- Responsable -->
             <div class="col-md-3">
-                <label for="responsable_id" class="form-label small fw-semibold">Responsable</label>
+                <label class="form-label fw-semibold small">Responsable</label>
+                {% if modo == 'ver' %}
+                <input type="text" class="form-control form-control-sm" readonly
+                       value="{{ (expediente.responsable.siglas + ' \u2014 ' + expediente.responsable.nombre + ' ' + expediente.responsable.apellido1) if expediente.responsable else '' }}"
+                       placeholder="Sin asignar">
+                {% else %}
                 <select class="form-select form-select-sm" id="responsable_id" name="responsable_id"
                         {% if not current_user.tiene_rol('ADMIN', 'SUPERVISOR') %}disabled{% endif %}>
                     <option value="">-- Sin asignar (huérfano) --</option>
@@ -155,23 +147,30 @@
                 {% if not current_user.tiene_rol('ADMIN', 'SUPERVISOR') %}
                     <small class="text-muted">Solo ADMIN/SUPERVISOR</small>
                 {% endif %}
+                {% endif %}
             </div>
+
+            <!-- Titular (siempre solo lectura por ahora) -->
             <div class="col-md-3">
-                <label class="form-label small fw-semibold">Titular</label>
-                <input type="text" class="form-control form-control-sm bg-light"
-                       value="{{ expediente.titular.nombre_completo if expediente.titular else 'Sin titular' }}"
-                       disabled>
-                <small class="text-muted">Gestionar desde el wizard</small>
+                <label class="form-label fw-semibold small">Titular</label>
+                <input type="text" class="form-control form-control-sm" readonly
+                       value="{{ expediente.titular.nombre_completo if expediente.titular else '' }}"
+                       placeholder="Sin titular">
+                {% if modo == 'editar' %}
+                    <small class="text-muted">Gestionar desde el wizard</small>
+                {% endif %}
             </div>
+
+            <!-- Heredado -->
             <div class="col-md-2 d-flex align-items-end pb-1">
                 <div class="form-check">
                     <input class="form-check-input" type="checkbox" id="heredado" name="heredado"
-                           {% if expediente.heredado %}checked{% endif %}>
+                           {% if expediente.heredado %}checked{% endif %}
+                           {% if modo == 'ver' %}disabled{% endif %}>
                     <label class="form-check-label small" for="heredado">Expediente heredado</label>
                 </div>
             </div>
         </div>
-        {% endif %}
     </div>
 </div>
 
@@ -181,78 +180,57 @@
     <!-- PROYECTO -->
     <div class="col-lg-8 mb-3 mb-lg-0">
         <div class="card shadow-sm h-100" id="proyecto">
-            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-                <h5 class="mb-0"><i class="fas fa-project-diagram me-2"></i>Proyecto</h5>
+            <div class="card-header card-header-accent d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="fas fa-project-diagram me-2 text-primary"></i>Proyecto
+                </h5>
                 {% if modo == 'ver' %}
                 <a href="{{ url_for('proyectos.detalle', id=expediente.proyecto.id) }}"
-                   class="btn btn-sm btn-outline-light">
+                   class="btn btn-sm btn-outline-primary">
                     <i class="fas fa-external-link-alt me-1"></i>Ver proyecto
                 </a>
                 {% endif %}
             </div>
             <div class="card-body">
-                {% if modo == 'ver' %}
-                <!-- Vista: datos del proyecto en modo lectura -->
-                <h5 class="card-title">{{ expediente.proyecto.titulo }}</h5>
-
-                <div class="mb-3">
-                    <h6 class="text-secondary fw-semibold">Descripción</h6>
-                    <p class="mb-0" style="max-height: 300px; overflow-y: auto; white-space: pre-wrap;">
-                        {{- expediente.proyecto.descripcion or 'Sin descripción' -}}
-                    </p>
-                </div>
-
-                <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <h6 class="text-secondary fw-semibold">Finalidad</h6>
-                        <p class="mb-0" style="max-height: 150px; overflow-y: auto; white-space: pre-wrap;">
-                            {{- expediente.proyecto.finalidad or 'Sin finalidad' -}}
-                        </p>
-                    </div>
-                    <div class="col-md-6 mb-3">
-                        <h6 class="text-secondary fw-semibold">Emplazamiento</h6>
-                        <p class="mb-0" style="max-height: 150px; overflow-y: auto; white-space: pre-wrap;">
-                            {{- expediente.proyecto.emplazamiento or 'Sin emplazamiento' -}}
-                        </p>
-                    </div>
-                </div>
-
-                <div>
-                    <h6 class="text-secondary fw-semibold">Instrumento Ambiental</h6>
-                    {% if expediente.proyecto.ia %}
-                        <p class="mb-0">
-                            <span class="badge bg-success">{{ expediente.proyecto.ia.siglas }}</span>
-                            <span class="ms-2">{{ expediente.proyecto.ia.descripcion }}</span>
-                        </p>
-                    {% else %}
-                        <p class="text-muted mb-0">Sin instrumento ambiental</p>
-                    {% endif %}
-                </div>
-
-                {% else %}
-                <!-- Edición: formulario del proyecto -->
+                <!-- Título del Proyecto -->
                 <div class="mb-3">
                     <label for="titulo_proyecto" class="form-label fw-semibold">Título del Proyecto</label>
                     <input type="text" class="form-control" id="titulo_proyecto" name="titulo_proyecto"
-                           value="{{ expediente.proyecto.titulo }}">
+                           value="{{ expediente.proyecto.titulo or '' }}"
+                           {% if modo == 'ver' %}readonly{% endif %}>
                 </div>
+
+                <!-- Descripción -->
                 <div class="mb-3">
                     <label for="descripcion_proyecto" class="form-label fw-semibold">Descripción</label>
                     <textarea class="form-control" id="descripcion_proyecto" name="descripcion_proyecto"
-                              rows="3">{{ expediente.proyecto.descripcion }}</textarea>
+                              rows="4" {% if modo == 'ver' %}readonly{% endif %}>{{ expediente.proyecto.descripcion or '' }}</textarea>
                 </div>
-                <div class="mb-3">
-                    <label for="finalidad" class="form-label fw-semibold">Finalidad</label>
-                    <input type="text" class="form-control" id="finalidad" name="finalidad"
-                           value="{{ expediente.proyecto.finalidad }}">
+
+                <!-- Finalidad + Emplazamiento -->
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="finalidad" class="form-label fw-semibold">Finalidad</label>
+                        <input type="text" class="form-control" id="finalidad" name="finalidad"
+                               value="{{ expediente.proyecto.finalidad or '' }}"
+                               {% if modo == 'ver' %}readonly{% endif %}>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="emplazamiento" class="form-label fw-semibold">Emplazamiento</label>
+                        <input type="text" class="form-control" id="emplazamiento" name="emplazamiento"
+                               value="{{ expediente.proyecto.emplazamiento or '' }}"
+                               {% if modo == 'ver' %}readonly{% endif %}>
+                    </div>
                 </div>
-                <div class="mb-3">
-                    <label for="emplazamiento" class="form-label fw-semibold">Emplazamiento</label>
-                    <input type="text" class="form-control" id="emplazamiento" name="emplazamiento"
-                           value="{{ expediente.proyecto.emplazamiento }}">
-                </div>
+
+                <!-- Instrumento Ambiental -->
                 <div class="mb-0">
-                    <label for="ia_id" class="form-label fw-semibold">Instrumento Ambiental</label>
+                    <label for="ia_display" class="form-label fw-semibold">Instrumento Ambiental</label>
+                    {% if modo == 'ver' %}
+                    <input type="text" class="form-control" id="ia_display" readonly
+                           value="{{ (expediente.proyecto.ia.siglas + ' \u2014 ' + expediente.proyecto.ia.descripcion) if expediente.proyecto.ia else '' }}"
+                           placeholder="Sin instrumento ambiental">
+                    {% else %}
                     <select class="form-select" id="ia_id" name="ia_id">
                         <option value="">-- Sin instrumento ambiental --</option>
                         {% for tipo_ia in tipos_ia %}
@@ -262,8 +240,8 @@
                             </option>
                         {% endfor %}
                     </select>
+                    {% endif %}
                 </div>
-                {% endif %}
             </div>
         </div>
     </div>
@@ -271,19 +249,15 @@
     <!-- MUNICIPIOS -->
     <div class="col-lg-4">
         <div class="card shadow-sm h-100">
-            <div class="card-header bg-warning text-dark">
+            <div class="card-header card-header-accent">
                 <h5 class="mb-0">
-                    <i class="fas fa-map-marked-alt me-2"></i>Municipios Afectados
-                    {% if modo == 'editar' %}
-                        <small id="campo_obligatorio" class="float-end">
-                            <span class="text-danger">*</span> Obligatorio
-                        </small>
-                    {% endif %}
+                    <i class="fas fa-map-marked-alt me-2 text-primary"></i>Municipios Afectados
+                    <small id="campo_obligatorio" class="float-end text-muted fw-normal"></small>
                 </h5>
             </div>
             <div class="card-body">
                 {% if modo == 'ver' %}
-                <!-- Vista: lista de municipios -->
+                <!-- Vista: lista estática de municipios -->
                 {% if expediente.proyecto.municipios_afectados %}
                     {% set provincias_unicas = expediente.proyecto.municipios_afectados
                         | map(attribute='municipio.provincia') | unique | list %}
@@ -312,20 +286,24 @@
                 {% endif %}
 
                 {% else %}
-                <!-- Edición: selector de provincia y municipio -->
+                <!-- Edición: lista gestionada por JS + selector de provincia/municipio -->
+                <ul class="list-group list-group-flush mb-3" id="lista_municipios">
+                    <li class="list-group-item text-muted"><em>No hay municipios añadidos</em></li>
+                </ul>
+                <hr class="my-2">
                 <div class="row g-2">
                     <div class="col-12">
-                        <label for="select_provincia" class="form-label small fw-semibold">Provincia</label>
-                        <input type="text" class="form-control form-control-sm mb-1" id="buscador_provincia"
-                               placeholder="🔍 Buscar provincia...">
+                        <label class="form-label small fw-semibold">Provincia</label>
+                        <input type="text" class="form-control form-control-sm mb-1"
+                               id="buscador_provincia" placeholder="🔍 Buscar...">
                         <select class="form-select form-select-sm" id="select_provincia" size="4">
-                            <option value="">-- Cargando provincias... --</option>
+                            <option value="">-- Cargando... --</option>
                         </select>
                     </div>
                     <div class="col-12">
-                        <label for="select_municipio" class="form-label small fw-semibold">Municipio</label>
-                        <input type="text" class="form-control form-control-sm mb-1" id="buscador_municipio"
-                               placeholder="🔍 Buscar municipio..." disabled>
+                        <label class="form-label small fw-semibold">Municipio</label>
+                        <input type="text" class="form-control form-control-sm mb-1"
+                               id="buscador_municipio" placeholder="🔍 Buscar..." disabled>
                         <select class="form-select form-select-sm" id="select_municipio" size="4" disabled>
                             <option value="">-- Seleccione provincia primero --</option>
                         </select>
@@ -335,12 +313,6 @@
                                 id="btn_anadir_municipio" disabled>
                             <i class="fas fa-plus me-1"></i> Añadir Municipio
                         </button>
-                    </div>
-                    <div class="col-12">
-                        <label class="form-label small fw-semibold">Seleccionados:</label>
-                        <ul class="list-group" id="lista_municipios">
-                            <li class="list-group-item text-muted"><em>No hay municipios añadidos</em></li>
-                        </ul>
                     </div>
                     <div class="col-12 text-end">
                         <button type="button" class="btn btn-danger btn-sm"
@@ -359,8 +331,10 @@
 <div class="row">
     <div class="col-12">
         <div class="card shadow-sm">
-            <div class="card-header bg-light">
-                <h6 class="mb-0"><i class="fas fa-file-alt me-2"></i>Documentos</h6>
+            <div class="card-header bg-light border-bottom">
+                <h6 class="mb-0 text-secondary fw-semibold">
+                    <i class="fas fa-file-alt me-2"></i>Documentos
+                </h6>
             </div>
             <div class="card-body text-center text-muted py-4">
                 <i class="fas fa-folder fa-2x mb-2"></i>
