@@ -60,8 +60,8 @@
         debounceTimer = setTimeout(() => scrollInfinito.reload(), 400);
     });
 
-    // ScrollInfinito lee el primer select de .filters como 'estado'.
-    // La API acepta 'estado' como alias de 'tipo_ia'.
+    // ScrollInfinito lee el primer select de .filters como parámetro 'estado'.
+    // La API de proyectos acepta 'estado' como alias de 'tipo_ia'.
     filtroTipoIA.addEventListener('change', () => scrollInfinito.reload());
 </script>
 {% endblock %}

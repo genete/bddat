@@ -55,11 +55,10 @@ def create_app(config_name='development'):
         return Usuario.query.get(int(user_id))
 
     # Registrar blueprints - Rutas principales
-    from app.routes import auth, dashboard, proyectos, usuarios, perfil
+    from app.routes import auth, dashboard, usuarios, perfil
 
     app.register_blueprint(auth.bp)
     app.register_blueprint(dashboard.bp)
-    app.register_blueprint(proyectos.bp)
     app.register_blueprint(usuarios.bp)
     app.register_blueprint(perfil.bp)
 
@@ -69,12 +68,13 @@ def create_app(config_name='development'):
     app.register_blueprint(wizard_expediente.bp)  # Issue #67
 
     # Registrar blueprints - APIs
-    from app.routes import api_expedientes, api_municipios, vista3, api_entidades
+    from app.routes import api_expedientes, api_municipios, vista3, api_entidades, api_proyectos
 
     app.register_blueprint(api_expedientes.api_bp)          # usa 'api_bp'
     app.register_blueprint(api_municipios.bp)               # usa 'bp'
     app.register_blueprint(vista3.bp)                       # usa 'bp'
     app.register_blueprint(api_entidades.api_entidades_bp)  # usa 'api_entidades_bp' — Issue #61
+    app.register_blueprint(api_proyectos.api_proyectos_bp)  # usa 'api_proyectos_bp' — Issue #123
 
     # Registrar módulos (app/modules/) — Fase 4: auto-discovery
     from app.modules import ModuleRegistry
