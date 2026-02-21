@@ -301,11 +301,13 @@ def paso3():
                 )
                 db.session.add(mp)
 
-            # 3) numero_at = MAX(numero_at) + 1 dentro de la misma transacción
-            ultimo_numero = db.session.query(
-                db.func.max(Expediente.numero_at)
-            ).scalar() or 0
-            numero_at = ultimo_numero + 1
+            # 3) numero_at — tabla contador gapless (sin race condition ni huecos)
+            #    UPDATE atómico: si la transacción hace rollback, el contador
+            #    también revierte y no se produce ningún hueco en la numeración.
+            #    Ver: docs/fuentesIA/numero_at_gapless.md
+            numero_at = db.session.execute(
+                db.text("UPDATE public.contador_numero_at SET valor = valor + 1 RETURNING valor")
+            ).scalar()
 
             # 4) Expediente
             #    El signal after_insert crea automáticamente el histórico INICIAL
