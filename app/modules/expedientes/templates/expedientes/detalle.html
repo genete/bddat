@@ -21,32 +21,7 @@
 </nav>
 {% endblock %}
 
-{% block extra_css %}
-{{ super() }}
-<style>
-    /* Campos de solo lectura con apariencia idéntica a los editables */
-    .form-control[readonly],
-    .form-control:read-only {
-        background-color: #fff;
-        cursor: default;
-    }
-    /* Cabeceras de ficha en verde corporativo secundario (apoyo) */
-    .card-header-accent {
-        background-color: var(--primary-light, #c4ddca);
-        color: var(--gris-principal, #111);
-    }
-    /* Fondo gris claro en cuerpos de ficha para destacar los campos blancos */
-    .card-body-tinted {
-        background-color: var(--gris-especifico, #f5f5f5);
-    }
-    /* Borde verde corporativo al enfocar campos en modo edición */
-    #form_expediente .form-control:focus,
-    #form_expediente .form-select:focus {
-        border-color: var(--primary, #087021);
-        box-shadow: 0 0 0 0.25rem rgba(8, 112, 33, 0.25);
-    }
-</style>
-{% endblock %}
+{% block extra_css %}{{ super() }}{% endblock %}
 
 {% block content %}
 <div class="p-4">
@@ -65,7 +40,7 @@
         {% endfor %}
     ];
 </script>
-<form id="form_expediente" action="{{ url_for('expedientes.editar', id=expediente.id) }}" method="POST">
+<form id="form_expediente" class="form-detail" action="{{ url_for('expedientes.editar', id=expediente.id) }}" method="POST">
 {% endif %}
 
 <!-- Encabezado de página -->

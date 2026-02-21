@@ -49,6 +49,7 @@ A: app-container (grid header/main/footer)
 | **V1** (Dashboard) | A/B.1/B.2/B.3 | Simple | NO |
 | **V2** (Listado) | A/B.1/B.2/C.1/C.2/D/B.3 | C.2 independiente | SÍ |
 | **V3** (Tramitación) | A/B.1/B.2/acordeón/B.3 | Simple | NO |
+| **V4** (Detalle/Edición) | A/B.1/B.2/B.3 | Simple | NO |
 
 ---
 
@@ -322,6 +323,165 @@ def estructura_completa(id):
 
 ---
 
+## 📄 Vista V4 - Detalle/Edición Unificada
+
+**Referencia:** `detalle.html` de expedientes (issue #49)
+**Tipo de vista:** Registro único con alternancia lectura ↔ edición
+
+### Concepto: Template único con parámetro `modo`
+
+Un solo template sirve para ver y editar. El parámetro `modo` controla qué se renderiza:
+- `modo='ver'` → campos bloqueados, botones Volver/Tramitar/Editar
+- `modo='editar'` → campos editables, botones Cancelar/Guardar
+
+**Regla fundamental: CERO salto de layout entre modos.**
+Los mismos elementos HTML en las mismas posiciones. Solo cambia el atributo `readonly`/`disabled` y aparecen controles auxiliares en edición (ej: selector de municipios).
+
+### Estructura de Fichas
+
+```html
+<!-- Ficha tipo V4: cabecera verde secundario + cuerpo gris -->
+<div class="card shadow-sm mb-3">
+    <div class="card-header card-header-accent">
+        <h5 class="mb-0 fw-semibold">
+            <i class="fas fa-icon me-2"></i>Título Ficha
+        </h5>
+    </div>
+    <div class="card-body card-body-tinted">
+        <!-- Campos del formulario -->
+    </div>
+</div>
+```
+
+### Clases CSS Globales (en `v2-components.css`)
+
+| Clase | Uso |
+|-------|-----|
+| `.card-header-accent` | Cabecera de ficha en `#c4ddca` (verde apoyo corporativo) |
+| `.card-body-tinted` | Fondo `#f5f5f5` en cuerpo de ficha para destacar campos blancos |
+| `.form-control[readonly]` | Override global: campos readonly con fondo blanco (igual que editable) |
+| `.form-detail .form-control:focus` | Focus ring verde corporativo en formularios de edición |
+
+### Patrón de Campos
+
+#### Campos de texto (mismo elemento en ambos modos)
+```html
+<input type="text" class="form-control" id="titulo" name="titulo"
+       value="{{ objeto.campo or '' }}"
+       {% if modo == 'ver' %}readonly{% endif %}>
+```
+
+#### Selects (select en editar, input readonly en ver — mismo alto visual)
+```html
+{% if modo == 'ver' %}
+<input type="text" class="form-control" readonly
+       value="{{ objeto.relacion.nombre if objeto.relacion else '' }}"
+       placeholder="Sin valor">
+{% else %}
+<select class="form-select" id="campo_id" name="campo_id">
+    <option value="">-- Sin valor --</option>
+    {% for item in items %}
+        <option value="{{ item.id }}" {% if objeto.campo_id == item.id %}selected{% endif %}>
+            {{ item.nombre }}
+        </option>
+    {% endfor %}
+</select>
+{% endif %}
+```
+
+#### Campos bloqueados → tooltip, NO texto subtítulo
+```html
+<!-- ✅ BIEN: tooltip en hover -->
+<input type="text" class="form-control" value="AT-{{ num }}" disabled
+       data-bs-toggle="tooltip" title="No modificable">
+
+<!-- ❌ MAL: texto subtítulo visible siempre -->
+<input type="text" class="form-control" value="AT-{{ num }}" disabled>
+<small class="text-muted">No modificable</small>
+```
+
+### Formulario de Edición
+
+```html
+{% if modo == 'editar' %}
+<form id="form_expediente" class="form-detail"
+      action="{{ url_for('blueprint.editar', id=objeto.id) }}" method="POST">
+{% endif %}
+
+<!-- ... contenido de la vista ... -->
+
+{% if modo == 'editar' %}
+</form>
+{% endif %}
+```
+
+La clase `form-detail` activa el focus ring verde corporativo via `v2-components.css`.
+
+### Botones de Acción
+
+```html
+{% if modo == 'ver' %}
+    <a href="{{ url_for('blueprint.listado') }}" class="btn btn-secondary me-2">
+        <i class="fas fa-arrow-left me-1"></i> Volver
+    </a>
+    <!-- Acciones específicas de la vista (ej: Tramitar) -->
+    <a href="{{ url_for('blueprint.editar', id=objeto.id) }}" class="btn btn-primary">
+        <i class="fas fa-edit me-1"></i> Editar
+    </a>
+{% else %}
+    <a href="{{ url_for('blueprint.detalle', id=objeto.id) }}" class="btn btn-secondary me-2">
+        <i class="fas fa-times me-1"></i> Cancelar
+    </a>
+    <button type="submit" class="btn btn-primary">
+        <i class="fas fa-save me-1"></i> Guardar Cambios
+    </button>
+{% endif %}
+```
+
+### Tooltips — Inicialización
+
+```html
+{% block extra_js %}
+{{ super() }}
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // Siempre inicializar tooltips (presentes en ambos modos)
+        document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
+            new bootstrap.Tooltip(el);
+        });
+    });
+</script>
+{% if modo == 'editar' %}
+<!-- Scripts específicos de edición aquí -->
+{% endif %}
+{% endblock %}
+```
+
+### Ruta Flask
+
+```python
+@bp.route('/<int:id>')
+@login_required
+def detalle(id):
+    objeto = Modelo.query.get_or_404(id)
+    return render_template('modulo/detalle.html', objeto=objeto, modo='ver')
+
+@bp.route('/<int:id>/editar', methods=['GET', 'POST'])
+@login_required
+def editar(id):
+    objeto = Modelo.query.get_or_404(id)
+    if request.method == 'POST':
+        # ... guardar cambios ...
+        return redirect(url_for('blueprint.detalle', id=id))
+    # GET: mismo template con datos de formulario
+    return render_template('modulo/detalle.html',
+                           objeto=objeto,
+                           modo='editar',
+                           lista_opciones=...,)
+```
+
+---
+
 ## 🎨 Patrones CSS Reutilizables
 
 ### `.content-constrained` - Márgenes Laterales
@@ -445,7 +605,7 @@ container.addEventListener('scroll', toggleButton);
 ## 📝 Checklist Implementación Vista
 
 ### Antes de Empezar
-- [ ] ¿Qué tipo de vista? (Login, Dashboard, Listado, Tramitación)
+- [ ] ¿Qué tipo de vista? (Login, Dashboard, Listado, Tramitación, **Detalle/Edición**)
 - [ ] ¿Necesita C.1/C.2? (solo si lista larga >100 items)
 - [ ] ¿Colores corporativos? (verde #087021 para identidad)
 - [ ] ¿Responsive? (definir breakpoints y columnas a ocultar)
@@ -479,6 +639,7 @@ container.addEventListener('scroll', toggleButton);
 - **V1:** `v1-dashboard.css`, `index_v1.html`
 - **V2:** Sin CSS específico (usa solo base), `listado_v2.html`, `v2-scroll-infinito.js`
 - **V3:** `v3-tramitacion.css` (pendiente), `tramitacion_v3.html`, `v3-accordion-main.js` (pendiente)
+- **V4:** Sin CSS específico (clases en `v2-components.css`), `detalle.html` unificado
 
 ### Bootstrap 5
 - [Accordion](https://getbootstrap.com/docs/5.3/components/accordion/)

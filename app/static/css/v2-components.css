@@ -411,6 +411,35 @@
   color: var(--info) !important;
 }
 
+/* ===== VISTA DETALLE/EDICIÓN UNIFICADA (V4) ===== */
+/* Patrón para vistas que alternan modo lectura/edición con el mismo layout.
+ * Ver: docs/GUIA_VISTAS_BOOTSTRAP.md - Vista V4 Detalle/Edición */
+
+/* Cabecera de ficha: verde corporativo secundario (primary-light) */
+.card-header-accent {
+  background-color: var(--primary-light, #c4ddca);
+  color: var(--gris-principal, #111);
+}
+
+/* Cuerpo de ficha: gris claro para que los campos blancos destaquen */
+.card-body-tinted {
+  background-color: var(--gris-especifico, #f5f5f5);
+}
+
+/* Campos readonly: mismo aspecto visual que los editables (fondo blanco) */
+.form-control[readonly],
+.form-control:read-only {
+  background-color: #fff;
+  cursor: default;
+}
+
+/* Formulario de edición: focus ring verde corporativo al enfocar campos */
+.form-detail .form-control:focus,
+.form-detail .form-select:focus {
+  border-color: var(--primary, #087021);
+  box-shadow: 0 0 0 0.25rem var(--focus-ring, rgba(8, 112, 33, 0.25));
+}
+
 /* ===== RESPONSIVE FILTROS ===== */
 @media (max-width: 767px) {
   .filters-row {
