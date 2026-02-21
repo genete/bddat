@@ -34,6 +34,9 @@
         <!-- B.1: Header (sticky) -->
         {% include 'layout/header.html' %}
 
+        <!-- Breadcrumb de página (overrideable por templates hijo) -->
+        {% block page_breadcrumb %}{% endblock %}
+
         <!-- B.2: Main Content (scrollable si C.1+C.2+C.3 > espacio) -->
         <main class="app-main">
             {% block content %}{% endblock %}
