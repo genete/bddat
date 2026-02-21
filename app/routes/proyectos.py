@@ -42,6 +42,20 @@ def index():
         query = query.filter(Expediente.responsable_id == current_user.id)
     # ADMIN y SUPERVISOR ven todos los proyectos (incluyendo huérfanos con responsable=NULL)
     
+    # Filtro por texto libre (título, descripción, número AT, municipio)
+    buscar = request.args.get('buscar', '').strip()
+    if buscar and len(buscar) >= 2:
+        patron = f'%{buscar}%'
+        subquery_municipio = db.session.query(MunicipioProyecto.proyecto_id).join(
+            Municipio, MunicipioProyecto.municipio_id == Municipio.id
+        ).filter(Municipio.nombre.ilike(patron)).distinct()
+        query = query.filter(db.or_(
+            Proyecto.titulo.ilike(patron),
+            Proyecto.descripcion.ilike(patron),
+            db.cast(Expediente.numero_at, db.String).ilike(patron),
+            Proyecto.id.in_(subquery_municipio)
+        ))
+
     # Filtro por tipo de instrumento ambiental
     tipo_ia_id = request.args.get('tipo_ia', type=int)
     if tipo_ia_id:
@@ -122,6 +136,7 @@ def index():
         provincias=provincias,
         responsables=responsables,
         filtros_activos={
+            'buscar': buscar,
             'tipo_ia': tipo_ia_id,
             'provincia': provincia_codigo,
             'responsable': request.args.get('responsable', type=int)

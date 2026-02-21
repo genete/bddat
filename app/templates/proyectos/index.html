@@ -39,6 +39,13 @@
         <input type="hidden" name="order" value="{{ order }}">
         
         <div class="col-md-3">
+          <label for="buscar" class="form-label">Buscar</label>
+          <input type="text" name="buscar" id="buscar" class="form-control"
+                 placeholder="Título, descripción, AT, municipio..."
+                 value="{{ filtros_activos.buscar }}">
+        </div>
+
+        <div class="col-md-3">
           <label for="tipo_ia" class="form-label">Instrumento Ambiental</label>
           <select name="tipo_ia" id="tipo_ia" class="form-select">
             <option value="">Todos</option>
@@ -104,6 +111,7 @@
                                         order='asc' if sort_by == 'expediente' and order == 'desc' else 'desc',
                                         tipo_ia=filtros_activos.tipo_ia,
                                         provincia=filtros_activos.provincia,
+                                        buscar=filtros_activos.buscar,
                                         responsable=filtros_activos.responsable) }}" 
                        class="text-decoration-none text-dark">
                       Expediente AT
@@ -120,6 +128,7 @@
                                         order='asc' if sort_by == 'titulo' and order == 'desc' else 'desc',
                                         tipo_ia=filtros_activos.tipo_ia,
                                         provincia=filtros_activos.provincia,
+                                        buscar=filtros_activos.buscar,
                                         responsable=filtros_activos.responsable) }}" 
                        class="text-decoration-none text-dark">
                       Título Proyecto
@@ -136,6 +145,7 @@
                                         order='asc' if sort_by == 'tipo_ia' and order == 'desc' else 'desc',
                                         tipo_ia=filtros_activos.tipo_ia,
                                         provincia=filtros_activos.provincia,
+                                        buscar=filtros_activos.buscar,
                                         responsable=filtros_activos.responsable) }}" 
                        class="text-decoration-none text-dark">
                       Inst. Ambiental
@@ -154,6 +164,7 @@
                                         order='asc' if sort_by == 'responsable' and order == 'desc' else 'desc',
                                         tipo_ia=filtros_activos.tipo_ia,
                                         provincia=filtros_activos.provincia,
+                                        buscar=filtros_activos.buscar,
                                         responsable=filtros_activos.responsable) }}" 
                        class="text-decoration-none text-dark">
                       Responsable
