@@ -267,7 +267,6 @@
         municipioSugg.style.display = 'none';
 
         const q = this.value.trim();
-        if (!q) { provinciaSugg.style.display = 'none'; return; }
 
         tProv = setTimeout(() => {
             fetch(`/api/provincias?q=${encodeURIComponent(q)}`)
@@ -301,7 +300,6 @@
         clearTimeout(tMuni);
         if (!provinciaActual) return;
         const q = this.value.trim();
-        if (!q) { municipioSugg.style.display = 'none'; return; }
 
         tMuni = setTimeout(() => {
             const url = `/api/municipios?provincia=${encodeURIComponent(provinciaActual)}&q=${encodeURIComponent(q)}`;
@@ -346,13 +344,48 @@
         ul.style.display = 'block';
     }
 
+    let blurTimer = null;
     [provinciaSearch, municipioSearch].forEach(inp => {
         inp.addEventListener('blur', () => {
-            setTimeout(() => {
+            blurTimer = setTimeout(() => {
                 provinciaSugg.style.display = 'none';
                 municipioSugg.style.display = 'none';
             }, 150);
         });
+    });
+
+    // Focus: mostrar todas las opciones sin necesidad de escribir
+    provinciaSearch.addEventListener('focus', function () {
+        clearTimeout(blurTimer);
+        if (provinciaSugg.style.display === 'block') return;
+        fetch('/api/provincias')
+            .then(r => r.json())
+            .then(lista => {
+                navProv.reset();
+                renderSugg(
+                    provinciaSugg,
+                    lista.map(n => ({ id: n, text: n })),
+                    item => seleccionarProvincia(item.text)
+                );
+            })
+            .catch(() => {});
+    });
+
+    municipioSearch.addEventListener('focus', function () {
+        clearTimeout(blurTimer);
+        if (!provinciaActual || municipioSugg.style.display === 'block') return;
+        fetch(`/api/municipios?provincia=${encodeURIComponent(provinciaActual)}`)
+            .then(r => r.json())
+            .then(lista => {
+                if (!Array.isArray(lista)) lista = [];
+                navMuni.reset();
+                renderSugg(
+                    municipioSugg,
+                    lista.map(m => ({ id: m.id, text: m.nombre + ' (' + m.provincia + ')' })),
+                    item => { agregarMunicipio(item.id, item.text); municipioSearch.value = ''; }
+                );
+            })
+            .catch(() => {});
     });
 
     // ------------------------------------------------------------------

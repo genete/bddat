@@ -323,26 +323,31 @@
         renderBadges();
     }
 
-    // Filtro inline al escribir en el buscador de tipos
-    tiposSearch.addEventListener('input', function () {
-        const q = this.value.trim().toLowerCase();
+    // Mostrar todos los tipos no seleccionados; los no coincidentes se dimean
+    function mostrarTipos(q) {
         navTipos.reset();
         tiposSugg.innerHTML = '';
 
-        // Filtrar: coincidencia en siglas o descripción, excluir ya seleccionados
-        const coincidencias = TIPOS_SOLICITUD.filter(ts =>
-            !tiposSeleccionados[ts.id] &&
-            (ts.siglas.toLowerCase().includes(q) || ts.descripcion.toLowerCase().includes(q))
-        );
+        const disponibles = TIPOS_SOLICITUD.filter(ts => !tiposSeleccionados[ts.id]);
 
-        if (!q || !coincidencias.length) {
-            tiposSugg.style.display = 'none';
+        if (!disponibles.length) {
+            const li = document.createElement('li');
+            li.className = 'list-group-item text-muted small py-2';
+            li.textContent = 'Todos los tipos han sido añadidos.';
+            tiposSugg.appendChild(li);
+            tiposSugg.style.display = 'block';
             return;
         }
 
-        coincidencias.forEach(ts => {
+        const qLow = q.toLowerCase();
+        let primerMatch = null;
+        disponibles.forEach(ts => {
+            const coincide = !qLow ||
+                ts.siglas.toLowerCase().includes(qLow) ||
+                ts.descripcion.toLowerCase().includes(qLow);
             const li = document.createElement('li');
             li.className = 'list-group-item list-group-item-action py-2 small';
+            if (!coincide) li.style.opacity = '0.4';
             li.innerHTML = `<strong>${ts.siglas}</strong> &mdash; ${ts.descripcion}`;
             li.addEventListener('mousedown', ev => {
                 ev.preventDefault();
@@ -351,13 +356,22 @@
                 tiposSugg.style.display = 'none';
             });
             tiposSugg.appendChild(li);
+            if (coincide && !primerMatch) primerMatch = li;
         });
 
-        tiposSugg.style.display = 'block';
-    });
+        if (primerMatch && qLow) primerMatch.scrollIntoView({ block: 'nearest' });
 
+        tiposSugg.style.display = 'block';
+    }
+
+    let tiposBlurTimer = null;
+    tiposSearch.addEventListener('focus', () => {
+        clearTimeout(tiposBlurTimer);
+        mostrarTipos(tiposSearch.value.trim());
+    });
+    tiposSearch.addEventListener('input', function () { mostrarTipos(this.value.trim()); });
     tiposSearch.addEventListener('blur', () => {
-        setTimeout(() => { tiposSugg.style.display = 'none'; }, 150);
+        tiposBlurTimer = setTimeout(() => { tiposSugg.style.display = 'none'; }, 150);
     });
 
     // ------------------------------------------------------------------

@@ -49,13 +49,22 @@ class MunicipiosSelector {
         this.inputBuscadorProvincia.addEventListener('keydown', (e) => {
             if (e.key === 'ArrowDown' || e.key === 'Enter') {
                 e.preventDefault();
-                const primera = this.selectProvincia.querySelector('option:not([value=""])');
-                if (primera) {
-                    this.selectProvincia.value = primera.value;
+                // Si el filtro ya pre-seleccionó una opción, usarla; si no, la primera disponible
+                if (!this.selectProvincia.value) {
+                    const primera = this.selectProvincia.querySelector('option:not([value=""])');
+                    if (primera) this.selectProvincia.value = primera.value;
+                }
+                if (this.selectProvincia.value) {
                     this.selectProvincia.dispatchEvent(new Event('change'));
                     this.selectProvincia.focus();
                 }
             }
+        });
+
+        // Focus en buscador provincia: mostrar todas las provincias disponibles
+        this.inputBuscadorProvincia.addEventListener('focus', () => {
+            this.renderProvincias(this.todasProvincias);
+            this.selectProvincia.value = '';
         });
 
         // Cambio provincia
@@ -80,12 +89,24 @@ class MunicipiosSelector {
         this.inputBuscadorMunicipio.addEventListener('keydown', (e) => {
             if (e.key === 'ArrowDown' || e.key === 'Enter') {
                 e.preventDefault();
-                const primera = this.selectMunicipio.querySelector('option:not([value=""])');
-                if (primera) {
-                    this.selectMunicipio.value = primera.value;
+                // Si el filtro ya pre-seleccionó una opción, usarla; si no, la primera disponible
+                if (!this.selectMunicipio.value) {
+                    const primera = this.selectMunicipio.querySelector('option:not([value=""])');
+                    if (primera) this.selectMunicipio.value = primera.value;
+                }
+                if (this.selectMunicipio.value) {
                     this.selectMunicipio.dispatchEvent(new Event('change'));
                     this.selectMunicipio.focus();
                 }
+            }
+        });
+
+        // Focus en buscador municipio: mostrar todos los municipios disponibles
+        this.inputBuscadorMunicipio.addEventListener('focus', () => {
+            if (this.todosMunicipios.length) {
+                this.renderMunicipios(this.todosMunicipios);
+                this.selectMunicipio.value = '';
+                this.btnAnadir.disabled = true;
             }
         });
 
@@ -147,11 +168,16 @@ class MunicipiosSelector {
     }
     
     filtrarProvincias() {
-        const query = this.inputBuscadorProvincia.value.toLowerCase();
-        const provinciasFiltradas = this.todasProvincias.filter(p => 
-            p.toLowerCase().includes(query)
-        );
-        this.renderProvincias(provinciasFiltradas);
+        const q = this.inputBuscadorProvincia.value.toLowerCase();
+        if (!q) {
+            this.renderProvincias(this.todasProvincias);
+            this.selectProvincia.value = '';
+            return;
+        }
+        // Desplazar el select al primer resultado sin ocultar los demás
+        const firstMatch = Array.from(this.selectProvincia.options)
+            .find(o => o.value && o.text.toLowerCase().includes(q));
+        if (firstMatch) this.selectProvincia.selectedIndex = firstMatch.index;
     }
     
     async onCambioProvincia() {
@@ -196,11 +222,17 @@ class MunicipiosSelector {
     }
     
     filtrarMunicipios() {
-        const query = this.inputBuscadorMunicipio.value.toLowerCase();
-        const municipiosFiltrados = this.todosMunicipios.filter(m => 
-            m.nombre.toLowerCase().includes(query)
-        );
-        this.renderMunicipios(municipiosFiltrados);
+        const q = this.inputBuscadorMunicipio.value.toLowerCase();
+        if (!q) {
+            this.renderMunicipios(this.todosMunicipios);
+            this.selectMunicipio.value = '';
+            this.btnAnadir.disabled = true;
+            return;
+        }
+        // Desplazar el select al primer resultado sin ocultar los demás
+        const firstMatch = Array.from(this.selectMunicipio.options)
+            .find(o => o.value && o.text.toLowerCase().includes(q));
+        if (firstMatch) this.selectMunicipio.selectedIndex = firstMatch.index;
     }
     
     anadirMunicipio() {
