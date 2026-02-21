@@ -74,30 +74,40 @@
                         </div>
 
                         {# --- Tipos de solicitud --- #}
-                        <div class="mb-4">
+                        <div class="mb-4" style="position:relative;">
                             <label class="form-label fw-semibold">
                                 Tipo(s) de solicitud <span class="text-danger">*</span>
                             </label>
-                            <div id="tipos-solicitud-error" class="text-danger small mb-2" style="display:none;">
+
+                            <div class="card bg-light border-0 p-3">
+                                {# Buscador/filtro #}
+                                <div class="mb-2" style="position:relative;">
+                                    <input type="text" id="tipos-search"
+                                           class="form-control"
+                                           placeholder="Buscar tipo de solicitud..."
+                                           autocomplete="off">
+                                    <ul id="tipos-suggestions" class="list-group shadow-sm"
+                                        style="position:absolute; z-index:1050; width:100%;
+                                               max-height:220px; overflow-y:auto; display:none;">
+                                    </ul>
+                                </div>
+
+                                {# Badges seleccionados #}
+                                <div>
+                                    <p class="small text-muted mb-2">Tipos seleccionados:</p>
+                                    <div id="tipos-seleccionados" class="d-flex flex-wrap gap-2">
+                                        <span class="text-muted small">Ninguno añadido todavía.</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div id="tipos-error" class="text-danger small mt-1" style="display:none;">
                                 <i class="fas fa-exclamation-circle me-1"></i>Debe seleccionar al menos un tipo.
                             </div>
-                            <div class="row row-cols-1 row-cols-md-2 g-2">
-                                {% for ts in tipos_solicitudes %}
-                                    <div class="col">
-                                        <div class="form-check border rounded p-2 h-100">
-                                            <input class="form-check-input tipo-solicitud-check"
-                                                   type="checkbox"
-                                                   name="tipos_solicitud_ids[]"
-                                                   id="ts_{{ ts.id }}"
-                                                   value="{{ ts.id }}">
-                                            <label class="form-check-label" for="ts_{{ ts.id }}">
-                                                <span class="badge bg-secondary me-1">{{ ts.siglas }}</span>
-                                                {{ ts.descripcion }}
-                                            </label>
-                                        </div>
-                                    </div>
-                                {% endfor %}
+                            <div id="tipos-combo-error" class="text-danger small mt-1" style="display:none;">
+                                <i class="fas fa-exclamation-circle me-1"></i><span id="tipos-combo-msg"></span>
                             </div>
+                            <div id="tipos-hidden-inputs"></div>
                         </div>
 
                         {# --- Observaciones --- #}
@@ -139,60 +149,80 @@
 (function () {
     'use strict';
 
+    // ------------------------------------------------------------------
+    // Datos de tipos de solicitud inyectados desde Jinja2
+    // ------------------------------------------------------------------
+    const TIPOS_SOLICITUD = [
+        {% for ts in tipos_solicitudes %}
+        { id: {{ ts.id }}, siglas: {{ ts.siglas|tojson }}, descripcion: {{ ts.descripcion|tojson }} },
+        {% endfor %}
+    ];
+
+    // ------------------------------------------------------------------
+    // Navegación de teclado reutilizable para listas de sugerencias (<ul>)
+    // ------------------------------------------------------------------
+    function navTeclado(inputEl, ulEl) {
+        let cursor = -1;
+
+        function items() {
+            return Array.from(ulEl.querySelectorAll('li.list-group-item-action'));
+        }
+
+        function moverCursor(delta) {
+            const its = items();
+            if (!its.length) return;
+            cursor = Math.max(-1, Math.min(its.length - 1, cursor + delta));
+            its.forEach((li, i) => li.classList.toggle('active', i === cursor));
+            if (cursor >= 0) its[cursor].scrollIntoView({ block: 'nearest' });
+        }
+
+        inputEl.addEventListener('keydown', function (e) {
+            if (ulEl.style.display === 'none') return;
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                moverCursor(1);
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                moverCursor(-1);
+            } else if (e.key === 'Enter') {
+                const its = items();
+                if (cursor >= 0 && its[cursor]) {
+                    e.preventDefault();
+                    its[cursor].dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+                }
+            } else if (e.key === 'Escape') {
+                ulEl.style.display = 'none';
+                cursor = -1;
+            }
+        });
+
+        return { reset() { cursor = -1; } };
+    }
+
+    // ------------------------------------------------------------------
+    // A) Autocomplete de titular / entidad
+    // ------------------------------------------------------------------
     const entidadSearch  = document.getElementById('entidad-search');
     const entidadIdInput = document.getElementById('entidad_id');
     const entidadSugg    = document.getElementById('entidad-suggestions');
     const btnLimpiar     = document.getElementById('btn-limpiar-entidad');
     const entidadError   = document.getElementById('entidad-error');
 
-    let timer = null;
-    let cursor = -1;
-
-    // Navegación de teclado en la lista de sugerencias
-    function itemsSugg() {
-        return Array.from(entidadSugg.querySelectorAll('li.list-group-item-action'));
-    }
-
-    function moverCursor(delta) {
-        const its = itemsSugg();
-        if (!its.length) return;
-        cursor = Math.max(-1, Math.min(its.length - 1, cursor + delta));
-        its.forEach((li, i) => li.classList.toggle('active', i === cursor));
-        if (cursor >= 0) its[cursor].scrollIntoView({ block: 'nearest' });
-    }
-
-    entidadSearch.addEventListener('keydown', function (e) {
-        if (entidadSugg.style.display === 'none') return;
-        if (e.key === 'ArrowDown') {
-            e.preventDefault();
-            moverCursor(1);
-        } else if (e.key === 'ArrowUp') {
-            e.preventDefault();
-            moverCursor(-1);
-        } else if (e.key === 'Enter') {
-            const its = itemsSugg();
-            if (cursor >= 0 && its[cursor]) {
-                e.preventDefault();
-                its[cursor].dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
-            }
-        } else if (e.key === 'Escape') {
-            entidadSugg.style.display = 'none';
-            cursor = -1;
-        }
-    });
+    const navEntidad = navTeclado(entidadSearch, entidadSugg);
+    let timerEntidad = null;
 
     entidadSearch.addEventListener('input', function () {
-        clearTimeout(timer);
+        clearTimeout(timerEntidad);
         entidadIdInput.value = '';
         btnLimpiar.style.display = 'none';
         const q = this.value.trim();
         if (q.length < 2) { entidadSugg.style.display = 'none'; return; }
-        timer = setTimeout(() => {
+        timerEntidad = setTimeout(() => {
             fetch(`/api/entidades?q=${encodeURIComponent(q)}&rol=titular`)
                 .then(r => r.json())
                 .then(data => {
                     const lista = data.results || [];
-                    cursor = -1;
+                    navEntidad.reset();
                     entidadSugg.innerHTML = '';
                     if (!lista.length) {
                         const li = document.createElement('li');
@@ -228,22 +258,158 @@
     btnLimpiar.addEventListener('click', () => {
         entidadIdInput.value = '';
         entidadSearch.value  = '';
-        btnLimpiar.style.display = 'none';
+        btnLimpiar.style.display  = 'none';
         entidadSugg.style.display = 'none';
     });
 
+    // ------------------------------------------------------------------
+    // B) Selector de tipos de solicitud con badges acumulables
+    // ------------------------------------------------------------------
+    const tiposSeleccionados = {};  // { id: { siglas, descripcion } }
+
+    const tiposSearch     = document.getElementById('tipos-search');
+    const tiposSugg       = document.getElementById('tipos-suggestions');
+    const tiposDiv        = document.getElementById('tipos-seleccionados');
+    const tiposHidden     = document.getElementById('tipos-hidden-inputs');
+    const tiposError      = document.getElementById('tipos-error');
+    const tiposComboError = document.getElementById('tipos-combo-error');
+    const tiposComboMsg   = document.getElementById('tipos-combo-msg');
+
+    const navTipos = navTeclado(tiposSearch, tiposSugg);
+
+    /** Renderiza los badges y los inputs hidden según tiposSeleccionados */
+    function renderBadges() {
+        tiposDiv.innerHTML = '';
+        tiposHidden.innerHTML = '';
+        const ids = Object.keys(tiposSeleccionados);
+        if (!ids.length) {
+            tiposDiv.innerHTML = '<span class="text-muted small">Ninguno añadido todavía.</span>';
+            return;
+        }
+        ids.forEach(id => {
+            const { siglas } = tiposSeleccionados[id];
+
+            // Badge visual con botón de eliminar
+            const span = document.createElement('span');
+            span.className = 'badge bg-primary d-inline-flex align-items-center gap-1 fs-6';
+            span.textContent = siglas;
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'btn-close btn-close-white ms-1';
+            btn.style.cssText = 'font-size:0.6em;';
+            btn.setAttribute('aria-label', `Eliminar ${siglas}`);
+            btn.addEventListener('click', () => eliminarTipo(id));
+            span.appendChild(btn);
+            tiposDiv.appendChild(span);
+
+            // Input hidden para que llegue al backend
+            const inp = document.createElement('input');
+            inp.type  = 'hidden';
+            inp.name  = 'tipos_solicitud_ids[]';
+            inp.value = id;
+            tiposHidden.appendChild(inp);
+        });
+    }
+
+    function añadirTipo(id, siglas, descripcion) {
+        if (tiposSeleccionados[id]) return;  // ya está
+        tiposSeleccionados[id] = { siglas, descripcion };
+        renderBadges();
+        tiposError.style.display = 'none';
+    }
+
+    function eliminarTipo(id) {
+        delete tiposSeleccionados[id];
+        renderBadges();
+    }
+
+    // Filtro inline al escribir en el buscador de tipos
+    tiposSearch.addEventListener('input', function () {
+        const q = this.value.trim().toLowerCase();
+        navTipos.reset();
+        tiposSugg.innerHTML = '';
+
+        // Filtrar: coincidencia en siglas o descripción, excluir ya seleccionados
+        const coincidencias = TIPOS_SOLICITUD.filter(ts =>
+            !tiposSeleccionados[ts.id] &&
+            (ts.siglas.toLowerCase().includes(q) || ts.descripcion.toLowerCase().includes(q))
+        );
+
+        if (!q || !coincidencias.length) {
+            tiposSugg.style.display = 'none';
+            return;
+        }
+
+        coincidencias.forEach(ts => {
+            const li = document.createElement('li');
+            li.className = 'list-group-item list-group-item-action py-2 small';
+            li.innerHTML = `<strong>${ts.siglas}</strong> &mdash; ${ts.descripcion}`;
+            li.addEventListener('mousedown', ev => {
+                ev.preventDefault();
+                añadirTipo(ts.id, ts.siglas, ts.descripcion);
+                tiposSearch.value = '';
+                tiposSugg.style.display = 'none';
+            });
+            tiposSugg.appendChild(li);
+        });
+
+        tiposSugg.style.display = 'block';
+    });
+
+    tiposSearch.addEventListener('blur', () => {
+        setTimeout(() => { tiposSugg.style.display = 'none'; }, 150);
+    });
+
+    // ------------------------------------------------------------------
+    // Placeholder de validación de combinaciones (Fase 3)
+    // ------------------------------------------------------------------
+    /**
+     * Placeholder para la regla de negocio de combinaciones válidas.
+     * En Fase 3 este método recibirá las reglas del motor de tramitación.
+     * Actualmente siempre devuelve { valido: true }.
+     *
+     * @param {string[]} siglasList - Array de siglas seleccionadas
+     * @returns {{ valido: boolean, mensaje: string }}
+     */
+    function validarCombinacion(siglasList) {
+        // TODO Fase 3: implementar reglas de negocio
+        return { valido: true, mensaje: '' };
+    }
+
+    // ------------------------------------------------------------------
+    // Validación en submit
+    // ------------------------------------------------------------------
     document.querySelector('form').addEventListener('submit', function (e) {
         let ok = true;
+
+        // Validar titular
         if (!entidadIdInput.value) {
-            entidadError.style.display = 'block'; ok = false;
-        }
-        const checked  = document.querySelectorAll('.tipo-solicitud-check:checked');
-        const tiposErr = document.getElementById('tipos-solicitud-error');
-        if (!checked.length) {
-            tiposErr.style.display = 'block'; ok = false;
+            entidadError.style.display = 'block';
+            ok = false;
         } else {
-            tiposErr.style.display = 'none';
+            entidadError.style.display = 'none';
         }
+
+        // Validar al menos un tipo seleccionado
+        const ids = Object.keys(tiposSeleccionados);
+        if (!ids.length) {
+            tiposError.style.display = 'block';
+            ok = false;
+        } else {
+            tiposError.style.display = 'none';
+
+            // Validar combinación (placeholder Fase 3)
+            const siglas = ids.map(id => tiposSeleccionados[id].siglas);
+            const { valido, mensaje } = validarCombinacion(siglas);
+            if (!valido) {
+                tiposComboMsg.textContent = mensaje;
+                tiposComboError.style.display = 'block';
+                ok = false;
+            } else {
+                tiposComboError.style.display = 'none';
+            }
+        }
+
         if (!ok) {
             e.preventDefault();
         } else {
