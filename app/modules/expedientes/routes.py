@@ -94,7 +94,7 @@ def detalle(id):
     if resultado:
         return resultado
 
-    return render_template('expedientes/detalle.html', expediente=expediente)
+    return render_template('expedientes/detalle.html', expediente=expediente, modo='ver')
 
 
 @bp.route('/<int:id>/editar', methods=['GET', 'POST'])
@@ -177,8 +177,9 @@ def editar(id):
     tipos_ia = TipoIA.query.all()
     usuarios = Usuario.query.filter_by(activo=True).all()
 
-    return render_template('expedientes/editar.html',
+    return render_template('expedientes/detalle.html',
                          expediente=expediente,
+                         modo='editar',
                          tipos_expedientes=tipos_expedientes,
                          tipos_ia=tipos_ia,
                          usuarios=usuarios)
