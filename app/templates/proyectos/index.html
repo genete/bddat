@@ -1,9 +1,20 @@
-{% extends "base.html" %}
+{% extends "layout/base_fullwidth.html" %}
 
 {% block title %}Listado de Proyectos - BDDAT{% endblock %}
 
+{% block page_breadcrumb %}
+<nav aria-label="breadcrumb" class="px-4 py-2 bg-light border-bottom">
+    <ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item">
+            <a href="{{ url_for('dashboard.index') }}">Inicio</a>
+        </li>
+        <li class="breadcrumb-item active">Proyectos</li>
+    </ol>
+</nav>
+{% endblock %}
+
 {% block content %}
-<div class="container-fluid mt-4">
+<div class="p-4">
   <!-- Header con título y estadísticas -->
   <div class="row mb-3">
     <div class="col-md-12">
@@ -259,6 +270,7 @@
 {% endblock %}
 
 {% block extra_js %}
+{{ super() }}
 <script>
   // Inicializar tooltips de Bootstrap
   document.addEventListener('DOMContentLoaded', function() {
