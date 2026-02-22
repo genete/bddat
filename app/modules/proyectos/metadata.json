@@ -1,0 +1,16 @@
+{
+  "module": "proyectos",
+  "name": "Proyectos",
+  "icon": "fa-drafting-compass",
+  "order": 15,
+  "permissions": {
+    "list":   ["ADMIN", "SUPERVISOR", "TRAMITADOR", "ADMINISTRATIVO"],
+    "create": [],
+    "edit":   ["ADMIN", "SUPERVISOR", "TRAMITADOR"],
+    "delete": ["ADMIN"]
+  },
+  "navigation": {
+    "label": "Proyectos",
+    "route": "proyectos.index"
+  }
+}

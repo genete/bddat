@@ -1,0 +1,371 @@
+/**
+ * v0-login.css
+ * Estilos específicos para Vista V0 (Login)
+ * 
+ * Epic: #93 (Sistema de Navegación UI Modular)
+ * Vista: V0 - Login split-screen (pantalla sin autenticación)
+ * Layout: base_login.html (header + main + footer, sin breadcrumb/usuario)
+ * Colores: Junta de Andalucía (v2-theme.css)
+ */
+
+/* ===== LOGIN CONTAINER (SPLIT-SCREEN) ===== */
+.login-container {
+  display: grid;
+  grid-template-columns: 60% 40%;
+  min-height: calc(100vh - var(--header-height) - var(--footer-height));
+  gap: 0;
+}
+
+/* ===== ZONA IZQUIERDA - INFORMACIÓN ===== */
+.login-info {
+  background: linear-gradient(135deg, var(--primary-lighter) 0%, #ffffff 100%);
+  padding: 4rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Decoración fondo izquierda */
+.login-info::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -20%;
+  width: 500px;
+  height: 500px;
+  background: var(--primary);
+  opacity: 0.05;
+  border-radius: 50%;
+  z-index: 0;
+}
+
+.info-content {
+  position: relative;
+  z-index: 1;
+  max-width: 600px;
+}
+
+/* Título bienvenida */
+.welcome-title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--primary);
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.welcome-title i {
+  font-size: 3rem;
+}
+
+.welcome-subtitle {
+  font-size: 1.125rem;
+  color: var(--text-secondary);
+  margin-bottom: 3rem;
+  line-height: 1.6;
+}
+
+/* Secciones de información */
+.info-section {
+  margin-bottom: 2rem;
+}
+
+.info-section h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.info-section h3 i {
+  color: var(--primary);
+  font-size: 1.5rem;
+}
+
+.info-section ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.info-section ul li {
+  padding: 0.5rem 0;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.info-section ul li i {
+  color: var(--primary);
+  width: 20px;
+  text-align: center;
+}
+
+.info-section ul li a {
+  color: var(--primary);
+  text-decoration: none;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.info-section ul li a:hover {
+  color: var(--primary-hover);
+  text-decoration: underline;
+}
+
+.info-footer {
+  margin-top: 3rem;
+  padding-top: 2rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.info-footer small {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text-muted);
+}
+
+/* ===== ZONA DERECHA - FORMULARIO ===== */
+.login-form-zone {
+  background: var(--bg-page);
+  padding: 4rem 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Card formulario */
+.login-card {
+  width: 100%;
+  max-width: 420px;
+  background: var(--bg-card);
+  border-radius: var(--border-radius-lg);
+  padding: 2.5rem;
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--border-color);
+}
+
+.login-card-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.login-card-header h2 {
+  font-size: 1.75rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+}
+
+.login-card-header h2 i {
+  color: var(--primary);
+}
+
+.login-card-header p {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  margin: 0;
+}
+
+/* Formulario */
+.login-form {
+  margin-bottom: 1.5rem;
+}
+
+.form-group {
+  margin-bottom: 1.5rem;
+}
+
+.form-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin-bottom: 0.5rem;
+}
+
+.form-label i {
+  color: var(--primary);
+  width: 16px;
+}
+
+.form-control {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  transition: all 0.2s ease;
+  background: var(--bg-card);
+  color: var(--text-primary);
+}
+
+.form-control:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 0.25rem var(--focus-ring);
+}
+
+.form-control::placeholder {
+  color: var(--text-muted);
+}
+
+/* Botón entrar */
+.btn-login {
+  width: 100%;
+  padding: 0.875rem 1.5rem;
+  font-size: 1.125rem;
+  font-weight: 600;
+  background: var(--primary);
+  background-image: var(--gradient);
+  color: var(--text-inverse);
+  border: none;
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+}
+
+.btn-login:hover {
+  background: var(--primary-hover);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow);
+}
+
+.btn-login:active {
+  transform: translateY(0);
+}
+
+.btn-login:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 0.25rem var(--focus-ring);
+}
+
+/* Enlaces secundarios */
+.login-links {
+  text-align: center;
+  margin-top: 1.5rem;
+}
+
+.login-links a {
+  color: var(--primary);
+  text-decoration: none;
+  font-size: 0.875rem;
+  transition: all 0.2s ease;
+}
+
+.login-links a:hover {
+  color: var(--primary-hover);
+  text-decoration: underline;
+}
+
+/* Mensajes de error/éxito */
+.alert {
+  padding: 0.75rem 1rem;
+  border-radius: var(--border-radius);
+  margin-bottom: 1.5rem;
+  font-size: 0.875rem;
+}
+
+.alert-danger {
+  background-color: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+}
+
+.alert-success {
+  background-color: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+/* ===== RESPONSIVE ===== */
+
+/* Tablet y mobile */
+@media (max-width: 991px) {
+  .login-container {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+  }
+  
+  .login-info {
+    padding: 2rem;
+    min-height: auto;
+  }
+  
+  .welcome-title {
+    font-size: 2rem;
+  }
+  
+  .welcome-title i {
+    font-size: 2.5rem;
+  }
+  
+  .welcome-subtitle {
+    font-size: 1rem;
+    margin-bottom: 2rem;
+  }
+  
+  .info-section {
+    margin-bottom: 1.5rem;
+  }
+  
+  .login-form-zone {
+    padding: 2rem 1.5rem;
+  }
+  
+  .login-card {
+    padding: 2rem 1.5rem;
+  }
+}
+
+/* Mobile pequeño */
+@media (max-width: 576px) {
+  .login-info {
+    padding: 1.5rem;
+  }
+  
+  .welcome-title {
+    font-size: 1.75rem;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .login-form-zone {
+    padding: 1.5rem 1rem;
+  }
+  
+  .login-card {
+    padding: 1.5rem 1rem;
+  }
+  
+  .login-card-header h2 {
+    font-size: 1.5rem;
+  }
+}
+
+/* ===== ACCESIBILIDAD ===== */
+.login-form *:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}

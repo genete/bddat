@@ -1,0 +1,165 @@
+{% extends "layout/base_login.html" %}
+
+{% block title %}Iniciar Sesión{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/v0-login.css') }}">
+{% endblock %}
+
+{% block content %}
+<!-- Login Container (Split-screen 60/40) -->
+<div class="login-container">
+    
+    <!-- ZONA IZQUIERDA (60%) - Información y Ayuda -->
+    <div class="login-info">
+        <div class="info-content">
+            <!-- Bienvenida -->
+            <h1 class="welcome-title">
+                <i class="fas fa-bolt"></i>
+                Bienvenido a BDDAT
+            </h1>
+            <p class="welcome-subtitle">
+                Sistema de Tramitación Administrativa de Expedientes de 
+                Autorización de Instalaciones de Alta Tensión de la 
+                Junta de Andalucía.
+            </p>
+            
+            <!-- Sección: Información de Acceso -->
+            <div class="info-section">
+                <h3>
+                    <i class="fas fa-info-circle"></i>
+                    Información de Acceso
+                </h3>
+                <ul>
+                    <li>
+                        <i class="fas fa-user-tag"></i>
+                        Utiliza tus <strong>siglas de usuario</strong> asignadas por el administrador
+                    </li>
+                    <li>
+                        <i class="fas fa-desktop"></i>
+                        Navegadores recomendados: Chrome, Firefox, Edge (actualizados)
+                    </li>
+                    <li>
+                        <i class="fas fa-expand-arrows-alt"></i>
+                        Resolución mínima recomendada: 1280x720 píxeles
+                    </li>
+                </ul>
+            </div>
+            
+            <!-- Sección: ¿Necesitas Ayuda? -->
+            <div class="info-section">
+                <h3>
+                    <i class="fas fa-question-circle"></i>
+                    ¿Necesitas Ayuda?
+                </h3>
+                <ul>
+                    <li>
+                        <a href="#">
+                            <i class="fas fa-key"></i>
+                            ¿Olvidaste tu contraseña? (Próximamente)
+                        </a>
+                    </li>
+                    <li>
+                        <a href="mailto:soporte.bddat@juntadeandalucia.es">
+                            <i class="fas fa-envelope"></i>
+                            Contactar con soporte técnico
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" target="_blank">
+                            <i class="fas fa-book"></i>
+                            Manual de usuario (Próximamente)
+                        </a>
+                    </li>
+                </ul>
+            </div>
+            
+            <!-- Footer información -->
+            <div class="info-footer">
+                <small>
+                    <i class="fas fa-shield-alt"></i>
+                    Acceso restringido a personal autorizado de la Junta de Andalucía
+                </small>
+            </div>
+        </div>
+    </div>
+    
+    <!-- ZONA DERECHA (40%) - Formulario Login -->
+    <div class="login-form-zone">
+        <div class="login-card">
+            <!-- Header del formulario -->
+            <div class="login-card-header">
+                <h2>
+                    <i class="fas fa-sign-in-alt"></i>
+                    Iniciar Sesión
+                </h2>
+                <p>Introduce tus credenciales para acceder</p>
+            </div>
+            
+            <!-- Mensajes flash (errores/éxito) -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}" role="alert">
+                        {{ message }}
+                    </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+            
+            <!-- Formulario -->
+            <form method="POST" action="{{ url_for('auth.login') }}" class="login-form">
+                <!-- Campo: Siglas de Usuario -->
+                <div class="form-group">
+                    <label for="siglas" class="form-label">
+                        <i class="fas fa-user"></i>
+                        Siglas de Usuario
+                    </label>
+                    <input 
+                        type="text" 
+                        class="form-control" 
+                        id="siglas" 
+                        name="siglas" 
+                        placeholder="Ej: ADMIN, CLOPEZ..." 
+                        required 
+                        autofocus
+                        autocomplete="username"
+                    >
+                </div>
+                
+                <!-- Campo: Contraseña -->
+                <div class="form-group">
+                    <label for="password" class="form-label">
+                        <i class="fas fa-lock"></i>
+                        Contraseña
+                    </label>
+                    <input 
+                        type="password" 
+                        class="form-control" 
+                        id="password" 
+                        name="password" 
+                        placeholder="Introduce tu contraseña" 
+                        required
+                        autocomplete="current-password"
+                    >
+                </div>
+                
+                <!-- Botón Entrar -->
+                <button type="submit" class="btn-login">
+                    <i class="fas fa-sign-in-alt"></i>
+                    Entrar
+                </button>
+            </form>
+            
+            <!-- Enlaces secundarios -->
+            <div class="login-links">
+                <a href="#">
+                    <i class="fas fa-key"></i>
+                    ¿Olvidaste tu contraseña?
+                </a>
+            </div>
+        </div>
+    </div>
+    
+</div>
+{% endblock %}

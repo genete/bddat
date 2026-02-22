@@ -1,0 +1,104 @@
+{# Acordeón de Tarea específica - Nivel 5 (final) #}
+<div class="accordion-item vista3-level-5" data-level-type="tarea" data-level-id="{{ tarea.id }}">
+    <h2 class="accordion-header" id="heading-tarea-{{ tarea.id }}">
+        <button class="accordion-button"
+                type="button"
+                onclick="navigateToLevel({{ level_index }})">
+            <i class="bi bi-check2-square"></i>
+            &nbsp;Tarea: {{ tarea.tipo_tarea.nombre if tarea.tipo_tarea else 'Tarea ' ~ tarea.id }}
+        </button>
+    </h2>
+    <div class="accordion-collapse collapse show"
+         aria-labelledby="heading-tarea-{{ tarea.id }}">
+        <div class="accordion-body p-0">
+
+            {# --- Tabs de navegación --- #}
+            <ul class="nav nav-tabs px-3 pt-2" id="tabs-tarea-{{ tarea.id }}" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="tab-tarea-{{ tarea.id }}-datos-btn"
+                            data-bs-toggle="tab"
+                            data-bs-target="#tab-tarea-{{ tarea.id }}-datos"
+                            type="button" role="tab">
+                        <i class="bi bi-info-circle me-1"></i>Datos
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="tab-tarea-{{ tarea.id }}-docs-btn"
+                            data-bs-toggle="tab"
+                            data-bs-target="#tab-tarea-{{ tarea.id }}-docs"
+                            type="button" role="tab">
+                        <i class="bi bi-file-earmark me-1"></i>Documentos
+                        {% if documentos %}
+                        <span class="badge bg-secondary ms-1">{{ documentos|length }}</span>
+                        {% endif %}
+                    </button>
+                </li>
+            </ul>
+
+            {# --- Contenido de tabs --- #}
+            <div class="tab-content px-3 pb-3 pt-3">
+
+                {# Tab Datos #}
+                <div class="tab-pane fade show active"
+                     id="tab-tarea-{{ tarea.id }}-datos"
+                     role="tabpanel">
+                    <div class="detalle-tarea">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <p class="mb-1"><strong>Inicio:</strong> {{ tarea.fecha_inicio.strftime('%d/%m/%Y') if tarea.fecha_inicio else 'Pendiente' }}</p>
+                                <p class="mb-1"><strong>Fin:</strong> {{ tarea.fecha_fin.strftime('%d/%m/%Y') if tarea.fecha_fin else 'En curso' }}</p>
+                            </div>
+                            <div class="col-md-6">
+                                {% if tarea.responsable %}
+                                <p class="mb-1"><strong>Responsable:</strong> {{ tarea.responsable.siglas }}</p>
+                                {% endif %}
+                                {% if tarea.observaciones %}
+                                <p class="mb-1"><strong>Obs:</strong> {{ tarea.observaciones[:100] }}</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {# Tab Documentos #}
+                <div class="tab-pane fade"
+                     id="tab-tarea-{{ tarea.id }}-docs"
+                     role="tabpanel">
+                    {% if documentos %}
+                    <table class="table table-sm table-hover">
+                        <thead class="table-success">
+                            <tr>
+                                <th>Relación</th>
+                                <th>Documento</th>
+                                <th>Fecha</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for doc_data in documentos %}
+                            <tr>
+                                <td><span class="badge bg-secondary">{{ doc_data.tipo_relacion }}</span></td>
+                                <td>{{ doc_data.obj.nombre if doc_data.obj.nombre else 'Doc ' ~ doc_data.obj.id }}</td>
+                                <td class="small">{{ doc_data.obj.fecha_creacion.strftime('%d/%m/%Y') if doc_data.obj.fecha_creacion else '-' }}</td>
+                                <td>
+                                    {% if doc_data.obj.ruta %}
+                                    <a href="{{ url_for('static', filename='uploads/' ~ doc_data.obj.ruta) }}"
+                                       class="btn btn-sm btn-outline-secondary"
+                                       target="_blank">
+                                        <i class="bi bi-download"></i>
+                                    </a>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% else %}
+                    <p class="text-muted mb-0">No hay documentos asociados a esta tarea.</p>
+                    {% endif %}
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>

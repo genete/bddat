@@ -1,0 +1,287 @@
+{% extends 'layout/base_fullwidth.html' %}
+
+{% block title %}Nuevo Expediente &mdash; Paso 3{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('dashboard.index') }}">Inicio</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('expedientes.listado_v2') }}">Expedientes</a></li>
+            <li class="breadcrumb-item active">Nuevo &mdash; Paso 3 de 3</li>
+        </ol>
+    </nav>
+
+    <div class="d-flex align-items-center mb-4 gap-3">
+        <h1 class="h3 mb-0">
+            <i class="fas fa-folder-plus me-2 text-primary"></i>Nuevo Expediente
+        </h1>
+        <span class="badge bg-primary fs-6">Paso 3 de 3</span>
+    </div>
+
+    <div class="progress mb-4" style="height: 6px;">
+        <div class="progress-bar bg-primary" style="width: 100%"
+             role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100">
+        </div>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-8 col-md-11">
+            <div class="card shadow-sm">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="fas fa-file-alt me-2 text-secondary"></i>Datos de la solicitud</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" action="{{ url_for('wizard_expediente.paso3') }}" novalidate>
+
+                        {# --- Titular / solicitante --- #}
+                        <div class="mb-4">
+                            <label class="form-label fw-semibold">
+                                Titular / Solicitante <span class="text-danger">*</span>
+                            </label>
+                            <div id="sb-titular"></div>
+                            <div class="form-text">Solo entidades activas con rol Titular.</div>
+                            <div id="entidad-error" class="text-danger small mt-1" style="display:none;">
+                                <i class="fas fa-exclamation-circle me-1"></i>Debe seleccionar un titular.
+                            </div>
+                        </div>
+
+                        {# --- Fecha solicitud --- #}
+                        <div class="mb-4">
+                            <label for="fecha_solicitud" class="form-label fw-semibold">
+                                Fecha de solicitud <span class="text-danger">*</span>
+                            </label>
+                            <input type="date" id="fecha_solicitud" name="fecha_solicitud"
+                                   class="form-control w-auto" required>
+                            <div class="form-text">Fecha oficial de presentación.</div>
+                        </div>
+
+                        {# --- Tipos de solicitud --- #}
+                        <div class="mb-4" style="position:relative;">
+                            <label class="form-label fw-semibold">
+                                Tipo(s) de solicitud <span class="text-danger">*</span>
+                            </label>
+
+                            <div class="card bg-light border-0 p-3">
+                                {# Select nativo para añadir tipos #}
+                                <div class="mb-2">
+                                    <select id="tipos-select" class="form-select">
+                                        <option value="">— Añadir tipo de solicitud —</option>
+                                        {% for ts in tipos_solicitudes %}
+                                        <option value="{{ ts.id }}"
+                                                data-siglas="{{ ts.siglas }}"
+                                                data-descripcion="{{ ts.descripcion }}">
+                                            {{ ts.siglas }} &mdash; {{ ts.descripcion }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+
+                                {# Badges seleccionados #}
+                                <div>
+                                    <p class="small text-muted mb-2">Tipos seleccionados:</p>
+                                    <div id="tipos-seleccionados" class="d-flex flex-wrap gap-2">
+                                        <span class="text-muted small">Ninguno añadido todavía.</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div id="tipos-error" class="text-danger small mt-1" style="display:none;">
+                                <i class="fas fa-exclamation-circle me-1"></i>Debe seleccionar al menos un tipo.
+                            </div>
+                            <div id="tipos-combo-error" class="text-danger small mt-1" style="display:none;">
+                                <i class="fas fa-exclamation-circle me-1"></i><span id="tipos-combo-msg"></span>
+                            </div>
+                            <div id="tipos-hidden-inputs"></div>
+                        </div>
+
+                        {# --- Observaciones --- #}
+                        <div class="mb-4">
+                            <label for="observaciones" class="form-label fw-semibold">Observaciones</label>
+                            <textarea id="observaciones" name="observaciones"
+                                      class="form-control" rows="3"
+                                      maxlength="2000"
+                                      placeholder="Notas adicionales (opcional)"></textarea>
+                        </div>
+
+                        <div class="d-flex justify-content-between pt-2">
+                            <div class="d-flex gap-2">
+                                <a href="{{ url_for('wizard_expediente.paso2') }}"
+                                   class="btn btn-outline-secondary">
+                                    <i class="fas fa-arrow-left me-1"></i>Atrás
+                                </a>
+                                <a href="{{ url_for('wizard_expediente.cancelar') }}"
+                                   class="btn btn-outline-danger">
+                                    <i class="fas fa-times me-1"></i>Cancelar
+                                </a>
+                            </div>
+                            <button type="submit" class="btn btn-success" id="btn-finalizar">
+                                <i class="fas fa-check me-1"></i>Crear expediente
+                            </button>
+                        </div>
+
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/selector_busqueda.css') }}">
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/selector_busqueda.js') }}"></script>
+<script>
+(function () {
+    'use strict';
+
+    // ------------------------------------------------------------------
+    // A) SelectorBusqueda para titular / entidad
+    // ------------------------------------------------------------------
+    const entidadError = document.getElementById('entidad-error');
+
+    const entidadSel = new SelectorBusqueda(
+        '#sb-titular',
+        {{ entidades_opts | tojson }},
+        {
+            placeholder: '— Seleccione titular/solicitante —',
+            name: 'entidad_id',
+            onChange: (v) => {
+                if (v) entidadError.style.display = 'none';
+            }
+        }
+    );
+
+    // ------------------------------------------------------------------
+    // B) Selector de tipos de solicitud con badges acumulables
+    // ------------------------------------------------------------------
+    const tiposSeleccionados = {};  // { id: { siglas, descripcion } }
+
+    const tiposSelect     = document.getElementById('tipos-select');
+    const tiposDiv        = document.getElementById('tipos-seleccionados');
+    const tiposHidden     = document.getElementById('tipos-hidden-inputs');
+    const tiposError      = document.getElementById('tipos-error');
+    const tiposComboError = document.getElementById('tipos-combo-error');
+    const tiposComboMsg   = document.getElementById('tipos-combo-msg');
+
+    /** Renderiza los badges y los inputs hidden según tiposSeleccionados */
+    function renderBadges() {
+        tiposDiv.innerHTML = '';
+        tiposHidden.innerHTML = '';
+        const ids = Object.keys(tiposSeleccionados);
+        if (!ids.length) {
+            tiposDiv.innerHTML = '<span class="text-muted small">Ninguno añadido todavía.</span>';
+            return;
+        }
+        ids.forEach(id => {
+            const { siglas } = tiposSeleccionados[id];
+
+            // Badge visual con botón de eliminar
+            const span = document.createElement('span');
+            span.className = 'badge bg-primary d-inline-flex align-items-center gap-1 fs-6';
+            span.textContent = siglas;
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'btn-close btn-close-white ms-1';
+            btn.style.cssText = 'font-size:0.6em;';
+            btn.setAttribute('aria-label', `Eliminar ${siglas}`);
+            btn.addEventListener('click', () => eliminarTipo(id));
+            span.appendChild(btn);
+            tiposDiv.appendChild(span);
+
+            // Input hidden para que llegue al backend
+            const inp = document.createElement('input');
+            inp.type  = 'hidden';
+            inp.name  = 'tipos_solicitud_ids[]';
+            inp.value = id;
+            tiposHidden.appendChild(inp);
+        });
+    }
+
+    function añadirTipo(id, siglas, descripcion) {
+        if (tiposSeleccionados[id]) return;  // ya está
+        tiposSeleccionados[id] = { siglas, descripcion };
+        renderBadges();
+        tiposError.style.display = 'none';
+    }
+
+    function eliminarTipo(id) {
+        delete tiposSeleccionados[id];
+        renderBadges();
+    }
+
+    // Al seleccionar en el <select>, añadir al badge list y resetear
+    tiposSelect.addEventListener('change', function () {
+        const opt = this.options[this.selectedIndex];
+        if (!opt.value) return;
+        añadirTipo(opt.value, opt.dataset.siglas, opt.dataset.descripcion);
+        this.value = '';  // resetear al placeholder
+    });
+
+    // ------------------------------------------------------------------
+    // Placeholder de validación de combinaciones (Fase 3)
+    // ------------------------------------------------------------------
+    /**
+     * Placeholder para la regla de negocio de combinaciones válidas.
+     * En Fase 3 este método recibirá las reglas del motor de tramitación.
+     * Actualmente siempre devuelve { valido: true }.
+     *
+     * @param {string[]} siglasList - Array de siglas seleccionadas
+     * @returns {Object} Objeto con campos `valido` (boolean) y `mensaje` (string)
+     */
+    function validarCombinacion(siglasList) {
+        // TODO Fase 3: implementar reglas de negocio
+        return { valido: true, mensaje: '' };
+    }
+
+    // ------------------------------------------------------------------
+    // Validación en submit
+    // ------------------------------------------------------------------
+    document.querySelector('form').addEventListener('submit', function (e) {
+        let ok = true;
+
+        // Validar titular
+        if (!entidadSel.getValue()) {
+            entidadError.style.display = 'block';
+            ok = false;
+        } else {
+            entidadError.style.display = 'none';
+        }
+
+        // Validar al menos un tipo seleccionado
+        const ids = Object.keys(tiposSeleccionados);
+        if (!ids.length) {
+            tiposError.style.display = 'block';
+            ok = false;
+        } else {
+            tiposError.style.display = 'none';
+
+            // Validar combinación (placeholder Fase 3)
+            const siglas = ids.map(id => tiposSeleccionados[id].siglas);
+            const { valido, mensaje } = validarCombinacion(siglas);
+            if (!valido) {
+                tiposComboMsg.textContent = mensaje;
+                tiposComboError.style.display = 'block';
+                ok = false;
+            } else {
+                tiposComboError.style.display = 'none';
+            }
+        }
+
+        if (!ok) {
+            e.preventDefault();
+        } else {
+            const btn = document.getElementById('btn-finalizar');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Creando...';
+        }
+    });
+
+}());
+</script>
+{% endblock %}

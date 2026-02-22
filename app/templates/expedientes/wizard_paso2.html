@@ -1,0 +1,278 @@
+{% extends 'layout/base_fullwidth.html' %}
+
+{% block title %}Nuevo Expediente &mdash; Paso 2{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('dashboard.index') }}">Inicio</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('expedientes.listado_v2') }}">Expedientes</a></li>
+            <li class="breadcrumb-item active">Nuevo &mdash; Paso 2 de 3</li>
+        </ol>
+    </nav>
+
+    <div class="d-flex align-items-center mb-4 gap-3">
+        <h1 class="h3 mb-0">
+            <i class="fas fa-folder-plus me-2 text-primary"></i>Nuevo Expediente
+        </h1>
+        <span class="badge bg-primary fs-6">Paso 2 de 3</span>
+    </div>
+
+    <div class="progress mb-4" style="height: 6px;">
+        <div class="progress-bar bg-primary" style="width: 66%"
+             role="progressbar" aria-valuenow="66" aria-valuemin="0" aria-valuemax="100">
+        </div>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-9 col-md-11">
+            <div class="card shadow-sm">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="fas fa-drafting-compass me-2 text-secondary"></i>Datos del proyecto técnico</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" action="{{ url_for('wizard_expediente.paso2') }}" novalidate id="form-paso2">
+
+                        <div class="mb-3">
+                            <label for="titulo" class="form-label fw-semibold">
+                                Título del proyecto <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" id="titulo" name="titulo"
+                                   class="form-control"
+                                   value="{{ paso2.get('titulo', '') }}"
+                                   maxlength="500" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="descripcion" class="form-label fw-semibold">
+                                Descripción <span class="text-danger">*</span>
+                            </label>
+                            <textarea id="descripcion" name="descripcion"
+                                      class="form-control" rows="3"
+                                      maxlength="10000" required>{{ paso2.get('descripcion', '') }}</textarea>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="finalidad" class="form-label fw-semibold">
+                                    Finalidad <span class="text-danger">*</span>
+                                </label>
+                                <input type="text" id="finalidad" name="finalidad"
+                                       class="form-control"
+                                       value="{{ paso2.get('finalidad', '') }}"
+                                       maxlength="500" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="emplazamiento" class="form-label fw-semibold">
+                                    Emplazamiento <span class="text-danger">*</span>
+                                </label>
+                                <input type="text" id="emplazamiento" name="emplazamiento"
+                                       class="form-control"
+                                       value="{{ paso2.get('emplazamiento', '') }}"
+                                       maxlength="200" required>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label for="fecha" class="form-label fw-semibold">
+                                    Fecha del proyecto <span class="text-danger">*</span>
+                                </label>
+                                <input type="date" id="fecha" name="fecha"
+                                       class="form-control"
+                                       value="{{ paso2.get('fecha', '') }}"
+                                       required>
+                                <div class="form-text">Fecha de firma/visado.</div>
+                            </div>
+                            <div class="col-md-8 mb-3">
+                                <label for="ia_id" class="form-label fw-semibold">Instrumento ambiental</label>
+                                <select id="ia_id" name="ia_id" class="form-select">
+                                    <option value=""
+                                        {% if not paso2.get('ia_id') %}selected{% endif %}>
+                                        Sin determinar
+                                    </option>
+                                    {% for ia in tipos_ia %}
+                                        <option value="{{ ia.id }}"
+                                            {% if paso2.get('ia_id') == ia.id %}selected{% endif %}>
+                                            {{ ia.siglas }}{% if ia.descripcion %} &mdash; {{ ia.descripcion }}{% endif %}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+
+                        {# ============================================================= #}
+                        {# MUNICIPIOS AFECTADOS                                          #}
+                        {# Paso A: provincia  →  GET /api/provincias?q=                  #}
+                        {#         respuesta: ["Sevilla", "Cádiz", ...]                   #}
+                        {# Paso B: municipio  →  GET /api/municipios?provincia=X&q=Y      #}
+                        {#         respuesta: [{id, nombre, codigo, provincia}]          #}
+                        {# ============================================================= #}
+                        <div class="mb-4">
+                            <label class="form-label fw-semibold">
+                                Municipios afectados <span class="text-danger">*</span>
+                            </label>
+
+                            <div class="card bg-light border-0 p-3">
+
+                                {# Paso A: Provincia #}
+                                <div class="mb-3">
+                                    <label class="form-label small fw-semibold mb-1">
+                                        <span class="badge bg-secondary me-1">A</span> Provincia
+                                    </label>
+                                    <div id="wp2-provincia"></div>
+                                </div>
+
+                                {# Paso B: Municipio (se habilita al seleccionar provincia) #}
+                                <div class="mb-3">
+                                    <label class="form-label small fw-semibold mb-1">
+                                        <span class="badge bg-secondary me-1">B</span>
+                                        Municipio
+                                        <span id="wp2-label-provincia" class="text-primary fst-italic"></span>
+                                    </label>
+                                    <div id="wp2-municipio"></div>
+                                </div>
+
+                                {# Lista de municipios ya añadidos #}
+                                <div>
+                                    <p class="small text-muted mb-2">Municipios seleccionados:</p>
+                                    <div id="municipios-seleccionados" class="d-flex flex-wrap gap-2">
+                                        <span class="text-muted small">Ninguno añadido todavía.</span>
+                                    </div>
+                                </div>
+
+                            </div>
+
+                            <div id="municipios-error" class="text-danger small mt-1" style="display:none;">
+                                <i class="fas fa-exclamation-circle me-1"></i>Debe añadir al menos un municipio.
+                            </div>
+                            <div id="municipios-hidden-inputs"></div>
+                        </div>
+
+                        <div class="d-flex justify-content-between pt-2">
+                            <div class="d-flex gap-2">
+                                <a href="{{ url_for('wizard_expediente.paso1') }}"
+                                   class="btn btn-outline-secondary">
+                                    <i class="fas fa-arrow-left me-1"></i>Atrás
+                                </a>
+                                <a href="{{ url_for('wizard_expediente.cancelar') }}"
+                                   class="btn btn-outline-danger">
+                                    <i class="fas fa-times me-1"></i>Cancelar
+                                </a>
+                            </div>
+                            <button type="submit" class="btn btn-primary" id="btn-siguiente-paso2">
+                                Siguiente <i class="fas fa-arrow-right ms-1"></i>
+                            </button>
+                        </div>
+
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_css %}{{ super() }}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/selector_busqueda.css') }}">
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/selector_busqueda.js') }}"></script>
+<script>
+(function () {
+    'use strict';
+
+    const municipiosSeleccionados = {};
+    const badgesDiv = document.getElementById('municipios-seleccionados');
+    const hiddenDiv = document.getElementById('municipios-hidden-inputs');
+    const errorDiv  = document.getElementById('municipios-error');
+
+    // ── Selector de municipio (se habilita al seleccionar provincia) ──
+    const muniSelector = new SelectorBusqueda('#wp2-municipio', [], {
+        placeholder: '— Seleccione primero una provincia —',
+        onChange: (v, t) => {
+            if (!v) return;
+            agregarMunicipio(v, t);
+            muniSelector.clear();  // limpia sin perder las opciones cargadas
+        }
+    });
+    muniSelector.disable();
+
+    // ── Selector de provincia — al seleccionar carga los municipios ──
+    const provSelector = new SelectorBusqueda('#wp2-provincia', [], {
+        placeholder: '— Seleccione una provincia —',
+        onChange: async (v, t) => {
+            document.getElementById('wp2-label-provincia').textContent = t ? ' — ' + t : '';
+            muniSelector.setOpciones([]);
+            if (!t) { muniSelector.disable(); return; }
+            try {
+                const resp = await fetch(`/api/municipios?provincia=${encodeURIComponent(t)}`);
+                const data = await resp.json();
+                muniSelector.setOpciones(data.map(m => ({ v: String(m.id), t: m.nombre })));
+                muniSelector.enable();
+            } catch (e) { console.error('Error cargando municipios:', e); }
+        }
+    });
+
+    // Cargar provincias desde API al inicio
+    fetch('/api/provincias')
+        .then(r => r.json())
+        .then(lista => provSelector.setOpciones(lista.map(n => ({ v: n, t: n }))))
+        .catch(e => console.error('Error cargando provincias:', e));
+
+    // ── Gestión de badges (municipios seleccionados) ──
+    function agregarMunicipio(id, etiqueta) {
+        if (municipiosSeleccionados[id]) return;
+        municipiosSeleccionados[id] = etiqueta;
+        renderBadges();
+        errorDiv.style.display = 'none';
+    }
+
+    function eliminarMunicipio(id) {
+        delete municipiosSeleccionados[id];
+        renderBadges();
+    }
+
+    function renderBadges() {
+        badgesDiv.innerHTML = '';
+        hiddenDiv.innerHTML = '';
+        const ids = Object.keys(municipiosSeleccionados);
+        if (!ids.length) {
+            badgesDiv.innerHTML = '<span class="text-muted small">Ninguno añadido todavía.</span>';
+            return;
+        }
+        ids.forEach(id => {
+            const etiqueta = municipiosSeleccionados[id];
+            const span = document.createElement('span');
+            span.className = 'badge bg-primary d-inline-flex align-items-center gap-1';
+            span.innerHTML = escapeHtml(etiqueta) +
+                `<button type="button" class="btn-close btn-close-white ms-1"
+                         aria-label="Eliminar" style="font-size:0.5rem;"></button>`;
+            span.querySelector('button').addEventListener('click', () => eliminarMunicipio(id));
+            badgesDiv.appendChild(span);
+            const inp = document.createElement('input');
+            inp.type = 'hidden'; inp.name = 'municipios_ids[]'; inp.value = id;
+            hiddenDiv.appendChild(inp);
+        });
+    }
+
+    // ── Validación pre-submit ──
+    document.getElementById('form-paso2').addEventListener('submit', function (e) {
+        if (!Object.keys(municipiosSeleccionados).length) {
+            e.preventDefault();
+            errorDiv.style.display = 'block';
+            provSelector._input.focus();
+        }
+    });
+
+    function escapeHtml(s) {
+        return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+}());
+</script>
+{% endblock %}

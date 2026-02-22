@@ -1,0 +1,67 @@
+{% extends 'layout/lista_v2_base.html' %}
+
+{% block page_title %}Entidades{% endblock %}
+{% block page_icon %}<i class="fas fa-building"></i>{% endblock %}
+{% block entity_label_plural %}entidades{% endblock %}
+{% block search_placeholder %}Buscar por nombre o NIF...{% endblock %}
+
+{% block btn_nuevo %}
+<button class="btn btn-primary"
+        onclick="window.location.href='{{ url_for('entidades.nueva') }}'">
+    <i class="fas fa-plus"></i> Nueva Entidad
+</button>
+{% endblock %}
+
+{% block filtros_extra %}
+<select aria-label="Filtrar por estado">
+    <option value="">Activo: Todos</option>
+    <option value="true">Activas</option>
+    <option value="false">Inactivas</option>
+</select>
+{% endblock %}
+
+{% block tabla_clase %}entidades-table{% endblock %}
+
+{% block thead_cols %}
+<th>Nombre / Razón Social</th>
+<th>NIF</th>
+<th>Roles</th>
+<th>Activo</th>
+<th></th>
+{% endblock %}
+
+{% block extra_js %}
+{{ super() }}
+<script>
+    const scrollInfinito = new ScrollInfinito({
+        apiUrl:      '{{ url_for("api_entidades.listar_entidades") }}',
+        tableClass:  '.entidades-table',
+        entityLabel: 'entidades',
+        detailUrl:   id => `/entidades/${id}`,
+        columns: [
+            { key: 'nombre_completo', label: 'Nombre / Razón Social', type: 'text'     },
+            { key: 'nif',             label: 'NIF',                   type: 'text'     },
+            { key: 'roles',           label: 'Roles',                 type: 'text'     },
+            { key: 'activo',          label: 'Activo',                type: 'bool'     },
+            { key: '_acciones',       label: '',                      type: 'acciones' }
+        ]
+    });
+
+    // Botones filtrar / limpiar (genéricos, sin FiltrosExpedientes)
+    document.querySelector('.btn-filtrar').addEventListener('click', () => scrollInfinito.reload());
+    document.querySelector('.btn-limpiar').addEventListener('click', () => {
+        document.querySelector('input[type="search"]').value = '';
+        document.querySelector('.filters select').value = '';
+        scrollInfinito.reload();
+    });
+
+    // Búsqueda en tiempo real con debounce
+    let debounceTimer;
+    document.querySelector('input[type="search"]').addEventListener('input', () => {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => scrollInfinito.reload(), 400);
+    });
+
+    console.log('Listado de entidades v2 inicializado');
+</script>
+{% endblock %}

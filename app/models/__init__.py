@@ -24,15 +24,10 @@ from app.models.tipos_tramites import TipoTramite
 # Modelo de metadata del sistema (issue #85)
 from app.models.tabla_metadata import TablaMetadata
 
-# Arquitectura Entidades Polimórfica (nuevos modelos issue #62)
-# Orden: TipoEntidad primero, luego Entidad, luego metadatos
-from app.models.tipos_entidades import TipoEntidad
+# Arquitectura Entidades Simplificada (refactorizada en issue #103)
+# Elimina jerarquía polimórfica, usa roles booleanos
 from app.models.entidad import Entidad
-from app.models.entidad_administrado import EntidadAdministrado
-from app.models.entidad_empresa_servicio_publico import EntidadEmpresaServicioPublico
-from app.models.entidad_organismo_publico import EntidadOrganismoPublico
-from app.models.entidad_ayuntamiento import EntidadAyuntamiento
-from app.models.entidad_diputacion import EntidadDiputacion
+from app.models.direccion_notificacion import DireccionNotificacion
 
 # Relaciones N:N Entidades (issue #63)
 from app.models.autorizados_titular import AutorizadoTitular
@@ -72,14 +67,9 @@ __all__ = [
     'TipoTramite',
     # Metadata del sistema
     'TablaMetadata',
-    # Arquitectura Entidades
-    'TipoEntidad',
+    # Arquitectura Entidades (simplificada en issue #103)
     'Entidad',
-    'EntidadAdministrado',
-    'EntidadEmpresaServicioPublico',
-    'EntidadOrganismoPublico',
-    'EntidadAyuntamiento',
-    'EntidadDiputacion',
+    'DireccionNotificacion',
     # Relaciones N:N Entidades
     'AutorizadoTitular',
     # Operacionales

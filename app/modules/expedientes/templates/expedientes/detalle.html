@@ -1,0 +1,351 @@
+{% extends 'layout/base_fullwidth.html' %}
+
+{% block title %}
+  {% if modo == 'editar' %}Editar Expediente{% else %}Expediente{% endif %} AT-{{ expediente.numero_at }} - BDDAT
+{% endblock %}
+
+{% block page_breadcrumb %}
+<nav aria-label="breadcrumb" class="px-4 py-2 bg-light border-bottom">
+    <ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item"><a href="{{ url_for('dashboard.index') }}">Inicio</a></li>
+        <li class="breadcrumb-item"><a href="{{ url_for('expedientes.listado_v2') }}">Expedientes</a></li>
+        {% if modo == 'editar' %}
+            <li class="breadcrumb-item">
+                <a href="{{ url_for('expedientes.detalle', id=expediente.id) }}">AT-{{ expediente.numero_at }}</a>
+            </li>
+            <li class="breadcrumb-item active" aria-current="page">Editar</li>
+        {% else %}
+            <li class="breadcrumb-item active" aria-current="page">AT-{{ expediente.numero_at }}</li>
+        {% endif %}
+    </ol>
+</nav>
+{% endblock %}
+
+{% block extra_css %}{{ super() }}
+{% if modo == 'editar' %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/selector_busqueda.css') }}">
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="p-4">
+
+{# Datos de municipios existentes para el selector JS (solo en edición) #}
+{% if modo == 'editar' %}
+<script>
+    window.municipiosExistentes = [
+        {% for mp in expediente.proyecto.municipios_afectados %}
+        {
+            id: {{ mp.municipio.id }},
+            nombre: "{{ mp.municipio.nombre }}",
+            provincia: "{{ mp.municipio.provincia }}",
+            codigo: "{{ mp.municipio.codigo }}"
+        }{% if not loop.last %},{% endif %}
+        {% endfor %}
+    ];
+</script>
+<form id="form_expediente" class="form-detail" action="{{ url_for('expedientes.editar', id=expediente.id) }}" method="POST">
+{% endif %}
+
+<!-- Encabezado de página -->
+<div class="row mb-3">
+    <div class="col-md-8">
+        <h2>
+            <i class="fas fa-folder-open me-2"></i>
+            Expediente <span class="text-primary">AT-{{ expediente.numero_at }}</span>
+        </h2>
+    </div>
+    <div class="col-md-4 text-end">
+        {% if modo == 'ver' %}
+            <a href="{{ url_for('expedientes.listado_v2') }}" class="btn btn-secondary me-2">
+                <i class="fas fa-arrow-left me-1"></i> Volver
+            </a>
+            <a href="{{ url_for('expedientes.tramitacion_v3', id=expediente.id) }}" class="btn btn-primary me-2">
+                <i class="fas fa-tasks me-1"></i> Tramitar
+            </a>
+            <a href="{{ url_for('expedientes.editar', id=expediente.id) }}" class="btn btn-primary">
+                <i class="fas fa-edit me-1"></i> Editar
+            </a>
+        {% else %}
+            <a href="{{ url_for('expedientes.detalle', id=expediente.id) }}" class="btn btn-secondary me-2">
+                <i class="fas fa-times me-1"></i> Cancelar
+            </a>
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-save me-1"></i> Guardar Cambios
+            </button>
+        {% endif %}
+    </div>
+</div>
+
+<!-- BARRA INFO: Datos del Expediente -->
+<div class="card shadow-sm mb-3">
+    <div class="card-header card-header-accent">
+        <h6 class="mb-0 fw-semibold">
+            <i class="fas fa-info-circle me-2"></i>Datos del Expediente
+        </h6>
+    </div>
+    <div class="card-body card-body-tinted py-3">
+        <div class="row g-3 align-items-end">
+            <!-- Número AT (siempre bloqueado) -->
+            <div class="col-md-2">
+                <label class="form-label fw-semibold small">Número AT</label>
+                <input type="text" class="form-control form-control-sm"
+                       value="AT-{{ expediente.numero_at }}" disabled
+                       data-bs-toggle="tooltip" title="No modificable">
+            </div>
+
+            <!-- Tipo de Expediente -->
+            <div class="col-md-2">
+                <label class="form-label fw-semibold small">Tipo</label>
+                {% if modo == 'ver' %}
+                <input type="text" class="form-control form-control-sm" readonly
+                       value="{{ expediente.tipo_expediente.tipo if expediente.tipo_expediente else '' }}"
+                       placeholder="Sin tipo">
+                {% else %}
+                <select class="form-select form-select-sm" id="tipo_expediente_id" name="tipo_expediente_id">
+                    <option value="">-- Sin tipo --</option>
+                    {% for tipo in tipos_expedientes %}
+                        <option value="{{ tipo.id }}"
+                                {% if expediente.tipo_expediente_id == tipo.id %}selected{% endif %}>
+                            {{ tipo.tipo }}
+                        </option>
+                    {% endfor %}
+                </select>
+                {% endif %}
+            </div>
+
+            <!-- Responsable -->
+            <div class="col-md-3">
+                <label class="form-label fw-semibold small">Responsable</label>
+                {% if modo == 'ver' %}
+                <input type="text" class="form-control form-control-sm" readonly
+                       value="{{ (expediente.responsable.siglas + ' \u2014 ' + expediente.responsable.nombre + ' ' + expediente.responsable.apellido1) if expediente.responsable else '' }}"
+                       placeholder="Sin asignar">
+                {% else %}
+                <select class="form-select form-select-sm" id="responsable_id" name="responsable_id"
+                        {% if not current_user.tiene_rol('ADMIN', 'SUPERVISOR') %}disabled{% endif %}>
+                    <option value="">-- Sin asignar (huérfano) --</option>
+                    {% for usuario in usuarios %}
+                        <option value="{{ usuario.id }}"
+                                {% if expediente.responsable_id == usuario.id %}selected{% endif %}>
+                            {{ usuario.siglas }} - {{ usuario.nombre }} {{ usuario.apellido1 }}
+                        </option>
+                    {% endfor %}
+                </select>
+                {% if not current_user.tiene_rol('ADMIN', 'SUPERVISOR') %}
+                    <small class="text-muted">Solo ADMIN/SUPERVISOR</small>
+                {% endif %}
+                {% endif %}
+            </div>
+
+            <!-- Titular (siempre solo lectura por ahora) -->
+            <div class="col-md-3">
+                <label class="form-label fw-semibold small">Titular</label>
+                <input type="text" class="form-control form-control-sm" readonly
+                       value="{{ expediente.titular.nombre_completo if expediente.titular else '' }}"
+                       placeholder="Sin titular"
+                       {% if modo == 'editar' %}data-bs-toggle="tooltip" title="Gestionar desde el wizard"{% endif %}>
+            </div>
+
+            <!-- Heredado -->
+            <div class="col-md-2 d-flex align-items-end pb-1">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="heredado" name="heredado"
+                           {% if expediente.heredado %}checked{% endif %}
+                           {% if modo == 'ver' %}disabled{% endif %}>
+                    <label class="form-check-label small" for="heredado">Expediente heredado</label>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- FILA PRINCIPAL: Proyecto (col-lg-8) + Municipios (col-lg-4) -->
+<div class="row mb-3">
+
+    <!-- PROYECTO -->
+    <div class="col-lg-8 mb-3 mb-lg-0">
+        <div class="card shadow-sm h-100" id="proyecto">
+            <div class="card-header card-header-accent">
+                <h5 class="mb-0">
+                    <i class="fas fa-project-diagram me-2"></i>Proyecto
+                </h5>
+            </div>
+            <div class="card-body card-body-tinted">
+                <!-- Título del Proyecto -->
+                <div class="mb-3">
+                    <label for="titulo_proyecto" class="form-label fw-semibold">Título del Proyecto</label>
+                    <input type="text" class="form-control" id="titulo_proyecto" name="titulo_proyecto"
+                           value="{{ expediente.proyecto.titulo or '' }}"
+                           {% if modo == 'ver' %}readonly{% endif %}>
+                </div>
+
+                <!-- Descripción -->
+                <div class="mb-3">
+                    <label for="descripcion_proyecto" class="form-label fw-semibold">Descripción</label>
+                    <textarea class="form-control" id="descripcion_proyecto" name="descripcion_proyecto"
+                              rows="4" {% if modo == 'ver' %}readonly{% endif %}>{{ expediente.proyecto.descripcion or '' }}</textarea>
+                </div>
+
+                <!-- Finalidad + Emplazamiento -->
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="finalidad" class="form-label fw-semibold">Finalidad</label>
+                        <input type="text" class="form-control" id="finalidad" name="finalidad"
+                               value="{{ expediente.proyecto.finalidad or '' }}"
+                               {% if modo == 'ver' %}readonly{% endif %}>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="emplazamiento" class="form-label fw-semibold">Emplazamiento</label>
+                        <input type="text" class="form-control" id="emplazamiento" name="emplazamiento"
+                               value="{{ expediente.proyecto.emplazamiento or '' }}"
+                               {% if modo == 'ver' %}readonly{% endif %}>
+                    </div>
+                </div>
+
+                <!-- Instrumento Ambiental -->
+                <div class="mb-0">
+                    <label for="ia_display" class="form-label fw-semibold">Instrumento Ambiental</label>
+                    {% if modo == 'ver' %}
+                    <input type="text" class="form-control" id="ia_display" readonly
+                           value="{{ (expediente.proyecto.ia.siglas + ' \u2014 ' + expediente.proyecto.ia.descripcion) if expediente.proyecto.ia else '' }}"
+                           placeholder="Sin instrumento ambiental">
+                    {% else %}
+                    <select class="form-select" id="ia_id" name="ia_id">
+                        <option value="">-- Sin instrumento ambiental --</option>
+                        {% for tipo_ia in tipos_ia %}
+                            <option value="{{ tipo_ia.id }}"
+                                    {% if expediente.proyecto.ia_id == tipo_ia.id %}selected{% endif %}>
+                                {{ tipo_ia.siglas }} - {{ tipo_ia.descripcion }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MUNICIPIOS -->
+    <div class="col-lg-4">
+        <div class="card shadow-sm h-100">
+            <div class="card-header card-header-accent">
+                <h5 class="mb-0">
+                    <i class="fas fa-map-marked-alt me-2"></i>Municipios Afectados
+                    <small id="campo_obligatorio" class="float-end fw-normal"></small>
+                </h5>
+            </div>
+            <div class="card-body card-body-tinted">
+                {% if modo == 'ver' %}
+                <!-- Vista: lista estática de municipios -->
+                {% if expediente.proyecto.municipios_afectados %}
+                    {% set provincias_unicas = expediente.proyecto.municipios_afectados
+                        | map(attribute='municipio.provincia') | unique | list %}
+                    {% if provincias_unicas | length > 1 %}
+                        <div class="alert alert-info mb-3 py-2">
+                            <i class="fas fa-info-circle me-1"></i>
+                            <strong>Interprovincial</strong> —
+                            {% for provincia in provincias_unicas %}
+                                <span class="badge bg-primary ms-1">{{ provincia }}</span>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                    <ul class="list-group list-group-flush">
+                        {% for mp in expediente.proyecto.municipios_afectados %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                            <div>
+                                <strong>{{ mp.municipio.nombre }}</strong>
+                                <span class="badge bg-secondary ms-2">{{ mp.municipio.provincia }}</span>
+                            </div>
+                            <small class="text-muted">{{ mp.municipio.codigo }}</small>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p class="text-muted mb-0"><em>No hay municipios asociados</em></p>
+                {% endif %}
+
+                {% else %}
+                <!-- Edición: lista gestionada por JS + selector de provincia/municipio -->
+                <ul class="list-group list-group-flush mb-3" id="lista_municipios">
+                    <li class="list-group-item text-muted"><em>No hay municipios añadidos</em></li>
+                </ul>
+                <hr class="my-2">
+                <div class="row g-2">
+                    <div class="col-12">
+                        <label class="form-label small fw-semibold">Provincia</label>
+                        <div id="sb-provincia"></div>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label small fw-semibold">Municipio</label>
+                        <div id="sb-municipio"></div>
+                    </div>
+                    <div class="col-12 text-end">
+                        <button type="button" class="btn btn-danger btn-sm"
+                                id="btn_borrar_municipios" disabled>
+                            <i class="fas fa-trash me-1"></i> Borrar Seleccionados
+                        </button>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- DOCUMENTOS -->
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow-sm">
+            <div class="card-header card-header-accent">
+                <h6 class="mb-0 fw-semibold">
+                    <i class="fas fa-file-alt me-2"></i>Documentos
+                </h6>
+            </div>
+            <div class="card-body text-center text-muted py-4">
+                <i class="fas fa-folder fa-2x mb-2"></i>
+                <p class="mb-0 small">Próximamente</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if modo == 'editar' %}
+</form>
+{% endif %}
+
+</div>{# /p-4 #}
+{% endblock %}
+
+{% block extra_js %}
+{{ super() }}
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // Inicializar tooltips Bootstrap
+        document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
+            new bootstrap.Tooltip(el);
+        });
+    });
+</script>
+{% if modo == 'editar' %}
+<script src="{{ url_for('static', filename='js/selector_busqueda.js') }}"></script>
+<script src="{{ url_for('static', filename='js/municipios_selector.js') }}"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        if (window.selectorMunicipios && window.municipiosExistentes) {
+            window.selectorMunicipios.inicializar(window.municipiosExistentes);
+        }
+
+        // Scroll automático a la sección proyecto si la URL lleva #proyecto
+        if (window.location.hash === '#proyecto') {
+            const proyectoCard = document.getElementById('proyecto');
+            if (proyectoCard) {
+                setTimeout(() => {
+                    proyectoCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }, 100);
+            }
+        }
+    });
+</script>
+{% endif %}
+{% endblock %}

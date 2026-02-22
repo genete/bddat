@@ -1,0 +1,193 @@
+/**
+ * v1-dashboard.css
+ * Estilos específicos para Vista V1 (Dashboard)
+ * 
+ * Epic: #93 (Sistema de Navegación UI Modular)
+ * Vista: V1 - Dashboard sin sidebar
+ * Layout: base_fullwidth.html (header + main + footer)
+ * Colores: Junta de Andalucía (v2-theme.css)
+ */
+
+/* ===== PAGE HEADER ===== */
+.page-header {
+  padding-top: 2rem;
+  padding-bottom: 1rem;
+}
+
+.page-header h1 {
+  margin-bottom: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.page-header h1 i {
+  color: var(--primary);
+}
+
+.user-welcome {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 1rem;
+}
+
+.user-welcome strong {
+  color: var(--text-primary);
+}
+
+.user-welcome .badge {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  background-color: var(--gris-contenedor);
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+/* ===== DASHBOARD GRID ===== */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1.5rem;
+  padding-top: 2rem;
+  padding-bottom: 3rem;
+}
+
+/* Responsive breakpoints */
+@media (min-width: 1400px) {
+  .dashboard-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+@media (min-width: 992px) and (max-width: 1399px) {
+  .dashboard-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (min-width: 768px) and (max-width: 991px) {
+  .dashboard-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 767px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ===== DASHBOARD CARD ===== */
+.dashboard-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-lg);
+  padding: 2rem 1.5rem;
+  text-align: center;
+  transition: all 0.3s ease;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  cursor: pointer;
+  text-decoration: none;
+  color: var(--text-primary);
+}
+
+.dashboard-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+  border-color: var(--primary);
+  text-decoration: none;
+  color: var(--text-primary);
+}
+
+/* ===== CARD ICON ===== */
+.card-icon {
+  width: 80px;
+  height: 80px;
+  background: var(--primary-lighter);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.5rem;
+  color: var(--primary);
+  transition: all 0.3s ease;
+  margin-bottom: 0.5rem;
+}
+
+.dashboard-card:hover .card-icon {
+  background: var(--primary);
+  color: var(--text-inverse);
+  transform: scale(1.05);
+}
+
+/* ===== CARD TITLE ===== */
+.card-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0;
+  color: var(--text-primary);
+}
+
+/* ===== CARD DESCRIPTION ===== */
+.card-description {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* ===== CARD DISABLED ===== */
+.dashboard-card.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.dashboard-card.disabled .card-icon {
+  background: var(--gris-contenedor);
+  color: var(--text-muted);
+}
+
+/* ===== FOCUS ACCESIBILIDAD ===== */
+.dashboard-card:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 0.25rem var(--focus-ring);
+}
+
+/* ===== RESPONSIVE AJUSTES ===== */
+@media (max-width: 767px) {
+  .page-header {
+    padding-top: 1.5rem;
+    padding-bottom: 1rem;
+  }
+  
+  .page-header h1 {
+    font-size: 1.5rem;
+  }
+  
+  .dashboard-grid {
+    padding-top: 1.5rem;
+    padding-bottom: 2rem;
+    gap: 1rem;
+  }
+  
+  .dashboard-card {
+    padding: 1.5rem 1rem;
+  }
+  
+  .card-icon {
+    width: 64px;
+    height: 64px;
+    font-size: 2rem;
+  }
+  
+  .card-title {
+    font-size: 1.125rem;
+  }
+}

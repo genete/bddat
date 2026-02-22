@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Tramitación - BDDAT{% endblock %}</title>
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- CSS v2 base (reutilización header/footer) -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/v2-theme.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/v2-layout.css') }}">
+    
+    <!-- Font Awesome (iconos) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header V2 (reutilizado) -->
+        <header class="app-header">
+            <a href="{{ url_for('dashboard.index') }}" class="logo">
+                <i class="fas fa-bolt"></i>
+                BDDAT
+            </a>
+
+            {# Navegación de módulos — generada automáticamente desde metadata.json #}
+            {% if module_nav %}
+            <nav class="module-nav">
+                {% for item in module_nav %}
+                <a href="{{ url_for(item.route) }}"
+                   class="module-nav-link{% if active_module == item.module %} active{% endif %}">
+                    <i class="fas {{ item.icon }}"></i>
+                    {{ item.label }}
+                </a>
+                {% endfor %}
+            </nav>
+            {% endif %}
+
+            <nav class="breadcrumb">
+                {% block breadcrumb %}
+                <a href="{{ url_for('dashboard.index') }}">Inicio</a>
+                {% for item in module_nav %}
+                    {% if active_module == item.module %}
+                    <span>›</span>
+                    <span>{{ item.label }}</span>
+                    {% endif %}
+                {% endfor %}
+                {% endblock %}
+            </nav>
+
+            <!-- Spacer: empuja user-menu a la derecha -->
+            <div class="spacer"></div>
+
+            <div class="user-menu">
+                {% if current_user.is_authenticated %}
+                    <span>{{ current_user.nombre }} {{ current_user.apellido1 or '' }}</span>
+                    <a href="{{ url_for('auth.logout') }}">
+                        <i class="fas fa-sign-out-alt"></i> Salir
+                    </a>
+                {% else %}
+                    <a href="{{ url_for('auth.login') }}">
+                        <i class="fas fa-sign-in-alt"></i> Iniciar Sesión
+                    </a>
+                {% endif %}
+            </div>
+        </header>
+        
+        <!-- Main Content SIN sidebar (100% ancho) -->
+        <main class="app-main">
+            <div class="container-fluid" style="max-width: 1400px; padding: 1.5rem;">
+                {% block content %}
+                <!-- Contenido principal -->
+                {% endblock %}
+            </div>
+        </main>
+        
+        <!-- Footer V2 (reutilizado) -->
+        {% include 'layout/footer.html' %}
+    </div>
+    
+    <!-- Bootstrap 5 JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>
+
+<!-- 
+Layout Base Acordeón - Vista V3 Fase 2
+
+DISEÑO:
+- Sin sidebar lateral (100% ancho para contenido)
+- Header/Footer reutilizados de V2
+- Bootstrap 5 para acordeones nativos
+- Container fluid con max-width 1400px
+
+DIFERENCIAS vs base_tramitacion.html:
+- NO tiene sidebar ni divisor redimensionable
+- NO carga JS de sidebar/tabs antiguos
+- SÍ carga Bootstrap 5 JS para acordeones
+- Layout simple: header > main > footer
+
+Referencias:
+- docs/implementaciones/VISTA_V3_TRAMITACION.md
+- Commit: [TEMPLATE] Crear base_acordeon.html sin sidebar
+-->
