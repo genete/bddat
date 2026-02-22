@@ -47,11 +47,15 @@ bddat/
 │   │   ├── expedientes.py   ← Modelo raíz + signal after_insert
 │   │   ├── usuarios.py      ← UserMixin, Rol, tabla usuarios_roles
 │   │   └── ...
-│   ├── routes/
+│   ├── modules/                 ← Blueprints modulares (template_folder propio)
+│   │   ├── expedientes/         ← Blueprint + templates/expedientes/
+│   │   ├── proyectos/           ← Blueprint + templates/proyectos/
+│   │   └── entidades/           ← Blueprint + templates/entidades/
+│   ├── routes/                  ← Blueprints simples (usan app/templates/ global)
 │   │   ├── api_expedientes.py    ← Blueprint 'api', prefijo /api
 │   │   ├── wizard_expediente.py  ← Blueprint multi-paso con sesión Flask
 │   │   └── ...
-│   ├── templates/
+│   ├── templates/               ← Templates globales (layout, auth, dashboard...)
 │   │   └── layout/
 │   │       ├── base_fullwidth.html    ← Base principal (header+main+footer)
 │   │       ├── base_acordeon.html     ← Vista V3 tramitación
@@ -68,6 +72,21 @@ bddat/
 ├── run.py
 └── .env                     ← NUNCA commitear
 ```
+
+---
+
+## Convención de Templates (#127)
+
+**Regla:** Los blueprints en `app/modules/` declaran `template_folder='templates'`
+(carpeta propia del módulo). Los blueprints en `app/routes/` usan la carpeta global
+`app/templates/`. **No mezclar.**
+
+- `app/modules/X/templates/X/` → templates del módulo X (prioridad más alta)
+- `app/templates/` → templates globales (layout, auth, dashboard, vistas compartidas)
+
+Si un módulo declara `template_folder` pero no tiene el template en su carpeta propia,
+Flask hace fallback a `app/templates/`. Esto puede servir templates legacy sin avisar.
+**Verificar siempre** que el template correcto está en la carpeta del módulo.
 
 ---
 
