@@ -1,0 +1,54 @@
+/* =============================================================================
+   selector_busqueda.css — Estructura del componente SelectorBusqueda
+   Solo posicionamiento y layout. Colores, tipografía y bordes heredados del tema.
+   ============================================================================= */
+
+.sb-wrap {
+  position: relative;
+}
+
+/* Espacio interior del input para los botones × y ▾ */
+.sb-wrap .sb-input {
+  padding-right: 3.75rem;
+}
+
+/* Botones × y ▾ comunes */
+.sb-btn-x,
+.sb-btn-v {
+  position: absolute;
+  top: 0; bottom: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: inherit;
+  opacity: 0.45;
+}
+.sb-btn-x:hover,
+.sb-btn-v:hover { opacity: 1; }
+
+/* × entre el texto y el ▾ */
+.sb-btn-x { right: 2.25rem; padding: 0 0.4rem; }
+
+/* ▾ pegado al borde derecho */
+.sb-btn-v { right: 0; width: 2.25rem; }
+
+/* Lista desplegable — usa .dropdown-menu de Bootstrap para colores y sombra */
+.sb-lista {
+  position: absolute;
+  top: calc(100% + 2px);
+  left: 0;
+  right: 0;
+  max-height: 14rem;
+  overflow-y: auto;
+  z-index: 200;
+}
+
+/* Ítem placeholder siempre visible pero no interactivo visualmente */
+.sb-lista .sb-placeholder {
+  cursor: default;
+  opacity: 0.65;
+  font-style: italic;
+}

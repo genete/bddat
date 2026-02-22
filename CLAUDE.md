@@ -18,6 +18,7 @@ Antes de cualquier tarea de desarrollo, leer:
 - `docs/fuentesIA/REGLAS_DESARROLLO.md` — workflow Git, commits, ramas, migraciones
 - `docs/fuentesIA/GuiaGeneralNueva.md` — arquitectura general y lógica de negocio
 - `docs/GUIA_VISTAS_BOOTSTRAP.md` — referencia principal para desarrollo UI
+- `docs/GUIA_COMPONENTES_INTERACTIVOS.md` — catálogo de componentes JS reutilizables
 - `docs/fuentesIA/Estructura_fases_tramites_tareas.json` — lógica de tramitación administrativa
 
 ---
