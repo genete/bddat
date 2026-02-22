@@ -134,41 +134,25 @@ class AutorizadoTitular(db.Model):
         }
     
     @validates('titular_entidad_id')
-    def validate_titular_es_administrado(self, key, titular_id):
-        """
-        Valida que el titular sea un administrado (tenga entrada en entidades_administrados).
-        """
+    def validate_titular(self, key, titular_id):
+        """Valida que el titular exista y esté activo."""
         from app.models.entidad import Entidad
-        
-        titular = Entidad.query.get(titular_id)
-        if not titular:
-            raise ValueError(f"Entidad {titular_id} no existe")
-        
-        if not titular.datos_administrado:
-            raise ValueError(
-                f"{titular.nombre_completo} (ID {titular_id}) no es un administrado. "
-                f"Debe tener entrada en entidades_administrados"
-            )
-        
+        entidad = Entidad.query.get(titular_id)
+        if not entidad:
+            raise ValueError(f"Entidad titular {titular_id} no existe")
+        if not entidad.activo:
+            raise ValueError(f"{entidad.nombre_completo} (ID {titular_id}) no está activa")
         return titular_id
-    
+
     @validates('autorizado_entidad_id')
-    def validate_autorizado_es_administrado(self, key, autorizado_id):
-        """
-        Valida que el autorizado sea un administrado (tenga entrada en entidades_administrados).
-        """
+    def validate_autorizado(self, key, autorizado_id):
+        """Valida que el autorizado exista y esté activo."""
         from app.models.entidad import Entidad
-        
-        autorizado = Entidad.query.get(autorizado_id)
-        if not autorizado:
-            raise ValueError(f"Entidad {autorizado_id} no existe")
-        
-        if not autorizado.datos_administrado:
-            raise ValueError(
-                f"{autorizado.nombre_completo} (ID {autorizado_id}) no es un administrado. "
-                f"Debe tener entrada en entidades_administrados"
-            )
-        
+        entidad = Entidad.query.get(autorizado_id)
+        if not entidad:
+            raise ValueError(f"Entidad autorizada {autorizado_id} no existe")
+        if not entidad.activo:
+            raise ValueError(f"{entidad.nombre_completo} (ID {autorizado_id}) no está activa")
         return autorizado_id
     
     def revocar(self, motivo=None):
