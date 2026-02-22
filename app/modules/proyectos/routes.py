@@ -2,12 +2,12 @@
 
 RUTAS:
     GET /proyectos/           → listado V2 (shell, datos vía API)
-    GET /proyectos/<id>       → detalle del proyecto
+    GET /proyectos/<id>       → redirige al detalle del expediente asociado (#128)
     GET /proyectos/<id>/editar → redirige a edición del expediente asociado
 
-VERSIÓN: 2.0
-FECHA: 2026-02-21
-ISSUE: #123
+VERSIÓN: 2.1
+FECHA: 2026-02-22
+ISSUE: #128
 """
 
 from flask import Blueprint, render_template, redirect, url_for, abort
@@ -66,7 +66,8 @@ def detalle(id):
         if proyecto.expediente.responsable_id != current_user.id:
             abort(403)
 
-    return render_template('proyectos/detalle.html', proyecto=proyecto)
+    # La Vista V4 de expediente contiene toda la info del proyecto → redirigir
+    return redirect(url_for('expedientes.detalle', id=proyecto.expediente.id))
 
 
 # =============================================================================
