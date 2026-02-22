@@ -199,7 +199,7 @@
                 // Resetear sección solicitante al cambiar titular
                 chkDistinto.checked = false;
                 solicitanteSection.style.display = 'none';
-                solicitanteSel.limpiar();
+                solicitanteSel.clear();
                 avisoSinAut.style.display = 'none';
             }
         }
@@ -224,7 +224,10 @@
             .then(r => r.json())
             .then(json => {
                 // Filtrar el propio titular (ya está elegido arriba)
-                const opciones = (json.data || []).filter(o => o.id !== parseInt(titular_id, 10));
+                // Convertir {id, text} → {v, t} que espera SelectorBusqueda
+                const opciones = (json.data || [])
+                    .filter(o => o.id !== parseInt(titular_id, 10))
+                    .map(o => ({ v: String(o.id), t: o.text }));
                 if (!opciones.length) {
                     // Sin autorizados: mostrar aviso y revertir toggle
                     avisoSinAut.style.display = '';
@@ -250,12 +253,12 @@
             const tid = entidadSel.getValue();
             if (!tid) { this.checked = false; return; }
             solicitanteSection.style.display = '';
-            solicitanteSel.limpiar();
+            solicitanteSel.clear();
             solicitanteHidden.value = '';
             cargarAutorizados(tid);
         } else {
             solicitanteSection.style.display = 'none';
-            solicitanteSel.limpiar();
+            solicitanteSel.clear();
             avisoSinAut.style.display = 'none';
             // Solicitante vuelve a ser el titular
             solicitanteHidden.value = entidadSel.getValue() || '';
