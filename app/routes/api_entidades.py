@@ -18,6 +18,7 @@ from flask_login import login_required
 from sqlalchemy import func, or_
 from app import db
 from app.models.entidad import Entidad
+from app.models.autorizados_titular import AutorizadoTitular
 
 api_entidades_bp = Blueprint('api_entidades', __name__, url_prefix='/api')
 
@@ -210,3 +211,38 @@ def listar_entidades():
         response['total'] = total
 
     return jsonify(response), 200
+
+
+@api_entidades_bp.route('/entidades/<int:titular_id>/autorizados', methods=['GET'])
+@login_required
+def listar_autorizados(titular_id):
+    """
+    GET /api/entidades/<titular_id>/autorizados
+
+    Devuelve los autorizados vigentes de un titular, incluyendo al propio titular
+    como primera opción (autoautorización implícita).
+
+    Respuesta JSON:
+        { "data": [{"id": 1, "text": "Nombre (NIF)"}, ...] }
+
+    Returns:
+        200 OK  con lista de autorizados (puede ser solo el titular si no hay más).
+        404 Not Found si el titular no existe o no tiene rol_titular=True.
+    """
+    titular = Entidad.query.get(titular_id)
+    if not titular or not titular.rol_titular:
+        return jsonify({'error': 'Titular no encontrado'}), 404
+
+    # Siempre incluir al propio titular como primera opción
+    def _label(e):
+        return f'{e.nombre_completo} ({e.nif})' if e.nif else e.nombre_completo
+
+    data = [{'id': titular.id, 'text': _label(titular)}]
+
+    # Añadir autorizados vigentes (distintos del titular)
+    autorizaciones = AutorizadoTitular.obtener_autorizados_de_titular(titular_id, solo_activos=True)
+    for aut in autorizaciones:
+        if aut.autorizado:
+            data.append({'id': aut.autorizado.id, 'text': _label(aut.autorizado)})
+
+    return jsonify({'data': data}), 200

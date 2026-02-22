@@ -27,6 +27,7 @@ from app.models.entidad import Entidad
 from app.models.solicitudes import Solicitud
 from app.models.tipos_solicitudes import TipoSolicitud
 from app.models.solicitudes_tipos import SolicitudTipo
+from app.models.autorizados_titular import AutorizadoTitular
 
 bp = Blueprint('wizard_expediente', __name__, url_prefix='/expedientes/wizard')
 
@@ -252,6 +253,24 @@ def paso3():
             flash('La entidad seleccionada no es válida como titular.', 'danger')
             return redirect(url_for('wizard_expediente.paso3'))
 
+        # --- Solicitante (puede ser el titular o un tercero autorizado) ---
+        solicitante_id_raw = (request.form.get('solicitante_id') or '').strip()
+        try:
+            solicitante_id = int(solicitante_id_raw) if solicitante_id_raw else entidad.id
+        except ValueError:
+            solicitante_id = entidad.id
+
+        if solicitante_id != entidad.id:
+            if not AutorizadoTitular.puede_actuar_como(solicitante_id, entidad.id):
+                flash('El solicitante no tiene autorización vigente para actuar en nombre de este titular.', 'danger')
+                return redirect(url_for('wizard_expediente.paso3'))
+            solicitante = Entidad.query.get(solicitante_id)
+            if not solicitante:
+                flash('Solicitante no encontrado.', 'danger')
+                return redirect(url_for('wizard_expediente.paso3'))
+        else:
+            solicitante = entidad
+
         try:
             fecha_solicitud = date.fromisoformat(fecha_solicitud_str)
         except ValueError:
@@ -322,10 +341,10 @@ def paso3():
             db.session.add(expediente)
             db.session.flush()  # → expediente.id disponible
 
-            # 5) Solicitud
+            # 5) Solicitud (entidad_id = solicitante, que puede ser distinto del titular)
             solicitud = Solicitud(
                 expediente_id=expediente.id,
-                entidad_id=entidad.id,
+                entidad_id=solicitante.id,
                 fecha_solicitud=fecha_solicitud,
                 estado='EN_TRAMITE',
                 observaciones=observaciones,

@@ -35,10 +35,10 @@
                 <div class="card-body">
                     <form method="post" action="{{ url_for('wizard_expediente.paso3') }}" novalidate>
 
-                        {# --- Titular / solicitante --- #}
-                        <div class="mb-4">
+                        {# --- Titular --- #}
+                        <div class="mb-3">
                             <label class="form-label fw-semibold">
-                                Titular / Solicitante <span class="text-danger">*</span>
+                                Titular <span class="text-danger">*</span>
                             </label>
                             <div id="sb-titular"></div>
                             <div class="form-text">Solo entidades activas con rol Titular.</div>
@@ -46,6 +46,35 @@
                                 <i class="fas fa-exclamation-circle me-1"></i>Debe seleccionar un titular.
                             </div>
                         </div>
+
+                        {# --- Toggle: solicitante distinto del titular --- #}
+                        <div id="toggle-solicitante-section" class="mb-3" style="display:none;">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="chk-solicitante-distinto">
+                                <label class="form-check-label" for="chk-solicitante-distinto">
+                                    El solicitante es distinto del titular
+                                </label>
+                            </div>
+                        </div>
+
+                        {# --- Selector de solicitante (solo si es distinto) --- #}
+                        <div id="solicitante-section" class="mb-4" style="display:none;">
+                            <label class="form-label fw-semibold">
+                                Solicitante <span class="text-danger">*</span>
+                            </label>
+                            <div id="sb-solicitante"></div>
+                            <div class="form-text">Solo entidades con autorización vigente para este titular.</div>
+                            <div id="aviso-sin-autorizados" class="alert alert-warning py-2 mt-2" style="display:none;">
+                                <i class="fas fa-exclamation-triangle me-1"></i>
+                                Este titular no tiene autorizados vigentes. Cree la autorización antes de continuar.
+                            </div>
+                            <div id="solicitante-error" class="text-danger small mt-1" style="display:none;">
+                                <i class="fas fa-exclamation-circle me-1"></i>Debe seleccionar un solicitante.
+                            </div>
+                        </div>
+
+                        {# Input hidden: solicitante final (titular o autorizado elegido) #}
+                        <input type="hidden" name="solicitante_id" id="solicitante-id-hidden">
 
                         {# --- Fecha solicitud --- #}
                         <div class="mb-4">
@@ -141,21 +170,100 @@
     'use strict';
 
     // ------------------------------------------------------------------
-    // A) SelectorBusqueda para titular / entidad
+    // A) Selectores de titular y solicitante
     // ------------------------------------------------------------------
-    const entidadError = document.getElementById('entidad-error');
+    const entidadError      = document.getElementById('entidad-error');
+    const toggleSection     = document.getElementById('toggle-solicitante-section');
+    const chkDistinto       = document.getElementById('chk-solicitante-distinto');
+    const solicitanteSection = document.getElementById('solicitante-section');
+    const avisoSinAut       = document.getElementById('aviso-sin-autorizados');
+    const solicitanteError  = document.getElementById('solicitante-error');
+    const solicitanteHidden = document.getElementById('solicitante-id-hidden');
 
     const entidadSel = new SelectorBusqueda(
         '#sb-titular',
         {{ entidades_opts | tojson }},
         {
-            placeholder: '— Seleccione titular/solicitante —',
+            placeholder: '— Seleccione titular —',
             name: 'entidad_id',
             onChange: (v) => {
-                if (v) entidadError.style.display = 'none';
+                if (v) {
+                    entidadError.style.display = 'none';
+                    // Mostrar toggle y sincronizar solicitante_id con el titular por defecto
+                    toggleSection.style.display = '';
+                    solicitanteHidden.value = v;
+                } else {
+                    toggleSection.style.display = 'none';
+                    solicitanteHidden.value = '';
+                }
+                // Resetear sección solicitante al cambiar titular
+                chkDistinto.checked = false;
+                solicitanteSection.style.display = 'none';
+                solicitanteSel.clear();
+                avisoSinAut.style.display = 'none';
             }
         }
     );
+
+    const solicitanteSel = new SelectorBusqueda(
+        '#sb-solicitante',
+        [],
+        {
+            placeholder: '— Seleccione solicitante —',
+            name: '_solicitante_display',   // no se envía al servidor; usa el hidden
+            onChange: (v) => {
+                solicitanteHidden.value = v || '';
+                if (v) solicitanteError.style.display = 'none';
+            }
+        }
+    );
+
+    /** Carga autorizados vigentes del titular desde la API y rellena el selector. */
+    function cargarAutorizados(titular_id) {
+        fetch(`/api/entidades/${titular_id}/autorizados`)
+            .then(r => r.json())
+            .then(json => {
+                // Filtrar el propio titular (ya está elegido arriba)
+                // Convertir {id, text} → {v, t} que espera SelectorBusqueda
+                const opciones = (json.data || [])
+                    .filter(o => o.id !== parseInt(titular_id, 10))
+                    .map(o => ({ v: String(o.id), t: o.text }));
+                if (!opciones.length) {
+                    // Sin autorizados: mostrar aviso y revertir toggle
+                    avisoSinAut.style.display = '';
+                    chkDistinto.checked = false;
+                    solicitanteSection.style.display = 'none';
+                    // Restaurar solicitante_id al titular
+                    solicitanteHidden.value = titular_id;
+                } else {
+                    avisoSinAut.style.display = 'none';
+                    solicitanteSel.setOpciones(opciones);
+                }
+            })
+            .catch(() => {
+                // Error de red: revertir toggle
+                chkDistinto.checked = false;
+                solicitanteSection.style.display = 'none';
+                solicitanteHidden.value = entidadSel.getValue() || '';
+            });
+    }
+
+    chkDistinto.addEventListener('change', function () {
+        if (this.checked) {
+            const tid = entidadSel.getValue();
+            if (!tid) { this.checked = false; return; }
+            solicitanteSection.style.display = '';
+            solicitanteSel.clear();
+            solicitanteHidden.value = '';
+            cargarAutorizados(tid);
+        } else {
+            solicitanteSection.style.display = 'none';
+            solicitanteSel.clear();
+            avisoSinAut.style.display = 'none';
+            // Solicitante vuelve a ser el titular
+            solicitanteHidden.value = entidadSel.getValue() || '';
+        }
+    });
 
     // ------------------------------------------------------------------
     // B) Selector de tipos de solicitud con badges acumulables
@@ -251,6 +359,14 @@
             ok = false;
         } else {
             entidadError.style.display = 'none';
+        }
+
+        // Validar solicitante si el toggle está activo
+        if (chkDistinto.checked && !solicitanteSel.getValue()) {
+            solicitanteError.style.display = 'block';
+            ok = false;
+        } else {
+            solicitanteError.style.display = 'none';
         }
 
         // Validar al menos un tipo seleccionado
