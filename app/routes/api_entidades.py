@@ -8,9 +8,18 @@ ENDPOINTS:
                                Devuelve {results: [{id, text}, ...]}
                                Pensado para selects de titular en wizard expediente.
 
-VERSIÓN: 1.1
-FECHA: 2026-02-19
-ISSUE: #61
+    GET /api/entidades/<titular_id>/autorizados
+        Autorizados vigentes de un titular (incluye al propio titular).
+        Devuelve {data: [{id, text}, ...]}
+
+    GET /api/entidades/<titular_id>/candidatos-autorizacion
+        Entidades activas que aún NO están autorizadas por el titular dado.
+        Excluye al propio titular y a los ya autorizados con autorización activa.
+        Devuelve {data: [{v, t}, ...]}  (formato SelectorBusqueda)
+
+VERSIÓN: 1.2
+FECHA: 2026-02-22
+ISSUE: #137
 """
 
 from flask import Blueprint, request, jsonify
@@ -245,4 +254,50 @@ def listar_autorizados(titular_id):
         if aut.autorizado:
             data.append({'id': aut.autorizado.id, 'text': _label(aut.autorizado)})
 
+    return jsonify({'data': data}), 200
+
+
+@api_entidades_bp.route('/entidades/<int:titular_id>/candidatos-autorizacion', methods=['GET'])
+@login_required
+def candidatos_autorizacion(titular_id):
+    """
+    GET /api/entidades/<titular_id>/candidatos-autorizacion
+
+    Devuelve entidades activas que aún NO tienen autorización activa con el titular dado.
+    Excluye al propio titular (autoautorización implícita, no necesita entrada en BD).
+
+    Respuesta JSON:
+        { "data": [{"v": "3", "t": "Nombre Entidad (NIF)"}, ...] }
+        Formato {v, t} compatible con SelectorBusqueda.
+
+    Returns:
+        200 OK  con lista de candidatos.
+        404 Not Found si el titular no existe o no tiene rol_titular.
+    """
+    titular = Entidad.query.get(titular_id)
+    if not titular or not titular.rol_titular:
+        return jsonify({'error': 'Titular no encontrado'}), 404
+
+    # IDs de entidades ya autorizadas activamente
+    ya_autorizados = {
+        aut.autorizado_entidad_id
+        for aut in AutorizadoTitular.query.filter_by(
+            titular_entidad_id=titular_id, activo=True
+        ).all()
+    }
+    # Excluir también al propio titular
+    ya_autorizados.add(titular_id)
+
+    candidatos = (
+        Entidad.query
+        .filter(Entidad.activo == True)
+        .filter(Entidad.id.notin_(ya_autorizados))
+        .order_by(Entidad.nombre_completo)
+        .all()
+    )
+
+    def _label(e):
+        return f'{e.nombre_completo} ({e.nif})' if e.nif else e.nombre_completo
+
+    data = [{'v': str(e.id), 't': _label(e)} for e in candidatos]
     return jsonify({'data': data}), 200

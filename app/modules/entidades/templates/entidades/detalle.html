@@ -4,6 +4,12 @@
   {% if modo == 'editar' %}Editar — {% endif %}{{ entidad.nombre_completo }} — BDDAT
 {% endblock %}
 
+{% block extra_css %}{{ super() }}
+{% if entidad.rol_titular %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/selector_busqueda.css') }}">
+{% endif %}
+{% endblock %}
+
 {% block page_breadcrumb %}
 <nav aria-label="breadcrumb" class="px-4 py-2 bg-light border-bottom">
     <ol class="breadcrumb mb-0">
@@ -361,11 +367,9 @@
 {% if entidad.rol_titular %}
 <div class="card mb-3">
     <div class="card-header card-header-accent fw-semibold d-flex justify-content-between align-items-center">
-        <span><i class="fas fa-user-check me-1"></i> Autorizados vigentes</span>
-        <button class="btn btn-sm btn-outline-primary disabled"
-                data-bs-toggle="tooltip"
-                title="Próximamente"
-                tabindex="-1">
+        <span><i class="fas fa-user-check me-1"></i> Autorizaciones</span>
+        <button type="button" class="btn btn-sm btn-outline-primary"
+                data-bs-toggle="modal" data-bs-target="#modalAutorizacion">
             <i class="fas fa-plus me-1"></i> Añadir autorizado
         </button>
     </div>
@@ -377,23 +381,53 @@
                         <th>Entidad autorizada</th>
                         <th>NIF</th>
                         <th>Alta</th>
-                        <th>Observaciones</th>
+                        <th>Estado</th>
+                        <th class="text-end">Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for aut in autorizaciones %}
-                    <tr>
+                    <tr class="{% if not aut.activo %}text-secondary{% endif %}">
                         <td>{{ aut.autorizado.nombre_completo }}</td>
                         <td>{{ aut.autorizado.nif or '—' }}</td>
                         <td>{{ aut.created_at.strftime('%d/%m/%Y') }}</td>
-                        <td class="text-secondary small">{{ aut.observaciones or '—' }}</td>
+                        <td>
+                            {% if aut.activo %}
+                                <span class="badge bg-success">Activa</span>
+                            {% else %}
+                                <span class="badge bg-secondary">Revocada</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end">
+                            {% if aut.activo %}
+                            <form method="POST"
+                                  action="{{ url_for('entidades.revocar_autorizacion', entidad_id=entidad.id, aut_id=aut.id) }}"
+                                  class="d-inline"
+                                  onsubmit="return confirm('¿Revocar la autorización de {{ aut.autorizado.nombre_completo }}?')">
+                                <button type="submit" class="btn btn-sm btn-outline-warning"
+                                        data-bs-toggle="tooltip" title="Revocar">
+                                    <i class="fas fa-ban"></i>
+                                </button>
+                            </form>
+                            {% else %}
+                            <form method="POST"
+                                  action="{{ url_for('entidades.restaurar_autorizacion', entidad_id=entidad.id, aut_id=aut.id) }}"
+                                  class="d-inline"
+                                  onsubmit="return confirm('¿Restaurar la autorización de {{ aut.autorizado.nombre_completo }}?')">
+                                <button type="submit" class="btn btn-sm btn-outline-success"
+                                        data-bs-toggle="tooltip" title="Restaurar">
+                                    <i class="fas fa-redo"></i>
+                                </button>
+                            </form>
+                            {% endif %}
+                        </td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
         {% else %}
             <p class="text-secondary mb-0 p-3">
-                <i class="fas fa-info-circle me-1"></i> Sin autorizados vigentes.
+                <i class="fas fa-info-circle me-1"></i> Sin autorizaciones registradas.
             </p>
         {% endif %}
     </div>
@@ -505,6 +539,43 @@
     </div>
 </div>
 
+{% if entidad.rol_titular %}
+<!-- MODAL: Añadir autorizado -->
+<div class="modal fade" id="modalAutorizacion" tabindex="-1" aria-labelledby="modalAutorizacionLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header card-header-accent">
+                <h5 class="modal-title fw-semibold" id="modalAutorizacionLabel">
+                    <i class="fas fa-user-check me-1"></i> Añadir autorizado
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <form method="POST" action="{{ url_for('entidades.nueva_autorizacion', entidad_id=entidad.id) }}">
+                <div class="modal-body">
+                    <p class="text-secondary small mb-3">
+                        Selecciona la entidad que podrá actuar en nombre de
+                        <strong>{{ entidad.nombre_completo }}</strong>.
+                    </p>
+                    <label class="form-label fw-semibold small">Entidad autorizada</label>
+                    <div id="sb-autorizado"></div>
+                    <input type="hidden" name="autorizado_id" id="autorizado_id_hidden">
+                    <div id="sb-aviso" class="text-secondary small mt-2" style="display:none;">
+                        Cargando entidades...
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" id="btn-guardar-aut" disabled>
+                        <i class="fas fa-save me-1"></i> Guardar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<script src="{{ url_for('static', filename='js/selector_busqueda.js') }}"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     // Tooltips
@@ -512,7 +583,44 @@ document.addEventListener('DOMContentLoaded', function () {
         new bootstrap.Tooltip(el);
     });
 
-    // Rellenar modal al abrir (nueva vs editar)
+    {% if entidad.rol_titular %}
+    // SelectorBusqueda para añadir autorizado
+    var selAutorizado = new SelectorBusqueda('#sb-autorizado', [], {
+        placeholder: '— Buscar entidad —',
+        name: '_autorizado_sel',
+        onChange: function (v, t) {
+            document.getElementById('autorizado_id_hidden').value = v;
+            document.getElementById('btn-guardar-aut').disabled = !v;
+        }
+    });
+
+    // Cargar candidatos al abrir el modal
+    document.getElementById('modalAutorizacion').addEventListener('show.bs.modal', function () {
+        selAutorizado.clear();
+        document.getElementById('autorizado_id_hidden').value = '';
+        document.getElementById('btn-guardar-aut').disabled = true;
+        var aviso = document.getElementById('sb-aviso');
+        aviso.style.display = 'block';
+
+        fetch('{{ url_for("api_entidades.candidatos_autorizacion", titular_id=entidad.id) }}')
+            .then(function (r) { return r.json(); })
+            .then(function (json) {
+                aviso.style.display = 'none';
+                if (json.data && json.data.length > 0) {
+                    selAutorizado.setOpciones(json.data);
+                } else {
+                    aviso.textContent = 'No hay entidades disponibles para autorizar.';
+                    aviso.style.display = 'block';
+                }
+            })
+            .catch(function () {
+                aviso.textContent = 'Error al cargar entidades.';
+                aviso.style.display = 'block';
+            });
+    });
+    {% endif %}
+
+    // Rellenar modal al abrir (nueva vs editar) — direcciones
     var modalEl = document.getElementById('modalDireccion');
     modalEl.addEventListener('show.bs.modal', function (event) {
         var btn    = event.relatedTarget;

@@ -111,10 +111,12 @@ def detalle(entidad_id):
     """Vista detalle de entidad — patrón V4 solo lectura."""
     entidad = Entidad.query.get_or_404(entidad_id)
 
-    # Cargar autorizaciones vigentes si es titular
+    # Cargar historial completo de autorizaciones si es titular
     autorizaciones = []
     if entidad.rol_titular:
-        autorizaciones = AutorizadoTitular.obtener_autorizados_de_titular(entidad_id)
+        autorizaciones = AutorizadoTitular.obtener_autorizados_de_titular(
+            entidad_id, solo_activos=False
+        )
 
     return render_template(
         'entidades/detalle.html',
@@ -133,7 +135,9 @@ def editar(entidad_id):
     if request.method == 'GET':
         autorizaciones = []
         if entidad.rol_titular:
-            autorizaciones = AutorizadoTitular.obtener_autorizados_de_titular(entidad_id)
+            autorizaciones = AutorizadoTitular.obtener_autorizados_de_titular(
+                entidad_id, solo_activos=False
+            )
         return render_template(
             'entidades/detalle.html',
             entidad=entidad,
@@ -174,7 +178,9 @@ def editar(entidad_id):
             flash(msg, 'danger')
         autorizaciones = []
         if entidad.rol_titular:
-            autorizaciones = AutorizadoTitular.obtener_autorizados_de_titular(entidad_id)
+            autorizaciones = AutorizadoTitular.obtener_autorizados_de_titular(
+                entidad_id, solo_activos=False
+            )
         return render_template(
             'entidades/detalle.html',
             entidad=entidad,
@@ -319,4 +325,85 @@ def toggle_direccion(entidad_id, dir_id):
 
     estado = 'activada' if direccion.activo else 'desactivada'
     flash(f'Dirección "{direccion.descripcion or dir_id}" {estado}.', 'success')
+    return redirect(url_for('entidades.detalle', entidad_id=entidad_id))
+
+
+# =============================================================================
+# AUTORIZACIONES  (#137)
+# =============================================================================
+
+@bp.route('/<int:entidad_id>/autorizados/nueva', methods=['POST'])
+@login_required
+def nueva_autorizacion(entidad_id):
+    """Crea una nueva autorización para que otra entidad actúe en nombre del titular."""
+    entidad = Entidad.query.get_or_404(entidad_id)
+    if not entidad.rol_titular:
+        flash('Esta entidad no tiene rol Titular.', 'danger')
+        return redirect(url_for('entidades.detalle', entidad_id=entidad_id))
+
+    autorizado_id_str = request.form.get('autorizado_id', '').strip()
+    if not autorizado_id_str or not autorizado_id_str.isdigit():
+        flash('Debe seleccionar una entidad autorizada.', 'danger')
+        return redirect(url_for('entidades.detalle', entidad_id=entidad_id))
+
+    autorizado_id = int(autorizado_id_str)
+
+    if autorizado_id == entidad_id:
+        flash('Una entidad no puede autorizarse a sí misma.', 'danger')
+        return redirect(url_for('entidades.detalle', entidad_id=entidad_id))
+
+    # Comprobar que no existe ya una autorización activa
+    existente = AutorizadoTitular.query.filter_by(
+        titular_entidad_id=entidad_id,
+        autorizado_entidad_id=autorizado_id,
+    ).first()
+
+    if existente:
+        if existente.activo:
+            flash('Ya existe una autorización activa con esa entidad.', 'warning')
+            return redirect(url_for('entidades.detalle', entidad_id=entidad_id))
+        # Reutilizar la revocada en vez de crear un duplicado
+        existente.restaurar()
+        db.session.commit()
+        flash(f'Autorización restaurada para "{existente.autorizado.nombre_completo}".', 'success')
+        return redirect(url_for('entidades.detalle', entidad_id=entidad_id))
+
+    try:
+        nueva = AutorizadoTitular.crear_autorizacion(entidad_id, autorizado_id)
+        db.session.add(nueva)
+        db.session.commit()
+        flash(f'Autorización concedida a "{nueva.autorizado.nombre_completo}".', 'success')
+    except ValueError as e:
+        flash(str(e), 'danger')
+
+    return redirect(url_for('entidades.detalle', entidad_id=entidad_id))
+
+
+@bp.route('/<int:entidad_id>/autorizados/<int:aut_id>/revocar', methods=['POST'])
+@login_required
+def revocar_autorizacion(entidad_id, aut_id):
+    """Revoca una autorización (borrado lógico)."""
+    Entidad.query.get_or_404(entidad_id)
+    aut = AutorizadoTitular.query.filter_by(
+        id=aut_id, titular_entidad_id=entidad_id
+    ).first_or_404()
+
+    aut.revocar()
+    db.session.commit()
+    flash(f'Autorización de "{aut.autorizado.nombre_completo}" revocada.', 'success')
+    return redirect(url_for('entidades.detalle', entidad_id=entidad_id))
+
+
+@bp.route('/<int:entidad_id>/autorizados/<int:aut_id>/restaurar', methods=['POST'])
+@login_required
+def restaurar_autorizacion(entidad_id, aut_id):
+    """Restaura una autorización revocada."""
+    Entidad.query.get_or_404(entidad_id)
+    aut = AutorizadoTitular.query.filter_by(
+        id=aut_id, titular_entidad_id=entidad_id
+    ).first_or_404()
+
+    aut.restaurar()
+    db.session.commit()
+    flash(f'Autorización de "{aut.autorizado.nombre_completo}" restaurada.', 'success')
     return redirect(url_for('entidades.detalle', entidad_id=entidad_id))
