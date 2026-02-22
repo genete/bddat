@@ -354,8 +354,15 @@ def paso3():
 
     # GET
     tipos_solicitudes = TipoSolicitud.query.order_by(TipoSolicitud.siglas).all()
+    entidades_titulares = Entidad.query.filter_by(activo=True, rol_titular=True)\
+        .order_by(Entidad.nombre_completo).all()
+    entidades_opts = [
+        {'v': str(e.id), 't': f'{e.nombre_completo} ({e.nif})' if e.nif else e.nombre_completo}
+        for e in entidades_titulares
+    ]
 
     return render_template(
         'expedientes/wizard_paso3.html',
         tipos_solicitudes=tipos_solicitudes,
+        entidades_opts=entidades_opts,
     )

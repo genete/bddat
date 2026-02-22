@@ -36,27 +36,11 @@
                     <form method="post" action="{{ url_for('wizard_expediente.paso3') }}" novalidate>
 
                         {# --- Titular / solicitante --- #}
-                        <div class="mb-4" style="position:relative;">
+                        <div class="mb-4">
                             <label class="form-label fw-semibold">
                                 Titular / Solicitante <span class="text-danger">*</span>
                             </label>
-                            <input type="hidden" id="entidad_id" name="entidad_id">
-                            <div class="input-group">
-                                <span class="input-group-text"><i class="fas fa-search"></i></span>
-                                <input type="text" id="entidad-search"
-                                       class="form-control"
-                                       placeholder="Nombre o NIF (mín. 2 caracteres)..."
-                                       autocomplete="off">
-                                <button type="button" class="btn btn-outline-secondary"
-                                        id="btn-limpiar-entidad" title="Limpiar" style="display:none;">
-                                    <i class="fas fa-times"></i>
-                                </button>
-                            </div>
-                            <ul id="entidad-suggestions" class="list-group shadow-sm"
-                                style="position:absolute; z-index:1050;
-                                       width:calc(100% - var(--bs-gutter-x, 0px));
-                                       max-height:220px; overflow-y:auto; display:none;">
-                            </ul>
+                            <div id="sb-titular"></div>
                             <div class="form-text">Solo entidades activas con rol Titular.</div>
                             <div id="entidad-error" class="text-danger small mt-1" style="display:none;">
                                 <i class="fas fa-exclamation-circle me-1"></i>Debe seleccionar un titular.
@@ -80,16 +64,18 @@
                             </label>
 
                             <div class="card bg-light border-0 p-3">
-                                {# Buscador/filtro #}
-                                <div class="mb-2" style="position:relative;">
-                                    <input type="text" id="tipos-search"
-                                           class="form-control"
-                                           placeholder="Buscar tipo de solicitud..."
-                                           autocomplete="off">
-                                    <ul id="tipos-suggestions" class="list-group shadow-sm"
-                                        style="position:absolute; z-index:1050; width:100%;
-                                               max-height:220px; overflow-y:auto; display:none;">
-                                    </ul>
+                                {# Select nativo para añadir tipos #}
+                                <div class="mb-2">
+                                    <select id="tipos-select" class="form-select">
+                                        <option value="">— Añadir tipo de solicitud —</option>
+                                        {% for ts in tipos_solicitudes %}
+                                        <option value="{{ ts.id }}"
+                                                data-siglas="{{ ts.siglas }}"
+                                                data-descripcion="{{ ts.descripcion }}">
+                                            {{ ts.siglas }} &mdash; {{ ts.descripcion }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
                                 </div>
 
                                 {# Badges seleccionados #}
@@ -144,138 +130,44 @@
 </div>
 {% endblock %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/selector_busqueda.css') }}">
+{% endblock %}
+
 {% block extra_js %}
+<script src="{{ url_for('static', filename='js/selector_busqueda.js') }}"></script>
 <script>
 (function () {
     'use strict';
 
     // ------------------------------------------------------------------
-    // Datos de tipos de solicitud inyectados desde Jinja2
+    // A) SelectorBusqueda para titular / entidad
     // ------------------------------------------------------------------
-    const TIPOS_SOLICITUD = [
-        {% for ts in tipos_solicitudes %}
-        { id: {{ ts.id }}, siglas: {{ ts.siglas|tojson }}, descripcion: {{ ts.descripcion|tojson }} },
-        {% endfor %}
-    ];
+    const entidadError = document.getElementById('entidad-error');
 
-    // ------------------------------------------------------------------
-    // Navegación de teclado reutilizable para listas de sugerencias (<ul>)
-    // ------------------------------------------------------------------
-    function navTeclado(inputEl, ulEl) {
-        let cursor = -1;
-
-        function items() {
-            return Array.from(ulEl.querySelectorAll('li.list-group-item-action'));
-        }
-
-        function moverCursor(delta) {
-            const its = items();
-            if (!its.length) return;
-            cursor = Math.max(-1, Math.min(its.length - 1, cursor + delta));
-            its.forEach((li, i) => li.classList.toggle('active', i === cursor));
-            if (cursor >= 0) its[cursor].scrollIntoView({ block: 'nearest' });
-        }
-
-        inputEl.addEventListener('keydown', function (e) {
-            if (ulEl.style.display === 'none') return;
-            if (e.key === 'ArrowDown') {
-                e.preventDefault();
-                moverCursor(1);
-            } else if (e.key === 'ArrowUp') {
-                e.preventDefault();
-                moverCursor(-1);
-            } else if (e.key === 'Enter') {
-                const its = items();
-                if (cursor >= 0 && its[cursor]) {
-                    e.preventDefault();
-                    its[cursor].dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
-                }
-            } else if (e.key === 'Escape') {
-                ulEl.style.display = 'none';
-                cursor = -1;
+    const entidadSel = new SelectorBusqueda(
+        '#sb-titular',
+        {{ entidades_opts | tojson }},
+        {
+            placeholder: '— Seleccione titular/solicitante —',
+            name: 'entidad_id',
+            onChange: (v) => {
+                if (v) entidadError.style.display = 'none';
             }
-        });
-
-        return { reset() { cursor = -1; } };
-    }
-
-    // ------------------------------------------------------------------
-    // A) Autocomplete de titular / entidad
-    // ------------------------------------------------------------------
-    const entidadSearch  = document.getElementById('entidad-search');
-    const entidadIdInput = document.getElementById('entidad_id');
-    const entidadSugg    = document.getElementById('entidad-suggestions');
-    const btnLimpiar     = document.getElementById('btn-limpiar-entidad');
-    const entidadError   = document.getElementById('entidad-error');
-
-    const navEntidad = navTeclado(entidadSearch, entidadSugg);
-    let timerEntidad = null;
-
-    entidadSearch.addEventListener('input', function () {
-        clearTimeout(timerEntidad);
-        entidadIdInput.value = '';
-        btnLimpiar.style.display = 'none';
-        const q = this.value.trim();
-        if (q.length < 2) { entidadSugg.style.display = 'none'; return; }
-        timerEntidad = setTimeout(() => {
-            fetch(`/api/entidades?q=${encodeURIComponent(q)}&rol=titular`)
-                .then(r => r.json())
-                .then(data => {
-                    const lista = data.results || [];
-                    navEntidad.reset();
-                    entidadSugg.innerHTML = '';
-                    if (!lista.length) {
-                        const li = document.createElement('li');
-                        li.className = 'list-group-item text-muted small py-2';
-                        li.textContent = 'Sin resultados con rol Titular.';
-                        entidadSugg.appendChild(li);
-                    } else {
-                        lista.forEach(e => {
-                            const li = document.createElement('li');
-                            li.className = 'list-group-item list-group-item-action py-2';
-                            li.textContent = e.text;
-                            li.addEventListener('mousedown', ev => {
-                                ev.preventDefault();
-                                entidadIdInput.value = e.id;
-                                entidadSearch.value  = e.text;
-                                entidadSugg.style.display = 'none';
-                                btnLimpiar.style.display  = 'inline-block';
-                                entidadError.style.display = 'none';
-                            });
-                            entidadSugg.appendChild(li);
-                        });
-                    }
-                    entidadSugg.style.display = 'block';
-                })
-                .catch(() => { entidadSugg.style.display = 'none'; });
-        }, 250);
-    });
-
-    entidadSearch.addEventListener('blur', () => {
-        setTimeout(() => { entidadSugg.style.display = 'none'; }, 150);
-    });
-
-    btnLimpiar.addEventListener('click', () => {
-        entidadIdInput.value = '';
-        entidadSearch.value  = '';
-        btnLimpiar.style.display  = 'none';
-        entidadSugg.style.display = 'none';
-    });
+        }
+    );
 
     // ------------------------------------------------------------------
     // B) Selector de tipos de solicitud con badges acumulables
     // ------------------------------------------------------------------
     const tiposSeleccionados = {};  // { id: { siglas, descripcion } }
 
-    const tiposSearch     = document.getElementById('tipos-search');
-    const tiposSugg       = document.getElementById('tipos-suggestions');
+    const tiposSelect     = document.getElementById('tipos-select');
     const tiposDiv        = document.getElementById('tipos-seleccionados');
     const tiposHidden     = document.getElementById('tipos-hidden-inputs');
     const tiposError      = document.getElementById('tipos-error');
     const tiposComboError = document.getElementById('tipos-combo-error');
     const tiposComboMsg   = document.getElementById('tipos-combo-msg');
-
-    const navTipos = navTeclado(tiposSearch, tiposSugg);
 
     /** Renderiza los badges y los inputs hidden según tiposSeleccionados */
     function renderBadges() {
@@ -323,55 +215,12 @@
         renderBadges();
     }
 
-    // Mostrar todos los tipos no seleccionados; los no coincidentes se dimean
-    function mostrarTipos(q) {
-        navTipos.reset();
-        tiposSugg.innerHTML = '';
-
-        const disponibles = TIPOS_SOLICITUD.filter(ts => !tiposSeleccionados[ts.id]);
-
-        if (!disponibles.length) {
-            const li = document.createElement('li');
-            li.className = 'list-group-item text-muted small py-2';
-            li.textContent = 'Todos los tipos han sido añadidos.';
-            tiposSugg.appendChild(li);
-            tiposSugg.style.display = 'block';
-            return;
-        }
-
-        const qLow = q.toLowerCase();
-        let primerMatch = null;
-        disponibles.forEach(ts => {
-            const coincide = !qLow ||
-                ts.siglas.toLowerCase().includes(qLow) ||
-                ts.descripcion.toLowerCase().includes(qLow);
-            const li = document.createElement('li');
-            li.className = 'list-group-item list-group-item-action py-2 small';
-            if (!coincide) li.style.opacity = '0.4';
-            li.innerHTML = `<strong>${ts.siglas}</strong> &mdash; ${ts.descripcion}`;
-            li.addEventListener('mousedown', ev => {
-                ev.preventDefault();
-                añadirTipo(ts.id, ts.siglas, ts.descripcion);
-                tiposSearch.value = '';
-                tiposSugg.style.display = 'none';
-            });
-            tiposSugg.appendChild(li);
-            if (coincide && !primerMatch) primerMatch = li;
-        });
-
-        if (primerMatch && qLow) primerMatch.scrollIntoView({ block: 'nearest' });
-
-        tiposSugg.style.display = 'block';
-    }
-
-    let tiposBlurTimer = null;
-    tiposSearch.addEventListener('focus', () => {
-        clearTimeout(tiposBlurTimer);
-        mostrarTipos(tiposSearch.value.trim());
-    });
-    tiposSearch.addEventListener('input', function () { mostrarTipos(this.value.trim()); });
-    tiposSearch.addEventListener('blur', () => {
-        tiposBlurTimer = setTimeout(() => { tiposSugg.style.display = 'none'; }, 150);
+    // Al seleccionar en el <select>, añadir al badge list y resetear
+    tiposSelect.addEventListener('change', function () {
+        const opt = this.options[this.selectedIndex];
+        if (!opt.value) return;
+        añadirTipo(opt.value, opt.dataset.siglas, opt.dataset.descripcion);
+        this.value = '';  // resetear al placeholder
     });
 
     // ------------------------------------------------------------------
@@ -397,7 +246,7 @@
         let ok = true;
 
         // Validar titular
-        if (!entidadIdInput.value) {
+        if (!entidadSel.getValue()) {
             entidadError.style.display = 'block';
             ok = false;
         } else {
