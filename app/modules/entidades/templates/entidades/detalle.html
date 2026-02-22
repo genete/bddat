@@ -259,7 +259,105 @@
     </div>
 </div>
 
-<!-- CARD 4 — Autorizaciones (solo si es titular) -->
+<!-- CARD 4 — Direcciones de notificación (#136) -->
+<div class="card mb-3">
+    <div class="card-header card-header-accent fw-semibold d-flex justify-content-between align-items-center">
+        <span><i class="fas fa-bell me-1"></i> Direcciones de notificación</span>
+        <button type="button" class="btn btn-sm btn-outline-primary"
+                data-bs-toggle="modal" data-bs-target="#modalDireccion"
+                data-modo="nueva">
+            <i class="fas fa-plus me-1"></i> Añadir dirección
+        </button>
+    </div>
+    <div class="card-body p-0">
+        {% if entidad.direcciones_notificacion %}
+            <table class="table table-sm table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Descripción</th>
+                        <th>Roles</th>
+                        <th>Email</th>
+                        <th>Dirección</th>
+                        <th>Estado</th>
+                        <th class="text-end">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for d in entidad.direcciones_notificacion %}
+                    <tr class="{% if not d.activo %}text-secondary{% endif %}">
+                        <td>{{ d.descripcion or '—' }}</td>
+                        <td>
+                            {% if d.es_titular %}
+                                <span class="badge bg-success">Titular</span>
+                            {% endif %}
+                            {% if d.es_consultado %}
+                                <span class="badge bg-info text-dark">Consultado</span>
+                            {% endif %}
+                            {% if d.es_publicador %}
+                                <span class="badge bg-warning text-dark">Publicador</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if d.email %}
+                                <a href="mailto:{{ d.email }}">{{ d.email }}</a>
+                            {% else %}—{% endif %}
+                        </td>
+                        <td class="small">
+                            {% set df = d.direccion_formateada() %}
+                            {% if df.linea1 %}{{ df.linea1 }}{% if df.linea2 %}, {{ df.linea2 }}{% endif %}
+                            {% else %}—{% endif %}
+                        </td>
+                        <td>
+                            {% if d.activo %}
+                                <span class="badge bg-success">Activa</span>
+                            {% else %}
+                                <span class="badge bg-secondary">Inactiva</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end">
+                            <button type="button"
+                                    class="btn btn-sm btn-outline-secondary"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#modalDireccion"
+                                    data-modo="editar"
+                                    data-dir-id="{{ d.id }}"
+                                    data-descripcion="{{ d.descripcion or '' }}"
+                                    data-email="{{ d.email or '' }}"
+                                    data-telefono="{{ d.telefono or '' }}"
+                                    data-direccion="{{ d.direccion or '' }}"
+                                    data-codigo-postal="{{ d.codigo_postal or '' }}"
+                                    data-direccion-fallback="{{ d.direccion_fallback or '' }}"
+                                    data-notas="{{ d.notas or '' }}"
+                                    data-rol-titular="{{ '1' if d.es_titular else '0' }}"
+                                    data-rol-consultado="{{ '1' if d.es_consultado else '0' }}"
+                                    data-rol-publicador="{{ '1' if d.es_publicador else '0' }}">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <form method="POST"
+                                  action="{{ url_for('entidades.toggle_direccion', entidad_id=entidad.id, dir_id=d.id) }}"
+                                  class="d-inline"
+                                  onsubmit="return confirm('¿{{ 'Desactivar' if d.activo else 'Activar' }} esta dirección?')">
+                                <button type="submit"
+                                        class="btn btn-sm {{ 'btn-outline-warning' if d.activo else 'btn-outline-success' }}"
+                                        data-bs-toggle="tooltip"
+                                        title="{{ 'Desactivar' if d.activo else 'Activar' }}">
+                                    <i class="fas fa-{{ 'ban' if d.activo else 'check' }}"></i>
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p class="text-secondary mb-0 p-3">
+                <i class="fas fa-info-circle me-1"></i> Sin direcciones de notificación registradas.
+            </p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- CARD 5 — Autorizaciones (solo si es titular) -->
 {% if entidad.rol_titular %}
 <div class="card mb-3">
     <div class="card-header card-header-accent fw-semibold d-flex justify-content-between align-items-center">
@@ -306,12 +404,147 @@
 </form>
 {% endif %}
 
+</div>{# /p-4 #}
+
+<!-- MODAL: Añadir / Editar dirección de notificación -->
+<div class="modal fade" id="modalDireccion" tabindex="-1" aria-labelledby="modalDireccionLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header card-header-accent">
+                <h5 class="modal-title fw-semibold" id="modalDireccionLabel">
+                    <i class="fas fa-bell me-1"></i>
+                    <span id="modalDireccionTitulo">Añadir dirección de notificación</span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <form id="formDireccion" method="POST">
+                <div class="modal-body">
+                    <div class="row g-3">
+
+                        <div class="col-md-12">
+                            <label class="form-label fw-semibold small" for="md_descripcion">Descripción</label>
+                            <input type="text" class="form-control" id="md_descripcion" name="descripcion"
+                                   placeholder="Ej: Sede Central, Delegación Sur...">
+                        </div>
+
+                        <div class="col-md-12">
+                            <label class="form-label fw-semibold small">Roles</label>
+                            <div class="d-flex gap-4 flex-wrap">
+                                {% if entidad.rol_titular %}
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="md_rol_titular" name="rol_titular">
+                                    <label class="form-check-label" for="md_rol_titular">Titular</label>
+                                </div>
+                                {% endif %}
+                                {% if entidad.rol_consultado %}
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="md_rol_consultado" name="rol_consultado">
+                                    <label class="form-check-label" for="md_rol_consultado">Consultado</label>
+                                </div>
+                                {% endif %}
+                                {% if entidad.rol_publicador %}
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="md_rol_publicador" name="rol_publicador">
+                                    <label class="form-check-label" for="md_rol_publicador">Publicador</label>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold small" for="md_email">Email</label>
+                            <input type="email" class="form-control" id="md_email" name="email"
+                                   placeholder="notificaciones@ejemplo.es">
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold small" for="md_telefono">Teléfono</label>
+                            <input type="text" class="form-control" id="md_telefono" name="telefono"
+                                   placeholder="958 000 000">
+                        </div>
+
+                        <div class="col-md-7">
+                            <label class="form-label fw-semibold small" for="md_direccion">Dirección postal</label>
+                            <input type="text" class="form-control" id="md_direccion" name="direccion"
+                                   placeholder="Calle, número, piso...">
+                        </div>
+
+                        <div class="col-md-2">
+                            <label class="form-label fw-semibold small" for="md_cp">CP</label>
+                            <input type="text" class="form-control" id="md_cp" name="codigo_postal"
+                                   maxlength="10" placeholder="18001">
+                        </div>
+
+                        <div class="col-md-12">
+                            <label class="form-label fw-semibold small" for="md_fallback">
+                                Dirección libre
+                                <span class="text-secondary fw-normal">(extranjero / casos especiales)</span>
+                            </label>
+                            <input type="text" class="form-control" id="md_fallback" name="direccion_fallback"
+                                   placeholder="Dirección completa en texto libre...">
+                        </div>
+
+                        <div class="col-md-12">
+                            <label class="form-label fw-semibold small" for="md_notas">Notas</label>
+                            <textarea class="form-control" id="md_notas" name="notas" rows="2"
+                                      placeholder="Observaciones sobre esta dirección..."></textarea>
+                        </div>
+
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-1"></i> Guardar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
 </div>
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    // Tooltips
     document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function (el) {
         new bootstrap.Tooltip(el);
+    });
+
+    // Rellenar modal al abrir (nueva vs editar)
+    var modalEl = document.getElementById('modalDireccion');
+    modalEl.addEventListener('show.bs.modal', function (event) {
+        var btn    = event.relatedTarget;
+        var modo   = btn.dataset.modo;
+        var titulo = document.getElementById('modalDireccionTitulo');
+        var form   = document.getElementById('formDireccion');
+
+        if (modo === 'nueva') {
+            titulo.textContent = 'Añadir dirección de notificación';
+            form.action = '{{ url_for("entidades.nueva_direccion", entidad_id=entidad.id) }}';
+            // Limpiar campos
+            form.reset();
+        } else {
+            titulo.textContent = 'Editar dirección de notificación';
+            var dirId = btn.dataset.dirId;
+            form.action = '/entidades/{{ entidad.id }}/direcciones/' + dirId + '/editar';
+
+            document.getElementById('md_descripcion').value = btn.dataset.descripcion || '';
+            document.getElementById('md_email').value       = btn.dataset.email       || '';
+            document.getElementById('md_telefono').value    = btn.dataset.telefono    || '';
+            document.getElementById('md_direccion').value   = btn.dataset.direccion   || '';
+            document.getElementById('md_cp').value          = btn.dataset.codigoPostal|| '';
+            document.getElementById('md_fallback').value    = btn.dataset.direccionFallback || '';
+            document.getElementById('md_notas').value       = btn.dataset.notas       || '';
+
+            var chkTitular   = document.getElementById('md_rol_titular');
+            var chkConsultado= document.getElementById('md_rol_consultado');
+            var chkPublicador= document.getElementById('md_rol_publicador');
+            if (chkTitular)    chkTitular.checked    = btn.dataset.rolTitular    === '1';
+            if (chkConsultado) chkConsultado.checked = btn.dataset.rolConsultado === '1';
+            if (chkPublicador) chkPublicador.checked = btn.dataset.rolPublicador === '1';
+        }
     });
 });
 </script>

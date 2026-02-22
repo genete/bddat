@@ -1,15 +1,19 @@
 """Blueprint entidades - Vistas HTML para gestión de entidades.
 
 RUTAS:
-    GET  /entidades/          → listado (shell V2, datos vía API)
-    GET  /entidades/nueva     → formulario nueva entidad
-    POST /entidades/nueva     → crear entidad
-    GET  /entidades/<id>      → detalle entidad V4 solo lectura (#134)
-    GET  /entidades/<id>/editar → placeholder edición (#134, próximamente)
+    GET  /entidades/                                   → listado (shell V2, datos vía API)
+    GET  /entidades/nueva                              → formulario nueva entidad
+    POST /entidades/nueva                              → crear entidad
+    GET  /entidades/<id>                               → detalle entidad V4 solo lectura (#134)
+    GET  /entidades/<id>/editar                        → edición V4 mismo template (#135)
+    POST /entidades/<id>/editar                        → guardar cambios entidad (#135)
+    POST /entidades/<id>/direcciones/nueva             → añadir dirección de notificación (#136)
+    POST /entidades/<id>/direcciones/<dir_id>/editar   → editar dirección (#136)
+    POST /entidades/<id>/direcciones/<dir_id>/toggle   → activar/desactivar dirección (#136)
 
-VERSIÓN: 1.1
+VERSIÓN: 1.2
 FECHA: 2026-02-22
-ISSUE: #134
+ISSUE: #136
 """
 
 from flask import Blueprint, render_template, request, redirect, url_for, flash
@@ -17,6 +21,7 @@ from flask_login import login_required
 from app import db
 from app.models.entidad import Entidad
 from app.models.autorizados_titular import AutorizadoTitular
+from app.models.direccion_notificacion import DireccionNotificacion
 
 # template_folder apunta a app/modules/entidades/templates/
 bp = Blueprint('entidades', __name__,
@@ -194,4 +199,124 @@ def editar(entidad_id):
     db.session.commit()
 
     flash(f'Entidad "{entidad.nombre_completo}" actualizada correctamente.', 'success')
+    return redirect(url_for('entidades.detalle', entidad_id=entidad_id))
+
+
+# =============================================================================
+# DIRECCIONES DE NOTIFICACIÓN  (#136)
+# =============================================================================
+
+def _recoger_datos_direccion(form, entidad):
+    """Extrae y valida campos del formulario de dirección. Devuelve (datos, errores)."""
+    datos = {
+        'descripcion':        form.get('descripcion', '').strip() or None,
+        'es_titular':         'rol_titular'    in form,
+        'es_consultado':      'rol_consultado' in form,
+        'es_publicador':      'rol_publicador' in form,
+        'email':              form.get('email',        '').strip() or None,
+        'telefono':           form.get('telefono',     '').strip() or None,
+        'direccion':          form.get('direccion',    '').strip() or None,
+        'codigo_postal':      form.get('codigo_postal','').strip() or None,
+        'direccion_fallback': form.get('direccion_fallback','').strip() or None,
+        'notas':              form.get('notas',        '').strip() or None,
+    }
+
+    errores = []
+
+    if not (datos['es_titular'] or datos['es_consultado'] or datos['es_publicador']):
+        errores.append('Debe seleccionarse al menos un rol para la dirección.')
+
+    if not (datos['email'] or datos['direccion'] or datos['direccion_fallback']):
+        errores.append('Debe indicarse al menos un canal: email o dirección postal.')
+
+    # Filtrar solo roles disponibles en la entidad
+    if datos['es_titular']   and not entidad.rol_titular:
+        errores.append('La entidad no tiene rol Titular.')
+    if datos['es_consultado'] and not entidad.rol_consultado:
+        errores.append('La entidad no tiene rol Consultado.')
+    if datos['es_publicador'] and not entidad.rol_publicador:
+        errores.append('La entidad no tiene rol Publicador.')
+
+    datos['tipo_rol'] = DireccionNotificacion.calcular_tipo_rol(
+        datos['es_titular'], datos['es_consultado'], datos['es_publicador']
+    )
+
+    return datos, errores
+
+
+@bp.route('/<int:entidad_id>/direcciones/nueva', methods=['POST'])
+@login_required
+def nueva_direccion(entidad_id):
+    """Añade una nueva dirección de notificación a la entidad."""
+    entidad = Entidad.query.get_or_404(entidad_id)
+    datos, errores = _recoger_datos_direccion(request.form, entidad)
+
+    if errores:
+        for msg in errores:
+            flash(msg, 'danger')
+        return redirect(url_for('entidades.detalle', entidad_id=entidad_id))
+
+    dir_nueva = DireccionNotificacion(
+        entidad_id=entidad_id,
+        descripcion=datos['descripcion'],
+        tipo_rol=datos['tipo_rol'],
+        email=datos['email'],
+        telefono=datos['telefono'],
+        direccion=datos['direccion'],
+        codigo_postal=datos['codigo_postal'],
+        direccion_fallback=datos['direccion_fallback'],
+        notas=datos['notas'],
+        activo=True,
+    )
+    db.session.add(dir_nueva)
+    db.session.commit()
+
+    flash('Dirección de notificación añadida.', 'success')
+    return redirect(url_for('entidades.detalle', entidad_id=entidad_id))
+
+
+@bp.route('/<int:entidad_id>/direcciones/<int:dir_id>/editar', methods=['POST'])
+@login_required
+def editar_direccion(entidad_id, dir_id):
+    """Edita una dirección de notificación existente."""
+    entidad = Entidad.query.get_or_404(entidad_id)
+    direccion = DireccionNotificacion.query.filter_by(
+        id=dir_id, entidad_id=entidad_id
+    ).first_or_404()
+
+    datos, errores = _recoger_datos_direccion(request.form, entidad)
+
+    if errores:
+        for msg in errores:
+            flash(msg, 'danger')
+        return redirect(url_for('entidades.detalle', entidad_id=entidad_id))
+
+    direccion.descripcion        = datos['descripcion']
+    direccion.tipo_rol           = datos['tipo_rol']
+    direccion.email              = datos['email']
+    direccion.telefono           = datos['telefono']
+    direccion.direccion          = datos['direccion']
+    direccion.codigo_postal      = datos['codigo_postal']
+    direccion.direccion_fallback = datos['direccion_fallback']
+    direccion.notas              = datos['notas']
+
+    db.session.commit()
+    flash('Dirección de notificación actualizada.', 'success')
+    return redirect(url_for('entidades.detalle', entidad_id=entidad_id))
+
+
+@bp.route('/<int:entidad_id>/direcciones/<int:dir_id>/toggle', methods=['POST'])
+@login_required
+def toggle_direccion(entidad_id, dir_id):
+    """Activa o desactiva una dirección de notificación (borrado lógico)."""
+    Entidad.query.get_or_404(entidad_id)
+    direccion = DireccionNotificacion.query.filter_by(
+        id=dir_id, entidad_id=entidad_id
+    ).first_or_404()
+
+    direccion.activo = not direccion.activo
+    db.session.commit()
+
+    estado = 'activada' if direccion.activo else 'desactivada'
+    flash(f'Dirección "{direccion.descripcion or dir_id}" {estado}.', 'success')
     return redirect(url_for('entidades.detalle', entidad_id=entidad_id))
