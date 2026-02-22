@@ -208,6 +208,20 @@
   color: var(--text-inverse);
 }
 
+/* Botón outline primario (corporativo Junta) */
+.btn-outline-primary {
+  color: var(--primary);
+  border-color: var(--primary);
+}
+
+.btn-outline-primary:hover,
+.btn-outline-primary:active,
+.btn-outline-primary.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--text-inverse);
+}
+
 /* Botón secundario */
 .btn-secondary {
   background: var(--gris-principal);
