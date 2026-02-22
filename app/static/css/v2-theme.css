@@ -63,10 +63,12 @@
   --focus-ring: rgba(8, 112, 33, 0.25); /* Verde corporativo con transparencia */
 
   /* ===== INTEGRACIÓN BOOTSTRAP 5 ===== */
-  /* Alias --bs-* que apuntan a la fuente de verdad --primary          */
-  /* v2-theme carga DESPUÉS de Bootstrap, por lo que estas definiciones */
-  /* sobreescriben las variables azules por defecto de Bootstrap 5.     */
-  /* Para cambiar el color corporativo basta con modificar --primary.   */
+  /* Alias --bs-* que apuntan a la fuente de verdad --primary.          */
+  /* El CDN Junta ya define --bs-primary:#087021 a nivel de componente  */
+  /* (btn-primary, btn-outline-primary, etc.). Estas definiciones        */
+  /* complementan las clases utilitarias (:root) para .text-primary,    */
+  /* .bg-primary, acordeón, etc. Para cambiar el color basta con        */
+  /* modificar --primary.                                               */
   --bs-primary: var(--primary);
   --bs-primary-rgb: 8, 112, 33;                                    /* RGB de #087021 - CSS no convierte hex a RGB automáticamente */
   --bs-primary-bg-subtle: var(--primary-light);
