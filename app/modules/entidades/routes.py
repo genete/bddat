@@ -4,17 +4,19 @@ RUTAS:
     GET  /entidades/          → listado (shell V2, datos vía API)
     GET  /entidades/nueva     → formulario nueva entidad
     POST /entidades/nueva     → crear entidad
-    GET  /entidades/<id>      → detalle entidad (placeholder hasta fase 2 #61)
+    GET  /entidades/<id>      → detalle entidad V4 solo lectura (#134)
+    GET  /entidades/<id>/editar → placeholder edición (#134, próximamente)
 
-VERSIÓN: 1.0
-FECHA: 2026-02-19
-ISSUE: #61
+VERSIÓN: 1.1
+FECHA: 2026-02-22
+ISSUE: #134
 """
 
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_required
 from app import db
 from app.models.entidad import Entidad
+from app.models.autorizados_titular import AutorizadoTitular
 
 # template_folder apunta a app/modules/entidades/templates/
 bp = Blueprint('entidades', __name__,
@@ -95,13 +97,32 @@ def nueva():
 
 
 # =============================================================================
-# DETALLE  (placeholder — fase 2 del Epic #61)
+# DETALLE  V4 solo lectura (#134)
 # =============================================================================
 
 @bp.route('/<int:entidad_id>')
 @login_required
 def detalle(entidad_id):
-    """Detalle/edición de entidad. Placeholder hasta fase 2 de #61."""
+    """Vista detalle de entidad — patrón V4 solo lectura."""
     entidad = Entidad.query.get_or_404(entidad_id)
-    # TODO #61 fase 2: Implementar edición, direcciones de notificación y relaciones
-    return render_template('entidades/detalle.html', entidad=entidad)
+
+    # Cargar autorizaciones vigentes si es titular
+    autorizaciones = []
+    if entidad.rol_titular:
+        autorizaciones = AutorizadoTitular.obtener_autorizados_de_titular(entidad_id)
+
+    return render_template(
+        'entidades/detalle.html',
+        entidad=entidad,
+        autorizaciones=autorizaciones,
+        modo='ver',
+    )
+
+
+@bp.route('/<int:entidad_id>/editar')
+@login_required
+def editar(entidad_id):
+    """Placeholder edición — implementar en issue hijo de #134."""
+    Entidad.query.get_or_404(entidad_id)
+    flash('La edición de entidades estará disponible próximamente.', 'info')
+    return redirect(url_for('entidades.detalle', entidad_id=entidad_id))

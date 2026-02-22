@@ -2,60 +2,196 @@
 
 {% block title %}{{ entidad.nombre_completo }} — BDDAT{% endblock %}
 
-{% block content %}
-<div class="content-constrained" style="max-width: 720px; padding: 2rem 1rem;">
+{% block page_breadcrumb %}
+<nav aria-label="breadcrumb" class="px-4 py-2 bg-light border-bottom">
+    <ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item"><a href="{{ url_for('dashboard.index') }}">Inicio</a></li>
+        <li class="breadcrumb-item"><a href="{{ url_for('entidades.index') }}">Entidades</a></li>
+        <li class="breadcrumb-item active" aria-current="page">{{ entidad.nombre_completo }}</li>
+    </ol>
+</nav>
+{% endblock %}
 
-    <div class="page-header" style="margin-bottom: 1.5rem;">
-        <h1><i class="fas fa-building"></i> {{ entidad.nombre_completo }}</h1>
-        <a href="{{ url_for('entidades.index') }}" class="btn btn-outline">
-            <i class="fas fa-arrow-left"></i> Volver al listado
+{% block content %}
+<div class="p-4">
+
+<!-- Encabezado de página -->
+<div class="row mb-3">
+    <div class="col-md-8">
+        <h2>
+            <i class="fas fa-building me-2"></i>
+            {{ entidad.nombre_completo }}
+        </h2>
+    </div>
+    <div class="col-md-4 text-end">
+        <a href="{{ url_for('entidades.index') }}" class="btn btn-outline-primary me-2">
+            <i class="fas fa-arrow-left me-1"></i> Volver
+        </a>
+        <a href="{{ url_for('entidades.editar', entidad_id=entidad.id) }}" class="btn btn-primary">
+            <i class="fas fa-edit me-1"></i> Editar
         </a>
     </div>
+</div>
 
-    <!-- Flash messages -->
-    {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-        {% for category, message in messages %}
-        <div class="alert alert-{{ category }} alert-dismissible" role="alert">
-            {{ message }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
-        </div>
-        {% endfor %}
-    {% endif %}
-    {% endwith %}
-
-    <div class="alert alert-info">
-        <i class="fas fa-info-circle"></i>
-        <strong>Vista en desarrollo.</strong>
-        La edición completa, direcciones de notificación y relaciones
-        se implementarán en la fase 2 del Issue #61.
+<!-- CARD 1 — Identificación -->
+<div class="card mb-3">
+    <div class="card-header card-header-accent fw-semibold">
+        <i class="fas fa-id-card me-1"></i> Identificación
     </div>
+    <div class="card-body card-body-tinted">
+        <div class="row g-3">
 
-    <dl class="row">
-        <dt class="col-sm-4">NIF</dt>
-        <dd class="col-sm-8">{{ entidad.nif or '—' }}</dd>
+            <div class="col-md-4">
+                <label class="form-label fw-semibold small">NIF</label>
+                <input type="text" class="form-control" value="{{ entidad.nif or '—' }}" readonly>
+            </div>
 
-        <dt class="col-sm-4">Roles</dt>
-        <dd class="col-sm-8">
-            {% if entidad.rol_titular %}<span class="badge badge-info">Titular</span>{% endif %}
-            {% if entidad.rol_consultado %}<span class="badge badge-info">Consultado</span>{% endif %}
-            {% if entidad.rol_publicador %}<span class="badge badge-info">Publicador</span>{% endif %}
-        </dd>
+            <div class="col-md-4">
+                <label class="form-label fw-semibold small">Estado</label>
+                <div class="form-control d-flex align-items-center gap-2" style="background:#fff; pointer-events:none;">
+                    {% if entidad.activo %}
+                        <i class="fas fa-check-circle text-success"></i> Activa
+                    {% else %}
+                        <i class="fas fa-times-circle text-danger"></i> Inactiva
+                    {% endif %}
+                </div>
+            </div>
 
-        <dt class="col-sm-4">Email</dt>
-        <dd class="col-sm-8">{{ entidad.email or '—' }}</dd>
+            <div class="col-md-4">
+                <label class="form-label fw-semibold small">Roles</label>
+                <div class="form-control d-flex align-items-center gap-2 flex-wrap" style="background:#fff; min-height:38px; pointer-events:none;">
+                    {% if entidad.rol_titular %}
+                        <span class="badge bg-success">Titular</span>
+                    {% endif %}
+                    {% if entidad.rol_consultado %}
+                        <span class="badge bg-info text-dark">Consultado</span>
+                    {% endif %}
+                    {% if entidad.rol_publicador %}
+                        <span class="badge bg-warning text-dark">Publicador</span>
+                    {% endif %}
+                </div>
+            </div>
 
-        <dt class="col-sm-4">Teléfono</dt>
-        <dd class="col-sm-8">{{ entidad.telefono or '—' }}</dd>
+        </div>
+    </div>
+</div>
 
-        <dt class="col-sm-4">Activo</dt>
-        <dd class="col-sm-8">{% if entidad.activo %}<i class="fas fa-check-circle text-success"></i> Sí{% else %}<i class="fas fa-times-circle text-danger"></i> No{% endif %}</dd>
+<!-- CARD 2 — Contacto -->
+<div class="card mb-3">
+    <div class="card-header card-header-accent fw-semibold">
+        <i class="fas fa-envelope me-1"></i> Contacto
+    </div>
+    <div class="card-body card-body-tinted">
+        <div class="row g-3">
 
-        {% if entidad.notas %}
-        <dt class="col-sm-4">Notas</dt>
-        <dd class="col-sm-8">{{ entidad.notas }}</dd>
+            <div class="col-md-5">
+                <label class="form-label fw-semibold small">Email</label>
+                {% if entidad.email %}
+                    <div class="form-control" style="background:#fff; pointer-events:none;">
+                        <a href="mailto:{{ entidad.email }}" style="pointer-events:auto;">
+                            {{ entidad.email }}
+                        </a>
+                    </div>
+                {% else %}
+                    <input type="text" class="form-control" value="—" readonly>
+                {% endif %}
+            </div>
+
+            <div class="col-md-3">
+                <label class="form-label fw-semibold small">Teléfono</label>
+                <input type="text" class="form-control" value="{{ entidad.telefono or '—' }}" readonly>
+            </div>
+
+            {% if entidad.notas %}
+            <div class="col-md-12">
+                <label class="form-label fw-semibold small">Notas</label>
+                <textarea class="form-control" rows="3" readonly style="background:#fff; resize:none;">{{ entidad.notas }}</textarea>
+            </div>
+            {% endif %}
+
+        </div>
+    </div>
+</div>
+
+<!-- CARD 3 — Dirección -->
+{% set dir = entidad.direccion_formateada() %}
+<div class="card mb-3">
+    <div class="card-header card-header-accent fw-semibold">
+        <i class="fas fa-map-marker-alt me-1"></i> Dirección
+    </div>
+    <div class="card-body card-body-tinted">
+        {% if dir.linea1 or dir.linea2 %}
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold small">Calle / Dirección</label>
+                    <input type="text" class="form-control" value="{{ dir.linea1 or '—' }}" readonly>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold small">CP y Municipio</label>
+                    <input type="text" class="form-control" value="{{ dir.linea2 or '—' }}" readonly>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold small">Provincia</label>
+                    <input type="text" class="form-control" value="{{ dir.provincia or '—' }}" readonly>
+                </div>
+            </div>
+        {% else %}
+            <p class="text-secondary mb-0"><i class="fas fa-info-circle me-1"></i> Sin dirección registrada.</p>
         {% endif %}
-    </dl>
+    </div>
+</div>
+
+<!-- CARD 4 — Autorizaciones (solo si es titular) -->
+{% if entidad.rol_titular %}
+<div class="card mb-3">
+    <div class="card-header card-header-accent fw-semibold d-flex justify-content-between align-items-center">
+        <span><i class="fas fa-user-check me-1"></i> Autorizados vigentes</span>
+        <button class="btn btn-sm btn-outline-primary disabled"
+                data-bs-toggle="tooltip"
+                title="Próximamente"
+                tabindex="-1">
+            <i class="fas fa-plus me-1"></i> Añadir autorizado
+        </button>
+    </div>
+    <div class="card-body p-0">
+        {% if autorizaciones %}
+            <table class="table table-sm table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Entidad autorizada</th>
+                        <th>NIF</th>
+                        <th>Alta</th>
+                        <th>Observaciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for aut in autorizaciones %}
+                    <tr>
+                        <td>{{ aut.autorizado.nombre_completo }}</td>
+                        <td>{{ aut.autorizado.nif or '—' }}</td>
+                        <td>{{ aut.created_at.strftime('%d/%m/%Y') }}</td>
+                        <td class="text-secondary small">{{ aut.observaciones or '—' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p class="text-secondary mb-0 p-3">
+                <i class="fas fa-info-circle me-1"></i> Sin autorizados vigentes.
+            </p>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
 
 </div>
+
+<script>
+// Inicializar tooltips Bootstrap
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function (el) {
+        new bootstrap.Tooltip(el);
+    });
+});
+</script>
 {% endblock %}
