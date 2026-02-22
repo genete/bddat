@@ -25,6 +25,7 @@ class SelectorBusqueda {
     this._valor   = '';
     this._idx     = -1;
     this._abierto = false;
+    this.onChange = config.onChange || null;
     this._construir();
     this._bind();
   }
@@ -100,6 +101,7 @@ class SelectorBusqueda {
     this._input.value  = v ? t : '';
     this._hidden.value = v;
     this._cerrar();
+    if (this.onChange) this.onChange(v, t);
   }
 
   _limpiar() {
@@ -112,6 +114,26 @@ class SelectorBusqueda {
   getValue()       { return this._valor; }
   setValue(v, t)   { this._seleccionar(v, t); }
   clear()          { this._limpiar(); }
+
+  // Actualiza la lista de opciones sin disparar onChange ni cambiar el valor visible
+  setOpciones(opciones) {
+    this.opciones      = opciones;
+    this._valor        = '';
+    this._input.value  = '';
+    this._hidden.value = '';
+    this._cerrar();
+  }
+
+  disable() {
+    this._input.disabled = true;
+    this._btnV.disabled  = true;
+    this._cerrar();
+  }
+
+  enable() {
+    this._input.disabled = false;
+    this._btnV.disabled  = false;
+  }
 
   // ── Eventos ───────────────────────────────────────────────────────────────
 

@@ -21,7 +21,11 @@
 </nav>
 {% endblock %}
 
-{% block extra_css %}{{ super() }}{% endblock %}
+{% block extra_css %}{{ super() }}
+{% if modo == 'editar' %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/selector_busqueda.css') }}">
+{% endif %}
+{% endblock %}
 
 {% block content %}
 <div class="p-4">
@@ -276,25 +280,11 @@
                 <div class="row g-2">
                     <div class="col-12">
                         <label class="form-label small fw-semibold">Provincia</label>
-                        <input type="text" class="form-control form-control-sm mb-1"
-                               id="buscador_provincia" placeholder="🔍 Buscar...">
-                        <select class="form-select form-select-sm" id="select_provincia" size="4">
-                            <option value="">-- Cargando... --</option>
-                        </select>
+                        <div id="sb-provincia"></div>
                     </div>
                     <div class="col-12">
                         <label class="form-label small fw-semibold">Municipio</label>
-                        <input type="text" class="form-control form-control-sm mb-1"
-                               id="buscador_municipio" placeholder="🔍 Buscar..." disabled>
-                        <select class="form-select form-select-sm" id="select_municipio" size="4" disabled>
-                            <option value="">-- Seleccione provincia primero --</option>
-                        </select>
-                    </div>
-                    <div class="col-12">
-                        <button type="button" class="btn btn-success btn-sm w-100"
-                                id="btn_anadir_municipio" disabled>
-                            <i class="fas fa-plus me-1"></i> Añadir Municipio
-                        </button>
+                        <div id="sb-municipio"></div>
                     </div>
                     <div class="col-12 text-end">
                         <button type="button" class="btn btn-danger btn-sm"
@@ -344,6 +334,7 @@
     });
 </script>
 {% if modo == 'editar' %}
+<script src="{{ url_for('static', filename='js/selector_busqueda.js') }}"></script>
 <script src="{{ url_for('static', filename='js/municipios_selector.js') }}"></script>
 <script>
     document.addEventListener('DOMContentLoaded', () => {
