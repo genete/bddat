@@ -6,14 +6,16 @@
     <title>{% block title %}BDDAT{% endblock %} - Junta de Andalucía</title>
     <link rel="icon" href="data:,">
 
+    <!-- CDN oficial Junta de Andalucía v1.2.5 (Bootstrap 5.3.3 + FA 6.5.1 + tipografía) Ref: #132 -->
+    <link href="https://cdn.juntadeandalucia.es/components/sass/1.2.5/css/fonts.css" rel="stylesheet">
+    <link href="https://cdn.juntadeandalucia.es/components/sass/1.2.5/css/all.css" rel="stylesheet">
+    <link href="https://cdn.juntadeandalucia.es/components/sass/1.2.5/css/custom-jda-bootstrap.css" rel="stylesheet">
+
     <!-- CSS v2 -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/v2-theme.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/v2-layout.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/v2-components.css') }}">
-    
-    <!-- Font Awesome (iconos) -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    
+
     {% block extra_css %}{% endblock %}
 </head>
 <body>
@@ -40,6 +42,9 @@
     </div>
     <!-- Fin A -->
     
+    <!-- Bootstrap JS bundle del CDN Junta (Bootstrap 5.3.3) Ref: #132 -->
+    <script src="https://cdn.juntadeandalucia.es/components/sass/1.2.5/js/bootstrap.bundle.min.js"></script>
+
     {% block extra_js %}{% endblock %}
 </body>
 </html>
