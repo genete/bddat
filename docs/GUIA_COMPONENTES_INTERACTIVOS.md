@@ -28,7 +28,7 @@ Complementa `GUIA_VISTAS_BOOTSTRAP.md` (que cubre layout y vistas).
 | Fichero CSS | `app/static/css/nombre_componente.css` |
 | Colores en CSS | Prohibidos. Usar `inherit` o `currentColor` |
 | Tipografía en CSS | Prohibida. Heredada del tema |
-| API mínima | `getValue()`, `setValue()`, `clear()` |
+| API mínima | `getValue()`, `setValue()`, `clear()`, `setOpciones()`, `enable()`, `disable()` |
 
 ---
 
@@ -72,14 +72,62 @@ opciones = [{"v": p.codigo, "t": p.nombre} for p in provincias]
 return render_template('mi_vista.html', opciones=opciones)
 ```
 
+#### Config
+
+| Opción | Tipo | Descripción |
+|---|---|---|
+| `placeholder` | string | Texto del estado vacío |
+| `name` | string | Atributo `name` del `<input hidden>` para submit |
+| `onChange` | `(v, t) => {}` | Callback ejecutado al seleccionar o limpiar. `v` = valor, `t` = texto. Se llama con `('', '')` al limpiar. |
+
 #### API pública
 
 ```javascript
 const sel = new SelectorBusqueda('#mi-div', opciones, config);
 
-sel.getValue()        // → string con el valor seleccionado, '' si vacío
-sel.setValue('GRA', 'Granada')  // selecciona programáticamente
-sel.clear()           // limpia la selección
+sel.getValue()              // → string con el valor seleccionado, '' si vacío
+sel.setValue('GRA', 'Granada')  // selecciona programáticamente (dispara onChange)
+sel.clear()                 // limpia la selección (dispara onChange con v='')
+sel.setOpciones(nuevas)     // reemplaza la lista de opciones y limpia el valor
+                            //   sin disparar onChange — usar para selectores encadenados
+sel.enable()                // habilita el control
+sel.disable()               // deshabilita el control y cierra la lista
+```
+
+#### Selectores encadenados (provincia → municipio)
+
+Patrón usado en el wizard paso 2 y en la edición de expediente:
+
+```javascript
+// El selector dependiente empieza deshabilitado
+const muniSel = new SelectorBusqueda('#sb-municipio', [], {
+  placeholder: '— Seleccione primero una provincia —',
+  name: 'municipio_id',
+  onChange: (v, t) => {
+    if (!v) return;
+    // hacer algo con la selección, p.ej. añadir a una lista
+    muniSel.clear();  // clear() llama onChange('','') → el guard !v lo descarta
+  }
+});
+muniSel.disable();
+
+// El selector padre carga las opciones del dependiente al cambiar
+const provSel = new SelectorBusqueda('#sb-provincia', [], {
+  placeholder: '— Seleccione una provincia —',
+  onChange: async (v, t) => {
+    muniSel.setOpciones([]);          // limpia sin disparar onChange del hijo
+    if (!t) { muniSel.disable(); return; }
+    const resp = await fetch(`/api/municipios?provincia=${encodeURIComponent(t)}`);
+    const data = await resp.json();
+    muniSel.setOpciones(data.map(m => ({ v: String(m.id), t: m.nombre })));
+    muniSel.enable();
+  }
+});
+
+// Cargar las opciones del selector raíz desde API
+fetch('/api/provincias')
+  .then(r => r.json())
+  .then(lista => provSel.setOpciones(lista.map(n => ({ v: n, t: n }))));
 ```
 
 #### Comportamiento
