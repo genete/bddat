@@ -119,10 +119,79 @@ def detalle(entidad_id):
     )
 
 
-@bp.route('/<int:entidad_id>/editar')
+@bp.route('/<int:entidad_id>/editar', methods=['GET', 'POST'])
 @login_required
 def editar(entidad_id):
-    """Placeholder edición — implementar en issue hijo de #134."""
-    Entidad.query.get_or_404(entidad_id)
-    flash('La edición de entidades estará disponible próximamente.', 'info')
+    """Edición de entidad — patrón V4 mismo template con modo='editar' (#135)."""
+    entidad = Entidad.query.get_or_404(entidad_id)
+
+    if request.method == 'GET':
+        autorizaciones = []
+        if entidad.rol_titular:
+            autorizaciones = AutorizadoTitular.obtener_autorizados_de_titular(entidad_id)
+        return render_template(
+            'entidades/detalle.html',
+            entidad=entidad,
+            autorizaciones=autorizaciones,
+            modo='editar',
+        )
+
+    # --- POST: recoger y validar ---
+    nombre_completo = request.form.get('nombre_completo', '').strip()
+    nif_raw         = request.form.get('nif', '').strip()
+    rol_titular     = 'rol_titular'     in request.form
+    rol_consultado  = 'rol_consultado'  in request.form
+    rol_publicador  = 'rol_publicador'  in request.form
+    email           = request.form.get('email',    '').strip() or None
+    telefono        = request.form.get('telefono', '').strip() or None
+    notas           = request.form.get('notas',    '').strip() or None
+    activo          = 'activo' in request.form
+    direccion       = request.form.get('direccion',          '').strip() or None
+    codigo_postal   = request.form.get('codigo_postal',      '').strip() or None
+    dir_fallback    = request.form.get('direccion_fallback', '').strip() or None
+
+    errores = []
+
+    if not nombre_completo:
+        errores.append('El nombre / razón social es obligatorio.')
+
+    if not (rol_titular or rol_consultado or rol_publicador):
+        errores.append('Debe asignarse al menos un rol a la entidad.')
+
+    nif = Entidad.normalizar_nif(nif_raw) if nif_raw else None
+    if nif:
+        duplicado = Entidad.query.filter_by(nif=nif).first()
+        if duplicado and duplicado.id != entidad_id:
+            errores.append(f'Ya existe otra entidad con el NIF {nif}.')
+
+    if errores:
+        for msg in errores:
+            flash(msg, 'danger')
+        autorizaciones = []
+        if entidad.rol_titular:
+            autorizaciones = AutorizadoTitular.obtener_autorizados_de_titular(entidad_id)
+        return render_template(
+            'entidades/detalle.html',
+            entidad=entidad,
+            autorizaciones=autorizaciones,
+            modo='editar',
+        )
+
+    # --- Actualizar ---
+    entidad.nombre_completo    = nombre_completo
+    entidad.nif                = nif
+    entidad.rol_titular        = rol_titular
+    entidad.rol_consultado     = rol_consultado
+    entidad.rol_publicador     = rol_publicador
+    entidad.email              = email
+    entidad.telefono           = telefono
+    entidad.notas              = notas
+    entidad.activo             = activo
+    entidad.direccion          = direccion
+    entidad.codigo_postal      = codigo_postal
+    entidad.direccion_fallback = dir_fallback
+
+    db.session.commit()
+
+    flash(f'Entidad "{entidad.nombre_completo}" actualizada correctamente.', 'success')
     return redirect(url_for('entidades.detalle', entidad_id=entidad_id))
