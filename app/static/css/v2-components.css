@@ -221,7 +221,7 @@
   color: var(--text-inverse);
 }
 
-/* Botón outline */
+/* Botón outline (clase custom antigua) */
 .btn-outline {
   background: transparent;
   border: 2px solid var(--border-color);
@@ -231,6 +231,37 @@
 .btn-outline:hover {
   background: var(--gris-especifico);
   border-color: var(--gris-apoyo);
+  transform: translateY(-1px);
+  text-decoration: none;
+}
+
+/* btn-outline-primary y btn-outline-secondary: la regla .btn superior
+ * (border: 1px solid transparent) aplasta el border-color del CDN Junta
+ * porque nuestro CSS carga después. Re-aplicamos aquí para restaurarlo. */
+.btn-outline-primary {
+  background: transparent;
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.btn-outline-primary:hover {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--text-inverse);
+  transform: translateY(-1px);
+  text-decoration: none;
+}
+
+.btn-outline-secondary {
+  background: transparent;
+  border-color: var(--gris-principal);
+  color: var(--gris-principal);
+}
+
+.btn-outline-secondary:hover {
+  background: var(--gris-principal);
+  border-color: var(--gris-principal);
+  color: var(--text-inverse);
   transform: translateY(-1px);
   text-decoration: none;
 }

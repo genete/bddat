@@ -46,26 +46,26 @@
 {% endif %}
 
 <!-- Encabezado de página -->
-<div class="row mb-3">
-    <div class="col-md-8">
+<div class="row mb-3 gy-2 align-items-center">
+    <div class="col">
         <h2>
             <i class="fas fa-folder-open me-2"></i>
             Expediente <span class="text-primary">AT-{{ expediente.numero_at }}</span>
         </h2>
     </div>
-    <div class="col-md-4 text-end">
+    <div class="col-auto d-flex flex-nowrap gap-2">
         {% if modo == 'ver' %}
-            <a href="{{ url_for('expedientes.listado_v2') }}" class="btn btn-secondary me-2">
+            <a href="{{ url_for('expedientes.listado_v2') }}" class="btn btn-outline-primary">
                 <i class="fas fa-arrow-left me-1"></i> Volver
             </a>
-            <a href="{{ url_for('expedientes.tramitacion_v3', id=expediente.id) }}" class="btn btn-primary me-2">
+            <a href="{{ url_for('expedientes.tramitacion_v3', id=expediente.id) }}" class="btn btn-primary">
                 <i class="fas fa-tasks me-1"></i> Tramitar
             </a>
             <a href="{{ url_for('expedientes.editar', id=expediente.id) }}" class="btn btn-primary">
                 <i class="fas fa-edit me-1"></i> Editar
             </a>
         {% else %}
-            <a href="{{ url_for('expedientes.detalle', id=expediente.id) }}" class="btn btn-secondary me-2">
+            <a href="{{ url_for('expedientes.detalle', id=expediente.id) }}" class="btn btn-outline-primary">
                 <i class="fas fa-times me-1"></i> Cancelar
             </a>
             <button type="submit" class="btn btn-primary">
