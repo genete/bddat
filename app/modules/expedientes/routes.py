@@ -12,6 +12,7 @@ from flask import Blueprint, render_template, request, flash, redirect, url_for
 from flask_login import login_required
 from app import db
 from app.models.expedientes import Expediente
+from app.routes.vista3 import _get_solicitudes_con_stats
 from app.models.proyectos import Proyecto
 from app.models.usuarios import Usuario
 from app.models.tipos_expedientes import TipoExpediente
@@ -79,7 +80,8 @@ def tramitacion_v3(id):
 
     return render_template(
         'expedientes/tramitacion_v3.html',
-        expediente=expediente
+        expediente=expediente,
+        solicitudes=_get_solicitudes_con_stats(expediente.id)
     )
 
 
