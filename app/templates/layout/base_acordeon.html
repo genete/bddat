@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Tramitación - BDDAT{% endblock %}</title>
-    
+
     <!-- CDN oficial Junta de Andalucía v1.2.5 (Bootstrap 5.3.3 + FA 6.5.1 + tipografía) Ref: #132 -->
     <link href="https://cdn.juntadeandalucia.es/components/sass/1.2.5/css/fonts.css" rel="stylesheet">
     <link href="https://cdn.juntadeandalucia.es/components/sass/1.2.5/css/all.css" rel="stylesheet">
@@ -13,60 +13,16 @@
     <!-- CSS v2 base (reutilización header/footer) -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/v2-theme.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/v2-layout.css') }}">
-    
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/v2-components.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}">
+
     {% block extra_css %}{% endblock %}
 </head>
 <body>
     <div class="app-container">
-        <!-- Header V2 (reutilizado) -->
-        <header class="app-header">
-            <a href="{{ url_for('dashboard.index') }}" class="logo">
-                <i class="fas fa-bolt"></i>
-                BDDAT
-            </a>
+        <!-- Header V2 unificado (dos filas: nav + breadcrumb) Ref: #138 -->
+        {% include 'layout/header.html' %}
 
-            {# Navegación de módulos — generada automáticamente desde metadata.json #}
-            {% if module_nav %}
-            <nav class="module-nav">
-                {% for item in module_nav %}
-                <a href="{{ url_for(item.route) }}"
-                   class="module-nav-link{% if active_module == item.module %} active{% endif %}">
-                    <i class="fas {{ item.icon }}"></i>
-                    {{ item.label }}
-                </a>
-                {% endfor %}
-            </nav>
-            {% endif %}
-
-            <nav class="breadcrumb">
-                {% block breadcrumb %}
-                <a href="{{ url_for('dashboard.index') }}">Inicio</a>
-                {% for item in module_nav %}
-                    {% if active_module == item.module %}
-                    <span>›</span>
-                    <span>{{ item.label }}</span>
-                    {% endif %}
-                {% endfor %}
-                {% endblock %}
-            </nav>
-
-            <!-- Spacer: empuja user-menu a la derecha -->
-            <div class="spacer"></div>
-
-            <div class="user-menu">
-                {% if current_user.is_authenticated %}
-                    <span>{{ current_user.nombre }} {{ current_user.apellido1 or '' }}</span>
-                    <a href="{{ url_for('auth.logout') }}">
-                        <i class="fas fa-sign-out-alt"></i> Salir
-                    </a>
-                {% else %}
-                    <a href="{{ url_for('auth.login') }}">
-                        <i class="fas fa-sign-in-alt"></i> Iniciar Sesión
-                    </a>
-                {% endif %}
-            </div>
-        </header>
-        
         <!-- Main Content SIN sidebar (100% ancho) -->
         <main class="app-main">
             <div class="container-fluid" style="max-width: 1400px; padding: 1.5rem;">
@@ -75,24 +31,72 @@
                 {% endblock %}
             </div>
         </main>
-        
+
         <!-- Footer V2 (reutilizado) -->
         {% include 'layout/footer.html' %}
     </div>
-    
+
+    <!-- Sistema de notificaciones toast (flash messages de Flask) -->
+    <div class="toast-container position-fixed bottom-0 p-3">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                <div class="toast toast-{{ category }}" role="alert"
+                     aria-live="assertive" aria-atomic="true"
+                     data-bs-autohide="true" data-bs-delay="8000">
+                    <div class="d-flex align-items-center p-3">
+                        <div class="flex-grow-1">
+                            {% if category == 'success' %}
+                                <i class="fas fa-check-circle me-2"></i><strong>Correcto:</strong> {{ message }}
+                            {% elif category == 'danger' %}
+                                <i class="fas fa-exclamation-circle me-2"></i><strong>Error:</strong> {{ message }}
+                            {% elif category == 'warning' %}
+                                <i class="fas fa-exclamation-triangle me-2"></i><strong>Atención:</strong> {{ message }}
+                            {% elif category == 'info' %}
+                                <i class="fas fa-info-circle me-2"></i><strong>Información:</strong> {{ message }}
+                            {% endif %}
+                        </div>
+                        <button type="button" class="btn-close ms-3"
+                                data-bs-dismiss="toast" aria-label="Cerrar"></button>
+                    </div>
+                </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
+
     <!-- Bootstrap JS bundle del CDN Junta (Bootstrap 5.3.3) Ref: #132 -->
     <script src="https://cdn.juntadeandalucia.es/components/sass/1.2.5/js/bootstrap.bundle.min.js"></script>
-    
+
+    <script>
+        // Auto-inicializar toasts al cargar la página (patrón del PR #44)
+        document.addEventListener('DOMContentLoaded', function() {
+            var toastElList = [].slice.call(document.querySelectorAll('.toast'));
+            toastElList.forEach(function(toastEl) {
+                toastEl.classList.add('showing');
+                var toast = new bootstrap.Toast(toastEl);
+                toast.show();
+                setTimeout(function() { toastEl.classList.remove('showing'); }, 300);
+                toastEl.addEventListener('hide.bs.toast', function() {
+                    toastEl.classList.add('hide');
+                });
+                toastEl.addEventListener('click', function(e) {
+                    if (!e.target.closest('.btn-close')) { toast.hide(); }
+                });
+            });
+        });
+    </script>
+
     {% block extra_js %}{% endblock %}
 </body>
 </html>
 
-<!-- 
+<!--
 Layout Base Acordeón - Vista V3 Fase 2
 
 DISEÑO:
 - Sin sidebar lateral (100% ancho para contenido)
-- Header/Footer reutilizados de V2
+- Header/Footer reutilizados de V2 via {% include %}
 - Bootstrap 5 para acordeones nativos
 - Container fluid con max-width 1400px
 
@@ -104,5 +108,5 @@ DIFERENCIAS vs base_tramitacion.html:
 
 Referencias:
 - docs/implementaciones/VISTA_V3_TRAMITACION.md
-- Commit: [TEMPLATE] Crear base_acordeon.html sin sidebar
+- Issue: #138 (refactor header dos filas + offcanvas mobile)
 -->

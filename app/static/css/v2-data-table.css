@@ -26,7 +26,7 @@
 /* ===== HEADER STICKY ===== */
 .data-table__header {
   position: sticky;
-  top: 60px; /* Altura del app-header */
+  top: var(--header-height);
   z-index: 100;
   background: var(--primary);
   background-image: var(--gradient);
@@ -134,11 +134,8 @@
 
 /* ===== RESPONSIVE: MOBILE (<768px) ===== */
 @media (max-width: 767px) {
-  /* Ajustar sticky top por header mobile más pequeño */
-  .data-table__header {
-    top: 56px;
-  }
-  
+  /* Sticky top usa var(--header-height) que en mobile es 92px */
+
   /* Expedientes: Solo Expediente + Titular + Acciones */
   .data-table--expedientes .data-table__row {
     grid-template-columns:

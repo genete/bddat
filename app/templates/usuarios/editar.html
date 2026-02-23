@@ -2,18 +2,12 @@
 
 {% block title %}Editar Usuario - BDDAT{% endblock %}
 
-{% block page_breadcrumb %}
-<nav aria-label="breadcrumb" class="px-4 py-2 bg-light border-bottom">
-    <ol class="breadcrumb mb-0">
-        <li class="breadcrumb-item">
-            <a href="{{ url_for('dashboard.index') }}">Inicio</a>
-        </li>
-        <li class="breadcrumb-item">
-            <a href="{{ url_for('usuarios.index') }}">Usuarios</a>
-        </li>
-        <li class="breadcrumb-item active">Editar</li>
-    </ol>
-</nav>
+{% block breadcrumb %}
+<a href="{{ url_for('dashboard.index') }}">Inicio</a>
+<span>›</span>
+<a href="{{ url_for('usuarios.index') }}">Usuarios</a>
+<span>›</span>
+<span>Editar</span>
 {% endblock %}
 
 {% block content %}

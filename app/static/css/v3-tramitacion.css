@@ -17,7 +17,7 @@
 
 .panel-contexto-fijo {
     position: sticky;
-    top: 60px; /* Altura del header app */
+    top: var(--header-height);
     z-index: 100;
     background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
     border: 1px solid #dee2e6;

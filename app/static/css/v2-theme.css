@@ -12,7 +12,9 @@
   /* ===== LAYOUT ===== */
   --max-width: 100%;           /* Sin limitador max-width */
   --content-padding: 2rem;
-  --header-height: 60px;
+  --header-nav-height: 60px;
+  --breadcrumb-height: 36px;
+  --header-height: 96px;       /* nav(60) + breadcrumb(36) */
   --footer-height: 50px;
   
   /* ===== COLORES CORPORATIVOS JUNTA DE ANDALUCÍA ===== */

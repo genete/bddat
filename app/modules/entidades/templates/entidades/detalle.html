@@ -10,21 +10,19 @@
 {% endif %}
 {% endblock %}
 
-{% block page_breadcrumb %}
-<nav aria-label="breadcrumb" class="px-4 py-2 bg-light border-bottom">
-    <ol class="breadcrumb mb-0">
-        <li class="breadcrumb-item"><a href="{{ url_for('dashboard.index') }}">Inicio</a></li>
-        <li class="breadcrumb-item"><a href="{{ url_for('entidades.index') }}">Entidades</a></li>
-        {% if modo == 'editar' %}
-            <li class="breadcrumb-item">
-                <a href="{{ url_for('entidades.detalle', entidad_id=entidad.id) }}">{{ entidad.nombre_completo }}</a>
-            </li>
-            <li class="breadcrumb-item active" aria-current="page">Editar</li>
-        {% else %}
-            <li class="breadcrumb-item active" aria-current="page">{{ entidad.nombre_completo }}</li>
-        {% endif %}
-    </ol>
-</nav>
+{% block breadcrumb %}
+<a href="{{ url_for('dashboard.index') }}">Inicio</a>
+<span>›</span>
+<a href="{{ url_for('entidades.index') }}">Entidades</a>
+{% if modo == 'editar' %}
+    <span>›</span>
+    <a href="{{ url_for('entidades.detalle', entidad_id=entidad.id) }}">{{ entidad.nombre_completo }}</a>
+    <span>›</span>
+    <span>Editar</span>
+{% else %}
+    <span>›</span>
+    <span>{{ entidad.nombre_completo }}</span>
+{% endif %}
 {% endblock %}
 
 {% block content %}

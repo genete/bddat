@@ -1,48 +1,84 @@
+{# Offcanvas declarado FUERA del header para que su z-index (1045) supere al del header (1000) #}
+{% if module_nav %}
+<div class="offcanvas offcanvas-start" tabindex="-1" id="offcanvas-nav" aria-labelledby="offcanvas-nav-label">
+    <div class="offcanvas-header">
+        <h5 class="offcanvas-title" id="offcanvas-nav-label">
+            <i class="fas fa-bolt me-2 text-primary"></i>BDDAT
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Cerrar"></button>
+    </div>
+    <div class="offcanvas-body">
+        <nav class="d-flex flex-column gap-1">
+            {% for item in module_nav %}
+            <a href="{{ url_for(item.route) }}"
+               class="offcanvas-nav-link{% if active_module == item.module %} active{% endif %}">
+                <i class="fas {{ item.icon }}"></i>
+                {{ item.label }}
+            </a>
+            {% endfor %}
+        </nav>
+    </div>
+</div>
+{% endif %}
+
 <header class="app-header">
-    <a href="{{ url_for('dashboard.index') }}" class="logo">
-        <i class="fas fa-bolt"></i>
-        BDDAT
-    </a>
-
-    {# Navegación de módulos — generada automáticamente desde metadata.json #}
-    {% if module_nav %}
-    <nav class="module-nav">
-        {% for item in module_nav %}
-        <a href="{{ url_for(item.route) }}"
-           class="module-nav-link{% if active_module == item.module %} active{% endif %}">
-            <i class="fas {{ item.icon }}"></i>
-            {{ item.label }}
-        </a>
-        {% endfor %}
-    </nav>
-    {% endif %}
-
-    {# Breadcrumb — auto desde metadata si hay módulo activo; overrideable por template #}
-    <nav class="breadcrumb">
-        {% block breadcrumb %}
-        <a href="{{ url_for('dashboard.index') }}">Inicio</a>
-        {% for item in module_nav %}
-            {% if active_module == item.module %}
-            <span>›</span>
-            <span>{{ item.label }}</span>
-            {% endif %}
-        {% endfor %}
-        {% endblock %}
-    </nav>
-
-    <!-- Spacer: empuja user-menu a la derecha -->
-    <div class="spacer"></div>
-
-    <div class="user-menu">
-        {% if current_user.is_authenticated %}
-            <span>{{ current_user.nombre }} {{ current_user.apellidos }}</span>
-            <a href="{{ url_for('auth.logout') }}">
-                <i class="fas fa-sign-out-alt"></i> Salir
-            </a>
-        {% else %}
-            <a href="{{ url_for('auth.login') }}">
-                <i class="fas fa-sign-in-alt"></i> Iniciar Sesión
-            </a>
+    {# Fila 1: logo + módulos + usuario #}
+    <div class="header-nav-row">
+        {# Hamburger mobile: abre el offcanvas #}
+        {% if module_nav %}
+        <button class="btn-hamburger" type="button"
+                data-bs-toggle="offcanvas" data-bs-target="#offcanvas-nav"
+                aria-controls="offcanvas-nav" aria-label="Abrir menú">
+            <i class="fas fa-bars"></i>
+        </button>
         {% endif %}
+
+        <a href="{{ url_for('dashboard.index') }}" class="logo">
+            <i class="fas fa-bolt"></i>
+            BDDAT
+        </a>
+
+        {# Navegación de módulos — generada automáticamente desde metadata.json #}
+        {% if module_nav %}
+        <nav class="module-nav">
+            {% for item in module_nav %}
+            <a href="{{ url_for(item.route) }}"
+               class="module-nav-link{% if active_module == item.module %} active{% endif %}">
+                <i class="fas {{ item.icon }}"></i>
+                {{ item.label }}
+            </a>
+            {% endfor %}
+        </nav>
+        {% endif %}
+
+        <div class="spacer"></div>
+
+        <div class="user-menu">
+            {% if current_user.is_authenticated %}
+                <span>{{ current_user.nombre }} {{ current_user.apellido1 or '' }}</span>
+                <a href="{{ url_for('auth.logout') }}">
+                    <i class="fas fa-sign-out-alt"></i> Salir
+                </a>
+            {% else %}
+                <a href="{{ url_for('auth.login') }}">
+                    <i class="fas fa-sign-in-alt"></i> Iniciar Sesión
+                </a>
+            {% endif %}
+        </div>
+    </div>
+
+    {# Fila 2: breadcrumb #}
+    <div class="header-breadcrumb-row">
+        <nav class="breadcrumb" aria-label="breadcrumb">
+            {% block breadcrumb %}
+            <a href="{{ url_for('dashboard.index') }}">Inicio</a>
+            {% for item in module_nav %}
+                {% if active_module == item.module %}
+                <span>›</span>
+                <span>{{ item.label }}</span>
+                {% endif %}
+            {% endfor %}
+            {% endblock %}
+        </nav>
     </div>
 </header>

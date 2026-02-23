@@ -63,7 +63,7 @@
   border-bottom: 2px solid rgba(0, 0, 0, 0.1);
   /* STICKY HEADER (por defecto para uso sin C.2) */
   position: sticky;
-  top: 60px;
+  top: var(--header-height);
   z-index: 100;
   background: var(--primary);
   background-image: var(--gradient);
@@ -110,11 +110,8 @@
     font-size: 0.8rem;
   }
   
-  /* En mobile, sticky header justo debajo del header mobile (56px) */
-  .expedientes-table th {
-    top: 56px;
-  }
-  
+  /* Sticky header usa var(--header-height) que en mobile es 92px */
+
   /* Ajuste sticky en C.2 mobile */
   .lista-scroll-container .expedientes-table thead th {
     top: 0; /* Dentro de C.2 siempre top: 0 */
