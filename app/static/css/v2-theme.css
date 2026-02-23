@@ -16,6 +16,7 @@
   --breadcrumb-height: 36px;
   --header-height: 96px;       /* nav(60) + breadcrumb(36) */
   --footer-height: 50px;
+  --v4-max-width: 1200px;      /* Ancho máximo para vistas V4 (detalle/edición) */
   
   /* ===== COLORES CORPORATIVOS JUNTA DE ANDALUCÍA ===== */
   /* Identidad corporativa */
