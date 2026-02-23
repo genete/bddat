@@ -416,6 +416,7 @@
  * El default (--v4-max-width: 1200px) es sobreescribible por template via
  * {% block extra_css %}<style>:root { --v4-max-width: 900px; }</style>{% endblock %} */
 .v4-content {
+  width: 100%;
   max-width: var(--v4-max-width);
   margin-left: auto;
   margin-right: auto;
