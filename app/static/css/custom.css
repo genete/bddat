@@ -220,3 +220,27 @@ table a.badge:hover {
     content: '\f054' !important;   /* chevron-right: sección cerrada */
     transform: none !important;
 }
+
+/* ========================================
+   BDDAT - Vista V3 Tramitación (acordeón lazy)
+   Ref: issue #144 / #145
+   ======================================== */
+
+/* Cabeceras SFTT: verde success — diferenciado del verde primario del expediente */
+.vista3-acordeon .accordion-button {
+    background-color: #d1e7dd;
+    color: #0f5132;
+}
+
+.vista3-acordeon .accordion-button:not(.collapsed) {
+    background-color: #badbcc;
+    color: #0f5132;
+    box-shadow: none;
+}
+
+/* Indentación visual por nivel — borde izquierdo verde */
+.vista3-acordeon .hijos-container {
+    margin-left: 1.25rem;
+    border-left: 3px solid #198754;
+    padding-left: 0;
+}

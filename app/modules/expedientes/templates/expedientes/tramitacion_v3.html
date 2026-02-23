@@ -1,50 +1,60 @@
 {% extends 'layout/base_fullwidth.html' %}
 
-{% block title %}Tramitación - EXP-{{ expediente.numero_at }}{% endblock %}
+{% block title %}Tramitación AT-{{ expediente.numero_at }} - BDDAT{% endblock %}
 
 {% block breadcrumb %}
-<nav aria-label="breadcrumb">
-    <ol class="breadcrumb mb-0" id="breadcrumb-list">
-        <li class="breadcrumb-item active" aria-current="page">AT-{{ expediente.numero_at }}</li>
-    </ol>
-</nav>
+<a href="{{ url_for('dashboard.index') }}">Inicio</a>
+<span>›</span>
+<a href="{{ url_for('expedientes.listado_v2') }}">Expedientes</a>
+<span>›</span>
+<a href="{{ url_for('expedientes.detalle', id=expediente.id) }}">AT-{{ expediente.numero_at }}</a>
+<span>›</span>
+<span>Tramitación</span>
 {% endblock %}
 
 {% block content %}
 <div style="width: 95%; max-width: 95%; margin: 0 auto; padding-top: 1.5rem;">
-    <div class="mb-3">
-        <div class="d-flex align-items-center justify-content-between mb-2">
-            <h2 class="mb-0">Vista 3 - Navegación Jerárquica</h2>
-            <a href="{{ url_for('expedientes.detalle', id=expediente.id) }}" class="btn btn-sm btn-outline-secondary">
+
+    {# Cabecera con título y botones de acción #}
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <h2 class="mb-0">Tramitación AT-{{ expediente.numero_at }}</h2>
+        <div class="d-flex gap-2">
+            <button id="btn-expandir-todo" type="button" class="btn btn-sm btn-outline-secondary">
+                <i class="fas fa-expand-alt me-1"></i> Expandir todo
+            </button>
+            <button id="btn-colapsar-todo" type="button" class="btn btn-sm btn-outline-secondary">
+                <i class="fas fa-compress-alt me-1"></i> Colapsar todo
+            </button>
+            <a href="{{ url_for('expedientes.detalle', id=expediente.id) }}"
+               class="btn btn-sm btn-outline-secondary">
                 <i class="fas fa-arrow-left me-1"></i> Volver al detalle
             </a>
         </div>
-        <hr>
     </div>
-    
-    {# Contenedor dinámico donde se renderiza el stack #}
-    <div id="vista3-container" class="accordion">
-        {# Nivel 0 inicial: Solo expediente #}
-        {% include 'vistas/vista3/_expediente_body.html' %}
-        
-        {# Acordeón inicial de solicitudes (colapsado) #}
-        <div class="accordion-item">
-            <h2 class="accordion-header" id="heading-solicitudes-init">
-                <button class="accordion-button collapsed" 
-                        type="button"
-                        onclick="expandSolicitudes()">
-                    <i class="bi bi-file-earmark-text"></i>
-                    &nbsp;Solicitudes
-                </button>
-            </h2>
-        </div>
+
+    {# Bloque fijo del expediente — siempre visible #}
+    {% include 'vistas/vista3/_expediente_body.html' %}
+
+    {# Acordeones de solicitudes — renderizados server-side #}
+    <div id="tramitacion-container"
+         class="accordion vista3-acordeon"
+         data-expediente-id="{{ expediente.id }}">
+        {% for sol_data in solicitudes %}
+            {% include 'vistas/vista3/_acordeon_solicitud.html' %}
+        {% else %}
+            <div class="alert alert-info mt-2">
+                <i class="fas fa-info-circle me-2"></i>
+                Este expediente no tiene solicitudes registradas.
+            </div>
+        {% endfor %}
     </div>
+
 </div>
 
-<script src="{{ url_for('static', filename='js/vista3_navigation.js') }}"></script>
+<script src="{{ url_for('static', filename='js/acordeon_lazy.js') }}"></script>
 <script>
-// Inicializar con expediente ID
-const EXPEDIENTE_ID = {{ expediente.id }};
-initVista3(EXPEDIENTE_ID);
+document.addEventListener('DOMContentLoaded', function () {
+    initAcordeonLazy('tramitacion-container');
+});
 </script>
 {% endblock %}
