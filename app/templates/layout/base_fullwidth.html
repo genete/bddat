@@ -32,8 +32,23 @@
     <!-- A: Grid Principal -->
     <div class="app-container">
 
-        <!-- B.1: Header (sticky) -->
-        {% include 'layout/header.html' %}
+        <!-- B.1: Header (sticky) — dos filas: nav + breadcrumb -->
+        <header class="app-header">
+            {% include 'layout/header.html' %}
+            <div class="header-breadcrumb-row">
+                <nav class="breadcrumb" aria-label="breadcrumb">
+                    {% block breadcrumb %}
+                    <a href="{{ url_for('dashboard.index') }}">Inicio</a>
+                    {% for item in module_nav %}
+                        {% if active_module == item.module %}
+                        <span>›</span>
+                        <span>{{ item.label }}</span>
+                        {% endif %}
+                    {% endfor %}
+                    {% endblock %}
+                </nav>
+            </div>
+        </header>
 
         <!-- B.2: Main Content (scrollable si C.1+C.2+C.3 > espacio) -->
         <main class="app-main">

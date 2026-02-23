@@ -21,7 +21,22 @@
 <body>
     <div class="app-container">
         <!-- Header V2 unificado (dos filas: nav + breadcrumb) Ref: #138 -->
-        {% include 'layout/header.html' %}
+        <header class="app-header">
+            {% include 'layout/header.html' %}
+            <div class="header-breadcrumb-row">
+                <nav class="breadcrumb" aria-label="breadcrumb">
+                    {% block breadcrumb %}
+                    <a href="{{ url_for('dashboard.index') }}">Inicio</a>
+                    {% for item in module_nav %}
+                        {% if active_module == item.module %}
+                        <span>›</span>
+                        <span>{{ item.label }}</span>
+                        {% endif %}
+                    {% endfor %}
+                    {% endblock %}
+                </nav>
+            </div>
+        </header>
 
         <!-- Main Content SIN sidebar (100% ancho) -->
         <main class="app-main">
