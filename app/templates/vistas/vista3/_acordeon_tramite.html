@@ -1,0 +1,52 @@
+{# Acordeón de trámite — devuelto por GET /api/vista3/fase/<id>/tramites     #}
+{# Recibe: tramite_data (dict del helper _get_tramites_con_stats)             #}
+{# NOTA: tramite.responsable NO existe en el modelo; no usar                  #}
+<div class="accordion-item"
+     data-endpoint="/api/vista3/tramite/{{ tramite_data.obj.id }}/tareas"
+     data-loaded="false">
+    <h2 class="accordion-header">
+        <button class="accordion-button collapsed"
+                type="button"
+                data-bs-toggle="collapse"
+                data-bs-target="#tram-{{ tramite_data.obj.id }}"
+                aria-expanded="false"
+                aria-controls="tram-{{ tramite_data.obj.id }}">
+            <span class="badge bg-primary me-2">{{ tramite_data.estado }}</span>
+            <span class="fw-semibold">{{ tramite_data.nombre }}</span>
+            <span class="ms-3 small">
+                Tareas: {{ tramite_data.tareas_completadas }}/{{ tramite_data.total_tareas }}
+                {% if tramite_data.obj.fecha_inicio %}
+                &middot; {{ tramite_data.obj.fecha_inicio.strftime('%d/%m/%Y') }}
+                {% if tramite_data.obj.fecha_fin %}→ {{ tramite_data.obj.fecha_fin.strftime('%d/%m/%Y') }}{% endif %}
+                {% endif %}
+            </span>
+        </button>
+    </h2>
+    <div id="tram-{{ tramite_data.obj.id }}" class="accordion-collapse collapse">
+        <div class="accordion-body">
+            {# Detalle del trámite #}
+            <div class="detalle-bloque mb-3">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p class="mb-1"><strong>Inicio:</strong>
+                            {{ tramite_data.obj.fecha_inicio.strftime('%d/%m/%Y') if tramite_data.obj.fecha_inicio else 'Pendiente' }}
+                        </p>
+                        <p class="mb-1"><strong>Fin:</strong>
+                            {{ tramite_data.obj.fecha_fin.strftime('%d/%m/%Y') if tramite_data.obj.fecha_fin else 'En curso' }}
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        {% if tramite_data.obj.observaciones %}
+                        <p class="mb-1"><strong>Obs:</strong>
+                            {{ tramite_data.obj.observaciones[:120] }}
+                        </p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {# Hijos — el JS inyecta aquí los acordeones de tareas al expandir #}
+            <div class="hijos-container accordion vista3-acordeon"
+                 id="tareas-tram-{{ tramite_data.obj.id }}"></div>
+        </div>
+    </div>
+</div>
