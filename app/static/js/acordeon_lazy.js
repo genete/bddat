@@ -116,6 +116,42 @@ function colapsarTodo(rootContainer) {
 }
 
 /**
+ * Delegación global para modales de edición SFTT.
+ * Captura clics en .btn-guardar-sftt, envía el form por AJAX y recarga la página.
+ */
+document.addEventListener('click', function (e) {
+    var btn = e.target.closest('.btn-guardar-sftt');
+    if (!btn) return;
+    var modal = btn.closest('.modal');
+    if (!modal) return;
+    var tipo = modal.dataset.sfttTipo;
+    var id   = modal.dataset.sfttId;
+    var form = modal.querySelector('.form-editar-sftt');
+    var data = new FormData(form);
+
+    btn.disabled = true;
+    fetch('/api/vista3/' + tipo + '/' + id + '/editar', {
+        method: 'POST',
+        body: data,
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(function (r) { return r.json(); })
+    .then(function (resp) {
+        if (resp.ok) {
+            bootstrap.Modal.getInstance(modal).hide();
+            location.reload();   // v1: recarga simple
+        } else {
+            alert('Error: ' + (resp.error || 'No se pudo guardar'));
+            btn.disabled = false;
+        }
+    })
+    .catch(function () {
+        alert('Error de red. Inténtalo de nuevo.');
+        btn.disabled = false;
+    });
+});
+
+/**
  * Registra los botones de expandir/colapsar todo.
  * @param {string} containerId - ID del elemento raíz del acordeón
  */
