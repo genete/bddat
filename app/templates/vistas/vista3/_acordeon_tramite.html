@@ -4,7 +4,7 @@
 <div class="accordion-item"
      data-endpoint="/api/vista3/tramite/{{ tramite_data.obj.id }}/tareas"
      data-loaded="false">
-    <h2 class="accordion-header">
+    <h2 class="accordion-header with-actions">
         <button class="accordion-button collapsed"
                 type="button"
                 data-bs-toggle="collapse"
@@ -20,6 +20,13 @@
                 {% if tramite_data.obj.fecha_fin %}→ {{ tramite_data.obj.fecha_fin.strftime('%d/%m/%Y') }}{% endif %}
                 {% endif %}
             </span>
+        </button>
+        <button class="btn btn-sm btn-outline-secondary btn-accion-header px-2"
+                type="button"
+                data-bs-toggle="modal"
+                data-bs-target="#modal-editar-tram-{{ tramite_data.obj.id }}"
+                title="Editar trámite">
+            <i class="fas fa-pencil-alt"></i>
         </button>
     </h2>
     <div id="tram-{{ tramite_data.obj.id }}" class="accordion-collapse collapse">
@@ -47,6 +54,43 @@
             {# Hijos — el JS inyecta aquí los acordeones de tareas al expandir #}
             <div class="hijos-container accordion vista3-acordeon"
                  id="tareas-tram-{{ tramite_data.obj.id }}"></div>
+        </div>
+    </div>
+</div>
+
+{# Modal edición trámite #}
+<div class="modal fade" id="modal-editar-tram-{{ tramite_data.obj.id }}" tabindex="-1"
+     data-sftt-tipo="tramite" data-sftt-id="{{ tramite_data.obj.id }}">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Editar Trámite — {{ tramite_data.nombre }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form class="form-editar-sftt">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Fecha inicio</label>
+                        <input type="date" class="form-control" name="fecha_inicio"
+                               value="{{ tramite_data.obj.fecha_inicio.strftime('%Y-%m-%d') if tramite_data.obj.fecha_inicio else '' }}">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Fecha fin</label>
+                        <input type="date" class="form-control" name="fecha_fin"
+                               value="{{ tramite_data.obj.fecha_fin.strftime('%Y-%m-%d') if tramite_data.obj.fecha_fin else '' }}">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Observaciones</label>
+                        <textarea class="form-control" name="observaciones" rows="3">{{ tramite_data.obj.observaciones or '' }}</textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary btn-guardar-sftt">
+                    <i class="fas fa-save me-1"></i> Guardar
+                </button>
+            </div>
         </div>
     </div>
 </div>

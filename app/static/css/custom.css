@@ -244,3 +244,24 @@ table a.badge:hover {
     border-left: 3px solid #198754;
     padding-left: 0;
 }
+
+/* ========================================
+   BDDAT - Acordeón con botón de acción en header
+   Ref: issue #145
+   ======================================== */
+
+.accordion-header.with-actions {
+    display: flex;
+    align-items: stretch;
+}
+
+.accordion-header.with-actions .accordion-button {
+    flex: 1;
+    min-width: 0;
+}
+
+.accordion-header.with-actions .btn-accion-header {
+    border-radius: 0;
+    border-left: 1px solid rgba(0, 0, 0, .125);
+    flex-shrink: 0;
+}
