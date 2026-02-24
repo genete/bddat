@@ -1,8 +1,8 @@
 ---
-name: Feature request
-about: Suggest an idea for this project
+name: Mejora o petición
+about: Sugerencias o mejoras para el proycto
 title: ''
-labels: ''
+labels: enhancement
 assignees: ''
 
 ---
@@ -13,7 +13,7 @@ Una descripción concisa del comportamiento deseado. Por ejemplo: "Resulta moles
 **Describa como es la solución propuesta que le gustaría**
 Describa la forma en que espera que el sistema funcione mejor.
 
-**Describe alternatives you've considered**
+**Describa alternativas que haya considerado**
 Describa las alternativas a la implementación actual, que haya considerado.
 
 **Contexto adicional**

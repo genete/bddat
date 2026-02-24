@@ -1,8 +1,8 @@
 ---
-name: Bug report
-about: Create a report to help us improve
+name: Informe de error
+about: Crear un informe acerca de un error o comportamiento anómalo
 title: ''
-labels: ''
+labels: bug
 assignees: ''
 
 ---
