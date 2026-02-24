@@ -13,16 +13,15 @@
 {% endblock %}
 
 {% block content %}
-<div style="width: 95%; max-width: 95%; margin: 0 auto; padding-top: 1.5rem;">
-
-    {# Cabecera con título y botones de acción #}
-    <div class="d-flex align-items-center justify-content-between mb-3">
+{# C.1: Cabecera fija — no scrollea #}
+<div class="lista-cabecera px-3 pt-3">
+    <div class="d-flex align-items-center justify-content-between mb-2">
         <h2 class="mb-0">Tramitación AT-{{ expediente.numero_at }}</h2>
         <div class="d-flex gap-2">
-            <button id="btn-expandir-todo" type="button" class="btn btn-sm btn-outline-secondary">
+            <button id="btn-expandir-todo" type="button" class="btn btn-sm btn-outline-primary">
                 <i class="fas fa-expand-alt me-1"></i> Expandir todo
             </button>
-            <button id="btn-colapsar-todo" type="button" class="btn btn-sm btn-outline-secondary">
+            <button id="btn-colapsar-todo" type="button" class="btn btn-sm btn-outline-primary">
                 <i class="fas fa-compress-alt me-1"></i> Colapsar todo
             </button>
             <a href="{{ url_for('expedientes.detalle', id=expediente.id) }}"
@@ -31,13 +30,14 @@
             </a>
         </div>
     </div>
-
-    {# Bloque fijo del expediente — siempre visible #}
+    {# Bloque del expediente — siempre visible, fijo sobre los acordeones #}
     {% include 'vistas/vista3/_expediente_body.html' %}
+</div>
 
-    {# Acordeones de solicitudes — renderizados server-side #}
+{# C.2: Acordeones con scroll propio #}
+<div class="lista-scroll-container">
     <div id="tramitacion-container"
-         class="accordion vista3-acordeon"
+         class="accordion vista3-acordeon p-3"
          data-expediente-id="{{ expediente.id }}">
         {% for sol_data in solicitudes %}
             {% include 'vistas/vista3/_acordeon_solicitud.html' %}
@@ -48,7 +48,6 @@
             </div>
         {% endfor %}
     </div>
-
 </div>
 
 <script src="{{ url_for('static', filename='js/acordeon_lazy.js') }}"></script>
