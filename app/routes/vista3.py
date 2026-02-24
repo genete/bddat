@@ -7,7 +7,7 @@ Endpoints:
   GET /api/vista3/tramite/<id>/tareas    → acordeones de tareas (HTML + count)
   GET /api/vista3/expediente/<id>/arbol  → árbol completo pre-cargado (HTML + count)
 """
-from flask import Blueprint, jsonify, render_template
+from flask import Blueprint, jsonify, render_template, request
 from flask_login import login_required
 from sqlalchemy import func
 from app import db
@@ -19,6 +19,7 @@ from app.models.tareas import Tarea
 from app.models.documentos import Documento
 from app.models.tipos_solicitudes import TipoSolicitud
 from app.models.solicitudes_tipos import SolicitudTipo
+from app.models.tipos_resultados_fases import TipoResultadoFase
 from app.utils.permisos import verificar_acceso_expediente
 
 bp = Blueprint('vista3', __name__, url_prefix='/api/vista3')
@@ -34,8 +35,10 @@ def get_fases(sol_id):
         return jsonify({'error': 'Acceso denegado'}), 403
 
     fases = _get_fases_con_stats(sol_id)
+    resultados_fase = TipoResultadoFase.query.order_by(TipoResultadoFase.nombre).all()
     html_parts = [
-        render_template('vistas/vista3/_acordeon_fase.html', fase_data=fd)
+        render_template('vistas/vista3/_acordeon_fase.html', fase_data=fd,
+                        resultados_fase=resultados_fase)
         for fd in fases
     ]
     return jsonify({'html': ''.join(html_parts), 'count': len(fases)})
@@ -104,9 +107,11 @@ def get_arbol(exp_id):
             fases_arbol.append({**fase_data, 'tramites': tramites_arbol})
         solicitudes_arbol.append({**sol_data, 'fases': fases_arbol})
 
+    resultados_fase = TipoResultadoFase.query.order_by(TipoResultadoFase.nombre).all()
     html = render_template(
         'vistas/vista3/_arbol_completo.html',
-        solicitudes_arbol=solicitudes_arbol
+        solicitudes_arbol=solicitudes_arbol,
+        resultados_fase=resultados_fase
     )
     return jsonify({'html': html, 'count': len(solicitudes_arbol)})
 
@@ -246,3 +251,102 @@ def _get_documentos_tarea(tarea_id):
         })
 
     return docs
+
+
+# ============================================
+# ENDPOINTS POST — Edición SFTT
+# ============================================
+
+@bp.route('/solicitud/<int:sol_id>/editar', methods=['POST'])
+@login_required
+def editar_solicitud(sol_id):
+    """Actualiza campos editables de una solicitud."""
+    sol = Solicitud.query.get_or_404(sol_id)
+    resultado = verificar_acceso_expediente(sol.expediente, 'editar')
+    if resultado:
+        return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
+
+    try:
+        if request.form.get('fecha_solicitud'):
+            from datetime import date
+            sol.fecha_solicitud = date.fromisoformat(request.form['fecha_solicitud'])
+        else:
+            sol.fecha_solicitud = None
+        if request.form.get('fecha_fin'):
+            from datetime import date
+            sol.fecha_fin = date.fromisoformat(request.form['fecha_fin'])
+        else:
+            sol.fecha_fin = None
+        if request.form.get('estado'):
+            sol.estado = request.form['estado']
+        sol.observaciones = request.form.get('observaciones') or None
+        db.session.commit()
+        return jsonify({'ok': True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@bp.route('/fase/<int:fase_id>/editar', methods=['POST'])
+@login_required
+def editar_fase(fase_id):
+    """Actualiza campos editables de una fase."""
+    fase = Fase.query.get_or_404(fase_id)
+    resultado = verificar_acceso_expediente(fase.solicitud.expediente, 'editar')
+    if resultado:
+        return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
+
+    try:
+        from datetime import date
+        fase.fecha_inicio = date.fromisoformat(request.form['fecha_inicio']) if request.form.get('fecha_inicio') else None
+        fase.fecha_fin = date.fromisoformat(request.form['fecha_fin']) if request.form.get('fecha_fin') else None
+        resultado_id = request.form.get('resultado_fase_id')
+        fase.resultado_fase_id = int(resultado_id) if resultado_id else None
+        fase.observaciones = request.form.get('observaciones') or None
+        db.session.commit()
+        return jsonify({'ok': True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@bp.route('/tramite/<int:tram_id>/editar', methods=['POST'])
+@login_required
+def editar_tramite(tram_id):
+    """Actualiza campos editables de un trámite."""
+    tramite = Tramite.query.get_or_404(tram_id)
+    resultado = verificar_acceso_expediente(tramite.fase.solicitud.expediente, 'editar')
+    if resultado:
+        return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
+
+    try:
+        from datetime import date
+        tramite.fecha_inicio = date.fromisoformat(request.form['fecha_inicio']) if request.form.get('fecha_inicio') else None
+        tramite.fecha_fin = date.fromisoformat(request.form['fecha_fin']) if request.form.get('fecha_fin') else None
+        tramite.observaciones = request.form.get('observaciones') or None
+        db.session.commit()
+        return jsonify({'ok': True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@bp.route('/tarea/<int:tarea_id>/editar', methods=['POST'])
+@login_required
+def editar_tarea(tarea_id):
+    """Actualiza campos editables de una tarea."""
+    tarea = Tarea.query.get_or_404(tarea_id)
+    resultado = verificar_acceso_expediente(tarea.tramite.fase.solicitud.expediente, 'editar')
+    if resultado:
+        return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
+
+    try:
+        from datetime import date
+        tarea.fecha_inicio = date.fromisoformat(request.form['fecha_inicio']) if request.form.get('fecha_inicio') else None
+        tarea.fecha_fin = date.fromisoformat(request.form['fecha_fin']) if request.form.get('fecha_fin') else None
+        tarea.notas = request.form.get('notas') or None
+        db.session.commit()
+        return jsonify({'ok': True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'ok': False, 'error': str(e)}), 500
