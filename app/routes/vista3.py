@@ -7,6 +7,7 @@ Endpoints:
   GET /api/vista3/tramite/<id>/tareas    → acordeones de tareas (HTML + count)
   GET /api/vista3/expediente/<id>/arbol  → árbol completo pre-cargado (HTML + count)
 """
+from datetime import date
 from flask import Blueprint, jsonify, render_template, request
 from flask_login import login_required
 from sqlalchemy import func
@@ -267,21 +268,17 @@ def editar_solicitud(sol_id):
         return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
 
     try:
-        if request.form.get('fecha_solicitud'):
-            from datetime import date
-            sol.fecha_solicitud = date.fromisoformat(request.form['fecha_solicitud'])
-        else:
-            sol.fecha_solicitud = None
-        if request.form.get('fecha_fin'):
-            from datetime import date
-            sol.fecha_fin = date.fromisoformat(request.form['fecha_fin'])
-        else:
-            sol.fecha_fin = None
+        sol.fecha_solicitud = date.fromisoformat(request.form['fecha_solicitud']) if request.form.get('fecha_solicitud') else None
+        sol.fecha_fin = date.fromisoformat(request.form['fecha_fin']) if request.form.get('fecha_fin') else None
         if request.form.get('estado'):
             sol.estado = request.form['estado']
         sol.observaciones = request.form.get('observaciones') or None
         db.session.commit()
-        return jsonify({'ok': True})
+        # Re-renderizar el acordeón para actualizar el DOM sin recargar
+        result = _get_solicitudes_con_stats(sol.expediente_id)
+        sol_data = next((s for s in result if s['obj'].id == sol_id), None)
+        html = render_template('vistas/vista3/_acordeon_solicitud.html', sol_data=sol_data) if sol_data else ''
+        return jsonify({'ok': True, 'html': html})
     except Exception as e:
         db.session.rollback()
         return jsonify({'ok': False, 'error': str(e)}), 500
@@ -297,14 +294,19 @@ def editar_fase(fase_id):
         return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
 
     try:
-        from datetime import date
         fase.fecha_inicio = date.fromisoformat(request.form['fecha_inicio']) if request.form.get('fecha_inicio') else None
         fase.fecha_fin = date.fromisoformat(request.form['fecha_fin']) if request.form.get('fecha_fin') else None
         resultado_id = request.form.get('resultado_fase_id')
         fase.resultado_fase_id = int(resultado_id) if resultado_id else None
         fase.observaciones = request.form.get('observaciones') or None
         db.session.commit()
-        return jsonify({'ok': True})
+        # Re-renderizar el acordeón para actualizar el DOM sin recargar
+        result = _get_fases_con_stats(fase.solicitud_id)
+        fase_data = next((f for f in result if f['obj'].id == fase_id), None)
+        resultados_fase = TipoResultadoFase.query.order_by(TipoResultadoFase.nombre).all()
+        html = render_template('vistas/vista3/_acordeon_fase.html', fase_data=fase_data,
+                               resultados_fase=resultados_fase) if fase_data else ''
+        return jsonify({'ok': True, 'html': html})
     except Exception as e:
         db.session.rollback()
         return jsonify({'ok': False, 'error': str(e)}), 500
@@ -320,12 +322,15 @@ def editar_tramite(tram_id):
         return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
 
     try:
-        from datetime import date
         tramite.fecha_inicio = date.fromisoformat(request.form['fecha_inicio']) if request.form.get('fecha_inicio') else None
         tramite.fecha_fin = date.fromisoformat(request.form['fecha_fin']) if request.form.get('fecha_fin') else None
         tramite.observaciones = request.form.get('observaciones') or None
         db.session.commit()
-        return jsonify({'ok': True})
+        # Re-renderizar el acordeón para actualizar el DOM sin recargar
+        result = _get_tramites_con_stats(tramite.fase_id)
+        tramite_data = next((t for t in result if t['obj'].id == tram_id), None)
+        html = render_template('vistas/vista3/_acordeon_tramite.html', tramite_data=tramite_data) if tramite_data else ''
+        return jsonify({'ok': True, 'html': html})
     except Exception as e:
         db.session.rollback()
         return jsonify({'ok': False, 'error': str(e)}), 500
@@ -341,12 +346,17 @@ def editar_tarea(tarea_id):
         return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
 
     try:
-        from datetime import date
         tarea.fecha_inicio = date.fromisoformat(request.form['fecha_inicio']) if request.form.get('fecha_inicio') else None
         tarea.fecha_fin = date.fromisoformat(request.form['fecha_fin']) if request.form.get('fecha_fin') else None
         tarea.notas = request.form.get('notas') or None
         db.session.commit()
-        return jsonify({'ok': True})
+        # Re-renderizar el acordeón para actualizar el DOM sin recargar
+        result = _get_tareas_con_stats(tarea.tramite_id)
+        tarea_data = next((t for t in result if t['obj'].id == tarea_id), None)
+        documentos = _get_documentos_tarea(tarea_id)
+        html = render_template('vistas/vista3/_acordeon_tarea.html', tarea_data=tarea_data,
+                               documentos=documentos) if tarea_data else ''
+        return jsonify({'ok': True, 'html': html})
     except Exception as e:
         db.session.rollback()
         return jsonify({'ok': False, 'error': str(e)}), 500

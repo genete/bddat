@@ -117,7 +117,8 @@ function colapsarTodo(rootContainer) {
 
 /**
  * Delegación global para modales de edición SFTT.
- * Captura clics en .btn-guardar-sftt, envía el form por AJAX y recarga la página.
+ * Captura clics en .btn-guardar-sftt, envía el form por AJAX y actualiza el DOM
+ * sin recargar la página, preservando el estado del acordeón.
  */
 document.addEventListener('click', function (e) {
     var btn = e.target.closest('.btn-guardar-sftt');
@@ -138,8 +139,44 @@ document.addEventListener('click', function (e) {
     .then(function (r) { return r.json(); })
     .then(function (resp) {
         if (resp.ok) {
-            bootstrap.Modal.getInstance(modal).hide();
-            location.reload();   // v1: recarga simple
+            var bsModal = bootstrap.Modal.getInstance(modal);
+            bsModal.hide();
+
+            if (resp.html) {
+                // Cuando el modal termina de cerrarse, reemplazamos el DOM
+                modal.addEventListener('hidden.bs.modal', function () {
+                    var item = modal.previousElementSibling; // .accordion-item
+                    if (!item || !modal.parentNode) return;
+
+                    // Guardar si el acordeón estaba abierto (para reabrirlo)
+                    var openCollapse = item.querySelector('.accordion-collapse.show');
+                    var openId = openCollapse ? openCollapse.id : null;
+                    var itemPos = Array.from(modal.parentNode.children).indexOf(item);
+                    var parent = modal.parentNode;
+
+                    // Parsear nuevo HTML (accordion-item + modal hermano)
+                    // temp.children es live: al mover [0] al DOM, [1] pasa a ser [0]
+                    var temp = document.createElement('div');
+                    temp.innerHTML = resp.html;
+                    parent.replaceChild(temp.children[0], item);   // reemplaza accordion-item
+                    parent.replaceChild(temp.children[0], modal);  // reemplaza modal
+
+                    // Inicializar tooltips del nuevo HTML si los hubiera
+                    var newItem = parent.children[itemPos];
+                    if (newItem) {
+                        newItem.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function (el) {
+                            new bootstrap.Tooltip(el);
+                        });
+                        // Re-abrir el acordeón si estaba expandido
+                        if (openId) {
+                            var newCollapse = newItem.querySelector('#' + openId);
+                            if (newCollapse) {
+                                new bootstrap.Collapse(newCollapse, { toggle: false }).show();
+                            }
+                        }
+                    }
+                }, { once: true });
+            }
         } else {
             alert('Error: ' + (resp.error || 'No se pudo guardar'));
             btn.disabled = false;
