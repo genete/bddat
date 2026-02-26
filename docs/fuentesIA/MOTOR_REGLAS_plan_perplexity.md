@@ -13,9 +13,15 @@ tipos de solicitud y legislación concreta. Perplexity se limitó a buscar lo qu
 dijimos y no exploró por su cuenta. Resultado: se perdió legislación relevante
 (renovables, RAIPEE, RADNE, decretos de simplificación, acceso y conexión).
 
-**Principio para la próxima sesión:** prompt inicial abierto, sin acotar legislación
-ni tipos. Que Perplexity descubra el mapa completo desde cero. Solo darle contexto
-de quiénes somos y qué tramitamos.
+En la segunda sesión se probó con prompt más abierto pero sin guía de fuentes.
+Resultado: inventario incompleto (omitió decretos de simplificación andaluces,
+circulares CNMC recientes, confundió la Instrucción 1/2017 —derogada— con la
+vigente 1/2023 de 11 de julio).
+
+**Principio para la próxima sesión:** prompt abierto + metodología por capas:
+primero identificar órganos competentes, luego sus propios inventarios web,
+luego cruzar con BOE/BOJA para detectar modificaciones recientes. No dar
+legislación concreta ni URLs directas — que las descubra él.
 
 ---
 
@@ -37,21 +43,26 @@ variantes procedimentales posibles.
 **Prompt de arranque:**
 
 > Eres un experto en derecho administrativo y legislación del sector eléctrico español.
-> [CONTEXTO ARRIBA]
 >
-> TAREA: Sin que yo te indique ninguna norma concreta, elabora por ti mismo el mapa
-> completo de legislación que puede afectar a la tramitación de estos expedientes.
-> Incluye normativa estatal y autonómica andaluza. Considera todas las dimensiones:
-> procedimiento de autorización, evaluación ambiental, ordenación del territorio,
-> acceso y conexión a red, registros administrativos de instalaciones, régimen
-> económico, simplificación administrativa, y cualquier otra que identifiques.
+> Contexto: Somos un servicio de la Consejería de Industria, Energía y Minas de la Junta de Andalucía. Tramitamos expedientes de autorización de instalaciones eléctricas de alta tensión de competencia autonómica. Estamos construyendo un sistema informático para gestionar esa tramitación y necesitamos un mapa exhaustivo de toda la legislación aplicable y todas las variantes procedimentales posibles.
 >
-> No me des el contenido de las normas todavía. Solo el inventario: qué normas
-> existen, para qué sirven, y si tienen relación entre sí (derogan, complementan,
-> excepcionan a otras).
+> TAREA: Sin que yo te indique ninguna norma concreta, elabora por ti mismo el mapa completo de legislación que puede afectar a la tramitación de estos expedientes. Incluye normativa estatal y autonómica andaluza. Considera todas las dimensiones: procedimiento de autorización, seguridad industrial, evaluación ambiental, ordenación del territorio, acceso y conexión a red, registros administrativos de instalaciones, régimen económico, simplificación administrativa, fomento de energías renovables, y cualquier otra que identifiques. Incluye también las circulares y resoluciones de la CNMC relevantes.
 >
-> Al terminar, presenta el inventario en formato tabla descargable (Markdown) y
-> espera mi confirmación antes de continuar.
+> Para cada norma: indica si está vigente tal como se publicó o si ha sido modificada, derogada o sustituida por otra posterior. Cuando una norma haya sido sustituida, incluye solo la versión vigente actual.
+>
+> Para hacer el inventario, da pasadas por capas:
+>
+> Primero identifica los órganos andaluces que tienen competencia sustantiva, ambiental, de ordenación del territorio, etc.
+>
+> Segundo, investiga si cada uno de ellos ha elaborado un inventario legislativo o páginas web que indiquen cómo se tramitan instalaciones energéticas y cuándo usar la legislación específica andaluza o estatal. Da prioridad al órgano de competencia sustantiva en materia de energía, pero investiga también los órganos ambiental y de ordenación del territorio, ya que sus propias páginas suelen listar la normativa que aplican en coordinación con el procedimiento energético.
+>
+> Tercero, cuando tengas esos inventarios, los clasificas por materia.
+>
+> Antes de presentar la tabla, verifica en BOE y BOJA si existen modificaciones posteriores a las normas identificadas que no estén reflejadas en esas páginas web.
+>
+> No me des el contenido de las normas todavía. Solo el inventario: qué normas existen, para qué sirven, y si tienen relación entre sí (derogan, complementan, excepcionan a otras).
+>
+> Al terminar, presenta el inventario en formato tabla Markdown y espera mi confirmación antes de continuar.
 
 **Señal de parada:** cuando presente la tabla con el inventario legislativo.
 **Revisión aquí (Claude Code):** verificar si faltan normas conocidas del servicio.
