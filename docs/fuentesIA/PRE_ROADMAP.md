@@ -226,3 +226,14 @@ BLOQUEANTES          NECESARIOS           POST-PRODUCCIÓN           OPCIONAL
 ```
 
 **Secuencia mínima viable:** estudiar arquitectura de (4) y (5) → implementar los 3 bloqueantes → resolver los 4 necesarios → arranque en producción → añadir post-producción por orden de demanda real.
+
+---
+
+### G.6 Condiciones pre-producción no funcionales
+
+Tareas que no bloquean el trabajo del programador pero deben estar resueltas antes del despliegue:
+
+| Issue | Condición | Responsable |
+|-------|-----------|-------------|
+| [#151](https://github.com/genete/bddat/issues/151) | Definición de infraestructura de soporte: servidor de aplicación, PostgreSQL en servidor central, servidor de archivos, backups, SSL, proceso de despliegue y dependencias nativas | IT Admin + Programador |
+| [#45](https://github.com/genete/bddat/issues/45) | Cambiar `SECRET_KEY` por clave criptográfica segura en servidor de producción | Programador |
