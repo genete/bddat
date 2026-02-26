@@ -4,7 +4,7 @@
 > desde múltiples perspectivas antes de priorizar implementaciones.
 > Crecerá con la segunda parte: clasificación de bloqueantes hacia producción.
 >
-> **Última revisión:** 2026-02-26
+> **Última revisión:** 2026-02-26 (añadida sección G)
 
 ---
 
@@ -147,4 +147,82 @@
 
 ---
 
-*Siguiente sección a desarrollar: clasificación de los 14 bloques según su rol en el camino a producción (bloqueantes, necesarios, post-producción, opcionales).*
+---
+
+## G. Clasificación de los 14 bloques — Camino a producción
+
+> **Criterio de clasificación:** qué ocurre si el sistema entra en producción *sin* ese bloque.
+>
+> - **Bloqueante** — sin él, producción es imposible o el abandono del sistema anterior es inviable
+> - **Necesario** — producción posible con workaround, pero el workaround no aguanta más de semanas
+> - **Post-producción** — puede añadirse después de arrancar sin comprometer la misión principal
+> - **Opcional** — aporta valor pero no es parte del flujo central
+>
+> **Nota sobre Motor de Reglas (4) y Plazos (5):** No son bloqueantes para el arranque —los
+> funcionarios llevan décadas tramitando sin enforcement automático, y la GuíaGeneral establece
+> explícitamente una Fase 2 sin restricciones activas. Sin embargo, **su estudio arquitectónico
+> es previo a producción**: las decisiones de modelo de datos y estructura de tramitación (1) y
+> documental (2) deben ser compatibles con el motor futuro. Estudiar ≠ implementar.
+
+---
+
+### G.1 Bloqueantes — sin esto no hay producción viable
+
+| # | Bloque | Por qué bloquea |
+|---|--------|-----------------|
+| 1 | **Tramitación ESFTT** | Es el núcleo. Sin crear/avanzar/cerrar Solicitudes/Fases/Trámites/Tareas el sistema no reemplaza ningún proceso real. |
+| 2 | **Sistema documental** | El expediente administrativo *son* sus documentos. Sin gestión de ficheros no hay expediente válido, no hay prueba de actuación, no hay notificación. |
+| 12 | **Importación legacy** | Si se lanza producción sin legacy, se operan dos sistemas en paralelo indefinidamente y el sistema antiguo nunca muere. Los expedientes en curso son reales y no pueden quedar fuera del nuevo sistema. |
+
+**Dependencia interna:** el diseño de (1) y (2) debe ser compatible con el motor de reglas (4) y los plazos (5) que vendrán después. El estudio de ambos es necesario antes de fijar la arquitectura de tramitación, aunque su implementación sea posterior.
+
+---
+
+### G.2 Necesarios — el workaround no aguanta
+
+| # | Bloque | Workaround temporal | Por qué no aguanta |
+|---|--------|--------------------|--------------------|
+| 3 | **Generación de escritos** | Generar el documento fuera (Word manual) y subirlo como fichero | Derrota el propósito del sistema; introduce errores humanos en variables y numeración; no escala |
+| 8 | **Configuración de reglas y estructura** | El técnico gestiona tablas maestras directamente en BD | El Supervisor no puede operar autónomamente; cualquier cambio de tipo o regla depende del programador |
+| 9 | **Gestión de carga y usuarios** | Existe interfaz básica; el Supervisor opera con lo que hay | El reparto de expedientes y estadísticas de carga son operativos desde el primer día; sin ellos el Supervisor trabaja a ciegas |
+| 10 | **Listado inteligente** | El listado V2 actual muestra datos básicos | Sin plazos agregados, tareas vencidas y cola priorizada, el tramitador no puede gestionar su trabajo diario eficientemente |
+
+---
+
+### G.3 Post-producción — añadir después de arrancar
+
+| # | Bloque | Justificación | Prioridad estudio previo |
+|---|--------|---------------|--------------------------|
+| 4 | **Motor de reglas** | Los funcionarios operan sin enforcement automático hoy. La Fase 2 es explícitamente permisiva. Implementación progresiva: primero informativo, luego restrictivo si se decide. | **Alta** — su arquitectura debe estar definida antes de producción para no forzar refactorizaciones |
+| 5 | **Plazos legales** | Los plazos se gestionan manualmente hoy. Las alertas visuales aportan valor desde el primer día pero no son requisito legal del sistema informático. | **Alta** — el modelo de datos (suspensiones, días hábiles) debe diseñarse en paralelo con (1) y (2) |
+| 6 | **Proyectos e instalaciones** | El expediente puede tramitarse con datos básicos de proyecto ya existentes. Los elementos técnicos anidados son necesarios para resoluciones técnicas y GIS, no para el flujo procedimental inicial. | Media |
+| 11 | **Auditoría configurable** | En el arranque basta con auditoría básica. La granularidad configurable es una mejora operativa, no un requisito inicial. | Baja |
+| 13 | **Manual de usuario** | Sustituible en el arranque por formación presencial. Crítico a medio plazo para reducir dependencia del programador. | Baja |
+| 14 | **Mensajería interna** | El email corporativo cubre la comunicación inicial. La mensajería añade eficiencia (pool de tareas, delegación) pero no es el día uno. | Baja |
+
+---
+
+### G.4 Opcional — valor real, no en el camino crítico
+
+| # | Bloque | Justificación |
+|---|--------|---------------|
+| 7 | **GIS / Cartografía** | Dependiente de que Proyectos e instalaciones (#6) esté maduro. Ningún trámite administrativo se bloquea por no tener mapa. |
+
+---
+
+### G.5 Resumen visual
+
+```
+BLOQUEANTES          NECESARIOS           POST-PRODUCCIÓN           OPCIONAL
+──────────────       ──────────────       ──────────────────────    ────────
+1. Tramitación       3. Escritos          4. Motor reglas  [*]      7. GIS
+2. Documental        8. Config/maestras   5. Plazos        [*]
+12. Legacy           9. Carga/usuarios    6. Proyectos
+                     10. Listado          11. Auditoría
+                                          13. Manual
+                                          14. Mensajería
+
+[*] Implementación post-producción, pero estudio arquitectónico PREVIO a producción.
+```
+
+**Secuencia mínima viable:** estudiar arquitectura de (4) y (5) → implementar los 3 bloqueantes → resolver los 4 necesarios → arranque en producción → añadir post-producción por orden de demanda real.
