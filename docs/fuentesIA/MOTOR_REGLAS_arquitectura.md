@@ -170,89 +170,111 @@ CONDICIONES_REGLA  (1:N con REGLAS_MOTOR)
 
 ---
 
-## Estados reales de ESFTT — auditoría de modelos
+## Estados de ESFTT — auditoría de modelos Python
 
-> Revisado contra BD real. Lo que hay vs. lo que se asumía.
+> Revisado contra modelos .py reales, no contra esquema de BD.
+> Distinción clave: campo persistido vs. @property calculada al vuelo.
 
 ### EXPEDIENTE
-Sin campo `estado`, sin `fecha_inicio`/`fecha_fin`. Estado completamente derivado de sus solicitudes.
-El expediente vive mientras tenga solicitudes activas. Una vez todas sus solicitudes están
-cerradas (RESUELTA o DESISTIDA), el expediente está de facto finalizado — pero no hay campo
-que lo registre explícitamente. Pendiente de decidir si hace falta.
+Sin campo `estado`, sin `fecha_inicio`/`fecha_fin`. Sin `@property` de estado.
+Estado completamente derivado de sus solicitudes — no implementado aún.
+El expediente vive mientras tenga solicitudes activas.
 
-**Reflexión sobre ciclo de vida del expediente:**
-El expediente vive junto con el proyecto y su producto son las instalaciones en servicio.
-Eso es un proceso normal. Los expedientes con tramitaciones fallidas se finalizan y archivan
-con resoluciones desestimatorias/denegatorias. Una vez archivado no tiene sentido en sí mismo.
-Cualquier solicitud nueva tras el archivo crea un nuevo expediente.
+**Ciclo de vida:**
+El expediente vive junto con el proyecto; su producto son las instalaciones en servicio.
+Los expedientes con tramitaciones fallidas se finalizan con resoluciones desestimatorias.
+Una vez archivado no tiene sentido en sí mismo — cualquier solicitud nueva tras el archivo
+crea un nuevo expediente.
 
-**Reflexión sobre instalaciones:**
-Las instalaciones nacen con el proyecto pero una vez en servicio se independizan de él.
-Tienen vida propia: pueden cambiar de estado por otros expedientes/proyectos/solicitudes
-posteriores. Sus estados (solicitada, autorizada, en servicio, cerrada, desmantelada)
-hacen referencia al expediente/proyecto/solicitud/resolución que las dejó en ese estado.
-Son un mundo aparte — no afectan al modelo ESFTT actual.
+**Instalaciones (mundo aparte):**
+Nacen con el proyecto pero una vez en servicio se independizan de él. Tienen vida propia:
+cambian de estado por otros expedientes/proyectos posteriores. Sus estados
+(solicitada, autorizada, en servicio, cerrada, desmantelada) referencian el
+expediente/proyecto/solicitud/resolución que las dejó en ese estado.
+No afectan al modelo ESFTT actual.
 
 ### SOLICITUD
-Campo `estado` explícito (varchar, NOT NULL). Valores reales en BD:
-- `EN_TRAMITE`
-- `RESUELTA`
-- `DESISTIDA`
+`estado` es **campo persistido** (varchar, NOT NULL, default `EN_TRAMITE`).
+Valores: `EN_TRAMITE`, `RESUELTA`, `DESISTIDA`, `ARCHIVADA`.
 
-**Gap crítico:** No tiene `tipo_solicitud_id`. Existe `tipos_solicitudes` con 17 tipos
-(AAP, AAC, DUP, etc.) pero `solicitudes` no tiene FK a ella. **Campo pendiente de añadir.**
+**@property ya implementadas:**
+- `activa` → `estado == 'EN_TRAMITE'`
+- `es_desistimiento_o_renuncia` → `solicitud_afectada_id is not None` *(temporal, ver TODO en modelo)*
 
-**Limitación:** `estado = 'RESUELTA'` no distingue si fue favorable o no. Para reglas que
-necesiten esta distinción (ej: RENUNCIA requiere resolución favorable), el motor debe bajar
-a la fase RESOLUCION y leer su `resultado_fase_id`.
+**Tipos de solicitud — relación N:M deliberada:**
+No hay `tipo_solicitud_id` directo. Los tipos se gestionan en tabla puente `SolicitudTipo`
+(modelo `solicitudes_tipos.py`), permitiendo múltiples tipos simultáneos en una sola
+solicitud (ej: AAP+AAC+DUP = 3 registros en `solicitudes_tipos`).
+El motor de reglas evalúa cada tipo individualmente — diseño ya previsto en el modelo.
+
+**Limitación del campo `estado`:** `RESUELTA` no distingue favorable de desfavorable.
+Para reglas que necesiten esa distinción, el motor debe consultar `resultado_fase_id`
+de la fase RESOLUCION asociada.
 
 ### FASE
-**Discrepancia con GuiaGeneralNueva:** el campo documentado como `exito` (boolean)
-en realidad es `resultado_fase_id`, FK a `tipos_resultados_fases`. Valores:
-`FAVORABLE`, `FAVORABLE_CONDICIONADO`, `DESFAVORABLE`, `NO_PROCEDE`, `DESISTIDA`, `ARCHIVADA`.
-El modelo real es más rico que el documentado. La Guia debe actualizarse.
+`resultado_fase_id` es FK a `tipos_resultados_fases` (no boolean).
+Valores: `FAVORABLE`, `FAVORABLE_CONDICIONADO`, `DESFAVORABLE`, `NO_PROCEDE`, `DESISTIDA`, `ARCHIVADA`.
 
-Estado derivado de: `fecha_inicio`, `fecha_fin`, `resultado_fase_id`.
+**Estados deducibles** (descritos en docstring, sin `@property` implementada aún):
+- `PENDIENTE`: `fecha_inicio IS NULL`
+- `EN_CURSO`: `fecha_inicio IS NOT NULL AND fecha_fin IS NULL`
+- `COMPLETADA`: `fecha_fin IS NOT NULL`
+- `EXITOSA`: `fecha_fin IS NOT NULL AND resultado_fase_id` indica resultado favorable
 
 ### TRÁMITE
-`fecha_inicio`, `fecha_fin`, `observaciones`. Sin estado explícito. Estado derivado de fechas.
-Sin campo equivalente a `resultado_fase_id` — no distingue entre cierre exitoso y no exitoso.
-**Pendiente de decidir** si hace falta un `resultado_tramite_id` análogo.
+Sin campo de resultado — solo fechas. Sin `@property` implementada.
+
+**Estados deducibles** (descritos en docstring):
+- `PENDIENTE`: `fecha_inicio IS NULL`
+- `EN_CURSO`: `fecha_inicio IS NOT NULL AND fecha_fin IS NULL`
+- `COMPLETADO`: `fecha_fin IS NOT NULL`
+
+No distingue entre cierre exitoso y no exitoso. Pendiente de decidir si necesita
+`resultado_tramite_id` análogo al de FASE.
 
 ### TAREA
-`fecha_inicio`, `fecha_fin`, `documento_usado_id`, `documento_producido_id`.
-Sin estado explícito. Estado derivado de fechas y documentos.
+Sin `@property` implementada. Semántica por tipo documentada en docstring del modelo.
+
+**Estados deducibles:**
+- `PENDIENTE`: `fecha_inicio IS NULL`
+- `EN_CURSO`: `fecha_inicio IS NOT NULL AND fecha_fin IS NULL`
+- `EJECUTADA`: `fecha_fin IS NOT NULL`
+- `EJECUTADA_CON_DOC`: `fecha_fin IS NOT NULL AND documento_producido_id IS NOT NULL`
 
 ---
 
-## Vocabulario de estados derivados (para @property en modelos)
+## Vocabulario de estados para @property (pendiente de implementar)
 
-Estados que el motor puede usar como criterio, derivados de campos reales:
+El motor referencia nombres de estado, no condiciones SQL crudas.
+Las `@property` son el contrato entre el modelo y el motor.
+Solo `Solicitud.activa` existe hoy — el resto está pendiente.
 
-| Entidad | Estado | Condición real en BD |
-|---------|--------|---------------------|
-| SOLICITUD | `activa` | `estado = 'EN_TRAMITE'` |
-| SOLICITUD | `cerrada` | `estado IN ('RESUELTA', 'DESISTIDA')` |
-| SOLICITUD | `resuelta_favorable` | `estado = 'RESUELTA'` AND fase RESOLUCION con resultado IN {FAVORABLE, FAVORABLE_CONDICIONADO} |
-| FASE | `planificada` | `fecha_inicio IS NULL` |
-| FASE | `en_curso` | `fecha_inicio IS NOT NULL AND fecha_fin IS NULL` |
-| FASE | `cerrada` | `fecha_fin IS NOT NULL` (con o sin resultado) |
-| FASE | `cerrada_favorable` | `fecha_fin IS NOT NULL AND resultado_fase_id IN {FAVORABLE, FAVORABLE_CONDICIONADO}` |
-| TRAMITE | `en_curso` | `fecha_fin IS NULL` |
-| TRAMITE | `cerrado` | `fecha_fin IS NOT NULL` |
-| TAREA | `pendiente` | `fecha_inicio IS NULL` |
-| TAREA | `en_curso` | `fecha_inicio IS NOT NULL AND fecha_fin IS NULL` |
-| TAREA | `ejecutada` | `fecha_fin IS NOT NULL` |
-| TAREA | `ejecutada_con_doc` | `fecha_fin IS NOT NULL AND documento_producido_id IS NOT NULL` |
+| Entidad | @property | Condición |
+|---------|-----------|-----------|
+| Solicitud | `activa` ✅ | `estado == 'EN_TRAMITE'` |
+| Solicitud | `cerrada` ⬜ | `estado in ('RESUELTA','DESISTIDA','ARCHIVADA')` |
+| Solicitud | `resuelta_favorable` ⬜ | `estado == 'RESUELTA'` AND fase RESOLUCION con resultado favorable |
+| Fase | `planificada` ⬜ | `fecha_inicio is None` |
+| Fase | `en_curso` ⬜ | `fecha_inicio is not None and fecha_fin is None` |
+| Fase | `cerrada` ⬜ | `fecha_fin is not None` |
+| Fase | `cerrada_favorable` ⬜ | `fecha_fin is not None and resultado_fase.codigo in ('FAVORABLE','FAVORABLE_CONDICIONADO')` |
+| Tramite | `en_curso` ⬜ | `fecha_fin is None` |
+| Tramite | `cerrado` ⬜ | `fecha_fin is not None` |
+| Tarea | `pendiente` ⬜ | `fecha_inicio is None` |
+| Tarea | `en_curso` ⬜ | `fecha_inicio is not None and fecha_fin is None` |
+| Tarea | `ejecutada` ⬜ | `fecha_fin is not None` |
+| Tarea | `ejecutada_con_doc` ⬜ | `fecha_fin is not None and documento_producido_id is not None` |
+
+✅ implementada · ⬜ pendiente (se añadirán antes de implementar el motor)
 
 ---
 
 ## Pendiente de sesión
 
-- **[CRÍTICO]** Añadir `tipo_solicitud_id` a tabla `solicitudes` (FK a `tipos_solicitudes`)
 - Actualizar GuiaGeneralNueva: `exito` (bool) → `resultado_fase_id` (FK a tipos_resultados_fases)
 - Decidir si TRÁMITE necesita `resultado_tramite_id` análogo al de FASE
-- Decidir si EXPEDIENTE necesita campo `estado` explícito o basta con estado derivado
+- Decidir si EXPEDIENTE necesita `@property estado` explícito o derivado de solicitudes
+- Añadir `@property` de estado a FASE, TRÁMITE y TAREA antes de implementar el motor
 - Definir tabla secundaria para tipificar documentos (DRs y otros)
 - Diseño detallado de REGLAS_MOTOR y CONDICIONES_REGLA con ejemplos concretos
 - Decidir dónde vive `figura_ambiental` en el modelo (expediente, solicitud o proyecto)
