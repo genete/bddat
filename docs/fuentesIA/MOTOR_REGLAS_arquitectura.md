@@ -170,8 +170,89 @@ CONDICIONES_REGLA  (1:N con REGLAS_MOTOR)
 
 ---
 
+## Estados reales de ESFTT — auditoría de modelos
+
+> Revisado contra BD real. Lo que hay vs. lo que se asumía.
+
+### EXPEDIENTE
+Sin campo `estado`, sin `fecha_inicio`/`fecha_fin`. Estado completamente derivado de sus solicitudes.
+El expediente vive mientras tenga solicitudes activas. Una vez todas sus solicitudes están
+cerradas (RESUELTA o DESISTIDA), el expediente está de facto finalizado — pero no hay campo
+que lo registre explícitamente. Pendiente de decidir si hace falta.
+
+**Reflexión sobre ciclo de vida del expediente:**
+El expediente vive junto con el proyecto y su producto son las instalaciones en servicio.
+Eso es un proceso normal. Los expedientes con tramitaciones fallidas se finalizan y archivan
+con resoluciones desestimatorias/denegatorias. Una vez archivado no tiene sentido en sí mismo.
+Cualquier solicitud nueva tras el archivo crea un nuevo expediente.
+
+**Reflexión sobre instalaciones:**
+Las instalaciones nacen con el proyecto pero una vez en servicio se independizan de él.
+Tienen vida propia: pueden cambiar de estado por otros expedientes/proyectos/solicitudes
+posteriores. Sus estados (solicitada, autorizada, en servicio, cerrada, desmantelada)
+hacen referencia al expediente/proyecto/solicitud/resolución que las dejó en ese estado.
+Son un mundo aparte — no afectan al modelo ESFTT actual.
+
+### SOLICITUD
+Campo `estado` explícito (varchar, NOT NULL). Valores reales en BD:
+- `EN_TRAMITE`
+- `RESUELTA`
+- `DESISTIDA`
+
+**Gap crítico:** No tiene `tipo_solicitud_id`. Existe `tipos_solicitudes` con 17 tipos
+(AAP, AAC, DUP, etc.) pero `solicitudes` no tiene FK a ella. **Campo pendiente de añadir.**
+
+**Limitación:** `estado = 'RESUELTA'` no distingue si fue favorable o no. Para reglas que
+necesiten esta distinción (ej: RENUNCIA requiere resolución favorable), el motor debe bajar
+a la fase RESOLUCION y leer su `resultado_fase_id`.
+
+### FASE
+**Discrepancia con GuiaGeneralNueva:** el campo documentado como `exito` (boolean)
+en realidad es `resultado_fase_id`, FK a `tipos_resultados_fases`. Valores:
+`FAVORABLE`, `FAVORABLE_CONDICIONADO`, `DESFAVORABLE`, `NO_PROCEDE`, `DESISTIDA`, `ARCHIVADA`.
+El modelo real es más rico que el documentado. La Guia debe actualizarse.
+
+Estado derivado de: `fecha_inicio`, `fecha_fin`, `resultado_fase_id`.
+
+### TRÁMITE
+`fecha_inicio`, `fecha_fin`, `observaciones`. Sin estado explícito. Estado derivado de fechas.
+Sin campo equivalente a `resultado_fase_id` — no distingue entre cierre exitoso y no exitoso.
+**Pendiente de decidir** si hace falta un `resultado_tramite_id` análogo.
+
+### TAREA
+`fecha_inicio`, `fecha_fin`, `documento_usado_id`, `documento_producido_id`.
+Sin estado explícito. Estado derivado de fechas y documentos.
+
+---
+
+## Vocabulario de estados derivados (para @property en modelos)
+
+Estados que el motor puede usar como criterio, derivados de campos reales:
+
+| Entidad | Estado | Condición real en BD |
+|---------|--------|---------------------|
+| SOLICITUD | `activa` | `estado = 'EN_TRAMITE'` |
+| SOLICITUD | `cerrada` | `estado IN ('RESUELTA', 'DESISTIDA')` |
+| SOLICITUD | `resuelta_favorable` | `estado = 'RESUELTA'` AND fase RESOLUCION con resultado IN {FAVORABLE, FAVORABLE_CONDICIONADO} |
+| FASE | `planificada` | `fecha_inicio IS NULL` |
+| FASE | `en_curso` | `fecha_inicio IS NOT NULL AND fecha_fin IS NULL` |
+| FASE | `cerrada` | `fecha_fin IS NOT NULL` (con o sin resultado) |
+| FASE | `cerrada_favorable` | `fecha_fin IS NOT NULL AND resultado_fase_id IN {FAVORABLE, FAVORABLE_CONDICIONADO}` |
+| TRAMITE | `en_curso` | `fecha_fin IS NULL` |
+| TRAMITE | `cerrado` | `fecha_fin IS NOT NULL` |
+| TAREA | `pendiente` | `fecha_inicio IS NULL` |
+| TAREA | `en_curso` | `fecha_inicio IS NOT NULL AND fecha_fin IS NULL` |
+| TAREA | `ejecutada` | `fecha_fin IS NOT NULL` |
+| TAREA | `ejecutada_con_doc` | `fecha_fin IS NOT NULL AND documento_producido_id IS NOT NULL` |
+
+---
+
 ## Pendiente de sesión
 
+- **[CRÍTICO]** Añadir `tipo_solicitud_id` a tabla `solicitudes` (FK a `tipos_solicitudes`)
+- Actualizar GuiaGeneralNueva: `exito` (bool) → `resultado_fase_id` (FK a tipos_resultados_fases)
+- Decidir si TRÁMITE necesita `resultado_tramite_id` análogo al de FASE
+- Decidir si EXPEDIENTE necesita campo `estado` explícito o basta con estado derivado
 - Definir tabla secundaria para tipificar documentos (DRs y otros)
 - Diseño detallado de REGLAS_MOTOR y CONDICIONES_REGLA con ejemplos concretos
 - Decidir dónde vive `figura_ambiental` en el modelo (expediente, solicitud o proyecto)
