@@ -79,56 +79,62 @@ Se integran en el modelo documental existente mediante tabla secundaria
 
 ## Mapa de (evento, entidad, tipo) con reglas conocidas
 
+**Cómo leer las tablas:**
+El motor evalúa la condición descrita. Si es **TRUE → aplica la acción**.
+Si es **FALSE → operación permitida** (principio de todo permitido excepto prohibido).
+
+---
+
 ### SOLICITUD — padre_id: expediente_id
 
-| evento | tipo (siglas) | Regla | Nivel |
-|--------|--------------|-------|-------|
-| CREAR | AAP | ¿Ya existe AAP activa en este expediente? | BLOQUEAR |
-| CREAR | DESISTIMIENTO | ¿Existe solicitud activa afectable? (SOLICITUD_AFECTADA_ID obligatoria) | BLOQUEAR |
-| CREAR | RENUNCIA | ¿Existe solicitud resuelta favorablemente afectable? | BLOQUEAR |
-| CREAR | RECURSO | ¿Existe resolución en el expediente? | BLOQUEAR |
-| CREAR | RAIPEE_DEFINITIVA | ¿Existe RAIPEE_PREVIA resuelta? | ADVERTIR |
-| CERRAR | cualquiera | ¿Existe fase RESOLUCION con fecha_fin y exito=true? | BLOQUEAR |
-| BORRAR | cualquiera | ¿Hay tareas NOTIFICAR/PUBLICAR ejecutadas en esta solicitud? | BLOQUEAR |
+| evento | tipo (siglas) | Condición (si TRUE → acción) | Acción |
+|--------|--------------|------------------------------|--------|
+| CREAR | AAP | EXISTS AAP activa en este expediente | BLOQUEAR |
+| CREAR | DESISTIMIENTO | NOT EXISTS solicitud activa en este expediente (para afectar) | BLOQUEAR |
+| CREAR | RENUNCIA | NOT EXISTS solicitud resuelta favorablemente en este expediente | BLOQUEAR |
+| CREAR | RECURSO | NOT EXISTS resolución emitida en este expediente | BLOQUEAR |
+| CREAR | RAIPEE_DEFINITIVA | NOT EXISTS RAIPEE_PREVIA resuelta en este expediente | ADVERTIR |
+| CERRAR | cualquiera | NOT EXISTS fase RESOLUCION con fecha_fin not null AND exito=true en esta solicitud | BLOQUEAR |
+| BORRAR | cualquiera | EXISTS tarea tipo NOTIFICAR o PUBLICAR con fecha_fin not null en esta solicitud | BLOQUEAR |
 
 ### FASE — padre_id: solicitud_id
 
-| evento | tipo (codigo) | Regla | Nivel |
-|--------|--------------|-------|-------|
-| CREAR | INFORMACION_PUBLICA | DR_NO_DUP presente AND figura_ambiental ∉ {AAU,AAUs} | BLOQUEAR |
-| CREAR | FIGURA_AMBIENTAL_EXTERNA | figura_ambiental ≠ CA | BLOQUEAR |
-| CREAR | AAU_AAUS_INTEGRADA | figura_ambiental ∉ {AAU,AAUs} | BLOQUEAR |
-| CREAR | RESOLUCION | CA y sin FIGURA_AMBIENTAL_EXTERNA cerrada con éxito | BLOQUEAR |
-| CREAR | RESOLUCION | Sin ANALISIS_TECNICO cerrado (regla interna del servicio) | BLOQUEAR |
-| CREAR | CONSULTA_MINISTERIO | Solo instalaciones de competencia compartida | BLOQUEAR |
-| CREAR | ADMISION_TRAMITE | Solo generación renovable (tipo_expediente específico) | BLOQUEAR |
-| CERRAR | cualquiera | ¿Existe trámite sin fecha_fin en esta fase? | BLOQUEAR |
-| BORRAR | cualquiera | ¿Existe tarea con fecha_fin not null en esta fase? | BLOQUEAR |
+| evento | tipo (codigo) | Condición (si TRUE → acción) | Acción |
+|--------|--------------|------------------------------|--------|
+| CREAR | INFORMACION_PUBLICA | EXISTS documento tipo DR_NO_DUP en esta solicitud AND figura_ambiental NOT IN {AAU, AAUs} | BLOQUEAR |
+| CREAR | FIGURA_AMBIENTAL_EXTERNA | figura_ambiental NOT IN {CA} | BLOQUEAR |
+| CREAR | AAU_AAUS_INTEGRADA | figura_ambiental NOT IN {AAU, AAUs} | BLOQUEAR |
+| CREAR | RESOLUCION | figura_ambiental = CA AND NOT EXISTS fase FIGURA_AMBIENTAL_EXTERNA con exito=true | BLOQUEAR |
+| CREAR | RESOLUCION | NOT EXISTS fase ANALISIS_TECNICO con fecha_fin not null (regla interna del servicio) | BLOQUEAR |
+| CREAR | CONSULTA_MINISTERIO | tipo_expediente NOT IN {competencia compartida con Ministerio} | BLOQUEAR |
+| CREAR | ADMISION_TRAMITE | tipo_expediente NOT IN {generación renovable} | BLOQUEAR |
+| CERRAR | cualquiera | EXISTS trámite con fecha_fin IS NULL en esta fase | BLOQUEAR |
+| BORRAR | cualquiera | EXISTS tarea con fecha_fin IS NOT NULL en algún trámite de esta fase | BLOQUEAR |
 
 ### TRÁMITE — padre_id: fase_id
 
-| evento | tipo (codigo) | Regla | Nivel | params |
-|--------|--------------|-------|-------|--------|
-| CREAR | SEPARATAS | DR_ORGANISMO existe para organismo_id | BLOQUEAR | organismo_id |
-| CREAR | ANUNCIO_BOE/BOP/PRENSA | Solo en fase INFORMACION_PUBLICA | BLOQUEAR | — |
-| CREAR | PUBLICACION_RESOLUCION | ¿Existe ELABORACION_RESOLUCION cerrado con doc? | BLOQUEAR | — |
-| CREAR | NOTIFICACION_RESOLUCION | ¿Existe ELABORACION_RESOLUCION cerrado con doc? | BLOQUEAR | — |
-| CERRAR | cualquiera | ¿Existe tarea sin fecha_fin en este trámite? | BLOQUEAR | — |
-| BORRAR | cualquiera | ¿Existe tarea con fecha_fin not null en este trámite? | BLOQUEAR | — |
+| evento | tipo (codigo) | Condición (si TRUE → acción) | Acción | params |
+|--------|--------------|------------------------------|--------|--------|
+| CREAR | SEPARATAS | EXISTS documento tipo DR_ORGANISMO para organismo_id en esta solicitud | BLOQUEAR | organismo_id |
+| CREAR | ANUNCIO_BOE / ANUNCIO_BOP / ANUNCIO_PRENSA | tipo de la fase padre NOT IN {INFORMACION_PUBLICA} | BLOQUEAR | — |
+| CREAR | PUBLICACION_RESOLUCION | NOT EXISTS trámite ELABORACION_RESOLUCION con fecha_fin not null AND doc_producido_id not null | BLOQUEAR | — |
+| CREAR | NOTIFICACION_RESOLUCION | NOT EXISTS trámite ELABORACION_RESOLUCION con fecha_fin not null AND doc_producido_id not null | BLOQUEAR | — |
+| CERRAR | cualquiera | EXISTS tarea con fecha_fin IS NULL en este trámite | BLOQUEAR | — |
+| BORRAR | cualquiera | EXISTS tarea con fecha_fin IS NOT NULL en este trámite | BLOQUEAR | — |
 
 ### TAREA — padre_id: tramite_id
 
 Las tareas tienen solo 7 tipos genéricos. Sus reglas son de secuencia interna
 (independientes del dominio legislativo) y de obligatoriedad de documento.
 
-| evento | tipo (codigo) | Regla | Nivel |
-|--------|--------------|-------|-------|
-| CREAR | FIRMAR | NOT EXISTS REDACTAR cerrada con doc_producido en este trámite | BLOQUEAR |
-| CREAR | NOTIFICAR | NOT EXISTS FIRMAR cerrada con doc_producido en este trámite | BLOQUEAR |
-| CREAR | PUBLICAR | NOT EXISTS FIRMAR cerrada con doc_producido en este trámite | BLOQUEAR |
-| CERRAR | REDACTAR / FIRMAR / INCORPORAR | doc_producido_id es null | BLOQUEAR |
-| CERRAR | NOTIFICAR / PUBLICAR | doc_usado_id es null | BLOQUEAR |
-| BORRAR | cualquiera | fecha_fin not null (ya ejecutada) | BLOQUEAR |
+| evento | tipo (codigo) | Condición (si TRUE → acción) | Acción |
+|--------|--------------|------------------------------|--------|
+| CREAR | FIRMAR | NOT EXISTS tarea REDACTAR con fecha_fin not null AND doc_producido_id not null en este trámite | BLOQUEAR |
+| CREAR | NOTIFICAR | NOT EXISTS tarea FIRMAR con fecha_fin not null AND doc_producido_id not null en este trámite | BLOQUEAR |
+| CREAR | PUBLICAR | NOT EXISTS tarea FIRMAR con fecha_fin not null AND doc_producido_id not null en este trámite | BLOQUEAR |
+| CERRAR | REDACTAR / FIRMAR / INCORPORAR | doc_producido_id IS NULL | BLOQUEAR |
+| CERRAR | NOTIFICAR / PUBLICAR | doc_usado_id IS NULL | BLOQUEAR |
+| BORRAR | cualquiera | fecha_fin IS NOT NULL | BLOQUEAR |
 
 ---
 
