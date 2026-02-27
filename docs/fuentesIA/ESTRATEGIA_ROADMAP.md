@@ -1,10 +1,10 @@
-# PRE-ROADMAP — BDDAT · Visión y Análisis de Sistema
+# ESTRATEGIA Y VISIÓN — BDDAT
 
-> **Propósito:** Documento previo al roadmap. Define la visión completa del sistema
-> desde múltiples perspectivas antes de priorizar implementaciones.
-> Crecerá con la segunda parte: clasificación de bloqueantes hacia producción.
+> **Propósito:** Documento de visión estable del sistema. Define actores, bloques funcionales,
+> clasificación estratégica hacia producción y principios de trabajo.
+> Cambia solo si cambia la estrategia, no al cerrar issues o milestones.
 >
-> **Última revisión:** 2026-02-26 (añadida sección G)
+> **Última revisión:** 2026-02-27
 
 ---
 
@@ -147,8 +147,6 @@
 
 ---
 
----
-
 ## G. Clasificación de los 14 bloques — Camino a producción
 
 > **Criterio de clasificación:** qué ocurre si el sistema entra en producción *sin* ese bloque.
@@ -229,11 +227,29 @@ BLOQUEANTES          NECESARIOS           POST-PRODUCCIÓN           OPCIONAL
 
 ---
 
-### G.6 Condiciones pre-producción no funcionales
+## H. Mecánica de trabajo con GitHub
 
-Tareas que no bloquean el trabajo del programador pero deben estar resueltas antes del despliegue:
+### Principios
 
-| Issue | Condición | Responsable |
-|-------|-----------|-------------|
-| [#151](https://github.com/genete/bddat/issues/151) | Definición de infraestructura de soporte: servidor de aplicación, PostgreSQL en servidor central, servidor de archivos, backups, SSL, proceso de despliegue y dependencias nativas | IT Admin + Programador |
-| [#45](https://github.com/genete/bddat/issues/45) | Cambiar `SECRET_KEY` por clave criptográfica segura en servidor de producción | Programador |
+- Los milestones se crean cuando el bloque está suficientemente estudiado. Pueden crearse
+  todos al mismo tiempo una vez el roadmap está analizado.
+- Los issues se crean solo cuando se va a implementar algo en los próximos días.
+  No se crean issues "para el futuro" ni issues interconectados en cadena.
+- Siempre se abre el issue ANTES de implementar, en modo plan de Claude, para
+  valorar pros/contras y el mini-plan de implementación.
+- Cuando se cierra un bloque o milestone, se abren los 2-3 issues del siguiente.
+
+### GitHub Projects / Kanban — decisión: no usar
+
+Con la filosofía de issues mínimos (2-3 activos simultáneamente), un tablero
+Kanban estaría casi siempre vacío y añadiría mantenimiento sin valor.
+Los milestones con porcentaje de completitud ya cubren el seguimiento necesario.
+
+### Qué vive dónde
+
+| Dónde | Qué contiene |
+|-------|-------------|
+| **ESTRATEGIA_ROADMAP.md** | Visión, actores, clasificación de bloques, principios de trabajo. Cambia solo si cambia la estrategia. |
+| **ROADMAP.md** | Estado actual por milestone: qué está implementado, qué está en curso, qué queda. Se actualiza al cerrar issues/milestones. |
+| **Issues GitHub** | El mini-plan de un bloque concreto: qué se hace, cómo, checklist. Verbosidad aquí, no en ROADMAP. |
+| **Milestones GitHub** | Agrupación de issues por bloque funcional. Refleja el progreso del roadmap. |
