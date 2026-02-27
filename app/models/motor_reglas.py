@@ -28,6 +28,7 @@ class ReglaMotor(db.Model):
         - entidad=TRAMITE → tipos_tramites.id
         - entidad=TAREA → tipos_tareas.id
         - entidad=SOLICITUD_TIPO → tipos_solicitudes.id
+        - entidad=EXPEDIENTE → tipos_expedientes.id
         - NULL = la regla aplica a todos los tipos de esa entidad
         Sin FK constraint (tabla referenciada varía según entidad).
 
@@ -52,7 +53,7 @@ class ReglaMotor(db.Model):
     __table_args__ = (
         db.CheckConstraint("evento IN ('CREAR','CERRAR','BORRAR')", name='ck_reglas_motor_evento'),
         db.CheckConstraint(
-            "entidad IN ('SOLICITUD','SOLICITUD_TIPO','FASE','TRAMITE','TAREA')",
+            "entidad IN ('SOLICITUD','SOLICITUD_TIPO','FASE','TRAMITE','TAREA','EXPEDIENTE')",
             name='ck_reglas_motor_entidad'
         ),
         db.CheckConstraint("accion IN ('BLOQUEAR','ADVERTIR')", name='ck_reglas_motor_accion'),
@@ -71,7 +72,7 @@ class ReglaMotor(db.Model):
     entidad = db.Column(
         db.String(20),
         nullable=False,
-        comment='Entidad sobre la que actúa: SOLICITUD | SOLICITUD_TIPO | FASE | TRAMITE | TAREA'
+        comment='Entidad sobre la que actúa: SOLICITUD | SOLICITUD_TIPO | FASE | TRAMITE | TAREA | EXPEDIENTE'
     )
 
     tipo_id = db.Column(
