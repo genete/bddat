@@ -156,6 +156,40 @@ Las tareas tienen solo 7 tipos genéricos. Sus reglas son de secuencia interna
 
 ---
 
+## Compatibilidad de tipos en una solicitud
+
+Una solicitud puede tener múltiples tipos simultáneamente (N:M via `solicitudes_tipos`),
+pero no todas las combinaciones son válidas. Ejemplos:
+
+- `AAP + AAE` → PROHIBIDO: AAE implica instalación construida; AAP es anterior a la construcción
+- `DUP + CIERRE` → PROHIBIDO: DUP implica que no se pudo construir; CIERRE implica instalación existente
+- `AAP + AAC` → PERMITIDO: tramitación conjunta estándar
+- `AAP + AAC + DUP` → PERMITIDO: procedimiento estándar para instalaciones que requieren utilidad pública
+
+**Decisión de diseño: whitelist (pares permitidos), no blacklist.**
+
+Excepción justificada al principio "todo permitido excepto prohibido":
+- Con 17 tipos hay 136 pares posibles; la mayoría son absurdos por definición
+- Definir los prohibidos requeriría listar ~120 pares para dejar ~16 válidos
+- Un tipo nuevo añadido sin actualizar la tabla quedaría compatible con todo por omisión
+- Con whitelist, lo nuevo es inválido hasta definición explícita — más seguro
+
+**Tabla independiente de REGLAS_MOTOR** (restricción estructural estática, sin contexto):
+
+```
+TIPOS_SOLICITUDES_COMPATIBLES
+  tipo_a_id  FK → tipos_solicitudes  (par siempre en orden: tipo_a < tipo_b)
+  tipo_b_id  FK → tipos_solicitudes
+  nota        texto explicativo / referencia normativa si aplica
+```
+
+**Punto de evaluación:** al añadir un tipo a una solicitud (CREAR SolicitudTipo),
+comprobar que ninguno de los tipos ya presentes es incompatible con el nuevo.
+
+**Pendiente:** definir la lista completa de pares compatibles con el técnico del servicio.
+
+---
+
 ## Tablas del motor (pendiente de diseñar en detalle)
 
 ```
