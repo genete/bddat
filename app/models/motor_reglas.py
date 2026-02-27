@@ -18,9 +18,12 @@ class ReglaMotor(db.Model):
 
     CAMPO ENTIDAD:
         Tipo de entidad sobre la que actúa:
-        - SOLICITUD: sobre la solicitud completa
-        - SOLICITUD_TIPO: al añadir un tipo a una solicitud (SolicitudTipo)
+        - SOLICITUD: crear/cerrar/borrar una solicitud (cualquier tipo via solicitudes_tipos)
         - FASE, TRAMITE, TAREA: sobre las entidades correspondientes
+        - EXPEDIENTE: borrar un expediente u otras acciones sobre él
+        NOTA: SOLICITUD_TIPO no es una entidad del motor. El handler de SOLICITUD
+        gestiona directamente la compatibilidad de tipos via TIPOS_SOLICITUDES_COMPATIBLES.
+        La N:M de solicitudes_tipos es un detalle de implementación, no una entidad de negocio.
 
     CAMPO TIPO_ID:
         ID en la tabla tipos_* correspondiente según entidad:
@@ -53,7 +56,7 @@ class ReglaMotor(db.Model):
     __table_args__ = (
         db.CheckConstraint("evento IN ('CREAR','CERRAR','BORRAR')", name='ck_reglas_motor_evento'),
         db.CheckConstraint(
-            "entidad IN ('SOLICITUD','SOLICITUD_TIPO','FASE','TRAMITE','TAREA','EXPEDIENTE')",
+            "entidad IN ('SOLICITUD','FASE','TRAMITE','TAREA','EXPEDIENTE')",
             name='ck_reglas_motor_entidad'
         ),
         db.CheckConstraint("accion IN ('BLOQUEAR','ADVERTIR')", name='ck_reglas_motor_accion'),
@@ -72,7 +75,7 @@ class ReglaMotor(db.Model):
     entidad = db.Column(
         db.String(20),
         nullable=False,
-        comment='Entidad sobre la que actúa: SOLICITUD | SOLICITUD_TIPO | FASE | TRAMITE | TAREA | EXPEDIENTE'
+        comment='Entidad sobre la que actúa: SOLICITUD | FASE | TRAMITE | TAREA | EXPEDIENTE'
     )
 
     tipo_id = db.Column(
