@@ -53,6 +53,9 @@ from app.models.municipios_proyecto import MunicipioProyecto  # Depende de Munic
 from app.models.tramites import Tramite  # Depende de Fase, TipoTramite
 from app.models.tareas import Tarea  # Depende de Tramite, TipoTarea, Documento
 
+# Motor de reglas (depende de TipoSolicitud; tipo_id sin FK por diseño polimórfico)
+from app.models.motor_reglas import ReglaMotor, CondicionRegla, TipoSolicitudCompatible
+
 __all__ = [
     # Maestros
     'Usuario',
@@ -86,4 +89,8 @@ __all__ = [
     'MunicipioProyecto',
     'Tramite',
     'Tarea',
+    # Motor de reglas
+    'ReglaMotor',
+    'CondicionRegla',
+    'TipoSolicitudCompatible',
 ]
