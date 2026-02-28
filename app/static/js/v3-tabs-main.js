@@ -47,6 +47,13 @@ document.addEventListener('click', (e) => {
     const modalEl  = document.getElementById(`modal-nueva-${nivel}`);
     if (!modalEl) return;
     modalEl.dataset.parentId = parentId;
+    // Resetear form y re-habilitar submit por si quedó disabled de una apertura anterior
+    const form = modalEl.querySelector('.form-nueva-entidad');
+    if (form) {
+        form.reset();
+        const btnSubmit = form.querySelector('[type=submit]');
+        if (btnSubmit) btnSubmit.disabled = false;
+    }
     bootstrap.Modal.getOrCreateInstance(modalEl).show();
 });
 
