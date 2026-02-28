@@ -28,7 +28,7 @@
 
 <div class="tab-content mt-2">
     {% for sol_data in solicitudes_arbol %}
-    <div class="tab-pane fade {% if loop.first %}show active{% endif %}"
+    <div class="tab-pane {% if loop.first %}show active{% endif %}"
          id="panel-solicitud-{{ sol_data.obj.id }}"
          role="tabpanel"
          aria-labelledby="tab-solicitud-{{ sol_data.obj.id }}">

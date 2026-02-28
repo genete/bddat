@@ -28,7 +28,7 @@
 
 <div class="tab-content mt-2">
     {% for tram_data in fase_data.tramites %}
-    <div class="tab-pane fade {% if loop.first %}show active{% endif %}"
+    <div class="tab-pane {% if loop.first %}show active{% endif %}"
          id="panel-tramite-{{ tram_data.obj.id }}"
          role="tabpanel"
          aria-labelledby="tab-tramite-{{ tram_data.obj.id }}">
