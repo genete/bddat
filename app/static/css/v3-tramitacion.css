@@ -337,3 +337,9 @@
 
 /* === Tamaño icono en tabs (C3) === */
 .tramitacion-tabs .nav-link .tab-icon i { font-size: 1.1rem; }
+
+/* === Visibilidad icono en tab activo (C4) ===
+   El icono hereda el color de texto del nav-link activo (ya tiene
+   buen contraste con el fondo pálido del nivel), evitando que
+   text-warning/text-success queden invisibles sobre fondos coloreados. */
+.tramitacion-tabs .nav-link.active .tab-icon i { color: inherit !important; }

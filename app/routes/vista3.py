@@ -188,6 +188,7 @@ def _get_fases_con_stats(solicitud_id):
         result.append({
             'obj': fase,
             'nombre': fase.tipo_fase.nombre if fase.tipo_fase else f'Fase {fase.id}',
+            'codigo': fase.tipo_fase.codigo if fase.tipo_fase else '',
             'tramites_completados': tramites_completados,
             'total_tramites': total_tramites,
             'estado': 'Finalizada' if fase.fecha_fin else 'En curso' if fase.fecha_inicio else 'Pendiente'
@@ -210,6 +211,7 @@ def _get_tramites_con_stats(fase_id):
         result.append({
             'obj': tramite,
             'nombre': tramite.tipo_tramite.nombre if tramite.tipo_tramite else f'Trámite {tramite.id}',
+            'codigo': tramite.tipo_tramite.codigo if tramite.tipo_tramite else '',
             'tareas_completadas': tareas_completadas,
             'total_tareas': total_tareas,
             'estado': 'Finalizado' if tramite.fecha_fin else 'En curso' if tramite.fecha_inicio else 'Pendiente'
@@ -234,6 +236,7 @@ def _get_tareas_con_stats(tramite_id):
         result.append({
             'obj': tarea,
             'nombre': tarea.tipo_tarea.nombre if tarea.tipo_tarea else f'Tarea {tarea.id}',
+            'codigo': tarea.tipo_tarea.codigo if tarea.tipo_tarea else '',
             'documentos_count': docs_count,
             'estado': 'Finalizada' if tarea.fecha_fin else 'En curso' if tarea.fecha_inicio else 'Pendiente'
         })

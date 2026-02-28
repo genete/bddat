@@ -216,12 +216,27 @@ function _actualizarTabIcon(nivel, id, panel) {
             'ARCHIVADA':  ['bi bi-file-earmark',       'text-secondary'],
         };
         [icono, color] = map[est] || map['EN_TRAMITE'];
+    } else if (nivel === 'tarea') {
+        // Icono por tipo (semántico), color por estado
+        const tipoCodigo = tabBtn.dataset.tipoCodigo || '';
+        const tipoIconos = {
+            'ANALISIS':      'bi bi-person-gear',
+            'REDACTAR':      'bi bi-pencil',
+            'FIRMAR':        'bi bi-pen',
+            'NOTIFICAR':     'bi bi-send',
+            'PUBLICAR':      'bi bi-megaphone',
+            'ESPERAR_PLAZO': 'bi bi-hourglass-split',
+            'INCORPORAR':    'bi bi-box-arrow-in-down',
+        };
+        icono = tipoIconos[tipoCodigo] || 'bi bi-square';
+        if (fechaFinEl?.value)    color = 'text-success';
+        else if (fechaInicioEl?.value) color = 'text-warning';
     } else {
         const tieneFin    = fechaFinEl?.value;
         const tieneInicio = fechaInicioEl?.value;
-        const finIcons   = { fase: 'bi bi-bar-chart-steps', tramite: 'bi bi-clipboard-check', tarea: 'bi bi-check-square' };
-        const curIcons   = { fase: 'bi bi-bar-chart-steps', tramite: 'bi bi-clipboard-pulse',  tarea: 'bi bi-pencil-square' };
-        const penIcons   = { fase: 'bi bi-bar-chart-steps', tramite: 'bi bi-clipboard',        tarea: 'bi bi-square' };
+        const finIcons = { fase: 'bi bi-diagram-3',      tramite: 'bi bi-clipboard-check' };
+        const curIcons = { fase: 'bi bi-diagram-3-fill', tramite: 'bi bi-clipboard-pulse' };
+        const penIcons = { fase: 'bi bi-diagram-3',      tramite: 'bi bi-clipboard' };
         if (tieneFin) {
             icono = finIcons[nivel] || 'bi bi-file-earmark'; color = 'text-success';
         } else if (tieneInicio) {

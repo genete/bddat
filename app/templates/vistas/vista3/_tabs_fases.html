@@ -13,7 +13,7 @@
             <span class="tab-icon">
                 <i class="{{ fase_data.estado | icono_fase }} {{ fase_data.estado | color_fase }}"></i>
             </span>
-            <span class="tab-label">{{ fase_data.nombre }}</span>
+            <span class="tab-label">{{ fase_data.codigo | formato_codigo }}</span>
         </button>
     </li>
     {% endfor %}

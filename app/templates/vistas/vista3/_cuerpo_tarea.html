@@ -3,7 +3,7 @@
 #}
 <div class="card mb-3">
     <div class="card-header card-header-tarea d-flex justify-content-between align-items-center">
-        <span><i class="{{ tarea_data.estado | icono_tarea }} {{ tarea_data.estado | color_tarea }} me-1"></i> {{ tarea_data.nombre }}</span>
+        <span><i class="{{ tarea_data.codigo | icono_tarea_tipo }} {{ tarea_data.estado | color_tarea }} me-1"></i> {{ tarea_data.nombre }}</span>
         <div>
             <div data-modo-ver>
                 <button type="button" class="btn btn-sm btn-outline-primary btn-editar-entidad">

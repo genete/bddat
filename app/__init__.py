@@ -109,7 +109,7 @@ def create_app(config_name='development'):
         return {'EN_TRAMITE': 'text-primary', 'RESUELTA': 'text-success', 'DESISTIDA': 'text-danger'}.get(estado, 'text-secondary')
 
     def _icono_fase(estado):
-        return 'bi bi-bar-chart-steps'
+        return 'bi bi-diagram-3-fill' if estado == 'En curso' else 'bi bi-diagram-3'
 
     def _color_fase(estado):
         return {'En curso': 'text-warning', 'Finalizada': 'text-success'}.get(estado, 'text-secondary')
@@ -129,14 +129,32 @@ def create_app(config_name='development'):
             'Finalizada': 'bi bi-check-square',
         }.get(estado, 'bi bi-square')
 
+    def _icono_tarea_tipo(codigo):
+        """Icono semántico por tipo de tarea (mockup icons_ESFTT)."""
+        return {
+            'ANALISIS':     'bi bi-person-gear',
+            'REDACTAR':     'bi bi-pencil',
+            'FIRMAR':       'bi bi-pen',
+            'NOTIFICAR':    'bi bi-send',
+            'PUBLICAR':     'bi bi-megaphone',
+            'ESPERAR_PLAZO':'bi bi-hourglass-split',
+            'INCORPORAR':   'bi bi-box-arrow-in-down',
+        }.get(codigo, 'bi bi-square')
+
     def _color_tarea(estado):
         return {'En curso': 'text-warning', 'Finalizada': 'text-success'}.get(estado, 'text-secondary')
 
+    def _formato_codigo(s):
+        """ADMISIBILIDAD_TECNICA → Admisibilidad Tecnica (para labels de tab)."""
+        return s.replace('_', ' ').title() if s else ''
+
     app.jinja_env.filters.update({
-        'icono_solicitud': _icono_solicitud, 'color_solicitud': _color_solicitud,
-        'icono_fase':      _icono_fase,      'color_fase':      _color_fase,
-        'icono_tramite':   _icono_tramite,   'color_tramite':   _color_tramite,
-        'icono_tarea':     _icono_tarea,     'color_tarea':     _color_tarea,
+        'icono_solicitud':  _icono_solicitud,  'color_solicitud': _color_solicitud,
+        'icono_fase':       _icono_fase,       'color_fase':      _color_fase,
+        'icono_tramite':    _icono_tramite,    'color_tramite':   _color_tramite,
+        'icono_tarea':      _icono_tarea,      'color_tarea':     _color_tarea,
+        'icono_tarea_tipo': _icono_tarea_tipo,
+        'formato_codigo':   _formato_codigo,
     })
 
     # Manejadores de errores HTTP

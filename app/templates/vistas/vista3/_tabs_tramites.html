@@ -13,7 +13,7 @@
             <span class="tab-icon">
                 <i class="{{ tram_data.estado | icono_tramite }} {{ tram_data.estado | color_tramite }}"></i>
             </span>
-            <span class="tab-label">{{ tram_data.nombre }}</span>
+            <span class="tab-label">{{ tram_data.codigo | formato_codigo }}</span>
         </button>
     </li>
     {% endfor %}

@@ -9,11 +9,12 @@
                 data-bs-toggle="tab"
                 data-bs-target="#panel-tarea-{{ tarea_data.obj.id }}"
                 type="button" role="tab"
+                data-tipo-codigo="{{ tarea_data.codigo }}"
                 title="{{ tarea_data.nombre }}">
             <span class="tab-icon">
-                <i class="{{ tarea_data.estado | icono_tarea }} {{ tarea_data.estado | color_tarea }}"></i>
+                <i class="{{ tarea_data.codigo | icono_tarea_tipo }} {{ tarea_data.estado | color_tarea }}"></i>
             </span>
-            <span class="tab-label">{{ tarea_data.nombre }}</span>
+            <span class="tab-label">{{ tarea_data.codigo | formato_codigo }}</span>
         </button>
     </li>
     {% endfor %}
