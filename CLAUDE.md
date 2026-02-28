@@ -6,7 +6,7 @@ Desarrollado para la Consejería de Industria, Energía y Minas (Junta de Andalu
 Licencia: EUPL v1.2
 
 **Stack:** Python 3.x + Flask + SQLAlchemy + PostgreSQL + Bootstrap 5.3 + Jinja2
-**Fase actual:** Fase 2 — Interfaz de Usuario (sin restricciones de lógica de negocio activas)
+**Fase actual:** Fase 2 — Interfaz de Usuario (evaluador motor de reglas activo desde #152)
 **Rama de trabajo:** `develop`
 
 ---
@@ -20,6 +20,7 @@ Antes de cualquier tarea de desarrollo, leer:
 - `docs/GUIA_VISTAS_BOOTSTRAP.md` — referencia principal para desarrollo UI
 - `docs/GUIA_COMPONENTES_INTERACTIVOS.md` — catálogo de componentes JS reutilizables
 - `docs/fuentesIA/Estructura_fases_tramites_tareas.json` — lógica de tramitación administrativa
+- `docs/fuentesIA/ROADMAP.md` — estado actual de implementación
 
 ---
 
@@ -39,36 +40,32 @@ Antes de cualquier tarea de desarrollo, leer:
 ```
 bddat/
 ├── app/
-│   ├── __init__.py          ← Factory pattern, registro de blueprints
-│   ├── config.py            ← DevelopmentConfig / ProductionConfig
-│   ├── decorators.py        ← @role_required('ADMIN', 'SUPERVISOR', ...)
+│   ├── __init__.py
+│   ├── config.py
+│   ├── decorators.py
 │   ├── models/
-│   │   ├── __init__.py      ← ORDEN DE IMPORTS CRÍTICO (ver abajo)
-│   │   ├── expedientes.py   ← Modelo raíz + signal after_insert
-│   │   ├── usuarios.py      ← UserMixin, Rol, tabla usuarios_roles
+│   │   ├── __init__.py      ← ORDEN DE IMPORTS CRÍTICO
 │   │   └── ...
-│   ├── modules/                 ← Blueprints modulares (template_folder propio)
-│   │   ├── expedientes/         ← Blueprint + templates/expedientes/
-│   │   ├── proyectos/           ← Blueprint + templates/proyectos/
-│   │   └── entidades/           ← Blueprint + templates/entidades/
-│   ├── routes/                  ← Blueprints simples (usan app/templates/ global)
-│   │   ├── api_expedientes.py    ← Blueprint 'api', prefijo /api
-│   │   ├── wizard_expediente.py  ← Blueprint multi-paso con sesión Flask
+│   ├── modules/             ← Blueprints con template_folder propio
+│   │   ├── expedientes/
+│   │   ├── proyectos/
+│   │   └── entidades/
+│   ├── routes/              ← Blueprints simples (usan app/templates/ global)
+│   │   ├── api_expedientes.py
+│   │   ├── vista3.py
 │   │   └── ...
-│   ├── templates/               ← Templates globales (layout, auth, dashboard...)
+│   ├── services/            ← Lógica de negocio desacoplada de rutas
+│   │   └── motor_reglas.py
+│   ├── templates/
 │   │   └── layout/
-│   │       ├── base_fullwidth.html    ← Base principal (header+main+footer)
-│   │       ├── base_acordeon.html     ← Vista V3 tramitación
-│   │       ├── base_login.html        ← Vista V0 login
-│   │       └── base_tramitacion.html  ← Vista V3 con sidebar (legacy)
+│   │       ├── base_fullwidth.html
+│   │       ├── base_acordeon.html
+│   │       └── base_login.html
 │   └── static/
-│       ├── css/v2-theme.css           ← Variables CSS corporativas Junta
-│       ├── css/v2-layout.css          ← Grid A/B/C (app-container)
-│       ├── css/v2-components.css      ← Componentes reutilizables
-│       └── css/custom.css             ← Toasts, hover effects
-├── migrations/              ← Alembic — NO editar manualmente
+│       └── css/
+├── migrations/
 ├── docs/
-│   └── fuentesIA/           ← Documentos de referencia para IA
+│   └── fuentesIA/
 ├── run.py
 └── .env                     ← NUNCA commitear
 ```
@@ -85,8 +82,8 @@ bddat/
 - `app/templates/` → templates globales (layout, auth, dashboard, vistas compartidas)
 
 Si un módulo declara `template_folder` pero no tiene el template en su carpeta propia,
-Flask hace fallback a `app/templates/`. Esto puede servir templates legacy sin avisar.
-**Verificar siempre** que el template correcto está en la carpeta del módulo.
+Flask hace fallback a `app/templates/`. **Verificar siempre** que el template correcto
+está en la carpeta del módulo.
 
 ---
 
@@ -126,7 +123,7 @@ Las FK deben referenciar con prefijo: `db.ForeignKey('public.tabla.campo')`
 | wizard_expediente | bp | /expedientes/wizard |
 | api_expedientes | api_bp | /api |
 | api_municipios | bp | /api/municipios |
-| vista3 | bp | /vista3 |
+| vista3 | bp | /api/vista3 |
 | api_entidades | api_entidades_bp | /api/entidades |
 
 **Atención:** Los blueprints usan nombres de variable distintos (`bp`, `api_bp`, `api_entidades_bp`).
@@ -136,60 +133,24 @@ Comprobar siempre en el fichero de ruta antes de importar.
 
 ## Roles del Sistema
 
-`ADMIN`, `SUPERVISOR`, `TRAMITADOR`, `ADMINISTRATIVO`
-
-Usar siempre el decorador de `app/decorators.py`:
-```python
-@role_required('ADMIN', 'SUPERVISOR')
-```
+`ADMIN`, `SUPERVISOR`, `TRAMITADOR`, `ADMINISTRATIVO` — usar `@role_required('ADMIN', ...)` de `app/decorators.py`.
 
 ---
 
 ## Layout y CSS — Sistema V2
 
-La arquitectura de layout tiene 3 niveles:
-- **A:** `.app-container` (grid 3 filas: header / main / footer)
-- **B:** `.app-header`, `.app-main`, `.app-footer`
-- **C:** `.lista-cabecera` (fijo), `.lista-scroll-container` (scroll interno), contenido adicional
-
-**Bases disponibles:**
-- `base_fullwidth.html` — uso general
-- `base_acordeon.html` — Vista V3 tramitación (sin sidebar)
-- `base_login.html` — autenticación
-
-**IMPORTANTE:** Antes de crear cualquier nueva vista, leer `docs/GUIA_VISTAS_BOOTSTRAP.md`.
-
-**Bootstrap:** Cargado siempre desde CDN oficial. Versión 5.3.2.
-Font Awesome 6.5.1 para iconos (no Bootstrap Icons excepto en base_fullwidth.html).
-
----
-
-## Notificaciones al Usuario
-
-Sistema de toasts Flask (`flash messages`) definido en `base_fullwidth.html`.
-Categorías: `success`, `danger`, `warning`, `info`.
-Estilos en `app/static/css/custom.css`.
-**No usar modales para notificaciones** salvo riesgo de pérdida de datos.
+Niveles: `.app-container` → `.app-header/.app-main/.app-footer` → `.lista-cabecera` + `.lista-scroll-container`.
+**Bases:** `base_fullwidth.html` (general), `base_acordeon.html` (V3), `base_login.html`.
+**IMPORTANTE:** Leer `docs/GUIA_VISTAS_BOOTSTRAP.md` antes de crear cualquier vista.
+**Bootstrap 5.3.3** + Font Awesome 6.5.1 — CDN Junta de Andalucía.
+Toasts Flask (`flash messages`): categorías `success`, `danger`, `warning`, `info`. No usar modales para notificaciones.
 
 ---
 
 ## APIs REST
 
-Patrón establecido en `api_expedientes.py`:
-- Paginación por cursor (no por OFFSET)
-- Parámetros: `cursor`, `limit` (máx 100), `search` (mín 2 chars), filtros opcionales
-- Respuesta: `{ data, next_cursor, has_more, total? }`
-- Serializar siempre campo `codigo` como `AT-{numero_at}` para expedientes
-
----
-
-## Wizard Multi-Paso
-
-Patrón establecido en `wizard_expediente.py`:
-- Datos de pasos intermedios guardados en sesión Flask con clave `SESSION_KEY`
-- Helpers: `_get_wizard()`, `_save_wizard(data)`, `_reset_wizard()`
-- Commit transaccional completo solo en el último paso
-- Usar `db.session.flush()` para obtener IDs antes del commit final
+Patrón (`api_expedientes.py`): paginación por cursor, params `cursor/limit(máx 100)/search(mín 2)`,
+respuesta `{ data, next_cursor, has_more, total? }`, campo `codigo` serializado como `AT-{numero_at}`.
 
 ---
 
@@ -200,18 +161,10 @@ Alembic tiene un bug conocido con `include_schemas` que regenera todas las FK.
 
 **Procedimiento obligatorio:**
 ```powershell
-# 1. Crear migración vacía
-flask db revision -m "Descripción del cambio"
-
-# 2. Editar manualmente el archivo en migrations/versions/
-#    Solo añadir los cambios necesarios (add_column, create_table...)
-#    NO tocar FK existentes
-
-# 3. Aplicar
-flask db upgrade
-
-# 4. Verificar
-flask run
+flask db revision -m "Descripción"   # 1. Crear migración vacía
+# 2. Editar manualmente migrations/versions/<rev>.py
+flask db upgrade                      # 3. Aplicar
+flask run                             # 4. Verificar
 ```
 
 ---
@@ -219,19 +172,9 @@ flask run
 ## Workflow Git
 
 **Rama por defecto:** `develop`
+**Categorías de commit:** `[BD]`, `[MODELO]`, `[RUTA]`, `[TEMPLATE]`, `[STYLE]`, `[MIGA]`, `[TEST]`, `[DOCS]`, `[SERVICIO]`
 
-**Commits:**
-```
-[MODELO] Añadir campo observaciones a Fase
-[RUTA]   Implementar endpoint GET /expedientes/<id>
-[MIGA]   Añadir campo fecha_fin a tramites
-[DOCS]   Actualizar GuiaGeneralNueva con lógica de fases
-```
-Categorías: `[BD]`, `[MODELO]`, `[RUTA]`, `[TEMPLATE]`, `[STYLE]`, `[MIGA]`, `[TEST]`, `[DOCS]`
-
-**Ramas temporales** (para cambios complejos con testing):
-`feature/issue-XX-descripcion`, `bugfix/issue-XX-descripcion`
-
+**Ramas temporales** (cambios complejos): `feature/issue-XX-descripcion`, `bugfix/issue-XX-descripcion`
 **Cambios simples** (docs, typos, 1-2 ficheros): commit directo en `develop`.
 
 Leer `docs/fuentesIA/REGLAS_DESARROLLO.md` para el workflow completo.
@@ -243,7 +186,6 @@ Leer `docs/fuentesIA/REGLAS_DESARROLLO.md` para el workflow completo.
 - **PostgreSQL MCP** — consultar esquema real de BD en desarrollo
 - **Playwright MCP** — testing e interacción automática con navegador
 - **Windows MCP** — redimensionado de ventanas
-- **GitHub MCP** — gestión de issues, PRs y ramas
 
 ---
 
@@ -253,31 +195,3 @@ Leer `docs/fuentesIA/REGLAS_DESARROLLO.md` para el workflow completo.
 - Mantener cabeceras de licencia EUPL v1.2 en ficheros relevantes
 - Proyecto sometido a ENS (Esquema Nacional de Seguridad)
 - `db.drop_all()` y `db.create_all()` prohibidos en producción
-
----
-
-## Estado actual del desarrollo
-
-**Último PR mergeado:** #101 — Vista V3 Fase 1 (acordeón Bootstrap)
-**En curso:** Vista V3 Fase 2 — Issue #101
-**Rama activa:** develop
-**Próximo hito:** Completar Vista V3 Tramitación
-
----
-
-## Qué está y no está implementado
-
-**Completado:**
-- Vista V0 (Login), V1 (Dashboard), V2 (Listado con scroll infinito)
-- Autenticación Flask-Login + RBAC
-- CRUD Expedientes, Usuarios, Entidades
-- Wizard de creación de expedientes (3 pasos)
-- API REST expedientes (paginación cursor)
-- Sistema de toasts/flash messages
-
-**En desarrollo:**
-- Vista V3 Tramitación (Fase 1 completada, acordeón Bootstrap 5)
-
-**Pendiente (Fase 3):**
-- Motor de reglas de negocio (lógica de tramitación administrativa)
-- Restricciones basadas en tipos de expediente/solicitud/fase
