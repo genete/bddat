@@ -328,3 +328,6 @@
 .tabs-nivel-2 .nav-link:not(.active):not(.btn-nueva-entidad) { font-weight: 700; color: #0d6efd; }
 .tabs-nivel-3 .nav-link:not(.active):not(.btn-nueva-entidad) { font-weight: 700; color: #fd7e14; }
 .tabs-nivel-4 .nav-link:not(.active):not(.btn-nueva-entidad) { font-weight: 700; color: #6f42c1; }
+
+/* === Tamaño icono en tabs (C3) === */
+.tramitacion-tabs .nav-link .tab-icon i { font-size: 1.1rem; }
