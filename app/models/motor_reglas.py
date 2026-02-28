@@ -54,7 +54,7 @@ class ReglaMotor(db.Model):
     """
     __tablename__ = 'reglas_motor'
     __table_args__ = (
-        db.CheckConstraint("evento IN ('CREAR','CERRAR','BORRAR')", name='ck_reglas_motor_evento'),
+        db.CheckConstraint("evento IN ('CREAR','INICIAR','FINALIZAR','BORRAR')", name='ck_reglas_motor_evento'),
         db.CheckConstraint(
             "entidad IN ('SOLICITUD','FASE','TRAMITE','TAREA','EXPEDIENTE')",
             name='ck_reglas_motor_entidad'
