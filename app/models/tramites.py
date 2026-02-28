@@ -112,3 +112,20 @@ class Tramite(db.Model):
     def __str__(self):
         """Representación legible para interfaz."""
         return f'Trámite {self.id} - {self.tipo_tramite.nombre if self.tipo_tramite else "Sin tipo"}'
+
+    # --- Estados deducibles (vocabulario CREAR/INICIAR/FINALIZAR/BORRAR) ---
+
+    @property
+    def planificado(self):
+        """True si el trámite existe pero aún no se ha iniciado (fecha_inicio IS NULL)."""
+        return self.fecha_inicio is None
+
+    @property
+    def en_curso(self):
+        """True si el trámite ha sido iniciado pero no finalizado."""
+        return self.fecha_inicio is not None and self.fecha_fin is None
+
+    @property
+    def finalizado(self):
+        """True si el trámite ha sido finalizado (fecha_fin IS NOT NULL)."""
+        return self.fecha_fin is not None

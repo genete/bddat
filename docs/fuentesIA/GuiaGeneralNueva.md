@@ -328,15 +328,15 @@ Una fase es un conjunto de trámites para obtener un requisito para alcanzar el 
 
 - `ID` de fase, `ID` de solicitud, tipo de fase, fecha de inicio, fecha de fin, observaciones.
 - **Fecha de fin:** se define como la última fecha de finalización de todos los trámites asociados.
-- **EXITO:** Es el valor booleano del resultado exitoso de la fase. Si es `SI`, la fase ha concluido exitosamente respecto a su tipo. Por ejemplo si la fase es "INFORME MINISTERIO" entonces se ha obtenido el informe favorable. Ese informe estará en el trámite/tarea correspondiente.
+- **RESULTADO_FASE_ID:** FK a `tipos_resultados_fases`. Registra el resultado al cerrar la fase. Valores del catálogo: `FAVORABLE`, `FAVORABLE_CONDICIONADO`, `DESFAVORABLE`, `NO_PROCEDE`, `DESISTIDA`, `ARCHIVADA`. Una fase "exitosa" ≡ `resultado_fase.codigo IN ('FAVORABLE', 'FAVORABLE_CONDICIONADO')`. NULL = fase en curso o pendiente de cierre.
 - **DOCUMENTO_RESULTADO_ID:** posible vínculo al documento oficial generado. Posiblemente desaparezca.
 
 **Rellenado y flujo:**
 
 - La fecha fin de la fase debe ser rellenada **manualmente por el usuario**. En fases posteriores del desarrollo, se podrá añadir una sugerencia automática basada en la fecha del último trámite cerrado, pero nunca será obligatoria ni se aplicará automáticamente.
-- El éxito o no de la fase debe ser registrado **manualmente por el usuario** una vez analizada la documentación oficial correspondiente.
-- Si `EXITO` es nulo, la fase está en curso o pendiente de cierre administrativo.
-- Al tener el valor de éxito relleno (SÍ/NO) la fase se considera concluida y se puede permitir la creación o activación de fases sucesivas según reglas de negocio.
+- El resultado de la fase debe ser registrado **manualmente por el usuario** una vez analizada la documentación oficial correspondiente, eligiendo uno de los valores del catálogo `tipos_resultados_fases`.
+- Si `RESULTADO_FASE_ID` es nulo, la fase está en curso o pendiente de cierre administrativo.
+- Al tener `RESULTADO_FASE_ID` relleno, la fase se considera concluida y se puede permitir la creación o activación de fases sucesivas según reglas de negocio. Las reglas que requieren "fase exitosa" evalúan `resultado_fase.codigo IN ('FAVORABLE', 'FAVORABLE_CONDICIONADO')`.
 
 **Reglas de negocio y validación:**
 

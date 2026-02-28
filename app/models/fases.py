@@ -142,3 +142,29 @@ class Fase(db.Model):
     def __str__(self):
         """Representación legible para interfaz."""
         return f'Fase {self.id} - {self.tipo_fase.nombre if self.tipo_fase else "Sin tipo"}'
+
+    # --- Estados deducibles (vocabulario CREAR/INICIAR/FINALIZAR/BORRAR) ---
+
+    @property
+    def planificada(self):
+        """True si la fase existe pero aún no se ha iniciado (fecha_inicio IS NULL)."""
+        return self.fecha_inicio is None
+
+    @property
+    def en_curso(self):
+        """True si la fase ha sido iniciada pero no finalizada."""
+        return self.fecha_inicio is not None and self.fecha_fin is None
+
+    @property
+    def finalizada(self):
+        """True si la fase ha sido finalizada (fecha_fin IS NOT NULL)."""
+        return self.fecha_fin is not None
+
+    @property
+    def finalizada_favorable(self):
+        """True si la fase está finalizada con resultado favorable o favorable condicionado."""
+        return (
+            self.fecha_fin is not None
+            and self.resultado_fase_id is not None
+            and self.resultado_fase.codigo in ('FAVORABLE', 'FAVORABLE_CONDICIONADO')
+        )
