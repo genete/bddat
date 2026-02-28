@@ -78,11 +78,9 @@ document.addEventListener('submit', async (e) => {
         // Cerrar modal y recargar la página para mostrar el nuevo elemento
         bootstrap.Modal.getInstance(modalEl)?.hide();
         if (data.advertencia) mostrarAdvertencia(data.advertencia.mensaje);
-        // Guardar todos los tabs activos + el nuevo elemento para restaurar tras reload
-        const tabsPadres = [...document.querySelectorAll('.tramitacion-tabs .nav-link.active')]
-            .map(btn => btn.id).filter(id => id);
+        // Guardar la cadena de tabs visibles + el nuevo elemento para restaurar tras reload
         sessionStorage.setItem('v3_tabs_restaurar', JSON.stringify({
-            padres: tabsPadres,
+            padres: _getCadenaTabsActivos(),
             nuevo: `tab-${nivel}-${data.id}`,
         }));
         location.reload();
@@ -279,6 +277,27 @@ document.addEventListener('click', async (e) => {
 
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+/**
+ * Devuelve los IDs de los tabs activos en la cadena visible (nivel 1→4),
+ * recorriendo los paneles activos de forma descendente para evitar incluir
+ * tabs activos de paneles ocultos.
+ */
+function _getCadenaTabsActivos() {
+    const cadena = [];
+    // Nivel 1 — solicitud
+    let btn = document.querySelector('.tabs-nivel-1 .tramitacion-tabs .nav-link.active:not(.btn-nueva-entidad)');
+    if (!btn?.id) return cadena;
+    cadena.push(btn.id);
+    // Niveles 2, 3, 4 — desciende por el panel activo de cada nivel
+    for (let i = 0; i < 3; i++) {
+        const panel = document.querySelector(btn.dataset.bsTarget);
+        btn = panel?.querySelector('.tramitacion-tabs .nav-link.active:not(.btn-nueva-entidad)');
+        if (!btn?.id) break;
+        cadena.push(btn.id);
+    }
+    return cadena;
+}
 
 function _buildCrearEndpoint(nivel, parentId) {
     const map = {
