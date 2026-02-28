@@ -96,6 +96,67 @@ def create_app(config_name='development'):
     app.jinja_env.trim_blocks = True
     app.jinja_env.lstrip_blocks = True
 
+    # Filtros Jinja2 para iconos/colores en V3 tabs (issue #150)
+    def _icono_solicitud(estado):
+        return {
+            'EN_TRAMITE': 'bi bi-file-earmark-text',
+            'RESUELTA':   'bi bi-file-earmark-check',
+            'DESISTIDA':  'bi bi-file-earmark-x',
+            'ARCHIVADA':  'bi bi-file-earmark',
+        }.get(estado, 'bi bi-file-earmark')
+
+    def _color_solicitud(estado):
+        return {'EN_TRAMITE': 'text-primary', 'RESUELTA': 'text-success', 'DESISTIDA': 'text-danger'}.get(estado, 'text-secondary')
+
+    def _icono_fase(estado):
+        return 'bi bi-diagram-3-fill' if estado == 'En curso' else 'bi bi-diagram-3'
+
+    def _color_fase(estado):
+        return {'En curso': 'text-warning', 'Finalizada': 'text-success'}.get(estado, 'text-secondary')
+
+    def _icono_tramite(estado):
+        return {
+            'En curso':   'bi bi-clipboard-pulse',
+            'Finalizado': 'bi bi-clipboard-check',
+        }.get(estado, 'bi bi-clipboard')
+
+    def _color_tramite(estado):
+        return {'En curso': 'text-warning', 'Finalizado': 'text-success'}.get(estado, 'text-secondary')
+
+    def _icono_tarea(estado):
+        return {
+            'En curso':   'bi bi-pencil-square',
+            'Finalizada': 'bi bi-check-square',
+        }.get(estado, 'bi bi-square')
+
+    def _icono_tarea_tipo(codigo):
+        """Icono semántico por tipo de tarea (mockup icons_ESFTT)."""
+        return {
+            'ANALISIS':     'bi bi-person-gear',
+            'REDACTAR':     'bi bi-pencil',
+            'FIRMAR':       'bi bi-pen',
+            'NOTIFICAR':    'bi bi-send',
+            'PUBLICAR':     'bi bi-megaphone',
+            'ESPERAR_PLAZO':'bi bi-hourglass-split',
+            'INCORPORAR':   'bi bi-box-arrow-in-down',
+        }.get(codigo, 'bi bi-square')
+
+    def _color_tarea(estado):
+        return {'En curso': 'text-warning', 'Finalizada': 'text-success'}.get(estado, 'text-secondary')
+
+    def _formato_codigo(s):
+        """ADMISIBILIDAD_TECNICA → ADMISIBILIDAD TECNICA (para labels de tab)."""
+        return s.replace('_', ' ') if s else ''
+
+    app.jinja_env.filters.update({
+        'icono_solicitud':  _icono_solicitud,  'color_solicitud': _color_solicitud,
+        'icono_fase':       _icono_fase,       'color_fase':      _color_fase,
+        'icono_tramite':    _icono_tramite,    'color_tramite':   _color_tramite,
+        'icono_tarea':      _icono_tarea,      'color_tarea':     _color_tarea,
+        'icono_tarea_tipo': _icono_tarea_tipo,
+        'formato_codigo':   _formato_codigo,
+    })
+
     # Manejadores de errores HTTP
     @app.errorhandler(404)
     def not_found_error(error):

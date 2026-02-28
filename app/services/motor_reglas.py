@@ -192,7 +192,7 @@ def _checks_hardcoded(evento: str, entidad: str,
 
 def _check_borrar(entidad: str, ctx: _Contexto) -> Optional[EvaluacionResult]:
     if entidad in ('FASE', 'TRAMITE', 'TAREA'):
-        obj = ctx.fase or ctx.tramite or ctx.tarea
+        obj = {'FASE': ctx.fase, 'TRAMITE': ctx.tramite, 'TAREA': ctx.tarea}[entidad]
         if obj and obj.fecha_inicio is not None:
             return EvaluacionResult(
                 permitido=False,

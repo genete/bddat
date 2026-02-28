@@ -12,12 +12,17 @@ from flask import Blueprint, render_template, request, flash, redirect, url_for
 from flask_login import login_required
 from app import db
 from app.models.expedientes import Expediente
-from app.routes.vista3 import _get_solicitudes_con_stats
+from app.routes.vista3 import _get_solicitudes_con_stats, _construir_arbol
 from app.models.proyectos import Proyecto
 from app.models.usuarios import Usuario
 from app.models.tipos_expedientes import TipoExpediente
 from app.models.tipos_ia import TipoIA
 from app.models.municipios_proyecto import MunicipioProyecto
+from app.models.tipos_solicitudes import TipoSolicitud
+from app.models.tipos_fases import TipoFase
+from app.models.tipos_tramites import TipoTramite
+from app.models.tipos_tareas import TipoTarea
+from app.models.tipos_resultados_fases import TipoResultadoFase
 from app.decorators import role_required
 from app.utils.permisos import (
     puede_cambiar_responsable,
@@ -56,24 +61,18 @@ def listado_v2():
 @login_required
 def tramitacion_v3(id):
     """
-    Vista V3 - Tramitación con Sidebar Acordeón (Fase 1).
+    Vista V3 - Tramitación con Tabs Anidados (4 niveles) — issue #150.
 
-    Patrón de vista para navegación jerárquica dentro de UN expediente:
-    - Sidebar acordeón: Expediente > Solicitudes > Fases > Trámites > Tareas
-    - Panel detalle: Tabs [Datos] [Documentos] [Historial]
-    - Contexto fijo: Expediente/Proyecto siempre visible
-    - Paneles de hijos directos con listados (grupo C2.D de Vista 2)
-
-    Fase 1 (actual): Mockup estático con estructura completa
-    Fase 2+: JavaScript funcional + APIs backend
-
-    Referencias:
-    - Epic #93 - Sistema de Navegación UI Modular
-    - docs/arquitectura/PATRONES_UI.md - Patrón Vista 3
+    Reemplaza el acordeón lazy-loading por tabs renderizados en servidor:
+    - Nivel 1: Solicitudes (tabs horizontales)
+    - Nivel 2: Fases (tabs anidados dentro de cada solicitud)
+    - Nivel 3: Trámites (tabs anidados dentro de cada fase)
+    - Nivel 4: Tareas (tabs anidados dentro de cada trámite)
+    - Edición inline V4 (toggle ver/editar sin modal)
+    - Creación de entidades hijas via modal Bootstrap
     """
     expediente = Expediente.query.get_or_404(id)
 
-    # Verificación de acceso
     resultado = verificar_acceso_expediente(expediente, 'ver')
     if resultado:
         return resultado
@@ -81,7 +80,12 @@ def tramitacion_v3(id):
     return render_template(
         'expedientes/tramitacion_v3.html',
         expediente=expediente,
-        solicitudes=_get_solicitudes_con_stats(expediente.id)
+        solicitudes_arbol=_construir_arbol(expediente.id),
+        tipos_solicitud=TipoSolicitud.query.order_by(TipoSolicitud.siglas).all(),
+        tipos_fase=TipoFase.query.order_by(TipoFase.nombre).all(),
+        tipos_tramite=TipoTramite.query.order_by(TipoTramite.nombre).all(),
+        tipos_tarea=TipoTarea.query.order_by(TipoTarea.nombre).all(),
+        resultados_fase=TipoResultadoFase.query.order_by(TipoResultadoFase.nombre).all(),
     )
 
 

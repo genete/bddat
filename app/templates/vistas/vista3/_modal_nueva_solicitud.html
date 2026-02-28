@@ -1,0 +1,42 @@
+{# Modal para crear nueva solicitud
+   El data-parent-id se actualiza desde JS antes de abrir
+#}
+<div class="modal fade" id="modal-nueva-solicitud" tabindex="-1"
+     aria-labelledby="modal-nueva-solicitud-label">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modal-nueva-solicitud-label">
+                    <i class="fa-solid fa-file-contract me-1"></i> Nueva Solicitud
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form class="form-nueva-entidad" data-nivel="solicitud">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Tipo(s) de solicitud <span class="text-danger">*</span></label>
+                        <select class="form-select" name="tipo_solicitud_id[]"
+                                multiple size="5" required>
+                            {% for t in tipos_solicitud %}
+                            <option value="{{ t.id }}">{{ t.siglas }} — {{ t.descripcion }}</option>
+                            {% endfor %}
+                        </select>
+                        <div class="form-text">Mantén Ctrl para seleccionar varios tipos.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Fecha solicitud <span class="text-danger">*</span></label>
+                        <input type="date" class="form-control" name="fecha_solicitud"
+                               required
+                               value="">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fa-solid fa-plus me-1"></i> Crear
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

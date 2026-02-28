@@ -212,69 +212,96 @@ def get_expedientes():
 
 ---
 
-## 🛠️ Vista V3 - Tramitación (Acordeón)
+## 🛠️ Vista V3 - Tramitación (Tabs 4 niveles)
 
-### ⚠️ Cambio Arquitectónico (12/02/2026)
-**De:** Sidebar lateral (250px) + panel detalle  
-**A:** Acordeón completo Bootstrap 5 en 100% ancho
+### Cambios Arquitectónicos
+| Fecha | Cambio |
+|-------|--------|
+| 12/02/2026 | De sidebar → Acordeón completo Bootstrap 5 en 100% ancho |
+| 28/02/2026 | De acordeón lazy-loading → **Tabs 4 niveles renderizados en servidor** (issue #150) |
 
-### Decisiones de Diseño
+### Arquitectura Actual (Tabs 4 niveles)
 
-#### Panel Contexto Fijo (Sticky)
-- **Contenido:** Expediente + Proyecto juntos (NO en acordeón)
-- **Razón:** No son parte de jerarquía de tramitación, mantienen contexto
-- **CSS:** `position: sticky; top: 60px; z-index: 100;`
-
-#### Jerarquía Acordeón
+#### Jerarquía de Tabs
 ```
-Panel Contexto (sticky)
-└── Acordeón Solicitudes (Bootstrap 5)
-    └── Detalle Solicitud
-        └── Acordeón Fases (anidado)
-            └── Detalle Fase
-                └── Acordeón Trámites (anidado)
-                    └── Detalle Trámite
-                        └── Acordeón Tareas (anidado)
+Cabecera fija (expediente + proyecto)
+└── Tabs Nivel 1: Solicitudes   [data-tabs-nivel="solicitud"]
+    └── Cuerpo Solicitud (V4)
+    └── Tabs Nivel 2: Fases      [data-tabs-nivel="fase"]
+        └── Cuerpo Fase (V4)
+        └── Tabs Nivel 3: Trámites [data-tabs-nivel="tramite"]
+            └── Cuerpo Trámite (V4)
+            └── Tabs Nivel 4: Tareas [data-tabs-nivel="tarea"]
+                └── Cuerpo Tarea (V4) + tabla documentos
 ```
 
-#### Cabeceras con Columnas Customizadas
-```html
-<button class="accordion-button collapsed">
-  <span class="col-tipo">Solicitud 1: AAP+AAC</span>
-  <span class="col-fases">Fases (1/2)</span>
-  <span class="col-tramites">Trámites (1/5)</span>
-  <span class="badge bg-success">Activa</span>
-</button>
+#### Template principal
+- `app/modules/expedientes/templates/expedientes/tramitacion_v3.html`
+- Extiende `base_fullwidth.html` (para `lista-cabecera` / `lista-scroll-container`)
+- URL: `/expedientes/<id>/tramitacion_v3`
+- Ruta: `app/modules/expedientes/routes.py :: tramitacion_v3`
+
+#### Archivos de soporte
+| Archivo | Propósito |
+|---------|-----------|
+| `app/static/css/v3-tramitacion.css` | Estilos acordeón (legacy) + tabs nuevos |
+| `app/static/js/v3-tabs-main.js` | Crear/editar/borrar entidades SFTT |
+| `app/routes/vista3.py :: _construir_arbol` | Construye árbol completo para render servidor |
+
+#### Partials del sistema de tabs
+```
+app/templates/vistas/vista3/
+├── _expediente_body.html        ← cabecera (sin cambios)
+├── _tabs_solicitudes.html       ← nivel 1
+├── _tabs_fases.html             ← nivel 2 (usa sol_data del contexto)
+├── _tabs_tramites.html          ← nivel 3 (usa fase_data del contexto)
+├── _tabs_tareas.html            ← nivel 4 (usa tram_data del contexto)
+├── _cuerpo_solicitud.html       ← V4 inline
+├── _cuerpo_fase.html            ← V4 inline (requiere resultados_fase en contexto)
+├── _cuerpo_tramite.html         ← V4 inline
+├── _cuerpo_tarea.html           ← V4 inline + tabla docs
+├── _modal_nueva_solicitud.html  ← modal crear solicitud
+├── _modal_nueva_fase.html       ← modal crear fase
+├── _modal_nuevo_tramite.html    ← modal crear trámite
+└── _modal_nueva_tarea.html      ← modal crear tarea
 ```
 
-```css
-.accordion-button {
-  display: flex;
-  justify-content: space-between;
-}
+#### Edición inline (patrón V4 en tabs)
+- Botón "Editar" → activa modo editar via JS: `[data-modo-ver]` se ocultan, `[data-modo-editar]` aparecen
+- Campos especiales:
+  - Fechas: `<input type="text" data-modo-ver data-display-for="campo" data-display-format="date">` + `<input type="date" name="campo" data-modo-editar>`
+  - Selects: `<input type="text" data-modo-ver data-display-for="campo">` + `<select name="campo" data-modo-editar>`
+  - Textareas (observaciones, notas): un solo elemento, toggle `readonly`
 
-.col-tipo { width: 200px; }
-.col-fases { width: 100px; }
-.col-tramites { width: 100px; }
-```
+#### Creación de entidades hija
+- Clic en `.btn-nueva-entidad` → JS actualiza `data-parent-id` en el modal y lo abre
+- Submit del modal → POST al endpoint existente → `location.reload()`
 
-#### Anidación Visual (Indentación)
-```css
-/* Cada nivel anidado: margen + borde color */
-.accordion .accordion {
-  margin-left: 2rem;
-  border-left: 3px solid #0d6efd;
-  padding-left: 1rem;
-}
+#### Borrado
+- Clic en `.btn-borrar-entidad` → confirm → POST `/api/vista3/<nivel>/<id>/borrar`
+- Si ok → DOM: activar tab anterior, eliminar `<li>` + `<div.tab-pane>`
 
-.accordion .accordion .accordion {
-  border-left-color: #198754; /* Trámites */
-}
+#### Endpoints backend
+| Operación | URL |
+|-----------|-----|
+| Crear solicitud | POST `/api/vista3/expediente/<id>/solicitudes/nueva` |
+| Crear fase | POST `/api/vista3/solicitud/<id>/fases/nueva` |
+| Crear trámite | POST `/api/vista3/fase/<id>/tramites/nuevo` |
+| Crear tarea | POST `/api/vista3/tramite/<id>/tareas/nueva` |
+| Editar solicitud | POST `/api/vista3/solicitud/<id>/editar` |
+| Editar fase | POST `/api/vista3/fase/<id>/editar` |
+| Editar trámite | POST `/api/vista3/tramite/<id>/editar` |
+| Editar tarea | POST `/api/vista3/tarea/<id>/editar` |
+| Borrar solicitud | POST `/api/vista3/solicitud/<id>/borrar` |
+| Borrar fase | POST `/api/vista3/fase/<id>/borrar` |
+| Borrar trámite | POST `/api/vista3/tramite/<id>/borrar` |
+| Borrar tarea | POST `/api/vista3/tarea/<id>/borrar` |
 
-.accordion .accordion .accordion .accordion {
-  border-left-color: #ffc107; /* Tareas */
-}
-```
+#### Filtros Jinja2 registrados (app/__init__.py)
+`icono_solicitud`, `color_solicitud`, `icono_fase`, `color_fase`,
+`icono_tramite`, `color_tramite`, `icono_tarea`, `color_tarea`
+
+### Modelo de Datos Crítico
 
 ### Modelo de Datos Crítico
 

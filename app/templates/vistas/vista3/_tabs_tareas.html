@@ -1,0 +1,41 @@
+{# Tabs nivel 4 — Tareas de un trámite
+   Contexto requerido: tram_data (con tram_data.tareas)
+#}
+<ul class="nav nav-tabs tramitacion-tabs" role="tablist">
+    {% for tarea_data in tram_data.tareas %}
+    <li class="nav-item" role="presentation">
+        <button class="nav-link {% if loop.first %}active{% endif %}"
+                id="tab-tarea-{{ tarea_data.obj.id }}"
+                data-bs-toggle="tab"
+                data-bs-target="#panel-tarea-{{ tarea_data.obj.id }}"
+                type="button" role="tab"
+                data-tipo-codigo="{{ tarea_data.codigo }}"
+                title="{{ tarea_data.nombre }}">
+            <span class="tab-icon">
+                <i class="{{ tarea_data.codigo | icono_tarea_tipo }} {{ tarea_data.estado | color_tarea }}"></i>
+            </span>
+            <span class="tab-label">{{ tarea_data.codigo | formato_codigo }}</span>
+        </button>
+    </li>
+    {% endfor %}
+    <li class="nav-item li-btn-nueva">
+        <button class="nav-link btn-nueva-entidad" type="button"
+                data-nivel="tarea" data-parent-id="{{ tram_data.obj.id }}"
+                title="Nueva tarea">
+            <i class="fa-solid fa-plus"></i>
+        </button>
+    </li>
+</ul>
+
+<div class="tab-content mt-2">
+    {% for tarea_data in tram_data.tareas %}
+    <div class="tab-pane {% if loop.first %}show active{% endif %}"
+         id="panel-tarea-{{ tarea_data.obj.id }}"
+         role="tabpanel"
+         aria-labelledby="tab-tarea-{{ tarea_data.obj.id }}">
+        {% include 'vistas/vista3/_cuerpo_tarea.html' %}
+    </div>
+    {% else %}
+    <p class="text-secondary small mt-2">Sin tareas en este trámite.</p>
+    {% endfor %}
+</div>
