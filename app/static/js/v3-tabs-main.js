@@ -78,8 +78,13 @@ document.addEventListener('submit', async (e) => {
         // Cerrar modal y recargar la página para mostrar el nuevo elemento
         bootstrap.Modal.getInstance(modalEl)?.hide();
         if (data.advertencia) mostrarAdvertencia(data.advertencia.mensaje);
-        const tabActivo = document.querySelector('.tramitacion-tabs .nav-link.active');
-        if (tabActivo) sessionStorage.setItem('v3_tab_activo', tabActivo.id);
+        // Guardar todos los tabs activos + el nuevo elemento para restaurar tras reload
+        const tabsPadres = [...document.querySelectorAll('.tramitacion-tabs .nav-link.active')]
+            .map(btn => btn.id).filter(id => id);
+        sessionStorage.setItem('v3_tabs_restaurar', JSON.stringify({
+            padres: tabsPadres,
+            nuevo: `tab-${nivel}-${data.id}`,
+        }));
         location.reload();
     } catch (err) {
         mostrarError('Error de red: ' + err.message);
@@ -285,13 +290,20 @@ function _buildCrearEndpoint(nivel, parentId) {
     return map[nivel] || null;
 }
 
-// Inicializar tooltips y restaurar tab activo tras reload
+// Inicializar tooltips y restaurar tabs activos tras crear elemento
 document.addEventListener('DOMContentLoaded', () => {
-    const tabId = sessionStorage.getItem('v3_tab_activo');
-    if (tabId) {
-        sessionStorage.removeItem('v3_tab_activo');
-        const btn = document.getElementById(tabId);
-        if (btn) new bootstrap.Tab(btn).show();
+    const restaurarStr = sessionStorage.getItem('v3_tabs_restaurar');
+    if (restaurarStr) {
+        sessionStorage.removeItem('v3_tabs_restaurar');
+        const { padres, nuevo } = JSON.parse(restaurarStr);
+        // Restaurar tabs padre en orden (nivel 1 → 4) para que los paneles estén visibles
+        padres.forEach(id => {
+            const btn = document.getElementById(id);
+            if (btn) new bootstrap.Tab(btn).show();
+        });
+        // Activar el tab del elemento recién creado
+        const btnNuevo = document.getElementById(nuevo);
+        if (btnNuevo) new bootstrap.Tab(btnNuevo).show();
     }
     document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
         new bootstrap.Tooltip(el);
