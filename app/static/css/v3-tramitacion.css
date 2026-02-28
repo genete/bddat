@@ -313,3 +313,18 @@
 
 /* Tab pendiente — recién creado sin fechas */
 .tab-pendiente { font-style: italic; color: #6c757d; }
+
+/* === Colores por nivel (C1) === */
+.card-header-fase    { background-color: #0d6efd; color: #fff; }
+.card-header-tramite { background-color: #fd7e14; color: #fff; }
+.card-header-tarea   { background-color: #6f42c1; color: #fff; }
+
+.tabs-nivel-1 .nav-link.active { background-color: #087021; color: #fff; font-weight: 700; border-color: #087021; }
+.tabs-nivel-2 .nav-link.active { background-color: #0d6efd; color: #fff; font-weight: 700; border-color: #0d6efd; }
+.tabs-nivel-3 .nav-link.active { background-color: #fd7e14; color: #fff; font-weight: 700; border-color: #fd7e14; }
+.tabs-nivel-4 .nav-link.active { background-color: #6f42c1; color: #fff; font-weight: 700; border-color: #6f42c1; }
+
+.tabs-nivel-1 .nav-link:not(.active):not(.btn-nueva-entidad) { font-weight: 700; color: #087021; }
+.tabs-nivel-2 .nav-link:not(.active):not(.btn-nueva-entidad) { font-weight: 700; color: #0d6efd; }
+.tabs-nivel-3 .nav-link:not(.active):not(.btn-nueva-entidad) { font-weight: 700; color: #fd7e14; }
+.tabs-nivel-4 .nav-link:not(.active):not(.btn-nueva-entidad) { font-weight: 700; color: #6f42c1; }
