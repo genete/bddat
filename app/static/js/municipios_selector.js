@@ -55,8 +55,8 @@ class MunicipiosSelector {
             }
         });
 
-        // Cargar provincias desde API al inicio
-        fetch('/api/provincias')
+        // Cargar provincias desde API al inicio (solo Andalucía: instalaciones AT de la Junta)
+        fetch('/api/provincias?solo_andalucia=true')
             .then(r => r.json())
             .then(lista => this.sbProvincia.setOpciones(lista.map(n => ({ v: n, t: n }))))
             .catch(e => console.error('Error cargando provincias:', e));

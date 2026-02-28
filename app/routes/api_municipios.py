@@ -3,7 +3,7 @@ API REST para búsqueda de provincias y municipios.
 Usado por dropdowns con búsqueda substring en formularios.
 """
 from flask import Blueprint, jsonify, request
-from app.models.municipios import Municipio
+from app.models.municipios import Municipio, CODIGOS_PROVINCIA_ANDALUCIA
 from sqlalchemy import func
 
 bp = Blueprint('api_municipios', __name__, url_prefix='/api')
@@ -13,32 +13,42 @@ bp = Blueprint('api_municipios', __name__, url_prefix='/api')
 def buscar_provincias():
     """
     Búsqueda de provincias con substring match.
-    
+
     Query params:
     - q: término de búsqueda (opcional)
-    
+    - solo_andalucia: si es 'true', restringe a las 8 provincias andaluzas
+
     Returns:
         JSON: ["Sevilla", "Málaga", ...]
-    
+
     Ejemplo:
         /api/provincias?q=la
-        → ["Sevilla", "Málaga"]  (contienen 'la')
+        → ["Sevilla", "Málaga"]  (contienen 'la', todas España)
+        /api/provincias?solo_andalucia=true
+        → 8 provincias andaluzas
     """
     query = request.args.get('q', '').strip()
-    
+    solo_andalucia = request.args.get('solo_andalucia', '').lower() == 'true'
+
     # Query base: provincias únicas
     provincias_query = Municipio.query.with_entities(
         Municipio.provincia
     ).distinct().order_by(Municipio.provincia)
-    
+
+    # Filtro opcional: solo Andalucía (por código INE, robusto ante variaciones de texto)
+    if solo_andalucia:
+        provincias_query = provincias_query.filter(
+            func.substring(Municipio.codigo, 1, 2).in_(CODIGOS_PROVINCIA_ANDALUCIA)
+        )
+
     # Filtro substring (case-insensitive)
     if query:
         provincias_query = provincias_query.filter(
             func.lower(Municipio.provincia).like(f'%{query.lower()}%')
         )
-    
+
     provincias = [p.provincia for p in provincias_query.all()]
-    
+
     return jsonify(provincias)
 
 
