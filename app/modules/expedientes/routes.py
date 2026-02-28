@@ -81,7 +81,7 @@ def tramitacion_v3(id):
         'expedientes/tramitacion_v3.html',
         expediente=expediente,
         solicitudes_arbol=_construir_arbol(expediente.id),
-        tipos_solicitud=TipoSolicitud.query.order_by(TipoSolicitud.nombre).all(),
+        tipos_solicitud=TipoSolicitud.query.order_by(TipoSolicitud.siglas).all(),
         tipos_fase=TipoFase.query.order_by(TipoFase.nombre).all(),
         tipos_tramite=TipoTramite.query.order_by(TipoTramite.nombre).all(),
         tipos_tarea=TipoTarea.query.order_by(TipoTarea.nombre).all(),
