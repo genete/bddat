@@ -8,11 +8,19 @@
  * Colores: Junta de Andalucía (v2-theme.css)
  */
 
+/* El login no tiene breadcrumb: reducir la altura reservada al header a solo la fila de nav */
+.app-container {
+  --header-height: var(--header-nav-height);
+}
+
 /* ===== LOGIN CONTAINER (SPLIT-SCREEN) ===== */
 .login-container {
   display: grid;
-  grid-template-columns: 60% 40%;
+  grid-template-columns: 1fr 1fr;   /* 50/50 simétrico */
   min-height: calc(100vh - var(--header-height) - var(--footer-height));
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
   gap: 0;
 }
 

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}BDDAT{% endblock %} - Junta de Andalucía</title>
+    <title>BDDAT - {% block title %}{% endblock %}</title>
     <link rel="icon" href="data:,">
 
     <!-- CDN oficial Junta de Andalucía v1.2.5 (Bootstrap 5.3.3 + FA 6.5.1 + tipografía) Ref: #132 -->
@@ -22,11 +22,13 @@
     <!-- A: Grid Principal -->
     <div class="app-container">
         
-        <!-- B.1: Header (sticky, simplificado sin breadcrumb ni usuario) -->
+        <!-- B.1: Header (sticky, simplificado: solo fila nav sin módulos ni usuario) -->
         <header class="app-header">
-            <div class="logo">
-                <i class="fas fa-bolt"></i>
-                BDDAT
+            <div class="header-nav-row">
+                <span class="logo">
+                    <i class="fas fa-bolt"></i>
+                    BDDAT
+                </span>
             </div>
         </header>
         
