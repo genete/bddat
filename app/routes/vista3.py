@@ -482,6 +482,14 @@ def borrar_solicitud(sol_id):
     if not res_eval.permitido:
         return jsonify({'ok': False, 'error': res_eval.mensaje, 'norma': res_eval.norma}), 422
 
+    fase_ids = [f.id for f in Fase.query.filter_by(solicitud_id=sol_id).all()]
+    if fase_ids:
+        tram_ids = [t.id for t in Tramite.query.filter(Tramite.fase_id.in_(fase_ids)).all()]
+        if tram_ids:
+            Tarea.query.filter(Tarea.tramite_id.in_(tram_ids)).delete()
+        Tramite.query.filter(Tramite.fase_id.in_(fase_ids)).delete()
+    Fase.query.filter_by(solicitud_id=sol_id).delete()
+    SolicitudTipo.query.filter_by(solicitudid=sol_id).delete()
     db.session.delete(sol)
     db.session.commit()
     return jsonify({'ok': True})
@@ -585,6 +593,10 @@ def borrar_fase(fase_id):
     if not res_eval.permitido:
         return jsonify({'ok': False, 'error': res_eval.mensaje, 'norma': res_eval.norma}), 422
 
+    tram_ids = [t.id for t in Tramite.query.filter_by(fase_id=fase_id).all()]
+    if tram_ids:
+        Tarea.query.filter(Tarea.tramite_id.in_(tram_ids)).delete()
+    Tramite.query.filter_by(fase_id=fase_id).delete()
     db.session.delete(fase)
     db.session.commit()
     return jsonify({'ok': True})
@@ -603,6 +615,7 @@ def borrar_tramite(tram_id):
     if not res_eval.permitido:
         return jsonify({'ok': False, 'error': res_eval.mensaje, 'norma': res_eval.norma}), 422
 
+    Tarea.query.filter_by(tramite_id=tram_id).delete()
     db.session.delete(tramite)
     db.session.commit()
     return jsonify({'ok': True})
