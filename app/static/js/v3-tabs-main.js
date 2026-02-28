@@ -320,9 +320,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const btn = document.getElementById(id);
             if (btn) new bootstrap.Tab(btn).show();
         });
-        // Activar el tab del elemento recién creado
+        // Activar el tab del elemento recién creado y hacer scroll hasta él
         const btnNuevo = document.getElementById(nuevo);
-        if (btnNuevo) new bootstrap.Tab(btnNuevo).show();
+        if (btnNuevo) {
+            new bootstrap.Tab(btnNuevo).show();
+            btnNuevo.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
     }
     document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
         new bootstrap.Tooltip(el);
