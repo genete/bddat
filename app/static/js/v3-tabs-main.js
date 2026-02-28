@@ -88,6 +88,23 @@ document.addEventListener('submit', async (e) => {
 });
 
 
+// ── Cancelar edición al cambiar de tab ────────────────────────────────────────
+
+document.addEventListener('hide.bs.tab', (e) => {
+    const panelId = e.target.dataset.bsTarget;
+    if (!panelId) return;
+    const panel = document.querySelector(panelId);
+    if (!panel) return;
+    panel.querySelectorAll('.card').forEach(card => {
+        if (card.querySelector('[data-modo-editar]:not(.d-none)')) {
+            const form = card.querySelector('form');
+            if (form) form.reset();
+            _toggleModoEditar(card, false);
+        }
+    });
+});
+
+
 // ── Toggle edición inline ─────────────────────────────────────────────────────
 
 document.addEventListener('click', (e) => {
