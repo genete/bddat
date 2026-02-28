@@ -96,6 +96,52 @@ def create_app(config_name='development'):
     app.jinja_env.trim_blocks = True
     app.jinja_env.lstrip_blocks = True
 
+    # Filtros Jinja2 para iconos/colores en V3 tabs (issue #150)
+    def _icono_solicitud(estado):
+        return {
+            'EN_TRAMITE': 'fa-solid fa-file-contract',
+            'RESUELTA':   'fa-solid fa-file-circle-check',
+            'DESISTIDA':  'fa-solid fa-file-circle-xmark',
+            'ARCHIVADA':  'fa-regular fa-file',
+        }.get(estado, 'fa-regular fa-file')
+
+    def _color_solicitud(estado):
+        return {'EN_TRAMITE': 'text-warning', 'RESUELTA': 'text-success'}.get(estado, 'text-secondary')
+
+    def _icono_fase(estado):
+        return {
+            'En curso':   'fa-solid fa-sitemap',
+            'Finalizada': 'fa-solid fa-sitemap',
+        }.get(estado, 'fa-solid fa-sitemap')
+
+    def _color_fase(estado):
+        return {'En curso': 'text-warning', 'Finalizada': 'text-success'}.get(estado, 'text-secondary')
+
+    def _icono_tramite(estado):
+        return {
+            'En curso':   'fa-solid fa-clipboard-list',
+            'Finalizado': 'fa-solid fa-clipboard-check',
+        }.get(estado, 'fa-regular fa-clipboard')
+
+    def _color_tramite(estado):
+        return {'En curso': 'text-warning', 'Finalizado': 'text-success'}.get(estado, 'text-secondary')
+
+    def _icono_tarea(estado):
+        return {
+            'En curso':   'fa-solid fa-pen-to-square',
+            'Finalizada': 'fa-solid fa-square-check',
+        }.get(estado, 'fa-regular fa-square')
+
+    def _color_tarea(estado):
+        return {'En curso': 'text-warning', 'Finalizada': 'text-success'}.get(estado, 'text-secondary')
+
+    app.jinja_env.filters.update({
+        'icono_solicitud': _icono_solicitud, 'color_solicitud': _color_solicitud,
+        'icono_fase':      _icono_fase,      'color_fase':      _color_fase,
+        'icono_tramite':   _icono_tramite,   'color_tramite':   _color_tramite,
+        'icono_tarea':     _icono_tarea,     'color_tarea':     _color_tarea,
+    })
+
     # Manejadores de errores HTTP
     @app.errorhandler(404)
     def not_found_error(error):

@@ -1,0 +1,35 @@
+{# Modal para crear nueva tarea
+   El data-parent-id se actualiza desde JS antes de abrir
+#}
+<div class="modal fade" id="modal-nueva-tarea" tabindex="-1"
+     aria-labelledby="modal-nueva-tarea-label">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modal-nueva-tarea-label">
+                    <i class="fa-solid fa-pen-to-square me-1"></i> Nueva Tarea
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form class="form-nueva-entidad" data-nivel="tarea">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Tipo de tarea <span class="text-danger">*</span></label>
+                        <select class="form-select" name="tipo_tarea_id" required>
+                            <option value="">— Selecciona tipo —</option>
+                            {% for t in tipos_tarea %}
+                            <option value="{{ t.id }}">{{ t.nombre }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fa-solid fa-plus me-1"></i> Crear
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

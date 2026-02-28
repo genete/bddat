@@ -1,0 +1,35 @@
+{# Modal para crear nuevo trámite
+   El data-parent-id se actualiza desde JS antes de abrir
+#}
+<div class="modal fade" id="modal-nueva-tramite" tabindex="-1"
+     aria-labelledby="modal-nueva-tramite-label">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modal-nueva-tramite-label">
+                    <i class="fa-solid fa-clipboard-list me-1"></i> Nuevo Trámite
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form class="form-nueva-entidad" data-nivel="tramite">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Tipo de trámite <span class="text-danger">*</span></label>
+                        <select class="form-select" name="tipo_tramite_id" required>
+                            <option value="">— Selecciona tipo —</option>
+                            {% for t in tipos_tramite %}
+                            <option value="{{ t.id }}">{{ t.nombre }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fa-solid fa-plus me-1"></i> Crear
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

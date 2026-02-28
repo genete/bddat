@@ -1,0 +1,66 @@
+{# Cuerpo de trámite — patrón V4 (ver/editar inline)
+   Contexto: tram_data
+#}
+<div class="card mb-3">
+    <div class="card-header card-header-accent d-flex justify-content-between align-items-center">
+        <span><i class="fa-solid fa-clipboard-list me-1"></i> {{ tram_data.nombre }}</span>
+        <div>
+            <div data-modo-ver>
+                <button type="button" class="btn btn-sm btn-outline-primary btn-editar-entidad">
+                    <i class="fa-solid fa-pen"></i> Editar
+                </button>
+            </div>
+            <div data-modo-editar class="d-none d-flex gap-1">
+                <button type="submit" form="form-tramite-{{ tram_data.obj.id }}"
+                        class="btn btn-sm btn-success">
+                    <i class="fa-solid fa-save"></i> Guardar
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-secondary btn-cancelar-edicion">
+                    Cancelar
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-danger btn-borrar-entidad"
+                        data-nivel="tramite" data-id="{{ tram_data.obj.id }}"
+                        data-bs-toggle="tooltip" title="Eliminar trámite">
+                    <i class="fa-solid fa-trash"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+    <div class="card-body card-body-tinted">
+        <form id="form-tramite-{{ tram_data.obj.id }}"
+              class="form-detail form-editar-entidad"
+              data-nivel="tramite"
+              data-entidad-id="{{ tram_data.obj.id }}">
+            <div class="row g-3">
+
+                {# Fecha inicio #}
+                <div class="col-md-3">
+                    <label class="fw-semibold">Fecha inicio</label>
+                    <input type="text" class="form-control"
+                           value="{{ tram_data.obj.fecha_inicio.strftime('%d/%m/%Y') if tram_data.obj.fecha_inicio else '' }}"
+                           readonly data-modo-ver data-display-for="fecha_inicio" data-display-format="date">
+                    <input type="date" class="form-control d-none" name="fecha_inicio" data-modo-editar
+                           value="{{ tram_data.obj.fecha_inicio.isoformat() if tram_data.obj.fecha_inicio else '' }}">
+                </div>
+
+                {# Fecha fin #}
+                <div class="col-md-3">
+                    <label class="fw-semibold">Fecha fin</label>
+                    <input type="text" class="form-control"
+                           value="{{ tram_data.obj.fecha_fin.strftime('%d/%m/%Y') if tram_data.obj.fecha_fin else '' }}"
+                           readonly data-modo-ver data-display-for="fecha_fin" data-display-format="date">
+                    <input type="date" class="form-control d-none" name="fecha_fin" data-modo-editar
+                           value="{{ tram_data.obj.fecha_fin.isoformat() if tram_data.obj.fecha_fin else '' }}">
+                </div>
+
+                {# Observaciones #}
+                <div class="col-12">
+                    <label class="fw-semibold">Observaciones</label>
+                    <textarea class="form-control" name="observaciones" rows="2"
+                              readonly>{{ tram_data.obj.observaciones or '' }}</textarea>
+                </div>
+
+            </div>
+        </form>
+    </div>
+</div>

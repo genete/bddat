@@ -1,0 +1,83 @@
+{# Cuerpo de fase — patrón V4 (ver/editar inline)
+   Contexto: fase_data, resultados_fase
+#}
+<div class="card mb-3">
+    <div class="card-header card-header-accent d-flex justify-content-between align-items-center">
+        <span><i class="fa-solid fa-sitemap me-1"></i> {{ fase_data.nombre }}</span>
+        <div>
+            <div data-modo-ver>
+                <button type="button" class="btn btn-sm btn-outline-primary btn-editar-entidad">
+                    <i class="fa-solid fa-pen"></i> Editar
+                </button>
+            </div>
+            <div data-modo-editar class="d-none d-flex gap-1">
+                <button type="submit" form="form-fase-{{ fase_data.obj.id }}"
+                        class="btn btn-sm btn-success">
+                    <i class="fa-solid fa-save"></i> Guardar
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-secondary btn-cancelar-edicion">
+                    Cancelar
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-danger btn-borrar-entidad"
+                        data-nivel="fase" data-id="{{ fase_data.obj.id }}"
+                        data-bs-toggle="tooltip" title="Eliminar fase">
+                    <i class="fa-solid fa-trash"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+    <div class="card-body card-body-tinted">
+        <form id="form-fase-{{ fase_data.obj.id }}"
+              class="form-detail form-editar-entidad"
+              data-nivel="fase"
+              data-entidad-id="{{ fase_data.obj.id }}">
+            <div class="row g-3">
+
+                {# Fecha inicio #}
+                <div class="col-md-3">
+                    <label class="fw-semibold">Fecha inicio</label>
+                    <input type="text" class="form-control"
+                           value="{{ fase_data.obj.fecha_inicio.strftime('%d/%m/%Y') if fase_data.obj.fecha_inicio else '' }}"
+                           readonly data-modo-ver data-display-for="fecha_inicio" data-display-format="date">
+                    <input type="date" class="form-control d-none" name="fecha_inicio" data-modo-editar
+                           value="{{ fase_data.obj.fecha_inicio.isoformat() if fase_data.obj.fecha_inicio else '' }}">
+                </div>
+
+                {# Fecha fin #}
+                <div class="col-md-3">
+                    <label class="fw-semibold">Fecha fin</label>
+                    <input type="text" class="form-control"
+                           value="{{ fase_data.obj.fecha_fin.strftime('%d/%m/%Y') if fase_data.obj.fecha_fin else '' }}"
+                           readonly data-modo-ver data-display-for="fecha_fin" data-display-format="date">
+                    <input type="date" class="form-control d-none" name="fecha_fin" data-modo-editar
+                           value="{{ fase_data.obj.fecha_fin.isoformat() if fase_data.obj.fecha_fin else '' }}">
+                </div>
+
+                {# Resultado #}
+                <div class="col-md-4">
+                    <label class="fw-semibold">Resultado</label>
+                    <input type="text" class="form-control"
+                           value="{{ fase_data.obj.resultado_fase.nombre if fase_data.obj.resultado_fase else '' }}"
+                           readonly data-modo-ver data-display-for="resultado_fase_id">
+                    <select class="form-select d-none" name="resultado_fase_id" data-modo-editar>
+                        <option value="">— Sin resultado —</option>
+                        {% for rf in resultados_fase %}
+                        <option value="{{ rf.id }}"
+                                {% if fase_data.obj.resultado_fase_id == rf.id %}selected{% endif %}>
+                            {{ rf.nombre }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                {# Observaciones #}
+                <div class="col-12">
+                    <label class="fw-semibold">Observaciones</label>
+                    <textarea class="form-control" name="observaciones" rows="2"
+                              readonly>{{ fase_data.obj.observaciones or '' }}</textarea>
+                </div>
+
+            </div>
+        </form>
+    </div>
+</div>

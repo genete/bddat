@@ -2,6 +2,10 @@
 
 {% block title %}Tramitación AT-{{ expediente.numero_at }} - BDDAT{% endblock %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/v3-tramitacion.css') }}">
+{% endblock %}
+
 {% block breadcrumb %}
 <a href="{{ url_for('dashboard.index') }}">Inicio</a>
 <span>›</span>
@@ -13,47 +17,32 @@
 {% endblock %}
 
 {% block content %}
-{# C.1: Cabecera fija — no scrollea #}
+{# C.1: Cabecera fija — expediente + título #}
 <div class="lista-cabecera px-3 pt-3">
     <div class="d-flex align-items-center justify-content-between mb-2">
         <h2 class="mb-0">Tramitación AT-{{ expediente.numero_at }}</h2>
-        <div class="d-flex gap-2">
-            <button id="btn-expandir-todo" type="button" class="btn btn-sm btn-outline-primary">
-                <i class="fas fa-expand-alt me-1"></i> Expandir todo
-            </button>
-            <button id="btn-colapsar-todo" type="button" class="btn btn-sm btn-outline-primary">
-                <i class="fas fa-compress-alt me-1"></i> Colapsar todo
-            </button>
-            <a href="{{ url_for('expedientes.detalle', id=expediente.id) }}"
-               class="btn btn-sm btn-outline-secondary">
-                <i class="fas fa-arrow-left me-1"></i> Volver al detalle
-            </a>
-        </div>
+        <a href="{{ url_for('expedientes.detalle', id=expediente.id) }}"
+           class="btn btn-sm btn-outline-secondary">
+            <i class="fa-solid fa-arrow-left me-1"></i> Volver al detalle
+        </a>
     </div>
-    {# Bloque del expediente — siempre visible, fijo sobre los acordeones #}
     {% include 'vistas/vista3/_expediente_body.html' %}
 </div>
 
-{# C.2: Acordeones con scroll propio #}
-<div class="lista-scroll-container">
-    <div id="tramitacion-container"
-         class="accordion vista3-acordeon p-3"
-         data-expediente-id="{{ expediente.id }}">
-        {% for sol_data in solicitudes %}
-            {% include 'vistas/vista3/_acordeon_solicitud.html' %}
-        {% else %}
-            <div class="alert alert-info mt-2">
-                <i class="fas fa-info-circle me-2"></i>
-                Este expediente no tiene solicitudes registradas.
-            </div>
-        {% endfor %}
+{# C.2: Contenido con scroll — tabs 4 niveles #}
+<div class="lista-scroll-container p-3">
+    <div data-tabs-nivel="solicitud" data-parent-id="{{ expediente.id }}">
+        {% include 'vistas/vista3/_tabs_solicitudes.html' %}
     </div>
 </div>
 
-<script src="{{ url_for('static', filename='js/acordeon_lazy.js') }}"></script>
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-    initAcordeonLazy('tramitacion-container');
-});
-</script>
+{# Modales de creación (uno por nivel) #}
+{% include 'vistas/vista3/_modal_nueva_solicitud.html' %}
+{% include 'vistas/vista3/_modal_nueva_fase.html' %}
+{% include 'vistas/vista3/_modal_nuevo_tramite.html' %}
+{% include 'vistas/vista3/_modal_nueva_tarea.html' %}
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/v3-tabs-main.js') }}"></script>
 {% endblock %}

@@ -96,22 +96,7 @@ def get_arbol(exp_id):
     if resultado:
         return jsonify({'error': 'Acceso denegado'}), 403
 
-    # Construir estructura anidada completa
-    solicitudes_arbol = []
-    for sol_data in _get_solicitudes_con_stats(exp_id):
-        fases_arbol = []
-        for fase_data in _get_fases_con_stats(sol_data['obj'].id):
-            tramites_arbol = []
-            for tramite_data in _get_tramites_con_stats(fase_data['obj'].id):
-                tareas = _get_tareas_con_stats(tramite_data['obj'].id)
-                tareas_con_docs = [
-                    {**t, 'documentos': _get_documentos_tarea(t['obj'].id)}
-                    for t in tareas
-                ]
-                tramites_arbol.append({**tramite_data, 'tareas': tareas_con_docs})
-            fases_arbol.append({**fase_data, 'tramites': tramites_arbol})
-        solicitudes_arbol.append({**sol_data, 'fases': fases_arbol})
-
+    solicitudes_arbol = _construir_arbol(exp_id)
     resultados_fase = TipoResultadoFase.query.order_by(TipoResultadoFase.nombre).all()
     html = render_template(
         'vistas/vista3/_arbol_completo.html',
@@ -119,6 +104,25 @@ def get_arbol(exp_id):
         resultados_fase=resultados_fase
     )
     return jsonify({'html': html, 'count': len(solicitudes_arbol)})
+
+
+def _construir_arbol(expediente_id):
+    """Construye árbol completo anidado de todos los niveles (para V3 tabs y acordeón)."""
+    solicitudes_arbol = []
+    for sol_data in _get_solicitudes_con_stats(expediente_id):
+        fases_arbol = []
+        for fase_data in _get_fases_con_stats(sol_data['obj'].id):
+            tramites_arbol = []
+            for tram_data in _get_tramites_con_stats(fase_data['obj'].id):
+                tareas = _get_tareas_con_stats(tram_data['obj'].id)
+                tareas_con_docs = [
+                    {**t, 'documentos': _get_documentos_tarea(t['obj'].id)}
+                    for t in tareas
+                ]
+                tramites_arbol.append({**tram_data, 'tareas': tareas_con_docs})
+            fases_arbol.append({**fase_data, 'tramites': tramites_arbol})
+        solicitudes_arbol.append({**sol_data, 'fases': fases_arbol})
+    return solicitudes_arbol
 
 
 # ============================================
@@ -431,6 +435,57 @@ def editar_tarea(tarea_id):
 # ============================================
 # ENDPOINTS POST — CREAR entidades
 # ============================================
+
+@bp.route('/expediente/<int:exp_id>/solicitudes/nueva', methods=['POST'])
+@login_required
+def crear_solicitud(exp_id):
+    """Crea una nueva solicitud en el expediente indicado."""
+    expediente = Expediente.query.get_or_404(exp_id)
+    resultado = verificar_acceso_expediente(expediente, 'editar')
+    if resultado:
+        return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
+
+    tipo_ids = request.form.getlist('tipo_solicitud_id[]', type=int)
+    fecha_str = request.form.get('fecha_solicitud')
+    entidad_id = request.form.get('entidad_id', type=int) or expediente.titular_id
+    if not tipo_ids or not fecha_str:
+        return jsonify({'ok': False, 'error': 'tipo y fecha son obligatorios'}), 400
+
+    try:
+        fecha = date.fromisoformat(fecha_str)
+    except ValueError:
+        return jsonify({'ok': False, 'error': 'Fecha inválida'}), 400
+
+    sol = Solicitud(expediente_id=exp_id, entidad_id=entidad_id,
+                    fecha_solicitud=fecha, estado='EN_TRAMITE')
+    db.session.add(sol)
+    db.session.flush()
+    for tipo_id in tipo_ids:
+        db.session.add(SolicitudTipo(solicitud_id=sol.id, tiposolicitudid=tipo_id))
+    db.session.commit()
+
+    tipos_objs = TipoSolicitud.query.filter(TipoSolicitud.id.in_(tipo_ids)).all()
+    tipos_str = '+'.join(t.siglas for t in tipos_objs) if tipos_objs else 'Nueva'
+    return jsonify({'ok': True, 'id': sol.id, 'tipos_str': tipos_str})
+
+
+@bp.route('/solicitud/<int:sol_id>/borrar', methods=['POST'])
+@login_required
+def borrar_solicitud(sol_id):
+    """Elimina una solicitud si el motor de reglas lo permite."""
+    sol = Solicitud.query.get_or_404(sol_id)
+    resultado = verificar_acceso_expediente(sol.expediente, 'editar')
+    if resultado:
+        return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
+
+    res_eval = evaluar('BORRAR', 'SOLICITUD', entidad_id=sol_id)
+    if not res_eval.permitido:
+        return jsonify({'ok': False, 'error': res_eval.mensaje, 'norma': res_eval.norma}), 422
+
+    db.session.delete(sol)
+    db.session.commit()
+    return jsonify({'ok': True})
+
 
 @bp.route('/solicitud/<int:sol_id>/fases/nueva', methods=['POST'])
 @login_required

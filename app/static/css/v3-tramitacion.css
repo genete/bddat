@@ -231,28 +231,85 @@
         position: relative;
         top: auto;
     }
-    
+
     .expediente-info h2 {
         font-size: 1.25rem;
     }
-    
+
     .proyecto-info h3 {
         font-size: 1rem;
     }
-    
+
     #accordionSolicitudes .accordion-button {
         font-size: 0.9rem;
         padding: 0.75rem;
     }
-    
+
     .accordion-anidado {
         margin-left: 0;
         border-left-width: 2px;
         padding-left: 0.5rem;
     }
-    
+
     /* Ocultar algunos badges en móvil para ahorrar espacio */
     .badge {
         font-size: 0.7rem;
     }
 }
+
+/* ===== TABS V3 — issue #150 ===== */
+
+.tramitacion-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    border-bottom: 1px solid #dee2e6;
+    scrollbar-width: thin;
+}
+
+.tramitacion-tabs .nav-link {
+    max-width: 180px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+}
+
+.tramitacion-tabs .nav-link .tab-icon { flex-shrink: 0; }
+.tramitacion-tabs .nav-link .tab-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 130px;
+}
+
+.tramitacion-tabs .btn-nueva-entidad {
+    color: #6c757d;
+    border: none;
+    background: none;
+    flex-shrink: 0;
+}
+.tramitacion-tabs .btn-nueva-entidad:hover { color: var(--bs-primary); }
+
+/* Indentación visual por nivel */
+.tabs-nivel-2 {
+    margin-top: 1rem;
+    border-top: 2px solid #dee2e6;
+    padding-top: 0.75rem;
+}
+.tabs-nivel-3 {
+    margin-top: 0.75rem;
+    border-top: 1px solid #e9ecef;
+    padding-top: 0.5rem;
+    margin-left: 0.5rem;
+}
+.tabs-nivel-4 {
+    margin-top: 0.5rem;
+    margin-left: 1rem;
+}
+
+/* Tab pendiente — recién creado sin fechas */
+.tab-pendiente { font-style: italic; color: #6c757d; }
