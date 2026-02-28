@@ -50,7 +50,7 @@ document.addEventListener('click', (e) => {
     bootstrap.Modal.getOrCreateInstance(modalEl).show();
 });
 
-// Submit de formulario de creación → POST → location.reload()
+// Submit de formulario de creación → POST → inyección dinámica en DOM
 document.addEventListener('submit', async (e) => {
     if (!e.target.classList.contains('form-nueva-entidad')) return;
     e.preventDefault();
@@ -75,15 +75,9 @@ document.addEventListener('submit', async (e) => {
             if (btnSubmit) btnSubmit.disabled = false;
             return;
         }
-        // Cerrar modal y recargar la página para mostrar el nuevo elemento
         bootstrap.Modal.getInstance(modalEl)?.hide();
         if (data.advertencia) mostrarAdvertencia(data.advertencia.mensaje);
-        // Guardar la cadena de tabs visibles + el nuevo elemento para restaurar tras reload
-        sessionStorage.setItem('v3_tabs_restaurar', JSON.stringify({
-            padres: _getCadenaTabsActivos(),
-            nuevo: `tab-${nivel}-${data.id}`,
-        }));
-        location.reload();
+        await _insertarNuevoTab(nivel, data.id, parentId);
     } catch (err) {
         mostrarError('Error de red: ' + err.message);
         if (btnSubmit) btnSubmit.disabled = false;
@@ -278,27 +272,6 @@ document.addEventListener('click', async (e) => {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-/**
- * Devuelve los IDs de los tabs activos en la cadena visible (nivel 1→4),
- * recorriendo los paneles activos de forma descendente para evitar incluir
- * tabs activos de paneles ocultos.
- */
-function _getCadenaTabsActivos() {
-    const cadena = [];
-    // Nivel 1 — solicitud
-    let btn = document.querySelector('.tabs-nivel-1 .tramitacion-tabs .nav-link.active:not(.btn-nueva-entidad)');
-    if (!btn?.id) return cadena;
-    cadena.push(btn.id);
-    // Niveles 2, 3, 4 — desciende por el panel activo de cada nivel
-    for (let i = 0; i < 3; i++) {
-        const panel = document.querySelector(btn.dataset.bsTarget);
-        btn = panel?.querySelector('.tramitacion-tabs .nav-link.active:not(.btn-nueva-entidad)');
-        if (!btn?.id) break;
-        cadena.push(btn.id);
-    }
-    return cadena;
-}
-
 function _buildCrearEndpoint(nivel, parentId) {
     const map = {
         solicitud: `/api/vista3/expediente/${parentId}/solicitudes/nueva`,
@@ -309,24 +282,60 @@ function _buildCrearEndpoint(nivel, parentId) {
     return map[nivel] || null;
 }
 
-// Inicializar tooltips y restaurar tabs activos tras crear elemento
-document.addEventListener('DOMContentLoaded', () => {
-    const restaurarStr = sessionStorage.getItem('v3_tabs_restaurar');
-    if (restaurarStr) {
-        sessionStorage.removeItem('v3_tabs_restaurar');
-        const { padres, nuevo } = JSON.parse(restaurarStr);
-        // Restaurar tabs padre en orden (nivel 1 → 4) para que los paneles estén visibles
-        padres.forEach(id => {
-            const btn = document.getElementById(id);
-            if (btn) new bootstrap.Tab(btn).show();
-        });
-        // Activar el tab del elemento recién creado y hacer scroll hasta él
-        const btnNuevo = document.getElementById(nuevo);
-        if (btnNuevo) {
-            new bootstrap.Tab(btnNuevo).show();
-            btnNuevo.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        }
+/** Localiza el tabList y tabContent del contenedor padre según nivel y parentId. */
+function _encontrarContenedorTab(nivel, parentId) {
+    const parentNivelMap = { solicitud: null, fase: 'solicitud', tramite: 'fase', tarea: 'tramite' };
+    const parentNivel = parentNivelMap[nivel];
+    const container = parentNivel
+        ? document.getElementById(`panel-${parentNivel}-${parentId}`)
+        : document.querySelector('.tabs-nivel-1');
+    if (!container) return {};
+    return {
+        tabList:    container.querySelector('.tramitacion-tabs'),
+        tabContent: container.querySelector('.tab-content'),
+    };
+}
+
+/**
+ * Hace fetch de la página, extrae el tab+panel del nuevo elemento
+ * e los inyecta en el DOM sin recargar la página.
+ */
+async function _insertarNuevoTab(nivel, id, parentId) {
+    const respHtml = await fetch(location.href);
+    const html = await respHtml.text();
+    const tempDoc = new DOMParser().parseFromString(html, 'text/html');
+
+    const newLi    = tempDoc.getElementById(`tab-${nivel}-${id}`)?.closest('li');
+    const newPanel = tempDoc.getElementById(`panel-${nivel}-${id}`);
+    if (!newLi || !newPanel) { location.reload(); return; }
+
+    // Quitar active/show: se activará manualmente
+    newLi.querySelector('.nav-link')?.classList.remove('active');
+    newPanel.classList.remove('active', 'show');
+
+    const { tabList, tabContent } = _encontrarContenedorTab(nivel, parentId);
+    if (!tabList || !tabContent) { location.reload(); return; }
+
+    // Insertar antes del botón "+"
+    const plusLi = tabList.querySelector('.btn-nueva-entidad')?.closest('li');
+    tabList.insertBefore(document.adoptNode(newLi), plusLi || null);
+    tabContent.appendChild(document.adoptNode(newPanel));
+
+    // Activar el nuevo tab y desplazar hasta él
+    const newBtn = document.getElementById(`tab-${nivel}-${id}`);
+    if (newBtn) {
+        new bootstrap.Tab(newBtn).show();
+        newBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
+
+    // Re-inicializar tooltips en el nuevo panel
+    document.getElementById(`panel-${nivel}-${id}`)
+        ?.querySelectorAll('[data-bs-toggle="tooltip"]')
+        .forEach(el => new bootstrap.Tooltip(el));
+}
+
+// Inicializar tooltips al cargar
+document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
         new bootstrap.Tooltip(el);
     });
