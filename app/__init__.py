@@ -145,8 +145,8 @@ def create_app(config_name='development'):
         return {'En curso': 'text-warning', 'Finalizada': 'text-success'}.get(estado, 'text-secondary')
 
     def _formato_codigo(s):
-        """ADMISIBILIDAD_TECNICA → Admisibilidad Tecnica (para labels de tab)."""
-        return s.replace('_', ' ').title() if s else ''
+        """ADMISIBILIDAD_TECNICA → ADMISIBILIDAD TECNICA (para labels de tab)."""
+        return s.replace('_', ' ') if s else ''
 
     app.jinja_env.filters.update({
         'icono_solicitud':  _icono_solicitud,  'color_solicitud': _color_solicitud,
