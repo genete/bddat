@@ -4,7 +4,7 @@
 > La verbosidad (qué falta, cómo hacerlo) vive en los issues de GitHub, no aquí.
 > La visión estratégica y clasificación de bloques está en `ESTRATEGIA_ROADMAP.md`.
 >
-> **Última actualización:** 2026-02-27
+> **Última actualización:** 2026-02-28
 
 ---
 
@@ -21,6 +21,9 @@
 - Componentes JS: SelectorBusqueda, ScrollInfinito, AcordeonLazy
 - Tablas BD motor de reglas: `reglas_motor`, `condiciones_regla`, `tipos_solicitudes_compatibles`
 - Modelos Python motor de reglas: ReglaMotor, CondicionRegla, TipoSolicitudCompatible
+- Evaluador motor de reglas: `app/services/motor_reglas.py` — evaluar(evento, entidad, ...) con checks hardcoded + criterios BD
+- Hooks INICIAR/FINALIZAR en rutas editar de Solicitud/Fase/Trámite/Tarea (vista3)
+- Rutas API JSON CREAR/BORRAR para Fase/Trámite/Tarea (vista3, sin botones UI aún)
 
 ---
 
@@ -45,10 +48,11 @@ Issues activos: #106
 ## M3 — Motor de reglas y plazos
 
 **Descripción:** Motor de reglas completo (evaluador + configuración) + plazos legales con suspensión.
-**Estado:** EN CURSO — diseño completo, implementación pendiente
+**Estado:** EN CURSO — evaluador implementado, pendiente UI de configuración y plazos
 
 Diseño: `docs/fuentesIA/MOTOR_REGLAS_arquitectura.md`
-Issues activos: #152, #74
+Issues activos: #74
+Issues cerrados: #152 (evaluador — PR #154, 2026-02-28)
 
 ---
 
