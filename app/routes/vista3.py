@@ -461,7 +461,7 @@ def crear_solicitud(exp_id):
     db.session.add(sol)
     db.session.flush()
     for tipo_id in tipo_ids:
-        db.session.add(SolicitudTipo(solicitud_id=sol.id, tiposolicitudid=tipo_id))
+        db.session.add(SolicitudTipo(solicitudid=sol.id, tiposolicitudid=tipo_id))
     db.session.commit()
 
     tipos_objs = TipoSolicitud.query.filter(TipoSolicitud.id.in_(tipo_ids)).all()
