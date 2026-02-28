@@ -313,12 +313,20 @@
 @media (max-width: 991px) {
   .login-container {
     grid-template-columns: 1fr;
-    grid-template-rows: auto 1fr;
+    grid-template-rows: auto auto;  /* ambas filas al alto de su contenido */
+    flex-shrink: 0;                 /* evita que flex de app-main lo comprima al min-height */
   }
-  
+
   .login-info {
     padding: 2rem;
     min-height: auto;
+    overflow: visible;              /* permitir que el contenido empuje el alto real */
+    justify-content: flex-start;   /* contenido visible desde arriba, overflow abajo */
+  }
+
+  /* Ocultar la decoración circular: ya no se necesita overflow:hidden para contenerla */
+  .login-info::before {
+    display: none;
   }
   
   .welcome-title {
