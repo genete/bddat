@@ -3,7 +3,7 @@
 #}
 <div class="card mb-3">
     <div class="card-header card-header-tramite d-flex justify-content-between align-items-center">
-        <span><i class="fa-solid fa-clipboard-list me-1"></i> {{ tram_data.nombre }}</span>
+        <span><i class="{{ tram_data.estado | icono_tramite }} {{ tram_data.estado | color_tramite }} me-1"></i> {{ tram_data.nombre }}</span>
         <div>
             <div data-modo-ver>
                 <button type="button" class="btn btn-sm btn-outline-primary btn-editar-entidad">

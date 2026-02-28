@@ -196,24 +196,24 @@ function _actualizarTabIcon(nivel, id, panel) {
     if (nivel === 'solicitud') {
         const est = estadoEl?.value || 'EN_TRAMITE';
         const map = {
-            'EN_TRAMITE': ['fa-solid fa-file-contract',      'text-warning'],
-            'RESUELTA':   ['fa-solid fa-file-circle-check',  'text-success'],
-            'DESISTIDA':  ['fa-solid fa-file-circle-xmark',  'text-secondary'],
-            'ARCHIVADA':  ['fa-regular fa-file',             'text-secondary'],
+            'EN_TRAMITE': ['bi bi-file-earmark-text',  'text-primary'],
+            'RESUELTA':   ['bi bi-file-earmark-check', 'text-success'],
+            'DESISTIDA':  ['bi bi-file-earmark-x',     'text-danger'],
+            'ARCHIVADA':  ['bi bi-file-earmark',       'text-secondary'],
         };
         [icono, color] = map[est] || map['EN_TRAMITE'];
     } else {
         const tieneFin    = fechaFinEl?.value;
         const tieneInicio = fechaInicioEl?.value;
-        const finIcons   = { fase: 'fa-solid fa-sitemap',       tramite: 'fa-solid fa-clipboard-check', tarea: 'fa-solid fa-square-check' };
-        const curIcons   = { fase: 'fa-solid fa-sitemap',       tramite: 'fa-solid fa-clipboard-list',  tarea: 'fa-solid fa-pen-to-square' };
-        const penIcons   = { fase: 'fa-solid fa-sitemap',       tramite: 'fa-regular fa-clipboard',     tarea: 'fa-regular fa-square' };
+        const finIcons   = { fase: 'bi bi-bar-chart-steps', tramite: 'bi bi-clipboard-check', tarea: 'bi bi-check-square' };
+        const curIcons   = { fase: 'bi bi-bar-chart-steps', tramite: 'bi bi-clipboard-pulse',  tarea: 'bi bi-pencil-square' };
+        const penIcons   = { fase: 'bi bi-bar-chart-steps', tramite: 'bi bi-clipboard',        tarea: 'bi bi-square' };
         if (tieneFin) {
-            icono = finIcons[nivel] || 'fa-regular fa-file'; color = 'text-success';
+            icono = finIcons[nivel] || 'bi bi-file-earmark'; color = 'text-success';
         } else if (tieneInicio) {
-            icono = curIcons[nivel] || 'fa-regular fa-file'; color = 'text-warning';
+            icono = curIcons[nivel] || 'bi bi-file-earmark'; color = 'text-warning';
         } else {
-            icono = penIcons[nivel] || 'fa-regular fa-file';
+            icono = penIcons[nivel] || 'bi bi-file-earmark';
         }
     }
     iconEl.className = `${icono} ${color}`;

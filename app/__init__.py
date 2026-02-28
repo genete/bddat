@@ -99,38 +99,35 @@ def create_app(config_name='development'):
     # Filtros Jinja2 para iconos/colores en V3 tabs (issue #150)
     def _icono_solicitud(estado):
         return {
-            'EN_TRAMITE': 'fa-solid fa-file-contract',
-            'RESUELTA':   'fa-solid fa-file-circle-check',
-            'DESISTIDA':  'fa-solid fa-file-circle-xmark',
-            'ARCHIVADA':  'fa-regular fa-file',
-        }.get(estado, 'fa-regular fa-file')
+            'EN_TRAMITE': 'bi bi-file-earmark-text',
+            'RESUELTA':   'bi bi-file-earmark-check',
+            'DESISTIDA':  'bi bi-file-earmark-x',
+            'ARCHIVADA':  'bi bi-file-earmark',
+        }.get(estado, 'bi bi-file-earmark')
 
     def _color_solicitud(estado):
-        return {'EN_TRAMITE': 'text-warning', 'RESUELTA': 'text-success'}.get(estado, 'text-secondary')
+        return {'EN_TRAMITE': 'text-primary', 'RESUELTA': 'text-success', 'DESISTIDA': 'text-danger'}.get(estado, 'text-secondary')
 
     def _icono_fase(estado):
-        return {
-            'En curso':   'fa-solid fa-sitemap',
-            'Finalizada': 'fa-solid fa-sitemap',
-        }.get(estado, 'fa-solid fa-sitemap')
+        return 'bi bi-bar-chart-steps'
 
     def _color_fase(estado):
         return {'En curso': 'text-warning', 'Finalizada': 'text-success'}.get(estado, 'text-secondary')
 
     def _icono_tramite(estado):
         return {
-            'En curso':   'fa-solid fa-clipboard-list',
-            'Finalizado': 'fa-solid fa-clipboard-check',
-        }.get(estado, 'fa-regular fa-clipboard')
+            'En curso':   'bi bi-clipboard-pulse',
+            'Finalizado': 'bi bi-clipboard-check',
+        }.get(estado, 'bi bi-clipboard')
 
     def _color_tramite(estado):
         return {'En curso': 'text-warning', 'Finalizado': 'text-success'}.get(estado, 'text-secondary')
 
     def _icono_tarea(estado):
         return {
-            'En curso':   'fa-solid fa-pen-to-square',
-            'Finalizada': 'fa-solid fa-square-check',
-        }.get(estado, 'fa-regular fa-square')
+            'En curso':   'bi bi-pencil-square',
+            'Finalizada': 'bi bi-check-square',
+        }.get(estado, 'bi bi-square')
 
     def _color_tarea(estado):
         return {'En curso': 'text-warning', 'Finalizada': 'text-success'}.get(estado, 'text-secondary')

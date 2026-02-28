@@ -3,7 +3,7 @@
 #}
 <div class="card mb-3">
     <div class="card-header card-header-accent d-flex justify-content-between align-items-center">
-        <span><i class="fa-solid fa-file-contract me-1"></i> Solicitud</span>
+        <span><i class="{{ sol_data.obj.estado | icono_solicitud }} {{ sol_data.obj.estado | color_solicitud }} me-1"></i> Solicitud</span>
         <div>
             <div data-modo-ver>
                 <button type="button" class="btn btn-sm btn-outline-primary btn-editar-entidad">
