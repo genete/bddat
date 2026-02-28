@@ -78,6 +78,8 @@ document.addEventListener('submit', async (e) => {
         // Cerrar modal y recargar la página para mostrar el nuevo elemento
         bootstrap.Modal.getInstance(modalEl)?.hide();
         if (data.advertencia) mostrarAdvertencia(data.advertencia.mensaje);
+        const tabActivo = document.querySelector('.tramitacion-tabs .nav-link.active');
+        if (tabActivo) sessionStorage.setItem('v3_tab_activo', tabActivo.id);
         location.reload();
     } catch (err) {
         mostrarError('Error de red: ' + err.message);
@@ -266,8 +268,14 @@ function _buildCrearEndpoint(nivel, parentId) {
     return map[nivel] || null;
 }
 
-// Inicializar tooltips de Bootstrap en toda la página
+// Inicializar tooltips y restaurar tab activo tras reload
 document.addEventListener('DOMContentLoaded', () => {
+    const tabId = sessionStorage.getItem('v3_tab_activo');
+    if (tabId) {
+        sessionStorage.removeItem('v3_tab_activo');
+        const btn = document.getElementById(tabId);
+        if (btn) new bootstrap.Tab(btn).show();
+    }
     document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
         new bootstrap.Tooltip(el);
     });
