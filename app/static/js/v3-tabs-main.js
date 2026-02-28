@@ -90,12 +90,16 @@ document.addEventListener('submit', async (e) => {
 
 document.addEventListener('click', (e) => {
     if (e.target.closest('.btn-editar-entidad')) {
-        const panel = e.target.closest('.tab-pane');
-        if (panel) _toggleModoEditar(panel, true);
+        const card = e.target.closest('.card');
+        if (card) _toggleModoEditar(card, true);
     }
     if (e.target.closest('.btn-cancelar-edicion')) {
-        const panel = e.target.closest('.tab-pane');
-        if (panel) _toggleModoEditar(panel, false);
+        const card = e.target.closest('.card');
+        if (card) {
+            const form = card.querySelector('form');
+            if (form) form.reset();
+            _toggleModoEditar(card, false);
+        }
     }
 });
 
@@ -138,10 +142,10 @@ document.addEventListener('submit', async (e) => {
             return;
         }
         // Actualizar campos de vista y volver a modo ver
-        const panel = form.closest('.tab-pane');
-        _aplicarCambiosAVista(panel);
-        _toggleModoEditar(panel, false);
-        _actualizarTabIcon(nivel, entidadId, panel);
+        const card = form.closest('.card');
+        _aplicarCambiosAVista(card);
+        _toggleModoEditar(card, false);
+        _actualizarTabIcon(nivel, entidadId, card);
         if (data.advertencia) mostrarAdvertencia(data.advertencia.mensaje);
     } catch (err) {
         mostrarError('Error de red: ' + err.message);
