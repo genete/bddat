@@ -314,16 +314,22 @@
 /* Tab pendiente — recién creado sin fechas */
 .tab-pendiente { font-style: italic; color: #6c757d; }
 
-/* === Colores por nivel (C1) === */
-.card-header-fase    { background-color: #0d6efd; color: #fff; }
-.card-header-tramite { background-color: #fd7e14; color: #fff; }
-.card-header-tarea   { background-color: #6f42c1; color: #fff; }
+/* === Colores por nivel (C1 revisado — headers y tabs pálidos) === */
 
-.tabs-nivel-1 .nav-link.active { background-color: #087021; color: #fff; font-weight: 700; border-color: #087021; }
-.tabs-nivel-2 .nav-link.active { background-color: #0d6efd; color: #fff; font-weight: 700; border-color: #0d6efd; }
-.tabs-nivel-3 .nav-link.active { background-color: #fd7e14; color: #fff; font-weight: 700; border-color: #fd7e14; }
-.tabs-nivel-4 .nav-link.active { background-color: #6f42c1; color: #fff; font-weight: 700; border-color: #6f42c1; }
+/* Fase: azul pálido (#cfe2ff) / texto azul oscuro */
+.card-header-fase    { background-color: #cfe2ff; color: #084298; }
+/* Trámite: naranja pálido (#fde8d1) / texto naranja oscuro */
+.card-header-tramite { background-color: #fde8d1; color: #8b4500; }
+/* Tarea: morado pálido (#e8d5f5) / texto morado oscuro */
+.card-header-tarea   { background-color: #e8d5f5; color: #4a1d8a; }
 
+/* Tabs activos: mismo pálido que el header, texto en color oscuro del nivel */
+.tabs-nivel-1 .nav-link.active { background-color: #c4ddca; color: #055218; font-weight: 700; border-color: #b0cdb7; border-bottom-color: #c4ddca; }
+.tabs-nivel-2 .nav-link.active { background-color: #cfe2ff; color: #084298; font-weight: 700; border-color: #9ec5fe; border-bottom-color: #cfe2ff; }
+.tabs-nivel-3 .nav-link.active { background-color: #fde8d1; color: #8b4500; font-weight: 700; border-color: #ffc69e; border-bottom-color: #fde8d1; }
+.tabs-nivel-4 .nav-link.active { background-color: #e8d5f5; color: #4a1d8a; font-weight: 700; border-color: #c9a8f0; border-bottom-color: #e8d5f5; }
+
+/* Tabs inactivos: texto en color saturado del nivel, en negrita */
 .tabs-nivel-1 .nav-link:not(.active):not(.btn-nueva-entidad) { font-weight: 700; color: #087021; }
 .tabs-nivel-2 .nav-link:not(.active):not(.btn-nueva-entidad) { font-weight: 700; color: #0d6efd; }
 .tabs-nivel-3 .nav-link:not(.active):not(.btn-nueva-entidad) { font-weight: 700; color: #fd7e14; }

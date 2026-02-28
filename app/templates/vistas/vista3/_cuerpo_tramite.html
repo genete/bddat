@@ -6,19 +6,19 @@
         <span><i class="{{ tram_data.estado | icono_tramite }} {{ tram_data.estado | color_tramite }} me-1"></i> {{ tram_data.nombre }}</span>
         <div>
             <div data-modo-ver>
-                <button type="button" class="btn btn-sm btn-outline-light btn-editar-entidad">
+                <button type="button" class="btn btn-sm btn-outline-primary btn-editar-entidad">
                     <i class="fa-solid fa-pen"></i> Editar
                 </button>
             </div>
             <div data-modo-editar class="d-none d-flex gap-1">
                 <button type="submit" form="form-tramite-{{ tram_data.obj.id }}"
-                        class="btn btn-sm btn-light">
+                        class="btn btn-sm btn-success">
                     <i class="fa-solid fa-save"></i> Guardar
                 </button>
-                <button type="button" class="btn btn-sm btn-outline-light btn-cancelar-edicion">
+                <button type="button" class="btn btn-sm btn-outline-secondary btn-cancelar-edicion">
                     Cancelar
                 </button>
-                <button type="button" class="btn btn-sm btn-danger btn-borrar-entidad"
+                <button type="button" class="btn btn-sm btn-outline-danger btn-borrar-entidad"
                         data-nivel="tramite" data-id="{{ tram_data.obj.id }}"
                         data-bs-toggle="tooltip" title="Eliminar trámite">
                     <i class="fa-solid fa-trash"></i>

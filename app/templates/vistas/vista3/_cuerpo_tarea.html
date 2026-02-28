@@ -6,19 +6,19 @@
         <span><i class="{{ tarea_data.estado | icono_tarea }} {{ tarea_data.estado | color_tarea }} me-1"></i> {{ tarea_data.nombre }}</span>
         <div>
             <div data-modo-ver>
-                <button type="button" class="btn btn-sm btn-outline-light btn-editar-entidad">
+                <button type="button" class="btn btn-sm btn-outline-primary btn-editar-entidad">
                     <i class="fa-solid fa-pen"></i> Editar
                 </button>
             </div>
             <div data-modo-editar class="d-none d-flex gap-1">
                 <button type="submit" form="form-tarea-{{ tarea_data.obj.id }}"
-                        class="btn btn-sm btn-light">
+                        class="btn btn-sm btn-success">
                     <i class="fa-solid fa-save"></i> Guardar
                 </button>
-                <button type="button" class="btn btn-sm btn-outline-light btn-cancelar-edicion">
+                <button type="button" class="btn btn-sm btn-outline-secondary btn-cancelar-edicion">
                     Cancelar
                 </button>
-                <button type="button" class="btn btn-sm btn-danger btn-borrar-entidad"
+                <button type="button" class="btn btn-sm btn-outline-danger btn-borrar-entidad"
                         data-nivel="tarea" data-id="{{ tarea_data.obj.id }}"
                         data-bs-toggle="tooltip" title="Eliminar tarea">
                     <i class="fa-solid fa-trash"></i>
