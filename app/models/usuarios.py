@@ -330,10 +330,15 @@ class Usuario(UserMixin, db.Model):
         """
         return any(rol.nombre in nombres_roles for rol in self.roles)
 
+    def rol_por_id(self, rol_id: int):
+        """Devuelve el Rol si está asignado al usuario, None en caso contrario.
+        Usado para validar el rol seleccionado en /auth/seleccionar-rol."""
+        return next((r for r in self.roles if r.id == rol_id), None)
+
     @property
     def es_admin(self):
         return self.tiene_rol('ADMIN')
-    
+
     @property
     def es_supervisor(self):
         return self.tiene_rol('SUPERVISOR')

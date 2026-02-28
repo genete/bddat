@@ -57,7 +57,17 @@
 
     <div class="user-menu">
         {% if current_user.is_authenticated %}
-            <span>{{ current_user.nombre }} {{ current_user.apellido1 or '' }}</span>
+            <span>
+                {{ current_user.nombre }} {{ current_user.apellido1 or '' }}
+                {% if session.get('rol_activo_nombre') %}
+                    <small class="opacity-75">({{ session.rol_activo_nombre }})</small>
+                {% endif %}
+            </span>
+            {% if session.get('rol_activo_id') and current_user.roles | length > 1 %}
+            <a href="{{ url_for('auth.seleccionar_rol') }}" title="Cambiar rol activo">
+                <i class="fas fa-exchange-alt"></i> Cambiar rol
+            </a>
+            {% endif %}
             <a href="{{ url_for('auth.logout') }}">
                 <i class="fas fa-sign-out-alt"></i> Salir
             </a>
