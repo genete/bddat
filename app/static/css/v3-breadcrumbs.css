@@ -1,0 +1,52 @@
+/*
+ * v3-breadcrumbs.css — Estilos específicos de la Vista 3 Breadcrumbs (issue #157)
+ *
+ * Complementa v2-layout.css y v2-components.css sin sobreescribirlos.
+ * Cargado solo en los templates tramitacion_bc*.html.
+ */
+
+/* ── Card de detalle del nodo actual ─────────────────────────────────────── */
+
+/* Sombra discreta en el card de cabecera de nivel */
+.bc-card-nodo {
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+/* Texto de metadatos dentro del card de nodo (fechas, estado) */
+.bc-meta {
+    font-size: 0.85rem;
+    color: var(--bs-secondary-color, #6c757d);
+}
+
+.bc-meta strong {
+    color: var(--bs-body-color);
+}
+
+/* ── Indicadores de estado en tabla de hijos ────────────────────────────── */
+
+/* Ampliar área de click de la flecha → en mobile */
+.table td:last-child .btn {
+    min-width: 2rem;
+}
+
+/* Alinear indicador al centro sin colapsar columna */
+.table th:first-child,
+.table td:first-child {
+    text-align: center;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+}
+
+/* ── Botones de acción en la cabecera (placeholders) ────────────────────── */
+
+.bc-acciones-bar {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+/* Separador visual entre info y botones dentro del card body */
+.bc-acciones-bar + .bc-acciones-bar {
+    margin-top: 0.5rem;
+}

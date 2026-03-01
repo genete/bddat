@@ -1,0 +1,121 @@
+{% extends 'layout/base_fullwidth.html' %}
+
+{% block title %}Tramitación AT-{{ expediente.numero_at }} — Tarea - BDDAT{% endblock %}
+
+{% block breadcrumb %}
+<a href="{{ url_for('dashboard.index') }}">Inicio</a>
+<span>›</span>
+<a href="{{ url_for('expedientes.listado_v2') }}">Expedientes</a>
+<span>›</span>
+<a href="{{ url_for('expedientes.detalle', id=expediente.id) }}">AT-{{ expediente.numero_at }}</a>
+<span>›</span>
+<a href="{{ url_for('expedientes.tramitacion_bc', exp_id=expediente.id) }}">Tramitación</a>
+<span>›</span>
+<a href="{{ url_for('expedientes.tramitacion_bc_solicitud', exp_id=expediente.id, sol_id=solicitud.id) }}">
+  Solicitud #{{ solicitud.id }}
+</a>
+<span>›</span>
+<a href="{{ url_for('expedientes.tramitacion_bc_fase', exp_id=expediente.id, sol_id=solicitud.id, fase_id=fase.id) }}">
+  {{ fase.tipo_fase.nombre if fase.tipo_fase else 'Fase #' ~ fase.id }}
+</a>
+<span>›</span>
+<a href="{{ url_for('expedientes.tramitacion_bc_tramite', exp_id=expediente.id, sol_id=solicitud.id, fase_id=fase.id, tram_id=tramite.id) }}">
+  {{ tramite.tipo_tramite.nombre if tramite.tipo_tramite else 'Trámite #' ~ tramite.id }}
+</a>
+<span>›</span>
+<span>{{ tarea.tipo_tarea.nombre if tarea.tipo_tarea else 'Tarea #' ~ tarea.id }}</span>
+{% endblock %}
+
+{% block extra_css %}{{ super() }}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/v3-breadcrumbs.css') }}">
+{% endblock %}
+
+{% block content %}
+
+<!-- Nivel Tarea: sin tabla de hijos, solo detalle + docs -->
+<div class="lista-cabecera px-3 pt-3">
+  <div class="card bc-card-nodo">
+    <div class="card-header card-header-accent d-flex justify-content-between align-items-center">
+      <span class="fw-semibold">
+        <i class="fas fa-check-square me-2"></i>
+        Tarea: {{ tarea.tipo_tarea.nombre if tarea.tipo_tarea else '#' ~ tarea.id }}
+      </span>
+      <div class="bc-acciones-bar">
+        {# Placeholder — funcionalidad en issue posterior #}
+        <button class="btn btn-sm btn-outline-primary" disabled title="Próximamente">
+          <i class="fas fa-edit me-1"></i> Editar
+        </button>
+        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" disabled title="Próximamente">
+          Acciones
+        </button>
+      </div>
+    </div>
+    <div class="card-body card-body-tinted py-2">
+      <div class="row g-2 bc-meta">
+        <div class="col-auto">
+          <strong>F. Inicio:</strong>
+          {{ tarea.fecha_inicio.strftime('%d/%m/%Y') if tarea.fecha_inicio else '—' }}
+        </div>
+        <div class="col-auto">
+          <strong>F. Fin:</strong>
+          {{ tarea.fecha_fin.strftime('%d/%m/%Y') if tarea.fecha_fin else '—' }}
+        </div>
+        {% if tarea.notas %}
+        <div class="col-auto">
+          <strong>Notas:</strong> {{ tarea.notas | truncate(80) }}
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Detalle completo + documentos (scrollable) -->
+<div class="lista-scroll-container p-3">
+
+  <!-- Detalle extendido -->
+  <div class="card mb-3">
+    <div class="card-header card-header-accent">
+      <h6 class="mb-0 fw-semibold"><i class="fas fa-info-circle me-2"></i>Detalle de la tarea</h6>
+    </div>
+    <div class="card-body card-body-tinted">
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label fw-semibold small">Tipo de tarea</label>
+          <input type="text" class="form-control form-control-sm" readonly
+                 value="{{ tarea.tipo_tarea.nombre if tarea.tipo_tarea else '—' }}">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label fw-semibold small">Fecha inicio</label>
+          <input type="text" class="form-control form-control-sm" readonly
+                 value="{{ tarea.fecha_inicio.strftime('%d/%m/%Y') if tarea.fecha_inicio else '—' }}">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label fw-semibold small">Fecha fin</label>
+          <input type="text" class="form-control form-control-sm" readonly
+                 value="{{ tarea.fecha_fin.strftime('%d/%m/%Y') if tarea.fecha_fin else '—' }}">
+        </div>
+        {% if tarea.notas %}
+        <div class="col-12">
+          <label class="form-label fw-semibold small">Notas</label>
+          <textarea class="form-control form-control-sm" readonly rows="3">{{ tarea.notas }}</textarea>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Documentos -->
+  <div class="card">
+    <div class="card-header card-header-accent">
+      <h6 class="mb-0 fw-semibold"><i class="fas fa-file-alt me-2"></i>Documentos</h6>
+    </div>
+    <div class="card-body text-center text-muted py-4">
+      <i class="fas fa-folder fa-2x mb-2 d-block"></i>
+      <span class="small">Gestión de documentos — próximamente</span>
+    </div>
+  </div>
+
+</div>
+
+{% endblock %}

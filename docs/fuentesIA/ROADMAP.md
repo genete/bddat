@@ -4,18 +4,18 @@
 > La verbosidad (qué falta, cómo hacerlo) vive en los issues de GitHub, no aquí.
 > La visión estratégica y clasificación de bloques está en `ESTRATEGIA_ROADMAP.md`.
 >
-> **Última actualización:** 2026-02-28
+> **Última actualización:** 2026-03-01
 
 ---
 
-## Estado de partida (operativo a 2026-02-27)
+## Estado de partida (operativo a 2026-03-01)
 
 - Modelos SQLAlchemy completos: Expediente, Solicitud, Fase, Trámite, Tarea, Entidad, Proyecto, Usuario + maestros
 - Autenticación Flask-Login + RBAC (4 roles)
 - V0 Login, V1 Dashboard, V2 Listado scroll infinito
 - V4 Detalle/Edición para Expedientes y Entidades
-- V3 Tramitación acordeón con carga lazy (~90%)
-- Edición de campos de Solicitud/Fase/Trámite/Tarea vía modales (sin creación ni borrado)
+- V3 Tramitación: dos implementaciones disponibles (acordeón #146, tabs anidados #156) — pendiente de sustituir por diseño breadcrumbs (#157)
+- Edición de campos de Solicitud/Fase/Trámite/Tarea vía modales
 - Wizard de creación de expedientes (3 pasos)
 - API REST expedientes con paginación cursor
 - Componentes JS: SelectorBusqueda, ScrollInfinito, AcordeonLazy
@@ -29,10 +29,16 @@
 
 ## M1 — Bloqueantes
 
-**Descripción:** Tramitación ESFTT completa (CRUD de Solicitud/Fase/Trámite/Tarea) + sistema documental + importación legacy.
+**Descripción:** Tramitación ESFTT completa (CRUD de Solicitud/Fase/Trámite/Tarea) + sistema documental.
 **Estado:** EN CURSO
 
-Issues activos: #150, #149, #148, #147, #121
+**Pendiente:**
+1. **Vista 3 breadcrumbs** (#157) — rediseño UX prerequisito para el resto de UI de tramitación. Mockups en `docs/mockups/VISTA_3_NUEVA_BREADCRUMBS-*.txt`
+2. **Botones UI crear/borrar SFTT** — las rutas API existen; faltan los controles en la nueva Vista 3
+3. **Sistema documental** — decisión de arquitectura de almacenamiento pendiente (ver tabla al final)
+4. **Mejoras visuales y adaptación vistas** (#121)
+
+Issues activos: #157, #121
 
 ---
 
@@ -52,7 +58,7 @@ Issues activos: #106
 
 Diseño: `docs/fuentesIA/MOTOR_REGLAS_arquitectura.md`
 Issues activos: #74
-Issues cerrados: #152 (evaluador — PR #154, 2026-02-28)
+Issues cerrados: #152 (evaluador — PR #154, 2026-02-28), #150 (tabs V3 — PR #156, 2026-02-28)
 
 ---
 
@@ -87,4 +93,4 @@ Issues activos: #76, #75, #27, #28, #85, #105, #4, #1
 | Reglas de tramitación | Editables en producción por Supervisor / solo por técnico | M3 (motor), M2 (config) |
 | Notificaciones externas | Email directo / Notific@ JdA / manual | M5 |
 | Integración registro de entrada | SIGEM JdA / registro propio / ninguno | M1 (documental) |
-| Legacy | Inventario pendiente: estructura, volumen, documentos | M1 (#121) |
+| Legacy | Inventario pendiente: estructura, volumen, documentos | M5 (#105) |

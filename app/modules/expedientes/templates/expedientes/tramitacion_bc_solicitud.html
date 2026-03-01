@@ -1,0 +1,86 @@
+{% extends 'layout/base_fullwidth.html' %}
+
+{% block title %}Tramitación AT-{{ expediente.numero_at }} — Solicitud - BDDAT{% endblock %}
+
+{% block breadcrumb %}
+<a href="{{ url_for('dashboard.index') }}">Inicio</a>
+<span>›</span>
+<a href="{{ url_for('expedientes.listado_v2') }}">Expedientes</a>
+<span>›</span>
+<a href="{{ url_for('expedientes.detalle', id=expediente.id) }}">AT-{{ expediente.numero_at }}</a>
+<span>›</span>
+<a href="{{ url_for('expedientes.tramitacion_bc', exp_id=expediente.id) }}">Tramitación</a>
+<span>›</span>
+<span>Solicitud #{{ solicitud.id }}</span>
+{% endblock %}
+
+{% block extra_css %}{{ super() }}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/v3-breadcrumbs.css') }}">
+{% endblock %}
+
+{% block content %}
+
+<!-- C.1: Card detalle de la Solicitud (fijo) -->
+<div class="lista-cabecera px-3 pt-3">
+  <div class="card bc-card-nodo">
+    <div class="card-header card-header-accent d-flex justify-content-between align-items-center">
+      <span class="fw-semibold">
+        <i class="fas fa-file-alt me-2"></i>
+        Solicitud #{{ solicitud.id }}
+        {% if solicitud.solicitud_tipos %}
+          —
+          {% for st in solicitud.solicitud_tipos %}
+            <span class="badge bg-primary ms-1">{{ st.tipo_solicitud.siglas }}</span>
+          {% endfor %}
+        {% endif %}
+      </span>
+      <div class="bc-acciones-bar">
+        {# Placeholder — funcionalidad en issue posterior #}
+        <button class="btn btn-sm btn-outline-primary" disabled title="Próximamente">
+          <i class="fas fa-edit me-1"></i> Editar
+        </button>
+        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" disabled title="Próximamente">
+          Acciones
+        </button>
+      </div>
+    </div>
+    <div class="card-body card-body-tinted py-2">
+      <div class="row g-2 bc-meta">
+        <div class="col-auto">
+          <strong>F. Solicitud:</strong>
+          {{ solicitud.fecha_solicitud.strftime('%d/%m/%Y') if solicitud.fecha_solicitud else '—' }}
+        </div>
+        <div class="col-auto">
+          <strong>F. Resolución:</strong>
+          {{ solicitud.fecha_fin.strftime('%d/%m/%Y') if solicitud.fecha_fin else '—' }}
+        </div>
+        <div class="col-auto">
+          <strong>Estado:</strong>
+          <span class="badge
+            {% if solicitud.estado == 'EN_TRAMITE' %}bg-primary
+            {% elif solicitud.estado == 'RESUELTA' %}bg-success
+            {% else %}bg-secondary{% endif %}">
+            {{ solicitud.estado }}
+          </span>
+        </div>
+        <div class="col-auto ms-auto">
+          <span class="badge bg-primary">{{ hijos | length }} fase(s)</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- C.2: Listado de Fases (scrollable) -->
+<div class="lista-scroll-container p-3">
+  <div class="d-flex justify-content-between align-items-center mb-2">
+    <h6 class="mb-0 fw-semibold">Fases</h6>
+    {# Placeholder — funcionalidad en issue posterior #}
+    <button class="btn btn-sm btn-success" disabled title="Próximamente">
+      <i class="fas fa-plus me-1"></i> Nueva fase
+    </button>
+  </div>
+  {% include 'vistas/vista3_bc/_tabla_hijos.html' %}
+</div>
+
+{% endblock %}
