@@ -14,16 +14,13 @@
 - Autenticación Flask-Login + RBAC (4 roles)
 - V0 Login, V1 Dashboard, V2 Listado scroll infinito
 - V4 Detalle/Edición para Expedientes y Entidades
-- V3 Tramitación: dos implementaciones disponibles (acordeón #146, tabs anidados #156) — pendiente de sustituir por diseño breadcrumbs (#157)
-- Edición de campos de Solicitud/Fase/Trámite/Tarea vía modales
+- V3 Tramitación: esqueleto breadcrumbs operativo (#157) — navegación por los 5 niveles con URL propia, CRUD pendiente
 - Wizard de creación de expedientes (3 pasos)
 - API REST expedientes con paginación cursor
 - Componentes JS: SelectorBusqueda, ScrollInfinito, AcordeonLazy
 - Tablas BD motor de reglas: `reglas_motor`, `condiciones_regla`, `tipos_solicitudes_compatibles`
 - Modelos Python motor de reglas: ReglaMotor, CondicionRegla, TipoSolicitudCompatible
 - Evaluador motor de reglas: `app/services/motor_reglas.py` — evaluar(evento, entidad, ...) con checks hardcoded + criterios BD
-- Hooks INICIAR/FINALIZAR en rutas editar de Solicitud/Fase/Trámite/Tarea (vista3)
-- Rutas API JSON CREAR/BORRAR para Fase/Trámite/Tarea (vista3, sin botones UI aún)
 
 ---
 
@@ -33,50 +30,76 @@
 **Estado:** EN CURSO
 
 **Pendiente:**
-1. **Vista 3 breadcrumbs** (#157) — rediseño UX prerequisito para el resto de UI de tramitación. Mockups en `docs/mockups/VISTA_3_NUEVA_BREADCRUMBS-*.txt`
-2. **Botones UI crear/borrar SFTT** — las rutas API existen; faltan los controles en la nueva Vista 3
-3. **Sistema documental** — decisión de arquitectura de almacenamiento pendiente (ver tabla al final)
-4. **Mejoras visuales y adaptación vistas** (#121)
+- Edición inline de Solicitud/Fase/Trámite/Tarea en Vista 3 BC (#160, #161, #162, #163)
+- Acciones contextuales INICIAR/FINALIZAR/BORRAR con motor de reglas (#164)
+- Creación de hijos mediante modal (#165)
+- Sistema documental en nivel Tarea (#166)
+- Mejoras visuales y adaptación vistas (#121)
 
-Issues activos: #157, #121
+Issues cerrados: #157 (esqueleto BC — PR #159, 2026-03-01), #150 (tabs V3), #146 (acordeón V3)
+Issues activos: #160, #161, #162, #163, #164, #165, #166, #121
 
 ---
 
 ## M2 — Necesarios
 
-**Descripción:** Generación de escritos, configuración de tablas maestras, gestión de carga/usuarios, listado inteligente.
+**Descripción:** Generación de escritos, gestión de usuarios, listado inteligente de trabajo.
 **Estado:** PENDIENTE
 
-Issues activos: #106
+**Pendiente:**
+- Generación de escritos administrativos conectada a tramitación (#167)
+- Gestión de usuarios — adaptar a vistas V4 (#168)
+- Listado inteligente multi-pista con deducción automática de estados (#169) — servicio `app/services/seguimiento.py`
+- Semáforos y alertas de vencimiento (#74)
+
+Issues activos: #167, #168, #169, #74
 
 ---
 
 ## M3 — Motor de reglas y plazos
 
-**Descripción:** Motor de reglas completo (evaluador + configuración) + plazos legales con suspensión.
+**Descripción:** Motor de reglas completo (evaluador + configuración por Supervisor) + plazos legales con suspensión + permisos granulares.
 **Estado:** EN CURSO — evaluador implementado, pendiente UI de configuración y plazos
 
 Diseño: `docs/fuentesIA/MOTOR_REGLAS_arquitectura.md`
-Issues activos: #74
-Issues cerrados: #152 (evaluador — PR #154, 2026-02-28), #150 (tabs V3 — PR #156, 2026-02-28)
+
+**Pendiente:**
+- CRUD de reglas del motor — interfaz Supervisor (#170)
+- CRUD de tablas maestras estructurales — tipos Fase/Trámite/Tarea (#171)
+- Plazos legales en días hábiles con calendario de festivos (#172)
+- Suspensión de plazos por causas tasadas (#173)
+- Permisos granulares por acción y expediente (#174)
+
+Issues cerrados: #152 (evaluador — PR #154, 2026-02-28), #85 (duplicado de #174)
+Issues activos: #170, #171, #172, #173, #174
 
 ---
 
 ## M4 — Pre-producción
 
-**Descripción:** Condiciones técnicas de despliegue: infraestructura, seguridad, numeración AT.
+**Descripción:** Condiciones técnicas de despliegue: infraestructura, seguridad, numeración AT, datos legacy.
 **Estado:** PENDIENTE
 
-Issues activos: #151, #45, #120
+**Pendiente:**
+- Infraestructura de despliegue (#151)
+- SECRET_KEY y variables de entorno en producción (#45)
+- Establecer base numero_at (#120)
+- Wizard de importación de expedientes y entidades legacy (#175)
+- Adecuación al ENS (#176)
+- HTTPS y certificado digital (#177)
+- Política de backup y recuperación de BD (#178)
+- Migración Access → PostgreSQL schema legacy (#105)
+
+Issues activos: #151, #45, #120, #175, #176, #177, #178, #105
 
 ---
 
 ## M5 — Post-producción
 
-**Descripción:** Proyectos/instalaciones, GIS, auditoría configurable, mensajería interna, manual de usuario, importación legacy avanzada.
+**Descripción:** GIS, DIR3, auditoría/bitácora, mensajería interna, búsqueda global, exportación, solicitud de acceso.
 **Estado:** PENDIENTE
 
-Issues activos: #76, #75, #27, #28, #85, #105, #4, #1
+Issues activos: #1, #4, #27, #28, #75, #76, #106
 
 ---
 
@@ -87,10 +110,11 @@ Issues activos: #76, #75, #27, #28, #85, #105, #4, #1
 | Almacenamiento de documentos | Filesystem local / S3-compatible / PostgreSQL bytea | M1 (sistema documental) |
 | Motor de plantillas | python-docx (Word) / Jinja2 sobre ODT / WeasyPrint (HTML→PDF) | M2 (generación escritos) |
 | Firma electrónica | @firma JdA integrada / flujo manual en dos pasos | M2 (escritos) |
+| Estados de pista listado inteligente | Deducidos automáticamente de ESFTT vía `seguimiento.py` | M2 (#169) |
 | Modelo de elementos eléctricos | Genérico con JSON / Tablas específicas por tipo | M5 (proyectos) |
 | PostGIS vs coordenadas simples | PostGIS / lat+lon numérico | M5 (GIS) |
-| Plazos: suspensión | Modelo de eventos de suspensión / solo fecha_limite estática | M3 (plazos) |
-| Reglas de tramitación | Editables en producción por Supervisor / solo por técnico | M3 (motor), M2 (config) |
+| Plazos: suspensión | Modelo de eventos de suspensión / solo fecha_limite estática | M3 (#173) |
+| Permisos granulares | Por acción+expediente en tablas / roles fijos ampliados | M3 (#174) |
 | Notificaciones externas | Email directo / Notific@ JdA / manual | M5 |
-| Integración registro de entrada | SIGEM JdA / registro propio / ninguno | M1 (documental) |
-| Legacy | Inventario pendiente: estructura, volumen, documentos | M5 (#105) |
+| Integración registro de entrada | BandeJA JdA / registro propio / ninguno | M2 (escritos, #167) |
+| Legacy | Inventario pendiente: estructura, volumen, documentos | M4 (#105, #175) |
