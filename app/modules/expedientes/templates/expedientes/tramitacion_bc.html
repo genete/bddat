@@ -1,0 +1,74 @@
+{% extends 'layout/base_fullwidth.html' %}
+
+{% block title %}Tramitación AT-{{ expediente.numero_at }} - BDDAT{% endblock %}
+
+{% block breadcrumb %}
+<a href="{{ url_for('dashboard.index') }}">Inicio</a>
+<span>›</span>
+<a href="{{ url_for('expedientes.listado_v2') }}">Expedientes</a>
+<span>›</span>
+<a href="{{ url_for('expedientes.detalle', id=expediente.id) }}">AT-{{ expediente.numero_at }}</a>
+<span>›</span>
+<span>Tramitación</span>
+{% endblock %}
+
+{% block extra_css %}{{ super() }}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/v3-breadcrumbs.css') }}">
+{% endblock %}
+
+{% block content %}
+
+<!-- C.1: Card detalle del nodo actual (fijo, sin scroll) -->
+<div class="lista-cabecera px-3 pt-3">
+  <div class="card bc-card-nodo">
+    <div class="card-header card-header-accent d-flex justify-content-between align-items-center">
+      <span class="fw-semibold">
+        <i class="fas fa-folder-open me-2"></i>
+        Expediente <strong>AT-{{ expediente.numero_at }}</strong>
+      </span>
+      <div class="bc-acciones-bar">
+        <a href="{{ url_for('expedientes.detalle', id=expediente.id) }}"
+           class="btn btn-sm btn-outline-secondary">
+          <i class="fas fa-info-circle me-1"></i> Detalle
+        </a>
+        {# [Editar] y [Acciones ▾] — placeholder, funcionalidad en issue posterior #}
+        <button class="btn btn-sm btn-outline-primary" disabled title="Próximamente">
+          <i class="fas fa-edit me-1"></i> Editar
+        </button>
+      </div>
+    </div>
+    <div class="card-body card-body-tinted py-2">
+      <div class="row g-2 bc-meta">
+        <div class="col-auto">
+          <strong>Titular:</strong>
+          {{ expediente.titular.nombre_completo if expediente.titular else '—' }}
+        </div>
+        <div class="col-auto">
+          <strong>Responsable:</strong>
+          {{ expediente.responsable.siglas if expediente.responsable else '—' }}
+        </div>
+        <div class="col-auto">
+          <strong>Tipo:</strong>
+          {{ expediente.tipo_expediente.tipo if expediente.tipo_expediente else '—' }}
+        </div>
+        <div class="col-auto ms-auto">
+          <span class="badge bg-primary">{{ hijos | length }} solicitud(es)</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- C.2: Listado de Solicitudes (scrollable) -->
+<div class="lista-scroll-container p-3">
+  <div class="d-flex justify-content-between align-items-center mb-2">
+    <h6 class="mb-0 fw-semibold">Solicitudes</h6>
+    {# [+ Nueva solicitud] — placeholder, funcionalidad en issue posterior #}
+    <button class="btn btn-sm btn-success" disabled title="Próximamente">
+      <i class="fas fa-plus me-1"></i> Nueva solicitud
+    </button>
+  </div>
+  {% include 'vistas/vista3_bc/_tabla_hijos.html' %}
+</div>
+
+{% endblock %}
