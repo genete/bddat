@@ -85,7 +85,7 @@ document.addEventListener('DOMContentLoaded', function () {
       span.textContent = iso ? _iso_a_dmy(iso) : '—';
     });
 
-    // Estado (select normal con badge de color)
+    // Estado (select con badge de color — caso especial)
     const estado = datos.get('estado');
     if (estado) {
       const span = document.getElementById('disp-estado');
@@ -94,6 +94,15 @@ document.addEventListener('DOMContentLoaded', function () {
         span.className   = 'badge ' + _clase_estado(estado);
       }
     }
+
+    // Selects genéricos: actualizar #disp-{name} con el texto de la opción seleccionada
+    form.querySelectorAll('select').forEach(sel => {
+      if (sel.name === 'estado') return; // ya tratado arriba
+      const span = document.getElementById('disp-' + sel.name);
+      if (!span) return;
+      const opcion = sel.options[sel.selectedIndex];
+      span.textContent = (opcion && opcion.value) ? opcion.text : '—';
+    });
   }
 
   // ── Helpers ───────────────────────────────────────────────────────────────

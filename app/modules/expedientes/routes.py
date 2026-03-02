@@ -372,6 +372,8 @@ def tramitacion_bc_fase(exp_id, sol_id, fase_id):
         {'key': 'fecha_fin',    'label': 'F. Fin'},
     ]
 
+    resultados_fase = TipoResultadoFase.query.order_by(TipoResultadoFase.nombre).all()
+
     return render_template(
         'expedientes/tramitacion_bc_fase.html',
         expediente=expediente,
@@ -379,6 +381,7 @@ def tramitacion_bc_fase(exp_id, sol_id, fase_id):
         fase=fase,
         hijos=hijos,
         columnas=columnas,
+        resultados_fase=resultados_fase,
     )
 
 
