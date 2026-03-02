@@ -173,6 +173,84 @@ fetch('/api/provincias')
 
 ---
 
+---
+
+### EntradaFecha
+
+Campo de texto con parser inteligente de fechas. Acepta formatos abreviados y normaliza
+al perder el foco. Sin dependencias externas.
+
+**Ficheros:**
+- `app/static/js/entrada_fecha.js`
+- `app/static/css/entrada_fecha.css`
+
+**Mockup de referencia:** `docs/mockups/fecha-mockup.html` (Control 4)
+
+#### Uso en Jinja2
+
+```html
+{# 1. Cargar en el bloque head #}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/entrada_fecha.css') }}">
+
+{# 2. Contenedor vacío donde vivirá el componente #}
+<div id="ef-fecha-inicio"></div>
+
+{# 3. Instanciar al final del body o en el bloque scripts #}
+<script src="{{ url_for('static', filename='js/entrada_fecha.js') }}"></script>
+<script>
+  new EntradaFecha('#ef-fecha-inicio', {
+    name: 'fecha_inicio',   // atributo name del input hidden para el formulario
+    onChange: (iso) => { console.log(iso); }  // opcional
+  });
+</script>
+```
+
+#### Config
+
+| Opción | Tipo | Descripción |
+|---|---|---|
+| `name` | string | Atributo `name` del `<input hidden>` para submit |
+| `placeholder` | string | Texto de ayuda (por defecto `dd/mm/aaaa`) |
+| `onChange` | `(iso) => {}` | Callback al confirmar fecha válida o al limpiar. `iso` = `'yyyy-mm-dd'` o `''`. |
+
+#### API pública
+
+```javascript
+const ef = new EntradaFecha('#mi-div', { name: 'fecha_inicio' });
+
+ef.getValue()              // → 'yyyy-mm-dd' o ''
+ef.setValue('2025-02-10')  // muestra 10/02/2025, dispara onChange
+ef.clear()                 // limpia campo y hidden, dispara onChange('')
+ef.enable()
+ef.disable()
+```
+
+#### Comportamiento
+
+| Acción | Resultado |
+|---|---|
+| Escribir `10/2/25` y pulsar Tab | Normaliza a `10/02/2025`, hidden = `2025-02-10` |
+| Separadores aceptados | `/` `-` `.` espacio |
+| Año de 2 dígitos | `25` → `2025`, `99` → `2099` |
+| Fecha imposible (`31/02/2025`) | Borde rojo, hidden vacío |
+| Campo vacío al salir | Sin error, hidden vacío |
+| `Escape` | Limpia campo y hidden |
+| Botón `×` | Limpia y devuelve el foco al input |
+| Hover sobre el input | Tooltip "Escape para borrar" |
+
+#### Estructura HTML generada
+
+```html
+<div id="mi-div" class="ef-wrap">
+  <input type="text"   class="form-control ef-input" placeholder="dd/mm/aaaa"
+         data-bs-toggle="tooltip" title="Escape para borrar">
+  <input type="hidden" name="fecha_inicio" class="ef-hidden">
+  <button class="ef-btn-x" tabindex="-1">×</button>
+</div>
+```
+
+---
+
 ## Próximos componentes (pendientes)
 
 - `SelectorMultiple` — selección acumulable con badges (variante del anterior)
