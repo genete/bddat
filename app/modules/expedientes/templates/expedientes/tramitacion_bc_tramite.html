@@ -24,47 +24,96 @@
 
 {% block extra_css %}{{ super() }}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/v3-breadcrumbs.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/entrada_fecha.css') }}">
 {% endblock %}
 
 {% block content %}
 
 <!-- C.1: Card detalle del Trámite (fijo) -->
 <div class="lista-cabecera px-3 pt-3">
-  <div class="card bc-card-nodo">
+  <div class="card bc-card-nodo" data-bc-editable>
+
     <div class="card-header card-header-accent d-flex justify-content-between align-items-center">
       <span class="fw-semibold">
         <i class="fas fa-tasks me-2"></i>
         Trámite: {{ tramite.tipo_tramite.nombre if tramite.tipo_tramite else '#' ~ tramite.id }}
       </span>
       <div class="bc-acciones-bar">
-        {# Placeholder — funcionalidad en issue posterior #}
-        <button class="btn btn-sm btn-outline-primary" disabled title="Próximamente">
-          <i class="fas fa-edit me-1"></i> Editar
-        </button>
-        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" disabled title="Próximamente">
-          Acciones
-        </button>
+        {# Modo ver #}
+        <div data-modo-ver class="d-flex gap-1">
+          <button type="button" class="btn btn-sm btn-outline-primary btn-editar-bc">
+            <i class="fas fa-edit me-1"></i> Editar
+          </button>
+          <button class="btn btn-sm btn-outline-secondary dropdown-toggle" disabled title="Próximamente">
+            Acciones
+          </button>
+        </div>
+        {# Modo editar #}
+        <div data-modo-editar class="d-none d-flex gap-1">
+          <button type="button" class="btn btn-sm btn-success btn-guardar-bc">
+            <i class="fas fa-save me-1"></i> Guardar
+          </button>
+          <button type="button" class="btn btn-sm btn-outline-secondary btn-cancelar-bc">
+            Cancelar
+          </button>
+        </div>
       </div>
     </div>
+
     <div class="card-body card-body-tinted py-2">
-      <div class="row g-2 bc-meta">
+
+      {# Modo ver #}
+      <div data-modo-ver class="row g-2 bc-meta">
         <div class="col-auto">
           <strong>F. Inicio:</strong>
-          {{ tramite.fecha_inicio.strftime('%d/%m/%Y') if tramite.fecha_inicio else '—' }}
+          <span id="disp-fecha_inicio">
+            {{- tramite.fecha_inicio.strftime('%d/%m/%Y') if tramite.fecha_inicio else '—' -}}
+          </span>
         </div>
         <div class="col-auto">
           <strong>F. Fin:</strong>
-          {{ tramite.fecha_fin.strftime('%d/%m/%Y') if tramite.fecha_fin else '—' }}
+          <span id="disp-fecha_fin">
+            {{- tramite.fecha_fin.strftime('%d/%m/%Y') if tramite.fecha_fin else '—' -}}
+          </span>
         </div>
-        {% if tramite.observaciones %}
-        <div class="col-auto">
-          <strong>Obs:</strong> {{ tramite.observaciones | truncate(60) }}
-        </div>
-        {% endif %}
         <div class="col-auto ms-auto">
           <span class="badge bg-primary">{{ hijos | length }} tarea(s)</span>
         </div>
       </div>
+
+      {# Modo editar #}
+      <form data-modo-editar class="d-none row g-2 pt-1"
+            data-url="{{ url_for('vista3.editar_tramite', tram_id=tramite.id) }}">
+        <div class="col-md-4">
+          <label class="form-label fw-semibold mb-1">Tipo</label>
+          <input type="text" class="form-control form-control-sm" readonly
+                 value="{{ tramite.tipo_tramite.nombre if tramite.tipo_tramite else '—' }}"
+                 data-bs-toggle="tooltip" title="El tipo se establece al crear el trámite">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label fw-semibold mb-1">F. Inicio</label>
+          <div id="ef-fecha_inicio"
+               data-ef-name="fecha_inicio"
+               data-ef-value="{{ tramite.fecha_inicio.isoformat() if tramite.fecha_inicio else '' }}">
+          </div>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label fw-semibold mb-1">F. Fin</label>
+          <div id="ef-fecha_fin"
+               data-ef-name="fecha_fin"
+               data-ef-value="{{ tramite.fecha_fin.isoformat() if tramite.fecha_fin else '' }}">
+          </div>
+        </div>
+        <div class="col-12">
+          <label class="form-label fw-semibold mb-1">Observaciones</label>
+          <textarea class="form-control form-control-sm" name="observaciones"
+                    rows="2">{{ tramite.observaciones or '' }}</textarea>
+        </div>
+      </form>
+
+      {# Mensajes de error/advertencia del motor de reglas #}
+      <div id="alert-edicion" class="alert d-none mt-2 py-2 mb-0" role="alert"></div>
+
     </div>
   </div>
 </div>
@@ -73,7 +122,6 @@
 <div class="lista-scroll-container p-3">
   <div class="d-flex justify-content-between align-items-center mb-2">
     <h6 class="mb-0 fw-semibold">Tareas</h6>
-    {# Placeholder — funcionalidad en issue posterior #}
     <button class="btn btn-sm btn-success" disabled title="Próximamente">
       <i class="fas fa-plus me-1"></i> Nueva tarea
     </button>
@@ -81,4 +129,9 @@
   {% include 'vistas/vista3_bc/_tabla_hijos.html' %}
 </div>
 
+{% endblock %}
+
+{% block extra_js %}{{ super() }}
+<script src="{{ url_for('static', filename='js/entrada_fecha.js') }}"></script>
+<script src="{{ url_for('static', filename='js/v3-breadcrumbs-edicion.js') }}"></script>
 {% endblock %}
