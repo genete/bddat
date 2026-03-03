@@ -168,11 +168,51 @@
 <div class="lista-scroll-container p-3">
   <div class="d-flex justify-content-between align-items-center mb-2">
     <h6 class="mb-0 fw-semibold">Trámites</h6>
-    <button class="btn btn-sm btn-success" disabled title="Próximamente">
+    <button class="btn btn-sm btn-success"
+            data-bs-toggle="modal" data-bs-target="#modal-nuevo-tramite-bc">
       <i class="fas fa-plus me-1"></i> Nuevo trámite
     </button>
   </div>
   {% include 'vistas/vista3_bc/_tabla_hijos.html' %}
+</div>
+
+<!-- Modal Nuevo Trámite -->
+<div class="modal fade" id="modal-nuevo-tramite-bc" tabindex="-1"
+     aria-labelledby="modal-nuevo-tramite-bc-label">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modal-nuevo-tramite-bc-label">
+          <i class="fa-solid fa-clipboard-list me-1"></i> Nuevo Trámite
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form class="form-nueva-bc"
+            data-url="{{ url_for('vista3.crear_tramite', fase_id=fase.id) }}">
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">
+              Tipo de trámite <span class="text-danger">*</span>
+            </label>
+            <select class="form-select" name="tipo_tramite_id" required>
+              <option value="">— Selecciona tipo —</option>
+              {% for t in tipos_tramite %}
+              <option value="{{ t.id }}">{{ t.nombre }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="alert alert-danger alert-crear d-none" role="alert"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary"
+                  data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary">
+            <i class="fa-solid fa-plus me-1"></i> Crear
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
 </div>
 
 {% endblock %}
@@ -181,4 +221,5 @@
 <script src="{{ url_for('static', filename='js/entrada_fecha.js') }}"></script>
 <script src="{{ url_for('static', filename='js/v3-breadcrumbs-edicion.js') }}"></script>
 <script src="{{ url_for('static', filename='js/v3-breadcrumbs-acciones.js') }}"></script>
+<script src="{{ url_for('static', filename='js/v3-breadcrumbs-crear.js') }}"></script>
 {% endblock %}

@@ -282,11 +282,14 @@ def tramitacion_bc(exp_id):
         {'key': 'estado_texto', 'label': 'Estado'},
     ]
 
+    tipos_solicitud = TipoSolicitud.query.order_by(TipoSolicitud.siglas).all()
+
     return render_template(
         'expedientes/tramitacion_bc.html',
         expediente=expediente,
         hijos=hijos,
         columnas=columnas,
+        tipos_solicitud=tipos_solicitud,
     )
 
 
@@ -324,12 +327,15 @@ def tramitacion_bc_solicitud(exp_id, sol_id):
         {'key': 'fecha_fin',    'label': 'F. Fin'},
     ]
 
+    tipos_fase = TipoFase.query.order_by(TipoFase.nombre).all()
+
     return render_template(
         'expedientes/tramitacion_bc_solicitud.html',
         expediente=expediente,
         solicitud=solicitud,
         hijos=hijos,
         columnas=columnas,
+        tipos_fase=tipos_fase,
     )
 
 
@@ -373,6 +379,7 @@ def tramitacion_bc_fase(exp_id, sol_id, fase_id):
     ]
 
     resultados_fase = TipoResultadoFase.query.order_by(TipoResultadoFase.nombre).all()
+    tipos_tramite = TipoTramite.query.order_by(TipoTramite.nombre).all()
 
     return render_template(
         'expedientes/tramitacion_bc_fase.html',
@@ -382,6 +389,7 @@ def tramitacion_bc_fase(exp_id, sol_id, fase_id):
         hijos=hijos,
         columnas=columnas,
         resultados_fase=resultados_fase,
+        tipos_tramite=tipos_tramite,
     )
 
 
@@ -428,6 +436,8 @@ def tramitacion_bc_tramite(exp_id, sol_id, fase_id, tram_id):
         {'key': 'fecha_fin',    'label': 'F. Fin'},
     ]
 
+    tipos_tarea = TipoTarea.query.order_by(TipoTarea.nombre).all()
+
     return render_template(
         'expedientes/tramitacion_bc_tramite.html',
         expediente=expediente,
@@ -436,6 +446,7 @@ def tramitacion_bc_tramite(exp_id, sol_id, fase_id, tram_id):
         tramite=tramite,
         hijos=hijos,
         columnas=columnas,
+        tipos_tarea=tipos_tarea,
     )
 
 
