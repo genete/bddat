@@ -37,6 +37,31 @@
     padding-right: 0.5rem;
 }
 
+/* ── Breadcrumb — legibilidad y color corporativo ───────────────────────── */
+
+.header-breadcrumb-row .breadcrumb {
+    font-size: 0.9rem;
+}
+
+.header-breadcrumb-row .breadcrumb a {
+    color: var(--bs-primary);
+    font-weight: 500;
+}
+
+/* Segmento activo (último, sin enlace) visible en color oscuro */
+.header-breadcrumb-row .breadcrumb span:last-child {
+    color: #444;
+    font-weight: 600;
+}
+
+/* ── Anchura máxima adaptativa ───────────────────────────────────────────── */
+
+.bc-view {
+    max-width: 1200px;
+    margin: 0 auto;
+    width: 100%;
+}
+
 /* ── Botones de acción en la cabecera (placeholders) ────────────────────── */
 
 .bc-acciones-bar {

@@ -11,7 +11,7 @@
 <span>›</span>
 <a href="{{ url_for('expedientes.tramitacion_bc', exp_id=expediente.id) }}">Tramitación</a>
 <span>›</span>
-<span>Solicitud #{{ solicitud.id }}</span>
+<span>{{ solicitud.solicitud_tipos | map(attribute="tipo_solicitud.siglas") | join("+") or "Solicitud #" ~ solicitud.id }}</span>
 {% endblock %}
 
 {% block extra_css %}{{ super() }}
@@ -20,6 +20,7 @@
 {% endblock %}
 
 {% block content %}
+<div class="bc-view">
 
 <!-- C.1: Card detalle de la Solicitud (fijo) -->
 <div class="lista-cabecera px-3 pt-3">
@@ -211,6 +212,7 @@
   </div>
 </div>
 
+</div>
 {% endblock %}
 
 {% block extra_js %}{{ super() }}
