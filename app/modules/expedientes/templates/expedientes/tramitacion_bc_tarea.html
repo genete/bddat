@@ -48,9 +48,41 @@
           <button type="button" class="btn btn-sm btn-outline-primary btn-editar-bc">
             <i class="fas fa-edit me-1"></i> Editar
           </button>
-          <button class="btn btn-sm btn-outline-secondary dropdown-toggle" disabled title="Próximamente">
-            Acciones
-          </button>
+          <div class="dropdown">
+            <button class="btn btn-sm btn-outline-secondary dropdown-toggle"
+                    data-bs-toggle="dropdown" aria-expanded="false">
+              Acciones
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end">
+              {% if not tarea.fecha_inicio %}
+              <li>
+                <a class="dropdown-item" href="#"
+                   data-accion="iniciar"
+                   data-url="{{ url_for('vista3.iniciar_tarea', tarea_id=tarea.id) }}">
+                  <i class="fas fa-play me-2 text-success"></i> Iniciar
+                </a>
+              </li>
+              {% endif %}
+              {% if tarea.fecha_inicio and not tarea.fecha_fin %}
+              <li>
+                <a class="dropdown-item" href="#"
+                   data-accion="finalizar"
+                   data-url="{{ url_for('vista3.finalizar_tarea', tarea_id=tarea.id) }}">
+                  <i class="fas fa-flag-checkered me-2 text-primary"></i> Finalizar
+                </a>
+              </li>
+              {% endif %}
+              <li><hr class="dropdown-divider"></li>
+              <li>
+                <a class="dropdown-item text-danger" href="#"
+                   data-accion="borrar"
+                   data-url="{{ url_for('vista3.borrar_tarea', tarea_id=tarea.id) }}"
+                   data-redirect="{{ url_for('expedientes.tramitacion_bc_tramite', exp_id=expediente.id, sol_id=solicitud.id, fase_id=fase.id, tram_id=tramite.id) }}">
+                  <i class="fas fa-trash me-2"></i> Borrar
+                </a>
+              </li>
+            </ul>
+          </div>
         </div>
         {# Modo editar #}
         <div data-modo-editar class="d-none d-flex gap-1">
@@ -137,4 +169,5 @@
 {% block extra_js %}{{ super() }}
 <script src="{{ url_for('static', filename='js/entrada_fecha.js') }}"></script>
 <script src="{{ url_for('static', filename='js/v3-breadcrumbs-edicion.js') }}"></script>
+<script src="{{ url_for('static', filename='js/v3-breadcrumbs-acciones.js') }}"></script>
 {% endblock %}
