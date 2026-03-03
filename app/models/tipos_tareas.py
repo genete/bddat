@@ -60,11 +60,22 @@ class TipoTarea(db.Model):
     )
     
     nombre = db.Column(
-        db.String(200), 
+        db.String(200),
         nullable=False,
         comment='Denominación completa de la tarea para interfaz de usuario'
     )
-    
+
+    abrev = db.Column(
+        db.String(20),
+        nullable=True,
+        comment='Abreviatura para breadcrumb (máx 20 car.). Si nula, se usa nombre.'
+    )
+
+    @property
+    def label_bc(self):
+        """Etiqueta corta para breadcrumb: abreviatura si existe, nombre completo si no."""
+        return self.abrev or self.nombre
+
     def __repr__(self):
         """Representación técnica para debugging."""
         return f'<TipoTarea {self.codigo}>'

@@ -238,7 +238,7 @@ def listar_expedientes():
             'num_solicitudes':     num_solicitudes,
             'num_activas':         num_activas,
             'estado_tramitacion':  estado_tramitacion,
-            'url_tramitacion':     url_for('expedientes.tramitacion_v3', id=exp.id)
+            'url_tramitacion':     url_for('expedientes.tramitacion_bc', exp_id=exp.id)
         }
         data.append(expediente_dict)
 
