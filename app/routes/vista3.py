@@ -640,3 +640,167 @@ def borrar_tarea(tarea_id):
     db.session.delete(tarea)
     db.session.commit()
     return jsonify({'ok': True})
+
+
+# ============================================
+# ENDPOINTS POST — ACCIONES contextuales (INICIAR / FINALIZAR)
+# ============================================
+
+@bp.route('/solicitud/<int:sol_id>/iniciar', methods=['POST'])
+@login_required
+def iniciar_solicitud(sol_id):
+    """Inicia una solicitud (establece fecha_solicitud = hoy) si el motor lo permite."""
+    sol = Solicitud.query.get_or_404(sol_id)
+    resultado = verificar_acceso_expediente(sol.expediente, 'editar')
+    if resultado:
+        return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
+    if sol.fecha_solicitud is not None:
+        return jsonify({'ok': False, 'error': 'La solicitud ya tiene fecha de inicio'}), 422
+
+    res_eval = evaluar('INICIAR', 'SOLICITUD', entidad_id=sol_id)
+    if not res_eval.permitido:
+        return jsonify({'ok': False, 'error': res_eval.mensaje, 'norma': res_eval.norma}), 422
+
+    sol.fecha_solicitud = date.today()
+    db.session.commit()
+    return jsonify({'ok': True, 'nivel': res_eval.nivel, 'mensaje': res_eval.mensaje})
+
+
+@bp.route('/solicitud/<int:sol_id>/finalizar', methods=['POST'])
+@login_required
+def finalizar_solicitud(sol_id):
+    """Finaliza una solicitud (establece fecha_fin = hoy) si el motor lo permite."""
+    sol = Solicitud.query.get_or_404(sol_id)
+    resultado = verificar_acceso_expediente(sol.expediente, 'editar')
+    if resultado:
+        return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
+    if sol.fecha_fin is not None:
+        return jsonify({'ok': False, 'error': 'La solicitud ya está finalizada'}), 422
+
+    res_eval = evaluar('FINALIZAR', 'SOLICITUD', entidad_id=sol_id)
+    if not res_eval.permitido:
+        return jsonify({'ok': False, 'error': res_eval.mensaje, 'norma': res_eval.norma}), 422
+
+    sol.fecha_fin = date.today()
+    db.session.commit()
+    return jsonify({'ok': True, 'nivel': res_eval.nivel, 'mensaje': res_eval.mensaje})
+
+
+@bp.route('/fase/<int:fase_id>/iniciar', methods=['POST'])
+@login_required
+def iniciar_fase(fase_id):
+    """Inicia una fase (establece fecha_inicio = hoy) si el motor lo permite."""
+    fase = Fase.query.get_or_404(fase_id)
+    resultado = verificar_acceso_expediente(fase.solicitud.expediente, 'editar')
+    if resultado:
+        return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
+    if fase.fecha_inicio is not None:
+        return jsonify({'ok': False, 'error': 'La fase ya está iniciada'}), 422
+
+    res_eval = evaluar('INICIAR', 'FASE', entidad_id=fase_id)
+    if not res_eval.permitido:
+        return jsonify({'ok': False, 'error': res_eval.mensaje, 'norma': res_eval.norma}), 422
+
+    fase.fecha_inicio = date.today()
+    db.session.commit()
+    return jsonify({'ok': True, 'nivel': res_eval.nivel, 'mensaje': res_eval.mensaje})
+
+
+@bp.route('/fase/<int:fase_id>/finalizar', methods=['POST'])
+@login_required
+def finalizar_fase(fase_id):
+    """Finaliza una fase (establece fecha_fin = hoy) si el motor lo permite."""
+    fase = Fase.query.get_or_404(fase_id)
+    resultado = verificar_acceso_expediente(fase.solicitud.expediente, 'editar')
+    if resultado:
+        return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
+    if fase.fecha_fin is not None:
+        return jsonify({'ok': False, 'error': 'La fase ya está finalizada'}), 422
+
+    res_eval = evaluar('FINALIZAR', 'FASE', entidad_id=fase_id)
+    if not res_eval.permitido:
+        return jsonify({'ok': False, 'error': res_eval.mensaje, 'norma': res_eval.norma}), 422
+
+    fase.fecha_fin = date.today()
+    db.session.commit()
+    return jsonify({'ok': True, 'nivel': res_eval.nivel, 'mensaje': res_eval.mensaje})
+
+
+@bp.route('/tramite/<int:tram_id>/iniciar', methods=['POST'])
+@login_required
+def iniciar_tramite(tram_id):
+    """Inicia un trámite (establece fecha_inicio = hoy) si el motor lo permite."""
+    tramite = Tramite.query.get_or_404(tram_id)
+    resultado = verificar_acceso_expediente(tramite.fase.solicitud.expediente, 'editar')
+    if resultado:
+        return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
+    if tramite.fecha_inicio is not None:
+        return jsonify({'ok': False, 'error': 'El trámite ya está iniciado'}), 422
+
+    res_eval = evaluar('INICIAR', 'TRAMITE', entidad_id=tram_id)
+    if not res_eval.permitido:
+        return jsonify({'ok': False, 'error': res_eval.mensaje, 'norma': res_eval.norma}), 422
+
+    tramite.fecha_inicio = date.today()
+    db.session.commit()
+    return jsonify({'ok': True, 'nivel': res_eval.nivel, 'mensaje': res_eval.mensaje})
+
+
+@bp.route('/tramite/<int:tram_id>/finalizar', methods=['POST'])
+@login_required
+def finalizar_tramite(tram_id):
+    """Finaliza un trámite (establece fecha_fin = hoy) si el motor lo permite."""
+    tramite = Tramite.query.get_or_404(tram_id)
+    resultado = verificar_acceso_expediente(tramite.fase.solicitud.expediente, 'editar')
+    if resultado:
+        return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
+    if tramite.fecha_fin is not None:
+        return jsonify({'ok': False, 'error': 'El trámite ya está finalizado'}), 422
+
+    res_eval = evaluar('FINALIZAR', 'TRAMITE', entidad_id=tram_id)
+    if not res_eval.permitido:
+        return jsonify({'ok': False, 'error': res_eval.mensaje, 'norma': res_eval.norma}), 422
+
+    tramite.fecha_fin = date.today()
+    db.session.commit()
+    return jsonify({'ok': True, 'nivel': res_eval.nivel, 'mensaje': res_eval.mensaje})
+
+
+@bp.route('/tarea/<int:tarea_id>/iniciar', methods=['POST'])
+@login_required
+def iniciar_tarea(tarea_id):
+    """Inicia una tarea (establece fecha_inicio = hoy) si el motor lo permite."""
+    tarea = Tarea.query.get_or_404(tarea_id)
+    resultado = verificar_acceso_expediente(tarea.tramite.fase.solicitud.expediente, 'editar')
+    if resultado:
+        return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
+    if tarea.fecha_inicio is not None:
+        return jsonify({'ok': False, 'error': 'La tarea ya está iniciada'}), 422
+
+    res_eval = evaluar('INICIAR', 'TAREA', entidad_id=tarea_id)
+    if not res_eval.permitido:
+        return jsonify({'ok': False, 'error': res_eval.mensaje, 'norma': res_eval.norma}), 422
+
+    tarea.fecha_inicio = date.today()
+    db.session.commit()
+    return jsonify({'ok': True, 'nivel': res_eval.nivel, 'mensaje': res_eval.mensaje})
+
+
+@bp.route('/tarea/<int:tarea_id>/finalizar', methods=['POST'])
+@login_required
+def finalizar_tarea(tarea_id):
+    """Finaliza una tarea (establece fecha_fin = hoy) si el motor lo permite."""
+    tarea = Tarea.query.get_or_404(tarea_id)
+    resultado = verificar_acceso_expediente(tarea.tramite.fase.solicitud.expediente, 'editar')
+    if resultado:
+        return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
+    if tarea.fecha_fin is not None:
+        return jsonify({'ok': False, 'error': 'La tarea ya está finalizada'}), 422
+
+    res_eval = evaluar('FINALIZAR', 'TAREA', entidad_id=tarea_id)
+    if not res_eval.permitido:
+        return jsonify({'ok': False, 'error': res_eval.mensaje, 'norma': res_eval.norma}), 422
+
+    tarea.fecha_fin = date.today()
+    db.session.commit()
+    return jsonify({'ok': True, 'nivel': res_eval.nivel, 'mensaje': res_eval.mensaje})
