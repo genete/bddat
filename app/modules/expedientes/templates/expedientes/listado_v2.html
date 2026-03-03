@@ -40,7 +40,7 @@
         apiUrl:      '{{ url_for("api.listar_expedientes") }}',
         tableClass:  '.expedientes-table',
         entityLabel: 'expedientes',
-        detailUrl:   id => `/expedientes/${id}/tramitacion_v3`,
+        detailUrl:   id => `/expedientes/${id}/tramitacion`,
         columns: [
             { key: 'codigo',          label: 'N° Expediente', type: 'text' },
             { key: 'titular',         label: 'Titular',       type: 'text' },

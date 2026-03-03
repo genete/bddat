@@ -35,6 +35,7 @@ class EntradaFecha {
     this._input.addEventListener('focus',   () => this._input.classList.remove('is-invalid'));
     this._input.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') { this.clear(); e.preventDefault(); }
+      if (e.key === 'Enter')  { this._alSalir(); e.preventDefault(); }
     });
     // mousedown en vez de click para no disparar blur antes de tiempo
     this._btnX.addEventListener('mousedown', (e) => {
