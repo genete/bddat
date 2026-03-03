@@ -65,6 +65,18 @@ document.addEventListener('DOMContentLoaded', function () {
             const url = form.dataset.url;
             if (!url) return;
 
+            // Validar campos EntradaFecha (hidden con clase ef-hidden)
+            const campos_ef = form.querySelectorAll('input.ef-hidden');
+            for (const campo of campos_ef) {
+                if (!campo.value) {
+                    if (alert_el) {
+                        alert_el.textContent = 'La fecha es obligatoria.';
+                        alert_el.classList.remove('d-none');
+                    }
+                    return;
+                }
+            }
+
             // Deshabilitar submit para evitar doble envío
             if (submit_btn) {
                 submit_btn.disabled = true;
