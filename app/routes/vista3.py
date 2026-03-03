@@ -452,7 +452,9 @@ def crear_solicitud(exp_id):
     fecha_str = request.form.get('fecha_solicitud')
     entidad_id = request.form.get('entidad_id', type=int) or expediente.titular_id
     if not tipo_ids or not fecha_str:
-        return jsonify({'ok': False, 'error': 'tipo y fecha son obligatorios'}), 400
+        return jsonify({'ok': False, 'error': 'Tipo(s) de solicitud y fecha son obligatorios'}), 400
+    if not entidad_id:
+        return jsonify({'ok': False, 'error': 'El expediente no tiene titular asignado. Asígnelo antes de crear solicitudes.'}), 422
 
     try:
         fecha = date.fromisoformat(fecha_str)
