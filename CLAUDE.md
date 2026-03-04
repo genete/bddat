@@ -21,6 +21,7 @@ Antes de cualquier tarea de desarrollo, leer:
 - `docs/GUIA_COMPONENTES_INTERACTIVOS.md` — catálogo de componentes JS reutilizables
 - `docs/fuentesIA/Estructura_fases_tramites_tareas.json` — lógica de tramitación administrativa
 - `docs/fuentesIA/ROADMAP.md` — estado actual de implementación
+- `docs/fuentesIA/ARQUITECTURA_DOCUMENTOS.md` — decisiones arquitectónicas del subsistema documental
 
 ---
 

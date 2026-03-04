@@ -37,7 +37,7 @@
 - Mejoras visuales y adaptación vistas (#121)
 
 Issues cerrados: #157 (esqueleto BC — PR #159, 2026-03-01), #150 (tabs V3), #146 (acordeón V3)
-Issues activos: #160, #161, #162, #163, #164, #165, #166, #121
+Issues activos: #160, #161, #162, #163, #164, #165, #166, #188, #121
 
 ---
 
@@ -52,7 +52,7 @@ Issues activos: #160, #161, #162, #163, #164, #165, #166, #121
 - Listado inteligente multi-pista con deducción automática de estados (#169) — servicio `app/services/seguimiento.py`
 - Semáforos y alertas de vencimiento (#74)
 
-Issues activos: #167, #168, #169, #74
+Issues activos: #167, #168, #169, #189, #74
 
 ---
 
@@ -71,7 +71,7 @@ Diseño: `docs/fuentesIA/MOTOR_REGLAS_arquitectura.md`
 - Permisos granulares por acción y expediente (#174)
 
 Issues cerrados: #152 (evaluador — PR #154, 2026-02-28), #85 (duplicado de #174)
-Issues activos: #170, #171, #172, #173, #174
+Issues activos: #170, #171, #172, #173, #174, #190
 
 ---
 
