@@ -20,6 +20,7 @@ from app.models.tipos_resultados_fases import TipoResultadoFase
 from app.models.tipos_solicitudes import TipoSolicitud
 from app.models.tipos_tareas import TipoTarea
 from app.models.tipos_tramites import TipoTramite
+from app.models.tipos_documentos import TipoDocumento
 
 # Modelo de metadata del sistema (issue #85)
 from app.models.tabla_metadata import TablaMetadata
@@ -68,6 +69,7 @@ __all__ = [
     'TipoSolicitud',
     'TipoTarea',
     'TipoTramite',
+    'TipoDocumento',
     # Metadata del sistema
     'TablaMetadata',
     # Arquitectura Entidades (simplificada en issue #103)

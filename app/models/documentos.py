@@ -61,6 +61,7 @@ class Documento(db.Model):
         db.Index('idx_documentos_expediente', 'expediente_id'),
         db.Index('idx_documentos_fecha_administrativa', 'fecha_administrativa'),
         db.Index('idx_documentos_hash', 'hash_md5'),
+        db.Index('idx_documentos_tipo_doc', 'tipo_doc_id'),
         {'schema': 'public'}
     )
     
@@ -77,7 +78,16 @@ class Documento(db.Model):
         nullable=False,
         comment='FK a EXPEDIENTES. ÚNCO FK del documento (tabla agnóstica)'
     )
-    
+
+    tipo_doc_id = db.Column(
+        db.Integer,
+        db.ForeignKey('public.tipos_documentos.id'),
+        nullable=False,
+        default=1,
+        server_default='1',
+        comment='FK a TIPOS_DOCUMENTOS. Tipo semántico de negocio del documento'
+    )
+
     url = db.Column(
         db.String(500),
         nullable=False,
@@ -133,8 +143,9 @@ class Documento(db.Model):
         comment='Notas o comentarios adicionales del técnico'
     )
     
-    # Relación con expediente
+    # Relaciones
     expediente = db.relationship('Expediente', foreign_keys=[expediente_id], backref='documentos')
+    tipo_doc = db.relationship('TipoDocumento', foreign_keys=[tipo_doc_id])
     
     def __repr__(self):
         """Representación técnica para debugging."""
