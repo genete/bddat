@@ -1,6 +1,6 @@
 # ARQUITECTURA — Subsistema Documental
 
-> **Sesión de diseño:** 2026-03-04
+> **Sesión de diseño:** 2026-03-04 | **Actualizado:** 2026-03-05
 > Decisiones tomadas antes de entrar en M1 sistema documental (#166) y M2 generación escritos (#167).
 > Documentos relacionados: `MOTOR_REGLAS_arquitectura.md`, `GUIA_CONTEXT_BUILDERS.md`, `ROADMAP.md`
 
@@ -35,18 +35,64 @@ No implementar como @property en `Documento` ni como Event Sourcing completo.
 
 ---
 
-## GAP detectado — BLOQUEANTE para M1 #166
+## GAP resuelto — #188 cerrado
 
-### `Documento` no tiene tipo de negocio
+`tipos_documentos` + FK `tipo_doc_id` en `documentos` implementados en commit `fbb006e`.
+`OTROS` (id=1) es el cajón de sastre por defecto (`server_default='1'`).
 
-El motor de reglas ya usa `tipo_doc_codigo` en criterios `EXISTE_DOCUMENTO_TIPO`.
-Pero `Documento.tipo_contenido` es el tipo MIME (application/pdf), no el tipo de negocio.
+---
 
-**Solución requerida antes de #166:**
-- Tabla maestra `tipos_documentos` (`id`, `codigo`, `nombre`, `descripcion`, `requiere_doc_producido`)
-- FK `tipo_doc_id` en `documentos` → `tipos_documentos`
+## Revisión del modelo Documento — #191 cerrado (2026-03-05)
 
-**Issue:** #188 (M1)
+### Campos eliminados
+
+| Campo | Motivo |
+|---|---|
+| `origen` | Semántica ambigua (mezclaba dirección flujo con emisor concreto). La procedencia del emisor va en columnas de las tablas cualificadoras según su contexto. |
+| `nombre_display` | Deducible del último segmento de la URL. Una sola fuente de la verdad. La interfaz siempre muestra el nombre calculado. |
+
+### `fecha_administrativa` → nullable
+
+NULL tiene dos significados legítimos:
+1. **Pendiente de revisión** — documento cargado al pool sin fecha asignada aún.
+2. **Sin valor jurídico propio por diseño** — borradores (`REDACTAR`) e informes internos (`ANALISIS`); el efecto jurídico lo tiene el documento firmado sucesor.
+
+La API de asignación a tareas debe rechazar documentos con NULL cuando el tipo de tarea lo requiera. Es validación de negocio en capa de servicio, no constraint de BD.
+
+### `prioridad` — semántica aclarada
+
+`0` = no prioritario. `>0` = prioritario (recurso de alzada, respuesta desfavorable, alegación urgente).
+Pseudo-booleano que deja margen para escalas futuras. Validación de rango solo en frontend.
+
+---
+
+## Dos vías de entrada al pool — decisión 2026-03-05
+
+Las dos vías son completamente independientes y no deben confundirse:
+
+**Vía 1 — Carga masiva de soporte (operación previa a tramitación)**
+Pantalla de gestión documental (#180). Ejecutada por el administrativo antes o al margen
+del flujo de tramitación. No genera tareas en el ESFTT.
+
+**Vía 2 — Tarea INCORPORAR (durante tramitación activa)**
+Solo para documentos externos que llegan mientras el expediente está en tramitación:
+informes de organismos, alegaciones, respuestas del titular, justificantes de publicación.
+El documento debe existir ya en el pool antes de ejecutar la tarea.
+**No aplica a la recepción inicial de solicitudes.**
+
+### RECEPCION_SOLICITUD sin INCORPORAR
+
+`REGISTRO_SOLICITUD.RECEPCION_SOLICITUD` cambia a patrón A (solo `ANALISIS`).
+Los documentos ya están en el pool. El `ANALISIS` verifica su presencia, los cualifica
+con `tipo_doc_id` correcto y produce un acta de recepción que es presupuesto para
+las fases `ADMISIBILIDAD` y `ANALISIS_TECNICO`.
+
+### ZIP — no válido como unidad de trabajo
+
+Un ZIP no permite verificar la presencia de tipos específicos exigidos por la legislación.
+Los documentos deben incorporarse individualmente con su `tipo_doc_id`.
+El ZIP puede conservarse como referencia histórica del paquete original de registro,
+pero no como sustituto de los documentos individuales clasificados.
 
 ---
 
@@ -129,3 +175,11 @@ Ver `GUIA_CONTEXT_BUILDERS.md` para crear uno nuevo.
 | Plazos en motor | Servicio separado (plazos.py) | Criterios temporales en condiciones_regla |
 | Escritos simples | Contexto base + plantilla .docx | Hardcoded por tipo |
 | Escritos complejos | Context Builder por tipo | Motor genérico de descubrimiento semántico |
+| Campo `origen` | Eliminado; procedencia en tablas cualificadoras | Campo libre en Documento |
+| Campo `nombre_display` | Eliminado; deducible de URL | Campo editable por usuario |
+| `fecha_administrativa` | Nullable (dos semánticas de NULL documentadas) | NOT NULL con fecha placeholder |
+| `prioridad` | Mantener, pseudo-bool, validación solo frontend | Eliminar / CHECK constraint BD |
+| Carga inicial al pool | Pantalla de gestión (#180), sin tarea ESFTT | Tarea INCORPORAR |
+| INCORPORAR | Solo externos durante tramitación activa | También para carga inicial |
+| ZIP como documento | Solo referencia histórica, no unidad de trabajo | Documento clasificable |
+| Requisitos documentales legales | Issue #192 (M5, futuro) | Sin soporte |
