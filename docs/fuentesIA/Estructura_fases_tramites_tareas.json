@@ -14,13 +14,15 @@
       "Validación uniforme: public.tareas.documento_producido_id IS NOT NULL para tareas con salida obligatoria"
     ],
     "cambios_v5.3": [
-      "Corrección de referencias FK obsoletas en notas de TAREAS_ATOMICAS y NOTAS_IMPLEMENTACION",
-      "Las FKs tarea↔documento viven en public.tareas (documento_producido_id, documento_usado_id), NO en public.documentos",
-      "public.documentos es tabla agnóstica: solo tiene FK expediente_id y tipo_doc_id (ver modelo actual)",
-      "Eliminadas referencias a public.documentos.TAREA_ORIGEN_ID y public.documentos.TAREA_DESTINO_ID (arquitectura invertida en implementación)",
+      "Corrección de referencias FK obsoletas: public.documentos.TAREA_ORIGEN/DESTINO_ID (HSQLDB) → public.tareas.documento_producido_id / documento_usado_id (PostgreSQL)",
+      "Eliminado prefijo T. (schema LibreOffice HSQLDB): reemplazado por nombres public.* de PostgreSQL",
+      "public.documentos es tabla agnóstica: solo tiene FK expediente_id y tipo_doc_id",
       "Corrección typo en NOTAS_IMPLEMENTACION.cambios_v5: REGISTRAR → INCORPORAR",
-      "Actualizada sección tareas_pendientes: public.documentos ya implementado con campos correctos",
-      "Actualizadas validaciones_documentales: SQL obsoleto reemplazado por condición IS NOT NULL en public.tareas"
+      "Actualizadas validaciones_documentales: SQL obsoleto → IS NOT NULL en public.tareas",
+      "RECEPCION_SOLICITUD: INCORPORAR → ANALISIS, patrón G → A. La carga inicial es operación de soporte previa a la tramitación, no tarea ESFTT.",
+      "Patrón G marcado como obsoleto desde v5.3",
+      "INCORPORAR redefinido: califica documentos externos que llegan durante tramitación activa; requiere que el documento exista previamente en el pool",
+      "Añadida filosofia_documentos_v5.3: dos vías de entrada al pool, rol del tipo_doc_id, rechazo del ZIP como unidad de trabajo"
     ]
     "cambios_v5.1": [
       "REGISTRAR renombrado a INCORPORAR: evita confusión con registro de salida administrativo",
@@ -159,9 +161,9 @@
       "codigo": "G",
       "nombre": "Incorporación Inicial",
       "secuencia": ["INCORPORAR"],
-      "descripcion": "Entrada formal de solicitud al sistema sin análisis inmediato",
+      "descripcion": "PATRÓN OBSOLETO desde v5.3. Era la entrada formal de la solicitud inicial al sistema.",
       "destinatario": "Sistema",
-      "nota": "Versión v5.1: INCORPORAR renombrado (antes REGISTRAR). Punto de entrada al sistema. Genera expediente si procede y vincula documentación física al contexto administrativo."
+      "nota": "Obsoleto desde v5.3: RECEPCION_SOLICITUD ya no usa INCORPORAR. La carga inicial de documentos al pool es una operación de soporte documental (pantalla de gestión #180), no una tarea del flujo ESFTT. INCORPORAR queda reservado exclusivamente para documentos externos que llegan durante la tramitación activa (informes de organismos, alegaciones, respuestas del titular, justificantes de publicación)."
     }
   ],
   "FASES": [
@@ -173,10 +175,10 @@
         {
           "codigo": "RECEPCION_SOLICITUD",
           "nombre": "Recepción de Solicitud",
-          "descripcion": "Incorporación de la solicitud y documentación técnica aportada al expediente ya existente. Vinculación de documentación física (ZIP/carpeta) al expediente.",
-          "tareas_indicativas": ["INCORPORAR"],
-          "patron": "G",
-          "nota": "Ejecutado por técnico tras asignación. El expediente ya ha sido creado previamente por el flujo colaborativo administrativo. Formaliza la incorporación de documentación. Actualiza public.documentos con TAREA_ORIGEN_ID. La clasificación inicial (tipo solicitud, proyecto básico) ya está hecha en public.expedientes y public.proyectos."
+          "descripcion": "Verificación y calificación de la documentación aportada por el solicitante. Los documentos ya están en el pool del expediente (cargados vía pantalla de gestión documental). El técnico comprueba que están todos, los cualifica con su tipo semántico y genera un acta de recepción.",
+          "tareas_indicativas": ["ANALISIS"],
+          "patron": "A",
+          "nota": "Ejecutado por técnico tras asignación. El expediente ya ha sido creado previamente por el flujo colaborativo administrativo. La documentación física ya está en el pool (public.documentos) cargada por el administrativo. El ANALISIS aquí no analiza un único documento sino el conjunto del pool: verifica que están presentes los documentos necesarios, los cualifica con tipo_doc_id adecuado, y produce un acta/informe de recepción. Este acta es presupuesto para las fases ADMISIBILIDAD y ANALISIS_TECNICO. No se usa INCORPORAR porque la carga inicial no es un acto de tramitación sino una operación de soporte documental previa."
         },
         {
           "codigo": "COMUNICACION_INICIO",
@@ -538,12 +540,20 @@
       "El estado del expediente es deducible de las tareas incompletas (filosofía del 'mise en place')"
     ],
     "filosofia_documentos_v5.1": [
-      "INCORPORAR solo para documentos externos que llegan al 'hall' del sistema",
+      "INCORPORAR solo para documentos externos que llegan durante la tramitación activa (no para la carga inicial)",
       "Los documentos generados internamente se vinculan al completar la tarea que los produce",
       "Upload integrado: al poner FECHA_FIN en tarea con salida obligatoria, debe haber documento vinculado",
       "El registro de salida administrativo (LPA 39/2015) es externo al tramitador, lo gestiona NOTIFICAR",
       "No confundir INCORPORAR (interno del tramitador) con registro de entrada/salida (externo, administrativos)"
     ],
+    "filosofia_documentos_v5.3": [
+      "El pool (public.documentos) es agnóstico: solo conoce expediente y tipo semántico. No sabe de fases ni trámites.",
+      "Dos vías de entrada al pool, completamente separadas: (1) carga masiva de soporte por administrativo via pantalla de gestión documental (operación previa a la tramitación); (2) INCORPORAR dentro de la tramitación activa para documentos externos que llegan durante el procedimiento.",
+      "RECEPCION_SOLICITUD no usa INCORPORAR: los documentos ya están en el pool. El ANALISIS verifica, cualifica y genera acta de recepción.",
+      "Los documentos del pool deben tener tipo_doc_id correcto (public.tipos_documentos) para que el motor de reglas pueda evaluar su presencia por tipo.",
+      "Un ZIP no es un documento válido para el motor de reglas: no permite verificar la presencia de tipos específicos exigidos por la legislación.",
+      "El concepto de documentos_procedimiento (requisitos documentales legales por fase) está pendiente de definición — issue abierto."
+    ]
     "realidad_administrativa_v5.2": [
       "BOE/BOP/PRENSA: No controlamos fecha exacta de publicación → doble ESPERAR_PLAZO necesario",
       "TABLON_AYUNTAMIENTOS: Certificado llega al final, no al inicio → quebradero de cabeza real",
