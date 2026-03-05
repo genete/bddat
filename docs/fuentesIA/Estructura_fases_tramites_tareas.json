@@ -1,18 +1,27 @@
 {
   "metadata": {
-    "version": "5.2",
+    "version": "5.3",
     "descripcion": "Estructura jerárquica de fases, trámites y tareas para expedientes de AT",
     "principio": "Minimalismo estructural - la semántica vive en los TIPOS",
-    "fecha_actualizacion": "2025-12-16",
+    "fecha_actualizacion": "2026-03-05",
     "cambios_v5": [
-      "Revisión completa de TAREAS_ATOMICAS: relación con T.TAREAS (6 campos) y T.DOCUMENTOS",
+      "Revisión completa de TAREAS_ATOMICAS: relación con public.tareas (6 campos) y public.documentos",
       "ANALISIS: documento de salida ahora obligatorio (no opcional) para validación estructurada",
       "Todas las tareas confirmadas como compatibles con estructura minimalista de 6 campos",
       "Actualización de campos 'entrada' y 'salida' para reflejar solo documentos (no datos auxiliares)",
       "Cambio de campo 'genera' a 'habilita_tareas' para mayor claridad semántica",
       "Eliminación de referencias a datos no documentales en entrada/salida (PLANTILLA_ID, FIRMANTE_ID, etc.)",
-      "Validación uniforme: COUNT(TAREA_ORIGEN_ID) > 0 para tareas con salida obligatoria"
+      "Validación uniforme: public.tareas.documento_producido_id IS NOT NULL para tareas con salida obligatoria"
     ],
+    "cambios_v5.3": [
+      "Corrección de referencias FK obsoletas en notas de TAREAS_ATOMICAS y NOTAS_IMPLEMENTACION",
+      "Las FKs tarea↔documento viven en public.tareas (documento_producido_id, documento_usado_id), NO en public.documentos",
+      "public.documentos es tabla agnóstica: solo tiene FK expediente_id y tipo_doc_id (ver modelo actual)",
+      "Eliminadas referencias a public.documentos.TAREA_ORIGEN_ID y public.documentos.TAREA_DESTINO_ID (arquitectura invertida en implementación)",
+      "Corrección typo en NOTAS_IMPLEMENTACION.cambios_v5: REGISTRAR → INCORPORAR",
+      "Actualizada sección tareas_pendientes: public.documentos ya implementado con campos correctos",
+      "Actualizadas validaciones_documentales: SQL obsoleto reemplazado por condición IS NOT NULL en public.tareas"
+    ]
     "cambios_v5.1": [
       "REGISTRAR renombrado a INCORPORAR: evita confusión con registro de salida administrativo",
       "INCORPORAR clarificado: solo para documentos externos con valor administrativo",
@@ -40,7 +49,7 @@
       "entrada": "ID_DOCUMENTO (obligatorio)",
       "salida": "DOCUMENTO_ID (obligatorio)",
       "habilita_tareas": ["REDACTAR"],
-      "nota": "Documento de entrada: se implementa mediante T.DOCUMENTOS.TAREA_DESTINO_ID apuntando a esta tarea. Documento de salida obligatorio - cambio v5: se implementa mediante T.DOCUMENTOS.TAREA_ORIGEN_ID. El motor de reglas valida que COUNT(TAREA_ORIGEN_ID) > 0 antes de permitir FECHA_FIN. El documento puede ser informe formal o nota técnica informal según contexto del trámite. Al completar la tarea, el usuario debe vincular el documento generado (upload integrado en la tarea). Durante la ejecución, el usuario puede corregir datos erróneos en PROYECTOS o clasificación documental, salvo que las reglas de negocio lo impidan. Los 6 campos genéricos de T.TAREAS son suficientes para ANALISIS."
+      "nota": "Documento de entrada: se implementa mediante public.tareas.documento_usado_id apuntando al documento del pool. Documento de salida obligatorio - cambio v5: se implementa mediante public.tareas.documento_producido_id. El motor de reglas valida que documento_producido_id IS NOT NULL antes de permitir FECHA_FIN. El documento puede ser informe formal o nota técnica informal según contexto del trámite. Al completar la tarea, el usuario debe vincular el documento generado (upload integrado en la tarea). Durante la ejecución, el usuario puede corregir datos erróneos en PROYECTOS o clasificación documental, salvo que las reglas de negocio lo impidan. Los 6 campos genéricos de public.tareas son suficientes para ANALISIS."
     },
     {
       "codigo": "REDACTAR",
@@ -49,7 +58,7 @@
       "entrada": "ID_DOCUMENTO (opcional - documento de ANALISIS previo si existe)",
       "salida": "DOCUMENTO_BORRADOR_ID (obligatorio)",
       "habilita_tareas": ["FIRMAR"],
-      "nota": "Documento de entrada opcional (si existe ANALISIS previo), T.DOCUMENTOS.TAREA_DESTINO_ID apunta a esta tarea REDACTAR. Documento de salida obligatorio mediante T.DOCUMENTOS.TAREA_ORIGEN_ID. Al completar la tarea, el usuario debe vincular el borrador generado (upload integrado en la tarea). El técnico consulta libremente todo el pool documental del expediente para redactar, pero solo el documento de ANALISIS (si existe) tiene relación administrativa formal. El borrador carece de fecha administrativa y validez jurídica hasta FIRMAR. Incluye implícitamente la preparación de documentación necesaria. Los 6 campos genéricos de T.TAREAS son suficientes para REDACTAR."
+      "nota": "Documento de entrada opcional (si existe ANALISIS previo), public.tareas.documento_usado_id apunta al documento del pool. Documento de salida obligatorio mediante public.tareas.documento_producido_id. Al completar la tarea, el usuario debe vincular el borrador generado (upload integrado en la tarea). El técnico consulta libremente todo el pool documental del expediente para redactar, pero solo el documento de ANALISIS (si existe) tiene relación administrativa formal. El borrador carece de fecha administrativa y validez jurídica hasta FIRMAR. Incluye implícitamente la preparación de documentación necesaria. Los 6 campos genéricos de public.tareas son suficientes para REDACTAR."
     },
     {
       "codigo": "FIRMAR",
@@ -58,7 +67,7 @@
       "entrada": "DOCUMENTO_BORRADOR_ID (obligatorio)",
       "salida": "DOCUMENTO_FIRMADO_ID (obligatorio)",
       "habilita_tareas": ["NOTIFICAR", "PUBLICAR"],
-      "nota": "Documento de entrada obligatorio: T.DOCUMENTOS.TAREA_DESTINO_ID apunta a esta tarea FIRMAR (borrador de REDACTAR). Documento de salida obligatorio mediante T.DOCUMENTOS.TAREA_ORIGEN_ID (documento firmado con validez jurídica). Al completar la tarea (poner FECHA_FIN), el usuario debe vincular el documento firmado obtenido del portafirmas (upload integrado en la tarea). FECHA_FIN de la tarea es la fecha administrativa del acto de firma. Transforma el borrador en documento administrativo válido. Responsabilidad de usuario con autoridad (distinta al redactor). Los 6 campos genéricos de T.TAREAS son suficientes para FIRMAR."
+      "nota": "Documento de entrada obligatorio: public.tareas.documento_usado_id apunta al borrador de REDACTAR en el pool. Documento de salida obligatorio mediante public.tareas.documento_producido_id (documento firmado con validez jurídica). Al completar la tarea (poner FECHA_FIN), el usuario debe vincular el documento firmado obtenido del portafirmas (upload integrado en la tarea). FECHA_FIN de la tarea es la fecha administrativa del acto de firma. Transforma el borrador en documento administrativo válido. Responsabilidad de usuario con autoridad (distinta al redactor). Los 6 campos genéricos de public.tareas son suficientes para FIRMAR."
     },
     {
       "codigo": "NOTIFICAR",
@@ -67,7 +76,7 @@
       "entrada": "DOCUMENTO_FIRMADO_ID (obligatorio)",
       "salida": "JUSTIFICANTE_ID (obligatorio)",
       "habilita_tareas": ["ESPERAR_PLAZO", "INCORPORAR"],
-      "nota": "Documento de entrada obligatorio: T.DOCUMENTOS.TAREA_DESTINO_ID apunta a esta tarea NOTIFICAR (documento firmado de FIRMAR). Documento de salida obligatorio mediante T.DOCUMENTOS.TAREA_ORIGEN_ID (justificante de notificación: acuse, certificado postal, etc.). Al completar la tarea, el usuario debe vincular el justificante obtenido (upload integrado en la tarea). FECHA_FIN de la tarea es la fecha administrativa de la notificación. El justificante es documento terminal que no alimenta otras tareas. El proceso de notificación incluye el registro de salida administrativo (externo al tramitador). Destinatario y medio de notificación se gestionan fuera de la estructura de tarea. Los 6 campos genéricos de T.TAREAS son suficientes para NOTIFICAR."
+      "nota": "Documento de entrada obligatorio: public.tareas.documento_usado_id apunta al documento firmado de FIRMAR en el pool. Documento de salida obligatorio mediante public.tareas.documento_producido_id (justificante de notificación: acuse, certificado postal, etc.). Al completar la tarea, el usuario debe vincular el justificante obtenido (upload integrado en la tarea). FECHA_FIN de la tarea es la fecha administrativa de la notificación. El justificante es documento terminal que no alimenta otras tareas. El proceso de notificación incluye el registro de salida administrativo (externo al tramitador). Destinatario y medio de notificación se gestionan fuera de la estructura de tarea. Los 6 campos genéricos de public.tareas son suficientes para NOTIFICAR."
     },
     {
       "codigo": "PUBLICAR",
@@ -76,7 +85,7 @@
       "entrada": "DOCUMENTO_FIRMADO_ID (obligatorio)",
       "salida": "JUSTIFICANTE_PUBLICACION_ID (obligatorio)",
       "habilita_tareas": ["ESPERAR_PLAZO"],
-      "nota": "Documento de entrada obligatorio: T.DOCUMENTOS.TAREA_DESTINO_ID apunta a esta tarea PUBLICAR (documento firmado de FIRMAR). Documento de salida obligatorio mediante T.DOCUMENTOS.TAREA_ORIGEN_ID (justificante de publicación: PDF del BOE/BOP, captura portal, etc.). Al completar la tarea, el usuario debe vincular el justificante de publicación (upload integrado en la tarea). FECHA_FIN de la tarea es la fecha administrativa de publicación. Campo NOTAS almacena referencia de publicación (ej: BOE-A-2025-1234). Siempre habilita ESPERAR_PLAZO para plazo de alegaciones. Los 6 campos genéricos de T.TAREAS son suficientes para PUBLICAR."
+      "nota": "Documento de entrada obligatorio: public.tareas.documento_usado_id apunta al documento firmado de FIRMAR en el pool. Documento de salida obligatorio mediante public.tareas.documento_producido_id (justificante de publicación: PDF del BOE/BOP, captura portal, etc.). Al completar la tarea, el usuario debe vincular el justificante de publicación (upload integrado en la tarea). FECHA_FIN de la tarea es la fecha administrativa de publicación. Campo NOTAS almacena referencia de publicación (ej: BOE-A-2025-1234). Siempre habilita ESPERAR_PLAZO para plazo de alegaciones. Los 6 campos genéricos de public.tareas son suficientes para PUBLICAR."
     },
     {
       "codigo": "ESPERAR_PLAZO",
@@ -85,7 +94,7 @@
       "entrada": "Ninguno",
       "salida": "Ninguno",
       "habilita_tareas": ["INCORPORAR (si llega respuesta)", "FIN (si vence sin respuesta)"],
-      "nota": "Única tarea que no maneja documentos. FECHA_INICIO de la tarea marca inicio del plazo. Campo NOTAS almacena PLAZO_DIAS y TIPO_DIAS (ej: '30 días hábiles' o '0 días=indefinido'). FECHA_FIN marca el cierre administrativo del plazo (puede ser automático al transcurrir o manual al recibir respuesta). PLAZO_DIAS=0 indica paralización indefinida hasta evento externo (ej: resolución ambiental). Si llega documento externo durante el plazo, el usuario debe crear una tarea INCORPORAR para incorporarlo al sistema. Si vence el plazo sin respuesta, se finaliza sin crear INCORPORAR. Los 6 campos genéricos de T.TAREAS son suficientes para ESPERAR_PLAZO."
+      "nota": "Única tarea que no maneja documentos. FECHA_INICIO de la tarea marca inicio del plazo. Campo NOTAS almacena PLAZO_DIAS y TIPO_DIAS (ej: '30 días hábiles' o '0 días=indefinido'). FECHA_FIN marca el cierre administrativo del plazo (puede ser automático al transcurrir o manual al recibir respuesta). PLAZO_DIAS=0 indica paralización indefinida hasta evento externo (ej: resolución ambiental). Si llega documento externo durante el plazo, el usuario debe crear una tarea INCORPORAR para incorporarlo al sistema. Si vence el plazo sin respuesta, se finaliza sin crear INCORPORAR. Los 6 campos genéricos de public.tareas son suficientes para ESPERAR_PLAZO."
     },
     {
       "codigo": "INCORPORAR",
@@ -94,7 +103,7 @@
       "entrada": "Ninguno (documento externo en 'hall' aún no vinculado al sistema)",
       "salida": "DOCUMENTO_ID (obligatorio)",
       "habilita_tareas": ["ANALISIS"],
-      "nota": "Única tarea que produce documento sin consumir. Incorpora documentos externos (solicitudes, alegaciones, informes de organismos, respuestas del titular) al sistema transformándolos de estado 'huérfano' (NULL, NULL) a 'generado' (ID_INCORPORAR, NULL) mediante T.DOCUMENTOS.TAREA_ORIGEN_ID. Solo se usa para documentación externa que requiere análisis/clasificación del técnico. Los documentos generados internamente (borradores REDACTAR, firmados FIRMAR, informes ANALISIS) se vinculan dentro de la misma tarea que los genera mediante upload integrado al completar la tarea. Es el punto de entrada de información externa al expediente. Campo NOTAS puede almacenar número de registro de entrada y remitente. Los 6 campos genéricos de T.TAREAS son suficientes para INCORPORAR."
+      "nota": "Única tarea que produce documento sin consumir. Califica documentos externos (alegaciones, informes de organismos, respuestas del titular, justificantes de publicación) que ya están en el pool del expediente (public.documentos), vinculándolos al trámite activo mediante public.tareas.documento_producido_id. El documento debe existir previamente en el pool. Solo se usa para documentación externa que llega durante la tramitación activa — no aplica a la recepción inicial de la solicitud (ver REGISTRO_SOLICITUD.RECEPCION_SOLICITUD). Los documentos generados internamente (borradores REDACTAR, firmados FIRMAR, informes ANALISIS) se vinculan dentro de la misma tarea que los genera. Campo NOTAS puede almacenar número de registro de entrada y remitente. Los 6 campos genéricos de public.tareas son suficientes para INCORPORAR."
     }
   ],
   "PATRONES_FLUJO": [
@@ -167,7 +176,7 @@
           "descripcion": "Incorporación de la solicitud y documentación técnica aportada al expediente ya existente. Vinculación de documentación física (ZIP/carpeta) al expediente.",
           "tareas_indicativas": ["INCORPORAR"],
           "patron": "G",
-          "nota": "Ejecutado por técnico tras asignación. El expediente ya ha sido creado previamente por el flujo colaborativo administrativo. Formaliza la incorporación de documentación. Actualiza T.DOCUMENTOS con TAREA_ORIGEN_ID. La clasificación inicial (tipo solicitud, proyecto básico) ya está hecha en T.EXPEDIENTES y T.PROYECTOS."
+          "nota": "Ejecutado por técnico tras asignación. El expediente ya ha sido creado previamente por el flujo colaborativo administrativo. Formaliza la incorporación de documentación. Actualiza public.documentos con TAREA_ORIGEN_ID. La clasificación inicial (tipo solicitud, proyecto básico) ya está hecha en public.expedientes y public.proyectos."
         },
         {
           "codigo": "COMUNICACION_INICIO",
@@ -470,14 +479,14 @@
   ],
   "NOTAS_IMPLEMENTACION": {
     "cambios_v5": [
-      "Revisión completa de relación TAREAS_ATOMICAS con estructura minimalista de T.TAREAS (6 campos)",
+      "Revisión completa de relación TAREAS_ATOMICAS con estructura minimalista de public.tareas (6 campos)",
       "Confirmación: los 6 campos genéricos son suficientes para todas las tareas atómicas",
       "ANALISIS: documento de salida cambiado de opcional a obligatorio",
       "Cambio de nomenclatura: 'genera' → 'habilita_tareas'",
       "Simplificación campos entrada/salida: solo documentos (no datos auxiliares)",
-      "Validación uniforme mediante T.DOCUMENTOS.TAREA_ORIGEN_ID para tareas con salida obligatoria",
+      "Validación uniforme mediante public.tareas.documento_producido_id IS NOT NULL para tareas con salida obligatoria",
       "6 de 7 tareas manejan documentos (solo ESPERAR_PLAZO no usa documentos)",
-      "REGISTRAR es la única tarea que produce sin consumir (punto de entrada)"
+      "INCORPORAR es la única tarea que produce sin consumir (punto de entrada de externos durante tramitación)"
     ],
     "cambios_v5.1": [
       "REGISTRAR renombrado a INCORPORAR para evitar confusión con registro de salida administrativo.",
@@ -501,7 +510,7 @@
     ],
     "tareas_pendientes": [
       "Crear tabla TIPOS_TAREAS con las 7 tareas atómicas y sus reglas de entrada/salida",
-      "Actualizar tabla T.DOCUMENTOS confirmando campos: ID, URL, EXPEDIENTE_ID, TAREA_ORIGEN_ID, TAREA_DESTINO_ID",
+      "public.documentos implementado con campos: ID, URL, EXPEDIENTE_ID, TIPO_DOC_ID (ver #188). Las FKs de tarea viven en public.tareas: documento_producido_id (salida), documento_usado_id (entrada). public.documentos es agnóstica.",
       "Implementar validaciones en motor de reglas para documentos obligatorios",
       "Definir tabla REGLAS_SECUENCIA_TAREAS que vincule TIPO_TRAMITE → SECUENCIA_OBLIGATORIA",
       "Crear reglas que vinculen TIPO_EXPEDIENTE → FASES_OBLIGATORIAS",
@@ -513,8 +522,8 @@
     ],
     "principios_mantenidos": [
       "Minimalismo estructural: la semántica vive en los TIPOS",
-      "Los 6 campos de T.TAREAS son suficientes para todas las tareas atómicas",
-      "La relación tarea↔documento se almacena UNA SOLA VEZ en T.DOCUMENTOS",
+      "Los 6 campos de public.tareas son suficientes para todas las tareas atómicas",
+      "La relación tarea↔documento se almacena en public.tareas (documento_producido_id, documento_usado_id); public.documentos es agnóstica",
       "Estados deducibles NO se almacenan (PENDIENTE/EN_CURSO/COMPLETADA)",
       "Las reglas de negocio determinan secuencias válidas, no el código",
       "El núcleo es documental: documentos, fechas, plazos y destinatarios",
@@ -543,12 +552,12 @@
       "Propuesta de incompatibilidad ambiental: Documento externo crítico → requiere INCORPORAR+ANALISIS antes de alegar"
     ],
     "validaciones_documentales": [
-      "ANALISIS: SELECT COUNT(*) FROM T.DOCUMENTOS WHERE TAREA_ORIGEN_ID = ? debe ser > 0",
-      "REDACTAR: SELECT COUNT(*) FROM T.DOCUMENTOS WHERE TAREA_ORIGEN_ID = ? debe ser > 0",
-      "FIRMAR: SELECT COUNT(*) FROM T.DOCUMENTOS WHERE TAREA_ORIGEN_ID = ? debe ser > 0",
-      "NOTIFICAR: SELECT COUNT(*) FROM T.DOCUMENTOS WHERE TAREA_ORIGEN_ID = ? debe ser > 0",
-      "PUBLICAR: SELECT COUNT(*) FROM T.DOCUMENTOS WHERE TAREA_ORIGEN_ID = ? debe ser > 0",
-      "INCORPORAR: SELECT COUNT(*) FROM T.DOCUMENTOS WHERE TAREA_ORIGEN_ID = ? debe ser > 0",
+      "ANALISIS: public.tareas.documento_producido_id IS NOT NULL para permitir FECHA_FIN",
+      "REDACTAR: public.tareas.documento_producido_id IS NOT NULL para permitir FECHA_FIN",
+      "FIRMAR: public.tareas.documento_producido_id IS NOT NULL para permitir FECHA_FIN",
+      "NOTIFICAR: public.tareas.documento_producido_id IS NOT NULL para permitir FECHA_FIN",
+      "PUBLICAR: public.tareas.documento_producido_id IS NOT NULL para permitir FECHA_FIN",
+      "INCORPORAR: public.tareas.documento_producido_id IS NOT NULL para permitir FECHA_FIN",
       "ESPERAR_PLAZO: No requiere validación documental"
     ]
   }
