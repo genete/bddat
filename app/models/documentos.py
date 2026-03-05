@@ -19,42 +19,72 @@ class Documento(db.Model):
         - Pool único de documentos por expediente, relaciones viven fuera
     
     CAMPO EXPEDIENTE_ID:
-        - ÚNCO FK del documento
+        - ÚNICO FK del documento
         - NOT NULL: Todo documento pertenece a un expediente
-    
+
+    CAMPO TIPO_DOC_ID:
+        - FK a TIPOS_DOCUMENTOS. Clasificación semántica de negocio del documento.
+        - Distinta del tipo MIME (tipo_contenido): indica qué ES el documento, no su formato.
+        - Ejemplos: INFORME_ORGANISMO, RESOLUCION, PODER_REPRESENTACION, ALEGACION…
+        - OTROS (id=1) es el cajón de sastre por defecto (server_default='1').
+        - Usado por el motor de reglas con el criterio EXISTE_DOCUMENTO_TIPO.
+        - NOT NULL: todo documento tiene al menos tipo OTROS.
+
     CAMPO FECHA_ADMINISTRATIVA:
         - NO es la fecha del archivo físico (metadatos filesystem)
         - ES la fecha con efectos administrativos y legales
         - Ejemplos: fecha registro entrada, firma, notificación, publicación
         - Determina plazos, efectos jurídicos y secuencia administrativa
-        - NOT NULL: Todo documento tiene fecha administrativa
-    
+        - NULLABLE: dos casos legítimos de NULL:
+          1. Documento cargado al pool pendiente de revisión posterior.
+          2. Documento sin valor jurídico propio (borrador REDACTAR, informe
+             ANALISIS): el efecto jurídico lo tiene el documento firmado sucesor.
+        - La API de asignación a tareas debe rechazar documentos con NULL
+          cuando el tipo de tarea lo requiera (validación de negocio, no de BD).
+
     CAMPO URL:
         - Ruta o URL del archivo físico
         - Sistema de archivos local o repositorio documental
         - NOT NULL: Todo documento tiene ubicación física
-    
+        - El nombre a mostrar en interfaz se deduce del último segmento de la URL.
+
     CAMPO HASH_MD5:
         - Verificación de integridad del archivo
         - Detección de duplicados
         - NULLABLE: Se calcula tras almacenamiento
-    
+
+    CAMPO PRIORIDAD:
+        - 0 = no prioritario (defecto)
+        - >0 = prioritario (recurso de alzada, respuesta desfavorable, alegación urgente…)
+        - Pseudo-booleano que deja margen para escalas futuras sin cambio de modelo.
+        - Validación de rango solo en frontend; sin constraint de BD.
+        - Permite al administrativo señalar documentos relevantes antes de que
+          el técnico los incorpore al flujo de tramitación.
+
     RELACIONES:
         - expediente → EXPEDIENTES.id (FK, expediente contenedor)
+        - tipo_doc → TIPOS_DOCUMENTOS.id (FK, clasificación semántica)
         - documentos_proyecto ← DOCUMENTOS_PROYECTO.documento_id (tabla puente con proyectos)
         - tareas_producidas ← TAREAS.documento_producido_id (tareas que lo generaron)
         - tareas_usadas ← TAREAS.documento_usado_id (tareas que lo utilizan)
-    
+
+    PROCEDENCIA DEL EMISOR:
+        No existe campo origen en esta tabla (eliminado en #191).
+        La identificación del emisor concreto (organismo, BOE, Notifica, portafirmas…)
+        se registra en las columnas propias de cada tabla cualificadora
+        (ej: documentos_proyecto puede añadir entidad_emisora_id si lo necesita).
+
     REGLAS DE NEGOCIO:
         - Un documento pertenece a UN expediente
         - Un documento puede estar en N proyectos (vía DOCUMENTOS_PROYECTO)
-        - Un documento puede ser producido por N tareas
+        - Un documento puede ser producido por UNA tarea (UNIQUE en tareas.documento_producido_id)
         - Un documento puede ser usado por N tareas
-        - FECHA_ADMINISTRATIVA determina vigencia en DOCUMENTOS_PROYECTO
-    
+
     NOTAS DE VERSIÓN:
         v3.0: RENOMBRADO fecha_documento → fecha_administrativa.
               ELIMINADOS: tarea_origen_id, tarea_destino_id, proyecto_id.
+        v4.0: AÑADIDO tipo_doc_id FK → tipos_documentos (#188).
+        v4.1: ELIMINADOS origen, nombre_display. fecha_administrativa → nullable (#191).
     """
     __tablename__ = 'documentos'
     __table_args__ = (
@@ -99,38 +129,26 @@ class Documento(db.Model):
         nullable=True,
         comment='Tipo MIME del archivo (ej: application/pdf)'
     )
-    
+
     fecha_administrativa = db.Column(
         db.Date,
-        nullable=False,
-        comment='Fecha con valor administrativo oficial (firma, registro, publicación)'
+        nullable=True,
+        comment='Fecha con efectos administrativos (firma, registro, publicación). NULL = pendiente o sin valor jurídico propio (borrador/informe interno)'
     )
-    
+
     asunto = db.Column(
         db.String(500),
         nullable=True,
         comment='Descripción o asunto del documento'
     )
-    
-    origen = db.Column(
-        db.String(100),
-        nullable=True,
-        comment='Procedencia del documento (EXTERNO, INTERNO, ORGANISMO_X, etc.)'
-    )
-    
+
     prioridad = db.Column(
         db.Integer,
         default=0,
         nullable=True,
-        comment='Nivel de prioridad o relevancia (default: 0)'
+        comment='0 = no prioritario. >0 = prioritario (recurso, respuesta desfavorable, alegación urgente). Validación de rango solo en frontend.'
     )
-    
-    nombre_display = db.Column(
-        db.String(200),
-        nullable=True,
-        comment='Nombre legible para mostrar en interfaz'
-    )
-    
+
     hash_md5 = db.Column(
         db.String(32),
         nullable=True,
