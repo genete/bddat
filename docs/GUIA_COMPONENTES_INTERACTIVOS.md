@@ -251,6 +251,94 @@ ef.disable()
 
 ---
 
+---
+
+## Toasts programáticos
+
+Sistema de notificaciones para uso desde JavaScript. Definido en `app/static/css/custom.css`
+y el contenedor vive en `app/templates/layout/base_fullwidth.html`.
+
+**No confundir con los flash messages de Flask**, que se inyectan en Jinja al renderizar
+la página. Los toasts programáticos se muestran como respuesta a acciones AJAX ya resueltas.
+
+### CSS (custom.css)
+
+Cuatro clases disponibles: `.toast-success`, `.toast-danger`, `.toast-warning`, `.toast-info`.
+Cada una aplica color de fondo sutil, texto oscuro y un botón de cierre con el filtro de color
+correspondiente. Sobreescribe el estilo base de Bootstrap.
+
+### Estructura HTML
+
+```html
+<div class="toast toast-success" role="alert"
+     aria-live="assertive" aria-atomic="true"
+     data-bs-autohide="true" data-bs-delay="5000">
+  <div class="d-flex align-items-center p-3">
+    <div class="flex-grow-1">
+      <i class="fas fa-check-circle me-2"></i>
+      <strong>Correcto:</strong> El mensaje aquí.
+    </div>
+    <button type="button" class="btn-close ms-3"
+            data-bs-dismiss="toast" aria-label="Cerrar"></button>
+  </div>
+</div>
+```
+
+| Tipo | Clase | Icono FA | Etiqueta |
+|------|-------|----------|----------|
+| `success` | `.toast-success` | `fa-check-circle` | Correcto |
+| `danger` | `.toast-danger` | `fa-exclamation-circle` | Error |
+| `warning` | `.toast-warning` | `fa-exclamation-triangle` | Atención |
+| `info` | `.toast-info` | `fa-info-circle` | Información |
+
+### Función JS reutilizable
+
+Copiar esta función en cualquier `<script>` que necesite mostrar toasts.
+Inyecta el elemento en el `.toast-container` ya presente en el base template
+y replica el ciclo de vida (clases `showing`/`hide`, autodestrucción).
+
+```javascript
+function mostrar_toast(tipo, mensaje) {
+  var iconos    = { success: 'fa-check-circle', danger: 'fa-exclamation-circle',
+                    warning: 'fa-exclamation-triangle', info: 'fa-info-circle' };
+  var etiquetas = { success: 'Correcto', danger: 'Error',
+                    warning: 'Atención',  info: 'Información' };
+  var id   = 'toast-js-' + Date.now();
+  var html =
+    '<div id="' + id + '" class="toast toast-' + tipo + '" role="alert"' +
+    ' aria-live="assertive" aria-atomic="true" data-bs-autohide="true" data-bs-delay="5000">' +
+    '<div class="d-flex align-items-center p-3"><div class="flex-grow-1">' +
+    '<i class="fas ' + (iconos[tipo] || iconos.info) + ' me-2"></i>' +
+    '<strong>' + (etiquetas[tipo] || 'Aviso') + ':</strong> ' + mensaje +
+    '</div><button type="button" class="btn-close ms-3"' +
+    ' data-bs-dismiss="toast" aria-label="Cerrar"></button></div></div>';
+
+  var container = document.querySelector('.toast-container');
+  container.insertAdjacentHTML('beforeend', html);
+  var el = document.getElementById(id);
+  el.classList.add('showing');
+  var t = new bootstrap.Toast(el);
+  t.show();
+  setTimeout(function () { el.classList.remove('showing'); }, 300);
+  el.addEventListener('hide.bs.toast', function () { el.classList.add('hide'); });
+  el.addEventListener('click', function (e) {
+    if (!e.target.closest('.btn-close')) { t.hide(); }
+  });
+  el.addEventListener('hidden.bs.toast', function () { el.remove(); });
+}
+```
+
+### Uso
+
+```javascript
+mostrar_toast('success', 'Cambios guardados correctamente.');
+mostrar_toast('danger',  'Error al conectar con el servidor.');
+mostrar_toast('warning', 'El documento no tiene fecha administrativa.');
+mostrar_toast('info',    'Ruta copiada al portapapeles.');
+```
+
+---
+
 ## Próximos componentes (pendientes)
 
 - `SelectorMultiple` — selección acumulable con badges (variante del anterior)

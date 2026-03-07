@@ -49,13 +49,6 @@
   .fs-item:hover { background-color: var(--bs-primary-bg-subtle); }
   .fs-breadcrumb a { cursor: pointer; text-decoration: none; }
   .fs-breadcrumb a:hover { text-decoration: underline; }
-  /* Toast container */
-  .toast-container-custom {
-    position: fixed;
-    bottom: 1.5rem;
-    right: 1.5rem;
-    z-index: 1200;
-  }
 </style>
 {% endblock %}
 
@@ -69,9 +62,6 @@
   <option value="{{ t.id }}">{{ t.nombre }}</option>
   {% endfor %}
 </template>
-
-<!-- Toast container -->
-<div class="toast-container-custom" id="toast-container"></div>
 
 <!-- C.1 -->
 <div class="lista-cabecera px-3 pt-3">
@@ -585,26 +575,35 @@
   });
 
   // ================================================================
-  // TOASTS
+  // TOASTS — misma estructura y clases que el sistema base (custom.css)
   // ================================================================
   function mostrar_toast(tipo, mensaje) {
-    var colores = {
-      success: 'bg-success text-white',
-      danger:  'bg-danger text-white',
-      info:    'bg-info text-dark',
-      warning: 'bg-warning text-dark'
-    };
-    var cls = colores[tipo] || colores.info;
-    var id  = 'toast-' + Date.now();
+    var iconos   = { success: 'fa-check-circle', danger: 'fa-exclamation-circle',
+                     warning: 'fa-exclamation-triangle', info: 'fa-info-circle' };
+    var etiquetas = { success: 'Correcto', danger: 'Error',
+                      warning: 'Atención', info: 'Información' };
+    var id  = 'toast-js-' + Date.now();
     var html =
-      '<div id="' + id + '" class="toast align-items-center ' + cls + ' border-0" role="alert">' +
-      '<div class="d-flex"><div class="toast-body">' + escapar_html(mensaje) + '</div>' +
-      '<button type="button" class="btn-close btn-close-white me-2 m-auto"' +
-      ' data-bs-dismiss="toast"></button></div></div>';
-    document.getElementById('toast-container').insertAdjacentHTML('beforeend', html);
+      '<div id="' + id + '" class="toast toast-' + tipo + '" role="alert"' +
+      ' aria-live="assertive" aria-atomic="true" data-bs-autohide="true" data-bs-delay="5000">' +
+      '<div class="d-flex align-items-center p-3"><div class="flex-grow-1">' +
+      '<i class="fas ' + (iconos[tipo] || iconos.info) + ' me-2"></i>' +
+      '<strong>' + (etiquetas[tipo] || 'Aviso') + ':</strong> ' + escapar_html(mensaje) +
+      '</div><button type="button" class="btn-close ms-3"' +
+      ' data-bs-dismiss="toast" aria-label="Cerrar"></button></div></div>';
+
+    // Inyectar en el contenedor de toasts del base template
+    var container = document.querySelector('.toast-container');
+    container.insertAdjacentHTML('beforeend', html);
     var el = document.getElementById(id);
-    var t  = new bootstrap.Toast(el, { delay: 4000 });
+    el.classList.add('showing');
+    var t = new bootstrap.Toast(el);
     t.show();
+    setTimeout(function () { el.classList.remove('showing'); }, 300);
+    el.addEventListener('hide.bs.toast', function () { el.classList.add('hide'); });
+    el.addEventListener('click', function (e) {
+      if (!e.target.closest('.btn-close')) { t.hide(); }
+    });
     el.addEventListener('hidden.bs.toast', function () { el.remove(); });
   }
 
