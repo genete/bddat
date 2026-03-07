@@ -16,39 +16,62 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/v3-breadcrumbs.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/entrada_fecha.css') }}">
 <style>
-  .zona-explorador {
-    border: 2px dashed var(--bs-border-color);
-    border-radius: 0.5rem;
-    padding: 1.25rem 1rem;
-    text-align: center;
+  /* Fichas de entrada */
+  .ficha-entrada {
     cursor: pointer;
-    transition: border-color 0.15s, background-color 0.15s;
-    color: var(--bs-secondary-color);
+    border: 1px solid var(--bs-border-color);
+    transition: border-color 0.15s, box-shadow 0.15s;
     user-select: none;
   }
-  .zona-explorador:hover {
+  .ficha-entrada:hover {
     border-color: var(--bs-primary);
-    background-color: var(--bs-primary-bg-subtle);
-    color: var(--bs-primary);
+    box-shadow: 0 0 0 3px var(--bs-primary-bg-subtle);
+  }
+  /* Asunto truncado en tabla */
+  .asunto-celda {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 260px;
+    display: block;
+  }
+  /* Panel de seleccionados (explorador) */
+  .panel-seleccionados {
+    max-height: 110px;
+    overflow-y: auto;
+    background: var(--bs-light);
+    border: 1px solid var(--bs-border-color);
+    border-radius: 0.375rem;
+    padding: 0.4rem 0.6rem;
   }
   /* Explorador de carpetas */
   .fs-item { cursor: pointer; }
   .fs-item:hover { background-color: var(--bs-primary-bg-subtle); }
   .fs-breadcrumb a { cursor: pointer; text-decoration: none; }
   .fs-breadcrumb a:hover { text-decoration: underline; }
+  /* Toast container */
+  .toast-container-custom {
+    position: fixed;
+    bottom: 1.5rem;
+    right: 1.5rem;
+    z-index: 1200;
+  }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="bc-view">
 
-{# Opciones de tipo — dentro del block content para que el DOM las encuentre #}
+{# Opciones de tipo — plantilla para JS #}
 <template id="tmpl-tipos-doc">
   <option value="">— Tipo —</option>
   {% for t in tipos_doc %}
   <option value="{{ t.id }}">{{ t.nombre }}</option>
   {% endfor %}
 </template>
+
+<!-- Toast container -->
+<div class="toast-container-custom" id="toast-container"></div>
 
 <!-- C.1 -->
 <div class="lista-cabecera px-3 pt-3">
@@ -60,11 +83,11 @@
       </span>
       <div class="bc-acciones-bar">
         <a href="{{ url_for('expedientes.detalle', id=expediente.id) }}"
-           class="btn btn-sm btn-outline-secondary">
+           class="btn btn-sm btn-outline-primary">
           <i class="fas fa-info-circle me-1"></i> Detalle
         </a>
         <a href="{{ url_for('expedientes.tramitacion_bc', exp_id=expediente.id) }}"
-           class="btn btn-sm btn-outline-secondary">
+           class="btn btn-sm btn-outline-primary">
           <i class="fas fa-sitemap me-1"></i> Tramitación
         </a>
       </div>
@@ -94,20 +117,57 @@
 <!-- C.2 -->
 <div class="lista-scroll-container p-3">
 
-  <div class="d-flex justify-content-between align-items-center mb-3">
-    <h6 class="mb-0 fw-semibold">Pool de Documentos</h6>
-    <button type="button" class="btn btn-sm btn-outline-secondary"
-            onclick="abrir_modal_url_externa()">
-      <i class="fas fa-link me-1"></i> Añadir URL externa
-    </button>
+  <h6 class="mb-3 fw-semibold">Pool de Documentos</h6>
+
+  <!-- Dos fichas de entrada -->
+  <div class="row g-2 mb-3">
+    <div class="col-6">
+      <div class="card ficha-entrada h-100" onclick="abrir_explorador()">
+        <div class="card-body text-center py-3">
+          <i class="fas fa-server fa-2x mb-2 text-primary"></i>
+          <div class="fw-semibold">Seleccionar del servidor</div>
+          <div class="small text-secondary">Archivos del servidor corporativo</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6">
+      <div class="card ficha-entrada h-100" onclick="abrir_modal_url_externa()">
+        <div class="card-body text-center py-3">
+          <i class="fas fa-link fa-2x mb-2 text-primary"></i>
+          <div class="fw-semibold">Añadir URL externa</div>
+          <div class="small text-secondary">BOE, Notifica, sede electrónica…</div>
+        </div>
+      </div>
+    </div>
   </div>
 
-  <!-- Zona de entrada al explorador de servidor -->
-  <div class="zona-explorador mb-3" id="zona-entrada-principal"
-       onclick="abrir_explorador()">
-    <i class="fas fa-folder-open fa-2x mb-2"></i>
-    <p class="mb-0 fw-semibold">Selecciona ficheros del servidor de documentos</p>
-    <small class="text-secondary">Haz clic para abrir el explorador de carpetas</small>
+  <!-- Panel de edición masiva (oculto hasta que haya selección) -->
+  <div id="panel-masivo" class="card card-body bg-light border mb-3 d-none">
+    <div class="d-flex flex-wrap align-items-center gap-2">
+      <span class="fw-semibold small">
+        Edición masiva (<span id="masivo-count">0</span> seleccionado(s)):
+      </span>
+      <select class="form-select form-select-sm" id="masivo-tipo" style="width:auto;min-width:180px">
+        <option value="">— Tipo (sin cambio) —</option>
+        {% for t in tipos_doc %}
+        <option value="{{ t.id }}">{{ t.nombre }}</option>
+        {% endfor %}
+      </select>
+      <div id="ef-masivo-fecha" style="width:155px"></div>
+      <select class="form-select form-select-sm" id="masivo-prioridad-sel" style="width:auto">
+        <option value="">— Prioridad (sin cambio) —</option>
+        <option value="1">Prioritario</option>
+        <option value="0">No prioritario</option>
+      </select>
+      <button type="button" class="btn btn-sm btn-primary" onclick="aplicar_masivo()">
+        <i class="fas fa-check me-1"></i> Aplicar
+      </button>
+      <button type="button" class="btn btn-sm btn-outline-secondary ms-auto"
+              onclick="deseleccionar_todos()">
+        <i class="fas fa-times me-1"></i> Deseleccionar
+      </button>
+      <div id="masivo-error" class="text-danger small w-100 d-none"></div>
+    </div>
   </div>
 
   <!-- Tabla -->
@@ -115,17 +175,27 @@
   <table class="table table-hover table-sm align-middle">
     <thead class="table-light">
       <tr>
+        <th style="width:2rem">
+          <input type="checkbox" class="form-check-input" id="check-todos"
+                 onchange="toggle_todos(this.checked)"
+                 title="Seleccionar / deseleccionar todos">
+        </th>
         <th>Documento</th>
+        <th>Ext.</th>
         <th>Tipo</th>
         <th>Fecha adm.</th>
-        <th>Prioritario</th>
+        <th class="text-center">Prio.</th>
         <th class="text-end">Acciones</th>
       </tr>
     </thead>
     <tbody id="tbody-docs">
       {% for item in docs_lista %}
       {% set doc = item.doc %}
-      <tr id="fila-doc-{{ doc.id }}">
+      <tr id="fila-doc-{{ doc.id }}" data-doc-id="{{ doc.id }}">
+        <td>
+          <input type="checkbox" class="form-check-input doc-check"
+                 onchange="on_check_doc(this, {{ doc.id }})">
+        </td>
         <td>
           {% if item.es_url_externa %}
           <a href="{{ doc.url }}" target="_blank" rel="noopener" class="fw-semibold">
@@ -133,17 +203,22 @@
           </a>
           {% else %}
           <a href="{{ url_for('expedientes.pool_descargar_documento', id=expediente.id, doc_id=doc.id) }}"
-             class="fw-semibold">
-            <i class="fas fa-file-download fa-xs me-1 text-secondary"></i>{{ item.nombre_display }}
+             target="_blank" class="fw-semibold">
+            <i class="fas fa-file fa-xs me-1 text-secondary"></i>{{ item.nombre_display }}
           </a>
           {% endif %}
-          {% if item.extension %}
-          <span class="badge border border-secondary text-secondary ms-1 small">.{{ item.extension }}</span>
-          {% elif doc.tipo_contenido %}
-          <span class="badge bg-secondary ms-1 small">{{ doc.tipo_contenido }}</span>
-          {% endif %}
           {% if doc.asunto %}
-          <div class="text-secondary small">{{ doc.asunto }}</div>
+          <span class="asunto-celda text-secondary small"
+                title="{{ doc.asunto | e }}">{{ doc.asunto }}</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if item.extension %}
+          <span class="badge border border-secondary text-secondary">.{{ item.extension }}</span>
+          {% elif doc.tipo_contenido %}
+          <span class="badge bg-secondary small">{{ doc.tipo_contenido }}</span>
+          {% else %}
+          <span class="text-secondary">—</span>
           {% endif %}
         </td>
         <td>
@@ -162,6 +237,14 @@
           {% endif %}
         </td>
         <td class="text-end text-nowrap">
+          {% if not item.es_url_externa %}
+          <button type="button" class="btn btn-sm btn-outline-secondary"
+                  title="Copiar ruta al portapapeles — pégala en el Explorador de Windows para navegar al archivo"
+                  data-bs-toggle="tooltip" data-bs-placement="top"
+                  onclick="copiar_ruta('{{ doc.url | replace('\\', '/') | e }}')">
+            <i class="fas fa-copy"></i>
+          </button>
+          {% endif %}
           <button type="button" class="btn btn-sm btn-outline-secondary"
                   title="Editar metadatos"
                   onclick="abrir_modal_editar(this)"
@@ -183,7 +266,7 @@
           </button>
           {% else %}
           <button type="button" class="btn btn-sm btn-outline-danger"
-                  title="Borrar documento"
+                  title="Borrar registro del pool"
                   onclick="borrar_documento(this, '{{ url_for('expedientes.pool_borrar_documento', id=expediente.id, doc_id=doc.id) }}')"
                   data-doc-id="{{ doc.id }}">
             <i class="fas fa-times"></i>
@@ -197,7 +280,7 @@
   {% else %}
   <div class="text-center text-secondary py-4">
     <i class="fas fa-inbox fa-3x mb-3 d-block"></i>
-    No hay documentos en el pool. Arrastra ficheros en la zona de arriba.
+    Sin documentos en el pool. Usa las fichas de arriba para añadir.
   </div>
   {% endif %}
 
@@ -212,7 +295,7 @@
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title" id="modal-explorador-label">
-          <i class="fas fa-folder-open me-1"></i> Seleccionar ficheros del servidor
+          <i class="fas fa-server me-1"></i> Seleccionar ficheros del servidor
         </h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
@@ -220,19 +303,20 @@
 
         <!-- Paso 1: Explorador de carpetas -->
         <div id="paso-explorador">
-          {# Breadcrumb de navegación #}
           <nav class="fs-breadcrumb mb-2 small" id="fs-breadcrumb">
             <span class="text-secondary">Cargando…</span>
           </nav>
-
           <div id="fs-error" class="alert alert-danger d-none"></div>
 
-          {# Lista de carpetas y ficheros #}
-          <div class="table-responsive" style="max-height:50vh; overflow-y:auto;">
+          <div class="table-responsive" style="max-height:35vh; overflow-y:auto;">
             <table class="table table-sm table-hover align-middle mb-0">
               <thead class="table-light sticky-top">
                 <tr>
-                  <th></th>
+                  <th style="width:2rem">
+                    <input type="checkbox" class="form-check-input" id="fs-check-todos"
+                           onchange="toggle_todos_fs(this.checked)"
+                           title="Seleccionar todos los ficheros de esta carpeta">
+                  </th>
                   <th>Nombre</th>
                   <th>Tamaño</th>
                   <th>Ext.</th>
@@ -246,12 +330,21 @@
             </table>
           </div>
 
-          <div class="mt-2 text-secondary small" id="fs-contador">
-            0 fichero(s) seleccionado(s)
+          <!-- Panel de seleccionados -->
+          <div id="panel-sel-wrap" class="mt-2 d-none">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+              <span class="small fw-semibold" id="fs-contador">0 fichero(s) seleccionado(s)</span>
+              <button type="button" class="btn btn-link btn-sm p-0 text-secondary"
+                      onclick="limpiar_seleccion_fs()">Limpiar</button>
+            </div>
+            <div class="panel-seleccionados" id="lista-seleccionados"></div>
+          </div>
+          <div class="mt-1 small text-secondary" id="fs-contador-vacio">
+            0 fichero(s) seleccionado(s) — puedes seleccionar de varias carpetas
           </div>
         </div>
 
-        <!-- Paso 2: Metadatos de los ficheros seleccionados -->
+        <!-- Paso 2: Metadatos -->
         <div id="paso-metadatos" class="d-none">
           <p class="text-secondary small mb-2" id="meta-contador"></p>
           <div class="table-responsive">
@@ -261,7 +354,7 @@
                   <th>Nombre</th>
                   <th>Tamaño</th>
                   <th style="min-width:180px">Tipo de documento</th>
-                  <th style="min-width:130px">Fecha adm.</th>
+                  <th style="min-width:155px">Fecha adm.</th>
                   <th class="text-center">Prioritario</th>
                 </tr>
               </thead>
@@ -419,26 +512,44 @@
 (function () {
   'use strict';
 
-  var URL_BASE_DOCS    = '{{ url_for('expedientes.pool_documentos', id=expediente.id) }}';
-  var URL_EXPLORADOR   = '{{ url_for('expedientes.pool_explorador_fs', id=expediente.id) }}';
+  var URL_BASE_DOCS  = '{{ url_for('expedientes.pool_documentos', id=expediente.id) }}';
+  var URL_EXPLORADOR = '{{ url_for('expedientes.pool_explorador_fs', id=expediente.id) }}';
 
-  // Instancias de modales Bootstrap
-  var _modal_exp_bs    = null;
+  // ----------------------------------------------------------------
+  // Modales Bootstrap
+  // ----------------------------------------------------------------
+  var _modal_exp_bs     = null;
   var _modal_url_ext_bs = null;
   var _modal_editar_bs  = null;
   var _modal_editar_el  = document.getElementById('modal-editar-doc');
 
-  // EntradaFecha
+  // ----------------------------------------------------------------
+  // EntradaFecha — instancias
+  // ----------------------------------------------------------------
   var _ef_editar  = null;
   var _ef_url_ext = null;
-
-  // Estado del explorador
-  var _ruta_actual    = '';        // ruta relativa actual (vacío = raíz)
-  var _seleccionados  = [];        // [{ruta, nombre, ext, tamano}]
+  var _ef_masivo  = null;
+  var _ef_metas   = [];   // una por fila en paso 2
 
   // ----------------------------------------------------------------
-  // Init
+  // Estado explorador
   // ----------------------------------------------------------------
+  var _ruta_actual   = '';
+  var _seleccionados = [];   // [{ruta, nombre, ext, tamano}]
+
+  // ----------------------------------------------------------------
+  // Estado edición masiva (tabla)
+  // ----------------------------------------------------------------
+  var _masivo_ids = new Set();
+
+  // ----------------------------------------------------------------
+  // Docs registrados en sesión (para toast al cerrar)
+  // ----------------------------------------------------------------
+  var _registrados_sesion = 0;
+
+  // ================================================================
+  // INIT
+  // ================================================================
   document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function (el) {
       new bootstrap.Tooltip(el);
@@ -447,28 +558,59 @@
     var el_modal = document.getElementById('modal-explorador');
     _modal_exp_bs = new bootstrap.Modal(el_modal);
 
-    // Al abrir el explorador, cargar raíz
     el_modal.addEventListener('show.bs.modal', function () {
-      _ruta_actual   = '';
-      _seleccionados = [];
+      _ruta_actual        = '';
+      _seleccionados      = [];
+      _registrados_sesion = 0;
       mostrar_paso_explorador();
       cargar_carpeta('');
     });
-    // Al cerrar, resetear
-    el_modal.addEventListener('hidden.bs.modal', resetear_explorador);
+    el_modal.addEventListener('hidden.bs.modal', function () {
+      resetear_explorador();
+      if (_registrados_sesion === 0) {
+        mostrar_toast('info', 'Carga cancelada — se han registrado 0 documentos.');
+      }
+    });
 
-    // EntradaFecha — inicializar cuando se abren los modales
+    // EntradaFecha — al abrir modales que los contienen
     document.getElementById('modal-url-externa').addEventListener('show.bs.modal', function () {
       if (!_ef_url_ext) _ef_url_ext = new EntradaFecha('#ef-url-ext-fecha', { name: '_f_url_ext' });
     });
     _modal_editar_el.addEventListener('show.bs.modal', function () {
       if (!_ef_editar) _ef_editar = new EntradaFecha('#ef-editar-fecha', { name: '_f_editar' });
     });
+
+    // EntradaFecha del panel masivo (en el DOM principal, inicializar ya)
+    _ef_masivo = new EntradaFecha('#ef-masivo-fecha', { name: '_f_masivo' });
   });
 
-  // ----------------------------------------------------------------
-  // Explorador — navegación
-  // ----------------------------------------------------------------
+  // ================================================================
+  // TOASTS
+  // ================================================================
+  function mostrar_toast(tipo, mensaje) {
+    var colores = {
+      success: 'bg-success text-white',
+      danger:  'bg-danger text-white',
+      info:    'bg-info text-dark',
+      warning: 'bg-warning text-dark'
+    };
+    var cls = colores[tipo] || colores.info;
+    var id  = 'toast-' + Date.now();
+    var html =
+      '<div id="' + id + '" class="toast align-items-center ' + cls + ' border-0" role="alert">' +
+      '<div class="d-flex"><div class="toast-body">' + escapar_html(mensaje) + '</div>' +
+      '<button type="button" class="btn-close btn-close-white me-2 m-auto"' +
+      ' data-bs-dismiss="toast"></button></div></div>';
+    document.getElementById('toast-container').insertAdjacentHTML('beforeend', html);
+    var el = document.getElementById(id);
+    var t  = new bootstrap.Toast(el, { delay: 4000 });
+    t.show();
+    el.addEventListener('hidden.bs.toast', function () { el.remove(); });
+  }
+
+  // ================================================================
+  // EXPLORADOR — navegación
+  // ================================================================
   window.abrir_explorador = function () {
     _modal_exp_bs.show();
   };
@@ -476,6 +618,7 @@
   function cargar_carpeta(ruta) {
     _ruta_actual = ruta;
     document.getElementById('fs-error').classList.add('d-none');
+    document.getElementById('fs-check-todos').checked = false;
     document.getElementById('fs-tbody').innerHTML =
       '<tr><td colspan="4" class="text-center text-secondary py-3">' +
       '<i class="fas fa-spinner fa-spin me-1"></i> Cargando…</td></tr>';
@@ -496,7 +639,7 @@
   }
 
   function renderizar_breadcrumb(partes) {
-    var bc = document.getElementById('fs-breadcrumb');
+    var bc   = document.getElementById('fs-breadcrumb');
     var html = '<a onclick="cargar_carpeta(\'\')" class="text-primary">Raíz</a>';
     var acum = [];
     partes.forEach(function (p, i) {
@@ -504,7 +647,7 @@
       var ruta = acum.join('/');
       if (i < partes.length - 1) {
         html += ' <span class="text-secondary">›</span> <a onclick="cargar_carpeta(\'' +
-                escapar_html(ruta) + '\')" class="text-primary">' + escapar_html(p) + '</a>';
+                escapar_attr(ruta) + '\')" class="text-primary">' + escapar_html(p) + '</a>';
       } else {
         html += ' <span class="text-secondary">›</span> <span class="fw-semibold">' +
                 escapar_html(p) + '</span>';
@@ -517,31 +660,32 @@
     var tbody = document.getElementById('fs-tbody');
     tbody.innerHTML = '';
 
-    // Botón "Subir un nivel"
+    // Subir un nivel
     if (_ruta_actual) {
       var partes = _ruta_actual.split('/');
       partes.pop();
       var padre = partes.join('/');
       var tr_up = document.createElement('tr');
       tr_up.className = 'fs-item';
-      tr_up.innerHTML = '<td><i class="fas fa-level-up-alt text-secondary"></i></td>' +
-                        '<td colspan="3"><em class="text-secondary">← Subir un nivel</em></td>';
+      tr_up.innerHTML =
+        '<td></td>' +
+        '<td colspan="3"><i class="fas fa-level-up-alt text-secondary me-1"></i>' +
+        '<em class="text-secondary">← Subir un nivel</em></td>';
       tr_up.onclick = function () { cargar_carpeta(padre); };
       tbody.appendChild(tr_up);
     }
 
-    // Carpetas
     dirs.forEach(function (d) {
       var tr = document.createElement('tr');
       tr.className = 'fs-item';
-      tr.innerHTML = '<td><i class="fas fa-folder text-warning"></i></td>' +
-                     '<td><strong>' + escapar_html(d.nombre) + '</strong></td>' +
-                     '<td></td><td></td>';
+      tr.innerHTML =
+        '<td></td>' +
+        '<td colspan="3"><i class="fas fa-folder text-warning me-1"></i>' +
+        '<strong>' + escapar_html(d.nombre) + '</strong></td>';
       tr.onclick = function () { cargar_carpeta(d.ruta); };
       tbody.appendChild(tr);
     });
 
-    // Ficheros
     files.forEach(function (f) {
       var tr = document.createElement('tr');
       tr._fs_item = f;
@@ -560,25 +704,65 @@
         } else {
           _seleccionados = _seleccionados.filter(function (s) { return s.ruta !== f.ruta; });
         }
-        actualizar_contador();
+        actualizar_panel_seleccionados();
       });
       tbody.appendChild(tr);
     });
 
-    if (dirs.length === 0 && files.length === 0 && !_ruta_actual) {
+    if (dirs.length === 0 && files.length === 0) {
       var tr_vac = document.createElement('tr');
       tr_vac.innerHTML = '<td colspan="4" class="text-center text-secondary py-3">Carpeta vacía</td>';
       tbody.appendChild(tr_vac);
     }
 
-    actualizar_contador();
+    actualizar_panel_seleccionados();
   }
 
-  function actualizar_contador() {
-    var n = _seleccionados.length;
-    document.getElementById('fs-contador').textContent =
-      n + ' fichero(s) seleccionado(s)';
+  window.toggle_todos_fs = function (checked) {
+    document.querySelectorAll('#fs-tbody .fs-check').forEach(function (chk) {
+      var tr = chk.closest('tr');
+      if (!tr || !tr._fs_item) return;
+      var f = tr._fs_item;
+      chk.checked = checked;
+      if (checked) {
+        if (!_seleccionados.some(function (s) { return s.ruta === f.ruta; })) {
+          _seleccionados.push(f);
+        }
+      } else {
+        _seleccionados = _seleccionados.filter(function (s) { return s.ruta !== f.ruta; });
+      }
+    });
+    actualizar_panel_seleccionados();
+  };
+
+  window.limpiar_seleccion_fs = function () {
+    _seleccionados = [];
+    document.querySelectorAll('#fs-tbody .fs-check').forEach(function (c) { c.checked = false; });
+    document.getElementById('fs-check-todos').checked = false;
+    actualizar_panel_seleccionados();
+  };
+
+  function actualizar_panel_seleccionados() {
+    var n     = _seleccionados.length;
+    var wrap  = document.getElementById('panel-sel-wrap');
+    var vacio = document.getElementById('fs-contador-vacio');
     document.getElementById('btn-exp-siguiente').disabled = (n === 0);
+
+    if (n === 0) {
+      wrap.classList.add('d-none');
+      vacio.classList.remove('d-none');
+    } else {
+      wrap.classList.remove('d-none');
+      vacio.classList.add('d-none');
+      document.getElementById('fs-contador').textContent = n + ' fichero(s) seleccionado(s)';
+      document.getElementById('lista-seleccionados').innerHTML =
+        _seleccionados.map(function (f) {
+          return '<div class="small"><i class="fas fa-file fa-xs me-1 text-secondary"></i>' +
+                 escapar_html(f.nombre) +
+                 ' <span class="text-secondary" style="font-size:0.78em">' +
+                 escapar_html(f.ruta) + '</span></div>';
+        }).join('');
+    }
   }
 
   function mostrar_error_exp(msg) {
@@ -588,9 +772,9 @@
     document.getElementById('fs-tbody').innerHTML = '';
   }
 
-  // ----------------------------------------------------------------
-  // Paso 2 — metadatos
-  // ----------------------------------------------------------------
+  // ================================================================
+  // PASO 2 — metadatos
+  // ================================================================
   window.ir_a_metadatos = function () {
     if (_seleccionados.length === 0) return;
     mostrar_paso_metadatos();
@@ -598,22 +782,25 @@
     var tmpl_tipos = document.getElementById('tmpl-tipos-doc').innerHTML;
     var tbody = document.getElementById('meta-tbody');
     tbody.innerHTML = '';
+    _ef_metas = [];
 
-    _seleccionados.forEach(function (f) {
-      var tr = document.createElement('tr');
-      tr._ruta = f.ruta;
+    _seleccionados.forEach(function (f, i) {
+      var tr    = document.createElement('tr');
+      tr._ruta  = f.ruta;
+      var ef_id = 'ef-meta-fecha-' + i;
       tr.innerHTML =
         '<td class="small">' + escapar_html(f.nombre) + '</td>' +
         '<td class="small text-secondary text-nowrap">' + formatear_bytes(f.tamano) + '</td>' +
         '<td><select class="form-select form-select-sm tipo-doc-select">' + tmpl_tipos + '</select></td>' +
-        '<td><input type="date" class="form-control form-control-sm fecha-admin-input"></td>' +
+        '<td><div id="' + ef_id + '"></div></td>' +
         '<td class="text-center"><input type="checkbox" class="form-check-input prioridad-check"></td>';
       tbody.appendChild(tr);
+      _ef_metas.push(new EntradaFecha('#' + ef_id, { name: '_ef_meta_' + i }));
     });
 
     var n = _seleccionados.length;
     document.getElementById('meta-contador').textContent =
-      n + ' fichero(s) seleccionado(s) para registrar';
+      n + ' fichero(s) listos para registrar';
     document.getElementById('btn-meta-texto').textContent =
       'Registrar ' + n + ' fichero(s)';
     document.getElementById('meta-error').classList.add('d-none');
@@ -643,11 +830,11 @@
 
   window.registrar_rutas = function (url_registrar) {
     var payload = [];
-    document.querySelectorAll('#meta-tbody tr').forEach(function (tr) {
+    document.querySelectorAll('#meta-tbody tr').forEach(function (tr, i) {
       payload.push({
         ruta:                 tr._ruta,
         tipo_doc_id:          tr.querySelector('.tipo-doc-select').value || '1',
-        fecha_administrativa: tr.querySelector('.fecha-admin-input').value || null,
+        fecha_administrativa: _ef_metas[i] ? _ef_metas[i].getValue() : null,
         prioridad:            tr.querySelector('.prioridad-check').checked,
       });
     });
@@ -663,8 +850,19 @@
     })
     .then(function (r) { return r.json(); })
     .then(function (data) {
-      if (data.ok) { window.location.reload(); }
-      else {
+      if (data.ok) {
+        _registrados_sesion = data.creados || payload.length;
+        // Cerrar modal → el evento hidden.bs.modal ve _registrados_sesion > 0 y NO muestra
+        // el toast de cancelación. Mostramos el toast de éxito con un delay.
+        bootstrap.Modal.getInstance(
+          document.getElementById('modal-explorador')
+        ).hide();
+        setTimeout(function () {
+          mostrar_toast('success',
+            'Se han registrado ' + _registrados_sesion + ' documento(s) en el pool.');
+          setTimeout(function () { window.location.reload(); }, 1800);
+        }, 350);
+      } else {
         document.getElementById('meta-error').textContent = data.error || 'Error al registrar.';
         document.getElementById('meta-error').classList.remove('d-none');
         btn.disabled = false;
@@ -678,20 +876,114 @@
   };
 
   function resetear_explorador() {
-    _ruta_actual   = '';
+    _ruta_actual = '';
     _seleccionados = [];
+    _ef_metas = [];
     mostrar_paso_explorador();
-    document.getElementById('fs-tbody').innerHTML = '';
+    document.getElementById('fs-tbody').innerHTML      = '';
     document.getElementById('fs-breadcrumb').innerHTML = '';
     document.getElementById('fs-error').classList.add('d-none');
-    document.getElementById('meta-tbody').innerHTML = '';
+    document.getElementById('meta-tbody').innerHTML    = '';
     document.getElementById('meta-error').classList.add('d-none');
     document.getElementById('btn-exp-siguiente').disabled = true;
+    document.getElementById('fs-check-todos').checked     = false;
+    actualizar_panel_seleccionados();
   }
 
-  // ----------------------------------------------------------------
-  // URL externa
-  // ----------------------------------------------------------------
+  // ================================================================
+  // EDICIÓN MASIVA (tabla de docs)
+  // ================================================================
+  window.on_check_doc = function (chk, doc_id) {
+    if (chk.checked) {
+      _masivo_ids.add(doc_id);
+    } else {
+      _masivo_ids.delete(doc_id);
+      document.getElementById('check-todos').checked = false;
+    }
+    actualizar_panel_masivo();
+  };
+
+  window.toggle_todos = function (checked) {
+    document.querySelectorAll('.doc-check').forEach(function (c) { c.checked = checked; });
+    _masivo_ids.clear();
+    if (checked) {
+      document.querySelectorAll('#tbody-docs tr[data-doc-id]').forEach(function (tr) {
+        _masivo_ids.add(parseInt(tr.dataset.docId, 10));
+      });
+    }
+    actualizar_panel_masivo();
+  };
+
+  window.deseleccionar_todos = function () {
+    toggle_todos(false);
+    document.getElementById('check-todos').checked = false;
+  };
+
+  function actualizar_panel_masivo() {
+    var n = _masivo_ids.size;
+    var panel = document.getElementById('panel-masivo');
+    if (n > 0) {
+      panel.classList.remove('d-none');
+      document.getElementById('masivo-count').textContent = n;
+    } else {
+      panel.classList.add('d-none');
+    }
+  }
+
+  window.aplicar_masivo = function () {
+    if (_masivo_ids.size === 0) return;
+
+    // Solo incluir en el payload los campos que el usuario ha rellenado
+    var payload = {};
+    var tipo_doc_id = document.getElementById('masivo-tipo').value;
+    var fecha_admin = _ef_masivo ? _ef_masivo.getValue() : '';
+    var prio_val    = document.getElementById('masivo-prioridad-sel').value;
+
+    if (tipo_doc_id) payload.tipo_doc_id = parseInt(tipo_doc_id, 10);
+    if (fecha_admin) payload.fecha_administrativa = fecha_admin;
+    if (prio_val !== '') payload.prioridad = (prio_val === '1');
+
+    if (Object.keys(payload).length === 0) {
+      document.getElementById('masivo-error').textContent =
+        'Elige al menos un campo a modificar.';
+      document.getElementById('masivo-error').classList.remove('d-none');
+      return;
+    }
+    document.getElementById('masivo-error').classList.add('d-none');
+
+    var ids = Array.from(_masivo_ids);
+    var promesas = ids.map(function (doc_id) {
+      var url_editar =
+        URL_BASE_DOCS.replace(/\/documentos$/, '/documentos/') + doc_id + '/editar';
+      return fetch(url_editar, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      }).then(function (r) { return r.json(); });
+    });
+
+    Promise.all(promesas)
+    .then(function (resultados) {
+      var errores = resultados.filter(function (r) { return !r.ok; });
+      if (errores.length > 0) {
+        document.getElementById('masivo-error').textContent =
+          errores.length + ' error(es) al aplicar. Recarga la página.';
+        document.getElementById('masivo-error').classList.remove('d-none');
+      } else {
+        mostrar_toast('success',
+          'Cambios aplicados a ' + ids.length + ' documento(s).');
+        setTimeout(function () { window.location.reload(); }, 1200);
+      }
+    })
+    .catch(function () {
+      document.getElementById('masivo-error').textContent = 'Error de red.';
+      document.getElementById('masivo-error').classList.remove('d-none');
+    });
+  };
+
+  // ================================================================
+  // URL EXTERNA
+  // ================================================================
   window.abrir_modal_url_externa = function () {
     document.getElementById('url-ext-url').value    = '';
     document.getElementById('url-ext-tipo').value   = '';
@@ -726,8 +1018,10 @@
     })
     .then(function (r) { return r.json(); })
     .then(function (data) {
-      if (data.ok) { window.location.reload(); }
-      else {
+      if (data.ok) {
+        mostrar_toast('success', 'URL externa registrada correctamente.');
+        setTimeout(function () { window.location.reload(); }, 1200);
+      } else {
         document.getElementById('url-ext-error').textContent = data.error || 'Error al guardar.';
         document.getElementById('url-ext-error').classList.remove('d-none');
       }
@@ -738,19 +1032,19 @@
     });
   };
 
-  // ----------------------------------------------------------------
-  // Editar metadatos
-  // ----------------------------------------------------------------
+  // ================================================================
+  // EDITAR METADATOS (individual)
+  // ================================================================
   window.abrir_modal_editar = function (btn) {
     document.getElementById('editar-doc-id').value        = btn.dataset.docId;
     document.getElementById('editar-url').value           = btn.dataset.docUrl;
     document.getElementById('editar-tipo-doc-id').value   = btn.dataset.docTipoDocId;
     document.getElementById('editar-asunto').value        = btn.dataset.docAsunto;
-    document.getElementById('editar-prioridad').checked   = btn.dataset.docPrioridad !== '0' && btn.dataset.docPrioridad !== '';
+    document.getElementById('editar-prioridad').checked   =
+      btn.dataset.docPrioridad !== '0' && btn.dataset.docPrioridad !== '';
     document.getElementById('editar-observaciones').value = btn.dataset.docObservaciones;
     document.getElementById('editar-error').classList.add('d-none');
 
-    // Campo URL: solo editable para URL externas
     var campo_url = document.getElementById('editar-url-campo');
     campo_url.classList.toggle('d-none', btn.dataset.docEsUrlExterna !== 'true');
 
@@ -767,7 +1061,8 @@
 
   window.guardar_edicion = function () {
     var doc_id     = document.getElementById('editar-doc-id').value;
-    var url_editar = URL_BASE_DOCS.replace(/\/documentos$/, '/documentos/') + doc_id + '/editar';
+    var url_editar =
+      URL_BASE_DOCS.replace(/\/documentos$/, '/documentos/') + doc_id + '/editar';
 
     var payload = {
       url:                  document.getElementById('editar-url').value.trim() || null,
@@ -797,11 +1092,11 @@
     });
   };
 
-  // ----------------------------------------------------------------
-  // Borrar
-  // ----------------------------------------------------------------
+  // ================================================================
+  // BORRAR (individual)
+  // ================================================================
   window.borrar_documento = function (btn, url_borrar) {
-    if (!confirm('¿Borrar este registro del pool? El fichero del servidor NO se eliminará.')) return;
+    if (!confirm('¿Borrar este registro del pool?\nEl fichero del servidor NO se eliminará.')) return;
     var doc_id = btn.dataset.docId;
     fetch(url_borrar, { method: 'POST' })
     .then(function (r) { return r.json(); })
@@ -809,18 +1104,42 @@
       if (data.ok) {
         var fila = document.getElementById('fila-doc-' + doc_id);
         if (fila) fila.remove();
+        _masivo_ids.delete(parseInt(doc_id, 10));
+        actualizar_panel_masivo();
+        mostrar_toast('info', 'Registro eliminado del pool.');
       } else { alert(data.error || 'No se pudo borrar.'); }
     })
     .catch(function () { alert('Error de red al borrar.'); });
   };
 
-  // ----------------------------------------------------------------
-  // Utilidades
-  // ----------------------------------------------------------------
+  // ================================================================
+  // COPIAR RUTA AL PORTAPAPELES
+  // ================================================================
+  window.copiar_ruta = function (ruta) {
+    // Normalizar separadores a backslash para Windows
+    var ruta_win = ruta.replace(/\//g, '\\');
+    if (!navigator.clipboard) {
+      alert('Tu navegador no soporta copia al portapapeles.\nRuta:\n' + ruta_win);
+      return;
+    }
+    navigator.clipboard.writeText(ruta_win).then(function () {
+      mostrar_toast('info', 'Ruta copiada al portapapeles — pégala en el Explorador de Windows.');
+    }).catch(function () {
+      alert('No se pudo copiar automáticamente.\nRuta:\n' + ruta_win);
+    });
+  };
+
+  // ================================================================
+  // UTILIDADES
+  // ================================================================
   function escapar_html(str) {
     return String(str)
       .replace(/&/g, '&amp;').replace(/</g, '&lt;')
       .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  function escapar_attr(str) {
+    return String(str).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
   }
 
   function formatear_bytes(bytes) {
