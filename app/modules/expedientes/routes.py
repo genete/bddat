@@ -531,10 +531,19 @@ def pool_documentos(id):
 
     docs_lista = []
     for doc in documentos_raw:
-        nombre = doc.url.rsplit('/', 1)[-1].rsplit('.', 1)[0] if doc.url else f'Documento {doc.id}'
+        filename = doc.url.rsplit('/', 1)[-1].rsplit('\\', 1)[-1] if doc.url else ''
+        nombre = filename or f'Documento {doc.id}'
+        # Extensión para mostrar en la tabla (vacía si no hay punto en el nombre)
+        partes = filename.rsplit('.', 1)
+        extension = partes[1].lower() if len(partes) == 2 and partes[1] else ''
+        # ¿Es una URL clickable? Solo http/https y file:// (UNC \\ no funciona en browser)
+        url = doc.url or ''
+        es_clickable = url.startswith(('http://', 'https://', 'file:///'))
         docs_lista.append({
-            'doc':            doc,
-            'nombre_display': nombre,
+            'doc':             doc,
+            'nombre_display':  nombre,
+            'extension':       extension,
+            'es_clickable':    es_clickable,
             'es_referenciado': _documento_es_referenciado(doc),
         })
 
