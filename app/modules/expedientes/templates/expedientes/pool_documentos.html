@@ -39,6 +39,9 @@
 </style>
 {% endblock %}
 
+{% block content %}
+<div class="bc-view">
+
 {# Plantilla de opciones de tipo — generada una sola vez en servidor #}
 <template id="tmpl-tipos-doc">
   <option value="">— Tipo —</option>
@@ -46,9 +49,6 @@
   <option value="{{ t.id }}">{{ t.nombre }}</option>
   {% endfor %}
 </template>
-
-{% block content %}
-<div class="bc-view">
 
 <!-- C.1: Card expediente (fijo) -->
 <div class="lista-cabecera px-3 pt-3">
