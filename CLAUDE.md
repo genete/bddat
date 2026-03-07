@@ -196,3 +196,14 @@ Leer `docs/fuentesIA/REGLAS_DESARROLLO.md` para el workflow completo.
 - Mantener cabeceras de licencia EUPL v1.2 en ficheros relevantes
 - Proyecto sometido a ENS (Esquema Nacional de Seguridad)
 - `db.drop_all()` y `db.create_all()` prohibidos en producción
+
+---
+
+## Convenciones Bash (anti-bloqueos del parser)
+
+Patrones hardcoded bloqueados por Claude Code que **no** puede resolver la allowlist:
+
+- **cd + git:** usar SIEMPRE `git -C /ruta` — NUNCA `cd /ruta && git`
+- **`$()` y backticks:** NUNCA usar sustitución de comandos — separar en llamadas Bash secuenciales independientes o usar fichero temporal
+- **cd + redirección:** NUNCA `cd /ruta && cmd > fichero` — separar en dos llamadas Bash distintas
+- **cd + escritura:** NUNCA `cd /ruta && cmd_de_escritura` — separar en dos llamadas Bash distintas
