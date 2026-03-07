@@ -13,10 +13,11 @@ Rutas:
 - GET  /expedientes/<id>/editar          - Formulario editar expediente
 - POST /expedientes/<id>/editar          - Actualizar expediente + proyecto
 """
-import subprocess
-import sys
-import json as _json
+import os
+import uuid as _uuid
 from datetime import date
+from werkzeug.utils import secure_filename
+from flask import current_app, send_from_directory
 from flask import Blueprint, render_template, request, flash, redirect, url_for, abort, jsonify
 from flask_login import login_required
 from app import db
@@ -534,19 +535,16 @@ def pool_documentos(id):
 
     docs_lista = []
     for doc in documentos_raw:
-        filename = doc.url.rsplit('/', 1)[-1].rsplit('\\', 1)[-1] if doc.url else ''
+        filename = doc.url.rsplit('/', 1)[-1] if doc.url else ''
         nombre = filename or f'Documento {doc.id}'
-        # Extensión para mostrar en la tabla (vacía si no hay punto en el nombre)
         partes = filename.rsplit('.', 1)
         extension = partes[1].lower() if len(partes) == 2 and partes[1] else ''
-        # ¿Es una URL clickable? Solo http/https y file:// (UNC \\ no funciona en browser)
-        url = doc.url or ''
-        es_clickable = url.startswith(('http://', 'https://', 'file:///'))
+        es_url_externa = (doc.url or '').startswith(('http://', 'https://'))
         docs_lista.append({
             'doc':             doc,
             'nombre_display':  nombre,
             'extension':       extension,
-            'es_clickable':    es_clickable,
+            'es_url_externa':  es_url_externa,
             'es_referenciado': _documento_es_referenciado(doc),
         })
 
@@ -560,46 +558,137 @@ def pool_documentos(id):
     )
 
 
-@bp.route('/<int:id>/documentos/carga-masiva', methods=['POST'])
+@bp.route('/<int:id>/documentos/subir', methods=['POST'])
 @login_required
-def pool_carga_masiva(id):
-    """Carga masiva de documentos al pool — recibe JSON, devuelve JSON."""
+def pool_subir(id):
+    """
+    Sube uno o varios ficheros al pool del expediente (multipart/form-data).
+
+    Campos del formulario:
+      files          → ficheros (múltiple)
+      tipos[]        → tipo_doc_id por fichero (mismo índice)
+      fechas[]       → fecha_administrativa ISO por fichero
+      prioridades[]  → '1'/'0' por fichero
+
+    Almacena cada fichero en UPLOAD_FOLDER/expedientes/<id>/<uuid>/<nombre>.
+    Guarda la ruta relativa en Documento.url.
+    """
     expediente = Expediente.query.get_or_404(id)
     resultado = verificar_acceso_expediente(expediente, 'editar')
     if resultado:
         return resultado
 
-    datos = request.get_json(silent=True) or []
+    files      = request.files.getlist('files')
+    tipos      = request.form.getlist('tipos[]')
+    fechas     = request.form.getlist('fechas[]')
+    prioridades = request.form.getlist('prioridades[]')
+
+    upload_base = current_app.config['UPLOAD_FOLDER']
     creados = 0
+
     try:
-        for entrada in datos:
-            url = (entrada.get('url') or '').strip()
-            if not url or entrada.get('excluir'):
+        for i, f in enumerate(files):
+            if not f or not f.filename:
                 continue
-            tipo_doc_id = entrada.get('tipo_doc_id') or 1
-            fecha_raw = entrada.get('fecha_administrativa') or None
+
+            nombre_seguro = secure_filename(f.filename) or f'doc_{i}'
+            subdir = os.path.join('expedientes', str(id), str(_uuid.uuid4()))
+            ruta_abs = os.path.join(upload_base, subdir)
+            os.makedirs(ruta_abs, exist_ok=True)
+            f.save(os.path.join(ruta_abs, nombre_seguro))
+
+            # Guardar con separadores / para consistencia entre SO
+            url_relativa = subdir.replace(os.sep, '/') + '/' + nombre_seguro
+
             fecha_admin = None
-            if fecha_raw:
+            if i < len(fechas) and fechas[i]:
                 try:
-                    fecha_admin = date.fromisoformat(fecha_raw)
+                    fecha_admin = date.fromisoformat(fechas[i])
                 except ValueError:
                     pass
+
             doc = Documento(
                 expediente_id=id,
-                url=url,
-                tipo_doc_id=int(tipo_doc_id),
+                url=url_relativa,
+                tipo_doc_id=int(tipos[i]) if i < len(tipos) and tipos[i] else 1,
                 fecha_administrativa=fecha_admin,
-                asunto=(entrada.get('asunto') or '').strip() or None,
-                prioridad=1 if entrada.get('prioridad') else 0,
+                prioridad=1 if (i < len(prioridades) and prioridades[i] == '1') else 0,
             )
             db.session.add(doc)
             creados += 1
+
         db.session.commit()
     except Exception as e:
         db.session.rollback()
         return jsonify({'ok': False, 'error': str(e)}), 500
 
     return jsonify({'ok': True, 'creados': creados})
+
+
+@bp.route('/<int:id>/documentos/<int:doc_id>/fichero')
+@login_required
+def pool_descargar_documento(id, doc_id):
+    """Sirve un fichero subido al pool. Para URLs externas, redirige."""
+    expediente = Expediente.query.get_or_404(id)
+    resultado = verificar_acceso_expediente(expediente, 'ver')
+    if resultado:
+        return resultado
+
+    doc = Documento.query.get_or_404(doc_id)
+    if doc.expediente_id != id:
+        abort(404)
+
+    if (doc.url or '').startswith(('http://', 'https://')):
+        from flask import redirect
+        return redirect(doc.url)
+
+    upload_base = current_app.config['UPLOAD_FOLDER']
+    dir_abs  = os.path.join(upload_base, os.path.dirname(doc.url))
+    filename = os.path.basename(doc.url)
+    return send_from_directory(dir_abs, filename)
+
+
+@bp.route('/<int:id>/documentos/url-externa', methods=['POST'])
+@login_required
+def pool_registrar_url_externa(id):
+    """
+    Registra una URL externa en el pool (BOE, Notifica, sede electrónica, etc.)
+    sin subir ningún fichero. Recibe JSON, devuelve JSON.
+    """
+    expediente = Expediente.query.get_or_404(id)
+    resultado = verificar_acceso_expediente(expediente, 'editar')
+    if resultado:
+        return resultado
+
+    datos = request.get_json(silent=True) or {}
+    url = (datos.get('url') or '').strip()
+    if not url:
+        return jsonify({'ok': False, 'error': 'La URL es obligatoria'}), 400
+
+    fecha_admin = None
+    fecha_raw = datos.get('fecha_administrativa') or None
+    if fecha_raw:
+        try:
+            fecha_admin = date.fromisoformat(fecha_raw)
+        except ValueError:
+            pass
+
+    try:
+        doc = Documento(
+            expediente_id=id,
+            url=url,
+            tipo_doc_id=int(datos.get('tipo_doc_id') or 1),
+            fecha_administrativa=fecha_admin,
+            asunto=(datos.get('asunto') or '').strip() or None,
+            prioridad=1 if datos.get('prioridad') else 0,
+        )
+        db.session.add(doc)
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+    return jsonify({'ok': True})
 
 
 @bp.route('/<int:id>/documentos/<int:doc_id>/editar', methods=['POST'])
@@ -616,9 +705,9 @@ def pool_editar_documento(id, doc_id):
         abort(404)
 
     datos = request.get_json(silent=True) or {}
-    url = (datos.get('url') or '').strip()
-    if not url:
-        return jsonify({'ok': False, 'error': 'La URL es obligatoria'}), 400
+    # url es opcional en el payload: si viene vacía/null se conserva la existente
+    # (para ficheros subidos el campo URL está oculto en el modal)
+    url_nueva = (datos.get('url') or '').strip()
 
     fecha_raw = datos.get('fecha_administrativa') or None
     fecha_admin = None
@@ -629,7 +718,8 @@ def pool_editar_documento(id, doc_id):
             pass
 
     try:
-        doc.url = url
+        if url_nueva:
+            doc.url = url_nueva
         doc.tipo_doc_id = int(datos.get('tipo_doc_id') or 1)
         doc.fecha_administrativa = fecha_admin
         doc.asunto = (datos.get('asunto') or '').strip() or None
@@ -663,6 +753,19 @@ def pool_borrar_documento(id, doc_id):
         }), 422
 
     try:
+        # Si es un fichero subido (no URL externa), eliminarlo del disco
+        url = doc.url or ''
+        if url and not url.startswith(('http://', 'https://')):
+            upload_base = current_app.config['UPLOAD_FOLDER']
+            file_abs = os.path.join(upload_base, url.replace('/', os.sep))
+            if os.path.isfile(file_abs):
+                os.remove(file_abs)
+            dir_abs = os.path.dirname(file_abs)
+            try:
+                os.rmdir(dir_abs)   # Solo borra si está vacío (cada doc tiene su UUID dir)
+            except OSError:
+                pass
+
         db.session.delete(doc)
         db.session.commit()
     except Exception as e:
@@ -672,96 +775,3 @@ def pool_borrar_documento(id, doc_id):
     return jsonify({'ok': True})
 
 
-# Scripts tkinter para el selector nativo (se ejecutan en subproceso independiente).
-# sys.argv[1] recibe el último directorio usado para abrir el diálogo en él directamente.
-_SCRIPT_FICHEROS = """\
-import tkinter as tk
-from tkinter import filedialog
-import json, pathlib, sys
-
-initialdir = sys.argv[1] if len(sys.argv) > 1 else ''
-root = tk.Tk()
-root.withdraw()
-root.wm_attributes('-topmost', True)
-rutas = list(filedialog.askopenfilenames(
-    title='Seleccionar ficheros \u2014 BDDAT Pool',
-    initialdir=initialdir or None,
-))
-rutas = [str(pathlib.Path(r)) for r in rutas]
-root.destroy()
-print(json.dumps(rutas))
-"""
-
-_SCRIPT_CARPETA = """\
-import tkinter as tk
-from tkinter import filedialog
-import json, pathlib, sys
-
-initialdir = sys.argv[1] if len(sys.argv) > 1 else ''
-root = tk.Tk()
-root.withdraw()
-root.wm_attributes('-topmost', True)
-carpeta = filedialog.askdirectory(
-    title='Seleccionar carpeta \u2014 BDDAT Pool',
-    initialdir=initialdir or None,
-)
-rutas = []
-if carpeta:
-    p = pathlib.Path(carpeta)
-    rutas = [str(f) for f in sorted(p.iterdir()) if f.is_file()]
-root.destroy()
-print(json.dumps(rutas))
-"""
-
-# Último directorio usado — persiste en memoria durante la sesión del servidor.
-# Permite que el diálogo se abra directamente en la carpeta del uso anterior.
-_ultimo_directorio = ''
-
-
-@bp.route('/<int:id>/documentos/selector-nativo', methods=['POST'])
-@login_required
-def pool_selector_nativo(id):
-    """
-    Abre un selector de ficheros o carpeta nativo del SO mediante tkinter
-    en un subproceso y devuelve las rutas completas como JSON.
-
-    - Funciona cuando Flask corre en la misma máquina que el usuario (desarrollo/admin local).
-    - En producción con servidor remoto el diálogo se abriría en el servidor: no usar.
-      Para ese escenario, el usuario rellena la columna URL editable manualmente.
-
-    Recibe: { modo: 'ficheros' | 'carpeta' }
-    Devuelve: { ok: true, rutas: ['C:\\\\...', ...] }
-    """
-    global _ultimo_directorio
-
-    expediente = Expediente.query.get_or_404(id)
-    resultado = verificar_acceso_expediente(expediente, 'editar')
-    if resultado:
-        return resultado
-
-    datos = request.get_json(silent=True) or {}
-    modo = datos.get('modo', 'ficheros')
-    script = _SCRIPT_CARPETA if modo == 'carpeta' else _SCRIPT_FICHEROS
-
-    try:
-        proc = subprocess.run(
-            [sys.executable, '-c', script, _ultimo_directorio],
-            capture_output=True,
-            text=True,
-            timeout=120,
-        )
-        rutas = _json.loads(proc.stdout.strip() or '[]')
-    except subprocess.TimeoutExpired:
-        return jsonify({'ok': False, 'error': 'Tiempo de espera agotado (120 s)'}), 408
-    except _json.JSONDecodeError:
-        detalle = proc.stderr.strip() if proc.stderr else 'sin detalle'
-        return jsonify({'ok': False, 'error': f'Error en el selector: {detalle}'}), 500
-    except Exception as e:
-        return jsonify({'ok': False, 'error': str(e)}), 500
-
-    # Memorizar el directorio de la primera ruta seleccionada para la próxima vez
-    if rutas:
-        import pathlib as _pl
-        _ultimo_directorio = str(_pl.Path(rutas[0]).parent)
-
-    return jsonify({'ok': True, 'rutas': rutas})
