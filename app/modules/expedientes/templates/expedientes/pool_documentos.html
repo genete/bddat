@@ -429,9 +429,26 @@
     zona.addEventListener('drop', function (e) {
       e.preventDefault();
       zona.classList.remove('drag-over');
-      if (abre_modal) _modal_carga.show();
-      // Pequeño delay para que el modal esté visible antes de procesar
-      setTimeout(function () { procesar_drop(e.dataTransfer); }, abre_modal ? 100 : 0);
+
+      // CAPTURA SÍNCRONA — DataTransfer solo es válido mientras el handler no retorna.
+      // getText/uri-list y webkitGetAsEntry() devuelven vacío/null si se llaman en un setTimeout.
+      var uri_list = '';
+      try { uri_list = e.dataTransfer.getData('text/uri-list') || ''; } catch (ex) {}
+
+      var entries = [];
+      var items = e.dataTransfer.items;
+      for (var j = 0; j < items.length; j++) {
+        var ent = items[j].webkitGetAsEntry ? items[j].webkitGetAsEntry() : null;
+        if (ent) entries.push(ent);
+      }
+
+      if (abre_modal) {
+        _modal_carga.show();
+        // Solo el show() se difiere; los datos ya están capturados
+        setTimeout(function () { procesar_drop_con_datos(uri_list, entries); }, 100);
+      } else {
+        procesar_drop_con_datos(uri_list, entries);
+      }
     });
     zona.addEventListener('click', function () {
       if (abre_modal) _modal_carga.show();
@@ -444,47 +461,41 @@
   }
 
   // ----------------------------------------------------------------
-  // Procesar drop — intenta obtener rutas completas vía text/uri-list
-  // (funciona en Firefox; Chrome solo da el nombre del fichero)
+  // Procesar drop con datos ya capturados sincrónicamente
+  // uri_list  → resultado de getData('text/uri-list') durante el evento
+  // entries   → array de FileSystemEntry capturados con webkitGetAsEntry()
   // ----------------------------------------------------------------
-  function procesar_drop(dt) {
+  function procesar_drop_con_datos(uri_list, entries) {
     archivos_pendientes = [];
 
-    // Intento 1: text/uri-list puede dar file:// URIs completas (Firefox, algunos entornos)
-    var uri_list = '';
-    try { uri_list = dt.getData('text/uri-list') || ''; } catch (e) {}
-
+    // Intento 1: text/uri-list — Firefox en Windows devuelve file:// URIs completas.
+    // Chrome/Edge bloquean este campo por política de seguridad (devuelven '').
     if (uri_list) {
       var uris = uri_list.split('\n')
         .map(function (u) { return u.trim(); })
         .filter(function (u) { return u && !u.startsWith('#'); });
-
-      // Solo usar si son URIs de fichero (no directorios — no podemos distinguirlos aquí)
       var solo_ficheros = uris.filter(function (u) { return u.startsWith('file://'); });
       if (solo_ficheros.length > 0 && solo_ficheros.length === uris.length) {
         solo_ficheros.forEach(function (uri) {
           var decoded = decodeURIComponent(uri);
-          // Nombre = último segmento de la URI
           var nombre = decoded.replace(/\/$/, '').split('/').pop().split('\\').pop();
           archivos_pendientes.push({ nombre: nombre, url_completa: decoded });
         });
-        mostrar_preview(true);  // true = tenemos URLs completas
+        mostrar_preview(true);
         return;
       }
     }
 
-    // Intento 2: webkitGetAsEntry (da solo nombres, no rutas)
-    var items = dt.items;
-    var promesas = [];
-    for (var i = 0; i < items.length; i++) {
-      var entry = items[i].webkitGetAsEntry ? items[i].webkitGetAsEntry() : null;
-      if (!entry) continue;
-      if (entry.isFile) {
-        promesas.push(entry_a_archivo(entry, null));
-      } else if (entry.isDirectory) {
-        promesas.push(leer_directorio_primer_nivel(entry));
-      }
+    // Intento 2: entradas ya capturadas sincrónicamente (funcionan en todos los navegadores)
+    if (entries.length === 0) {
+      mostrar_error_carga('No se pudieron leer los ficheros. Prueba con el selector de carpeta (clic).');
+      return;
     }
+    var promesas = entries.map(function (entry) {
+      if (entry.isFile)      return entry_a_archivo(entry, null);
+      if (entry.isDirectory) return leer_directorio_primer_nivel(entry);
+      return Promise.resolve();
+    });
     Promise.all(promesas).then(function () {
       mostrar_preview(false);
     }).catch(function (err) {
