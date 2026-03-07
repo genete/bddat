@@ -295,15 +295,68 @@
 <div class="row">
     <div class="col-12">
         <div class="card shadow-sm">
-            <div class="card-header card-header-accent">
+            <div class="card-header card-header-accent d-flex justify-content-between align-items-center">
                 <h6 class="mb-0 fw-semibold">
                     <i class="fas fa-file-alt me-2"></i>Documentos
+                    <span class="badge bg-secondary ms-2 fw-normal">{{ expediente.documentos | length }}</span>
                 </h6>
+                <a href="{{ url_for('expedientes.pool_documentos', id=expediente.id) }}"
+                   class="btn btn-sm btn-outline-primary">
+                    <i class="fas fa-folder-open me-1"></i> Gestionar pool
+                </a>
             </div>
-            <div class="card-body text-center text-muted py-4">
-                <i class="fas fa-folder fa-2x mb-2"></i>
-                <p class="mb-0 small">Próximamente</p>
+            {% if expediente.documentos %}
+            <div class="card-body p-0">
+                <table class="table table-sm table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-3">Documento</th>
+                            <th>Tipo</th>
+                            <th>Fecha adm.</th>
+                            <th class="text-center">Prio.</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for doc in expediente.documentos | sort(attribute='id', reverse=True) %}
+                    {% set filename = doc.url.replace('\\', '/').rsplit('/', 1)[-1] if doc.url else 'Documento ' ~ doc.id %}
+                    {% set es_url = doc.url and (doc.url.startswith('http://') or doc.url.startswith('https://')) %}
+                    <tr>
+                        <td class="ps-3">
+                            {% if es_url %}
+                            <a href="{{ doc.url }}" target="_blank" rel="noopener">
+                                <i class="fas fa-external-link-alt fa-xs me-1 text-secondary"></i>{{ filename }}
+                            </a>
+                            {% else %}
+                            <a href="{{ url_for('expedientes.pool_descargar_documento', id=expediente.id, doc_id=doc.id) }}"
+                               target="_blank">
+                                <i class="fas fa-file fa-xs me-1 text-secondary"></i>{{ filename }}
+                            </a>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="badge border border-secondary text-secondary small">
+                                {{ doc.tipo_doc.nombre if doc.tipo_doc else '—' }}
+                            </span>
+                        </td>
+                        <td class="text-nowrap small">
+                            {{ doc.fecha_administrativa.strftime('%d/%m/%Y') if doc.fecha_administrativa else '—' }}
+                        </td>
+                        <td class="text-center">
+                            {% if doc.prioridad and doc.prioridad > 0 %}
+                            <span class="badge bg-warning text-dark">Sí</span>
+                            {% else %}<span class="text-secondary">—</span>{% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
             </div>
+            {% else %}
+            <div class="card-body text-center text-secondary py-3">
+                <i class="fas fa-inbox me-1"></i>
+                <span class="small">Sin documentos — usa "Gestionar pool" para añadir.</span>
+            </div>
+            {% endif %}
         </div>
     </div>
 </div>

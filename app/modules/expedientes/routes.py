@@ -13,7 +13,10 @@ Rutas:
 - GET  /expedientes/<id>/editar          - Formulario editar expediente
 - POST /expedientes/<id>/editar          - Actualizar expediente + proyecto
 """
-from flask import Blueprint, render_template, request, flash, redirect, url_for, abort
+import os
+from datetime import date
+from flask import current_app, send_file
+from flask import Blueprint, render_template, request, flash, redirect, url_for, abort, jsonify
 from flask_login import login_required
 from app import db
 from app.models.expedientes import Expediente
@@ -32,6 +35,8 @@ from app.models.solicitudes import Solicitud
 from app.models.fases import Fase
 from app.models.tramites import Tramite
 from app.models.tareas import Tarea
+from app.models.documentos import Documento
+from app.models.tipos_documentos import TipoDocumento
 from app.decorators import role_required
 from app.utils.permisos import (
     puede_cambiar_responsable,
@@ -483,3 +488,326 @@ def tramitacion_bc_tarea(exp_id, sol_id, fase_id, tram_id, tarea_id):
         tramite=tramite,
         tarea=tarea,
     )
+
+
+# ===========================================================================
+# POOL DE DOCUMENTOS — issue #180
+# Gestión masiva del pool documental de un expediente (Vía 1)
+# ===========================================================================
+
+def _documento_es_referenciado(doc):
+    """
+    True si el documento tiene referencias activas que impiden su borrado.
+
+    Usa únicamente backrefs SQLAlchemy — NO hardcodear SQL directo.
+    Si en el futuro se añade una nueva tabla con FK a documentos.id:
+      1. Añadir el backref en el modelo correspondiente.
+      2. Añadir un check aquí.
+
+    Backrefs consultados:
+      doc.proyecto_vinculado  → DocumentoProyecto.documento_id  (uselist=False)
+      doc.tareas_que_usan     → Tarea.documento_usado_id        (lista)
+      doc.tarea_productora    → Tarea.documento_producido_id    (lista, UNIQUE en BD)
+    """
+    if doc.proyecto_vinculado:
+        return True
+    if doc.tareas_que_usan:
+        return True
+    if doc.tarea_productora:
+        return True
+    return False
+
+
+@bp.route('/<int:id>/documentos')
+@login_required
+def pool_documentos(id):
+    """Pool de documentos — listado del expediente."""
+    expediente = Expediente.query.get_or_404(id)
+    resultado = verificar_acceso_expediente(expediente, 'ver')
+    if resultado:
+        return resultado
+
+    documentos_raw = Documento.query.filter_by(
+        expediente_id=id
+    ).order_by(Documento.id.desc()).all()
+
+    docs_lista = []
+    for doc in documentos_raw:
+        filename = doc.url.replace('\\', '/').rsplit('/', 1)[-1] if doc.url else ''
+        nombre = filename or f'Documento {doc.id}'
+        partes = filename.rsplit('.', 1)
+        extension = partes[1].lower() if len(partes) == 2 and partes[1] else ''
+        es_url_externa = (doc.url or '').startswith(('http://', 'https://'))
+        docs_lista.append({
+            'doc':             doc,
+            'nombre_display':  nombre,
+            'extension':       extension,
+            'es_url_externa':  es_url_externa,
+            'es_referenciado': _documento_es_referenciado(doc),
+        })
+
+    tipos_doc = TipoDocumento.query.order_by(TipoDocumento.nombre).all()
+
+    return render_template(
+        'expedientes/pool_documentos.html',
+        expediente=expediente,
+        docs_lista=docs_lista,
+        tipos_doc=tipos_doc,
+    )
+
+
+def _path_seguro(ruta_relativa, base):
+    """
+    Devuelve ruta absoluta si está dentro de base; None si intenta path traversal.
+    ruta_relativa usa '/' como separador (enviado por JS).
+    """
+    base_norm = os.path.normpath(os.path.abspath(base))
+    if ruta_relativa:
+        ruta_full = os.path.normpath(os.path.join(base, ruta_relativa.replace('/', os.sep)))
+    else:
+        ruta_full = base_norm
+    if ruta_full != base_norm and not ruta_full.startswith(base_norm + os.sep):
+        return None
+    return ruta_full
+
+
+@bp.route('/<int:id>/documentos/explorador-fs')
+@login_required
+def pool_explorador_fs(id):
+    """Explorador de carpetas del servidor de ficheros — devuelve JSON."""
+    expediente = Expediente.query.get_or_404(id)
+    resultado = verificar_acceso_expediente(expediente, 'ver')
+    if resultado:
+        return resultado
+
+    base = current_app.config.get('FILESYSTEM_BASE', '')
+    if not base or not os.path.isdir(base):
+        return jsonify({'ok': False, 'error': 'Servidor de ficheros no accesible'}), 503
+
+    ruta_rel = request.args.get('ruta', '').strip('/\\ ')
+    ruta_abs = _path_seguro(ruta_rel, base)
+    if not ruta_abs or not os.path.isdir(ruta_abs):
+        return jsonify({'ok': False, 'error': 'Ruta no válida'}), 400
+
+    try:
+        dirs, files = [], []
+        for e in sorted(os.scandir(ruta_abs), key=lambda x: (not x.is_dir(), x.name.lower())):
+            rel = os.path.relpath(e.path, base).replace(os.sep, '/')
+            if e.is_dir(follow_symlinks=False):
+                dirs.append({'nombre': e.name, 'ruta': rel})
+            elif e.is_file(follow_symlinks=False):
+                ext = e.name.rsplit('.', 1)[-1].lower() if '.' in e.name else ''
+                files.append({'nombre': e.name, 'ruta': rel,
+                              'tamano': e.stat().st_size, 'ext': ext})
+    except PermissionError:
+        return jsonify({'ok': False, 'error': 'Sin permisos en esta carpeta'}), 403
+
+    partes = ruta_rel.split('/') if ruta_rel else []
+    return jsonify({'ok': True, 'partes': partes, 'directorios': dirs, 'ficheros': files})
+
+
+@bp.route('/<int:id>/documentos/registrar-rutas', methods=['POST'])
+@login_required
+def pool_registrar_rutas(id):
+    """
+    Registra ficheros del servidor de ficheros en el pool del expediente.
+
+    Recibe JSON: [{ruta, tipo_doc_id, fecha_administrativa, asunto, prioridad}, ...]
+    donde ruta es relativa a FILESYSTEM_BASE (con '/' como separador).
+    Almacena la ruta absoluta normalizada en Documento.url.
+    """
+    expediente = Expediente.query.get_or_404(id)
+    resultado = verificar_acceso_expediente(expediente, 'editar')
+    if resultado:
+        return resultado
+
+    base = current_app.config.get('FILESYSTEM_BASE', '')
+    if not base or not os.path.isdir(base):
+        return jsonify({'ok': False, 'error': 'Servidor de ficheros no accesible'}), 503
+
+    items = request.get_json(silent=True)
+    if not isinstance(items, list) or not items:
+        return jsonify({'ok': False, 'error': 'Payload inválido'}), 400
+
+    creados = 0
+    try:
+        for item in items:
+            ruta_rel = (item.get('ruta') or '').strip()
+            if not ruta_rel:
+                continue
+            ruta_abs = _path_seguro(ruta_rel, base)
+            if not ruta_abs or not os.path.isfile(ruta_abs):
+                continue
+
+            fecha_admin = None
+            fecha_raw = item.get('fecha_administrativa') or None
+            if fecha_raw:
+                try:
+                    fecha_admin = date.fromisoformat(fecha_raw)
+                except ValueError:
+                    pass
+
+            doc = Documento(
+                expediente_id=id,
+                url=ruta_abs,
+                tipo_doc_id=int(item.get('tipo_doc_id') or 1),
+                fecha_administrativa=fecha_admin,
+                asunto=(item.get('asunto') or '').strip() or None,
+                prioridad=1 if item.get('prioridad') else 0,
+            )
+            db.session.add(doc)
+            creados += 1
+
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+    return jsonify({'ok': True, 'creados': creados})
+
+
+@bp.route('/<int:id>/documentos/<int:doc_id>/fichero')
+@login_required
+def pool_descargar_documento(id, doc_id):
+    """Sirve un fichero del servidor de ficheros. Para URLs externas, redirige."""
+    expediente = Expediente.query.get_or_404(id)
+    resultado = verificar_acceso_expediente(expediente, 'ver')
+    if resultado:
+        return resultado
+
+    doc = Documento.query.get_or_404(doc_id)
+    if doc.expediente_id != id:
+        abort(404)
+
+    url = doc.url or ''
+    if url.startswith(('http://', 'https://')):
+        return redirect(url)
+
+    ruta_abs = os.path.normpath(os.path.abspath(url))
+    if not os.path.isfile(ruta_abs):
+        abort(404)
+
+    base = current_app.config.get('FILESYSTEM_BASE', '')
+    if base:
+        base_norm = os.path.normpath(os.path.abspath(base))
+        if not ruta_abs.startswith(base_norm):
+            abort(403)
+
+    return send_file(ruta_abs, as_attachment=False,
+                     download_name=os.path.basename(ruta_abs))
+
+
+@bp.route('/<int:id>/documentos/url-externa', methods=['POST'])
+@login_required
+def pool_registrar_url_externa(id):
+    """
+    Registra una URL externa en el pool (BOE, Notifica, sede electrónica, etc.)
+    sin subir ningún fichero. Recibe JSON, devuelve JSON.
+    """
+    expediente = Expediente.query.get_or_404(id)
+    resultado = verificar_acceso_expediente(expediente, 'editar')
+    if resultado:
+        return resultado
+
+    datos = request.get_json(silent=True) or {}
+    url = (datos.get('url') or '').strip()
+    if not url:
+        return jsonify({'ok': False, 'error': 'La URL es obligatoria'}), 400
+
+    fecha_admin = None
+    fecha_raw = datos.get('fecha_administrativa') or None
+    if fecha_raw:
+        try:
+            fecha_admin = date.fromisoformat(fecha_raw)
+        except ValueError:
+            pass
+
+    try:
+        doc = Documento(
+            expediente_id=id,
+            url=url,
+            tipo_doc_id=int(datos.get('tipo_doc_id') or 1),
+            fecha_administrativa=fecha_admin,
+            asunto=(datos.get('asunto') or '').strip() or None,
+            prioridad=1 if datos.get('prioridad') else 0,
+        )
+        db.session.add(doc)
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+    return jsonify({'ok': True})
+
+
+@bp.route('/<int:id>/documentos/<int:doc_id>/editar', methods=['POST'])
+@login_required
+def pool_editar_documento(id, doc_id):
+    """Editar metadatos de un documento del pool — devuelve JSON."""
+    expediente = Expediente.query.get_or_404(id)
+    resultado = verificar_acceso_expediente(expediente, 'editar')
+    if resultado:
+        return resultado
+
+    doc = Documento.query.get_or_404(doc_id)
+    if doc.expediente_id != id:
+        abort(404)
+
+    datos = request.get_json(silent=True) or {}
+    # url es opcional en el payload: si viene vacía/null se conserva la existente
+    # (para ficheros subidos el campo URL está oculto en el modal)
+    url_nueva = (datos.get('url') or '').strip()
+
+    fecha_raw = datos.get('fecha_administrativa') or None
+    fecha_admin = None
+    if fecha_raw:
+        try:
+            fecha_admin = date.fromisoformat(fecha_raw)
+        except ValueError:
+            pass
+
+    try:
+        if url_nueva:
+            doc.url = url_nueva
+        doc.tipo_doc_id = int(datos.get('tipo_doc_id') or 1)
+        doc.fecha_administrativa = fecha_admin
+        doc.asunto = (datos.get('asunto') or '').strip() or None
+        doc.prioridad = 1 if datos.get('prioridad') else 0
+        doc.observaciones = (datos.get('observaciones') or '').strip() or None
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+    return jsonify({'ok': True})
+
+
+@bp.route('/<int:id>/documentos/<int:doc_id>/borrar', methods=['POST'])
+@login_required
+def pool_borrar_documento(id, doc_id):
+    """Borrar un documento del pool si no está referenciado — devuelve JSON."""
+    expediente = Expediente.query.get_or_404(id)
+    resultado = verificar_acceso_expediente(expediente, 'editar')
+    if resultado:
+        return resultado
+
+    doc = Documento.query.get_or_404(doc_id)
+    if doc.expediente_id != id:
+        abort(404)
+
+    if _documento_es_referenciado(doc):
+        return jsonify({
+            'ok': False,
+            'error': 'El documento está referenciado en tramitación y no puede eliminarse'
+        }), 422
+
+    try:
+        db.session.delete(doc)
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+    return jsonify({'ok': True})
+
+

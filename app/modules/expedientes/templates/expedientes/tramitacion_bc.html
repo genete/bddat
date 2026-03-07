@@ -30,8 +30,12 @@
       </span>
       <div class="bc-acciones-bar">
         <a href="{{ url_for('expedientes.detalle', id=expediente.id) }}"
-           class="btn btn-sm btn-outline-secondary">
+           class="btn btn-sm btn-outline-primary">
           <i class="fas fa-info-circle me-1"></i> Detalle
+        </a>
+        <a href="{{ url_for('expedientes.pool_documentos', id=expediente.id) }}"
+           class="btn btn-sm btn-outline-primary">
+          <i class="fas fa-file-alt me-1"></i> Pool de Docs
         </a>
         {# [Editar] y [Acciones ▾] — placeholder, funcionalidad en issue posterior #}
         <button class="btn btn-sm btn-outline-primary" disabled title="Próximamente">

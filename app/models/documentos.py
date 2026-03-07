@@ -119,9 +119,9 @@ class Documento(db.Model):
     )
 
     url = db.Column(
-        db.String(500),
+        db.Text,
         nullable=False,
-        comment='Ruta o URL del archivo físico en sistema de archivos o repositorio'
+        comment='Ruta absoluta en servidor de ficheros o URL externa (http/https)'
     )
     
     tipo_contenido = db.Column(
