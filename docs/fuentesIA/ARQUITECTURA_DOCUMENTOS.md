@@ -59,6 +59,21 @@ NULL tiene dos significados legítimos:
 
 La API de asignación a tareas debe rechazar documentos con NULL cuando el tipo de tarea lo requiera. Es validación de negocio en capa de servicio, no constraint de BD.
 
+### Coexistencia fechas Tarea ↔ Documento — sin duplicación
+
+Dos campos de fecha con semánticas distintas y complementarias:
+
+| Campo | Rol | Quién lo introduce |
+|---|---|---|
+| `Tarea.fecha_inicio / fecha_fin` | Verdad legal: cómputo de plazos y efectos administrativos | Tramitador, manualmente |
+| `Documento.fecha_administrativa` | Dato de origen: fecha objetiva del acto jurídico del archivo | Tramitador, al incorporar el documento |
+
+La fecha del documento es **dato de origen** (cuándo se firmó, se notificó, se registró).
+La fecha de la tarea es **dato de proceso** (cuándo empieza/termina el efecto procedimental).
+No hay duplicación: una informa a la otra pero no son intercambiables.
+
+`Documento.fecha_administrativa` sirve además para: ordenar la bandeja de entrada por antigüedad, sugerir fechas al crear tareas relacionadas.
+
 ### `prioridad` — semántica aclarada
 
 `0` = no prioritario. `>0` = prioritario (recurso de alzada, respuesta desfavorable, alegación urgente).
