@@ -44,7 +44,10 @@ Referencias y reglas para desarrollo asistido por IA (Claude Code).
 - [GUIA_CONTEXT_BUILDERS.md](fuentesIA/GUIA_CONTEXT_BUILDERS.md) — generación de escritos administrativos
 - [TAREAS_INVERSO.md](fuentesIA/TAREAS_INVERSO.md) — tabla inversa de tareas atómicas ESFTT
 - [Roles.md](fuentesIA/Roles.md) — roles y permisos del sistema
-- **[referencias/](fuentesIA/referencias/)** — normativa AT y clasificaciones (conocimiento de dominio)
+- **[referencias/](fuentesIA/referencias/)** — conocimiento de dominio AT (normativa y clasificaciones):
+  - [Clasificacion AT Andalucia.md](fuentesIA/referencias/Clasificacion%20AT%20Andalucia.md) — tipos de instalaciones y competencias Junta/Estado
+  - [Clasificacion AT Capa2.md](fuentesIA/referencias/Clasificacion%20AT%20Capa2.md) — subtipos físicos, generación, modificaciones e Instrucción 1/2023
+  - [Mapa Normativo AT Andalucia.md](fuentesIA/referencias/Mapa%20Normativo%20AT%20Andalucia.md) — inventario completo de normativa estatal y autonómica con relaciones entre normas
 
 ---
 
