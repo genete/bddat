@@ -672,15 +672,21 @@ def pool_borrar_documento(id, doc_id):
     return jsonify({'ok': True})
 
 
-# Scripts tkinter para el selector nativo (se ejecutan en subproceso independiente)
+# Scripts tkinter para el selector nativo (se ejecutan en subproceso independiente).
+# sys.argv[1] recibe el último directorio usado para abrir el diálogo en él directamente.
 _SCRIPT_FICHEROS = """\
 import tkinter as tk
 from tkinter import filedialog
-import json, pathlib
+import json, pathlib, sys
+
+initialdir = sys.argv[1] if len(sys.argv) > 1 else ''
 root = tk.Tk()
 root.withdraw()
 root.wm_attributes('-topmost', True)
-rutas = list(filedialog.askopenfilenames(title='Seleccionar ficheros \u2014 BDDAT Pool'))
+rutas = list(filedialog.askopenfilenames(
+    title='Seleccionar ficheros \u2014 BDDAT Pool',
+    initialdir=initialdir or None,
+))
 rutas = [str(pathlib.Path(r)) for r in rutas]
 root.destroy()
 print(json.dumps(rutas))
@@ -689,11 +695,16 @@ print(json.dumps(rutas))
 _SCRIPT_CARPETA = """\
 import tkinter as tk
 from tkinter import filedialog
-import json, pathlib
+import json, pathlib, sys
+
+initialdir = sys.argv[1] if len(sys.argv) > 1 else ''
 root = tk.Tk()
 root.withdraw()
 root.wm_attributes('-topmost', True)
-carpeta = filedialog.askdirectory(title='Seleccionar carpeta \u2014 BDDAT Pool')
+carpeta = filedialog.askdirectory(
+    title='Seleccionar carpeta \u2014 BDDAT Pool',
+    initialdir=initialdir or None,
+)
 rutas = []
 if carpeta:
     p = pathlib.Path(carpeta)
@@ -701,6 +712,10 @@ if carpeta:
 root.destroy()
 print(json.dumps(rutas))
 """
+
+# Último directorio usado — persiste en memoria durante la sesión del servidor.
+# Permite que el diálogo se abra directamente en la carpeta del uso anterior.
+_ultimo_directorio = ''
 
 
 @bp.route('/<int:id>/documentos/selector-nativo', methods=['POST'])
@@ -710,25 +725,30 @@ def pool_selector_nativo(id):
     Abre un selector de ficheros o carpeta nativo del SO mediante tkinter
     en un subproceso y devuelve las rutas completas como JSON.
 
-    Esto evita la restricción de seguridad del navegador que impide obtener
-    la ruta completa de ficheros arrastrados al área de drop.
+    - Funciona cuando Flask corre en la misma máquina que el usuario (desarrollo/admin local).
+    - En producción con servidor remoto el diálogo se abriría en el servidor: no usar.
+      Para ese escenario, el usuario rellena la columna URL editable manualmente.
 
-    Solo funciona cuando Flask corre en la misma máquina que el usuario.
+    Recibe: { modo: 'ficheros' | 'carpeta' }
+    Devuelve: { ok: true, rutas: ['C:\\\\...', ...] }
     """
+    global _ultimo_directorio
+
     expediente = Expediente.query.get_or_404(id)
     resultado = verificar_acceso_expediente(expediente, 'editar')
     if resultado:
         return resultado
 
-    modo = (request.get_json(silent=True) or {}).get('modo', 'ficheros')
+    datos = request.get_json(silent=True) or {}
+    modo = datos.get('modo', 'ficheros')
     script = _SCRIPT_CARPETA if modo == 'carpeta' else _SCRIPT_FICHEROS
 
     try:
         proc = subprocess.run(
-            [sys.executable, '-c', script],
+            [sys.executable, '-c', script, _ultimo_directorio],
             capture_output=True,
             text=True,
-            timeout=120,          # El usuario tiene 2 minutos para seleccionar
+            timeout=120,
         )
         rutas = _json.loads(proc.stdout.strip() or '[]')
     except subprocess.TimeoutExpired:
@@ -738,5 +758,10 @@ def pool_selector_nativo(id):
         return jsonify({'ok': False, 'error': f'Error en el selector: {detalle}'}), 500
     except Exception as e:
         return jsonify({'ok': False, 'error': str(e)}), 500
+
+    # Memorizar el directorio de la primera ruta seleccionada para la próxima vez
+    if rutas:
+        import pathlib as _pl
+        _ultimo_directorio = str(_pl.Path(rutas[0]).parent)
 
     return jsonify({'ok': True, 'rutas': rutas})

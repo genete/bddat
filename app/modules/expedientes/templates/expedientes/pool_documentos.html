@@ -98,7 +98,7 @@
 
   <!-- Zona de entrada compacta — abre el modal -->
   <div class="zona-drop zona-drop-compacta mb-3" id="zona-entrada-principal"
-       title="Arrastra ficheros o una carpeta, o haz clic para seleccionar carpeta">
+       title="Arrastra ficheros o una carpeta — el explorador nativo se abrirá con la ruta completa">
     <i class="fas fa-file-import fa-2x mb-2"></i>
     <p class="mb-0 fw-semibold">Arrastra ficheros o una carpeta aquí</p>
     <small>O haz clic para seleccionar una carpeta con el explorador de archivos</small>
@@ -225,7 +225,9 @@
         <div class="zona-drop mb-2" id="zona-drop-modal">
           <i class="fas fa-folder-open fa-2x mb-2"></i>
           <p class="fw-semibold mb-1">Arrastra aquí ficheros o una carpeta</p>
-          <p class="small mb-0 text-secondary">Solo se procesan los ficheros del primer nivel</p>
+          <p class="small mb-0 text-secondary">
+            El explorador nativo se abrirá en el mismo directorio — un clic confirma la selección
+          </p>
         </div>
         <input type="file" id="input-carpeta-modal" webkitdirectory multiple class="d-none">
 
@@ -378,8 +380,11 @@
   // ----------------------------------------------------------------
   // Constantes
   // ----------------------------------------------------------------
-  var LS_PREFIJO_KEY = 'bddat_pool_prefijo';  // Clave localStorage para el prefijo
-  var URL_BASE_DOCS  = '{{ url_for('expedientes.pool_documentos', id=expediente.id) }}';
+  var LS_PREFIJO_KEY  = 'bddat_pool_prefijo';
+  var URL_BASE_DOCS   = '{{ url_for('expedientes.pool_documentos', id=expediente.id) }}';
+  var URL_SEL_NATIVO  = '{{ url_for('expedientes.pool_selector_nativo', id=expediente.id) }}';
+  // El drop dispara el selector nativo solo cuando Flask corre en local
+  var ES_FLASK_LOCAL  = ['localhost', '127.0.0.1', '::1'].indexOf(window.location.hostname) !== -1;
 
   // ----------------------------------------------------------------
   // Estado del módulo
@@ -447,24 +452,29 @@
       zona.classList.remove('drag-over');
 
       // CAPTURA SÍNCRONA — DataTransfer solo es válido mientras el handler no retorna.
-      // getText/uri-list y webkitGetAsEntry() devuelven vacío/null si se llaman en un setTimeout.
       var uri_list = '';
       try { uri_list = e.dataTransfer.getData('text/uri-list') || ''; } catch (ex) {}
 
       var entries = [];
-      var items = e.dataTransfer.items;
-      for (var j = 0; j < items.length; j++) {
-        var ent = items[j].webkitGetAsEntry ? items[j].webkitGetAsEntry() : null;
+      var items_dt = e.dataTransfer.items;
+      for (var j = 0; j < items_dt.length; j++) {
+        var ent = items_dt[j].webkitGetAsEntry ? items_dt[j].webkitGetAsEntry() : null;
         if (ent) entries.push(ent);
       }
 
-      if (abre_modal) {
-        _modal_carga.show();
-        // Solo el show() se difiere; los datos ya están capturados
-        setTimeout(function () { procesar_drop_con_datos(uri_list, entries); }, 100);
-      } else {
-        procesar_drop_con_datos(uri_list, entries);
-      }
+      if (abre_modal) _modal_carga.show();
+
+      setTimeout(function () {
+        if (ES_FLASK_LOCAL && entries.length > 0) {
+          // Flask local: el drop es solo el gesto; Python obtiene la ruta completa.
+          // El selector nativo se abre en el último directorio usado → un clic y listo.
+          var hay_dir = entries.some(function (en) { return en.isDirectory; });
+          abrir_selector_nativo(hay_dir ? 'carpeta' : 'ficheros');
+        } else {
+          // Flask remoto o sin entries: flujo navegador (solo nombres de fichero)
+          procesar_drop_con_datos(uri_list, entries);
+        }
+      }, abre_modal ? 100 : 0);
     });
     zona.addEventListener('click', function () {
       if (abre_modal) _modal_carga.show();
