@@ -840,7 +840,9 @@ def pool_abrir_en_carpeta(id, doc_id):
         return jsonify({'ok': False, 'error': 'Fichero no encontrado en disco'}), 404
 
     try:
-        subprocess.Popen(['explorer', f'/select,{ruta_abs}'])
+        # shell=True necesario: explorer.exe no parsea /select,ruta como argumento de lista.
+        # La ruta viene de BD (ya validada), no de input directo del usuario.
+        subprocess.Popen(f'explorer /select,"{ruta_abs}"', shell=True)
         return jsonify({'ok': True})
     except Exception as e:
         return jsonify({'ok': False, 'error': str(e)}), 500
