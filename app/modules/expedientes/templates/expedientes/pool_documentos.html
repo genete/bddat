@@ -1106,9 +1106,13 @@
         _masivo_ids.delete(parseInt(doc_id, 10));
         actualizar_panel_masivo();
         mostrar_toast('info', 'Registro eliminado del pool.');
-      } else { alert(data.error || 'No se pudo borrar.'); }
+      } else {
+        mostrar_toast('danger', data.error || 'No se pudo borrar el documento.');
+      }
     })
-    .catch(function () { alert('Error de red al borrar.'); });
+    .catch(function () {
+      mostrar_toast('danger', 'Error de red al borrar.');
+    });
   };
 
   // ================================================================
