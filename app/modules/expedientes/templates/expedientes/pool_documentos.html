@@ -261,8 +261,8 @@
             <table class="table table-sm table-bordered align-middle">
               <thead class="table-light">
                 <tr>
-                  <th>Nombre de fichero</th>
-                  <th>URL / ruta resultante</th>
+                  <th style="min-width:160px">Nombre de fichero</th>
+                  <th>URL / ruta <span class="fw-normal text-secondary">(editable)</span></th>
                   <th style="min-width:180px">Tipo de documento</th>
                   <th style="min-width:130px">Fecha adm.</th>
                   <th class="text-center">Prioritario</th>
@@ -582,10 +582,13 @@
       var url_inicial = arch.url_completa || (document.getElementById('prefijo-ruta').value + arch.nombre);
       var tr = document.createElement('tr');
       tr.dataset.nombre = arch.nombre;
-      tr.dataset.urlCompleta = arch.url_completa || '';
       tr.innerHTML =
-        '<td class="small">' + escapar_html(arch.nombre) + '</td>' +
-        '<td class="small font-monospace text-break url-resultante text-secondary">' + escapar_html(url_inicial) + '</td>' +
+        '<td class="small text-nowrap">' + escapar_html(arch.nombre) + '</td>' +
+        '<td><input type="text" class="form-control form-control-sm font-monospace url-input"' +
+          ' value="' + escapar_html(url_inicial) + '"' +
+          ' data-manual="' + (arch.url_completa ? 'true' : 'false') + '"' +
+          ' oninput="this.dataset.manual=\'true\'"' +
+          ' placeholder="Ruta o URL completa del fichero"></td>' +
         '<td><select class="form-select form-select-sm tipo-doc-select">' + tmpl_tipos + '</select></td>' +
         '<td><input type="date" class="form-control form-control-sm fecha-admin-input"></td>' +
         '<td class="text-center"><input type="checkbox" class="form-check-input prioridad-check" title="Marcar como prioritario"></td>' +
@@ -602,14 +605,15 @@
   }
 
   // ----------------------------------------------------------------
-  // Actualizar columna URL resultante cuando cambia el prefijo
+  // Actualizar columna URL cuando cambia el prefijo
+  // Solo actualiza filas que el usuario NO ha editado manualmente (data-manual="false")
   // ----------------------------------------------------------------
   window.actualizar_urls_preview = function () {
     var prefijo = document.getElementById('prefijo-ruta').value;
     document.querySelectorAll('#preview-tbody tr').forEach(function (tr) {
-      if (tr.dataset.urlCompleta) return;  // tiene URL completa, no tocar
-      var url_el = tr.querySelector('.url-resultante');
-      if (url_el) url_el.textContent = prefijo + tr.dataset.nombre;
+      var input = tr.querySelector('.url-input');
+      if (!input || input.dataset.manual === 'true') return;
+      input.value = prefijo + tr.dataset.nombre;
     });
   };
 
@@ -634,7 +638,7 @@
 
     document.querySelectorAll('#preview-tbody tr').forEach(function (tr) {
       if (tr.querySelector('.excluir-check').checked) return;
-      var url_final = tr.dataset.urlCompleta || (prefijo + tr.dataset.nombre);
+      var url_final = tr.querySelector('.url-input').value.trim() || tr.dataset.nombre;
       payload.push({
         url:                  url_final,
         tipo_doc_id:          tr.querySelector('.tipo-doc-select').value || 1,
