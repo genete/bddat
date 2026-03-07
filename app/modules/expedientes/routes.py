@@ -14,10 +14,8 @@ Rutas:
 - POST /expedientes/<id>/editar          - Actualizar expediente + proyecto
 """
 import os
-import uuid as _uuid
 from datetime import date
-from werkzeug.utils import secure_filename
-from flask import current_app, send_from_directory
+from flask import current_app, send_file
 from flask import Blueprint, render_template, request, flash, redirect, url_for, abort, jsonify
 from flask_login import login_required
 from app import db
@@ -535,7 +533,7 @@ def pool_documentos(id):
 
     docs_lista = []
     for doc in documentos_raw:
-        filename = doc.url.rsplit('/', 1)[-1] if doc.url else ''
+        filename = doc.url.replace('\\', '/').rsplit('/', 1)[-1] if doc.url else ''
         nombre = filename or f'Documento {doc.id}'
         partes = filename.rsplit('.', 1)
         extension = partes[1].lower() if len(partes) == 2 and partes[1] else ''
@@ -558,61 +556,104 @@ def pool_documentos(id):
     )
 
 
-@bp.route('/<int:id>/documentos/subir', methods=['POST'])
-@login_required
-def pool_subir(id):
+def _path_seguro(ruta_relativa, base):
     """
-    Sube uno o varios ficheros al pool del expediente (multipart/form-data).
+    Devuelve ruta absoluta si está dentro de base; None si intenta path traversal.
+    ruta_relativa usa '/' como separador (enviado por JS).
+    """
+    base_norm = os.path.normpath(os.path.abspath(base))
+    if ruta_relativa:
+        ruta_full = os.path.normpath(os.path.join(base, ruta_relativa.replace('/', os.sep)))
+    else:
+        ruta_full = base_norm
+    if ruta_full != base_norm and not ruta_full.startswith(base_norm + os.sep):
+        return None
+    return ruta_full
 
-    Campos del formulario:
-      files          → ficheros (múltiple)
-      tipos[]        → tipo_doc_id por fichero (mismo índice)
-      fechas[]       → fecha_administrativa ISO por fichero
-      prioridades[]  → '1'/'0' por fichero
 
-    Almacena cada fichero en UPLOAD_FOLDER/expedientes/<id>/<uuid>/<nombre>.
-    Guarda la ruta relativa en Documento.url.
+@bp.route('/<int:id>/documentos/explorador-fs')
+@login_required
+def pool_explorador_fs(id):
+    """Explorador de carpetas del servidor de ficheros — devuelve JSON."""
+    expediente = Expediente.query.get_or_404(id)
+    resultado = verificar_acceso_expediente(expediente, 'ver')
+    if resultado:
+        return resultado
+
+    base = current_app.config.get('FILESYSTEM_BASE', '')
+    if not base or not os.path.isdir(base):
+        return jsonify({'ok': False, 'error': 'Servidor de ficheros no accesible'}), 503
+
+    ruta_rel = request.args.get('ruta', '').strip('/\\ ')
+    ruta_abs = _path_seguro(ruta_rel, base)
+    if not ruta_abs or not os.path.isdir(ruta_abs):
+        return jsonify({'ok': False, 'error': 'Ruta no válida'}), 400
+
+    try:
+        dirs, files = [], []
+        for e in sorted(os.scandir(ruta_abs), key=lambda x: (not x.is_dir(), x.name.lower())):
+            rel = os.path.relpath(e.path, base).replace(os.sep, '/')
+            if e.is_dir(follow_symlinks=False):
+                dirs.append({'nombre': e.name, 'ruta': rel})
+            elif e.is_file(follow_symlinks=False):
+                ext = e.name.rsplit('.', 1)[-1].lower() if '.' in e.name else ''
+                files.append({'nombre': e.name, 'ruta': rel,
+                              'tamano': e.stat().st_size, 'ext': ext})
+    except PermissionError:
+        return jsonify({'ok': False, 'error': 'Sin permisos en esta carpeta'}), 403
+
+    partes = ruta_rel.split('/') if ruta_rel else []
+    return jsonify({'ok': True, 'partes': partes, 'directorios': dirs, 'ficheros': files})
+
+
+@bp.route('/<int:id>/documentos/registrar-rutas', methods=['POST'])
+@login_required
+def pool_registrar_rutas(id):
+    """
+    Registra ficheros del servidor de ficheros en el pool del expediente.
+
+    Recibe JSON: [{ruta, tipo_doc_id, fecha_administrativa, asunto, prioridad}, ...]
+    donde ruta es relativa a FILESYSTEM_BASE (con '/' como separador).
+    Almacena la ruta absoluta normalizada en Documento.url.
     """
     expediente = Expediente.query.get_or_404(id)
     resultado = verificar_acceso_expediente(expediente, 'editar')
     if resultado:
         return resultado
 
-    files      = request.files.getlist('files')
-    tipos      = request.form.getlist('tipos[]')
-    fechas     = request.form.getlist('fechas[]')
-    prioridades = request.form.getlist('prioridades[]')
+    base = current_app.config.get('FILESYSTEM_BASE', '')
+    if not base or not os.path.isdir(base):
+        return jsonify({'ok': False, 'error': 'Servidor de ficheros no accesible'}), 503
 
-    upload_base = current_app.config['UPLOAD_FOLDER']
+    items = request.get_json(silent=True)
+    if not isinstance(items, list) or not items:
+        return jsonify({'ok': False, 'error': 'Payload inválido'}), 400
+
     creados = 0
-
     try:
-        for i, f in enumerate(files):
-            if not f or not f.filename:
+        for item in items:
+            ruta_rel = (item.get('ruta') or '').strip()
+            if not ruta_rel:
+                continue
+            ruta_abs = _path_seguro(ruta_rel, base)
+            if not ruta_abs or not os.path.isfile(ruta_abs):
                 continue
 
-            nombre_seguro = secure_filename(f.filename) or f'doc_{i}'
-            subdir = os.path.join('expedientes', str(id), str(_uuid.uuid4()))
-            ruta_abs = os.path.join(upload_base, subdir)
-            os.makedirs(ruta_abs, exist_ok=True)
-            f.save(os.path.join(ruta_abs, nombre_seguro))
-
-            # Guardar con separadores / para consistencia entre SO
-            url_relativa = subdir.replace(os.sep, '/') + '/' + nombre_seguro
-
             fecha_admin = None
-            if i < len(fechas) and fechas[i]:
+            fecha_raw = item.get('fecha_administrativa') or None
+            if fecha_raw:
                 try:
-                    fecha_admin = date.fromisoformat(fechas[i])
+                    fecha_admin = date.fromisoformat(fecha_raw)
                 except ValueError:
                     pass
 
             doc = Documento(
                 expediente_id=id,
-                url=url_relativa,
-                tipo_doc_id=int(tipos[i]) if i < len(tipos) and tipos[i] else 1,
+                url=ruta_abs,
+                tipo_doc_id=int(item.get('tipo_doc_id') or 1),
                 fecha_administrativa=fecha_admin,
-                prioridad=1 if (i < len(prioridades) and prioridades[i] == '1') else 0,
+                asunto=(item.get('asunto') or '').strip() or None,
+                prioridad=1 if item.get('prioridad') else 0,
             )
             db.session.add(doc)
             creados += 1
@@ -628,7 +669,7 @@ def pool_subir(id):
 @bp.route('/<int:id>/documentos/<int:doc_id>/fichero')
 @login_required
 def pool_descargar_documento(id, doc_id):
-    """Sirve un fichero subido al pool. Para URLs externas, redirige."""
+    """Sirve un fichero del servidor de ficheros. Para URLs externas, redirige."""
     expediente = Expediente.query.get_or_404(id)
     resultado = verificar_acceso_expediente(expediente, 'ver')
     if resultado:
@@ -638,14 +679,22 @@ def pool_descargar_documento(id, doc_id):
     if doc.expediente_id != id:
         abort(404)
 
-    if (doc.url or '').startswith(('http://', 'https://')):
-        from flask import redirect
-        return redirect(doc.url)
+    url = doc.url or ''
+    if url.startswith(('http://', 'https://')):
+        return redirect(url)
 
-    upload_base = current_app.config['UPLOAD_FOLDER']
-    dir_abs  = os.path.join(upload_base, os.path.dirname(doc.url))
-    filename = os.path.basename(doc.url)
-    return send_from_directory(dir_abs, filename)
+    ruta_abs = os.path.normpath(os.path.abspath(url))
+    if not os.path.isfile(ruta_abs):
+        abort(404)
+
+    base = current_app.config.get('FILESYSTEM_BASE', '')
+    if base:
+        base_norm = os.path.normpath(os.path.abspath(base))
+        if not ruta_abs.startswith(base_norm):
+            abort(403)
+
+    return send_file(ruta_abs, as_attachment=False,
+                     download_name=os.path.basename(ruta_abs))
 
 
 @bp.route('/<int:id>/documentos/url-externa', methods=['POST'])
@@ -753,19 +802,6 @@ def pool_borrar_documento(id, doc_id):
         }), 422
 
     try:
-        # Si es un fichero subido (no URL externa), eliminarlo del disco
-        url = doc.url or ''
-        if url and not url.startswith(('http://', 'https://')):
-            upload_base = current_app.config['UPLOAD_FOLDER']
-            file_abs = os.path.join(upload_base, url.replace('/', os.sep))
-            if os.path.isfile(file_abs):
-                os.remove(file_abs)
-            dir_abs = os.path.dirname(file_abs)
-            try:
-                os.rmdir(dir_abs)   # Solo borra si está vacío (cada doc tiene su UUID dir)
-            except OSError:
-                pass
-
         db.session.delete(doc)
         db.session.commit()
     except Exception as e:
