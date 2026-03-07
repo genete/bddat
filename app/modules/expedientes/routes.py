@@ -13,7 +13,8 @@ Rutas:
 - GET  /expedientes/<id>/editar          - Formulario editar expediente
 - POST /expedientes/<id>/editar          - Actualizar expediente + proyecto
 """
-from flask import Blueprint, render_template, request, flash, redirect, url_for, abort
+from datetime import date
+from flask import Blueprint, render_template, request, flash, redirect, url_for, abort, jsonify
 from flask_login import login_required
 from app import db
 from app.models.expedientes import Expediente
@@ -32,6 +33,8 @@ from app.models.solicitudes import Solicitud
 from app.models.fases import Fase
 from app.models.tramites import Tramite
 from app.models.tareas import Tarea
+from app.models.documentos import Documento
+from app.models.tipos_documentos import TipoDocumento
 from app.decorators import role_required
 from app.utils.permisos import (
     puede_cambiar_responsable,
@@ -483,3 +486,175 @@ def tramitacion_bc_tarea(exp_id, sol_id, fase_id, tram_id, tarea_id):
         tramite=tramite,
         tarea=tarea,
     )
+
+
+# ===========================================================================
+# POOL DE DOCUMENTOS — issue #180
+# Gestión masiva del pool documental de un expediente (Vía 1)
+# ===========================================================================
+
+def _documento_es_referenciado(doc):
+    """
+    True si el documento tiene referencias activas que impiden su borrado.
+
+    Usa únicamente backrefs SQLAlchemy — NO hardcodear SQL directo.
+    Si en el futuro se añade una nueva tabla con FK a documentos.id:
+      1. Añadir el backref en el modelo correspondiente.
+      2. Añadir un check aquí.
+
+    Backrefs consultados:
+      doc.proyecto_vinculado  → DocumentoProyecto.documento_id  (uselist=False)
+      doc.tareas_que_usan     → Tarea.documento_usado_id        (lista)
+      doc.tarea_productora    → Tarea.documento_producido_id    (lista, UNIQUE en BD)
+    """
+    if doc.proyecto_vinculado:
+        return True
+    if doc.tareas_que_usan:
+        return True
+    if doc.tarea_productora:
+        return True
+    return False
+
+
+@bp.route('/<int:id>/documentos')
+@login_required
+def pool_documentos(id):
+    """Pool de documentos — listado del expediente."""
+    expediente = Expediente.query.get_or_404(id)
+    resultado = verificar_acceso_expediente(expediente, 'ver')
+    if resultado:
+        return resultado
+
+    documentos_raw = Documento.query.filter_by(
+        expediente_id=id
+    ).order_by(Documento.id.desc()).all()
+
+    docs_lista = []
+    for doc in documentos_raw:
+        nombre = doc.url.rsplit('/', 1)[-1].rsplit('.', 1)[0] if doc.url else f'Documento {doc.id}'
+        docs_lista.append({
+            'doc':            doc,
+            'nombre_display': nombre,
+            'es_referenciado': _documento_es_referenciado(doc),
+        })
+
+    tipos_doc = TipoDocumento.query.order_by(TipoDocumento.nombre).all()
+
+    return render_template(
+        'expedientes/pool_documentos.html',
+        expediente=expediente,
+        docs_lista=docs_lista,
+        tipos_doc=tipos_doc,
+    )
+
+
+@bp.route('/<int:id>/documentos/carga-masiva', methods=['POST'])
+@login_required
+def pool_carga_masiva(id):
+    """Carga masiva de documentos al pool — recibe JSON, devuelve JSON."""
+    expediente = Expediente.query.get_or_404(id)
+    resultado = verificar_acceso_expediente(expediente, 'editar')
+    if resultado:
+        return resultado
+
+    datos = request.get_json(silent=True) or []
+    creados = 0
+    try:
+        for entrada in datos:
+            url = (entrada.get('url') or '').strip()
+            if not url or entrada.get('excluir'):
+                continue
+            tipo_doc_id = entrada.get('tipo_doc_id') or 1
+            fecha_raw = entrada.get('fecha_administrativa') or None
+            fecha_admin = None
+            if fecha_raw:
+                try:
+                    fecha_admin = date.fromisoformat(fecha_raw)
+                except ValueError:
+                    pass
+            doc = Documento(
+                expediente_id=id,
+                url=url,
+                tipo_doc_id=int(tipo_doc_id),
+                fecha_administrativa=fecha_admin,
+                asunto=(entrada.get('asunto') or '').strip() or None,
+                prioridad=1 if entrada.get('prioridad') else 0,
+            )
+            db.session.add(doc)
+            creados += 1
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+    return jsonify({'ok': True, 'creados': creados})
+
+
+@bp.route('/<int:id>/documentos/<int:doc_id>/editar', methods=['POST'])
+@login_required
+def pool_editar_documento(id, doc_id):
+    """Editar metadatos de un documento del pool — devuelve JSON."""
+    expediente = Expediente.query.get_or_404(id)
+    resultado = verificar_acceso_expediente(expediente, 'editar')
+    if resultado:
+        return resultado
+
+    doc = Documento.query.get_or_404(doc_id)
+    if doc.expediente_id != id:
+        abort(404)
+
+    datos = request.get_json(silent=True) or {}
+    url = (datos.get('url') or '').strip()
+    if not url:
+        return jsonify({'ok': False, 'error': 'La URL es obligatoria'}), 400
+
+    fecha_raw = datos.get('fecha_administrativa') or None
+    fecha_admin = None
+    if fecha_raw:
+        try:
+            fecha_admin = date.fromisoformat(fecha_raw)
+        except ValueError:
+            pass
+
+    try:
+        doc.url = url
+        doc.tipo_doc_id = int(datos.get('tipo_doc_id') or 1)
+        doc.fecha_administrativa = fecha_admin
+        doc.asunto = (datos.get('asunto') or '').strip() or None
+        doc.prioridad = 1 if datos.get('prioridad') else 0
+        doc.observaciones = (datos.get('observaciones') or '').strip() or None
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+    return jsonify({'ok': True})
+
+
+@bp.route('/<int:id>/documentos/<int:doc_id>/borrar', methods=['POST'])
+@login_required
+def pool_borrar_documento(id, doc_id):
+    """Borrar un documento del pool si no está referenciado — devuelve JSON."""
+    expediente = Expediente.query.get_or_404(id)
+    resultado = verificar_acceso_expediente(expediente, 'editar')
+    if resultado:
+        return resultado
+
+    doc = Documento.query.get_or_404(doc_id)
+    if doc.expediente_id != id:
+        abort(404)
+
+    if _documento_es_referenciado(doc):
+        return jsonify({
+            'ok': False,
+            'error': 'El documento está referenciado en tramitación y no puede eliminarse'
+        }), 422
+
+    try:
+        db.session.delete(doc)
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+    return jsonify({'ok': True})
