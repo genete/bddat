@@ -228,14 +228,14 @@
         </td>
         <td class="text-end text-nowrap">
           {% if not item.es_url_externa %}
-          <button type="button" class="btn btn-sm btn-outline-secondary"
-                  title="Copiar ruta al portapapeles — pégala en el Explorador de Windows para navegar al archivo"
+          <button type="button" class="btn btn-sm btn-outline-primary"
+                  title="Abrir ubicación en el Explorador de Windows"
                   data-bs-toggle="tooltip" data-bs-placement="top"
-                  onclick="copiar_ruta('{{ doc.url | replace('\\', '/') | e }}')">
-            <i class="fas fa-copy"></i>
+                  onclick="abrir_en_carpeta('{{ url_for('expedientes.pool_abrir_en_carpeta', id=expediente.id, doc_id=doc.id) }}')">
+            <i class="fas fa-folder-open"></i>
           </button>
           {% endif %}
-          <button type="button" class="btn btn-sm btn-outline-secondary"
+          <button type="button" class="btn btn-sm btn-outline-primary"
                   title="Editar metadatos"
                   onclick="abrir_modal_editar(this)"
                   data-doc-id="{{ doc.id }}"
@@ -1116,19 +1116,18 @@
   };
 
   // ================================================================
-  // COPIAR RUTA AL PORTAPAPELES
+  // ABRIR EN EXPLORADOR DE WINDOWS
   // ================================================================
-  window.copiar_ruta = function (ruta) {
-    // Normalizar separadores a backslash para Windows
-    var ruta_win = ruta.replace(/\//g, '\\');
-    if (!navigator.clipboard) {
-      alert('Tu navegador no soporta copia al portapapeles.\nRuta:\n' + ruta_win);
-      return;
-    }
-    navigator.clipboard.writeText(ruta_win).then(function () {
-      mostrar_toast('info', 'Ruta copiada al portapapeles — pégala en el Explorador de Windows.');
-    }).catch(function () {
-      alert('No se pudo copiar automáticamente.\nRuta:\n' + ruta_win);
+  window.abrir_en_carpeta = function (url_abrir) {
+    fetch(url_abrir, { method: 'POST' })
+    .then(function (r) { return r.json(); })
+    .then(function (data) {
+      if (!data.ok) {
+        mostrar_toast('warning', data.error || 'No se pudo abrir el Explorador.');
+      }
+    })
+    .catch(function () {
+      mostrar_toast('danger', 'Error de red al abrir en carpeta.');
     });
   };
 

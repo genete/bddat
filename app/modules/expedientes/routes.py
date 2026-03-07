@@ -811,3 +811,38 @@ def pool_borrar_documento(id, doc_id):
     return jsonify({'ok': True})
 
 
+@bp.route('/<int:id>/documentos/<int:doc_id>/abrir-en-carpeta', methods=['POST'])
+@login_required
+def pool_abrir_en_carpeta(id, doc_id):
+    """
+    Abre el Explorador de Windows enfocando el archivo.
+
+    Requiere que Flask corra en el mismo PC que el navegador (despliegue local).
+    No funciona con URLs externas ni si el fichero no existe en disco.
+    """
+    import subprocess
+
+    expediente = Expediente.query.get_or_404(id)
+    resultado = verificar_acceso_expediente(expediente, 'ver')
+    if resultado:
+        return resultado
+
+    doc = Documento.query.get_or_404(doc_id)
+    if doc.expediente_id != id:
+        abort(404)
+
+    url = doc.url or ''
+    if url.startswith(('http://', 'https://')):
+        return jsonify({'ok': False, 'error': 'No aplicable a URLs externas'}), 400
+
+    ruta_abs = os.path.normpath(os.path.abspath(url))
+    if not os.path.isfile(ruta_abs):
+        return jsonify({'ok': False, 'error': 'Fichero no encontrado en disco'}), 404
+
+    try:
+        subprocess.Popen(['explorer', f'/select,{ruta_abs}'])
+        return jsonify({'ok': True})
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
