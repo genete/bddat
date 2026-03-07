@@ -27,43 +27,6 @@ Arquitectura del frontend dinámico (futuro):
 
 ---
 
-## Histórico (Referencia Detallada)
-
-Los siguientes documentos han sido **compactados en la guía principal** pero se mantienen como referencia histórica detallada:
-
-### historico/PATRONES_UI.md
-Especificación completa de los 3 patrones de vistas:
-- Vista Dashboard (panel control sin sidebar)
-- Vista Listado (tabla scroll infinito sin sidebar)
-- Vista Tramitación (sidebar acordeón + detalle)
-- Mockups ASCII detallados
-- **Estado:** ✅ Completado (7-feb-2026)
-- **Issue:** #90
-
-### historico/VISTAS.md
-Sistema completo de vistas V0/V1/V2/V3:
-- Nomenclatura y flujos de navegación
-- Tabla comparativa estructuras
-- CSS y archivos por vista
-- Historial de implementación
-- **Estado:** 📚 Documentación histórica
-
-### historico/VISTA_V0_LOGIN.md
-Documentación detallada Vista V0:
-- Split-screen 60/40 con gradiente
-- Template base_login.html sin breadcrumb
-- Flujo autenticación completo
-- **Estado:** ✅ Completada (PR pendiente)
-
-### historico/VISTA_V1_DASHBOARD.md
-Documentación detallada Vista V1:
-- Grid responsive 4/3/2/1 columnas
-- Cards clicables con hover effects
-- Filtrado por roles
-- **Estado:** ✅ Completada (PR #98)
-
----
-
 ## Decisiones Arquitectónicas Importantes
 
 ### Sistema de Navegación Modular

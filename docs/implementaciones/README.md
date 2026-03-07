@@ -28,52 +28,11 @@ Implementación completa Vista V3 (Tramitación):
 
 ---
 
-## Histórico (Referencia Detallada)
+## Issues y PRs de referencia
 
-Los siguientes documentos han sido **compactados en la guía principal** pero se mantienen como referencia histórica técnica:
-
-### historico/ISSUE_94_ESTRUCTURA.md
-Estructura detallada implementación Issue #94:
-- Fase 2: Listado V2 con scroll infinito
-- Archivos modificados y creados
-- Decisión arquitectura C.1/C.2/D
-- Testing y validación completa
-- **Estado:** ✅ Completado (PR #97 merged)
-
-### historico/SCROLL_INFINITO.md
-Documentación técnica scroll infinito:
-- Comparativa de estrategias (Append, Windowing, Cursor, Híbrido)
-- Arquitectura paginación cursor-based
-- JavaScript modular reutilizable
-- API Backend Flask/SQLAlchemy
-- Performance benchmarks
-- **Estado:** 📚 Referencia técnica histórica
-- **Versión:** 2.0
-
-### historico/UI_PATTERNS_DATA_TABLE.md
-Implementación patrones tablas de datos:
-- Sistema DIV + CSS Grid (alternativa a `<table>`)
-- Sticky header 100% funcional
-- Variantes (expedientes, solicitudes, titulares)
-- Reutilización en Flask (Jinja2)
-- **Estado:** 📚 Referencia histórica (reemplazado por C.1/C.2)
-- **Fase:** 1 completada
-
----
-
-## Enlaces a Issues y PRs
-
-### Issues Relacionados
-- [Issue #90 - Especificación Patrones UI](https://github.com/genete/bddat/issues/90) ✅
-- [Issue #94 - Scroll Infinito Fase 2](https://github.com/genete/bddat/issues/94) ✅
-- [Issue #101 - Vista V3 Tramitación](https://github.com/genete/bddat/issues/101) 🟡
-- [Epic #93 - Sistema de Navegación UI Modular](https://github.com/genete/bddat/issues/93) ⏳
-
-### Pull Requests Relacionados
-- [PR #97 - Vista V2 (Listado scroll infinito)](https://github.com/genete/bddat/pull/97) ✅ merged
-- [PR #98 - Vista V1 (Dashboard grid cards)](https://github.com/genete/bddat/pull/98) ✅ merged
-- [PR #99 - Vista V0 (Login split-screen)](https://github.com/genete/bddat/pull/99) ✅ merged
-- PR pendiente - Vista V3 (Tramitación Fase 1+2) 🔴 Pendiente
+- [Issue #94 - Scroll Infinito Fase 2](https://github.com/genete/bddat/issues/94) ✅ — PR #97 merged
+- [Issue #101 - Vista V3 Tramitación](https://github.com/genete/bddat/issues/101) 🟡 — en desarrollo
+- [PR #98 - V1 Dashboard](https://github.com/genete/bddat/pull/98) ✅ — [PR #99 - V0 Login](https://github.com/genete/bddat/pull/99) ✅
 
 ---
 
