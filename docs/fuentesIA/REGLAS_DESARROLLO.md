@@ -172,116 +172,8 @@ main ─────────────●─v0.1.0──●─v0.2.0  (sol
 
 ## 3. Milestones y Organización de Issues
 
-### 3.1 Estructura de Milestones
-
-Los milestones representan objetivos funcionales completos dentro de cada fase.
-
-#### Fase 1: Fundamentos y MVP Básico
-
-**Milestone 1.1 - Infraestructura base**
-- Tags: `infrastructure`, `database`, `setup`
-- Hito: "Aplicación arranca sin errores"
-- Issues ejemplo: #3, #4
-- Entregable: Flask funcional + BD desplegada + datos maestros
-
-**Milestone 1.2 - Gestión de solicitantes**
-- Tags: `solicitantes`, `crud-basico`, `forms`
-- Hito: "Registro de personas funcional"
-- Entregable: CRUD completo solicitantes/titulares + validación NIF/CIF
-
-**Milestone 1.3 - Expedientes básicos (MVP)**
-- Tags: `expedientes`, `crud-basico`, `mvp`
-- Hito: "Crear y consultar expediente"
-- Entregable: CRUD expedientes + asociación solicitante + listado + detalle
-- **Version:** `v0.1.0` - Primera release
-
----
-
-#### Fase 2: Tramitación Administrativa
-
-**Milestone 2.1 - Control de fases**
-- Tags: `fases`, `transiciones`, `workflow`
-- Hito: "Flujo de tramitación operativo"
-- Entregable: Cambios de fase + validaciones + registro histórico
-
-**Milestone 2.2 - Actuaciones y trámites**
-- Tags: `actuaciones`, `tramites`, `historico`
-- Hito: "Registro de gestiones"
-- Entregable: Registrar actuaciones + asociar trámites + histórico cronológico
-- Issues ejemplo: #1 (auditoría)
-
-**Milestone 2.3 - Notificaciones básicas**
-- Tags: `notificaciones`, `alertas`, `messaging`
-- Hito: "Comunicación automática"
-- Entregable: Sistema notificaciones internas + alertas de fase
-- Issues ejemplo: #28
-- **Version:** `v0.2.0`
-
----
-
-#### Fase 3: Gestión Avanzada
-
-**Milestone 3.1 - Documentación**
-- Tags: `documentos`, `adjuntos`, `storage`
-- Hito: "Gestión documental operativa"
-- Entregable: Upload archivos + asociación a expediente + versionado
-
-**Milestone 3.2 - Sistema de tareas**
-- Tags: `tareas`, `asignaciones`, `deadlines`
-- Hito: "Seguimiento de trabajo"
-- Entregable: Crear tareas + asignar responsables + control vencimientos
-
-**Milestone 3.3 - Búsqueda y filtros**
-- Tags: `busqueda`, `filtros`, `indices`
-- Hito: "Consultas eficientes"
-- Entregable: Búsqueda multi-criterio + filtros avanzados + índices BD
-- **Version:** `v0.3.0`
-
-**Milestone 3.4 - Visualización cartográfica**
-- Tags: `postgis`, `maps`, `geolocation`
-- Hito: "Visor geográfico operativo"
-- Entregable: PostGIS + Leaflet + visualización instalaciones + coordenadas editables
-- Issues ejemplo: #27
-- **Version:** `v0.4.0` (opcional si es muy grande)
-
----
-
-#### Fase 4: Optimización y Producción
-
-**Milestone 4.1 - Reporting**
-- Tags: `reporting`, `dashboards`, `analytics`
-- Hito: "Informes y estadísticas"
-- Entregable: Panel estadísticas + informes predefinidos + exportación Excel/PDF
-
-**Milestone 4.2 - Auditoría**
-- Tags: `auditoria`, `logging`, `seguridad`
-- Hito: "Trazabilidad completa"
-- Entregable: Log acciones + histórico cambios + control permisos por rol
-
-**Milestone 4.3 - Despliegue producción**
-- Tags: `deployment`, `performance`, `backup`
-- Hito: "Sistema en producción"
-- Entregable: Configuración producción + backup automatizado + monitorización + docs usuario
-- **Version:** `v1.0.0` - Primera versión producción
-
----
-
-### 3.2 Tags de Issues Recomendados
-
-**Por tipo:**
-- `bug`, `enhancement`, `feature`, `documentation`, `refactor`
-
-**Por área funcional:**
-- `expedientes`, `solicitantes`, `actuaciones`, `documentos`, `tareas`, `notificaciones`, `maps`
-
-**Por prioridad:**
-- `mvp` (mínimo viable), `critical`, `high`, `medium`, `low`
-
-**Por fase:**
-- `fase-1`, `fase-2`, `fase-3`, `fase-4`
-
-**Por estado técnico:**
-- `database`, `backend`, `frontend`, `api`, `forms`, `validation`
+El estado actual de milestones y su contenido vive en `docs/fuentesIA/ROADMAP.md` (milestones M1–M5).
+Los issues de cada milestone están organizados en GitHub.
 
 ---
 
@@ -291,7 +183,7 @@ Los milestones representan objetivos funcionales completos dentro de cada fase.
 
 En este proyecto se usa **snake_case** como convención general: tablas, columnas, variables, funciones, rutas, plantillas y nombres de fichero.
 
-**Nota:** La insistencia estricta en snake_case es principalmente para Perplexity AI. Otras IAs pueden no requerir el mismo nivel de énfasis, pero se recomienda mantener consistencia.
+**Nota:** Se recomienda mantener consistencia en todo el proyecto.
 
 #### Base de Datos (PostgreSQL)
 
@@ -560,6 +452,7 @@ git pull origin develop
 - `[MIGA]` - Cambios en migraciones
 - `[TEST]` - Pruebas y testing
 - `[DOCS]` - Cambios en documentación
+- `[SERVICIO]` - Cambios en servicios (`app/services/`)
 - `[MERGE]` - Merge de pull requests
 - `[RELEASE]` - Preparación de releases
 
@@ -899,7 +792,7 @@ git branch -D nombre-rama
 - [ ] Rama creada con nombre apropiado (si aplica)
 - [ ] Cambio documentado y explicado
 - [ ] Nombres en snake_case (excepto clases en CamelCase)
-- [ ] Consultado `schema.sql` para cambios BD
+- [ ] Consultado PostgreSQL MCP para cambios BD
 - [ ] Código sigue convenciones del proyecto
 - [ ] Mensaje de commit con categoría correcta
 
@@ -933,7 +826,6 @@ git branch -D nombre-rama
 | Crear GitHub Releases | ✅ | |
 | Hacer git pull | | ✅ |
 | Probar en local (flask run) | | ✅ |
-| Generar schema.sql y subirlo | | ✅ |
 | Hacer migraciones locales | | ✅ |
 | Commits de testing/ajustes | | ✅ |
 | Git push (cambios locales) | | ✅ |
@@ -948,21 +840,8 @@ git branch -D nombre-rama
 
 ### 16.1 Milestones → Versiones
 
-| Milestone | Versión | Fase | Release |
-|-----------|---------|------|---------|
-| 1.1 | - | Fase 1 | No |
-| 1.2 | - | Fase 1 | No |
-| 1.3 | **v0.1.0** | Fase 1 | ✅ MVP |
-| 2.1 | - | Fase 2 | No |
-| 2.2 | - | Fase 2 | No |
-| 2.3 | **v0.2.0** | Fase 2 | ✅ |
-| 3.1 | - | Fase 3 | No |
-| 3.2 | - | Fase 3 | No |
-| 3.3 | **v0.3.0** | Fase 3 | ✅ |
-| 3.4 | **v0.4.0** | Fase 3 | ✅ (PostGIS) |
-| 4.1 | - | Fase 4 | No |
-| 4.2 | - | Fase 4 | No |
-| 4.3 | **v1.0.0** | Fase 4 | ✅ PRODUCCIÓN |
+Los milestones actuales (M1–M5) y su contenido están en `docs/fuentesIA/ROADMAP.md`.
+Las versiones siguen el criterio: `vMAJOR.MINOR.PATCH` — release al completar un milestone funcional completo.
 
 ### 16.2 Hotfixes
 
@@ -979,74 +858,25 @@ git checkout -b hotfix/fix-validacion-nif
 
 ---
 
-## 17. Transición del Workflow Actual
+## 17. Documentación y Fuentes de Verdad
 
-### 17.1 Estado Actual (25 enero 2026)
-
-- ✅ 1 rama: `main`
-- ✅ GitHub Flow básico funcionando
-- ✅ Ramas temporales se borran correctamente tras merge
-- ❌ Sin rama `develop`
-- ❌ Sin tags ni releases
-- ❌ Sin milestones asignados a issues
-
-### 17.2 Pasos de Migración
-
-**Paso 1: Crear rama develop (ahora)**
-
-```bash
-# IA ejecuta:
-git checkout main
-git pull origin main
-git checkout -b develop
-git push origin develop
-```
-
-**Paso 2: Configurar develop como rama por defecto en GitHub**
-
-Settings → Branches → Default branch → cambiar a `develop`
-
-**Paso 3: Crear milestones en GitHub**
-
-Issues → Milestones → New milestone:
-- Milestone 1.1 - Infraestructura base (fecha estimada)
-- Milestone 1.2 - Gestión solicitantes (fecha estimada)
-- Milestone 1.3 - Expedientes básicos MVP (fecha estimada)
-
-**Paso 4: Reasignar issues existentes**
-
-- Issue #3 → Milestone 1.1
-- Issue #4 → Milestone 1.1
-- Issue #1 → Milestone 2.2
-- Issue #28 → Milestone 2.3
-- Issue #27 → Milestone 3.4
-
-**Paso 5: Partir de develop para nuevos cambios**
-
-A partir de ahora:
-- Trabajo diario en `develop` o ramas desde `develop`
-- `main` solo recibe merges al completar milestones
-- Tags y releases solo en `main`
-
----
-
-## 18. Documentación y Fuentes de Verdad
-
-### 18.1 Jerarquía de Documentación
+### 17.1 Jerarquía de Documentación
 
 **Orden de prevalencia (mayor a menor):**
 
-1. **Código en el repositorio** (`app/`, `schema.sql`, `migrations/`)
+1. **Código en el repositorio** (`app/`, `migrations/`)
 2. **Documentación en repositorio** (`docs/fuentesIA/`)
 3. **Pull Requests en GitHub** (historial completo)
 4. **Otras fuentes de conocimiento de IA**
 
-### 18.2 Documentos Clave en Repositorio
+### 17.2 Documentos Clave en Repositorio
 
-- `docs/fuentesIA/REGLAS_DESARROLLO.md` - Este documento
-- `docs/fuentesIA/GuiaGeneralNueva.md` - Plan general del proyecto
-- `docs/fuentesIA/ACCESO_RAPIDO_PROYECTO.md` - Referencia rápida
-- `schema.sql` - Definición completa BD (generado por usuario)
+- `CLAUDE.md` — instrucciones de proyecto para Claude Code (punto de entrada)
+- `docs/fuentesIA/REGLAS_DESARROLLO.md` — este documento
+- `docs/fuentesIA/GuiaGeneralNueva.md` — arquitectura general y lógica de negocio
+- `docs/fuentesIA/ROADMAP.md` — estado de implementación por milestones
+- `docs/fuentesIA/ESTRATEGIA_ROADMAP.md` — visión estratégica, 14 bloques funcionales
+- `docs/fuentesIA/ARQUITECTURA_DOCUMENTOS.md` — decisiones subsistema documental
 
 ---
 

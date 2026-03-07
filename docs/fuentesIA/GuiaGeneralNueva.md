@@ -87,13 +87,10 @@ Ver https://github.com/genete/bddat?tab=readme-ov-file#-estructura-del-proyecto
 
 ---
 
-### Documentos a Proporcionar a la IA
+### Documentos de Referencia para Claude Code
 
-Los documentos serán leídos directamente por Claude Code al encontrarse directamente en el repositorio. 
-Los documentos principales son:
-- /README.md
-- /docs/GuiaGeneralNueva.md (este documento)
-- /docs/ARQUITECTURA.md (documento de toma de decisiones arquitectónicas y sus cambios, si los hay)
+Claude Code lee directamente el repositorio y dispone de acceso a PostgreSQL via MCP.
+Los documentos de referencia activos están listados en `CLAUDE.md` (raíz del repo) y en `docs/README.md`.
 
 ---
 
