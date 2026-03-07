@@ -222,15 +222,31 @@
       <div class="modal-body">
 
         <!-- Zona de drop dentro del modal -->
-        <div class="zona-drop mb-3" id="zona-drop-modal">
-          <i class="fas fa-folder-open fa-3x mb-2"></i>
+        <div class="zona-drop mb-2" id="zona-drop-modal">
+          <i class="fas fa-folder-open fa-2x mb-2"></i>
           <p class="fw-semibold mb-1">Arrastra aquí ficheros o una carpeta</p>
-          <p class="small mb-0">
-            O haz clic para abrir el selector de carpeta
-            <span class="text-secondary">— solo se procesan los ficheros del primer nivel</span>
-          </p>
+          <p class="small mb-0 text-secondary">Solo se procesan los ficheros del primer nivel</p>
         </div>
         <input type="file" id="input-carpeta-modal" webkitdirectory multiple class="d-none">
+
+        <!-- Selector nativo (vía Python/tkinter — obtiene rutas completas) -->
+        <div class="text-center mb-3" id="zona-selector-nativo">
+          <p class="text-secondary small mb-2">— o usa el explorador de archivos nativo —</p>
+          <div class="d-flex gap-2 justify-content-center">
+            <button type="button" class="btn btn-outline-secondary btn-selector-nativo"
+                    onclick="abrir_selector_nativo('ficheros')">
+              <i class="fas fa-file me-1"></i> Seleccionar ficheros…
+            </button>
+            <button type="button" class="btn btn-outline-secondary btn-selector-nativo"
+                    onclick="abrir_selector_nativo('carpeta')">
+              <i class="fas fa-folder-open me-1"></i> Seleccionar carpeta…
+            </button>
+          </div>
+          <div id="msg-cargando-selector" class="alert alert-info py-2 mt-2 d-none small">
+            <span class="spinner-border spinner-border-sm me-2"></span>
+            Selecciona los ficheros en la ventana del explorador que acaba de abrirse…
+          </div>
+        </div>
 
         <!-- Preview: aparece tras seleccionar archivos -->
         <div id="seccion-preview" class="d-none">
@@ -614,6 +630,43 @@
       var input = tr.querySelector('.url-input');
       if (!input || input.dataset.manual === 'true') return;
       input.value = prefijo + tr.dataset.nombre;
+    });
+  };
+
+  // ----------------------------------------------------------------
+  // Selector nativo (Python/tkinter) — obtiene rutas completas del SO
+  // ----------------------------------------------------------------
+  window.abrir_selector_nativo = function (modo) {
+    var url_selector = '{{ url_for('expedientes.pool_selector_nativo', id=expediente.id) }}';
+    var btns = document.querySelectorAll('.btn-selector-nativo');
+    var msg  = document.getElementById('msg-cargando-selector');
+
+    btns.forEach(function (b) { b.disabled = true; });
+    msg.classList.remove('d-none');
+    document.getElementById('carga-error').classList.add('d-none');
+
+    fetch(url_selector, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ modo: modo }),
+    })
+    .then(function (r) { return r.json(); })
+    .then(function (data) {
+      btns.forEach(function (b) { b.disabled = false; });
+      msg.classList.add('d-none');
+      if (!data.ok) { mostrar_error_carga(data.error || 'Error al abrir el selector.'); return; }
+      if (!data.rutas || data.rutas.length === 0) return;  // Usuario canceló
+
+      archivos_pendientes = data.rutas.map(function (ruta) {
+        var nombre = ruta.replace(/\\/g, '/').split('/').pop();
+        return { nombre: nombre, url_completa: ruta };
+      });
+      mostrar_preview(true);
+    })
+    .catch(function () {
+      btns.forEach(function (b) { b.disabled = false; });
+      msg.classList.add('d-none');
+      mostrar_error_carga('No se pudo abrir el selector nativo. ¿Está Flask corriendo localmente?');
     });
   };
 

@@ -13,6 +13,9 @@ Rutas:
 - GET  /expedientes/<id>/editar          - Formulario editar expediente
 - POST /expedientes/<id>/editar          - Actualizar expediente + proyecto
 """
+import subprocess
+import sys
+import json as _json
 from datetime import date
 from flask import Blueprint, render_template, request, flash, redirect, url_for, abort, jsonify
 from flask_login import login_required
@@ -667,3 +670,73 @@ def pool_borrar_documento(id, doc_id):
         return jsonify({'ok': False, 'error': str(e)}), 500
 
     return jsonify({'ok': True})
+
+
+# Scripts tkinter para el selector nativo (se ejecutan en subproceso independiente)
+_SCRIPT_FICHEROS = """\
+import tkinter as tk
+from tkinter import filedialog
+import json, pathlib
+root = tk.Tk()
+root.withdraw()
+root.wm_attributes('-topmost', True)
+rutas = list(filedialog.askopenfilenames(title='Seleccionar ficheros \u2014 BDDAT Pool'))
+rutas = [str(pathlib.Path(r)) for r in rutas]
+root.destroy()
+print(json.dumps(rutas))
+"""
+
+_SCRIPT_CARPETA = """\
+import tkinter as tk
+from tkinter import filedialog
+import json, pathlib
+root = tk.Tk()
+root.withdraw()
+root.wm_attributes('-topmost', True)
+carpeta = filedialog.askdirectory(title='Seleccionar carpeta \u2014 BDDAT Pool')
+rutas = []
+if carpeta:
+    p = pathlib.Path(carpeta)
+    rutas = [str(f) for f in sorted(p.iterdir()) if f.is_file()]
+root.destroy()
+print(json.dumps(rutas))
+"""
+
+
+@bp.route('/<int:id>/documentos/selector-nativo', methods=['POST'])
+@login_required
+def pool_selector_nativo(id):
+    """
+    Abre un selector de ficheros o carpeta nativo del SO mediante tkinter
+    en un subproceso y devuelve las rutas completas como JSON.
+
+    Esto evita la restricción de seguridad del navegador que impide obtener
+    la ruta completa de ficheros arrastrados al área de drop.
+
+    Solo funciona cuando Flask corre en la misma máquina que el usuario.
+    """
+    expediente = Expediente.query.get_or_404(id)
+    resultado = verificar_acceso_expediente(expediente, 'editar')
+    if resultado:
+        return resultado
+
+    modo = (request.get_json(silent=True) or {}).get('modo', 'ficheros')
+    script = _SCRIPT_CARPETA if modo == 'carpeta' else _SCRIPT_FICHEROS
+
+    try:
+        proc = subprocess.run(
+            [sys.executable, '-c', script],
+            capture_output=True,
+            text=True,
+            timeout=120,          # El usuario tiene 2 minutos para seleccionar
+        )
+        rutas = _json.loads(proc.stdout.strip() or '[]')
+    except subprocess.TimeoutExpired:
+        return jsonify({'ok': False, 'error': 'Tiempo de espera agotado (120 s)'}), 408
+    except _json.JSONDecodeError:
+        detalle = proc.stderr.strip() if proc.stderr else 'sin detalle'
+        return jsonify({'ok': False, 'error': f'Error en el selector: {detalle}'}), 500
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+    return jsonify({'ok': True, 'rutas': rutas})
