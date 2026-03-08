@@ -308,7 +308,8 @@
         <td>
           {% if doc.asunto %}
           <span class="asunto-celda text-secondary"
-                title="{{ doc.asunto | e }}">{{ doc.asunto }}</span>
+                title="{{ doc.asunto | e }}"
+                data-bs-toggle="tooltip" data-bs-placement="top">{{ doc.asunto }}</span>
           {% else %}
           <span class="text-secondary">—</span>
           {% endif %}
