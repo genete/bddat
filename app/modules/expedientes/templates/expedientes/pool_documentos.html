@@ -85,13 +85,7 @@
   @media (max-width: 1399.98px) {
     #pool-tabla th:nth-child(4), #pool-tabla td:nth-child(4) { display: none; }
   }
-  /* Paso 1 (< 1100px): Asunto en word-wrap (sin line-clamp) */
-  @media (max-width: 1099.98px) {
-    #pool-tabla td:nth-child(3) .asunto-celda {
-      display: block; -webkit-line-clamp: unset; overflow: visible; white-space: normal;
-    }
-  }
-  /* Paso 2 (< 900px): ocultar Asunto → Documento gana 200px */
+  /* Paso 2 (< 900px): ocultar Asunto → Documento gana espacio */
   @media (max-width: 899.98px) {
     #pool-tabla th:nth-child(3), #pool-tabla td:nth-child(3) { display: none; }
   }

@@ -534,8 +534,10 @@ def pool_documentos(id):
     docs_lista = []
     for doc in documentos_raw:
         filename = doc.url.replace('\\', '/').rsplit('/', 1)[-1] if doc.url else ''
-        nombre = filename or f'Documento {doc.id}'
-        partes = filename.rsplit('.', 1)
+        # Eliminar fragment (#...) y query string (?...) para nombre y extensión limpios
+        filename_limpio = filename.split('?')[0].split('#')[0]
+        nombre = filename_limpio or f'Documento {doc.id}'
+        partes = filename_limpio.rsplit('.', 1)
         extension = partes[1].lower() if len(partes) == 2 and partes[1] else ''
         es_url_externa = (doc.url or '').startswith(('http://', 'https://'))
         docs_lista.append({
