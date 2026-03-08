@@ -27,14 +27,7 @@
     border-color: var(--bs-primary);
     box-shadow: 0 0 0 3px var(--bs-primary-bg-subtle);
   }
-  /* Asunto truncado en tabla */
-  .asunto-celda {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 260px;
-    display: block;
-  }
+  /* .asunto-celda: estructura definida en la regla td:nth-child(3) de #pool-tabla */
   /* Panel de seleccionados (explorador) */
   .panel-seleccionados {
     max-height: 110px;
@@ -51,35 +44,36 @@
   .fs-breadcrumb a:hover { text-decoration: underline; }
   /* Línea separadora pertenece a C.1 (borde inferior), no al inicio de C.2 */
   .lista-cabecera { border-bottom: 1px solid var(--bs-border-color, #dee2e6); }
-  /* Thead sticky en C.2 */
-  #pool-tabla { table-layout: fixed; width: 100%; border-top: none; }
-  #pool-tabla thead th {
-    position: sticky;
-    top: 0;
-    z-index: 10;
-    background: var(--bs-light);
-  }
-  /* Anchos fijos de columnas (table-layout:fixed evita que varíen al filtrar) */
+  /* border-collapse:separate permite sticky thead sin artefactos de subpixel.
+     border-spacing:0 reproduce el aspecto de collapse sin el bug. */
+  #pool-tabla { table-layout: fixed; width: 100%; border-collapse: separate; border-spacing: 0; }
+  #pool-tabla td, #pool-tabla th { border-bottom: 1px solid var(--bs-border-color, #dee2e6); }
+  /* Eliminar border-top que BS5 añade al tbody (2px por defecto → línea negra en C.2) */
+  #pool-tabla > tbody { border-top: none; }
+  /* Thead sticky con fondo sólido (table-light) para cubrir filas al hacer scroll */
+  #pool-tabla thead th { position: sticky; top: 0; z-index: 10; background-color: #f8f9fa; }
+  /* Anchos fijos de columnas — col 2 (Documento) y col 3 (Asunto) toman el espacio restante */
   #pool-tabla th:nth-child(1) { width: 36px; }
-  /* col 2 (Documento) toma el espacio restante */
-  #pool-tabla th:nth-child(3) { width: 72px; }
-  #pool-tabla th:nth-child(4) { width: 115px; }
-  #pool-tabla th:nth-child(5) { width: 108px; }
-  #pool-tabla th:nth-child(6) { width: 44px; }
-  #pool-tabla th:nth-child(7) { width: 122px; }
-  /* Celda Documento: truncar nombre largo */
-  #pool-tabla td:nth-child(2) { overflow: hidden; max-width: 0; }
-  #pool-tabla td:nth-child(2) a,
-  #pool-tabla td:nth-child(2) .asunto-celda {
+  /* col 2 Documento: flex */
+  #pool-tabla th:nth-child(3) { width: 200px; }   /* Asunto */
+  #pool-tabla th:nth-child(4) { width: 68px; }    /* Ext */
+  #pool-tabla th:nth-child(5) { width: 100px; }   /* Tipo */
+  #pool-tabla th:nth-child(6) { width: 108px; }   /* Fecha adm */
+  #pool-tabla th:nth-child(7) { width: 44px; }    /* ★ */
+  #pool-tabla th:nth-child(8) { width: 122px; }   /* Acciones */
+  /* Celdas Documento y Asunto: truncar con ellipsis */
+  #pool-tabla td:nth-child(2), #pool-tabla td:nth-child(3) { overflow: hidden; max-width: 0; }
+  #pool-tabla td:nth-child(2) a, #pool-tabla td:nth-child(3) .asunto-celda {
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     display: block; max-width: 100%;
   }
   /* Fila seleccionada para edición masiva */
   #tbody-docs tr.doc-seleccionada > td { background-color: var(--bs-primary-bg-subtle, #d1e7dd) !important; }
-  /* C.1/C.2 scroll independiente + full-width:
-     - max-width:none elimina el centrado de bc-view (aquí la vista es full-width)
-     - overflow-y:hidden en app-main delega el scroll exclusivamente a C.2
-     - flex column + min-height:0 en bc-view para que C.2 ocupe la altura restante */
+  /* entrada_fecha dentro del panel masivo: misma altura que form-select-sm */
+  #ef-masivo-fecha .ef-input {
+    font-size: 0.875rem; padding: 0.25rem 2rem 0.25rem 0.5rem; line-height: 1.5; height: auto;
+  }
+  /* C.1/C.2 scroll independiente + full-width */
   .app-main { overflow-y: hidden; }
   .bc-view   { display: flex; flex-direction: column; flex: 1; min-height: 0;
                max-width: none; margin: 0; }
@@ -234,6 +228,7 @@
                  title="Seleccionar / deseleccionar todos">
         </th>
         <th>Documento</th>
+        <th>Asunto</th>
         <th>Ext.</th>
         <th>Tipo</th>
         <th>Fecha adm.</th>
@@ -267,9 +262,13 @@
             <i class="fas fa-file fa-xs me-1 text-secondary"></i>{{ item.nombre_display }}
           </a>
           {% endif %}
+        </td>
+        <td>
           {% if doc.asunto %}
-          <span class="asunto-celda text-secondary small"
+          <span class="asunto-celda text-secondary"
                 title="{{ doc.asunto | e }}">{{ doc.asunto }}</span>
+          {% else %}
+          <span class="text-secondary">—</span>
           {% endif %}
         </td>
         <td>
@@ -672,6 +671,9 @@
 
     // EntradaFecha del panel masivo (en el DOM principal, inicializar ya)
     _ef_masivo = new EntradaFecha('#ef-masivo-fecha', { name: '_f_masivo' });
+
+    // Igualar alturas de panel-masivo y barra-filtros (sin salto al intercambiar)
+    sincronizar_altura_c1();
   });
 
   // ================================================================
@@ -1042,6 +1044,37 @@
       filtros.classList.remove('d-none');
     }
   }
+
+  // Iguala la altura de panel-masivo y barra-filtros para evitar salto al intercambiarlos.
+  // Muestra ambos (invisibles) para medir, toma el máximo y lo fija como min-height.
+  // Se llama al cargar y en cada resize para adaptarse a cualquier ancho de ventana.
+  function sincronizar_altura_c1() {
+    var panel   = document.getElementById('panel-masivo');
+    var filtros = document.getElementById('barra-filtros');
+    if (!panel || !filtros) return;
+    // Guardar estado visible/oculto actual
+    var panel_oculto   = panel.classList.contains('d-none');
+    var filtros_oculto = filtros.classList.contains('d-none');
+    // Resetear min-height para medir la altura natural
+    panel.style.minHeight   = '';
+    filtros.style.minHeight = '';
+    // Mostrar ambos de forma invisible para medir
+    panel.style.visibility   = 'hidden';
+    filtros.style.visibility = 'hidden';
+    panel.classList.remove('d-none');
+    filtros.classList.remove('d-none');
+    var h = Math.max(panel.offsetHeight, filtros.offsetHeight);
+    // Restaurar estado
+    if (panel_oculto)   panel.classList.add('d-none');
+    if (filtros_oculto) filtros.classList.add('d-none');
+    panel.style.visibility   = '';
+    filtros.style.visibility = '';
+    // Fijar min-height igual en ambos
+    panel.style.minHeight   = h + 'px';
+    filtros.style.minHeight = h + 'px';
+  }
+
+  window.addEventListener('resize', sincronizar_altura_c1);
 
   window.aplicar_masivo = function () {
     if (_masivo_ids.size === 0) return;
