@@ -1,8 +1,23 @@
 # Guía de Vistas Bootstrap - BDDAT
 
-**Versión:** 1.0  
-**Fecha:** 16 de febrero de 2026  
+**Versión:** 2.0
+**Fecha:** 8 de marzo de 2026
 **Para:** Claude Code - Referencia de diseño UI
+
+---
+
+## 📖 Vocabulario
+
+| Término | Significado |
+|---------|-------------|
+| **V0, V1, V2, V4** | Tipos de vista definidos en esta guía |
+| **V3-BC** | Vista de tramitación por breadcrumbs (evolución de V3; no usa acordeón ni tabs) |
+| **C.1** | Zona fija superior sin scroll (`lista-cabecera`) |
+| **C.2** | Zona scrollable independiente (`lista-scroll-container`) |
+| **Listado embebido** | Tabla dentro de una card V4 (ej: documentos en detalle de expediente, direcciones en detalle de entidad) |
+| **Tabla V2** | Tabla con clase `expedientes-table`, thead verde corporativo sticky, scroll infinito JS |
+| **Tabla BC** | Tabla generada por `_tabla_hijos.html`, Bootstrap puro `table-hover table-sm`, thead `table-light` |
+| **Tabla Pool** | Tabla `#pool-tabla`, `table-layout: fixed`, thead sticky gris con `box-shadow inset` |
 
 ---
 
@@ -48,8 +63,9 @@ A: app-container (grid header/main/footer)
 | **V0** (Login) | A/B.1/B.2/B.3 | Simple | NO |
 | **V1** (Dashboard) | A/B.1/B.2/B.3 | Simple | NO |
 | **V2** (Listado) | A/B.1/B.2/C.1/C.2/D/B.3 | C.2 independiente | SÍ |
-| **V3** (Tramitación) | A/B.1/B.2/acordeón/B.3 | Simple | NO |
+| **V3-BC** (Tramitación) | A/B.1/B.2/C.1/C.2/B.3 | C.2 independiente | SÍ |
 | **V4** (Detalle/Edición) | A/B.1/B.2/B.3 | Simple | NO |
+| **Pool** (variante V3-BC) | A/B.1/B.2/C.1/C.2/B.3 | C.2 independiente | SÍ |
 
 ---
 
@@ -212,76 +228,113 @@ def get_expedientes():
 
 ---
 
-## 🛠️ Vista V3 - Tramitación (Tabs 4 niveles)
+## 🛠️ Vista V3-BC - Tramitación (Breadcrumbs)
 
-### Cambios Arquitectónicos
+### Evolución histórica
 | Fecha | Cambio |
 |-------|--------|
-| 12/02/2026 | De sidebar → Acordeón completo Bootstrap 5 en 100% ancho |
-| 28/02/2026 | De acordeón lazy-loading → **Tabs 4 niveles renderizados en servidor** (issue #150) |
+| 12/02/2026 | Sidebar → Acordeón Bootstrap 5 |
+| 28/02/2026 | Acordeón → Tabs 4 niveles (#150) |
+| 04/03/2026 | Tabs → **Breadcrumbs** (#157) — arquitectura actual |
 
-### Arquitectura Actual (Tabs 4 niveles)
+> **Legacy:** La versión anterior (acordeón/tabs, `tramitacion_v3.html`) sigue en el repositorio
+> como referencia pero **no se usa**. Los archivos legacy están en `app/templates/vistas/vista3/`
+> y `app/static/js/v3-tabs-main.js`. No crear vistas nuevas con ese patrón.
 
-#### Jerarquía de Tabs
+### Concepto
+
+Navegación drill-down por la jerarquía ESFTT (Expediente → Solicitud → Fase → Trámite → Tarea).
+Cada nivel es una **página independiente** con:
+- **C.1** — Card del nodo actual (datos de la entidad, metadatos, botones de acción)
+- **C.2** — Tabla de hijos del nodo (`_tabla_hijos.html`) o contenido específico (tarea → documentos)
+
+El breadcrumb del header permite volver a cualquier nivel superior.
+
+### Estructura tipo (cada nivel)
+
+```html
+<main class="app-main" style="overflow-y: hidden;">
+  <!-- C.1: card del nodo actual -->
+  <div class="lista-cabecera">
+    <div class="bc-view">
+      <div class="card bc-card-nodo">
+        <div class="card-header card-header-accent">Título nodo</div>
+        <div class="card-body card-body-tinted">
+          <div class="bc-meta">Metadatos: estado, fechas...</div>
+          <div class="bc-acciones-bar">Botones acción</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- C.2: tabla de hijos -->
+  <div class="lista-scroll-container">
+    <div class="bc-view">
+      <h6>Título listado hijos + botón Nuevo</h6>
+      {% include 'vistas/vista3_bc/_tabla_hijos.html' %}
+    </div>
+  </div>
+</main>
 ```
-Cabecera fija (expediente + proyecto)
-└── Tabs Nivel 1: Solicitudes   [data-tabs-nivel="solicitud"]
-    └── Cuerpo Solicitud (V4)
-    └── Tabs Nivel 2: Fases      [data-tabs-nivel="fase"]
-        └── Cuerpo Fase (V4)
-        └── Tabs Nivel 3: Trámites [data-tabs-nivel="tramite"]
-            └── Cuerpo Trámite (V4)
-            └── Tabs Nivel 4: Tareas [data-tabs-nivel="tarea"]
-                └── Cuerpo Tarea (V4) + tabla documentos
+
+**Regla crítica de scroll:** `overflow-y: hidden` en `.app-main` es obligatorio para que C.2
+absorba el scroll de forma independiente (misma mecánica que V2).
+
+### Partial `_tabla_hijos.html`
+
+Genera la tabla de hijos con columnas dinámicas desde Python:
+
+```html
+<!-- Variables de contexto: hijos (lista de dicts), columnas (lista de {key, label}) -->
+<table class="table table-hover table-sm align-middle mb-0">
+  <thead class="table-light">
+    <tr>
+      <th style="width:2rem"></th>         <!-- indicador estado -->
+      {% for col in columnas %}
+      <th>{{ col.label }}</th>
+      {% endfor %}
+      <th style="width:3rem"></th>         <!-- botón → -->
+    </tr>
+  </thead>
+  <tbody>
+    {% for hijo in hijos %}
+    <tr>
+      <td>{{ indicador_estado(hijo.estado) }}</td>
+      {% for col in columnas %}
+      <td>{{ hijo[col.key] }}</td>
+      {% endfor %}
+      <td><a href="{{ hijo.url_detalle }}" class="btn btn-sm btn-outline-secondary">→</a></td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
 ```
 
-#### Template principal
-- `app/modules/expedientes/templates/expedientes/tramitacion_v3.html`
-- Extiende `base_fullwidth.html` (para `lista-cabecera` / `lista-scroll-container`)
-- URL: `/expedientes/<id>/tramitacion_v3`
-- Ruta: `app/modules/expedientes/routes.py :: tramitacion_v3`
+Indicadores de estado: `bi-check-circle-fill` (finalizada), `bi-clock-fill` (en curso), `bi-circle` (planificada).
 
-#### Archivos de soporte
+### Clases CSS específicas (`v3-breadcrumbs.css`)
+
+| Clase | Uso |
+|-------|-----|
+| `.bc-card-nodo` | Card del nodo actual — sombra discreta |
+| `.bc-meta` | Texto de metadatos (0.85rem, color secundario) |
+| `.bc-view` | Contenedor centrado `max-width: 1200px` |
+| `.bc-acciones-bar` | Flex row de botones de acción |
+
+### Archivos clave
+
 | Archivo | Propósito |
 |---------|-----------|
-| `app/static/css/v3-tramitacion.css` | Estilos acordeón (legacy) + tabs nuevos |
-| `app/static/js/v3-tabs-main.js` | Crear/editar/borrar entidades SFTT |
-| `app/routes/vista3.py :: _construir_arbol` | Construye árbol completo para render servidor |
+| `app/static/css/v3-breadcrumbs.css` | Estilos V3-BC |
+| `app/templates/vistas/vista3_bc/_tabla_hijos.html` | Partial tabla de hijos (columnas dinámicas) |
+| `app/modules/expedientes/templates/expedientes/tramitacion_bc.html` | Nivel expediente |
+| `app/modules/expedientes/templates/expedientes/tramitacion_bc_solicitud.html` | Nivel solicitud |
+| `app/modules/expedientes/templates/expedientes/tramitacion_bc_fase.html` | Nivel fase |
+| `app/modules/expedientes/templates/expedientes/tramitacion_bc_tramite.html` | Nivel trámite |
+| `app/modules/expedientes/templates/expedientes/tramitacion_bc_tarea.html` | Nivel tarea |
 
-#### Partials del sistema de tabs
-```
-app/templates/vistas/vista3/
-├── _expediente_body.html        ← cabecera (sin cambios)
-├── _tabs_solicitudes.html       ← nivel 1
-├── _tabs_fases.html             ← nivel 2 (usa sol_data del contexto)
-├── _tabs_tramites.html          ← nivel 3 (usa fase_data del contexto)
-├── _tabs_tareas.html            ← nivel 4 (usa tram_data del contexto)
-├── _cuerpo_solicitud.html       ← V4 inline
-├── _cuerpo_fase.html            ← V4 inline (requiere resultados_fase en contexto)
-├── _cuerpo_tramite.html         ← V4 inline
-├── _cuerpo_tarea.html           ← V4 inline + tabla docs
-├── _modal_nueva_solicitud.html  ← modal crear solicitud
-├── _modal_nueva_fase.html       ← modal crear fase
-├── _modal_nuevo_tramite.html    ← modal crear trámite
-└── _modal_nueva_tarea.html      ← modal crear tarea
-```
+### Endpoints backend
 
-#### Edición inline (patrón V4 en tabs)
-- Botón "Editar" → activa modo editar via JS: `[data-modo-ver]` se ocultan, `[data-modo-editar]` aparecen
-- Campos especiales:
-  - Fechas: `<input type="text" data-modo-ver data-display-for="campo" data-display-format="date">` + `<input type="date" name="campo" data-modo-editar>`
-  - Selects: `<input type="text" data-modo-ver data-display-for="campo">` + `<select name="campo" data-modo-editar>`
-  - Textareas (observaciones, notas): un solo elemento, toggle `readonly`
-
-#### Creación de entidades hija
-- Clic en `.btn-nueva-entidad` → JS actualiza `data-parent-id` en el modal y lo abre
-- Submit del modal → POST al endpoint existente → `location.reload()`
-
-#### Borrado
-- Clic en `.btn-borrar-entidad` → confirm → POST `/api/vista3/<nivel>/<id>/borrar`
-- Si ok → DOM: activar tab anterior, eliminar `<li>` + `<div.tab-pane>`
-
-#### Endpoints backend
 | Operación | URL |
 |-----------|-----|
 | Crear solicitud | POST `/api/vista3/expediente/<id>/solicitudes/nueva` |
@@ -297,11 +350,9 @@ app/templates/vistas/vista3/
 | Borrar trámite | POST `/api/vista3/tramite/<id>/borrar` |
 | Borrar tarea | POST `/api/vista3/tarea/<id>/borrar` |
 
-#### Filtros Jinja2 registrados (app/__init__.py)
+### Filtros Jinja2 registrados (app/__init__.py)
 `icono_solicitud`, `color_solicitud`, `icono_fase`, `color_fase`,
 `icono_tramite`, `color_tramite`, `icono_tarea`, `color_tarea`
-
-### Modelo de Datos Crítico
 
 ### Modelo de Datos Crítico
 
@@ -322,30 +373,6 @@ proyecto = solicitud.expediente.proyecto
 
 # ❌ INCORRECTO
 proyecto = solicitud.proyecto  # NO existe esta relación
-```
-
-### API Estructura Completa
-
-```python
-@app.route('/api/expedientes/<int:id>/estructura_completa')
-def estructura_completa(id):
-    """Una sola petición HTTP con jerarquía completa."""
-    expediente = Expediente.query.get_or_404(id)
-    
-    return jsonify({
-        'expediente': expediente.to_dict(),
-        'proyecto': expediente.proyecto.to_dict(),
-        'solicitudes': [{
-            **sol.to_dict(),
-            'fases': [{
-                **fase.to_dict(),
-                'tramites': [{
-                    **tram.to_dict(),
-                    'tareas': [t.to_dict() for t in tram.tareas]
-                } for tram in fase.tramites]
-            } for fase in sol.fases]
-        } for sol in expediente.solicitudes]
-    })
 ```
 
 ---
@@ -509,6 +536,75 @@ def editar(id):
 
 ---
 
+## 📋 Listados Embebidos (tablas dentro de V4)
+
+Tablas cortas dentro de cards V4, para datos secundarios del registro principal.
+Ejemplos: documentos en detalle de expediente, direcciones y autorizaciones en detalle de entidad.
+
+### Convenciones
+
+- Card con `card-header-accent` (verde secundario) + `card-body` sin `card-body-tinted`
+- Tabla: `table table-sm table-hover`, thead `table-light`
+- Sin scroll infinito, sin C.1/C.2, sin botón scroll-to-top
+- Paginación: no necesaria (listados cortos, <50 registros típicamente)
+- Acciones por fila: botones `btn-sm btn-outline-*`
+
+### Ejemplo
+
+```html
+<div class="card shadow-sm mb-3">
+  <div class="card-header card-header-accent">
+    <h5 class="mb-0 fw-semibold">
+      <i class="fas fa-list me-2"></i>Direcciones
+    </h5>
+  </div>
+  <div class="card-body p-0">
+    <table class="table table-sm table-hover mb-0">
+      <thead class="table-light">
+        <tr><th>Tipo</th><th>Dirección</th><th>Acciones</th></tr>
+      </thead>
+      <tbody>...</tbody>
+    </table>
+  </div>
+</div>
+```
+
+### Diferencias con tabla V2
+
+| Aspecto | V2 | Listado embebido |
+|---------|----|--------------------|
+| Contenedor | C.2 (`lista-scroll-container`) | Card body V4 |
+| Thead | Verde corporativo, sticky, uppercase | `table-light`, no sticky |
+| Scroll | Infinito (JS) | Página completa |
+| Clase tabla | `expedientes-table` | `table table-sm table-hover` |
+
+---
+
+## 📦 Vista Pool (variante V3-BC)
+
+El pool de documentos del expediente sigue la estructura V3-BC (C.1 + C.2) pero con
+particularidades propias.
+
+### Estructura
+
+- **C.1** — Card del expediente (metadatos) + fichas de entrada (subida/enlace)
+- **C.2** — Tabla pool (`#pool-tabla`)
+
+### Particularidades de la tabla Pool
+
+| Aspecto | Pool | V2 / BC |
+|---------|------|---------|
+| Layout | `table-layout: fixed` | Auto |
+| Thead | Sticky, gris claro, `box-shadow inset` inferior | Corporativo (V2) o `table-light` (BC) |
+| Responsive | 5 breakpoints con columnas ocultas | Media queries simples (V2) o ninguno (BC) |
+| Selección | Checkbox por fila | No |
+| Scroll | C.2 independiente | Igual |
+
+### Archivo clave
+- `app/modules/expedientes/templates/expedientes/pool_documentos.html`
+
+---
+
 ## 🎨 Patrones CSS Reutilizables
 
 ### `.content-constrained` - Márgenes Laterales
@@ -632,7 +728,7 @@ container.addEventListener('scroll', toggleButton);
 ## 📝 Checklist Implementación Vista
 
 ### Antes de Empezar
-- [ ] ¿Qué tipo de vista? (Login, Dashboard, Listado, Tramitación, **Detalle/Edición**)
+- [ ] ¿Qué tipo de vista? (V0 Login, V1 Dashboard, V2 Listado, V3-BC Tramitación, V4 Detalle/Edición, Pool)
 - [ ] ¿Necesita C.1/C.2? (solo si lista larga >100 items)
 - [ ] ¿Colores corporativos? (verde #087021 para identidad)
 - [ ] ¿Responsive? (definir breakpoints y columnas a ocultar)
@@ -664,9 +760,10 @@ container.addEventListener('scroll', toggleButton);
 ### Archivos por Vista
 - **V0:** `v0-login.css`, `base_login.html`, `login_v0.html`
 - **V1:** `v1-dashboard.css`, `index_v1.html`
-- **V2:** Sin CSS específico (usa solo base), `listado_v2.html`, `v2-scroll-infinito.js`
-- **V3:** `v3-tramitacion.css` (pendiente), `tramitacion_v3.html`, `v3-accordion-main.js` (pendiente)
+- **V2:** Sin CSS específico (usa solo base), `lista_v2_base.html`, `listado_v2.html`, `v2-scroll-infinito.js`
+- **V3-BC:** `v3-breadcrumbs.css`, `tramitacion_bc*.html`, `_tabla_hijos.html`
 - **V4:** Sin CSS específico (clases en `v2-components.css`), `detalle.html` unificado
+- **Pool:** Inline en `pool_documentos.html` (variante V3-BC)
 
 ### Bootstrap 5
 - [Accordion](https://getbootstrap.com/docs/5.3/components/accordion/)
@@ -675,6 +772,7 @@ container.addEventListener('scroll', toggleButton);
 
 ---
 
-**Versión:** 1.0 - Compactada para Claude Code  
-**Fecha:** 16 de febrero de 2026  
-**Histórico completo:** Ver `docs/arquitectura/FASE_3_FRONTEND_DINAMICO.md` y documentos relacionados
+**Versión:** 2.0
+**Fecha:** 8 de marzo de 2026
+**Cambios v2.0:** Eliminada V3 acordeón/tabs (legacy), documentada V3-BC, listados embebidos y Pool.
+**Referencia estudio:** `docs/fuentesIA/ESTUDIO_HOMOGENEIZACION_UI.md`
