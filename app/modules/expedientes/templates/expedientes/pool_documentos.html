@@ -57,26 +57,57 @@
     top: -1px;
     z-index: 10;
     background-color: #f8f9fa;
-    box-shadow: inset 0 -2px 0 var(--bs-border-color, #dee2e6);
+    box-shadow: inset 0 -2px 0 #6c757d;
   }
   /* Anchos fijos de columnas — col 2 (Documento) y col 3 (Asunto) toman el espacio restante */
   #pool-tabla th:nth-child(1) { width: 36px; }
-  /* col 2 Documento: flex */
+  /* col 2 Documento: flex — prioridad máxima, se acorta en último lugar */
   #pool-tabla th:nth-child(3) { width: 200px; }   /* Asunto */
   #pool-tabla th:nth-child(4) { width: 68px; }    /* Ext */
   #pool-tabla th:nth-child(5) { width: 100px; }   /* Tipo */
   #pool-tabla th:nth-child(6) { width: 108px; }   /* Fecha adm */
   #pool-tabla th:nth-child(7) { width: 44px; }    /* ★ */
   #pool-tabla th:nth-child(8) { width: 122px; }   /* Acciones */
-  /* Celdas Documento y Asunto: line-clamp 2 (máximo 2 líneas, luego ...) */
-  #pool-tabla td:nth-child(2), #pool-tabla td:nth-child(3) { overflow: hidden; max-width: 0; }
-  #pool-tabla td:nth-child(2) a, #pool-tabla td:nth-child(3) .asunto-celda {
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-    white-space: normal;
-    max-width: 100%;
+  /* Documento: word-wrap sin truncar (se da todo el espacio disponible) */
+  #pool-tabla td:nth-child(2) { overflow: hidden; max-width: 0; }
+  #pool-tabla td:nth-child(2) a {
+    display: block; white-space: normal;
+    overflow-wrap: break-word; word-break: break-word; max-width: 100%;
+  }
+  /* Asunto: line-clamp 2 por defecto */
+  #pool-tabla td:nth-child(3) { overflow: hidden; max-width: 0; }
+  #pool-tabla td:nth-child(3) .asunto-celda {
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden; white-space: normal; max-width: 100%;
+  }
+  /* === Responsive: Documento es prioritario, otros columnas se sacrifican primero === */
+  /* Paso 0 (< 1400px): ocultar Ext → Documento gana 68px */
+  @media (max-width: 1399.98px) {
+    #pool-tabla th:nth-child(4), #pool-tabla td:nth-child(4) { display: none; }
+  }
+  /* Paso 1 (< 1100px): Asunto en word-wrap (sin line-clamp) */
+  @media (max-width: 1099.98px) {
+    #pool-tabla td:nth-child(3) .asunto-celda {
+      display: block; -webkit-line-clamp: unset; overflow: visible; white-space: normal;
+    }
+  }
+  /* Paso 2 (< 900px): ocultar Asunto → Documento gana 200px */
+  @media (max-width: 899.98px) {
+    #pool-tabla th:nth-child(3), #pool-tabla td:nth-child(3) { display: none; }
+  }
+  /* Paso 3 (< 700px): ocultar Tipo → Documento gana 100px */
+  @media (max-width: 699.98px) {
+    #pool-tabla th:nth-child(5), #pool-tabla td:nth-child(5) { display: none; }
+  }
+  /* Paso 4 (< 560px): ocultar Fecha → Documento gana 108px */
+  @media (max-width: 559.98px) {
+    #pool-tabla th:nth-child(6), #pool-tabla td:nth-child(6) { display: none; }
+  }
+  /* Solo clampear Documento cuando todo lo demás ya está oculto (< 420px) */
+  @media (max-width: 419.98px) {
+    #pool-tabla td:nth-child(2) a {
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    }
   }
   /* Fila seleccionada para edición masiva */
   #tbody-docs tr.doc-seleccionada > td { background-color: var(--bs-primary-bg-subtle, #d1e7dd) !important; }
