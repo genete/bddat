@@ -201,9 +201,23 @@ Leer `docs/fuentesIA/REGLAS_DESARROLLO.md` para el workflow completo.
 
 ## Convenciones Bash (anti-bloqueos del parser)
 
-Patrones hardcoded bloqueados por Claude Code que **no** puede resolver la allowlist:
+Los checks de seguridad de Claude Code son **hardcoded** y no los desactiva la allowlist.
+Evitarlos cambiando el patrón:
+
+| Aviso | Causa | Solución |
+|-------|-------|----------|
+| output redirection `>` | `cmd > fichero` | Usar tool `Write` |
+| command contains newlines | heredoc en Bash | Escribir con `Write` → pasar como fichero |
+| quoted newline + `#`-line | `## Header` dentro de heredoc | Ídem (fichero temporal) |
+| quoted chars in flag names | comillas dentro de `--body "..."` | Ídem (fichero temporal) |
+| backticks `` ` `` | sustitución de comandos | Separar en llamadas Bash secuenciales |
+
+### Patrones concretos obligatorios
 
 - **cd + git:** usar SIEMPRE `git -C /ruta` — NUNCA `cd /ruta && git`
-- **`$()` y backticks:** NUNCA usar sustitución de comandos — separar en llamadas Bash secuenciales independientes o usar fichero temporal
-- **cd + redirección:** NUNCA `cd /ruta && cmd > fichero` — separar en dos llamadas Bash distintas
-- **cd + escritura:** NUNCA `cd /ruta && cmd_de_escritura` — separar en dos llamadas Bash distintas
+- **`$()` y backticks:** NUNCA — separar en llamadas Bash secuenciales o usar fichero temporal
+- **cd + redirección / escritura:** separar en dos llamadas Bash distintas
+- **`gh issue create` / `gh pr create`:** escribir el body con `Write` a `/tmp/gh_body.md`,
+  luego `gh issue create --body-file /tmp/gh_body.md ...`
+- **`git commit`:** escribir el mensaje con `Write` a `/tmp/commit_msg.txt`,
+  luego `git commit -F /tmp/commit_msg.txt`
