@@ -74,11 +74,11 @@
     display: block; white-space: normal;
     overflow-wrap: break-word; word-break: break-word; max-width: 100%;
   }
-  /* Asunto: line-clamp 2 por defecto */
+  /* Asunto: ellipsis una línea (tooltip muestra el texto completo) */
   #pool-tabla td:nth-child(3) { overflow: hidden; max-width: 0; }
   #pool-tabla td:nth-child(3) .asunto-celda {
-    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
-    overflow: hidden; white-space: normal; max-width: 100%;
+    display: block; overflow: hidden; text-overflow: ellipsis;
+    white-space: nowrap; max-width: 100%;
   }
   /* === Responsive: Documento es prioritario, otros columnas se sacrifican primero === */
   /* Paso 0 (< 1400px): ocultar Ext → Documento gana 68px */
