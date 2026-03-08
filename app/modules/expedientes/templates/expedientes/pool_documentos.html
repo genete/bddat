@@ -49,6 +49,13 @@
   .fs-item:hover { background-color: var(--bs-primary-bg-subtle); }
   .fs-breadcrumb a { cursor: pointer; text-decoration: none; }
   .fs-breadcrumb a:hover { text-decoration: underline; }
+  /* Thead sticky en C.2 */
+  #pool-tabla thead th {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: var(--bs-light);
+  }
 </style>
 {% endblock %}
 
@@ -102,15 +109,9 @@
       </div>
     </div>
   </div>
-</div>
-
-<!-- C.2 -->
-<div class="lista-scroll-container p-3">
-
-  <h6 class="mb-3 fw-semibold">Pool de Documentos</h6>
 
   <!-- Dos fichas de entrada -->
-  <div class="row g-2 mb-3">
+  <div class="row g-2 mb-2 mt-2">
     <div class="col-6">
       <div class="card ficha-entrada h-100" onclick="abrir_explorador()">
         <div class="card-body text-center py-3">
@@ -132,7 +133,7 @@
   </div>
 
   <!-- Panel de edición masiva (oculto hasta que haya selección) -->
-  <div id="panel-masivo" class="card card-body bg-light border mb-3 d-none">
+  <div id="panel-masivo" class="card card-body bg-light border mb-2 d-none">
     <div class="d-flex flex-wrap align-items-center gap-2">
       <span class="fw-semibold small">
         Edición masiva (<span id="masivo-count">0</span> seleccionado(s)):
@@ -160,9 +161,21 @@
     </div>
   </div>
 
+  <!-- Filtro client-side -->
+  <div class="d-flex align-items-center gap-2 pb-2">
+    <i class="fas fa-search text-secondary small"></i>
+    <input type="search" id="filtro-docs" class="form-control form-control-sm"
+           placeholder="Filtrar por nombre o asunto…" style="max-width:300px">
+    <span id="filtro-count" class="text-secondary small ms-1"></span>
+  </div>
+</div>
+
+<!-- C.2 -->
+<div class="lista-scroll-container px-3 pt-0 pb-3">
+
   <!-- Tabla -->
   {% if docs_lista %}
-  <table class="table table-hover table-sm align-middle">
+  <table class="table table-hover table-sm align-middle" id="pool-tabla">
     <thead class="table-light">
       <tr>
         <th style="width:2rem">
@@ -174,14 +187,18 @@
         <th>Ext.</th>
         <th>Tipo</th>
         <th>Fecha adm.</th>
-        <th class="text-center">Prio.</th>
+        <th class="text-center">
+          <i class="fas fa-star" title="Prioritario" data-bs-toggle="tooltip"></i>
+        </th>
         <th class="text-end">Acciones</th>
       </tr>
     </thead>
     <tbody id="tbody-docs">
       {% for item in docs_lista %}
       {% set doc = item.doc %}
-      <tr id="fila-doc-{{ doc.id }}" data-doc-id="{{ doc.id }}">
+      <tr id="fila-doc-{{ doc.id }}" data-doc-id="{{ doc.id }}"
+          data-nombre="{{ item.nombre_display | e }}"
+          data-asunto="{{ doc.asunto | e if doc.asunto else '' }}">
         <td>
           <input type="checkbox" class="form-check-input doc-check"
                  onchange="on_check_doc(this, {{ doc.id }})">
@@ -212,8 +229,10 @@
           {% endif %}
         </td>
         <td>
-          <span class="badge border border-secondary text-secondary">
-            {{ doc.tipo_doc.nombre if doc.tipo_doc else '—' }}
+          <span class="badge border border-secondary text-secondary"
+                title="{{ doc.tipo_doc.nombre if doc.tipo_doc else '' }}"
+                data-bs-toggle="tooltip">
+            {{ doc.tipo_doc.codigo if doc.tipo_doc else '—' }}
           </span>
         </td>
         <td class="text-nowrap">
@@ -221,7 +240,7 @@
         </td>
         <td class="text-center">
           {% if doc.prioridad and doc.prioridad > 0 %}
-          <span class="badge bg-warning text-dark">Sí</span>
+          <i class="fas fa-star text-warning"></i>
           {% else %}
           <span class="text-secondary">—</span>
           {% endif %}
@@ -544,6 +563,24 @@
     document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function (el) {
       new bootstrap.Tooltip(el);
     });
+
+    // Filtro client-side
+    var el_filtro = document.getElementById('filtro-docs');
+    if (el_filtro) {
+      el_filtro.addEventListener('input', function () {
+        var q = this.value.trim().toLowerCase();
+        var visible = 0;
+        document.querySelectorAll('#tbody-docs tr[data-doc-id]').forEach(function (tr) {
+          var texto = (tr.dataset.nombre || '') + ' ' + (tr.dataset.asunto || '');
+          var mostrar = !q || texto.toLowerCase().includes(q);
+          tr.style.display = mostrar ? '' : 'none';
+          if (mostrar) visible++;
+        });
+        var total = document.querySelectorAll('#tbody-docs tr[data-doc-id]').length;
+        document.getElementById('filtro-count').textContent =
+          q ? '(' + visible + '/' + total + ')' : '';
+      });
+    }
 
     var el_modal = document.getElementById('modal-explorador');
     _modal_exp_bs = new bootstrap.Modal(el_modal);
@@ -903,13 +940,14 @@
   };
 
   window.toggle_todos = function (checked) {
-    document.querySelectorAll('.doc-check').forEach(function (c) { c.checked = checked; });
-    _masivo_ids.clear();
-    if (checked) {
-      document.querySelectorAll('#tbody-docs tr[data-doc-id]').forEach(function (tr) {
-        _masivo_ids.add(parseInt(tr.dataset.docId, 10));
-      });
-    }
+    // Solo actúa sobre filas visibles (respeta el filtro)
+    document.querySelectorAll('#tbody-docs tr[data-doc-id]').forEach(function (tr) {
+      if (tr.style.display === 'none') return;
+      var chk = tr.querySelector('.doc-check');
+      if (chk) chk.checked = checked;
+      var id = parseInt(tr.dataset.docId, 10);
+      if (checked) { _masivo_ids.add(id); } else { _masivo_ids.delete(id); }
+    });
     actualizar_panel_masivo();
   };
 
@@ -950,7 +988,15 @@
     }
     document.getElementById('masivo-error').classList.add('d-none');
 
-    var ids = Array.from(_masivo_ids);
+    // Cruzar _masivo_ids con filas visibles (respeta el filtro)
+    var ids_visibles = new Set();
+    document.querySelectorAll('#tbody-docs tr[data-doc-id]').forEach(function (tr) {
+      if (tr.style.display !== 'none') {
+        ids_visibles.add(parseInt(tr.dataset.docId, 10));
+      }
+    });
+    var ids = Array.from(_masivo_ids).filter(function (id) { return ids_visibles.has(id); });
+    if (ids.length === 0) return;
     var promesas = ids.map(function (doc_id) {
       var url_editar =
         URL_BASE_DOCS.replace(/\/documentos$/, '/documentos/') + doc_id + '/editar';
