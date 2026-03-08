@@ -754,26 +754,36 @@ def pool_editar_documento(id, doc_id):
         abort(404)
 
     datos = request.get_json(silent=True) or {}
-    # url es opcional en el payload: si viene vacía/null se conserva la existente
-    # (para ficheros subidos el campo URL está oculto en el modal)
-    url_nueva = (datos.get('url') or '').strip()
-
-    fecha_raw = datos.get('fecha_administrativa') or None
-    fecha_admin = None
-    if fecha_raw:
-        try:
-            fecha_admin = date.fromisoformat(fecha_raw)
-        except ValueError:
-            pass
+    # Solo se actualizan los campos presentes en el payload.
+    # Esto permite edición masiva parcial (p.ej. solo cambiar prioridad)
+    # sin sobreescribir los demás metadatos.
 
     try:
+        url_nueva = (datos.get('url') or '').strip()
         if url_nueva:
             doc.url = url_nueva
-        doc.tipo_doc_id = int(datos.get('tipo_doc_id') or 1)
-        doc.fecha_administrativa = fecha_admin
-        doc.asunto = (datos.get('asunto') or '').strip() or None
-        doc.prioridad = 1 if datos.get('prioridad') else 0
-        doc.observaciones = (datos.get('observaciones') or '').strip() or None
+
+        if 'tipo_doc_id' in datos:
+            doc.tipo_doc_id = int(datos['tipo_doc_id'] or 1)
+
+        if 'fecha_administrativa' in datos:
+            fecha_raw = datos['fecha_administrativa']
+            doc.fecha_administrativa = None
+            if fecha_raw:
+                try:
+                    doc.fecha_administrativa = date.fromisoformat(fecha_raw)
+                except ValueError:
+                    pass
+
+        if 'asunto' in datos:
+            doc.asunto = (datos['asunto'] or '').strip() or None
+
+        if 'prioridad' in datos:
+            doc.prioridad = 1 if datos['prioridad'] else 0
+
+        if 'observaciones' in datos:
+            doc.observaciones = (datos['observaciones'] or '').strip() or None
+
         db.session.commit()
     except Exception as e:
         db.session.rollback()

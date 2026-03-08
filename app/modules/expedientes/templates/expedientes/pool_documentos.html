@@ -56,6 +56,13 @@
     z-index: 10;
     background: var(--bs-light);
   }
+  /* C.1/C.2 scroll independiente + full-width:
+     - max-width:none elimina el centrado de bc-view (aquí la vista es full-width)
+     - overflow-y:hidden en app-main delega el scroll exclusivamente a C.2
+     - flex column + min-height:0 en bc-view para que C.2 ocupe la altura restante */
+  .app-main { overflow-y: hidden; }
+  .bc-view   { display: flex; flex-direction: column; flex: 1; min-height: 0;
+               max-width: none; margin: 0; }
 </style>
 {% endblock %}
 
@@ -161,11 +168,34 @@
     </div>
   </div>
 
-  <!-- Filtro client-side -->
-  <div class="d-flex align-items-center gap-2 pb-2">
+  <!-- Filtros client-side -->
+  <div class="d-flex align-items-center flex-wrap gap-2 pb-2">
     <i class="fas fa-search text-secondary small"></i>
     <input type="search" id="filtro-docs" class="form-control form-control-sm"
-           placeholder="Filtrar por nombre o asunto…" style="max-width:300px">
+           placeholder="Nombre o asunto…" style="max-width:220px">
+    <select id="filtro-ext" class="form-select form-select-sm" style="width:auto">
+      <option value="">Ext: Todas</option>
+      {% set extensiones = [] %}
+      {% for item in docs_lista %}
+        {% if item.extension and item.extension not in extensiones %}
+          {% set _ = extensiones.append(item.extension) %}
+        {% endif %}
+      {% endfor %}
+      {% for ext in extensiones | sort %}
+      <option value="{{ ext }}">.{{ ext }}</option>
+      {% endfor %}
+    </select>
+    <select id="filtro-tipo" class="form-select form-select-sm" style="width:auto;min-width:110px">
+      <option value="">Tipo: Todos</option>
+      {% for t in tipos_doc %}
+      <option value="{{ t.id }}">{{ t.codigo }}</option>
+      {% endfor %}
+    </select>
+    <select id="filtro-prio" class="form-select form-select-sm" style="width:auto">
+      <option value="">★ Todas</option>
+      <option value="1">★ Prioritarios</option>
+      <option value="0">— No prioritarios</option>
+    </select>
     <span id="filtro-count" class="text-secondary small ms-1"></span>
   </div>
 </div>
@@ -198,7 +228,10 @@
       {% set doc = item.doc %}
       <tr id="fila-doc-{{ doc.id }}" data-doc-id="{{ doc.id }}"
           data-nombre="{{ item.nombre_display | e }}"
-          data-asunto="{{ doc.asunto | e if doc.asunto else '' }}">
+          data-asunto="{{ doc.asunto | e if doc.asunto else '' }}"
+          data-ext="{{ item.extension }}"
+          data-tipo-id="{{ doc.tipo_doc_id or '' }}"
+          data-prioridad="{{ '1' if doc.prioridad and doc.prioridad > 0 else '0' }}">
         <td>
           <input type="checkbox" class="form-check-input doc-check"
                  onchange="on_check_doc(this, {{ doc.id }})">
@@ -564,23 +597,33 @@
       new bootstrap.Tooltip(el);
     });
 
-    // Filtro client-side
-    var el_filtro = document.getElementById('filtro-docs');
-    if (el_filtro) {
-      el_filtro.addEventListener('input', function () {
-        var q = this.value.trim().toLowerCase();
-        var visible = 0;
-        document.querySelectorAll('#tbody-docs tr[data-doc-id]').forEach(function (tr) {
-          var texto = (tr.dataset.nombre || '') + ' ' + (tr.dataset.asunto || '');
-          var mostrar = !q || texto.toLowerCase().includes(q);
-          tr.style.display = mostrar ? '' : 'none';
-          if (mostrar) visible++;
-        });
-        var total = document.querySelectorAll('#tbody-docs tr[data-doc-id]').length;
-        document.getElementById('filtro-count').textContent =
-          q ? '(' + visible + '/' + total + ')' : '';
+    // Filtro client-side (texto + extensión + tipo + prioridad)
+    function aplicar_filtro() {
+      var q    = (document.getElementById('filtro-docs').value || '').trim().toLowerCase();
+      var ext  = (document.getElementById('filtro-ext')  ? document.getElementById('filtro-ext').value  : '');
+      var tipo = (document.getElementById('filtro-tipo') ? document.getElementById('filtro-tipo').value : '');
+      var prio = (document.getElementById('filtro-prio') ? document.getElementById('filtro-prio').value : '');
+      var visible = 0;
+      document.querySelectorAll('#tbody-docs tr[data-doc-id]').forEach(function (tr) {
+        var texto   = (tr.dataset.nombre || '') + ' ' + (tr.dataset.asunto || '');
+        var ok_q    = !q    || texto.toLowerCase().includes(q);
+        var ok_ext  = !ext  || (tr.dataset.ext || '') === ext;
+        var ok_tipo = !tipo || (tr.dataset.tipoId || '') === tipo;
+        var ok_prio = !prio || (tr.dataset.prioridad || '0') === prio;
+        var mostrar = ok_q && ok_ext && ok_tipo && ok_prio;
+        tr.style.display = mostrar ? '' : 'none';
+        if (mostrar) visible++;
       });
+      var total = document.querySelectorAll('#tbody-docs tr[data-doc-id]').length;
+      var activo = q || ext || tipo || prio;
+      document.getElementById('filtro-count').textContent =
+        activo ? '(' + visible + '/' + total + ')' : '';
     }
+
+    ['filtro-docs', 'filtro-ext', 'filtro-tipo', 'filtro-prio'].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) el.addEventListener('input', aplicar_filtro);
+    });
 
     var el_modal = document.getElementById('modal-explorador');
     _modal_exp_bs = new bootstrap.Modal(el_modal);
