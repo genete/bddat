@@ -49,13 +49,33 @@
   .fs-item:hover { background-color: var(--bs-primary-bg-subtle); }
   .fs-breadcrumb a { cursor: pointer; text-decoration: none; }
   .fs-breadcrumb a:hover { text-decoration: underline; }
+  /* Línea separadora pertenece a C.1 (borde inferior), no al inicio de C.2 */
+  .lista-cabecera { border-bottom: 1px solid var(--bs-border-color, #dee2e6); }
   /* Thead sticky en C.2 */
+  #pool-tabla { table-layout: fixed; width: 100%; border-top: none; }
   #pool-tabla thead th {
     position: sticky;
     top: 0;
     z-index: 10;
     background: var(--bs-light);
   }
+  /* Anchos fijos de columnas (table-layout:fixed evita que varíen al filtrar) */
+  #pool-tabla th:nth-child(1) { width: 36px; }
+  /* col 2 (Documento) toma el espacio restante */
+  #pool-tabla th:nth-child(3) { width: 72px; }
+  #pool-tabla th:nth-child(4) { width: 115px; }
+  #pool-tabla th:nth-child(5) { width: 108px; }
+  #pool-tabla th:nth-child(6) { width: 44px; }
+  #pool-tabla th:nth-child(7) { width: 122px; }
+  /* Celda Documento: truncar nombre largo */
+  #pool-tabla td:nth-child(2) { overflow: hidden; max-width: 0; }
+  #pool-tabla td:nth-child(2) a,
+  #pool-tabla td:nth-child(2) .asunto-celda {
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    display: block; max-width: 100%;
+  }
+  /* Fila seleccionada para edición masiva */
+  #tbody-docs tr.doc-seleccionada > td { background-color: var(--bs-primary-bg-subtle, #d1e7dd) !important; }
   /* C.1/C.2 scroll independiente + full-width:
      - max-width:none elimina el centrado de bc-view (aquí la vista es full-width)
      - overflow-y:hidden en app-main delega el scroll exclusivamente a C.2
@@ -168,8 +188,8 @@
     </div>
   </div>
 
-  <!-- Filtros client-side -->
-  <div class="d-flex align-items-center flex-wrap gap-2 pb-2">
+  <!-- Filtros client-side (ocultos cuando hay selección masiva activa) -->
+  <div id="barra-filtros" class="d-flex align-items-center flex-wrap gap-2 pb-2">
     <i class="fas fa-search text-secondary small"></i>
     <input type="search" id="filtro-docs" class="form-control form-control-sm"
            placeholder="Nombre o asunto…" style="max-width:220px">
@@ -973,10 +993,13 @@
   // EDICIÓN MASIVA (tabla de docs)
   // ================================================================
   window.on_check_doc = function (chk, doc_id) {
+    var tr = chk.closest('tr');
     if (chk.checked) {
       _masivo_ids.add(doc_id);
+      if (tr) tr.classList.add('doc-seleccionada');
     } else {
       _masivo_ids.delete(doc_id);
+      if (tr) tr.classList.remove('doc-seleccionada');
       document.getElementById('check-todos').checked = false;
     }
     actualizar_panel_masivo();
@@ -989,7 +1012,13 @@
       var chk = tr.querySelector('.doc-check');
       if (chk) chk.checked = checked;
       var id = parseInt(tr.dataset.docId, 10);
-      if (checked) { _masivo_ids.add(id); } else { _masivo_ids.delete(id); }
+      if (checked) {
+        _masivo_ids.add(id);
+        tr.classList.add('doc-seleccionada');
+      } else {
+        _masivo_ids.delete(id);
+        tr.classList.remove('doc-seleccionada');
+      }
     });
     actualizar_panel_masivo();
   };
@@ -1000,13 +1029,17 @@
   };
 
   function actualizar_panel_masivo() {
-    var n = _masivo_ids.size;
-    var panel = document.getElementById('panel-masivo');
+    var n      = _masivo_ids.size;
+    var panel  = document.getElementById('panel-masivo');
+    var filtros = document.getElementById('barra-filtros');
     if (n > 0) {
+      // El panel masivo sustituye a la barra de filtros: mismo espacio, sin salto
       panel.classList.remove('d-none');
+      filtros.classList.add('d-none');
       document.getElementById('masivo-count').textContent = n;
     } else {
       panel.classList.add('d-none');
+      filtros.classList.remove('d-none');
     }
   }
 
