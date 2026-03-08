@@ -62,7 +62,7 @@
   /* Anchos fijos de columnas — col 2 (Documento) y col 3 (Asunto) toman el espacio restante */
   #pool-tabla th:nth-child(1) { width: 36px; }
   /* col 2 Documento: flex — prioridad máxima, se acorta en último lugar */
-  #pool-tabla th:nth-child(3) { width: 200px; }   /* Asunto */
+  #pool-tabla th:nth-child(3) { width: calc(40% - 271px); }  /* Asunto: 40% del espacio flex */
   #pool-tabla th:nth-child(4) { width: 68px; }    /* Ext */
   #pool-tabla th:nth-child(5) { width: 100px; }   /* Tipo */
   #pool-tabla th:nth-child(6) { width: 108px; }   /* Fecha adm */
