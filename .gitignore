@@ -9,3 +9,5 @@ app/static/uploads/*
 .playwright-mcp/
 # Carpeta de configuración de Claude Code
 .claude/
+# Documentos de prueba locales (no versionar binarios ni datos reales)
+docs_prueba/
