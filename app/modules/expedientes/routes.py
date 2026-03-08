@@ -534,8 +534,10 @@ def pool_documentos(id):
     docs_lista = []
     for doc in documentos_raw:
         filename = doc.url.replace('\\', '/').rsplit('/', 1)[-1] if doc.url else ''
-        nombre = filename or f'Documento {doc.id}'
-        partes = filename.rsplit('.', 1)
+        # Eliminar fragment (#...) y query string (?...) para nombre y extensión limpios
+        filename_limpio = filename.split('?')[0].split('#')[0]
+        nombre = filename_limpio or f'Documento {doc.id}'
+        partes = filename_limpio.rsplit('.', 1)
         extension = partes[1].lower() if len(partes) == 2 and partes[1] else ''
         es_url_externa = (doc.url or '').startswith(('http://', 'https://'))
         docs_lista.append({
@@ -754,26 +756,36 @@ def pool_editar_documento(id, doc_id):
         abort(404)
 
     datos = request.get_json(silent=True) or {}
-    # url es opcional en el payload: si viene vacía/null se conserva la existente
-    # (para ficheros subidos el campo URL está oculto en el modal)
-    url_nueva = (datos.get('url') or '').strip()
-
-    fecha_raw = datos.get('fecha_administrativa') or None
-    fecha_admin = None
-    if fecha_raw:
-        try:
-            fecha_admin = date.fromisoformat(fecha_raw)
-        except ValueError:
-            pass
+    # Solo se actualizan los campos presentes en el payload.
+    # Esto permite edición masiva parcial (p.ej. solo cambiar prioridad)
+    # sin sobreescribir los demás metadatos.
 
     try:
+        url_nueva = (datos.get('url') or '').strip()
         if url_nueva:
             doc.url = url_nueva
-        doc.tipo_doc_id = int(datos.get('tipo_doc_id') or 1)
-        doc.fecha_administrativa = fecha_admin
-        doc.asunto = (datos.get('asunto') or '').strip() or None
-        doc.prioridad = 1 if datos.get('prioridad') else 0
-        doc.observaciones = (datos.get('observaciones') or '').strip() or None
+
+        if 'tipo_doc_id' in datos:
+            doc.tipo_doc_id = int(datos['tipo_doc_id'] or 1)
+
+        if 'fecha_administrativa' in datos:
+            fecha_raw = datos['fecha_administrativa']
+            doc.fecha_administrativa = None
+            if fecha_raw:
+                try:
+                    doc.fecha_administrativa = date.fromisoformat(fecha_raw)
+                except ValueError:
+                    pass
+
+        if 'asunto' in datos:
+            doc.asunto = (datos['asunto'] or '').strip() or None
+
+        if 'prioridad' in datos:
+            doc.prioridad = 1 if datos['prioridad'] else 0
+
+        if 'observaciones' in datos:
+            doc.observaciones = (datos['observaciones'] or '').strip() or None
+
         db.session.commit()
     except Exception as e:
         db.session.rollback()
@@ -809,5 +821,42 @@ def pool_borrar_documento(id, doc_id):
         return jsonify({'ok': False, 'error': str(e)}), 500
 
     return jsonify({'ok': True})
+
+
+@bp.route('/<int:id>/documentos/<int:doc_id>/abrir-en-carpeta', methods=['POST'])
+@login_required
+def pool_abrir_en_carpeta(id, doc_id):
+    """
+    Abre el Explorador de Windows enfocando el archivo.
+
+    Requiere que Flask corra en el mismo PC que el navegador (despliegue local).
+    No funciona con URLs externas ni si el fichero no existe en disco.
+    """
+    import subprocess
+
+    expediente = Expediente.query.get_or_404(id)
+    resultado = verificar_acceso_expediente(expediente, 'ver')
+    if resultado:
+        return resultado
+
+    doc = Documento.query.get_or_404(doc_id)
+    if doc.expediente_id != id:
+        abort(404)
+
+    url = doc.url or ''
+    if url.startswith(('http://', 'https://')):
+        return jsonify({'ok': False, 'error': 'No aplicable a URLs externas'}), 400
+
+    ruta_abs = os.path.normpath(os.path.abspath(url))
+    if not os.path.isfile(ruta_abs):
+        return jsonify({'ok': False, 'error': 'Fichero no encontrado en disco'}), 404
+
+    try:
+        # shell=True necesario: explorer.exe no parsea /select,ruta como argumento de lista.
+        # La ruta viene de BD (ya validada), no de input directo del usuario.
+        subprocess.Popen(f'explorer /select,"{ruta_abs}"', shell=True)
+        return jsonify({'ok': True})
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
 
 

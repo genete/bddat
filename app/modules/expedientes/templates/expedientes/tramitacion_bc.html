@@ -15,6 +15,12 @@
 {% block extra_css %}{{ super() }}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/v3-breadcrumbs.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/entrada_fecha.css') }}">
+<style>
+  /* Full-width + C.1/C.2 scroll independiente (igual que pool_documentos) */
+  .app-main { overflow-y: hidden; }
+  .bc-view   { display: flex; flex-direction: column; flex: 1; min-height: 0;
+               max-width: none; margin: 0; }
+</style>
 {% endblock %}
 
 {% block content %}
@@ -37,10 +43,6 @@
            class="btn btn-sm btn-outline-primary">
           <i class="fas fa-file-alt me-1"></i> Pool de Docs
         </a>
-        {# [Editar] y [Acciones ▾] — placeholder, funcionalidad en issue posterior #}
-        <button class="btn btn-sm btn-outline-primary" disabled title="Próximamente">
-          <i class="fas fa-edit me-1"></i> Editar
-        </button>
       </div>
     </div>
     <div class="card-body card-body-tinted py-2">
