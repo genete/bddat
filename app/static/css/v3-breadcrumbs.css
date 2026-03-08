@@ -61,12 +61,36 @@
     font-weight: 600;
 }
 
-/* ── Anchura máxima adaptativa ───────────────────────────────────────────── */
+/* ── Layout C.1/C.2 — scroll independiente (#199) ──────────────────────── */
+/* Antes estaba inline en tramitacion_bc.html y pool_documentos.html.
+   Centralizado aquí para que todas las vistas BC lo hereden. */
+
+.app-main {
+    overflow-y: hidden;
+}
 
 .bc-view {
-    max-width: 1200px;
-    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    max-width: none;
+    margin: 0;
     width: 100%;
+}
+
+/* Anular min-height de V2 — en BC el espacio disponible varía mucho */
+.lista-scroll-container {
+    min-height: 0;
+}
+
+/* ── Thead sticky en tabla de hijos (#199) ──────────────────────────────── */
+
+.lista-scroll-container .table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background-color: var(--bs-table-bg, #f8f9fa);
 }
 
 /* ── Botones de acción en la cabecera (placeholders) ────────────────────── */

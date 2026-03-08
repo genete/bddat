@@ -112,8 +112,12 @@
             {{ solicitud.estado | replace('_', ' ') | title }}
           </span>
         </div>
-        <div class="col-auto ms-auto">
+        <div class="col-auto ms-auto d-flex align-items-center gap-2">
           <span class="badge bg-primary">{{ hijos | length }} fase(s)</span>
+          <button class="btn btn-sm btn-primary"
+                  data-bs-toggle="modal" data-bs-target="#modal-nueva-fase-bc">
+            <i class="fas fa-plus me-1"></i> Nueva fase
+          </button>
         </div>
       </div>
 
@@ -157,14 +161,7 @@
 </div>
 
 <!-- C.2: Listado de Fases (scrollable) -->
-<div class="lista-scroll-container p-3">
-  <div class="d-flex justify-content-between align-items-center mb-2">
-    <h6 class="mb-0 fw-semibold">Fases</h6>
-    <button class="btn btn-sm btn-primary"
-            data-bs-toggle="modal" data-bs-target="#modal-nueva-fase-bc">
-      <i class="fas fa-plus me-1"></i> Nueva fase
-    </button>
-  </div>
+<div class="lista-scroll-container">
   {% include 'vistas/vista3_bc/_tabla_hijos.html' %}
 </div>
 
