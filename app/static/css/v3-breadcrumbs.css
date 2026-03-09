@@ -50,13 +50,13 @@
 
 /* Segmento activo (último, sin enlace) visible en color oscuro */
 .header-breadcrumb-row .breadcrumb span:last-child {
-    color: #444;
+    color: var(--bs-body-color);
     font-weight: 600;
 }
 
 /* Separadores › más visibles */
 .header-breadcrumb-row .breadcrumb span:not(:last-child) {
-    color: #444;
+    color: var(--bs-body-color);
     font-size: 1.1rem;
     font-weight: 600;
 }

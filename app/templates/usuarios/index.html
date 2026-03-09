@@ -16,7 +16,7 @@
     </div>
     <div class="col-md-4 text-end">
         <!-- Botón que activa el Modal -->
-        <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#crearUsuarioModal">
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#crearUsuarioModal">
             <i class="fas fa-plus me-1"></i> Nuevo Usuario
         </button>
     </div>
@@ -26,7 +26,7 @@
 <div class="card shadow-sm">
     <div class="card-body p-0">
         <table class="table table-hover table-striped mb-0">
-            <thead class="table-success">
+            <thead class="table-light">
                 <tr>
                     <th>ID</th>
                     <th>Siglas</th>
@@ -49,7 +49,7 @@
                     <td>{{ usuario.nombre }} {{ usuario.apellido1 }} {{ usuario.apellido2 or '' }}</td>
                     <td>
                         {% for rol in usuario.roles %}
-                            <span class="badge me-1" style="background-color: #e6e6e5; color: #54585a;">{{ rol.nombre }}</span>
+                            <span class="badge me-1 bg-light text-dark">{{ rol.nombre }}</span>
                         {% else %}
                             <span class="text-muted small">Sin roles</span>
                         {% endfor %}
@@ -66,7 +66,7 @@
                                        onchange="this.form.submit();">
                                 <label class="form-check-label" for="switch_{{ usuario.id }}">
                                     {% if usuario.activo %}
-                                        <span class="badge" style="background-color: #00695c; color: white;">Activo</span>
+                                        <span class="badge bg-primary">Activo</span>
                                     {% else %}
                                         <span class="badge bg-secondary">Inactivo</span>
                                     {% endif %}
@@ -98,9 +98,9 @@
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <form action="{{ url_for('usuarios.index') }}" method="POST">
-                <div class="modal-header bg-success text-white">
+                <div class="modal-header card-header-accent">
                     <h5 class="modal-title">Nuevo Usuario</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <!-- Datos Personales -->
@@ -218,7 +218,7 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-success">Guardar Usuario</button>
+                    <button type="submit" class="btn btn-primary">Guardar Usuario</button>
                 </div>
             </form>
         </div>
