@@ -212,12 +212,26 @@ Evitarlos cambiando el patrón:
 | quoted chars in flag names | comillas dentro de `--body "..."` | Ídem (fichero temporal) |
 | backticks `` ` `` | sustitución de comandos | Separar en llamadas Bash secuenciales |
 
+### Ficheros temporales — ruta obligatoria
+
+En Windows, `/tmp/` no es fiable: la tool `Write` y `bash` (MSYS2) pueden resolver
+a rutas distintas, causando que `git commit -F` o `gh pr create --body-file` lean
+contenido obsoleto. **Usar siempre ruta absoluta dentro del repo:**
+
+```
+D:\BDDAT\docs_prueba\temp\   ← ignorado por .gitignore (docs_prueba/)
+```
+
+Ejemplo: `Write` a `D:\BDDAT\docs_prueba\temp\commit_msg.txt`,
+luego `git -C /d/BDDAT commit -F docs_prueba/temp/commit_msg.txt`.
+Borrar el fichero tras uso con `rm`.
+
 ### Patrones concretos obligatorios
 
 - **cd + git:** usar SIEMPRE `git -C /ruta` — NUNCA `cd /ruta && git`
 - **`$()` y backticks:** NUNCA — separar en llamadas Bash secuenciales o usar fichero temporal
 - **cd + redirección / escritura:** separar en dos llamadas Bash distintas
-- **`gh issue create` / `gh pr create`:** escribir el body con `Write` a `/tmp/gh_body.md`,
-  luego `gh issue create --body-file /tmp/gh_body.md ...`
-- **`git commit`:** escribir el mensaje con `Write` a `/tmp/commit_msg.txt`,
-  luego `git commit -F /tmp/commit_msg.txt`
+- **`gh issue create` / `gh pr create`:** escribir el body con `Write` a `docs_prueba/temp/gh_body.md`,
+  luego `gh pr create --body-file /d/BDDAT/docs_prueba/temp/gh_body.md ...`
+- **`git commit`:** escribir el mensaje con `Write` a `docs_prueba/temp/commit_msg.txt`,
+  luego `git -C /d/BDDAT commit -F docs_prueba/temp/commit_msg.txt`
