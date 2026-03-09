@@ -186,6 +186,9 @@ Leer `docs/fuentesIA/REGLAS_DESARROLLO.md` para el workflow completo.
 
 - **PostgreSQL MCP** — consultar esquema real de BD en desarrollo
 - **Playwright MCP** — testing e interacción automática con navegador
+  - Sin nombre de fichero → auto-genera `page-TIMESTAMP.png` en `.playwright-mcp/` (correcto)
+  - Con nombre personalizado → guarda relativo al CWD (repo root). **SIEMPRE** prefijar:
+    `.playwright-mcp/nombre.png` para mantenerlos fuera del árbol git.
 - **Windows MCP** — redimensionado de ventanas
 
 ---
