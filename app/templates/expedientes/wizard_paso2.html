@@ -80,6 +80,8 @@
                                 <label class="form-label fw-semibold">
                                     Fecha del proyecto <span class="text-danger">*</span>
                                 </label>
+                                {# Componente EntradaFecha — construye su propio HTML internamente.
+                                   El error se valida a mano en JS porque el form usa novalidate. #}
                                 <div id="ef-fecha"></div>
                                 <div id="ef-fecha-error" class="text-danger small mt-1" style="display:none">Campo obligatorio.</div>
                                 <div class="form-text">Fecha de firma/visado.</div>
