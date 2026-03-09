@@ -1,6 +1,7 @@
 # Guía General del Proyecto BDDAT
 
 **Fecha de revisión:** 16/02/2026
+> ⚠️ **Pendiente de actualizar:** secciones de subsistema documental (decisiones post #191) y motor de reglas (implementado en PR #154). Consultar `ARQUITECTURA_DOCUMENTOS.md` y `MOTOR_REGLAS_arquitectura.md` para esas áreas.
 
 ---
 
