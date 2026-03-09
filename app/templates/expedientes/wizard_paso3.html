@@ -78,11 +78,11 @@
 
                         {# --- Fecha solicitud --- #}
                         <div class="mb-4">
-                            <label for="fecha_solicitud" class="form-label fw-semibold">
+                            <label class="form-label fw-semibold">
                                 Fecha de solicitud <span class="text-danger">*</span>
                             </label>
-                            <input type="date" id="fecha_solicitud" name="fecha_solicitud"
-                                   class="form-control w-auto" required>
+                            <div id="ef-fecha-solicitud"></div>
+                            <div id="ef-fecha-error" class="text-danger small mt-1" style="display:none">Campo obligatorio.</div>
                             <div class="form-text">Fecha oficial de presentación.</div>
                         </div>
 
@@ -161,13 +161,19 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/selector_busqueda.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/entrada_fecha.css') }}">
 {% endblock %}
 
 {% block extra_js %}
 <script src="{{ url_for('static', filename='js/selector_busqueda.js') }}"></script>
+<script src="{{ url_for('static', filename='js/entrada_fecha.js') }}"></script>
 <script>
 (function () {
     'use strict';
+
+    // ── EntradaFecha ──
+    const efFecha = new EntradaFecha('#ef-fecha-solicitud', { name: 'fecha_solicitud' });
+    const efFechaError = document.getElementById('ef-fecha-error');
 
     // ------------------------------------------------------------------
     // A) Selectores de titular y solicitante
@@ -352,6 +358,14 @@
     // ------------------------------------------------------------------
     document.querySelector('form').addEventListener('submit', function (e) {
         let ok = true;
+
+        // Validar fecha solicitud
+        if (!efFecha.getValue()) {
+            efFechaError.style.display = 'block';
+            ok = false;
+        } else {
+            efFechaError.style.display = 'none';
+        }
 
         // Validar titular
         if (!entidadSel.getValue()) {
