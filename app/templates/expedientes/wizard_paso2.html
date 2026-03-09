@@ -137,9 +137,9 @@
 
                                 {# Lista de municipios ya añadidos #}
                                 <div>
-                                    <p class="small text-muted mb-2">Municipios seleccionados:</p>
+                                    <p class="small mb-2">Municipios seleccionados:</p>
                                     <div id="municipios-seleccionados" class="d-flex flex-wrap gap-2">
-                                        <span class="text-muted small">Ninguno añadido todavía.</span>
+                                        <span class="text-secondary small">Ninguno añadido todavía.</span>
                                     </div>
                                 </div>
 
@@ -242,7 +242,7 @@
         hiddenDiv.innerHTML = '';
         const ids = Object.keys(municipiosSeleccionados);
         if (!ids.length) {
-            badgesDiv.innerHTML = '<span class="text-muted small">Ninguno añadido todavía.</span>';
+            badgesDiv.innerHTML = '<span class="text-secondary small">Ninguno añadido todavía.</span>';
             return;
         }
         ids.forEach(id => {

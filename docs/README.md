@@ -31,7 +31,7 @@ Guías de estilos CSS y recursos visuales.
 
 ### 💻 [implementaciones/](implementaciones/)
 Documentación técnica de implementaciones específicas.
-- [VISTA_V3_TRAMITACION.md](implementaciones/VISTA_V3_TRAMITACION.md) - Vista tramitación con acordeón (en desarrollo)
+- [VISTA_V3_TRAMITACION.md](implementaciones/VISTA_V3_TRAMITACION.md) - Vista tramitación V3-BC (breadcrumbs)
 
 ### 🤖 [fuentesIA/](fuentesIA/)
 Referencias y reglas para desarrollo asistido por IA (Claude Code).
@@ -82,7 +82,7 @@ El contenido sigue accesible via `git log` en el commit `[DOCS] Limpieza documen
 ### Febrero 2026 — Transición a Claude Code
 - Nueva guía compactada: [GUIA_VISTAS_BOOTSTRAP.md](GUIA_VISTAS_BOOTSTRAP.md)
 - Documentos detallados movidos a carpetas `historico/` (ahora eliminadas, ver arriba)
-- Vista V3: cambio arquitectónico de sidebar → acordeón Bootstrap 5 (12/02/2026)
+- Vista V3: cambio arquitectónico de sidebar → acordeón → V3-BC breadcrumbs (12/02/2026)
 - Vistas completadas: V0 (Login), V1 (Dashboard), V2 (Listado scroll infinito)
 
 ---

@@ -93,7 +93,7 @@ class MunicipiosSelector {
 
         if (this.municipiosSeleccionados.size === 0) {
             this.listaMunicipios.innerHTML =
-                '<li class="list-group-item text-muted"><em>No hay municipios añadidos</em></li>';
+                '<li class="list-group-item"><em>No hay municipios añadidos</em></li>';
             this.btnBorrar.disabled = true;
             return;
         }
@@ -105,7 +105,7 @@ class MunicipiosSelector {
                 <div>
                     <input type="checkbox" class="form-check-input me-2" data-municipio-id="${id}">
                     <strong>${mun.nombre}</strong>
-                    ${mun.codigo ? `<small class="text-muted ms-2">(${mun.codigo})</small>` : ''}
+                    ${mun.codigo ? `<small class="text-secondary ms-2">(${mun.codigo})</small>` : ''}
                 </div>
                 <input type="hidden" name="municipios[]" value="${id}">
             `;

@@ -131,7 +131,7 @@
                     {% endfor %}
                 </select>
                 {% if not current_user.tiene_rol('ADMIN', 'SUPERVISOR') %}
-                    <small class="text-muted">Solo ADMIN/SUPERVISOR</small>
+                    <small>Solo ADMIN/SUPERVISOR</small>
                 {% endif %}
                 {% endif %}
             </div>
@@ -151,7 +151,7 @@
                     <input class="form-check-input" type="checkbox" id="heredado" name="heredado"
                            {% if expediente.heredado %}checked{% endif %}
                            {% if modo == 'ver' %}disabled{% endif %}>
-                    <label class="form-check-label small" for="heredado">Expediente heredado</label>
+                    <label class="form-check-label small opacity-100" for="heredado">Expediente heredado</label>
                 </div>
             </div>
         </div>
@@ -255,18 +255,18 @@
                                 <strong>{{ mp.municipio.nombre }}</strong>
                                 <span class="badge bg-secondary ms-2">{{ mp.municipio.provincia }}</span>
                             </div>
-                            <small class="text-muted">{{ mp.municipio.codigo }}</small>
+                            <small class="text-secondary">{{ mp.municipio.codigo }}</small>
                         </li>
                         {% endfor %}
                     </ul>
                 {% else %}
-                    <p class="text-muted mb-0"><em>No hay municipios asociados</em></p>
+                    <p class="text-secondary mb-0"><em>No hay municipios asociados</em></p>
                 {% endif %}
 
                 {% else %}
                 <!-- Edición: lista gestionada por JS + selector de provincia/municipio -->
                 <ul class="list-group list-group-flush mb-3" id="lista_municipios">
-                    <li class="list-group-item text-muted"><em>No hay municipios añadidos</em></li>
+                    <li class="list-group-item"><em>No hay municipios añadidos</em></li>
                 </ul>
                 <hr class="my-2">
                 <div class="row g-2">
