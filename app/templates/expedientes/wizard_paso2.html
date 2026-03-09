@@ -77,13 +77,13 @@
 
                         <div class="row">
                             <div class="col-md-4 mb-3">
-                                <label for="fecha" class="form-label fw-semibold">
+                                <label class="form-label fw-semibold">
                                     Fecha del proyecto <span class="text-danger">*</span>
                                 </label>
-                                <input type="date" id="fecha" name="fecha"
-                                       class="form-control"
-                                       value="{{ paso2.get('fecha', '') }}"
-                                       required>
+                                {# Componente EntradaFecha — construye su propio HTML internamente.
+                                   El error se valida a mano en JS porque el form usa novalidate. #}
+                                <div id="ef-fecha"></div>
+                                <div id="ef-fecha-error" class="text-danger small mt-1" style="display:none">Campo obligatorio.</div>
                                 <div class="form-text">Fecha de firma/visado.</div>
                             </div>
                             <div class="col-md-8 mb-3">
@@ -178,10 +178,12 @@
 
 {% block extra_css %}{{ super() }}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/selector_busqueda.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/entrada_fecha.css') }}">
 {% endblock %}
 
 {% block extra_js %}
 <script src="{{ url_for('static', filename='js/selector_busqueda.js') }}"></script>
+<script src="{{ url_for('static', filename='js/entrada_fecha.js') }}"></script>
 <script>
 (function () {
     'use strict';
@@ -190,6 +192,11 @@
     const badgesDiv = document.getElementById('municipios-seleccionados');
     const hiddenDiv = document.getElementById('municipios-hidden-inputs');
     const errorDiv  = document.getElementById('municipios-error');
+
+    // ── EntradaFecha ──
+    const efFecha = new EntradaFecha('#ef-fecha', { name: 'fecha' });
+    {% if paso2.get('fecha') %}efFecha.setValue('{{ paso2.get("fecha") }}');{% endif %}
+    const efFechaError = document.getElementById('ef-fecha-error');
 
     // ── Selector de municipio (se habilita al seleccionar provincia) ──
     const muniSelector = new SelectorBusqueda('#wp2-municipio', [], {
@@ -262,11 +269,24 @@
 
     // ── Validación pre-submit ──
     document.getElementById('form-paso2').addEventListener('submit', function (e) {
-        if (!Object.keys(municipiosSeleccionados).length) {
-            e.preventDefault();
-            errorDiv.style.display = 'block';
-            provSelector._input.focus();
+        let ok = true;
+
+        if (!efFecha.getValue()) {
+            efFechaError.style.display = 'block';
+            ok = false;
+        } else {
+            efFechaError.style.display = 'none';
         }
+
+        if (!Object.keys(municipiosSeleccionados).length) {
+            errorDiv.style.display = 'block';
+            if (ok) provSelector._input.focus();
+            ok = false;
+        } else {
+            errorDiv.style.display = 'none';
+        }
+
+        if (!ok) e.preventDefault();
     });
 
     function escapeHtml(s) {
