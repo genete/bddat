@@ -100,7 +100,7 @@
                                {% if form_data %}{{ 'checked' if form_data.activo else '' }}{% else %}{{ 'checked' if usuario.activo else '' }}{% endif %}>
                         <label class="form-check-label" for="activo">
                             <strong>Usuario activo</strong>
-                            <small class="text-muted d-block">Desactivar impide el acceso sin eliminar datos</small>
+                            <small class="d-block">Desactivar impide el acceso sin eliminar datos</small>
                         </label>
                     </div>
 
@@ -136,7 +136,7 @@
                                            {% if form_data %}{{ 'checked' if (rol.id|string) in form_data.roles_ids else '' }}{% else %}{{ 'checked' if rol in usuario.roles else '' }}{% endif %}>
                                     <label class="form-check-label" for="rol_{{ rol.id }}">
                                         <strong>{{ rol.nombre }}</strong>
-                                        <small class="text-muted d-block">{{ rol.descripcion }}</small>
+                                        <small class="d-block">{{ rol.descripcion }}</small>
                                     </label>
                                 </div>
                             </div>

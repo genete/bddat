@@ -206,7 +206,7 @@
                                                id="rol_{{ rol.id }}"
                                                {% if form_data and (rol.id|string) in form_data.roles_ids %}checked{% endif %}>
                                         <label class="form-check-label" for="rol_{{ rol.id }}">
-                                            <strong>{{ rol.nombre }}</strong> <small class="text-muted d-block">{{ rol.descripcion }}</small>
+                                            <strong>{{ rol.nombre }}</strong> <small class="d-block">{{ rol.descripcion }}</small>
                                         </label>
                                     </div>
                                 </div>
