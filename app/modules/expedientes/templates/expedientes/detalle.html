@@ -131,7 +131,7 @@
                     {% endfor %}
                 </select>
                 {% if not current_user.tiene_rol('ADMIN', 'SUPERVISOR') %}
-                    <small class="text-muted">Solo ADMIN/SUPERVISOR</small>
+                    <small>Solo ADMIN/SUPERVISOR</small>
                 {% endif %}
                 {% endif %}
             </div>
