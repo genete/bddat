@@ -443,14 +443,11 @@
 /* Patrón para vistas que alternan modo lectura/edición con el mismo layout.
  * Ver: docs/GUIA_VISTAS_BOOTSTRAP.md - Vista V4 Detalle/Edición */
 
-/* Contenedor con ancho máximo: evita que fichas se estiren en pantallas anchas.
- * El default (--v4-max-width: 1200px) es sobreescribible por template via
- * {% block extra_css %}<style>:root { --v4-max-width: 900px; }</style>{% endblock %} */
+/* Contenedor del contenido V4 (detalle/edición).
+ * El ancho efectivo ~95% lo da padding: 0 var(--content-padding) heredado de content-constrained.
+ * Usar siempre junto con la clase content-constrained en el HTML. */
 .v4-content {
   width: 100%;
-  max-width: var(--v4-max-width);
-  margin-left: auto;
-  margin-right: auto;
 }
 
 /* Cabecera de ficha: verde corporativo secundario (primary-light) */

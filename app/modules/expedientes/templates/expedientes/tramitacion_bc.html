@@ -17,50 +17,44 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/entrada_fecha.css') }}">
 {% endblock %}
 
+{% from 'macros/page_header.html' import page_header %}
+
 {% block content %}
 <div class="bc-view">
 
-<!-- C.1: Card detalle del nodo actual (fijo, sin scroll) -->
-<div class="lista-cabecera px-3 pt-3">
-  <div class="card bc-card-nodo">
-    <div class="card-header card-header-accent d-flex justify-content-between align-items-center">
-      <span class="fw-semibold">
-        <i class="fas fa-folder-open me-2"></i>
-        Expediente <strong>AT-{{ expediente.numero_at }}</strong>
-      </span>
-      <div class="bc-acciones-bar">
-        <a href="{{ url_for('expedientes.detalle', id=expediente.id) }}"
-           class="btn btn-sm btn-outline-primary">
-          <i class="fas fa-info-circle me-1"></i> Detalle
-        </a>
-        <a href="{{ url_for('expedientes.pool_documentos', id=expediente.id) }}"
-           class="btn btn-sm btn-outline-primary">
-          <i class="fas fa-file-alt me-1"></i> Pool de Docs
-        </a>
+<!-- C.1: Encabezado homogéneo — expediente + navegación + datos secundarios -->
+<div class="lista-cabecera">
+  {% call page_header('Expediente', 'fas fa-folder-open', title_accent='AT-' ~ expediente.numero_at) %}
+    <a href="{{ url_for('expedientes.detalle', id=expediente.id) }}"
+       class="btn btn-sm btn-outline-primary">
+      <i class="fas fa-info-circle me-1"></i> Detalle
+    </a>
+    <a href="{{ url_for('expedientes.pool_documentos', id=expediente.id) }}"
+       class="btn btn-sm btn-outline-primary">
+      <i class="fas fa-file-alt me-1"></i> Pool de Docs
+    </a>
+  {% endcall %}
+  <div class="page-subheader content-constrained">
+    <div class="page-subheader-data">
+      <div class="subheader-item">
+        <strong>Titular:</strong>
+        {{ expediente.titular.nombre_completo if expediente.titular else '—' }}
+      </div>
+      <div class="subheader-item">
+        <strong>Responsable:</strong>
+        {{ expediente.responsable.siglas if expediente.responsable else '—' }}
+      </div>
+      <div class="subheader-item">
+        <strong>Tipo:</strong>
+        {{ expediente.tipo_expediente.tipo if expediente.tipo_expediente else '—' }}
       </div>
     </div>
-    <div class="card-body card-body-tinted py-2">
-      <div class="row g-2 bc-meta">
-        <div class="col-auto">
-          <strong>Titular:</strong>
-          {{ expediente.titular.nombre_completo if expediente.titular else '—' }}
-        </div>
-        <div class="col-auto">
-          <strong>Responsable:</strong>
-          {{ expediente.responsable.siglas if expediente.responsable else '—' }}
-        </div>
-        <div class="col-auto">
-          <strong>Tipo:</strong>
-          {{ expediente.tipo_expediente.tipo if expediente.tipo_expediente else '—' }}
-        </div>
-        <div class="col-auto ms-auto d-flex align-items-center gap-2">
-          <span class="badge bg-primary">{{ hijos | length }} solicitud(es)</span>
-          <button class="btn btn-sm btn-primary"
-                  data-bs-toggle="modal" data-bs-target="#modal-nueva-solicitud-bc">
-            <i class="fas fa-plus me-1"></i> Nueva solicitud
-          </button>
-        </div>
-      </div>
+    <div class="page-subheader-actions">
+      <span class="badge bg-primary">{{ hijos | length }} solicitud(es)</span>
+      <button class="btn btn-sm btn-primary"
+              data-bs-toggle="modal" data-bs-target="#modal-nueva-solicitud-bc">
+        <i class="fas fa-plus me-1"></i> Nueva solicitud
+      </button>
     </div>
   </div>
 </div>

@@ -11,12 +11,11 @@
 :root {
   /* ===== LAYOUT ===== */
   --max-width: 100%;           /* Sin limitador max-width */
-  --content-padding: 2rem;
+  --content-padding: max(1rem, 2.5vw); /* ~2.5% cada lado → ~95% efectivo. Alineado con celdas de tabla */
   --header-nav-height: 60px;
   --breadcrumb-height: 36px;
   --header-height: 96px;       /* nav(60) + breadcrumb(36) */
   --footer-height: 50px;
-  --v4-max-width: 1200px;      /* Ancho máximo para vistas V4 (detalle/edición) */
   
   /* ===== COLORES CORPORATIVOS JUNTA DE ANDALUCÍA ===== */
   /* Identidad corporativa */

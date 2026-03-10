@@ -23,11 +23,24 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/entrada_fecha.css') }}">
 {% endblock %}
 
+{% from 'macros/page_header.html' import page_header %}
+
 {% block content %}
 <div class="bc-view">
 
-<!-- C.1: Card detalle de la Fase (fijo) -->
-<div class="lista-cabecera px-3 pt-3">
+<!-- C.1 -->
+<div class="lista-cabecera">
+  {% call page_header('Expediente', 'fas fa-folder-open', title_accent='AT-' ~ expediente.numero_at) %}
+    <a href="{{ url_for('expedientes.detalle', id=expediente.id) }}"
+       class="btn btn-sm btn-outline-primary">
+      <i class="fas fa-info-circle me-1"></i> Detalle
+    </a>
+    <a href="{{ url_for('expedientes.pool_documentos', id=expediente.id) }}"
+       class="btn btn-sm btn-outline-primary">
+      <i class="fas fa-file-alt me-1"></i> Pool de Docs
+    </a>
+  {% endcall %}
+  <div class="content-constrained pb-3">
   <div class="card bc-card-nodo" data-bc-editable>
 
     <div class="card-header card-header-accent d-flex justify-content-between align-items-center">
@@ -167,7 +180,8 @@
 
     </div>
   </div>
-</div>
+  </div>{# /content-constrained #}
+</div>{# /lista-cabecera #}
 
 <!-- C.2: Listado de Trámites (scrollable) -->
 <div class="lista-scroll-container">
