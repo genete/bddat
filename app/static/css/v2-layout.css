@@ -220,10 +220,42 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1rem; /* Compacto */
+  margin-bottom: 0.75rem;
   padding-top: var(--content-padding); /* Margen superior solo aquí */
   flex-wrap: wrap;
   gap: 1rem;
+  min-height: 2.375rem; /* Iguala altura con/sin botón de acción (#202) */
+}
+
+/* Fila secundaria: datos de contexto (titular, responsable, tipo) para vistas V3 */
+.page-subheader {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  flex-wrap: wrap;
+  padding-bottom: 0.875rem;
+  font-size: 0.875rem;
+  color: var(--gris-principal);
+  border-bottom: 1px solid var(--border-color);
+}
+.page-subheader .page-subheader-data {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0;
+}
+.page-subheader .subheader-item {
+  padding-right: 1.25rem;
+}
+.page-subheader .subheader-item + .subheader-item {
+  padding-left: 1.25rem;
+  border-left: 1px solid var(--border-color);
+}
+.page-subheader .page-subheader-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .page-header h1 {
@@ -238,15 +270,12 @@
 
 /* Tablet (768px - 1199px) */
 @media (max-width: 1199px) {
-  :root {
-    --content-padding: 1.5rem;
-  }
+  /* --content-padding ya se adapta con max(1rem, 2.5vw), sin override necesario */
 }
 
 /* Mobile (<768px) */
 @media (max-width: 767px) {
   :root {
-    --content-padding: 1rem;
     --header-nav-height: 56px;
     --header-height: 92px;    /* nav(56) + breadcrumb(36) */
     --footer-height: auto;

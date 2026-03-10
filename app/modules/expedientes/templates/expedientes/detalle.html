@@ -25,8 +25,9 @@
 {% endif %}
 {% endblock %}
 
+{% from 'macros/page_header.html' import page_header %}
+
 {% block content %}
-<div class="p-4 v4-content">
 
 {# Datos de municipios existentes para el selector JS (solo en edición) #}
 {% if modo == 'editar' %}
@@ -45,35 +46,31 @@
 <form id="form_expediente" class="form-detail" action="{{ url_for('expedientes.editar', id=expediente.id) }}" method="POST">
 {% endif %}
 
-<!-- Encabezado de página -->
-<div class="row mb-3 gy-2 align-items-center">
-    <div class="col">
-        <h2>
-            <i class="fas fa-folder-open me-2"></i>
-            Expediente <span class="text-primary">AT-{{ expediente.numero_at }}</span>
-        </h2>
-    </div>
-    <div class="col-auto d-flex flex-nowrap gap-2">
-        {% if modo == 'ver' %}
-            <a href="{{ url_for('expedientes.listado_v2') }}" class="btn btn-outline-primary">
-                <i class="fas fa-arrow-left me-1"></i> Volver
-            </a>
-            <a href="{{ url_for('expedientes.tramitacion_bc', exp_id=expediente.id) }}" class="btn btn-primary">
-                <i class="fas fa-tasks me-1"></i> Tramitar
-            </a>
-            <a href="{{ url_for('expedientes.editar', id=expediente.id) }}" class="btn btn-primary">
-                <i class="fas fa-edit me-1"></i> Editar
-            </a>
-        {% else %}
-            <a href="{{ url_for('expedientes.detalle', id=expediente.id) }}" class="btn btn-outline-primary">
-                <i class="fas fa-times me-1"></i> Cancelar
-            </a>
-            <button type="submit" class="btn btn-primary">
-                <i class="fas fa-save me-1"></i> Guardar Cambios
-            </button>
-        {% endif %}
-    </div>
+<!-- C.1: Encabezado de página — homogéneo con el resto de vistas -->
+<div class="lista-cabecera">
+{% call page_header('Expediente', 'fas fa-folder-open', title_accent='AT-' ~ expediente.numero_at) %}
+    {% if modo == 'ver' %}
+        <a href="{{ url_for('expedientes.listado_v2') }}" class="btn btn-outline-primary">
+            <i class="fas fa-arrow-left me-1"></i> Volver
+        </a>
+        <a href="{{ url_for('expedientes.tramitacion_bc', exp_id=expediente.id) }}" class="btn btn-primary">
+            <i class="fas fa-tasks me-1"></i> Tramitar
+        </a>
+        <a href="{{ url_for('expedientes.editar', id=expediente.id) }}" class="btn btn-primary">
+            <i class="fas fa-edit me-1"></i> Editar
+        </a>
+    {% else %}
+        <a href="{{ url_for('expedientes.detalle', id=expediente.id) }}" class="btn btn-outline-primary">
+            <i class="fas fa-times me-1"></i> Cancelar
+        </a>
+        <button type="submit" class="btn btn-primary">
+            <i class="fas fa-save me-1"></i> Guardar Cambios
+        </button>
+    {% endif %}
+{% endcall %}
 </div>
+
+<div class="v4-content content-constrained py-3">
 
 <!-- BARRA INFO: Datos del Expediente -->
 <div class="card shadow-sm mb-3">
@@ -365,7 +362,7 @@
 </form>
 {% endif %}
 
-</div>{# /p-4 #}
+</div>{# /v4-content #}
 {% endblock %}
 
 {% block extra_js %}

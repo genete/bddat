@@ -1,0 +1,37 @@
+{#
+  Macro page_header — Encabezado de página homogéneo
+  ====================================================
+  Genera la zona invariante entre el breadcrumb y el contenido (filtros o cards).
+
+  USO CON BOTONES (caller):
+    {% from 'macros/page_header.html' import page_header %}
+    {% call page_header('Expedientes', 'fas fa-folder-open') %}
+      <a href="..." class="btn btn-primary">+ Nuevo Expediente</a>
+    {% endcall %}
+
+  CON TEXTO DESTACADO (p.ej. número AT en verde):
+    {% call page_header('Expediente', 'fas fa-folder-open', title_accent='AT-' ~ expediente.numero_at) %}
+      ...botones...
+    {% endcall %}
+    → Renderiza: <h1><i>...</i> Expediente <span class="text-primary">AT-1</span></h1>
+
+  SIN BOTONES (p.ej. Proyectos):
+    {% call page_header('Proyectos', 'fas fa-drafting-compass') %}{% endcall %}
+
+  PARÁMETROS:
+    title        — Texto del <h1>. Se auto-escapa (seguro para texto de usuario).
+    icon_class   — Clase FontAwesome del icono (opcional).
+    title_accent — Parte final del título con color primario (opcional, también auto-escapado).
+#}
+{%- macro page_header(title, icon_class='', title_accent='') -%}
+<div class="page-header content-constrained">
+  <h1>
+    {%- if icon_class %}<i class="{{ icon_class }}"></i>{% endif %}
+    {{ title -}}
+    {%- if title_accent %} <span class="text-primary">{{ title_accent }}</span>{% endif %}
+  </h1>
+  {%- if caller %}
+  <div class="d-flex flex-nowrap gap-2">{{ caller() }}</div>
+  {%- endif %}
+</div>
+{%- endmacro -%}

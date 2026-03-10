@@ -16,17 +16,17 @@
 <span>Tramitación</span>
 {% endblock %}
 
+{% from 'macros/page_header.html' import page_header %}
+
 {% block content %}
-{# C.1: Cabecera fija — expediente + título #}
-<div class="lista-cabecera px-3 pt-3">
-    <div class="d-flex align-items-center justify-content-between mb-2">
-        <h2 class="mb-0">Tramitación AT-{{ expediente.numero_at }}</h2>
+{# C.1: Cabecera fija — expediente + acciones #}
+<div class="lista-cabecera">
+    {% call page_header('Expediente', 'fas fa-folder-open', title_accent='AT-' ~ expediente.numero_at) %}
         <a href="{{ url_for('expedientes.detalle', id=expediente.id) }}"
-           class="btn btn-sm btn-outline-secondary">
-            <i class="fa-solid fa-arrow-left me-1"></i> Volver al detalle
+           class="btn btn-sm btn-outline-primary">
+            <i class="fas fa-arrow-left me-1"></i> Volver al detalle
         </a>
-    </div>
-    {% include 'vistas/vista3/_expediente_body.html' %}
+    {% endcall %}
 </div>
 
 {# C.2: Contenido con scroll — tabs 4 niveles #}
