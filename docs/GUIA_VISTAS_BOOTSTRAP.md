@@ -15,9 +15,10 @@
 | **C.1** | Zona fija superior sin scroll (`lista-cabecera`) |
 | **C.2** | Zona scrollable independiente (`lista-scroll-container`) |
 | **Listado embebido** | Tabla dentro de una card V4 (ej: documentos en detalle de expediente, direcciones en detalle de entidad) |
-| **Tabla V2** | Tabla con clase `expedientes-table`, thead verde corporativo sticky, scroll infinito JS |
-| **Tabla BC** | Tabla generada por `_tabla_hijos.html`, Bootstrap puro `table-hover table-sm`, thead `table-light` |
+| **Tabla V2** | Tabla `expedientes-table` dentro de `card.tabla-bloque`, thead verde claro sticky, scroll infinito JS |
+| **Tabla BC** | Tabla `_tabla_hijos.html` dentro de `card.tabla-bloque`, thead verde claro (unificado con V2), sin sticky |
 | **Tabla Pool** | Tabla `#pool-tabla`, `table-layout: fixed`, thead sticky gris con `box-shadow inset` |
+| **`.tabla-bloque`** | Card contenedor de tabla (V2 y BC): bordes redondeados, sombra. Con `card-header` → `overflow:hidden` (esquinas limpias); con `expedientes-table` directa → bg verde claro (esquinas seamless + sticky intacto) |
 
 ---
 
@@ -140,13 +141,17 @@ A: app-container (grid header/main/footer)
     <div class="page-header content-constrained">Título + botón</div>
     <div class="filters-row content-constrained">Filtros + paginación</div>
   </div>
-  
+
   <div class="lista-scroll-container"> <!-- C.2: flex: 1, overflow-y: auto -->
-    <table class="expedientes-table"> <!-- D: thead sticky top: 0 -->
-      <thead>...</thead>
-      <tbody>...</tbody>
-    </table>
-    <button id="tabla-scroll-to-top">↑</button> <!-- sticky bottom: 1rem -->
+    <div class="content-constrained py-3">
+      <div class="card tabla-bloque"> <!-- bordes redondeados + sombra; bg verde → esquinas seamless -->
+        <table class="expedientes-table"> <!-- thead sticky top: 0 -->
+          <thead>...</thead>
+          <tbody><!-- filas JS ScrollInfinito --></tbody>
+        </table>
+      </div>
+    </div>
+    <button id="tabla-scroll-to-top">↑</button> <!-- sticky bottom: 1rem, FUERA del card -->
   </div>
 </main>
 ```
@@ -269,9 +274,19 @@ El breadcrumb del header permite volver a cualquier nivel superior.
 
   <!-- C.2: tabla de hijos -->
   <div class="lista-scroll-container">
-    <div class="bc-view">
-      <h6>Título listado hijos + botón Nuevo</h6>
-      {% include 'vistas/vista3_bc/_tabla_hijos.html' %}
+    <div class="content-constrained py-3">
+      <div class="card tabla-bloque"> <!-- overflow:hidden vía :has(>.card-header) → esquinas limpias -->
+        <div class="card-header card-header-accent d-flex justify-content-between align-items-center py-2">
+          <span class="fw-semibold">
+            <i class="fas fa-..."></i> [Título hijos]
+            <span class="badge bg-primary ms-2">{{ hijos|length }}</span>
+          </span>
+          <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#modal-nuevo-...">
+            <i class="fas fa-plus me-1"></i> Nuevo [hijo]
+          </button>
+        </div>
+        {% include 'vistas/vista3_bc/_tabla_hijos.html' %}
+      </div>
     </div>
   </div>
 </main>
@@ -286,14 +301,16 @@ Genera la tabla de hijos con columnas dinámicas desde Python:
 
 ```html
 <!-- Variables de contexto: hijos (lista de dicts), columnas (lista de {key, label}) -->
-<table class="table table-hover table-sm align-middle mb-0">
-  <thead class="table-light">
+<!-- Clase tabla-hijos: permite responsive mobile (oculta columnas medias en ≤767px) -->
+<table class="table table-hover table-sm align-middle mb-0 tabla-hijos">
+  <thead>
+    <!-- Sin table-light: el CSS de v3-breadcrumbs.css sobreescribe el bg a verde claro -->
     <tr>
-      <th style="width:2rem"></th>         <!-- indicador estado -->
+      <th style="width:2rem"></th>         <!-- indicador estado — siempre visible -->
       {% for col in columnas %}
-      <th>{{ col.label }}</th>
+      <th>{{ col.label }}</th>             <!-- ocultas en mobile vía .tabla-hijos media query -->
       {% endfor %}
-      <th style="width:3rem"></th>         <!-- botón → -->
+      <th style="width:3rem"></th>         <!-- botón → — siempre visible -->
     </tr>
   </thead>
   <tbody>
@@ -312,14 +329,16 @@ Genera la tabla de hijos con columnas dinámicas desde Python:
 
 Indicadores de estado: `bi-check-circle-fill` (finalizada), `bi-clock-fill` (en curso), `bi-circle` (planificada).
 
-### Clases CSS específicas (`v3-breadcrumbs.css`)
+### Clases CSS específicas (`v3-breadcrumbs.css` y `v2-components.css`)
 
-| Clase | Uso |
-|-------|-----|
-| `.bc-card-nodo` | Card del nodo actual — sombra discreta |
-| `.bc-meta` | Texto de metadatos (0.85rem, color secundario) |
-| `.bc-view` | Contenedor centrado `max-width: 1200px` |
-| `.bc-acciones-bar` | Flex row de botones de acción |
+| Clase | Archivo | Uso |
+|-------|---------|-----|
+| `.bc-card-nodo` | v3-breadcrumbs | Card del nodo actual — sombra discreta |
+| `.bc-meta` | v3-breadcrumbs | Texto de metadatos (0.85rem, color secundario) |
+| `.bc-view` | v3-breadcrumbs | Contenedor centrado `max-width: 1200px` |
+| `.bc-acciones-bar` | v3-breadcrumbs | Flex row de botones de acción |
+| `.tabla-bloque` | v2-components | Card contenedor de tabla (V2 y BC): `border-radius`, `box-shadow`. Ver vocabulario para comportamiento por variante. |
+| `.tabla-hijos` | v3-breadcrumbs | Clase en `<table>` de `_tabla_hijos.html`; activa responsive mobile (oculta columnas medias en ≤767px) |
 
 ### Archivos clave
 
@@ -694,6 +713,8 @@ particularidades propias.
 ### 2. NO usar `overflow: hidden` en contenedores con sticky
 Bloquea `position: sticky`. En C.1/C.2, el `overflow: hidden` va en `.app-main`, NO en `.lista-scroll-container`.
 
+**Excepción controlada:** `.tabla-bloque:has(> .card-header)` añade `overflow: hidden` via `:has()` solo cuando hay `card-header` (BC). En esos casos no hay sticky, así que es seguro. Para V2 (tabla directa sin card-header) se usa en cambio `background-color` verde en el card para que el hueco de la esquina redondeada sea invisible.
+
 ### 3. Botón scroll-to-top FUERA de `<table>`
 ```html
 <!-- MAL: Se mueve con scroll -->
@@ -772,7 +793,8 @@ container.addEventListener('scroll', toggleButton);
 
 ---
 
-**Versión:** 2.0
-**Fecha:** 8 de marzo de 2026
+**Versión:** 2.1
+**Fecha:** 11 de marzo de 2026
 **Cambios v2.0:** Eliminada V3 acordeón/tabs (legacy), documentada V3-BC, listados embebidos y Pool.
+**Cambios v2.1 (#202):** Unificado thead V2/BC (verde claro `#c4ddca`). Añadido `.tabla-bloque` como contenedor card de tabla. Thead BC sin sticky (listas cortas). Responsive mobile en `_tabla_hijos.html` (clase `.tabla-hijos`). Estructura C.2 actualizada en V2 y V3-BC.
 **Referencia estudio:** `docs/fuentesIA/ESTUDIO_HOMOGENEIZACION_UI.md`
