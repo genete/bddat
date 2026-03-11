@@ -52,6 +52,14 @@
   overflow: hidden;
 }
 
+/* V2: la tabla es hijo directo del card (sin card-header).
+ * Los th:first/last-child tienen border-radius, pero el card background (blanco)
+ * quedaba visible en el hueco de la esquina redondeada.
+ * Solución: igualar el bg del card al color del thead → el hueco es invisible. */
+.tabla-bloque:has(> table.expedientes-table) {
+  background-color: var(--primary-light, #c4ddca);
+}
+
 /* Redondeado superior del thead cuando la tabla es hija directa del card (V2).
  * expedientes-table usa border-collapse:separate → border-radius en th funciona. */
 .tabla-bloque > table.expedientes-table thead th:first-child {
