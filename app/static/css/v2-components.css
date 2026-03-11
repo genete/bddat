@@ -35,12 +35,32 @@
   z-index: 10;
 }
 
+/* ===== BLOQUE CONTENEDOR DE TABLA (V2 y BC) — issue #202 ===== */
+/* Envuelve la tabla en un card con bordes redondeados al ~95% de ancho.
+ * Usar junto con content-constrained py-3 en el HTML.
+ * SIN overflow:hidden — rompería position:sticky del thead.
+ * Los bordes redondeados superiores se aplican directamente a las th. */
+.tabla-bloque {
+  border-radius: var(--border-radius-lg, 0.5rem);
+  box-shadow: var(--shadow-sm);
+  margin: 0;
+}
+
+/* Redondeado superior del thead cuando la tabla es hija directa del card (V2).
+ * expedientes-table usa border-collapse:separate → border-radius en th funciona. */
+.tabla-bloque > table.expedientes-table thead th:first-child {
+  border-top-left-radius: calc(var(--border-radius-lg, 0.5rem) - 1px);
+}
+.tabla-bloque > table.expedientes-table thead th:last-child {
+  border-top-right-radius: calc(var(--border-radius-lg, 0.5rem) - 1px);
+}
+
 /* ===== TABLA RESPONSIVE (FULL-WIDTH) ===== */
 .expedientes-table {
   width: 100%;
   background: var(--bg-card);
-  border-radius: 0; /* Sin border-radius para full-width */
-  box-shadow: none; /* Sin sombra para full-width */
+  border-radius: 0; /* Sin border-radius — la da .tabla-bloque */
+  box-shadow: none; /* Sin sombra — la da .tabla-bloque */
   border-collapse: separate;
   border-spacing: 0;
   /*overflow: hidden;*/  /* Comentado - bloqueaba sticky */
@@ -65,9 +85,10 @@
   position: sticky;
   top: var(--header-height);
   z-index: 100;
-  background: var(--primary);
-  background-image: var(--gradient);
-  color: var(--text-inverse);
+  /* Verde claro coherente con card-header-accent (#202) */
+  background: var(--primary-light, #c4ddca);
+  background-image: none;
+  color: var(--gris-principal, #111);
 }
 
 .expedientes-table td {

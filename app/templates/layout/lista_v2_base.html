@@ -109,17 +109,22 @@
     {#
        Clase base: 'expedientes-table' (estilos en v2-components.css).
        TODO Epic #93 Fase 3: renombrar a 'lista-table' en CSS y aquí.
+       Envuelta en .tabla-bloque para bordes redondeados y sombra (#202).
     #}
-    <table class="expedientes-table {% block tabla_clase %}{% endblock %}">
-        <thead>
-            <tr>
-                {% block thead_cols %}{% endblock %}
-            </tr>
-        </thead>
-        <tbody>
-            <!-- Filas cargadas dinámicamente por ScrollInfinito -->
-        </tbody>
-    </table>
+    <div class="content-constrained py-3">
+      <div class="card tabla-bloque">
+        <table class="expedientes-table {% block tabla_clase %}{% endblock %}">
+            <thead>
+                <tr>
+                    {% block thead_cols %}{% endblock %}
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Filas cargadas dinámicamente por ScrollInfinito -->
+            </tbody>
+        </table>
+      </div>
+    </div>
 
     <button id="tabla-scroll-to-top" aria-label="Volver arriba de la tabla">
         <i class="fas fa-chevron-up"></i>

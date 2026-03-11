@@ -124,13 +124,6 @@
             {{- fase.resultado_fase.nombre if fase.resultado_fase else '—' -}}
           </span>
         </div>
-        <div class="col-auto ms-auto d-flex align-items-center gap-2">
-          <span class="badge bg-primary">{{ hijos | length }} trámite(s)</span>
-          <button class="btn btn-sm btn-primary"
-                  data-bs-toggle="modal" data-bs-target="#modal-nuevo-tramite-bc">
-            <i class="fas fa-plus me-1"></i> Nuevo trámite
-          </button>
-        </div>
       </div>
 
       {# Modo editar #}
@@ -185,7 +178,21 @@
 
 <!-- C.2: Listado de Trámites (scrollable) -->
 <div class="lista-scroll-container">
-  {% include 'vistas/vista3_bc/_tabla_hijos.html' %}
+  <div class="content-constrained py-3">
+    <div class="card tabla-bloque">
+      <div class="card-header card-header-accent d-flex justify-content-between align-items-center py-2">
+        <span class="fw-semibold">
+          <i class="fas fa-clipboard-list me-1"></i> Trámites
+          <span class="badge bg-primary ms-2">{{ hijos | length }}</span>
+        </span>
+        <button class="btn btn-sm btn-primary"
+                data-bs-toggle="modal" data-bs-target="#modal-nuevo-tramite-bc">
+          <i class="fas fa-plus me-1"></i> Nuevo trámite
+        </button>
+      </div>
+      {% include 'vistas/vista3_bc/_tabla_hijos.html' %}
+    </div>
+  </div>
 </div>
 
 <!-- Modal Nuevo Trámite -->
