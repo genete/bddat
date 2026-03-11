@@ -35,12 +35,46 @@
   z-index: 10;
 }
 
+/* ===== BLOQUE CONTENEDOR DE TABLA (V2 y BC) — issue #202 ===== */
+/* Envuelve la tabla en un card con bordes redondeados al ~95% de ancho.
+ * Usar junto con content-constrained py-3 en el HTML.
+ * Base SIN overflow:hidden — preserva position:sticky del thead (V2).
+ * Cuando el card tiene card-header (BC), no hay sticky → se puede recortar. */
+.tabla-bloque {
+  border-radius: var(--border-radius-lg, 0.5rem);
+  box-shadow: var(--shadow-sm);
+  margin: 0;
+}
+
+/* BC: card-header como primer hijo → overflow:hidden para esquinas limpias.
+ * V2: primer hijo es <table> directa → esta regla no aplica, sticky intacto. */
+.tabla-bloque:has(> .card-header) {
+  overflow: hidden;
+}
+
+/* V2: la tabla es hijo directo del card (sin card-header).
+ * Los th:first/last-child tienen border-radius, pero el card background (blanco)
+ * quedaba visible en el hueco de la esquina redondeada.
+ * Solución: igualar el bg del card al color del thead → el hueco es invisible. */
+.tabla-bloque:has(> table.expedientes-table) {
+  background-color: var(--primary-light, #c4ddca);
+}
+
+/* Redondeado superior del thead cuando la tabla es hija directa del card (V2).
+ * expedientes-table usa border-collapse:separate → border-radius en th funciona. */
+.tabla-bloque > table.expedientes-table thead th:first-child {
+  border-top-left-radius: calc(var(--border-radius-lg, 0.5rem) - 1px);
+}
+.tabla-bloque > table.expedientes-table thead th:last-child {
+  border-top-right-radius: calc(var(--border-radius-lg, 0.5rem) - 1px);
+}
+
 /* ===== TABLA RESPONSIVE (FULL-WIDTH) ===== */
 .expedientes-table {
   width: 100%;
   background: var(--bg-card);
-  border-radius: 0; /* Sin border-radius para full-width */
-  box-shadow: none; /* Sin sombra para full-width */
+  border-radius: 0; /* Sin border-radius — la da .tabla-bloque */
+  box-shadow: none; /* Sin sombra — la da .tabla-bloque */
   border-collapse: separate;
   border-spacing: 0;
   /*overflow: hidden;*/  /* Comentado - bloqueaba sticky */
@@ -65,9 +99,10 @@
   position: sticky;
   top: var(--header-height);
   z-index: 100;
-  background: var(--primary);
-  background-image: var(--gradient);
-  color: var(--text-inverse);
+  /* Verde claro coherente con card-header-accent (#202) */
+  background: var(--primary-light, #c4ddca);
+  background-image: none;
+  color: var(--gris-principal, #111);
 }
 
 .expedientes-table td {

@@ -122,13 +122,6 @@
             {{- tramite.fecha_fin.strftime('%d/%m/%Y') if tramite.fecha_fin else '—' -}}
           </span>
         </div>
-        <div class="col-auto ms-auto d-flex align-items-center gap-2">
-          <span class="badge bg-primary">{{ hijos | length }} tarea(s)</span>
-          <button class="btn btn-sm btn-primary"
-                  data-bs-toggle="modal" data-bs-target="#modal-nueva-tarea-bc">
-            <i class="fas fa-plus me-1"></i> Nueva tarea
-          </button>
-        </div>
       </div>
 
       {# Modo editar #}
@@ -171,7 +164,21 @@
 
 <!-- C.2: Listado de Tareas (scrollable) -->
 <div class="lista-scroll-container">
-  {% include 'vistas/vista3_bc/_tabla_hijos.html' %}
+  <div class="content-constrained py-3">
+    <div class="card tabla-bloque">
+      <div class="card-header card-header-accent d-flex justify-content-between align-items-center py-2">
+        <span class="fw-semibold">
+          <i class="fas fa-tasks me-1"></i> Tareas
+          <span class="badge bg-primary ms-2">{{ hijos | length }}</span>
+        </span>
+        <button class="btn btn-sm btn-primary"
+                data-bs-toggle="modal" data-bs-target="#modal-nueva-tarea-bc">
+          <i class="fas fa-plus me-1"></i> Nueva tarea
+        </button>
+      </div>
+      {% include 'vistas/vista3_bc/_tabla_hijos.html' %}
+    </div>
+  </div>
 </div>
 
 <!-- Modal Nueva Tarea -->

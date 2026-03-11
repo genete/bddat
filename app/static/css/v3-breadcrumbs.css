@@ -84,13 +84,23 @@
     min-height: 0;
 }
 
-/* ── Thead sticky en tabla de hijos (#199) ──────────────────────────────── */
+/* ── Thead BC: color unificado, sin sticky (#199, #202) ─────────────────── */
+/* Las listas BC son cortas — no necesitan thead fijo.
+ * El sticky permanece solo en expedientes-table (V2), definido en v2-components.css. */
 
 .lista-scroll-container .table thead th {
-    position: sticky;
-    top: 0;
-    z-index: 10;
-    background-color: var(--bs-table-bg, #f8f9fa);
+    /* Verde claro unificado con expedientes-table (#202) */
+    background-color: var(--primary-light, #c4ddca);
+    color: var(--gris-principal, #111);
+}
+
+/* ── Responsive BC: ocultar columnas medias en mobile (#202) ────────────── */
+/* Primera columna (indicador estado) y última (flecha →) siempre visibles. */
+@media (max-width: 767px) {
+    .tabla-hijos th:not(:first-child):not(:last-child),
+    .tabla-hijos td:not(:first-child):not(:last-child) {
+        display: none;
+    }
 }
 
 /* ── Botones de acción en la cabecera (placeholders) ────────────────────── */
