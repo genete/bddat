@@ -58,10 +58,13 @@ Las FK deben referenciar con prefijo: `db.ForeignKey('public.tabla.campo')`
 
 - **PostgreSQL MCP** — consultar esquema real de BD en desarrollo
 - **Playwright MCP** — testing e interacción automática con navegador
-  - Sin nombre de fichero → auto-genera `page-TIMESTAMP.png` en `.playwright-mcp/` (correcto)
-  - Con nombre personalizado → guarda relativo al CWD (repo root). **SIEMPRE** prefijar:
-    `.playwright-mcp/nombre.png` para mantenerlos fuera del árbol git.
 - **Windows MCP** — redimensionado de ventanas
+
+### Precauciones Playright MCP
+- **Consume mucho contexto**: especialmente al capturar pantalla. ¡¡Preguntar siempre!!
+- Sin nombre de fichero → auto-genera `page-TIMESTAMP.png` en `.playwright-mcp/` (correcto)
+- Con nombre personalizado → guarda relativo al CWD (repo root). **SIEMPRE** prefijar:
+    `.playwright-mcp/nombre.png` para mantenerlos fuera del árbol git.
 
 ---
 
