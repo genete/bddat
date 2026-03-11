@@ -84,12 +84,11 @@
     min-height: 0;
 }
 
-/* ── Thead sticky en tabla de hijos (#199, actualizado #202) ────────────── */
+/* ── Thead BC: color unificado, sin sticky (#199, #202) ─────────────────── */
+/* Las listas BC son cortas — no necesitan thead fijo.
+ * El sticky permanece solo en expedientes-table (V2), definido en v2-components.css. */
 
 .lista-scroll-container .table thead th {
-    position: sticky;
-    top: 0;
-    z-index: 10;
     /* Verde claro unificado con expedientes-table (#202) */
     background-color: var(--primary-light, #c4ddca);
     color: var(--gris-principal, #111);

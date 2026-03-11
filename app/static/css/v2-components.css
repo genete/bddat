@@ -38,12 +38,18 @@
 /* ===== BLOQUE CONTENEDOR DE TABLA (V2 y BC) — issue #202 ===== */
 /* Envuelve la tabla en un card con bordes redondeados al ~95% de ancho.
  * Usar junto con content-constrained py-3 en el HTML.
- * SIN overflow:hidden — rompería position:sticky del thead.
- * Los bordes redondeados superiores se aplican directamente a las th. */
+ * Base SIN overflow:hidden — preserva position:sticky del thead (V2).
+ * Cuando el card tiene card-header (BC), no hay sticky → se puede recortar. */
 .tabla-bloque {
   border-radius: var(--border-radius-lg, 0.5rem);
   box-shadow: var(--shadow-sm);
   margin: 0;
+}
+
+/* BC: card-header como primer hijo → overflow:hidden para esquinas limpias.
+ * V2: primer hijo es <table> directa → esta regla no aplica, sticky intacto. */
+.tabla-bloque:has(> .card-header) {
+  overflow: hidden;
 }
 
 /* Redondeado superior del thead cuando la tabla es hija directa del card (V2).
