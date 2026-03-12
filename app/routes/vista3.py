@@ -11,6 +11,7 @@ from datetime import date
 from flask import Blueprint, jsonify, render_template, request
 from flask_login import login_required
 from sqlalchemy import func
+from sqlalchemy.exc import IntegrityError
 from app import db
 from app.models.expedientes import Expediente
 from app.models.solicitudes import Solicitud
@@ -401,9 +402,27 @@ def editar_tarea(tarea_id):
     if resultado:
         return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
 
+    expediente_id = tarea.tramite.fase.solicitud.expediente_id
+
     try:
         nueva_fecha_inicio = date.fromisoformat(request.form['fecha_inicio']) if request.form.get('fecha_inicio') else None
         nueva_fecha_fin = date.fromisoformat(request.form['fecha_fin']) if request.form.get('fecha_fin') else None
+
+        # Documentos (nullable: string vacío → None)
+        doc_usado_raw     = request.form.get('documento_usado_id') or None
+        doc_producido_raw = request.form.get('documento_producido_id') or None
+        nuevo_doc_usado_id     = int(doc_usado_raw)     if doc_usado_raw     else None
+        nuevo_doc_producido_id = int(doc_producido_raw) if doc_producido_raw else None
+
+        # Validar que los documentos pertenecen al mismo expediente
+        for doc_id in filter(None, [nuevo_doc_usado_id, nuevo_doc_producido_id]):
+            doc = Documento.query.get(doc_id)
+            if not doc or doc.expediente_id != expediente_id:
+                return jsonify({'ok': False, 'error': 'Documento no válido para este expediente'}), 422
+
+        # Asignar documentos ANTES de los hooks para que el motor vea los nuevos valores
+        tarea.documento_usado_id     = nuevo_doc_usado_id
+        tarea.documento_producido_id = nuevo_doc_producido_id
 
         # Hook INICIAR (fecha_inicio: None → valor)
         res_eval = None
@@ -430,6 +449,9 @@ def editar_tarea(tarea_id):
                                documentos=documentos) if tarea_data else ''
         advertencia = {'mensaje': res_eval.mensaje, 'norma': res_eval.norma} if res_eval and res_eval.nivel == 'ADVERTIR' else None
         return jsonify({'ok': True, 'html': html, 'advertencia': advertencia})
+    except IntegrityError:
+        db.session.rollback()
+        return jsonify({'ok': False, 'error': 'Este documento ya está asignado como producido a otra tarea'}), 422
     except Exception as e:
         db.session.rollback()
         return jsonify({'ok': False, 'error': str(e)}), 500

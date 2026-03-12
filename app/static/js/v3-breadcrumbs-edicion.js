@@ -63,6 +63,7 @@ document.addEventListener('DOMContentLoaded', function () {
       } else {
         _actualizar_display(datos);
         activar_modo_ver();
+        form.dispatchEvent(new CustomEvent('bc:guardado', { bubbles: false }));
         if (json.advertencia) {
           _mostrar_alert('warning', json.advertencia.mensaje);
         }

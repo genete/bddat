@@ -29,6 +29,7 @@
 {% block extra_css %}{{ super() }}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/v3-breadcrumbs.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/entrada_fecha.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/selector_busqueda.css') }}">
 {% endblock %}
 
 {% from 'macros/page_header.html' import page_header %}
@@ -167,14 +168,88 @@
 </div>{# /lista-cabecera #}
 
 <!-- C.2: Documentos (scrollable) -->
-<div class="lista-scroll-container p-3">
+<div class="lista-scroll-container p-3" id="card-documentos">
   <div class="card">
     <div class="card-header card-header-accent">
       <h6 class="mb-0 fw-semibold"><i class="fas fa-file-alt me-2"></i>Documentos</h6>
     </div>
-    <div class="card-body text-center py-4">
-      <i class="fas fa-folder fa-2x mb-2 d-block text-secondary"></i>
-      <span class="small text-secondary">Gestión de documentos — próximamente</span>
+    <div class="card-body card-body-tinted py-3">
+
+      {% if not requiere_doc_usado and not requiere_doc_producido %}
+      <p class="text-secondary mb-0 fst-italic small">Este tipo de tarea no requiere documentos.</p>
+
+      {% else %}
+
+      {# ── Documento usado ────────────────────────────────────────────────────── #}
+      {% if requiere_doc_usado %}
+      <div class="mb-3">
+        <label class="form-label fw-semibold mb-1">Documento de entrada</label>
+        {# Modo ver #}
+        <div class="doc-modo-ver">
+          {% if tarea.documento_usado %}
+            {% set nombre_usado = tarea.documento_usado.url.replace('\\', '/').rsplit('/', 1)[-1].split('?')[0].split('#')[0] %}
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+              <i class="fas fa-file-import text-secondary"></i>
+              <span id="disp-doc-usado" class="fw-semibold">{{ nombre_usado }}</span>
+              <small class="text-secondary">
+                — {{ tarea.documento_usado.tipo_doc.nombre if tarea.documento_usado.tipo_doc else '' }}
+                {% if tarea.documento_usado.fecha_administrativa %}
+                  — {{ tarea.documento_usado.fecha_administrativa.strftime('%d/%m/%Y') }}
+                {% endif %}
+              </small>
+              <a href="{{ url_for('expedientes.pool_descargar_documento', id=expediente.id, doc_id=tarea.documento_usado.id) }}"
+                 class="btn btn-sm btn-outline-secondary ms-auto"
+                 target="_blank" rel="noopener">
+                <i class="fas fa-download me-1"></i>Descargar
+              </a>
+            </div>
+          {% else %}
+            <span id="disp-doc-usado" class="fst-italic text-secondary small">Sin documento asociado</span>
+          {% endif %}
+        </div>
+        {# Modo editar #}
+        <div class="doc-modo-editar d-none">
+          <div id="sb-doc-usado"></div>
+        </div>
+      </div>
+      {% endif %}
+
+      {# ── Documento producido ────────────────────────────────────────────────── #}
+      {% if requiere_doc_producido %}
+      <div class="mb-1">
+        <label class="form-label fw-semibold mb-1">Documento producido</label>
+        {# Modo ver #}
+        <div class="doc-modo-ver">
+          {% if tarea.documento_producido %}
+            {% set nombre_producido = tarea.documento_producido.url.replace('\\', '/').rsplit('/', 1)[-1].split('?')[0].split('#')[0] %}
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+              <i class="fas fa-file-export text-secondary"></i>
+              <span id="disp-doc-producido" class="fw-semibold">{{ nombre_producido }}</span>
+              <small class="text-secondary">
+                — {{ tarea.documento_producido.tipo_doc.nombre if tarea.documento_producido.tipo_doc else '' }}
+                {% if tarea.documento_producido.fecha_administrativa %}
+                  — {{ tarea.documento_producido.fecha_administrativa.strftime('%d/%m/%Y') }}
+                {% endif %}
+              </small>
+              <a href="{{ url_for('expedientes.pool_descargar_documento', id=expediente.id, doc_id=tarea.documento_producido.id) }}"
+                 class="btn btn-sm btn-outline-secondary ms-auto"
+                 target="_blank" rel="noopener">
+                <i class="fas fa-download me-1"></i>Descargar
+              </a>
+            </div>
+          {% else %}
+            <span id="disp-doc-producido" class="fst-italic text-secondary small">Sin documento asociado</span>
+          {% endif %}
+        </div>
+        {# Modo editar #}
+        <div class="doc-modo-editar d-none">
+          <div id="sb-doc-producido"></div>
+        </div>
+      </div>
+      {% endif %}
+
+      {% endif %}{# /requiere_doc #}
+
     </div>
   </div>
 </div>
@@ -184,6 +259,17 @@
 
 {% block extra_js %}{{ super() }}
 <script src="{{ url_for('static', filename='js/entrada_fecha.js') }}"></script>
+<script src="{{ url_for('static', filename='js/selector_busqueda.js') }}"></script>
 <script src="{{ url_for('static', filename='js/v3-breadcrumbs-edicion.js') }}"></script>
 <script src="{{ url_for('static', filename='js/v3-breadcrumbs-acciones.js') }}"></script>
+<script>
+window.TAREA_DOCS_CONFIG = {
+  requiereDocUsado:     {{ requiere_doc_usado | tojson }},
+  requiereDocProducido: {{ requiere_doc_producido | tojson }},
+  docUsadoId:      {{ tarea.documento_usado_id | tojson }},
+  docProducidoId:  {{ tarea.documento_producido_id | tojson }},
+  urlApiDocs: "{{ url_for('expedientes.pool_documentos_json', id=expediente.id) }}"
+};
+</script>
+<script src="{{ url_for('static', filename='js/tarea_documentos.js') }}"></script>
 {% endblock %}
