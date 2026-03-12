@@ -55,11 +55,10 @@ def create_app(config_name='development'):
         return Usuario.query.get(int(user_id))
 
     # Registrar blueprints - Rutas principales
-    from app.routes import auth, dashboard, usuarios, perfil
+    from app.routes import auth, dashboard, perfil
 
     app.register_blueprint(auth.bp)
     app.register_blueprint(dashboard.bp)
-    app.register_blueprint(usuarios.bp)
     app.register_blueprint(perfil.bp)
 
     # Registrar blueprints - Wizards
@@ -88,17 +87,6 @@ def create_app(config_name='development'):
             if current_user.is_authenticated else []
         )
         nav = ModuleRegistry.get_navigation(user_roles)
-
-        # TODO(#217): entrada temporal hasta migrar usuarios a app/modules/usuarios/
-        # con su metadata.json (ver issue #217).
-        if any(r in user_roles for r in ('ADMIN', 'SUPERVISOR')):
-            nav.append({
-                'label':  'Usuarios',
-                'route':  'usuarios.index',
-                'icon':   'fa-users',
-                'order':  30,
-                'module': 'usuarios',
-            })
 
         return {
             'module_nav':    nav,

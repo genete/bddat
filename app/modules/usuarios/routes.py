@@ -5,8 +5,9 @@ from app import db
 from app.models.usuarios import Usuario, Rol
 from app.decorators import role_required
 
-# Definimos el Blueprint
-bp = Blueprint('usuarios', __name__, url_prefix='/usuarios')
+# Definimos el Blueprint con template_folder propio (convención app/modules/)
+bp = Blueprint('usuarios', __name__, url_prefix='/usuarios',
+               template_folder='templates')
 
 def usuario_es_admin(usuario):
     """Verifica si un usuario tiene el rol ADMIN"""
@@ -23,7 +24,7 @@ def index():
     # Recuperamos todos los roles para el formulario
     todos_los_roles = Rol.query.all()
     usuarios = Usuario.query.all()
-    
+
     # Variable para controlar si mostrar modal y preservar datos
     form_data = None
     error_siglas = None
@@ -37,13 +38,13 @@ def index():
             apellido1 = request.form['apellido1']
             apellido2 = request.form.get('apellido2')
             email = request.form.get('email')
-            
+
             password = request.form['password']
             confirm_password = request.form['confirm_password']
-            
+
             # Capturar roles seleccionados para preservarlos
             roles_ids = request.form.getlist('roles')
-            
+
             # Preparar datos del formulario para devolver en caso de error
             form_data = {
                 'siglas': siglas,
@@ -53,37 +54,37 @@ def index():
                 'email': email,
                 'roles_ids': roles_ids
             }
-            
+
             # VALIDACIÓN PREVENTIVA: Verificar si las siglas ya existen
             if Usuario.query.filter_by(siglas=siglas).first():
                 error_siglas = f'Las siglas "{siglas}" ya están en uso. Por favor, elige otras.'
-                return render_template('usuarios/index.html', 
-                                     usuarios=usuarios, 
+                return render_template('usuarios/index.html',
+                                     usuarios=usuarios,
                                      roles=todos_los_roles,
                                      form_data=form_data,
                                      error_siglas=error_siglas,
                                      show_modal=True)
-            
+
             # Validación de contraseñas
             if password != confirm_password:
                 flash('Las contraseñas no coinciden', 'danger')
-                return render_template('usuarios/index.html', 
-                                     usuarios=usuarios, 
+                return render_template('usuarios/index.html',
+                                     usuarios=usuarios,
                                      roles=todos_los_roles,
                                      form_data=form_data,
                                      show_modal=True)
-            
+
             # NUEVA VALIDACIÓN: SUPERVISOR no puede asignar rol ADMIN
             if not current_user_es_admin():
                 rol_admin = Rol.query.filter_by(nombre='ADMIN').first()
                 if rol_admin and str(rol_admin.id) in roles_ids:
                     flash('No tienes permisos para asignar el rol ADMIN', 'danger')
-                    return render_template('usuarios/index.html', 
-                                         usuarios=usuarios, 
+                    return render_template('usuarios/index.html',
+                                         usuarios=usuarios,
                                          roles=todos_los_roles,
                                          form_data=form_data,
                                          show_modal=True)
-            
+
             # Crear instancia del modelo
             nuevo_usuario = Usuario(
                 siglas=siglas,
@@ -91,48 +92,48 @@ def index():
                 apellido1=apellido1,
                 apellido2=apellido2
             )
-            
+
             # Asignar email (el setter del modelo convertirá '' a None)
             nuevo_usuario.email = email
-            
+
             # Establecer contraseña (hash)
             nuevo_usuario.set_password(password)
-            
+
             # Asignar Roles
             if roles_ids:
                 roles_seleccionados = Rol.query.filter(Rol.id.in_(roles_ids)).all()
                 nuevo_usuario.roles.extend(roles_seleccionados)
-            
+
             # Guardar en BD
             db.session.add(nuevo_usuario)
             db.session.commit()
-            
+
             flash('Usuario creado correctamente con roles y contraseña', 'success')
             return redirect(url_for('usuarios.index'))
-            
+
         except IntegrityError as e:
             db.session.rollback()
             # Detectar si es error de email duplicado
             if 'usuarios_email_key' in str(e.orig):
                 error_email = 'Este email ya está registrado por otro usuario. Usa uno diferente o déjalo vacío.'
-                return render_template('usuarios/index.html', 
-                                     usuarios=usuarios, 
+                return render_template('usuarios/index.html',
+                                     usuarios=usuarios,
                                      roles=todos_los_roles,
                                      form_data=form_data,
                                      error_email=error_email,
                                      show_modal=True)
             else:
                 flash(f'Error de integridad al crear usuario: {str(e)}', 'danger')
-                return render_template('usuarios/index.html', 
-                                     usuarios=usuarios, 
+                return render_template('usuarios/index.html',
+                                     usuarios=usuarios,
                                      roles=todos_los_roles,
                                      form_data=form_data,
                                      show_modal=True)
         except Exception as e:
             db.session.rollback()
             flash(f'Error al crear usuario: {str(e)}', 'danger')
-            return render_template('usuarios/index.html', 
-                                 usuarios=usuarios, 
+            return render_template('usuarios/index.html',
+                                 usuarios=usuarios,
                                  roles=todos_los_roles,
                                  form_data=form_data,
                                  show_modal=True)
@@ -160,16 +161,16 @@ def detalle(id):
 def editar(id):
     usuario = Usuario.query.get_or_404(id)
     todos_los_roles = Rol.query.all()
-    
+
     # NUEVA VALIDACIÓN: SUPERVISOR no puede editar usuarios ADMIN
     if not current_user_es_admin() and usuario_es_admin(usuario):
         flash('No tienes permisos para editar usuarios ADMIN', 'danger')
         return redirect(url_for('usuarios.index'))
-    
+
     # Variables para errores
     error_siglas = None
     error_email = None
-    
+
     if request.method == 'POST':
         try:
             # VALIDACIÓN PREVENTIVA: Verificar si las siglas ya existen (excepto el usuario actual)
@@ -196,19 +197,19 @@ def editar(id):
                                          puede_editar_admin=current_user.es_admin,
                                          error_siglas=error_siglas,
                                          form_data=form_data)
-            
+
             # VALIDACIÓN 1: No permitir quitar rol ADMIN al último ADMIN
             roles_ids = request.form.getlist('roles')
             roles_seleccionados = Rol.query.filter(Rol.id.in_(roles_ids)).all()
             roles_nombres_nuevos = [r.nombre for r in roles_seleccionados]
-            
+
             # Si el usuario actual es ADMIN y se está quitando el rol
             user_roles_actuales = [rol.nombre for rol in usuario.roles]
-            
+
             # NUEVA VALIDACIÓN: SUPERVISOR no puede asignar/quitar rol ADMIN
             if not current_user_es_admin():
                 rol_admin = Rol.query.filter_by(nombre='ADMIN').first()
-                
+
                 # Verificar si intenta asignar ADMIN
                 if rol_admin and str(rol_admin.id) in roles_ids and not usuario_es_admin(usuario):
                     flash('No tienes permisos para asignar el rol ADMIN', 'danger')
@@ -222,23 +223,23 @@ def editar(id):
                     return render_template('usuarios/detalle.html', usuario=usuario, roles=todos_los_roles,
                                          modo='editar', puede_editar_siglas=current_user.es_admin,
                                          puede_editar_admin=current_user.es_admin)
-            
+
             if 'ADMIN' in user_roles_actuales and 'ADMIN' not in roles_nombres_nuevos:
                 # Contar cuántos ADMIN hay en total (activos e inactivos)
                 admins_totales = Usuario.query.join(Usuario.roles).filter(
                     Rol.nombre == 'ADMIN'
                 ).count()
-                
+
                 if admins_totales <= 1:
                     flash('No puedes quitar el rol ADMIN del último administrador', 'danger')
                     return redirect(url_for('usuarios.editar', id=id))
-            
+
             # VALIDACIÓN 2: No permitir desactivarse a sí mismo
             activo_nuevo = 'activo' in request.form
             if usuario.id == current_user.id and not activo_nuevo:
                 flash('No puedes desactivar tu propia cuenta', 'warning')
                 return redirect(url_for('usuarios.editar', id=id))
-            
+
             # VALIDACIÓN 3: No permitir desactivar el último ADMIN activo
             if usuario.activo and not activo_nuevo:  # Si está intentando desactivar
                 if 'ADMIN' in user_roles_actuales:
@@ -247,26 +248,26 @@ def editar(id):
                         Rol.nombre == 'ADMIN',
                         Usuario.activo == True
                     ).count()
-                    
+
                     if admins_activos <= 1:
                         flash('No puedes desactivar el último administrador activo del sistema', 'danger')
                         return redirect(url_for('usuarios.editar', id=id))
-            
+
             # Actualizar datos personales
             usuario.siglas = nuevas_siglas
             usuario.nombre = request.form['nombre']
             usuario.apellido1 = request.form['apellido1']
             usuario.apellido2 = request.form.get('apellido2')
             usuario.email = request.form.get('email')  # El setter del modelo convertirá '' a None
-            
+
             # Actualizar estado activo (sin mensaje flash - es reversible)
             usuario.activo = activo_nuevo
-            
+
             # Actualizar roles
             usuario.roles = []
             if roles_ids:
                 usuario.roles.extend(roles_seleccionados)
-            
+
             # Cambiar contraseña solo si se proporciona
             nueva_password = request.form.get('nueva_password')
             if nueva_password:
@@ -291,11 +292,11 @@ def editar(id):
                                          puede_editar_admin=current_user.es_admin,
                                          form_data=form_data)
                 usuario.set_password(nueva_password)
-            
+
             db.session.commit()
             flash(f'Usuario {usuario.siglas} actualizado correctamente', 'success')
             return redirect(url_for('usuarios.detalle', id=id))
-            
+
         except IntegrityError as e:
             db.session.rollback()
             # Detectar si es error de email duplicado
@@ -324,7 +325,7 @@ def editar(id):
         except Exception as e:
             db.session.rollback()
             flash(f'Error al actualizar usuario: {str(e)}', 'danger')
-    
+
     # GET: Mostrar formulario de edición
     return render_template('usuarios/detalle.html', usuario=usuario, roles=todos_los_roles,
                            modo='editar',
@@ -338,17 +339,17 @@ def editar(id):
 def toggle_estado(id):
     """Toggle rápido del estado activo/inactivo"""
     usuario = Usuario.query.get_or_404(id)
-    
+
     # NUEVA VALIDACIÓN: SUPERVISOR no puede desactivar usuarios ADMIN
     if not current_user_es_admin() and usuario_es_admin(usuario):
         flash('No tienes permisos para modificar el estado de usuarios ADMIN', 'danger')
         return redirect(url_for('usuarios.index'))
-    
+
     # VALIDACIÓN 1: No permitir desactivarse a sí mismo
     if usuario.id == current_user.id:
         flash('No puedes desactivar tu propia cuenta', 'warning')
         return redirect(url_for('usuarios.index'))
-    
+
     # VALIDACIÓN 2: No permitir desactivar el último ADMIN
     if usuario.activo:  # Si está intentando desactivar
         user_roles = [rol.nombre for rol in usuario.roles]
@@ -358,18 +359,18 @@ def toggle_estado(id):
                 Rol.nombre == 'ADMIN',
                 Usuario.activo == True
             ).count()
-            
+
             if admins_activos <= 1:
                 flash('No puedes desactivar el último administrador del sistema', 'danger')
                 return redirect(url_for('usuarios.index'))
-    
+
     try:
         usuario.activo = not usuario.activo
         db.session.commit()
-        
+
         # Sin mensaje flash - acción reversible y no destructiva
     except Exception as e:
         db.session.rollback()
         flash(f'Error al cambiar estado: {str(e)}', 'danger')
-    
+
     return redirect(url_for('usuarios.index'))
