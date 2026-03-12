@@ -151,6 +151,9 @@
                 <div class="form-control d-flex align-items-center gap-2"
                      style="background:#fff; min-height:38px;">
                     <div class="form-check mb-0">
+                        {% if usuario.id == current_user.id %}
+                        <input type="hidden" name="activo" value="on">
+                        {% endif %}
                         <input class="form-check-input" type="checkbox"
                                id="activo" name="activo"
                                {% if form_data %}{{ 'checked' if form_data.activo else '' }}{% else %}{{ 'checked' if usuario.activo else '' }}{% endif %}
