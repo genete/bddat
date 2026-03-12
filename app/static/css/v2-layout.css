@@ -361,3 +361,43 @@
     display: none;
   }
 }
+
+/* ── Dropdown de usuario ── */
+
+/* Botón trigger: blanco sobre fondo verde del header */
+.header-nav-row .user-menu .nav-user-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-inverse);
+  font-size: 0.875rem;
+  padding: 0.25rem 0.5rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.header-nav-row .user-menu .nav-user-btn:hover {
+  opacity: 0.85;
+}
+
+/* Items del dropdown: resetear color (la regla .user-menu a los pone en blanco) */
+.header-nav-row .user-menu .dropdown-menu .dropdown-item {
+  color: var(--gris-principal, #212529);
+}
+
+.header-nav-row .user-menu .dropdown-menu .dropdown-item:hover,
+.header-nav-row .user-menu .dropdown-menu .dropdown-item:focus {
+  background-color: var(--primary-lighter);
+  color: var(--primary);
+  opacity: 1;
+}
+
+.header-nav-row .user-menu .dropdown-menu .dropdown-item.text-danger {
+  color: var(--danger, #dc3545) !important;
+}
+
+.header-nav-row .user-menu .dropdown-menu .dropdown-item.text-danger:hover {
+  background-color: #f8d7da;
+  color: var(--danger, #dc3545) !important;
+}
