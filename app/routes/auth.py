@@ -92,6 +92,7 @@ def cambiar_rol(rol_id):
 
     session['rol_activo_id'] = rol.id
     session['rol_activo_nombre'] = rol.nombre
+    flash(f'Rol cambiado a {rol.nombre}.', 'info')
     return redirect(request.referrer or url_for('dashboard.index'))
 
 
