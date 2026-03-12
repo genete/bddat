@@ -81,6 +81,20 @@ def seleccionar_rol():
     return render_template('auth/seleccionar_rol.html', roles=current_user.roles)
 
 
+@bp.route('/cambiar-rol/<int:rol_id>')
+@login_required
+def cambiar_rol(rol_id):
+    """Cambia el rol activo desde el dropdown del navbar (GET directo)."""
+    rol = current_user.rol_por_id(rol_id)
+    if not rol:
+        flash('El rol seleccionado no está asignado a tu cuenta.', 'danger')
+        return redirect(url_for('dashboard.index'))
+
+    session['rol_activo_id'] = rol.id
+    session['rol_activo_nombre'] = rol.nombre
+    return redirect(request.referrer or url_for('dashboard.index'))
+
+
 @bp.route('/logout')
 @login_required
 def logout():
