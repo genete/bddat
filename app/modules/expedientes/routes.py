@@ -480,6 +480,10 @@ def tramitacion_bc_tarea(exp_id, sol_id, fase_id, tram_id, tarea_id):
     if tarea.tramite_id != tram_id:
         abort(404)
 
+    codigo_tipo = tarea.tipo_tarea.codigo if tarea.tipo_tarea else ''
+    requiere_doc_usado     = codigo_tipo in _TIPOS_REQUIEREN_DOC_USADO
+    requiere_doc_producido = codigo_tipo in _TIPOS_REQUIEREN_DOC_PRODUCIDO
+
     return render_template(
         'expedientes/tramitacion_bc_tarea.html',
         expediente=expediente,
@@ -487,7 +491,14 @@ def tramitacion_bc_tarea(exp_id, sol_id, fase_id, tram_id, tarea_id):
         fase=fase,
         tramite=tramite,
         tarea=tarea,
+        requiere_doc_usado=requiere_doc_usado,
+        requiere_doc_producido=requiere_doc_producido,
     )
+
+
+# Conjuntos de tipos de tarea que requieren documentos (espejo de motor_reglas.py)
+_TIPOS_REQUIEREN_DOC_USADO     = {'ANALISIS', 'FIRMAR', 'NOTIFICAR', 'PUBLICAR'}
+_TIPOS_REQUIEREN_DOC_PRODUCIDO = {'INCORPORAR', 'ANALISIS', 'REDACTAR', 'FIRMAR', 'NOTIFICAR', 'PUBLICAR'}
 
 
 # ===========================================================================
@@ -556,6 +567,38 @@ def pool_documentos(id):
         docs_lista=docs_lista,
         tipos_doc=tipos_doc,
     )
+
+
+@bp.route('/<int:id>/documentos/json')
+@login_required
+def pool_documentos_json(id):
+    """API JSON — lista de documentos del expediente para SelectorBusqueda (issue #166).
+
+    Devuelve: { "ok": true, "docs": [{"v": "42", "t": "informe.pdf — Informe técnico — 15/01/2026"}, ...] }
+    """
+    expediente = Expediente.query.get_or_404(id)
+    resultado = verificar_acceso_expediente(expediente, 'ver')
+    if resultado:
+        return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
+
+    documentos = Documento.query.filter_by(
+        expediente_id=id
+    ).order_by(Documento.id.desc()).all()
+
+    docs = []
+    for doc in documentos:
+        filename = doc.url.replace('\\', '/').rsplit('/', 1)[-1] if doc.url else ''
+        filename_limpio = filename.split('?')[0].split('#')[0]
+        nombre = filename_limpio or f'Documento {doc.id}'
+        tipo_nombre = doc.tipo_doc.nombre if doc.tipo_doc else 'Sin tipo'
+        if doc.fecha_administrativa:
+            fecha_str = doc.fecha_administrativa.strftime('%d/%m/%Y')
+        else:
+            fecha_str = 'Sin fecha'
+        texto = f'{nombre} — {tipo_nombre} — {fecha_str}'
+        docs.append({'v': str(doc.id), 't': texto})
+
+    return jsonify({'ok': True, 'docs': docs})
 
 
 def _path_seguro(ruta_relativa, base):
