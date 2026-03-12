@@ -65,6 +65,15 @@ def index():
                                      error_siglas=error_siglas,
                                      show_modal=True)
 
+            # Validación: al menos un rol obligatorio
+            if not roles_ids:
+                flash('Debes asignar al menos un rol al usuario', 'danger')
+                return render_template('usuarios/index.html',
+                                     usuarios=usuarios,
+                                     roles=todos_los_roles,
+                                     form_data=form_data,
+                                     show_modal=True)
+
             # Validación de contraseñas
             if password != confirm_password:
                 flash('Las contraseñas no coinciden', 'danger')
