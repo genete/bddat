@@ -57,20 +57,48 @@
 
     <div class="user-menu">
         {% if current_user.is_authenticated %}
-            <span>
-                {{ current_user.nombre }} {{ current_user.apellido1 or '' }}
+        <div class="dropdown">
+            <button class="nav-user-btn dropdown-toggle" type="button"
+                    data-bs-toggle="dropdown" aria-expanded="false">
+                <i class="bi bi-person-circle"></i>
+                {{ current_user.nombre }}
                 {% if session.get('rol_activo_nombre') %}
-                    <small class="opacity-75">({{ session.rol_activo_nombre }})</small>
+                <span class="badge bg-primary ms-1">{{ session.rol_activo_nombre }}</span>
                 {% endif %}
-            </span>
-            {% if session.get('rol_activo_id') and current_user.roles | length > 1 %}
-            <a href="{{ url_for('auth.seleccionar_rol') }}" title="Cambiar rol activo">
-                <i class="fas fa-exchange-alt"></i> Cambiar rol
-            </a>
-            {% endif %}
-            <a href="{{ url_for('auth.logout') }}">
-                <i class="fas fa-sign-out-alt"></i> Salir
-            </a>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end">
+                {# Lista de roles — solo si hay más de uno #}
+                {% if current_user.roles | length > 1 %}
+                    {% for rol in current_user.roles %}
+                    <li>
+                        {% if rol.id == session.get('rol_activo_id') %}
+                        <span class="dropdown-item disabled d-flex align-items-center gap-2">
+                            <i class="bi bi-check text-primary"></i> {{ rol.nombre }}
+                        </span>
+                        {% else %}
+                        <a class="dropdown-item ps-4" href="{{ url_for('auth.cambiar_rol', rol_id=rol.id) }}">
+                            {{ rol.nombre }}
+                        </a>
+                        {% endif %}
+                    </li>
+                    {% endfor %}
+                    <li><hr class="dropdown-divider"></li>
+                {% endif %}
+                <li>
+                    <a class="dropdown-item d-flex align-items-center gap-2"
+                       href="{{ url_for('perfil.index') }}">
+                        <i class="bi bi-pencil"></i> Editar perfil
+                    </a>
+                </li>
+                <li><hr class="dropdown-divider"></li>
+                <li>
+                    <a class="dropdown-item d-flex align-items-center gap-2 text-danger"
+                       href="{{ url_for('auth.logout') }}">
+                        <i class="bi bi-box-arrow-right"></i> Cerrar sesión
+                    </a>
+                </li>
+            </ul>
+        </div>
         {% else %}
             <a href="{{ url_for('auth.login') }}">
                 <i class="fas fa-sign-in-alt"></i> Iniciar Sesión
