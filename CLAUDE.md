@@ -79,7 +79,9 @@ Evitarlos cambiando el patrón:
 | command contains newlines | heredoc en Bash | Escribir con `Write` → pasar como fichero |
 | quoted newline + `#`-line | `## Header` dentro de heredoc | Ídem (fichero temporal) |
 | quoted chars in flag names | comillas dentro de `--body "..."` | Ídem (fichero temporal) |
-| backticks `` ` `` | sustitución de comandos | Separar en llamadas Bash secuenciales |
+| backtick or `$()` substitution | `` cmd=`...` `` o `$(...)` | Separar en llamadas Bash secuenciales |
+| backslash before shell operator | `\|`, `\;`, `\&`, `\<`, `\>` en comandos | Eliminar la barra — nunca escapar operadores de shell; reestructurar el comando |
+| Command contains quoted characters in flag names | comillas dentro del nombre de un flag, ej: `--flag-"name"` o interpolación con comillas en el nombre | Nunca interpolar comillas en nombres de flags; usar variable intermedia o fichero temporal para el valor |
 
 ### Ficheros temporales — ruta obligatoria
 
