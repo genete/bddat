@@ -69,6 +69,19 @@
   border-top-right-radius: calc(var(--border-radius-lg, 0.5rem) - 1px);
 }
 
+/* ===== TABLAS EMBEBIDAS (listados secundarios dentro de cards V4) ===== */
+/* Patrón: <table class="table table-sm table-hover table-embedded">        */
+/*          <thead class="table-light"> dentro de card-body p-0            */
+.table-embedded {
+  margin-bottom: 0;
+  vertical-align: middle; /* evita añadir align-middle ad-hoc en cada tabla */
+}
+
+.table-embedded thead th {
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
 /* ===== TABLA RESPONSIVE (FULL-WIDTH) ===== */
 .expedientes-table {
   width: 100%;

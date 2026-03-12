@@ -563,7 +563,7 @@ Ejemplos: documentos en detalle de expediente, direcciones y autorizaciones en d
 ### Convenciones
 
 - Card con `card-header-accent` (verde secundario) + `card-body` sin `card-body-tinted`
-- Tabla: `table table-sm table-hover`, thead `table-light`
+- Tabla: `table table-sm table-hover table-embedded`, thead `table-light`
 - Sin scroll infinito, sin C.1/C.2, sin botón scroll-to-top
 - Paginación: no necesaria (listados cortos, <50 registros típicamente)
 - Acciones por fila: botones `btn-sm btn-outline-*`
@@ -578,7 +578,7 @@ Ejemplos: documentos en detalle de expediente, direcciones y autorizaciones en d
     </h5>
   </div>
   <div class="card-body p-0">
-    <table class="table table-sm table-hover mb-0">
+    <table class="table table-sm table-hover table-embedded">
       <thead class="table-light">
         <tr><th>Tipo</th><th>Dirección</th><th>Acciones</th></tr>
       </thead>
@@ -595,7 +595,7 @@ Ejemplos: documentos en detalle de expediente, direcciones y autorizaciones en d
 | Contenedor | C.2 (`lista-scroll-container`) | Card body V4 |
 | Thead | Verde corporativo, sticky, uppercase | `table-light`, no sticky |
 | Scroll | Infinito (JS) | Página completa |
-| Clase tabla | `expedientes-table` | `table table-sm table-hover` |
+| Clase tabla | `expedientes-table` | `table table-sm table-hover table-embedded` |
 
 ---
 
