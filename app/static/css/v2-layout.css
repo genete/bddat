@@ -384,6 +384,7 @@
 /* Items del dropdown: resetear color (la regla .user-menu a los pone en blanco) */
 .header-nav-row .user-menu .dropdown-menu .dropdown-item {
   color: var(--gris-principal, #212529);
+  font-size: 0.875rem;
 }
 
 .header-nav-row .user-menu .dropdown-menu .dropdown-item:hover,
