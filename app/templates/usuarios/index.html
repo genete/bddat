@@ -1,6 +1,6 @@
 {% extends 'layout/base_fullwidth.html' %}
 
-{% block title %}Usuarios - BDDAT{% endblock %}
+{% block title %}Usuarios — BDDAT{% endblock %}
 
 {% block breadcrumb %}
 <a href="{{ url_for('dashboard.index') }}">Inicio</a>
@@ -9,87 +9,95 @@
 {% endblock %}
 
 {% block content %}
-<div class="p-4">
-<div class="row mb-3">
-    <div class="col-md-8">
-        <h2>Gestión de Usuarios</h2>
-    </div>
-    <div class="col-md-4 text-end">
-        <!-- Botón que activa el Modal -->
-        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#crearUsuarioModal">
-            <i class="fas fa-plus me-1"></i> Nuevo Usuario
+
+<!-- C.1: Cabecera fija (sin scroll) -->
+<div class="lista-cabecera">
+    <div class="page-header content-constrained">
+        <h1>
+            <i class="fas fa-users"></i> Usuarios
+        </h1>
+        <button type="button" class="btn btn-primary"
+                data-bs-toggle="modal" data-bs-target="#crearUsuarioModal">
+            <i class="fas fa-plus"></i> Nuevo Usuario
         </button>
     </div>
 </div>
 
-<!-- Tabla de Usuarios -->
-<div class="card shadow-sm">
-    <div class="card-body p-0">
-        <table class="table table-hover table-striped mb-0">
-            <thead class="table-light">
-                <tr>
-                    <th>ID</th>
-                    <th>Siglas</th>
-                    <th>Nombre Completo</th>
-                    <th>Roles</th>
-                    <th>Estado</th>
-                    <th>Acciones</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for usuario in usuarios %}
-                <tr>
-                    <td>{{ usuario.id }}</td>
-                    <td>
-                        <strong>{{ usuario.siglas }}</strong>
-                        {% if usuario.id == current_user.id %}
-                            <span class="badge bg-primary ms-1">Tú</span>
-                        {% endif %}
-                    </td>
-                    <td>{{ usuario.nombre }} {{ usuario.apellido1 }} {{ usuario.apellido2 or '' }}</td>
-                    <td>
-                        {% for rol in usuario.roles %}
-                            <span class="badge me-1 bg-light text-dark">{{ rol.nombre }}</span>
-                        {% else %}
-                            <span class="text-secondary small">Sin roles</span>
-                        {% endfor %}
-                    </td>
-                    <td>
-                        <!-- Switch toggle sin confirmación (acción reversible) -->
-                        <form action="{{ url_for('usuarios.toggle_estado', id=usuario.id) }}" 
-                              method="POST" style="display: inline;">
-                            <div class="form-check form-switch">
-                                <input class="form-check-input" type="checkbox" role="switch" 
-                                       id="switch_{{ usuario.id }}"
-                                       {% if usuario.activo %}checked{% endif %}
-                                       {% if usuario.id == current_user.id %}disabled{% endif %}
-                                       onchange="this.form.submit();">
-                                <label class="form-check-label" for="switch_{{ usuario.id }}">
-                                    {% if usuario.activo %}
-                                        <span class="badge bg-primary">Activo</span>
-                                    {% else %}
-                                        <span class="badge bg-secondary">Inactivo</span>
-                                    {% endif %}
-                                </label>
-                            </div>
-                        </form>
-                    </td>
-                    <td>
-                        <a href="{{ url_for('usuarios.detalle', id=usuario.id) }}"
-                           class="btn btn-sm btn-outline-primary" title="Ver / Editar">
-                            <i class="fas fa-eye"></i>
-                        </a>
-                    </td>
-                </tr>
-                {% else %}
-                <tr>
-                    <td colspan="6" class="text-center py-3 text-secondary">
-                        No hay usuarios registrados. ¡Crea el primero!
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+<!-- C.2: Contenedor scrollable independiente -->
+<div class="lista-scroll-container">
+    <div class="content-constrained py-3">
+        <div class="card tabla-bloque">
+            <table class="expedientes-table">
+                <thead>
+                    <tr>
+                        <th>Siglas</th>
+                        <th>Nombre Completo</th>
+                        <th>Roles</th>
+                        <th>Estado</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for usuario in usuarios %}
+                    <tr>
+                        <td>
+                            <strong>{{ usuario.siglas }}</strong>
+                            {% if usuario.id == current_user.id %}
+                                <span class="badge bg-primary ms-1">Tú</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ usuario.nombre }} {{ usuario.apellido1 }} {{ usuario.apellido2 or '' }}</td>
+                        <td>
+                            {% for rol in usuario.roles %}
+                                {% if rol.nombre == 'ADMIN' %}
+                                    <span class="badge bg-danger me-1">{{ rol.nombre }}</span>
+                                {% elif rol.nombre == 'SUPERVISOR' %}
+                                    <span class="badge bg-warning text-dark me-1">{{ rol.nombre }}</span>
+                                {% elif rol.nombre == 'TRAMITADOR' %}
+                                    <span class="badge bg-primary me-1">{{ rol.nombre }}</span>
+                                {% else %}
+                                    <span class="badge bg-secondary me-1">{{ rol.nombre }}</span>
+                                {% endif %}
+                            {% else %}
+                                <span class="text-secondary small">Sin roles</span>
+                            {% endfor %}
+                        </td>
+                        <td>
+                            <form action="{{ url_for('usuarios.toggle_estado', id=usuario.id) }}"
+                                  method="POST" style="display: inline;">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" role="switch"
+                                           id="switch_{{ usuario.id }}"
+                                           {% if usuario.activo %}checked{% endif %}
+                                           {% if usuario.id == current_user.id %}disabled{% endif %}
+                                           onchange="this.form.submit();">
+                                    <label class="form-check-label" for="switch_{{ usuario.id }}">
+                                        {% if usuario.activo %}
+                                            <span class="badge bg-success">Activo</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">Inactivo</span>
+                                        {% endif %}
+                                    </label>
+                                </div>
+                            </form>
+                        </td>
+                        <td>
+                            <a href="{{ url_for('usuarios.detalle', id=usuario.id) }}"
+                               class="btn btn-sm btn-outline-primary" title="Ver / Editar">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" class="text-center py-3 text-secondary">
+                            No hay usuarios registrados. ¡Crea el primero!
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 
@@ -108,48 +116,35 @@
                     <div class="row mb-3">
                         <div class="col-md-4">
                             <label for="siglas" class="form-label">Siglas *</label>
-                            <input type="text" 
-                                   class="form-control {% if error_siglas %}is-invalid{% endif %}" 
-                                   id="siglas" 
-                                   name="siglas" 
-                                   required 
-                                   maxlength="50" 
+                            <input type="text"
+                                   class="form-control {% if error_siglas %}is-invalid{% endif %}"
+                                   id="siglas" name="siglas" required maxlength="50"
                                    placeholder="Ej: CGL"
                                    value="{{ form_data.siglas if form_data else '' }}">
                             {% if error_siglas %}
-                            <div class="invalid-feedback">
-                                {{ error_siglas }}
-                            </div>
+                            <div class="invalid-feedback">{{ error_siglas }}</div>
                             {% endif %}
                         </div>
                         <div class="col-md-8">
                             <label for="nombre" class="form-label">Nombre *</label>
-                            <input type="text" 
-                                   class="form-control" 
-                                   id="nombre" 
-                                   name="nombre" 
-                                   required 
-                                   maxlength="100"
+                            <input type="text"
+                                   class="form-control" id="nombre" name="nombre"
+                                   required maxlength="100"
                                    value="{{ form_data.nombre if form_data else '' }}">
                         </div>
                     </div>
                     <div class="row mb-3">
                         <div class="col-md-6">
                             <label for="apellido1" class="form-label">Primer Apellido *</label>
-                            <input type="text" 
-                                   class="form-control" 
-                                   id="apellido1" 
-                                   name="apellido1" 
-                                   required 
-                                   maxlength="50"
+                            <input type="text"
+                                   class="form-control" id="apellido1" name="apellido1"
+                                   required maxlength="50"
                                    value="{{ form_data.apellido1 if form_data else '' }}">
                         </div>
                         <div class="col-md-6">
                             <label for="apellido2" class="form-label">Segundo Apellido</label>
-                            <input type="text" 
-                                   class="form-control" 
-                                   id="apellido2" 
-                                   name="apellido2" 
+                            <input type="text"
+                                   class="form-control" id="apellido2" name="apellido2"
                                    maxlength="50"
                                    value="{{ form_data.apellido2 if form_data else '' }}">
                         </div>
@@ -157,16 +152,13 @@
                     <div class="row mb-3">
                         <div class="col-md-12">
                             <label for="email" class="form-label">Email</label>
-                            <input type="email" 
-                                   class="form-control {% if error_email %}is-invalid{% endif %}" 
-                                   id="email" 
-                                   name="email" 
+                            <input type="email"
+                                   class="form-control {% if error_email %}is-invalid{% endif %}"
+                                   id="email" name="email"
                                    placeholder="usuario@ejemplo.com"
                                    value="{{ form_data.email if form_data else '' }}">
                             {% if error_email %}
-                            <div class="invalid-feedback">
-                                {{ error_email }}
-                            </div>
+                            <div class="invalid-feedback">{{ error_email }}</div>
                             {% endif %}
                         </div>
                     </div>
@@ -177,17 +169,18 @@
                         <div class="col-md-6">
                             <label for="password" class="form-label">Contraseña *</label>
                             <div class="input-group">
-                                <input type="password" class="form-control" id="password" name="password" required>
-                                <button class="btn btn-outline-secondary" type="button" onclick="togglePassword('password')">
+                                <input type="password" class="form-control"
+                                       id="password" name="password" required>
+                                <button class="btn btn-outline-secondary" type="button"
+                                        onclick="togglePassword('password')">
                                     <i class="fas fa-eye"></i>
                                 </button>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <label for="confirm_password" class="form-label">Repetir Contraseña *</label>
-                            <div class="input-group">
-                                <input type="password" class="form-control" id="confirm_password" name="confirm_password" required>
-                            </div>
+                            <input type="password" class="form-control"
+                                   id="confirm_password" name="confirm_password" required>
                         </div>
                     </div>
 
@@ -199,14 +192,13 @@
                                 {% for rol in roles %}
                                 <div class="col-md-6">
                                     <div class="form-check">
-                                        <input class="form-check-input" 
-                                               type="checkbox" 
-                                               name="roles" 
-                                               value="{{ rol.id }}" 
-                                               id="rol_{{ rol.id }}"
+                                        <input class="form-check-input"
+                                               type="checkbox" name="roles" value="{{ rol.id }}"
+                                               id="modal_rol_{{ rol.id }}"
                                                {% if form_data and (rol.id|string) in form_data.roles_ids %}checked{% endif %}>
-                                        <label class="form-check-label" for="rol_{{ rol.id }}">
-                                            <strong>{{ rol.nombre }}</strong> <small class="d-block">{{ rol.descripcion }}</small>
+                                        <label class="form-check-label" for="modal_rol_{{ rol.id }}">
+                                            <strong>{{ rol.nombre }}</strong>
+                                            <small class="d-block">{{ rol.descripcion }}</small>
                                         </label>
                                     </div>
                                 </div>
@@ -214,7 +206,6 @@
                             </div>
                         </div>
                     </div>
-
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
@@ -231,7 +222,6 @@ function togglePassword(fieldId) {
     field.type = field.type === 'password' ? 'text' : 'password';
 }
 
-// Abrir modal automáticamente si hay errores
 {% if show_modal %}
 document.addEventListener('DOMContentLoaded', function() {
     var modal = new bootstrap.Modal(document.getElementById('crearUsuarioModal'));
@@ -239,5 +229,5 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 {% endif %}
 </script>
-</div>
+
 {% endblock %}
