@@ -133,6 +133,22 @@
                     >
                 </div>
                 
+                {% if roles %}
+                <!-- Selección de rol (solo usuarios con múltiples roles) -->
+                <div class="form-group">
+                    <label for="rol_id" class="form-label">
+                        <i class="fas fa-user-tag"></i>
+                        Rol de trabajo
+                    </label>
+                    <select class="form-select" id="rol_id" name="rol_id" required>
+                        {% for rol in roles %}
+                        <option value="{{ rol.id }}">{{ rol.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                    <div class="form-text">Selecciona el rol con el que deseas trabajar en esta sesión.</div>
+                </div>
+                {% endif %}
+
                 <!-- Botón Entrar -->
                 <button type="submit" class="btn-login">
                     <i class="fas fa-sign-in-alt"></i>
