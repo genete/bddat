@@ -73,7 +73,8 @@ def login():
                 next_page = request.args.get('next')
                 if next_page:
                     session['next_after_rol'] = next_page
-                return render_template('auth/login_v0.html', roles=usuario.roles)
+                return render_template('auth/login_v0.html', roles=usuario.roles,
+                                       siglas=usuario.siglas)
         else:
             flash('Siglas o contraseña incorrectos.', 'danger')
 
