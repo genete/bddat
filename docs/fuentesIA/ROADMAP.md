@@ -4,7 +4,7 @@
 > La verbosidad (qué falta, cómo hacerlo) vive en los issues de GitHub, no aquí.
 > La visión estratégica y clasificación de bloques está en `ESTRATEGIA_ROADMAP.md`.
 >
-> **Última actualización:** 2026-03-01
+> **Última actualización:** 2026-03-12
 
 ---
 
@@ -27,32 +27,33 @@
 ## M1 — Bloqueantes
 
 **Descripción:** Tramitación ESFTT completa (CRUD de Solicitud/Fase/Trámite/Tarea) + sistema documental.
-**Estado:** EN CURSO
+**Estado:** ✅ COMPLETADO (2026-03-12)
 
-**Pendiente:**
-- Edición inline de Solicitud/Fase/Trámite/Tarea en Vista 3 BC (#160, #161, #162, #163)
-- Acciones contextuales INICIAR/FINALIZAR/BORRAR con motor de reglas (#164)
-- Creación de hijos mediante modal (#165)
-- Sistema documental en nivel Tarea (#166)
-- Mejoras visuales y adaptación vistas (#121)
-
-Issues cerrados: #157 (esqueleto BC — PR #159, 2026-03-01), #150 (tabs V3), #146 (acordeón V3)
-Issues activos: #160, #161, #162, #163, #164, #165, #166, #188, #121
+Issues activos: ninguno
 
 ---
 
 ## M2 — Necesarios
 
 **Descripción:** Generación de escritos, gestión de usuarios, listado inteligente de trabajo.
-**Estado:** PENDIENTE
+**Estado:** EN CURSO
 
 **Pendiente:**
 - Generación de escritos administrativos conectada a tramitación (#167)
 - Gestión de usuarios — adaptar a vistas V4 (#168)
 - Listado inteligente multi-pista con deducción automática de estados (#169) — servicio `app/services/seguimiento.py`
 - Semáforos y alertas de vencimiento (#74)
+- Arquitectura generación de escritos: tipos_escritos + context builders (#189)
+- Inspección automática de documentos — preclasificación asistida (#181)
+- Códigos de clasificación embebidos en PDFs internos firmados (#182)
+- Revisar color thead V2 y cabecera tramitación BC (#203)
+- Columnas dinámicas en metadata.json — Fase 3 frontend (#204)
+- Clase CSS estandarizada para listados embebidos y theads internos (#205)
+- Refactor FiltrosExpedientes → FiltrosListado genérica (#206)
+- Auditoría de datos asociados en vistas de detalle (#213)
+- Refactorizar control de usuario en navbar (#216)
 
-Issues activos: #167, #168, #169, #189, #74
+Issues activos: #74, #167, #168, #169, #181, #182, #189, #203, #204, #205, #206, #213, #216
 
 ---
 
@@ -90,7 +91,7 @@ Issues activos: #170, #171, #172, #173, #174, #190
 - Política de backup y recuperación de BD (#178)
 - Migración Access → PostgreSQL schema legacy (#105)
 
-Issues activos: #151, #45, #120, #175, #176, #177, #178, #105
+Issues activos: #45, #105, #120, #151, #175, #176, #177, #178
 
 ---
 
@@ -99,7 +100,7 @@ Issues activos: #151, #45, #120, #175, #176, #177, #178, #105
 **Descripción:** GIS, DIR3, auditoría/bitácora, mensajería interna, búsqueda global, exportación, solicitud de acceso.
 **Estado:** PENDIENTE
 
-Issues activos: #1, #4, #27, #28, #75, #76, #106
+Issues activos: #1, #4, #27, #28, #75, #76, #106, #192, #195
 
 ---
 
