@@ -713,6 +713,7 @@ git stash pop  # Recuperar trabajo
 2. Usuario da OK
 3. IA hace commit directo en `develop`
 4. **No rama, no PR**
+5. **Si el commit resuelve un issue: cerrarlo manualmente** con `gh issue close <N> --comment "Resuelto en commit <SHA> (develop)."` — sin PR no hay `Closes #N` que lo cierre automáticamente.
 
 ---
 
