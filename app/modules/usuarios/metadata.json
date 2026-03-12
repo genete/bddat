@@ -1,0 +1,16 @@
+{
+  "module": "usuarios",
+  "name": "Usuarios",
+  "icon": "fa-users",
+  "order": 30,
+  "permissions": {
+    "list":   ["ADMIN", "SUPERVISOR"],
+    "create": ["ADMIN", "SUPERVISOR"],
+    "edit":   ["ADMIN", "SUPERVISOR"],
+    "delete": ["ADMIN"]
+  },
+  "navigation": {
+    "label": "Usuarios",
+    "route": "usuarios.index"
+  }
+}
