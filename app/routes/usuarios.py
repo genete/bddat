@@ -141,6 +141,19 @@ def index():
     return render_template('usuarios/index.html', usuarios=usuarios, roles=todos_los_roles)
 
 
+@bp.route('/<int:id>')
+@login_required
+@role_required('ADMIN', 'SUPERVISOR')
+def detalle(id):
+    usuario = Usuario.query.get_or_404(id)
+    roles = Rol.query.all()
+    return render_template('usuarios/detalle.html',
+                           usuario=usuario, roles=roles,
+                           modo='ver',
+                           puede_editar_siglas=current_user.es_admin,
+                           puede_editar_admin=current_user.es_admin)
+
+
 @bp.route('/<int:id>/editar', methods=['GET', 'POST'])
 @login_required
 @role_required('ADMIN', 'SUPERVISOR')
@@ -175,9 +188,12 @@ def editar(id):
                         'activo': 'activo' in request.form,
                         'roles_ids': request.form.getlist('roles')
                     }
-                    return render_template('usuarios/editar.html', 
-                                         usuario=usuario, 
+                    return render_template('usuarios/detalle.html',
+                                         usuario=usuario,
                                          roles=todos_los_roles,
+                                         modo='editar',
+                                         puede_editar_siglas=current_user.es_admin,
+                                         puede_editar_admin=current_user.es_admin,
                                          error_siglas=error_siglas,
                                          form_data=form_data)
             
@@ -196,12 +212,16 @@ def editar(id):
                 # Verificar si intenta asignar ADMIN
                 if rol_admin and str(rol_admin.id) in roles_ids and not usuario_es_admin(usuario):
                     flash('No tienes permisos para asignar el rol ADMIN', 'danger')
-                    return render_template('usuarios/editar.html', usuario=usuario, roles=todos_los_roles)
-                
+                    return render_template('usuarios/detalle.html', usuario=usuario, roles=todos_los_roles,
+                                         modo='editar', puede_editar_siglas=current_user.es_admin,
+                                         puede_editar_admin=current_user.es_admin)
+
                 # Verificar si intenta quitar ADMIN
                 if usuario_es_admin(usuario) and (not rol_admin or str(rol_admin.id) not in roles_ids):
                     flash('No tienes permisos para quitar el rol ADMIN', 'danger')
-                    return render_template('usuarios/editar.html', usuario=usuario, roles=todos_los_roles)
+                    return render_template('usuarios/detalle.html', usuario=usuario, roles=todos_los_roles,
+                                         modo='editar', puede_editar_siglas=current_user.es_admin,
+                                         puede_editar_admin=current_user.es_admin)
             
             if 'ADMIN' in user_roles_actuales and 'ADMIN' not in roles_nombres_nuevos:
                 # Contar cuántos ADMIN hay en total (activos e inactivos)
@@ -263,15 +283,18 @@ def editar(id):
                         'roles_ids': roles_ids
                     }
                     flash('Las contraseñas no coinciden', 'danger')
-                    return render_template('usuarios/editar.html',
+                    return render_template('usuarios/detalle.html',
                                          usuario=usuario,
                                          roles=todos_los_roles,
+                                         modo='editar',
+                                         puede_editar_siglas=current_user.es_admin,
+                                         puede_editar_admin=current_user.es_admin,
                                          form_data=form_data)
                 usuario.set_password(nueva_password)
             
             db.session.commit()
             flash(f'Usuario {usuario.siglas} actualizado correctamente', 'success')
-            return redirect(url_for('usuarios.index'))
+            return redirect(url_for('usuarios.detalle', id=id))
             
         except IntegrityError as e:
             db.session.rollback()
@@ -288,9 +311,12 @@ def editar(id):
                     'activo': 'activo' in request.form,
                     'roles_ids': request.form.getlist('roles')
                 }
-                return render_template('usuarios/editar.html', 
-                                     usuario=usuario, 
+                return render_template('usuarios/detalle.html',
+                                     usuario=usuario,
                                      roles=todos_los_roles,
+                                     modo='editar',
+                                     puede_editar_siglas=current_user.es_admin,
+                                     puede_editar_admin=current_user.es_admin,
                                      error_email=error_email,
                                      form_data=form_data)
             else:
@@ -299,8 +325,11 @@ def editar(id):
             db.session.rollback()
             flash(f'Error al actualizar usuario: {str(e)}', 'danger')
     
-    # GET: Mostrar formulario
-    return render_template('usuarios/editar.html', usuario=usuario, roles=todos_los_roles)
+    # GET: Mostrar formulario de edición
+    return render_template('usuarios/detalle.html', usuario=usuario, roles=todos_los_roles,
+                           modo='editar',
+                           puede_editar_siglas=current_user.es_admin,
+                           puede_editar_admin=current_user.es_admin)
 
 
 @bp.route('/<int:id>/toggle_estado', methods=['POST'])
