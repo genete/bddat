@@ -12,12 +12,42 @@ def login():
     Tras validar credenciales:
       - 0 roles  → denegar acceso
       - 1 rol    → guardar en sesión y redirigir al dashboard
-      - 2+ roles → redirigir al selector de rol activo
+      - 2+ roles → re-renderizar el formulario con <select> de roles (segunda pasada)
+    Segunda pasada (rol_id presente en el POST):
+      - Recuperar usuario de session['pending_login_id']
+      - Validar que el rol pertenece al usuario
+      - Guardar en sesión y redirigir al dashboard
     """
     if request.method == 'POST':
+        rol_id = request.form.get('rol_id')
+
+        # Segunda pasada: el usuario ya validó credenciales y ahora elige rol
+        if rol_id and 'pending_login_id' in session:
+            from app.models.usuarios import Rol
+            usuario = Usuario.query.get(session.pop('pending_login_id'))
+            if not usuario:
+                flash('La sesión ha expirado. Vuelve a introducir tus credenciales.', 'warning')
+                return redirect(url_for('auth.login'))
+
+            try:
+                rol = usuario.rol_por_id(int(rol_id))
+            except (ValueError, AttributeError):
+                rol = None
+
+            if not rol:
+                flash('El rol seleccionado no está asignado a tu cuenta.', 'danger')
+                return render_template('auth/login_v0.html', roles=usuario.roles)
+
+            login_user(usuario)
+            session['rol_activo_id'] = rol.id
+            session['rol_activo_nombre'] = rol.nombre
+            flash(f'Bienvenido, {usuario.nombre}! Trabajando como {rol.nombre}.', 'success')
+            next_page = session.pop('next_after_rol', None) or request.args.get('next')
+            return redirect(next_page if next_page else url_for('dashboard.index'))
+
+        # Primera pasada: validar credenciales
         siglas = request.form.get('siglas')
         password = request.form.get('password')
-
         usuario = Usuario.query.filter_by(siglas=siglas).first()
 
         if usuario and usuario.check_password(password):
@@ -29,9 +59,8 @@ def login():
                 flash('Tu cuenta no tiene ningún rol asignado. Contacta con el administrador.', 'danger')
                 return redirect(url_for('auth.login'))
 
-            login_user(usuario)
-
             if len(usuario.roles) == 1:
+                login_user(usuario)
                 rol = usuario.roles[0]
                 session['rol_activo_id'] = rol.id
                 session['rol_activo_nombre'] = rol.nombre
@@ -39,11 +68,13 @@ def login():
                 next_page = request.args.get('next')
                 return redirect(next_page if next_page else url_for('dashboard.index'))
             else:
-                # Guardar next para redirigir tras elegir rol
+                # Guardar usuario pendiente y next en sesión para la segunda pasada
+                session['pending_login_id'] = usuario.id
                 next_page = request.args.get('next')
                 if next_page:
                     session['next_after_rol'] = next_page
-                return redirect(url_for('auth.seleccionar_rol'))
+                return render_template('auth/login_v0.html', roles=usuario.roles,
+                                       siglas=usuario.siglas)
         else:
             flash('Siglas o contraseña incorrectos.', 'danger')
 
