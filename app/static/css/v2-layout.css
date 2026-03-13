@@ -131,12 +131,13 @@
   margin: 0;
   padding: 0;
   list-style: none;
-  font-size: 0.8125rem;
+  font-size: 0.9rem;
   color: var(--gris-principal);
 }
 
 .header-breadcrumb-row .breadcrumb a {
   color: var(--primary);
+  font-weight: 500;
   text-decoration: none;
   transition: color 0.2s ease;
 }
@@ -146,8 +147,17 @@
   text-decoration: underline;
 }
 
-.header-breadcrumb-row .breadcrumb span {
-  color: var(--gris-apoyo);
+/* Separadores › */
+.header-breadcrumb-row .breadcrumb span:not(:last-child) {
+  color: var(--gris-principal);
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+/* Nodo activo (último segmento sin enlace) */
+.header-breadcrumb-row .breadcrumb span:last-child {
+  color: var(--gris-principal);
+  font-weight: 600;
 }
 
 /* ── Offcanvas mobile ── */

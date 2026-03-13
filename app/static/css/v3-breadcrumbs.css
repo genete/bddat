@@ -37,29 +37,6 @@
     padding-right: 0.5rem;
 }
 
-/* ── Breadcrumb — legibilidad y color corporativo ───────────────────────── */
-
-.header-breadcrumb-row .breadcrumb {
-    font-size: 0.9rem;
-}
-
-.header-breadcrumb-row .breadcrumb a {
-    color: var(--bs-primary);
-    font-weight: 500;
-}
-
-/* Segmento activo (último, sin enlace) visible en color oscuro */
-.header-breadcrumb-row .breadcrumb span:last-child {
-    color: var(--bs-body-color);
-    font-weight: 600;
-}
-
-/* Separadores › más visibles */
-.header-breadcrumb-row .breadcrumb span:not(:last-child) {
-    color: var(--bs-body-color);
-    font-size: 1.1rem;
-    font-weight: 600;
-}
 
 /* ── Layout C.1/C.2 — scroll independiente (#199) ──────────────────────── */
 /* Antes estaba inline en tramitacion_bc.html y pool_documentos.html.
