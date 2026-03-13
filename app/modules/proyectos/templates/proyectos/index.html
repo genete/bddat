@@ -43,25 +43,8 @@
         ]
     });
 
-    const filtroTipoIA = document.getElementById('filtro-tipo-ia');
-
-    document.querySelector('.btn-filtrar').addEventListener('click', () => scrollInfinito.reload());
-
-    document.querySelector('.btn-limpiar').addEventListener('click', () => {
-        document.querySelector('input[type="search"]').value = '';
-        filtroTipoIA.value = '';
-        scrollInfinito.reload();
-    });
-
-    // Búsqueda en tiempo real con debounce
-    let debounceTimer;
-    document.querySelector('input[type="search"]').addEventListener('input', () => {
-        clearTimeout(debounceTimer);
-        debounceTimer = setTimeout(() => scrollInfinito.reload(), 400);
-    });
-
-    // ScrollInfinito lee el primer select de .filters como parámetro 'estado'.
+    // ScrollInfinito lee el primer select de .filters-row como parámetro 'estado'.
     // La API de proyectos acepta 'estado' como alias de 'tipo_ia'.
-    filtroTipoIA.addEventListener('change', () => scrollInfinito.reload());
+    const filtros = new FiltrosListado(scrollInfinito);
 </script>
 {% endblock %}
