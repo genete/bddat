@@ -146,6 +146,33 @@ def listar_expedientes():
         if estado_filter.lower() not in estados_validos:
             return jsonify({'error': f'Estado inválido. Válidos: {", ".join(estados_validos)}'}), 400
 
+        # Subquery: IDs de expedientes con al menos una solicitud EN_TRAMITE
+        ids_en_tramite = db.session.query(Solicitud.expediente_id).filter(
+            Solicitud.estado == 'EN_TRAMITE'
+        ).subquery()
+
+        # Subquery: IDs de expedientes con alguna solicitud (cualquier estado)
+        ids_con_solicitudes = db.session.query(Solicitud.expediente_id).subquery()
+
+        # Subquery: IDs de expedientes con alguna solicitud ARCHIVADA
+        ids_archivados = db.session.query(Solicitud.expediente_id).filter(
+            Solicitud.estado == 'ARCHIVADA'
+        ).subquery()
+
+        if estado_filter == 'tramitacion':
+            query = query.filter(Expediente.id.in_(ids_en_tramite))
+        elif estado_filter == 'finalizado':
+            # Con solicitudes, ninguna EN_TRAMITE ni ARCHIVADA
+            query = query.filter(
+                Expediente.id.in_(ids_con_solicitudes),
+                Expediente.id.notin_(ids_en_tramite),
+                Expediente.id.notin_(ids_archivados)
+            )
+        elif estado_filter == 'archivado':
+            query = query.filter(Expediente.id.in_(ids_archivados))
+        elif estado_filter == 'borrador':
+            query = query.filter(Expediente.id.notin_(ids_con_solicitudes))
+
     # ==========================================================================
     # PASO 5: Ejecutar query con limit + 1
     # ==========================================================================

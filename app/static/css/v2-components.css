@@ -354,6 +354,18 @@
 
 /* ===== FILTROS + PAGINACIÓN (COMPACTO) ===== */
 
+/* Indicador de filtro activo (dentro de pagination-info) */
+.filtro-indicador {
+  color: var(--gris-apoyo);
+  font-size: 0.8rem;
+  transition: color 0.2s ease;
+}
+
+.filters-row.filtros-activos .filtro-indicador {
+  color: var(--primary);
+}
+
+
 /* Contenedor que une filtros + paginación en 1 línea */
 .filters-row {
   display: flex;

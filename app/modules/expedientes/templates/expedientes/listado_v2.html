@@ -17,7 +17,8 @@
     <option value="">Estado: Todos</option>
     <option value="tramitacion">En trámite</option>
     <option value="finalizado">Resuelto</option>
-    <option value="borrador">Incompleto</option>
+    <option value="archivado">Archivado</option>
+    <option value="borrador">Sin solicitudes</option>
 </select>
 {% endblock %}
 
@@ -89,7 +90,7 @@
         ]
     });
 
-    const filtros = new FiltrosExpedientes(scrollInfinito);
+    const filtros = new FiltrosListado(scrollInfinito);
     console.log('Listado de expedientes v2 inicializado');
 </script>
 {% endblock %}

@@ -21,6 +21,32 @@
             <i class="fas fa-plus"></i> Nuevo Usuario
         </button>
     </div>
+    <div class="filters-row content-constrained">
+        <div class="filters">
+            <input type="search" id="usuarios-search"
+                   placeholder="Buscar por siglas o nombre..."
+                   aria-label="Buscar usuario">
+            <select id="usuarios-activo" aria-label="Filtrar por estado">
+                <option value="">Estado: Todos</option>
+                <option value="true">Activos</option>
+                <option value="false">Inactivos</option>
+            </select>
+            <select id="usuarios-rol" aria-label="Filtrar por rol">
+                <option value="">Rol: Todos</option>
+                {% for rol in roles %}
+                <option value="{{ rol.nombre }}">{{ rol.nombre }}</option>
+                {% endfor %}
+            </select>
+            <button class="btn btn-outline-primary btn-limpiar" id="usuarios-limpiar" disabled>
+                <i class="fas fa-times"></i> Limpiar
+            </button>
+        </div>
+        <div class="pagination-info">
+            <i class="fas fa-filter filtro-indicador me-1"></i>Mostrando
+            <span id="usuarios-visibles">{{ usuarios|length }}</span> de
+            <span id="usuarios-total">{{ usuarios|length }}</span> usuarios
+        </div>
+    </div>
 </div>
 
 <!-- C.2: Contenedor scrollable independiente -->
@@ -39,7 +65,9 @@
                 </thead>
                 <tbody>
                     {% for usuario in usuarios %}
-                    <tr>
+                    <tr data-activo="{{ 'true' if usuario.activo else 'false' }}"
+                        data-roles="{{ usuario.roles | map(attribute='nombre') | join(' ') }}"
+                        data-search="{{ usuario.siglas|lower }} {{ usuario.nombre|lower }} {{ usuario.apellido1|lower }} {{ (usuario.apellido2 or '')|lower }}">
                         <td>
                             <strong>{{ usuario.siglas }}</strong>
                             {% if usuario.id == current_user.id %}
@@ -217,6 +245,47 @@
 </div>
 
 <script>
+// Filtrado cliente de la tabla de usuarios
+(function() {
+    const search      = document.getElementById('usuarios-search');
+    const selActivo   = document.getElementById('usuarios-activo');
+    const selRol      = document.getElementById('usuarios-rol');
+    const limpiar     = document.getElementById('usuarios-limpiar');
+    const filas       = document.querySelectorAll('tbody tr[data-search]');
+
+    const filtersRow     = document.querySelector('.filters-row');
+    const spanVisibles   = document.getElementById('usuarios-visibles');
+
+    function filtrar() {
+        const texto  = search.value.toLowerCase();
+        const activo = selActivo.value;
+        const rol    = selRol.value;
+        let visibles = 0;
+
+        filas.forEach(tr => {
+            const ok = (!texto  || tr.dataset.search.includes(texto))
+                    && (!activo || tr.dataset.activo === activo)
+                    && (!rol    || tr.dataset.roles.includes(rol));
+            tr.style.display = ok ? '' : 'none';
+            if (ok) visibles++;
+        });
+
+        if (spanVisibles) spanVisibles.textContent = visibles;
+        const hayFiltros = !!(search.value.trim() || selActivo.value || selRol.value);
+        filtersRow.classList.toggle('filtros-activos', hayFiltros);
+        limpiar.disabled = !hayFiltros;
+    }
+
+    let timer;
+    search.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(filtrar, 300); });
+    selActivo.addEventListener('change', filtrar);
+    selRol.addEventListener('change', filtrar);
+    limpiar.addEventListener('click', () => {
+        search.value = ''; selActivo.value = ''; selRol.value = '';
+        filtrar();
+    });
+})();
+
 function togglePassword(fieldId) {
     const field = document.getElementById(fieldId);
     field.type = field.type === 'password' ? 'text' : 'password';

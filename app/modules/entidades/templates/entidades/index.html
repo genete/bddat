@@ -47,21 +47,7 @@
         ]
     });
 
-    // Botones filtrar / limpiar (genéricos, sin FiltrosExpedientes)
-    document.querySelector('.btn-filtrar').addEventListener('click', () => scrollInfinito.reload());
-    document.querySelector('.btn-limpiar').addEventListener('click', () => {
-        document.querySelector('input[type="search"]').value = '';
-        document.querySelector('.filters select').value = '';
-        scrollInfinito.reload();
-    });
-
-    // Búsqueda en tiempo real con debounce
-    let debounceTimer;
-    document.querySelector('input[type="search"]').addEventListener('input', () => {
-        clearTimeout(debounceTimer);
-        debounceTimer = setTimeout(() => scrollInfinito.reload(), 400);
-    });
-
+    const filtros = new FiltrosListado(scrollInfinito);
     console.log('Listado de entidades v2 inicializado');
 </script>
 {% endblock %}
