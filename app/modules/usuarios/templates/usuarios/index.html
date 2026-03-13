@@ -100,8 +100,8 @@
                                      {% endif %}>
                                     <input class="form-check-input" type="checkbox" role="switch"
                                            id="switch_{{ usuario.id }}"
-                                           {% if usuario.activo %}checked{% endif %}
-                                           {% if usuario.id != current_user.id %}onchange="this.form.submit();"{% endif %}>
+                                           {{ 'checked' if usuario.activo else '' }}
+                                           {{ 'onchange="this.form.submit();"' if usuario.id != current_user.id else '' }}>
                                     <label class="form-check-label" for="switch_{{ usuario.id }}">
                                         {% if usuario.activo %}
                                             <span class="badge bg-success">Activo</span>
