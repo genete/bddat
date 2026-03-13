@@ -92,11 +92,13 @@
                         </td>
                         <td>
                             <form action="{{ url_for('usuarios.toggle_estado', id=usuario.id) }}"
-                                  method="POST" style="display: inline;">
+                                  method="POST" style="display: inline;"
+                                  {% if usuario.id == current_user.id %}
+                                  data-bs-toggle="tooltip" title="No puedes desactivar tu propia cuenta"
+                                  {% endif %}>
                                 <div class="form-check form-switch"
                                      {% if usuario.id == current_user.id %}
-                                     style="pointer-events: none;"
-                                     data-bs-toggle="tooltip" title="No puedes desactivar tu propia cuenta"
+                                     style="pointer-events: none; opacity: 0.65;"
                                      {% endif %}>
                                     <input class="form-check-input" type="checkbox" role="switch"
                                            id="switch_{{ usuario.id }}"
@@ -248,6 +250,13 @@
 </div>
 
 <script>
+// Inicializar tooltips
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function (el) {
+        new bootstrap.Tooltip(el);
+    });
+});
+
 // Filtrado cliente de la tabla de usuarios
 (function() {
     const search      = document.getElementById('usuarios-search');
