@@ -23,7 +23,6 @@
     </div>
     <div class="filters-row content-constrained">
         <div class="filters">
-            <i class="fas fa-filter filtro-indicador" title="Filtros activos"></i>
             <input type="search" id="usuarios-search"
                    placeholder="Buscar por siglas o nombre..."
                    aria-label="Buscar usuario">
@@ -41,6 +40,11 @@
             <button class="btn btn-outline-primary btn-limpiar" id="usuarios-limpiar">
                 <i class="fas fa-times"></i> Limpiar
             </button>
+        </div>
+        <div class="pagination-info">
+            <i class="fas fa-filter filtro-indicador me-1"></i>Mostrando
+            <span id="usuarios-visibles">{{ usuarios|length }}</span> de
+            <span id="usuarios-total">{{ usuarios|length }}</span> usuarios
         </div>
     </div>
 </div>
@@ -249,25 +253,26 @@
     const limpiar     = document.getElementById('usuarios-limpiar');
     const filas       = document.querySelectorAll('tbody tr[data-search]');
 
-    const filtersRow = document.querySelector('.filters-row');
-
-    function actualizarIndicador() {
-        const hayFiltros = search.value.trim() || selActivo.value || selRol.value;
-        filtersRow.classList.toggle('filtros-activos', !!hayFiltros);
-    }
+    const filtersRow     = document.querySelector('.filters-row');
+    const spanVisibles   = document.getElementById('usuarios-visibles');
 
     function filtrar() {
         const texto  = search.value.toLowerCase();
         const activo = selActivo.value;
         const rol    = selRol.value;
+        let visibles = 0;
 
         filas.forEach(tr => {
             const ok = (!texto  || tr.dataset.search.includes(texto))
                     && (!activo || tr.dataset.activo === activo)
                     && (!rol    || tr.dataset.roles.includes(rol));
             tr.style.display = ok ? '' : 'none';
+            if (ok) visibles++;
         });
-        actualizarIndicador();
+
+        if (spanVisibles) spanVisibles.textContent = visibles;
+        const hayFiltros = search.value.trim() || selActivo.value || selRol.value;
+        filtersRow.classList.toggle('filtros-activos', !!hayFiltros);
     }
 
     let timer;

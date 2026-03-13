@@ -85,7 +85,6 @@
     <!-- Filtros + Contador -->
     <div class="filters-row content-constrained">
         <div class="filters">
-            <i class="fas fa-filter filtro-indicador" title="Filtros activos"></i>
             <input type="search"
                    placeholder="{% block search_placeholder %}Buscar...{% endblock %}"
                    aria-label="Buscar">
@@ -96,7 +95,7 @@
         </div>
 
         <div class="pagination-info">
-            Mostrando <span>0</span> de <span>0</span>
+            <i class="fas fa-filter filtro-indicador me-1"></i>Mostrando <span>0</span> de <span>0</span>
             {% block entity_label_plural %}registros{% endblock %}
         </div>
     </div>
