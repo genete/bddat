@@ -70,39 +70,11 @@ Las FK deben referenciar con prefijo: `db.ForeignKey('public.tabla.campo')`
 
 ## Convenciones Bash (anti-bloqueos del parser)
 
-Los checks de seguridad de Claude Code son **hardcoded** y no los desactiva la allowlist.
-Evitarlos cambiando el patrón:
+Ver referencia completa: `docs/fuentesIA/ANTI_BLOQUEOS_BASH.md`
 
-| Aviso | Causa | Solución |
-|-------|-------|----------|
-| output redirection `>` | `cmd > fichero` | Usar tool `Write` |
-| command contains newlines | heredoc en Bash | Escribir con `Write` → pasar como fichero |
-| quoted newline + `#`-line | `## Header` dentro de heredoc | Ídem (fichero temporal) |
-| quoted chars in flag names | comillas dentro de `--body "..."` | Ídem (fichero temporal) |
-| backtick or `$()` substitution | `` cmd=`...` `` o `$(...)` | Separar en llamadas Bash secuenciales |
-| backslash before shell operator | `\|`, `\;`, `\&`, `\<`, `\>` en comandos | Eliminar la barra — nunca escapar operadores de shell; reestructurar el comando |
-| Command contains quoted characters in flag names | comillas dentro del nombre de un flag, ej: `--flag-"name"` o interpolación con comillas en el nombre | Nunca interpolar comillas en nombres de flags; usar variable intermedia o fichero temporal para el valor |
-
-### Ficheros temporales — ruta obligatoria
-
-En Windows, `/tmp/` no es fiable: la tool `Write` y `bash` (MSYS2) pueden resolver
-a rutas distintas, causando que `git commit -F` o `gh pr create --body-file` lean
-contenido obsoleto. **Usar siempre ruta absoluta dentro del repo:**
-
-```
-D:\BDDAT\docs_prueba\temp\   ← ignorado por .gitignore (docs_prueba/)
-```
-
-Ejemplo: `Write` a `D:\BDDAT\docs_prueba\temp\commit_msg.txt`,
-luego `git -C /d/BDDAT commit -F docs_prueba/temp/commit_msg.txt`.
-Borrar el fichero tras uso con `rm`.
-
-### Patrones concretos obligatorios
-
-- **cd + git:** usar SIEMPRE `git -C /ruta` — NUNCA `cd /ruta && git`
-- **`$()` y backticks:** NUNCA — separar en llamadas Bash secuenciales o usar fichero temporal
-- **cd + redirección / escritura:** separar en dos llamadas Bash distintas
-- **`gh issue create` / `gh pr create`:** escribir el body con `Write` a `docs_prueba/temp/gh_body.md`,
-  luego `gh pr create --body-file /d/BDDAT/docs_prueba/temp/gh_body.md ...`
-- **`git commit`:** escribir el mensaje con `Write` a `docs_prueba/temp/commit_msg.txt`,
-  luego `git -C /d/BDDAT commit -F docs_prueba/temp/commit_msg.txt`
+Resumen de patrones obligatorios:
+- **`$()` y backticks:** NUNCA — separar en llamadas Bash secuenciales
+- **`sed -i`:** usar tool `Edit`
+- **`git commit` / `gh pr create` con texto largo:** `Write` a `docs_prueba/temp/` → pasar como fichero
+- **`git -C /ruta`:** SIEMPRE en vez de `cd /ruta && git`
+- **Ficheros temporales:** SIEMPRE en `D:\BDDAT\docs_prueba\temp\` (allowlisted, gitignored)
