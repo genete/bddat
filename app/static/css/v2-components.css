@@ -365,14 +365,6 @@
   color: var(--primary);
 }
 
-/* Botón limpiar: oculto hasta que haya filtros activos */
-.filters-row .btn-limpiar {
-  display: none;
-}
-
-.filters-row.filtros-activos .btn-limpiar {
-  display: inline-flex;
-}
 
 /* Contenedor que une filtros + paginación en 1 línea */
 .filters-row {

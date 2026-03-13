@@ -77,6 +77,7 @@ class FiltrosListado {
         const hayFiltros = (this.searchInput && this.searchInput.value.trim())
             || Array.from(this.selects).some(s => s.value);
         this._filtersRow.classList.toggle('filtros-activos', !!hayFiltros);
+        if (this.btnLimpiar) this.btnLimpiar.disabled = !hayFiltros;
     }
 
     _limpiar() {

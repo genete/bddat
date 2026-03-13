@@ -37,7 +37,7 @@
                 <option value="{{ rol.nombre }}">{{ rol.nombre }}</option>
                 {% endfor %}
             </select>
-            <button class="btn btn-outline-primary btn-limpiar" id="usuarios-limpiar">
+            <button class="btn btn-outline-primary btn-limpiar" id="usuarios-limpiar" disabled>
                 <i class="fas fa-times"></i> Limpiar
             </button>
         </div>
@@ -271,8 +271,9 @@
         });
 
         if (spanVisibles) spanVisibles.textContent = visibles;
-        const hayFiltros = search.value.trim() || selActivo.value || selRol.value;
-        filtersRow.classList.toggle('filtros-activos', !!hayFiltros);
+        const hayFiltros = !!(search.value.trim() || selActivo.value || selRol.value);
+        filtersRow.classList.toggle('filtros-activos', hayFiltros);
+        limpiar.disabled = !hayFiltros;
     }
 
     let timer;
