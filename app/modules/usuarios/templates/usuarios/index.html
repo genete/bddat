@@ -265,7 +265,7 @@
         filas.forEach(tr => {
             const ok = (!texto  || tr.dataset.search.includes(texto))
                     && (!activo || tr.dataset.activo === activo)
-                    && (!rol    || tr.dataset.roles.includes(rol));
+                    && (!rol    || tr.dataset.roles.split(' ').includes(rol));
             tr.style.display = ok ? '' : 'none';
             if (ok) visibles++;
         });
