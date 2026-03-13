@@ -52,9 +52,9 @@
 <div class="v4-content content-constrained py-3">
 
 <!-- CARD 1 — Identificación -->
-<div class="card mb-3">
-    <div class="card-header card-header-accent fw-semibold">
-        <i class="fas fa-id-card me-1"></i> Identificación
+<div class="card shadow-sm mb-3">
+    <div class="card-header card-header-accent">
+        <h6 class="mb-0 fw-semibold"><i class="fas fa-id-card me-2"></i>Identificación</h6>
     </div>
     <div class="card-body card-body-tinted">
         <div class="row g-3">
@@ -115,24 +115,13 @@
 
             <div class="col-md-8">
                 <label class="form-label fw-semibold small" for="email">Email</label>
-                {% if modo == 'ver' %}
-                    {% if usuario.email %}
-                    <div class="form-control" style="background:#fff; pointer-events:none;">
-                        <a href="mailto:{{ usuario.email }}" style="pointer-events:auto;">
-                            {{ usuario.email }}
-                        </a>
-                    </div>
-                    {% else %}
-                    <input type="text" class="form-control" value="—" readonly>
-                    {% endif %}
-                {% else %}
                 <input type="email" class="form-control {% if error_email %}is-invalid{% endif %}"
                        id="email" name="email"
                        value="{{ form_data.email if form_data else (usuario.email or '') }}"
-                       placeholder="usuario@ejemplo.com">
+                       placeholder="usuario@ejemplo.com"
+                       {% if modo == 'ver' %}readonly{% endif %}>
                 {% if error_email %}
                 <div class="invalid-feedback">{{ error_email }}</div>
-                {% endif %}
                 {% endif %}
             </div>
 
@@ -171,9 +160,9 @@
 </div>
 
 <!-- CARD 2 — Roles y acceso -->
-<div class="card mb-3">
-    <div class="card-header card-header-accent fw-semibold">
-        <i class="fas fa-user-tag me-1"></i> Roles y acceso
+<div class="card shadow-sm mb-3">
+    <div class="card-header card-header-accent">
+        <h6 class="mb-0 fw-semibold"><i class="fas fa-user-tag me-2"></i>Roles y acceso</h6>
     </div>
     <div class="card-body card-body-tinted">
         {% if modo == 'ver' %}
@@ -222,9 +211,9 @@
 
 <!-- CARD 3 — Seguridad (solo en modo editar) -->
 {% if modo == 'editar' %}
-<div class="card mb-3">
-    <div class="card-header card-header-accent fw-semibold">
-        <i class="fas fa-lock me-1"></i> Seguridad
+<div class="card shadow-sm mb-3">
+    <div class="card-header card-header-accent">
+        <h6 class="mb-0 fw-semibold"><i class="fas fa-lock me-2"></i>Seguridad</h6>
     </div>
     <div class="card-body card-body-tinted">
         <div class="row g-3">
