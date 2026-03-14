@@ -114,8 +114,16 @@
                                     <i class="fas fa-copy me-1"></i> Copiar ruta
                                 </button>
                             </div>
-                            <div class="form-text">
-                                Pega la ruta en la barra del Explorador de Windows para ir directamente al fichero.
+                            <div class="mt-2 d-flex align-items-center gap-2">
+                                {% if uri_explorador %}
+                                <a href="{{ uri_explorador }}" class="btn btn-sm btn-outline-success"
+                                   title="Requiere tener instalado el protocolo bddat-explorador:// en este PC">
+                                    <i class="fas fa-folder-open me-1"></i> Abrir en Explorador
+                                </a>
+                                {% endif %}
+                                <span class="form-text mb-0">
+                                    O pega la ruta en la barra del Explorador de Windows.
+                                </span>
                             </div>
                             {% endif %}
                         </div>
