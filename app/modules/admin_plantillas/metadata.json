@@ -1,0 +1,16 @@
+{
+  "module": "admin_plantillas",
+  "name": "Plantillas de escritos",
+  "icon": "fa-file-word",
+  "order": 80,
+  "permissions": {
+    "list":   ["ADMIN", "SUPERVISOR"],
+    "create": ["ADMIN", "SUPERVISOR"],
+    "edit":   ["ADMIN", "SUPERVISOR"],
+    "delete": ["ADMIN"]
+  },
+  "navigation": {
+    "label": "Plantillas",
+    "route": "admin_plantillas.listado"
+  }
+}

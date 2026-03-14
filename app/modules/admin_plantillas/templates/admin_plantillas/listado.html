@@ -1,0 +1,82 @@
+{% extends 'layout/base_fullwidth.html' %}
+
+{% block title %}Plantillas de escritos — BDDAT{% endblock %}
+
+{% block breadcrumb %}
+<a href="{{ url_for('dashboard.index') }}">Inicio</a>
+<span>›</span>
+<span>Plantillas de escritos</span>
+{% endblock %}
+
+{% block content %}
+<div class="lista-cabecera">
+    <div class="page-header content-constrained">
+        <h1><i class="fas fa-file-word"></i> Plantillas de escritos</h1>
+        <a href="{{ url_for('admin_plantillas.nueva') }}" class="btn btn-primary">
+            <i class="fas fa-plus me-1"></i> Nueva plantilla
+        </a>
+    </div>
+</div>
+
+<div class="content-constrained py-4">
+    <div class="card tabla-bloque">
+        <table class="expedientes-table">
+            <thead>
+                <tr>
+                    <th>Nombre</th>
+                    <th>Código</th>
+                    <th>Tipo documento</th>
+                    <th>Solicitud</th>
+                    <th>Fase</th>
+                    <th>Trámite</th>
+                    <th>Estado</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for t in tipos %}
+                <tr>
+                    <td>
+                        <a href="{{ url_for('admin_plantillas.detalle', id=t.id) }}" class="fw-semibold">
+                            {{ t.nombre }}
+                        </a>
+                        {% if t.descripcion %}
+                        <div class="small text-secondary">{{ t.descripcion }}</div>
+                        {% endif %}
+                    </td>
+                    <td><code>{{ t.codigo }}</code></td>
+                    <td>{{ t.tipo_documento.nombre if t.tipo_documento else '—' }}</td>
+                    <td>{{ t.tipo_solicitud.siglas if t.tipo_solicitud else '<span class="text-secondary">Cualquiera</span>'|safe }}</td>
+                    <td>{{ t.tipo_fase.nombre if t.tipo_fase else '<span class="text-secondary">Cualquiera</span>'|safe }}</td>
+                    <td>{{ t.tipo_tramite.nombre if t.tipo_tramite else '<span class="text-secondary">Cualquiera</span>'|safe }}</td>
+                    <td>
+                        {% if t.activo %}
+                            <span class="badge bg-success">Activa</span>
+                        {% else %}
+                            <span class="badge bg-secondary">Inactiva</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-end">
+                        <a href="{{ url_for('admin_plantillas.detalle', id=t.id) }}"
+                           class="btn btn-sm btn-outline-primary me-1">
+                            <i class="fas fa-info-circle"></i>
+                        </a>
+                        <a href="{{ url_for('admin_plantillas.editar', id=t.id) }}"
+                           class="btn btn-sm btn-outline-secondary">
+                            <i class="fas fa-edit"></i>
+                        </a>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="8" class="text-center text-secondary py-4">
+                        No hay plantillas registradas.
+                        <a href="{{ url_for('admin_plantillas.nueva') }}">Crear la primera</a>.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
