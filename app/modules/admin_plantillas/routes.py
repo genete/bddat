@@ -251,8 +251,11 @@ def detalle(id):
     # Ruta absoluta en disco para que el supervisor pueda abrirla directamente
     d = _plantillas_dir()
     ruta_absoluta = os.path.join(d, tipo.ruta_plantilla).replace('/', '\\') if d else None
+    # El ':' de la letra de unidad (D:) se codifica como %3A para evitar que el
+    # navegador lo interprete como separador host:puerto en la autoridad de la URI.
+    uri_explorador = ('bddat-explorador://' + ruta_absoluta.replace('\\', '/').replace(':', '%3A')) if ruta_absoluta else None
     return render_template('admin_plantillas/detalle.html', tipo=tipo, tokens=tokens,
-                           ruta_absoluta=ruta_absoluta)
+                           ruta_absoluta=ruta_absoluta, uri_explorador=uri_explorador)
 
 
 @bp.route('/<int:id>/editar', methods=['GET', 'POST'])
