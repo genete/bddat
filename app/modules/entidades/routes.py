@@ -22,6 +22,7 @@ from app import db
 from app.models.entidad import Entidad
 from app.models.autorizados_titular import AutorizadoTitular
 from app.models.direccion_notificacion import DireccionNotificacion
+from app.utils.metadata import cargar_metadata
 
 # template_folder apunta a app/modules/entidades/templates/
 bp = Blueprint('entidades', __name__,
@@ -37,7 +38,9 @@ bp = Blueprint('entidades', __name__,
 @login_required
 def index():
     """Vista listado de entidades. Sin datos de BD en Jinja2."""
-    return render_template('entidades/index.html')
+    meta = cargar_metadata('entidades')
+    columns = meta.get('listado_v2', {}).get('columns', [])
+    return render_template('entidades/index.html', columns=columns)
 
 
 # =============================================================================

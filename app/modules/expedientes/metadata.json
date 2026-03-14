@@ -12,5 +12,16 @@
   "navigation": {
     "label": "Expedientes",
     "route": "expedientes.listado_v2"
+  },
+  "listado_v2": {
+    "columns": [
+      { "key": "codigo",             "label": "N\u00b0 Expediente", "type": "text"   },
+      { "key": "titular",            "label": "Titular",            "type": "text"   },
+      { "key": "tipo_expediente",    "label": "Tipo",               "type": "text"   },
+      { "key": "responsable",        "label": "Responsable",        "type": "text"   },
+      { "key": "num_solicitudes",    "label": "Solicitudes",        "type": "custom" },
+      { "key": "estado_tramitacion", "label": "Estado",             "type": "custom" },
+      { "key": "_acciones",          "label": "",                   "type": "custom" }
+    ]
   }
 }
