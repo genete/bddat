@@ -12,5 +12,14 @@
   "navigation": {
     "label": "Entidades",
     "route": "entidades.index"
+  },
+  "listado_v2": {
+    "columns": [
+      { "key": "nombre_completo", "label": "Nombre / Raz\u00f3n Social", "type": "text"     },
+      { "key": "nif",             "label": "NIF",                        "type": "text"     },
+      { "key": "roles",           "label": "Roles",                      "type": "text"     },
+      { "key": "activo",          "label": "Activo",                     "type": "bool"     },
+      { "key": "_acciones",       "label": "",                           "type": "acciones" }
+    ]
   }
 }

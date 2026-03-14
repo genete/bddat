@@ -42,6 +42,7 @@ from app.utils.permisos import (
     puede_cambiar_responsable,
     verificar_acceso_expediente
 )
+from app.utils.metadata import cargar_metadata
 
 # template_folder apunta a app/modules/expedientes/templates/
 bp = Blueprint('expedientes', __name__,
@@ -68,7 +69,9 @@ def listado_v2():
     Nota: Esta ruta NO carga expedientes iniciales, solo renderiza
           la estructura HTML. Los datos se cargan vía AJAX.
     """
-    return render_template('expedientes/listado_v2.html')
+    meta = cargar_metadata('expedientes')
+    columns = meta.get('listado_v2', {}).get('columns', [])
+    return render_template('expedientes/listado_v2.html', columns=columns)
 
 
 @bp.route('/<int:id>/tramitacion_v3')

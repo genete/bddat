@@ -22,14 +22,6 @@
 
 {% block tabla_clase %}entidades-table{% endblock %}
 
-{% block thead_cols %}
-<th>Nombre / Razón Social</th>
-<th>NIF</th>
-<th>Roles</th>
-<th>Activo</th>
-<th></th>
-{% endblock %}
-
 {% block extra_js %}
 {{ super() }}
 <script>
@@ -38,13 +30,7 @@
         tableClass:  '.entidades-table',
         entityLabel: 'entidades',
         detailUrl:   id => `/entidades/${id}`,
-        columns: [
-            { key: 'nombre_completo', label: 'Nombre / Razón Social', type: 'text'     },
-            { key: 'nif',             label: 'NIF',                   type: 'text'     },
-            { key: 'roles',           label: 'Roles',                 type: 'text'     },
-            { key: 'activo',          label: 'Activo',                type: 'bool'     },
-            { key: '_acciones',       label: '',                      type: 'acciones' }
-        ]
+        columns:     {{ columns | tojson }}
     });
 
     const filtros = new FiltrosListado(scrollInfinito);

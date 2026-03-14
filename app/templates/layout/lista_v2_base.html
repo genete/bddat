@@ -113,7 +113,13 @@
         <table class="expedientes-table {% block tabla_clase %}{% endblock %}">
             <thead>
                 <tr>
-                    {% block thead_cols %}{% endblock %}
+                    {% if columns is defined and columns %}
+                        {% for col in columns %}
+                            <th>{{ col.label }}</th>
+                        {% endfor %}
+                    {% else %}
+                        {% block thead_cols %}{% endblock %}
+                    {% endif %}
                 </tr>
             </thead>
             <tbody>

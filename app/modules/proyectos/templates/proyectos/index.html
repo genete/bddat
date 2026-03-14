@@ -16,15 +16,6 @@
 
 {% block tabla_clase %}proyectos-table{% endblock %}
 
-{% block thead_cols %}
-<th>N° Expediente</th>
-<th>Título del Proyecto</th>
-<th>Instr. Ambiental</th>
-<th>Responsable</th>
-<th>Fecha</th>
-<th></th>
-{% endblock %}
-
 {% block extra_js %}
 {{ super() }}
 <script>
@@ -33,14 +24,7 @@
         tableClass:  '.proyectos-table',
         entityLabel: 'proyectos',
         detailUrl:   id => `/proyectos/${id}`,
-        columns: [
-            { key: 'expediente_codigo', label: 'N° Expediente',      type: 'text'     },
-            { key: 'titulo',            label: 'Título del Proyecto', type: 'text'     },
-            { key: 'tipo_ia',           label: 'Instr. Ambiental',    type: 'text'     },
-            { key: 'responsable',       label: 'Responsable',         type: 'text'     },
-            { key: 'fecha',             label: 'Fecha',               type: 'text'     },
-            { key: '_acciones',         label: '',                    type: 'acciones' }
-        ]
+        columns:     {{ columns | tojson }}
     });
 
     // ScrollInfinito lee el primer select de .filters-row como parámetro 'estado'.
