@@ -47,7 +47,7 @@ CAMPOS_BASE = [
     {'campo': 'proyecto_emplazamiento', 'descripcion': 'Emplazamiento descriptivo'},
     {'campo': 'instrumento_ambiental',  'descripcion': 'Siglas del instrumento ambiental (AAI, AAU, EXENTO...)'},
     {'campo': 'responsable_nombre',     'descripcion': 'Nombre completo del tramitador asignado'},
-    {'campo': 'municipios',             'descripcion': 'Lista de municipios afectados (list[str], usar en bucle)'},
+    {'campo': 'municipios',             'descripcion': 'Lista de municipios afectados', 'tipo': 'lista'},
     {'campo': 'fecha_hoy',              'descripcion': 'Fecha actual en formato DD/MM/YYYY'},
 ]
 
