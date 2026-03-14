@@ -248,7 +248,11 @@ def nueva():
 def detalle(id):
     tipo = TipoEscrito.query.get_or_404(id)
     tokens = _build_tokens(tipo)
-    return render_template('admin_plantillas/detalle.html', tipo=tipo, tokens=tokens)
+    # Ruta absoluta en disco para que el supervisor pueda abrirla directamente
+    d = _plantillas_dir()
+    ruta_absoluta = os.path.join(d, tipo.ruta_plantilla).replace('/', '\\') if d else None
+    return render_template('admin_plantillas/detalle.html', tipo=tipo, tokens=tokens,
+                           ruta_absoluta=ruta_absoluta)
 
 
 @bp.route('/<int:id>/editar', methods=['GET', 'POST'])

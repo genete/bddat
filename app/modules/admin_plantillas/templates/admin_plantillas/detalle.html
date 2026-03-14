@@ -99,14 +99,26 @@
                 <div class="card-header fw-semibold">
                     <i class="fas fa-file-word me-1"></i> Fichero de plantilla
                 </div>
-                <div class="card-body d-flex align-items-center gap-3">
-                    <i class="fas fa-file-word fa-2x text-primary"></i>
-                    <div>
-                        <div class="fw-semibold">{{ tipo.ruta_plantilla }}</div>
-                        <a href="{{ url_for('admin_plantillas.descargar', id=tipo.id) }}"
-                           class="btn btn-sm btn-outline-primary mt-2">
-                            <i class="fas fa-download me-1"></i> Descargar .docx
-                        </a>
+                <div class="card-body">
+                    <div class="d-flex align-items-start gap-3">
+                        <i class="fas fa-file-word fa-2x text-primary flex-shrink-0 mt-1"></i>
+                        <div class="flex-grow-1 min-w-0">
+                            <div class="fw-semibold mb-2">{{ tipo.ruta_plantilla }}</div>
+                            {% if ruta_absoluta %}
+                            <div class="input-group input-group-sm">
+                                <input type="text" class="form-control font-monospace"
+                                       id="ruta-abs" value="{{ ruta_absoluta }}" readonly>
+                                <button class="btn btn-outline-secondary" type="button"
+                                        id="btn-copiar-ruta"
+                                        title="Pega esta ruta en la barra del Explorador de Windows">
+                                    <i class="fas fa-copy me-1"></i> Copiar ruta
+                                </button>
+                            </div>
+                            <div class="form-text">
+                                Pega la ruta en la barra del Explorador de Windows para ir directamente al fichero.
+                            </div>
+                            {% endif %}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -172,4 +184,18 @@
 
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+{% if ruta_absoluta %}
+<script>
+document.getElementById('btn-copiar-ruta').addEventListener('click', function () {
+    navigator.clipboard.writeText(document.getElementById('ruta-abs').value).then(function () {
+        const btn = document.getElementById('btn-copiar-ruta');
+        btn.innerHTML = '<i class="fas fa-check text-success me-1"></i> Copiada';
+        setTimeout(function () { btn.innerHTML = '<i class="fas fa-copy me-1"></i> Copiar ruta'; }, 2000);
+    });
+});
+</script>
+{% endif %}
 {% endblock %}

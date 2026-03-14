@@ -74,7 +74,8 @@ Ver referencia completa: `docs/fuentesIA/ANTI_BLOQUEOS_BASH.md`
 
 Resumen de patrones obligatorios:
 - **`$()` y backticks:** NUNCA — separar en llamadas Bash secuenciales
-- **`sed -i`:** usar tool `Edit`
+- **`sed -i`:** usar tool `Edit` — nunca sed para escribir ficheros
+- **Newlines en comandos Bash:** NUNCA saltos de línea dentro del cuerpo de un comando (heredocs, `python -c "..."` multilínea, etc.) → escribir el contenido con `Write` a `docs_prueba/temp/` y pasarlo como fichero
 - **`git commit` / `gh pr create` con texto largo:** `Write` a `docs_prueba/temp/` → pasar como fichero
 - **`git -C /ruta`:** SIEMPRE en vez de `cd /ruta && git`
 - **Ficheros temporales:** SIEMPRE en `D:\BDDAT\docs_prueba\temp\` (allowlisted, gitignored)
