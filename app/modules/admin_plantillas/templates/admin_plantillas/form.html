@@ -1,0 +1,273 @@
+{% extends 'layout/base_fullwidth.html' %}
+
+{% block title %}
+{% if modo == 'editar' %}Editar plantilla — {{ tipo.nombre }}{% else %}Nueva plantilla{% endif %} — BDDAT
+{% endblock %}
+
+{% block breadcrumb %}
+<a href="{{ url_for('dashboard.index') }}">Inicio</a>
+<span>›</span>
+<a href="{{ url_for('admin_plantillas.listado') }}">Plantillas de escritos</a>
+{% if modo == 'editar' %}
+<span>›</span>
+<a href="{{ url_for('admin_plantillas.detalle', id=tipo.id) }}">{{ tipo.nombre }}</a>
+<span>›</span>
+<span>Editar</span>
+{% else %}
+<span>›</span>
+<span>Nueva plantilla</span>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="lista-cabecera">
+    <div class="page-header content-constrained">
+        <h1>
+            <i class="fas fa-file-word"></i>
+            {% if modo == 'editar' %}Editar plantilla{% else %}Nueva plantilla{% endif %}
+        </h1>
+        <a href="{{ url_for('admin_plantillas.listado') }}" class="btn btn-outline-primary">
+            <i class="fas fa-arrow-left me-1"></i> Volver
+        </a>
+    </div>
+</div>
+
+<div class="content-constrained py-4">
+    <form method="POST"
+          enctype="multipart/form-data"
+          action="{% if modo == 'editar' %}{{ url_for('admin_plantillas.editar', id=tipo.id) }}{% else %}{{ url_for('admin_plantillas.nueva') }}{% endif %}">
+
+        <div class="row g-4">
+
+            {# ── Columna izquierda: formulario ── #}
+            <div class="col-lg-7">
+
+                {# Bloque: Identificación #}
+                <div class="card mb-4">
+                    <div class="card-header fw-semibold">
+                        <i class="fas fa-tag me-1"></i> Identificación
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="nombre" class="form-label fw-semibold">Nombre <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="nombre" name="nombre"
+                                   value="{{ tipo.nombre if tipo else '' }}"
+                                   placeholder="Requerimiento de subsanación"
+                                   required>
+                            <div class="form-text">Nombre legible que verán tramitadores y supervisores.</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="codigo" class="form-label fw-semibold">Código <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control font-monospace" id="codigo" name="codigo"
+                                   value="{{ tipo.codigo if tipo else '' }}"
+                                   placeholder="REQUERIMIENTO_SUBSANACION"
+                                   pattern="[A-Z0-9_]+"
+                                   title="Solo mayúsculas, números y guiones bajos"
+                                   required>
+                            <div class="form-text">Slug estable en MAYÚSCULAS_CON_GUIONES. Se usará en código.</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="descripcion" class="form-label fw-semibold">Descripción</label>
+                            <textarea class="form-control" id="descripcion" name="descripcion"
+                                      rows="2"
+                                      placeholder="Requerimiento al titular para subsanación de documentación técnica">{{ tipo.descripcion if tipo and tipo.descripcion else '' }}</textarea>
+                        </div>
+
+                        <div class="mb-0">
+                            <label for="tipo_documento_id" class="form-label fw-semibold">
+                                Tipo de documento resultante <span class="text-danger">*</span>
+                            </label>
+                            <select class="form-select" id="tipo_documento_id" name="tipo_documento_id" required>
+                                <option value="">— Seleccionar —</option>
+                                {% for td in tipos_documento %}
+                                <option value="{{ td.id }}"
+                                    {% if tipo and tipo.tipo_documento_id == td.id %}selected{% endif %}>
+                                    {{ td.codigo }} — {{ td.nombre }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text">
+                                El documento generado se registrará en el pool del expediente con este tipo.
+                                Permite al motor de reglas detectar su existencia.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {# Bloque: Contexto ESFTT #}
+                <div class="card mb-4">
+                    <div class="card-header fw-semibold">
+                        <i class="fas fa-sitemap me-1"></i> Contexto ESFTT
+                        <span class="badge bg-secondary ms-2" style="font-weight:400">Todos los campos son opcionales</span>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-secondary small mb-3">
+                            Deja en blanco los campos que no apliquen.
+                            <strong>Vacío = aplica a cualquier valor</strong> de esa dimensión.
+                        </p>
+
+                        <div class="mb-3">
+                            <label for="tipo_solicitud_id" class="form-label fw-semibold">Tipo de solicitud</label>
+                            <select class="form-select" id="tipo_solicitud_id" name="tipo_solicitud_id">
+                                <option value="">— Cualquier solicitud —</option>
+                                {% for ts in tipos_solicitud %}
+                                <option value="{{ ts.id }}"
+                                    {% if tipo and tipo.tipo_solicitud_id == ts.id %}selected{% endif %}>
+                                    {{ ts.siglas }} — {{ ts.descripcion }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="tipo_fase_id" class="form-label fw-semibold">Fase</label>
+                            <select class="form-select" id="tipo_fase_id" name="tipo_fase_id">
+                                <option value="">— Cualquier fase —</option>
+                                {% for tf in tipos_fase %}
+                                <option value="{{ tf.id }}"
+                                    {% if tipo and tipo.tipo_fase_id == tf.id %}selected{% endif %}>
+                                    {{ tf.nombre }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="mb-0">
+                            <label for="tipo_tramite_id" class="form-label fw-semibold">Trámite</label>
+                            <select class="form-select" id="tipo_tramite_id" name="tipo_tramite_id">
+                                <option value="">— Cualquier trámite —</option>
+                                {% for tt in tipos_tramite %}
+                                <option value="{{ tt.id }}"
+                                    {% if tipo and tipo.tipo_tramite_id == tt.id %}selected{% endif %}>
+                                    {{ tt.nombre }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                {# Bloque: Plantilla .docx #}
+                <div class="card mb-4">
+                    <div class="card-header fw-semibold">
+                        <i class="fas fa-file-upload me-1"></i> Fichero de plantilla
+                    </div>
+                    <div class="card-body">
+                        {% if modo == 'editar' and tipo.ruta_plantilla %}
+                        <div class="alert alert-info d-flex align-items-center gap-2 mb-3">
+                            <i class="fas fa-file-word fa-lg"></i>
+                            <div>
+                                Plantilla actual: <strong>{{ tipo.ruta_plantilla }}</strong>
+                                <a href="{{ url_for('admin_plantillas.descargar', id=tipo.id) }}"
+                                   class="ms-2 small">
+                                    <i class="fas fa-download me-1"></i>Descargar
+                                </a>
+                            </div>
+                        </div>
+                        <label for="archivo_plantilla" class="form-label fw-semibold">
+                            Subir nueva versión <span class="text-secondary">(opcional)</span>
+                        </label>
+                        {% else %}
+                        <label for="archivo_plantilla" class="form-label fw-semibold">
+                            Fichero .docx <span class="text-danger">*</span>
+                        </label>
+                        {% endif %}
+                        <input type="file" class="form-control" id="archivo_plantilla"
+                               name="archivo_plantilla" accept=".docx"
+                               {% if modo == 'nueva' %}required{% endif %}>
+                        <div class="form-text">
+                            Crea la plantilla en LibreOffice Writer usando los tokens del panel.
+                            Guárdala como .docx antes de subirla.
+                        </div>
+                    </div>
+                </div>
+
+                {# Bloque: Contexto Python avanzado #}
+                <div class="card mb-4">
+                    <div class="card-header fw-semibold">
+                        <i class="fas fa-code me-1"></i> Contexto Python avanzado
+                        <span class="badge bg-secondary ms-2" style="font-weight:400">Opcional — Capa 2</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="contexto_clase" class="form-label fw-semibold">Clase Context Builder</label>
+                            <input type="text" class="form-control font-monospace"
+                                   id="contexto_clase" name="contexto_clase"
+                                   value="{{ tipo.contexto_clase if tipo and tipo.contexto_clase else '' }}"
+                                   placeholder="RequerimientoSubsanacion">
+                            <div class="form-text">
+                                Nombre de clase Python en <code>app/services/context_builders/</code>.
+                                Dejar vacío si la plantilla solo usa campos base (Capa 1).
+                            </div>
+                        </div>
+
+                        <div class="mb-0">
+                            <label for="campos_catalogo" class="form-label fw-semibold">
+                                Campos adicionales del Context Builder
+                            </label>
+                            <textarea class="form-control font-monospace" id="campos_catalogo"
+                                      name="campos_catalogo" rows="5"
+                                      placeholder='[{"campo": "importe_tasas", "descripcion": "Importe en euros de las tasas calculadas"}]'>{{ tipo.campos_catalogo | tojson(indent=2) if tipo and tipo.campos_catalogo else '' }}</textarea>
+                            <div class="form-text">
+                                JSON: lista de <code>{"campo": "...", "descripcion": "..."}</code>.
+                                Estos campos aparecerán en el panel de tokens para copiarlos fácilmente.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {# Bloque: Estado #}
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox"
+                                   id="activo" name="activo" role="switch"
+                                   {% if tipo is none or tipo.activo %}checked{% endif %}>
+                            <label class="form-check-label fw-semibold" for="activo">
+                                Plantilla activa
+                            </label>
+                        </div>
+                        <div class="form-text">
+                            Las plantillas inactivas no se muestran en la tarea REDACTAR,
+                            pero se conservan para histórico.
+                        </div>
+                    </div>
+                </div>
+
+                {# Botones de acción #}
+                <div class="d-flex gap-2 mb-5">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-1"></i>
+                        {% if modo == 'editar' %}Guardar cambios{% else %}Registrar plantilla{% endif %}
+                    </button>
+                    <a href="{{ url_for('admin_plantillas.listado') }}" class="btn btn-outline-secondary">
+                        Cancelar
+                    </a>
+                </div>
+
+            </div>{# fin col-lg-7 #}
+
+            {# ── Columna derecha: panel de tokens ── #}
+            <div class="col-lg-5">
+                <div class="sticky-top" style="top: 1rem">
+                    {% include 'admin_plantillas/_panel_tokens.html' %}
+                </div>
+            </div>
+
+        </div>{# fin row #}
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Autoformato código: convierte a MAYÚSCULAS mientras escribe
+    document.getElementById('codigo').addEventListener('input', function () {
+        const pos = this.selectionStart;
+        this.value = this.value.toUpperCase().replace(/[^A-Z0-9_]/g, '_');
+        this.setSelectionRange(pos, pos);
+    });
+</script>
+{% endblock %}
