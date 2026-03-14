@@ -22,7 +22,7 @@
             Sintaxis en la plantilla: <code class="bg-light px-1 rounded">{{ '{{campo}}' }}</code>
         </p>
         <div class="list-group list-group-flush mb-3">
-            {% for c in tokens.campos %}
+            {% for c in tokens.campos if c.get('tipo') != 'lista' %}
             <div class="list-group-item list-group-item-action py-2 px-2">
                 <div class="d-flex align-items-start gap-2">
                     <div class="flex-grow-1 min-w-0">
@@ -44,6 +44,46 @@
             {% endfor %}
         </div>
     </div>
+
+    {# ── Sección: Campos de lista (bucle de párrafo) ── #}
+    {% set campos_lista = tokens.campos | selectattr('tipo', 'equalto', 'lista') | list %}
+    {% if campos_lista %}
+    <div class="card-body pb-0 border-top pt-3">
+        <h6 class="mb-2 text-primary">
+            <i class="fas fa-list me-1"></i> Campos de lista
+        </h6>
+        <p class="small text-secondary mb-2">
+            Copia el bloque completo y pégalo en Word — los tres párrafos se crean solos.
+        </p>
+        <div class="list-group list-group-flush mb-3">
+            {% for c in campos_lista %}
+            {# data-token incluye &#10; (newline) para que Word cree 3 párrafos al pegar #}
+            {% set t_open  = '{%p for item in ' ~ c.campo ~ ' %}' %}
+            {% set t_item  = '{{item}}' %}
+            {% set t_close = '{%p endfor %}' %}
+            {% set snippet = t_open ~ '&#10;' ~ t_item ~ '&#10;' ~ t_close %}
+            <div class="list-group-item py-2 px-2">
+                <div class="d-flex align-items-start gap-2">
+                    <div class="flex-grow-1 min-w-0">
+                        <span class="text-secondary d-block" style="font-size:.8rem">{{ c.descripcion }}</span>
+                        <code class="d-block text-primary small mt-1 lh-base" style="white-space:pre-line">{{ t_open }}
+{{ t_item }}
+{{ t_close }}</code>
+                    </div>
+                    {% if not solo_lectura %}
+                    <button type="button"
+                            class="btn btn-sm btn-outline-primary flex-shrink-0 btn-copiar"
+                            data-token="{{ snippet }}"
+                            title="Copiar bloque de bucle (3 párrafos)">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
 
     {# ── Sección: Consultas nombradas (tablas dinámicas) ── #}
     <div class="card-body pb-0 border-top pt-3">
