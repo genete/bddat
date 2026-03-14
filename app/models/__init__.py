@@ -21,6 +21,8 @@ from app.models.tipos_solicitudes import TipoSolicitud
 from app.models.tipos_tareas import TipoTarea
 from app.models.tipos_tramites import TipoTramite
 from app.models.tipos_documentos import TipoDocumento
+from app.models.consultas_nombradas import ConsultaNombrada
+from app.models.tipos_escritos import TipoEscrito
 
 # Modelo de metadata del sistema (issue #85)
 from app.models.tabla_metadata import TablaMetadata
@@ -70,6 +72,8 @@ __all__ = [
     'TipoTarea',
     'TipoTramite',
     'TipoDocumento',
+    'ConsultaNombrada',
+    'TipoEscrito',
     # Metadata del sistema
     'TablaMetadata',
     # Arquitectura Entidades (simplificada en issue #103)
