@@ -53,37 +53,61 @@ Se cierran conjuntamente los cabos 1 y 2 con 6 decisiones firmes:
 
 ---
 
-### Cabo 4: PARCIALMENTE CERRADO — Filtrado dinamico de tokens por contexto ESFTT
+### Cabo 4: CERRADO — Filtrado dinamico de tokens por contexto ESFTT
 
-#### Parte cerrada: Tablas whitelist ESFTT
+#### Decision 1: Tablas whitelist ESFTT — cadena completa E→S→F→T
 
-Se decidieron dos tablas whitelist editables para la jerarquia ESFTT:
+Tres tablas whitelist editables cubren la cascada completa:
 
-- **`fases_tramites`** (PK compuesta: `tipo_fase_id` + `tipo_tramite_id`) — que tramites son validos dentro de que fase
-- **`expedientes_fases`** (PK compuesta: `tipo_expediente_id` + `tipo_fase_id`) — que fases aplican a que tipo de expediente
+- **`expedientes_solicitudes`** (PK compuesta: `tipo_expediente_id` + `tipo_solicitud_id`) — que solicitudes son validas para cada tipo de expediente
+- **`solicitudes_fases`** (PK compuesta: `tipo_solicitud_id` + `tipo_fase_id`) — que fases aplican a cada tipo de solicitud
+- **`fases_tramites`** (PK compuesta: `tipo_fase_id` + `tipo_tramite_id`) — que tramites son validos dentro de cada fase
 
 Caracteristicas acordadas:
 - Seed inicial desde `Estructura_fases_tramites_tareas.json`
 - CRUD editable por supervisor (legislacion cambiante)
 - La cascada de selectores consume estas tablas como whitelist
-- Capa 1 tokens (12 campos base) siempre iguales — la dinamicidad llega con Capa 2
-- Infraestructura AJAX preparada para refresco futuro del panel de tokens
 - Solo definen **posibilidad** ("esta combinacion tiene sentido"), no obligatoriedad ni orden
+- Capa 1 tokens (12 campos base) siempre los mismos — la dinamicidad llega con Capa 2
+- Infraestructura AJAX preparada para refresco futuro del panel de tokens
 
-#### PROBLEMA IDENTIFICADO: cobertura incompleta E→S→F→T
+#### Decision 2: Tipos de solicitud combinados como entidades propias
 
-Las dos tablas whitelist cubren E→F y F→T, pero **falta la dimension solicitud (S)**.
-La cadena completa debe ser E→S→F→T y las tablas actuales no la cubren.
+**Problema:** La tabla M:N `solicitudes_tipos` expresa combinaciones de tipos atomicos
+(AAP+AAC, AAP+AAC+DUP...) pero esta flexibilidad es innecesaria — las combinaciones
+legales son finitas y cerradas. La M:N complica el filtrado en cascada y hace imposible
+un FK simple desde plantillas.
 
-> **Comentario del usuario:** "Ese documento `Estructura_fases_tramites_tareas.json`
-> no es absolutamente completo. Es un analisis bastante completo para los tipos de
-> solicitudes mas complejos. Pero si te fijas bien, no cubre completamente todas las
-> combinaciones tipos_expedientes combinadas con tipos_solicitudes. Es esencialmente
-> correcto pero no exhaustivo. Mi idea es que el supervisor pueda completar estas
-> jerarquias en el futuro, modificarlas o crear nuevas, pues la legislacion es muy
-> cambiante."
+**Decision:** Extender `tipos_solicitudes` con tipos combinados como entradas propias.
+La tabla contendra tanto tipos atomicos (AAP, AAC, DUP...) como combinaciones legales.
 
-La dimension solicitud presenta complejidad adicional:
+Tipos combinados a anadir:
+
+| Siglas | Descripcion |
+|---|---|
+| AAP_AAC | Autorizacion Administrativa Previa y de Construccion |
+| AAP_AAC_DUP | AAP + AAC + Declaracion de Utilidad Publica |
+| AAP_AAC_AAU | AAP + AAC + Autorizacion Ambiental Unificada |
+| AAP_AAC_AAU_DUP | AAP + AAC + AAU + Declaracion de Utilidad Publica |
+| AAC_DUP | AAC + Declaracion de Utilidad Publica |
+| AAE_DEFINITIVA_AAT | Explotacion Definitiva + Transmision de Titularidad |
+
+**Justificacion:**
+- Las combinaciones legales son ~6. No van a crecer arbitrariamente (requiere cambio legislativo)
+- Cada combinacion tiene implicaciones procedimentales distintas (fases, texto de resoluciones)
+- Las plantillas necesitan un FK directo para saber que texto administrativo usar
+- El filtrado en cascada se resuelve con JOINs directos contra las whitelist, sin tabla puente
+- Si aparece una nueva combinacion legal, es un INSERT + actualizacion de whitelist
+
+**Impacto en tablas existentes:**
+
+| Tabla | Cambio |
+|---|---|
+| `tipos_solicitudes` | Anadir ~6 tipos combinados |
+| `solicitudes` | Anadir FK `tipo_solicitud_id` directa al tipo (atomico o combinado) |
+| `solicitudes_tipos` | Mantener como historico, dejar de usar para logica de negocio |
+| Wizard creacion solicitudes | Selector directo en vez de multiselect de checkboxes |
+| Plantillas (ex `tipos_escritos`) | FK simple a `tipo_solicitud_id` |
 
 > **Comentario del usuario:** "Las plantillas estan intimamente relacionadas con la
 > cadena ESFTT (con S=las solicitudes presentadas). Si solicito AAP, la plantilla no
@@ -91,18 +115,16 @@ La dimension solicitud presenta complejidad adicional:
 > de Construccion de fecha...' Todo influye. El lenguaje administrativo requiere de
 > mucha precision, especialmente las resoluciones."
 
-> **Comentario del usuario:** "Esto me da que pensar que el sistema de eleccion de las
-> solicitudes compatibles deberia ser simplemente un listado de tipos de solicitud donde
-> esten ya combinadas las compatibles. Aunque el listado de tipos de solicitud sea mas
-> largo, no es harcodear, es poner en la tabla lo que es posible y ahora mismo las
-> posibilidades de combinaciones de solicitudes son unas pocas, no infinitas."
+> **Comentario del usuario:** "El sistema de eleccion de las solicitudes compatibles
+> deberia ser simplemente un listado de tipos de solicitud donde esten ya combinadas
+> las compatibles. Aunque el listado de tipos de solicitud sea mas largo, no es
+> harcodear, es poner en la tabla lo que es posible y ahora mismo las posibilidades
+> de combinaciones de solicitudes son unas pocas, no infinitas."
 
-Conclusiones sobre la dimension solicitud:
-- Las COMBINACIONES de tipos de solicitud afectan al contenido del escrito (AAP no es lo mismo que AAP+DUP)
-- El FK simple `tipo_solicitud_id` no puede expresar combinaciones
-- Opciones: perfiles de solicitud como entidades propias, o refactor de `tipos_solicitudes`
-- `tipos_solicitudes_compatibles` existente podria no ser suficiente
-- **Pendiente de sesion dedicada. Prerequisito antes de codificar.**
+> **Comentario del usuario:** "El documento `Estructura_fases_tramites_tareas.json`
+> no es absolutamente completo. Es esencialmente correcto pero no exhaustivo.
+> Mi idea es que el supervisor pueda completar estas jerarquias en el futuro,
+> modificarlas o crear nuevas, pues la legislacion es muy cambiante."
 
 ---
 
@@ -147,15 +169,12 @@ No conoce las tablas ni sus campos. Necesita que la interfaz le muestre solo lo 
 de reglas para determinar que aplica a que contexto. El diseno de este mecanismo
 no puede diferirse a cuando se implemente el motor completo — hay que establecerlo ahora.
 
-**Decisiones sesion 2:**
-- Tablas whitelist `expedientes_fases` y `fases_tramites` alimentan la cascada
+**Decisiones sesiones 2+3 (RESUELTO — ver Cabo 4 cerrado):**
+- 3 tablas whitelist: `expedientes_solicitudes` (E→S), `solicitudes_fases` (S→F), `fases_tramites` (F→T)
+- Tipos de solicitud combinados como entidades propias en `tipos_solicitudes`
 - Tokens Capa 1 son siempre los mismos (12 campos base del expediente)
 - La dinamicidad de tokens llega con Capa 2 / Context Builders
 - AJAX preparado para refresco futuro del panel
-
-**Pendiente:**
-- Dimension solicitud: como expresar combinaciones de tipos de solicitud
-- Estructura exacta de tablas whitelist para cubrir E→S→F→T completo
 
 > **Comentario del usuario:** "Este contexto ESFTT implica que el descubrimiento de tokens
 > a introducir en la plantilla cuando se crea, ha de estar sincronizado con dicho contexto.
@@ -452,16 +471,12 @@ Definir convencion de nombrado para archivos generados.
 El usuario lo considera "un apartado muy interesante y util".
 Afecta a B4 y C8.
 
-### Cabo 4: Filtrado dinamico de tokens por contexto ESFTT — PARCIALMENTE CERRADO
+### Cabo 4: ~~Filtrado dinamico de tokens por contexto ESFTT~~ — CERRADO
 
-**Cerrado:**
-- Tablas whitelist `expedientes_fases` y `fases_tramites`
+Resuelto en sesion 3 (ver seccion "Decisiones sesion 2", actualizada).
+- Cadena completa E→S→F→T con 3 tablas whitelist
+- Tipos de solicitud combinados como entidades propias en `tipos_solicitudes`
 - Principio de escape como principio transversal
-
-**Abierto:**
-- Dimension solicitud: como expresar combinaciones de tipos de solicitud en la cadena ESFTT
-- Estructura exacta de tablas whitelist para cubrir E→S→F→T completo (no solo E→F y F→T)
-- **Prerequisito antes de codificar**
 
 ### Cabo 5: Nota sobre dependencias del #189 — PENDIENTE
 
@@ -487,11 +502,10 @@ No actualizar antes de la migracion — el codigo aun usa los nombres actuales.
 
 ## Proximos pasos (cuando se retome)
 
-1. **Sesion dedicada: dimension solicitud en ESFTT** — prerequisito para codificar
+1. Resolver cabos pendientes: C3-C6 (trazabilidad, metadatos, motor pre-generacion, permisos)
 2. Sesion dedicada: sistematizacion de nombres de archivos (Cabo 3)
-3. Resolver cabos pendientes restantes (C3-C6)
-4. Al ejecutar Cabo 1+2: actualizar documentacion (Cabo 6)
-5. Completar punto 2) Dependencias con otros modulos
+3. Al ejecutar Cabos 1+2+4: actualizar documentacion (Cabo 6)
+4. Completar punto 2) Dependencias con otros modulos
 5. Completar punto 3) Riesgos e inconsistencias
 6. Completar punto 4) Orden logico de decisiones de diseno
 7. Completar punto 5) Preguntas sin respuesta
