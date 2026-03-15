@@ -535,7 +535,7 @@ No actualizar antes de la migracion — el codigo aun usa los nombres actuales.
 
 ## Proximos pasos (cuando se retome)
 
-1. Resolver cabos pendientes: C3-C6 (trazabilidad, metadatos, motor pre-generacion, permisos)
+1. Resolver pendientes: C4 (metadatos), C5 (motor pre-generacion), C6 (permisos)
 2. Sesion dedicada: sistematizacion de nombres de archivos (Cabo 3)
 3. Al ejecutar Cabos 1+2+4: actualizar documentacion (Cabo 6)
 4. Completar punto 2) Dependencias con otros modulos
