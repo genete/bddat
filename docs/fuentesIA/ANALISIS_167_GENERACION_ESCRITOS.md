@@ -1,6 +1,6 @@
 # Analisis #167 — Generacion de escritos administrativos
 
-> **Estado:** Analisis de necesidades completado. Pendiente de implementacion.
+> **Estado:** Punto 1 (necesidades) completado. Pendientes puntos 2-5 (analisis tecnico pre-implementacion).
 > **Issues relacionados:** #167 (abierto), #189 (cerrado), #181 y #182 (vinculados via C3)
 > **Fecha inicio analisis:** 2026-03-15
 > **Sesiones:** 3 (todas 2026-03-15)
@@ -584,12 +584,15 @@ referencian nombres antiguos. **No antes** — el codigo aun usa los nombres act
 
 ## Proximos pasos
 
-**Fase de analisis completada.** Todas las necesidades identificadas, clasificadas
-y decididas. Los cabos 1-5 estan cerrados. El cabo 6 se ejecuta junto con las migraciones.
+**Punto 1 (mapa de necesidades) completado.** Cabos 1-5 cerrados. Cabo 6 diferido a migraciones.
 
-Cuando se retome para implementar:
-1. Migraciones BD (decisiones Cabo 1+2+3+4) + actualizar docs (Cabo 6)
-2. Tocar codigo
+Pendiente (analisis tecnico pre-implementacion, sin intervencion del usuario):
+1. Completar punto 2) Dependencias con otros modulos
+2. Completar punto 3) Riesgos e inconsistencias
+3. Completar punto 4) Orden logico de decisiones de diseno
+4. Completar punto 5) Preguntas sin respuesta
+5. Al ejecutar migraciones: actualizar documentacion (Cabo 6)
+6. Solo entonces: tocar codigo
 
 ---
 
