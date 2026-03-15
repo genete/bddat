@@ -51,34 +51,34 @@ con la funcionalidad completada hasta ese punto.
 
 ---
 
-### 4.3 Fase 0 — Decisiones previas + fix independiente
+### 4.3 Fase 0 — Fix independiente + export
 
-**No es rama.** Se resuelve antes de tocar codigo funcional.
+**No es rama.** Commits directos en develop.
 
-#### Decisiones bloqueantes (documentar resultado en este analisis)
+#### Decisiones previas — TODAS RESUELTAS (sesion 4)
 
-| ID | Decision | Afecta a |
-|----|----------|----------|
-| R1 | Semantica de `EXISTE_TIPO_SOLICITUD` con tipos combinados | Fase 1 |
-| R5 | Mecanismo concreto del principio de escape en selectores | Fase 4 |
-| I1 | Ubicacion endpoints de generacion (vista3.py / api nueva / vista BC) | Fase 5 |
-| I3 | Mecanismo de secuencial automatico en nombres duplicados | Fase 5 |
+| ID | Decision | Resolucion (ver punto 5) |
+|----|----------|--------------------------|
+| R1 | Semantica `EXISTE_TIPO_SOLICITUD` | Comparacion exacta. Supervisor lista tipos aplicables en la regla (P1) |
+| R5 | Mecanismo escape en selectores | Toggle "Solo aplicables al contexto". Defecto = todas las opciones (P5) |
+| I1 | Ubicacion endpoints generacion | `routes/api_escritos.py` — fichero API dedicado (P6) |
+| I3 | Secuencial automatico nombres | Comprobar filesystem, sufijo ` (2)` antes de `.docx` (P5/propuesta) |
 
-#### Acciones (commit directo en develop, sin rama)
+#### Acciones pendientes (commit directo en develop, sin rama)
 
 | Accion | Detalle |
 |--------|---------|
 | Fix R6 | `Documento.__str__`: reemplazar `self.nombre_display` por `(self.url or '').rsplit('/', 1)[-1] or f'Documento {self.id}'` |
 | Export R7 | Consulta SQL: `SELECT codigo, nombre, campos_catalogo FROM tipos_escritos WHERE campos_catalogo IS NOT NULL` → guardar en `docs_prueba/temp/` como referencia |
 
-**Criterio de avance:** 4 decisiones documentadas. Fix R6 mergeado. Export R7 guardado.
+**Criterio de avance:** Fix R6 mergeado. Export R7 guardado.
 
 ---
 
 ### 4.4 Fase 1 — Solicitudes: FK directa + whitelist ESFTT
 
 **Rama:** `feature/167-fase-1-tipo-solicitud-directo`
-**Consume:** R1 (semantica combinados), R3 (backfill), R8 (seed incompleto)
+**Decisiones aplicadas:** R1/P1 (comparacion exacta), R3 (backfill script), R8/P2 (seed ampliable)
 **Gestiona:** R2 (atomicidad drop solicitudes_tipos)
 
 #### Migracion (1 fichero, `flask db revision`)
@@ -215,14 +215,14 @@ Sin mas cambios — la columna no se consume hasta Fase 5.
 
 **Rama:** `feature/167-fase-4-admin-cascada`
 **Requiere:** Fases 1 + 2 + 3 completadas (las tres convergen aqui)
-**Consume:** R5 (principio de escape)
+**Decisiones aplicadas:** R5/P5 (toggle "Solo aplicables al contexto", defecto=todas)
 
 #### Contenido
 
 | Bloque | Detalle |
 |--------|---------|
-| Endpoints AJAX cascada | `GET /api/admin/plantillas/tipos-solicitud?tipo_expediente_id=X` (y analoga para fases y tramites). Devuelve `{compatibles, otros}` si se adopta toggle de escape |
-| JS selectores cascada | E → filtra S → filtra F → filtra T. Con mecanismo de escape (segun R5) |
+| Endpoints AJAX cascada | `GET /api/admin/plantillas/tipos-solicitud?tipo_expediente_id=X` (y analoga para fases y tramites). Sin filtro devuelve todas; con `?filtrar=1` solo whitelist |
+| JS selectores cascada | E → filtra S → filtra F → filtra T. Toggle "Solo aplicables al contexto" (defecto=todas) |
 | Filtrar tipos_documentos | Excluir `origen='EXTERNO'` en el selector del form |
 | Actualizar panel tokens | Preparar endpoint AJAX para refresco futuro (Capa 2). Hoy solo muestra Capa 1 |
 | Validacion sintaxis (A1) | `validar_plantilla(ruta)` — try `DocxTemplate(ruta)` antes de registrar |
@@ -240,7 +240,7 @@ Sin mas cambios — la columna no se consume hasta Fase 5.
 #### Verificacion
 
 - Crear plantilla nueva → selectores filtran en cascada
-- Toggle escape: al activar, aparecen opciones fuera de whitelist con advertencia
+- Toggle "Solo aplicables": al activar, se ocultan opciones fuera de whitelist
 - Subir .docx con token mal escrito → error de validacion
 - Subir .docx correcto → registro exitoso
 
@@ -250,13 +250,13 @@ Sin mas cambios — la columna no se consume hasta Fase 5.
 
 **Rama:** `feature/167-fase-5-generacion`
 **Requiere:** Fase 4 completada
-**Consume:** I1 (ubicacion endpoints), I3 (secuencial automatico)
+**Decisiones aplicadas:** I1/P6 (`routes/api_escritos.py`), I3 (sufijo ` (N)` en filesystem)
 
 #### Contenido
 
 | Bloque | Necesidades cubiertas |
 |--------|----------------------|
-| Endpoint generacion | B1. Nuevo endpoint (ubicacion segun I1) |
+| Endpoint generacion | B1. `POST /api/escritos/generar` en `routes/api_escritos.py` (nuevo) |
 | Selector plantilla filtrado | B2. Plantillas aplicables al contexto ESFTT de la tarea, con NULL-comodin |
 | Preview campos | B3. Valores del expediente para tokens de la plantilla seleccionada |
 | Guardado + checkboxes | B4. Nombre sistematizado (Cabo 3), ruta en FILESYSTEM_BASE, checkboxes pool/doc_producido |
@@ -295,16 +295,16 @@ Sin mas cambios — la columna no se consume hasta Fase 5.
 
 **Rama:** `feature/167-fase-6-trazabilidad`
 **Requiere:** Fase 5 completada
-**Consume:** R10 (supervivencia codigo embebido), I4 (FK plantilla_id)
+**Decisiones aplicadas:** R10 (probar pipeline antes), P7 (NO FK — trazabilidad en metadatos del .docx)
 
 #### Contenido
 
 | Bloque | Detalle |
 |--------|---------|
-| Custom properties | Inyectar metadatos BDDAT en el .docx generado (python-docx) |
+| Custom properties | Inyectar metadatos BDDAT en el .docx generado (python-docx), incluyendo plantilla ID |
 | QR clasificacion | Generar QR con codigo estructurado. Insertar en pie de pagina (o donde `{{qr_clasificacion}}`) |
+| Texto pie discreto | `Template ID: NNN` en pie de pagina — trazabilidad visible que sobrevive impresion |
 | Parseo automatico (A3) | Al registrar plantilla: detectar campos, consultas, fragmentos usados |
-| FK plantilla_id (I4) | Si se decide: ADD FK nullable en `documentos` + migración |
 
 > **Prerequisito R10:** Antes de implementar custom properties, probar manualmente
 > si sobreviven el pipeline .docx → portafirmas → PDF. Si no sobreviven,
@@ -340,11 +340,11 @@ Si se para el trabajo tras completar la fase N, este es el estado del sistema:
 | Fase | Migracion | Codigo | Complejidad | Dependencias |
 |------|:---------:|:------:|:-----------:|:------------:|
 | 0 | — | 1 fix trivial | Baja | Ninguna |
-| 1 | 1 (7 pasos) | ~10 ficheros | **Alta** | Decision R1, R3 |
-| 2 | 1 (7 pasos) | ~8 ficheros | **Alta** | Export R7 |
+| 1 | 1 (7 pasos) | ~10 ficheros | **Alta** | Fase 0 (decisiones resueltas) |
+| 2 | 1 (7 pasos) | ~8 ficheros | **Alta** | Fase 0 (export R7) |
 | 3 | 1 (simple) | 5 ficheros | Baja | Ninguna |
-| 4 | — | ~4 ficheros + JS | Media-Alta | Fases 1+2+3, decision R5 |
-| 5 | — | ~6 ficheros + JS + templates | **Alta** | Fase 4, decisiones I1/I3 |
-| 6 | 0-1 | ~3 ficheros + dependencia pip | Media | Fase 5, verificacion R10 |
+| 4 | — | ~4 ficheros + JS | Media-Alta | Fases 1+2+3 |
+| 5 | — | ~6 ficheros + JS + templates | **Alta** | Fase 4 |
+| 6 | — | ~3 ficheros + dependencia pip | Media | Fase 5, verificacion R10 |
 
 ---
