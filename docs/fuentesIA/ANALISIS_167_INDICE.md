@@ -1,6 +1,6 @@
 # Analisis #167 — Generacion de escritos administrativos
 
-> **Estado:** Puntos 1-4 completados. Pendiente punto 5 (analisis tecnico pre-implementacion).
+> **Estado:** Puntos 1-5 completados. Analisis tecnico pre-implementacion COMPLETO.
 > **Issues relacionados:** #167 (abierto), #189 (cerrado), #181 y #182 (vinculados via C3)
 > **Fecha inicio analisis:** 2026-03-15
 > **Sesiones:** 3 (todas 2026-03-15)
@@ -158,6 +158,7 @@ y cualquier mecanismo futuro que restrinja opciones.
 | 2 | [ANALISIS_167_PUNTO_2_DEPENDENCIAS.md](ANALISIS_167_PUNTO_2_DEPENDENCIAS.md) | Matriz de impacto, migraciones, modelos, rutas, templates, JS |
 | 3 | [ANALISIS_167_PUNTO_3_RIESGOS.md](ANALISIS_167_PUNTO_3_RIESGOS.md) | Riesgos R1-R10, inconsistencias I1-I5 |
 | 4 | [ANALISIS_167_PUNTO_4_FASES.md](ANALISIS_167_PUNTO_4_FASES.md) | Fases 0-6, diagrama, estado Flask por parada |
+| 5 | [ANALISIS_167_PUNTO_5_PREGUNTAS.md](ANALISIS_167_PUNTO_5_PREGUNTAS.md) | 8 preguntas P1-P8 con recomendaciones |
 | Anexos | [ANALISIS_167_GENERACION_ESCRITOS_ANEXOS.md](ANALISIS_167_GENERACION_ESCRITOS_ANEXOS.md) | Comentarios literales del usuario sesiones 1-2 |
 
 ## Cabos sueltos — sesiones dedicadas pendientes
@@ -255,7 +256,7 @@ Pendiente (analisis tecnico pre-implementacion, sin intervencion del usuario):
 2. ~~Completar punto 2) Dependencias con otros modulos~~ — HECHO
 3. ~~Completar punto 3) Riesgos e inconsistencias~~ — HECHO
 4. ~~Completar punto 4) Orden logico de decisiones de diseno~~ — HECHO
-5. Completar punto 5) Preguntas sin respuesta
+5. ~~Completar punto 5) Preguntas sin respuesta~~ — HECHO
 6. Al ejecutar migraciones: actualizar documentacion (Cabo 6)
 7. Solo entonces: tocar codigo
 
