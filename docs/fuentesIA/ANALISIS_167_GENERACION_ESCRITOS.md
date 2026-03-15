@@ -469,6 +469,20 @@ Afecta a B4 y C8.
 > los requerimientos no son exactamente python-docx-template.
 > Ver commit 6b85fcf4d404730758c90314f393c6bbcef6af52"
 
+### Cabo 6: Actualizar documentacion tras ejecutar decisiones Cabo 1+2 — PENDIENTE
+
+Al ejecutar las decisiones de Cabo 1+2 (renombrar `tipos_escritos` → `plantillas`,
+eliminar `campos_catalogo`, etc.) hay que actualizar los .md que referencian
+los nombres antiguos:
+
+| Fichero | Conceptos a actualizar |
+|---|---|
+| `docs/fuentesIA/GUIA_CONTEXT_BUILDERS.md` | `campos_catalogo`, `tipos_escritos`, ejemplo de migracion INSERT |
+| `docs/fuentesIA/ARQUITECTURA_DOCUMENTOS.md` | `campos_catalogo`, `tipos_escritos` |
+| `docs/fuentesIA/ROADMAP.md` | `tipos_escritos` |
+
+No actualizar antes de la migracion — el codigo aun usa los nombres actuales.
+
 ---
 
 ## Proximos pasos (cuando se retome)
@@ -476,7 +490,8 @@ Afecta a B4 y C8.
 1. **Sesion dedicada: dimension solicitud en ESFTT** — prerequisito para codificar
 2. Sesion dedicada: sistematizacion de nombres de archivos (Cabo 3)
 3. Resolver cabos pendientes restantes (C3-C6)
-4. Completar punto 2) Dependencias con otros modulos
+4. Al ejecutar Cabo 1+2: actualizar documentacion (Cabo 6)
+5. Completar punto 2) Dependencias con otros modulos
 5. Completar punto 3) Riesgos e inconsistencias
 6. Completar punto 4) Orden logico de decisiones de diseno
 7. Completar punto 5) Preguntas sin respuesta
