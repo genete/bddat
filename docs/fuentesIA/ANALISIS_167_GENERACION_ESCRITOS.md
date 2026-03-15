@@ -450,13 +450,17 @@ verificacion cruzada. Pendiente de decidir si la FK justifica la migracion.
 
 ---
 
-#### C4. Metadatos del documento generado — PENDIENTE DE DECISION
+#### C4. Metadatos del documento generado — DECIDIDO
 
-Al crear `Documento` en pool: que `asunto` se pone? La `fecha_administrativa`
-es la fecha de generacion o NULL (porque aun no esta firmado)? La `prioridad`?
+Al registrar el `Documento` en pool tras generar:
 
-**Propuesta:** Asunto = nombre del tipo_escrito + contexto minimo.
-Fecha administrativa = NULL hasta firma. Prioridad = 0.
+- **`fecha_administrativa`** = NULL — el .docx es un borrador sin valor juridico hasta la firma
+- **`prioridad`** = 0 — la prioridad solo tiene sentido para documentos externos
+  (urgencias, problemas potenciales). Los internos son 0 salvo que el usuario lo cambie
+- **`asunto`** = descripcion de la plantilla + contexto ESFTT con datos reales del expediente.
+  Si la instancia de plantilla esta bien rellena, su campo `descripcion` equivale al asunto.
+  Se concatenan las cadenas legibles del contexto (expediente, solicitud, fase, tramite)
+  con los mismos datos reales que se inyectan en el propio documento
 
 ---
 
@@ -535,7 +539,7 @@ No actualizar antes de la migracion — el codigo aun usa los nombres actuales.
 
 ## Proximos pasos (cuando se retome)
 
-1. Resolver pendientes: C4 (metadatos), C5 (motor pre-generacion), C6 (permisos)
+1. Resolver pendientes: C5 (motor pre-generacion), C6 (permisos)
 2. Sesion dedicada: sistematizacion de nombres de archivos (Cabo 3)
 3. Al ejecutar Cabos 1+2+4: actualizar documentacion (Cabo 6)
 4. Completar punto 2) Dependencias con otros modulos
