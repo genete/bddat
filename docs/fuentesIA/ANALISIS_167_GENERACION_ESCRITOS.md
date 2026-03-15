@@ -615,7 +615,7 @@ Las columnas usan codigos cortos: **R** = renombrar/restructurar, **A** = anadir
 | `services/motor_reglas.py` | | | | | | | M | | |
 | `routes/vista3.py` | | | | | | | M | M | |
 | `routes/wizard_expediente.py` | | | | | | | M | | |
-| `templates/vistas/vista3/` | | | | | | | | M | |
+| ~~`templates/vistas/vista3/`~~ | | | | | | | | | DEPRECADA |
 | `config.py` | | | | | | | | | |
 
 > **Clave:** C1D1 = Cabo1 Decision1, C3 = Cabo3, C4 = Cabo4, B1-B8 = necesidades tramitador, C1-C8 = transversales.
@@ -636,12 +636,13 @@ Todas las migraciones deben ser manuales (`flask db revision`). Nunca `flask db 
 | `plantillas` (ex tipos_escritos) | ADD `variante` TEXT nullable | C3 | Texto libre para distinguir plantillas del mismo contexto ESFTT |
 | `tipos_documentos` | ADD `origen` VARCHAR(10) NOT NULL DEFAULT 'AMBOS' | C1D4 | CHECK (`origen` IN ('INTERNO','EXTERNO','AMBOS')). Seed: actualizar registros existentes |
 | `tipos_solicitudes` | ADD ~6 filas combinadas | C4 | INSERT tipos combinados (AAP_AAC, AAP_AAC_DUP, etc.) |
-| `solicitudes` | ADD `tipo_solicitud_id` FK nullable → `tipos_solicitudes.id` | C4 | FK directa al tipo (atomico o combinado). Nullable para retrocompatibilidad con datos existentes |
+| `solicitudes` | ADD `tipo_solicitud_id` FK NOT NULL → `tipos_solicitudes.id` | C4 | FK directa al tipo (atomico o combinado). NOT NULL — sin datos reales que migrar |
 | `tipos_expedientes` | ADD `nombre_en_plantilla` TEXT nullable | C3 | Texto corto para nomenclatura de ficheros |
 | `tipos_solicitudes` | ADD `nombre_en_plantilla` TEXT nullable | C3 | Idem |
 | `tipos_fases` | ADD `nombre_en_plantilla` TEXT nullable | C3 | Idem |
 | `tipos_tramites` | ADD `nombre_en_plantilla` TEXT nullable | C3 | Idem |
 | `tipos_tareas` | ADD `nombre_en_plantilla` TEXT nullable | C3 | Idem |
+| `solicitudes_tipos` | DROP TABLE | C4 | Reemplazada por `Solicitud.tipo_solicitud_id` directo. Sin datos reales que preservar |
 
 #### 2.2.2 Tablas nuevas
 
@@ -703,7 +704,7 @@ Las tres tablas son whitelists editables por supervisor. Seed inicial desde
 
 | Cambio | Origen | Detalle |
 |--------|--------|---------|
-| Anadir `tipo_solicitud_id` FK nullable | C4 | FK directa a `tipos_solicitudes.id`. Coexiste con `solicitudes_tipos` (tabla puente historica) |
+| Anadir `tipo_solicitud_id` FK NOT NULL | C4 | FK directa a `tipos_solicitudes.id`. Reemplaza la tabla puente `solicitudes_tipos` |
 | Anadir relationship `tipo_solicitud` | C4 | `db.relationship('TipoSolicitud')` |
 
 #### `app/models/__init__.py`
@@ -752,7 +753,7 @@ Cada uno con PK compuesta y sin columnas adicionales salvo las dos FK.
 
 | Cambio | Origen | Detalle |
 |--------|--------|---------|
-| Adaptar `_criterio_existe_tipo_solicitud` | C4 | Actualmente usa `SolicitudTipo` (tabla puente N:M). Con tipos combinados, debe tambien consultar `Solicitud.tipo_solicitud_id` directamente |
+| Reescribir `_criterio_existe_tipo_solicitud` | C4 | Actualmente usa `SolicitudTipo` (tabla puente N:M). Con la eliminacion de la tabla puente, consultar directamente `Solicitud.tipo_solicitud_id` |
 | Stubs de EXISTE_DOCUMENTO_TIPO | B4, C3 | Los stubs actuales (`lambda: False`) deben implementarse cuando el pool reciba documentos generados con tipo correcto |
 
 ---
@@ -781,14 +782,14 @@ Cada uno con PK compuesta y sin columnas adicionales salvo las dos FK.
 | Nuevo endpoint `POST /api/vista3/tarea/<id>/generar` | B1 | Orquesta la generacion: seleccion plantilla → preview → generar → guardar |
 | Nuevo endpoint `GET /api/vista3/tarea/<id>/plantillas` | B2 | Devuelve plantillas aplicables al contexto ESFTT de la tarea, con logica NULL-comodin |
 | Nuevo endpoint `GET /api/vista3/tarea/<id>/preview-campos` | B3 | Devuelve campos de la plantilla seleccionada con valores del expediente |
-| Adaptar `_get_solicitudes_con_stats()` | C4 | Actualmente obtiene tipos via `SolicitudTipo` JOIN. Debe tambien consultar `Solicitud.tipo_solicitud_id` |
-| Adaptar `crear_solicitud()` | C4 | Debe aceptar `tipo_solicitud_id` directo ademas de (o en vez de) `tipo_solicitud_id[]` |
+| Simplificar `_get_solicitudes_con_stats()` | C4 | Actualmente obtiene tipos via `SolicitudTipo` JOIN. Sustituir por acceso directo a `Solicitud.tipo_solicitud_id` |
+| Simplificar `crear_solicitud()` | C4 | Aceptar `tipo_solicitud_id` unico en vez de `tipo_solicitud_id[]` |
 
 #### `app/routes/wizard_expediente.py` — IMPACTO MEDIO
 
 | Cambio | Origen | Detalle |
 |--------|--------|---------|
-| Paso 3: cambiar selector de solicitudes | C4 | De multiselect checkboxes (tipos atomicos + tabla puente) a selector unico (tipo combinado). Rellenar `Solicitud.tipo_solicitud_id` ademas de `SolicitudTipo` para retrocompatibilidad |
+| Paso 3: cambiar selector de solicitudes | C4 | De multiselect checkboxes (tipos atomicos + tabla puente) a selector unico (tipo combinado). Solo rellena `Solicitud.tipo_solicitud_id`; `SolicitudTipo` se elimina |
 
 #### Nuevos endpoints necesarios (API)
 
@@ -819,25 +820,23 @@ Cada uno con PK compuesta y sin columnas adicionales salvo las dos FK.
 | `_panel_tokens.html` | Eliminar seccion campos_catalogo | C1D3 |
 | Todas | Renombrar variables `tipo`/`tipo_escrito` → `plantilla` | C1D1 |
 
-#### `app/templates/vistas/vista3/`
+#### ~~`app/templates/vistas/vista3/`~~ — DEPRECADA
 
-| Template | Cambio | Origen |
-|----------|--------|--------|
-| `_acordeon_tarea.html` | Anadir boton/accion "Generar escrito" visible solo para tareas tipo REDACTAR | B1 |
-| `_acordeon_tarea.html` | Modal o panel de generacion: selector plantilla + preview campos + checkboxes (pool, doc producido, abrir carpeta) | B2, B3, B4, B5 |
-| `_acordeon_solicitud.html` | Mostrar tipo solicitud directo (ademas de/en vez de siglas concatenadas) | C4 |
+La vista de acordeones (vista3) se va a deprecar. Los cambios de B1-B6 (generacion
+desde tarea REDACTAR) y C4 (tipo solicitud directo) se implementaran en la vista
+breadcrumb BC (`app/templates/vistas/vista3_bc/`) o su sucesora.
 
 #### `app/templates/expedientes/wizard_paso3.html`
 
 | Cambio | Origen | Detalle |
 |--------|--------|---------|
-| Cambiar multiselect tipos atomicos → selector tipo combinado | C4 | El selector muestra tipos atomicos Y combinados. Si se elige combinado, el sistema crea los `SolicitudTipo` correspondientes para retrocompatibilidad |
+| Cambiar multiselect tipos atomicos → selector tipo combinado | C4 | El selector muestra tipos atomicos Y combinados. `SolicitudTipo` desaparece; solo se usa `Solicitud.tipo_solicitud_id` |
 
 #### Templates nuevos necesarios
 
 | Template | Origen | Descripcion |
 |----------|--------|-------------|
-| Parcial de generacion en acordeon tarea | B1-B6 | UI de seleccion plantilla + preview + checkboxes + resultado |
+| Parcial de generacion en vista tarea (BC) | B1-B6 | UI de seleccion plantilla + preview + checkboxes + resultado |
 | CRUD consultas nombradas (listado, form, detalle) | A4 | 3-4 templates |
 | CRUD whitelist ESFTT (opcional fase 1) | C4 | Si se implementa admin de whitelists, 3 listados editables |
 
@@ -849,9 +848,9 @@ Cada uno con PK compuesta y sin columnas adicionales salvo las dos FK.
 |------------|--------|--------|
 | Admin plantillas: formulario | Selectores en cascada AJAX (E→S→F→T) | A0, C4 |
 | Admin plantillas: formulario | Refrescar panel tokens segun contexto (preparado, no implementado aun) | A0 |
-| Vista 3: acordeon tarea | Logica boton "Generar escrito" → AJAX al endpoint de generacion | B1 |
-| Vista 3: acordeon tarea | Selector plantilla filtrado + preview campos | B2, B3 |
-| Vista 3: acordeon tarea | Checkboxes pool/doc_producido/abrir_carpeta + submit | B4, B5 |
+| Vista tramitacion BC: tarea | Logica boton "Generar escrito" → AJAX al endpoint de generacion | B1 |
+| Vista tramitacion BC: tarea | Selector plantilla filtrado + preview campos | B2, B3 |
+| Vista tramitacion BC: tarea | Checkboxes pool/doc_producido/abrir_carpeta + submit | B4, B5 |
 | Wizard paso 3 | Cambiar de multiselect a selector unico (o selector con buscador) | C4 |
 
 > **Consultar `docs/GUIA_COMPONENTES_INTERACTIVOS.md`** antes de implementar cualquier JS.
