@@ -464,11 +464,11 @@ Al registrar el `Documento` en pool tras generar:
 
 ---
 
-#### C5. Motor de reglas pre-generacion — PENDIENTE DE DECISION
+#### ~~C5. Motor de reglas pre-generacion~~ — ELIMINADO
 
-Debe el motor evaluar algo antes de permitir generar? Ejemplo: "no generar resolucion
-si no existe informe tecnico favorable". O solo se evalua al FINALIZAR la tarea
-(que ya verifica `documento_producido`)?
+No aplica. Si el motor de reglas funciona, la tarea REDACTAR no puede existir
+si no se cumplen los presupuestos. La validacion pre-generacion seria redundante
+con la validacion de creacion de tareas.
 
 ---
 
@@ -539,7 +539,7 @@ No actualizar antes de la migracion — el codigo aun usa los nombres actuales.
 
 ## Proximos pasos (cuando se retome)
 
-1. Resolver pendientes: C5 (motor pre-generacion), C6 (permisos)
+1. Resolver pendientes: C6 (permisos)
 2. Sesion dedicada: sistematizacion de nombres de archivos (Cabo 3)
 3. Al ejecutar Cabos 1+2+4: actualizar documentacion (Cabo 6)
 4. Completar punto 2) Dependencias con otros modulos
