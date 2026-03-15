@@ -1,9 +1,9 @@
 # Analisis #167 — Generacion de escritos administrativos
 
-> **Estado:** En estudio. Documento de trabajo para retomar entre sesiones.
-> **Issues relacionados:** #167 (abierto), #189 (cerrado)
+> **Estado:** Analisis de necesidades completado. Pendiente de implementacion.
+> **Issues relacionados:** #167 (abierto), #189 (cerrado), #181 y #182 (vinculados via C3)
 > **Fecha inicio analisis:** 2026-03-15
-> **Sesiones:** 2 (ambas 2026-03-15)
+> **Sesiones:** 3 (todas 2026-03-15)
 
 ---
 
@@ -561,36 +561,35 @@ Resuelto en sesion 3 (ver seccion "Decisiones sesion 2", actualizada).
 - Tipos de solicitud combinados como entidades propias en `tipos_solicitudes`
 - Principio de escape como principio transversal
 
-### Cabo 5: Nota sobre dependencias del #189 — PENDIENTE
+### Cabo 5: ~~Nota sobre dependencias del #189~~ — CERRADO
 
-> **Comentario del usuario:** "el issue #189 requiere alguna actualizacion.
-> los requerimientos no son exactamente python-docx-template.
-> Ver commit 6b85fcf4d404730758c90314f393c6bbcef6af52"
+El issue #189 (cerrado) dice `python-docx-template` como dependencia, pero el paquete
+real es `docxtpl`. El commit 6b85fcf anadio correctamente las tres dependencias:
+`docxtpl==0.20.2`, `python-docx==1.2.0`, `lxml==6.0.2`. El codigo es correcto;
+solo el texto del issue tiene la discrepancia. No requiere accion.
 
-### Cabo 6: Actualizar documentacion tras ejecutar decisiones Cabo 1+2 — PENDIENTE
+### Cabo 6: Actualizar documentacion tras ejecutar migraciones — PENDIENTE (no bloqueante)
 
-Al ejecutar las decisiones de Cabo 1+2 (renombrar `tipos_escritos` → `plantillas`,
-eliminar `campos_catalogo`, etc.) hay que actualizar los .md que referencian
-los nombres antiguos:
+Al ejecutar las migraciones derivadas de este analisis, actualizar los .md que
+referencian nombres antiguos. **No antes** — el codigo aun usa los nombres actuales.
 
 | Fichero | Conceptos a actualizar |
 |---|---|
 | `docs/fuentesIA/GUIA_CONTEXT_BUILDERS.md` | `campos_catalogo`, `tipos_escritos`, ejemplo de migracion INSERT |
 | `docs/fuentesIA/ARQUITECTURA_DOCUMENTOS.md` | `campos_catalogo`, `tipos_escritos` |
 | `docs/fuentesIA/ROADMAP.md` | `tipos_escritos` |
-
-No actualizar antes de la migracion — el codigo aun usa los nombres actuales.
+| Issue #189 (cuerpo) | Estructura `tipos_escritos` obsoleta (renombrar a `plantillas`, eliminar `campos_catalogo`, anadir `tipo_expediente_id`, campo `variante`) |
 
 ---
 
-## Proximos pasos (cuando se retome)
+## Proximos pasos
 
-1. Al ejecutar Cabos 1+2+3+4: actualizar documentacion (Cabo 6) y migraciones
-2. Completar punto 2) Dependencias con otros modulos
-3. Completar punto 3) Riesgos e inconsistencias
-4. Completar punto 4) Orden logico de decisiones de diseno
-5. Completar punto 5) Preguntas sin respuesta
-6. Solo entonces: tocar codigo
+**Fase de analisis completada.** Todas las necesidades identificadas, clasificadas
+y decididas. Los cabos 1-5 estan cerrados. El cabo 6 se ejecuta junto con las migraciones.
+
+Cuando se retome para implementar:
+1. Migraciones BD (decisiones Cabo 1+2+3+4) + actualizar docs (Cabo 6)
+2. Tocar codigo
 
 ---
 
