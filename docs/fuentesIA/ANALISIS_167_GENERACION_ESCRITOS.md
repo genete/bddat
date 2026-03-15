@@ -472,10 +472,13 @@ con la validacion de creacion de tareas.
 
 ---
 
-#### C6. Permisos y roles — PENDIENTE DE DECISION
+#### ~~C6. Permisos y roles~~ — ELIMINADO
 
-Todos los tramitadores pueden generar escritos? O solo ciertos roles?
-El admin de plantillas ya esta protegido, pero la accion de generar?
+No procede. El control de acceso a las tareas lo gestiona el motor de reglas
+(roles que pueden tramitar, mover tramites, etc.). La accion de generar un escrito
+no requiere restriccion adicional: lo que tiene validez administrativa es la firma,
+que es externa a BDDAT. Si alguien genera un escrito y al tramitador real no le gusta,
+lo regenera o lo edita.
 
 ---
 
@@ -539,8 +542,7 @@ No actualizar antes de la migracion — el codigo aun usa los nombres actuales.
 
 ## Proximos pasos (cuando se retome)
 
-1. Resolver pendientes: C6 (permisos)
-2. Sesion dedicada: sistematizacion de nombres de archivos (Cabo 3)
+1. Sesion dedicada: sistematizacion de nombres de archivos (Cabo 3)
 3. Al ejecutar Cabos 1+2+4: actualizar documentacion (Cabo 6)
 4. Completar punto 2) Dependencias con otros modulos
 5. Completar punto 3) Riesgos e inconsistencias
