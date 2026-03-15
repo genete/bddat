@@ -3,6 +3,7 @@
 > **Estado:** En estudio. Documento de trabajo para retomar entre sesiones.
 > **Issues relacionados:** #167 (abierto), #189 (cerrado)
 > **Fecha inicio analisis:** 2026-03-15
+> **Sesiones:** 2 (ambas 2026-03-15)
 
 ---
 
@@ -30,6 +31,103 @@
 
 ---
 
+## Decisiones sesion 2 (2026-03-15)
+
+### Cabo 1+2: CERRADO — Estructura de `tipos_escritos` y `tipos_documentos`
+
+Se cierran conjuntamente los cabos 1 y 2 con 6 decisiones firmes:
+
+| # | Decision | Motivo |
+|---|----------|--------|
+| 1 | **Renombrar `tipos_escritos` a `plantillas`** | El nombre actual induce a confusion; es un registro de plantillas concretas, no un catalogo de tipos |
+| 2 | **Anadir `tipo_expediente_id` FK nullable a `plantillas`** | Completa la E que falta en ESFTT. NULL = cualquier tipo de expediente |
+| 3 | **Eliminar `campos_catalogo` de `plantillas`** | Debe ser calculo dinamico segun contexto, no dato estatico. Evita inconsistencias |
+| 4 | **Anadir `origen` (INTERNO/EXTERNO/AMBOS) a `tipos_documentos`** | Impide que una plantilla apunte a un tipo de documento externo. Distinto del `origen` eliminado en #191 (aquel era en la instancia `documentos`, este es en el catalogo `tipos_documentos`) |
+| 5 | **Mantener `contexto_clase`** | Necesario para Capa 2 (Context Builders) |
+| 6 | **Mantener `filtros_adicionales` JSONB** | Absorbe futuro sin migracion |
+
+> **Nota sobre decision 4:** Lo que se propone es distinto de lo eliminado en #191.
+> Anadir `origen` a `tipos_documentos` (el catalogo de tipos), no a `documentos`
+> (la instancia). A nivel de tipo no hay ambiguedad: una RESOLUCION es siempre
+> interna, una DR_NO_DUP es siempre externa. No entra en conflicto con la decision del #191.
+
+---
+
+### Cabo 4: PARCIALMENTE CERRADO — Filtrado dinamico de tokens por contexto ESFTT
+
+#### Parte cerrada: Tablas whitelist ESFTT
+
+Se decidieron dos tablas whitelist editables para la jerarquia ESFTT:
+
+- **`fases_tramites`** (PK compuesta: `tipo_fase_id` + `tipo_tramite_id`) — que tramites son validos dentro de que fase
+- **`expedientes_fases`** (PK compuesta: `tipo_expediente_id` + `tipo_fase_id`) — que fases aplican a que tipo de expediente
+
+Caracteristicas acordadas:
+- Seed inicial desde `Estructura_fases_tramites_tareas.json`
+- CRUD editable por supervisor (legislacion cambiante)
+- La cascada de selectores consume estas tablas como whitelist
+- Capa 1 tokens (12 campos base) siempre iguales — la dinamicidad llega con Capa 2
+- Infraestructura AJAX preparada para refresco futuro del panel de tokens
+- Solo definen **posibilidad** ("esta combinacion tiene sentido"), no obligatoriedad ni orden
+
+#### PROBLEMA IDENTIFICADO: cobertura incompleta E→S→F→T
+
+Las dos tablas whitelist cubren E→F y F→T, pero **falta la dimension solicitud (S)**.
+La cadena completa debe ser E→S→F→T y las tablas actuales no la cubren.
+
+> **Comentario del usuario:** "Ese documento `Estructura_fases_tramites_tareas.json`
+> no es absolutamente completo. Es un analisis bastante completo para los tipos de
+> solicitudes mas complejos. Pero si te fijas bien, no cubre completamente todas las
+> combinaciones tipos_expedientes combinadas con tipos_solicitudes. Es esencialmente
+> correcto pero no exhaustivo. Mi idea es que el supervisor pueda completar estas
+> jerarquias en el futuro, modificarlas o crear nuevas, pues la legislacion es muy
+> cambiante."
+
+La dimension solicitud presenta complejidad adicional:
+
+> **Comentario del usuario:** "Las plantillas estan intimamente relacionadas con la
+> cadena ESFTT (con S=las solicitudes presentadas). Si solicito AAP, la plantilla no
+> puede decir en su texto '...de acuerdo con la solicitud de Autorizacion Administrativa
+> de Construccion de fecha...' Todo influye. El lenguaje administrativo requiere de
+> mucha precision, especialmente las resoluciones."
+
+> **Comentario del usuario:** "Esto me da que pensar que el sistema de eleccion de las
+> solicitudes compatibles deberia ser simplemente un listado de tipos de solicitud donde
+> esten ya combinadas las compatibles. Aunque el listado de tipos de solicitud sea mas
+> largo, no es harcodear, es poner en la tabla lo que es posible y ahora mismo las
+> posibilidades de combinaciones de solicitudes son unas pocas, no infinitas."
+
+Conclusiones sobre la dimension solicitud:
+- Las COMBINACIONES de tipos de solicitud afectan al contenido del escrito (AAP no es lo mismo que AAP+DUP)
+- El FK simple `tipo_solicitud_id` no puede expresar combinaciones
+- Opciones: perfiles de solicitud como entidades propias, o refactor de `tipos_solicitudes`
+- `tipos_solicitudes_compatibles` existente podria no ser suficiente
+- **Pendiente de sesion dedicada. Prerequisito antes de codificar.**
+
+---
+
+### Principio de escape — Principio transversal de diseno
+
+> **Comentario del usuario:** "Despues de anos tramitando expedientes, me encuentro la
+> necesidad de realizar ciertos tramites que no estan exactamente recogidos en el flujo
+> normal. Una alegacion fuera de contexto, cambio de rumbo del expediente en medio de la
+> tramitacion de la IP, etc. En el motor de reglas, en el listado en cascada, etc., en
+> definitiva en todos los lugares donde se impide realizar ciertas cosas, se debe dejar
+> una via de escape para poder por ejemplo crear una FTT de un tipo donde no toca, de
+> forma que no haya callejon sin salida. Por supuesto estas acciones de escape se
+> documentan en la bitacora que esta prevista para estos casos."
+
+Cristaliza como principio de diseno transversal a todo el sistema:
+- **Toda cascada, filtro y regla debe tener via de escape**
+- El usuario puede elegir opciones "fuera de contexto" con advertencia visual
+- Toda accion de escape se registra en bitacora
+- **Nunca crear callejones sin salida**
+
+Aplica a: selectores en cascada ESFTT, motor de reglas, filtrado de plantillas,
+y cualquier mecanismo futuro que restrinja opciones.
+
+---
+
 ## 1) Mapa de necesidades (revisado)
 
 ### A. Supervisor — momento de crear/gestionar la plantilla
@@ -37,7 +135,7 @@
 #### A0. Filtrado dinamico de tokens y contexto ESFTT en cascada — CRITICO, NO DIFERIBLE
 
 **Necesidad:** Cuando el supervisor crea una plantilla nueva, selecciona el contexto ESFTT
-(tipo solicitud, fase, tramite). Actualmente:
+(tipo expediente, tipo solicitud, fase, tramite). Actualmente:
 - Los selectores NO filtran en cascada (solicitudes por tipo de expediente, fases por solicitud, tramites por fase)
 - El panel de tokens NO se actualiza en funcion del contexto seleccionado
 - Los tokens mostrados son siempre los mismos (Capa 1 estatica)
@@ -49,12 +147,15 @@ No conoce las tablas ni sus campos. Necesita que la interfaz le muestre solo lo 
 de reglas para determinar que aplica a que contexto. El diseno de este mecanismo
 no puede diferirse a cuando se implemente el motor completo — hay que establecerlo ahora.
 
-**Preguntas de diseno abiertas:**
-- Los tokens de Capa 1 son genericos (datos del expediente). Son siempre los mismos
-  independientemente del contexto ESFTT?
-- Los tokens de Capa 2 (Context Builders) si dependen del contexto. Como se descubren
-  dinamicamente segun el contexto seleccionado?
-- Las consultas nombradas: tienen contexto ESFTT propio o son transversales?
+**Decisiones sesion 2:**
+- Tablas whitelist `expedientes_fases` y `fases_tramites` alimentan la cascada
+- Tokens Capa 1 son siempre los mismos (12 campos base del expediente)
+- La dinamicidad de tokens llega con Capa 2 / Context Builders
+- AJAX preparado para refresco futuro del panel
+
+**Pendiente:**
+- Dimension solicitud: como expresar combinaciones de tipos de solicitud
+- Estructura exacta de tablas whitelist para cubrir E→S→F→T completo
 
 > **Comentario del usuario:** "Este contexto ESFTT implica que el descubrimiento de tokens
 > a introducir en la plantilla cuando se crea, ha de estar sincronizado con dicho contexto.
@@ -98,7 +199,7 @@ sin registrarlo en ningun pool.
 - Consultas nombradas (`{%tr for row in query %}`)
 - Fragmentos insertables (`{{r fragmento}}`)
 
-Tras detectarlos, registrar en `tipos_escritos` lo que corresponda.
+Tras detectarlos, registrar en `plantillas` (ex `tipos_escritos`) lo que corresponda.
 
 **Sobre fragmentos:** Son responsabilidad del supervisor. Se almacenan como .docx
 en `PLANTILLAS_BASE/fragmentos/`. El panel de tokens los lista pero no hay CRUD.
@@ -112,13 +213,16 @@ Un historico de fragmentos seria interesante pero diferible como modulo aparte.
 > seleccion del documento a consumir o generar en las tareas. Tiene una doble funcion pues
 > los documentos no son todos internos, tambien clasifica los externos. El tipo de documento
 > de un escrito generado por la plantilla no puede ser un tipo externo (algo hay que hacer)"
->
-> **<<< Sesion dedicada pendiente sobre tipos_escritos vs tipos_documentos >>>**
 
-**Pregunta de diseno sobre tipos_escritos:**
+**Resuelto en sesion 2:** Decisions 2 y 4 de Cabo 1+2 (anadir `tipo_expediente_id`,
+anadir `origen` a `tipos_documentos`).
+
+**Pregunta de diseno sobre tipos_escritos (resuelta sesion 2):**
 
 > "te das cuenta de que la estructura de tipos_escritos no esta funcionando??
 > Tiene lo que tiene que tener o es excesivo? Que debe definir realmente????"
+
+**Resuelto:** Decisiones 1-6 de Cabo 1+2 (renombrar, limpiar, completar).
 
 ---
 
@@ -338,44 +442,28 @@ Vinculado con B4. El .docx generado se guarda en `FILESYSTEM_BASE` con:
 
 ## Cabos sueltos — sesiones dedicadas pendientes
 
-### Cabo 1: Estructura de `tipos_escritos`
+### Cabo 1+2: ~~Estructura de `tipos_escritos` y `tipos_documentos`~~ — CERRADO
 
-La tabla actual tiene muchos campos. El usuario pregunta:
-"Tiene lo que tiene que tener o es excesivo? Que debe definir realmente?"
+Resuelto en sesion 2 con 6 decisiones firmes (ver seccion "Decisiones sesion 2").
 
-Campos actuales: `id, codigo, nombre, descripcion, ruta_plantilla, tipo_documento_id,
-contexto_clase, campos_catalogo, tipo_solicitud_id, tipo_fase_id, tipo_tramite_id,
-filtros_adicionales, activo`.
-
-Si el sistema parsea automaticamente el .docx y detecta que tokens usa,
-algunos campos podrian ser redundantes o autocalculados.
-
-### Cabo 2: `tipos_documentos` — internos vs externos
-
-Los tipos de documento clasifican tanto documentos externos (incorporados)
-como internos (generados). El `tipo_documento_id` de un `TipoEscrito` deberia
-apuntar solo a tipos "internos". Hay que definir esa distincion o al menos
-impedir que un escrito generado se clasifique como tipo externo.
-
-> **Comentario del usuario:** "debemos tener una sesion dedicada a esto solamente
-> (probablemente sea mas para reforzar mi comprension del funcionamiento del sistema
-> que la tuya)"
-
-### Cabo 3: Sistematizacion de nombres de archivos
+### Cabo 3: Sistematizacion de nombres de archivos — PENDIENTE
 
 Definir convencion de nombrado para archivos generados.
 El usuario lo considera "un apartado muy interesante y util".
 Afecta a B4 y C8.
 
-### Cabo 4: Filtrado dinamico de tokens por contexto ESFTT
+### Cabo 4: Filtrado dinamico de tokens por contexto ESFTT — PARCIALMENTE CERRADO
 
-Mecanismo tecnico para que al cambiar el contexto S/F/T en la UI de admin,
-los tokens disponibles se actualicen. Implica:
-- Que tokens son estaticos (Capa 1) vs dinamicos (Capa 2, consultas nombradas)
-- Como se descubren los Context Builders aplicables a un contexto dado
-- Endpoint AJAX para devolver tokens filtrados
+**Cerrado:**
+- Tablas whitelist `expedientes_fases` y `fases_tramites`
+- Principio de escape como principio transversal
 
-### Cabo 5: Nota sobre dependencias del #189
+**Abierto:**
+- Dimension solicitud: como expresar combinaciones de tipos de solicitud en la cadena ESFTT
+- Estructura exacta de tablas whitelist para cubrir E→S→F→T completo (no solo E→F y F→T)
+- **Prerequisito antes de codificar**
+
+### Cabo 5: Nota sobre dependencias del #189 — PENDIENTE
 
 > **Comentario del usuario:** "el issue #189 requiere alguna actualizacion.
 > los requerimientos no son exactamente python-docx-template.
@@ -385,16 +473,18 @@ los tokens disponibles se actualicen. Implica:
 
 ## Proximos pasos (cuando se retome)
 
-1. Resolver cabos sueltos (sesiones dedicadas)
-2. Completar punto 2) Dependencias con otros modulos
-3. Completar punto 3) Riesgos e inconsistencias
-4. Completar punto 4) Orden logico de decisiones de diseno
-5. Completar punto 5) Preguntas sin respuesta
-6. Solo entonces: tocar codigo
+1. **Sesion dedicada: dimension solicitud en ESFTT** — prerequisito para codificar
+2. Sesion dedicada: sistematizacion de nombres de archivos (Cabo 3)
+3. Resolver cabos pendientes restantes (C3-C6)
+4. Completar punto 2) Dependencias con otros modulos
+5. Completar punto 3) Riesgos e inconsistencias
+6. Completar punto 4) Orden logico de decisiones de diseno
+7. Completar punto 5) Preguntas sin respuesta
+8. Solo entonces: tocar codigo
 
 ---
 
-## ANEXO — Comentarios del usuario (2026-03-15, literal)
+## ANEXO — Comentarios del usuario (2026-03-15, sesion 1, literal)
 
 Yo me había planteado algunas preguntas que parcialmente están contestadas por ti.
 Por ejemplo: Cuando el supervisor crea una plantilla completamente nueva, se le pregunta cual es el contexto de esta plantilla ESFTT, se le pide que lo defina. Pero sin embargo no hay sistema que detecte esos datos introducidos y actualice el listado de tokens disponibles en función del contexto. Tampoco se produce filtrado de las solicitudes en función del tipo de expediente, de las fases en función de la solicitud seleccionada y de los trámites en función de la fase. El sistema de contexto de donde se puede usar una plantilla está directamente relacionado con su creación. Y para crearlo el supervisor (que no conoce los nombres de las tablas ni sus campos) tiene que poder saber que es cada campo y que significa. (listado de tokens disponibles) Es un asunto relacionado con el motor de reglas pero no se puede diferir a cuando se implemente. Hay que establecer su diseño ahora. <<< IMPORTANTE.
@@ -423,3 +513,21 @@ Hemos dejado cabos sueltos a discutir.
 Se me agota el tiempo delante del ordenador. Podemos crear un documento md que englobe esta conversación y podamos retormarlo en otro momento? Tras las reflexiones y reescritura tuya. Mete estos comentarios míos literalmente para no perder nada si los resumes. Luego si quieres los matizas en el propio md.
 
 Nota: el issue #189 requiere alguna actualización. los requerimientos no son exactamente pyton-docx-template. Ver commit 6b85fcf4d404730758c90314f393c6bbcef6af52
+
+---
+
+## ANEXO 2 — Comentarios del usuario (2026-03-15, sesion 2, literal)
+
+### Sobre tablas whitelist y completitud del JSON de estructura
+
+"Primero, ese documento fuentesIA/Estructura_fases_tramites_tareas.json no es absolutamente completo. Es un analisis bastante completo para los tipos de solicitudes mas complejos. Pero si te fijas bien, no cubre completamente todas las combinaciones tipos_expedientes combinadas con tipos_solicitudes. Es esencialmente correcto pero no exhaustivo. Mi idea es que el supervisor pueda completar estas jerarquias en el futuro, modificarlas o crear nuevas, pues la legislacion es muy cambiante."
+
+### Sobre el principio de escape
+
+"Despues de anos tramitando expedientes, me encuentro la necesidad de realizar ciertos tramites que no estan exactamente recogidos en el flujo normal. Una alegacion fuera de contexto, cambio de rumbo del expediente en medio de la tramitacion de la IP, etc. En el motor de reglas, en el listado en cascada, etc., en definitiva en todos los lugares donde se impide realizar ciertas cosas, se debe dejar una via de escape para poder por ejemplo crear una FTT de un tipo donde no toca, de forma que no haya callejon sin salida. Por supuesto estas acciones de escape se documentan en la bitacora que esta prevista para estos casos."
+
+### Sobre solicitudes y plantillas
+
+"Las plantillas estan intimamente relacionadas con la cadena ESFTT (con S=las solicitudes presentadas). Si solicito AAP, la plantilla no puede decir en su texto '...de acuerdo con la solicitud de Autorizacion Administrativa de Construccion de fecha...' Todo influye. El lenguaje administrativo requiere de mucha precision, especialmente las resoluciones."
+
+"Esto me da que pensar que el sistema de eleccion de las solicitudes compatibles deberia ser simplemente un listado de tipos de solicitud donde esten ya combinadas las compatibles. Aunque el listado de tipos de solicitud sea mas largo, no es harcodear, es poner en la tabla lo que es posible y ahora mismo las posibilidades de combinaciones de solicitudes son unas pocas, no infinitas."
