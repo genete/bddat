@@ -407,13 +407,46 @@ complejo lo requiera. No es bloqueante para el flujo basico de generacion.
 
 ---
 
-#### C3. Trazabilidad: quien genero, cuando, con que plantilla — PENDIENTE DE DECISION
+#### C3. Trazabilidad y codigo de clasificacion embebido — DECIDIDO (vincula #182 y #181)
 
-El `Documento` registrado en pool no lleva referencia a que `TipoEscrito` lo genero.
-Si alguien pregunta "con que plantilla se hizo este requerimiento?", no hay forma
-de saberlo desde la BD.
+**Contexto:** El `Documento` registrado en pool no lleva referencia a que plantilla lo genero.
+Los issues #182 (codigos embebidos en PDFs internos) y #181 (inspeccion automatica de documentos)
+se conectan directamente con #167: **el momento de generacion es el unico donde el sistema
+tiene contexto ESFTT completo.**
 
-**Pregunta abierta:** Es necesario? FK en documento a tipo_escrito? Campo observaciones?
+**Ciclo de vida del documento generado:**
+
+```
+GENERAR (#167)          →  .docx con codigo embebido (#182)
+   ↓
+Usuario edita en Writer →  el codigo sobrevive
+   ↓
+Portafirmas             →  PDF firmado, codigo intacto
+   ↓
+INCORPORAR al pool      →  inspeccion automatica (#181) lee el codigo
+   ↓
+Clasificacion sin intervencion manual
+```
+
+**Decision: doble via de trazabilidad**
+
+1. **Codigo embebido en el .docx generado (#182):** `generar_escrito()` inyecta automaticamente
+   metadatos de clasificacion en el documento. El supervisor no interviene — el sistema lo hace.
+   - **Via principal:** Custom properties del .docx (invisible, lectura programatica directa)
+   - **Via fallback:** QR en pie de pagina (resistente a impresion, escaneo, conversion PDF)
+   - El supervisor puede ubicar el QR con un token especial `{{qr_clasificacion}}`
+     en la plantilla; si no lo pone, el sistema lo anade al final automaticamente
+
+2. **Codigo estructurado:** `BDDAT|AT-12345|AAP_AAC|RESOLUCION|ELABORACION|RES_FAVORABLE|2026-03-15`
+   (sistema, expediente, tipo solicitud, fase, tramite, plantilla, fecha generacion)
+
+3. **Al reincorporar el PDF firmado (#181):** la inspeccion automatica lee el codigo embebido
+   y preclasifica el documento (expediente, tipo, contexto) sin intervencion manual.
+   Los documentos con codigo se clasifican con certeza; los sin codigo pasan por heuristicas.
+
+**Sobre FK en BD:** No es estrictamente necesaria si el documento lleva el codigo dentro.
+Pero tener ambas vias (FK `plantilla_id` en `documentos` + codigo embebido) da
+verificacion cruzada. Pendiente de decidir si la FK justifica la migracion.
 
 ---
 
