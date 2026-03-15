@@ -321,7 +321,7 @@ alerta si alguno esta vacio. El tramitador ve esto ANTES de pulsar "Generar".
 
 **Flujo decidido:**
 1. Generar sustituye campos por valores
-2. El sistema ofrece guardar con nombre propuesto (sistematizado: codigo plantilla + numero expediente + solicitud)
+2. El sistema ofrece guardar con nombre propuesto (ver Cabo 3: convencion de nomenclatura)
 3. La ruta debe estar DENTRO de `FILESYSTEM_BASE`, navegable con un explorador similar al del pool
 4. **Checkbox 1:** Registrar en pool (opcional, advertencia si no se marca)
 5. **Checkbox 2:** Asignar como documento producido (opcional)
@@ -335,7 +335,7 @@ alerta si alguno esta vacio. El tramitador ve esto ANTES de pulsar "Generar".
 > producido. Igualmente. [...] Porque el usuario podria querer hacer una segunda iteracion
 > al darse cuenta de que el documento tiene datos erroneos."
 >
-> **<<< Sesion dedicada pendiente: SISTEMATIZACION DE NOMBRES DE ARCHIVOS >>>**
+> Sistematizacion de nombres: resuelta en Cabo 3.
 
 ---
 
@@ -489,13 +489,10 @@ toast de error con detalle suficiente para que el tramitador informe al supervis
 
 ---
 
-#### C8. Ruta de almacenamiento y sistematizacion de nombres — NECESARIO
+#### C8. Ruta de almacenamiento y sistematizacion de nombres — DECIDIDO (ver Cabo 3)
 
-Vinculado con B4. El .docx generado se guarda en `FILESYSTEM_BASE` con:
-- Ruta: dentro del arbol del expediente, navegable
-- Nombre: sistematizado (codigo plantilla + numero expediente + solicitud + ?)
-
-**<<< Sesion dedicada pendiente: SISTEMATIZACION DE NOMBRES DE ARCHIVOS >>>**
+Vinculado con B4. El .docx generado se guarda en `FILESYSTEM_BASE` dentro del arbol
+del expediente, con nombre sistematizado segun convencion definida en Cabo 3.
 
 ---
 
@@ -505,11 +502,57 @@ Vinculado con B4. El .docx generado se guarda en `FILESYSTEM_BASE` con:
 
 Resuelto en sesion 2 con 6 decisiones firmes (ver seccion "Decisiones sesion 2").
 
-### Cabo 3: Sistematizacion de nombres de archivos — PENDIENTE
+### Cabo 3: ~~Sistematizacion de nombres de archivos~~ — CERRADO
 
-Definir convencion de nombrado para archivos generados.
-El usuario lo considera "un apartado muy interesante y util".
-Afecta a B4 y C8.
+Afecta a B4 y C8. Resuelto en sesion 3.
+
+#### Convencion de nomenclatura
+
+Separador: espacio. El nombre se compone concatenando los `nombre_en_plantilla`
+de cada nivel ESFTT separados por espacios. BDDAT siempre compone el nombre,
+nunca lo parsea — el nombre es solo para legibilidad humana, no para logica interna.
+
+**Requisito previo:** Anadir campo `nombre_en_plantilla` en cada tabla tipo_
+(`tipos_tareas`, `tipos_tramites`, `tipos_fases`, `tipos_solicitudes`, `tipos_expedientes`).
+Texto corto legible que aparecera en los nombres de fichero.
+Puede contener espacios (ej: "Requerimiento subsanacion").
+
+**Nombre de plantilla** (sistema lo construye, supervisor lo acepta o ajusta):
+
+```
+{tarea} {tramite} {fase} {solicitud} {expediente} [V {variante}].docx
+```
+
+Reglas para NULLs (comodines):
+- NULL al final de la cadena → se omite
+- NULL en medio de dos valores reales → se sustituye por `ANY`
+
+El campo **variante** es texto libre que el supervisor introduce en el formulario
+para distinguir plantillas del mismo contexto ESFTT (ej: "Favorable", "Denegatoria",
+"Condicionada"). Resuelve el problema de las multiples plantillas sin inflar
+el interfaz con campos para cada posibilidad.
+
+**Nombre de documento generado** (sistema lo construye con datos reales del expediente):
+
+Los niveles que eran NULL/ANY en la plantilla se rellenan con los valores reales
+del expediente concreto.
+
+**Almacenamiento de plantillas:** Directorio plano en `PLANTILLAS_BASE/`.
+El contexto ESFTT vive en la BD (tabla `plantillas`), no en el filesystem.
+La convencion de nombres evita colisiones sin necesidad de subdirectorios.
+
+**Ejemplos:**
+
+| Plantilla | Documento generado |
+|---|---|
+| `Redactar Elaboracion Resolucion V Favorable.docx` | `Redactar Elaboracion Resolucion AAP+AAC AT-13465-24 V Favorable.docx` |
+| `Redactar Requerimiento subsanacion.docx` | `Redactar Requerimiento subsanacion AAP+AAC AT-13465-24.docx` |
+| `Notificar Traslado condicionados Consultas ANY Transporte.docx` | `Notificar Traslado condicionados Consultas AAP+AAC+DUP AT-13465-24.docx` |
+| `Redactar Elaboracion Resolucion ANY Transporte V Denegatoria.docx` | `Redactar Elaboracion Resolucion AAP+AAC AT-13465-24 V Denegatoria.docx` |
+
+**TODO implementacion:** Secuencial automatico (`_2`, `_3`) cuando ya existe un documento
+con el mismo nombre para el mismo expediente (ej: segundo requerimiento de subsanacion).
+Pendiente de definir mecanismo exacto.
 
 ### Cabo 4: ~~Filtrado dinamico de tokens por contexto ESFTT~~ — CERRADO
 
@@ -542,13 +585,12 @@ No actualizar antes de la migracion — el codigo aun usa los nombres actuales.
 
 ## Proximos pasos (cuando se retome)
 
-1. Sesion dedicada: sistematizacion de nombres de archivos (Cabo 3)
-3. Al ejecutar Cabos 1+2+4: actualizar documentacion (Cabo 6)
-4. Completar punto 2) Dependencias con otros modulos
-5. Completar punto 3) Riesgos e inconsistencias
-6. Completar punto 4) Orden logico de decisiones de diseno
-7. Completar punto 5) Preguntas sin respuesta
-8. Solo entonces: tocar codigo
+1. Al ejecutar Cabos 1+2+3+4: actualizar documentacion (Cabo 6) y migraciones
+2. Completar punto 2) Dependencias con otros modulos
+3. Completar punto 3) Riesgos e inconsistencias
+4. Completar punto 4) Orden logico de decisiones de diseno
+5. Completar punto 5) Preguntas sin respuesta
+6. Solo entonces: tocar codigo
 
 ---
 
