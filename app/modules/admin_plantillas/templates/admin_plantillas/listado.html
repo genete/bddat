@@ -50,7 +50,7 @@
                     </td>
                     <td><code>{{ p.codigo }}</code></td>
                     <td>{{ p.tipo_documento.nombre if p.tipo_documento else '—' }}</td>
-                    <td>{{ p.tipo_expediente.nombre if p.tipo_expediente else '<span class="text-secondary">Cualquiera</span>'|safe }}</td>
+                    <td>{{ p.tipo_expediente.tipo if p.tipo_expediente else '<span class="text-secondary">Cualquiera</span>'|safe }}</td>
                     <td>{{ p.tipo_solicitud.siglas if p.tipo_solicitud else '<span class="text-secondary">Cualquiera</span>'|safe }}</td>
                     <td>{{ p.tipo_fase.nombre if p.tipo_fase else '<span class="text-secondary">Cualquiera</span>'|safe }}</td>
                     <td>{{ p.tipo_tramite.nombre if p.tipo_tramite else '<span class="text-secondary">Cualquiera</span>'|safe }}</td>

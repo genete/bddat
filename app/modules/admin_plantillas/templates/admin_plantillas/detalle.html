@@ -81,7 +81,7 @@
                         <dt class="col-sm-4">Tipo expediente</dt>
                         <dd class="col-sm-8">
                             {% if plantilla.tipo_expediente %}
-                                {{ plantilla.tipo_expediente.nombre }}
+                                {{ plantilla.tipo_expediente.tipo }}{% if plantilla.tipo_expediente.descripcion %} — {{ plantilla.tipo_expediente.descripcion }}{% endif %}
                             {% else %}<span class="text-secondary">Cualquiera</span>{% endif %}
                         </dd>
 

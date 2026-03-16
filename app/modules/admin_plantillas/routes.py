@@ -155,7 +155,7 @@ def _form_data_to_plantilla(plantilla: Plantilla) -> bool:
 def _selects_context():
     """Devuelve los querysets para los selects del formulario."""
     return {
-        'tipos_expediente': TipoExpediente.query.order_by(TipoExpediente.nombre).all(),
+        'tipos_expediente': TipoExpediente.query.order_by(TipoExpediente.tipo).all(),
         'tipos_solicitud':  TipoSolicitud.query.order_by(TipoSolicitud.siglas).all(),
         'tipos_fase':       TipoFase.query.order_by(TipoFase.nombre).all(),
         'tipos_tramite':    TipoTramite.query.order_by(TipoTramite.nombre).all(),

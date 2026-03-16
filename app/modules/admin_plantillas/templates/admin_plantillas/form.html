@@ -126,7 +126,7 @@
                                 {% for te in tipos_expediente %}
                                 <option value="{{ te.id }}"
                                     {% if plantilla and plantilla.tipo_expediente_id == te.id %}selected{% endif %}>
-                                    {{ te.nombre }}
+                                    {{ te.tipo }}{% if te.descripcion %} — {{ te.descripcion }}{% endif %}
                                 </option>
                                 {% endfor %}
                             </select>

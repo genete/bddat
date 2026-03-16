@@ -82,28 +82,28 @@ class Plantilla(db.Model):
 
     tipo_expediente_id = db.Column(
         db.Integer,
-        db.ForeignKey('public.tipos_expedientes.id', name='fk_plantillas_tipo_expediente'),
+        db.ForeignKey('tipos_expedientes.id', name='fk_plantillas_tipo_expediente'),
         nullable=True,
         comment='FK tipos_expedientes. NULL = aplica a cualquier tipo de expediente'
     )
 
     tipo_solicitud_id = db.Column(
         db.Integer,
-        db.ForeignKey('public.tipos_solicitudes.id', name='fk_plantillas_tipo_solicitud'),
+        db.ForeignKey('tipos_solicitudes.id', name='fk_plantillas_tipo_solicitud'),
         nullable=True,
         comment='FK tipos_solicitudes. NULL = aplica a cualquier tipo de solicitud'
     )
 
     tipo_fase_id = db.Column(
         db.Integer,
-        db.ForeignKey('public.tipos_fases.id', name='fk_plantillas_tipo_fase'),
+        db.ForeignKey('tipos_fases.id', name='fk_plantillas_tipo_fase'),
         nullable=True,
         comment='FK tipos_fases. NULL = aplica a cualquier fase'
     )
 
     tipo_tramite_id = db.Column(
         db.Integer,
-        db.ForeignKey('public.tipos_tramites.id', name='fk_plantillas_tipo_tramite'),
+        db.ForeignKey('tipos_tramites.id', name='fk_plantillas_tipo_tramite'),
         nullable=True,
         comment='FK tipos_tramites. NULL = aplica a cualquier trámite'
     )
