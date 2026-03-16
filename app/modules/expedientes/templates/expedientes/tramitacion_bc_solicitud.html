@@ -11,7 +11,7 @@
 <span>›</span>
 <a href="{{ url_for('expedientes.tramitacion_bc', exp_id=expediente.id) }}">Tramitación</a>
 <span>›</span>
-<span>{{ solicitud.solicitud_tipos | map(attribute="tipo_solicitud.siglas") | join("+") or "Solicitud #" ~ solicitud.id }}</span>
+<span>{{ solicitud.tipo_solicitud.siglas if solicitud.tipo_solicitud else "Solicitud #" ~ solicitud.id }}</span>
 {% endblock %}
 
 {% block extra_css %}{{ super() }}
@@ -43,7 +43,7 @@
       <span class="fw-semibold">
         <i class="fas fa-file-alt me-2"></i>
         Solicitud:
-        {{ solicitud.solicitud_tipos | map(attribute='tipo_solicitud.siglas') | join(' + ') or '#' ~ solicitud.id }}
+        {{ solicitud.tipo_solicitud.siglas if solicitud.tipo_solicitud else '#' ~ solicitud.id }}
       </span>
       <div class="bc-acciones-bar">
         {# Modo ver: botones Editar + Acciones #}

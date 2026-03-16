@@ -44,8 +44,8 @@ class TipoSolicitud(db.Model):
         v3.0: Sin cambios estructurales. Tabla maestra estable.
     """
     __tablename__ = 'tipos_solicitudes'
-    
-    
+
+
     id = db.Column(
         db.Integer, 
         primary_key=True, 

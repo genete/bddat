@@ -13,13 +13,13 @@ class ExpedienteSolicitud(db.Model):
 
     tipo_expediente_id = db.Column(
         db.Integer,
-        db.ForeignKey('public.tipos_expedientes.id', name='fk_exp_sol_tipo_expediente'),
+        db.ForeignKey('tipos_expedientes.id', name='fk_exp_sol_tipo_expediente'),
         primary_key=True,
         nullable=False
     )
     tipo_solicitud_id = db.Column(
         db.Integer,
-        db.ForeignKey('public.tipos_solicitudes.id', name='fk_exp_sol_tipo_solicitud'),
+        db.ForeignKey('tipos_solicitudes.id', name='fk_exp_sol_tipo_solicitud'),
         primary_key=True,
         nullable=False
     )

@@ -104,7 +104,7 @@ class Solicitud(db.Model):
     
     tipo_solicitud_id = db.Column(
         db.Integer,
-        db.ForeignKey('public.tipos_solicitudes.id', name='fk_solicitudes_tipo_solicitud'),
+        db.ForeignKey('tipos_solicitudes.id', name='fk_solicitudes_tipo_solicitud'),
         nullable=False,
         comment='FK a TIPOS_SOLICITUDES. Tipo atómico o combinado (#167 Fase 1)'
     )

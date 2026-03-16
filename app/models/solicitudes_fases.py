@@ -13,13 +13,13 @@ class SolicitudFase(db.Model):
 
     tipo_solicitud_id = db.Column(
         db.Integer,
-        db.ForeignKey('public.tipos_solicitudes.id', name='fk_sol_fas_tipo_solicitud'),
+        db.ForeignKey('tipos_solicitudes.id', name='fk_sol_fas_tipo_solicitud'),
         primary_key=True,
         nullable=False
     )
     tipo_fase_id = db.Column(
         db.Integer,
-        db.ForeignKey('public.tipos_fases.id', name='fk_sol_fas_tipo_fase'),
+        db.ForeignKey('tipos_fases.id', name='fk_sol_fas_tipo_fase'),
         primary_key=True,
         nullable=False
     )
