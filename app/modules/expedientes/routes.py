@@ -269,10 +269,7 @@ def tramitacion_bc(exp_id):
 
     hijos = []
     for s in solicitudes_raw:
-        tipos_str = ' + '.join(
-            st.tipo_solicitud.siglas
-            for st in s.solicitud_tipos
-        ) if s.solicitud_tipos else f'Solicitud #{s.id}'
+        tipos_str = s.tipo_solicitud.siglas if s.tipo_solicitud else f'Solicitud #{s.id}'
         hijos.append({
             'nombre':        tipos_str,
             'fecha_inicio':  _fmt_fecha(s.fecha_solicitud),

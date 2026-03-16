@@ -12,7 +12,7 @@
 <a href="{{ url_for('expedientes.tramitacion_bc', exp_id=expediente.id) }}">Tramitación</a>
 <span>›</span>
 <a href="{{ url_for('expedientes.tramitacion_bc_solicitud', exp_id=expediente.id, sol_id=solicitud.id) }}">
-  {{ solicitud.solicitud_tipos | map(attribute="tipo_solicitud.siglas") | join("+") or "Solicitud #" ~ solicitud.id }}
+  {{ solicitud.tipo_solicitud.siglas if solicitud.tipo_solicitud else "Solicitud #" ~ solicitud.id }}
 </a>
 <span>›</span>
 <a href="{{ url_for('expedientes.tramitacion_bc_fase', exp_id=expediente.id, sol_id=solicitud.id, fase_id=fase.id) }}">

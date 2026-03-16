@@ -171,4 +171,4 @@ class Documento(db.Model):
     
     def __str__(self):
         """Representación legible para interfaz."""
-        return self.nombre_display or f'Documento {self.id}'
+        return (self.url or '').rsplit('/', 1)[-1] or f'Documento {self.id}'

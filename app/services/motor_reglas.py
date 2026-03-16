@@ -38,7 +38,6 @@ from app.models.tipos_fases import TipoFase
 from app.models.tipos_tramites import TipoTramite
 from app.models.tipos_tareas import TipoTarea
 from app.models.tipos_solicitudes import TipoSolicitud
-from app.models.solicitudes_tipos import SolicitudTipo
 from app.models.motor_reglas import ReglaMotor, CondicionRegla
 
 
@@ -456,15 +455,11 @@ def _criterio_estado_solicitud(p: dict, ctx: _Contexto, params: dict) -> bool:
 
 
 def _criterio_existe_tipo_solicitud(p: dict, ctx: _Contexto, params: dict) -> bool:
-    if not ctx.solicitud:
+    """Comparación exacta de siglas. La inteligencia está en la regla, no en el motor."""
+    if not ctx.solicitud or not ctx.solicitud.tipo_solicitud:
         return False
     siglas = p.get('tipo_solicitud_codigo')
-    resultado = (db.session.query(SolicitudTipo)
-                 .join(TipoSolicitud, SolicitudTipo.tiposolicitudid == TipoSolicitud.id)
-                 .filter(SolicitudTipo.solicitudid == ctx.solicitud.id,
-                         TipoSolicitud.siglas == siglas)
-                 .first())
-    return resultado is not None
+    return ctx.solicitud.tipo_solicitud.siglas == siglas
 
 
 # ---------------------------------------------------------------------------
@@ -592,6 +587,5 @@ def _deducir_tipo_id(entidad: str, ctx: _Contexto) -> Optional[int]:
     if entidad == 'FASE'     and ctx.fase:
         return ctx.fase.tipo_fase_id
     if entidad == 'SOLICITUD' and ctx.solicitud:
-        # La solicitud puede tener múltiples tipos — no hay un único tipo_id
-        return None
+        return ctx.solicitud.tipo_solicitud_id
     return None

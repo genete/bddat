@@ -88,43 +88,23 @@
                             <div class="form-text">Fecha oficial de presentación.</div>
                         </div>
 
-                        {# --- Tipos de solicitud --- #}
-                        <div class="mb-4" style="position:relative;">
-                            <label class="form-label fw-semibold">
-                                Tipo(s) de solicitud <span class="text-danger">*</span>
+                        {# --- Tipo de solicitud --- #}
+                        <div class="mb-4">
+                            <label for="tipo-solicitud-select" class="form-label fw-semibold">
+                                Tipo de solicitud <span class="text-danger">*</span>
                             </label>
-
-                            <div class="card bg-light border-0 p-3">
-                                {# Select nativo para añadir tipos #}
-                                <div class="mb-2">
-                                    <select id="tipos-select" class="form-select">
-                                        <option value="">— Añadir tipo de solicitud —</option>
-                                        {% for ts in tipos_solicitudes %}
-                                        <option value="{{ ts.id }}"
-                                                data-siglas="{{ ts.siglas }}"
-                                                data-descripcion="{{ ts.descripcion }}">
-                                            {{ ts.siglas }} &mdash; {{ ts.descripcion }}
-                                        </option>
-                                        {% endfor %}
-                                    </select>
-                                </div>
-
-                                {# Badges seleccionados #}
-                                <div>
-                                    <p class="small mb-2">Tipos seleccionados:</p>
-                                    <div id="tipos-seleccionados" class="d-flex flex-wrap gap-2">
-                                        <span class="text-secondary small">Ninguno añadido todavía.</span>
-                                    </div>
-                                </div>
-                            </div>
-
+                            <select id="tipo-solicitud-select" name="tipo_solicitud_id"
+                                    class="form-select" required>
+                                <option value="">— Seleccione tipo de solicitud —</option>
+                                {% for ts in tipos_solicitudes %}
+                                <option value="{{ ts.id }}">
+                                    {{ ts.siglas }} &mdash; {{ ts.descripcion }}
+                                </option>
+                                {% endfor %}
+                            </select>
                             <div id="tipos-error" class="text-danger small mt-1" style="display:none;">
-                                <i class="fas fa-exclamation-circle me-1"></i>Debe seleccionar al menos un tipo.
+                                <i class="fas fa-exclamation-circle me-1"></i>Debe seleccionar un tipo.
                             </div>
-                            <div id="tipos-combo-error" class="text-danger small mt-1" style="display:none;">
-                                <i class="fas fa-exclamation-circle me-1"></i><span id="tipos-combo-msg"></span>
-                            </div>
-                            <div id="tipos-hidden-inputs"></div>
                         </div>
 
                         {# --- Observaciones --- #}
@@ -274,86 +254,10 @@
     });
 
     // ------------------------------------------------------------------
-    // B) Selector de tipos de solicitud con badges acumulables
+    // B) Validación del selector de tipo de solicitud
     // ------------------------------------------------------------------
-    const tiposSeleccionados = {};  // { id: { siglas, descripcion } }
-
-    const tiposSelect     = document.getElementById('tipos-select');
-    const tiposDiv        = document.getElementById('tipos-seleccionados');
-    const tiposHidden     = document.getElementById('tipos-hidden-inputs');
-    const tiposError      = document.getElementById('tipos-error');
-    const tiposComboError = document.getElementById('tipos-combo-error');
-    const tiposComboMsg   = document.getElementById('tipos-combo-msg');
-
-    /** Renderiza los badges y los inputs hidden según tiposSeleccionados */
-    function renderBadges() {
-        tiposDiv.innerHTML = '';
-        tiposHidden.innerHTML = '';
-        const ids = Object.keys(tiposSeleccionados);
-        if (!ids.length) {
-            tiposDiv.innerHTML = '<span class="text-secondary small">Ninguno añadido todavía.</span>';
-            return;
-        }
-        ids.forEach(id => {
-            const { siglas } = tiposSeleccionados[id];
-
-            // Badge visual con botón de eliminar
-            const span = document.createElement('span');
-            span.className = 'badge bg-primary d-inline-flex align-items-center gap-1 fs-6';
-            span.textContent = siglas;
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            btn.className = 'btn-close btn-close-white ms-1';
-            btn.style.cssText = 'font-size:0.6em;';
-            btn.setAttribute('aria-label', `Eliminar ${siglas}`);
-            btn.addEventListener('click', () => eliminarTipo(id));
-            span.appendChild(btn);
-            tiposDiv.appendChild(span);
-
-            // Input hidden para que llegue al backend
-            const inp = document.createElement('input');
-            inp.type  = 'hidden';
-            inp.name  = 'tipos_solicitud_ids[]';
-            inp.value = id;
-            tiposHidden.appendChild(inp);
-        });
-    }
-
-    function añadirTipo(id, siglas, descripcion) {
-        if (tiposSeleccionados[id]) return;  // ya está
-        tiposSeleccionados[id] = { siglas, descripcion };
-        renderBadges();
-        tiposError.style.display = 'none';
-    }
-
-    function eliminarTipo(id) {
-        delete tiposSeleccionados[id];
-        renderBadges();
-    }
-
-    // Al seleccionar en el <select>, añadir al badge list y resetear
-    tiposSelect.addEventListener('change', function () {
-        const opt = this.options[this.selectedIndex];
-        if (!opt.value) return;
-        añadirTipo(opt.value, opt.dataset.siglas, opt.dataset.descripcion);
-        this.value = '';  // resetear al placeholder
-    });
-
-    // ------------------------------------------------------------------
-    // Placeholder de validación de combinaciones (Fase 3)
-    // ------------------------------------------------------------------
-    /**
-     * Placeholder para la regla de negocio de combinaciones válidas.
-     * En Fase 3 este método recibirá las reglas del motor de tramitación.
-     * Actualmente siempre devuelve { valido: true }.
-     *
-     * @param {string[]} siglasList - Array de siglas seleccionadas
-     * @returns {Object} Objeto con campos `valido` (boolean) y `mensaje` (string)
-     */
-    function validarCombinacion(siglasList) {
-        // TODO Fase 3: implementar reglas de negocio
-        return { valido: true, mensaje: '' };
-    }
+    const tiposSelect = document.getElementById('tipo-solicitud-select');
+    const tiposError  = document.getElementById('tipos-error');
 
     // ------------------------------------------------------------------
     // Validación en submit
@@ -385,24 +289,12 @@
             solicitanteError.style.display = 'none';
         }
 
-        // Validar al menos un tipo seleccionado
-        const ids = Object.keys(tiposSeleccionados);
-        if (!ids.length) {
+        // Validar tipo de solicitud seleccionado
+        if (!tiposSelect.value) {
             tiposError.style.display = 'block';
             ok = false;
         } else {
             tiposError.style.display = 'none';
-
-            // Validar combinación (placeholder Fase 3)
-            const siglas = ids.map(id => tiposSeleccionados[id].siglas);
-            const { valido, mensaje } = validarCombinacion(siglas);
-            if (!valido) {
-                tiposComboMsg.textContent = mensaje;
-                tiposComboError.style.display = 'block';
-                ok = false;
-            } else {
-                tiposComboError.style.display = 'none';
-            }
         }
 
         if (!ok) {
