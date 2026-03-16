@@ -1,7 +1,7 @@
 {% extends 'layout/base_fullwidth.html' %}
 
 {% block title %}
-{% if modo == 'editar' %}Editar plantilla — {{ tipo.nombre }}{% else %}Nueva plantilla{% endif %} — BDDAT
+{% if modo == 'editar' %}Editar plantilla — {{ plantilla.nombre }}{% else %}Nueva plantilla{% endif %} — BDDAT
 {% endblock %}
 
 {% block breadcrumb %}
@@ -10,7 +10,7 @@
 <a href="{{ url_for('admin_plantillas.listado') }}">Plantillas de escritos</a>
 {% if modo == 'editar' %}
 <span>›</span>
-<a href="{{ url_for('admin_plantillas.detalle', id=tipo.id) }}">{{ tipo.nombre }}</a>
+<a href="{{ url_for('admin_plantillas.detalle', id=plantilla.id) }}">{{ plantilla.nombre }}</a>
 <span>›</span>
 <span>Editar</span>
 {% else %}
@@ -35,7 +35,7 @@
 <div class="content-constrained py-4">
     <form method="POST"
           enctype="multipart/form-data"
-          action="{% if modo == 'editar' %}{{ url_for('admin_plantillas.editar', id=tipo.id) }}{% else %}{{ url_for('admin_plantillas.nueva') }}{% endif %}">
+          action="{% if modo == 'editar' %}{{ url_for('admin_plantillas.editar', id=plantilla.id) }}{% else %}{{ url_for('admin_plantillas.nueva') }}{% endif %}">
 
         <div class="row g-4">
 
@@ -51,7 +51,7 @@
                         <div class="mb-3">
                             <label for="nombre" class="form-label fw-semibold">Nombre <span class="text-danger">*</span></label>
                             <input type="text" class="form-control" id="nombre" name="nombre"
-                                   value="{{ tipo.nombre if tipo else '' }}"
+                                   value="{{ plantilla.nombre if plantilla else '' }}"
                                    placeholder="Requerimiento de subsanación"
                                    required>
                             <div class="form-text">Nombre legible que verán tramitadores y supervisores.</div>
@@ -60,7 +60,7 @@
                         <div class="mb-3">
                             <label for="codigo" class="form-label fw-semibold">Código <span class="text-danger">*</span></label>
                             <input type="text" class="form-control font-monospace" id="codigo" name="codigo"
-                                   value="{{ tipo.codigo if tipo else '' }}"
+                                   value="{{ plantilla.codigo if plantilla else '' }}"
                                    placeholder="REQUERIMIENTO_SUBSANACION"
                                    pattern="[A-Z0-9_]+"
                                    title="Solo mayúsculas, números y guiones bajos"
@@ -69,10 +69,20 @@
                         </div>
 
                         <div class="mb-3">
+                            <label for="variante" class="form-label fw-semibold">Variante</label>
+                            <input type="text" class="form-control" id="variante" name="variante"
+                                   value="{{ plantilla.variante if plantilla and plantilla.variante else '' }}"
+                                   placeholder="Favorable, Denegatoria, Con condicionado…">
+                            <div class="form-text">
+                                Opcional. Distingue plantillas del mismo contexto ESFTT con diferente resultado.
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
                             <label for="descripcion" class="form-label fw-semibold">Descripción</label>
                             <textarea class="form-control" id="descripcion" name="descripcion"
                                       rows="2"
-                                      placeholder="Requerimiento al titular para subsanación de documentación técnica">{{ tipo.descripcion if tipo and tipo.descripcion else '' }}</textarea>
+                                      placeholder="Requerimiento al titular para subsanación de documentación técnica">{{ plantilla.descripcion if plantilla and plantilla.descripcion else '' }}</textarea>
                         </div>
 
                         <div class="mb-0">
@@ -83,7 +93,7 @@
                                 <option value="">— Seleccionar —</option>
                                 {% for td in tipos_documento %}
                                 <option value="{{ td.id }}"
-                                    {% if tipo and tipo.tipo_documento_id == td.id %}selected{% endif %}>
+                                    {% if plantilla and plantilla.tipo_documento_id == td.id %}selected{% endif %}>
                                     {{ td.codigo }} — {{ td.nombre }}
                                 </option>
                                 {% endfor %}
@@ -91,6 +101,7 @@
                             <div class="form-text">
                                 El documento generado se registrará en el pool del expediente con este tipo.
                                 Permite al motor de reglas detectar su existencia.
+                                Solo se muestran tipos de origen INTERNO o AMBOS.
                             </div>
                         </div>
                     </div>
@@ -109,12 +120,25 @@
                         </p>
 
                         <div class="mb-3">
+                            <label for="tipo_expediente_id" class="form-label fw-semibold">Tipo de expediente</label>
+                            <select class="form-select" id="tipo_expediente_id" name="tipo_expediente_id">
+                                <option value="">— Cualquier expediente —</option>
+                                {% for te in tipos_expediente %}
+                                <option value="{{ te.id }}"
+                                    {% if plantilla and plantilla.tipo_expediente_id == te.id %}selected{% endif %}>
+                                    {{ te.tipo }}{% if te.descripcion %} — {{ te.descripcion }}{% endif %}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
                             <label for="tipo_solicitud_id" class="form-label fw-semibold">Tipo de solicitud</label>
                             <select class="form-select" id="tipo_solicitud_id" name="tipo_solicitud_id">
                                 <option value="">— Cualquier solicitud —</option>
                                 {% for ts in tipos_solicitud %}
                                 <option value="{{ ts.id }}"
-                                    {% if tipo and tipo.tipo_solicitud_id == ts.id %}selected{% endif %}>
+                                    {% if plantilla and plantilla.tipo_solicitud_id == ts.id %}selected{% endif %}>
                                     {{ ts.siglas }} — {{ ts.descripcion }}
                                 </option>
                                 {% endfor %}
@@ -127,7 +151,7 @@
                                 <option value="">— Cualquier fase —</option>
                                 {% for tf in tipos_fase %}
                                 <option value="{{ tf.id }}"
-                                    {% if tipo and tipo.tipo_fase_id == tf.id %}selected{% endif %}>
+                                    {% if plantilla and plantilla.tipo_fase_id == tf.id %}selected{% endif %}>
                                     {{ tf.nombre }}
                                 </option>
                                 {% endfor %}
@@ -140,7 +164,7 @@
                                 <option value="">— Cualquier trámite —</option>
                                 {% for tt in tipos_tramite %}
                                 <option value="{{ tt.id }}"
-                                    {% if tipo and tipo.tipo_tramite_id == tt.id %}selected{% endif %}>
+                                    {% if plantilla and plantilla.tipo_tramite_id == tt.id %}selected{% endif %}>
                                     {{ tt.nombre }}
                                 </option>
                                 {% endfor %}
@@ -155,12 +179,12 @@
                         <i class="fas fa-file-upload me-1"></i> Fichero de plantilla
                     </div>
                     <div class="card-body">
-                        {% if modo == 'editar' and tipo.ruta_plantilla %}
+                        {% if modo == 'editar' and plantilla.ruta_plantilla %}
                         <div class="alert alert-info d-flex align-items-center gap-2 mb-3">
                             <i class="fas fa-file-word fa-lg"></i>
                             <div>
-                                Plantilla actual: <strong>{{ tipo.ruta_plantilla }}</strong>
-                                <a href="{{ url_for('admin_plantillas.descargar', id=tipo.id) }}"
+                                Plantilla actual: <strong>{{ plantilla.ruta_plantilla }}</strong>
+                                <a href="{{ url_for('admin_plantillas.descargar', id=plantilla.id) }}"
                                    class="ms-2 small">
                                     <i class="fas fa-download me-1"></i>Descargar
                                 </a>
@@ -191,28 +215,15 @@
                         <span class="badge bg-secondary ms-2" style="font-weight:400">Opcional — Capa 2</span>
                     </div>
                     <div class="card-body">
-                        <div class="mb-3">
+                        <div class="mb-0">
                             <label for="contexto_clase" class="form-label fw-semibold">Clase Context Builder</label>
                             <input type="text" class="form-control font-monospace"
                                    id="contexto_clase" name="contexto_clase"
-                                   value="{{ tipo.contexto_clase if tipo and tipo.contexto_clase else '' }}"
+                                   value="{{ plantilla.contexto_clase if plantilla and plantilla.contexto_clase else '' }}"
                                    placeholder="RequerimientoSubsanacion">
                             <div class="form-text">
                                 Nombre de clase Python en <code>app/services/context_builders/</code>.
                                 Dejar vacío si la plantilla solo usa campos base (Capa 1).
-                            </div>
-                        </div>
-
-                        <div class="mb-0">
-                            <label for="campos_catalogo" class="form-label fw-semibold">
-                                Campos adicionales del Context Builder
-                            </label>
-                            <textarea class="form-control font-monospace" id="campos_catalogo"
-                                      name="campos_catalogo" rows="5"
-                                      placeholder='[{"campo": "importe_tasas", "descripcion": "Importe en euros de las tasas calculadas"}]'>{{ tipo.campos_catalogo | tojson(indent=2) if tipo and tipo.campos_catalogo else '' }}</textarea>
-                            <div class="form-text">
-                                JSON: lista de <code>{"campo": "...", "descripcion": "..."}</code>.
-                                Estos campos aparecerán en el panel de tokens para copiarlos fácilmente.
                             </div>
                         </div>
                     </div>
@@ -224,7 +235,7 @@
                         <div class="form-check form-switch">
                             <input class="form-check-input" type="checkbox"
                                    id="activo" name="activo" role="switch"
-                                   {% if tipo is none or tipo.activo %}checked{% endif %}>
+                                   {% if plantilla is none or plantilla.activo %}checked{% endif %}>
                             <label class="form-check-label fw-semibold" for="activo">
                                 Plantilla activa
                             </label>

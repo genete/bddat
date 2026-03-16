@@ -26,6 +26,7 @@
                     <th>Nombre</th>
                     <th>Código</th>
                     <th>Tipo documento</th>
+                    <th>Expediente</th>
                     <th>Solicitud</th>
                     <th>Fase</th>
                     <th>Trámite</th>
@@ -34,34 +35,38 @@
                 </tr>
             </thead>
             <tbody>
-                {% for t in tipos %}
+                {% for p in plantillas %}
                 <tr>
                     <td>
-                        <a href="{{ url_for('admin_plantillas.detalle', id=t.id) }}" class="fw-semibold">
-                            {{ t.nombre }}
+                        <a href="{{ url_for('admin_plantillas.detalle', id=p.id) }}" class="fw-semibold">
+                            {{ p.nombre }}
                         </a>
-                        {% if t.descripcion %}
-                        <div class="small text-secondary">{{ t.descripcion }}</div>
+                        {% if p.variante %}
+                        <span class="badge bg-secondary ms-1" style="font-weight:400">{{ p.variante }}</span>
+                        {% endif %}
+                        {% if p.descripcion %}
+                        <div class="small text-secondary">{{ p.descripcion }}</div>
                         {% endif %}
                     </td>
-                    <td><code>{{ t.codigo }}</code></td>
-                    <td>{{ t.tipo_documento.nombre if t.tipo_documento else '—' }}</td>
-                    <td>{{ t.tipo_solicitud.siglas if t.tipo_solicitud else '<span class="text-secondary">Cualquiera</span>'|safe }}</td>
-                    <td>{{ t.tipo_fase.nombre if t.tipo_fase else '<span class="text-secondary">Cualquiera</span>'|safe }}</td>
-                    <td>{{ t.tipo_tramite.nombre if t.tipo_tramite else '<span class="text-secondary">Cualquiera</span>'|safe }}</td>
+                    <td><code>{{ p.codigo }}</code></td>
+                    <td>{{ p.tipo_documento.nombre if p.tipo_documento else '—' }}</td>
+                    <td>{{ p.tipo_expediente.tipo if p.tipo_expediente else '<span class="text-secondary">Cualquiera</span>'|safe }}</td>
+                    <td>{{ p.tipo_solicitud.siglas if p.tipo_solicitud else '<span class="text-secondary">Cualquiera</span>'|safe }}</td>
+                    <td>{{ p.tipo_fase.nombre if p.tipo_fase else '<span class="text-secondary">Cualquiera</span>'|safe }}</td>
+                    <td>{{ p.tipo_tramite.nombre if p.tipo_tramite else '<span class="text-secondary">Cualquiera</span>'|safe }}</td>
                     <td>
-                        {% if t.activo %}
+                        {% if p.activo %}
                             <span class="badge bg-success">Activa</span>
                         {% else %}
                             <span class="badge bg-secondary">Inactiva</span>
                         {% endif %}
                     </td>
                     <td class="text-end">
-                        <a href="{{ url_for('admin_plantillas.detalle', id=t.id) }}"
+                        <a href="{{ url_for('admin_plantillas.detalle', id=p.id) }}"
                            class="btn btn-sm btn-outline-primary me-1">
                             <i class="fas fa-info-circle"></i>
                         </a>
-                        <a href="{{ url_for('admin_plantillas.editar', id=t.id) }}"
+                        <a href="{{ url_for('admin_plantillas.editar', id=p.id) }}"
                            class="btn btn-sm btn-outline-secondary">
                             <i class="fas fa-edit"></i>
                         </a>
@@ -69,7 +74,7 @@
                 </tr>
                 {% else %}
                 <tr>
-                    <td colspan="8" class="text-center text-secondary py-4">
+                    <td colspan="9" class="text-center text-secondary py-4">
                         No hay plantillas registradas.
                         <a href="{{ url_for('admin_plantillas.nueva') }}">Crear la primera</a>.
                     </td>

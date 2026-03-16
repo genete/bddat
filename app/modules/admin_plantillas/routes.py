@@ -2,7 +2,7 @@
 Blueprint para administración de plantillas de escritos administrativos.
 
 Rutas:
-- GET  /admin/plantillas/             — Listado de tipos_escritos
+- GET  /admin/plantillas/             — Listado de plantillas
 - GET  /admin/plantillas/nueva/       — Formulario alta nueva plantilla
 - POST /admin/plantillas/nueva/       — Guardar nueva plantilla
 - GET  /admin/plantillas/<id>/        — Detalle (solo lectura) + panel tokens
@@ -11,7 +11,6 @@ Rutas:
 - GET  /admin/plantillas/<id>/descargar — Descarga del .docx registrado
 - POST /admin/plantillas/<id>/activar — Activar/desactivar plantilla
 """
-import json
 import os
 
 import werkzeug.utils
@@ -22,8 +21,9 @@ from flask_login import login_required
 from app import db
 from app.decorators import role_required
 from app.models.consultas_nombradas import ConsultaNombrada
+from app.models.plantillas import Plantilla
 from app.models.tipos_documentos import TipoDocumento
-from app.models.tipos_escritos import TipoEscrito
+from app.models.tipos_expedientes import TipoExpediente
 from app.models.tipos_fases import TipoFase
 from app.models.tipos_solicitudes import TipoSolicitud
 from app.models.tipos_tramites import TipoTramite
@@ -76,18 +76,14 @@ def _listar_fragmentos() -> list[str]:
     return sorted(f for f in os.listdir(d) if f.lower().endswith('.docx'))
 
 
-def _build_tokens(tipo_escrito=None) -> dict:
+def _build_tokens(plantilla=None) -> dict:
     """
     Construye el contexto de tokens para el panel del supervisor.
 
-    campos:    CAMPOS_BASE + campos_catalogo del tipo (si existe y tiene context builder)
-    consultas: ConsultaNombrada activas (ordenadas por nombre)
+    campos:     CAMPOS_BASE (Capa 1 fija)
+    consultas:  ConsultaNombrada activas (ordenadas por nombre)
     fragmentos: ficheros .docx en PLANTILLAS_BASE/fragmentos/
     """
-    campos = list(CAMPOS_BASE)
-    if tipo_escrito and tipo_escrito.campos_catalogo:
-        campos = campos + tipo_escrito.campos_catalogo
-
     consultas = (
         ConsultaNombrada.query
         .filter_by(activo=True)
@@ -95,8 +91,7 @@ def _build_tokens(tipo_escrito=None) -> dict:
         .all()
     )
     fragmentos = _listar_fragmentos()
-
-    return {'campos': campos, 'consultas': consultas, 'fragmentos': fragmentos}
+    return {'campos': list(CAMPOS_BASE), 'consultas': consultas, 'fragmentos': fragmentos}
 
 
 def _guardar_docx(archivo) -> str | None:
@@ -123,9 +118,9 @@ def _guardar_docx(archivo) -> str | None:
     return filename
 
 
-def _form_data_to_tipo(tipo: TipoEscrito) -> bool:
+def _form_data_to_plantilla(plantilla: Plantilla) -> bool:
     """
-    Rellena los campos de un TipoEscrito desde request.form.
+    Rellena los campos de una Plantilla desde request.form.
     Devuelve False si hay errores de validación (con flash).
     """
     codigo = request.form.get('codigo', '').strip().upper()
@@ -143,38 +138,34 @@ def _form_data_to_tipo(tipo: TipoEscrito) -> bool:
         flash('El tipo de documento es obligatorio.', 'danger')
         return False
 
-    # campos_catalogo viene como JSON en textarea
-    campos_raw = request.form.get('campos_catalogo', '').strip()
-    campos_catalogo = None
-    if campos_raw:
-        try:
-            campos_catalogo = json.loads(campos_raw)
-            if not isinstance(campos_catalogo, list):
-                raise ValueError
-        except (ValueError, json.JSONDecodeError):
-            flash('El catálogo de campos adicionales no es JSON válido (debe ser una lista).', 'danger')
-            return False
-
-    tipo.codigo = codigo
-    tipo.nombre = nombre
-    tipo.descripcion = request.form.get('descripcion', '').strip() or None
-    tipo.tipo_documento_id = int(tipo_documento_id)
-    tipo.tipo_solicitud_id  = int(request.form['tipo_solicitud_id']) if request.form.get('tipo_solicitud_id') else None
-    tipo.tipo_fase_id       = int(request.form['tipo_fase_id'])      if request.form.get('tipo_fase_id')      else None
-    tipo.tipo_tramite_id    = int(request.form['tipo_tramite_id'])   if request.form.get('tipo_tramite_id')   else None
-    tipo.contexto_clase     = request.form.get('contexto_clase', '').strip() or None
-    tipo.campos_catalogo    = campos_catalogo
-    tipo.activo             = 'activo' in request.form
+    plantilla.codigo           = codigo
+    plantilla.nombre           = nombre
+    plantilla.descripcion      = request.form.get('descripcion', '').strip() or None
+    plantilla.variante         = request.form.get('variante', '').strip() or None
+    plantilla.tipo_documento_id   = int(tipo_documento_id)
+    plantilla.tipo_expediente_id  = int(request.form['tipo_expediente_id']) if request.form.get('tipo_expediente_id') else None
+    plantilla.tipo_solicitud_id   = int(request.form['tipo_solicitud_id'])  if request.form.get('tipo_solicitud_id')  else None
+    plantilla.tipo_fase_id        = int(request.form['tipo_fase_id'])       if request.form.get('tipo_fase_id')       else None
+    plantilla.tipo_tramite_id     = int(request.form['tipo_tramite_id'])    if request.form.get('tipo_tramite_id')    else None
+    plantilla.contexto_clase      = request.form.get('contexto_clase', '').strip() or None
+    plantilla.activo              = 'activo' in request.form
     return True
 
 
 def _selects_context():
     """Devuelve los querysets para los selects del formulario."""
     return {
+        'tipos_expediente': TipoExpediente.query.order_by(TipoExpediente.tipo).all(),
         'tipos_solicitud':  TipoSolicitud.query.order_by(TipoSolicitud.siglas).all(),
         'tipos_fase':       TipoFase.query.order_by(TipoFase.nombre).all(),
         'tipos_tramite':    TipoTramite.query.order_by(TipoTramite.nombre).all(),
-        'tipos_documento':  TipoDocumento.query.order_by(TipoDocumento.nombre).all(),
+        # Solo tipos producidos internamente (excluir EXTERNO — documentos aportados por el interesado)
+        'tipos_documento':  (
+            TipoDocumento.query
+            .filter(TipoDocumento.origen != 'EXTERNO')
+            .order_by(TipoDocumento.nombre)
+            .all()
+        ),
     }
 
 
@@ -186,8 +177,8 @@ def _selects_context():
 @login_required
 @role_required('ADMIN', 'SUPERVISOR')
 def listado():
-    tipos = TipoEscrito.query.order_by(TipoEscrito.nombre).all()
-    return render_template('admin_plantillas/listado.html', tipos=tipos)
+    plantillas = Plantilla.query.order_by(Plantilla.nombre).all()
+    return render_template('admin_plantillas/listado.html', plantillas=plantillas)
 
 
 @bp.route('/nueva/', methods=['GET', 'POST'])
@@ -201,24 +192,24 @@ def nueva():
             flash('Debes subir el fichero .docx de la plantilla.', 'danger')
             return render_template(
                 'admin_plantillas/form.html',
-                modo='nueva', tipo=None,
+                modo='nueva', plantilla=None,
                 tokens=_build_tokens(),
                 **_selects_context(),
             )
 
-        tipo = TipoEscrito()
-        if not _form_data_to_tipo(tipo):
+        p = Plantilla()
+        if not _form_data_to_plantilla(p):
             return render_template(
                 'admin_plantillas/form.html',
-                modo='nueva', tipo=None,
+                modo='nueva', plantilla=None,
                 tokens=_build_tokens(),
                 **_selects_context(),
             )
 
         if ruta:
-            tipo.ruta_plantilla = ruta
+            p.ruta_plantilla = ruta
 
-        db.session.add(tipo)
+        db.session.add(p)
         try:
             db.session.commit()
         except Exception as e:
@@ -226,17 +217,17 @@ def nueva():
             flash(f'Error al guardar: {e}', 'danger')
             return render_template(
                 'admin_plantillas/form.html',
-                modo='nueva', tipo=None,
+                modo='nueva', plantilla=None,
                 tokens=_build_tokens(),
                 **_selects_context(),
             )
 
-        flash(f'Plantilla «{tipo.nombre}» registrada correctamente.', 'success')
-        return redirect(url_for('admin_plantillas.detalle', id=tipo.id))
+        flash(f'Plantilla «{p.nombre}» registrada correctamente.', 'success')
+        return redirect(url_for('admin_plantillas.detalle', id=p.id))
 
     return render_template(
         'admin_plantillas/form.html',
-        modo='nueva', tipo=None,
+        modo='nueva', plantilla=None,
         tokens=_build_tokens(),
         **_selects_context(),
     )
@@ -246,38 +237,40 @@ def nueva():
 @login_required
 @role_required('ADMIN', 'SUPERVISOR')
 def detalle(id):
-    tipo = TipoEscrito.query.get_or_404(id)
-    tokens = _build_tokens(tipo)
-    # Ruta absoluta en disco para que el supervisor pueda abrirla directamente
+    plantilla = Plantilla.query.get_or_404(id)
+    tokens = _build_tokens(plantilla)
     d = _plantillas_dir()
-    ruta_absoluta = os.path.join(d, tipo.ruta_plantilla).replace('/', '\\') if d else None
-    # El ':' de la letra de unidad (D:) se codifica como %3A para evitar que el
-    # navegador lo interprete como separador host:puerto en la autoridad de la URI.
-    uri_explorador = ('bddat-explorador://' + ruta_absoluta.replace('\\', '/').replace(':', '%3A')) if ruta_absoluta else None
-    return render_template('admin_plantillas/detalle.html', tipo=tipo, tokens=tokens,
-                           ruta_absoluta=ruta_absoluta, uri_explorador=uri_explorador)
+    ruta_absoluta = os.path.join(d, plantilla.ruta_plantilla).replace('/', '\\') if d else None
+    uri_explorador = (
+        'bddat-explorador://' + ruta_absoluta.replace('\\', '/').replace(':', '%3A')
+    ) if ruta_absoluta else None
+    return render_template(
+        'admin_plantillas/detalle.html',
+        plantilla=plantilla, tokens=tokens,
+        ruta_absoluta=ruta_absoluta, uri_explorador=uri_explorador,
+    )
 
 
 @bp.route('/<int:id>/editar', methods=['GET', 'POST'])
 @login_required
 @role_required('ADMIN', 'SUPERVISOR')
 def editar(id):
-    tipo = TipoEscrito.query.get_or_404(id)
+    plantilla = Plantilla.query.get_or_404(id)
 
     if request.method == 'POST':
         archivo = request.files.get('archivo_plantilla')
         ruta = _guardar_docx(archivo)
 
-        if not _form_data_to_tipo(tipo):
+        if not _form_data_to_plantilla(plantilla):
             return render_template(
                 'admin_plantillas/form.html',
-                modo='editar', tipo=tipo,
-                tokens=_build_tokens(tipo),
+                modo='editar', plantilla=plantilla,
+                tokens=_build_tokens(plantilla),
                 **_selects_context(),
             )
 
         if ruta:
-            tipo.ruta_plantilla = ruta
+            plantilla.ruta_plantilla = ruta
 
         try:
             db.session.commit()
@@ -286,18 +279,18 @@ def editar(id):
             flash(f'Error al guardar: {e}', 'danger')
             return render_template(
                 'admin_plantillas/form.html',
-                modo='editar', tipo=tipo,
-                tokens=_build_tokens(tipo),
+                modo='editar', plantilla=plantilla,
+                tokens=_build_tokens(plantilla),
                 **_selects_context(),
             )
 
-        flash(f'Plantilla «{tipo.nombre}» actualizada correctamente.', 'success')
-        return redirect(url_for('admin_plantillas.detalle', id=tipo.id))
+        flash(f'Plantilla «{plantilla.nombre}» actualizada correctamente.', 'success')
+        return redirect(url_for('admin_plantillas.detalle', id=plantilla.id))
 
     return render_template(
         'admin_plantillas/form.html',
-        modo='editar', tipo=tipo,
-        tokens=_build_tokens(tipo),
+        modo='editar', plantilla=plantilla,
+        tokens=_build_tokens(plantilla),
         **_selects_context(),
     )
 
@@ -306,23 +299,23 @@ def editar(id):
 @login_required
 @role_required('ADMIN', 'SUPERVISOR')
 def descargar(id):
-    tipo = TipoEscrito.query.get_or_404(id)
+    plantilla = Plantilla.query.get_or_404(id)
     d = _plantillas_dir()
     if not d:
         abort(503, 'PLANTILLAS_BASE no configurado.')
-    ruta_abs = os.path.join(d, tipo.ruta_plantilla)
+    ruta_abs = os.path.join(d, plantilla.ruta_plantilla)
     if not os.path.isfile(ruta_abs):
-        abort(404, f'Fichero no encontrado: {tipo.ruta_plantilla}')
-    return send_file(ruta_abs, as_attachment=True, download_name=tipo.ruta_plantilla)
+        abort(404, f'Fichero no encontrado: {plantilla.ruta_plantilla}')
+    return send_file(ruta_abs, as_attachment=True, download_name=plantilla.ruta_plantilla)
 
 
 @bp.route('/<int:id>/activar', methods=['POST'])
 @login_required
 @role_required('ADMIN', 'SUPERVISOR')
 def activar(id):
-    tipo = TipoEscrito.query.get_or_404(id)
-    tipo.activo = not tipo.activo
+    plantilla = Plantilla.query.get_or_404(id)
+    plantilla.activo = not plantilla.activo
     db.session.commit()
-    estado = 'activada' if tipo.activo else 'desactivada'
-    flash(f'Plantilla «{tipo.nombre}» {estado}.', 'success')
-    return redirect(url_for('admin_plantillas.detalle', id=tipo.id))
+    estado = 'activada' if plantilla.activo else 'desactivada'
+    flash(f'Plantilla «{plantilla.nombre}» {estado}.', 'success')
+    return redirect(url_for('admin_plantillas.detalle', id=plantilla.id))
