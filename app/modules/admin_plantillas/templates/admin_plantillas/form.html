@@ -109,14 +109,23 @@
 
                 {# Bloque: Contexto ESFTT #}
                 <div class="card mb-4">
-                    <div class="card-header fw-semibold">
-                        <i class="fas fa-sitemap me-1"></i> Contexto ESFTT
-                        <span class="badge bg-secondary ms-2" style="font-weight:400">Todos los campos son opcionales</span>
+                    <div class="card-header fw-semibold d-flex align-items-center justify-content-between flex-wrap gap-2">
+                        <span><i class="fas fa-sitemap me-1"></i> Contexto ESFTT
+                            <span class="badge bg-secondary ms-2" style="font-weight:400">Todos los campos son opcionales</span>
+                        </span>
+                        <div class="form-check form-switch mb-0">
+                            <input class="form-check-input" type="checkbox" role="switch"
+                                   id="toggle-solo-aplicables">
+                            <label class="form-check-label small fw-normal" for="toggle-solo-aplicables">
+                                Solo aplicables al contexto
+                            </label>
+                        </div>
                     </div>
                     <div class="card-body">
                         <p class="text-secondary small mb-3">
                             Deja en blanco los campos que no apliquen.
                             <strong>Vacío = aplica a cualquier valor</strong> de esa dimensión.
+                            Activa el filtro para ver solo las opciones válidas según la whitelist ESFTT.
                         </p>
 
                         <div class="mb-3">
@@ -280,5 +289,84 @@
         this.value = this.value.toUpperCase().replace(/[^A-Z0-9_]/g, '_');
         this.setSelectionRange(pos, pos);
     });
+
+    // -----------------------------------------------------------------------
+    // Selectores en cascada ESFTT
+    // -----------------------------------------------------------------------
+    const URL_SOL  = "{{ url_for('admin_plantillas.api_tipos_solicitud') }}";
+    const URL_FASE = "{{ url_for('admin_plantillas.api_tipos_fase') }}";
+    const URL_TRAM = "{{ url_for('admin_plantillas.api_tipos_tramite') }}";
+
+    const selExp  = document.getElementById('tipo_expediente_id');
+    const selSol  = document.getElementById('tipo_solicitud_id');
+    const selFase = document.getElementById('tipo_fase_id');
+    const selTram = document.getElementById('tipo_tramite_id');
+    const toggle  = document.getElementById('toggle-solo-aplicables');
+
+    function filtrarActivo() { return toggle.checked; }
+
+    async function fetchOpciones(url, params) {
+        const qs = new URLSearchParams(params).toString();
+        const resp = await fetch(url + (qs ? '?' + qs : ''));
+        if (!resp.ok) return null;
+        return resp.json();
+    }
+
+    function reconstruirSelect(sel, opciones, placeholder) {
+        const valActual = sel.value;
+        sel.innerHTML = '<option value="">' + placeholder + '</option>';
+        for (const d of opciones) {
+            const opt = document.createElement('option');
+            opt.value = d.id;
+            opt.textContent = d.texto;
+            if (String(d.id) === String(valActual)) opt.selected = true;
+            sel.appendChild(opt);
+        }
+    }
+
+    // Actualiza los tres selectores dependientes a partir del nivel indicado.
+    // desde=1 → recalcula S, F y T; desde=2 → recalcula F y T; desde=3 → recalcula T.
+    async function actualizarCascada(desde) {
+        const filtrar = filtrarActivo() ? '1' : '0';
+
+        if (desde <= 1) {
+            const params = (filtrar === '1' && selExp.value)
+                ? { tipo_expediente_id: selExp.value, filtrar: '1' }
+                : {};
+            const data = await fetchOpciones(URL_SOL, params);
+            if (data) reconstruirSelect(selSol, data, '— Cualquier solicitud —');
+        }
+
+        if (desde <= 2) {
+            const params = (filtrar === '1' && selSol.value)
+                ? { tipo_solicitud_id: selSol.value, filtrar: '1' }
+                : {};
+            const data = await fetchOpciones(URL_FASE, params);
+            if (data) reconstruirSelect(selFase, data, '— Cualquier fase —');
+        }
+
+        if (desde <= 3) {
+            const params = (filtrar === '1' && selFase.value)
+                ? { tipo_fase_id: selFase.value, filtrar: '1' }
+                : {};
+            const data = await fetchOpciones(URL_TRAM, params);
+            if (data) reconstruirSelect(selTram, data, '— Cualquier trámite —');
+        }
+    }
+
+    // Al cambiar E: si toggle ON, recascada desde S
+    selExp.addEventListener('change', () => {
+        if (filtrarActivo()) actualizarCascada(1);
+    });
+    // Al cambiar S: si toggle ON, recascada desde F
+    selSol.addEventListener('change', () => {
+        if (filtrarActivo()) actualizarCascada(2);
+    });
+    // Al cambiar F: si toggle ON, recascada desde T
+    selFase.addEventListener('change', () => {
+        if (filtrarActivo()) actualizarCascada(3);
+    });
+    // Al cambiar toggle: recascada completa (filtrar=1 aplica filtro, filtrar=0 restaura todo)
+    toggle.addEventListener('change', () => actualizarCascada(1));
 </script>
 {% endblock %}

@@ -1,7 +1,7 @@
 """
 Blueprint para administración de plantillas de escritos administrativos.
 
-Rutas:
+Rutas de formulario:
 - GET  /admin/plantillas/             — Listado de plantillas
 - GET  /admin/plantillas/nueva/       — Formulario alta nueva plantilla
 - POST /admin/plantillas/nueva/       — Guardar nueva plantilla
@@ -10,18 +10,29 @@ Rutas:
 - POST /admin/plantillas/<id>/editar  — Guardar cambios
 - GET  /admin/plantillas/<id>/descargar — Descarga del .docx registrado
 - POST /admin/plantillas/<id>/activar — Activar/desactivar plantilla
+
+Endpoints AJAX (cascada ESFTT):
+- GET  /admin/plantillas/api/tipos-solicitud  — Tipos solicitud (filtrar=1: solo whitelist por exp)
+- GET  /admin/plantillas/api/tipos-fase       — Tipos fase (filtrar=1: solo whitelist por sol)
+- GET  /admin/plantillas/api/tipos-tramite    — Tipos trámite (filtrar=1: solo whitelist por fase)
+- GET  /admin/plantillas/api/tokens           — Tokens Capa 1 (stub — Capa 2 en Fase 5)
 """
 import os
 
 import werkzeug.utils
-from flask import (Blueprint, abort, current_app, flash, redirect,
+from docx import Document as DocxDocument
+from docxtpl import DocxTemplate
+from flask import (Blueprint, abort, current_app, flash, jsonify, redirect,
                    render_template, request, send_file, url_for)
 from flask_login import login_required
 
 from app import db
 from app.decorators import role_required
 from app.models.consultas_nombradas import ConsultaNombrada
+from app.models.expedientes_solicitudes import ExpedienteSolicitud
+from app.models.fases_tramites import FaseTramite
 from app.models.plantillas import Plantilla
+from app.models.solicitudes_fases import SolicitudFase
 from app.models.tipos_documentos import TipoDocumento
 from app.models.tipos_expedientes import TipoExpediente
 from app.models.tipos_fases import TipoFase
@@ -92,6 +103,19 @@ def _build_tokens(plantilla=None) -> dict:
     )
     fragmentos = _listar_fragmentos()
     return {'campos': list(CAMPOS_BASE), 'consultas': consultas, 'fragmentos': fragmentos}
+
+
+def _validar_plantilla_docx(ruta_abs: str) -> str | None:
+    """
+    Valida que el fichero sea un .docx bien formado (ZIP con estructura OOXML).
+    DocxTemplate.__init__ no abre el fichero — se usa python-docx Document() que sí lo hace.
+    Devuelve mensaje de error o None si ok.
+    """
+    try:
+        DocxDocument(ruta_abs)
+        return None
+    except Exception as e:
+        return str(e)
 
 
 def _guardar_docx(archivo) -> str | None:
@@ -170,6 +194,117 @@ def _selects_context():
 
 
 # ---------------------------------------------------------------------------
+# Endpoints AJAX (cascada ESFTT)
+# ---------------------------------------------------------------------------
+
+@bp.route('/api/tipos-solicitud')
+@login_required
+@role_required('ADMIN', 'SUPERVISOR')
+def api_tipos_solicitud():
+    """
+    Devuelve tipos de solicitud disponibles.
+    Si filtrar=1 y tipo_expediente_id dado: solo los de la whitelist expedientes_solicitudes.
+    Sin filtro: todos.
+    """
+    tipo_expediente_id = request.args.get('tipo_expediente_id', type=int)
+    filtrar = request.args.get('filtrar') == '1'
+
+    if filtrar and tipo_expediente_id:
+        tipos = (
+            TipoSolicitud.query
+            .join(ExpedienteSolicitud,
+                  ExpedienteSolicitud.tipo_solicitud_id == TipoSolicitud.id)
+            .filter(ExpedienteSolicitud.tipo_expediente_id == tipo_expediente_id)
+            .order_by(TipoSolicitud.siglas)
+            .all()
+        )
+    else:
+        tipos = TipoSolicitud.query.order_by(TipoSolicitud.siglas).all()
+
+    return jsonify([
+        {'id': t.id, 'texto': f'{t.siglas} — {t.descripcion}'}
+        for t in tipos
+    ])
+
+
+@bp.route('/api/tipos-fase')
+@login_required
+@role_required('ADMIN', 'SUPERVISOR')
+def api_tipos_fase():
+    """
+    Devuelve tipos de fase disponibles.
+    Si filtrar=1 y tipo_solicitud_id dado: solo los de la whitelist solicitudes_fases.
+    """
+    tipo_solicitud_id = request.args.get('tipo_solicitud_id', type=int)
+    filtrar = request.args.get('filtrar') == '1'
+
+    if filtrar and tipo_solicitud_id:
+        tipos = (
+            TipoFase.query
+            .join(SolicitudFase,
+                  SolicitudFase.tipo_fase_id == TipoFase.id)
+            .filter(SolicitudFase.tipo_solicitud_id == tipo_solicitud_id)
+            .order_by(TipoFase.nombre)
+            .all()
+        )
+    else:
+        tipos = TipoFase.query.order_by(TipoFase.nombre).all()
+
+    return jsonify([
+        {'id': t.id, 'texto': t.nombre}
+        for t in tipos
+    ])
+
+
+@bp.route('/api/tipos-tramite')
+@login_required
+@role_required('ADMIN', 'SUPERVISOR')
+def api_tipos_tramite():
+    """
+    Devuelve tipos de trámite disponibles.
+    Si filtrar=1 y tipo_fase_id dado: solo los de la whitelist fases_tramites.
+    """
+    tipo_fase_id = request.args.get('tipo_fase_id', type=int)
+    filtrar = request.args.get('filtrar') == '1'
+
+    if filtrar and tipo_fase_id:
+        tipos = (
+            TipoTramite.query
+            .join(FaseTramite,
+                  FaseTramite.tipo_tramite_id == TipoTramite.id)
+            .filter(FaseTramite.tipo_fase_id == tipo_fase_id)
+            .order_by(TipoTramite.nombre)
+            .all()
+        )
+    else:
+        tipos = TipoTramite.query.order_by(TipoTramite.nombre).all()
+
+    return jsonify([
+        {'id': t.id, 'texto': t.nombre}
+        for t in tipos
+    ])
+
+
+@bp.route('/api/tokens')
+@login_required
+@role_required('ADMIN', 'SUPERVISOR')
+def api_tokens():
+    """
+    Stub para refresco dinámico de tokens (Capa 2 — Fase 5+).
+    Hoy devuelve siempre los tokens de Capa 1 independientemente del contexto ESFTT.
+    """
+    tokens = _build_tokens()
+    return jsonify({
+        'campos': tokens['campos'],
+        'consultas': [
+            {'nombre': c.nombre, 'descripcion': getattr(c, 'descripcion', '')}
+            for c in tokens['consultas']
+        ],
+        'fragmentos': tokens['fragmentos'],
+    })
+
+
+# ---------------------------------------------------------------------------
 # Rutas
 # ---------------------------------------------------------------------------
 
@@ -196,6 +331,17 @@ def nueva():
                 tokens=_build_tokens(),
                 **_selects_context(),
             )
+
+        if ruta:
+            error_docx = _validar_plantilla_docx(os.path.join(_plantillas_dir(), ruta))
+            if error_docx:
+                flash(f'El fichero .docx tiene errores de sintaxis: {error_docx}', 'danger')
+                return render_template(
+                    'admin_plantillas/form.html',
+                    modo='nueva', plantilla=None,
+                    tokens=_build_tokens(),
+                    **_selects_context(),
+                )
 
         p = Plantilla()
         if not _form_data_to_plantilla(p):
@@ -260,6 +406,17 @@ def editar(id):
     if request.method == 'POST':
         archivo = request.files.get('archivo_plantilla')
         ruta = _guardar_docx(archivo)
+
+        if ruta:
+            error_docx = _validar_plantilla_docx(os.path.join(_plantillas_dir(), ruta))
+            if error_docx:
+                flash(f'El fichero .docx tiene errores de sintaxis: {error_docx}', 'danger')
+                return render_template(
+                    'admin_plantillas/form.html',
+                    modo='editar', plantilla=plantilla,
+                    tokens=_build_tokens(plantilla),
+                    **_selects_context(),
+                )
 
         if not _form_data_to_plantilla(plantilla):
             return render_template(
