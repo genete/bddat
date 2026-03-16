@@ -20,7 +20,6 @@ from app.models.tramites import Tramite
 from app.models.tareas import Tarea
 from app.models.documentos import Documento
 from app.models.tipos_solicitudes import TipoSolicitud
-from app.models.solicitudes_tipos import SolicitudTipo
 from app.models.tipos_resultados_fases import TipoResultadoFase
 from app.models.tipos_fases import TipoFase
 from app.models.tipos_tramites import TipoTramite
@@ -154,14 +153,7 @@ def _get_solicitudes_con_stats(expediente_id):
             Tramite.fecha_fin.isnot(None)
         ).scalar() or 0
 
-        # Obtener tipos de solicitud usando join con tabla intermedia
-        tipos_solicitud = (
-            TipoSolicitud.query
-            .join(SolicitudTipo, TipoSolicitud.id == SolicitudTipo.tiposolicitudid)
-            .filter(SolicitudTipo.solicitudid == sol.id)
-            .all()
-        )
-        tipos = '+'.join([ts.siglas for ts in tipos_solicitud]) if tipos_solicitud else 'SIN TIPO'
+        tipos = sol.tipo_solicitud.siglas if sol.tipo_solicitud else 'SIN TIPO'
 
         result.append({
             'obj': sol,
@@ -470,13 +462,17 @@ def crear_solicitud(exp_id):
     if resultado:
         return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
 
-    tipo_ids = request.form.getlist('tipo_solicitud_id[]', type=int)
+    tipo_solicitud_id = request.form.get('tipo_solicitud_id', type=int)
     fecha_str = request.form.get('fecha_solicitud')
     entidad_id = request.form.get('entidad_id', type=int) or expediente.titular_id
-    if not tipo_ids or not fecha_str:
-        return jsonify({'ok': False, 'error': 'Tipo(s) de solicitud y fecha son obligatorios'}), 400
+    if not tipo_solicitud_id or not fecha_str:
+        return jsonify({'ok': False, 'error': 'Tipo de solicitud y fecha son obligatorios'}), 400
     if not entidad_id:
         return jsonify({'ok': False, 'error': 'El expediente no tiene titular asignado. Asígnelo antes de crear solicitudes.'}), 422
+
+    tipo = TipoSolicitud.query.get(tipo_solicitud_id)
+    if not tipo:
+        return jsonify({'ok': False, 'error': 'Tipo de solicitud no encontrado'}), 404
 
     try:
         fecha = date.fromisoformat(fecha_str)
@@ -484,16 +480,12 @@ def crear_solicitud(exp_id):
         return jsonify({'ok': False, 'error': 'Fecha inválida'}), 400
 
     sol = Solicitud(expediente_id=exp_id, entidad_id=entidad_id,
+                    tipo_solicitud_id=tipo_solicitud_id,
                     fecha_solicitud=fecha, estado='EN_TRAMITE')
     db.session.add(sol)
-    db.session.flush()
-    for tipo_id in tipo_ids:
-        db.session.add(SolicitudTipo(solicitudid=sol.id, tiposolicitudid=tipo_id))
     db.session.commit()
 
-    tipos_objs = TipoSolicitud.query.filter(TipoSolicitud.id.in_(tipo_ids)).all()
-    tipos_str = '+'.join(t.siglas for t in tipos_objs) if tipos_objs else 'Nueva'
-    return jsonify({'ok': True, 'id': sol.id, 'tipos_str': tipos_str})
+    return jsonify({'ok': True, 'id': sol.id, 'tipos_str': tipo.siglas})
 
 
 @bp.route('/solicitud/<int:sol_id>/borrar', methods=['POST'])
@@ -516,7 +508,6 @@ def borrar_solicitud(sol_id):
             Tarea.query.filter(Tarea.tramite_id.in_(tram_ids)).delete()
         Tramite.query.filter(Tramite.fase_id.in_(fase_ids)).delete()
     Fase.query.filter_by(solicitud_id=sol_id).delete()
-    SolicitudTipo.query.filter_by(solicitudid=sol_id).delete()
     db.session.delete(sol)
     db.session.commit()
     return jsonify({'ok': True})

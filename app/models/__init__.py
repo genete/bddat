@@ -46,8 +46,12 @@ from app.models.solicitudes import Solicitud  # Depende de Expediente
 # Histórico de titulares (issue #64)
 from app.models.historico_titular_expediente import HistoricoTitularExpediente  # Depende de Expediente, Entidad, Solicitud
 
+# Tablas whitelist ESFTT (#167 Fase 1)
+from app.models.expedientes_solicitudes import ExpedienteSolicitud
+from app.models.solicitudes_fases import SolicitudFase
+from app.models.fases_tramites import FaseTramite
+
 # Modelos operacionales con dependencias múltiples
-from app.models.solicitudes_tipos import SolicitudTipo  # Depende de Solicitud, TipoSolicitud
 from app.models.documentos_proyecto import DocumentoProyecto  # Depende de Documento, Proyecto
 from app.models.fases import Fase  # Depende de Solicitud, TipoFase, TipoResultadoFase, Documento
 from app.models.municipios_proyecto import MunicipioProyecto  # Depende de Municipio, Proyecto
@@ -88,8 +92,11 @@ __all__ = [
     'Solicitud',
     # Histórico
     'HistoricoTitularExpediente',
+    # Whitelists ESFTT
+    'ExpedienteSolicitud',
+    'SolicitudFase',
+    'FaseTramite',
     # Operacionales (continuación)
-    'SolicitudTipo',
     'DocumentoProyecto',
     'Fase',
     'MunicipioProyecto',

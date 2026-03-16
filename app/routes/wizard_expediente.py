@@ -26,7 +26,6 @@ from app.models.municipios_proyecto import MunicipioProyecto
 from app.models.entidad import Entidad
 from app.models.solicitudes import Solicitud
 from app.models.tipos_solicitudes import TipoSolicitud
-from app.models.solicitudes_tipos import SolicitudTipo
 from app.models.autorizados_titular import AutorizadoTitular
 
 bp = Blueprint('wizard_expediente', __name__, url_prefix='/expedientes/wizard')
@@ -221,8 +220,7 @@ def paso3():
         1) Proyecto
         2) MunicipioProyecto x N
         3) Expediente  (signal after_insert → histórico INICIAL automático)
-        4) Solicitud
-        5) SolicitudTipo x N
+        4) Solicitud (con tipo_solicitud_id directo)
 
     Requiere pasos 1 y 2 completados en sesión.
     """
@@ -235,7 +233,7 @@ def paso3():
         entidad_id = (request.form.get('entidad_id') or '').strip()
         fecha_solicitud_str = (request.form.get('fecha_solicitud') or '').strip()
         observaciones = (request.form.get('observaciones') or '').strip() or None
-        tipos_solicitud_ids = request.form.getlist('tipos_solicitud_ids[]')
+        tipo_solicitud_id_raw = (request.form.get('tipo_solicitud_id') or '').strip()
 
         # --- Validaciones ---
         if not entidad_id:
@@ -277,22 +275,19 @@ def paso3():
             flash('Fecha de solicitud inválida (formato esperado: YYYY-MM-DD).', 'danger')
             return redirect(url_for('wizard_expediente.paso3'))
 
-        if not tipos_solicitud_ids:
-            flash('Debe seleccionar al menos un tipo de solicitud.', 'danger')
+        if not tipo_solicitud_id_raw:
+            flash('Debe seleccionar un tipo de solicitud.', 'danger')
             return redirect(url_for('wizard_expediente.paso3'))
 
         try:
-            tipos_solicitud_ids = [int(tid) for tid in tipos_solicitud_ids]
+            tipo_solicitud_id = int(tipo_solicitud_id_raw)
         except ValueError:
-            flash('Tipos de solicitud inválidos.', 'danger')
+            flash('Tipo de solicitud inválido.', 'danger')
             return redirect(url_for('wizard_expediente.paso3'))
 
-        # Verificar que todos los tipos existen en la BD
-        tipos_validos = TipoSolicitud.query.filter(
-            TipoSolicitud.id.in_(tipos_solicitud_ids)
-        ).all()
-        if len(tipos_validos) != len(tipos_solicitud_ids):
-            flash('Algún tipo de solicitud seleccionado no es válido.', 'danger')
+        tipo_solicitud = TipoSolicitud.query.get(tipo_solicitud_id)
+        if not tipo_solicitud:
+            flash('El tipo de solicitud seleccionado no existe.', 'danger')
             return redirect(url_for('wizard_expediente.paso3'))
 
         # --- Transacción ---
@@ -345,20 +340,12 @@ def paso3():
             solicitud = Solicitud(
                 expediente_id=expediente.id,
                 entidad_id=solicitante.id,
+                tipo_solicitud_id=tipo_solicitud_id,
                 fecha_solicitud=fecha_solicitud,
                 estado='EN_TRAMITE',
                 observaciones=observaciones,
             )
             db.session.add(solicitud)
-            db.session.flush()  # → solicitud.id disponible
-
-            # 6) Tipos de solicitud (tabla puente)
-            for tipo_id in tipos_solicitud_ids:
-                st = SolicitudTipo(
-                    solicitudid=solicitud.id,
-                    tiposolicitudid=tipo_id,
-                )
-                db.session.add(st)
 
             db.session.commit()
             _reset_wizard()
@@ -385,3 +372,4 @@ def paso3():
         tipos_solicitudes=tipos_solicitudes,
         entidades_opts=entidades_opts,
     )
+

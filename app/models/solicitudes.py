@@ -10,11 +10,16 @@ class Solicitud(db.Model):
         solicitud con su estado propio, independiente del expediente global.
     
     FILOSOFÍA:
-        - Una solicitud puede tener MÚLTIPLES TIPOS simultáneamente (vía SOLICITUDES_TIPOS)
-        - Motor de reglas aplica lógica sobre tipos individuales, no combinaciones
+        - Una solicitud tiene UN ÚNICO TIPO (atómico o combinado) vía tipo_solicitud_id
+        - Los tipos combinados (AAP_AAC, AAP_AAC_DUP, etc.) se definen en TIPOS_SOLICITUDES
+        - Motor de reglas compara por siglas exactas; el supervisor lista variantes en las reglas
         - Cada solicitud es una instancia independiente con estado y trazabilidad propios
-        - Permite secuencias temporales (MOD requiere AAC previa)
-    
+
+    CAMPO TIPO_SOLICITUD_ID:
+        - NOT NULL: Toda solicitud tiene exactamente un tipo (atómico o combinado)
+        - FK a TIPOS_SOLICITUDES (public schema)
+        - Reemplaza la tabla puente solicitudes_tipos (eliminada en #167 Fase 1)
+
     CAMPO EXPEDIENTE_ID:
         - NOT NULL: Toda solicitud pertenece a un expediente
         - FK a EXPEDIENTES (public schema)
@@ -51,22 +56,21 @@ class Solicitud(db.Model):
     RELACIONES:
         - expediente → EXPEDIENTES.id (FK, expediente contenedor)
         - entidad → ENTIDADES.id (FK, solicitante)
+        - tipo_solicitud → TIPOS_SOLICITUDES.id (FK, tipo atómico o combinado)
         - solicitud_afectada → SOLICITUDES.id (FK self-referencia, para DESISTIMIENTO/RENUNCIA)
-        - solicitudes_tipos ← SOLICITUDES_TIPOS.solicitud_id (tipos de la solicitud)
-    
+
     REGLAS DE NEGOCIO:
-        - Tipos múltiples: Gestionados en tabla puente SOLICITUDES_TIPOS
         - DESISTIMIENTO/RENUNCIA: Requiere SOLICITUD_AFECTADA_ID NOT NULL
         - MOD: Debe existir AAC previa en el expediente (validar en interfaz)
         - Estado RESUELTA: Debe existir resolución asociada (validar)
         - FECHA_FIN: Si estado = RESUELTA/DESISTIDA/ARCHIVADA, debería tener fecha_fin
     
     NOTAS DE VERSIÓN:
-        v3.0: ELIMINADO tipo_solicitud_id (movido a SOLICITUDES_TIPOS N:M).
+        v3.0: ELIMINADO tipo_solicitud_id → SOLICITUDES_TIPOS N:M.
               AÑADIDO solicitud_afectada_id.
-        v3.1: AÑADIDO entidad_id (solicitante).
-              AÑADIDO fecha_fin (finalización real).
-              AÑADIDO properties: activa, es_desistimiento_o_renuncia.
+        v3.1: AÑADIDO entidad_id. AÑADIDO fecha_fin.
+        v4.0 (#167): RESTAURADO tipo_solicitud_id como FK directa (atómico o combinado).
+              ELIMINADA tabla puente solicitudes_tipos.
     """
     __tablename__ = 'solicitudes'
     __table_args__ = (
@@ -98,6 +102,13 @@ class Solicitud(db.Model):
         comment='FK a ENTIDADES. Solicitante (promotor/titular) de la solicitud'
     )
     
+    tipo_solicitud_id = db.Column(
+        db.Integer,
+        db.ForeignKey('public.tipos_solicitudes.id', name='fk_solicitudes_tipo_solicitud'),
+        nullable=False,
+        comment='FK a TIPOS_SOLICITUDES. Tipo atómico o combinado (#167 Fase 1)'
+    )
+
     solicitud_afectada_id = db.Column(
         db.Integer,
         db.ForeignKey('public.solicitudes.id'),
@@ -133,6 +144,7 @@ class Solicitud(db.Model):
     # Relaciones
     expediente = db.relationship('Expediente', backref='solicitudes')
     entidad = db.relationship('Entidad', backref='solicitudes')
+    tipo_solicitud = db.relationship('TipoSolicitud')
     solicitud_afectada = db.relationship('Solicitud', remote_side=[id], backref='solicitudes_dependientes')
     
     # Properties

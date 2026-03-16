@@ -20,7 +20,7 @@ from app.models.entidad import Entidad
 from app.models.tipos_expedientes import TipoExpediente
 from app.models import (
     Solicitud, Fase, TipoSolicitud, TipoFase,
-    Proyecto, TipoIA, Usuario, SolicitudTipo
+    Proyecto, TipoIA, Usuario
 )
 
 # Blueprint para API
@@ -414,15 +414,7 @@ def get_jerarquia_expediente(expediente_id):
 
     solicitudes_data = []
     for solicitud in solicitudes:
-        # Obtener tipos de solicitud (tabla many-to-many)
-        tipos_solicitud = (
-            TipoSolicitud.query
-            .join(SolicitudTipo, TipoSolicitud.id == SolicitudTipo.tiposolicitudid)
-            .filter(SolicitudTipo.solicitudid == solicitud.id)
-            .all()
-        )
-
-        tipos_str = ' + '.join([ts.siglas for ts in tipos_solicitud]) if tipos_solicitud else 'Sin tipo'
+        tipos_str = solicitud.tipo_solicitud.siglas if solicitud.tipo_solicitud else 'Sin tipo'
 
         # Obtener fases de la solicitud
         fases = Fase.query.filter_by(
