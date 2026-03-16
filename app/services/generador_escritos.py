@@ -3,8 +3,7 @@ Servicio de generación de escritos administrativos (.docx).
 
 RESPONSABILIDAD:
     Orquesta las capas de contexto + python-docx-template para producir
-    un fichero .docx relleno a partir de una plantilla registrada en
-    tipos_escritos.
+    un fichero .docx relleno a partir de una Plantilla registrada.
 
 FLUJO:
     1. Carga la plantilla .docx desde PLANTILLAS_BASE
@@ -16,7 +15,7 @@ FLUJO:
 USO:
     from app.services.generador_escritos import generar_escrito
 
-    docx_bytes = generar_escrito(tipo_escrito, expediente, db_session)
+    docx_bytes = generar_escrito(plantilla, expediente, db_session)
     # Guardar bytes en FILESYSTEM_BASE y registrar en pool del expediente
 
 DEPENDENCIA:
@@ -31,14 +30,14 @@ from docxtpl import DocxTemplate
 from app.services.escritos import ContextoBaseExpediente
 
 
-def generar_escrito(tipo_escrito, expediente, db_session) -> bytes:
+def generar_escrito(plantilla, expediente, db_session) -> bytes:
     """
-    Genera el .docx relleno para el tipo_escrito y expediente dados.
+    Genera el .docx relleno para la plantilla y expediente dados.
 
     Args:
-        tipo_escrito:  Instancia de TipoEscrito (plantilla + contexto registrado).
-        expediente:    Instancia de Expediente con relaciones cargadas.
-        db_session:    Sesión SQLAlchemy activa (para ejecutar consultas nombradas).
+        plantilla:   Instancia de Plantilla (plantilla + contexto registrado).
+        expediente:  Instancia de Expediente con relaciones cargadas.
+        db_session:  Sesión SQLAlchemy activa (para ejecutar consultas nombradas).
 
     Returns:
         bytes — Contenido del .docx generado, listo para guardar en disco.
@@ -47,18 +46,18 @@ def generar_escrito(tipo_escrito, expediente, db_session) -> bytes:
         FileNotFoundError — Si la plantilla .docx no existe en PLANTILLAS_BASE.
         RuntimeError      — Si el Context Builder especificado no se puede cargar.
     """
-    plantilla_path = _ruta_plantilla(tipo_escrito.ruta_plantilla)
+    plantilla_path = _ruta_plantilla(plantilla.ruta_plantilla)
 
     # Capa 1: contexto base del expediente
     ctx = ContextoBaseExpediente(expediente).get_contexto()
 
     # Capa 2: Context Builder opcional
-    if tipo_escrito.contexto_clase:
-        builder = _cargar_context_builder(tipo_escrito.contexto_clase)
+    if plantilla.contexto_clase:
+        builder = _cargar_context_builder(plantilla.contexto_clase)
         ctx.update(builder(expediente, db_session).get_contexto())
 
     # Consultas nombradas: se añaden al contexto con su nombre como clave
-    ctx.update(_ejecutar_consultas(tipo_escrito, expediente, db_session))
+    ctx.update(_ejecutar_consultas(plantilla, expediente, db_session))
 
     # Renderizado
     tpl = DocxTemplate(plantilla_path)
@@ -83,7 +82,7 @@ def _ruta_plantilla(ruta_relativa: str) -> str:
     if not os.path.isfile(ruta):
         raise FileNotFoundError(
             f'Plantilla no encontrada: {ruta}. '
-            f'Comprueba PLANTILLAS_BASE y la ruta registrada en tipos_escritos.'
+            f'Comprueba PLANTILLAS_BASE y la ruta registrada en la plantilla.'
         )
     return ruta
 
@@ -108,16 +107,12 @@ def _cargar_context_builder(nombre_clase: str):
         )
 
 
-def _ejecutar_consultas(tipo_escrito, expediente, db_session) -> dict:
+def _ejecutar_consultas(plantilla, expediente, db_session) -> dict:
     """
     Ejecuta las consultas nombradas referenciadas en la plantilla.
 
-    Por ahora devuelve un dict vacío: las consultas nombradas se detectarán
-    automáticamente al parsear la plantilla en una versión futura, o se
-    registrarán explícitamente en tipos_escritos cuando sea necesario.
-
-    TODO (Parte 2 o issue posterior):
-        - Parsear la plantilla para detectar {%tr for row in X %} y ejecutar
-          la consulta_nombrada con nombre X para cada bloque encontrado.
+    Por ahora devuelve un dict vacío. La implementación completa se hará
+    en Fase 5 (#167): parsear la plantilla para detectar {%tr for row in X %}
+    y ejecutar la consulta_nombrada con nombre X para cada bloque encontrado.
     """
     return {}

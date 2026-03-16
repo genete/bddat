@@ -1,13 +1,13 @@
 {% extends 'layout/base_fullwidth.html' %}
 
-{% block title %}{{ tipo.nombre }} — Plantillas — BDDAT{% endblock %}
+{% block title %}{{ plantilla.nombre }} — Plantillas — BDDAT{% endblock %}
 
 {% block breadcrumb %}
 <a href="{{ url_for('dashboard.index') }}">Inicio</a>
 <span>›</span>
 <a href="{{ url_for('admin_plantillas.listado') }}">Plantillas de escritos</a>
 <span>›</span>
-<span>{{ tipo.nombre }}</span>
+<span>{{ plantilla.nombre }}</span>
 {% endblock %}
 
 {% block content %}
@@ -15,8 +15,11 @@
     <div class="page-header content-constrained">
         <h1>
             <i class="fas fa-file-word me-1"></i>
-            {{ tipo.nombre }}
-            {% if tipo.activo %}
+            {{ plantilla.nombre }}
+            {% if plantilla.variante %}
+            <span class="badge bg-secondary fs-6 ms-1" style="font-weight:400">{{ plantilla.variante }}</span>
+            {% endif %}
+            {% if plantilla.activo %}
                 <span class="badge bg-success fs-6 ms-2">Activa</span>
             {% else %}
                 <span class="badge bg-secondary fs-6 ms-2">Inactiva</span>
@@ -26,7 +29,7 @@
             <a href="{{ url_for('admin_plantillas.listado') }}" class="btn btn-outline-primary">
                 <i class="fas fa-arrow-left me-1"></i> Volver
             </a>
-            <a href="{{ url_for('admin_plantillas.editar', id=tipo.id) }}" class="btn btn-primary">
+            <a href="{{ url_for('admin_plantillas.editar', id=plantilla.id) }}" class="btn btn-primary">
                 <i class="fas fa-edit me-1"></i> Editar
             </a>
         </div>
@@ -47,18 +50,21 @@
                 <div class="card-body">
                     <dl class="row mb-0">
                         <dt class="col-sm-4">Código</dt>
-                        <dd class="col-sm-8"><code>{{ tipo.codigo }}</code></dd>
+                        <dd class="col-sm-8"><code>{{ plantilla.codigo }}</code></dd>
 
                         <dt class="col-sm-4">Nombre</dt>
-                        <dd class="col-sm-8">{{ tipo.nombre }}</dd>
+                        <dd class="col-sm-8">{{ plantilla.nombre }}</dd>
+
+                        <dt class="col-sm-4">Variante</dt>
+                        <dd class="col-sm-8">{{ plantilla.variante or '—' }}</dd>
 
                         <dt class="col-sm-4">Descripción</dt>
-                        <dd class="col-sm-8">{{ tipo.descripcion or '—' }}</dd>
+                        <dd class="col-sm-8">{{ plantilla.descripcion or '—' }}</dd>
 
                         <dt class="col-sm-4">Tipo documento</dt>
                         <dd class="col-sm-8">
-                            {% if tipo.tipo_documento %}
-                                <code>{{ tipo.tipo_documento.codigo }}</code> — {{ tipo.tipo_documento.nombre }}
+                            {% if plantilla.tipo_documento %}
+                                <code>{{ plantilla.tipo_documento.codigo }}</code> — {{ plantilla.tipo_documento.nombre }}
                             {% else %}—{% endif %}
                         </dd>
                     </dl>
@@ -72,22 +78,29 @@
                 </div>
                 <div class="card-body">
                     <dl class="row mb-0">
+                        <dt class="col-sm-4">Tipo expediente</dt>
+                        <dd class="col-sm-8">
+                            {% if plantilla.tipo_expediente %}
+                                {{ plantilla.tipo_expediente.nombre }}
+                            {% else %}<span class="text-secondary">Cualquiera</span>{% endif %}
+                        </dd>
+
                         <dt class="col-sm-4">Tipo solicitud</dt>
                         <dd class="col-sm-8">
-                            {% if tipo.tipo_solicitud %}
-                                {{ tipo.tipo_solicitud.siglas }} — {{ tipo.tipo_solicitud.descripcion }}
+                            {% if plantilla.tipo_solicitud %}
+                                {{ plantilla.tipo_solicitud.siglas }} — {{ plantilla.tipo_solicitud.descripcion }}
                             {% else %}<span class="text-secondary">Cualquiera</span>{% endif %}
                         </dd>
 
                         <dt class="col-sm-4">Fase</dt>
                         <dd class="col-sm-8">
-                            {% if tipo.tipo_fase %}{{ tipo.tipo_fase.nombre }}
+                            {% if plantilla.tipo_fase %}{{ plantilla.tipo_fase.nombre }}
                             {% else %}<span class="text-secondary">Cualquiera</span>{% endif %}
                         </dd>
 
                         <dt class="col-sm-4">Trámite</dt>
                         <dd class="col-sm-8">
-                            {% if tipo.tipo_tramite %}{{ tipo.tipo_tramite.nombre }}
+                            {% if plantilla.tipo_tramite %}{{ plantilla.tipo_tramite.nombre }}
                             {% else %}<span class="text-secondary">Cualquiera</span>{% endif %}
                         </dd>
                     </dl>
@@ -103,7 +116,7 @@
                     <div class="d-flex align-items-start gap-3">
                         <i class="fas fa-file-word fa-2x text-primary flex-shrink-0 mt-1"></i>
                         <div class="flex-grow-1 min-w-0">
-                            <div class="fw-semibold mb-2">{{ tipo.ruta_plantilla }}</div>
+                            <div class="fw-semibold mb-2">{{ plantilla.ruta_plantilla }}</div>
                             {% if ruta_absoluta %}
                             <div class="input-group input-group-sm">
                                 <input type="text" class="form-control font-monospace"
@@ -131,46 +144,26 @@
                 </div>
             </div>
 
-            {# Bloque: Context Builder #}
-            {% if tipo.contexto_clase or tipo.campos_catalogo %}
+            {# Bloque: Context Builder — solo si tiene clase configurada #}
+            {% if plantilla.contexto_clase %}
             <div class="card mb-4">
                 <div class="card-header fw-semibold">
                     <i class="fas fa-code me-1"></i> Context Builder (Capa 2)
                 </div>
                 <div class="card-body">
-                    {% if tipo.contexto_clase %}
                     <dl class="row mb-0">
                         <dt class="col-sm-4">Clase</dt>
-                        <dd class="col-sm-8"><code>{{ tipo.contexto_clase }}</code></dd>
+                        <dd class="col-sm-8"><code>{{ plantilla.contexto_clase }}</code></dd>
                     </dl>
-                    {% endif %}
-                    {% if tipo.campos_catalogo %}
-                    <div class="mt-2">
-                        <div class="fw-semibold small mb-1">Campos adicionales:</div>
-                        <table class="table table-sm table-bordered small mb-0">
-                            <thead class="table-light">
-                                <tr><th>Campo</th><th>Descripción</th></tr>
-                            </thead>
-                            <tbody>
-                                {% for c in tipo.campos_catalogo %}
-                                <tr>
-                                    <td><code>{{ c.campo }}</code></td>
-                                    <td>{{ c.descripcion }}</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                    {% endif %}
                 </div>
             </div>
             {% endif %}
 
             {# Acción desactivar/activar #}
-            <form method="POST" action="{{ url_for('admin_plantillas.activar', id=tipo.id) }}">
-                <button type="submit" class="btn {% if tipo.activo %}btn-outline-danger{% else %}btn-outline-success{% endif %}">
-                    <i class="fas {% if tipo.activo %}fa-toggle-off{% else %}fa-toggle-on{% endif %} me-1"></i>
-                    {% if tipo.activo %}Desactivar plantilla{% else %}Activar plantilla{% endif %}
+            <form method="POST" action="{{ url_for('admin_plantillas.activar', id=plantilla.id) }}">
+                <button type="submit" class="btn {% if plantilla.activo %}btn-outline-danger{% else %}btn-outline-success{% endif %}">
+                    <i class="fas {% if plantilla.activo %}fa-toggle-off{% else %}fa-toggle-on{% endif %} me-1"></i>
+                    {% if plantilla.activo %}Desactivar plantilla{% else %}Activar plantilla{% endif %}
                 </button>
             </form>
 
@@ -182,7 +175,7 @@
                 {% set solo_lectura = true %}
                 {% include 'admin_plantillas/_panel_tokens.html' %}
                 <div class="mt-2 text-center">
-                    <a href="{{ url_for('admin_plantillas.editar', id=tipo.id) }}"
+                    <a href="{{ url_for('admin_plantillas.editar', id=plantilla.id) }}"
                        class="btn btn-sm btn-outline-primary">
                         <i class="fas fa-edit me-1"></i> Editar para copiar tokens
                     </a>

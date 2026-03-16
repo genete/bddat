@@ -50,6 +50,14 @@ class TipoDocumento(db.Model):
         comment='Descripción ampliada del tipo de documento'
     )
 
+    origen = db.Column(
+        db.String(10),
+        nullable=False,
+        default='AMBOS',
+        server_default='AMBOS',
+        comment='Origen: INTERNO (generado por administración), EXTERNO (aportado por interesado), AMBOS'
+    )
+
     def __repr__(self):
         return f'<TipoDocumento {self.codigo}>'
 
