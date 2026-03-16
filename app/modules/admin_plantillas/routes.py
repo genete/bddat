@@ -20,6 +20,7 @@ Endpoints AJAX (cascada ESFTT):
 import os
 
 import werkzeug.utils
+from docx import Document as DocxDocument
 from docxtpl import DocxTemplate
 from flask import (Blueprint, abort, current_app, flash, jsonify, redirect,
                    render_template, request, send_file, url_for)
@@ -105,9 +106,13 @@ def _build_tokens(plantilla=None) -> dict:
 
 
 def _validar_plantilla_docx(ruta_abs: str) -> str | None:
-    """Intenta parsear el .docx con DocxTemplate. Devuelve mensaje de error o None si ok."""
+    """
+    Valida que el fichero sea un .docx bien formado (ZIP con estructura OOXML).
+    DocxTemplate.__init__ no abre el fichero — se usa python-docx Document() que sí lo hace.
+    Devuelve mensaje de error o None si ok.
+    """
     try:
-        DocxTemplate(ruta_abs)
+        DocxDocument(ruta_abs)
         return None
     except Exception as e:
         return str(e)
