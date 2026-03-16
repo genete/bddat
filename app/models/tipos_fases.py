@@ -73,6 +73,12 @@ class TipoFase(db.Model):
         comment='Abreviatura para breadcrumb (máx 20 car.). Si nula, se usa nombre.'
     )
 
+    nombre_en_plantilla = db.Column(
+        db.Text,
+        nullable=True,
+        comment='Nombre legible usado en nombres de documentos generados'
+    )
+
     @property
     def label_bc(self):
         """Etiqueta corta para breadcrumb: abreviatura si existe, nombre completo si no."""
