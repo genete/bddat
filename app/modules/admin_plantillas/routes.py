@@ -16,10 +16,10 @@ Endpoints AJAX (cascada ESFTT):
 - GET  /admin/plantillas/api/tipos-fase       — Tipos fase (filtrar=1: solo whitelist por sol)
 - GET  /admin/plantillas/api/tipos-tramite    — Tipos trámite (filtrar=1: solo whitelist por fase)
 - GET  /admin/plantillas/api/tokens           — Tokens Capa 1 (stub — Capa 2 en Fase 5)
+- GET  /admin/plantillas/api/fs               — Explorador de servidor restringido a PLANTILLAS_BASE/plantillas/
 """
 import os
 
-import werkzeug.utils
 from docx import Document as DocxDocument
 from docxtpl import DocxTemplate
 from flask import (Blueprint, abort, current_app, flash, jsonify, redirect,
@@ -118,28 +118,22 @@ def _validar_plantilla_docx(ruta_abs: str) -> str | None:
         return str(e)
 
 
-def _guardar_docx(archivo) -> str | None:
+def _path_seguro_plantillas(ruta_relativa: str) -> str | None:
     """
-    Guarda el fichero .docx subido en PLANTILLAS_BASE/plantillas/.
-    Devuelve el nombre de fichero (ruta_plantilla) o None si hay error.
+    Valida que ruta_relativa (con '/' como separador) no escape de PLANTILLAS_BASE/plantillas/.
+    Devuelve la ruta absoluta o None si hay path traversal.
     """
-    if not archivo or not archivo.filename:
-        return None
-
-    base = current_app.config.get('PLANTILLAS_BASE', '')
+    base = _plantillas_dir()
     if not base:
-        flash('PLANTILLAS_BASE no está configurado en el servidor.', 'danger')
         return None
-
-    filename = werkzeug.utils.secure_filename(archivo.filename)
-    if not filename.lower().endswith('.docx'):
-        flash('Solo se admiten ficheros .docx.', 'danger')
+    base_norm = os.path.normpath(os.path.abspath(base))
+    if ruta_relativa:
+        ruta_full = os.path.normpath(os.path.join(base, ruta_relativa.replace('/', os.sep)))
+    else:
+        ruta_full = base_norm
+    if ruta_full != base_norm and not ruta_full.startswith(base_norm + os.sep):
         return None
-
-    destino_dir = _plantillas_dir()
-    os.makedirs(destino_dir, exist_ok=True)
-    archivo.save(os.path.join(destino_dir, filename))
-    return filename
+    return ruta_full
 
 
 def _form_data_to_plantilla(plantilla: Plantilla) -> bool:
@@ -285,6 +279,39 @@ def api_tipos_tramite():
     ])
 
 
+@bp.route('/api/fs')
+@login_required
+@role_required('ADMIN', 'SUPERVISOR')
+def api_explorador_fs():
+    """
+    Explorador de ficheros del servidor restringido a PLANTILLAS_BASE/plantillas/.
+    GET ?ruta=<subruta>  →  JSON {ok, partes, directorios, ficheros}
+    Solo expone ficheros .docx y subdirectorios.
+    """
+    base = _plantillas_dir()
+    if not base or not os.path.isdir(base):
+        return jsonify({'ok': False, 'error': 'Directorio de plantillas no accesible'}), 503
+
+    ruta_rel = request.args.get('ruta', '').strip('/\\ ')
+    ruta_abs = _path_seguro_plantillas(ruta_rel)
+    if not ruta_abs or not os.path.isdir(ruta_abs):
+        return jsonify({'ok': False, 'error': 'Ruta no válida'}), 400
+
+    try:
+        dirs, files = [], []
+        for e in sorted(os.scandir(ruta_abs), key=lambda x: (not x.is_dir(), x.name.lower())):
+            rel = os.path.relpath(e.path, base).replace(os.sep, '/')
+            if e.is_dir(follow_symlinks=False):
+                dirs.append({'nombre': e.name, 'ruta': rel})
+            elif e.is_file(follow_symlinks=False) and e.name.lower().endswith('.docx'):
+                files.append({'nombre': e.name, 'ruta': rel, 'tamano': e.stat().st_size})
+    except PermissionError:
+        return jsonify({'ok': False, 'error': 'Sin permisos en esta carpeta'}), 403
+
+    partes = ruta_rel.split('/') if ruta_rel else []
+    return jsonify({'ok': True, 'partes': partes, 'directorios': dirs, 'ficheros': files})
+
+
 @bp.route('/api/tokens')
 @login_required
 @role_required('ADMIN', 'SUPERVISOR')
@@ -321,10 +348,9 @@ def listado():
 @role_required('ADMIN', 'SUPERVISOR')
 def nueva():
     if request.method == 'POST':
-        archivo = request.files.get('archivo_plantilla')
-        ruta = _guardar_docx(archivo)
-        if ruta is None and not archivo.filename:
-            flash('Debes subir el fichero .docx de la plantilla.', 'danger')
+        ruta_rel = request.form.get('ruta_plantilla', '').strip()
+        if not ruta_rel:
+            flash('Debes seleccionar el fichero .docx de la plantilla desde el servidor.', 'danger')
             return render_template(
                 'admin_plantillas/form.html',
                 modo='nueva', plantilla=None,
@@ -332,16 +358,25 @@ def nueva():
                 **_selects_context(),
             )
 
-        if ruta:
-            error_docx = _validar_plantilla_docx(os.path.join(_plantillas_dir(), ruta))
-            if error_docx:
-                flash(f'El fichero .docx tiene errores de sintaxis: {error_docx}', 'danger')
-                return render_template(
-                    'admin_plantillas/form.html',
-                    modo='nueva', plantilla=None,
-                    tokens=_build_tokens(),
-                    **_selects_context(),
-                )
+        ruta_abs = _path_seguro_plantillas(ruta_rel)
+        if not ruta_abs or not os.path.isfile(ruta_abs):
+            flash('La ruta del fichero seleccionado no es válida.', 'danger')
+            return render_template(
+                'admin_plantillas/form.html',
+                modo='nueva', plantilla=None,
+                tokens=_build_tokens(),
+                **_selects_context(),
+            )
+
+        error_docx = _validar_plantilla_docx(ruta_abs)
+        if error_docx:
+            flash(f'El fichero .docx tiene errores de sintaxis: {error_docx}', 'danger')
+            return render_template(
+                'admin_plantillas/form.html',
+                modo='nueva', plantilla=None,
+                tokens=_build_tokens(),
+                **_selects_context(),
+            )
 
         p = Plantilla()
         if not _form_data_to_plantilla(p):
@@ -352,8 +387,8 @@ def nueva():
                 **_selects_context(),
             )
 
-        if ruta:
-            p.ruta_plantilla = ruta
+        # Almacenar solo el nombre de fichero (relativo a PLANTILLAS_BASE/plantillas/)
+        p.ruta_plantilla = os.path.basename(ruta_rel)
 
         db.session.add(p)
         try:
@@ -404,11 +439,20 @@ def editar(id):
     plantilla = Plantilla.query.get_or_404(id)
 
     if request.method == 'POST':
-        archivo = request.files.get('archivo_plantilla')
-        ruta = _guardar_docx(archivo)
+        ruta_rel = request.form.get('ruta_plantilla', '').strip()
 
-        if ruta:
-            error_docx = _validar_plantilla_docx(os.path.join(_plantillas_dir(), ruta))
+        if ruta_rel:
+            # El supervisor ha seleccionado un nuevo fichero en el servidor
+            ruta_abs = _path_seguro_plantillas(ruta_rel)
+            if not ruta_abs or not os.path.isfile(ruta_abs):
+                flash('La ruta del fichero seleccionado no es válida.', 'danger')
+                return render_template(
+                    'admin_plantillas/form.html',
+                    modo='editar', plantilla=plantilla,
+                    tokens=_build_tokens(plantilla),
+                    **_selects_context(),
+                )
+            error_docx = _validar_plantilla_docx(ruta_abs)
             if error_docx:
                 flash(f'El fichero .docx tiene errores de sintaxis: {error_docx}', 'danger')
                 return render_template(
@@ -426,8 +470,8 @@ def editar(id):
                 **_selects_context(),
             )
 
-        if ruta:
-            plantilla.ruta_plantilla = ruta
+        if ruta_rel:
+            plantilla.ruta_plantilla = os.path.basename(ruta_rel)
 
         try:
             db.session.commit()
