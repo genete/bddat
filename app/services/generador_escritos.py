@@ -73,6 +73,10 @@ def generar_escrito(plantilla, expediente, db_session) -> bytes:
 
     # Renderizado
     tpl = DocxTemplate(plantilla_path)
+
+    # Fragmentos insertables: {{r NombreFragmento}} → tpl.new_subdoc(ruta)
+    ctx.update(_cargar_fragmentos(tpl, plantilla_path))
+
     tpl.render(ctx)
 
     # Devolver bytes sin escribir a disco (la escritura es responsabilidad del caller)
@@ -204,6 +208,43 @@ def _cargar_context_builder(nombre_clase: str):
             f'No se pudo cargar el Context Builder "{nombre_clase}" '
             f'desde {modulo_path}: {e}'
         )
+
+
+def _cargar_fragmentos(tpl, plantilla_path) -> dict:
+    """
+    Detecta etiquetas {{r NombreFragmento}} en el XML de la plantilla y carga
+    los subdocumentos correspondientes desde PLANTILLAS_BASE/fragmentos/.
+
+    python-docx-template requiere que el contexto contenga un objeto Subdoc
+    creado con tpl.new_subdoc(ruta) para cada {{r variable}}.
+    """
+    import zipfile
+
+    # Leer el XML del .docx para encontrar las etiquetas {{r ...}}
+    with zipfile.ZipFile(plantilla_path) as z:
+        xml = z.read('word/document.xml').decode('utf-8')
+
+    # Patrón: {{r nombre}} — captura el nombre del fragmento
+    nombres = re.findall(r'\{\{r\s+(\w+)\s*\}\}', xml)
+    if not nombres:
+        return {}
+
+    from flask import current_app
+    base = current_app.config['PLANTILLAS_BASE']
+    fragmentos_dir = os.path.join(base, 'fragmentos')
+
+    resultado = {}
+    for nombre in set(nombres):
+        ruta_frag = os.path.join(fragmentos_dir, nombre + '.docx')
+        if os.path.isfile(ruta_frag):
+            resultado[nombre] = tpl.new_subdoc(ruta_frag)
+        else:
+            logger.warning(
+                'Fragmento "%s.docx" referenciado en plantilla pero no encontrado en %s',
+                nombre, fragmentos_dir
+            )
+
+    return resultado
 
 
 def _ejecutar_consultas(plantilla, expediente, db_session) -> dict:
