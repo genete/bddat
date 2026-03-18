@@ -12,22 +12,34 @@ FLUJO:
     4. Renderiza con DocxTemplate (python-docx-template / Jinja2)
     5. Devuelve bytes del .docx resultante
 
+FUNCIONES PÚBLICAS ADICIONALES (Fase 5 #167):
+    componer_nombre_documento  — Nombre sistematizado para el .docx generado
+    ruta_destino_documento     — Ruta en FILESYSTEM_BASE/AT-XXXX/
+    guardar_docx               — Escribe bytes a disco (sobrescribe si existe)
+
 USO:
     from app.services.generador_escritos import generar_escrito
+    from app.services.generador_escritos import componer_nombre_documento, ruta_destino_documento, guardar_docx
 
     docx_bytes = generar_escrito(plantilla, expediente, db_session)
-    # Guardar bytes en FILESYSTEM_BASE y registrar en pool del expediente
+    nombre = componer_nombre_documento(tarea, plantilla)
+    ruta = ruta_destino_documento(expediente, nombre)
+    guardar_docx(docx_bytes, ruta)
 
 DEPENDENCIA:
     pip install python-docx-template
 """
 
 import importlib
+import logging
 import os
+import re
 
 from docxtpl import DocxTemplate
 
 from app.services.escritos import ContextoBaseExpediente
+
+logger = logging.getLogger(__name__)
 
 
 def generar_escrito(plantilla, expediente, db_session) -> bytes:
@@ -68,6 +80,93 @@ def generar_escrito(plantilla, expediente, db_session) -> bytes:
     buffer = io.BytesIO()
     tpl.save(buffer)
     return buffer.getvalue()
+
+
+# ------------------------------------------------------------------
+# Funciones públicas — nombre, ruta y guardado (Fase 5 #167)
+# ------------------------------------------------------------------
+
+# Caracteres no válidos en nombres de fichero Windows
+_CARACTERES_INVALIDOS = re.compile(r'[\\/:*?"<>|]')
+
+
+def componer_nombre_documento(tarea, plantilla) -> str:
+    """
+    Genera un nombre sistematizado para el .docx a partir de la cadena ESFTT.
+
+    Recorre tarea → tipo_tarea → tramite → tipo_tramite → fase → tipo_fase
+    → solicitud → tipo_solicitud → expediente, tomando nombre_en_plantilla
+    de cada nivel. NULL al final se omite; NULL en medio se reemplaza por "ANY".
+
+    Si plantilla.variante existe, se añade " V {variante}" al final.
+    Sufijo siempre .docx. Caracteres inválidos para fichero → '_'.
+    """
+    tramite = tarea.tramite
+    fase = tramite.fase if tramite else None
+    solicitud = fase.solicitud if fase else None
+    expediente = solicitud.expediente if solicitud else None
+
+    # Recoger nombre_en_plantilla de cada nivel (de más genérico a más específico)
+    partes_raw = [
+        getattr(tarea.tipo_tarea, 'nombre_en_plantilla', None) if tarea.tipo_tarea else None,
+        getattr(tramite.tipo_tramite, 'nombre_en_plantilla', None) if tramite and tramite.tipo_tramite else None,
+        getattr(fase.tipo_fase, 'nombre_en_plantilla', None) if fase and fase.tipo_fase else None,
+        getattr(solicitud.tipo_solicitud, 'nombre_en_plantilla', None) if solicitud and solicitud.tipo_solicitud else None,
+        f'AT-{expediente.numero_at}' if expediente and expediente.numero_at else None,
+    ]
+
+    # Recortar NULLs del final; reemplazar NULLs internos por "ANY"
+    while partes_raw and partes_raw[-1] is None:
+        partes_raw.pop()
+
+    partes = [p if p is not None else 'ANY' for p in partes_raw]
+
+    nombre = ' '.join(partes)
+
+    if plantilla.variante:
+        nombre += f' V {plantilla.variante}'
+
+    nombre += '.docx'
+
+    # Sanitizar caracteres inválidos para nombre de fichero
+    nombre = _CARACTERES_INVALIDOS.sub('_', nombre)
+
+    return nombre
+
+
+def ruta_destino_documento(expediente, nombre_fichero) -> str:
+    """
+    Calcula la ruta absoluta donde guardar el documento generado.
+
+    Estructura: FILESYSTEM_BASE / AT-{numero_at} / {nombre_fichero}
+    Crea el subdirectorio si no existe.
+
+    NOTA: Ruta hardcoded provisional. Se reemplazará por rutas configurables
+    en tablas maestras cuando se implemente esa decisión de arquitectura
+    (Bloque 2/8 del roadmap).
+    """
+    from flask import current_app
+    base = current_app.config.get('FILESYSTEM_BASE', '')
+    if not base:
+        raise RuntimeError('FILESYSTEM_BASE no está configurado')
+
+    carpeta_exp = f'AT-{expediente.numero_at}'
+    directorio = os.path.join(base, carpeta_exp)
+    os.makedirs(directorio, exist_ok=True)
+
+    return os.path.join(directorio, nombre_fichero)
+
+
+def guardar_docx(docx_bytes, ruta_destino) -> str:
+    """
+    Escribe bytes del .docx a disco. Sobrescribe si existe (regeneración B6).
+
+    Returns:
+        str — Ruta absoluta del fichero escrito.
+    """
+    with open(ruta_destino, 'wb') as f:
+        f.write(docx_bytes)
+    return ruta_destino
 
 
 # ------------------------------------------------------------------
