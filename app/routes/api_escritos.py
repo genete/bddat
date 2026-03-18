@@ -229,7 +229,7 @@ def generar():
                 expediente_id=expediente.id,
                 url=ruta,
                 tipo_doc_id=plantilla.tipo_documento_id,
-                tipo_contenido='application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                tipo_contenido='application/docx',
                 fecha_administrativa=None,
                 prioridad=0,
                 asunto=asunto,
