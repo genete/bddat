@@ -208,10 +208,30 @@ def _cargar_context_builder(nombre_clase: str):
 
 def _ejecutar_consultas(plantilla, expediente, db_session) -> dict:
     """
-    Ejecuta las consultas nombradas referenciadas en la plantilla.
+    Ejecuta TODAS las ConsultaNombrada activas con :expediente_id y las pasa
+    al contexto. Las no referenciadas en la plantilla se ignoran por Jinja2.
 
-    Por ahora devuelve un dict vacío. La implementación completa se hará
-    en Fase 5 (#167): parsear la plantilla para detectar {%tr for row in X %}
-    y ejecutar la consulta_nombrada con nombre X para cada bloque encontrado.
+    Estrategia simple: ejecutar todas es más barato que parsear el .docx
+    buscando etiquetas {%tr for row in X %}. Si una consulta falla, se
+    registra un warning y se pasa como lista vacía (no rompe la generación).
     """
-    return {}
+    from app.models.consultas_nombradas import ConsultaNombrada
+    from sqlalchemy import text
+
+    resultado = {}
+
+    for cn in ConsultaNombrada.query.filter_by(activo=True).all():
+        try:
+            rows = db_session.execute(
+                text(cn.sql),
+                {'expediente_id': expediente.id}
+            ).mappings().all()
+            resultado[cn.nombre] = [dict(r) for r in rows]
+        except Exception as e:
+            logger.warning(
+                'Consulta nombrada "%s" (id=%s) falló para expediente %s: %s',
+                cn.nombre, cn.id, expediente.id, e
+            )
+            resultado[cn.nombre] = []
+
+    return resultado
