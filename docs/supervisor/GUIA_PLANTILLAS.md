@@ -236,16 +236,16 @@ en la plantilla principal.
 
 ## 8. Filtros útiles de Jinja2
 
-Se añaden con `|` después del campo:
+Se añaden con `|` después del campo (en Word, siempre sin barra invertida):
 
-| Sintaxis | Efecto | Ejemplo resultado |
+| Sintaxis en Word | Efecto | Ejemplo resultado |
 |----------|--------|-------------------|
-| `{{campo\|upper}}` | Mayúsculas | `EMPRESA EJEMPLO S.L.` |
-| `{{campo\|lower}}` | Minúsculas | `empresa ejemplo s.l.` |
-| `{{campo\|title}}` | Primera letra mayúscula | `Empresa Ejemplo S.l.` |
-| `{{campo\|default('texto')}}` | Valor si campo es None | `Sin datos` |
-| `{{lista\|join(', ')}}` | Une lista con separador | `Alcalá, Martos, Alcaudete` |
-| `{{lista\|length}}` | Número de elementos | `3` |
+| `{{campo|upper}}` | Mayúsculas | `EMPRESA EJEMPLO S.L.` |
+| `{{campo|lower}}` | Minúsculas | `empresa ejemplo s.l.` |
+| `{{campo|title}}` | Primera letra mayúscula | `Empresa Ejemplo S.l.` |
+| `{{campo|default('texto')}}` | Valor si campo es None | `Sin datos` |
+| `{{lista|join(', ')}}` | Une lista con separador | `Alcalá, Martos, Alcaudete` |
+| `{{lista|length}}` | Número de elementos | `3` |
 
 ---
 
