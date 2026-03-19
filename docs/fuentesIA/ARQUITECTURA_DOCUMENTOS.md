@@ -1,6 +1,6 @@
 # ARQUITECTURA — Subsistema Documental
 
-> **Sesión de diseño:** 2026-03-04 | **Actualizado:** 2026-03-05
+> **Sesión de diseño:** 2026-03-04 | **Actualizado:** 2026-03-18
 > Decisiones tomadas antes de entrar en M1 sistema documental (#166) y M2 generación escritos (#167).
 > Documentos relacionados: `MOTOR_REGLAS_arquitectura.md`, `GUIA_CONTEXT_BUILDERS.md`, `ROADMAP.md`
 
@@ -148,28 +148,63 @@ El motor delegará via nuevo `tipo_criterio = 'PLAZO_ESTADO'`:
 
 Ver detalle completo en `docs/fuentesIA/GUIA_CONTEXT_BUILDERS.md`.
 
-### Tabla `tipos_escritos`
+### Tabla `plantillas` (renombrada desde `tipos_escritos` en #167 Fase 2)
+
+Modelo: `app/models/plantillas.py`
 
 ```
-tipos_escritos
-  id                SERIAL PK
-  codigo            TEXT UNIQUE NOT NULL
-  nombre            TEXT NOT NULL
-  descripcion       TEXT
-  plantilla_url     TEXT            ← ruta al .docx plantilla
-  contexto_clase    TEXT NULL       ← nombre clase Python; NULL = solo capa base
-  campos_catalogo   JSONB NULL      ← {campo: descripcion_legible} para la UI
-  activo            BOOLEAN DEFAULT TRUE
+plantillas
+  id                    SERIAL PK
+  codigo                TEXT UNIQUE NOT NULL      ← slug estable (REQUERIMIENTO_SUBSANACION)
+  nombre                TEXT NOT NULL             ← nombre legible para la UI
+  descripcion           TEXT NULL
+  ruta_plantilla        TEXT NOT NULL             ← ruta relativa a PLANTILLAS_BASE/plantillas/
+  variante              TEXT NULL                 ← distingue plantillas del mismo contexto (Favorable, Denegatoria)
+  tipo_documento_id     FK tipos_documentos NOT NULL  ← tipo que se asignará al Documento generado
+  tipo_expediente_id    FK tipos_expedientes NULL ← NULL = aplica a cualquier tipo de expediente
+  tipo_solicitud_id     FK tipos_solicitudes NULL ← NULL = aplica a cualquier solicitud
+  tipo_fase_id          FK tipos_fases NULL       ← NULL = aplica a cualquier fase
+  tipo_tramite_id       FK tipos_tramites NULL    ← NULL = aplica a cualquier trámite
+  contexto_clase        TEXT NULL                 ← nombre clase Python; NULL = solo capa base
+  filtros_adicionales   JSONB DEFAULT '{}'        ← variables de negocio futuras (tensión, tecnología…)
+  activo                BOOLEAN DEFAULT TRUE      ← FALSE = oculta en REDACTAR, conservada para histórico
+```
+
+**Cambios respecto al diseño original (`tipos_escritos`):**
+- Renombrada a `plantillas` por claridad semántica
+- Añadidas 4 FKs ESFTT nullable (tipo_expediente, tipo_solicitud, tipo_fase, tipo_tramite) para filtrado por contexto de tarea — NULL = comodín
+- `plantilla_url` → `ruta_plantilla` (relativa a `PLANTILLAS_BASE/plantillas/`)
+- Añadido `tipo_documento_id` (NOT NULL): tipo semántico que se asigna al Documento generado
+- Añadido `variante`: texto libre para distinguir escritos del mismo contexto ESFTT
+- Añadido `filtros_adicionales`: JSON extensible para criterios futuros
+- Eliminado `campos_catalogo`: reemplazado por `consultas_nombradas` (tabla independiente)
+
+### Tabla `consultas_nombradas` (nueva, #167 Fase 3)
+
+Modelo: `app/models/consultas_nombradas.py`
+
+Consultas SQL predefinidas para tablas dinámicas en plantillas .docx.
+El supervisor referencia la consulta por nombre en el marcador: `{%tr for row in municipios_afectados %}`.
+
+```
+consultas_nombradas
+  id          SERIAL PK
+  nombre      TEXT UNIQUE NOT NULL     ← slug usado en plantilla (municipios_afectados)
+  descripcion TEXT NOT NULL            ← texto legible para supervisor en UI
+  sql         TEXT NOT NULL            ← SQL parametrizado con :expediente_id
+  columnas    JSONB NOT NULL           ← [{campo, descripcion}] para UI supervisor
+  activo      BOOLEAN DEFAULT TRUE
 ```
 
 ### Capa 1 — Contexto base (autoservicio Supervisor)
 
-`app/services/escritos.py` → `ContextoBaseExpediente.get_contexto(expediente_id)`
+`app/services/escritos.py` → `ContextoBaseExpediente(expediente).get_contexto()`
 
-Devuelve diccionario plano con todos los campos simples del expediente:
-titular, proyecto, tipo, municipio, tensión, instrumento ambiental, fecha_hoy, etc.
+Devuelve diccionario plano con los campos directos del expediente:
+numero_at, titular (nombre/NIF/dirección), proyecto (título/finalidad/emplazamiento),
+instrumento ambiental, responsable, municipios, fecha_hoy.
 
-El Supervisor prepara plantilla .docx con `{{campo}}` y la registra en `tipos_escritos`
+El Supervisor prepara plantilla .docx con `{{campo}}` y la registra en `plantillas`
 sin intervención del gestor de sistemas.
 
 ### Capa 2 — Context Builder (con soporte técnico/AI)
@@ -177,7 +212,24 @@ sin intervención del gestor de sistemas.
 Para escritos con campos calculados o cruzados. Clase Python que enriquece el contexto base.
 Ver `GUIA_CONTEXT_BUILDERS.md` para crear uno nuevo.
 
-**Issue:** #189 (M2)
+### Capa 3 — Consultas nombradas (autoservicio Supervisor)
+
+Tablas dinámicas ejecutadas sobre el expediente. Se ejecutan todas las activas y se pasan
+al contexto Jinja2; las no referenciadas en la plantilla se ignoran silenciosamente.
+Si una consulta falla, se pasa como lista vacía (log warning, no rompe generación).
+
+### Motor de generación (Fase 5 #167)
+
+`app/services/generador_escritos.py` orquesta el flujo:
+1. Carga plantilla .docx desde `PLANTILLAS_BASE/plantillas/`
+2. Capa 1: `ContextoBaseExpediente`
+3. Capa 2: Context Builder opcional (`plantilla.contexto_clase`)
+4. Capa 3: Consultas nombradas activas
+5. Renderiza con `python-docx-template` (Jinja2)
+
+API REST: `app/routes/api_escritos.py` — endpoints `/api/escritos/plantillas`, `/preview`, `/generar`.
+
+**Issue:** #167
 
 ---
 
@@ -188,8 +240,10 @@ Ver `GUIA_CONTEXT_BUILDERS.md` para crear uno nuevo.
 | Extensión de `Documento` | Particularización N:M | Herencia SQLAlchemy |
 | Estado de consultas | Service layer (seguimiento.py) | Event Sourcing / campo persistido |
 | Plazos en motor | Servicio separado (plazos.py) | Criterios temporales en condiciones_regla |
-| Escritos simples | Contexto base + plantilla .docx | Hardcoded por tipo |
-| Escritos complejos | Context Builder por tipo | Motor genérico de descubrimiento semántico |
+| Escritos simples | Contexto base + plantilla .docx (tabla `plantillas`) | Hardcoded por tipo |
+| Escritos complejos | Context Builder por tipo + consultas nombradas | Motor genérico de descubrimiento semántico |
+| Catálogo de escritos | `plantillas` con 4 FKs ESFTT nullable (comodín) | `tipos_escritos` sin filtrado por contexto |
+| Tablas dinámicas en plantillas | `consultas_nombradas` (SQL + :expediente_id) | `campos_catalogo` JSONB en tipos_escritos |
 | Campo `origen` | Eliminado; procedencia en tablas cualificadoras | Campo libre en Documento |
 | Campo `nombre_display` | Eliminado; deducible de URL | Campo editable por usuario |
 | `fecha_administrativa` | Nullable (dos semánticas de NULL documentadas) | NOT NULL con fecha placeholder |
