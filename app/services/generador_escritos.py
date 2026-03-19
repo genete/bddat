@@ -280,14 +280,19 @@ def _elevar_parrafos_anidados(doc) -> None:
 
 
 def _elevar_en_contenedor(contenedor, W: str) -> None:
-    """Eleva párrafos anidados dentro de un contenedor OOXML (body, hdr, ftr)."""
+    """Eleva elementos de bloque anidados dentro de <w:p> en un contenedor OOXML.
+
+    Trata <w:p> y <w:tbl> anidados — ambos son inválidos dentro de <w:p> y
+    Word los descarta. Ocurre cuando el fragmento contiene párrafos o tablas.
+    """
+    BLOQUES = {f'{W}p', f'{W}tbl'}
     changed = True
     while changed:
         changed = False
         for i, elem in enumerate(list(contenedor)):
             if elem.tag != f'{W}p':
                 continue
-            nested = [c for c in list(elem) if c.tag == f'{W}p']
+            nested = [c for c in list(elem) if c.tag in BLOQUES]
             if not nested:
                 continue
 
