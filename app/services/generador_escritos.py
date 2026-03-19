@@ -79,11 +79,19 @@ def generar_escrito(plantilla, expediente, db_session) -> bytes:
 
     tpl.render(ctx)
 
+    # docxtpl/docxcompose genera <w:p> anidados (inválido en OOXML) al insertar subdocs.
+    # Word descarta silenciosamente el contenido anidado. Corrección necesaria.
+    # — Para el body: se puede corregir en memoria antes de save()
+    _elevar_parrafos_anidados(tpl.docx)
+
     # Devolver bytes sin escribir a disco (la escritura es responsabilidad del caller)
     import io
     buffer = io.BytesIO()
     tpl.save(buffer)
-    return buffer.getvalue()
+
+    # — Para cabeceras/pies: docxtpl los renderiza en Parts separados no accesibles
+    #   vía tpl.docx en memoria; hay que parchear el ZIP resultante.
+    return _corregir_anidados_en_zip(buffer.getvalue())
 
 
 # ------------------------------------------------------------------
@@ -210,6 +218,95 @@ def _cargar_context_builder(nombre_clase: str):
         )
 
 
+def _corregir_anidados_en_zip(docx_bytes: bytes) -> bytes:
+    """
+    Parchea el ZIP del .docx resultante para corregir <w:p> anidados en las
+    partes que docxtpl renderiza fuera del objeto Document en memoria:
+    cabeceras (word/header*.xml) y pies de página (word/footer*.xml).
+
+    Devuelve los bytes corregidos.
+    """
+    import zipfile
+    import io as _io
+    from lxml import etree
+
+    W = '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}'
+    _PARTES = re.compile(r'^word/(header|footer)\d*\.xml$')
+
+    buf_in = _io.BytesIO(docx_bytes)
+    buf_out = _io.BytesIO()
+
+    with zipfile.ZipFile(buf_in, 'r') as zin, \
+         zipfile.ZipFile(buf_out, 'w', compression=zipfile.ZIP_DEFLATED) as zout:
+        for item in zin.infolist():
+            data = zin.read(item.filename)
+            if _PARTES.match(item.filename):
+                try:
+                    root = etree.fromstring(data)
+                    _elevar_en_contenedor(root, W)
+                    data = etree.tostring(root, xml_declaration=True,
+                                          encoding='UTF-8', standalone=True)
+                except Exception as e:
+                    logger.warning('No se pudo corregir %s: %s', item.filename, e)
+            zout.writestr(item, data)
+
+    return buf_out.getvalue()
+
+
+def _elevar_parrafos_anidados(doc) -> None:
+    """
+    Corrige párrafos anidados (<w:p> dentro de <w:p>) que genera docxtpl/docxcompose
+    al insertar subdocumentos. OOXML no permite anidamiento de párrafos: Word los
+    descarta silenciosamente al renderizar.
+
+    Procesa el body principal y los elementos de cabecera/pie de todas las secciones.
+    """
+    W = '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}'
+
+    # Recoger todos los contenedores de párrafos: body + cabeceras + pies de página
+    contenedores = [doc.element.body]
+    for section in doc.sections:
+        for part in (section.header, section.footer,
+                     section.even_page_header, section.even_page_footer,
+                     section.first_page_header, section.first_page_footer):
+            try:
+                if part and not part.is_linked_to_previous:
+                    contenedores.append(part._element)
+            except Exception:
+                pass
+
+    for contenedor in contenedores:
+        _elevar_en_contenedor(contenedor, W)
+
+
+def _elevar_en_contenedor(contenedor, W: str) -> None:
+    """Eleva párrafos anidados dentro de un contenedor OOXML (body, hdr, ftr)."""
+    changed = True
+    while changed:
+        changed = False
+        for i, elem in enumerate(list(contenedor)):
+            if elem.tag != f'{W}p':
+                continue
+            nested = [c for c in list(elem) if c.tag == f'{W}p']
+            if not nested:
+                continue
+
+            insert_pos = i + 1
+            for nested_p in nested:
+                elem.remove(nested_p)
+                contenedor.insert(insert_pos, nested_p)
+                insert_pos += 1
+
+            texto_restante = ''.join(
+                (t.text or '') for t in elem.iter(f'{W}t')
+            ).strip()
+            if not texto_restante:
+                contenedor.remove(elem)
+
+            changed = True
+            break
+
+
 def _cargar_fragmentos(tpl, plantilla_path) -> dict:
     """
     Detecta etiquetas {{r NombreFragmento}} en el XML de la plantilla y carga
@@ -220,12 +317,15 @@ def _cargar_fragmentos(tpl, plantilla_path) -> dict:
     """
     import zipfile
 
-    # Leer el XML del .docx para encontrar las etiquetas {{r ...}}
+    # Escanear todos los XML relevantes: body, cabeceras y pies de página
+    _PARTES_ESCANEAR = re.compile(r'^word/(document|header\d*|footer\d*)\.xml$')
+    nombres = set()
     with zipfile.ZipFile(plantilla_path) as z:
-        xml = z.read('word/document.xml').decode('utf-8')
+        for nombre_parte in z.namelist():
+            if _PARTES_ESCANEAR.match(nombre_parte):
+                xml = z.read(nombre_parte).decode('utf-8', errors='replace')
+                nombres.update(re.findall(r'\{\{r\s+(\w+)\s*\}\}', xml))
 
-    # Patrón: {{r nombre}} — captura el nombre del fragmento
-    nombres = re.findall(r'\{\{r\s+(\w+)\s*\}\}', xml)
     if not nombres:
         return {}
 
