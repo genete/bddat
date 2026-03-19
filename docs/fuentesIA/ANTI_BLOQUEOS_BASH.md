@@ -10,11 +10,11 @@ ni el modo "accept edits". Evitarlos cambiando el patrón.
 | Mensaje que aparece | Causa | Solución |
 |---------------------|-------|----------|
 | `output redirection >` | `cmd > fichero` | Usar tool `Write` |
-| `command contains newlines that could separate multiple commands` | heredoc en Bash | Escribir con `Write` → pasar como fichero |
-| `quoted newline + #-line` | `## Header` dentro de heredoc | Ídem (fichero temporal) |
-| `command contains quoted characters in flag names` | comillas dentro de `--body "..."` o interpolación con comillas en nombre de flag | Usar fichero temporal para el valor |
+| `command contains newlines that could separate multiple commands` | heredoc en Bash **o `python -c "...código multilínea..."`** | Escribir con `Write` → pasar como fichero (`python script.py`) |
+| `quoted newline + #-line` | `## Header` dentro de string con comillas (heredoc, `git commit -m`, `--body`) | Usar fichero temporal (`Write` → `-F`/`--body-file`) |
+| `command contains quoted characters in flag names` | comillas dentro de `--body "..."` o flag con valor entrecomillado | Usar fichero temporal para el valor |
 | `backtick or $() substitution` / `command contains $() command substitution` | `` cmd=`...` `` o `$(...)` | Separar en llamadas Bash secuenciales |
-| `backslash before shell operator` | `\|`, `\;`, `\&`, `\<`, `\>` en comandos | Eliminar la barra — nunca escapar operadores de shell |
+| `backslash before shell operator` | `\|`, `\;`, `\&`, `\<`, `\>` en comandos — **incluido `grep 'pat1\|pat2'`** | Eliminar barra — usar `grep -E 'pat1|pat2'` o `-e pat1 -e pat2` |
 | `sed command contains operations that require explicit approval` | `sed -i` u otras operaciones de escritura con sed | Usar tool `Edit` en su lugar |
 
 ---
@@ -45,3 +45,5 @@ Borrar el fichero tras uso con `rm`.
 - **`gh issue create` / `gh pr create`:** `Write` body → `--body-file`
 - **`git commit` con mensaje largo:** `Write` mensaje → `commit -F fichero`
 - **`sed -i`:** usar tool `Edit` siempre
+- **`python -c "...multilínea..."`:** `Write` el script a `docs_prueba/temp/` → `python docs_prueba/temp/script.py`
+- **`grep 'pat1\|pat2'`:** usar `grep -E 'pat1|pat2'` (ERE sin barra) o `-e pat1 -e pat2`

@@ -76,6 +76,8 @@ Resumen de patrones obligatorios:
 - **`$()` y backticks:** NUNCA — separar en llamadas Bash secuenciales
 - **`sed -i`:** usar tool `Edit` — nunca sed para escribir ficheros
 - **Newlines en comandos Bash:** NUNCA saltos de línea dentro del cuerpo de un comando (heredocs, `python -c "..."` multilínea, etc.) → escribir el contenido con `Write` a `docs_prueba/temp/` y pasarlo como fichero
-- **`git commit` / `gh pr create` con texto largo:** `Write` a `docs_prueba/temp/` → pasar como fichero
+- **`python -c "...multilínea..."`:** `Write` el script → `python docs_prueba/temp/script.py`
+- **`git commit` / `gh pr create` con texto largo o `#`:** `Write` a `docs_prueba/temp/` → `-F`/`--body-file`
+- **`grep 'pat1\|pat2'`:** usar `grep -E 'pat1|pat2'` (ERE) o `-e pat1 -e pat2` — nunca `\|`
 - **`git -C /ruta`:** SIEMPRE en vez de `cd /ruta && git`
 - **Ficheros temporales:** SIEMPRE en `D:\BDDAT\docs_prueba\temp\` (allowlisted, gitignored)
