@@ -284,6 +284,10 @@ def _elevar_en_contenedor(contenedor, W: str) -> None:
 
     Trata <w:p> y <w:tbl> anidados — ambos son inválidos dentro de <w:p> y
     Word los descarta. Ocurre cuando el fragmento contiene párrafos o tablas.
+
+    Procesa el contenedor dado (body, hdr, ftr o tc) y recursivamente las
+    celdas de todas las tablas que contenga, para cubrir el caso en que el
+    marcador {{r Fragmento}} está dentro de una celda de tabla de la plantilla.
     """
     BLOQUES = {f'{W}p', f'{W}tbl'}
     changed = True
@@ -297,9 +301,9 @@ def _elevar_en_contenedor(contenedor, W: str) -> None:
                 continue
 
             insert_pos = i + 1
-            for nested_p in nested:
-                elem.remove(nested_p)
-                contenedor.insert(insert_pos, nested_p)
+            for bloque in nested:
+                elem.remove(bloque)
+                contenedor.insert(insert_pos, bloque)
                 insert_pos += 1
 
             texto_restante = ''.join(
@@ -310,6 +314,10 @@ def _elevar_en_contenedor(contenedor, W: str) -> None:
 
             changed = True
             break
+
+    # Procesar recursivamente las celdas de todas las tablas del contenedor
+    for tc in contenedor.findall(f'.//{W}tc'):
+        _elevar_en_contenedor(tc, W)
 
 
 def _cargar_fragmentos(tpl, plantilla_path) -> dict:
