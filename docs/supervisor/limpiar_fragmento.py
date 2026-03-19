@@ -31,6 +31,7 @@ ELIMINAR_CON_CONTENIDO = {
     f'{{{W}}}commentRangeStart',
     f'{{{W}}}commentRangeEnd',
     f'{{{W}}}commentReference',
+    f'{{{W}}}sectPr',        # propiedades de sección — generan saltos al insertar el fragmento
 }
 
 # Etiquetas que se "aceptan": se eliminan pero se conserva su contenido hijo
