@@ -100,9 +100,9 @@ class ContextoBaseExpediente:
         if not self._exp.titular:
             return None
         direcciones = getattr(self._exp.titular, 'direcciones_notificacion', [])
-        preferente = next((d for d in direcciones if d.preferente), None)
-        if preferente:
-            return str(preferente)
+        activa = next((d for d in direcciones if d.activo), None)
+        if activa:
+            return str(activa)
         return None
 
     def _nombre_responsable(self) -> str | None:
