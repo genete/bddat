@@ -78,9 +78,9 @@ class ContextoBaseExpediente:
             'proyecto_emplazamiento':  proyecto.emplazamiento if proyecto else None,
             'instrumento_ambiental':   proyecto.ia.siglas     if proyecto and proyecto.ia else None,
 
-            # Responsable
+            # Responsable (Usuario no tiene nombre_completo, se construye aquí)
             'responsable_nombre': (
-                exp.responsable.nombre_completo if exp.responsable else None
+                self._nombre_responsable()
             ),
 
             # Municipios (lista de nombres para uso en plantilla simple)
@@ -100,10 +100,20 @@ class ContextoBaseExpediente:
         if not self._exp.titular:
             return None
         direcciones = getattr(self._exp.titular, 'direcciones_notificacion', [])
-        preferente = next((d for d in direcciones if d.preferente), None)
-        if preferente:
-            return str(preferente)
+        activa = next((d for d in direcciones if d.activo), None)
+        if activa:
+            return str(activa)
         return None
+
+    def _nombre_responsable(self) -> str | None:
+        """Construye nombre completo del responsable (Usuario no tiene nombre_completo)."""
+        r = self._exp.responsable
+        if not r:
+            return None
+        partes = [r.nombre, r.apellido1]
+        if r.apellido2:
+            partes.append(r.apellido2)
+        return ' '.join(p for p in partes if p)
 
     def _municipios(self) -> list[str]:
         """Devuelve los nombres de municipios afectados por el proyecto."""

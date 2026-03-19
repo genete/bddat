@@ -483,6 +483,7 @@ def tramitacion_bc_tarea(exp_id, sol_id, fase_id, tram_id, tarea_id):
     codigo_tipo = tarea.tipo_tarea.codigo if tarea.tipo_tarea else ''
     requiere_doc_usado     = codigo_tipo in _TIPOS_REQUIEREN_DOC_USADO
     requiere_doc_producido = codigo_tipo in _TIPOS_REQUIEREN_DOC_PRODUCIDO
+    es_tarea_redactar      = (codigo_tipo == 'REDACTAR')
 
     return render_template(
         'expedientes/tramitacion_bc_tarea.html',
@@ -493,6 +494,7 @@ def tramitacion_bc_tarea(exp_id, sol_id, fase_id, tram_id, tarea_id):
         tarea=tarea,
         requiere_doc_usado=requiere_doc_usado,
         requiere_doc_producido=requiere_doc_producido,
+        es_tarea_redactar=es_tarea_redactar,
     )
 
 
