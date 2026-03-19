@@ -226,11 +226,36 @@ Los ficheros de fragmento se depositan en la carpeta `fragmentos/` del servidor
 El contenido completo del fichero `ClausulaConfidencialidad.docx` aparece
 en ese punto del documento, con su propio formato.
 
-**Funciona también en cabeceras y pies de página**, con la misma regla.
+### Dónde puede ir el marcador
 
-**Limitación:** Los marcadores `{{campo}}` dentro de un fragmento **no se procesan**.
-Los fragmentos son contenido estático. Si necesitas contenido dinámico, ponlo
-en la plantilla principal.
+| Ubicación | Compatible |
+|-----------|-----------|
+| Cuerpo del documento | ✅ |
+| Cabecera | ✅ |
+| Pie de página | ✅ |
+| Dentro de una celda de tabla | ✅ |
+
+### El fragmento puede contener
+
+| Contenido | Compatible |
+|-----------|-----------|
+| Texto con formato | ✅ |
+| Tabla (ej: logo + texto alineados) | ✅ |
+| Múltiples párrafos | ✅ |
+| Marcadores `{{campo}}` | ❌ No se procesan — los fragmentos son estáticos |
+
+### Limpiar el fragmento antes de usarlo
+
+Si el fragmento fue creado en LibreOffice o contiene texto copiado de otro documento,
+puede tener metadatos internos que impiden la inserción correcta. Pasarlo por el
+script de limpieza antes de colocarlo en la carpeta `fragmentos/`:
+
+```powershell
+D:\BDDAT\venv\Scripts\python.exe D:\BDDAT\docs\supervisor\limpiar_fragmento.py .\MiFragmento.docx
+```
+
+Esto elimina marcadores de revisión, cambios rastreados y propiedades de sección
+que LibreOffice añade automáticamente y que interfieren con la inserción.
 
 ---
 
