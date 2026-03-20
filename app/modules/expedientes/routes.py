@@ -482,6 +482,7 @@ def tramitacion_bc_tarea(exp_id, sol_id, fase_id, tram_id, tarea_id):
 
     codigo_tipo = tarea.tipo_tarea.codigo if tarea.tipo_tarea else ''
     requiere_doc_usado     = codigo_tipo in _TIPOS_REQUIEREN_DOC_USADO
+    doc_usado_opcional     = codigo_tipo in _TIPOS_DOC_USADO_OPCIONAL
     requiere_doc_producido = codigo_tipo in _TIPOS_REQUIEREN_DOC_PRODUCIDO
     es_tarea_redactar      = (codigo_tipo == 'REDACTAR')
 
@@ -493,6 +494,7 @@ def tramitacion_bc_tarea(exp_id, sol_id, fase_id, tram_id, tarea_id):
         tramite=tramite,
         tarea=tarea,
         requiere_doc_usado=requiere_doc_usado,
+        doc_usado_opcional=doc_usado_opcional,
         requiere_doc_producido=requiere_doc_producido,
         es_tarea_redactar=es_tarea_redactar,
     )
@@ -500,6 +502,7 @@ def tramitacion_bc_tarea(exp_id, sol_id, fase_id, tram_id, tarea_id):
 
 # Conjuntos de tipos de tarea que requieren documentos (espejo de motor_reglas.py)
 _TIPOS_REQUIEREN_DOC_USADO     = {'ANALISIS', 'FIRMAR', 'NOTIFICAR', 'PUBLICAR'}
+_TIPOS_DOC_USADO_OPCIONAL      = {'REDACTAR'}   # visible en UI pero no obligatorio al finalizar
 _TIPOS_REQUIEREN_DOC_PRODUCIDO = {'INCORPORAR', 'ANALISIS', 'REDACTAR', 'FIRMAR', 'NOTIFICAR', 'PUBLICAR'}
 
 

@@ -42,7 +42,7 @@ from app.services.escritos import ContextoBaseExpediente
 logger = logging.getLogger(__name__)
 
 
-def generar_escrito(plantilla, expediente, db_session) -> bytes:
+def generar_escrito(plantilla, expediente, db_session, tarea=None) -> bytes:
     """
     Genera el .docx relleno para la plantilla y expediente dados.
 
@@ -50,6 +50,8 @@ def generar_escrito(plantilla, expediente, db_session) -> bytes:
         plantilla:   Instancia de Plantilla (plantilla + contexto registrado).
         expediente:  Instancia de Expediente con relaciones cargadas.
         db_session:  Sesión SQLAlchemy activa (para ejecutar consultas nombradas).
+        tarea:       Instancia de Tarea opcional. Si se proporciona y tiene
+                     documento_usado, se añade al contexto como 'doc_entrada'.
 
     Returns:
         bytes — Contenido del .docx generado, listo para guardar en disco.
@@ -62,6 +64,10 @@ def generar_escrito(plantilla, expediente, db_session) -> bytes:
 
     # Capa 1: contexto base del expediente
     ctx = ContextoBaseExpediente(expediente).get_contexto()
+
+    # Documento de entrada: si la tarea tiene documento_usado, se expone en el contexto
+    if tarea and tarea.documento_usado:
+        ctx['doc_entrada'] = tarea.documento_usado
 
     # Capa 2: Context Builder opcional
     if plantilla.contexto_clase:

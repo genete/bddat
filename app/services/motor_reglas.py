@@ -271,6 +271,9 @@ _TIPOS_REQUIEREN_DOC_PRODUCIDO = {'INCORPORAR', 'ANALISIS', 'REDACTAR', 'FIRMAR'
 # Tipos de tarea que requieren documento de entrada al finalizar
 _TIPOS_REQUIEREN_DOC_USADO = {'ANALISIS', 'FIRMAR', 'NOTIFICAR', 'PUBLICAR'}
 
+# Tipos de tarea donde el documento de entrada es visible en UI pero no obligatorio
+_TIPOS_DOC_USADO_OPCIONAL = {'REDACTAR'}
+
 
 def _check_finalizar_tarea(ctx: _Contexto) -> Optional[EvaluacionResult]:
     tarea = ctx.tarea

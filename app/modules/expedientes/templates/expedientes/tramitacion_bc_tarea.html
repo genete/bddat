@@ -183,15 +183,15 @@
     </div>
     <div class="card-body card-body-tinted py-3">
 
-      {% if not requiere_doc_usado and not requiere_doc_producido %}
+      {% if not requiere_doc_usado and not doc_usado_opcional and not requiere_doc_producido %}
       <p class="text-secondary mb-0 fst-italic small">Este tipo de tarea no requiere documentos.</p>
 
       {% else %}
 
       {# ── Documento usado ────────────────────────────────────────────────────── #}
-      {% if requiere_doc_usado %}
+      {% if requiere_doc_usado or doc_usado_opcional %}
       <div class="mb-3">
-        <label class="form-label fw-semibold mb-1">Documento de entrada</label>
+        <label class="form-label fw-semibold mb-1">Documento de entrada{% if doc_usado_opcional %} <span class="text-secondary fw-normal small">(opcional)</span>{% endif %}</label>
         {# Modo ver #}
         <div class="doc-modo-ver">
           {% if tarea.documento_usado %}
@@ -347,6 +347,7 @@
 <script>
 window.TAREA_DOCS_CONFIG = {
   requiereDocUsado:     {{ requiere_doc_usado | tojson }},
+  docUsadoOpcional:     {{ doc_usado_opcional | tojson }},
   requiereDocProducido: {{ requiere_doc_producido | tojson }},
   docUsadoId:      {{ tarea.documento_usado_id | tojson }},
   docProducidoId:  {{ tarea.documento_producido_id | tojson }},

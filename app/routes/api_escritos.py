@@ -193,7 +193,7 @@ def generar():
 
     # Generar .docx
     try:
-        docx_bytes = generar_escrito(plantilla, expediente, db.session)
+        docx_bytes = generar_escrito(plantilla, expediente, db.session, tarea=tarea)
     except FileNotFoundError as e:
         return jsonify(ok=False, error=f'Plantilla .docx no encontrada: {e}'), 404
     except jinja2.TemplateSyntaxError as e:

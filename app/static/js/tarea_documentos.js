@@ -38,7 +38,7 @@ document.addEventListener('DOMContentLoaded', function () {
   let sel_usado = null;
   let sel_producido = null;
 
-  if (cfg.requiereDocUsado && document.getElementById('sb-doc-usado')) {
+  if ((cfg.requiereDocUsado || cfg.docUsadoOpcional) && document.getElementById('sb-doc-usado')) {
     sel_usado = new SelectorBusqueda('#sb-doc-usado', [], {
       placeholder: '— Seleccione documento de entrada —',
       name: 'documento_usado_id'
