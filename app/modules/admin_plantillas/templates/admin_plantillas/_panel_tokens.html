@@ -4,7 +4,7 @@
     tokens.campos     — list[{campo, descripcion}]
     tokens.consultas  — list[ConsultaNombrada]
     tokens.fragmentos — list[str] (nombres de fichero .docx)
-  solo_lectura (opcional) — Si True, no muestra botones Copiar
+  solo_lectura (opcional) — Si True, oculta textos de ayuda de edición
 #}
 {% set solo_lectura = solo_lectura | default(false) %}
 
@@ -29,14 +29,12 @@
                         <code class="d-block text-primary small">{{ '{{' }}{{ c.campo }}{{ '}}' }}</code>
                         <span class="text-secondary" style="font-size:.8rem">{{ c.descripcion }}</span>
                     </div>
-                    {% if not solo_lectura %}
                     <button type="button"
                             class="btn btn-sm btn-outline-primary flex-shrink-0 btn-copiar"
                             data-token="{{ '{{' }}{{ c.campo }}{{ '}}' }}"
                             title="Copiar token">
                         <i class="fas fa-copy"></i>
                     </button>
-                    {% endif %}
                 </div>
             </div>
             {% else %}
@@ -70,14 +68,12 @@
 {{ t_item }}
 {{ t_close }}</code>
                     </div>
-                    {% if not solo_lectura %}
                     <button type="button"
                             class="btn btn-sm btn-outline-primary flex-shrink-0 btn-copiar"
                             data-token="{{ snippet }}"
                             title="Copiar bloque de bucle (3 párrafos)">
                         <i class="fas fa-copy"></i>
                     </button>
-                    {% endif %}
                 </div>
             </div>
             {% endfor %}
@@ -114,14 +110,12 @@
                         {# Token de apertura del bucle #}
                         <div class="d-flex align-items-center gap-2 mb-1">
                             <code class="small flex-grow-1 text-primary">{{ '{%tr for row in ' }}{{ cn.nombre }}{{ ' %}' }}</code>
-                            {% if not solo_lectura %}
                             <button type="button"
                                     class="btn btn-sm btn-outline-primary flex-shrink-0 btn-copiar"
                                     data-token="{{ '{%tr for row in ' }}{{ cn.nombre }}{{ ' %}' }}"
                                     title="Copiar apertura de bucle">
                                 <i class="fas fa-copy"></i>
                             </button>
-                            {% endif %}
                         </div>
                         {# Columnas disponibles #}
                         {% if cn.columnas %}
@@ -132,28 +126,24 @@
                         <div class="d-flex align-items-center gap-2 mb-1 ps-2">
                             <code class="small flex-grow-1">{{ '{{row.' }}{{ col.campo }}{{ '}}' }}</code>
                             <span class="text-secondary small me-auto">{{ col.descripcion }}</span>
-                            {% if not solo_lectura %}
                             <button type="button"
                                     class="btn btn-sm btn-outline-primary flex-shrink-0 btn-copiar"
                                     data-token="{{ '{{row.' }}{{ col.campo }}{{ '}}' }}"
                                     title="Copiar campo de fila">
                                 <i class="fas fa-copy"></i>
                             </button>
-                            {% endif %}
                         </div>
                         {% endfor %}
                         {% endif %}
                         {# Token de cierre #}
                         <div class="d-flex align-items-center gap-2 mt-1">
                             <code class="small flex-grow-1 text-primary">{{ '{%tr endfor %}' }}</code>
-                            {% if not solo_lectura %}
                             <button type="button"
                                     class="btn btn-sm btn-outline-primary flex-shrink-0 btn-copiar"
                                     data-token="{{ '{%tr endfor %}' }}"
                                     title="Copiar cierre de bucle">
                                 <i class="fas fa-copy"></i>
                             </button>
-                            {% endif %}
                         </div>
                     </div>
                 </div>
@@ -183,14 +173,12 @@
                         <code class="d-block text-primary small">{{ '{{r ' }}{{ nombre_sin_ext }}{{ '}}' }}</code>
                         <span class="text-secondary" style="font-size:.8rem">{{ frag }}</span>
                     </div>
-                    {% if not solo_lectura %}
                     <button type="button"
                             class="btn btn-sm btn-outline-primary flex-shrink-0 btn-copiar"
                             data-token="{{ '{{r ' }}{{ nombre_sin_ext }}{{ '}}' }}"
                             title="Copiar token fragmento">
                         <i class="fas fa-copy"></i>
                     </button>
-                    {% endif %}
                 </div>
             </div>
             {% endfor %}
@@ -206,7 +194,6 @@
     </div>
 </div>
 
-{% if not solo_lectura %}
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('.btn-copiar').forEach(function (btn) {
@@ -237,4 +224,3 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 });
 </script>
-{% endif %}
