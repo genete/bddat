@@ -1,12 +1,17 @@
 {
   "metadata": {
-    "version": "5.3",
+    "version": "5.4",
     "descripcion": "Estructura jerárquica de fases, trámites y tareas para expedientes de AT",
     "principio": "Minimalismo estructural - la semántica vive en los TIPOS",
-    "fecha_actualizacion": "2026-03-05",
+    "fecha_actualizacion": "2026-03-21",
+    "cambios_v5.4": [
+      "Renombrada tarea ANALISIS → ANALIZAR en todo el documento (más preciso semánticamente). Pendiente migración en public.tipos_tareas y referencias en código.",
+      "CONSULTAS: rediseño completo de trámites según diseño docs/fuentesIA/DISEÑO_CONSULTAS_ORGANISMOS.md. SEPARATAS→CONSULTA_SEPARATA (uno por organismo), nuevo CONSULTA_TRASLADO_TITULAR, TRASLADO_REPAROS→CONSULTA_TRASLADO_ORGANISMO. RECEPCION_INFORME_ORGANISMO eliminado (absorbido en cada trámite). Patrón C+ = C extendido con INCORPORAR+ANALIZAR al final.",
+      "REQUERIMIENTO_MEJORA: añadido INCORPORAR al final de la cadena de tareas (patrón C+)"
+    ],
     "cambios_v5": [
       "Revisión completa de TAREAS_ATOMICAS: relación con public.tareas (6 campos) y public.documentos",
-      "ANALISIS: documento de salida ahora obligatorio (no opcional) para validación estructurada",
+      "ANALISIS (ahora ANALIZAR): documento de salida ahora obligatorio (no opcional) para validación estructurada",
       "Todas las tareas confirmadas como compatibles con estructura minimalista de 6 campos",
       "Actualización de campos 'entrada' y 'salida' para reflejar solo documentos (no datos auxiliares)",
       "Cambio de campo 'genera' a 'habilita_tareas' para mayor claridad semántica",
@@ -35,7 +40,7 @@
     ],
     "cambios_v5.2": [
       "Corregida descripción REGISTRO_SOLICITUD.RECEPCION_SOLICITUD: el expediente ya existe al entrar en una fase",
-      "Añadido INCORPORAR+ANALISIS inicial en COMPATIBILIDAD_AMBIENTAL.AUDIENCIA: patrón EC",
+      "Añadido INCORPORAR+ANALIZAR inicial en COMPATIBILIDAD_AMBIENTAL.AUDIENCIA: patrón EC",
       "Corregido flujo INFORMACION_PUBLICA para anuncios BOE/BOP/PRENSA: doble ESPERAR_PLAZO con INCORPORAR intermedio",
       "Añadido trmite RECEPCION_FIGURA en FIGURA_AMBIENTAL_EXTERNA: patrón E",
       "Desdoblado AAU_AAUS_INTEGRADA: REMISION_MEDIO_AMBIENTE + nuevo trmite RECEPCION_DICTAMEN: patrón E",
@@ -45,22 +50,22 @@
   },
   "TAREAS_ATOMICAS": [
     {
-      "codigo": "ANALISIS",
+      "codigo": "ANALIZAR",
       "nombre": "Análisis",
       "descripcion": "Revisión técnica o jurídica de documentación con generación obligatoria de documento formal (informe técnico-jurídico o nota interna)",
       "entrada": "ID_DOCUMENTO (obligatorio)",
       "salida": "DOCUMENTO_ID (obligatorio)",
       "habilita_tareas": ["REDACTAR"],
-      "nota": "Documento de entrada: se implementa mediante public.tareas.documento_usado_id apuntando al documento del pool. Documento de salida obligatorio - cambio v5: se implementa mediante public.tareas.documento_producido_id. El motor de reglas valida que documento_producido_id IS NOT NULL antes de permitir FECHA_FIN. El documento puede ser informe formal o nota técnica informal según contexto del trámite. Al completar la tarea, el usuario debe vincular el documento generado (upload integrado en la tarea). Durante la ejecución, el usuario puede corregir datos erróneos en PROYECTOS o clasificación documental, salvo que las reglas de negocio lo impidan. Los 6 campos genéricos de public.tareas son suficientes para ANALISIS."
+      "nota": "Documento de entrada: se implementa mediante public.tareas.documento_usado_id apuntando al documento del pool. Documento de salida obligatorio - cambio v5: se implementa mediante public.tareas.documento_producido_id. El motor de reglas valida que documento_producido_id IS NOT NULL antes de permitir FECHA_FIN. El documento puede ser informe formal o nota técnica informal según contexto del trámite. Al completar la tarea, el usuario debe vincular el documento generado (upload integrado en la tarea). Durante la ejecución, el usuario puede corregir datos erróneos en PROYECTOS o clasificación documental, salvo que las reglas de negocio lo impidan. Los 6 campos genéricos de public.tareas son suficientes para ANALIZAR."
     },
     {
       "codigo": "REDACTAR",
       "nombre": "Redactar",
       "descripcion": "Creación de documento administrativo (borrador)",
-      "entrada": "ID_DOCUMENTO (opcional - documento de ANALISIS previo si existe)",
+      "entrada": "ID_DOCUMENTO (opcional - documento de ANALIZAR previo si existe)",
       "salida": "DOCUMENTO_BORRADOR_ID (obligatorio)",
       "habilita_tareas": ["FIRMAR"],
-      "nota": "Documento de entrada opcional (si existe ANALISIS previo), public.tareas.documento_usado_id apunta al documento del pool. Documento de salida obligatorio mediante public.tareas.documento_producido_id. Al completar la tarea, el usuario debe vincular el borrador generado (upload integrado en la tarea). El técnico consulta libremente todo el pool documental del expediente para redactar, pero solo el documento de ANALISIS (si existe) tiene relación administrativa formal. El borrador carece de fecha administrativa y validez jurídica hasta FIRMAR. Incluye implícitamente la preparación de documentación necesaria. Los 6 campos genéricos de public.tareas son suficientes para REDACTAR."
+      "nota": "Documento de entrada opcional (si existe ANALISIS previo), public.tareas.documento_usado_id apunta al documento del pool. Documento de salida obligatorio mediante public.tareas.documento_producido_id. Al completar la tarea, el usuario debe vincular el borrador generado (upload integrado en la tarea). El técnico consulta libremente todo el pool documental del expediente para redactar, pero solo el documento de ANALIZAR (si existe) tiene relación administrativa formal. El borrador carece de fecha administrativa y validez jurídica hasta FIRMAR. Incluye implícitamente la preparación de documentación necesaria. Los 6 campos genéricos de public.tareas son suficientes para REDACTAR."
     },
     {
       "codigo": "FIRMAR",
@@ -104,18 +109,18 @@
       "descripcion": "Incorporación de documentación externa al sistema con valor administrativo",
       "entrada": "Ninguno (documento externo en 'hall' aún no vinculado al sistema)",
       "salida": "DOCUMENTO_ID (obligatorio)",
-      "habilita_tareas": ["ANALISIS"],
-      "nota": "Única tarea que produce documento sin consumir. Califica documentos externos (alegaciones, informes de organismos, respuestas del titular, justificantes de publicación) que ya están en el pool del expediente (public.documentos), vinculándolos al trámite activo mediante public.tareas.documento_producido_id. El documento debe existir previamente en el pool. Solo se usa para documentación externa que llega durante la tramitación activa — no aplica a la recepción inicial de la solicitud (ver REGISTRO_SOLICITUD.RECEPCION_SOLICITUD). Los documentos generados internamente (borradores REDACTAR, firmados FIRMAR, informes ANALISIS) se vinculan dentro de la misma tarea que los genera. Campo NOTAS puede almacenar número de registro de entrada y remitente. Los 6 campos genéricos de public.tareas son suficientes para INCORPORAR."
+      "habilita_tareas": ["ANALIZAR"],
+      "nota": "Única tarea que produce documento sin consumir. Califica documentos externos (alegaciones, informes de organismos, respuestas del titular, justificantes de publicación) que ya están en el pool del expediente (public.documentos), vinculándolos al trámite activo mediante public.tareas.documento_producido_id. El documento debe existir previamente en el pool. Solo se usa para documentación externa que llega durante la tramitación activa — no aplica a la recepción inicial de la solicitud (ver REGISTRO_SOLICITUD.RECEPCION_SOLICITUD). Los documentos generados internamente (borradores REDACTAR, firmados FIRMAR, informes ANALIZAR) se vinculan dentro de la misma tarea que los genera. Campo NOTAS puede almacenar número de registro de entrada y remitente. Los 6 campos genéricos de public.tareas son suficientes para INCORPORAR."
     }
   ],
   "PATRONES_FLUJO": [
     {
       "codigo": "A",
       "nombre": "Análisis Interno",
-      "secuencia": ["ANALISIS"],
+      "secuencia": ["ANALIZAR"],
       "descripcion": "Análisis de documentación con generación obligatoria de informe formal o nota técnica",
       "destinatario": "Interno",
-      "nota": "Versión v5: ANALISIS siempre genera documento obligatorio para permitir validación estructurada. Los patrones son orientativos y combinables según reglas de negocio."
+      "nota": "Versión v5: ANALIZAR siempre genera documento obligatorio para permitir validación estructurada. Los patrones son orientativos y combinables según reglas de negocio."
     },
     {
       "codigo": "B",
@@ -128,7 +133,7 @@
       "codigo": "C",
       "nombre": "Comunicación con Espera",
       "secuencia": ["REDACTAR", "FIRMAR", "NOTIFICAR", "ESPERAR_PLAZO"],
-      "descripcion": "Comunicación con espera de respuesta obligatoria. Si llega respuesta externa, el técnico debe crear una tarea INCORPORAR y normalmente un ANALISIS posterior.",
+      "descripcion": "Comunicación con espera de respuesta obligatoria. Si llega respuesta externa, el técnico debe crear una tarea INCORPORAR y normalmente un ANALIZAR posterior.",
       "destinatario": "Externo identificado",
       "retorno_esperado": "INCORPORAR (si llega documento)",
       "nota": "Versión v5.1: ESPERAR_PLAZO habilita INCORPORAR opcionalmente. El usuario decide si crea INCORPORAR según llegue o no respuesta externa. Los patrones son orientativos y combinables."
@@ -144,7 +149,7 @@
     {
       "codigo": "E",
       "nombre": "Recepción y Análisis",
-      "secuencia": ["INCORPORAR", "ANALISIS"],
+      "secuencia": ["INCORPORAR", "ANALIZAR"],
       "descripcion": "Procesamiento de documentación recibida externamente con análisis",
       "destinatario": "Interno",
       "nota": "Versión v5.1: INCORPORAR renombrado (antes REGISTRAR). ANALISIS genera documento obligatorio"
@@ -176,7 +181,7 @@
           "codigo": "RECEPCION_SOLICITUD",
           "nombre": "Recepción de Solicitud",
           "descripcion": "Verificación y calificación de la documentación aportada por el solicitante. Los documentos ya están en el pool del expediente (cargados vía pantalla de gestión documental). El técnico comprueba que están todos, los cualifica con su tipo semántico y genera un acta de recepción.",
-          "tareas_indicativas": ["ANALISIS"],
+          "tareas_indicativas": ["ANALIZAR"],
           "patron": "A",
           "nota": "Ejecutado por técnico tras asignación. El expediente ya ha sido creado previamente por el flujo colaborativo administrativo. La documentación física ya está en el pool (public.documentos) cargada por el administrativo. El ANALISIS aquí no analiza un único documento sino el conjunto del pool: verifica que están presentes los documentos necesarios, los cualifica con tipo_doc_id adecuado, y produce un acta/informe de recepción. Este acta es presupuesto para las fases ADMISIBILIDAD y ANALISIS_TECNICO. No se usa INCORPORAR porque la carga inicial no es un acto de tramitación sino una operación de soporte documental previa."
         },
@@ -199,9 +204,9 @@
           "codigo": "COMPROBACION_ADMISIBILIDAD",
           "nombre": "Comprobación de Admisibilidad",
           "descripcion": "Análisis de capacidad legal, técnica, económica y pago de tasas",
-          "tareas_indicativas": ["ANALISIS"],
+          "tareas_indicativas": ["ANALIZAR"],
           "patron": "A",
-          "nota": "ANALISIS genera informe de admisibilidad documentando conclusiones"
+          "nota": "ANALIZAR genera informe de admisibilidad documentando conclusiones"
         },
         {
           "codigo": "REQUERIMIENTO_SUBSANACION",
@@ -209,7 +214,7 @@
           "descripcion": "Solicitud de subsanación de defectos formales subsanables",
           "tareas_indicativas": ["REDACTAR", "FIRMAR", "NOTIFICAR", "ESPERAR_PLAZO"],
           "patron": "C",
-          "nota": "Si llega respuesta del titular, se debe crear una tarea INCORPORAR seguida de ANALISIS."
+          "nota": "Si llega respuesta del titular, se debe crear una tarea INCORPORAR seguida de ANALIZAR."
         }
       ]
     },
@@ -222,16 +227,16 @@
           "codigo": "COMPROBACION_DOCUMENTAL",
           "nombre": "Comprobación Documental",
           "descripcion": "Análisis de documentación técnica",
-          "tareas_indicativas": ["ANALISIS"],
+          "tareas_indicativas": ["ANALIZAR"],
           "patron": "A"
         },
         {
           "codigo": "REQUERIMIENTO_MEJORA",
           "nombre": "Requerimiento de Mejora/Complemento",
-          "descripcion": "Solicitud de mejora o complemento de documentación técnica",
-          "tareas_indicativas": ["REDACTAR", "FIRMAR", "NOTIFICAR", "ESPERAR_PLAZO"],
-          "patron": "C",
-          "nota": "Si llega documentación complementaria del titular, se debe crear una tarea INCORPORAR seguida de ANALISIS."
+          "descripcion": "Solicitud de mejora o complemento de documentación técnica. Incluye la recepción de la documentación subsanada del titular.",
+          "tareas_indicativas": ["REDACTAR", "FIRMAR", "NOTIFICAR", "ESPERAR_PLAZO", "INCORPORAR"],
+          "patron": "C+",
+          "nota": "INCORPORAR al final registra la recepción de la documentación subsanada aportada por el titular. El trámite se cierra manualmente por el tramitador con comentario obligatorio cuando considera el asunto subsanado. El motor de reglas comprueba que la tarea INCORPORAR esté completada antes de permitir el cierre de la fase ANALISIS_TECNICO."
         }
       ]
     },
@@ -251,9 +256,9 @@
           "codigo": "RECEPCION_INFORME",
           "nombre": "Recepción de Informe",
           "descripcion": "Incorporación del informe recibido y análisis",
-          "tareas_indicativas": ["INCORPORAR", "ANALISIS"],
+          "tareas_indicativas": ["INCORPORAR", "ANALIZAR"],
           "patron": "E",
-          "nota": "El informe recibido se incorpora mediante la tarea INCORPORAR y a continuación se analiza con ANALISIS."
+          "nota": "El informe recibido se incorpora mediante la tarea INCORPORAR y a continuación se analiza con ANALIZAR."
         }
       ]
     },
@@ -273,7 +278,7 @@
           "codigo": "AUDIENCIA",
           "nombre": "Audiencia",
           "descripcion": "Audiencia iniciada por Medio Ambiente en caso de incompatibilidad. Se incorpora propuesta de declaración de incompatibilidad, se analiza y se redactan alegaciones",
-          "tareas_indicativas": ["INCORPORAR", "ANALISIS", "REDACTAR", "FIRMAR", "NOTIFICAR", "ESPERAR_PLAZO"],
+          "tareas_indicativas": ["INCORPORAR", "ANALIZAR", "REDACTAR", "FIRMAR", "NOTIFICAR", "ESPERAR_PLAZO"],
           "patron": "EC",
           "nota": "Medio Ambiente notifica propuesta de incompatibilidad que debe ser incorporada y analizada antes de redactar alegaciones."
         },
@@ -281,9 +286,9 @@
           "codigo": "RECEPCION_INFORME",
           "nombre": "Recepción de Informe Vinculante",
           "descripcion": "Recepción de informe vinculante (compatible o incompatible)",
-          "tareas_indicativas": ["INCORPORAR", "ANALISIS"],
+          "tareas_indicativas": ["INCORPORAR", "ANALIZAR"],
           "patron": "E",
-          "nota": "El informe recibido se incorpora mediante la tarea INCORPORAR y a continuación se analiza con ANALISIS."
+          "nota": "El informe recibido se incorpora mediante la tarea INCORPORAR y a continuación se analiza con ANALIZAR."
         }
       ]
     },
@@ -296,7 +301,7 @@
           "codigo": "ANALISIS_ADMISION",
           "nombre": "Análisis de Admisión",
           "descripcion": "Evaluación de requisitos para admisión a trámite",
-          "tareas_indicativas": ["ANALISIS", "REDACTAR", "FIRMAR", "NOTIFICAR"],
+          "tareas_indicativas": ["ANALIZAR", "REDACTAR", "FIRMAR", "NOTIFICAR"],
           "patron": "AB",
           "nota": "Combina análisis interno con comunicación simple"
         },
@@ -304,7 +309,7 @@
           "codigo": "ALEGACIONES",
           "nombre": "Alegaciones a Admisión",
           "descripcion": "Presentación de alegaciones al informe de admisión",
-          "tareas_indicativas": ["INCORPORAR", "ANALISIS", "REDACTAR", "FIRMAR", "NOTIFICAR"],
+          "tareas_indicativas": ["INCORPORAR", "ANALIZAR", "REDACTAR", "FIRMAR", "NOTIFICAR"],
           "patron": "EB"
         }
       ]
@@ -312,31 +317,37 @@
     {
       "codigo": "CONSULTAS",
       "nombre": "Consultas a Organismos",
-      "descripcion": "Solicitud de informes sectoriales a organismos competentes (conforme RD 1955/2000)",
+      "descripcion": "Solicitud de informes sectoriales a organismos competentes (conforme RD 1955/2000 arts. 127, 131, 146-147). Cada trámite es individual por organismo (registro en organismos_expediente).",
       "tramites": [
         {
-          "codigo": "SEPARATAS",
-          "nombre": "Generación y Traslado de Separatas",
-          "descripcion": "Creación de separatas específicas por organismo afectado y su traslado (una por cada)",
-          "tareas_indicativas": ["ANALISIS", "REDACTAR", "FIRMAR", "NOTIFICAR", "ESPERAR_PLAZO"],
-          "patron": "AC",
-          "nota": "ANALISIS identifica organismos afectados, REDACTAR genera separatas con plantillas"
+          "codigo": "CONSULTA_SEPARATA",
+          "nombre": "Separata a Organismo",
+          "descripcion": "Envío de separata (anteproyecto o proyecto) a un organismo concreto. Un trámite por organismo. Se crean en bloque desde organismos_expediente mediante acción 'Enviar consultas'.",
+          "tareas_indicativas": ["REDACTAR", "FIRMAR", "NOTIFICAR", "ESPERAR_PLAZO", "INCORPORAR", "ANALIZAR"],
+          "patron": "C+",
+          "plazo_legal": "30 días (15 si existe AAP previa y la tramitación es AAC sin DUP)",
+          "resultado_analizar": ["sin_respuesta", "conformidad", "oposicion", "reparos_organismo", "condicionado"],
+          "nota": "ESPERAR_PLAZO inicia el plazo legal. Si el organismo responde, INCORPORAR registra su informe y ANALIZAR determina el resultado. Si no responde, se cierra con resultado sin_respuesta (conformidad tácita). El resultado actualiza el estado del registro organismos_expediente. Sustituye al antiguo SEPARATAS (que era uno para todos) y al antiguo RECEPCION_INFORME_ORGANISMO (que ahora queda absorbido en este trámite)."
         },
         {
-          "codigo": "RECEPCION_INFORME",
-          "nombre": "Recepción de Informe de Organismo",
-          "descripcion": "Incorporación de informe del organismo con condicionados o negativa",
-          "tareas_indicativas": ["INCORPORAR", "ANALISIS"],
-          "patron": "E",
-          "nota": "El informe recibido se incorpora mediante la tarea INCORPORAR y a continuación se analiza con ANALISIS."
+          "codigo": "CONSULTA_TRASLADO_TITULAR",
+          "nombre": "Traslado al Titular",
+          "descripcion": "Traslado al titular de la respuesta del organismo (oposición, reparos o condicionados). Inicia el ciclo de reparos.",
+          "tareas_indicativas": ["REDACTAR", "FIRMAR", "NOTIFICAR", "ESPERAR_PLAZO", "INCORPORAR", "ANALIZAR"],
+          "patron": "C+",
+          "plazo_legal": "15 días",
+          "resultado_analizar": ["sin_respuesta", "conformidad", "reparos_titular"],
+          "nota": "ANALIZAR determina si el titular responde con reparos, conformidad o no responde. Resultado sin_respuesta en AAP activa audiencia previa a archivo; en AAC equivale a aceptación tácita de condicionados (incluir en resolución). Trámite nuevo, no existía en el catálogo anterior."
         },
         {
-          "codigo": "TRASLADO_REPAROS",
-          "nombre": "Traslado de Reparos",
-          "descripcion": "Traslado de reparos del titular al organismo correspondiente",
-          "tareas_indicativas": ["INCORPORAR", "ANALISIS", "REDACTAR", "FIRMAR", "NOTIFICAR", "ESPERAR_PLAZO"],
-          "patron": "EC",
-          "nota": "Si llega respuesta del titular a los reparos, se debe crear una tarea INCORPORAR seguida de ANALISIS."
+          "codigo": "CONSULTA_TRASLADO_ORGANISMO",
+          "nombre": "Traslado al Organismo",
+          "descripcion": "Traslado al organismo de los reparos formulados por el titular. Segunda ronda del ciclo.",
+          "tareas_indicativas": ["REDACTAR", "FIRMAR", "NOTIFICAR", "ESPERAR_PLAZO", "INCORPORAR", "ANALIZAR"],
+          "patron": "C+",
+          "plazo_legal": "15 días",
+          "resultado_analizar": ["sin_respuesta", "conformidad", "oposicion", "reparos_organismo", "condicionado"],
+          "nota": "El organismo puede responder con condicionado también en esta fase (no solo tras la separata inicial). Resultado sin_respuesta equivale a informe favorable tácito. El motor puede contar el número de trámites CONSULTA_TRASLADO_ORGANISMO por organismo_expediente para advertir o bloquear si se supera 1 iteración (límite '1 VEZ' de los diagramas). Renombrado desde TRASLADO_REPAROS con redefinición de patrón."
         }
       ]
     },
@@ -389,15 +400,15 @@
           "codigo": "RECEPCION_ALEGACION",
           "nombre": "Recepción de Alegación",
           "descripcion": "Incorporación de alegación individual y traslado a titular",
-          "tareas_indicativas": ["INCORPORAR", "ANALISIS", "REDACTAR", "FIRMAR", "NOTIFICAR", "ESPERAR_PLAZO"],
+          "tareas_indicativas": ["INCORPORAR", "ANALIZAR", "REDACTAR", "FIRMAR", "NOTIFICAR", "ESPERAR_PLAZO"],
           "patron": "EC",
-          "nota": "ANALISIS clasifica alegante/interesado, traslada al titular para respuesta. La recepción de alegaciones individuales implica crear INCORPORAR para cada alegación recibida, seguida de ANALISIS si procede."
+          "nota": "ANALIZAR clasifica alegante/interesado, traslada al titular para respuesta. La recepción de alegaciones individuales implica crear INCORPORAR para cada alegación recibida, seguida de ANALIZAR si procede."
         },
         {
           "codigo": "ANALISIS_ALEGACIONES",
           "nombre": "Análisis de Alegaciones",
           "descripcion": "Informe técnico-jurídico sobre alegaciones y propuesta de respuesta",
-          "tareas_indicativas": ["ANALISIS", "REDACTAR", "FIRMAR", "NOTIFICAR"],
+          "tareas_indicativas": ["ANALIZAR", "REDACTAR", "FIRMAR", "NOTIFICAR"],
           "patron": "AB"
         }
       ]
@@ -419,9 +430,9 @@
           "codigo": "RECEPCION_FIGURA",
           "nombre": "Recepción de Instrumento Ambiental",
           "descripcion": "Incorporación de resolución ambiental (AAU/AAUS/CA) y análisis. Puede ser favorable o negativa.",
-          "tareas_indicativas": ["INCORPORAR", "ANALISIS"],
+          "tareas_indicativas": ["INCORPORAR", "ANALIZAR"],
           "patron": "E",
-          "nota": "El documento ambiental recibido (AAU, AAUS o CA) se incorpora mediante INCORPORAR y se analiza con ANALISIS. Si es negativa puede paralizar el expediente."
+          "nota": "El documento ambiental recibido (AAU, AAUS o CA) se incorpora mediante INCORPORAR y se analiza con ANALIZAR. Si es negativa puede paralizar el expediente."
         }
       ]
     },
@@ -442,9 +453,9 @@
           "codigo": "RECEPCION_DICTAMEN",
           "nombre": "Recepción de Dictamen Ambiental",
           "descripcion": "Incorporación del dictamen de Medio Ambiente y análisis. El dictamen puede ser favorable, desfavorable o condicionado.",
-          "tareas_indicativas": ["INCORPORAR", "ANALISIS"],
+          "tareas_indicativas": ["INCORPORAR", "ANALIZAR"],
           "patron": "E",
-          "nota": "El dictamen ambiental integrado se incorpora mediante INCORPORAR y se analiza con ANALISIS. Si es desfavorable, puede condicionar o paralizar la autorización sustantiva."
+          "nota": "El dictamen ambiental integrado se incorpora mediante INCORPORAR y se analiza con ANALIZAR. Si es desfavorable, puede condicionar o paralizar la autorización sustantiva."
         }
       ]
     },
@@ -457,7 +468,7 @@
           "codigo": "ELABORACION",
           "nombre": "Elaboración de Resolución",
           "descripcion": "Redacción de la resolución con base en informes y trámites previos",
-          "tareas_indicativas": ["ANALISIS", "REDACTAR", "FIRMAR"],
+          "tareas_indicativas": ["ANALIZAR", "REDACTAR", "FIRMAR"],
           "patron": "AB (sin NOTIFICAR)",
           "nota": "El documento firmado se vincula al completar la tarea FIRMAR (upload integrado). No requiere INCORPORAR porque es documento interno generado por el sistema."
         },
@@ -502,7 +513,7 @@
     ],
     "cambios_v5.2": [
       "Corregida descripción REGISTRO_SOLICITUD.RECEPCION_SOLICITUD: el expediente ya existe al entrar en una fase (creado por flujo colaborativo administrativo).",
-      "Añadido INCORPORAR+ANALISIS inicial en COMPATIBILIDAD_AMBIENTAL.AUDIENCIA: la propuesta de incompatibilidad es documento externo crítico.",
+      "Añadido INCORPORAR+ANALIZAR inicial en COMPATIBILIDAD_AMBIENTAL.AUDIENCIA: la propuesta de incompatibilidad es documento externo crítico.",
       "Corregido flujo INFORMACION_PUBLICA para anuncios BOE/BOP/PRENSA: doble ESPERAR_PLAZO con INCORPORAR intermedio (espera hasta publicación + plazo alegaciones).",
       "TABLON_AYUNTAMIENTOS mantiene flujo simplificado: certificado llega al final del plazo completo (problemática administrativa real).",
       "Añadido trmite RECEPCION_FIGURA en FIGURA_AMBIENTAL_EXTERNA para incorporar y analizar resolución ambiental (puede ser negativa).",
@@ -520,7 +531,7 @@
       "Implementar validación no intrusiva en interfaz: asterisco rojo + texto explicativo",
       "Implementar botones de cálculo de fechas/plazos (no como tareas)",
       "Implementar asistente de preparación documental en formulario REDACTAR",
-      "Implementar upload integrado en formularios de tareas que generan documentos (ANALISIS, REDACTAR, FIRMAR, NOTIFICAR, PUBLICAR)"
+      "Implementar upload integrado en formularios de tareas que generan documentos (ANALIZAR, REDACTAR, FIRMAR, NOTIFICAR, PUBLICAR)"
     ],
     "principios_mantenidos": [
       "Minimalismo estructural: la semántica vive en los TIPOS",
@@ -549,7 +560,7 @@
     "filosofia_documentos_v5.3": [
       "El pool (public.documentos) es agnóstico: solo conoce expediente y tipo semántico. No sabe de fases ni trámites.",
       "Dos vías de entrada al pool, completamente separadas: (1) carga masiva de soporte por administrativo via pantalla de gestión documental (operación previa a la tramitación); (2) INCORPORAR dentro de la tramitación activa para documentos externos que llegan durante el procedimiento.",
-      "RECEPCION_SOLICITUD no usa INCORPORAR: los documentos ya están en el pool. El ANALISIS verifica, cualifica y genera acta de recepción.",
+      "RECEPCION_SOLICITUD no usa INCORPORAR: los documentos ya están en el pool. El ANALIZAR verifica, cualifica y genera acta de recepción.",
       "Los documentos del pool deben tener tipo_doc_id correcto (public.tipos_documentos) para que el motor de reglas pueda evaluar su presencia por tipo.",
       "Un ZIP no es un documento válido para el motor de reglas: no permite verificar la presencia de tipos específicos exigidos por la legislación.",
       "El concepto de documentos_procedimiento (requisitos documentales legales por fase) está pendiente de definición — issue abierto."
@@ -559,10 +570,10 @@
       "TABLON_AYUNTAMIENTOS: Certificado llega al final, no al inicio → quebradero de cabeza real",
       "PORTAL_TRANSPARENCIA: Control total de fechas → flujo simplificado",
       "Resoluciones ambientales: Pueden ser negativas → requieren trmite de recepción explícito",
-      "Propuesta de incompatibilidad ambiental: Documento externo crítico → requiere INCORPORAR+ANALISIS antes de alegar"
+      "Propuesta de incompatibilidad ambiental: Documento externo crítico → requiere INCORPORAR+ANALIZAR antes de alegar"
     ],
     "validaciones_documentales": [
-      "ANALISIS: public.tareas.documento_producido_id IS NOT NULL para permitir FECHA_FIN",
+      "ANALIZAR: public.tareas.documento_producido_id IS NOT NULL para permitir FECHA_FIN",
       "REDACTAR: public.tareas.documento_producido_id IS NOT NULL para permitir FECHA_FIN",
       "FIRMAR: public.tareas.documento_producido_id IS NOT NULL para permitir FECHA_FIN",
       "NOTIFICAR: public.tareas.documento_producido_id IS NOT NULL para permitir FECHA_FIN",
