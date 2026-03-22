@@ -10,12 +10,14 @@ ni el modo "accept edits". Evitarlos cambiando el patrón.
 | Mensaje que aparece | Causa | Solución |
 |---------------------|-------|----------|
 | `output redirection >` | `cmd > fichero` | Usar tool `Write` |
-| `command contains newlines that could separate multiple commands` | heredoc en Bash **o `python -c "...código multilínea..."`** | Escribir con `Write` → pasar como fichero (`python script.py`) |
+| `command contains newlines that could separate multiple commands` | heredoc en Bash, **`python -c "...multilínea..."`** o bucle `for/do/done` multilínea | Escribir con `Write` → pasar como fichero (`python script.py`; si es bucle, `bash fichero.sh`) |
 | `quoted newline + #-line` | `## Header` dentro de string con comillas (heredoc, `git commit -m`, `--body`) | Usar fichero temporal (`Write` → `-F`/`--body-file`) |
 | `command contains quoted characters in flag names` | comillas dentro de `--body "..."` o flag con valor entrecomillado | Usar fichero temporal para el valor |
 | `backtick or $() substitution` / `command contains $() command substitution` | `` cmd=`...` `` o `$(...)` | Separar en llamadas Bash secuenciales |
 | `backslash before shell operator` | `\|`, `\;`, `\&`, `\<`, `\>` en comandos — **incluido `grep 'pat1\|pat2'`** | Eliminar barra — usar `grep -E 'pat1|pat2'` o `-e pat1 -e pat2` |
 | `sed command contains operations that require explicit approval` | `sed -i` u otras operaciones de escritura con sed | Usar tool `Edit` en su lugar |
+| `command contains consecutive quote characters at word start (potential obfuscation)` | `""` o `''` como primer carácter de un argumento, p. ej. `echo ""texto` o `cmd ''arg` | Nunca empezar un argumento con comilla doble vacía; si el valor puede quedar vacío, usar variable o fichero temporal |
+| `allow reading from <ruta>\` / `allow access to <ruta>\` | Ruta con **backslash** Windows en comando Bash (p. ej. `app\models\`) | En Bash (MSYS2) las rutas van con `/`. Usar siempre `app/models/`, nunca `app\models\` |
 
 ---
 
