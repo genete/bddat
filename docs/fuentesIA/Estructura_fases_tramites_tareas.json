@@ -408,8 +408,9 @@
           "codigo": "ANALISIS_ALEGACIONES",
           "nombre": "Análisis de Alegaciones",
           "descripcion": "Informe técnico-jurídico sobre alegaciones y propuesta de respuesta",
-          "tareas_indicativas": ["ANALIZAR", "REDACTAR", "FIRMAR", "NOTIFICAR"],
-          "patron": "AB"
+          "tareas_indicativas": ["ANALIZAR"],
+          "patron": "A",
+          "nota": "El análisis no se notifica directamente. El documento producido por ANALIZAR va al pool del expediente y se referencia mediante token ({{documento_analisis_alegaciones}}) en la plantilla de resolución. La respuesta a las alegaciones (aceptación o rechazo argumentado) se materializa en la propia resolución, no en una comunicación separada."
         }
       ]
     },

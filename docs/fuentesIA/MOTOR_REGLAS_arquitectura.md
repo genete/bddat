@@ -153,6 +153,7 @@ de la solicitud — una resolución denegatoria es el mecanismo ordinario de fin
 | CREAR | CONSULTA_MINISTERIO | `expediente.tipo_expediente_id` NOT IN {1} (Transporte) | BLOQUEAR |
 | CREAR | ADMISION_TRAMITE | `expediente.tipo_expediente_id` NOT IN {4} (Renovable) | BLOQUEAR |
 | INICIAR | INFORMACION_PUBLICA | EXISTS documento tipo DR_NO_DUP en esta solicitud AND `proyecto.ia.siglas` NOT IN {AAU, AAUS} | BLOQUEAR |
+<!-- DR_NO_DUP = Declaración Responsable de No solicitar Declaración de Utilidad Pública. Fuente: Disposición Final Cuarta del Decreto-ley 26/2021 (simplificación administrativa Andalucía). Si el titular declara que no pedirá DUP, la IP no es necesaria. AAU/AAUS quedan excluidos porque necesitan IP por motivos ambientales independientemente de la DUP. -->
 | INICIAR | FIGURA_AMBIENTAL_EXTERNA | `proyecto.ia.siglas` NOT IN {CA, AAI} AND NOT (`proyecto.ia.siglas` IN {AAU, AAUS} AND `proyecto.es_modificacion` = true) | BLOQUEAR |
 | INICIAR | AAU_AAUS_INTEGRADA | `proyecto.ia.siglas` NOT IN {AAU, AAUS} OR `proyecto.es_modificacion` = true | BLOQUEAR |
 | INICIAR | RESOLUCION | (`proyecto.ia.siglas` IN {CA, AAI} OR (`proyecto.ia.siglas` IN {AAU, AAUS} AND `proyecto.es_modificacion` = true)) AND NOT EXISTS fase FIGURA_AMBIENTAL_EXTERNA con `cerrada_favorable` = true | BLOQUEAR |
