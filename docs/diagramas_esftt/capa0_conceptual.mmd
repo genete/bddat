@@ -2,30 +2,30 @@
 title: ESFTT — Modelo Conceptual (Capa 0)
 ---
 graph TD
-    EXP["<b>EXPEDIENTE</b><br/>número AT único"]
+    EXP["<b>EXPEDIENTE</b><br/>Agrupación lógica de tramitación<br/>para un fin proyectado"]
 
     subgraph procedimental["Jerarquía procedimental"]
-        SOL["<b>SOLICITUD</b><br/>AAP · AAC · AAU · …"]
-        PROY["<b>PROYECTO</b><br/>instalación AT a autorizar"]
-        FASE["<b>FASE</b><br/>etapa del procedimiento"]
-        TRAM["<b>TRÁMITE</b><br/>unidad de gestión"]
-        TAREA["<b>TAREA</b><br/>acción concreta y registrable"]
-        PAT["<b>PATRÓN</b><br/>secuencia tipo reutilizable"]
-        TAT["<b>TAREA ATÓMICA</b><br/>ANALIZAR · REDACTAR · FIRMAR<br/>NOTIFICAR · PUBLICAR · INCORPORAR<br/>ESPERAR_PLAZO"]
+        SOL["<b>SOLICITUD</b><br/>Describe lo que se solicita.<br/>Se clasifica por tipos"]
+        PROY["<b>PROYECTO</b><br/>Instalación objeto del expediente.<br/>Se tramita con solicitudes"]
+        FASE["<b>FASE</b><br/>Etapa del procedimiento"]
+        TRAM["<b>TRÁMITE</b><br/>Unidad de gestión, agrupa tareas"]
+        TAREA["<b>TAREA</b><br/>Acción concreta y registrable"]
+        PAT["<b>PATRÓN</b><br/>Secuencia tipo reutilizable"]
+        TAT["<b>TAREA ATÓMICA</b><br/>ANALIZAR<br/>REDACTAR<br/>FIRMAR<br/>NOTIFICAR<br/>PUBLICAR<br/>INCORPORAR<br/>ESPERAR_PLAZO"]
     end
 
     subgraph documental["Estructura documental"]
-        POOL["<b>POOL DOCUMENTAL</b><br/>archivo vivo del expediente"]
-        DOC["<b>DOCUMENTO</b><br/>tipo · fecha · origen · estado"]
+        POOL["<b>POOL DOCUMENTAL</b><br/>Conjunto de documentos<br/>asociados a ese expediente"]
+        DOC["<b>DOCUMENTO</b><br/>Fuente de verdad administrativa:<br/>qué ocurrió y cuándo"]
     end
 
     EXP -->|"tiene 1"| PROY
-    EXP -->|"tiene 1..*"| SOL
+    EXP -->|"tiene 1(+)"| SOL
     EXP -->|"tiene 1"| POOL
 
-    SOL -->|"pasa por 1..*"| FASE
-    FASE -->|"contiene 1..*"| TRAM
-    TRAM -->|"ejecuta 1..*"| TAREA
+    SOL -->|"pasa por 1(+)"| FASE
+    FASE -->|"contiene 1(+)"| TRAM
+    TRAM -->|"ejecuta 1(+)"| TAREA
     TAREA -->|"sigue un"| PAT
     PAT -->|"combina"| TAT
 
