@@ -14,6 +14,7 @@
 5. [Flujo de trabajo](#5-flujo-de-trabajo)
 6. [Organización en git](#6-organización-en-git)
 7. [Relación con el JSON](#7-relación-con-el-json)
+8. [Lecciones aprendidas — prueba #249](#8-lecciones-aprendidas--prueba-249)
 
 ---
 
@@ -127,3 +128,40 @@ El JSON (`Estructura_fases_tramites_tareas.json`) es el esqueleto estructural pe
 - **Lo que no debe estar en el JSON:** notas de diseño extensas, motivaciones, historial de razonamiento. Eso pertenece a los MDs de diseño. El JSON debe ser lean: solo estructura.
 
 La limpieza del JSON (mover notas de prosa a MDs) es parte de la sesión de sincronización documental.
+
+---
+
+## 8. Lecciones aprendidas — prueba #249
+
+Sesión de prueba realizada el 22/03/2026 antes de consolidar la decisión de Mermaid.
+Se generó la Capa 0 (conceptual) y se intentó reproducir el diagrama de flujo AAP_PROPIO de Miro.
+
+### Veredicto: Mermaid es válido
+
+- Maneja sin errores diagramas con ciclos, múltiples terminales y convergencias de ramas.
+- La Capa 0 (conceptual) quedó correcta desde la primera generación.
+- El SVG renderizado es importable a Miro/Figma y visualizable en GitHub.
+
+### Limitación conocida: layout automático (Dagre)
+
+El motor de layout de Mermaid (Dagre) coloca los nodos según el grafo dirigido. Esto tiene consecuencias en diagramas con ramas paralelas que convergen:
+- Ramas que en un diagrama manual son paralelas (lado a lado) quedan apiladas verticalmente.
+- Las flechas de retorno (ciclos) se renderizan como arcos largos en el margen, no como flechas compactas.
+- No es configurable: Mermaid no permite posicionamiento manual de nodos.
+
+Esto no invalida Mermaid para documentación técnica, pero el resultado visual es menos legible que un diagrama manual de Miro para flujos con muchas convergencias.
+
+### Limitación conocida: generación asistida por IA no es 100% fiable
+
+La IA genera el `.mmd` sintetizando fuentes textuales (JSON, MDs de diseño). Cuando la fuente es una **captura de pantalla de un diagrama compacto con cruces de líneas**, la lectura es ambigua y el `.mmd` generado puede contener errores estructurales (nodos mal conectados, terminales con flechas de salida erróneas, nodos fantasma).
+
+**Regla de trabajo:** la IA genera los diagramas a partir de los MDs de diseño y el JSON — no a partir de capturas o SVGs de Miro. Si se parte de un diagrama Miro existente, debe expandirse sin cruces de líneas antes de pasárselo a la IA.
+
+### Convención de color (extraída del análisis)
+
+Los diagramas de flujo ESFTT usan color para indicar quién tiene la pelota en cada momento:
+- **Amarillo** — Administración: nodos de decisión o terminales. No tienen flechas de salida al flujo (son resoluciones administrativas).
+- **Verde** — Titular: traslados y acciones que corresponden al titular del expediente.
+- **Morado** — Organismo: traslados y acciones que corresponden al organismo consultado.
+
+Esta convención debe respetarse en todos los diagramas de Capa 2 y Capa 3.
