@@ -21,6 +21,23 @@ con campos específicos necesarios para un tipo de escrito concreto.
 El Supervisor no distingue la diferencia — en ambos casos prepara su plantilla .docx
 con `{{campo}}` y el sistema la rellena. La diferencia es interna.
 
+### Relación con el renderizador de plantillas
+
+El Context Builder y el renderizador de plantillas son dos capas distintas que trabajan en secuencia:
+
+1. **Context Builder** (capa de datos): código Python que consulta la BD y construye un diccionario
+   `{variable: valor}`. Por ejemplo, consulta `requerimientos_tarea` y construye la lista Python
+   `requerimientos = [{texto: "..."}, {texto: "..."}, ...]`.
+
+2. **Renderizador** (capa de presentación): recibe ese diccionario y ejecuta la plantilla `.docx`.
+   Los bloques Jinja2 de la plantilla (`{% for r in requerimientos %}`, `{{ r.texto }}`, etc.)
+   operan sobre los datos que el Context Builder ya preparó.
+
+El bloque `{% for %}` en la plantilla es necesario pero no suficiente — sin el Context Builder
+que alimente la variable con datos reales de la BD, la lista estaría vacía. Ambas capas
+deben estar sincronizadas: si se añade una variable nueva al Context Builder, la plantilla
+debe incluir el token correspondiente, y viceversa.
+
 ---
 
 ## Cuándo crear un Context Builder

@@ -12,7 +12,7 @@
 3. [Trámites y tareas de ANÁLISIS_SOLICITUD](#3-trámites-y-tareas-de-análisis_solicitud)
 4. [Checklist documental](#4-checklist-documental)
 5. [INCORPORAR multi-documento](#5-incorporar-multi-documento)
-6. [Catálogo de items de requerimiento](#6-catálogo-de-items-de-requerimiento)
+6. [Catálogo de requerimientos y selector de defectos](#6-catálogo-de-requerimientos-y-selector-de-defectos)
 7. [Motor de reglas: restricción de tasas](#7-motor-de-reglas-restricción-de-tasas)
 8. [Utilidades de redacción: firmantes y siglas](#8-utilidades-de-redacción-firmantes-y-siglas)
 9. [Impacto en Estructura_fases_tramites_tareas.json](#9-impacto-en-estructura_fases_tramites_tareasjson)
@@ -23,7 +23,7 @@
 
 Las fases `REGISTRO_SOLICITUD`, `ADMISIBILIDAD` y `ANÁLISIS_TÉCNICO` modelaban por separado lo que en la práctica administrativa es un único acto intelectual del técnico: revisar la documentación presentada, comprobar su completitud formal y técnica, y emitir un requerimiento si procede.
 
-La separación en tres fases generaba artificialidad: el técnico analiza todo de golpe (si faltan las escrituras de constitución y además el proyecto tiene deficiencias de cálculo, el requerimiento es uno solo). La única distinción legalmente relevante es la **restricción de tasas**: si las tasas no están correctas o no se presentaron, no pueden iniciarse las fases de información pública ni consultas (Ley de Tasas de la Junta de Andalucía). Esto no exige una fase separada — basta con una regla del motor.
+La separación en tres fases generaba artificialidad: el técnico analiza todo de golpe (si faltan las escrituras de constitución y además el proyecto tiene deficiencias de cálculo, el requerimiento es uno solo). La única distinción legalmente relevante es la **restricción de tasas**: el art. 45.1 de la Ley 10/2021, de 28 de diciembre, de tasas y precios públicos de la Comunidad Autónoma de Andalucía establece literalmente que ninguna actuación administrativa «se realizará o tramitará sin que se haya efectuado el pago correspondiente». En la práctica, por economía procesal, se completa el análisis documental antes de detener la tramitación, pero la restricción afecta a **cualquier fase posterior**. Esto no exige una fase separada — basta con una regla del motor.
 
 **Decisión:** fusionar las tres fases en una sola: `ANÁLISIS_SOLICITUD`.
 
@@ -55,7 +55,14 @@ El técnico abre el pool del expediente, asigna el tipo correcto a cada document
 
 > No precede INCORPORAR. Los documentos ya están en el pool (cargados por el administrativo antes de la asignación al técnico). La cualificación de tipos y el análisis checklist es trabajo intelectual del técnico → es ANALIZAR directamente, igual que en RECEPCION_SOLICITUD (v5.3).
 
-El documento producido por ANALIZAR es el resultado formal del análisis: lista de documentos faltantes + defectos de contenido. Este documento es entrada del trámite REQUERIMIENTO_SUBSANACIÓN.
+El documento producido por ANALIZAR es el resultado formal del análisis. Su contenido (con o sin defectos) determina el camino que habilita el motor:
+
+- **Con defectos** → el motor habilita `REQUERIMIENTO_SUBSANACIÓN` y bloquea `COMUNICACIÓN_INICIO`.
+- **Sin defectos** → el motor habilita `COMUNICACIÓN_INICIO` y bloquea `REQUERIMIENTO_SUBSANACIÓN`.
+
+Los dos trámites son mutuamente excluyentes: no tiene sentido comunicar el inicio de un procedimiento con defectos pendientes, ni emitir un requerimiento cuando no hay nada que subsanar.
+
+> **A ESTUDIAR — tabla `documentos_analizar`:** para que el motor pueda leer el resultado del ANALIZAR (con/sin defectos) se necesita un mecanismo estructurado, análogo a `documentos_proyecto`. Una tabla `documentos_analizar` extendería el documento producido con al menos un campo `tiene_defectos` (boolean), que sería el semáforo que el motor consulta. Pendiente de diseño propio.
 
 ### Trámite: `REQUERIMIENTO_SUBSANACIÓN`
 
@@ -63,11 +70,11 @@ Combina el resultado del ANÁLISIS_DOCUMENTAL en un escrito de requerimiento dir
 
 **Tareas:** `REDACTAR → FIRMAR → NOTIFICAR → ESPERAR_PLAZO → INCORPORAR (multi-doc) → ANALIZAR`
 
-La plantilla del escrito usa el token `{{resultado_analisis_documental}}` (lista de defectos del trámite anterior). Si el análisis no detectó defectos de un tipo, el token produce vacío y la sección no aparece en el documento.
+La plantilla del escrito usa el token `{{ resultado_analisis_documental }}` (resultado del trámite anterior, inyectado por el context builder). Si en ese resultado no hay defectos de un tipo concreto, el bloque correspondiente queda vacío en el documento.
 
-Tras ESPERAR_PLAZO, el titular aporta la documentación subsanada. INCORPORAR registra formalmente la recepción (puede ser N documentos — ver sección 5). ANALIZAR evalúa la subsanación y puede habilitar un nuevo REQUERIMIENTO_SUBSANACIÓN si persisten defectos, o el cierre de la fase si la subsanación es correcta.
+Tras ESPERAR_PLAZO, el titular aporta la documentación subsanada. INCORPORAR registra formalmente la recepción (puede ser N documentos — ver sección 5). ANALIZAR evalúa la subsanación: si persisten defectos, el motor puede habilitar un nuevo `REQUERIMIENTO_SUBSANACIÓN`; si la subsanación es correcta, habilita el cierre de la fase.
 
-> **Sobre el uso del catálogo de items de requerimiento:** el técnico dispone en la tarea ANALIZAR de un selector de items tipo para redactar los defectos detectados (ver sección 6). El resultado del ANALIZAR es el documento que alimenta el REDACTAR posterior.
+> El técnico dispone en la tarea ANALIZAR del selector de requerimientos tipo (ver sección 6) para redactar los defectos detectados. El documento producido por ANALIZAR es el que alimenta el REDACTAR posterior.
 
 ### Trámite: `COMUNICACIÓN_INICIO`
 
@@ -91,7 +98,7 @@ Opcional según política organizativa.
 
 ### Concepto
 
-Para cada combinación `(tipo_instalacion, tipo_solicitud)` existe una lista de documentos obligatorios. El técnico contrasta los documentos del pool contra esa lista. La fuente del checklist es un estudio en marcha a nivel andaluz (pendiente de formalizar — probablemente en hoja de cálculo). No se implementa ahora.
+Para cada combinación `(tipo_instalacion, tipo_solicitud)` existe una lista de documentos obligatorios. El técnico contrasta los documentos del pool contra esa lista. La fuente del checklist es un estudio en marcha a nivel andaluz (pendiente de formalizar — probablemente en hoja de cálculo). **No se implementa ahora — puede hacerse de forma independiente incluso en una fase post-producción del sistema, sin afectar al resto del diseño.**
 
 ### Modelo de datos (cuando esté listo el estudio)
 
@@ -127,25 +134,27 @@ Esta asociación se almacena en una tabla `checklist_asociacion`:
 
 La tarea INCORPORAR tiene `documento_producido_id` (FK simple). En la respuesta a un requerimiento de subsanación el titular puede aportar N documentos simultáneamente. Crear una tarea INCORPORAR por documento es trabajo ímprobo e innatural.
 
-### Decisión: tabla puente `tarea_documentos`
+### Decisión: tabla puente `documentos_tarea` y deprecación de `documento_producido_id`
 
-Se añade una tabla `tarea_documentos (tarea_id, documento_id)` para las tareas de tipo INCORPORAR. Una sola tarea INCORPORAR = un acto formal de recepción → N documentos vinculados.
+Se añade una tabla `documentos_tarea (tarea_id, documento_id)` para las tareas INCORPORAR. Una sola tarea INCORPORAR = un acto formal de recepción → N documentos vinculados. Aunque solo llegue un documento, se usa igualmente esta tabla — no existe mecanismo dual.
 
-`documento_producido_id` en `public.tareas` queda **NULL** para tareas INCORPORAR que usen esta tabla. El motor detecta tareas INCORPORAR completadas por `fecha_fin IS NOT NULL`, no por `documento_producido_id`.
+`documento_producido_id` en `public.tareas` queda **deprecado para tareas INCORPORAR**. Esto simplifica el motor (un solo sitio donde buscar) y elimina el riesgo de duplicidad entre ambos mecanismos. Los registros existentes con `documento_producido_id` en tareas INCORPORAR se migran a `documentos_tarea`.
+
+**Validación:** una tarea INCORPORAR no puede completarse (`fecha_fin`) si no existe al menos un registro en `documentos_tarea` para esa tarea. Esta validación se aplica tanto en la UI como en el motor.
 
 **UI:** El técnico abre la tarea INCORPORAR, ve los documentos del pool sin trámite de origen, selecciona en bloque los recibidos como respuesta, y confirma. La tarea queda completada con todos vinculados.
 
 ---
 
-## 6. Catálogo de items de requerimiento
+## 6. Catálogo de requerimientos y selector de defectos
 
 ### Concepto
 
-Los defectos documentales que se repiten entre expedientes (falta de justificación técnica, tasas incorrectas, ausencia de documentos específicos, etc.) se mantienen en un catálogo. El técnico selecciona los que aplican en lugar de redactarlos desde cero cada vez, garantizando imagen homogénea de la administración.
+Los defectos que se repiten entre expedientes (falta de justificación técnica, tasas incorrectas, ausencia de documentos específicos, etc.) se mantienen en un catálogo. El técnico selecciona los que aplican en lugar de redactarlos desde cero cada vez, garantizando imagen homogénea de la administración.
 
 ### Modelo de datos
 
-**Tabla `item_requerimiento`:**
+**Tabla `catalogo_requerimientos`:**
 
 | Campo | Descripción |
 |---|---|
@@ -154,42 +163,59 @@ Los defectos documentales que se repiten entre expedientes (falta de justificaci
 | `categoria` | Categoría: `documental`, `tecnica`, `administrativa`, `tasas` |
 | `activo` | Boolean — visible o archivado |
 
+**Tabla `requerimientos_tarea`** (enriquecimiento de la tarea ANALIZAR, sin campos nullables en la tabla base):
+
+| Campo | Descripción |
+|---|---|
+| `tarea_id` | FK `tareas.id` |
+| `catalogo_requerimientos_id` | FK `catalogo_requerimientos.id` — nullable si es texto libre |
+| `texto_libre` | Texto manual — nullable si proviene del catálogo |
+| `orden` | Entero — posición en el listado final |
+
+Exactamente uno de los dos campos de contenido (`catalogo_requerimientos_id` o `texto_libre`) tiene valor; el otro es NULL.
+
 ### Dónde se usa
 
 En la tarea **ANALIZAR** de los trámites `ANÁLISIS_DOCUMENTAL` y `REQUERIMIENTO_SUBSANACIÓN` (iteración) — no en REDACTAR. El técnico analiza → selecciona defectos → produce documento de análisis. REDACTAR solo ensambla con plantilla.
 
-### Persistencia de la selección
+### Context builder y plantilla
 
-Los items seleccionados por el técnico (IDs del catálogo + textos libres adicionales) se guardan como **campo JSON en la tarea ANALIZAR** (`public.tareas`). Permite recuperar el estado si el usuario cierra y vuelve. El context builder los lee para generar el documento de análisis con el bucle `{% for item in items_requerimiento %}`.
+El context builder de este tipo de escrito consulta `requerimientos_tarea` para la tarea ANALIZAR y construye la lista Python `requerimientos` que entrega al renderizador de plantillas. La plantilla itera esa lista con un bloque Jinja2:
+
+```
+{% for r in requerimientos %}
+   ... {{ r.texto }} ...
+{% endfor %}
+```
+
+> Ver `docs/fuentesIA/GUIA_CONTEXT_BUILDERS.md` para el rol del context builder y su relación con el renderizador.
 
 ### UI: selector tipo shuttle
 
 Panel lateral en la tarea ANALIZAR con dos columnas:
 
-- **Izquierda:** catálogo de items, agrupados por categoría, con botón `→` por item
-- **Derecha:** lista de items seleccionados, con botón `←` para devolver al catálogo (y editar si se desea)
-- **Área de texto libre:** debajo del catálogo, con botón `→` para añadir item no catalogado. El área se vacía tras añadir para permitir redactar el siguiente. Botón `Limpiar` para descartar.
-- **Opción "Guardar en catálogo":** al añadir un item libre, checkbox para persistirlo en `item_requerimiento`.
+**Columna izquierda — Catálogo:**
+- Items de `catalogo_requerimientos` agrupados por categoría, filtrable
+- Botón `→` por item para pasarlo a la columna derecha
+- Área de texto libre al pie con botón `→` para añadir un requerimiento no catalogado; el área se vacía tras añadir (listo para el siguiente). Botón `Limpiar` para descartar sin añadir
+- Opción "Guardar en catálogo" (checkbox): al añadir un texto libre, si está marcado, el texto se persiste en `catalogo_requerimientos`
 
-### Token en plantilla
-
-La plantilla del escrito de requerimiento usa un bloque de iteración:
-
-```
-{% for item in items_requerimiento %}
-   ... {{ item.texto }} ...
-{% endfor %}
-```
+**Columna derecha — Seleccionados:**
+- Lista de requerimientos que se incluirán en el documento, en el orden que se insertarán
+- Items del catálogo: botón `←` para devolverlos al catálogo (desaparecen de la derecha)
+- Items de texto libre: botón `←` para devolverlo al área de texto libre (desaparece de la derecha y el texto vuelve al campo para editar); alternativamente, edición inline con icono lápiz que convierte el texto en textarea editable en su sitio
+- Ordenamiento por drag-and-drop (handler visual con puntos/rayas) o con botones ↑ / ↓ al seleccionar un item
+- Todos los botones son inteligentes: `↑` deshabilitado si el item es el primero, `↓` si es el último, `←` siempre activo si hay item seleccionado
 
 ---
 
 ## 7. Motor de reglas: restricción de tasas
 
-La Ley de Tasas de la Junta de Andalucía exige que las tasas estén correctamente presentadas y completas antes de iniciar la información pública o las consultas a organismos.
+El art. 45.1 de la Ley 10/2021, de 28 de diciembre, de tasas y precios públicos de la Comunidad Autónoma de Andalucía establece que ninguna actuación administrativa «se realizará o tramitará sin que se haya efectuado el pago correspondiente». En la práctica, por economía procesal, el análisis se completa antes de detener la tramitación (la tasa es siempre subsanable y conviene agotar el análisis en la primera iteración).
 
-**Regla del motor:** las fases `INFORMACIÓN_PÚBLICA` y `CONSULTAS` tienen como pre-condición que el item del checklist correspondiente a las tasas (`categoria = tasas`) esté marcado como `validado = True` en la tabla `checklist_asociacion` del expediente.
+**Regla del motor:** cualquier fase posterior a `ANÁLISIS_SOLICITUD` tiene como pre-condición que el item del checklist correspondiente a las tasas (`categoria = tasas`) esté marcado como `validado = True` en la tabla `checklist_asociacion` del expediente.
 
-Esta regla no bloquea el análisis de otros defectos ni la emisión del requerimiento — solo bloquea el avance a las fases siguientes.
+Esta regla no bloquea el análisis de otros defectos ni la emisión del requerimiento — solo bloquea el avance a fases posteriores.
 
 ---
 
@@ -209,5 +235,5 @@ Se añade el campo `siglas_escritos` en el modelo `Usuario`. Su valor es las sig
 
 - Eliminar fases: `REGISTRO_SOLICITUD`, `ADMISIBILIDAD`, `ANÁLISIS_TÉCNICO`
 - Añadir fase: `ANÁLISIS_SOLICITUD` con trámites `ANÁLISIS_DOCUMENTAL`, `REQUERIMIENTO_SUBSANACIÓN`, `COMUNICACIÓN_INICIO`
-- Actualizar definición de tarea `INCORPORAR`: `documento_producido_id` pasa a ser opcional cuando se usa `tarea_documentos`; añadir nota sobre soporte multi-documento
+- Actualizar definición de tarea `INCORPORAR`: `documento_producido_id` deprecado; los documentos se vinculan mediante `documentos_tarea`; fecha_fin requiere al menos un registro en `documentos_tarea`
 - Versión: 5.5
