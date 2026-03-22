@@ -153,7 +153,12 @@ de la solicitud — una resolución denegatoria es el mecanismo ordinario de fin
 | CREAR | CONSULTA_MINISTERIO | `expediente.tipo_expediente_id` NOT IN {1} (Transporte) | BLOQUEAR |
 | CREAR | ADMISION_TRAMITE | `expediente.tipo_expediente_id` NOT IN {4} (Renovable) | BLOQUEAR |
 | INICIAR | INFORMACION_PUBLICA | EXISTS documento tipo DR_NO_DUP en esta solicitud AND `proyecto.ia.siglas` NOT IN {AAU, AAUS} | BLOQUEAR |
-<!-- DR_NO_DUP = Declaración Responsable de No solicitar Declaración de Utilidad Pública. Fuente: Disposición Final Cuarta del Decreto-ley 26/2021 (simplificación administrativa Andalucía). Si el titular declara que no pedirá DUP, la IP no es necesaria. AAU/AAUS quedan excluidos porque necesitan IP por motivos ambientales independientemente de la DUP. -->
+<!-- DR_NO_DUP = documento que acredita que la instalación no requiere Declaración de Utilidad Pública para su implantación (condición objetiva, no declaración de intención).
+Fuente: Disposición Final Cuarta del Decreto-ley 26/2021, de 14 de diciembre (simplificación administrativa Andalucía).
+Texto legal: "No se someterán al trámite de información pública aquellas solicitudes [...] que no requieran de declaración de utilidad pública para su implantación y que no estén sometidas a la autorización ambiental unificada".
+La exención de IP requiere AMBAS condiciones: (1) no necesita DUP + (2) no sujeta a AAU.
+El motor implementa esto como: EXISTS DR_NO_DUP (condición 1) AND ia NOT IN {AAU, AAUS} (condición 2) → BLOQUEAR IP.
+Nota: el texto legal solo menciona AAU; la extensión a AAUS es decisión de política interna del servicio, no está en la norma. -->
 | INICIAR | FIGURA_AMBIENTAL_EXTERNA | `proyecto.ia.siglas` NOT IN {CA, AAI} AND NOT (`proyecto.ia.siglas` IN {AAU, AAUS} AND `proyecto.es_modificacion` = true) | BLOQUEAR |
 | INICIAR | AAU_AAUS_INTEGRADA | `proyecto.ia.siglas` NOT IN {AAU, AAUS} OR `proyecto.es_modificacion` = true | BLOQUEAR |
 | INICIAR | RESOLUCION | (`proyecto.ia.siglas` IN {CA, AAI} OR (`proyecto.ia.siglas` IN {AAU, AAUS} AND `proyecto.es_modificacion` = true)) AND NOT EXISTS fase FIGURA_AMBIENTAL_EXTERNA con `cerrada_favorable` = true | BLOQUEAR |
