@@ -11,7 +11,7 @@ Los documentos marcados con ⚠️ deben leerse antes de actuar en su área.
 |---|---|
 | ⚠️ `REGLAS_DESARROLLO.md` | Workflow Git, commits, ramas, migraciones. Leer siempre. |
 | ⚠️ `REGLAS_ARQUITECTURA.md` | Flujo de decisiones arquitectónicas, reglas del JSON, sincronización documental. Borrador — pendiente sesión dedicada (#250). |
-| `ANTI_BLOQUEOS_BASH.md` | Patrones prohibidos en Bash y workarounds. |
+| `REGLAS_BASH.md` | Patrones prohibidos en Bash y workarounds. |
 
 ---
 
@@ -19,9 +19,9 @@ Los documentos marcados con ⚠️ deben leerse antes de actuar en su área.
 
 | Documento | Contenido |
 |---|---|
-| ⚠️ `GuiaGeneralNueva.md` | Arquitectura general y lógica de negocio. Visión de conjunto. |
-| `ARQUITECTURA_DOCUMENTOS.md` | Pool documental: tipos, vías de entrada, decisiones de modelo. |
-| `MOTOR_REGLAS_arquitectura.md` | Arquitectura del motor de reglas ESFTT. |
+| ⚠️ `GUIA_GENERAL.md` | Arquitectura general y lógica de negocio. Visión de conjunto. |
+| `DISEÑO_SUBSISTEMA_DOCUMENTAL.md` | Pool documental: tipos, vías de entrada, decisiones de modelo. |
+| `DISEÑO_MOTOR_REGLAS.md` | Arquitectura del motor de reglas ESFTT. |
 | `MOTOR_REGLAS_investigacion_legislativa.md` | Base legislativa del motor de reglas. |
 | ⚠️ `Estructura_fases_tramites_tareas.json` | Estructura ESFTT: fases, trámites, tareas y patrones. Fuente de verdad estructural. Versión actual: 5.4 — pendiente actualización a 5.5 (#248). |
 
@@ -65,12 +65,12 @@ Serie de análisis previos a la implementación del subsistema documental. Refer
 
 | Documento | Contenido |
 |---|---|
-| `ESTRATEGIA_ROADMAP.md` | Estrategia general del proyecto |
-| `ROADMAP.md` | Roadmap de funcionalidades |
-| `ESTUDIO_HOMOGENEIZACION_UI.md` | Estudio de homogeneización de la interfaz |
-| `TAREAS_INVERSO.md` | Análisis inverso de tareas |
+| `PLAN_ESTRATEGIA.md` | Estrategia general del proyecto |
+| `PLAN_ROADMAP.md` | Roadmap de funcionalidades |
+| `ANALISIS_HOMOGENEIZACION_UI.md` | Estudio de homogeneización de la interfaz |
+| `ANALISIS_TAREAS_INVERSO.md` | Análisis inverso de tareas |
 | `numero_at_gapless.md` | Numeración AT sin huecos |
-| `Roles.md` | Roles de usuario en el sistema |
+| `GUIA_ROLES.md` | Roles de usuario en el sistema |
 
 ---
 

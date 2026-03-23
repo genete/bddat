@@ -70,7 +70,7 @@ Las FK deben referenciar con prefijo: `db.ForeignKey('public.tabla.campo')`
 
 ## Convenciones Bash (anti-bloqueos del parser)
 
-Ver referencia completa: `docs/fuentesIA/ANTI_BLOQUEOS_BASH.md`
+Ver referencia completa: `docs/fuentesIA/REGLAS_BASH.md`
 
 Resumen de patrones obligatorios:
 - **`$()` y backticks:** NUNCA — separar en llamadas Bash secuenciales

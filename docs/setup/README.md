@@ -4,7 +4,7 @@ Documentación para la instalación y configuración inicial del proyecto BDDAT.
 
 ## Documentos
 
-### Guía Completa_ Configurar BDDAT en un PC Nuevo.md
+### PROCEDIMIENTO_SETUP_PC.md
 Guía paso a paso para configurar el entorno de desarrollo desde cero:
 - Instalación de Python, PostgreSQL, dependencias
 - Configuración de base de datos

@@ -2,7 +2,7 @@
 
 > **Sesión de diseño:** 2026-03-04 | **Actualizado:** 2026-03-18
 > Decisiones tomadas antes de entrar en M1 sistema documental (#166) y M2 generación escritos (#167).
-> Documentos relacionados: `MOTOR_REGLAS_arquitectura.md`, `GUIA_CONTEXT_BUILDERS.md`, `ROADMAP.md`
+> Documentos relacionados: `DISEÑO_MOTOR_REGLAS.md`, `GUIA_CONTEXT_BUILDERS.md`, `PLAN_ROADMAP.md`
 
 ---
 

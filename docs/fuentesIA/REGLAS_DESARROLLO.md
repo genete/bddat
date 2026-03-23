@@ -172,7 +172,7 @@ main ─────────────●─v0.1.0──●─v0.2.0  (sol
 
 ## 3. Milestones y Organización de Issues
 
-El estado actual de milestones y su contenido vive en `docs/fuentesIA/ROADMAP.md` (milestones M1–M5).
+El estado actual de milestones y su contenido vive en `docs/fuentesIA/PLAN_ROADMAP.md` (milestones M1–M5).
 Los issues de cada milestone están organizados en GitHub.
 
 ---
@@ -276,7 +276,7 @@ bddat/
 ├── docs/
 │   └── fuentesIA/
 │       ├── REGLAS_DESARROLLO.md
-│       ├── GuiaGeneralNueva.md
+│       ├── GUIA_GENERAL.md
 │       └── [otros documentos]
 ├── tests/
 ├── utils/
@@ -841,7 +841,7 @@ git branch -D nombre-rama
 
 ### 16.1 Milestones → Versiones
 
-Los milestones actuales (M1–M5) y su contenido están en `docs/fuentesIA/ROADMAP.md`.
+Los milestones actuales (M1–M5) y su contenido están en `docs/fuentesIA/PLAN_ROADMAP.md`.
 Las versiones siguen el criterio: `vMAJOR.MINOR.PATCH` — release al completar un milestone funcional completo.
 
 ### 16.2 Hotfixes
@@ -874,10 +874,10 @@ git checkout -b hotfix/fix-validacion-nif
 
 - `CLAUDE.md` — instrucciones de proyecto para Claude Code (punto de entrada)
 - `docs/fuentesIA/REGLAS_DESARROLLO.md` — este documento
-- `docs/fuentesIA/GuiaGeneralNueva.md` — arquitectura general y lógica de negocio
-- `docs/fuentesIA/ROADMAP.md` — estado de implementación por milestones
-- `docs/fuentesIA/ESTRATEGIA_ROADMAP.md` — visión estratégica, 14 bloques funcionales
-- `docs/fuentesIA/ARQUITECTURA_DOCUMENTOS.md` — decisiones subsistema documental
+- `docs/fuentesIA/GUIA_GENERAL.md` — arquitectura general y lógica de negocio
+- `docs/fuentesIA/PLAN_ROADMAP.md` — estado de implementación por milestones
+- `docs/fuentesIA/PLAN_ESTRATEGIA.md` — visión estratégica, 14 bloques funcionales
+- `docs/fuentesIA/DISEÑO_SUBSISTEMA_DOCUMENTAL.md` — decisiones subsistema documental
 
 ---
 

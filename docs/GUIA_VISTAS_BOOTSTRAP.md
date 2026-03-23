@@ -797,4 +797,4 @@ container.addEventListener('scroll', toggleButton);
 **Fecha:** 11 de marzo de 2026
 **Cambios v2.0:** Eliminada V3 acordeón/tabs (legacy), documentada V3-BC, listados embebidos y Pool.
 **Cambios v2.1 (#202):** Unificado thead V2/BC (verde claro `#c4ddca`). Añadido `.tabla-bloque` como contenedor card de tabla. Thead BC sin sticky (listas cortas). Responsive mobile en `_tabla_hijos.html` (clase `.tabla-hijos`). Estructura C.2 actualizada en V2 y V3-BC.
-**Referencia estudio:** `docs/fuentesIA/ESTUDIO_HOMOGENEIZACION_UI.md`
+**Referencia estudio:** `docs/fuentesIA/ANALISIS_HOMOGENEIZACION_UI.md`

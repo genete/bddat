@@ -2,7 +2,7 @@
 
 > **Propósito:** Estado vivo del proyecto. Se actualiza al cerrar issues y milestones.
 > La verbosidad (qué falta, cómo hacerlo) vive en los issues de GitHub, no aquí.
-> La visión estratégica y clasificación de bloques está en `ESTRATEGIA_ROADMAP.md`.
+> La visión estratégica y clasificación de bloques está en `PLAN_ESTRATEGIA.md`.
 >
 > **Última actualización:** 2026-03-12
 
@@ -62,7 +62,7 @@ Issues activos: #74, #167, #168, #169, #181, #182, #189, #203, #204, #205, #206,
 **Descripción:** Motor de reglas completo (evaluador + configuración por Supervisor) + plazos legales con suspensión + permisos granulares.
 **Estado:** EN CURSO — evaluador implementado, pendiente UI de configuración y plazos
 
-Diseño: `docs/fuentesIA/MOTOR_REGLAS_arquitectura.md`
+Diseño: `docs/fuentesIA/DISEÑO_MOTOR_REGLAS.md`
 
 **Pendiente:**
 - CRUD de reglas del motor — interfaz Supervisor (#170)

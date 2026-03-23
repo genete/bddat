@@ -19,7 +19,7 @@ Leer antes de implementar cualquier componente interactivo.
 
 ### 📁 [setup/](setup/)
 Guías de instalación y configuración inicial del proyecto.
-- [Guía Completa: Configurar BDDAT en un PC Nuevo](setup/Guía%20Completa_%20Configurar%20BDDAT%20en%20un%20PC%20Nuevo.md)
+- [PROCEDIMIENTO_SETUP_PC.md](setup/PROCEDIMIENTO_SETUP_PC.md)
 
 ### 🏗️ [arquitectura/](arquitectura/)
 Documentos de diseño de alto nivel: arquitectura frontend, sistema de módulos.
@@ -36,14 +36,14 @@ Documentación técnica de implementaciones específicas.
 ### 🤖 [fuentesIA/](fuentesIA/)
 Referencias y reglas para desarrollo asistido por IA (Claude Code).
 - [REGLAS_DESARROLLO.md](fuentesIA/REGLAS_DESARROLLO.md) — workflow Git, commits, ramas, migraciones
-- [GuiaGeneralNueva.md](fuentesIA/GuiaGeneralNueva.md) — arquitectura general y lógica de negocio
-- [ROADMAP.md](fuentesIA/ROADMAP.md) — estado actual de implementación por milestones
-- [ESTRATEGIA_ROADMAP.md](fuentesIA/ESTRATEGIA_ROADMAP.md) — visión estratégica, 14 bloques funcionales
-- [ARQUITECTURA_DOCUMENTOS.md](fuentesIA/ARQUITECTURA_DOCUMENTOS.md) — decisiones subsistema documental
-- [MOTOR_REGLAS_arquitectura.md](fuentesIA/MOTOR_REGLAS_arquitectura.md) — diseño del motor de reglas
+- [GUIA_GENERAL.md](fuentesIA/GUIA_GENERAL.md) — arquitectura general y lógica de negocio
+- [PLAN_ROADMAP.md](fuentesIA/PLAN_ROADMAP.md) — estado actual de implementación por milestones
+- [PLAN_ESTRATEGIA.md](fuentesIA/PLAN_ESTRATEGIA.md) — visión estratégica, 14 bloques funcionales
+- [DISEÑO_SUBSISTEMA_DOCUMENTAL.md](fuentesIA/DISEÑO_SUBSISTEMA_DOCUMENTAL.md) — decisiones subsistema documental
+- [DISEÑO_MOTOR_REGLAS.md](fuentesIA/DISEÑO_MOTOR_REGLAS.md) — diseño del motor de reglas
 - [GUIA_CONTEXT_BUILDERS.md](fuentesIA/GUIA_CONTEXT_BUILDERS.md) — generación de escritos administrativos
-- [TAREAS_INVERSO.md](fuentesIA/TAREAS_INVERSO.md) — tabla inversa de tareas atómicas ESFTT
-- [Roles.md](fuentesIA/Roles.md) — roles y permisos del sistema
+- [ANALISIS_TAREAS_INVERSO.md](fuentesIA/ANALISIS_TAREAS_INVERSO.md) — tabla inversa de tareas atómicas ESFTT
+- [GUIA_ROLES.md](fuentesIA/GUIA_ROLES.md) — roles y permisos del sistema
 - **[referencias/](fuentesIA/referencias/)** — conocimiento de dominio AT (normativa y clasificaciones):
   - [Clasificacion AT Andalucia.md](fuentesIA/referencias/Clasificacion%20AT%20Andalucia.md) — tipos de instalaciones y competencias Junta/Estado
   - [Clasificacion AT Capa2.md](fuentesIA/referencias/Clasificacion%20AT%20Capa2.md) — subtipos físicos, generación, modificaciones e Instrucción 1/2023
@@ -55,7 +55,7 @@ Referencias y reglas para desarrollo asistido por IA (Claude Code).
 
 - [📘 Guía Vistas Bootstrap](GUIA_VISTAS_BOOTSTRAP.md) — **Referencia principal UI**
 - [Reglas de Desarrollo](fuentesIA/REGLAS_DESARROLLO.md) — flujo de trabajo Git
-- [ROADMAP](fuentesIA/ROADMAP.md) — qué está hecho, qué está pendiente
+- [PLAN_ROADMAP](fuentesIA/PLAN_ROADMAP.md) — qué está hecho, qué está pendiente
 - [Repositorio en GitHub](https://github.com/genete/bddat)
 
 ---

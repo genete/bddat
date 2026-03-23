@@ -326,7 +326,7 @@ Para reglas que necesiten esa distinción, el motor debe consultar `resultado_fa
 de la fase RESOLUCION asociada.
 
 ### FASE
-`resultado_fase_id` es FK a `tipos_resultados_fases` (NO boolean — GuiaGeneralNueva
+`resultado_fase_id` es FK a `tipos_resultados_fases` (NO boolean — GUIA_GENERAL
 desactualizada; el modelo Python ya usa FK).
 Valores: `FAVORABLE`, `FAVORABLE_CONDICIONADO`, `DESFAVORABLE`, `NO_PROCEDE`, `DESISTIDA`, `ARCHIVADA`.
 
@@ -411,7 +411,7 @@ Solo `Solicitud.activa` existe hoy — el resto está pendiente.
 
 - ⬜ Implementar campo `proyecto.es_modificacion` (Boolean, default=False) + migración
 - ⬜ Cambiar CHECK constraint `reglas_motor.evento` de `('CREAR','CERRAR','BORRAR')` a `('CREAR','INICIAR','FINALIZAR','BORRAR')`
-- ⬜ Actualizar GuiaGeneralNueva: sección FASE — `exito` (bool) → `resultado_fase_id` (FK a tipos_resultados_fases)
+- ⬜ Actualizar GUIA_GENERAL: sección FASE — `exito` (bool) → `resultado_fase_id` (FK a tipos_resultados_fases)
 - ⬜ Añadir `@property` de estado a FASE, TRÁMITE y TAREA antes de implementar el motor
 - ⬜ Definir tabla `entidades_consultadas` y su integración con SEPARATAS (issue draft)
 - ⬜ Diseño detallado de evaluador con handlers por entidad (TAREA → TRÁMITE → FASE → SOLICITUD → EXPEDIENTE → PROYECTO)
