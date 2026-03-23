@@ -1,3 +1,4 @@
+// Mockup de referencia original: docs/mockups/fecha-mockup.html (commit 028451f)
 // entrada_fecha.js — componente EntradaFecha
 // Uso: new EntradaFecha('#contenedor', { name, placeholder, onChange })
 
