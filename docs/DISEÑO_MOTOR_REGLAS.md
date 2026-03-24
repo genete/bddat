@@ -232,23 +232,72 @@ sea reutilizable y no genere variaciones hardcodeadas en plantillas.
 
 ---
 
+## Principio de escape
+
+**Principio transversal de diseño:** toda cascada, filtro y regla debe tener vía de escape.
+
+El técnico tramitador puede encontrar situaciones no previstas en el flujo normal
+(alegación fuera de contexto, cambio de rumbo del expediente, etc.). El sistema
+no debe crear callejones sin salida.
+
+**Implementación:**
+- El usuario puede elegir opciones "fuera de contexto" con advertencia visual
+- Toda acción de escape se registra en bitácora
+- Toggle "Solo aplicables al contexto" (defecto = todas las opciones visibles)
+
+Aplica a: selectores en cascada ESFTT, motor de reglas, filtrado de plantillas,
+y cualquier mecanismo futuro que restrinja opciones.
+
+---
+
+## Whitelist E→S→F→T — tablas de estructura ESFTT
+
+Tres tablas whitelist editables por el Supervisor cubren la cascada completa:
+
+| Tabla | PK compuesta | Semántica |
+|-------|-------------|-----------|
+| `expedientes_solicitudes` | `tipo_expediente_id` + `tipo_solicitud_id` | Qué solicitudes son válidas para cada tipo de expediente |
+| `solicitudes_fases` | `tipo_solicitud_id` + `tipo_fase_id` | Qué fases aplican a cada tipo de solicitud |
+| `fases_tramites` | `tipo_fase_id` + `tipo_tramite_id` | Qué trámites son válidos dentro de cada fase |
+
+**Características:**
+- Seed inicial desde `Estructura_fases_tramites_tareas.json`
+- CRUD editable por Supervisor (legislación cambiante — no hardcoded)
+- Solo definen **posibilidad** ("esta combinación tiene sentido"), no obligatoriedad ni orden
+- La cascada de selectores consume estas tablas como whitelist
+- El principio de escape permite al técnico salir de la whitelist con advertencia visual
+
+**Implementación:** Issue #167 Fase 1. Ver `docs/DISEÑO_GENERACION_ESCRITOS.md`.
+
+---
+
+## Tipos de solicitud combinados como entidades propias
+
+Las combinaciones de tipos de solicitud (AAP+AAC, AAP+AAC+DUP...) son entidades
+propias en `tipos_solicitudes`, no una tabla puente M:N.
+
+**Motivación:** Las combinaciones legales son ~6, finitas y cerradas (cambio legislativo
+para añadir una nueva). Cada combinación tiene implicaciones procedimentales distintas
+(fases, texto de resoluciones). Las plantillas necesitan FK directo.
+
+Ver catálogo completo en `docs/NORMATIVA_SOLICITUDES.md`.
+
+**Impacto en modelos:**
+- `tipos_solicitudes` → añadir ~6 tipos combinados
+- `solicitudes` → añadir FK `tipo_solicitud_id` directa (reemplaza tabla puente `solicitudes_tipos`)
+- `solicitudes_tipos` → mantener como histórico, dejar de usar para lógica de negocio
+
+**Implementación:** Issue #167 Fase 1.
+
+---
+
 ## Compatibilidad de tipos en una solicitud
 
-Una solicitud puede tener múltiples tipos simultáneamente (N:M via `solicitudes_tipos`),
-pero no todas las combinaciones son válidas.
+Con la decisión de tipos combinados como entidades propias, la compatibilidad entre
+tipos se gestiona mediante la whitelist `expedientes_solicitudes` y la propia tabla
+`tipos_solicitudes` (que solo contiene combinaciones legales).
 
-**Decisión de diseño: whitelist (pares permitidos), no blacklist.**
-
-Con 17 tipos hay 136 pares posibles; la mayoría son absurdos por definición.
-Un tipo nuevo añadido sin actualizar la tabla quedaría compatible con todo por omisión.
-Con whitelist, lo nuevo es inválido hasta definición explícita — más seguro.
-
-Ejemplos:
-- `AAP + AAE` → PROHIBIDO (AAE implica instalación construida; AAP es anterior)
-- `DUP + CIERRE` → PROHIBIDO (DUP implica que no se pudo construir; CIERRE implica existente)
-- `AAP + AAC` → PERMITIDO (tramitación conjunta estándar)
-- `AAP + AAC + DUP` → PERMITIDO (procedimiento estándar con utilidad pública)
-
+**Tabla de referencia histórica** (previa a la migración de Fase 1 del #167):
 ```
 TIPOS_SOLICITUDES_COMPATIBLES
   tipo_a_id  FK → tipos_solicitudes  (par siempre en orden: tipo_a < tipo_b)
@@ -256,8 +305,10 @@ TIPOS_SOLICITUDES_COMPATIBLES
   nota        texto explicativo / referencia normativa si aplica
 ```
 
-**Punto de evaluación:** al añadir un tipo a una solicitud (CREAR SolicitudTipo),
-comprobar que ninguno de los tipos ya presentes es incompatible con el nuevo.
+Ejemplos:
+- `AAP + AAE` → PROHIBIDO (AAE implica instalación construida; AAP es anterior)
+- `DUP + CIERRE` → PROHIBIDO (DUP implica que no se pudo construir; CIERRE implica existente)
+- `AAP + AAC` → PERMITIDO → entrada directa en `tipos_solicitudes` como `AAP_AAC`
 
 **Pendiente:** definir la lista completa de pares compatibles con el técnico del servicio.
 

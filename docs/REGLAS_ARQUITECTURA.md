@@ -1,7 +1,7 @@
 # Reglas de arquitectura y documentación de decisiones — BDDAT
 
 **Fecha:** 22/03/2026
-**Estado:** Borrador inicial — requiere sesión dedicada para cerrar y consolidar
+**Estado:** En progreso — pendiente cerrar según issue #250
 
 ---
 
@@ -36,15 +36,18 @@ Esta brecha se ensancha con cada sesión y genera confianza falsa: el desarrolla
 
 ## 2. Tipos de documento y su rol
 
-| Documento | Rol | Audiencia | Estabilidad |
-|---|---|---|---|
-| `Estructura_fases_tramites_tareas.json` | Esqueleto estructural del ESFTT. Qué fases, trámites, tareas y patrones existen. Solo estructura, sin prosa. | IA + código | Media — cambia con cada nueva fase o trámite |
-| `DISEÑO_*.md` | Decisiones de diseño con motivación y alternativas descartadas. Nivel de detalle suficiente para implementar. | Desarrollador + IA | Alta — solo cambia si la decisión cambia |
-| `GUIA_*.md` | Referencia técnica de implementación de un subsistema concreto. | Desarrollador + IA | Alta |
-| `GUIA_GENERAL.md` | Arquitectura general y lógica de negocio. Visión de conjunto. | Desarrollador + IA | Muy alta |
-| `REGLAS_DESARROLLO.md` | Workflow de código: Git, commits, ramas, migraciones. | Desarrollador + IA | Muy alta |
-| `REGLAS_ARQUITECTURA.md` (este doc) | Workflow de decisiones estructurales. | Desarrollador + IA | Muy alta |
-| Diagramas `.mmd` / `.svg` | Representación visual del sistema. Cara legible del JSON. | Usuario + Desarrollador | Media — se actualiza cuando cambia el JSON |
+| Prefijo | Rol | Cambia cuando |
+|---|---|---|
+| `DISEÑO_*.md` | Decisión arquitectónica propia: qué se decide, por qué, alternativas descartadas. | Cambia la decisión |
+| `NORMATIVA_*.md` | Conocimiento externo (legislación, instrucciones Consejería). Incluye `Fuente:` y `Aplica a:` en cabecera. | Cambia la norma |
+| `GUIA_*.md` | Instrucciones prácticas de implementación de un subsistema. | Cambia la implementación |
+| `REGLAS_*.md` | Normas de trabajo obligatorias (workflow Git, antibloqueos Bash, este doc). | Cambia el criterio |
+| `PLAN_*.md` | Planificación y roadmap. Estado de milestones e iniciativas. | Avanza la implementación |
+| `ANALISIS_*.md` | Diagnóstico puntual o estudio. Puede ser derivado de otra fuente de verdad. | No debería — es histórico |
+| `PROCEDIMIENTO_*.md` | Pasos secuenciales para una operación concreta. | Cambia el proceso |
+| `ESTRUCTURA_*.md` | Catálogo estructural del dominio (reemplaza al JSON como lectura humana). | Cambia la estructura ESFTT |
+| `Estructura_fases_tramites_tareas.json` | Fuente de verdad estructural ESFTT para código e IA. Solo estructura, sin prosa. | Cambia la estructura ESFTT |
+| Diagramas `.mmd` / `.svg` | Representación visual del sistema. Cara legible del JSON. | Cambia el JSON |
 
 ---
 
@@ -133,12 +136,12 @@ Antes de crear diagramas de Capa 2 o Capa 3, y antes de iniciar la implementaci�
 
 ---
 
-## 7. Pendientes de la sesión dedicada
+## 7. Pendientes de la sesión dedicada (#250)
 
-Este documento es un borrador. Los siguientes puntos requieren sesión dedicada para cerrarse:
+Este documento es un borrador. Los puntos pendientes se rastrean en el issue #250. Resumen:
 
-- [ ] Reorganización de `docs/fuentesIA/`: los documentos han crecido sin criterio de organización explícito. Definir subcarpetas o convención de nombres.
-- [ ] Limpieza del JSON: auditar campo por campo qué notas pasan a MDs y cómo queda el JSON lean.
-- [ ] Definir criterio formal de "sesión de sincronización": cuándo se convoca, qué cubre, qué produce.
-- [ ] Revisar si `GUIA_GENERAL.md` sigue siendo la referencia correcta o ha quedado desfasada por los MDs de diseño posteriores.
-- [ ] Decidir si los `DISEÑO_*.md` necesitan una sección estándar de "impacto en otros documentos" para facilitar la propagación de cambios.
+- [ ] Disolver `docs/fuentesIA/` y subcarpetas — todos los MDs a `docs/` raíz
+- [ ] Redistribuir contenido de `ANALISIS_167_*` en documentos con prefijo correcto
+- [ ] Completar secciones de árbol de decisión, sesión de sincronización y ciclo de vida (ver issue)
+- [ ] Limpieza del JSON y conversión a `ESTRUCTURA_FTT.md`
+- [ ] Revisar si `GUIA_GENERAL.md` sigue siendo válida como referencia general

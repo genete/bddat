@@ -17,45 +17,48 @@ Leer antes de implementar cualquier componente interactivo.
 
 ## Estructura de Documentación
 
-### 📁 [setup/](setup/)
-Guías de instalación y configuración inicial del proyecto.
-- [PROCEDIMIENTO_SETUP_PC.md](setup/PROCEDIMIENTO_SETUP_PC.md)
-
-### 🏗️ [arquitectura/](arquitectura/)
-Documentos de diseño de alto nivel: arquitectura frontend, sistema de módulos.
-- [FASE_3_FRONTEND_DINAMICO.md](arquitectura/FASE_3_FRONTEND_DINAMICO.md) - Sistema metadata-driven (futuro)
+Todos los documentos viven en `docs/` raíz. Subdirectorios solo para no-MDs.
 
 ### 🎨 [estilos/](estilos/)
-Guías de estilos CSS y recursos visuales.
 - [guia_colores_junta_andalucia.html](estilos/guia_colores_junta_andalucia.html) - Paleta interactiva
 
-### 💻 [implementaciones/](implementaciones/)
-Documentación técnica de implementaciones específicas.
-- [VISTA_V3_TRAMITACION.md](implementaciones/VISTA_V3_TRAMITACION.md) - Vista tramitación V3-BC (breadcrumbs)
+### Reglas y workflow
+- [REGLAS_DESARROLLO.md](REGLAS_DESARROLLO.md) — workflow Git, commits, ramas, migraciones
+- [REGLAS_ARQUITECTURA.md](REGLAS_ARQUITECTURA.md) — flujo de decisiones arquitectónicas, sincronización documental
+- [REGLAS_BASH.md](REGLAS_BASH.md) — patrones prohibidos en Bash y workarounds
 
-### 🤖 [fuentesIA/](fuentesIA/)
-Referencias y reglas para desarrollo asistido por IA (Claude Code).
-- [REGLAS_DESARROLLO.md](fuentesIA/REGLAS_DESARROLLO.md) — workflow Git, commits, ramas, migraciones
-- [GUIA_GENERAL.md](fuentesIA/GUIA_GENERAL.md) — arquitectura general y lógica de negocio
-- [PLAN_ROADMAP.md](fuentesIA/PLAN_ROADMAP.md) — estado actual de implementación por milestones
-- [PLAN_ESTRATEGIA.md](fuentesIA/PLAN_ESTRATEGIA.md) — visión estratégica, 14 bloques funcionales
-- [DISEÑO_SUBSISTEMA_DOCUMENTAL.md](fuentesIA/DISEÑO_SUBSISTEMA_DOCUMENTAL.md) — decisiones subsistema documental
-- [DISEÑO_MOTOR_REGLAS.md](fuentesIA/DISEÑO_MOTOR_REGLAS.md) — diseño del motor de reglas
-- [GUIA_CONTEXT_BUILDERS.md](fuentesIA/GUIA_CONTEXT_BUILDERS.md) — generación de escritos administrativos
-- [ANALISIS_TAREAS_INVERSO.md](fuentesIA/ANALISIS_TAREAS_INVERSO.md) — tabla inversa de tareas atómicas ESFTT
-- [GUIA_ROLES.md](fuentesIA/GUIA_ROLES.md) — roles y permisos del sistema
-- **[referencias/](fuentesIA/referencias/)** — conocimiento de dominio AT (normativa y clasificaciones):
-  - [Clasificacion AT Andalucia.md](fuentesIA/referencias/Clasificacion%20AT%20Andalucia.md) — tipos de instalaciones y competencias Junta/Estado
-  - [Clasificacion AT Capa2.md](fuentesIA/referencias/Clasificacion%20AT%20Capa2.md) — subtipos físicos, generación, modificaciones e Instrucción 1/2023
-  - [Mapa Normativo AT Andalucia.md](fuentesIA/referencias/Mapa%20Normativo%20AT%20Andalucia.md) — inventario completo de normativa estatal y autonómica con relaciones entre normas
+### Arquitectura y diseño
+- [GUIA_GENERAL.md](GUIA_GENERAL.md) — arquitectura general y lógica de negocio
+- [DISEÑO_MOTOR_REGLAS.md](DISEÑO_MOTOR_REGLAS.md) — diseño del motor de reglas ESFTT
+- [DISEÑO_SUBSISTEMA_DOCUMENTAL.md](DISEÑO_SUBSISTEMA_DOCUMENTAL.md) — pool documental: tipos, vías de entrada, decisiones
+- [DISEÑO_ANALISIS_SOLICITUD.md](DISEÑO_ANALISIS_SOLICITUD.md) — fase ANÁLISIS_SOLICITUD, checklist documental (#248)
+- [DISEÑO_CONSULTAS_ORGANISMOS.md](DISEÑO_CONSULTAS_ORGANISMOS.md) — fase consultas a organismos (#247)
+- [DISEÑO_DIAGRAMAS_ESFTT.md](DISEÑO_DIAGRAMAS_ESFTT.md) — diagramas de flujo ESFTT por capas (#249)
+
+### Planificación
+- [PLAN_ROADMAP.md](PLAN_ROADMAP.md) — estado actual de implementación por milestones
+- [PLAN_ESTRATEGIA.md](PLAN_ESTRATEGIA.md) — visión estratégica, 14 bloques funcionales
+
+### Guías técnicas
+- [GUIA_CONTEXT_BUILDERS.md](GUIA_CONTEXT_BUILDERS.md) — context builders para generación de escritos
+- [GUIA_ROLES.md](GUIA_ROLES.md) — roles y permisos del sistema
+
+### Análisis
+- [ANALISIS_TAREAS_INVERSO.md](ANALISIS_TAREAS_INVERSO.md) — tabla inversa de tareas atómicas ESFTT
+- [ANALISIS_HOMOGENEIZACION_UI.md](ANALISIS_HOMOGENEIZACION_UI.md) — estudio de homogeneización de la interfaz
+
+### Procedimientos
+- [PROCEDIMIENTO_SETUP_PC.md](PROCEDIMIENTO_SETUP_PC.md) — configuración del entorno de desarrollo
+- [PROCEDIMIENTO_MMD_DESDE_DOCUMENTACION.md](PROCEDIMIENTO_MMD_DESDE_DOCUMENTACION.md) — generación de diagramas Mermaid
+- [PROCEDIMIENTO_MMD_DESDE_IMAGEN.md](PROCEDIMIENTO_MMD_DESDE_IMAGEN.md) — generación de diagramas desde imagen
 
 ---
 
 ## Enlaces Rápidos
 
 - [📘 Guía Vistas Bootstrap](GUIA_VISTAS_BOOTSTRAP.md) — **Referencia principal UI**
-- [Reglas de Desarrollo](fuentesIA/REGLAS_DESARROLLO.md) — flujo de trabajo Git
-- [PLAN_ROADMAP](fuentesIA/PLAN_ROADMAP.md) — qué está hecho, qué está pendiente
+- [Reglas de Desarrollo](REGLAS_DESARROLLO.md) — flujo de trabajo Git
+- [PLAN_ROADMAP](PLAN_ROADMAP.md) — qué está hecho, qué está pendiente
 - [Repositorio en GitHub](https://github.com/genete/bddat)
 
 ---

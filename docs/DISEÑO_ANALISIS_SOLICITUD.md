@@ -188,7 +188,7 @@ El context builder de este tipo de escrito consulta `requerimientos_tarea` para 
 {% endfor %}
 ```
 
-> Ver `docs/fuentesIA/GUIA_CONTEXT_BUILDERS.md` para el rol del context builder y su relación con el renderizador.
+> Ver `docs/GUIA_CONTEXT_BUILDERS.md` para el rol del context builder y su relación con el renderizador.
 
 ### UI: selector tipo shuttle
 

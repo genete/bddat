@@ -39,7 +39,16 @@ Issues activos: ninguno
 **Estado:** EN CURSO
 
 **Pendiente:**
-- Generación de escritos administrativos conectada a tramitación (#167)
+- Generación de escritos administrativos conectada a tramitación (#167) — fases:
+  - **Fase 0** (commit directo develop): fix `Documento.__str__` (R6) + export `campos_catalogo`
+  - **Fase 1** `feature/167-fase-1-tipo-solicitud-directo`: solicitudes FK directa + whitelist ESFTT (3 tablas)
+  - **Fase 2** `feature/167-fase-2-rename-plantillas`: rename `tipos_escritos`→`plantillas` + limpieza + nuevos campos
+  - **Fase 3** `feature/167-fase-3-nombre-en-plantilla`: añadir `nombre_en_plantilla` × 5 tablas tipo_
+  - **Fase 4** `feature/167-fase-4-admin-cascada`: admin plantillas con selectores en cascada E→S→F→T
+  - **Fase 5** `feature/167-fase-5-generacion`: motor de generación completo (B1-B8) desde tarea REDACTAR
+  - **Fase 6** `feature/167-fase-6-trazabilidad`: códigos embebidos + parseo automático
+  - Fases 1, 2 y 3 son **independientes entre sí**. Fases 4-6 son secuenciales.
+  - Diseño completo: `docs/DISEÑO_GENERACION_ESCRITOS.md`
 - Gestión de usuarios — adaptar a vistas V4 (#168)
 - Listado inteligente multi-pista con deducción automática de estados (#169) — servicio `app/services/seguimiento.py`
 - Semáforos y alertas de vencimiento (#74)
@@ -62,7 +71,7 @@ Issues activos: #74, #167, #168, #169, #181, #182, #189, #203, #204, #205, #206,
 **Descripción:** Motor de reglas completo (evaluador + configuración por Supervisor) + plazos legales con suspensión + permisos granulares.
 **Estado:** EN CURSO — evaluador implementado, pendiente UI de configuración y plazos
 
-Diseño: `docs/fuentesIA/DISEÑO_MOTOR_REGLAS.md`
+Diseño: `docs/DISEÑO_MOTOR_REGLAS.md`
 
 **Pendiente:**
 - CRUD de reglas del motor — interfaz Supervisor (#170)
