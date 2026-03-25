@@ -1,7 +1,7 @@
 # Guía de Vistas Bootstrap - BDDAT
 
-**Versión:** 2.0
-**Fecha:** 8 de marzo de 2026
+**Versión:** 2.2
+**Fecha:** 25 de marzo de 2026
 **Para:** Claude Code - Referencia de diseño UI
 
 ---
