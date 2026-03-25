@@ -1,7 +1,8 @@
 # Guía General del Proyecto BDDAT
 
-**Fecha de revisión:** 16/02/2026
-> ⚠️ **Pendiente de actualizar:** secciones de subsistema documental (decisiones post #191) y motor de reglas (implementado en PR #154). Consultar `DISEÑO_SUBSISTEMA_DOCUMENTAL.md` y `DISEÑO_MOTOR_REGLAS.md` para esas áreas.
+**Fecha de revisión:** 25/03/2026
+> ⚠️ **Pendiente de actualizar:** sección de subsistema documental (decisiones post #191). Consultar `DISEÑO_SUBSISTEMA_DOCUMENTAL.md` para esa área.
+> La sección del motor de reglas en este documento recoge los principios y la arquitectura general; para el mapa completo de reglas, esquema de tablas y pendientes de implementación ver `DISEÑO_MOTOR_REGLAS.md`.
 
 ---
 
@@ -211,13 +212,18 @@ Esta arquitectura mantiene la base de datos **limpia, adaptable y alineada con l
 
 **3. Reglas configurables:** Las reglas viven en tablas, no en código. Modificar el comportamiento del sistema implica modificar registros en tablas de reglas, no reescribir código. Esto permite adaptación ágil a cambios normativos.
 
+**4. Principio de escape:** Todo filtro, cascada o regla debe tener vía de escape. El técnico tramitador puede encontrar situaciones no previstas en el flujo normal (alegaciones fuera de contexto, cambio de rumbo del expediente, etc.). El sistema nunca crea callejones sin salida: el usuario puede elegir opciones «fuera de contexto» con advertencia visual, y toda acción de escape queda registrada en el cuaderno de bitácora.
+
 #### Implementación del Motor de Reglas
 
 **Cómo funcionan las reglas:**
 
 - El motor lee dinámicamente datos de las tablas estructurales
 - Evalúa condiciones basándose en valores de campos, existencia de registros relacionados y contexto del expediente
-- Produce acciones: **bloquear** (impedir acciones), **sugerir** (advertencias sin bloqueo), **obligar** (forzar creación/modificación), **calcular** (derivar valores) o **validar** (verificar consistencia)
+- Produce dos tipos de acción: **BLOQUEAR** (impedir la operación) o **ADVERTIR** (advertencia no bloqueante que el técnico puede ignorar)
+- Opera sobre cuatro eventos del ciclo de vida de cada entidad ESFTT: **CREAR**, **INICIAR**, **FINALIZAR** y **BORRAR**
+
+> Ver esquema completo de reglas y condiciones en `DISEÑO_MOTOR_REGLAS.md`.
 
 **Ejemplos de reglas:**
 
@@ -231,7 +237,7 @@ Esta arquitectura mantiene la base de datos **limpia, adaptable y alineada con l
 - `TRAMITE.REQUIERE_DESTINATARIO` → esto es una regla
 - `TIPO_SOLICITUD.FASES_OBLIGATORIAS` → esto es una regla
 
-Estos conceptos se implementan mediante tablas como `REGLAS_SECUENCIA_FASES`, `REGLAS_VALIDACION_TRAMITES`, `REGLAS_FLUJO_SOLICITUDES`.
+Estos conceptos se implementan mediante las tablas `REGLAS_MOTOR` (una fila por regla, indexada por evento y entidad) y `CONDICIONES_REGLA` (condiciones 1:N por regla, con lógica AND/OR). Ver `DISEÑO_MOTOR_REGLAS.md` para el esquema completo.
 
 #### Validación No Obstructiva en la Interfaz
 
@@ -258,7 +264,7 @@ Todas las modificaciones quedan registradas automáticamente en el cuaderno de b
 **Fase 3 en adelante - Con lógica activada:**
 
 - Restricciones automáticas según reglas definidas
-- Flujos guiados: sistema sugiere o impone siguiente paso según contexto
+- La iniciativa es siempre del técnico; el motor informa o bloquea, no genera el flujo por sí mismo
 - Validación en tiempo real previene inconsistencias
 - Flexibilidad mantenida: ajustar reglas no requiere nueva versión de software
 
