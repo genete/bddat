@@ -162,7 +162,7 @@ Nota: el texto legal solo menciona AAU; la extensión a AAUS es decisión de pol
 | INICIAR | FIGURA_AMBIENTAL_EXTERNA | `proyecto.ia.siglas` NOT IN {CA, AAI} AND NOT (`proyecto.ia.siglas` IN {AAU, AAUS} AND `proyecto.es_modificacion` = true) | BLOQUEAR |
 | INICIAR | AAU_AAUS_INTEGRADA | `proyecto.ia.siglas` NOT IN {AAU, AAUS} OR `proyecto.es_modificacion` = true | BLOQUEAR |
 | INICIAR | RESOLUCION | (`proyecto.ia.siglas` IN {CA, AAI} OR (`proyecto.ia.siglas` IN {AAU, AAUS} AND `proyecto.es_modificacion` = true)) AND NOT EXISTS fase FIGURA_AMBIENTAL_EXTERNA con `cerrada_favorable` = true | BLOQUEAR |
-| INICIAR | RESOLUCION | NOT EXISTS fase ANALISIS_TECNICO con `fecha_fin IS NOT NULL` (regla interna del servicio) | BLOQUEAR |
+| INICIAR | RESOLUCION | NOT EXISTS fase ANALISIS_SOLICITUD con `fecha_fin IS NOT NULL` (regla interna del servicio) | BLOQUEAR |
 | FINALIZAR | cualquiera | EXISTS trámite con `fecha_fin IS NULL` en esta fase | BLOQUEAR |
 | BORRAR | cualquiera | `fecha_inicio IS NOT NULL` | BLOQUEAR |
 
@@ -197,6 +197,10 @@ la tabla `entidades_consultadas`. Ver sección «Zona gris — consultas a organ
 
 Las tareas tienen solo 7 tipos genéricos. Sus reglas son de secuencia interna
 (independientes del dominio legislativo) y de obligatoriedad de documento.
+
+**Criterio de qué es una tarea ESFTT:**
+- Una tarea es una unidad de trabajo **registrable con fecha inicio/fin**. Si una actividad nunca se registra como pendiente o completada, no es una tarea ESFTT.
+- Las funcionalidades de interfaz (preparar documentación, calcular fechas, calcular plazos) **no son tareas** — son utilidades de soporte que no generan registro administrativo.
 
 | evento | tipo (codigo) | Condición (si TRUE → acción) | Acción |
 |--------|--------------|------------------------------|--------|
@@ -261,7 +265,7 @@ Tres tablas whitelist editables por el Supervisor cubren la cascada completa:
 | `fases_tramites` | `tipo_fase_id` + `tipo_tramite_id` | Qué trámites son válidos dentro de cada fase |
 
 **Características:**
-- Seed inicial desde `Estructura_fases_tramites_tareas.json`
+- Seed inicial desde `ESTRUCTURA_FTT.json`
 - CRUD editable por Supervisor (legislación cambiante — no hardcoded)
 - Solo definen **posibilidad** ("esta combinación tiene sentido"), no obligatoriedad ni orden
 - La cascada de selectores consume estas tablas como whitelist

@@ -1,6 +1,6 @@
 # Tabla Inversa de Tareas Atómicas — ESFTT
 
-> Fuente de verdad: `Estructura_fases_tramites_tareas.json`
+> Fuente de verdad: `ESTRUCTURA_FTT.json`
 > Última sincronización: 2026-03-05
 
 **Propósito de este documento:**

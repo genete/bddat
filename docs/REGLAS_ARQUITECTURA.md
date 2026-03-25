@@ -47,7 +47,7 @@ Esta brecha se ensancha con cada sesión y genera confianza falsa: el desarrolla
 | `ANALISIS_*.md` | Diagnóstico puntual o estudio. Puede ser derivado de otra fuente de verdad. | No debería — es histórico |
 | `PROCEDIMIENTO_*.md` | Pasos secuenciales para una operación concreta. | Cambia el proceso |
 | `ESTRUCTURA_*.md` | Catálogo estructural del dominio (reemplaza al JSON como lectura humana). | Cambia la estructura ESFTT |
-| `Estructura_fases_tramites_tareas.json` | Fuente de verdad estructural ESFTT para código e IA. Solo estructura, sin prosa. | Cambia la estructura ESFTT |
+| `ESTRUCTURA_FTT.json` | Fuente de verdad estructural ESFTT para código e IA. Solo estructura, sin prosa. | Cambia la estructura ESFTT |
 | Diagramas `.mmd` / `.svg` | Representación visual del sistema. Cara legible del JSON. | Cambia el JSON |
 
 ### 2.1 Documentos derivados
@@ -73,9 +73,9 @@ Esta línea va como primer comentario del archivo, antes de la declaración del 
 
 | Documento derivado | Fuente de verdad |
 |---|---|
-| `ANALISIS_TAREAS_INVERSO.md` | `Estructura_fases_tramites_tareas.json` |
-| `diagramas_esftt/capa0_conceptual.mmd` | `Estructura_fases_tramites_tareas.json` |
-| `diagramas_esftt/capa3_informacion_publica.mmd` | `Estructura_fases_tramites_tareas.json` |
+| `ANALISIS_TAREAS_INVERSO.md` | `ESTRUCTURA_FTT.json` |
+| `diagramas_esftt/capa0_conceptual.mmd` | `ESTRUCTURA_FTT.json` |
+| `diagramas_esftt/capa3_informacion_publica.mmd` | `ESTRUCTURA_FTT.json` |
 
 ---
 
@@ -168,7 +168,7 @@ Antes de crear diagramas de Capa 2 o Capa 3, y antes de iniciar la implementaci�
 
 Este documento es un borrador. Los puntos pendientes se rastrean en el issue #250. Resumen:
 
-- [ ] Disolver `docs/fuentesIA/` y subcarpetas — todos los MDs a `docs/` raíz
+- [x] Disolver `docs/fuentesIA/` — JSON movido a `docs/ESTRUCTURA_FTT.json` (v5.5)
 - [ ] Redistribuir contenido de `ANALISIS_167_*` en documentos con prefijo correcto
 - [ ] Completar secciones de árbol de decisión, sesión de sincronización y ciclo de vida (ver issue)
 - [ ] Limpieza del JSON y conversión a `ESTRUCTURA_FTT.md`
