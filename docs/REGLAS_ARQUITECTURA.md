@@ -9,6 +9,7 @@
 
 1. [Contexto y problema](#1-contexto-y-problema)
 2. [Tipos de documento y su rol](#2-tipos-de-documento-y-su-rol)
+   - [2.1 Documentos derivados](#21-documentos-derivados)
 3. [Flujo de una decisión arquitectónica](#3-flujo-de-una-decisión-arquitectónica)
 4. [Reglas del JSON de estructura](#4-reglas-del-json-de-estructura)
 5. [Cuándo una decisión está cerrada](#5-cuándo-una-decisión-está-cerrada)
@@ -48,6 +49,33 @@ Esta brecha se ensancha con cada sesión y genera confianza falsa: el desarrolla
 | `ESTRUCTURA_*.md` | Catálogo estructural del dominio (reemplaza al JSON como lectura humana). | Cambia la estructura ESFTT |
 | `Estructura_fases_tramites_tareas.json` | Fuente de verdad estructural ESFTT para código e IA. Solo estructura, sin prosa. | Cambia la estructura ESFTT |
 | Diagramas `.mmd` / `.svg` | Representación visual del sistema. Cara legible del JSON. | Cambia el JSON |
+
+### 2.1 Documentos derivados
+
+Un documento es **derivado** cuando su contenido se genera o extrae de otra fuente de verdad (normalmente el JSON de estructura). Estos documentos deben declarar su dependencia en cabecera para que el §6 de sincronización sea accionable.
+
+**Convención de cabecera para MDs derivados:**
+
+```markdown
+> Fuente de verdad: `<fichero>`
+> Última sincronización: <fecha ISO 8601>
+```
+
+**Convención para diagramas `.mmd`** (no admiten cabecera Markdown):
+
+```
+%% Fuente: <fichero> | Sincronizado: <fecha ISO 8601>
+```
+
+Esta línea va como primer comentario del archivo, antes de la declaración del diagrama (o después del bloque frontmatter `---` si existe).
+
+**Derivados conocidos actualmente:**
+
+| Documento derivado | Fuente de verdad |
+|---|---|
+| `ANALISIS_TAREAS_INVERSO.md` | `Estructura_fases_tramites_tareas.json` |
+| `diagramas_esftt/capa0_conceptual.mmd` | `Estructura_fases_tramites_tareas.json` |
+| `diagramas_esftt/capa3_informacion_publica.mmd` | `Estructura_fases_tramites_tareas.json` |
 
 ---
 
