@@ -1,7 +1,7 @@
 # Reglas de arquitectura y documentación de decisiones — BDDAT
 
-**Fecha:** 22/03/2026
-**Estado:** En progreso — pendiente cerrar según issue #250
+**Fecha:** 25/03/2026
+**Estado:** Cerrado — issue #250
 
 ---
 
@@ -14,7 +14,10 @@
 4. [Reglas del JSON de estructura](#4-reglas-del-json-de-estructura)
 5. [Cuándo una decisión está cerrada](#5-cuándo-una-decisión-está-cerrada)
 6. [Sincronización documental](#6-sincronización-documental)
-7. [Pendientes de la sesión dedicada](#7-pendientes-de-la-sesión-dedicada)
+7. [Skills de mantenimiento](#7-skills-de-mantenimiento)
+8. [Árbol de decisión](#8-árbol-de-decisión----qué-hago-con-esta-idea-o-necesidad)
+9. [Ciclo de vida de un documento](#9-ciclo-de-vida-de-un-documento)
+10. [Historial del documento](#10-historial-del-documento)
 
 ---
 
@@ -153,24 +156,122 @@ Los items "A ESTUDIAR" en los MDs de diseño son decisiones **abiertas** — deb
 
 ## 6. Sincronización documental
 
-Antes de crear diagramas de Capa 2 o Capa 3, y antes de iniciar la implementación de cualquier fase nueva, debe realizarse una verificación de coherencia:
+Antes de crear diagramas de Capa 2 o Capa 3, y antes de iniciar la implementación de cualquier fase nueva, debe realizarse una verificación de coherencia.
+
+**Cuándo se convoca una sesión de sincronización:**
+- Se modificó `ESTRUCTURA_FTT.json` (cualquier cambio de estructura)
+- Un diagrama tiene fecha de sincronización anterior a la del JSON
+- Dos MDs de diseño parecen contradecirse
 
 **Checklist de sincronización:**
 - [ ] Todas las decisiones de sesiones recientes tienen MD de diseño
 - [ ] El JSON refleja el estado actual de los MDs de diseño
 - [ ] Los items "A ESTUDIAR" pendientes tienen issue asignado
 - [ ] Las notas extensas del JSON se han movido a MDs de diseño
-- [ ] Los issues de diseño abiertos (actualmente #247, #248) tienen sus MDs de diseño correctamente referenciados
+- [ ] Los derivados conocidos (tabla §2.1) tienen su `> Última sincronización:` al día
+
+**Cómo ejecutar cada verificación:**
+
+1. **Decisiones sin MD** — revisar el log de commits recientes y comparar con la lista de `DISEÑO_*.md` en `docs/`:
+   - `git -C /d/BDDAT log --oneline -20` para ver sesiones recientes
+   - `ls docs/DISEÑO_*.md` para ver los MDs existentes
+
+2. **JSON vs MDs** — comparar la versión del JSON (`metadata.version`) con la fecha de los MDs de diseño relacionados. Si algún MD es posterior al JSON, el JSON está desactualizado.
+
+3. **Items "A ESTUDIAR" sin issue** — buscar en todos los MDs:
+   - `grep -rn "A ESTUDIAR" docs/` para listar los abiertos
+   - Cada resultado debe tener un issue de GitHub asignado
+
+4. **Notas extensas en el JSON** — revisar campos `nota` del JSON. Si alguno supera 3 líneas, mover el contenido a un `DISEÑO_*.md` y dejar solo `"ver DISEÑO_X.md §Y"`.
+
+5. **Derivados desactualizados** — usar el skill `/sync-derivados` para detectar qué fuentes cambiaron y qué derivados están desfasados.
+
+**Qué produce una sesión de sincronización:**
+
+Un commit con prefijo `[SYNC]` que lista explícitamente qué se ha sincronizado:
+
+```
+[SYNC] #250 Actualizar derivados tras cambios en ESTRUCTURA_FTT.json
+
+- ANALISIS_TAREAS_INVERSO.md: Última sincronización actualizada
+- capa0_conceptual.mmd: Última sincronización actualizada
+```
 
 ---
 
-## 7. Pendientes de la sesión dedicada (#250)
+## 7. Skills de mantenimiento
 
-Este documento es un borrador. Los puntos pendientes se rastrean en el issue #250. Resumen:
+Dos skills automatizan las tareas más repetitivas de sincronización y registro:
 
-- [x] Disolver `docs/fuentesIA/` — JSON movido a `docs/ESTRUCTURA_FTT.json` (v5.5)
-- [x] Limpieza del JSON y conversión a `ESTRUCTURA_FTT.md`
-- [ ] Redistribuir contenido de `ANALISIS_167_*` en documentos con prefijo correcto
-- [ ] Completar secciones de árbol de decisión, sesión de sincronización y ciclo de vida (ver issue)
-- [ ] Revisar si `GUIA_GENERAL.md` sigue siendo válida como referencia general
-- [ ] Skills de mantenimiento de dependencias documentales (ver issue #250 §disciplina futura)
+| Skill | Invocación | Función |
+|---|---|---|
+| `sync-derivados` | `/sync-derivados` | Detecta fuentes modificadas y actualiza `> Última sincronización:` en sus derivados |
+| `register-fuente` | `/register-fuente` | Registra un MD nuevo en la tabla §2.1, detectando su fuente desde la cabecera |
+
+Ambos skills leen el contexto git en tiempo real y operan sin argumentos en el caso habitual.
+
+---
+
+## 8. Árbol de decisión — ¿qué hago con esta idea o necesidad?
+
+```
+IDEA O NECESIDAD
+      │
+      ├─ ¿Es una corrección puntual o aclaración de algo ya decidido?
+      │       └─ Sí → Edita directamente el doc afectado + commit [DOCS]
+      │
+      ├─ ¿Implica una decisión de diseño? (arquitectura, modelo, flujo, motor de reglas)
+      │       └─ Sí → Sesión de diseño → DISEÑO_*.md
+      │               → Si afecta JSON: actualizar ESTRUCTURA_FTT.json + bump versión
+      │               → Si implica código: abrir issue con checklist + referencia al MD
+      │
+      ├─ ¿Es una tarea de implementación ya decidida?
+      │       └─ Sí → Abrir issue → rama feature → código → PR a develop
+      │
+      ├─ ¿Afecta a la estructura global? (JSON + diagramas + varios MDs)
+      │       └─ Sí → Sesión de sincronización → /sync-derivados → commit [SYNC]
+      │
+      └─ ¿Es conocimiento normativo externo? (legislación, instrucciones Consejería)
+              └─ Sí → NORMATIVA_*.md con cabecera:
+                       > Fuente: <referencia legal>
+                       > Aplica a: <subsistema o fase>
+```
+
+**Regla de oro:** si la idea solo existe en la conversación, no está documentada. Una conversación no es un doc de diseño.
+
+---
+
+## 9. Ciclo de vida de un documento
+
+### Nacimiento
+
+| Tipo | Quién lo crea | Estructura mínima obligatoria |
+|---|---|---|
+| `DISEÑO_*.md` | Claude o el usuario, en sesión de diseño | Título, fecha, decisión tomada, alternativas descartadas |
+| `NORMATIVA_*.md` | El usuario, con asistencia de Claude | Cabecera `> Fuente:` y `> Aplica a:`, texto de la norma |
+| `GUIA_*.md` | Claude, cuando hay suficiente implementación que documentar | Contexto, pasos, ejemplos |
+| `REGLAS_*.md` | Claude o el usuario, cuando se establece una norma de trabajo | Norma, motivación, ejemplos |
+| `ANALISIS_*.md` | Claude, como diagnóstico puntual | Fecha, alcance, hallazgos |
+| `ESTRUCTURA_*.md` | Claude, derivado del JSON | Cabecera `> Fuente de verdad:` + `> Última sincronización:` |
+
+### Actualización vs. archivo
+
+Un documento se **actualiza** cuando la decisión, norma o guía que describe cambia.
+
+Un documento se **archiva** (`docs/archivo/`) cuando:
+- La decisión fue revertida o sustituida por otra
+- El subsistema fue eliminado o renombrado completamente
+- Existe un `DISEÑO_*.md` más reciente que lo supera
+
+Un `DISEÑO_*.md` queda **congelado** cuando la implementación lo supera: se anota `> Estado: implementado` en la cabecera y no se vuelve a modificar. Sirve como registro histórico de por qué se tomó la decisión, no como referencia activa.
+
+### Derivados: cuándo se desactualizan
+
+Un derivado queda desactualizado cuando su fuente de verdad cambia. La señal visible es que la fecha en `> Última sincronización:` es anterior a la fecha del último commit que tocó la fuente. El skill `/sync-derivados` detecta esta situación automáticamente.
+
+---
+
+## 10. Historial del documento
+
+- **2026-03-22:** Primera versión — §1 a §5, checklist §6 básico
+- **2026-03-25:** Cierre borrador — §6 con procedimiento ejecutable, §7 skills, §8 árbol de decisión, §9 ciclo de vida (issue #250)
