@@ -65,7 +65,7 @@ A: app-container (grid header/main/footer)
 | **V1** (Dashboard) | A/B.1/B.2/B.3 | Simple | NO |
 | **V2** (Listado) | A/B.1/B.2/C.1/C.2/D/B.3 | C.2 independiente | SÍ |
 | **V3-BC** (Tramitación) | A/B.1/B.2/C.1/C.2/B.3 | C.2 independiente | SÍ |
-| **V4** (Detalle/Edición) | A/B.1/B.2/B.3 | Simple | NO |
+| **V4** (Detalle/Edición) | A/B.1/B.2/C.1/B.3 | Simple (B.2 entera) | C.1 solo header |
 | **Pool** (variante V3-BC) | A/B.1/B.2/C.1/C.2/B.3 | C.2 independiente | SÍ |
 
 ---
@@ -242,9 +242,12 @@ def get_expedientes():
 | 28/02/2026 | Acordeón → Tabs 4 niveles (#150) |
 | 04/03/2026 | Tabs → **Breadcrumbs** (#157) — arquitectura actual |
 
-> **Legacy:** La versión anterior (acordeón/tabs, `tramitacion_v3.html`) sigue en el repositorio
-> como referencia pero **no se usa**. Los archivos legacy están en `app/templates/vistas/vista3/`
-> y `app/static/js/v3-tabs-main.js`. No crear vistas nuevas con ese patrón.
+> **Legacy:** La versión anterior (acordeón/tabs) sigue en el repositorio pero **no se usa**.
+> Archivos legacy: `app/templates/vistas/vista3/` (partials acordeón/tabs),
+> `app/modules/expedientes/templates/expedientes/tramitacion_v3.html`,
+> `app/routes/vista3.py`, `app/static/js/v3-tabs-main.js`,
+> `app/static/js/acordeon_lazy.js`, `app/templates/layout/base_acordeon.html`.
+> No crear vistas nuevas con ese patrón.
 
 ### Concepto
 
@@ -410,17 +413,59 @@ Un solo template sirve para ver y editar. El parámetro `modo` controla qué se 
 **Regla fundamental: CERO salto de layout entre modos.**
 Los mismos elementos HTML en las mismas posiciones. Solo cambia el atributo `readonly`/`disabled` y aparecen controles auxiliares en edición (ej: selector de municipios).
 
+### Estructura real de un template V4
+
+```html
+{% from 'macros/page_header.html' import page_header %}
+
+{% block content %}
+{% if modo == 'editar' %}
+<form id="form_objeto" class="form-detail" action="{{ url_for(...) }}" method="POST">
+{% endif %}
+
+<!-- C.1: Encabezado homogéneo (lista-cabecera sin scroll) -->
+<div class="lista-cabecera">
+  {% call page_header('Título', 'fas fa-icon', title_accent=objeto.codigo) %}
+    {% if modo == 'ver' %}
+      <a href="{{ url_for('...listado') }}" class="btn btn-outline-primary">Volver</a>
+      <a href="{{ url_for('...editar', id=objeto.id) }}" class="btn btn-primary">Editar</a>
+    {% else %}
+      <a href="{{ url_for('...detalle', id=objeto.id) }}" class="btn btn-outline-primary">Cancelar</a>
+      <button type="submit" class="btn btn-primary">Guardar cambios</button>
+    {% endif %}
+  {% endcall %}
+</div>
+
+<!-- Contenido: fichas de campos, scroll del body entero -->
+<div class="v4-content content-constrained py-3">
+  <!-- Fichas aquí -->
+</div>
+
+{% if modo == 'editar' %}</form>{% endif %}
+{% endblock %}
+```
+
+**`lista-cabecera` en V4:** se usa solo para el header de página (macro `page_header`), no hay C.2 — el scroll es del `<body>` entero. La mecánica C.1/C.2 con scroll independiente es exclusiva de V2, V3-BC y Pool.
+
+**Macro `page_header`** — genera el bloque título + botones de forma homogénea entre todas las vistas:
+```jinja2
+{% call page_header('Expediente', 'fas fa-folder-open', title_accent='AT-' ~ expediente.numero_at) %}
+  ... botones ...
+{% endcall %}
+```
+El parámetro `title_accent` añade la parte variable del título en color primario (ej: número AT).
+
 ### Estructura de Fichas
 
 ```html
 <!-- Ficha tipo V4: cabecera verde secundario + cuerpo gris -->
 <div class="card shadow-sm mb-3">
     <div class="card-header card-header-accent">
-        <h5 class="mb-0 fw-semibold">
+        <h6 class="mb-0 fw-semibold">
             <i class="fas fa-icon me-2"></i>Título Ficha
-        </h5>
+        </h6>
     </div>
-    <div class="card-body card-body-tinted">
+    <div class="card-body card-body-tinted py-3">
         <!-- Campos del formulario -->
     </div>
 </div>
@@ -430,6 +475,7 @@ Los mismos elementos HTML en las mismas posiciones. Solo cambia el atributo `rea
 
 | Clase | Uso |
 |-------|-----|
+| `.v4-content` | Wrapper del cuerpo de fichas (usar siempre con `content-constrained`) |
 | `.card-header-accent` | Cabecera de ficha en `#c4ddca` (verde apoyo corporativo) |
 | `.card-body-tinted` | Fondo `#f5f5f5` en cuerpo de ficha para destacar campos blancos |
 | `.form-control[readonly]` | Override global: campos readonly con fondo blanco (igual que editable) |
@@ -475,41 +521,20 @@ Los mismos elementos HTML en las mismas posiciones. Solo cambia el atributo `rea
 
 ### Formulario de Edición
 
-```html
-{% if modo == 'editar' %}
-<form id="form_expediente" class="form-detail"
-      action="{{ url_for('blueprint.editar', id=objeto.id) }}" method="POST">
-{% endif %}
-
-<!-- ... contenido de la vista ... -->
-
-{% if modo == 'editar' %}
-</form>
-{% endif %}
-```
-
-La clase `form-detail` activa el focus ring verde corporativo via `v2-components.css`.
-
-### Botones de Acción
+El `<form>` envuelve **todo** el contenido del bloque, incluyendo `lista-cabecera`, para que el botón "Guardar cambios" (dentro del header) sea un `<button type="submit">` del mismo form. La clase `form-detail` activa el focus ring verde corporativo.
 
 ```html
-{% if modo == 'ver' %}
-    <a href="{{ url_for('blueprint.listado') }}" class="btn btn-secondary me-2">
-        <i class="fas fa-arrow-left me-1"></i> Volver
-    </a>
-    <!-- Acciones específicas de la vista (ej: Tramitar) -->
-    <a href="{{ url_for('blueprint.editar', id=objeto.id) }}" class="btn btn-primary">
-        <i class="fas fa-edit me-1"></i> Editar
-    </a>
-{% else %}
-    <a href="{{ url_for('blueprint.detalle', id=objeto.id) }}" class="btn btn-secondary me-2">
-        <i class="fas fa-times me-1"></i> Cancelar
-    </a>
-    <button type="submit" class="btn btn-primary">
-        <i class="fas fa-save me-1"></i> Guardar Cambios
-    </button>
+{% if modo == 'editar' %}
+<form id="form_objeto" class="form-detail" action="..." method="POST">
 {% endif %}
+
+<div class="lista-cabecera">...</div>  {# header con botones Guardar/Cancelar #}
+<div class="v4-content content-constrained py-3">...</div>
+
+{% if modo == 'editar' %}</form>{% endif %}
 ```
+
+Los **botones de acción** van dentro de la macro `page_header` (ver "Estructura real" arriba). Usar `btn-outline-primary` para acciones secundarias (Volver, Cancelar) y `btn-primary` para la acción principal (Editar, Guardar).
 
 ### Tooltips — Inicialización
 
@@ -783,7 +808,7 @@ container.addEventListener('scroll', toggleButton);
 - **V1:** `v1-dashboard.css`, `index_v1.html`
 - **V2:** Sin CSS específico (usa solo base), `lista_v2_base.html`, `listado_v2.html`, `v2-scroll-infinito.js`
 - **V3-BC:** `v3-breadcrumbs.css`, `tramitacion_bc*.html`, `_tabla_hijos.html`
-- **V4:** Sin CSS específico (clases en `v2-components.css`), `detalle.html` unificado
+- **V4:** Sin CSS específico (clases en `v2-components.css`), `detalle.html` unificado, macro `macros/page_header.html`
 - **Pool:** Inline en `pool_documentos.html` (variante V3-BC)
 
 ### Bootstrap 5
@@ -793,8 +818,9 @@ container.addEventListener('scroll', toggleButton);
 
 ---
 
-**Versión:** 2.1
-**Fecha:** 11 de marzo de 2026
+**Versión:** 2.2
+**Fecha:** 25 de marzo de 2026
 **Cambios v2.0:** Eliminada V3 acordeón/tabs (legacy), documentada V3-BC, listados embebidos y Pool.
 **Cambios v2.1 (#202):** Unificado thead V2/BC (verde claro `#c4ddca`). Añadido `.tabla-bloque` como contenedor card de tabla. Thead BC sin sticky (listas cortas). Responsive mobile en `_tabla_hijos.html` (clase `.tabla-hijos`). Estructura C.2 actualizada en V2 y V3-BC.
+**Cambios v2.2 (#251):** Estructura real de V4 documentada: `lista-cabecera` para header vía macro `page_header`, wrapper `v4-content`, form envuelve todo el contenido. Lista completa de archivos legacy V3. Comparativa corregida (V4 usa C.1 solo para header).
 **Referencia estudio:** `docs/ANALISIS_HOMOGENEIZACION_UI.md`
