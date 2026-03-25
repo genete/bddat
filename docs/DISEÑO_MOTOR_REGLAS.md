@@ -162,7 +162,7 @@ Nota: el texto legal solo menciona AAU; la extensión a AAUS es decisión de pol
 | INICIAR | FIGURA_AMBIENTAL_EXTERNA | `proyecto.ia.siglas` NOT IN {CA, AAI} AND NOT (`proyecto.ia.siglas` IN {AAU, AAUS} AND `proyecto.es_modificacion` = true) | BLOQUEAR |
 | INICIAR | AAU_AAUS_INTEGRADA | `proyecto.ia.siglas` NOT IN {AAU, AAUS} OR `proyecto.es_modificacion` = true | BLOQUEAR |
 | INICIAR | RESOLUCION | (`proyecto.ia.siglas` IN {CA, AAI} OR (`proyecto.ia.siglas` IN {AAU, AAUS} AND `proyecto.es_modificacion` = true)) AND NOT EXISTS fase FIGURA_AMBIENTAL_EXTERNA con `cerrada_favorable` = true | BLOQUEAR |
-| INICIAR | RESOLUCION | NOT EXISTS fase ANALISIS_TECNICO con `fecha_fin IS NOT NULL` (regla interna del servicio) | BLOQUEAR |
+| INICIAR | RESOLUCION | NOT EXISTS fase ANALISIS_SOLICITUD con `fecha_fin IS NOT NULL` (regla interna del servicio) | BLOQUEAR |
 | FINALIZAR | cualquiera | EXISTS trámite con `fecha_fin IS NULL` en esta fase | BLOQUEAR |
 | BORRAR | cualquiera | `fecha_inicio IS NOT NULL` | BLOQUEAR |
 
@@ -198,6 +198,10 @@ la tabla `entidades_consultadas`. Ver sección «Zona gris — consultas a organ
 Las tareas tienen solo 7 tipos genéricos. Sus reglas son de secuencia interna
 (independientes del dominio legislativo) y de obligatoriedad de documento.
 
+**Criterio de qué es una tarea ESFTT:**
+- Una tarea es una unidad de trabajo **registrable con fecha inicio/fin**. Si una actividad nunca se registra como pendiente o completada, no es una tarea ESFTT.
+- Las funcionalidades de interfaz (preparar documentación, calcular fechas, calcular plazos) **no son tareas** — son utilidades de soporte que no generan registro administrativo.
+
 | evento | tipo (codigo) | Condición (si TRUE → acción) | Acción |
 |--------|--------------|------------------------------|--------|
 | INICIAR | FIRMAR | NOT EXISTS tarea REDACTAR con `fecha_fin IS NOT NULL` AND `doc_producido_id IS NOT NULL` en este trámite | BLOQUEAR |
@@ -232,23 +236,72 @@ sea reutilizable y no genere variaciones hardcodeadas en plantillas.
 
 ---
 
+## Principio de escape
+
+**Principio transversal de diseño:** toda cascada, filtro y regla debe tener vía de escape.
+
+El técnico tramitador puede encontrar situaciones no previstas en el flujo normal
+(alegación fuera de contexto, cambio de rumbo del expediente, etc.). El sistema
+no debe crear callejones sin salida.
+
+**Implementación:**
+- El usuario puede elegir opciones "fuera de contexto" con advertencia visual
+- Toda acción de escape se registra en bitácora
+- Toggle "Solo aplicables al contexto" (defecto = todas las opciones visibles)
+
+Aplica a: selectores en cascada ESFTT, motor de reglas, filtrado de plantillas,
+y cualquier mecanismo futuro que restrinja opciones.
+
+---
+
+## Whitelist E→S→F→T — tablas de estructura ESFTT
+
+Tres tablas whitelist editables por el Supervisor cubren la cascada completa:
+
+| Tabla | PK compuesta | Semántica |
+|-------|-------------|-----------|
+| `expedientes_solicitudes` | `tipo_expediente_id` + `tipo_solicitud_id` | Qué solicitudes son válidas para cada tipo de expediente |
+| `solicitudes_fases` | `tipo_solicitud_id` + `tipo_fase_id` | Qué fases aplican a cada tipo de solicitud |
+| `fases_tramites` | `tipo_fase_id` + `tipo_tramite_id` | Qué trámites son válidos dentro de cada fase |
+
+**Características:**
+- Seed inicial desde `ESTRUCTURA_FTT.json`
+- CRUD editable por Supervisor (legislación cambiante — no hardcoded)
+- Solo definen **posibilidad** ("esta combinación tiene sentido"), no obligatoriedad ni orden
+- La cascada de selectores consume estas tablas como whitelist
+- El principio de escape permite al técnico salir de la whitelist con advertencia visual
+
+**Implementación:** Issue #167 Fase 1. Ver `docs/DISEÑO_GENERACION_ESCRITOS.md`.
+
+---
+
+## Tipos de solicitud combinados como entidades propias
+
+Las combinaciones de tipos de solicitud (AAP+AAC, AAP+AAC+DUP...) son entidades
+propias en `tipos_solicitudes`, no una tabla puente M:N.
+
+**Motivación:** Las combinaciones legales son ~6, finitas y cerradas (cambio legislativo
+para añadir una nueva). Cada combinación tiene implicaciones procedimentales distintas
+(fases, texto de resoluciones). Las plantillas necesitan FK directo.
+
+Ver catálogo completo en `docs/NORMATIVA_SOLICITUDES.md`.
+
+**Impacto en modelos:**
+- `tipos_solicitudes` → añadir ~6 tipos combinados
+- `solicitudes` → añadir FK `tipo_solicitud_id` directa (reemplaza tabla puente `solicitudes_tipos`)
+- `solicitudes_tipos` → mantener como histórico, dejar de usar para lógica de negocio
+
+**Implementación:** Issue #167 Fase 1.
+
+---
+
 ## Compatibilidad de tipos en una solicitud
 
-Una solicitud puede tener múltiples tipos simultáneamente (N:M via `solicitudes_tipos`),
-pero no todas las combinaciones son válidas.
+Con la decisión de tipos combinados como entidades propias, la compatibilidad entre
+tipos se gestiona mediante la whitelist `expedientes_solicitudes` y la propia tabla
+`tipos_solicitudes` (que solo contiene combinaciones legales).
 
-**Decisión de diseño: whitelist (pares permitidos), no blacklist.**
-
-Con 17 tipos hay 136 pares posibles; la mayoría son absurdos por definición.
-Un tipo nuevo añadido sin actualizar la tabla quedaría compatible con todo por omisión.
-Con whitelist, lo nuevo es inválido hasta definición explícita — más seguro.
-
-Ejemplos:
-- `AAP + AAE` → PROHIBIDO (AAE implica instalación construida; AAP es anterior)
-- `DUP + CIERRE` → PROHIBIDO (DUP implica que no se pudo construir; CIERRE implica existente)
-- `AAP + AAC` → PERMITIDO (tramitación conjunta estándar)
-- `AAP + AAC + DUP` → PERMITIDO (procedimiento estándar con utilidad pública)
-
+**Tabla de referencia histórica** (previa a la migración de Fase 1 del #167):
 ```
 TIPOS_SOLICITUDES_COMPATIBLES
   tipo_a_id  FK → tipos_solicitudes  (par siempre en orden: tipo_a < tipo_b)
@@ -256,8 +309,10 @@ TIPOS_SOLICITUDES_COMPATIBLES
   nota        texto explicativo / referencia normativa si aplica
 ```
 
-**Punto de evaluación:** al añadir un tipo a una solicitud (CREAR SolicitudTipo),
-comprobar que ninguno de los tipos ya presentes es incompatible con el nuevo.
+Ejemplos:
+- `AAP + AAE` → PROHIBIDO (AAE implica instalación construida; AAP es anterior)
+- `DUP + CIERRE` → PROHIBIDO (DUP implica que no se pudo construir; CIERRE implica existente)
+- `AAP + AAC` → PERMITIDO → entrada directa en `tipos_solicitudes` como `AAP_AAC`
 
 **Pendiente:** definir la lista completa de pares compatibles con el técnico del servicio.
 
@@ -326,7 +381,7 @@ Para reglas que necesiten esa distinción, el motor debe consultar `resultado_fa
 de la fase RESOLUCION asociada.
 
 ### FASE
-`resultado_fase_id` es FK a `tipos_resultados_fases` (NO boolean — GuiaGeneralNueva
+`resultado_fase_id` es FK a `tipos_resultados_fases` (NO boolean — GUIA_GENERAL
 desactualizada; el modelo Python ya usa FK).
 Valores: `FAVORABLE`, `FAVORABLE_CONDICIONADO`, `DESFAVORABLE`, `NO_PROCEDE`, `DESISTIDA`, `ARCHIVADA`.
 
@@ -411,7 +466,7 @@ Solo `Solicitud.activa` existe hoy — el resto está pendiente.
 
 - ⬜ Implementar campo `proyecto.es_modificacion` (Boolean, default=False) + migración
 - ⬜ Cambiar CHECK constraint `reglas_motor.evento` de `('CREAR','CERRAR','BORRAR')` a `('CREAR','INICIAR','FINALIZAR','BORRAR')`
-- ⬜ Actualizar GuiaGeneralNueva: sección FASE — `exito` (bool) → `resultado_fase_id` (FK a tipos_resultados_fases)
+- ⬜ Actualizar GUIA_GENERAL: sección FASE — `exito` (bool) → `resultado_fase_id` (FK a tipos_resultados_fases)
 - ⬜ Añadir `@property` de estado a FASE, TRÁMITE y TAREA antes de implementar el motor
 - ⬜ Definir tabla `entidades_consultadas` y su integración con SEPARATAS (issue draft)
 - ⬜ Diseño detallado de evaluador con handlers por entidad (TAREA → TRÁMITE → FASE → SOLICITUD → EXPEDIENTE → PROYECTO)

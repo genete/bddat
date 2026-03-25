@@ -1,7 +1,8 @@
 # Tabla Inversa de Tareas Atómicas — ESFTT
 
-**Generado:** 2026-03-05
-**Fuente:** `Estructura_fases_tramites_tareas.json` v5.2
+> Fuente de verdad: `ESTRUCTURA_FTT.json`
+> Última sincronización: 2026-03-05
+
 **Propósito de este documento:**
 
 El JSON de referencia está orientado jerárquicamente: Fase → Trámite → Tareas indicativas.

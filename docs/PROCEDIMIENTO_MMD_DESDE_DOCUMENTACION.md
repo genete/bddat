@@ -18,14 +18,14 @@ Primera lectura obligatoria. Aporta:
   a artículos concretos. Solo estructura.
 - Herramienta: Mermaid con `mmdc` para render a SVG.
 
-### 2. `GuiaGeneralNueva.md`
+### 2. `GUIA_GENERAL.md`
 Aporta el modelo mental de la tramitación:
 - EXPEDIENTE → SOLICITUD → FASE → TRAMITE → TAREA
 - Concepto de fase: contenedor de trámites para obtener un requisito.
 - Cierre de fase: manual por el usuario (resultado del catálogo).
 - La fase solo puede cerrarse cuando todos sus trámites están cerrados.
 
-### 3. `MOTOR_REGLAS_arquitectura.md`
+### 3. `DISEÑO_MOTOR_REGLAS.md`
 Aporta las condiciones del motor para INFORMACION_PUBLICA:
 - INICIAR: `EXISTS DR_NO_DUP AND ia NOT IN {AAU, AAUS}` → BLOQUEAR
 - FINALIZAR (universal): `EXISTS tramite con fecha_fin IS NULL` → BLOQUEAR
@@ -33,13 +33,13 @@ Aporta las condiciones del motor para INFORMACION_PUBLICA:
 - Principio rector: todo permitido excepto lo prohibido. El motor no
   conduce el flujo — responde a preguntas del usuario.
 
-### 4. `Estructura_fases_tramites_tareas.json` (sección PATRONES_FLUJO)
+### 4. `ESTRUCTURA_FTT.json` (sección PATRONES_FLUJO)
 Aporta los patrones base: A, B, C, D, E, F con sus secuencias de tareas.
 Detectado: los patrones compuestos (C+, EC, AB, C+E+F) no están
 formalizados como entradas propias — se describen solo en prosa
 en los trámites que los usan.
 
-### 5. `Estructura_fases_tramites_tareas.json` (sección FASES > INFORMACION_PUBLICA)
+### 5. `ESTRUCTURA_FTT.json` (sección FASES > INFORMACION_PUBLICA)
 Aporta los 7 trámites de la fase con:
 - Código y nombre de cada trámite
 - `tareas_indicativas`: secuencia de tareas del trámite

@@ -1,3 +1,5 @@
+// Mockup de referencia original: docs/mockups/select-mockup.html (commit 02fa7c7)
+
 /**
  * SelectorBusqueda — Control de selección con filtrado por texto
  *

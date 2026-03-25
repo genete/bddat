@@ -93,7 +93,7 @@ main ─────────────●─v0.1.0──●─v0.2.0  (sol
 
 ##### Fase 1: Análisis y Diseño
 
-- Se revisan documentos en Knowledge Base y `docs/fuentesIA/`
+- Se revisan documentos en Knowledge Base y `docs/`
 - **IA consulta `schema.sql`** (generado por usuario localmente)
 - Se identifican cambios necesarios
 - Se registra claramente el alcance
@@ -172,7 +172,7 @@ main ─────────────●─v0.1.0──●─v0.2.0  (sol
 
 ## 3. Milestones y Organización de Issues
 
-El estado actual de milestones y su contenido vive en `docs/fuentesIA/ROADMAP.md` (milestones M1–M5).
+El estado actual de milestones y su contenido vive en `docs/PLAN_ROADMAP.md` (milestones M1–M5).
 Los issues de cada milestone están organizados en GitHub.
 
 ---
@@ -274,10 +274,9 @@ bddat/
 ├── migrations/
 │   └── versions/
 ├── docs/
-│   └── fuentesIA/
-│       ├── REGLAS_DESARROLLO.md
-│       ├── GuiaGeneralNueva.md
-│       └── [otros documentos]
+│   ├── REGLAS_DESARROLLO.md
+│   ├── GUIA_GENERAL.md
+│   └── [otros documentos]
 ├── tests/
 ├── utils/
 ├── config.py
@@ -705,7 +704,7 @@ git stash pop  # Recuperar trabajo
 - Corregir typo en comentario de código
 - Actualizar `README.md`
 - Ajustar `.gitignore`
-- Actualizar documentación en `docs/fuentesIA/`
+- Actualizar documentación en `docs/`
 - Cambios en archivos de configuración menores
 
 **Proceso:**
@@ -841,7 +840,7 @@ git branch -D nombre-rama
 
 ### 16.1 Milestones → Versiones
 
-Los milestones actuales (M1–M5) y su contenido están en `docs/fuentesIA/ROADMAP.md`.
+Los milestones actuales (M1–M5) y su contenido están en `docs/PLAN_ROADMAP.md`.
 Las versiones siguen el criterio: `vMAJOR.MINOR.PATCH` — release al completar un milestone funcional completo.
 
 ### 16.2 Hotfixes
@@ -866,18 +865,18 @@ git checkout -b hotfix/fix-validacion-nif
 **Orden de prevalencia (mayor a menor):**
 
 1. **Código en el repositorio** (`app/`, `migrations/`)
-2. **Documentación en repositorio** (`docs/fuentesIA/`)
+2. **Documentación en repositorio** (`docs/`)
 3. **Pull Requests en GitHub** (historial completo)
 4. **Otras fuentes de conocimiento de IA**
 
 ### 17.2 Documentos Clave en Repositorio
 
 - `CLAUDE.md` — instrucciones de proyecto para Claude Code (punto de entrada)
-- `docs/fuentesIA/REGLAS_DESARROLLO.md` — este documento
-- `docs/fuentesIA/GuiaGeneralNueva.md` — arquitectura general y lógica de negocio
-- `docs/fuentesIA/ROADMAP.md` — estado de implementación por milestones
-- `docs/fuentesIA/ESTRATEGIA_ROADMAP.md` — visión estratégica, 14 bloques funcionales
-- `docs/fuentesIA/ARQUITECTURA_DOCUMENTOS.md` — decisiones subsistema documental
+- `docs/REGLAS_DESARROLLO.md` — este documento
+- `docs/GUIA_GENERAL.md` — arquitectura general y lógica de negocio
+- `docs/PLAN_ROADMAP.md` — estado de implementación por milestones
+- `docs/PLAN_ESTRATEGIA.md` — visión estratégica, 14 bloques funcionales
+- `docs/DISEÑO_SUBSISTEMA_DOCUMENTAL.md` — decisiones subsistema documental
 
 ---
 

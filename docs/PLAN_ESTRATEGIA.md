@@ -249,7 +249,7 @@ Los milestones con porcentaje de completitud ya cubren el seguimiento necesario.
 
 | Dónde | Qué contiene |
 |-------|-------------|
-| **ESTRATEGIA_ROADMAP.md** | Visión, actores, clasificación de bloques, principios de trabajo. Cambia solo si cambia la estrategia. |
-| **ROADMAP.md** | Estado actual por milestone: qué está implementado, qué está en curso, qué queda. Se actualiza al cerrar issues/milestones. |
+| **PLAN_ESTRATEGIA.md** | Visión, actores, clasificación de bloques, principios de trabajo. Cambia solo si cambia la estrategia. |
+| **PLAN_ROADMAP.md** | Estado actual por milestone: qué está implementado, qué está en curso, qué queda. Se actualiza al cerrar issues/milestones. |
 | **Issues GitHub** | El mini-plan de un bloque concreto: qué se hace, cómo, checklist. Verbosidad aquí, no en ROADMAP. |
 | **Milestones GitHub** | Agrupación de issues por bloque funcional. Refleja el progreso del roadmap. |

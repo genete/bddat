@@ -13,7 +13,7 @@ Desarrollado para la Consejería de Industria, Energía y Minas (Junta de Andalu
 Índice completo de documentación: `docs/README.md`
 
 Leer **siempre** antes de actuar:
-- `docs/fuentesIA/REGLAS_DESARROLLO.md` — workflow Git, commits, ramas, migraciones (reglas que debo seguir)
+- `docs/REGLAS_DESARROLLO.md` — workflow Git, commits, ramas, migraciones (reglas que debo seguir)
 - `docs/GUIA_VISTAS_BOOTSTRAP.md` — antes de crear cualquier vista
 - `docs/GUIA_COMPONENTES_INTERACTIVOS.md` — antes de implementar cualquier componente JS
 
@@ -70,7 +70,7 @@ Las FK deben referenciar con prefijo: `db.ForeignKey('public.tabla.campo')`
 
 ## Convenciones Bash (anti-bloqueos del parser)
 
-Ver referencia completa: `docs/fuentesIA/ANTI_BLOQUEOS_BASH.md`
+Ver referencia completa: `docs/REGLAS_BASH.md`
 
 Resumen de patrones obligatorios:
 - **`$()` y backticks:** NUNCA — separar en llamadas Bash secuenciales

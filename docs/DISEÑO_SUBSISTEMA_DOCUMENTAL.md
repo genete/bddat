@@ -2,7 +2,7 @@
 
 > **Sesión de diseño:** 2026-03-04 | **Actualizado:** 2026-03-18
 > Decisiones tomadas antes de entrar en M1 sistema documental (#166) y M2 generación escritos (#167).
-> Documentos relacionados: `MOTOR_REGLAS_arquitectura.md`, `GUIA_CONTEXT_BUILDERS.md`, `ROADMAP.md`
+> Documentos relacionados: `DISEÑO_MOTOR_REGLAS.md`, `GUIA_CONTEXT_BUILDERS.md`, `PLAN_ROADMAP.md`
 
 ---
 
@@ -146,7 +146,7 @@ El motor delegará via nuevo `tipo_criterio = 'PLAZO_ESTADO'`:
 
 ## Generación de escritos — arquitectura dos capas
 
-Ver detalle completo en `docs/fuentesIA/GUIA_CONTEXT_BUILDERS.md`.
+Ver detalle completo en `docs/GUIA_CONTEXT_BUILDERS.md`.
 
 ### Tabla `plantillas` (renombrada desde `tipos_escritos` en #167 Fase 2)
 

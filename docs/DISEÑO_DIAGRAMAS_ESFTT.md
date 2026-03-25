@@ -121,7 +121,7 @@ docs/diagramas_esftt/
 
 ## 7. Relación con el JSON
 
-El JSON (`Estructura_fases_tramites_tareas.json`) es el esqueleto estructural pero no es la fuente completa para los diagramas:
+El JSON (`ESTRUCTURA_FTT.json`) es el esqueleto estructural pero no es la fuente completa para los diagramas:
 
 - **Lo que el JSON aporta:** qué fases, trámites y patrones existen; la secuencia de tareas dentro de cada trámite.
 - **Lo que los MDs de diseño aportan:** condiciones del motor, decisiones arquitectónicas, semántica de cada fase, casos especiales.

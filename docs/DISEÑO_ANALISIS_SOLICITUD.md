@@ -15,7 +15,7 @@
 6. [Catálogo de requerimientos y selector de defectos](#6-catálogo-de-requerimientos-y-selector-de-defectos)
 7. [Motor de reglas: restricción de tasas](#7-motor-de-reglas-restricción-de-tasas)
 8. [Utilidades de redacción: firmantes y siglas](#8-utilidades-de-redacción-firmantes-y-siglas)
-9. [Impacto en Estructura_fases_tramites_tareas.json](#9-impacto-en-estructura_fases_tramites_tareasjson)
+9. [Impacto en ESTRUCTURA_FTT.json](#9-impacto-en-estructura_fases_tramites_tareasjson)
 
 ---
 
@@ -188,7 +188,7 @@ El context builder de este tipo de escrito consulta `requerimientos_tarea` para 
 {% endfor %}
 ```
 
-> Ver `docs/fuentesIA/GUIA_CONTEXT_BUILDERS.md` para el rol del context builder y su relación con el renderizador.
+> Ver `docs/GUIA_CONTEXT_BUILDERS.md` para el rol del context builder y su relación con el renderizador.
 
 ### UI: selector tipo shuttle
 
@@ -231,7 +231,7 @@ Se añade el campo `siglas_escritos` en el modelo `Usuario`. Su valor es las sig
 
 ---
 
-## 9. Impacto en Estructura_fases_tramites_tareas.json
+## 9. Impacto en ESTRUCTURA_FTT.json
 
 - Eliminar fases: `REGISTRO_SOLICITUD`, `ADMISIBILIDAD`, `ANÁLISIS_TÉCNICO`
 - Añadir fase: `ANÁLISIS_SOLICITUD` con trámites `ANÁLISIS_DOCUMENTAL`, `REQUERIMIENTO_SUBSANACIÓN`, `COMUNICACIÓN_INICIO`

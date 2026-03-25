@@ -6,7 +6,7 @@
 > **Audiencia:** Técnico de sistemas + Claude Code.
 > El Supervisor gestiona plantillas; esta guía es para el responsable técnico.
 >
-> **Diseño de referencia:** `docs/fuentesIA/ARQUITECTURA_DOCUMENTOS.md`
+> **Diseño de referencia:** `docs/DISEÑO_SUBSISTEMA_DOCUMENTAL.md`
 
 ---
 
