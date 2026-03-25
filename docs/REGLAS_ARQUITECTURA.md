@@ -169,7 +169,8 @@ Antes de crear diagramas de Capa 2 o Capa 3, y antes de iniciar la implementaci�
 Este documento es un borrador. Los puntos pendientes se rastrean en el issue #250. Resumen:
 
 - [x] Disolver `docs/fuentesIA/` — JSON movido a `docs/ESTRUCTURA_FTT.json` (v5.5)
+- [x] Limpieza del JSON y conversión a `ESTRUCTURA_FTT.md`
 - [ ] Redistribuir contenido de `ANALISIS_167_*` en documentos con prefijo correcto
 - [ ] Completar secciones de árbol de decisión, sesión de sincronización y ciclo de vida (ver issue)
-- [ ] Limpieza del JSON y conversión a `ESTRUCTURA_FTT.md`
 - [ ] Revisar si `GUIA_GENERAL.md` sigue siendo válida como referencia general
+- [ ] Skills de mantenimiento de dependencias documentales (ver issue #250 §disciplina futura)
