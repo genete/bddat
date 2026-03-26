@@ -2,7 +2,7 @@
 Blueprint para gestión de expedientes.
 
 Rutas:
-- GET  /expedientes/listado-v2                                                  - Listado con scroll infinito (Fase 2)
+- GET  /expedientes/                                                            - Listado con scroll infinito (Fase 2)
 - GET  /expedientes/<id>/tramitacion_v3                                         - Tramitación Vista V3 con tabs (legacy)
 - GET  /expedientes/<exp_id>/tramitacion                                        - Tramitación BC: nivel Expediente (#157)
 - GET  /expedientes/<exp_id>/tramitacion/solicitud/<sol_id>                     - Tramitación BC: nivel Solicitud (#157)
@@ -50,7 +50,7 @@ bp = Blueprint('expedientes', __name__,
                template_folder='templates')
 
 
-@bp.route('/listado-v2')
+@bp.route('/')
 @login_required
 def listado_v2():
     """

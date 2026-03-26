@@ -58,6 +58,19 @@
  * Solución: igualar el bg del card al color del thead → el hueco es invisible. */
 .tabla-bloque:has(> table.expedientes-table) {
   background-color: var(--primary-light, #c4ddca);
+  /* overflow:clip recorta el contenido a border-radius sin crear scroll container,
+   * por lo que position:sticky del thead sigue funcionando en C.2. */
+  overflow: clip;
+}
+
+/* Elimina border-top/bottom directo del <table> cuando es hijo de .tabla-bloque.
+ * Sin overflow:hidden (necesario para sticky), el borde recto de la tabla se extiende
+ * hasta la esquina del elemento, cruzando la zona de border-radius del card y creando
+ * un artefacto visible. La separación visual la aportan el box-shadow del card y el
+ * border-bottom de los th. */
+.tabla-bloque > table.expedientes-table {
+  border-top: none;
+  border-bottom: none;
 }
 
 /* Redondeado superior del thead cuando la tabla es hija directa del card (V2).
@@ -136,7 +149,7 @@
   border-bottom: none;
 }
 
-/* Responsive tabla */
+/* Responsive tabla (expedientes/proyectos/entidades) */
 @media (max-width: 991px) {
   .expedientes-table th:nth-child(3), /* Solicitudes */
   .expedientes-table td:nth-child(3) {
@@ -151,23 +164,60 @@
   .expedientes-table td:nth-child(5) {
     display: none;
   }
-  
+
   .expedientes-table th,
   .expedientes-table td {
     padding: 0.75rem 1rem; /* Padding reducido en mobile */
     font-size: 0.8rem;
   }
-  
+
   /* Sticky header usa var(--header-height) que en mobile es 92px */
 
   /* Ajuste sticky en C.2 mobile */
   .lista-scroll-container .expedientes-table thead th {
     top: 0; /* Dentro de C.2 siempre top: 0 */
   }
-  
+
   /* En mobile, min-height más pequeño (thead + 2 filas) */
   .lista-scroll-container {
     min-height: 150px;
+  }
+}
+
+/* Columna Código de plantillas: texto largo sin espacios (ej. REQUERIMIENTO_SUBSANACION)
+ * puede estirar la tabla por encima del viewport. Se trunca con ellipsis. */
+.plantillas-table td:nth-child(2) {
+  max-width: 180px;
+  overflow-wrap: break-word;
+  word-break: break-all;
+}
+
+/* Responsive tabla plantillas (9 columnas):
+ * ≤1199px: ocultar Solicitud(5), Fase(6), Trámite(7)  → 6 cols
+ * ≤991px:  ocultar además Expediente(4)               → 5 cols
+ * ≤767px:  ocultar además Tipo documento(3)           → 4 cols: Nombre, Código, Estado, Acciones */
+@media (max-width: 1199px) {
+  .plantillas-table th:nth-child(5),
+  .plantillas-table td:nth-child(5),
+  .plantillas-table th:nth-child(6),
+  .plantillas-table td:nth-child(6),
+  .plantillas-table th:nth-child(7),
+  .plantillas-table td:nth-child(7) {
+    display: none;
+  }
+}
+
+@media (max-width: 991px) {
+  .plantillas-table th:nth-child(4),
+  .plantillas-table td:nth-child(4) {
+    display: none;
+  }
+}
+
+@media (max-width: 767px) {
+  .plantillas-table th:nth-child(3),
+  .plantillas-table td:nth-child(3) {
+    display: none;
   }
 }
 
