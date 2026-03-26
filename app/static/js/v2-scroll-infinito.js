@@ -205,7 +205,7 @@ class ScrollInfinito {
                 }
                 case 'acciones': {
                     const btn = document.createElement('button');
-                    btn.className = 'btn btn-sm btn-primary';
+                    btn.className = 'btn-accion-ver';
                     btn.innerHTML = '<i class="fas fa-eye"></i> Ver';
                     btn.addEventListener('click', () => {
                         window.location.href = this.detailUrl(item.id);

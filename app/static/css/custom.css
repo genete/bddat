@@ -265,3 +265,36 @@ table a.badge:hover {
     border-left: 1px solid rgba(0, 0, 0, .125);
     flex-shrink: 0;
 }
+
+/* ========================================
+   BDDAT - Botón estándar "Ver detalle"
+   Usado en columnas de acciones de todos los listados.
+   Hereda el color primario del tema Junta vía var(--bs-primary).
+   ======================================== */
+.btn-accion-ver {
+    -webkit-appearance: none;
+    appearance: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    border-radius: 0.25rem;
+    border: 1px solid var(--bs-primary);
+    color: var(--bs-primary);
+    background-color: transparent;
+    text-decoration: none;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: color 0.15s ease-in-out,
+                background-color 0.15s ease-in-out,
+                border-color 0.15s ease-in-out;
+}
+
+.btn-accion-ver:hover,
+.btn-accion-ver:focus {
+    background-color: var(--bs-primary);
+    color: #fff;
+    text-decoration: none;
+}

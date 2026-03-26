@@ -20,7 +20,7 @@
       { "key": "tipo_ia",           "label": "Instr. Ambiental",         "type": "text"     },
       { "key": "responsable",       "label": "Responsable",              "type": "text"     },
       { "key": "fecha",             "label": "Fecha",                    "type": "text"     },
-      { "key": "_acciones",         "label": "",                         "type": "acciones" }
+      { "key": "_acciones",         "label": "Acciones",                 "type": "acciones" }
     ]
   }
 }

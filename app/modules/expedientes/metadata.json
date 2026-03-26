@@ -21,7 +21,7 @@
       { "key": "responsable",        "label": "Responsable",        "type": "text"   },
       { "key": "num_solicitudes",    "label": "Solicitudes",        "type": "custom" },
       { "key": "estado_tramitacion", "label": "Estado",             "type": "custom" },
-      { "key": "_acciones",          "label": "",                   "type": "custom" }
+      { "key": "_acciones",          "label": "Acciones",           "type": "custom" }
     ]
   }
 }

@@ -60,7 +60,7 @@
                         <th>Nombre Completo</th>
                         <th>Roles</th>
                         <th>Estado</th>
-                        <th></th>
+                        <th>Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -116,8 +116,8 @@
                         </td>
                         <td>
                             <a href="{{ url_for('usuarios.detalle', id=usuario.id) }}"
-                               class="btn btn-sm btn-outline-primary" title="Ver / Editar">
-                                <i class="fas fa-eye"></i>
+                               class="btn-accion-ver">
+                                <i class="fas fa-eye"></i> Ver
                             </a>
                         </td>
                     </tr>

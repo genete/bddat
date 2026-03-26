@@ -19,7 +19,7 @@
       { "key": "nif",             "label": "NIF",                        "type": "text"     },
       { "key": "roles",           "label": "Roles",                      "type": "text"     },
       { "key": "activo",          "label": "Activo",                     "type": "bool"     },
-      { "key": "_acciones",       "label": "",                           "type": "acciones" }
+      { "key": "_acciones",       "label": "Acciones",                   "type": "acciones" }
     ]
   }
 }
