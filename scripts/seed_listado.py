@@ -195,7 +195,7 @@ with app.app_context():
     TDOC_OTROS = TDOC.get('OTROS', next(iter(TDOC.values())))
     TRES_FAV   = TRES.get('FAVORABLE', next(iter(TRES.values())))
 
-    TAREA_ANAL = TTAREA['ANALISIS']
+    TAREA_ANAL = TTAREA['ANALIZAR']
     TAREA_RED  = TTAREA['REDACTAR']
     TAREA_FIR  = TTAREA['FIRMAR']
     TAREA_NOT  = TTAREA['NOTIFICAR']
