@@ -267,7 +267,7 @@ Además del filtro por `tipo_titular`, el listado necesita filtros que no tienen
 ## 9. Próximos pasos
 
 1. ~~Revisar y aprobar este análisis (especialmente §8)~~ — en curso
-2. ~~Migración `tipo_titular` en `Entidad`~~ — **DECIDIDA** (§8). Pendiente de ejecutar: `flask db revision` manual, campo `tipo_titular VARCHAR(30) nullable` con default `'OTRO'`, poblar entidades existentes.
+2. ~~Migración `tipo_titular` en `Entidad`~~ — **HECHO** (issue #169). Migración `f77b09ef7c1e`, campo `tipo_titular VARCHAR(30) nullable`. Titulares existentes poblados con `'OTRO'` hasta revisión manual.
 3. ~~Crear script `docs_prueba/seed_listado.py` con los escenarios de §6~~ — hecho
 4. ~~**Limpieza BD ADMISION_TRAMITE**~~ — **HECHO** (issue #257). JSON actualizado a v5.6. Scripts promovidos a `scripts/`. Sin migración Alembic — los maestros FTT nunca se insertan por migración, siempre por `reset_maestros_ftt.py`.
 5. ~~Terminar decisiones §8 pendientes~~ — en curso. Quedan diferidos: `tecnologia` en `Proyecto` y presentación de `Notas`.
