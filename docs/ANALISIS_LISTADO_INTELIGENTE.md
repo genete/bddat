@@ -261,6 +261,9 @@ Además del filtro por `tipo_titular`, el listado necesita filtros que no tienen
 - [x] **Última comunicación** — **DECISIÓN: ELIMINAR del listado.** Deducir el último documento externo por fecha es demasiado complejo y sin utilidad clara en BDDAT. Si se necesita, queda en el detalle del expediente.
 - [x] **Diseño columnas pista (frontend)** — **DECISIÓN: texto abreviado o nombre completo cuando quepa, con color de fondo/texto según estado.** Las 5 columnas de pista deben ser compactas con `white-space: nowrap`. Sin badge separado — el color de celda ya actúa como indicador visual. El resto de columnas: `Nº AT` y `Tipo solicitud` también `nowrap`; `Solicitante` y `Proyecto` con ellipsis controlado; contenedor de tabla con `overflow-x: auto` para scroll horizontal.
 - [x] **Prefijo `docs/`** en la línea `Fuente de verdad` de este fichero — **DECISIÓN: corrección aplicada.**
+- [ ] **Ruta de la vista del listado** — ¿Reemplazar la `/expedientes/` existente (ruta `/` del módulo) o añadir `/expedientes/listado/` dejando convivir ambas temporalmente?
+- [ ] **Filtro por usuario por defecto** — ¿Mostrar solo los expedientes del usuario actual (`responsable_id = current_user.id`) o todos? Propuesta: por defecto `mis` expedientes, toggle para `todos` (supervisores). URL: `?ver=mis` / `?ver=todos`.
+- [ ] **Filtro activos/resueltos por defecto** — El análisis dice activos por defecto. Propuesta: `?estado=activos` (default) / `?estado=resueltos` / `?estado=todos`, reflejado en la URL.
 
 ---
 
