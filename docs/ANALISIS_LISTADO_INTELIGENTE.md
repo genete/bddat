@@ -181,20 +181,19 @@ Fila = solicitud. El AT puede repetirse. Columnas relevantes para el test:
 
 ---
 
-## 7. Clasificación de administrados y prioridad de atención
+## 7. Clasificación de administrados, prioridad y filtros
 
 ### 7.1 Motivación
 
-Con 170+ solicitudes activas simultáneas, el listado puede ocultar casos urgentes entre el volumen masivo de la gran distribuidora. La diferenciación visual y el filtro por tipo de administrado permiten al tramitador no perder de vista los casos de mayor impacto social:
+Con 170+ solicitudes activas simultáneas, el listado puede ocultar casos urgentes entre el volumen masivo de la gran distribuidora. La diferenciación visual y los filtros por tipo de administrado permiten al tramitador no perder de vista los casos de mayor impacto social o político:
 
-| Tipo | Por qué priorizar |
-|------|-------------------|
-| **PROMOTOR** | Instalaciones cedidas — bloquean entregas de viviendas o apertura de negocios |
-| **PARTICULAR** | Persona física — instalación propia, menor capacidad de seguimiento |
-| **DISTRIBUIDOR_MENOR** | Eléctricas pequeñas — su supervivencia puede depender del expediente |
-| **GRAN_DISTRIBUIDORA** | Volumen masivo (EDISTRIBUCIÓN…) — tiene recursos para absorber tiempos |
-| **ORGANISMO** | Administración o empresa pública |
-| **OTRO** | Resto |
+| `tipo_titular` | Por qué priorizar | Notas |
+|----------------|-------------------|-------|
+| **PROMOTOR** | Instalaciones cedidas o persona física — bloquean entrega de viviendas, apertura de negocios, instalaciones propias sin recursos de seguimiento | Incluye distribución cedida. Un ayuntamiento que promueve una instalación es ORGANISMO_PUBLICO, no PROMOTOR |
+| **ORGANISMO_PUBLICO** | Presión política real — ayuntamientos, Junta de Andalucía, AGE, puertos del Estado | Políticamente sensible independientemente de si promueven o solo son titulares |
+| **DISTRIBUIDOR_MENOR** | Eléctricas pequeñas — su viabilidad puede depender del expediente | |
+| **GRAN_DISTRIBUIDORA** | Volumen masivo (EDISTRIBUCIÓN…) — tiene recursos para absorber tiempos | |
+| **OTRO** | Resto | |
 
 La prioridad se deriva del tipo — no se almacena un número en BD. La lógica puede evolucionar sin migración.
 
@@ -209,7 +208,7 @@ tipo_titular = db.Column(
     comment='Categoría del administrado cuando actúa como titular. '
             'NULL para entidades sin rol_titular. '
             'Valores: GRAN_DISTRIBUIDORA | DISTRIBUIDOR_MENOR | '
-            'PARTICULAR | PROMOTOR | ORGANISMO | OTRO'
+            'PROMOTOR | ORGANISMO_PUBLICO | OTRO'
 )
 ```
 
@@ -221,18 +220,30 @@ tipo_titular = db.Column(
 
 | `tipo_titular` | Estilo en columna Solicitante |
 |----------------|-------------------------------|
-| `PROMOTOR` / `PARTICULAR` | **Negrita** — máxima visibilidad |
+| `PROMOTOR` | **Negrita** — máxima visibilidad |
+| `ORGANISMO_PUBLICO` | **Negrita** + color distintivo (pendiente de definir) |
 | `DISTRIBUIDOR_MENOR` | Normal |
 | `GRAN_DISTRIBUIDORA` | Gris — menor urgencia relativa |
-| `ORGANISMO` / `OTRO` | Normal |
+| `OTRO` | Normal |
 
-El filtro por `tipo_titular` en el listado inteligente permite trabajar por segmentos: "ver solo PROMOTOR pendientes de firma", "ver todo lo de DISTRIBUIDOR_MENOR con plazos vencidos", etc.
+### 7.4 Filtros sin columna visible
+
+Además del filtro por `tipo_titular`, el listado necesita filtros que no tienen columna propia porque son criterios de búsqueda, no información permanente en pantalla:
+
+| Filtro | Fuente en BD | Estado |
+|--------|-------------|--------|
+| **Tipo de expediente** | `expediente.tipo_expediente_id` → `tipos_expedientes.tipo` | Existe |
+| **Tecnología** | No existe campo en BD | Requiere nuevo campo en `Proyecto` |
+| **Tipo de administrado** | `tipo_titular` en `Entidad` (ver §7.2) | Requiere migración |
+
+**Tecnología:** útil principalmente para técnicos de generación renovable (solar, eólica, hidráulica, etc.). El `tipo_expediente` "Renovable" agrupa todas las tecnologías sin distinguirlas. Se necesitaría un campo nuevo en `Proyecto` (p.ej. `tecnologia VARCHAR(30)`) o una tabla maestra `tipos_tecnologia`. Pendiente de decisión — ver §8.
 
 ---
 
 ## 8. Pendientes de decisión
 
-- [ ] **Migración `tipo_titular` en `Entidad`**: añadir campo y poblar datos existentes. Requiere revisar las entidades ya registradas en BD.
+- [ ] **Migración `tipo_titular` en `Entidad`**: añadir campo y poblar datos existentes. Requiere revisar las entidades ya registradas en BD. Valores: `GRAN_DISTRIBUIDORA | DISTRIBUIDOR_MENOR | PROMOTOR | ORGANISMO_PUBLICO | OTRO`.
+- [ ] **Campo `tecnologia` en `Proyecto`**: ¿campo libre VARCHAR, enum fijo o tabla maestra `tipos_tecnologia`? Necesario para el filtro de técnicos de generación renovable.
 - [ ] **Migración ANALISIS_SOLICITUD**: ¿Se crea el tipo nuevo en BD o se mantienen los 3 viejos? Afecta al mapeo de SOL/REQ/SUB.
 - [ ] **Fase ADMISION_TRAMITE** (id=6): Específica de renovables. ¿Pista propia o agrupada en SOL/REQ/SUB?
 - [ ] **Prioridad con múltiples fases abiertas en la misma pista**: se propone el estado más urgente (rojo > … > verde). ¿Correcto o se necesita desglose?
