@@ -49,7 +49,6 @@ Punto de entrada de documentación externa al expediente.
 | CONSULTA_MINISTERIO | RECEPCION_INFORME | E | Informe preceptivo del Ministerio |
 | COMPATIBILIDAD_AMBIENTAL | AUDIENCIA | EC | Propuesta de declaración de incompatibilidad ambiental (MA) |
 | COMPATIBILIDAD_AMBIENTAL | RECEPCION_INFORME | E | Informe vinculante de Medio Ambiente (compatible/incompatible) |
-| ADMISION_TRAMITE | ALEGACIONES | EB | Alegaciones presentadas al informe de admisión |
 | CONSULTAS | RECEPCION_INFORME | E | Informe de organismo sectorial (con condicionados o negativa) |
 | CONSULTAS | TRASLADO_REPAROS | EC | Respuesta del titular a reparos del organismo |
 | INFORMACION_PUBLICA | ANUNCIO_BOE | C+E+F | Justificante de publicación con fecha real del BOE |
@@ -85,8 +84,6 @@ Punto de entrada de documentación externa al expediente.
 | CONSULTA_MINISTERIO | RECEPCION_INFORME | E | Informe del Ministerio (incorporado) | Nota/informe de análisis |
 | COMPATIBILIDAD_AMBIENTAL | AUDIENCIA | EC | Propuesta de incompatibilidad (incorporada) | Informe para redactar alegaciones |
 | COMPATIBILIDAD_AMBIENTAL | RECEPCION_INFORME | E | Informe vinculante MA | Nota de análisis |
-| ADMISION_TRAMITE | ANALISIS_ADMISION | AB | Documentación de admisión | Informe de admisión |
-| ADMISION_TRAMITE | ALEGACIONES | EB | Alegaciones incorporadas | Nota de análisis |
 | CONSULTAS | SEPARATAS | AC | Identifica organismos afectados | Informe de organismos (habilita REDACTAR separatas) |
 | CONSULTAS | RECEPCION_INFORME | E | Informe de organismo sectorial | Nota de análisis de condicionados |
 | CONSULTAS | TRASLADO_REPAROS | EC | Respuesta del titular a reparos | Nota de análisis |
@@ -111,8 +108,6 @@ Punto de entrada de documentación externa al expediente.
 | CONSULTA_MINISTERIO | SOLICITUD_INFORME | C | Solicitud de informe preceptivo al Ministerio |
 | COMPATIBILIDAD_AMBIENTAL | SOLICITUD_COMPATIBILIDAD | C | Solicitud de compatibilidad ambiental a MA |
 | COMPATIBILIDAD_AMBIENTAL | AUDIENCIA | EC | Alegaciones a propuesta de incompatibilidad |
-| ADMISION_TRAMITE | ANALISIS_ADMISION | AB | Comunicación de resultado de admisión |
-| ADMISION_TRAMITE | ALEGACIONES | EB | Respuesta a alegaciones de admisión |
 | CONSULTAS | SEPARATAS | AC | Separatas por organismo afectado (con plantillas) |
 | CONSULTAS | TRASLADO_REPAROS | EC | Traslado de reparos del titular al organismo |
 | INFORMACION_PUBLICA | ANUNCIO_BOE | C+E+F | Anuncio para el BOE |
@@ -144,8 +139,6 @@ El documento firmado proviene del portafirmas corporativo.
 | CONSULTA_MINISTERIO | SOLICITUD_INFORME | C | — |
 | COMPATIBILIDAD_AMBIENTAL | SOLICITUD_COMPATIBILIDAD | C | — |
 | COMPATIBILIDAD_AMBIENTAL | AUDIENCIA | EC | — |
-| ADMISION_TRAMITE | ANALISIS_ADMISION | AB | — |
-| ADMISION_TRAMITE | ALEGACIONES | EB | — |
 | CONSULTAS | SEPARATAS | AC | — |
 | CONSULTAS | TRASLADO_REPAROS | EC | — |
 | INFORMACION_PUBLICA | ANUNCIO_BOE | C+E+F | — |
@@ -177,8 +170,6 @@ El justificante proviene de Notifica o similar (sistema corporativo externo).
 | CONSULTA_MINISTERIO | SOLICITUD_INFORME | C | Ministerio | Acuse solicitud informe |
 | COMPATIBILIDAD_AMBIENTAL | SOLICITUD_COMPATIBILIDAD | C | Medio Ambiente | Acuse solicitud compatibilidad |
 | COMPATIBILIDAD_AMBIENTAL | AUDIENCIA | EC | MA (alegaciones) | Acuse alegaciones audiencia |
-| ADMISION_TRAMITE | ANALISIS_ADMISION | AB | Titular | Acuse resultado admisión |
-| ADMISION_TRAMITE | ALEGACIONES | EB | Titular (respuesta) | Acuse respuesta alegaciones |
 | CONSULTAS | SEPARATAS | AC | Organismos afectados (uno por separata) | Acuse por organismo |
 | CONSULTAS | TRASLADO_REPAROS | EC | Organismo (reparos trasladados) | Acuse traslado reparos |
 | INFORMACION_PUBLICA | ANUNCIO_BOE | C+E+F | BOE | Acuse envío BOE |

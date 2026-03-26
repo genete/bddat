@@ -269,8 +269,9 @@ Además del filtro por `tipo_titular`, el listado necesita filtros que no tienen
 1. ~~Revisar y aprobar este análisis (especialmente §8)~~ — en curso
 2. ~~Migración `tipo_titular` en `Entidad`~~ — **DECIDIDA** (§8). Pendiente de ejecutar: `flask db revision` manual, campo `tipo_titular VARCHAR(30) nullable` con default `'OTRO'`, poblar entidades existentes.
 3. ~~Crear script `docs_prueba/seed_listado.py` con los escenarios de §6~~ — hecho
-4. **Ejecutar limpieza BD por decisión ADMISION_TRAMITE:** borrar `tipos_fases` id=4, `tipos_tramites` ids 8 y 9, pares `fases_tramites` (4,8) y (4,9). Eliminar regla del motor `CREAR FASE ADMISION_TRAMITE` de `DISEÑO_MOTOR_REGLAS.md`. Actualizar `seed_listado.py`.
+4. ~~**Limpieza BD ADMISION_TRAMITE**~~ — **HECHO** (issue #257). JSON actualizado a v5.6. Scripts promovidos a `scripts/`. Sin migración Alembic — los maestros FTT nunca se insertan por migración, siempre por `reset_maestros_ftt.py`.
 5. ~~Terminar decisiones §8 pendientes~~ — en curso. Quedan diferidos: `tecnologia` en `Proyecto` y presentación de `Notas`.
+5b. **Escribir `scripts/verificar_seed.py`** — verifica estructura de datos de los 11 escenarios (T01-T11) contra BD: tipos de fase/trámite/tarea correctos, campos doc_usado/doc_producido/notas según cada caso. Sirve como test de regresión para cuando exista `seguimiento.py`. Pendiente de implementar.
 6. Implementar `app/services/seguimiento.py`
 7. Implementar la vista del listado (issue #169)
 8. Vista de auditoría — ver issue #256

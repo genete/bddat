@@ -151,7 +151,6 @@ de la solicitud — una resolución denegatoria es el mecanismo ordinario de fin
 | evento | tipo (codigo) | Condición (si TRUE → acción) | Acción |
 |--------|--------------|------------------------------|--------|
 | CREAR | CONSULTA_MINISTERIO | `expediente.tipo_expediente_id` NOT IN {1} (Transporte) | BLOQUEAR |
-| CREAR | ADMISION_TRAMITE | `expediente.tipo_expediente_id` NOT IN {4} (Renovable) | BLOQUEAR |
 | INICIAR | INFORMACION_PUBLICA | EXISTS documento tipo DR_NO_DUP en esta solicitud AND `proyecto.ia.siglas` NOT IN {AAU, AAUS} | BLOQUEAR |
 <!-- DR_NO_DUP = documento que acredita que la instalación no requiere Declaración de Utilidad Pública para su implantación (condición objetiva, no declaración de intención).
 Fuente: Disposición Final Cuarta del Decreto-ley 26/2021, de 14 de diciembre (simplificación administrativa Andalucía).

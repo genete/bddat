@@ -76,16 +76,6 @@ Los patrones son orientativos y combinables. `C+` = patrón C extendido con INCO
 
 ---
 
-### ADMISION_TRAMITE
-*Resolución de admisión a trámite. Solo instalaciones de generación renovable.*
-
-| Trámite | Patrón | Tareas indicativas |
-|---|---|---|
-| `ANALISIS_ADMISION` | AB | ANALIZAR → REDACTAR → FIRMAR → NOTIFICAR |
-| `ALEGACIONES` | EB | INCORPORAR → ANALIZAR → REDACTAR → FIRMAR → NOTIFICAR |
-
----
-
 ### CONSULTAS
 *Informes sectoriales a organismos (RD 1955/2000). Un trámite por organismo. Ver `DISEÑO_CONSULTAS_ORGANISMOS.md`.*
 
