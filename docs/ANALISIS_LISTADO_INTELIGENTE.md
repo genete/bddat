@@ -181,35 +181,73 @@ Fila = solicitud. El AT puede repetirse. Columnas relevantes para el test:
 
 ---
 
-## 7. Diferenciación visual de solicitante
+## 7. Clasificación de administrados y prioridad de atención
 
-| Tipo de solicitante | Estilo |
-|--------------------|--------|
-| EDISTRIBUCIÓN REDES DIGITALES S.L.U. | Fondo/texto distintivo (gris oscuro) — principal administrado AT en Andalucía |
-| Persona física (particular) | Negrita |
-| Resto de compañías | Normal |
+### 7.1 Motivación
 
-La diferenciación se puede derivar de un flag o campo en la entidad `Entidad` del modelo, o de una lista configurable en tablas maestras.
+Con 170+ solicitudes activas simultáneas, el listado puede ocultar casos urgentes entre el volumen masivo de la gran distribuidora. La diferenciación visual y el filtro por tipo de administrado permiten al tramitador no perder de vista los casos de mayor impacto social:
+
+| Tipo | Por qué priorizar |
+|------|-------------------|
+| **PROMOTOR** | Instalaciones cedidas — bloquean entregas de viviendas o apertura de negocios |
+| **PARTICULAR** | Persona física — instalación propia, menor capacidad de seguimiento |
+| **DISTRIBUIDOR_MENOR** | Eléctricas pequeñas — su supervivencia puede depender del expediente |
+| **GRAN_DISTRIBUIDORA** | Volumen masivo (EDISTRIBUCIÓN…) — tiene recursos para absorber tiempos |
+| **ORGANISMO** | Administración o empresa pública |
+| **OTRO** | Resto |
+
+La prioridad se deriva del tipo — no se almacena un número en BD. La lógica puede evolucionar sin migración.
+
+### 7.2 Campo propuesto en el modelo `Entidad`
+
+El modelo actual (`app/models/entidad.py`) tiene roles booleanos (`rol_titular`, `rol_consultado`, `rol_publicador`) pero **no tiene ningún campo que clasifique el tipo de administrado**. Se propone añadir:
+
+```python
+tipo_titular = db.Column(
+    db.String(30),
+    nullable=True,
+    comment='Categoría del administrado cuando actúa como titular. '
+            'NULL para entidades sin rol_titular. '
+            'Valores: GRAN_DISTRIBUIDORA | DISTRIBUIDOR_MENOR | '
+            'PARTICULAR | PROMOTOR | ORGANISMO | OTRO'
+)
+```
+
+- `NULL` para entidades que no son titulares (`rol_titular=False`)
+- Requiere migración manual (`flask db revision`)
+- No requiere tabla maestra separada — los valores son un enum de negocio estable
+
+### 7.3 Diferenciación visual en el listado
+
+| `tipo_titular` | Estilo en columna Solicitante |
+|----------------|-------------------------------|
+| `PROMOTOR` / `PARTICULAR` | **Negrita** — máxima visibilidad |
+| `DISTRIBUIDOR_MENOR` | Normal |
+| `GRAN_DISTRIBUIDORA` | Gris — menor urgencia relativa |
+| `ORGANISMO` / `OTRO` | Normal |
+
+El filtro por `tipo_titular` en el listado inteligente permite trabajar por segmentos: "ver solo PROMOTOR pendientes de firma", "ver todo lo de DISTRIBUIDOR_MENOR con plazos vencidos", etc.
 
 ---
 
 ## 8. Pendientes de decisión
 
+- [ ] **Migración `tipo_titular` en `Entidad`**: añadir campo y poblar datos existentes. Requiere revisar las entidades ya registradas en BD.
 - [ ] **Migración ANALISIS_SOLICITUD**: ¿Se crea el tipo nuevo en BD o se mantienen los 3 viejos? Afecta al mapeo de SOL/REQ/SUB.
 - [ ] **Fase ADMISION_TRAMITE** (id=6): Específica de renovables. ¿Pista propia o agrupada en SOL/REQ/SUB?
 - [ ] **Prioridad con múltiples fases abiertas en la misma pista**: se propone el estado más urgente (rojo > … > verde). ¿Correcto o se necesita desglose?
 - [ ] **N/A vs vacío**: cuando una pista no aplica al tipo de solicitud, ¿celda vacía, texto "N/A" o icono?
-- [ ] **Notas**: ¿campo libre por solicitud, o algo más estructurado (etiquetas, categorías)?
-- [ ] **Última comunicación**: ¿se incluye como columna o queda en el detalle del expediente?
-- [ ] **Diferenciación visual de solicitante**: ¿flag en tabla `entidades` o lista configurable en maestras?
-- [ ] **Prefijo `docs/`** en la línea `Fuente de verdad` de este fichero (actualmente sin prefijo). Corrección menor pendiente.
+- [ ] **Notas**: ¿campo libre por solicitud en la vista, o campo en el modelo `Solicitud`?
+- [ ] **Última comunicación**: ¿columna en el listado o queda en el detalle del expediente?
+- [ ] **Prefijo `docs/`** en la línea `Fuente de verdad` de este fichero. Corrección menor pendiente.
 
 ---
 
 ## 9. Próximos pasos
 
 1. Revisar y aprobar este análisis (especialmente §8)
-2. Crear script `docs_prueba/seed_listado.py` con los escenarios de §6
-3. Implementar `app/services/seguimiento.py`
-4. Implementar la vista del listado (issue #169)
-5. Vista de auditoría — ver issue #[pendiente]
+2. Migración `tipo_titular` en `Entidad` (issue pendiente)
+3. Crear script `docs_prueba/seed_listado.py` con los escenarios de §6
+4. Implementar `app/services/seguimiento.py`
+5. Implementar la vista del listado (issue #169)
+6. Vista de auditoría — ver issue #256
