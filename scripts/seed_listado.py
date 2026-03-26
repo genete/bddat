@@ -49,7 +49,7 @@ def cargar_ids():
     tramites = {r[0]: r[1] for r in db.session.execute(
         db.text('SELECT codigo, id FROM public.tipos_tramites')).fetchall()}
     solicitudes = {r[0]: r[1] for r in db.session.execute(
-        db.text('SELECT tipo, id FROM public.tipos_solicitudes')).fetchall()}
+        db.text('SELECT siglas, id FROM public.tipos_solicitudes')).fetchall()}
     expedientes = {r[0]: r[1] for r in db.session.execute(
         db.text('SELECT tipo, id FROM public.tipos_expedientes')).fetchall()}
     docs = {r[0]: r[1] for r in db.session.execute(
@@ -195,7 +195,7 @@ with app.app_context():
     TDOC_OTROS = TDOC.get('OTROS', next(iter(TDOC.values())))
     TRES_FAV   = TRES.get('FAVORABLE', next(iter(TRES.values())))
 
-    TAREA_ANAL = TTAREA['ANALIZAR']
+    TAREA_ANAL = TTAREA['ANALISIS']
     TAREA_RED  = TTAREA['REDACTAR']
     TAREA_FIR  = TTAREA['FIRMAR']
     TAREA_NOT  = TTAREA['NOTIFICAR']
