@@ -1,10 +1,22 @@
 # Análisis: Listado Inteligente de Expedientes
 
-> Fuente de verdad: `docs/ESTRUCTURA_FTT.json`
+> Fuente de verdad: `ESTRUCTURA_FTT.json`
 > Última sincronización: 2026-03-26
 
 **Issue de referencia:** #169
 **Estado:** Borrador — pendiente de revisión
+
+---
+
+## 1. Concepto y decisiones de arquitectura
+
+### Columnas configurables vía `metadata.json`
+
+Las columnas del listado — incluidas las pistas — se definen en el `metadata.json` del módulo, siguiendo el patrón establecido en el resto de módulos (`app/modules/*/metadata.json`, leído por `app/utils/metadata.py`).
+
+Cada pista es una entrada de tipo `"pista"` con los `tipos_fase` que le corresponden. Cambiar visibilidad, añadir o reordenar columnas = editar el JSON y hacer deploy. No requiere tocar código Python ni plantillas.
+
+**No está expuesto a administración por UI** — lo cambia el programador o el técnico responsable del proyecto. Queda versionado en git. Es la granularidad correcta para este proyecto: los cambios de configuración de columnas son puntuales (detección de necesidad o consenso con usuarios) y no ocurren en producción de forma rutinaria.
 
 ---
 
@@ -34,7 +46,7 @@ El tramitador gestiona por lotes: filtra por estado de pista y trabaja secuencia
 | **RESOLUCIÓN** | Estado | Pista de resolución |
 | **FIN** | Booleano calculado | TRUE si todas las pistas son FIN o vacías. Permite filtrar activos/resueltos |
 | **Notas** | Texto libre | A definir alcance en BDDAT |
-| **Última comunicación** | Referencia | TBD — a decidir si se incluye |
+| ~~**Última comunicación**~~ | — | **ELIMINADA.** Demasiado complejo de deducir (último doc externo por fecha) y sin utilidad clara en BDDAT. Queda en el detalle del expediente si se necesita. |
 
 ---
 
@@ -42,17 +54,15 @@ El tramitador gestiona por lotes: filtra por estado de pista y trabaja secuencia
 
 | Pista | tipos_fases en BD | Obligatoriedad |
 |-------|-------------------|----------------|
-| **SOL/REQ/SUB** | `ADMISIBILIDAD` (id=2) | Siempre |
-| **CONSULTAS** | `CONSULTAS` (id=7), `CONSULTA_MINISTERIO` (id=4) — y futuras fases de tipo similar | Según tipo solicitud (POS/N/A) |
-| **MA** | `COMPATIBILIDAD_AMBIENTAL` (id=5), `FIGURA_AMBIENTAL_EXTERNA` (id=9), `AAU_AAUS_INTEGRADA` (id=10) | Según tipo solicitud |
-| **IP** | `INFORMACION_PUBLICA` (id=8) | Según tipo solicitud (POS/N/A) |
-| **RESOLUCIÓN** | `RESOLUCION` (id=11) | Siempre |
+| **SOL/REQ/SUB** | `ANALISIS_SOLICITUD` (id=1) | Siempre |
+| **CONSULTAS** | `CONSULTAS` (id=5), `CONSULTA_MINISTERIO` (id=2) — y futuras fases de tipo similar | Según tipo solicitud (POS/N/A) |
+| **MA** | `COMPATIBILIDAD_AMBIENTAL` (id=3), `FIGURA_AMBIENTAL_EXTERNA` (id=7), `AAU_AAUS_INTEGRADA` (id=8) | Según tipo solicitud |
+| **IP** | `INFORMACION_PUBLICA` (id=6) | Según tipo solicitud (POS/N/A) |
+| **RESOLUCIÓN** | `RESOLUCION` (id=9) | Siempre |
 
-**Inteligencia de columna:** si una solicitud no tiene fases del tipo "principal" de una pista pero sí de un tipo alternativo (p.ej. no tiene `CONSULTAS` pero sí `CONSULTA_MINISTERIO`), la columna muestra el estado de la fase disponible. Si tiene varias fases abiertas en la misma pista, se muestra el estado más urgente. Las fases cerradas no contribuyen al estado visible.
+**Inteligencia de columna:** si una solicitud no tiene fases del tipo "principal" de una pista pero sí de un tipo alternativo (p.ej. no tiene `CONSULTAS` pero sí `CONSULTA_MINISTERIO`), la columna muestra el estado de la fase disponible. Si tiene varias fases abiertas en la misma pista, se muestra el estado más urgente; cuando hay más de un elemento en ese mismo nivel de urgencia se añade un contador entre paréntesis (ej: `rojo(2)`). Las fases cerradas no contribuyen al estado visible.
 
-**Columna vacía vs N/A:** si el tipo de solicitud hace que una pista sea no aplicable (p.ej. AAC no tiene IP), la celda aparece vacía/gris sin estado. Diferente a FIN (verde).
-
-> **Pendiente de decisión:** `ESTRUCTURA_FTT.json` v5.5 define `ANALISIS_SOLICITUD` como código unificado que sustituye a `REGISTRO_SOLICITUD + ADMISIBILIDAD + ANALISIS_TECNICO`. En BD aún existen los tres códigos viejos. Mientras no se migre, la pista SOL/REQ/SUB mapea a `ADMISIBILIDAD`. Ver §8.
+**Columna vacía (N/A):** si el tipo de solicitud hace que una pista sea no aplicable (p.ej. AAC no tiene IP), la celda aparece vacía — fondo limpio, sin texto ni icono. Diferente a FIN (verde).
 
 ---
 
@@ -242,23 +252,27 @@ Además del filtro por `tipo_titular`, el listado necesita filtros que no tienen
 
 ## 8. Pendientes de decisión
 
-- [ ] **Migración `tipo_titular` en `Entidad`**: añadir campo y poblar datos existentes. Requiere revisar las entidades ya registradas en BD. Valores: `GRAN_DISTRIBUIDORA | DISTRIBUIDOR_MENOR | PROMOTOR | ORGANISMO_PUBLICO | OTRO`.
-- [ ] **Campo `tecnologia` en `Proyecto`**: ¿campo libre VARCHAR, enum fijo o tabla maestra `tipos_tecnologia`? Necesario para el filtro de técnicos de generación renovable.
-- [ ] **Migración ANALISIS_SOLICITUD**: ¿Se crea el tipo nuevo en BD o se mantienen los 3 viejos? Afecta al mapeo de SOL/REQ/SUB.
-- [ ] **Fase ADMISION_TRAMITE** (id=6): Específica de renovables. ¿Pista propia o agrupada en SOL/REQ/SUB?
-- [ ] **Prioridad con múltiples fases abiertas en la misma pista**: se propone el estado más urgente (rojo > … > verde). ¿Correcto o se necesita desglose?
-- [ ] **N/A vs vacío**: cuando una pista no aplica al tipo de solicitud, ¿celda vacía, texto "N/A" o icono?
-- [ ] **Notas**: ¿campo libre por solicitud en la vista, o campo en el modelo `Solicitud`?
-- [ ] **Última comunicación**: ¿columna en el listado o queda en el detalle del expediente?
-- [ ] **Prefijo `docs/`** en la línea `Fuente de verdad` de este fichero. Corrección menor pendiente.
+- [x] **Migración `tipo_titular` en `Entidad`** — **DECISIÓN: PROCEDER.** Campo `nullable=True`, default `'OTRO'`. Sin riesgo de datos: todas las entidades existentes quedarán como `OTRO` hasta revisión manual. Valores: `GRAN_DISTRIBUIDORA | DISTRIBUIDOR_MENOR | PROMOTOR | ORGANISMO_PUBLICO | OTRO`. Migración manual con `flask db revision`.
+- [ ] **Campo `tecnologia` en `Proyecto`** — **DIFERIDO.** Útil para técnicos de generación renovable, pero no bloquea el listado. Pendiente de decidir si VARCHAR libre, enum fijo o tabla maestra `tipos_tecnologia`. Placeholder en §9.
+- [x] **Fase ADMISION_TRAMITE** — **DECISIÓN: ELIMINAR.** Se absorbe completamente en `ANALISIS_SOLICITUD`. Los requisitos específicos de renovables (capacidad legal, técnica, económica, permiso de acceso y conexión) se cubren mediante el checklist de `ANALISIS_DOCUMENTAL`, que varía por `(tipo_instalacion, tipo_solicitud)` — ver `DISEÑO_ANALISIS_SOLICITUD.md §4`. `ANALISIS_ADMISION` y `ALEGACIONES` desaparecen como trámites: ALEGACIONES = REQUERIMIENTO_SUBSANACION (alegar ante inadmisión provisional es idéntico a subsanar un defecto).
+- [x] **Prioridad con múltiples fases abiertas en la misma pista** — **DECISIÓN: estado más urgente con contador.** Se muestra el color más urgente presente (rojo > amarillo > azul > naranja > gris > verde). Cuando hay más de un elemento en ese nivel se añade un contador: `rojo(2)`. Ver §3.
+- [x] **N/A vs vacío** — **DECISIÓN: celda vacía.** Fondo limpio, sin texto ni icono. Ver §3.
+- [ ] **Notas** — **DIFERIDO.** En el diseño hoja de cálculo es un campo persistente. Opciones abiertas: (a) tooltip en la columna de la pista, (b) columna recolectora de notas de pistas, (c) campo `observaciones` ya existente en el modelo. Pendiente de decidir presentación.
+- [x] **Última comunicación** — **DECISIÓN: ELIMINAR del listado.** Deducir el último documento externo por fecha es demasiado complejo y sin utilidad clara en BDDAT. Si se necesita, queda en el detalle del expediente.
+- [x] **Diseño columnas pista (frontend)** — **DECISIÓN: texto abreviado o nombre completo cuando quepa, con color de fondo/texto según estado.** Las 5 columnas de pista deben ser compactas con `white-space: nowrap`. Sin badge separado — el color de celda ya actúa como indicador visual. El resto de columnas: `Nº AT` y `Tipo solicitud` también `nowrap`; `Solicitante` y `Proyecto` con ellipsis controlado; contenedor de tabla con `overflow-x: auto` para scroll horizontal.
+- [x] **Prefijo `docs/`** en la línea `Fuente de verdad` de este fichero — **DECISIÓN: corrección aplicada.**
 
 ---
 
 ## 9. Próximos pasos
 
-1. Revisar y aprobar este análisis (especialmente §8)
-2. Migración `tipo_titular` en `Entidad` (issue pendiente)
-3. Crear script `docs_prueba/seed_listado.py` con los escenarios de §6
-4. Implementar `app/services/seguimiento.py`
-5. Implementar la vista del listado (issue #169)
-6. Vista de auditoría — ver issue #256
+1. ~~Revisar y aprobar este análisis (especialmente §8)~~ — en curso
+2. ~~Migración `tipo_titular` en `Entidad`~~ — **DECIDIDA** (§8). Pendiente de ejecutar: `flask db revision` manual, campo `tipo_titular VARCHAR(30) nullable` con default `'OTRO'`, poblar entidades existentes.
+3. ~~Crear script `docs_prueba/seed_listado.py` con los escenarios de §6~~ — hecho
+4. **Ejecutar limpieza BD por decisión ADMISION_TRAMITE:** borrar `tipos_fases` id=4, `tipos_tramites` ids 8 y 9, pares `fases_tramites` (4,8) y (4,9). Eliminar regla del motor `CREAR FASE ADMISION_TRAMITE` de `DISEÑO_MOTOR_REGLAS.md`. Actualizar `seed_listado.py`.
+5. ~~Terminar decisiones §8 pendientes~~ — en curso. Quedan diferidos: `tecnologia` en `Proyecto` y presentación de `Notas`.
+6. Implementar `app/services/seguimiento.py`
+7. Implementar la vista del listado (issue #169)
+8. Vista de auditoría — ver issue #256
+9. **Decidir campo `tecnologia` en `Proyecto`** (diferido de §8): VARCHAR libre, enum fijo o tabla maestra. No bloquea el listado.
+10. **Decidir presentación de Notas** (diferido de §8): tooltip en columna de pista, columna recolectora, o `observaciones` del modelo.
