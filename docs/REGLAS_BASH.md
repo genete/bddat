@@ -11,7 +11,7 @@ ni el modo "accept edits". Evitarlos cambiando el patrón.
 |---------------------|-------|----------|
 | `output redirection >` | `cmd > fichero` | Usar tool `Write` |
 | `command contains newlines that could separate multiple commands` | heredoc en Bash, **`python -c "...multilínea..."`** o bucle `for/do/done` multilínea | Escribir con `Write` → pasar como fichero (`python script.py`; si es bucle, `bash fichero.sh`) |
-| `quoted newline + #-line` | `## Header` dentro de string con comillas (heredoc, `git commit -m`, `--body`) | Usar fichero temporal (`Write` → `-F`/`--body-file`) |
+| `quoted newline + #-line` | Cualquier línea que empiece por `#` tras un salto dentro de cadena entrecomillada: `## Header` en heredoc/`--body`, **comentario `# ...` en `python -c "..."`**, etc. | Usar fichero temporal (`Write` → `-F`/`--body-file` o `python script.py`) |
 | `command contains quoted characters in flag names` | comillas dentro de `--body "..."` o flag con valor entrecomillado | Usar fichero temporal para el valor |
 | `backtick or $() substitution` / `command contains $() command substitution` | `` cmd=`...` `` o `$(...)` | Separar en llamadas Bash secuenciales |
 | `backslash before shell operator` | `\|`, `\;`, `\&`, `\<`, `\>` en comandos — **incluido `grep 'pat1\|pat2'`** | Eliminar barra — usar `grep -E 'pat1|pat2'` o `-e pat1 -e pat2` |
