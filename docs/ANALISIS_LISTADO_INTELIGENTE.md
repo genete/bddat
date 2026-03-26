@@ -269,7 +269,7 @@ Además del filtro por `tipo_titular`, el listado necesita filtros que no tienen
 1. ~~Revisar y aprobar este análisis (especialmente §8)~~ — en curso
 2. ~~Migración `tipo_titular` en `Entidad`~~ — **DECIDIDA** (§8). Pendiente de ejecutar: `flask db revision` manual, campo `tipo_titular VARCHAR(30) nullable` con default `'OTRO'`, poblar entidades existentes.
 3. ~~Crear script `docs_prueba/seed_listado.py` con los escenarios de §6~~ — hecho
-4. **Ejecutar limpieza BD por decisión ADMISION_TRAMITE:** borrar `tipos_fases` id=4, `tipos_tramites` ids 8 y 9, pares `fases_tramites` (4,8) y (4,9). Eliminar regla del motor `CREAR FASE ADMISION_TRAMITE` de `DISEÑO_MOTOR_REGLAS.md`. Actualizar `seed_listado.py`.
+4. ~~**Limpieza BD ADMISION_TRAMITE**~~ — **HECHO** (issue #257). Migración `d65a957ade7d`. Scripts promovidos a `scripts/`.
 5. ~~Terminar decisiones §8 pendientes~~ — en curso. Quedan diferidos: `tecnologia` en `Proyecto` y presentación de `Notas`.
 6. Implementar `app/services/seguimiento.py`
 7. Implementar la vista del listado (issue #169)

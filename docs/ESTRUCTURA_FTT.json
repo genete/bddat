@@ -1,9 +1,9 @@
 {
   "metadata": {
-    "version": "5.5",
+    "version": "5.6",
     "descripcion": "Estructura jerárquica de fases, trámites y tareas para expedientes de AT",
     "principio": "Minimalismo estructural — la semántica vive en los TIPOS",
-    "fecha_actualizacion": "2026-03-25",
+    "fecha_actualizacion": "2026-03-26",
     "ref_diseño": [
       "docs/DISEÑO_ANALISIS_SOLICITUD.md",
       "docs/DISEÑO_MOTOR_REGLAS.md",
@@ -199,28 +199,6 @@
           "descripcion": "Recepción de informe vinculante (compatible o incompatible)",
           "tareas_indicativas": ["INCORPORAR", "ANALIZAR"],
           "patron": "E"
-        }
-      ]
-    },
-    {
-      "codigo": "ADMISION_TRAMITE",
-      "nombre": "Admisión a Trámite",
-      "descripcion": "Resolución de admisión a trámite (solo para instalaciones de generación renovable)",
-      "tramites": [
-        {
-          "codigo": "ANALISIS_ADMISION",
-          "nombre": "Análisis de Admisión",
-          "descripcion": "Evaluación de requisitos para admisión a trámite",
-          "tareas_indicativas": ["ANALIZAR", "REDACTAR", "FIRMAR", "NOTIFICAR"],
-          "patron": "AB",
-          "nota": "Combina análisis interno con comunicación simple."
-        },
-        {
-          "codigo": "ALEGACIONES",
-          "nombre": "Alegaciones a Admisión",
-          "descripcion": "Presentación de alegaciones al informe de admisión",
-          "tareas_indicativas": ["INCORPORAR", "ANALIZAR", "REDACTAR", "FIRMAR", "NOTIFICAR"],
-          "patron": "EB"
         }
       ]
     },
