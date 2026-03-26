@@ -206,8 +206,8 @@ with app.app_context():
     limpiar()
 
     # Entidades de prueba
-    e_dist = Entidad(nombre_completo='Gran Distribuidora Eléctrica S.A.', rol_titular=True, activo=True)
-    e_prom = Entidad(nombre_completo='Promotor Solar Sur S.L.', rol_titular=True, activo=True)
+    e_dist = Entidad(nombre_completo='Gran Distribuidora Eléctrica S.A.', rol_titular=True, activo=True, tipo_titular='GRAN_DISTRIBUIDORA')
+    e_prom = Entidad(nombre_completo='Promotor Solar Sur S.L.', rol_titular=True, activo=True, tipo_titular='PROMOTOR')
     db.session.add_all([e_dist, e_prom])
     db.session.flush()
 
