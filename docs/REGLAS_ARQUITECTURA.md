@@ -47,7 +47,7 @@ Esta brecha se ensancha con cada sesión y genera confianza falsa: el desarrolla
 | `GUIA_*.md` | Instrucciones prácticas de implementación de un subsistema. | Cambia la implementación |
 | `REGLAS_*.md` | Normas de trabajo obligatorias (workflow Git, antibloqueos Bash, este doc). | Cambia el criterio |
 | `PLAN_*.md` | Planificación y roadmap. Estado de milestones e iniciativas. | Avanza la implementación |
-| `ANALISIS_*.md` | Diagnóstico puntual o estudio. Puede ser derivado de otra fuente de verdad. | No debería — es histórico |
+| `ANALISIS_*.md` | Documento de trabajo durante la fase de análisis/planificación de un issue complejo. Recoge el diagnóstico, las decisiones en curso y los pendientes. Evoluciona durante el estudio; queda congelado al arrancar la implementación. **No es la referencia post-implementación** — eso es el `DISEÑO_*.md` asociado. | Mientras dure el análisis; congelado al implementar |
 | `PROCEDIMIENTO_*.md` | Pasos secuenciales para una operación concreta. | Cambia el proceso |
 | `ESTRUCTURA_*.md` | Catálogo estructural del dominio (reemplaza al JSON como lectura humana). | Cambia la estructura ESFTT |
 | `ESTRUCTURA_FTT.json` | Fuente de verdad estructural ESFTT para código e IA. Solo estructura, sin prosa. | Cambia la estructura ESFTT |
@@ -88,32 +88,47 @@ Esta línea va como primer comentario del archivo, antes de la declaración del 
 ```
 IDEA / NECESIDAD
       │
-      ▼
-Discusión en sesión → conclusiones en memoria de conversación
+      ├─ Simple (1-2 archivos, sin análisis previo)
+      │       └─ Ver §8 (árbol de decisión)
       │
-      ▼
-Documento de diseño MD (DISEÑO_*.md)
-  - Qué se decide y por qué
-  - Alternativas descartadas y motivo
-  - Impacto en modelo de datos
-  - Impacto en motor de reglas
-      │
-      ▼
-Actualización del JSON (si afecta a fases/trámites/tareas)
-  - Solo estructura, sin notas de diseño
-  - Bump de versión en metadata
-      │
-      ▼
-Issue de implementación en GitHub
-  - Checklist de tareas concretas
-  - Referencia al MD de diseño
-      │
-      ▼
-Actualización de diagramas afectados (Capa 2 o 3)
-  - Solo cuando el MD y el JSON estén alineados
+      └─ Compleja (requiere análisis, múltiples decisiones, issue)
+              │
+              ▼
+        ANÁLISIS_*.md  ← documento de trabajo durante el estudio
+          - Diagnóstico, preguntas abiertas, alternativas
+          - Evoluciona con cada sesión de análisis
+          - Se congela al arrancar la implementación
+              │
+              ▼
+        Issue de implementación en GitHub
+          - Checklist de tareas concretas
+          - Referencia al ANÁLISIS_*.md
+              │
+              ▼
+        Implementación (rama feature → PR → develop)
+          - Modelo, migración, servicio, vista
+              │
+              ▼
+        DISEÑO_*.md  ← síntesis post-implementación  ◄─── NUEVO PASO OBLIGATORIO
+          - Qué se hizo y por qué se hizo así
+          - Alternativas descartadas y motivo
+          - Cómo está implementado (claves de diseño, no manual de código)
+          - Qué NO hace y por qué
+          - El ANÁLISIS_*.md queda como contexto histórico; este doc es la referencia futura
+              │
+              ▼
+        Actualización del JSON (si afecta a fases/trámites/tareas)
+          - Solo estructura, sin notas de diseño
+          - Bump de versión en metadata
+              │
+              ▼
+        Actualización de diagramas afectados (Capa 2 o 3)
+          - Solo cuando el MD y el JSON estén alineados
 ```
 
 Ningún paso puede saltarse. Si una decisión solo existe en la conversación sin MD, se considera **no documentada** y por tanto inestable — puede perderse o reinterpretarse incorrectamente en una sesión futura.
+
+> **Regla ANÁLISIS → DISEÑO:** todo `ANÁLISIS_*.md` que desemboque en implementación debe tener su `DISEÑO_*.md` correspondiente antes de cerrar el issue. El análisis explica el camino; el diseño explica la llegada.
 
 ---
 
@@ -221,8 +236,13 @@ IDEA O NECESIDAD
       ├─ ¿Es una corrección puntual o aclaración de algo ya decidido?
       │       └─ Sí → Edita directamente el doc afectado + commit [DOCS]
       │
-      ├─ ¿Implica una decisión de diseño? (arquitectura, modelo, flujo, motor de reglas)
-      │       └─ Sí → Sesión de diseño → DISEÑO_*.md
+      ├─ ¿Implica análisis profundo antes de decidir? (múltiples opciones, impacto amplio)
+      │       └─ Sí → ANÁLISIS_*.md (doc de trabajo) → decisiones → issue → implementación
+      │               → Al terminar: DISEÑO_*.md (síntesis) — ver §3
+      │               → ANÁLISIS_*.md queda congelado como contexto histórico
+      │
+      ├─ ¿Implica una decisión de diseño simple? (arquitectura puntual, sin análisis largo)
+      │       └─ Sí → Sesión de diseño → DISEÑO_*.md directamente
       │               → Si afecta JSON: actualizar ESTRUCTURA_FTT.json + bump versión
       │               → Si implica código: abrir issue con checklist + referencia al MD
       │
@@ -276,3 +296,4 @@ Un derivado queda desactualizado cuando su fuente de verdad cambia. La señal vi
 
 - **2026-03-22:** Primera versión — §1 a §5, checklist §6 básico
 - **2026-03-25:** Cierre borrador — §6 con procedimiento ejecutable, §7 skills, §8 árbol de decisión, §9 ciclo de vida (issue #250)
+- **2026-03-26:** Añadir patrón ANÁLISIS_*.md → DISEÑO_*.md — §2, §3 y §8 actualizados
