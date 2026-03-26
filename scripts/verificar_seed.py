@@ -216,14 +216,14 @@ def verificar_T04():
         check('T04a: tarea ESPERAR_PLAZO en SOL (subsanar)', len(tareas_req) == 1 and tareas_req[0][0] == 'ESPERAR_PLAZO',
               f'tareas: {[t[0] for t in tareas_req]}')
         if tareas_req:
-            check('T04a: notas PLAZO_DIAS=10 en SOL', tareas_req[0][3] == 'PLAZO_DIAS=10',
+            check('T04a: notas PLAZO_DIAS=0 en SOL', tareas_req[0][3] == 'PLAZO_DIAS=0',
                   f'notas={tareas_req[0][3]!r}')
 
         tareas_cons = tareas_de_tramite('CONSULTA_SEPARATA', sid_a)
         check('T04a: tarea ESPERAR_PLAZO en CONSULTAS', len(tareas_cons) == 1 and tareas_cons[0][0] == 'ESPERAR_PLAZO',
               f'tareas: {[t[0] for t in tareas_cons]}')
         if tareas_cons:
-            check('T04a: notas PLAZO_DIAS=30 en CONSULTAS', tareas_cons[0][3] == 'PLAZO_DIAS=30',
+            check('T04a: notas PLAZO_DIAS=0 en CONSULTAS', tareas_cons[0][3] == 'PLAZO_DIAS=0',
                   f'notas={tareas_cons[0][3]!r}')
 
     # Sol B: AAE_DEFINITIVA — PENDIENTE_ESTUDIO
@@ -317,7 +317,7 @@ def verificar_T08():
     check('T08: ESPERAR_PLAZO en IP', len(tareas_ip) == 1 and tareas_ip[0][0] == 'ESPERAR_PLAZO',
           f'tareas IP: {[t[0] for t in tareas_ip]}')
     if tareas_ip:
-        check('T08: notas PLAZO_DIAS=20', tareas_ip[0][3] == 'PLAZO_DIAS=20',
+        check('T08: notas PLAZO_DIAS=0', tareas_ip[0][3] == 'PLAZO_DIAS=0',
               f'notas={tareas_ip[0][3]!r}')
 
     tareas_res = tareas_de_tramite('ELABORACION', sid)
@@ -386,6 +386,79 @@ def verificar_T11():
 
 
 # ---------------------------------------------------------------------------
+# Sección 2: estados deducidos por seguimiento.py
+# ---------------------------------------------------------------------------
+
+from app.services.seguimiento import estado_solicitud, fin_total
+
+
+# Estados esperados por escenario: {pista: codigo_esperado | None}
+# None = N/A (sin fases de ese tipo)
+ESPERADOS = {
+    # (numero_at, tipo_siglas): {pista: estado_esperado}
+    (1001, 'AAP_AAC'):      {'SOL': 'PENDIENTE_ESTUDIO',   'CONSULTAS': None,                'MA': None, 'IP': None, 'RES': None},
+    (1002, 'AAP_AAC'):      {'SOL': 'PENDIENTE_REDACTAR',  'CONSULTAS': None,                'MA': None, 'IP': None, 'RES': None},
+    (1003, 'AAP_AAC'):      {'SOL': 'PENDIENTE_FIRMA',     'CONSULTAS': None,                'MA': None, 'IP': None, 'RES': None},
+    (1004, 'AAP_AAC'):      {'SOL': 'PENDIENTE_SUBSANAR',  'CONSULTAS': 'PENDIENTE_PLAZOS',  'MA': None, 'IP': None, 'RES': None},
+    (1004, 'AAE_DEFINITIVA'):{'SOL': 'PENDIENTE_ESTUDIO',  'CONSULTAS': None,                'MA': None, 'IP': None, 'RES': None},
+    (1005, 'AAP_AAC'):      {'SOL': 'FIN',                 'CONSULTAS': 'PENDIENTE_NOTIFICAR','MA': None, 'IP': None, 'RES': None},
+    (1006, 'AAP_AAC'):      {'SOL': 'FIN',                 'CONSULTAS': 'FIN',               'MA': 'PENDIENTE_PLAZOS', 'IP': None, 'RES': None},
+    (1007, 'AAP_AAC'):      {'SOL': 'FIN',                 'CONSULTAS': 'FIN',               'MA': 'FIN', 'IP': 'PENDIENTE_PUBLICAR', 'RES': None},
+    (1008, 'AAP_AAC'):      {'SOL': 'FIN',                 'CONSULTAS': 'FIN',               'MA': 'FIN', 'IP': 'PENDIENTE_PLAZOS', 'RES': 'PENDIENTE_ESTUDIO'},
+    (1009, 'AAP_AAC'):      {'SOL': 'FIN',                 'CONSULTAS': 'FIN',               'MA': 'FIN', 'IP': 'FIN', 'RES': 'PENDIENTE_NOTIFICAR'},
+    (1010, 'AAP_AAC'):      {'SOL': 'FIN',                 'CONSULTAS': 'FIN',               'MA': 'FIN', 'IP': 'FIN', 'RES': 'FIN'},
+    (1011, 'AAP_AAC'):      {'SOL': 'PENDIENTE_TRAMITAR',  'CONSULTAS': None,                'MA': None, 'IP': None, 'RES': None},
+}
+
+FIN_TOTAL_ESPERADO = {
+    (1001, 'AAP_AAC'): False,
+    (1002, 'AAP_AAC'): False,
+    (1003, 'AAP_AAC'): False,
+    (1004, 'AAP_AAC'): False,
+    (1004, 'AAE_DEFINITIVA'): False,
+    (1005, 'AAP_AAC'): False,
+    (1006, 'AAP_AAC'): False,
+    (1007, 'AAP_AAC'): False,
+    (1008, 'AAP_AAC'): False,
+    (1009, 'AAP_AAC'): False,
+    (1010, 'AAP_AAC'): True,
+    (1011, 'AAP_AAC'): False,
+}
+
+
+def verificar_estados():
+    seccion('ESTADOS DEDUCIDOS — seguimiento.py')
+    for (nat, siglas), esperado in ESPERADOS.items():
+        sid = sol_de_at(nat, siglas)
+        if sid is None:
+            check(f'AT={nat} {siglas}: solicitud encontrada para verificar estados', False)
+            continue
+
+        try:
+            estados = estado_solicitud(sid)
+        except Exception as exc:
+            check(f'AT={nat} {siglas}: estado_solicitud sin excepción', False, str(exc))
+            continue
+
+        for pista, cod_esperado in esperado.items():
+            e = estados.get(pista)
+            cod_real = e.codigo if e is not None else None
+            check(
+                f'AT={nat} {siglas} {pista}: {cod_esperado}',
+                cod_real == cod_esperado,
+                f'obtenido={cod_real!r}',
+            )
+
+        ft_esperado = FIN_TOTAL_ESPERADO[(nat, siglas)]
+        ft_real = fin_total(estados)
+        check(
+            f'AT={nat} {siglas} fin_total={ft_esperado}',
+            ft_real == ft_esperado,
+            f'obtenido={ft_real}',
+        )
+
+
+# ---------------------------------------------------------------------------
 # Entrypoint
 # ---------------------------------------------------------------------------
 
@@ -404,6 +477,7 @@ with app.app_context():
     verificar_T09()
     verificar_T10()
     verificar_T11()
+    verificar_estados()
 
     print(f'\n{"="*50}')
     print(f'Resultado: {_ok}/{_total} checks pasados')
