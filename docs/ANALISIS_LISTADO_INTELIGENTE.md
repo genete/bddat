@@ -271,7 +271,7 @@ Además del filtro por `tipo_titular`, el listado necesita filtros que no tienen
 3. ~~Crear script `docs_prueba/seed_listado.py` con los escenarios de §6~~ — hecho
 4. ~~**Limpieza BD ADMISION_TRAMITE**~~ — **HECHO** (issue #257). JSON actualizado a v5.6. Scripts promovidos a `scripts/`. Sin migración Alembic — los maestros FTT nunca se insertan por migración, siempre por `reset_maestros_ftt.py`.
 5. ~~Terminar decisiones §8 pendientes~~ — en curso. Quedan diferidos: `tecnologia` en `Proyecto` y presentación de `Notas`.
-5b. **Escribir `scripts/verificar_seed.py`** — verifica estructura de datos de los 11 escenarios (T01-T11) contra BD: tipos de fase/trámite/tarea correctos, campos doc_usado/doc_producido/notas según cada caso. Sirve como test de regresión para cuando exista `seguimiento.py`. Pendiente de implementar.
+5b. ~~**Escribir `scripts/verificar_seed.py`**~~ — **HECHO** (issue #257). 77 checks T01-T11: tipos de fase/trámite/tarea, campos doc_usado/doc_producido/notas. Test de regresión para cuando exista `seguimiento.py`.
 6. Implementar `app/services/seguimiento.py`
 7. Implementar la vista del listado (issue #169)
 8. Vista de auditoría — ver issue #256
