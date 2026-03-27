@@ -143,25 +143,98 @@ El servicio `app/services/seguimiento.py` (ya implementado en #169) deduce el es
 
 El algoritmo se ejecuta para cualquier solicitud visible, independientemente de su `estado` en BD — el filtro `estado_solicitud` del listado determina qué solicitudes se muestran.
 
+El algoritmo aplica el mismo procedimiento en los cuatro niveles: acumular los estados de los hijos y devolver el de mayor prioridad. El **contador acumula a través de niveles**: si la fase A produce `TRAMITAR(2)` y la fase B produce `TRAMITAR(1)`, la pista muestra `TRAMITAR(3)`.
+
 ```
-Para cada pista de la solicitud visible:
-  1. Buscar fases del tipo correspondiente en esa solicitud
-  2. Si no existe ninguna → celda vacía (N/A) o PENDIENTE_TRAMITAR según tipo solicitud
-  3. Si todas cerradas → FIN (verde)
-  4. Para cada fase abierta:
-     a. No iniciada (fecha_inicio IS NULL) → PENDIENTE_TRAMITAR
-     b. Iniciada, sin trámites → PENDIENTE_TRAMITAR
-     c. Iniciada, con trámites:
-        · Trámite no iniciado → PENDIENTE_TRAMITAR
-        · Trámite iniciado, sin tareas → PENDIENTE_TRAMITAR
-        · Trámite iniciado, con tareas:
-          - Sin tarea activa, todas finalizadas → PENDIENTE_CERRAR
-          - Sin tarea activa, hay planificadas → PENDIENTE_TRAMITAR
-          - Con tarea activa → aplicar §4.4
-        · Todos los trámites cerrados:
-          - resultado_fase IS NULL → PENDIENTE_ESTUDIO
-          - resultado_fase IS NOT NULL → PENDIENTE_CERRAR
-  5. Devolver estado de mayor prioridad (§4.2) entre todas las fases abiertas de esa pista
+# ──────────────────────────────────────────────────
+# Punto de entrada: una pista de la solicitud visible
+# ──────────────────────────────────────────────────
+
+función estado_pista(solicitud, tipos_fase_pista):
+    fases ← fases de solicitud cuyo tipo ∈ tipos_fase_pista
+
+    si fases está vacío:
+        devolver (vacío)        # N/A o fase obligatoria ausente
+                                # DIFERIDO — depende del motor de reglas; por ahora celda vacía
+
+    si todas las fases tienen fecha_fin IS NOT NULL:
+        devolver (FIN, 1)       # pista terminada
+
+    acumulado ← {}
+    para cada fase en fases donde fecha_fin IS NULL:
+        (estado, n) ← estado_fase(fase)
+        acumulado[estado] += n
+
+    devolver mayor_prioridad(acumulado)
+
+
+# ──────────────────────────────────────────────────
+# Nivel fase
+# ──────────────────────────────────────────────────
+
+función estado_fase(fase):
+    si fase.fecha_inicio IS NULL:
+        devolver (PENDIENTE_TRAMITAR, 1)    # fase no arrancada
+
+    tramites ← trámites de la fase
+
+    si tramites está vacío:
+        devolver (PENDIENTE_TRAMITAR, 1)    # fase iniciada pero sin trámites creados
+
+    si todos los trámites tienen fecha_fin IS NOT NULL:
+        # fase en curso pero todos los trámites cerrados
+        si fase.resultado_fase IS NULL:
+            devolver (PENDIENTE_ESTUDIO, 1) # hay que estudiar y decidir resultado
+        sino:
+            devolver (PENDIENTE_CERRAR, 1)  # resultado decidido, falta cerrar la fase
+
+    acumulado ← {}
+    para cada tramite en tramites donde fecha_fin IS NULL:
+        (estado, n) ← estado_tramite(tramite)
+        acumulado[estado] += n
+
+    devolver mayor_prioridad(acumulado)
+
+
+# ──────────────────────────────────────────────────
+# Nivel trámite
+# ──────────────────────────────────────────────────
+
+función estado_tramite(tramite):
+    si tramite.fecha_inicio IS NULL:
+        devolver (PENDIENTE_TRAMITAR, 1)    # trámite no arrancado
+
+    tareas ← tareas del trámite
+
+    si tareas está vacío:
+        devolver (PENDIENTE_TRAMITAR, 1)    # trámite iniciado pero sin tareas creadas
+
+    acumulado ← {}
+    para cada tarea en tareas:
+        (estado, n) ← estado_tarea(tarea)
+        acumulado[estado] += n
+
+    devolver mayor_prioridad(acumulado)
+
+
+# ──────────────────────────────────────────────────
+# Nivel tarea (hoja del árbol)
+# ──────────────────────────────────────────────────
+
+función estado_tarea(tarea):
+    aplicar tabla §4.4 según tarea.tipo_tarea + campos de la tarea
+    devolver (estado_interno, 1)
+
+
+# ──────────────────────────────────────────────────
+# Selector de mayor prioridad (§4.2)
+# ──────────────────────────────────────────────────
+
+función mayor_prioridad(acumulado):
+    # acumulado = dict {estado_interno → count}
+    ordenar claves por prioridad numérica §4.2 (1 = más urgente)
+    estado_ganador ← primera clave
+    devolver (estado_ganador, acumulado[estado_ganador])
 ```
 
 ---
