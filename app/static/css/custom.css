@@ -301,20 +301,27 @@ table a.badge:hover {
 
 /* ========================================
    Seguimiento — Pistas y celda SOLICITUD
-   Issue #262
+   Issue #262 / #263
    ======================================== */
 
-/* Pill de estado de pista (§4.1) */
+/* Variables de layout — un solo punto de cambio (#263) */
+:root {
+    --seg-pista-w:   5.75rem; /* ancho de cada columna de pista (ANÁLISIS…RESOLUCIÓN) */
+    /* Total cols fijas: AT(5.5)+SOL(9)+FECHA(5.25)+pistas×5(28.75)+ACC(4.5) = 53rem */
+    --seg-fixed-tot: 53rem;
+}
+
+/* Pill de estado de pista — display:block para rellenar toda la celda (#263) */
 .pista-celda {
-    display: inline-block;
+    display: block;
     padding: 0.2em 0.55em;
     border-radius: 0.25rem;
     font-size: 0.78rem;
     font-weight: 600;
-    min-width: 5.5rem;
     text-align: center;
     white-space: nowrap;
     letter-spacing: 0.02em;
+    overflow: hidden;
 }
 
 .pista-rojo     { background-color: #f8d7da; color: #721c24; }
@@ -349,20 +356,114 @@ table a.badge:hover {
     white-space: nowrap;
 }
 
-/* Tabla seguimiento: columnas cortas sin wrap */
+/* Tabla seguimiento: layout fijo (#263) */
+.seguimiento-table {
+    table-layout: fixed;
+    width: 100%;
+    min-width: 0;
+}
+
 .seguimiento-table th,
 .seguimiento-table td {
     white-space: nowrap;
+    padding: 0.6rem 0.75rem;
+    overflow: hidden;
+    border-right: 1px solid #dee2e6;
 }
+.seguimiento-table th:last-child,
+.seguimiento-table td:last-child { border-right: none; }
 
-/* TITULAR y PROYECTO permiten truncado controlado */
+/* ── Columnas fijas IZQUIERDA ── */
+.seguimiento-table th:nth-child(1),
+.seguimiento-table td:nth-child(1) {
+    width: 5.5rem;
+    padding-left: 0.2rem;
+    padding-right: 0.2rem;
+}  /* Nº AT */
+
+.seguimiento-table th:nth-child(2),
+.seguimiento-table td:nth-child(2) { width: 9rem; }    /* SOLICITUD */
+
+.seguimiento-table th:nth-child(3),
+.seguimiento-table td:nth-child(3) {
+    width: 5.25rem;
+    padding-left: 0.2rem;
+    padding-right: 0.2rem;
+    text-align: center;
+}  /* FECHA */
+
+/* ── Columnas flexibles CENTRO: TITULAR (40%) / PROYECTO (60%) gestionado por JS ── */
 .seguimiento-table td:nth-child(4),
-.seguimiento-table td:nth-child(5) {
-    white-space: normal;
-    max-width: 220px;
+.seguimiento-table td:nth-child(5) { white-space: nowrap; }
+
+.seguimiento-table .celda-ellipsis {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
-/* Scroll horizontal si la pantalla es estrecha */
-.seguimiento-table {
-    min-width: 1100px;
+/* ── Columnas fijas DERECHA: pistas — padding mínimo para que el pill llene la celda ── */
+.seguimiento-table th:nth-child(6),  .seguimiento-table td:nth-child(6),
+.seguimiento-table th:nth-child(7),  .seguimiento-table td:nth-child(7),
+.seguimiento-table th:nth-child(8),  .seguimiento-table td:nth-child(8),
+.seguimiento-table th:nth-child(9),  .seguimiento-table td:nth-child(9),
+.seguimiento-table th:nth-child(10), .seguimiento-table td:nth-child(10) {
+    padding-left: 0.2rem;
+    padding-right: 0.2rem;
+}
+
+.seguimiento-table th:nth-child(6),
+.seguimiento-table td:nth-child(6)  { width: var(--seg-pista-w); } /* ANÁLISIS */
+
+.seguimiento-table th:nth-child(7),
+.seguimiento-table td:nth-child(7)  { width: var(--seg-pista-w); } /* CONSULTAS */
+
+.seguimiento-table th:nth-child(8),
+.seguimiento-table td:nth-child(8)  { width: var(--seg-pista-w); } /* MA */
+
+.seguimiento-table th:nth-child(9),
+.seguimiento-table td:nth-child(9)  { width: var(--seg-pista-w); } /* IP */
+
+.seguimiento-table th:nth-child(10),
+.seguimiento-table td:nth-child(10) { width: var(--seg-pista-w); } /* RESOLUCIÓN */
+
+.seguimiento-table th:nth-child(11),
+.seguimiento-table td:nth-child(11) { width: 4.5rem; }             /* Acciones */
+
+/* Pill base Nº AT — mismo tamaño en todas las filas, solo cambia el color (#263) */
+.num-at-pill {
+    display: block;
+    padding: 0.2em 0.55em;
+    border-radius: 0.25rem;
+    text-align: center;
+    overflow: hidden;
+    background-color: transparent;
+}
+.num-at-multiples {
+    background-color: #fff3cd;
+    color: #664d03;
+}
+
+/* Responsive: ocultar columnas progresivamente (#263)
+ * Breakpoints calculados sobre espacio real disponible (cols fijas = 53rem ≈ 848px) */
+@media (max-width: 1100px) {
+    .seguimiento-table th:nth-child(5),
+    .seguimiento-table td:nth-child(5) { display: none; } /* PROYECTO */
+}
+@media (max-width: 1000px) {
+    .seguimiento-table th:nth-child(4),
+    .seguimiento-table td:nth-child(4) { display: none; } /* TITULAR */
+}
+@media (max-width: 991px) {
+    .seguimiento-table th:nth-child(7),
+    .seguimiento-table td:nth-child(7),
+    .seguimiento-table th:nth-child(8),
+    .seguimiento-table td:nth-child(8) { display: none; } /* CONSULTAS, MA */
+}
+@media (max-width: 767px) {
+    .seguimiento-table th:nth-child(9),
+    .seguimiento-table td:nth-child(9) { display: none; } /* IP */
 }
