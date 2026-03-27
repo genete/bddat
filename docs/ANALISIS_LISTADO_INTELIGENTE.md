@@ -79,58 +79,58 @@ Cada pista es una entrada de tipo `"pista"` con los `tipos_fase` que le correspo
 
 Cada pista tiene su propio subconjunto de estados posibles, determinado por el flujo de sus fases:
 
-| Estado | ANÁLISIS | CONSULTAS | MA | IP | RESOLUCIÓN |
-|--------|:--------:|:---------:|:--:|:--:|:----------:|
-| PENDIENTE_TRAMITAR | ✓ | ✓ | ✓ | ✓ | ✓ |
-| PENDIENTE_ESTUDIO | ✓ | ✓ | ✓ | ✓ | ✓ |
-| PENDIENTE_REDACTAR | — | ✓ | ✓ | ✓ | ✓ |
-| PENDIENTE_FIRMA | ✓ | ✓ | ✓ | ✓ | ✓ |
-| PENDIENTE_NOTIFICAR | ✓ | ✓ | ✓ | — | ✓ |
-| PENDIENTE_PUBLICAR | — | — | — | ✓ | ✓ |
-| PENDIENTE_SUBSANAR | ✓ | — | — | — | — |
-| PENDIENTE_PLAZOS | — | ✓ | ✓ | ✓ | — |
-| PENDIENTE_CERRAR | ✓ | ✓ | ✓ | ✓ | ✓ |
-| FIN | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Estado interno | Texto en celda | ANÁLISIS | CONSULTAS | MA | IP | RESOLUCIÓN |
+|----------------|:--------------:|:--------:|:---------:|:--:|:--:|:----------:|
+| PENDIENTE_TRAMITAR | TRAMITAR | ✓ | ✓ | ✓ | ✓ | ✓ |
+| PENDIENTE_ESTUDIO | ESTUDIAR | ✓ | ✓ | ✓ | ✓ | ✓ |
+| PENDIENTE_REDACTAR | REDACTAR | — | ✓ | ✓ | ✓ | ✓ |
+| PENDIENTE_FIRMA | FIRMAR | ✓ | ✓ | ✓ | ✓ | ✓ |
+| PENDIENTE_NOTIFICAR | NOTIFICAR | ✓ | ✓ | ✓ | — | ✓ |
+| PENDIENTE_PUBLICAR | PUBLICAR | — | — | — | ✓ | ✓ |
+| PENDIENTE_SUBSANAR | SUBSANAR | ✓ | — | — | — | — |
+| PENDIENTE_PLAZOS | PLAZOS | — | ✓ | ✓ | ✓ | — |
+| PENDIENTE_CERRAR | CERRAR | ✓ | ✓ | ✓ | ✓ | ✓ |
+| FIN | FIN | ✓ | ✓ | ✓ | ✓ | ✓ |
 
 > ANÁLISIS no tiene PENDIENTE_REDACTAR porque su primera acción activa es siempre un análisis (ANALIZAR), no una redacción.
 
 ### 4.3 Definición de estados
 
-| Estado | Color | Cuándo se aplica |
-|--------|-------|------------------|
-| **PENDIENTE_TRAMITAR** | rojo | Solicitud sin fases; fase sin trámites; trámite sin tareas creadas; FIRMAR sin borrador; NOTIFICAR/PUBLICAR sin doc firmado |
-| **PENDIENTE_ESTUDIO** | rojo | ANALIZAR sin input o sin informe producido; INCORPORAR sin docs; ESPERAR_PLAZO vencido; fase con trámites cerrados y `resultado_fase IS NULL` |
-| **PENDIENTE_REDACTAR** | rojo | REDACTAR sin borrador; trámite cuya primera tarea es REDACTAR, creado pero no iniciado |
-| **PENDIENTE_FIRMA** | amarillo | FIRMAR con borrador presente pero sin doc firmado |
-| **PENDIENTE_NOTIFICAR** | azul | NOTIFICAR con doc firmado pero sin justificante |
-| **PENDIENTE_PUBLICAR** | azul | PUBLICAR con doc firmado pero sin justificante |
-| **PENDIENTE_SUBSANAR** | gris | ESPERAR_PLAZO activo en pista ANÁLISIS |
-| **PENDIENTE_PLAZOS** | gris | ESPERAR_PLAZO activo en pistas CONSULTAS, MA o IP |
-| **PENDIENTE_CERRAR** | naranja | Tarea/trámite/fase completos pero sin `fecha_fin` |
-| **FIN** | verde | Fase finalizada (`fecha_fin IS NOT NULL`) |
+| Estado interno | Texto celda | Color | Cuándo se aplica |
+|----------------|:-----------:|-------|------------------|
+| PENDIENTE_TRAMITAR | TRAMITAR | rojo | Solicitud sin fases; fase sin trámites; trámite sin tareas creadas; FIRMAR sin borrador; NOTIFICAR/PUBLICAR sin doc firmado |
+| PENDIENTE_ESTUDIO | ESTUDIAR | rojo | ANALIZAR sin input o sin informe producido; INCORPORAR sin docs; ESPERAR_PLAZO vencido; fase con trámites cerrados y `resultado_fase IS NULL` |
+| PENDIENTE_REDACTAR | REDACTAR | rojo | REDACTAR sin borrador; trámite cuya primera tarea es REDACTAR, creado pero no iniciado |
+| PENDIENTE_FIRMA | FIRMAR | amarillo | FIRMAR con borrador presente pero sin doc firmado |
+| PENDIENTE_NOTIFICAR | NOTIFICAR | azul | NOTIFICAR con doc firmado pero sin justificante |
+| PENDIENTE_PUBLICAR | PUBLICAR | azul | PUBLICAR con doc firmado pero sin justificante |
+| PENDIENTE_SUBSANAR | SUBSANAR | gris | ESPERAR_PLAZO activo en pista ANÁLISIS |
+| PENDIENTE_PLAZOS | PLAZOS | gris | ESPERAR_PLAZO activo en pistas CONSULTAS, MA o IP |
+| PENDIENTE_CERRAR | CERRAR | naranja | Tarea/trámite/fase completos pero sin `fecha_fin` |
+| FIN | FIN | verde | Fase finalizada (`fecha_fin IS NOT NULL`) |
 
 ### 4.4 Subestados internos por tipo de tarea
 
-| Tarea | Situación | Estado | Color |
-|-------|-----------|--------|-------|
-| **ANALIZAR** | Falta `doc_usado` | PENDIENTE_ESTUDIO | rojo |
-| | Tiene input, falta `doc_producido` | PENDIENTE_ESTUDIO | rojo |
-| | Tiene ambos | PENDIENTE_CERRAR | naranja |
-| **REDACTAR** | Sin borrador | PENDIENTE_REDACTAR | rojo |
-| | Con borrador | PENDIENTE_CERRAR | naranja |
-| **FIRMAR** | Falta borrador | PENDIENTE_TRAMITAR | rojo |
-| | Tiene borrador, falta firmado | PENDIENTE_FIRMA | amarillo |
-| | Tiene ambos | PENDIENTE_CERRAR | naranja |
-| **NOTIFICAR** | Falta doc firmado | PENDIENTE_TRAMITAR | rojo |
-| | Tiene firmado, falta justificante | PENDIENTE_NOTIFICAR | azul |
-| | Tiene ambos | PENDIENTE_CERRAR | naranja |
-| **PUBLICAR** | Falta doc firmado | PENDIENTE_TRAMITAR | rojo |
-| | Tiene firmado, falta justificante | PENDIENTE_PUBLICAR | azul |
-| | Tiene ambos | PENDIENTE_CERRAR | naranja |
-| **ESPERAR_PLAZO** | `PLAZO_DIAS=0` o plazo activo | PENDIENTE_SUBSANAR / PENDIENTE_PLAZOS | gris |
-| | Plazo vencido | PENDIENTE_ESTUDIO | rojo |
-| **INCORPORAR** | Sin `documentos_tarea` | PENDIENTE_ESTUDIO | rojo |
-| | Con ≥1 registro | PENDIENTE_CERRAR | naranja |
+| Tarea | Situación | Estado interno | Texto celda | Color |
+|-------|-----------|----------------|:-----------:|-------|
+| **ANALIZAR** | Falta `doc_usado` | PENDIENTE_ESTUDIO | ESTUDIAR | rojo |
+| | Tiene input, falta `doc_producido` | PENDIENTE_ESTUDIO | ESTUDIAR | rojo |
+| | Tiene ambos | PENDIENTE_CERRAR | CERRAR | naranja |
+| **REDACTAR** | Sin borrador | PENDIENTE_REDACTAR | REDACTAR | rojo |
+| | Con borrador | PENDIENTE_CERRAR | CERRAR | naranja |
+| **FIRMAR** | Falta borrador | PENDIENTE_TRAMITAR | TRAMITAR | rojo |
+| | Tiene borrador, falta firmado | PENDIENTE_FIRMA | FIRMAR | amarillo |
+| | Tiene ambos | PENDIENTE_CERRAR | CERRAR | naranja |
+| **NOTIFICAR** | Falta doc firmado | PENDIENTE_TRAMITAR | TRAMITAR | rojo |
+| | Tiene firmado, falta justificante | PENDIENTE_NOTIFICAR | NOTIFICAR | azul |
+| | Tiene ambos | PENDIENTE_CERRAR | CERRAR | naranja |
+| **PUBLICAR** | Falta doc firmado | PENDIENTE_TRAMITAR | TRAMITAR | rojo |
+| | Tiene firmado, falta justificante | PENDIENTE_PUBLICAR | PUBLICAR | azul |
+| | Tiene ambos | PENDIENTE_CERRAR | CERRAR | naranja |
+| **ESPERAR_PLAZO** | `PLAZO_DIAS=0` o plazo activo | PENDIENTE_SUBSANAR / PENDIENTE_PLAZOS | SUBSANAR / PLAZOS | gris |
+| | Plazo vencido | PENDIENTE_ESTUDIO | ESTUDIAR | rojo |
+| **INCORPORAR** | Sin `documentos_tarea` | PENDIENTE_ESTUDIO | ESTUDIAR | rojo |
+| | Con ≥1 registro | PENDIENTE_CERRAR | CERRAR | naranja |
 
 ---
 
@@ -166,7 +166,7 @@ Para cada pista de la solicitud EN_TRAMITE:
 
 ## 6. Escenarios de prueba necesarios
 
-Fila = solicitud. El AT puede repetirse. Columnas relevantes para el test:
+Fila = solicitud. El AT puede repetirse. Los valores de pista son **estados internos** (`PENDIENTE_X`); el texto visible en celda se deriva de §4.2. Columnas relevantes para el test:
 
 | AT | Tipo sol. | ANÁLISIS | CONSULTAS | MA | IP | RESOLUCIÓN | FIN | Propósito |
 |----|-----------|----------|-----------|----|----|------------|-----|-----------|
