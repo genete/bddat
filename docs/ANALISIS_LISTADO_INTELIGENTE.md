@@ -32,33 +32,33 @@ El tramitador gestiona por lotes: filtra por estado de pista y trabaja secuencia
 
 ## 2. Columnas del listado
 
-| Columna | Tipo | Notas |
-|---------|------|-------|
-| **Nº AT** | Texto + estilo | Si el AT aparece en más de una fila (varias solicitudes activas), se marca visualmente (badge, color) |
-| **Tipo solicitud** | Texto | AAP_AAC, AAE, DUP… Indica de qué acto administrativo se trata |
-| **Fecha solicitud** | Fecha | Ordenación principal por defecto |
-| **Solicitante** | Texto + estilo | EDISTRIBUCIÓN = estilo distintivo; particulares = negrita; resto = normal |
-| **Proyecto** | Texto | Descripción del proyecto |
-| **SOL/REQ/SUB** | Estado | Pista de análisis y subsanación |
-| **CONSULTAS** | Estado | Pista de separatas e informes |
-| **MA** | Estado | Pista de tramitación ambiental |
-| **IP** | Estado | Pista de información pública |
-| **RESOLUCIÓN** | Estado | Pista de resolución |
-| **FIN** | Booleano calculado | TRUE si todas las pistas son FIN o vacías. Permite filtrar activos/resueltos |
-| **Notas** | Texto libre | A definir alcance en BDDAT |
-| ~~**Última comunicación**~~ | — | **ELIMINADA.** Demasiado complejo de deducir (último doc externo por fecha) y sin utilidad clara en BDDAT. Queda en el detalle del expediente si se necesita. |
+| Columna (visible) | Clave interna | Tipo | Notas |
+|-------------------|---------------|------|-------|
+| **Nº AT** | `num_at` | Texto + estilo | Badge si el AT aparece en más de una fila (varias solicitudes activas simultáneas) |
+| **SOLICITUD** | `tipo_solicitud` | Texto | AAP_AAC, AAE, DUP… Indica de qué acto administrativo se trata |
+| **FECHA** | `fecha_solicitud` | Fecha | Ordenación principal por defecto desc |
+| **TITULAR** | `titular_nombre` | Texto + estilo | Titular directo del expediente. PROMOTOR = negrita; ORGANISMO_PUBLICO = negrita+color; GRAN_DISTRIBUIDORA = gris; resto = normal |
+| **PROYECTO** | `proyecto_descripcion` | Texto | Descripción del proyecto |
+| **ANÁLISIS** | `pista_analisis` | Estado | Pista de análisis y subsanación (antes SOL/REQ/SUB) |
+| **CONSULTAS** | `pista_consultas` | Estado | Pista de separatas e informes |
+| **MA** | `pista_ma` | Estado | Pista de tramitación ambiental |
+| **IP** | `pista_ip` | Estado | Pista de información pública |
+| **RESOLUCIÓN** | `pista_resolucion` | Estado | Pista de resolución |
+| *(FIN)* | `fin` | Booleano calculado | TRUE si todas las pistas son FIN o vacías. **No es columna visible** — conduce el filtro activos/resueltos y distingue visualmente la fila (todas las celdas de pista en verde/vacías) |
+| **Notas** | — | Texto libre | **DIFERIDO** — ver §8 |
+| ~~**Última comunicación**~~ | — | — | **ELIMINADA.** Demasiado complejo de deducir (último doc externo por fecha) y sin utilidad clara en BDDAT. Queda en el detalle del expediente si se necesita. |
 
 ---
 
 ## 3. Pistas de seguimiento y su mapeo a tipos_fases
 
-| Pista | tipos_fases en BD | Obligatoriedad |
-|-------|-------------------|----------------|
-| **SOL/REQ/SUB** | `ANALISIS_SOLICITUD` (id=1) | Siempre |
-| **CONSULTAS** | `CONSULTAS` (id=5), `CONSULTA_MINISTERIO` (id=2) — y futuras fases de tipo similar | Según tipo solicitud (POS/N/A) |
-| **MA** | `COMPATIBILIDAD_AMBIENTAL` (id=3), `FIGURA_AMBIENTAL_EXTERNA` (id=7), `AAU_AAUS_INTEGRADA` (id=8) | Según tipo solicitud |
-| **IP** | `INFORMACION_PUBLICA` (id=6) | Según tipo solicitud (POS/N/A) |
-| **RESOLUCIÓN** | `RESOLUCION` (id=9) | Siempre |
+| Pista (cabecera visible) | Clave interna | tipos_fases en BD | Obligatoriedad |
+|--------------------------|---------------|-------------------|----------------|
+| **ANÁLISIS** | `pista_analisis` | `ANALISIS_SOLICITUD` (id=1) | Siempre |
+| **CONSULTAS** | `pista_consultas` | `CONSULTAS` (id=5), `CONSULTA_MINISTERIO` (id=2) — y futuras fases de tipo similar | Según tipo solicitud (POS/N/A) |
+| **MA** | `pista_ma` | `COMPATIBILIDAD_AMBIENTAL` (id=3), `FIGURA_AMBIENTAL_EXTERNA` (id=7), `AAU_AAUS_INTEGRADA` (id=8) | Según tipo solicitud |
+| **IP** | `pista_ip` | `INFORMACION_PUBLICA` (id=6) | Según tipo solicitud (POS/N/A) |
+| **RESOLUCIÓN** | `pista_resolucion` | `RESOLUCION` (id=9) | Siempre |
 
 **Inteligencia de columna:** si una solicitud no tiene fases del tipo "principal" de una pista pero sí de un tipo alternativo (p.ej. no tiene `CONSULTAS` pero sí `CONSULTA_MINISTERIO`), la columna muestra el estado de la fase disponible. Si tiene varias fases abiertas en la misma pista, se muestra el estado más urgente; cuando hay más de un elemento en ese mismo nivel de urgencia se añade un contador entre paréntesis (ej: `rojo(2)`). Las fases cerradas no contribuyen al estado visible.
 
@@ -228,10 +228,10 @@ tipo_titular = db.Column(
 
 ### 7.3 Diferenciación visual en el listado
 
-| `tipo_titular` | Estilo en columna Solicitante |
-|----------------|-------------------------------|
+| `tipo_titular` | Estilo en columna TITULAR |
+|----------------|--------------------------|
 | `PROMOTOR` | **Negrita** — máxima visibilidad |
-| `ORGANISMO_PUBLICO` | **Negrita** + color distintivo (pendiente de definir) |
+| `ORGANISMO_PUBLICO` | **Negrita** + color distintivo (pendiente de definir paleta exacta) |
 | `DISTRIBUIDOR_MENOR` | Normal |
 | `GRAN_DISTRIBUIDORA` | Gris — menor urgencia relativa |
 | `OTRO` | Normal |
@@ -261,9 +261,9 @@ Además del filtro por `tipo_titular`, el listado necesita filtros que no tienen
 - [x] **Última comunicación** — **DECISIÓN: ELIMINAR del listado.** Deducir el último documento externo por fecha es demasiado complejo y sin utilidad clara en BDDAT. Si se necesita, queda en el detalle del expediente.
 - [x] **Diseño columnas pista (frontend)** — **DECISIÓN: texto abreviado o nombre completo cuando quepa, con color de fondo/texto según estado.** Las 5 columnas de pista deben ser compactas con `white-space: nowrap`. Sin badge separado — el color de celda ya actúa como indicador visual. El resto de columnas: `Nº AT` y `Tipo solicitud` también `nowrap`; `Solicitante` y `Proyecto` con ellipsis controlado; contenedor de tabla con `overflow-x: auto` para scroll horizontal.
 - [x] **Prefijo `docs/`** en la línea `Fuente de verdad` de este fichero — **DECISIÓN: corrección aplicada.**
-- [ ] **Ruta de la vista del listado** — ¿Reemplazar la `/expedientes/` existente (ruta `/` del módulo) o añadir `/expedientes/listado/` dejando convivir ambas temporalmente?
-- [ ] **Filtro por usuario por defecto** — ¿Mostrar solo los expedientes del usuario actual (`responsable_id = current_user.id`) o todos? Propuesta: por defecto `mis` expedientes, toggle para `todos` (supervisores). URL: `?ver=mis` / `?ver=todos`.
-- [ ] **Filtro activos/resueltos por defecto** — El análisis dice activos por defecto. Propuesta: `?estado=activos` (default) / `?estado=resueltos` / `?estado=todos`, reflejado en la URL.
+- [x] **Ruta de la vista del listado** — **DECISIÓN: `/expedientes/seguimiento/`**, nueva ruta que coexiste con `/expedientes/` (inventario). Audiencias distintas: inventario = buscar/crear; seguimiento = cola de trabajo diario por estado de pista.
+- [x] **Filtro por usuario por defecto** — **DECISIÓN: `mis` por defecto**, toggle `todos` accesible para todos los roles (no solo supervisores). Si `mis` devuelve 0 filas → toast informativo, sin fallback automático. Patrón FiltrosListado JS (sin URL params), homogéneo con el resto de vistas.
+- [x] **Filtro activos/resueltos por defecto** — **DECISIÓN: `activos` por defecto.** Opciones: `activos` / `resueltos` / `todos`. FIN no es columna visible — solo conduce el filtro y distingue visualmente la fila.
 
 ---
 
@@ -275,8 +275,8 @@ Además del filtro por `tipo_titular`, el listado necesita filtros que no tienen
 4. ~~**Limpieza BD ADMISION_TRAMITE**~~ — **HECHO** (issue #257). JSON actualizado a v5.6. Scripts promovidos a `scripts/`. Sin migración Alembic — los maestros FTT nunca se insertan por migración, siempre por `reset_maestros_ftt.py`.
 5. ~~Terminar decisiones §8 pendientes~~ — en curso. Quedan diferidos: `tecnologia` en `Proyecto` y presentación de `Notas`.
 5b. ~~**Escribir `scripts/verificar_seed.py`**~~ — **HECHO** (issue #257). 77 checks T01-T11: tipos de fase/trámite/tarea, campos doc_usado/doc_producido/notas. Test de regresión para cuando exista `seguimiento.py`.
-6. Implementar `app/services/seguimiento.py`
-7. Implementar la vista del listado (issue #169)
+6. ~~Implementar `app/services/seguimiento.py`~~ — **HECHO** (issue #169). Servicio `app/services/seguimiento.py` con deducción jerárquica de estados de pista.
+7. Implementar la vista `/expedientes/seguimiento/` — **issue #262**
 8. Vista de auditoría — ver issue #256
 9. **Decidir campo `tecnologia` en `Proyecto`** (diferido de §8): VARCHAR libre, enum fijo o tabla maestra. No bloquea el listado.
 10. **Decidir presentación de Notas** (diferido de §8): tooltip en columna de pista, columna recolectora, o `observaciones` del modelo.
