@@ -349,20 +349,97 @@ table a.badge:hover {
     white-space: nowrap;
 }
 
-/* Tabla seguimiento: columnas cortas sin wrap */
+/* Tabla seguimiento: layout fijo + padding compacto (#263 bug #3)
+ * table-layout:fixed obliga al navegador a respetar los anchos declarados
+ * y NO distribuir el espacio sobrante entre todas las columnas. */
+.seguimiento-table {
+    table-layout: fixed;
+    width: 100%;
+    min-width: 0;
+}
+
 .seguimiento-table th,
 .seguimiento-table td {
     white-space: nowrap;
+    padding: 0.6rem 0.75rem;
+    overflow: hidden;
 }
 
-/* TITULAR y PROYECTO permiten truncado controlado */
+/* ── Columnas fijas IZQUIERDA: Nº AT, SOLICITUD, FECHA ── */
+.seguimiento-table th:nth-child(1),
+.seguimiento-table td:nth-child(1) { width: 5.5rem; }  /* Nº AT */
+
+.seguimiento-table th:nth-child(2),
+.seguimiento-table td:nth-child(2) { width: 9rem; }    /* SOLICITUD */
+
+.seguimiento-table th:nth-child(3),
+.seguimiento-table td:nth-child(3) { width: 6.5rem; }  /* FECHA */
+
+/* ── Columnas flexibles CENTRO: TITULAR y PROYECTO se reparten lo que sobra ──
+ * Con table-layout:fixed, las columnas sin ancho explícito se reparten el espacio
+ * restante en partes iguales → 50% cada una automáticamente. */
+
+/* TITULAR y PROYECTO: truncado con ellipsis llenando toda la celda */
 .seguimiento-table td:nth-child(4),
 .seguimiento-table td:nth-child(5) {
-    white-space: normal;
-    max-width: 220px;
+    white-space: nowrap; /* necesario para ellipsis en celdas flexibles */
+}
+.seguimiento-table .celda-ellipsis {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
-/* Scroll horizontal si la pantalla es estrecha */
-.seguimiento-table {
-    min-width: 1100px;
+/* ── Columnas fijas DERECHA: pistas + acciones ── */
+.seguimiento-table th:nth-child(6),
+.seguimiento-table td:nth-child(6)  { width: 7rem; }   /* ANÁLISIS */
+
+.seguimiento-table th:nth-child(7),
+.seguimiento-table td:nth-child(7)  { width: 7rem; }   /* CONSULTAS */
+
+.seguimiento-table th:nth-child(8),
+.seguimiento-table td:nth-child(8)  { width: 6.5rem; } /* MA */
+
+.seguimiento-table th:nth-child(9),
+.seguimiento-table td:nth-child(9)  { width: 6.5rem; } /* IP */
+
+.seguimiento-table th:nth-child(10),
+.seguimiento-table td:nth-child(10) { width: 7.5rem; } /* RESOLUCIÓN */
+
+.seguimiento-table th:nth-child(11),
+.seguimiento-table td:nth-child(11) { width: 4.5rem; } /* Acciones */
+
+/* AT con múltiples solicitudes: fondo amarillo en lugar de badge (#263 bug #1) */
+.num-at-multiples {
+    display: inline-block;
+    background-color: #fff3cd;
+    color: #664d03;
+    border-radius: 0.25rem;
+    padding: 0.1em 0.4em;
+    border-left: 3px solid #ffc107;
+}
+
+/* Responsive seguimiento: ocultar columnas progresivamente (#263 bug #2)
+ * Orden de ocultación (menos → más importante): PROYECTO → TITULAR → CONSULTAS+MA → IP
+ * RESOLUCIÓN siempre visible */
+@media (max-width: 1400px) {
+    .seguimiento-table th:nth-child(5),
+    .seguimiento-table td:nth-child(5) { display: none; } /* PROYECTO */
+}
+@media (max-width: 1199px) {
+    .seguimiento-table th:nth-child(4),
+    .seguimiento-table td:nth-child(4) { display: none; } /* TITULAR */
+}
+@media (max-width: 991px) {
+    .seguimiento-table th:nth-child(7),
+    .seguimiento-table td:nth-child(7),
+    .seguimiento-table th:nth-child(8),
+    .seguimiento-table td:nth-child(8) { display: none; } /* CONSULTAS, MA */
+}
+@media (max-width: 767px) {
+    .seguimiento-table th:nth-child(9),
+    .seguimiento-table td:nth-child(9) { display: none; } /* IP */
 }

@@ -1,9 +1,18 @@
 {% extends 'layout/lista_v2_base.html' %}
 
+{# Bug #263.5: breadcrumb con tercer nivel Seguimiento #}
+{% block breadcrumb %}
+<a href="{{ url_for('dashboard.index') }}">Inicio</a>
+<span>›</span>
+<a href="{{ url_for('expedientes.listado_v2') }}">Expedientes</a>
+<span>›</span>
+<span>Seguimiento</span>
+{% endblock %}
+
 {% block page_title %}Seguimiento{% endblock %}
 {% block page_icon %}<i class="fas fa-tasks"></i>{% endblock %}
 {% block entity_label_plural %}solicitudes{% endblock %}
-{% block search_placeholder %}{% endblock %}
+{% block search_placeholder %}Buscar por Nº AT o titular...{% endblock %}
 
 {% block filtros_extra %}
 <select id="sel-ver" aria-label="Ver">
@@ -79,12 +88,15 @@ function renderFecha(val) {
 
 const renderFns = {
     'num_at': (val, item) => {
-        let html = `<strong>AT-${val}</strong>`;
+        // Bug #263.1: fondo amarillo en lugar de badge cuando hay múltiples solicitudes
+        const atStr = `AT-${val}`;
         if (item.at_count > 1) {
-            html += ` <span class="badge bg-warning text-dark ms-1"
-                           title="Este AT tiene ${item.at_count} solicitudes activas">×${item.at_count}</span>`;
+            return `<span class="num-at-multiples"
+                         title="Este AT tiene ${item.at_count} solicitudes activas simultáneas">
+                        <strong>${atStr}</strong>
+                    </span>`;
         }
-        return html;
+        return `<strong>${atStr}</strong>`;
     },
 
     'tipo_solicitud': (val, item) => {
