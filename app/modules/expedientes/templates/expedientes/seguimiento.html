@@ -88,15 +88,14 @@ function renderFecha(val) {
 
 const renderFns = {
     'num_at': (val, item) => {
-        // Bug #263.1: fondo amarillo en lugar de badge cuando hay múltiples solicitudes
         const atStr = `AT-${val}`;
         if (item.at_count > 1) {
-            return `<span class="num-at-multiples"
+            return `<span class="num-at-pill num-at-multiples"
                          title="Este AT tiene ${item.at_count} solicitudes activas simultáneas">
                         <strong>${atStr}</strong>
                     </span>`;
         }
-        return `<strong>${atStr}</strong>`;
+        return `<span class="num-at-pill"><strong>${atStr}</strong></span>`;
     },
 
     'tipo_solicitud': (val, item) => {
@@ -147,6 +146,9 @@ class SeguimientoScroll extends ScrollInfinito {
 
         try {
             const params = new URLSearchParams({ cursor: this.cursor, limit: this.limit });
+
+            const search = this.searchInput?.value.trim();
+            if (search) params.append('search', search);
 
             const ver = document.getElementById('sel-ver')?.value || 'mis';
             params.append('ver', ver);
@@ -214,6 +216,33 @@ const scrollInfinito = new SeguimientoScroll({
 });
 
 const filtros = new FiltrosListado(scrollInfinito);
-console.log('Seguimiento inicializado');
+
+// Reparte el espacio sobrante: TITULAR 40% / PROYECTO 60% (mínimo 100px cada uno)
+// CSS calc() no funciona con rem en table-layout:fixed → medimos el DOM.
+function ajustarFlexiblesSeguimiento() {
+    const tabla = document.querySelector('.seguimiento-table');
+    if (!tabla) return;
+    const ths = Array.from(tabla.querySelectorAll('thead th'));
+    if (ths.length < 5) return;
+    const thTitular  = ths[3];
+    const thProyecto = ths[4];
+    thTitular.style.width  = '';
+    thProyecto.style.width = '';
+    const totalWidth = tabla.offsetWidth;
+    let anchoFijo = 0;
+    ths.forEach((th, i) => { if (i !== 3 && i !== 4) anchoFijo += th.offsetWidth; });
+    const sobrante = Math.max(0, totalWidth - anchoFijo);
+    const MIN_PX = 100;
+    const proyectoVisible = getComputedStyle(thProyecto).display !== 'none';
+    if (proyectoVisible) {
+        thTitular.style.width  = Math.max(MIN_PX, sobrante * 0.4) + 'px';
+        thProyecto.style.width = Math.max(MIN_PX, sobrante * 0.6) + 'px';
+    } else {
+        thTitular.style.width  = Math.max(MIN_PX, sobrante) + 'px';
+    }
+}
+requestAnimationFrame(ajustarFlexiblesSeguimiento);
+new ResizeObserver(ajustarFlexiblesSeguimiento)
+    .observe(document.querySelector('.lista-scroll-container'));
 </script>
 {% endblock %}

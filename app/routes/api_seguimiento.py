@@ -35,7 +35,7 @@ FECHA: 2026-03-27
 from flask import Blueprint, request, jsonify
 from flask_login import login_required, current_user
 from sqlalchemy.orm import joinedload
-from sqlalchemy import func
+from sqlalchemy import func, cast, String, or_
 
 from app import db
 from app.models.expedientes import Expediente
@@ -78,6 +78,7 @@ def listar_seguimiento():
     estado           = request.args.get('estado', 'EN_TRAMITE').strip()
     tipo_titular     = request.args.get('tipo_titular', '').strip()
     tipo_expediente_id_raw = request.args.get('tipo_expediente_id', '').strip()
+    search           = request.args.get('search', '').strip()
 
     if ver not in ('mis', 'todos'):
         return jsonify({'error': 'ver debe ser "mis" o "todos"'}), 400
@@ -106,6 +107,12 @@ def listar_seguimiento():
         filtros_base.append(Entidad.tipo_titular == tipo_titular)
     if tipo_expediente_id:
         filtros_base.append(Expediente.tipo_expediente_id == tipo_expediente_id)
+    if search:
+        num_at_str = search.upper().removeprefix('AT-').removeprefix('AT')
+        filtros_base.append(or_(
+            cast(Expediente.numero_at, String).ilike(f'%{num_at_str}%'),
+            Entidad.nombre_completo.ilike(f'%{search}%'),
+        ))
 
     # -------------------------------------------------------------------------
     # 3. Query principal con eager loading para evitar N+1 en serialización
