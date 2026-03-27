@@ -128,7 +128,7 @@ def n_soles_de_at(numero_at):
 # ---------------------------------------------------------------------------
 
 def verificar_T01():
-    seccion('T01 | AT=1001 | SOL=PENDIENTE_ESTUDIO (ANALIZAR sin doc_usado)')
+    seccion('T01 | AT=1001 | SOL=PENDIENTE_ESTUDIO (ANALIZAR con doc_usado, sin doc_producido)')
     sid = sol_de_at(1001, 'AAP_AAC')
     check('T01: solicitud AAP_AAC existe', sid is not None)
     if not sid:
@@ -147,8 +147,8 @@ def verificar_T01():
     check('T01: 1 tarea ANALIZAR', len(tareas) == 1 and tareas[0][0] == 'ANALIZAR',
           f'tareas: {[t[0] for t in tareas]}')
     if tareas:
-        check('T01: ANALIZAR sin doc_usado', tareas[0][1] is None,
-              f'doc_usado={tareas[0][1]}')
+        check('T01: ANALIZAR con doc_usado presente', tareas[0][1] is not None,
+              'doc_usado es NULL')
         check('T01: ANALIZAR sin doc_producido', tareas[0][2] is None,
               f'doc_producido={tareas[0][2]}')
 
@@ -216,14 +216,14 @@ def verificar_T04():
         check('T04a: tarea ESPERAR_PLAZO en SOL (subsanar)', len(tareas_req) == 1 and tareas_req[0][0] == 'ESPERAR_PLAZO',
               f'tareas: {[t[0] for t in tareas_req]}')
         if tareas_req:
-            check('T04a: notas PLAZO_DIAS=0 en SOL', tareas_req[0][3] == 'PLAZO_DIAS=0',
+            check('T04a: notas PLAZO_DIAS=9999 en SOL', tareas_req[0][3] == 'PLAZO_DIAS=9999',
                   f'notas={tareas_req[0][3]!r}')
 
         tareas_cons = tareas_de_tramite('CONSULTA_SEPARATA', sid_a)
         check('T04a: tarea ESPERAR_PLAZO en CONSULTAS', len(tareas_cons) == 1 and tareas_cons[0][0] == 'ESPERAR_PLAZO',
               f'tareas: {[t[0] for t in tareas_cons]}')
         if tareas_cons:
-            check('T04a: notas PLAZO_DIAS=0 en CONSULTAS', tareas_cons[0][3] == 'PLAZO_DIAS=0',
+            check('T04a: notas PLAZO_DIAS=9999 en CONSULTAS', tareas_cons[0][3] == 'PLAZO_DIAS=9999',
                   f'notas={tareas_cons[0][3]!r}')
 
     # Sol B: AAE_DEFINITIVA — PENDIENTE_ESTUDIO
@@ -231,10 +231,11 @@ def verificar_T04():
     check('T04b: solicitud AAE_DEFINITIVA existe', sid_b is not None)
     if sid_b:
         tareas_b = tareas_de_tramite('ANALISIS_DOCUMENTAL', sid_b)
-        check('T04b: tarea ANALIZAR sin docs', len(tareas_b) == 1 and tareas_b[0][0] == 'ANALIZAR',
+        check('T04b: tarea ANALIZAR con doc_usado', len(tareas_b) == 1 and tareas_b[0][0] == 'ANALIZAR',
               f'tareas: {[t[0] for t in tareas_b]}')
         if tareas_b:
-            check('T04b: ANALIZAR sin doc_usado', tareas_b[0][1] is None)
+            check('T04b: ANALIZAR con doc_usado presente', tareas_b[0][1] is not None,
+                  'doc_usado es NULL')
 
 
 def verificar_T05():
@@ -274,7 +275,7 @@ def verificar_T06():
     check('T06: tarea ESPERAR_PLAZO en MA', len(tareas) == 1 and tareas[0][0] == 'ESPERAR_PLAZO',
           f'tareas: {[t[0] for t in tareas]}')
     if tareas:
-        check('T06: notas PLAZO_DIAS=0', tareas[0][3] == 'PLAZO_DIAS=0',
+        check('T06: notas PLAZO_DIAS=9999', tareas[0][3] == 'PLAZO_DIAS=9999',
               f'notas={tareas[0][3]!r}')
 
 
@@ -317,14 +318,15 @@ def verificar_T08():
     check('T08: ESPERAR_PLAZO en IP', len(tareas_ip) == 1 and tareas_ip[0][0] == 'ESPERAR_PLAZO',
           f'tareas IP: {[t[0] for t in tareas_ip]}')
     if tareas_ip:
-        check('T08: notas PLAZO_DIAS=0', tareas_ip[0][3] == 'PLAZO_DIAS=0',
+        check('T08: notas PLAZO_DIAS=9999', tareas_ip[0][3] == 'PLAZO_DIAS=9999',
               f'notas={tareas_ip[0][3]!r}')
 
     tareas_res = tareas_de_tramite('ELABORACION', sid)
     check('T08: ANALIZAR en RESOLUCION', len(tareas_res) == 1 and tareas_res[0][0] == 'ANALIZAR',
           f'tareas RES: {[t[0] for t in tareas_res]}')
     if tareas_res:
-        check('T08: ANALIZAR sin docs (resolución sin input)', tareas_res[0][1] is None and tareas_res[0][2] is None)
+        check('T08: ANALIZAR con doc_usado presente (resolución con input)', tareas_res[0][1] is not None,
+              'doc_usado es NULL')
 
 
 def verificar_T09():

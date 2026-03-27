@@ -18,7 +18,7 @@ Uso:
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import date, timedelta
 from typing import Optional
 
@@ -58,14 +58,18 @@ COLOR: dict[str, str] = {
     'FIN':                 'verde',
 }
 
-# Prioridad de urgencia: mayor número = más urgente (§5)
-URGENCIA: dict[str, int] = {
-    'rojo':     6,
-    'amarillo': 5,
-    'azul':     4,
-    'naranja':  3,
-    'gris':     2,
-    'verde':    1,
+# Prioridad numérica por §4.2 (1 = más urgente, 10 = menos urgente)
+PRIORIDAD: dict[str, int] = {
+    'PENDIENTE_TRAMITAR':  1,
+    'PENDIENTE_ESTUDIO':   2,
+    'PENDIENTE_REDACTAR':  3,
+    'PENDIENTE_CERRAR':    4,
+    'PENDIENTE_FIRMA':     5,
+    'PENDIENTE_NOTIFICAR': 6,
+    'PENDIENTE_PUBLICAR':  7,
+    'PENDIENTE_SUBSANAR':  8,
+    'PENDIENTE_PLAZOS':    9,
+    'FIN':                 10,
 }
 
 
@@ -78,7 +82,7 @@ class EstadoPista:
     """Estado deducido para una pista de una solicitud."""
     codigo: str    # p.ej. 'PENDIENTE_ESTUDIO'
     color: str     # p.ej. 'rojo'
-    count: int = 1 # fases en el nivel de urgencia máximo (para mostrar contador)
+    count: int = 1 # elementos en el estado de mayor prioridad (para contador visible)
 
 
 # ---------------------------------------------------------------------------
@@ -92,7 +96,7 @@ def estado_solicitud(solicitud_id: int) -> dict[str, Optional[EstadoPista]]:
     Returns:
         Dict con claves SOL, CONSULTAS, MA, IP, RES.
         None  → pista N/A (sin fases de ese tipo).
-        EstadoPista → estado más urgente de las fases abiertas, con contador.
+        EstadoPista → estado más urgente, con contador acumulado desde los niveles inferiores.
     """
     sol = Solicitud.query.get(solicitud_id)
     if sol is None:
@@ -111,12 +115,13 @@ def estado_solicitud(solicitud_id: int) -> dict[str, Optional[EstadoPista]]:
             continue
 
         if all(f.fecha_fin is not None for f in fases):
-            result[pista] = EstadoPista('FIN', 'verde', count=len(fases))
+            result[pista] = EstadoPista('FIN', 'verde', count=1)
             continue
 
         fases_abiertas = [f for f in fases if f.fecha_fin is None]
-        estados = [_estado_fase(f, pista) for f in fases_abiertas]
-        result[pista] = _agregar(estados)
+        acc = _acumular([_estado_fase(f, pista) for f in fases_abiertas])
+        ganador, count = _mayor_prioridad(acc)
+        result[pista] = EstadoPista(ganador, COLOR[ganador], count)
 
     return result
 
@@ -124,7 +129,7 @@ def estado_solicitud(solicitud_id: int) -> dict[str, Optional[EstadoPista]]:
 def fin_total(estados: dict[str, Optional[EstadoPista]]) -> bool:
     """
     True si todas las pistas con fases están en FIN.
-    Columna FIN del listado.
+    Determina el color naranja de la celda SOLICITUD.
     """
     pistas_con_fases = [e for e in estados.values() if e is not None]
     return bool(pistas_con_fases) and all(e.codigo == 'FIN' for e in pistas_con_fases)
@@ -134,109 +139,125 @@ def fin_total(estados: dict[str, Optional[EstadoPista]]) -> bool:
 # Algoritmo §5 — deducción jerárquica
 # ---------------------------------------------------------------------------
 
-def _estado_fase(fase, pista: str) -> str:
-    """Estado de una fase abierta (fecha_fin IS NULL). §5 paso 4."""
+def _estado_fase(fase, pista: str) -> tuple[str, int]:
+    """Estado de una fase abierta (fecha_fin IS NULL)."""
     if fase.fecha_inicio is None:
-        return 'PENDIENTE_TRAMITAR'                          # §5.4a
+        return ('PENDIENTE_TRAMITAR', 1)
 
     tramites = sorted(fase.tramites, key=lambda t: t.id)
 
     if not tramites:
-        return 'PENDIENTE_TRAMITAR'                          # §5.4b
+        return ('PENDIENTE_TRAMITAR', 1)
 
     tramites_abiertos = [t for t in tramites if t.fecha_fin is None]
 
     if not tramites_abiertos:
         # Todos los trámites cerrados — depende del resultado de fase
         if fase.resultado_fase_id is None:
-            return 'PENDIENTE_ESTUDIO'
-        return 'PENDIENTE_CERRAR'
+            return ('PENDIENTE_ESTUDIO', 1)
+        return ('PENDIENTE_CERRAR', 1)
 
-    estados = [_estado_tramite(t, pista) for t in tramites_abiertos]
-    return _mas_urgente(estados)
+    acc = _acumular([_estado_tramite(t, pista) for t in tramites_abiertos])
+    return _mayor_prioridad(acc)
 
 
-def _estado_tramite(tramite, pista: str) -> str:
-    """Estado de un trámite abierto (fecha_fin IS NULL). §5.4c"""
-    tareas = sorted(tramite.tareas, key=lambda t: t.id)
-
+def _estado_tramite(tramite, pista: str) -> tuple[str, int]:
+    """Estado de un trámite abierto (fecha_fin IS NULL)."""
     if tramite.fecha_inicio is None:
-        # Trámite no iniciado — excepción si la primera tarea es REDACTAR
-        if tareas and tareas[0].tipo_tarea.codigo == 'REDACTAR':
-            return 'PENDIENTE_REDACTAR'
-        return 'PENDIENTE_TRAMITAR'
+        return ('PENDIENTE_TRAMITAR', 1)
+
+    tareas = list(tramite.tareas)
 
     if not tareas:
-        return 'PENDIENTE_TRAMITAR'
+        return ('PENDIENTE_TRAMITAR', 1)
 
-    activas     = [t for t in tareas if t.fecha_inicio is not None and t.fecha_fin is None]
-    planificadas = [t for t in tareas if t.fecha_inicio is None]
+    tareas_abiertas = [t for t in tareas if t.fecha_fin is None]
 
-    if not activas:
-        return 'PENDIENTE_TRAMITAR' if planificadas else 'PENDIENTE_CERRAR'
+    if not tareas_abiertas:
+        # Todas las tareas completadas pero el trámite sigue abierto
+        return ('PENDIENTE_CERRAR', 1)
 
-    estados = [_estado_tarea(t, pista) for t in activas]
-    return _mas_urgente(estados)
+    acc = _acumular([_estado_tarea(t, pista) for t in tareas_abiertas])
+    return _mayor_prioridad(acc)
 
 
-def _estado_tarea(tarea, pista: str) -> str:
-    """Estado de una tarea activa (fecha_inicio NOT NULL, fecha_fin IS NULL). §4.4"""
+def _estado_tarea(tarea, pista: str) -> tuple[str, int]:
+    """Estado de una tarea abierta (fecha_fin IS NULL). §4.4"""
+    if tarea.fecha_inicio is None:
+        return ('PENDIENTE_TRAMITAR', 1)  # tarea planificada, no iniciada
+
     tipo = tarea.tipo_tarea.codigo
 
     if tipo == 'ANALIZAR':
-        if tarea.documento_usado_id is None or tarea.documento_producido_id is None:
-            return 'PENDIENTE_ESTUDIO'
-        return 'PENDIENTE_CERRAR'
+        if tarea.documento_usado_id is None:
+            return ('PENDIENTE_TRAMITAR', 1)   # sin doc de entrada: hay que tramitar
+        if tarea.documento_producido_id is None:
+            return ('PENDIENTE_ESTUDIO', 1)    # doc recibido, hay que estudiar y redactar informe
+        return ('PENDIENTE_CERRAR', 1)         # ambos documentos presentes
 
     if tipo == 'REDACTAR':
-        return 'PENDIENTE_CERRAR' if tarea.documento_producido_id else 'PENDIENTE_REDACTAR'
+        if tarea.documento_producido_id is not None:
+            return ('PENDIENTE_CERRAR', 1)     # borrador ya producido
+        if tarea.documento_usado_id is not None:
+            return ('PENDIENTE_REDACTAR', 1)   # tiene doc de entrada, falta redactar
+        return ('PENDIENTE_TRAMITAR', 1)       # sin ningún doc: hay que tramitar
 
     if tipo == 'FIRMAR':
         if tarea.documento_usado_id is None:
-            return 'PENDIENTE_TRAMITAR'
-        return 'PENDIENTE_CERRAR' if tarea.documento_producido_id else 'PENDIENTE_FIRMA'
+            return ('PENDIENTE_TRAMITAR', 1)   # falta borrador
+        if tarea.documento_producido_id is None:
+            return ('PENDIENTE_FIRMA', 1)      # borrador presente, falta firmado
+        return ('PENDIENTE_CERRAR', 1)
 
     if tipo == 'NOTIFICAR':
         if tarea.documento_usado_id is None:
-            return 'PENDIENTE_TRAMITAR'
-        return 'PENDIENTE_CERRAR' if tarea.documento_producido_id else 'PENDIENTE_NOTIFICAR'
+            return ('PENDIENTE_TRAMITAR', 1)   # falta doc firmado
+        if tarea.documento_producido_id is None:
+            return ('PENDIENTE_NOTIFICAR', 1)  # doc firmado, falta justificante
+        return ('PENDIENTE_CERRAR', 1)
 
     if tipo == 'PUBLICAR':
         if tarea.documento_usado_id is None:
-            return 'PENDIENTE_TRAMITAR'
-        return 'PENDIENTE_CERRAR' if tarea.documento_producido_id else 'PENDIENTE_PUBLICAR'
+            return ('PENDIENTE_TRAMITAR', 1)   # falta doc firmado
+        if tarea.documento_producido_id is None:
+            return ('PENDIENTE_PUBLICAR', 1)   # doc firmado, falta justificante publicación
+        return ('PENDIENTE_CERRAR', 1)
 
     if tipo == 'ESPERAR_PLAZO':
-        return _estado_esperar_plazo(tarea, pista)
+        return (_estado_esperar_plazo(tarea, pista), 1)
 
     if tipo == 'INCORPORAR':
-        return 'PENDIENTE_CERRAR' if tarea.documento_producido_id else 'PENDIENTE_ESTUDIO'
+        if tarea.documento_producido_id is None:
+            return ('PENDIENTE_TRAMITAR', 1)   # sin documento incorporado
+        return ('PENDIENTE_CERRAR', 1)
 
-    return 'PENDIENTE_TRAMITAR'
+    return ('PENDIENTE_TRAMITAR', 1)  # tipo desconocido — seguro por defecto
 
 
 def _estado_esperar_plazo(tarea, pista: str) -> str:
     """
-    ESPERAR_PLAZO: gris si el plazo está activo o es indefinido,
-    PENDIENTE_ESTUDIO si el plazo ha vencido. §4.4
-    Lee PLAZO_DIAS del campo notas.
+    ESPERAR_PLAZO: §4.4
+    - PLAZO_DIAS no configurado (=0) → PENDIENTE_TRAMITAR
+    - Plazo activo (días restantes > 0) → PENDIENTE_SUBSANAR (pista SOL) o PENDIENTE_PLAZOS (resto)
+    - Plazo vencido (días restantes ≤ 0) → PENDIENTE_ESTUDIO
     """
-    estado_espera = 'PENDIENTE_SUBSANAR' if pista == 'SOL' else 'PENDIENTE_PLAZOS'
     plazo = _parse_plazo_dias(tarea.notas)
 
     if plazo == 0:
-        return estado_espera  # espera indefinida
+        return 'PENDIENTE_TRAMITAR'  # plazo no configurado: hay que tramitar
+
+    estado_espera = 'PENDIENTE_SUBSANAR' if pista == 'SOL' else 'PENDIENTE_PLAZOS'
 
     if tarea.fecha_inicio:
         vencimiento = tarea.fecha_inicio + timedelta(days=plazo)
         if vencimiento < date.today():
-            return 'PENDIENTE_ESTUDIO'
+            return 'PENDIENTE_ESTUDIO'  # plazo vencido: hay que estudiar la respuesta
 
     return estado_espera
 
 
 # ---------------------------------------------------------------------------
-# Helpers
+# Helpers internos
 # ---------------------------------------------------------------------------
 
 def _parse_plazo_dias(notas: Optional[str]) -> int:
@@ -247,14 +268,15 @@ def _parse_plazo_dias(notas: Optional[str]) -> int:
     return int(m.group(1)) if m else 0
 
 
-def _mas_urgente(estados: list[str]) -> str:
-    """El estado de mayor urgencia de la lista."""
-    return max(estados, key=lambda e: URGENCIA[COLOR[e]])
+def _acumular(resultados: list[tuple[str, int]]) -> dict[str, int]:
+    """Suma counts por estado interno a través de los niveles del árbol."""
+    acc: dict[str, int] = {}
+    for estado, n in resultados:
+        acc[estado] = acc.get(estado, 0) + n
+    return acc
 
 
-def _agregar(estados: list[str]) -> EstadoPista:
-    """EstadoPista con el estado más urgente y cuántas fases lo comparten."""
-    mejor = _mas_urgente(estados)
-    urgencia_max = URGENCIA[COLOR[mejor]]
-    count = sum(1 for e in estados if URGENCIA[COLOR[e]] == urgencia_max)
-    return EstadoPista(mejor, COLOR[mejor], count)
+def _mayor_prioridad(acumulado: dict[str, int]) -> tuple[str, int]:
+    """(estado_ganador, count) del estado de menor número en §4.2 (más urgente)."""
+    ganador = min(acumulado, key=lambda e: PRIORIDAD[e])
+    return ganador, acumulado[ganador]
