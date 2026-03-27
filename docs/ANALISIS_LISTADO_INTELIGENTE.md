@@ -76,17 +76,17 @@ Cada pista es una entrada de tipo `"pista"` con los `tipos_fase` que le correspo
 
 ### 4.2 Estados válidos por pista
 
-La columna **Prioridad** determina qué estado se muestra cuando hay varias fases abiertas en la misma pista (gana el de menor número). El contador `TRAMITAR (2)` se añade solo cuando hay >1 elemento en el **mismo estado interno** (misma fila).
+La columna **Prioridad** determina qué estado se muestra cuando hay varias fases abiertas en la misma pista (gana el de menor número). El criterio principal es la accionabilidad: primero los estados en que el tramitador puede actuar (1–4), luego los que esperan a otro (5–9). El contador `TRAMITAR (2)` se añade solo cuando hay >1 elemento en el **mismo estado interno** (misma fila).
 
 | Prioridad | Estado interno | Texto en celda | ANÁLISIS | CONSULTAS | MA | IP | RESOLUCIÓN |
 |:---------:|----------------|:--------------:|:--------:|:---------:|:--:|:--:|:----------:|
 | 1 | PENDIENTE_TRAMITAR | TRAMITAR | ✓ | ✓ | ✓ | ✓ | ✓ |
 | 2 | PENDIENTE_ESTUDIO | ESTUDIAR | ✓ | ✓ | ✓ | ✓ | ✓ |
 | 3 | PENDIENTE_REDACTAR | REDACTAR | — | ✓ | ✓ | ✓ | ✓ |
-| 4 | PENDIENTE_FIRMA | FIRMAR | ✓ | ✓ | ✓ | ✓ | ✓ |
-| 5 | PENDIENTE_NOTIFICAR | NOTIFICAR | ✓ | ✓ | ✓ | — | ✓ |
-| 6 | PENDIENTE_PUBLICAR | PUBLICAR | — | — | — | ✓ | ✓ |
-| 7 | PENDIENTE_CERRAR | CERRAR | ✓ | ✓ | ✓ | ✓ | ✓ |
+| 4 | PENDIENTE_CERRAR | CERRAR | ✓ | ✓ | ✓ | ✓ | ✓ |
+| 5 | PENDIENTE_FIRMA | FIRMAR | ✓ | ✓ | ✓ | ✓ | ✓ |
+| 6 | PENDIENTE_NOTIFICAR | NOTIFICAR | ✓ | ✓ | ✓ | — | ✓ |
+| 7 | PENDIENTE_PUBLICAR | PUBLICAR | — | — | — | ✓ | ✓ |
 | 8 | PENDIENTE_SUBSANAR | SUBSANAR | ✓ | — | — | — | — |
 | 9 | PENDIENTE_PLAZOS | PLAZOS | — | ✓ | ✓ | ✓ | — |
 | 10 | FIN | FIN | ✓ | ✓ | ✓ | ✓ | ✓ |
