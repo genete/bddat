@@ -237,16 +237,20 @@ def _estado_tarea(tarea, pista: str) -> tuple[str, int]:
 def _estado_esperar_plazo(tarea, pista: str) -> str:
     """
     ESPERAR_PLAZO: §4.4
-    - PLAZO_DIAS no configurado (=0) → PENDIENTE_TRAMITAR
-    - Plazo activo (días restantes > 0) → PENDIENTE_SUBSANAR (pista SOL) o PENDIENTE_PLAZOS (resto)
-    - Plazo vencido (días restantes ≤ 0) → PENDIENTE_ESTUDIO
+    - PLAZO_DIAS ausente en notas → PENDIENTE_TRAMITAR (tarea sin configurar)
+    - PLAZO_DIAS=0 → espera indefinida → PENDIENTE_SUBSANAR (SOL) o PENDIENTE_PLAZOS (resto)
+    - PLAZO_DIAS=N (N>0) con plazo activo → PENDIENTE_SUBSANAR / PENDIENTE_PLAZOS
+    - PLAZO_DIAS=N (N>0) con plazo vencido → PENDIENTE_ESTUDIO
     """
     plazo = _parse_plazo_dias(tarea.notas)
 
-    if plazo == 0:
-        return 'PENDIENTE_TRAMITAR'  # plazo no configurado: hay que tramitar
+    if plazo is None:
+        return 'PENDIENTE_TRAMITAR'  # PLAZO_DIAS no presente en notas: tarea sin configurar
 
     estado_espera = 'PENDIENTE_SUBSANAR' if pista == 'SOL' else 'PENDIENTE_PLAZOS'
+
+    if plazo == 0:
+        return estado_espera  # espera indefinida: siempre activo
 
     if tarea.fecha_inicio:
         vencimiento = tarea.fecha_inicio + timedelta(days=plazo)
@@ -260,12 +264,16 @@ def _estado_esperar_plazo(tarea, pista: str) -> str:
 # Helpers internos
 # ---------------------------------------------------------------------------
 
-def _parse_plazo_dias(notas: Optional[str]) -> int:
-    """Extrae PLAZO_DIAS=N de notas. Devuelve 0 si no encontrado."""
+def _parse_plazo_dias(notas: Optional[str]) -> Optional[int]:
+    """
+    Extrae PLAZO_DIAS=N de notas.
+    Devuelve None si la clave no está presente (tarea sin configurar).
+    Devuelve 0 si PLAZO_DIAS=0 (espera indefinida).
+    """
     if not notas:
-        return 0
+        return None
     m = re.search(r'PLAZO_DIAS=(\d+)', notas)
-    return int(m.group(1)) if m else 0
+    return int(m.group(1)) if m else None
 
 
 def _acumular(resultados: list[tuple[str, int]]) -> dict[str, int]:

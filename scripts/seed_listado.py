@@ -212,23 +212,25 @@ with app.app_context():
     db.session.flush()
 
     # ------------------------------------------------------------------
-    # T01 | AAP_AAC | SOL=PENDIENTE_ESTUDIO | Sin doc_usado en ANALIZAR
+    # T01 | AAP_AAC | SOL=PENDIENTE_ESTUDIO | ANALIZAR con doc_usado, sin doc_producido
     # ------------------------------------------------------------------
     exp01 = crear_exp(1001, e_dist, TE_DIST)
+    sol_recibida01 = crear_doc(exp01, 'seed://sol_recibida_T01', TDOC_OTROS)
     sol01 = crear_sol(exp01, TS_AAP_AAC, e_dist)
     f01 = crear_fase(sol01, TF_SOL)
     t01 = crear_tramite(f01, TT_ANAL_DOC)
-    crear_tarea(t01, TAREA_ANAL)
+    crear_tarea(t01, TAREA_ANAL, doc_usado=sol_recibida01)
     print('T01 OK — SOL=PENDIENTE_ESTUDIO')
 
     # ------------------------------------------------------------------
-    # T02 | AAP_AAC | SOL=PENDIENTE_REDACTAR | REDACTAR sin borrador
+    # T02 | AAP_AAC | SOL=PENDIENTE_REDACTAR | REDACTAR con doc_usado, sin doc_producido
     # ------------------------------------------------------------------
     exp02 = crear_exp(1002, e_dist, TE_DIST)
+    sol_recibida02 = crear_doc(exp02, 'seed://sol_recibida_T02', TDOC_OTROS)
     sol02 = crear_sol(exp02, TS_AAP_AAC, e_dist)
     f02 = crear_fase(sol02, TF_SOL)
     t02 = crear_tramite(f02, TT_REQ_SUB)
-    crear_tarea(t02, TAREA_RED)
+    crear_tarea(t02, TAREA_RED, doc_usado=sol_recibida02)
     print('T02 OK — SOL=PENDIENTE_REDACTAR')
 
     # ------------------------------------------------------------------
@@ -257,10 +259,11 @@ with app.app_context():
     t04a_sep = crear_tramite(f04a_cons, TT_CONS_SEP)
     crear_tarea(t04a_sep, TAREA_ESP, notas='PLAZO_DIAS=0')
 
+    sol_recibida04b = crear_doc(exp04, 'seed://sol_recibida_T04b', TDOC_OTROS)
     sol04b = crear_sol(exp04, TS_AAE_DEF, e_dist, fecha=date(2025, 8, 1))
     f04b_sol = crear_fase(sol04b, TF_SOL)
     t04b = crear_tramite(f04b_sol, TT_ANAL_DOC)
-    crear_tarea(t04b, TAREA_ANAL)
+    crear_tarea(t04b, TAREA_ANAL, doc_usado=sol_recibida04b)
     print('T04 OK — dos filas: PENDIENTE_SUBSANAR+PENDIENTE_PLAZOS / PENDIENTE_ESTUDIO')
 
     # ------------------------------------------------------------------
@@ -312,9 +315,10 @@ with app.app_context():
     f08_ip = crear_fase(sol08, TF_IP)
     t08_bop = crear_tramite(f08_ip, TT_BOP)
     crear_tarea(t08_bop, TAREA_ESP, notas='PLAZO_DIAS=0')
+    sol_recibida08 = crear_doc(exp08, 'seed://sol_recibida_T08', TDOC_OTROS)
     f08_res = crear_fase(sol08, TF_RES)
     t08_elab = crear_tramite(f08_res, TT_ELAB)
-    crear_tarea(t08_elab, TAREA_ANAL)
+    crear_tarea(t08_elab, TAREA_ANAL, doc_usado=sol_recibida08)
     print('T08 OK — SOL=FIN, CONSULTAS=FIN, MA=FIN, IP=PENDIENTE_PLAZOS, RES=PENDIENTE_ESTUDIO')
 
     # ------------------------------------------------------------------
