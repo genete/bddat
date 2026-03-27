@@ -43,11 +43,31 @@ from app.utils.permisos import (
     verificar_acceso_expediente
 )
 from app.utils.metadata import cargar_metadata
+from app.models.tipos_expedientes import TipoExpediente
 
 # template_folder apunta a app/modules/expedientes/templates/
 bp = Blueprint('expedientes', __name__,
                url_prefix='/expedientes',
                template_folder='templates')
+
+
+@bp.route('/seguimiento/')
+@login_required
+def seguimiento():
+    """
+    Listado inteligente de seguimiento: cola de trabajo multi-pista.
+
+    Cada fila es una solicitud EN_TRAMITE (o con el estado seleccionado).
+    El estado de cada pista se deduce dinámicamente vía API /api/expedientes/seguimiento.
+    """
+    meta = cargar_metadata('expedientes')
+    columns = meta.get('seguimiento', {}).get('columns', [])
+    tipos_expedientes = TipoExpediente.query.order_by(TipoExpediente.tipo).all()
+    return render_template(
+        'expedientes/seguimiento.html',
+        columns=columns,
+        tipos_expedientes=tipos_expedientes,
+    )
 
 
 @bp.route('/')
