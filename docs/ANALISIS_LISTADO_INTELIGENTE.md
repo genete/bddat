@@ -3,20 +3,8 @@
 > Fuente de verdad: `ESTRUCTURA_FTT.json`
 > Última sincronización: 2026-03-26
 
-**Issue de referencia:** #169
-**Estado:** Borrador — pendiente de revisión
-
----
-
-## 1. Concepto y decisiones de arquitectura
-
-### Columnas configurables vía `metadata.json`
-
-Las columnas del listado — incluidas las pistas — se definen en el `metadata.json` del módulo, siguiendo el patrón establecido en el resto de módulos (`app/modules/*/metadata.json`, leído por `app/utils/metadata.py`).
-
-Cada pista es una entrada de tipo `"pista"` con los `tipos_fase` que le corresponden. Cambiar visibilidad, añadir o reordenar columnas = editar el JSON y hacer deploy. No requiere tocar código Python ni plantillas.
-
-**No está expuesto a administración por UI** — lo cambia el programador o el técnico responsable del proyecto. Queda versionado en git. Es la granularidad correcta para este proyecto: los cambios de configuración de columnas son puntuales (detección de necesidad o consenso con usuarios) y no ocurren en producción de forma rutinaria.
+**Issues:** #169 (análisis/infraestructura) · #262 (implementación vista)
+**Estado:** Decisiones completas — pendiente de implementación (#262)
 
 ---
 
@@ -27,6 +15,14 @@ El listado de expedientes es una **cola de trabajo multi-pista**: cada fila repr
 El tramitador gestiona por lotes: filtra por estado de pista y trabaja secuencialmente ese grupo.
 
 **Unidad de fila: solicitud.** El número AT puede repetirse si un expediente tiene varias solicitudes activas simultáneamente. Esa repetición es intencionada y se señaliza visualmente.
+
+### Columnas configurables vía `metadata.json`
+
+Las columnas del listado — incluidas las pistas — se definen en el `metadata.json` del módulo, siguiendo el patrón establecido en el resto de módulos (`app/modules/*/metadata.json`, leído por `app/utils/metadata.py`).
+
+Cada pista es una entrada de tipo `"pista"` con los `tipos_fase` que le corresponden. Cambiar visibilidad, añadir o reordenar columnas = editar el JSON y hacer deploy. No requiere tocar código Python ni plantillas.
+
+**No está expuesto a administración por UI** — lo cambia el programador o el técnico responsable del proyecto. Queda versionado en git. Es la granularidad correcta para este proyecto: los cambios de configuración de columnas son puntuales (detección de necesidad o consenso con usuarios) y no ocurren en producción de forma rutinaria.
 
 ---
 
@@ -60,7 +56,7 @@ El tramitador gestiona por lotes: filtra por estado de pista y trabaja secuencia
 | **IP** | `pista_ip` | `INFORMACION_PUBLICA` (id=6) | Según tipo solicitud (POS/N/A) |
 | **RESOLUCIÓN** | `pista_resolucion` | `RESOLUCION` (id=9) | Siempre |
 
-**Inteligencia de columna:** si una solicitud no tiene fases del tipo "principal" de una pista pero sí de un tipo alternativo (p.ej. no tiene `CONSULTAS` pero sí `CONSULTA_MINISTERIO`), la columna muestra el estado de la fase disponible. Si tiene varias fases abiertas en la misma pista, se muestra el estado más urgente; cuando hay más de un elemento en ese mismo nivel de urgencia se añade un contador entre paréntesis (ej: `rojo(2)`). Las fases cerradas no contribuyen al estado visible.
+**Inteligencia de columna:** si una solicitud no tiene fases del tipo "principal" de una pista pero sí de un tipo alternativo (p.ej. no tiene `CONSULTAS` pero sí `CONSULTA_MINISTERIO`), la columna muestra el estado de la fase disponible. Si tiene varias fases abiertas en la misma pista, se muestra el estado más urgente; cuando hay más de un elemento en ese mismo nivel de urgencia se añade un contador entre paréntesis (ej: `TRAMITAR (2)`). Las fases cerradas no contribuyen al estado visible.
 
 **Columna vacía (N/A):** si el tipo de solicitud hace que una pista sea no aplicable (p.ej. AAC no tiene IP), la celda aparece vacía — fondo limpio, sin texto ni icono. Diferente a FIN (verde).
 
@@ -83,8 +79,8 @@ El tramitador gestiona por lotes: filtra por estado de pista y trabaja secuencia
 
 Cada pista tiene su propio subconjunto de estados posibles, determinado por el flujo de sus fases:
 
-| Estado | SOL/REQ/SUB | CONSULTAS | MA | IP | RESOLUCIÓN |
-|--------|:-----------:|:---------:|:--:|:--:|:----------:|
+| Estado | ANÁLISIS | CONSULTAS | MA | IP | RESOLUCIÓN |
+|--------|:--------:|:---------:|:--:|:--:|:----------:|
 | PENDIENTE_TRAMITAR | ✓ | ✓ | ✓ | ✓ | ✓ |
 | PENDIENTE_ESTUDIO | ✓ | ✓ | ✓ | ✓ | ✓ |
 | PENDIENTE_REDACTAR | — | ✓ | ✓ | ✓ | ✓ |
@@ -96,7 +92,7 @@ Cada pista tiene su propio subconjunto de estados posibles, determinado por el f
 | PENDIENTE_CERRAR | ✓ | ✓ | ✓ | ✓ | ✓ |
 | FIN | ✓ | ✓ | ✓ | ✓ | ✓ |
 
-> SOL/REQ/SUB no tiene PENDIENTE_REDACTAR porque su primera acción activa es siempre un análisis (ANALIZAR), no una redacción.
+> ANÁLISIS no tiene PENDIENTE_REDACTAR porque su primera acción activa es siempre un análisis (ANALIZAR), no una redacción.
 
 ### 4.3 Definición de estados
 
@@ -108,7 +104,7 @@ Cada pista tiene su propio subconjunto de estados posibles, determinado por el f
 | **PENDIENTE_FIRMA** | amarillo | FIRMAR con borrador presente pero sin doc firmado |
 | **PENDIENTE_NOTIFICAR** | azul | NOTIFICAR con doc firmado pero sin justificante |
 | **PENDIENTE_PUBLICAR** | azul | PUBLICAR con doc firmado pero sin justificante |
-| **PENDIENTE_SUBSANAR** | gris | ESPERAR_PLAZO activo en pista SOL/REQ/SUB |
+| **PENDIENTE_SUBSANAR** | gris | ESPERAR_PLAZO activo en pista ANÁLISIS |
 | **PENDIENTE_PLAZOS** | gris | ESPERAR_PLAZO activo en pistas CONSULTAS, MA o IP |
 | **PENDIENTE_CERRAR** | naranja | Tarea/trámite/fase completos pero sin `fecha_fin` |
 | **FIN** | verde | Fase finalizada (`fecha_fin IS NOT NULL`) |
@@ -140,7 +136,7 @@ Cada pista tiene su propio subconjunto de estados posibles, determinado por el f
 
 ## 5. Algoritmo de deducción jerárquica
 
-El servicio `app/services/seguimiento.py` (pendiente de crear) deduce el estado de cada pista recorriendo el árbol de abajo arriba. El estado más urgente prevalece.
+El servicio `app/services/seguimiento.py` (ya implementado en #169) deduce el estado de cada pista recorriendo el árbol de abajo arriba. El estado más urgente prevalece.
 
 **Prioridad de urgencia:** rojo > amarillo > azul > naranja > gris > verde
 
@@ -172,8 +168,8 @@ Para cada pista de la solicitud EN_TRAMITE:
 
 Fila = solicitud. El AT puede repetirse. Columnas relevantes para el test:
 
-| AT | Tipo sol. | SOL/REQ/SUB | CONSULTAS | MA | IP | RESOLUCIÓN | FIN | Propósito |
-|----|-----------|-------------|-----------|----|----|------------|-----|-----------|
+| AT | Tipo sol. | ANÁLISIS | CONSULTAS | MA | IP | RESOLUCIÓN | FIN | Propósito |
+|----|-----------|----------|-----------|----|----|------------|-----|-----------|
 | T01 | AAP_AAC | PENDIENTE_ESTUDIO | — | — | — | — | N | ANALIZAR sin input |
 | T02 | AAP_AAC | PENDIENTE_REDACTAR | — | — | — | — | N | Requerimiento por redactar |
 | T03 | AAP_AAC | PENDIENTE_FIRMA | — | — | — | — | N | Borrador OK, por firmar |
@@ -207,9 +203,9 @@ Con 170+ solicitudes activas simultáneas, el listado puede ocultar casos urgent
 
 La prioridad se deriva del tipo — no se almacena un número en BD. La lógica puede evolucionar sin migración.
 
-### 7.2 Campo propuesto en el modelo `Entidad`
+### 7.2 Campo `tipo_titular` en el modelo `Entidad`
 
-El modelo actual (`app/models/entidad.py`) tiene roles booleanos (`rol_titular`, `rol_consultado`, `rol_publicador`) pero **no tiene ningún campo que clasifique el tipo de administrado**. Se propone añadir:
+**Ya implementado en #169** (migración `f77b09ef7c1e`). Campo añadido a `app/models/entidad.py`:
 
 ```python
 tipo_titular = db.Column(
@@ -223,7 +219,7 @@ tipo_titular = db.Column(
 ```
 
 - `NULL` para entidades que no son titulares (`rol_titular=False`)
-- Requiere migración manual (`flask db revision`)
+- Titulares existentes poblados con `'OTRO'` hasta revisión manual
 - No requiere tabla maestra separada — los valores son un enum de negocio estable
 
 ### 7.3 Diferenciación visual en el listado
@@ -244,7 +240,7 @@ Además del filtro por `tipo_titular`, el listado necesita filtros que no tienen
 |--------|-------------|--------|
 | **Tipo de expediente** | `expediente.tipo_expediente_id` → `tipos_expedientes.tipo` | Existe |
 | **Tecnología** | No existe campo en BD | Requiere nuevo campo en `Proyecto` |
-| **Tipo de administrado** | `tipo_titular` en `Entidad` (ver §7.2) | Requiere migración |
+| **Tipo de administrado** | `tipo_titular` en `Entidad` (ver §7.2) | **Hecho** (#169) |
 
 **Tecnología:** útil principalmente para técnicos de generación renovable (solar, eólica, hidráulica, etc.). El `tipo_expediente` "Renovable" agrupa todas las tecnologías sin distinguirlas. Se necesitaría un campo nuevo en `Proyecto` (p.ej. `tecnologia VARCHAR(30)`) o una tabla maestra `tipos_tecnologia`. Pendiente de decisión — ver §8.
 
@@ -259,7 +255,7 @@ Además del filtro por `tipo_titular`, el listado necesita filtros que no tienen
 - [x] **N/A vs vacío** — **DECISIÓN: celda vacía.** Fondo limpio, sin texto ni icono. Ver §3.
 - [ ] **Notas** — **DIFERIDO.** En el diseño hoja de cálculo es un campo persistente. Opciones abiertas: (a) tooltip en la columna de la pista, (b) columna recolectora de notas de pistas, (c) campo `observaciones` ya existente en el modelo. Pendiente de decidir presentación.
 - [x] **Última comunicación** — **DECISIÓN: ELIMINAR del listado.** Deducir el último documento externo por fecha es demasiado complejo y sin utilidad clara en BDDAT. Si se necesita, queda en el detalle del expediente.
-- [x] **Diseño columnas pista (frontend)** — **DECISIÓN: texto abreviado o nombre completo cuando quepa, con color de fondo/texto según estado.** Las 5 columnas de pista deben ser compactas con `white-space: nowrap`. Sin badge separado — el color de celda ya actúa como indicador visual. El resto de columnas: `Nº AT` y `Tipo solicitud` también `nowrap`; `Solicitante` y `Proyecto` con ellipsis controlado; contenedor de tabla con `overflow-x: auto` para scroll horizontal.
+- [x] **Diseño columnas pista (frontend)** — **DECISIÓN: verbo en infinitivo + color de fondo de celda según estado** (paleta §4.1). Sin badge separado — el color de celda ya actúa como indicador visual. Texto fijo por estado: TRAMITAR, ESTUDIAR, REDACTAR, FIRMAR, NOTIFICAR, PUBLICAR, SUBSANAR, PLAZOS, CERRAR, FIN. Contador si hay >1 elemento en el mismo nivel: `TRAMITAR (2)`. Layout: `Nº AT`, `SOLICITUD`, `FECHA` y pistas con `white-space: nowrap`; `TITULAR` y `PROYECTO` con ellipsis controlado; contenedor de tabla con `overflow-x: auto` para pantallas menores o zoom. Referencia 1920×1080.
 - [x] **Prefijo `docs/`** en la línea `Fuente de verdad` de este fichero — **DECISIÓN: corrección aplicada.**
 - [x] **Ruta de la vista del listado** — **DECISIÓN: `/expedientes/seguimiento/`**, nueva ruta que coexiste con `/expedientes/` (inventario). Audiencias distintas: inventario = buscar/crear; seguimiento = cola de trabajo diario por estado de pista.
 - [x] **Filtro por usuario por defecto** — **DECISIÓN: `mis` por defecto**, toggle `todos` accesible para todos los roles (no solo supervisores). Si `mis` devuelve 0 filas → toast informativo, sin fallback automático. Patrón FiltrosListado JS (sin URL params), homogéneo con el resto de vistas.
