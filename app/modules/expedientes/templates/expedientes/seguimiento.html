@@ -1,0 +1,207 @@
+{% extends 'layout/lista_v2_base.html' %}
+
+{% block page_title %}Seguimiento{% endblock %}
+{% block page_icon %}<i class="fas fa-tasks"></i>{% endblock %}
+{% block entity_label_plural %}solicitudes{% endblock %}
+{% block search_placeholder %}{% endblock %}
+
+{% block filtros_extra %}
+<select id="sel-ver" aria-label="Ver">
+    <option value="mis">Mis expedientes</option>
+    <option value="todos">Todos</option>
+</select>
+<select id="sel-estado" aria-label="Estado solicitud">
+    <option value="EN_TRAMITE">En trámite</option>
+    <option value="RESUELTA">Resuelta</option>
+    <option value="DESISTIDA">Desistida</option>
+    <option value="ARCHIVADA">Archivada</option>
+    <option value="todos">Todos los estados</option>
+</select>
+<select id="sel-tipo-titular" aria-label="Tipo de titular">
+    <option value="">Todos los titulares</option>
+    <option value="PROMOTOR">Promotor</option>
+    <option value="ORGANISMO_PUBLICO">Organismo público</option>
+    <option value="DISTRIBUIDOR_MENOR">Distribuidora menor</option>
+    <option value="GRAN_DISTRIBUIDORA">Gran distribuidora</option>
+    <option value="OTRO">Otro</option>
+</select>
+<select id="sel-tipo-expediente" aria-label="Tipo de expediente">
+    <option value="">Todos los tipos</option>
+    {% for te in tipos_expedientes %}
+    <option value="{{ te.id }}">{{ te.tipo }}</option>
+    {% endfor %}
+</select>
+{% endblock %}
+
+{% block tabla_clase %}seguimiento-table{% endblock %}
+
+{% block extra_js %}
+{{ super() }}
+<script>
+const colsMeta = {{ columns | tojson }};
+
+// Mapas de texto y color por estado interno (§4.2 / §4.3)
+const TEXTO_ESTADO = {
+    'PENDIENTE_TRAMITAR':  'TRAMITAR',
+    'PENDIENTE_ESTUDIO':   'ESTUDIAR',
+    'PENDIENTE_REDACTAR':  'REDACTAR',
+    'PENDIENTE_FIRMA':     'FIRMAR',
+    'PENDIENTE_NOTIFICAR': 'NOTIFICAR',
+    'PENDIENTE_PUBLICAR':  'PUBLICAR',
+    'PENDIENTE_SUBSANAR':  'SUBSANAR',
+    'PENDIENTE_PLAZOS':    'PLAZOS',
+    'PENDIENTE_CERRAR':    'CERRAR',
+    'FIN':                 'FIN',
+};
+const COLOR_CLASE = {
+    'rojo':     'pista-rojo',
+    'amarillo': 'pista-amarillo',
+    'azul':     'pista-azul',
+    'gris':     'pista-gris',
+    'naranja':  'pista-naranja',
+    'verde':    'pista-verde',
+};
+
+function renderPista(ep) {
+    if (!ep) return '';
+    const texto   = TEXTO_ESTADO[ep.codigo] || ep.codigo;
+    const clase   = COLOR_CLASE[ep.color]   || '';
+    const counter = ep.count > 1 ? ` (${ep.count})` : '';
+    return `<span class="pista-celda ${clase}">${texto}${counter}</span>`;
+}
+
+function renderFecha(val) {
+    if (!val) return '—';
+    // +T12:00:00 para evitar desfase de zona horaria
+    const d = new Date(val + 'T12:00:00');
+    return d.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+
+const renderFns = {
+    'num_at': (val, item) => {
+        let html = `<strong>AT-${val}</strong>`;
+        if (item.at_count > 1) {
+            html += ` <span class="badge bg-warning text-dark ms-1"
+                           title="Este AT tiene ${item.at_count} solicitudes activas">×${item.at_count}</span>`;
+        }
+        return html;
+    },
+
+    'tipo_solicitud': (val, item) => {
+        const clase   = item.color_solicitud ? `solicitud-${item.color_solicitud}` : '';
+        const tooltip = item.estado_solicitud || '';
+        return `<span class="tipo-solicitud-celda ${clase}" title="${tooltip}">${val || '—'}</span>`;
+    },
+
+    'fecha_solicitud': (val) => renderFecha(val),
+
+    'titular_nombre': (val, item) => {
+        let clase = '';
+        if      (item.tipo_titular === 'PROMOTOR')         clase = 'titular-promotor';
+        else if (item.tipo_titular === 'ORGANISMO_PUBLICO') clase = 'titular-organismo';
+        else if (item.tipo_titular === 'GRAN_DISTRIBUIDORA') clase = 'titular-gran-dist';
+        const texto = val || '—';
+        return `<span class="celda-ellipsis ${clase}" title="${texto}">${texto}</span>`;
+    },
+
+    'proyecto_descripcion': (val) => {
+        const texto = val || '—';
+        return `<span class="celda-ellipsis" title="${texto}">${texto}</span>`;
+    },
+
+    'pista_SOL':       (val) => renderPista(val),
+    'pista_CONSULTAS': (val) => renderPista(val),
+    'pista_MA':        (val) => renderPista(val),
+    'pista_IP':        (val) => renderPista(val),
+    'pista_RES':       (val) => renderPista(val),
+
+    '_acciones': (val, item) =>
+        `<a href="/expedientes/${item.expediente_id}/tramitacion/solicitud/${item.id}"
+             class="btn-accion-ver">
+            <i class="fas fa-eye"></i> Ver
+         </a>`,
+};
+
+const columns = colsMeta.map(col =>
+    renderFns[col.key] ? { ...col, renderFn: renderFns[col.key] } : col
+);
+
+// Subclase que inyecta los filtros del seguimiento en cada petición
+class SeguimientoScroll extends ScrollInfinito {
+    async loadMore() {
+        if (this.loading || !this.hasMore) return;
+        this.loading = true;
+        this.showLoader();
+
+        try {
+            const params = new URLSearchParams({ cursor: this.cursor, limit: this.limit });
+
+            const ver = document.getElementById('sel-ver')?.value || 'mis';
+            params.append('ver', ver);
+
+            const estado = document.getElementById('sel-estado')?.value || 'EN_TRAMITE';
+            if (estado && estado !== 'todos') params.append('estado', estado);
+
+            const tipoTitular = document.getElementById('sel-tipo-titular')?.value;
+            if (tipoTitular) params.append('tipo_titular', tipoTitular);
+
+            const tipoExp = document.getElementById('sel-tipo-expediente')?.value;
+            if (tipoExp) params.append('tipo_expediente_id', tipoExp);
+
+            const response = await fetch(`${this.apiUrl}?${params}`);
+            if (!response.ok) throw new Error(`Error ${response.status}: ${response.statusText}`);
+
+            const data = await response.json();
+            this.cursor         = data.next_cursor;
+            this.hasMore        = data.has_more;
+            this.totalAvailable = data.total || null;
+
+            this.renderItems(data.data);
+            this.totalLoaded += data.data.length;
+            this.updatePaginationInfo();
+
+            if (this.totalLoaded === 0 && ver === 'mis') {
+                this._mostrarToastSinExpedientes();
+            }
+
+        } catch (error) {
+            console.error('Error cargando seguimiento:', error);
+            this.showError('Error al cargar el seguimiento. Inténtalo de nuevo.');
+        } finally {
+            this.loading = false;
+            this.hideLoader();
+        }
+    }
+
+    _mostrarToastSinExpedientes() {
+        // Solo mostrar en la primera carga (cursor=0) y si sigue sin resultados
+        if (this.cursor !== 0) return;
+        const contenedor = document.querySelector('.toast-container');
+        if (!contenedor) return;
+        const toast = document.createElement('div');
+        toast.className = 'toast show align-items-center text-bg-info border-0';
+        toast.setAttribute('role', 'alert');
+        toast.innerHTML = `
+            <div class="d-flex">
+                <div class="toast-body">
+                    No tienes expedientes asignados. Usa «Todos» para ver el listado completo.
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto"
+                        data-bs-dismiss="toast" aria-label="Cerrar"></button>
+            </div>`;
+        contenedor.appendChild(toast);
+        setTimeout(() => toast.remove(), 6000);
+    }
+}
+
+const scrollInfinito = new SeguimientoScroll({
+    apiUrl:      '{{ url_for("api_seguimiento.listar_seguimiento") }}',
+    tableClass:  '.seguimiento-table',
+    entityLabel: 'solicitudes',
+    columns,
+});
+
+const filtros = new FiltrosListado(scrollInfinito);
+console.log('Seguimiento inicializado');
+</script>
+{% endblock %}

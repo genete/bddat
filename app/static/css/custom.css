@@ -298,3 +298,71 @@ table a.badge:hover {
     color: #fff;
     text-decoration: none;
 }
+
+/* ========================================
+   Seguimiento — Pistas y celda SOLICITUD
+   Issue #262
+   ======================================== */
+
+/* Pill de estado de pista (§4.1) */
+.pista-celda {
+    display: inline-block;
+    padding: 0.2em 0.55em;
+    border-radius: 0.25rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    min-width: 5.5rem;
+    text-align: center;
+    white-space: nowrap;
+    letter-spacing: 0.02em;
+}
+
+.pista-rojo     { background-color: #f8d7da; color: #721c24; }
+.pista-amarillo { background-color: #fff3cd; color: #664d03; }
+.pista-azul     { background-color: #cfe2ff; color: #084298; }
+.pista-gris     { background-color: #e2e3e5; color: #41464b; }
+.pista-naranja  { background-color: #ffe5d0; color: #7d3f00; }
+.pista-verde    { background-color: #d1e7dd; color: #0a3622; }
+
+/* Columna SOLICITUD — color según estado global (§2) */
+.tipo-solicitud-celda {
+    display: inline-block;
+    padding: 0.15em 0.4em;
+    border-radius: 0.2rem;
+    font-weight: 500;
+    font-size: 0.82rem;
+}
+.tipo-solicitud-celda.solicitud-naranja { background-color: #ffe5d0; color: #7d3f00; }
+.tipo-solicitud-celda.solicitud-verde   { background-color: #d1e7dd; color: #0a3622; }
+
+/* Columna TITULAR — diferenciación por tipo_titular (§7.3) */
+.titular-promotor  { font-weight: 700; }
+.titular-organismo { font-weight: 700; color: #0d6efd; }
+.titular-gran-dist { color: #6c757d; }
+
+/* Ellipsis para TITULAR y PROYECTO */
+.celda-ellipsis {
+    display: block;
+    max-width: 220px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Tabla seguimiento: columnas cortas sin wrap */
+.seguimiento-table th,
+.seguimiento-table td {
+    white-space: nowrap;
+}
+
+/* TITULAR y PROYECTO permiten truncado controlado */
+.seguimiento-table td:nth-child(4),
+.seguimiento-table td:nth-child(5) {
+    white-space: normal;
+    max-width: 220px;
+}
+
+/* Scroll horizontal si la pantalla es estrecha */
+.seguimiento-table {
+    min-width: 1100px;
+}
