@@ -13,11 +13,7 @@
 {% endblock %}
 
 {% block filtros_extra %}
-<select aria-label="Filtrar por estado">
-    <option value="">Activo: Todos</option>
-    <option value="true">Activas</option>
-    <option value="false">Inactivas</option>
-</select>
+<div id="sf-activo"></div>
 {% endblock %}
 
 {% block tabla_clase %}entidades-table{% endblock %}
@@ -25,6 +21,11 @@
 {% block extra_js %}
 {{ super() }}
 <script>
+    new SelectorFiltro('#sf-activo', [
+        { v: 'true',  t: 'Activas'   },
+        { v: 'false', t: 'Inactivas' }
+    ], { label: 'Activo', name: 'activo' });
+
     const scrollInfinito = new ScrollInfinito({
         apiUrl:      '{{ url_for("api_entidades.listar_entidades") }}',
         tableClass:  '.entidades-table',

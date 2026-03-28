@@ -6,12 +6,7 @@
 {% block search_placeholder %}Buscar por título o número AT...{% endblock %}
 
 {% block filtros_extra %}
-<select id="filtro-tipo-ia" aria-label="Filtrar por instrumento ambiental">
-    <option value="">Instr. ambiental: Todos</option>
-    {% for ia in tipos_ia %}
-    <option value="{{ ia.id }}">{{ ia.siglas }} — {{ ia.nombre }}</option>
-    {% endfor %}
-</select>
+<div id="sf-tipo-ia"></div>
 {% endblock %}
 
 {% block tabla_clase %}proyectos-table{% endblock %}
@@ -19,6 +14,11 @@
 {% block extra_js %}
 {{ super() }}
 <script>
+    new SelectorFiltro('#sf-tipo-ia', {{ tipos_ia_opts | tojson }}, {
+        label: 'Instr. ambiental',
+        name:  'tipo_ia'
+    });
+
     const scrollInfinito = new ScrollInfinito({
         apiUrl:      '{{ url_for("api_proyectos.listar_proyectos") }}',
         tableClass:  '.proyectos-table',
@@ -27,7 +27,7 @@
         columns:     {{ columns | tojson }}
     });
 
-    // ScrollInfinito lee el primer select de .filters-row como parámetro 'estado'.
+    // ScrollInfinito lee el primer select de .filters-row y lo envía como 'estado'.
     // La API de proyectos acepta 'estado' como alias de 'tipo_ia'.
     const filtros = new FiltrosListado(scrollInfinito);
 </script>
