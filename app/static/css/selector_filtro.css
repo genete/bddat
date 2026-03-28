@@ -36,11 +36,15 @@
   border-radius: var(--border-radius) 0 0 var(--border-radius);
 }
 
-/* outline se recalcula automáticamente cuando el select cambia de tamaño;
-   box-shadow no lo hace y queda "congelado" en el tamaño anterior */
-.sf-wrap .sf-select:focus {
+/* outline en el wrapper: no sufre el layout shift que afecta al <select>
+   cuando aparece el botón × (#268) */
+.sf-wrap:focus-within {
   outline: 0.25rem solid var(--focus-ring);
   outline-offset: 0;
+  border-radius: var(--border-radius);
+}
+.sf-wrap .sf-select:focus {
+  outline: none;
   box-shadow: none;
 }
 
