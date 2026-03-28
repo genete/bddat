@@ -447,12 +447,9 @@ table a.badge:hover {
     color: #664d03;
 }
 
-/* Responsive: ocultar columnas progresivamente (#263, #265)
- * Breakpoints espaciados ≥100px para que la ocultación sea progresiva y visible.
- * Cols fijas totales: AT(5.5)+SOL(9)+pistas×5(28.75)+ACC(4.5) = 47.75rem ≈ 764px
- *   +FECHA(5.25) = 53rem ≈ 848px
- *   +TITULAR(flex)
- *   +PROYECTO(flex) */
+/* Responsive: ocultar columnas flexibles (#263, #265)
+ * Solo se ocultan las columnas flexibles (PROYECTO y TITULAR).
+ * A partir de ahí las columnas fijas suman ~53rem y el scroll h trabaja. */
 @media (max-width: 1100px) {
     .seguimiento-table th:nth-child(5),
     .seguimiento-table td:nth-child(5) { display: none; } /* PROYECTO */
@@ -460,18 +457,4 @@ table a.badge:hover {
 @media (max-width: 1000px) {
     .seguimiento-table th:nth-child(4),
     .seguimiento-table td:nth-child(4) { display: none; } /* TITULAR */
-}
-@media (max-width: 880px) {
-    .seguimiento-table th:nth-child(3),
-    .seguimiento-table td:nth-child(3) { display: none; } /* FECHA */
-}
-@media (max-width: 760px) {
-    .seguimiento-table th:nth-child(7),
-    .seguimiento-table td:nth-child(7),
-    .seguimiento-table th:nth-child(8),
-    .seguimiento-table td:nth-child(8) { display: none; } /* CONSULTAS, MA */
-}
-@media (max-width: 640px) {
-    .seguimiento-table th:nth-child(9),
-    .seguimiento-table td:nth-child(9) { display: none; } /* IP */
 }

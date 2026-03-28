@@ -265,8 +265,8 @@ function ajustarFlexiblesSeguimiento() {
 requestAnimationFrame(ajustarFlexiblesSeguimiento);
 new ResizeObserver(ajustarFlexiblesSeguimiento)
     .observe(document.querySelector('.lista-scroll-container'));
-// Recalcular también cuando los media queries cambian la visibilidad de columnas (#265.5)
-[1100, 1000, 880, 760, 640].forEach(bp => {
+// Recalcular cuando los media queries ocultan/muestran las columnas flexibles (#265.5)
+[1100, 1000].forEach(bp => {
     window.matchMedia(`(max-width: ${bp}px)`).addEventListener('change', ajustarFlexiblesSeguimiento);
 });
 </script>
