@@ -44,15 +44,6 @@
 
 {% block tabla_clase %}seguimiento-table{% endblock %}
 
-{% block extra_css %}
-<style>
-/* Bug #265.1: ocultar «Mostrando» a anchos intermedios donde los filtros de seguimiento
-   (4 selects) empujan el contador. A ≤767px el base CSS ya apila en columna. */
-@media (max-width: 1200px) and (min-width: 768px) {
-    .filters-row:has(#sel-ver) .pagination-info { display: none; }
-}
-</style>
-{% endblock %}
 
 {% block extra_js %}
 {{ super() }}
@@ -216,7 +207,10 @@ class SeguimientoScroll extends ScrollInfinito {
                 <button type="button" class="btn-close ms-3" data-bs-dismiss="toast" aria-label="Cerrar"></button>
             </div>`;
         contenedor.appendChild(el);
-        new bootstrap.Toast(el).show();
+        const toastInstance = new bootstrap.Toast(el);
+        // data-bs-dismiss no funciona en toasts dinámicos — click explícito
+        el.querySelector('.btn-close').addEventListener('click', () => toastInstance.hide());
+        toastInstance.show();
         el.addEventListener('hidden.bs.toast', () => el.remove());
     }
 }

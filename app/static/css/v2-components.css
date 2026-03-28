@@ -463,11 +463,11 @@
   cursor: pointer;
 }
 
-/* ===== INDICADOR PAGINACIÓN (derecha) ===== */
+/* ===== INDICADOR PAGINACIÓN — subtítulo bajo el h1 ===== */
 .pagination-info {
   color: var(--text-secondary);
-  font-size: 0.875rem;
-  white-space: nowrap;
+  font-size: 0.8rem;
+  margin-top: 0.2rem;
 }
 
 .pagination-info span {
@@ -604,7 +604,5 @@
     min-width: auto;
   }
   
-  .pagination-info {
-    text-align: center;
-  }
+  /* pagination-info es subtítulo del h1, no necesita override en mobile */
 }
