@@ -15,31 +15,10 @@
 {% block search_placeholder %}Buscar por Nº AT o titular...{% endblock %}
 
 {% block filtros_extra %}
-<select id="sel-ver" aria-label="Ver">
-    <option value="mis">Mis expedientes</option>
-    <option value="todos">Todos</option>
-</select>
-<select id="sel-estado" aria-label="Estado solicitud">
-    <option value="EN_TRAMITE">En trámite</option>
-    <option value="RESUELTA">Resuelta</option>
-    <option value="DESISTIDA">Desistida</option>
-    <option value="ARCHIVADA">Archivada</option>
-    <option value="todos">Todos los estados</option>
-</select>
-<select id="sel-tipo-titular" aria-label="Tipo de titular">
-    <option value="">Todos los titulares</option>
-    <option value="PROMOTOR">Promotor</option>
-    <option value="ORGANISMO_PUBLICO">Organismo público</option>
-    <option value="DISTRIBUIDOR_MENOR">Distribuidora menor</option>
-    <option value="GRAN_DISTRIBUIDORA">Gran distribuidora</option>
-    <option value="OTRO">Otro</option>
-</select>
-<select id="sel-tipo-expediente" aria-label="Tipo de expediente">
-    <option value="">Todos los tipos</option>
-    {% for te in tipos_expedientes %}
-    <option value="{{ te.id }}">{{ te.tipo }}</option>
-    {% endfor %}
-</select>
+<div id="sf-ver"></div>
+<div id="sf-estado"></div>
+<div id="sf-tipo-titular"></div>
+<div id="sf-tipo-expediente"></div>
 {% endblock %}
 
 {% block tabla_clase %}seguimiento-table{% endblock %}
@@ -48,6 +27,39 @@
 {% block extra_js %}
 {{ super() }}
 <script>
+// ===== SELECTORES DE FILTRO =====
+// Instanciados antes de las clases para que sus valores sean accesibles
+// en el closure de SeguimientoScroll.loadMore() y FiltrosSeguimiento.
+
+const sfVer = new SelectorFiltro('#sf-ver', [
+    { v: 'mis', t: 'Mis expedientes' }
+], { label: 'Ver' });
+// Ver (todos) = placeholder vacío → muestra todos; Mis expedientes = filtro activo
+sfVer.setValue('mis');  // la ruta empieza mostrando solo mis expedientes
+
+const sfEstado = new SelectorFiltro('#sf-estado', [
+    { v: 'EN_TRAMITE', t: 'En trámite' },
+    { v: 'RESUELTA',   t: 'Resuelta' },
+    { v: 'DESISTIDA',  t: 'Desistida' },
+    { v: 'ARCHIVADA',  t: 'Archivada' }
+], { label: 'Estado' });
+sfEstado.setValue('EN_TRAMITE');  // la ruta empieza filtrada por en trámite
+
+const sfTipoTitular = new SelectorFiltro('#sf-tipo-titular', [
+    { v: 'PROMOTOR',           t: 'Promotor' },
+    { v: 'ORGANISMO_PUBLICO',  t: 'Organismo público' },
+    { v: 'DISTRIBUIDOR_MENOR', t: 'Distribuidora menor' },
+    { v: 'GRAN_DISTRIBUIDORA', t: 'Gran distribuidora' },
+    { v: 'OTRO',               t: 'Otro' }
+], { label: 'Tipo titular' });
+
+const sfTipoExpediente = new SelectorFiltro('#sf-tipo-expediente', [
+    {% for te in tipos_expedientes %}
+    { v: '{{ te.id }}', t: {{ te.tipo | tojson }} }{% if not loop.last %},{% endif %}
+
+    {% endfor %}
+], { label: 'Tipo expediente' });
+
 const colsMeta = {{ columns | tojson }};
 
 // Mapas de texto y color por estado interno (§4.2 / §4.3)
@@ -151,16 +163,16 @@ class SeguimientoScroll extends ScrollInfinito {
             const search = this.searchInput?.value.trim();
             if (search) params.append('search', search);
 
-            const ver = document.getElementById('sel-ver')?.value || 'mis';
+            const ver = sfVer.getValue() || 'todos';
             params.append('ver', ver);
 
-            const estado = document.getElementById('sel-estado')?.value || 'EN_TRAMITE';
-            if (estado && estado !== 'todos') params.append('estado', estado);
+            const estado = sfEstado.getValue();
+            if (estado) params.append('estado', estado);
 
-            const tipoTitular = document.getElementById('sel-tipo-titular')?.value;
+            const tipoTitular = sfTipoTitular.getValue();
             if (tipoTitular) params.append('tipo_titular', tipoTitular);
 
-            const tipoExp = document.getElementById('sel-tipo-expediente')?.value;
+            const tipoExp = sfTipoExpediente.getValue();
             if (tipoExp) params.append('tipo_expediente_id', tipoExp);
 
             const response = await fetch(`${this.apiUrl}?${params}`);
@@ -226,7 +238,42 @@ const scrollInfinito = new SeguimientoScroll({
     columns,
 });
 
-const filtros = new FiltrosListado(scrollInfinito);
+// FiltrosSeguimiento extiende FiltrosListado para gestionar los dos filtros
+// que tienen valor por defecto (ver=mis, estado=EN_TRAMITE):
+//   - El indicador solo se activa cuando hay desviación de los defaults
+//   - El botón Limpiar restaura a los defaults en vez de dejar en blanco
+class FiltrosSeguimiento extends FiltrosListado {
+    // Los defaults de esta vista (no cuentan como "filtro extra" aplicado por el usuario)
+    static DEFAULTS = { ver: 'mis', estado: 'EN_TRAMITE' };
+
+    _actualizarIndicador() {
+        if (!this._filtersRow) return;
+        const hayExtra =
+            (this.searchInput && this.searchInput.value.trim()) ||
+            sfTipoTitular.getValue() ||
+            sfTipoExpediente.getValue() ||
+            sfVer.getValue()    !== FiltrosSeguimiento.DEFAULTS.ver ||
+            sfEstado.getValue() !== FiltrosSeguimiento.DEFAULTS.estado;
+        this._filtersRow.classList.toggle('filtros-activos', !!hayExtra);
+        if (this.btnLimpiar) this.btnLimpiar.disabled = !hayExtra;
+    }
+
+    _limpiar() {
+        this._limpiando = true;
+        if (this.searchInput) this.searchInput.value = '';
+        sfTipoTitular.clear();       // dispara 'change' → suprimido por _limpiando
+        sfTipoExpediente.clear();    // idem
+        // setValue no dispara evento DOM → no necesita supresión
+        sfVer.setValue(FiltrosSeguimiento.DEFAULTS.ver);
+        sfEstado.setValue(FiltrosSeguimiento.DEFAULTS.estado);
+        this._limpiando = false;
+        clearTimeout(this._timer);
+        this._actualizarIndicador();
+        this.scroll.reload();
+    }
+}
+
+const filtros = new FiltrosSeguimiento(scrollInfinito);
 
 // Reparte el espacio sobrante: TITULAR 40% / PROYECTO 60% (mínimo 100px cada uno)
 // CSS calc() no funciona con rem en table-layout:fixed → medimos el DOM.

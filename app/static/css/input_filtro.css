@@ -1,0 +1,98 @@
+/* input_filtro.css
+ * Estructura del componente InputFiltro.
+ * CERO colores, CERO tipografía: todo se hereda del tema Bootstrap (v2-theme.css).
+ * Prefijo de clases: if-
+ * Issue: nuevos componentes de filtro
+ */
+
+/* ===== CONTENEDOR ===== */
+
+.if-wrap {
+  display: inline-flex;
+  align-items: stretch;
+  position: relative;   /* necesario para posicionar el icono lupa */
+}
+
+/* ===== ICONO LUPA =====
+   Posicionado de forma absoluta dentro del input.
+   pointer-events:none para que los clics pasen al input. */
+
+.if-icon {
+  position: absolute;
+  left: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  transition: color 0.2s ease;
+  z-index: 1;
+}
+
+.if-wrap.if-activo .if-icon {
+  color: var(--primary);
+}
+
+/* ===== INPUT DE TEXTO ===== */
+
+.if-input {
+  flex: 1;
+  min-width: 160px;
+  /* padding-left ampliado para dejar espacio al icono lupa */
+  padding: 0.625rem 1rem 0.625rem 2.25rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  font-size: 0.875rem;
+  background: var(--bg-card);
+  color: var(--text-primary);
+  transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.if-input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 0.25rem var(--focus-ring);
+}
+
+/* Estado activo: fondo corporativo sutil + borde primario + radio izquierdo para unir con × */
+.if-wrap.if-activo .if-input {
+  background: var(--primary-lighter);
+  border-color: var(--primary);
+  border-right-color: transparent;
+  border-radius: var(--border-radius) 0 0 var(--border-radius);
+}
+
+/* ===== BOTÓN × ===== */
+
+.if-btn-x {
+  display: none;           /* visible solo cuando if-activo */
+  align-items: center;
+  justify-content: center;
+  padding: 0 0.6rem;
+  border: 1px solid var(--border-color);
+  border-left: none;
+  border-radius: 0 var(--border-radius) var(--border-radius) 0;
+  background: var(--bg-card);
+  color: inherit;
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  transition: background 0.2s ease, border-color 0.2s ease, opacity 0.15s ease;
+}
+
+.if-wrap.if-activo .if-btn-x {
+  display: flex;
+  background: var(--primary-lighter);
+  border-color: var(--primary);
+}
+
+.if-btn-x:hover {
+  opacity: 0.7;
+}
+
+/* ===== ESTADO DESHABILITADO ===== */
+
+.if-wrap.if-disabled {
+  opacity: 0.6;
+  pointer-events: none;
+}

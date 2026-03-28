@@ -339,6 +339,182 @@ mostrar_toast('info',    'Ruta copiada al portapapeles.');
 
 ---
 
+---
+
+### SelectorFiltro
+
+Selector de filtro con etiqueta contextual y estado activo visual. Diseñado para
+usarse en la barra de filtros de los listados V2. Internamente usa un `<select>` nativo,
+por lo que `FiltrosListado` lo detecta y gestiona automáticamente.
+
+**Ficheros:**
+- `app/static/js/selector_filtro.js`
+- `app/static/css/selector_filtro.css`
+
+Cargados automáticamente en `lista_v2_base.html` — no hace falta incluirlos manualmente
+en templates que extiendan ese base.
+
+#### Uso en Jinja2
+
+```html
+{# En el bloque filtros_extra del template de listado #}
+{% block filtros_extra %}
+<div id="sf-tipo-exp"></div>
+{% endblock %}
+
+{% block extra_js %}
+{{ super() }}
+<script>
+  new SelectorFiltro('#sf-tipo-exp', {{ tipos_exp | tojson }}, {
+    label: 'Tipo expediente',
+    name: 'tipo_expediente_id'
+  });
+  const scrollInfinito = new ScrollInfinito({ ... });
+  const filtros = new FiltrosListado(scrollInfinito);
+</script>
+{% endblock %}
+```
+
+El array de opciones tiene la forma `[{ "v": "valor", "t": "texto visible" }, ...]`.
+
+#### Config
+
+| Opción | Tipo | Descripción |
+|---|---|---|
+| `label` | string | Texto de la etiqueta. El placeholder será `"Label (todos)"`. |
+| `name` | string | Atributo `name` del `<select>` nativo interno |
+| `onChange` | `(v, t) => {}` | Callback al seleccionar o limpiar. `v` = valor, `t` = texto. Se llama con `('', '')` al limpiar. |
+
+#### API pública
+
+```javascript
+const sf = new SelectorFiltro('#mi-div', opciones, config);
+
+sf.getValue()               // → valor seleccionado o ''
+sf.setValue('3')            // selecciona programáticamente (dispara onChange)
+sf.clear()                  // vuelve al estado "todos" (dispara onChange)
+sf.setOpciones(nuevas)      // reemplaza opciones y limpia — sin disparar onChange
+sf.enable() / sf.disable()
+```
+
+#### Comportamiento
+
+| Estado | Apariencia |
+|---|---|
+| Sin filtro | Fondo blanco, texto `"Label (todos)"`, sin botón × |
+| Con filtro | Fondo `var(--primary-lighter)` (#f7fbf8, verde muy claro — igual que hover de fila de tabla), borde `var(--primary)`, botón × visible |
+| Clic en × | Limpia la selección, devuelve el foco al select, dispara recarga del listado |
+| Btn Limpiar (FiltrosListado) | Resetea el select y actualiza el estado visual |
+
+#### Notas de implementación
+
+- El color de fondo activo se aplica al **wrapper** `.sf-wrap` (div), **no** al `<select>`.
+  El select usa `background: transparent` para que el dropdown nativo no herede el tinte verde.
+- El focus ring usa `outline` en vez de `box-shadow` para que se recalcule automáticamente
+  si el selector cambia de tamaño al elegir una opción más larga. Pendiente #268: el outline
+  desaparece al aparecer el botón `×`.
+- `clear()` despacha un evento `change` con `bubbles:true` para que `FiltrosListado` recargue
+  el listado, igual que haría una selección manual del usuario.
+- `FiltrosListado._limpiar()` usa el flag `_limpiando` para suprimir los eventos de cambio
+  durante el reset masivo y evitar recargas múltiples.
+
+#### Estructura HTML generada
+
+```html
+<div id="mi-div" class="sf-wrap [sf-activo]">
+  <select class="sf-select" name="tipo_expediente_id">
+    <option value="">Tipo expediente (todos)</option>
+    <option value="1">Legalización</option>
+    ...
+  </select>
+  <button class="sf-btn-x" tabindex="-1">×</button>
+</div>
+```
+
+---
+
+---
+
+### InputFiltro
+
+Campo de texto para filtros con icono de lupa y estado activo visual. Compañero de
+`SelectorFiltro`. Compatible con `FiltrosListado` (v2.2+): los inputs `.if-input`
+se detectan automáticamente y se gestionan con debounce.
+
+**Ficheros:**
+- `app/static/js/input_filtro.js`
+- `app/static/css/input_filtro.css`
+
+Cargados automáticamente en `lista_v2_base.html`.
+
+#### Uso en Jinja2
+
+```html
+{% block filtros_extra %}
+<div id="if-nif"></div>
+{% endblock %}
+
+{% block extra_js %}
+{{ super() }}
+<script>
+  new InputFiltro('#if-nif', {
+    placeholder: 'Filtrar por NIF...',
+    name: 'nif'
+  });
+  const scrollInfinito = new ScrollInfinito({ ... });
+  const filtros = new FiltrosListado(scrollInfinito);
+</script>
+{% endblock %}
+```
+
+#### Config
+
+| Opción | Tipo | Descripción |
+|---|---|---|
+| `placeholder` | string | Texto de ayuda mostrado en el input |
+| `name` | string | Atributo `name` del `<input>` interno |
+| `onChange` | `(v) => {}` | Callback en cada pulsación de tecla. `v` = valor actual. |
+
+#### API pública
+
+```javascript
+const inf = new InputFiltro('#mi-div', config);
+
+inf.getValue()          // → string con el valor actual o ''
+inf.setValue('12345')   // establece el valor (dispara onChange)
+inf.clear()             // limpia el campo (dispara onChange con '')
+inf.enable() / inf.disable()
+```
+
+#### Comportamiento
+
+| Estado | Apariencia |
+|---|---|
+| Vacío | Fondo blanco, icono lupa gris (`var(--text-secondary)`), sin botón × |
+| Con texto | Fondo `var(--primary-lighter)` (#f7fbf8, igual que `SelectorFiltro` y hover de fila), borde `var(--primary)`, lupa verde (`var(--primary)`), botón × visible |
+| Clic en × | Limpia el campo, devuelve el foco al input, dispara recarga del listado |
+| Btn Limpiar (FiltrosListado) | Vacía el input y actualiza el estado visual |
+
+#### Notas de implementación
+
+- El buscador principal (`input[type="search"]` en `lista_v2_base.html`) también muestra
+  estado activo con el mismo color, pero vía CSS puro: `.filters input[type="search"]:not(:placeholder-shown)`.
+  No requiere componente JS.
+- `clear()` despacha un evento `input` con `bubbles:true` para que `FiltrosListado`
+  inicie su debounce y recargue el listado.
+
+#### Estructura HTML generada
+
+```html
+<div id="mi-div" class="if-wrap [if-activo]">
+  <span class="if-icon" aria-hidden="true"><i class="fas fa-search"></i></span>
+  <input type="text" class="if-input" placeholder="Filtrar por NIF...">
+  <button class="if-btn-x" tabindex="-1">×</button>
+</div>
+```
+
+---
+
 ## Próximos componentes (pendientes)
 
 - `SelectorMultiple` — selección acumulable con badges (variante del anterior)

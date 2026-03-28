@@ -13,13 +13,7 @@
 {% endblock %}
 
 {% block filtros_extra %}
-<select aria-label="Filtrar por estado">
-    <option value="">Estado: Todos</option>
-    <option value="tramitacion">En trámite</option>
-    <option value="finalizado">Resuelto</option>
-    <option value="archivado">Archivado</option>
-    <option value="borrador">Sin solicitudes</option>
-</select>
+<div id="sf-estado-exp"></div>
 {% endblock %}
 
 {% block tabla_clase %}expedientes-table{% endblock %}
@@ -27,6 +21,13 @@
 {% block extra_js %}
 {{ super() }}
 <script>
+    const sfEstadoExp = new SelectorFiltro('#sf-estado-exp', [
+        { v: 'tramitacion', t: 'En trámite' },
+        { v: 'finalizado',  t: 'Resuelto' },
+        { v: 'archivado',   t: 'Archivado' },
+        { v: 'borrador',    t: 'Sin solicitudes' }
+    ], { label: 'Estado' });
+
     // Columnas base desde metadata.json (serializables a JSON)
     const colsMeta = {{ columns | tojson }};
 
