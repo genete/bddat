@@ -44,6 +44,16 @@
 
 {% block tabla_clase %}seguimiento-table{% endblock %}
 
+{% block extra_css %}
+<style>
+/* Bug #265.1: ocultar «Mostrando» a anchos intermedios donde los filtros de seguimiento
+   (4 selects) empujan el contador. A ≤767px el base CSS ya apila en columna. */
+@media (max-width: 1200px) and (min-width: 768px) {
+    .filters-row:has(#sel-ver) .pagination-info { display: none; }
+}
+</style>
+{% endblock %}
+
 {% block extra_js %}
 {{ super() }}
 <script>
@@ -192,19 +202,22 @@ class SeguimientoScroll extends ScrollInfinito {
         if (this.cursor !== 0) return;
         const contenedor = document.querySelector('.toast-container');
         if (!contenedor) return;
-        const toast = document.createElement('div');
-        toast.className = 'toast show align-items-center text-bg-info border-0';
-        toast.setAttribute('role', 'alert');
-        toast.innerHTML = `
-            <div class="d-flex">
-                <div class="toast-body">
-                    No tienes expedientes asignados. Usa «Todos» para ver el listado completo.
+        // Patrón estándar de toasts del proyecto (#265.2)
+        const el = document.createElement('div');
+        el.className = 'toast toast-info';
+        el.setAttribute('role', 'alert');
+        el.setAttribute('data-bs-autohide', 'true');
+        el.setAttribute('data-bs-delay', '6000');
+        el.innerHTML = `
+            <div class="d-flex align-items-center p-3">
+                <div class="flex-grow-1">
+                    <i class="fas fa-info-circle me-2"></i>No tienes expedientes asignados. Usa «Todos» para ver el listado completo.
                 </div>
-                <button type="button" class="btn-close btn-close-white me-2 m-auto"
-                        data-bs-dismiss="toast" aria-label="Cerrar"></button>
+                <button type="button" class="btn-close ms-3" data-bs-dismiss="toast" aria-label="Cerrar"></button>
             </div>`;
-        contenedor.appendChild(toast);
-        setTimeout(() => toast.remove(), 6000);
+        contenedor.appendChild(el);
+        new bootstrap.Toast(el).show();
+        el.addEventListener('hidden.bs.toast', () => el.remove());
     }
 }
 
@@ -219,6 +232,7 @@ const filtros = new FiltrosListado(scrollInfinito);
 
 // Reparte el espacio sobrante: TITULAR 40% / PROYECTO 60% (mínimo 100px cada uno)
 // CSS calc() no funciona con rem en table-layout:fixed → medimos el DOM.
+// Bug #265.5: saltar si ninguna columna flexible está visible; excluir cols ocultas de anchoFijo.
 function ajustarFlexiblesSeguimiento() {
     const tabla = document.querySelector('.seguimiento-table');
     if (!tabla) return;
@@ -228,12 +242,21 @@ function ajustarFlexiblesSeguimiento() {
     const thProyecto = ths[4];
     thTitular.style.width  = '';
     thProyecto.style.width = '';
+
+    const titularVisible  = getComputedStyle(thTitular).display  !== 'none';
+    const proyectoVisible = getComputedStyle(thProyecto).display !== 'none';
+    // Si ninguna columna flexible está visible, no hay nada que distribuir
+    if (!titularVisible && !proyectoVisible) return;
+
     const totalWidth = tabla.offsetWidth;
     let anchoFijo = 0;
-    ths.forEach((th, i) => { if (i !== 3 && i !== 4) anchoFijo += th.offsetWidth; });
+    ths.forEach((th, i) => {
+        if (i !== 3 && i !== 4 && getComputedStyle(th).display !== 'none') {
+            anchoFijo += th.offsetWidth;
+        }
+    });
     const sobrante = Math.max(0, totalWidth - anchoFijo);
     const MIN_PX = 100;
-    const proyectoVisible = getComputedStyle(thProyecto).display !== 'none';
     if (proyectoVisible) {
         thTitular.style.width  = Math.max(MIN_PX, sobrante * 0.4) + 'px';
         thProyecto.style.width = Math.max(MIN_PX, sobrante * 0.6) + 'px';
@@ -244,5 +267,9 @@ function ajustarFlexiblesSeguimiento() {
 requestAnimationFrame(ajustarFlexiblesSeguimiento);
 new ResizeObserver(ajustarFlexiblesSeguimiento)
     .observe(document.querySelector('.lista-scroll-container'));
+// Recalcular también cuando los media queries cambian la visibilidad de columnas (#265.5)
+[1100, 1000, 880, 760, 640].forEach(bp => {
+    window.matchMedia(`(max-width: ${bp}px)`).addEventListener('change', ajustarFlexiblesSeguimiento);
+});
 </script>
 {% endblock %}
