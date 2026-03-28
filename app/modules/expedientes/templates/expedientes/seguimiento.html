@@ -189,28 +189,32 @@ class SeguimientoScroll extends ScrollInfinito {
     }
 
     _mostrarToastSinExpedientes() {
-        // Solo mostrar en la primera carga (cursor=0) y si sigue sin resultados
+        // Solo mostrar en la primera carga y si no hay resultados
         if (this.cursor !== 0) return;
         const contenedor = document.querySelector('.toast-container');
         if (!contenedor) return;
-        // Patrón estándar de toasts del proyecto (#265.2)
-        const el = document.createElement('div');
-        el.className = 'toast toast-info';
-        el.setAttribute('role', 'alert');
-        el.setAttribute('data-bs-autohide', 'true');
-        el.setAttribute('data-bs-delay', '6000');
-        el.innerHTML = `
-            <div class="d-flex align-items-center p-3">
-                <div class="flex-grow-1">
-                    <i class="fas fa-info-circle me-2"></i>No tienes expedientes asignados. Usa «Todos» para ver el listado completo.
+        // Patrón pool_documentos: insertAdjacentHTML + showing + click en toast (#265.2)
+        const id = 'toast-seg-' + Date.now();
+        contenedor.insertAdjacentHTML('beforeend',
+            `<div id="${id}" class="toast toast-info" role="alert"
+                  aria-live="assertive" aria-atomic="true"
+                  data-bs-autohide="true" data-bs-delay="6000">
+                <div class="d-flex align-items-center p-3">
+                    <div class="flex-grow-1">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Información:</strong> No tienes expedientes asignados. Usa «Todos» para ver el listado completo.
+                    </div>
+                    <button type="button" class="btn-close ms-3"
+                            data-bs-dismiss="toast" aria-label="Cerrar"></button>
                 </div>
-                <button type="button" class="btn-close ms-3" data-bs-dismiss="toast" aria-label="Cerrar"></button>
-            </div>`;
-        contenedor.appendChild(el);
-        const toastInstance = new bootstrap.Toast(el);
-        // data-bs-dismiss no funciona en toasts dinámicos — click explícito
-        el.querySelector('.btn-close').addEventListener('click', () => toastInstance.hide());
-        toastInstance.show();
+            </div>`);
+        const el = document.getElementById(id);
+        el.classList.add('showing');
+        const t = new bootstrap.Toast(el);
+        t.show();
+        setTimeout(() => el.classList.remove('showing'), 300);
+        el.addEventListener('hide.bs.toast', () => el.classList.add('hide'));
+        el.addEventListener('click', e => { if (!e.target.closest('.btn-close')) t.hide(); });
         el.addEventListener('hidden.bs.toast', () => el.remove());
     }
 }
