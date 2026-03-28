@@ -736,9 +736,20 @@ particularidades propias.
 ```
 
 ### 2. NO usar `overflow: hidden` en contenedores con sticky
-Bloquea `position: sticky`. En C.1/C.2, el `overflow: hidden` va en `.app-main`, NO en `.lista-scroll-container`.
+Bloquea `position: sticky`. `overflow: hidden` crea un nuevo scroll container y el `thead` sticky pasa a resolverse relativo al card (que no scrollea) en lugar de a `.lista-scroll-container`.
 
-**Excepción controlada:** `.tabla-bloque:has(> .card-header)` añade `overflow: hidden` via `:has()` solo cuando hay `card-header` (BC). En esos casos no hay sticky, así que es seguro. Para V2 (tabla directa sin card-header) se usa en cambio `background-color` verde en el card para que el hueco de la esquina redondeada sea invisible.
+**Solución para esquinas redondeadas en V2:** usar `overflow: clip` (CSS Overflow Level 4).
+Recorta visualmente igual que `hidden` pero **no crea scroll container ni nuevo BFC**, por lo que el sticky sigue funcionando:
+
+```css
+.tabla-bloque:has(> table) {
+  overflow: clip;  /* recorta esquinas sin romper sticky */
+}
+```
+
+Soporte: Chrome 90+, Firefox 81+, Safari 16+, Edge 90+.
+
+**Excepción controlada (BC):** `.tabla-bloque:has(> .card-header)` usa `overflow: hidden` porque en las vistas V4 la tabla no tiene `thead` sticky propio — el sticky se resuelve relativo al viewport a través de `.app-main`. No hay conflicto.
 
 ### 3. Botón scroll-to-top FUERA de `<table>`
 ```html
