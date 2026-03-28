@@ -443,12 +443,18 @@
   font-size: 0.875rem;
   background: var(--bg-card);
   color: var(--text-primary);
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
 }
 
 .filters input[type="search"] {
   flex: 1;
   min-width: 180px;
+}
+
+/* Estado activo del buscador: cambia fondo al tener texto (sin JS) */
+.filters input[type="search"]:not(:placeholder-shown) {
+  background: var(--primary-lighter);
+  border-color: var(--primary);
 }
 
 .filters input[type="search"]:focus,
