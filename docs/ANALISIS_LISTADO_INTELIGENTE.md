@@ -326,11 +326,11 @@ Además del filtro por `tipo_titular`, el listado necesita filtros que no tienen
 ## 8. Pendientes de decisión
 
 - [x] **Migración `tipo_titular` en `Entidad`** — **DECISIÓN: PROCEDER.** Campo `nullable=True`, default `'OTRO'`. Sin riesgo de datos: todas las entidades existentes quedarán como `OTRO` hasta revisión manual. Valores: `GRAN_DISTRIBUIDORA | DISTRIBUIDOR_MENOR | PROMOTOR | ORGANISMO_PUBLICO | OTRO`. Migración manual con `flask db revision`.
-- [ ] **Campo `tecnologia` en `Proyecto`** — **DIFERIDO.** Útil para técnicos de generación renovable, pero no bloquea el listado. Pendiente de decidir si VARCHAR libre, enum fijo o tabla maestra `tipos_tecnologia`. Placeholder en §9.
+- [ ] **Campo `tecnologia` en `Proyecto`** — **→ #279 (M2).** Útil para técnicos de generación renovable. Decisión pendiente en el issue: VARCHAR libre, enum fijo o tabla maestra `tipos_tecnologia`.
 - [x] **Fase ADMISION_TRAMITE** — **DECISIÓN: ELIMINAR.** Se absorbe completamente en `ANALISIS_SOLICITUD`. Los requisitos específicos de renovables (capacidad legal, técnica, económica, permiso de acceso y conexión) se cubren mediante el checklist de `ANALISIS_DOCUMENTAL`, que varía por `(tipo_instalacion, tipo_solicitud)` — ver `DISEÑO_ANALISIS_SOLICITUD.md §4`. `ANALISIS_ADMISION` y `ALEGACIONES` desaparecen como trámites: ALEGACIONES = REQUERIMIENTO_SUBSANACION (alegar ante inadmisión provisional es idéntico a subsanar un defecto).
 - [x] **Prioridad con múltiples fases abiertas en la misma pista** — **DECISIÓN: prioridad numérica completa + contador.** Se muestra el estado de mayor prioridad según la tabla §4.2 (orden numérico, no solo por color — desempata dentro del mismo color). Contador solo cuando >1 elemento está en el **mismo estado interno**: `TRAMITAR (2)`. Ver §4.2.
 - [x] **N/A vs vacío** — **DECISIÓN: celda vacía.** Fondo limpio, sin texto ni icono. Ver §3.
-- [ ] **Notas** — **DIFERIDO.** En el diseño hoja de cálculo es un campo persistente. Opciones abiertas: (a) tooltip en la columna de la pista, (b) columna recolectora de notas de pistas, (c) campo `observaciones` ya existente en el modelo. Pendiente de decidir presentación.
+- [x] **Notas** — **DECISIÓN: tooltip en celda de pista → #280 (M2).** `seguimiento.py` incluye la `nota` de la tarea activa en el dict de respuesta; el frontend renderiza tooltip Bootstrap en la celda.
 - [x] **Última comunicación** — **DECISIÓN: ELIMINAR del listado.** Deducir el último documento externo por fecha es demasiado complejo y sin utilidad clara en BDDAT. Si se necesita, queda en el detalle del expediente.
 - [x] **Diseño columnas pista (frontend)** — **DECISIÓN: verbo en infinitivo + color de fondo de celda según estado** (paleta §4.1). Sin badge separado — el color de celda ya actúa como indicador visual. Texto fijo por estado: TRAMITAR, ESTUDIAR, REDACTAR, FIRMAR, NOTIFICAR, PUBLICAR, SUBSANAR, PLAZOS, CERRAR, FIN. Contador si hay >1 elemento en el mismo nivel: `TRAMITAR (2)`. Layout: `Nº AT`, `SOLICITUD`, `FECHA` y pistas con `white-space: nowrap`; `TITULAR` y `PROYECTO` con ellipsis controlado; contenedor de tabla con `overflow-x: auto` para pantallas menores o zoom. Referencia 1920×1080.
 - [x] **Prefijo `docs/`** en la línea `Fuente de verdad` de este fichero — **DECISIÓN: corrección aplicada.**
@@ -347,10 +347,10 @@ Además del filtro por `tipo_titular`, el listado necesita filtros que no tienen
 2. ~~Migración `tipo_titular` en `Entidad`~~ — **HECHO** (issue #169). Migración `f77b09ef7c1e`, campo `tipo_titular VARCHAR(30) nullable`. Titulares existentes poblados con `'OTRO'` hasta revisión manual.
 3. ~~Crear script `docs_prueba/seed_listado.py` con los escenarios de §6~~ — hecho
 4. ~~**Limpieza BD ADMISION_TRAMITE**~~ — **HECHO** (issue #257). JSON actualizado a v5.6. Scripts promovidos a `scripts/`. Sin migración Alembic — los maestros FTT nunca se insertan por migración, siempre por `reset_maestros_ftt.py`.
-5. ~~Terminar decisiones §8 pendientes~~ — en curso. Quedan diferidos: `tecnologia` en `Proyecto` y presentación de `Notas`.
+5. ~~Terminar decisiones §8 pendientes~~ — **HECHO.** `tecnologia` → #279; `Notas` → tooltip via #280.
 5b. ~~**Escribir `scripts/verificar_seed.py`**~~ — **HECHO** (issue #257). 77 checks T01-T11: tipos de fase/trámite/tarea, campos doc_usado/doc_producido/notas. Test de regresión para cuando exista `seguimiento.py`.
 6. ~~Implementar `app/services/seguimiento.py`~~ — **HECHO** (issue #169). Servicio `app/services/seguimiento.py` con deducción jerárquica de estados de pista.
-7. Implementar la vista `/expedientes/seguimiento/` — **issue #262**
+7. ~~Implementar la vista `/expedientes/seguimiento/`~~ — **HECHO** (issue #262)
 8. Vista de auditoría — ver issue #256
-9. **Decidir campo `tecnologia` en `Proyecto`** (diferido de §8): VARCHAR libre, enum fijo o tabla maestra. No bloquea el listado.
-10. **Decidir presentación de Notas** (diferido de §8): tooltip en columna de pista, columna recolectora, o `observaciones` del modelo.
+9. **Añadir campo `tecnologia` en `Proyecto`** — #279 (M2). Decisión: tabla maestra `tipos_tecnologia` (coherente con el resto de catálogos).
+10. **Tooltip de Notas en celdas de pista** — #280 (M2). `seguimiento.py` expone `nota` por pista; frontend Bootstrap tooltip.
