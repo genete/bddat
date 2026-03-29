@@ -248,7 +248,7 @@ class Entidad(db.Model):
         """
         Validación básica de formato NIF/NIE español.
         
-        TODO: Implementar validación completa con algoritmo oficial
+        TODO #272 (M5): Implementar validación completa con algoritmo oficial
         (NIF: letra calculada, NIE: letra + número, etc.)
         """
         if not valor:

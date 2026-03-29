@@ -113,7 +113,7 @@ FK a tabla `tipos_ia`. Instrumento ambiental del proyecto.
 
 El motor accede como `proyecto.ia.siglas` (criterio `VARIABLE_PROYECTO`).
 
-### `proyecto.es_modificacion` — **pendiente de implementar**
+### `proyecto.es_modificacion` — **implementado** (`proyectos.py`)
 `Boolean`, default `False`. Indica si el expediente tramita una modificación de
 instalaciones existentes (frente a instalación nueva).
 Afecta directamente a las reglas de tramitación ambiental (ver mapa de reglas).
@@ -409,30 +409,30 @@ Sin `@property` implementada.
 
 ---
 
-## Vocabulario de estados para @property (pendiente de implementar)
+## Vocabulario de estados para @property
 
 El motor referencia nombres de estado, no condiciones SQL crudas.
 Las `@property` son el contrato entre el modelo y el motor.
-Solo `Solicitud.activa` existe hoy — el resto está pendiente.
+Fase, Trámite y Tarea implementadas. Pendientes en Solicitud: `cerrada` y `resuelta_favorable`.
 
 | Entidad | @property | Condición |
 |---------|-----------|-----------|
 | Solicitud | `activa` ✅ | `estado == 'EN_TRAMITE'` |
 | Solicitud | `cerrada` ⬜ | `estado in ('RESUELTA','DESISTIDA','ARCHIVADA')` |
 | Solicitud | `resuelta_favorable` ⬜ | `estado == 'RESUELTA'` AND fase RESOLUCION con resultado favorable |
-| Fase | `planificada` ⬜ | `fecha_inicio is None` |
-| Fase | `en_curso` ⬜ | `fecha_inicio is not None and fecha_fin is None` |
-| Fase | `finalizada` ⬜ | `fecha_fin is not None` |
-| Fase | `cerrada_favorable` ⬜ | `fecha_fin is not None and resultado_fase.codigo in ('FAVORABLE','FAVORABLE_CONDICIONADO')` |
-| Tramite | `planificado` ⬜ | `fecha_inicio is None` |
-| Tramite | `en_curso` ⬜ | `fecha_fin is None and fecha_inicio is not None` |
-| Tramite | `finalizado` ⬜ | `fecha_fin is not None` |
-| Tarea | `planificada` ⬜ | `fecha_inicio is None` |
-| Tarea | `en_curso` ⬜ | `fecha_inicio is not None and fecha_fin is None` |
-| Tarea | `ejecutada` ⬜ | `fecha_fin is not None` |
-| Tarea | `ejecutada_con_doc` ⬜ | `fecha_fin is not None and documento_producido_id is not None` |
+| Fase | `planificada` ✅ | `fecha_inicio is None` |
+| Fase | `en_curso` ✅ | `fecha_inicio is not None and fecha_fin is None` |
+| Fase | `finalizada` ✅ | `fecha_fin is not None` |
+| Fase | `finalizada_favorable` ✅ | `fecha_fin is not None and resultado_fase.codigo in ('FAVORABLE','FAVORABLE_CONDICIONADO')` |
+| Tramite | `planificado` ✅ | `fecha_inicio is None` |
+| Tramite | `en_curso` ✅ | `fecha_fin is None and fecha_inicio is not None` |
+| Tramite | `finalizado` ✅ | `fecha_fin is not None` |
+| Tarea | `planificada` ✅ | `fecha_inicio is None` |
+| Tarea | `en_curso` ✅ | `fecha_inicio is not None and fecha_fin is None` |
+| Tarea | `ejecutada` ✅ | `fecha_fin is not None` |
+| Tarea | `ejecutada_con_doc` ✅ | `fecha_fin is not None and documento_producido_id is not None` |
 
-✅ implementada · ⬜ pendiente (se añadirán antes de implementar el motor)
+✅ implementada · ⬜ pendiente
 
 ---
 
@@ -461,15 +461,16 @@ Solo `Solicitud.activa` existe hoy — el resto está pendiente.
 
 ---
 
-## Pendientes de sesión
+## Pendientes
 
-- ⬜ Implementar campo `proyecto.es_modificacion` (Boolean, default=False) + migración
-- ⬜ Cambiar CHECK constraint `reglas_motor.evento` de `('CREAR','CERRAR','BORRAR')` a `('CREAR','INICIAR','FINALIZAR','BORRAR')`
-- ⬜ Actualizar GUIA_GENERAL: sección FASE — `exito` (bool) → `resultado_fase_id` (FK a tipos_resultados_fases)
-- ⬜ Añadir `@property` de estado a FASE, TRÁMITE y TAREA antes de implementar el motor
+- ✅ Implementar campo `proyecto.es_modificacion` (Boolean, default=False) + migración
+- ✅ Cambiar CHECK constraint `reglas_motor.evento` — incluye `CREAR`, `INICIAR`, `FINALIZAR`, `BORRAR`
+- ✅ Actualizar GUIA_GENERAL: sección FASE — `exito` (bool) → `resultado_fase_id` (FK a tipos_resultados_fases)
+- ✅ Añadir `@property` de estado a FASE, TRÁMITE y TAREA
+- ✅ Implementar evaluador `app/services/motor_reglas.py` con handlers por entidad
+- ⬜ Añadir `Solicitud.cerrada` y `Solicitud.resuelta_favorable`
 - ⬜ Definir tabla `entidades_consultadas` y su integración con SEPARATAS (issue draft)
-- ⬜ Diseño detallado de evaluador con handlers por entidad (TAREA → TRÁMITE → FASE → SOLICITUD → EXPEDIENTE → PROYECTO)
 - ⬜ Poblar `reglas_motor` + `condiciones_regla` con las reglas del mapa anterior
-- ⬜ Definir pares compatibles en `tipos_solicitudes_compatibles` (con el técnico del servicio)
+- ⬜ Definir pares compatibles en `tipos_solicitudes_compatibles` (con el técnico del servicio) — #276
 - ⬜ Decidir si TRÁMITE necesita `resultado_tramite_id` análogo al de FASE
 - ⬜ Decidir si EXPEDIENTE necesita `@property estado` explícito o derivado de solicitudes

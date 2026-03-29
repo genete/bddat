@@ -3,8 +3,8 @@
 > Fuente de verdad: `ESTRUCTURA_FTT.json`
 > Última sincronización: 2026-03-26
 
-**Issues:** #169 (análisis/infraestructura) · #262 (implementación vista)
-**Estado:** Decisiones completas — pendiente de implementación (#262)
+**Issues:** #169 (análisis/infraestructura) · #262 (implementación vista) · #263 (bugs UI 1ª it.) · #265 (bugs responsive 2ª it.)
+**Estado:** Implementado y cerrado — vista operativa en `/expedientes/seguimiento/`
 
 ---
 
