@@ -174,12 +174,14 @@ En AAP (art. 127) el RD usa "oposición" como término genérico. En AAC (art. 1
 
 ## 6. Flujos por tipo de autorización
 
-Los flujos están documentados en diagramas PNG en `docs_prueba/mockups/`:
-- `AAP_segun_RD1955.png` — flujo literal del RD para AAP
-- `AAP_segun_MI_CRITERIO.png` — flujo con criterio propio (flecos resueltos)
-- `AAC_segun_RD1955.png` — flujo literal del RD para AAC
-- `AAC_segun_MI_CRITERIO.png` — flujo con criterio propio
-- `AAP+AAC_segun_MI_CRITERIO.png` — flujo unificado
+Los flujos están documentados en diagramas SVG en `docs/diagramas_flujo/`:
+- `AAP_RD1955.svg` — flujo literal del RD para AAP
+- `AAP_PROPIO.svg` — flujo con criterio propio (flecos resueltos)
+- `AAC_RD1955.svg` — flujo literal del RD para AAC
+- `AAC_PROPIO.svg` — flujo con criterio propio
+- `AAP+AAC_PROPIO.svg` — flujo unificado
+
+> Los SVGs se generaron desde Miro y se procesaron con `docs/diagramas_flujo/fix_miro_svg.sh` para compatibilidad con Inkscape.
 
 ### Puntos indefinidos en el RD y criterio adoptado
 
@@ -263,4 +265,4 @@ El motor comprueba sobre los trámites de la fase:
 - **Definición de tipos de trámite** `CONSULTA_SEPARATA`, `CONSULTA_TRASLADO_TITULAR`, `CONSULTA_TRASLADO_ORGANISMO` en el catálogo de tipos.
 - **Cadena de tareas** dentro de los trámites de traslado (REDACTAR → FIRMAR → NOTIFICAR → ESPERAR → INCORPORAR_RESPUESTA → ANALIZAR).
 - **Acción en bloque** de creación de separatas desde `organismos_expediente`.
-- **Mover los diagramas PNG** de `docs_prueba/mockups/` a una ubicación permanente dentro de `docs/`.
+- ~~**Mover los diagramas PNG** de `docs_prueba/mockups/` a una ubicación permanente dentro de `docs/`.~~ **HECHO** — SVGs en `docs/diagramas_flujo/`.
