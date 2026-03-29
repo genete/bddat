@@ -97,7 +97,7 @@ La columna **Prioridad** determina qué estado se muestra cuando hay varias fase
 
 | Estado interno | Texto celda | Color | Cuándo se aplica |
 |----------------|:-----------:|-------|------------------|
-| PENDIENTE_TRAMITAR | TRAMITAR | rojo | Solicitud sin fases; fase sin trámites; trámite sin tareas creadas; FIRMAR sin borrador; NOTIFICAR/PUBLICAR sin doc firmado; ANALIZAR sin `doc_usado`; REDACTAR sin `doc_usado` ni `doc_producido`; INCORPORAR sin `documentos_tarea`; ESPERAR_PLAZO sin `PLAZO_DIAS` configurado |
+| PENDIENTE_TRAMITAR | TRAMITAR | rojo | Solicitud sin fases; fase sin trámites; trámite sin tareas creadas; FIRMAR sin borrador; NOTIFICAR/PUBLICAR sin doc firmado; ANALIZAR sin `doc_usado`; REDACTAR sin `doc_usado` ni `doc_producido`; INCORPORAR sin `documentos_tarea`; ESPERAR_PLAZO con `PLAZO_DIAS` ausente en notas |
 | PENDIENTE_ESTUDIO | ESTUDIAR | rojo | ANALIZAR con `doc_usado` pero sin `doc_producido`; ESPERAR_PLAZO vencido; fase con trámites cerrados y `resultado_fase IS NULL` |
 | PENDIENTE_REDACTAR | REDACTAR | rojo | REDACTAR con `doc_usado` presente pero sin `doc_producido` |
 | PENDIENTE_FIRMA | FIRMAR | amarillo | FIRMAR con borrador presente pero sin doc firmado |
@@ -127,9 +127,10 @@ La columna **Prioridad** determina qué estado se muestra cuando hay varias fase
 | **PUBLICAR** | Falta doc firmado | PENDIENTE_TRAMITAR | TRAMITAR | rojo |
 | | Tiene firmado, falta justificante | PENDIENTE_PUBLICAR | PUBLICAR | azul |
 | | Tiene ambos | PENDIENTE_CERRAR | CERRAR | naranja |
-| **ESPERAR_PLAZO** | `PLAZO_DIAS` no configurado (= 0) | PENDIENTE_TRAMITAR | TRAMITAR | rojo |
-| | Plazo activo (días restantes > 0) | PENDIENTE_SUBSANAR / PENDIENTE_PLAZOS | SUBSANAR / PLAZOS | gris |
-| | Plazo vencido (días restantes ≤ 0) | PENDIENTE_ESTUDIO | ESTUDIAR | rojo |
+| **ESPERAR_PLAZO** | `PLAZO_DIAS` ausente en notas | PENDIENTE_TRAMITAR | TRAMITAR | rojo |
+| | `PLAZO_DIAS=0` (espera indefinida hasta evento externo) | PENDIENTE_SUBSANAR / PENDIENTE_PLAZOS | SUBSANAR / PLAZOS | gris |
+| | Plazo activo (`PLAZO_DIAS` > 0, no vencido) | PENDIENTE_SUBSANAR / PENDIENTE_PLAZOS | SUBSANAR / PLAZOS | gris |
+| | Plazo vencido (`PLAZO_DIAS` > 0, vencido) | PENDIENTE_ESTUDIO | ESTUDIAR | rojo |
 | **INCORPORAR** | Sin `documentos_tarea` | PENDIENTE_TRAMITAR | TRAMITAR | rojo |
 | | Con ≥1 registro | PENDIENTE_CERRAR | CERRAR | naranja |
 
