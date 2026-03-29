@@ -1,9 +1,9 @@
 # Estructura de Fases, Trámites y Tareas (ESFTT)
 
 > Fuente de verdad: `docs/ESTRUCTURA_FTT.json`
-> Última sincronización: 2026-03-25
+> Última sincronización: 2026-03-29
 
-**Versión:** 5.5 | **Fecha:** 2026-03-25
+**Versión:** 5.6 | **Fecha:** 2026-03-26
 
 Este documento es la versión legible por humanos del JSON estructural. El JSON es la fuente de verdad para código e IA; este MD es la referencia de consulta rápida.
 
