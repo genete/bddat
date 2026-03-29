@@ -2,7 +2,7 @@
 
 > **Issue principal:** #167
 > **Fecha análisis:** 2026-03-15 (3 sesiones)
-> **Estado:** Análisis completo. Cabos 1-5 cerrados. Pendiente implementación (Fases 0-6).
+> **Estado:** Análisis completo. Cabos 1-5 cerrados. Implementación pendiente → #277 (M2).
 > **Issues relacionados:** #189 (cerrado), #181 y #182 (vinculados via C3)
 
 ---
@@ -11,7 +11,7 @@
 
 | Componente | Estado | Ubicación |
 |---|---|---|
-| Modelo `TipoEscrito` (→ renombrar a `Plantilla`) | HECHO | `app/models/tipos_escritos.py` |
+| Modelo `Plantilla` (renombrado desde `TipoEscrito` en #167 Fase 2) | HECHO | `app/models/plantillas.py` |
 | Modelo `ConsultaNombrada` | HECHO | `app/models/consultas_nombradas.py` |
 | Migración BD (ambas tablas) | HECHO | `migrations/versions/20c5d1e9d782*.py` |
 | `ContextoBaseExpediente` (Capa 1) | HECHO | `app/services/escritos.py` |
@@ -185,13 +185,10 @@ Las fases 4-6 son secuenciales y requieren que cicatricen las anteriores.
 
 ## Actualizaciones pendientes tras ejecutar migraciones (Cabo 6)
 
-Al ejecutar las migraciones de las fases anteriores, actualizar:
+Renombrado ejecutado en #167 Fase 2. Actualización de docs pendiente → #278 (M2).
 
-| Fichero | Conceptos a actualizar |
-|---------|------------------------|
-| `docs/GUIA_CONTEXT_BUILDERS.md` | `campos_catalogo`, `tipos_escritos`, ejemplo de migración INSERT |
-| `docs/DISEÑO_SUBSISTEMA_DOCUMENTAL.md` | `campos_catalogo`, `tipos_escritos` |
-| `docs/PLAN_ROADMAP.md` | `tipos_escritos` |
-| Issue #189 (cuerpo) | Estructura `tipos_escritos` obsoleta (renombrar a `plantillas`, etc.) |
-
-**No antes** — el código aún usa los nombres actuales.
+| Fichero | Estado |
+|---------|--------|
+| `docs/GUIA_CONTEXT_BUILDERS.md` | ⬜ pendiente (#278) |
+| `docs/PLAN_ROADMAP.md` | ⬜ pendiente (#278) |
+| `docs/DISEÑO_SUBSISTEMA_DOCUMENTAL.md` | ✅ ya actualizado |
