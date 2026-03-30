@@ -14,8 +14,8 @@
 2. [Diferencia con los diagramas estáticos](#2-diferencia-con-los-diagramas-estáticos)
 3. [Decisión de arquitectura: API JSON agnóstica](#3-decisión-de-arquitectura-api-json-agnóstica)
 4. [Endpoint `/api/expedientes/<id>/arbol`](#4-endpoint-apiexpedientesidarbol)
-5. [Serializadores Mermaid](#5-serializadores-mermaid)
-6. [Estrategia híbrida: dos diagramas](#6-estrategia-híbrida-dos-diagramas)
+5. [Serializador Mermaid](#5-serializador-mermaid)
+6. [Interacción: frame único con expansión al clic](#6-interacción-frame-único-con-expansión-al-clic)
 7. [Render client-side con mermaid.js](#7-render-client-side-con-mermaidjs)
 8. [Pendientes antes de implementar](#8-pendientes-antes-de-implementar)
 
@@ -56,11 +56,9 @@ A diferencia de los diagramas de documentación (capas 0–3 en `DISEÑO_DIAGRAM
 ```
 BD  →  _construir_arbol()  →  /api/expedientes/<id>/arbol (JSON)
                                          │
-                              ┌──────────┴──────────┐
-                              ▼                     ▼
-                    arbol_to_mmd_macro()   arbol_to_mmd_detalle()
-                              │                     │
-                              └──────────┬──────────┘
+                                         ▼
+                             arbol_to_mmd(arbol, fase_expandida_id)
+                                         │
                                          ▼
                                    mermaid.js (browser)
 ```
@@ -118,56 +116,89 @@ La función `_construir_arbol()` en `app/routes/vista3.py` ya construye el árbo
 
 ---
 
-## 5. Serializadores Mermaid
+## 5. Serializador Mermaid
 
-Dos funciones Python independientes, desacopladas de Flask y testables en aislamiento:
+Un único serializador Python, desacoplado de Flask y testable en aislamiento:
 
-### `arbol_to_mmd_macro(arbol)`
+```python
+def arbol_to_mmd(arbol, fase_expandida_id=None) -> str:
+    ...
+```
 
-Genera un `stateDiagram-v2` con el mapa de fases del expediente. Muestra qué fases existen y cuál está activa. No desciende a trámites ni tareas.
+- `fase_expandida_id=None` — vista macro: todas las fases como nodos simples
+- `fase_expandida_id=X` — fase X renderizada como subgraph con sus trámites y tareas; el resto de fases siguen visibles como nodos simples
 
-Útil para: ¿en qué punto del procedimiento está este expediente?
+**Tipo de diagrama: `flowchart TD` en ambos casos.** No se necesita `stateDiagram-v2` — el frame único con expansión al clic (§6) hace innecesario mezclar tipos de diagrama.
 
-### `arbol_to_mmd_detalle(arbol, fase_id)`
-
-Genera un `flowchart TD` con subgraphs anidados para la fase seleccionada: sus trámites como subgraphs y las tareas como nodos dentro de cada subgraph.
-
-Útil para: ¿qué hay que hacer en esta fase y en qué estado está cada tarea?
-
-Ambos serializadores aplican `classDef` para colorear nodos según estado (pendiente / en curso / finalizado / finalizado favorable).
+El serializador aplica `classDef` para colorear nodos según estado (pendiente / en curso / finalizado / finalizado favorable).
 
 ---
 
-## 6. Estrategia híbrida: dos diagramas
+## 6. Interacción: frame único con expansión al clic
 
-Mermaid no permite mezclar tipos de diagrama (`stateDiagram-v2` y `flowchart`) en un solo bloque. La solución son dos bloques `<div class="mermaid">` independientes renderizados en la misma vista:
+**Decisión:** un solo `<div>` cuyo contenido Mermaid se regenera al interactuar, sin salto de layout ni segunda zona en pantalla.
+
+### Flujo de interacción
 
 ```
-┌─────────────────────────────────────────────────┐
-│  stateDiagram-v2  — Mapa de fases               │
-│  ANÁLISIS_SOLICITUD → CONSULTAS → ...           │
-│  (fase activa resaltada)                        │
-└─────────────────────────────────────────────────┘
+Carga inicial
+  arbol_to_mmd(arbol, fase_expandida_id=None)
+  → flowchart TD con todas las fases como nodos simples
 
-┌─────────────────────────────────────────────────┐
-│  flowchart TD  — Detalle de fase activa         │
-│  subgraph ANALISIS_DOCUMENTAL                   │
-│    ANALIZAR[Análisis]:::ejecutada               │
-│  end                                            │
-│  subgraph COMUNICACION_INICIO                   │
-│    REDACTAR --> FIRMAR --> NOTIFICAR             │
-│  end                                            │
-└─────────────────────────────────────────────────┘
+Usuario hace clic en FASE X
+  → click callback de mermaid.js
+  → arbol_to_mmd(arbol, fase_expandida_id=X)  [cliente o llamada al servidor]
+  → mermaid.render('diagrama', nuevoMMD)
+  → mismo <div> actualizado, contexto preservado
+
+Usuario hace clic en FASE X (ya expandida) u otra fase
+  → colapsa o expande según corresponda
 ```
 
-El diagrama de detalle se regenera cuando el usuario selecciona una fase distinta.
+### Aspecto visual
 
-### Consideración sobre el tamaño
+```
+Vista macro (ninguna fase expandida):
 
-Un ESFTT completo (8 fases × varios trámites × hasta 6 tareas) genera un grafo grande en el diagrama de detalle. Opciones a valorar en implementación:
+  [ANÁLISIS_SOLICITUD]:::finalizada
+        ↓
+  [CONSULTAS]:::en_curso
+        ↓
+  [INFORMACIÓN_PÚBLICA]:::pendiente
+        ↓
+  [RESOLUCIÓN]:::pendiente
 
-- Mostrar solo la fase activa en el detalle (lo más probable)
-- Mostrar todas las fases con posibilidad de colapsar
+
+Tras clic en CONSULTAS:
+
+  [ANÁLISIS_SOLICITUD]:::finalizada
+        ↓
+  subgraph CONSULTAS:::en_curso
+    subgraph CONSULTA_SEPARATA:::finalizado
+      R --> F --> N --> EP --> INC --> A
+    end
+    subgraph CONSULTA_TRASLADO_TITULAR:::en_curso
+      R --> F --> N:::en_curso
+    end
+  end
+        ↓
+  [INFORMACIÓN_PÚBLICA]:::pendiente
+        ↓
+  [RESOLUCIÓN]:::pendiente
+```
+
+El contexto del expediente completo (qué fases hay y en qué estado están) permanece visible mientras se examina el detalle de una fase.
+
+### Generación del MMD: ¿cliente o servidor?
+
+Dos opciones válidas; decisión aplazada a implementación:
+
+| Opción | Descripción | Trade-off |
+|---|---|---|
+| **Servidor** | JS llama a `/api/expedientes/<id>/arbol/mmd?fase_id=X` y recibe el texto MMD | Lógica de serialización centralizada en Python; más fácil de mantener y testear |
+| **Cliente** | JS recibe el JSON del árbol en la carga inicial y genera el MMD localmente | Sin round-trip al servidor en cada clic; requiere duplicar la lógica de serialización en JS |
+
+La opción servidor es preferible si la lógica de serialización es no trivial o puede evolucionar. La opción cliente es preferible si la latencia de red es un problema.
 
 ---
 
@@ -178,9 +209,9 @@ Un ESFTT completo (8 fases × varios trámites × hasta 6 tareas) genera un graf
 | Aspecto | Valoración |
 |---|---|
 | **Dependencias servidor** | Ninguna — no requiere Node.js ni `mmdc` instalado |
-| **Integración** | Un `<script>` CDN y `<div class="mermaid">…</div>` con el código generado por Flask |
-| **Interactividad** | `mermaid.js` soporta `click` callbacks en nodos — posible navegación al trámite al hacer clic |
-| **Actualización dinámica** | Con JS: regenerar el `div` y llamar a `mermaid.init()` al cambiar de fase |
+| **Integración** | Un `<script>` CDN y un `<div id="diagrama">` cuyo contenido se actualiza por JS |
+| **Regeneración** | `mermaid.render(id, codigoMMD)` devuelve el SVG sin tocar el DOM — se inserta manualmente |
+| **Click callbacks** | `click nodoId callbackFn` en la sintaxis MMD — nativo en mermaid.js |
 | **Riesgo** | Dependencia CDN externa. Mitigable cacheando la librería localmente si fuera necesario |
 
 ---
@@ -190,5 +221,5 @@ Un ESFTT completo (8 fases × varios trámites × hasta 6 tareas) genera un graf
 - [ ] Crear issue de implementación y enlazarlo aquí
 - [ ] Decidir en qué vista se muestra el diagrama (¿tab en tramitación V3?, ¿modal?, ¿panel lateral?)
 - [ ] Prototipar la sintaxis MMD generada para un expediente real de prueba y validar legibilidad
-- [ ] Valorar el tamaño máximo del diagrama de detalle (¿solo fase activa o todas?)
+- [ ] Decidir generación del MMD en servidor o cliente (ver §6)
 - [ ] Decidir si `mermaid.js` se carga desde CDN externo o se incluye en el bundle del proyecto
