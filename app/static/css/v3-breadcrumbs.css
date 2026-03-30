@@ -12,8 +12,9 @@
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
 }
 
-/* Cabecera blanca — el color queda exclusivamente en el icono de nivel */
-.bc-card-nodo .card-header {
+/* Cabecera blanca en toda la vista bc — el color queda exclusivamente en el icono */
+.bc-view .card-header,
+.bc-view .card-header-accent {
     background-color: #fff;
     border-bottom: 1px solid rgba(0, 0, 0, 0.125);
     color: var(--bs-body-color);
