@@ -190,8 +190,28 @@
   </div>{# /content-constrained #}
 </div>{# /lista-cabecera #}
 
-<!-- C.2: Documentos (scrollable) -->
-<div class="lista-scroll-container p-3" id="card-documentos">
+<!-- C.2: Tabs Documentos / Diagrama -->
+<div class="lista-scroll-container">
+  <div class="content-constrained pt-2 pb-3">
+
+    <ul class="nav nav-tabs mb-3" role="tablist">
+      <li class="nav-item" role="presentation">
+        <button class="nav-link active" data-bs-toggle="tab"
+                data-bs-target="#panel-documentos" type="button" role="tab" aria-selected="true">
+          <i class="fas fa-file-alt me-1"></i> Documentos
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" data-bs-toggle="tab"
+                data-bs-target="#panel-diagrama-tarea" type="button" role="tab" aria-selected="false">
+          <i class="fas fa-project-diagram me-1"></i> Diagrama
+        </button>
+      </li>
+    </ul>
+
+    <div class="tab-content">
+      <div class="tab-pane fade show active" id="panel-documentos" role="tabpanel">
+  <div id="card-documentos">
   <div class="card">
     <div class="card-header card-header-accent">
       <h6 class="mb-0 fw-semibold"><i class="fas fa-file-alt me-2"></i>Documentos</h6>
@@ -275,7 +295,21 @@
 
     </div>
   </div>
-</div>
+  </div>{# /card-documentos #}
+      </div>{# /tab-pane panel-documentos #}
+
+      <div class="tab-pane fade" id="panel-diagrama-tarea" role="tabpanel">
+        <div class="card">
+          <div class="card-body text-center py-5 text-secondary">
+            <i class="fas fa-project-diagram fa-3x mb-3 opacity-50"></i>
+            <p class="mb-0 fst-italic">Diagrama interactivo — pendiente de implementar (#285)</p>
+          </div>
+        </div>
+      </div>
+
+    </div>{# /tab-content #}
+  </div>{# /content-constrained #}
+</div>{# /lista-scroll-container #}
 
 {% if es_tarea_redactar %}
 {# ── Modal Generar Escrito (#167 Fase 5) ───────────────────────────── #}

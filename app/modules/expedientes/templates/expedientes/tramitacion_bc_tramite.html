@@ -187,22 +187,52 @@
   </div>{# /content-constrained #}
 </div>{# /lista-cabecera #}
 
-<!-- C.2: Listado de Tareas (scrollable) -->
+<!-- C.2: Tabs Tareas / Diagrama -->
 <div class="lista-scroll-container">
-  <div class="content-constrained py-3">
-    <div class="card tabla-bloque">
-      <div class="card-header card-header-accent d-flex justify-content-between align-items-center py-2">
-        <span class="fw-semibold">
+  <div class="content-constrained pt-2 pb-3">
+
+    <ul class="nav nav-tabs mb-3" role="tablist">
+      <li class="nav-item" role="presentation">
+        <button class="nav-link active" data-bs-toggle="tab"
+                data-bs-target="#panel-tareas" type="button" role="tab" aria-selected="true">
           <i class="fas fa-tasks fs-5 bc-icon-tarea me-1"></i> Tareas
-          <span class="badge bg-primary ms-2">{{ hijos | length }}</span>
-        </span>
-        <button class="btn btn-sm btn-primary"
-                data-bs-toggle="modal" data-bs-target="#modal-nueva-tarea-bc">
-          <i class="fas fa-plus me-1"></i> Nueva tarea
+          <span class="badge bg-primary ms-1">{{ hijos | length }}</span>
         </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" data-bs-toggle="tab"
+                data-bs-target="#panel-diagrama-tram" type="button" role="tab" aria-selected="false">
+          <i class="fas fa-project-diagram me-1"></i> Diagrama
+        </button>
+      </li>
+    </ul>
+
+    <div class="tab-content">
+      <div class="tab-pane fade show active" id="panel-tareas" role="tabpanel">
+        <div class="card tabla-bloque">
+          <div class="card-header card-header-accent d-flex justify-content-between align-items-center py-2">
+            <span class="fw-semibold">
+              <i class="fas fa-tasks fs-5 bc-icon-tarea me-1"></i> Tareas
+              <span class="badge bg-primary ms-2">{{ hijos | length }}</span>
+            </span>
+            <button class="btn btn-sm btn-primary"
+                    data-bs-toggle="modal" data-bs-target="#modal-nueva-tarea-bc">
+              <i class="fas fa-plus me-1"></i> Nueva tarea
+            </button>
+          </div>
+          {% include 'vistas/vista3_bc/_tabla_hijos.html' %}
+        </div>
       </div>
-      {% include 'vistas/vista3_bc/_tabla_hijos.html' %}
+      <div class="tab-pane fade" id="panel-diagrama-tram" role="tabpanel">
+        <div class="card">
+          <div class="card-body text-center py-5 text-secondary">
+            <i class="fas fa-project-diagram fa-3x mb-3 opacity-50"></i>
+            <p class="mb-0 fst-italic">Diagrama interactivo — pendiente de implementar (#285)</p>
+          </div>
+        </div>
+      </div>
     </div>
+
   </div>
 </div>
 
