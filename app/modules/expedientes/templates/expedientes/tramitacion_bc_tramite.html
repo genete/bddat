@@ -28,6 +28,7 @@
 {% endblock %}
 
 {% from 'macros/page_header.html' import page_header %}
+{% from 'macros/bc_cards.html' import bc_card_compacto %}
 
 {% block content %}
 <div class="bc-view">
@@ -45,12 +46,36 @@
     </a>
   {% endcall %}
   <div class="content-constrained pb-3">
+
+  {# Cards compactos de niveles superiores #}
+  {{ bc_card_compacto('fas fa-folder-open', '', 'Expediente AT-' ~ expediente.numero_at,
+      url_for('expedientes.tramitacion_bc', exp_id=expediente.id)) }}
+  {{ bc_card_compacto('fas fa-file-alt', 'bc-icon-solicitud',
+      'Solicitud: ' ~ (solicitud.tipo_solicitud.siglas if solicitud.tipo_solicitud else '#' ~ solicitud.id),
+      url_for('expedientes.tramitacion_bc_solicitud', exp_id=expediente.id, sol_id=solicitud.id)) }}
+  {{ bc_card_compacto('fas fa-layer-group', 'bc-icon-fase',
+      'Fase: ' ~ (fase.tipo_fase.nombre if fase.tipo_fase else '#' ~ fase.id),
+      url_for('expedientes.tramitacion_bc_fase', exp_id=expediente.id, sol_id=solicitud.id, fase_id=fase.id)) }}
+
+  {# Estado del trámite deducido de fechas #}
+  {% if tramite.fecha_fin %}
+    {% set tram_badge_class = 'bg-success' %}
+    {% set tram_badge_label = 'Finalizado' %}
+  {% elif tramite.fecha_inicio %}
+    {% set tram_badge_class = 'bg-primary' %}
+    {% set tram_badge_label = 'En curso' %}
+  {% else %}
+    {% set tram_badge_class = 'bg-secondary' %}
+    {% set tram_badge_label = 'Planificado' %}
+  {% endif %}
+
   <div class="card bc-card-nodo" data-bc-editable>
 
-    <div class="card-header card-header-accent d-flex justify-content-between align-items-center">
-      <span class="fw-semibold">
-        <i class="fas fa-tasks me-2"></i>
-        Trámite: {{ tramite.tipo_tramite.nombre if tramite.tipo_tramite else '#' ~ tramite.id }}
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <span class="fw-semibold d-flex align-items-center gap-2">
+        <i class="fas fa-tasks fs-5 bc-icon-tramite"></i>
+        <span>Trámite: {{ tramite.tipo_tramite.nombre if tramite.tipo_tramite else '#' ~ tramite.id }}</span>
+        <span class="badge {{ tram_badge_class }} ms-1">{{ tram_badge_label }}</span>
       </span>
       <div class="bc-acciones-bar">
         {# Modo ver #}
@@ -112,13 +137,13 @@
       <div data-modo-ver class="row g-2 bc-meta">
         <div class="col-auto">
           <strong>F. Inicio:</strong>
-          <span id="disp-fecha_inicio">
+          <span id="disp-fecha_inicio" class="bc-fecha-valor">
             {{- tramite.fecha_inicio.strftime('%d/%m/%Y') if tramite.fecha_inicio else '—' -}}
           </span>
         </div>
         <div class="col-auto">
           <strong>F. Fin:</strong>
-          <span id="disp-fecha_fin">
+          <span id="disp-fecha_fin" class="bc-fecha-valor">
             {{- tramite.fecha_fin.strftime('%d/%m/%Y') if tramite.fecha_fin else '—' -}}
           </span>
         </div>

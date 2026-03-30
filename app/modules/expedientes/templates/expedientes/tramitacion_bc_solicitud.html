@@ -20,6 +20,7 @@
 {% endblock %}
 
 {% from 'macros/page_header.html' import page_header %}
+{% from 'macros/bc_cards.html' import bc_card_compacto %}
 
 {% block content %}
 <div class="bc-view">
@@ -37,13 +38,25 @@
     </a>
   {% endcall %}
   <div class="content-constrained pb-3">
+
+  {# Cards compactos de niveles superiores #}
+  {{ bc_card_compacto('fas fa-folder-open', '', 'Expediente AT-' ~ expediente.numero_at,
+      url_for('expedientes.tramitacion_bc', exp_id=expediente.id)) }}
+
   <div class="card bc-card-nodo" data-bc-editable>
 
-    <div class="card-header card-header-accent d-flex justify-content-between align-items-center">
-      <span class="fw-semibold">
-        <i class="fas fa-file-alt me-2"></i>
-        Solicitud:
-        {{ solicitud.tipo_solicitud.siglas if solicitud.tipo_solicitud else '#' ~ solicitud.id }}
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <span class="fw-semibold d-flex align-items-center gap-2">
+        <i class="fas fa-file-alt fs-5 bc-icon-solicitud"></i>
+        <span>Solicitud:
+        {{ solicitud.tipo_solicitud.siglas if solicitud.tipo_solicitud else '#' ~ solicitud.id }}</span>
+        <span class="badge
+          {% if solicitud.estado == 'EN_TRAMITE' %}bg-primary
+          {% elif solicitud.estado == 'RESUELTA' %}bg-success
+          {% elif solicitud.estado == 'DESISTIDA' %}bg-warning text-dark
+          {% else %}bg-secondary{% endif %} ms-1">
+          {{ solicitud.estado | replace('_', ' ') | title }}
+        </span>
       </span>
       <div class="bc-acciones-bar">
         {# Modo ver: botones Editar + Acciones #}
@@ -105,13 +118,13 @@
       <div data-modo-ver class="row g-2 bc-meta">
         <div class="col-auto">
           <strong>F. Solicitud:</strong>
-          <span id="disp-fecha_solicitud">
+          <span id="disp-fecha_solicitud" class="bc-fecha-valor">
             {{- solicitud.fecha_solicitud.strftime('%d/%m/%Y') if solicitud.fecha_solicitud else '—' -}}
           </span>
         </div>
         <div class="col-auto">
           <strong>F. Resolución:</strong>
-          <span id="disp-fecha_fin">
+          <span id="disp-fecha_fin" class="bc-fecha-valor">
             {{- solicitud.fecha_fin.strftime('%d/%m/%Y') if solicitud.fecha_fin else '—' -}}
           </span>
         </div>

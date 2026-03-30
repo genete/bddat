@@ -33,6 +33,7 @@
 {% endblock %}
 
 {% from 'macros/page_header.html' import page_header %}
+{% from 'macros/bc_cards.html' import bc_card_compacto %}
 
 {% block content %}
 <div class="bc-view">
@@ -50,12 +51,26 @@
     </a>
   {% endcall %}
   <div class="content-constrained pb-3">
+
+  {# Cards compactos de niveles superiores #}
+  {{ bc_card_compacto('fas fa-folder-open', '', 'Expediente AT-' ~ expediente.numero_at,
+      url_for('expedientes.tramitacion_bc', exp_id=expediente.id)) }}
+  {{ bc_card_compacto('fas fa-file-alt', 'bc-icon-solicitud',
+      'Solicitud: ' ~ (solicitud.tipo_solicitud.siglas if solicitud.tipo_solicitud else '#' ~ solicitud.id),
+      url_for('expedientes.tramitacion_bc_solicitud', exp_id=expediente.id, sol_id=solicitud.id)) }}
+  {{ bc_card_compacto('fas fa-layer-group', 'bc-icon-fase',
+      'Fase: ' ~ (fase.tipo_fase.nombre if fase.tipo_fase else '#' ~ fase.id),
+      url_for('expedientes.tramitacion_bc_fase', exp_id=expediente.id, sol_id=solicitud.id, fase_id=fase.id)) }}
+  {{ bc_card_compacto('fas fa-tasks', 'bc-icon-tramite',
+      'Trámite: ' ~ (tramite.tipo_tramite.nombre if tramite.tipo_tramite else '#' ~ tramite.id),
+      url_for('expedientes.tramitacion_bc_tramite', exp_id=expediente.id, sol_id=solicitud.id, fase_id=fase.id, tram_id=tramite.id)) }}
+
   <div class="card bc-card-nodo" data-bc-editable>
 
-    <div class="card-header card-header-accent d-flex justify-content-between align-items-center">
-      <span class="fw-semibold">
-        <i class="fas fa-check-square me-2"></i>
-        Tarea: {{ tarea.tipo_tarea.nombre if tarea.tipo_tarea else '#' ~ tarea.id }}
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <span class="fw-semibold d-flex align-items-center gap-2">
+        <i class="fas fa-check-square fs-5 bc-icon-tarea"></i>
+        <span>Tarea: {{ tarea.tipo_tarea.nombre if tarea.tipo_tarea else '#' ~ tarea.id }}</span>
       </span>
       <div class="bc-acciones-bar">
         {# Modo ver #}
@@ -125,13 +140,13 @@
       <div data-modo-ver class="row g-2 bc-meta">
         <div class="col-auto">
           <strong>F. Inicio:</strong>
-          <span id="disp-fecha_inicio">
+          <span id="disp-fecha_inicio" class="bc-fecha-valor">
             {{- tarea.fecha_inicio.strftime('%d/%m/%Y') if tarea.fecha_inicio else '—' -}}
           </span>
         </div>
         <div class="col-auto">
           <strong>F. Fin:</strong>
-          <span id="disp-fecha_fin">
+          <span id="disp-fecha_fin" class="bc-fecha-valor">
             {{- tarea.fecha_fin.strftime('%d/%m/%Y') if tarea.fecha_fin else '—' -}}
           </span>
         </div>

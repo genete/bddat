@@ -12,14 +12,59 @@
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
 }
 
-/* Texto de metadatos dentro del card de nodo (fechas, estado) */
-.bc-meta {
-    font-size: 0.85rem;
-    color: var(--bs-secondary-color, #6c757d);
+/* Cabecera blanca — el color queda exclusivamente en el icono de nivel */
+.bc-card-nodo .card-header {
+    background-color: #fff;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.125);
+    color: var(--bs-body-color);
 }
 
-.bc-meta strong {
+/* Iconos de nivel SFTT — color identificativo por nivel (#274) */
+.bc-icon-solicitud { color: #3b7dd8; }
+.bc-icon-fase      { color: #d97706; }
+.bc-icon-tramite   { color: #7c3aed; }
+.bc-icon-tarea     { color: #16a34a; }
+
+/* Texto de metadatos dentro del card de nodo (fechas, estado) */
+.bc-meta {
+    /* Sin reducción de tamaño ni gris — las fechas son dato operacional principal */
+    font-size: 1rem;
     color: var(--bs-body-color);
+}
+
+/* Valor de fecha en negrita para máximo peso visual */
+.bc-fecha-valor {
+    font-weight: 600;
+}
+
+/* ── Cards compactos apilados (breadcrumb visual, #274) ──────────────────── */
+
+.bc-card-compacto {
+    text-decoration: none;
+    color: var(--bs-body-color);
+    border: 1px solid rgba(0, 0, 0, 0.125);
+    border-radius: var(--bs-border-radius);
+    background-color: #fff;
+    padding: 0.4rem 0.75rem;
+    margin-bottom: 0.375rem;
+    cursor: pointer;
+    transition: background-color 0.12s ease;
+    min-height: 36px;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.bc-card-compacto:hover {
+    background-color: #f8f9fa;
+    color: var(--bs-body-color);
+    text-decoration: none;
+}
+
+.bc-card-compacto .bc-compacto-label {
+    font-weight: 500;
+    flex: 1;
 }
 
 /* ── Indicadores de estado en tabla de hijos ────────────────────────────── */
