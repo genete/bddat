@@ -17,7 +17,7 @@
 5. [Capa 2 — Masticador por renderer](#5-capa-2--masticador-por-renderer)
 6. [Capa 3 — Serializador Mermaid](#6-capa-3--serializador-mermaid)
 7. [Interacción: frame único con expansión al clic](#7-interacción-frame-único-con-expansión-al-clic)
-8. [Render client-side con mermaid.js](#8-render-client-side-con-mermaidjs)
+8. [Render y navegación en el navegador](#8-render-y-navegación-en-el-navegador)
 9. [Pendientes antes de implementar](#9-pendientes-antes-de-implementar)
 
 ---
@@ -143,6 +143,7 @@ Recorre el árbol bruto y produce un árbol enriquecido con las propiedades que 
 - `estado`: deduce `pendiente` / `en_curso` / `finalizado` / `finalizado_favorable` a partir de `fecha_inicio`, `fecha_fin` y `resultado_fase`
 - `label`: texto a mostrar en el nodo (nombre corto, código…)
 - `clase`: nombre de la `classDef` Mermaid a aplicar
+- `clickable`: booleano — si el nodo debe responder al clic (fases) o no (tareas)
 
 El masticador es el único lugar donde vive la lógica "si `fecha_fin` es nulo y `fecha_inicio` no es nulo → en_curso". Ni la API ni el serializador la conocen.
 
@@ -168,10 +169,31 @@ def arbol_to_mmd(arbol_preparado, fase_expandida_id=None) -> str:
 - `fase_expandida_id=None` — vista macro: todas las fases como nodos simples
 - `fase_expandida_id=X` — fase X renderizada como subgraph con sus trámites y tareas; el resto de fases siguen visibles como nodos simples
 
-**Tipo de diagrama: `flowchart TD` en ambos casos.** No se necesita `stateDiagram-v2` — el frame único con expansión al clic (§7) hace innecesario mezclar tipos de diagrama.
+### Orientación del diagrama
 
+**`flowchart LR`** para el flujo principal — las fases se leen de izquierda a derecha, como una línea de tiempo. Esto produce un diagrama ancho y bajo que encaja naturalmente en un contenedor Bootstrap full-width (`col-12`).
+
+Cuando una fase se expande, su subgraph usa `direction TB` — los trámites y tareas dentro de esa fase crecen verticalmente sin alterar la orientación horizontal general:
+
+```
+flowchart LR
+  F1[ANÁLISIS]:::finalizada --> F2
+  subgraph F2[CONSULTAS]:::en_curso
+    direction TB
+    T1[CONSULTA_SEPARATA]:::finalizado --> T2[TRASLADO_TITULAR]:::en_curso
+  end
+  F2 --> F3[INF_PÚBLICA]:::pendiente
+```
 
 El serializador usa los campos `clase` del árbol preparado para emitir `classDef` y colorear nodos según estado.
+
+### El servidor genera el texto MMD
+
+**Decisión:** Flask ejecuta el masticador y el serializador y devuelve el texto MMD. El navegador solo renderiza.
+
+- Endpoint: `GET /api/expedientes/<id>/arbol/mmd?fase_id=X`
+- El texto MMD es ligero (pocos KB) — la latencia del AJAX es imperceptible
+- Toda la lógica de serialización permanece en Python, sin duplicar en JS
 
 ---
 
@@ -183,84 +205,91 @@ El serializador usa los campos `clase` del árbol preparado para emitir `classDe
 
 ```
 Carga inicial
-  arbol_to_mmd(arbol, fase_expandida_id=None)
-  → flowchart TD con todas las fases como nodos simples
+  GET /api/expedientes/<id>/arbol/mmd  →  texto MMD (macro)
+  mermaid.render()  →  SVG en el <div>
+  svgPanZoom()      →  zoom/pan activo
 
 Usuario hace clic en FASE X
-  → click callback de mermaid.js
-  → arbol_to_mmd(arbol, fase_expandida_id=X)  [cliente o llamada al servidor]
-  → mermaid.render('diagrama', nuevoMMD)
-  → mismo <div> actualizado, contexto preservado
+  GET /api/expedientes/<id>/arbol/mmd?fase_id=X  →  texto MMD (fase expandida)
+  svgPanZoomInstance.destroy()
+  mermaid.render()  →  nuevo SVG en el mismo <div>
+  svgPanZoom()      →  reinstanciar zoom/pan
 
-Usuario hace clic en FASE X (ya expandida) u otra fase
-  → colapsa o expande según corresponda
+Usuario hace clic en FASE X (ya expandida)
+  → colapsa (misma llamada sin fase_id o con fase_id=null)
 ```
 
-### Aspecto visual
+### Aspecto visual (orientación LR)
 
 ```
-Vista macro (ninguna fase expandida):
-
-  [ANÁLISIS_SOLICITUD]:::finalizada
-        ↓
-  [CONSULTAS]:::en_curso
-        ↓
-  [INFORMACIÓN_PÚBLICA]:::pendiente
-        ↓
-  [RESOLUCIÓN]:::pendiente
-
+Vista macro:
+  [ANÁLISIS]:::finalizada → [CONSULTAS]:::en_curso → [INF_PÚBLICA]:::pendiente → [RESOLUCIÓN]:::pendiente
 
 Tras clic en CONSULTAS:
-
-  [ANÁLISIS_SOLICITUD]:::finalizada
-        ↓
-  subgraph CONSULTAS:::en_curso
-    subgraph CONSULTA_SEPARATA:::finalizado
-      R --> F --> N --> EP --> INC --> A
-    end
-    subgraph CONSULTA_TRASLADO_TITULAR:::en_curso
-      R --> F --> N:::en_curso
-    end
-  end
-        ↓
-  [INFORMACIÓN_PÚBLICA]:::pendiente
-        ↓
-  [RESOLUCIÓN]:::pendiente
+  [ANÁLISIS]:::finalizada →  subgraph CONSULTAS:::en_curso  → [INF_PÚBLICA]:::pendiente → [RESOLUCIÓN]:::pendiente
+                               direction TB
+                               [CONSULTA_SEPARATA]:::finalizado
+                                      ↓
+                               [TRASLADO_TITULAR]:::en_curso
 ```
 
-El contexto del expediente completo (qué fases hay y en qué estado están) permanece visible mientras se examina el detalle de una fase.
+El contexto del expediente completo permanece visible mientras se examina el detalle de una fase.
 
-### Generación del MMD: ¿cliente o servidor?
+### Gestión del clic: problema de coexistencia con zoom/pan
 
-Dos opciones válidas; decisión aplazada a implementación:
+svg-pan-zoom intercepta eventos de ratón para el pan (mousedown + drag). Los click callbacks de Mermaid se registran directamente sobre los nodos SVG. Ambos compiten por el mismo evento.
 
-| Opción | Descripción | Trade-off |
+**En la práctica:** un click simple (sin arrastrar) generalmente llega al nodo porque svg-pan-zoom distingue click de drag. Pero hay casos problemáticos:
+- Movimiento mínimo durante el click → svg-pan-zoom lo interpreta como pan y el click no llega al nodo
+- En touch (tablet) la distinción tap/pan es más ambigua
+
+**Opciones:**
+
+| Opción | Descripción | Estado |
 |---|---|---|
-| **Servidor** | JS llama a `/api/expedientes/<id>/arbol/mmd?fase_id=X` y recibe el texto MMD | Lógica de serialización centralizada en Python; más fácil de mantener y testear |
-| **Cliente** | JS recibe el JSON del árbol en la carga inicial y genera el MMD localmente | Sin round-trip al servidor en cada clic; requiere duplicar la lógica de serialización en JS |
+| **A) Umbral de sensibilidad** | Configurar svg-pan-zoom con umbral alto para considerar drag. El pan se vuelve menos fluido. | Compromiso incómodo |
+| **B) Evento propio** | Capturar el click en el contenedor SVG e inspeccionar el elemento clicado. svg-pan-zoom expone si hubo drag antes del mouseup — permite discriminar limpiamente sin depender de los callbacks de Mermaid. | **Abierto — valorar en implementación** |
+| **C) Separar interacción del diagrama** | El diagrama es solo visual + zoom/pan. La selección de fase se hace con un control externo al SVG (lista, breadcrumb). Sin conflicto posible. | Más robusta, menos integrada |
 
-La opción servidor es preferible si la lógica de serialización es no trivial o puede evolucionar. La opción cliente es preferible si la latencia de red es un problema.
+### Feedback visual: cursor
+
+Los nodos clickables deben mostrar `cursor: pointer`. Mermaid genera clases CSS sobre los nodos SVG — se puede apuntar con CSS de mayor especificidad que el `cursor: grab` que aplica svg-pan-zoom sobre el área general. El campo `clickable` del masticador (§5) informa al serializador de qué nodos recibirán esta clase.
 
 ---
 
-## 8. Render client-side con mermaid.js
+## 8. Render y navegación en el navegador
 
-**Decisión:** `mermaid.js` vía CDN, renderizado en el navegador.
+**Decisión:** `mermaid.js` vía CDN para renderizar SVG + `svg-pan-zoom` para zoom y pan.
+
+### mermaid.js
 
 | Aspecto | Valoración |
 |---|---|
-| **Dependencias servidor** | Ninguna — no requiere Node.js ni `mmdc` instalado |
-| **Integración** | Un `<script>` CDN y un `<div id="diagrama">` cuyo contenido se actualiza por JS |
-| **Regeneración** | `mermaid.render(id, codigoMMD)` devuelve el SVG sin tocar el DOM — se inserta manualmente |
-| **Click callbacks** | `click nodoId callbackFn` en la sintaxis MMD — nativo en mermaid.js |
-| **Riesgo** | Dependencia CDN externa. Mitigable cacheando la librería localmente si fuera necesario |
+| **Dependencias servidor** | Ninguna — no requiere Node.js ni `mmdc` |
+| **Integración** | `<script>` CDN + `<div id="diagrama">` actualizado por JS |
+| **Regeneración** | `mermaid.render(id, codigoMMD)` devuelve SVG sin tocar el DOM — se inserta manualmente |
+| **Riesgo** | Dependencia CDN externa — mitigable cacheando localmente si fuera necesario |
+
+### svg-pan-zoom
+
+Biblioteca ligera (~17KB, MIT) diseñada para añadir zoom y pan a SVGs generados dinámicamente.
+
+| Funcionalidad | Detalle |
+|---|---|
+| **Zoom** | Rueda del ratón + botones +/− |
+| **Pan** | Click + arrastrar |
+| **Fit automático** | Ajusta el diagrama al contenedor en la carga inicial |
+| **Reset** | Botón para volver al estado inicial |
+| **Ciclo de vida** | `destroy()` antes de cada regeneración del SVG, reinstanciar después |
+
+El fit automático resuelve el problema de aspecto: independientemente del tamaño del diagrama generado, el punto de partida siempre es el diagrama completo visible en el contenedor. El usuario ajusta desde ahí con zoom/pan libre.
 
 ---
 
 ## 9. Pendientes antes de implementar
 
 - [ ] Crear issue de implementación y enlazarlo aquí
-- [ ] Decidir en qué vista se muestra el diagrama (¿tab en tramitación V3?, ¿modal?, ¿panel lateral?)
+- [ ] Decidir en qué vista se muestra el diagrama (¿tab en tramitación?, ¿modal?, ¿panel lateral?)
 - [ ] Prototipar la sintaxis MMD generada para un expediente real de prueba y validar legibilidad
-- [ ] Decidir generación del MMD en servidor o cliente (ver §6)
-- [ ] Decidir si `mermaid.js` se carga desde CDN externo o se incluye en el bundle del proyecto
+- [ ] Decidir estrategia de gestión del clic con svg-pan-zoom: opción B (evento propio) u opción C (control externo) — ver §7
+- [ ] Decidir si `mermaid.js` y `svg-pan-zoom` se cargan desde CDN o se incluyen en el bundle del proyecto
