@@ -12,12 +12,13 @@
 
 1. [Concepto y motivación](#1-concepto-y-motivación)
 2. [Diferencia con los diagramas estáticos](#2-diferencia-con-los-diagramas-estáticos)
-3. [Decisión de arquitectura: API JSON agnóstica](#3-decisión-de-arquitectura-api-json-agnóstica)
-4. [Endpoint `/api/expedientes/<id>/arbol`](#4-endpoint-apiexpedientesidarbol)
-5. [Serializador Mermaid](#5-serializador-mermaid)
-6. [Interacción: frame único con expansión al clic](#6-interacción-frame-único-con-expansión-al-clic)
-7. [Render client-side con mermaid.js](#7-render-client-side-con-mermaidjs)
-8. [Pendientes antes de implementar](#8-pendientes-antes-de-implementar)
+3. [Decisión de arquitectura: tres capas](#3-decisión-de-arquitectura-tres-capas)
+4. [Capa 1 — Endpoint `/api/expedientes/<id>/arbol` (JSON bruto)](#4-capa-1--endpoint-apiexpedientesidarbol-json-bruto)
+5. [Capa 2 — Masticador por renderer](#5-capa-2--masticador-por-renderer)
+6. [Capa 3 — Serializador Mermaid](#6-capa-3--serializador-mermaid)
+7. [Interacción: frame único con expansión al clic](#7-interacción-frame-único-con-expansión-al-clic)
+8. [Render client-side con mermaid.js](#8-render-client-side-con-mermaidjs)
+9. [Pendientes antes de implementar](#9-pendientes-antes-de-implementar)
 
 ---
 
@@ -47,25 +48,35 @@ A diferencia de los diagramas de documentación (capas 0–3 en `DISEÑO_DIAGRAM
 
 ---
 
-## 3. Decisión de arquitectura: API JSON agnóstica
+## 3. Decisión de arquitectura: tres capas
 
-**Decisión:** el backend expone un endpoint JSON puro a 4 niveles. El serializador Mermaid es una capa posterior independiente.
-
-**Por qué no generar MMD directamente desde Flask:** el árbol JSON del expediente es útil por sí solo y puede ser consumido por múltiples renderers (Mermaid, una futura vista de timeline, exportación a Excel, tests de integración). Acoplar Flask directamente a sintaxis Mermaid sacrifica esa reusabilidad sin ningún beneficio.
+El sistema se estructura en tres capas independientes:
 
 ```
-BD  →  _construir_arbol()  →  /api/expedientes/<id>/arbol (JSON)
+BD  →  _construir_arbol()  →  /api/expedientes/<id>/arbol  (JSON bruto)
                                          │
-                                         ▼
-                             arbol_to_mmd(arbol, fase_expandida_id)
-                                         │
-                                         ▼
-                                   mermaid.js (browser)
+                          ┌──────────────┼──────────────┐
+                          ▼              ▼              ▼
+                   preparar_mmd()  preparar_excel()  preparar_*()
+                          │
+                          ▼
+              arbol_to_mmd(arbol_preparado, fase_expandida_id)
+                          │
+                          ▼
+                    mermaid.js (browser)
 ```
+
+**Capa 1 — API bruta:** expone los datos tal como están en BD. Sin interpretación, sin decisiones de presentación.
+
+**Capa 2 — Masticador:** transforma el JSON bruto en la forma que necesita cada renderer. Cada renderer tiene el suyo. El masticador para MMD decide qué es `en_curso`; el de Excel decide el formato de fecha; uno estadístico puede ignorar el detalle de tareas y agregar contadores.
+
+**Capa 3 — Serializador:** toma el JSON ya preparado y emite el formato final (texto MMD, fichero xlsx, HTML…).
+
+**Por qué no generar MMD directamente desde Flask:** el JSON bruto es útil por sí solo y agnóstico a cualquier renderer. Acoplar Flask a sintaxis Mermaid — o a cualquier formato de salida — contamina la API con decisiones de presentación.
 
 ---
 
-## 4. Endpoint `/api/expedientes/<id>/arbol`
+## 4. Capa 1 — Endpoint `/api/expedientes/<id>/arbol` (JSON bruto)
 
 ### Por qué un endpoint nuevo y no ampliar `/jerarquia`
 
@@ -77,33 +88,38 @@ El endpoint existente `GET /api/expedientes/<id>/jerarquia` solo desciende hasta
 
 La función `_construir_arbol()` en `app/routes/vista3.py` ya construye el árbol completo a 4 niveles con estados incluidos. El nuevo endpoint la reutiliza y devuelve el resultado como JSON puro en lugar de HTML renderizado.
 
-### Estructura JSON esperada
+### Estructura JSON bruta esperada
+
+El JSON expone los campos reales de BD sin interpretación. El estado no se deduce aquí — eso es responsabilidad del masticador.
 
 ```json
 [
   {
     "id": 1,
-    "codigo": "SOL-1",
-    "tipos": "AAP + AAC",
-    "estado": "EN_CURSO",
+    "tipo_solicitud": {"id": 2, "siglas": "AAP"},
+    "fecha_solicitud": "2025-06-15",
+    "fecha_fin": null,
     "fases": [
       {
         "id": 12,
-        "codigo": "ANÁLISIS_SOLICITUD",
-        "nombre": "Análisis de solicitud",
-        "estado": "Finalizada",
+        "tipo_fase": {"id": 3, "codigo": "ANÁLISIS_SOLICITUD", "nombre": "Análisis de solicitud"},
+        "fecha_inicio": "2025-06-20",
+        "fecha_fin": "2025-07-10",
+        "resultado_fase": {"id": 1, "codigo": "FAVORABLE"},
         "tramites": [
           {
             "id": 45,
-            "codigo": "ANALISIS_DOCUMENTAL",
-            "nombre": "Análisis documental",
-            "estado": "Finalizado",
+            "tipo_tramite": {"id": 7, "codigo": "ANALISIS_DOCUMENTAL", "nombre": "Análisis documental"},
+            "fecha_inicio": "2025-06-20",
+            "fecha_fin": "2025-07-10",
             "tareas": [
               {
                 "id": 101,
-                "codigo": "ANALIZAR",
-                "nombre": "Análisis",
-                "estado": "Ejecutada"
+                "tipo_tarea": {"id": 1, "codigo": "ANALIZAR", "nombre": "Análisis"},
+                "fecha_inicio": "2025-06-20",
+                "fecha_fin": "2025-07-10",
+                "documento_usado_id": 55,
+                "documento_producido_id": 56
               }
             ]
           }
@@ -116,25 +132,50 @@ La función `_construir_arbol()` en `app/routes/vista3.py` ya construye el árbo
 
 ---
 
-## 5. Serializador Mermaid
+## 5. Capa 2 — Masticador por renderer
 
-Un único serializador Python, desacoplado de Flask y testable en aislamiento:
+Función que transforma el JSON bruto en la forma que necesita un renderer concreto. Cada renderer tiene la suya.
+
+### `preparar_para_mmd(arbol_bruto)`
+
+Recorre el árbol bruto y produce un árbol enriquecido con las propiedades que necesita el serializador MMD:
+
+- `estado`: deduce `pendiente` / `en_curso` / `finalizado` / `finalizado_favorable` a partir de `fecha_inicio`, `fecha_fin` y `resultado_fase`
+- `label`: texto a mostrar en el nodo (nombre corto, código…)
+- `clase`: nombre de la `classDef` Mermaid a aplicar
+
+El masticador es el único lugar donde vive la lógica "si `fecha_fin` es nulo y `fecha_inicio` no es nulo → en_curso". Ni la API ni el serializador la conocen.
+
+### Otros masticadores (ejemplos futuros)
+
+| Masticador | Qué produce |
+|---|---|
+| `preparar_para_excel(arbol_bruto)` | Fechas formateadas, duraciones calculadas, contadores de tareas |
+| `preparar_para_timeline(arbol_bruto)` | Segmentos con inicio/fin absolutos para una vista Gantt |
+| `preparar_para_stats(arbol_bruto)` | Agregados por fase, sin detalle de tareas |
+
+---
+
+## 6. Capa 3 — Serializador Mermaid
+
+Un único serializador Python, desacoplado de Flask y testable en aislamiento. Recibe el árbol **ya masticado** por `preparar_para_mmd()`:
 
 ```python
-def arbol_to_mmd(arbol, fase_expandida_id=None) -> str:
+def arbol_to_mmd(arbol_preparado, fase_expandida_id=None) -> str:
     ...
 ```
 
 - `fase_expandida_id=None` — vista macro: todas las fases como nodos simples
 - `fase_expandida_id=X` — fase X renderizada como subgraph con sus trámites y tareas; el resto de fases siguen visibles como nodos simples
 
-**Tipo de diagrama: `flowchart TD` en ambos casos.** No se necesita `stateDiagram-v2` — el frame único con expansión al clic (§6) hace innecesario mezclar tipos de diagrama.
+**Tipo de diagrama: `flowchart TD` en ambos casos.** No se necesita `stateDiagram-v2` — el frame único con expansión al clic (§7) hace innecesario mezclar tipos de diagrama.
 
-El serializador aplica `classDef` para colorear nodos según estado (pendiente / en curso / finalizado / finalizado favorable).
+
+El serializador usa los campos `clase` del árbol preparado para emitir `classDef` y colorear nodos según estado.
 
 ---
 
-## 6. Interacción: frame único con expansión al clic
+## 7. Interacción: frame único con expansión al clic
 
 **Decisión:** un solo `<div>` cuyo contenido Mermaid se regenera al interactuar, sin salto de layout ni segunda zona en pantalla.
 
@@ -202,7 +243,7 @@ La opción servidor es preferible si la lógica de serialización es no trivial 
 
 ---
 
-## 7. Render client-side con mermaid.js
+## 8. Render client-side con mermaid.js
 
 **Decisión:** `mermaid.js` vía CDN, renderizado en el navegador.
 
@@ -216,7 +257,7 @@ La opción servidor es preferible si la lógica de serialización es no trivial 
 
 ---
 
-## 8. Pendientes antes de implementar
+## 9. Pendientes antes de implementar
 
 - [ ] Crear issue de implementación y enlazarlo aquí
 - [ ] Decidir en qué vista se muestra el diagrama (¿tab en tramitación V3?, ¿modal?, ¿panel lateral?)
