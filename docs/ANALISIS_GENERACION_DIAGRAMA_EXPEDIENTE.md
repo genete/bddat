@@ -237,23 +237,42 @@ El contexto del expediente completo permanece visible mientras se examina el det
 
 ### Gestión del clic: problema de coexistencia con zoom/pan
 
-svg-pan-zoom intercepta eventos de ratón para el pan (mousedown + drag). Los click callbacks de Mermaid se registran directamente sobre los nodos SVG. Ambos compiten por el mismo evento.
+svg-pan-zoom usa LMB drag para pan. Cualquier acción que también use LMB compite con él — el umbral entre "click" y "inicio de drag" es frágil y difícil de calibrar.
 
-**En la práctica:** un click simple (sin arrastrar) generalmente llega al nodo porque svg-pan-zoom distingue click de drag. Pero hay casos problemáticos:
-- Movimiento mínimo durante el click → svg-pan-zoom lo interpreta como pan y el click no llega al nodo
-- En touch (tablet) la distinción tap/pan es más ambigua
+**Decisión: Opción B — LMB para pan, RMB para acciones (menú contextual).**
 
-**Opciones:**
+Separa las dos interacciones en botones distintos, eliminando el conflicto de raíz:
 
-| Opción | Descripción | Estado |
-|---|---|---|
-| **A) Umbral de sensibilidad** | Configurar svg-pan-zoom con umbral alto para considerar drag. El pan se vuelve menos fluido. | Compromiso incómodo |
-| **B) Evento propio** | Capturar el click en el contenedor SVG e inspeccionar el elemento clicado. svg-pan-zoom expone si hubo drag antes del mouseup — permite discriminar limpiamente sin depender de los callbacks de Mermaid. | **Abierto — valorar en implementación** |
-| **C) Separar interacción del diagrama** | El diagrama es solo visual + zoom/pan. La selección de fase se hace con un control externo al SVG (lista, breadcrumb). Sin conflicto posible. | Más robusta, menos integrada |
+- **LMB drag** → pan (svg-pan-zoom, sin cambios)
+- **Rueda** → zoom
+- **RMB sobre nodo de fase** → menú contextual con acciones: _Expandir_, _Colapsar_, y en el futuro _Ir a tramitación_, _Ver documentos_…
+
+```javascript
+svgElement.addEventListener('contextmenu', (e) => {
+    e.preventDefault()  // evita el menú del navegador
+    const nodo = e.target.closest('.fase-node')
+    if (nodo) mostrarMenu(e.clientX, e.clientY, nodo.dataset.faseId)
+})
+```
+
+El menú contextual es un `<div>` Bootstrap posicionado absolutamente en las coordenadas del clic, que desaparece al hacer clic fuera.
+
+**Ventaja adicional:** el menú puede crecer con nuevas acciones sin rediseñar la interacción.
+
+**Coste:** el RMB es menos descubrible que el LMB. Mitigable con un hint visual bajo el diagrama o un icono en los nodos de fase.
+
+Las opciones descartadas:
+
+| Opción | Motivo de descarte |
+|---|---|
+| Umbral de sensibilidad LMB | Compromiso frágil — movimiento mínimo durante click rompe la acción |
+| Evento propio sobre SVG | Complejidad sin ventaja real frente a RMB |
+| Botones externos (sin pan libre) | Pan con botones incómodo en diagramas grandes; zoom sin pan deja el diagrama fuera de vista |
+| Control externo al SVG | Menos integrado; el diagrama pierde interactividad directa |
 
 ### Feedback visual: cursor
 
-Los nodos clickables deben mostrar `cursor: pointer`. Mermaid genera clases CSS sobre los nodos SVG — se puede apuntar con CSS de mayor especificidad que el `cursor: grab` que aplica svg-pan-zoom sobre el área general. El campo `clickable` del masticador (§5) informa al serializador de qué nodos recibirán esta clase.
+Los nodos de fase deben mostrar `cursor: context-menu` (indica que hay menú RMB). Mermaid genera clases CSS sobre los nodos SVG — se apunta con CSS de mayor especificidad que el `cursor: grab` de svg-pan-zoom. El campo `clickable` del masticador (§5) informa al serializador de qué nodos recibirán esta clase.
 
 ---
 
@@ -291,5 +310,5 @@ El fit automático resuelve el problema de aspecto: independientemente del tama�
 - [x] Crear issue de implementación → #285
 - [ ] Decidir en qué vista se muestra el diagrama (¿tab en tramitación?, ¿modal?, ¿panel lateral?)
 - [ ] Prototipar la sintaxis MMD generada para un expediente real de prueba y validar legibilidad
-- [ ] Decidir estrategia de gestión del clic con svg-pan-zoom: opción B (evento propio) u opción C (control externo) — ver §7
+- [x] Estrategia de gestión del clic: RMB menú contextual, LMB reservado para pan — ver §7
 - [ ] Decidir si `mermaid.js` y `svg-pan-zoom` se cargan desde CDN o se incluyen en el bundle del proyecto
