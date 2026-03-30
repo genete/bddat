@@ -185,10 +185,10 @@ Las fases 4-6 son secuenciales y requieren que cicatricen las anteriores.
 
 ## Actualizaciones pendientes tras ejecutar migraciones (Cabo 6)
 
-Renombrado ejecutado en #167 Fase 2. Actualización de docs pendiente → #278 (M2).
+Renombrado ejecutado en #167 Fase 2. Actualización de docs completada en #278.
 
 | Fichero | Estado |
 |---------|--------|
-| `docs/GUIA_CONTEXT_BUILDERS.md` | ⬜ pendiente (#278) |
-| `docs/PLAN_ROADMAP.md` | ⬜ pendiente (#278) |
+| `docs/GUIA_CONTEXT_BUILDERS.md` | ✅ actualizado (#278) |
+| `docs/PLAN_ROADMAP.md` | ✅ actualizado (#278) |
 | `docs/DISEÑO_SUBSISTEMA_DOCUMENTAL.md` | ✅ ya actualizado |

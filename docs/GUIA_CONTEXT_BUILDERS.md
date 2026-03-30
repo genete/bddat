@@ -64,7 +64,7 @@ class ContextoNotificacionOrganismo:
     """
     Context Builder para escritos de notificación a organismos consultados.
 
-    Campos adicionales que aporta (ver campos_catalogo en tipos_escritos):
+    Campos adicionales que aporta (ver consultas_nombradas en plantillas):
     - organismo_nombre: Nombre del organismo consultado
     - fecha_respuesta: Fecha administrativa del documento de respuesta
     - plazo_alegaciones: Plazo legal para presentar alegaciones (texto)
@@ -120,10 +120,10 @@ CONTEXT_BUILDERS = {
     # añadir nuevos aquí
 }
 
-def get_contexto(tipo_escrito: TipoEscrito, tarea_id: int) -> dict:
-    """Devuelve el contexto apropiado según el tipo de escrito."""
-    if tipo_escrito.contexto_clase and tipo_escrito.contexto_clase in CONTEXT_BUILDERS:
-        builder = CONTEXT_BUILDERS[tipo_escrito.contexto_clase]()
+def get_contexto(plantilla: Plantilla, tarea_id: int) -> dict:
+    """Devuelve el contexto apropiado según la plantilla."""
+    if plantilla.contexto_clase and plantilla.contexto_clase in CONTEXT_BUILDERS:
+        builder = CONTEXT_BUILDERS[plantilla.contexto_clase]()
         return builder.get_contexto(tarea_id)
     return ContextoBaseExpediente.get_contexto_desde_tarea(tarea_id)
 ```
@@ -138,28 +138,20 @@ def get_contexto(tipo_escrito: TipoEscrito, tarea_id: int) -> dict:
 
 def upgrade():
     op.execute("""
-        INSERT INTO public.tipos_escritos
-            (codigo, nombre, descripcion, plantilla_url, contexto_clase, campos_catalogo, activo)
+        INSERT INTO public.plantillas
+            (codigo, nombre, descripcion, plantilla_url, contexto_clase, activo)
         VALUES (
             'NOTIF_ORGANISMO',
             'Notificación a organismo consultado',
             'Traslado de respuesta de organismo con plazo de alegaciones',
             'escritos/notificacion_organismo.docx',
             'ContextoNotificacionOrganismo',
-            '{
-                "expediente_codigo": "Código del expediente (AT-XXXXX)",
-                "titular_nombre": "Nombre del titular",
-                "organismo_nombre": "Nombre del organismo consultado",
-                "fecha_respuesta": "Fecha de la respuesta del organismo (DD/MM/AAAA)",
-                "plazo_alegaciones": "Plazo legal para alegaciones",
-                "fecha_limite": "Fecha límite calculada"
-            }',
             TRUE
         )
     """)
 
 def downgrade():
-    op.execute("DELETE FROM public.tipos_escritos WHERE codigo = 'NOTIF_ORGANISMO'")
+    op.execute("DELETE FROM public.plantillas WHERE codigo = 'NOTIF_ORGANISMO'")
 ```
 
 ---
@@ -222,7 +214,7 @@ Al crear un nuevo tipo de escrito, añadir en el manual:
 
 1. **Nombre y propósito** — qué tramitación cubre este escrito
 2. **Cuándo usarlo** — en qué tarea de qué trámite aparece disponible
-3. **Catálogo de campos** — copiar de `campos_catalogo` en `tipos_escritos`
+3. **Catálogo de campos** — derivado del Context Builder y las consultas nombradas
 4. **Requisitos previos** — qué datos deben existir en el expediente
 5. **Ejemplo de resultado** — captura o fragmento del escrito generado
 

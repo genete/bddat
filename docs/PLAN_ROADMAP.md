@@ -52,7 +52,7 @@ Issues activos: ninguno
 - Gestión de usuarios — adaptar a vistas V4 (#168)
 - Listado inteligente multi-pista con deducción automática de estados (#169) — servicio `app/services/seguimiento.py`
 - Semáforos y alertas de vencimiento (#74)
-- Arquitectura generación de escritos: tipos_escritos + context builders (#189)
+- Arquitectura generación de escritos: plantillas + context builders (#189)
 - Inspección automática de documentos — preclasificación asistida (#181)
 - Códigos de clasificación embebidos en PDFs internos firmados (#182)
 - Revisar color thead V2 y cabecera tramitación BC (#203)
