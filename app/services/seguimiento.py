@@ -83,6 +83,7 @@ class EstadoPista:
     codigo: str    # p.ej. 'PENDIENTE_ESTUDIO'
     color: str     # p.ej. 'rojo'
     count: int = 1 # elementos en el estado de mayor prioridad (para contador visible)
+    nota: Optional[str] = None  # notas de la tarea activa (para tooltip en seguimiento)
 
 
 # ---------------------------------------------------------------------------
@@ -121,7 +122,8 @@ def estado_solicitud(solicitud_id: int) -> dict[str, Optional[EstadoPista]]:
         fases_abiertas = [f for f in fases if f.fecha_fin is None]
         acc = _acumular([_estado_fase(f, pista) for f in fases_abiertas])
         ganador, count = _mayor_prioridad(acc)
-        result[pista] = EstadoPista(ganador, COLOR[ganador], count)
+        nota = _nota_activa(fases_abiertas)
+        result[pista] = EstadoPista(ganador, COLOR[ganador], count, nota)
 
     return result
 
@@ -274,6 +276,21 @@ def _parse_plazo_dias(notas: Optional[str]) -> Optional[int]:
         return None
     m = re.search(r'PLAZO_DIAS=(\d+)', notas)
     return int(m.group(1)) if m else None
+
+
+def _nota_activa(fases_abiertas) -> Optional[str]:
+    """
+    Devuelve las notas de la primera tarea abierta encontrada en las fases abiertas.
+    Se usa para poblar el tooltip en el listado de seguimiento.
+    """
+    for fase in fases_abiertas:
+        for tramite in sorted(fase.tramites, key=lambda t: t.id):
+            if tramite.fecha_fin is not None:
+                continue
+            for tarea in tramite.tareas:
+                if tarea.fecha_fin is None and tarea.notas:
+                    return tarea.notas
+    return None
 
 
 def _acumular(resultados: list[tuple[str, int]]) -> dict[str, int]:
