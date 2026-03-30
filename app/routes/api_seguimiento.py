@@ -213,4 +213,4 @@ def _ser_pista(ep) -> dict | None:
     """Serializa un EstadoPista a dict JSON; None si la pista es N/A."""
     if ep is None:
         return None
-    return {'codigo': ep.codigo, 'color': ep.color, 'count': ep.count}
+    return {'codigo': ep.codigo, 'color': ep.color, 'count': ep.count, 'nota': ep.nota}

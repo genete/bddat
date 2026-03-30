@@ -89,7 +89,8 @@ function renderPista(ep) {
     const texto   = TEXTO_ESTADO[ep.codigo] || ep.codigo;
     const clase   = COLOR_CLASE[ep.color]   || '';
     const counter = ep.count > 1 ? ` (${ep.count})` : '';
-    return `<span class="pista-celda ${clase}">${texto}${counter}</span>`;
+    const tooltip = ep.nota ? ` data-bs-toggle="tooltip" title="${ep.nota.replace(/"/g, '&quot;')}"` : '';
+    return `<span class="pista-celda ${clase}"${tooltip}>${texto}${counter}</span>`;
 }
 
 function renderFecha(val) {
@@ -186,6 +187,11 @@ class SeguimientoScroll extends ScrollInfinito {
             this.renderItems(data.data);
             this.totalLoaded += data.data.length;
             this.updatePaginationInfo();
+
+            // Inicializar tooltips Bootstrap en los elementos recién renderizados
+            document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
+                if (!bootstrap.Tooltip.getInstance(el)) new bootstrap.Tooltip(el);
+            });
 
             if (this.totalLoaded === 0 && ver === 'mis') {
                 this._mostrarToastSinExpedientes();
