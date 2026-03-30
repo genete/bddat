@@ -79,6 +79,7 @@ Esta línea va como primer comentario del archivo, antes de la declaración del 
 | `ESTRUCTURA_FTT.md` | `ESTRUCTURA_FTT.json` |
 | `ANALISIS_TAREAS_INVERSO.md` | `ESTRUCTURA_FTT.json` |
 | `ANALISIS_LISTADO_INTELIGENTE.md` | `ESTRUCTURA_FTT.json` |
+| `ANALISIS_GENERACION_DIAGRAMA_EXPEDIENTE.md` | `ESTRUCTURA_FTT.json` |
 
 ---
 
