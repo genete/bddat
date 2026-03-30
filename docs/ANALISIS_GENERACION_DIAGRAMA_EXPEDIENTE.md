@@ -3,7 +3,7 @@
 > Fuente de verdad: `ESTRUCTURA_FTT.json`
 > Última sincronización: 2026-03-30
 
-**Estado:** En análisis — sin issue de implementación aún
+**Estado:** En análisis — issue de implementación: #285
 **Relacionado con:** `DISEÑO_DIAGRAMAS_ESFTT.md` (diagramas estáticos de documentación) · #274 (revisión visual vista tramitación)
 
 ---
@@ -288,7 +288,7 @@ El fit automático resuelve el problema de aspecto: independientemente del tama�
 
 ## 9. Pendientes antes de implementar
 
-- [ ] Crear issue de implementación y enlazarlo aquí
+- [x] Crear issue de implementación → #285
 - [ ] Decidir en qué vista se muestra el diagrama (¿tab en tramitación?, ¿modal?, ¿panel lateral?)
 - [ ] Prototipar la sintaxis MMD generada para un expediente real de prueba y validar legibilidad
 - [ ] Decidir estrategia de gestión del clic con svg-pan-zoom: opción B (evento propio) u opción C (control externo) — ver §7
