@@ -55,12 +55,14 @@ class ScrollInfinito {
      * @param {string}   options.tableClass  - Selector CSS de la tabla. Default: '.expedientes-table'
      * @param {string}   options.entityLabel - Nombre de la entidad para mensajes. Default: 'expedientes'
      * @param {Function} options.detailUrl   - Función id => URL del detalle. Default: V3 expedientes
+     * @param {Object}   options.fixedParams - Parámetros fijos añadidos a cada petición. Default: {}
      */
     constructor(options = {}) {
         // Configuración base
         this.apiUrl      = options.apiUrl      || '/api/expedientes';
         this.limit       = options.limit       || 50;
         this.threshold   = options.threshold   || 0.8;
+        this.fixedParams = options.fixedParams || {};
 
         // Configuración genérica (nueva en v1.2)
         this.columns     = options.columns     || null;
@@ -119,7 +121,7 @@ class ScrollInfinito {
         this.showLoader();
 
         try {
-            const params = new URLSearchParams({ cursor: this.cursor, limit: this.limit });
+            const params = new URLSearchParams({ cursor: this.cursor, limit: this.limit, ...this.fixedParams });
             if (this.searchInput && this.searchInput.value.trim()) {
                 params.append('search', this.searchInput.value.trim());
             }
