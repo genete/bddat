@@ -4,7 +4,7 @@
 > Última sincronización: 2026-03-30
 
 **Estado:** En análisis — sin issue de implementación aún
-**Relacionado con:** `DISEÑO_DIAGRAMAS_ESFTT.md` (diagramas estáticos de documentación)
+**Relacionado con:** `DISEÑO_DIAGRAMAS_ESFTT.md` (diagramas estáticos de documentación) · #274 (revisión visual vista tramitación)
 
 ---
 
