@@ -1,7 +1,7 @@
-# Diseño: Diagramas de flujo ESFTT
+# Guía: Diagramas de flujo ESFTT
 
 **Fecha:** 22/03/2026
-**Estado:** Decisiones tomadas — bloqueado hasta completar sincronización documental (ver issue REGLAS_ARQUITECTURA)
+**Estado:** Decisiones consolidadas — guía operativa activa
 
 ---
 
@@ -15,6 +15,7 @@
 6. [Organización en git](#6-organización-en-git)
 7. [Relación con el JSON](#7-relación-con-el-json)
 8. [Lecciones aprendidas — prueba #249](#8-lecciones-aprendidas--prueba-249)
+9. [Procedimientos operativos](#9-procedimientos-operativos)
 
 ---
 
@@ -127,7 +128,7 @@ El JSON (`ESTRUCTURA_FTT.json`) es el esqueleto estructural pero no es la fuente
 - **Lo que los MDs de diseño aportan:** condiciones del motor, decisiones arquitectónicas, semántica de cada fase, casos especiales.
 - **Lo que no debe estar en el JSON:** notas de diseño extensas, motivaciones, historial de razonamiento. Eso pertenece a los MDs de diseño. El JSON debe ser lean: solo estructura.
 
-La limpieza del JSON (mover notas de prosa a MDs) es parte de la sesión de sincronización documental.
+La limpieza del JSON (mover notas de prosa a MDs) ya está realizada. El JSON actual es lean: solo estructura operativa.
 
 ---
 
@@ -165,3 +166,12 @@ Los diagramas de flujo ESFTT usan color para indicar quién tiene la pelota en c
 - **Morado** — Organismo: traslados y acciones que corresponden al organismo consultado.
 
 Esta convención debe respetarse en todos los diagramas de Capa 2 y Capa 3.
+
+---
+
+## 9. Procedimientos operativos
+
+Esta guía define las decisiones de diseño. Los procedimientos paso a paso están en ficheros separados:
+
+- **[PROCEDIMIENTO_MMD_DESDE_DOCUMENTACION.md](PROCEDIMIENTO_MMD_DESDE_DOCUMENTACION.md)** — generación de Capa 3 a partir de MDs de diseño y JSON. Incluye fuentes a consultar, decisiones de diseño tomadas y gaps detectados.
+- **[PROCEDIMIENTO_MMD_DESDE_IMAGEN.md](PROCEDIMIENTO_MMD_DESDE_IMAGEN.md)** — generación de diagrama Mermaid a partir de una captura de pantalla de un diagrama existente. Útil cuando se parte de diagramas de Miro o similares.

@@ -4,7 +4,7 @@
 > Última sincronización: 2026-03-30
 
 **Estado:** En análisis — issue de implementación: #285
-**Relacionado con:** `DISEÑO_DIAGRAMAS_ESFTT.md` (diagramas estáticos de documentación) · #274 (revisión visual vista tramitación)
+**Relacionado con:** `GUIA_DIAGRAMAS_ESFTT.md` (diagramas estáticos de documentación) · #274 (revisión visual vista tramitación)
 
 ---
 
@@ -26,7 +26,7 @@
 
 El objetivo es generar **al vuelo** un diagrama visual del árbol ESFTT real de un expediente concreto — fases, trámites y tareas con sus estados actuales — y mostrarlo embebido en BDDAT.
 
-A diferencia de los diagramas de documentación (capas 0–3 en `DISEÑO_DIAGRAMAS_ESFTT.md`), este diagrama:
+A diferencia de los diagramas de documentación (capas 0–3 en `GUIA_DIAGRAMAS_ESFTT.md`), este diagrama:
 
 - Se genera en runtime a partir de datos reales de BD, no de fuentes documentales
 - Refleja el estado actual de cada nodo (pendiente / en curso / finalizado)
@@ -37,7 +37,7 @@ A diferencia de los diagramas de documentación (capas 0–3 en `DISEÑO_DIAGRAM
 
 ## 2. Diferencia con los diagramas estáticos
 
-| Aspecto | Diagramas estáticos (`DISEÑO_DIAGRAMAS_ESFTT.md`) | Este análisis |
+| Aspecto | Diagramas estáticos (`GUIA_DIAGRAMAS_ESFTT.md`) | Este análisis |
 |---|---|---|
 | **Origen** | JSON estructural + MDs de diseño | BD en tiempo real |
 | **Sujeto** | El procedimiento genérico (todas las fases posibles) | Un expediente concreto (las fases que tiene) |

@@ -33,7 +33,7 @@ Todos los documentos viven en `docs/` raíz. Subdirectorios solo para no-MDs.
 - [DISEÑO_SUBSISTEMA_DOCUMENTAL.md](DISEÑO_SUBSISTEMA_DOCUMENTAL.md) — pool documental: tipos, vías de entrada, decisiones
 - [DISEÑO_ANALISIS_SOLICITUD.md](DISEÑO_ANALISIS_SOLICITUD.md) — fase ANÁLISIS_SOLICITUD, checklist documental (#248)
 - [DISEÑO_CONSULTAS_ORGANISMOS.md](DISEÑO_CONSULTAS_ORGANISMOS.md) — fase consultas a organismos (#247)
-- [DISEÑO_DIAGRAMAS_ESFTT.md](DISEÑO_DIAGRAMAS_ESFTT.md) — diagramas de flujo ESFTT por capas (#249)
+- [GUIA_DIAGRAMAS_ESFTT.md](GUIA_DIAGRAMAS_ESFTT.md) — diagramas de flujo ESFTT: decisiones, capas y convenciones (#249)
 
 ### Planificación
 - [PLAN_ROADMAP.md](PLAN_ROADMAP.md) — estado actual de implementación por milestones

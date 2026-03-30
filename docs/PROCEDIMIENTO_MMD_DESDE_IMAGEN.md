@@ -1,5 +1,7 @@
 # Procedimiento: generación de diagrama Mermaid desde imagen
 
+**Contexto:** ver [GUIA_DIAGRAMAS_ESFTT.md](GUIA_DIAGRAMAS_ESFTT.md) para decisiones de diseño, estructura en capas y convenciones de color.
+
 ## Orientación
 Antes de empezar, fijar UNA referencia de orientación (N/S/E/O respecto a la imagen
 tal como se entrega) y mantenerla durante todo el análisis. No corregir la rotación

@@ -6,7 +6,7 @@ Caso concreto: `capa3_informacion_publica.mmd`
 
 ## Fuentes consultadas y orden
 
-### 1. `DISEÑO_DIAGRAMAS_ESFTT.md`
+### 1. `GUIA_DIAGRAMAS_ESFTT.md`
 Primera lectura obligatoria. Aporta:
 - Estructura en capas (Capa 0-3) y qué debe contener cada una.
   Capa 3 = ficha de fase: trámites, tareas, condiciones del motor.
