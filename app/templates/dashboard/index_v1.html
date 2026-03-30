@@ -39,7 +39,7 @@
             <i class="fas fa-folder-open"></i>
         </div>
         <h2 class="card-title">Expedientes</h2>
-        <p class="card-description">Listado con scroll infinito</p>
+        <p class="card-description">Consulta y gestión de expedientes</p>
     </a>
     {% endif %}
     
@@ -98,13 +98,13 @@
     
     <!-- Cards futuras (deshabilitadas) -->
     {% if 'TRAMITADOR' in user_roles or 'ADMINISTRATIVO' in user_roles or 'SUPERVISOR' in user_roles or 'ADMIN' in user_roles %}
-    <div class="dashboard-card disabled">
+    <a href="{{ url_for('expedientes.seguimiento') }}" class="dashboard-card">
         <div class="card-icon">
             <i class="fas fa-tasks"></i>
         </div>
         <h2 class="card-title">Tareas</h2>
-        <p class="card-description">Próximamente</p>
-    </div>
+        <p class="card-description">Cola de trabajo — solicitudes en tramitación</p>
+    </a>
     
     {# <div class="dashboard-card disabled"><div class="card-icon"><i class="fas fa-file-alt"></i></div><h2 class="card-title">Documentos</h2><p class="card-description">Búsqueda documental global — pendiente</p></div> #}
     {% endif %}

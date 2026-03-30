@@ -11,7 +11,7 @@ CAMBIOS v2.1: Añadido campo 'codigo' ("AT-{numero_at}") a serialización del li
 """
 
 from flask import Blueprint, request, jsonify, url_for
-from flask_login import login_required
+from flask_login import login_required, current_user
 from sqlalchemy.orm import joinedload
 from sqlalchemy import func, or_
 from app import db
@@ -95,6 +95,7 @@ def listar_expedientes():
             return jsonify({'error': 'Search debe tener al menos 2 caracteres'}), 400
 
         estado_filter = request.args.get('estado', '').strip()
+        responsable_filter = request.args.get('responsable', '').strip()
 
     except ValueError:
         return jsonify({'error': 'Parámetros numéricos inválidos'}), 400
@@ -140,6 +141,9 @@ def listar_expedientes():
         )
 
         query = query.filter(or_(*filtros_busqueda))
+
+    if responsable_filter == 'yo':
+        query = query.filter(Expediente.responsable_id == current_user.id)
 
     if estado_filter:
         estados_validos = ['borrador', 'tramitacion', 'finalizado', 'archivado']

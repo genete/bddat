@@ -72,7 +72,10 @@
         tableClass:  '.expedientes-table',
         entityLabel: 'expedientes',
         detailUrl:   id => `/expedientes/${id}/tramitacion`,
-        columns
+        columns,
+        {% if request.args.get('responsable') %}
+        fixedParams: { responsable: '{{ request.args.get("responsable") }}' }
+        {% endif %}
     });
 
     const filtros = new FiltrosListado(scrollInfinito);
