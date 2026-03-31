@@ -1,4 +1,4 @@
-{% extends 'layout/base_fullwidth.html' %}
+{% extends 'layout/base_bc.html' %}
 
 {% block title %}Tramitación AT-{{ expediente.numero_at }} — Solicitud - BDDAT{% endblock %}
 
@@ -14,176 +14,152 @@
 <span>{{ solicitud.tipo_solicitud.siglas if solicitud.tipo_solicitud else "Solicitud #" ~ solicitud.id }}</span>
 {% endblock %}
 
-{% block extra_css %}{{ super() }}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/v3-breadcrumbs.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/entrada_fecha.css') }}">
-{% endblock %}
+{% block bc_content %}
 
-{% from 'macros/page_header.html' import page_header %}
+{# Card activo: Solicitud #}
+<div class="card bc-card-nodo mb-3" data-bc-editable>
 
-{% block content %}
-<div class="bc-view">
-
-<!-- C.1 -->
-<div class="lista-cabecera">
-  {% call page_header('Expediente', 'fas fa-folder-open', title_accent='AT-' ~ expediente.numero_at) %}
-    <a href="{{ url_for('expedientes.detalle', id=expediente.id) }}"
-       class="btn btn-sm btn-outline-primary">
-      <i class="fas fa-info-circle me-1"></i> Detalle
-    </a>
-    <a href="{{ url_for('expedientes.pool_documentos', id=expediente.id) }}"
-       class="btn btn-sm btn-outline-primary">
-      <i class="fas fa-file-alt me-1"></i> Pool de Docs
-    </a>
-  {% endcall %}
-  <div class="content-constrained pb-3">
-  <div class="card bc-card-nodo" data-bc-editable>
-
-    <div class="card-header card-header-accent d-flex justify-content-between align-items-center">
-      <span class="fw-semibold">
-        <i class="fas fa-file-alt me-2"></i>
-        Solicitud:
-        {{ solicitud.tipo_solicitud.siglas if solicitud.tipo_solicitud else '#' ~ solicitud.id }}
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <span class="fw-semibold d-flex align-items-center gap-2">
+      <i class="fas fa-file-alt fs-5 bc-icon-solicitud"></i>
+      <span>Solicitud:
+      {{ solicitud.tipo_solicitud.siglas if solicitud.tipo_solicitud else '#' ~ solicitud.id }}</span>
+      <span class="badge
+        {% if solicitud.estado == 'EN_TRAMITE' %}bg-primary
+        {% elif solicitud.estado == 'RESUELTA' %}bg-success
+        {% elif solicitud.estado == 'DESISTIDA' %}bg-warning text-dark
+        {% else %}bg-secondary{% endif %} ms-1">
+        {{ solicitud.estado | replace('_', ' ') | title }}
       </span>
-      <div class="bc-acciones-bar">
-        {# Modo ver: botones Editar + Acciones #}
-        <div data-modo-ver class="d-flex gap-1">
-          <button type="button" class="btn btn-sm btn-outline-primary btn-editar-bc">
-            <i class="fas fa-edit me-1"></i> Editar
+    </span>
+    <div class="bc-acciones-bar">
+      <div data-modo-ver class="d-flex gap-1">
+        <button type="button" class="btn btn-sm btn-outline-primary btn-editar-bc">
+          <i class="fas fa-edit me-1"></i> Editar
+        </button>
+        <div class="dropdown">
+          <button class="btn btn-sm btn-outline-secondary dropdown-toggle"
+                  data-bs-toggle="dropdown" aria-expanded="false">
+            Acciones
           </button>
-          <div class="dropdown">
-            <button class="btn btn-sm btn-outline-secondary dropdown-toggle"
-                    data-bs-toggle="dropdown" aria-expanded="false">
-              Acciones
-            </button>
-            <ul class="dropdown-menu dropdown-menu-end">
-              {% if not solicitud.fecha_solicitud %}
-              <li>
-                <a class="dropdown-item" href="#"
-                   data-accion="iniciar"
-                   data-url="{{ url_for('vista3.iniciar_solicitud', sol_id=solicitud.id) }}">
-                  <i class="fas fa-play me-2 text-success"></i> Iniciar
-                </a>
-              </li>
-              {% endif %}
-              {% if solicitud.fecha_solicitud and not solicitud.fecha_fin %}
-              <li>
-                <a class="dropdown-item" href="#"
-                   data-accion="finalizar"
-                   data-url="{{ url_for('vista3.finalizar_solicitud', sol_id=solicitud.id) }}">
-                  <i class="fas fa-flag-checkered me-2 text-primary"></i> Finalizar
-                </a>
-              </li>
-              {% endif %}
-              <li><hr class="dropdown-divider"></li>
-              <li>
-                <a class="dropdown-item text-danger" href="#"
-                   data-accion="borrar"
-                   data-url="{{ url_for('vista3.borrar_solicitud', sol_id=solicitud.id) }}"
-                   data-redirect="{{ url_for('expedientes.tramitacion_bc', exp_id=expediente.id) }}">
-                  <i class="fas fa-trash me-2"></i> Borrar
-                </a>
-              </li>
-            </ul>
-          </div>
-        </div>
-        {# Modo editar: botones Guardar + Cancelar #}
-        <div data-modo-editar class="d-none d-flex gap-1">
-          <button type="button" class="btn btn-sm btn-primary btn-guardar-bc">
-            <i class="fas fa-save me-1"></i> Guardar
-          </button>
-          <button type="button" class="btn btn-sm btn-outline-secondary btn-cancelar-bc">
-            Cancelar
-          </button>
+          <ul class="dropdown-menu dropdown-menu-end">
+            {% if not solicitud.fecha_solicitud %}
+            <li>
+              <a class="dropdown-item" href="#"
+                 data-accion="iniciar"
+                 data-url="{{ url_for('vista3.iniciar_solicitud', sol_id=solicitud.id) }}">
+                <i class="fas fa-play me-2 text-success"></i> Iniciar
+              </a>
+            </li>
+            {% endif %}
+            {% if solicitud.fecha_solicitud and not solicitud.fecha_fin %}
+            <li>
+              <a class="dropdown-item" href="#"
+                 data-accion="finalizar"
+                 data-url="{{ url_for('vista3.finalizar_solicitud', sol_id=solicitud.id) }}">
+                <i class="fas fa-flag-checkered me-2 text-primary"></i> Finalizar
+              </a>
+            </li>
+            {% endif %}
+            <li><hr class="dropdown-divider"></li>
+            <li>
+              <a class="dropdown-item text-danger" href="#"
+                 data-accion="borrar"
+                 data-url="{{ url_for('vista3.borrar_solicitud', sol_id=solicitud.id) }}"
+                 data-redirect="{{ url_for('expedientes.tramitacion_bc', exp_id=expediente.id) }}">
+                <i class="fas fa-trash me-2"></i> Borrar
+              </a>
+            </li>
+          </ul>
         </div>
       </div>
-    </div>
-
-    <div class="card-body card-body-tinted py-2">
-
-      {# Modo ver: resumen de metadatos #}
-      <div data-modo-ver class="row g-2 bc-meta">
-        <div class="col-auto">
-          <strong>F. Solicitud:</strong>
-          <span id="disp-fecha_solicitud">
-            {{- solicitud.fecha_solicitud.strftime('%d/%m/%Y') if solicitud.fecha_solicitud else '—' -}}
-          </span>
-        </div>
-        <div class="col-auto">
-          <strong>F. Resolución:</strong>
-          <span id="disp-fecha_fin">
-            {{- solicitud.fecha_fin.strftime('%d/%m/%Y') if solicitud.fecha_fin else '—' -}}
-          </span>
-        </div>
-        <div class="col-auto">
-          <strong>Estado:</strong>
-          <span id="disp-estado" class="badge
-            {% if solicitud.estado == 'EN_TRAMITE' %}bg-primary
-            {% elif solicitud.estado == 'RESUELTA' %}bg-success
-            {% elif solicitud.estado == 'DESISTIDA' %}bg-warning text-dark
-            {% else %}bg-secondary{% endif %}">
-            {{ solicitud.estado | replace('_', ' ') | title }}
-          </span>
-        </div>
-      </div>
-
-      {# Modo editar: formulario #}
-      <form data-modo-editar class="d-none row g-2 pt-1"
-            data-url="{{ url_for('vista3.editar_solicitud', sol_id=solicitud.id) }}">
-        <div class="col-md-3">
-          <label class="form-label fw-semibold mb-1">F. Solicitud</label>
-          <div id="ef-fecha_solicitud"
-               data-ef-name="fecha_solicitud"
-               data-ef-value="{{ solicitud.fecha_solicitud.isoformat() if solicitud.fecha_solicitud else '' }}">
-          </div>
-        </div>
-        <div class="col-md-3">
-          <label class="form-label fw-semibold mb-1">F. Resolución</label>
-          <div id="ef-fecha_fin"
-               data-ef-name="fecha_fin"
-               data-ef-value="{{ solicitud.fecha_fin.isoformat() if solicitud.fecha_fin else '' }}">
-          </div>
-        </div>
-        <div class="col-md-3">
-          <label class="form-label fw-semibold mb-1">Estado</label>
-          <select class="form-select form-select-sm" name="estado">
-            {% for val, label in [('EN_TRAMITE','En trámite'),('RESUELTA','Resuelta'),('DESISTIDA','Desistida'),('ARCHIVADA','Archivada')] %}
-            <option value="{{ val }}" {% if solicitud.estado == val %}selected{% endif %}>{{ label }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div class="col-12">
-          <label class="form-label fw-semibold mb-1">Observaciones</label>
-          <textarea class="form-control form-control-sm" name="observaciones"
-                    rows="2">{{ solicitud.observaciones or '' }}</textarea>
-        </div>
-      </form>
-
-      {# Mensajes de error/advertencia del motor de reglas #}
-      <div id="alert-edicion" class="alert d-none mt-2 py-2 mb-0" role="alert"></div>
-
-    </div>
-  </div>
-  </div>{# /content-constrained #}
-</div>{# /lista-cabecera #}
-
-<!-- C.2: Listado de Fases (scrollable) -->
-<div class="lista-scroll-container">
-  <div class="content-constrained py-3">
-    <div class="card tabla-bloque">
-      <div class="card-header card-header-accent d-flex justify-content-between align-items-center py-2">
-        <span class="fw-semibold">
-          <i class="fas fa-sitemap me-1"></i> Fases
-          <span class="badge bg-primary ms-2">{{ hijos | length }}</span>
-        </span>
-        <button class="btn btn-sm btn-primary"
-                data-bs-toggle="modal" data-bs-target="#modal-nueva-fase-bc">
-          <i class="fas fa-plus me-1"></i> Nueva fase
+      <div data-modo-editar class="d-none d-flex gap-1">
+        <button type="button" class="btn btn-sm btn-primary btn-guardar-bc">
+          <i class="fas fa-save me-1"></i> Guardar
+        </button>
+        <button type="button" class="btn btn-sm btn-outline-secondary btn-cancelar-bc">
+          Cancelar
         </button>
       </div>
-      {% include 'vistas/vista3_bc/_tabla_hijos.html' %}
     </div>
   </div>
+
+  <div class="card-body card-body-tinted py-2">
+
+    <div data-modo-ver class="row g-2 bc-meta">
+      <div class="col-auto">
+        <strong>F. Solicitud:</strong>
+        <span id="disp-fecha_solicitud" class="bc-fecha-valor">
+          {{- solicitud.fecha_solicitud.strftime('%d/%m/%Y') if solicitud.fecha_solicitud else '—' -}}
+        </span>
+      </div>
+      <div class="col-auto">
+        <strong>F. Resolución:</strong>
+        <span id="disp-fecha_fin" class="bc-fecha-valor">
+          {{- solicitud.fecha_fin.strftime('%d/%m/%Y') if solicitud.fecha_fin else '—' -}}
+        </span>
+      </div>
+      <div class="col-auto">
+        <strong>Estado:</strong>
+        <span id="disp-estado" class="badge
+          {% if solicitud.estado == 'EN_TRAMITE' %}bg-primary
+          {% elif solicitud.estado == 'RESUELTA' %}bg-success
+          {% elif solicitud.estado == 'DESISTIDA' %}bg-warning text-dark
+          {% else %}bg-secondary{% endif %}">
+          {{ solicitud.estado | replace('_', ' ') | title }}
+        </span>
+      </div>
+    </div>
+
+    <form data-modo-editar class="d-none row g-2 pt-1"
+          data-url="{{ url_for('vista3.editar_solicitud', sol_id=solicitud.id) }}">
+      <div class="col-md-3">
+        <label class="form-label fw-semibold mb-1">F. Solicitud</label>
+        <div id="ef-fecha_solicitud"
+             data-ef-name="fecha_solicitud"
+             data-ef-value="{{ solicitud.fecha_solicitud.isoformat() if solicitud.fecha_solicitud else '' }}">
+        </div>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label fw-semibold mb-1">F. Resolución</label>
+        <div id="ef-fecha_fin"
+             data-ef-name="fecha_fin"
+             data-ef-value="{{ solicitud.fecha_fin.isoformat() if solicitud.fecha_fin else '' }}">
+        </div>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label fw-semibold mb-1">Estado</label>
+        <select class="form-select form-select-sm" name="estado">
+          {% for val, label in [('EN_TRAMITE','En trámite'),('RESUELTA','Resuelta'),('DESISTIDA','Desistida'),('ARCHIVADA','Archivada')] %}
+          <option value="{{ val }}" {% if solicitud.estado == val %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-12">
+        <label class="form-label fw-semibold mb-1">Observaciones</label>
+        <textarea class="form-control form-control-sm" name="observaciones"
+                  rows="2">{{ solicitud.observaciones or '' }}</textarea>
+      </div>
+    </form>
+
+    <div id="alert-edicion" class="alert d-none mt-2 py-2 mb-0" role="alert"></div>
+
+  </div>
+</div>
+
+{# Lista de Fases #}
+<div class="card tabla-bloque">
+  <div class="card-header card-header-accent d-flex justify-content-between align-items-center py-2">
+    <span class="fw-semibold">
+      <i class="fas fa-sitemap fs-5 bc-icon-fase me-1"></i> Fases
+      <span class="badge bg-primary ms-2">{{ hijos | length }}</span>
+    </span>
+    <button class="btn btn-sm btn-primary"
+            data-bs-toggle="modal" data-bs-target="#modal-nueva-fase-bc">
+      <i class="fas fa-plus me-1"></i> Nueva fase
+    </button>
+  </div>
+  {% include 'vistas/vista3_bc/_tabla_hijos.html' %}
 </div>
 
 <!-- Modal Nueva Fase -->
@@ -225,11 +201,9 @@
   </div>
 </div>
 
-</div>
 {% endblock %}
 
-{% block extra_js %}{{ super() }}
-<script src="{{ url_for('static', filename='js/entrada_fecha.js') }}"></script>
+{% block extra_js_bc %}
 <script src="{{ url_for('static', filename='js/v3-breadcrumbs-edicion.js') }}"></script>
 <script src="{{ url_for('static', filename='js/v3-breadcrumbs-acciones.js') }}"></script>
 <script src="{{ url_for('static', filename='js/v3-breadcrumbs-crear.js') }}"></script>

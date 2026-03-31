@@ -1,0 +1,19 @@
+{#
+  bc_cards.html — Macros para los cards apilados compactos de la vista bc (#274)
+
+  Uso: {% from 'macros/bc_cards.html' import bc_card_compacto %}
+
+  bc_card_compacto(icon, icon_class, label, url)
+    icon       — clase FA del icono (ej: 'fas fa-file-alt')
+    icon_class — clase de color de nivel (ej: 'bc-icon-solicitud')
+    label      — texto del card compacto
+    url        — URL de navegación al clicar
+#}
+
+{% macro bc_card_compacto(icon, icon_class, label, url) %}
+<a href="{{ url }}" class="bc-card-compacto">
+  <i class="{{ icon }} fs-5 {{ icon_class }}"></i>
+  <span class="bc-compacto-label">{{ label }}</span>
+  <i class="fas fa-chevron-right text-secondary" style="font-size:0.75rem;"></i>
+</a>
+{% endmacro %}
