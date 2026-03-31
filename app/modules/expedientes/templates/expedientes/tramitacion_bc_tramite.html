@@ -1,4 +1,5 @@
-{% extends 'layout/base_fullwidth.html' %}
+{% extends 'layout/base_bc.html' %}
+{% from 'macros/bc_cards.html' import bc_card_compacto %}
 
 {% block title %}Tramitación AT-{{ expediente.numero_at }} — Trámite - BDDAT{% endblock %}
 
@@ -22,218 +23,153 @@
 <span>{{ tramite.tipo_tramite.label_bc if tramite.tipo_tramite else 'Trámite #' ~ tramite.id }}</span>
 {% endblock %}
 
-{% block extra_css %}{{ super() }}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/v3-breadcrumbs.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/entrada_fecha.css') }}">
-{% endblock %}
+{% block bc_content %}
 
-{% from 'macros/page_header.html' import page_header %}
-{% from 'macros/bc_cards.html' import bc_card_compacto %}
+{# Cards compactos de niveles superiores #}
+{{ bc_card_compacto('fas fa-file-alt', 'bc-icon-solicitud',
+    'Solicitud: ' ~ (solicitud.tipo_solicitud.siglas if solicitud.tipo_solicitud else '#' ~ solicitud.id),
+    url_for('expedientes.tramitacion_bc_solicitud', exp_id=expediente.id, sol_id=solicitud.id)) }}
+{{ bc_card_compacto('fas fa-layer-group', 'bc-icon-fase',
+    'Fase: ' ~ (fase.tipo_fase.nombre if fase.tipo_fase else '#' ~ fase.id),
+    url_for('expedientes.tramitacion_bc_fase', exp_id=expediente.id, sol_id=solicitud.id, fase_id=fase.id)) }}
 
-{% block content %}
-<div class="bc-view">
+{# Estado del trámite deducido de fechas #}
+{% if tramite.fecha_fin %}
+  {% set tram_badge_class = 'bg-success' %}
+  {% set tram_badge_label = 'Finalizado' %}
+{% elif tramite.fecha_inicio %}
+  {% set tram_badge_class = 'bg-primary' %}
+  {% set tram_badge_label = 'En curso' %}
+{% else %}
+  {% set tram_badge_class = 'bg-secondary' %}
+  {% set tram_badge_label = 'Planificado' %}
+{% endif %}
 
-<!-- C.1 -->
-<div class="lista-cabecera">
-  {% call page_header('Expediente', 'fas fa-folder-open', title_accent='AT-' ~ expediente.numero_at) %}
-    <a href="{{ url_for('expedientes.detalle', id=expediente.id) }}"
-       class="btn btn-sm btn-outline-primary">
-      <i class="fas fa-info-circle me-1"></i> Detalle
-    </a>
-    <a href="{{ url_for('expedientes.pool_documentos', id=expediente.id) }}"
-       class="btn btn-sm btn-outline-primary">
-      <i class="fas fa-file-alt me-1"></i> Pool de Docs
-    </a>
-  {% endcall %}
-  <div class="content-constrained pb-3">
+{# Card activo: Trámite #}
+<div class="card bc-card-nodo mb-3" data-bc-editable>
 
-  {# Cards compactos de niveles superiores #}
-  {{ bc_card_compacto('fas fa-folder-open', '', 'Expediente AT-' ~ expediente.numero_at,
-      url_for('expedientes.tramitacion_bc', exp_id=expediente.id)) }}
-  {{ bc_card_compacto('fas fa-file-alt', 'bc-icon-solicitud',
-      'Solicitud: ' ~ (solicitud.tipo_solicitud.siglas if solicitud.tipo_solicitud else '#' ~ solicitud.id),
-      url_for('expedientes.tramitacion_bc_solicitud', exp_id=expediente.id, sol_id=solicitud.id)) }}
-  {{ bc_card_compacto('fas fa-layer-group', 'bc-icon-fase',
-      'Fase: ' ~ (fase.tipo_fase.nombre if fase.tipo_fase else '#' ~ fase.id),
-      url_for('expedientes.tramitacion_bc_fase', exp_id=expediente.id, sol_id=solicitud.id, fase_id=fase.id)) }}
-
-  {# Estado del trámite deducido de fechas #}
-  {% if tramite.fecha_fin %}
-    {% set tram_badge_class = 'bg-success' %}
-    {% set tram_badge_label = 'Finalizado' %}
-  {% elif tramite.fecha_inicio %}
-    {% set tram_badge_class = 'bg-primary' %}
-    {% set tram_badge_label = 'En curso' %}
-  {% else %}
-    {% set tram_badge_class = 'bg-secondary' %}
-    {% set tram_badge_label = 'Planificado' %}
-  {% endif %}
-
-  <div class="card bc-card-nodo" data-bc-editable>
-
-    <div class="card-header d-flex justify-content-between align-items-center">
-      <span class="fw-semibold d-flex align-items-center gap-2">
-        <i class="fas fa-tasks fs-5 bc-icon-tramite"></i>
-        <span>Trámite: {{ tramite.tipo_tramite.nombre if tramite.tipo_tramite else '#' ~ tramite.id }}</span>
-        <span class="badge {{ tram_badge_class }} ms-1">{{ tram_badge_label }}</span>
-      </span>
-      <div class="bc-acciones-bar">
-        {# Modo ver #}
-        <div data-modo-ver class="d-flex gap-1">
-          <button type="button" class="btn btn-sm btn-outline-primary btn-editar-bc">
-            <i class="fas fa-edit me-1"></i> Editar
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <span class="fw-semibold d-flex align-items-center gap-2">
+      <i class="fas fa-tasks fs-5 bc-icon-tramite"></i>
+      <span>Trámite: {{ tramite.tipo_tramite.nombre if tramite.tipo_tramite else '#' ~ tramite.id }}</span>
+      <span class="badge {{ tram_badge_class }} ms-1">{{ tram_badge_label }}</span>
+    </span>
+    <div class="bc-acciones-bar">
+      <div data-modo-ver class="d-flex gap-1">
+        <button type="button" class="btn btn-sm btn-outline-primary btn-editar-bc">
+          <i class="fas fa-edit me-1"></i> Editar
+        </button>
+        <div class="dropdown">
+          <button class="btn btn-sm btn-outline-secondary dropdown-toggle"
+                  data-bs-toggle="dropdown" aria-expanded="false">
+            Acciones
           </button>
-          <div class="dropdown">
-            <button class="btn btn-sm btn-outline-secondary dropdown-toggle"
-                    data-bs-toggle="dropdown" aria-expanded="false">
-              Acciones
-            </button>
-            <ul class="dropdown-menu dropdown-menu-end">
-              {% if not tramite.fecha_inicio %}
-              <li>
-                <a class="dropdown-item" href="#"
-                   data-accion="iniciar"
-                   data-url="{{ url_for('vista3.iniciar_tramite', tram_id=tramite.id) }}">
-                  <i class="fas fa-play me-2 text-success"></i> Iniciar
-                </a>
-              </li>
-              {% endif %}
-              {% if tramite.fecha_inicio and not tramite.fecha_fin %}
-              <li>
-                <a class="dropdown-item" href="#"
-                   data-accion="finalizar"
-                   data-url="{{ url_for('vista3.finalizar_tramite', tram_id=tramite.id) }}">
-                  <i class="fas fa-flag-checkered me-2 text-primary"></i> Finalizar
-                </a>
-              </li>
-              {% endif %}
-              <li><hr class="dropdown-divider"></li>
-              <li>
-                <a class="dropdown-item text-danger" href="#"
-                   data-accion="borrar"
-                   data-url="{{ url_for('vista3.borrar_tramite', tram_id=tramite.id) }}"
-                   data-redirect="{{ url_for('expedientes.tramitacion_bc_fase', exp_id=expediente.id, sol_id=solicitud.id, fase_id=fase.id) }}">
-                  <i class="fas fa-trash me-2"></i> Borrar
-                </a>
-              </li>
-            </ul>
-          </div>
-        </div>
-        {# Modo editar #}
-        <div data-modo-editar class="d-none d-flex gap-1">
-          <button type="button" class="btn btn-sm btn-primary btn-guardar-bc">
-            <i class="fas fa-save me-1"></i> Guardar
-          </button>
-          <button type="button" class="btn btn-sm btn-outline-secondary btn-cancelar-bc">
-            Cancelar
-          </button>
+          <ul class="dropdown-menu dropdown-menu-end">
+            {% if not tramite.fecha_inicio %}
+            <li>
+              <a class="dropdown-item" href="#"
+                 data-accion="iniciar"
+                 data-url="{{ url_for('vista3.iniciar_tramite', tram_id=tramite.id) }}">
+                <i class="fas fa-play me-2 text-success"></i> Iniciar
+              </a>
+            </li>
+            {% endif %}
+            {% if tramite.fecha_inicio and not tramite.fecha_fin %}
+            <li>
+              <a class="dropdown-item" href="#"
+                 data-accion="finalizar"
+                 data-url="{{ url_for('vista3.finalizar_tramite', tram_id=tramite.id) }}">
+                <i class="fas fa-flag-checkered me-2 text-primary"></i> Finalizar
+              </a>
+            </li>
+            {% endif %}
+            <li><hr class="dropdown-divider"></li>
+            <li>
+              <a class="dropdown-item text-danger" href="#"
+                 data-accion="borrar"
+                 data-url="{{ url_for('vista3.borrar_tramite', tram_id=tramite.id) }}"
+                 data-redirect="{{ url_for('expedientes.tramitacion_bc_fase', exp_id=expediente.id, sol_id=solicitud.id, fase_id=fase.id) }}">
+                <i class="fas fa-trash me-2"></i> Borrar
+              </a>
+            </li>
+          </ul>
         </div>
       </div>
-    </div>
-
-    <div class="card-body card-body-tinted py-2">
-
-      {# Modo ver #}
-      <div data-modo-ver class="row g-2 bc-meta">
-        <div class="col-auto">
-          <strong>F. Inicio:</strong>
-          <span id="disp-fecha_inicio" class="bc-fecha-valor">
-            {{- tramite.fecha_inicio.strftime('%d/%m/%Y') if tramite.fecha_inicio else '—' -}}
-          </span>
-        </div>
-        <div class="col-auto">
-          <strong>F. Fin:</strong>
-          <span id="disp-fecha_fin" class="bc-fecha-valor">
-            {{- tramite.fecha_fin.strftime('%d/%m/%Y') if tramite.fecha_fin else '—' -}}
-          </span>
-        </div>
+      <div data-modo-editar class="d-none d-flex gap-1">
+        <button type="button" class="btn btn-sm btn-primary btn-guardar-bc">
+          <i class="fas fa-save me-1"></i> Guardar
+        </button>
+        <button type="button" class="btn btn-sm btn-outline-secondary btn-cancelar-bc">
+          Cancelar
+        </button>
       </div>
-
-      {# Modo editar #}
-      <form data-modo-editar class="d-none row g-2 pt-1"
-            data-url="{{ url_for('vista3.editar_tramite', tram_id=tramite.id) }}">
-        <div class="col-md-4">
-          <label class="form-label fw-semibold mb-1">Tipo</label>
-          <input type="text" class="form-control form-control-sm" readonly
-                 value="{{ tramite.tipo_tramite.nombre if tramite.tipo_tramite else '—' }}"
-                 data-bs-toggle="tooltip" title="El tipo se establece al crear el trámite">
-        </div>
-        <div class="col-md-3">
-          <label class="form-label fw-semibold mb-1">F. Inicio</label>
-          <div id="ef-fecha_inicio"
-               data-ef-name="fecha_inicio"
-               data-ef-value="{{ tramite.fecha_inicio.isoformat() if tramite.fecha_inicio else '' }}">
-          </div>
-        </div>
-        <div class="col-md-3">
-          <label class="form-label fw-semibold mb-1">F. Fin</label>
-          <div id="ef-fecha_fin"
-               data-ef-name="fecha_fin"
-               data-ef-value="{{ tramite.fecha_fin.isoformat() if tramite.fecha_fin else '' }}">
-          </div>
-        </div>
-        <div class="col-12">
-          <label class="form-label fw-semibold mb-1">Observaciones</label>
-          <textarea class="form-control form-control-sm" name="observaciones"
-                    rows="2">{{ tramite.observaciones or '' }}</textarea>
-        </div>
-      </form>
-
-      {# Mensajes de error/advertencia del motor de reglas #}
-      <div id="alert-edicion" class="alert d-none mt-2 py-2 mb-0" role="alert"></div>
-
     </div>
   </div>
-  </div>{# /content-constrained #}
-</div>{# /lista-cabecera #}
 
-<!-- C.2: Tabs Tareas / Diagrama -->
-<div class="lista-scroll-container">
-  <div class="content-constrained pt-2 pb-3">
+  <div class="card-body card-body-tinted py-2">
 
-    <ul class="nav nav-tabs mb-3" role="tablist">
-      <li class="nav-item" role="presentation">
-        <button class="nav-link active" data-bs-toggle="tab"
-                data-bs-target="#panel-tareas" type="button" role="tab" aria-selected="true">
-          <i class="fas fa-tasks fs-5 bc-icon-tarea me-1"></i> Tareas
-          <span class="badge bg-primary ms-1">{{ hijos | length }}</span>
-        </button>
-      </li>
-      <li class="nav-item" role="presentation">
-        <button class="nav-link" data-bs-toggle="tab"
-                data-bs-target="#panel-diagrama-tram" type="button" role="tab" aria-selected="false">
-          <i class="fas fa-project-diagram me-1"></i> Diagrama
-        </button>
-      </li>
-    </ul>
-
-    <div class="tab-content">
-      <div class="tab-pane fade show active" id="panel-tareas" role="tabpanel">
-        <div class="card tabla-bloque">
-          <div class="card-header card-header-accent d-flex justify-content-between align-items-center py-2">
-            <span class="fw-semibold">
-              <i class="fas fa-tasks fs-5 bc-icon-tarea me-1"></i> Tareas
-              <span class="badge bg-primary ms-2">{{ hijos | length }}</span>
-            </span>
-            <button class="btn btn-sm btn-primary"
-                    data-bs-toggle="modal" data-bs-target="#modal-nueva-tarea-bc">
-              <i class="fas fa-plus me-1"></i> Nueva tarea
-            </button>
-          </div>
-          {% include 'vistas/vista3_bc/_tabla_hijos.html' %}
-        </div>
+    <div data-modo-ver class="row g-2 bc-meta">
+      <div class="col-auto">
+        <strong>F. Inicio:</strong>
+        <span id="disp-fecha_inicio" class="bc-fecha-valor">
+          {{- tramite.fecha_inicio.strftime('%d/%m/%Y') if tramite.fecha_inicio else '—' -}}
+        </span>
       </div>
-      <div class="tab-pane fade" id="panel-diagrama-tram" role="tabpanel">
-        <div class="card">
-          <div class="card-body text-center py-5 text-secondary">
-            <i class="fas fa-project-diagram fa-3x mb-3 opacity-50"></i>
-            <p class="mb-0 fst-italic">Diagrama interactivo — pendiente de implementar (#285)</p>
-          </div>
-        </div>
+      <div class="col-auto">
+        <strong>F. Fin:</strong>
+        <span id="disp-fecha_fin" class="bc-fecha-valor">
+          {{- tramite.fecha_fin.strftime('%d/%m/%Y') if tramite.fecha_fin else '—' -}}
+        </span>
       </div>
     </div>
 
+    <form data-modo-editar class="d-none row g-2 pt-1"
+          data-url="{{ url_for('vista3.editar_tramite', tram_id=tramite.id) }}">
+      <div class="col-md-4">
+        <label class="form-label fw-semibold mb-1">Tipo</label>
+        <input type="text" class="form-control form-control-sm" readonly
+               value="{{ tramite.tipo_tramite.nombre if tramite.tipo_tramite else '—' }}"
+               data-bs-toggle="tooltip" title="El tipo se establece al crear el trámite">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label fw-semibold mb-1">F. Inicio</label>
+        <div id="ef-fecha_inicio"
+             data-ef-name="fecha_inicio"
+             data-ef-value="{{ tramite.fecha_inicio.isoformat() if tramite.fecha_inicio else '' }}">
+        </div>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label fw-semibold mb-1">F. Fin</label>
+        <div id="ef-fecha_fin"
+             data-ef-name="fecha_fin"
+             data-ef-value="{{ tramite.fecha_fin.isoformat() if tramite.fecha_fin else '' }}">
+        </div>
+      </div>
+      <div class="col-12">
+        <label class="form-label fw-semibold mb-1">Observaciones</label>
+        <textarea class="form-control form-control-sm" name="observaciones"
+                  rows="2">{{ tramite.observaciones or '' }}</textarea>
+      </div>
+    </form>
+
+    <div id="alert-edicion" class="alert d-none mt-2 py-2 mb-0" role="alert"></div>
+
   </div>
+</div>
+
+{# Lista de Tareas #}
+<div class="card tabla-bloque">
+  <div class="card-header card-header-accent d-flex justify-content-between align-items-center py-2">
+    <span class="fw-semibold">
+      <i class="fas fa-tasks fs-5 bc-icon-tarea me-1"></i> Tareas
+      <span class="badge bg-primary ms-2">{{ hijos | length }}</span>
+    </span>
+    <button class="btn btn-sm btn-primary"
+            data-bs-toggle="modal" data-bs-target="#modal-nueva-tarea-bc">
+      <i class="fas fa-plus me-1"></i> Nueva tarea
+    </button>
+  </div>
+  {% include 'vistas/vista3_bc/_tabla_hijos.html' %}
 </div>
 
 <!-- Modal Nueva Tarea -->
@@ -275,11 +211,9 @@
   </div>
 </div>
 
-</div>
 {% endblock %}
 
-{% block extra_js %}{{ super() }}
-<script src="{{ url_for('static', filename='js/entrada_fecha.js') }}"></script>
+{% block extra_js_bc %}
 <script src="{{ url_for('static', filename='js/v3-breadcrumbs-edicion.js') }}"></script>
 <script src="{{ url_for('static', filename='js/v3-breadcrumbs-acciones.js') }}"></script>
 <script src="{{ url_for('static', filename='js/v3-breadcrumbs-crear.js') }}"></script>

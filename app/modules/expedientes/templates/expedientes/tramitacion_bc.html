@@ -1,4 +1,4 @@
-{% extends 'layout/base_fullwidth.html' %}
+{% extends 'layout/base_bc.html' %}
 
 {% block title %}Tramitación AT-{{ expediente.numero_at }} - BDDAT{% endblock %}
 
@@ -12,103 +12,19 @@
 <span>Tramitación</span>
 {% endblock %}
 
-{% block extra_css %}{{ super() }}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/v3-breadcrumbs.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/entrada_fecha.css') }}">
-{% endblock %}
-
-{% from 'macros/page_header.html' import page_header %}
-
-{% block content %}
-<div class="bc-view">
-
-<!-- C.1: Encabezado homogéneo — expediente + navegación + datos secundarios -->
-<div class="lista-cabecera">
-  {% call page_header('Expediente', 'fas fa-folder-open', title_accent='AT-' ~ expediente.numero_at) %}
-    <a href="{{ url_for('expedientes.detalle', id=expediente.id) }}"
-       class="btn btn-sm btn-outline-primary">
-      <i class="fas fa-info-circle me-1"></i> Detalle
-    </a>
-    <a href="{{ url_for('expedientes.pool_documentos', id=expediente.id) }}"
-       class="btn btn-sm btn-outline-primary">
-      <i class="fas fa-file-alt me-1"></i> Pool de Docs
-    </a>
-  {% endcall %}
-  <div class="page-subheader content-constrained">
-    <div class="page-subheader-data">
-      <div class="subheader-item">
-        <strong>Titular:</strong>
-        {{ expediente.titular.nombre_completo if expediente.titular else '—' }}
-      </div>
-      <div class="subheader-item">
-        <strong>Responsable:</strong>
-        {{ expediente.responsable.siglas if expediente.responsable else '—' }}
-      </div>
-      <div class="subheader-item">
-        <strong>Tipo:</strong>
-        {{ expediente.tipo_expediente.tipo if expediente.tipo_expediente else '—' }}
-      </div>
-    </div>
+{% block bc_content %}
+<div class="card tabla-bloque">
+  <div class="card-header card-header-accent d-flex justify-content-between align-items-center py-2">
+    <span class="fw-semibold">
+      <i class="fas fa-file-contract fs-5 bc-icon-solicitud me-1"></i> Solicitudes
+      <span class="badge bg-primary ms-2">{{ hijos | length }}</span>
+    </span>
+    <button class="btn btn-sm btn-primary"
+            data-bs-toggle="modal" data-bs-target="#modal-nueva-solicitud-bc">
+      <i class="fas fa-plus me-1"></i> Nueva solicitud
+    </button>
   </div>
-</div>
-
-<!-- C.2: Tabs Solicitudes / Diagrama -->
-<div class="lista-scroll-container">
-  <div class="content-constrained pt-2 pb-3">
-
-    <!-- Nav tabs -->
-    <ul class="nav nav-tabs mb-3" id="bc-tabs" role="tablist">
-      <li class="nav-item" role="presentation">
-        <button class="nav-link active" id="tab-solicitudes" data-bs-toggle="tab"
-                data-bs-target="#panel-solicitudes" type="button" role="tab"
-                aria-controls="panel-solicitudes" aria-selected="true">
-          <i class="fas fa-file-contract me-1"></i> Solicitudes
-          <span class="badge bg-primary ms-1">{{ hijos | length }}</span>
-        </button>
-      </li>
-      <li class="nav-item" role="presentation">
-        <button class="nav-link" id="tab-diagrama" data-bs-toggle="tab"
-                data-bs-target="#panel-diagrama" type="button" role="tab"
-                aria-controls="panel-diagrama" aria-selected="false">
-          <i class="fas fa-project-diagram me-1"></i> Diagrama
-        </button>
-      </li>
-    </ul>
-
-    <!-- Contenido tabs -->
-    <div class="tab-content" id="bc-tabs-content">
-
-      <!-- Tab Solicitudes -->
-      <div class="tab-pane fade show active" id="panel-solicitudes" role="tabpanel"
-           aria-labelledby="tab-solicitudes">
-        <div class="card tabla-bloque">
-          <div class="card-header card-header-accent d-flex justify-content-between align-items-center py-2">
-            <span class="fw-semibold">
-              <i class="fas fa-file-contract fs-5 bc-icon-solicitud me-1"></i> Solicitudes
-              <span class="badge bg-primary ms-2">{{ hijos | length }}</span>
-            </span>
-            <button class="btn btn-sm btn-primary"
-                    data-bs-toggle="modal" data-bs-target="#modal-nueva-solicitud-bc">
-              <i class="fas fa-plus me-1"></i> Nueva solicitud
-            </button>
-          </div>
-          {% include 'vistas/vista3_bc/_tabla_hijos.html' %}
-        </div>
-      </div>
-
-      <!-- Tab Diagrama (placeholder — issue #285) -->
-      <div class="tab-pane fade" id="panel-diagrama" role="tabpanel"
-           aria-labelledby="tab-diagrama">
-        <div class="card">
-          <div class="card-body text-center py-5 text-secondary">
-            <i class="fas fa-project-diagram fa-3x mb-3 opacity-50"></i>
-            <p class="mb-0 fst-italic">Diagrama interactivo — pendiente de implementar (#285)</p>
-          </div>
-        </div>
-      </div>
-
-    </div>{# /tab-content #}
-  </div>
+  {% include 'vistas/vista3_bc/_tabla_hijos.html' %}
 </div>
 
 <!-- Modal Nueva Solicitud -->
@@ -156,12 +72,9 @@
     </div>
   </div>
 </div>
-
-</div>
 {% endblock %}
 
-{% block extra_js %}{{ super() }}
-<script src="{{ url_for('static', filename='js/entrada_fecha.js') }}"></script>
+{% block extra_js_bc %}
 <script src="{{ url_for('static', filename='js/v3-breadcrumbs-crear.js') }}"></script>
 <script>
   const _ef_fecha_sol = new EntradaFecha('#ef-fecha-sol-bc', { name: 'fecha_solicitud' });
