@@ -2,8 +2,8 @@
 
 > **Fecha:** 2026-04-01
 > **Estado:** En construcción — sesión inicial de diseño.
-> Complementa `NORMATIVA_PLAZOS.md` (marco legal) y `DISEÑO_MOTOR_AGNOSTICO.md` (arquitectura del motor).
-> Fuente de verdad: `docs/NORMATIVA_PLAZOS.md`
+> **Fuente de verdad:** `docs/NORMATIVA_PLAZOS.md` — todo contenido legal (plazos, artículos, constantes) extrae de ahí. En caso de discrepancia, prevalece `NORMATIVA_PLAZOS.md`.
+> Referencia de arquitectura: `DISEÑO_MOTOR_AGNOSTICO.md`
 > Última sincronización: 2026-04-01
 
 ---
