@@ -214,13 +214,168 @@ El efecto `PRESCRIPCION_CONDICIONADO` del catálogo §2.4 corresponde a este tip
 
 ## 3. Modelo de datos
 
-> **Estado:** Pendiente de sesión de diseño.
+> **Estado:** En diseño — sesión 2026-04-01.
+> Decisiones 3.3 y 3.6 cerradas. Decisiones 3.1, 3.2, 3.4, 3.5, 3.7 y 3.8 pendientes de sesión específica.
+
+---
+
+### 3.0 Revisión previa obligatoria — inventario de fechas en el modelo
+
+Antes de diseñar el modelo de datos de plazos hay que hacer una **revisión exhaustiva de todos los modelos** de BDDAT para identificar qué campos de tipo fecha existen y qué significan. La primera sesión de diseño omitió `Solicitud` (que tiene `fecha_solicitud` y `fecha_fin`), y puede haber otros modelos con campos relevantes.
+
+**Tarea pendiente:** revisar todos los modelos buscando `fecha` y `plazo`. Para cada campo encontrado:
+
+1. ¿Es **administrativo** (valor legal, válido para cómputo de plazos)?
+2. ¿Es **de tramitación** (registro interno, cuándo ocurrió en el sistema)?
+3. ¿Está relacionado con plazos de algún tipo?
+
+El resultado esperado es una tabla inventario completa de fechas en el modelo, que sirve de base para las decisiones 3.1 (semántica) y 3.2 (mapa semántico).
+
+#### Inventario parcial conocido (incompleto — pendiente de revisión exhaustiva)
+
+| Modelo | Campo | Naturaleza actual | Valor admin. | Revisado |
+|---|---|---|---|---|
+| `Solicitud` | `fecha_solicitud` | ? | ? | ✗ |
+| `Solicitud` | `fecha_fin` | ? | ? | ✗ |
+| `Fase` | `fecha_inicio` | Tramitación | Depende del tipo | ✗ |
+| `Fase` | `fecha_fin` | Tramitación | Depende del tipo | ✗ |
+| `Tramite` | `fecha_inicio` | Tramitación | Depende del tipo | ✗ |
+| `Tramite` | `fecha_fin` | Tramitación | Depende del tipo | ✗ |
+| `Tarea` | `fecha_inicio` | Tramitación | Depende del tipo — las tareas están cerca del documento | ✗ |
+| `Tarea` | `fecha_fin` | Tramitación | Depende del tipo | ✗ |
+| `Documento` | `fecha_administrativa` | Administrativa — **fuente absoluta de verdad** | Sí | ✓ |
+
+> ⚠ La revisión ha de extenderse a **todos** los modelos en `app/models/`, no solo a los del núcleo ESFTT.
+
+---
+
+### 3.1 Semántica de las fechas existentes (pendiente)
+
+> **Estado:** Pendiente de revisión sistemática tipo a tipo.
+
+Las columnas `fecha_inicio`/`fecha_fin` de Fase, Trámite y Tarea **no se renombran ni se añaden columnas nuevas**. La semántica de cada fecha (si tiene valor administrativo y qué significa) se almacena **externamente**, no en la columna misma.
+
+**Principio:** el motor de reglas, `plazos.py` y la UI leen de ese mapa externo para saber:
+- si la fecha que el tramitador rellena tiene valor legal (→ UI advierte)
+- qué instante del procedimiento representa (→ `plazos.py` lo usa como inicio de cómputo)
+
+Pendiente de decidir: la estructura concreta del mapa semántico (ver §3.2).
+
+La revisión tipo a tipo es un trabajo de negocio que requiere sesión específica. Hasta entonces, ningún cómputo de plazos puede darse por completo porque no está claro qué fecha de Fase o Trámite es el punto de inicio.
+
+---
+
+### 3.2 Mapa semántico de fechas (pendiente)
+
+> **Estado:** Pendiente de diseño.
+
+El mapa semántico es la estructura que asocia a cada campo de fecha de cada tipo ESFTT su significado y si tiene valor administrativo. Preguntas abiertas:
+
+- ¿Vive en BD (tabla `metadatos_fechas_esftt`) o hardcodeado en `plazos.py`?
+- ¿La granularidad es por tipo de elemento (todos los trámites del tipo X comparten semántica) o puede variar por instancia?
+- ¿Quién puede modificarlo? (Supervisor, solo en BD; o developer, si es hardcodeado)
+
+> Bloqueante para: 3.1, para `plazos.py` y para la UI de aviso al tramitador.
+
+---
+
+### 3.3 Catálogo de plazos — CERRADO
+
+> **Decisión:** Tabla separada `catalogo_plazos`, administrable por el Supervisor.
+
+Motivación: un tipo de Fase o Trámite no tiene el plazo como atributo propio — la relación es independiente y merece una tabla puente. Permite histórico de cambios legales, múltiples plazos por tipo (por tipo de expediente o vigencia temporal), y modificación sin alterar el catálogo de tipos.
+
+**Estructura preliminar** (sujeta a revisión cuando se cierre 3.1 y 3.2):
+
+```
+catalogo_plazos
+├── id
+├── tipo_elemento       ENUM(SOLICITUD, FASE, TRAMITE, TAREA)
+├── tipo_elemento_id    FK → tipos_solicitudes / tipos_fases / tipos_tramites / tipos_tareas
+├── campo_fecha         TEXT  -- nombre del campo que actúa como inicio de cómputo
+├── plazo_valor         INTEGER
+├── plazo_unidad        ENUM(DIAS_HABILES, DIAS_NATURALES, MESES, ANOS)
+├── efecto_vencimiento  FK → efectos_plazo  -- (tabla; sin enums hardcodeados)
+├── norma_origen        TEXT  -- "Art. 21.3 LPACAP", "Art. 14 RD 1955/2000"...
+├── vigencia_desde      DATE nullable
+├── vigencia_hasta      DATE nullable
+└── activo              BOOLEAN
+```
+
+> La FK `efecto_vencimiento` referencia una tabla de efectos (no ENUM hardcodeado). Ver decisión §3.4 nota.
+
+---
+
+### 3.4 Suspensiones de plazo (pendiente)
+
+> **Estado:** Pendiente de estudio previo.
+
+Antes de diseñar la tabla hay que estudiar qué **eventos concretos de BDDAT** activan y cierran una suspensión, y cómo cada causa del art. 22 LPACAP tiene reflejo en el sistema. Ver `NORMATIVA_PLAZOS.md §1.1` y `DISEÑO_FECHAS_PLAZOS §2.5`.
 
 Preguntas abiertas:
-- ¿Dónde se almacena el plazo legal aplicable a cada tipo de Fase/Trámite? (¿tabla `tipos_fase`, config externa, BD?)
-- ¿Cómo se registran los periodos de suspensión? (tabla `suspensiones_plazo` ligada a Fase/Trámite)
-- ¿Dónde vive el calendario de inhábiles de la Junta de Andalucía?
-- ¿Se almacena la fecha límite calculada o se recalcula siempre?
+- ¿Qué acción del tramitador en BDDAT desencadena cada causa de suspensión?
+- ¿La suspensión se registra explícitamente (el tramitador la abre/cierra) o se infiere del estado de algún trámite?
+- ¿Las causas van en una tabla de catálogo (preferido — sin enums hardcodeados) o en ENUM?
+
+Estructura tentativa (sujeta al estudio previo):
+
+```
+suspensiones_plazo
+├── id
+├── fase_id      FK nullable → fases
+├── tramite_id   FK nullable → tramites
+│   -- CHECK: exactamente uno de los dos NOT NULL
+├── causa_id     FK → causas_suspension  -- tabla, no ENUM
+├── fecha_inicio DATE  (administrativa)
+├── fecha_fin    DATE nullable  -- NULL = suspensión activa
+└── observaciones TEXT
+```
+
+---
+
+### 3.5 Calendario de inhábiles (pendiente)
+
+> **Estado:** Pendiente de decisión sobre fuente y carga.
+
+Estructura tentativa:
+
+```
+dias_inhabiles
+├── fecha        DATE  PK
+├── descripcion  TEXT  -- "Día de Andalucía", "Corpus Christi (Cádiz)"...
+└── ambito       FK → ambitos_inhabilidad  -- tabla: NACIONAL / AUTONOMICO_AND / PROVINCIAL_CAD / ...
+```
+
+Puntos abiertos:
+- **Sede y ámbito:** la sede del órgano tramitador es Cádiz (festivos provinciales de Cádiz), pero el sistema debe ser exportable a otras provincias. Los órganos tramitadores son provinciales → los festivos aplicables son nacionales + autonómicos andaluces + provinciales del órgano concreto.
+- **Fuente de datos:** verificar si la Junta de Andalucía publica el calendario de inhábiles en formato CSV o similar, desglosado por provincia. Si es así, la carga sería un script anual ejecutado por el administrador.
+- **Transición de año:** los cómputos de plazo pueden aterrizar en el año siguiente. Si el calendario del año N+1 no está cargado cuando se calcula una fecha límite que cae en ese año, el sistema debe emitir un **aviso a todos los usuarios** (con especial énfasis para el administrador) para que cargue el calendario antes de que el cómputo sea necesario.
+
+---
+
+### 3.6 Semántica de `fecha_limite` — CERRADO
+
+> **Decisión:** `fecha_limite` se **recalcula siempre**; nunca se almacena en BD.
+
+Las suspensiones son dinámicas (se abren y cierran con el procedimiento en curso), por lo que una fecha límite cacheada quedaría desfasada inmediatamente. El coste de recálculo es bajo.
+
+Pendiente aún de cerrar: ¿es `fecha_limite` el **último día dentro de plazo** (inclusive, el tramitador puede actuar ese día) o el **primer día fuera de plazo** (límite+1)? Esta decisión afecta a las condiciones del estado `VENCIDO` de §2.4 y debe cerrarse antes de implementar `plazos.py`.
+
+---
+
+### 3.7 Nueva entidad: condicionado de resolución (pendiente)
+
+> **Estado:** Pendiente de diseño y nombre definitivo.
+
+Las resoluciones de AT imponen obligaciones al administrado con plazo propio (`PRESCRIPCION_CONDICIONADO`, §2.4). Estas obligaciones se escapan del árbol ESFTT actual: no las inicia el administrado (no son `Solicitud`), sino que las genera la Administración de oficio al dictar la resolución.
+
+**Decisión de arquitectura acordada:** crear una nueva entidad al mismo nivel que `Solicitud` bajo `Expediente`, generada de oficio. Tendrá su propia jerarquía FTT (Fases, Trámites, Tareas). El motor, `ContextAssembler` y `plazos.py` la tratarán sin distinción respecto a las demás entidades ESFTT.
+
+Pendiente:
+- **Nombre de la entidad:** ¿`Condicionado`? ¿`Obligacion`? A decidir en próxima sesión.
+- **Modelo de datos** de la entidad y sus FTT asociados.
+- **Mecanismo de generación:** cómo BDDAT crea la instancia al redactar la resolución.
+- **Alertas:** cuándo y cómo el sistema avisa del vencimiento y asiste en la declaración de prescripción.
 
 ---
 
@@ -311,7 +466,13 @@ Issues preexistentes relacionados (pendientes de revisar contra este diseño):
 ## 7. Deudas y pendientes
 
 - [x] **§2 Conceptos** — cerrado sesión 2026-04-01
-- [ ] **§3 Modelo de datos** — sesión de diseño pendiente
+- [ ] **§3.0 Inventario de fechas** — revisión exhaustiva de todos los modelos (`app/models/*.py`) buscando campos `fecha`/`plazo` y clasificando su semántica
+- [ ] **§3.1 Semántica de fechas por tipo** — revisión tipo a tipo de qué fechas de cada ESFTT tienen valor administrativo (requiere §3.0 y conocimiento de negocio)
+- [ ] **§3.2 Mapa semántico** — decidir estructura (tabla BD vs. hardcodeado en `plazos.py`) y granularidad; bloqueante para UI y para `plazos.py`
+- [ ] **§3.4 Suspensiones** — estudiar qué eventos de BDDAT desencadenan cada causa del art. 22 LPACAP antes de diseñar la tabla
+- [ ] **§3.5 Calendario inhábiles** — verificar disponibilidad de datos por provincia en la Junta; diseñar mecanismo de alerta de año N+1 sin cargar
+- [ ] **§3.7 Nombre y modelo del condicionado de resolución** — decidir nombre (`Condicionado`/`Obligacion`/otro) y diseñar la entidad y su jerarquía FTT
+- [ ] **§3.6 Semántica exacta de `fecha_limite`** — ¿último día válido (inclusive) o primer día fuera de plazo?; bloqueante para implementar `plazos.py`
 - [ ] **§4 Cadena de evaluación** — formalizar contrato de interfaz `plazos.py`
 - [ ] **Leyes sectoriales** — extraer plazos de RD 1955/2000, Decreto 9/2011, Ley 21/2013, Decreto-ley 26/2021 (ver `NORMATIVA_PLAZOS.md §2`)
 - [ ] **Revisar #190** — determinar si el criterio `PLAZO_ESTADO` queda obsoleto o se reorienta
