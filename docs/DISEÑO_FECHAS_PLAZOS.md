@@ -262,7 +262,13 @@ Preguntas abiertas:
 - ¿La granularidad es por tipo de elemento (todos los trámites del tipo X comparten semántica) o puede variar por instancia?
 - ¿Quién puede modificarlo? (Supervisor en BD, o developer si es hardcodeado)
 
-La revisión tipo a tipo es trabajo de negocio que requiere sesión específica. Bloqueante para `plazos.py` y para la UI de aviso al tramitador.
+La revisión tipo a tipo es trabajo de negocio que requiere sesión específica con la legislación en la mano. En esa misma sesión se cruzan las fechas administrativas identificadas con los plazos legales conocidos, lo que puede arrojar:
+
+- Fecha administrativa sin plazo asociado → ¿correcto o hueco normativo no identificado?
+- Plazo legal sin fecha administrativa correspondiente en BDDAT → el sistema no puede computarlo; hay que añadir la fecha o revisar el modelo.
+- Coincidencia limpia → en orden.
+
+Bloqueante para `plazos.py`, para la UI de aviso al tramitador y para completar `catalogo_plazos` (§3.2).
 
 ---
 
