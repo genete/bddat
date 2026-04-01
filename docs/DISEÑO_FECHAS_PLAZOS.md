@@ -256,23 +256,36 @@ Todo modelo nuevo que incorpore campos de fecha debe declarar la semántica de c
 
 ---
 
-### 3.1 Mapa semántico de fechas (pendiente)
+### 3.1 Mapa semántico de fechas (pendiente — revisión tipo a tipo)
 
-> **Estado:** Pendiente de diseño y revisión tipo a tipo.
+> **Estado:** Estructura cerrada. Contenido pendiente de revisión tipo a tipo con legislación en mano.
 
-Las columnas `fecha_inicio`/`fecha_fin` de Fase, Trámite y Tarea **no se renombran ni se añaden columnas nuevas**. La semántica de cada fecha (si tiene valor administrativo y qué significa) se almacena **externamente** en un mapa semántico, no en la columna misma.
+Las columnas `fecha_inicio`/`fecha_fin` de Fase, Trámite y Tarea **no se renombran ni se añaden columnas nuevas**. La semántica de cada fecha se almacena en una tabla BD `metadatos_fechas`, administrable por Supervisor o Admin.
 
-`plazos.py` y la UI leen ese mapa para saber si la fecha que rellena el tramitador tiene valor legal y qué instante del procedimiento representa.
+#### Estructura de `metadatos_fechas`
 
-Preguntas abiertas:
-- ¿Vive en BD (tabla) o hardcodeado en `plazos.py`?
-- ¿La granularidad es por tipo de elemento (todos los trámites del tipo X comparten semántica) o puede variar por instancia?
-- ¿Quién puede modificarlo? (Supervisor en BD, o developer si es hardcodeado)
+| Campo | Tipo | Descripción |
+|---|---|---|
+| `tabla` | TEXT | Nombre de la tabla — `"fases"`, `"tramites"`... |
+| `campo` | TEXT | Nombre del campo — `"fecha_inicio"`, `"fecha_fin"`... |
+| `tipo_elemento_id` | INT nullable | FK al tipo concreto (`tipos_fases`, `tipos_tramites`, `tipos_tareas`, `tipos_solicitudes`). NULL = aplica a todos los tipos de esa tabla |
+| `es_administrativa` | BOOLEAN | Si tiene valor legal para cómputo de plazos |
+| `descripcion` | TEXT | Qué instante del procedimiento representa |
 
-La revisión tipo a tipo es trabajo de negocio que requiere sesión específica con la legislación en la mano. En esa misma sesión se cruzan las fechas administrativas identificadas con los plazos legales conocidos, lo que puede arrojar:
+PK compuesta: `(tabla, campo, tipo_elemento_id)`.
 
-- Fecha administrativa sin plazo asociado → ¿correcto o hueco normativo no identificado?
-- Plazo legal sin fecha administrativa correspondiente en BDDAT → el sistema no puede computarlo; hay que añadir la fecha o revisar el modelo.
+La coherencia de `tipo_elemento_id` con la tabla elegida la garantiza la aplicación en dos niveles:
+- **UI de Supervisión:** `tabla` se elige de una lista fija hardcodeada en Flask (cambia solo con migraciones). El desplegable de tipos se puebla dinámicamente desde la `tipos_*` correspondiente — el mapeo `tabla → tipos_tabla` son cuatro líneas en Flask.
+- **Runtime (`plazos.py`):** al consultar la semántica de un campo, si no existe entrada en `metadatos_fechas` → error con alarma permanente visible al Supervisor hasta que se corrija.
+
+El área de Supervisión incluirá una auditoría de **fechas huérfanas** (campos de fecha en el inventario §3.0 sin entrada en `metadatos_fechas`) para detección y corrección.
+
+#### Contenido — revisión tipo a tipo (pendiente)
+
+La clasificación de `es_administrativa` para los campos de Fase, Trámite y Tarea requiere sesión específica con la legislación en la mano (`NORMATIVA_PLAZOS.md` como fuente de verdad). En esa sesión se cruzan las fechas administrativas identificadas con los plazos del §5, lo que puede arrojar:
+
+- Fecha administrativa sin plazo asociado → ¿correcto o hueco normativo?
+- Plazo legal sin fecha administrativa en BDDAT → el sistema no puede computarlo; revisar el modelo.
 - Coincidencia limpia → en orden.
 
 Bloqueante para `plazos.py`, para la UI de aviso al tramitador y para completar `catalogo_plazos` (§3.2).
@@ -285,7 +298,7 @@ Al diseñar `plazos.py` (¿renombrar a `fechas_y_plazos.py`?) hay que contemplar
 - `fecha_desde` de nuevo titular anterior a `fecha_hasta` del titular saliente — hueco o solapamiento en el histórico.
 - `fecha_desde` de cambio de titular anterior a la `fecha_administrativa` del documento de resolución que lo motiva.
 
-Estos controles no son de plazo sino de integridad administrativa. Deben decidirse en el diseño de `plazos.py`: si los valida ese módulo, si los valida la capa de negocio (modelo/servicio), o ambos.
+Estos controles son de integridad administrativa, no de plazo. Deben decidirse en el diseño de `plazos.py`: si los valida ese módulo, la capa de negocio, o ambos.
 
 ---
 
@@ -480,7 +493,7 @@ Issues preexistentes relacionados (pendientes de revisar contra este diseño):
 
 - [x] **§2 Conceptos** — cerrado sesión 2026-04-01
 - [x] **§3.0 Inventario de fechas** — cerrado sesión 2026-04-01; campos Fase/Trámite/Tarea pendientes de revisión tipo a tipo en §3.1
-- [ ] **§3.1 Mapa semántico** — revisión tipo a tipo + decidir estructura (tabla BD vs. hardcodeado) y granularidad; bloqueante para UI y para `plazos.py`
+- [ ] **§3.1 Mapa semántico** — estructura cerrada; pendiente revisión tipo a tipo con legislación en mano y cruce con §5
 - [ ] **§3.3 Suspensiones** — estudiar qué eventos de BDDAT desencadenan cada causa del art. 22 LPACAP antes de diseñar la tabla
 - [ ] **§3.4 Calendario inhábiles** — verificar disponibilidad de datos por provincia en la Junta; diseñar mecanismo de alerta de año N+1 sin cargar
 - [ ] **§3.5 Semántica exacta de `fecha_limite`** — ¿último día válido (inclusive) o primer día fuera de plazo?; bloqueante para implementar `plazos.py`
