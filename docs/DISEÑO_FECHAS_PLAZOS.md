@@ -249,37 +249,24 @@ El resultado esperado es una tabla inventario completa de fechas en el modelo, q
 
 ---
 
-### 3.1 Semántica de las fechas existentes (pendiente)
+### 3.1 Mapa semántico de fechas (pendiente)
 
-> **Estado:** Pendiente de revisión sistemática tipo a tipo.
+> **Estado:** Pendiente de diseño y revisión tipo a tipo.
 
-Las columnas `fecha_inicio`/`fecha_fin` de Fase, Trámite y Tarea **no se renombran ni se añaden columnas nuevas**. La semántica de cada fecha (si tiene valor administrativo y qué significa) se almacena **externamente**, no en la columna misma.
+Las columnas `fecha_inicio`/`fecha_fin` de Fase, Trámite y Tarea **no se renombran ni se añaden columnas nuevas**. La semántica de cada fecha (si tiene valor administrativo y qué significa) se almacena **externamente** en un mapa semántico, no en la columna misma.
 
-**Principio:** el motor de reglas, `plazos.py` y la UI leen de ese mapa externo para saber:
-- si la fecha que el tramitador rellena tiene valor legal (→ UI advierte)
-- qué instante del procedimiento representa (→ `plazos.py` lo usa como inicio de cómputo)
+`plazos.py` y la UI leen ese mapa para saber si la fecha que rellena el tramitador tiene valor legal y qué instante del procedimiento representa.
 
-Pendiente de decidir: la estructura concreta del mapa semántico (ver §3.2).
-
-La revisión tipo a tipo es un trabajo de negocio que requiere sesión específica. Hasta entonces, ningún cómputo de plazos puede darse por completo porque no está claro qué fecha de Fase o Trámite es el punto de inicio.
-
----
-
-### 3.2 Mapa semántico de fechas (pendiente)
-
-> **Estado:** Pendiente de diseño.
-
-El mapa semántico es la estructura que asocia a cada campo de fecha de cada tipo ESFTT su significado y si tiene valor administrativo. Preguntas abiertas:
-
-- ¿Vive en BD (tabla `metadatos_fechas_esftt`) o hardcodeado en `plazos.py`?
+Preguntas abiertas:
+- ¿Vive en BD (tabla) o hardcodeado en `plazos.py`?
 - ¿La granularidad es por tipo de elemento (todos los trámites del tipo X comparten semántica) o puede variar por instancia?
-- ¿Quién puede modificarlo? (Supervisor, solo en BD; o developer, si es hardcodeado)
+- ¿Quién puede modificarlo? (Supervisor en BD, o developer si es hardcodeado)
 
-> Bloqueante para: 3.1, para `plazos.py` y para la UI de aviso al tramitador.
+La revisión tipo a tipo es trabajo de negocio que requiere sesión específica. Bloqueante para `plazos.py` y para la UI de aviso al tramitador.
 
 ---
 
-### 3.3 Catálogo de plazos — CERRADO
+### 3.2 Catálogo de plazos — CERRADO
 
 > **Decisión:** Tabla separada `catalogo_plazos`, administrable por el Supervisor.
 
@@ -302,11 +289,11 @@ catalogo_plazos
 └── activo              BOOLEAN
 ```
 
-> La FK `efecto_vencimiento` referencia una tabla de efectos (no ENUM hardcodeado). Ver decisión §3.4 nota.
+> La FK `efecto_vencimiento` referencia una tabla de efectos (no ENUM hardcodeado). Ver decisión §3.3 nota.
 
 ---
 
-### 3.4 Suspensiones de plazo (pendiente)
+### 3.3 Suspensiones de plazo (pendiente)
 
 > **Estado:** Pendiente de estudio previo.
 
@@ -333,7 +320,7 @@ suspensiones_plazo
 
 ---
 
-### 3.5 Calendario de inhábiles (pendiente)
+### 3.4 Calendario de inhábiles (pendiente)
 
 > **Estado:** Pendiente de decisión sobre fuente y carga.
 
@@ -353,7 +340,7 @@ Puntos abiertos:
 
 ---
 
-### 3.6 Semántica de `fecha_limite` — CERRADO
+### 3.5 Semántica de `fecha_limite` — CERRADO
 
 > **Decisión:** `fecha_limite` se **recalcula siempre**; nunca se almacena en BD.
 
@@ -363,7 +350,7 @@ Pendiente aún de cerrar: ¿es `fecha_limite` el **último día dentro de plazo*
 
 ---
 
-### 3.7 Nueva entidad: condicionado de resolución (pendiente)
+### 3.6 Nueva entidad: condicionado de resolución (pendiente)
 
 > **Estado:** Pendiente de diseño y nombre definitivo.
 
@@ -467,12 +454,11 @@ Issues preexistentes relacionados (pendientes de revisar contra este diseño):
 
 - [x] **§2 Conceptos** — cerrado sesión 2026-04-01
 - [ ] **§3.0 Inventario de fechas** — revisión exhaustiva de todos los modelos (`app/models/*.py`) buscando campos `fecha`/`plazo` y clasificando su semántica
-- [ ] **§3.1 Semántica de fechas por tipo** — revisión tipo a tipo de qué fechas de cada ESFTT tienen valor administrativo (requiere §3.0 y conocimiento de negocio)
-- [ ] **§3.2 Mapa semántico** — decidir estructura (tabla BD vs. hardcodeado en `plazos.py`) y granularidad; bloqueante para UI y para `plazos.py`
-- [ ] **§3.4 Suspensiones** — estudiar qué eventos de BDDAT desencadenan cada causa del art. 22 LPACAP antes de diseñar la tabla
-- [ ] **§3.5 Calendario inhábiles** — verificar disponibilidad de datos por provincia en la Junta; diseñar mecanismo de alerta de año N+1 sin cargar
-- [ ] **§3.7 Nombre y modelo del condicionado de resolución** — decidir nombre (`Condicionado`/`Obligacion`/otro) y diseñar la entidad y su jerarquía FTT
-- [ ] **§3.6 Semántica exacta de `fecha_limite`** — ¿último día válido (inclusive) o primer día fuera de plazo?; bloqueante para implementar `plazos.py`
+- [ ] **§3.1 Mapa semántico** — revisión tipo a tipo + decidir estructura (tabla BD vs. hardcodeado) y granularidad; bloqueante para UI y para `plazos.py`
+- [ ] **§3.3 Suspensiones** — estudiar qué eventos de BDDAT desencadenan cada causa del art. 22 LPACAP antes de diseñar la tabla
+- [ ] **§3.4 Calendario inhábiles** — verificar disponibilidad de datos por provincia en la Junta; diseñar mecanismo de alerta de año N+1 sin cargar
+- [ ] **§3.5 Semántica exacta de `fecha_limite`** — ¿último día válido (inclusive) o primer día fuera de plazo?; bloqueante para implementar `plazos.py`
+- [ ] **§3.6 Nombre y modelo del condicionado de resolución** — decidir nombre (`Condicionado`/`Obligacion`/otro) y diseñar la entidad y su jerarquía FTT
 - [ ] **§4 Cadena de evaluación** — formalizar contrato de interfaz `plazos.py`
 - [ ] **Leyes sectoriales** — extraer plazos de RD 1955/2000, Decreto 9/2011, Ley 21/2013, Decreto-ley 26/2021 (ver `NORMATIVA_PLAZOS.md §2`)
 - [ ] **Revisar #190** — determinar si el criterio `PLAZO_ESTADO` queda obsoleto o se reorienta
