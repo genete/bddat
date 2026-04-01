@@ -41,34 +41,40 @@ Issues de referencia previos: **#172** (plazos en días hábiles), **#173** (sus
 
 ## 2. Conceptos y vocabulario
 
-> **Estado:** Cerrado — sesión 2026-04-01.
+> **Estado:** Cerrado — sesión 2026-04-01 (rev. 2026-04-01).
 
 ---
 
 ### 2.1 Fecha
 
-Una **fecha** es un hecho registrado en BDDAT sobre cuándo ocurrió algo en el procedimiento.
+Una **fecha** es un hecho almacenado en BDDAT sobre cuándo ocurrió algo en el procedimiento.
 
 **Fuente de verdad real:** el documento administrativo (notificación, resolución, acuse de recibo...). La transcripción a la BD puede ser automática o manual y es susceptible de error.
 
-**Fuente de verdad operativa:** la BD. BDDAT opera sobre las fechas almacenadas, asumiendo que son correctas. Cualquier discrepancia con el documento es un problema de calidad de datos, no de lógica del sistema.
+**Fuente de verdad operativa:** la BD. BDDAT opera sobre las fechas almacenadas asumiendo que son correctas.
 
-**No todas las fechas de BD son válidas para cómputo de plazos.** Las fechas operativas relevantes para plazos son siempre la fecha del acto administrativo que inicia o cierra el cómputo — no la fecha de registro en BD. Esto requiere una **dupla**:
+#### Dos tipos de fecha
 
-| Campo | Significado | Ejemplo |
-|---|---|---|
-| `fecha_registro` | Cuándo se introdujo el dato en BDDAT | Hoy, mientras tramita el técnico |
-| `fecha_administrativa` | Fecha del acto administrativo (notificación, firma, publicación...) | La fecha que figura en el documento |
+No todas las fechas de BD son iguales. Se distinguen dos categorías, que deben estar anotadas expresamente en el modelo y cuya semántica queda hardcodeada en `plazos.py`:
 
-El cómputo de plazos usa siempre `fecha_administrativa`. `fecha_registro` es auditoría interna.
+| Tipo | Nombre en BD | Significado | Cómo se rellena | Valor para plazos |
+|---|---|---|---|---|
+| **Administrativa** | `fecha_administrativa` | Fecha del acto administrativo con valor legal (notificación, firma, publicación, entrada en registro oficial) | **Siempre manual.** La UI advierte al usuario que esta fecha tiene valor legal. | **Sí** — es la única fecha válida para cómputo de plazos |
+| **De tramitación** | `fecha_tramitacion` | Fecha de trabajo interno: cuándo se realizó la acción en BDDAT | Preferiblemente automática (timestamp del sistema); si no, manual sin advertencia especial | **No** — valor únicamente de seguimiento interno |
 
-> Esta dupla ya existe parcialmente en el modelo `Documento` (#191). Pendiente de confirmar si se extiende a Fase/Trámite/Tarea o si se resuelve por referencia al documento asociado.
+**Regla de diseño de UI:** los plazos (configuración legal) solo son accesibles al Supervisor. El tramitador solo introduce **fechas**. Los campos de `fecha_administrativa` deben mostrar un aviso explícito de que la fecha tiene valor legal. Los campos de `fecha_tramitacion` no requieren aviso especial.
+
+#### Fechas en documentos
+
+Un documento puede tener una fecha que tenga valor administrativo (p. ej. fecha de notificación al interesado) o solo valor decorativo (p. ej. fecha de redacción de un borrador interno). Si la fecha del documento no tiene valor administrativo, no aporta ni valor de cómputo ni de auditoría interna relevante — es un dato de descripción del documento.
+
+> La dupla `fecha_tramitacion`/`fecha_administrativa` existe parcialmente en el modelo `Documento` (#191). Pendiente de confirmar cómo se extiende a Fase/Trámite/Tarea — ver §3.
 
 ---
 
 ### 2.2 Plazo
 
-Un **plazo** es una restricción externa impuesta por la legislación. No es un hecho propio de BDDAT sino una norma que aplica sobre sus fechas.
+Un **plazo** es una restricción externa impuesta por la legislación sobre el tiempo para **resolver Y notificar** (arts. 21 y 22 LPACAP — la obligación no es solo resolver, sino notificar la resolución dentro del plazo). No es un hecho propio de BDDAT sino una norma que aplica sobre sus fechas.
 
 **Jerarquía de fuentes:** norma sectorial > LPACAP como fallback (ver `NORMATIVA_PLAZOS.md`).
 
@@ -81,16 +87,16 @@ Plazo = (valor, unidad, asociación)
 | Elemento | Descripción | Valores posibles |
 |---|---|---|
 | `valor` | Cantidad numérica | Entero positivo |
-| `unidad` | Naturaleza del cómputo | `DIAS_HABILES` (defecto LPACAP art. 30.2) · `DIAS_NATURALES` (debe ser expreso) · `MESES` · `ANOS` |
+| `unidad` | Naturaleza del cómputo | `DIAS_HABILES` (defecto art. 30.2) · `DIAS_NATURALES` (debe ser expreso en la norma) · `MESES` · `ANOS` |
 | `asociación` | A qué elemento ESFTT aplica | tipo de Fase · tipo de Trámite · tipo de Solicitud · tipo de recurso |
 
-La unidad `DIAS_HABILES` es el valor por defecto cuando la norma no especifica (art. 30.2 LPACAP). `DIAS_NATURALES` y `MESES` deben estar declarados expresamente en la norma.
+La unidad `DIAS_HABILES` es el valor por defecto cuando la norma no especifica (art. 30.2 LPACAP). `DIAS_NATURALES`, `MESES` y `ANOS` deben estar declarados expresamente en la norma.
 
 ---
 
 ### 2.3 Fecha límite efectiva
 
-La **fecha límite** es el instante concreto hasta el cual es válido actuar. Se calcula a partir de la fecha de inicio del cómputo y el plazo aplicable:
+La **fecha límite** es el instante concreto hasta el cual es válido actuar. Se calcula a partir de la `fecha_administrativa` de inicio del cómputo y el plazo aplicable:
 
 ```
 fecha_limite = calcular_fecha_fin(fecha_administrativa_inicio, plazo)
@@ -98,20 +104,20 @@ fecha_limite = calcular_fecha_fin(fecha_administrativa_inicio, plazo)
 
 La función `calcular_fecha_fin` depende de la unidad del plazo:
 
-| Unidad | Cálculo |
-|---|---|
-| `DIAS_HABILES` | Suma `valor` días hábiles usando el calendario de inhábiles de la Junta. Último día inhábil → prorroga al siguiente hábil (art. 30.5). |
-| `DIAS_NATURALES` | Suma `valor` días naturales. Último día inhábil → **no** prorroga (son naturales). |
-| `MESES` | Mismo día ordinal del mes de vencimiento (art. 30.4). Si no existe ese día en el mes → último día del mes. |
-| `ANOS` | Mismo día ordinal del año de vencimiento. |
+| Unidad | Cálculo | Prorroga si último día inhábil |
+|---|---|---|
+| `DIAS_HABILES` | Suma `valor` días saltando inhábiles (calendario Junta). El último día es siempre hábil por construcción. | No aplica — imposible aterrizar en inhábil |
+| `DIAS_NATURALES` | Suma `valor` días naturales. | Sí → art. 30.5: prorroga al primer día hábil siguiente |
+| `MESES` | Mismo día ordinal del mes de vencimiento (art. 30.4). Si no existe ese día → último día del mes. | Sí → art. 30.5 |
+| `ANOS` | Mismo día ordinal del año de vencimiento. | Sí → art. 30.5 |
 
-> `hábiles(inicio, fin)` es una función auxiliar que cuenta días hábiles entre dos fechas. La necesitamos para informar al usuario ("quedan N días hábiles"), pero **no** es la función principal de cómputo — lo es `calcular_fecha_fin`.
+> `habiles(inicio, fin)` es una función auxiliar que **cuenta** días hábiles entre dos fechas. Se usa para informar al usuario ("quedan N días hábiles"), pero **no** es la función de cómputo principal — lo es `calcular_fecha_fin`.
 
-**Suspensiones:** la fecha límite efectiva descuenta los periodos de suspensión activos (art. 22 LPACAP). Ver §3 para el modelo de datos de suspensiones.
+**Suspensiones:** la fecha límite efectiva incorpora los periodos de suspensión activos (art. 22 LPACAP) sumándolos al plazo. Ver §3 para el modelo de datos de suspensiones.
 
 ---
 
-### 2.4 Estado de plazo de un elemento ESFTT
+### 2.4 Estado de plazo y efectos
 
 El **estado de plazo** es un valor derivado, calculado en tiempo real. No se almacena en BD.
 
@@ -119,57 +125,58 @@ El **estado de plazo** es un valor derivado, calculado en tiempo real. No se alm
 estado_plazo = f(fecha_limite_efectiva, hoy())
 ```
 
-| Estado | Condición | Uso |
-|---|---|---|
-| `SIN_PLAZO` | No existe plazo legal asociado al tipo | Elemento sin restricción temporal |
-| `EN_PLAZO` | `hoy() < fecha_limite - umbral_alerta` | Normal |
-| `PROXIMO_VENCER` | `fecha_limite - umbral_alerta ≤ hoy() < fecha_limite` | Alerta visual en UI y semáforo |
-| `VENCIDO` | `hoy() ≥ fecha_limite` | Alerta crítica; posible silencio o caducidad |
+| Estado | Condición | Efecto legal posible | Alerta en UI |
+|---|---|---|---|
+| `SIN_PLAZO` | No existe plazo legal asociado al tipo | Ninguno | Sin indicador |
+| `EN_PLAZO` | `hoy() < fecha_limite - umbral_alerta` | — | Sin indicador |
+| `PROXIMO_VENCER` | `fecha_limite - umbral_alerta ≤ hoy() < fecha_limite` | — | Aviso (amarillo) |
+| `VENCIDO` | `hoy() ≥ fecha_limite` | Ver catálogo de efectos ↓ | Depende del efecto |
 
-`umbral_alerta` es configurable (propuesta: 10 días hábiles por defecto).
+`umbral_alerta` = **5 días hábiles** (fijo).
 
-El estado se expone como variable del ContextAssembler para que el motor pueda evaluarlo como condición sin conocer la lógica de fechas.
+#### Catálogo de efectos del vencimiento
 
----
+El efecto del vencimiento determina la gravedad de la alerta. Los efectos vienen de la LPACAP y de la norma sectorial:
 
-### 2.5 Suspensión vs. interrupción
+| Efecto | Quién resulta perjudicado | Alerta en UI | Referencia |
+|---|---|---|---|
+| **Silencio estimatorio** | Administración (el acto se entiende concedido) | **Crítica** (rojo) | Art. 24.1 LPACAP |
+| **Silencio desestimatorio** | Administrado (se entiende denegado) | Normal (naranja) | Art. 24.1 y 25.1.a LPACAP |
+| **Apertura de recurso** | Ninguno directamente (abre vía impugnatoria) | Normal (naranja) | Arts. 122, 124 LPACAP |
+| **Caducidad** | Administrado (se archivan las actuaciones) | Normal (naranja) | Art. 25.1.b LPACAP — **no aplica en BDDAT** (todos los procedimientos son a instancia de parte, nunca de oficio) |
+| **Sin efecto automático** | Ninguno (plazo propio de trámite interno) | Normal (naranja) | — |
 
-| Concepto | Efecto sobre el cómputo | Referencia LPACAP |
-|---|---|---|
-| **Suspensión** | El reloj se para. El tiempo transcurrido antes se conserva. Al reanudar, se suma el periodo suspendido. | Art. 22 |
-| **Interrupción** | El cómputo se reinicia desde cero. | Art. 25.2 (paralización por causa del interesado) |
+> La caducidad del art. 25.1.b no aplica en BDDAT: todos los expedientes se inician a solicitud del interesado, nunca de oficio. Si en el futuro se incorporan procedimientos de oficio, revisar este punto.
 
----
-
-### 2.6 Zona gris: régimen transitorio y procedimientos iniciados
-
-> **Estado:** Pendiente de decisión de criterio propio. No implementar hasta cerrar este punto.
-
-**El problema:** cuando una norma nueva modifica plazos o exime de un procedimiento y no incluye disposición transitoria expresa, no está claro qué aplica a los procedimientos ya iniciados.
-
-**Referencia general:** Disposición Transitoria 3ª LPACAP, apartado a):
-> *"A los procedimientos ya iniciados antes de la entrada en vigor de la Ley no les será de aplicación la misma, rigiéndose por la normativa anterior."*
-
-Y el apartado e) como cláusula de cierre para lo no previsto.
-
-**La paradoja:** este principio (*tempus regit actum* — el procedimiento se rige por la ley vigente al inicio) genera situaciones absurdas cuando la norma nueva es más favorable al administrado. Ejemplo: si una ley posterior elimina un procedimiento por completo (porque los mismos efectos se obtienen por otro medio), la DT3ª-a) obliga a seguir tramitando el procedimiento obsoleto.
-
-En la práctica del mundillo administrativo de AT andaluz, esto se resuelve caso a caso sin criterio uniforme.
-
-**Decisión pendiente para BDDAT:** definir si el sistema permite marcar un procedimiento como "tramitado bajo normativa X" y qué ocurre cuando X cambia. Opciones:
-1. Congelar el plazo asociado a la norma vigente en la fecha de inicio (inmutable histórico).
-2. Permitir al Supervisor actualizar manualmente el plazo aplicable a un expediente concreto.
-3. Combinación: congelado por defecto, editable con justificación auditada.
+El estado y el efecto se exponen como variables separadas del ContextAssembler:
+- `estado_plazo`: `SIN_PLAZO` / `EN_PLAZO` / `PROXIMO_VENCER` / `VENCIDO`
+- `efecto_plazo`: `NINGUNO` / `SILENCIO_ESTIMATORIO` / `SILENCIO_DESESTIMATORIO` / `APERTURA_RECURSO` / `SIN_EFECTO_AUTOMATICO`
 
 ---
 
-### 2.7 Retroactividad y tramitación simplificada (en relación con plazos)
+### 2.5 Suspensión del plazo
+
+El plazo se **suspende** cuando concurre alguna de las causas del art. 22 LPACAP (ver `NORMATIVA_PLAZOS.md §1.1`). El reloj se para; el tiempo transcurrido antes se conserva; al reanudar se suma el periodo suspendido a la fecha límite.
+
+> El art. 25.2 LPACAP habla de "interrupción" del cómputo por paralización imputable al interesado, pero dicho artículo no aplica en BDDAT (regula procedimientos de oficio, que no existen en el sistema). Se elimina la distinción suspensión/interrupción como irrelevante para BDDAT.
+
+---
+
+### 2.6 Régimen transitorio y procedimientos iniciados
+
+**El problema:** cuando una norma nueva modifica plazos o exime de un procedimiento sin disposición transitoria expresa, no está claro qué aplica a procedimientos ya iniciados. El principio general (DT3ª-a LPACAP) dice que se sigue con la normativa anterior, lo que puede generar situaciones absurdas cuando la nueva norma es más favorable al administrado.
+
+**Criterio de BDDAT:** no se procedimenta esta casuística. Cuando el tramitador necesite apartarse de las reglas por cambio normativo sin transitorio, usará la **puerta de escape del motor de reglas** (ya prevista) y lo anotará en el **cuaderno de bitácora** del expediente con la justificación. La responsabilidad jurídica de la decisión recae en el técnico tramitador, no en el sistema.
+
+---
+
+### 2.7 Retroactividad y tramitación simplificada
 
 **Art. 39.3 LPACAP — Retroactividad:**
-Permite otorgar eficacia retroactiva a actos que produzcan efectos favorables al interesado, siempre que los supuestos de hecho existieran ya en la fecha de retroacción y no se lesionen derechos de terceros. Implicación para plazos: una resolución retroactiva puede reabrir o cerrar periodos de cómputo en fechas pasadas — `calcular_fecha_fin` debe soportar `fecha_administrativa_inicio` anterior a `fecha_registro`.
+Permite otorgar eficacia retroactiva a actos favorables al interesado. Implicación para BDDAT: `fecha_administrativa_inicio` puede ser anterior a `fecha_tramitacion` (p. ej. inicio de fase resolución con fecha de resolución retroactiva). El sistema debe aceptar esa situación. La justificación queda en el cuaderno de bitácora y en el propio cuerpo de la resolución.
 
 **Art. 96 LPACAP — Tramitación simplificada:**
-Plazo máximo de resolución: **30 días** desde la notificación del acuerdo de tramitación simplificada (salvo que reste menos para la ordinaria). Suspensión automática si se solicita Dictamen al Consejo de Estado (apartado g). Implicación: el plazo aplicable puede cambiar a mitad del procedimiento si se acuerda tramitación simplificada — el sistema debe poder reasignar el plazo sin perder el historial del cómputo anterior.
+Plazo especial de 30 días desde el acuerdo de tramitación simplificada. Sin casos reales conocidos en AT andaluz desde 2015. Pendiente de decisión sobre si merece implementación — documentar en issue cuando surja necesidad real.
 
 ---
 
