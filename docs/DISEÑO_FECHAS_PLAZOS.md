@@ -493,7 +493,7 @@ Issues preexistentes relacionados (pendientes de revisar contra este diseño):
 
 - [x] **§2 Conceptos** — cerrado sesión 2026-04-01
 - [x] **§3.0 Inventario de fechas** — cerrado sesión 2026-04-01; campos Fase/Trámite/Tarea pendientes de revisión tipo a tipo en §3.1
-- [ ] **§3.1 Mapa semántico** — estructura cerrada; pendiente revisión tipo a tipo con legislación en mano y cruce con §5
+- [ ] **§3.1 Mapa semántico** — estructura cerrada; pendiente de: (1) completar `NORMATIVA_PLAZOS.md` con revisión LPACAP del §5, y (2) revisión tipo a tipo con legislación en mano y cruce con §5
 - [ ] **§3.3 Suspensiones** — estudiar qué eventos de BDDAT desencadenan cada causa del art. 22 LPACAP antes de diseñar la tabla
 - [ ] **§3.4 Calendario inhábiles** — verificar disponibilidad de datos por provincia en la Junta; diseñar mecanismo de alerta de año N+1 sin cargar
 - [ ] **§3.5 Semántica exacta de `fecha_limite`** — ¿último día válido (inclusive) o primer día fuera de plazo?; bloqueante para implementar `plazos.py`
