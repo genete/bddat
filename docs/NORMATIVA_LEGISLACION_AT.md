@@ -37,7 +37,7 @@ EXPEDIENTE (proyecto de instalación eléctrica)
   eléctrica. **Norma procedimental principal.**
 - **Ley 24/2013**, de 26 de diciembre — Ley del Sector Eléctrico. Marco legal de referencia.
 - **Ley 39/2015**, de 1 de octubre — Procedimiento Administrativo Común. Plazos,
-  notificaciones, silencio administrativo.
+  notificaciones, silencio administrativo. → Ver `docs/NORMATIVA_PLAZOS.md` para detalle de arts. 21-25, 29-32 y 112-126.
 - **Ley 40/2015** — Régimen Jurídico del Sector Público (procedimiento interadministrativo).
 - **RD 842/2002** — Reglamento Electrotécnico de Baja Tensión (referencia técnica complementaria).
 - **Ley 21/2013** — Evaluación de Impacto Ambiental (EIA). Afecta a fases de consultas y
