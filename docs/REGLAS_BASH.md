@@ -31,8 +31,7 @@ D:\BDDAT\docs_prueba\temp\   ← ignorado por .gitignore (docs_prueba/)
 ```
 
 Esta ruta está en la allowlist del proyecto (`always allow access`).
-**No borrar** con `rm` tras uso — mover a `docs_prueba/temp/trash/` con `mv`.
-La carpeta `trash/` se vacía manualmente de vez en cuando; no borrar en cada sesión.
+**No borrar ni mover** tras uso — `rm` y `mv` quedan bloqueados por permisos. Dejar el fichero; el usuario lo borra manualmente cuando quiere. La carpeta está gitignored.
 
 **Ejemplos:**
 - `Write` a `D:\BDDAT\docs_prueba\temp\commit_msg.txt` → `git -C /d/BDDAT commit -F docs_prueba/temp/commit_msg.txt`
