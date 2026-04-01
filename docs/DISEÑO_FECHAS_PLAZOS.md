@@ -219,33 +219,40 @@ El efecto `PRESCRIPCION_CONDICIONADO` del catálogo §2.4 corresponde a este tip
 
 ---
 
-### 3.0 Revisión previa obligatoria — inventario de fechas en el modelo
+### 3.0 Inventario de fechas en el modelo
 
-Antes de diseñar el modelo de datos de plazos hay que hacer una **revisión exhaustiva de todos los modelos** de BDDAT para identificar qué campos de tipo fecha existen y qué significan. La primera sesión de diseño omitió `Solicitud` (que tiene `fecha_solicitud` y `fecha_fin`), y puede haber otros modelos con campos relevantes.
+> **Estado:** Cerrado — sesión 2026-04-01. Campos de Fase/Trámite/Tarea pendientes de revisión tipo a tipo (§3.1).
 
-**Tarea pendiente:** revisar todos los modelos buscando `fecha` y `plazo`. Para cada campo encontrado:
+Revisión exhaustiva de todos los modelos en `app/models/` buscando campos de tipo fecha y clasificando su semántica.
 
-1. ¿Es **administrativo** (valor legal, válido para cómputo de plazos)?
-2. ¿Es **de tramitación** (registro interno, cuándo ocurrió en el sistema)?
-3. ¿Está relacionado con plazos de algún tipo?
+#### Inventario completo
 
-El resultado esperado es una tabla inventario completa de fechas en el modelo, que sirve de base para las decisiones 3.1 (semántica) y 3.2 (mapa semántico).
+| Modelo | Campo | Tipo BD | Semántica (comment en código) | ¿Administrativa? | ¿Relevante para plazos? |
+|---|---|---|---|---|---|
+| `Documento` | `fecha_administrativa` | Date nullable | Fecha con efectos administrativos (firma, registro, publicación) | **Sí** — fuente absoluta de verdad | **Sí** |
+| `Solicitud` | `fecha_solicitud` | Date NOT NULL | Fecha oficial de presentación — entrada en registro electrónico | **Sí** — inicio del cómputo del plazo de resolución (art. 21) | **Sí** |
+| `Solicitud` | `fecha_fin` | Date nullable | Cierre voluntario de la tramitación por el usuario (fecha de hoy) | **No** — sin valor jurídico propio | **No** — semáforo para el motor de reglas: NULL indica algo pendiente |
+| `Fase` | `fecha_inicio` | Date | Manual — metadato administrativo | Depende del tipo | Depende — ver §3.1 |
+| `Fase` | `fecha_fin` | Date | Manual | Depende del tipo | Depende — ver §3.1 |
+| `Tramite` | `fecha_inicio` | Date | Tramitación | Depende del tipo | Depende — ver §3.1 |
+| `Tramite` | `fecha_fin` | Date | Tramitación | Depende del tipo | Depende — ver §3.1 |
+| `Tarea` | `fecha_inicio` | Date | Tramitación, cerca del documento | Depende del tipo | Depende — ver §3.1 |
+| `Tarea` | `fecha_fin` | Date | Tramitación, cerca del documento | Depende del tipo | Depende — ver §3.1 |
+| `Proyecto` | `fecha` | Date NOT NULL | Fecha técnica (firma/visado) — explícitamente NO administrativa | **No** | No |
+| `DireccionNotificacion` | `fecha_inicio` | Date | Inicio de vigencia de la dirección postal | No | No |
+| `DireccionNotificacion` | `fecha_fin` | Date nullable | Fin de vigencia de la dirección postal | No | No |
+| `HistoricoTitularExpediente` | `fecha_desde` | DateTime | Inicio de vigencia del titular — ver nota ↓ | No (no genera plazos) | No — pero sujeta a restricciones de integridad administrativa |
+| `HistoricoTitularExpediente` | `fecha_hasta` | DateTime nullable | Fin de vigencia del titular — ver nota ↓ | No (no genera plazos) | No — pero sujeta a restricciones de integridad administrativa |
 
-#### Inventario parcial conocido (incompleto — pendiente de revisión exhaustiva)
+> **Nota — HistoricoTitularExpediente:** aunque estas fechas no generan plazos, tienen restricciones de integridad administrativa que deben validarse: (1) `fecha_hasta` del registro saliente debe coincidir con `fecha_desde` del entrante, sin huecos; (2) `fecha_desde` no puede ser anterior a la fecha del documento de resolución que motivó el cambio de titular.
 
-| Modelo | Campo | Naturaleza actual | Valor admin. | Revisado |
-|---|---|---|---|---|
-| `Solicitud` | `fecha_solicitud` | ? | ? | ✗ |
-| `Solicitud` | `fecha_fin` | ? | ? | ✗ |
-| `Fase` | `fecha_inicio` | Tramitación | Depende del tipo | ✗ |
-| `Fase` | `fecha_fin` | Tramitación | Depende del tipo | ✗ |
-| `Tramite` | `fecha_inicio` | Tramitación | Depende del tipo | ✗ |
-| `Tramite` | `fecha_fin` | Tramitación | Depende del tipo | ✗ |
-| `Tarea` | `fecha_inicio` | Tramitación | Depende del tipo — las tareas están cerca del documento | ✗ |
-| `Tarea` | `fecha_fin` | Tramitación | Depende del tipo | ✗ |
-| `Documento` | `fecha_administrativa` | Administrativa — **fuente absoluta de verdad** | Sí | ✓ |
+#### Modelos sin campos de fecha propios
 
-> ⚠ La revisión ha de extenderse a **todos** los modelos en `app/models/`, no solo a los del núcleo ESFTT.
+`Expediente`, `Entidad`, `AutorizadoTitular`, `FasesTramites`, `SolicitudesFases`, `ExpedientesSolicitudes`, `DocumentosProyecto`, `MotorReglas`, `Municipio`, `MunicipioProyecto`, `Plantilla`, `TiposFases`, `TiposTramites`, `TiposTareas`, `TiposSolicitudes`, `TiposExpedientes`, `TiposDocumentos`, `TiposResultadosFases`, `TiposIA`, `Usuarios`.
+
+#### Modelos futuros
+
+Todo modelo nuevo que incorpore campos de fecha debe declarar la semántica de cada uno en la tabla de control del mapa semántico (§3.1) desde el diseño inicial, indicando si tiene valor administrativo y qué instante del procedimiento representa.
 
 ---
 
@@ -269,6 +276,16 @@ La revisión tipo a tipo es trabajo de negocio que requiere sesión específica 
 - Coincidencia limpia → en orden.
 
 Bloqueante para `plazos.py`, para la UI de aviso al tramitador y para completar `catalogo_plazos` (§3.2).
+
+#### Nota — coherencia e imposibilidades de fechas
+
+Al diseñar `plazos.py` (¿renombrar a `fechas_y_plazos.py`?) hay que contemplar la validación de imposibilidades lógicas entre fechas, especialmente en las parejas inicio/fin que el usuario puede rellenar manualmente o con fecha del pasado:
+
+- `fecha_fin < fecha_inicio` — imposible en cualquier par.
+- `fecha_desde` de nuevo titular anterior a `fecha_hasta` del titular saliente — hueco o solapamiento en el histórico.
+- `fecha_desde` de cambio de titular anterior a la `fecha_administrativa` del documento de resolución que lo motiva.
+
+Estos controles no son de plazo sino de integridad administrativa. Deben decidirse en el diseño de `plazos.py`: si los valida ese módulo, si los valida la capa de negocio (modelo/servicio), o ambos.
 
 ---
 
@@ -462,7 +479,7 @@ Issues preexistentes relacionados (pendientes de revisar contra este diseño):
 ## 7. Deudas y pendientes
 
 - [x] **§2 Conceptos** — cerrado sesión 2026-04-01
-- [ ] **§3.0 Inventario de fechas** — revisión exhaustiva de todos los modelos (`app/models/*.py`) buscando campos `fecha`/`plazo` y clasificando su semántica
+- [x] **§3.0 Inventario de fechas** — cerrado sesión 2026-04-01; campos Fase/Trámite/Tarea pendientes de revisión tipo a tipo en §3.1
 - [ ] **§3.1 Mapa semántico** — revisión tipo a tipo + decidir estructura (tabla BD vs. hardcodeado) y granularidad; bloqueante para UI y para `plazos.py`
 - [ ] **§3.3 Suspensiones** — estudiar qué eventos de BDDAT desencadenan cada causa del art. 22 LPACAP antes de diseñar la tabla
 - [ ] **§3.4 Calendario inhábiles** — verificar disponibilidad de datos por provincia en la Junta; diseñar mecanismo de alerta de año N+1 sin cargar
