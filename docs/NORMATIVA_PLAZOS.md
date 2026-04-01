@@ -51,6 +51,10 @@ El cómputo se **suspende** (el reloj se para) en estos casos:
 | Actuaciones complementarias (art. 87) | Hasta su terminación |
 | Recusación de funcionario | Hasta resolución por el superior jerárquico |
 
+#### Art. 40 — Obligación de notificar
+- La notificación debe cursarse en el plazo de **10 días hábiles** desde que se dicta el acto.
+- La obligación de "resolver y notificar" (art. 21) no se cumple solo con dictar la resolución — también exige notificarla dentro de este plazo.
+
 #### Art. 23 — Ampliación del plazo para resolver
 - Solo en casos excepcionales (agotados los medios del art. 21.5).
 - Máximo: igual al plazo del procedimiento. No cabe recurso contra el acuerdo de ampliación.

@@ -401,12 +401,15 @@ Pendiente de formalizar: contrato de interfaz de `plazos.py` (qué recibe, qué 
 Valores extraídos del texto consolidado de la Ley 39/2015 (sesión 2026-04-01).
 Fuente detallada: `NORMATIVA_PLAZOS.md §1`.
 
+> ⚠ **Revisión pendiente:** dar otro repaso a la LPACAP buscando plazos definidos (términos: "plazo", "días", "diez", "quince", "meses", etc.) para verificar que no falta ninguna constante. Excluir los títulos de responsabilidad patrimonial, procedimiento sancionador y los artículos que modifican otras leyes.
+
 ### 5.1 Plazos para resolver
 
 | Constante | Valor | Referencia | Aplicación |
 |---|---|---|---|
 | `PLAZO_DEFECTO_MESES` | 3 meses | Art. 21.3 | Cuando la norma sectorial no fija plazo |
 | `PLAZO_MAXIMO_MESES` | 6 meses | Art. 21.2 | Techo salvo ley que autorice más |
+| `NOTIFICACION_DIAS` | 10 días hábiles | Art. 40.2 | Plazo para notificar al interesado desde que se dicta el acto — culmina la obligación de "resolver y notificar" |
 | `SUSPENSION_INFORME_PRECEPTIVO_MAX_MESES` | 3 meses | Art. 22.1.d | Suspensión por informe a otro órgano |
 | `SILENCIO_SUSPENSION_MESES` | 1 mes | Art. 117.3 | Silencio positivo en solicitud de suspensión de recurso |
 
