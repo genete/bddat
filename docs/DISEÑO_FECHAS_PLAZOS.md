@@ -19,6 +19,7 @@
    - [2.5 Suspensión vs. interrupción](#25-suspensión-vs-interrupción)
    - [2.6 Zona gris: régimen transitorio](#26-zona-gris-régimen-transitorio-y-procedimientos-iniciados)
    - [2.7 Retroactividad y tramitación simplificada](#27-retroactividad-y-tramitación-simplificada-en-relación-con-plazos)
+   - [2.8 Plazo condicionado de resolución propia](#28-plazo-condicionado-de-resolución-propia)
 3. [Modelo de datos](#3-modelo-de-datos)
 4. [Cadena de evaluación](#4-cadena-de-evaluación)
 5. [Constantes LPACAP — valores de fallback](#5-constantes-lpacap--valores-de-fallback)
@@ -136,21 +137,26 @@ estado_plazo = f(fecha_limite_efectiva, hoy())
 
 #### Catálogo de efectos del vencimiento
 
-El efecto del vencimiento determina la gravedad de la alerta. Los efectos vienen de la LPACAP y de la norma sectorial:
+El efecto del vencimiento determina la gravedad de la alerta y quién resulta perjudicado. Los efectos vienen de la LPACAP y de la norma sectorial. Se distingue si el perjudicado es la Administración o el administrado, porque la alerta en UI debe ser distinta:
 
-| Efecto | Quién resulta perjudicado | Alerta en UI | Referencia |
-|---|---|---|---|
-| **Silencio estimatorio** | Administración (el acto se entiende concedido) | **Crítica** (rojo) | Art. 24.1 LPACAP |
-| **Silencio desestimatorio** | Administrado (se entiende denegado) | Normal (naranja) | Art. 24.1 y 25.1.a LPACAP |
-| **Apertura de recurso** | Ninguno directamente (abre vía impugnatoria) | Normal (naranja) | Arts. 122, 124 LPACAP |
-| **Caducidad** | Administrado (se archivan las actuaciones) | Normal (naranja) | Art. 25.1.b LPACAP — **no aplica en BDDAT** (todos los procedimientos son a instancia de parte, nunca de oficio) |
-| **Sin efecto automático** | Ninguno (plazo propio de trámite interno) | Normal (naranja) | — |
+| Efecto | Perjudicado | Automático | Alerta UI | Referencia |
+|---|---|---|---|---|
+| **Silencio estimatorio** | Administración — el acto se entiende concedido sin resolución expresa | Sí | **Crítica** (rojo) | Art. 24.1 LPACAP |
+| **Responsabilidad disciplinaria** | Administración — el funcionario responde del incumplimiento | No (requiere expediente) | **Crítica** (rojo) | Art. 21.6 LPACAP |
+| **Silencio desestimatorio** | Administrado — se entiende denegado, puede recurrir | Sí | Normal (naranja) | Arts. 24.1 y 25.1.a LPACAP |
+| **Caducidad del procedimiento** | Administrado — se archivan las actuaciones por inactividad | No (requiere advertencia previa + resolución) | Normal (naranja) | Art. 95.1 LPACAP — **aplica en BDDAT**: inactividad del interesado > 3 meses |
+| **Pérdida de trámite** | Administrado — pierde un trámite no indispensable, no el procedimiento | Sí | Normal (naranja) | Art. 95.2 LPACAP |
+| **Apertura de recurso** | Ninguno directamente — abre la vía impugnatoria | Sí | Normal (naranja) | Arts. 122, 124 LPACAP |
+| **Prescripción del derecho condicionado** | Administrado — el derecho otorgado por resolución propia caduca | No (requiere declaración) | Normal (naranja) | Ver §2.8 |
+| **Sin efecto automático** | Ninguno — plazo de trámite interno sin consecuencia legal directa | No | Normal (naranja) | — |
 
-> La caducidad del art. 25.1.b no aplica en BDDAT: todos los expedientes se inician a solicitud del interesado, nunca de oficio. Si en el futuro se incorporan procedimientos de oficio, revisar este punto.
+> **Art. 25.1.b** (caducidad de procedimientos de oficio): no aplica en BDDAT — todos los expedientes son a instancia de parte. Si en el futuro se incorporan procedimientos de oficio, revisar.
+
+> **Art. 95 — Caducidad por inactividad del interesado**: aplica íntegramente en BDDAT. El flujo es: inactividad > 3 meses → la Administración advierte → si persiste → resolución de archivo. Un procedimiento caducado no interrumpe la prescripción del derecho, pero si el derecho no ha prescrito, el interesado puede iniciar un nuevo procedimiento incorporando actos y trámites del anterior (ver §7 — reutilización de trámites entre expedientes).
 
 El estado y el efecto se exponen como variables separadas del ContextAssembler:
 - `estado_plazo`: `SIN_PLAZO` / `EN_PLAZO` / `PROXIMO_VENCER` / `VENCIDO`
-- `efecto_plazo`: `NINGUNO` / `SILENCIO_ESTIMATORIO` / `SILENCIO_DESESTIMATORIO` / `APERTURA_RECURSO` / `SIN_EFECTO_AUTOMATICO`
+- `efecto_plazo`: `NINGUNO` / `SILENCIO_ESTIMATORIO` / `RESPONSABILIDAD_DISCIPLINARIA` / `SILENCIO_DESESTIMATORIO` / `CADUCIDAD_PROCEDIMIENTO` / `PERDIDA_TRAMITE` / `APERTURA_RECURSO` / `PRESCRIPCION_CONDICIONADO` / `SIN_EFECTO_AUTOMATICO`
 
 ---
 
@@ -177,6 +183,32 @@ Permite otorgar eficacia retroactiva a actos favorables al interesado. Implicaci
 
 **Art. 96 LPACAP — Tramitación simplificada:**
 Plazo especial de 30 días desde el acuerdo de tramitación simplificada. Sin casos reales conocidos en AT andaluz desde 2015. Pendiente de decisión sobre si merece implementación — documentar en issue cuando surja necesidad real.
+
+---
+
+### 2.8 Plazo condicionado de resolución propia
+
+Un tipo de plazo que no proviene de ningún catálogo legal externo: es el que **BDDAT genera al emitir una resolución con condicionados**.
+
+La palabra "prescribir" tiene aquí doble acepción (RAE):
+- La resolución **prescribe** (ordena) que el interesado realice algo en un plazo máximo.
+- Si no lo hace, el derecho otorgado **prescribe** (caduca).
+
+**Ejemplo típico en AT:** una resolución de autorización dice "deberá presentar el certificado de fin de obra en un plazo máximo de X meses desde la notificación de la presente resolución". Si no se presenta, la autorización otorgada puede declararse prescrita.
+
+Este plazo tiene características propias que lo diferencian de los plazos del catálogo:
+
+| Característica | Plazo legal (catálogo) | Plazo condicionado de resolución |
+|---|---|---|
+| **Origen** | Norma sectorial o LPACAP | La propia resolución dictada por BDDAT |
+| **Almacenamiento** | Tabla de plazos configurada por Supervisor | Se genera al redactar la resolución — pendiente de diseño (§3) |
+| **Sujeto del plazo** | La Administración (para resolver/notificar) | El administrado (para cumplir el condicionado) |
+| **Efecto del vencimiento** | Silencio, caducidad del procedimiento... | Prescripción del derecho — requiere declaración expresa |
+| **¿Automático?** | Según el efecto (ver §2.4) | No — requiere acto administrativo de declaración |
+
+El efecto `PRESCRIPCION_CONDICIONADO` del catálogo §2.4 corresponde a este tipo.
+
+> Pendiente de diseño: cómo se almacena y vincula este plazo al expediente (§3), y cuándo y cómo BDDAT genera la alerta de vencimiento y asiste al tramitador en la declaración de prescripción.
 
 ---
 
@@ -242,14 +274,26 @@ Fuente detallada: `NORMATIVA_PLAZOS.md §1`.
 | `REVISION_INTERPOSICION_MESES_RESTO` | 3 meses | Art. 125.2 | Revisión extraordinaria, resto de causas |
 | `REVISION_RESOLUCION_MESES` | 3 meses | Art. 126.3 | Plazo para resolver revisión extraordinaria |
 
-### 5.3 Cómputo
+### 5.3 Plazos para el administrado
+
+Plazos que la LPACAP impone al administrado en su relación con la Administración:
+
+| Constante | Valor | Referencia | Aplicación |
+|---|---|---|---|
+| `SUBSANACION_DIAS` | 10 días hábiles | Art. 68.1 | Plazo para subsanar deficiencias en la solicitud |
+| `SUBSANACION_AMPLIACION_MAX_DIAS` | 5 días hábiles | Art. 68.2 | Ampliación máxima del plazo de subsanación |
+| `AUDIENCIA_MIN_DIAS` | 10 días hábiles | Art. 82.2 | Mínimo del trámite de audiencia al interesado |
+| `AUDIENCIA_MAX_DIAS` | 15 días hábiles | Art. 82.2 | Máximo del trámite de audiencia al interesado |
+| `AUDIENCIA_RECURSO_MIN_DIAS` | 10 días hábiles | Art. 118.1 | Mínimo para alegaciones en recurso por hechos nuevos |
+| `AUDIENCIA_RECURSO_MAX_DIAS` | 15 días hábiles | Art. 118.1 | Máximo para alegaciones en recurso por hechos nuevos |
+| `CADUCIDAD_INACTIVIDAD_MESES` | 3 meses | Art. 95.1 | Inactividad del interesado → advertencia de caducidad |
+
+### 5.4 Cómputo
 
 | Constante | Valor | Referencia | Aplicación |
 |---|---|---|---|
 | `DIAS_POR_DEFECTO` | hábiles | Art. 30.2 | Días sin calificar → hábiles |
 | `INICIO_COMPUTO` | día siguiente | Art. 30.3 | El cómputo empieza el día siguiente a la notificación |
-| `AUDIENCIA_RECURSO_MIN_DIAS` | 10 días | Art. 118.1 | Mínimo para alegaciones en recurso por hechos nuevos |
-| `AUDIENCIA_RECURSO_MAX_DIAS` | 15 días | Art. 118.1 | Máximo para alegaciones en recurso por hechos nuevos |
 
 ---
 
@@ -266,9 +310,10 @@ Issues preexistentes relacionados (pendientes de revisar contra este diseño):
 
 ## 7. Deudas y pendientes
 
-- [x] **§2 Conceptos** — cerrado sesión 2026-04-01 (pendiente: decisión §2.6 régimen transitorio)
+- [x] **§2 Conceptos** — cerrado sesión 2026-04-01
 - [ ] **§3 Modelo de datos** — sesión de diseño pendiente
 - [ ] **§4 Cadena de evaluación** — formalizar contrato de interfaz `plazos.py`
 - [ ] **Leyes sectoriales** — extraer plazos de RD 1955/2000, Decreto 9/2011, Ley 21/2013, Decreto-ley 26/2021 (ver `NORMATIVA_PLAZOS.md §2`)
 - [ ] **Revisar #190** — determinar si el criterio `PLAZO_ESTADO` queda obsoleto o se reorienta
 - [ ] **Revisar #172 y #173** — actualizar alcance según arquitectura agnóstica
+- [ ] **Reutilización de trámites entre expedientes** — art. 95.3: procedimiento caducado cuyo derecho no ha prescrito permite nuevo procedimiento incorporando actos del anterior. Implica modelo de enlace entre expedientes y reutilización del pool documental. Diseñar cuando se estudie normativa sectorial.

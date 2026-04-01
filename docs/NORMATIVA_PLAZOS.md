@@ -10,8 +10,10 @@
 
 1. [LPACAP — Marco general de plazos](#1-lpacap--marco-general-de-plazos)
    - [1.1 Plazo máximo para resolver (arts. 21-25)](#11-plazo-máximo-para-resolver-arts-21-25)
-   - [1.2 Cómputo de plazos (arts. 29-32)](#12-cómputo-de-plazos-arts-29-32)
-   - [1.3 Recursos y sus plazos (arts. 112-126)](#13-recursos-y-sus-plazos-arts-112-126)
+   - [1.2 Caducidad del procedimiento y prescripción (arts. 95, 21.1)](#12-caducidad-del-procedimiento-y-prescripción-arts-95-211)
+   - [1.3 Plazos del administrado (arts. 68, 82)](#13-plazos-del-administrado-arts-68-82)
+   - [1.4 Cómputo de plazos (arts. 29-32)](#14-cómputo-de-plazos-arts-29-32)
+   - [1.5 Recursos y sus plazos (arts. 112-126)](#15-recursos-y-sus-plazos-arts-112-126)
 2. [Particularizaciones sectoriales](#2-particularizaciones-sectoriales)
 
 ---
@@ -66,7 +68,48 @@ El cómputo se **suspende** (el reloj se para) en estos casos:
 
 ---
 
-### 1.2 Cómputo de plazos (arts. 29-32)
+### 1.2 Caducidad del procedimiento y prescripción (arts. 95, 21.1)
+
+#### Art. 95 — Caducidad por inactividad del interesado
+
+Aplica a procedimientos iniciados a solicitud del interesado (es decir, **todos los de BDDAT**).
+
+**Tres escenarios:**
+
+| Escenario | Condición | Efecto |
+|---|---|---|
+| **Caducidad del procedimiento** | Inactividad del interesado > 3 meses en actividad indispensable para continuar | Advertencia → si persiste → resolución de archivo |
+| **Pérdida de trámite** | Inactividad en trámite **no** indispensable para resolver | Solo se pierde ese trámite; el procedimiento continúa |
+| **Nuevo procedimiento tras caducidad** | Derecho aún no prescrito → el interesado puede reiniciar | Los actos y trámites del procedimiento caducado pueden incorporarse al nuevo (con obligación de repetir alegaciones, prueba y audiencia) |
+
+**Relación caducidad–prescripción (art. 95.3):**
+- La caducidad del procedimiento **no produce** por sí sola la prescripción del derecho.
+- Los procedimientos caducados **no interrumpen** el plazo de prescripción del derecho.
+- Consecuencia: si el derecho aún no ha prescrito al caducar el procedimiento, el interesado puede iniciar uno nuevo.
+
+> **Implicación en BDDAT:** la reutilización de trámites y documentos de un expediente caducado en uno nuevo requiere diseño específico de modelo de datos y UI. Ver `DISEÑO_FECHAS_PLAZOS.md §7`.
+
+#### Prescripción (art. 21.1 y remisiones)
+
+La LPACAP menciona la prescripción como causa de terminación del procedimiento (art. 21.1) pero **no la regula**: cuando se produce, la resolución la declara. La prescripción del derecho sustantivo la regula la norma sectorial (RD 1955/2000 u otras).
+
+En BDDAT aparece además en una segunda acepción: la resolución propia **prescribe** (ordena) condicionados con plazo, y si no se cumplen, el derecho **prescribe** (caduca). Ver `DISEÑO_FECHAS_PLAZOS.md §2.8`.
+
+---
+
+### 1.3 Plazos del administrado (arts. 68, 82)
+
+#### Art. 68 — Subsanación de la solicitud
+- Plazo para subsanar deficiencias: **10 días hábiles** desde el requerimiento.
+- Ampliable hasta **5 días hábiles** más a petición del interesado o de oficio, cuando la aportación presente dificultades especiales (salvo procedimientos selectivos o de concurrencia competitiva).
+- Si no subsana en plazo → se le tiene por desistido (requiere resolución expresa).
+
+#### Art. 82 — Trámite de audiencia
+- Plazo: **entre 10 y 15 días hábiles** para que el interesado formule alegaciones y aporte documentos antes de la resolución.
+
+---
+
+### 1.4 Cómputo de plazos (arts. 29-32)
 
 #### Art. 29 — Los plazos obligan a ambas partes
 Tanto a la Administración como a los interesados.
@@ -97,7 +140,7 @@ Tanto a la Administración como a los interesados.
 
 ---
 
-### 1.3 Recursos y sus plazos (arts. 112-126)
+### 1.5 Recursos y sus plazos (arts. 112-126)
 
 #### Recurso de alzada (arts. 121-122)
 - Contra actos que **no ponen fin a la vía administrativa**.
