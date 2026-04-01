@@ -431,7 +431,7 @@ Pendiente de formalizar: contrato de interfaz de `plazos.py` (qué recibe, qué 
 Valores extraídos del texto consolidado de la Ley 39/2015 (sesión 2026-04-01).
 Fuente detallada: `NORMATIVA_PLAZOS.md §1`.
 
-> ⚠ **Revisión pendiente:** dar otro repaso a la LPACAP buscando plazos definidos (términos: "plazo", "días", "diez", "quince", "meses", etc.) para verificar que no falta ninguna constante. Excluir los títulos de responsabilidad patrimonial, procedimiento sancionador y los artículos que modifican otras leyes.
+> Revisión LPACAP ejecutada sesión 2026-04-01 — arts. 73, 77, 80, 83, 88, 96 añadidos.
 
 ### 5.1 Plazos para resolver
 
@@ -461,15 +461,28 @@ Plazos que la LPACAP impone al administrado en su relación con la Administraci�
 
 | Constante | Valor | Referencia | Aplicación |
 |---|---|---|---|
+| `TRAMITE_CUMPLIMIENTO_DIAS` | 10 días hábiles | Art. 73.1 | Plazo general para que el interesado cumpla cualquier trámite requerido (salvo que la norma fije otro) |
 | `SUBSANACION_DIAS` | 10 días hábiles | Art. 68.1 | Plazo para subsanar deficiencias en la solicitud |
 | `SUBSANACION_AMPLIACION_MAX_DIAS` | 5 días hábiles | Art. 68.2 | Ampliación máxima del plazo de subsanación |
 | `AUDIENCIA_MIN_DIAS` | 10 días hábiles | Art. 82.2 | Mínimo del trámite de audiencia al interesado |
 | `AUDIENCIA_MAX_DIAS` | 15 días hábiles | Art. 82.2 | Máximo del trámite de audiencia al interesado |
 | `AUDIENCIA_RECURSO_MIN_DIAS` | 10 días hábiles | Art. 118.1 | Mínimo para alegaciones en recurso por hechos nuevos |
 | `AUDIENCIA_RECURSO_MAX_DIAS` | 15 días hábiles | Art. 118.1 | Máximo para alegaciones en recurso por hechos nuevos |
+| `ALEGACIONES_CONEXAS_MAX_DIAS` | 15 días hábiles | Art. 88.1 | Máximo para alegaciones del interesado sobre cuestiones conexas no planteadas por él |
 | `CADUCIDAD_INACTIVIDAD_MESES` | 3 meses | Art. 95.1 | Inactividad del interesado → advertencia de caducidad |
 
-### 5.4 Cómputo
+### 5.4 Instrucción
+
+| Constante | Valor | Referencia | Aplicación |
+|---|---|---|---|
+| `PRUEBA_MIN_DIAS` | 10 días | Art. 77.2 | Mínimo del período de prueba |
+| `PRUEBA_MAX_DIAS` | 30 días | Art. 77.2 | Máximo del período de prueba |
+| `INFORME_FACULTATIVO_DIAS` | 10 días | Art. 80.2 | Plazo para emitir informes facultativos (salvo que la norma fije otro) |
+| `INFORMACION_PUBLICA_MIN_DIAS` | 20 días | Art. 83.2 | Mínimo del período de información pública para alegaciones |
+| `TRAMITACION_SIMPLIFICADA_DIAS` | 30 días | Art. 96.6 | Plazo de resolución en tramitación simplificada |
+| `TRAMITACION_SIMPLIFICADA_RECHAZO_DIAS` | 5 días | Art. 96.3 | Plazo para rechazar solicitud de tramitación simplificada; transcurrido → desestimación presunta |
+
+### 5.5 Cómputo
 
 | Constante | Valor | Referencia | Aplicación |
 |---|---|---|---|

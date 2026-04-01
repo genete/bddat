@@ -11,9 +11,11 @@
 1. [LPACAP — Marco general de plazos](#1-lpacap--marco-general-de-plazos)
    - [1.1 Plazo máximo para resolver (arts. 21-25)](#11-plazo-máximo-para-resolver-arts-21-25)
    - [1.2 Caducidad del procedimiento y prescripción (arts. 95, 21.1)](#12-caducidad-del-procedimiento-y-prescripción-arts-95-211)
-   - [1.3 Plazos del administrado (arts. 68, 82)](#13-plazos-del-administrado-arts-68-82)
-   - [1.4 Cómputo de plazos (arts. 29-32)](#14-cómputo-de-plazos-arts-29-32)
-   - [1.5 Recursos y sus plazos (arts. 112-126)](#15-recursos-y-sus-plazos-arts-112-126)
+   - [1.3 Plazos del administrado (arts. 68, 73, 82)](#13-plazos-del-administrado-arts-68-73-82)
+   - [1.4 Instrucción: prueba, informes e información pública (arts. 77, 80, 83, 88)](#14-instrucción-prueba-informes-e-información-pública-arts-77-80-83-88)
+   - [1.5 Tramitación simplificada (art. 96)](#15-tramitación-simplificada-art-96)
+   - [1.6 Cómputo de plazos (arts. 29-32)](#16-cómputo-de-plazos-arts-29-32)
+   - [1.7 Recursos y sus plazos (arts. 112-126)](#17-recursos-y-sus-plazos-arts-112-126)
 2. [Particularizaciones sectoriales](#2-particularizaciones-sectoriales)
 
 ---
@@ -108,12 +110,43 @@ En BDDAT aparece además en una segunda acepción: la resolución propia **presc
 - Ampliable hasta **5 días hábiles** más a petición del interesado o de oficio, cuando la aportación presente dificultades especiales (salvo procedimientos selectivos o de concurrencia competitiva).
 - Si no subsana en plazo → se le tiene por desistido (requiere resolución expresa).
 
+#### Art. 73 — Cumplimiento de trámites
+- Plazo general para cumplir cualquier trámite requerido al interesado: **10 días hábiles** desde la notificación, salvo que la norma fije uno distinto.
+- Si el acto no reúne los requisitos necesarios, la Administración concede otros **10 días hábiles** para cumplimentarlo.
+
 #### Art. 82 — Trámite de audiencia
 - Plazo: **entre 10 y 15 días hábiles** para que el interesado formule alegaciones y aporte documentos antes de la resolución.
 
 ---
 
-### 1.4 Cómputo de plazos (arts. 29-32)
+### 1.4 Instrucción: prueba, informes e información pública (arts. 77, 80, 83, 88)
+
+#### Art. 77 — Período de prueba
+- El instructor puede abrir un período de prueba de **entre 10 y 30 días**.
+
+#### Art. 80 — Emisión de informes facultativos
+- Plazo para emitir informes: **10 días**, salvo que la norma o el cumplimiento del resto de plazos del procedimiento permita o exija otro plazo.
+- Si no se emite en plazo → las actuaciones pueden proseguir salvo que sea preceptivo (ver art. 22 para efectos de suspensión).
+
+#### Art. 83 — Información pública
+- El período de información pública no puede ser inferior a **20 días** para formular alegaciones.
+
+#### Art. 88 — Cuestiones conexas en resolución
+- Si el órgano resolutor va a pronunciarse sobre cuestiones conexas no planteadas por el interesado, debe dársele audiencia por un plazo máximo de **15 días**.
+
+---
+
+### 1.5 Tramitación simplificada (art. 96)
+
+#### Art. 96 — Tramitación simplificada
+- Plazo de resolución: **30 días** desde la notificación del acuerdo de tramitación simplificada (salvo que reste menos para la ordinaria).
+- Rechazo de solicitud de tramitación simplificada: **5 días**; transcurrido sin respuesta → desestimación presunta.
+- Dictamen urgente del Consejo de Estado u órgano equivalente: **15 días** si así se solicita.
+- Aplicación en BDDAT: sin casos conocidos en AT andaluz desde 2015 — ver `DISEÑO_FECHAS_PLAZOS.md §2.7`.
+
+---
+
+### 1.6 Cómputo de plazos (arts. 29-32)
 
 #### Art. 29 — Los plazos obligan a ambas partes
 Tanto a la Administración como a los interesados.
@@ -144,7 +177,7 @@ Tanto a la Administración como a los interesados.
 
 ---
 
-### 1.5 Recursos y sus plazos (arts. 112-126)
+### 1.7 Recursos y sus plazos (arts. 112-126)
 
 #### Recurso de alzada (arts. 121-122)
 - Contra actos que **no ponen fin a la vía administrativa**.
