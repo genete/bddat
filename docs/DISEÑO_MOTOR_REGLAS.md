@@ -77,7 +77,7 @@ evaluar(evento='BORRAR',    entidad='FASE', entidad_id=45, params={})
 Retorna: `EvaluacionResult(permitido: bool, nivel: str, mensaje: str, norma: str)`
 
 `params` solo es necesario en casos especiales actualmente no confirmados tras la
-revisión del patrón SEPARATAS (ver sección «Zona gris — consultas a organismos»).
+revisión del patrón SEPARATAS (ver `docs/DISEÑO_CONSULTAS_ORGANISMOS.md`).
 
 ---
 
@@ -188,7 +188,7 @@ Nota: el texto legal solo menciona AAU; la extensión a AAUS es decisión de pol
 | BORRAR | cualquiera | `fecha_inicio IS NOT NULL` | BLOQUEAR |
 
 **Nota SEPARATAS:** Eliminada de las reglas conocidas. Requiere diseño previo de
-la tabla `entidades_consultadas`. Ver sección «Zona gris — consultas a organismos».
+la tabla `entidades_consultadas`. Ver `docs/DISEÑO_CONSULTAS_ORGANISMOS.md`.
 
 ---
 
@@ -214,24 +214,9 @@ Las tareas tienen solo 7 tipos genéricos. Sus reglas son de secuencia interna
 
 ## Zona gris — consultas a organismos
 
-**Estado:** Pendiente de diseño. Issue draft creado para refinamiento con el técnico.
-
-Este patrón afecta al trámite SEPARATAS (y posiblemente a LISTA — informe de incidencia
-territorial por Ley de Sostenibilidad de Andalucía — y a otras consultas externas).
-
-**Principio de diseño:** Este mecanismo NO debe implementarse de forma ad-hoc en
-el HTML de un trámite concreto. Debe elevarse al nivel expediente/proyecto para que
-sea reutilizable y no genere variaciones hardcodeadas en plantillas.
-
-**Diseño tentativo:**
-- Tabla `entidades_consultadas` (solicitud_id FK, entidad_id FK → entidades). Lista de organismos a consultar en esta solicitud concreta.
-- **Al añadir entidad a la lista:** si EXISTS DR_ORGANISMO para esa entidad en esta solicitud → BLOQUEAR (el organismo ya declaró responsablemente, no hay que consultarle).
-- **Al incorporar un documento DR_ORGANISMO** para entidad que ya está en `entidades_consultadas` → ADVERTIR (contradicción — la entidad fue incluida en consulta y ahora aporta DR; el técnico decide).
-- **Trámite SEPARATAS:** la tarea REDACTAR usa plantilla de generación múltiple basada en toda la lista `entidades_consultadas`. Si una entidad está en la lista es porque el técnico la incluyó conscientemente.
-
-**Otros tramites de consulta:**
-- LISTA (Ley de Sostenibilidad): cubre mediante nuevos tipos en `tipos_fases` / `tipos_tramites`. No requiere tabla especial.
-- Las separatas en sí (SEPARATAS) son documentos individuales por organismo — el diseño de la plantilla múltiple está pendiente.
+> **Obsoleto.** Esta sección ha sido superada por `docs/DISEÑO_CONSULTAS_ORGANISMOS.md`,
+> que contiene el diseño completo y cerrado de la fase de consultas a organismos (#247).
+> Conservada aquí solo como referencia histórica del diseño tentativo original.
 
 ---
 
