@@ -1,8 +1,11 @@
 # NORMATIVA — Legislación aplicable al motor de reglas BDDAT
 
-> **Fuente:** Legislación estatal y autonómica sobre instalaciones de alta tensión en Andalucía.
 > **Aplica a:** Motor de reglas — base legal de las reglas de tramitación ESFTT.
 > **Estado:** Catálogo de normas y estructura de extracción definida. Iteraciones de investigación pendientes.
+
+Este documento es el **catálogo normativo de referencia** del motor de reglas de BDDAT. Recoge la legislación estatal y autonómica aplicable a los procedimientos de autorización de instalaciones de alta tensión en Andalucía, organizada por ámbito (distribución y transporte, renovables, autoconsumo). Su función es servir de fuente de verdad sobre qué normas rigen cada tipo de solicitud (AAP, AAC, AE, transmisión, cierre), de manera que los documentos de diseño del motor —`DISEÑO_MOTOR_REGLAS.md`, `NORMATIVA_SOLICITUDES.md`— puedan referenciar una base legal verificada. Los plazos procedimentales se extraen y documentan en profundidad en `NORMATIVA_PLAZOS.md`; este documento se centra en el catálogo de normas y en el proceso de extracción de las reglas de tramitación.
+
+Esa extracción se articula como un proceso iterativo (§5) de complejidad creciente: desde el mapa de fases obligatorias por tipo de solicitud hasta los casos límite y la casuística especial, pasando por los regímenes de excepción. Este enfoque responde a la densidad normativa del ámbito: las reglas que gobiernan un expediente de AT emergen de la interacción entre normas de distinto rango y ámbito —estatal, autonómica, sectorial, ambiental— y no pueden identificarse de forma exhaustiva en una sola lectura.
 
 ---
 
@@ -11,16 +14,15 @@
 | § | Contenido | Naturaleza |
 |---|---|---|
 | [§1](#1-contexto-del-sistema-bddat) | Contexto del sistema BDDAT — jerarquía ESFTT y tipos de instalación | Referencia de dominio |
-| [§2](#2-legislación-base) | **Legislación base** — normas nacionales y autonómicas principales | **Fuente de verdad normativa** |
 | [§3](#3-qué-extraer-por-tipo-de-solicitud) | Qué extraer por tipo de solicitud — variables y excepciones | Guía de extracción (investigación) |
 | [§4](#4-formato-de-documentación-de-reglas) | Formato de documentación de reglas — plantilla | Guía de trabajo (investigación) |
 | [§5](#5-resultados-por-iteración) | Resultados por iteración — estado de avance | Log de progreso |
-| [§6](#6-fuentes-normativas-por-ámbito--junta-de-andalucía) | **Fuentes normativas por ámbito** — catálogo completo con links | **Fuente de verdad normativa** |
+| [§6](#6-fuentes-normativas-por-ámbito--junta-de-andalucía) | **Catálogo normativo completo** — todas las normas ordenadas por ámbito | **Fuente de verdad normativa** |
 | [§6.1](#61-energía-eléctrica--distribución-y-transporte) | Energía eléctrica — distribución y transporte (Junta + BOE) | Catálogo normativo |
 | [§6.2](#62-energías-renovables) | Energías renovables (Junta + BOE) | Catálogo normativo |
 | [§6.3](#63-autoconsumo) | Autoconsumo (Junta + BOE) | Catálogo normativo |
 
-> **Nota de uso:** Los documentos derivados (`NORMATIVA_PLAZOS.md`, `NORMATIVA_SOLICITUDES.md`, `DISEÑO_MOTOR_REGLAS.md`) deben referenciar §2 como punto de entrada a las normas principales y §6.x para normativa específica por ámbito. Las secciones §3–§5 son andamiaje del proceso de investigación, no fuente de verdad.
+> **Nota de uso:** Los documentos derivados (`NORMATIVA_PLAZOS.md`, `NORMATIVA_SOLICITUDES.md`, `DISEÑO_MOTOR_REGLAS.md`) deben referenciar §6.x como punto de entrada al catálogo normativo. Las secciones §3–§5 son andamiaje del proceso de investigación, no fuente de verdad.
 
 ---
 
@@ -44,31 +46,6 @@ EXPEDIENTE (proyecto de instalación eléctrica)
 
 **Tipos de solicitud:** AAP, AAC, APO, DUP, Modificación, Desistimiento/Renuncia
 (Ver `docs/NORMATIVA_SOLICITUDES.md` para detalle y combinaciones.)
-
----
-
-## 2. Legislación base
-
-### Nacional
-- **RD 1955/2000**, de 1 de diciembre — Regula actividades de transporte, distribución,
-  comercialización, suministro y procedimientos de autorización de instalaciones de energía
-  eléctrica. **Norma procedimental principal.**
-- **Ley 24/2013**, de 26 de diciembre — Ley del Sector Eléctrico. Marco legal de referencia.
-- **Ley 39/2015**, de 1 de octubre — Procedimiento Administrativo Común. Plazos,
-  notificaciones, silencio administrativo. → Ver `docs/NORMATIVA_PLAZOS.md` para detalle de arts. 21-25, 29-32 y 112-126.
-- **Ley 40/2015** — Régimen Jurídico del Sector Público (procedimiento interadministrativo).
-- **RD 842/2002** — Reglamento Electrotécnico de Baja Tensión. Aplica a instalaciones BT incluidas en expedientes de renovables (certificado de instalador).
-- **Ley 21/2013** — Evaluación de Impacto Ambiental (EIA). Afecta a fases de consultas y
-  pronunciamiento ambiental.
-
-### Autonómica Andalucía
-- **Decreto 9/2011**, de 18 de enero (BOJA nº 22) — Medidas para la agilización de trámites
-  administrativos. Contiene excepciones relevantes al procedimiento estándar.
-- **Ley 2/2007**, de 27 de marzo — Fomento de las Energías Renovables y del Ahorro y Eficiencia
-  Energética de Andalucía.
-- **Decreto-ley 26/2021**, de 14 de diciembre — Simplificación administrativa. Incluye la
-  Disposición Final Cuarta sobre exención de información pública para instalaciones sin DUP
-  y sin AAU (ver DISEÑO_MOTOR_REGLAS.md, regla INICIAR INFORMACION_PUBLICA).
 
 ---
 
@@ -163,12 +140,19 @@ Página de referencia del Ministerio para la Transición Ecológica y el Reto De
 
 ### 6.1 Energía eléctrica — distribución y transporte
 
-Normas no recogidas en §2, identificadas en la página de la Consejería y en las fichas de procedimiento:
+Normas identificadas en la página de la Consejería, fichas de procedimiento y legislación general aplicable:
 
 > **Glosario:** AAP = Autorización Administrativa Previa · AAC = Autorización Administrativa de Construcción · AE = Autorización de Explotación · Trans. = Transmisión de titularidad · Cierre = Autorización de cierre · BT = instalaciones de baja tensión (en renovables) · General = todos los procedimientos / marco competencial
 
 | Norma | Afecta a | Observaciones |
 |---|---|---|
+| [Ley 24/2013, de 26 de diciembre (LSE)](https://www.boe.es/eli/es/l/2013/12/26/24/con) | General | **Marco legal del sector eléctrico.** Define los tipos de autorización (AAP, AAC, AE), el régimen de silencio (desestimatorio) y el reparto competencial AGE/CCAA. Ver `NORMATIVA_PLAZOS.md §2.1`. |
+| [RD 1955/2000, de 1 de diciembre](https://www.boe.es/eli/es/rd/2000/12/01/1955/con) | AAP, AAC, AE, Trans., Cierre | **Norma procedimental principal.** Regula el procedimiento de autorización de instalaciones eléctricas. Ver `NORMATIVA_PLAZOS.md §2.2` para plazos detallados. |
+| [Ley 39/2015, de 1 de octubre (LPACAP)](https://www.boe.es/eli/es/l/2015/10/01/39/con) | General | Procedimiento administrativo común. Plazos, notificaciones, silencio administrativo. Actúa como fallback cuando la norma sectorial no fija plazo. Ver `NORMATIVA_PLAZOS.md §1` para detalle completo. |
+| [Ley 21/2013, de 9 de diciembre (EIA)](https://www.boe.es/eli/es/l/2013/12/09/21/con) | AAP | Evaluación de Impacto Ambiental. Afecta a la fase de consultas y al pronunciamiento ambiental previo a la resolución de la AAP. Plazos pendientes de extracción — ver `NORMATIVA_PLAZOS.md §2` (pendiente). |
+| [RD 842/2002, de 2 de agosto (REBT)](https://www.boe.es/eli/es/rd/2002/08/02/842/con) | AE · BT | Reglamento Electrotécnico de Baja Tensión. Aplica a instalaciones BT incluidas en expedientes de renovables y autoconsumo (certificado de instalador). |
+| [Decreto 9/2011, de 18 de enero](https://ws040.juntadeandalucia.es/sedeboja/web/textos-consolidados/resumen-ficha?p_p_id=resumenrecursolegal_WAR_sedebojatextoconsolidadoportlet&p_p_lifecycle=0&_resumenrecursolegal_WAR_sedebojatextoconsolidadoportlet_recursoLegalAbstractoId=22168) | AAP, AAC | Modifica procedimientos administrativos de industria y energía para agilizar trámites. Contiene excepciones relevantes al procedimiento estándar. Pendiente de revisar. |
+| [Decreto-ley 26/2021, de 14 de diciembre](https://www.boe.es/buscar/act.php?id=BOJA-b-2021-90434) | General | Simplificación administrativa y mejora de la calidad regulatoria. DF 4ª: exención de información pública para instalaciones sin DUP y sin AAU (ver DISEÑO_MOTOR_REGLAS.md, regla INICIAR INFORMACION_PUBLICA). Pendiente de revisar resto del articulado. |
 | [RD 337/2014, de 9 de mayo (RAT)](https://www.boe.es/eli/es/rd/2014/05/09/337/con) | AAP, AAC, AE, Trans., Cierre | Reglamento de condiciones técnicas y garantías en instalaciones AT e ITCs RAT 01-23. Incide en documentación técnica de solicitudes. |
 | [RD 223/2008, de 15 de febrero](https://www.boe.es/eli/es/rd/2008/02/15/223/con) | AAP, AAC, AE, Trans., Cierre | Reglamento de condiciones técnicas y garantías en líneas eléctricas AT e ITCs LAT 01-09. |
 | [Decreto 356/2010, de 3 de agosto — AAU](https://ws040.juntadeandalucia.es/sedeboja/web/textos-consolidados/resumen-ficha?p_p_id=resumenrecursolegal_WAR_sedebojatextoconsolidadoportlet&p_p_lifecycle=0&_resumenrecursolegal_WAR_sedebojatextoconsolidadoportlet_recursoLegalAbstractoId=21892) | AAP, Cierre | Autorización ambiental unificada autonómica; aplica cuando la instalación está sometida a prevención ambiental de la Junta. |
@@ -208,12 +192,13 @@ Normas no recogidas en §2, identificadas en la página de la Consejería y en l
 
 ### 6.2 Energías renovables
 
-Normas no recogidas en §2 ni en §6.1, identificadas en la [página de renovables](https://www.juntadeandalucia.es/organismos/industriaenergiayminas/areas/energia/renovables.html) y en la ficha de procedimiento [12083](https://www.juntadeandalucia.es/organismos/industriaenergiayminas/servicios/procedimientos/detalle/12083.html) (Registro de instalaciones de producción):
+Normas no recogidas en §6.1, identificadas en la [página de renovables](https://www.juntadeandalucia.es/organismos/industriaenergiayminas/areas/energia/renovables.html) y en la ficha de procedimiento [12083](https://www.juntadeandalucia.es/organismos/industriaenergiayminas/servicios/procedimientos/detalle/12083.html) (Registro de instalaciones de producción):
 
 > La página de renovables no tiene fichas de procedimiento propias para AAP/AAC/AE — remite a las mismas fichas del catálogo general (§6.1). Lo específico de renovables es la normativa sectorial de producción y acceso a red.
 
 | Norma | Afecta a | Observaciones |
 |---|---|---|
+| [Ley 2/2007, de 27 de marzo](https://www.boe.es/eli/es-an/l/2007/03/27/2/con) | General | **Marco legal autonómico de renovables.** Fomento de energías renovables y ahorro y eficiencia energética en Andalucía. |
 | [RD-ley 23/2020, de 23 de junio](https://www.boe.es/buscar/act.php?id=BOE-A-2020-6621) | AAP, AAC | Establece hitos administrativos para instalaciones de energías renovables; condiciona la admisión a trámite de solicitudes según disponibilidad de punto de acceso/conexión. |
 | [RD-ley 8/2023, de 27 de diciembre](https://www.boe.es/buscar/act.php?id=BOE-A-2023-26452) | AAP, AAC | Modifica el régimen de hitos administrativos del RD-ley 23/2020. Pendiente de revisar alcance concreto. |
 | [RD 1183/2020, de 29 de diciembre](https://www.boe.es/eli/es/rd/2020/12/29/1183/con) | AAP, AAC | Regula el acceso y la conexión a la red eléctrica de transporte y distribución. Determina si la instalación tiene punto de acceso/conexión concedido — requisito para admisión a trámite. |
@@ -236,7 +221,7 @@ Normas no recogidas en §2 ni en §6.1, identificadas en la [página de renovabl
 
 ### 6.3 Autoconsumo
 
-Normas no recogidas en §2, §6.1 ni §6.2, identificadas en la [página de autoconsumo](https://www.juntadeandalucia.es/organismos/industriaenergiayminas/areas/energia/autoconsumo.html) y en la ficha de procedimiento [18494](https://www.juntadeandalucia.es/organismos/industriaenergiayminas/servicios/procedimientos/detalle/18494.html) (Registro de autoconsumo):
+Normas no recogidas en §6.1 ni §6.2, identificadas en la [página de autoconsumo](https://www.juntadeandalucia.es/organismos/industriaenergiayminas/areas/energia/autoconsumo.html) y en la ficha de procedimiento [18494](https://www.juntadeandalucia.es/organismos/industriaenergiayminas/servicios/procedimientos/detalle/18494.html) (Registro de autoconsumo):
 
 > **Régimen según potencia instalada:**
 > - **≤ 500 kW** — legalización mediante ficha técnica BT en el aplicativo PUES (salvo excepciones de la DA única DL 2/2018). Sin AAP ni AAC.

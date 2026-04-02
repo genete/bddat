@@ -19,6 +19,13 @@
 2. [Particularizaciones sectoriales](#2-particularizaciones-sectoriales)
    - [2.1 Ley 24/2013 del Sector Eléctrico (LSE)](#21-ley-242013-de-26-de-diciembre-del-sector-eléctrico-lse)
    - [2.2 Real Decreto 1955/2000](#22-real-decreto-19552000-de-1-de-diciembre-rd-19552000)
+3. [API de días inhábiles — Junta de Andalucía](#3-api-de-días-inhábiles--junta-de-andalucía)
+   - [3.1 Descripción](#31-descripción)
+   - [3.2 Endpoints](#32-endpoints)
+   - [3.3 Parámetros del endpoint principal](#33-parámetros-del-endpoint-principal)
+   - [3.4 Estructura de cada registro en la respuesta](#34-estructura-de-cada-registro-en-la-respuesta)
+   - [3.5 Festivos locales de Cádiz capital (referencia)](#35-festivos-locales-de-cádiz-capital-referencia)
+   - [3.6 Nota de implementación](#36-nota-de-implementación)
 
 ---
 
@@ -164,6 +171,8 @@ Tanto a la Administración como a los interesados.
 | Último día inhábil | Se prorroga al primer día hábil siguiente |
 | Conflicto hábil/inhábil entre municipio e interesado y sede del órgano | **Inhábil en todo caso** |
 
+> **Decisión de diseño BDDAT (art. 30.2):** la regla del "inhábil en todo caso" exigiría conocer el municipio del interesado para tomar la unión de calendarios. En la práctica esto no es computable: (a) ningún formulario de la Consejería recoge ese dato a efectos del art. 30.2; (b) para personas jurídicas no está definido qué domicilio aplica (social, fiscal o el de notificaciones); (c) con administración electrónica el supuesto de hecho casi no se da. **BDDAT calcula los plazos exclusivamente con el calendario de la sede del órgano (Cádiz/Cádiz).** Si la SGE decide incorporar el municipio del interesado en el futuro, será una decisión jurídica externa al sistema.
+
 - El cómputo empieza el **día siguiente** a la notificación o publicación del acto.
 - Si el mes de vencimiento no tiene el día ordinal equivalente → último día del mes.
 - Cada Comunidad Autónoma publica su calendario de inhábiles antes del 1 de enero. → [Calendario de días inhábiles de la CA y Municipios de Andalucía](https://www.juntadeandalucia.es/servicios/tramites/conoce-mas-cts.html#toc-c-mo-calcular-los-plazos-de-un-tr-mite)
@@ -176,6 +185,8 @@ Tanto a la Administración como a los interesados.
 - Hasta la **mitad** del plazo original. Debe solicitarse antes del vencimiento.
 - No cabe ampliar un plazo ya vencido.
 - Incidencia técnica o ciberincidente → causa de ampliación general.
+
+> **Implicación en BDDAT:** la ampliación es un evento que modifica la fecha de vencimiento de un plazo ya en curso. Los plazos no pueden modelarse como fechas fijas — necesitan soportar extensiones registradas. Cada ampliación debe guardar: fecha del acuerdo, plazo original, días ampliados (≤ mitad del original) y nueva fecha de vencimiento. El motor de plazos debe rechazar ampliaciones sobre plazos ya vencidos. Ver `DISEÑO_FECHAS_PLAZOS.md` cuando se desarrolle.
 
 ---
 
@@ -425,3 +436,79 @@ El RD **no regula causas propias de suspensión** del plazo de resolución. Las 
 | **Cierre** | Informe REE | 3 meses | Continúa sin informe |
 | **Cierre** | **Resolución** | **3 meses** | **Desestimatorio** |
 | **Transporte CCAA** | Informe DGPEM (art. 114) | 2 meses | Continúa sin informe |
+
+---
+
+## 3. API de días inhábiles — Junta de Andalucía
+
+> **Fuente:** API pública consumida por la página oficial de la Junta.
+> **URL página:** `https://www.juntadeandalucia.es/servicios/sede/tramites/calendario-dias-inhabiles.html`
+> **Aplica a:** Motor de plazos (`app/services/plazos.py`). Implementación pendiente — ver nota al pie.
+> **Estado:** API documentada (sesión 2026-04-02). Integración en motor pendiente.
+
+### 3.1 Descripción
+
+La página oficial de la Junta no es una fuente estática — consume en tiempo real una API REST pública sin autenticación. Es la **fuente de verdad programable** para días inhábiles en Andalucía, más fiable que extraer el texto del BOJA, ya que:
+
+- Se actualiza automáticamente cuando la Junta carga los datos de un año nuevo (el endpoint `/years` lo refleja de inmediato).
+- Incluye los tres niveles necesarios: autonómico, provincial y municipal.
+- La respuesta ya incorpora sábados y domingos, eliminando la necesidad de calcularlos por separado.
+
+### 3.2 Endpoints
+
+**Base:** `https://www.juntadeandalucia.es/ssdigitales/datasets/work-calendar/`
+
+| Endpoint | Método | Descripción |
+|---|---|---|
+| `/years` | GET | Años con datos disponibles. Ej: `{"result":["2024","2025","2026"]}` |
+| `/provinces` | GET | Provincias disponibles (las 8 + vacío para ámbito autonómico) |
+| `/municipalities` | GET | Todos los municipios de Andalucía (sin filtro por provincia) |
+| `/work-calendar/get/search_calendar_weekends` | GET | Días inhábiles del ámbito y año solicitados |
+
+### 3.3 Parámetros del endpoint principal
+
+```
+GET /work-calendar/get/search_calendar_weekends?municipality={m}&province={p}&year={y}
+```
+
+| `province` | `municipality` | Resultado |
+|---|---|---|
+| *(vacío o `-`)* | *(vacío o `-`)* | Festivos autonómicos + sábados/domingos |
+| `CÁDIZ` | `-` | Autonómicos + festivos locales de todos los municipios de Cádiz + sáb/dom |
+| `CÁDIZ` | `CÁDIZ` | Autonómicos + festivos locales de Cádiz capital + sáb/dom |
+
+> Los valores de `province` y `municipality` son en **mayúsculas exactas** tal como devuelve `/provinces` y `/municipalities`.
+
+### 3.4 Estructura de cada registro en la respuesta
+
+```json
+{
+  "date": 20260101,
+  "dateformat": "2026-01-01T00:00:00Z",
+  "description": "AÑO NUEVO",
+  "event": "VEVENT",
+  "id": "20261",
+  "municipality": "",
+  "province": "",
+  "type": "LABORAL",
+  "year": "2026"
+}
+```
+
+- `date`: entero `YYYYMMDD` — útil para comparación directa.
+- `municipality` y `province`: vacíos en festivos autonómicos/nacionales; rellenos en locales.
+- La respuesta puede contener duplicados cuando se consulta con `province` + `municipality=-` (se devuelven los autonómicos repetidos junto a los locales). Deduplicar por `date` al procesar.
+
+### 3.5 Festivos locales de Cádiz capital (referencia)
+
+Configuración base del proyecto: **provincia CÁDIZ / municipio CÁDIZ**.
+
+| Año | Fecha | Descripción |
+|---|---|---|
+| 2025 | Por confirmar — consultar API con `year=2025` | — |
+| 2026 | 2026-02-16 | Fiesta local (Carnaval) |
+| 2026 | 2026-10-07 | Fiesta local (Virgen del Rosario) |
+
+### 3.6 Nota de implementación
+
+Los JSON estáticos en `app/data/dias_inhabiles/` (2025.json, 2026.json) contienen los festivos autonómicos extraídos del BOJA y son válidos como fallback o para tests offline. En `plazos.py`, la estrategia de integración (consulta en tiempo real vs. caché al arrancar vs. JSON estático) queda pendiente de decisión en el momento de implementar el motor.

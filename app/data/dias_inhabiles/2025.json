@@ -1,0 +1,20 @@
+{
+  "year": 2025,
+  "scope": "Comunidad Autónoma de Andalucía",
+  "source": "Orden 16/10/2024, BOJA núm. 205",
+  "source_url": "https://www.juntadeandalucia.es/boja/2024/205/49",
+  "festivos": [
+    {"fecha": "2025-01-01", "descripcion": "Año Nuevo"},
+    {"fecha": "2025-01-06", "descripcion": "Epifanía del Señor"},
+    {"fecha": "2025-02-28", "descripcion": "Día de Andalucía"},
+    {"fecha": "2025-04-17", "descripcion": "Jueves Santo"},
+    {"fecha": "2025-04-18", "descripcion": "Viernes Santo"},
+    {"fecha": "2025-05-01", "descripcion": "Día del Trabajo"},
+    {"fecha": "2025-08-15", "descripcion": "Asunción de María"},
+    {"fecha": "2025-10-13", "descripcion": "Fiesta Nacional (traslado del 12, domingo)"},
+    {"fecha": "2025-11-01", "descripcion": "Todos los Santos"},
+    {"fecha": "2025-12-06", "descripcion": "Día de la Constitución"},
+    {"fecha": "2025-12-08", "descripcion": "Inmaculada Concepción"},
+    {"fecha": "2025-12-25", "descripcion": "Navidad"}
+  ]
+}
