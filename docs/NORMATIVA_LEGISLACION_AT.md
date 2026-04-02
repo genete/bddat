@@ -109,8 +109,23 @@ Para cada tipo de solicitud estándar (AAP, AAC, APO, DUP):
 qué fases son obligatorias según RD 1955/2000 y cuáles son los plazos.
 
 ### Iteración 2 — Excepciones y regímenes especiales
-Generación renovable, instalaciones < 30 kV, Decreto 9/2011.
+Generación renovable, instalaciones < 30 kV.
 
 ### Iteración 3 — Plazos y silencio administrativo
+→ En curso. Ver `docs/NORMATIVA_PLAZOS.md` para extracción detallada por norma.
+- §1 LPACAP 39/2015 — completo (sesión 2026-04-01)
+- §2.1 LSE 24/2013 — completo (sesión 2026-04-02)
+- §2.2 RD 1955/2000 — completo (sesión 2026-04-02)
 
 ### Iteración 4 — Casos límite y casuística especial
+
+---
+
+## 6. Fuentes normativas por ámbito — Junta de Andalucía
+
+Páginas de referencia de la Consejería de Industria, Energía y Minas:
+
+| Ámbito | URL |
+|---|---|
+| Energía eléctrica (distribución y transporte) | https://www.juntadeandalucia.es/organismos/industriaenergiayminas/areas/energia/electricidad.html |
+| Energías renovables | https://www.juntadeandalucia.es/organismos/industriaenergiayminas/areas/energia/renovables.html |

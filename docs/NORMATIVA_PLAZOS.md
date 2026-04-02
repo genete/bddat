@@ -18,6 +18,7 @@
    - [1.7 Recursos y sus plazos (arts. 112-126)](#17-recursos-y-sus-plazos-arts-112-126)
 2. [Particularizaciones sectoriales](#2-particularizaciones-sectoriales)
    - [2.1 Ley 24/2013 del Sector Eléctrico (LSE)](#21-ley-242013-de-26-de-diciembre-del-sector-eléctrico-lse)
+   - [2.2 Real Decreto 1955/2000](#22-real-decreto-19552000-de-1-de-diciembre-rd-19552000)
 
 ---
 
@@ -213,8 +214,8 @@ Tanto a la Administración como a los interesados.
 > **Estado:** En desarrollo — sesión 2026-04-02.
 
 Normas pendientes de extracción:
-- **RD 1955/2000** — Plazos del procedimiento de autorización de instalaciones eléctricas.
-- **Decreto 9/2011** (Junta de Andalucía) — Agilización; posibles modificaciones de plazos estándar.
+- ~~**RD 1955/2000**~~ — ✅ Extraído en §2.2.
+- **Decreto 9/2011** (Junta de Andalucía) — Fuente de plazos auxiliares; pendiente de extracción.
 - **Ley 21/2013** — Plazos del procedimiento de EIA (consultas, información pública, pronunciamiento ambiental).
 - **Decreto-ley 26/2021** — Simplificación; excepciones procedimentales.
 
@@ -224,7 +225,7 @@ Normas pendientes de extracción:
 
 > **BOE-A-2013-13645** — texto consolidado. Sesión 2026-04-02.
 
-La LSE establece el **marco** del régimen de autorizaciones pero **no fija plazos concretos de resolución** para las autorizaciones ordinarias de instalaciones — los delega a sus disposiciones de desarrollo (principalmente RD 1955/2000 y, en Andalucía, Decreto 9/2011).
+La LSE establece el **marco** del régimen de autorizaciones pero **no fija plazos concretos de resolución** para las autorizaciones ordinarias de instalaciones — los delega a sus disposiciones de desarrollo (principalmente RD 1955/2000).
 
 #### Art. 53 — Autorización de instalaciones
 
@@ -245,14 +246,182 @@ AAP y AAC pueden tramitarse de forma consecutiva, coetánea o conjunta (art. 53.
 | Resolución sobre solicitudes de **cierre definitivo** | 6 meses | Si vence y el operador del sistema lleva ≥ 3 meses con informe favorable → el titular puede cerrar sin resolución |
 | Autorizaciones competencia de la **AGE** (no BDDAT) | 1 año | Silencio desestimatorio (art. 53.8) |
 
-> Para instalaciones competencia de las **CCAA** (ámbito de BDDAT), el plazo concreto de resolución lo fija la norma autonómica de desarrollo. Ver §2.2 (RD 1955/2000) y §2.3 (Decreto 9/2011).
+> Para instalaciones competencia de las **CCAA** (ámbito de BDDAT), el plazo concreto de resolución lo fija la norma autonómica aplicable. Ver §2.2 (RD 1955/2000 como referencia).
 
 #### DA 3ª — Silencio administrativo
 
 Regla general para todas las solicitudes amparadas en la LSE: **silencio desestimatorio**. El plazo a partir del cual opera lo establecen las disposiciones de desarrollo.
 
-> **Implicación en BDDAT:** confirma que el silencio en los procedimientos de autorización de AT es desestimatorio. El plazo concreto vendrá del RD 1955/2000 / Decreto 9/2011.
+> **Implicación en BDDAT:** confirma que el silencio en los procedimientos de autorización de AT es desestimatorio. El plazo concreto vendrá del RD 1955/2000 (§2.2).
 
 #### Nomenclatura
 
-La LSE utiliza "**autorización de explotación**" (sin "administrativa") en todos los casos (art. 53.1.c y concordantes). Si el RD 1955/2000 o el Decreto 9/2011 utilizan "autorización administrativa de explotación", prevalecerá el término de la norma procedimental aplicable. Pendiente de verificar en §2.2.
+La LSE utiliza "**autorización de explotación**" (sin "administrativa") en todos los casos (art. 53.1.c y concordantes). El RD 1955/2000 (§2.2) **confirma** el mismo término — no "autorización administrativa de explotación".
+
+---
+
+### 2.2 Real Decreto 1955/2000, de 1 de diciembre (RD 1955/2000)
+
+> **BOE-A-2000-24019** — texto consolidado. Sesión 2026-04-02.
+
+#### Advertencia de base legal
+
+El RD 1955/2000 fue dictado en desarrollo de la **Ley 54/1997** del Sector Eléctrico (derogada). Sigue vigente pero con adaptaciones sucesivas: sus referencias a la Ley 54/1997 deben leerse como referencias a la **Ley 24/2013** (LSE vigente), y sus referencias a la **Ley 30/1992** (derogada) como referencias a la **Ley 39/2015** (LPACAP).
+
+> **Implicación en BDDAT:** cuando el RD cite plazos o efectos vinculados a artículos de leyes derogadas, verificar si el artículo equivalente de la norma vigente mantiene el mismo régimen. En caso de duda, prevalece la LSE 24/2013 y la LPACAP 39/2015.
+
+#### Ámbito de aplicación (art. 111)
+
+El **Título VII** del RD 1955/2000 regula el procedimiento de autorización para instalaciones cuyo aprovechamiento **afecta a más de una Comunidad Autónoma** (competencia AGE).
+
+Para instalaciones **intra-CCAA** (ámbito de BDDAT), la competencia corresponde a la Comunidad Autónoma. Andalucía no tiene norma procedimental propia equivalente — el RD 1955/2000 actúa como **norma de referencia** para el esquema de trámites.
+
+#### Informe DGPEM para instalaciones de transporte competencia CCAA (art. 114)
+
+Cuando la CCAA tramita una autorización de instalación de **transporte**, debe solicitar informe previo a la Dirección General de Política Energética y Minas (DGPEM):
+
+| Plazo de emisión | Efecto del silencio |
+|---|---|
+| **2 meses** | Se prosiguen las actuaciones (silencio no equivale a favorable ni a desfavorable) |
+
+> **Naturaleza del informe:** solicitarlo es **obligatorio** para la CCAA. Cuando se emite en plazo, su contenido es **vinculante** — la CCAA debe tenerlo en cuenta en la resolución (art. 114 in fine). La no respuesta en plazo permite continuar formalmente, pero en la práctica la resolución suele esperar al informe: si la instalación no encaja en la planificación estatal de la red, REE no puede construirla ni percibirla en retribución con independencia de lo que resuelva la CCAA. Se han dado casos de informes desfavorables en plazo.
+>
+> **Efecto sobre plazos:** la solicitud del informe puede suspender el plazo de resolución al amparo del art. 22 LPACAP (solicitud de informe preceptivo a otro órgano, máx. 3 meses de suspensión). Aunque el RD no lo califica expresamente de "preceptivo", la obligatoriedad de solicitarlo y el carácter vinculante de su respuesta apuntan a que opera como tal a efectos de suspensión.
+
+---
+
+#### Procedimiento de Autorización Administrativa Previa — AAP (arts. 122-128)
+
+##### Información pública (art. 125)
+
+| Trámite | Plazo | Efecto del silencio / vencimiento |
+|---|---|---|
+| Información pública | **30 días** | Fin del período; alegaciones fuera de plazo no se admiten |
+
+La publicación se efectúa en el BOE y en el Boletín Oficial de la provincia o CCAA. Si se solicita simultáneamente la declaración de utilidad pública, la información pública se efectúa de forma conjunta.
+
+##### Traslado de alegaciones al peticionario (art. 126)
+
+| Trámite | Plazo | Efecto |
+|---|---|---|
+| Traslado al peticionario para que conteste las alegaciones recibidas | **15 días** (máximo) | — |
+
+##### Informes a otras Administraciones (art. 127)
+
+| Trámite | Plazo | Efecto del silencio |
+|---|---|---|
+| Informe / conformidad de otras AAPP, organismos y empresas de servicio público sobre bienes a su cargo | **30 días** | **Conformidad presunta** |
+| Traslado del resultado al peticionario para que preste conformidad o formule reparos | **15 días** | — |
+| Réplica de la AAPP a los reparos del peticionario | **15 días** | **Conformidad** con la contestación del peticionario |
+| Informe CNMC sobre capacidad del solicitante (solo AGE; ver nota) | **15 días hábiles** | **Favorable** |
+
+> El informe CNMC (art. 127.6) está previsto para la AGE. En el procedimiento autonómico de la Junta de Andalucía no hay un equivalente identificado hasta ahora.
+
+##### Resolución AAP (art. 128)
+
+| Plazo | Cómputo | Silencio |
+|---|---|---|
+| **3 meses** | Desde la presentación de la solicitud | **Desestimatorio** |
+
+La resolución debe publicarse en BOE y en el Boletín Oficial de las provincias afectadas.
+
+La autorización fija un **plazo** para que el titular solicite la AAC (aprobación del proyecto de ejecución): si vence sin solicitarla → **caducidad de la AAP** (art. 128.4). El titular puede pedir prórrogas por razones justificadas.
+
+---
+
+#### Procedimiento de Autorización Administrativa de Construcción — AAC / Aprobación proyecto ejecución (arts. 130-131)
+
+##### Condicionados de otras Administraciones (art. 131)
+
+| Trámite | Plazo | Efecto del silencio |
+|---|---|---|
+| Condicionado técnico de otras AAPP, organismos y empresas de servicio público sobre bienes a su cargo | **30 días** | **Conformidad presunta** |
+| — Reducción: si la instalación ya tiene AAP y la tramitación es solo AAC (sin DUP ni modificación de AAP) | **15 días** | **Conformidad presunta** |
+| Traslado del condicionado al peticionario para conformidad o reparos | **15 días** | — |
+| Réplica de la AAPP a los reparos del peticionario | **15 días** | **Conformidad** con la contestación del peticionario |
+
+##### Resolución AAC (art. 131.7)
+
+| Plazo | Cómputo | Silencio |
+|---|---|---|
+| **3 meses** | Desde la presentación de la solicitud | **Desestimatorio** |
+
+La resolución fija el período previsto para la ejecución de la instalación (art. 131.10).
+
+---
+
+#### Procedimiento de Autorización de Explotación — AE (arts. 132, 132 bis, 132 ter, 132 quater)
+
+El RD 1955/2000 distingue según tipo de instalación:
+
+| Tipo de instalación | Fase | Plazo desde solicitud | Silencio |
+|---|---|---|---|
+| Transporte y distribución | AE definitiva (única) | **1 mes** | No regulado → LPACAP + DA 3ª LSE: **desestimatorio** |
+| Generación | AE provisional para pruebas | **1 mes** | Ídem |
+| Generación | AE definitiva | **1 mes** | Ídem |
+
+La AE provisional para pruebas habilita la puesta en tensión y las pruebas de la instalación antes de la autorización definitiva.
+
+> **Nomenclatura confirmada:** el RD usa "autorización de explotación" (sin "administrativa") — coherente con la LSE 24/2013.
+
+---
+
+#### Procedimiento de transmisión de titularidad (arts. 133-134)
+
+| Trámite / Plazo | Duración | Efecto |
+|---|---|---|
+| Resolución sobre autorización de transmisión | **3 meses** | Silencio: **desestimatorio** |
+| Plazo para formalizar la transmisión una vez autorizada | **6 meses** desde el otorgamiento | Caducidad de la autorización si vence sin transmisión efectiva |
+| Comunicación de la transmisión hecha efectiva a la DGPEM | **1 mes** desde que se hace efectiva | Obligación del adquirente |
+
+---
+
+#### Procedimiento de cierre de instalaciones (arts. 135-139)
+
+| Trámite / Plazo | Duración | Efecto del silencio |
+|---|---|---|
+| Informe del operador del sistema (REE) sobre la solicitud de cierre | **3 meses** | Se continúa el procedimiento sin informe |
+| Resolución sobre autorización de cierre | **3 meses** | **Desestimatorio** |
+
+La resolución fija el plazo para ejecutar el cierre (y en su caso el desmantelamiento); si vence → **caducidad** de la autorización de cierre (art. 138.2).
+
+> Para instalaciones CCAA (BDDAT), el plazo de resolución de cierre lo fija la norma autonómica aplicable. La LSE (art. 53) fija 6 meses para el régimen especial de cierre unilateral de instalaciones AGE.
+
+---
+
+#### Suspensiones del plazo específicas del RD 1955/2000
+
+El RD **no regula causas propias de suspensión** del plazo de resolución. Las únicas suspensiones aplicables son las del art. 22 LPACAP. Las más relevantes en la práctica:
+
+| Causa LPACAP (art. 22) | Concreción en este procedimiento |
+|---|---|
+| Solicitud de informe preceptivo a otro órgano | Informe DGPEM (art. 114) para instalaciones de transporte CCAA — 2 meses. Obligatorio solicitarlo y vinculante si se emite; opera en la práctica como preceptivo a efectos de suspensión (ver nota §2.2 art. 114) |
+| Pronunciamiento previo preceptivo (EIA) | Cuando la instalación requiere EIA ordinaria (Ley 21/2013), la AAP no puede resolverse sin la DIA — suspensión de facto mientras dura el trámite ambiental. Ver §2.4 |
+| Pruebas técnicas o análisis contradictorios | Puede aplicar en la fase de comprobaciones técnicas previas a la AE |
+
+---
+
+#### Resumen de plazos — tabla consolidada RD 1955/2000
+
+| Procedimiento | Trámite | Plazo | Silencio |
+|---|---|---|---|
+| **AAP** | Información pública | 30 días | — |
+| **AAP** | Traslado alegaciones al peticionario | 15 días (máx.) | — |
+| **AAP** | Informe otras AAPP sobre bienes a su cargo | 30 días | Conformidad |
+| **AAP** | Traslado condicionado al peticionario | 15 días | — |
+| **AAP** | Réplica AAPP a reparos del peticionario | 15 días | Conformidad |
+| **AAP** | Informe CNMC (AGE) | 15 días hábiles | Favorable |
+| **AAP** | **Resolución** | **3 meses** | **Desestimatorio** |
+| **AAC** | Condicionado otras AAPP (régimen general) | 30 días | Conformidad |
+| **AAC** | Condicionado otras AAPP (solo AAC, sin DUP) | 15 días | Conformidad |
+| **AAC** | Traslado condicionado al peticionario | 15 días | — |
+| **AAC** | Réplica AAPP a reparos del peticionario | 15 días | Conformidad |
+| **AAC** | **Resolución** | **3 meses** | **Desestimatorio** |
+| **AE** (transporte/distribución) | **Resolución** | **1 mes** | Desestimatorio (DA 3ª LSE) |
+| **AE provisional pruebas** (generación) | **Resolución** | **1 mes** | Desestimatorio (DA 3ª LSE) |
+| **AE definitiva** (generación) | **Resolución** | **1 mes** | Desestimatorio (DA 3ª LSE) |
+| **Transmisión** | **Resolución** | **3 meses** | **Desestimatorio** |
+| **Transmisión** | Plazo para formalizar tras autorización | 6 meses | Caducidad |
+| **Cierre** | Informe REE | 3 meses | Continúa sin informe |
+| **Cierre** | **Resolución** | **3 meses** | **Desestimatorio** |
+| **Transporte CCAA** | Informe DGPEM (art. 114) | 2 meses | Continúa sin informe |
