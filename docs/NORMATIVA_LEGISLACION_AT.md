@@ -122,12 +122,19 @@ Generación renovable, instalaciones < 30 kV.
 
 ## 6. Fuentes normativas por ámbito — Junta de Andalucía
 
-Páginas de referencia de la Consejería de Industria, Energía y Minas:
+Páginas de referencia de la Consejería de Industria, Energía y Minas (Junta de Andalucía):
 
 | Ámbito |
 |---|
 | [Energía eléctrica (distribución y transporte)](https://www.juntadeandalucia.es/organismos/industriaenergiayminas/areas/energia/electricidad.html) |
 | [Energías renovables](https://www.juntadeandalucia.es/organismos/industriaenergiayminas/areas/energia/renovables.html) |
+| [Autoconsumo](https://www.juntadeandalucia.es/organismos/industriaenergiayminas/areas/energia/autoconsumo.html) |
+
+Página de referencia del Ministerio para la Transición Ecológica y el Reto Demográfico (MITECO — Estado):
+
+| Ámbito |
+|---|
+| [Energía — MITECO](https://www.miteco.gob.es/es/energia.html) *(pendiente de explorar)* |
 
 > **Aviso de obsolescencia:** Las páginas de la Consejería y las fichas de procedimiento se actualizan con retraso o de forma incompleta. Para detectar cambios normativos conviene combinar estas fuentes con:
 > - **BOE / BOJA consolidados** — [boe.es](https://www.boe.es) y [juntadeandalucia.es/eboja](https://www.juntadeandalucia.es/eboja/) como fuentes de verdad de texto legal vigente.
