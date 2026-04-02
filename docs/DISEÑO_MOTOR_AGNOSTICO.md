@@ -89,32 +89,26 @@ Con el rediseño agnóstico esto deja de ser problema: ContextAssembler los comp
 
 ---
 
-## Controlador de fechas — pieza no diseñada
+## Controlador de fechas — diseño cerrado
 
-**Estado:** No existe diseño, documento ni implementación.
+**Estado:** Diseño completado en `docs/DISEÑO_FECHAS_PLAZOS.md` (sesión 2026-04-01/02).
+`docs/NORMATIVA_PLAZOS.md` es la fuente de verdad normativa (LPACAP + sectorial AT).
 
-**Qué bloquea:**
-- `PLAZO_DIAS`/`TIPO_DIAS` de ESPERAR_PLAZO vive en `tarea.notas` como texto libre
-  → inaccesible para el motor y para cualquier cálculo automatizado
-- Vista de seguimiento no puede mostrar expedientes vencidos o próximos a vencer
-- Motor no puede evaluar condiciones temporales (`plazo_vencido`, `dias_transcurridos`)
-- #279 (campos extra proyecto) puede incluir datos que afectan a plazos
-
-**Preguntas de diseño abiertas (responder antes de implementar cualquier issue de fechas):**
-1. ¿`PLAZO_DIAS` y `TIPO_DIAS` salen de `tarea.notas` y se convierten en campos reales de Tarea?
-2. ¿El motor necesita evaluar "plazo vencido" como condición de BLOQUEAR, o solo es informativo?
-3. ¿Fecha de vencimiento se calcula al vuelo o se persiste?
-4. ¿El controlador de fechas es parte del ContextAssembler o una capa separada?
+**Decisiones adoptadas:**
+1. `PLAZO_DIAS`/`TIPO_DIAS` de ESPERAR_PLAZO → catálogo de plazos en tabla propia (`§3.2`)
+2. Motor evalúa `plazo_vencido` como condición informativa; el bloqueo formal queda pendiente de §4
+3. Fecha de vencimiento se persiste en `fecha_limite` con semántica cerrada (`§3.5`)
+4. `plazos.py` es capa separada — no parte del ContextAssembler (`§4`)
 
 ---
 
 ## Issues M2 afectados
 
 ### #290 — INCORPORAR multi-doc (tabla documentos_tarea)
-**Estado: en standby** hasta resolver diseño del controlador de fechas.
+**Estado: desbloqueado** — diseño del controlador de fechas completado (`docs/DISEÑO_FECHAS_PLAZOS.md`).
 La validación de FINALIZAR para INCORPORAR migrará del motor actual
 (`doc_producido_id IS NULL → BLOQUEAR`) al ContextAssembler (`tiene_docs_incorporar`).
-Implementar ahora requeriría cambiar esa lógica dos veces.
+Pendiente de implementar junto con el rediseño del motor agnóstico.
 
 ### #279 — Campos extra en Proyecto (tecnología, kV, kVA, tipo suelo...)
 **Estado: requiere diseño previo.** Preguntas abiertas:
@@ -135,10 +129,10 @@ extra de proyecto que aún no existen.
 ## Orden de trabajo recomendado
 
 1. Diseño motor agnóstico + API del motor
-2. Diseño controlador de fechas (desbloquea #290 y #279)
+2. ~~Diseño controlador de fechas (desbloquea #290 y #279)~~ — **completado** (`docs/DISEÑO_FECHAS_PLAZOS.md`)
 3. Diseño ContextAssembler (qué variables, cómo se declaran, qué configura el Supervisor)
 4. #279 — después de los diseños anteriores
-5. #290 — después del controlador de fechas
+5. #290 — desbloqueado; implementar tras refactor motor agnóstico
 6. #289 — después de #279 y con datos reales
 
 ---
