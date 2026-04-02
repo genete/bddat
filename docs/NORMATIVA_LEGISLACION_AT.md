@@ -96,22 +96,19 @@ Para cada regla identificada, documentar:
 
 ## 5. Resultados por iteración
 
-*(Se completarán en sesiones de trabajo dedicadas — ver issue #250 para planificación)*
+Los resultados se distribuyen en documentos propios, siguiendo el patrón de `NORMATIVA_PLAZOS.md`:
 
-### Iteración 1 — Mapa de alto nivel
-Para cada tipo de solicitud estándar (AAP, AAC, APO, DUP):
-qué fases son obligatorias según RD 1955/2000 y cuáles son los plazos.
+| Iteración | Documento | Estado |
+|---|---|---|
+| **1** — Mapa procedimental | `docs/NORMATIVA_MAPA_PROCEDIMENTAL.md` | En curso |
+| **2+4** — Excepciones, regímenes especiales y casos límite | `docs/NORMATIVA_EXCEPCIONES_AT.md` | En curso |
+| **3** — Plazos y silencio administrativo | `docs/NORMATIVA_PLAZOS.md §2` | En curso |
 
-### Iteración 2 — Excepciones y regímenes especiales
-Generación renovable, instalaciones < 30 kV.
-
-### Iteración 3 — Plazos y silencio administrativo
-→ En curso. Ver `docs/NORMATIVA_PLAZOS.md` para extracción detallada por norma.
-- §1 LPACAP 39/2015 — completo (sesión 2026-04-01)
-- §2.1 LSE 24/2013 — completo (sesión 2026-04-02)
-- §2.2 RD 1955/2000 — completo (sesión 2026-04-02)
-
-### Iteración 4 — Casos límite y casuística especial
+### Iteración 3 — Plazos (ver NORMATIVA_PLAZOS.md)
+- §1 LPACAP 39/2015 — ✅ completo (sesión 2026-04-01)
+- §2.1 LSE 24/2013 — ✅ completo (sesión 2026-04-02)
+- §2.2 RD 1955/2000 — ✅ completo (sesión 2026-04-02)
+- §2.3+ Resto de normas sectoriales — pendiente
 
 ---
 
