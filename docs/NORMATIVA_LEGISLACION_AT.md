@@ -39,7 +39,7 @@ EXPEDIENTE (proyecto de instalación eléctrica)
 - **Ley 39/2015**, de 1 de octubre — Procedimiento Administrativo Común. Plazos,
   notificaciones, silencio administrativo. → Ver `docs/NORMATIVA_PLAZOS.md` para detalle de arts. 21-25, 29-32 y 112-126.
 - **Ley 40/2015** — Régimen Jurídico del Sector Público (procedimiento interadministrativo).
-- **RD 842/2002** — Reglamento Electrotécnico de Baja Tensión (referencia técnica complementaria).
+- **RD 842/2002** — Reglamento Electrotécnico de Baja Tensión. Aplica a instalaciones BT incluidas en expedientes de renovables (certificado de instalador).
 - **Ley 21/2013** — Evaluación de Impacto Ambiental (EIA). Afecta a fases de consultas y
   pronunciamiento ambiental.
 
@@ -125,62 +125,50 @@ Generación renovable, instalaciones < 30 kV.
 
 Páginas de referencia de la Consejería de Industria, Energía y Minas:
 
-| Ámbito | URL |
-|---|---|
-| Energía eléctrica (distribución y transporte) | https://www.juntadeandalucia.es/organismos/industriaenergiayminas/areas/energia/electricidad.html |
-| Energías renovables | https://www.juntadeandalucia.es/organismos/industriaenergiayminas/areas/energia/renovables.html |
+| Ámbito |
+|---|
+| [Energía eléctrica (distribución y transporte)](https://www.juntadeandalucia.es/organismos/industriaenergiayminas/areas/energia/electricidad.html) |
+| [Energías renovables](https://www.juntadeandalucia.es/organismos/industriaenergiayminas/areas/energia/renovables.html) |
 
 ---
 
 ### 6.1 Energía eléctrica — distribución y transporte
 
-#### Normativa directa (introducción apartado 1)
+Normas no recogidas en §2, identificadas en la página de la Consejería y en las fichas de procedimiento:
 
-Normas que la Consejería lista explícitamente como marco de las autorizaciones:
+> **Glosario:** AAP = Autorización Administrativa Previa · AAC = Autorización Administrativa de Construcción · AE = Autorización de Explotación · Trans. = Transmisión de titularidad · Cierre = Autorización de cierre · BT = instalaciones de baja tensión (en renovables) · General = todos los procedimientos / marco competencial
 
-| Norma | URL | Observaciones |
+| Norma | Afecta a | Observaciones |
 |---|---|---|
-| Ley 24/2013, de 26 de diciembre (LSE) | https://www.boe.es/eli/es/l/2013/12/26/24/con | → Ver NORMATIVA_PLAZOS §2.1 |
-| RD 1955/2000, de 1 de diciembre | https://www.boe.es/eli/es/rd/2000/12/01/1955/con | → Ver NORMATIVA_PLAZOS §2.2 |
-| RD 337/2014, de 9 de mayo (RAT) | https://www.boe.es/eli/es/rd/2014/05/09/337/con | Reglamento sobre condiciones técnicas y garantías de seguridad en instalaciones eléctricas de alta tensión. Referencia técnica; puede incidir en documentación de solicitudes. |
-| RD 223/2008, de 15 de febrero | https://www.boe.es/eli/es/rd/2008/02/15/223/con | Reglamento sobre condiciones técnicas y garantías de seguridad en líneas eléctricas de alta tensión. |
-| Instrucción 1/2023, de 11 de julio — SGE AT (pdf) | https://www.juntadeandalucia.es/sites/default/files/2023-10/7_20230711_INSTRUCCI%C3%93N%201-2023%20de%20SGE%20AT(F).pdf | Instrucción interna de la Secretaría General de Energía sobre tramitación AT. Pendiente de revisar. |
-| Instrucción Conjunta 1/2022 — SGE + DGSAyCC (pdf) | https://www.juntadeandalucia.es/sites/default/files/inline-files/2022/10/INSTRUCCION_CONJUNTA_1_2022_SGE_DGSAyCC_F_F.pdf | Conjunta con la Dirección General de Sostenibilidad Ambiental y Cambio Climático. Relevante para trámites EIA. Pendiente de revisar. |
-| Resolución de 13 de octubre de 2023 (BOJA 2023/206/75) | https://www.juntadeandalucia.es/boja/2023/206/75.html | Pendiente de identificar objeto. |
+| [RD 337/2014, de 9 de mayo (RAT)](https://www.boe.es/eli/es/rd/2014/05/09/337/con) | AAP, AAC, AE, Trans., Cierre | Reglamento de condiciones técnicas y garantías en instalaciones AT e ITCs RAT 01-23. Incide en documentación técnica de solicitudes. |
+| [RD 223/2008, de 15 de febrero](https://www.boe.es/eli/es/rd/2008/02/15/223/con) | AAP, AAC, AE, Trans., Cierre | Reglamento de condiciones técnicas y garantías en líneas eléctricas AT e ITCs LAT 01-09. |
+| [Decreto 356/2010, de 3 de agosto — AAU](http://www.juntadeandalucia.es/boja/2010/157/d2.pdf) | AAP, Cierre | Autorización ambiental unificada autonómica; aplica cuando la instalación está sometida a prevención ambiental de la Junta. |
+| [Decreto-ley 2/2018, de 26 de junio — Simplificación energía y renovables](https://www.juntadeandalucia.es/eboja/2018/127/BOJA18-127-00006-11489-01_00138802.pdf) | AAP, AAC, Trans., Cierre | Puede modificar trámites o umbrales del procedimiento estándar. Pendiente de revisar. |
+| [RD 413/2014, de 6 de junio](https://www.boe.es/diario_boe/txt.php?id=BOE-A-2014-6123) | AAC, AE, Trans., Cierre | Regula la actividad de producción de energía eléctrica a partir de fuentes renovables, cogeneración y residuos. |
+| [Resolución de 9 de marzo de 2016 — Delegación de competencias a las DTs](http://juntadeandalucia.es/boja/2016/51/23) | General | **Clave para BDDAT:** título habilitante por el que las Delegaciones Territoriales tramitan y resuelven los expedientes. |
+| [Instrucción 1/2023, de 11 de julio — SGE AT (pdf)](https://www.juntadeandalucia.es/sites/default/files/2023-10/7_20230711_INSTRUCCI%C3%93N%201-2023%20de%20SGE%20AT(F).pdf) | General | Instrucción interna de la Secretaría General de Energía sobre tramitación AT. Pendiente de revisar. |
+| [Instrucción Conjunta 1/2022 — SGE + DGSAyCC (pdf)](https://www.juntadeandalucia.es/sites/default/files/inline-files/2022/10/INSTRUCCION_CONJUNTA_1_2022_SGE_DGSAyCC_F_F.pdf) | AAP | Conjunta con la Dirección General de Sostenibilidad Ambiental y Cambio Climático. Relevante para trámites EIA. Pendiente de revisar. |
+| [Resolución de 13 de octubre de 2023 — Formulario de solicitud](https://www.juntadeandalucia.es/eboja/2023/206/BOJA23-206-00006-16391-01_00291369.pdf) | General | Aprueba el formulario oficial de solicitud de autorizaciones eléctricas de Andalucía. |
+| [Corrección de errores — Resolución 13 octubre 2023](https://www.juntadeandalucia.es/eboja/2023/233/BOJA23-233-00005-18542-01_00293610.pdf) | General | — |
+| [Decreto-ley 3/2024, de 6 de febrero — Simplificación administrativa](https://www.juntadeandalucia.es/eboja/2024/34/index.html) | General | Medidas de simplificación y racionalización; puede afectar trámites. Pendiente de revisar. |
+| [Decreto-ley 4/2024, de 27 de febrero — Modifica DL 3/2024](https://www.boe.es/ccaa/boja/2024/044/b00001-00005.pdf) | General | — |
+| [Decreto 59/2005 (BOJA 2005/118)](https://www.juntadeandalucia.es/boja/2005/118/3) | AE · BT | Certificados de instalaciones de BT en el ámbito de renovables. |
+| [Orden de 5 de marzo de 2013 (BOJA 2013/48)](https://www.juntadeandalucia.es/boja/2013/48/1) | AE · BT | — |
+| [Orden de 24 de octubre de 2005 (BOJA 2005/217)](https://www.juntadeandalucia.es/boja/2005/217/4) | AE · BT | — |
+| [Resolución de 9 de mayo de 2024 (BOJA 2024/95/52)](https://www.juntadeandalucia.es/boja/2024/95/52) | AE · BT | — |
+| [Modelo certificado instalación BT (pdf rellenable)](https://www.juntadeandalucia.es/sites/default/files/inline-files/2023/02/140223_Certificado_BT_rellenable_mod.pdf) | AE · BT | Modelo oficial de certificado de instalador para BT. |
 
-#### Procedimientos del catálogo
+#### Clasificación de procedimientos — catálogo Junta de Andalucía
 
-Los procedimientos oficiales del catálogo de la Consejería — cada ficha contiene normativa aplicable, plazo de resolución, documentación y efectos del silencio:
+> La Consejería divide las autorizaciones en fichas de procedimiento que no siempre se corresponden con la estructura real de los expedientes en BDDAT. Se recogen aquí como referencia para navegación y extracción de datos de las fichas (normativa, plazos, documentación), no como modelo de clasificación.
 
-| Tipo | URL catálogo |
+| Tipo (denominación Junta) | Ficha |
 |---|---|
-| Autorización administrativa previa (AAP) — producción, distribución, transporte y líneas directas | https://www.juntadeandalucia.es/organismos/industriaenergiayminas/servicios/procedimientos/detalle/9588.html |
-| Autorización administrativa de construcción (AAC) — producción, distribución, transporte y líneas directas | https://www.juntadeandalucia.es/organismos/industriaenergiayminas/servicios/procedimientos/detalle/11944.html |
-| Autorización de explotación — instalaciones de producción (excl. líneas de evacuación) | https://www.juntadeandalucia.es/organismos/industriaenergiayminas/servicios/procedimientos/detalle/11954.html |
-| Autorización de explotación — distribución, transporte secundario, acometidas (<380 kV), líneas directas e infraestructuras de evacuación | https://www.juntadeandalucia.es/organismos/industriaenergiayminas/servicios/procedimientos/detalle/11996.html |
-| Autorización de transmisión — producción, distribución, transporte, líneas directas y líneas a ceder a transportista/distribuidora | https://www.juntadeandalucia.es/organismos/industriaenergiayminas/servicios/procedimientos/detalle/11955.html |
-| Autorización de cierre — producción, distribución, transporte y líneas directas | https://www.juntadeandalucia.es/organismos/industriaenergiayminas/servicios/procedimientos/detalle/11963.html |
+| AAP — producción, distribución, transporte y líneas directas | [9588](https://www.juntadeandalucia.es/organismos/industriaenergiayminas/servicios/procedimientos/detalle/9588.html) |
+| AAC — producción, distribución, transporte y líneas directas | [11944](https://www.juntadeandalucia.es/organismos/industriaenergiayminas/servicios/procedimientos/detalle/11944.html) |
+| AE — instalaciones de producción (excl. líneas de evacuación) | [11954](https://www.juntadeandalucia.es/organismos/industriaenergiayminas/servicios/procedimientos/detalle/11954.html) |
+| AE — distribución, transporte secundario, acometidas (<380 kV), líneas directas e infraestructuras de evacuación | [11996](https://www.juntadeandalucia.es/organismos/industriaenergiayminas/servicios/procedimientos/detalle/11996.html) |
+| Transmisión — producción, distribución, transporte, líneas directas y líneas a ceder | [11955](https://www.juntadeandalucia.es/organismos/industriaenergiayminas/servicios/procedimientos/detalle/11955.html) |
+| Cierre — producción, distribución, transporte y líneas directas | [11963](https://www.juntadeandalucia.es/organismos/industriaenergiayminas/servicios/procedimientos/detalle/11963.html) |
 
-> Formulario electrónico de solicitud (VEA): https://ws050.juntadeandalucia.es/vea/accesoDirecto?codProcedimiento=CHFE_DGE_9588
-
-#### Certificados eléctricos de alta tensión
-
-Normativa de referencia para los certificados que acompañan la solicitud de AE:
-
-| Norma | URL |
-|---|---|
-| RD 337/2014, de 9 de mayo (RAT) | https://www.boe.es/eli/es/rd/2014/05/09/337/con |
-| RD 223/2008, de 15 de febrero | https://www.boe.es/eli/es/rd/2008/02/15/223/con |
-
-#### Certificados eléctricos de baja tensión
-
-*(Fuera del ámbito principal de BDDAT — anotado como referencia)*
-
-| Norma / Recurso | URL |
-|---|---|
-| RD 842/2002, de 2 de agosto (REBT) | https://www.boe.es/buscar/act.php?id=BOE-A-2002-18099 |
-| Decreto 59/2005 (BOJA 2005/118) | https://www.juntadeandalucia.es/boja/2005/118/3 |
-| Orden de 5 de marzo de 2013 (BOJA 2013/48) | https://www.juntadeandalucia.es/boja/2013/48/1 |
-| Orden de 24 de octubre de 2005 (BOJA 2005/217) | https://www.juntadeandalucia.es/boja/2005/217/4 |
-| Resolución de 9 de mayo de 2024 (BOJA 2024/95/52) | https://www.juntadeandalucia.es/boja/2024/95/52 |
-| Modelo certificado instalación BT (pdf rellenable) | https://www.juntadeandalucia.es/sites/default/files/inline-files/2023/02/140223_Certificado_BT_rellenable_mod.pdf |
+> [Formulario electrónico de solicitud (VEA)](https://ws050.juntadeandalucia.es/vea/accesoDirecto?codProcedimiento=CHFE_DGE_9588)
