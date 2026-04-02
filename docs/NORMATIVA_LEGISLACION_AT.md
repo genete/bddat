@@ -195,4 +195,27 @@ Normas no recogidas en §2 ni en §6.1, identificadas en la [página de renovabl
 | [RD 1699/2011, de 18 de noviembre](https://www.boe.es/buscar/doc.php?id=BOE-A-2011-19242) | AE | Regula la conexión a red de instalaciones de producción de pequeña potencia (autoconsumo y mini-generación). |
 | [RD 2019/1997, de 26 de diciembre](https://www.boe.es/buscar/act.php?id=BOE-A-1997-27817) | AE | Organiza y regula el mercado de producción de energía eléctrica. Norma de 1997; en vigor con modificaciones. Pendiente de revisar vigencia real en el contexto actual. |
 | [Resolución de 30 de abril de 2018 (BOJA 2018/88)](https://www.juntadeandalucia.es/boja/2018/88/BOJA18-088-00015-7901-01_00135302.pdf) | General | Pendiente de identificar objeto. |
-| [Resolución de 28 de septiembre de 2023 (pdf)](https://www.juntadeandalucia.es/sites/default/files/inline-files/2023/10/Resolucion_de_28_de_septiembre_de_2023.pdf) | General | Pendiente de identificar objeto. |
+| [Resolución de 28 de septiembre de 2023 (pdf)](https://www.juntadeandalucia.es/sites/default/files/inline-files/2023/10/Resolucion_de_28_de_septiembre_de_2023.pdf) | General | Aparece también en la página de autoconsumo (§6.3). Pendiente de identificar objeto. |
+
+---
+
+### 6.3 Autoconsumo
+
+Normas no recogidas en §2, §6.1 ni §6.2, identificadas en la [página de autoconsumo](https://www.juntadeandalucia.es/organismos/industriaenergiayminas/areas/energia/autoconsumo.html) y en la ficha de procedimiento [18494](https://www.juntadeandalucia.es/organismos/industriaenergiayminas/servicios/procedimientos/detalle/18494.html) (Registro de autoconsumo):
+
+> El autoconsumo tiene un régimen propio de legalización que **no pasa por AAP/AAC** — se tramita directamente con la AE y la inscripción en el Registro de Autoconsumo. Para instalaciones de autoconsumo con excedentes que superen umbrales de potencia sí puede ser exigible la autorización ordinaria vía fichas del catálogo general (§6.1).
+
+| Norma | Afecta a | Observaciones |
+|---|---|---|
+| [RD 244/2019, de 5 de abril](https://www.boe.es/buscar/act.php?id=BOE-A-2019-5089) | AE | **Norma central del autoconsumo.** Regula las condiciones administrativas, técnicas y económicas del autoconsumo de energía eléctrica. Establece el Registro de Autoconsumo. |
+| [RD-ley 29/2021, de 21 de diciembre](https://www.boe.es/eli/es/rdl/2021/12/21/29/con) | AE | Modifica el régimen de autoconsumo; amplía supuestos y simplifica trámites. Pendiente de revisar alcance concreto. |
+| [Resolución de 21 de julio de 2022](https://www.boe.es/diario_boe/txt.php?id=BOE-B-2022-23914) | AE | Pendiente de identificar objeto. |
+| [Resolución de 28 de septiembre de 2023 (pdf)](https://www.juntadeandalucia.es/sites/default/files/inline-files/2023/10/Resolucion_de_28_de_septiembre_de_2023.pdf) | AE | → Ver §6.2. Aparece en ambas páginas (renovables y autoconsumo). Pendiente de identificar objeto. |
+
+#### Documentos de apoyo (no normativa)
+
+| Documento | Observaciones |
+|---|---|
+| [Manual SGE tramitación autoconsumo (noviembre 2025, pdf)](https://www.juntadeandalucia.es/sites/default/files/inline-files/2025/11/MANUAL_tramitacion_autoconsumo_noviembre_2025.pdf) | Guía completa de la Secretaría General de Energía para tramitar autorizaciones de autoconsumo en Andalucía. Referencia práctica de primer orden. |
+| [Configuraciones de instalaciones de autoconsumo (pdf)](https://www.juntadeandalucia.es/sites/default/files/inline-files/2023/12/Configuraciones_instalaciones_autoconsumo_V2.pdf) | Esquemas de las configuraciones posibles (con/sin excedentes, colectivo, etc.). |
+| [Configuraciones de conexión planta–consumo no colindantes (marzo 2025, pdf)](https://www.juntadeandalucia.es/sites/default/files/2025-03/Configuraciones_conexion.pdf) | Para instalaciones en las que la planta de generación y el punto de consumo no están en el mismo emplazamiento. |
