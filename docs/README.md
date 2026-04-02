@@ -27,13 +27,21 @@ Todos los documentos viven en `docs/` raíz. Subdirectorios solo para no-MDs.
 - [REGLAS_ARQUITECTURA.md](REGLAS_ARQUITECTURA.md) — flujo de decisiones arquitectónicas, sincronización documental
 - [REGLAS_BASH.md](REGLAS_BASH.md) — patrones prohibidos en Bash y workarounds
 
+### Normativa
+- [NORMATIVA_PLAZOS.md](NORMATIVA_PLAZOS.md) — plazos administrativos aplicables: LPACAP artículo a artículo + leyes sectoriales AT
+- [NORMATIVA_LEGISLACION_AT.md](NORMATIVA_LEGISLACION_AT.md) — legislación aplicable al motor de reglas ESFTT (electricidad, renovables, autoconsumo)
+- [NORMATIVA_SOLICITUDES.md](NORMATIVA_SOLICITUDES.md) — tipos de solicitud y su base normativa
+
 ### Arquitectura y diseño
 - [GUIA_GENERAL.md](GUIA_GENERAL.md) — arquitectura general y lógica de negocio
 - [DISEÑO_MOTOR_REGLAS.md](DISEÑO_MOTOR_REGLAS.md) — diseño del motor de reglas ESFTT
+- [DISEÑO_MOTOR_AGNOSTICO.md](DISEÑO_MOTOR_AGNOSTICO.md) — decisiones de rediseño hacia motor agnóstico de dominio
+- [DISEÑO_FECHAS_PLAZOS.md](DISEÑO_FECHAS_PLAZOS.md) — subsistema de fechas y plazos: modelo de datos, vocabulario, `plazos.py`
 - [DISEÑO_SUBSISTEMA_DOCUMENTAL.md](DISEÑO_SUBSISTEMA_DOCUMENTAL.md) — pool documental: tipos, vías de entrada, decisiones
 - [DISEÑO_ANALISIS_SOLICITUD.md](DISEÑO_ANALISIS_SOLICITUD.md) — fase ANÁLISIS_SOLICITUD, checklist documental (#248)
 - [DISEÑO_CONSULTAS_ORGANISMOS.md](DISEÑO_CONSULTAS_ORGANISMOS.md) — fase consultas a organismos (#247)
 - [GUIA_DIAGRAMAS_ESFTT.md](GUIA_DIAGRAMAS_ESFTT.md) — diagramas de flujo ESFTT: decisiones, capas y convenciones (#249)
+- [ESTRUCTURA_FTT.md](ESTRUCTURA_FTT.md) — catálogo de fases, trámites y tareas por tipo de solicitud
 
 ### Planificación
 - [PLAN_ROADMAP.md](PLAN_ROADMAP.md) — estado actual de implementación por milestones
