@@ -278,6 +278,9 @@ Los campos `FECHA`, `FECHA_INICIO` y `FECHA_FIN` permiten valores nulos (`NULL`)
 
 Las fechas representan **fechas administrativas oficiales** que se introducen manualmente o mediante macros. Las reglas determinarán cuándo es obligatorio que tengan valor mediante validaciones no intrusivas.
 
+> El diseño completo del subsistema de fechas y plazos (vocabulario, modelo de datos, cálculo de `fecha_limite`, calendario de inhábiles, suspensiones) está en `docs/DISEÑO_FECHAS_PLAZOS.md`.
+> La normativa legal de referencia (LPACAP + leyes sectoriales AT) está en `docs/NORMATIVA_PLAZOS.md`.
+
 ---
 
 ## Estructura de Tablas y Tipos
