@@ -214,8 +214,8 @@ El efecto `PRESCRIPCION_CONDICIONADO` del catálogo §2.4 corresponde a este tip
 
 ## 3. Modelo de datos
 
-> **Estado:** En diseño — sesión 2026-04-01.
-> Decisiones 3.3 y 3.6 cerradas. Decisiones 3.1, 3.2, 3.4, 3.5, 3.7 y 3.8 pendientes de sesión específica.
+> **Estado:** En diseño — sesión 2026-04-01 / rev. 2026-04-02.
+> Decisiones 3.3, 3.5 y 3.6 cerradas. Decisiones 3.1, 3.2, 3.4, 3.7 y 3.8 pendientes de sesión específica.
 
 ---
 
@@ -378,26 +378,51 @@ Puntos abiertos:
 
 ### 3.5 Semántica de `fecha_limite` — CERRADO
 
-> **Decisión:** `fecha_limite` se **recalcula siempre**; nunca se almacena en BD.
+> **Estado:** Cerrado — 2026-04-02.
 
-Las suspensiones son dinámicas (se abren y cierran con el procedimiento en curso), por lo que una fecha límite cacheada quedaría desfasada inmediatamente. El coste de recálculo es bajo.
+**Decisiones acordadas:**
 
-Pendiente aún de cerrar: ¿es `fecha_limite` el **último día dentro de plazo** (inclusive, el tramitador puede actuar ese día) o el **primer día fuera de plazo** (límite+1)? Esta decisión afecta a las condiciones del estado `VENCIDO` de §2.4 y debe cerrarse antes de implementar `plazos.py`.
+1. **`fecha_limite` se recalcula siempre; nunca se almacena en BD.** Las suspensiones son dinámicas (se abren y cierran a lo largo del procedimiento), por lo que una fecha límite cacheada quedaría desfasada. El coste de recálculo es bajo.
+
+2. **`fecha_limite` = último día hábil dentro del plazo (inclusive).** El tramitador puede actuar ese día; al día siguiente el plazo está `VENCIDO`. Las condiciones de §2.4 quedan:
+   - `VENCIDO` → `hoy > fecha_limite`
+   - `PROXIMO_VENCER` → `dias_habiles(hoy, fecha_limite) ≤ umbral_alerta`
+   - `EN_PLAZO` → resto
+
+3. **El conteo empieza el día siguiente al acto** (art. 30.1 LPACAP). La función recibe `fecha_acto` y arranca desde `fecha_acto + 1 día`.
+
+4. **Días inhábiles y días en suspensión se tratan igual:** el reloj no avanza. Solo cuentan días que sean hábiles *y* estén fuera de cualquier período de suspensión activo.
+
+5. **Suspensiones definidas por `(fecha_inicio, fecha_fin)` en días naturales, ambos extremos inclusive.** El día de inicio no cuenta (el reloj ya está parado); el día de fin tampoco (art. 22.2 LPACAP: el cómputo se reanuda "desde el día siguiente"). La semántica de `fecha_inicio` (día de notificación, de envío de consulta, etc.) depende del tipo de causa y se decide en §3.3.
+
+El algoritmo de cálculo (`plazos.py`) se formaliza en §4.
 
 ---
 
-### 3.6 Nueva entidad: condicionado de resolución (pendiente)
+### 3.6 Condicionados de resolución — nueva fase dentro de la solicitud
 
-> **Estado:** Pendiente de diseño y nombre definitivo.
+> **Estado:** Decisión de arquitectura cerrada — 2026-04-02. Diseño detallado pendiente.
 
-Las resoluciones de AT imponen obligaciones al administrado con plazo propio (`PRESCRIPCION_CONDICIONADO`, §2.4). Estas obligaciones se escapan del árbol ESFTT actual: no las inicia el administrado (no son `Solicitud`), sino que las genera la Administración de oficio al dictar la resolución.
+Las resoluciones de AT pueden imponer obligaciones al administrado con plazo propio (`PRESCRIPCION_CONDICIONADO`, §2.4): presentar documentos, solicitudes concretas (p.ej. AAE), estudios, medidas correctoras, etc. El caso habitual en energía es puntual; en medio ambiente puede ser periódico (estudios de avifauna), aunque la vigilancia de esos plazos periódicos recae en medio ambiente, no en BDDAT.
 
-**Decisión de arquitectura acordada:** crear una nueva entidad al mismo nivel que `Solicitud` bajo `Expediente`, generada de oficio. Tendrá su propia jerarquía FTT (Fases, Trámites, Tareas). El motor, `ContextAssembler` y `plazos.py` la tratarán sin distinción respecto a las demás entidades ESFTT.
+**Alternativas estudiadas (2026-04-02):**
 
-Pendiente:
-- **Nombre de la entidad:** ¿`Condicionado`? ¿`Obligacion`? A decidir en próxima sesión.
-- **Modelo de datos** de la entidad y sus FTT asociados.
-- **Mecanismo de generación:** cómo BDDAT crea la instancia al redactar la resolución.
+Se evaluaron tres alternativas:
+
+1. **Nueva entidad bajo `Expediente`** al mismo nivel que `Solicitud` — descartada. Rompe el modelo ESFTT: introduce una entidad raíz que no es una solicitud, sin encaje conceptual en el vocabulario del sistema. El coste de refactorización y de explicar el modelo resultante no compensa.
+
+2. **Solicitud de oficio con fase previa artificial** — descartada. Una `Solicitud` implica que el interesado ha iniciado algo; aquí la genera la Administración. Colapsa para condicionados que no son "presentar una solicitud" (documentos, estudios, etc.).
+
+3. **Nueva fase dentro de la solicitud que contiene la resolución** — **elegida**. El cierre de la solicitud es manual y comprobatorio: mientras exista una fase sin cerrar, la solicitud no puede cerrarse. La fase de resolución se cierra normalmente; lo que permanece abierto es la solicitud como contenedor de la deuda. La deuda nace de la resolución, que vive dentro de la solicitud — la ubicación es semánticamente correcta.
+
+**Decisión de arquitectura acordada:** los condicionados de resolución se modelan como **un nuevo tipo de fase** dentro de la solicitud que contiene la resolución que los impone. Esa solicitud permanece abierta hasta que la fase de cumplimiento se cierre. No se introduce ninguna entidad raíz nueva; el árbol ESFTT no cambia estructuralmente.
+
+Pendiente de diseño:
+- **Nombre y tipos de fase:** cómo se denomina la fase de cumplimiento y sus posibles variantes (presentación de solicitud, entrega de documento, estudio, etc.).
+- **Plazos:** `plazos.py` debe distinguir que el sujeto del plazo es el administrado (no la Administración) — el tipo de fase determinará el régimen de cálculo.
+- **Mecanismo de generación:** cómo BDDAT crea la fase al redactar la resolución y qué datos toma de ella (plazo, descripción del condicionado).
+- **Reglas de colisión:** qué ocurre si se intenta abrir una nueva solicitud del mismo tipo mientras la solicitud con el condicionado pendiente sigue abierta.
+- **UI:** distinción visual entre solicitud "en tramitación" y solicitud "resuelta con condicionado pendiente" para evitar confusión al tramitador.
 - **Alertas:** cuándo y cómo el sistema avisa del vencimiento y asiste en la declaración de prescripción.
 
 ---
@@ -509,8 +534,8 @@ Issues preexistentes relacionados (pendientes de revisar contra este diseño):
 - [ ] **§3.1 Mapa semántico** — estructura cerrada; pendiente de: (1) completar `NORMATIVA_PLAZOS.md` con revisión LPACAP del §5, y (2) revisión tipo a tipo con legislación en mano y cruce con §5
 - [ ] **§3.3 Suspensiones** — estudiar qué eventos de BDDAT desencadenan cada causa del art. 22 LPACAP antes de diseñar la tabla
 - [ ] **§3.4 Calendario inhábiles** — verificar disponibilidad de datos por provincia en la Junta; diseñar mecanismo de alerta de año N+1 sin cargar
-- [ ] **§3.5 Semántica exacta de `fecha_limite`** — ¿último día válido (inclusive) o primer día fuera de plazo?; bloqueante para implementar `plazos.py`
-- [ ] **§3.6 Nombre y modelo del condicionado de resolución** — decidir nombre (`Condicionado`/`Obligacion`/otro) y diseñar la entidad y su jerarquía FTT
+- [x] **§3.5 Semántica de `fecha_limite`** — cerrado 2026-04-02
+- [ ] **§3.6 Condicionados de resolución** — diseñar nombre y tipos de fase, régimen de plazos (sujeto = administrado), mecanismo de generación desde la resolución, reglas de colisión y distinción visual en UI
 - [ ] **§4 Cadena de evaluación** — formalizar contrato de interfaz `plazos.py`
 - [ ] **Leyes sectoriales** — extraer plazos de RD 1955/2000, Decreto 9/2011, Ley 21/2013, Decreto-ley 26/2021 (ver `NORMATIVA_PLAZOS.md §2`)
 - [ ] **Revisar #190** — determinar si el criterio `PLAZO_ESTADO` queda obsoleto o se reorienta
