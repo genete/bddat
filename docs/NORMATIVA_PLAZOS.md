@@ -17,6 +17,7 @@
    - [1.6 Cómputo de plazos (arts. 29-32)](#16-cómputo-de-plazos-arts-29-32)
    - [1.7 Recursos y sus plazos (arts. 112-126)](#17-recursos-y-sus-plazos-arts-112-126)
 2. [Particularizaciones sectoriales](#2-particularizaciones-sectoriales)
+   - [2.1 Ley 24/2013 del Sector Eléctrico (LSE)](#21-ley-242013-de-26-de-diciembre-del-sector-eléctrico-lse)
 
 ---
 
@@ -209,11 +210,49 @@ Tanto a la Administración como a los interesados.
 
 ## 2. Particularizaciones sectoriales
 
-> **Estado:** Pendiente. Diferido hasta tener modelo de datos de plazos definido.
-> Ver `DISEÑO_FECHAS_PLAZOS.md §7` para el plan de trabajo.
+> **Estado:** En desarrollo — sesión 2026-04-02.
 
-Normas a analizar:
+Normas pendientes de extracción:
 - **RD 1955/2000** — Plazos del procedimiento de autorización de instalaciones eléctricas.
 - **Decreto 9/2011** (Junta de Andalucía) — Agilización; posibles modificaciones de plazos estándar.
 - **Ley 21/2013** — Plazos del procedimiento de EIA (consultas, información pública, pronunciamiento ambiental).
 - **Decreto-ley 26/2021** — Simplificación; excepciones procedimentales.
+
+---
+
+### 2.1 Ley 24/2013, de 26 de diciembre, del Sector Eléctrico (LSE)
+
+> **BOE-A-2013-13645** — texto consolidado. Sesión 2026-04-02.
+
+La LSE establece el **marco** del régimen de autorizaciones pero **no fija plazos concretos de resolución** para las autorizaciones ordinarias de instalaciones — los delega a sus disposiciones de desarrollo (principalmente RD 1955/2000 y, en Andalucía, Decreto 9/2011).
+
+#### Art. 53 — Autorización de instalaciones
+
+Define los tres tipos de autorización que estructuran el procedimiento en BDDAT:
+
+| Tipo | Sigla | Descripción |
+|---|---|---|
+| Autorización administrativa previa | AAP | Se tramita con el anteproyecto; en su caso, conjuntamente con la EIA (Ley 21/2013). Otorga el derecho a realizar la instalación en determinadas condiciones. |
+| Autorización administrativa de construcción | AAC | Permite ejecutar la obra. Requiere proyecto de ejecución y declaración responsable. Se analizan exclusivamente condicionados técnicos de otras Administraciones sobre bienes de su propiedad afectados. |
+| Autorización de explotación | AE | Permite poner en tensión y explotar la instalación una vez ejecutado el proyecto. |
+
+AAP y AAC pueden tramitarse de forma consecutiva, coetánea o conjunta (art. 53.1).
+
+**Plazos fijados en el propio art. 53:**
+
+| Supuesto | Plazo | Efecto del vencimiento |
+|---|---|---|
+| Resolución sobre solicitudes de **cierre definitivo** | 6 meses | Si vence y el operador del sistema lleva ≥ 3 meses con informe favorable → el titular puede cerrar sin resolución |
+| Autorizaciones competencia de la **AGE** (no BDDAT) | 1 año | Silencio desestimatorio (art. 53.8) |
+
+> Para instalaciones competencia de las **CCAA** (ámbito de BDDAT), el plazo concreto de resolución lo fija la norma autonómica de desarrollo. Ver §2.2 (RD 1955/2000) y §2.3 (Decreto 9/2011).
+
+#### DA 3ª — Silencio administrativo
+
+Regla general para todas las solicitudes amparadas en la LSE: **silencio desestimatorio**. El plazo a partir del cual opera lo establecen las disposiciones de desarrollo.
+
+> **Implicación en BDDAT:** confirma que el silencio en los procedimientos de autorización de AT es desestimatorio. El plazo concreto vendrá del RD 1955/2000 / Decreto 9/2011.
+
+#### Nomenclatura
+
+La LSE utiliza "**autorización de explotación**" (sin "administrativa") en todos los casos (art. 53.1.c y concordantes). Si el RD 1955/2000 o el Decreto 9/2011 utilizan "autorización administrativa de explotación", prevalecerá el término de la norma procedimental aplicable. Pendiente de verificar en §2.2.
