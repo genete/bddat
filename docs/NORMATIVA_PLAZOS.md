@@ -166,7 +166,7 @@ Tanto a la Administración como a los interesados.
 
 - El cómputo empieza el **día siguiente** a la notificación o publicación del acto.
 - Si el mes de vencimiento no tiene el día ordinal equivalente → último día del mes.
-- Cada Comunidad Autónoma publica su calendario de inhábiles antes del 1 de enero.
+- Cada Comunidad Autónoma publica su calendario de inhábiles antes del 1 de enero. → [Calendario de días inhábiles de la CA y Municipios de Andalucía](https://www.juntadeandalucia.es/servicios/tramites/conoce-mas-cts.html#toc-c-mo-calcular-los-plazos-de-un-tr-mite)
 
 #### Art. 31 — Registro electrónico
 - Presentación en día inhábil → se entiende presentada en la **primera hora del primer día hábil siguiente**.
