@@ -172,3 +172,22 @@ Normas no recogidas en §2, identificadas en la página de la Consejería y en l
 | Cierre — producción, distribución, transporte y líneas directas | [11963](https://www.juntadeandalucia.es/organismos/industriaenergiayminas/servicios/procedimientos/detalle/11963.html) |
 
 > [Formulario electrónico de solicitud (VEA)](https://ws050.juntadeandalucia.es/vea/accesoDirecto?codProcedimiento=CHFE_DGE_9588)
+
+---
+
+### 6.2 Energías renovables
+
+Normas no recogidas en §2 ni en §6.1, identificadas en la [página de renovables](https://www.juntadeandalucia.es/organismos/industriaenergiayminas/areas/energia/renovables.html) y en la ficha de procedimiento [12083](https://www.juntadeandalucia.es/organismos/industriaenergiayminas/servicios/procedimientos/detalle/12083.html) (Registro de instalaciones de producción):
+
+> La página de renovables no tiene fichas de procedimiento propias para AAP/AAC/AE — remite a las mismas fichas del catálogo general (§6.1). Lo específico de renovables es la normativa sectorial de producción y acceso a red.
+
+| Norma | Afecta a | Observaciones |
+|---|---|---|
+| [RD-ley 23/2020, de 23 de junio](https://www.boe.es/buscar/act.php?id=BOE-A-2020-6621) | AAP, AAC | Establece hitos administrativos para instalaciones de energías renovables; condiciona la admisión a trámite de solicitudes según disponibilidad de punto de acceso/conexión. |
+| [RD-ley 8/2023, de 27 de diciembre](https://www.boe.es/buscar/act.php?id=BOE-A-2023-26452) | AAP, AAC | Modifica el régimen de hitos administrativos del RD-ley 23/2020. Pendiente de revisar alcance concreto. |
+| [RD 1183/2020, de 29 de diciembre](https://www.boe.es/eli/es/rd/2020/12/29/1183/con) | AAP, AAC | Regula el acceso y la conexión a la red eléctrica de transporte y distribución. Determina si la instalación tiene punto de acceso/conexión concedido — requisito para admisión a trámite. |
+| [RD 413/2014, de 6 de junio](https://www.boe.es/diario_boe/txt.php?id=BOE-A-2014-6123) | AAC, AE | → Ver §6.1 |
+| [RD 1699/2011, de 18 de noviembre](https://www.boe.es/buscar/doc.php?id=BOE-A-2011-19242) | AE | Regula la conexión a red de instalaciones de producción de pequeña potencia (autoconsumo y mini-generación). |
+| [RD 2019/1997, de 26 de diciembre](https://www.boe.es/buscar/act.php?id=BOE-A-1997-27817) | AE | Organiza y regula el mercado de producción de energía eléctrica. Norma de 1997; en vigor con modificaciones. Pendiente de revisar vigencia real en el contexto actual. |
+| [Resolución de 30 de abril de 2018 (BOJA 2018/88)](https://www.juntadeandalucia.es/boja/2018/88/BOJA18-088-00015-7901-01_00135302.pdf) | General | Pendiente de identificar objeto. |
+| [Resolución de 28 de septiembre de 2023 (pdf)](https://www.juntadeandalucia.es/sites/default/files/inline-files/2023/10/Resolucion_de_28_de_septiembre_de_2023.pdf) | General | Pendiente de identificar objeto. |
