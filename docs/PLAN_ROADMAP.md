@@ -71,7 +71,8 @@ Issues activos: #74, #167, #168, #169, #181, #182, #189, #203, #204, #205, #206,
 **Descripción:** Motor de reglas completo (evaluador + configuración por Supervisor) + plazos legales con suspensión + permisos granulares.
 **Estado:** EN CURSO — evaluador implementado, pendiente UI de configuración y plazos
 
-Diseño: `docs/DISEÑO_MOTOR_REGLAS.md`
+Diseño motor: `docs/DISEÑO_MOTOR_REGLAS.md` — Diseño rediseño agnóstico: `docs/DISEÑO_MOTOR_AGNOSTICO.md`
+Diseño plazos: `docs/DISEÑO_FECHAS_PLAZOS.md` (normativa: `docs/NORMATIVA_PLAZOS.md`)
 
 **Pendiente:**
 - CRUD de reglas del motor — interfaz Supervisor (#170)
