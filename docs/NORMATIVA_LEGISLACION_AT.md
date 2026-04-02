@@ -130,6 +130,11 @@ Páginas de referencia de la Consejería de Industria, Energía y Minas:
 | [Energía eléctrica (distribución y transporte)](https://www.juntadeandalucia.es/organismos/industriaenergiayminas/areas/energia/electricidad.html) |
 | [Energías renovables](https://www.juntadeandalucia.es/organismos/industriaenergiayminas/areas/energia/renovables.html) |
 
+> **Aviso de obsolescencia:** Las páginas de la Consejería y las fichas de procedimiento se actualizan con retraso o de forma incompleta. Para detectar cambios normativos conviene combinar estas fuentes con:
+> - **BOE / BOJA consolidados** — [boe.es](https://www.boe.es) y [juntadeandalucia.es/eboja](https://www.juntadeandalucia.es/eboja/) como fuentes de verdad de texto legal vigente.
+> - **Alertas BOE** — el BOE ofrece servicio de alertas por materia o norma concreta.
+> - **Revisión periódica de estas dos páginas** — volver a ejecutar la extracción de normativa de los apartados §6.1 y §6.2 para detectar nuevas entradas o modificaciones.
+
 ---
 
 ### 6.1 Energía eléctrica — distribución y transporte
