@@ -6,6 +6,24 @@
 
 ---
 
+## Índice
+
+| § | Contenido | Naturaleza |
+|---|---|---|
+| [§1](#1-contexto-del-sistema-bddat) | Contexto del sistema BDDAT — jerarquía ESFTT y tipos de instalación | Referencia de dominio |
+| [§2](#2-legislación-base) | **Legislación base** — normas nacionales y autonómicas principales | **Fuente de verdad normativa** |
+| [§3](#3-qué-extraer-por-tipo-de-solicitud) | Qué extraer por tipo de solicitud — variables y excepciones | Guía de extracción (investigación) |
+| [§4](#4-formato-de-documentación-de-reglas) | Formato de documentación de reglas — plantilla | Guía de trabajo (investigación) |
+| [§5](#5-resultados-por-iteración) | Resultados por iteración — estado de avance | Log de progreso |
+| [§6](#6-fuentes-normativas-por-ámbito--junta-de-andalucía) | **Fuentes normativas por ámbito** — catálogo completo con links | **Fuente de verdad normativa** |
+| [§6.1](#61-energía-eléctrica--distribución-y-transporte) | Energía eléctrica — distribución y transporte (Junta + BOE) | Catálogo normativo |
+| [§6.2](#62-energías-renovables) | Energías renovables (Junta + BOE) | Catálogo normativo |
+| [§6.3](#63-autoconsumo) | Autoconsumo (Junta + BOE) | Catálogo normativo |
+
+> **Nota de uso:** Los documentos derivados (`NORMATIVA_PLAZOS.md`, `NORMATIVA_SOLICITUDES.md`, `DISEÑO_MOTOR_REGLAS.md`) deben referenciar §2 como punto de entrada a las normas principales y §6.x para normativa específica por ámbito. Las secciones §3–§5 son andamiaje del proceso de investigación, no fuente de verdad.
+
+---
+
 ## 1. Contexto del sistema BDDAT
 
 La tramitación de cada expediente sigue la jerarquía ESFTT:
@@ -134,7 +152,7 @@ Página de referencia del Ministerio para la Transición Ecológica y el Reto De
 
 | Ámbito |
 |---|
-| [Energía — MITECO](https://www.miteco.gob.es/es/energia.html) *(pendiente de explorar)* |
+| [Energía — MITECO](https://www.miteco.gob.es/es/energia.html) *(explorado 2026-04-02)* |
 
 > **Aviso de obsolescencia:** Las páginas de la Consejería y las fichas de procedimiento se actualizan con retraso o de forma incompleta. Para detectar cambios normativos conviene combinar estas fuentes con:
 > - **BOE / BOJA consolidados** — [boe.es](https://www.boe.es) y [juntadeandalucia.es/eboja](https://www.juntadeandalucia.es/eboja/) como fuentes de verdad de texto legal vigente.
@@ -156,6 +174,7 @@ Normas no recogidas en §2, identificadas en la página de la Consejería y en l
 | [Decreto 356/2010, de 3 de agosto — AAU](https://ws040.juntadeandalucia.es/sedeboja/web/textos-consolidados/resumen-ficha?p_p_id=resumenrecursolegal_WAR_sedebojatextoconsolidadoportlet&p_p_lifecycle=0&_resumenrecursolegal_WAR_sedebojatextoconsolidadoportlet_recursoLegalAbstractoId=21892) | AAP, Cierre | Autorización ambiental unificada autonómica; aplica cuando la instalación está sometida a prevención ambiental de la Junta. |
 | [Decreto-ley 2/2018, de 26 de junio — Simplificación energía y renovables](https://ws040.juntadeandalucia.es/sedeboja/web/textos-consolidados/resumen-ficha?p_p_id=resumenrecursolegal_WAR_sedebojatextoconsolidadoportlet&p_p_lifecycle=0&_resumenrecursolegal_WAR_sedebojatextoconsolidadoportlet_recursoLegalAbstractoId=26974) | AAP, AAC, Trans., Cierre | Puede modificar trámites o umbrales del procedimiento estándar. Pendiente de revisar. |
 | [RD 413/2014, de 6 de junio](https://www.boe.es/diario_boe/txt.php?id=BOE-A-2014-6123) | AAC, AE, Trans., Cierre | Regula la actividad de producción de energía eléctrica a partir de fuentes renovables, cogeneración y residuos. |
+| [RD 917/2025, de 15 de octubre](https://www.boe.es/diario_boe/txt.php?id=BOE-A-2025-20694) | AAC, AE | Modifica el RD 413/2014. Pendiente de revisar alcance concreto sobre requisitos de tramitación. |
 | [Resolución de 9 de marzo de 2016 — Delegación de competencias a las DTs](http://juntadeandalucia.es/boja/2016/51/23) | General | **Clave para BDDAT:** título habilitante por el que las Delegaciones Territoriales tramitan y resuelven los expedientes. |
 | [Instrucción 1/2023, de 11 de julio — SGE AT (pdf)](https://www.juntadeandalucia.es/sites/default/files/2023-10/7_20230711_INSTRUCCI%C3%93N%201-2023%20de%20SGE%20AT(F).pdf) | General | Instrucción interna de la Secretaría General de Energía sobre tramitación AT. Pendiente de revisar. |
 | [Instrucción Conjunta 1/2022 — SGE + DGSAyCC (pdf)](https://www.juntadeandalucia.es/sites/default/files/inline-files/2022/10/INSTRUCCION_CONJUNTA_1_2022_SGE_DGSAyCC_F_F.pdf) | AAP | Conjunta con la Dirección General de Sostenibilidad Ambiental y Cambio Climático. Relevante para trámites EIA. Pendiente de revisar. |
@@ -203,6 +222,15 @@ Normas no recogidas en §2 ni en §6.1, identificadas en la [página de renovabl
 | [RD 2019/1997, de 26 de diciembre](https://www.boe.es/buscar/act.php?id=BOE-A-1997-27817) | AE | Organiza y regula el mercado de producción de energía eléctrica. Norma de 1997; en vigor con modificaciones. Pendiente de revisar vigencia real en el contexto actual. |
 | [Resolución de 30 de abril de 2018 (BOJA 2018/88)](https://www.juntadeandalucia.es/boja/2018/88/BOJA18-088-00015-7901-01_00135302.pdf) | General | Pendiente de identificar objeto. |
 | [Resolución de 28 de septiembre de 2023 (pdf)](https://www.juntadeandalucia.es/sites/default/files/inline-files/2023/10/Resolucion_de_28_de_septiembre_de_2023.pdf) | AE | De la SGE. Aprueba la ficha técnica PUES para legalización de autoconsumo ≤ 500 kW. → Ver §6.3. |
+| [RD 960/2020, de 3 de noviembre](https://www.boe.es/buscar/doc.php?id=BOE-A-2020-13591) | AAP, AAC | Regula el régimen económico de energías renovables (REER). Marco económico de instalaciones renovables; puede condicionar admisión a trámite. Pendiente de revisar alcance concreto. |
+
+#### Recursos de referencia (MITECO)
+
+| Recurso | Observaciones |
+|---|---|
+| [Preguntas frecuentes sobre acceso y conexión (MITECO)](https://www.miteco.gob.es/es/energia/energia-electrica/electricidad/preguntas-frecuentes-acceso-conexion.html) | FAQ sobre RD 1183/2020. |
+| [Preguntas frecuentes sobre renovables (MITECO)](https://www.miteco.gob.es/es/energia/renovables/preguntas-frecuentes.html) | FAQ sobre RRE y REER. |
+| [Registros y aplicación ERIDE (MITECO)](https://www.miteco.gob.es/es/energia/renovables/registro.html) | Registro de régimen retributivo específico y registro electrónico REER. |
 
 ---
 
@@ -220,6 +248,7 @@ Normas no recogidas en §2, §6.1 ni §6.2, identificadas en la [página de auto
 | [RD-ley 29/2021, de 21 de diciembre](https://www.boe.es/eli/es/rdl/2021/12/21/29/con) | AE | Modifica el régimen de autoconsumo; amplía supuestos y simplifica trámites. Pendiente de revisar alcance concreto. |
 | [Resolución de 21 de julio de 2022 (CNMC)](https://www.boe.es/diario_boe/txt.php?id=BOE-B-2022-23914) | AE | De la Comisión Nacional de los Mercados y la Competencia. Establece la flexibilización del flujo de contratación para autoconsumo conectado en BT con generación < 100 kW (en vigor desde 30/01/2023). |
 | [Resolución de 28 de septiembre de 2023 (pdf)](https://www.juntadeandalucia.es/sites/default/files/inline-files/2023/10/Resolucion_de_28_de_septiembre_de_2023.pdf) | AE | De la Secretaría General de Energía. Aprueba la ficha técnica descriptiva de baja tensión del aplicativo PUES — documento de legalización para autoconsumo ≤ 500 kW. → Ver también §6.2. |
+| [RD-ley 15/2018, de 5 de octubre](https://www.boe.es/buscar/act.php?id=BOE-A-2018-13593) | AE | Modifica el art. 9 de la Ley 24/2013 (definición y modalidades de autoconsumo: sin excedentes, con excedentes individual/colectivo). |
 
 #### Documentos de apoyo (no normativa)
 
@@ -228,3 +257,4 @@ Normas no recogidas en §2, §6.1 ni §6.2, identificadas en la [página de auto
 | [Manual SGE tramitación autoconsumo (noviembre 2025, pdf)](https://www.juntadeandalucia.es/sites/default/files/inline-files/2025/11/MANUAL_tramitacion_autoconsumo_noviembre_2025.pdf) | Guía completa de la Secretaría General de Energía para tramitar autorizaciones de autoconsumo en Andalucía. Referencia práctica de primer orden. |
 | [Configuraciones de instalaciones de autoconsumo (pdf)](https://www.juntadeandalucia.es/sites/default/files/inline-files/2023/12/Configuraciones_instalaciones_autoconsumo_V2.pdf) | Esquemas de las configuraciones posibles (con/sin excedentes, colectivo, etc.). |
 | [Configuraciones de conexión planta–consumo no colindantes (marzo 2025, pdf)](https://www.juntadeandalucia.es/sites/default/files/2025-03/Configuraciones_conexion.pdf) | Para instalaciones en las que la planta de generación y el punto de consumo no están en el mismo emplazamiento. |
+| [Preguntas frecuentes sobre autoconsumo (MITECO)](https://www.miteco.gob.es/es/energia/energia-electrica/electricidad/autoconsumo-electrico/preguntas-frecuentes-autoconsumo.html) | FAQ estatal sobre modalidades, registro y trámites de autoconsumo. |
