@@ -48,7 +48,6 @@ EXPEDIENTE (proyecto de instalación eléctrica)
   administrativos. Contiene excepciones relevantes al procedimiento estándar.
 - **Ley 2/2007**, de 27 de marzo — Fomento de las Energías Renovables y del Ahorro y Eficiencia
   Energética de Andalucía.
-- **Decreto 369/2010** y normas de desarrollo autonómico aplicables.
 - **Decreto-ley 26/2021**, de 14 de diciembre — Simplificación administrativa. Incluye la
   Disposición Final Cuarta sobre exención de información pública para instalaciones sin DUP
   y sin AAU (ver DISEÑO_MOTOR_REGLAS.md, regla INICIAR INFORMACION_PUBLICA).
