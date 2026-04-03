@@ -222,11 +222,11 @@ Tanto a la Administración como a los interesados.
 
 ## 2. Particularizaciones sectoriales
 
-> **Estado:** En desarrollo — sesión 2026-04-02.
+> **Estado:** En desarrollo — sesiones 2026-04-02/03.
 
 Normas pendientes de extracción:
 - ~~**RD 1955/2000**~~ — ✅ Extraído en §2.2.
-- **Decreto 9/2011** (Junta de Andalucía) — Fuente de plazos auxiliares; pendiente de extracción.
+- ~~**Decreto 9/2011**~~ — ✅ Sin plazos propios; suprime la información pública (30 días) para AT tercera categoría en suelo urbano sin DUP. Nota añadida en §2.2. Ver `NORMATIVA_EXCEPCIONES_AT.md §3.1`.
 - **Ley 21/2013** — Plazos del procedimiento de EIA (consultas, información pública, pronunciamiento ambiental).
 - **Decreto-ley 26/2021** — Simplificación; excepciones procedimentales.
 
@@ -308,6 +308,8 @@ Cuando la CCAA tramita una autorización de instalación de **transporte**, debe
 | Trámite | Plazo | Efecto del silencio / vencimiento |
 |---|---|---|
 | Información pública | **30 días** | Fin del período; alegaciones fuera de plazo no se admiten |
+
+> **Excepción — Decreto 9/2011 DA 1ª:** trámite **suprimido** (junto con la publicación en BOP, art. 128.3) para instalaciones AT de tercera categoría (U ≤ 30 kV), línea subterránea o CT interior, suelo urbano/urbanizable, sin DUP. Ver `NORMATIVA_EXCEPCIONES_AT.md §3.1`.
 
 La publicación se efectúa en el BOE y en el Boletín Oficial de la provincia o CCAA. Si se solicita simultáneamente la declaración de utilidad pública, la información pública se efectúa de forma conjunta.
 
