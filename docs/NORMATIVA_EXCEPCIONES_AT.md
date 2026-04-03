@@ -126,11 +126,55 @@ el trámite de información pública con la AAP, sin duplicar el período de exp
 
 ---
 
-## 3. Normas pendientes de extracción
+## 3. Decreto 9/2011, de 18 de enero (Junta de Andalucía)
+
+> [BOJA 2011/22](https://www.juntadeandalucia.es/boja/2011/22/1) — Sesión 2026-04-03.
+
+### 3.1 Exención de información pública para AT de tercera categoría en suelo urbano (DA 1ª)
+
+**Regla estándar:** la AAP requiere información pública de 30 días (art. 125 RD 1955/2000)
+y publicación de la resolución en el BOP (art. 128.3 RD 1955/2000).
+
+**Excepción (DA 1ª, apartados 1-3):** ambos trámites quedan suprimidos cuando se cumplen
+**todas** las condiciones siguientes:
+
+| Condición | Detalle |
+|---|---|
+| Categoría de la instalación | **Tercera categoría AT** — tensión nominal 1 kV < U ≤ 30 kV (media tensión) |
+| Tipo de instalación | **Línea subterránea** o **centro de transformación interior** |
+| Suelo | **Urbano o urbanizable** |
+| DUP | **No requerida** (la instalación no necesita declaración de utilidad pública en concreto) |
+| Titularidad / destino | Indistinto: instalaciones del distribuidor o instalaciones a ceder al distribuidor para integrarse en su red |
+
+**Alcance:** instalaciones **nuevas**, **ampliaciones** y **modificaciones** de instalaciones existentes.
+
+**Trámites suprimidos:**
+- Información pública (art. 125 RD 1955/2000) — **30 días eliminados**
+- Publicación de la resolución de AAP/AAC/AE en el Boletín Oficial de la Provincia (art. 128.3)
+
+**Trámites que se mantienen:** el resto del procedimiento AAP sigue igual — consultas a AAPP,
+traslado de alegaciones (si las hubiera pese a no haber información pública) y resolución en 3 meses.
+
+**Implicación en BDDAT:** la fase INFORMACION_PUBLICA en el motor debe ser **condicional**,
+no obligatoria, para solicitudes que cumplan los cuatro criterios. El motor necesita evaluar:
+- ¿Tensión ≤ 30 kV? (tercera categoría)
+- ¿Instalación subterránea o CT interior?
+- ¿Suelo urbano/urbanizable?
+- ¿Sin DUP?
+
+Si los cuatro son verdaderos → INFORMACION_PUBLICA y publicación en BOP se omiten.
+Ver `NORMATIVA_MAPA_PROCEDIMENTAL.md §2.1` (fase 3 de AAP marcada como condicional).
+
+**Relación con DL 26/2021 DF 4ª:** el DL 26/2021 contiene una exención más amplia
+(instalaciones sin DUP y sin AAU — independiente de la tensión y el tipo de suelo).
+Pendiente de verificar si el DL 26/2021 subsume o complementa el Decreto 9/2011.
+
+---
+
+## 4. Normas pendientes de extracción
 
 | Norma | Excepciones esperadas | Prioridad |
 |---|---|---|
-| **Decreto 9/2011** (Junta) | Exenciones de fases para instalaciones menores; agilizaciones específicas | Alta |
 | **Ley 21/2013** (EIA) | Régimen de consultas previas, información pública ambiental, plazos DIA | Alta |
 | **DL 26/2021** (Junta) DF 4ª | Exención de información pública para instalaciones sin DUP y sin AAU | Alta |
 | **RD-ley 23/2020 + 8/2023** | Hitos administrativos para renovables; condicionan admisión a trámite de AAP | Media |
