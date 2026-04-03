@@ -158,4 +158,4 @@ El procedimiento varía según el tipo de instalación:
 | RD-ley 6/2022 + RD-ley 20/2022 | AAP, AAC renovables — tramitación conjunta simplificada | Media |
 | RD-ley 7/2025 | AAP, AAC almacenamiento y repotenciación | Media |
 | Ley 4/2025 (Espacios productivos) | AE — acometidas y líneas directas un solo titular | Media |
-| DL 26/2021 (Junta) | AAP — exención de información pública (DF 4ª) | Alta |
+| ~~DL 26/2021 (Junta)~~ | ~~AAP — exención de información pública (DF 4ª)~~ | ~~Alta~~ — ✅ extraído en `NORMATIVA_EXCEPCIONES_AT.md §4.1` |

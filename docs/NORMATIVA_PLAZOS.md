@@ -228,7 +228,7 @@ Normas pendientes de extracción:
 - ~~**RD 1955/2000**~~ — ✅ Extraído en §2.2.
 - ~~**Decreto 9/2011**~~ — ✅ Sin plazos propios; suprime la información pública (30 días) para AT tercera categoría en suelo urbano sin DUP. Nota añadida en §2.2. Ver `NORMATIVA_EXCEPCIONES_AT.md §3.1`.
 - **Ley 21/2013** — Plazos del procedimiento de EIA (consultas, información pública, pronunciamiento ambiental).
-- **Decreto-ley 26/2021** — Simplificación; excepciones procedimentales.
+- ~~**Decreto-ley 26/2021**~~ — ✅ Sin plazos propios; exime de información pública instalaciones sin DUP y sin AAU (DF 4ª). Ver `NORMATIVA_EXCEPCIONES_AT.md §4.1`.
 
 ---
 

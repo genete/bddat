@@ -2,7 +2,7 @@
 
 > **Aplica a:** Motor de reglas — desviaciones respecto al procedimiento estándar AAP/AAC/AE.
 > **Fuentes de verdad:** `docs/NORMATIVA_LEGISLACION_AT.md §6` · `docs/NORMATIVA_PLAZOS.md §2`.
-> **Estado:** En construcción — sesión 2026-04-02. LSE + RD 1955/2000 extraídos.
+> **Estado:** En construcción — sesión 2026-04-03. LSE + RD 1955/2000 + Decreto 9/2011 + DL 26/2021 extraídos.
 
 Este documento recoge las **Iteraciones 2 y 4** de `NORMATIVA_LEGISLACION_AT.md §5`:
 - **Iteración 2:** excepciones al procedimiento estándar y regímenes especiales (renovables, <30 kV, simplificaciones).
@@ -19,7 +19,9 @@ Para los plazos concretos de cada trámite: ver `docs/NORMATIVA_PLAZOS.md §2`.
 |---|---|
 | [§1](#1-excepciones-lse-242013) | Excepciones identificadas en la LSE 24/2013 |
 | [§2](#2-excepciones-rd-19552000) | Excepciones identificadas en el RD 1955/2000 |
-| [§3](#3-normas-pendientes-de-extracción) | Normas pendientes |
+| [§3](#3-decreto-92011-de-18-de-enero-junta-de-andalucía) | Decreto 9/2011 — exención AT 3ª categoría suelo urbano |
+| [§4](#4-decreto-ley-262021-de-14-de-diciembre-junta-de-andalucía) | DL 26/2021 — exención general instalaciones sin DUP y sin AAU |
+| [§5](#5-normas-pendientes-de-extracción) | Normas pendientes |
 
 ---
 
@@ -167,16 +169,69 @@ Ver `NORMATIVA_MAPA_PROCEDIMENTAL.md §2.1` (fase 3 de AAP marcada como condicio
 
 **Relación con DL 26/2021 DF 4ª:** el DL 26/2021 contiene una exención más amplia
 (instalaciones sin DUP y sin AAU — independiente de la tensión y el tipo de suelo).
-Pendiente de verificar si el DL 26/2021 subsume o complementa el Decreto 9/2011.
+En la práctica, la exención del DL 26/2021 **absorbe** la del Decreto 9/2011 para el trámite de
+información pública. El Decreto 9/2011 sigue siendo relevante en lo no cubierto por el DL 26/2021:
+la supresión de la **publicación en BOP** (art. 128.3 RD 1955/2000), que el DL 26/2021 no contempla.
+Ver análisis completo en §4.
 
 ---
 
-## 4. Normas pendientes de extracción
+## 4. Decreto-ley 26/2021, de 14 de diciembre (Junta de Andalucía)
+
+> [BOJA 2021/241](https://ws040.juntadeandalucia.es/sedeboja/web/textos-consolidados/resumen-ficha?p_p_id=resumenrecursolegal_WAR_sedebojatextoconsolidadoportlet&p_p_lifecycle=0&_resumenrecursolegal_WAR_sedebojatextoconsolidadoportlet_recursoLegalAbstractoId=33520) — Sesión 2026-04-03.
+
+### 4.1 Exención de información pública para instalaciones sin DUP y sin AAU (DF 4ª)
+
+**Regla estándar:** la AAP requiere información pública de 30 días (art. 125 RD 1955/2000).
+
+**Excepción (DF 4ª, ap. 1):** quedan exentas del trámite de información pública las solicitudes
+de autorización administrativa del **Título VII del RD 1955/2000** que cumplan **simultáneamente**:
+
+| Condición | Detalle |
+|---|---|
+| Sin DUP | La instalación no requiere declaración de utilidad pública para su implantación |
+| Sin AAU | La instalación no está sometida a autorización ambiental unificada (Ley 7/2007, de 9 de julio, GICA) |
+
+**Alcance:** cualquier autorización del Título VII RD 1955/2000 — AAP, AAC, AE, transmisión, cierre —
+sin restricción de tensión, tipo de instalación (aérea/subterránea) ni clasificación de suelo.
+
+**Modificabilidad (ap. 2):** las excepciones de esta disposición pueden modificarse por norma reglamentaria.
+
+**Relación con el Decreto 9/2011 DA 1ª:**
+
+| Aspecto | Decreto 9/2011 DA 1ª | DL 26/2021 DF 4ª |
+|---|---|---|
+| Tensión | Solo AT 3ª categoría (1 kV < U ≤ 30 kV) | Sin restricción |
+| Tipo de instalación | Solo línea subterránea o CT interior | Cualquier instalación del Título VII |
+| Clasificación de suelo | Solo urbano o urbanizable | Sin restricción |
+| Condición sin DUP | Sí | Sí |
+| Condición sin AAU | No mencionado | Sí (condición expresa) |
+| Suprime publicación en BOP (art. 128.3) | Sí | No |
+
+**Conclusión:** el DL 26/2021 **subsume y amplía** la exención del Decreto 9/2011 en cuanto al
+trámite de información pública — al no estar limitado por tensión, tipo de instalación ni suelo.
+Sin embargo, **no lo sustituye** en lo relativo a la supresión de la publicación en BOP (art. 128.3),
+que el Decreto 9/2011 suprime expresamente para AT 3ª categoría y el DL 26/2021 no menciona.
+
+**Implicación en BDDAT:** las condiciones de evaluación para omitir INFORMACION_PUBLICA son:
+
+```
+¿Requiere DUP? = false
+¿Sometida a AAU? = false
+→ INFORMACION_PUBLICA se omite (DL 26/2021 DF 4ª)
+```
+
+La exención del Decreto 9/2011 queda absorbida en la práctica. La supresión de publicación en BOP
+(Decreto 9/2011 DA 1ª) se evalúa de forma independiente con sus propias condiciones (AT 3ª categoría
++ subterránea/CT + suelo urbano/urbanizable + sin DUP).
+
+---
+
+## 5. Normas pendientes de extracción
 
 | Norma | Excepciones esperadas | Prioridad |
 |---|---|---|
 | **Ley 21/2013** (EIA) | Régimen de consultas previas, información pública ambiental, plazos DIA | Alta |
-| **DL 26/2021** (Junta) DF 4ª | Exención de información pública para instalaciones sin DUP y sin AAU | Alta |
 | **RD-ley 23/2020 + 8/2023** | Hitos administrativos para renovables; condicionan admisión a trámite de AAP | Media |
 | **RD-ley 6/2022 + 20/2022** | Tramitación conjunta AAP+AAC para renovables; afección ambiental simplificada | Media |
 | **RD-ley 7/2025** | Almacenamiento hibridado: tramitación conjunta, plazos reducidos; repotenciación | Media |
