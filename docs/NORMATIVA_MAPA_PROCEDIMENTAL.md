@@ -71,7 +71,7 @@ Fases en orden:
 |---|---|---|---|
 | 1 | Presentación de solicitud con anteproyecto | ✅ | Art. 122-123 |
 | 2 | Verificación de documentación / subsanación | ✅ | LPACAP art. 68 |
-| 3 | Información pública (30 días) | ✅ | Art. 125 |
+| 3 | Información pública (30 días) | ⚠️ Condicional — ver nota | Art. 125 |
 | 3b | Información pública conjunta con DUP | Condicional — si se solicita DUP | Art. 125 |
 | 4 | Traslado de alegaciones al peticionario (15 días) | ✅ si hay alegaciones | Art. 126 |
 | 5 | Consultas e informes a otras AAPP sobre bienes a su cargo (30 días, silencio = conformidad) | ✅ | Art. 127 |
@@ -79,6 +79,8 @@ Fases en orden:
 | 7 | Réplica de las AAPP a los reparos del peticionario (15 días, silencio = conformidad) | Condicional — si hay reparos | Art. 127 |
 | 8 | Informe DGPEM — solo instalaciones de transporte tramitadas por CCAA (2 meses) | Condicional | Art. 114 |
 | 9 | **Resolución** (3 meses desde solicitud; silencio desestimatorio) | ✅ | Art. 128 |
+
+> **Nota información pública (fase 3):** la información pública es **obligatoria con carácter general**, pero queda **suprimida** cuando se cumplen los cuatro criterios del Decreto 9/2011 DA 1ª: tensión ≤ 30 kV (tercera categoría AT), línea subterránea o centro de transformación interior, suelo urbano/urbanizable, y sin DUP. En ese caso también se suprime la publicación de la resolución en el BOP (art. 128.3). Ver `NORMATIVA_EXCEPCIONES_AT.md §3.1`.
 
 > **Nota EIA:** cuando la instalación requiere Evaluación de Impacto Ambiental ordinaria
 > (Ley 21/2013), la AAP no puede resolverse sin la Declaración de Impacto Ambiental (DIA).
