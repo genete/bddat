@@ -94,7 +94,7 @@ Normas pendientes de extracción o completar. Unificada desde `NORMATIVA_MAPA_PR
 
 | Norma | ID-REF | Ficheros a actualizar | Prioridad | Estado |
 |---|---|---|---|---|
-| **Modificaciones RD 1955/2000** — cuándo una modificación requiere nueva AAP vs. solo AAC vs. comunicación | REF-RD1955 | C (§2) | Alta | IDENTIFICADA |
+| **Modificaciones RD 1955/2000** — cuándo una modificación requiere nueva AAP vs. solo AAC vs. solo AE | REF-RD1955 | C (§2.6) | Alta | MAPEO_CONTEXTO — extraído en sesión 2026-04-04, ver `NORMATIVA_MAPA_PROCEDIMENTAL.md §2.6` |
 | **Ley 21/2013 (EIA)** — consultas previas, info pública ambiental, plazos DIA | REF-EIA | C, D, E§2.3+, motor, plazos | Alta | IDENTIFICADA — ⚠️ **Pendiente de revisión previa**: puede haber quedado desactualizada por nueva ley ambiental andaluza. No extraer reglas hasta que el Servicio evalúe el impacto. |
 | **RD-ley 23/2020 + RD-ley 8/2023** — hitos administrativos renovables; condicionan admisión a trámite de AAP según punto de acceso/conexión | REF-RDL23-2020 | C, D | Media | IDENTIFICADA |
 | **RD-ley 6/2022 + RD-ley 20/2022** — tramitación conjunta AAP+AAC renovables; afección ambiental simplificada en zonas de baja/moderada sensibilidad | — | C, D | Media | IDENTIFICADA |
@@ -140,5 +140,13 @@ Variables que el ContextAssembler puede pasar al motor de reglas. Crecen en el p
 | `requiere_aau` | boolean | DL 26/2021 DF 4ª (Ley 7/2007 GICA) | definida |
 | `tiene_aap_previa` | boolean | RD 1955/2000 art. 131 (reducción plazo consultas AAC de 30 a 15 días) | definida |
 | `es_instalacion_transporte` | boolean | RD 1955/2000 art. 114 (informe DGPEM obligatorio para transporte CCAA) | definida |
-| `requiere_eia` | boolean | Ley 21/2013 (EIA) | pendiente de implementar |
+| `requiere_eia` | boolean | Ley 21/2013 (EIA) — cualquier tipo de evaluación ambiental | pendiente de implementar |
+| `requiere_eia_ordinaria` | boolean | Art. 115.2 y 115.3 RD 1955/2000 — evaluación ambiental **ordinaria** específicamente (art. 7.1 Ley 21/2013). Más restrictivo que `requiere_eia` (excluye EIA simplificada). Condición de acceso a niveles 2 y 3 del régimen de modificaciones. | definida |
+| `es_modificacion_instalacion` | boolean | Art. 115 RD 1955/2000 — la solicitud es una modificación de instalación ya autorizada (no instalación nueva) | definida |
+| `modificacion_exceso_potencia_pct` | numérico (%) | Art. 115.2.c RD 1955/2000 — incremento de potencia instalada respecto al proyecto original. Umbral: >15% requiere nueva AAP (instalaciones de generación). | definida |
+| `modificacion_variacion_tecnica_pct` | numérico (%) | Art. 115.3.b RD 1955/2000 — variación de características técnicas básicas (potencia, capacidad de transformación/transporte) respecto al original. Umbral: >10% impide nivel 3 (solo AE). | definida |
+| `modificacion_cambia_tecnologia` | boolean | Art. 115.2.d RD 1955/2000 — la modificación implica cambio en la tecnología de generación. Impide nivel 2 para generación. | definida |
+| `modificacion_dentro_poligonal_o_sin_expropiacion` | boolean | Art. 115.2.b RD 1955/2000 — los terrenos afectados no exceden la poligonal autorizada, o si la exceden no requieren expropiación forzosa y tienen compatibilidad urbanística. Condición de nivel 2 para generación. | definida |
+| `modificacion_afecta_otras_instalaciones` | boolean | Art. 115.2.g RD 1955/2000 — las modificaciones producen afecciones sobre otras instalaciones de producción en servicio. Impide nivel 2 para generación. | definida |
+| `modificacion_excede_condiciones_aap_dia` | boolean | Art. 115.2.b RD 1955/2000 (transporte/distribución) — los cambios exceden las condiciones establecidas en la AAP concedida y en la DIA. Impide nivel 2 para transporte/distribución. | definida |
 | `tiene_punto_acceso_conexion` | boolean | RD-ley 23/2020 (condición admisión a trámite renovables) | pendiente de implementar |

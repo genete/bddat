@@ -2,7 +2,7 @@
 
 > **Aplica a:** Motor de reglas — fases obligatorias, su orden y base legal por tipo de solicitud.
 > **Fuentes de verdad:** `docs/NORMATIVA_LEGISLACION_AT.md §6` (catálogo normativo) · `docs/NORMATIVA_PLAZOS.md §2` (plazos concretos).
-> **Estado:** En construcción — sesión 2026-04-02. LSE + RD 1955/2000 extraídos.
+> **Estado:** En construcción — sesiones 2026-04-02 / 2026-04-04. LSE + RD 1955/2000 (incl. modificaciones) extraídos.
 
 Este documento responde a la **Iteración 1** de `NORMATIVA_LEGISLACION_AT.md §5`:
 para cada tipo de solicitud, qué procedimiento define la legislación, qué fases lo componen,
@@ -145,5 +145,73 @@ El procedimiento varía según el tipo de instalación:
 > y el operador del sistema lleva ≥3 meses con informe favorable, el titular puede cerrar
 > sin esperar resolución. Este régimen es de la AGE; para instalaciones CCAA ver norma autonómica.
 > Ver `NORMATIVA_EXCEPCIONES_AT.md §2.3`.
+
+### 2.6 Modificación de instalación (art. 115)
+
+> Base: **art. 115 RD 1955/2000** (última actualización: 24-07-2025) + **art. 53.2 LSE 24/2013**.
+
+El art. 115 define tres niveles de exigencia para las modificaciones de instalaciones
+que ya cuentan con autorización. El nivel determina qué autorizaciones se requieren:
+
+| Nivel | Denominación | Autorizaciones requeridas | Base legal |
+|---|---|---|---|
+| 1 | Modificación sustancial | Nueva AAP + AAC (+ AE) | Art. 115.1 — régimen general |
+| 2 | Modificación con AAC sin nueva AAP | Solo AAC (+ AE) | Art. 115.2 |
+| 3 | Modificación no sustancial | Solo AE | Art. 115.3 + art. 53.2 LSE |
+
+> **Secuencia de evaluación:** comprobar primero el nivel 3 (solo AE); si no lo cumple, nivel 2 (solo AAC); si tampoco, nivel 1 (AAP + AAC completa).
+
+#### Nivel 1 — Modificación sustancial (art. 115.1)
+
+**Regla general:** toda modificación requiere nueva AAP + AAC + AE (procedimiento completo).
+Se aplica cuando no se cumplen las condiciones de nivel 2 ni de nivel 3.
+El procedimiento es idéntico al de una instalación nueva — ver §2.1 (AAP) y §2.2 (AAC).
+
+#### Nivel 2 — Modificación con AAC sin nueva AAP (art. 115.2)
+
+Puede obtenerse AAC sin requerir nueva AAP cuando se cumplen **todas** las condiciones del grupo aplicable según el tipo de instalación.
+
+**Instalaciones de generación:**
+
+| Condición | Descripción |
+|---|---|
+| Sin EIA ordinaria | Las modificaciones no son objeto de evaluación ambiental ordinaria (art. 7.1 Ley 21/2013) |
+| Terrenos en poligonal | Los terrenos afectados no exceden la poligonal del proyecto autorizado, o si la exceden: sin expropiación forzosa y con compatibilidad urbanística |
+| Potencia ≤ 15% | La potencia instalada tras la modificación no excede en más del 15% la del proyecto original |
+| Sin cambio de tecnología | No hay cambio en la tecnología de generación |
+| Sin riesgo de seguridad | No hay alteraciones de seguridad de la instalación principal ni de sus auxiliares en servicio |
+| Sin DUP | No se requiere declaración de utilidad pública para las modificaciones |
+| Sin afección a terceros | Las modificaciones no producen afecciones sobre otras instalaciones de producción en servicio |
+
+**Instalaciones de transporte y distribución:**
+
+| Condición | Descripción |
+|---|---|
+| Sin EIA ordinaria | Las modificaciones no son objeto de evaluación ambiental ordinaria (art. 7.1 Ley 21/2013) |
+| Sin exceder AAP/DIA | No se producen cambios que excedan las condiciones de la AAP concedida y de la DIA |
+| Sin riesgo de seguridad | No hay alteraciones de seguridad de la instalación principal ni de sus auxiliares en servicio |
+| Sin DUP | No se requiere declaración de utilidad pública para las modificaciones |
+| *(subestaciones)* Posiciones de reserva | Exclusivamente: equipamiento de posiciones de reserva ya autorizadas, o renovación de equipos sin cambio de características técnicas |
+| *(líneas)* Repotenciación | Retensado o cambio de conductores, recrecido de apoyos, o instalación de dispositivos electrónicos |
+
+> Las dos últimas condiciones son específicas de cada tipo de elemento (subestación o línea), no es necesario cumplir ambas.
+
+#### Nivel 3 — Modificación no sustancial (art. 115.3 + art. 53.2 LSE)
+
+Solo se requiere AE cuando se cumplen **todas** las condiciones siguientes:
+
+| Condición | Descripción |
+|---|---|
+| Sin EIA | No está dentro del ámbito de aplicación de la Ley 21/2013 |
+| Variación técnica ≤ 10% | No supone alteración de características técnicas básicas (potencia, capacidad de transformación o transporte, etc.) superior al 10% de la potencia de la instalación |
+| Sin riesgo de seguridad | No supone alteraciones de seguridad de la instalación principal ni de sus auxiliares en servicio |
+| Sin DUP | No se requiere declaración de utilidad pública |
+| *(líneas)* Sin cambio de servidumbre | Las modificaciones de líneas no provocan cambios de servidumbre sobre el trazado |
+| *(líneas)* Cambio de servidumbre con acuerdo | Si hay cambio de servidumbre sin modificar el trazado: acuerdo mutuo con los afectados (art. 151 RD 1955/2000) |
+| *(líneas)* Sustitución por deterioro | Sustitución de apoyos o conductores por deterioro o rotura, manteniendo las condiciones del proyecto original |
+| *(subestaciones)* Sin variación de calles/posiciones | La modificación de configuración de subestación no varía el número de calles ni de posiciones |
+| *(transporte/distribución)* Sin cambios retributivos | La modificación no implica cambios retributivos |
+
+> **Implicación en BDDAT:** el motor debe evaluar el nivel de modificación antes de asignar las solicitudes requeridas. Los plazos de AAP y AAC en modificaciones son los mismos que para instalaciones nuevas — ver `NORMATIVA_PLAZOS.md §2.2`.
 
 > **Cola de trabajo:** las normas pendientes de extracción se gestionan en `docs/GUIA_NORMAS.md §4`.
