@@ -122,7 +122,8 @@ Pasos al trabajar una norma de la cola (§4):
 3. Si genera fases o procedimientos → añadir en `NORMATIVA_MAPA_PROCEDIMENTAL.md` con `Implicación en BDDAT`.
 4. Si genera excepciones → añadir en `NORMATIVA_EXCEPCIONES_AT.md` con `Implicación en BDDAT`.
 5. Si genera plazos → añadir en `NORMATIVA_PLAZOS.md §2.x` con plazo + silencio + cómputo.
-6. **MAPEO_CONTEXTO:** identificar qué variables necesita el ContextAssembler para evaluar esta norma; añadirlas al Diccionario de Variables (§6 de este doc) si son nuevas; actualizar `Estado` en la cola a `MAPEO_CONTEXTO`.
+6. **MAPEO_CONTEXTO:** identificar qué variables necesita el ContextAssembler para evaluar esta norma; actualizar `Estado` en la cola a `MAPEO_CONTEXTO`.
+   - **6a. Deduplicación:** antes de añadir cada variable al §6, buscar en la tabla si el concepto ya existe con otro nombre. Riesgo típico: sinónimos (`tiene_X` / `es_X` / `X_obtenida`), generalizaciones (`requiere_eia` vs. `requiere_eia_ordinaria`) o variables que en un contexto son condición de trámite y en otro son hito ya cumplido (`tiene_aap_previa` vs. `hito_aap_obtenida`). Si el concepto ya existe: reutilizar la variable y añadir la nueva norma de origen en la columna correspondiente. Solo crear variable nueva si el concepto es genuinamente distinto.
 7. Traducir las "Implicaciones en BDDAT" de los puntos 3 y 4 a filas del mapa de reglas en `DISEÑO_MOTOR_REGLAS.md`.
 8. Traducir los plazos del punto 5 al bloque "Constantes sectoriales" de `DISEÑO_FECHAS_PLAZOS.md §5.2`.
 9. Actualizar "Última sincronización" en los docs de diseño afectados; cambiar `Estado` en la cola a `IMPLEMENTADA`.
@@ -132,6 +133,17 @@ Pasos al trabajar una norma de la cola (§4):
 ## 6. Diccionario de Variables de Contexto
 
 Variables que el ContextAssembler puede pasar al motor de reglas. Crecen en el paso `MAPEO_CONTEXTO` del protocolo de extracción. Antes de tocar código, toda variable nueva se define aquí.
+
+**Columna Estado — valores y significado:**
+
+| Valor | Significado |
+|---|---|
+| `definida` | Variable nombrada, tipada y con norma de origen registrada. Puede o no estar en código. |
+| `pendiente de implementar` | Definida aquí pero aún no existe en modelo, ContextAssembler ni motor. |
+| `implementada` | Existe en el modelo de BD, el ContextAssembler la pasa al motor y el motor la evalúa. |
+| `obsoleta` | Ya no aplica (norma derogada, diseño cambiado). Mantener fila para trazabilidad; no borrar. |
+
+> Mantener este campo actualizado es tan importante como la propia definición: es el **inventario de cobertura real del motor**. Cuando una variable pasa a `implementada`, significa que la regla jurídica asociada está activa en producción.
 
 | Variable | Tipo | Norma de origen | Estado |
 |---|---|---|---|
