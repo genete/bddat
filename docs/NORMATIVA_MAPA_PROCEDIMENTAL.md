@@ -19,7 +19,6 @@ se documenta en `docs/NORMATIVA_SOLICITUDES.md`.
 |---|---|
 | [§1](#1-lse-242013--procedimientos-autorizatorios) | LSE 24/2013 — tipos de autorización y relación entre ellos |
 | [§2](#2-rd-19552000--fases-detalladas-por-procedimiento) | RD 1955/2000 — fases detalladas por procedimiento |
-| [§3](#3-normas-pendientes-de-extracción) | Normas pendientes |
 
 ---
 
@@ -147,15 +146,4 @@ El procedimiento varía según el tipo de instalación:
 > sin esperar resolución. Este régimen es de la AGE; para instalaciones CCAA ver norma autonómica.
 > Ver `NORMATIVA_EXCEPCIONES_AT.md §2.3`.
 
----
-
-## 3. Normas pendientes de extracción
-
-| Norma | Procedimientos que afecta | Prioridad |
-|---|---|---|
-| Decreto 9/2011 (Junta) | AAP, AAC — excepciones y agilizaciones autonómicas | Alta |
-| Ley 21/2013 (EIA) | AAP — fases de consultas y pronunciamiento ambiental | Alta |
-| RD-ley 6/2022 + RD-ley 20/2022 | AAP, AAC renovables — tramitación conjunta simplificada | Media |
-| RD-ley 7/2025 | AAP, AAC almacenamiento y repotenciación | Media |
-| Ley 4/2025 (Espacios productivos) | AE — acometidas y líneas directas un solo titular | Media |
-| ~~DL 26/2021 (Junta)~~ | ~~AAP — exención de información pública (DF 4ª)~~ | ~~Alta~~ — ✅ extraído en `NORMATIVA_EXCEPCIONES_AT.md §4.1` |
+> **Cola de trabajo:** las normas pendientes de extracción se gestionan en `docs/GUIA_NORMAS.md §4`.

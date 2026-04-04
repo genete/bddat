@@ -21,7 +21,6 @@ Para los plazos concretos de cada trámite: ver `docs/NORMATIVA_PLAZOS.md §2`.
 | [§2](#2-excepciones-rd-19552000) | Excepciones identificadas en el RD 1955/2000 |
 | [§3](#3-decreto-92011-de-18-de-enero-junta-de-andalucía) | Decreto 9/2011 — exención AT 3ª categoría suelo urbano |
 | [§4](#4-decreto-ley-262021-de-14-de-diciembre-junta-de-andalucía) | DL 26/2021 — exención general instalaciones sin DUP y sin AAU |
-| [§5](#5-normas-pendientes-de-extracción) | Normas pendientes |
 
 ---
 
@@ -225,16 +224,4 @@ La exención del Decreto 9/2011 queda absorbida en la práctica. La supresión d
 (Decreto 9/2011 DA 1ª) se evalúa de forma independiente con sus propias condiciones (AT 3ª categoría
 + subterránea/CT + suelo urbano/urbanizable + sin DUP).
 
----
-
-## 5. Normas pendientes de extracción
-
-| Norma | Excepciones esperadas | Prioridad |
-|---|---|---|
-| **Ley 21/2013** (EIA) | Régimen de consultas previas, información pública ambiental, plazos DIA | Alta |
-| **RD-ley 23/2020 + 8/2023** | Hitos administrativos para renovables; condicionan admisión a trámite de AAP | Media |
-| **RD-ley 6/2022 + 20/2022** | Tramitación conjunta AAP+AAC para renovables; afección ambiental simplificada | Media |
-| **RD-ley 7/2025** | Almacenamiento hibridado: tramitación conjunta, plazos reducidos; repotenciación | Media |
-| **Ley 4/2025** (Espacios productivos) | DA 7ª: acometidas de un solo titular; arts. 59-61: líneas directas, redes cerradas | Media |
-| **Art. 95.3 LPACAP** | Reutilización de actos de expediente caducado en nuevo procedimiento | Baja — casos límite |
-| **Modificaciones** (RD 1955/2000) | Cuándo una modificación requiere nueva AAP vs. solo AAC vs. comunicación | Alta — frecuente |
+> **Cola de trabajo:** las normas pendientes de extracción se gestionan en `docs/GUIA_NORMAS.md §4`.
