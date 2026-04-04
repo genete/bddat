@@ -11,3 +11,4 @@ app/static/uploads/*
 .claude/
 # Documentos de prueba locales (no versionar binarios ni datos reales)
 docs_prueba/
+contexto_completo_gemini.txt
