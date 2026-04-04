@@ -134,38 +134,48 @@ Pasos al trabajar una norma de la cola (§4):
 
 Variables que el ContextAssembler puede pasar al motor de reglas. Crecen en el paso `MAPEO_CONTEXTO` del protocolo de extracción. Antes de tocar código, toda variable nueva se define aquí.
 
+**Columna Naturaleza — valores y significado:**
+
+| Valor | Significado | Dónde vive | Caché en BD |
+|---|---|---|---|
+| `dato` | Valor introducido por un humano o aportado en un documento externo. No se calcula. | Campo de `Expediente`, `Proyecto` o `Solicitud` | Sí — es el dato de origen |
+| `derivado_documento` | Verdadero si existe (y está vigente) un documento de un tipo concreto asociado al expediente. | Consulta sobre la tabla de documentos; no como campo propio | No — recalcular siempre; el documento puede añadirse o anularse |
+| `calculado` | Se obtiene aplicando una función sobre otros datos del sistema. Puede cambiar sin intervención humana directa. | Servicio/propiedad computada; **nunca campo de trámite ni de fase** | No salvo decisión explícita documentada; riesgo de quedar desactualizado |
+
+> **Regla de implementación para variables `calculado` y `derivado_documento`:** el ContextAssembler debe construirlas frescas en cada invocación. No persistir el resultado en BD salvo que exista una decisión de diseño deliberada y documentada que justifique el caché y defina cuándo se invalida.
+
 **Columna Estado — valores y significado:**
 
 | Valor | Significado |
 |---|---|
 | `definida` | Variable nombrada, tipada y con norma de origen registrada. Puede o no estar en código. |
 | `pendiente de implementar` | Definida aquí pero aún no existe en modelo, ContextAssembler ni motor. |
-| `implementada` | Existe en el modelo de BD, el ContextAssembler la pasa al motor y el motor la evalúa. |
+| `implementada` | Existe en el modelo de BD (si es `dato`), o en el ContextAssembler (si es `calculado`/`derivado_documento`), y el motor la evalúa. |
 | `obsoleta` | Ya no aplica (norma derogada, diseño cambiado). Mantener fila para trazabilidad; no borrar. |
 
 > Mantener este campo actualizado es tan importante como la propia definición: es el **inventario de cobertura real del motor**. Cuando una variable pasa a `implementada`, significa que la regla jurídica asociada está activa en producción.
 
-| Variable | Tipo | Norma de origen | Estado |
-|---|---|---|---|
-| `tension_nominal_kv` | numérico (kV) | Decreto 9/2011 DA 1ª (umbral ≤ 30 kV — tercera categoría AT) | definida |
-| `es_linea_subterranea` | boolean | Decreto 9/2011 DA 1ª | definida |
-| `es_ct_interior` | boolean | Decreto 9/2011 DA 1ª | definida |
-| `es_suelo_urbano_o_urbanizable` | boolean | Decreto 9/2011 DA 1ª | definida |
-| `requiere_dup` | boolean | Decreto 9/2011 DA 1ª · DL 26/2021 DF 4ª | definida |
-| `requiere_aau` | boolean | DL 26/2021 DF 4ª (Ley 7/2007 GICA) | definida |
-| `tiene_aap_previa` | boolean | RD 1955/2000 art. 131 (reducción plazo consultas AAC de 30 a 15 días) | definida |
-| `es_instalacion_transporte` | boolean | RD 1955/2000 art. 114 (informe DGPEM obligatorio para transporte CCAA) | definida |
-| `requiere_eia` | boolean | Ley 21/2013 (EIA) — cualquier tipo de evaluación ambiental | pendiente de implementar |
-| `requiere_eia_ordinaria` | boolean | Art. 115.2 y 115.3 RD 1955/2000 — evaluación ambiental **ordinaria** específicamente (art. 7.1 Ley 21/2013). Más restrictivo que `requiere_eia` (excluye EIA simplificada). Condición de acceso a niveles 2 y 3 del régimen de modificaciones. | definida |
-| `es_modificacion_instalacion` | boolean | Art. 115 RD 1955/2000 — la solicitud es una modificación de instalación ya autorizada (no instalación nueva) | definida |
-| `modificacion_exceso_potencia_pct` | numérico (%) | Art. 115.2.c RD 1955/2000 — incremento de potencia instalada respecto al proyecto original. Umbral: >15% requiere nueva AAP (instalaciones de generación). | definida |
-| `modificacion_variacion_tecnica_pct` | numérico (%) | Art. 115.3.b RD 1955/2000 — variación de características técnicas básicas (potencia, capacidad de transformación/transporte) respecto al original. Umbral: >10% impide nivel 3 (solo AE). | definida |
-| `modificacion_cambia_tecnologia` | boolean | Art. 115.2.d RD 1955/2000 — la modificación implica cambio en la tecnología de generación. Impide nivel 2 para generación. | definida |
-| `modificacion_dentro_poligonal_o_sin_expropiacion` | boolean | Art. 115.2.b RD 1955/2000 — los terrenos afectados no exceden la poligonal autorizada, o si la exceden no requieren expropiación forzosa y tienen compatibilidad urbanística. Condición de nivel 2 para generación. | definida |
-| `modificacion_afecta_otras_instalaciones` | boolean | Art. 115.2.g RD 1955/2000 — las modificaciones producen afecciones sobre otras instalaciones de producción en servicio. Impide nivel 2 para generación. | definida |
-| `modificacion_excede_condiciones_aap_dia` | boolean | Art. 115.2.b RD 1955/2000 (transporte/distribución) — los cambios exceden las condiciones establecidas en la AAP concedida y en la DIA. Impide nivel 2 para transporte/distribución. | definida |
-| `tiene_punto_acceso_conexion` | boolean | RD-ley 23/2020 art. 1 — permiso de acceso y conexión a red concedido (condición de admisión a trámite AAP renovables) | pendiente de implementar |
-| `es_renovable_rdl23` | boolean | RD-ley 23/2020 art. 1 — la instalación es de generación renovable sujeta al régimen de hitos (permiso de acceso posterior al 27/12/2013) | pendiente de implementar |
-| `fecha_permiso_acceso` | fecha (ISO 8601) | RD-ley 23/2020 art. 1 — fecha de obtención del permiso de acceso a la red; determina el grupo (A: 28/12/2013–31/12/2017 / B: desde 01/01/2018) y el cómputo de plazos de hitos | pendiente de implementar |
-| `rdl23_grupo_permiso_acceso` | enum: `'a'`/`'b'` | RD-ley 23/2020 art. 1 — grupo de plazos aplicable: `'a'` = permiso entre 28/12/2013 y 31/12/2017; `'b'` = permiso desde 01/01/2018 | pendiente de implementar |
-| `hito_dia_favorable` | boolean | RD-ley 23/2020 art. 1.1 — DIA favorable obtenida (Hito 2 acreditado ante el gestor de red); para semáforo de prioridad | pendiente de implementar |
+| Variable | Tipo | Naturaleza | Norma de origen y descripción | Estado |
+|---|---|---|---|---|
+| `tension_nominal_kv` | numérico (kV) | `dato` · Proyecto | Decreto 9/2011 DA 1ª — umbral ≤ 30 kV define tercera categoría AT | definida |
+| `es_linea_subterranea` | boolean | `dato` · Proyecto | Decreto 9/2011 DA 1ª | definida |
+| `es_ct_interior` | boolean | `dato` · Proyecto | Decreto 9/2011 DA 1ª | definida |
+| `es_suelo_urbano_o_urbanizable` | boolean | `dato` · Proyecto | Decreto 9/2011 DA 1ª — clasificación urbanística de los terrenos afectados | definida |
+| `requiere_dup` | boolean | `dato` · Solicitud | Decreto 9/2011 DA 1ª · DL 26/2021 DF 4ª — el promotor solicita declaración de utilidad pública | definida |
+| `requiere_aau` | boolean | `dato` · Solicitud | DL 26/2021 DF 4ª (Ley 7/2007 GICA) — la instalación requiere autorización ambiental unificada | definida |
+| `es_instalacion_transporte` | boolean | `dato` · Proyecto | RD 1955/2000 art. 114 — instalación de transporte tramitada por CCAA; condiciona el informe DGPEM | definida |
+| `es_modificacion_instalacion` | boolean | `dato` · Solicitud | Art. 115 RD 1955/2000 — la solicitud es una modificación de instalación ya autorizada (no instalación nueva) | definida |
+| `modificacion_cambia_tecnologia` | boolean | `dato` · Proyecto | Art. 115.2.d RD 1955/2000 — la modificación implica cambio en la tecnología de generación; impide nivel 2 | definida |
+| `modificacion_dentro_poligonal_o_sin_expropiacion` | boolean | `dato` · Proyecto | Art. 115.2.b RD 1955/2000 — terrenos afectados no exceden la poligonal autorizada, o si la exceden: sin expropiación forzosa y con compatibilidad urbanística; condición de nivel 2 para generación | definida |
+| `modificacion_afecta_otras_instalaciones` | boolean | `dato` · Proyecto | Art. 115.2.g RD 1955/2000 — las modificaciones producen afecciones sobre otras instalaciones de producción en servicio; impide nivel 2 para generación | definida |
+| `fecha_permiso_acceso` | fecha (ISO 8601) | `dato` · Expediente | RD-ley 23/2020 art. 1 — fecha de obtención del permiso de acceso a la red, aportada por el promotor | pendiente de implementar |
+| `tiene_punto_acceso_conexion` | boolean | `derivado_documento` · Expediente | RD-ley 23/2020 art. 1 — existe documento de tipo PERMISO_ACCESO_CONEXION vigente en el expediente; condición de admisión a trámite de AAP renovables | pendiente de implementar |
+| `hito_dia_favorable` | boolean | `derivado_documento` · Expediente | RD-ley 23/2020 art. 1.1 — existe documento de tipo DIA con resultado favorable asociado al expediente (Hito 2); para semáforo de prioridad | pendiente de implementar |
+| `tiene_aap_previa` | boolean | `derivado_documento` · Expediente | RD 1955/2000 art. 131 — existe resolución de AAP favorable vinculada a este proyecto en BDDAT; reduce plazo de consultas AAC de 30 a 15 días. **Nota:** no leer el estado de la fase AAP — consultar la existencia del documento de resolución | definida |
+| `requiere_eia` | boolean | `calculado` | Ley 21/2013 — cualquier tipo de evaluación ambiental; deriva de características del proyecto según anexos de la Ley 21/2013 | pendiente de implementar |
+| `requiere_eia_ordinaria` | boolean | `calculado` | Art. 115.2 y 115.3 RD 1955/2000 — evaluación ambiental **ordinaria** (art. 7.1 Ley 21/2013); más restrictivo que `requiere_eia` (excluye EIA simplificada); condición de acceso a niveles 2 y 3 del régimen de modificaciones | definida |
+| `modificacion_exceso_potencia_pct` | numérico (%) | `calculado` | Art. 115.2.c RD 1955/2000 — deriva de: (potencia_propuesta − potencia_original) / potencia_original × 100; umbral >15% impide nivel 2 en generación | definida |
+| `modificacion_variacion_tecnica_pct` | numérico (%) | `calculado` | Art. 115.3.b RD 1955/2000 — variación de características técnicas básicas (potencia, capacidad de transformación/transporte) respecto al original; umbral >10% impide nivel 3 | definida |
+| `modificacion_excede_condiciones_aap_dia` | boolean | `calculado` | Art. 115.2.b RD 1955/2000 (transporte/distribución) — deriva de comparar el proyecto modificado con las condiciones establecidas en la AAP concedida y en la DIA; impide nivel 2 | definida |
+| `es_renovable_rdl23` | boolean | `calculado` | RD-ley 23/2020 art. 1 — deriva de: tipo de instalación = generación renovable AND `fecha_permiso_acceso` > 27/12/2013 | pendiente de implementar |
+| `rdl23_grupo_permiso_acceso` | enum: `'a'`/`'b'` | `calculado` | RD-ley 23/2020 art. 1 — deriva de `fecha_permiso_acceso`: `'a'` si entre 28/12/2013 y 31/12/2017; `'b'` si desde 01/01/2018 | pendiente de implementar |
