@@ -280,11 +280,17 @@ La exención del Decreto 9/2011 queda absorbida en la práctica. La supresión d
 
 **Excepción (art. 7):** para proyectos renovables que hayan obtenido informe de afección ambiental favorable (art. 6), se declaran de urgencia y se tramitan conjuntamente. **Solo aplica a proyectos competencia de la AGE.**
 
+> **Base legal de la competencia AGE:** LSE art. 3.13.a — corresponde a la AGE autorizar instalaciones peninsulares de producción con **potencia eléctrica instalada superior a 50 MW eléctricos** (incluyendo sus infraestructuras de evacuación), así como instalaciones de transporte primario y acometidas ≥ 380 kV. Las instalaciones ≤ 50 MW son competencia de la CCAA (Andalucía → BDDAT).
+>
+> **Definición de «potencia instalada» en instalaciones fotovoltaicas:** el **RD 1183/2020 DF 3ª** (modifica art. 3 RD 413/2014) introduce una nueva definición que sustituyó a la anterior «potencia pico» (solo DC):
+> `potencia instalada FV = min(Σ potencia máxima módulos en STC [DC], Σ potencia máxima inversores [AC])`
+> Esto resolvió el problema que existía con plantas FV con alta relación DC/AC («overplanting»), que antes se clasificaban con su potencia pico DC — más alta que la capacidad real de inyección AC. La transición al registro tardó hasta 12 meses (DT 7ª RD 1183/2020).
+
 **Condiciones de aplicación:**
 
 | Condición | Detalle |
 |---|---|
-| Competencia | **Administración General del Estado** — NO aplica directamente a CCAA (Andalucía) |
+| Competencia | **Administración General del Estado** (producción > 50 MW peninsular, LSE art. 3.13.a) — NO aplica a CCAA (Andalucía/BDDAT ≤ 50 MW) |
 | Requisito previo | Informe de determinación de afección ambiental **favorable** (art. 6) |
 | Solicitud | El promotor opta por el procedimiento simplificado **antes del 31/12/2024** |
 
@@ -344,7 +350,7 @@ Idéntico en estructura al art. 7 del RDL 6/2022 (§5.2), con dos diferencias cl
 | Carácter | Optativo — el promotor solicita acogerse | **Obligatorio** — "se tramitarán en todo caso" si cumplen condiciones |
 | Ventana temporal | Solicitudes hasta 31/12/2024 | Solicitudes desde 28/12/2022 hasta 31/12/2024 |
 
-**Aplica exclusivamente a proyectos competencia AGE** — igual que el art. 7. Misma limitación para BDDAT/Andalucía.
+**Aplica exclusivamente a proyectos competencia AGE** (producción > 50 MW peninsular, LSE art. 3.13.a) — igual que el art. 7. Ver nota sobre competencia y definición de potencia instalada FV en §5.2.
 
 ---
 
