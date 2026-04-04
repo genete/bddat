@@ -2,7 +2,7 @@
 
 > **Aplica a:** Motor de reglas — fases obligatorias, su orden y base legal por tipo de solicitud.
 > **Fuentes de verdad:** `docs/NORMATIVA_LEGISLACION_AT.md §6` (catálogo normativo) · `docs/NORMATIVA_PLAZOS.md §2` (plazos concretos).
-> **Estado:** En construcción — sesiones 2026-04-02 / 2026-04-04. LSE + RD 1955/2000 (incl. modificaciones) extraídos.
+> **Estado:** En construcción — sesiones 2026-04-02 / 2026-04-04. LSE + RD 1955/2000 (incl. modificaciones) + RD-ley 23/2020 extraídos.
 
 Este documento responde a la **Iteración 1** de `NORMATIVA_LEGISLACION_AT.md §5`:
 para cada tipo de solicitud, qué procedimiento define la legislación, qué fases lo componen,
@@ -19,6 +19,7 @@ se documenta en `docs/NORMATIVA_SOLICITUDES.md`.
 |---|---|
 | [§1](#1-lse-242013--procedimientos-autorizatorios) | LSE 24/2013 — tipos de autorización y relación entre ellos |
 | [§2](#2-rd-19552000--fases-detalladas-por-procedimiento) | RD 1955/2000 — fases detalladas por procedimiento |
+| [§2.7](#27-hitos-administrativos-para-instalaciones-renovables--rd-ley-232020) | Hitos administrativos renovables — RD-ley 23/2020 + RD-ley 8/2023 |
 
 ---
 
@@ -215,3 +216,90 @@ Solo se requiere AE cuando se cumplen **todas** las condiciones siguientes:
 > **Implicación en BDDAT:** el motor debe evaluar el nivel de modificación antes de asignar las solicitudes requeridas. Los plazos de AAP y AAC en modificaciones son los mismos que para instalaciones nuevas — ver `NORMATIVA_PLAZOS.md §2.2`.
 
 > **Cola de trabajo:** las normas pendientes de extracción se gestionan en `docs/GUIA_NORMAS.md §4`.
+
+---
+
+### 2.7 Hitos administrativos para instalaciones renovables — RD-ley 23/2020
+
+> Base: **art. 1 RD-ley 23/2020, de 23 de junio** + **arts. 28 y 29 RD-ley 8/2023, de 27 de diciembre**. Sesión 2026-04-04.
+> Ámbito: instalaciones de generación de energía eléctrica titulares de permisos de acceso obtenidos con posterioridad al 27 de diciembre de 2013.
+
+El RD-ley 23/2020 establece cinco **hitos administrativos** que el promotor debe acreditar ante el gestor de la red para mantener la vigencia de sus permisos de acceso y conexión.
+
+**Son obligaciones del administrado (promotor), no de la Administración.** La CCAA tramita el expediente igual independientemente de su estado de cumplimiento.
+
+**Relevancia para BDDAT:**
+1. El permiso de acceso y conexión es **condición de admisión a trámite** de la AAP para instalaciones renovables sujetas a este régimen. Sin permiso de acceso → no se admite.
+2. El estado de cumplimiento de hitos determina la **prioridad del expediente** en cola de tramitación: el promotor que ha acreditado los hitos ante el gestor de red tiene preferencia sobre los que aún no lo han hecho.
+
+#### Ámbito de aplicación
+
+- Instalaciones de generación de electricidad a partir de fuentes de energía renovables.
+- Con permiso de acceso a red obtenido con posterioridad al 27 de diciembre de 2013.
+- También deben solicitar el permiso de conexión en el plazo de 6 meses desde el 25/06/2020 (entrada en vigor del RDL 23/2020), o desde la obtención del permiso de acceso si fue posterior.
+
+#### Los cinco hitos y sus plazos
+
+Los plazos dependen de cuándo se obtuvo el permiso de acceso:
+
+**Grupo A — Permiso de acceso obtenido entre 28/12/2013 y 31/12/2017:**
+Todos los plazos se computan desde el **25/06/2020**.
+
+| Hito | Descripción | Plazo máximo |
+|---|---|---|
+| 1 | Solicitud AAP **presentada y admitida** por el órgano competente | 3 meses |
+| 2 | Declaración de Impacto Ambiental (DIA) **favorable** | 27 meses |
+| 3 | **AAP obtenida** | 30 meses |
+| 4 | **AAC obtenida** | 33 meses |
+| 5 | **Autorización de explotación definitiva** | 5 años |
+
+**Grupo B — Permiso de acceso obtenido desde 01/01/2018 en adelante:**
+Plazos computados desde el **25/06/2020** (para permisos anteriores a esa fecha) o desde la **fecha de obtención del permiso** (para los otorgados desde el 25/06/2020).
+
+| Hito | Descripción | Plazo estándar | Plazo ampliado — RD-ley 8/2023 art. 28 |
+|---|---|---|---|
+| 1 | Solicitud AAP **presentada y admitida** | 6 meses | — |
+| 2 | DIA **favorable** | 31 meses | — |
+| 3 | **AAP obtenida** | 34 meses | — |
+| 4 | **AAC obtenida** | 37 meses | **49 meses** (solo para permisos obtenidos antes del 28/12/2023) |
+| 5 | **Autorización de explotación definitiva** | 5 años | **Hasta 8 años**, a solicitud del promotor ante el órgano competente (en 3 meses desde la EV del RDL 8/2023 o desde la obtención de la AAC). Requiere indicar el semestre comprometido; sin posibilidad de AE previa a ese semestre. |
+
+> El plazo ampliado del Hito 4 (49 meses) sustituye al estándar de 37 meses automáticamente para los titulares dentro de su ámbito. El plazo ampliado del Hito 5 requiere solicitud expresa y resolución del órgano competente (silencio = desestimatorio).
+
+#### Excepciones y regímenes especiales de plazo
+
+| Supuesto | Régimen |
+|---|---|
+| Eólica marina | Plazo máx. total sin AE definitiva: **9 años** desde la obtención del permiso de acceso (art. 1.1 párr. último + art. 29 RDL 8/2023) |
+| Hidráulica de bombeo | Plazo máx. total sin AE definitiva: **12 años** (art. 1.1 párr. último) |
+| Medida cautelar que suspende la eficacia de autorizaciones | Suspensión del cómputo de hitos desde la adopción de la medida hasta su levantamiento; promotor debe comunicar el levantamiento en 3 meses (art. 1.1 bis) |
+| Hito 5 con subestación T/D sin AE definitiva propia | Se considera cumplido el Hito 5 acreditando AE **provisional para pruebas** que contemple el parque generador + infraestructuras de evacuación hasta ≥ 100 m de la subestación de conexión (art. 28.3 RDL 8/2023) |
+| Instalación exenta de algún trámite | El promotor acredita la exención mediante escrito del órgano competente; ese hito se considerará cumplido (art. 1.2) |
+
+#### Consecuencia del incumplimiento
+
+La no acreditación ante el gestor de la red en tiempo y forma conlleva:
+- **Caducidad automática** de los permisos de acceso y conexión.
+- **Ejecución inmediata** de las garantías económicas por el órgano competente para emitir las autorizaciones administrativas (CCAA o AGE según corresponda).
+- Excepción: si la DIA favorable no se produce por causas no imputables al promotor → no se ejecutan las garantías (art. 1.2).
+
+#### Acreditación del Hito 1
+
+Para acreditar el cumplimiento del Hito 1, **el órgano competente debe emitir escrito que acredite que la solicitud de AAP ha sido presentada y admitida** (art. 1.2 in fine). La solicitud debe cumplir con el art. 53 LSE y con el art. 35 Ley 21/2013 (documentación EIA si procede).
+
+> **Implicación en BDDAT:** cuando la Delegación Territorial emite la notificación de admisión a trámite de la AAP, ese acto es el que el promotor necesita para acreditar el Hito 1 ante el gestor de red. BDDAT debería reflejar la fecha de admisión a trámite como fecha de cumplimiento de Hito 1.
+
+#### Variables del ContextAssembler
+
+Ver `GUIA_NORMAS.md §6`. Variables relevantes:
+
+| Variable | Uso |
+|---|---|
+| `tiene_punto_acceso_conexion` | Condición de admisión a trámite de AAP (renovables) |
+| `es_renovable_rdl23` | Determina si aplica este régimen |
+| `fecha_permiso_acceso` | Determina grupo A / grupo B y computa plazos de hitos |
+| `rdl23_grupo_permiso_acceso` | `'a'` (2013-2017) / `'b'` (2018+) |
+| `hito_dia_favorable` | Para semáforo de prioridad (Hito 2 acreditado) |
+| `hito_aap_obtenida` | Para semáforo de prioridad (Hito 3 — implícito en BDDAT) |
+| `hito_aac_obtenida` | Para semáforo de prioridad (Hito 4 — implícito en BDDAT) |
+| `hito_explotacion_definitiva` | Para semáforo de prioridad (Hito 5 — implícito en BDDAT) |

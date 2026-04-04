@@ -19,6 +19,7 @@
 2. [Particularizaciones sectoriales](#2-particularizaciones-sectoriales)
    - [2.1 Ley 24/2013 del Sector Eléctrico (LSE)](#21-ley-242013-de-26-de-diciembre-del-sector-eléctrico-lse)
    - [2.2 Real Decreto 1955/2000](#22-real-decreto-19552000-de-1-de-diciembre-rd-19552000)
+   - [2.3 RD-ley 23/2020 — hitos del administrado](#23-rd-ley-232020-de-23-de-junio--hitos-del-administrado)
 3. [API de días inhábiles — Junta de Andalucía](#3-api-de-días-inhábiles--junta-de-andalucía)
    - [3.1 Descripción](#31-descripción)
    - [3.2 Endpoints](#32-endpoints)
@@ -229,6 +230,7 @@ Normas pendientes de extracción:
 - ~~**Decreto 9/2011**~~ — ✅ Sin plazos propios; suprime la información pública (30 días) para AT tercera categoría en suelo urbano sin DUP. Nota añadida en §2.2. Ver `NORMATIVA_EXCEPCIONES_AT.md §3.1`.
 - **Ley 21/2013** — Plazos del procedimiento de EIA (consultas, información pública, pronunciamiento ambiental).
 - ~~**Decreto-ley 26/2021**~~ — ✅ Sin plazos propios; exime de información pública instalaciones sin DUP y sin AAU (DF 4ª). Ver `NORMATIVA_EXCEPCIONES_AT.md §4.1`.
+- ~~**RD-ley 23/2020**~~ — ✅ Extraído en §2.3. Plazos son del administrado (promotor), no de la Administración.
 
 ---
 
@@ -438,6 +440,42 @@ El RD **no regula causas propias de suspensión** del plazo de resolución. Las 
 | **Cierre** | Informe REE | 3 meses | Continúa sin informe |
 | **Cierre** | **Resolución** | **3 meses** | **Desestimatorio** |
 | **Transporte CCAA** | Informe DGPEM (art. 114) | 2 meses | Continúa sin informe |
+
+---
+
+### 2.3 RD-ley 23/2020, de 23 de junio — Hitos del administrado
+
+> **BOE-A-2020-6621** — texto consolidado. Modificado por RD-ley 8/2023 (arts. 28-29). Sesión 2026-04-04.
+
+Los plazos del RD-ley 23/2020 son **obligaciones del promotor** (no del órgano tramitador): son los plazos máximos dentro de los cuales el promotor debe acreditar cada hito ante el gestor de la red para mantener la vigencia de sus permisos de acceso y conexión. La Administración tramita igual independientemente de su estado de cumplimiento.
+
+Para el detalle del régimen de hitos, condiciones y excepciones, ver `NORMATIVA_MAPA_PROCEDIMENTAL.md §2.7`.
+
+#### Plazos de hitos — Grupo A (permiso de acceso obtenido entre 28/12/2013 y 31/12/2017)
+
+Cómputo desde el 25/06/2020.
+
+| Hito | Descripción | Plazo máximo | Cómputo |
+|---|---|---|---|
+| 1 | Solicitud AAP presentada y admitida | 3 meses | Desde 25/06/2020 |
+| 2 | DIA favorable | 27 meses | Desde 25/06/2020 |
+| 3 | AAP obtenida | 30 meses | Desde 25/06/2020 |
+| 4 | AAC obtenida | 33 meses | Desde 25/06/2020 |
+| 5 | Autorización de explotación definitiva | 5 años | Desde 25/06/2020 |
+
+#### Plazos de hitos — Grupo B (permiso de acceso obtenido desde 01/01/2018)
+
+Cómputo desde el 25/06/2020 (permisos anteriores a esa fecha) o desde la fecha de obtención del permiso (permisos desde el 25/06/2020).
+
+| Hito | Descripción | Plazo estándar | Plazo ampliado (RDL 8/2023) |
+|---|---|---|---|
+| 1 | Solicitud AAP presentada y admitida | 6 meses | — |
+| 2 | DIA favorable | 31 meses | — |
+| 3 | AAP obtenida | 34 meses | — |
+| 4 | AAC obtenida | 37 meses | **49 meses** |
+| 5 | Autorización de explotación definitiva | 5 años | **Hasta 8 años** (a solicitud) |
+
+> Plazos son en **meses naturales** — no hay distinción entre hábiles e inhábiles en este contexto.
 
 ---
 
