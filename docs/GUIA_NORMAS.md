@@ -100,6 +100,9 @@ Normas pendientes de extracción o completar. Unificada desde `NORMATIVA_MAPA_PR
 | **RD-ley 6/2022 + RD-ley 20/2022** — tramitación conjunta AAP+AAC renovables; afección ambiental simplificada en zonas de baja/moderada sensibilidad | — | C, D | Media | IDENTIFICADA |
 | **RD-ley 7/2025** — almacenamiento hibridado: tramitación conjunta, plazos a la mitad, exención EIA si proyecto original ya la tenía; repotenciación: impacto diferencial | REF-RDL7-2025 | C, D | Media | IDENTIFICADA |
 | **Ley 4/2025 (Espacios productivos)** — tramitación simplificada renovables en polígonos; acometidas y líneas directas de un solo titular (DA 7ª); líneas directas y redes cerradas (arts. 59-61); almacenamiento hibridado autonómico (DA 12ª) | REF-L4-2025 | C, D | Media | IDENTIFICADA |
+| **Decreto-ley 2/2018 (Simplificación energía)** — puede modificar trámites o umbrales del procedimiento estándar en energía y renovables | REF-DL2-2018 | C, D | Media | IDENTIFICADA |
+| **Decreto-ley 3/2024 (Simplificación administrativa)** — medidas de simplificación y racionalización; puede afectar trámites generales | REF-DL3-2024 | C, D | Media | IDENTIFICADA |
+| **Decreto-ley 4/2024** — modifica el DL 3/2024; revisar alcance conjunto con él | REF-DL4-2024 | C, D | Media | IDENTIFICADA — extraer junto con DL 3/2024 |
 | **Art. 95.3 LPACAP** — reutilización de actos y trámites de expediente caducado en nuevo procedimiento | REF-LPACAP | D | Baja | IDENTIFICADA |
 
 ### Protocolo de adición de norma nueva al catálogo
