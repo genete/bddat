@@ -561,6 +561,17 @@ Estos valores son el seed del `catalogo_plazos` para las fases y trámites del p
 
 > **CONFORMIDAD_PRESUNTA:** efecto del silencio de un organismo consultado — el procedimiento sigue como si hubiera conformidad expresa. Diferente del silencio estimatorio del §2.4 (que recae sobre la Administración resolutora, no sobre un organismo consultado). Añadir `CONFORMIDAD_PRESUNTA` a la tabla `efectos_plazo`.
 
+### Ley 21/2013 — Umbrales EIA instalaciones eléctricas AT
+
+| Constante | Valor | Norma |
+|---|---|---|
+| EIA_ORDINARIA_TENSION_KV | 220 kV (≥) | Ley 21/2013 Anexo I Grupo 3g |
+| EIA_ORDINARIA_LONGITUD_KM | 15 km (>) | Ley 21/2013 Anexo I Grupo 3g |
+| EIA_SIMPLIFICADA_TENSION_KV | 15 kV (≥) | Ley 21/2013 Anexo II Grupo 4b |
+| EIA_SIMPLIFICADA_LONGITUD_KM | 3 km (>) | Ley 21/2013 Anexo II Grupo 4b |
+| EIA_SIMPLIFICADA_DIST_POBLACION_M | 200 m (<) | Ley 21/2013 Anexo II Grupo 4b |
+| EIA_SIMPLIFICADA_DIST_VIVIENDA_M | 100 m (<) | Ley 21/2013 Anexo II Grupo 4b |
+
 ---
 
 ## 6. Issues derivados

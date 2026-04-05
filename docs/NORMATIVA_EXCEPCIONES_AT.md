@@ -550,7 +550,7 @@ Requieren **Informe de Impacto Ambiental (IIA)**:
 > - No incluyen las medidas del **RD 1432/2008** de protección de avifauna contra colisión y electrocución.
 > - Discurren a **< 200 m de población** o a **< 100 m de viviendas aisladas** en algún tramo.
 >
-> **Excepción:** quedan fuera del Grupo 4b las líneas que discurran íntegramente en subterráneo por suelo urbanizado.
+> **Excepción:** quedan fuera del Grupo 4b las líneas que discurran íntegramente en subterráneo por suelo urbanizado. Esta excepción aparece al final de toda la frase del Grupo 4b en el Anexo II, por lo que **exime de todos los criterios del Grupo 4b** (umbral tensión/longitud, RD 1432/2008, proximidad a viviendas/población y criterios generales 1 y 2 del Anexo II). La única captura que sobrevive es la del **art. 7.2.b** (afectación apreciable a Red Natura 2000 desde fuera del perímetro — proyectos no incluidos en ningún Anexo), documentada en §8.3.
 
 > **Grupo 4c** — Repotenciación de líneas de transmisión existentes cuando cumplan los criterios generales 1 o 2 del Anexo II (espacios protegidos o corredores ecológicos).
 
@@ -586,22 +586,21 @@ Contrastar con el régimen excepcional del **art. 6 RDL 6/2022 / art. 22 RDL 20/
 | Cualquier proyecto (no en Anexo I ni II) + afección apreciable Red Natura 2000 | EIA simplificada | IIA | Sin escape |
 | Resto (sin criterios anteriores) | Sin EIA | — | — |
 
-### 8.6 Variables de contexto — MAPEO_CONTEXTO diferido a Ley 2/2026
+### 8.6 Variables de contexto — MAPEO_CONTEXTO
 
-> **⚠️ Variables pendientes de revisión.**
->
-> La Ley 21/2013 es marco estatal. En Andalucía, los procedimientos de evaluación ambiental (AAU, Calificación Ambiental, informe de incidencia territorial) los ha regulado siempre la normativa autonómica propia: hasta 2026 la GICA (Ley 7/2007) y a partir del 12/09/2026 la **Ley 2/2026 de Gestión Ambiental de Andalucía**. Las variables de contexto concretas dependerán de cómo la Ley 2/2026 particularice los umbrales estatales de la Ley 21/2013. Las variables identificadas a continuación son provisionales y deben revisarse tras extraer la Ley 2/2026 para evitar duplicidades o redefiniciones.
+Ley 2/2026 extraída. Deduplicación completada contra `DISEÑO_CONTEXT_ASSEMBLER.md` (sesión 2026-04-05).
 
-| Variable | Tipo | Naturaleza | Estado |
-|---|---|---|---|
-| `tension_kv` | float | `dato` | Pendiente de confirmar con Ley 2/2026 |
-| `longitud_km` | float | `dato` | Pendiente de confirmar con Ley 2/2026 |
-| `discurre_integra_subterranea_suelo_urbanizado` | boolean | `dato` | Pendiente de confirmar con Ley 2/2026 |
-| `afecta_red_natura_2000` | boolean | `calculado` | Pendiente de confirmar con Ley 2/2026 |
-| `requiere_eia_ordinaria` | boolean | `calculado` | Pendiente de confirmar con Ley 2/2026 |
-| `requiere_eia_simplificada` | boolean | `calculado` | Pendiente de confirmar con Ley 2/2026 |
-| `hito_dia_obtenida` | boolean | `derivado_documento` | Confirmado (Ley 2/2026 art. 52.2 + 67) |
-| `hito_iia_obtenido` | boolean | `derivado_documento` | Confirmado (Ley 2/2026 art. 52.2 + 79) |
+| Variable | Decisión |
+|---|---|
+| `tension_kv` | ELIMINAR — ya existe `tension_nominal_kv` (l.97 ContextAssembler) |
+| `longitud_km` | NUEVA |
+| `discurre_integra_subterranea_suelo_urbanizado` | NUEVA — distinta de `es_linea_subterranea` (no captura "íntegramente") y de `es_suelo_urbano_o_urbanizable` ("urbanizable" ≠ "urbanizado"); boolean, dato |
+| `ubicacion_red_natura_2000` | REUTILIZAR la existente (l.122) para criterio 1 del Grupo 4b |
+| `puede_afectar_red_natura_2000` | NUEVA — para art. 7.2.b ("puedan afectar de forma apreciable, directa o indirectamente"); dato, distinta de `ubicacion_` |
+| `requiere_eia_ordinaria` | REUTILIZAR existente (l.113) |
+| `requiere_eia_simplificada` | NUEVA |
+| `hito_dia_obtenida` | ELIMINAR — ya existe `hito_dia_favorable` (l.110) |
+| `hito_iia_obtenido` | NUEVA |
 
 ---
 
@@ -660,16 +659,18 @@ Los procedimientos de AAU (antes llamada igual bajo la GICA) y demás instrument
 
 ### 9.6 Variables de contexto — MAPEO_CONTEXTO
 
-| Variable | Tipo | Naturaleza | Estado | Norma |
-|---|---|---|---|---|
-| `requiere_aau` | boolean | `calculado` | Pendiente de implementar | Ley 2/2026 art. 67 + Ley 21/2013 Anexo I |
-| `requiere_aaus` | boolean | `calculado` | Pendiente de implementar | Ley 2/2026 art. 79 + Ley 21/2013 Anexo II |
-| `competencia_ambiental_estatal` | boolean | `dato` | Pendiente de implementar | Ley 2/2026 arts. 67.3 y 79.3 |
-| `declarada_utilidad_interes_general` | boolean | `dato` | Pendiente de implementar | Ley 2/2026 arts. 67.4 y 79.4 |
-| `fecha_inicio_expediente_ambiental` | date | `dato` | Pendiente de implementar | Ley 2/2026 DT 1ª |
-| `hito_aau_obtenida` | boolean | `derivado_documento` | Pendiente de implementar | Ley 2/2026 art. 67 / GICA art. 31 |
-| `hito_aaus_obtenida` | boolean | `derivado_documento` | Pendiente de implementar | Ley 2/2026 art. 79 |
+Deduplicación completada contra `DISEÑO_CONTEXT_ASSEMBLER.md` (sesión 2026-04-05).
 
-> **Deduplicación respecto a §8:** Las variables `requiere_eia_ordinaria` y `requiere_eia_simplificada` de §8 son equivalentes funcionales a `requiere_aau` y `requiere_aaus` en el contexto autonómico andaluz. Una vez confirmado el régimen Ley 2/2026, considerar unificar en una sola variable o aclarar la distinción (el instrumento autonómico es la AAU/AAUS; la EIA ordinaria/simplificada es el procedimiento que integran). La variable `requiere_eia_ordinaria` de §8 sigue siendo útil para el caso de competencia estatal (donde existe EIA pero sin AAU).
+| Variable | Decisión |
+|---|---|
+| `requiere_aau` | REUTILIZAR existente (l.102); actualizar norma_origen añadiendo Ley 2/2026 art. 67 |
+| `requiere_aaus` | NUEVA |
+| `competencia_ambiental_estatal` | NUEVA |
+| `declarada_utilidad_interes_general` | NUEVA pero estado=pendiente_de_revisar; nota: aplica solo a instalaciones promovidas por la Administración sin ser distribución/transporte (esas ya son de interés general per se); casos muy raros en BDDAT |
+| `fecha_inicio_expediente_ambiental` | NUEVA — date, dato; distingue si tramitación por GICA (< 20/06/2026) o Ley 2/2026 (≥ 20/06/2026) |
+| `hito_aau_obtenida` | NUEVA |
+| `hito_aaus_obtenida` | NUEVA |
 
-> **Nota sobre `requiere_aau` bajo GICA (antes 20/06/2026):** la variable lógica es la misma pero la norma que la calcula era el Decreto 356/2010 + GICA. El valor de la variable no cambia de nombre; cambia la norma que define los umbrales. Cuando se extraiga el Decreto 356/2010 verificar si los umbrales coinciden con los de Ley 21/2013 (altamente probable, dado que Decreto 356/2010 fue aprobado para implementar la GICA y esta remitía ya a umbrales EIA).
+> **Distinción `requiere_aau` / `requiere_eia_ordinaria`:** `requiere_aau` es el instrumento autonómico (Andalucía); `requiere_eia_ordinaria` cubre también el caso de competencia estatal (donde existe EIA ordinaria pero sin AAU autonómica). Mantener ambas variables con significado separado.
+>
+> **`requiere_aau` bajo GICA (antes 20/06/2026):** la variable lógica es la misma; cambia la norma que la activa (Decreto 356/2010 + GICA vs Ley 2/2026). Cuando se extraiga el Decreto 356/2010 verificar que los umbrales coinciden con los de Ley 21/2013.
