@@ -643,6 +643,9 @@ Los instrumentos de prevención ambiental son, por orden de prioridad descendent
 
 → Instalaciones de distribución o generación de competencia autonómica (Junta de Andalucía): sí requieren AAU o AAUS según umbrales.
 
+> ⚠️ **Cambio de régimen respecto a la GICA — pendiente de verificar al analizar GICA + Decreto 356/2010 + Instrucción Conjunta 1/2022:**
+> Bajo el régimen anterior (GICA + Decreto 356/2010), las instalaciones de transporte intra-CCAA sí requerían AAU autonómica, y la **Instrucción Conjunta 1/2022** establecía que dicha AAU se tramitaba de forma **integrada** en el procedimiento de AAP (instrucción conjunta AAP+AAU). Con la Ley 2/2026, arts. 67.3 y 79.3 excluyen expresamente la AAU/AAUS para instalaciones de competencia ambiental estatal, de modo que el EIA lo tramita MITECO por separado. Esto **rompe la instrucción conjunta** para este tipo de instalaciones: ya no hay AAU autonómica que integrar en la AAP. Al analizar la GICA y el Decreto 356/2010 verificar el alcance exacto de ese régimen anterior y el impacto del cambio en expedientes en curso (DT 1ª).
+
 ### 9.4 Régimen especial — instalaciones declaradas de utilidad e interés general o promovidas por la Junta (arts. 67.4 y 79.4)
 
 Estas actuaciones se someten igualmente al procedimiento AAU/AAUS, pero la resolución del órgano ambiental adopta la forma de **informe de carácter vinculante** en lugar de resolución de autorización. El procedimiento tiene carácter instrumental respecto al procedimiento de autorización o aprobación de la actuación principal.
@@ -685,6 +688,14 @@ Deduplicación completada contra `DISEÑO_CONTEXT_ASSEMBLER.md` (sesión 2026-04
 #### Diseño de umbrales — continuidad y exclusividad con AAUS/AAU
 
 La Ley 2/2026 diseña la Categoría 3 del Anexo I para que sus umbrales sean **continuos y excluyentes** respecto a los de AAUS (Ley 21/2013 Anexo II): si se activan los criterios\* que remiten a la EIA, el proyecto sale de la Categoría 3 y entra en AAUS; si no se activan, queda en Licencia Ambiental. No hay solapamiento ni hueco entre tramos de distinto instrumento.
+
+El sistema AAU / AAUS / LA / sin instrumento es **monotónico** respecto a las tres variables principales, verificado mediante análisis matricial exhaustivo (sesión 2026-04-05):
+
+- **Tensión:** a mayor tensión nominal, igual o mayor instrumento (T < 15 kV → LA o sin instrumento; T ≥ 15 kV → LA o AAUS; T ≥ 220 kV y L > 15 km → AAU).
+- **Longitud:** a mayor longitud, igual o mayor instrumento para un tipo y suelo dados. No existe ninguna combinación en que cruzar un umbral de longitud reduzca el instrumento requerido.
+- **Clasificación de suelo (modelo concéntrico LISTA):** el suelo se organiza en capas concéntricas de menor a mayor antropización — rústico / urbanizable / urbano / urbanizado. A mayor antropización (capas interiores), mayor longitud o tensión puede tener la instalación sin requerir instrumento, porque las capas interiores ya no tienen valores naturales que proteger. El escape de LA para suelo urbano y el escape de EIA para suelo urbanizado son consecuencia de este principio, no vacíos legales.
+
+Los casos sin instrumento son siempre: (a) instalaciones por debajo de todos los umbrales aplicables, o (b) instalaciones en capas de suelo suficientemente antropizadas. No existe ninguna combinación en que una instalación con mayor impacto (T, L o suelo más exterior) quede sin instrumento mientras una de menor impacto sí lo requiere.
 
 #### Umbrales — líneas eléctricas y subestaciones asociadas
 
