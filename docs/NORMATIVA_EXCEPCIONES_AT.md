@@ -24,6 +24,7 @@ Para los plazos concretos de cada trámite: ver `docs/NORMATIVA_PLAZOS.md §2`.
 | [§5](#5-rd-ley-62022-de-29-de-marzo) | RD-ley 6/2022 — afección ambiental simplificada + tramitación conjunta (primera ola) |
 | [§6](#6-rd-ley-202022-de-27-de-diciembre) | RD-ley 20/2022 — régimen ampliado (segunda ola) + suspensión nudos concurso |
 | [§7](#7-decreto-ley-22018-de-26-de-junio-junta-de-andalucía) | DL 2/2018 — umbral 500 kW, anti-fraccionamiento, DR consultas, incidencia territorial |
+| [§8](#8-ley-212013-de-9-de-diciembre--umbrales-eia-y-condiciones-de-obligatoriedad) | Ley 21/2013 — umbrales EIA ordinaria/simplificada para instalaciones eléctricas AT |
 
 ---
 
@@ -514,3 +515,89 @@ El órgano competente puede requerir el análisis realizado por el promotor en c
 - `promotor_aporto_doc_incidencia_territorial` — boolean, `derivado_documento` · Expediente: existe documento de tipo DR_NO_INCIDENCIA_TERRITORIAL o INFORME_INCIDENCIA_TERRITORIAL asociado a la solicitud.
 
 > **Nota:** el art. 71 del Reglamento LISTA (Decreto 550/2022) define los supuestos de actuaciones sometidas a informe de incidencia territorial. Pendiente de revisar su contenido para completar la lógica de `requiere_informe_incidencia_territorial`.
+
+---
+
+## 8. Ley 21/2013, de 9 de diciembre — Umbrales EIA y condiciones de obligatoriedad
+
+> **BOE-A-2013-12913** — texto consolidado (last_updated 2025-11-06). Sesión 2026-04-05.
+> Para los plazos del procedimiento ambiental (DIA, IIA, vigencias): ver `NORMATIVA_PLAZOS.md §2.5`.
+> La norma autonómica andaluza que regula los procedimientos ambientales aplicables en Andalucía (AAU, Calificación Ambiental) es la **Ley 2/2026** — pendiente de extraer; depende conceptualmente de esta sección.
+
+La Ley 21/2013 es el marco estatal de evaluación ambiental. Para instalaciones de AT, determina cuándo la AAP queda condicionada a obtener primero la DIA (EIA ordinaria) o el IIA (EIA simplificada). El órgano ambiental es la CCAA cuando la instalación sea de competencia autonómica.
+
+### 8.1 EIA ordinaria — Umbral Anexo I (art. 7.1.a + Anexo I, Grupo 3g)
+
+Requieren **Declaración de Impacto Ambiental (DIA)** previa a la AAP:
+
+> **Líneas eléctricas** con voltaje **≥ 220 kV** y longitud **> 15 km**, así como sus **subestaciones asociadas**.
+>
+> **Excepción al umbral:** quedan fuera del Anexo I (no requieren EIA ordinaria por este punto) las líneas que discurran **íntegramente en subterráneo por suelo urbanizado**, aunque superen ambos umbrales.
+
+Adicionalmente, cualquier proyecto del Anexo II sube a EIA ordinaria si:
+- el órgano ambiental lo decide caso por caso por los criterios del Anexo III (art. 7.1.b), o
+- el promotor lo solicita voluntariamente (art. 7.1.d), o
+- una modificación de un proyecto ya incluido en el Anexo I cumple por sí sola los umbrales del Anexo I (art. 7.1.c).
+
+### 8.2 EIA simplificada — Umbral Anexo II (art. 7.2.a + Anexo II, Grupo 4b y 4c)
+
+Requieren **Informe de Impacto Ambiental (IIA)**:
+
+> **Grupo 4b** — Líneas eléctricas **≥ 15 kV** y longitud **> 3 km**, no incluidas en el Anexo I, con sus subestaciones asociadas. También por debajo de estos umbrales cuando se dé cualquiera de estas condiciones:
+> - Afectan a espacios protegidos Red Natura 2000, espacios naturales protegidos, Ramsar u otros espacios especiales (criterio general 1 del Anexo II).
+> - Se solapan con corredores ecológicos declarados, áreas críticas de especies amenazadas u otras áreas de protección especial de especies (criterio general 2 del Anexo II).
+> - No incluyen las medidas del **RD 1432/2008** de protección de avifauna contra colisión y electrocución.
+> - Discurren a **< 200 m de población** o a **< 100 m de viviendas aisladas** en algún tramo.
+>
+> **Excepción:** quedan fuera del Grupo 4b las líneas que discurran íntegramente en subterráneo por suelo urbanizado.
+
+> **Grupo 4c** — Repotenciación de líneas de transmisión existentes cuando cumplan los criterios generales 1 o 2 del Anexo II (espacios protegidos o corredores ecológicos).
+
+#### Criterios generales del Anexo II (aplicables como cláusula de captura por debajo de umbrales)
+
+| Criterio | Contenido |
+|---|---|
+| **1** | Proyectos en espacios Red Natura 2000, espacios naturales protegidos, humedales Ramsar, sitios Patrimonio Mundial, zonas OSPAR/ZEPIM, zonas núcleo/tampón de Reservas de Biosfera UNESCO. No aplica a proyectos expresamente permitidos por la zonificación del espacio ni a proyectos sin efectos adversos apreciables (informe del órgano gestor). |
+| **2** | Proyectos solapados con corredores/conectores ecológicos declarados, áreas críticas de planes de recuperación/conservación de especies amenazadas, otras áreas de protección especial de especies, hábitats de interés comunitario en estado desfavorable, o áreas para protección de especies de pesca/marisqueo. Salvo informe del órgano gestor de ausencia de efectos adversos. |
+
+### 8.3 EIA simplificada por afección a Red Natura 2000 — proyecto fuera de Anexos (art. 7.2.b)
+
+Aunque el proyecto no esté en el Anexo I ni en el Anexo II, si puede afectar de forma **apreciable, directa o indirectamente, a Espacios Protegidos Red Natura 2000**, requiere EIA simplificada. En este caso el EsIA solo analiza las repercusiones sobre Red Natura 2000 (art. 45.1.e).
+
+### 8.4 Silencio ambiental — regla general (art. 10)
+
+La falta de emisión de la DIA o del IIA en plazo **en ningún caso** equivale a evaluación ambiental favorable. No existe silencio positivo ambiental. Si no se emite en plazo, la AAP no puede resolverse favorablemente.
+
+Contrastar con el régimen excepcional del **art. 6 RDL 6/2022 / art. 22 RDL 20/2022** (procedimiento de determinación de afección ambiental para renovables), donde el silencio del órgano ambiental en 2 meses sí obliga a pasar por el procedimiento EIA de la Ley 21/2013 — lo que equivale en la práctica a un silencio desestimatorio del procedimiento simplificado, aunque la instalación pueda continuar por la vía EIA ordinaria.
+
+### 8.5 Cuadro resumen — umbrales para instalaciones eléctricas AT
+
+| Caso | Tipo de EIA | Instrumento | Condición de escape |
+|---|---|---|---|
+| Línea AT **≥ 220 kV** y **> 15 km** | EIA ordinaria | DIA | Íntegramente subterránea por suelo urbanizado |
+| Subestación asociada a línea anterior | EIA ordinaria | DIA | Ídem |
+| Línea AT **≥ 15 kV** y **> 3 km** (< 220 kV o ≤ 15 km) | EIA simplificada | IIA | Íntegramente subterránea por suelo urbanizado |
+| Subestación asociada a línea anterior | EIA simplificada | IIA | Ídem |
+| Línea cualquier tensión/longitud + criterio gral. 1 o 2 | EIA simplificada | IIA | Sin escape |
+| Línea cualquier tensión/longitud + sin medidas RD 1432/2008 | EIA simplificada | IIA | Sin escape |
+| Línea cualquier tensión/longitud + < 200 m población o < 100 m vivienda aislada | EIA simplificada | IIA | Sin escape |
+| Repotenciación de línea existente + criterio gral. 1 o 2 | EIA simplificada | IIA | Sin escape |
+| Cualquier proyecto (no en Anexo I ni II) + afección apreciable Red Natura 2000 | EIA simplificada | IIA | Sin escape |
+| Resto (sin criterios anteriores) | Sin EIA | — | — |
+
+### 8.6 Variables de contexto — MAPEO_CONTEXTO diferido a Ley 2/2026
+
+> **⚠️ Variables pendientes de revisión.**
+>
+> La Ley 21/2013 es marco estatal. En Andalucía, los procedimientos de evaluación ambiental (AAU, Calificación Ambiental, informe de incidencia territorial) los ha regulado siempre la normativa autonómica propia: hasta 2026 la GICA (Ley 7/2007) y a partir del 12/09/2026 la **Ley 2/2026 de Gestión Ambiental de Andalucía**. Las variables de contexto concretas dependerán de cómo la Ley 2/2026 particularice los umbrales estatales de la Ley 21/2013. Las variables identificadas a continuación son provisionales y deben revisarse tras extraer la Ley 2/2026 para evitar duplicidades o redefiniciones.
+
+| Variable | Tipo | Naturaleza | Estado |
+|---|---|---|---|
+| `tension_kv` | float | `dato` | Pendiente de confirmar con Ley 2/2026 |
+| `longitud_km` | float | `dato` | Pendiente de confirmar con Ley 2/2026 |
+| `discurre_integra_subterranea_suelo_urbanizado` | boolean | `dato` | Pendiente de confirmar con Ley 2/2026 |
+| `afecta_red_natura_2000` | boolean | `calculado` | Pendiente de confirmar con Ley 2/2026 |
+| `requiere_eia_ordinaria` | boolean | `calculado` | Pendiente de confirmar con Ley 2/2026 |
+| `requiere_eia_simplificada` | boolean | `calculado` | Pendiente de confirmar con Ley 2/2026 |
+| `hito_dia_obtenida` | boolean | `derivado_documento` | Pendiente de confirmar con Ley 2/2026 |
+| `hito_iia_obtenido` | boolean | `derivado_documento` | Pendiente de confirmar con Ley 2/2026 |

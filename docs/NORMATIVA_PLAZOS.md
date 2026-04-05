@@ -21,6 +21,7 @@
    - [2.2 Real Decreto 1955/2000](#22-real-decreto-19552000-de-1-de-diciembre-rd-19552000)
    - [2.3 RD-ley 23/2020 — hitos del administrado](#23-rd-ley-232020-de-23-de-junio--hitos-del-administrado)
    - [2.4 RD-ley 6/2022 + RD-ley 20/2022 — afección ambiental y tramitación conjunta renovables](#24-rd-ley-62022-de-29-de-marzo--rd-ley-202022-de-27-de-diciembre)
+   - [2.5 Ley 21/2013 — EIA: plazos del procedimiento ambiental](#25-ley-212013-de-9-de-diciembre--eia-plazos-del-procedimiento-ambiental)
 3. [API de días inhábiles — Junta de Andalucía](#3-api-de-días-inhábiles--junta-de-andalucía)
    - [3.1 Descripción](#31-descripción)
    - [3.2 Endpoints](#32-endpoints)
@@ -520,6 +521,73 @@ Ambos artículos establecen plazos idénticos. La diferencia entre ellos es el �
 | Fin de la suspensión | ≈ junio 2024 (18 meses naturales desde el 28/12/2022) |
 
 > Este artículo ya ha **agotado su período de vigencia**. Solo es relevante para expedientes con trámites que quedaron suspendidos entre diciembre 2022 y junio 2024 y aún están activos.
+
+---
+
+### 2.5 Ley 21/2013, de 9 de diciembre — EIA: plazos del procedimiento ambiental
+
+> **BOE-A-2013-12913** — texto consolidado (last_updated 2025-11-06). Sesión 2026-04-05.
+> Para los umbrales que determinan cuándo se requiere EIA ordinaria o simplificada, ver `NORMATIVA_EXCEPCIONES_AT.md §8`.
+> Para la suspensión de facto de la AAP mientras se tramita la DIA, ver `NORMATIVA_EXCEPCIONES_AT.md §2.2`.
+
+Los plazos de la Ley 21/2013 son **plazos del órgano ambiental** y del órgano sustantivo dentro del procedimiento de EIA. Son independientes —y se superponen— con los plazos del procedimiento de autorización sectorial (RD 1955/2000).
+
+**Regla de oro (art. 10):** la falta de emisión de la DIA o del informe de impacto ambiental **en ningún caso equivale a evaluación favorable**. No existe silencio positivo ambiental.
+
+#### EIA ordinaria — plazos (arts. 33-43)
+
+| Trámite | Plazo | Quién | Artículo |
+|---|---|---|---|
+| Documento de alcance del EsIA (potestativo) | **2 meses** | Órgano ambiental | Art. 33.2 / Art. 34 |
+| Remisión del doc. inicial al órgano ambiental | **10 días hábiles** | Órgano sustantivo | Art. 34.2 |
+| Consultas previas al doc. de alcance | **20 días hábiles** | AAPP y personas interesadas | Art. 34.4 |
+| Validez del doc. de alcance | **2 años** desde notificación al promotor | — | Art. 34.5 |
+| Validez del EsIA | **1 año** desde conclusión para presentarlo | — | Art. 35.4 |
+| Información pública (proyecto + EsIA) | **≥ 30 días hábiles** | Órgano sustantivo | Art. 36.1 |
+| Consultas a AAPP y personas interesadas | **30 días hábiles** | AAPP y personas interesadas | Art. 37.4 |
+| Vigencia de los trámites de IP y consultas | **1 año** desde finalización | — | Art. 33.3 |
+| Traslado de alegaciones al promotor | **30 días hábiles** desde fin IP+consultas | Órgano sustantivo | Art. 38.1 |
+| Inadmisión de la solicitud de EIA ordinaria | **20 días hábiles** | Órgano ambiental | Art. 39.4 |
+| Subsanación del expediente (si incompleto) | **3 meses** | Órgano sustantivo | Art. 40.1 |
+| Análisis técnico + formulación de la DIA | **4 meses** desde recepción del expediente completo | Órgano ambiental | Art. 33.4 |
+| Publicación de la DIA en diario oficial | **10 días hábiles** desde formulación | Órgano ambiental | (implícito) |
+| Extracto de la resolución de autorización | **15 días hábiles** desde autorización o denegación | Órgano sustantivo | Art. 42.4 |
+
+**Vigencia de la DIA (art. 43):**
+- **4 años** desde publicación para inicio de ejecución.
+- Prórroga: **2 años** adicionales si no hay cambios sustanciales en los elementos esenciales.
+- Plazo para resolver la prórroga: **3 meses** desde solicitud (silencio: desestimatorio).
+
+#### EIA simplificada — plazos (arts. 45-47)
+
+| Trámite | Plazo | Quién | Artículo |
+|---|---|---|---|
+| Inadmisión solicitud EIA simplificada | **20 días hábiles** | Órgano ambiental | Art. 45.4 |
+| Consultas a AAPP y personas interesadas | **20 días** | AAPP y personas interesadas | Art. 46.2 |
+| Formulación del informe de impacto ambiental (IIA) | **3 meses** desde recepción solicitud | Órgano ambiental | Art. 47.1 |
+| Publicación del IIA | **10 días hábiles** desde formulación | — | Art. 47.3 |
+
+**Vigencia del IIA (art. 47.4):**
+- **4 años** desde publicación para autorizar el proyecto.
+- Prórroga: **2 años** adicionales si no hay cambios sustanciales.
+- Plazo para resolver la prórroga: **3 meses** desde solicitud (silencio: desestimatorio).
+
+#### Resumen de plazos — tabla consolidada Ley 21/2013
+
+| Procedimiento | Trámite | Plazo | Tipo | Silencio |
+|---|---|---|---|---|
+| **EIA ordinaria** | Doc. alcance EsIA (potestativo) | 2 meses | Órgano ambiental | — |
+| **EIA ordinaria** | Información pública | ≥ 30 días hábiles | Trámite | — |
+| **EIA ordinaria** | Consultas a AAPP | 30 días hábiles | AAPP | Continúa sin respuesta |
+| **EIA ordinaria** | Análisis técnico + formulación DIA | **4 meses** | Órgano ambiental | No hay silencio favorable |
+| **EIA ordinaria** | Vigencia DIA | **4 años** | Vigencia | — |
+| **EIA ordinaria** | Prórroga DIA | + 2 años | Órgano ambiental | **Desestimatorio** |
+| **EIA simplificada** | Consultas a AAPP | 20 días | AAPP | Continúa sin respuesta |
+| **EIA simplificada** | Formulación IIA | **3 meses** | Órgano ambiental | No hay silencio favorable |
+| **EIA simplificada** | Vigencia IIA | **4 años** | Vigencia | — |
+| **EIA simplificada** | Prórroga IIA | + 2 años | Órgano ambiental | **Desestimatorio** |
+
+> **Implicación en BDDAT:** los expedientes con EIA pueden tener la AAP bloqueada entre 4 y 8+ meses por el solo trámite de la DIA. Los hitos del RD-ley 23/2020 (Grupo B, hito 2: DIA favorable en 31 meses) presuponen este orden temporal. El motor debe gestionar la DIA como evento desbloqueante de la AAP, no como trámite interno del expediente sectorial.
 
 ---
 
