@@ -20,6 +20,7 @@
    - [2.1 Ley 24/2013 del Sector Eléctrico (LSE)](#21-ley-242013-de-26-de-diciembre-del-sector-eléctrico-lse)
    - [2.2 Real Decreto 1955/2000](#22-real-decreto-19552000-de-1-de-diciembre-rd-19552000)
    - [2.3 RD-ley 23/2020 — hitos del administrado](#23-rd-ley-232020-de-23-de-junio--hitos-del-administrado)
+   - [2.4 RD-ley 6/2022 + RD-ley 20/2022 — afección ambiental y tramitación conjunta renovables](#24-rd-ley-62022-de-29-de-marzo--rd-ley-202022-de-27-de-diciembre)
 3. [API de días inhábiles — Junta de Andalucía](#3-api-de-días-inhábiles--junta-de-andalucía)
    - [3.1 Descripción](#31-descripción)
    - [3.2 Endpoints](#32-endpoints)
@@ -476,6 +477,49 @@ Cómputo desde el 25/06/2020 (permisos anteriores a esa fecha) o desde la fecha 
 | 5 | Autorización de explotación definitiva | 5 años | **Hasta 8 años** (a solicitud) |
 
 > Plazos son en **meses naturales** — no hay distinción entre hábiles e inhábiles en este contexto.
+
+---
+
+### 2.4 RD-ley 6/2022, de 29 de marzo + RD-ley 20/2022, de 27 de diciembre
+
+> **BOE-A-2022-4972** (RDL 6/2022) · **BOE-A-2022-22685** (RDL 20/2022) — textos consolidados. Sesión 2026-04-04.
+> Para el detalle del procedimiento y las condiciones de activación, ver `NORMATIVA_EXCEPCIONES_AT.md §5` y `§6`.
+
+Los plazos de estas normas corresponden al **procedimiento de determinación de afección ambiental** (alternativo a la EIA ordinaria) y a la **tramitación conjunta AAP+AAC** para renovables. Afectan tanto al órgano tramitador como al órgano ambiental.
+
+#### Procedimiento de determinación de afección ambiental (art. 6 RDL 6/2022 · art. 22 RDL 20/2022)
+
+Ambos artículos establecen plazos idénticos. La diferencia entre ellos es el ámbito de aplicación (condiciones de activación), no los plazos. Ver `NORMATIVA_EXCEPCIONES_AT.md §5.1` y `§6.1`.
+
+| Trámite | Plazo | Tipo | Cómputo | Silencio |
+|---|---|---|---|---|
+| Remisión al órgano ambiental por el órgano sustantivo | **10 días hábiles** | Obligación del órgano sustantivo | Desde recepción de la solicitud completa | — |
+| Emisión del informe de determinación de afección ambiental | **2 meses** | Plazo del órgano ambiental | Desde recepción de documentación completa | **Desestimatorio** — si no se emite en plazo, el proyecto debe someterse al procedimiento EIA de la Ley 21/2013 |
+| Validez del informe favorable | **2 años** | Plazo de vigencia | Desde la notificación del informe al promotor | — |
+
+> **Ventana temporal de aplicación:**
+> - Art. 6 RDL 6/2022: solicitudes presentadas ante el órgano sustantivo **antes del 31/12/2024**.
+> - Art. 22 RDL 20/2022: solicitudes presentadas **desde el 28/12/2022 hasta el 31/12/2024**.
+> En 2026, ambos artículos solo afectan a expedientes con solicitud previa al 31/12/2024 aún en tramitación.
+
+#### Tramitación conjunta AAP+AAC — plazos reducidos (art. 7 RDL 6/2022 · art. 23 RDL 20/2022)
+
+> ⚠️ **Solo aplica a proyectos competencia AGE** (producción > 50 MW peninsular, LSE art. 3.13.a). Los expedientes de BDDAT (Andalucía, ≤ 50 MW) **no siguen este régimen** directamente. Se documenta como referencia para el caso en que Andalucía adopte un procedimiento análogo.
+
+| Trámite | Plazo estándar (RD 1955/2000) | Plazo reducido (arts. 7/23) | Tipo |
+|---|---|---|---|
+| Consultas a AAPP (arts. 127+131 RD 1955/2000) | 30 días hábiles | **15 días hábiles** (mitad) | Plazo del órgano tramitador |
+| Información pública AAP (art. 125 RD 1955/2000) | 30 días hábiles | **15 días hábiles** (mitad) | Plazo del administrado/publicación |
+| Información pública AAC (art. 126 RD 1955/2000) | 20 días hábiles | **10 días hábiles** (mitad) | Plazo del administrado/publicación |
+
+#### Suspensión en nudos con concurso de acceso (art. 13 RDL 20/2022)
+
+| Evento | Fecha |
+|---|---|
+| Inicio de la suspensión | 28/12/2022 (entrada en vigor RDL 20/2022) |
+| Fin de la suspensión | ≈ junio 2024 (18 meses naturales desde el 28/12/2022) |
+
+> Este artículo ya ha **agotado su período de vigencia**. Solo es relevante para expedientes con trámites que quedaron suspendidos entre diciembre 2022 y junio 2024 y aún están activos.
 
 ---
 

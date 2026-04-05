@@ -2,7 +2,7 @@
 
 > **Aplica a:** Motor de reglas — fases obligatorias, su orden y base legal por tipo de solicitud.
 > **Fuentes de verdad:** `docs/NORMATIVA_LEGISLACION_AT.md §6` (catálogo normativo) · `docs/NORMATIVA_PLAZOS.md §2` (plazos concretos).
-> **Estado:** En construcción — sesiones 2026-04-02 / 2026-04-04. LSE + RD 1955/2000 (incl. modificaciones) + RD-ley 23/2020 extraídos.
+> **Estado:** En construcción — sesiones 2026-04-02 / 2026-04-04. LSE + RD 1955/2000 (incl. modificaciones) + RD-ley 23/2020 + RD 1183/2020 extraídos.
 
 Este documento responde a la **Iteración 1** de `NORMATIVA_LEGISLACION_AT.md §5`:
 para cada tipo de solicitud, qué procedimiento define la legislación, qué fases lo componen,
@@ -20,6 +20,7 @@ se documenta en `docs/NORMATIVA_SOLICITUDES.md`.
 | [§1](#1-lse-242013--procedimientos-autorizatorios) | LSE 24/2013 — tipos de autorización y relación entre ellos |
 | [§2](#2-rd-19552000--fases-detalladas-por-procedimiento) | RD 1955/2000 — fases detalladas por procedimiento |
 | [§2.7](#27-hitos-administrativos-para-instalaciones-renovables--rd-ley-232020) | Hitos administrativos renovables — RD-ley 23/2020 + RD-ley 8/2023 |
+| [§2.8](#28-acceso-y-conexión-a-red--rd-11832020) | Acceso y conexión a red — RD 1183/2020 |
 
 ---
 
@@ -303,3 +304,45 @@ Ver `GUIA_NORMAS.md §6`. Variables relevantes:
 | `hito_aap_obtenida` | Para semáforo de prioridad (Hito 3 — implícito en BDDAT) |
 | `hito_aac_obtenida` | Para semáforo de prioridad (Hito 4 — implícito en BDDAT) |
 | `hito_explotacion_definitiva` | Para semáforo de prioridad (Hito 5 — implícito en BDDAT) |
+
+---
+
+### 2.8 Acceso y conexión a red — RD 1183/2020
+
+> Base: **RD 1183/2020, de 29 de diciembre** (BOE-A-2020-17278, texto consolidado). Sesión 2026-04-04.
+> Modificado en marzo 2026 por RDL 7/2026 (BOE-A-2026-6544) — arts. 20 ter, 20 quater, 20 quinquies (concursos de demanda).
+
+El RD 1183/2020 regula el procedimiento para obtener **permisos de acceso y conexión** a las redes de transporte y distribución. Es el marco base del que depende la variable `tiene_punto_acceso_conexion` — condición de admisión a trámite de la AAP para renovables (ver §2.7).
+
+**Ámbito de aplicación (art. 3):** se aplica a todos los sujetos que soliciten permisos de acceso y conexión: promotores y titulares de instalaciones de generación, distribución, transporte, almacenamiento y consumidores. No se aplica a almacenamiento titularidad del operador del sistema en territorios no peninsulares, ni a almacenamiento que nunca inyecte energía a la red, ni cuando el titular de la red accede a redes de su propia titularidad.
+
+#### Permiso de acceso y conexión como presupuesto previo
+
+El permiso de acceso y conexión es **externo a BDDAT**: lo otorga el gestor de la red (REE para transporte, distribuidora para distribución), no la Consejería. BDDAT solo comprueba su existencia como condición de admisión a trámite.
+
+**Concursos de acceso (arts. 18-20):** cuando un nudo supera determinados umbrales de capacidad solicitada, la Secretaría de Estado de Energía puede acordar la celebración de un **concurso de capacidad de acceso** en ese nudo. Durante la reserva para concurso, las solicitudes que no tengan ya permiso de acceso quedan suspendidas. Este mecanismo opera a nivel AGE/TSO — no es un trámite de BDDAT, pero condiciona la variable `tiene_punto_acceso_conexion`.
+
+#### DA 1ª — Sistema de control coordinado
+
+**Regla:** Las instalaciones de generación cuya **potencia total instalada supere la capacidad de acceso otorgada** en su permiso deben disponer de un sistema de control coordinado para todos los módulos (generación + almacenamiento), que impida que la potencia activa inyectada a la red supere dicha capacidad de acceso.
+
+**Implicación en BDDAT:** es un **requisito técnico del proyecto** (no una fase del procedimiento). El órgano tramitador lo verifica en la revisión documental de la AAP/AAC. No cambia el flujo de fases, pero puede ser motivo de requerimiento de subsanación si el proyecto no lo contempla. Aplica especialmente en instalaciones FV con alta relación DC/AC («overplanting»).
+
+#### DF 3ª — Definición de potencia instalada FV
+
+Modifica el art. 3 del RD 413/2014. Para instalaciones fotovoltaicas:
+
+```
+potencia instalada FV = min(Σ potencia máxima módulos DC en STC, Σ potencia máxima inversores AC)
+```
+
+Esta definición determina el umbral de competencia (AGE >50 MW / CCAA ≤50 MW) y los umbrales de los procedimientos de afección ambiental de RDL 6/2022 y RDL 20/2022. Ver variable `potencia_instalada_mw` en `GUIA_NORMAS.md §6`.
+
+> **Nota sobre RDL 7/2025:** este RDL introdujo temporalmente en su art. 10 una nueva definición de potencia instalada para instalaciones híbridas (generación + almacenamiento compartiendo inversores). Fue **derogado íntegramente** por el Congreso el 22/07/2025 (BOE-A-2025-15313). La definición vigente de potencia instalada FV sigue siendo la de la DF 3ª del RD 1183/2020.
+
+#### Variables del ContextAssembler
+
+| Variable | Uso |
+|---|---|
+| `tiene_punto_acceso_conexion` | Condición de admisión a trámite de AAP (renovables) — ver §2.7 |
+| `potencia_instalada_mw` | Umbral de competencia AGE/CCAA; para FV: `min(DC, AC)` conforme DF 3ª |
