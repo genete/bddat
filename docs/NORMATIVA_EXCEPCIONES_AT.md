@@ -2,7 +2,7 @@
 
 > **Aplica a:** Motor de reglas — desviaciones respecto al procedimiento estándar AAP/AAC/AE.
 > **Fuentes de verdad:** `docs/NORMATIVA_LEGISLACION_AT.md §6` · `docs/NORMATIVA_PLAZOS.md §2`.
-> **Estado:** En construcción — sesión 2026-04-04. LSE + RD 1955/2000 + Decreto 9/2011 + DL 26/2021 + RDL 6/2022 + RDL 20/2022 + DL 2/2018 extraídos.
+> **Estado:** En construcción — sesión 2026-04-05. LSE + RD 1955/2000 + Decreto 9/2011 + DL 26/2021 + RDL 6/2022 + RDL 20/2022 + DL 2/2018 + Ley 21/2013 + Ley 2/2026 extraídos.
 
 Este documento recoge las **Iteraciones 2 y 4** de `NORMATIVA_LEGISLACION_AT.md §5`:
 - **Iteración 2:** excepciones al procedimiento estándar y regímenes especiales (renovables, <30 kV, simplificaciones).
@@ -25,6 +25,7 @@ Para los plazos concretos de cada trámite: ver `docs/NORMATIVA_PLAZOS.md §2`.
 | [§6](#6-rd-ley-202022-de-27-de-diciembre) | RD-ley 20/2022 — régimen ampliado (segunda ola) + suspensión nudos concurso |
 | [§7](#7-decreto-ley-22018-de-26-de-junio-junta-de-andalucía) | DL 2/2018 — umbral 500 kW, anti-fraccionamiento, DR consultas, incidencia territorial |
 | [§8](#8-ley-212013-de-9-de-diciembre--umbrales-eia-y-condiciones-de-obligatoriedad) | Ley 21/2013 — umbrales EIA ordinaria/simplificada para instalaciones eléctricas AT |
+| [§9](#9-ley-22026-de-12-de-marzo--instrumentos-de-prevención-ambiental-aplicables-a-instalaciones-at) | Ley 2/2026 — instrumentos de prevención ambiental (AAU, AAUS, Licencia Ambiental) y régimen transitorio |
 
 ---
 
@@ -599,5 +600,76 @@ Contrastar con el régimen excepcional del **art. 6 RDL 6/2022 / art. 22 RDL 20/
 | `afecta_red_natura_2000` | boolean | `calculado` | Pendiente de confirmar con Ley 2/2026 |
 | `requiere_eia_ordinaria` | boolean | `calculado` | Pendiente de confirmar con Ley 2/2026 |
 | `requiere_eia_simplificada` | boolean | `calculado` | Pendiente de confirmar con Ley 2/2026 |
-| `hito_dia_obtenida` | boolean | `derivado_documento` | Pendiente de confirmar con Ley 2/2026 |
-| `hito_iia_obtenido` | boolean | `derivado_documento` | Pendiente de confirmar con Ley 2/2026 |
+| `hito_dia_obtenida` | boolean | `derivado_documento` | Confirmado (Ley 2/2026 art. 52.2 + 67) |
+| `hito_iia_obtenido` | boolean | `derivado_documento` | Confirmado (Ley 2/2026 art. 52.2 + 79) |
+
+---
+
+## 9. Ley 2/2026, de 12 de marzo — Instrumentos de prevención ambiental aplicables a instalaciones AT
+
+> **BOJA núm. 54 de 20/03/2026** — sedeboja id_tecnico 40751. Entrada en vigor **20/06/2026**.
+> Para plazos del procedimiento AAU y AAUS: ver `NORMATIVA_PLAZOS.md §2.6`.
+> Para umbrales EIA que determinan cuál instrumento aplica: ver `NORMATIVA_EXCEPCIONES_AT.md §8` (Ley 21/2013).
+> Para régimen transitorio y derogaciones: ver análisis previo `docs_prueba/temp/ley2026_analisis_EV_DD_DT.md`.
+
+La Ley 2/2026 sustituye a la GICA (Ley 7/2007) como norma autonómica de prevención ambiental. Para instalaciones AT, determina el instrumento ambiental autonómico exigible en función de los umbrales de la Ley 21/2013.
+
+### 9.1 Jerarquía de instrumentos (art. 52)
+
+Los instrumentos de prevención ambiental son, por orden de prioridad descendente:
+
+1. **Autorización Ambiental Integrada (AAI)** — art. 57: instalaciones del anejo 1 del TRLPCIC (grandes instalaciones industriales). No aplica a líneas eléctricas AT convencionales.
+2. **Autorización Ambiental Unificada (AAU)** — art. 67: proyectos del **Anexo I de la Ley 21/2013**. Integra la DIA (EIA ordinaria). Competencia: Consejería de Medio Ambiente.
+3. **Autorización Ambiental Unificada Simplificada (AAUS)** — art. 79: proyectos del **Anexo II de la Ley 21/2013** + proyectos que puedan afectar apreciablemente a Red Natura 2000 aunque no estén en ningún Anexo. Integra el IIA (EIA simplificada). Competencia: Consejería de Medio Ambiente.
+4. **Licencia Ambiental** — art. 89: actuaciones del Anexo I de la Ley 2/2026 (lista propia). Competencia: **ayuntamiento**. No aplica a instalaciones AT de líneas de cierta longitud (estas quedan en AAUS o AAU); puede aplicar a centros de transformación o subestaciones de distribución de pequeño tamaño si figuran en el Anexo I.
+5. **Declaración Responsable de los Efectos Ambientales** — art. 100: actuaciones residuales del Anexo I de Ley 2/2026 marcadas para este régimen. Competencia: ayuntamiento.
+
+### 9.2 Instrumento aplicable a instalaciones AT — cuadro resumen
+
+| Umbral (Ley 21/2013) | Instrumento ambiental autonómico | EIA integrada | Competencia ambiental |
+|---|---|---|---|
+| Línea AT **≥ 220 kV** y **> 15 km** (no ínteg. subterránea urb.) | **AAU** (art. 67.1.a) | DIA (EIA ordinaria) | Consejería Medio Ambiente |
+| Subestación asociada a línea anterior | **AAU** (art. 67.1.a) | DIA | Consejería Medio Ambiente |
+| Línea AT **≥ 15 kV** y **> 3 km** (fuera de Anexo I) o criterios Red Natura 2000 | **AAUS** (art. 79.1.a/b) | IIA (EIA simplificada) | Consejería Medio Ambiente |
+| Subestación asociada a línea anterior | **AAUS** (art. 79.1.a/b) | IIA | Consejería Medio Ambiente |
+| Proyecto AT no en Anexo I ni II, pero afecta apreciablemente Red Natura 2000 | **AAUS** (art. 79.1.b) | IIA | Consejería Medio Ambiente |
+| Instalación AT de competencia estatal (REE, red transporte) | **Sin AAU/AAUS autonómica** (arts. 67.3 y 79.3) | Pronunciamiento ambiental estatal | Ministerio (MITECO) |
+| Subestación o CT pequeño en Anexo I Ley 2/2026 | **Licencia Ambiental** (art. 89) | No integra EIA | Ayuntamiento |
+
+### 9.3 Exclusión de AAU/AAUS para instalaciones de competencia estatal (arts. 67.3 y 79.3)
+
+"Las actuaciones cuya evaluación ambiental sea de competencia estatal, no estarán sometidas a autorización ambiental unificada [/ simplificada]."
+
+→ Instalaciones de la red de transporte (competencia del Ministerio de Industria + MITECO): sin AAU ni AAUS autonómica. El promotor debe obtener pronunciamiento ambiental favorable del órgano ambiental estatal (DIA/IIA de competencia estatal) antes de que se otorgue la AAP.
+
+→ Instalaciones de distribución o generación de competencia autonómica (Junta de Andalucía): sí requieren AAU o AAUS según umbrales.
+
+### 9.4 Régimen especial — instalaciones declaradas de utilidad e interés general o promovidas por la Junta (arts. 67.4 y 79.4)
+
+Estas actuaciones se someten igualmente al procedimiento AAU/AAUS, pero la resolución del órgano ambiental adopta la forma de **informe de carácter vinculante** en lugar de resolución de autorización. El procedimiento tiene carácter instrumental respecto al procedimiento de autorización o aprobación de la actuación principal.
+
+Implicación para BDDAT: cuando el expediente está declarado de utilidad e interés general, el hito de "obtención de la AAU/AAUS" puede materializarse como informe vinculante del órgano ambiental, no como resolución de otorgamiento clásica.
+
+### 9.5 Régimen transitorio — expedientes en curso (DT 1ª)
+
+Los procedimientos de AAU (antes llamada igual bajo la GICA) y demás instrumentos de prevención ambiental **iniciados antes del 20/06/2026** siguen su tramitación íntegra conforme a la **GICA (Ley 7/2007)** y sus normas de desarrollo (Decreto 356/2010, etc.).
+
+→ El motor debe conocer la fecha de inicio del expediente ambiental para aplicar la norma correcta:
+- Iniciado antes del 20/06/2026 → GICA + Decreto 356/2010
+- Iniciado desde el 20/06/2026 → Ley 2/2026
+
+### 9.6 Variables de contexto — MAPEO_CONTEXTO
+
+| Variable | Tipo | Naturaleza | Estado | Norma |
+|---|---|---|---|---|
+| `requiere_aau` | boolean | `calculado` | Pendiente de implementar | Ley 2/2026 art. 67 + Ley 21/2013 Anexo I |
+| `requiere_aaus` | boolean | `calculado` | Pendiente de implementar | Ley 2/2026 art. 79 + Ley 21/2013 Anexo II |
+| `competencia_ambiental_estatal` | boolean | `dato` | Pendiente de implementar | Ley 2/2026 arts. 67.3 y 79.3 |
+| `declarada_utilidad_interes_general` | boolean | `dato` | Pendiente de implementar | Ley 2/2026 arts. 67.4 y 79.4 |
+| `fecha_inicio_expediente_ambiental` | date | `dato` | Pendiente de implementar | Ley 2/2026 DT 1ª |
+| `hito_aau_obtenida` | boolean | `derivado_documento` | Pendiente de implementar | Ley 2/2026 art. 67 / GICA art. 31 |
+| `hito_aaus_obtenida` | boolean | `derivado_documento` | Pendiente de implementar | Ley 2/2026 art. 79 |
+
+> **Deduplicación respecto a §8:** Las variables `requiere_eia_ordinaria` y `requiere_eia_simplificada` de §8 son equivalentes funcionales a `requiere_aau` y `requiere_aaus` en el contexto autonómico andaluz. Una vez confirmado el régimen Ley 2/2026, considerar unificar en una sola variable o aclarar la distinción (el instrumento autonómico es la AAU/AAUS; la EIA ordinaria/simplificada es el procedimiento que integran). La variable `requiere_eia_ordinaria` de §8 sigue siendo útil para el caso de competencia estatal (donde existe EIA pero sin AAU).
+
+> **Nota sobre `requiere_aau` bajo GICA (antes 20/06/2026):** la variable lógica es la misma pero la norma que la calcula era el Decreto 356/2010 + GICA. El valor de la variable no cambia de nombre; cambia la norma que define los umbrales. Cuando se extraiga el Decreto 356/2010 verificar si los umbrales coinciden con los de Ley 21/2013 (altamente probable, dado que Decreto 356/2010 fue aprobado para implementar la GICA y esta remitía ya a umbrales EIA).

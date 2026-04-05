@@ -22,6 +22,7 @@
    - [2.3 RD-ley 23/2020 — hitos del administrado](#23-rd-ley-232020-de-23-de-junio--hitos-del-administrado)
    - [2.4 RD-ley 6/2022 + RD-ley 20/2022 — afección ambiental y tramitación conjunta renovables](#24-rd-ley-62022-de-29-de-marzo--rd-ley-202022-de-27-de-diciembre)
    - [2.5 Ley 21/2013 — EIA: plazos del procedimiento ambiental](#25-ley-212013-de-9-de-diciembre--eia-plazos-del-procedimiento-ambiental)
+   - [2.6 Ley 2/2026 — AAU y AAUS: plazos del procedimiento de prevención ambiental](#26-ley-22026-de-12-de-marzo--aau-y-aaus-plazos-del-procedimiento-de-prevención-ambiental)
 3. [API de días inhábiles — Junta de Andalucía](#3-api-de-días-inhábiles--junta-de-andalucía)
    - [3.1 Descripción](#31-descripción)
    - [3.2 Endpoints](#32-endpoints)
@@ -588,6 +589,70 @@ Los plazos de la Ley 21/2013 son **plazos del órgano ambiental** y del órgano 
 | **EIA simplificada** | Prórroga IIA | + 2 años | Órgano ambiental | **Desestimatorio** |
 
 > **Implicación en BDDAT:** los expedientes con EIA pueden tener la AAP bloqueada entre 4 y 8+ meses por el solo trámite de la DIA. Los hitos del RD-ley 23/2020 (Grupo B, hito 2: DIA favorable en 31 meses) presuponen este orden temporal. El motor debe gestionar la DIA como evento desbloqueante de la AAP, no como trámite interno del expediente sectorial.
+
+---
+
+### 2.6 Ley 2/2026, de 12 de marzo — AAU y AAUS: plazos del procedimiento de prevención ambiental
+
+> **BOJA núm. 54 de 20/03/2026** — sedeboja id_tecnico 40751. Entrada en vigor **20/06/2026**. Sesión 2026-04-05.
+> Para los instrumentos y umbrales que determinan cuál aplica: ver `NORMATIVA_EXCEPCIONES_AT.md §9`.
+> Los plazos del procedimiento de EIA que se integra en AAU (DIA) y AAUS (IIA) están en `§2.5`.
+> **Régimen transitorio:** procedimientos iniciados antes del 20/06/2026 siguen por GICA (Ley 7/2007) y Decreto 356/2010 (DT 1ª).
+
+Los plazos de esta sección son **plazos del órgano ambiental autonómico** (Consejería de Medio Ambiente) dentro del procedimiento de AAU o AAUS. Se superponen con los plazos del RD 1955/2000 porque la AAP no puede resolverse hasta que el instrumento ambiental sea favorable.
+
+**Regla de oro:** el silencio en todos los plazos de resolución de la AAU y AAUS es **desestimatorio**. No existe silencio positivo ambiental (coherente con art. 10 Ley 21/2013).
+
+#### AAU — Autorización Ambiental Unificada (arts. 70-78)
+
+| Trámite | Plazo | Quién | Artículo |
+|---|---|---|---|
+| Consultas previas — doc. de alcance (potestativo) | **2 meses** | Órgano ambiental | Art. 70.1 |
+| Validez del doc. de alcance | **2 años** desde notificación | — | Art. 70.4 |
+| Informe compatibilidad urbanística (ayuntamiento) | **1 mes** | Ayuntamiento | Art. 71.2.b |
+| Inadmisión de solicitud | **20 días hábiles** | Órgano ambiental | Art. 71.3 |
+| Información pública | **≥ 30 días hábiles** | Órgano ambiental | Art. 71.4 |
+| Consultas simultáneas a AAPP e interesados | **30 días hábiles** (preceptivos vinculantes: máx. 3 meses) | AAPP e interesados | Art. 71.5 |
+| Traslado de alegaciones de IP a AAPP | **10 días hábiles** desde fin IP | AAPP | Art. 71.4 |
+| Audiencia — dictamen ambiental | **10 días hábiles** | Promotor e interesados | Art. 71.6 |
+| **Resolución** | **6 meses** (excepcionalmente hasta 8 meses) | Órgano ambiental | Art. 71.8 |
+| Modificación sustancial — resolución | **4 meses** | Órgano ambiental | Art. 75.1.d |
+| Vigencia para iniciar actividad | **5 años** desde notificación | — | Art. 76.1 |
+| Prórroga de vigencia — resolución | **6 meses** | Órgano ambiental | Art. 76.3 |
+| Cese definitivo — resolución del órgano ambiental | **2 meses** | Órgano ambiental | Art. 78 |
+
+**Silencio en resolución AAU (art. 71.8):** desestimatorio al cumplirse 6 meses (o 8 en ampliación). La ampliación a 8 meses debe notificarse antes de que expire el plazo original.
+
+#### AAUS — Autorización Ambiental Unificada Simplificada (arts. 79-88)
+
+| Trámite | Plazo | Quién | Artículo |
+|---|---|---|---|
+| Informe compatibilidad urbanística (ayuntamiento) | **1 mes** | Ayuntamiento | Art. 82.2.b |
+| Inadmisión de solicitud | **20 días hábiles** | Órgano ambiental | Art. 82.3 |
+| Consultas a AAPP e interesados | **20 días hábiles** | AAPP e interesados | Art. 82.4 |
+| Audiencia — dictamen ambiental | (sin plazo explícito distinto) | Promotor e interesados | Art. 82.5 |
+| **Resolución** | **5 meses** | Órgano ambiental | Art. 82.8 |
+| Revisión de oficio / a instancia | **3 meses** | Órgano ambiental | Art. 84.8 |
+| Vigencia para iniciar actividad | **5 años** desde notificación | — | Art. 86.1 |
+| Prórroga de vigencia — resolución | **6 meses** | Órgano ambiental | Art. 86.3 |
+| Cese definitivo — resolución del órgano ambiental | **2 meses** | Órgano ambiental | Art. 88 |
+
+**Silencio en resolución AAUS (art. 82.8):** desestimatorio al cumplirse 5 meses.
+
+**Escalado a AAU (art. 82.7.a):** si el IIA determina que el proyecto necesita EIA ordinaria, la AAUS se convierte en AAU. El promotor elabora EsIA y puede solicitar doc. de alcance conforme al art. 53.2.
+
+#### Cuadro consolidado — plazos de resolución y silencio
+
+| Instrumento | Trámite | Plazo | Silencio |
+|---|---|---|---|
+| **AAU** | Resolución | **6 meses** (máx. 8) | Desestimatorio |
+| **AAU** | Modificación sustancial | **4 meses** | Desestimatorio |
+| **AAU** | Prórroga de vigencia | **6 meses** | Desestimatorio |
+| **AAUS** | Resolución | **5 meses** | Desestimatorio |
+| **AAUS** | Revisión | **3 meses** | — |
+| **AAUS** | Prórroga de vigencia | **6 meses** | Desestimatorio |
+
+> **Implicación en BDDAT:** la AAU o AAUS es el instrumento ambiental de competencia autonómica que debe obtenerse antes de la AAP (o de forma coordinada). Sus plazos de resolución (5-6 meses) se superponen con el procedimiento del RD 1955/2000. El motor debe gestionar la AAU/AAUS como evento desbloqueante, en paralelo pero condicionante de la resolución de la AAP. La vigencia de 5 años para iniciar actividad es independiente de la vigencia de la DIA/IIA que integra (que tiene sus propios plazos de 4 años, §2.5).
 
 ---
 
