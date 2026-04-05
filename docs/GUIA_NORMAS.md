@@ -13,8 +13,8 @@
 | [§1](#1-qué-extraer-por-tipo-de-solicitud) | Qué extraer — variables y excepciones por tipo de solicitud |
 | [§2](#2-formato-de-documentación-de-reglas) | Formato de documentación de reglas — plantilla |
 | [§3](#3-resultados-por-iteración) | Resultados por iteración — estado de avance |
-| [§4](#4-cola-de-trabajo-unificada) | Cola de trabajo unificada — normas pendientes de extracción |
-| [§5](#5-protocolo-de-extracción) | Protocolo de extracción — pasos al trabajar una norma nueva |
+| [§4](#4-cola-de-trabajo--normas-pendientes) | Cola de trabajo — pointer a `NORMATIVA_LEGISLACION_AT.md §6` |
+| [§5](#5-protocolo-de-extracción) | Protocolo de extracción — skills de localización + pasos al trabajar una norma |
 | [§6](#6-diccionario-de-variables-de-contexto) | Diccionario de Variables de Contexto — variables del ContextAssembler |
 
 ---
@@ -82,48 +82,41 @@ Los resultados se distribuyen en documentos propios:
 
 ---
 
-## 4. Cola de trabajo unificada
+## 4. Cola de trabajo — normas pendientes
 
-Normas pendientes de extracción o completar. Unificada desde `NORMATIVA_MAPA_PROCEDIMENTAL.md §3` (eliminado), `NORMATIVA_EXCEPCIONES_AT.md §5` (eliminado) y nota de §2 de `NORMATIVA_PLAZOS.md`.
+La fuente de verdad de todas las normas aplicables, su estado de extracción, los IDs técnicos (sedeboja, BOE-A) y las observaciones de trabajo está en **`NORMATIVA_LEGISLACION_AT.md §6`**. Esta sección no mantiene lista propia para evitar duplicidades.
 
-**Estados de madurez:** `IDENTIFICADA` → `EXTRAÍDA` → `MAPEO_CONTEXTO` → `IMPLEMENTADA`
-- `IDENTIFICADA`: norma en §6 del catálogo; no se ha leído en profundidad.
-- `EXTRAÍDA`: leída y volcada en C (mapa procedimental), D (excepciones) o E (plazos) según corresponde.
-- `MAPEO_CONTEXTO`: variables concretas definidas en el Diccionario de Variables (§6 de este doc).
-- `IMPLEMENTADA`: variables y reglas en `DISEÑO_MOTOR_REGLAS.md` y/o `DISEÑO_FECHAS_PLAZOS.md`.
-
-| Norma | ID-REF | Ficheros a actualizar | Prioridad | Estado |
-|---|---|---|---|---|
-| **Modificaciones RD 1955/2000** — cuándo una modificación requiere nueva AAP vs. solo AAC vs. solo AE | REF-RD1955 | C (§2.6) | Alta | MAPEO_CONTEXTO — extraído en sesión 2026-04-04, ver `NORMATIVA_MAPA_PROCEDIMENTAL.md §2.6` |
-| **Ley 2/2026, de 12 de marzo (Gestión Ambiental de Andalucía)** — nueva ley marco ambiental autonómica; sustituye (total o parcialmente) la GICA (Ley 7/2007). Impacto amplio: AAU, EIA autonómica, declaración responsable ambiental, comunicación ambiental. Afecta directamente a `requiere_aau`, a las exenciones del DL 26/2021 DF 4ª (que referencia Ley 7/2007) y al Decreto 356/2010 (AAU). **Entrada en vigor: 12/09/2026.** Solo disponible en BOJA (PDF: boja.es/2026/55, web: juntadeandalucia.es/boja/2026/55/1) | REF-L2-2026 | D (§3, §4), variables `requiere_aau` | **Alta** | IDENTIFICADA — ⚠️ **Revisar antes de 12/09/2026**: entrará en vigor en esa fecha y puede dejar obsoletas las referencias a Ley 7/2007 GICA en todo el catálogo normativo y en `NORMATIVA_EXCEPCIONES_AT.md §4`. |
-| **Ley 21/2013 (EIA)** — consultas previas, info pública ambiental, plazos DIA | REF-EIA | C, D, E§2.3+, motor, plazos | Alta | IDENTIFICADA — ⚠️ **Pendiente de revisión previa**: puede haber quedado desactualizada por nueva ley ambiental andaluza (Ley 2/2026). No extraer reglas hasta que el Servicio evalúe el impacto. |
-| **RD-ley 23/2020 + RD-ley 8/2023** — hitos administrativos renovables; condicionan admisión a trámite de AAP según punto de acceso/conexión | REF-RDL23-2020 | C, E§2.3 | Media | MAPEO_CONTEXTO — extraído en sesión 2026-04-04, ver `NORMATIVA_MAPA_PROCEDIMENTAL.md §2.7` y `NORMATIVA_PLAZOS.md §2.3` |
-| **RD-ley 6/2022 + RD-ley 20/2022** — tramitación conjunta AAP+AAC renovables; afección ambiental simplificada en zonas de baja/moderada sensibilidad | REF-RDL6-2022 · REF-RDL20-2022 | D, E§2.4 | Media | MAPEO_CONTEXTO — extraído en sesión 2026-04-04, ver `NORMATIVA_EXCEPCIONES_AT.md §5` y `§6`. ⚠️ Tramitación conjunta (arts. 7/23) solo aplica a proyectos **competencia AGE**; el art. 6/22 (afección ambiental) sí puede aplicarlo la CCAA. Plazos añadidos en `NORMATIVA_PLAZOS.md §2.4` (sesión 2026-04-04). |
-| **RD 1183/2020** — acceso y conexión; DF 3ª: nueva definición potencia instalada FV = min(DC módulos, AC inversores); DA 1ª: sistema de control si potencia total > capacidad de acceso; régimen de hitos y concursos | REF-RD1183 | C§2.7 (complemento), E§5/§6 (nota competencia), E§2.3 (plazos acceso) | Media | MAPEO_CONTEXTO — extraído en sesión 2026-04-04, ver `NORMATIVA_MAPA_PROCEDIMENTAL.md §2.8`. DA 1ª y DF 3ª documentadas; concursos de acceso resumidos. |
-| **RD-ley 7/2025** — **DEROGADO ÍNTEGRAMENTE** por el Congreso el 22/07/2025 (BOE-A-2025-15313, no convalidado). Arts. 9 (almacenamiento hibridado AGE), 10 (nueva def. potencia instalada híbrida) y 29 (repotenciación) ya no están en vigor. El catálogo lo reflejaba como "derogado parcialmente" — era derogación total. | REF-RDL7-2025 | — | — | OBSOLETA — norma derogada; no extraer reglas. Verificar si algún contenido fue incorporado por norma posterior (RDL 7/2026, BOE-A-2026-6544). |
-| **RD 997/2025** — no localizado en el BOE. El identificador puede ser incorrecto o la norma puede no existir bajo ese nombre. Las modificaciones de RD 1183/2020 que se atribuían a esta norma provienen de RDL 7/2026 (BOE-A-2026-6544, marzo 2026). | REF-RDL7-2025 | — | — | IDENTIFICADA — ⚠️ **Verificar existencia real**: buscar en BOE si existe RD 997/2025 con ese número exacto. Si no existe, eliminar esta fila. |
-| **RDL 7/2026 (BOE-A-2026-6544)** — modificó RD 1183/2020 arts. 20 ter, 20 quater y 20 quinquies (concursos de acceso de demanda). Vigente desde 22/03/2026. **Norma nueva no catalogada aún.** | — | C§2.8 (complemento) | Baja | IDENTIFICADA — añadir al catálogo §6; revisar alcance completo. |
-| **Resolución CNMC 27/06/2024 + Circulares CNMC** — especificaciones de detalle para capacidad de acceso de generación; metodología acceso/conexión. Las Circulares CNMC son fuente normativa adicional (acceso, peajes, conexión). Pendiente catalogar cuáles aplican al ámbito BDDAT | REF-CNMC-2024 | C§2.7 (complemento) | Baja | IDENTIFICADA |
-| **Ley 4/2025 (Espacios productivos)** — tramitación simplificada renovables en polígonos; acometidas y líneas directas de un solo titular (DA 7ª); líneas directas y redes cerradas (arts. 59-61); almacenamiento hibridado autonómico (DA 12ª) | REF-L4-2025 | C, D | Media | IDENTIFICADA |
-| **Decreto-ley 2/2018 (Simplificación energía)** — DA única: cauce RD 1955/2000 para FV; ≤500 kW → puesta en servicio; anti-fraccionamiento 3.000 m/ref. catastral; DR consultas; incidencia territorial LISTA (apdo. 4 añadido por DL 3/2024). No toca Decreto 9/2011. | REF-DL2-2018 | D§7 ✅ | Media | MAPEO_CONTEXTO — extraído sesión 2026-04-04, ver `NORMATIVA_EXCEPCIONES_AT.md §7`. Variables nuevas: `tiene_linea_evacuacion_comun`, `suma_potencia_grupo_evacuacion_kw`, `misma_referencia_catastral_grupo`, `distancia_minima_instalaciones_grupo_m`, `promotor_presento_dr_consultas`, `requiere_informe_incidencia_territorial`, `promotor_aporto_doc_incidencia_territorial`. Pendiente: trasladar a motor (paso 7). |
-| **Ley 7/2021 LISTA + Decreto 550/2022 (Reglamento General)** — **arts. 71-72 Reglamento**: supuestos de informe de incidencia territorial para instalaciones energéticas; necesario para completar la lógica de `requiere_informe_incidencia_territorial` | — | D§7.5 (complemento) | Media | IDENTIFICADA — añadidos al catálogo §6.1 sesión 2026-04-04. Pendiente leer arts. 71-72 Reglamento LISTA. |
-| **Decreto-ley 3/2024 (Simplificación administrativa)** — medidas de simplificación y racionalización; puede afectar trámites generales. **Art. 260:** modifica DA única DL 2/2018 (apdo. 4 incidencia territorial) — ya documentado en `NORMATIVA_EXCEPCIONES_AT.md §7.5`. | REF-DL3-2024 | C, D | Media | IDENTIFICADA — art. 260 ya recogido vía DL 2/2018. Pendiente revisar alcance completo del resto del articulado. |
-| **Decreto-ley 4/2024** — modifica el DL 3/2024; revisar alcance conjunto con él | REF-DL4-2024 | C, D | Media | IDENTIFICADA — extraer junto con DL 3/2024 |
-| **Art. 95.3 LPACAP** — reutilización de actos y trámites de expediente caducado en nuevo procedimiento | REF-LPACAP | D | Baja | IDENTIFICADA |
+Los estados de madurez (`IDENTIFICADA` → `EXTRAÍDA` → `MAPEO_CONTEXTO` → `IMPLEMENTADA`) y su significado también están definidos en `NORMATIVA_LEGISLACION_AT.md §6`.
 
 ### Protocolo de adición de norma nueva al catálogo
 
 Cuando se identifica una norma no registrada en §6:
-1. Añadir fila en `NORMATIVA_LEGISLACION_AT.md §6` con URL + procedimientos que afecta + `Estado=IDENTIFICADA`.
-2. Añadir fila en la tabla de esta sección con el ID-REF asignado.
+1. Añadir fila en `NORMATIVA_LEGISLACION_AT.md §6` con URL + procedimientos que afecta + `Estado=IDENTIFICADA` + ID técnico (sedeboja o BOE-A).
 
 ---
 
 ## 5. Protocolo de extracción
 
+### 0. Localizar la norma — uso de skills
+
+Antes de leer cualquier norma seguir este orden para minimizar consumo de contexto:
+
+| Paso | Skill | Cuándo |
+|---|---|---|
+| 1 | `/legalize <referencia>` | **Siempre primero** — busca en el repo local `D:\legalize-es` |
+| 2a | `/boe <referencia>` | Si NOT_FOUND y es **norma estatal** (RD, Ley, RDL estatales) |
+| 2b | `/boja <referencia>` | Si NOT_FOUND y es **norma andaluza de rango de Ley** (Ley del Parlamento de Andalucía) → prueba BOE internamente, luego sedeboja |
+| 2c | `/boja <referencia>` | Si NOT_FOUND y es **norma BOJA sub-Ley** (Decreto-ley, Decreto, Orden andaluz) → sedeboja directamente |
+
+**Regla crítica:** no llamar a `/boe` ni a `/boja` sin haber recibido `NOT_FOUND` de `/legalize` primero, salvo indicación explícita.
+
+El ID técnico de sedeboja (columna "ID técnico" de `NORMATIVA_LEGISLACION_AT.md §6`) permite construir la URL de ficha directamente sin pasar por búsqueda.
+
+---
+
 Pasos al trabajar una norma de la cola (§4):
 
-1. Usar `/boe` para leer la norma — BOE: ELI URL del catálogo §6; BOJA: sedeboja URL del catálogo §6 (el `recursoLegalAbstractoId` ya está en la columna ID técnico).
+1. **Localizar la norma** siguiendo el protocolo de skills del paso 0.
 2. Actualizar `NORMATIVA_LEGISLACION_AT.md §6`: cambiar `Estado` de la norma a `EXTRAÍDA`.
 3. Si genera fases o procedimientos → añadir en `NORMATIVA_MAPA_PROCEDIMENTAL.md` con `Implicación en BDDAT`.
 4. Si genera excepciones → añadir en `NORMATIVA_EXCEPCIONES_AT.md` con `Implicación en BDDAT`.
