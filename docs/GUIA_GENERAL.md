@@ -56,7 +56,12 @@ El escenario real es este: entra en vigor una nueva ley. El tramitador pita. Qui
 
 **La configurabilidad del motor es ese puente.** No porque cualquiera pueda configurarlo sin conocimiento, sino porque con la documentación adecuada alguien con conocimiento jurídico limitado puede identificar qué cambiar, y alguien con conocimiento técnico limitado puede ejecutar el cambio sin tocar código.
 
-Esto no significa exponer todo al Supervisor. La elegibilidad jurídica compleja (¿requiere esta instalación AAU, AAUS o Licencia Ambiental?) no es configurable por un técnico tramitador: requiere código con la ley en la mano. Lo que sí debe ser configurable son plazos, umbrales numéricos, documentos requeridos, y el árbol de fases que genera cada tipo de solicitud.
+Esto no significa exponer todo al Supervisor. Hay dos tipos de lógica que requieren código y no son configurables:
+
+- **Reglas de integridad estructural** — por ejemplo, que una fase no puede cerrarse sin que sus trámites estén finalizados. Son decisiones de diseño del sistema, no proceden de ninguna ley.
+- **El ContextAssembler** — la traducción de los datos del proyecto a variables con significado jurídico (calcular si una instalación requiere EIA simplificada, qué clasificación de suelo aplica, si la competencia ambiental es estatal). Requiere entender varias leyes a la vez y vive en código Python.
+
+Lo que sí es configurable, aunque encode lógica jurídica compleja, son las **reglas del motor**: qué instrumento ambiental aplica, qué fases se generan para cada tipo de solicitud, qué documentos son obligatorios en cada trámite. Para eso está diseñado el motor agnóstico. Quien las configure necesita conocimiento jurídico y del sistema, pero no tocar código.
 
 ### La cadena de conocimiento: el verdadero activo del proyecto
 
@@ -92,7 +97,7 @@ Por eso BDDAT se despliega en fases con lógica progresiva: primero los técnico
 | Decisión | Por qué |
 |---|---|
 | Motor configurable, no hardcodeado | Sostenibilidad cuando cambia la norma y cambian las personas |
-| Configurabilidad parcial (no todo al Supervisor) | La elegibilidad jurídica compleja requiere código; los parámetros operativos, no |
+| Configurabilidad parcial (no todo al Supervisor) | Requieren código: (a) integridad estructural del sistema (diseño, no ley) y (b) el ContextAssembler (computación de variables jurídicas). Son configurables: las reglas del motor que evalúan esas variables, aunque encoden lógica legal compleja |
 | Documentación exhaustiva de variables y normas | Es la herencia institucional; sin ella el sistema es opaco para quien venga después |
 | Despliegue progresivo con reglas activas por fases | Las reglas reales se aprenden tramitando, no solo leyendo la ley |
 
