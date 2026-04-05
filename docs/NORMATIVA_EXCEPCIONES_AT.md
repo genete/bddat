@@ -594,7 +594,7 @@ Ley 2/2026 extraída. Deduplicación completada contra `DISEÑO_CONTEXT_ASSEMBLE
 |---|---|
 | `tension_kv` | ELIMINAR — ya existe `tension_nominal_kv` (l.97 ContextAssembler) |
 | `longitud_km` | NUEVA |
-| `discurre_integra_subterranea_suelo_urbanizado` | NUEVA — distinta de `es_linea_subterranea` (no captura "íntegramente") y de `es_suelo_urbano_o_urbanizable` ("urbanizable" ≠ "urbanizado"); boolean, dato |
+| `discurre_integra_subterranea_suelo_urbanizado` | REDISEÑAR → se separa en `discurre_integra_subterranea` (boolean, condición "íntegramente") + `clasificacion_suelo_lista` (enum LISTA). Ver §9.8 y DISEÑO_CONTEXT_ASSEMBLER para definición final. |
 | `ubicacion_red_natura_2000` | REUTILIZAR la existente (l.122) para criterio 1 del Grupo 4b |
 | `puede_afectar_red_natura_2000` | NUEVA — para art. 7.2.b ("puedan afectar de forma apreciable, directa o indirectamente"); dato, distinta de `ubicacion_` |
 | `requiere_eia_ordinaria` | REUTILIZAR existente (l.113) |
@@ -674,3 +674,55 @@ Deduplicación completada contra `DISEÑO_CONTEXT_ASSEMBLER.md` (sesión 2026-04
 > **Distinción `requiere_aau` / `requiere_eia_ordinaria`:** `requiere_aau` es el instrumento autonómico (Andalucía); `requiere_eia_ordinaria` cubre también el caso de competencia estatal (donde existe EIA ordinaria pero sin AAU autonómica). Mantener ambas variables con significado separado.
 >
 > **`requiere_aau` bajo GICA (antes 20/06/2026):** la variable lógica es la misma; cambia la norma que la activa (Decreto 356/2010 + GICA vs Ley 2/2026). Cuando se extraiga el Decreto 356/2010 verificar que los umbrales coinciden con los de Ley 21/2013.
+
+---
+
+### 9.7 Licencia Ambiental — Categoría 3 Anexo I Ley 2/2026 (competencia municipal)
+
+> Instrumento de competencia del **Ayuntamiento** (art. 91 Ley 2/2026). Sustituye a la Calificación Ambiental de la GICA.
+> **Previa a la AAP:** art. 89.4 — *"No podrá otorgarse licencia o autorización sustantiva de cualquier Administración... sin haber obtenido previamente la licencia ambiental."*
+
+#### Diseño de umbrales — continuidad y exclusividad con AAUS/AAU
+
+La Ley 2/2026 diseña la Categoría 3 del Anexo I para que sus umbrales sean **continuos y excluyentes** respecto a los de AAUS (Ley 21/2013 Anexo II): si se activan los criterios\* que remiten a la EIA, el proyecto sale de la Categoría 3 y entra en AAUS; si no se activan, queda en Licencia Ambiental. No hay solapamiento ni hueco entre tramos de distinto instrumento.
+
+#### Umbrales — líneas eléctricas y subestaciones asociadas
+
+Escape general de toda la Categoría 3: **íntegramente subterránea por suelo urbano** (clasificación LISTA, Ley 7/2021 art. 21).
+
+> ⚠️ **Distinción normativa crítica:** el escape de Licencia Ambiental usa **"suelo urbano"** (LISTA) y el escape de EIA ordinaria/simplificada (Ley 21/2013) usa **"suelo urbanizado"** (concepto del TRLSRU estatal). Son marcos normativos distintos. En la práctica "suelo urbano" LISTA probablemente equivale a "suelo urbanizado" TRLSRU, pero requiere verificación jurídica. Las variables de contexto los tratan como campos separados hasta que se cierre esa verificación.
+
+| Subcategoría | Tensión | Tipo / Longitud | Condición | Instrumento |
+|---|---|---|---|---|
+| **3.1** | T ≥ 15 kV | Aérea — **1 km < L ≤ 3 km** | Sin criterios\* | LA |
+| **3.2** | T < 15 kV | Aérea — **L > 1 km** | Sin criterios\* | LA |
+| **3.3** | T < 15 kV | Subterránea — **L > 3 km** | Sin criterios\* + suelo rústico | LA |
+
+> **Criterios\*** — si concurre cualquiera de estos, el proyecto va a AAUS (no LA):
+> - Criterios generales 1 o 2 del Anexo III Ley 21/2013 (Red Natura 2000, corredores ecológicos)
+> - No incluye medidas del RD 1432/2008 (protección avifauna AT)
+> - Discurre a < 200 m de población o < 100 m de viviendas aisladas en algún tramo
+> - *Excepción a la excepción:* lo anterior no aplica si la línea discurre íntegramente en subterráneo por suelo urbanizado (Ley 21/2013)
+
+> **Nota clasificación suelo (Anexo I nota \*\*):** para la Licencia Ambiental, la clasificación del suelo sigue la Ley 7/2021 (LISTA). Categorías relevantes: **suelo urbano** (escapa de LA), **suelo urbanizable** (no escapa), **suelo rústico** (no escapa; es el equivalente al antiguo "suelo no urbanizable"). La condición 3.3 requiere explícitamente suelo rústico.
+
+#### Relación procedimental con la AAP
+
+```
+Licencia Ambiental (Ayuntamiento) → previa → AAP (Delegación Territorial)
+```
+
+La resolución de la Licencia Ambiental (plazo máximo 3 meses — art. 92.6; silencio desestimatorio) debe producirse **antes** de que la Delegación Territorial pueda otorgar la AAP. El hito `hito_licencia_ambiental_obtenida = true` es condición necesaria para resolver la fase AAP cuando `requiere_licencia_ambiental = true`.
+
+#### Instalaciones sin línea asociada
+
+Las subestaciones y CTs **asociadas** a una línea de la Categoría 3 siguen el mismo instrumento. Pendiente de verificar si existen CTs de distribución independientes (sin línea asociada) con categoría propia en el Anexo I.
+
+### 9.8 Variables de contexto — MAPEO_CONTEXTO Licencia Ambiental
+
+| Variable | Decisión |
+|---|---|
+| `clasificacion_suelo_lista` | NUEVA — enum `'urbano'`/`'urbanizable'`/`'rustico'`; clasifica el suelo según LISTA (Ley 7/2021); alimenta: escape LA (solo `'urbano'`), escape EIA 21/2013 (probable equivalencia `'urbano'` ≈ "urbanizado" — pendiente verificación), condición Decreto 9/2011 (`'urbano'` O `'urbanizable'`). Supersede `es_suelo_urbano_o_urbanizable` (l.100) que mezcla ambas categorías en un boolean sin distinción |
+| `discurre_integra_subterranea` | NUEVA — boolean; la línea discurre íntegramente en subterráneo en toda su longitud; distinto de `es_linea_subterranea` (ese no captura "íntegramente"). Combinado con `clasificacion_suelo_lista` determina el escape de LA y de los umbrales EIA. **Redesign:** reemplaza la variable `discurre_integra_subterranea_suelo_urbanizado` (§8.6) que combinaba dos condiciones separables en un solo boolean |
+| `requiere_licencia_ambiental` | NUEVA |
+| `hito_licencia_ambiental_obtenida` | NUEVA |
