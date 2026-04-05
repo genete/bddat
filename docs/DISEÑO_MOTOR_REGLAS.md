@@ -237,6 +237,57 @@ Las tareas tienen solo 7 tipos genéricos. Sus reglas son de secuencia interna
 
 ---
 
+## El sistema de reglas es caótico — el motor no
+
+El motor es determinista y agnóstico: lee variables, evalúa condiciones definidas en tabla,
+devuelve PERMITIDO/BLOQUEADO/ADVERTIR. Su comportamiento es predecible.
+
+**Las reglas que el motor lee son un sistema multivariable con tendencia al caos.** No el
+motor: las reglas. Fuentes de caos identificadas:
+
+| Fuente | Descripción |
+|---|---|
+| Cambio legislativo | Una norma nueva modifica o deroga condiciones existentes; el Supervisor debe actualizar reglas activas. |
+| Razonamiento incorrecto previo | Una regla bien intencionada pero mal razonada produce bloqueos injustificados o permisos indebidos. |
+| Combinación no contemplada | Dos reglas correctas por separado pueden crear un estado imposible de desbloquear cuando se dan juntas. |
+| Deadlock | Un conjunto de condiciones en cadena que nunca pueden cumplirse simultáneamente. No se detecta hasta que ocurre en producción. |
+
+**Consecuencias para el Supervisor:**
+- Las reglas se añaden de una en una, se prueban, y solo entonces se itera.
+- Toda regla nueva debe razonarse contra las reglas existentes antes de activarse.
+- El sistema de escape (ver abajo) es la válvula de seguridad cuando una regla produce un callejón sin salida inesperado.
+
+### El motor es agnóstico — el Supervisor orquesta
+
+El motor no sabe quién acredita qué, ni qué significa una variable en términos de proceso.
+Eso es razonamiento del Supervisor al definir las condiciones. El motor solo pregunta:
+«¿esta variable tiene este valor ahora mismo?»
+
+El Supervisor es quien:
+1. Analiza la normativa y descubre qué variables y combinaciones son relevantes.
+2. Define condiciones correctas que alimentan las reglas de la tabla.
+3. Garantiza que las reglas no crean estados imposibles de desbloquear.
+4. Mantiene el sistema coherente ante cambios legislativos y casuística nueva.
+
+### Cuando dos condiciones eximen el mismo hito
+
+Si existe condición A (exención legal objetiva, ej: instalación en suelo no rústico) y
+condición B (requisito procedimental cumplido, ej: promotor presenta DR de no incidencia),
+y ambas eximen el mismo hito, **no son intercambiables**:
+
+- Condición A es una exención legal que la administración puede verificar objetivamente.
+- Condición B es una acreditación que solo el promotor puede aportar.
+
+Si se definen como OR sin orden, el usuario puede rellenar la condición incorrecta para
+eludir un trámite que sí le corresponde. El orden de evaluación debe estar documentado
+en el campo Explicación de la regla, y las condiciones deben reflejar esa secuencia.
+
+**Regla práctica:** cuando la administración no puede determinar una condición por sí sola,
+la variable correspondiente llega como null al motor → el motor la evalúa como bloqueante
+hasta que el promotor aporte la documentación que la materializa.
+
+---
+
 ## Principio de escape
 
 **Principio transversal de diseño:** toda cascada, filtro y regla debe tener vía de escape.
