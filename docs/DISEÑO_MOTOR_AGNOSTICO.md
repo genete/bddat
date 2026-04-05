@@ -1,6 +1,6 @@
 # Motor de reglas agnóstico — Decisiones de rediseño
 
-> **Fecha:** 2026-03-31
+> **Fecha:** 2026-04-05
 > Sesión de reflexión arquitectural. Complementa `DISEÑO_MOTOR_REGLAS.md`.
 
 ---
@@ -44,14 +44,9 @@ con reglas reales. El coste de refactorizar es mínimo ahora, altísimo después
 Capa de BDDAT que, dado un evento + entidad, sube el árbol ESFTT y computa todas las
 variables necesarias antes de llamar al motor. Esta capa sí conoce BDDAT a fondo.
 
-**Complejidad propia pendiente de diseño:**
-- ¿Qué variables computa para cada `(accion, tipo)`? ¿Hardcoded o configurable en BD?
-- El Supervisor debe poder editar acciones, variables y condiciones → hay que equilibrar
-  flexibilidad con que no todo sea personalizable
-- Variables derivadas (`intermunicipal`, `plazo_vencido`, `tiene_fase_X_cerrada`) requieren
-  queries específicas — cómo se declaran sin hardcodearlas es una decisión de diseño abierta
-- El contrato entre ContextAssembler y Motor define qué variables existen: si es configurable,
-  el Supervisor necesita UI para declarar variables nuevas
+**Diseño del ContextAssembler:** `docs/DISEÑO_CONTEXT_ASSEMBLER.md`
+— diccionario de variables, tipos de naturaleza, estados de implementación y preguntas
+de diseño abiertas.
 
 ---
 
@@ -130,7 +125,7 @@ extra de proyecto que aún no existen.
 
 1. Diseño motor agnóstico + API del motor
 2. ~~Diseño controlador de fechas (desbloquea #290 y #279)~~ — **completado** (`docs/DISEÑO_FECHAS_PLAZOS.md`)
-3. Diseño ContextAssembler (qué variables, cómo se declaran, qué configura el Supervisor)
+3. ~~Diseño ContextAssembler (qué variables, cómo se declaran, qué configura el Supervisor)~~ — **en curso** (`docs/DISEÑO_CONTEXT_ASSEMBLER.md`; diccionario activo, implementación pendiente)
 4. #279 — después de los diseños anteriores
 5. #290 — desbloqueado; implementar tras refactor motor agnóstico
 6. #289 — después de #279 y con datos reales
