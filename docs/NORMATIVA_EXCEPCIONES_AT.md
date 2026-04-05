@@ -2,7 +2,7 @@
 
 > **Aplica a:** Motor de reglas — desviaciones respecto al procedimiento estándar AAP/AAC/AE.
 > **Fuentes de verdad:** `docs/NORMATIVA_LEGISLACION_AT.md §6` · `docs/NORMATIVA_PLAZOS.md §2`.
-> **Estado:** En construcción — sesión 2026-04-03. LSE + RD 1955/2000 + Decreto 9/2011 + DL 26/2021 extraídos.
+> **Estado:** En construcción — sesión 2026-04-04. LSE + RD 1955/2000 + Decreto 9/2011 + DL 26/2021 + RDL 6/2022 + RDL 20/2022 + DL 2/2018 extraídos.
 
 Este documento recoge las **Iteraciones 2 y 4** de `NORMATIVA_LEGISLACION_AT.md §5`:
 - **Iteración 2:** excepciones al procedimiento estándar y regímenes especiales (renovables, <30 kV, simplificaciones).
@@ -23,6 +23,7 @@ Para los plazos concretos de cada trámite: ver `docs/NORMATIVA_PLAZOS.md §2`.
 | [§4](#4-decreto-ley-262021-de-14-de-diciembre-junta-de-andalucía) | DL 26/2021 — exención general instalaciones sin DUP y sin AAU |
 | [§5](#5-rd-ley-62022-de-29-de-marzo) | RD-ley 6/2022 — afección ambiental simplificada + tramitación conjunta (primera ola) |
 | [§6](#6-rd-ley-202022-de-27-de-diciembre) | RD-ley 20/2022 — régimen ampliado (segunda ola) + suspensión nudos concurso |
+| [§7](#7-decreto-ley-22018-de-26-de-junio-junta-de-andalucía) | DL 2/2018 — umbral 500 kW, anti-fraccionamiento, DR consultas, incidencia territorial |
 
 ---
 
@@ -61,6 +62,28 @@ lo establece la norma autonómica aplicable (o el RD 1955/2000 como referencia).
 
 **Implicación en BDDAT:** no hay posibilidad de silencio positivo en AAP, AAC, AE,
 transmisión ni cierre. Ver plazos en `NORMATIVA_PLAZOS.md §2.1` y `§2.2`.
+
+### 1.4 Exención de autorizaciones para infraestructuras de recarga VE de potencia ≤3.000 kW (art. 53.1)
+
+**Regla estándar:** cualquier instalación eléctrica contemplada en la LSE requiere AAP, AAC y AE (art. 53.1).
+
+**Excepción implícita:** el art. 53.1 incluye expresamente en el ámbito de autorización las
+«infraestructuras eléctricas, incluidos los accesos y extensiones de red, así como los centros
+de transformación y de seccionamiento, de las estaciones de recarga de vehículos eléctricos
+de **potencia superior a 3.000 kW**». La delimitación por umbral implica que las infraestructuras
+eléctricas de estaciones de recarga de **potencia ≤3.000 kW quedan fuera del ámbito del art. 53**
+y no requieren AAP, AAC ni AE.
+
+**Condición de aplicación:**
+
+| Condición | Detalle |
+|---|---|
+| Tipo de instalación | Infraestructura eléctrica (acceso/extensión de red, CT, seccionamiento) asociada a estación de recarga VE |
+| Potencia | ≤ 3.000 kW |
+
+**Implicación en BDDAT:** si `es_infraestructura_recarga_ve = true` y `potencia_recarga_ve_kw ≤ 3.000`,
+la instalación queda exenta del procedimiento de autorización — el motor no debe generar fases AAP/AAC/AE.
+Solo las infraestructuras de recarga VE con potencia superior a 3.000 kW siguen el procedimiento estándar.
 
 ---
 
@@ -372,3 +395,122 @@ Idéntico en estructura al art. 7 del RDL 6/2022 (§5.2), con dos diferencias cl
 **Vigencia:** Este artículo ya ha agotado su período de 18 meses (venció ≈ junio 2024). Solo es relevante para expedientes con trámites suspendidos entre diciembre 2022 y junio 2024 que aún estén activos.
 
 **Implicación en BDDAT:** la suspensión del art. 13 opera sobre proyectos sin permiso de acceso/conexión — complementa la variable `tiene_punto_acceso_conexion` (ya definida en §6 de GUIA_NORMAS.md).
+
+---
+
+## 7. Decreto-ley 2/2018, de 26 de junio (Junta de Andalucía)
+
+> [BOJA 2018/125 — ID sedeboja 26974](https://ws040.juntadeandalucia.es/sedeboja/web/textos-consolidados/resumen-ficha?p_p_id=resumenrecursolegal_WAR_sedebojatextoconsolidadoportlet&p_p_lifecycle=0&_resumenrecursolegal_WAR_sedebojatextoconsolidadoportlet_recursoLegalAbstractoId=26974) — Sesión 2026-04-04.
+> Versión consolidada: BOJA 34/2024 (vigencia 17/02/2024). Modificado por DL 26/2021 (art. 3.2) y DL 3/2024 (DA única apdo. 4).
+
+La **Disposición Adicional única** de este DL es el instrumento normativo principal que regula el procedimiento de tramitación en Andalucía para las autorizaciones eléctricas de instalaciones de producción. Sus cuatro apartados contienen reglas directamente aplicables al motor:
+
+### 7.1 Cauce procedimental único para instalaciones de producción en Andalucía (DA única, apdo. 1)
+
+**Regla:** los procedimientos de autorizaciones del **art. 53 LSE** (AAP, AAC, AE), incluidos los asociados a instalaciones fotovoltaicas, se tramitan en Andalucía conforme al **Título VII del RD 1955/2000**, con las excepciones de los siguientes apartados.
+
+**Relevancia histórica:** antes de este DL existía un cauce paralelo para FV (Decreto 50/2008), que generaba duplicidad. La DA única apdo. 1 unifica el cauce y deroga el Decreto 50/2008 (salvo art. 5 y DA 2ª). Los expedientes FV pendientes bajo el Decreto 50/2008 a la entrada en vigor del DL se tramitan igualmente conforme a la DA única (DT única).
+
+**Implicación en BDDAT:** no cambia la lógica del motor (el mapa procedimental ya usa RD 1955/2000 Título VII como referencia), pero confirma que este cauce es también el aplicable a instalaciones FV competencia autonómica. No hay bifurcación de cauce por tipo de renovable.
+
+---
+
+### 7.2 Umbral 500 kW — puesta en servicio en lugar de autorización de explotación (DA única, apdo. 2)
+
+**Regla estándar:** la AE (autorización de explotación, art. 53.1.c LSE) es un trámite obligatorio antes de poner en tensión la instalación.
+
+**Excepción:** para instalaciones de **producción de energía eléctrica con potencia instalada ≤ 500 kW**, la AE se tramita en Andalucía mediante la **puesta en servicio** regulada por la Orden de 5 de marzo de 2013 (desarrollo del Decreto 59/2005) — es decir, el trámite de legalización industrial de baja tensión, no una autorización administrativa separada.
+
+**Condición de aplicación:**
+
+| Condición | Detalle |
+|---|---|
+| Tipo de instalación | Instalación de **producción** de energía eléctrica (no aplica a distribución, transporte ni autoconsumo puro) |
+| Potencia instalada | **≤ 500 kW** |
+| Sin anti-fraccionamiento | No concurre ninguna de las condiciones del apdo. 2 párr. 2 (ver §7.3) |
+
+**Trámite resultante:** en lugar de AE → puesta en servicio (Decreto 59/2005 / Orden 5/3/2013 / Ficha técnica AT Resolución 23/03/2026 si es AT).
+
+**Implicación en BDDAT:** el motor debe evaluar si la fase AE requiere autorización administrativa o basta puesta en servicio:
+
+```
+es_instalacion_produccion_electrica = true
+AND potencia_instalada_mw ≤ 0.5 (500 kW)
+AND NO aplica_regla_anti_fraccionamiento
+→ AE = PUESTA_EN_SERVICIO (Decreto 59/2005), no autorización administrativa
+```
+
+Variable reutilizada: `potencia_instalada_mw` (ya definida — añadir DL 2/2018 como norma de origen adicional con umbral 0.5 MW).
+
+---
+
+### 7.3 Anti-fraccionamiento — agrupación de instalaciones con evacuación común (DA única, apdo. 2 párr. 2)
+
+**Regla:** la excepción del §7.2 **no aplica** cuando concurren simultáneamente las siguientes condiciones, y las instalaciones agrupadas pasan al régimen completo de AAP+AAC:
+
+| Condición | Detalle |
+|---|---|
+| Línea de evacuación | Las instalaciones **comparten línea de evacuación común** |
+| Suma de potencia | La **suma total** de potencia instalada del grupo **supera 500 kW** |
+| Criterio de proximidad | **Al menos una** de estas dos sub-condiciones se cumple: (a) están en la **misma referencia catastral**, o (b) están ubicadas a **menos de 3.000 metros** entre sí |
+
+Cuando se activa la regla, se comunica la circunstancia al **órgano ambiental competente** (calificación ambiental, AAU o AAU simplificada) a efectos de su consideración en la evaluación ambiental.
+
+**Implicación en BDDAT:** el motor necesita detectar si una instalación de producción forma parte de un grupo anti-fraccionamiento. Esto requiere variables nuevas:
+
+- `tiene_linea_evacuacion_comun` — boolean, `dato` · Proyecto: la instalación comparte línea de evacuación con otras instalaciones del mismo promotor o con punto de interconexión compartido.
+- `suma_potencia_grupo_evacuacion_kw` — numérico (kW), `calculado`: suma de potencias instaladas de todas las instalaciones que comparten la línea de evacuación. Se calcula si `tiene_linea_evacuacion_comun = true`.
+- `misma_referencia_catastral_grupo` — boolean, `dato` · Proyecto: alguna instalación del grupo comparte referencia catastral con otra del mismo grupo.
+- `distancia_minima_instalaciones_grupo_m` — numérico (m), `dato` · Proyecto: distancia mínima entre cualquier par de instalaciones del grupo (en metros). Solo relevante si `misma_referencia_catastral_grupo = false`.
+
+Condición de activación del anti-fraccionamiento:
+
+```
+tiene_linea_evacuacion_comun = true
+AND suma_potencia_grupo_evacuacion_kw > 500
+AND (misma_referencia_catastral_grupo = true
+     OR distancia_minima_instalaciones_grupo_m < 3000)
+→ aplica_regla_anti_fraccionamiento = true
+→ régimen completo: AAP + AAC + AE (no puesta en servicio)
+→ comunicar al órgano ambiental (calificación / AAU / AAU simplificada)
+```
+
+---
+
+### 7.4 Declaración responsable de consultas previas (DA única, apdo. 3)
+
+**Regla estándar:** el órgano competente envía separatas a todos los organismos con bienes o intereses afectados (art. 123.d y art. 130.3 RD 1955/2000) en la fase de consultas de la AAP y AAC.
+
+**Simplificación:** el promotor puede **potestativamente** presentar una **declaración responsable** de haber realizado por su cuenta las consultas previas e identificar qué órganos han emitido pronunciamiento favorable o condicionado.
+
+**Efecto:** si se presenta la DR, el órgano competente solo envía separatas a los organismos **no cubiertos** por la DR (o a los que considere oportuno revisar). Reduce la carga del trámite de consultas previas cuando el promotor ha gestionado proactivamente los informes.
+
+**Implicación en BDDAT:** no altera las fases obligatorias, pero sí el alcance de las separatas en la fase de consultas. El motor puede registrar si el promotor presentó esta DR para ajustar el número de organismos a los que se envían separatas.
+
+- `promotor_presento_dr_consultas` — boolean, `derivado_documento` · Expediente: existe documento de tipo DR_CONSULTAS_PREVIAS presentado por el promotor junto a la solicitud de AAP o AAC.
+
+---
+
+### 7.5 Verificación de incidencia territorial (DA única, apdo. 4) — Vigente desde DL 3/2024 art. 260
+
+> Añadido a la DA única por el **art. 260 del DL 3/2024** (vigencia: 17/02/2024).
+
+**Regla:** antes de presentar la solicitud de autorización de instalaciones de energía eléctrica sometidas a autorización, el promotor debe **comprobar** si el proyecto está en alguno de los supuestos del **art. 71 del Reglamento General de la LISTA** (Decreto 550/2022, de 29 de noviembre).
+
+**Opciones resultantes:**
+
+| Resultado del análisis | Documentación a aportar con la solicitud |
+|---|---|
+| El proyecto **sí cae** en art. 71 Reglamento LISTA | Documentación para valorar la incidencia en ordenación del territorio y paisaje → informe de incidencia territorial (art. 72 Reglamento LISTA), emitido por la Consejería competente en ordenación del territorio y urbanismo |
+| El proyecto **no cae** en art. 71 | **Declaración responsable** de que el proyecto no requiere el informe de incidencia territorial |
+
+El órgano competente puede requerir el análisis realizado por el promotor en cualquier momento.
+
+**Condición de aplicación:** instalaciones de energía eléctrica sometidas a autorización (art. 53 LSE) — todas las instalaciones del ámbito de BDDAT.
+
+**Implicación en BDDAT:** es un requisito previo a la solicitud formal, análogo al punto de acceso/conexión. El motor debe verificar que se ha aportado documentación de incidencia territorial (o DR de no-incidencia) antes de dar por completa la solicitud.
+
+- `requiere_informe_incidencia_territorial` — boolean, `calculado`: el promotor ha concluido que el proyecto cae en algún supuesto del art. 71 Reglamento LISTA; deriva del análisis del promotor y debe constar en la solicitud.
+- `promotor_aporto_doc_incidencia_territorial` — boolean, `derivado_documento` · Expediente: existe documento de tipo DR_NO_INCIDENCIA_TERRITORIAL o INFORME_INCIDENCIA_TERRITORIAL asociado a la solicitud.
+
+> **Nota:** el art. 71 del Reglamento LISTA (Decreto 550/2022) define los supuestos de actuaciones sometidas a informe de incidencia territorial. Pendiente de revisar su contenido para completar la lógica de `requiere_informe_incidencia_territorial`.
