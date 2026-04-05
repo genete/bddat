@@ -9,6 +9,7 @@
 ## Índice
 
 - [Propósito del Proyecto](#propósito-del-proyecto)
+- [Filosofía del Diseño — Sostenibilidad e Herencia Institucional](#filosofía-del-diseño--sostenibilidad-e-herencia-institucional)
 - [Desarrollo de la Base de Datos](#desarrollo-de-la-base-de-datos)
   - [Claves Técnicas](#claves-técnicas)
   - [Control de Versiones](#control-de-versiones)
@@ -36,6 +37,64 @@ El proyecto tiene dos retos principales:
 
 1. **Desarrollo técnico** de la base de datos y el interfaz.
 2. **Definición de la lógica de negocio** de la tramitación de expedientes.
+
+---
+
+## Filosofía del Diseño — Sostenibilidad e Herencia Institucional
+
+### El problema real: legislación acumulada, no diseñada
+
+La normativa de AT en Andalucía no es un sistema coherente. Es un palimpsesto: cada norma parcheó la anterior sin refactorizar el conjunto. El resultado son umbrales que se solapan o dejan huecos, conceptos que parecen idénticos pero tienen significado jurídico distinto según la ley que los usa, y competencias repartidas entre tres administraciones con secuencias que hay que deducir porque nadie las escribió explícitamente.
+
+BDDAT no es un gestor de legislación. Es un tramitador con trabajo real y administrados que piden soluciones. El reto de diseño es precisamente ese: traducir ese galimatías a un sistema que funcione en el día a día y que además sea mantenible cuando cambie la norma, porque siempre cambia.
+
+### Por qué la configurabilidad del motor es una decisión de sostenibilidad, no solo técnica
+
+La tentación de hardcodear la lógica jurídica es real: la legislación es compleja, codificarla directamente en Python es más limpio y más rápido. El problema no es técnico, es institucional.
+
+El escenario real es este: entra en vigor una nueva ley. El tramitador pita. Quien la diseñó ya no está, o está ocupado, o se ha jubilado. La Agencia Digital de Andalucía recibe el aviso. El técnico informático pregunta: "¿qué variable hay que cambiar?". La persona que conoce la ley no sabe qué es una variable. La persona que sabe de variables no conoce la ley. Resultado: parálisis, expedientes bloqueados, soluciones manuales mientras el sistema espera que alguien construya el puente entre ambos mundos.
+
+**La configurabilidad del motor es ese puente.** No porque cualquiera pueda configurarlo sin conocimiento, sino porque con la documentación adecuada alguien con conocimiento jurídico limitado puede identificar qué cambiar, y alguien con conocimiento técnico limitado puede ejecutar el cambio sin tocar código.
+
+Esto no significa exponer todo al Supervisor. La elegibilidad jurídica compleja (¿requiere esta instalación AAU, AAUS o Licencia Ambiental?) no es configurable por un técnico tramitador: requiere código con la ley en la mano. Lo que sí debe ser configurable son plazos, umbrales numéricos, documentos requeridos, y el árbol de fases que genera cada tipo de solicitud.
+
+### La cadena de conocimiento: el verdadero activo del proyecto
+
+El valor más duradero de BDDAT no está en el código. Está en la cadena de traducción entre el mundo jurídico y el sistema:
+
+```
+Ley (texto consolidado)
+    → Extracción normativa (NORMATIVA_*.md)
+        → Variables documentadas (DISEÑO_CONTEXT_ASSEMBLER.md)
+            → Reglas del motor (reglas_motor + condiciones_regla en BD)
+                → Tramitación real
+```
+
+Cada eslabón de esa cadena es documentación. Cuando esa cadena está completa y actualizada, alguien que no participó en el diseño puede:
+
+1. Leer qué cambió en la ley
+2. Encontrar qué variable está afectada y por qué existe
+3. Entender qué reglas usan esa variable
+4. Decirle al desarrollador exactamente qué tocar y dónde
+
+Sin esa cadena, cada cambio normativo es una crisis. Con ella, es un procedimiento.
+
+### La parte más difícil: las reglas que funcionan en casos reales
+
+El motor agnóstico y el ContextAssembler son el marco. La extracción normativa y el diccionario de variables son el mapa. Pero lo que determina si el sistema funciona de verdad es si las reglas concretas —las filas en `reglas_motor` y `condiciones_regla`— cubren la casuística real de los expedientes.
+
+Esa es la parte más difícil y la que requiere más iteración: casos límite, excepciones a excepciones, instalaciones que encajan en dos categorías a la vez, expedientes heredados con datos incompletos. Ningún diseño previo los anticipa todos. Se descubren tramitando.
+
+Por eso BDDAT se despliega en fases con lógica progresiva: primero los técnicos usan el sistema sin restricciones activas, aprenden sus patrones, reportan los casos raros. Cuando las reglas se activan, ya hay evidencia empírica de qué casuística existe. Ese conocimiento no se puede derivar solo de la ley: requiere observación real.
+
+### Resumen
+
+| Decisión | Por qué |
+|---|---|
+| Motor configurable, no hardcodeado | Sostenibilidad cuando cambia la norma y cambian las personas |
+| Configurabilidad parcial (no todo al Supervisor) | La elegibilidad jurídica compleja requiere código; los parámetros operativos, no |
+| Documentación exhaustiva de variables y normas | Es la herencia institucional; sin ella el sistema es opaco para quien venga después |
+| Despliegue progresivo con reglas activas por fases | Las reglas reales se aprenden tramitando, no solo leyendo la ley |
 
 ---
 
