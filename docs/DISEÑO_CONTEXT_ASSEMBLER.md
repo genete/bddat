@@ -16,6 +16,36 @@ dominio, los problemas que resuelve y las advertencias de riesgo del refactor.
 
 ---
 
+## Relación con las tablas del Supervisor
+
+La cadena de evaluación es:
+
+```
+BDDAT → ContextAssembler → dict de variables → Motor → reglas_motor/condiciones_regla → EvaluacionResult
+```
+
+Las tablas editables por el Supervisor (`reglas_motor` + `condiciones_regla`) viven
+**después** del ContextAssembler. El Supervisor nunca configura la lógica de cómputo
+de variables — eso es código Python. Lo que edita son las reglas que evalúan el
+resultado de ese cómputo.
+
+**Trampa a evitar:** una condición en `condiciones_regla` que referencia una variable
+que el ContextAssembler no computa falla silenciosamente — variable ausente del dict
+equivale a condición que nunca se evalúa correctamente.
+
+**Solución de contrato:** el diccionario de variables de este documento es el catálogo
+oficial. La UI del Supervisor solo debe permitir seleccionar variables mediante
+dropdown/autocomplete sobre este catálogo — nunca texto libre. Si la variable
+necesaria no está en el catálogo, es señal de que falta trabajo previo:
+
+1. Definir la variable en este diccionario (tipo, naturaleza, norma de origen)
+2. Implementarla en el ContextAssembler (código Python)
+3. Solo entonces estará disponible en el formulario del Supervisor
+
+Variable nueva ≠ regla nueva. Son dos pasos distintos con responsables distintos.
+
+---
+
 ## Preguntas de diseño abiertas
 
 Estas preguntas bloquean la implementación; deben cerrarse antes de codificar el

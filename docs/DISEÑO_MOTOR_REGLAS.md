@@ -1,6 +1,6 @@
 # MOTOR_REGLAS — Arquitectura de diseño
 
-> **Última revisión:** 2026-02-28
+> **Última revisión:** 2026-04-05
 > Documento derivado del análisis de dos ejemplos reales de tramitación AT en Andalucía
 > y revisión exhaustiva en sesión con el técnico del servicio.
 
@@ -74,7 +74,24 @@ evaluar(evento='FINALIZAR', entidad='FASE', entidad_id=45, params={})
 evaluar(evento='BORRAR',    entidad='FASE', entidad_id=45, params={})
 ```
 
-Retorna: `EvaluacionResult(permitido: bool, nivel: str, mensaje: str, norma: str)`
+Retorna:
+
+```python
+@dataclass
+class EvaluacionResult:
+    permitido:   bool   # True = operación permitida
+    nivel:       str    # 'BLOQUEAR' | 'ADVERTIR' | None
+    mensaje:     str    # Corto — mostrar directamente en el banner de UI
+    explicacion: str    # Largo, markdown — base legal completa; expandible bajo "¿Por qué?"
+    norma:       str    # Referencia normativa ("Art. 6 DL 26/2021, de 14 dic.")
+    url_norma:   str    # URL texto consolidado BOE/BOJA; nullable
+```
+
+**Patrón de UI:**
+- Estado normal: `mensaje` en el banner de alerta + indicador visual (color/icono).
+- "¿Por qué?" — botón expandible que muestra `explicacion` (markdown renderizado)
+  con enlace a `url_norma` si existe. El usuario puede leer el artículo exacto
+  sin salir del flujo de trabajo.
 
 `params` solo es necesario en casos especiales actualmente no confirmados tras la
 revisión del patrón SEPARATAS (ver `docs/DISEÑO_CONSULTAS_ORGANISMOS.md`).
@@ -306,9 +323,16 @@ Ejemplos:
 
 ```
 REGLAS_MOTOR
-  id, evento (CREAR|INICIAR|FINALIZAR|BORRAR), entidad (SOLICITUD|FASE|TRAMITE|TAREA|EXPEDIENTE),
-  tipo_id (nullable = aplica a todos), accion (BLOQUEAR|ADVERTIR),
-  mensaje, norma, activa
+  id
+  evento      (CREAR|INICIAR|FINALIZAR|BORRAR)
+  entidad     (SOLICITUD|FASE|TRAMITE|TAREA|EXPEDIENTE)
+  tipo_id     FK a tipo correspondiente; nullable = aplica a todos los tipos
+  accion      (BLOQUEAR|ADVERTIR)
+  mensaje     VARCHAR  — texto corto para UI; obligatorio
+  explicacion TEXT     — base legal completa, markdown; obligatorio
+  norma       VARCHAR  — referencia normativa ("Art. 6 DL 26/2021"); obligatorio
+  url_norma   VARCHAR  — URL texto consolidado BOE/BOJA; nullable
+  activa      BOOLEAN
 
 CONDICIONES_REGLA  (1:N con REGLAS_MOTOR)
   id, regla_id, tipo_criterio, parametros (JSON),
@@ -327,6 +351,55 @@ CONDICIONES_REGLA  (1:N con REGLAS_MOTOR)
 - `EXISTE_TRAMITE_TIPO` — params: `{tipo_tramite_codigo, cerrado, requiere_doc_producido}`
 - `ESTADO_SOLICITUD` — params: `{estado}`
 - `EXISTE_TIPO_SOLICITUD` — params: `{tipo_solicitud_codigo}`
+
+---
+
+## Formulario del Supervisor para alta de reglas
+
+El Supervisor rellena cada regla con la misma calidad que los documentos de diseño.
+El formulario debe hacer obligatorios todos los campos de texto — una regla sin
+explicación o sin norma degrada el sistema con el tiempo.
+
+### Campos del formulario
+
+| Campo | Oblig. | Qué poner |
+|---|---|---|
+| Evento | Sí | `CREAR` / `INICIAR` / `FINALIZAR` / `BORRAR` |
+| Entidad | Sí | `SOLICITUD` / `FASE` / `TRÁMITE` / `TAREA` |
+| Tipo | No | Vacío = aplica a todos los tipos de esa entidad |
+| Acción | Sí | `BLOQUEAR` (impide la operación) / `ADVERTIR` (permite con aviso) |
+| Mensaje corto | Sí | Una frase directa para el banner de UI. Sin referencias normativas — solo qué falta o qué ocurre. Ej: *"No se puede iniciar IP sin acreditar ausencia de DUP"* |
+| Explicación | Sí | Texto largo en markdown: qué dice la norma, por qué aplica aquí, qué debe hacer el técnico para cumplirla. Puede incluir citas literales del artículo. |
+| Norma | Sí | Referencia normalizada: *"Art. 6 Decreto-ley 26/2021, de 14 de diciembre"* |
+| URL norma | No | URL al texto consolidado en BOE (ELI) o sedeboja. Se obtiene del catálogo `NORMATIVA_LEGISLACION_AT.md §6`. |
+| Activa | Sí | Desactivar en lugar de borrar — preserva trazabilidad |
+
+### Condiciones (CONDICIONES_REGLA)
+
+Cada condición referencia una variable por nombre. La UI debe presentar las variables
+como **dropdown del catálogo** de `DISEÑO_CONTEXT_ASSEMBLER.md` — no texto libre.
+Si la variable necesaria no está en el catálogo, es señal de que falta código primero.
+
+El Supervisor puede encadenar condiciones con AND/OR y negarlas. Toda condición
+compleja debe tener su justificación reflejada en el campo Explicación de la regla.
+
+### Ayuda contextual en el formulario
+
+El formulario debe incluir un enlace de ayuda que abra la **Guía del Supervisor**
+(artefacto pendiente de creación: `docs/GUIA_SUPERVISOR_MOTOR.md`). Esa guía debe
+cubrir, en lenguaje no técnico-jurídico:
+
+- Glosario de términos (AAP, AAC, AE, DUP, DIA, EIA, IP…)
+- Cómo está organizado el BOE y el BOJA: qué es un texto consolidado, qué es
+  un ELI URL, cómo se diferencia una Ley de un Real Decreto-ley
+- Cómo encontrar el ID sedeboja de una norma andaluza
+- Qué significa cada tipo de condición (`EXISTE_DOCUMENTO_TIPO`, `VARIABLE_PROYECTO`…)
+- Qué significa cada valor de Naturaleza de variable (`dato`, `calculado`,
+  `derivado_documento`) para saber si la condición es comprobable en tiempo real
+- Ejemplos de reglas bien formadas (extraídos de las reglas ya en producción)
+
+La guía debe mantenerse sincronizada con `GUIA_NORMAS.md` y `DISEÑO_CONTEXT_ASSEMBLER.md`
+como fuentes de verdad.
 
 ---
 
