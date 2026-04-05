@@ -1,7 +1,7 @@
 # GUIA_NORMAS — Proceso de trabajo con normativa AT
 
 > **Aplica a:** Proceso de investigación y extracción normativa para el motor de reglas BDDAT.
-> **No es fuente de verdad normativa** — para el catálogo de normas ver `docs/NORMATIVA_LEGISLACION_AT.md §6`.
+> **No es fuente de verdad normativa** — para el catálogo de normas ver `docs/normas_catalog.csv` (fuente estructurada) o `docs/NORMATIVA_LEGISLACION_AT.md §6` (vista legible).
 > Contenido migrado desde `NORMATIVA_LEGISLACION_AT.md §3-§5` (sesión 2026-04-04).
 
 ---
@@ -13,7 +13,7 @@
 | [§1](#1-qué-extraer-por-tipo-de-solicitud) | Qué extraer — variables y excepciones por tipo de solicitud |
 | [§2](#2-formato-de-documentación-de-reglas) | Formato de documentación de reglas — plantilla |
 | [§3](#3-resultados-por-iteración) | Resultados por iteración — estado de avance |
-| [§4](#4-cola-de-trabajo--normas-pendientes) | Cola de trabajo — pointer a `NORMATIVA_LEGISLACION_AT.md §6` |
+| [§4](#4-cola-de-trabajo--normas-pendientes) | Cola de trabajo — pointer a `normas_catalog.csv` |
 | [§5](#5-protocolo-de-extracción) | Protocolo de extracción — skills de localización + pasos al trabajar una norma |
 | [§6](#6-diccionario-de-variables-de-contexto) | Diccionario de Variables de Contexto — pointer a `DISEÑO_CONTEXT_ASSEMBLER.md` |
 
@@ -84,14 +84,14 @@ Los resultados se distribuyen en documentos propios:
 
 ## 4. Cola de trabajo — normas pendientes
 
-La fuente de verdad de todas las normas aplicables, su estado de extracción, los IDs técnicos (sedeboja, BOE-A) y las observaciones de trabajo está en **`NORMATIVA_LEGISLACION_AT.md §6`**. Esta sección no mantiene lista propia para evitar duplicidades.
+La **fuente de verdad estructurada** de todas las normas aplicables —estado de extracción, IDs técnicos (sedeboja, BOE-A), procedimientos afectados y doc_extraccion— está en **`docs/normas_catalog.csv`**. Esta sección no mantiene lista propia para evitar duplicidades. La vista legible equivalente está en `NORMATIVA_LEGISLACION_AT.md §6`.
 
-Los estados de madurez (`IDENTIFICADA` → `EXTRAÍDA` → `MAPEO_CONTEXTO` → `IMPLEMENTADA`) y su significado también están definidos en `NORMATIVA_LEGISLACION_AT.md §6`.
+Los estados de madurez (`IDENTIFICADA` → `EXTRAÍDA` → `MAPEO_CONTEXTO` → `IMPLEMENTADA`) y su significado están definidos en el propio CSV (columna `estado`).
 
 ### Protocolo de adición de norma nueva al catálogo
 
-Cuando se identifica una norma no registrada en §6:
-1. Añadir fila en `NORMATIVA_LEGISLACION_AT.md §6` con URL + procedimientos que afecta + `Estado=IDENTIFICADA` + ID técnico (sedeboja o BOE-A).
+Cuando se identifica una norma no registrada:
+1. Añadir fila en `normas_catalog.csv` con: `id_ref`, `nombre_corto`, `ambito`, `procedimientos` (separados por `|`), `estado=IDENTIFICADA`, `id_tecnico` (sedeboja o BOE-A), `url_consolidado`.
 
 ---
 
@@ -110,22 +110,22 @@ Antes de leer cualquier norma seguir este orden para minimizar consumo de contex
 
 **Regla crítica:** no llamar a `/boe` ni a `/boja` sin haber recibido `NOT_FOUND` de `/legalize` primero, salvo indicación explícita.
 
-El ID técnico de sedeboja (columna "ID técnico" de `NORMATIVA_LEGISLACION_AT.md §6`) permite construir la URL de ficha directamente sin pasar por búsqueda.
+El ID técnico de sedeboja (campo `id_tecnico` de `normas_catalog.csv`) permite construir la URL de ficha directamente sin pasar por búsqueda.
 
 ---
 
 Pasos al trabajar una norma de la cola (§4):
 
 1. **Localizar la norma** siguiendo el protocolo de skills del paso 0.
-2. Actualizar `NORMATIVA_LEGISLACION_AT.md §6`: cambiar `Estado` de la norma a `EXTRAÍDA`.
+2. Actualizar `normas_catalog.csv`: cambiar campo `estado` a `EXTRAÍDA` y rellenar `doc_extraccion` con los documentos donde se recoge el resultado (separados por `|`).
 3. Si genera fases o procedimientos → añadir en `NORMATIVA_MAPA_PROCEDIMENTAL.md` con `Implicación en BDDAT`.
 4. Si genera excepciones → añadir en `NORMATIVA_EXCEPCIONES_AT.md` con `Implicación en BDDAT`.
 5. Si genera plazos → añadir en `NORMATIVA_PLAZOS.md §2.x` con plazo + silencio + cómputo.
-6. **MAPEO_CONTEXTO:** identificar qué variables necesita el ContextAssembler para evaluar esta norma; actualizar `Estado` en la cola a `MAPEO_CONTEXTO`.
-   - **6a. Deduplicación:** antes de añadir cada variable al §6, buscar en la tabla si el concepto ya existe con otro nombre. Riesgo típico: sinónimos (`tiene_X` / `es_X` / `X_obtenida`), generalizaciones (`requiere_eia` vs. `requiere_eia_ordinaria`) o variables que en un contexto son condición de trámite y en otro son hito ya cumplido (`tiene_aap_previa` vs. `hito_aap_obtenida`). Si el concepto ya existe: reutilizar la variable y añadir la nueva norma de origen en la columna correspondiente. Solo crear variable nueva si el concepto es genuinamente distinto.
+6. **MAPEO_CONTEXTO:** identificar qué variables necesita el ContextAssembler para evaluar esta norma; actualizar `estado` en `normas_catalog.csv` a `MAPEO_CONTEXTO`.
+   - **6a. Deduplicación:** antes de añadir cada variable, buscar en `DISEÑO_CONTEXT_ASSEMBLER.md` si el concepto ya existe con otro nombre. Riesgo típico: sinónimos (`tiene_X` / `es_X` / `X_obtenida`), generalizaciones (`requiere_eia` vs. `requiere_eia_ordinaria`) o variables que en un contexto son condición de trámite y en otro son hito ya cumplido (`tiene_aap_previa` vs. `hito_aap_obtenida`). Si el concepto ya existe: reutilizar la variable y añadir la nueva norma de origen en la columna correspondiente. Solo crear variable nueva si el concepto es genuinamente distinto.
 7. Traducir las "Implicaciones en BDDAT" de los puntos 3 y 4 a filas del mapa de reglas en `DISEÑO_MOTOR_REGLAS.md`.
 8. Traducir los plazos del punto 5 al bloque "Constantes sectoriales" de `DISEÑO_FECHAS_PLAZOS.md §5.2`.
-9. Actualizar "Última sincronización" en los docs de diseño afectados; cambiar `Estado` en la cola a `IMPLEMENTADA`.
+9. Actualizar "Última sincronización" en los docs de diseño afectados; cambiar `estado` en `normas_catalog.csv` a `IMPLEMENTADA`.
 
 ---
 
