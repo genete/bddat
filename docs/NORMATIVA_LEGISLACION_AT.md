@@ -19,7 +19,7 @@ Esa extracción se articula como un proceso iterativo (§5) de complejidad creci
 | [§6.2](#62-energías-renovables) | Energías renovables (Junta + BOE) | Catálogo normativo |
 | [§6.3](#63-autoconsumo) | Autoconsumo (Junta + BOE) | Catálogo normativo |
 
-> **Nota de uso:** Los documentos derivados (`NORMATIVA_PLAZOS.md`, `NORMATIVA_SOLICITUDES.md`, `DISEÑO_MOTOR_REGLAS.md`) deben referenciar §6.x como punto de entrada al catálogo normativo. El proceso de investigación (qué extraer, protocolo, cola de trabajo, diccionario de variables) se gestiona en `docs/GUIA_NORMAS.md`.
+> **Nota de uso:** Los documentos derivados (`NORMATIVA_PLAZOS.md`, `NORMATIVA_SOLICITUDES.md`, `DISEÑO_MOTOR_REGLAS.md`) deben referenciar §6.x como punto de entrada al catálogo normativo. El proceso de investigación (qué extraer, protocolo, cola de trabajo) se gestiona en `docs/GUIA_NORMAS.md`; el diccionario de variables del ContextAssembler en `docs/DISEÑO_CONTEXT_ASSEMBLER.md`.
 
 ---
 

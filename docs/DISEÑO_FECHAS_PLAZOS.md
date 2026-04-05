@@ -584,7 +584,7 @@ Issues preexistentes relacionados (pendientes de revisar contra este diseño):
 - [x] **§3.5 Semántica de `fecha_limite`** — cerrado 2026-04-02
 - [ ] **§3.6 Condicionados de resolución** — diseñar nombre y tipos de fase, régimen de plazos (sujeto = administrado), mecanismo de generación desde la resolución, reglas de colisión y distinción visual en UI
 - [ ] **§4 Cadena de evaluación** — formalizar contrato de interfaz `plazos.py`
-- [x] **Leyes sectoriales (parcial)** — ~~RD 1955/2000~~: ✅ añadido en §5.2 (sesión 2026-04-04). ~~Decreto 9/2011~~: sin plazos propios (suprime trámite). ~~DL 26/2021~~: sin plazos propios (suprime trámite). Pendiente: Ley 21/2013 (EIA) — en revisión previa, ver `GUIA_NORMAS.md §4`.
+- [x] **Leyes sectoriales (parcial)** — ~~RD 1955/2000~~: ✅ añadido en §5.2 (sesión 2026-04-04). ~~Decreto 9/2011~~: sin plazos propios (suprime trámite). ~~DL 26/2021~~: sin plazos propios (suprime trámite). Pendiente: Ley 21/2013 (EIA) — en revisión previa, ver `NORMATIVA_LEGISLACION_AT.md §6`.
 - [ ] **Revisar #190** — determinar si el criterio `PLAZO_ESTADO` queda obsoleto o se reorienta
 - [ ] **Revisar #172 y #173** — actualizar alcance según arquitectura agnóstica
 - [ ] **Reutilización de trámites entre expedientes** — art. 95.3: procedimiento caducado cuyo derecho no ha prescrito permite nuevo procedimiento incorporando actos del anterior. Implica modelo de enlace entre expedientes y reutilización del pool documental. Diseñar cuando se estudie normativa sectorial.

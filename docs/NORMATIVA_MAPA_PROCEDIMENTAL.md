@@ -292,7 +292,7 @@ Para acreditar el cumplimiento del Hito 1, **el órgano competente debe emitir e
 
 #### Variables del ContextAssembler
 
-Ver `GUIA_NORMAS.md §6`. Variables relevantes:
+Ver `DISEÑO_CONTEXT_ASSEMBLER.md`. Variables relevantes:
 
 | Variable | Uso |
 |---|---|
@@ -336,7 +336,7 @@ Modifica el art. 3 del RD 413/2014. Para instalaciones fotovoltaicas:
 potencia instalada FV = min(Σ potencia máxima módulos DC en STC, Σ potencia máxima inversores AC)
 ```
 
-Esta definición determina el umbral de competencia (AGE >50 MW / CCAA ≤50 MW) y los umbrales de los procedimientos de afección ambiental de RDL 6/2022 y RDL 20/2022. Ver variable `potencia_instalada_mw` en `GUIA_NORMAS.md §6`.
+Esta definición determina el umbral de competencia (AGE >50 MW / CCAA ≤50 MW) y los umbrales de los procedimientos de afección ambiental de RDL 6/2022 y RDL 20/2022. Ver variable `potencia_instalada_mw` en `DISEÑO_CONTEXT_ASSEMBLER.md`.
 
 > **Nota sobre RDL 7/2025:** este RDL introdujo temporalmente en su art. 10 una nueva definición de potencia instalada para instalaciones híbridas (generación + almacenamiento compartiendo inversores). Fue **derogado íntegramente** por el Congreso el 22/07/2025 (BOE-A-2025-15313). La definición vigente de potencia instalada FV sigue siendo la de la DF 3ª del RD 1183/2020.
 

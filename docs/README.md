@@ -33,12 +33,13 @@ Todos los documentos viven en `docs/` raíz. Subdirectorios solo para no-MDs.
 - [NORMATIVA_EXCEPCIONES_AT.md](NORMATIVA_EXCEPCIONES_AT.md) — excepciones, regímenes especiales y casos límite (tramitación conjunta, EIA, simplificaciones)
 - [NORMATIVA_LEGISLACION_AT.md](NORMATIVA_LEGISLACION_AT.md) — catálogo normativo de referencia (electricidad, renovables, autoconsumo)
 - [NORMATIVA_SOLICITUDES.md](NORMATIVA_SOLICITUDES.md) — tipos de solicitud y su base normativa
-- [GUIA_NORMAS.md](GUIA_NORMAS.md) — proceso de trabajo normativo: protocolo de extracción, cola de pendientes, diccionario de variables de contexto
+- [GUIA_NORMAS.md](GUIA_NORMAS.md) — proceso de trabajo normativo: protocolo de extracción, cola de pendientes
 
 ### Arquitectura y diseño
 - [GUIA_GENERAL.md](GUIA_GENERAL.md) — arquitectura general y lógica de negocio
 - [DISEÑO_MOTOR_REGLAS.md](DISEÑO_MOTOR_REGLAS.md) — diseño del motor de reglas ESFTT
 - [DISEÑO_MOTOR_AGNOSTICO.md](DISEÑO_MOTOR_AGNOSTICO.md) — decisiones de rediseño hacia motor agnóstico de dominio
+- [DISEÑO_CONTEXT_ASSEMBLER.md](DISEÑO_CONTEXT_ASSEMBLER.md) — ContextAssembler: diccionario de variables y contrato con el motor
 - [DISEÑO_FECHAS_PLAZOS.md](DISEÑO_FECHAS_PLAZOS.md) — subsistema de fechas y plazos: modelo de datos, vocabulario, `plazos.py`
 - [DISEÑO_SUBSISTEMA_DOCUMENTAL.md](DISEÑO_SUBSISTEMA_DOCUMENTAL.md) — pool documental: tipos, vías de entrada, decisiones
 - [DISEÑO_ANALISIS_SOLICITUD.md](DISEÑO_ANALISIS_SOLICITUD.md) — fase ANÁLISIS_SOLICITUD, checklist documental (#248)

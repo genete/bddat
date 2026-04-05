@@ -394,7 +394,7 @@ Idéntico en estructura al art. 7 del RDL 6/2022 (§5.2), con dos diferencias cl
 
 **Vigencia:** Este artículo ya ha agotado su período de 18 meses (venció ≈ junio 2024). Solo es relevante para expedientes con trámites suspendidos entre diciembre 2022 y junio 2024 que aún estén activos.
 
-**Implicación en BDDAT:** la suspensión del art. 13 opera sobre proyectos sin permiso de acceso/conexión — complementa la variable `tiene_punto_acceso_conexion` (ya definida en §6 de GUIA_NORMAS.md).
+**Implicación en BDDAT:** la suspensión del art. 13 opera sobre proyectos sin permiso de acceso/conexión — complementa la variable `tiene_punto_acceso_conexion` (definida en `DISEÑO_CONTEXT_ASSEMBLER.md`).
 
 ---
 
