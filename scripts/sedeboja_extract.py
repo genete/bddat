@@ -246,13 +246,13 @@ def _intro_text(text_html, index):
         return None
 
     # Fin de la intro = inicio del primer div del índice
+    # Si no hay divs semánticos (norma sin ART/DA/...), la intro es todo el dTxT
+    intro_end = len(text_html)
     if index:
         first_div_marker = f'<div id="{index[0][0]}"'
-        intro_end = text_html.find(first_div_marker, dtxt_start)
-        if intro_end < 0:
-            intro_end = dtxt_start + 500  # fallback
-    else:
-        intro_end = dtxt_start + 500
+        found = text_html.find(first_div_marker, dtxt_start)
+        if found > 0:
+            intro_end = found
 
     segment = text_html[dtxt_start:intro_end]
     text = _clean(segment)
