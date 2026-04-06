@@ -33,7 +33,7 @@ Para **Decretos-leyes, Decretos, Órdenes y normas de rango inferior**: saltarse
 ### Script disponible
 
 ```
-D:/BDDAT/tools/sedeboja_extract.py
+D:/BDDAT/scripts/sedeboja_extract.py
 ```
 
 ### IDs técnicos de normas BDDAT
@@ -52,17 +52,17 @@ Los IDs sedeboja están en la columna "ID técnico" de `docs/NORMATIVA_LEGISLACI
 
 ```bash
 # Listar índice de secciones disponibles
-python D:/BDDAT/tools/sedeboja_extract.py {ID} --indice
+python D:/BDDAT/scripts/sedeboja_extract.py {ID} --indice
 
 # Extraer artículos concretos
-python D:/BDDAT/tools/sedeboja_extract.py {ID} "artículo 1" "artículo 2"
+python D:/BDDAT/scripts/sedeboja_extract.py {ID} "artículo 1" "artículo 2"
 
 # Extraer disposiciones
-python D:/BDDAT/tools/sedeboja_extract.py {ID} "disposición adicional única"
-python D:/BDDAT/tools/sedeboja_extract.py {ID} "disposición final primera"
+python D:/BDDAT/scripts/sedeboja_extract.py {ID} "disposición adicional única"
+python D:/BDDAT/scripts/sedeboja_extract.py {ID} "disposición final primera"
 
 # Texto completo (usar con precaución — puede ser largo)
-python D:/BDDAT/tools/sedeboja_extract.py {ID} --todo
+python D:/BDDAT/scripts/sedeboja_extract.py {ID} --todo
 ```
 
 ### Notas del script

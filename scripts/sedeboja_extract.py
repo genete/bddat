@@ -3,11 +3,11 @@
 Extrae artículos y disposiciones de sedeboja (BOJA consolidado) sin navegador.
 
 Uso:
-  python tools/sedeboja_extract.py {ID} --indice
-  python tools/sedeboja_extract.py {ID} "artículo 1" "artículo 2"
-  python tools/sedeboja_extract.py {ID} "disposición adicional única"
-  python tools/sedeboja_extract.py {ID} --todo
-  python tools/sedeboja_extract.py {ID} --guardar   (--todo + persiste en docs/normas/)
+  python scripts/sedeboja_extract.py {ID} --indice
+  python scripts/sedeboja_extract.py {ID} "artículo 1" "artículo 2"
+  python scripts/sedeboja_extract.py {ID} "disposición adicional única"
+  python scripts/sedeboja_extract.py {ID} --todo
+  python scripts/sedeboja_extract.py {ID} --guardar   (--todo + persiste en docs/normas/)
 
 El ID es el recursoLegalAbstractoId numérico de sedeboja (columna «ID técnico» en
 docs/NORMATIVA_LEGISLACION_AT.md §6).

@@ -1,4 +1,4 @@
-# tools/
+# scripts/
 
 Scripts de uso interno del proyecto BDDAT.
 
@@ -20,14 +20,18 @@ Python 3 estándar (sin dependencias externas). No requiere el entorno virtual.
 ### Argumentos
 
 ```
-python tools/sedeboja_extract.py {ID} [opciones]
+python scripts/sedeboja_extract.py {ID} [opciones]
 ```
 
 | Argumento | Descripción |
 |---|---|
 | `{ID}` | ID técnico numérico de sedeboja (ver tabla más abajo) |
 | `--indice` | Lista las secciones disponibles de la norma |
-| `"artículo N"` | Extrae una sección concreta (acepta varios, separados por espacios) |
+| `"artículo N"` | Extrae una sección concreta (acepta varios separados por espacios) |
+| `"disposición adicional única"` | Disposición adicional (única / primera / segunda…) |
+| `"disposición transitoria única"` | Disposición transitoria |
+| `"disposición derogatoria única"` | Disposición derogatoria |
+| `"disposición final primera"` | Disposición final (primera / segunda…) |
 | `--todo` | Extrae el texto completo estructurado (stdout) |
 | `--guardar` | Igual que `--todo` pero persiste en `docs/normas/sedeboja_{ID}.md` |
 
@@ -35,15 +39,18 @@ python tools/sedeboja_extract.py {ID} [opciones]
 
 ```bash
 # 1. Ver qué secciones tiene la norma antes de extraer
-python tools/sedeboja_extract.py 21892 --indice
+python scripts/sedeboja_extract.py 21892 --indice
 
-# 2. Leer un artículo concreto (stdout, sin guardar)
-python tools/sedeboja_extract.py 21892 "artículo 5" "artículo 6"
+# 2. Leer artículos concretos (stdout, sin guardar)
+python scripts/sedeboja_extract.py 21892 "artículo 5" "artículo 6"
 
-# 3. Descargar y persistir el texto completo
-python tools/sedeboja_extract.py 21892 --guardar
+# 3. Leer disposiciones
+python scripts/sedeboja_extract.py 26974 "disposición adicional única" "disposición final segunda"
 
-# 4. Ver los cambios respecto a la versión anterior guardada
+# 4. Descargar y persistir el texto completo
+python scripts/sedeboja_extract.py 21892 --guardar
+
+# 5. Ver los cambios respecto a la versión anterior guardada
 git diff docs/normas/sedeboja_21892.md
 ```
 
