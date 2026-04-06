@@ -4,6 +4,32 @@ Scripts de uso interno del proyecto BDDAT.
 
 ---
 
+## sedeboja_buscar.py — Descubrir el ID técnico de una norma
+
+Busca una norma por nombre en el portal sedeboja y devuelve su ID técnico
+(`recursoLegalAbstractoId`), necesario para `sedeboja_extract.py`.
+
+### Uso
+
+```bash
+python scripts/sedeboja_buscar.py "Decreto 550/2022"
+python scripts/sedeboja_buscar.py "Ley 7/2021"
+python scripts/sedeboja_buscar.py "356/2010"
+```
+
+Salida:
+
+```
+Buscando: Decreto 550/2022
+
+ID: 34371  (25/10/2022)
+    DECRETO 550/2022, de 25 de octubre, por el que se aprueba el Reglamento ...
+```
+
+El ID obtenido se pasa directamente a `sedeboja_extract.py`.
+
+---
+
 ## sedeboja_extract.py — Extracción de legislación andaluza consolidada
 
 Descarga el texto consolidado de una norma desde el portal sedeboja de la Junta de
@@ -34,6 +60,17 @@ python scripts/sedeboja_extract.py {ID} [opciones]
 | `"disposición final primera"` | Disposición final (primera / segunda…) |
 | `--todo` | Extrae el texto completo estructurado (stdout) |
 | `--guardar` | Igual que `--todo` pero persiste en `docs/normas/sedeboja_{ID}.md` |
+
+### Flujo completo (buscar + extraer)
+
+```bash
+# 1. Descubrir el ID si no se conoce
+python scripts/sedeboja_buscar.py "Decreto 550/2022"
+# → ID: 34371
+
+# 2. Descargar y guardar con el ID obtenido
+python scripts/sedeboja_extract.py 34371 --guardar
+```
 
 ### Uso típico
 
