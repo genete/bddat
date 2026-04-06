@@ -776,3 +776,46 @@ Las subestaciones y CTs **asociadas** a una línea de la Categoría 3 siguen el 
 | `discurre_integra_subterranea` | NUEVA — boolean; la línea discurre íntegramente en subterráneo en toda su longitud; distinto de `es_linea_subterranea` (ese no captura "íntegramente"). Combinado con `clasificacion_suelo_lista` determina el escape de LA y de los umbrales EIA. **Redesign:** reemplaza la variable `discurre_integra_subterranea_suelo_urbanizado` (§8.6) que combinaba dos condiciones separables en un solo boolean |
 | `requiere_licencia_ambiental` | NUEVA |
 | `hito_licencia_ambiental_obtenida` | NUEVA |
+
+---
+
+## 10. RD 337/2014, de 9 de mayo (RAT) — Reglamento sobre condiciones técnicas y garantías de seguridad en instalaciones eléctricas de alta tensión
+
+### 10.1 Instalaciones NO-PTD no cedidas: sin autorización administrativa (art. 20.2 + ITC-RAT 22 §4)
+
+Las instalaciones de alta tensión que **no son propiedad de entidades de producción, transporte o distribución** (PTD) de energía eléctrica y **no van a ser cedidas** a PTD antes de su puesta en servicio quedan **exentas de autorización administrativa**. Solo están sujetas al procedimiento de puesta en servicio de la ITC-RAT 22 §4:
+
+1. Elaboración de proyecto (ITC-RAT 20)
+2. Ejecución por empresa instaladora habilitada (ITC-RAT 21)
+3. Verificaciones por empresa instaladora (ITC-RAT 23)
+4. Si tensión nominal > 30 kV: **inspección inicial obligatoria por Organismo de Control** (ITC-RAT 23 §3)
+5. Certificado de Instalación + contrato de mantenimiento
+6. Presentación ante Administración en el plazo de 1 mes (registro, no autorización)
+
+**Excepción a la excepción:** si la instalación va a ser cedida a PTD antes de puesta en servicio → sigue el régimen de autorizaciones del RD 1955/2000 título VII (art. 20.3 RAT), igual que las instalaciones PTD.
+
+**Implicación en BDDAT:** el flujo AAP/AAC solo aplica cuando `es_ptd = true` O `instalacion_cedida = true`. Si ambas son `false`, el expediente es de puesta en servicio directa (sin fases de autorización previas).
+
+### 10.2 Ampliaciones y modificaciones sin proyecto (ITC-RAT 20 §4)
+
+Las siguientes operaciones sobre instalaciones AT existentes **no requieren proyecto** ni autorización administrativa. El titular lleva un registro interno y envía certificación anual al órgano competente:
+
+| Operación | Descripción |
+|---|---|
+| Sustitución equivalente | Sustituir cables, conductores, aparamenta o relés por otros de características técnicas similares |
+| Ocupación de celdas previstas | Instalar fusibles, aparamenta o relés en espacios/celdas/cabinas vacías previstas y preparadas en el proyecto original |
+| Circuitos de control | Reparación, ampliación o adecuación que afecta solo a circuitos de medida, mando, señalización o protección, o a los aparatos asociados |
+| Servicios auxiliares BT | Reparación, ampliación o adecuación que afecta solo a los servicios auxiliares de baja tensión de la instalación AT |
+| Sustitución funcional | Sustitución de aparatos, máquinas o elementos por otros de características técnicas similares |
+
+**Condición para excluir esta excepción:** la operación provoca obras nuevas O un cambio sustancial en las características técnicas → requiere proyecto de ampliación/modificación.
+
+**Implicación en BDDAT:** las modificaciones de tipo "sin proyecto" no generan expediente de autorización en BDDAT. Solo son registrables como actuaciones en el histórico de la instalación.
+
+### 10.3 Variables de contexto — MAPEO_CONTEXTO
+
+| Variable | Decisión |
+|---|---|
+| `es_ptd` | NUEVA — boolean; el titular/promotor es empresa de producción, transporte o distribución de energía eléctrica. Determina si aplica el régimen de autorización sectorial (art. 16.1 RAT) o el de puesta en servicio (art. 20.2 RAT). Dato de solicitud. |
+| `instalacion_cedida` | NUEVA — boolean; la instalación va a ser cedida a una PTD antes de su puesta en servicio; si `true`, somete la instalación al régimen de autorizaciones del RD 1955/2000 título VII aunque el promotor no sea PTD (art. 20.3 RAT). Dato de solicitud. Distinto de `tiene_linea_evacuacion_comun` (ese es sobre fraccionamiento entre promotores; este es sobre la titularidad final). |
+| `tension_nominal_kv` | YA EXISTE (origen: Decreto 9/2011). Añadir norma de origen: RAT ITC-RAT 22 §4 — umbral > 30 kV activa la obligación de inspección inicial por Organismo de Control para instalaciones NO-PTD. |
