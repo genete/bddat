@@ -5,23 +5,26 @@ Extrae artículos y disposiciones de sedeboja (BOJA consolidado) sin navegador.
 Uso:
   python tools/sedeboja_extract.py {ID} --indice
   python tools/sedeboja_extract.py {ID} "artículo 1" "artículo 2"
-  python tools/sedeboja_extract.py {ID} "disposición adicional primera"
+  python tools/sedeboja_extract.py {ID} "disposición adicional única"
   python tools/sedeboja_extract.py {ID} --todo
+  python tools/sedeboja_extract.py {ID} --guardar   (--todo + persiste en docs/normas/)
 
 El ID es el recursoLegalAbstractoId numérico de sedeboja (columna «ID técnico» en
 docs/NORMATIVA_LEGISLACION_AT.md §6).
 
 Flujo interno (sin navegador, sin JavaScript):
-  1. curl render_portlet → extrae URL del iframe embebido (~14 KB)
+  1. curl render_portlet → extrae título, URL del iframe y versión (~14 KB)
   2. curl iframe URL     → HTML estático con el texto consolidado
   3. Parse div id="ART{N}" / "DA..." / "DT..." / "DD..." / "DF..." para extraer secciones
 """
 
 import sys
+import os
 import re
 import html as html_lib
 import urllib.request
 import unicodedata
+from datetime import date
 
 PORTLET_URL = (
     "https://ws040.juntadeandalucia.es/sedeboja/c/portal/render_portlet"
@@ -32,6 +35,10 @@ PORTLET_URL = (
 )
 
 UA = "Mozilla/5.0 (compatible; sedeboja_extract/1.0)"
+
+# Directorio de normas persistidas, relativo a la raíz del repo
+NORMAS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                          "docs", "normas")
 
 
 # ---------------------------------------------------------------------------
@@ -46,8 +53,11 @@ def fetch(url):
         return raw.decode(charset, errors="replace")
 
 
-def get_text_html(norm_id):
-    """Devuelve (iframe_url, html_texto). Lanza RuntimeError si no encuentra iframe."""
+def get_all(norm_id):
+    """
+    Devuelve (portlet_html, iframe_url, text_html).
+    Lanza RuntimeError si no encuentra iframe.
+    """
     portlet_html = fetch(PORTLET_URL.format(id=norm_id))
     m = re.search(r'iframe[^>]+src="([^"]+)"', portlet_html)
     if not m:
@@ -55,22 +65,36 @@ def get_text_html(norm_id):
             f"No se encontró iframe en portlet para ID={norm_id}. "
             "Verifica que el ID es correcto y la norma tiene versión consolidada."
         )
-    url = m.group(1).replace("\\", "/")
-    return url, fetch(url)
+    iframe_url = m.group(1).replace("\\", "/")
+    return portlet_html, iframe_url, fetch(iframe_url)
+
+
+# ---------------------------------------------------------------------------
+# Metadatos desde portlet e iframe URL
+# ---------------------------------------------------------------------------
+
+def get_title(portlet_html):
+    """Extrae el título completo de la norma del portlet."""
+    # El span (no label) con versiotitulo en el id contiene "fecha - CONSOLIDADA - título"
+    m = re.search(r'<span[^>]+versiotitulo[^>]*>([^<]+)<', portlet_html)
+    if m:
+        raw = html_lib.unescape(m.group(1).strip())
+        parts = raw.split(" - ", 2)
+        return parts[-1].strip() if len(parts) >= 3 else raw
+    return None
+
+
+def get_version_date(iframe_url):
+    """Extrae la fecha de versión consolidada de la URL del iframe: .../con/20240217/..."""
+    m = re.search(r'/con/(\d{4})(\d{2})(\d{2})/', iframe_url)
+    if m:
+        return f"{m.group(1)}-{m.group(2)}-{m.group(3)}"
+    return None
 
 
 # ---------------------------------------------------------------------------
 # Índice de secciones
 # ---------------------------------------------------------------------------
-
-# Mapeo: patrón div id → descripción legible
-# Los IDs siguen el esquema: ART{N}, DA{ORDINAL|UNICA}, DT{...}, DD{...}, DF{N|ORDINAL|UNICA}
-_ORDINALS = {
-    "primera": 1, "segunda": 2, "tercera": 3, "cuarta": 4, "quinta": 5,
-    "sexta": 6, "séptima": 7, "octava": 8, "novena": 9, "décima": 10,
-    "undécima": 11, "duodécima": 12, "unica": 0, "única": 0,
-}
-
 
 def normalize(s):
     """Normaliza string para comparaciones: minúsculas, sin tildes, sin puntuación."""
@@ -87,28 +111,23 @@ def build_index(text_html):
     Devuelve lista de (div_id, título, posición_en_html) ordenada por posición.
     Extrae los títulos del índice (href="#I{N}") y los correlaciona con los div ids.
     """
-    # Mapa anchor I{N} → título (del índice de navegación)
     anchor_to_title = {}
     for m in re.finditer(r'href="#(I\d+)"[^>]*>([^<]{1,120})', text_html):
         anchor_to_title[m.group(1)] = m.group(2).strip()
 
-    # Posición de cada anchor I{N} en el texto
     anchor_positions = {}
     for m in re.finditer(r'id="(I\d+)"', text_html):
         anchor_positions[m.group(1)] = m.start()
 
-    # Div ids con sus posiciones
     div_positions = {}
     for m in re.finditer(r'<div id="([A-Z][A-Z0-9]+)"', text_html):
         div_positions[m.group(1)] = m.start()
 
-    # Para cada entrada del índice, buscar el div más cercano (justo después del anchor)
     entries = []
     for anchor, title in anchor_to_title.items():
         if anchor not in anchor_positions:
             continue
         apos = anchor_positions[anchor]
-        # Buscar el div que sigue inmediatamente (dentro de 300 chars)
         best_div = None
         best_dist = 999999
         for div_id, dpos in div_positions.items():
@@ -119,7 +138,6 @@ def build_index(text_html):
         if best_div:
             entries.append((best_div, title, div_positions[best_div]))
 
-    # Eliminar duplicados (mismo div_id, quedar con el primero por posición)
     seen = set()
     unique = []
     for e in sorted(entries, key=lambda x: x[2]):
@@ -127,9 +145,7 @@ def build_index(text_html):
             seen.add(e[0])
             unique.append(e)
 
-    # Añadir entradas derivadas de los div ids semánticos que no estén en el índice
-    # (ej: DADICUNICA → "Disposición adicional única", que el índice puede poner
-    #  como "DISPOSICIONES ADICIONALES" sin permitir match exacto)
+    # Aliases semánticos para divs no mapeados por el índice
     div_ids_in_index = {e[0] for e in unique}
     for div_id, dpos in sorted(div_positions.items(), key=lambda x: x[1]):
         if div_id in div_ids_in_index:
@@ -166,17 +182,23 @@ def _decode_div_id(div_id):
 
 
 # ---------------------------------------------------------------------------
-# Extracción de secciones
+# Extracción de texto
 # ---------------------------------------------------------------------------
+
+def _clean(html_segment):
+    """Elimina tags HTML y normaliza espacios."""
+    clean = re.sub(r"<[^>]+>", " ", html_segment)
+    clean = html_lib.unescape(clean)
+    clean = re.sub(r"\s+", " ", clean).strip()
+    return clean
+
 
 def _div_text(text_html, div_id, next_div_id=None):
     """Extrae el innerText del div id=div_id hasta el inicio de next_div_id."""
-    # str.find evita problemas de re en Windows cp1252 con Python 3.14
     marker = f'<div id="{div_id}"'
     start = text_html.find(marker)
     if start < 0:
         return None
-
     if next_div_id:
         end_marker = f'<div id="{next_div_id}"'
         end = text_html.find(end_marker, start + len(marker))
@@ -184,25 +206,60 @@ def _div_text(text_html, div_id, next_div_id=None):
             end = len(text_html)
     else:
         end = len(text_html)
+    return _clean(text_html[start:end])
 
-    segment = text_html[start:end]
-    # Limpiar HTML
-    clean = re.sub(r"<[^>]+>", " ", segment)
-    clean = html_lib.unescape(clean)
-    clean = re.sub(r"\s+", " ", clean).strip()
-    return clean
+
+def _intro_text(text_html, index):
+    """
+    Extrae la exposición de motivos: texto dentro de dTxT antes del primer div del índice.
+    """
+    dtxt_marker = '<div id="dTxT"'
+    dtxt_start = text_html.find(dtxt_marker)
+    if dtxt_start < 0:
+        return None
+
+    # Fin de la intro = inicio del primer div del índice
+    if index:
+        first_div_marker = f'<div id="{index[0][0]}"'
+        intro_end = text_html.find(first_div_marker, dtxt_start)
+        if intro_end < 0:
+            intro_end = dtxt_start + 500  # fallback
+    else:
+        intro_end = dtxt_start + 500
+
+    segment = text_html[dtxt_start:intro_end]
+    text = _clean(segment)
+    # Quitar el propio id del div del texto limpio
+    text = re.sub(r'^dTxT\s*', '', text).strip()
+    return text if len(text) > 50 else None
+
+
+def extract_structured(text_html):
+    """
+    Extrae el texto completo con cabeceras ## por sección.
+    Incluye exposición de motivos si existe.
+    Devuelve string markdown.
+    """
+    index = build_index(text_html)
+    parts = []
+
+    intro = _intro_text(text_html, index)
+    if intro:
+        parts.append(f"## Exposición de motivos\n\n{intro}")
+
+    for i, (div_id, title, _) in enumerate(index):
+        next_div = index[i + 1][0] if i + 1 < len(index) else None
+        text = _div_text(text_html, div_id, next_div)
+        if text:
+            parts.append(f"## {title}\n\n{text}")
+
+    return "\n\n---\n\n".join(parts)
 
 
 def extract_sections(text_html, queries):
-    """
-    Extrae secciones por nombre. queries es lista de strings como
-    ["artículo 1", "disposición adicional única", "disposición final primera"].
-    Devuelve lista de strings markdown.
-    """
+    """Extrae secciones concretas por nombre."""
     index = build_index(text_html)
-    # Construir mapa normalizado → (div_id, título, posición)
     norm_map = {normalize(title): (div_id, title, pos) for div_id, title, pos in index}
-    # Añadir aliases semánticos derivados del div_id (ej: DADICUNICA → "disposicion adicional unica")
     for div_id, title, pos in index:
         canonical = _decode_div_id(div_id)
         if canonical:
@@ -213,32 +270,61 @@ def extract_sections(text_html, queries):
     results = []
     for query in queries:
         nq = normalize(query)
-        # Búsqueda exacta
         match = norm_map.get(nq)
-        # Búsqueda parcial si no hay exacta
         if not match:
             candidates = [(k, v) for k, v in norm_map.items() if nq in k or k in nq]
             if candidates:
-                # Preferir el más corto (más específico)
                 candidates.sort(key=lambda x: len(x[0]))
                 match = candidates[0][1]
         if not match:
             results.append(f"**{query}**: No encontrado en el índice.")
             continue
 
-        div_id, title, pos = match
-        # Siguiente sección en el índice
+        div_id, title, _ = match
         idx_pos = next((i for i, e in enumerate(index) if e[0] == div_id), None)
         next_div = index[idx_pos + 1][0] if idx_pos is not None and idx_pos + 1 < len(index) else None
-
         text = _div_text(text_html, div_id, next_div)
         if text:
             results.append(f"## {title}\n\n{text}")
         else:
-            results.append(f"**{query}**: div id={div_id} no encontrado en el HTML del texto.")
+            results.append(f"**{query}**: div id={div_id} no encontrado en el HTML.")
 
     return results
 
+
+# ---------------------------------------------------------------------------
+# Persistencia en docs/normas/
+# ---------------------------------------------------------------------------
+
+def build_frontmatter(norm_id, title, version_date, iframe_url):
+    today = date.today().isoformat()
+    lines = ["---"]
+    if title:
+        lines.append(f'referencia: "{title}"')
+    lines.append(f"sedeboja_id: {norm_id}")
+    if version_date:
+        lines.append(f"version_consolidada: {version_date}")
+    lines.append(f"extraido: {today}")
+    lines.append(f'iframe_url: "{iframe_url}"')
+    lines.append("---")
+    return "\n".join(lines)
+
+
+def save_norm(norm_id, title, version_date, iframe_url, body):
+    """Guarda la norma en docs/normas/sedeboja_{ID}.md"""
+    os.makedirs(NORMAS_DIR, exist_ok=True)
+    path = os.path.join(NORMAS_DIR, f"sedeboja_{norm_id}.md")
+    frontmatter = build_frontmatter(norm_id, title, version_date, iframe_url)
+    heading = f"# {title}" if title else f"# sedeboja {norm_id}"
+    content = f"{frontmatter}\n\n{heading}\n\n{body}\n"
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(content)
+    return path
+
+
+# ---------------------------------------------------------------------------
+# CLI
+# ---------------------------------------------------------------------------
 
 def print_index(text_html, norm_id, iframe_url):
     index = build_index(text_html)
@@ -247,22 +333,6 @@ def print_index(text_html, norm_id, iframe_url):
     for div_id, title, _ in index:
         print(f"  {div_id:20} {title}")
 
-
-def extract_all(text_html):
-    """Extrae el texto completo del div dTxT."""
-    m = re.search(r'<div id="dTxT"', text_html)
-    if not m:
-        return None
-    start = m.start()
-    clean = re.sub(r"<[^>]+>", " ", text_html[start:])
-    clean = html_lib.unescape(clean)
-    clean = re.sub(r"\s+", " ", clean).strip()
-    return clean
-
-
-# ---------------------------------------------------------------------------
-# CLI
-# ---------------------------------------------------------------------------
 
 def main():
     if len(sys.argv) < 2:
@@ -273,7 +343,7 @@ def main():
     args = sys.argv[2:]
 
     try:
-        iframe_url, text_html = get_text_html(norm_id)
+        portlet_html, iframe_url, text_html = get_all(norm_id)
     except Exception as e:
         print(f"ERROR: {e}", file=sys.stderr)
         sys.exit(1)
@@ -282,12 +352,14 @@ def main():
         print_index(text_html, norm_id, iframe_url)
         return
 
-    if "--todo" in args:
-        result = extract_all(text_html)
-        if result:
-            print(result)
-        else:
-            print("No se encontró div dTxT.", file=sys.stderr)
+    if "--guardar" in args or "--todo" in args:
+        body = extract_structured(text_html)
+        if "--guardar" in args:
+            title = get_title(portlet_html)
+            version_date = get_version_date(iframe_url)
+            path = save_norm(norm_id, title, version_date, iframe_url, body)
+            print(f"Guardado: {path}", file=sys.stderr)
+        print(body)
         return
 
     sections = extract_sections(text_html, args)

@@ -5,14 +5,26 @@ argument-hint: "[BOE:|BOJA:] <referencia>  — ej: 'BOJA: DL 2/2018' | 'BOE: Ley
 allowed-tools: Grep, Glob, Read
 ---
 
-Eres un buscador especializado en el repositorio local **legalize-es** (`/d/legalize-es`).
+Eres un buscador especializado en legislación consolidada local.
 Tu argumento es: `$ARGUMENTS`
 
 Devuelve el contenido completo del fichero si lo encuentras, o `NOT_FOUND` con motivo si no.
 
 ---
 
-## ESTRUCTURA DEL REPOSITORIO
+## PASO 0 — docs/normas/ (primera parada, normas propias de BDDAT)
+
+Antes de buscar en legalize-es, busca en `docs/normas/` dentro del repo BDDAT:
+
+```
+Grep pattern="<término>" path=docs/normas -i output_mode=files_with_matches
+```
+
+Los ficheros tienen frontmatter con `referencia:` y `sedeboja_id:`. Si hay match, leer el fichero y devolver su contenido. Si no hay ficheros o no hay match, continuar con el paso siguiente.
+
+---
+
+## ESTRUCTURA DEL REPOSITORIO (legalize-es)
 
 ```
 /d/legalize-es/
