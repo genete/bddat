@@ -200,6 +200,20 @@ información pública. El Decreto 9/2011 sigue siendo relevante en lo no cubiert
 la supresión de la **publicación en BOP** (art. 128.3 RD 1955/2000), que el DL 26/2021 no contempla.
 Ver análisis completo en §4.
 
+> **Nota sobre el resto del Decreto 9/2011:** el decreto es un "ómnibus" que también modifica el Reglamento del Suministro Domiciliario de Agua (art. 1), el régimen sancionador energético (art. 2), y el procedimiento de autorizaciones de redes de gas (DA 2ª). Ninguno de estos contenidos afecta a instalaciones eléctricas AT — solo la DA 1ª es relevante para BDDAT.
+
+### 3.2 Variables de contexto — MAPEO_CONTEXTO
+
+| Variable | Tipo | Descripción |
+|---|---|---|
+| `tension_nominal_kv` | numérico (kV) | Tensión nominal de la instalación — umbral ≤ 30 kV define tercera categoría AT |
+| `es_linea_subterranea` | boolean | La instalación es una línea subterránea |
+| `es_ct_interior` | boolean | La instalación es un centro de transformación interior |
+| `es_suelo_urbano_o_urbanizable` | boolean | Los terrenos afectados son suelo urbano o urbanizable |
+| `requiere_dup` | boolean | La instalación requiere declaración de utilidad pública (compartida con DL 26/2021 §4) |
+
+Todas definidas en `DISEÑO_CONTEXT_ASSEMBLER.md`.
+
 ---
 
 ## 4. Decreto-ley 26/2021, de 14 de diciembre (Junta de Andalucía)
