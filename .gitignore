@@ -7,8 +7,10 @@ __pycache__/
 app/static/uploads/*
 # Artefactos de Claude Code / Playwright MCP
 .playwright-mcp/
-# Carpeta de configuración de Claude Code
-.claude/
+# Artefactos locales de Claude Code (no versionar config/caché/sesiones)
+# Se ignora el contenido pero no el directorio, para poder exceptuar skills/
+.claude/*
+!.claude/skills
 # Documentos de prueba locales (no versionar binarios ni datos reales)
 docs_prueba/
 contexto_completo_gemini.txt
