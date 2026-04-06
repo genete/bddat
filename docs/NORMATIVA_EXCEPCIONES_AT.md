@@ -265,7 +265,32 @@ La exención del Decreto 9/2011 queda absorbida en la práctica. La supresión d
 (Decreto 9/2011 DA 1ª) se evalúa de forma independiente con sus propias condiciones (AT 3ª categoría
 + subterránea/CT + suelo urbano/urbanizable + sin DUP).
 
-> **Cola de trabajo:** las normas pendientes de extracción se gestionan en `docs/GUIA_NORMAS.md §4`.
+### 4.2 Resto del articulado relevante para BDDAT (Cap. VII)
+
+**Art. 19 — Declaración automática de utilidad e interés general para AAU (modifica D356/2010 art. 30.4)**
+
+Las instalaciones de transporte, distribución y generación de energía quedan declaradas automáticamente como "actuaciones de utilidad e interés general" a efectos del procedimiento de AAU bajo el régimen GICA (Ley 7/2007 + Decreto 356/2010).
+
+**Ámbito temporal:** aplica a expedientes ambientales iniciados **antes del 20/06/2026** (`fecha_inicio_expediente_ambiental < 20/06/2026`). Desde esa fecha, la Ley 2/2026 sustituye al régimen GICA y recoge un efecto equivalente en sus arts. 67.4 y 79.4 (ver §9.4).
+
+**Implicación en BDDAT:** cuando el expediente ambiental se inició bajo GICA, las instalaciones AT de transporte, distribución y generación tienen tratamiento preferencial en la AAU sin necesidad de declaración ad hoc. No genera variable nueva — deriva de tipo de instalación + `fecha_inicio_expediente_ambiental`.
+
+**Art. 20 — Impulso preferente para renovables sin régimen retributivo (modifica DL 2/2018 art. 3.2)**
+
+Los proyectos de renovables no acogidos a régimen retributivo específico tienen "impulso preferente y urgente" ante cualquier Administración Pública andaluza. Es una directiva de tramitación prioritaria, sin plazo concreto ni variable de evaluación. No genera variable nueva.
+
+**Art. 18 — Régimen urbanístico de instalaciones renovables en suelo rústico (modifica Ley 2/2007 art. 12)**
+
+Instalaciones renovables en suelo rústico = actuaciones ordinarias urbanísticas (licencia municipal). Umbral de declaración responsable: autoconsumo eléctrico ≤ 100 kW e infraestructuras de recarga VE ≤ 40 kW en edificaciones existentes en suelo urbano. No afecta al procedimiento AT de BDDAT (la licencia urbanística es trámite municipal paralelo, no parte del Título VII RD 1955/2000).
+
+### 4.3 Variables de contexto — MAPEO_CONTEXTO
+
+| Variable | Tipo | Descripción |
+|---|---|---|
+| `requiere_dup` | boolean | La instalación requiere declaración de utilidad pública — condición DF 4ª (compartida con D9/2011 §3) |
+| `requiere_aau` | boolean | La instalación está sometida a AAU — condición DF 4ª (compartida con Ley 2/2026 §9) |
+
+Ambas definidas en `DISEÑO_CONTEXT_ASSEMBLER.md`. El art. 19 no añade variables propias — su efecto se evalúa por tipo de instalación + `fecha_inicio_expediente_ambiental` (ya definida para Ley 2/2026 §9).
 
 ---
 
