@@ -79,9 +79,9 @@ Normas identificadas en la página de la Consejería, fichas de procedimiento y 
 
 | Norma | Afecta a | ID-REF | Estado | ID técnico |
 |---|---|---|---|---|
-| [Ley 24/2013, de 26 de diciembre (LSE)](https://www.boe.es/eli/es/l/2013/12/26/24/con) | General | REF-LSE | EXTRAÍDA | BOE-A-2013-13645 |
-| [RD 1955/2000, de 1 de diciembre](https://www.boe.es/eli/es/rd/2000/12/01/1955/con) | AAP, AAC, AE, Trans., Cierre | REF-RD1955 | EXTRAÍDA | BOE-A-2000-24019 |
-| [Ley 39/2015, de 1 de octubre (LPACAP)](https://www.boe.es/eli/es/l/2015/10/01/39/con) | General | REF-LPACAP | EXTRAÍDA | (ver ELI) |
+| [Ley 24/2013, de 26 de diciembre (LSE)](https://www.boe.es/eli/es/l/2013/12/26/24/con) | General | REF-LSE | MAPEO_CONTEXTO | BOE-A-2013-13645 |
+| [RD 1955/2000, de 1 de diciembre](https://www.boe.es/eli/es/rd/2000/12/01/1955/con) | AAP, AAC, AE, Trans., Cierre | REF-RD1955 | MAPEO_CONTEXTO | BOE-A-2000-24019 |
+| [Ley 39/2015, de 1 de octubre (LPACAP)](https://www.boe.es/eli/es/l/2015/10/01/39/con) | General | REF-LPACAP | MAPEO_CONTEXTO | (ver ELI) |
 | [Ley 21/2013, de 9 de diciembre (EIA)](https://www.boe.es/eli/es/l/2013/12/09/21/con) | AAP | REF-EIA | IDENTIFICADA | (ver ELI) |
 | [RD 842/2002, de 2 de agosto (REBT)](https://www.boe.es/eli/es/rd/2002/08/02/842/con) | AE · BT | — | IDENTIFICADA | (ver ELI) |
 | [Decreto 9/2011, de 18 de enero](https://ws040.juntadeandalucia.es/sedeboja/web/textos-consolidados/resumen-ficha?p_p_id=resumenrecursolegal_WAR_sedebojatextoconsolidadoportlet&p_p_lifecycle=0&_resumenrecursolegal_WAR_sedebojatextoconsolidadoportlet_recursoLegalAbstractoId=22168) | AAP | REF-D9-2011 | EXTRAÍDA | 22168 |
