@@ -3,9 +3,7 @@
 > **Aplica a:** Motor de reglas — base legal de las reglas de tramitación ESFTT.
 > **Estado:** Catálogo de normas y estructura de extracción definida. Iteraciones de investigación pendientes.
 
-Este documento es el **catálogo normativo de referencia** del motor de reglas de BDDAT. Recoge la legislación estatal y autonómica aplicable a los procedimientos de autorización de instalaciones de alta tensión en Andalucía, organizada por ámbito (distribución y transporte, renovables, autoconsumo). Su función es servir de fuente de verdad sobre qué normas rigen cada tipo de solicitud (AAP, AAC, AE, transmisión, cierre), de manera que los documentos de diseño del motor —`DISEÑO_MOTOR_REGLAS.md`, `NORMATIVA_SOLICITUDES.md`— puedan referenciar una base legal verificada. Los plazos procedimentales se extraen y documentan en profundidad en `NORMATIVA_PLAZOS.md`; este documento se centra en el catálogo de normas y en el proceso de extracción de las reglas de tramitación.
-
-Esa extracción se articula como un proceso iterativo (§5) de complejidad creciente: desde el mapa de fases obligatorias por tipo de solicitud hasta los casos límite y la casuística especial, pasando por los regímenes de excepción. Este enfoque responde a la densidad normativa del ámbito: las reglas que gobiernan un expediente de AT emergen de la interacción entre normas de distinto rango y ámbito —estatal, autonómica, sectorial, ambiental— y no pueden identificarse de forma exhaustiva en una sola lectura.
+Este documento recoge los **recursos de navegación normativa** del motor de reglas de BDDAT: links a las páginas de la Consejería de Industria y MITECO, fichas de procedimiento de la Junta (AAP, AAC, AE, Transmisión, Cierre) y documentos de apoyo sectoriales. El **catálogo estructurado de normas** —estado de extracción, IDs técnicos, procedimientos afectados, doc_extraccion— está en `docs/normas_catalog.csv`.
 
 ---
 
@@ -19,7 +17,7 @@ Esa extracción se articula como un proceso iterativo (§5) de complejidad creci
 | [§6.2](#62-energías-renovables) | Renovables — recursos de referencia MITECO | Recursos MITECO |
 | [§6.3](#63-autoconsumo) | Autoconsumo — documentos de apoyo | Documentos de apoyo |
 
-> **Nota de uso:** Los documentos derivados (`NORMATIVA_PLAZOS.md`, `NORMATIVA_SOLICITUDES.md`, `DISEÑO_MOTOR_REGLAS.md`) deben referenciar §6.x como punto de entrada al catálogo normativo. La **fuente de verdad estructurada** (estado, ID técnico, doc_extraccion) es `docs/normas_catalog.csv` — usar para consultas de estado o adición de normas nuevas. El proceso de investigación (protocolo, cola de trabajo) se gestiona en `docs/GUIA_NORMAS.md`; el diccionario de variables del ContextAssembler en `docs/DISEÑO_CONTEXT_ASSEMBLER.md`.
+> **Nota de uso:** Para el catálogo de normas (estado, ID técnico, doc_extraccion) usar `docs/normas_catalog.csv`. Para recursos de navegación, fichas de procedimiento y documentos de apoyo, usar §6.x de este documento. El proceso de investigación (protocolo, cola de trabajo) se gestiona en `docs/GUIA_NORMAS.md`; el diccionario de variables del ContextAssembler en `docs/DISEÑO_CONTEXT_ASSEMBLER.md`.
 
 ---
 

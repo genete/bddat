@@ -38,7 +38,7 @@ D:/BDDAT/scripts/sedeboja_extract.py
 
 ### IDs técnicos de normas BDDAT
 
-Los IDs sedeboja están en la columna "ID técnico" de `docs/NORMATIVA_LEGISLACION_AT.md §6`.
+Los IDs sedeboja están en la columna "ID técnico" de `docs/normas_catalog.csv`.
 
 | Norma | ID |
 |---|---|
@@ -161,7 +161,7 @@ Add-Type -MemberDefinition '[DllImport("user32.dll")] public static extern bool 
 
 ## NOTAS
 
-- Los IDs sedeboja (`recursoLegalAbstractoId`) de las normas BDDAT están en la columna "ID técnico" de `docs/NORMATIVA_LEGISLACION_AT.md §6`.
+- Los IDs sedeboja (`recursoLegalAbstractoId`) de las normas BDDAT están en la columna "ID técnico" de `docs/normas_catalog.csv`.
 - Las normas que tienen versión consolidada en sedeboja: Decretos, Decreto-leyes, Órdenes y algunas Resoluciones que modifican anexos normativos.
 - Si el bloque aparece `(Derogado)`, indicarlo claramente con la norma derogatoria.
 - El navigate de Playwright consume mucho contexto si se lee: **no leer su output nunca**.

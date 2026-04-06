@@ -1,7 +1,7 @@
 # NORMATIVA — Excepciones, regímenes especiales y casos límite AT
 
 > **Aplica a:** Motor de reglas — desviaciones respecto al procedimiento estándar AAP/AAC/AE.
-> **Fuentes de verdad:** `docs/NORMATIVA_LEGISLACION_AT.md §6` · `docs/NORMATIVA_PLAZOS.md §2`.
+> **Fuentes de verdad:** `docs/normas_catalog.csv` · `docs/NORMATIVA_PLAZOS.md §2`.
 > **Estado:** En construcción — sesión 2026-04-05. LSE + RD 1955/2000 + Decreto 9/2011 + DL 26/2021 + RDL 6/2022 + RDL 20/2022 + DL 2/2018 + Ley 21/2013 + Ley 2/2026 extraídos.
 
 Este documento recoge las **Iteraciones 2 y 4** de `NORMATIVA_LEGISLACION_AT.md §5`:

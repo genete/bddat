@@ -422,7 +422,7 @@ explicación o sin norma degrada el sistema con el tiempo.
 | Mensaje corto | Sí | Una frase directa para el banner de UI. Sin referencias normativas — solo qué falta o qué ocurre. Ej: *"No se puede iniciar IP sin acreditar ausencia de DUP"* |
 | Explicación | Sí | Texto largo en markdown: qué dice la norma, por qué aplica aquí, qué debe hacer el técnico para cumplirla. Puede incluir citas literales del artículo. |
 | Norma | Sí | Referencia normalizada: *"Art. 6 Decreto-ley 26/2021, de 14 de diciembre"* |
-| URL norma | No | URL al texto consolidado en BOE (ELI) o sedeboja. Se obtiene del catálogo `NORMATIVA_LEGISLACION_AT.md §6`. |
+| URL norma | No | URL al texto consolidado en BOE (ELI) o sedeboja. Se obtiene de `normas_catalog.csv`. |
 | Activa | Sí | Desactivar en lugar de borrar — preserva trazabilidad |
 
 ### Condiciones (CONDICIONES_REGLA)

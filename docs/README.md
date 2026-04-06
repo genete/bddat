@@ -31,7 +31,7 @@ Todos los documentos viven en `docs/` raíz. Subdirectorios solo para no-MDs.
 - [NORMATIVA_PLAZOS.md](NORMATIVA_PLAZOS.md) — plazos administrativos aplicables: LPACAP artículo a artículo + leyes sectoriales AT
 - [NORMATIVA_MAPA_PROCEDIMENTAL.md](NORMATIVA_MAPA_PROCEDIMENTAL.md) — fases obligatorias, orden y base legal por tipo de procedimiento (AAP, AAC, AE, Trans., Cierre)
 - [NORMATIVA_EXCEPCIONES_AT.md](NORMATIVA_EXCEPCIONES_AT.md) — excepciones, regímenes especiales y casos límite (tramitación conjunta, EIA, simplificaciones)
-- [NORMATIVA_LEGISLACION_AT.md](NORMATIVA_LEGISLACION_AT.md) — catálogo normativo de referencia (electricidad, renovables, autoconsumo)
+- [NORMATIVA_LEGISLACION_AT.md](NORMATIVA_LEGISLACION_AT.md) — recursos de navegación y fichas de procedimiento (catálogo de normas en `normas_catalog.csv`)
 - [NORMATIVA_SOLICITUDES.md](NORMATIVA_SOLICITUDES.md) — tipos de solicitud y su base normativa
 - [GUIA_NORMAS.md](GUIA_NORMAS.md) — proceso de trabajo normativo: protocolo de extracción, cola de pendientes
 

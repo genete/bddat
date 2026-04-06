@@ -1,7 +1,7 @@
 # GUIA_NORMAS — Proceso de trabajo con normativa AT
 
 > **Aplica a:** Proceso de investigación y extracción normativa para el motor de reglas BDDAT.
-> **No es fuente de verdad normativa** — para el catálogo de normas ver `docs/normas_catalog.csv` (fuente estructurada) o `docs/NORMATIVA_LEGISLACION_AT.md §6` (vista legible).
+> **No es fuente de verdad normativa** — para el catálogo de normas ver `docs/normas_catalog.csv`.
 > Contenido migrado desde `NORMATIVA_LEGISLACION_AT.md §3-§5` (sesión 2026-04-04).
 
 ---
@@ -80,7 +80,7 @@ El estado de extracción de cada norma está en `docs/normas_catalog.csv` (colum
 
 ## 4. Cola de trabajo — normas pendientes
 
-La **fuente de verdad estructurada** de todas las normas aplicables —estado de extracción, IDs técnicos (sedeboja, BOE-A), procedimientos afectados y doc_extraccion— está en **`docs/normas_catalog.csv`**. Esta sección no mantiene lista propia para evitar duplicidades. La vista legible equivalente está en `NORMATIVA_LEGISLACION_AT.md §6`.
+La **fuente de verdad estructurada** de todas las normas aplicables —estado de extracción, IDs técnicos (sedeboja, BOE-A), procedimientos afectados y doc_extraccion— está en **`docs/normas_catalog.csv`**. Esta sección no mantiene lista propia para evitar duplicidades.
 
 Los estados de madurez (`IDENTIFICADA` → `EXTRAÍDA` → `MAPEO_CONTEXTO` → `IMPLEMENTADA`) y su significado están definidos en el propio CSV (columna `estado`).
 

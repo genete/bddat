@@ -1,7 +1,7 @@
 # NORMATIVA — Mapa procedimental por tipo de solicitud
 
 > **Aplica a:** Motor de reglas — fases obligatorias, su orden y base legal por tipo de solicitud.
-> **Fuentes de verdad:** `docs/NORMATIVA_LEGISLACION_AT.md §6` (catálogo normativo) · `docs/NORMATIVA_PLAZOS.md §2` (plazos concretos).
+> **Fuentes de verdad:** `docs/normas_catalog.csv` (catálogo normativo) · `docs/NORMATIVA_PLAZOS.md §2` (plazos concretos).
 > **Estado:** En construcción — sesiones 2026-04-02 / 2026-04-04 / 2026-04-06. LSE + RD 1955/2000 (incl. modificaciones) + RD-ley 23/2020 + RD 1183/2020 + Decreto 356/2010 extraídos.
 
 Este documento responde a la **Iteración 1** de `NORMATIVA_LEGISLACION_AT.md §5`:
@@ -53,7 +53,7 @@ adicionales para situaciones posteriores a la puesta en servicio:
 
 Para instalaciones **intra-CCAA** (ámbito de BDDAT), la competencia de tramitación y resolución
 corresponde a la Junta de Andalucía, delegada en las Delegaciones Territoriales
-(Resolución de 9 de marzo de 2016 — ver `NORMATIVA_LEGISLACION_AT.md §6.1`).
+(Resolución de 9 de marzo de 2016 — ver `normas_catalog.csv`).
 
 La norma procedimental aplicable es el RD 1955/2000 como referencia (Andalucía no tiene
 norma procedimental propia equivalente — ver §2.2 NORMATIVA_PLAZOS).
