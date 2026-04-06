@@ -26,6 +26,8 @@ Para los plazos concretos de cada trámite: ver `docs/NORMATIVA_PLAZOS.md §2`.
 | [§7](#7-decreto-ley-22018-de-26-de-junio-junta-de-andalucía) | DL 2/2018 — umbral 500 kW, anti-fraccionamiento, DR consultas, incidencia territorial |
 | [§8](#8-ley-212013-de-9-de-diciembre--umbrales-eia-y-condiciones-de-obligatoriedad) | Ley 21/2013 — umbrales EIA ordinaria/simplificada para instalaciones eléctricas AT |
 | [§9](#9-ley-22026-de-12-de-marzo--instrumentos-de-prevención-ambiental-aplicables-a-instalaciones-at) | Ley 2/2026 — instrumentos de prevención ambiental (AAU, AAUS, Licencia Ambiental) y régimen transitorio |
+| [§10](#10-rd-3372014-de-9-de-mayo-rat--reglamento-sobre-condiciones-técnicas-y-garantías-de-seguridad-en-instalaciones-eléctricas-de-alta-tensión) | RD 337/2014 (RAT) — exención autorización para instalaciones no-PTD no cedidas; ampliaciones sin proyecto |
+| [§11](#11-rd-2232008-de-15-de-febrero-lat--reglamento-sobre-condiciones-técnicas-y-garantías-de-seguridad-en-líneas-eléctricas-de-alta-tensión) | RD 223/2008 (LAT) — líneas no-PTD que siempre requieren autorización; sustitución inspección ≤ 30 kV |
 
 ---
 
@@ -819,3 +821,38 @@ Las siguientes operaciones sobre instalaciones AT existentes **no requieren proy
 | `es_ptd` | NUEVA — boolean; el titular/promotor es empresa de producción, transporte o distribución de energía eléctrica. Determina si aplica el régimen de autorización sectorial (art. 16.1 RAT) o el de puesta en servicio (art. 20.2 RAT). Dato de solicitud. |
 | `instalacion_cedida` | NUEVA — boolean; la instalación va a ser cedida a una PTD antes de su puesta en servicio; si `true`, somete la instalación al régimen de autorizaciones del RD 1955/2000 título VII aunque el promotor no sea PTD (art. 20.3 RAT). Dato de solicitud. Distinto de `tiene_linea_evacuacion_comun` (ese es sobre fraccionamiento entre promotores; este es sobre la titularidad final). |
 | `tension_nominal_kv` | YA EXISTE (origen: Decreto 9/2011). Añadir norma de origen: RAT ITC-RAT 22 §4 — umbral > 30 kV activa la obligación de inspección inicial por Organismo de Control para instalaciones NO-PTD. |
+
+---
+
+## 11. RD 223/2008, de 15 de febrero (LAT) — Reglamento sobre condiciones técnicas y garantías de seguridad en líneas eléctricas de alta tensión
+
+### 11.1 Líneas no-PTD que siempre requieren autorización administrativa (ITC-LAT 04 §4)
+
+El LAT invierte la regla general del RAT: para **líneas** (no para instalaciones en general), la excepción de autorización es **estrecha**. Las siguientes líneas no-PTD están sujetas **siempre** al régimen de autorización del título VII del RD 1955/2000, aunque no sean cedidas:
+
+- Líneas de conexión de centrales de generación
+- Líneas de consumidores a redes de transporte o distribución
+- Líneas directas
+- Acometidas (de AT)
+- Líneas destinadas a más de un consumidor (consideradas redes de distribución)
+
+**Solo quedan exentas de autorización** las líneas privadas de uso exclusivo que no conectan a red de transporte/distribución y no son cedidas. En la práctica de BDDAT, prácticamente todos los expedientes de líneas AT tramitados corresponden a alguno de los tipos con autorización obligatoria.
+
+**Contraste con RAT §10.1:** el RAT exime a cualquier instalación no-PTD no cedida; el LAT exime solo a líneas privadas puras. Los procedimientos AAP/AAC del motor aplican a todos los tipos de líneas listados arriba.
+
+**Implicación en BDDAT:** la condición `es_ptd = false AND instalacion_cedida = false` no exime de autorización cuando se trata de **líneas** de los tipos anteriores. El motor debe comprobar, además de `es_ptd` e `instalacion_cedida`, el tipo funcional de la línea para determinar si aplica el régimen AAP/AAC.
+
+### 11.2 Inspección periódica sustituible para líneas ≤ 30 kV (art. 21.2)
+
+Para líneas de tensión nominal **≤ 30 kV** (tercera categoría), las inspecciones periódicas (cada 3 años) pueden sustituirse por revisiones o verificaciones realizadas por **técnicos titulados competentes** en lugar de Organismos de Control. Esta sustitución no está disponible en el RAT (que exige siempre OC para no-PTD).
+
+Alcance: solo fase de explotación, fuera del alcance actual del motor de reglas.
+
+### 11.3 Variables de contexto — MAPEO_CONTEXTO
+
+| Variable | Decisión |
+|---|---|
+| `es_ptd` | YA EXISTE (creada en §10 RAT). Añadir LAT como norma de origen: arts. 17.1 y 20 LAT — misma lógica PTD/no-PTD. |
+| `instalacion_cedida` | YA EXISTE (creada en §10 RAT). Añadir LAT como norma de origen: ITC-LAT 04 §5 — líneas cedidas a PTD antes de puesta en servicio someten al título VII RD 1955/2000. |
+| `tension_nominal_kv` | YA EXISTE. Añadir norma de origen: LAT art. 20.d / ITC-LAT 04 §4 — umbral > 30 kV activa inspección inicial por OC para líneas no-PTD (igual que RAT). |
+| `tipo_linea_funcional` | NUEVA — enum: `'generacion'` / `'consumidor_red'` / `'linea_directa'` / `'acometida'` / `'red_distribucion'` / `'privada_exclusiva'`; determina si la línea no-PTD requiere autorización administrativa (ITC-LAT 04 §4). Solo relevante cuando `es_ptd = false AND instalacion_cedida = false`. En BDDAT los tipos `'generacion'`, `'consumidor_red'` y `'red_distribucion'` son los más frecuentes. |
