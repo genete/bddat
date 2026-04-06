@@ -2,7 +2,7 @@
 
 > **Aplica a:** Motor de reglas — fases obligatorias, su orden y base legal por tipo de solicitud.
 > **Fuentes de verdad:** `docs/NORMATIVA_LEGISLACION_AT.md §6` (catálogo normativo) · `docs/NORMATIVA_PLAZOS.md §2` (plazos concretos).
-> **Estado:** En construcción — sesiones 2026-04-02 / 2026-04-04. LSE + RD 1955/2000 (incl. modificaciones) + RD-ley 23/2020 + RD 1183/2020 extraídos.
+> **Estado:** En construcción — sesiones 2026-04-02 / 2026-04-04 / 2026-04-06. LSE + RD 1955/2000 (incl. modificaciones) + RD-ley 23/2020 + RD 1183/2020 + Decreto 356/2010 extraídos.
 
 Este documento responde a la **Iteración 1** de `NORMATIVA_LEGISLACION_AT.md §5`:
 para cada tipo de solicitud, qué procedimiento define la legislación, qué fases lo componen,
@@ -21,6 +21,7 @@ se documenta en `docs/NORMATIVA_SOLICITUDES.md`.
 | [§2](#2-rd-19552000--fases-detalladas-por-procedimiento) | RD 1955/2000 — fases detalladas por procedimiento |
 | [§2.7](#27-hitos-administrativos-para-instalaciones-renovables--rd-ley-232020) | Hitos administrativos renovables — RD-ley 23/2020 + RD-ley 8/2023 |
 | [§2.8](#28-acceso-y-conexión-a-red--rd-11832020) | Acceso y conexión a red — RD 1183/2020 |
+| [§3](#3-decreto-3562010--procedimiento-aau-y-aaus-régimen-gica) | Decreto 356/2010 — Procedimiento AAU y AAUS (régimen GICA, expedientes < 20/06/2026) |
 
 ---
 
@@ -346,3 +347,77 @@ Esta definición determina el umbral de competencia (AGE >50 MW / CCAA ≤50 MW)
 |---|---|
 | `tiene_punto_acceso_conexion` | Condición de admisión a trámite de AAP (renovables) — ver §2.7 |
 | `potencia_instalada_mw` | Umbral de competencia AGE/CCAA; para FV: `min(DC, AC)` conforme DF 3ª |
+
+---
+
+## 3. Decreto 356/2010 — Procedimiento AAU y AAUS (régimen GICA)
+
+> **Base:** Decreto 356/2010, de 3 de agosto (sedeboja id 21892), versión consolidada 2024-05-25. Sesión 2026-04-06.
+> **Ámbito temporal:** expedientes de instrumento ambiental iniciados **antes del 20/06/2026** (DT 1ª Ley 2/2026). Desde esa fecha aplica la Ley 2/2026 (ver `NORMATIVA_PLAZOS.md §2.6`).
+> **Derogaciones parciales:** art. 28 y 29 (AAU para instalaciones con EIA competencia AGE) derogados por DL 26/2021; DF 1ª (modificación Anexo I GICA) suprimida por DL 3/2024.
+
+### 3.1 Ámbito de aplicación — AAU vs. AAUS
+
+| Instrumento | Actuaciones sometidas | Base |
+|---|---|---|
+| **AAU** | Actividades del **Anexo I de la Ley 21/2013** + modificaciones sustanciales | Art. 2.1.a |
+| **AAUS** | Actividades del **Anexo II de la Ley 21/2013** + proyectos con afección apreciable a Red Natura 2000 aunque no estén en ningún Anexo | Art. 2.2.a-b |
+| **Excluidas** | Actuaciones sometidas a AAI (autorización ambiental integrada); exclusiones del art. 27.3 GICA | Art. 2.1 + 3 |
+
+**Nota AT:** Las instalaciones de líneas AT de distribución de competencia autonómica quedan sujetas a AAU o AAUS según umbrales de los Anexos I/II de la Ley 21/2013. Para instalaciones de competencia estatal (red de transporte), los arts. 28-29 fueron derogados por DL 26/2021 — actualmente sin AAU autonómica.
+
+### 3.2 Procedimiento ordinario — AAU
+
+**Órgano competente:** Delegación Territorial de la Consejería de Medio Ambiente (art. 7.1). Si afecta a más de una provincia → Dirección General competente en materia de prevención y control ambiental (art. 7.2).
+
+**Interés general automático:** Las instalaciones de **transporte y distribución de energía** son de utilidad e interés general sin declaración expresa (art. 30.5.a). En estos casos la resolución adopta forma de **informe vinculante** del órgano ambiental en lugar de resolución de autorización (art. 30.1). Los plazos son los mismos que la AAU/AAUS ordinaria.
+
+| Fase | Descripción | Plazo | Base |
+|---|---|---|---|
+| **0. Consultas previas** *(potestativo)* | El promotor puede pedir al órgano ambiental información sobre el alcance del EsIA (documento inicial). El órgano consulta a AAPP en 30 días y responde al promotor en 20 días desde fin de consultas | Potestativo | Arts. 12-14 |
+| **1. Solicitud + documentación** | Modelo Anexo II + proyecto técnico (Anexo V) + informe urbanístico (art. 17) + EsIA (contenido art. 35 Ley 21/2013) + doc. sectorial (Anexo VI) + tasas | — | Arts. 15-16 |
+| **2. Informe compatibilidad urbanística** | Ayuntamiento emite en máx. 1 mes. Si no emite → basta copia de la solicitud. Si es negativo → audiencia + archivo | 1 mes | Art. 17 |
+| **3. Verificación normativa ambiental** | Si hay prohibición ambiental de la documentación → audiencia + archivo de actuaciones | — | Art. 18 |
+| **4. Información pública** | Anuncio en BOJA, mín. 30 días naturales. Puede ser conjunta con la IP de la AAP si el promotor lo solicita al inicio; en procedimientos de DUP se realiza de forma independiente | Mín. 30 días naturales | Art. 19 |
+| **5. Consultas simultáneas** | Simultáneo a IP: remisión a Ayuntamientos, órgano sustantivo y demás AAPP. Plazo: 30 días naturales. Si no responden → continúa; se pueden incorporar si llegan tras el plazo | 30 días naturales | Art. 20 |
+| **6. Dictamen ambiental** | Documento con resultado de la EIA + condicionantes de informes y unidades administrativas afectadas | — | Art. 21 |
+| **7. Audiencia** | A personas interesadas, máx. 10 días | Máx. 10 días | Art. 22 |
+| **8. Propuesta de resolución** | Incorpora modificaciones del dictamen tras audiencia; se traslada al órgano sustantivo para conocimiento | — | Art. 23 |
+| **9. Resolución** | Plazo máx. **8 meses** desde entrada de solicitud; ampliable excepcionalmente a **10 meses** (notificación motivada antes de que expire el plazo original). Silencio: **desestimatorio** | **8 meses** (máx. 10) | Art. 24 |
+
+**Coordinación con AAP:** el órgano ambiental traslada al órgano sustantivo los informes y condicionados de las consultas (art. 20.2). El órgano sustantivo puede considerar cumplidos sus propios trámites de consulta con los realizados en la AAU.
+
+### 3.3 Procedimiento simplificado — AAUS
+
+| Fase | Descripción | Plazo | Base |
+|---|---|---|---|
+| **1. Solicitud + doc. ambiental** | Proyecto técnico + documento ambiental (contenido art. 45.1 Ley 21/2013) + informe urbanístico + doc. sectorial | — | Arts. 27-27 bis |
+| **2. Verificación** | Misma comprobación de prohibiciones ambientales que en AAU | — | Art. 27 ter |
+| **3. Consultas** | A AAPP afectadas e interesados, 20 días naturales. Si sin elementos suficientes → reiteración por 10 días adicionales | 20 días naturales | Art. 27 quáter |
+| **4. Dictamen + decisión** | El órgano ambiental resuelve motivadamente: **(a)** necesita EIA ordinaria → elaborar EsIA y solicitar AAU completa; **(b)** sin efectos adversos significativos → otorga AAUS (previa audiencia 10 días); **(c)** sin elementos → archivo | — | Art. 27 quinquies |
+| **5. Resolución AAUS** | Plazo máx. **5 meses** desde solicitud. Silencio: **desestimatorio** | **5 meses** | Art. 27 sexies.1 |
+
+### 3.4 Modificación, caducidad y cese
+
+| Situación | Plazo | Silencio | Base |
+|---|---|---|---|
+| Consulta al órgano: ¿modificación es sustancial? | 1 mes | **Positivo** (silencio = no sustancial, a efectos ambientales) | Art. 9.5 |
+| Modificación sustancial — resolución AAU | **6 meses** | Desestimatorio | Art. 9.1.a |
+| Modificación sustancial — resolución AAUS | **4 meses** | Desestimatorio | Art. 9.1.a |
+| Modificación de oficio (por órgano ambiental) | 3 meses | — | Art. 34.3 |
+| Modificación a instancia del titular | 3 meses | **Positivo** (condiciones propuestas quedan incorporadas si no son contrarias a derecho) | Art. 36.3 |
+| Caducidad — plazo para iniciar ejecución | **4 años** desde notificación; prorrogable | — | Art. 37.1 |
+| Prórroga de vigencia — resolución | 6 meses; la prórroga no puede exceder 2 años adicionales | Desestimatorio (silencio = caducada) | Art. 37.5 |
+| Cese definitivo — comunicar al órgano ambiental | Con **3 meses** de antelación al cese previsto | — | Art. 38 |
+| Cese definitivo — resolución condiciones desmantelamiento | **2 meses** | **Positivo** (puede iniciar desmantelamiento) | Art. 38 |
+
+### 3.5 Implicación en BDDAT
+
+El Decreto 356/2010 rige el procedimiento AAU/AAUS para expedientes ambientales iniciados **antes del 20/06/2026**. La variable `fecha_inicio_expediente_ambiental` (definida en `DISEÑO_CONTEXT_ASSEMBLER.md`) selecciona el régimen aplicable.
+
+No se añaden variables nuevas — las existentes (`requiere_aau`, `requiere_aaus`, `hito_aau_obtenida`, `hito_aaus_obtenida`) cubren ambos regímenes.
+
+Puntos de impacto en el motor:
+- **AAU/AAUS paralelas a la AAP:** la AAP no puede resolverse sin el instrumento ambiental favorable. Motor: gestionar como evento desbloqueante.
+- **IP conjunta:** si hay AAP + AAU, el promotor puede pedir IP conjunta al inicio (salvo en DUP, que se hace independiente). Optimización de trámite — no cambia los hitos del motor.
+- **Interés general — informe vinculante:** para instalaciones AT distribución, `hito_aau_obtenida` se materializa como informe vinculante, no como resolución de otorgamiento. El contenido es equivalente.

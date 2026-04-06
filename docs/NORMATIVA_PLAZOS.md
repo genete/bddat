@@ -23,6 +23,7 @@
    - [2.4 RD-ley 6/2022 + RD-ley 20/2022 — afección ambiental y tramitación conjunta renovables](#24-rd-ley-62022-de-29-de-marzo--rd-ley-202022-de-27-de-diciembre)
    - [2.5 Ley 21/2013 — EIA: plazos del procedimiento ambiental](#25-ley-212013-de-9-de-diciembre--eia-plazos-del-procedimiento-ambiental)
    - [2.6 Ley 2/2026 — AAU y AAUS: plazos del procedimiento de prevención ambiental](#26-ley-22026-de-12-de-marzo--aau-y-aaus-plazos-del-procedimiento-de-prevención-ambiental)
+   - [2.7 Decreto 356/2010 — AAU y AAUS: plazos régimen GICA (expedientes < 20/06/2026)](#27-decreto-3562010--aau-y-aaus-plazos-régimen-gica-expedientes--20062026)
 3. [API de días inhábiles — Junta de Andalucía](#3-api-de-días-inhábiles--junta-de-andalucía)
    - [3.1 Descripción](#31-descripción)
    - [3.2 Endpoints](#32-endpoints)
@@ -226,7 +227,7 @@ Tanto a la Administración como a los interesados.
 
 ## 2. Particularizaciones sectoriales
 
-> **Estado:** En desarrollo — sesiones 2026-04-02/03.
+> **Estado:** En desarrollo — sesiones 2026-04-02/03/05/06.
 
 Normas pendientes de extracción:
 - ~~**RD 1955/2000**~~ — ✅ Extraído en §2.2.
@@ -653,6 +654,66 @@ Los plazos de esta sección son **plazos del órgano ambiental autonómico** (Co
 | **AAUS** | Prórroga de vigencia | **6 meses** | Desestimatorio |
 
 > **Implicación en BDDAT:** la AAU o AAUS es el instrumento ambiental de competencia autonómica que debe obtenerse antes de la AAP (o de forma coordinada). Sus plazos de resolución (5-6 meses) se superponen con el procedimiento del RD 1955/2000. El motor debe gestionar la AAU/AAUS como evento desbloqueante, en paralelo pero condicionante de la resolución de la AAP. La vigencia de 5 años para iniciar actividad es independiente de la vigencia de la DIA/IIA que integra (que tiene sus propios plazos de 4 años, §2.5).
+
+### 2.7 Decreto 356/2010 — AAU y AAUS: plazos (régimen GICA, expedientes < 20/06/2026)
+
+> **Base:** Decreto 356/2010, de 3 de agosto (sedeboja id 21892), versión consolidada 2024-05-25. Sesión 2026-04-06.
+> **Ámbito temporal:** procedimientos de instrumento ambiental iniciados **antes del 20/06/2026** (DT 1ª Ley 2/2026). Para expedientes desde esa fecha: §2.6.
+> Para fases y trámites del procedimiento: `NORMATIVA_MAPA_PROCEDIMENTAL.md §3`.
+
+#### AAU — Autorización Ambiental Unificada
+
+| Trámite | Plazo | Tipo de días | Quién | Artículo |
+|---|---|---|---|---|
+| Consultas previas — plazo a consultados | 30 días | Naturales | AAPP consultadas | Art. 13 |
+| Consultas previas — respuesta al promotor | 20 días desde fin consultas | Naturales | Órgano ambiental | Art. 14 |
+| Informe compatibilidad urbanística | 1 mes | — | Ayuntamiento | Art. 17.1 |
+| Subsanación de solicitud | 10 días | Naturales | Promotor | Art. 16.3 |
+| Información pública | Mín. **30 días** | **Naturales** | Órgano ambiental | Art. 19.2 |
+| Consultas simultáneas | **30 días** | **Naturales** | AAPP | Art. 20.1 |
+| Audiencia | Máx. 10 días | Naturales | Interesados | Art. 22 |
+| **Resolución** | **8 meses** (ampliable a 10) | — | Órgano ambiental | Art. 24.1 |
+| Modificación sustancial — resolución | **6 meses** | — | Órgano ambiental | Art. 9.1.a |
+| Consulta sobre carácter sustancial de modificación | 1 mes | — | Órgano ambiental | Art. 9.5 |
+| Modificación de oficio | 3 meses | — | Órgano ambiental | Art. 34.3 |
+| Modificación a instancia del titular | 3 meses | — | Órgano ambiental | Art. 36 |
+| Vigencia para iniciar ejecución | **4 años** desde notificación | — | — | Art. 37.1 |
+| Prórroga de vigencia — resolución | 6 meses; prórroga máx. 2 años | — | Órgano ambiental | Art. 37.5 |
+| Cese definitivo — resolución condiciones desmantelamiento | 2 meses | — | Órgano ambiental | Art. 38 |
+
+**Silencios AAU:**
+- Resolución: **desestimatorio** (art. 24.1)
+- Consulta carácter sustancial modificación: **positivo** = silencio → no sustancial (art. 9.5)
+- Modificación a instancia del titular: **positivo** = condiciones propuestas incorporadas (art. 36.3)
+- Cese definitivo (2 meses): **positivo** = puede iniciar desmantelamiento (art. 38)
+
+#### AAUS — Autorización Ambiental Unificada Simplificada
+
+| Trámite | Plazo | Tipo de días | Quién | Artículo |
+|---|---|---|---|---|
+| Informe compatibilidad urbanística | 1 mes | — | Ayuntamiento | Art. 17.1 |
+| Consultas | **20 días** | **Naturales** | AAPP e interesados | Art. 27 quáter |
+| Audiencia (si no efectos significativos) | 10 días | — | Interesados | Art. 27 quinquies.b |
+| **Resolución** | **5 meses** | — | Órgano ambiental | Art. 27 sexies.1 |
+
+**Silencio AAUS resolución:** desestimatorio.
+
+#### Cuadro de contradicciones — D356/2010 vs. Ley 2/2026 (la Ley prevalece)
+
+| Aspecto | D356/2010 (GICA) | Ley 2/2026 | Impacto |
+|---|---|---|---|
+| Resolución AAU | **8 meses** (máx. 10) | **6 meses** (máx. 8) | Reducción plazo órgano ambiental |
+| Modificación sustancial AAU | **6 meses** | **4 meses** | Reducción plazo |
+| Vigencia AAU para iniciar | **4 años** + prórroga máx. 2 años | **5 años** + prórroga | Ampliación (favorable al promotor) |
+| IP — tipo de días | **Naturales** (30 días) | **Hábiles** (30 días hábiles) | Mayor plazo efectivo |
+| Consultas AAU — tipo de días | **Naturales** (30 días; sin distinción vinculantes) | **Hábiles** (30 días hábiles; vinculantes hasta 3 meses) | Mayor plazo efectivo + nueva categoría |
+| Consultas AAUS — tipo de días | **Naturales** (20 días) | **Hábiles** (20 días hábiles) | Mayor plazo efectivo |
+| Resolución AAUS | 5 meses | 5 meses | **Igual** |
+| Cese definitivo — resolución | 2 meses | 2 meses | **Igual** |
+
+**Implicación en BDDAT:** la variable `fecha_inicio_expediente_ambiental` selecciona el régimen de plazos:
+- `< 20/06/2026` → D356/2010: AAU en 8 meses, IP en 30 días naturales
+- `≥ 20/06/2026` → Ley 2/2026: AAU en 6 meses, IP en 30 días hábiles
 
 ---
 
