@@ -68,21 +68,13 @@ Para cada regla identificada, documentar:
 
 Los resultados se distribuyen en documentos propios:
 
-| Iteración | Documento | Estado |
-|---|---|---|
-| **1** — Mapa procedimental | `docs/NORMATIVA_MAPA_PROCEDIMENTAL.md` | En curso |
-| **2+4** — Excepciones, regímenes especiales y casos límite | `docs/NORMATIVA_EXCEPCIONES_AT.md` | En curso |
-| **3** — Plazos y silencio administrativo | `docs/NORMATIVA_PLAZOS.md §2` | En curso |
+| Iteración | Documento |
+|---|---|
+| **1** — Mapa procedimental | `docs/NORMATIVA_MAPA_PROCEDIMENTAL.md` |
+| **2+4** — Excepciones, regímenes especiales y casos límite | `docs/NORMATIVA_EXCEPCIONES_AT.md` |
+| **3** — Plazos y silencio administrativo | `docs/NORMATIVA_PLAZOS.md §2` |
 
-### Iteración 3 — Plazos (ver NORMATIVA_PLAZOS.md)
-- §1 LPACAP 39/2015 — ✅ completo (sesión 2026-04-01)
-- §2.1 LSE 24/2013 — ✅ completo (sesión 2026-04-02)
-- §2.2 RD 1955/2000 — ✅ completo (sesión 2026-04-02)
-- §2.3 RD-ley 23/2020 — ✅ completo
-- §2.4 RD-ley 6/2022 + RD-ley 20/2022 — ✅ completo
-- §2.5 Ley 21/2013 (EIA) — ✅ completo
-- §2.6 Ley 2/2026 — ✅ completo
-- §3 API días inhábiles Junta — ✅ completo
+El estado de extracción de cada norma está en `docs/normas_catalog.csv` (columna `estado`).
 
 ---
 
