@@ -186,11 +186,38 @@ def _decode_div_id(div_id):
 # ---------------------------------------------------------------------------
 
 def _clean(html_segment):
-    """Elimina tags HTML y normaliza espacios."""
-    clean = re.sub(r"<[^>]+>", " ", html_segment)
-    clean = html_lib.unescape(clean)
-    clean = re.sub(r"\s+", " ", clean).strip()
-    return clean
+    """Convierte HTML a markdown preservando párrafos y encabezados."""
+    s = html_segment
+    # Eliminar anclas vacías de referencia cruzada (<li class="AN">, <a class="AN">)
+    s = re.sub(r'<li\s+class="AN"[^>]*>.*?</li>', "", s, flags=re.DOTALL)
+    s = re.sub(r'<li\s+class="AN"[^>]*/?>',       "", s)
+    # Notas editoriales (modificaciones, vigencias) → bloque separado con prefijo >
+    s = re.sub(r'<div[^>]+class="ccn[^"]*"[^>]*>(.*?)</div>',
+               lambda m: f"\n\n> {re.sub(r'<[^>]+>', '', m.group(1)).strip()}\n\n",
+               s, flags=re.DOTALL)
+    # Encabezados → markdown
+    def _h(m):
+        level = int(m.group(1))
+        inner = re.sub(r"<[^>]+>", "", m.group(2)).strip()
+        return f"\n\n{'#' * (level + 2)} {inner}\n\n"
+    s = re.sub(r"<h([1-6])[^>]*>(.*?)</h\1>", _h, s, flags=re.DOTALL)
+    # Listas: solo <li> reales (sin class="AN", ya eliminados arriba)
+    s = re.sub(r"<li[^>]*>", "\n- ", s)
+    s = re.sub(r"</li>", "\n", s)
+    # Saltos de línea explícitos
+    s = re.sub(r"<br\s*/?>", "\n", s)
+    # Párrafos → doble salto
+    s = re.sub(r"<p[^>]*>", "", s)
+    s = re.sub(r"</p>", "\n\n", s)
+    # Eliminar tags restantes
+    s = re.sub(r"<[^>]+>", "", s)
+    s = html_lib.unescape(s)
+    # Limpiar espacios dentro de cada línea sin colapsar saltos de párrafo
+    lines = [re.sub(r" +", " ", line).strip() for line in s.split("\n")]
+    s = "\n".join(lines)
+    # Máximo dos saltos consecutivos
+    s = re.sub(r"\n{3,}", "\n\n", s)
+    return s.strip()
 
 
 def _div_text(text_html, div_id, next_div_id=None):
