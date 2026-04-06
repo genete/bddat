@@ -136,13 +136,13 @@ Normas no recogidas en §6.1, identificadas en la [página de renovables](https:
 | Norma | Afecta a | ID-REF | Estado | ID técnico |
 |---|---|---|---|---|
 | [Ley 2/2007, de 27 de marzo](https://www.boe.es/eli/es-an/l/2007/03/27/2/con) | General | — | IDENTIFICADA | (ver ELI) |
-| [RD-ley 23/2020, de 23 de junio](https://www.boe.es/buscar/act.php?id=BOE-A-2020-6621) | AAP, AAC | REF-RDL23-2020 | EXTRAÍDA | BOE-A-2020-6621 |
+| [RD-ley 23/2020, de 23 de junio](https://www.boe.es/buscar/act.php?id=BOE-A-2020-6621) | AAP, AAC | REF-RDL23-2020 | MAPEO_CONTEXTO | BOE-A-2020-6621 |
 | [RD-ley 6/2022, de 29 de marzo](https://www.boe.es/buscar/act.php?id=BOE-A-2022-4972) | AAP, AAC | REF-RDL6-2022 | EXTRAÍDA | BOE-A-2022-4972 |
 | [RD-ley 20/2022, de 27 de diciembre](https://www.boe.es/buscar/act.php?id=BOE-A-2022-22685) | AAP, AAC | REF-RDL20-2022 | EXTRAÍDA | BOE-A-2022-22685 |
 | [RD-ley 8/2023, de 27 de diciembre](https://www.boe.es/buscar/act.php?id=BOE-A-2023-26452) | AAP, AAC | REF-RDL23-2020 | EXTRAÍDA | BOE-A-2023-26452 |
 | [RD-ley 7/2025, de 24 de junio](https://www.boe.es/buscar/act.php?id=BOE-A-2025-12857) | — | REF-RDL7-2025 | OBSOLETA | BOE-A-2025-12857 |
 | RD 997/2025 | — | REF-RDL7-2025 | OBSOLETA | pendiente — ⚠️ verificar existencia |
-| [RD 1183/2020, de 29 de diciembre](https://www.boe.es/eli/es/rd/2020/12/29/1183/con) | AAP, AAC | REF-RD1183 | EXTRAÍDA | BOE-A-2020-17278 |
+| [RD 1183/2020, de 29 de diciembre](https://www.boe.es/eli/es/rd/2020/12/29/1183/con) | AAP, AAC | REF-RD1183 | MAPEO_CONTEXTO | BOE-A-2020-17278 |
 | [RD-ley 7/2026, de 20 de marzo](https://www.boe.es/buscar/act.php?id=BOE-A-2026-6544) | AAP, AAC | — | IDENTIFICADA | BOE-A-2026-6544 |
 | [Resolución CNMC de 27 de junio de 2024](https://www.boe.es/buscar/doc.php?id=BOE-A-2024-13823) | AAP, AAC | REF-CNMC-2024 | IDENTIFICADA | BOE-A-2024-13823 |
 | [RD 413/2014, de 6 de junio](https://www.boe.es/diario_boe/txt.php?id=BOE-A-2014-6123) | AAC, AE | — | — | — |

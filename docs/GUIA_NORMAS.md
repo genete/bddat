@@ -78,7 +78,11 @@ Los resultados se distribuyen en documentos propios:
 - §1 LPACAP 39/2015 — ✅ completo (sesión 2026-04-01)
 - §2.1 LSE 24/2013 — ✅ completo (sesión 2026-04-02)
 - §2.2 RD 1955/2000 — ✅ completo (sesión 2026-04-02)
-- §2.3+ Resto de normas sectoriales — pendiente (ver §4 de este documento)
+- §2.3 RD-ley 23/2020 — ✅ completo
+- §2.4 RD-ley 6/2022 + RD-ley 20/2022 — ✅ completo
+- §2.5 Ley 21/2013 (EIA) — ✅ completo
+- §2.6 Ley 2/2026 — ✅ completo
+- §3 API días inhábiles Junta — ✅ completo
 
 ---
 
@@ -101,16 +105,19 @@ Cuando se identifica una norma no registrada:
 
 Antes de leer cualquier norma seguir este orden para minimizar consumo de contexto:
 
-| Paso | Skill | Cuándo |
+| Paso | Herramienta | Cuándo |
 |---|---|---|
 | 1 | `/legalize <referencia>` | **Siempre primero** — busca en el repo local `D:\legalize-es` |
 | 2a | `/boe <referencia>` | Si NOT_FOUND y es **norma estatal** (RD, Ley, RDL estatales) |
-| 2b | `/boja <referencia>` | Si NOT_FOUND y es **norma andaluza de rango de Ley** (Ley del Parlamento de Andalucía) → prueba BOE internamente, luego sedeboja |
-| 2c | `/boja <referencia>` | Si NOT_FOUND y es **norma BOJA sub-Ley** (Decreto-ley, Decreto, Orden andaluz) → sedeboja directamente |
+| 2b | `python scripts/sedeboja_buscar.py "<nombre>"` | Si NOT_FOUND y es **norma andaluza** y **no** se conoce el `id_tecnico` — localiza el ID sin Playwright |
+| 2c | `python scripts/sedeboja_extract.py <id_tecnico>` | Si se conoce el `id_tecnico` (de normas_catalog.csv o del paso 2b) — extrae el texto consolidado directamente, sin Playwright |
+| 2d | `/boja <referencia>` | Solo si los scripts fallan o la norma no está en sedeboja (Instrucciones, PDFs directos BOJA) |
+
+> **⚠️ Ahorro de tokens:** los scripts Python (`sedeboja_buscar` y `sedeboja_extract`) no usan Playwright y consumen muy pocos tokens. Usarlos **siempre que la norma esté en sedeboja**. Reservar `/boja` para los casos que no lo estén.
 
 **Regla crítica:** no llamar a `/boe` ni a `/boja` sin haber recibido `NOT_FOUND` de `/legalize` primero, salvo indicación explícita.
 
-El ID técnico de sedeboja (campo `id_tecnico` de `normas_catalog.csv`) permite construir la URL de ficha directamente sin pasar por búsqueda.
+El ID técnico de sedeboja (campo `id_tecnico` de `normas_catalog.csv`) permite ir directamente al paso 2c sin búsqueda.
 
 ---
 
