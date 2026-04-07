@@ -1,0 +1,52 @@
+{% extends "layout/base_fullwidth.html" %}
+
+{% block title %}Diagrama ESFTT POC{% endblock %}
+
+{% block breadcrumb %}
+<a href="{{ url_for('dashboard.index') }}">Inicio</a>
+<span>›</span>
+<span>Demo React — Diagrama ESFTT</span>
+{% endblock %}
+
+{% block content %}
+<div class="lista-cabecera">
+  <div class="page-header content-constrained">
+    <div>
+      <h1>
+        <i class="bi bi-diagram-3-fill"></i>
+        Diagrama ESFTT — POC React+Vite
+      </h1>
+      <p class="text-secondary">
+        Árbol interactivo Solicitud → Fase → Trámite.
+        Arrastra nodos, zoom con rueda, pan con click+arrastrar.
+      </p>
+    </div>
+  </div>
+</div>
+
+<div class="content-constrained mt-3">
+  <div class="card">
+    <div class="card-header d-flex align-items-center gap-2">
+      <strong>Expediente AT-2024-042</strong>
+      <span class="badge bg-secondary">POC #291</span>
+    </div>
+    <div class="card-body p-0">
+      {# Contenedor donde React monta el diagrama #}
+      <div id="diagrama-esftt-root" class="diagrama-esftt-wrapper"></div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{# Bundle IIFE — incluye React, ReactFlow y sus estilos (inyectados por JS) #}
+<script src="{{ url_for('static', filename='js/react/diagrama-esftt.iife.js') }}"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    var el = document.getElementById('diagrama-esftt-root');
+    if (el && window.DiagramaEsftt) {
+      window.DiagramaEsftt.mount(el);
+    }
+  });
+</script>
+{% endblock %}
