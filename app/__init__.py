@@ -55,11 +55,12 @@ def create_app(config_name='development'):
         return Usuario.query.get(int(user_id))
 
     # Registrar blueprints - Rutas principales
-    from app.routes import auth, dashboard, perfil
+    from app.routes import auth, dashboard, perfil, demo
 
     app.register_blueprint(auth.bp)
     app.register_blueprint(dashboard.bp)
     app.register_blueprint(perfil.bp)
+    app.register_blueprint(demo.bp)  # POC React #291
 
     # Registrar blueprints - Wizards
     from app.routes import wizard_expediente
