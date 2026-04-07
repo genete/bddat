@@ -1,7 +1,7 @@
 import '@xyflow/react/dist/style.css'
 import './styles/diagrama.css'
 import React, { useMemo } from 'react'
-import { ReactFlow, Background, Controls, useNodesState, useEdgesState } from '@xyflow/react'
+import { ReactFlow, Background, Controls, MiniMap, useNodesState, useEdgesState } from '@xyflow/react'
 import { COLORES, MOCK } from './mockData.js'
 
 // Posición X fija por nivel (columnas)
@@ -101,6 +101,7 @@ export default function DiagramaEsftt() {
       >
         <Background />
         <Controls />
+        <MiniMap nodeColor={(n) => n.style?.background ?? '#ccc'} nodeStrokeWidth={3} />
       </ReactFlow>
     </div>
   )
