@@ -1,13 +1,16 @@
 import '@xyflow/react/dist/style.css'
 import './styles/diagrama.css'
 import React, { useMemo } from 'react'
-import { ReactFlow, Background, Controls, MiniMap } from '@xyflow/react'
+import { ReactFlow, Background, Controls } from '@xyflow/react'
 import { COLORES, MOCK } from './mockData.js'
 
 // Posición X fija por nivel (columnas)
 const X = { solicitud: 0, fase: 320, tramite: 640 }
 // Separación vertical entre nodos del mismo nivel
 const DY = 110
+
+// width/height en style controla el render visual; en el nodo raíz lo necesita el MiniMap
+const NODE_WIDTH = 260
 
 function nodeStyle(nivel) {
   return {
@@ -16,7 +19,7 @@ function nodeStyle(nivel) {
     border:       'none',
     borderRadius: 8,
     padding:      '8px 14px',
-    width:        260,
+    width:        NODE_WIDTH,
     fontSize:     13,
     fontWeight:   600,
     whiteSpace:   'normal',
@@ -25,29 +28,19 @@ function nodeStyle(nivel) {
 }
 
 // Convierte el árbol MOCK en arrays nodes/edges de ReactFlow.
-// Usa contadores globales yFase/yTram para evitar solapamientos entre ramas.
+// Las Y de cada nivel se calculan en orden de aparición para evitar solapamientos.
+// La Y de cada solicitud se centra respecto a su bloque de fases.
 function buildGraph(data) {
   const nodes = []
   const edges = []
   let yFase = 0
   let yTram = 0
 
-  data.solicitudes.forEach((sol, i) => {
-    nodes.push({
-      id:       sol.id,
-      data:     { label: sol.nombre },
-      position: { x: X.solicitud, y: i * DY * 4 },
-      style:    nodeStyle('solicitud'),
-    })
+  data.solicitudes.forEach((sol) => {
+    const yFaseInicio = yFase
 
     sol.fases.forEach(fase => {
-      nodes.push({
-        id:       fase.id,
-        data:     { label: fase.nombre },
-        position: { x: X.fase, y: yFase++ * DY },
-        style:    nodeStyle('fase'),
-      })
-      edges.push({ id: `e-${sol.id}-${fase.id}`, source: sol.id, target: fase.id })
+      const yTramInicio = yTram
 
       fase.tramites.forEach(tram => {
         nodes.push({
@@ -55,9 +48,33 @@ function buildGraph(data) {
           data:     { label: tram.nombre },
           position: { x: X.tramite, y: yTram++ * DY },
           style:    nodeStyle('tramite'),
+          width:    NODE_WIDTH,
         })
         edges.push({ id: `e-${fase.id}-${tram.id}`, source: fase.id, target: tram.id })
       })
+
+      // Centrar la fase respecto a sus trámites
+      const yFaseCentrada = (yTramInicio + yTram - 1) / 2 * DY
+      nodes.push({
+        id:       fase.id,
+        data:     { label: fase.nombre },
+        position: { x: X.fase, y: yFaseCentrada },
+        style:    nodeStyle('fase'),
+        width:    NODE_WIDTH,
+      })
+      edges.push({ id: `e-${sol.id}-${fase.id}`, source: sol.id, target: fase.id })
+      yFase++
+    })
+
+    // Centrar la solicitud respecto a sus fases
+    const yFaseFin = yTram - 1
+    const ySolCentrada = (yFaseInicio * DY + yFaseFin * DY) / 2
+    nodes.push({
+      id:       sol.id,
+      data:     { label: sol.nombre },
+      position: { x: X.solicitud, y: ySolCentrada },
+      style:    nodeStyle('solicitud'),
+      width:    NODE_WIDTH,
     })
   })
 
@@ -79,7 +96,6 @@ export default function DiagramaEsftt() {
       >
         <Background />
         <Controls />
-        <MiniMap nodeStrokeWidth={3} />
       </ReactFlow>
     </div>
   )

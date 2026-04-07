@@ -12,6 +12,10 @@ export default defineConfig(({ command }) => {
   // El bundle expone window.DiagramaEsftt = { mount }
   return {
     plugins: [react()],
+    // React usa process.env.NODE_ENV — no existe en browser; hay que reemplazarlo
+    define: {
+      'process.env.NODE_ENV': JSON.stringify('production'),
+    },
     build: {
       lib: {
         entry:    resolve(__dirname, 'src/main.lib.jsx'),
