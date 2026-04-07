@@ -1,7 +1,7 @@
 import '@xyflow/react/dist/style.css'
 import './styles/diagrama.css'
 import React, { useMemo } from 'react'
-import { ReactFlow, Background, Controls } from '@xyflow/react'
+import { ReactFlow, Background, Controls, useNodesState, useEdgesState } from '@xyflow/react'
 import { COLORES, MOCK } from './mockData.js'
 
 // Posición X fija por nivel (columnas)
@@ -82,13 +82,18 @@ function buildGraph(data) {
 }
 
 export default function DiagramaEsftt() {
-  const { nodes, edges } = useMemo(() => buildGraph(MOCK), [])
+  const { nodes: initialNodes, edges: initialEdges } = useMemo(() => buildGraph(MOCK), [])
+  // useNodesState/useEdgesState habilitan el drag: onNodesChange actualiza posiciones en el store
+  const [nodes, , onNodesChange] = useNodesState(initialNodes)
+  const [edges, , onEdgesChange] = useEdgesState(initialEdges)
 
   return (
     <div style={{ width: '100%', height: '100%' }}>
       <ReactFlow
         nodes={nodes}
         edges={edges}
+        onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
         fitView
         fitViewOptions={{ padding: 0.3 }}
         minZoom={0.2}
