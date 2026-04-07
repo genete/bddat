@@ -14,3 +14,7 @@ app/static/uploads/*
 # Documentos de prueba locales (no versionar binarios ni datos reales)
 docs_prueba/
 contexto_completo_gemini.txt
+
+# React+Vite POC #291 — artefactos de build
+react-diagramas/node_modules/
+app/static/js/react/
