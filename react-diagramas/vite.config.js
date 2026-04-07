@@ -21,6 +21,12 @@ export default defineConfig(({ command }) => {
       },
       outDir:      resolve(__dirname, '../app/static/js/react'),
       emptyOutDir: true,
+      rollupOptions: {
+        output: {
+          // Nombre fijo para el CSS — Flask lo referencia con url_for
+          assetFileNames: 'diagrama-esftt[extname]',
+        },
+      },
     },
   }
 })

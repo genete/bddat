@@ -38,8 +38,13 @@
 </div>
 {% endblock %}
 
+{% block extra_css %}
+{# CSS de ReactFlow extraído por Vite build — debe cargarse antes del bundle #}
+<link rel="stylesheet" href="{{ url_for('static', filename='js/react/diagrama-esftt.css') }}">
+{% endblock %}
+
 {% block extra_js %}
-{# Bundle IIFE — incluye React, ReactFlow y sus estilos (inyectados por JS) #}
+{# Bundle IIFE — incluye React y ReactFlow #}
 <script src="{{ url_for('static', filename='js/react/diagrama-esftt.iife.js') }}"></script>
 <script>
   document.addEventListener('DOMContentLoaded', function () {
