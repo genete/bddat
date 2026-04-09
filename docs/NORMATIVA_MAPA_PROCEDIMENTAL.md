@@ -2,7 +2,7 @@
 
 > **Aplica a:** Motor de reglas — fases obligatorias, su orden y base legal por tipo de solicitud.
 > **Fuentes de verdad:** `docs/normas_catalog.csv` (catálogo normativo) · `docs/NORMATIVA_PLAZOS.md §2` (plazos concretos).
-> **Estado:** En construcción — sesiones 2026-04-02 / 2026-04-04 / 2026-04-06. LSE + RD 1955/2000 (incl. modificaciones) + RD-ley 23/2020 + RD 1183/2020 + Decreto 356/2010 extraídos.
+> **Estado:** En construcción — sesiones 2026-04-02 / 2026-04-04 / 2026-04-06 / 2026-04-09. LSE + RD 1955/2000 (incl. modificaciones) + RD-ley 23/2020 + RD 1183/2020 + Decreto 356/2010 extraídos. Hallazgos LPACAP + EIA revisados — sin gaps (reglas ya recogidas por referencia a LPACAP art. 68, art. 22 y Ley 21/2013).
 
 Este documento responde a la **Iteración 1** de `NORMATIVA_LEGISLACION_AT.md §5`:
 para cada tipo de solicitud, qué procedimiento define la legislación, qué fases lo componen,

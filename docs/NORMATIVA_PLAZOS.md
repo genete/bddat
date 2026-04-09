@@ -2,7 +2,7 @@
 
 > **Fuente:** Ley 39/2015, de 1 de octubre (LPACAP) — texto consolidado BOE. Leyes sectoriales pendientes de extracción (ver §2).
 > **Aplica a:** Motor de plazos (`app/services/plazos.py`), ContextAssembler, diseño de BD de plazos.
-> **Estado:** §1 completo (sesión 2026-04-01). §2 pendiente — diferido hasta tener estructura BD definida.
+> **Estado:** §1 completo (sesión 2026-04-01). §2.1 LSE, §2.2 RD1955, §2.3 RD-ley 23/2020, §2.4 RD-ley 6/2022+20/2022, §2.5 Ley 21/2013 EIA completos (sesión 2026-04-09). §2.6 Ley 2/2026 y §2.7 Decreto 356/2010 pendientes.
 
 ---
 

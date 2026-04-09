@@ -2,7 +2,7 @@
 
 > **Aplica a:** Motor de reglas — desviaciones respecto al procedimiento estándar AAP/AAC/AE.
 > **Fuentes de verdad:** `docs/normas_catalog.csv` · `docs/NORMATIVA_PLAZOS.md §2`.
-> **Estado:** En construcción — sesión 2026-04-05. LSE + RD 1955/2000 + Decreto 9/2011 + DL 26/2021 + RDL 6/2022 + RDL 20/2022 + DL 2/2018 + Ley 21/2013 + Ley 2/2026 extraídos.
+> **Estado:** En construcción — sesión 2026-04-09. LSE + RD 1955/2000 + Decreto 9/2011 + DL 26/2021 + RDL 6/2022 + RDL 20/2022 + DL 2/2018 + Ley 21/2013 + Ley 2/2026 + LPACAP extraídos. Variables LPACAP y RD1955 añadidas en §8.6 (sesión 2026-04-09).
 
 Este documento recoge las **Iteraciones 2 y 4** de `NORMATIVA_LEGISLACION_AT.md §5`:
 - **Iteración 2:** excepciones al procedimiento estándar y regímenes especiales (renovables, <30 kV, simplificaciones).
@@ -642,6 +642,14 @@ Ley 2/2026 extraída. Deduplicación completada contra `DISEÑO_CONTEXT_ASSEMBLE
 | `requiere_eia_simplificada` | NUEVA |
 | `hito_dia_obtenida` | ELIMINAR — ya existe `hito_dia_favorable` (l.110) |
 | `hito_iia_obtenido` | NUEVA |
+| `requiere_subsanacion` | NUEVA — boolean, disparador de la fase de subsanación y suspensión del plazo (LPACAP art. 22.1.a + art. 68.1) |
+| `es_dia_habil` | NUEVA — boolean, lógica de calendario para cómputo de plazos (LPACAP art. 30.2); excluye sábados, domingos y festivos |
+| `dias_subsanacion` | NUEVA — entero, plazo de subsanación de solicitudes (LPACAP art. 68.1 → 10 días hábiles); constante en implementación |
+| `dias_audiencia` | NUEVA — entero, plazo de trámite de audiencia antes de resolución (LPACAP art. 82.2 → 10-15 días hábiles); constante en implementación |
+| `plazo_caducidad_inactividad_meses` | NUEVA — entero, plazo de caducidad por inactividad del interesado (LPACAP art. 95.1 → 3 meses); distinto de la caducidad de la AAP por no pedir AAC (RD1955 art. 128.4) |
+| `tiene_aap_previa` | NUEVA — boolean, derivado_doc; indica si el expediente ya tiene AAP resuelta, condiciona la reducción de consultas a 15 días en AAC (RD1955 art. 131.1) |
+| `requiere_ae_provisional` | NUEVA — boolean, calculado; activa el trámite de AE provisional para pruebas en instalaciones de generación (RD1955 art. 132 bis) |
+| `plazo_ejecucion_transmision_meses` | NUEVA — entero, constante; plazo para formalizar la transmisión desde el otorgamiento (RD1955 art. 134 → 6 meses); vencimiento genera caducidad |
 
 ---
 
