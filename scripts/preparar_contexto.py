@@ -1,11 +1,12 @@
 import os
 import pathlib
+import argparse
 
 # --- CONFIGURACIÓN ---
 # Carpetas a ignorar
-CARPETAS_IGNORAR = {"venv", ".venv", "__pycache__", ".git", ".playwright-mcp", "docs_prueba", "utils"}
+CARPETAS_IGNORAR = {"venv", ".venv", "__pycache__", ".git", ".playwright-mcp", "docs_prueba", "utils", "node_modules", "dist", ".vite", "normas"}
 # Archivos específicos a ignorar
-ARCHIVOS_IGNORAR = {".env", ".DS_Store", "contexto_completo_gemini.txt"}
+ARCHIVOS_IGNORAR = {".env", ".DS_Store", "contexto_completo_gemini.txt", "package-lock.json"}
 # Extensiones permitidas
 EXTENSIONES_VALIDAS = {
     ".py", ".html", ".md", ".css", ".js", ".json", 
@@ -14,10 +15,15 @@ EXTENSIONES_VALIDAS = {
 }
 
 def generar_contexto():
+    parser = argparse.ArgumentParser(description="Genera volcado de contexto del proyecto")
+    parser.add_argument("--out", help="Ruta adicional de salida (ej: carpeta Google Drive)")
+    args = parser.parse_args()
+
     # Definir rutas relativas al script
     script_path = pathlib.Path(__file__).parent.resolve()
     project_root = script_path.parent
     output_file = project_root / "contexto_completo_gemini.txt"
+    output_extra = pathlib.Path(args.out) if args.out else None
 
     print(f"--- INICIANDO EMPAQUETADO RÁPIDO CON PYTHON ---")
     print(f"Raíz del proyecto: {project_root}")
@@ -52,6 +58,12 @@ def generar_contexto():
                                 f_out.write("\n")
                         except Exception as e:
                             print(f"  [!] Error leyendo {rel_path}: {e}")
+
+        # Copia adicional si se especificó --out
+        if output_extra:
+            output_extra.parent.mkdir(parents=True, exist_ok=True)
+            output_extra.write_bytes(output_file.read_bytes())
+            print(f"Copia adicional en:  {output_extra}")
 
         print(f"\n--- PROCESO FINALIZADO ---")
         print(f"Archivo generado en: {output_file}")
