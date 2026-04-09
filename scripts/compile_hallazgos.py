@@ -19,16 +19,6 @@ from datetime import date
 REPO_ROOT = Path(__file__).resolve().parent.parent
 HALLAZGOS_DIR = REPO_ROOT / "docs" / "normas" / "hallazgos_nblm"
 
-# Orden jerárquico explícito: norma general primero, especial después.
-# Los ficheros no listados aquí se añaden al final en orden alfabético.
-ORDEN_JERARQUICO = [
-    "BOE-A-2015-10565_reglas.md",   # LPACAP — procedimiento general
-    "BOE-A-2013-13645_reglas.md",   # LSE — ley sectorial
-    "BOE-A-2000-24019_reglas.md",   # RD 1955/2000 — reglamento sectorial
-    "BOE-A-2013-12913_reglas.md",   # Ley 21/2013 EIA — evaluación ambiental
-    "sedeboja_22168_reglas.md",     # Decreto 9/2011 (Andalucía) — simplificación AT 3ª categoría
-]
-
 OUTPUT_DEFAULT = REPO_ROOT / "docs_prueba" / "temp" / "hallazgos_consolidados.txt"
 
 
@@ -45,11 +35,7 @@ def main():
     output_path = Path(args.out) if args.out else OUTPUT_DEFAULT
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    # Construir lista ordenada: primero los del orden jerárquico, luego el resto
-    todos = {p.name: p for p in HALLAZGOS_DIR.glob("*_reglas.md")}
-    ordenados = [todos[n] for n in ORDEN_JERARQUICO if n in todos]
-    resto = sorted(p for name, p in todos.items() if name not in ORDEN_JERARQUICO)
-    ficheros = ordenados + resto
+    ficheros = sorted(HALLAZGOS_DIR.glob("*_reglas.md"))
 
     if not ficheros:
         print("No se encontraron ficheros *_reglas.md en", HALLAZGOS_DIR)
