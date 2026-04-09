@@ -64,9 +64,11 @@ Para cada sección, aplica las siguientes instrucciones:
 **Sección Variables:**
 - Para cada variable, documenta en formato tabla:
   Variable; Tipo; Naturaleza (dato/calculado/derivado_doc); Estado; Norma de origen
-- En Estado indica: "Ya existe (ver [NORMA-NN])" si ya estaba documentada, "Nueva" si es
-  realmente nueva, o "Renombrar: coincide con [nombre_existente]" si hay solapamiento
-  semántico con nombre distinto.
+- En Estado indica:
+  "Ya existe (ver [NORMA-NN])" si ya aparece en los hallazgos de normas analizadas,
+  "Ya existe (ver contexto BDDAT)" si aparece en el contexto del proyecto (DISEÑO_CONTEXT_ASSEMBLER, NORMATIVA_EXCEPCIONES_AT, etc.),
+  "Nueva" solo si no aparece en ninguna fuente del cuaderno,
+  o "Renombrar: coincide con [nombre_existente]" si hay solapamiento semántico con nombre distinto.
 
 **Sección Excepciones:**
 - Si la excepción ya fue documentada en otra norma, indica de qué regla proviene y si esta
