@@ -1,8 +1,8 @@
 id_ref,nombre_corto,ambito,procedimientos,estado,id_tecnico,url_consolidado,doc_extraccion,notas
-REF-LSE,Ley 24/2013 (LSE),6.1,General,MAPEO_CONTEXTO,BOE-A-2013-13645,https://www.boe.es/eli/es/l/2013/12/26/24/con,NORMATIVA_PLAZOS.md §2.1,
-REF-RD1955,RD 1955/2000,6.1,AAP|AAC|AE|Trans|Cierre,MAPEO_CONTEXTO,BOE-A-2000-24019,https://www.boe.es/eli/es/rd/2000/12/01/1955/con,NORMATIVA_MAPA_PROCEDIMENTAL.md §2|NORMATIVA_PLAZOS.md §2.2,
-REF-LPACAP,Ley 39/2015 (LPACAP),6.1,General,MAPEO_CONTEXTO,BOE-A-2015-10565,https://www.boe.es/eli/es/l/2015/10/01/39/con,NORMATIVA_PLAZOS.md §1,
-REF-EIA,Ley 21/2013 (EIA),6.1,AAP,MAPEO_CONTEXTO,BOE-A-2013-12913,https://www.boe.es/eli/es/l/2013/12/09/21/con,NORMATIVA_EXCEPCIONES_AT.md §8|NORMATIVA_PLAZOS.md §2.5,Marco estatal EIA — extraer antes que Ley 2/2026 (la autonómica deriva del estatal)
+REF-LSE,Ley 24/2013 (LSE),6.1,General,MAPEO_CONTEXTO,BOE-A-2013-13645,https://www.boe.es/eli/es/l/2013/12/26/24/con,NORMATIVA_PLAZOS.md §2.1|hallazgos_nblm/BOE-A-2013-13645_reglas.md,
+REF-RD1955,RD 1955/2000,6.1,AAP|AAC|AE|Trans|Cierre,MAPEO_CONTEXTO,BOE-A-2000-24019,https://www.boe.es/eli/es/rd/2000/12/01/1955/con,NORMATIVA_MAPA_PROCEDIMENTAL.md §2|NORMATIVA_PLAZOS.md §2.2|hallazgos_nblm/BOE-A-2000-24019_reglas.md,
+REF-LPACAP,Ley 39/2015 (LPACAP),6.1,General,MAPEO_CONTEXTO,BOE-A-2015-10565,https://www.boe.es/eli/es/l/2015/10/01/39/con,NORMATIVA_PLAZOS.md §1|hallazgos_nblm/BOE-A-2015-10565_reglas.md,
+REF-EIA,Ley 21/2013 (EIA),6.1,AAP,MAPEO_CONTEXTO,BOE-A-2013-12913,https://www.boe.es/eli/es/l/2013/12/09/21/con,NORMATIVA_EXCEPCIONES_AT.md §8|NORMATIVA_PLAZOS.md §2.5|hallazgos_nblm/BOE-A-2013-12913_reglas.md,Marco estatal EIA — extraer antes que Ley 2/2026 (la autonómica deriva del estatal)
 ,RD 842/2002 (REBT),6.1,AE|BT,IDENTIFICADA,,https://www.boe.es/eli/es/rd/2002/08/02/842/con,,
 REF-D9-2011,Decreto 9/2011,6.1,AAP,MAPEO_CONTEXTO,22168,https://ws040.juntadeandalucia.es/sedeboja/web/textos-consolidados/resumen-ficha?p_p_id=resumenrecursolegal_WAR_sedebojatextoconsolidadoportlet&p_p_lifecycle=0&_resumenrecursolegal_WAR_sedebojatextoconsolidadoportlet_recursoLegalAbstractoId=22168,NORMATIVA_EXCEPCIONES_AT.md §3.1,
 REF-DL26-2021,Decreto-ley 26/2021,6.1,AAP,MAPEO_CONTEXTO,33520,https://ws040.juntadeandalucia.es/sedeboja/web/textos-consolidados/resumen-ficha?p_p_id=resumenrecursolegal_WAR_sedebojatextoconsolidadoportlet&p_p_lifecycle=0&_resumenrecursolegal_WAR_sedebojatextoconsolidadoportlet_recursoLegalAbstractoId=33520,NORMATIVA_EXCEPCIONES_AT.md §4.1|NORMATIVA_EXCEPCIONES_AT.md §4.2,
