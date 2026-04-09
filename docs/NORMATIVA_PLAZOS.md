@@ -2,7 +2,7 @@
 
 > **Fuente:** Ley 39/2015, de 1 de octubre (LPACAP) — texto consolidado BOE. Leyes sectoriales pendientes de extracción (ver §2).
 > **Aplica a:** Motor de plazos (`app/services/plazos.py`), ContextAssembler, diseño de BD de plazos.
-> **Estado:** §1 completo (sesión 2026-04-01). §2.1 LSE, §2.2 RD1955, §2.3 RD-ley 23/2020, §2.4 RD-ley 6/2022+20/2022, §2.5 Ley 21/2013 EIA completos (sesión 2026-04-09). §2.6 Ley 2/2026 y §2.7 Decreto 356/2010 pendientes.
+> **Estado:** §1 completo (sesión 2026-04-01). §2.1 LSE, §2.2 RD1955, §2.3 RD-ley 23/2020, §2.4 RD-ley 6/2022+20/2022, §2.5 Ley 21/2013 EIA completos (sesión 2026-04-09). Decreto 9/2011, DL 2/2018, RAT y LAT revisados — sin plazos de autorización propios, notas en listado §2 (sesión 2026-04-09). §2.6 Ley 2/2026 y §2.7 Decreto 356/2010 pendientes.
 
 ---
 
@@ -235,6 +235,9 @@ Normas pendientes de extracción:
 - **Ley 21/2013** — Plazos del procedimiento de EIA (consultas, información pública, pronunciamiento ambiental).
 - ~~**Decreto-ley 26/2021**~~ — ✅ Sin plazos propios; exime de información pública instalaciones sin DUP y sin AAU (DF 4ª). Ver `NORMATIVA_EXCEPCIONES_AT.md §4.1`.
 - ~~**RD-ley 23/2020**~~ — ✅ Extraído en §2.3. Plazos son del administrado (promotor), no de la Administración.
+- ~~**Decreto-ley 2/2018**~~ — ✅ Sin plazos de resolución propios. Modifica AE para instalaciones de producción ≤ 500 kW → puesta en servicio industrial (DA única apdo. 2). Nota añadida en `NORMATIVA_MAPA_PROCEDIMENTAL.md §2.3`. Ver `NORMATIVA_EXCEPCIONES_AT.md §7.2`.
+- ~~**RD 337/2014 (RAT)**~~ — ✅ Sin plazos de autorización propios para AAP/AAC/AE. Introduce silencio **positivo** de 3 meses para aprobación de especificaciones particulares de PTD (art. 14.4). Plazos de explotación/inspección fuera del alcance del motor. Ver `NORMATIVA_EXCEPCIONES_AT.md §10`.
+- ~~**RD 223/2008 (LAT)**~~ — ✅ Sin plazos de autorización propios. Mismo silencio positivo de 3 meses para especificaciones PTD (art. 15.4). Plazos de mantenimiento/inspección (3 años periódicas, 6 años puesta a tierra) fuera del alcance del motor. Ver `NORMATIVA_EXCEPCIONES_AT.md §11`.
 
 ---
 

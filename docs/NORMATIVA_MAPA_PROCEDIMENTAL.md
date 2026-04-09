@@ -2,7 +2,7 @@
 
 > **Aplica a:** Motor de reglas — fases obligatorias, su orden y base legal por tipo de solicitud.
 > **Fuentes de verdad:** `docs/normas_catalog.csv` (catálogo normativo) · `docs/NORMATIVA_PLAZOS.md §2` (plazos concretos).
-> **Estado:** En construcción — sesiones 2026-04-02 / 2026-04-04 / 2026-04-06 / 2026-04-09. LSE + RD 1955/2000 (incl. modificaciones) + RD-ley 23/2020 + RD 1183/2020 + Decreto 356/2010 extraídos. Hallazgos LPACAP + EIA revisados — sin gaps (reglas ya recogidas por referencia a LPACAP art. 68, art. 22 y Ley 21/2013).
+> **Estado:** En construcción — sesiones 2026-04-02 / 2026-04-04 / 2026-04-06 / 2026-04-09. LSE + RD 1955/2000 (incl. modificaciones) + RD-ley 23/2020 + RD 1183/2020 + Decreto 356/2010 extraídos. Hallazgos LPACAP + EIA revisados — sin gaps. Decreto 9/2011, DL 2/2018, RAT y LAT revisados — notas de excepción añadidas en §2.1 y §2.3 (sesión 2026-04-09).
 
 Este documento responde a la **Iteración 1** de `NORMATIVA_LEGISLACION_AT.md §5`:
 para cada tipo de solicitud, qué procedimiento define la legislación, qué fases lo componen,
@@ -84,6 +84,8 @@ Fases en orden:
 
 > **Nota información pública (fase 3):** la información pública es **obligatoria con carácter general**, pero queda **suprimida** cuando se cumplen los cuatro criterios del Decreto 9/2011 DA 1ª: tensión ≤ 30 kV (tercera categoría AT), línea subterránea o centro de transformación interior, suelo urbano/urbanizable, y sin DUP. En ese caso también se suprime la publicación de la resolución en el BOP (art. 128.3). Ver `NORMATIVA_EXCEPCIONES_AT.md §3.1`.
 
+> **Nota RAT/LAT — régimen de puesta en servicio directa (RAT art. 20.2 + LAT ITC-LAT 04 §4):** cuando `es_ptd = false AND instalacion_cedida = false`, las instalaciones AT en general quedan **exentas de AAP/AAC/AE** (RAT); solo las líneas de tipo `privada_exclusiva` quedan igualmente exentas (LAT). Para líneas de conexión a red (`generacion`, `consumidor_red`, `linea_directa`, `acometida`, `red_distribucion`), la autorización es siempre obligatoria aunque no sean de PTD ni cedidas. Ver `NORMATIVA_EXCEPCIONES_AT.md §10` y `§11`.
+
 > **Nota EIA:** cuando la instalación requiere Evaluación de Impacto Ambiental ordinaria
 > (Ley 21/2013), la AAP no puede resolverse sin la Declaración de Impacto Ambiental (DIA).
 > La tramitación ambiental corre en paralelo pero su finalización es condición de la resolución.
@@ -125,6 +127,8 @@ El procedimiento varía según el tipo de instalación:
 | 2 | **Resolución AE provisional** para pruebas (1 mes; silencio desestimatorio) | ✅ | Art. 132 bis |
 | 3 | Período de pruebas de la instalación | ✅ | Art. 132 bis |
 | 4 | **Resolución AE definitiva** (1 mes desde solicitud; silencio desestimatorio) | ✅ | Art. 132 ter |
+
+> **Excepción DL 2/2018 (DA única apdo. 2):** instalaciones de producción con `potencia_instalada_mw` ≤ 0,5 (500 kW) tramitan **puesta en servicio industrial** (Orden 5/3/2013) en lugar de AE. No hay resolución administrativa: la puesta en servicio se realiza directamente con la documentación técnica. Ver `NORMATIVA_EXCEPCIONES_AT.md §7.2`.
 
 ### 2.4 Transmisión de titularidad (arts. 133-134)
 

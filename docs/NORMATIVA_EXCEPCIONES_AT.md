@@ -2,7 +2,7 @@
 
 > **Aplica a:** Motor de reglas — desviaciones respecto al procedimiento estándar AAP/AAC/AE.
 > **Fuentes de verdad:** `docs/normas_catalog.csv` · `docs/NORMATIVA_PLAZOS.md §2`.
-> **Estado:** En construcción — sesión 2026-04-09. LSE + RD 1955/2000 + Decreto 9/2011 + DL 26/2021 + RDL 6/2022 + RDL 20/2022 + DL 2/2018 + Ley 21/2013 + Ley 2/2026 + LPACAP extraídos. Variables LPACAP y RD1955 añadidas en §8.6 (sesión 2026-04-09).
+> **Estado:** En construcción — sesión 2026-04-09. LSE + RD 1955/2000 + Decreto 9/2011 + DL 26/2021 + RDL 6/2022 + RDL 20/2022 + DL 2/2018 + Ley 21/2013 + Ley 2/2026 + LPACAP + RD 337/2014 (RAT) + RD 223/2008 (LAT) extraídos. Variables LPACAP y RD1955 añadidas en §8.6; `es_ptd` e `instalacion_cedida` NUEVAS en §10.3; `tipo_linea_funcional` NUEVA en §11.3 (sesión 2026-04-09).
 
 Este documento recoge las **Iteraciones 2 y 4** de `NORMATIVA_LEGISLACION_AT.md §5`:
 - **Iteración 2:** excepciones al procedimiento estándar y regímenes especiales (renovables, <30 kV, simplificaciones).
