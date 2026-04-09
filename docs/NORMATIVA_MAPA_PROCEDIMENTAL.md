@@ -108,6 +108,8 @@ Fases en orden:
 > (sin DUP ni modificación de AAP), el plazo de consultas a AAPP se reduce de 30 a 15 días.
 > Ver `NORMATIVA_EXCEPCIONES_AT.md §2.2`.
 
+> **Nota RAT/LAT — Proyectos Tipo (RAT art. 12.2, LAT art. 13.2):** cuando `es_proyecto_tipo = true`, la documentación del proyecto de ejecución se sustituye por el proyecto tipo aprobado + hoja de datos específicos. No altera las fases de la AAC, solo los documentos requeridos. Ver `NORMATIVA_EXCEPCIONES_AT.md §10.4` y `§11.4`.
+
 ### 2.3 AE — Autorización de Explotación (arts. 132, 132 bis, 132 ter, 132 quater)
 
 El procedimiento varía según el tipo de instalación:

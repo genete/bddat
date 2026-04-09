@@ -560,6 +560,24 @@ El órgano competente puede requerir el análisis realizado por el promotor en c
 
 ---
 
+### 7.6 Impulso preferente y urgente para renovables sin régimen retributivo (art. 3.2)
+
+**Regla:** las instalaciones de producción de energía a partir de fuentes renovables que **no estén acogidas a régimen retributivo específico** deben tramitarse con **carácter preferente y urgente** ante cualquier administración andaluza. No es una excepción procedimental sino una obligación de priorización en la instrucción.
+
+**Condición de aplicación:**
+
+| Condición | Detalle |
+|---|---|
+| Tipo de instalación | Instalación de producción renovable |
+| Régimen retributivo | Sin régimen retributivo específico (`regimen_retributivo_especifico = false`) |
+
+**Implicación en BDDAT:** no altera las fases ni los plazos formales, pero el motor puede registrar este flag para que la interfaz de gestión muestre la prioridad de tramitación.
+
+- `es_instalacion_generacion_renovable` — boolean, `dato`: la instalación produce energía a partir de fuentes renovables. Ya definida (ver DISEÑO_CONTEXT_ASSEMBLER.md).
+- `regimen_retributivo_especifico` — boolean, `dato`: la instalación está acogida a un régimen retributivo específico (RD 413/2014 o equivalente). Cuando es `false` y `es_instalacion_generacion_renovable = true`, activa el deber de impulso preferente.
+
+---
+
 ## 8. Ley 21/2013, de 9 de diciembre — Umbrales EIA y condiciones de obligatoriedad
 
 > **BOE-A-2013-12913** — texto consolidado (last_updated 2025-11-06). Sesión 2026-04-05.
@@ -822,7 +840,27 @@ Las siguientes operaciones sobre instalaciones AT existentes **no requieren proy
 
 **Implicación en BDDAT:** las modificaciones de tipo "sin proyecto" no generan expediente de autorización en BDDAT. Solo son registrables como actuaciones en el histórico de la instalación.
 
-### 10.3 Variables de contexto — MAPEO_CONTEXTO
+### 10.3 Exención de declaración responsable de instalador para PTD (art. 15)
+
+Las empresas PTD que ejecuten o mantengan instalaciones de su propiedad por **medios propios** no necesitan presentar la declaración responsable de actividad de empresa instaladora (ITC-RAT 03). La capacidad técnica propia de la PTD sustituye el requisito de empresa instaladora habilitada.
+
+**Implicación en BDDAT:** en el registro y en la fase AE, cuando `es_ptd = true AND ejecucion_por_medios_propios = true`, el motor no debe exigir documentación de empresa instaladora habilitada.
+
+- `ejecucion_por_medios_propios` — boolean, `dato`: la PTD ejecuta la instalación con personal técnico propio sin subcontratar empresa instaladora externa. Solo relevante cuando `es_ptd = true`.
+
+---
+
+### 10.4 Proyectos Tipo para instalaciones repetitivas de PTD (art. 12.2)
+
+Las PTD pueden obtener la aprobación administrativa de **proyectos tipo** para instalaciones repetitivas (subestaciones, centros de transformación, módulos de línea). Una vez aprobado el proyecto tipo, cada instalación concreta se ejecuta completando el proyecto tipo con los datos específicos de ubicación sin necesidad de nuevo proyecto individual completo.
+
+**Implicación en BDDAT:** en la fase AAC, cuando `es_proyecto_tipo = true`, la documentación requerida es distinta (proyecto tipo aprobado + hoja de datos específicos en lugar de proyecto de ejecución completo).
+
+- `es_proyecto_tipo` — boolean, `dato`: la instalación se ejecuta bajo un proyecto tipo previamente aprobado. Ya definida (ver DISEÑO_CONTEXT_ASSEMBLER.md).
+
+---
+
+### 10.5 Variables de contexto — MAPEO_CONTEXTO
 
 | Variable | Decisión |
 |---|---|
@@ -856,7 +894,17 @@ Para líneas de tensión nominal **≤ 30 kV** (tercera categoría), las inspecc
 
 Alcance: solo fase de explotación, fuera del alcance actual del motor de reglas.
 
-### 11.3 Variables de contexto — MAPEO_CONTEXTO
+### 11.3 Exención de declaración responsable de instalador para PTD (art. 16)
+
+Igual que en el RAT (§10.3): las PTD que ejecuten líneas de su propiedad por medios propios no necesitan presentar declaración responsable de empresa instaladora (ITC-LAT 03). Misma variable: `ejecucion_por_medios_propios` (ver §10.3).
+
+### 11.4 Proyectos Tipo para líneas repetitivas (art. 13.2)
+
+Las PTD y promotores que ceden al distribuidor pueden obtener la aprobación de **proyectos tipo de líneas** para tramos o configuraciones repetitivas. El proyecto tipo debe ser aprobado previamente; cada línea concreta se completa con datos específicos de trazado, apoyo y cruzamientos.
+
+**Implicación en BDDAT:** igual que en el RAT (§10.4): cuando `es_proyecto_tipo = true`, la fase AAC requiere documentación simplificada (proyecto tipo + hoja de datos). Variable `es_proyecto_tipo` ya definida.
+
+### 11.6 Variables de contexto — MAPEO_CONTEXTO
 
 | Variable | Decisión |
 |---|---|
