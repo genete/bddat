@@ -99,5 +99,9 @@ No incluyas párrafo introductorio. Empieza directamente con la sección de regl
 | LSE — Ley 24/2013 | `LSE` | `BOE-A-2013-13645_reglas.md` |
 | RD 1955/2000 | `RD1955` | `BOE-A-2000-24019_reglas.md` |
 | Ley 21/2013 EIA | `EIA` | `BOE-A-2013-12913_reglas.md` |
+| Decreto 9/2011 (Junta) | `D9` | `sedeboja_22168_reglas.md` |
+| Decreto-ley 2/2018 (Junta) | `DL2` | `sedeboja_26974_reglas.md` |
+| RD 337/2014 (RAT) | `RAT` | `BOE-A-2014-6084_reglas.md` |
+| RD 223/2008 (LAT) | `LAT` | `BOE-A-2008-5269_reglas.md` |
 
 Al añadir una norma nueva, añadir su fila aquí y en `ORDEN_JERARQUICO` de `compile_hallazgos.py`.
