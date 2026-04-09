@@ -22,10 +22,11 @@ HALLAZGOS_DIR = REPO_ROOT / "docs" / "normas" / "hallazgos_nblm"
 # Orden jerárquico explícito: norma general primero, especial después.
 # Los ficheros no listados aquí se añaden al final en orden alfabético.
 ORDEN_JERARQUICO = [
-    "BOE-A-2015-10565_reglas.md",  # LPACAP — procedimiento general
-    "BOE-A-2013-13645_reglas.md",  # LSE — ley sectorial
-    "BOE-A-2000-24019_reglas.md",  # RD 1955/2000 — reglamento sectorial
-    "BOE-A-2013-12913_reglas.md",  # Ley 21/2013 EIA — evaluación ambiental
+    "BOE-A-2015-10565_reglas.md",   # LPACAP — procedimiento general
+    "BOE-A-2013-13645_reglas.md",   # LSE — ley sectorial
+    "BOE-A-2000-24019_reglas.md",   # RD 1955/2000 — reglamento sectorial
+    "BOE-A-2013-12913_reglas.md",   # Ley 21/2013 EIA — evaluación ambiental
+    "sedeboja_22168_reglas.md",     # Decreto 9/2011 (Andalucía) — simplificación AT 3ª categoría
 ]
 
 OUTPUT_DEFAULT = REPO_ROOT / "docs_prueba" / "temp" / "hallazgos_consolidados.txt"
