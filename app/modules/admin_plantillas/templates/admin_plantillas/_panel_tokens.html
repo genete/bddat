@@ -1,0 +1,226 @@
+{#
+  Panel de tokens disponibles para plantillas .docx.
+  Variables esperadas en contexto:
+    tokens.campos     — list[{campo, descripcion}]
+    tokens.consultas  — list[ConsultaNombrada]
+    tokens.fragmentos — list[str] (nombres de fichero .docx)
+  solo_lectura (opcional) — Si True, oculta textos de ayuda de edición
+#}
+{% set solo_lectura = solo_lectura | default(false) %}
+
+<div class="card border-primary">
+    <div class="card-header bg-primary text-white fw-semibold">
+        <i class="fas fa-tags me-1"></i> Tokens disponibles
+    </div>
+
+    {# ── Sección: Campos simples ── #}
+    <div class="card-body pb-0">
+        <h6 class="mb-2 text-primary">
+            <i class="fas fa-cube me-1"></i> Campos simples
+        </h6>
+        <p class="small text-secondary mb-2">
+            Sintaxis en la plantilla: <code class="bg-light px-1 rounded">{{ '{{campo}}' }}</code>
+        </p>
+        <div class="list-group list-group-flush mb-3">
+            {% for c in tokens.campos if c.get('tipo') != 'lista' %}
+            <div class="list-group-item list-group-item-action py-2 px-2">
+                <div class="d-flex align-items-start gap-2">
+                    <div class="flex-grow-1 min-w-0">
+                        <code class="d-block text-primary small">{{ '{{' }}{{ c.campo }}{{ '}}' }}</code>
+                        <span class="text-secondary" style="font-size:.8rem">{{ c.descripcion }}</span>
+                    </div>
+                    <button type="button"
+                            class="btn btn-sm btn-outline-primary flex-shrink-0 btn-copiar"
+                            data-token="{{ '{{' }}{{ c.campo }}{{ '}}' }}"
+                            title="Copiar token">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                </div>
+            </div>
+            {% else %}
+            <div class="list-group-item text-secondary small">Sin campos disponibles.</div>
+            {% endfor %}
+        </div>
+    </div>
+
+    {# ── Sección: Campos de lista (bucle de párrafo) ── #}
+    {% set campos_lista = tokens.campos | selectattr('tipo', 'equalto', 'lista') | list %}
+    {% if campos_lista %}
+    <div class="card-body pb-0 border-top pt-3">
+        <h6 class="mb-2 text-primary">
+            <i class="fas fa-list me-1"></i> Campos de lista
+        </h6>
+        <p class="small text-secondary mb-2">
+            Copia el bloque completo y pégalo en Word — los tres párrafos se crean solos.
+        </p>
+        <div class="list-group list-group-flush mb-3">
+            {% for c in campos_lista %}
+            {# data-token incluye &#10; (newline) para que Word cree 3 párrafos al pegar #}
+            {% set t_open  = '{%p for item in ' ~ c.campo ~ ' %}' %}
+            {% set t_item  = '{{item}}' %}
+            {% set t_close = '{%p endfor %}' %}
+            {% set snippet = t_open ~ '&#10;' ~ t_item ~ '&#10;' ~ t_close %}
+            <div class="list-group-item py-2 px-2">
+                <div class="d-flex align-items-start gap-2">
+                    <div class="flex-grow-1 min-w-0">
+                        <span class="text-secondary d-block" style="font-size:.8rem">{{ c.descripcion }}</span>
+                        <code class="d-block text-primary small mt-1 lh-base" style="white-space:pre-line">{{ t_open }}
+{{ t_item }}
+{{ t_close }}</code>
+                    </div>
+                    <button type="button"
+                            class="btn btn-sm btn-outline-primary flex-shrink-0 btn-copiar"
+                            data-token="{{ snippet }}"
+                            title="Copiar bloque de bucle (3 párrafos)">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    {# ── Sección: Consultas nombradas (tablas dinámicas) ── #}
+    <div class="card-body pb-0 border-top pt-3">
+        <h6 class="mb-2 text-primary">
+            <i class="fas fa-table me-1"></i> Consultas nombradas
+        </h6>
+        <p class="small text-secondary mb-2">
+            Sintaxis: <code class="bg-light px-1 rounded">{{ '{%tr for row in nombre %}' }}</code> … <code class="bg-light px-1 rounded">{{ '{%tr endfor %}' }}</code>
+        </p>
+        {% if tokens.consultas %}
+        <div class="accordion accordion-flush" id="acordeon-consultas">
+            {% for cn in tokens.consultas %}
+            <div class="accordion-item">
+                <h2 class="accordion-header" id="hcn-{{ cn.id }}">
+                    <button class="accordion-button collapsed py-2 px-2 small"
+                            type="button"
+                            data-bs-toggle="collapse"
+                            data-bs-target="#ccn-{{ cn.id }}"
+                            aria-expanded="false">
+                        <code class="text-primary me-2">{{ cn.nombre }}</code>
+                        <span class="text-secondary">{{ cn.descripcion }}</span>
+                    </button>
+                </h2>
+                <div id="ccn-{{ cn.id }}" class="accordion-collapse collapse"
+                     aria-labelledby="hcn-{{ cn.id }}"
+                     data-bs-parent="#acordeon-consultas">
+                    <div class="accordion-body py-2 px-2">
+                        {# Token de apertura del bucle #}
+                        <div class="d-flex align-items-center gap-2 mb-1">
+                            <code class="small flex-grow-1 text-primary">{{ '{%tr for row in ' }}{{ cn.nombre }}{{ ' %}' }}</code>
+                            <button type="button"
+                                    class="btn btn-sm btn-outline-primary flex-shrink-0 btn-copiar"
+                                    data-token="{{ '{%tr for row in ' }}{{ cn.nombre }}{{ ' %}' }}"
+                                    title="Copiar apertura de bucle">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                        {# Columnas disponibles #}
+                        {% if cn.columnas %}
+                        <div class="small text-secondary mb-2 ps-1">
+                            Columnas disponibles dentro del bucle:
+                        </div>
+                        {% for col in cn.columnas %}
+                        <div class="d-flex align-items-center gap-2 mb-1 ps-2">
+                            <code class="small flex-grow-1">{{ '{{row.' }}{{ col.campo }}{{ '}}' }}</code>
+                            <span class="text-secondary small me-auto">{{ col.descripcion }}</span>
+                            <button type="button"
+                                    class="btn btn-sm btn-outline-primary flex-shrink-0 btn-copiar"
+                                    data-token="{{ '{{row.' }}{{ col.campo }}{{ '}}' }}"
+                                    title="Copiar campo de fila">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                        {% endfor %}
+                        {% endif %}
+                        {# Token de cierre #}
+                        <div class="d-flex align-items-center gap-2 mt-1">
+                            <code class="small flex-grow-1 text-primary">{{ '{%tr endfor %}' }}</code>
+                            <button type="button"
+                                    class="btn btn-sm btn-outline-primary flex-shrink-0 btn-copiar"
+                                    data-token="{{ '{%tr endfor %}' }}"
+                                    title="Copiar cierre de bucle">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-secondary small">No hay consultas nombradas registradas.</p>
+        {% endif %}
+    </div>
+
+    {# ── Sección: Fragmentos .docx ── #}
+    <div class="card-body pb-3 border-top pt-3">
+        <h6 class="mb-2 text-primary">
+            <i class="fas fa-file-import me-1"></i> Fragmentos insertables
+        </h6>
+        <p class="small text-secondary mb-2">
+            Sintaxis: <code class="bg-light px-1 rounded">{{ '{{r nombre_sin_extension}}' }}</code>
+        </p>
+        {% if tokens.fragmentos %}
+        <div class="list-group list-group-flush">
+            {% for frag in tokens.fragmentos %}
+            {% set nombre_sin_ext = frag[:-5] if frag.endswith('.docx') else frag %}
+            <div class="list-group-item list-group-item-action py-2 px-2">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="flex-grow-1 min-w-0">
+                        <code class="d-block text-primary small">{{ '{{r ' }}{{ nombre_sin_ext }}{{ '}}' }}</code>
+                        <span class="text-secondary" style="font-size:.8rem">{{ frag }}</span>
+                    </div>
+                    <button type="button"
+                            class="btn btn-sm btn-outline-primary flex-shrink-0 btn-copiar"
+                            data-token="{{ '{{r ' }}{{ nombre_sin_ext }}{{ '}}' }}"
+                            title="Copiar token fragmento">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-secondary small mb-0">
+            No se encontraron fragmentos en <code>PLANTILLAS_BASE/fragmentos/</code>.
+            {% if not solo_lectura %}
+            Coloca ficheros .docx en esa carpeta para verlos aquí.
+            {% endif %}
+        </p>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('.btn-copiar').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            const token = btn.dataset.token;
+            navigator.clipboard.writeText(token).then(function () {
+                const icon = btn.querySelector('i');
+                icon.className = 'fas fa-check text-success';
+                setTimeout(function () {
+                    icon.className = 'fas fa-copy';
+                }, 1500);
+            }).catch(function () {
+                // Fallback para contextos sin clipboard API (HTTP sin TLS)
+                const tmp = document.createElement('textarea');
+                tmp.value = token;
+                tmp.style.position = 'fixed';
+                tmp.style.opacity = '0';
+                document.body.appendChild(tmp);
+                tmp.focus();
+                tmp.select();
+                document.execCommand('copy');
+                document.body.removeChild(tmp);
+                const icon = btn.querySelector('i');
+                icon.className = 'fas fa-check text-success';
+                setTimeout(function () { icon.className = 'fas fa-copy'; }, 1500);
+            });
+        });
+    });
+});
+</script>

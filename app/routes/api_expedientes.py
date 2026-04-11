@@ -11,7 +11,7 @@ CAMBIOS v2.1: Añadido campo 'codigo' ("AT-{numero_at}") a serialización del li
 """
 
 from flask import Blueprint, request, jsonify, url_for
-from flask_login import login_required
+from flask_login import login_required, current_user
 from sqlalchemy.orm import joinedload
 from sqlalchemy import func, or_
 from app import db
@@ -20,7 +20,7 @@ from app.models.entidad import Entidad
 from app.models.tipos_expedientes import TipoExpediente
 from app.models import (
     Solicitud, Fase, TipoSolicitud, TipoFase,
-    Proyecto, TipoIA, Usuario, SolicitudTipo
+    Proyecto, TipoIA, Usuario
 )
 
 # Blueprint para API
@@ -95,6 +95,7 @@ def listar_expedientes():
             return jsonify({'error': 'Search debe tener al menos 2 caracteres'}), 400
 
         estado_filter = request.args.get('estado', '').strip()
+        responsable_filter = request.args.get('responsable', '').strip()
 
     except ValueError:
         return jsonify({'error': 'Parámetros numéricos inválidos'}), 400
@@ -141,10 +142,40 @@ def listar_expedientes():
 
         query = query.filter(or_(*filtros_busqueda))
 
+    if responsable_filter == 'yo':
+        query = query.filter(Expediente.responsable_id == current_user.id)
+
     if estado_filter:
         estados_validos = ['borrador', 'tramitacion', 'finalizado', 'archivado']
         if estado_filter.lower() not in estados_validos:
             return jsonify({'error': f'Estado inválido. Válidos: {", ".join(estados_validos)}'}), 400
+
+        # Subquery: IDs de expedientes con al menos una solicitud EN_TRAMITE
+        ids_en_tramite = db.session.query(Solicitud.expediente_id).filter(
+            Solicitud.estado == 'EN_TRAMITE'
+        ).subquery()
+
+        # Subquery: IDs de expedientes con alguna solicitud (cualquier estado)
+        ids_con_solicitudes = db.session.query(Solicitud.expediente_id).subquery()
+
+        # Subquery: IDs de expedientes con alguna solicitud ARCHIVADA
+        ids_archivados = db.session.query(Solicitud.expediente_id).filter(
+            Solicitud.estado == 'ARCHIVADA'
+        ).subquery()
+
+        if estado_filter == 'tramitacion':
+            query = query.filter(Expediente.id.in_(ids_en_tramite))
+        elif estado_filter == 'finalizado':
+            # Con solicitudes, ninguna EN_TRAMITE ni ARCHIVADA
+            query = query.filter(
+                Expediente.id.in_(ids_con_solicitudes),
+                Expediente.id.notin_(ids_en_tramite),
+                Expediente.id.notin_(ids_archivados)
+            )
+        elif estado_filter == 'archivado':
+            query = query.filter(Expediente.id.in_(ids_archivados))
+        elif estado_filter == 'borrador':
+            query = query.filter(Expediente.id.notin_(ids_con_solicitudes))
 
     # ==========================================================================
     # PASO 5: Ejecutar query con limit + 1
@@ -238,7 +269,7 @@ def listar_expedientes():
             'num_solicitudes':     num_solicitudes,
             'num_activas':         num_activas,
             'estado_tramitacion':  estado_tramitacion,
-            'url_tramitacion':     url_for('expedientes.tramitacion_v3', id=exp.id)
+            'url_tramitacion':     url_for('expedientes.tramitacion_bc', exp_id=exp.id)
         }
         data.append(expediente_dict)
 
@@ -387,15 +418,7 @@ def get_jerarquia_expediente(expediente_id):
 
     solicitudes_data = []
     for solicitud in solicitudes:
-        # Obtener tipos de solicitud (tabla many-to-many)
-        tipos_solicitud = (
-            TipoSolicitud.query
-            .join(SolicitudTipo, TipoSolicitud.id == SolicitudTipo.tiposolicitudid)
-            .filter(SolicitudTipo.solicitudid == solicitud.id)
-            .all()
-        )
-
-        tipos_str = ' + '.join([ts.siglas for ts in tipos_solicitud]) if tipos_solicitud else 'Sin tipo'
+        tipos_str = solicitud.tipo_solicitud.siglas if solicitud.tipo_solicitud else 'Sin tipo'
 
         # Obtener fases de la solicitud
         fases = Fase.query.filter_by(

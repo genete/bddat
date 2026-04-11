@@ -1,0 +1,54 @@
+{#
+  Partial: _tabla_hijos.html
+  Uso:
+    {% include 'vistas/vista3_bc/_tabla_hijos.html' %}
+  Variables esperadas del contexto:
+    hijos   — lista de dicts con claves: estado, url_detalle, + columnas dinámicas
+    columnas — lista de dicts {key, label}
+  La columna indicador (izquierda) y la acción → (derecha) son siempre fijas.
+#}
+
+{# Macro: indicador de estado visual #}
+{% macro indicador_estado(estado) %}
+  {% if estado == 'finalizada' %}
+    <i class="bi bi-check-circle-fill text-success" title="Finalizada"></i>
+  {% elif estado == 'en_curso' %}
+    <i class="bi bi-clock-fill text-primary" title="En curso"></i>
+  {% else %}
+    <i class="bi bi-circle text-secondary" title="Planificada"></i>
+  {% endif %}
+{% endmacro %}
+
+{% if hijos %}
+  <table class="table table-hover table-sm align-middle mb-0 tabla-hijos">
+    <thead class="table-light">
+      <tr>
+        <th style="width:2rem"></th>
+        {% for col in columnas %}
+        <th>{{ col.label }}</th>
+        {% endfor %}
+        <th style="width:3rem"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for hijo in hijos %}
+      <tr>
+        <td class="text-center">{{ indicador_estado(hijo.estado) }}</td>
+        {% for col in columnas %}
+        <td>{{ hijo[col.key] | default('—') }}</td>
+        {% endfor %}
+        <td class="text-center">
+          <a href="{{ hijo.url_detalle }}"
+             class="btn btn-sm btn-outline-secondary"
+             title="Ver detalle">→</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% else %}
+<div class="text-center text-secondary py-4">
+  <i class="bi bi-inbox fs-3 d-block mb-2"></i>
+  <span class="small">No hay elementos en este nivel</span>
+</div>
+{% endif %}

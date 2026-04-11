@@ -17,6 +17,7 @@ from app.models.proyectos import Proyecto
 from app.models.expedientes import Expediente
 from app.models.usuarios import Usuario
 from app.models.tipos_ia import TipoIA
+from app.utils.metadata import cargar_metadata
 
 # template_folder apunta a app/modules/proyectos/templates/
 bp = Blueprint('proyectos', __name__,
@@ -33,7 +34,11 @@ bp = Blueprint('proyectos', __name__,
 def index():
     """Vista listado de proyectos. Pasa tipos_ia para poblar el filtro."""
     tipos_ia = TipoIA.query.order_by(TipoIA.siglas).all()
-    return render_template('proyectos/index.html', tipos_ia=tipos_ia)
+    tipos_ia_opts = [{"v": str(ia.id), "t": f"{ia.siglas} — {ia.descripcion}"} for ia in tipos_ia]
+    meta = cargar_metadata('proyectos')
+    columns = meta.get('listado_v2', {}).get('columns', [])
+    return render_template('proyectos/index.html',
+                           tipos_ia_opts=tipos_ia_opts, columns=columns)
 
 
 # =============================================================================

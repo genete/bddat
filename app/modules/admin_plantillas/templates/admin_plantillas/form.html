@@ -1,0 +1,530 @@
+{% extends 'layout/base_fullwidth.html' %}
+
+{% block title %}
+{% if modo == 'editar' %}Editar plantilla — {{ plantilla.nombre }}{% else %}Nueva plantilla{% endif %} — BDDAT
+{% endblock %}
+
+{% block breadcrumb %}
+<a href="{{ url_for('dashboard.index') }}">Inicio</a>
+<span>›</span>
+<a href="{{ url_for('admin_plantillas.listado') }}">Plantillas de escritos</a>
+{% if modo == 'editar' %}
+<span>›</span>
+<a href="{{ url_for('admin_plantillas.detalle', id=plantilla.id) }}">{{ plantilla.nombre }}</a>
+<span>›</span>
+<span>Editar</span>
+{% else %}
+<span>›</span>
+<span>Nueva plantilla</span>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="lista-cabecera">
+    <div class="page-header content-constrained">
+        <h1>
+            <i class="fas fa-file-word"></i>
+            {% if modo == 'editar' %}Editar plantilla{% else %}Nueva plantilla{% endif %}
+        </h1>
+        <a href="{{ url_for('admin_plantillas.listado') }}" class="btn btn-outline-primary">
+            <i class="fas fa-arrow-left me-1"></i> Volver
+        </a>
+    </div>
+</div>
+
+<div class="content-constrained py-4">
+    <form method="POST"
+          action="{% if modo == 'editar' %}{{ url_for('admin_plantillas.editar', id=plantilla.id) }}{% else %}{{ url_for('admin_plantillas.nueva') }}{% endif %}">
+
+        <div class="row g-4">
+
+            {# ── Columna izquierda: formulario ── #}
+            <div class="col-lg-7">
+
+                {# Bloque: Identificación #}
+                <div class="card mb-4">
+                    <div class="card-header fw-semibold">
+                        <i class="fas fa-tag me-1"></i> Identificación
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="nombre" class="form-label fw-semibold">Nombre <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="nombre" name="nombre"
+                                   value="{{ plantilla.nombre if plantilla else '' }}"
+                                   placeholder="Requerimiento de subsanación"
+                                   required>
+                            <div class="form-text">Nombre legible que verán tramitadores y supervisores.</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="codigo" class="form-label fw-semibold">Código <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control font-monospace" id="codigo" name="codigo"
+                                   value="{{ plantilla.codigo if plantilla else '' }}"
+                                   placeholder="REQUERIMIENTO_SUBSANACION"
+                                   pattern="[A-Z0-9_]+"
+                                   title="Solo mayúsculas, números y guiones bajos"
+                                   required>
+                            <div class="form-text">Slug estable en MAYÚSCULAS_CON_GUIONES. Se usará en código.</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="variante" class="form-label fw-semibold">Variante</label>
+                            <input type="text" class="form-control" id="variante" name="variante"
+                                   value="{{ plantilla.variante if plantilla and plantilla.variante else '' }}"
+                                   placeholder="Favorable, Denegatoria, Con condicionado…">
+                            <div class="form-text">
+                                Opcional. Distingue plantillas del mismo contexto ESFTT con diferente resultado.
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="descripcion" class="form-label fw-semibold">Descripción</label>
+                            <textarea class="form-control" id="descripcion" name="descripcion"
+                                      rows="2"
+                                      placeholder="Requerimiento al titular para subsanación de documentación técnica">{{ plantilla.descripcion if plantilla and plantilla.descripcion else '' }}</textarea>
+                        </div>
+
+                        <div class="mb-0">
+                            <label for="tipo_documento_id" class="form-label fw-semibold">
+                                Tipo de documento resultante <span class="text-danger">*</span>
+                            </label>
+                            <select class="form-select" id="tipo_documento_id" name="tipo_documento_id" required>
+                                <option value="">— Seleccionar —</option>
+                                {% for td in tipos_documento %}
+                                <option value="{{ td.id }}"
+                                    {% if plantilla and plantilla.tipo_documento_id == td.id %}selected{% endif %}>
+                                    {{ td.codigo }} — {{ td.nombre }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text">
+                                El documento generado se registrará en el pool del expediente con este tipo.
+                                Permite al motor de reglas detectar su existencia.
+                                Solo se muestran tipos de origen INTERNO o AMBOS.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {# Bloque: Contexto ESFTT #}
+                <div class="card mb-4">
+                    <div class="card-header fw-semibold d-flex align-items-center justify-content-between flex-wrap gap-2">
+                        <span><i class="fas fa-sitemap me-1"></i> Contexto ESFTT
+                            <span class="badge bg-secondary ms-2" style="font-weight:400">Todos los campos son opcionales</span>
+                        </span>
+                        <div class="form-check form-switch mb-0">
+                            <input class="form-check-input" type="checkbox" role="switch"
+                                   id="toggle-solo-aplicables">
+                            <label class="form-check-label small fw-normal" for="toggle-solo-aplicables">
+                                Solo aplicables al contexto
+                            </label>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-secondary small mb-3">
+                            Deja en blanco los campos que no apliquen.
+                            <strong>Vacío = aplica a cualquier valor</strong> de esa dimensión.
+                            Activa el filtro para ver solo las opciones válidas según la whitelist ESFTT.
+                        </p>
+
+                        <div class="mb-3">
+                            <label for="tipo_expediente_id" class="form-label fw-semibold">Tipo de expediente</label>
+                            <select class="form-select" id="tipo_expediente_id" name="tipo_expediente_id">
+                                <option value="">— Cualquier expediente —</option>
+                                {% for te in tipos_expediente %}
+                                <option value="{{ te.id }}"
+                                    {% if plantilla and plantilla.tipo_expediente_id == te.id %}selected{% endif %}>
+                                    {{ te.tipo }}{% if te.descripcion %} — {{ te.descripcion }}{% endif %}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="tipo_solicitud_id" class="form-label fw-semibold">Tipo de solicitud</label>
+                            <select class="form-select" id="tipo_solicitud_id" name="tipo_solicitud_id">
+                                <option value="">— Cualquier solicitud —</option>
+                                {% for ts in tipos_solicitud %}
+                                <option value="{{ ts.id }}"
+                                    {% if plantilla and plantilla.tipo_solicitud_id == ts.id %}selected{% endif %}>
+                                    {{ ts.siglas }} — {{ ts.descripcion }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="tipo_fase_id" class="form-label fw-semibold">Fase</label>
+                            <select class="form-select" id="tipo_fase_id" name="tipo_fase_id">
+                                <option value="">— Cualquier fase —</option>
+                                {% for tf in tipos_fase %}
+                                <option value="{{ tf.id }}"
+                                    {% if plantilla and plantilla.tipo_fase_id == tf.id %}selected{% endif %}>
+                                    {{ tf.nombre }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="mb-0">
+                            <label for="tipo_tramite_id" class="form-label fw-semibold">Trámite</label>
+                            <select class="form-select" id="tipo_tramite_id" name="tipo_tramite_id">
+                                <option value="">— Cualquier trámite —</option>
+                                {% for tt in tipos_tramite %}
+                                <option value="{{ tt.id }}"
+                                    {% if plantilla and plantilla.tipo_tramite_id == tt.id %}selected{% endif %}>
+                                    {{ tt.nombre }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                {# Bloque: Plantilla .docx #}
+                <div class="card mb-4">
+                    <div class="card-header fw-semibold">
+                        <i class="fas fa-server me-1"></i> Fichero de plantilla
+                    </div>
+                    <div class="card-body">
+                        {% if modo == 'editar' and plantilla.ruta_plantilla %}
+                        <div class="alert alert-info d-flex align-items-center gap-2 mb-3">
+                            <i class="fas fa-file-word fa-lg"></i>
+                            <div>
+                                Plantilla actual: <strong>{{ plantilla.ruta_plantilla }}</strong>
+                                <a href="{{ url_for('admin_plantillas.descargar', id=plantilla.id) }}"
+                                   class="ms-2 small">
+                                    <i class="fas fa-download me-1"></i>Descargar
+                                </a>
+                            </div>
+                        </div>
+                        <div class="form-label fw-semibold">
+                            Cambiar fichero <span class="text-secondary">(opcional)</span>
+                        </div>
+                        {% else %}
+                        <div class="form-label fw-semibold">
+                            Fichero .docx <span class="text-danger">*</span>
+                        </div>
+                        {% endif %}
+
+                        {# Campo oculto con la ruta relativa seleccionada en el explorador #}
+                        <input type="hidden" id="ruta_plantilla" name="ruta_plantilla"
+                               value="">
+
+                        <div class="d-flex align-items-center gap-3">
+                            <button type="button" class="btn btn-outline-secondary"
+                                    onclick="abrirExploradorPlantillas()">
+                                <i class="fas fa-folder-open me-1"></i> Seleccionar del servidor
+                            </button>
+                            <span id="plantilla_nombre_label" class="text-secondary small fst-italic">
+                                Ningún archivo seleccionado
+                            </span>
+                        </div>
+                        <div class="form-text mt-2">
+                            Navega el servidor corporativo para seleccionar el fichero .docx de la plantilla.
+                            {% if modo == 'editar' %}Si no seleccionas ninguno, se conserva el fichero actual.{% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                {# Bloque: Contexto Python avanzado #}
+                <div class="card mb-4">
+                    <div class="card-header fw-semibold">
+                        <i class="fas fa-code me-1"></i> Contexto Python avanzado
+                        <span class="badge bg-secondary ms-2" style="font-weight:400">Opcional — Capa 2</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-0">
+                            <label for="contexto_clase" class="form-label fw-semibold">Clase Context Builder</label>
+                            <input type="text" class="form-control font-monospace"
+                                   id="contexto_clase" name="contexto_clase"
+                                   value="{{ plantilla.contexto_clase if plantilla and plantilla.contexto_clase else '' }}"
+                                   placeholder="RequerimientoSubsanacion">
+                            <div class="form-text">
+                                Nombre de clase Python en <code>app/services/context_builders/</code>.
+                                Dejar vacío si la plantilla solo usa campos base (Capa 1).
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {# Bloque: Estado #}
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox"
+                                   id="activo" name="activo" role="switch"
+                                   {% if plantilla is none or plantilla.activo %}checked{% endif %}>
+                            <label class="form-check-label fw-semibold" for="activo">
+                                Plantilla activa
+                            </label>
+                        </div>
+                        <div class="form-text">
+                            Las plantillas inactivas no se muestran en la tarea REDACTAR,
+                            pero se conservan para histórico.
+                        </div>
+                    </div>
+                </div>
+
+                {# Botones de acción #}
+                <div class="d-flex gap-2 mb-5">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-1"></i>
+                        {% if modo == 'editar' %}Guardar cambios{% else %}Registrar plantilla{% endif %}
+                    </button>
+                    <a href="{{ url_for('admin_plantillas.listado') }}" class="btn btn-outline-secondary">
+                        Cancelar
+                    </a>
+                </div>
+
+            </div>{# fin col-lg-7 #}
+
+            {# ── Columna derecha: panel de tokens ── #}
+            <div class="col-lg-5">
+                <div class="sticky-top" style="top: 1rem; z-index: 100">
+                    {% include 'admin_plantillas/_panel_tokens.html' %}
+                </div>
+            </div>
+
+        </div>{# fin row #}
+    </form>
+</div>
+
+{# ============================================================ #}
+{# Modal: Explorador de servidor restringido a PLANTILLAS_BASE  #}
+{# ============================================================ #}
+<div class="modal fade" id="modal-explorador-plantillas" tabindex="-1"
+     aria-labelledby="modal-exp-pl-label">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modal-exp-pl-label">
+          <i class="fas fa-server me-1"></i> Seleccionar plantilla del servidor
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <nav class="small mb-2" id="exp-pl-breadcrumb">
+          <span class="text-secondary">Cargando…</span>
+        </nav>
+        <div class="alert alert-danger d-none small py-2" id="exp-pl-error"></div>
+        <table class="table table-sm table-hover mb-0">
+          <tbody id="exp-pl-tbody"></tbody>
+        </table>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary"
+                data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-primary" id="exp-pl-btn-seleccionar"
+                disabled onclick="confirmarSeleccionPlantilla()">
+          <i class="fas fa-check me-1"></i> Seleccionar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // -----------------------------------------------------------------------
+    // Explorador de plantillas del servidor
+    // -----------------------------------------------------------------------
+    (function () {
+        'use strict';
+
+        var URL_FS = "{{ url_for('admin_plantillas.api_explorador_fs') }}";
+        var _modal_bs = null;
+        var _seleccionado = null;   // {ruta, nombre}
+
+        document.addEventListener('DOMContentLoaded', function () {
+            var el = document.getElementById('modal-explorador-plantillas');
+            _modal_bs = new bootstrap.Modal(el);
+            el.addEventListener('show.bs.modal', function () {
+                _seleccionado = null;
+                document.getElementById('exp-pl-btn-seleccionar').disabled = true;
+                cargarCarpeta('');
+            });
+        });
+
+        window.abrirExploradorPlantillas = function () {
+            _modal_bs.show();
+        };
+
+        window.confirmarSeleccionPlantilla = function () {
+            if (!_seleccionado) return;
+            document.getElementById('ruta_plantilla').value = _seleccionado.ruta;
+            var label = document.getElementById('plantilla_nombre_label');
+            label.textContent = _seleccionado.nombre;
+            label.classList.remove('text-secondary', 'fst-italic');
+            label.classList.add('fw-semibold');
+            _modal_bs.hide();
+        };
+
+        function cargarCarpeta(ruta) {
+            var qs = ruta ? '?ruta=' + encodeURIComponent(ruta) : '';
+            fetch(URL_FS + qs)
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (!data.ok) {
+                        mostrarError(data.error || 'Error al cargar');
+                        return;
+                    }
+                    ocultarError();
+                    renderBreadcrumb(data.partes);
+                    renderTabla(data.directorios, data.ficheros);
+                    _seleccionado = null;
+                    document.getElementById('exp-pl-btn-seleccionar').disabled = true;
+                })
+                .catch(function () { mostrarError('Error de red'); });
+        }
+
+        function renderBreadcrumb(partes) {
+            var nav = document.getElementById('exp-pl-breadcrumb');
+            var html = '<a href="#" class="text-decoration-none" onclick="expPlNavegar(\'\');return false;">Inicio</a>';
+            var acum = [];
+            partes.forEach(function (p, i) {
+                acum.push(p);
+                var ruta = acum.join('/');
+                if (i === partes.length - 1) {
+                    html += ' / <span class="fw-semibold">' + p + '</span>';
+                } else {
+                    html += ' / <a href="#" class="text-decoration-none" onclick="expPlNavegar(\'' + ruta + '\');return false;">' + p + '</a>';
+                }
+            });
+            nav.innerHTML = html;
+        }
+
+        function renderTabla(dirs, files) {
+            var tbody = document.getElementById('exp-pl-tbody');
+            var html = '';
+            dirs.forEach(function (d) {
+                html += '<tr style="cursor:pointer" onclick="expPlNavegar(\'' + d.ruta.replace(/'/g, "\\'") + '\')">'
+                      + '<td><i class="fas fa-folder text-warning me-2"></i>' + d.nombre + '</td>'
+                      + '<td class="text-secondary small text-end">Carpeta</td>'
+                      + '</tr>';
+            });
+            files.forEach(function (f) {
+                var kb = (f.tamano / 1024).toFixed(1) + ' KB';
+                html += '<tr style="cursor:pointer" class="exp-pl-fila-doc" onclick="expPlSeleccionar(\'' + f.ruta.replace(/'/g, "\\'") + '\',\'' + f.nombre.replace(/'/g, "\\'") + '\')">'
+                      + '<td><i class="fas fa-file-word text-primary me-2"></i>' + f.nombre + '</td>'
+                      + '<td class="text-secondary small text-end">' + kb + '</td>'
+                      + '</tr>';
+            });
+            if (!html) {
+                html = '<tr><td colspan="2" class="text-secondary small text-center py-3">Carpeta vacía</td></tr>';
+            }
+            tbody.innerHTML = html;
+        }
+
+        window.expPlNavegar = function (ruta) { cargarCarpeta(ruta); };
+
+        window.expPlSeleccionar = function (ruta, nombre) {
+            // Resaltar fila activa
+            document.querySelectorAll('.exp-pl-fila-doc').forEach(function (tr) {
+                tr.classList.remove('table-active');
+            });
+            event.currentTarget.classList.add('table-active');
+            _seleccionado = {ruta: ruta, nombre: nombre};
+            document.getElementById('exp-pl-btn-seleccionar').disabled = false;
+        };
+
+        function mostrarError(msg) {
+            var el = document.getElementById('exp-pl-error');
+            el.textContent = msg;
+            el.classList.remove('d-none');
+        }
+
+        function ocultarError() {
+            document.getElementById('exp-pl-error').classList.add('d-none');
+        }
+    })();
+
+    // Autoformato código: convierte a MAYÚSCULAS mientras escribe
+    document.getElementById('codigo').addEventListener('input', function () {
+        const pos = this.selectionStart;
+        this.value = this.value.toUpperCase().replace(/[^A-Z0-9_]/g, '_');
+        this.setSelectionRange(pos, pos);
+    });
+
+    // -----------------------------------------------------------------------
+    // Selectores en cascada ESFTT
+    // -----------------------------------------------------------------------
+    const URL_SOL  = "{{ url_for('admin_plantillas.api_tipos_solicitud') }}";
+    const URL_FASE = "{{ url_for('admin_plantillas.api_tipos_fase') }}";
+    const URL_TRAM = "{{ url_for('admin_plantillas.api_tipos_tramite') }}";
+
+    const selExp  = document.getElementById('tipo_expediente_id');
+    const selSol  = document.getElementById('tipo_solicitud_id');
+    const selFase = document.getElementById('tipo_fase_id');
+    const selTram = document.getElementById('tipo_tramite_id');
+    const toggle  = document.getElementById('toggle-solo-aplicables');
+
+    function filtrarActivo() { return toggle.checked; }
+
+    async function fetchOpciones(url, params) {
+        const qs = new URLSearchParams(params).toString();
+        const resp = await fetch(url + (qs ? '?' + qs : ''));
+        if (!resp.ok) return null;
+        return resp.json();
+    }
+
+    function reconstruirSelect(sel, opciones, placeholder) {
+        const valActual = sel.value;
+        sel.innerHTML = '<option value="">' + placeholder + '</option>';
+        for (const d of opciones) {
+            const opt = document.createElement('option');
+            opt.value = d.id;
+            opt.textContent = d.texto;
+            if (String(d.id) === String(valActual)) opt.selected = true;
+            sel.appendChild(opt);
+        }
+    }
+
+    // Actualiza los tres selectores dependientes a partir del nivel indicado.
+    // desde=1 → recalcula S, F y T; desde=2 → recalcula F y T; desde=3 → recalcula T.
+    async function actualizarCascada(desde) {
+        const filtrar = filtrarActivo() ? '1' : '0';
+
+        if (desde <= 1) {
+            const params = (filtrar === '1' && selExp.value)
+                ? { tipo_expediente_id: selExp.value, filtrar: '1' }
+                : {};
+            const data = await fetchOpciones(URL_SOL, params);
+            if (data) reconstruirSelect(selSol, data, '— Cualquier solicitud —');
+        }
+
+        if (desde <= 2) {
+            const params = (filtrar === '1' && selSol.value)
+                ? { tipo_solicitud_id: selSol.value, filtrar: '1' }
+                : {};
+            const data = await fetchOpciones(URL_FASE, params);
+            if (data) reconstruirSelect(selFase, data, '— Cualquier fase —');
+        }
+
+        if (desde <= 3) {
+            const params = (filtrar === '1' && selFase.value)
+                ? { tipo_fase_id: selFase.value, filtrar: '1' }
+                : {};
+            const data = await fetchOpciones(URL_TRAM, params);
+            if (data) reconstruirSelect(selTram, data, '— Cualquier trámite —');
+        }
+    }
+
+    // Al cambiar E: si toggle ON, recascada desde S
+    selExp.addEventListener('change', () => {
+        if (filtrarActivo()) actualizarCascada(1);
+    });
+    // Al cambiar S: si toggle ON, recascada desde F
+    selSol.addEventListener('change', () => {
+        if (filtrarActivo()) actualizarCascada(2);
+    });
+    // Al cambiar F: si toggle ON, recascada desde T
+    selFase.addEventListener('change', () => {
+        if (filtrarActivo()) actualizarCascada(3);
+    });
+    // Al cambiar toggle: recascada completa (filtrar=1 aplica filtro, filtrar=0 restaura todo)
+    toggle.addEventListener('change', () => actualizarCascada(1));
+</script>
+{% endblock %}

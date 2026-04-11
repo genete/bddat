@@ -3,7 +3,7 @@
  * 
  * Sistema de tabs para panel detalle Vista V3.
  * 
- * FASE 1: Funcionalidad básica implementada en template
+ * DEPRECADO — sustituido por vista breadcrumbs. Pendiente mover a legacy/ (#275 M4)
  * FASE 3: Implementar lógica completa:
  * - Lazy loading de contenido
  * - Estado activo persistente

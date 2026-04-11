@@ -1,0 +1,19 @@
+/* entrada_fecha.css — solo estructura, sin colores ni tipografía */
+
+.ef-wrap { position: relative; }
+.ef-wrap .ef-input { padding-right: 2rem; }
+.ef-wrap .ef-btn-x {
+  position: absolute;
+  right: 0.5rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: #adb5bd;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0 0.2rem;
+  cursor: pointer;
+  display: none;
+}
+.ef-wrap .ef-btn-x:hover { color: #212529; }

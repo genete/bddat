@@ -13,55 +13,28 @@
 {% endblock %}
 
 {% block filtros_extra %}
-<select aria-label="Filtrar por estado">
-    <option value="">Activo: Todos</option>
-    <option value="true">Activas</option>
-    <option value="false">Inactivas</option>
-</select>
+<div id="sf-activo"></div>
 {% endblock %}
 
 {% block tabla_clase %}entidades-table{% endblock %}
 
-{% block thead_cols %}
-<th>Nombre / Razón Social</th>
-<th>NIF</th>
-<th>Roles</th>
-<th>Activo</th>
-<th></th>
-{% endblock %}
-
 {% block extra_js %}
 {{ super() }}
 <script>
+    new SelectorFiltro('#sf-activo', [
+        { v: 'true',  t: 'Activas'   },
+        { v: 'false', t: 'Inactivas' }
+    ], { label: 'Activo', name: 'activo' });
+
     const scrollInfinito = new ScrollInfinito({
         apiUrl:      '{{ url_for("api_entidades.listar_entidades") }}',
         tableClass:  '.entidades-table',
         entityLabel: 'entidades',
         detailUrl:   id => `/entidades/${id}`,
-        columns: [
-            { key: 'nombre_completo', label: 'Nombre / Razón Social', type: 'text'     },
-            { key: 'nif',             label: 'NIF',                   type: 'text'     },
-            { key: 'roles',           label: 'Roles',                 type: 'text'     },
-            { key: 'activo',          label: 'Activo',                type: 'bool'     },
-            { key: '_acciones',       label: '',                      type: 'acciones' }
-        ]
+        columns:     {{ columns | tojson }}
     });
 
-    // Botones filtrar / limpiar (genéricos, sin FiltrosExpedientes)
-    document.querySelector('.btn-filtrar').addEventListener('click', () => scrollInfinito.reload());
-    document.querySelector('.btn-limpiar').addEventListener('click', () => {
-        document.querySelector('input[type="search"]').value = '';
-        document.querySelector('.filters select').value = '';
-        scrollInfinito.reload();
-    });
-
-    // Búsqueda en tiempo real con debounce
-    let debounceTimer;
-    document.querySelector('input[type="search"]').addEventListener('input', () => {
-        clearTimeout(debounceTimer);
-        debounceTimer = setTimeout(() => scrollInfinito.reload(), 400);
-    });
-
+    const filtros = new FiltrosListado(scrollInfinito);
     console.log('Listado de entidades v2 inicializado');
 </script>
 {% endblock %}

@@ -9,17 +9,8 @@
  */
 
 /* ===== PAGE HEADER ===== */
-.page-header {
-  padding-top: 2rem;
-  padding-bottom: 1rem;
-}
-
-.page-header h1 {
-  margin-bottom: 0.5rem;
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
+/* El padding y altura los gestiona lista-cabecera (v2-components) + .page-header (v2-layout).
+   Solo se sobreescribe lo específico del dashboard. */
 
 .page-header h1 i {
   color: var(--primary);

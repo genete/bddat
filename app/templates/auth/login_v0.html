@@ -1,6 +1,6 @@
 {% extends "layout/base_login.html" %}
 
-{% block title %}Iniciar Sesión{% endblock %}
+{% block title %}Iniciar sesión{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/v0-login.css') }}">
@@ -60,13 +60,13 @@
                         </a>
                     </li>
                     <li>
-                        <a href="mailto:soporte.bddat@juntadeandalucia.es">
+                        <a href="#">
                             <i class="fas fa-envelope"></i>
-                            Contactar con soporte técnico
+                            Contactar con soporte técnico (próximamente)
                         </a>
                     </li>
                     <li>
-                        <a href="#" target="_blank">
+                        <a href="#">
                             <i class="fas fa-book"></i>
                             Manual de usuario (Próximamente)
                         </a>
@@ -96,54 +96,63 @@
                 <p>Introduce tus credenciales para acceder</p>
             </div>
             
-            <!-- Mensajes flash (errores/éxito) -->
-            {% with messages = get_flashed_messages(with_categories=true) %}
-                {% if messages %}
-                    {% for category, message in messages %}
-                    <div class="alert alert-{{ category }}" role="alert">
-                        {{ message }}
-                    </div>
-                    {% endfor %}
-                {% endif %}
-            {% endwith %}
-            
             <!-- Formulario -->
             <form method="POST" action="{{ url_for('auth.login') }}" class="login-form">
-                <!-- Campo: Siglas de Usuario -->
+                {% if roles %}
+                <!-- Segunda pasada: credenciales ya verificadas, solo elegir rol -->
+                <div class="text-center mb-3 p-3 rounded"
+                     style="background: var(--primary-lighter);">
+                    <i class="fas fa-check-circle me-1" style="color: var(--primary);"></i>
+                    <strong style="color: var(--primary);">{{ siglas }}</strong>
+                    <span class="text-secondary small d-block mt-1">Credenciales verificadas</span>
+                </div>
+                <div class="form-group">
+                    <label for="rol_id" class="form-label">
+                        <i class="fas fa-user-tag"></i>
+                        Rol de trabajo
+                    </label>
+                    <select class="form-select" id="rol_id" name="rol_id" required>
+                        {% for rol in roles %}
+                        <option value="{{ rol.id }}">{{ rol.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                    <div class="form-text">Selecciona el rol con el que deseas trabajar en esta sesión.</div>
+                </div>
+                {% else %}
+                <!-- Primera pasada: introducir credenciales -->
                 <div class="form-group">
                     <label for="siglas" class="form-label">
                         <i class="fas fa-user"></i>
                         Siglas de Usuario
                     </label>
-                    <input 
-                        type="text" 
-                        class="form-control" 
-                        id="siglas" 
-                        name="siglas" 
-                        placeholder="Ej: ADMIN, CLOPEZ..." 
-                        required 
+                    <input
+                        type="text"
+                        class="form-control"
+                        id="siglas"
+                        name="siglas"
+                        placeholder="Ej: ADMIN, CLOPEZ..."
+                        required
                         autofocus
                         autocomplete="username"
                     >
                 </div>
-                
-                <!-- Campo: Contraseña -->
                 <div class="form-group">
                     <label for="password" class="form-label">
-                        <i class="fas fa-lock"></i>
+                        <i class="fas fa-key"></i>
                         Contraseña
                     </label>
-                    <input 
-                        type="password" 
-                        class="form-control" 
-                        id="password" 
-                        name="password" 
-                        placeholder="Introduce tu contraseña" 
+                    <input
+                        type="password"
+                        class="form-control"
+                        id="password"
+                        name="password"
+                        placeholder="Introduce tu contraseña"
                         required
                         autocomplete="current-password"
                     >
                 </div>
-                
+                {% endif %}
+
                 <!-- Botón Entrar -->
                 <button type="submit" class="btn-login">
                     <i class="fas fa-sign-in-alt"></i>

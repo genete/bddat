@@ -1,47 +1,48 @@
 {% extends 'layout/base_fullwidth.html' %}
 
-{% block title %}Tramitación - EXP-{{ expediente.numero_at }}{% endblock %}
+{% block title %}Tramitación AT-{{ expediente.numero_at }} - BDDAT{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/v3-tramitacion.css') }}">
+{% endblock %}
+
+{% block breadcrumb %}
+<a href="{{ url_for('dashboard.index') }}">Inicio</a>
+<span>›</span>
+<a href="{{ url_for('expedientes.listado_v2') }}">Expedientes</a>
+<span>›</span>
+<a href="{{ url_for('expedientes.detalle', id=expediente.id) }}">AT-{{ expediente.numero_at }}</a>
+<span>›</span>
+<span>Tramitación</span>
+{% endblock %}
+
+{% from 'macros/page_header.html' import page_header %}
 
 {% block content %}
-<div style="width: 95%; max-width: 95%; margin: 0 auto; padding-top: 1.5rem;">
-    <div class="mb-3">
-        <div class="d-flex align-items-center justify-content-between mb-2">
-            <h2 class="mb-0">Vista 3 - Navegación Jerárquica</h2>
-            <a href="{{ url_for('expedientes.detalle', id=expediente.id) }}" class="btn btn-sm btn-outline-secondary">
-                <i class="fas fa-arrow-left me-1"></i> Volver al detalle
-            </a>
-        </div>
-        <nav aria-label="breadcrumb">
-            <ol class="breadcrumb mb-0" id="breadcrumb-list">
-                <li class="breadcrumb-item active" aria-current="page">Expediente AT-{{ expediente.numero_at }}</li>
-            </ol>
-        </nav>
-        <hr>
-    </div>
-    
-    {# Contenedor dinámico donde se renderiza el stack #}
-    <div id="vista3-container" class="accordion">
-        {# Nivel 0 inicial: Solo expediente #}
-        {% include 'vistas/vista3/_expediente_body.html' %}
-        
-        {# Acordeón inicial de solicitudes (colapsado) #}
-        <div class="accordion-item">
-            <h2 class="accordion-header" id="heading-solicitudes-init">
-                <button class="accordion-button collapsed" 
-                        type="button"
-                        onclick="expandSolicitudes()">
-                    <i class="bi bi-file-earmark-text"></i>
-                    &nbsp;Solicitudes
-                </button>
-            </h2>
-        </div>
+{# C.1: Cabecera fija — expediente + acciones #}
+<div class="lista-cabecera">
+    {% call page_header('Expediente', 'fas fa-folder-open', title_accent='AT-' ~ expediente.numero_at) %}
+        <a href="{{ url_for('expedientes.detalle', id=expediente.id) }}"
+           class="btn btn-sm btn-outline-primary">
+            <i class="fas fa-arrow-left me-1"></i> Volver al detalle
+        </a>
+    {% endcall %}
+</div>
+
+{# C.2: Contenido con scroll — tabs 4 niveles #}
+<div class="lista-scroll-container p-3">
+    <div class="tabs-nivel-1" data-tabs-nivel="solicitud" data-parent-id="{{ expediente.id }}">
+        {% include 'vistas/vista3/_tabs_solicitudes.html' %}
     </div>
 </div>
 
-<script src="{{ url_for('static', filename='js/vista3_navigation.js') }}"></script>
-<script>
-// Inicializar con expediente ID
-const EXPEDIENTE_ID = {{ expediente.id }};
-initVista3(EXPEDIENTE_ID);
-</script>
+{# Modales de creación (uno por nivel) #}
+{% include 'vistas/vista3/_modal_nueva_solicitud.html' %}
+{% include 'vistas/vista3/_modal_nueva_fase.html' %}
+{% include 'vistas/vista3/_modal_nuevo_tramite.html' %}
+{% include 'vistas/vista3/_modal_nueva_tarea.html' %}
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/v3-tabs-main.js') }}"></script>
 {% endblock %}

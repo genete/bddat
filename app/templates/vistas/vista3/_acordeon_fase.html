@@ -1,0 +1,109 @@
+{# Acordeón de fase — devuelto por GET /api/vista3/solicitud/<id>/fases  #}
+{# Recibe: fase_data (dict del helper _get_fases_con_stats)               #}
+<div class="accordion-item"
+     data-endpoint="/api/vista3/fase/{{ fase_data.obj.id }}/tramites"
+     data-loaded="false">
+    <h2 class="accordion-header with-actions">
+        <button class="accordion-button collapsed"
+                type="button"
+                data-bs-toggle="collapse"
+                data-bs-target="#fase-{{ fase_data.obj.id }}"
+                aria-expanded="false"
+                aria-controls="fase-{{ fase_data.obj.id }}">
+            <span class="badge bg-warning text-dark me-2">{{ fase_data.estado }}</span>
+            <span class="fw-semibold">{{ fase_data.nombre }}</span>
+            <span class="ms-3 small">
+                Trámites: {{ fase_data.tramites_completados }}/{{ fase_data.total_tramites }}
+                {% if fase_data.obj.fecha_inicio %}
+                &middot; {{ fase_data.obj.fecha_inicio.strftime('%d/%m/%Y') }}
+                {% if fase_data.obj.fecha_fin %}→ {{ fase_data.obj.fecha_fin.strftime('%d/%m/%Y') }}{% endif %}
+                {% endif %}
+            </span>
+        </button>
+        <button class="btn btn-sm btn-outline-secondary btn-accion-header px-2"
+                type="button"
+                data-bs-toggle="modal"
+                data-bs-target="#modal-editar-fase-{{ fase_data.obj.id }}"
+                title="Editar fase">
+            <i class="fas fa-pencil-alt"></i>
+        </button>
+    </h2>
+    <div id="fase-{{ fase_data.obj.id }}" class="accordion-collapse collapse">
+        <div class="accordion-body">
+            {# Detalle de la fase #}
+            <div class="detalle-bloque mb-3">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p class="mb-1"><strong>Inicio:</strong>
+                            {{ fase_data.obj.fecha_inicio.strftime('%d/%m/%Y') if fase_data.obj.fecha_inicio else 'Pendiente' }}
+                        </p>
+                        <p class="mb-1"><strong>Fin:</strong>
+                            {{ fase_data.obj.fecha_fin.strftime('%d/%m/%Y') if fase_data.obj.fecha_fin else 'En curso' }}
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        {% if fase_data.obj.resultado_fase %}
+                        <p class="mb-1"><strong>Resultado:</strong>
+                            {{ fase_data.obj.resultado_fase.nombre }}
+                        </p>
+                        {% endif %}
+                        {% if fase_data.obj.observaciones %}
+                        <p class="mb-1"><strong>Obs:</strong>
+                            {{ fase_data.obj.observaciones[:120] }}
+                        </p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {# Hijos — el JS inyecta aquí los acordeones de trámites al expandir #}
+            <div class="hijos-container accordion vista3-acordeon"
+                 id="tramites-fase-{{ fase_data.obj.id }}"></div>
+        </div>
+    </div>
+</div>
+
+{# Modal edición fase #}
+<div class="modal fade" id="modal-editar-fase-{{ fase_data.obj.id }}" tabindex="-1"
+     data-sftt-tipo="fase" data-sftt-id="{{ fase_data.obj.id }}">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Editar Fase — {{ fase_data.nombre }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form class="form-editar-sftt">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Fecha inicio</label>
+                        <input type="date" class="form-control" name="fecha_inicio"
+                               value="{{ fase_data.obj.fecha_inicio.strftime('%Y-%m-%d') if fase_data.obj.fecha_inicio else '' }}">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Fecha fin</label>
+                        <input type="date" class="form-control" name="fecha_fin"
+                               value="{{ fase_data.obj.fecha_fin.strftime('%Y-%m-%d') if fase_data.obj.fecha_fin else '' }}">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Resultado</label>
+                        <select class="form-select" name="resultado_fase_id">
+                            <option value="">— Sin resultado —</option>
+                            {% for rf in resultados_fase %}
+                            <option value="{{ rf.id }}" {{ 'selected' if fase_data.obj.resultado_fase_id == rf.id }}>{{ rf.nombre }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Observaciones</label>
+                        <textarea class="form-control" name="observaciones" rows="3">{{ fase_data.obj.observaciones or '' }}</textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary btn-guardar-sftt">
+                    <i class="fas fa-save me-1"></i> Guardar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

@@ -2,16 +2,16 @@
 
 {% block title %}Nuevo Expediente &mdash; Paso 2{% endblock %}
 
+{% block breadcrumb %}
+<a href="{{ url_for('dashboard.index') }}">Inicio</a>
+<span>›</span>
+<a href="{{ url_for('expedientes.listado_v2') }}">Expedientes</a>
+<span>›</span>
+<span>Nuevo — Paso 2 de 3</span>
+{% endblock %}
+
 {% block content %}
 <div class="container-fluid py-4">
-
-    <nav aria-label="breadcrumb" class="mb-3">
-        <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="{{ url_for('dashboard.index') }}">Inicio</a></li>
-            <li class="breadcrumb-item"><a href="{{ url_for('expedientes.listado_v2') }}">Expedientes</a></li>
-            <li class="breadcrumb-item active">Nuevo &mdash; Paso 2 de 3</li>
-        </ol>
-    </nav>
 
     <div class="d-flex align-items-center mb-4 gap-3">
         <h1 class="h3 mb-0">
@@ -77,13 +77,13 @@
 
                         <div class="row">
                             <div class="col-md-4 mb-3">
-                                <label for="fecha" class="form-label fw-semibold">
+                                <label class="form-label fw-semibold">
                                     Fecha del proyecto <span class="text-danger">*</span>
                                 </label>
-                                <input type="date" id="fecha" name="fecha"
-                                       class="form-control"
-                                       value="{{ paso2.get('fecha', '') }}"
-                                       required>
+                                {# Componente EntradaFecha — construye su propio HTML internamente.
+                                   El error se valida a mano en JS porque el form usa novalidate. #}
+                                <div id="ef-fecha"></div>
+                                <div id="ef-fecha-error" class="text-danger small mt-1" style="display:none">Campo obligatorio.</div>
                                 <div class="form-text">Fecha de firma/visado.</div>
                             </div>
                             <div class="col-md-8 mb-3">
@@ -137,9 +137,9 @@
 
                                 {# Lista de municipios ya añadidos #}
                                 <div>
-                                    <p class="small text-muted mb-2">Municipios seleccionados:</p>
+                                    <p class="small mb-2">Municipios seleccionados:</p>
                                     <div id="municipios-seleccionados" class="d-flex flex-wrap gap-2">
-                                        <span class="text-muted small">Ninguno añadido todavía.</span>
+                                        <span class="text-secondary small">Ninguno añadido todavía.</span>
                                     </div>
                                 </div>
 
@@ -178,10 +178,12 @@
 
 {% block extra_css %}{{ super() }}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/selector_busqueda.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/entrada_fecha.css') }}">
 {% endblock %}
 
 {% block extra_js %}
 <script src="{{ url_for('static', filename='js/selector_busqueda.js') }}"></script>
+<script src="{{ url_for('static', filename='js/entrada_fecha.js') }}"></script>
 <script>
 (function () {
     'use strict';
@@ -190,6 +192,11 @@
     const badgesDiv = document.getElementById('municipios-seleccionados');
     const hiddenDiv = document.getElementById('municipios-hidden-inputs');
     const errorDiv  = document.getElementById('municipios-error');
+
+    // ── EntradaFecha ──
+    const efFecha = new EntradaFecha('#ef-fecha', { name: 'fecha' });
+    {% if paso2.get('fecha') %}efFecha.setValue('{{ paso2.get("fecha") }}');{% endif %}
+    const efFechaError = document.getElementById('ef-fecha-error');
 
     // ── Selector de municipio (se habilita al seleccionar provincia) ──
     const muniSelector = new SelectorBusqueda('#wp2-municipio', [], {
@@ -218,8 +225,8 @@
         }
     });
 
-    // Cargar provincias desde API al inicio
-    fetch('/api/provincias')
+    // Cargar provincias desde API al inicio (solo Andalucía: instalaciones AT de la Junta)
+    fetch('/api/provincias?solo_andalucia=true')
         .then(r => r.json())
         .then(lista => provSelector.setOpciones(lista.map(n => ({ v: n, t: n }))))
         .catch(e => console.error('Error cargando provincias:', e));
@@ -242,7 +249,7 @@
         hiddenDiv.innerHTML = '';
         const ids = Object.keys(municipiosSeleccionados);
         if (!ids.length) {
-            badgesDiv.innerHTML = '<span class="text-muted small">Ninguno añadido todavía.</span>';
+            badgesDiv.innerHTML = '<span class="text-secondary small">Ninguno añadido todavía.</span>';
             return;
         }
         ids.forEach(id => {
@@ -262,11 +269,24 @@
 
     // ── Validación pre-submit ──
     document.getElementById('form-paso2').addEventListener('submit', function (e) {
-        if (!Object.keys(municipiosSeleccionados).length) {
-            e.preventDefault();
-            errorDiv.style.display = 'block';
-            provSelector._input.focus();
+        let ok = true;
+
+        if (!efFecha.getValue()) {
+            efFechaError.style.display = 'block';
+            ok = false;
+        } else {
+            efFechaError.style.display = 'none';
         }
+
+        if (!Object.keys(municipiosSeleccionados).length) {
+            errorDiv.style.display = 'block';
+            if (ok) provSelector._input.focus();
+            ok = false;
+        } else {
+            errorDiv.style.display = 'none';
+        }
+
+        if (!ok) e.preventDefault();
     });
 
     function escapeHtml(s) {

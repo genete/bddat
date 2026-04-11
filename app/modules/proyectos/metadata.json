@@ -12,5 +12,15 @@
   "navigation": {
     "label": "Proyectos",
     "route": "proyectos.index"
+  },
+  "listado_v2": {
+    "columns": [
+      { "key": "expediente_codigo", "label": "N\u00b0 Expediente",      "type": "text"     },
+      { "key": "titulo",            "label": "T\u00edtulo del Proyecto", "type": "text"     },
+      { "key": "tipo_ia",           "label": "Instr. Ambiental",         "type": "text"     },
+      { "key": "responsable",       "label": "Responsable",              "type": "text"     },
+      { "key": "fecha",             "label": "Fecha",                    "type": "text"     },
+      { "key": "_acciones",         "label": "Acciones",                 "type": "acciones" }
+    ]
   }
 }

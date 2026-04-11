@@ -1,7 +1,182 @@
 <footer class="app-footer">
-    <div>© 2026 Junta de Andalucía - BDDAT</div>
+    <div>© 2026 Junta de Andalucía · BDDAT</div>
     <div>
-        <a href="#">Ayuda</a> · 
-        <a href="#">Contacto</a>
+        <a href="#" data-bs-toggle="modal" data-bs-target="#modal-acerca-de">Acerca de</a>
     </div>
 </footer>
+
+<!-- Modal Acerca de -->
+<div class="modal fade" id="modal-acerca-de" tabindex="-1"
+     aria-labelledby="modal-acerca-de-label" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+
+            {# MEJORA FUTURA — Identidad corporativa del header del modal:
+               - Sustituir estilos inline por clases CSS en v2-layout.css o custom.css
+               - Estudiar uso del escudo oficial de la Junta de Andalucía (SVG inline o CDN)
+               - Valorar integrar la fuente corporativa Myriad Pro si se hace disponible en CDN
+               - Revisar alineación con las guías de estilo de la Consejería cuando se publiquen
+                 como recurso técnico reutilizable (actualmente solo disponible vía CDN v1.2.5)
+            #}
+            <div class="modal-header border-0 pb-3"
+                 style="background: var(--bg-header); background-image: var(--gradient);
+                        border-radius: calc(var(--bs-modal-inner-border-radius) - 1px)
+                                       calc(var(--bs-modal-inner-border-radius) - 1px) 0 0;">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="fas fa-bolt fs-4" style="color: rgba(255,255,255,0.9);"></i>
+                    <div>
+                        <div style="font-size: 0.7rem; color: rgba(255,255,255,0.7);
+                                    letter-spacing: 0.05em; text-transform: uppercase;">
+                            Junta de Andalucía · Consejería de Industria, Energía y Minas
+                        </div>
+                        <h5 class="modal-title mb-0" id="modal-acerca-de-label"
+                            style="color: #fff; font-weight: 700;">BDDAT</h5>
+                        <small style="color: rgba(255,255,255,0.8);">
+                            Sistema de tramitación de expedientes · Alta Tensión · v0.3.3
+                        </small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-body pt-2">
+
+                <!-- Tabs -->
+                <ul class="nav nav-tabs mb-3" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="tab-aplicacion"
+                                data-bs-toggle="tab" data-bs-target="#pane-aplicacion"
+                                type="button" role="tab">
+                            <i class="bi bi-info-circle me-1"></i>Aplicación
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="tab-creditos"
+                                data-bs-toggle="tab" data-bs-target="#pane-creditos"
+                                type="button" role="tab">
+                            <i class="bi bi-award me-1"></i>Créditos
+                        </button>
+                    </li>
+                </ul>
+
+                <div class="tab-content">
+
+                    <!-- Tab: Aplicación -->
+                    <div class="tab-pane fade show active" id="pane-aplicacion"
+                         role="tabpanel">
+                        <p class="text-secondary small mb-4">
+                            Sistema de tramitación de expedientes de autorización de
+                            instalaciones de alta tensión. Desarrollado para la
+                            Consejería de Industria, Energía y Minas — Junta de Andalucía.
+                        </p>
+
+                        <div class="row g-3 small">
+                            <div class="col-sm-6">
+                                <h6 class="text-uppercase text-secondary fw-semibold small mb-1">
+                                    <i class="bi bi-server me-1"></i>Servidor
+                                </h6>
+                                <p class="text-secondary mb-0">
+                                    Aplicación web Python con framework Flask y ORM SQLAlchemy.
+                                    Plantillas Jinja2, migraciones con Alembic.
+                                </p>
+                            </div>
+                            <div class="col-sm-6">
+                                <h6 class="text-uppercase text-secondary fw-semibold small mb-1">
+                                    <i class="bi bi-database me-1"></i>Base de datos
+                                </h6>
+                                <p class="text-secondary mb-0">
+                                    PostgreSQL como motor relacional.
+                                    Generación de documentos Word con python-docx y docxtpl.
+                                </p>
+                            </div>
+                            <div class="col-sm-6">
+                                <h6 class="text-uppercase text-secondary fw-semibold small mb-1">
+                                    <i class="bi bi-palette me-1"></i>Interfaz
+                                </h6>
+                                <p class="text-secondary mb-0">
+                                    Bootstrap 5.3 con identidad visual corporativa
+                                    de la Junta de Andalucía (CDN oficial v1.2.5).
+                                </p>
+                            </div>
+                            <div class="col-sm-6">
+                                <h6 class="text-uppercase text-secondary fw-semibold small mb-1">
+                                    <i class="bi bi-journal-text me-1"></i>Datos normativos
+                                </h6>
+                                <p class="text-secondary mb-0">
+                                    Repositorio local de legislación consolidada
+                                    (legalize-es) con acceso a BOE y BOJA.
+                                </p>
+                            </div>
+                            <div class="col-12">
+                                <h6 class="text-uppercase text-secondary fw-semibold small mb-1">
+                                    <i class="bi bi-tools me-1"></i>Integraciones en desarrollo
+                                </h6>
+                                <p class="text-secondary mb-0">
+                                    Diagramas Mermaid.js, componentes React y
+                                    presentaciones Reveal.js.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tab: Créditos -->
+                    <div class="tab-pane fade" id="pane-creditos" role="tabpanel">
+
+                        <!-- Equipo -->
+                        <h6 class="text-uppercase text-secondary fw-semibold small mb-2">
+                            <i class="bi bi-people me-1"></i>Equipo
+                        </h6>
+                        <ul class="list-unstyled small mb-3">
+                            <li class="mb-1">
+                                <i class="bi bi-person-fill text-primary me-2"></i>
+                                <strong>Carlos López</strong> — Programador
+                            </li>
+                            <li class="mb-1">
+                                <i class="bi bi-stars text-primary me-2"></i>
+                                <strong>Claude</strong> (Anthropic) — Asistente IA
+                            </li>
+                            <li class="mb-1">
+                                <i class="bi bi-stars text-secondary me-2"></i>
+                                <strong>Perplexity AI</strong> — Asistente IA (etapas iniciales)
+                            </li>
+                        </ul>
+
+                        <!-- Software -->
+                        <h6 class="text-uppercase text-secondary fw-semibold small mb-2">
+                            <i class="bi bi-box-seam me-1"></i>Software utilizado
+                        </h6>
+                        <div class="d-flex flex-wrap gap-2 mb-3">
+                            {# TODO: lista plana de todo el software #}
+                        </div>
+
+                        <!-- Fuentes -->
+                        <h6 class="text-uppercase text-secondary fw-semibold small mb-2">
+                            <i class="bi bi-journal-bookmark me-1"></i>Fuentes
+                        </h6>
+                        <ul class="list-unstyled small mb-0">
+                            <li class="mb-1">
+                                <i class="bi bi-file-text text-primary me-2"></i>
+                                <strong>legalize-es</strong>
+                                <span class="text-secondary">
+                                    — Legislación española consolidada en Markdown,
+                                    versionada con Git ·
+                                    <strong>Enrique Lopez</strong> · <em>legalize.dev</em>
+                                    · Licencia MIT
+                                </span>
+                            </li>
+                        </ul>
+                    </div>
+
+                </div>
+            </div>
+
+            <div class="modal-footer border-0 pt-1">
+                <small class="text-secondary me-auto">
+                    © 2026 Junta de Andalucía · Consejería de Industria, Energía y Minas
+                </small>
+                <button type="button" class="btn btn-sm btn-secondary"
+                        data-bs-dismiss="modal">Cerrar</button>
+            </div>
+
+        </div>
+    </div>
+</div>

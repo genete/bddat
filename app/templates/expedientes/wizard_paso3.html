@@ -2,16 +2,16 @@
 
 {% block title %}Nuevo Expediente &mdash; Paso 3{% endblock %}
 
+{% block breadcrumb %}
+<a href="{{ url_for('dashboard.index') }}">Inicio</a>
+<span>›</span>
+<a href="{{ url_for('expedientes.listado_v2') }}">Expedientes</a>
+<span>›</span>
+<span>Nuevo — Paso 3 de 3</span>
+{% endblock %}
+
 {% block content %}
 <div class="container-fluid py-4">
-
-    <nav aria-label="breadcrumb" class="mb-3">
-        <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="{{ url_for('dashboard.index') }}">Inicio</a></li>
-            <li class="breadcrumb-item"><a href="{{ url_for('expedientes.listado_v2') }}">Expedientes</a></li>
-            <li class="breadcrumb-item active">Nuevo &mdash; Paso 3 de 3</li>
-        </ol>
-    </nav>
 
     <div class="d-flex align-items-center mb-4 gap-3">
         <h1 class="h3 mb-0">
@@ -35,10 +35,10 @@
                 <div class="card-body">
                     <form method="post" action="{{ url_for('wizard_expediente.paso3') }}" novalidate>
 
-                        {# --- Titular / solicitante --- #}
-                        <div class="mb-4">
+                        {# --- Titular --- #}
+                        <div class="mb-3">
                             <label class="form-label fw-semibold">
-                                Titular / Solicitante <span class="text-danger">*</span>
+                                Titular <span class="text-danger">*</span>
                             </label>
                             <div id="sb-titular"></div>
                             <div class="form-text">Solo entidades activas con rol Titular.</div>
@@ -47,53 +47,64 @@
                             </div>
                         </div>
 
+                        {# --- Toggle: solicitante distinto del titular --- #}
+                        <div id="toggle-solicitante-section" class="mb-3" style="display:none;">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="chk-solicitante-distinto">
+                                <label class="form-check-label" for="chk-solicitante-distinto">
+                                    El solicitante es distinto del titular
+                                </label>
+                            </div>
+                        </div>
+
+                        {# --- Selector de solicitante (solo si es distinto) --- #}
+                        <div id="solicitante-section" class="mb-4" style="display:none;">
+                            <label class="form-label fw-semibold">
+                                Solicitante <span class="text-danger">*</span>
+                            </label>
+                            <div id="sb-solicitante"></div>
+                            <div class="form-text">Solo entidades con autorización vigente para este titular.</div>
+                            <div id="aviso-sin-autorizados" class="alert alert-warning py-2 mt-2" style="display:none;">
+                                <i class="fas fa-exclamation-triangle me-1"></i>
+                                Este titular no tiene autorizados vigentes. Cree la autorización antes de continuar.
+                            </div>
+                            <div id="solicitante-error" class="text-danger small mt-1" style="display:none;">
+                                <i class="fas fa-exclamation-circle me-1"></i>Debe seleccionar un solicitante.
+                            </div>
+                        </div>
+
+                        {# Input hidden: solicitante final (titular o autorizado elegido) #}
+                        <input type="hidden" name="solicitante_id" id="solicitante-id-hidden">
+
                         {# --- Fecha solicitud --- #}
                         <div class="mb-4">
-                            <label for="fecha_solicitud" class="form-label fw-semibold">
+                            <label class="form-label fw-semibold">
                                 Fecha de solicitud <span class="text-danger">*</span>
                             </label>
-                            <input type="date" id="fecha_solicitud" name="fecha_solicitud"
-                                   class="form-control w-auto" required>
+                            {# Componente EntradaFecha — construye su propio HTML internamente.
+                               El error se valida a mano en JS porque el form usa novalidate. #}
+                            <div id="ef-fecha-solicitud"></div>
+                            <div id="ef-fecha-error" class="text-danger small mt-1" style="display:none">Campo obligatorio.</div>
                             <div class="form-text">Fecha oficial de presentación.</div>
                         </div>
 
-                        {# --- Tipos de solicitud --- #}
-                        <div class="mb-4" style="position:relative;">
-                            <label class="form-label fw-semibold">
-                                Tipo(s) de solicitud <span class="text-danger">*</span>
+                        {# --- Tipo de solicitud --- #}
+                        <div class="mb-4">
+                            <label for="tipo-solicitud-select" class="form-label fw-semibold">
+                                Tipo de solicitud <span class="text-danger">*</span>
                             </label>
-
-                            <div class="card bg-light border-0 p-3">
-                                {# Select nativo para añadir tipos #}
-                                <div class="mb-2">
-                                    <select id="tipos-select" class="form-select">
-                                        <option value="">— Añadir tipo de solicitud —</option>
-                                        {% for ts in tipos_solicitudes %}
-                                        <option value="{{ ts.id }}"
-                                                data-siglas="{{ ts.siglas }}"
-                                                data-descripcion="{{ ts.descripcion }}">
-                                            {{ ts.siglas }} &mdash; {{ ts.descripcion }}
-                                        </option>
-                                        {% endfor %}
-                                    </select>
-                                </div>
-
-                                {# Badges seleccionados #}
-                                <div>
-                                    <p class="small text-muted mb-2">Tipos seleccionados:</p>
-                                    <div id="tipos-seleccionados" class="d-flex flex-wrap gap-2">
-                                        <span class="text-muted small">Ninguno añadido todavía.</span>
-                                    </div>
-                                </div>
-                            </div>
-
+                            <select id="tipo-solicitud-select" name="tipo_solicitud_id"
+                                    class="form-select" required>
+                                <option value="">— Seleccione tipo de solicitud —</option>
+                                {% for ts in tipos_solicitudes %}
+                                <option value="{{ ts.id }}">
+                                    {{ ts.siglas }} &mdash; {{ ts.descripcion }}
+                                </option>
+                                {% endfor %}
+                            </select>
                             <div id="tipos-error" class="text-danger small mt-1" style="display:none;">
-                                <i class="fas fa-exclamation-circle me-1"></i>Debe seleccionar al menos un tipo.
+                                <i class="fas fa-exclamation-circle me-1"></i>Debe seleccionar un tipo.
                             </div>
-                            <div id="tipos-combo-error" class="text-danger small mt-1" style="display:none;">
-                                <i class="fas fa-exclamation-circle me-1"></i><span id="tipos-combo-msg"></span>
-                            </div>
-                            <div id="tipos-hidden-inputs"></div>
                         </div>
 
                         {# --- Observaciones --- #}
@@ -132,118 +143,135 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/selector_busqueda.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/entrada_fecha.css') }}">
 {% endblock %}
 
 {% block extra_js %}
 <script src="{{ url_for('static', filename='js/selector_busqueda.js') }}"></script>
+<script src="{{ url_for('static', filename='js/entrada_fecha.js') }}"></script>
 <script>
 (function () {
     'use strict';
 
+    // ── EntradaFecha ──
+    const efFecha = new EntradaFecha('#ef-fecha-solicitud', { name: 'fecha_solicitud' });
+    const efFechaError = document.getElementById('ef-fecha-error');
+
     // ------------------------------------------------------------------
-    // A) SelectorBusqueda para titular / entidad
+    // A) Selectores de titular y solicitante
     // ------------------------------------------------------------------
-    const entidadError = document.getElementById('entidad-error');
+    const entidadError      = document.getElementById('entidad-error');
+    const toggleSection     = document.getElementById('toggle-solicitante-section');
+    const chkDistinto       = document.getElementById('chk-solicitante-distinto');
+    const solicitanteSection = document.getElementById('solicitante-section');
+    const avisoSinAut       = document.getElementById('aviso-sin-autorizados');
+    const solicitanteError  = document.getElementById('solicitante-error');
+    const solicitanteHidden = document.getElementById('solicitante-id-hidden');
 
     const entidadSel = new SelectorBusqueda(
         '#sb-titular',
         {{ entidades_opts | tojson }},
         {
-            placeholder: '— Seleccione titular/solicitante —',
+            placeholder: '— Seleccione titular —',
             name: 'entidad_id',
             onChange: (v) => {
-                if (v) entidadError.style.display = 'none';
+                if (v) {
+                    entidadError.style.display = 'none';
+                    // Mostrar toggle y sincronizar solicitante_id con el titular por defecto
+                    toggleSection.style.display = '';
+                    solicitanteHidden.value = v;
+                } else {
+                    toggleSection.style.display = 'none';
+                    solicitanteHidden.value = '';
+                }
+                // Resetear sección solicitante al cambiar titular
+                chkDistinto.checked = false;
+                solicitanteSection.style.display = 'none';
+                solicitanteSel.clear();
+                avisoSinAut.style.display = 'none';
             }
         }
     );
 
-    // ------------------------------------------------------------------
-    // B) Selector de tipos de solicitud con badges acumulables
-    // ------------------------------------------------------------------
-    const tiposSeleccionados = {};  // { id: { siglas, descripcion } }
-
-    const tiposSelect     = document.getElementById('tipos-select');
-    const tiposDiv        = document.getElementById('tipos-seleccionados');
-    const tiposHidden     = document.getElementById('tipos-hidden-inputs');
-    const tiposError      = document.getElementById('tipos-error');
-    const tiposComboError = document.getElementById('tipos-combo-error');
-    const tiposComboMsg   = document.getElementById('tipos-combo-msg');
-
-    /** Renderiza los badges y los inputs hidden según tiposSeleccionados */
-    function renderBadges() {
-        tiposDiv.innerHTML = '';
-        tiposHidden.innerHTML = '';
-        const ids = Object.keys(tiposSeleccionados);
-        if (!ids.length) {
-            tiposDiv.innerHTML = '<span class="text-muted small">Ninguno añadido todavía.</span>';
-            return;
+    const solicitanteSel = new SelectorBusqueda(
+        '#sb-solicitante',
+        [],
+        {
+            placeholder: '— Seleccione solicitante —',
+            name: '_solicitante_display',   // no se envía al servidor; usa el hidden
+            onChange: (v) => {
+                solicitanteHidden.value = v || '';
+                if (v) solicitanteError.style.display = 'none';
+            }
         }
-        ids.forEach(id => {
-            const { siglas } = tiposSeleccionados[id];
+    );
 
-            // Badge visual con botón de eliminar
-            const span = document.createElement('span');
-            span.className = 'badge bg-primary d-inline-flex align-items-center gap-1 fs-6';
-            span.textContent = siglas;
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            btn.className = 'btn-close btn-close-white ms-1';
-            btn.style.cssText = 'font-size:0.6em;';
-            btn.setAttribute('aria-label', `Eliminar ${siglas}`);
-            btn.addEventListener('click', () => eliminarTipo(id));
-            span.appendChild(btn);
-            tiposDiv.appendChild(span);
-
-            // Input hidden para que llegue al backend
-            const inp = document.createElement('input');
-            inp.type  = 'hidden';
-            inp.name  = 'tipos_solicitud_ids[]';
-            inp.value = id;
-            tiposHidden.appendChild(inp);
-        });
+    /** Carga autorizados vigentes del titular desde la API y rellena el selector. */
+    function cargarAutorizados(titular_id) {
+        fetch(`/api/entidades/${titular_id}/autorizados`)
+            .then(r => r.json())
+            .then(json => {
+                // Filtrar el propio titular (ya está elegido arriba)
+                // Convertir {id, text} → {v, t} que espera SelectorBusqueda
+                const opciones = (json.data || [])
+                    .filter(o => o.id !== parseInt(titular_id, 10))
+                    .map(o => ({ v: String(o.id), t: o.text }));
+                if (!opciones.length) {
+                    // Sin autorizados: mostrar aviso y revertir toggle
+                    avisoSinAut.style.display = '';
+                    chkDistinto.checked = false;
+                    solicitanteSection.style.display = 'none';
+                    // Restaurar solicitante_id al titular
+                    solicitanteHidden.value = titular_id;
+                } else {
+                    avisoSinAut.style.display = 'none';
+                    solicitanteSel.setOpciones(opciones);
+                }
+            })
+            .catch(() => {
+                // Error de red: revertir toggle
+                chkDistinto.checked = false;
+                solicitanteSection.style.display = 'none';
+                solicitanteHidden.value = entidadSel.getValue() || '';
+            });
     }
 
-    function añadirTipo(id, siglas, descripcion) {
-        if (tiposSeleccionados[id]) return;  // ya está
-        tiposSeleccionados[id] = { siglas, descripcion };
-        renderBadges();
-        tiposError.style.display = 'none';
-    }
-
-    function eliminarTipo(id) {
-        delete tiposSeleccionados[id];
-        renderBadges();
-    }
-
-    // Al seleccionar en el <select>, añadir al badge list y resetear
-    tiposSelect.addEventListener('change', function () {
-        const opt = this.options[this.selectedIndex];
-        if (!opt.value) return;
-        añadirTipo(opt.value, opt.dataset.siglas, opt.dataset.descripcion);
-        this.value = '';  // resetear al placeholder
+    chkDistinto.addEventListener('change', function () {
+        if (this.checked) {
+            const tid = entidadSel.getValue();
+            if (!tid) { this.checked = false; return; }
+            solicitanteSection.style.display = '';
+            solicitanteSel.clear();
+            solicitanteHidden.value = '';
+            cargarAutorizados(tid);
+        } else {
+            solicitanteSection.style.display = 'none';
+            solicitanteSel.clear();
+            avisoSinAut.style.display = 'none';
+            // Solicitante vuelve a ser el titular
+            solicitanteHidden.value = entidadSel.getValue() || '';
+        }
     });
 
     // ------------------------------------------------------------------
-    // Placeholder de validación de combinaciones (Fase 3)
+    // B) Validación del selector de tipo de solicitud
     // ------------------------------------------------------------------
-    /**
-     * Placeholder para la regla de negocio de combinaciones válidas.
-     * En Fase 3 este método recibirá las reglas del motor de tramitación.
-     * Actualmente siempre devuelve { valido: true }.
-     *
-     * @param {string[]} siglasList - Array de siglas seleccionadas
-     * @returns {Object} Objeto con campos `valido` (boolean) y `mensaje` (string)
-     */
-    function validarCombinacion(siglasList) {
-        // TODO Fase 3: implementar reglas de negocio
-        return { valido: true, mensaje: '' };
-    }
+    const tiposSelect = document.getElementById('tipo-solicitud-select');
+    const tiposError  = document.getElementById('tipos-error');
 
     // ------------------------------------------------------------------
     // Validación en submit
     // ------------------------------------------------------------------
     document.querySelector('form').addEventListener('submit', function (e) {
         let ok = true;
+
+        // Validar fecha solicitud
+        if (!efFecha.getValue()) {
+            efFechaError.style.display = 'block';
+            ok = false;
+        } else {
+            efFechaError.style.display = 'none';
+        }
 
         // Validar titular
         if (!entidadSel.getValue()) {
@@ -253,24 +281,20 @@
             entidadError.style.display = 'none';
         }
 
-        // Validar al menos un tipo seleccionado
-        const ids = Object.keys(tiposSeleccionados);
-        if (!ids.length) {
+        // Validar solicitante si el toggle está activo
+        if (chkDistinto.checked && !solicitanteSel.getValue()) {
+            solicitanteError.style.display = 'block';
+            ok = false;
+        } else {
+            solicitanteError.style.display = 'none';
+        }
+
+        // Validar tipo de solicitud seleccionado
+        if (!tiposSelect.value) {
             tiposError.style.display = 'block';
             ok = false;
         } else {
             tiposError.style.display = 'none';
-
-            // Validar combinación (placeholder Fase 3)
-            const siglas = ids.map(id => tiposSeleccionados[id].siglas);
-            const { valido, mensaje } = validarCombinacion(siglas);
-            if (!valido) {
-                tiposComboMsg.textContent = mensaje;
-                tiposComboError.style.display = 'block';
-                ok = false;
-            } else {
-                tiposComboError.style.display = 'none';
-            }
         }
 
         if (!ok) {

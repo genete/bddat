@@ -35,12 +35,72 @@
   z-index: 10;
 }
 
+/* ===== BLOQUE CONTENEDOR DE TABLA (V2 y BC) — issue #202 ===== */
+/* Envuelve la tabla en un card con bordes redondeados al ~95% de ancho.
+ * Usar junto con content-constrained py-3 en el HTML.
+ * Base SIN overflow:hidden — preserva position:sticky del thead (V2).
+ * Cuando el card tiene card-header (BC), no hay sticky → se puede recortar. */
+.tabla-bloque {
+  border-radius: var(--border-radius-lg, 0.5rem);
+  box-shadow: var(--shadow-sm);
+  margin: 0;
+}
+
+/* BC: card-header como primer hijo → overflow:hidden para esquinas limpias.
+ * V2: primer hijo es <table> directa → esta regla no aplica, sticky intacto. */
+.tabla-bloque:has(> .card-header) {
+  overflow: hidden;
+}
+
+/* V2: la tabla es hijo directo del card (sin card-header).
+ * Los th:first/last-child tienen border-radius, pero el card background (blanco)
+ * quedaba visible en el hueco de la esquina redondeada.
+ * Solución: igualar el bg del card al color del thead → el hueco es invisible. */
+.tabla-bloque:has(> table.expedientes-table) {
+  background-color: var(--primary-light, #c4ddca);
+  /* overflow:clip recorta el contenido a border-radius sin crear scroll container,
+   * por lo que position:sticky del thead sigue funcionando en C.2. */
+  overflow: clip;
+}
+
+/* Elimina border-top/bottom directo del <table> cuando es hijo de .tabla-bloque.
+ * Sin overflow:hidden (necesario para sticky), el borde recto de la tabla se extiende
+ * hasta la esquina del elemento, cruzando la zona de border-radius del card y creando
+ * un artefacto visible. La separación visual la aportan el box-shadow del card y el
+ * border-bottom de los th. */
+.tabla-bloque > table.expedientes-table {
+  border-top: none;
+  border-bottom: none;
+}
+
+/* Redondeado superior del thead cuando la tabla es hija directa del card (V2).
+ * expedientes-table usa border-collapse:separate → border-radius en th funciona. */
+.tabla-bloque > table.expedientes-table thead th:first-child {
+  border-top-left-radius: calc(var(--border-radius-lg, 0.5rem) - 1px);
+}
+.tabla-bloque > table.expedientes-table thead th:last-child {
+  border-top-right-radius: calc(var(--border-radius-lg, 0.5rem) - 1px);
+}
+
+/* ===== TABLAS EMBEBIDAS (listados secundarios dentro de cards V4) ===== */
+/* Patrón: <table class="table table-sm table-hover table-embedded">        */
+/*          <thead class="table-light"> dentro de card-body p-0            */
+.table-embedded {
+  margin-bottom: 0;
+  vertical-align: middle; /* evita añadir align-middle ad-hoc en cada tabla */
+}
+
+.table-embedded thead th {
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
 /* ===== TABLA RESPONSIVE (FULL-WIDTH) ===== */
 .expedientes-table {
   width: 100%;
   background: var(--bg-card);
-  border-radius: 0; /* Sin border-radius para full-width */
-  box-shadow: none; /* Sin sombra para full-width */
+  border-radius: 0; /* Sin border-radius — la da .tabla-bloque */
+  box-shadow: none; /* Sin sombra — la da .tabla-bloque */
   border-collapse: separate;
   border-spacing: 0;
   /*overflow: hidden;*/  /* Comentado - bloqueaba sticky */
@@ -63,11 +123,12 @@
   border-bottom: 2px solid rgba(0, 0, 0, 0.1);
   /* STICKY HEADER (por defecto para uso sin C.2) */
   position: sticky;
-  top: 60px;
+  top: var(--header-height);
   z-index: 100;
-  background: var(--primary);
-  background-image: var(--gradient);
-  color: var(--text-inverse);
+  /* Verde claro coherente con card-header-accent (#202) */
+  background: var(--primary-light, #c4ddca);
+  background-image: none;
+  color: var(--gris-principal, #111);
 }
 
 .expedientes-table td {
@@ -88,7 +149,7 @@
   border-bottom: none;
 }
 
-/* Responsive tabla */
+/* Responsive tabla (expedientes/proyectos/entidades) */
 @media (max-width: 991px) {
   .expedientes-table th:nth-child(3), /* Solicitudes */
   .expedientes-table td:nth-child(3) {
@@ -103,26 +164,60 @@
   .expedientes-table td:nth-child(5) {
     display: none;
   }
-  
+
   .expedientes-table th,
   .expedientes-table td {
     padding: 0.75rem 1rem; /* Padding reducido en mobile */
     font-size: 0.8rem;
   }
-  
-  /* En mobile, sticky header justo debajo del header mobile (56px) */
-  .expedientes-table th {
-    top: 56px;
-  }
-  
+
+  /* Sticky header usa var(--header-height) que en mobile es 92px */
+
   /* Ajuste sticky en C.2 mobile */
   .lista-scroll-container .expedientes-table thead th {
     top: 0; /* Dentro de C.2 siempre top: 0 */
   }
-  
+
   /* En mobile, min-height más pequeño (thead + 2 filas) */
   .lista-scroll-container {
     min-height: 150px;
+  }
+}
+
+/* Columna Código de plantillas: texto largo sin espacios (ej. REQUERIMIENTO_SUBSANACION)
+ * puede estirar la tabla por encima del viewport. Se trunca con ellipsis. */
+.plantillas-table td:nth-child(2) {
+  max-width: 180px;
+  overflow-wrap: break-word;
+  word-break: break-all;
+}
+
+/* Responsive tabla plantillas (9 columnas):
+ * ≤1199px: ocultar Solicitud(5), Fase(6), Trámite(7)  → 6 cols
+ * ≤991px:  ocultar además Expediente(4)               → 5 cols
+ * ≤767px:  ocultar además Tipo documento(3)           → 4 cols: Nombre, Código, Estado, Acciones */
+@media (max-width: 1199px) {
+  .plantillas-table th:nth-child(5),
+  .plantillas-table td:nth-child(5),
+  .plantillas-table th:nth-child(6),
+  .plantillas-table td:nth-child(6),
+  .plantillas-table th:nth-child(7),
+  .plantillas-table td:nth-child(7) {
+    display: none;
+  }
+}
+
+@media (max-width: 991px) {
+  .plantillas-table th:nth-child(4),
+  .plantillas-table td:nth-child(4) {
+    display: none;
+  }
+}
+
+@media (max-width: 767px) {
+  .plantillas-table th:nth-child(3),
+  .plantillas-table td:nth-child(3) {
+    display: none;
   }
 }
 
@@ -224,7 +319,7 @@
   color: var(--text-inverse);
 }
 
-/* Botón outline */
+/* Botón outline (clase custom antigua) */
 .btn-outline {
   background: transparent;
   border: 2px solid var(--border-color);
@@ -234,6 +329,37 @@
 .btn-outline:hover {
   background: var(--gris-especifico);
   border-color: var(--gris-apoyo);
+  transform: translateY(-1px);
+  text-decoration: none;
+}
+
+/* btn-outline-primary y btn-outline-secondary: la regla .btn superior
+ * (border: 1px solid transparent) aplasta el border-color del CDN Junta
+ * porque nuestro CSS carga después. Re-aplicamos aquí para restaurarlo. */
+.btn-outline-primary {
+  background: transparent;
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.btn-outline-primary:hover {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--text-inverse);
+  transform: translateY(-1px);
+  text-decoration: none;
+}
+
+.btn-outline-secondary {
+  background: transparent;
+  border-color: var(--gris-principal);
+  color: var(--gris-principal);
+}
+
+.btn-outline-secondary:hover {
+  background: var(--gris-principal);
+  border-color: var(--gris-principal);
+  color: var(--text-inverse);
   transform: translateY(-1px);
   text-decoration: none;
 }
@@ -278,6 +404,18 @@
 
 /* ===== FILTROS + PAGINACIÓN (COMPACTO) ===== */
 
+/* Indicador de filtro activo (dentro de pagination-info) */
+.filtro-indicador {
+  color: var(--gris-apoyo);
+  font-size: 0.8rem;
+  transition: color 0.2s ease;
+}
+
+.filters-row.filtros-activos .filtro-indicador {
+  color: var(--primary);
+}
+
+
 /* Contenedor que une filtros + paginación en 1 línea */
 .filters-row {
   display: flex;
@@ -305,12 +443,18 @@
   font-size: 0.875rem;
   background: var(--bg-card);
   color: var(--text-primary);
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
 }
 
 .filters input[type="search"] {
   flex: 1;
   min-width: 180px;
+}
+
+/* Estado activo del buscador: cambia fondo al tener texto (sin JS) */
+.filters input[type="search"]:not(:placeholder-shown) {
+  background: var(--primary-lighter);
+  border-color: var(--primary);
 }
 
 .filters input[type="search"]:focus,
@@ -325,11 +469,11 @@
   cursor: pointer;
 }
 
-/* ===== INDICADOR PAGINACIÓN (derecha) ===== */
+/* ===== INDICADOR PAGINACIÓN — subtítulo bajo el h1 ===== */
 .pagination-info {
   color: var(--text-secondary);
-  font-size: 0.875rem;
-  white-space: nowrap;
+  font-size: 0.8rem;
+  margin-top: 0.2rem;
 }
 
 .pagination-info span {
@@ -415,6 +559,13 @@
 /* Patrón para vistas que alternan modo lectura/edición con el mismo layout.
  * Ver: docs/GUIA_VISTAS_BOOTSTRAP.md - Vista V4 Detalle/Edición */
 
+/* Contenedor del contenido V4 (detalle/edición).
+ * El ancho efectivo ~95% lo da padding: 0 var(--content-padding) heredado de content-constrained.
+ * Usar siempre junto con la clase content-constrained en el HTML. */
+.v4-content {
+  width: 100%;
+}
+
 /* Cabecera de ficha: verde corporativo secundario (primary-light) */
 .card-header-accent {
   background-color: var(--primary-light, #c4ddca);
@@ -459,7 +610,5 @@
     min-width: auto;
   }
   
-  .pagination-info {
-    text-align: center;
-  }
+  /* pagination-info es subtítulo del h1, no necesita override en mobile */
 }

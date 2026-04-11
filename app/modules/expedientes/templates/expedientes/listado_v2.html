@@ -13,83 +13,72 @@
 {% endblock %}
 
 {% block filtros_extra %}
-<select aria-label="Filtrar por estado">
-    <option value="">Estado: Todos</option>
-    <option value="tramitacion">En trámite</option>
-    <option value="finalizado">Resuelto</option>
-    <option value="borrador">Incompleto</option>
-</select>
+<div id="sf-estado-exp"></div>
 {% endblock %}
 
 {% block tabla_clase %}expedientes-table{% endblock %}
 
-{% block thead_cols %}
-<th>N° Expediente</th>
-<th>Titular</th>
-<th>Tipo</th>
-<th>Responsable</th>
-<th>Solicitudes</th>
-<th>Estado</th>
-<th></th>
-{% endblock %}
-
 {% block extra_js %}
 {{ super() }}
 <script>
+    const sfEstadoExp = new SelectorFiltro('#sf-estado-exp', [
+        { v: 'tramitacion', t: 'En trámite' },
+        { v: 'finalizado',  t: 'Resuelto' },
+        { v: 'archivado',   t: 'Archivado' },
+        { v: 'borrador',    t: 'Sin solicitudes' }
+    ], { label: 'Estado' });
+
+    // Columnas base desde metadata.json (serializables a JSON)
+    const colsMeta = {{ columns | tojson }};
+
+    // renderFns para columnas custom — no serializables, definidas localmente
+    const renderFns = {
+        'num_solicitudes': (val, item) => {
+            const total = item.num_solicitudes || 0;
+            const activas = item.num_activas || 0;
+            if (total === 0) return '<span class="text-secondary">—</span>';
+            const badge = activas > 0
+                ? `<span class="badge bg-primary ms-1">${activas} activa${activas !== 1 ? 's' : ''}</span>`
+                : '';
+            return `${total}${badge}`;
+        },
+        'estado_tramitacion': (val) => {
+            const mapa = {
+                'SIN_SOLICITUDES': ['secondary', 'Sin solicitudes'],
+                'EN_TRAMITE':      ['primary',   'En trámite'],
+                'RESUELTO':        ['success',   'Resuelto']
+            };
+            const [cls, label] = mapa[val] || ['secondary', val || '—'];
+            return `<span class="badge bg-${cls}">${label}</span>`;
+        },
+        '_acciones': (val, item) =>
+            `<div class="d-flex gap-1">
+                <a href="/expedientes/${item.id}" class="btn-accion-ver">
+                    <i class="fas fa-eye"></i> Ver
+                </a>
+                <a href="${item.url_tramitacion}" class="btn btn-sm btn-primary">
+                    <i class="fas fa-tasks"></i> Tramitar
+                </a>
+             </div>`
+    };
+
+    // Mezcla: inyectar renderFn en cada columna custom
+    const columns = colsMeta.map(col =>
+        renderFns[col.key] ? { ...col, renderFn: renderFns[col.key] } : col
+    );
+
     const scrollInfinito = new ScrollInfinito({
         apiUrl:      '{{ url_for("api.listar_expedientes") }}',
         tableClass:  '.expedientes-table',
         entityLabel: 'expedientes',
-        detailUrl:   id => `/expedientes/${id}/tramitacion_v3`,
-        columns: [
-            { key: 'codigo',          label: 'N° Expediente', type: 'text' },
-            { key: 'titular',         label: 'Titular',       type: 'text' },
-            { key: 'tipo_expediente', label: 'Tipo',          type: 'text' },
-            { key: 'responsable',     label: 'Responsable',   type: 'text' },
-            {
-                key: 'num_solicitudes',
-                label: 'Solicitudes',
-                type: 'custom',
-                renderFn: (val, item) => {
-                    const total = item.num_solicitudes || 0;
-                    const activas = item.num_activas || 0;
-                    if (total === 0) return '<span class="text-muted">—</span>';
-                    const badge = activas > 0
-                        ? `<span class="badge bg-primary ms-1">${activas} activa${activas !== 1 ? 's' : ''}</span>`
-                        : '';
-                    return `${total}${badge}`;
-                }
-            },
-            {
-                key: 'estado_tramitacion',
-                label: 'Estado',
-                type: 'custom',
-                renderFn: (val) => {
-                    const mapa = {
-                        'SIN_SOLICITUDES': ['secondary', 'Sin solicitudes'],
-                        'EN_TRAMITE':      ['primary',   'En trámite'],
-                        'RESUELTO':        ['success',   'Resuelto']
-                    };
-                    const [cls, label] = mapa[val] || ['secondary', val || '—'];
-                    return `<span class="badge bg-${cls}">${label}</span>`;
-                }
-            },
-            {
-                key: '_acciones',
-                label: '',
-                type: 'custom',
-                renderFn: (val, item) =>
-                    `<a href="/expedientes/${item.id}" class="btn btn-sm btn-outline-secondary me-1">
-                        <i class="fas fa-info-circle"></i> Detalle
-                     </a>
-                     <a href="${item.url_tramitacion}" class="btn btn-sm btn-primary">
-                        <i class="fas fa-tasks"></i> Tramitar
-                     </a>`
-            }
-        ]
+        detailUrl:   id => `/expedientes/${id}/tramitacion`,
+        columns,
+        {% if request.args.get('responsable') %}
+        fixedParams: { responsable: '{{ request.args.get("responsable") }}' }
+        {% endif %}
     });
 
-    const filtros = new FiltrosExpedientes(scrollInfinito);
+    const filtros = new FiltrosListado(scrollInfinito);
     console.log('Listado de expedientes v2 inicializado');
 </script>
 {% endblock %}

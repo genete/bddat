@@ -128,10 +128,17 @@ class Proyecto(db.Model):
     )
     
     ia_id = db.Column(
-        db.Integer, 
-        db.ForeignKey('tipos_ia.id'), 
+        db.Integer,
+        db.ForeignKey('tipos_ia.id'),
         nullable=True,
         comment='FK a TIPOS_IA. Instrumento ambiental aplicable (AAI, AAU, AAUS, CA, EXENTO)'
+    )
+
+    es_modificacion = db.Column(
+        db.Boolean,
+        nullable=False,
+        default=False,
+        comment='True si el proyecto tramita modificación de instalaciones existentes (afecta tramitación ambiental AAU/AAUS)'
     )
     
     # Relación con TipoIA

@@ -2,16 +2,16 @@
 
 {% block title %}Nuevo Expediente &mdash; Paso 1{% endblock %}
 
+{% block breadcrumb %}
+<a href="{{ url_for('dashboard.index') }}">Inicio</a>
+<span>›</span>
+<a href="{{ url_for('expedientes.listado_v2') }}">Expedientes</a>
+<span>›</span>
+<span>Nuevo — Paso 1 de 3</span>
+{% endblock %}
+
 {% block content %}
 <div class="container-fluid py-4">
-
-    <nav aria-label="breadcrumb" class="mb-3">
-        <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="{{ url_for('dashboard.index') }}">Inicio</a></li>
-            <li class="breadcrumb-item"><a href="{{ url_for('expedientes.listado_v2') }}">Expedientes</a></li>
-            <li class="breadcrumb-item active">Nuevo &mdash; Paso 1 de 3</li>
-        </ol>
-    </nav>
 
     <div class="d-flex align-items-center mb-4 gap-3">
         <h1 class="h3 mb-0">

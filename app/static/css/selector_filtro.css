@@ -1,0 +1,83 @@
+/* selector_filtro.css
+ * Estructura del componente SelectorFiltro.
+ * CERO colores, CERO tipografía: todo se hereda del tema Bootstrap (v2-theme.css).
+ * Prefijo de clases: sf-
+ */
+
+/* ===== CONTENEDOR ===== */
+
+.sf-wrap {
+  display: inline-flex;
+  align-items: stretch;
+  transition: background 0.2s ease;
+}
+
+/* Estado activo: el COLOR va en el WRAPPER (div), no en el <select>.
+   Así el dropdown nativo abre con su fondo de sistema sin herencia de color. */
+.sf-wrap.sf-activo {
+  background: var(--primary-lighter);
+  border-radius: var(--border-radius);
+  overflow: hidden;   /* recorta el fondo del wrapper a los bordes redondeados */
+}
+
+/* ===== SELECT NATIVO =====
+   Hereda padding, border, font-size y color de `.filters select` (v2-components.css).
+   En estado activo: transparent para que se vea el fondo del wrapper. */
+
+.sf-wrap .sf-select {
+  flex: 1;
+  transition: border-color 0.2s ease;
+}
+
+.sf-wrap.sf-activo .sf-select {
+  background: transparent;           /* el dropdown nativo ignora esto */
+  border-color: var(--primary);
+  border-right-color: transparent;   /* se funde visualmente con el botón × */
+  border-radius: var(--border-radius) 0 0 var(--border-radius);
+}
+
+/* outline en el wrapper: no sufre el layout shift que afecta al <select>
+   cuando aparece el botón × (#268) */
+.sf-wrap:focus-within {
+  outline: 0.25rem solid var(--focus-ring);
+  outline-offset: 0;
+  border-radius: var(--border-radius);
+}
+.sf-wrap .sf-select:focus {
+  outline: none;
+  box-shadow: none;
+}
+
+/* ===== BOTÓN × ===== */
+
+.sf-btn-x {
+  display: none;           /* visible solo cuando sf-activo */
+  align-items: center;
+  justify-content: center;
+  padding: 0 0.6rem;
+  border: 1px solid var(--border-color);
+  border-left: none;
+  border-radius: 0 var(--border-radius) var(--border-radius) 0;
+  background: transparent; /* hereda el fondo del wrapper */
+  color: inherit;
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  transition: opacity 0.15s ease;
+}
+
+.sf-wrap.sf-activo .sf-btn-x {
+  display: flex;
+  border-color: var(--primary);
+}
+
+.sf-btn-x:hover {
+  opacity: 0.7;
+}
+
+/* ===== ESTADO DESHABILITADO ===== */
+
+.sf-wrap.sf-disabled {
+  opacity: 0.6;
+  pointer-events: none;
+}

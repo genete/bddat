@@ -50,6 +50,12 @@ class TipoExpediente(db.Model):
         db.String(200),
         comment='Descripción detallada de características y particularidades procedimentales'
     )
+
+    nombre_en_plantilla = db.Column(
+        db.Text,
+        nullable=True,
+        comment='Nombre legible usado en nombres de documentos generados'
+    )
     
     def __repr__(self):
         """Representación técnica para debugging."""

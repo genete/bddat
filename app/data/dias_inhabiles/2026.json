@@ -1,0 +1,20 @@
+{
+  "year": 2026,
+  "scope": "Comunidad Autónoma de Andalucía",
+  "source": "Orden 24/09/2025, BOJA núm. 187",
+  "source_url": "https://www.juntadeandalucia.es/boja/2025/187/26",
+  "festivos": [
+    {"fecha": "2026-01-01", "descripcion": "Año Nuevo"},
+    {"fecha": "2026-01-06", "descripcion": "Epifanía del Señor"},
+    {"fecha": "2026-02-28", "descripcion": "Día de Andalucía"},
+    {"fecha": "2026-04-02", "descripcion": "Jueves Santo"},
+    {"fecha": "2026-04-03", "descripcion": "Viernes Santo"},
+    {"fecha": "2026-05-01", "descripcion": "Día del Trabajo"},
+    {"fecha": "2026-08-15", "descripcion": "Asunción de María"},
+    {"fecha": "2026-10-12", "descripcion": "Fiesta Nacional"},
+    {"fecha": "2026-11-02", "descripcion": "Todos los Santos (traslado del 1, domingo)"},
+    {"fecha": "2026-12-07", "descripcion": "Día de la Constitución (traslado del 6, domingo)"},
+    {"fecha": "2026-12-08", "descripcion": "Inmaculada Concepción"},
+    {"fecha": "2026-12-25", "descripcion": "Navidad"}
+  ]
+}

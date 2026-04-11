@@ -1,0 +1,254 @@
+{% extends 'layout/base_fullwidth.html' %}
+
+{% block title %}
+  {% if modo == 'editar' %}Editar — {% endif %}{{ usuario.siglas }} — BDDAT
+{% endblock %}
+
+{% block breadcrumb %}
+<a href="{{ url_for('dashboard.index') }}">Inicio</a>
+<span>›</span>
+<a href="{{ url_for('usuarios.index') }}">Usuarios</a>
+{% if modo == 'editar' %}
+    <span>›</span>
+    <a href="{{ url_for('usuarios.detalle', id=usuario.id) }}">{{ usuario.siglas }}</a>
+    <span>›</span>
+    <span>Editar</span>
+{% else %}
+    <span>›</span>
+    <span>{{ usuario.siglas }}</span>
+{% endif %}
+{% endblock %}
+
+{% from 'macros/page_header.html' import page_header %}
+
+{% block content %}
+
+{% if modo == 'editar' %}
+<form id="form_usuario" class="form-detail"
+      action="{{ url_for('usuarios.editar', id=usuario.id) }}" method="POST">
+{% endif %}
+
+<!-- Encabezado de página -->
+<div class="lista-cabecera">
+{% call page_header(usuario.nombre ~ ' ' ~ usuario.apellido1, 'fas fa-user') %}
+    {% if modo == 'ver' %}
+        <a href="{{ url_for('usuarios.index') }}" class="btn btn-outline-primary">
+            <i class="fas fa-arrow-left me-1"></i> Volver
+        </a>
+        <a href="{{ url_for('usuarios.editar', id=usuario.id) }}" class="btn btn-primary">
+            <i class="fas fa-edit me-1"></i> Editar
+        </a>
+    {% else %}
+        <a href="{{ url_for('usuarios.detalle', id=usuario.id) }}" class="btn btn-outline-primary">
+            <i class="fas fa-times me-1"></i> Cancelar
+        </a>
+        <button type="submit" class="btn btn-primary">
+            <i class="fas fa-save me-1"></i> Guardar cambios
+        </button>
+    {% endif %}
+{% endcall %}
+</div>
+
+<div class="v4-content content-constrained py-3">
+
+<!-- CARD 1 — Identificación -->
+<div class="card shadow-sm mb-3">
+    <div class="card-header card-header-accent">
+        <h6 class="mb-0 fw-semibold"><i class="fas fa-id-card me-2"></i>Identificación</h6>
+    </div>
+    <div class="card-body card-body-tinted">
+        <div class="row g-3">
+
+            <div class="col-md-2">
+                <label class="form-label fw-semibold small" for="siglas">Siglas</label>
+                {% if modo == 'ver' %}
+                <input type="text" class="form-control" value="{{ usuario.siglas }}" readonly>
+                {% elif puede_editar_siglas %}
+                <input type="text" class="form-control {% if error_siglas %}is-invalid{% endif %}"
+                       id="siglas" name="siglas"
+                       value="{{ form_data.siglas if form_data else usuario.siglas }}"
+                       required maxlength="50">
+                {% if error_siglas %}
+                <div class="invalid-feedback">{{ error_siglas }}</div>
+                {% endif %}
+                {% else %}
+                <input type="text" class="form-control" id="siglas" name="siglas"
+                       value="{{ usuario.siglas }}" readonly
+                       data-bs-toggle="tooltip"
+                       title="Solo los administradores pueden cambiar las siglas">
+                {% endif %}
+            </div>
+
+            <div class="col-md-10">
+                <label class="form-label fw-semibold small" for="nombre">Nombre</label>
+                {% if modo == 'ver' %}
+                <input type="text" class="form-control" value="{{ usuario.nombre }}" readonly>
+                {% else %}
+                <input type="text" class="form-control" id="nombre" name="nombre"
+                       value="{{ form_data.nombre if form_data else usuario.nombre }}"
+                       required maxlength="100">
+                {% endif %}
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label fw-semibold small" for="apellido1">Primer apellido</label>
+                {% if modo == 'ver' %}
+                <input type="text" class="form-control" value="{{ usuario.apellido1 }}" readonly>
+                {% else %}
+                <input type="text" class="form-control" id="apellido1" name="apellido1"
+                       value="{{ form_data.apellido1 if form_data else usuario.apellido1 }}"
+                       required maxlength="50">
+                {% endif %}
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label fw-semibold small" for="apellido2">Segundo apellido</label>
+                {% if modo == 'ver' %}
+                <input type="text" class="form-control"
+                       value="{{ usuario.apellido2 or '—' }}" readonly>
+                {% else %}
+                <input type="text" class="form-control" id="apellido2" name="apellido2"
+                       value="{{ form_data.apellido2 if form_data else (usuario.apellido2 or '') }}"
+                       maxlength="50">
+                {% endif %}
+            </div>
+
+            <div class="col-md-8">
+                <label class="form-label fw-semibold small" for="email">Email</label>
+                <input type="email" class="form-control {% if error_email %}is-invalid{% endif %}"
+                       id="email" name="email"
+                       value="{{ form_data.email if form_data else (usuario.email or '') }}"
+                       placeholder="usuario@ejemplo.com"
+                       {% if modo == 'ver' %}readonly{% endif %}>
+                {% if error_email %}
+                <div class="invalid-feedback">{{ error_email }}</div>
+                {% endif %}
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label fw-semibold small">Estado</label>
+                {% if modo == 'ver' %}
+                <div class="form-control d-flex align-items-center gap-2"
+                     style="background:#fff; pointer-events:none;">
+                    {% if usuario.activo %}
+                        <span class="badge bg-success">Activo</span>
+                    {% else %}
+                        <span class="badge bg-secondary">Inactivo</span>
+                    {% endif %}
+                </div>
+                {% else %}
+                <div class="form-control d-flex align-items-center gap-2"
+                     style="background:#fff; min-height:38px;">
+                    <div class="form-check mb-0">
+                        {% if usuario.id == current_user.id %}
+                        <input type="hidden" name="activo" value="on">
+                        {% endif %}
+                        <input class="form-check-input" type="checkbox"
+                               id="activo" name="activo"
+                               {% if form_data %}{{ 'checked' if form_data.activo else '' }}{% else %}{{ 'checked' if usuario.activo else '' }}{% endif %}
+                               {% if usuario.id == current_user.id %}disabled
+                               data-bs-toggle="tooltip"
+                               title="No puedes desactivar tu propia cuenta"{% endif %}>
+                        <label class="form-check-label" for="activo">Activo</label>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- CARD 2 — Roles y acceso -->
+<div class="card shadow-sm mb-3">
+    <div class="card-header card-header-accent">
+        <h6 class="mb-0 fw-semibold"><i class="fas fa-user-tag me-2"></i>Roles y acceso</h6>
+    </div>
+    <div class="card-body card-body-tinted">
+        {% if modo == 'ver' %}
+        <div class="d-flex flex-wrap gap-2">
+            {% for rol in usuario.roles %}
+                {% if rol.nombre == 'ADMIN' %}
+                    <span class="badge bg-danger fs-6">{{ rol.nombre }}</span>
+                {% elif rol.nombre == 'SUPERVISOR' %}
+                    <span class="badge bg-warning text-dark fs-6">{{ rol.nombre }}</span>
+                {% elif rol.nombre == 'TRAMITADOR' %}
+                    <span class="badge bg-primary fs-6">{{ rol.nombre }}</span>
+                {% else %}
+                    <span class="badge bg-secondary fs-6">{{ rol.nombre }}</span>
+                {% endif %}
+            {% else %}
+                <span class="text-secondary">Sin roles asignados</span>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="row g-2">
+            {% for rol in roles %}
+            <div class="col-md-6">
+                <div class="form-check">
+                    {% set es_admin_rol = rol.nombre == 'ADMIN' %}
+                    {% set tiene_rol = rol in usuario.roles %}
+                    {% set en_form = form_data and (rol.id|string) in form_data.roles_ids %}
+                    <input class="form-check-input" type="checkbox"
+                           name="roles" value="{{ rol.id }}" id="rol_{{ rol.id }}"
+                           {% if form_data %}{{ 'checked' if en_form else '' }}{% else %}{{ 'checked' if tiene_rol else '' }}{% endif %}
+                           {% if es_admin_rol and not puede_editar_admin %}disabled
+                           data-bs-toggle="tooltip"
+                           title="Solo los administradores pueden asignar o quitar el rol ADMIN"{% endif %}>
+                    <label class="form-check-label" for="rol_{{ rol.id }}">
+                        <strong>{{ rol.nombre }}</strong>
+                        {% if rol.descripcion %}
+                        <small class="d-block text-secondary">{{ rol.descripcion }}</small>
+                        {% endif %}
+                    </label>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- CARD 3 — Seguridad (solo en modo editar) -->
+{% if modo == 'editar' %}
+<div class="card shadow-sm mb-3">
+    <div class="card-header card-header-accent">
+        <h6 class="mb-0 fw-semibold"><i class="fas fa-lock me-2"></i>Seguridad</h6>
+    </div>
+    <div class="card-body card-body-tinted">
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label fw-semibold small" for="nueva_password">Nueva contraseña</label>
+                <input type="password" class="form-control"
+                       id="nueva_password" name="nueva_password">
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-semibold small" for="confirm_password">Confirmar contraseña</label>
+                <input type="password" class="form-control"
+                       id="confirm_password" name="confirm_password">
+            </div>
+            <div class="col-12">
+                <p class="text-secondary small mb-0">
+                    <i class="fas fa-info-circle me-1"></i>
+                    Dejar vacío para no cambiar la contraseña.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% if modo == 'editar' %}
+</form>
+{% endif %}
+
+</div>{# /v4-content #}
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function (el) {
+        new bootstrap.Tooltip(el);
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,141 @@
+/*
+ * v3-breadcrumbs.css — Estilos específicos de la Vista 3 Breadcrumbs (issue #157)
+ *
+ * Complementa v2-layout.css y v2-components.css sin sobreescribirlos.
+ * Cargado solo en los templates tramitacion_bc*.html.
+ */
+
+/* ── Card de detalle del nodo actual ─────────────────────────────────────── */
+
+/* Sombra discreta en el card de cabecera de nivel */
+.bc-card-nodo {
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+/* Cabecera blanca en toda la vista bc — el color queda exclusivamente en el icono */
+.bc-view .card-header,
+.bc-view .card-header-accent {
+    background-color: #fff;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.125);
+    color: var(--bs-body-color);
+}
+
+/* Iconos de nivel SFTT — color identificativo por nivel (#274) */
+.bc-icon-solicitud { color: #3b7dd8; }
+.bc-icon-fase      { color: #d97706; }
+.bc-icon-tramite   { color: #7c3aed; }
+.bc-icon-tarea     { color: #16a34a; }
+
+/* Texto de metadatos dentro del card de nodo (fechas, estado) */
+.bc-meta {
+    /* Sin reducción de tamaño ni gris — las fechas son dato operacional principal */
+    font-size: 1rem;
+    color: var(--bs-body-color);
+}
+
+/* Valor de fecha en negrita para máximo peso visual */
+.bc-fecha-valor {
+    font-weight: 600;
+}
+
+/* ── Cards compactos apilados (breadcrumb visual, #274) ──────────────────── */
+
+.bc-card-compacto {
+    text-decoration: none;
+    color: var(--bs-body-color);
+    border: 1px solid rgba(0, 0, 0, 0.125);
+    border-radius: var(--bs-border-radius);
+    background-color: #fff;
+    padding: 0.4rem 0.75rem;
+    margin-bottom: 0.375rem;
+    cursor: pointer;
+    transition: background-color 0.12s ease;
+    min-height: 36px;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.bc-card-compacto:hover {
+    background-color: #f8f9fa;
+    color: var(--bs-body-color);
+    text-decoration: none;
+}
+
+.bc-card-compacto .bc-compacto-label {
+    font-weight: 500;
+    flex: 1;
+}
+
+/* ── Indicadores de estado en tabla de hijos ────────────────────────────── */
+
+/* Ampliar área de click de la flecha → en mobile */
+.table td:last-child .btn {
+    min-width: 2rem;
+}
+
+/* Alinear indicador al centro sin colapsar columna */
+.table th:first-child,
+.table td:first-child {
+    text-align: center;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+}
+
+
+/* ── Layout C.1/C.2 — scroll independiente (#199) ──────────────────────── */
+/* Antes estaba inline en tramitacion_bc.html y pool_documentos.html.
+   Centralizado aquí para que todas las vistas BC lo hereden. */
+
+.app-main {
+    overflow-y: hidden;
+}
+
+.bc-view {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    max-width: none;
+    margin: 0;
+    width: 100%;
+}
+
+/* Anular min-height de V2 — en BC el espacio disponible varía mucho */
+.lista-scroll-container {
+    min-height: 0;
+}
+
+/* ── Thead BC: color unificado, sin sticky (#199, #202) ─────────────────── */
+/* Las listas BC son cortas — no necesitan thead fijo.
+ * El sticky permanece solo en expedientes-table (V2), definido en v2-components.css. */
+
+.lista-scroll-container .table thead th {
+    /* Verde claro unificado con expedientes-table (#202) */
+    background-color: var(--primary-light, #c4ddca);
+    color: var(--gris-principal, #111);
+}
+
+/* ── Responsive BC: ocultar columnas medias en mobile (#202) ────────────── */
+/* Primera columna (indicador estado) y última (flecha →) siempre visibles. */
+@media (max-width: 767px) {
+    .tabla-hijos th:not(:first-child):not(:last-child),
+    .tabla-hijos td:not(:first-child):not(:last-child) {
+        display: none;
+    }
+}
+
+/* ── Botones de acción en la cabecera (placeholders) ────────────────────── */
+
+.bc-acciones-bar {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+/* Separador visual entre info y botones dentro del card body */
+.bc-acciones-bar + .bc-acciones-bar {
+    margin-top: 0.5rem;
+}

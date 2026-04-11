@@ -1,4 +1,8 @@
 alembic==1.18.1
+docxcompose==2.0.2
+docxtpl==0.20.2
+lxml==6.0.2
+python-docx==1.2.0
 blinker==1.9.0
 click==8.3.1
 colorama==0.4.6

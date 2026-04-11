@@ -44,8 +44,8 @@ class TipoSolicitud(db.Model):
         v3.0: Sin cambios estructurales. Tabla maestra estable.
     """
     __tablename__ = 'tipos_solicitudes'
-    
-    
+
+
     id = db.Column(
         db.Integer, 
         primary_key=True, 
@@ -61,9 +61,15 @@ class TipoSolicitud(db.Model):
     )
     
     descripcion = db.Column(
-        db.String(200), 
+        db.String(200),
         nullable=False,
         comment='Descripción completa del acto administrativo solicitado'
+    )
+
+    nombre_en_plantilla = db.Column(
+        db.Text,
+        nullable=True,
+        comment='Nombre legible usado en nombres de documentos generados'
     )
     
     def __repr__(self):

@@ -20,6 +20,9 @@ from app.models.tipos_resultados_fases import TipoResultadoFase
 from app.models.tipos_solicitudes import TipoSolicitud
 from app.models.tipos_tareas import TipoTarea
 from app.models.tipos_tramites import TipoTramite
+from app.models.tipos_documentos import TipoDocumento
+from app.models.consultas_nombradas import ConsultaNombrada
+from app.models.plantillas import Plantilla
 
 # Modelo de metadata del sistema (issue #85)
 from app.models.tabla_metadata import TablaMetadata
@@ -43,8 +46,12 @@ from app.models.solicitudes import Solicitud  # Depende de Expediente
 # Histórico de titulares (issue #64)
 from app.models.historico_titular_expediente import HistoricoTitularExpediente  # Depende de Expediente, Entidad, Solicitud
 
+# Tablas whitelist ESFTT (#167 Fase 1)
+from app.models.expedientes_solicitudes import ExpedienteSolicitud
+from app.models.solicitudes_fases import SolicitudFase
+from app.models.fases_tramites import FaseTramite
+
 # Modelos operacionales con dependencias múltiples
-from app.models.solicitudes_tipos import SolicitudTipo  # Depende de Solicitud, TipoSolicitud
 from app.models.documentos_proyecto import DocumentoProyecto  # Depende de Documento, Proyecto
 from app.models.fases import Fase  # Depende de Solicitud, TipoFase, TipoResultadoFase, Documento
 from app.models.municipios_proyecto import MunicipioProyecto  # Depende de Municipio, Proyecto
@@ -52,6 +59,9 @@ from app.models.municipios_proyecto import MunicipioProyecto  # Depende de Munic
 # Modelos operacionales con dependencias complejas (al final)
 from app.models.tramites import Tramite  # Depende de Fase, TipoTramite
 from app.models.tareas import Tarea  # Depende de Tramite, TipoTarea, Documento
+
+# Motor de reglas (depende de TipoSolicitud; tipo_id sin FK por diseño polimórfico)
+from app.models.motor_reglas import ReglaMotor, CondicionRegla, TipoSolicitudCompatible
 
 __all__ = [
     # Maestros
@@ -65,6 +75,9 @@ __all__ = [
     'TipoSolicitud',
     'TipoTarea',
     'TipoTramite',
+    'TipoDocumento',
+    'ConsultaNombrada',
+    'Plantilla',
     # Metadata del sistema
     'TablaMetadata',
     # Arquitectura Entidades (simplificada en issue #103)
@@ -79,11 +92,18 @@ __all__ = [
     'Solicitud',
     # Histórico
     'HistoricoTitularExpediente',
+    # Whitelists ESFTT
+    'ExpedienteSolicitud',
+    'SolicitudFase',
+    'FaseTramite',
     # Operacionales (continuación)
-    'SolicitudTipo',
     'DocumentoProyecto',
     'Fase',
     'MunicipioProyecto',
     'Tramite',
     'Tarea',
+    # Motor de reglas
+    'ReglaMotor',
+    'CondicionRegla',
+    'TipoSolicitudCompatible',
 ]

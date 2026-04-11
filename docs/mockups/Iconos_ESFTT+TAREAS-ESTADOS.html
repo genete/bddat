@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Documentación de Iconografía y Estados - V.Final</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <style>
+        :root {
+            --slate-900: #0f172a;
+            --slate-700: #334155;
+            --slate-500: #64748b;
+        }
+        body { background-color: #f8fafc; padding: 40px 0; color: var(--slate-700); font-family: 'Segoe UI', system-ui, sans-serif; }
+        .doc-section { background: white; border-radius: 12px; box-shadow: 0 5px 20px rgba(0,0,0,0.05); margin-bottom: 30px; overflow: hidden; border: 1px solid #e2e8f0; }
+        .doc-header { background: var(--slate-900); color: white; padding: 15px 20px; font-weight: 600; font-size: 1rem; }
+        
+        /* Semántica de Colores */
+        .c-todo { color: #94a3b8; }    /* Gris (Pendiente) */
+        .c-active { color: #f59e0b; }  /* Amarillo/Naranja (En proceso) */
+        .c-success { color: #10b981; } /* Verde (Finalizado OK) */
+        .c-error { color: #ef4444; }   /* Rojo (Fallido/Error) */
+        .c-neutral { color: #334155; } /* Oscuro (Acciones neutras) */
+
+        .table td { vertical-align: middle; padding: 12px 20px; border-bottom: 1px solid #f1f5f9; }
+        .table th { background: #f8fafc; font-size: 0.75rem; text-transform: uppercase; color: var(--slate-500); padding: 12px 20px; }
+        .icon-name { font-family: 'Courier New', monospace; font-weight: bold; color: #be185d; font-size: 0.9rem; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="text-center mb-5">
+        <h1 class="fw-bold">Documentación del Sistema de Estados</h1>
+        <p class="text-muted">Guía completa de clases CSS, iconografía y semántica de colores.</p>
+    </div>
+
+    <div class="doc-section">
+        <div class="doc-header">1. MATRIZ DE ESTADOS POR NIVEL</div>
+        <table class="table mb-0">
+            <thead>
+                <tr>
+                    <th>Nivel</th>
+                    <th>Estado</th>
+                    <th>Icono</th>
+                    <th>Clase Bootstrap (Nombre)</th>
+                    <th>Color Semántico</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td rowspan="4" class="fw-bold bg-light">N1. EXPEDIENTE</td><td>Sin Tramitar</td><td><i class="bi bi-folder2 fs-4 c-todo"></i></td><td class="icon-name">bi-folder2</td><td>Gris (todo)</td></tr>
+                <tr><td>En Trámite</td><td><i class="bi bi-folder2-open fs-4 c-active"></i></td><td class="icon-name">bi-folder2-open</td><td>Amarillo (active)</td></tr>
+                <tr><td>Hecho</td><td><i class="bi bi-folder-check fs-4 c-success"></i></td><td class="icon-name">bi-folder-check</td><td>Verde (success)</td></tr>
+                <tr><td>Fallido</td><td><i class="bi bi-folder-x fs-4 c-error"></i></td><td class="icon-name">bi-folder-x</td><td>Rojo (error)</td></tr>
+                
+                <tr class="border-top-2"><td rowspan="4" class="fw-bold bg-light">N2. SOLICITUD</td><td>Sin Tramitar</td><td><i class="bi bi-file-earmark fs-4 c-todo"></i></td><td class="icon-name">bi-file-earmark</td><td>Gris (todo)</td></tr>
+                <tr><td>En Trámite</td><td><i class="bi bi-file-earmark-text fs-4 c-active"></i></td><td class="icon-name">bi-file-earmark-text</td><td>Amarillo (active)</td></tr>
+                <tr><td>Hecho</td><td><i class="bi bi-file-earmark-check fs-4 c-success"></i></td><td class="icon-name">bi-file-earmark-check</td><td>Verde (success)</td></tr>
+                <tr><td>Fallido</td><td><i class="bi bi-file-earmark-x fs-4 c-error"></i></td><td class="icon-name">bi-file-earmark-x</td><td>Rojo (error)</td></tr>
+
+                <tr class="border-top-2"><td rowspan="4" class="fw-bold bg-light">N3. FASE</td><td>Sin Tramitar</td><td><i class="bi bi-diagram-3 fs-4 c-todo"></i></td><td class="icon-name">bi-diagram-3</td><td>Gris (todo)</td></tr>
+                <tr><td>En Trámite</td><td><i class="bi bi-diagram-3-fill fs-4 c-active"></i></td><td class="icon-name">bi-diagram-3-fill</td><td>Amarillo (active)</td></tr>
+                <tr><td>Hecho</td><td><i class="bi bi-diagram-3 fs-4 c-success"></i></td><td class="icon-name">bi-diagram-3</td><td>Verde (success)</td></tr>
+                <tr><td>Fallido</td><td><i class="bi bi-exclamation-triangle fs-4 c-error"></i></td><td class="icon-name">bi-exclamation-triangle</td><td>Rojo (error)</td></tr>
+
+                <tr class="border-top-2"><td rowspan="4" class="fw-bold bg-light">N4. TRÁMITE</td><td>Sin Tramitar</td><td><i class="bi bi-clipboard fs-4 c-todo"></i></td><td class="icon-name">bi-clipboard</td><td>Gris (todo)</td></tr>
+                <tr><td>En Trámite</td><td><i class="bi bi-clipboard-pulse fs-4 c-active"></i></td><td class="icon-name">bi-clipboard-pulse</td><td>Amarillo (active)</td></tr>
+                <tr><td>Hecho</td><td><i class="bi bi-clipboard-check fs-4 c-success"></i></td><td class="icon-name">bi-clipboard-check</td><td>Verde (success)</td></tr>
+                <tr><td>Fallido</td><td><i class="bi bi-clipboard-x fs-4 c-error"></i></td><td class="icon-name">bi-clipboard-x</td><td>Rojo (error)</td></tr>
+
+                <tr class="border-top-2"><td rowspan="4" class="fw-bold bg-light">N5. TAREA</td><td>Sin Tramitar</td><td><i class="bi bi-square fs-4 c-todo"></i></td><td class="icon-name">bi-square</td><td>Gris (todo)</td></tr>
+                <tr><td>En Trámite</td><td><i class="bi bi-pencil-square fs-4 c-active"></i></td><td class="icon-name">bi-pencil-square</td><td>Amarillo (active)</td></tr>
+                <tr><td>Hecho</td><td><i class="bi bi-check-square fs-4 c-success"></i></td><td class="icon-name">bi-check-square</td><td>Verde (success)</td></tr>
+                <tr><td>Fallido</td><td><i class="bi bi-x-square fs-4 c-error"></i></td><td class="icon-name">bi-x-square</td><td>Rojo (error)</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="doc-section">
+        <div class="doc-header bg-primary">2. TIPOLOGÍA DE ACCIONES (TAREAS)</div>
+        <table class="table mb-0">
+            <thead>
+                <tr>
+                    <th>Acción</th>
+                    <th>Icono</th>
+                    <th>Clase Bootstrap (Nombre)</th>
+                    <th>Propósito</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td><strong>ANALISIS</strong></td><td><i class="bi bi-person-gear fs-4 c-neutral"></i></td><td class="icon-name">bi-person-gear</td><td>Procesado y estudio técnico.</td></tr>
+                <tr><td><strong>REDACTAR</strong></td><td><i class="bi bi-pencil fs-4 c-neutral"></i></td><td class="icon-name">bi-pencil</td><td>Creación de documentos.</td></tr>
+                <tr><td><strong>FIRMAR</strong></td><td><i class="bi bi-pen fs-4 c-neutral"></i></td><td class="icon-name">bi-pen</td><td>Validación de firmas.</td></tr>
+                <tr><td><strong>NOTIFICAR</strong></td><td><i class="bi bi-send fs-4 c-neutral"></i></td><td class="icon-name">bi-send</td><td>Comunicación directa.</td></tr>
+                <tr><td><strong>PUBLICAR</strong></td><td><i class="bi bi-megaphone fs-4 c-neutral"></i></td><td class="icon-name">bi-megaphone</td><td>Inserción en diarios oficiales.</td></tr>
+                <tr><td><strong>ESPERAR_PLAZO</strong></td><td><i class="bi bi-hourglass-split fs-4 c-neutral"></i></td><td class="icon-name">bi-hourglass-split</td><td>Pausa legal obligatoria.</td></tr>
+                <tr><td><strong>INCORPORAR</strong></td><td><i class="bi bi-box-arrow-in-down fs-4 c-neutral"></i></td><td class="icon-name">bi-box-arrow-in-down</td><td>Anexar archivos al contenedor.</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+</body>
+</html>

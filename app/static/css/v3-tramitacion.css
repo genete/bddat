@@ -17,7 +17,7 @@
 
 .panel-contexto-fijo {
     position: sticky;
-    top: 60px; /* Altura del header app */
+    top: var(--header-height);
     z-index: 100;
     background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
     border: 1px solid #dee2e6;
@@ -231,28 +231,115 @@
         position: relative;
         top: auto;
     }
-    
+
     .expediente-info h2 {
         font-size: 1.25rem;
     }
-    
+
     .proyecto-info h3 {
         font-size: 1rem;
     }
-    
+
     #accordionSolicitudes .accordion-button {
         font-size: 0.9rem;
         padding: 0.75rem;
     }
-    
+
     .accordion-anidado {
         margin-left: 0;
         border-left-width: 2px;
         padding-left: 0.5rem;
     }
-    
+
     /* Ocultar algunos badges en móvil para ahorrar espacio */
     .badge {
         font-size: 0.7rem;
     }
 }
+
+/* ===== TABS V3 — issue #150 ===== */
+
+.tramitacion-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    border-bottom: 1px solid #dee2e6;
+    scrollbar-width: thin;
+}
+
+.tramitacion-tabs .nav-link {
+    max-width: 180px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+}
+
+.tramitacion-tabs .nav-link .tab-icon { flex-shrink: 0; }
+.tramitacion-tabs .nav-link .tab-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 130px;
+}
+
+.tramitacion-tabs .btn-nueva-entidad {
+    color: #6c757d;
+    border: none;
+    background: none;
+    flex-shrink: 0;
+}
+.tramitacion-tabs .btn-nueva-entidad:hover { color: var(--bs-primary); }
+
+/* Indentación visual por nivel */
+.tabs-nivel-2 {
+    margin-top: 1rem;
+    border-top: 2px solid #dee2e6;
+    padding-top: 0.75rem;
+}
+.tabs-nivel-3 {
+    margin-top: 0.75rem;
+    border-top: 1px solid #e9ecef;
+    padding-top: 0.5rem;
+    margin-left: 0.5rem;
+}
+.tabs-nivel-4 {
+    margin-top: 0.5rem;
+    margin-left: 1rem;
+}
+
+/* Tab pendiente — recién creado sin fechas */
+.tab-pendiente { font-style: italic; color: #6c757d; }
+
+/* === Colores por nivel (C1 revisado — headers y tabs pálidos) === */
+
+/* Fase: azul pálido (#cfe2ff) / texto azul oscuro */
+.card-header-fase    { background-color: #cfe2ff; color: #084298; }
+/* Trámite: naranja pálido (#fde8d1) / texto naranja oscuro */
+.card-header-tramite { background-color: #fde8d1; color: #8b4500; }
+/* Tarea: morado pálido (#e8d5f5) / texto morado oscuro */
+.card-header-tarea   { background-color: #e8d5f5; color: #4a1d8a; }
+
+/* Tabs activos: mismo pálido que el header, texto en color oscuro del nivel */
+.tabs-nivel-1 .nav-link.active { background-color: #c4ddca; color: #055218; font-weight: 700; border-color: #b0cdb7; border-bottom-color: #c4ddca; }
+.tabs-nivel-2 .nav-link.active { background-color: #cfe2ff; color: #084298; font-weight: 700; border-color: #9ec5fe; border-bottom-color: #cfe2ff; }
+.tabs-nivel-3 .nav-link.active { background-color: #fde8d1; color: #8b4500; font-weight: 700; border-color: #ffc69e; border-bottom-color: #fde8d1; }
+.tabs-nivel-4 .nav-link.active { background-color: #e8d5f5; color: #4a1d8a; font-weight: 700; border-color: #c9a8f0; border-bottom-color: #e8d5f5; }
+
+/* Tabs inactivos: texto en color saturado del nivel, en negrita */
+.tabs-nivel-1 .nav-link:not(.active):not(.btn-nueva-entidad) { font-weight: 700; color: #087021; }
+.tabs-nivel-2 .nav-link:not(.active):not(.btn-nueva-entidad) { font-weight: 700; color: #0d6efd; }
+.tabs-nivel-3 .nav-link:not(.active):not(.btn-nueva-entidad) { font-weight: 700; color: #fd7e14; }
+.tabs-nivel-4 .nav-link:not(.active):not(.btn-nueva-entidad) { font-weight: 700; color: #6f42c1; }
+
+/* === Tamaño icono en tabs (C3) === */
+.tramitacion-tabs .nav-link .tab-icon i { font-size: 1.1rem; }
+
+/* === Visibilidad icono en tab activo (C4) ===
+   El icono hereda el color de texto del nav-link activo (ya tiene
+   buen contraste con el fondo pálido del nivel), evitando que
+   text-warning/text-success queden invisibles sobre fondos coloreados. */
+.tramitacion-tabs .nav-link.active .tab-icon i { color: inherit !important; }

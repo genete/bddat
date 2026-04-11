@@ -1,8 +1,24 @@
 # Guía de Vistas Bootstrap - BDDAT
 
-**Versión:** 1.0  
-**Fecha:** 16 de febrero de 2026  
+**Versión:** 2.2
+**Fecha:** 25 de marzo de 2026
 **Para:** Claude Code - Referencia de diseño UI
+
+---
+
+## 📖 Vocabulario
+
+| Término | Significado |
+|---------|-------------|
+| **V0, V1, V2, V4** | Tipos de vista definidos en esta guía |
+| **V3-BC** | Vista de tramitación por breadcrumbs (evolución de V3; no usa acordeón ni tabs) |
+| **C.1** | Zona fija superior sin scroll (`lista-cabecera`) |
+| **C.2** | Zona scrollable independiente (`lista-scroll-container`) |
+| **Listado embebido** | Tabla dentro de una card V4 (ej: documentos en detalle de expediente, direcciones en detalle de entidad) |
+| **Tabla V2** | Tabla `expedientes-table` dentro de `card.tabla-bloque`, thead verde claro sticky, scroll infinito JS |
+| **Tabla BC** | Tabla `_tabla_hijos.html` dentro de `card.tabla-bloque`, thead verde claro (unificado con V2), sin sticky |
+| **Tabla Pool** | Tabla `#pool-tabla`, `table-layout: fixed`, thead sticky gris con `box-shadow inset` |
+| **`.tabla-bloque`** | Card contenedor de tabla (V2 y BC): bordes redondeados, sombra. Con `card-header` → `overflow:hidden` (esquinas limpias); con `expedientes-table` directa → bg verde claro (esquinas seamless + sticky intacto) |
 
 ---
 
@@ -48,8 +64,9 @@ A: app-container (grid header/main/footer)
 | **V0** (Login) | A/B.1/B.2/B.3 | Simple | NO |
 | **V1** (Dashboard) | A/B.1/B.2/B.3 | Simple | NO |
 | **V2** (Listado) | A/B.1/B.2/C.1/C.2/D/B.3 | C.2 independiente | SÍ |
-| **V3** (Tramitación) | A/B.1/B.2/acordeón/B.3 | Simple | NO |
-| **V4** (Detalle/Edición) | A/B.1/B.2/B.3 | Simple | NO |
+| **V3-BC** (Tramitación) | A/B.1/B.2/C.1/C.2/B.3 | C.2 independiente | SÍ |
+| **V4** (Detalle/Edición) | A/B.1/B.2/C.1/B.3 | Simple (B.2 entera) | C.1 solo header |
+| **Pool** (variante V3-BC) | A/B.1/B.2/C.1/C.2/B.3 | C.2 independiente | SÍ |
 
 ---
 
@@ -124,13 +141,17 @@ A: app-container (grid header/main/footer)
     <div class="page-header content-constrained">Título + botón</div>
     <div class="filters-row content-constrained">Filtros + paginación</div>
   </div>
-  
+
   <div class="lista-scroll-container"> <!-- C.2: flex: 1, overflow-y: auto -->
-    <table class="expedientes-table"> <!-- D: thead sticky top: 0 -->
-      <thead>...</thead>
-      <tbody>...</tbody>
-    </table>
-    <button id="tabla-scroll-to-top">↑</button> <!-- sticky bottom: 1rem -->
+    <div class="content-constrained py-3">
+      <div class="card tabla-bloque"> <!-- bordes redondeados + sombra; bg verde → esquinas seamless -->
+        <table class="expedientes-table"> <!-- thead sticky top: 0 -->
+          <thead>...</thead>
+          <tbody><!-- filas JS ScrollInfinito --></tbody>
+        </table>
+      </div>
+    </div>
+    <button id="tabla-scroll-to-top">↑</button> <!-- sticky bottom: 1rem, FUERA del card -->
   </div>
 </main>
 ```
@@ -212,69 +233,148 @@ def get_expedientes():
 
 ---
 
-## 🛠️ Vista V3 - Tramitación (Acordeón)
+## 🛠️ Vista V3-BC - Tramitación (Breadcrumbs)
 
-### ⚠️ Cambio Arquitectónico (12/02/2026)
-**De:** Sidebar lateral (250px) + panel detalle  
-**A:** Acordeón completo Bootstrap 5 en 100% ancho
+### Evolución histórica
+| Fecha | Cambio |
+|-------|--------|
+| 12/02/2026 | Sidebar → Acordeón Bootstrap 5 |
+| 28/02/2026 | Acordeón → Tabs 4 niveles (#150) |
+| 04/03/2026 | Tabs → **Breadcrumbs** (#157) — arquitectura actual |
 
-### Decisiones de Diseño
+> **Legacy:** La versión anterior (acordeón/tabs) sigue en el repositorio pero **no se usa**.
+> Archivos legacy: `app/templates/vistas/vista3/` (partials acordeón/tabs),
+> `app/modules/expedientes/templates/expedientes/tramitacion_v3.html`,
+> `app/routes/vista3.py`, `app/static/js/v3-tabs-main.js`,
+> `app/static/js/acordeon_lazy.js`, `app/templates/layout/base_acordeon.html`.
+> No crear vistas nuevas con ese patrón.
 
-#### Panel Contexto Fijo (Sticky)
-- **Contenido:** Expediente + Proyecto juntos (NO en acordeón)
-- **Razón:** No son parte de jerarquía de tramitación, mantienen contexto
-- **CSS:** `position: sticky; top: 60px; z-index: 100;`
+### Concepto
 
-#### Jerarquía Acordeón
-```
-Panel Contexto (sticky)
-└── Acordeón Solicitudes (Bootstrap 5)
-    └── Detalle Solicitud
-        └── Acordeón Fases (anidado)
-            └── Detalle Fase
-                └── Acordeón Trámites (anidado)
-                    └── Detalle Trámite
-                        └── Acordeón Tareas (anidado)
-```
+Navegación drill-down por la jerarquía ESFTT (Expediente → Solicitud → Fase → Trámite → Tarea).
+Cada nivel es una **página independiente** con:
+- **C.1** — Card del nodo actual (datos de la entidad, metadatos, botones de acción)
+- **C.2** — Tabla de hijos del nodo (`_tabla_hijos.html`) o contenido específico (tarea → documentos)
 
-#### Cabeceras con Columnas Customizadas
+El breadcrumb del header permite volver a cualquier nivel superior.
+
+### Estructura tipo (cada nivel)
+
 ```html
-<button class="accordion-button collapsed">
-  <span class="col-tipo">Solicitud 1: AAP+AAC</span>
-  <span class="col-fases">Fases (1/2)</span>
-  <span class="col-tramites">Trámites (1/5)</span>
-  <span class="badge bg-success">Activa</span>
-</button>
+<main class="app-main" style="overflow-y: hidden;">
+  <!-- C.1: card del nodo actual -->
+  <div class="lista-cabecera">
+    <div class="bc-view">
+      <div class="card bc-card-nodo">
+        <div class="card-header card-header-accent">Título nodo</div>
+        <div class="card-body card-body-tinted">
+          <div class="bc-meta">Metadatos: estado, fechas...</div>
+          <div class="bc-acciones-bar">Botones acción</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- C.2: tabla de hijos -->
+  <div class="lista-scroll-container">
+    <div class="content-constrained py-3">
+      <div class="card tabla-bloque"> <!-- overflow:hidden vía :has(>.card-header) → esquinas limpias -->
+        <div class="card-header card-header-accent d-flex justify-content-between align-items-center py-2">
+          <span class="fw-semibold">
+            <i class="fas fa-..."></i> [Título hijos]
+            <span class="badge bg-primary ms-2">{{ hijos|length }}</span>
+          </span>
+          <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#modal-nuevo-...">
+            <i class="fas fa-plus me-1"></i> Nuevo [hijo]
+          </button>
+        </div>
+        {% include 'vistas/vista3_bc/_tabla_hijos.html' %}
+      </div>
+    </div>
+  </div>
+</main>
 ```
 
-```css
-.accordion-button {
-  display: flex;
-  justify-content: space-between;
-}
+**Regla crítica de scroll:** `overflow-y: hidden` en `.app-main` es obligatorio para que C.2
+absorba el scroll de forma independiente (misma mecánica que V2).
 
-.col-tipo { width: 200px; }
-.col-fases { width: 100px; }
-.col-tramites { width: 100px; }
+### Partial `_tabla_hijos.html`
+
+Genera la tabla de hijos con columnas dinámicas desde Python:
+
+```html
+<!-- Variables de contexto: hijos (lista de dicts), columnas (lista de {key, label}) -->
+<!-- Clase tabla-hijos: permite responsive mobile (oculta columnas medias en ≤767px) -->
+<table class="table table-hover table-sm align-middle mb-0 tabla-hijos">
+  <thead>
+    <!-- Sin table-light: el CSS de v3-breadcrumbs.css sobreescribe el bg a verde claro -->
+    <tr>
+      <th style="width:2rem"></th>         <!-- indicador estado — siempre visible -->
+      {% for col in columnas %}
+      <th>{{ col.label }}</th>             <!-- ocultas en mobile vía .tabla-hijos media query -->
+      {% endfor %}
+      <th style="width:3rem"></th>         <!-- botón → — siempre visible -->
+    </tr>
+  </thead>
+  <tbody>
+    {% for hijo in hijos %}
+    <tr>
+      <td>{{ indicador_estado(hijo.estado) }}</td>
+      {% for col in columnas %}
+      <td>{{ hijo[col.key] }}</td>
+      {% endfor %}
+      <td><a href="{{ hijo.url_detalle }}" class="btn btn-sm btn-outline-secondary">→</a></td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
 ```
 
-#### Anidación Visual (Indentación)
-```css
-/* Cada nivel anidado: margen + borde color */
-.accordion .accordion {
-  margin-left: 2rem;
-  border-left: 3px solid #0d6efd;
-  padding-left: 1rem;
-}
+Indicadores de estado: `bi-check-circle-fill` (finalizada), `bi-clock-fill` (en curso), `bi-circle` (planificada).
 
-.accordion .accordion .accordion {
-  border-left-color: #198754; /* Trámites */
-}
+### Clases CSS específicas (`v3-breadcrumbs.css` y `v2-components.css`)
 
-.accordion .accordion .accordion .accordion {
-  border-left-color: #ffc107; /* Tareas */
-}
-```
+| Clase | Archivo | Uso |
+|-------|---------|-----|
+| `.bc-card-nodo` | v3-breadcrumbs | Card del nodo actual — sombra discreta |
+| `.bc-meta` | v3-breadcrumbs | Texto de metadatos (0.85rem, color secundario) |
+| `.bc-view` | v3-breadcrumbs | Contenedor centrado `max-width: 1200px` |
+| `.bc-acciones-bar` | v3-breadcrumbs | Flex row de botones de acción |
+| `.tabla-bloque` | v2-components | Card contenedor de tabla (V2 y BC): `border-radius`, `box-shadow`. Ver vocabulario para comportamiento por variante. |
+| `.tabla-hijos` | v3-breadcrumbs | Clase en `<table>` de `_tabla_hijos.html`; activa responsive mobile (oculta columnas medias en ≤767px) |
+
+### Archivos clave
+
+| Archivo | Propósito |
+|---------|-----------|
+| `app/static/css/v3-breadcrumbs.css` | Estilos V3-BC |
+| `app/templates/vistas/vista3_bc/_tabla_hijos.html` | Partial tabla de hijos (columnas dinámicas) |
+| `app/modules/expedientes/templates/expedientes/tramitacion_bc.html` | Nivel expediente |
+| `app/modules/expedientes/templates/expedientes/tramitacion_bc_solicitud.html` | Nivel solicitud |
+| `app/modules/expedientes/templates/expedientes/tramitacion_bc_fase.html` | Nivel fase |
+| `app/modules/expedientes/templates/expedientes/tramitacion_bc_tramite.html` | Nivel trámite |
+| `app/modules/expedientes/templates/expedientes/tramitacion_bc_tarea.html` | Nivel tarea |
+
+### Endpoints backend
+
+| Operación | URL |
+|-----------|-----|
+| Crear solicitud | POST `/api/vista3/expediente/<id>/solicitudes/nueva` |
+| Crear fase | POST `/api/vista3/solicitud/<id>/fases/nueva` |
+| Crear trámite | POST `/api/vista3/fase/<id>/tramites/nuevo` |
+| Crear tarea | POST `/api/vista3/tramite/<id>/tareas/nueva` |
+| Editar solicitud | POST `/api/vista3/solicitud/<id>/editar` |
+| Editar fase | POST `/api/vista3/fase/<id>/editar` |
+| Editar trámite | POST `/api/vista3/tramite/<id>/editar` |
+| Editar tarea | POST `/api/vista3/tarea/<id>/editar` |
+| Borrar solicitud | POST `/api/vista3/solicitud/<id>/borrar` |
+| Borrar fase | POST `/api/vista3/fase/<id>/borrar` |
+| Borrar trámite | POST `/api/vista3/tramite/<id>/borrar` |
+| Borrar tarea | POST `/api/vista3/tarea/<id>/borrar` |
+
+### Filtros Jinja2 registrados (app/__init__.py)
+`icono_solicitud`, `color_solicitud`, `icono_fase`, `color_fase`,
+`icono_tramite`, `color_tramite`, `icono_tarea`, `color_tarea`
 
 ### Modelo de Datos Crítico
 
@@ -297,30 +397,6 @@ proyecto = solicitud.expediente.proyecto
 proyecto = solicitud.proyecto  # NO existe esta relación
 ```
 
-### API Estructura Completa
-
-```python
-@app.route('/api/expedientes/<int:id>/estructura_completa')
-def estructura_completa(id):
-    """Una sola petición HTTP con jerarquía completa."""
-    expediente = Expediente.query.get_or_404(id)
-    
-    return jsonify({
-        'expediente': expediente.to_dict(),
-        'proyecto': expediente.proyecto.to_dict(),
-        'solicitudes': [{
-            **sol.to_dict(),
-            'fases': [{
-                **fase.to_dict(),
-                'tramites': [{
-                    **tram.to_dict(),
-                    'tareas': [t.to_dict() for t in tram.tareas]
-                } for tram in fase.tramites]
-            } for fase in sol.fases]
-        } for sol in expediente.solicitudes]
-    })
-```
-
 ---
 
 ## 📄 Vista V4 - Detalle/Edición Unificada
@@ -337,17 +413,59 @@ Un solo template sirve para ver y editar. El parámetro `modo` controla qué se 
 **Regla fundamental: CERO salto de layout entre modos.**
 Los mismos elementos HTML en las mismas posiciones. Solo cambia el atributo `readonly`/`disabled` y aparecen controles auxiliares en edición (ej: selector de municipios).
 
+### Estructura real de un template V4
+
+```html
+{% from 'macros/page_header.html' import page_header %}
+
+{% block content %}
+{% if modo == 'editar' %}
+<form id="form_objeto" class="form-detail" action="{{ url_for(...) }}" method="POST">
+{% endif %}
+
+<!-- C.1: Encabezado homogéneo (lista-cabecera sin scroll) -->
+<div class="lista-cabecera">
+  {% call page_header('Título', 'fas fa-icon', title_accent=objeto.codigo) %}
+    {% if modo == 'ver' %}
+      <a href="{{ url_for('...listado') }}" class="btn btn-outline-primary">Volver</a>
+      <a href="{{ url_for('...editar', id=objeto.id) }}" class="btn btn-primary">Editar</a>
+    {% else %}
+      <a href="{{ url_for('...detalle', id=objeto.id) }}" class="btn btn-outline-primary">Cancelar</a>
+      <button type="submit" class="btn btn-primary">Guardar cambios</button>
+    {% endif %}
+  {% endcall %}
+</div>
+
+<!-- Contenido: fichas de campos, scroll del body entero -->
+<div class="v4-content content-constrained py-3">
+  <!-- Fichas aquí -->
+</div>
+
+{% if modo == 'editar' %}</form>{% endif %}
+{% endblock %}
+```
+
+**`lista-cabecera` en V4:** se usa solo para el header de página (macro `page_header`), no hay C.2 — el scroll es del `<body>` entero. La mecánica C.1/C.2 con scroll independiente es exclusiva de V2, V3-BC y Pool.
+
+**Macro `page_header`** — genera el bloque título + botones de forma homogénea entre todas las vistas:
+```jinja2
+{% call page_header('Expediente', 'fas fa-folder-open', title_accent='AT-' ~ expediente.numero_at) %}
+  ... botones ...
+{% endcall %}
+```
+El parámetro `title_accent` añade la parte variable del título en color primario (ej: número AT).
+
 ### Estructura de Fichas
 
 ```html
 <!-- Ficha tipo V4: cabecera verde secundario + cuerpo gris -->
 <div class="card shadow-sm mb-3">
     <div class="card-header card-header-accent">
-        <h5 class="mb-0 fw-semibold">
+        <h6 class="mb-0 fw-semibold">
             <i class="fas fa-icon me-2"></i>Título Ficha
-        </h5>
+        </h6>
     </div>
-    <div class="card-body card-body-tinted">
+    <div class="card-body card-body-tinted py-3">
         <!-- Campos del formulario -->
     </div>
 </div>
@@ -357,6 +475,7 @@ Los mismos elementos HTML en las mismas posiciones. Solo cambia el atributo `rea
 
 | Clase | Uso |
 |-------|-----|
+| `.v4-content` | Wrapper del cuerpo de fichas (usar siempre con `content-constrained`) |
 | `.card-header-accent` | Cabecera de ficha en `#c4ddca` (verde apoyo corporativo) |
 | `.card-body-tinted` | Fondo `#f5f5f5` en cuerpo de ficha para destacar campos blancos |
 | `.form-control[readonly]` | Override global: campos readonly con fondo blanco (igual que editable) |
@@ -402,41 +521,20 @@ Los mismos elementos HTML en las mismas posiciones. Solo cambia el atributo `rea
 
 ### Formulario de Edición
 
-```html
-{% if modo == 'editar' %}
-<form id="form_expediente" class="form-detail"
-      action="{{ url_for('blueprint.editar', id=objeto.id) }}" method="POST">
-{% endif %}
-
-<!-- ... contenido de la vista ... -->
-
-{% if modo == 'editar' %}
-</form>
-{% endif %}
-```
-
-La clase `form-detail` activa el focus ring verde corporativo via `v2-components.css`.
-
-### Botones de Acción
+El `<form>` envuelve **todo** el contenido del bloque, incluyendo `lista-cabecera`, para que el botón "Guardar cambios" (dentro del header) sea un `<button type="submit">` del mismo form. La clase `form-detail` activa el focus ring verde corporativo.
 
 ```html
-{% if modo == 'ver' %}
-    <a href="{{ url_for('blueprint.listado') }}" class="btn btn-secondary me-2">
-        <i class="fas fa-arrow-left me-1"></i> Volver
-    </a>
-    <!-- Acciones específicas de la vista (ej: Tramitar) -->
-    <a href="{{ url_for('blueprint.editar', id=objeto.id) }}" class="btn btn-primary">
-        <i class="fas fa-edit me-1"></i> Editar
-    </a>
-{% else %}
-    <a href="{{ url_for('blueprint.detalle', id=objeto.id) }}" class="btn btn-secondary me-2">
-        <i class="fas fa-times me-1"></i> Cancelar
-    </a>
-    <button type="submit" class="btn btn-primary">
-        <i class="fas fa-save me-1"></i> Guardar Cambios
-    </button>
+{% if modo == 'editar' %}
+<form id="form_objeto" class="form-detail" action="..." method="POST">
 {% endif %}
+
+<div class="lista-cabecera">...</div>  {# header con botones Guardar/Cancelar #}
+<div class="v4-content content-constrained py-3">...</div>
+
+{% if modo == 'editar' %}</form>{% endif %}
 ```
+
+Los **botones de acción** van dentro de la macro `page_header` (ver "Estructura real" arriba). Usar `btn-outline-primary` para acciones secundarias (Volver, Cancelar) y `btn-primary` para la acción principal (Editar, Guardar).
 
 ### Tooltips — Inicialización
 
@@ -479,6 +577,75 @@ def editar(id):
                            modo='editar',
                            lista_opciones=...,)
 ```
+
+---
+
+## 📋 Listados Embebidos (tablas dentro de V4)
+
+Tablas cortas dentro de cards V4, para datos secundarios del registro principal.
+Ejemplos: documentos en detalle de expediente, direcciones y autorizaciones en detalle de entidad.
+
+### Convenciones
+
+- Card con `card-header-accent` (verde secundario) + `card-body` sin `card-body-tinted`
+- Tabla: `table table-sm table-hover table-embedded`, thead `table-light`
+- Sin scroll infinito, sin C.1/C.2, sin botón scroll-to-top
+- Paginación: no necesaria (listados cortos, <50 registros típicamente)
+- Acciones por fila: botones `btn-sm btn-outline-*`
+
+### Ejemplo
+
+```html
+<div class="card shadow-sm mb-3">
+  <div class="card-header card-header-accent">
+    <h5 class="mb-0 fw-semibold">
+      <i class="fas fa-list me-2"></i>Direcciones
+    </h5>
+  </div>
+  <div class="card-body p-0">
+    <table class="table table-sm table-hover table-embedded">
+      <thead class="table-light">
+        <tr><th>Tipo</th><th>Dirección</th><th>Acciones</th></tr>
+      </thead>
+      <tbody>...</tbody>
+    </table>
+  </div>
+</div>
+```
+
+### Diferencias con tabla V2
+
+| Aspecto | V2 | Listado embebido |
+|---------|----|--------------------|
+| Contenedor | C.2 (`lista-scroll-container`) | Card body V4 |
+| Thead | Verde corporativo, sticky, uppercase | `table-light`, no sticky |
+| Scroll | Infinito (JS) | Página completa |
+| Clase tabla | `expedientes-table` | `table table-sm table-hover table-embedded` |
+
+---
+
+## 📦 Vista Pool (variante V3-BC)
+
+El pool de documentos del expediente sigue la estructura V3-BC (C.1 + C.2) pero con
+particularidades propias.
+
+### Estructura
+
+- **C.1** — Card del expediente (metadatos) + fichas de entrada (subida/enlace)
+- **C.2** — Tabla pool (`#pool-tabla`)
+
+### Particularidades de la tabla Pool
+
+| Aspecto | Pool | V2 / BC |
+|---------|------|---------|
+| Layout | `table-layout: fixed` | Auto |
+| Thead | Sticky, gris claro, `box-shadow inset` inferior | Corporativo (V2) o `table-light` (BC) |
+| Responsive | 5 breakpoints con columnas ocultas | Media queries simples (V2) o ninguno (BC) |
+| Selección | Checkbox por fila | No |
+| Scroll | C.2 independiente | Igual |
+
+### Archivo clave
+- `app/modules/expedientes/templates/expedientes/pool_documentos.html`
 
 ---
 
@@ -569,7 +736,20 @@ def editar(id):
 ```
 
 ### 2. NO usar `overflow: hidden` en contenedores con sticky
-Bloquea `position: sticky`. En C.1/C.2, el `overflow: hidden` va en `.app-main`, NO en `.lista-scroll-container`.
+Bloquea `position: sticky`. `overflow: hidden` crea un nuevo scroll container y el `thead` sticky pasa a resolverse relativo al card (que no scrollea) en lugar de a `.lista-scroll-container`.
+
+**Solución para esquinas redondeadas en V2:** usar `overflow: clip` (CSS Overflow Level 4).
+Recorta visualmente igual que `hidden` pero **no crea scroll container ni nuevo BFC**, por lo que el sticky sigue funcionando:
+
+```css
+.tabla-bloque:has(> table) {
+  overflow: clip;  /* recorta esquinas sin romper sticky */
+}
+```
+
+Soporte: Chrome 90+, Firefox 81+, Safari 16+, Edge 90+.
+
+**Excepción controlada (BC):** `.tabla-bloque:has(> .card-header)` usa `overflow: hidden` porque en las vistas V4 la tabla no tiene `thead` sticky propio — el sticky se resuelve relativo al viewport a través de `.app-main`. No hay conflicto.
 
 ### 3. Botón scroll-to-top FUERA de `<table>`
 ```html
@@ -605,7 +785,7 @@ container.addEventListener('scroll', toggleButton);
 ## 📝 Checklist Implementación Vista
 
 ### Antes de Empezar
-- [ ] ¿Qué tipo de vista? (Login, Dashboard, Listado, Tramitación, **Detalle/Edición**)
+- [ ] ¿Qué tipo de vista? (V0 Login, V1 Dashboard, V2 Listado, V3-BC Tramitación, V4 Detalle/Edición, Pool)
 - [ ] ¿Necesita C.1/C.2? (solo si lista larga >100 items)
 - [ ] ¿Colores corporativos? (verde #087021 para identidad)
 - [ ] ¿Responsive? (definir breakpoints y columnas a ocultar)
@@ -637,9 +817,10 @@ container.addEventListener('scroll', toggleButton);
 ### Archivos por Vista
 - **V0:** `v0-login.css`, `base_login.html`, `login_v0.html`
 - **V1:** `v1-dashboard.css`, `index_v1.html`
-- **V2:** Sin CSS específico (usa solo base), `listado_v2.html`, `v2-scroll-infinito.js`
-- **V3:** `v3-tramitacion.css` (pendiente), `tramitacion_v3.html`, `v3-accordion-main.js` (pendiente)
-- **V4:** Sin CSS específico (clases en `v2-components.css`), `detalle.html` unificado
+- **V2:** Sin CSS específico (usa solo base), `lista_v2_base.html`, `listado_v2.html`, `v2-scroll-infinito.js`
+- **V3-BC:** `v3-breadcrumbs.css`, `tramitacion_bc*.html`, `_tabla_hijos.html`
+- **V4:** Sin CSS específico (clases en `v2-components.css`), `detalle.html` unificado, macro `macros/page_header.html`
+- **Pool:** Inline en `pool_documentos.html` (variante V3-BC)
 
 ### Bootstrap 5
 - [Accordion](https://getbootstrap.com/docs/5.3/components/accordion/)
@@ -648,6 +829,9 @@ container.addEventListener('scroll', toggleButton);
 
 ---
 
-**Versión:** 1.0 - Compactada para Claude Code  
-**Fecha:** 16 de febrero de 2026  
-**Histórico completo:** Ver `docs/arquitectura/FASE_3_FRONTEND_DINAMICO.md` y documentos relacionados
+**Versión:** 2.2
+**Fecha:** 25 de marzo de 2026
+**Cambios v2.0:** Eliminada V3 acordeón/tabs (legacy), documentada V3-BC, listados embebidos y Pool.
+**Cambios v2.1 (#202):** Unificado thead V2/BC (verde claro `#c4ddca`). Añadido `.tabla-bloque` como contenedor card de tabla. Thead BC sin sticky (listas cortas). Responsive mobile en `_tabla_hijos.html` (clase `.tabla-hijos`). Estructura C.2 actualizada en V2 y V3-BC.
+**Cambios v2.2 (#251):** Estructura real de V4 documentada: `lista-cabecera` para header vía macro `page_header`, wrapper `v4-content`, form envuelve todo el contenido. Lista completa de archivos legacy V3. Comparativa corregida (V4 usa C.1 solo para header).
+**Referencia estudio:** `docs/ANALISIS_HOMOGENEIZACION_UI.md`

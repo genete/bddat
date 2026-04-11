@@ -1,5 +1,9 @@
 from app import db
 
+# Códigos INE de las 8 provincias andaluzas (2 primeros dígitos del código de municipio)
+CODIGOS_PROVINCIA_ANDALUCIA = ['04', '11', '14', '18', '21', '23', '29', '41']
+
+
 class Municipio(db.Model):
     """
     Catálogo oficial de municipios españoles.

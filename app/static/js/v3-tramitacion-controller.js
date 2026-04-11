@@ -3,7 +3,7 @@
  * 
  * Orquestador principal Vista V3 (Tramitación).
  * 
- * FASE 1: Stub vacío (sin funcionalidad)
+ * DEPRECADO — sustituido por vista breadcrumbs. Pendiente mover a legacy/ (#275 M4)
  * FASE 5: Implementar lógica completa:
  * - Coordinación sidebar + panel + breadcrumb
  * - Estado global de navegación

@@ -1,0 +1,347 @@
+# Análisis: Generación dinámica de diagrama de un expediente
+
+> Fuente de verdad: `ESTRUCTURA_FTT.json`
+> Última sincronización: 2026-03-30
+
+**Estado:** Diseño cerrado — pendiente de implementación (#285)
+**Relacionado con:** `GUIA_DIAGRAMAS_ESFTT.md` (diagramas estáticos de documentación) · #274 (revisión visual vista tramitación)
+
+---
+
+## Índice
+
+1. [Concepto y motivación](#1-concepto-y-motivación)
+2. [Diferencia con los diagramas estáticos](#2-diferencia-con-los-diagramas-estáticos)
+3. [Decisión de arquitectura: tres capas](#3-decisión-de-arquitectura-tres-capas)
+4. [Capa 1 — Endpoint `/api/expedientes/<id>/arbol` (JSON bruto)](#4-capa-1--endpoint-apiexpedientesidarbol-json-bruto)
+5. [Capa 2 — Masticador por renderer](#5-capa-2--masticador-por-renderer)
+6. [Capa 3 — Serializador Mermaid](#6-capa-3--serializador-mermaid)
+7. [Interacción: frame único con expansión al clic](#7-interacción-frame-único-con-expansión-al-clic)
+8. [Render y navegación en el navegador](#8-render-y-navegación-en-el-navegador)
+9. [Integración en la UI y paleta de colores](#9-integración-en-la-ui-y-paleta-de-colores)
+10. [Pendientes antes de implementar](#10-pendientes-antes-de-implementar)
+
+---
+
+## 1. Concepto y motivación
+
+El objetivo es generar **al vuelo** un diagrama visual del árbol ESFTT real de un expediente concreto — fases, trámites y tareas con sus estados actuales — y mostrarlo embebido en BDDAT.
+
+A diferencia de los diagramas de documentación (capas 0–3 en `GUIA_DIAGRAMAS_ESFTT.md`), este diagrama:
+
+- Se genera en runtime a partir de datos reales de BD, no de fuentes documentales
+- Refleja el estado actual de cada nodo (pendiente / en curso / finalizado)
+- Es específico de un expediente concreto, no del procedimiento genérico
+- Se muestra en la propia aplicación, no en git ni en Miro
+
+---
+
+## 2. Diferencia con los diagramas estáticos
+
+| Aspecto | Diagramas estáticos (`GUIA_DIAGRAMAS_ESFTT.md`) | Este análisis |
+|---|---|---|
+| **Origen** | JSON estructural + MDs de diseño | BD en tiempo real |
+| **Sujeto** | El procedimiento genérico (todas las fases posibles) | Un expediente concreto (las fases que tiene) |
+| **Estados** | Sin estados operacionales | Pendiente / En curso / Finalizado |
+| **Render** | `mmdc` CLI → SVG comprometido en git | `mermaid.js` CDN en el navegador |
+| **Destino** | Documentación, manual, Miro | Vista de tramitación en BDDAT |
+| **Ciclo de vida** | Actualización manual cuando cambia la arquitectura | Regenerado en cada carga de página |
+
+---
+
+## 3. Decisión de arquitectura: tres capas
+
+El sistema se estructura en tres capas independientes:
+
+```
+BD  →  _construir_arbol()  →  /api/expedientes/<id>/arbol  (JSON bruto)
+                                         │
+                          ┌──────────────┼──────────────┐
+                          ▼              ▼              ▼
+                   preparar_mmd()  preparar_excel()  preparar_*()
+                          │
+                          ▼
+              arbol_to_mmd(arbol_preparado, fase_expandida_id)
+                          │
+                          ▼
+                    mermaid.js (browser)
+```
+
+**Capa 1 — API bruta:** expone los datos tal como están en BD. Sin interpretación, sin decisiones de presentación.
+
+**Capa 2 — Masticador:** transforma el JSON bruto en la forma que necesita cada renderer. Cada renderer tiene el suyo. El masticador para MMD decide qué es `en_curso`; el de Excel decide el formato de fecha; uno estadístico puede ignorar el detalle de tareas y agregar contadores.
+
+**Capa 3 — Serializador:** toma el JSON ya preparado y emite el formato final (texto MMD, fichero xlsx, HTML…).
+
+**Por qué no generar MMD directamente desde Flask:** el JSON bruto es útil por sí solo y agnóstico a cualquier renderer. Acoplar Flask a sintaxis Mermaid — o a cualquier formato de salida — contamina la API con decisiones de presentación.
+
+---
+
+## 4. Capa 1 — Endpoint `/api/expedientes/<id>/arbol` (JSON bruto)
+
+### Por qué un endpoint nuevo y no ampliar `/jerarquia`
+
+El endpoint existente `GET /api/expedientes/<id>/jerarquia` solo desciende hasta el nivel **Fase** y es consumido actualmente por Vista V3. Ampliarlo para incluir trámites y tareas rompería el contrato con ese consumidor o lo cargaría de datos que no necesita.
+
+**Decisión:** endpoint nuevo `GET /api/expedientes/<id>/arbol`.
+
+### Fuente de la lógica
+
+La función `_construir_arbol()` en `app/routes/vista3.py` ya construye el árbol completo a 4 niveles con estados incluidos. El nuevo endpoint la reutiliza y devuelve el resultado como JSON puro en lugar de HTML renderizado.
+
+### Estructura JSON bruta esperada
+
+El JSON expone los campos reales de BD sin interpretación. El estado no se deduce aquí — eso es responsabilidad del masticador.
+
+```json
+[
+  {
+    "id": 1,
+    "tipo_solicitud": {"id": 2, "siglas": "AAP"},
+    "fecha_solicitud": "2025-06-15",
+    "fecha_fin": null,
+    "fases": [
+      {
+        "id": 12,
+        "tipo_fase": {"id": 3, "codigo": "ANÁLISIS_SOLICITUD", "nombre": "Análisis de solicitud"},
+        "fecha_inicio": "2025-06-20",
+        "fecha_fin": "2025-07-10",
+        "resultado_fase": {"id": 1, "codigo": "FAVORABLE"},
+        "tramites": [
+          {
+            "id": 45,
+            "tipo_tramite": {"id": 7, "codigo": "ANALISIS_DOCUMENTAL", "nombre": "Análisis documental"},
+            "fecha_inicio": "2025-06-20",
+            "fecha_fin": "2025-07-10",
+            "tareas": [
+              {
+                "id": 101,
+                "tipo_tarea": {"id": 1, "codigo": "ANALIZAR", "nombre": "Análisis"},
+                "fecha_inicio": "2025-06-20",
+                "fecha_fin": "2025-07-10",
+                "documento_usado_id": 55,
+                "documento_producido_id": 56
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+]
+```
+
+---
+
+## 5. Capa 2 — Masticador por renderer
+
+Función que transforma el JSON bruto en la forma que necesita un renderer concreto. Cada renderer tiene la suya.
+
+### `preparar_para_mmd(arbol_bruto)`
+
+Recorre el árbol bruto y produce un árbol enriquecido con las propiedades que necesita el serializador MMD:
+
+- `estado`: deduce `pendiente` / `en_curso` / `finalizado` / `finalizado_favorable` a partir de `fecha_inicio`, `fecha_fin` y `resultado_fase`
+- `label`: texto a mostrar en el nodo (nombre corto, código…)
+- `clase`: nombre de la `classDef` Mermaid a aplicar
+- `clickable`: string — `'fase'` (RMB expandir/colapsar), `'hoja'` (LMB navega a URL bc), `null` (no interactivo)
+
+El masticador es el único lugar donde vive la lógica "si `fecha_fin` es nulo y `fecha_inicio` no es nulo → en_curso". Ni la API ni el serializador la conocen.
+
+### Otros masticadores (ejemplos futuros)
+
+| Masticador | Qué produce |
+|---|---|
+| `preparar_para_excel(arbol_bruto)` | Fechas formateadas, duraciones calculadas, contadores de tareas |
+| `preparar_para_timeline(arbol_bruto)` | Segmentos con inicio/fin absolutos para una vista Gantt |
+| `preparar_para_stats(arbol_bruto)` | Agregados por fase, sin detalle de tareas |
+
+---
+
+## 6. Capa 3 — Serializador Mermaid
+
+Un único serializador Python, desacoplado de Flask y testable en aislamiento. Recibe el árbol **ya masticado** por `preparar_para_mmd()`:
+
+```python
+def arbol_to_mmd(arbol_preparado, fase_expandida_id=None) -> str:
+    ...
+```
+
+- `fase_expandida_id=None` — vista macro: todas las fases como nodos simples
+- `fase_expandida_id=X` — fase X renderizada como subgraph con sus trámites y tareas; el resto de fases siguen visibles como nodos simples
+
+### Orientación del diagrama
+
+**`flowchart LR`** para el flujo principal — las fases se leen de izquierda a derecha, como una línea de tiempo. Esto produce un diagrama ancho y bajo que encaja naturalmente en un contenedor Bootstrap full-width (`col-12`).
+
+Cuando una fase se expande, su subgraph usa `direction TB` — los trámites y tareas dentro de esa fase crecen verticalmente sin alterar la orientación horizontal general:
+
+```
+flowchart LR
+  F1[ANÁLISIS]:::finalizada --> F2
+  subgraph F2[CONSULTAS]:::en_curso
+    direction TB
+    T1[CONSULTA_SEPARATA]:::finalizado --> T2[TRASLADO_TITULAR]:::en_curso
+  end
+  F2 --> F3[INF_PÚBLICA]:::pendiente
+```
+
+El serializador usa los campos `clase` del árbol preparado para emitir `classDef` y colorear nodos según estado.
+
+### El servidor genera el texto MMD
+
+**Decisión:** Flask ejecuta el masticador y el serializador y devuelve el texto MMD. El navegador solo renderiza.
+
+- Endpoint: `GET /api/expedientes/<id>/arbol/mmd?fase_id=X`
+- El texto MMD es ligero (pocos KB) — la latencia del AJAX es imperceptible
+- Toda la lógica de serialización permanece en Python, sin duplicar en JS
+
+---
+
+## 7. Interacción: frame único con expansión al clic
+
+**Decisión:** un solo `<div>` cuyo contenido Mermaid se regenera al interactuar, sin salto de layout ni segunda zona en pantalla.
+
+### Flujo de interacción
+
+```
+Carga inicial
+  GET /api/expedientes/<id>/arbol/mmd  →  texto MMD (macro)
+  mermaid.render()  →  SVG en el <div>
+  svgPanZoom()      →  zoom/pan activo
+
+Usuario hace clic en FASE X
+  GET /api/expedientes/<id>/arbol/mmd?fase_id=X  →  texto MMD (fase expandida)
+  svgPanZoomInstance.destroy()
+  mermaid.render()  →  nuevo SVG en el mismo <div>
+  svgPanZoom()      →  reinstanciar zoom/pan
+
+Usuario hace clic en FASE X (ya expandida)
+  → colapsa (misma llamada sin fase_id o con fase_id=null)
+```
+
+### Aspecto visual (orientación LR)
+
+```
+Vista macro:
+  [ANÁLISIS]:::finalizada → [CONSULTAS]:::en_curso → [INF_PÚBLICA]:::pendiente → [RESOLUCIÓN]:::pendiente
+
+Tras clic en CONSULTAS:
+  [ANÁLISIS]:::finalizada →  subgraph CONSULTAS:::en_curso  → [INF_PÚBLICA]:::pendiente → [RESOLUCIÓN]:::pendiente
+                               direction TB
+                               [CONSULTA_SEPARATA]:::finalizado
+                                      ↓
+                               [TRASLADO_TITULAR]:::en_curso
+```
+
+El contexto del expediente completo permanece visible mientras se examina el detalle de una fase.
+
+### Gestión del clic: problema de coexistencia con zoom/pan
+
+svg-pan-zoom usa LMB drag para pan. Cualquier acción que también use LMB compite con él — el umbral entre "click" y "inicio de drag" es frágil y difícil de calibrar.
+
+**Decisión: LMB para pan, RMB para menú contextual, doble clic para acción por defecto.**
+
+Tres interacciones sin conflicto:
+
+- **LMB drag** → pan (svg-pan-zoom, sin cambios)
+- **Rueda** → zoom
+- **RMB sobre cualquier nodo** → menú contextual con acciones disponibles para ese nodo
+- **Doble clic sobre nodo de fase/trámite/solicitud** → expandir/colapsar (acción por defecto)
+- **Doble clic sobre nodo de tarea** → navegar a la URL bc de esa tarea (abrir)
+
+El doble clic es el atajo descubrible para la acción más frecuente. El RMB ofrece el menú completo y es extensible sin rediseñar la interacción.
+
+```javascript
+svgElement.addEventListener('contextmenu', (e) => {
+    e.preventDefault()  // evita el menú del navegador
+    const nodo = e.target.closest('.fase-node')
+    if (nodo) mostrarMenu(e.clientX, e.clientY, nodo.dataset.faseId)
+})
+```
+
+El menú contextual es un `<div>` Bootstrap posicionado absolutamente en las coordenadas del clic, que desaparece al hacer clic fuera.
+
+**Ventaja adicional:** el menú puede crecer con nuevas acciones sin rediseñar la interacción.
+
+**Coste:** el RMB es menos descubrible que el LMB. Mitigable con un hint visual bajo el diagrama o un icono en los nodos de fase.
+
+Las opciones descartadas:
+
+| Opción | Motivo de descarte |
+|---|---|
+| Umbral de sensibilidad LMB | Compromiso frágil — movimiento mínimo durante click rompe la acción |
+| Evento propio sobre SVG | Complejidad sin ventaja real frente a RMB |
+| Botones externos (sin pan libre) | Pan con botones incómodo en diagramas grandes; zoom sin pan deja el diagrama fuera de vista |
+| Control externo al SVG | Menos integrado; el diagrama pierde interactividad directa |
+
+### Feedback visual: cursor
+
+- Nodos de fase/trámite/solicitud → `cursor: pointer` (doble clic disponible + RMB)
+- Nodos de tarea → `cursor: pointer` (doble clic navega)
+
+Mermaid genera clases CSS sobre los nodos SVG — se apunta con mayor especificidad que el `cursor: grab` de svg-pan-zoom. El campo `clickable` del masticador (§5) informa al serializador de qué clase CSS recibe cada nodo.
+
+---
+
+## 8. Render y navegación en el navegador
+
+**Decisión tomada:** `mermaid.js` vía CDN + `svg-pan-zoom` vía CDN (~17KB, MIT).
+
+### mermaid.js
+
+| Aspecto | Valoración |
+|---|---|
+| **Dependencias servidor** | Ninguna — no requiere Node.js ni `mmdc` |
+| **Integración** | `<script>` CDN + `<div id="diagrama">` actualizado por JS |
+| **Regeneración** | `mermaid.render(id, codigoMMD)` devuelve SVG sin tocar el DOM — se inserta manualmente |
+| **Riesgo** | Dependencia CDN externa — mitigable cacheando localmente si fuera necesario |
+
+### svg-pan-zoom
+
+Biblioteca ligera (~17KB, MIT) diseñada para añadir zoom y pan a SVGs generados dinámicamente.
+
+| Funcionalidad | Detalle |
+|---|---|
+| **Zoom** | Rueda del ratón + botones +/− |
+| **Pan** | Click + arrastrar |
+| **Fit automático** | Ajusta el diagrama al contenedor en la carga inicial |
+| **Reset** | Botón para volver al estado inicial |
+| **Ciclo de vida** | `destroy()` antes de cada regeneración del SVG, reinstanciar después |
+
+El fit automático resuelve el problema de aspecto: independientemente del tamaño del diagrama generado, el punto de partida siempre es el diagrama completo visible en el contenedor. El usuario ajusta desde ahí con zoom/pan libre.
+
+---
+
+## 9. Integración en la UI y paleta de colores
+
+### Punto de integración
+
+**Tab en `tramitacion_bc.html`** (nivel raíz — expediente), no en los niveles inferiores.
+
+Es el único nivel con visión del árbol completo del expediente. El tab "Diagrama" convive con la lista de solicitudes — dos vistas del mismo dato. El fit automático de `svg-pan-zoom` adapta el SVG al espacio del tab.
+
+Flujo de uso previsto: el tramitador termina una tarea, quiere ver qué toca en el resto del expediente, pulsa "Diagrama", navega el árbol, hace clic en el nodo con acción pendiente y la bc lleva directamente a ese elemento. Sin salir del contexto de tramitación.
+
+### Paleta de colores
+
+Coherente con la paleta por nivel SFTT definida en #274 (revisión visual bc). Los mismos colores rigen tanto los iconos de la vista bc como los nodos del diagrama:
+
+| Nivel | Color | Hex | `classDef` Mermaid |
+|---|---|---|---|
+| Solicitud | Azul | `#3b7dd8` | `fill:#3b7dd8,stroke:#2563eb,color:#fff` |
+| Fase | Ámbar | `#d97706` | `fill:#d97706,stroke:#b45309,color:#fff` |
+| Trámite | Violeta | `#7c3aed` | `fill:#7c3aed,stroke:#6d28d9,color:#fff` |
+| Tarea | Verde | `#16a34a` | `fill:#16a34a,stroke:#15803d,color:#fff` |
+
+El estado (planificada / en curso / finalizada) se expresa con variación de tono sobre el color base del nivel — no con un color independiente — para no introducir un segundo sistema de colores.
+
+---
+
+## 10. Pendientes antes de implementar
+
+- [x] Crear issue de implementación → #285
+- [x] Decidir en qué vista se muestra el diagrama → tab en `tramitacion_bc.html` — ver §9
+- [x] Estrategia de gestión del clic: RMB menú contextual, LMB reservado para pan — ver §7
+- [x] Decidir si `mermaid.js` y `svg-pan-zoom` se cargan desde CDN → CDN externo
+- [ ] Prototipar la sintaxis MMD generada para un expediente real de prueba y validar legibilidad

@@ -1,4 +1,40 @@
-<header class="app-header">
+{# Offcanvas declarado FUERA del header para que su z-index (1045) supere al del header (1000) #}
+{% if module_nav %}
+<div class="offcanvas offcanvas-start" tabindex="-1" id="offcanvas-nav" aria-labelledby="offcanvas-nav-label">
+    <div class="offcanvas-header">
+        <h5 class="offcanvas-title" id="offcanvas-nav-label">
+            <i class="fas fa-bolt me-2 text-primary"></i>BDDAT
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Cerrar"></button>
+    </div>
+    <div class="offcanvas-body">
+        <nav class="d-flex flex-column gap-1">
+            {% for item in module_nav %}
+            <a href="{{ url_for(item.route) }}"
+               class="offcanvas-nav-link{% if active_module == item.module %} active{% endif %}">
+                <i class="fas {{ item.icon }}"></i>
+                {{ item.label }}
+            </a>
+            {% endfor %}
+        </nav>
+    </div>
+</div>
+{% endif %}
+
+{# Fila 1: logo + módulos + usuario
+   NOTA: el <header class="app-header"> y el bloque breadcrumb se declaran
+   en cada base template (base_fullwidth, base_acordeon) para que los
+   templates hijo puedan override el bloque via herencia Jinja2. #}
+<div class="header-nav-row">
+    {# Hamburger mobile: abre el offcanvas #}
+    {% if module_nav %}
+    <button class="btn-hamburger" type="button"
+            data-bs-toggle="offcanvas" data-bs-target="#offcanvas-nav"
+            aria-controls="offcanvas-nav" aria-label="Abrir menú">
+        <i class="fas fa-bars"></i>
+    </button>
+    {% endif %}
+
     <a href="{{ url_for('dashboard.index') }}" class="logo">
         <i class="fas fa-bolt"></i>
         BDDAT
@@ -17,32 +53,56 @@
     </nav>
     {% endif %}
 
-    {# Breadcrumb — auto desde metadata si hay módulo activo; overrideable por template #}
-    <nav class="breadcrumb">
-        {% block breadcrumb %}
-        <a href="{{ url_for('dashboard.index') }}">Inicio</a>
-        {% for item in module_nav %}
-            {% if active_module == item.module %}
-            <span>›</span>
-            <span>{{ item.label }}</span>
-            {% endif %}
-        {% endfor %}
-        {% endblock %}
-    </nav>
-
-    <!-- Spacer: empuja user-menu a la derecha -->
     <div class="spacer"></div>
 
     <div class="user-menu">
         {% if current_user.is_authenticated %}
-            <span>{{ current_user.nombre }} {{ current_user.apellidos }}</span>
-            <a href="{{ url_for('auth.logout') }}">
-                <i class="fas fa-sign-out-alt"></i> Salir
-            </a>
+        <div class="dropdown">
+            <button class="nav-user-btn dropdown-toggle" type="button"
+                    data-bs-toggle="dropdown" aria-expanded="false">
+                <i class="bi bi-person-circle"></i>
+                {{ current_user.nombre }}
+                {% if session.get('rol_activo_nombre') %}
+                <span class="badge bg-primary ms-1">{{ session.rol_activo_nombre }}</span>
+                {% endif %}
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end">
+                {# Lista de roles — solo si hay más de uno #}
+                {% if current_user.roles | length > 1 %}
+                    {% for rol in current_user.roles %}
+                    <li>
+                        {% if rol.id == session.get('rol_activo_id') %}
+                        <span class="dropdown-item disabled d-flex align-items-center gap-2">
+                            <i class="bi bi-check text-primary"></i> {{ rol.nombre }}
+                        </span>
+                        {% else %}
+                        <a class="dropdown-item ps-4" href="{{ url_for('auth.cambiar_rol', rol_id=rol.id) }}">
+                            {{ rol.nombre }}
+                        </a>
+                        {% endif %}
+                    </li>
+                    {% endfor %}
+                    <li><hr class="dropdown-divider"></li>
+                {% endif %}
+                <li>
+                    <a class="dropdown-item d-flex align-items-center gap-2"
+                       href="{{ url_for('perfil.index') }}">
+                        <i class="bi bi-pencil"></i> Editar perfil
+                    </a>
+                </li>
+                <li><hr class="dropdown-divider"></li>
+                <li>
+                    <a class="dropdown-item d-flex align-items-center gap-2 text-danger"
+                       href="{{ url_for('auth.logout') }}">
+                        <i class="bi bi-box-arrow-right"></i> Cerrar sesión
+                    </a>
+                </li>
+            </ul>
+        </div>
         {% else %}
             <a href="{{ url_for('auth.login') }}">
                 <i class="fas fa-sign-in-alt"></i> Iniciar Sesión
             </a>
         {% endif %}
     </div>
-</header>
+</div>

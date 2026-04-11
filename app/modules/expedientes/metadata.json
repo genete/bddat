@@ -12,5 +12,31 @@
   "navigation": {
     "label": "Expedientes",
     "route": "expedientes.listado_v2"
+  },
+  "listado_v2": {
+    "columns": [
+      { "key": "codigo",             "label": "N\u00b0 Expediente", "type": "text"   },
+      { "key": "titular",            "label": "Titular",            "type": "text"   },
+      { "key": "tipo_expediente",    "label": "Tipo",               "type": "text"   },
+      { "key": "responsable",        "label": "Responsable",        "type": "text"   },
+      { "key": "num_solicitudes",    "label": "Solicitudes",        "type": "custom" },
+      { "key": "estado_tramitacion", "label": "Estado",             "type": "custom" },
+      { "key": "_acciones",          "label": "Acciones",           "type": "custom" }
+    ]
+  },
+  "seguimiento": {
+    "columns": [
+      { "key": "num_at",               "label": "N\u00ba AT",      "type": "custom" },
+      { "key": "tipo_solicitud",       "label": "SOLICITUD",        "type": "custom" },
+      { "key": "fecha_solicitud",      "label": "FECHA",            "type": "custom" },
+      { "key": "titular_nombre",       "label": "TITULAR",          "type": "custom" },
+      { "key": "proyecto_descripcion", "label": "PROYECTO",         "type": "custom" },
+      { "key": "pista_SOL",            "label": "AN\u00c1LISIS",   "type": "custom" },
+      { "key": "pista_CONSULTAS",      "label": "CONSULTAS",        "type": "custom" },
+      { "key": "pista_MA",             "label": "MA",               "type": "custom" },
+      { "key": "pista_IP",             "label": "IP",               "type": "custom" },
+      { "key": "pista_RES",            "label": "RESOLUCI\u00d3N",  "type": "custom" },
+      { "key": "_acciones",            "label": "",                 "type": "custom" }
+    ]
   }
 }

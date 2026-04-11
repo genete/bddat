@@ -81,6 +81,14 @@ class Entidad(db.Model):
         comment='Puede publicar anuncios/notificaciones. Ej: diputaciones, ayuntamientos'
     )
     
+    tipo_titular = db.Column(
+        db.String(30),
+        nullable=True,
+        comment='Categoría del administrado cuando actúa como titular. '
+                'NULL para entidades sin rol_titular. '
+                'Valores: GRAN_DISTRIBUIDORA | DISTRIBUIDOR_MENOR | PROMOTOR | ORGANISMO_PUBLICO | OTRO'
+    )
+
     # === CONTACTO GENERAL ===
     email = db.Column(
         db.String(120), 
@@ -240,7 +248,7 @@ class Entidad(db.Model):
         """
         Validación básica de formato NIF/NIE español.
         
-        TODO: Implementar validación completa con algoritmo oficial
+        TODO #272 (M5): Implementar validación completa con algoritmo oficial
         (NIF: letra calculada, NIE: letra + número, etc.)
         """
         if not valor:

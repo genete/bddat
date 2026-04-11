@@ -1,0 +1,326 @@
+{% extends 'layout/lista_v2_base.html' %}
+
+{# Bug #263.5: breadcrumb con tercer nivel Seguimiento #}
+{% block breadcrumb %}
+<a href="{{ url_for('dashboard.index') }}">Inicio</a>
+<span>›</span>
+<a href="{{ url_for('expedientes.listado_v2') }}">Expedientes</a>
+<span>›</span>
+<span>Seguimiento</span>
+{% endblock %}
+
+{% block page_title %}Seguimiento{% endblock %}
+{% block page_icon %}<i class="fas fa-tasks"></i>{% endblock %}
+{% block entity_label_plural %}solicitudes{% endblock %}
+{% block search_placeholder %}Buscar por Nº AT o titular...{% endblock %}
+
+{% block filtros_extra %}
+<div id="sf-ver"></div>
+<div id="sf-estado"></div>
+<div id="sf-tipo-titular"></div>
+<div id="sf-tipo-expediente"></div>
+{% endblock %}
+
+{% block tabla_clase %}seguimiento-table{% endblock %}
+
+
+{% block extra_js %}
+{{ super() }}
+<script>
+// ===== SELECTORES DE FILTRO =====
+// Instanciados antes de las clases para que sus valores sean accesibles
+// en el closure de SeguimientoScroll.loadMore() y FiltrosSeguimiento.
+
+const sfVer = new SelectorFiltro('#sf-ver', [
+    { v: 'mis', t: 'Mis expedientes' }
+], { label: 'Ver' });
+// Ver (todos) = placeholder vacío → muestra todos; Mis expedientes = filtro activo
+sfVer.setValue('mis');  // la ruta empieza mostrando solo mis expedientes
+
+const sfEstado = new SelectorFiltro('#sf-estado', [
+    { v: 'EN_TRAMITE', t: 'En trámite' },
+    { v: 'RESUELTA',   t: 'Resuelta' },
+    { v: 'DESISTIDA',  t: 'Desistida' },
+    { v: 'ARCHIVADA',  t: 'Archivada' }
+], { label: 'Estado' });
+sfEstado.setValue('EN_TRAMITE');  // la ruta empieza filtrada por en trámite
+
+const sfTipoTitular = new SelectorFiltro('#sf-tipo-titular', [
+    { v: 'PROMOTOR',           t: 'Promotor' },
+    { v: 'ORGANISMO_PUBLICO',  t: 'Organismo público' },
+    { v: 'DISTRIBUIDOR_MENOR', t: 'Distribuidora menor' },
+    { v: 'GRAN_DISTRIBUIDORA', t: 'Gran distribuidora' },
+    { v: 'OTRO',               t: 'Otro' }
+], { label: 'Tipo titular' });
+
+const sfTipoExpediente = new SelectorFiltro('#sf-tipo-expediente', [
+    {% for te in tipos_expedientes %}
+    { v: '{{ te.id }}', t: {{ te.tipo | tojson }} }{% if not loop.last %},{% endif %}
+
+    {% endfor %}
+], { label: 'Tipo expediente' });
+
+const colsMeta = {{ columns | tojson }};
+
+// Mapas de texto y color por estado interno (§4.2 / §4.3)
+const TEXTO_ESTADO = {
+    'PENDIENTE_TRAMITAR':  'TRAMITAR',
+    'PENDIENTE_ESTUDIO':   'ESTUDIAR',
+    'PENDIENTE_REDACTAR':  'REDACTAR',
+    'PENDIENTE_FIRMA':     'FIRMAR',
+    'PENDIENTE_NOTIFICAR': 'NOTIFICAR',
+    'PENDIENTE_PUBLICAR':  'PUBLICAR',
+    'PENDIENTE_SUBSANAR':  'SUBSANAR',
+    'PENDIENTE_PLAZOS':    'PLAZOS',
+    'PENDIENTE_CERRAR':    'CERRAR',
+    'FIN':                 'FIN',
+};
+const COLOR_CLASE = {
+    'rojo':     'pista-rojo',
+    'amarillo': 'pista-amarillo',
+    'azul':     'pista-azul',
+    'gris':     'pista-gris',
+    'naranja':  'pista-naranja',
+    'verde':    'pista-verde',
+};
+
+function renderPista(ep) {
+    if (!ep) return '';
+    const texto   = TEXTO_ESTADO[ep.codigo] || ep.codigo;
+    const clase   = COLOR_CLASE[ep.color]   || '';
+    const counter = ep.count > 1 ? ` (${ep.count})` : '';
+    const tooltip = ep.nota ? ` data-bs-toggle="tooltip" title="${ep.nota.replace(/"/g, '&quot;')}"` : '';
+    return `<span class="pista-celda ${clase}"${tooltip}>${texto}${counter}</span>`;
+}
+
+function renderFecha(val) {
+    if (!val) return '—';
+    // +T12:00:00 para evitar desfase de zona horaria
+    const d = new Date(val + 'T12:00:00');
+    return d.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+
+const renderFns = {
+    'num_at': (val, item) => {
+        const atStr = `AT-${val}`;
+        if (item.at_count > 1) {
+            return `<span class="num-at-pill num-at-multiples"
+                         title="Este AT tiene ${item.at_count} solicitudes activas simultáneas">
+                        <strong>${atStr}</strong>
+                    </span>`;
+        }
+        return `<span class="num-at-pill"><strong>${atStr}</strong></span>`;
+    },
+
+    'tipo_solicitud': (val, item) => {
+        const clase   = item.color_solicitud ? `solicitud-${item.color_solicitud}` : '';
+        const tooltip = item.estado_solicitud || '';
+        return `<span class="tipo-solicitud-celda ${clase}" title="${tooltip}">${val || '—'}</span>`;
+    },
+
+    'fecha_solicitud': (val) => renderFecha(val),
+
+    'titular_nombre': (val, item) => {
+        let clase = '';
+        if      (item.tipo_titular === 'PROMOTOR')         clase = 'titular-promotor';
+        else if (item.tipo_titular === 'ORGANISMO_PUBLICO') clase = 'titular-organismo';
+        else if (item.tipo_titular === 'GRAN_DISTRIBUIDORA') clase = 'titular-gran-dist';
+        const texto = val || '—';
+        return `<span class="celda-ellipsis ${clase}" title="${texto}">${texto}</span>`;
+    },
+
+    'proyecto_descripcion': (val) => {
+        const texto = val || '—';
+        return `<span class="celda-ellipsis" title="${texto}">${texto}</span>`;
+    },
+
+    'pista_SOL':       (val) => renderPista(val),
+    'pista_CONSULTAS': (val) => renderPista(val),
+    'pista_MA':        (val) => renderPista(val),
+    'pista_IP':        (val) => renderPista(val),
+    'pista_RES':       (val) => renderPista(val),
+
+    '_acciones': (val, item) =>
+        `<a href="/expedientes/${item.expediente_id}/tramitacion/solicitud/${item.id}"
+             class="btn-accion-ver">
+            <i class="fas fa-eye"></i> Ver
+         </a>`,
+};
+
+const columns = colsMeta.map(col =>
+    renderFns[col.key] ? { ...col, renderFn: renderFns[col.key] } : col
+);
+
+// Subclase que inyecta los filtros del seguimiento en cada petición
+class SeguimientoScroll extends ScrollInfinito {
+    async loadMore() {
+        if (this.loading || !this.hasMore) return;
+        this.loading = true;
+        this.showLoader();
+
+        try {
+            const params = new URLSearchParams({ cursor: this.cursor, limit: this.limit });
+
+            const search = this.searchInput?.value.trim();
+            if (search) params.append('search', search);
+
+            const ver = sfVer.getValue() || 'todos';
+            params.append('ver', ver);
+
+            const estado = sfEstado.getValue();
+            if (estado) params.append('estado', estado);
+
+            const tipoTitular = sfTipoTitular.getValue();
+            if (tipoTitular) params.append('tipo_titular', tipoTitular);
+
+            const tipoExp = sfTipoExpediente.getValue();
+            if (tipoExp) params.append('tipo_expediente_id', tipoExp);
+
+            const response = await fetch(`${this.apiUrl}?${params}`);
+            if (!response.ok) throw new Error(`Error ${response.status}: ${response.statusText}`);
+
+            const data = await response.json();
+            this.cursor         = data.next_cursor;
+            this.hasMore        = data.has_more;
+            this.totalAvailable = data.total || null;
+
+            this.renderItems(data.data);
+            this.totalLoaded += data.data.length;
+            this.updatePaginationInfo();
+
+            // Inicializar tooltips Bootstrap en los elementos recién renderizados
+            document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
+                if (!bootstrap.Tooltip.getInstance(el)) new bootstrap.Tooltip(el);
+            });
+
+            if (this.totalLoaded === 0 && ver === 'mis') {
+                this._mostrarToastSinExpedientes();
+            }
+
+        } catch (error) {
+            console.error('Error cargando seguimiento:', error);
+            this.showError('Error al cargar el seguimiento. Inténtalo de nuevo.');
+        } finally {
+            this.loading = false;
+            this.hideLoader();
+        }
+    }
+
+    _mostrarToastSinExpedientes() {
+        // Solo mostrar en la primera carga y si no hay resultados
+        if (this.cursor !== 0) return;
+        const contenedor = document.querySelector('.toast-container');
+        if (!contenedor) return;
+        // Patrón pool_documentos: insertAdjacentHTML + showing + click en toast (#265.2)
+        const id = 'toast-seg-' + Date.now();
+        contenedor.insertAdjacentHTML('beforeend',
+            `<div id="${id}" class="toast toast-info" role="alert"
+                  aria-live="assertive" aria-atomic="true"
+                  data-bs-autohide="true" data-bs-delay="6000">
+                <div class="d-flex align-items-center p-3">
+                    <div class="flex-grow-1">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Información:</strong> No tienes expedientes asignados. Usa «Todos» para ver el listado completo.
+                    </div>
+                    <button type="button" class="btn-close ms-3"
+                            data-bs-dismiss="toast" aria-label="Cerrar"></button>
+                </div>
+            </div>`);
+        const el = document.getElementById(id);
+        el.classList.add('showing');
+        const t = new bootstrap.Toast(el);
+        t.show();
+        setTimeout(() => el.classList.remove('showing'), 300);
+        el.addEventListener('hide.bs.toast', () => el.classList.add('hide'));
+        el.addEventListener('click', e => { if (!e.target.closest('.btn-close')) t.hide(); });
+        el.addEventListener('hidden.bs.toast', () => el.remove());
+    }
+}
+
+const scrollInfinito = new SeguimientoScroll({
+    apiUrl:      '{{ url_for("api_seguimiento.listar_seguimiento") }}',
+    tableClass:  '.seguimiento-table',
+    entityLabel: 'solicitudes',
+    columns,
+});
+
+// FiltrosSeguimiento extiende FiltrosListado para gestionar los dos filtros
+// que tienen valor por defecto (ver=mis, estado=EN_TRAMITE):
+//   - El indicador solo se activa cuando hay desviación de los defaults
+//   - El botón Limpiar restaura a los defaults en vez de dejar en blanco
+class FiltrosSeguimiento extends FiltrosListado {
+    // Los defaults de esta vista (no cuentan como "filtro extra" aplicado por el usuario)
+    static DEFAULTS = { ver: 'mis', estado: 'EN_TRAMITE' };
+
+    _actualizarIndicador() {
+        if (!this._filtersRow) return;
+        const hayExtra =
+            (this.searchInput && this.searchInput.value.trim()) ||
+            sfTipoTitular.getValue() ||
+            sfTipoExpediente.getValue() ||
+            sfVer.getValue()    !== FiltrosSeguimiento.DEFAULTS.ver ||
+            sfEstado.getValue() !== FiltrosSeguimiento.DEFAULTS.estado;
+        this._filtersRow.classList.toggle('filtros-activos', !!hayExtra);
+        if (this.btnLimpiar) this.btnLimpiar.disabled = !hayExtra;
+    }
+
+    _limpiar() {
+        this._limpiando = true;
+        if (this.searchInput) this.searchInput.value = '';
+        sfTipoTitular.clear();       // dispara 'change' → suprimido por _limpiando
+        sfTipoExpediente.clear();    // idem
+        // setValue no dispara evento DOM → no necesita supresión
+        sfVer.setValue(FiltrosSeguimiento.DEFAULTS.ver);
+        sfEstado.setValue(FiltrosSeguimiento.DEFAULTS.estado);
+        this._limpiando = false;
+        clearTimeout(this._timer);
+        this._actualizarIndicador();
+        this.scroll.reload();
+    }
+}
+
+const filtros = new FiltrosSeguimiento(scrollInfinito);
+
+// Reparte el espacio sobrante: TITULAR 40% / PROYECTO 60% (mínimo 100px cada uno)
+// CSS calc() no funciona con rem en table-layout:fixed → medimos el DOM.
+// Bug #265.5: saltar si ninguna columna flexible está visible; excluir cols ocultas de anchoFijo.
+function ajustarFlexiblesSeguimiento() {
+    const tabla = document.querySelector('.seguimiento-table');
+    if (!tabla) return;
+    const ths = Array.from(tabla.querySelectorAll('thead th'));
+    if (ths.length < 5) return;
+    const thTitular  = ths[3];
+    const thProyecto = ths[4];
+    thTitular.style.width  = '';
+    thProyecto.style.width = '';
+
+    const titularVisible  = getComputedStyle(thTitular).display  !== 'none';
+    const proyectoVisible = getComputedStyle(thProyecto).display !== 'none';
+    // Si ninguna columna flexible está visible, no hay nada que distribuir
+    if (!titularVisible && !proyectoVisible) return;
+
+    const totalWidth = tabla.offsetWidth;
+    let anchoFijo = 0;
+    ths.forEach((th, i) => {
+        if (i !== 3 && i !== 4 && getComputedStyle(th).display !== 'none') {
+            anchoFijo += th.offsetWidth;
+        }
+    });
+    const sobrante = Math.max(0, totalWidth - anchoFijo);
+    const MIN_PX = 100;
+    if (proyectoVisible) {
+        thTitular.style.width  = Math.max(MIN_PX, sobrante * 0.4) + 'px';
+        thProyecto.style.width = Math.max(MIN_PX, sobrante * 0.6) + 'px';
+    } else {
+        thTitular.style.width  = Math.max(MIN_PX, sobrante) + 'px';
+    }
+}
+requestAnimationFrame(ajustarFlexiblesSeguimiento);
+new ResizeObserver(ajustarFlexiblesSeguimiento)
+    .observe(document.querySelector('.lista-scroll-container'));
+// Recalcular cuando los media queries ocultan/muestran las columnas flexibles (#265.5)
+[1100, 1000].forEach(bp => {
+    window.matchMedia(`(max-width: ${bp}px)`).addEventListener('change', ajustarFlexiblesSeguimiento);
+});
+</script>
+{% endblock %}
