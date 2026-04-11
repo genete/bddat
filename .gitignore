@@ -15,6 +15,9 @@ app/static/uploads/*
 docs_prueba/
 contexto_completo_gemini.txt
 
+# Contexto de issues generado por scripts/gen_issues.py (no versionar)
+.issues/
+
 # React+Vite POC #291 — artefactos de build
 react-diagramas/node_modules/
 app/static/js/react/
