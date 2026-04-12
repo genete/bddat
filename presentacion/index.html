@@ -832,24 +832,29 @@
 
     // Pan + pinch — táctil
     let lastDist = null;
+    let lastTap = 0;
+    let wasPinching = false;
 
     wrap.addEventListener('touchstart', function (e) {
       e.stopPropagation();
       if (e.touches.length === 1) {
         dragging = true;
+        wasPinching = false;
         startX = e.touches[0].clientX; startY = e.touches[0].clientY;
         startTx = tx; startTy = ty;
       } else if (e.touches.length === 2) {
         dragging = false;
+        wasPinching = true;
         lastDist = Math.hypot(
           e.touches[0].clientX - e.touches[1].clientX,
           e.touches[0].clientY - e.touches[1].clientY
         );
       }
-    }, { passive: true });
+    }, { passive: false });
 
     wrap.addEventListener('touchmove', function (e) {
       e.stopPropagation();
+      e.preventDefault();
       if (e.touches.length === 1 && dragging) {
         tx = startTx + (e.touches[0].clientX - startX);
         ty = startTy + (e.touches[0].clientY - startY);
@@ -863,21 +868,23 @@
         lastDist = dist;
         apply();
       }
-    }, { passive: true });
+    }, { passive: false });
 
+    // Un solo touchend — stopPropagation + doble tap sin interferencia del pinch
     wrap.addEventListener('touchend', function (e) {
       e.stopPropagation();
-      dragging = false;
-      lastDist = null;
-    }, { passive: true });
-
-    // Doble toque: reset
-    let lastTap = 0;
-    wrap.addEventListener('touchend', function (e) {
-      const now = Date.now();
-      if (now - lastTap < 300) { scale = 1; tx = 0; ty = 0; apply(); }
-      lastTap = now;
-    }, { passive: true });
+      if (e.touches.length === 0) {
+        // Doble tap solo si no venimos de un pinch
+        if (!wasPinching) {
+          const now = Date.now();
+          if (now - lastTap < 300) { scale = 1; tx = 0; ty = 0; apply(); }
+          lastTap = now;
+        }
+        dragging = false;
+        lastDist = null;
+        wasPinching = false;
+      }
+    }, { passive: false });
   })();
 </script>
 
