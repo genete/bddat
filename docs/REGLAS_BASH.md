@@ -41,6 +41,7 @@ Esta ruta está en la allowlist del proyecto (`always allow access`).
 
 ## Patrones concretos obligatorios
 
+- **Activar venv:** NUNCA `source venv/Scripts/activate` (el evaluador lo rechaza). Usar directamente el Python del venv: `venv/Scripts/python.exe script.py`
 - **cd + git:** usar SIEMPRE `git -C /ruta` — NUNCA `cd /ruta && git`
 - **`$()` y backticks:** NUNCA — separar en llamadas Bash secuenciales o usar fichero temporal
 - **cd + redirección / escritura:** separar en dos llamadas Bash distintas

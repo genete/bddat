@@ -73,6 +73,7 @@ Las FK deben referenciar con prefijo: `db.ForeignKey('public.tabla.campo')`
 Ver referencia completa: `docs/REGLAS_BASH.md`
 
 Resumen de patrones obligatorios:
+- **Activar venv:** NUNCA `source venv/Scripts/activate` — usar `venv/Scripts/python.exe script.py`
 - **`$()` y backticks:** NUNCA — separar en llamadas Bash secuenciales
 - **`sed -i`:** usar tool `Edit` — nunca sed para escribir ficheros
 - **Newlines en comandos Bash:** NUNCA saltos de línea dentro del cuerpo de un comando (heredocs, `python -c "..."` multilínea, etc.) → escribir el contenido con `Write` a `docs_prueba/temp/` y pasarlo como fichero
