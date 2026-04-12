@@ -718,20 +718,28 @@
 #btn-fullscreen {
   display: block;
   position: fixed;
-  bottom: 14px;
-  right: 14px;
+  bottom: 16px;
+  right: 16px;
   z-index: 8000;
   background: var(--ja-verde);
   border: none;
-  border-radius: 6px;
-  padding: 9px;
+  border-radius: 8px;
+  padding: 14px;
   color: #fff;
   cursor: pointer;
   line-height: 0;
-  opacity: 0.7;
+  opacity: 0.85;
+  touch-action: manipulation;
   transition: opacity 0.2s;
+  /* Área mínima táctil recomendada: 44×44px */
+  min-width: 48px;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
-#btn-fullscreen:hover { opacity: 1; }
+#btn-fullscreen:hover,
+#btn-fullscreen:active { opacity: 1; }
 
 /* =============================================
    ESFTT — Badges clicables + Popups (S05)
