@@ -315,14 +315,7 @@
             <div class="slide-body">
               <p class="slide-intro">Un expediente es siempre un proyecto. La estructura refleja el procedimiento legal real: la semántica del procedimiento vive en los tipos, no en los campos.</p>
               <ul>
-                <li class="fragment">Estructura en capas: <strong>Expediente → Solicitud → Fase → Trámite → Tarea</strong>. La tarea es la mínima unidad de trabajo.
-                  <ul>
-                    <li class="fragment"><strong>Expediente</strong> — el contenedor único ligado a un proyecto. Tipos: <em>Transporte, Distribución, Renovable…</em></li>
-                    <li class="fragment"><strong>Solicitud</strong> — el procedimiento tramitado. Tipos: <em>AAP, AAC, Autorización de Explotación…</em></li>
-                    <li class="fragment"><strong>Fase</strong> — contenedor de trámites con resultado propio: <em>Análisis, Información pública, Consultas, Resolución…</em></li>
-                    <li class="fragment"><strong>Trámite / Tarea</strong> — la acción concreta. 7 tipos atómicos: <em>REDACTAR, FIRMAR, NOTIFICAR, ESPERAR PLAZO…</em></li>
-                  </ul>
-                </li>
+                <li class="fragment"><span class="esftt-badge esftt-capas" data-popup="capas">Estructura en capas</span>: <span class="esftt-badge" data-popup="expediente"><svg xmlns="http://www.w3.org/2000/svg" width="94" height="22" viewBox="0 0 94 22"><rect x="0.75" y="0.75" width="92.5" height="20.5" rx="3" fill="#fff" stroke="#333" stroke-width="1.5"/><text x="47" y="15" font-family="Segoe UI,Arial,sans-serif" font-size="12" font-weight="700" fill="#333" text-anchor="middle">Expediente</text></svg></span> → <span class="esftt-badge" data-popup="solicitud"><svg xmlns="http://www.w3.org/2000/svg" width="76" height="22" viewBox="0 0 76 22"><rect x="0" y="0" width="76" height="22" rx="11" fill="#c6dcff"/><text x="38" y="15" font-family="Segoe UI,Arial,sans-serif" font-size="12" font-weight="700" fill="#1a4a8a" text-anchor="middle">Solicitud</text></svg></span> → <span class="esftt-badge" data-popup="fase"><svg xmlns="http://www.w3.org/2000/svg" width="46" height="22" viewBox="0 0 46 22"><rect x="0" y="0" width="46" height="22" rx="3" fill="#f8d3af"/><text x="23" y="15" font-family="Segoe UI,Arial,sans-serif" font-size="12" font-weight="700" fill="#8a4a00" text-anchor="middle">Fase</text></svg></span> → <span class="esftt-badge" data-popup="tramite"><svg xmlns="http://www.w3.org/2000/svg" width="66" height="22" viewBox="0 0 66 22"><rect x="0" y="0" width="66" height="22" rx="3" fill="#dedaff"/><text x="33" y="15" font-family="Segoe UI,Arial,sans-serif" font-size="12" font-weight="700" fill="#4a3a8a" text-anchor="middle">Trámite</text></svg></span> → <span class="esftt-badge" data-popup="tarea"><svg xmlns="http://www.w3.org/2000/svg" width="56" height="22" viewBox="0 0 56 22"><polygon points="0,0 46,0 56,11 46,22 0,22 10,11" fill="#adf0c7"/><text x="27" y="15" font-family="Segoe UI,Arial,sans-serif" font-size="12" font-weight="700" fill="#1a7a4a" text-anchor="middle">Tarea</text></svg></span>. La tarea es la mínima unidad de trabajo.</li>
                 <li class="fragment">El sistema muestra en todo momento en qué punto está cada solicitud y qué acción toca a continuación</li>
                 <li class="fragment">Varias fases del mismo expediente pueden avanzar en paralelo — siempre que sean compatibles</li>
                 <li class="fragment">Si la situación lo requiere, el tramitador puede salirse del flujo estándar justificadamente — quedará registro en el <strong>cuaderno de bitácora</strong></li>
@@ -350,6 +343,32 @@
           </div>
         </div>
       </div>
+      <!-- Datos popup — ocultos, sólo para lectura por JS -->
+      <div id="popup-expediente" class="esftt-popup-data" hidden>
+        <h4>Expediente</h4>
+        <p>El contenedor único ligado a un proyecto físico.<br>Tipos: <em>Transporte, Distribución, Renovable…</em></p>
+      </div>
+      <div id="popup-solicitud" class="esftt-popup-data" hidden>
+        <h4>Solicitud</h4>
+        <p>El procedimiento que se tramita sobre el proyecto.<br>Tipos: <em>Autorización Administrativa Previa (AAP), Autorización Administrativa de Construcción (AAC), Autorización de Explotación (AE)…</em></p>
+      </div>
+      <div id="popup-fase" class="esftt-popup-data" hidden>
+        <h4>Fase</h4>
+        <p>Contenedor de trámites con resultado propio.<br>Tipos: <em>Análisis de solicitud, Información pública, Consultas a organismos, Resolución…</em></p>
+      </div>
+      <div id="popup-tramite" class="esftt-popup-data" hidden>
+        <h4>Trámite</h4>
+        <p>Agrupa las tareas de un mismo acto administrativo.<br>Tipos: <em>Publicación BOE, Publicación BOP, Consulta a organismo X…</em></p>
+      </div>
+      <div id="popup-tarea" class="esftt-popup-data" hidden>
+        <h4>Tarea</h4>
+        <p>La acción concreta que realiza el tramitador. 7 tipos atómicos: <em>REDACTAR, FIRMAR, NOTIFICAR, ESPERAR PLAZO, REGISTRAR, ADJUNTAR, CONSULTAR.</em></p>
+      </div>
+      <div id="popup-capas" class="esftt-popup-data" hidden>
+        <h4>Estructura en capas</h4>
+        <p><em>[Diagrama SVG — pendiente de proporcionar]</em></p>
+      </div>
+
       <aside class="notes">
         Esta es la slide conceptual más importante. Si se entiende, todo lo demás encaja.
         Señalar el diagrama Miro mientras se van revelando los sub-bullets. No leer la lista entera.
@@ -806,6 +825,8 @@
     });
   })();
 </script>
+
+<script src="js/popups.js"></script>
 
 </body>
 </html>

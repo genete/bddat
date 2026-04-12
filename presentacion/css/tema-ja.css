@@ -710,3 +710,98 @@
   opacity: 1;
   visibility: visible;
 }
+
+/* =============================================
+   ESFTT — Badges clicables + Popups (S05)
+   ============================================= */
+
+/* Badge inline clicable */
+.esftt-badge {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  vertical-align: middle;
+  transition: opacity 0.15s;
+  line-height: 1;
+}
+.esftt-badge:hover { opacity: 0.75; }
+
+/* Variante "Estructura en capas" — texto con subrayado punteado */
+.esftt-capas {
+  font-style: normal;
+  font-weight: 700;
+  color: var(--ja-verde);
+  border-bottom: 1.5px dashed var(--ja-verde);
+  padding-bottom: 1px;
+  cursor: pointer;
+  display: inline;
+}
+.esftt-capas:hover { color: var(--ja-verde-hover); border-color: var(--ja-verde-hover); }
+
+/* Overlay pantalla completa — sin oscurecimiento */
+.ja-popup-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: transparent;
+  z-index: 9000;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.ja-popup-overlay.activo {
+  display: flex;
+  animation: jaPopupFadeIn 0.18s ease;
+  pointer-events: auto;
+}
+
+/* Caja popup — tipografía igual que la slide */
+.ja-popup-box {
+  background: #fff;
+  border-radius: 6px;
+  box-shadow: 0 6px 32px rgba(0, 0, 0, 0.18), 0 1px 6px rgba(0, 0, 0, 0.10);
+  padding: 28px 32px 24px;
+  max-width: 520px;
+  min-width: 280px;
+  width: 88%;
+  position: relative;
+  opacity: 0;
+  transition: opacity 0.18s ease;
+}
+.ja-popup-overlay.activo .ja-popup-box {
+  opacity: 1;
+}
+.ja-popup-box h4 {
+  font-family: var(--ja-font-titulo);
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--ja-gris-titulo);
+  margin: 0 0 10px 0;
+}
+.ja-popup-box p {
+  font-family: var(--ja-font-body);
+  font-size: 18px;
+  color: var(--ja-gris-cuerpo);
+  line-height: 1.65;
+  margin: 0;
+  font-style: italic;
+  font-weight: 300;
+}
+.ja-popup-box em {
+  font-style: italic;
+  color: var(--ja-gris-body);
+}
+.ja-popup-cerrar {
+  position: absolute;
+  top: 10px;
+  right: 14px;
+  background: none;
+  border: none;
+  font-size: 24px;
+  line-height: 1;
+  color: var(--ja-gris-body);
+  cursor: pointer;
+  padding: 0;
+}
+.ja-popup-cerrar:hover { color: var(--ja-gris-titulo); }
+
