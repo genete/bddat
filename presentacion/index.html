@@ -335,7 +335,7 @@
           </div>
 
           <div id="esftt-wrap" class="imgdcha-col-img"
-               style="position:relative;overflow:hidden;cursor:grab;background:#fff;">
+               style="position:relative;overflow:hidden;cursor:grab;background:#fff;touch-action:none;">
             <img id="esftt-img" src="assets/Diagrama_ESFTT.svg"
                  draggable="false"
                  style="position:absolute;top:50%;left:50%;
@@ -804,7 +804,7 @@
       apply();
     }, { passive: false });
 
-    // Pan
+    // Pan — ratón
     wrap.addEventListener('mousedown', function (e) {
       dragging = true;
       wrap.style.cursor = 'grabbing';
@@ -829,6 +829,55 @@
       apply();
       e.stopPropagation();
     });
+
+    // Pan + pinch — táctil
+    let lastDist = null;
+
+    wrap.addEventListener('touchstart', function (e) {
+      e.stopPropagation();
+      if (e.touches.length === 1) {
+        dragging = true;
+        startX = e.touches[0].clientX; startY = e.touches[0].clientY;
+        startTx = tx; startTy = ty;
+      } else if (e.touches.length === 2) {
+        dragging = false;
+        lastDist = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
+      }
+    }, { passive: true });
+
+    wrap.addEventListener('touchmove', function (e) {
+      e.stopPropagation();
+      if (e.touches.length === 1 && dragging) {
+        tx = startTx + (e.touches[0].clientX - startX);
+        ty = startTy + (e.touches[0].clientY - startY);
+        apply();
+      } else if (e.touches.length === 2 && lastDist !== null) {
+        const dist = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
+        scale = Math.min(8, Math.max(0.3, scale * (dist / lastDist)));
+        lastDist = dist;
+        apply();
+      }
+    }, { passive: true });
+
+    wrap.addEventListener('touchend', function (e) {
+      e.stopPropagation();
+      dragging = false;
+      lastDist = null;
+    }, { passive: true });
+
+    // Doble toque: reset
+    let lastTap = 0;
+    wrap.addEventListener('touchend', function (e) {
+      const now = Date.now();
+      if (now - lastTap < 300) { scale = 1; tx = 0; ty = 0; apply(); }
+      lastTap = now;
+    }, { passive: true });
   })();
 </script>
 
