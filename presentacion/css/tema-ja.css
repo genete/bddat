@@ -81,7 +81,7 @@
 }
 
 .reveal .slide-subtitulo {
-  font-size: 15px;
+  font-size: 20px;
   font-weight: 600;
   color: var(--ja-verde);
   line-height: 1.3;
@@ -238,6 +238,37 @@
 }
 
 /* =============================================
+   LAYOUT: SLIDE INTRO LABEL
+   Slide de entrada por sección: solo el label,
+   grande, centrado. data-auto-animate lo lleva
+   hasta su posición en slide-margen-lat.
+   ============================================= */
+
+.reveal section.slide-intro {
+  background: var(--ja-blanco);
+}
+
+.slide-intro-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Mismo tamaño que portada-titulo; el color y el
+   tamaño finales se definen en slide-margen-lat */
+.reveal .slide-intro-label {
+  font-family: var(--ja-font-titulo);
+  font-size: 76px;
+  font-weight: 900;
+  font-style: normal;
+  color: var(--ja-gris-titulo);
+  text-transform: uppercase;
+  letter-spacing: 0;
+  white-space: nowrap;
+  line-height: 1;
+}
+
+/* =============================================
    LAYOUT: PORTADILLA INTERIOR
    Sin triángulo TL, sin logo JA
    ============================================= */
@@ -297,6 +328,37 @@
   font-weight: 400;
   font-style: normal;
   z-index: 1;
+}
+
+/* Animación de entrada del indicador lateral cuando se viene de una slide-intro.
+   FROM: grande, centrado horizontalmente, sin rotación, color título.
+   TO:   posición natural (pequeño, margen derecho, rotado 90°, gris claro).
+   El translateX(-620px) lleva el elemento desde right:2px hasta aprox. el centro
+   de la slide (1280px lógicos). El scale(7) iguala visualmente el tamaño del título. */
+@keyframes margen-lat-entrada {
+  0% {
+    transform: translateX(-620px) translateY(-50%) scale(7) rotate(0deg);
+    color: var(--ja-gris-titulo);
+    font-family: var(--ja-font-titulo);
+    font-weight: 900;
+    letter-spacing: 0;
+  }
+  /* El salto de tipografía ocurre cuando el texto ya es pequeño y casi en su sitio */
+  88% {
+    font-family: var(--ja-font-titulo);
+    font-weight: 900;
+    letter-spacing: 0;
+  }
+  100% {
+    transform: translateY(-50%) rotate(90deg);
+    color: #cccccc;
+    font-family: var(--ja-font-body);
+    font-weight: 400;
+    letter-spacing: 2.5px;
+  }
+}
+.reveal .slide-margen-lat.ml-animando {
+  animation: margen-lat-entrada 0.65s cubic-bezier(0.4, 0, 0.2, 1) both;
 }
 
 /* Contenedor flex principal (layouts de 1 columna).
@@ -834,4 +896,53 @@
   padding: 0;
 }
 .ja-popup-cerrar:hover { color: var(--ja-gris-titulo); }
+
+/* =============================================
+   S00 PORTADA — animación de salida
+   Orquestada desde JS: la navegación se bloquea mientras portada sigue
+   siendo .present, los polígonos salen y el contenido hace fade,
+   y solo después se llama a Reveal.next().
+
+   Secuencia:
+     0.00 – 0.70 s  Polígonos salen hacia su exterior (sin fade)
+     0.65 – 1.10 s  Contenido, logo y pie hacen fade out
+     1.10 – 1.60 s  S01 hace fade in (controlado por JS)
+   ============================================= */
+
+/* Trapecio claro (detrás) → sale hacia la derecha */
+#portada.portada-salida .chevron-light {
+  animation: portada-chevron-dcha 0.7s ease-out both;
+}
+
+/* Trapecio oscuro (delante) → sale hacia la derecha, leve stagger */
+#portada.portada-salida .chevron-dark {
+  animation: portada-chevron-dcha 0.7s ease-out 0.07s both;
+}
+
+/* Triángulo esquina superior izquierda → sale hacia arriba-izquierda */
+#portada.portada-salida .chevron-triangle-tl {
+  animation: portada-triangle-tl 0.65s ease-out both;
+}
+
+/* Contenido, logo y pie → fade out una vez los polígonos han salido */
+#portada.portada-salida .portada-contenido,
+#portada.portada-salida .portada-logo-ja,
+#portada.portada-salida .portada-pie {
+  animation: portada-fade-salida 0.45s ease-out 0.65s both;
+}
+
+@keyframes portada-chevron-dcha {
+  from { transform: translateX(0); }
+  to   { transform: translateX(80%); }
+}
+
+@keyframes portada-triangle-tl {
+  from { transform: translate(0, 0); }
+  to   { transform: translate(-20%, -30%); }
+}
+
+@keyframes portada-fade-salida {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
 

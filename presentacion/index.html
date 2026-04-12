@@ -31,7 +31,7 @@
     <!-- ================================================
          S00 — PORTADA
          ================================================ -->
-    <section class="layout-portada" id="portada">
+    <section class="layout-portada" id="portada" data-transition="none">
       <div class="slide-wrap">
 
         <div class="portada-chevron">
@@ -44,7 +44,7 @@
           <h1 class="portada-titulo">BDDAT</h1>
           <h2 class="portada-subtitulo">Gestión de expedientes de<br>instalaciones de alta tensión</h2>
           <p class="portada-meta">Reunión de presentación interna &middot; Abril 2026</p>
-          <p class="portada-consejeria">Servicio de Energía de Cádiz &middot; Consejería de Industria, Energía y Minas &middot; Junta de Andalucía</p>
+          <p class="portada-consejeria">Servicio de Energía de Cádiz &middot; Consejería de Industria, Energía y Minas</p>
         </div>
 
         <div class="portada-logo-ja">
@@ -63,13 +63,20 @@
     </section>
 
 
+    <!-- S01 intro label -->
+    <section class="slide-intro">
+      <div class="slide-wrap slide-intro-wrap">
+        <span class="slide-intro-label" data-id="ml-s01">El problema</span>
+      </div>
+    </section>
+
     <!-- ================================================
          S01 — EL PROBLEMA
          ================================================ -->
     <section class="layout-contenido">
       <div class="slide-wrap">
         <div class="slide-barra-top"></div>
-        <div class="slide-margen-lat">El problema</div>
+        <div class="slide-margen-lat" data-id="ml-s01">El problema</div>
 
         <div class="slide-inner">
           <header class="slide-header">
@@ -77,8 +84,8 @@
               <span class="seccion-num">1</span>
               <div class="seccion-linea"></div>
             </div>
-            <h2 class="slide-titulo">El punto de partida</h2>
-            <h3 class="slide-subtitulo">Cómo gestionamos hoy</h3>
+            <h2 class="slide-titulo fragment">El punto de partida</h2>
+            <h3 class="slide-subtitulo fragment">Cómo gestionamos hoy</h3>
           </header>
 
           <div class="slide-body">
@@ -104,13 +111,20 @@
     </section>
 
 
+    <!-- S02 intro label -->
+    <section class="slide-intro">
+      <div class="slide-wrap slide-intro-wrap">
+        <span class="slide-intro-label" data-id="ml-s02">Qué es BDDAT</span>
+      </div>
+    </section>
+
     <!-- ================================================
          S02 — QUÉ ES BDDAT
          ================================================ -->
     <section class="layout-contenido">
       <div class="slide-wrap">
         <div class="slide-barra-top"></div>
-        <div class="slide-margen-lat">Qué es BDDAT</div>
+        <div class="slide-margen-lat" data-id="ml-s02">Qué es BDDAT</div>
 
         <div class="slide-inner">
           <header class="slide-header">
@@ -118,8 +132,8 @@
               <span class="seccion-num">2</span>
               <div class="seccion-linea"></div>
             </div>
-            <h2 class="slide-titulo">Una herramienta hecha a medida</h2>
-            <h3 class="slide-subtitulo">Para nuestra forma de tramitar</h3>
+            <h2 class="slide-titulo fragment">Una herramienta hecha a medida</h2>
+            <h3 class="slide-subtitulo fragment">Para nuestra forma de tramitar</h3>
           </header>
 
           <div class="slide-body">
@@ -146,13 +160,20 @@
     </section>
 
 
+    <!-- S02.1 intro label -->
+    <section class="slide-intro">
+      <div class="slide-wrap slide-intro-wrap">
+        <span class="slide-intro-label" data-id="ml-s02b">Límites</span>
+      </div>
+    </section>
+
     <!-- ================================================
-         S02.1 — QUÉ NO HACE BDDAT
+         S02.1 — LO QUE NO INCLUYE
          ================================================ -->
     <section class="layout-contenido">
       <div class="slide-wrap">
         <div class="slide-barra-top"></div>
-        <div class="slide-margen-lat">Límites</div>
+        <div class="slide-margen-lat" data-id="ml-s02b">Límites</div>
 
         <div class="slide-inner">
           <header class="slide-header">
@@ -160,16 +181,14 @@
               <span class="seccion-num">2.1</span>
               <div class="seccion-linea"></div>
             </div>
-            <h2 class="slide-titulo">Qué no hace (todavía) y qué necesita</h2>
-            <h3 class="slide-subtitulo">Para aprovechar la herramienta al máximo</h3>
+            <h2 class="slide-titulo fragment">Lo que no incluye</h2>
+            <h3 class="slide-subtitulo fragment">Por limitación técnica</h3>
           </header>
 
           <div class="slide-body">
             <ul>
               <li class="fragment">No integra el portafirmas — los documentos generados se firman por los canales habituales</li>
               <li class="fragment">No envía notificaciones ni conecta con el BOJA — esas gestiones siguen haciéndose fuera</li>
-              <li class="fragment">Su valor depende de que los datos se introduzcan bien: fechas de actos, estado del expediente, documentos — con rigor, no de cualquier manera</li>
-              <li class="fragment">Si los datos se rellenan de forma consciente, el sistema devuelve trazabilidad real, informes útiles y menos tiempo reconstruyendo el estado de un expediente</li>
             </ul>
           </div>
 
@@ -181,20 +200,70 @@
       </div>
       <aside class="notes">
         Esta slide es de honestidad, no de disculpa. Presentarla con naturalidad — toda herramienta tiene límites.
-        Bullets 1 y 2: acotar expectativas.
-        Bullets 3 y 4: BDDAT amplifica lo que se pone en él. Si los datos son buenos, la trazabilidad es buena.
-        Si hay tensión con bullet 3, es señal de que toca hablar de proceso interno — apuntarlo para S11.
+        Acotar expectativas antes de que alguien lo pregunte.
       </aside>
     </section>
 
 
+    <!-- S02.2 intro label -->
+    <section class="slide-intro">
+      <div class="slide-wrap slide-intro-wrap">
+        <span class="slide-intro-label" data-id="ml-s02c">Involucración</span>
+      </div>
+    </section>
+
+    <!-- ================================================
+         S02.2 — LO QUE NECESITA BDDAT
+         ================================================ -->
+    <section class="layout-contenido">
+      <div class="slide-wrap">
+        <div class="slide-barra-top"></div>
+        <div class="slide-margen-lat" data-id="ml-s02c">Involucración</div>
+
+        <div class="slide-inner">
+          <header class="slide-header">
+            <div class="slide-seccion-row">
+              <span class="seccion-num">2.2</span>
+              <div class="seccion-linea"></div>
+            </div>
+            <h2 class="slide-titulo fragment">Lo que necesita BDDAT</h2>
+            <h3 class="slide-subtitulo fragment">Para aprovechar la herramienta al máximo</h3>
+          </header>
+
+          <div class="slide-body">
+            <ul>
+              <li class="fragment">Su valor depende de que los datos se introduzcan bien: fechas de actos, estado del expediente, documentos — con rigor, no de cualquier manera</li>
+              <li class="fragment">Si los datos se rellenan de forma consciente, el sistema devuelve trazabilidad real, informes útiles y menos tiempo reconstruyendo el estado de un expediente</li>
+            </ul>
+          </div>
+
+          <footer class="slide-pie">
+            <span class="pie-izq">Junta de Andalucía</span>
+            <span class="pie-der">4</span>
+          </footer>
+        </div>
+      </div>
+      <aside class="notes">
+        BDDAT amplifica lo que se pone en él. Si los datos son buenos, la trazabilidad es buena.
+        Si hay tensión con estos puntos, es señal de que toca hablar de proceso interno — apuntarlo para S11.
+      </aside>
+    </section>
+
+
+    <!-- S03 intro label -->
+    <section class="slide-intro">
+      <div class="slide-wrap slide-intro-wrap">
+        <span class="slide-intro-label" data-id="ml-s03">Usuarios</span>
+      </div>
+    </section>
+
     <!-- ================================================
          S03 — QUIÉN LO USA (tabla)
          ================================================ -->
-    <section class="layout-tabla">
+    <section class="layout-tabla" data-auto-animate data-auto-animate-duration="0.7">
       <div class="slide-wrap">
         <div class="slide-barra-top"></div>
-        <div class="slide-margen-lat">Quién lo usa</div>
+        <div class="slide-margen-lat" data-id="ml-s03">Usuarios</div>
 
         <div class="slide-inner">
           <header class="slide-header">
@@ -202,14 +271,14 @@
               <span class="seccion-num">3</span>
               <div class="seccion-linea"></div>
             </div>
-            <h2 class="slide-titulo">Quién lo usa</h2>
-            <h3 class="slide-subtitulo">Cuatro perfiles, un mismo sistema</h3>
+            <h2 class="slide-titulo fragment">Roles</h2>
+            <h3 class="slide-subtitulo fragment">Cuatro perfiles, un mismo sistema</h3>
           </header>
 
           <div class="slide-body">
             <table class="tabla-ja">
               <thead>
-                <tr>
+                <tr class="fragment">
                   <th>Perfil</th>
                   <th>Qué hace en BDDAT</th>
                 </tr>
@@ -249,13 +318,20 @@
     </section>
 
 
+    <!-- S04 intro label -->
+    <section class="slide-intro">
+      <div class="slide-wrap slide-intro-wrap">
+        <span class="slide-intro-label" data-id="ml-s04">Interfaz</span>
+      </div>
+    </section>
+
     <!-- ================================================
          S04 — IDENTIDAD CORPORATIVA Y DISEÑO (img-dcha)
          ================================================ -->
-    <section class="layout-img-dcha">
+    <section class="layout-img-dcha" data-auto-animate data-auto-animate-duration="0.7">
       <div class="slide-wrap">
         <div class="slide-barra-top"></div>
-        <div class="slide-margen-lat">Interfaz</div>
+        <div class="slide-margen-lat" data-id="ml-s04">Interfaz</div>
 
         <div class="imgdcha-layout">
           <div class="imgdcha-col-texto">
@@ -264,8 +340,8 @@
                 <span class="seccion-num">4</span>
                 <div class="seccion-linea"></div>
               </div>
-              <h2 class="slide-titulo">Una interfaz que ya conocéis</h2>
-              <h3 class="slide-subtitulo">Imagen corporativa de la Junta, desde el primer día</h3>
+              <h2 class="slide-titulo fragment">Una interfaz que ya conocéis</h2>
+              <h3 class="slide-subtitulo fragment">Imagen corporativa de la Junta, desde el primer día</h3>
             </header>
 
             <div class="slide-body">
@@ -299,13 +375,20 @@
     </section>
 
 
+    <!-- S05 intro label -->
+    <section class="slide-intro">
+      <div class="slide-wrap slide-intro-wrap">
+        <span class="slide-intro-label" data-id="ml-s05">Tramitación</span>
+      </div>
+    </section>
+
     <!-- ================================================
          S05 — TRAMITACIÓN ESTRUCTURADA (img-dcha / iframe Miro)
          ================================================ -->
-    <section class="layout-img-dcha">
+    <section class="layout-img-dcha" data-auto-animate data-auto-animate-duration="0.7">
       <div class="slide-wrap">
         <div class="slide-barra-top"></div>
-        <div class="slide-margen-lat">Tramitación</div>
+        <div class="slide-margen-lat" data-id="ml-s05">Tramitación</div>
 
         <div class="imgdcha-layout">
           <div class="imgdcha-col-texto">
@@ -314,8 +397,8 @@
                 <span class="seccion-num">5</span>
                 <div class="seccion-linea"></div>
               </div>
-              <h2 class="slide-titulo">El expediente y el procedimiento</h2>
-              <h3 class="slide-subtitulo">Cada solicitud en su sitio. Un sitio para múltiples solicitudes.</h3>
+              <h2 class="slide-titulo fragment">El expediente y el procedimiento</h2>
+              <h3 class="slide-subtitulo fragment">Cada solicitud en su sitio. Un sitio para múltiples solicitudes.</h3>
             </header>
 
             <div class="slide-body">
@@ -386,13 +469,20 @@
     </section>
 
 
+    <!-- S06 intro label -->
+    <section class="slide-intro">
+      <div class="slide-wrap slide-intro-wrap">
+        <span class="slide-intro-label" data-id="ml-s06">El Documento</span>
+      </div>
+    </section>
+
     <!-- ================================================
          S06 — SISTEMA DOCUMENTAL (img-dcha)
          ================================================ -->
-    <section class="layout-img-dcha">
+    <section class="layout-img-dcha" data-auto-animate data-auto-animate-duration="0.7">
       <div class="slide-wrap">
         <div class="slide-barra-top"></div>
-        <div class="slide-margen-lat">Documental</div>
+        <div class="slide-margen-lat" data-id="ml-s06">El Documento</div>
 
         <div class="imgdcha-layout">
           <div class="imgdcha-col-texto">
@@ -401,8 +491,8 @@
                 <span class="seccion-num">6</span>
                 <div class="seccion-linea"></div>
               </div>
-              <h2 class="slide-titulo">Todos los documentos, en su sitio</h2>
-              <h3 class="slide-subtitulo">Un pool único por expediente, ligado al procedimiento</h3>
+              <h2 class="slide-titulo fragment">Todos los documentos, en su sitio</h2>
+              <h3 class="slide-subtitulo fragment">Un pool único por expediente, ligado al procedimiento</h3>
             </header>
 
             <div class="slide-body">
@@ -455,13 +545,20 @@
     </section>
 
 
+    <!-- S07 intro label -->
+    <section class="slide-intro">
+      <div class="slide-wrap slide-intro-wrap">
+        <span class="slide-intro-label" data-id="ml-s07">Escritos</span>
+      </div>
+    </section>
+
     <!-- ================================================
          S07 — GENERACIÓN DE ESCRITOS (img-dcha)
          ================================================ -->
-    <section class="layout-img-dcha">
+    <section class="layout-img-dcha" data-auto-animate data-auto-animate-duration="0.7">
       <div class="slide-wrap">
         <div class="slide-barra-top"></div>
-        <div class="slide-margen-lat">Escritos</div>
+        <div class="slide-margen-lat" data-id="ml-s07">Escritos</div>
 
         <div class="imgdcha-layout">
           <div class="imgdcha-col-texto">
@@ -470,8 +567,8 @@
                 <span class="seccion-num">7</span>
                 <div class="seccion-linea"></div>
               </div>
-              <h2 class="slide-titulo">El borrador, sin copiar y pegar</h2>
-              <h3 class="slide-subtitulo">Plantillas que ya conocen el expediente</h3>
+              <h2 class="slide-titulo fragment">El borrador, sin copiar y pegar</h2>
+              <h3 class="slide-subtitulo fragment">Plantillas que ya conocen el expediente</h3>
             </header>
 
             <div class="slide-body">
@@ -517,13 +614,20 @@
     </section>
 
 
+    <!-- S08 intro label -->
+    <section class="slide-intro">
+      <div class="slide-wrap slide-intro-wrap">
+        <span class="slide-intro-label" data-id="ml-s08">Listado</span>
+      </div>
+    </section>
+
     <!-- ================================================
          S08 — LISTADO INTELIGENTE (img-dcha)
          ================================================ -->
-    <section class="layout-img-dcha">
+    <section class="layout-img-dcha" data-auto-animate data-auto-animate-duration="0.7">
       <div class="slide-wrap">
         <div class="slide-barra-top"></div>
-        <div class="slide-margen-lat">Listado</div>
+        <div class="slide-margen-lat" data-id="ml-s08">Listado</div>
 
         <div class="imgdcha-layout">
           <div class="imgdcha-col-texto">
@@ -532,8 +636,8 @@
                 <span class="seccion-num">8</span>
                 <div class="seccion-linea"></div>
               </div>
-              <h2 class="slide-titulo">El estado de todos, de un vistazo</h2>
-              <h3 class="slide-subtitulo">Sin abrir ninguno</h3>
+              <h2 class="slide-titulo fragment">Mis expedientes, de un vistazo</h2>
+              <h3 class="slide-subtitulo fragment">Sin abrir ninguno</h3>
             </header>
 
             <div class="slide-body">
@@ -600,13 +704,20 @@
     </section>
 
 
+    <!-- S10 intro label -->
+    <section class="slide-intro">
+      <div class="slide-wrap slide-intro-wrap">
+        <span class="slide-intro-label" data-id="ml-s10">Roadmap</span>
+      </div>
+    </section>
+
     <!-- ================================================
          S10 — LO QUE VIENE (timeline)
          ================================================ -->
-    <section class="layout-timeline">
+    <section class="layout-timeline" data-auto-animate data-auto-animate-duration="0.7">
       <div class="slide-wrap">
         <div class="slide-barra-top"></div>
-        <div class="slide-margen-lat">Roadmap</div>
+        <div class="slide-margen-lat" data-id="ml-s10">Roadmap</div>
 
         <div class="slide-inner">
           <header class="slide-header">
@@ -614,8 +725,8 @@
               <span class="seccion-num">10</span>
               <div class="seccion-linea"></div>
             </div>
-            <h2 class="slide-titulo">Lo que viene</h2>
-            <h3 class="slide-subtitulo">Por fases, sin interrumpir lo que ya funciona</h3>
+            <h2 class="slide-titulo fragment">Lo que viene</h2>
+            <h3 class="slide-subtitulo fragment">Por fases, incluso en producción.</h3>
           </header>
 
           <div class="slide-body">
@@ -679,13 +790,20 @@
     </section>
 
 
+    <!-- S11 intro label -->
+    <section class="slide-intro">
+      <div class="slide-wrap slide-intro-wrap">
+        <span class="slide-intro-label" data-id="ml-s11">Feedback</span>
+      </div>
+    </section>
+
     <!-- ================================================
          S11 — LO QUE NECESITAMOS DE VOSOTROS
          ================================================ -->
     <section class="layout-contenido">
       <div class="slide-wrap">
         <div class="slide-barra-top"></div>
-        <div class="slide-margen-lat">Feedback</div>
+        <div class="slide-margen-lat" data-id="ml-s11">Feedback</div>
 
         <div class="slide-inner">
           <header class="slide-header">
@@ -693,8 +811,8 @@
               <span class="seccion-num">11</span>
               <div class="seccion-linea"></div>
             </div>
-            <h2 class="slide-titulo">Esto también es vuestro proyecto</h2>
-            <h3 class="slide-subtitulo">Cuatro preguntas concretas</h3>
+            <h2 class="slide-titulo fragment">Esto también es vuestro proyecto</h2>
+            <h3 class="slide-subtitulo fragment">Cuatro preguntas concretas</h3>
           </header>
 
           <div class="slide-body">
@@ -779,7 +897,142 @@
     transition: 'none',
     backgroundTransition: 'none',
     fragments: true,
+
   });
+</script>
+
+<script>
+  // Transiciones entre slides — secuencia bloqueante (captura antes que Reveal)
+  //
+  // Caso general:  fade out slide actual → Reveal.next/prev() → fade in nuevo slide
+  // Caso portada:  animación CSS polígonos+contenido → Reveal.next() → fade in S01
+  //
+  // Los fragmentos se dejan al comportamiento nativo de Reveal (sin fade).
+  (function () {
+    var animando = false;
+
+    // ── Utilidad: fade in del slide activo desde opacity:0 ──────────────────
+    // Llamar justo después de que Reveal haya cambiado el slide activo.
+    // opacity:0 se fija síncronamente (antes del primer paint); la transición
+    // arranca tras el delay (ms) para dejar un momento de negro entre slides.
+    function fadeInSlide(slide, dur, delay) {
+      slide.style.opacity = '0';
+      setTimeout(function () {
+        requestAnimationFrame(function () {
+          requestAnimationFrame(function () {
+            slide.style.transition = 'opacity ' + dur + 's ease-in';
+            slide.style.opacity = '1';
+            slide.addEventListener('transitionend', function () {
+              slide.style.transition = '';
+              slide.style.opacity = '';
+              animando = false;
+            }, { once: true });
+          });
+        });
+      }, delay || 0);
+    }
+
+    // ── Transición genérica: fade out → navegar → fade in ───────────────────
+    function transicion(navegarFn) {
+      if (animando) return;
+      animando = true;
+
+      var origen = Reveal.getCurrentSlide();
+      origen.style.transition = 'opacity 0.35s ease-out';
+      origen.style.opacity = '0';
+
+      origen.addEventListener('transitionend', function () {
+        origen.style.transition = '';
+        origen.style.opacity = '';
+        navegarFn();
+        var destino = Reveal.getCurrentSlide();
+        if (destino === origen) { animando = false; return; } // sin cambio (borde)
+        fadeInSlide(destino, 0.35, 120); // 120 ms de negro entre slides
+      }, { once: true });
+    }
+
+    // ── Caso especial: portada ───────────────────────────────────────────────
+    function portadaSalida() {
+      if (animando) return;
+      if (Reveal.getCurrentSlide().id !== 'portada') return;
+      animando = true;
+
+      document.getElementById('portada').classList.add('portada-salida');
+
+      setTimeout(function () {
+        Reveal.next();
+        fadeInSlide(Reveal.getCurrentSlide(), 0.5);
+      }, 1100);
+    }
+
+    // ── Helpers de fragmentos ────────────────────────────────────────────────
+    function hayFragmentosOcultos() {
+      var s = Reveal.getCurrentSlide();
+      return s.querySelectorAll('.fragment').length >
+             s.querySelectorAll('.fragment.visible').length;
+    }
+    function hayFragmentosVisibles() {
+      return Reveal.getCurrentSlide().querySelectorAll('.fragment.visible').length > 0;
+    }
+
+    // ── Handlers de navegación ───────────────────────────────────────────────
+    function onSiguiente(e) {
+      if (e) e.stopImmediatePropagation();
+      var curr = Reveal.getCurrentSlide();
+      if (curr.id === 'portada') { portadaSalida(); return; }
+      if (hayFragmentosOcultos()) { Reveal.next(); return; }
+      // Intro → contenido: navegación directa + animación CSS del margen-lat
+      if (curr.classList.contains('slide-intro')) {
+        if (animando) return;
+        animando = true;
+        Reveal.next();
+        var dest = Reveal.getCurrentSlide();
+        if (dest === curr) { animando = false; return; }
+        var ml = dest.querySelector('.slide-margen-lat');
+        if (ml) {
+          ml.classList.add('ml-animando');
+          ml.addEventListener('animationend', function () {
+            ml.classList.remove('ml-animando');
+            animando = false;
+          }, { once: true });
+        } else {
+          animando = false;
+        }
+        return;
+      }
+      transicion(Reveal.next.bind(Reveal));
+    }
+    function onAnterior(e) {
+      if (e) e.stopImmediatePropagation();
+      if (hayFragmentosVisibles()) { Reveal.prev(); return; }
+      transicion(Reveal.prev.bind(Reveal));
+    }
+
+    Reveal.on('ready', function () {
+      var SIG = [32, 34, 39, 40, 78]; // Space PgDn → ↓ N
+      var ANT = [33, 37, 38, 80];     // PgUp ← ↑ P
+
+      document.addEventListener('keydown', function (e) {
+        if      (SIG.indexOf(e.keyCode) !== -1) onSiguiente(e);
+        else if (ANT.indexOf(e.keyCode) !== -1) onAnterior(e);
+      }, true);
+
+      document.querySelectorAll('.navigate-right, .navigate-down').forEach(function (b) {
+        b.addEventListener('click', onSiguiente, true);
+      });
+      document.querySelectorAll('.navigate-left, .navigate-up').forEach(function (b) {
+        b.addEventListener('click', onAnterior, true);
+      });
+    });
+
+    // Limpiar portada al volver a ella
+    Reveal.on('slidechanged', function (e) {
+      if (e.currentSlide && e.currentSlide.id === 'portada') {
+        e.currentSlide.classList.remove('portada-salida');
+        animando = false;
+      }
+    });
+  }());
 </script>
 
 <script>
