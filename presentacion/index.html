@@ -335,16 +335,18 @@
             </footer>
           </div>
 
-          <div class="imgdcha-col-img" style="position:relative;">
-            <img src="assets/Diagrama_ESFTT.svg"
-                 style="width:100%;height:100%;object-fit:contain;display:block;">
-            <a href="assets/Diagrama_ESFTT.svg" target="_blank"
-               style="position:absolute;bottom:10px;right:10px;
-                      background:rgba(255,255,255,0.9);border:1px solid #ccc;
-                      border-radius:4px;padding:4px 10px;font-size:12px;
-                      color:#333;text-decoration:none;line-height:1.4;">
-              Ver diagrama completo ↗
-            </a>
+          <div id="esftt-wrap" class="imgdcha-col-img"
+               style="position:relative;overflow:hidden;cursor:grab;background:#fff;">
+            <img id="esftt-img" src="assets/Diagrama_ESFTT.svg"
+                 draggable="false"
+                 style="position:absolute;top:50%;left:50%;
+                        transform-origin:center center;
+                        transform:translate(-50%,-50%) scale(1);
+                        max-width:none;user-select:none;">
+            <div style="position:absolute;bottom:8px;right:8px;
+                        font-size:10px;color:#999;pointer-events:none;">
+              ⊕ rueda · arrastrar · doble clic: reset
+            </div>
           </div>
         </div>
       </div>
@@ -752,6 +754,57 @@
     backgroundTransition: 'none',
     fragments: true,
   });
+</script>
+
+<script>
+  // Panzoom embebido en S05 — aislado de Reveal.js
+  (function () {
+    const wrap = document.getElementById('esftt-wrap');
+    const img  = document.getElementById('esftt-img');
+    if (!wrap || !img) return;
+
+    let scale = 1, tx = 0, ty = 0;
+    let dragging = false, startX, startY, startTx, startTy;
+
+    function apply() {
+      img.style.transform = `translate(calc(-50% + ${tx}px), calc(-50% + ${ty}px)) scale(${scale})`;
+    }
+
+    // Zoom con rueda — stopPropagation evita que Reveal.js cambie de slide
+    wrap.addEventListener('wheel', function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      const delta = e.deltaY > 0 ? 0.85 : 1.15;
+      scale = Math.min(8, Math.max(0.3, scale * delta));
+      apply();
+    }, { passive: false });
+
+    // Pan
+    wrap.addEventListener('mousedown', function (e) {
+      dragging = true;
+      wrap.style.cursor = 'grabbing';
+      startX = e.clientX; startY = e.clientY;
+      startTx = tx; startTy = ty;
+      e.stopPropagation();
+    });
+    window.addEventListener('mousemove', function (e) {
+      if (!dragging) return;
+      tx = startTx + (e.clientX - startX);
+      ty = startTy + (e.clientY - startY);
+      apply();
+    });
+    window.addEventListener('mouseup', function () {
+      dragging = false;
+      wrap.style.cursor = 'grab';
+    });
+
+    // Doble clic: reset
+    wrap.addEventListener('dblclick', function (e) {
+      scale = 1; tx = 0; ty = 0;
+      apply();
+      e.stopPropagation();
+    });
+  })();
 </script>
 
 </body>
