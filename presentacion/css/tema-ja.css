@@ -1,0 +1,699 @@
+/* =============================================
+   tema-ja.css — Sistema visual Junta de Andalucía
+   Tema Reveal.js para presentación BDDAT
+   ============================================= */
+
+/* --- Variables (colores oficiales JA del PDF) --- */
+:root {
+  --ja-verde:        #19903E;   /* verde oscuro oficial — triángulo TL + trapecio dcho */
+  --ja-verde-claro:  #65A841;   /* verde claro oficial — trapecio izquierdo (detrás) */
+  --ja-verde-hover:  #0f6e2e;
+  --ja-gris-titulo:  #333333;
+  --ja-gris-cuerpo:  #4a4a4a;   /* bullets: intenso pero no negro puro */
+  --ja-gris-body:    #999999;   /* pie, sección num, meta */
+  --ja-gris-sep:     #cccccc;
+  --ja-gris-fondo:   #f4f4f4;
+  --ja-blanco:       #ffffff;
+
+  --ja-barra-h:      7px;
+
+  --ja-font-titulo:  'Montserrat', 'Myriad Pro', 'Segoe UI', Arial, sans-serif;
+  --ja-font-body:    'Source Sans 3', 'Source Sans Pro', 'Segoe UI', Arial, sans-serif;
+
+  --ja-pie-size:       12px;
+  --ja-margen-lat-size: 10px;
+}
+
+/* =============================================
+   BASE — reset de tema white de Reveal.js
+   ============================================= */
+
+.reveal {
+  font-family: var(--ja-font-body);
+  font-weight: 300;
+  color: var(--ja-gris-titulo);
+  background: var(--ja-blanco);
+}
+
+.reveal .slides {
+  text-align: left;
+}
+
+/* height: 100% necesario: Reveal.js no asigna height a sections
+   con position:absolute, colapsan a 0 sin esto. */
+.reveal .slides section {
+  padding: 0;
+  margin: 0;
+  box-sizing: border-box;
+  height: 100%;
+}
+
+/* slide-wrap — contenedor interior de cada sección.
+   Sirve como contexto de posicionamiento sin interferir
+   con el sistema de transforms de Reveal.js. */
+.slide-wrap {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow: hidden;
+}
+
+/* Reset de cabeceras del tema white */
+.reveal h1, .reveal h2, .reveal h3, .reveal h4 {
+  font-family: var(--ja-font-titulo);
+  text-transform: none;
+  letter-spacing: normal;
+  line-height: 1.15;
+  margin: 0;
+  color: var(--ja-gris-titulo);
+  text-shadow: none;
+}
+
+/* Clases con especificidad .reveal + .clase para ganar sobre .reveal h3 */
+.reveal .slide-titulo {
+  font-size: 38px;
+  font-weight: 800;
+  color: var(--ja-gris-titulo);
+  line-height: 1.15;
+  margin-bottom: 6px;
+}
+
+.reveal .slide-subtitulo {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ja-verde);
+  line-height: 1.3;
+  margin-bottom: 0;
+}
+
+.reveal .portada-titulo {
+  font-size: 76px;
+  font-weight: 900;
+  color: var(--ja-gris-titulo);
+  line-height: 1;
+  margin-bottom: 14px;
+}
+
+.reveal .portada-subtitulo {
+  font-size: 22px;
+  font-weight: 400;
+  color: var(--ja-gris-titulo);
+  line-height: 1.35;
+  margin-bottom: 30px;
+}
+
+.reveal .portadilla-titulo {
+  font-size: 52px;
+  font-weight: 900;
+  color: var(--ja-gris-titulo);
+  line-height: 1.1;
+}
+
+.reveal p { margin: 0; }
+
+.reveal a { color: var(--ja-verde); text-decoration: none; }
+.reveal a:hover { color: var(--ja-verde-hover); text-decoration: none; }
+
+.reveal .progress { color: var(--ja-verde); height: 3px; }
+
+/* Controles de navegación: centrados abajo, fuera del área del chevron */
+.reveal .controls {
+  bottom: 16px;
+  right: auto;
+  left: 50%;
+  transform: translateX(-50%);
+  color: var(--ja-verde);
+}
+
+/* =============================================
+   CHEVRON — coordenadas exactas del PDF JA
+   Imagen de referencia: 1500×843 px
+   Slide Reveal.js: 1280×720 px
+   Factor escala X: 1280/1500 = 0.8533
+   Factor escala Y: 720/843  = 0.8541
+
+   1. Triángulo TL (solo portada, verde oscuro #19903E):
+      (0,0) (188,0) (0,188) →
+      clip-path: polygon(0% 0%, 12.53% 0%, 0% 22.30%)
+
+   2. Trapecio claro DETRÁS (#65A841):
+      (918,0) (1500,0) (1500,843) (1290,843) →
+      clip-path: polygon(61.20% 0%, 100% 0%, 100% 100%, 86.00% 100%)
+
+   3. Trapecio oscuro ENCIMA (#19903E):
+      (1312,0) (1500,0) (1500,843) (980,843) →
+      clip-path: polygon(87.47% 0%, 100% 0%, 100% 100%, 65.33% 100%)
+   ============================================= */
+
+.portada-chevron {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* Trapecio claro — renderizado ANTES (detrás) */
+.chevron-light {
+  position: absolute;
+  inset: 0;
+  background: var(--ja-verde-claro);
+  clip-path: polygon(61.20% 0%, 100% 0%, 100% 100%, 86.00% 100%);
+}
+
+/* Trapecio oscuro — renderizado DESPUÉS (encima) */
+.chevron-dark {
+  position: absolute;
+  inset: 0;
+  background: var(--ja-verde);
+  clip-path: polygon(87.47% 0%, 100% 0%, 100% 100%, 65.33% 100%);
+}
+
+/* Triángulo esquina superior izquierda (portada solo) */
+.chevron-triangle-tl {
+  position: absolute;
+  inset: 0;
+  background: var(--ja-verde);
+  clip-path: polygon(0% 0%, 12.53% 0%, 0% 22.30%);
+}
+
+/* =============================================
+   LAYOUT: PORTADA JA
+   ============================================= */
+
+.reveal section.layout-portada {
+  background: var(--ja-blanco);
+}
+
+.portada-contenido {
+  position: absolute;
+  left: 80px;
+  top: 50%;
+  transform: translateY(-50%);
+  max-width: 55%;
+}
+
+.portada-consejeria {
+  font-family: var(--ja-font-body);
+  font-size: 13px;
+  color: var(--ja-gris-body);
+  font-style: italic;
+  font-weight: 300;
+  margin-top: 12px;
+  margin-bottom: 0;
+}
+
+.portada-meta {
+  font-family: var(--ja-font-body);
+  font-size: 13px;
+  color: var(--ja-gris-body);
+  font-style: italic;
+  font-weight: 300;
+}
+
+/* Logo símbolo JA — esquina inferior derecha sobre el chevron.
+   filter: blanco puro para que sea visible sobre fondo verde. */
+.portada-logo-ja {
+  position: absolute;
+  bottom: 30px;
+  right: 36px;
+  width: 90px;
+  z-index: 10;
+}
+
+.portada-logo-ja img {
+  width: 100%;
+  height: auto;
+  display: block;
+  filter: brightness(0) invert(1);
+}
+
+.portada-pie {
+  position: absolute;
+  bottom: 0;
+  left: 60px;
+  right: 200px;
+  padding: 0 0 20px 0;
+  border-top: none !important;
+}
+
+/* =============================================
+   LAYOUT: PORTADILLA INTERIOR
+   Sin triángulo TL, sin logo JA
+   ============================================= */
+
+.reveal section.layout-portadilla {
+  background: var(--ja-blanco);
+}
+
+.portadilla-contenido {
+  position: absolute;
+  left: 80px;
+  top: 50%;
+  transform: translateY(-50%);
+  max-width: 55%;
+}
+
+.portadilla-bloque {
+  font-family: var(--ja-font-titulo);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ja-verde);
+  text-transform: uppercase;
+  letter-spacing: 3px;
+  margin-bottom: 18px;
+}
+
+/* =============================================
+   LAYOUT BASE: CONTENIDO — chrome compartido
+   ============================================= */
+
+/* Barra verde superior */
+.slide-barra-top {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--ja-barra-h);
+  background: var(--ja-verde);
+  z-index: 5;
+}
+
+/* Indicador de sección vertical — en el margen derecho real.
+   Slide 1280px, slide-inner padding-right: 64px → margen de 64px disponible.
+   right: 2px lo sitúa lejos del área de contenido. */
+.slide-margen-lat {
+  position: absolute;
+  right: 2px;
+  top: 50%;
+  transform: translateY(-50%) rotate(90deg);
+  transform-origin: center center;
+  font-family: var(--ja-font-body);
+  font-size: var(--ja-margen-lat-size);
+  color: #cccccc;
+  white-space: nowrap;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  font-weight: 400;
+  font-style: normal;
+  z-index: 1;
+}
+
+/* Contenedor flex principal (layouts de 1 columna).
+   padding-right: 64px deja margen suficiente para el indicador lateral. */
+.slide-inner {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 20px 64px 0 55px;
+  box-sizing: border-box;
+}
+
+/* --- Header ---
+   Mayor separación vertical: padding-top + gap bajo el breadcrumb */
+.slide-header {
+  flex-shrink: 0;
+  padding-top: 18px;
+  margin-bottom: 6px;
+}
+
+.slide-seccion-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 20px;  /* separación antes del título */
+}
+
+.seccion-num {
+  font-family: var(--ja-font-body);
+  font-size: 13px;
+  font-weight: 400;
+  font-style: italic;
+  color: var(--ja-gris-body);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Línea separadora: ~1/4 del área útil, no full-width */
+.seccion-linea {
+  flex: 0 0 260px;
+  height: 1px;
+  background: var(--ja-gris-sep);
+}
+
+/* --- Body ---
+   Color más intenso en bullets: #4a4a4a en lugar de #999999 */
+.slide-body {
+  flex: 1;
+  overflow: hidden;
+  font-family: var(--ja-font-body);
+  font-size: 18px;
+  font-weight: 300;
+  color: var(--ja-gris-cuerpo);
+  font-style: italic;
+  line-height: 1.65;
+  padding-top: 14px;
+}
+
+.slide-body ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.slide-body ul li {
+  padding-left: 24px;
+  position: relative;
+  margin-bottom: 10px;
+}
+
+.slide-body ul li::before {
+  content: '›';
+  position: absolute;
+  left: 4px;
+  color: var(--ja-verde);
+  font-weight: 700;
+  font-style: normal;
+  font-size: 1.1em;
+}
+
+/* --- Footer --- */
+.slide-pie {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 7px 0 10px 0;
+  border-top: 1px solid #e8e8e8;
+  flex-shrink: 0;
+  font-family: var(--ja-font-body);
+  font-size: var(--ja-pie-size);
+  color: var(--ja-gris-body);
+  font-style: italic;
+  font-weight: 300;
+}
+
+.pie-izq { font-weight: 300; }
+.pie-der { font-weight: 300; }
+.pie-der a { color: var(--ja-gris-body); }
+.pie-der a:hover { color: var(--ja-verde); }
+
+/* Listas anidadas — sub-bullets */
+.slide-body ul ul {
+  padding-left: 20px;
+  margin-top: 4px;
+  margin-bottom: 2px;
+}
+
+.slide-body ul ul li {
+  font-size: 0.9em;
+  margin-bottom: 6px;
+}
+
+/* Strong dentro de bullets — rompe la cursiva para énfasis */
+.slide-body strong {
+  font-style: normal;
+  font-weight: 700;
+  color: var(--ja-gris-titulo);
+}
+
+/* Code inline */
+.slide-body code {
+  font-style: normal;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.82em;
+  background: var(--ja-gris-fondo);
+  padding: 1px 5px;
+  border-radius: 3px;
+  color: var(--ja-gris-titulo);
+}
+
+/* Tabla inline dentro de bullets (S06) */
+.tabla-inline {
+  width: 100%;
+  margin-top: 10px;
+  border-collapse: collapse;
+  font-size: 0.8em;
+  font-style: normal;
+}
+.tabla-inline th {
+  background: var(--ja-verde);
+  color: var(--ja-blanco);
+  font-weight: 700;
+  font-style: normal;
+  padding: 5px 10px;
+  text-align: left;
+}
+.tabla-inline td {
+  padding: 4px 10px;
+  border-bottom: 1px solid var(--ja-gris-sep);
+  font-style: normal;
+  color: var(--ja-gris-cuerpo);
+}
+.tabla-inline tr:last-child td {
+  border-bottom: none;
+}
+.tabla-inline td em {
+  font-style: italic;
+  color: var(--ja-gris-body);
+}
+
+/* Badge "pendiente" para funcionalidades en desarrollo */
+.badge-pendiente {
+  display: inline-block;
+  font-size: 0.8em;
+  font-style: normal;
+  font-weight: 600;
+  color: #b05a00;
+  background: #fff3e0;
+  border: 1px solid #ffcc80;
+  border-radius: 3px;
+  padding: 0 6px;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+/* Subtítulo en portadilla */
+.reveal .portadilla-subtitulo {
+  font-size: 18px;
+  font-weight: 400;
+  color: var(--ja-verde);
+  margin-top: 14px;
+  font-family: var(--ja-font-titulo);
+}
+
+/* Texto introductorio no-fragment en slide-body */
+.slide-intro {
+  font-style: italic;
+  color: var(--ja-gris-cuerpo);
+  font-size: 16px;
+  line-height: 1.5;
+  margin-bottom: 14px;
+}
+
+/* =============================================
+   LAYOUT: CONTENIDO IMG DERECHA
+   Imagen en columna derecha, altura completa.
+   Header y body solo en columna izquierda.
+   ============================================= */
+
+.imgdcha-layout {
+  position: absolute;
+  top: var(--ja-barra-h);
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+.imgdcha-col-texto {
+  display: flex;
+  flex-direction: column;
+  padding: 12px 28px 0 55px;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.imgdcha-col-texto .slide-pie {
+  margin-right: 0;
+}
+
+.imgdcha-col-img {
+  overflow: hidden;
+  background: var(--ja-gris-fondo);
+}
+
+.imgdcha-col-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.img-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-left: 2px dashed var(--ja-gris-sep);
+  color: var(--ja-gris-sep);
+  font-style: normal;
+  font-size: 13px;
+  text-align: center;
+  padding: 20px;
+  box-sizing: border-box;
+  line-height: 1.6;
+}
+
+.img-placeholder .placeholder-icon {
+  font-size: 44px;
+  display: block;
+  margin-bottom: 10px;
+}
+
+/* =============================================
+   LAYOUT: CONTENIDO TABLA
+   ============================================= */
+
+.layout-tabla .slide-body {
+  font-style: normal;
+  overflow: auto;
+  padding-top: 14px;
+  color: var(--ja-gris-titulo);
+}
+
+.tabla-ja {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--ja-font-body);
+  font-size: 16px;
+}
+
+.tabla-ja thead tr { background: var(--ja-verde); color: var(--ja-blanco); }
+
+.tabla-ja thead th {
+  padding: 11px 16px;
+  font-weight: 700;
+  text-align: left;
+  font-style: normal;
+  font-size: 14px;
+}
+
+.tabla-ja tbody tr:nth-child(even) { background: var(--ja-gris-fondo); }
+
+.tabla-ja tbody td {
+  padding: 10px 16px;
+  border-bottom: 1px solid #ebebeb;
+  vertical-align: top;
+  color: var(--ja-gris-titulo);
+  font-weight: 300;
+}
+
+.tabla-ja tbody td.td-bold  { font-weight: 700; }
+.tabla-ja tbody td.td-italic { font-style: italic; color: var(--ja-gris-body); }
+
+/* =============================================
+   LAYOUT: LÍNEA DE TIEMPO
+   ============================================= */
+
+.layout-timeline .slide-body {
+  font-style: normal;
+  overflow: hidden;
+  padding-top: 16px;
+  color: var(--ja-gris-titulo);
+}
+
+.timeline-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 28px;
+  height: 100%;
+}
+
+.timeline-col { display: flex; flex-direction: column; }
+
+.timeline-col-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 14px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid var(--ja-gris-sep);
+}
+
+.timeline-num {
+  background: var(--ja-verde);
+  color: var(--ja-blanco);
+  font-family: var(--ja-font-titulo);
+  font-weight: 800;
+  font-size: 20px;
+  width: 42px;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: 2px;
+}
+
+.timeline-col-titulo {
+  font-family: var(--ja-font-titulo);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ja-gris-titulo);
+  line-height: 1.25;
+}
+
+.timeline-col-titulo small {
+  font-family: var(--ja-font-body);
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--ja-gris-body);
+  display: block;
+  margin-top: 2px;
+}
+
+.timeline-col-items {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  font-family: var(--ja-font-body);
+  font-size: 15px;
+  color: var(--ja-gris-cuerpo);
+  font-style: italic;
+  font-weight: 300;
+}
+
+.timeline-col-items li {
+  padding-left: 16px;
+  position: relative;
+  margin-bottom: 9px;
+  line-height: 1.4;
+}
+
+.timeline-col-items li::before {
+  content: '·';
+  position: absolute;
+  left: 4px;
+  color: var(--ja-verde);
+  font-weight: 700;
+  font-style: normal;
+  font-size: 1.2em;
+}
+
+/* =============================================
+   FRAGMENTOS
+   ============================================= */
+
+.reveal .fragment {
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.reveal .fragment.visible {
+  opacity: 1;
+  visibility: visible;
+}
