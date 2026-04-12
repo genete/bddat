@@ -712,6 +712,32 @@
 }
 
 /* =============================================
+   BOTÓN FULLSCREEN — solo táctil
+   ============================================= */
+
+#btn-fullscreen {
+  display: none;  /* oculto por defecto */
+  position: fixed;
+  bottom: 14px;
+  right: 14px;
+  z-index: 8000;
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid var(--ja-gris-sep);
+  border-radius: 6px;
+  padding: 8px;
+  color: var(--ja-gris-titulo);
+  cursor: pointer;
+  line-height: 0;
+  transition: opacity 0.2s;
+}
+#btn-fullscreen:hover { background: #fff; }
+
+/* Solo mostrar en dispositivos sin ratón (táctiles) */
+@media (hover: none) {
+  #btn-fullscreen { display: block; }
+}
+
+/* =============================================
    ESFTT — Badges clicables + Popups (S05)
    ============================================= */
 

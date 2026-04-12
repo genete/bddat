@@ -3,6 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="BDDAT">
+  <meta name="theme-color" content="#19903E">
+  <link rel="manifest" href="manifest.json">
   <title>BDDAT — Gestión de expedientes de instalaciones de alta tensión</title>
 
   <!-- Google Fonts -->
@@ -827,6 +833,51 @@
 </script>
 
 <script src="js/popups.js"></script>
+
+<!-- Botón fullscreen — solo visible en dispositivos táctiles -->
+<button id="btn-fullscreen" aria-label="Pantalla completa" title="Pantalla completa">
+  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+       stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/>
+    <line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/>
+  </svg>
+</button>
+<script>
+  (function () {
+    var btn = document.getElementById('btn-fullscreen');
+
+    function isFullscreen() {
+      return !!(document.fullscreenElement || document.webkitFullscreenElement);
+    }
+
+    function toggleFullscreen() {
+      if (isFullscreen()) {
+        (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+      } else {
+        var el = document.documentElement;
+        (el.requestFullscreen || el.webkitRequestFullscreen).call(el);
+      }
+    }
+
+    btn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      toggleFullscreen();
+    });
+
+    // Ocultar botón cuando ya está en fullscreen
+    function actualizarBoton() {
+      btn.style.opacity = isFullscreen() ? '0' : '';
+      btn.style.pointerEvents = isFullscreen() ? 'none' : '';
+    }
+    document.addEventListener('fullscreenchange', actualizarBoton);
+    document.addEventListener('webkitfullscreenchange', actualizarBoton);
+
+    // Ocultar en dispositivos que no soporten la API (iOS sin PWA)
+    if (!document.documentElement.requestFullscreen && !document.documentElement.webkitRequestFullscreen) {
+      btn.style.display = 'none';
+    }
+  })();
+</script>
 
 </body>
 </html>
