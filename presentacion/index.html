@@ -639,17 +639,9 @@
 
             <div class="slide-body">
               <ul>
-                <li class="fragment">En una tarea REDACTAR, el sistema propone las plantillas disponibles para ese contexto y genera el borrador con los datos del expediente ya rellenos
-                  <ul>
-                    <li class="fragment">Si hay campos vacíos en el expediente, avisa antes de generar — no aparecen huecos en el documento</li>
-                  </ul>
-                </li>
+                <li class="fragment">En una tarea REDACTAR, el sistema propone las plantillas disponibles para ese contexto y genera el borrador con los datos del expediente <span class="esftt-capas" data-popup="s07-rellenos">ya rellenos</span></li>
                 <li class="fragment">El documento se guarda con nombre sistematizado y queda registrado en el pool, vinculado a la tarea que lo originó</li>
-                <li class="fragment">El documento lleva un código estructurado de trazabilidad en el pie de página — cuando vuelve firmado al pool, el sistema lo clasifica automáticamente
-                  <ul>
-                    <li class="fragment">Ejemplo: <code>BDDAT | AT-13465-24 | AAP | RESOLUCIÓN | Favorable</code></li>
-                  </ul>
-                </li>
+                <li class="fragment">El documento lleva un <span class="esftt-capas" data-popup="s07-codigo">código estructurado</span> de trazabilidad en el pie de página — cuando vuelve firmado al pool, el sistema lo clasifica automáticamente</li>
                 <li class="fragment">Las plantillas admiten campos simples, campos calculados, tablas dinámicas y condiciones — la plantilla ya sabe qué párrafo poner según el resultado</li>
                 <li class="fragment">El documento generado es un <code>.docx</code> editable en LibreOffice Writer — el tramitador puede ajustarlo si la situación lo requiere</li>
               </ul>
@@ -677,6 +669,17 @@
           </div>
         </div>
       </div>
+      <div id="popup-s07-rellenos" class="esftt-popup-data" hidden>
+        <h4>Datos ya rellenos</h4>
+        <p>Si hay campos vacíos en el expediente, el sistema avisa antes de generar el borrador — no aparecen huecos en el documento.</p>
+      </div>
+      <div id="popup-s07-codigo" class="esftt-popup-data" hidden>
+        <h4>Código estructurado de trazabilidad</h4>
+        <p>El pie de página del documento incluye un código legible que identifica su origen:</p>
+        <p style="margin-top:10px;font-family:monospace;font-size:0.95em;background:#f4f4f4;padding:8px 12px;border-radius:4px;">BDDAT | AT-13465-24 | AAP | RESOLUCIÓN | Favorable</p>
+        <p style="margin-top:10px">Cuando el documento firmado vuelve al pool, el sistema lo clasifica automáticamente a partir de este código.</p>
+      </div>
+
       <aside class="notes">
         Esta es una de las características más valoradas — darle tiempo.
         Bullet 1: no hay que abrir el escrito anterior, cambiar el número de AT y rezar. El sistema pone los datos.
