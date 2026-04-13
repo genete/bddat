@@ -4,7 +4,7 @@
 
 - **Layout:** Contenido (texto completo, sin imagen derecha)
 - **Fragments:** Sí
-- **Artefacto visual:** Ninguno — la claridad la da el texto y el popup de `tipo_titular`
+- **Artefacto visual:** Ninguno
 - **Posición:** Entre S05 (Tramitación estructurada) y S06 (Sistema documental)
 - **Número de sección sugerido:** 5.5 (o renumerar las siguientes si se prefiere secuencia limpia)
 
@@ -22,17 +22,18 @@
 
 **Bullets** *(se revelan con clic):*
 
-1. *(fragment)* En un expediente intervienen actores muy distintos: el **titular** que promueve la instalación, los **organismos** que emiten condicionados, la **Diputación** que publica en el BOP, el **Ayuntamiento** afectado por la información pública…
+1. *(fragment)* En un expediente intervienen actores de naturaleza muy distinta: el **titular** que promueve la instalación, los **organismos** que emiten condicionados, la **Diputación** que publica en el BOP, el **Ayuntamiento** afectado por la información pública…
 
 2. *(fragment)* La solución obvia es una tabla por tipo: `titulares`, `organismos`, `ayuntamientos`, `diputaciones`… El problema: la misma organización puede actuar en varios roles a la vez, y los datos de contacto se duplican sin control
 
-3. *(fragment)* BDDAT usa **una sola tabla `entidades`** con campos comunes (NIF, nombre, dirección, contacto) y tres roles booleanos que se activan según el contexto: `rol_titular` · `rol_consultado` · `rol_publicador`
+3. *(fragment)* BDDAT usa **una sola tabla `entidades`** con campos comunes (NIF, nombre, dirección, contacto) y tres roles booleanos que se activan según el contexto del trámite:
+   `rol_titular` · `rol_consultado` · `rol_publicador`
 
-4. *(fragment)* Una Diputación puede tener `rol_consultado` **y** `rol_publicador` simultáneamente — sin duplicar el registro. El rol lo determina el trámite, no la estructura de la tabla
+4. *(fragment)* El campo `tipo_titular` no define el procedimiento directamente: permite **filtrar y segmentar titulares** según sus características propias — gran distribuidora, promotor privado, organismo público — y aplicar lógicas diferenciadas para cada colectivo cuando el procedimiento lo requiere
+   - *(popup sobre "tipo_titular" — ver sección Popups)*
 
-5. *(fragment)* Cuando el titular es una gran distribuidora o un promotor privado, el campo `tipo_titular` añade la distinción que el procedimiento legal requiere — sin romper el modelo unificado
-
-   - 5.1 *(popup sobre "tipo_titular" — ver sección Popups abajo)*
+5. *(fragment)* Una entidad puede además **autorizar a otra para actuar en su nombre**: si una empresa gestora representa a un titular en la tramitación, el sistema lo registra y lo tiene en cuenta. La autoautorización es implícita — el titular siempre puede actuar por sí mismo sin entrada adicional
+   - *(popup sobre "actuar en su nombre" — ver sección Popups)*
 
 6. *(fragment)* La misma filosofía que el resto del sistema: **la semántica vive en los roles y los tipos, no en los campos ni en las tablas**
 
@@ -42,31 +43,65 @@
 
 ### Popup: `tipo_titular`
 
-**Disparador:** el texto `tipo_titular` en el bullet 5.
+**Disparador:** el texto `tipo_titular` en el bullet 4.
 
-**Título:** Variantes del titular
+**Título:** Tipos de titular
 
 **Contenido:**
 
+Los tipos permiten filtrar y trabajar con grupos de titulares de forma selectiva —
+por ejemplo, ver todos los expedientes de grandes distribuidoras, o aplicar
+reglas distintas para promotores privados.
+
 | Valor | Descripción |
 |---|---|
-| `GRAN_DISTRIBUIDORA` | Empresa PTD (producción, transporte o distribución). Autorización por RD 1955/2000 |
+| `GRAN_DISTRIBUIDORA` | Empresa PTD (producción, transporte o distribución) |
 | `DISTRIBUIDOR_MENOR` | Distribuidora no PTD que cede la instalación antes de la puesta en servicio |
-| `PROMOTOR` | Promotor privado no PTD. Puede quedar exento según el tipo de instalación |
+| `PROMOTOR` | Promotor privado no PTD |
 | `ORGANISMO_PUBLICO` | Administración pública promotora |
 | `OTRO` | Sin clasificar (valor por defecto en migración desde sistema anterior) |
 
-La distinción determina qué procedimiento de autorización aplica: RD 1955/2000, RAT o exención directa.
+Si el titular es o no distribuidora determina el régimen de autorización aplicable —
+el sistema usa este campo para diferenciar el procedimiento.
+
+---
+
+### Popup: `actuar en su nombre`
+
+**Disparador:** el texto `actuar en su nombre` en el bullet 5.
+
+**Título:** Autorizado titular
+
+**Contenido:**
+
+La tabla `autorizados_titular` registra relaciones N:N entre entidades:
+un titular puede autorizar a varios administrados, y un administrado puede
+estar autorizado por varios titulares.
+
+Características del modelo:
+- **Borrado lógico** — revocar una autorización no destruye el historial
+- **Observaciones libres** — permite anotar el tipo de poder o documento que sustenta la autorización
+- **Autoautorización implícita** — el titular siempre puede actuar por sí mismo; no necesita entrada en esta tabla
 
 ---
 
 ## Notas ponente
 
 Esta slide puede dispararse con la pregunta "¿A quién notifica el sistema?". Respuesta:
-a la entidad que tenga el rol correspondiente en ese trámite — y eso el sistema ya lo sabe porque la entidad lo declara.
+a la entidad que tenga el rol correspondiente en ese trámite — y eso el sistema ya lo sabe.
 
-El concepto clave es la separación entre *qué es* una entidad (sus datos de contacto) y *qué hace* en un expediente concreto (su rol). Esa separación es lo que permite reutilizar el mismo registro sin duplicar.
+El concepto clave es la separación entre *qué es* una entidad (sus datos) y *qué hace*
+en un expediente concreto (su rol). Esa separación es lo que permite reutilizar el mismo
+registro sin duplicar.
 
-Bullet 6: conectar explícitamente con S05 — "los tipos definen el procedimiento, los roles definen los actores". Es el mismo principio.
+Bullet 4: subrayar que `tipo_titular` no es burocracia — es el mecanismo que permite,
+por ejemplo, que jefatura vea "todos los expedientes de grandes distribuidoras" con un filtro,
+o que el sistema aplique una lógica diferente al cerrar una fase según el tipo de promotor.
 
-Transición a S06: "Esas mismas entidades son los destinatarios de los documentos que el sistema gestiona. Os explico cómo funciona eso."
+Bullet 5: el caso típico es una empresa consultora o gestora que lleva varios expedientes
+de distintos titulares. Sin este modelo, habría que registrar a la gestora como titular
+en cada expediente, perdiendo la trazabilidad real de quién es el propietario de la instalación.
+
+Bullet 6: conectar con S05 — "los tipos definen el procedimiento, los roles definen los actores".
+
+Transición a S06: "Esas mismas entidades son los destinatarios de los documentos que el sistema gestiona."
