@@ -362,10 +362,18 @@
             </footer>
           </div>
 
-          <div class="imgdcha-col-img">
-            <div class="img-placeholder">
-              <span class="placeholder-icon">🖥</span>
-              Vista de detalle<br>de un expediente
+          <div id="detalle-wrap" class="imgdcha-col-img fragment"
+               data-prevent-swipe
+               style="position:relative;overflow:hidden;cursor:grab;background:#fff;touch-action:none;">
+            <img id="detalle-img" src="assets/Captura_detalle_expediente.png"
+                 draggable="false"
+                 style="position:absolute;top:50%;left:50%;
+                        transform-origin:center center;
+                        transform:translate(-50%,-50%) scale(1);
+                        max-width:none;user-select:none;">
+            <div style="position:absolute;bottom:8px;right:8px;
+                        font-size:10px;color:#999;pointer-events:none;">
+              ⊕ rueda · arrastrar · doble clic: reset
             </div>
           </div>
         </div>
@@ -1270,6 +1278,7 @@
     }, { passive: false });
   }
 
+  makePanzoom('detalle-wrap',  'detalle-img');  // S04 — vista detalle expediente
   makePanzoom('esftt-wrap',    'esftt-img');    // S05 — diagrama ESFTT
   makePanzoom('docs-wrap',     'docs-img');     // S06 — captura gestor documentos
   makePanzoom('escritos-wrap', 'escritos-img'); // S07 — captura generación escrito
