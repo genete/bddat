@@ -586,10 +586,18 @@
             </footer>
           </div>
 
-          <div class="imgdcha-col-img">
-            <div class="img-placeholder">
-              <span class="placeholder-icon">📁</span>
-              Captura gestor<br>de documentos
+          <div id="docs-wrap" class="imgdcha-col-img fragment"
+               data-prevent-swipe
+               style="position:relative;overflow:hidden;cursor:grab;background:#fff;touch-action:none;">
+            <img id="docs-img" src="assets/Captura_gestor_docs.png"
+                 draggable="false"
+                 style="position:absolute;top:50%;left:50%;
+                        transform-origin:center center;
+                        transform:translate(-50%,-50%) scale(1);
+                        max-width:none;user-select:none;">
+            <div style="position:absolute;bottom:8px;right:8px;
+                        font-size:10px;color:#999;pointer-events:none;">
+              ⊕ rueda · arrastrar · doble clic: reset
             </div>
           </div>
         </div>
@@ -1095,10 +1103,10 @@
 </script>
 
 <script>
-  // Panzoom embebido en S05 — aislado de Reveal.js
-  (function () {
-    const wrap = document.getElementById('esftt-wrap');
-    const img  = document.getElementById('esftt-img');
+  // Panzoom reutilizable — S05 (diagrama ESFTT) y S06 (gestor docs)
+  function makePanzoom(wrapId, imgId) {
+    const wrap = document.getElementById(wrapId);
+    const img  = document.getElementById(imgId);
     if (!wrap || !img) return;
 
     let scale = 1, tx = 0, ty = 0;
@@ -1198,7 +1206,10 @@
         wasPinching = false;
       }
     }, { passive: false });
-  })();
+  }
+
+  makePanzoom('esftt-wrap', 'esftt-img');  // S05 — diagrama ESFTT
+  makePanzoom('docs-wrap',  'docs-img');   // S06 — captura gestor documentos
 </script>
 
 <script src="js/popups.js"></script>
