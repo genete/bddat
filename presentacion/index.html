@@ -640,7 +640,7 @@
             <div class="slide-body">
               <ul>
                 <li class="fragment">En una tarea REDACTAR, el sistema propone las plantillas disponibles para ese contexto y genera el borrador con los datos del expediente <span class="esftt-capas" data-popup="s07-rellenos">ya rellenos</span></li>
-                <li class="fragment">El documento se guarda con nombre sistematizado y queda registrado en el pool, vinculado a la tarea que lo originó</li>
+                <li class="fragment">El documento se guarda con <span class="esftt-capas" data-popup="s07-nombre">nombre sistematizado</span> y queda registrado en el pool, vinculado a la tarea que lo originó</li>
                 <li class="fragment">El documento lleva un <span class="esftt-capas" data-popup="s07-codigo">código estructurado</span> de trazabilidad en el pie de página — cuando vuelve firmado al pool, el sistema lo clasifica automáticamente</li>
                 <li class="fragment">Las plantillas admiten campos simples, campos calculados, tablas dinámicas y condiciones — la plantilla ya sabe qué párrafo poner según el resultado</li>
                 <li class="fragment">El documento generado es un <code>.docx</code> editable en LibreOffice Writer — el tramitador puede ajustarlo si la situación lo requiere</li>
@@ -668,6 +668,19 @@
             </div>
           </div>
         </div>
+      </div>
+      <div id="popup-s07-nombre" class="esftt-popup-data" hidden>
+        <h4>Nombre sistematizado</h4>
+        <p>El nombre del documento se construye a partir del contexto ESFTT:</p>
+        <p style="margin-top:10px;font-family:monospace;font-size:0.9em;background:#f4f4f4;padding:8px 12px;border-radius:4px;">{tarea} {trámite} {fase} {solicitud} {expediente} [V {variante}].docx</p>
+        <p style="margin-top:10px">Los niveles que la plantilla deja como comodín se rellenan con los datos reales del expediente al generar:</p>
+        <table class="tabla-inline" style="margin-top:8px">
+          <thead><tr><th>Plantilla</th><th>Documento generado</th></tr></thead>
+          <tbody>
+            <tr><td>Redactar Elaboracion Resolucion V Favorable.docx</td><td>Redactar Elaboracion Resolucion AAP+AAC AT-13465-24 V Favorable.docx</td></tr>
+            <tr><td>Redactar Requerimiento subsanacion.docx</td><td>Redactar Requerimiento subsanacion AAP+AAC AT-13465-24.docx</td></tr>
+          </tbody>
+        </table>
       </div>
       <div id="popup-s07-rellenos" class="esftt-popup-data" hidden>
         <h4>Datos ya rellenos</h4>
