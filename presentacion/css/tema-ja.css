@@ -664,7 +664,7 @@
   border-bottom: 1px solid #ebebeb;
   vertical-align: top;
   color: var(--ja-gris-titulo);
-  font-weight: 300;
+  font-weight: 400;
 }
 
 .tabla-ja tbody td.td-bold  { font-weight: 700; }
