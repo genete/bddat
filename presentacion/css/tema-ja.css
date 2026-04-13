@@ -575,12 +575,19 @@
   display: flex;
   flex-direction: column;
   padding: 12px 28px 0 55px;
+  padding-bottom: 40px;
   box-sizing: border-box;
   overflow: hidden;
 }
 
-.imgdcha-col-texto .slide-pie {
-  margin-right: 0;
+/* Footer sacado del flujo de col-texto: se ancla al fondo del slide (left/right
+   iguales al slide-inner) para que tenga el mismo span en todos los layouts */
+.layout-img-dcha .imgdcha-col-texto .slide-pie {
+  position: absolute;
+  bottom: 0;
+  left: 55px;
+  right: 64px;
+  background: white;
 }
 
 .imgdcha-col-img {
@@ -676,10 +683,6 @@
    LAYOUT: LÍNEA DE TIEMPO
    ============================================= */
 
-/* Footer acotado: alinea visualmente con el ancho del imgdcha-col-texto */
-.layout-timeline .slide-pie {
-  max-width: 560px;
-}
 
 .layout-timeline .slide-body {
   font-style: normal;
