@@ -1219,6 +1219,13 @@
           ml.classList.add('ml-animando');
           ml.addEventListener('animationend', function () {
             ml.classList.remove('ml-animando');
+            // Fade-in automático del título y subtítulo tras la animación
+            var titulo    = dest.querySelector('.slide-titulo.fragment');
+            var subtitulo = dest.querySelector('.slide-subtitulo.fragment');
+            if (titulo)    Reveal.nextFragment();
+            if (subtitulo) setTimeout(function () {
+              if (Reveal.getCurrentSlide() === dest) Reveal.nextFragment();
+            }, 150);
             animando = false;
           }, { once: true });
         } else {
