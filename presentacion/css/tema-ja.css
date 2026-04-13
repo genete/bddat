@@ -494,6 +494,7 @@
   width: 100%;
   margin-top: 10px;
   border-collapse: collapse;
+  font-family: var(--ja-font-body);
   font-size: 0.8em;
   font-style: normal;
 }
@@ -509,6 +510,7 @@
   padding: 4px 10px;
   border-bottom: 1px solid var(--ja-gris-sep);
   font-style: normal;
+  font-weight: 400;
   color: var(--ja-gris-cuerpo);
 }
 .tabla-inline tr:last-child td {
