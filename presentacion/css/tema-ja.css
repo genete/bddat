@@ -818,41 +818,22 @@
    ESFTT — Badges clicables + Popups (S05)
    ============================================= */
 
-/* Badge inline clicable — solo comportamiento, sin estilo visual propio */
+/* Nivel ESFTT inline — texto coloreado con subrayado punteado, sin pastilla */
 .esftt-badge {
-  display: inline-flex;
-  align-items: center;
+  display: inline;
   cursor: pointer;
-  vertical-align: middle;
-  transition: opacity 0.15s;
-  line-height: 1;
-}
-.esftt-badge:hover { opacity: 0.75; }
-
-/* Colores por nivel ESFTT — mismos que v3-tramitacion.css en la app.
-   El estilo tipográfico lo definen estas clases, no el badge base. */
-.esftt-expediente,
-.esftt-solicitud,
-.esftt-fase,
-.esftt-tramite,
-.esftt-tarea {
-  font-family: var(--ja-font-body);
-  font-size: 12px;
   font-weight: 700;
-  padding: 3px 8px;
-  border-radius: 4px;
-  gap: 5px;
+  padding-bottom: 1px;
+  transition: opacity 0.15s;
 }
-/* Expediente — sin color propio en la app, neutro oscuro */
-.esftt-expediente { background: #e9ecef; color: #343a40; }
-/* Solicitud — verde (tabs-nivel-1 active) */
-.esftt-solicitud  { background: #c4ddca; color: #055218; }
-/* Fase — azul pálido (card-header-fase) */
-.esftt-fase       { background: #cfe2ff; color: #084298; }
-/* Trámite — naranja pálido (card-header-tramite) */
-.esftt-tramite    { background: #fde8d1; color: #8b4500; }
-/* Tarea — morado pálido (card-header-tarea) */
-.esftt-tarea      { background: #e8d5f5; color: #4a1d8a; }
+.esftt-badge:hover { opacity: 0.7; }
+
+/* Colores e indicador clicable por nivel */
+.esftt-expediente { color: #343a40; border-bottom: 1.5px dashed #343a40; }
+.esftt-solicitud  { color: #055218; border-bottom: 1.5px dashed #055218; }
+.esftt-fase       { color: #084298; border-bottom: 1.5px dashed #084298; }
+.esftt-tramite    { color: #8b4500; border-bottom: 1.5px dashed #8b4500; }
+.esftt-tarea      { color: #4a1d8a; border-bottom: 1.5px dashed #4a1d8a; }
 
 /* Variante "Estructura en capas" — texto con subrayado punteado */
 .esftt-capas {
