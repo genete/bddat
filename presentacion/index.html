@@ -531,7 +531,82 @@
         Señalar el diagrama Miro mientras se van revelando los sub-bullets. No leer la lista entera.
         Bullet 3: útil para expedientes con AAP + AAC simultáneas. La audiencia reconocerá la casuística.
         Bullet 4: el sistema no es una jaula — y todo queda registrado.
-        Transición a S06: "Esta estructura gestiona también los documentos."
+        Transición a S05b: "Antes de los documentos, hablemos de a quién va dirigido todo esto."
+      </aside>
+    </section>
+
+    <!-- S05b intro label -->
+    <section class="slide-intro">
+      <div class="slide-wrap slide-intro-wrap">
+        <span class="slide-intro-label" data-id="ml-s05b">La Entidad</span>
+      </div>
+    </section>
+
+    <!-- ================================================
+         S05b — LA ENTIDAD (layout-contenido)
+         ================================================ -->
+    <section class="layout-contenido" data-auto-animate data-auto-animate-duration="0.7">
+      <div class="slide-wrap">
+        <div class="slide-barra-top"></div>
+        <div class="slide-margen-lat" data-id="ml-s05b">La Entidad</div>
+
+        <div class="slide-inner">
+          <header class="slide-header">
+            <div class="slide-seccion-row">
+              <span class="seccion-num">5.5</span>
+              <div class="seccion-linea"></div>
+            </div>
+            <h2 class="slide-titulo fragment">Todos los actores, una sola tabla</h2>
+            <h3 class="slide-subtitulo fragment">El rol es circunstancial. La entidad, no.</h3>
+          </header>
+
+          <div class="slide-body">
+            <ul>
+              <li class="fragment">En un expediente intervienen actores de naturaleza muy distinta: el <strong>titular</strong> que promueve la instalación, los <strong>organismos</strong> que emiten condicionados, la <strong>Diputación</strong> que publica en el BOP, el <strong>Ayuntamiento</strong> afectado…</li>
+              <li class="fragment">La solución obvia es una tabla por tipo: <code>titulares</code>, <code>organismos</code>, <code>ayuntamientos</code>… El problema: la misma organización puede actuar en varios roles a la vez y los datos de contacto se duplican</li>
+              <li class="fragment">BDDAT usa <strong>una sola tabla <code>entidades</code></strong> con campos comunes (NIF, nombre, dirección, contacto) y tres roles booleanos que se activan según el contexto del trámite: <code>rol_titular</code> · <code>rol_consultado</code> · <code>rol_publicador</code></li>
+              <li class="fragment">El campo <span class="esftt-capas" data-popup="s05b-tipo-titular"><code>tipo_titular</code></span> permite filtrar y segmentar titulares por sus características propias — gran distribuidora, promotor privado, organismo público — y aplicar lógicas diferenciadas cuando el procedimiento lo requiere</li>
+              <li class="fragment">Una entidad puede además <span class="esftt-capas" data-popup="s05b-autorizado">autorizar a otra para actuar en su nombre</span>: si una empresa gestora representa a un titular, el sistema lo registra. La autoautorización es implícita — el titular siempre puede actuar por sí mismo</li>
+              <li class="fragment">La misma filosofía que el resto del sistema: <strong>la semántica vive en los roles y los tipos, no en los campos ni en las tablas</strong></li>
+            </ul>
+          </div>
+
+          <footer class="slide-pie">
+            <span class="pie-izq">Junta de Andalucía</span>
+            <span class="pie-der">5.5</span>
+          </footer>
+        </div>
+      </div>
+
+      <div id="popup-s05b-tipo-titular" class="esftt-popup-data" hidden>
+        <h4>Tipos de titular</h4>
+        <p>Permiten filtrar y trabajar con grupos de titulares de forma selectiva. Si el titular es o no distribuidora determina el régimen de autorización aplicable.</p>
+        <table class="tabla-inline" style="margin-top:10px">
+          <thead><tr><th>Valor</th><th>Descripción</th></tr></thead>
+          <tbody>
+            <tr><td>GRAN_DISTRIBUIDORA</td><td>Empresa PTD (producción, transporte o distribución)</td></tr>
+            <tr><td>DISTRIBUIDOR_MENOR</td><td>Distribuidora no PTD que cede la instalación antes de la puesta en servicio</td></tr>
+            <tr><td>PROMOTOR</td><td>Promotor privado no PTD</td></tr>
+            <tr><td>ORGANISMO_PUBLICO</td><td>Administración pública promotora</td></tr>
+            <tr><td>OTRO</td><td>Sin clasificar (valor por defecto en migración)</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div id="popup-s05b-autorizado" class="esftt-popup-data" hidden>
+        <h4>Autorizado titular</h4>
+        <p>La tabla <code>autorizados_titular</code> registra relaciones N:N entre entidades: un titular puede autorizar a varios administrados, y un administrado puede estar autorizado por varios titulares.</p>
+        <ul>
+          <li><strong>Borrado lógico</strong> — revocar una autorización no destruye el historial</li>
+          <li><strong>Observaciones libres</strong> — permite anotar el poder notarial o documento que sustenta la autorización</li>
+          <li><strong>Autoautorización implícita</strong> — el titular siempre puede actuar por sí mismo sin entrada en esta tabla</li>
+        </ul>
+      </div>
+
+      <aside class="notes">
+        Puede dispararse con la pregunta "¿A quién notifica el sistema?".
+        Bullet 4: subrayar que tipo_titular no es burocracia — permite filtrar "todos los expedientes de grandes distribuidoras" con un solo criterio.
+        Bullet 5: caso típico, empresa gestora que lleva expedientes de varios titulares. Sin este modelo habría que registrar a la gestora como titular, perdiendo quién es el propietario real.
+        Transición a S06: "Esas mismas entidades son los destinatarios de los documentos que el sistema gestiona."
       </aside>
     </section>
 
