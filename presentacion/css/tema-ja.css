@@ -492,11 +492,11 @@
 /* Tabla inline dentro de bullets (S06) */
 .tabla-inline.tabla-inline-lg {
   font-size: 1em; /* hereda 18px del popup en vez del 0.8em base */
+  table-layout: fixed; /* respeta los anchos del colgroup */
 }
 .tabla-inline.tabla-inline-lg td:first-child {
   font-weight: 700;
   color: var(--ja-gris-titulo);
-  white-space: nowrap;
 }
 .tabla-inline {
   width: 100%;
