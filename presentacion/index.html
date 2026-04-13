@@ -751,10 +751,18 @@
             </footer>
           </div>
 
-          <div class="imgdcha-col-img">
-            <div class="img-placeholder">
-              <span class="placeholder-icon">📋</span>
-              Captura listado<br>de expedientes
+          <div id="listado-wrap" class="imgdcha-col-img fragment"
+               data-prevent-swipe
+               style="position:relative;overflow:hidden;cursor:grab;background:#fff;touch-action:none;">
+            <img id="listado-img" src="assets/Captura_listado_expedientes.png"
+                 draggable="false"
+                 style="position:absolute;top:50%;left:50%;
+                        transform-origin:center center;
+                        transform:translate(-50%,-50%) scale(1);
+                        max-width:none;user-select:none;">
+            <div style="position:absolute;bottom:8px;right:8px;
+                        font-size:10px;color:#999;pointer-events:none;">
+              ⊕ rueda · arrastrar · doble clic: reset
             </div>
           </div>
         </div>
@@ -1234,6 +1242,7 @@
   makePanzoom('esftt-wrap',    'esftt-img');    // S05 — diagrama ESFTT
   makePanzoom('docs-wrap',     'docs-img');     // S06 — captura gestor documentos
   makePanzoom('escritos-wrap', 'escritos-img'); // S07 — captura generación escrito
+  makePanzoom('listado-wrap',  'listado-img');  // S08 — captura listado expedientes
 </script>
 
 <script src="js/popups.js"></script>
