@@ -676,6 +676,11 @@
    LAYOUT: LÍNEA DE TIEMPO
    ============================================= */
 
+/* Footer acotado: alinea visualmente con el ancho del imgdcha-col-texto */
+.layout-timeline .slide-pie {
+  max-width: 560px;
+}
+
 .layout-timeline .slide-body {
   font-style: normal;
   overflow: hidden;
@@ -719,7 +724,7 @@
 .timeline-col-titulo {
   font-family: var(--ja-font-titulo);
   font-size: 15px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--ja-gris-titulo);
   line-height: 1.25;
 }
