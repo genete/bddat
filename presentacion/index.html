@@ -732,7 +732,7 @@
 
             <div class="slide-body">
               <ul>
-                <li class="fragment">Cada fila es una solicitud en tramitación. Las columnas son pistas del procedimiento: Análisis, Consultas, Medio Ambiente, Información Pública, Resolución</li>
+                <li class="fragment">Cada fila es una solicitud en tramitación. Las columnas son <span class="esftt-capas" data-popup="s08-pistas">pistas</span> del procedimiento, una por fase principal</li>
                 <li class="fragment">El estado de cada pista se calcula automáticamente del árbol del expediente — el listado siempre refleja la realidad sin que nadie lo actualice a mano</li>
                 <li class="fragment">Los colores dicen qué toca: <strong style="color:#c0392b">rojo</strong> = actuar, <strong style="color:#e67e22">amarillo</strong> = en firma, <strong style="color:#2980b9">azul</strong> = esperando respuesta, <strong style="color:#27ae60">verde</strong> = terminado
                   <ul>
@@ -767,6 +767,22 @@
           </div>
         </div>
       </div>
+      <div id="popup-s08-pistas" class="esftt-popup-data" hidden>
+        <h4>Pistas del procedimiento</h4>
+        <p>Cada pista agrupa las fases de un mismo bloque procedimental. Su estado se deduce automáticamente del árbol ESFTT — nadie lo actualiza a mano.</p>
+        <table class="tabla-inline" style="margin-top:10px">
+          <thead><tr><th>Pista</th><th>Fases que agrupa</th></tr></thead>
+          <tbody>
+            <tr><td>ANÁLISIS</td><td>Análisis de solicitud, subsanación</td></tr>
+            <tr><td>CONSULTAS</td><td>Consultas a organismos, consulta al Ministerio</td></tr>
+            <tr><td>MA</td><td>Compatibilidad ambiental, figura ambiental externa, AAU/AAUS integrada</td></tr>
+            <tr><td>IP</td><td>Información pública</td></tr>
+            <tr><td>RESOLUCIÓN</td><td>Resolución</td></tr>
+          </tbody>
+        </table>
+        <p style="margin-top:10px">Si una pista no aplica al tipo de solicitud (p.ej. una AAC no tiene IP), la celda aparece vacía — distinto a <strong style="color:#27ae60">FIN</strong>. Si hay varias fases abiertas en la misma pista, gana la más urgente; si coinciden en urgencia, aparece un contador: <code>TRAMITAR (2)</code>.</p>
+      </div>
+
       <aside class="notes">
         Esta slide cierra el bloque de características. Tono de síntesis.
         Bullet 1: la unidad es la solicitud, no el expediente — un AT puede tener varias filas.
