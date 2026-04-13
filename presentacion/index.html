@@ -410,7 +410,7 @@
                 <li class="fragment"><span class="esftt-badge esftt-capas" data-popup="capas">Estructura en capas</span>:<br><span class="esftt-badge esftt-expediente" data-popup="expediente"><i class="bi bi-folder2-open"></i> Expediente</span> → <span class="esftt-badge esftt-solicitud" data-popup="solicitud"><i class="bi bi-file-earmark-text"></i> Solicitud</span> → <span class="esftt-badge esftt-fase" data-popup="fase"><i class="bi bi-diagram-3-fill"></i> Fase</span> → <span class="esftt-badge esftt-tramite" data-popup="tramite"><i class="bi bi-clipboard-pulse"></i> Trámite</span> → <span class="esftt-badge esftt-tarea" data-popup="tarea"><i class="bi bi-pencil-square"></i> Tarea</span>.</li>
                 <li class="fragment">El sistema muestra en todo momento en qué punto está cada solicitud y qué acción toca a continuación</li>
                 <li class="fragment">Varias fases del mismo expediente pueden avanzar en paralelo — siempre que sean compatibles</li>
-                <li class="fragment">Si la situación lo requiere, el tramitador puede salirse del flujo estándar justificadamente — quedará registro en el <strong>cuaderno de bitácora</strong></li>
+                <li class="fragment">Si la situación lo requiere, el tramitador puede salirse del flujo estándar justificadamente — quedará registro en el <span class="esftt-capas" data-popup="bitacora">cuaderno de bitácora</span></li>
               </ul>
             </div>
 
@@ -505,6 +505,12 @@
           <li><i class="bi bi-hourglass-split"></i> ESPERAR PLAZO</li>
           <li><i class="bi bi-box-arrow-in-down"></i> INCORPORAR</li>
         </ul>
+      </div>
+      <div id="popup-bitacora" class="esftt-popup-data" hidden>
+        <h4>Cuaderno de bitácora</h4>
+        <p>El <strong>cuaderno de bitácora</strong> es un sistema de registro de acciones relevantes que incluye eliminaciones de registros, desactivaciones de usuarios o entidades y desviaciones respecto a las reglas de tramitación.</p>
+        <p style="margin-top:10px">Las desviaciones incluyen el qué, quién y cuándo, así como la justificación.</p>
+        <p style="margin-top:10px">El cuaderno de bitácora es auditable por el supervisor.</p>
       </div>
       <div id="popup-capas" class="esftt-popup-data" hidden>
         <h4>Estructura en capas</h4>
