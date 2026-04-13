@@ -35,7 +35,7 @@
 5. *(fragment)* Una entidad puede además **autorizar a otra para actuar en su nombre**: si una empresa gestora representa a un titular en la tramitación, el sistema lo registra y lo tiene en cuenta. La autoautorización es implícita — el titular siempre puede actuar por sí mismo sin entrada adicional
    - *(popup sobre "actuar en su nombre" — ver sección Popups)*
 
-6. *(fragment)* La misma filosofía que el resto del sistema: **la semántica vive en los roles y los tipos, no en los campos ni en las tablas**
+6. *(fragment)* La misma filosofía que el resto del sistema: **la semántica vive en los tipos, no en los tipos de tablas**
 
 ---
 
