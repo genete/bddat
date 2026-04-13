@@ -558,24 +558,7 @@
               <ul>
                 <li class="fragment">Todos los documentos de un expediente enlazados a su número de AT — BDDAT sabe la ruta en el servidor y permite localizarlos de inmediato</li>
                 <li class="fragment">Cada documento tiene una fecha administrativa — la que cuenta legalmente, no la del archivo en disco</li>
-                <li class="fragment">Los documentos se vinculan a las tareas que los generan o consumen: el sistema sabe qué borrador produjo qué resolución firmada
-                  <ul>
-                    <li class="fragment">
-                      <table class="tabla-inline">
-                        <thead>
-                          <tr><th>Tarea</th><th>Produce</th></tr>
-                        </thead>
-                        <tbody>
-                          <tr><td>REDACTAR</td><td>Borrador</td></tr>
-                          <tr><td>FIRMAR</td><td>Documento firmado</td></tr>
-                          <tr><td>NOTIFICAR</td><td>Justificante de notificación</td></tr>
-                          <tr><td>PUBLICAR</td><td>Justificante de publicación</td></tr>
-                          <tr><td>INCORPORAR</td><td>Documentos externos registrados en el pool</td></tr>
-                        </tbody>
-                      </table>
-                    </li>
-                  </ul>
-                </li>
+                <li class="fragment">Los documentos se vinculan a las tareas que los <span class="esftt-capas" data-popup="docs-tarea-produce">generan o consumen</span>: el sistema sabe qué borrador produjo qué resolución firmada</li>
                 <li class="fragment">El administrativo puede cargar documentos al pool pendiente y marcarlos como prioritarios — el tramitador los incorpora al flujo cuando toca</li>
               </ul>
             </div>
@@ -602,6 +585,20 @@
           </div>
         </div>
       </div>
+      <div id="popup-docs-tarea-produce" class="esftt-popup-data" hidden>
+        <h4>Tarea → documento</h4>
+        <table class="tabla-inline">
+          <thead><tr><th>Tarea</th><th>Produce</th></tr></thead>
+          <tbody>
+            <tr><td>REDACTAR</td><td>Borrador</td></tr>
+            <tr><td>FIRMAR</td><td>Documento firmado</td></tr>
+            <tr><td>NOTIFICAR</td><td>Justificante de notificación</td></tr>
+            <tr><td>PUBLICAR</td><td>Justificante de publicación</td></tr>
+            <tr><td>INCORPORAR</td><td>Documentos externos registrados en el pool</td></tr>
+          </tbody>
+        </table>
+      </div>
+
       <aside class="notes">
         Bullet 1: BDDAT mantiene el vínculo entre número AT y ruta física en el servidor — sin buscar carpetas manualmente.
         Bullet 2: la fecha administrativa distingue cuándo tiene efectos del cuándo se guardó.
