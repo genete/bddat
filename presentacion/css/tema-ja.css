@@ -20,8 +20,8 @@
   --ja-font-titulo:  'Montserrat', 'Myriad Pro', 'Segoe UI', Arial, sans-serif;
   --ja-font-body:    'Source Sans 3', 'Source Sans Pro', 'Segoe UI', Arial, sans-serif;
 
-  --ja-pie-size:       12px;
-  --ja-margen-lat-size: 10px;
+  --ja-pie-size:       13px;
+  --ja-margen-lat-size: 11px;
 }
 
 /* =============================================
@@ -73,7 +73,7 @@
 
 /* Clases con especificidad .reveal + .clase para ganar sobre .reveal h3 */
 .reveal .slide-titulo {
-  font-size: 38px;
+  font-size: 42px;
   font-weight: 800;
   color: var(--ja-gris-titulo);
   line-height: 1.15;
@@ -81,7 +81,7 @@
 }
 
 .reveal .slide-subtitulo {
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 600;
   color: var(--ja-verde);
   line-height: 1.3;
@@ -211,13 +211,12 @@
   font-weight: 300;
 }
 
-/* Logo símbolo JA — esquina inferior derecha sobre el chevron.
-   filter: blanco puro para que sea visible sobre fondo verde. */
+/* Logo JA con texto — esquina inferior derecha sobre el chevron. */
 .portada-logo-ja {
   position: absolute;
   bottom: 30px;
   right: 36px;
-  width: 90px;
+  width: 180px;
   z-index: 10;
 }
 
@@ -225,7 +224,6 @@
   width: 100%;
   height: auto;
   display: block;
-  filter: brightness(0) invert(1);
 }
 
 .portada-pie {
@@ -388,7 +386,7 @@
 
 .seccion-num {
   font-family: var(--ja-font-body);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 400;
   font-style: italic;
   color: var(--ja-gris-body);
@@ -409,7 +407,7 @@
   flex: 1;
   overflow: hidden;
   font-family: var(--ja-font-body);
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 400;
   color: var(--ja-gris-cuerpo);
   font-style: normal;
@@ -576,17 +574,41 @@
   right: 0;
   bottom: 0;
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;  /* imagen movida a popup */
 }
 
 .imgdcha-col-texto {
   display: flex;
   flex-direction: column;
-  padding: 12px 28px 0 55px;
+  padding: 12px 64px 0 55px;  /* 64px dcha = alineado con slide-inner */
   padding-bottom: 40px;
   box-sizing: border-box;
   overflow: hidden;
 }
+
+/* Botón de apertura de imagen en popup */
+.img-popup-btn {
+  margin-left: auto;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  background: transparent;
+  border: 1.5px solid var(--ja-gris-sep);
+  border-radius: 20px;
+  cursor: pointer;
+  font-family: var(--ja-font-body);
+  font-size: 13px;
+  color: var(--ja-gris-body);
+  transition: border-color 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+.img-popup-btn:hover {
+  border-color: var(--ja-verde);
+  color: var(--ja-verde);
+}
+.img-popup-btn .bi { font-size: 15px; }
 
 /* Footer sacado del flujo de col-texto: se ancla al fondo del slide (left/right
    iguales al slide-inner) para que tenga el mismo span en todos los layouts */
@@ -661,7 +683,7 @@
   width: 100%;
   border-collapse: collapse;
   font-family: var(--ja-font-body);
-  font-size: 16px;
+  font-size: 18px;
 }
 
 .tabla-ja thead tr { background: var(--ja-verde); color: var(--ja-blanco); }
@@ -722,7 +744,7 @@
   color: var(--ja-blanco);
   font-family: var(--ja-font-titulo);
   font-weight: 800;
-  font-size: 20px;
+  font-size: 22px;
   width: 42px;
   height: 42px;
   display: flex;
@@ -734,7 +756,7 @@
 
 .timeline-col-titulo {
   font-family: var(--ja-font-titulo);
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 600;
   color: var(--ja-gris-titulo);
   line-height: 1.25;
@@ -742,7 +764,7 @@
 
 .timeline-col-titulo small {
   font-family: var(--ja-font-body);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 400;
   color: var(--ja-gris-body);
   display: block;
@@ -754,7 +776,7 @@
   padding: 0;
   margin: 0;
   font-family: var(--ja-font-body);
-  font-size: 15px;
+  font-size: 17px;
   color: var(--ja-gris-cuerpo);
   font-style: normal;
   font-weight: 400;
@@ -890,14 +912,14 @@
 }
 .ja-popup-box h4 {
   font-family: var(--ja-font-titulo);
-  font-size: 22px;
+  font-size: 24px;
   font-weight: 800;
   color: var(--ja-gris-titulo);
   margin: 0 0 10px 0;
 }
 .ja-popup-box p {
   font-family: var(--ja-font-body);
-  font-size: 18px;
+  font-size: 20px;
   color: var(--ja-gris-cuerpo);
   line-height: 1.65;
   margin: 0;
@@ -914,13 +936,64 @@
 }
 .ja-popup-box ul li {
   font-family: var(--ja-font-body);
-  font-size: 18px;
+  font-size: 20px;
   color: var(--ja-gris-cuerpo);
   line-height: 1.65;
   font-style: normal;
   font-weight: 400;
   list-style: disc;
 }
+/* Popup de imagen — 16:9 */
+.ja-popup-box.img-popup {
+  width: 1100px;
+  max-width: 90vw;
+  aspect-ratio: 16 / 9;
+  padding: 0;
+  overflow: hidden;
+}
+.ja-popup-box.img-popup .ja-popup-contenido {
+  width: 100%;
+  height: 100%;
+}
+.ja-popup-box.img-popup .ja-popup-cerrar {
+  background: rgba(255, 255, 255, 0.85);
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Wrap panzoom dentro del popup de imagen */
+.imgpopup-wrap {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+  cursor: grab;
+  background: #fff;
+  touch-action: none;
+}
+.imgpopup-wrap img {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform-origin: center center;
+  transform: translate(-50%, -50%) scale(1);
+  max-width: none;
+  user-select: none;
+  draggable: false;
+}
+.imgpopup-hint {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  font-size: 10px;
+  color: #999;
+  pointer-events: none;
+}
+
 .ja-popup-cerrar {
   position: absolute;
   top: 10px;

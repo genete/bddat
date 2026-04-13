@@ -51,7 +51,7 @@
         </div>
 
         <div class="portada-logo-ja">
-          <img src="assets/Simbolo_JuntaAndalucia_CMYK.svg" alt="Junta de Andalucía">
+          <img src="assets/Logotipo_JuntaAndalucia_vertical_negativo_blanco.svg" alt="Junta de Andalucía">
         </div>
 
         <footer class="slide-pie portada-pie">
@@ -360,6 +360,7 @@
               <div class="slide-seccion-row">
                 <span class="seccion-num">6</span>
                 <div class="seccion-linea"></div>
+                <button class="img-popup-btn" data-popup="img-detalle"><i class="bi bi-image"></i> Ver captura</button>
               </div>
               <h2 class="slide-titulo fragment">Una interfaz que ya conocéis</h2>
               <h3 class="slide-subtitulo fragment">Imagen corporativa de la Junta, desde el primer día</h3>
@@ -380,20 +381,12 @@
             </footer>
           </div>
 
-          <div id="detalle-wrap" class="imgdcha-col-img fragment"
-               data-prevent-swipe
-               style="position:relative;overflow:hidden;cursor:grab;background:#fff;touch-action:none;">
-            <img id="detalle-img" src="assets/Captura_detalle_expediente.png"
-                 draggable="false"
-                 style="position:absolute;top:50%;left:50%;
-                        transform-origin:center center;
-                        transform:translate(-50%,-50%) scale(1);
-                        max-width:none;user-select:none;">
-            <div style="position:absolute;bottom:8px;right:8px;
-                        font-size:10px;color:#999;pointer-events:none;">
-              ⊕ rueda · arrastrar · doble clic: reset
-            </div>
-          </div>
+        </div>
+      </div>
+      <div id="popup-img-detalle" class="img-popup-data" hidden>
+        <div class="imgpopup-wrap">
+          <img src="assets/Captura_detalle_expediente.png" draggable="false">
+          <div class="imgpopup-hint">⊕ rueda · arrastrar · doble clic: reset</div>
         </div>
       </div>
       <aside class="notes">
@@ -425,6 +418,7 @@
               <div class="slide-seccion-row">
                 <span class="seccion-num">7</span>
                 <div class="seccion-linea"></div>
+                <button class="img-popup-btn" data-popup="img-esftt"><i class="bi bi-diagram-3"></i> Ver diagrama</button>
               </div>
               <h2 class="slide-titulo fragment">El expediente y el procedimiento</h2>
               <h3 class="slide-subtitulo fragment">Cada solicitud en su sitio. Un sitio para múltiples solicitudes.</h3>
@@ -446,20 +440,12 @@
             </footer>
           </div>
 
-          <div id="esftt-wrap" class="imgdcha-col-img fragment"
-               data-prevent-swipe
-               style="position:relative;overflow:hidden;cursor:grab;background:#fff;touch-action:none;">
-            <img id="esftt-img" src="assets/Diagrama_ESFTT.svg"
-                 draggable="false"
-                 style="position:absolute;top:50%;left:50%;
-                        transform-origin:center center;
-                        transform:translate(-50%,-50%) scale(1);
-                        max-width:none;user-select:none;">
-            <div style="position:absolute;bottom:8px;right:8px;
-                        font-size:10px;color:#999;pointer-events:none;">
-              ⊕ rueda · arrastrar · doble clic: reset
-            </div>
-          </div>
+        </div>
+      </div>
+      <div id="popup-img-esftt" class="img-popup-data" hidden>
+        <div class="imgpopup-wrap">
+          <img src="assets/Diagrama_ESFTT.svg" draggable="false">
+          <div class="imgpopup-hint">⊕ rueda · arrastrar · doble clic: reset</div>
         </div>
       </div>
       <!-- Datos popup — ocultos, sólo para lectura por JS -->
@@ -650,6 +636,7 @@
               <div class="slide-seccion-row">
                 <span class="seccion-num">9</span>
                 <div class="seccion-linea"></div>
+                <button class="img-popup-btn" data-popup="img-docs"><i class="bi bi-image"></i> Ver captura</button>
               </div>
               <h2 class="slide-titulo fragment">Todos los documentos, en su sitio</h2>
               <h3 class="slide-subtitulo fragment">Un pool único por expediente, ligado al procedimiento</h3>
@@ -670,20 +657,12 @@
             </footer>
           </div>
 
-          <div id="docs-wrap" class="imgdcha-col-img fragment"
-               data-prevent-swipe
-               style="position:relative;overflow:hidden;cursor:grab;background:#fff;touch-action:none;">
-            <img id="docs-img" src="assets/Captura_gestor_docs.png"
-                 draggable="false"
-                 style="position:absolute;top:50%;left:50%;
-                        transform-origin:center center;
-                        transform:translate(-50%,-50%) scale(1);
-                        max-width:none;user-select:none;">
-            <div style="position:absolute;bottom:8px;right:8px;
-                        font-size:10px;color:#999;pointer-events:none;">
-              ⊕ rueda · arrastrar · doble clic: reset
-            </div>
-          </div>
+        </div>
+      </div>
+      <div id="popup-img-docs" class="img-popup-data" hidden>
+        <div class="imgpopup-wrap">
+          <img src="assets/Captura_gestor_docs.png" draggable="false">
+          <div class="imgpopup-hint">⊕ rueda · arrastrar · doble clic: reset</div>
         </div>
       </div>
       <div id="popup-docs-tarea-produce" class="esftt-popup-data" hidden>
@@ -733,6 +712,7 @@
               <div class="slide-seccion-row">
                 <span class="seccion-num">10</span>
                 <div class="seccion-linea"></div>
+                <button class="img-popup-btn" data-popup="img-escritos"><i class="bi bi-image"></i> Ver captura</button>
               </div>
               <h2 class="slide-titulo fragment">El borrador, sin copiar y pegar</h2>
               <h3 class="slide-subtitulo fragment">Plantillas que ya conocen el expediente</h3>
@@ -754,20 +734,12 @@
             </footer>
           </div>
 
-          <div id="escritos-wrap" class="imgdcha-col-img fragment"
-               data-prevent-swipe
-               style="position:relative;overflow:hidden;cursor:grab;background:#fff;touch-action:none;">
-            <img id="escritos-img" src="assets/Captura_generacion_escrito.png"
-                 draggable="false"
-                 style="position:absolute;top:50%;left:50%;
-                        transform-origin:center center;
-                        transform:translate(-50%,-50%) scale(1);
-                        max-width:none;user-select:none;">
-            <div style="position:absolute;bottom:8px;right:8px;
-                        font-size:10px;color:#999;pointer-events:none;">
-              ⊕ rueda · arrastrar · doble clic: reset
-            </div>
-          </div>
+        </div>
+      </div>
+      <div id="popup-img-escritos" class="img-popup-data" hidden>
+        <div class="imgpopup-wrap">
+          <img src="assets/Captura_generacion_escrito.png" draggable="false">
+          <div class="imgpopup-hint">⊕ rueda · arrastrar · doble clic: reset</div>
         </div>
       </div>
       <div id="popup-s07-nombre" class="esftt-popup-data" hidden>
@@ -826,6 +798,7 @@
               <div class="slide-seccion-row">
                 <span class="seccion-num">11</span>
                 <div class="seccion-linea"></div>
+                <button class="img-popup-btn" data-popup="img-listado"><i class="bi bi-image"></i> Ver captura</button>
               </div>
               <h2 class="slide-titulo fragment">Mis expedientes, de un vistazo</h2>
               <h3 class="slide-subtitulo fragment">Sin abrir ninguno</h3>
@@ -848,20 +821,12 @@
             </footer>
           </div>
 
-          <div id="listado-wrap" class="imgdcha-col-img fragment"
-               data-prevent-swipe
-               style="position:relative;overflow:hidden;cursor:grab;background:#fff;touch-action:none;">
-            <img id="listado-img" src="assets/Captura_listado_expedientes.png"
-                 draggable="false"
-                 style="position:absolute;top:50%;left:50%;
-                        transform-origin:center center;
-                        transform:translate(-50%,-50%) scale(1);
-                        max-width:none;user-select:none;">
-            <div style="position:absolute;bottom:8px;right:8px;
-                        font-size:10px;color:#999;pointer-events:none;">
-              ⊕ rueda · arrastrar · doble clic: reset
-            </div>
-          </div>
+        </div>
+      </div>
+      <div id="popup-img-listado" class="img-popup-data" hidden>
+        <div class="imgpopup-wrap">
+          <img src="assets/Captura_listado_expedientes.png" draggable="false">
+          <div class="imgpopup-hint">⊕ rueda · arrastrar · doble clic: reset</div>
         </div>
       </div>
       <div id="popup-s08-columnas" class="esftt-popup-data" hidden>
@@ -923,6 +888,10 @@
         <div class="portadilla-contenido">
           <h2 class="portadilla-titulo">Demo en vivo</h2>
           <p class="portadilla-subtitulo">Conexión remota al PC de trabajo</p>
+        </div>
+
+        <div class="portada-logo-ja">
+          <img src="assets/Logotipo_JuntaAndalucia_vertical_negativo_blanco.svg" alt="Junta de Andalucía">
         </div>
 
       </div>
@@ -1086,7 +1055,7 @@
         </div>
 
         <div class="portada-logo-ja">
-          <img src="assets/Simbolo_JuntaAndalucia_CMYK.svg" alt="Junta de Andalucía">
+          <img src="assets/Logotipo_JuntaAndalucia_vertical_negativo_blanco.svg" alt="Junta de Andalucía">
         </div>
 
         <footer class="slide-pie portada-pie">
@@ -1270,9 +1239,9 @@
 
 <script>
   // Panzoom reutilizable — S05 (diagrama ESFTT) y S06 (gestor docs)
-  function makePanzoom(wrapId, imgId) {
-    const wrap = document.getElementById(wrapId);
-    const img  = document.getElementById(imgId);
+  function makePanzoom(wrapOrId, imgOrId) {
+    const wrap = (typeof wrapOrId === 'string') ? document.getElementById(wrapOrId) : wrapOrId;
+    const img  = (typeof imgOrId  === 'string') ? document.getElementById(imgOrId)  : imgOrId;
     if (!wrap || !img) return;
 
     let scale = 1, tx = 0, ty = 0;
@@ -1374,11 +1343,7 @@
     }, { passive: false });
   }
 
-  makePanzoom('detalle-wrap',  'detalle-img');  // S04 — vista detalle expediente
-  makePanzoom('esftt-wrap',    'esftt-img');    // S05 — diagrama ESFTT
-  makePanzoom('docs-wrap',     'docs-img');     // S06 — captura gestor documentos
-  makePanzoom('escritos-wrap', 'escritos-img'); // S07 — captura generación escrito
-  makePanzoom('listado-wrap',  'listado-img');  // S08 — captura listado expedientes
+  // Panzoom se inicializa en popups.js al abrir cada popup de imagen
 </script>
 
 <script src="js/popups.js"></script>

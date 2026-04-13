@@ -39,13 +39,25 @@
   function abrirPopup(nombre) {
     var data = document.getElementById('popup-' + nombre);
     if (!data) return;
+    var esImg = data.classList.contains('img-popup-data');
     contenido.innerHTML = data.innerHTML;
+    if (esImg) {
+      box.classList.add('img-popup');
+      var wrap = contenido.querySelector('.imgpopup-wrap');
+      var img  = wrap && wrap.querySelector('img');
+      if (wrap && img && typeof makePanzoom === 'function') {
+        makePanzoom(wrap, img);
+      }
+    } else {
+      box.classList.remove('img-popup');
+    }
     aplicarEscala();
     overlay.classList.add('activo');
   }
 
   function cerrarPopup() {
     overlay.classList.remove('activo');
+    box.classList.remove('img-popup');
   }
 
   // --- Eventos ---
