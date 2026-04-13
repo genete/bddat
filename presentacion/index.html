@@ -732,7 +732,7 @@
 
             <div class="slide-body">
               <ul>
-                <li class="fragment">Cada fila es una solicitud en tramitación. Las columnas son <span class="esftt-capas" data-popup="s08-pistas">pistas</span> del procedimiento, una por fase principal</li>
+                <li class="fragment">Cada fila es una solicitud en tramitación. Las <span class="esftt-capas" data-popup="s08-columnas">columnas</span> muestran las <span class="esftt-capas" data-popup="s08-pistas">pistas</span> del procedimiento, una por fase principal</li>
                 <li class="fragment">El estado de cada pista se calcula automáticamente del árbol del expediente — el listado siempre refleja la realidad sin que nadie lo actualice a mano</li>
                 <li class="fragment">Los colores dicen qué toca: <strong style="color:#c0392b">rojo</strong> = actuar, <strong style="color:#e67e22">amarillo</strong> = en firma, <strong style="color:#2980b9">azul</strong> = esperando respuesta, <strong style="color:#27ae60">verde</strong> = terminado
                   <ul>
@@ -767,11 +767,11 @@
           </div>
         </div>
       </div>
-      <div id="popup-s08-pistas" class="esftt-popup-data" hidden>
-        <h4>Pistas del procedimiento</h4>
-        <p>Cada pista agrupa las fases de un mismo bloque procedimental. Su estado se deduce automáticamente del árbol ESFTT — nadie lo actualiza a mano.</p>
+      <div id="popup-s08-columnas" class="esftt-popup-data" hidden>
+        <h4>Columnas del listado</h4>
+        <p>Cada columna agrupa las fases de un mismo bloque procedimental. Su estado se deduce automáticamente del árbol ESFTT — nadie lo actualiza a mano.</p>
         <table class="tabla-inline" style="margin-top:10px">
-          <thead><tr><th>Pista</th><th>Fases que agrupa</th></tr></thead>
+          <thead><tr><th>Columna</th><th>Fases que agrupa</th></tr></thead>
           <tbody>
             <tr><td>ANÁLISIS</td><td>Análisis de solicitud, subsanación</td></tr>
             <tr><td>CONSULTAS</td><td>Consultas a organismos, consulta al Ministerio</td></tr>
@@ -780,7 +780,26 @@
             <tr><td>RESOLUCIÓN</td><td>Resolución</td></tr>
           </tbody>
         </table>
-        <p style="margin-top:10px">Si una pista no aplica al tipo de solicitud (p.ej. una AAC no tiene IP), la celda aparece vacía — distinto a <strong style="color:#27ae60">FIN</strong>. Si hay varias fases abiertas en la misma pista, gana la más urgente; si coinciden en urgencia, aparece un contador: <code>TRAMITAR (2)</code>.</p>
+        <p style="margin-top:10px">Si una columna no aplica al tipo de solicitud (p.ej. una AAC no tiene IP), la celda aparece vacía — distinto a <strong style="color:#27ae60">FIN</strong>.</p>
+      </div>
+      <div id="popup-s08-pistas" class="esftt-popup-data" hidden>
+        <h4>Pistas de estado</h4>
+        <p>Cada celda muestra la pista de mayor urgencia activa en esa columna. Si hay varias en el mismo nivel, aparece un contador: <code>TRAMITAR (2)</code>.</p>
+        <table class="tabla-inline" style="margin-top:10px">
+          <thead><tr><th>Pista</th><th>Color</th><th>Qué indica</th></tr></thead>
+          <tbody>
+            <tr><td>TRAMITAR</td><td style="color:#c0392b">● rojo</td><td>Falta acción del tramitador</td></tr>
+            <tr><td>ESTUDIAR</td><td style="color:#c0392b">● rojo</td><td>Análisis en curso sin resultado</td></tr>
+            <tr><td>REDACTAR</td><td style="color:#c0392b">● rojo</td><td>Redacción en curso sin borrador</td></tr>
+            <tr><td>FIRMAR</td><td style="color:#e67e22">● amarillo</td><td>Borrador pendiente de firma</td></tr>
+            <tr><td>NOTIFICAR</td><td style="color:#2980b9">● azul</td><td>Notificación sin justificante</td></tr>
+            <tr><td>PUBLICAR</td><td style="color:#2980b9">● azul</td><td>Publicación sin justificante</td></tr>
+            <tr><td>SUBSANAR</td><td style="color:#888">● gris</td><td>Plazo de subsanación activo</td></tr>
+            <tr><td>PLAZOS</td><td style="color:#888">● gris</td><td>Esperando respuesta de organismo</td></tr>
+            <tr><td>CERRAR</td><td style="color:#e67e22">● naranja</td><td>Completo sin fecha de cierre</td></tr>
+            <tr><td>FIN</td><td style="color:#27ae60">● verde</td><td>Fase finalizada</td></tr>
+          </tbody>
+        </table>
       </div>
 
       <aside class="notes">
