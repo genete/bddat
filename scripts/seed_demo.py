@@ -205,20 +205,21 @@ with app.app_context():
     TF, TT, TS, TE, TDOC, TRES, TTAREA = cargar_ids()
 
     # --- Atajos tipos_fases ---
-    TF_SOL  = TF['ANALISIS_SOLICITUD']
+    # tipos_fases: el código de la primera fase varía según BD
+    TF_SOL  = TF.get('ANALISIS_SOLICITUD') or TF.get('REGISTRO_SOLICITUD')
     TF_CONS = TF['CONSULTAS']
     TF_MA   = TF['COMPATIBILIDAD_AMBIENTAL']
     TF_IP   = TF['INFORMACION_PUBLICA']
     TF_RES  = TF['RESOLUCION']
 
-    # --- Atajos tipos_tramites ---
-    TT_ANAL  = TT['ANALISIS_DOCUMENTAL']
+    # --- Atajos tipos_tramites (códigos difieren entre entornos) ---
+    TT_ANAL  = TT.get('ANALISIS_DOCUMENTAL') or TT.get('COMPROBACION_DOCUMENTAL')
     TT_REQ   = TT['REQUERIMIENTO_SUBSANACION']
-    TT_SEP   = TT['CONSULTA_SEPARATA']
+    TT_SEP   = TT.get('CONSULTA_SEPARATA') or TT.get('SEPARATAS')
     TT_COMP  = TT['SOLICITUD_COMPATIBILIDAD']
     TT_BOP   = TT['ANUNCIO_BOP']
-    TT_ELAB  = TT['ELABORACION']
-    TT_NOTIF = TT['NOTIFICACION']
+    TT_ELAB  = TT.get('ELABORACION') or TT.get('ELABORACION_RESOLUCION')
+    TT_NOTIF = TT.get('NOTIFICACION') or TT.get('NOTIFICACION_RESOLUCION')
 
     # --- Atajos tipos_solicitudes ---
     TS_AAP_AAC     = TS['AAP_AAC']
@@ -241,7 +242,7 @@ with app.app_context():
     TRES_FAV = TRES.get('FAVORABLE', next(iter(TRES.values())))
 
     # --- Atajos tareas ---
-    TAREA_ANAL = TTAREA['ANALIZAR']
+    TAREA_ANAL = TTAREA.get('ANALIZAR') or TTAREA.get('ANALISIS')
     TAREA_RED  = TTAREA['REDACTAR']
     TAREA_FIR  = TTAREA['FIRMAR']
     TAREA_NOT  = TTAREA['NOTIFICAR']
