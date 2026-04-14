@@ -81,7 +81,7 @@ def limpiar():
 # Helpers
 # ---------------------------------------------------------------------------
 def crear_exp(numero_at, entidad, tipo_exp_id, titulo, descripcion,
-              emplazamiento, fecha=date(2024, 1, 1)):
+              emplazamiento, responsable_id, fecha=date(2024, 1, 1)):
     p = Proyecto(
         titulo=titulo,
         descripcion=descripcion,
@@ -97,6 +97,7 @@ def crear_exp(numero_at, entidad, tipo_exp_id, titulo, descripcion,
         tipo_expediente_id=tipo_exp_id,
         proyecto_id=p.id,
         titular_id=entidad.id,
+        responsable_id=responsable_id,
         heredado=False,
     )
     db.session.add(exp)
@@ -351,6 +352,7 @@ with app.app_context():
         titulo='Planta Fotovoltaica "Las Marismas" — 49,9 MW',
         descripcion='Instalación fotovoltaica de 49,9 MW con línea de evacuación 66 kV',
         emplazamiento='T.M. de Lebrija (Sevilla)',
+        responsable_id=2,  # CLG
         fecha=date(2024, 9, 15),
     )
     sol01_entrada = crear_doc(exp01,
@@ -379,6 +381,7 @@ with app.app_context():
         titulo='Planta Fotovoltaica "Cerro Blanco" — 49,5 MW',
         descripcion='Instalación FV 49,5 MW con subestación de maniobra 132 kV',
         emplazamiento='T.M. de Utrera (Sevilla)',
+        responsable_id=2,  # CLG
         fecha=date(2024, 3, 10),
     )
     sol02_sol = crear_doc(exp02,
@@ -409,6 +412,7 @@ with app.app_context():
         titulo='Parque Eólico "Sierra Bermeja" — 48 MW',
         descripcion='Parque eólico 48 MW, 12 aerogeneradores, línea de evacuación 132 kV',
         emplazamiento='T.M. de Montoro y Adamuz (Córdoba)',
+        responsable_id=3,  # PLL
         fecha=date(2023, 6, 1),
     )
     sol03_dr = crear_doc(exp03,
@@ -435,6 +439,7 @@ with app.app_context():
         titulo='Parque Eólico "Los Pedroches" — 36 MW',
         descripcion='Parque eólico 36 MW, 9 aerogeneradores 4 MW, SET colectora',
         emplazamiento='T.M. de Pozoblanco (Córdoba)',
+        responsable_id=3,  # PLL
         fecha=date(2022, 11, 7),
     )
     sol04_res = crear_doc(exp04,
@@ -459,6 +464,7 @@ with app.app_context():
         titulo='Línea 132 kV "Alcalá – La Rinconada" y SET asociada',
         descripcion='Nueva línea subterránea 132 kV y subestación transformadora 132/20 kV',
         emplazamiento='T.M. de Alcalá de Guadaíra y La Rinconada (Sevilla)',
+        responsable_id=2,  # CLG
         fecha=date(2024, 2, 5),
     )
     sol05_sol = crear_doc(exp05,
@@ -485,6 +491,7 @@ with app.app_context():
         titulo='SET "Nueva Palmera" 66/20 kV — Autorización de Explotación',
         descripcion='Autorización de explotación definitiva de la SET construida al amparo de AT-1897',
         emplazamiento='T.M. de Palma del Río (Córdoba)',
+        responsable_id=3,  # PLL
         fecha=date(2024, 10, 3),
     )
     sol06_acta = crear_doc(exp06,
@@ -508,6 +515,7 @@ with app.app_context():
         titulo='Red MT 20 kV "Urbanización Los Naranjos" — Distribución Cedida',
         descripcion='Cesión de red de distribución 20 kV de urbanizador a empresa distribuidora',
         emplazamiento='T.M. de Mairena del Aljarafe (Sevilla)',
+        responsable_id=2,  # CLG
         fecha=date(2024, 8, 19),
     )
     sol07_sol = crear_doc(exp07,
@@ -533,6 +541,7 @@ with app.app_context():
         titulo='Instalación Autoconsumo Industrial 998 kWp — Polígono El Portal',
         descripcion='Sistema de autoconsumo fotovoltaico 998 kWp sobre cubierta industrial',
         emplazamiento='T.M. de El Puerto de Santa María (Cádiz)',
+        responsable_id=3,  # PLL
         fecha=date(2024, 11, 4),
     )
     sol08_sol = crear_doc(exp08,
@@ -553,6 +562,7 @@ with app.app_context():
         titulo='Planta Fotovoltaica "Levante I" — 49,9 MW',
         descripcion='Planta FV 49,9 MW en Almería, línea de evacuación 66 kV soterrada',
         emplazamiento='T.M. de Tabernas (Almería)',
+        responsable_id=2,  # CLG
         fecha=date(2023, 3, 14),
     )
     # Solicitud principal AAP+AAC — en fase consultas
@@ -587,6 +597,7 @@ with app.app_context():
         titulo='Transmisión de Titularidad SET "Aljarafe" 132/20 kV',
         descripcion='Cambio de titularidad de instalaciones de distribución tras fusión empresarial',
         emplazamiento='T.M. de Bormujos (Sevilla)',
+        responsable_id=3,  # PLL
         fecha=date(2023, 1, 10),
     )
     sol10_sol = crear_doc(exp10,
