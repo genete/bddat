@@ -11,7 +11,7 @@
 
 ## M1 — Bloqueantes
 
-**Descripción:** Tramitación ESFTT completa (CRUD Solicitud/Fase/Trámite/Tarea) + sistema documental
+**Descripción:** Sin esto no hay producción viable. El sistema no reemplaza ningún proceso real o el abandono del sistema anterior es inviable.
 **Estado:** ✅ COMPLETADO (25 cerrados)
 
 _Sin issues abiertos._
@@ -21,7 +21,7 @@ _Sin issues abiertos._
 
 ## M2 — Necesarios
 
-**Descripción:** Generación de escritos, configuración de tablas maestras, gestión de carga/usuarios, listado inteligente.
+**Descripción:** El workaround temporal no aguanta más de semanas tras el arranque. Producción posible con workaround, pero no escala.
 **Estado:** EN CURSO (26 cerrados)
 
 **Issues abiertos:**
@@ -40,7 +40,7 @@ _Sin issues abiertos._
 
 ## M3 — Motor de reglas y plazos
 
-**Descripción:** Motor de reglas completo (evaluador + configuración por Supervisor) + plazos legales con suspensión.
+**Descripción:** Implementación post-producción, pero el diseño arquitectónico debe estar cerrado antes de arrancar para no forzar refactorizaciones de M1/M2.
 **Estado:** EN CURSO (1 cerrados)
 
 **Issues abiertos:**
@@ -64,7 +64,7 @@ _Sin issues abiertos._
 
 ## M4 — Pre-producción
 
-**Descripción:** Condiciones técnicas de despliegue: infraestructura, seguridad, numeración AT.
+**Descripción:** Condiciones técnicas sin las que no se puede desplegar: infraestructura, seguridad, datos legacy. No es funcionalidad, es requisito de despliegue.
 **Estado:** EN CURSO (1 cerrados)
 
 **Issues abiertos:**
@@ -85,7 +85,7 @@ _Sin issues abiertos._
 
 ## M5 — Post-producción
 
-**Descripción:** Proyectos/instalaciones, GIS, auditoría configurable, mensajería interna, manual de usuario, importación legacy avanzada.
+**Descripción:** Puede añadirse tras el arranque sin comprometer la misión principal. Valor real pero fuera del camino crítico inicial.
 **Estado:** EN CURSO (1 cerrados)
 
 **Issues abiertos:**

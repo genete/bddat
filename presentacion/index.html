@@ -1,0 +1,1397 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="BDDAT">
+  <meta name="theme-color" content="#19903E">
+  <link rel="manifest" href="manifest.json">
+  <title>BDDAT — Gestión de expedientes de instalaciones de alta tensión</title>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700;800;900&family=Source+Sans+3:ital,wght@0,300;0,400;0,600;0,700;1,300;1,400&display=swap" rel="stylesheet">
+
+  <!-- Reveal.js (CDN) -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/white.css">
+
+  <!-- Bootstrap Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+  <!-- Tema JA — sobreescribe el tema white -->
+  <link rel="stylesheet" href="css/tema-ja.css">
+</head>
+<body>
+
+<div class="reveal">
+  <div class="slides">
+
+    <!-- ================================================
+         S00 — PORTADA
+         ================================================ -->
+    <section class="layout-portada" id="portada" data-transition="none">
+      <div class="slide-wrap">
+
+        <div class="portada-chevron">
+          <div class="chevron-light"></div>
+          <div class="chevron-dark"></div>
+          <div class="chevron-triangle-tl"></div>
+        </div>
+
+        <div class="portada-contenido">
+          <h1 class="portada-titulo">BDDAT</h1>
+          <h2 class="portada-subtitulo">Gestión de expedientes de<br>instalaciones de alta tensión</h2>
+          <p class="portada-meta">Reunión de presentación interna &middot; Abril 2026</p>
+          <p class="portada-consejeria">Servicio de Energía de Cádiz &middot; Consejería de Industria, Energía y Minas</p>
+        </div>
+
+        <div class="portada-logo-ja">
+          <img src="assets/Logotipo_JuntaAndalucia_vertical_negativo_blanco.svg" alt="Junta de Andalucía">
+        </div>
+
+        <footer class="slide-pie portada-pie">
+          <span class="pie-izq">Junta de Andalucía</span>
+          <span></span>
+        </footer>
+
+      </div>
+      <aside class="notes">
+        Slide de portada. Presentarse. Dar contexto de por qué estamos aquí.
+      </aside>
+    </section>
+
+
+    <!-- S01 intro label -->
+    <section class="slide-intro">
+      <div class="slide-wrap slide-intro-wrap">
+        <span class="slide-intro-label" data-id="ml-s01">El problema</span>
+      </div>
+    </section>
+
+    <!-- ================================================
+         S01 — EL PROBLEMA
+         ================================================ -->
+    <section class="layout-contenido">
+      <div class="slide-wrap">
+        <div class="slide-barra-top"></div>
+        <div class="slide-margen-lat" data-id="ml-s01">El problema</div>
+
+        <div class="slide-inner">
+          <header class="slide-header">
+            <div class="slide-seccion-row">
+              <span class="seccion-num">1</span>
+              <div class="seccion-linea"></div>
+            </div>
+            <h2 class="slide-titulo fragment">El punto de partida</h2>
+            <h3 class="slide-subtitulo fragment">Cómo gestionamos hoy</h3>
+          </header>
+
+          <div class="slide-body">
+            <ul>
+              <li class="fragment">Los expedientes se gestionan en hojas de cálculo y parcialmente en una base de datos Access</li>
+              <li class="fragment">No disponemos de un contexto unificado y claro del estado del expediente, ni para el tramitador ni para la jefatura</li>
+              <li class="fragment">A veces hay que revisar los documentos del servidor para reconstruir el estado de un expediente</li>
+              <li class="fragment">Los cambios legales se compilan como podemos en documentos de procedimiento. Son frecuentes y difíciles de consolidar y de transmitir</li>
+              <li class="fragment">El conocimiento acumulado se va con las personas</li>
+            </ul>
+          </div>
+
+          <footer class="slide-pie">
+            <span class="pie-izq">Junta de Andalucía</span>
+            <span class="pie-der">1</span>
+          </footer>
+        </div>
+      </div>
+      <aside class="notes">
+        Tono descriptivo, no crítico — la audiencia reconocerá la situación sin sentirse señalada.
+        Dejar unos segundos tras cada bullet. El bullet 5 es el gancho hacia S02 — solo dejarlo caer y avanzar.
+      </aside>
+    </section>
+
+
+    <!-- S02 intro label -->
+    <section class="slide-intro">
+      <div class="slide-wrap slide-intro-wrap">
+        <span class="slide-intro-label" data-id="ml-s02">Qué es BDDAT</span>
+      </div>
+    </section>
+
+    <!-- ================================================
+         S02 — QUÉ ES BDDAT
+         ================================================ -->
+    <section class="layout-contenido">
+      <div class="slide-wrap">
+        <div class="slide-barra-top"></div>
+        <div class="slide-margen-lat" data-id="ml-s02">Qué es BDDAT</div>
+
+        <div class="slide-inner">
+          <header class="slide-header">
+            <div class="slide-seccion-row">
+              <span class="seccion-num">2</span>
+              <div class="seccion-linea"></div>
+            </div>
+            <h2 class="slide-titulo fragment">Una herramienta hecha a medida</h2>
+            <h3 class="slide-subtitulo fragment">Para nuestra forma de tramitar</h3>
+          </header>
+
+          <div class="slide-body">
+            <ul>
+              <li class="fragment">Aplicación web — funciona en el navegador, sin instalaciones, sin Excel, sin Access</li>
+              <li class="fragment">Centraliza toda la información de un expediente: técnico responsable, estado, documentos, escritos e historial en un único lugar</li>
+              <li class="fragment">Guía al tramitador a través del procedimiento — el "mapa del expediente"</li>
+              <li class="fragment">Genera escritos y documentos automáticamente a partir de plantillas</li>
+              <li class="fragment">Trazabilidad completa: quién hizo qué y cuándo</li>
+              <li class="fragment">En definitiva, construida a medida de nuestras necesidades, con <span class="esftt-capas" data-popup="s02-conceptos">conceptos nuevos e innovadores</span></li>
+            </ul>
+          </div>
+
+          <footer class="slide-pie">
+            <span class="pie-izq">Junta de Andalucía</span>
+            <span class="pie-der">2</span>
+          </footer>
+        </div>
+      </div>
+      <div id="popup-s02-conceptos" class="esftt-popup-data" hidden>
+        <h4>Lo que hace diferente a BDDAT</h4>
+        <table class="tabla-inline tabla-inline-lg">
+          <colgroup><col style="width:35%"><col style="width:65%"></colgroup>
+          <thead><tr><th>Concepto</th><th>Qué aporta</th></tr></thead>
+          <tbody>
+            <tr><td>Organización y roles</td><td>Cada usuario ve solo lo que le corresponde: tramitador, jefatura o administrativo</td></tr>
+            <tr><td>Interfaz familiar</td><td>Mismo sistema visual de la Junta, sin curva de aprendizaje</td></tr>
+            <tr><td>Tramitación estructurada</td><td>El expediente refleja el procedimiento legal en capas: Expediente → Solicitud → Fase → Trámite → Tarea</td></tr>
+            <tr><td>Modelo de entidades unificado</td><td>Todos los actores en una sola tabla con roles booleanos, sin duplicar datos</td></tr>
+            <tr><td>Sistema documental</td><td>Cada documento enlazado al expediente, con fecha administrativa y trazabilidad completa</td></tr>
+            <tr><td>Generación de escritos</td><td>Plantillas que ya conocen el expediente: el borrador se genera con los datos rellenos y un código de trazabilidad en el pie</td></tr>
+            <tr><td>Listado de seguimiento</td><td>Estado global de todos los expedientes de un vistazo, calculado automáticamente del árbol del procedimiento</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <aside class="notes">
+        Tono de presentación, no de manual técnico. No entrar en detalles — eso va en S04-S09.
+        Bullet 3: el "mapa del expediente" es el concepto clave. Mencionarlo de pasada — S05 lo explica en detalle.
+        Bullet 6: gancho hacia el resto de la presentación — el popup es un aperitivo de lo que viene.
+      </aside>
+    </section>
+
+
+    <!-- S02.1 intro label -->
+    <section class="slide-intro">
+      <div class="slide-wrap slide-intro-wrap">
+        <span class="slide-intro-label" data-id="ml-s02b">Límites</span>
+      </div>
+    </section>
+
+    <!-- ================================================
+         S02.1 — LO QUE NO INCLUYE
+         ================================================ -->
+    <section class="layout-contenido">
+      <div class="slide-wrap">
+        <div class="slide-barra-top"></div>
+        <div class="slide-margen-lat" data-id="ml-s02b">Límites</div>
+
+        <div class="slide-inner">
+          <header class="slide-header">
+            <div class="slide-seccion-row">
+              <span class="seccion-num">3</span>
+              <div class="seccion-linea"></div>
+            </div>
+            <h2 class="slide-titulo fragment">Lo que no incluye</h2>
+            <h3 class="slide-subtitulo fragment">Por limitación técnica</h3>
+          </header>
+
+          <div class="slide-body">
+            <ul>
+              <li class="fragment">No integra el portafirmas — los documentos generados se firman por los canales habituales</li>
+              <li class="fragment">No envía notificaciones con NOTIFICA ni conecta con el SEDEBOJA — esas gestiones siguen haciéndose fuera</li>
+              <li class="fragment">Los archivos no se custodian en la base de datos. Se siguen guardando en el servidor de archivos. Solo se guarda la localización, con el riesgo de rotura del enlace si se mueve o borra el archivo del servidor.</li>
+            </ul>
+          </div>
+
+          <footer class="slide-pie">
+            <span class="pie-izq">Junta de Andalucía</span>
+            <span class="pie-der">3</span>
+          </footer>
+        </div>
+      </div>
+      <aside class="notes">
+        Esta slide es de honestidad, no de disculpa. Presentarla con naturalidad — toda herramienta tiene límites.
+        Acotar expectativas antes de que alguien lo pregunte.
+      </aside>
+    </section>
+
+
+    <!-- S02.2 intro label -->
+    <section class="slide-intro">
+      <div class="slide-wrap slide-intro-wrap">
+        <span class="slide-intro-label" data-id="ml-s02c">Involucración</span>
+      </div>
+    </section>
+
+    <!-- ================================================
+         S02.2 — LO QUE NECESITA BDDAT
+         ================================================ -->
+    <section class="layout-contenido">
+      <div class="slide-wrap">
+        <div class="slide-barra-top"></div>
+        <div class="slide-margen-lat" data-id="ml-s02c">Involucración</div>
+
+        <div class="slide-inner">
+          <header class="slide-header">
+            <div class="slide-seccion-row">
+              <span class="seccion-num">4</span>
+              <div class="seccion-linea"></div>
+            </div>
+            <h2 class="slide-titulo fragment">Lo que necesita BDDAT</h2>
+            <h3 class="slide-subtitulo fragment">Para aprovechar la herramienta al máximo</h3>
+          </header>
+
+          <div class="slide-body">
+            <ul>
+              <li class="fragment">Su valor depende de que los datos se introduzcan bien: fechas de actos, estado del expediente, documentos — con rigor, no de cualquier manera</li>
+              <li class="fragment">Si los datos se rellenan de forma consciente, el sistema devuelve trazabilidad real, informes útiles y menos tiempo reconstruyendo el estado de un expediente</li>
+            </ul>
+          </div>
+
+          <footer class="slide-pie">
+            <span class="pie-izq">Junta de Andalucía</span>
+            <span class="pie-der">4</span>
+          </footer>
+        </div>
+      </div>
+      <aside class="notes">
+        BDDAT amplifica lo que se pone en él. Si los datos son buenos, la trazabilidad es buena.
+        Si hay tensión con estos puntos, es señal de que toca hablar de proceso interno — apuntarlo para S11.
+      </aside>
+    </section>
+
+
+    <!-- S03 intro label -->
+    <section class="slide-intro">
+      <div class="slide-wrap slide-intro-wrap">
+        <span class="slide-intro-label" data-id="ml-s03">Usuarios</span>
+      </div>
+    </section>
+
+    <!-- ================================================
+         S03 — QUIÉN LO USA (tabla)
+         ================================================ -->
+    <section class="layout-tabla" data-auto-animate data-auto-animate-duration="0.7">
+      <div class="slide-wrap">
+        <div class="slide-barra-top"></div>
+        <div class="slide-margen-lat" data-id="ml-s03">Usuarios</div>
+
+        <div class="slide-inner">
+          <header class="slide-header">
+            <div class="slide-seccion-row">
+              <span class="seccion-num">5</span>
+              <div class="seccion-linea"></div>
+            </div>
+            <h2 class="slide-titulo fragment">Roles</h2>
+            <h3 class="slide-subtitulo fragment">Cuatro perfiles, un mismo sistema</h3>
+          </header>
+
+          <div class="slide-body">
+            <table class="tabla-ja fragment">
+              <thead>
+                <tr>
+                  <th>Perfil</th>
+                  <th>Qué hace en BDDAT</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr class="fragment">
+                  <td class="td-bold">Tramitador</td>
+                  <td>Gestiona sus expedientes: introduce datos, avanza por el mapa del expediente, genera escritos y documentos</td>
+                </tr>
+                <tr class="fragment">
+                  <td class="td-bold">Administrativo</td>
+                  <td>Consulta expedientes y da soporte: carga documentos al pool pendiente de revisión y persigue fechas y plazos</td>
+                </tr>
+                <tr class="fragment">
+                  <td class="td-bold">Supervisor</td>
+                  <td>Ve todos los expedientes, supervisa usuarios, gestiona asignaciones y configura las reglas del sistema</td>
+                </tr>
+                <tr class="fragment">
+                  <td class="td-bold">Administrador</td>
+                  <td>Configuración técnica del sistema. Borrado o copiado de registros de forma segura</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <footer class="slide-pie">
+            <span class="pie-izq">Junta de Andalucía</span>
+            <span class="pie-der">5</span>
+          </footer>
+        </div>
+      </div>
+      <aside class="notes">
+        Presentar la tabla como "vuestros accesos ya están pensados" — no como jerarquía, sino como perfiles adaptados.
+        El rol Supervisor es el que tiene visión global. Si hay jefatura en la sala, es para ellos.
+        Transición a S04: "Ahora os muestro cómo se ve todo esto."
+      </aside>
+    </section>
+
+
+    <!-- S04 intro label -->
+    <section class="slide-intro">
+      <div class="slide-wrap slide-intro-wrap">
+        <span class="slide-intro-label" data-id="ml-s04">Interfaz</span>
+      </div>
+    </section>
+
+    <!-- ================================================
+         S04 — IDENTIDAD CORPORATIVA Y DISEÑO (img-dcha)
+         ================================================ -->
+    <section class="layout-img-dcha" data-auto-animate data-auto-animate-duration="0.7">
+      <div class="slide-wrap">
+        <div class="slide-barra-top"></div>
+        <div class="slide-margen-lat" data-id="ml-s04">Interfaz</div>
+
+        <div class="imgdcha-layout">
+          <div class="imgdcha-col-texto">
+            <header class="slide-header">
+              <div class="slide-seccion-row">
+                <span class="seccion-num">6</span>
+                <div class="seccion-linea"></div>
+                <button class="img-popup-btn" data-popup="img-detalle"><i class="bi bi-image"></i> Ver captura</button>
+              </div>
+              <h2 class="slide-titulo fragment">Una interfaz que ya conocéis</h2>
+              <h3 class="slide-subtitulo fragment">Imagen corporativa de la Junta, desde el primer día</h3>
+            </header>
+
+            <div class="slide-body">
+              <ul>
+                <li class="fragment">Mismo sistema visual que otras herramientas de la Junta — colores, tipografía y componentes estándar</li>
+                <li class="fragment">Menú de navegación claro, formularios y tablas familiares — sin curva de aprendizaje</li>
+                <li class="fragment">Accesible desde cualquier puesto de la red — solo hace falta el navegador</li>
+                <li class="fragment">Sin papel entre pantallas: toda la información del expediente en una misma vista</li>
+              </ul>
+            </div>
+
+            <footer class="slide-pie">
+              <span class="pie-izq">Junta de Andalucía</span>
+              <span class="pie-der">6</span>
+            </footer>
+          </div>
+
+        </div>
+      </div>
+      <div id="popup-img-detalle" class="img-popup-data" hidden>
+        <div class="imgpopup-wrap">
+          <img src="assets/DetalleExpediente.png" draggable="false">
+          <div class="imgpopup-hint">⊕ rueda · arrastrar · doble clic: reset</div>
+        </div>
+      </div>
+      <aside class="notes">
+        El punto no es técnico — es de confianza. La audiencia ya usa herramientas con este aspecto.
+        Bullet 3: si alguien pregunta si necesita instalar algo, la respuesta es no. Solo red y navegador.
+        No detenerse demasiado aquí — esta slide es aperitivo. El detalle viene en S05-S08.
+      </aside>
+    </section>
+
+
+    <!-- S05 intro label -->
+    <section class="slide-intro">
+      <div class="slide-wrap slide-intro-wrap">
+        <span class="slide-intro-label" data-id="ml-s05">Tramitación</span>
+      </div>
+    </section>
+
+    <!-- ================================================
+         S05 — TRAMITACIÓN ESTRUCTURADA (img-dcha / iframe Miro)
+         ================================================ -->
+    <section class="layout-img-dcha" data-auto-animate data-auto-animate-duration="0.7">
+      <div class="slide-wrap">
+        <div class="slide-barra-top"></div>
+        <div class="slide-margen-lat" data-id="ml-s05">Tramitación</div>
+
+        <div class="imgdcha-layout">
+          <div class="imgdcha-col-texto">
+            <header class="slide-header">
+              <div class="slide-seccion-row">
+                <span class="seccion-num">7</span>
+                <div class="seccion-linea"></div>
+                <button class="img-popup-btn" data-popup="img-esftt"><i class="bi bi-diagram-3"></i> Ver diagrama</button>
+              </div>
+              <h2 class="slide-titulo fragment">El expediente y el procedimiento</h2>
+              <h3 class="slide-subtitulo fragment">Cada solicitud en su sitio. Un sitio para múltiples solicitudes.</h3>
+            </header>
+
+            <div class="slide-body">
+              <ul>
+                <li class="fragment">Un expediente es siempre un proyecto. La estructura refleja el procedimiento legal real: la semántica del procedimiento vive en los tipos, no en los campos.</li>
+                <li class="fragment"><span class="esftt-badge esftt-capas" data-popup="capas">Estructura en capas</span>:<br><span class="esftt-badge esftt-expediente" data-popup="expediente"><i class="bi bi-folder2-open"></i> Expediente</span> → <span class="esftt-badge esftt-solicitud" data-popup="solicitud"><i class="bi bi-file-earmark-text"></i> Solicitud</span> → <span class="esftt-badge esftt-fase" data-popup="fase"><i class="bi bi-diagram-3-fill"></i> Fase</span> → <span class="esftt-badge esftt-tramite" data-popup="tramite"><i class="bi bi-clipboard-pulse"></i> Trámite</span> → <span class="esftt-badge esftt-tarea" data-popup="tarea"><i class="bi bi-pencil-square"></i> Tarea</span>.</li>
+                <li class="fragment">El sistema muestra en todo momento en qué punto está cada solicitud y qué acción toca a continuación</li>
+                <li class="fragment">Varias fases del mismo expediente pueden avanzar en paralelo — siempre que sean compatibles</li>
+                <li class="fragment">Si la situación lo requiere, el tramitador puede salirse del flujo estándar justificadamente — quedará registro en el <span class="esftt-capas" data-popup="bitacora">cuaderno de bitácora</span></li>
+              </ul>
+            </div>
+
+            <footer class="slide-pie">
+              <span class="pie-izq">Junta de Andalucía</span>
+              <span class="pie-der">7</span>
+            </footer>
+          </div>
+
+        </div>
+      </div>
+      <div id="popup-img-esftt" class="img-popup-data" hidden>
+        <div class="imgpopup-wrap">
+          <img src="assets/Diagrama_ESFTT.svg" draggable="false">
+          <div class="imgpopup-hint">⊕ rueda · arrastrar · doble clic: reset</div>
+        </div>
+      </div>
+      <!-- Datos popup — ocultos, sólo para lectura por JS -->
+      <div id="popup-expediente" class="esftt-popup-data" hidden>
+        <h4><i class="bi bi-folder2-open" style="color:#343a40"></i> Expediente</h4>
+        <p>El contenedor único ligado a un proyecto físico. Se clasifica en los siguientes tipos:</p>
+        <ul>
+          <li>Transporte</li>
+          <li>Distribución</li>
+          <li>Distribución cedida</li>
+          <li>Renovable</li>
+          <li>Autoconsumo</li>
+          <li>Línea Directa</li>
+          <li>Convencional</li>
+          <li>Otros</li>
+        </ul>
+      </div>
+      <div id="popup-solicitud" class="esftt-popup-data" hidden>
+        <h4><i class="bi bi-file-earmark-text" style="color:#055218"></i> Solicitud</h4>
+        <p>El procedimiento administrativo que se tramita sobre el proyecto.</p>
+        <ul>
+          <li>AAP — Autorización Administrativa Previa</li>
+          <li>AAC — Autorización Administrativa de Construcción</li>
+          <li>DUP — Declaración de Utilidad Pública</li>
+          <li>AAE Provisional — Autorización de Explotación Provisional</li>
+          <li>AAE Definitiva — Autorización de Explotación Definitiva</li>
+          <li>AAT — Autorización de Transmisión de Titularidad</li>
+          <li>RAIPEE Previa / Definitiva</li>
+          <li>RADNE — Inscripción en Registro de Autoconsumo</li>
+        </ul>
+      </div>
+      <div id="popup-fase" class="esftt-popup-data" hidden>
+        <h4><i class="bi bi-diagram-3-fill" style="color:#084298"></i> Fase</h4>
+        <p>Contenedor de trámites con resultado propio.</p>
+        <ul>
+          <li>Análisis de Solicitud</li>
+          <li>Admisión a Trámite</li>
+          <li>Consulta al Ministerio</li>
+          <li>Compatibilidad Ambiental</li>
+          <li>Consultas a Organismos</li>
+          <li>Información Pública</li>
+          <li>Instrumento Ambiental Externo</li>
+          <li>AAU/AAUS Integrada</li>
+          <li>Resolución</li>
+        </ul>
+      </div>
+      <div id="popup-tramite" class="esftt-popup-data" hidden>
+        <h4><i class="bi bi-clipboard-pulse" style="color:#8b4500"></i> Trámite</h4>
+        <p>Agrupa las tareas de un mismo acto administrativo.</p>
+        <ul>
+          <li>Análisis Documental</li>
+          <li>Requerimiento de Subsanación</li>
+          <li>Consulta Separata</li>
+          <li>Anuncio BOE / BOP / Prensa</li>
+          <li>Recepción de Alegación</li>
+          <li>Elaboración</li>
+          <li>…</li>
+        </ul>
+      </div>
+      <div id="popup-tarea" class="esftt-popup-data" hidden>
+        <h4><i class="bi bi-pencil-square" style="color:#4a1d8a"></i> Tarea</h4>
+        <p>La tarea es la mínima unidad de trabajo. La acción concreta que realiza el tramitador. Hay siete tipos atómicos:</p>
+        <ul>
+          <li><i class="bi bi-person-gear"></i> ANALIZAR</li>
+          <li><i class="bi bi-pencil"></i> REDACTAR</li>
+          <li><i class="bi bi-pen"></i> FIRMAR</li>
+          <li><i class="bi bi-send"></i> NOTIFICAR</li>
+          <li><i class="bi bi-megaphone"></i> PUBLICAR</li>
+          <li><i class="bi bi-hourglass-split"></i> ESPERAR PLAZO</li>
+          <li><i class="bi bi-box-arrow-in-down"></i> INCORPORAR</li>
+        </ul>
+      </div>
+      <div id="popup-bitacora" class="esftt-popup-data" hidden>
+        <h4>Cuaderno de bitácora</h4>
+        <p>El <strong>cuaderno de bitácora</strong> es un sistema de registro de acciones relevantes que incluye eliminaciones de registros, desactivaciones de usuarios o entidades y desviaciones respecto a las reglas de tramitación.</p>
+        <p style="margin-top:10px">Las desviaciones incluyen el qué, quién y cuándo, así como la justificación.</p>
+        <p style="margin-top:10px">El cuaderno de bitácora es auditable por el supervisor.</p>
+      </div>
+      <div id="popup-capas" class="esftt-popup-data" hidden>
+        <h4>Estructura en capas</h4>
+        <p>Las tareas pertenecen a un trámite, los trámites pertenecen a una fase, las fases pertenecen a una solicitud y el expediente tiene diversas solicitudes.</p>
+        <img src="assets/Estructura_en_capas.svg" alt="Diagrama estructura en capas ESFTT" style="width:100%;margin-top:12px;">
+      </div>
+
+      <aside class="notes">
+        Esta es la slide conceptual más importante. Si se entiende, todo lo demás encaja.
+        Señalar el diagrama Miro mientras se van revelando los sub-bullets. No leer la lista entera.
+        Bullet 3: útil para expedientes con AAP + AAC simultáneas. La audiencia reconocerá la casuística.
+        Bullet 4: el sistema no es una jaula — y todo queda registrado.
+        Transición a S05b: "Antes de los documentos, hablemos de a quién va dirigido todo esto."
+      </aside>
+    </section>
+
+    <!-- S05b intro label -->
+    <section class="slide-intro">
+      <div class="slide-wrap slide-intro-wrap">
+        <span class="slide-intro-label" data-id="ml-s05b">La Entidad</span>
+      </div>
+    </section>
+
+    <!-- ================================================
+         S05b — LA ENTIDAD (layout-contenido)
+         ================================================ -->
+    <section class="layout-contenido" data-auto-animate data-auto-animate-duration="0.7">
+      <div class="slide-wrap">
+        <div class="slide-barra-top"></div>
+        <div class="slide-margen-lat" data-id="ml-s05b">La Entidad</div>
+
+        <div class="slide-inner">
+          <header class="slide-header">
+            <div class="slide-seccion-row">
+              <span class="seccion-num">8</span>
+              <div class="seccion-linea"></div>
+            </div>
+            <h2 class="slide-titulo fragment">Todos los actores, una sola tabla</h2>
+            <h3 class="slide-subtitulo fragment">El rol es circunstancial. La entidad, no.</h3>
+          </header>
+
+          <div class="slide-body">
+            <ul>
+              <li class="fragment">En un expediente intervienen actores de naturaleza muy distinta: el <strong>titular</strong> que promueve la instalación, los <strong>organismos</strong> que emiten condicionados, la <strong>Diputación</strong> que publica en el BOP, el <strong>Ayuntamiento</strong> afectado…</li>
+              <li class="fragment">La solución obvia es una tabla por tipo: <code>titulares</code>, <code>organismos</code>, <code>ayuntamientos</code>… El problema: la misma organización puede actuar en varios roles a la vez y los datos de contacto se duplican. Al duplicarse divergen, y ya no hay una sola <strong>fuente de la verdad</strong>.</li>
+              <li class="fragment">BDDAT usa <strong>una sola tabla <code>entidades</code></strong> con campos comunes (NIF, nombre, dirección, contacto) y tres roles booleanos que se activan según el contexto del trámite: <code>rol_titular</code> · <code>rol_consultado</code> · <code>rol_publicador</code></li>
+              <li class="fragment">El campo <span class="esftt-capas" data-popup="s05b-tipo-titular"><code>tipo_titular</code></span> permite filtrar y segmentar titulares por sus características propias — gran distribuidora, promotor privado, organismo público — y aplicar lógicas diferenciadas cuando el procedimiento lo requiere</li>
+              <li class="fragment">Una entidad puede además <span class="esftt-capas" data-popup="s05b-autorizado">autorizar a otra para actuar en su nombre</span>: si una empresa gestora representa a un titular, el sistema lo registra. La autoautorización es implícita — el titular siempre puede actuar por sí mismo</li>
+              <li class="fragment">La misma filosofía que el resto del sistema: <strong>la semántica vive en los tipos, no en los tipos de tablas</strong></li>
+            </ul>
+          </div>
+
+          <footer class="slide-pie">
+            <span class="pie-izq">Junta de Andalucía</span>
+            <span class="pie-der">8</span>
+          </footer>
+        </div>
+      </div>
+
+      <div id="popup-s05b-tipo-titular" class="esftt-popup-data" hidden>
+        <h4>Tipos de titular</h4>
+        <p>Permiten filtrar y trabajar con grupos de titulares de forma selectiva. Si el titular es o no distribuidora determina el régimen de autorización aplicable.</p>
+        <table class="tabla-inline" style="margin-top:10px">
+          <thead><tr><th>Valor</th><th>Descripción</th></tr></thead>
+          <tbody>
+            <tr><td>GRAN_DISTRIBUIDORA</td><td>Empresa PTD (producción, transporte o distribución)</td></tr>
+            <tr><td>DISTRIBUIDOR_MENOR</td><td>Distribuidora no PTD que cede la instalación antes de la puesta en servicio</td></tr>
+            <tr><td>PROMOTOR</td><td>Promotor privado no PTD</td></tr>
+            <tr><td>ORGANISMO_PUBLICO</td><td>Administración pública promotora</td></tr>
+            <tr><td>OTRO</td><td>Sin clasificar (valor por defecto en migración)</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div id="popup-s05b-autorizado" class="esftt-popup-data" hidden>
+        <h4>Autorizado titular</h4>
+        <p>La tabla <code>autorizados_titular</code> registra relaciones N:N entre entidades: un titular puede autorizar a varios administrados, y un administrado puede estar autorizado por varios titulares.</p>
+        <ul>
+          <li><strong>Borrado lógico</strong> — revocar una autorización no destruye el historial</li>
+          <li><strong>Observaciones libres</strong> — permite anotar el poder notarial o documento que sustenta la autorización</li>
+          <li><strong>Autoautorización implícita</strong> — el titular siempre puede actuar por sí mismo sin entrada en esta tabla</li>
+        </ul>
+      </div>
+
+      <aside class="notes">
+        Puede dispararse con la pregunta "¿A quién notifica el sistema?".
+        Bullet 4: subrayar que tipo_titular no es burocracia — permite filtrar "todos los expedientes de grandes distribuidoras" con un solo criterio.
+        Bullet 5: caso típico, empresa gestora que lleva expedientes de varios titulares. Sin este modelo habría que registrar a la gestora como titular, perdiendo quién es el propietario real.
+        Transición a S06: "Esas mismas entidades son los destinatarios de los documentos que el sistema gestiona."
+      </aside>
+    </section>
+
+
+    <!-- S06 intro label -->
+    <section class="slide-intro">
+      <div class="slide-wrap slide-intro-wrap">
+        <span class="slide-intro-label" data-id="ml-s06">El Documento</span>
+      </div>
+    </section>
+
+    <!-- ================================================
+         S06 — SISTEMA DOCUMENTAL (img-dcha)
+         ================================================ -->
+    <section class="layout-img-dcha" data-auto-animate data-auto-animate-duration="0.7">
+      <div class="slide-wrap">
+        <div class="slide-barra-top"></div>
+        <div class="slide-margen-lat" data-id="ml-s06">El Documento</div>
+
+        <div class="imgdcha-layout">
+          <div class="imgdcha-col-texto">
+            <header class="slide-header">
+              <div class="slide-seccion-row">
+                <span class="seccion-num">9</span>
+                <div class="seccion-linea"></div>
+                <button class="img-popup-btn" data-popup="img-docs"><i class="bi bi-image"></i> Ver captura</button>
+              </div>
+              <h2 class="slide-titulo fragment">Todos los documentos, en su sitio</h2>
+              <h3 class="slide-subtitulo fragment">Un pool único por expediente, ligado al procedimiento</h3>
+            </header>
+
+            <div class="slide-body">
+              <ul>
+                <li class="fragment">Todos los documentos de un expediente enlazados a su número de AT — BDDAT sabe la ruta en el servidor y permite localizarlos de inmediato</li>
+                <li class="fragment">Cada documento tiene una fecha administrativa — la que cuenta legalmente, no la del archivo en disco</li>
+                <li class="fragment">Los documentos se vinculan a las tareas que los <span class="esftt-capas" data-popup="docs-tarea-produce">generan o consumen</span>: el sistema sabe qué borrador produjo qué resolución firmada</li>
+                <li class="fragment">El administrativo puede cargar documentos al pool pendiente y marcarlos como prioritarios — el tramitador los incorpora al flujo cuando toca</li>
+              </ul>
+            </div>
+
+            <footer class="slide-pie">
+              <span class="pie-izq">Junta de Andalucía</span>
+              <span class="pie-der">9</span>
+            </footer>
+          </div>
+
+        </div>
+      </div>
+      <div id="popup-img-docs" class="img-popup-data" hidden>
+        <div class="imgpopup-wrap">
+          <img src="assets/GestorDocumentos.png" draggable="false">
+          <div class="imgpopup-hint">⊕ rueda · arrastrar · doble clic: reset</div>
+        </div>
+      </div>
+      <div id="popup-docs-tarea-produce" class="esftt-popup-data" hidden>
+        <h4>Tareas y documentos</h4>
+        <table class="tabla-inline">
+          <thead><tr><th>Tarea</th><th>Consume</th><th>Produce</th></tr></thead>
+          <tbody>
+            <tr><td>ANALIZAR</td><td>Documento previo</td><td>Informe interno</td></tr>
+            <tr><td>REDACTAR</td><td>Análisis (opcional)</td><td>Borrador</td></tr>
+            <tr><td>FIRMAR</td><td>Borrador</td><td>Documento firmado</td></tr>
+            <tr><td>NOTIFICAR</td><td>Documento firmado</td><td>Justificante de notificación</td></tr>
+            <tr><td>PUBLICAR</td><td>Documento firmado</td><td>Justificante de publicación</td></tr>
+            <tr><td>ESPERAR PLAZO</td><td>—</td><td>—</td></tr>
+            <tr><td>INCORPORAR</td><td>—</td><td>Documentos externos (≥1)</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <aside class="notes">
+        Bullet 1: BDDAT mantiene el vínculo entre número AT y ruta física en el servidor — sin buscar carpetas manualmente.
+        Bullet 2: la fecha administrativa distingue cuándo tiene efectos del cuándo se guardó.
+        Bullet 3: trazabilidad real — el sistema sabe de dónde viene cada documento.
+        Bullet 4: el rol del administrativo aparece aquí de forma natural.
+        Transición a S07: "Y si el documento hay que redactarlo desde cero, el sistema también ayuda."
+      </aside>
+    </section>
+
+
+    <!-- S07 intro label -->
+    <section class="slide-intro">
+      <div class="slide-wrap slide-intro-wrap">
+        <span class="slide-intro-label" data-id="ml-s07">Escritos</span>
+      </div>
+    </section>
+
+    <!-- ================================================
+         S07 — GENERACIÓN DE ESCRITOS (img-dcha)
+         ================================================ -->
+    <section class="layout-img-dcha" data-auto-animate data-auto-animate-duration="0.7">
+      <div class="slide-wrap">
+        <div class="slide-barra-top"></div>
+        <div class="slide-margen-lat" data-id="ml-s07">Escritos</div>
+
+        <div class="imgdcha-layout">
+          <div class="imgdcha-col-texto">
+            <header class="slide-header">
+              <div class="slide-seccion-row">
+                <span class="seccion-num">10</span>
+                <div class="seccion-linea"></div>
+                <button class="img-popup-btn" data-popup="img-escritos"><i class="bi bi-image"></i> Ver captura</button>
+              </div>
+              <h2 class="slide-titulo fragment">El borrador, sin copiar y pegar</h2>
+              <h3 class="slide-subtitulo fragment">Plantillas que ya conocen el expediente</h3>
+            </header>
+
+            <div class="slide-body">
+              <ul>
+                <li class="fragment">En una tarea REDACTAR, el sistema propone las plantillas disponibles para ese contexto y genera el borrador con los datos del expediente <span class="esftt-capas" data-popup="s07-rellenos">ya rellenos</span></li>
+                <li class="fragment">El documento se guarda con <span class="esftt-capas" data-popup="s07-nombre">nombre sistematizado</span> y queda registrado en el pool, vinculado a la tarea que lo originó</li>
+                <li class="fragment">El documento lleva un <span class="esftt-capas" data-popup="s07-codigo">código estructurado</span> de trazabilidad en el pie de página — cuando vuelve firmado al pool, el sistema lo clasifica automáticamente</li>
+                <li class="fragment">Las plantillas admiten campos simples, campos calculados, tablas dinámicas y condiciones — la plantilla ya sabe qué párrafo poner según el resultado</li>
+                <li class="fragment">El documento generado es un <code>.docx</code> editable en LibreOffice Writer — el tramitador puede ajustarlo si la situación lo requiere</li>
+              </ul>
+            </div>
+
+            <footer class="slide-pie">
+              <span class="pie-izq">Junta de Andalucía</span>
+              <span class="pie-der">10</span>
+            </footer>
+          </div>
+
+        </div>
+      </div>
+      <div id="popup-img-escritos" class="img-popup-data" hidden>
+        <div class="imgpopup-wrap">
+          <img src="assets/GeneracionEscrito.png" draggable="false">
+          <div class="imgpopup-hint">⊕ rueda · arrastrar · doble clic: reset</div>
+        </div>
+      </div>
+      <div id="popup-s07-nombre" class="esftt-popup-data" hidden>
+        <h4>Nombre sistematizado</h4>
+        <p>El nombre del documento se construye a partir del contexto ESFTT:</p>
+        <p style="margin-top:10px;font-family:monospace;font-size:0.9em;background:#f4f4f4;padding:8px 12px;border-radius:4px;">{tarea} {trámite} {fase} {solicitud} {expediente} [V {variante}].docx</p>
+        <p style="margin-top:10px">Los niveles que la plantilla deja como comodín se rellenan con los datos reales del expediente al generar:</p>
+        <table class="tabla-inline" style="margin-top:8px">
+          <thead><tr><th>Plantilla</th><th>Documento generado</th></tr></thead>
+          <tbody>
+            <tr><td>Redactar Elaboracion Resolucion V Favorable.docx</td><td>Redactar Elaboracion Resolucion AAP+AAC AT-13465-24 V Favorable.docx</td></tr>
+            <tr><td>Redactar Requerimiento subsanacion.docx</td><td>Redactar Requerimiento subsanacion AAP+AAC AT-13465-24.docx</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div id="popup-s07-rellenos" class="esftt-popup-data" hidden>
+        <h4>Datos ya rellenos</h4>
+        <p>Si hay campos vacíos en el expediente, el sistema avisa antes de generar el borrador — no aparecen huecos en el documento.</p>
+      </div>
+      <div id="popup-s07-codigo" class="esftt-popup-data" hidden>
+        <h4>Código estructurado de trazabilidad</h4>
+        <p>El pie de página del documento incluye un código legible que identifica su origen:</p>
+        <p style="margin-top:10px;font-family:monospace;font-size:0.95em;background:#f4f4f4;padding:8px 12px;border-radius:4px;">BDDAT | AT-13465-24 | AAP | RESOLUCIÓN | Favorable</p>
+        <p style="margin-top:10px">Cuando el documento firmado vuelve al pool, el sistema lo clasifica automáticamente a partir de este código.</p>
+      </div>
+
+      <aside class="notes">
+        Esta es una de las características más valoradas — darle tiempo.
+        Bullet 1: no hay que abrir el escrito anterior, cambiar el número de AT y rezar. El sistema pone los datos.
+        Bullet 3: el código en el pie de página no es técnico — es la identidad del documento legible por el tramitador.
+        Los fragmentos condicionales son el argumento más potente: la plantilla ya sabe qué párrafo poner.
+        Bullet 5: dejar claro que no es una caja negra — autonomía total si se necesita ajustar.
+        Transición a S08: "Con todo esto en marcha, el listado de expedientes es donde se ve el estado de todo de un vistazo."
+      </aside>
+    </section>
+
+
+    <!-- S08 intro label -->
+    <section class="slide-intro">
+      <div class="slide-wrap slide-intro-wrap">
+        <span class="slide-intro-label" data-id="ml-s08">Listado</span>
+      </div>
+    </section>
+
+    <!-- ================================================
+         S08 — LISTADO INTELIGENTE (img-dcha)
+         ================================================ -->
+    <section class="layout-img-dcha" data-auto-animate data-auto-animate-duration="0.7">
+      <div class="slide-wrap">
+        <div class="slide-barra-top"></div>
+        <div class="slide-margen-lat" data-id="ml-s08">Listado</div>
+
+        <div class="imgdcha-layout">
+          <div class="imgdcha-col-texto">
+            <header class="slide-header">
+              <div class="slide-seccion-row">
+                <span class="seccion-num">11</span>
+                <div class="seccion-linea"></div>
+                <button class="img-popup-btn" data-popup="img-listado"><i class="bi bi-image"></i> Ver captura</button>
+              </div>
+              <h2 class="slide-titulo fragment">Mis expedientes, de un vistazo</h2>
+              <h3 class="slide-subtitulo fragment">Sin abrir ninguno</h3>
+            </header>
+
+            <div class="slide-body">
+              <ul>
+                <li class="fragment">Cada fila es una solicitud en tramitación. Las <span class="esftt-capas" data-popup="s08-columnas">columnas</span> muestran las <span class="esftt-capas" data-popup="s08-pistas">pistas</span> del procedimiento, una por fase principal</li>
+                <li class="fragment">El estado de cada pista se calcula automáticamente del árbol del expediente — el listado siempre refleja la realidad sin que nadie lo actualice a mano</li>
+                <li class="fragment">Los colores dicen qué toca: <strong style="color:#c0392b">rojo</strong> = actuar, <strong style="color:#e67e22">amarillo</strong> = en firma, <strong style="color:#2980b9">azul</strong> = esperando respuesta, <strong style="color:#27ae60">verde</strong> = terminado</li>
+                <li class="fragment">El tramitador filtra por estado y trabaja por lotes — todos los que hay que firmar hoy, todos los que esperan respuesta de organismos…</li>
+                <li class="fragment">La jefatura ve el estado global de todos los expedientes y de todos los tramitadores — sin preguntar, sin esperar informe <span class="badge-pendiente">En desarrollo</span></li>
+                <li class="fragment">El administrativo dispone de una vista propia con plazos de IP, respuestas de titulares y acceso directo a la tarea concreta <span class="badge-pendiente">En desarrollo</span></li>
+              </ul>
+            </div>
+
+            <footer class="slide-pie">
+              <span class="pie-izq">Junta de Andalucía</span>
+              <span class="pie-der">11</span>
+            </footer>
+          </div>
+
+        </div>
+      </div>
+      <div id="popup-img-listado" class="img-popup-data" hidden>
+        <div class="imgpopup-wrap">
+          <img src="assets/ListadoSeguimiento.png" draggable="false">
+          <div class="imgpopup-hint">⊕ rueda · arrastrar · doble clic: reset</div>
+        </div>
+      </div>
+      <div id="popup-s08-columnas" class="esftt-popup-data" hidden>
+        <h4>Columnas del listado</h4>
+        <p>Cada columna agrupa las fases de un mismo bloque procedimental. Su estado se deduce automáticamente del árbol ESFTT — nadie lo actualiza a mano.</p>
+        <table class="tabla-inline" style="margin-top:10px">
+          <thead><tr><th>Columna</th><th>Fases que agrupa</th></tr></thead>
+          <tbody>
+            <tr><td>ANÁLISIS</td><td>Análisis de solicitud, subsanación</td></tr>
+            <tr><td>CONSULTAS</td><td>Consultas a organismos, consulta al Ministerio</td></tr>
+            <tr><td>MA</td><td>Compatibilidad ambiental, figura ambiental externa, AAU/AAUS integrada</td></tr>
+            <tr><td>IP</td><td>Información pública</td></tr>
+            <tr><td>RESOLUCIÓN</td><td>Resolución</td></tr>
+          </tbody>
+        </table>
+        <p style="margin-top:10px">Si una columna no aplica al tipo de solicitud (p.ej. una AAC no tiene IP), la celda aparece vacía — distinto a <strong style="color:#27ae60">FIN</strong>.</p>
+      </div>
+      <div id="popup-s08-pistas" class="esftt-popup-data" hidden>
+        <h4>Pistas de estado</h4>
+        <p>Cada celda muestra la pista de mayor urgencia activa en esa columna. Si hay varias en el mismo nivel, aparece un contador: <code>TRAMITAR (2)</code>.</p>
+        <table class="tabla-inline" style="margin-top:10px">
+          <thead><tr><th>Pista</th><th>Color</th><th>Qué indica</th></tr></thead>
+          <tbody>
+            <tr><td>TRAMITAR</td><td style="color:#c0392b">● rojo</td><td>Falta acción del tramitador</td></tr>
+            <tr><td>ESTUDIAR</td><td style="color:#c0392b">● rojo</td><td>Análisis en curso sin resultado</td></tr>
+            <tr><td>REDACTAR</td><td style="color:#c0392b">● rojo</td><td>Redacción en curso sin borrador</td></tr>
+            <tr><td>FIRMAR</td><td style="color:#e67e22">● amarillo</td><td>Borrador pendiente de firma</td></tr>
+            <tr><td>NOTIFICAR</td><td style="color:#2980b9">● azul</td><td>Notificación sin justificante</td></tr>
+            <tr><td>PUBLICAR</td><td style="color:#2980b9">● azul</td><td>Publicación sin justificante</td></tr>
+            <tr><td>SUBSANAR</td><td style="color:#888">● gris</td><td>Plazo de subsanación activo</td></tr>
+            <tr><td>PLAZOS</td><td style="color:#888">● gris</td><td>Esperando respuesta de organismo</td></tr>
+            <tr><td>CERRAR</td><td style="color:#e67e22">● naranja</td><td>Completo sin fecha de cierre</td></tr>
+            <tr><td>FIN</td><td style="color:#27ae60">● verde</td><td>Fase finalizada</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <aside class="notes">
+        Esta slide cierra el bloque de características. Tono de síntesis.
+        Bullet 1: la unidad es la solicitud, no el expediente — un AT puede tener varias filas.
+        Bullet 3: señalar los colores en la captura. El contador detecta cuellos de botella.
+        Bullet 5: mirar a quien corresponda. "Sin preguntar, sin esperar informe" es el mensaje.
+        Transición a S09: "Y ahora os lo enseñamos en vivo."
+      </aside>
+    </section>
+
+
+    <!-- ================================================
+         S09 — DEMO EN VIVO (portadilla)
+         ================================================ -->
+    <section class="layout-portadilla">
+      <div class="slide-wrap">
+
+        <div class="portada-chevron">
+          <div class="chevron-light"></div>
+          <div class="chevron-dark"></div>
+        </div>
+
+        <div class="portadilla-contenido">
+          <h2 class="portadilla-titulo">Demo en vivo</h2>
+          <p class="portadilla-subtitulo">Conexión remota al PC de trabajo</p>
+        </div>
+
+        <div class="portada-logo-ja">
+          <img src="assets/Logotipo_JuntaAndalucia_vertical_negativo_blanco.svg" alt="Junta de Andalucía">
+        </div>
+
+      </div>
+      <aside class="notes">
+        Slide de transición pura. Sin bullets, sin explicaciones.
+        Antes de avanzar: comprobar que la conexión remota está activa y la aplicación corriendo.
+        Recorrido mínimo: listado → abrir expediente → ver árbol ESFTT → tarea REDACTAR → generar escrito → pool de documentos.
+      </aside>
+    </section>
+
+
+    <!-- S10 intro label -->
+    <section class="slide-intro">
+      <div class="slide-wrap slide-intro-wrap">
+        <span class="slide-intro-label" data-id="ml-s10">Roadmap</span>
+      </div>
+    </section>
+
+    <!-- ================================================
+         S10 — LO QUE VIENE (timeline)
+         ================================================ -->
+    <section class="layout-timeline" data-auto-animate data-auto-animate-duration="0.7">
+      <div class="slide-wrap">
+        <div class="slide-barra-top"></div>
+        <div class="slide-margen-lat" data-id="ml-s10">Roadmap</div>
+
+        <div class="slide-inner">
+          <header class="slide-header">
+            <div class="slide-seccion-row">
+              <span class="seccion-num">12</span>
+              <div class="seccion-linea"></div>
+            </div>
+            <h2 class="slide-titulo fragment">Lo que viene</h2>
+            <h3 class="slide-subtitulo fragment">Por fases, incluso en producción.</h3>
+          </header>
+
+          <div class="slide-body">
+            <div class="timeline-cols">
+
+              <div class="timeline-col fragment">
+                <div class="timeline-col-header">
+                  <div class="timeline-num">1</div>
+                  <div class="timeline-col-titulo">Disponible ya<small>Desde el arranque</small></div>
+                </div>
+                <ul class="timeline-col-items">
+                  <li>Gestión completa del expediente: árbol ESFTT, documentos y escritos</li>
+                  <li>Listado de expedientes con estado por pistas</li>
+                  <li>Generación de escritos desde plantillas</li>
+                  <li>Gestión de usuarios y roles</li>
+                </ul>
+              </div>
+
+              <div class="timeline-col fragment">
+                <div class="timeline-col-header">
+                  <div class="timeline-num">2</div>
+                  <div class="timeline-col-titulo">Próximamente<small>Semanas, no meses</small></div>
+                </div>
+                <ul class="timeline-col-items">
+                  <li>Diagrama visual interactivo del árbol del expediente</li>
+                  <li>Escritos más completos: tablas calculadas, listas de organismos</li>
+                  <li>Vista del administrativo: plazos de IP y respuestas con acceso directo a la tarea</li>
+                  <li>Auditoría de actividad por técnico</li>
+                </ul>
+              </div>
+
+              <div class="timeline-col fragment">
+                <div class="timeline-col-header">
+                  <div class="timeline-num">3</div>
+                  <div class="timeline-col-titulo">Más adelante<small>Prerrequisitos técnicos</small></div>
+                </div>
+                <ul class="timeline-col-items">
+                  <li>Motor de reglas activo: el sistema valida el procedimiento y avisa de incompatibilidades</li>
+                  <li>Cómputo de plazos legales en días hábiles</li>
+                  <li>Migración de expedientes del sistema anterior</li>
+                  <li>Despliegue en infraestructura corporativa</li>
+                </ul>
+              </div>
+
+            </div>
+          </div>
+
+          <footer class="slide-pie">
+            <span class="pie-izq">Junta de Andalucía</span>
+            <span class="pie-der">12</span>
+          </footer>
+        </div>
+      </div>
+      <aside class="notes">
+        No entrar en fechas concretas — el roadmap es por fases, no por calendario.
+        Columna 1: lo que van a ver en la demo ya existe. No es una promesa — es lo que hay hoy.
+        Columna 2: semanas, no meses. El diagrama interactivo y la vista del administrativo son las más esperadas.
+        Columna 3: la migración legacy y el despliegue en infraestructura son los prerrequisitos para que sea el sistema oficial.
+        Transición a S11: "Para llegar ahí necesitamos vuestra ayuda."
+      </aside>
+    </section>
+
+
+    <!-- S11 intro label -->
+    <section class="slide-intro">
+      <div class="slide-wrap slide-intro-wrap">
+        <span class="slide-intro-label" data-id="ml-s11">Feedback</span>
+      </div>
+    </section>
+
+    <!-- ================================================
+         S11 — LO QUE NECESITAMOS DE VOSOTROS
+         ================================================ -->
+    <section class="layout-contenido">
+      <div class="slide-wrap">
+        <div class="slide-barra-top"></div>
+        <div class="slide-margen-lat" data-id="ml-s11">Feedback</div>
+
+        <div class="slide-inner">
+          <header class="slide-header">
+            <div class="slide-seccion-row">
+              <span class="seccion-num">13</span>
+              <div class="seccion-linea"></div>
+            </div>
+            <h2 class="slide-titulo fragment">Esto también es vuestro proyecto</h2>
+            <h3 class="slide-subtitulo fragment">Cuatro preguntas concretas</h3>
+          </header>
+
+          <div class="slide-body">
+            <ul>
+              <li class="fragment">¿Qué flujos de trabajo os parecen útiles tal como están — y cuáles os generan dudas?</li>
+              <li class="fragment">¿Hay casuística de expedientes que creéis que el sistema no cubre o cubre mal?</li>
+              <li class="fragment">¿Qué os preocupa del cambio? — disciplina de datos, adaptación al flujo, convivencia con el sistema anterior…</li>
+              <li class="fragment">¿Cómo queréis participar en las pruebas antes del arranque?</li>
+            </ul>
+          </div>
+
+          <footer class="slide-pie">
+            <span class="pie-izq">Junta de Andalucía</span>
+            <span class="pie-der">13</span>
+          </footer>
+        </div>
+      </div>
+      <aside class="notes">
+        Esta slide es una invitación, no un formulario. No hay que recorrer los cuatro bullets si la conversación ya ha empezado sola.
+        Bullet 2: el más valioso. Cada caso que salga es un issue potencial — apuntarlo.
+        Bullet 3: si alguien lo plantea, no defenderse. El argumento ya está en S02.1.
+        Bullet 4: concretar si es posible. ¿Quién quiere ser usuario de pruebas? ¿Cuándo?
+      </aside>
+    </section>
+
+
+    <!-- ================================================
+         S12 — GRACIAS (portada)
+         ================================================ -->
+    <section class="layout-portada">
+      <div class="slide-wrap">
+
+        <div class="portada-chevron">
+          <div class="chevron-light"></div>
+          <div class="chevron-dark"></div>
+          <div class="chevron-triangle-tl"></div>
+        </div>
+
+        <div class="portada-contenido">
+          <h1 class="portada-titulo">Gracias</h1>
+        </div>
+
+        <div class="portada-logo-ja">
+          <img src="assets/Logotipo_JuntaAndalucia_vertical_negativo_blanco.svg" alt="Junta de Andalucía">
+        </div>
+
+        <footer class="slide-pie portada-pie">
+          <span class="pie-izq">Hospedado en GitHub Pages &middot; Creado con Reveal.js, Miro y Claude Code</span>
+          <span></span>
+        </footer>
+
+      </div>
+      <aside class="notes">
+        Slide final. Sin bullets, sin texto adicional.
+        Dejar en pantalla mientras dure el turno de preguntas o la conversación informal posterior.
+      </aside>
+    </section>
+
+
+  </div><!-- /.slides -->
+</div><!-- /.reveal -->
+
+
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+<script>
+  Reveal.initialize({
+    hash: true,
+    width: 1280,
+    height: 720,
+    margin: 0,
+    minScale: 0.2,
+    maxScale: 2.0,
+    controls: true,
+    controlsTutorial: false,
+    progress: true,
+    slideNumber: false,
+    history: true,
+    keyboard: true,
+    overview: true,
+    center: false,
+    touch: true,
+    transition: 'none',
+    backgroundTransition: 'none',
+    fragments: true,
+
+  });
+</script>
+
+<script>
+  // Transiciones entre slides — secuencia bloqueante (captura antes que Reveal)
+  //
+  // Caso general:  fade out slide actual → Reveal.next/prev() → fade in nuevo slide
+  // Caso portada:  animación CSS polígonos+contenido → Reveal.next() → fade in S01
+  //
+  // Los fragmentos se dejan al comportamiento nativo de Reveal (sin fade).
+  (function () {
+    var animando = false;
+
+    // ── Utilidad: fade in del slide activo desde opacity:0 ──────────────────
+    // Llamar justo después de que Reveal haya cambiado el slide activo.
+    // opacity:0 se fija síncronamente (antes del primer paint); la transición
+    // arranca tras el delay (ms) para dejar un momento de negro entre slides.
+    function fadeInSlide(slide, dur, delay) {
+      slide.style.opacity = '0';
+      setTimeout(function () {
+        requestAnimationFrame(function () {
+          requestAnimationFrame(function () {
+            slide.style.transition = 'opacity ' + dur + 's ease-in';
+            slide.style.opacity = '1';
+            slide.addEventListener('transitionend', function () {
+              slide.style.transition = '';
+              slide.style.opacity = '';
+              animando = false;
+            }, { once: true });
+          });
+        });
+      }, delay || 0);
+    }
+
+    // ── Transición genérica: fade out → navegar → fade in ───────────────────
+    function transicion(navegarFn) {
+      if (animando) return;
+      animando = true;
+
+      var origen = Reveal.getCurrentSlide();
+      origen.style.transition = 'opacity 0.35s ease-out';
+      origen.style.opacity = '0';
+
+      origen.addEventListener('transitionend', function () {
+        origen.style.transition = '';
+        origen.style.opacity = '';
+        navegarFn();
+        var destino = Reveal.getCurrentSlide();
+        if (destino === origen) { animando = false; return; } // sin cambio (borde)
+        fadeInSlide(destino, 0.35, 120); // 120 ms de negro entre slides
+      }, { once: true });
+    }
+
+    // ── Caso especial: portada ───────────────────────────────────────────────
+    function portadaSalida() {
+      if (animando) return;
+      if (Reveal.getCurrentSlide().id !== 'portada') return;
+      animando = true;
+
+      document.getElementById('portada').classList.add('portada-salida');
+
+      setTimeout(function () {
+        Reveal.next();
+        fadeInSlide(Reveal.getCurrentSlide(), 0.5);
+      }, 1100);
+    }
+
+    // ── Helpers de fragmentos ────────────────────────────────────────────────
+    function hayFragmentosOcultos() {
+      var s = Reveal.getCurrentSlide();
+      return s.querySelectorAll('.fragment').length >
+             s.querySelectorAll('.fragment.visible').length;
+    }
+    function hayFragmentosVisibles() {
+      return Reveal.getCurrentSlide().querySelectorAll('.fragment.visible').length > 0;
+    }
+
+    // ── Handlers de navegación ───────────────────────────────────────────────
+    function onSiguiente(e) {
+      if (e) e.stopImmediatePropagation();
+      var curr = Reveal.getCurrentSlide();
+      if (curr.id === 'portada') { portadaSalida(); return; }
+      if (hayFragmentosOcultos()) { Reveal.next(); return; }
+      // Intro → contenido: navegación directa + animación CSS del margen-lat
+      if (curr.classList.contains('slide-intro')) {
+        if (animando) return;
+        animando = true;
+        Reveal.next();
+        var dest = Reveal.getCurrentSlide();
+        if (dest === curr) { animando = false; return; }
+        var ml = dest.querySelector('.slide-margen-lat');
+        if (ml) {
+          ml.classList.add('ml-animando');
+          ml.addEventListener('animationend', function () {
+            ml.classList.remove('ml-animando');
+            // Fade-in automático del título y subtítulo tras la animación
+            var titulo = dest.querySelector('.slide-titulo.fragment');
+            if (titulo) Reveal.nextFragment();
+            animando = false;
+          }, { once: true });
+        } else {
+          animando = false;
+        }
+        return;
+      }
+      transicion(Reveal.next.bind(Reveal));
+    }
+    function onAnterior(e) {
+      if (e) e.stopImmediatePropagation();
+      if (hayFragmentosVisibles()) { Reveal.prev(); return; }
+      transicion(Reveal.prev.bind(Reveal));
+    }
+
+    Reveal.on('ready', function () {
+      var SIG = [32, 34, 39, 40, 78]; // Space PgDn → ↓ N
+      var ANT = [33, 37, 38, 80];     // PgUp ← ↑ P
+
+      document.addEventListener('keydown', function (e) {
+        if      (SIG.indexOf(e.keyCode) !== -1) onSiguiente(e);
+        else if (ANT.indexOf(e.keyCode) !== -1) onAnterior(e);
+      }, true);
+
+      document.querySelectorAll('.navigate-right, .navigate-down').forEach(function (b) {
+        b.addEventListener('click', onSiguiente, true);
+      });
+      document.querySelectorAll('.navigate-left, .navigate-up').forEach(function (b) {
+        b.addEventListener('click', onAnterior, true);
+      });
+    });
+
+    // Limpiar portada al volver a ella
+    Reveal.on('slidechanged', function (e) {
+      if (e.currentSlide && e.currentSlide.id === 'portada') {
+        e.currentSlide.classList.remove('portada-salida');
+        animando = false;
+      }
+    });
+  }());
+</script>
+
+<script>
+  // Panzoom reutilizable — S05 (diagrama ESFTT) y S06 (gestor docs)
+  function makePanzoom(wrapOrId, imgOrId) {
+    const wrap = (typeof wrapOrId === 'string') ? document.getElementById(wrapOrId) : wrapOrId;
+    const img  = (typeof imgOrId  === 'string') ? document.getElementById(imgOrId)  : imgOrId;
+    if (!wrap || !img) return;
+
+    let scale = 1, tx = 0, ty = 0;
+    let dragging = false, startX, startY, startTx, startTy;
+
+    function apply() {
+      img.style.transform = `translate(calc(-50% + ${tx}px), calc(-50% + ${ty}px)) scale(${scale})`;
+    }
+
+    // Zoom con rueda — stopPropagation evita que Reveal.js cambie de slide
+    wrap.addEventListener('wheel', function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      const delta = e.deltaY > 0 ? 0.85 : 1.15;
+      scale = Math.min(8, Math.max(0.3, scale * delta));
+      apply();
+    }, { passive: false });
+
+    // Pan — ratón
+    wrap.addEventListener('mousedown', function (e) {
+      dragging = true;
+      wrap.style.cursor = 'grabbing';
+      startX = e.clientX; startY = e.clientY;
+      startTx = tx; startTy = ty;
+      e.stopPropagation();
+    });
+    window.addEventListener('mousemove', function (e) {
+      if (!dragging) return;
+      tx = startTx + (e.clientX - startX);
+      ty = startTy + (e.clientY - startY);
+      apply();
+    });
+    window.addEventListener('mouseup', function () {
+      dragging = false;
+      wrap.style.cursor = 'grab';
+    });
+
+    // Doble clic: reset
+    wrap.addEventListener('dblclick', function (e) {
+      scale = 1; tx = 0; ty = 0;
+      apply();
+      e.stopPropagation();
+    });
+
+    // Pan + pinch — táctil
+    let lastDist = null;
+    let lastTap = 0;
+    let wasPinching = false;
+
+    wrap.addEventListener('touchstart', function (e) {
+      e.stopPropagation();
+      if (e.touches.length === 1) {
+        dragging = true;
+        wasPinching = false;
+        startX = e.touches[0].clientX; startY = e.touches[0].clientY;
+        startTx = tx; startTy = ty;
+      } else if (e.touches.length === 2) {
+        dragging = false;
+        wasPinching = true;
+        lastDist = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
+      }
+    }, { passive: false });
+
+    wrap.addEventListener('touchmove', function (e) {
+      e.stopPropagation();
+      e.preventDefault();
+      if (e.touches.length === 1 && dragging) {
+        tx = startTx + (e.touches[0].clientX - startX);
+        ty = startTy + (e.touches[0].clientY - startY);
+        apply();
+      } else if (e.touches.length === 2 && lastDist !== null) {
+        const dist = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
+        scale = Math.min(8, Math.max(0.3, scale * (dist / lastDist)));
+        lastDist = dist;
+        apply();
+      }
+    }, { passive: false });
+
+    // Un solo touchend — stopPropagation + doble tap sin interferencia del pinch
+    wrap.addEventListener('touchend', function (e) {
+      e.stopPropagation();
+      if (e.touches.length === 0) {
+        // Doble tap solo si no venimos de un pinch
+        if (!wasPinching) {
+          const now = Date.now();
+          if (now - lastTap < 300) { scale = 1; tx = 0; ty = 0; apply(); }
+          lastTap = now;
+        }
+        dragging = false;
+        lastDist = null;
+        wasPinching = false;
+      }
+    }, { passive: false });
+  }
+
+  // Panzoom se inicializa en popups.js al abrir cada popup de imagen
+</script>
+
+<script src="js/popups.js"></script>
+
+<!-- Botón fullscreen — solo visible en dispositivos táctiles -->
+<button id="btn-fullscreen" aria-label="Pantalla completa" title="Pantalla completa">
+  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+       stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/>
+    <line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/>
+  </svg>
+</button>
+<script>
+  (function () {
+    var btn = document.getElementById('btn-fullscreen');
+
+    function isFullscreen() {
+      return !!(document.fullscreenElement || document.webkitFullscreenElement);
+    }
+
+    function toggleFullscreen() {
+      if (isFullscreen()) {
+        (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+      } else {
+        var el = document.documentElement;
+        (el.requestFullscreen || el.webkitRequestFullscreen).call(el);
+      }
+    }
+
+    btn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      toggleFullscreen();
+    });
+
+    // Ocultar botón cuando ya está en fullscreen
+    function actualizarBoton() {
+      btn.style.opacity = isFullscreen() ? '0' : '';
+      btn.style.pointerEvents = isFullscreen() ? 'none' : '';
+    }
+    document.addEventListener('fullscreenchange', actualizarBoton);
+    document.addEventListener('webkitfullscreenchange', actualizarBoton);
+
+    // Ocultar en dispositivos que no soporten la API (iOS sin PWA)
+    if (!document.documentElement.requestFullscreen && !document.documentElement.webkitRequestFullscreen) {
+      btn.style.display = 'none';
+    }
+  })();
+</script>
+
+</body>
+</html>
