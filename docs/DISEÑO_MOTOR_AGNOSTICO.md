@@ -45,8 +45,93 @@ Capa de BDDAT que, dado un evento + entidad, sube el árbol ESFTT y computa toda
 variables necesarias antes de llamar al motor. Esta capa sí conoce BDDAT a fondo.
 
 **Diseño del ContextAssembler:** `docs/DISEÑO_CONTEXT_ASSEMBLER.md`
-— diccionario de variables, tipos de naturaleza, estados de implementación y preguntas
-de diseño abiertas.
+— diccionario de variables, tipos de naturaleza, estados de implementación y filosofía
+de almacenamiento.
+
+---
+
+## API del Motor Agnóstico
+
+El motor expone una sola función pública. Su firma es el contrato con el resto del sistema:
+
+```python
+resultado = motor.evaluar(
+    accion:    str,   # 'INICIAR' | 'FINALIZAR' | 'BORRAR' | 'CREAR' | ...
+    tipo:      str,   # 'FASE' | 'TRAMITE' | 'TAREA' | 'SOLICITUD'
+    tipo_id:   int,   # ID del tipo concreto (tipo_fase_id, tipo_tramite_id...)
+    variables: dict,  # dict plano compilado por ContextAssembler
+) -> EvaluacionResult
+```
+
+```python
+@dataclass
+class EvaluacionResult:
+    permitido: bool
+    nivel:     str   # 'BLOQUEAR' | 'ADVERTIR' | ''
+    mensaje:   str   # texto para el usuario
+    norma:     str   # referencia legal de la regla que disparó el resultado
+```
+
+**Contratos de comportamiento:**
+
+| Situación | Comportamiento |
+|---|---|
+| Sin reglas en BD para `(accion, tipo, tipo_id)` | Devuelve `PERMITIDO` — todo permitido excepto lo expresamente prohibido |
+| Condición referencia variable ausente del dict | Condición se evalúa como no cumplida + log `WARNING` con nombre de variable |
+| Varias reglas activas en el mismo evento | `BLOQUEAR` tiene prioridad sobre `ADVERTIR`; dentro del mismo nivel, se devuelve el mensaje de la primera regla activa por orden de id |
+| Error interno del motor | Lanza excepción — nunca devuelve `PERMITIDO` silenciosamente ante un fallo |
+
+El motor no sabe nada de BDDAT. No importa modelos. No hace queries. Recibe el dict
+y evalúa las reglas en `reglas_motor`/`condiciones_regla`. Nada más.
+
+---
+
+## EventHandler — orquestación de eventos
+
+Capa de orquestación entre las rutas Flask y el motor. Es la única pieza que conoce
+simultáneamente el dominio BDDAT (para llamar al ContextAssembler) y el motor (para
+invocar `evaluar`).
+
+**Flujo completo:**
+
+```
+Ruta Flask (hardcodeado)
+    → event_handler.notify('INICIAR', 'FASE', entidad_id=fase_id)
+        → consulta tabla `disparadores`: ¿hay reglas para ('INICIAR', 'FASE')?
+            → NO  → devuelve PERMITIDO directamente (sin invocar el assembler)
+            → SÍ  → ContextAssembler.build('INICIAR', 'FASE', fase_id)
+                        → dict de variables
+                    → motor.evaluar('INICIAR', 'FASE', tipo_id, variables)
+                        → EvaluacionResult
+```
+
+**Uso en rutas Flask:**
+
+```python
+# La llamada al EventHandler es la única línea hardcodeada por evento.
+resultado = event_handler.notify('INICIAR', 'FASE', entidad_id=fase.id)
+if not resultado.permitido:
+    return jsonify({'ok': False, 'error': resultado.mensaje, 'norma': resultado.norma}), 422
+```
+
+**Tabla `disparadores`:**
+Mapea `(accion, tipo)` a qué reglas deben evaluarse. Administrada por el Supervisor.
+Si no existe ningún disparador para un `(accion, tipo)`, el EventHandler devuelve
+`PERMITIDO` sin ningún coste de cómputo.
+
+**Lo que es hardcodeado vs. configurable:**
+
+| Qué | Dónde vive |
+|---|---|
+| Llamada `event_handler.notify(...)` en la ruta | Código Python — inevitable |
+| Lógica de cómputo de cada variable | Código Python — ContextAssembler |
+| Qué eventos tienen reglas activas | BD — tabla `disparadores` |
+| Las reglas y sus condiciones | BD — `reglas_motor` / `condiciones_regla` |
+| Qué variables puede referenciar el Supervisor | BD — `catalogo_variables` (dropdown en UI) |
+
+Añadir una variable nueva siempre requiere dos pasos: (1) implementar su cómputo en
+el ContextAssembler, (2) registrarla en `catalogo_variables`. Solo entonces el
+Supervisor puede referenciarla en una regla.
 
 ---
 
@@ -123,12 +208,19 @@ extra de proyecto que aún no existen.
 
 ## Orden de trabajo recomendado
 
-1. Diseño motor agnóstico + API del motor
-2. ~~Diseño controlador de fechas (desbloquea #290 y #279)~~ — **completado** (`docs/DISEÑO_FECHAS_PLAZOS.md`)
-3. ~~Diseño ContextAssembler (qué variables, cómo se declaran, qué configura el Supervisor)~~ — **en curso** (`docs/DISEÑO_CONTEXT_ASSEMBLER.md`; diccionario activo, implementación pendiente)
-4. #279 — después de los diseños anteriores
-5. #290 — desbloqueado; implementar tras refactor motor agnóstico
-6. #289 — después de #279 y con datos reales
+Los seis pasos acordados en sesión 2026-04-15, de más interior a más exterior:
+
+1. **MRA — confirmar conceptual + API** — este documento + `DISEÑO_CONTEXT_ASSEMBLER.md`
+2. **MRA — implementación real** — refactor de `motor_reglas.py` para eliminar imports BDDAT
+3. **EventHandler — diseño de disparadores** — qué eventos de Flask invocan al EventHandler y cómo se estructura la tabla `disparadores`
+4. **Variables y plazos — recatalogación** — revisar hallazgos normativos, decidir dónde vive cada dato (campo en Proyecto/Solicitud vs. calculado vs. derivado_documento) y completar `DISEÑO_CONTEXT_ASSEMBLER.md`
+5. **ContextAssembler — implementación** — con la API del motor (paso 1), los disparadores (paso 3) y el catálogo de variables (paso 4) definidos
+6. **Fuego real** — seed de 2-3 reglas en BD + prueba con expediente real
+
+Issues afectados (no desbloquear hasta paso 5):
+- **#279** — campos extra Proyecto (tensión, potencia, tipo suelo): el modelo de BD se define en el paso 4
+- **#290** — INCORPORAR multi-doc: implementar tras paso 2 (refactor motor)
+- **#289** — Context Builders: bloqueado por #279 y datos reales
 
 ---
 

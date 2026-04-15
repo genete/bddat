@@ -256,9 +256,9 @@ Todo modelo nuevo que incorpore campos de fecha debe declarar la semántica de c
 
 ---
 
-### 3.1 Mapa semántico de fechas (pendiente — revisión tipo a tipo)
+### 3.1 Mapa semántico de fechas
 
-> **Estado:** Estructura cerrada. Contenido pendiente de revisión tipo a tipo con legislación en mano.
+> **Estado:** Cerrado — sesión 2026-04-15. La revisión tipo a tipo se considera suficiente con los plazos extraídos del RD 1955/2000 (§5.2) para arrancar la implementación. La tabla `metadatos_fechas` se puebla incrementalmente al implementar cada tipo, no de golpe.
 
 Las columnas `fecha_inicio`/`fecha_fin` de Fase, Trámite y Tarea **no se renombran ni se añaden columnas nuevas**. La semántica de cada fecha se almacena en una tabla BD `metadatos_fechas`, administrable por Supervisor o Admin.
 
@@ -589,7 +589,7 @@ Issues preexistentes relacionados (pendientes de revisar contra este diseño):
 
 - [x] **§2 Conceptos** — cerrado sesión 2026-04-01
 - [x] **§3.0 Inventario de fechas** — cerrado sesión 2026-04-01; campos Fase/Trámite/Tarea pendientes de revisión tipo a tipo en §3.1
-- [ ] **§3.1 Mapa semántico** — estructura cerrada; pendiente de: (1) completar `NORMATIVA_PLAZOS.md` con revisión LPACAP del §5, y (2) revisión tipo a tipo con legislación en mano y cruce con §5
+- [x] **§3.1 Mapa semántico** — cerrado sesión 2026-04-15; poblar `metadatos_fechas` incrementalmente al implementar cada tipo
 - [ ] **§3.3 Suspensiones** — estudiar qué eventos de BDDAT desencadenan cada causa del art. 22 LPACAP antes de diseñar la tabla
 - [ ] **§3.4 Calendario inhábiles** — verificar disponibilidad de datos por provincia en la Junta; diseñar mecanismo de alerta de año N+1 sin cargar
 - [x] **§3.5 Semántica de `fecha_limite`** — cerrado 2026-04-02
