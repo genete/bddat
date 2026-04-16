@@ -35,7 +35,9 @@
 5. *(fragment)* Una entidad puede además **autorizar a otra para actuar en su nombre**: si una empresa gestora representa a un titular en la tramitación, el sistema lo registra y lo tiene en cuenta. La autoautorización es implícita — el titular siempre puede actuar por sí mismo sin entrada adicional
    - *(popup sobre "actuar en su nombre" — ver sección Popups)*
 
-6. *(fragment)* La misma filosofía que el resto del sistema: **la semántica vive en los tipos, no en los tipos de tablas**
+6. *(fragment)* Cada entidad puede tener además **distintas direcciones de notificación según el rol** que desempeña: e-distribución como titular recibe los escritos en su departamento de tramitaciones; como empresa consultada, en su área técnica. El sistema sabe siempre a quién dirigirse — y en qué canal.
+   - *(popup sobre "direcciones de notificación" — ver sección Popups)*
+
 
 ---
 
@@ -66,6 +68,27 @@ el sistema usa este campo para diferenciar el procedimiento.
 
 ---
 
+### Popup: `direcciones de notificación`
+
+**Disparador:** el texto `direcciones de notificación` en el bullet 6.
+
+**Título:** Dirección de notificación
+
+**Contenido:**
+
+Cada dirección se activa para uno o varios roles (titular, consultado, publicador).
+El sistema usa siempre la más reciente activa para el rol correspondiente.
+Cambiar la dirección no elimina el historial — borrado lógico.
+
+| Canal | Descripción |
+|---|---|
+| Postal | Dirección estructurada (calle, CP, municipio) |
+| Email | Correo aviso de Notifica-PNT |
+| DIR3 | Código de unidad orgánica para organismos públicos |
+| SIR | Sistema de Información del Registro (telemático) |
+
+---
+
 ### Popup: `actuar en su nombre`
 
 **Disparador:** el texto `actuar en su nombre` en el bullet 5.
@@ -87,8 +110,8 @@ Características del modelo:
 
 ## Notas ponente
 
-Esta slide puede dispararse con la pregunta "¿A quién notifica el sistema?". Respuesta:
-a la entidad que tenga el rol correspondiente en ese trámite — y eso el sistema ya lo sabe.
+El bullet 6 responde directamente la pregunta "¿A quién notifica el sistema?":
+a la entidad con el rol correspondiente, en la dirección que ella misma haya configurado para ese rol.
 
 El concepto clave es la separación entre *qué es* una entidad (sus datos) y *qué hace*
 en un expediente concreto (su rol). Esa separación es lo que permite reutilizar el mismo

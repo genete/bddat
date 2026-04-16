@@ -34,7 +34,7 @@
     <!-- ================================================
          S00 — PORTADA
          ================================================ -->
-    <section class="layout-portada" id="portada" data-transition="none">
+    <section class="layout-portada" id="portada" data-transition="none" data-menu-title="Portada">
       <div class="slide-wrap">
 
         <div class="portada-chevron">
@@ -571,8 +571,7 @@
               <li class="fragment">BDDAT usa <strong>una sola tabla <code>entidades</code></strong> con campos comunes (NIF, nombre, dirección, contacto) y tres roles booleanos que se activan según el contexto del trámite: <code>rol_titular</code> · <code>rol_consultado</code> · <code>rol_publicador</code></li>
               <li class="fragment">El campo <span class="esftt-capas" data-popup="s05b-tipo-titular"><code>tipo_titular</code></span> permite filtrar y segmentar titulares por sus características propias — gran distribuidora, promotor privado, organismo público — y aplicar lógicas diferenciadas cuando el procedimiento lo requiere</li>
               <li class="fragment">Una entidad puede además <span class="esftt-capas" data-popup="s05b-autorizado">autorizar a otra para actuar en su nombre</span>: si una empresa gestora representa a un titular, el sistema lo registra. La autoautorización es implícita — el titular siempre puede actuar por sí mismo</li>
-              <li class="fragment">La misma filosofía que el resto del sistema: <strong>la semántica vive en los tipos, no en los tipos de tablas</strong></li>
-            </ul>
+              <li class="fragment">Cada entidad puede tener además <span class="esftt-capas" data-popup="s05b-direccion-notif">distintas direcciones de notificación según el rol</span> que desempeña: e-distribución como titular recibe los escritos en su departamento de tramitaciones; como empresa consultada, en su área técnica. El sistema sabe siempre a quién dirigirse — y en qué canal.</li>            </ul>
           </div>
 
           <footer class="slide-pie">
@@ -596,6 +595,19 @@
           </tbody>
         </table>
       </div>
+      <div id="popup-s05b-direccion-notif" class="esftt-popup-data" hidden>
+        <h4>Dirección de notificación</h4>
+        <p>Cada dirección se activa para uno o varios roles (titular, consultado, publicador). El sistema usa siempre la más reciente activa para el rol correspondiente. Cambiar la dirección no elimina el historial.</p>
+        <table class="tabla-inline tabla-inline-lg" style="margin-top:10px">
+          <thead><tr><th>Canal</th><th>Descripción</th></tr></thead>
+          <tbody>
+            <tr><td>Postal</td><td>Dirección estructurada (calle, CP, municipio)</td></tr>
+            <tr><td>Email</td><td>Correo aviso de Notifica-PNT</td></tr>
+            <tr><td>DIR3</td><td>Código de unidad orgánica para organismos públicos</td></tr>
+            <tr><td>SIR</td><td>Sistema de Información del Registro (telemático)</td></tr>
+          </tbody>
+        </table>
+      </div>
       <div id="popup-s05b-autorizado" class="esftt-popup-data" hidden>
         <h4>Autorizado titular</h4>
         <p>La tabla <code>autorizados_titular</code> registra relaciones N:N entre entidades: un titular puede autorizar a varios administrados, y un administrado puede estar autorizado por varios titulares.</p>
@@ -607,9 +619,9 @@
       </div>
 
       <aside class="notes">
-        Puede dispararse con la pregunta "¿A quién notifica el sistema?".
         Bullet 4: subrayar que tipo_titular no es burocracia — permite filtrar "todos los expedientes de grandes distribuidoras" con un solo criterio.
         Bullet 5: caso típico, empresa gestora que lleva expedientes de varios titulares. Sin este modelo habría que registrar a la gestora como titular, perdiendo quién es el propietario real.
+        Bullet 6: el modelo responde directamente a "¿A quién notifica el sistema?": a la entidad con el rol correspondiente, en la dirección que ella misma haya configurado para ese rol.
         Transición a S06: "Esas mismas entidades son los destinatarios de los documentos que el sistema gestiona."
       </aside>
     </section>
@@ -1076,6 +1088,7 @@
 
 
 <script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js-menu@2.1.0/menu.js"></script>
 <script>
   Reveal.initialize({
     hash: true,
@@ -1096,7 +1109,22 @@
     transition: 'none',
     backgroundTransition: 'none',
     fragments: true,
-
+    menu: {
+      side: 'left',
+      width: 'normal',
+      numbers: false,
+      titleSelector: '.slide-intro-label',
+      useTextContentForMissingTitles: false,
+      hideMissingTitles: true,
+      markers: true,
+      custom: false,
+      themes: false,
+      transitions: false,
+      openButton: true,
+      openSlideNumber: false,
+      keyboard: true,
+    },
+    plugins: [ RevealMenu ],
   });
 </script>
 
@@ -1176,6 +1204,7 @@
 
     // ── Handlers de navegación ───────────────────────────────────────────────
     function onSiguiente(e) {
+      if (Reveal.isOverview()) return;
       if (e) e.stopImmediatePropagation();
       var curr = Reveal.getCurrentSlide();
       if (curr.id === 'portada') { portadaSalida(); return; }
@@ -1205,6 +1234,7 @@
       transicion(Reveal.next.bind(Reveal));
     }
     function onAnterior(e) {
+      if (Reveal.isOverview()) return;
       if (e) e.stopImmediatePropagation();
       if (hayFragmentosVisibles()) { Reveal.prev(); return; }
       transicion(Reveal.prev.bind(Reveal));
