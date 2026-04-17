@@ -26,6 +26,7 @@ from app.models.tipos_tramites import TipoTramite
 from app.models.tipos_tareas import TipoTarea
 from app.utils.permisos import verificar_acceso_expediente
 from app.services.motor_reglas import evaluar
+from app.services.invariantes_esftt import check_invariante
 
 bp = Blueprint('vista3', __name__, url_prefix='/api/vista3')
 
@@ -278,9 +279,12 @@ def editar_solicitud(sol_id):
         # Hook FINALIZAR (fecha_fin: None → valor)
         res_eval = None
         if sol.fecha_fin is None and nueva_fecha_fin is not None:
-            res_eval = evaluar('FINALIZAR', 'SOLICITUD', entidad_id=sol_id)
+            bloqueo = check_invariante('FINALIZAR', 'SOLICITUD', sol_id)
+            if bloqueo:
+                return jsonify({'ok': False, 'error': bloqueo.norma_compilada}), 422
+            res_eval = evaluar('FINALIZAR', 'SOLICITUD', sol.tipo_solicitud_id, {})
             if not res_eval.permitido:
-                return jsonify({'ok': False, 'error': res_eval.mensaje, 'norma': res_eval.norma}), 422
+                return jsonify({'ok': False, 'error': res_eval.norma_compilada, 'norma': res_eval.url_norma}), 422
 
         sol.fecha_solicitud = nueva_fecha_solicitud
         sol.fecha_fin = nueva_fecha_fin
@@ -292,7 +296,7 @@ def editar_solicitud(sol_id):
         result = _get_solicitudes_con_stats(sol.expediente_id)
         sol_data = next((s for s in result if s['obj'].id == sol_id), None)
         html = render_template('vistas/vista3/_acordeon_solicitud.html', sol_data=sol_data) if sol_data else ''
-        advertencia = {'mensaje': res_eval.mensaje, 'norma': res_eval.norma} if res_eval and res_eval.nivel == 'ADVERTIR' else None
+        advertencia = {'mensaje': res_eval.norma_compilada, 'norma': res_eval.url_norma} if res_eval and res_eval.nivel == 'ADVERTIR' else None
         return jsonify({'ok': True, 'html': html, 'advertencia': advertencia})
     except Exception as e:
         db.session.rollback()
@@ -315,15 +319,18 @@ def editar_fase(fase_id):
         # Hook INICIAR (fecha_inicio: None → valor)
         res_eval = None
         if fase.fecha_inicio is None and nueva_fecha_inicio is not None:
-            res_eval = evaluar('INICIAR', 'FASE', entidad_id=fase_id)
+            res_eval = evaluar('INICIAR', 'FASE', fase.tipo_fase_id, {})
             if not res_eval.permitido:
-                return jsonify({'ok': False, 'error': res_eval.mensaje, 'norma': res_eval.norma}), 422
+                return jsonify({'ok': False, 'error': res_eval.norma_compilada, 'norma': res_eval.url_norma}), 422
 
         # Hook FINALIZAR (fecha_fin: None → valor)
         if fase.fecha_fin is None and nueva_fecha_fin is not None:
-            res_eval = evaluar('FINALIZAR', 'FASE', entidad_id=fase_id)
+            bloqueo = check_invariante('FINALIZAR', 'FASE', fase_id)
+            if bloqueo:
+                return jsonify({'ok': False, 'error': bloqueo.norma_compilada}), 422
+            res_eval = evaluar('FINALIZAR', 'FASE', fase.tipo_fase_id, {})
             if not res_eval.permitido:
-                return jsonify({'ok': False, 'error': res_eval.mensaje, 'norma': res_eval.norma}), 422
+                return jsonify({'ok': False, 'error': res_eval.norma_compilada, 'norma': res_eval.url_norma}), 422
 
         fase.fecha_inicio = nueva_fecha_inicio
         fase.fecha_fin = nueva_fecha_fin
@@ -337,7 +344,7 @@ def editar_fase(fase_id):
         resultados_fase = TipoResultadoFase.query.order_by(TipoResultadoFase.nombre).all()
         html = render_template('vistas/vista3/_acordeon_fase.html', fase_data=fase_data,
                                resultados_fase=resultados_fase) if fase_data else ''
-        advertencia = {'mensaje': res_eval.mensaje, 'norma': res_eval.norma} if res_eval and res_eval.nivel == 'ADVERTIR' else None
+        advertencia = {'mensaje': res_eval.norma_compilada, 'norma': res_eval.url_norma} if res_eval and res_eval.nivel == 'ADVERTIR' else None
         return jsonify({'ok': True, 'html': html, 'advertencia': advertencia})
     except Exception as e:
         db.session.rollback()
@@ -360,15 +367,18 @@ def editar_tramite(tram_id):
         # Hook INICIAR (fecha_inicio: None → valor)
         res_eval = None
         if tramite.fecha_inicio is None and nueva_fecha_inicio is not None:
-            res_eval = evaluar('INICIAR', 'TRAMITE', entidad_id=tram_id)
+            res_eval = evaluar('INICIAR', 'TRAMITE', tramite.tipo_tramite_id, {})
             if not res_eval.permitido:
-                return jsonify({'ok': False, 'error': res_eval.mensaje, 'norma': res_eval.norma}), 422
+                return jsonify({'ok': False, 'error': res_eval.norma_compilada, 'norma': res_eval.url_norma}), 422
 
         # Hook FINALIZAR (fecha_fin: None → valor)
         if tramite.fecha_fin is None and nueva_fecha_fin is not None:
-            res_eval = evaluar('FINALIZAR', 'TRAMITE', entidad_id=tram_id)
+            bloqueo = check_invariante('FINALIZAR', 'TRAMITE', tram_id)
+            if bloqueo:
+                return jsonify({'ok': False, 'error': bloqueo.norma_compilada}), 422
+            res_eval = evaluar('FINALIZAR', 'TRAMITE', tramite.tipo_tramite_id, {})
             if not res_eval.permitido:
-                return jsonify({'ok': False, 'error': res_eval.mensaje, 'norma': res_eval.norma}), 422
+                return jsonify({'ok': False, 'error': res_eval.norma_compilada, 'norma': res_eval.url_norma}), 422
 
         tramite.fecha_inicio = nueva_fecha_inicio
         tramite.fecha_fin = nueva_fecha_fin
@@ -378,7 +388,7 @@ def editar_tramite(tram_id):
         result = _get_tramites_con_stats(tramite.fase_id)
         tramite_data = next((t for t in result if t['obj'].id == tram_id), None)
         html = render_template('vistas/vista3/_acordeon_tramite.html', tramite_data=tramite_data) if tramite_data else ''
-        advertencia = {'mensaje': res_eval.mensaje, 'norma': res_eval.norma} if res_eval and res_eval.nivel == 'ADVERTIR' else None
+        advertencia = {'mensaje': res_eval.norma_compilada, 'norma': res_eval.url_norma} if res_eval and res_eval.nivel == 'ADVERTIR' else None
         return jsonify({'ok': True, 'html': html, 'advertencia': advertencia})
     except Exception as e:
         db.session.rollback()
@@ -419,15 +429,18 @@ def editar_tarea(tarea_id):
         # Hook INICIAR (fecha_inicio: None → valor)
         res_eval = None
         if tarea.fecha_inicio is None and nueva_fecha_inicio is not None:
-            res_eval = evaluar('INICIAR', 'TAREA', entidad_id=tarea_id)
+            res_eval = evaluar('INICIAR', 'TAREA', tarea.tipo_tarea_id, {})
             if not res_eval.permitido:
-                return jsonify({'ok': False, 'error': res_eval.mensaje, 'norma': res_eval.norma}), 422
+                return jsonify({'ok': False, 'error': res_eval.norma_compilada, 'norma': res_eval.url_norma}), 422
 
         # Hook FINALIZAR (fecha_fin: None → valor)
         if tarea.fecha_fin is None and nueva_fecha_fin is not None:
-            res_eval = evaluar('FINALIZAR', 'TAREA', entidad_id=tarea_id)
+            bloqueo = check_invariante('FINALIZAR', 'TAREA', tarea_id)
+            if bloqueo:
+                return jsonify({'ok': False, 'error': bloqueo.norma_compilada}), 422
+            res_eval = evaluar('FINALIZAR', 'TAREA', tarea.tipo_tarea_id, {})
             if not res_eval.permitido:
-                return jsonify({'ok': False, 'error': res_eval.mensaje, 'norma': res_eval.norma}), 422
+                return jsonify({'ok': False, 'error': res_eval.norma_compilada, 'norma': res_eval.url_norma}), 422
 
         tarea.fecha_inicio = nueva_fecha_inicio
         tarea.fecha_fin = nueva_fecha_fin
@@ -439,7 +452,7 @@ def editar_tarea(tarea_id):
         documentos = _get_documentos_tarea(tarea_id)
         html = render_template('vistas/vista3/_acordeon_tarea.html', tarea_data=tarea_data,
                                documentos=documentos) if tarea_data else ''
-        advertencia = {'mensaje': res_eval.mensaje, 'norma': res_eval.norma} if res_eval and res_eval.nivel == 'ADVERTIR' else None
+        advertencia = {'mensaje': res_eval.norma_compilada, 'norma': res_eval.url_norma} if res_eval and res_eval.nivel == 'ADVERTIR' else None
         return jsonify({'ok': True, 'html': html, 'advertencia': advertencia})
     except IntegrityError:
         db.session.rollback()
@@ -497,9 +510,12 @@ def borrar_solicitud(sol_id):
     if resultado:
         return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
 
-    res_eval = evaluar('BORRAR', 'SOLICITUD', entidad_id=sol_id)
+    bloqueo = check_invariante('BORRAR', 'SOLICITUD', sol_id)
+    if bloqueo:
+        return jsonify({'ok': False, 'error': bloqueo.norma_compilada}), 422
+    res_eval = evaluar('BORRAR', 'SOLICITUD', sol.tipo_solicitud_id, {})
     if not res_eval.permitido:
-        return jsonify({'ok': False, 'error': res_eval.mensaje, 'norma': res_eval.norma}), 422
+        return jsonify({'ok': False, 'error': res_eval.norma_compilada, 'norma': res_eval.url_norma}), 422
 
     fase_ids = [f.id for f in Fase.query.filter_by(solicitud_id=sol_id).all()]
     if fase_ids:
@@ -528,15 +544,15 @@ def crear_fase(sol_id):
     if not TipoFase.query.get(tipo_fase_id):
         return jsonify({'ok': False, 'error': 'Tipo de fase no encontrado'}), 404
 
-    res_eval = evaluar('CREAR', 'FASE', tipo_id=tipo_fase_id, padre_id=sol_id)
+    res_eval = evaluar('CREAR', 'FASE', tipo_fase_id, {})
     if not res_eval.permitido:
-        return jsonify({'ok': False, 'error': res_eval.mensaje, 'norma': res_eval.norma}), 422
+        return jsonify({'ok': False, 'error': res_eval.norma_compilada, 'norma': res_eval.url_norma}), 422
 
     fase = Fase(solicitud_id=sol_id, tipo_fase_id=tipo_fase_id)
     db.session.add(fase)
     db.session.commit()
 
-    advertencia = {'mensaje': res_eval.mensaje, 'norma': res_eval.norma} if res_eval.nivel == 'ADVERTIR' else None
+    advertencia = {'mensaje': res_eval.norma_compilada, 'norma': res_eval.url_norma} if res_eval.nivel == 'ADVERTIR' else None
     return jsonify({'ok': True, 'id': fase.id, 'advertencia': advertencia})
 
 
@@ -555,15 +571,15 @@ def crear_tramite(fase_id):
     if not TipoTramite.query.get(tipo_tramite_id):
         return jsonify({'ok': False, 'error': 'Tipo de trámite no encontrado'}), 404
 
-    res_eval = evaluar('CREAR', 'TRAMITE', tipo_id=tipo_tramite_id, padre_id=fase_id)
+    res_eval = evaluar('CREAR', 'TRAMITE', tipo_tramite_id, {})
     if not res_eval.permitido:
-        return jsonify({'ok': False, 'error': res_eval.mensaje, 'norma': res_eval.norma}), 422
+        return jsonify({'ok': False, 'error': res_eval.norma_compilada, 'norma': res_eval.url_norma}), 422
 
     tramite = Tramite(fase_id=fase_id, tipo_tramite_id=tipo_tramite_id)
     db.session.add(tramite)
     db.session.commit()
 
-    advertencia = {'mensaje': res_eval.mensaje, 'norma': res_eval.norma} if res_eval.nivel == 'ADVERTIR' else None
+    advertencia = {'mensaje': res_eval.norma_compilada, 'norma': res_eval.url_norma} if res_eval.nivel == 'ADVERTIR' else None
     return jsonify({'ok': True, 'id': tramite.id, 'advertencia': advertencia})
 
 
@@ -582,15 +598,15 @@ def crear_tarea(tram_id):
     if not TipoTarea.query.get(tipo_tarea_id):
         return jsonify({'ok': False, 'error': 'Tipo de tarea no encontrado'}), 404
 
-    res_eval = evaluar('CREAR', 'TAREA', tipo_id=tipo_tarea_id, padre_id=tram_id)
+    res_eval = evaluar('CREAR', 'TAREA', tipo_tarea_id, {})
     if not res_eval.permitido:
-        return jsonify({'ok': False, 'error': res_eval.mensaje, 'norma': res_eval.norma}), 422
+        return jsonify({'ok': False, 'error': res_eval.norma_compilada, 'norma': res_eval.url_norma}), 422
 
     tarea = Tarea(tramite_id=tram_id, tipo_tarea_id=tipo_tarea_id)
     db.session.add(tarea)
     db.session.commit()
 
-    advertencia = {'mensaje': res_eval.mensaje, 'norma': res_eval.norma} if res_eval.nivel == 'ADVERTIR' else None
+    advertencia = {'mensaje': res_eval.norma_compilada, 'norma': res_eval.url_norma} if res_eval.nivel == 'ADVERTIR' else None
     return jsonify({'ok': True, 'id': tarea.id, 'advertencia': advertencia})
 
 
@@ -607,9 +623,12 @@ def borrar_fase(fase_id):
     if resultado:
         return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
 
-    res_eval = evaluar('BORRAR', 'FASE', entidad_id=fase_id)
+    bloqueo = check_invariante('BORRAR', 'FASE', fase_id)
+    if bloqueo:
+        return jsonify({'ok': False, 'error': bloqueo.norma_compilada}), 422
+    res_eval = evaluar('BORRAR', 'FASE', fase.tipo_fase_id, {})
     if not res_eval.permitido:
-        return jsonify({'ok': False, 'error': res_eval.mensaje, 'norma': res_eval.norma}), 422
+        return jsonify({'ok': False, 'error': res_eval.norma_compilada, 'norma': res_eval.url_norma}), 422
 
     tram_ids = [t.id for t in Tramite.query.filter_by(fase_id=fase_id).all()]
     if tram_ids:
@@ -629,9 +648,12 @@ def borrar_tramite(tram_id):
     if resultado:
         return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
 
-    res_eval = evaluar('BORRAR', 'TRAMITE', entidad_id=tram_id)
+    bloqueo = check_invariante('BORRAR', 'TRAMITE', tram_id)
+    if bloqueo:
+        return jsonify({'ok': False, 'error': bloqueo.norma_compilada}), 422
+    res_eval = evaluar('BORRAR', 'TRAMITE', tramite.tipo_tramite_id, {})
     if not res_eval.permitido:
-        return jsonify({'ok': False, 'error': res_eval.mensaje, 'norma': res_eval.norma}), 422
+        return jsonify({'ok': False, 'error': res_eval.norma_compilada, 'norma': res_eval.url_norma}), 422
 
     Tarea.query.filter_by(tramite_id=tram_id).delete()
     db.session.delete(tramite)
@@ -648,9 +670,12 @@ def borrar_tarea(tarea_id):
     if resultado:
         return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
 
-    res_eval = evaluar('BORRAR', 'TAREA', entidad_id=tarea_id)
+    bloqueo = check_invariante('BORRAR', 'TAREA', tarea_id)
+    if bloqueo:
+        return jsonify({'ok': False, 'error': bloqueo.norma_compilada}), 422
+    res_eval = evaluar('BORRAR', 'TAREA', tarea.tipo_tarea_id, {})
     if not res_eval.permitido:
-        return jsonify({'ok': False, 'error': res_eval.mensaje, 'norma': res_eval.norma}), 422
+        return jsonify({'ok': False, 'error': res_eval.norma_compilada, 'norma': res_eval.url_norma}), 422
 
     db.session.delete(tarea)
     db.session.commit()
@@ -672,13 +697,13 @@ def iniciar_solicitud(sol_id):
     if sol.fecha_solicitud is not None:
         return jsonify({'ok': False, 'error': 'La solicitud ya tiene fecha de inicio'}), 422
 
-    res_eval = evaluar('INICIAR', 'SOLICITUD', entidad_id=sol_id)
+    res_eval = evaluar('INICIAR', 'SOLICITUD', sol.tipo_solicitud_id, {})
     if not res_eval.permitido:
-        return jsonify({'ok': False, 'error': res_eval.mensaje, 'norma': res_eval.norma}), 422
+        return jsonify({'ok': False, 'error': res_eval.norma_compilada, 'norma': res_eval.url_norma}), 422
 
     sol.fecha_solicitud = date.today()
     db.session.commit()
-    return jsonify({'ok': True, 'nivel': res_eval.nivel, 'mensaje': res_eval.mensaje})
+    return jsonify({'ok': True, 'nivel': res_eval.nivel, 'mensaje': res_eval.norma_compilada})
 
 
 @bp.route('/solicitud/<int:sol_id>/finalizar', methods=['POST'])
@@ -692,13 +717,16 @@ def finalizar_solicitud(sol_id):
     if sol.fecha_fin is not None:
         return jsonify({'ok': False, 'error': 'La solicitud ya está finalizada'}), 422
 
-    res_eval = evaluar('FINALIZAR', 'SOLICITUD', entidad_id=sol_id)
+    bloqueo = check_invariante('FINALIZAR', 'SOLICITUD', sol_id)
+    if bloqueo:
+        return jsonify({'ok': False, 'error': bloqueo.norma_compilada}), 422
+    res_eval = evaluar('FINALIZAR', 'SOLICITUD', sol.tipo_solicitud_id, {})
     if not res_eval.permitido:
-        return jsonify({'ok': False, 'error': res_eval.mensaje, 'norma': res_eval.norma}), 422
+        return jsonify({'ok': False, 'error': res_eval.norma_compilada, 'norma': res_eval.url_norma}), 422
 
     sol.fecha_fin = date.today()
     db.session.commit()
-    return jsonify({'ok': True, 'nivel': res_eval.nivel, 'mensaje': res_eval.mensaje})
+    return jsonify({'ok': True, 'nivel': res_eval.nivel, 'mensaje': res_eval.norma_compilada})
 
 
 @bp.route('/fase/<int:fase_id>/iniciar', methods=['POST'])
@@ -712,13 +740,13 @@ def iniciar_fase(fase_id):
     if fase.fecha_inicio is not None:
         return jsonify({'ok': False, 'error': 'La fase ya está iniciada'}), 422
 
-    res_eval = evaluar('INICIAR', 'FASE', entidad_id=fase_id)
+    res_eval = evaluar('INICIAR', 'FASE', fase.tipo_fase_id, {})
     if not res_eval.permitido:
-        return jsonify({'ok': False, 'error': res_eval.mensaje, 'norma': res_eval.norma}), 422
+        return jsonify({'ok': False, 'error': res_eval.norma_compilada, 'norma': res_eval.url_norma}), 422
 
     fase.fecha_inicio = date.today()
     db.session.commit()
-    return jsonify({'ok': True, 'nivel': res_eval.nivel, 'mensaje': res_eval.mensaje})
+    return jsonify({'ok': True, 'nivel': res_eval.nivel, 'mensaje': res_eval.norma_compilada})
 
 
 @bp.route('/fase/<int:fase_id>/finalizar', methods=['POST'])
@@ -732,13 +760,16 @@ def finalizar_fase(fase_id):
     if fase.fecha_fin is not None:
         return jsonify({'ok': False, 'error': 'La fase ya está finalizada'}), 422
 
-    res_eval = evaluar('FINALIZAR', 'FASE', entidad_id=fase_id)
+    bloqueo = check_invariante('FINALIZAR', 'FASE', fase_id)
+    if bloqueo:
+        return jsonify({'ok': False, 'error': bloqueo.norma_compilada}), 422
+    res_eval = evaluar('FINALIZAR', 'FASE', fase.tipo_fase_id, {})
     if not res_eval.permitido:
-        return jsonify({'ok': False, 'error': res_eval.mensaje, 'norma': res_eval.norma}), 422
+        return jsonify({'ok': False, 'error': res_eval.norma_compilada, 'norma': res_eval.url_norma}), 422
 
     fase.fecha_fin = date.today()
     db.session.commit()
-    return jsonify({'ok': True, 'nivel': res_eval.nivel, 'mensaje': res_eval.mensaje})
+    return jsonify({'ok': True, 'nivel': res_eval.nivel, 'mensaje': res_eval.norma_compilada})
 
 
 @bp.route('/tramite/<int:tram_id>/iniciar', methods=['POST'])
@@ -752,13 +783,13 @@ def iniciar_tramite(tram_id):
     if tramite.fecha_inicio is not None:
         return jsonify({'ok': False, 'error': 'El trámite ya está iniciado'}), 422
 
-    res_eval = evaluar('INICIAR', 'TRAMITE', entidad_id=tram_id)
+    res_eval = evaluar('INICIAR', 'TRAMITE', tramite.tipo_tramite_id, {})
     if not res_eval.permitido:
-        return jsonify({'ok': False, 'error': res_eval.mensaje, 'norma': res_eval.norma}), 422
+        return jsonify({'ok': False, 'error': res_eval.norma_compilada, 'norma': res_eval.url_norma}), 422
 
     tramite.fecha_inicio = date.today()
     db.session.commit()
-    return jsonify({'ok': True, 'nivel': res_eval.nivel, 'mensaje': res_eval.mensaje})
+    return jsonify({'ok': True, 'nivel': res_eval.nivel, 'mensaje': res_eval.norma_compilada})
 
 
 @bp.route('/tramite/<int:tram_id>/finalizar', methods=['POST'])
@@ -772,13 +803,16 @@ def finalizar_tramite(tram_id):
     if tramite.fecha_fin is not None:
         return jsonify({'ok': False, 'error': 'El trámite ya está finalizado'}), 422
 
-    res_eval = evaluar('FINALIZAR', 'TRAMITE', entidad_id=tram_id)
+    bloqueo = check_invariante('FINALIZAR', 'TRAMITE', tram_id)
+    if bloqueo:
+        return jsonify({'ok': False, 'error': bloqueo.norma_compilada}), 422
+    res_eval = evaluar('FINALIZAR', 'TRAMITE', tramite.tipo_tramite_id, {})
     if not res_eval.permitido:
-        return jsonify({'ok': False, 'error': res_eval.mensaje, 'norma': res_eval.norma}), 422
+        return jsonify({'ok': False, 'error': res_eval.norma_compilada, 'norma': res_eval.url_norma}), 422
 
     tramite.fecha_fin = date.today()
     db.session.commit()
-    return jsonify({'ok': True, 'nivel': res_eval.nivel, 'mensaje': res_eval.mensaje})
+    return jsonify({'ok': True, 'nivel': res_eval.nivel, 'mensaje': res_eval.norma_compilada})
 
 
 @bp.route('/tarea/<int:tarea_id>/iniciar', methods=['POST'])
@@ -792,13 +826,13 @@ def iniciar_tarea(tarea_id):
     if tarea.fecha_inicio is not None:
         return jsonify({'ok': False, 'error': 'La tarea ya está iniciada'}), 422
 
-    res_eval = evaluar('INICIAR', 'TAREA', entidad_id=tarea_id)
+    res_eval = evaluar('INICIAR', 'TAREA', tarea.tipo_tarea_id, {})
     if not res_eval.permitido:
-        return jsonify({'ok': False, 'error': res_eval.mensaje, 'norma': res_eval.norma}), 422
+        return jsonify({'ok': False, 'error': res_eval.norma_compilada, 'norma': res_eval.url_norma}), 422
 
     tarea.fecha_inicio = date.today()
     db.session.commit()
-    return jsonify({'ok': True, 'nivel': res_eval.nivel, 'mensaje': res_eval.mensaje})
+    return jsonify({'ok': True, 'nivel': res_eval.nivel, 'mensaje': res_eval.norma_compilada})
 
 
 @bp.route('/tarea/<int:tarea_id>/finalizar', methods=['POST'])
@@ -812,10 +846,13 @@ def finalizar_tarea(tarea_id):
     if tarea.fecha_fin is not None:
         return jsonify({'ok': False, 'error': 'La tarea ya está finalizada'}), 422
 
-    res_eval = evaluar('FINALIZAR', 'TAREA', entidad_id=tarea_id)
+    bloqueo = check_invariante('FINALIZAR', 'TAREA', tarea_id)
+    if bloqueo:
+        return jsonify({'ok': False, 'error': bloqueo.norma_compilada}), 422
+    res_eval = evaluar('FINALIZAR', 'TAREA', tarea.tipo_tarea_id, {})
     if not res_eval.permitido:
-        return jsonify({'ok': False, 'error': res_eval.mensaje, 'norma': res_eval.norma}), 422
+        return jsonify({'ok': False, 'error': res_eval.norma_compilada, 'norma': res_eval.url_norma}), 422
 
     tarea.fecha_fin = date.today()
     db.session.commit()
-    return jsonify({'ok': True, 'nivel': res_eval.nivel, 'mensaje': res_eval.mensaje})
+    return jsonify({'ok': True, 'nivel': res_eval.nivel, 'mensaje': res_eval.norma_compilada})
