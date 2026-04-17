@@ -1,7 +1,8 @@
 # Motor de reglas agnóstico — Decisiones de rediseño
 
-> **Fecha:** 2026-04-05
+> **Fecha:** 2026-04-05 · **Actualizado:** 2026-04-16
 > Sesión de reflexión arquitectural. Complementa `DISEÑO_MOTOR_REGLAS.md`.
+> Esquema de tablas cerrado en sesión 2026-04-16 — ver §Esquema de tablas.
 
 ---
 
@@ -12,7 +13,7 @@ En lugar de que el motor conozca el dominio (Fase, Tarea, Expediente, etc.) y ha
 queries internos al árbol ESFTT, el flujo correcto es:
 
 1. **BDDAT** ensambla un dict plano de variables antes de llamar al motor
-2. **Motor** recibe `(accion, tipo, variables: dict)` y evalúa reglas en BD contra ese dict
+2. **Motor** recibe `(accion, sujeto, tipo_sujeto_id, variables: dict)` y evalúa reglas en BD contra ese dict
 3. El motor no importa modelos de BDDAT, no traversa el árbol ESFTT, no hace queries propias
 
 ```python
@@ -27,7 +28,7 @@ variables = {
 }
 
 # Motor evalúa — sin saber de dónde vienen los valores
-motor.evaluar(accion='INICIAR', tipo='TRAMITE', variables=variables)
+motor.evaluar(accion='INICIAR', sujeto='TRAMITE', tipo_sujeto_id=5, variables=variables)
 ```
 
 **Principio:** es el procedimiento el que se engancha al API del motor, no al revés.
@@ -56,29 +57,37 @@ El motor expone una sola función pública. Su firma es el contrato con el resto
 
 ```python
 resultado = motor.evaluar(
-    accion:    str,   # 'INICIAR' | 'FINALIZAR' | 'BORRAR' | 'CREAR' | ...
-    tipo:      str,   # 'FASE' | 'TRAMITE' | 'TAREA' | 'SOLICITUD'
-    tipo_id:   int,   # ID del tipo concreto (tipo_fase_id, tipo_tramite_id...)
-    variables: dict,  # dict plano compilado por ContextAssembler
+    accion:         str,            # 'INICIAR' | 'FINALIZAR' | 'BORRAR' | 'CREAR' | ...
+    sujeto:         str,            # 'FASE' | 'TRAMITE' | 'TAREA' | 'SOLICITUD' | 'EXPEDIENTE'
+    tipo_sujeto_id: Optional[int],  # ID en la tabla tipos_* del sujeto. NULL = aplica a todos
+    variables:      dict,           # dict plano compilado por ContextAssembler
 ) -> EvaluacionResult
 ```
+
+`tipo_sujeto_id` es una clave de filtrado, no una variable de evaluación. El motor lo usa
+para hacer `WHERE tipo_sujeto_id = X OR tipo_sujeto_id IS NULL` al cargar reglas de BD.
+No aparece en las condiciones ni en el resultado.
 
 ```python
 @dataclass
 class EvaluacionResult:
-    permitido: bool
-    nivel:     str   # 'BLOQUEAR' | 'ADVERTIR' | ''
-    mensaje:   str   # texto para el usuario
-    norma:     str   # referencia legal de la regla que disparó el resultado
+    permitido:          bool
+    nivel:              str        # 'BLOQUEAR' | 'ADVERTIR' | ''
+    variables_trigger:  dict       # subconjunto del dict que disparó la regla (para mostrar al usuario)
+    norma_compilada:    str        # referencia compilada: "Art. 6 del Decreto-ley 26/2021..."
+    url_norma:          str        # URL BOE/BOJA; '' si no existe
 ```
+
+El motor no construye mensajes en lenguaje natural. La vista compila el texto a partir de
+`variables_trigger` y `norma_compilada`. Sin campos de texto libre escritos por humanos.
 
 **Contratos de comportamiento:**
 
 | Situación | Comportamiento |
 |---|---|
-| Sin reglas en BD para `(accion, tipo, tipo_id)` | Devuelve `PERMITIDO` — todo permitido excepto lo expresamente prohibido |
-| Condición referencia variable ausente del dict | Condición se evalúa como no cumplida + log `WARNING` con nombre de variable |
-| Varias reglas activas en el mismo evento | `BLOQUEAR` tiene prioridad sobre `ADVERTIR`; dentro del mismo nivel, se devuelve el mensaje de la primera regla activa por orden de id |
+| Sin reglas en BD para `(accion, sujeto, tipo_sujeto_id)` | Devuelve `PERMITIDO` — todo permitido excepto lo expresamente prohibido |
+| Condición referencia variable ausente del dict | Condición = `False` (no cumplida) + `log.warning(nombre_variable)`. PERMITIDO para el usuario |
+| Varias reglas activas para el mismo trío | `BLOQUEAR` > `ADVERTIR`; dentro del mismo nivel, gana la de menor `prioridad` |
 | Error interno del motor | Lanza excepción — nunca devuelve `PERMITIDO` silenciosamente ante un fallo |
 
 El motor no sabe nada de BDDAT. No importa modelos. No hace queries. Recibe el dict
@@ -86,52 +95,174 @@ y evalúa las reglas en `reglas_motor`/`condiciones_regla`. Nada más.
 
 ---
 
-## EventHandler — orquestación de eventos
+## ContextAssembler — contexto completo, agnóstico de reglas
 
-Capa de orquestación entre las rutas Flask y el motor. Es la única pieza que conoce
-simultáneamente el dominio BDDAT (para llamar al ContextAssembler) y el motor (para
-invocar `evaluar`).
-
-**Flujo completo:**
-
-```
-Ruta Flask (hardcodeado)
-    → event_handler.notify('INICIAR', 'FASE', entidad_id=fase_id)
-        → consulta tabla `disparadores`: ¿hay reglas para ('INICIAR', 'FASE')?
-            → NO  → devuelve PERMITIDO directamente (sin invocar el assembler)
-            → SÍ  → ContextAssembler.build('INICIAR', 'FASE', fase_id)
-                        → dict de variables
-                    → motor.evaluar('INICIAR', 'FASE', tipo_id, variables)
-                        → EvaluacionResult
-```
-
-**Uso en rutas Flask:**
+El ContextAssembler no sabe nada de las reglas, de la acción que se evalúa, ni del
+sujeto sobre el que actúa. Su único trabajo es compilar **todas** las variables del
+diccionario para el contexto activo del expediente. No toma ninguna decisión en función
+de qué se está evaluando — simplemente recorre el árbol ESFTT y llena la despensa.
 
 ```python
-# La llamada al EventHandler es la única línea hardcodeada por evento.
-resultado = event_handler.notify('INICIAR', 'FASE', entidad_id=fase.id)
-if not resultado.permitido:
-    return jsonify({'ok': False, 'error': resultado.mensaje, 'norma': resultado.norma}), 422
+variables = context_assembler.build(expediente_id)
+# → dict completo con TODAS las variables definidas en el catálogo
+#   {'ia': 'AAU', 'es_modificacion': False, 'tension_nominal_kv': 220,
+#    'tiene_doc_producido': True, 'plazo_vencido': False, ...}
+#   Las no aplicables o no rellenadas llegan como None.
 ```
 
-**Tabla `disparadores`:**
-Mapea `(accion, tipo)` a qué reglas deben evaluarse. Administrada por el Supervisor.
-Si no existe ningún disparador para un `(accion, tipo)`, el EventHandler devuelve
-`PERMITIDO` sin ningún coste de cómputo.
+No hay tabla de despacho, no hay lógica condicional por sujeto o acción. La ruta
+conoce la acción, el sujeto y el id — el assembler no los necesita para compilar
+el contexto. El mismo dict se pasa al motor sea cual sea la acción evaluada.
+
+El motor recibe el dict completo y usa solo las variables que sus condiciones
+referencian. No puede haber una regla que referencie una variable que el
+ContextAssembler no sepa computar, porque el assembler computa todas.
+
+**Contrato compartido entre ContextAssembler y Motor:** el diccionario de variables.
+`DISEÑO_CONTEXT_ASSEMBLER.md` es la única fuente de verdad de ambas piezas.
+Añadir una variable nueva requiere: (1) definirla en ese diccionario, (2) implementar
+su cómputo en el ContextAssembler. Solo entonces el Supervisor puede referenciarla
+en una regla.
+
+**Uso en rutas Flask — sin capa intermedia:**
+
+```python
+# La ruta llama directamente al assembler y al motor.
+variables = context_assembler.build(fase.expediente_id)
+resultado  = motor_reglas.evaluar('INICIAR', 'FASE', fase.tipo_fase_id, variables)
+if not resultado.permitido:
+    return jsonify({'norma': resultado.norma_compilada,
+                    'variables': resultado.variables_trigger}), 422
+```
+
+No existe una capa EventHandler separada. El patrón es siempre dos líneas.
+Si en el futuro se necesita lógica transversal (auditoría, métricas), se extrae
+a una función de utilidad sin nombre arquitectural.
 
 **Lo que es hardcodeado vs. configurable:**
 
 | Qué | Dónde vive |
 |---|---|
-| Llamada `event_handler.notify(...)` en la ruta | Código Python — inevitable |
+| Llamada al assembler + motor en la ruta | Código Python — dos líneas por evento |
 | Lógica de cómputo de cada variable | Código Python — ContextAssembler |
-| Qué eventos tienen reglas activas | BD — tabla `disparadores` |
 | Las reglas y sus condiciones | BD — `reglas_motor` / `condiciones_regla` |
 | Qué variables puede referenciar el Supervisor | BD — `catalogo_variables` (dropdown en UI) |
 
-Añadir una variable nueva siempre requiere dos pasos: (1) implementar su cómputo en
-el ContextAssembler, (2) registrarla en `catalogo_variables`. Solo entonces el
-Supervisor puede referenciarla en una regla.
+---
+
+## Esquema de tablas — decisiones cerradas (2026-04-16)
+
+Estas tres tablas constituyen el contrato de datos del motor. **Ningún campo es texto libre
+escrito por el creador de reglas.** Todo el texto visible (al usuario y al Supervisor) se
+compila en tiempo de presentación a partir de datos estructurados.
+
+### `reglas_motor`
+
+| Campo | Tipo | Descripción |
+|---|---|---|
+| `id` | INTEGER PK | |
+| `accion` | VARCHAR | `CREAR` \| `INICIAR` \| `FINALIZAR` \| `BORRAR` |
+| `sujeto` | VARCHAR | `SOLICITUD` \| `FASE` \| `TRAMITE` \| `TAREA` \| `EXPEDIENTE` |
+| `tipo_sujeto_id` | INTEGER nullable | ID en la tabla `tipos_*` del sujeto. NULL = aplica a todos los tipos |
+| `efecto` | VARCHAR | `BLOQUEAR` \| `ADVERTIR` |
+| `norma_id` | FK → `normas` | Norma legal de referencia |
+| `articulo` | VARCHAR | Artículo exacto: `"24.3"` \| `"DA4"` \| `"DF2"` |
+| `apartado` | VARCHAR nullable | Sub-apartado si procede |
+| `prioridad` | INTEGER | Orden de presentación cuando hay varias reglas activas del mismo trío |
+| `activa` | BOOLEAN | Desactivar en lugar de borrar — preserva trazabilidad |
+
+Sin campo `mensaje`, sin campo `descripcion`. El texto de presentación se compila desde los
+campos estructurados: la vista del Supervisor genera automáticamente algo del tipo:
+*"Esta regla bloquea INICIAR para FASE tipo 'Información Pública' cuando: ia_siglas en ['AAU','AAUS'] Y doc_dup_ausencia igual a false"*
+
+### `condiciones_regla`
+
+Una fila por variable del dict. Todas las condiciones de una regla se combinan con **AND
+implícito**. Para expresar OR se crean reglas separadas (Leyes de De Morgan).
+
+| Campo | Tipo | Descripción |
+|---|---|---|
+| `id` | INTEGER PK | |
+| `regla_id` | FK → `reglas_motor` CASCADE | Regla a la que pertenece |
+| `nombre_variable` | VARCHAR | Clave en el dict de variables |
+| `operador` | VARCHAR | Ver catálogo de operadores |
+| `valor` | JSON | Valor de referencia (string, número, lista para IN/BETWEEN) |
+| `orden` | INTEGER | Solo informativo — no cambia semántica |
+
+Sin `negacion` (redundante con los operadores contrarios), sin `operador_siguiente`
+(eliminado al adoptar AND-only), sin `tipo_criterio` (sustituido por `nombre_variable`).
+
+**Catálogo de operadores:**
+
+| Operador | Semántica |
+|---|---|
+| `EQ` / `NEQ` | igual / distinto |
+| `IN` / `NOT_IN` | en el conjunto / fuera del conjunto |
+| `IS_NULL` / `NOT_NULL` | ausente / presente |
+| `GT` / `GTE` | mayor que / mayor o igual que |
+| `LT` / `LTE` | menor que / menor o igual que |
+| `BETWEEN` / `NOT_BETWEEN` | en el rango [a,b] / fuera del rango |
+
+### `normas`
+
+| Campo | Tipo | Descripción |
+|---|---|---|
+| `id` | INTEGER PK | |
+| `codigo` | VARCHAR | Clave interna: `'DL26_2021'` \| `'LPACAP'` \| `'RD337_2014'` |
+| `titulo` | VARCHAR | Texto completo: `'Decreto-ley 26/2021, de 14 de diciembre'` |
+| `url_eli` | VARCHAR nullable | URL texto consolidado BOE/BOJA |
+
+---
+
+## Interfaz del Supervisor — principios de diseño
+
+El Supervisor no es un técnico informático. Trabaja con normas y expedientes, no con
+código ni esquemas de datos. El formulario de alta de reglas es la pieza más crítica
+del sistema desde el punto de vista de la usabilidad — si intimida, las reglas se
+definen mal o no se definen.
+
+### Compilación en tiempo real como mecanismo de confianza
+
+Cada campo que el Supervisor rellena actualiza inmediatamente una vista en lenguaje
+natural de la regla que está construyendo. No al guardar — mientras escribe, en
+tiempo real. Ejemplo:
+
+> *Selecciona: acción = INICIAR, sujeto = FASE, tipo = Información Pública*
+> → «Esta regla afecta a INICIAR para Fase de tipo Información Pública»
+>
+> *Añade condición: ia_siglas IN ['AAU', 'AAUS']*
+> → «...cuando el instrumento ambiental sea AAU o AAUS»
+>
+> *Añade condición: doc_declaracion_ausencia_dup EQ false*
+> → «...y el documento de declaración de ausencia de DUP no esté presente»
+>
+> *Selecciona efecto = BLOQUEAR, norma = Decreto-ley 26/2021, artículo = DA4*
+> → «**Bloquea** la acción. Referencia: Disposición Adicional 4ª del Decreto-ley 26/2021»
+
+El Supervisor en todo momento puede leer en lenguaje natural lo que está configurando.
+Si la frase no coincide con su intención, hay un error en la regla antes de guardarla.
+
+### Implicaciones para el diseño del formulario
+
+- **Nada de campos de texto libre** para definir la regla — todo son selects, dropdowns
+  y valores del catálogo. El lenguaje natural lo genera el sistema, no lo escribe el usuario.
+- **Variables como dropdown del catálogo** (`catalogo_variables`). Si la variable que
+  el Supervisor necesita no aparece, significa que falta código — no que pueda escribirla
+  a mano.
+- **Operadores en texto natural** en el selector: no "EQ" sino "igual a"; no "NOT_IN"
+  sino "fuera del conjunto".
+- **Artículo de la norma**: campo de texto libre controlado (corto, formato validado:
+  `"24.3"`, `"DA4"`, `"DF2"`). El único campo sin dropdown — no hay forma de catalogar
+  todos los artículos posibles de todas las normas.
+- **Vista previa persistente** en la parte derecha o inferior del formulario, siempre
+  visible, se actualiza en cada cambio sin necesidad de acción del usuario.
+
+### El formulario como barrera de calidad
+
+Una regla mal definida puede bloquear expedientes legítimos o permitir acciones
+indebidas. El formulario es la última oportunidad para detectarlo antes de que entre
+en producción. La vista en lenguaje natural es precisamente esa barrera: si el
+Supervisor puede leer la regla y entenderla, puede validar que es correcta.
 
 ---
 
@@ -145,6 +276,47 @@ Supervisor puede referenciarla en una regla.
 | `_TIPOS_REQUIEREN_DOC_PRODUCIDO` hardcodeado en motor | ContextAssembler lo computa según tipo de tarea |
 | Plazos/fechas inaccesibles al motor | ContextAssembler pasa `plazo_vencido`, `dias_transcurridos`, etc. |
 | `solicitud.estado` sin integridad referencial | Pasa como variable; su validez la gestiona BDDAT |
+
+---
+
+## Modificabilidad de fechas de inicio y fin — preguntas abiertas
+
+Las fechas `fecha_inicio` y `fecha_fin` de las entidades SFTT no son necesariamente
+invariantes absolutas. Una posible lectura es que son modificables siempre que sean
+coherentes con los elementos del interior del contenedor y con los hechos factuales
+invariantes del expediente.
+
+Si las modificaciones se propagan desde el interior hacia el exterior — modifico la
+tarea, luego el trámite que la contiene, luego la fase — y esas fechas son operacionales
+(cuándo ocurrió el trabajo) y no administrativas (cuándo se emitió un acto formal), la
+modificación podría ser legítima sin violar ninguna regla de negocio real.
+
+Esto abre una distinción que no está resuelta en el diseño:
+
+**¿Las fechas de SFTT son administrativas u operacionales?**
+Una fecha administrativa es un hecho jurídico: la fecha en que se notificó una
+resolución, en que se abrió un trámite de información pública. No se modifica sin
+consecuencias legales. Una fecha operacional es la fecha en que el tramitador registró
+que empezó o terminó un trabajo interno. Es más corregible.
+
+**El principio "todo permitido excepto lo expresamente prohibido" complica esto.**
+Bajo ese principio, un usuario podría crear e iniciar varios contenedores en paralelo
+como preparación o como estructura provisional del procedimiento, sin que nada
+administrativo haya ocurrido realmente. En ese caso, "DESINICIAR" no estaría
+deshaciendo un acto administrativo — estaría limpiando una estructura preparatoria.
+¿Tiene `fecha_inicio` el mismo peso jurídico en todos los contextos, o depende de
+si hay hechos factuales consolidados dentro del contenedor?
+
+**Preguntas sin responder:**
+- ¿Existe una distinción real entre fecha operacional y fecha administrativa en SFTT,
+  o toda fecha de inicio/fin tiene la misma naturaleza jurídica?
+- ¿Es la coherencia con el interior suficiente como condición, o hacen falta condiciones
+  adicionales (rastro externo, documentos emitidos, notificaciones enviadas)?
+- ¿DESINICIAR y DESFINALIZAR son eventos del motor con sus propias reglas, o son
+  operaciones de corrección de datos con su propio mecanismo fuera del motor?
+- Si el contenedor tiene `fecha_inicio` pero ninguno de sus hijos ha sido iniciado ni
+  tiene documentos, ¿es su `fecha_inicio` un hecho administrativo o solo un marcador
+  operacional corregible?
 
 ---
 
@@ -208,17 +380,17 @@ extra de proyecto que aún no existen.
 
 ## Orden de trabajo recomendado
 
-Los seis pasos acordados en sesión 2026-04-15, de más interior a más exterior:
+Seis pasos, de más interior a más exterior. Actualizado sesión 2026-04-16 (no hay EventHandler, esquema tablas cerrado):
 
-1. **MRA — confirmar conceptual + API** — este documento + `DISEÑO_CONTEXT_ASSEMBLER.md`
-2. **MRA — implementación real** — refactor de `motor_reglas.py` para eliminar imports BDDAT
-3. **EventHandler — diseño de disparadores** — qué eventos de Flask invocan al EventHandler y cómo se estructura la tabla `disparadores`
-4. **Variables y plazos — recatalogación** — revisar hallazgos normativos, decidir dónde vive cada dato (campo en Proyecto/Solicitud vs. calculado vs. derivado_documento) y completar `DISEÑO_CONTEXT_ASSEMBLER.md`
-5. **ContextAssembler — implementación** — con la API del motor (paso 1), los disparadores (paso 3) y el catálogo de variables (paso 4) definidos
-6. **Fuego real** — seed de 2-3 reglas en BD + prueba con expediente real
+1. ✅ **MRA — API + esquema tablas** — firma `evaluar(accion, sujeto, tipo_sujeto_id, variables)`, `EvaluacionResult` con `variables_trigger`/`norma_compilada`/`url_norma`, tablas `normas`/`reglas_motor`/`condiciones_regla`/`catalogo_variables` cerradas. Sin capa EventHandler — patrón dos líneas en ruta Flask.
+2. **MRA — implementación motor** — refactor `motor_reglas.py`: nueva firma, nuevo `EvaluacionResult`, eliminar imports BDDAT y criterios específicos (`EXISTE_FASE_CERRADA`, `EXISTE_TAREA_TIPO`, `_check_finalizar_tarea`)
+3. **Migración manual** — crear tablas `normas`, `reglas_motor`, `condiciones_regla`, `catalogo_variables` (esquema cerrado en §Esquema de tablas). Sin tabla `disparadores`.
+4. **Variables — recatalogación** — revisar `DISEÑO_CONTEXT_ASSEMBLER.md`, decidir primeras variables implementables para el primer sprint; seed de `catalogo_variables`; resolver modelo de BD de `Proyecto`/`Solicitud` para variables `dato` → issue #279
+5. **ContextAssembler — implementación** — `app/services/context_assembler.py` con las variables del paso 4; integrar `plazos.py`
+6. **Fuego real** — seed `normas` + 2-3 reglas + condiciones; wiring dos líneas en 2-3 rutas Flask; prueba con expediente real
 
 Issues afectados (no desbloquear hasta paso 5):
-- **#279** — campos extra Proyecto (tensión, potencia, tipo suelo): el modelo de BD se define en el paso 4
+- **#279** — campos extra Proyecto (tensión, potencia, tipo suelo): modelo de BD se define en paso 4
 - **#290** — INCORPORAR multi-doc: implementar tras paso 2 (refactor motor)
 - **#289** — Context Builders: bloqueado por #279 y datos reales
 
