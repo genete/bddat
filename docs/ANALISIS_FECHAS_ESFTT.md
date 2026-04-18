@@ -45,10 +45,13 @@ crea callejones sin salida ante errores en el interior.
 
 ### Reglas de implementación
 
-1. **DESFINALIZAR está siempre permitido** para todos los elementos SFTT. No pasa por el
-   motor — es una operación de corrección estructural. Sí pasa por `invariantes_esftt.py`
-   para verificar que no rompe coherencia con el exterior (p.ej. no se puede DESFINALIZAR
-   una Fase si su Solicitud contenedora está cerrada — primero hay que DESFINALIZAR la Solicitud).
+1. **DESFINALIZAR — regla confirmada solo para Solicitud** (`fecha_fin` no administrativa):
+   siempre permitido, no pasa por el motor. Sí pasa por `invariantes_esftt.py` para
+   verificar coherencia con el exterior (no se puede DESFINALIZAR si el contenedor
+   externo está cerrado — primero hay que reabrir el nivel superior).
+   **Para Fase, Trámite y Tarea: pendiente de confirmar por tipo.** Si `fecha_fin`
+   resulta administrativa en algún tipo, DESFINALIZAR puede requerir condiciones
+   adicionales o estar bloqueado. Se resolverá en el análisis tipo a tipo de cada nivel.
 
 2. **DESFINALIZAR Solicitud** resetea también `estado` a `EN_TRAMITE`. Son dos campos que
    se escriben en la misma operación atómica.
