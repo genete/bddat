@@ -47,11 +47,8 @@
                 <div class="tab-pane show active" id="tab-det-{{ tarea_data.obj.id }}">
                     <div class="row">
                         <div class="col-md-6">
-                            <p class="mb-1"><strong>Inicio:</strong>
-                                {{ tarea_data.obj.fecha_inicio.strftime('%d/%m/%Y') if tarea_data.obj.fecha_inicio else 'Pendiente' }}
-                            </p>
-                            <p class="mb-1"><strong>Fin:</strong>
-                                {{ tarea_data.obj.fecha_fin.strftime('%d/%m/%Y') if tarea_data.obj.fecha_fin else 'En curso' }}
+                            <p class="mb-1"><strong>Estado:</strong>
+                                {% if tarea_data.obj.ejecutada %}Ejecutada{% elif tarea_data.obj.en_curso %}En curso{% else %}Planificada{% endif %}
                             </p>
                         </div>
                         <div class="col-md-6">
@@ -129,16 +126,6 @@
             </div>
             <div class="modal-body">
                 <form class="form-editar-sftt">
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Fecha inicio</label>
-                        <input type="date" class="form-control" name="fecha_inicio"
-                               value="{{ tarea_data.obj.fecha_inicio.strftime('%Y-%m-%d') if tarea_data.obj.fecha_inicio else '' }}">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Fecha fin</label>
-                        <input type="date" class="form-control" name="fecha_fin"
-                               value="{{ tarea_data.obj.fecha_fin.strftime('%Y-%m-%d') if tarea_data.obj.fecha_fin else '' }}">
-                    </div>
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Notas</label>
                         <textarea class="form-control" name="notas" rows="3">{{ tarea_data.obj.notas or '' }}</textarea>

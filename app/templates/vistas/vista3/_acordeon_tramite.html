@@ -15,10 +15,6 @@
             <span class="fw-semibold">{{ tramite_data.nombre }}</span>
             <span class="ms-3 small">
                 Tareas: {{ tramite_data.tareas_completadas }}/{{ tramite_data.total_tareas }}
-                {% if tramite_data.obj.fecha_inicio %}
-                &middot; {{ tramite_data.obj.fecha_inicio.strftime('%d/%m/%Y') }}
-                {% if tramite_data.obj.fecha_fin %}→ {{ tramite_data.obj.fecha_fin.strftime('%d/%m/%Y') }}{% endif %}
-                {% endif %}
             </span>
         </button>
         <button class="btn btn-sm btn-outline-secondary btn-accion-header px-2"
@@ -35,11 +31,8 @@
             <div class="detalle-bloque mb-3">
                 <div class="row">
                     <div class="col-md-6">
-                        <p class="mb-1"><strong>Inicio:</strong>
-                            {{ tramite_data.obj.fecha_inicio.strftime('%d/%m/%Y') if tramite_data.obj.fecha_inicio else 'Pendiente' }}
-                        </p>
-                        <p class="mb-1"><strong>Fin:</strong>
-                            {{ tramite_data.obj.fecha_fin.strftime('%d/%m/%Y') if tramite_data.obj.fecha_fin else 'En curso' }}
+                        <p class="mb-1"><strong>Estado:</strong>
+                            {% if tramite_data.obj.finalizado %}Finalizado{% elif tramite_data.obj.en_curso %}En curso{% else %}Planificado{% endif %}
                         </p>
                     </div>
                     <div class="col-md-6">
@@ -69,16 +62,6 @@
             </div>
             <div class="modal-body">
                 <form class="form-editar-sftt">
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Fecha inicio</label>
-                        <input type="date" class="form-control" name="fecha_inicio"
-                               value="{{ tramite_data.obj.fecha_inicio.strftime('%Y-%m-%d') if tramite_data.obj.fecha_inicio else '' }}">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Fecha fin</label>
-                        <input type="date" class="form-control" name="fecha_fin"
-                               value="{{ tramite_data.obj.fecha_fin.strftime('%Y-%m-%d') if tramite_data.obj.fecha_fin else '' }}">
-                    </div>
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Observaciones</label>
                         <textarea class="form-control" name="observaciones" rows="3">{{ tramite_data.obj.observaciones or '' }}</textarea>
