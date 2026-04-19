@@ -1,126 +1,150 @@
-# Análisis de fechas ESFTT — fuente para `metadatos_fechas`
+# Análisis de fechas ESFTT — conclusión arquitectónica
 
-> **Fecha:** 2026-04-18
-> **Estado:** En construcción — sesión de análisis tipo a tipo.
-> **Destino:** seed y referencia de la tabla `metadatos_fechas` (diseño en `DISEÑO_FECHAS_PLAZOS.md §3.1`).
->
-> **Columnas:**
-> - **es_administrativa** — tiene valor legal para cómputo de plazos (art. 21 LPACAP y norma sectorial)
-> - **DESINICIAR/DESFINALIZAR** — si puede borrarse el valor una vez puesto
-> - **Coherencia** — validaciones de rango/contexto que el sistema debería aplicar
-> - **Estado modelo** — situación actual en el modelo Python y la BD
-> - **Estado UI** — situación actual en el interfaz
-> - **Decisiones/pendientes** — lo que queda por resolver o implementar
+> **Fecha inicio:** 2026-04-18 | **Fecha cierre:** 2026-04-19
+> **Estado:** CERRADO — conclusión arquitectónica alcanzada.
+> **Contexto:** sesión de análisis que comenzó tipo a tipo (fases) y llegó a una conclusión general sobre el modelo de fechas en todos los niveles ESFTT.
 
 ---
 
-## Principio transversal — Coherencia de fechas
+## CONCLUSIÓN ARQUITECTÓNICA
 
-**Las validaciones de coherencia de fechas son invariantes estructurales del sistema, no reglas del motor.**
-Se implementan en `invariantes_esftt.py` y se aplican uniformemente a todos los elementos SFTT,
-independientemente del tipo. No son imposiciones legales — son la integridad mínima del modelo.
+### Ningún elemento ESFTT almacena fechas
 
-| Invariante | Aplica a |
+Esta conclusión aplica a los cinco niveles: **Expediente, Solicitud, Fase, Trámite y Tarea**.
+
+**Fechas no administrativas** (`fecha_inicio`, `fecha_fin` de fases, trámites, tareas):
+Son marcas temporales de acciones del usuario en el sistema ("cuándo hice clic"). No tienen cliente real: no computan plazos legales, no tienen valor jurídico, no aportan nada que no esté ya en el cuaderno de bitácora. La mera existencia del registro con su `id` prueba que el usuario interactuó.
+
+**Fechas administrativas** (`fecha_solicitud`, fechas de notificación, firma, publicación…):
+Su único hogar válido es `Documento.fecha_administrativa` del documento que las porta. Leer una fecha administrativa es leer del Documento (fuente de verdad). Almacenar un duplicado en el modelo ESFTT crea un dato que puede divergir del documento real con consecuencias legales, y cuya consistencia no puede garantizarse.
+
+**El estado tampoco se almacena.** Es deducible en tiempo de consulta a partir de las reglas del motor (tablas de reglas) y de los documentos existentes. No es un campo.
+
+### Trazabilidad por FK, no por duplicación
+
+Los documentos son agnósticos: no saben quién los usa. La trazabilidad (quién los produce, a qué elemento pertenecen) vive en FKs en las tablas relacionadas. El FK no almacena el dato — señala dónde está la fuente de verdad.
+
+**Implicación para `Solicitud`:** debe existir un FK `documento_solicitud_id` que apunta al documento de solicitud en el pool. Este FK permite al motor y al usuario localizar la fuente de verdad de los dos datos capitales de la solicitud:
+- **cuándo** → `Documento.fecha_administrativa` del documento referenciado.
+- **qué** → tipo deducible por análisis del PDF (ver issue #304).
+
+`documento_solicitud_id` **no existe actualmente en el modelo** — debe añadirse.
+
+### Cuaderno de bitácora
+
+Todo episodio de interacción usuario → sistema se compila en el cuaderno de bitácora: evento del clic, contexto ensamblado, respuesta del motor, resultado. Es el único registro inmutable de "qué pasó y cuándo". Admin y supervisor pueden auditar y rebobinar desde ahí. La regla de escape ante cualquier incidencia (regla del motor incorrecta, validación hardcodeada que falló) siempre está en la bitácora.
+
+El motor **no** se apoya en la bitácora. El motor es agnóstico y consulta exclusivamente las tablas de reglas.
+
+### Cómo se capturan las fechas administrativas
+
+Las fechas administrativas no se introducen manualmente en campos de modelos ESFTT. El flujo:
+
+1. El documento se sube al pool (requisito previo al acto que lo origina).
+2. BDDAT analiza el documento: metadata del PDF, firma digital (issues existentes), OCR si hace falta.
+3. El sistema **propone** la fecha extraída para validación del usuario — nunca asignación automática sin confirmación.
+4. El usuario valida. La fecha queda en `Documento.fecha_administrativa`.
+5. Solo en caso extremo el usuario introduce la fecha manualmente en el Documento. La bitácora lo registra.
+
+Este flujo aplica también al **wizard de creación de expediente**: el documento de solicitud debe estar en el pool antes de crear el expediente. La fecha de solicitud se extrae del documento, no de un campo `Solicitud.fecha_solicitud`. El documento de proyecto puede estar ausente (el administrado lo omitió) — eso no bloquea la apertura del expediente sino que genera un trámite de reclamación; el tipo de solicitud se deduce igualmente del documento de solicitud.
+
+---
+
+## MAPA DE FECHAS ADMINISTRATIVAS POR FASE
+
+El análisis tipo a tipo de la sesión reveló qué documento porta la fecha administrativa relevante en cada fase. Este mapa es referencia para el seed de reglas del motor y para la UI (dónde apuntar al usuario para ver la fecha clave de cada fase).
+
+| Fase | Fecha administrativa | Documento que la porta | Tarea productora |
+|---|---|---|---|
+| ANALISIS_SOLICITUD | — | No aplica (contenedor puro) | — |
+| CONSULTA_MINISTERIO | Notificación al Ministerio | Doc. de notificación | NOTIFICAR en `SOLICITUD_INFORME` |
+| COMPATIBILIDAD_AMBIENTAL | Notificación a Medio Ambiente | Doc. de notificación | NOTIFICAR en `SOLICITUD_COMPATIBILIDAD` |
+| CONSULTAS | Notificación a cada organismo (30/15 días) | Doc. de separata/traslado | NOTIFICAR en `CONSULTA_SEPARATA` y traslados |
+| INFORMACION_PUBLICA | Fecha de publicación en cada medio | Doc. publicado/incorporado | PUBLICAR o INCORPORAR por trámite |
+| FIGURA_AMBIENTAL_EXTERNA | Notificación al titular | Doc. de notificación al titular | NOTIFICAR en `SOLICITUD_FIGURA` |
+| AAU_AAUS_INTEGRADA | Notificación al órgano ambiental | Doc. de notificación | NOTIFICAR en `REMISION_MEDIO_AMBIENTE` |
+| RESOLUCION | Firma, notificación y publicación | Doc. de resolución / notif. / publicación | FIRMAR, NOTIFICAR, PUBLICAR (un doc. por trámite) |
+
+**Nota RESOLUCION:** los tres trámites interiores (`ELABORACION`, `NOTIFICACION`, `PUBLICACION`) portan fechas con efectos jurídicos distintos (inicio de plazo de recurso, publicidad registral, etc.). Se analizarán en detalle cuando se aborde el nivel Trámite.
+
+---
+
+## REFACTORIZACIÓN PENDIENTE
+
+### Campos a eliminar de los modelos
+
+| Modelo | Campo | Motivo |
+|---|---|---|
+| `Solicitud` | `fecha_solicitud` | Vive en `Documento.fecha_administrativa` del doc. de solicitud |
+| `Solicitud` | `fecha_fin` | Marcador operacional sin valor; se registra en bitácora |
+| `Solicitud` | `estado` | Deducible por motor; no almacenable |
+| `Fase` | `fecha_inicio` | Marcador operacional; bitácora |
+| `Fase` | `fecha_fin` | Marcador operacional; bitácora |
+| `Tramite` | `fecha_inicio` | Ídem |
+| `Tramite` | `fecha_fin` | Ídem |
+| `Tarea` | `fecha_inicio` | Ídem |
+| `Tarea` | `fecha_fin` | Ídem |
+
+### Campos a añadir
+
+| Modelo | Campo | Tipo | Motivo |
+|---|---|---|---|
+| `Solicitud` | `documento_solicitud_id` | FK → `documentos.id` nullable | Ancla de trazabilidad al documento fundacional |
+
+### Lógica a adaptar
+
+- **Wizard de creación de expediente**: requiere que el documento de solicitud esté en el pool antes de crear el expediente. Integrar helper de extracción de fecha y propuesta de tipo (issues #304, #305).
+- **Motor de reglas**: cualquier lectura de `solicitud.fecha_solicitud` pasa a leer `Documento.fecha_administrativa` del documento referenciado por `documento_solicitud_id`.
+- **Cómputo de plazos** (art. 21 LPACAP): ídem.
+- **UI**: eliminar campos de fecha y estado de las vistas de Solicitud, Fase, Trámite y Tarea. Mostrar únicamente fechas leídas desde los documentos correspondientes.
+- **`invariantes_esftt.py`**: las invariantes de coherencia de fechas quedan obsoletas al no existir los campos. Revisar qué lógica permanece válida.
+
+### Issues abiertos en esta sesión
+
+| Issue | Título | Estado |
+|---|---|---|
+| #303 | Acción RE_INICIAR | **CERRADO** — innecesario al no existir los campos |
+| #304 | Script detección tipo de solicitud por PDF | Abierto |
+| #305 | Script detección tipo de expediente por proyecto | Abierto |
+| #306 | Helper cálculo de tasa + extracción presupuesto | Abierto |
+
+---
+
+## HISTÓRICO DE ANÁLISIS
+
+> El análisis detallado tipo a tipo que sigue fue el camino que llevó a la conclusión arquitectónica anterior. Se mantiene como contexto histórico de la sesión. Las tablas de atributos por campo (es_administrativa, DESINICIAR, coherencia, estado modelo, estado UI) corresponden a campos que, según la conclusión alcanzada, **no deben existir en el modelo**.
+
+---
+
+### Principio transversal original — Coherencia de fechas
+
+*(Supersedido por la conclusión arquitectónica. Los invariantes de coherencia de fechas quedan sin efecto al eliminarse los campos.)*
+
+### Principio transversal original — Interior de solo lectura y DESFINALIZAR
+
+*(Supersedido. La lógica de "contenedor cerrado bloquea su interior" pasa a ser responsabilidad del motor evaluando el estado deducido, sin leer campos fecha_fin.)*
+
+---
+
+### SOLICITUD — análisis histórico
+
+#### `fecha_solicitud`
+Conclusión del análisis: fecha administrativa (art. 16 LPACAP). Inicio del cómputo del plazo de resolución (art. 21). Clasificada como `es_administrativa = Sí` para todos los tipos. **Conclusión arquitectónica posterior:** no debe existir como campo en `Solicitud` — vive en `Documento.fecha_administrativa` del documento de solicitud vinculado por `documento_solicitud_id`.
+
+Clasificación por tipo (referencia para seed de reglas):
+
+| Tipos | Nota |
 |---|---|
-| `fecha_fin ≥ fecha_inicio` (o `fecha_solicitud`) | Todos los elementos SFTT |
-| `fecha_inicio` del hijo ≥ `fecha_inicio` del padre | Fase/Trámite/Tarea respecto a su contenedor |
-| `fecha_fin` del hijo ≤ `fecha_fin` del padre | Solo cuando el padre esté cerrado |
+| AAP, AAC, DUP, AAE_PROVISIONAL, AAE_DEFINITIVA, AAT, RAIPEE_PREVIA, RAIPEE_DEFINITIVA, RADNE, CIERRE, DESISTIMIENTO, RENUNCIA, AMPLIACION_PLAZO, RECURSO, AAP_AAC | A instancia de parte, entrada en Registro. |
+| CORRECCION_ERRORES | Puede ser de oficio o a instancia. Decisión de simplificación: siempre administrativa. |
+| INTERESADO | Cierre mediante fase finalizadora `RECONOCIMIENTO_INTERESADO`. No requiere campo nuevo en Solicitud. |
+| OTRO | Fase finalizadora genérica; el tramitador elige el documento de cierre. |
 
-La columna **Coherencia** de las tablas siguientes recoge solo las particularidades por tipo,
-asumiendo que los invariantes anteriores se comprueban siempre.
-
----
-
-## Principio transversal — Interior de solo lectura y DESFINALIZAR
-
-**Un contenedor cerrado (`fecha_fin IS NOT NULL`) convierte su interior en solo lectura.**
-DESFINALIZAR (borrar `fecha_fin`) es el mecanismo de corrección — sin él el sistema
-crea callejones sin salida ante errores en el interior.
-
-| Contenedor cerrado | Interior bloqueado (solo lectura) |
-|---|---|
-| Solicitud (`fecha_fin IS NOT NULL`) | Fases, Trámites, Tareas |
-| Fase (`fecha_fin IS NOT NULL`) | Trámites, Tareas |
-| Trámite (`fecha_fin IS NOT NULL`) | Tareas |
-
-### Reglas de implementación
-
-1. **DESFINALIZAR — regla confirmada solo para Solicitud** (`fecha_fin` no administrativa):
-   siempre permitido, no pasa por el motor. Sí pasa por `invariantes_esftt.py` para
-   verificar coherencia con el exterior (no se puede DESFINALIZAR si el contenedor
-   externo está cerrado — primero hay que reabrir el nivel superior).
-   **Para Fase, Trámite y Tarea: pendiente de confirmar por tipo.** Si `fecha_fin`
-   resulta administrativa en algún tipo, DESFINALIZAR puede requerir condiciones
-   adicionales o estar bloqueado. Se resolverá en el análisis tipo a tipo de cada nivel.
-
-2. **DESFINALIZAR Solicitud** resetea también `estado` a `EN_TRAMITE`. Son dos campos que
-   se escriben en la misma operación atómica.
-
-3. **Invariante en `invariantes_esftt.py`**: antes de cualquier operación sobre un hijo
-   (CREAR, INICIAR, FINALIZAR, BORRAR, editar), comprobar que el contenedor está abierto.
-   Si está cerrado → bloquear con mensaje que identifica el contenedor a reabrir.
-
-4. **UX — oferta de reapertura**: la vista puede ofrecer el atajo "¿Reabrir [contenedor]
-   primero?" cuando el invariante bloquea. El motor solo bloquea; la vista decide si ofrece
-   el atajo. No es responsabilidad del motor ni de `invariantes_esftt.py`.
-
-5. **DESFINALIZAR en cascada**: si el elemento a reabrir está dentro de un contenedor
-   cerrado, se bloquea hasta que el usuario reabra primero el contenedor externo.
-   El sistema no reabre en cascada automáticamente — el usuario confirma cada nivel.
-   La oferta de reapertura puede mostrar la cadena completa para orientar al usuario.
+#### `fecha_fin`
+Conclusión del análisis: no administrativa (marcador operacional). La fecha administrativa real vive en el documento de la fase finalizadora. **Conclusión arquitectónica posterior:** no debe existir como campo.
 
 ---
 
-## SOLICITUD
+### FASE — análisis histórico
 
-### `fecha_solicitud`
-
-| Atributo | Valor | Notas |
-|---|---|---|
-| **es_administrativa** | Sí — todos los tipos | Fecha de entrada en Registro (art. 16 LPACAP). Inicio del cómputo del plazo de resolución (art. 21). |
-| **DESINICIAR (→ NULL)** | No permitido | Borrarla equivale a borrar la solicitud. No tiene semántica de DESINICIAR. |
-| **Coherencia** | ⬜ No comprobada | No se valida que sea ≤ hoy, ni coherencia con fechas de hijos. |
-| **Estado modelo** | ✅ Correcto | `NOT NULL`, tipo `Date`. |
-| **Estado UI — creación** | ✅ Correcto | El wizard no permite crear solicitud sin esta fecha. |
-| **Estado UI — edición** | ⚠️ Parcial | Se puede editar (cambiar por otra fecha). Error al intentar poner NULL: se captura pero con mensaje no humano. No se valida coherencia de la nueva fecha. |
-| **Decisiones/pendientes** | Mejorar mensaje de error al intentar NULL. Añadir validación de coherencia (¿fecha ≤ hoy? ¿fecha ≥ fecha_inicio de hijos?). |
-
-#### Clasificación por tipo
-
-| Tipos | `es_administrativa` | Decisión |
-|---|---|---|
-| AAP, AAC, DUP, AAE_PROVISIONAL, AAE_DEFINITIVA, AAT, RAIPEE_PREVIA, RAIPEE_DEFINITIVA, RADNE, CIERRE, DESISTIMIENTO, RENUNCIA, AMPLIACION_PLAZO, RECURSO, AAP_AAC | **Sí** | A instancia de parte, con entrada en Registro. Sin duda. |
-| CORRECCION_ERRORES | **Sí** | Puede ser de oficio (art. 109 LPACAP) o a instancia. **Decisión de simplificación:** siempre administrativa. El tramitador introduce la fecha del documento de registro o la fecha de hoy si es de oficio. |
-| INTERESADO | **Sí** | A instancia de parte tiene entrada en Registro. Cuando la Administración emplaza de oficio (art. 8 LPACAP) se introduce la fecha del oficio. **Decisión de simplificación:** siempre administrativa, igual que el resto. El cierre de la solicitud se gestiona mediante un nuevo tipo de **fase finalizadora** (`RECONOCIMIENTO_INTERESADO`) que porta el resultado y el documento (oficio de reconocimiento o resolución denegatoria). No se añade ningún campo nuevo a Solicitud. La regla del motor para FINALIZAR esta solicitud sería: `EXISTS fase RECONOCIMIENTO_INTERESADO con fecha_fin IS NOT NULL`. |
-| OTRO | **Sí** | Mismo criterio de simplificación. La fase finalizadora es de tipo genérico; el tramitador elige el documento de cierre libremente. |
-
----
-
-### `fecha_fin`
-
-| Atributo | Valor | Notas |
-|---|---|---|
-| **es_administrativa** | **No** | Marcador operacional — "cierre voluntario de la tramitación por el usuario". Sin valor jurídico propio. La fecha administrativa real vive en el Documento de la fase finalizadora (RESOLUCION, RECONOCIMIENTO_INTERESADO…). Fuente: `DISEÑO_FECHAS_PLAZOS.md §3.0`. |
-| **DESFINALIZAR (→ NULL)** | **Permitido** | Mecanismo de corrección necesario. También resetea `estado` → `EN_TRAMITE` en la misma operación atómica. Ver principio transversal de solo lectura. |
-| **Coherencia** | Invariante estructural | `fecha_fin ≥ fecha_solicitud`. Comprobado en `invariantes_esftt.py`. |
-| **Estado modelo** | ✅ Correcto | `Date nullable`. Regla en docstring: "debería tener fecha_fin si estado ≠ EN_TRAMITE" (débil — correcta). |
-| **Estado UI** | ⬜ Pendiente de revisar | Verificar: ¿se puede poner fecha_fin sin que exista fase finalizadora cerrada? ¿Se bloquea la edición del interior cuando fecha_fin IS NOT NULL? |
-| **Decisiones/pendientes** | Ver issue #302 (fase finalizadora). Implementar bloqueo de interior cuando solicitud cerrada. Implementar oferta de reapertura en UI. |
-
----
-
-## FASE
-
-> Pendiente — sesión siguiente.
-
----
-
-## TRÁMITE
-
-> Pendiente — sesión siguiente.
-
----
-
-## TAREA
-
-> Pendiente — sesión siguiente.
+*(Todas las fases analizadas. Conclusión uniforme: fecha_inicio y fecha_fin son marcadores operacionales sin valor de dominio. No deben existir como campos. Ver mapa de fechas administrativas por fase en la sección anterior.)*
