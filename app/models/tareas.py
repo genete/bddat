@@ -51,9 +51,10 @@ class Tarea(db.Model):
     CAMPO NOTAS:
         - Campo libre para información adicional
         - Puede contener datos específicos según tipo:
-          * Plazos (ESPERARPLAZO)
           * Referencia publicación (PUBLICAR)
           * Remitente (INCORPORAR)
+        - ESPERARPLAZO: el plazo NO vive aquí — viene de `catalogo_plazos` por tipo de trámite.
+          La fecha de inicio del cómputo es `documento_usado.fecha_administrativa`.
     
     SEMÁNTICA SEGÚN TIPO:
         - INCORPORAR: usado=NULL, producido=obligatorio
@@ -62,7 +63,7 @@ class Tarea(db.Model):
         - FIRMAR: usado=obligatorio, producido=obligatorio
         - NOTIFICAR: usado=obligatorio, producido=obligatorio
         - PUBLICAR: usado=obligatorio, producido=obligatorio
-        - ESPERARPLAZO: usado=NULL, producido=NULL
+        - ESPERARPLAZO: usado=obligatorio (doc. de notificación — fuente de fecha inicio cómputo), producido=NULL
     
     RELACIONES:
         - tramite → TRAMITES.id (FK CASCADE, trámite contenedor)
@@ -139,7 +140,7 @@ class Tarea(db.Model):
     notas = db.Column(
         db.String(2000),
         nullable=True,
-        comment='Observaciones o información adicional (plazos, referencia, remitente, etc.)'
+        comment='Observaciones o información adicional (referencia publicación, remitente, etc.). NO usar para plazos — viven en catalogo_plazos.'
     )
     
     # Relaciones
