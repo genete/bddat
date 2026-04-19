@@ -140,19 +140,16 @@ def _get_solicitudes_con_stats(expediente_id):
         total_fases = Fase.query.filter_by(solicitud_id=sol.id).count()
         fases_completadas = Fase.query.filter_by(
             solicitud_id=sol.id
-        ).filter(Fase.fecha_fin.isnot(None)).count()
+        ).filter(Fase.documento_resultado_id.isnot(None)).count()
 
         # Contar trámites a través de fases
         total_tramites = db.session.query(func.count(Tramite.id)).join(
             Fase, Tramite.fase_id == Fase.id
         ).filter(Fase.solicitud_id == sol.id).scalar() or 0
 
-        tramites_completados = db.session.query(func.count(Tramite.id)).join(
-            Fase, Tramite.fase_id == Fase.id
-        ).filter(
-            Fase.solicitud_id == sol.id,
-            Tramite.fecha_fin.isnot(None)
-        ).scalar() or 0
+        tramites_completados = sum(
+            1 for f in sol.fases for t in f.tramites if t.finalizado
+        )
 
         tipos = sol.tipo_solicitud.siglas if sol.tipo_solicitud else 'SIN TIPO'
 
@@ -175,9 +172,7 @@ def _get_fases_con_stats(solicitud_id):
     result = []
     for fase in fases:
         total_tramites = Tramite.query.filter_by(fase_id=fase.id).count()
-        tramites_completados = Tramite.query.filter_by(
-            fase_id=fase.id
-        ).filter(Tramite.fecha_fin.isnot(None)).count()
+        tramites_completados = sum(1 for t in fase.tramites if t.finalizado)
 
         result.append({
             'obj': fase,
@@ -185,7 +180,7 @@ def _get_fases_con_stats(solicitud_id):
             'codigo': fase.tipo_fase.codigo if fase.tipo_fase else '',
             'tramites_completados': tramites_completados,
             'total_tramites': total_tramites,
-            'estado': 'Finalizada' if fase.fecha_fin else 'En curso' if fase.fecha_inicio else 'Pendiente'
+            'estado': 'Finalizada' if fase.finalizada else 'En curso' if fase.en_curso else 'Pendiente'
         })
 
     return result
@@ -200,7 +195,7 @@ def _get_tramites_con_stats(fase_id):
         total_tareas = Tarea.query.filter_by(tramite_id=tramite.id).count()
         tareas_completadas = Tarea.query.filter_by(
             tramite_id=tramite.id
-        ).filter(Tarea.fecha_fin.isnot(None)).count()
+        ).filter(Tarea.documento_producido_id.isnot(None)).count()
 
         result.append({
             'obj': tramite,
@@ -208,7 +203,7 @@ def _get_tramites_con_stats(fase_id):
             'codigo': tramite.tipo_tramite.codigo if tramite.tipo_tramite else '',
             'tareas_completadas': tareas_completadas,
             'total_tareas': total_tareas,
-            'estado': 'Finalizado' if tramite.fecha_fin else 'En curso' if tramite.fecha_inicio else 'Pendiente'
+            'estado': 'Finalizado' if tramite.finalizado else 'En curso' if tramite.en_curso else 'Pendiente'
         })
 
     return result
@@ -232,7 +227,7 @@ def _get_tareas_con_stats(tramite_id):
             'nombre': tarea.tipo_tarea.nombre if tarea.tipo_tarea else f'Tarea {tarea.id}',
             'codigo': tarea.tipo_tarea.codigo if tarea.tipo_tarea else '',
             'documentos_count': docs_count,
-            'estado': 'Finalizada' if tarea.fecha_fin else 'En curso' if tarea.fecha_inicio else 'Pendiente'
+            'estado': 'Finalizada' if tarea.ejecutada else 'En curso' if tarea.en_curso else 'Pendiente'
         })
 
     return result
@@ -273,7 +268,6 @@ def editar_solicitud(sol_id):
         return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
 
     try:
-        nueva_fecha_solicitud = date.fromisoformat(request.form['fecha_solicitud']) if request.form.get('fecha_solicitud') else None
         nueva_fecha_fin = date.fromisoformat(request.form['fecha_fin']) if request.form.get('fecha_fin') else None
 
         # Hook FINALIZAR (fecha_fin: None → valor)
@@ -286,7 +280,6 @@ def editar_solicitud(sol_id):
             if not res_eval.permitido:
                 return jsonify({'ok': False, 'error': res_eval.norma_compilada, 'norma': res_eval.url_norma}), 422
 
-        sol.fecha_solicitud = nueva_fecha_solicitud
         sol.fecha_fin = nueva_fecha_fin
         if request.form.get('estado'):
             sol.estado = request.form['estado']
@@ -476,10 +469,9 @@ def crear_solicitud(exp_id):
         return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
 
     tipo_solicitud_id = request.form.get('tipo_solicitud_id', type=int)
-    fecha_str = request.form.get('fecha_solicitud')
     entidad_id = request.form.get('entidad_id', type=int) or expediente.titular_id
-    if not tipo_solicitud_id or not fecha_str:
-        return jsonify({'ok': False, 'error': 'Tipo de solicitud y fecha son obligatorios'}), 400
+    if not tipo_solicitud_id:
+        return jsonify({'ok': False, 'error': 'Tipo de solicitud es obligatorio'}), 400
     if not entidad_id:
         return jsonify({'ok': False, 'error': 'El expediente no tiene titular asignado. Asígnelo antes de crear solicitudes.'}), 422
 
@@ -487,14 +479,9 @@ def crear_solicitud(exp_id):
     if not tipo:
         return jsonify({'ok': False, 'error': 'Tipo de solicitud no encontrado'}), 404
 
-    try:
-        fecha = date.fromisoformat(fecha_str)
-    except ValueError:
-        return jsonify({'ok': False, 'error': 'Fecha inválida'}), 400
-
     sol = Solicitud(expediente_id=exp_id, entidad_id=entidad_id,
                     tipo_solicitud_id=tipo_solicitud_id,
-                    fecha_solicitud=fecha, estado='EN_TRAMITE')
+                    documento_solicitud_id=None, estado='EN_TRAMITE')
     db.session.add(sol)
     db.session.commit()
 
@@ -694,14 +681,13 @@ def iniciar_solicitud(sol_id):
     resultado = verificar_acceso_expediente(sol.expediente, 'editar')
     if resultado:
         return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
-    if sol.fecha_solicitud is not None:
-        return jsonify({'ok': False, 'error': 'La solicitud ya tiene fecha de inicio'}), 422
+    if sol.documento_solicitud_id is not None:
+        return jsonify({'ok': False, 'error': 'La solicitud ya tiene documento de solicitud asignado'}), 422
 
     res_eval = evaluar('INICIAR', 'SOLICITUD', sol.tipo_solicitud_id, {})
     if not res_eval.permitido:
         return jsonify({'ok': False, 'error': res_eval.norma_compilada, 'norma': res_eval.url_norma}), 422
 
-    sol.fecha_solicitud = date.today()
     db.session.commit()
     return jsonify({'ok': True, 'nivel': res_eval.nivel, 'mensaje': res_eval.norma_compilada})
 

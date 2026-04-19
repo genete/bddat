@@ -231,7 +231,6 @@ def paso3():
 
     if request.method == 'POST':
         entidad_id = (request.form.get('entidad_id') or '').strip()
-        fecha_solicitud_str = (request.form.get('fecha_solicitud') or '').strip()
         observaciones = (request.form.get('observaciones') or '').strip() or None
         tipo_solicitud_id_raw = (request.form.get('tipo_solicitud_id') or '').strip()
 
@@ -268,12 +267,6 @@ def paso3():
                 return redirect(url_for('wizard_expediente.paso3'))
         else:
             solicitante = entidad
-
-        try:
-            fecha_solicitud = date.fromisoformat(fecha_solicitud_str)
-        except ValueError:
-            flash('Fecha de solicitud inválida (formato esperado: YYYY-MM-DD).', 'danger')
-            return redirect(url_for('wizard_expediente.paso3'))
 
         if not tipo_solicitud_id_raw:
             flash('Debe seleccionar un tipo de solicitud.', 'danger')
@@ -341,7 +334,7 @@ def paso3():
                 expediente_id=expediente.id,
                 entidad_id=solicitante.id,
                 tipo_solicitud_id=tipo_solicitud_id,
-                fecha_solicitud=fecha_solicitud,
+                documento_solicitud_id=None,
                 estado='EN_TRAMITE',
                 observaciones=observaciones,
             )

@@ -188,7 +188,7 @@ def listar_seguimiento():
             'num_at':                expediente.numero_at if expediente else None,
             'at_count':              at_counts.get(expediente.id, 1) if expediente else 1,
             'tipo_solicitud':        sol.tipo_solicitud.siglas if sol.tipo_solicitud else '—',
-            'fecha_solicitud':       sol.fecha_solicitud.isoformat() if sol.fecha_solicitud else None,
+            'fecha_solicitud':       sol.documento_solicitud.fecha_administrativa.isoformat() if sol.documento_solicitud and sol.documento_solicitud.fecha_administrativa else None,
             'estado_solicitud':      sol.estado,
             'color_solicitud':       color_solicitud,
             'titular_nombre':        titular.nombre_completo if titular else '—',

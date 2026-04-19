@@ -253,18 +253,18 @@ def _estado_indicador_fase(fase):
 
 def _estado_indicador_tramite(tramite):
     """Mapea el estado de un Tramite al indicador visual del partial."""
-    if tramite.fecha_fin is not None:
+    if tramite.finalizado:
         return 'finalizada'
-    if tramite.fecha_inicio is not None:
+    if tramite.en_curso:
         return 'en_curso'
     return 'planificada'
 
 
 def _estado_indicador_tarea(tarea):
     """Mapea el estado de una Tarea al indicador visual del partial."""
-    if tarea.fecha_fin is not None:
+    if tarea.ejecutada:
         return 'finalizada'
-    if tarea.fecha_inicio is not None:
+    if tarea.en_curso:
         return 'en_curso'
     return 'planificada'
 
@@ -290,9 +290,10 @@ def tramitacion_bc(exp_id):
     hijos = []
     for s in solicitudes_raw:
         tipos_str = s.tipo_solicitud.siglas if s.tipo_solicitud else f'Solicitud #{s.id}'
+        fecha_sol = s.documento_solicitud.fecha_administrativa if s.documento_solicitud else None
         hijos.append({
             'nombre':        tipos_str,
-            'fecha_inicio':  _fmt_fecha(s.fecha_solicitud),
+            'fecha_inicio':  _fmt_fecha(fecha_sol),
             'fecha_fin':     _fmt_fecha(s.fecha_fin),
             'estado':        _estado_indicador_solicitud(s),
             'estado_texto':  s.estado,

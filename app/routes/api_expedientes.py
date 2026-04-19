@@ -414,7 +414,7 @@ def get_jerarquia_expediente(expediente_id):
     # =====================================================
     solicitudes = Solicitud.query.filter_by(
         expediente_id=expediente_id
-    ).order_by(Solicitud.fecha_solicitud).all()
+    ).order_by(Solicitud.id).all()
 
     solicitudes_data = []
     for solicitud in solicitudes:
@@ -423,7 +423,7 @@ def get_jerarquia_expediente(expediente_id):
         # Obtener fases de la solicitud
         fases = Fase.query.filter_by(
             solicitud_id=solicitud.id
-        ).order_by(Fase.fecha_inicio).all()
+        ).order_by(Fase.id).all()
 
         fases_data = []
         for fase in fases:
@@ -435,7 +435,7 @@ def get_jerarquia_expediente(expediente_id):
                 'nombre':        tipo_fase.nombre if tipo_fase else 'Sin nombre',
                 'fecha_inicio':  fase.fecha_inicio.isoformat() if fase.fecha_inicio else None,
                 'fecha_fin':     fase.fecha_fin.isoformat() if fase.fecha_fin else None,
-                'estado':        'completada' if fase.fecha_fin else 'en-curso',
+                'estado':        'completada' if fase.finalizada else 'en-curso',
                 'observaciones': fase.observaciones
             }
             fases_data.append(fase_data)
@@ -445,7 +445,7 @@ def get_jerarquia_expediente(expediente_id):
             'id':             solicitud.id,
             'codigo':         f'SOL-{solicitud.id}',
             'tipos':          tipos_str,
-            'fecha_solicitud': solicitud.fecha_solicitud.isoformat() if solicitud.fecha_solicitud else None,
+            'fecha_solicitud': solicitud.documento_solicitud.fecha_administrativa.isoformat() if solicitud.documento_solicitud and solicitud.documento_solicitud.fecha_administrativa else None,
             'fecha_fin':      solicitud.fecha_fin.isoformat() if solicitud.fecha_fin else None,
             'estado':         solicitud.estado,
             'num_fases':      len(fases_data),
