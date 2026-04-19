@@ -113,19 +113,27 @@ class Tramite(db.Model):
         """Representación legible para interfaz."""
         return f'Trámite {self.id} - {self.tipo_tramite.nombre if self.tipo_tramite else "Sin tipo"}'
 
-    # --- Estados deducibles (vocabulario CREAR/INICIAR/FINALIZAR/BORRAR) ---
-
-    @property
-    def planificado(self):
-        """True si el trámite existe pero aún no se ha iniciado (fecha_inicio IS NULL)."""
-        return self.fecha_inicio is None
-
-    @property
-    def en_curso(self):
-        """True si el trámite ha sido iniciado pero no finalizado."""
-        return self.fecha_inicio is not None and self.fecha_fin is None
+    # --- Estados deducibles ---
+    # La completitud se deduce de documentos en las tareas hijas, no de campos de fecha.
 
     @property
     def finalizado(self):
-        """True si el trámite ha sido finalizado (fecha_fin IS NOT NULL)."""
-        return self.fecha_fin is not None
+        """True si todas las tareas del trámite que requieren documento producido lo tienen.
+        Devuelve True si no hay tareas (trámite vacío — estado transitorio)."""
+        _requieren = {'INCORPORAR', 'ANALISIS', 'REDACTAR', 'FIRMAR', 'NOTIFICAR', 'PUBLICAR'}
+        tareas_pendientes = [
+            t for t in self.tareas
+            if t.tipo_tarea and t.tipo_tarea.codigo in _requieren
+            and t.documento_producido_id is None
+        ]
+        return len(tareas_pendientes) == 0
+
+    @property
+    def planificado(self):
+        """True si el trámite no tiene ninguna tarea aún."""
+        return len(self.tareas) == 0
+
+    @property
+    def en_curso(self):
+        """True si el trámite tiene tareas pero no está finalizado."""
+        return not self.planificado and not self.finalizado

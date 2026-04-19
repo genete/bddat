@@ -78,6 +78,7 @@ class Solicitud(db.Model):
         db.Index('idx_solicitudes_entidad', 'entidad_id'),
         db.Index('idx_solicitudes_fecha', 'fecha_solicitud'),
         db.Index('idx_solicitudes_estado', 'estado'),
+        db.Index('idx_solicitudes_doc_solicitud', 'documento_solicitud_id'),
         {'schema': 'public'}
     )
     
@@ -115,7 +116,14 @@ class Solicitud(db.Model):
         nullable=True,
         comment='FK a SOLICITUDES. Para DESISTIMIENTO/RENUNCIA, solicitud que se desiste'
     )
-    
+
+    documento_solicitud_id = db.Column(
+        db.Integer,
+        db.ForeignKey('public.documentos.id', name='fk_solicitudes_documento_solicitud'),
+        nullable=True,
+        comment='FK a DOCUMENTOS. Ancla de trazabilidad al doc de solicitud (fecha admin en Documento.fecha_administrativa)'
+    )
+
     fecha_solicitud = db.Column(
         db.Date,
         nullable=False,
@@ -146,6 +154,7 @@ class Solicitud(db.Model):
     entidad = db.relationship('Entidad', backref='solicitudes')
     tipo_solicitud = db.relationship('TipoSolicitud')
     solicitud_afectada = db.relationship('Solicitud', remote_side=[id], backref='solicitudes_dependientes')
+    documento_solicitud = db.relationship('Documento', foreign_keys=[documento_solicitud_id])
     
     # Properties
     @property

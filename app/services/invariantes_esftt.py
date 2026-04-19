@@ -20,6 +20,9 @@ from app.models.tareas import Tarea
 from app.models.solicitudes import Solicitud
 from app.services.motor_reglas import EvaluacionResult
 
+_TIPOS_REQUIEREN_DOC_PRODUCIDO = {'INCORPORAR', 'ANALISIS', 'REDACTAR', 'FIRMAR', 'NOTIFICAR', 'PUBLICAR'}
+_TIPOS_REQUIEREN_DOC_USADO     = {'ANALISIS', 'FIRMAR', 'NOTIFICAR', 'PUBLICAR'}
+
 
 def _bloquear(mensaje: str) -> EvaluacionResult:
     return EvaluacionResult(
@@ -47,18 +50,31 @@ def check_invariante(accion: str, sujeto: str, entidad_id: int) -> Optional[Eval
 # ---------------------------------------------------------------------------
 
 def _check_borrar(sujeto: str, entidad_id: int) -> Optional[EvaluacionResult]:
-    if sujeto in ('FASE', 'TRAMITE', 'TAREA'):
-        obj = _cargar(sujeto, entidad_id)
-        if obj and obj.fecha_inicio is not None:
-            return _bloquear('No se puede eliminar una entidad ya iniciada.')
+    if sujeto == 'TAREA':
+        tarea = Tarea.query.get(entidad_id)
+        if tarea and (tarea.documento_producido_id is not None or tarea.documento_usado_id is not None):
+            return _bloquear('No se puede eliminar una tarea que ya tiene documentos asignados.')
+
+    elif sujeto == 'TRAMITE':
+        tiene_tareas = db.session.query(Tarea).filter(
+            Tarea.tramite_id == entidad_id
+        ).first()
+        if tiene_tareas:
+            return _bloquear('No se puede eliminar un trámite que ya tiene tareas.')
+
+    elif sujeto == 'FASE':
+        tiene_tramites = db.session.query(Tramite).filter(
+            Tramite.fase_id == entidad_id
+        ).first()
+        if tiene_tramites:
+            return _bloquear('No se puede eliminar una fase que ya tiene trámites.')
 
     elif sujeto == 'SOLICITUD':
-        tiene_fase_iniciada = db.session.query(Fase).filter(
-            Fase.solicitud_id == entidad_id,
-            Fase.fecha_inicio.isnot(None)
+        tiene_fases = db.session.query(Fase).filter(
+            Fase.solicitud_id == entidad_id
         ).first()
-        if tiene_fase_iniciada:
-            return _bloquear('No se puede eliminar una solicitud con fases ya iniciadas.')
+        if tiene_fases:
+            return _bloquear('No se puede eliminar una solicitud con fases creadas.')
 
     return None
 
@@ -69,28 +85,19 @@ def _check_borrar(sujeto: str, entidad_id: int) -> Optional[EvaluacionResult]:
 
 def _check_finalizar(sujeto: str, entidad_id: int) -> Optional[EvaluacionResult]:
     if sujeto == 'SOLICITUD':
-        fase_abierta = db.session.query(Fase).filter(
+        # Bloqueado si alguna fase no tiene documento de resultado
+        fase_sin_resultado = db.session.query(Fase).filter(
             Fase.solicitud_id == entidad_id,
-            Fase.fecha_fin.is_(None)
+            Fase.documento_resultado_id.is_(None)
         ).first()
-        if fase_abierta:
-            return _bloquear('Hay fases sin cerrar. Finalice todas las fases antes de cerrar la solicitud.')
+        if fase_sin_resultado:
+            return _bloquear('Hay fases sin resultado formalizado. Asocie el documento de resultado a cada fase antes de cerrar la solicitud.')
 
     elif sujeto == 'FASE':
-        tramite_abierto = db.session.query(Tramite).filter(
-            Tramite.fase_id == entidad_id,
-            Tramite.fecha_fin.is_(None)
-        ).first()
-        if tramite_abierto:
-            return _bloquear('Hay trámites sin cerrar. Finalice todos los trámites antes de cerrar la fase.')
+        return _check_finalizar_fase(entidad_id)
 
     elif sujeto == 'TRAMITE':
-        tarea_abierta = db.session.query(Tarea).filter(
-            Tarea.tramite_id == entidad_id,
-            Tarea.fecha_fin.is_(None)
-        ).first()
-        if tarea_abierta:
-            return _bloquear('Hay tareas sin ejecutar. Finalice todas las tareas antes de cerrar el trámite.')
+        return _check_finalizar_tramite(entidad_id)
 
     elif sujeto == 'TAREA':
         return _check_finalizar_tarea(entidad_id)
@@ -98,8 +105,39 @@ def _check_finalizar(sujeto: str, entidad_id: int) -> Optional[EvaluacionResult]
     return None
 
 
-_TIPOS_REQUIEREN_DOC_PRODUCIDO = {'INCORPORAR', 'ANALISIS', 'REDACTAR', 'FIRMAR', 'NOTIFICAR', 'PUBLICAR'}
-_TIPOS_REQUIEREN_DOC_USADO     = {'ANALISIS', 'FIRMAR', 'NOTIFICAR', 'PUBLICAR'}
+def _check_finalizar_fase(fase_id: int) -> Optional[EvaluacionResult]:
+    from app.models.tipos_tareas import TipoTarea
+    tarea_incompleta = (
+        db.session.query(Tarea)
+        .join(Tramite, Tarea.tramite_id == Tramite.id)
+        .join(TipoTarea, Tarea.tipo_tarea_id == TipoTarea.id)
+        .filter(
+            Tramite.fase_id == fase_id,
+            TipoTarea.codigo.in_(_TIPOS_REQUIEREN_DOC_PRODUCIDO),
+            Tarea.documento_producido_id.is_(None)
+        )
+        .first()
+    )
+    if tarea_incompleta:
+        return _bloquear('Hay tareas sin documento producido en esta fase. Finalice todas las tareas antes de cerrar la fase.')
+    return None
+
+
+def _check_finalizar_tramite(tramite_id: int) -> Optional[EvaluacionResult]:
+    from app.models.tipos_tareas import TipoTarea
+    tarea_incompleta = (
+        db.session.query(Tarea)
+        .join(TipoTarea, Tarea.tipo_tarea_id == TipoTarea.id)
+        .filter(
+            Tarea.tramite_id == tramite_id,
+            TipoTarea.codigo.in_(_TIPOS_REQUIEREN_DOC_PRODUCIDO),
+            Tarea.documento_producido_id.is_(None)
+        )
+        .first()
+    )
+    if tarea_incompleta:
+        return _bloquear('Hay tareas sin ejecutar. Finalice todas las tareas antes de cerrar el trámite.')
+    return None
 
 
 def _check_finalizar_tarea(tarea_id: int) -> Optional[EvaluacionResult]:
@@ -116,13 +154,3 @@ def _check_finalizar_tarea(tarea_id: int) -> Optional[EvaluacionResult]:
         return _bloquear('Falta el documento de entrada. Asócielo antes de finalizar la tarea.')
 
     return None
-
-
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-def _cargar(sujeto: str, entidad_id: int):
-    modelos = {'FASE': Fase, 'TRAMITE': Tramite, 'TAREA': Tarea}
-    modelo = modelos.get(sujeto)
-    return modelo.query.get(entidad_id) if modelo else None
