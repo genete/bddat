@@ -110,12 +110,12 @@ def crear_exp(numero_at, entidad, tipo_exp_id, titulo, descripcion,
     return exp, True
 
 
-def crear_sol(exp, tipo_sol_id, entidad, fecha):
+def crear_sol(exp, tipo_sol_id, entidad, fecha=None):
     s = Solicitud(
         expediente_id=exp.id,
         entidad_id=entidad.id,
         tipo_solicitud_id=tipo_sol_id,
-        fecha_solicitud=fecha,
+        documento_solicitud_id=None,
         estado='EN_TRAMITE',
     )
     db.session.add(s)

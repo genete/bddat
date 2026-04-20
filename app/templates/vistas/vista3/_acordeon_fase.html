@@ -14,10 +14,6 @@
             <span class="fw-semibold">{{ fase_data.nombre }}</span>
             <span class="ms-3 small">
                 Trámites: {{ fase_data.tramites_completados }}/{{ fase_data.total_tramites }}
-                {% if fase_data.obj.fecha_inicio %}
-                &middot; {{ fase_data.obj.fecha_inicio.strftime('%d/%m/%Y') }}
-                {% if fase_data.obj.fecha_fin %}→ {{ fase_data.obj.fecha_fin.strftime('%d/%m/%Y') }}{% endif %}
-                {% endif %}
             </span>
         </button>
         <button class="btn btn-sm btn-outline-secondary btn-accion-header px-2"
@@ -33,14 +29,6 @@
             {# Detalle de la fase #}
             <div class="detalle-bloque mb-3">
                 <div class="row">
-                    <div class="col-md-6">
-                        <p class="mb-1"><strong>Inicio:</strong>
-                            {{ fase_data.obj.fecha_inicio.strftime('%d/%m/%Y') if fase_data.obj.fecha_inicio else 'Pendiente' }}
-                        </p>
-                        <p class="mb-1"><strong>Fin:</strong>
-                            {{ fase_data.obj.fecha_fin.strftime('%d/%m/%Y') if fase_data.obj.fecha_fin else 'En curso' }}
-                        </p>
-                    </div>
                     <div class="col-md-6">
                         {% if fase_data.obj.resultado_fase %}
                         <p class="mb-1"><strong>Resultado:</strong>
@@ -73,16 +61,6 @@
             </div>
             <div class="modal-body">
                 <form class="form-editar-sftt">
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Fecha inicio</label>
-                        <input type="date" class="form-control" name="fecha_inicio"
-                               value="{{ fase_data.obj.fecha_inicio.strftime('%Y-%m-%d') if fase_data.obj.fecha_inicio else '' }}">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Fecha fin</label>
-                        <input type="date" class="form-control" name="fecha_fin"
-                               value="{{ fase_data.obj.fecha_fin.strftime('%Y-%m-%d') if fase_data.obj.fecha_fin else '' }}">
-                    </div>
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Resultado</label>
                         <select class="form-select" name="resultado_fase_id">

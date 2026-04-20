@@ -26,11 +26,11 @@
     'Solicitud: ' ~ (solicitud.tipo_solicitud.siglas if solicitud.tipo_solicitud else '#' ~ solicitud.id),
     url_for('expedientes.tramitacion_bc_solicitud', exp_id=expediente.id, sol_id=solicitud.id)) }}
 
-{# Estado de la fase deducido de fechas #}
-{% if fase.fecha_fin %}
+{# Estado de la fase deducido de documentos #}
+{% if fase.finalizada %}
   {% set fase_badge_class = 'bg-success' %}
   {% set fase_badge_label = 'Finalizada' %}
-{% elif fase.fecha_inicio %}
+{% elif fase.en_curso %}
   {% set fase_badge_class = 'bg-primary' %}
   {% set fase_badge_label = 'En curso' %}
 {% else %}
@@ -58,7 +58,7 @@
             Acciones
           </button>
           <ul class="dropdown-menu dropdown-menu-end">
-            {% if not fase.fecha_inicio %}
+            {% if not fase.en_curso and not fase.finalizada %}
             <li>
               <a class="dropdown-item" href="#"
                  data-accion="iniciar"
@@ -67,7 +67,7 @@
               </a>
             </li>
             {% endif %}
-            {% if fase.fecha_inicio and not fase.fecha_fin %}
+            {% if fase.en_curso %}
             <li>
               <a class="dropdown-item" href="#"
                  data-accion="finalizar"
@@ -103,18 +103,6 @@
 
     <div data-modo-ver class="row g-2 bc-meta">
       <div class="col-auto">
-        <strong>F. Inicio:</strong>
-        <span id="disp-fecha_inicio" class="bc-fecha-valor">
-          {{- fase.fecha_inicio.strftime('%d/%m/%Y') if fase.fecha_inicio else '—' -}}
-        </span>
-      </div>
-      <div class="col-auto">
-        <strong>F. Fin:</strong>
-        <span id="disp-fecha_fin" class="bc-fecha-valor">
-          {{- fase.fecha_fin.strftime('%d/%m/%Y') if fase.fecha_fin else '—' -}}
-        </span>
-      </div>
-      <div class="col-auto">
         <strong>Resultado:</strong>
         <span id="disp-resultado_fase_id">
           {{- fase.resultado_fase.nombre if fase.resultado_fase else '—' -}}
@@ -129,20 +117,6 @@
         <input type="text" class="form-control form-control-sm" readonly
                value="{{ fase.tipo_fase.nombre if fase.tipo_fase else '—' }}"
                data-bs-toggle="tooltip" title="El tipo se establece al crear la fase">
-      </div>
-      <div class="col-md-2">
-        <label class="form-label fw-semibold mb-1">F. Inicio</label>
-        <div id="ef-fecha_inicio"
-             data-ef-name="fecha_inicio"
-             data-ef-value="{{ fase.fecha_inicio.isoformat() if fase.fecha_inicio else '' }}">
-        </div>
-      </div>
-      <div class="col-md-2">
-        <label class="form-label fw-semibold mb-1">F. Fin</label>
-        <div id="ef-fecha_fin"
-             data-ef-name="fecha_fin"
-             data-ef-value="{{ fase.fecha_fin.isoformat() if fase.fecha_fin else '' }}">
-        </div>
       </div>
       <div class="col-md-3">
         <label class="form-label fw-semibold mb-1">Resultado</label>

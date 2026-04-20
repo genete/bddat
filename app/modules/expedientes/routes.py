@@ -234,12 +234,10 @@ def editar(id):
 # ===========================================================================
 
 def _estado_indicador_solicitud(solicitud):
-    """Mapea el estado de una Solicitud al indicador visual del partial."""
-    if solicitud.estado == 'EN_TRAMITE':
-        return 'en_curso'
-    elif solicitud.estado in ('RESUELTA', 'DESISTIDA', 'ARCHIVADA'):
-        return 'finalizada'
-    return 'planificada'
+    """Indicador visual de la solicitud deducido de sus fases (estado almacenado eliminado)."""
+    if not solicitud.fases:
+        return 'planificada'
+    return 'en_curso'
 
 
 def _estado_indicador_fase(fase):
@@ -253,18 +251,18 @@ def _estado_indicador_fase(fase):
 
 def _estado_indicador_tramite(tramite):
     """Mapea el estado de un Tramite al indicador visual del partial."""
-    if tramite.fecha_fin is not None:
+    if tramite.finalizado:
         return 'finalizada'
-    if tramite.fecha_inicio is not None:
+    if tramite.en_curso:
         return 'en_curso'
     return 'planificada'
 
 
 def _estado_indicador_tarea(tarea):
     """Mapea el estado de una Tarea al indicador visual del partial."""
-    if tarea.fecha_fin is not None:
+    if tarea.ejecutada:
         return 'finalizada'
-    if tarea.fecha_inicio is not None:
+    if tarea.en_curso:
         return 'en_curso'
     return 'planificada'
 
@@ -290,12 +288,11 @@ def tramitacion_bc(exp_id):
     hijos = []
     for s in solicitudes_raw:
         tipos_str = s.tipo_solicitud.siglas if s.tipo_solicitud else f'Solicitud #{s.id}'
+        fecha_sol = s.documento_solicitud.fecha_administrativa if s.documento_solicitud else None
         hijos.append({
             'nombre':        tipos_str,
-            'fecha_inicio':  _fmt_fecha(s.fecha_solicitud),
-            'fecha_fin':     _fmt_fecha(s.fecha_fin),
+            'fecha_inicio':  _fmt_fecha(fecha_sol),
             'estado':        _estado_indicador_solicitud(s),
-            'estado_texto':  s.estado,
             'url_detalle':   url_for('expedientes.tramitacion_bc_solicitud',
                                     exp_id=exp_id, sol_id=s.id),
         })
@@ -303,8 +300,6 @@ def tramitacion_bc(exp_id):
     columnas = [
         {'key': 'nombre',       'label': 'Tipos de solicitud'},
         {'key': 'fecha_inicio', 'label': 'F. Solicitud'},
-        {'key': 'fecha_fin',    'label': 'F. Resolución'},
-        {'key': 'estado_texto', 'label': 'Estado'},
     ]
 
     tipos_solicitud = TipoSolicitud.query.order_by(TipoSolicitud.siglas).all()
@@ -338,18 +333,14 @@ def tramitacion_bc_solicitud(exp_id, sol_id):
     hijos = []
     for f in fases_raw:
         hijos.append({
-            'nombre':       f.tipo_fase.nombre if f.tipo_fase else f'Fase #{f.id}',
-            'fecha_inicio': _fmt_fecha(f.fecha_inicio),
-            'fecha_fin':    _fmt_fecha(f.fecha_fin),
-            'estado':       _estado_indicador_fase(f),
-            'url_detalle':  url_for('expedientes.tramitacion_bc_fase',
-                                    exp_id=exp_id, sol_id=sol_id, fase_id=f.id),
+            'nombre':      f.tipo_fase.nombre if f.tipo_fase else f'Fase #{f.id}',
+            'estado':      _estado_indicador_fase(f),
+            'url_detalle': url_for('expedientes.tramitacion_bc_fase',
+                                   exp_id=exp_id, sol_id=sol_id, fase_id=f.id),
         })
 
     columnas = [
-        {'key': 'nombre',       'label': 'Fase'},
-        {'key': 'fecha_inicio', 'label': 'F. Inicio'},
-        {'key': 'fecha_fin',    'label': 'F. Fin'},
+        {'key': 'nombre',  'label': 'Fase'},
     ]
 
     tipos_fase = TipoFase.query.order_by(TipoFase.nombre).all()
@@ -388,19 +379,15 @@ def tramitacion_bc_fase(exp_id, sol_id, fase_id):
     hijos = []
     for t in tramites_raw:
         hijos.append({
-            'nombre':       t.tipo_tramite.nombre if t.tipo_tramite else f'Trámite #{t.id}',
-            'fecha_inicio': _fmt_fecha(t.fecha_inicio),
-            'fecha_fin':    _fmt_fecha(t.fecha_fin),
-            'estado':       _estado_indicador_tramite(t),
-            'url_detalle':  url_for('expedientes.tramitacion_bc_tramite',
-                                    exp_id=exp_id, sol_id=sol_id,
-                                    fase_id=fase_id, tram_id=t.id),
+            'nombre':      t.tipo_tramite.nombre if t.tipo_tramite else f'Trámite #{t.id}',
+            'estado':      _estado_indicador_tramite(t),
+            'url_detalle': url_for('expedientes.tramitacion_bc_tramite',
+                                   exp_id=exp_id, sol_id=sol_id,
+                                   fase_id=fase_id, tram_id=t.id),
         })
 
     columnas = [
-        {'key': 'nombre',       'label': 'Trámite'},
-        {'key': 'fecha_inicio', 'label': 'F. Inicio'},
-        {'key': 'fecha_fin',    'label': 'F. Fin'},
+        {'key': 'nombre',  'label': 'Trámite'},
     ]
 
     resultados_fase = TipoResultadoFase.query.order_by(TipoResultadoFase.nombre).all()
@@ -446,19 +433,15 @@ def tramitacion_bc_tramite(exp_id, sol_id, fase_id, tram_id):
     hijos = []
     for t in tareas_raw:
         hijos.append({
-            'nombre':       t.tipo_tarea.nombre if t.tipo_tarea else f'Tarea #{t.id}',
-            'fecha_inicio': _fmt_fecha(t.fecha_inicio),
-            'fecha_fin':    _fmt_fecha(t.fecha_fin),
-            'estado':       _estado_indicador_tarea(t),
-            'url_detalle':  url_for('expedientes.tramitacion_bc_tarea',
-                                    exp_id=exp_id, sol_id=sol_id,
-                                    fase_id=fase_id, tram_id=tram_id, tarea_id=t.id),
+            'nombre':      t.tipo_tarea.nombre if t.tipo_tarea else f'Tarea #{t.id}',
+            'estado':      _estado_indicador_tarea(t),
+            'url_detalle': url_for('expedientes.tramitacion_bc_tarea',
+                                   exp_id=exp_id, sol_id=sol_id,
+                                   fase_id=fase_id, tram_id=tram_id, tarea_id=t.id),
         })
 
     columnas = [
-        {'key': 'nombre',       'label': 'Tarea'},
-        {'key': 'fecha_inicio', 'label': 'F. Inicio'},
-        {'key': 'fecha_fin',    'label': 'F. Fin'},
+        {'key': 'nombre',  'label': 'Tarea'},
     ]
 
     tipos_tarea = TipoTarea.query.order_by(TipoTarea.nombre).all()

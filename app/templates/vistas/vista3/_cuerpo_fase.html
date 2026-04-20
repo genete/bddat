@@ -33,26 +33,6 @@
               data-entidad-id="{{ fase_data.obj.id }}">
             <div class="row g-3">
 
-                {# Fecha inicio #}
-                <div class="col-md-3">
-                    <label class="fw-semibold">Fecha inicio</label>
-                    <input type="text" class="form-control"
-                           value="{{ fase_data.obj.fecha_inicio.strftime('%d/%m/%Y') if fase_data.obj.fecha_inicio else '' }}"
-                           readonly data-modo-ver data-display-for="fecha_inicio" data-display-format="date">
-                    <input type="date" class="form-control d-none" name="fecha_inicio" data-modo-editar
-                           value="{{ fase_data.obj.fecha_inicio.isoformat() if fase_data.obj.fecha_inicio else '' }}">
-                </div>
-
-                {# Fecha fin #}
-                <div class="col-md-3">
-                    <label class="fw-semibold">Fecha fin</label>
-                    <input type="text" class="form-control"
-                           value="{{ fase_data.obj.fecha_fin.strftime('%d/%m/%Y') if fase_data.obj.fecha_fin else '' }}"
-                           readonly data-modo-ver data-display-for="fecha_fin" data-display-format="date">
-                    <input type="date" class="form-control d-none" name="fecha_fin" data-modo-editar
-                           value="{{ fase_data.obj.fecha_fin.isoformat() if fase_data.obj.fecha_fin else '' }}">
-                </div>
-
                 {# Resultado #}
                 <div class="col-md-4">
                     <label class="fw-semibold">Resultado</label>

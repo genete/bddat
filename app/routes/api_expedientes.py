@@ -150,30 +150,12 @@ def listar_expedientes():
         if estado_filter.lower() not in estados_validos:
             return jsonify({'error': f'Estado inválido. Válidos: {", ".join(estados_validos)}'}), 400
 
-        # Subquery: IDs de expedientes con al menos una solicitud EN_TRAMITE
-        ids_en_tramite = db.session.query(Solicitud.expediente_id).filter(
-            Solicitud.estado == 'EN_TRAMITE'
-        ).subquery()
-
-        # Subquery: IDs de expedientes con alguna solicitud (cualquier estado)
+        # Subquery: IDs de expedientes con alguna solicitud
         ids_con_solicitudes = db.session.query(Solicitud.expediente_id).subquery()
 
-        # Subquery: IDs de expedientes con alguna solicitud ARCHIVADA
-        ids_archivados = db.session.query(Solicitud.expediente_id).filter(
-            Solicitud.estado == 'ARCHIVADA'
-        ).subquery()
-
-        if estado_filter == 'tramitacion':
-            query = query.filter(Expediente.id.in_(ids_en_tramite))
-        elif estado_filter == 'finalizado':
-            # Con solicitudes, ninguna EN_TRAMITE ni ARCHIVADA
-            query = query.filter(
-                Expediente.id.in_(ids_con_solicitudes),
-                Expediente.id.notin_(ids_en_tramite),
-                Expediente.id.notin_(ids_archivados)
-            )
-        elif estado_filter == 'archivado':
-            query = query.filter(Expediente.id.in_(ids_archivados))
+        if estado_filter in ('tramitacion', 'finalizado', 'archivado'):
+            # Sin campo estado en Solicitud, estos filtros equivalen a "con solicitudes"
+            query = query.filter(Expediente.id.in_(ids_con_solicitudes))
         elif estado_filter == 'borrador':
             query = query.filter(Expediente.id.notin_(ids_con_solicitudes))
 
@@ -201,7 +183,7 @@ def listar_expedientes():
         rows = db.session.query(
             Solicitud.expediente_id,
             func.count(Solicitud.id).label('total'),
-            func.count(Solicitud.id).filter(Solicitud.estado == 'EN_TRAMITE').label('activas')
+            func.count(Solicitud.id).label('activas')
         ).filter(
             Solicitud.expediente_id.in_(ids_pagina)
         ).group_by(Solicitud.expediente_id).all()
@@ -330,8 +312,6 @@ def get_jerarquia_expediente(expediente_id):
                     "codigo": "SOL-1",
                     "tipos": "AAP + AAC",
                     "fecha_solicitud": "2025-06-15",
-                    "fecha_fin": "2025-09-20",
-                    "estado": "RESUELTA",
                     "num_fases": 6,
                     "fases": [...]
                 }
@@ -414,7 +394,7 @@ def get_jerarquia_expediente(expediente_id):
     # =====================================================
     solicitudes = Solicitud.query.filter_by(
         expediente_id=expediente_id
-    ).order_by(Solicitud.fecha_solicitud).all()
+    ).order_by(Solicitud.id).all()
 
     solicitudes_data = []
     for solicitud in solicitudes:
@@ -423,7 +403,7 @@ def get_jerarquia_expediente(expediente_id):
         # Obtener fases de la solicitud
         fases = Fase.query.filter_by(
             solicitud_id=solicitud.id
-        ).order_by(Fase.fecha_inicio).all()
+        ).order_by(Fase.id).all()
 
         fases_data = []
         for fase in fases:
@@ -433,9 +413,7 @@ def get_jerarquia_expediente(expediente_id):
                 'id':            fase.id,
                 'codigo':        tipo_fase.codigo if tipo_fase else 'SIN_CODIGO',
                 'nombre':        tipo_fase.nombre if tipo_fase else 'Sin nombre',
-                'fecha_inicio':  fase.fecha_inicio.isoformat() if fase.fecha_inicio else None,
-                'fecha_fin':     fase.fecha_fin.isoformat() if fase.fecha_fin else None,
-                'estado':        'completada' if fase.fecha_fin else 'en-curso',
+                'estado':        'completada' if fase.finalizada else 'en-curso',
                 'observaciones': fase.observaciones
             }
             fases_data.append(fase_data)
@@ -445,9 +423,7 @@ def get_jerarquia_expediente(expediente_id):
             'id':             solicitud.id,
             'codigo':         f'SOL-{solicitud.id}',
             'tipos':          tipos_str,
-            'fecha_solicitud': solicitud.fecha_solicitud.isoformat() if solicitud.fecha_solicitud else None,
-            'fecha_fin':      solicitud.fecha_fin.isoformat() if solicitud.fecha_fin else None,
-            'estado':         solicitud.estado,
+            'fecha_solicitud': solicitud.documento_solicitud.fecha_administrativa.isoformat() if solicitud.documento_solicitud and solicitud.documento_solicitud.fecha_administrativa else None,
             'num_fases':      len(fases_data),
             'fases':          fases_data
         }

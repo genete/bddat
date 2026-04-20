@@ -7,7 +7,6 @@ Endpoints:
   GET /api/vista3/tramite/<id>/tareas    → acordeones de tareas (HTML + count)
   GET /api/vista3/expediente/<id>/arbol  → árbol completo pre-cargado (HTML + count)
 """
-from datetime import date
 from flask import Blueprint, jsonify, render_template, request
 from flask_login import login_required
 from sqlalchemy import func
@@ -140,19 +139,16 @@ def _get_solicitudes_con_stats(expediente_id):
         total_fases = Fase.query.filter_by(solicitud_id=sol.id).count()
         fases_completadas = Fase.query.filter_by(
             solicitud_id=sol.id
-        ).filter(Fase.fecha_fin.isnot(None)).count()
+        ).filter(Fase.documento_resultado_id.isnot(None)).count()
 
         # Contar trámites a través de fases
         total_tramites = db.session.query(func.count(Tramite.id)).join(
             Fase, Tramite.fase_id == Fase.id
         ).filter(Fase.solicitud_id == sol.id).scalar() or 0
 
-        tramites_completados = db.session.query(func.count(Tramite.id)).join(
-            Fase, Tramite.fase_id == Fase.id
-        ).filter(
-            Fase.solicitud_id == sol.id,
-            Tramite.fecha_fin.isnot(None)
-        ).scalar() or 0
+        tramites_completados = sum(
+            1 for f in sol.fases for t in f.tramites if t.finalizado
+        )
 
         tipos = sol.tipo_solicitud.siglas if sol.tipo_solicitud else 'SIN TIPO'
 
@@ -175,9 +171,7 @@ def _get_fases_con_stats(solicitud_id):
     result = []
     for fase in fases:
         total_tramites = Tramite.query.filter_by(fase_id=fase.id).count()
-        tramites_completados = Tramite.query.filter_by(
-            fase_id=fase.id
-        ).filter(Tramite.fecha_fin.isnot(None)).count()
+        tramites_completados = sum(1 for t in fase.tramites if t.finalizado)
 
         result.append({
             'obj': fase,
@@ -185,7 +179,7 @@ def _get_fases_con_stats(solicitud_id):
             'codigo': fase.tipo_fase.codigo if fase.tipo_fase else '',
             'tramites_completados': tramites_completados,
             'total_tramites': total_tramites,
-            'estado': 'Finalizada' if fase.fecha_fin else 'En curso' if fase.fecha_inicio else 'Pendiente'
+            'estado': 'Finalizada' if fase.finalizada else 'En curso' if fase.en_curso else 'Pendiente'
         })
 
     return result
@@ -200,7 +194,7 @@ def _get_tramites_con_stats(fase_id):
         total_tareas = Tarea.query.filter_by(tramite_id=tramite.id).count()
         tareas_completadas = Tarea.query.filter_by(
             tramite_id=tramite.id
-        ).filter(Tarea.fecha_fin.isnot(None)).count()
+        ).filter(Tarea.documento_producido_id.isnot(None)).count()
 
         result.append({
             'obj': tramite,
@@ -208,7 +202,7 @@ def _get_tramites_con_stats(fase_id):
             'codigo': tramite.tipo_tramite.codigo if tramite.tipo_tramite else '',
             'tareas_completadas': tareas_completadas,
             'total_tareas': total_tareas,
-            'estado': 'Finalizado' if tramite.fecha_fin else 'En curso' if tramite.fecha_inicio else 'Pendiente'
+            'estado': 'Finalizado' if tramite.finalizado else 'En curso' if tramite.en_curso else 'Pendiente'
         })
 
     return result
@@ -232,7 +226,7 @@ def _get_tareas_con_stats(tramite_id):
             'nombre': tarea.tipo_tarea.nombre if tarea.tipo_tarea else f'Tarea {tarea.id}',
             'codigo': tarea.tipo_tarea.codigo if tarea.tipo_tarea else '',
             'documentos_count': docs_count,
-            'estado': 'Finalizada' if tarea.fecha_fin else 'En curso' if tarea.fecha_inicio else 'Pendiente'
+            'estado': 'Finalizada' if tarea.ejecutada else 'En curso' if tarea.en_curso else 'Pendiente'
         })
 
     return result
@@ -273,23 +267,7 @@ def editar_solicitud(sol_id):
         return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
 
     try:
-        nueva_fecha_solicitud = date.fromisoformat(request.form['fecha_solicitud']) if request.form.get('fecha_solicitud') else None
-        nueva_fecha_fin = date.fromisoformat(request.form['fecha_fin']) if request.form.get('fecha_fin') else None
-
-        # Hook FINALIZAR (fecha_fin: None → valor)
         res_eval = None
-        if sol.fecha_fin is None and nueva_fecha_fin is not None:
-            bloqueo = check_invariante('FINALIZAR', 'SOLICITUD', sol_id)
-            if bloqueo:
-                return jsonify({'ok': False, 'error': bloqueo.norma_compilada}), 422
-            res_eval = evaluar('FINALIZAR', 'SOLICITUD', sol.tipo_solicitud_id, {})
-            if not res_eval.permitido:
-                return jsonify({'ok': False, 'error': res_eval.norma_compilada, 'norma': res_eval.url_norma}), 422
-
-        sol.fecha_solicitud = nueva_fecha_solicitud
-        sol.fecha_fin = nueva_fecha_fin
-        if request.form.get('estado'):
-            sol.estado = request.form['estado']
         sol.observaciones = request.form.get('observaciones') or None
         db.session.commit()
         # Re-renderizar el acordeón para actualizar el DOM sin recargar
@@ -313,27 +291,7 @@ def editar_fase(fase_id):
         return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
 
     try:
-        nueva_fecha_inicio = date.fromisoformat(request.form['fecha_inicio']) if request.form.get('fecha_inicio') else None
-        nueva_fecha_fin = date.fromisoformat(request.form['fecha_fin']) if request.form.get('fecha_fin') else None
-
-        # Hook INICIAR (fecha_inicio: None → valor)
         res_eval = None
-        if fase.fecha_inicio is None and nueva_fecha_inicio is not None:
-            res_eval = evaluar('INICIAR', 'FASE', fase.tipo_fase_id, {})
-            if not res_eval.permitido:
-                return jsonify({'ok': False, 'error': res_eval.norma_compilada, 'norma': res_eval.url_norma}), 422
-
-        # Hook FINALIZAR (fecha_fin: None → valor)
-        if fase.fecha_fin is None and nueva_fecha_fin is not None:
-            bloqueo = check_invariante('FINALIZAR', 'FASE', fase_id)
-            if bloqueo:
-                return jsonify({'ok': False, 'error': bloqueo.norma_compilada}), 422
-            res_eval = evaluar('FINALIZAR', 'FASE', fase.tipo_fase_id, {})
-            if not res_eval.permitido:
-                return jsonify({'ok': False, 'error': res_eval.norma_compilada, 'norma': res_eval.url_norma}), 422
-
-        fase.fecha_inicio = nueva_fecha_inicio
-        fase.fecha_fin = nueva_fecha_fin
         resultado_id = request.form.get('resultado_fase_id')
         fase.resultado_fase_id = int(resultado_id) if resultado_id else None
         fase.observaciones = request.form.get('observaciones') or None
@@ -361,27 +319,7 @@ def editar_tramite(tram_id):
         return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
 
     try:
-        nueva_fecha_inicio = date.fromisoformat(request.form['fecha_inicio']) if request.form.get('fecha_inicio') else None
-        nueva_fecha_fin = date.fromisoformat(request.form['fecha_fin']) if request.form.get('fecha_fin') else None
-
-        # Hook INICIAR (fecha_inicio: None → valor)
         res_eval = None
-        if tramite.fecha_inicio is None and nueva_fecha_inicio is not None:
-            res_eval = evaluar('INICIAR', 'TRAMITE', tramite.tipo_tramite_id, {})
-            if not res_eval.permitido:
-                return jsonify({'ok': False, 'error': res_eval.norma_compilada, 'norma': res_eval.url_norma}), 422
-
-        # Hook FINALIZAR (fecha_fin: None → valor)
-        if tramite.fecha_fin is None and nueva_fecha_fin is not None:
-            bloqueo = check_invariante('FINALIZAR', 'TRAMITE', tram_id)
-            if bloqueo:
-                return jsonify({'ok': False, 'error': bloqueo.norma_compilada}), 422
-            res_eval = evaluar('FINALIZAR', 'TRAMITE', tramite.tipo_tramite_id, {})
-            if not res_eval.permitido:
-                return jsonify({'ok': False, 'error': res_eval.norma_compilada, 'norma': res_eval.url_norma}), 422
-
-        tramite.fecha_inicio = nueva_fecha_inicio
-        tramite.fecha_fin = nueva_fecha_fin
         tramite.observaciones = request.form.get('observaciones') or None
         db.session.commit()
         # Re-renderizar el acordeón para actualizar el DOM sin recargar
@@ -407,9 +345,6 @@ def editar_tarea(tarea_id):
     expediente_id = tarea.tramite.fase.solicitud.expediente_id
 
     try:
-        nueva_fecha_inicio = date.fromisoformat(request.form['fecha_inicio']) if request.form.get('fecha_inicio') else None
-        nueva_fecha_fin = date.fromisoformat(request.form['fecha_fin']) if request.form.get('fecha_fin') else None
-
         # Documentos (nullable: string vacío → None)
         doc_usado_raw     = request.form.get('documento_usado_id') or None
         doc_producido_raw = request.form.get('documento_producido_id') or None
@@ -426,24 +361,7 @@ def editar_tarea(tarea_id):
         tarea.documento_usado_id     = nuevo_doc_usado_id
         tarea.documento_producido_id = nuevo_doc_producido_id
 
-        # Hook INICIAR (fecha_inicio: None → valor)
         res_eval = None
-        if tarea.fecha_inicio is None and nueva_fecha_inicio is not None:
-            res_eval = evaluar('INICIAR', 'TAREA', tarea.tipo_tarea_id, {})
-            if not res_eval.permitido:
-                return jsonify({'ok': False, 'error': res_eval.norma_compilada, 'norma': res_eval.url_norma}), 422
-
-        # Hook FINALIZAR (fecha_fin: None → valor)
-        if tarea.fecha_fin is None and nueva_fecha_fin is not None:
-            bloqueo = check_invariante('FINALIZAR', 'TAREA', tarea_id)
-            if bloqueo:
-                return jsonify({'ok': False, 'error': bloqueo.norma_compilada}), 422
-            res_eval = evaluar('FINALIZAR', 'TAREA', tarea.tipo_tarea_id, {})
-            if not res_eval.permitido:
-                return jsonify({'ok': False, 'error': res_eval.norma_compilada, 'norma': res_eval.url_norma}), 422
-
-        tarea.fecha_inicio = nueva_fecha_inicio
-        tarea.fecha_fin = nueva_fecha_fin
         tarea.notas = request.form.get('notas') or None
         db.session.commit()
         # Re-renderizar el acordeón para actualizar el DOM sin recargar
@@ -476,10 +394,9 @@ def crear_solicitud(exp_id):
         return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
 
     tipo_solicitud_id = request.form.get('tipo_solicitud_id', type=int)
-    fecha_str = request.form.get('fecha_solicitud')
     entidad_id = request.form.get('entidad_id', type=int) or expediente.titular_id
-    if not tipo_solicitud_id or not fecha_str:
-        return jsonify({'ok': False, 'error': 'Tipo de solicitud y fecha son obligatorios'}), 400
+    if not tipo_solicitud_id:
+        return jsonify({'ok': False, 'error': 'Tipo de solicitud es obligatorio'}), 400
     if not entidad_id:
         return jsonify({'ok': False, 'error': 'El expediente no tiene titular asignado. Asígnelo antes de crear solicitudes.'}), 422
 
@@ -487,14 +404,9 @@ def crear_solicitud(exp_id):
     if not tipo:
         return jsonify({'ok': False, 'error': 'Tipo de solicitud no encontrado'}), 404
 
-    try:
-        fecha = date.fromisoformat(fecha_str)
-    except ValueError:
-        return jsonify({'ok': False, 'error': 'Fecha inválida'}), 400
-
     sol = Solicitud(expediente_id=exp_id, entidad_id=entidad_id,
                     tipo_solicitud_id=tipo_solicitud_id,
-                    fecha_solicitud=fecha, estado='EN_TRAMITE')
+                    documento_solicitud_id=None, estado='EN_TRAMITE')
     db.session.add(sol)
     db.session.commit()
 
@@ -689,19 +601,18 @@ def borrar_tarea(tarea_id):
 @bp.route('/solicitud/<int:sol_id>/iniciar', methods=['POST'])
 @login_required
 def iniciar_solicitud(sol_id):
-    """Inicia una solicitud (establece fecha_solicitud = hoy) si el motor lo permite."""
+    """Inicia una solicitud si el motor lo permite."""
     sol = Solicitud.query.get_or_404(sol_id)
     resultado = verificar_acceso_expediente(sol.expediente, 'editar')
     if resultado:
         return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
-    if sol.fecha_solicitud is not None:
-        return jsonify({'ok': False, 'error': 'La solicitud ya tiene fecha de inicio'}), 422
+    if sol.documento_solicitud_id is not None:
+        return jsonify({'ok': False, 'error': 'La solicitud ya tiene documento de solicitud asignado'}), 422
 
     res_eval = evaluar('INICIAR', 'SOLICITUD', sol.tipo_solicitud_id, {})
     if not res_eval.permitido:
         return jsonify({'ok': False, 'error': res_eval.norma_compilada, 'norma': res_eval.url_norma}), 422
 
-    sol.fecha_solicitud = date.today()
     db.session.commit()
     return jsonify({'ok': True, 'nivel': res_eval.nivel, 'mensaje': res_eval.norma_compilada})
 
@@ -709,13 +620,11 @@ def iniciar_solicitud(sol_id):
 @bp.route('/solicitud/<int:sol_id>/finalizar', methods=['POST'])
 @login_required
 def finalizar_solicitud(sol_id):
-    """Finaliza una solicitud (establece fecha_fin = hoy) si el motor lo permite."""
+    """Finaliza una solicitud si el motor lo permite."""
     sol = Solicitud.query.get_or_404(sol_id)
     resultado = verificar_acceso_expediente(sol.expediente, 'editar')
     if resultado:
         return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
-    if sol.fecha_fin is not None:
-        return jsonify({'ok': False, 'error': 'La solicitud ya está finalizada'}), 422
 
     bloqueo = check_invariante('FINALIZAR', 'SOLICITUD', sol_id)
     if bloqueo:
@@ -724,7 +633,6 @@ def finalizar_solicitud(sol_id):
     if not res_eval.permitido:
         return jsonify({'ok': False, 'error': res_eval.norma_compilada, 'norma': res_eval.url_norma}), 422
 
-    sol.fecha_fin = date.today()
     db.session.commit()
     return jsonify({'ok': True, 'nivel': res_eval.nivel, 'mensaje': res_eval.norma_compilada})
 
@@ -732,19 +640,16 @@ def finalizar_solicitud(sol_id):
 @bp.route('/fase/<int:fase_id>/iniciar', methods=['POST'])
 @login_required
 def iniciar_fase(fase_id):
-    """Inicia una fase (establece fecha_inicio = hoy) si el motor lo permite."""
+    """Inicia una fase si el motor lo permite."""
     fase = Fase.query.get_or_404(fase_id)
     resultado = verificar_acceso_expediente(fase.solicitud.expediente, 'editar')
     if resultado:
         return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
-    if fase.fecha_inicio is not None:
-        return jsonify({'ok': False, 'error': 'La fase ya está iniciada'}), 422
 
     res_eval = evaluar('INICIAR', 'FASE', fase.tipo_fase_id, {})
     if not res_eval.permitido:
         return jsonify({'ok': False, 'error': res_eval.norma_compilada, 'norma': res_eval.url_norma}), 422
 
-    fase.fecha_inicio = date.today()
     db.session.commit()
     return jsonify({'ok': True, 'nivel': res_eval.nivel, 'mensaje': res_eval.norma_compilada})
 
@@ -752,13 +657,11 @@ def iniciar_fase(fase_id):
 @bp.route('/fase/<int:fase_id>/finalizar', methods=['POST'])
 @login_required
 def finalizar_fase(fase_id):
-    """Finaliza una fase (establece fecha_fin = hoy) si el motor lo permite."""
+    """Finaliza una fase si el motor lo permite."""
     fase = Fase.query.get_or_404(fase_id)
     resultado = verificar_acceso_expediente(fase.solicitud.expediente, 'editar')
     if resultado:
         return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
-    if fase.fecha_fin is not None:
-        return jsonify({'ok': False, 'error': 'La fase ya está finalizada'}), 422
 
     bloqueo = check_invariante('FINALIZAR', 'FASE', fase_id)
     if bloqueo:
@@ -767,7 +670,6 @@ def finalizar_fase(fase_id):
     if not res_eval.permitido:
         return jsonify({'ok': False, 'error': res_eval.norma_compilada, 'norma': res_eval.url_norma}), 422
 
-    fase.fecha_fin = date.today()
     db.session.commit()
     return jsonify({'ok': True, 'nivel': res_eval.nivel, 'mensaje': res_eval.norma_compilada})
 
@@ -775,19 +677,16 @@ def finalizar_fase(fase_id):
 @bp.route('/tramite/<int:tram_id>/iniciar', methods=['POST'])
 @login_required
 def iniciar_tramite(tram_id):
-    """Inicia un trámite (establece fecha_inicio = hoy) si el motor lo permite."""
+    """Inicia un trámite si el motor lo permite."""
     tramite = Tramite.query.get_or_404(tram_id)
     resultado = verificar_acceso_expediente(tramite.fase.solicitud.expediente, 'editar')
     if resultado:
         return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
-    if tramite.fecha_inicio is not None:
-        return jsonify({'ok': False, 'error': 'El trámite ya está iniciado'}), 422
 
     res_eval = evaluar('INICIAR', 'TRAMITE', tramite.tipo_tramite_id, {})
     if not res_eval.permitido:
         return jsonify({'ok': False, 'error': res_eval.norma_compilada, 'norma': res_eval.url_norma}), 422
 
-    tramite.fecha_inicio = date.today()
     db.session.commit()
     return jsonify({'ok': True, 'nivel': res_eval.nivel, 'mensaje': res_eval.norma_compilada})
 
@@ -795,13 +694,11 @@ def iniciar_tramite(tram_id):
 @bp.route('/tramite/<int:tram_id>/finalizar', methods=['POST'])
 @login_required
 def finalizar_tramite(tram_id):
-    """Finaliza un trámite (establece fecha_fin = hoy) si el motor lo permite."""
+    """Finaliza un trámite si el motor lo permite."""
     tramite = Tramite.query.get_or_404(tram_id)
     resultado = verificar_acceso_expediente(tramite.fase.solicitud.expediente, 'editar')
     if resultado:
         return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
-    if tramite.fecha_fin is not None:
-        return jsonify({'ok': False, 'error': 'El trámite ya está finalizado'}), 422
 
     bloqueo = check_invariante('FINALIZAR', 'TRAMITE', tram_id)
     if bloqueo:
@@ -810,7 +707,6 @@ def finalizar_tramite(tram_id):
     if not res_eval.permitido:
         return jsonify({'ok': False, 'error': res_eval.norma_compilada, 'norma': res_eval.url_norma}), 422
 
-    tramite.fecha_fin = date.today()
     db.session.commit()
     return jsonify({'ok': True, 'nivel': res_eval.nivel, 'mensaje': res_eval.norma_compilada})
 
@@ -818,19 +714,16 @@ def finalizar_tramite(tram_id):
 @bp.route('/tarea/<int:tarea_id>/iniciar', methods=['POST'])
 @login_required
 def iniciar_tarea(tarea_id):
-    """Inicia una tarea (establece fecha_inicio = hoy) si el motor lo permite."""
+    """Inicia una tarea si el motor lo permite."""
     tarea = Tarea.query.get_or_404(tarea_id)
     resultado = verificar_acceso_expediente(tarea.tramite.fase.solicitud.expediente, 'editar')
     if resultado:
         return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
-    if tarea.fecha_inicio is not None:
-        return jsonify({'ok': False, 'error': 'La tarea ya está iniciada'}), 422
 
     res_eval = evaluar('INICIAR', 'TAREA', tarea.tipo_tarea_id, {})
     if not res_eval.permitido:
         return jsonify({'ok': False, 'error': res_eval.norma_compilada, 'norma': res_eval.url_norma}), 422
 
-    tarea.fecha_inicio = date.today()
     db.session.commit()
     return jsonify({'ok': True, 'nivel': res_eval.nivel, 'mensaje': res_eval.norma_compilada})
 
@@ -838,13 +731,11 @@ def iniciar_tarea(tarea_id):
 @bp.route('/tarea/<int:tarea_id>/finalizar', methods=['POST'])
 @login_required
 def finalizar_tarea(tarea_id):
-    """Finaliza una tarea (establece fecha_fin = hoy) si el motor lo permite."""
+    """Finaliza una tarea si el motor lo permite."""
     tarea = Tarea.query.get_or_404(tarea_id)
     resultado = verificar_acceso_expediente(tarea.tramite.fase.solicitud.expediente, 'editar')
     if resultado:
         return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
-    if tarea.fecha_fin is not None:
-        return jsonify({'ok': False, 'error': 'La tarea ya está finalizada'}), 422
 
     bloqueo = check_invariante('FINALIZAR', 'TAREA', tarea_id)
     if bloqueo:
@@ -853,6 +744,5 @@ def finalizar_tarea(tarea_id):
     if not res_eval.permitido:
         return jsonify({'ok': False, 'error': res_eval.norma_compilada, 'norma': res_eval.url_norma}), 422
 
-    tarea.fecha_fin = date.today()
     db.session.commit()
     return jsonify({'ok': True, 'nivel': res_eval.nivel, 'mensaje': res_eval.norma_compilada})

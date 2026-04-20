@@ -187,10 +187,6 @@ def generar():
         nombre_fichero = componer_nombre_documento(tarea, plantilla)
     ruta = ruta_destino_documento(expediente, nombre_fichero)
 
-    # B8: Si tarea.fecha_inicio es None → establecer fecha de hoy
-    if tarea.fecha_inicio is None:
-        tarea.fecha_inicio = date.today()
-
     # Generar .docx
     try:
         docx_bytes = generar_escrito(plantilla, expediente, db.session, tarea=tarea)

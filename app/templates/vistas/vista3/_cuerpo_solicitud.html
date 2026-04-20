@@ -59,24 +59,12 @@
                     </select>
                 </div>
 
-                {# Fecha solicitud #}
+                {# Fecha solicitud — proviene del documento de solicitud #}
                 <div class="col-md-3">
                     <label class="fw-semibold">Fecha solicitud</label>
                     <input type="text" class="form-control"
-                           value="{{ sol_data.obj.fecha_solicitud.strftime('%d/%m/%Y') if sol_data.obj.fecha_solicitud else '' }}"
-                           readonly data-modo-ver data-display-for="fecha_solicitud" data-display-format="date">
-                    <input type="date" class="form-control d-none" name="fecha_solicitud" data-modo-editar
-                           value="{{ sol_data.obj.fecha_solicitud.isoformat() if sol_data.obj.fecha_solicitud else '' }}">
-                </div>
-
-                {# Fecha fin #}
-                <div class="col-md-2">
-                    <label class="fw-semibold">Fecha fin</label>
-                    <input type="text" class="form-control"
-                           value="{{ sol_data.obj.fecha_fin.strftime('%d/%m/%Y') if sol_data.obj.fecha_fin else '' }}"
-                           readonly data-modo-ver data-display-for="fecha_fin" data-display-format="date">
-                    <input type="date" class="form-control d-none" name="fecha_fin" data-modo-editar
-                           value="{{ sol_data.obj.fecha_fin.isoformat() if sol_data.obj.fecha_fin else '' }}">
+                           value="{{ sol_data.obj.documento_solicitud.fecha_administrativa.strftime('%d/%m/%Y') if sol_data.obj.documento_solicitud and sol_data.obj.documento_solicitud.fecha_administrativa else '—' }}"
+                           readonly>
                 </div>
 
                 {# Observaciones #}

@@ -33,11 +33,11 @@
     'Fase: ' ~ (fase.tipo_fase.nombre if fase.tipo_fase else '#' ~ fase.id),
     url_for('expedientes.tramitacion_bc_fase', exp_id=expediente.id, sol_id=solicitud.id, fase_id=fase.id)) }}
 
-{# Estado del trámite deducido de fechas #}
-{% if tramite.fecha_fin %}
+{# Estado del trámite deducido de documentos #}
+{% if tramite.finalizado %}
   {% set tram_badge_class = 'bg-success' %}
   {% set tram_badge_label = 'Finalizado' %}
-{% elif tramite.fecha_inicio %}
+{% elif tramite.en_curso %}
   {% set tram_badge_class = 'bg-primary' %}
   {% set tram_badge_label = 'En curso' %}
 {% else %}
@@ -65,7 +65,7 @@
             Acciones
           </button>
           <ul class="dropdown-menu dropdown-menu-end">
-            {% if not tramite.fecha_inicio %}
+            {% if not tramite.en_curso and not tramite.finalizado %}
             <li>
               <a class="dropdown-item" href="#"
                  data-accion="iniciar"
@@ -74,7 +74,7 @@
               </a>
             </li>
             {% endif %}
-            {% if tramite.fecha_inicio and not tramite.fecha_fin %}
+            {% if tramite.en_curso %}
             <li>
               <a class="dropdown-item" href="#"
                  data-accion="finalizar"
@@ -108,20 +108,7 @@
 
   <div class="card-body card-body-tinted py-2">
 
-    <div data-modo-ver class="row g-2 bc-meta">
-      <div class="col-auto">
-        <strong>F. Inicio:</strong>
-        <span id="disp-fecha_inicio" class="bc-fecha-valor">
-          {{- tramite.fecha_inicio.strftime('%d/%m/%Y') if tramite.fecha_inicio else '—' -}}
-        </span>
-      </div>
-      <div class="col-auto">
-        <strong>F. Fin:</strong>
-        <span id="disp-fecha_fin" class="bc-fecha-valor">
-          {{- tramite.fecha_fin.strftime('%d/%m/%Y') if tramite.fecha_fin else '—' -}}
-        </span>
-      </div>
-    </div>
+    <div data-modo-ver></div>
 
     <form data-modo-editar class="d-none row g-2 pt-1"
           data-url="{{ url_for('vista3.editar_tramite', tram_id=tramite.id) }}">
@@ -130,20 +117,6 @@
         <input type="text" class="form-control form-control-sm" readonly
                value="{{ tramite.tipo_tramite.nombre if tramite.tipo_tramite else '—' }}"
                data-bs-toggle="tooltip" title="El tipo se establece al crear el trámite">
-      </div>
-      <div class="col-md-3">
-        <label class="form-label fw-semibold mb-1">F. Inicio</label>
-        <div id="ef-fecha_inicio"
-             data-ef-name="fecha_inicio"
-             data-ef-value="{{ tramite.fecha_inicio.isoformat() if tramite.fecha_inicio else '' }}">
-        </div>
-      </div>
-      <div class="col-md-3">
-        <label class="form-label fw-semibold mb-1">F. Fin</label>
-        <div id="ef-fecha_fin"
-             data-ef-name="fecha_fin"
-             data-ef-value="{{ tramite.fecha_fin.isoformat() if tramite.fecha_fin else '' }}">
-        </div>
       </div>
       <div class="col-12">
         <label class="form-label fw-semibold mb-1">Observaciones</label>

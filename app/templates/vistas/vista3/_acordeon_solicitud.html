@@ -36,7 +36,7 @@
                             <span class="badge bg-secondary">{{ sol_data.tipos_str }}</span>
                         </p>
                         <p class="mb-1"><strong>Fecha:</strong>
-                            {{ sol_data.obj.fecha_solicitud.strftime('%d/%m/%Y') if sol_data.obj.fecha_solicitud else '—' }}
+                            {{ sol_data.obj.documento_solicitud.fecha_administrativa.strftime('%d/%m/%Y') if sol_data.obj.documento_solicitud and sol_data.obj.documento_solicitud.fecha_administrativa else '—' }}
                         </p>
                         <p class="mb-1"><strong>Estado:</strong>
                             <span class="badge bg-info text-dark">{{ sol_data.obj.estado }}</span>
@@ -72,16 +72,6 @@
             </div>
             <div class="modal-body">
                 <form class="form-editar-sftt">
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Fecha solicitud</label>
-                        <input type="date" class="form-control" name="fecha_solicitud"
-                               value="{{ sol_data.obj.fecha_solicitud.strftime('%Y-%m-%d') if sol_data.obj.fecha_solicitud else '' }}">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Fecha fin</label>
-                        <input type="date" class="form-control" name="fecha_fin"
-                               value="{{ sol_data.obj.fecha_fin.strftime('%Y-%m-%d') if sol_data.obj.fecha_fin else '' }}">
-                    </div>
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Estado</label>
                         <select class="form-select" name="estado">
