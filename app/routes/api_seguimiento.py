@@ -45,8 +45,7 @@ from app.services.seguimiento import estado_solicitud, fin_total
 
 api_seguimiento_bp = Blueprint('api_seguimiento', __name__, url_prefix='/api')
 
-# Estados válidos para el filtro
-_ESTADOS_VALIDOS = {'EN_TRAMITE', 'RESUELTA', 'DESISTIDA', 'ARCHIVADA', 'todos'}
+# Filtro estado eliminado — Solicitud.estado removido del modelo (refactor fechas ESFTT)
 # Tipos de titular válidos
 _TIPOS_TITULAR_VALIDOS = {'GRAN_DISTRIBUIDORA', 'DISTRIBUIDOR_MENOR', 'PROMOTOR', 'ORGANISMO_PUBLICO', 'OTRO'}
 
@@ -75,15 +74,12 @@ def listar_seguimiento():
         return jsonify({'error': 'Parámetros numéricos inválidos'}), 400
 
     ver              = request.args.get('ver', 'mis').strip()
-    estado           = request.args.get('estado', 'EN_TRAMITE').strip()
     tipo_titular     = request.args.get('tipo_titular', '').strip()
     tipo_expediente_id_raw = request.args.get('tipo_expediente_id', '').strip()
     search           = request.args.get('search', '').strip()
 
     if ver not in ('mis', 'todos'):
         return jsonify({'error': 'ver debe ser "mis" o "todos"'}), 400
-    if estado not in _ESTADOS_VALIDOS:
-        return jsonify({'error': f'estado inválido. Válidos: {", ".join(sorted(_ESTADOS_VALIDOS))}'}), 400
     if tipo_titular and tipo_titular not in _TIPOS_TITULAR_VALIDOS:
         return jsonify({'error': f'tipo_titular inválido'}), 400
 
@@ -101,8 +97,6 @@ def listar_seguimiento():
 
     if ver == 'mis':
         filtros_base.append(Expediente.responsable_id == current_user.id)
-    if estado != 'todos':
-        filtros_base.append(Solicitud.estado == estado)
     if tipo_titular:
         filtros_base.append(Entidad.tipo_titular == tipo_titular)
     if tipo_expediente_id:
@@ -171,9 +165,7 @@ def listar_seguimiento():
         estados = estado_solicitud(sol.id)
         es_fin = fin_total(estados)
 
-        if sol.estado != 'EN_TRAMITE':
-            color_solicitud = 'verde'
-        elif es_fin:
+        if es_fin:
             color_solicitud = 'naranja'
         else:
             color_solicitud = ''
@@ -189,7 +181,6 @@ def listar_seguimiento():
             'at_count':              at_counts.get(expediente.id, 1) if expediente else 1,
             'tipo_solicitud':        sol.tipo_solicitud.siglas if sol.tipo_solicitud else '—',
             'fecha_solicitud':       sol.documento_solicitud.fecha_administrativa.isoformat() if sol.documento_solicitud and sol.documento_solicitud.fecha_administrativa else None,
-            'estado_solicitud':      sol.estado,
             'color_solicitud':       color_solicitud,
             'titular_nombre':        titular.nombre_completo if titular else '—',
             'tipo_titular':          titular.tipo_titular if titular else None,

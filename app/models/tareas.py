@@ -84,7 +84,6 @@ class Tarea(db.Model):
     __table_args__ = (
         db.Index('idx_tareas_tramite', 'tramite_id'),
         db.Index('idx_tareas_tipo', 'tipo_tarea_id'),
-        db.Index('idx_tareas_fechas', 'fecha_inicio', 'fecha_fin'),
         db.Index('idx_tareas_documento_usado', 'documento_usado_id'),
         {'schema': 'public'}
     )
@@ -123,18 +122,6 @@ class Tarea(db.Model):
         nullable=True,
         unique=True,
         comment='FK UNIQUE a DOCUMENTOS. Documento generado como output de la tarea'
-    )
-    
-    fecha_inicio = db.Column(
-        db.Date,
-        nullable=True,
-        comment='Fecha de inicio de la tarea. NULL = tarea planificada no iniciada'
-    )
-    
-    fecha_fin = db.Column(
-        db.Date,
-        nullable=True,
-        comment='Fecha de finalización de la tarea. NULL = tarea pendiente o en curso'
     )
     
     notas = db.Column(

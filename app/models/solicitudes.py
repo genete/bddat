@@ -76,8 +76,6 @@ class Solicitud(db.Model):
     __table_args__ = (
         db.Index('idx_solicitudes_expediente', 'expediente_id'),
         db.Index('idx_solicitudes_entidad', 'entidad_id'),
-        db.Index('idx_solicitudes_fecha', 'fecha_solicitud'),
-        db.Index('idx_solicitudes_estado', 'estado'),
         db.Index('idx_solicitudes_doc_solicitud', 'documento_solicitud_id'),
         {'schema': 'public'}
     )
@@ -124,25 +122,6 @@ class Solicitud(db.Model):
         comment='FK a DOCUMENTOS. Ancla de trazabilidad al doc de solicitud (fecha admin en Documento.fecha_administrativa)'
     )
 
-    fecha_solicitud = db.Column(
-        db.Date,
-        nullable=False,
-        comment='Fecha oficial de presentación de la solicitud'
-    )
-    
-    fecha_fin = db.Column(
-        db.Date,
-        nullable=True,
-        comment='Fecha real de finalización de la solicitud. NULL si aún en curso'
-    )
-    
-    estado = db.Column(
-        db.String(20),
-        default='EN_TRAMITE',
-        nullable=False,
-        comment='Estado: EN_TRAMITE, RESUELTA, DESISTIDA, ARCHIVADA'
-    )
-    
     observaciones = db.Column(
         db.String(2000),
         nullable=True,
@@ -159,17 +138,8 @@ class Solicitud(db.Model):
     # Properties
     @property
     def activa(self):
-        """
-        Determina si la solicitud está activa (en curso).
-        
-        Returns:
-            bool: True si estado es EN_TRAMITE, False en caso contrario.
-        
-        Uso:
-            if solicitud.activa:
-                # Solicitud aún en procedimiento
-        """
-        return self.estado == 'EN_TRAMITE'
+        """True si la solicitud está en tramitación. Pendiente del servicio EstadoSFTT."""
+        return True
     
     @property
     def es_desistimiento_o_renuncia(self):
@@ -203,9 +173,7 @@ class Solicitud(db.Model):
         return self.solicitud_afectada_id is not None
     
     def __repr__(self):
-        """Representación técnica para debugging."""
-        return f'<Solicitud id={self.id} expediente={self.expediente_id} entidad={self.entidad_id} estado={self.estado}>'
-    
+        return f'<Solicitud id={self.id} expediente={self.expediente_id} entidad={self.entidad_id}>'
+
     def __str__(self):
-        """Representación legible para interfaz."""
-        return f'Solicitud {self.id} - {self.estado}'
+        return f'Solicitud {self.id}'

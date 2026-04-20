@@ -72,7 +72,6 @@ class Fase(db.Model):
         db.Index('idx_fases_solicitud', 'solicitud_id'),
         db.Index('idx_fases_tipo', 'tipo_fase_id'),
         db.Index('idx_fases_resultado', 'resultado_fase_id'),
-        db.Index('idx_fases_fechas', 'fecha_inicio', 'fecha_fin'),
         {'schema': 'public'}
     )
     
@@ -95,18 +94,6 @@ class Fase(db.Model):
         db.ForeignKey('tipos_fases.id'),
         nullable=False,
         comment='FK a TIPOS_FASES. Tipo de fase (ADMISIBILIDAD, CONSULTAS, etc.)'
-    )
-    
-    fecha_inicio = db.Column(
-        db.Date,
-        nullable=True,
-        comment='Fecha de inicio de la fase. NULL = fase planificada no iniciada'
-    )
-    
-    fecha_fin = db.Column(
-        db.Date,
-        nullable=True,
-        comment='Fecha de finalización de la fase. NULL = fase pendiente o en curso'
     )
     
     resultado_fase_id = db.Column(

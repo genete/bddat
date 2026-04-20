@@ -58,7 +58,6 @@ class Tramite(db.Model):
     __table_args__ = (
         db.Index('idx_tramites_fase', 'fase_id'),
         db.Index('idx_tramites_tipo', 'tipo_tramite_id'),
-        db.Index('idx_tramites_fechas', 'fecha_inicio', 'fecha_fin'),
         {'schema': 'public'}
     )
     
@@ -81,18 +80,6 @@ class Tramite(db.Model):
         db.ForeignKey('tipos_tramites.id'),
         nullable=False,
         comment='FK a TIPOS_TRAMITES. Tipo de trámite'
-    )
-    
-    fecha_inicio = db.Column(
-        db.Date,
-        nullable=True,
-        comment='Fecha de inicio del trámite. NULL = trámite planificado no iniciado'
-    )
-    
-    fecha_fin = db.Column(
-        db.Date,
-        nullable=True,
-        comment='Fecha de finalización del trámite. NULL = trámite pendiente o en curso'
     )
     
     observaciones = db.Column(
