@@ -53,12 +53,6 @@
             </select>
             <div class="form-text">Mantén Ctrl para seleccionar varios tipos.</div>
           </div>
-          <div class="mb-3">
-            <label class="form-label fw-semibold">
-              Fecha solicitud <span class="text-danger">*</span>
-            </label>
-            <div id="ef-fecha-sol-bc"></div>
-          </div>
           <div class="alert alert-danger alert-crear d-none" role="alert"></div>
         </div>
         <div class="modal-footer">
@@ -76,10 +70,4 @@
 
 {% block extra_js_bc %}
 <script src="{{ url_for('static', filename='js/v3-breadcrumbs-crear.js') }}"></script>
-<script>
-  const _ef_fecha_sol = new EntradaFecha('#ef-fecha-sol-bc', { name: 'fecha_solicitud' });
-  document.getElementById('modal-nueva-solicitud-bc').addEventListener('show.bs.modal', function () {
-    _ef_fecha_sol.clear();
-  });
-</script>
 {% endblock %}
