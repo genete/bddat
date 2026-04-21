@@ -1,8 +1,9 @@
 # Motor de reglas agnóstico — Decisiones de rediseño
 
-> **Fecha:** 2026-04-05 · **Actualizado:** 2026-04-16
+> **Fecha:** 2026-04-05 · **Actualizado:** 2026-04-21
 > Sesión de reflexión arquitectural. Complementa `DISEÑO_MOTOR_REGLAS.md`.
 > Esquema de tablas cerrado en sesión 2026-04-16 — ver §Esquema de tablas.
+> Sesión 2026-04-21: esquema `catalogo_variables` cerrado; `condiciones_regla` pasa a FK entera; patrón Variable Registry adoptado — ver `DISEÑO_CONTEXT_ASSEMBLER.md §Ciclo de vida de una variable`.
 
 ---
 
@@ -184,13 +185,15 @@ implícito**. Para expresar OR se crean reglas separadas (Leyes de De Morgan).
 |---|---|---|
 | `id` | INTEGER PK | |
 | `regla_id` | FK → `reglas_motor` CASCADE | Regla a la que pertenece |
-| `nombre_variable` | VARCHAR | Clave en el dict de variables |
+| `variable_id` | FK → `catalogo_variables` | Variable evaluada (integridad referencial garantizada) |
 | `operador` | VARCHAR | Ver catálogo de operadores |
 | `valor` | JSON | Valor de referencia (string, número, lista para IN/BETWEEN) |
 | `orden` | INTEGER | Solo informativo — no cambia semántica |
 
 Sin `negacion` (redundante con los operadores contrarios), sin `operador_siguiente`
-(eliminado al adoptar AND-only), sin `tipo_criterio` (sustituido por `nombre_variable`).
+(eliminado al adoptar AND-only). El campo `nombre_variable VARCHAR` de la migración
+anterior se sustituye por `variable_id FK` — obliga a que toda condición referencie una
+variable registrada en `catalogo_variables`.
 
 **Catálogo de operadores:**
 
@@ -202,6 +205,26 @@ Sin `negacion` (redundante con los operadores contrarios), sin `operador_siguien
 | `GT` / `GTE` | mayor que / mayor o igual que |
 | `LT` / `LTE` | menor que / menor o igual que |
 | `BETWEEN` / `NOT_BETWEEN` | en el rango [a,b] / fuera del rango |
+
+### `catalogo_variables`
+
+Registro de todas las variables que el ContextAssembler sabe computar. Es la fuente de
+verdad compartida entre el código (Variable Registry) y la UI del Supervisor (dropdown).
+
+| Campo | Tipo | Descripción |
+|---|---|---|
+| `id` | INTEGER PK | |
+| `nombre` | VARCHAR UNIQUE NOT NULL | Clave usada en el dict de variables (e.g. `tension_nominal_kv`) |
+| `etiqueta` | VARCHAR NOT NULL | Texto legible para el Supervisor en el formulario |
+| `tipo_dato` | VARCHAR NOT NULL | `boolean` \| `numerico` \| `texto` \| `fecha` \| `enum` — valida `condiciones_regla.valor` |
+| `norma_id` | FK → `normas` nullable | Norma de origen principal de la variable |
+| `activa` | BOOLEAN NOT NULL DEFAULT false | `true` solo cuando la función existe en el Variable Registry |
+
+`naturaleza` (`dato`/`calculado`/`derivado_fase`/`derivado_documento`) vive en el código
+Python del registro — no en BD. Es metadata de implementación, no dato operativo.
+
+El ciclo de vida completo de una variable está descrito en
+`DISEÑO_CONTEXT_ASSEMBLER.md §Ciclo de vida de una variable`.
 
 ### `normas`
 
@@ -383,10 +406,10 @@ extra de proyecto que aún no existen.
 Seis pasos, de más interior a más exterior. Actualizado sesión 2026-04-16 (no hay EventHandler, esquema tablas cerrado):
 
 1. ✅ **MRA — API + esquema tablas** — firma `evaluar(accion, sujeto, tipo_sujeto_id, variables)`, `EvaluacionResult` con `variables_trigger`/`norma_compilada`/`url_norma`, tablas `normas`/`reglas_motor`/`condiciones_regla`/`catalogo_variables` cerradas. Sin capa EventHandler — patrón dos líneas en ruta Flask.
-2. **MRA — implementación motor** — refactor `motor_reglas.py`: nueva firma, nuevo `EvaluacionResult`, eliminar imports BDDAT y criterios específicos (`EXISTE_FASE_CERRADA`, `EXISTE_TAREA_TIPO`, `_check_finalizar_tarea`)
-3. **Migración manual** — crear tablas `normas`, `reglas_motor`, `condiciones_regla`, `catalogo_variables` (esquema cerrado en §Esquema de tablas). Sin tabla `disparadores`.
-4. **Variables — recatalogación** — revisar `DISEÑO_CONTEXT_ASSEMBLER.md`, decidir primeras variables implementables para el primer sprint; seed de `catalogo_variables`; resolver modelo de BD de `Proyecto`/`Solicitud` para variables `dato` → issue #279
-5. **ContextAssembler — implementación** — `app/services/context_assembler.py` con las variables del paso 4; integrar `plazos.py`
+2. ✅ **MRA — implementación motor** — `motor_reglas.py` refactorizado: agnóstico de BDDAT, nueva firma, nuevo `EvaluacionResult`, criterios específicos eliminados.
+3. **Migración manual** — una sola migración con este orden interno: (1) crear `normas`, (2) crear `catalogo_variables`, (3) añadir `norma_id`/`articulo`/`apartado` a `reglas_motor` + eliminar `norma_compilada`, (4) renombrar `condiciones_regla.nombre_variable → variable_id FK → catalogo_variables`. Ver §Esquema de tablas.
+4. **Variables — recatalogación** — revisar `DISEÑO_CONTEXT_ASSEMBLER.md`, decidir primeras variables implementables; seed de `catalogo_variables`; resolver modelo de BD de `Proyecto`/`Solicitud` para variables `dato` → issue #279
+5. **Variable Registry + ContextAssembler** — `app/services/variables/` con patrón registry (`@variable` decorator); `build(expediente_id) → dict`; integrar `plazos.py`. Ver `DISEÑO_CONTEXT_ASSEMBLER.md §Ciclo de vida de una variable`.
 6. **Fuego real** — seed `normas` + 2-3 reglas + condiciones; wiring dos líneas en 2-3 rutas Flask; prueba con expediente real
 
 Issues afectados (no desbloquear hasta paso 5):

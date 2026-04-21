@@ -17,9 +17,9 @@ Uso:
 
     bloqueo = check_invariante('FINALIZAR', 'FASE', fase.id)
     if bloqueo:
-        return jsonify({'ok': False, 'error': bloqueo.norma_compilada}), 422
+        return jsonify({'ok': False, 'error': bloqueo.mensaje}), 422
 
-    variables = {}  # TODO paso 5: context_assembler.build(expediente_id)
+    variables = {}  # TODO paso 5: variables = build(fase.expediente_id)
     resultado = evaluar('FINALIZAR', 'FASE', fase.tipo_fase_id, variables)
     if not resultado.permitido:
         return jsonify({'ok': False, 'error': resultado.norma_compilada,
@@ -30,6 +30,8 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, field
 from typing import Optional
+
+from sqlalchemy.orm import joinedload
 
 from app import db
 from app.models.motor_reglas import ReglaMotor, CondicionRegla
@@ -77,7 +79,7 @@ _OPERADORES = {
 
 
 def _evaluar_condicion(cond: CondicionRegla, variables: dict) -> bool:
-    nombre = cond.nombre_variable
+    nombre = cond.variable.nombre
     if nombre not in variables:
         log.warning('motor_reglas: variable ausente en dict: %s', nombre)
         return False
@@ -106,7 +108,7 @@ def _evaluar_regla(regla: ReglaMotor, variables: dict) -> tuple[bool, dict]:
     for cond in condiciones:
         if not _evaluar_condicion(cond, variables):
             return False, {}
-        trigger[cond.nombre_variable] = variables.get(cond.nombre_variable)
+        trigger[cond.variable.nombre] = variables.get(cond.variable.nombre)
     return True, trigger
 
 
@@ -133,7 +135,9 @@ def evaluar(
         EvaluacionResult. Lanza excepción ante error interno — nunca devuelve
         PERMITIDO silenciosamente ante un fallo.
     """
-    q = ReglaMotor.query.filter_by(accion=accion, sujeto=sujeto, activa=True)
+    q = ReglaMotor.query.options(
+        joinedload(ReglaMotor.condiciones).joinedload(CondicionRegla.variable)
+    ).filter_by(accion=accion, sujeto=sujeto, activa=True)
     if tipo_sujeto_id is not None:
         q = q.filter(
             db.or_(ReglaMotor.tipo_sujeto_id == tipo_sujeto_id,
@@ -149,21 +153,29 @@ def evaluar(
         disparada, trigger = _evaluar_regla(regla, variables)
         if not disparada:
             continue
+        norma_ref = ''
+        url_norma = ''
+        if regla.norma:
+            art = regla.articulo or ''
+            apt = f'.{regla.apartado}' if regla.apartado else ''
+            norma_ref = f'Art. {art}{apt} — {regla.norma.titulo}' if art else regla.norma.titulo
+            url_norma = regla.norma.url_eli or ''
+
         if regla.efecto == 'BLOQUEAR':
             return EvaluacionResult(
                 permitido=False,
                 nivel='BLOQUEAR',
                 variables_trigger=trigger,
-                norma_compilada=regla.norma_compilada or '',
-                url_norma='',
+                norma_compilada=norma_ref,
+                url_norma=url_norma,
             )
         if regla.efecto == 'ADVERTIR' and resultado_advertir is None:
             resultado_advertir = EvaluacionResult(
                 permitido=True,
                 nivel='ADVERTIR',
                 variables_trigger=trigger,
-                norma_compilada=regla.norma_compilada or '',
-                url_norma='',
+                norma_compilada=norma_ref,
+                url_norma=url_norma,
             )
 
     return resultado_advertir or PERMITIDO
