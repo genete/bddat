@@ -1,7 +1,7 @@
 # ContextAssembler — Diseño del contrato de variables
 
-> **Fecha:** 2026-04-05
-> **Estado:** En construcción — diccionario de variables activo; diseño de implementación pendiente.
+> **Fecha:** 2026-04-05 · **Actualizado:** 2026-04-21
+> **Estado:** En construcción — diccionario de variables activo; patrón Variable Registry y ciclo de vida definidos (sesión 2026-04-21).
 > **Referencia de arquitectura:** `DISEÑO_MOTOR_AGNOSTICO.md`
 
 Este documento define el contrato de entrada del ContextAssembler: qué variables
@@ -172,3 +172,78 @@ Las variables crecen en el paso `MAPEO_CONTEXTO` del protocolo de extracción
 | `es_ptd` | boolean | `dato` · Solicitud | RD 337/2014 arts. 16.1, 20.1 · **RD 223/2008 arts. 17.1, 20** — el titular/promotor es empresa de producción, transporte o distribución de energía eléctrica. Si `true`: procedimiento de autorización por legislación sectorial (RD 1955/2000 / LSE); si `false`: puesta en servicio directa (RAT) o autorización según tipo funcional (LAT) salvo `instalacion_cedida = true`. **Deduplicación:** este es el discriminador PTD/no-PTD; `tipo_promotor` no existe aún. | pendiente de implementar |
 | `instalacion_cedida` | boolean | `dato` · Solicitud | RD 337/2014 art. 20.3 / ITC-RAT 22 §5 · **RD 223/2008 ITC-LAT 04 §5** — la instalación va a ser cedida a una PTD antes de su puesta en servicio (pasa a formar parte de la red de transporte o distribución). Si `true`: se aplica el régimen de autorizaciones del RD 1955/2000 título VII aunque el promotor no sea PTD. **Deduplicación:** distinto de `tiene_linea_evacuacion_comun` (fraccionamiento entre promotores); este es sobre titularidad final. | pendiente de implementar |
 | `tipo_linea_funcional` | enum | `dato` · Solicitud | RD 223/2008 ITC-LAT 04 §4 — tipo funcional de la línea; determina si una línea no-PTD no cedida requiere autorización previa. Valores: `'generacion'` (conexión de central), `'consumidor_red'` (consumidor a red transporte/distribución), `'linea_directa'`, `'acometida'`, `'red_distribucion'` (varios consumidores) → todos requieren autorización; `'privada_exclusiva'` → exenta. Solo relevante cuando `es_ptd = false AND instalacion_cedida = false`. | pendiente de implementar |
+
+---
+
+## Ciclo de vida de una variable
+
+> Cómo implementa el programador una variable nueva y cómo la usa el Supervisor
+> para definir reglas, y el motor para evaluarlas.
+
+### Fase 1 — El programador implementa la variable
+
+Parte del diccionario de este documento. Hace dos cosas:
+
+**1. Escribe la función** en el submódulo correspondiente de `app/services/variables/`:
+
+```python
+# app/services/variables/calculado.py
+@variable('intermunicipal')
+def _(ctx: ExpedienteContext) -> bool:
+    return len(ctx.proyecto.municipios) > 1
+```
+
+Al arrancar Flask, el decorador `@variable` ejecuta `_REGISTRY['intermunicipal'] = esa_función`.
+El registro vive en memoria. No hay dispatcher, no hay ifs en `build()`.
+
+Los submódulos se organizan por naturaleza de la variable:
+- `dato.py` — leen directamente un campo del modelo
+- `calculado.py` — computan un valor a partir de otros datos
+- `derivado_fase.py` — consultan si existe una fase cerrada con resultado favorable
+- `derivado_documento.py` — consultan si existe un documento de tipo concreto
+
+**2. Activa la fila** en `catalogo_variables` (vía seed o UI del Supervisor):
+```sql
+UPDATE catalogo_variables SET activa = true WHERE nombre = 'intermunicipal';
+```
+`activa = false` mientras la función no exista en el registry. El Supervisor no puede
+referenciar variables no implementadas.
+
+### Fase 2 — El Supervisor define una regla
+
+Abre el formulario de alta de regla. El campo "variable" es un `<select>` poblado con:
+```sql
+SELECT id, etiqueta FROM catalogo_variables WHERE activa = true ORDER BY etiqueta;
+```
+El Supervisor elige variable, operador (en lenguaje natural: "igual a", "en el conjunto"...)
+y valor. Se guarda en `condiciones_regla` como:
+```
+variable_id = 7   ← FK al id de 'intermunicipal' en catalogo_variables
+operador    = 'EQ'
+valor       = true
+```
+Nunca escribe el nombre de la variable a mano. Si la variable que necesita no aparece
+en el dropdown, falta código — no puede forzarlo.
+
+### Fase 3 — El motor evalúa una acción
+
+La ruta Flask ejecuta siempre el mismo patrón de dos líneas:
+```python
+variables = build(expediente.id)   # dict completo de todas las variables
+resultado  = evaluar('INICIAR', 'FASE', fase.tipo_fase_id, variables)
+```
+
+`build()` recorre `_REGISTRY` y llama cada función con el contexto del expediente.
+Devuelve un dict plano: `{'intermunicipal': True, 'tension_nominal_kv': 220, ...}`.
+Las variables no aplicables llegan como `None`.
+
+`evaluar()` carga las reglas activas para `(accion, sujeto, tipo_sujeto_id)` de BD,
+resuelve cada condición buscando `variables[v.nombre]` en el dict y aplicando el operador
+contra `condiciones_regla.valor`. Si todas las condiciones de una regla se cumplen,
+esa regla se activa.
+
+### Regla de coherencia
+
+Toda variable referenciada en `condiciones_regla` debe existir en `catalogo_variables`
+(integridad referencial por FK) y tener su función en el registry (`activa = true`).
+Un comando `flask sync_variables` puede verificar que ambos lados están alineados.
