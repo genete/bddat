@@ -47,7 +47,7 @@
             <li>
               <a class="dropdown-item" href="#"
                  data-accion="iniciar"
-                 data-url="{{ url_for('vista3.iniciar_solicitud', sol_id=solicitud.id) }}">
+                 data-url="{{ url_for('api_bc.iniciar_solicitud', sol_id=solicitud.id) }}">
                 <i class="fas fa-play me-2 text-success"></i> Iniciar
               </a>
             </li>
@@ -56,7 +56,7 @@
             <li>
               <a class="dropdown-item" href="#"
                  data-accion="finalizar"
-                 data-url="{{ url_for('vista3.finalizar_solicitud', sol_id=solicitud.id) }}">
+                 data-url="{{ url_for('api_bc.finalizar_solicitud', sol_id=solicitud.id) }}">
                 <i class="fas fa-flag-checkered me-2 text-primary"></i> Finalizar
               </a>
             </li>
@@ -65,7 +65,7 @@
             <li>
               <a class="dropdown-item text-danger" href="#"
                  data-accion="borrar"
-                 data-url="{{ url_for('vista3.borrar_solicitud', sol_id=solicitud.id) }}"
+                 data-url="{{ url_for('api_bc.borrar_solicitud', sol_id=solicitud.id) }}"
                  data-redirect="{{ url_for('expedientes.tramitacion_bc', exp_id=expediente.id) }}">
                 <i class="fas fa-trash me-2"></i> Borrar
               </a>
@@ -106,7 +106,7 @@
     </div>
 
     <form data-modo-editar class="d-none row g-2 pt-1"
-          data-url="{{ url_for('vista3.editar_solicitud', sol_id=solicitud.id) }}">
+          data-url="{{ url_for('api_bc.editar_solicitud', sol_id=solicitud.id) }}">
       <div class="col-12">
         <label class="form-label fw-semibold mb-1">Observaciones</label>
         <textarea class="form-control form-control-sm" name="observaciones"
@@ -146,7 +146,7 @@
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <form class="form-nueva-bc"
-            data-url="{{ url_for('vista3.crear_fase', sol_id=solicitud.id) }}">
+            data-url="{{ url_for('api_bc.crear_fase', sol_id=solicitud.id) }}">
         <div class="modal-body">
           <div class="mb-3">
             <label class="form-label fw-semibold">
