@@ -51,9 +51,10 @@ class Tarea(db.Model):
     CAMPO NOTAS:
         - Campo libre para información adicional
         - Puede contener datos específicos según tipo:
-          * Plazos (ESPERARPLAZO)
           * Referencia publicación (PUBLICAR)
           * Remitente (INCORPORAR)
+        - ESPERARPLAZO: el plazo NO vive aquí — viene de `catalogo_plazos` por tipo de trámite.
+          La fecha de inicio del cómputo es `documento_usado.fecha_administrativa`.
     
     SEMÁNTICA SEGÚN TIPO:
         - INCORPORAR: usado=NULL, producido=obligatorio
@@ -62,7 +63,7 @@ class Tarea(db.Model):
         - FIRMAR: usado=obligatorio, producido=obligatorio
         - NOTIFICAR: usado=obligatorio, producido=obligatorio
         - PUBLICAR: usado=obligatorio, producido=obligatorio
-        - ESPERARPLAZO: usado=NULL, producido=NULL
+        - ESPERARPLAZO: usado=obligatorio (doc. de notificación — fuente de fecha inicio cómputo), producido=NULL
     
     RELACIONES:
         - tramite → TRAMITES.id (FK CASCADE, trámite contenedor)
@@ -83,7 +84,6 @@ class Tarea(db.Model):
     __table_args__ = (
         db.Index('idx_tareas_tramite', 'tramite_id'),
         db.Index('idx_tareas_tipo', 'tipo_tarea_id'),
-        db.Index('idx_tareas_fechas', 'fecha_inicio', 'fecha_fin'),
         db.Index('idx_tareas_documento_usado', 'documento_usado_id'),
         {'schema': 'public'}
     )
@@ -124,22 +124,10 @@ class Tarea(db.Model):
         comment='FK UNIQUE a DOCUMENTOS. Documento generado como output de la tarea'
     )
     
-    fecha_inicio = db.Column(
-        db.Date,
-        nullable=True,
-        comment='Fecha de inicio de la tarea. NULL = tarea planificada no iniciada'
-    )
-    
-    fecha_fin = db.Column(
-        db.Date,
-        nullable=True,
-        comment='Fecha de finalización de la tarea. NULL = tarea pendiente o en curso'
-    )
-    
     notas = db.Column(
         db.String(2000),
         nullable=True,
-        comment='Observaciones o información adicional (plazos, referencia, remitente, etc.)'
+        comment='Observaciones o información adicional (referencia publicación, remitente, etc.). NO usar para plazos — viven en catalogo_plazos.'
     )
     
     # Relaciones
@@ -156,24 +144,26 @@ class Tarea(db.Model):
         """Representación legible para interfaz."""
         return f'Tarea {self.id} - {self.tipo_tarea.nombre if self.tipo_tarea else "Sin tipo"}'
 
-    # --- Estados deducibles (vocabulario CREAR/INICIAR/FINALIZAR/BORRAR) ---
-
-    @property
-    def planificada(self):
-        """True si la tarea existe pero aún no se ha iniciado (fecha_inicio IS NULL)."""
-        return self.fecha_inicio is None
-
-    @property
-    def en_curso(self):
-        """True si la tarea ha sido iniciada pero no finalizada."""
-        return self.fecha_inicio is not None and self.fecha_fin is None
+    # --- Estados deducibles ---
+    # La completitud se deduce de documentos, no de campos de fecha.
+    # ESPERAR_PLAZO: la completitud viva en catalogo_plazos (pendiente EstadoSFTT).
 
     @property
     def ejecutada(self):
-        """True si la tarea ha sido finalizada (fecha_fin IS NOT NULL)."""
-        return self.fecha_fin is not None
+        """True si la tarea ha producido su documento de salida. Para ESPERAR_PLAZO, siempre False hasta que EstadoSFTT implemente el cómputo de plazo."""
+        return self.documento_producido_id is not None
+
+    @property
+    def planificada(self):
+        """True si la tarea no tiene ningún documento asignado aún."""
+        return self.documento_producido_id is None and self.documento_usado_id is None
+
+    @property
+    def en_curso(self):
+        """True si la tarea tiene documento de entrada pero no ha producido salida."""
+        return not self.planificada and not self.ejecutada
 
     @property
     def ejecutada_con_doc(self):
-        """True si la tarea está finalizada y ha producido un documento."""
-        return self.fecha_fin is not None and self.documento_producido_id is not None
+        """Alias de ejecutada — idéntico desde que la completitud se deduce del documento."""
+        return self.ejecutada

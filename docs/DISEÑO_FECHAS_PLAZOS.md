@@ -212,6 +212,57 @@ El efecto `PRESCRIPCION_CONDICIONADO` del catálogo §2.4 corresponde a este tip
 
 ---
 
+## 2.bis Principio arquitectónico — Ningún elemento ESFTT almacena fechas
+
+> **Estado:** Cerrado — sesión 2026-04-18/19 (análisis tipo a tipo). Absorbe y cierra `ANALISIS_FECHAS_ESFTT.md`.
+
+Esta sección establece el principio rector sobre fechas en ESFTT que supersede las decisiones abiertas de §3.0–§3.1 de versiones anteriores de este documento.
+
+### Conclusión
+
+**Ningún elemento ESFTT** (Expediente, Solicitud, Fase, Trámite, Tarea) **almacena fechas propias.** Esta conclusión aplica a los cinco niveles.
+
+**Fechas no administrativas** (`fecha_inicio`, `fecha_fin` de fases, trámites, tareas): son marcas temporales de acciones del usuario en el sistema ("cuándo hice clic"). No tienen cliente real: no computan plazos legales, no tienen valor jurídico, no aportan nada que no esté ya en el cuaderno de bitácora. La mera existencia del registro con su `id` prueba que el usuario interactuó.
+
+**Fechas administrativas** (`fecha_solicitud`, fechas de notificación, firma, publicación…): su único hogar válido es `Documento.fecha_administrativa` del documento que las porta. Leer una fecha administrativa es leer del Documento (fuente de verdad). Almacenar un duplicado en el modelo ESFTT crea un dato que puede divergir del documento real con consecuencias legales, y cuya consistencia no puede garantizarse.
+
+**El estado tampoco se almacena.** Es deducible en tiempo de consulta a partir de las reglas del motor y de los documentos existentes.
+
+### Trazabilidad por FK, no por duplicación
+
+Los documentos son agnósticos: no saben quién los usa. La trazabilidad (quién los produce, a qué elemento pertenecen) vive en FKs en las tablas relacionadas. El FK señala dónde está la fuente de verdad, no duplica el dato.
+
+**Implicación para `Solicitud`:** debe existir un FK `documento_solicitud_id` → `documentos.id` (nullable). Este FK permite localizar la fuente de verdad de los datos capitales de la solicitud: *cuándo* (`Documento.fecha_administrativa`) y *qué* (tipo deducible del PDF — issue #304). `documento_solicitud_id` no existe actualmente — debe añadirse.
+
+### Cómo se capturan las fechas administrativas
+
+1. El documento se sube al pool (requisito previo al acto que lo origina).
+2. BDDAT analiza el documento: metadata del PDF, firma digital, OCR si hace falta.
+3. El sistema **propone** la fecha extraída para validación del usuario — nunca asignación automática sin confirmación.
+4. El usuario valida. La fecha queda en `Documento.fecha_administrativa`.
+5. Solo en caso extremo el usuario introduce la fecha manualmente. La bitácora lo registra.
+
+Este flujo aplica también al wizard de creación de expediente: el documento de solicitud debe estar en el pool antes de crear el expediente. La fecha de solicitud se extrae del documento, no de un campo `Solicitud.fecha_solicitud`.
+
+### Mapa de fechas administrativas por fase
+
+El análisis tipo a tipo reveló qué documento porta la fecha administrativa relevante en cada fase. Referencia para el seed de reglas del motor y para la UI.
+
+| Fase | Fecha administrativa | Documento que la porta | Tarea productora |
+|---|---|---|---|
+| ANALISIS_SOLICITUD | — | No aplica (contenedor puro) | — |
+| CONSULTA_MINISTERIO | Notificación al Ministerio | Doc. de notificación | NOTIFICAR en `SOLICITUD_INFORME` |
+| COMPATIBILIDAD_AMBIENTAL | Notificación a Medio Ambiente | Doc. de notificación | NOTIFICAR en `SOLICITUD_COMPATIBILIDAD` |
+| CONSULTAS | Notificación a cada organismo (30/15 días) | Doc. de separata/traslado | NOTIFICAR en `CONSULTA_SEPARATA` y traslados |
+| INFORMACION_PUBLICA | Fecha de publicación en cada medio | Doc. publicado/incorporado | PUBLICAR o INCORPORAR por trámite |
+| FIGURA_AMBIENTAL_EXTERNA | Notificación al titular | Doc. de notificación al titular | NOTIFICAR en `SOLICITUD_FIGURA` |
+| AAU_AAUS_INTEGRADA | Notificación al órgano ambiental | Doc. de notificación | NOTIFICAR en `REMISION_MEDIO_AMBIENTE` |
+| RESOLUCION | Firma, notificación y publicación | Doc. de resolución / notif. / publicación | FIRMAR, NOTIFICAR, PUBLICAR (un doc. por trámite) |
+
+> **Nota RESOLUCION:** los tres trámites interiores portan fechas con efectos jurídicos distintos (inicio de plazo de recurso, publicidad registral, etc.). Se analizarán en detalle cuando se aborde el nivel Trámite.
+
+---
+
 ## 3. Modelo de datos
 
 > **Estado:** En diseño — sesión 2026-04-01 / rev. 2026-04-02.
@@ -230,14 +281,14 @@ Revisión exhaustiva de todos los modelos en `app/models/` buscando campos de ti
 | Modelo | Campo | Tipo BD | Semántica (comment en código) | ¿Administrativa? | ¿Relevante para plazos? |
 |---|---|---|---|---|---|
 | `Documento` | `fecha_administrativa` | Date nullable | Fecha con efectos administrativos (firma, registro, publicación) | **Sí** — fuente absoluta de verdad | **Sí** |
-| `Solicitud` | `fecha_solicitud` | Date NOT NULL | Fecha oficial de presentación — entrada en registro electrónico | **Sí** — inicio del cómputo del plazo de resolución (art. 21) | **Sí** |
-| `Solicitud` | `fecha_fin` | Date nullable | Cierre voluntario de la tramitación por el usuario (fecha de hoy) | **No** — sin valor jurídico propio | **No** — semáforo para el motor de reglas: NULL indica algo pendiente |
-| `Fase` | `fecha_inicio` | Date | Manual — metadato administrativo | Depende del tipo | Depende — ver §3.1 |
-| `Fase` | `fecha_fin` | Date | Manual | Depende del tipo | Depende — ver §3.1 |
-| `Tramite` | `fecha_inicio` | Date | Tramitación | Depende del tipo | Depende — ver §3.1 |
-| `Tramite` | `fecha_fin` | Date | Tramitación | Depende del tipo | Depende — ver §3.1 |
-| `Tarea` | `fecha_inicio` | Date | Tramitación, cerca del documento | Depende del tipo | Depende — ver §3.1 |
-| `Tarea` | `fecha_fin` | Date | Tramitación, cerca del documento | Depende del tipo | Depende — ver §3.1 |
+| `Solicitud` | `fecha_solicitud` | Date NOT NULL | Fecha oficial de presentación — entrada en registro electrónico | **Sí** — inicio del cómputo del plazo de resolución (art. 21) | **Sí** | **[ELIMINADO — pasa a `Documento.fecha_administrativa` del doc de solicitud referenciado por `documento_solicitud_id`]** |
+| `Solicitud` | `fecha_fin` | Date nullable | Cierre voluntario de la tramitación por el usuario (fecha de hoy) | **No** — sin valor jurídico propio | **No** | **[ELIMINADO — refactor fechas ESFTT]** |
+| `Fase` | `fecha_inicio` | Date | Manual — metadato administrativo | Depende del tipo | Depende — ver §3.1 | **[ELIMINADO — refactor fechas ESFTT]** |
+| `Fase` | `fecha_fin` | Date | Manual | Depende del tipo | Depende — ver §3.1 | **[ELIMINADO — refactor fechas ESFTT]** |
+| `Tramite` | `fecha_inicio` | Date | Tramitación | Depende del tipo | Depende — ver §3.1 | **[ELIMINADO — refactor fechas ESFTT]** |
+| `Tramite` | `fecha_fin` | Date | Tramitación | Depende del tipo | Depende — ver §3.1 | **[ELIMINADO — refactor fechas ESFTT]** |
+| `Tarea` | `fecha_inicio` | Date | Tramitación, cerca del documento | Depende del tipo | Depende — ver §3.1 | **[ELIMINADO — refactor fechas ESFTT]** |
+| `Tarea` | `fecha_fin` | Date | Tramitación, cerca del documento | Depende del tipo | Depende — ver §3.1 | **[ELIMINADO — refactor fechas ESFTT]** |
 | `Proyecto` | `fecha` | Date NOT NULL | Fecha técnica (firma/visado) — explícitamente NO administrativa | **No** | No |
 | `DireccionNotificacion` | `fecha_inicio` | Date | Inicio de vigencia de la dirección postal | No | No |
 | `DireccionNotificacion` | `fecha_fin` | Date nullable | Fin de vigencia de la dirección postal | No | No |
@@ -256,11 +307,11 @@ Todo modelo nuevo que incorpore campos de fecha debe declarar la semántica de c
 
 ---
 
-### 3.1 Mapa semántico de fechas (pendiente — revisión tipo a tipo)
+### 3.1 Mapa semántico de fechas
 
-> **Estado:** Estructura cerrada. Contenido pendiente de revisión tipo a tipo con legislación en mano.
+> **Estado:** OBSOLETO — 2026-04-19. Supersedido por `§2.bis Principio arquitectónico` de este documento (conclusión de la sesión 2026-04-18). Al eliminarse todos los campos `fecha_inicio`/`fecha_fin` de Fase, Trámite y Tarea, la tabla `metadatos_fechas` pierde su razón de ser para esos niveles. **No debe implementarse.** La referencia de inicio de cómputo para plazos pasa al campo `campo_fecha JSONB` de `catalogo_plazos` (ver §3.2 rediseñado).
 
-Las columnas `fecha_inicio`/`fecha_fin` de Fase, Trámite y Tarea **no se renombran ni se añaden columnas nuevas**. La semántica de cada fecha se almacena en una tabla BD `metadatos_fechas`, administrable por Supervisor o Admin.
+~~Las columnas `fecha_inicio`/`fecha_fin` de Fase, Trámite y Tarea **no se renombran ni se añaden columnas nuevas**. La semántica de cada fecha se almacena en una tabla BD `metadatos_fechas`, administrable por Supervisor o Admin.~~
 
 #### Estructura de `metadatos_fechas`
 
@@ -302,20 +353,20 @@ Estos controles son de integridad administrativa, no de plazo. Deben decidirse e
 
 ---
 
-### 3.2 Catálogo de plazos — CERRADO
+### 3.2 Catálogo de plazos — CERRADO (campo_fecha rediseñado 2026-04-19)
 
 > **Decisión:** Tabla separada `catalogo_plazos`, administrable por el Supervisor.
 
 Motivación: un tipo de Fase o Trámite no tiene el plazo como atributo propio — la relación es independiente y merece una tabla puente. Permite histórico de cambios legales, múltiples plazos por tipo (por tipo de expediente o vigencia temporal), y modificación sin alterar el catálogo de tipos.
 
-**Estructura preliminar** (sujeta a revisión cuando se cierre 3.1 y 3.2):
+**Estructura:**
 
 ```
 catalogo_plazos
 ├── id
 ├── tipo_elemento       ENUM(SOLICITUD, FASE, TRAMITE, TAREA)
 ├── tipo_elemento_id    FK → tipos_solicitudes / tipos_fases / tipos_tramites / tipos_tareas
-├── campo_fecha         TEXT  -- nombre del campo que actúa como inicio de cómputo
+├── campo_fecha         JSONB  -- referencia de inicio de cómputo (ver formato abajo)
 ├── plazo_valor         INTEGER
 ├── plazo_unidad        ENUM(DIAS_HABILES, DIAS_NATURALES, MESES, ANOS)
 ├── efecto_vencimiento  FK → efectos_plazo  -- (tabla; sin enums hardcodeados)
@@ -324,6 +375,34 @@ catalogo_plazos
 ├── vigencia_hasta      DATE nullable
 └── activo              BOOLEAN
 ```
+
+#### Formato de `campo_fecha` (JSONB)
+
+`campo_fecha` no es código — es **configuración de dominio administrable por el Supervisor**. La legislación fija el valor y la unidad del plazo; también fija *desde qué momento* empieza a contar. Ese momento tiene un reflejo en BDDAT (algún `Documento.fecha_administrativa` accesible desde el elemento ESFTT). El Supervisor lo define en el catálogo; puede corregirlo sin tocar código si la norma cambia.
+
+El campo `campo` es siempre `fecha_administrativa` (el resolver lo asume). FKs navegables por nivel:
+
+| Nivel | FKs navegables a `documentos` |
+|---|---|
+| `SOLICITUD` | `documento_solicitud_id` |
+| `FASE` | `documento_resultado_id` |
+| `TAREA` | `documento_usado_id`, `documento_producido_id` |
+| `TRAMITE` | — directo; requiere `via_tarea_tipo` |
+
+```jsonc
+// Caso directo — Solicitud, Fase, Tarea:
+// "fk" = nombre del atributo ORM con FK a documentos en ese nivel
+{ "fk": "documento_solicitud_id" }
+
+// Caso Trámite — sin FKs directas; se navega a tarea hija del tipo indicado:
+{ "via_tarea_tipo": "ESPERAR_PLAZO", "fk": "documento_usado_id" }
+```
+
+**UI de Supervisión:** selector en cascada (nivel ESFTT → tipo de tarea si Trámite → FK disponible etiquetada en lenguaje administrativo). El POST traduce la selección al JSON. La presentación inversa lo traduce a texto legible:
+- `{"fk": "documento_solicitud_id"}` → "Fecha administrativa del documento de solicitud"
+- `{"via_tarea_tipo": "ESPERAR_PLAZO", "fk": "documento_usado_id"}` → "Fecha administrativa del justificante de notificación (vía tarea Esperar Plazo)"
+
+**`plazos.py` — resolver:** recibe el objeto ORM del elemento y el JSON de `campo_fecha`. Cuatro ramas según `tipo_elemento`; si hay `via_tarea_tipo`, busca la tarea hija antes de seguir el FK. Devuelve `Documento.fecha_administrativa` o `None` (con alarma si el plazo tiene valor > 0 y el documento no existe).
 
 > La FK `efecto_vencimiento` referencia una tabla de efectos (no ENUM hardcodeado). Ver decisión §3.3 nota.
 
@@ -525,16 +604,18 @@ Estos valores son el seed del `catalogo_plazos` para las fases y trámites del p
 
 #### Fases — plazo de resolución (sujeto: la Administración)
 
+> **Nota 2026-04-19:** Las entradas que usan `campo_inicio = fecha_inicio` o `campo_inicio = fecha_solicitud (solicitud)` requieren reconceptualización conforme al rediseño de `campo_fecha` (§3.2). `fecha_solicitud` desaparece del modelo `Solicitud`; pasa a `Documento.fecha_administrativa` del doc de solicitud (`{"fk": "documento_solicitud_id"}`). `fecha_inicio` de Fase/Trámite tampoco existe: la referencia de inicio pasa al Documento navegable desde el elemento. **Marcar como PENDIENTE DE REDISEÑO `campo_fecha`** hasta confirmar el documento fuente en cada caso.
+
 | Tipo elemento ID | Campo inicio cómputo | Valor | Unidad | Efecto vencimiento | Norma origen |
 |---|---|---|---|---|---|
-| RESOLUCION_AAP | fecha_solicitud (solicitud) | 3 | MESES | SILENCIO_DESESTIMATORIO | Art. 128 RD 1955/2000 |
-| RESOLUCION_AAC | fecha_solicitud (solicitud) | 3 | MESES | SILENCIO_DESESTIMATORIO | Art. 131.7 RD 1955/2000 |
-| RESOLUCION_AE (transporte/distribución) | fecha_solicitud (solicitud) | 1 | MESES | SILENCIO_DESESTIMATORIO | Art. 132 RD 1955/2000 + DA 3ª LSE |
-| RESOLUCION_AE_PROVISIONAL (generación) | fecha_solicitud (solicitud) | 1 | MESES | SILENCIO_DESESTIMATORIO | Art. 132 bis RD 1955/2000 + DA 3ª LSE |
-| RESOLUCION_AE_DEFINITIVA (generación) | fecha_solicitud (solicitud) | 1 | MESES | SILENCIO_DESESTIMATORIO | Art. 132 ter RD 1955/2000 + DA 3ª LSE |
-| RESOLUCION_TRANSMISION | fecha_solicitud (solicitud) | 3 | MESES | SILENCIO_DESESTIMATORIO | Art. 133 RD 1955/2000 |
-| RESOLUCION_CIERRE | fecha_solicitud (solicitud) | 3 | MESES | SILENCIO_DESESTIMATORIO | Art. 137 RD 1955/2000 |
-| INFORMACION_PUBLICA | fecha_inicio | 30 | DIAS_NATURALES | SIN_EFECTO_AUTOMATICO | Art. 125 RD 1955/2000 |
+| RESOLUCION_AAP | `{"fk":"documento_solicitud_id"}` | 3 | MESES | SILENCIO_DESESTIMATORIO | Art. 128 RD 1955/2000 |
+| RESOLUCION_AAC | `{"fk":"documento_solicitud_id"}` | 3 | MESES | SILENCIO_DESESTIMATORIO | Art. 131.7 RD 1955/2000 |
+| RESOLUCION_AE (transporte/distribución) | `{"fk":"documento_solicitud_id"}` | 1 | MESES | SILENCIO_DESESTIMATORIO | Art. 132 RD 1955/2000 + DA 3ª LSE |
+| RESOLUCION_AE_PROVISIONAL (generación) | `{"fk":"documento_solicitud_id"}` | 1 | MESES | SILENCIO_DESESTIMATORIO | Art. 132 bis RD 1955/2000 + DA 3ª LSE |
+| RESOLUCION_AE_DEFINITIVA (generación) | `{"fk":"documento_solicitud_id"}` | 1 | MESES | SILENCIO_DESESTIMATORIO | Art. 132 ter RD 1955/2000 + DA 3ª LSE |
+| RESOLUCION_TRANSMISION | `{"fk":"documento_solicitud_id"}` | 3 | MESES | SILENCIO_DESESTIMATORIO | Art. 133 RD 1955/2000 |
+| RESOLUCION_CIERRE | `{"fk":"documento_solicitud_id"}` | 3 | MESES | SILENCIO_DESESTIMATORIO | Art. 137 RD 1955/2000 |
+| INFORMACION_PUBLICA | **[PENDIENTE REDISEÑO campo_fecha]** | 30 | DIAS_NATURALES | SIN_EFECTO_AUTOMATICO | Art. 125 RD 1955/2000 |
 
 > **Nota INFORMACION_PUBLICA:** trámite condicional. Suprimido bajo Decreto 9/2011 DA 1ª (AT 3ª categoría ≤ 30 kV, línea subterránea o CT interior, suelo urbano/urbanizable, sin DUP) y bajo DL 26/2021 DF 4ª (cualquier instalación del Título VII sin DUP y sin AAU). Ver `NORMATIVA_EXCEPCIONES_AT.md §3.1` y `§4.1`.
 
@@ -546,18 +627,20 @@ Estos valores son el seed del `catalogo_plazos` para las fases y trámites del p
 
 #### Trámites — plazos de consultas y traslados
 
+> **Nota 2026-04-19:** Todas las entradas de trámites usaban `campo_inicio = fecha_inicio` de `Tramite`, campo que desaparece. Para trámites el inicio de cómputo navega vía tarea hija: `{"via_tarea_tipo": "ESPERAR_PLAZO", "fk": "documento_usado_id"}` — el `documento_usado` del ESPERAR_PLAZO es el justificante de la NOTIFICAR previa (cuya `fecha_administrativa` inicia el cómputo). **PENDIENTE DE REDISEÑO `campo_fecha`** hasta confirmar en cada trámite que existe una tarea ESPERAR_PLAZO con documento_usado_id.
+
 | Tipo elemento ID | Campo inicio cómputo | Valor | Unidad | Efecto vencimiento | Norma origen |
 |---|---|---|---|---|---|
-| TRASLADO_ALEGACIONES_AAP | fecha_inicio | 15 | DIAS_NATURALES | SIN_EFECTO_AUTOMATICO | Art. 126 RD 1955/2000 |
-| INFORME_AAPP_AAP | fecha_inicio | 30 | DIAS_NATURALES | CONFORMIDAD_PRESUNTA | Art. 127 RD 1955/2000 |
-| TRASLADO_CONDICIONADO_AAP | fecha_inicio | 15 | DIAS_NATURALES | SIN_EFECTO_AUTOMATICO | Art. 127 RD 1955/2000 |
-| REPLICA_AAPP_AAP | fecha_inicio | 15 | DIAS_NATURALES | CONFORMIDAD_PRESUNTA | Art. 127 RD 1955/2000 |
-| INFORME_AAPP_AAC | fecha_inicio | 30 | DIAS_NATURALES | CONFORMIDAD_PRESUNTA | Art. 131 RD 1955/2000 |
-| INFORME_AAPP_AAC_REDUCIDO | fecha_inicio | 15 | DIAS_NATURALES | CONFORMIDAD_PRESUNTA | Art. 131 RD 1955/2000 — solo AAC sin DUP con AAP previa |
-| TRASLADO_CONDICIONADO_AAC | fecha_inicio | 15 | DIAS_NATURALES | SIN_EFECTO_AUTOMATICO | Art. 131 RD 1955/2000 |
-| REPLICA_AAPP_AAC | fecha_inicio | 15 | DIAS_NATURALES | CONFORMIDAD_PRESUNTA | Art. 131 RD 1955/2000 |
-| INFORME_REE_CIERRE | fecha_inicio | 3 | MESES | SIN_EFECTO_AUTOMATICO | Art. 136 RD 1955/2000 — silencio: se continúa sin informe |
-| INFORME_DGPEM | fecha_inicio | 2 | MESES | SIN_EFECTO_AUTOMATICO | Art. 114 RD 1955/2000 — solo instalaciones de transporte CCAA; se continúa sin informe |
+| TRASLADO_ALEGACIONES_AAP | **[PENDIENTE — via ESPERAR_PLAZO.documento_usado_id]** | 15 | DIAS_NATURALES | SIN_EFECTO_AUTOMATICO | Art. 126 RD 1955/2000 |
+| INFORME_AAPP_AAP | **[PENDIENTE — via ESPERAR_PLAZO.documento_usado_id]** | 30 | DIAS_NATURALES | CONFORMIDAD_PRESUNTA | Art. 127 RD 1955/2000 |
+| TRASLADO_CONDICIONADO_AAP | **[PENDIENTE — via ESPERAR_PLAZO.documento_usado_id]** | 15 | DIAS_NATURALES | SIN_EFECTO_AUTOMATICO | Art. 127 RD 1955/2000 |
+| REPLICA_AAPP_AAP | **[PENDIENTE — via ESPERAR_PLAZO.documento_usado_id]** | 15 | DIAS_NATURALES | CONFORMIDAD_PRESUNTA | Art. 127 RD 1955/2000 |
+| INFORME_AAPP_AAC | **[PENDIENTE — via ESPERAR_PLAZO.documento_usado_id]** | 30 | DIAS_NATURALES | CONFORMIDAD_PRESUNTA | Art. 131 RD 1955/2000 |
+| INFORME_AAPP_AAC_REDUCIDO | **[PENDIENTE — via ESPERAR_PLAZO.documento_usado_id]** | 15 | DIAS_NATURALES | CONFORMIDAD_PRESUNTA | Art. 131 RD 1955/2000 — solo AAC sin DUP con AAP previa |
+| TRASLADO_CONDICIONADO_AAC | **[PENDIENTE — via ESPERAR_PLAZO.documento_usado_id]** | 15 | DIAS_NATURALES | SIN_EFECTO_AUTOMATICO | Art. 131 RD 1955/2000 |
+| REPLICA_AAPP_AAC | **[PENDIENTE — via ESPERAR_PLAZO.documento_usado_id]** | 15 | DIAS_NATURALES | CONFORMIDAD_PRESUNTA | Art. 131 RD 1955/2000 |
+| INFORME_REE_CIERRE | **[PENDIENTE — via ESPERAR_PLAZO.documento_usado_id]** | 3 | MESES | SIN_EFECTO_AUTOMATICO | Art. 136 RD 1955/2000 — silencio: se continúa sin informe |
+| INFORME_DGPEM | **[PENDIENTE — via ESPERAR_PLAZO.documento_usado_id]** | 2 | MESES | SIN_EFECTO_AUTOMATICO | Art. 114 RD 1955/2000 — solo instalaciones de transporte CCAA; se continúa sin informe |
 
 > **CONFORMIDAD_PRESUNTA:** efecto del silencio de un organismo consultado — el procedimiento sigue como si hubiera conformidad expresa. Diferente del silencio estimatorio del §2.4 (que recae sobre la Administración resolutora, no sobre un organismo consultado). Añadir `CONFORMIDAD_PRESUNTA` a la tabla `efectos_plazo`.
 
@@ -589,7 +672,7 @@ Issues preexistentes relacionados (pendientes de revisar contra este diseño):
 
 - [x] **§2 Conceptos** — cerrado sesión 2026-04-01
 - [x] **§3.0 Inventario de fechas** — cerrado sesión 2026-04-01; campos Fase/Trámite/Tarea pendientes de revisión tipo a tipo en §3.1
-- [ ] **§3.1 Mapa semántico** — estructura cerrada; pendiente de: (1) completar `NORMATIVA_PLAZOS.md` con revisión LPACAP del §5, y (2) revisión tipo a tipo con legislación en mano y cruce con §5
+- [x] **§3.1 Mapa semántico** — cerrado sesión 2026-04-15; poblar `metadatos_fechas` incrementalmente al implementar cada tipo
 - [ ] **§3.3 Suspensiones** — estudiar qué eventos de BDDAT desencadenan cada causa del art. 22 LPACAP antes de diseñar la tabla
 - [ ] **§3.4 Calendario inhábiles** — verificar disponibilidad de datos por provincia en la Junta; diseñar mecanismo de alerta de año N+1 sin cargar
 - [x] **§3.5 Semántica de `fecha_limite`** — cerrado 2026-04-02

@@ -20,7 +20,7 @@ Para decisiones de diseño, motivaciones y reglas del motor: ver documentos refe
 | `FIRMAR` | Firmar | documento_usado_id (oblig. — borrador) | documento_producido_id (oblig. — firmado) | NOTIFICAR, PUBLICAR |
 | `NOTIFICAR` | Notificar | documento_usado_id (oblig. — firmado) | documento_producido_id (oblig. — justificante) | ESPERAR_PLAZO, INCORPORAR |
 | `PUBLICAR` | Publicar | documento_usado_id (oblig. — firmado) | documento_producido_id (oblig. — justificante) | ESPERAR_PLAZO |
-| `ESPERAR_PLAZO` | Esperar Plazo | — | — | INCORPORAR (si respuesta), FIN (si vence) |
+| `ESPERAR_PLAZO` | Esperar Plazo | documento_usado_id (oblig. si plazo>0 — justificante que inicia cómputo; NULL si plazo=0) | — | INCORPORAR (si respuesta), FIN (si vence) |
 | `INCORPORAR` | Incorporar | — | documentos_tarea N:M (oblig. ≥1) | ANALIZAR |
 
 **Nota INCORPORAR (v5.5):** usa tabla `documentos_tarea` en lugar de `documento_producido_id` (deprecado para esta tarea). Ver `DISEÑO_ANALISIS_SOLICITUD.md §5` y `DISEÑO_SUBSISTEMA_DOCUMENTAL.md`.

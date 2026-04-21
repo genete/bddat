@@ -46,17 +46,37 @@ Variable nueva ≠ regla nueva. Son dos pasos distintos con responsables distint
 
 ---
 
-## Preguntas de diseño abiertas
+## Preguntas de diseño — cerradas en sesión 2026-04-15
 
-Estas preguntas bloquean la implementación; deben cerrarse antes de codificar el
-ContextAssembler:
+| Pregunta | Decisión |
+|---|---|
+| ¿Qué variables computa para cada `(accion, tipo)`? ¿Hardcoded o configurable? | **Lógica de cómputo: siempre en Python.** Qué eventos tienen reglas activas: en BD (`disparadores`). Separación limpia entre "cómo se calcula" (código) y "cuándo aplica" (datos). |
+| Variables derivadas (`intermunicipal`, `plazo_vencido`...) — ¿cómo declararlas sin hardcodear? | El cómputo sí es hardcoded en Python — no hay forma de evitarlo sin sobreingeniería. Lo que no está hardcodeado es *qué reglas referencian esa variable* — eso vive en `condiciones_regla`. |
+| El Supervisor necesita UI para declarar variables nuevas | El Supervisor selecciona variables desde `catalogo_variables` (dropdown, nunca texto libre). Añadir una variable nueva requiere: (1) implementarla en el ContextAssembler, (2) registrarla en `catalogo_variables`. Solo entonces aparece en la UI del Supervisor. |
 
-- ¿Qué variables computa para cada `(accion, tipo)`? ¿Hardcoded o configurable en BD?
-- El Supervisor debe poder editar acciones, variables y condiciones → equilibrar
-  flexibilidad con no hacer todo personalizable.
-- Variables derivadas (`intermunicipal`, `plazo_vencido`, `tiene_fase_X_cerrada`)
-  requieren queries específicas — ¿cómo se declaran sin hardcodearlas?
-- Si el contrato es configurable, el Supervisor necesita UI para declarar variables nuevas.
+---
+
+## Filosofía de almacenamiento de variables
+
+Cada variable tiene **un único sitio de verdad** determinado por su semántica de dominio.
+El ContextAssembler no crea almacenes nuevos — lee de donde ya existe el dato.
+
+| Naturaleza | Dónde vive el valor | Ejemplo |
+|---|---|---|
+| `dato` | En el campo del modelo que corresponde (`Proyecto`, `Solicitud`, `Expediente`) | `proyecto.tension_nominal_kv`, `solicitud.requiere_dup` |
+| `derivado_fase` | Nowhere — se consulta `fase.finalizada_favorable` para el tipo concreto | `tiene_aap_previa` (fase tipo AAP con resultado FAVORABLE) |
+| `derivado_documento` | Nowhere — se consulta la existencia del documento en el momento | `hito_dia_favorable` (doc tipo DIA, resolución externa MITECO) |
+| `calculado` | Nowhere — se computa en el momento y se descarta | `intermunicipal` (query municipios), `plazo_vencido` (función fechas) |
+
+**El `catalogo_variables` registra la ruta semántica, no el valor.** Para una variable
+`dato`, la ruta es el campo de BD (`"proyecto.tension_nominal_kv"`). Para `calculado`
+y `derivado_documento`, la ruta es el nombre del método del ContextAssembler
+(`"_calc_intermunicipal"`, `"_doc_aap_previa"`). El catálogo es el contrato entre el
+código y la UI del Supervisor.
+
+**Regla de implementación:** nunca crear una columna en BD solo para satisfacer una
+variable del motor. Si la semántica correcta del dato es que pertenece a `Proyecto`,
+vive ahí. Si es calculado, no persiste.
 
 ---
 
@@ -65,10 +85,13 @@ ContextAssembler:
 | Valor | Significado | Dónde vive | Caché en BD |
 |---|---|---|---|
 | `dato` | Valor introducido por un humano o aportado en un documento externo. No se calcula. | Campo de `Expediente`, `Proyecto` o `Solicitud` | Sí — es el dato de origen |
-| `derivado_documento` | Verdadero si existe (y está vigente) un documento de un tipo concreto asociado al expediente. | Consulta sobre la tabla de documentos; no como campo propio | No — recalcular siempre; el documento puede añadirse o anularse |
+| `derivado_fase` | Verdadero si existe una fase de un tipo concreto **cerrada con resultado favorable** (`finalizada_favorable = True`). La señal de éxito es el resultado de la fase, no el documento. | Consulta sobre `fases` + `tipos_resultados_fases`; nunca sobre el pool de documentos | No — recalcular siempre; el resultado puede modificarse |
+| `derivado_documento` | Verdadero si existe un documento de un tipo concreto asociado al expediente **sin fase propia en BDDAT** — típicamente acredita un hecho resuelto por un órgano externo. | Consulta sobre la tabla de documentos; no como campo propio | No — recalcular siempre; el documento puede añadirse o anularse |
 | `calculado` | Se obtiene aplicando una función sobre otros datos del sistema. Puede cambiar sin intervención humana directa. | Servicio/propiedad computada; **nunca campo de trámite ni de fase** | No salvo decisión explícita documentada; riesgo de quedar desactualizado |
 
-> **Regla de implementación para variables `calculado` y `derivado_documento`:** el ContextAssembler debe construirlas frescas en cada invocación. No persistir el resultado en BD salvo que exista una decisión de diseño deliberada y documentada que justifique el caché y defina cuándo se invalida.
+> **Distinción `derivado_fase` vs `derivado_documento`:** si el hecho tiene reflejo en una fase de BDDAT (el tramitador la cierra con resultado), usar `derivado_fase`. Si el hecho lo acredita exclusivamente un documento externo sin fase propia (resolución de otro órgano que el tramitador solo adjunta), usar `derivado_documento`. Un documento en el pool sin resultado de fase no es señal de éxito.
+
+> **Regla de implementación para variables `calculado`, `derivado_fase` y `derivado_documento`:** el ContextAssembler debe construirlas frescas en cada invocación. No persistir el resultado en BD salvo que exista una decisión de diseño deliberada y documentada que justifique el caché y defina cuándo se invalida.
 
 ---
 
@@ -108,7 +131,7 @@ Las variables crecen en el paso `MAPEO_CONTEXTO` del protocolo de extracción
 | `fecha_permiso_acceso` | fecha (ISO 8601) | `dato` · Expediente | RD-ley 23/2020 art. 1 — fecha de obtención del permiso de acceso a la red, aportada por el promotor | pendiente de implementar |
 | `tiene_punto_acceso_conexion` | boolean | `derivado_documento` · Expediente | RD-ley 23/2020 art. 1 — existe documento de tipo PERMISO_ACCESO_CONEXION vigente en el expediente; condición de admisión a trámite de AAP renovables | pendiente de implementar |
 | `hito_dia_favorable` | boolean | `derivado_documento` · Expediente | RD-ley 23/2020 art. 1.1 — existe documento de tipo DIA con resultado favorable asociado al expediente (Hito 2); para semáforo de prioridad | pendiente de implementar |
-| `tiene_aap_previa` | boolean | `derivado_documento` · Expediente | RD 1955/2000 art. 131 — existe resolución de AAP favorable vinculada a este proyecto en BDDAT; reduce plazo de consultas AAC de 30 a 15 días. **Nota:** no leer el estado de la fase AAP — consultar la existencia del documento de resolución | definida |
+| `tiene_aap_previa` | boolean | `derivado_fase` · Expediente | RD 1955/2000 art. 131 — existe fase de tipo AAP cerrada con `finalizada_favorable = True` en este expediente; reduce plazo de consultas AAC de 30 a 15 días. La señal es el resultado de la fase, no el documento. | definida |
 | `requiere_eia` | boolean | `calculado` | Ley 21/2013 — cualquier tipo de evaluación ambiental; deriva de características del proyecto según anexos de la Ley 21/2013 | pendiente de implementar |
 | `requiere_eia_ordinaria` | boolean | `calculado` | Art. 115.2 y 115.3 RD 1955/2000 — evaluación ambiental **ordinaria** (art. 7.1 Ley 21/2013); más restrictivo que `requiere_eia` (excluye EIA simplificada); condición de acceso a niveles 2 y 3 del régimen de modificaciones | definida |
 | `modificacion_exceso_potencia_pct` | numérico (%) | `calculado` | Art. 115.2.c RD 1955/2000 — deriva de: (potencia_propuesta − potencia_original) / potencia_original × 100; umbral >15% impide nivel 2 en generación | definida |
@@ -142,8 +165,8 @@ Las variables crecen en el paso `MAPEO_CONTEXTO` del protocolo de extracción
 | `competencia_ambiental_estatal` | boolean | `dato` · Solicitud | Ley 2/2026 arts. 67.3 y 79.3 — la evaluación ambiental del proyecto es de competencia estatal (instalaciones red de transporte, REE); excluye de AAU y AAUS autonómica; el promotor debe obtener pronunciamiento ambiental del MITECO | pendiente de implementar |
 | `declarada_utilidad_interes_general` | boolean | `dato` · Solicitud | Ley 2/2026 arts. 67.4 y 79.4 — la actuación ha sido declarada de utilidad e interés general (distinto de DUP energética — las instalaciones de distribución y transporte ya son de interés general per se); cuando true, AAU/AAUS se resuelve por informe vinculante en lugar de resolución de autorización. ⚠️ Pendiente de revisar: casos muy raros en BDDAT (instalaciones promovidas por la propia Administración para uso propio) | pendiente de revisar |
 | `fecha_inicio_expediente_ambiental` | date (ISO 8601) | `dato` · Expediente | Ley 2/2026 DT 1ª · **D356/2010 DT única** — fecha de inicio del procedimiento de instrumento de prevención ambiental (AAU/AAUS/CA); si < 20/06/2026 → tramitación por GICA + Decreto 356/2010; si ≥ 20/06/2026 → Ley 2/2026 | pendiente de implementar |
-| `hito_aau_obtenida` | boolean | `derivado_documento` · Expediente | **D356/2010 art. 24** (GICA, plazo 8m) · Ley 2/2026 art. 67 (plazo 6m) / GICA art. 31 — existe resolución de AAU (o informe vinculante equivalente si declarada_utilidad_interes_general) favorable; desbloqueante de la AAP cuando requiere_aau = true | pendiente de implementar |
-| `hito_aaus_obtenida` | boolean | `derivado_documento` · Expediente | **D356/2010 art. 27 sexies** (GICA, plazo 5m) · Ley 2/2026 art. 79 (plazo 5m) — existe resolución de AAUS favorable; desbloqueante de la AAP cuando requiere_aaus = true | pendiente de implementar |
+| `hito_aau_obtenida` | boolean | `derivado_fase` · Expediente | **D356/2010 art. 24** (GICA, plazo 8m) · Ley 2/2026 art. 67 (plazo 6m) / GICA art. 31 — existe fase de tipo AAU cerrada con `finalizada_favorable = True`; desbloqueante de la AAP cuando `requiere_aau = true`. Si `declarada_utilidad_interes_general = true`, el instrumento es un informe vinculante en lugar de resolución, pero sigue cerrando la fase. | pendiente de implementar |
+| `hito_aaus_obtenida` | boolean | `derivado_fase` · Expediente | **D356/2010 art. 27 sexies** (GICA, plazo 5m) · Ley 2/2026 art. 79 (plazo 5m) — existe fase de tipo AAUS cerrada con `finalizada_favorable = True`; desbloqueante de la AAP cuando `requiere_aaus = true` | pendiente de implementar |
 | `requiere_licencia_ambiental` | boolean | `calculado` | Ley 2/2026 Anexo I Categoría 3 — la instalación requiere Licencia Ambiental municipal; se activa cuando la línea cumple los umbrales de Cat.3 (T≥15kV aérea 1-3km; T<15kV aérea >1km; T<15kV subterránea >3km en suelo rústico) **y NO** se activan los criterios\* EIA (si se activan → AAUS, no LA). Escape: `discurre_integra_subterranea = true` AND `clasificacion_suelo_lista = 'urbano'`. **Diseño:** umbrales excluyentes con AAUS por construcción. La Licencia Ambiental es previa a la AAP (art. 89.4). | pendiente de implementar |
 | `hito_licencia_ambiental_obtenida` | boolean | `derivado_documento` · Expediente | Ley 2/2026 art. 89.4 / art. 92.6 — existe resolución de Licencia Ambiental favorable del Ayuntamiento competente; desbloqueante de la AAP cuando `requiere_licencia_ambiental = true`. Órgano: Ayuntamiento (distinto de AAU/AAUS: Consejería de Medio Ambiente). Plazo resolución: 3 meses (silencio desestimatorio). | pendiente de implementar |
 | `es_ptd` | boolean | `dato` · Solicitud | RD 337/2014 arts. 16.1, 20.1 · **RD 223/2008 arts. 17.1, 20** — el titular/promotor es empresa de producción, transporte o distribución de energía eléctrica. Si `true`: procedimiento de autorización por legislación sectorial (RD 1955/2000 / LSE); si `false`: puesta en servicio directa (RAT) o autorización según tipo funcional (LAT) salvo `instalacion_cedida = true`. **Deduplicación:** este es el discriminador PTD/no-PTD; `tipo_promotor` no existe aún. | pendiente de implementar |

@@ -19,7 +19,7 @@
       "entrada": "documento_usado_id (obligatorio)",
       "salida": "documento_producido_id (obligatorio)",
       "habilita_tareas": ["REDACTAR"],
-      "nota": "documento_producido_id IS NOT NULL para FECHA_FIN. Ver DISEÑO_MOTOR_REGLAS.md §TAREA."
+      "nota": "documento_producido_id IS NOT NULL para completitud de la tarea. Ver DISEÑO_MOTOR_REGLAS.md §TAREA."
     },
     {
       "codigo": "REDACTAR",
@@ -28,7 +28,7 @@
       "entrada": "documento_usado_id (opcional — informe ANALIZAR previo si existe)",
       "salida": "documento_producido_id (obligatorio — borrador)",
       "habilita_tareas": ["FIRMAR"],
-      "nota": "documento_producido_id IS NOT NULL para FECHA_FIN."
+      "nota": "documento_producido_id IS NOT NULL para completitud de la tarea."
     },
     {
       "codigo": "FIRMAR",
@@ -37,7 +37,7 @@
       "entrada": "documento_usado_id (obligatorio — borrador de REDACTAR)",
       "salida": "documento_producido_id (obligatorio — documento firmado)",
       "habilita_tareas": ["NOTIFICAR", "PUBLICAR"],
-      "nota": "FECHA_FIN = fecha administrativa del acto de firma. documento_producido_id IS NOT NULL para FECHA_FIN."
+      "nota": "documento_producido.fecha_administrativa porta la fecha del acto de firma. documento_producido_id IS NOT NULL para completitud de la tarea."
     },
     {
       "codigo": "NOTIFICAR",
@@ -46,7 +46,7 @@
       "entrada": "documento_usado_id (obligatorio — documento firmado de FIRMAR)",
       "salida": "documento_producido_id (obligatorio — justificante de notificación)",
       "habilita_tareas": ["ESPERAR_PLAZO", "INCORPORAR"],
-      "nota": "FECHA_FIN = fecha administrativa de la notificación. documento_producido_id IS NOT NULL para FECHA_FIN."
+      "nota": "documento_producido.fecha_administrativa porta la fecha de la notificación. documento_producido_id IS NOT NULL para completitud de la tarea."
     },
     {
       "codigo": "PUBLICAR",
@@ -55,13 +55,13 @@
       "entrada": "documento_usado_id (obligatorio — documento firmado de FIRMAR)",
       "salida": "documento_producido_id (obligatorio — justificante de publicación)",
       "habilita_tareas": ["ESPERAR_PLAZO"],
-      "nota": "FECHA_FIN = fecha de publicación. Campo NOTAS: referencia de publicación (ej. BOE-A-2025-1234)."
+      "nota": "documento_producido.fecha_administrativa porta la fecha de publicación. Campo NOTAS: referencia de publicación (ej. BOE-A-2025-1234)."
     },
     {
       "codigo": "ESPERAR_PLAZO",
       "nombre": "Esperar Plazo",
       "descripcion": "Suspensión temporal con fecha límite (PLAZO_DIAS=0: paralización indefinida hasta evento externo)",
-      "entrada": "Ninguno",
+      "entrada": "documento_usado_id (obligatorio si plazo > 0 — justificante de NOTIFICAR o PUBLICAR que inicia el cómputo del plazo; NULL si plazo = 0, espera pasiva indefinida)",
       "salida": "Ninguno",
       "habilita_tareas": ["INCORPORAR (si llega respuesta)", "FIN (si vence sin respuesta)"],
       "nota": "Campo NOTAS: PLAZO_DIAS y TIPO_DIAS. PLAZO_DIAS=0 = indefinido."
@@ -73,7 +73,7 @@
       "entrada": "Ninguno (documentos externos ya presentes en pool del expediente)",
       "salida": "documentos_tarea (N documentos vinculados — documento_producido_id deprecado desde v5.5)",
       "habilita_tareas": ["ANALIZAR"],
-      "nota": "Desde v5.5: tabla documentos_tarea (1 acto de recepción = N docs). FECHA_FIN requiere ≥1 registro en documentos_tarea. Solo para documentación externa durante tramitación activa — no para carga inicial. Ver DISEÑO_SUBSISTEMA_DOCUMENTAL.md §INCORPORAR y DISEÑO_ANALISIS_SOLICITUD.md §5."
+      "nota": "Desde v5.5: tabla documentos_tarea (1 acto de recepción = N docs). Completitud requiere ≥1 registro en documentos_tarea. Solo para documentación externa durante tramitación activa — no para carga inicial. Ver DISEÑO_SUBSISTEMA_DOCUMENTAL.md §INCORPORAR y DISEÑO_ANALISIS_SOLICITUD.md §5."
     }
   ],
   "PATRONES_FLUJO": [

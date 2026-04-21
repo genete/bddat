@@ -208,7 +208,7 @@ Distinta de NOTIFICAR+BOE/BOP/PRENSA donde NO controlamos la fecha de publicaci�
 ## ESPERAR_PLAZO
 
 **Semántica:** Suspensión temporal con fecha límite (`PLAZO_DIAS=0`: indefinida hasta evento externo).
-Sin documentos: `documento_usado_id = NULL`, `documento_producido_id = NULL`.
+`documento_producido_id = NULL` siempre. `documento_usado_id`: obligatorio cuando `plazo > 0` — debe ser el justificante de NOTIFICAR o PUBLICAR cuya `fecha_administrativa` inicia el cómputo del plazo; `NULL` cuando `plazo = 0` (espera pasiva indefinida hasta evento externo, sin cómputo posible).
 
 | Fase | Trámite | Patrón | Tipo de espera | ¿Puede generar INCORPORAR? |
 |---|---|---|---|---|
@@ -263,14 +263,14 @@ como funcionalidad de soporte fuera del flujo ESFTT.
 ### 4. `fecha_administrativa` en documentos producidos internamente
 
 El JSON no menciona `fecha_administrativa` en ningún tipo de tarea.
-Sin embargo, la propuesta de hacer el campo nullable (#191) implica que:
+Según la conclusión arquitectónica de `ANALISIS_FECHAS_ESFTT.md` (absorbida en `DISEÑO_FECHAS_PLAZOS.md §2.bis`), ningún campo `fecha_fin` existe en Tarea. La `fecha_administrativa` vive exclusivamente en el `Documento`:
 - Documentos de `INCORPORAR`: la fecha administrativa es conocida en el acto (fecha de registro).
-- Documentos de `FIRMAR`: la fecha es `FECHA_FIN` de la tarea (acto de firma).
-- Documentos de `NOTIFICAR`/`PUBLICAR`: la fecha es `FECHA_FIN` de la tarea.
+- Documentos de `FIRMAR`: `documento_producido.fecha_administrativa` porta la fecha del acto de firma.
+- Documentos de `NOTIFICAR`/`PUBLICAR`: `documento_producido.fecha_administrativa` porta la fecha del acto.
 - Documentos de `REDACTAR`/`ANALIZAR`: sin fecha administrativa (el borrador y el informe
   no tienen efectos jurídicos directos). Son candidatos a `fecha_administrativa = NULL` por diseño,
   no por incompletos.
-Esto modifica la semántica de NULL: no solo "pendiente de revisión" sino también
+La semántica de NULL en `fecha_administrativa`: no solo "pendiente de revisión" sino también
 "documento sin valor jurídico propio (borrador/informe interno)".
 
 ### 5. NOTIFICAR produce justificante externo — igual que INCORPORAR en el sentido inverso

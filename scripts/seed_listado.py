@@ -98,25 +98,25 @@ def crear_exp(numero_at, entidad, tipo_exp_id):
     return exp
 
 
-def crear_sol(exp, tipo_sol_id, entidad, fecha=date(2025, 6, 1)):
+def crear_sol(exp, tipo_sol_id, entidad, fecha=None, doc_solicitud=None):
     s = Solicitud(
         expediente_id=exp.id,
         entidad_id=entidad.id,
         tipo_solicitud_id=tipo_sol_id,
-        fecha_solicitud=fecha,
-        estado='EN_TRAMITE',
+        documento_solicitud_id=doc_solicitud.id if doc_solicitud else None,
     )
     db.session.add(s)
     db.session.flush()
     return s
 
 
-def crear_doc(exp, url, tipo_doc_id):
+def crear_doc(exp, url, tipo_doc_id, fecha_adm=None):
     d = Documento(
         expediente_id=exp.id,
         tipo_doc_id=tipo_doc_id,
         url=url,
         asunto=url.split('/')[-1],
+        fecha_administrativa=fecha_adm,
     )
     db.session.add(d)
     db.session.flush()
@@ -127,8 +127,6 @@ def crear_fase(sol, tipo_fase_id, fin=None, resultado_id=None):
     f = Fase(
         solicitud_id=sol.id,
         tipo_fase_id=tipo_fase_id,
-        fecha_inicio=FECHA_INI,
-        fecha_fin=fin,
         resultado_fase_id=resultado_id,
     )
     db.session.add(f)
@@ -140,7 +138,6 @@ def crear_tramite(fase, tipo_tramite_id):
     t = Tramite(
         fase_id=fase.id,
         tipo_tramite_id=tipo_tramite_id,
-        fecha_inicio=FECHA_TRAM,
     )
     db.session.add(t)
     db.session.flush()
@@ -151,7 +148,6 @@ def crear_tarea(tramite, tipo_tarea_id, doc_usado=None, doc_producido=None, nota
     t = Tarea(
         tramite_id=tramite.id,
         tipo_tarea_id=tipo_tarea_id,
-        fecha_inicio=FECHA_TAREA,
         documento_usado_id=doc_usado.id if doc_usado else None,
         documento_producido_id=doc_producido.id if doc_producido else None,
         notas=notas,
@@ -161,8 +157,8 @@ def crear_tarea(tramite, tipo_tarea_id, doc_usado=None, doc_producido=None, nota
     return t
 
 
-def fase_fin(sol, tipo_fase_id, resultado_id):
-    return crear_fase(sol, tipo_fase_id, fin=FECHA_FIN, resultado_id=resultado_id)
+def fase_fin(sol, tipo_fase_id, resultado_id=None):
+    return crear_fase(sol, tipo_fase_id, resultado_id=resultado_id)
 
 
 # ---------------------------------------------------------------------------
@@ -215,8 +211,8 @@ with app.app_context():
     # T01 | AAP_AAC | SOL=PENDIENTE_ESTUDIO | ANALIZAR con doc_usado, sin doc_producido
     # ------------------------------------------------------------------
     exp01 = crear_exp(1001, e_dist, TE_DIST)
-    sol_recibida01 = crear_doc(exp01, 'seed://sol_recibida_T01', TDOC_OTROS)
-    sol01 = crear_sol(exp01, TS_AAP_AAC, e_dist)
+    sol_recibida01 = crear_doc(exp01, 'seed://sol_recibida_T01', TDOC_OTROS, fecha_adm=FECHA_INI)
+    sol01 = crear_sol(exp01, TS_AAP_AAC, e_dist, doc_solicitud=sol_recibida01)
     f01 = crear_fase(sol01, TF_SOL)
     t01 = crear_tramite(f01, TT_ANAL_DOC)
     crear_tarea(t01, TAREA_ANAL, doc_usado=sol_recibida01)
@@ -226,8 +222,8 @@ with app.app_context():
     # T02 | AAP_AAC | SOL=PENDIENTE_REDACTAR | REDACTAR con doc_usado, sin doc_producido
     # ------------------------------------------------------------------
     exp02 = crear_exp(1002, e_dist, TE_DIST)
-    sol_recibida02 = crear_doc(exp02, 'seed://sol_recibida_T02', TDOC_OTROS)
-    sol02 = crear_sol(exp02, TS_AAP_AAC, e_dist)
+    sol_recibida02 = crear_doc(exp02, 'seed://sol_recibida_T02', TDOC_OTROS, fecha_adm=FECHA_INI)
+    sol02 = crear_sol(exp02, TS_AAP_AAC, e_dist, doc_solicitud=sol_recibida02)
     f02 = crear_fase(sol02, TF_SOL)
     t02 = crear_tramite(f02, TT_REQ_SUB)
     crear_tarea(t02, TAREA_RED, doc_usado=sol_recibida02)
@@ -237,8 +233,9 @@ with app.app_context():
     # T03 | AAP_AAC | SOL=PENDIENTE_FIRMA | FIRMAR con borrador, sin firmado
     # ------------------------------------------------------------------
     exp03 = crear_exp(1003, e_dist, TE_DIST)
+    sol_recibida03 = crear_doc(exp03, 'seed://sol_recibida_T03', TDOC_OTROS, fecha_adm=FECHA_INI)
     borrador03 = crear_doc(exp03, 'seed://borrador_T03', TDOC_OTROS)
-    sol03 = crear_sol(exp03, TS_AAP_AAC, e_dist)
+    sol03 = crear_sol(exp03, TS_AAP_AAC, e_dist, doc_solicitud=sol_recibida03)
     f03 = crear_fase(sol03, TF_SOL)
     t03 = crear_tramite(f03, TT_REQ_SUB)
     crear_tarea(t03, TAREA_FIR, doc_usado=borrador03)
@@ -251,7 +248,8 @@ with app.app_context():
     # ------------------------------------------------------------------
     exp04 = crear_exp(1004, e_dist, TE_DIST)
 
-    sol04a = crear_sol(exp04, TS_AAP_AAC, e_dist)
+    sol_recibida04a = crear_doc(exp04, 'seed://sol_recibida_T04a', TDOC_OTROS, fecha_adm=FECHA_INI)
+    sol04a = crear_sol(exp04, TS_AAP_AAC, e_dist, doc_solicitud=sol_recibida04a)
     f04a_sol = crear_fase(sol04a, TF_SOL)
     t04a_req = crear_tramite(f04a_sol, TT_REQ_SUB)
     crear_tarea(t04a_req, TAREA_ESP, notas='PLAZO_DIAS=0')
@@ -259,8 +257,8 @@ with app.app_context():
     t04a_sep = crear_tramite(f04a_cons, TT_CONS_SEP)
     crear_tarea(t04a_sep, TAREA_ESP, notas='PLAZO_DIAS=0')
 
-    sol_recibida04b = crear_doc(exp04, 'seed://sol_recibida_T04b', TDOC_OTROS)
-    sol04b = crear_sol(exp04, TS_AAE_DEF, e_dist, fecha=date(2025, 8, 1))
+    sol_recibida04b = crear_doc(exp04, 'seed://sol_recibida_T04b', TDOC_OTROS, fecha_adm=date(2025, 8, 1))
+    sol04b = crear_sol(exp04, TS_AAE_DEF, e_dist, fecha=date(2025, 8, 1), doc_solicitud=sol_recibida04b)
     f04b_sol = crear_fase(sol04b, TF_SOL)
     t04b = crear_tramite(f04b_sol, TT_ANAL_DOC)
     crear_tarea(t04b, TAREA_ANAL, doc_usado=sol_recibida04b)
@@ -270,8 +268,9 @@ with app.app_context():
     # T05 | AAP_AAC | SOL=FIN, CONSULTAS=PENDIENTE_NOTIFICAR
     # ------------------------------------------------------------------
     exp05 = crear_exp(1005, e_dist, TE_DIST)
+    sol_recibida05 = crear_doc(exp05, 'seed://sol_recibida_T05', TDOC_OTROS, fecha_adm=FECHA_INI)
     firmado05 = crear_doc(exp05, 'seed://firmado_T05', TDOC_OTROS)
-    sol05 = crear_sol(exp05, TS_AAP_AAC, e_dist)
+    sol05 = crear_sol(exp05, TS_AAP_AAC, e_dist, doc_solicitud=sol_recibida05)
     fase_fin(sol05, TF_SOL, TRES_FAV)
     f05_cons = crear_fase(sol05, TF_CONS)
     t05_sep = crear_tramite(f05_cons, TT_CONS_SEP)
@@ -282,7 +281,8 @@ with app.app_context():
     # T06 | AAP_AAC | SOL=FIN, CONSULTAS=FIN, MA=PENDIENTE_PLAZOS
     # ------------------------------------------------------------------
     exp06 = crear_exp(1006, e_dist, TE_DIST)
-    sol06 = crear_sol(exp06, TS_AAP_AAC, e_dist)
+    sol_recibida06 = crear_doc(exp06, 'seed://sol_recibida_T06', TDOC_OTROS, fecha_adm=FECHA_INI)
+    sol06 = crear_sol(exp06, TS_AAP_AAC, e_dist, doc_solicitud=sol_recibida06)
     fase_fin(sol06, TF_SOL, TRES_FAV)
     fase_fin(sol06, TF_CONS, TRES_FAV)
     f06_ma = crear_fase(sol06, TF_MA)
@@ -294,8 +294,9 @@ with app.app_context():
     # T07 | AAP_AAC | SOL=FIN, CONSULTAS=FIN, MA=FIN, IP=PENDIENTE_PUBLICAR
     # ------------------------------------------------------------------
     exp07 = crear_exp(1007, e_dist, TE_DIST)
+    sol_recibida07 = crear_doc(exp07, 'seed://sol_recibida_T07', TDOC_OTROS, fecha_adm=FECHA_INI)
     firmado07 = crear_doc(exp07, 'seed://firmado_T07', TDOC_OTROS)
-    sol07 = crear_sol(exp07, TS_AAP_AAC, e_dist)
+    sol07 = crear_sol(exp07, TS_AAP_AAC, e_dist, doc_solicitud=sol_recibida07)
     fase_fin(sol07, TF_SOL, TRES_FAV)
     fase_fin(sol07, TF_CONS, TRES_FAV)
     fase_fin(sol07, TF_MA, TRES_FAV)
@@ -308,7 +309,8 @@ with app.app_context():
     # T08 | AAP_AAC | SOL=FIN, CONSULTAS=FIN, MA=FIN, IP=PENDIENTE_PLAZOS, RES=PENDIENTE_ESTUDIO
     # ------------------------------------------------------------------
     exp08 = crear_exp(1008, e_dist, TE_DIST)
-    sol08 = crear_sol(exp08, TS_AAP_AAC, e_dist)
+    sol_recibida08_sol = crear_doc(exp08, 'seed://sol_recibida_T08_sol', TDOC_OTROS, fecha_adm=FECHA_INI)
+    sol08 = crear_sol(exp08, TS_AAP_AAC, e_dist, doc_solicitud=sol_recibida08_sol)
     fase_fin(sol08, TF_SOL, TRES_FAV)
     fase_fin(sol08, TF_CONS, TRES_FAV)
     fase_fin(sol08, TF_MA, TRES_FAV)
@@ -325,8 +327,9 @@ with app.app_context():
     # T09 | AAP_AAC | SOL=FIN, CONSULTAS=FIN, MA=FIN, IP=FIN, RES=PENDIENTE_NOTIFICAR
     # ------------------------------------------------------------------
     exp09 = crear_exp(1009, e_dist, TE_DIST)
+    sol_recibida09 = crear_doc(exp09, 'seed://sol_recibida_T09', TDOC_OTROS, fecha_adm=FECHA_INI)
     firmado09 = crear_doc(exp09, 'seed://firmado_T09', TDOC_OTROS)
-    sol09 = crear_sol(exp09, TS_AAP_AAC, e_dist)
+    sol09 = crear_sol(exp09, TS_AAP_AAC, e_dist, doc_solicitud=sol_recibida09)
     fase_fin(sol09, TF_SOL, TRES_FAV)
     fase_fin(sol09, TF_CONS, TRES_FAV)
     fase_fin(sol09, TF_MA, TRES_FAV)
@@ -340,7 +343,8 @@ with app.app_context():
     # T10 | AAP_AAC | Todas las pistas FIN → FIN=TRUE
     # ------------------------------------------------------------------
     exp10 = crear_exp(1010, e_dist, TE_DIST)
-    sol10 = crear_sol(exp10, TS_AAP_AAC, e_dist)
+    sol_recibida10 = crear_doc(exp10, 'seed://sol_recibida_T10', TDOC_OTROS, fecha_adm=FECHA_INI)
+    sol10 = crear_sol(exp10, TS_AAP_AAC, e_dist, doc_solicitud=sol_recibida10)
     fase_fin(sol10, TF_SOL, TRES_FAV)
     fase_fin(sol10, TF_CONS, TRES_FAV)
     fase_fin(sol10, TF_MA, TRES_FAV)
@@ -352,7 +356,8 @@ with app.app_context():
     # T11 | AAP_AAC | SOL=PENDIENTE_TRAMITAR | Sin fases creadas
     # ------------------------------------------------------------------
     exp11 = crear_exp(1011, e_prom, TE_DIST)
-    sol11 = crear_sol(exp11, TS_AAP_AAC, e_prom)
+    sol_recibida11 = crear_doc(exp11, 'seed://sol_recibida_T11', TDOC_OTROS, fecha_adm=FECHA_INI)
+    sol11 = crear_sol(exp11, TS_AAP_AAC, e_prom, doc_solicitud=sol_recibida11)
     print('T11 OK — SOL=PENDIENTE_TRAMITAR (sin fases)')
 
     db.session.commit()

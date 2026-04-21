@@ -54,7 +54,7 @@ class ScrollInfinito {
      * @param {Array}    options.columns     - Config columnas (modo genérico). Default: null (usa legacy)
      * @param {string}   options.tableClass  - Selector CSS de la tabla. Default: '.expedientes-table'
      * @param {string}   options.entityLabel - Nombre de la entidad para mensajes. Default: 'expedientes'
-     * @param {Function} options.detailUrl   - Función id => URL del detalle. Default: V3 expedientes
+     * @param {Function} options.detailUrl   - Función id => URL del detalle. Default: BC expedientes
      * @param {Object}   options.fixedParams - Parámetros fijos añadidos a cada petición. Default: {}
      */
     constructor(options = {}) {
@@ -68,7 +68,7 @@ class ScrollInfinito {
         this.columns     = options.columns     || null;
         this.tableClass  = options.tableClass  || '.expedientes-table';
         this.entityLabel = options.entityLabel || 'expedientes';
-        this.detailUrl   = options.detailUrl   || (id => `/expedientes/${id}/tramitacion_v3`);
+        this.detailUrl   = options.detailUrl   || (id => `/expedientes/${id}/tramitacion`);
 
         // Estado
         this.cursor         = 0;

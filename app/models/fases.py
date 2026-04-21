@@ -72,7 +72,6 @@ class Fase(db.Model):
         db.Index('idx_fases_solicitud', 'solicitud_id'),
         db.Index('idx_fases_tipo', 'tipo_fase_id'),
         db.Index('idx_fases_resultado', 'resultado_fase_id'),
-        db.Index('idx_fases_fechas', 'fecha_inicio', 'fecha_fin'),
         {'schema': 'public'}
     )
     
@@ -95,18 +94,6 @@ class Fase(db.Model):
         db.ForeignKey('tipos_fases.id'),
         nullable=False,
         comment='FK a TIPOS_FASES. Tipo de fase (ADMISIBILIDAD, CONSULTAS, etc.)'
-    )
-    
-    fecha_inicio = db.Column(
-        db.Date,
-        nullable=True,
-        comment='Fecha de inicio de la fase. NULL = fase planificada no iniciada'
-    )
-    
-    fecha_fin = db.Column(
-        db.Date,
-        nullable=True,
-        comment='Fecha de finalización de la fase. NULL = fase pendiente o en curso'
     )
     
     resultado_fase_id = db.Column(
@@ -143,28 +130,30 @@ class Fase(db.Model):
         """Representación legible para interfaz."""
         return f'Fase {self.id} - {self.tipo_fase.nombre if self.tipo_fase else "Sin tipo"}'
 
-    # --- Estados deducibles (vocabulario CREAR/INICIAR/FINALIZAR/BORRAR) ---
-
-    @property
-    def planificada(self):
-        """True si la fase existe pero aún no se ha iniciado (fecha_inicio IS NULL)."""
-        return self.fecha_inicio is None
-
-    @property
-    def en_curso(self):
-        """True si la fase ha sido iniciada pero no finalizada."""
-        return self.fecha_inicio is not None and self.fecha_fin is None
+    # --- Estados deducibles ---
+    # La completitud se deduce de documento_resultado_id y de los trámites hijos.
+    # El resultado formal lo fija el técnico mediante resultado_fase_id + documento_resultado_id.
 
     @property
     def finalizada(self):
-        """True si la fase ha sido finalizada (fecha_fin IS NOT NULL)."""
-        return self.fecha_fin is not None
+        """True si la fase tiene documento de resultado asociado (el técnico lo formalizó)."""
+        return self.documento_resultado_id is not None
+
+    @property
+    def planificada(self):
+        """True si la fase no tiene trámites aún."""
+        return len(self.tramites) == 0
+
+    @property
+    def en_curso(self):
+        """True si la fase tiene trámites pero no está finalizada."""
+        return not self.planificada and not self.finalizada
 
     @property
     def finalizada_favorable(self):
         """True si la fase está finalizada con resultado favorable o favorable condicionado."""
         return (
-            self.fecha_fin is not None
+            self.finalizada
             and self.resultado_fase_id is not None
             and self.resultado_fase.codigo in ('FAVORABLE', 'FAVORABLE_CONDICIONADO')
         )

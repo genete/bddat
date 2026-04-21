@@ -43,7 +43,7 @@
             Acciones
           </button>
           <ul class="dropdown-menu dropdown-menu-end">
-            {% if not solicitud.fecha_solicitud %}
+            {% if not solicitud.activa %}
             <li>
               <a class="dropdown-item" href="#"
                  data-accion="iniciar"
@@ -52,7 +52,7 @@
               </a>
             </li>
             {% endif %}
-            {% if solicitud.fecha_solicitud and not solicitud.fecha_fin %}
+            {% if solicitud.activa %}
             <li>
               <a class="dropdown-item" href="#"
                  data-accion="finalizar"
@@ -90,13 +90,7 @@
       <div class="col-auto">
         <strong>F. Solicitud:</strong>
         <span id="disp-fecha_solicitud" class="bc-fecha-valor">
-          {{- solicitud.fecha_solicitud.strftime('%d/%m/%Y') if solicitud.fecha_solicitud else '—' -}}
-        </span>
-      </div>
-      <div class="col-auto">
-        <strong>F. Resolución:</strong>
-        <span id="disp-fecha_fin" class="bc-fecha-valor">
-          {{- solicitud.fecha_fin.strftime('%d/%m/%Y') if solicitud.fecha_fin else '—' -}}
+          {{- solicitud.documento_solicitud.fecha_administrativa.strftime('%d/%m/%Y') if solicitud.documento_solicitud and solicitud.documento_solicitud.fecha_administrativa else '—' -}}
         </span>
       </div>
       <div class="col-auto">
@@ -113,28 +107,6 @@
 
     <form data-modo-editar class="d-none row g-2 pt-1"
           data-url="{{ url_for('vista3.editar_solicitud', sol_id=solicitud.id) }}">
-      <div class="col-md-3">
-        <label class="form-label fw-semibold mb-1">F. Solicitud</label>
-        <div id="ef-fecha_solicitud"
-             data-ef-name="fecha_solicitud"
-             data-ef-value="{{ solicitud.fecha_solicitud.isoformat() if solicitud.fecha_solicitud else '' }}">
-        </div>
-      </div>
-      <div class="col-md-3">
-        <label class="form-label fw-semibold mb-1">F. Resolución</label>
-        <div id="ef-fecha_fin"
-             data-ef-name="fecha_fin"
-             data-ef-value="{{ solicitud.fecha_fin.isoformat() if solicitud.fecha_fin else '' }}">
-        </div>
-      </div>
-      <div class="col-md-3">
-        <label class="form-label fw-semibold mb-1">Estado</label>
-        <select class="form-select form-select-sm" name="estado">
-          {% for val, label in [('EN_TRAMITE','En trámite'),('RESUELTA','Resuelta'),('DESISTIDA','Desistida'),('ARCHIVADA','Archivada')] %}
-          <option value="{{ val }}" {% if solicitud.estado == val %}selected{% endif %}>{{ label }}</option>
-          {% endfor %}
-        </select>
-      </div>
       <div class="col-12">
         <label class="form-label fw-semibold mb-1">Observaciones</label>
         <textarea class="form-control form-control-sm" name="observaciones"

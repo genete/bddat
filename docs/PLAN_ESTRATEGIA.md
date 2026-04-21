@@ -4,7 +4,7 @@
 > clasificación estratégica hacia producción y principios de trabajo.
 > Cambia solo si cambia la estrategia, no al cerrar issues o milestones.
 >
-> **Última revisión:** 2026-02-27
+> **Última revisión:** 2026-04-11
 
 ---
 
@@ -134,6 +134,10 @@
 
 ## F. Decisiones de arquitectura abiertas
 
+> La columna *Afecta a* puede estar desactualizada — es un dato operacional
+> que debería vivir en los issues y documentos de diseño pertinentes.
+> Consultarlos para el estado real de cada decisión.
+
 | Decisión | Opciones | Afecta a |
 |---|---|---|
 | Motor de plantillas de escritos | python-docx (Word) / Jinja2 sobre ODT / WeasyPrint (HTML→PDF) | Bloque 3 |
@@ -151,16 +155,21 @@
 
 > **Criterio de clasificación:** qué ocurre si el sistema entra en producción *sin* ese bloque.
 >
-> - **Bloqueante** — sin él, producción es imposible o el abandono del sistema anterior es inviable
-> - **Necesario** — producción posible con workaround, pero el workaround no aguanta más de semanas
-> - **Post-producción** — puede añadirse después de arrancar sin comprometer la misión principal
-> - **Opcional** — aporta valor pero no es parte del flujo central
+> - **Bloqueante** → milestone M1. Sin él, producción es imposible o el abandono del sistema anterior es inviable.
+> - **Necesario** → milestone M2. Producción posible con workaround, pero el workaround no aguanta más de semanas.
+> - **Post-producción** → milestones M3/M5. Puede añadirse después de arrancar sin comprometer la misión principal.
+> - **Pre-producción técnica** → milestone M4. No es funcionalidad; son condiciones de despliegue (infraestructura, seguridad, legacy).
+> - **Opcional** — aporta valor pero no está en el camino crítico de ningún milestone.
 >
 > **Nota sobre Motor de Reglas (4) y Plazos (5):** No son bloqueantes para el arranque —los
 > funcionarios llevan décadas tramitando sin enforcement automático, y la GuíaGeneral establece
 > explícitamente una Fase 2 sin restricciones activas. Sin embargo, **su estudio arquitectónico
 > es previo a producción**: las decisiones de modelo de datos y estructura de tramitación (1) y
 > documental (2) deben ser compatibles con el motor futuro. Estudiar ≠ implementar.
+>
+> **Issues nuevos:** cada issue debe incluir en su propia descripción la justificación
+> de por qué pertenece al milestone asignado. Este documento clasifica bloques funcionales,
+> no issues individuales.
 
 ---
 
@@ -250,6 +259,7 @@ Los milestones con porcentaje de completitud ya cubren el seguimiento necesario.
 | Dónde | Qué contiene |
 |-------|-------------|
 | **PLAN_ESTRATEGIA.md** | Visión, actores, clasificación de bloques, principios de trabajo. Cambia solo si cambia la estrategia. |
-| **PLAN_ROADMAP.md** | Estado actual por milestone: qué está implementado, qué está en curso, qué queda. Se actualiza al cerrar issues/milestones. |
-| **Issues GitHub** | El mini-plan de un bloque concreto: qué se hace, cómo, checklist. Verbosidad aquí, no en ROADMAP. |
-| **Milestones GitHub** | Agrupación de issues por bloque funcional. Refleja el progreso del roadmap. |
+| **PLAN_ROADMAP.md** | Estado actual por milestone: issues abiertos por milestone. Generado con `python scripts/gen_roadmap.py`. |
+| **Issues GitHub** | El mini-plan de un bloque concreto: qué se hace, cómo, checklist y justificación del milestone. Verbosidad aquí, no en ROADMAP. |
+| **Milestones GitHub** | Agrupación de issues. La descripción del milestone define el criterio de clasificación. |
+| **`.issues/M*.md`** | Contexto on-demand de issues abiertos (título + cuerpo). Generado con `python scripts/gen_issues.py`. Gitignored. |

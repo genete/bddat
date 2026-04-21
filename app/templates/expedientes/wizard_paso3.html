@@ -76,18 +76,6 @@
                         {# Input hidden: solicitante final (titular o autorizado elegido) #}
                         <input type="hidden" name="solicitante_id" id="solicitante-id-hidden">
 
-                        {# --- Fecha solicitud --- #}
-                        <div class="mb-4">
-                            <label class="form-label fw-semibold">
-                                Fecha de solicitud <span class="text-danger">*</span>
-                            </label>
-                            {# Componente EntradaFecha — construye su propio HTML internamente.
-                               El error se valida a mano en JS porque el form usa novalidate. #}
-                            <div id="ef-fecha-solicitud"></div>
-                            <div id="ef-fecha-error" class="text-danger small mt-1" style="display:none">Campo obligatorio.</div>
-                            <div class="form-text">Fecha oficial de presentación.</div>
-                        </div>
-
                         {# --- Tipo de solicitud --- #}
                         <div class="mb-4">
                             <label for="tipo-solicitud-select" class="form-label fw-semibold">
@@ -143,19 +131,14 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/selector_busqueda.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/entrada_fecha.css') }}">
 {% endblock %}
 
 {% block extra_js %}
 <script src="{{ url_for('static', filename='js/selector_busqueda.js') }}"></script>
-<script src="{{ url_for('static', filename='js/entrada_fecha.js') }}"></script>
 <script>
 (function () {
     'use strict';
 
-    // ── EntradaFecha ──
-    const efFecha = new EntradaFecha('#ef-fecha-solicitud', { name: 'fecha_solicitud' });
-    const efFechaError = document.getElementById('ef-fecha-error');
 
     // ------------------------------------------------------------------
     // A) Selectores de titular y solicitante
@@ -264,14 +247,6 @@
     // ------------------------------------------------------------------
     document.querySelector('form').addEventListener('submit', function (e) {
         let ok = true;
-
-        // Validar fecha solicitud
-        if (!efFecha.getValue()) {
-            efFechaError.style.display = 'block';
-            ok = false;
-        } else {
-            efFechaError.style.display = 'none';
-        }
 
         // Validar titular
         if (!entidadSel.getValue()) {

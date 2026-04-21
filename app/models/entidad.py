@@ -233,7 +233,7 @@ class Entidad(db.Model):
         return {
             'linea1': self.direccion or '',
             'linea2': ' '.join(linea2_parts),
-            'provincia': self.municipio.provincia.nombre if self.municipio else ''
+            'provincia': self.municipio.provincia if self.municipio else ''
         }
     
     @staticmethod

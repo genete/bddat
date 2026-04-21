@@ -5,6 +5,9 @@ Implementa el algoritmo de ANALISIS_LISTADO_INTELIGENTE.md §5.
 Recorre el árbol Solicitud → Fases → Trámites → Tareas de abajo arriba
 y devuelve el estado más urgente de cada pista.
 
+La completitud se deduce de documentos (Documento.fecha_administrativa),
+no de campos fecha_inicio/fecha_fin (eliminados del modelo ESFTT).
+
 Uso:
     from app.services.seguimiento import estado_solicitud, fin_total
 
@@ -115,11 +118,11 @@ def estado_solicitud(solicitud_id: int) -> dict[str, Optional[EstadoPista]]:
                 result[pista] = None
             continue
 
-        if all(f.fecha_fin is not None for f in fases):
+        if all(f.finalizada for f in fases):
             result[pista] = EstadoPista('FIN', 'verde', count=1)
             continue
 
-        fases_abiertas = [f for f in fases if f.fecha_fin is None]
+        fases_abiertas = [f for f in fases if not f.finalizada]
         acc = _acumular([_estado_fase(f, pista) for f in fases_abiertas])
         ganador, count = _mayor_prioridad(acc)
         nota = _nota_activa(fases_abiertas)
@@ -142,51 +145,43 @@ def fin_total(estados: dict[str, Optional[EstadoPista]]) -> bool:
 # ---------------------------------------------------------------------------
 
 def _estado_fase(fase, pista: str) -> tuple[str, int]:
-    """Estado de una fase abierta (fecha_fin IS NULL)."""
-    if fase.fecha_inicio is None:
+    """Estado de una fase no finalizada (documento_resultado_id IS NULL)."""
+    if fase.planificada:  # sin trámites aún
         return ('PENDIENTE_TRAMITAR', 1)
 
     tramites = sorted(fase.tramites, key=lambda t: t.id)
+    tramites_activos = [t for t in tramites if not t.finalizado]
 
-    if not tramites:
-        return ('PENDIENTE_TRAMITAR', 1)
-
-    tramites_abiertos = [t for t in tramites if t.fecha_fin is None]
-
-    if not tramites_abiertos:
-        # Todos los trámites cerrados — depende del resultado de fase
+    if not tramites_activos:
+        # Todos los trámites completados — esperando que el técnico formalice el resultado de fase
         if fase.resultado_fase_id is None:
             return ('PENDIENTE_ESTUDIO', 1)
         return ('PENDIENTE_CERRAR', 1)
 
-    acc = _acumular([_estado_tramite(t, pista) for t in tramites_abiertos])
+    acc = _acumular([_estado_tramite(t, pista) for t in tramites_activos])
     return _mayor_prioridad(acc)
 
 
 def _estado_tramite(tramite, pista: str) -> tuple[str, int]:
-    """Estado de un trámite abierto (fecha_fin IS NULL)."""
-    if tramite.fecha_inicio is None:
+    """Estado de un trámite no finalizado."""
+    if tramite.planificado:  # sin tareas aún
         return ('PENDIENTE_TRAMITAR', 1)
 
     tareas = list(tramite.tareas)
+    tareas_pendientes = [t for t in tareas if not t.ejecutada]
 
-    if not tareas:
-        return ('PENDIENTE_TRAMITAR', 1)
-
-    tareas_abiertas = [t for t in tareas if t.fecha_fin is None]
-
-    if not tareas_abiertas:
-        # Todas las tareas completadas pero el trámite sigue abierto
+    if not tareas_pendientes:
+        # Todas las tareas completadas — trámite pendiente de cerrar (transitorio)
         return ('PENDIENTE_CERRAR', 1)
 
-    acc = _acumular([_estado_tarea(t, pista) for t in tareas_abiertas])
+    acc = _acumular([_estado_tarea(t, pista) for t in tareas_pendientes])
     return _mayor_prioridad(acc)
 
 
 def _estado_tarea(tarea, pista: str) -> tuple[str, int]:
-    """Estado de una tarea abierta (fecha_fin IS NULL). §4.4"""
-    if tarea.fecha_inicio is None:
-        return ('PENDIENTE_TRAMITAR', 1)  # tarea planificada, no iniciada
+    """Estado de una tarea no ejecutada. §4.4"""
+    if tarea.planificada:  # sin documentos asignados aún
+        return ('PENDIENTE_TRAMITAR', 1)
 
     tipo = tarea.tipo_tarea.codigo
 
@@ -229,9 +224,10 @@ def _estado_tarea(tarea, pista: str) -> tuple[str, int]:
         return (_estado_esperar_plazo(tarea, pista), 1)
 
     if tipo == 'INCORPORAR':
-        if tarea.documento_producido_id is None:
-            return ('PENDIENTE_TRAMITAR', 1)   # sin documento incorporado
-        return ('PENDIENTE_CERRAR', 1)
+        # INCORPORAR usa documentos_tarea (N:M). documento_producido_id = NULL siempre.
+        # Si planificada ya filtrado arriba; si en_curso, siempre pendiente hasta que
+        # el técnico registre documentos vía documentos_tarea.
+        return ('PENDIENTE_TRAMITAR', 1)
 
     return ('PENDIENTE_TRAMITAR', 1)  # tipo desconocido — seguro por defecto
 
@@ -239,10 +235,12 @@ def _estado_tarea(tarea, pista: str) -> tuple[str, int]:
 def _estado_esperar_plazo(tarea, pista: str) -> str:
     """
     ESPERAR_PLAZO: §4.4
-    - PLAZO_DIAS ausente en notas → PENDIENTE_TRAMITAR (tarea sin configurar)
-    - PLAZO_DIAS=0 → espera indefinida → PENDIENTE_SUBSANAR (SOL) o PENDIENTE_PLAZOS (resto)
-    - PLAZO_DIAS=N (N>0) con plazo activo → PENDIENTE_SUBSANAR / PENDIENTE_PLAZOS
-    - PLAZO_DIAS=N (N>0) con plazo vencido → PENDIENTE_ESTUDIO
+    - documento_usado_id IS NULL (plazo=0 o aún sin configurar) → PENDIENTE_PLAZOS / PENDIENTE_SUBSANAR
+    - documento_usado_id IS NOT NULL y plazo=0 → espera indefinida
+    - documento_usado_id IS NOT NULL y plazo>0 con plazo activo → PENDIENTE_PLAZOS / PENDIENTE_SUBSANAR
+    - documento_usado_id IS NOT NULL y plazo vencido → PENDIENTE_ESTUDIO
+
+    El inicio del cómputo es documento_usado.fecha_administrativa (no fecha_inicio de la tarea).
     """
     plazo = _parse_plazo_dias(tarea.notas)
 
@@ -254,8 +252,14 @@ def _estado_esperar_plazo(tarea, pista: str) -> str:
     if plazo == 0:
         return estado_espera  # espera indefinida: siempre activo
 
-    if tarea.fecha_inicio:
-        vencimiento = tarea.fecha_inicio + timedelta(days=plazo)
+    fecha_inicio_computo = (
+        tarea.documento_usado.fecha_administrativa
+        if tarea.documento_usado and tarea.documento_usado.fecha_administrativa
+        else None
+    )
+
+    if fecha_inicio_computo:
+        vencimiento = fecha_inicio_computo + timedelta(days=plazo)
         if vencimiento < date.today():
             return 'PENDIENTE_ESTUDIO'  # plazo vencido: hay que estudiar la respuesta
 
@@ -280,15 +284,15 @@ def _parse_plazo_dias(notas: Optional[str]) -> Optional[int]:
 
 def _nota_activa(fases_abiertas) -> Optional[str]:
     """
-    Devuelve las notas de la primera tarea abierta encontrada en las fases abiertas.
+    Devuelve las notas de la primera tarea no ejecutada encontrada en las fases abiertas.
     Se usa para poblar el tooltip en el listado de seguimiento.
     """
     for fase in fases_abiertas:
         for tramite in sorted(fase.tramites, key=lambda t: t.id):
-            if tramite.fecha_fin is not None:
+            if tramite.finalizado:
                 continue
             for tarea in tramite.tareas:
-                if tarea.fecha_fin is None and tarea.notas:
+                if not tarea.ejecutada and tarea.notas:
                     return tarea.notas
     return None
 
