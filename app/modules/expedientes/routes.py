@@ -3,7 +3,6 @@ Blueprint para gestión de expedientes.
 
 Rutas:
 - GET  /expedientes/                                                            - Listado con scroll infinito (Fase 2)
-- GET  /expedientes/<id>/tramitacion_v3                                         - Tramitación Vista V3 con tabs (legacy)
 - GET  /expedientes/<exp_id>/tramitacion                                        - Tramitación BC: nivel Expediente (#157)
 - GET  /expedientes/<exp_id>/tramitacion/solicitud/<sol_id>                     - Tramitación BC: nivel Solicitud (#157)
 - GET  /expedientes/<exp_id>/tramitacion/solicitud/<sol_id>/fase/<fase_id>      - Tramitación BC: nivel Fase (#157)
@@ -92,38 +91,6 @@ def listado_v2():
     meta = cargar_metadata('expedientes')
     columns = meta.get('listado_v2', {}).get('columns', [])
     return render_template('expedientes/listado_v2.html', columns=columns)
-
-
-@bp.route('/<int:id>/tramitacion_v3')
-@login_required
-def tramitacion_v3(id):
-    """
-    Vista V3 - Tramitación con Tabs Anidados (4 niveles) — issue #150.
-
-    Reemplaza el acordeón lazy-loading por tabs renderizados en servidor:
-    - Nivel 1: Solicitudes (tabs horizontales)
-    - Nivel 2: Fases (tabs anidados dentro de cada solicitud)
-    - Nivel 3: Trámites (tabs anidados dentro de cada fase)
-    - Nivel 4: Tareas (tabs anidados dentro de cada trámite)
-    - Edición inline V4 (toggle ver/editar sin modal)
-    - Creación de entidades hijas via modal Bootstrap
-    """
-    expediente = Expediente.query.get_or_404(id)
-
-    resultado = verificar_acceso_expediente(expediente, 'ver')
-    if resultado:
-        return resultado
-
-    return render_template(
-        'expedientes/tramitacion_v3.html',
-        expediente=expediente,
-        solicitudes_arbol=_construir_arbol(expediente.id),
-        tipos_solicitud=TipoSolicitud.query.order_by(TipoSolicitud.siglas).all(),
-        tipos_fase=TipoFase.query.order_by(TipoFase.nombre).all(),
-        tipos_tramite=TipoTramite.query.order_by(TipoTramite.nombre).all(),
-        tipos_tarea=TipoTarea.query.order_by(TipoTarea.nombre).all(),
-        resultados_fase=TipoResultadoFase.query.order_by(TipoResultadoFase.nombre).all(),
-    )
 
 
 @bp.route('/<int:id>')
