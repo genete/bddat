@@ -137,9 +137,18 @@ class Solicitud(db.Model):
     
     # Properties
     @property
+    def estado(self):
+        """Estado derivado de las fases: RESUELTA si todas están finalizadas, EN_TRAMITE en caso contrario."""
+        if not self.fases:
+            return 'EN_TRAMITE'
+        if all(f.finalizada for f in self.fases):
+            return 'RESUELTA'
+        return 'EN_TRAMITE'
+
+    @property
     def activa(self):
-        """True si la solicitud está en tramitación. Pendiente del servicio EstadoSFTT."""
-        return True
+        """True si la solicitud está en tramitación."""
+        return self.estado == 'EN_TRAMITE'
     
     @property
     def es_desistimiento_o_renuncia(self):

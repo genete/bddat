@@ -107,14 +107,6 @@
 
     <form data-modo-editar class="d-none row g-2 pt-1"
           data-url="{{ url_for('vista3.editar_solicitud', sol_id=solicitud.id) }}">
-      <div class="col-md-3">
-        <label class="form-label fw-semibold mb-1">Estado</label>
-        <select class="form-select form-select-sm" name="estado">
-          {% for val, label in [('EN_TRAMITE','En trámite'),('RESUELTA','Resuelta'),('DESISTIDA','Desistida'),('ARCHIVADA','Archivada')] %}
-          <option value="{{ val }}" {% if solicitud.estado == val %}selected{% endif %}>{{ label }}</option>
-          {% endfor %}
-        </select>
-      </div>
       <div class="col-12">
         <label class="form-label fw-semibold mb-1">Observaciones</label>
         <textarea class="form-control form-control-sm" name="observaciones"
