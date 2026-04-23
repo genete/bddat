@@ -137,6 +137,20 @@ class Solicitud(db.Model):
     
     # Properties
     @property
+    def tipos_simples(self) -> list:
+        """Descompone siglas combinadas en lista de tipos simples.
+
+        'AAP+AAC' → ['AAP', 'AAC']  |  'AAP' → ['AAP']
+        """
+        if not self.tipo_solicitud:
+            return []
+        return self.tipo_solicitud.siglas.split('+')
+
+    def contiene_tipo(self, siglas: str) -> bool:
+        """True si esta solicitud incluye el tipo simple dado."""
+        return siglas in self.tipos_simples
+
+    @property
     def estado(self):
         """Estado derivado de las fases: RESUELTA si todas están finalizadas, EN_TRAMITE en caso contrario."""
         if not self.fases:

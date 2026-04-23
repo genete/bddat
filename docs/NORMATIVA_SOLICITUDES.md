@@ -12,10 +12,9 @@
 |--------|----------------|-------------|
 | AAP | Autorización Administrativa Previa | Primera autorización del proyecto de instalación |
 | AAC | Autorización Administrativa de Construcción | Autoriza la ejecución de las obras |
-| APO | Autorización de Puesta en Operación | Autoriza la entrada en servicio de la instalación |
 | DUP | Declaración de Utilidad Pública | Necesaria para la ocupación de terrenos privados |
-| AAE_PROVISIONAL | Autorización de Explotación Provisional | Explotación temporal mientras se tramita la definitiva |
-| AAE_DEFINITIVA | Autorización de Explotación Definitiva | Autorización final de explotación |
+| AE_PROVISIONAL | Autorización de Explotación Provisional | Explotación temporal mientras se tramita la definitiva |
+| AE_DEFINITIVA | Autorización de Explotación Definitiva | Autorización final de explotación |
 | AAT | Autorización de Transmisión de Titularidad | Cambio de titular de la instalación autorizada |
 | MODIFICACION | Modificación de instalación autorizada | Modificación de características ya autorizadas |
 | DESISTIMIENTO | Desistimiento | El solicitante renuncia a la tramitación en curso |
@@ -37,14 +36,16 @@ entidades propias en `tipos_solicitudes` (no como tabla puente M:N).
 - Las plantillas necesitan FK directa para saber qué texto administrativo usar
 - Si aparece una nueva combinación legal, es un INSERT + actualización de whitelist
 
-| Siglas | Descripción |
-|--------|-------------|
-| AAP_AAC | Autorización Administrativa Previa y de Construcción — tramitación conjunta estándar |
-| AAP_AAC_DUP | AAP + AAC + Declaración de Utilidad Pública |
-| AAP_AAC_AAU | AAP + AAC + Autorización Ambiental Unificada |
-| AAP_AAC_AAU_DUP | AAP + AAC + AAU + Declaración de Utilidad Pública |
-| AAC_DUP | AAC + Declaración de Utilidad Pública |
-| AAE_DEFINITIVA_AAT | Explotación Definitiva + Transmisión de Titularidad |
+| Siglas | Descripción | Base legal |
+|--------|-------------|------------|
+| AAP+AAC | Tramitación conjunta estándar | Art. 53.1 LSE |
+| AAP+AAC+DUP | Con Declaración de Utilidad Pública | Art. 143.2 RD 1955/2000 |
+| AAC+DUP | DUP solicitada tras AAP ya obtenida | Art. 143.2 RD 1955/2000 |
+| AE_DEFINITIVA+AAT | Explotación definitiva + cesión al distribuidor en resolución única | Art. 133 RD 1955/2000 |
+
+> **Nota AAU:** la Autorización Ambiental Unificada no es una solicitud tramitada por la ventanilla
+> de energía — la Consejería emite resolución de AAP+AAC con el condicionante de la AAU integrado.
+> Se seguirá mediante un boolean en el expediente/proyecto (pendiente de implementar).
 
 ---
 

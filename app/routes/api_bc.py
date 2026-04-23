@@ -24,8 +24,7 @@ from app.models.tipos_fases import TipoFase
 from app.models.tipos_tramites import TipoTramite
 from app.models.tipos_tareas import TipoTarea
 from app.utils.permisos import verificar_acceso_expediente
-from app.services.motor_reglas import evaluar
-from app.services.assembler import build
+from app.services.assembler import evaluar_multi
 
 bp = Blueprint('api_bc', __name__, url_prefix='/api/bc')
 
@@ -116,8 +115,7 @@ def crear_fase(sol_id):
     if not tipo_fase:
         return jsonify({'ok': False, 'error': 'Tipo de fase no encontrado'}), 404
 
-    sujeto, variables = build(sol.expediente, objeto={'solicitud': sol, 'tipo_fase': tipo_fase})
-    res_eval = evaluar('CREAR', sujeto, variables)
+    res_eval = evaluar_multi('CREAR', sol.expediente, objeto={'solicitud': sol, 'tipo_fase': tipo_fase})
     if not res_eval.permitido:
         return _bloqueo(res_eval)
 
@@ -143,8 +141,7 @@ def crear_tramite(fase_id):
     if not tipo_tramite:
         return jsonify({'ok': False, 'error': 'Tipo de trámite no encontrado'}), 404
 
-    sujeto, variables = build(fase.solicitud.expediente, objeto={'fase': fase, 'tipo_tramite': tipo_tramite})
-    res_eval = evaluar('CREAR', sujeto, variables)
+    res_eval = evaluar_multi('CREAR', fase.solicitud.expediente, objeto={'fase': fase, 'tipo_tramite': tipo_tramite})
     if not res_eval.permitido:
         return _bloqueo(res_eval)
 
@@ -170,8 +167,7 @@ def crear_tarea(tram_id):
     if not tipo_tarea:
         return jsonify({'ok': False, 'error': 'Tipo de tarea no encontrado'}), 404
 
-    sujeto, variables = build(tramite.fase.solicitud.expediente, objeto={'tramite': tramite, 'tipo_tarea': tipo_tarea})
-    res_eval = evaluar('CREAR', sujeto, variables)
+    res_eval = evaluar_multi('CREAR', tramite.fase.solicitud.expediente, objeto={'tramite': tramite, 'tipo_tarea': tipo_tarea})
     if not res_eval.permitido:
         return _bloqueo(res_eval)
 
@@ -200,8 +196,7 @@ def editar_solicitud(sol_id):
 
         res_eval = None
         if sol.fecha_fin is None and nueva_fecha_fin is not None:
-            sujeto, variables = build(sol.expediente, objeto=sol)
-            res_eval = evaluar('FINALIZAR', sujeto, variables)
+            res_eval = evaluar_multi('FINALIZAR', sol.expediente, objeto=sol)
             if not res_eval.permitido:
                 return _bloqueo(res_eval)
 
@@ -229,15 +224,14 @@ def editar_fase(fase_id):
         nueva_fecha_inicio = date.fromisoformat(request.form['fecha_inicio']) if request.form.get('fecha_inicio') else None
         nueva_fecha_fin = date.fromisoformat(request.form['fecha_fin']) if request.form.get('fecha_fin') else None
 
-        sujeto, variables = build(fase.solicitud.expediente, objeto=fase)
         res_eval = None
         if fase.fecha_inicio is None and nueva_fecha_inicio is not None:
-            res_eval = evaluar('INICIAR', sujeto, variables)
+            res_eval = evaluar_multi('INICIAR', fase.solicitud.expediente, objeto=fase)
             if not res_eval.permitido:
                 return _bloqueo(res_eval)
 
         if fase.fecha_fin is None and nueva_fecha_fin is not None:
-            res_eval = evaluar('FINALIZAR', sujeto, variables)
+            res_eval = evaluar_multi('FINALIZAR', fase.solicitud.expediente, objeto=fase)
             if not res_eval.permitido:
                 return _bloqueo(res_eval)
 
@@ -266,15 +260,14 @@ def editar_tramite(tram_id):
         nueva_fecha_inicio = date.fromisoformat(request.form['fecha_inicio']) if request.form.get('fecha_inicio') else None
         nueva_fecha_fin = date.fromisoformat(request.form['fecha_fin']) if request.form.get('fecha_fin') else None
 
-        sujeto, variables = build(tramite.fase.solicitud.expediente, objeto=tramite)
         res_eval = None
         if tramite.fecha_inicio is None and nueva_fecha_inicio is not None:
-            res_eval = evaluar('INICIAR', sujeto, variables)
+            res_eval = evaluar_multi('INICIAR', tramite.fase.solicitud.expediente, objeto=tramite)
             if not res_eval.permitido:
                 return _bloqueo(res_eval)
 
         if tramite.fecha_fin is None and nueva_fecha_fin is not None:
-            res_eval = evaluar('FINALIZAR', sujeto, variables)
+            res_eval = evaluar_multi('FINALIZAR', tramite.fase.solicitud.expediente, objeto=tramite)
             if not res_eval.permitido:
                 return _bloqueo(res_eval)
 
@@ -316,15 +309,14 @@ def editar_tarea(tarea_id):
         tarea.documento_usado_id     = nuevo_doc_usado_id
         tarea.documento_producido_id = nuevo_doc_producido_id
 
-        sujeto, variables = build(expediente, objeto=tarea)
         res_eval = None
         if tarea.fecha_inicio is None and nueva_fecha_inicio is not None:
-            res_eval = evaluar('INICIAR', sujeto, variables)
+            res_eval = evaluar_multi('INICIAR', expediente, objeto=tarea)
             if not res_eval.permitido:
                 return _bloqueo(res_eval)
 
         if tarea.fecha_fin is None and nueva_fecha_fin is not None:
-            res_eval = evaluar('FINALIZAR', sujeto, variables)
+            res_eval = evaluar_multi('FINALIZAR', expediente, objeto=tarea)
             if not res_eval.permitido:
                 return _bloqueo(res_eval)
 
@@ -354,8 +346,7 @@ def borrar_solicitud(sol_id):
     if resultado:
         return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
 
-    sujeto, variables = build(sol.expediente, objeto=sol)
-    res_eval = evaluar('BORRAR', sujeto, variables)
+    res_eval = evaluar_multi('BORRAR', sol.expediente, objeto=sol)
     if not res_eval.permitido:
         return _bloqueo(res_eval)
 
@@ -379,8 +370,7 @@ def borrar_fase(fase_id):
     if resultado:
         return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
 
-    sujeto, variables = build(fase.solicitud.expediente, objeto=fase)
-    res_eval = evaluar('BORRAR', sujeto, variables)
+    res_eval = evaluar_multi('BORRAR', fase.solicitud.expediente, objeto=fase)
     if not res_eval.permitido:
         return _bloqueo(res_eval)
 
@@ -401,8 +391,7 @@ def borrar_tramite(tram_id):
     if resultado:
         return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
 
-    sujeto, variables = build(tramite.fase.solicitud.expediente, objeto=tramite)
-    res_eval = evaluar('BORRAR', sujeto, variables)
+    res_eval = evaluar_multi('BORRAR', tramite.fase.solicitud.expediente, objeto=tramite)
     if not res_eval.permitido:
         return _bloqueo(res_eval)
 
@@ -420,8 +409,7 @@ def borrar_tarea(tarea_id):
     if resultado:
         return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
 
-    sujeto, variables = build(tarea.tramite.fase.solicitud.expediente, objeto=tarea)
-    res_eval = evaluar('BORRAR', sujeto, variables)
+    res_eval = evaluar_multi('BORRAR', tarea.tramite.fase.solicitud.expediente, objeto=tarea)
     if not res_eval.permitido:
         return _bloqueo(res_eval)
 
@@ -444,8 +432,7 @@ def iniciar_solicitud(sol_id):
     if sol.fecha_solicitud is not None:
         return jsonify({'ok': False, 'error': 'La solicitud ya tiene fecha de inicio'}), 422
 
-    sujeto, variables = build(sol.expediente, objeto=sol)
-    res_eval = evaluar('INICIAR', sujeto, variables)
+    res_eval = evaluar_multi('INICIAR', sol.expediente, objeto=sol)
     if not res_eval.permitido:
         return _bloqueo(res_eval)
 
@@ -464,8 +451,7 @@ def finalizar_solicitud(sol_id):
     if sol.fecha_fin is not None:
         return jsonify({'ok': False, 'error': 'La solicitud ya está finalizada'}), 422
 
-    sujeto, variables = build(sol.expediente, objeto=sol)
-    res_eval = evaluar('FINALIZAR', sujeto, variables)
+    res_eval = evaluar_multi('FINALIZAR', sol.expediente, objeto=sol)
     if not res_eval.permitido:
         return _bloqueo(res_eval)
 
@@ -484,8 +470,7 @@ def iniciar_fase(fase_id):
     if fase.fecha_inicio is not None:
         return jsonify({'ok': False, 'error': 'La fase ya está iniciada'}), 422
 
-    sujeto, variables = build(fase.solicitud.expediente, objeto=fase)
-    res_eval = evaluar('INICIAR', sujeto, variables)
+    res_eval = evaluar_multi('INICIAR', fase.solicitud.expediente, objeto=fase)
     if not res_eval.permitido:
         return _bloqueo(res_eval)
 
@@ -504,8 +489,7 @@ def finalizar_fase(fase_id):
     if fase.fecha_fin is not None:
         return jsonify({'ok': False, 'error': 'La fase ya está finalizada'}), 422
 
-    sujeto, variables = build(fase.solicitud.expediente, objeto=fase)
-    res_eval = evaluar('FINALIZAR', sujeto, variables)
+    res_eval = evaluar_multi('FINALIZAR', fase.solicitud.expediente, objeto=fase)
     if not res_eval.permitido:
         return _bloqueo(res_eval)
 
@@ -524,8 +508,7 @@ def iniciar_tramite(tram_id):
     if tramite.fecha_inicio is not None:
         return jsonify({'ok': False, 'error': 'El trámite ya está iniciado'}), 422
 
-    sujeto, variables = build(tramite.fase.solicitud.expediente, objeto=tramite)
-    res_eval = evaluar('INICIAR', sujeto, variables)
+    res_eval = evaluar_multi('INICIAR', tramite.fase.solicitud.expediente, objeto=tramite)
     if not res_eval.permitido:
         return _bloqueo(res_eval)
 
@@ -544,8 +527,7 @@ def finalizar_tramite(tram_id):
     if tramite.fecha_fin is not None:
         return jsonify({'ok': False, 'error': 'El trámite ya está finalizado'}), 422
 
-    sujeto, variables = build(tramite.fase.solicitud.expediente, objeto=tramite)
-    res_eval = evaluar('FINALIZAR', sujeto, variables)
+    res_eval = evaluar_multi('FINALIZAR', tramite.fase.solicitud.expediente, objeto=tramite)
     if not res_eval.permitido:
         return _bloqueo(res_eval)
 
@@ -564,8 +546,7 @@ def iniciar_tarea(tarea_id):
     if tarea.fecha_inicio is not None:
         return jsonify({'ok': False, 'error': 'La tarea ya está iniciada'}), 422
 
-    sujeto, variables = build(tarea.tramite.fase.solicitud.expediente, objeto=tarea)
-    res_eval = evaluar('INICIAR', sujeto, variables)
+    res_eval = evaluar_multi('INICIAR', tarea.tramite.fase.solicitud.expediente, objeto=tarea)
     if not res_eval.permitido:
         return _bloqueo(res_eval)
 
@@ -584,8 +565,7 @@ def finalizar_tarea(tarea_id):
     if tarea.fecha_fin is not None:
         return jsonify({'ok': False, 'error': 'La tarea ya está finalizada'}), 422
 
-    sujeto, variables = build(tarea.tramite.fase.solicitud.expediente, objeto=tarea)
-    res_eval = evaluar('FINALIZAR', sujeto, variables)
+    res_eval = evaluar_multi('FINALIZAR', tarea.tramite.fase.solicitud.expediente, objeto=tarea)
     if not res_eval.permitido:
         return _bloqueo(res_eval)
 

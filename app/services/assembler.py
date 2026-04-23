@@ -107,25 +107,28 @@ class ExpedienteContext:
 # Compilación del sujeto calificado
 # ---------------------------------------------------------------------------
 
-def _compilar_sujeto(ctx: ExpedienteContext) -> str:
+def _compilar_sujeto(ctx: ExpedienteContext, siglas_override: str = None) -> str:
     """
     Produce el sujeto calificado ESFTT completo a partir del contexto.
 
     Recorre la jerarquía de exterior (E) a interior (hasta el nivel del objeto).
     Nunca produce ANY — eso es un comodín de las reglas, no de la realidad.
 
+    siglas_override: si se pasa, sustituye las siglas del tipo de solicitud.
+    Usado por evaluar_multi para iterar sobre tipos simples de combinados.
+
     Ejemplos:
-        Fase existente tipo RESOLUCION en solicitud AAP de expediente Distribución:
+        Fase en solicitud AAP+AAC, override='AAP':
             → 'Distribucion/AAP/RESOLUCION'
-        Dict {'solicitud': s(AAP), 'tipo_fase': TipoFase(RESOLUCION)} en Distribución:
-            → 'Distribucion/AAP/RESOLUCION'
+        Fase en solicitud AAP+AAC, override='AAC':
+            → 'Distribucion/AAC/RESOLUCION'
     """
     tipo_exp = ctx.expediente.tipo_expediente
     segmentos = [tipo_exp.tipo if tipo_exp else 'DESCONOCIDO']
 
     sol = ctx.solicitud
     if sol and sol.tipo_solicitud:
-        segmentos.append(sol.tipo_solicitud.siglas)
+        segmentos.append(siglas_override if siglas_override is not None else sol.tipo_solicitud.siglas)
 
     # Fase: existente (via ctx.fase) o prevista (via dict 'tipo_fase')
     fase = ctx.fase
@@ -197,8 +200,45 @@ def build(expediente: Any, objeto: Any = None) -> tuple[str, dict]:
     Returns:
         (sujeto, variables): sujeto calificado tipo 'Distribucion/AAP/RESOLUCION'
         y dict plano de variables para el motor.
+
+    Nota: para solicitudes con tipos combinados (AAP+AAC) este método devuelve
+    el sujeto con las siglas completas. Usar evaluar_multi para evaluar por
+    tipo simple automáticamente.
     """
     ctx = ExpedienteContext(expediente, objeto)
     sujeto    = _compilar_sujeto(ctx)
     variables = _compilar_variables(ctx)
     return sujeto, variables
+
+
+def evaluar_multi(accion: str, expediente: Any, objeto: Any = None):
+    """
+    Evalúa una acción para todos los tipos simples de la solicitud en contexto.
+
+    Para solicitudes con tipo combinado (ej. AAP+AAC) evalúa el motor una vez
+    por cada tipo simple. Devuelve el primer resultado BLOQUEAR encontrado,
+    o el último resultado (PERMITIDO) si ninguno bloquea.
+
+    Args:
+        accion:     Acción a evaluar ('CREAR', 'INICIAR', 'FINALIZAR', 'BORRAR').
+        expediente: Instancia de Expediente.
+        objeto:     Objeto actuado (misma semántica que build()).
+
+    Returns:
+        EvaluacionResult del motor.
+    """
+    from app.services.motor_reglas import evaluar
+
+    ctx = ExpedienteContext(expediente, objeto)
+    variables = _compilar_variables(ctx)
+    sol = ctx.solicitud
+
+    tipos = sol.tipos_simples if (sol and sol.tipo_solicitud) else [None]
+
+    ultimo = None
+    for tipo in tipos:
+        sujeto = _compilar_sujeto(ctx, siglas_override=tipo)
+        ultimo = evaluar(accion, sujeto, variables)
+        if not ultimo.permitido:
+            return ultimo
+    return ultimo

@@ -61,7 +61,7 @@ from app.models.tramites import Tramite  # Depende de Fase, TipoTramite
 from app.models.tareas import Tarea  # Depende de Tramite, TipoTarea, Documento
 
 # Motor de reglas (depende de TipoSolicitud; tipo_id sin FK por diseño polimórfico)
-from app.models.motor_reglas import ReglaMotor, CondicionRegla, TipoSolicitudCompatible
+from app.models.motor_reglas import ReglaMotor, CondicionRegla
 
 __all__ = [
     # Maestros
@@ -105,5 +105,4 @@ __all__ = [
     # Motor de reglas
     'ReglaMotor',
     'CondicionRegla',
-    'TipoSolicitudCompatible',
 ]
