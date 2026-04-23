@@ -317,13 +317,13 @@
   top: 50%;
   transform: translateY(-50%) rotate(90deg);
   transform-origin: center center;
-  font-family: var(--ja-font-body);
+  font-family: var(--ja-font-titulo);
   font-size: var(--ja-margen-lat-size);
   color: #cccccc;
   white-space: nowrap;
-  letter-spacing: 2.5px;
+  letter-spacing: 0;
   text-transform: uppercase;
-  font-weight: 400;
+  font-weight: 900;
   font-style: normal;
   z-index: 1;
 }
@@ -332,30 +332,21 @@
    FROM: grande, centrado horizontalmente, sin rotación, color título.
    TO:   posición natural (pequeño, margen derecho, rotado 90°, gris claro).
    El translateX(-620px) lleva el elemento desde right:2px hasta aprox. el centro
-   de la slide (1280px lógicos). El scale(7) iguala visualmente el tamaño del título. */
+   de la slide (1280px lógicos). El scale(7) iguala visualmente el tamaño del título.
+   Solo se animan transform y color (propiedades GPU-compositable) para garantizar
+   compatibilidad con mobile Chrome. Fuente Montserrat 900 fija en ambos extremos. */
 @keyframes margen-lat-entrada {
-  0% {
+  0%   {
     transform: translateX(-620px) translateY(-50%) scale(7) rotate(0deg);
     color: var(--ja-gris-titulo);
-    font-family: var(--ja-font-titulo);
-    font-weight: 900;
-    letter-spacing: 0;
-  }
-  /* El salto de tipografía ocurre cuando el texto ya es pequeño y casi en su sitio */
-  88% {
-    font-family: var(--ja-font-titulo);
-    font-weight: 900;
-    letter-spacing: 0;
   }
   100% {
     transform: translateY(-50%) rotate(90deg);
     color: #cccccc;
-    font-family: var(--ja-font-body);
-    font-weight: 400;
-    letter-spacing: 2.5px;
   }
 }
 .reveal .slide-margen-lat.ml-animando {
+  will-change: transform, color;
   animation: margen-lat-entrada 0.65s cubic-bezier(0.4, 0, 0.2, 1) both;
 }
 
@@ -1055,5 +1046,16 @@
 @keyframes portada-fade-salida {
   from { opacity: 1; }
   to   { opacity: 0; }
+}
+
+/* =============================================
+   MOBILE — fixes compatibilidad Chrome
+   ============================================= */
+
+/* El menú hamburguesa vive fuera de .slides pero en mobile Chrome la capa GPU
+   de .slides (transform:scale) lo tapa. Forzar capa propia lo pone encima. */
+.reveal .slide-menu {
+  transform: translateZ(0);
+  isolation: isolate;
 }
 
