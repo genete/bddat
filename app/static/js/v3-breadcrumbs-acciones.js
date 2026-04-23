@@ -66,7 +66,7 @@ document.addEventListener('click', async function (e) {
         if (!json.ok) {
             // Motor bloqueó la acción o error de servidor
             _toast_accion(
-                json.error + (json.norma ? ` — ${json.norma}` : ''),
+                json.error + (json.url_norma ? ` (<a href="${json.url_norma}" target="_blank">ver norma</a>)` : ''),
                 'danger'
             );
         } else {
@@ -80,7 +80,7 @@ document.addEventListener('click', async function (e) {
             if (json.nivel === 'ADVERTIR') {
                 // El motor permite con advertencia: mostrar warning y ejecutar
                 _toast_accion(
-                    json.mensaje + (json.norma ? ` — ${json.norma}` : ''),
+                    (json.norma_compilada || 'Acción permitida con advertencia') + (json.url_norma ? ` (<a href="${json.url_norma}" target="_blank">ver norma</a>)` : ''),
                     'warning'
                 );
                 setTimeout(() => _navegar_tras_accion(accion, redirect), 1500);

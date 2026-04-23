@@ -91,7 +91,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (!json.ok) {
                     // Mostrar error dentro del modal (sin cerrarlo)
                     if (alert_el) {
-                        alert_el.textContent = json.error + (json.norma ? ` — ${json.norma}` : '');
+                        alert_el.innerHTML = json.error + (json.url_norma ? ` (<a href="${json.url_norma}" target="_blank">ver norma</a>)` : '');
                         alert_el.classList.remove('d-none');
                     }
                     if (submit_btn) {

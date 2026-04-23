@@ -59,13 +59,13 @@ document.addEventListener('DOMContentLoaded', function () {
       const json = await resp.json();
 
       if (!json.ok) {
-        _mostrar_alert('danger', json.error + (json.norma ? ` — ${json.norma}` : ''));
+        _mostrar_alert('danger', json.error + (json.url_norma ? ` (<a href="${json.url_norma}" target="_blank">ver norma</a>)` : ''));
       } else {
         _actualizar_display(datos);
         activar_modo_ver();
         form.dispatchEvent(new CustomEvent('bc:guardado', { bubbles: false }));
         if (json.advertencia) {
-          _mostrar_alert('warning', json.advertencia.mensaje);
+          _mostrar_alert('warning', json.advertencia.norma_compilada || '');
         }
       }
     } catch (_e) {
@@ -135,7 +135,7 @@ document.addEventListener('DOMContentLoaded', function () {
   function _mostrar_alert(tipo, texto) {
     if (!alert_el) return;
     alert_el.className = `alert alert-${tipo} mt-2 py-2 mb-0`;
-    alert_el.textContent = texto;
+    alert_el.innerHTML = texto;
     alert_el.classList.remove('d-none');
   }
 
