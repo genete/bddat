@@ -62,27 +62,28 @@ class ReglaMotor(db.Model):
     """
     Regla del motor de validación agnóstico.
 
-    El motor evalúa si una acción sobre un sujeto ESFTT está permitida.
+    El motor evalúa si una acción sobre un sujeto calificado está permitida.
     Principio rector: todo permitido excepto lo expresamente prohibido.
 
     CAMPOS CLAVE:
-        accion:         CREAR|INICIAR|FINALIZAR|BORRAR
-        sujeto:         SOLICITUD|FASE|TRAMITE|TAREA|EXPEDIENTE
-        tipo_sujeto_id: ID en tipos_* del sujeto. NULL = aplica a todos los tipos.
-        efecto:         BLOQUEAR|ADVERTIR
+        accion:  CREAR|INICIAR|FINALIZAR|BORRAR
+        sujeto:  patrón calificado ESFTT: 'ANY/AAP/RESOLUCION'
+                 El assembler produce el sujeto concreto; el motor hace matching
+                 posicional por segmentos separados por '/'.
+                 ANY en un segmento casa con cualquier valor real.
+        efecto:  BLOQUEAR|ADVERTIR
 
-    EVALUACIÓN:
-        El motor carga las reglas activas para (accion, sujeto, tipo_sujeto_id).
-        Para cada regla evalúa sus condiciones (CondicionRegla) contra el dict de
-        variables compilado por el Variable Registry. AND implícito entre condiciones.
-        Si todas se cumplen → aplica efecto. BLOQUEAR tiene prioridad sobre ADVERTIR.
+    EVALUACIÓN (dos barridos):
+        1. Se evalúan todas las condiciones de la regla (AND implícito).
+        2. Si dispara → se comprueban las ExcepcionMotor ancladas a esta regla.
+        3. Si alguna excepción casa → prohibición neutralizada.
+        4. Cualquier prohibición no neutralizada → BLOQUEAR.
     """
     __tablename__ = 'reglas_motor'
     __table_args__ = (
         db.CheckConstraint("accion IN ('CREAR','INICIAR','FINALIZAR','BORRAR')", name='ck_reglas_motor_accion'),
-        db.CheckConstraint("sujeto IN ('SOLICITUD','FASE','TRAMITE','TAREA','EXPEDIENTE')", name='ck_reglas_motor_sujeto'),
         db.CheckConstraint("efecto IN ('BLOQUEAR','ADVERTIR')", name='ck_reglas_motor_efecto'),
-        db.Index('idx_reglas_motor_lookup', 'accion', 'sujeto', 'tipo_sujeto_id'),
+        db.Index('idx_reglas_motor_accion_sujeto', 'accion', 'sujeto'),
         {'schema': 'public'}
     )
 
@@ -93,12 +94,8 @@ class ReglaMotor(db.Model):
         comment='Acción evaluada: CREAR | INICIAR | FINALIZAR | BORRAR'
     )
     sujeto = db.Column(
-        db.String(20), nullable=False,
-        comment='Sujeto sobre el que actúa: SOLICITUD | FASE | TRAMITE | TAREA | EXPEDIENTE'
-    )
-    tipo_sujeto_id = db.Column(
-        db.Integer, nullable=True,
-        comment='ID en tipos_* del sujeto. NULL = aplica a todos los tipos'
+        db.String(200), nullable=False,
+        comment='Patrón calificado ESFTT: ANY/AAP/RESOLUCION. ANY = comodín posicional.'
     )
     efecto = db.Column(
         db.String(10), nullable=False,
@@ -118,23 +115,28 @@ class ReglaMotor(db.Model):
     )
     prioridad = db.Column(
         db.Integer, nullable=False, default=0,
-        comment='Orden entre reglas del mismo (accion, sujeto, tipo_sujeto_id)'
+        comment='Orden informativo entre reglas del mismo (accion, sujeto)'
     )
     activa = db.Column(
         db.Boolean, nullable=False, default=True,
         comment='Desactivar en lugar de borrar — preserva trazabilidad'
     )
 
-    norma      = db.relationship('Norma')
+    norma       = db.relationship('Norma')
     condiciones = db.relationship(
         'CondicionRegla',
         backref='regla',
         cascade='all, delete-orphan',
         order_by='CondicionRegla.orden'
     )
+    excepciones = db.relationship(
+        'ExcepcionMotor',
+        backref='regla',
+        cascade='all, delete-orphan',
+    )
 
     def __repr__(self):
-        return f'<ReglaMotor id={self.id} {self.accion}/{self.sujeto} tipo={self.tipo_sujeto_id} → {self.efecto}>'
+        return f'<ReglaMotor id={self.id} {self.accion}/{self.sujeto} → {self.efecto}>'
 
 
 class CondicionRegla(db.Model):
@@ -195,6 +197,98 @@ class CondicionRegla(db.Model):
     def __repr__(self):
         nombre = self.variable.nombre if self.variable else f'var_id={self.variable_id}'
         return f'<CondicionRegla id={self.id} regla={self.regla_id} {nombre} {self.operador} {self.valor!r}>'
+
+
+class ExcepcionMotor(db.Model):
+    """
+    Excepción a una ReglaMotor concreta.
+
+    Cada excepción está anclada mediante FK a la prohibición que neutraliza.
+    El motor evalúa las excepciones de una regla solo si esa regla ha disparado.
+    Si alguna excepción casa (todas sus condiciones se cumplen) → prohibición neutralizada.
+
+    La FK garantiza que no puede haber excepciones huérfanas ni ambigüedades:
+    el supervisor siempre sabe a qué prohibición responde cada excepción.
+    """
+    __tablename__ = 'excepciones_motor'
+    __table_args__ = (
+        db.Index('idx_excepciones_motor_regla', 'regla_id'),
+        {'schema': 'public'}
+    )
+
+    id       = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    regla_id = db.Column(
+        db.Integer,
+        db.ForeignKey('public.reglas_motor.id', ondelete='CASCADE'),
+        nullable=False,
+        comment='FK a reglas_motor — prohibición que esta excepción neutraliza'
+    )
+    norma_id = db.Column(
+        db.Integer, db.ForeignKey('public.normas.id'), nullable=True,
+        comment='FK a normas — norma que establece la excepción'
+    )
+    articulo = db.Column(db.String(20), nullable=True,
+                         comment='Artículo de la excepción: "DA1" | "DF4"')
+    apartado = db.Column(db.String(20), nullable=True,
+                         comment='Sub-apartado si procede')
+    activa   = db.Column(db.Boolean, nullable=False, default=True,
+                         comment='Desactivar en lugar de borrar — preserva trazabilidad')
+
+    norma       = db.relationship('Norma')
+    condiciones = db.relationship(
+        'CondicionExcepcion',
+        backref='excepcion',
+        cascade='all, delete-orphan',
+        order_by='CondicionExcepcion.orden'
+    )
+
+    def __repr__(self):
+        return f'<ExcepcionMotor id={self.id} regla={self.regla_id}>'
+
+
+class CondicionExcepcion(db.Model):
+    """
+    Condición individual de una ExcepcionMotor.
+
+    Misma semántica que CondicionRegla pero anclada a una excepción.
+    Todas las condiciones de la misma excepción se combinan con AND implícito.
+    """
+    __tablename__ = 'condiciones_excepcion'
+    __table_args__ = (
+        db.CheckConstraint(
+            "operador IN ('EQ','NEQ','IN','NOT_IN','IS_NULL','NOT_NULL','GT','GTE','LT','LTE','BETWEEN','NOT_BETWEEN')",
+            name='ck_condiciones_excepcion_operador'
+        ),
+        db.Index('idx_condiciones_excepcion_excepcion', 'excepcion_id'),
+        db.Index('idx_condiciones_excepcion_variable',  'variable_id'),
+        {'schema': 'public'}
+    )
+
+    id           = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    excepcion_id = db.Column(
+        db.Integer,
+        db.ForeignKey('public.excepciones_motor.id', ondelete='CASCADE'),
+        nullable=False,
+        comment='FK a excepciones_motor'
+    )
+    variable_id  = db.Column(
+        db.Integer,
+        db.ForeignKey('public.catalogo_variables.id'),
+        nullable=False,
+        comment='FK a catalogo_variables — variable evaluada'
+    )
+    operador = db.Column(db.String(20), nullable=False,
+                         comment='Operador de comparación (ver catálogo en CondicionRegla)')
+    valor    = db.Column(db.JSON, nullable=True,
+                         comment='Valor de referencia. Lista para IN/BETWEEN, None para IS_NULL/NOT_NULL')
+    orden    = db.Column(db.Integer, nullable=False, default=1,
+                         comment='Orden informativo dentro de la excepción')
+
+    variable = db.relationship('CatalogoVariable')
+
+    def __repr__(self):
+        nombre = self.variable.nombre if self.variable else f'var_id={self.variable_id}'
+        return f'<CondicionExcepcion id={self.id} exc={self.excepcion_id} {nombre} {self.operador} {self.valor!r}>'
 
 
 class TipoSolicitudCompatible(db.Model):
