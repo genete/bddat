@@ -336,17 +336,11 @@
    Solo se animan transform y color (propiedades GPU-compositable) para garantizar
    compatibilidad con mobile Chrome. Fuente Montserrat 900 fija en ambos extremos. */
 @keyframes margen-lat-entrada {
-  0%   {
-    transform: translateX(-620px) translateY(-50%) scale(7) rotate(0deg);
-    color: var(--ja-gris-titulo);
-  }
-  100% {
-    transform: translateY(-50%) rotate(90deg);
-    color: #cccccc;
-  }
+  0%   { transform: translateX(-620px) translateY(-50%) scale(7) rotate(0deg); }
+  100% { transform: translateX(0px)    translateY(-50%) scale(1) rotate(90deg); }
 }
 .reveal .slide-margen-lat.ml-animando {
-  will-change: transform, color;
+  will-change: transform;
   animation: margen-lat-entrada 0.65s cubic-bezier(0.4, 0, 0.2, 1) both;
 }
 
