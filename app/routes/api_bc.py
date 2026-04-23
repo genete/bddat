@@ -366,15 +366,9 @@ def iniciar_solicitud(sol_id):
     resultado = verificar_acceso_expediente(sol.expediente, 'editar')
     if resultado:
         return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
-    if sol.fecha_solicitud is not None:
-        return jsonify({'ok': False, 'error': 'La solicitud ya tiene fecha de inicio'}), 422
-
     res_eval = evaluar_multi('INICIAR', sol.expediente, objeto=sol)
     if not res_eval.permitido:
         return _bloqueo(res_eval)
-
-    sol.fecha_solicitud = date.today()
-    db.session.commit()
     return jsonify({'ok': True, 'nivel': res_eval.nivel, 'norma_compilada': res_eval.norma_compilada, 'url_norma': res_eval.url_norma})
 
 
@@ -385,15 +379,9 @@ def finalizar_solicitud(sol_id):
     resultado = verificar_acceso_expediente(sol.expediente, 'editar')
     if resultado:
         return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
-    if sol.fecha_fin is not None:
-        return jsonify({'ok': False, 'error': 'La solicitud ya está finalizada'}), 422
-
     res_eval = evaluar_multi('FINALIZAR', sol.expediente, objeto=sol)
     if not res_eval.permitido:
         return _bloqueo(res_eval)
-
-    sol.fecha_fin = date.today()
-    db.session.commit()
     return jsonify({'ok': True, 'nivel': res_eval.nivel, 'norma_compilada': res_eval.norma_compilada, 'url_norma': res_eval.url_norma})
 
 
@@ -404,15 +392,9 @@ def iniciar_fase(fase_id):
     resultado = verificar_acceso_expediente(fase.solicitud.expediente, 'editar')
     if resultado:
         return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
-    if fase.fecha_inicio is not None:
-        return jsonify({'ok': False, 'error': 'La fase ya está iniciada'}), 422
-
     res_eval = evaluar_multi('INICIAR', fase.solicitud.expediente, objeto=fase)
     if not res_eval.permitido:
         return _bloqueo(res_eval)
-
-    fase.fecha_inicio = date.today()
-    db.session.commit()
     return jsonify({'ok': True, 'nivel': res_eval.nivel, 'norma_compilada': res_eval.norma_compilada, 'url_norma': res_eval.url_norma})
 
 
@@ -441,15 +423,9 @@ def iniciar_tramite(tram_id):
     resultado = verificar_acceso_expediente(tramite.fase.solicitud.expediente, 'editar')
     if resultado:
         return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
-    if tramite.fecha_inicio is not None:
-        return jsonify({'ok': False, 'error': 'El trámite ya está iniciado'}), 422
-
     res_eval = evaluar_multi('INICIAR', tramite.fase.solicitud.expediente, objeto=tramite)
     if not res_eval.permitido:
         return _bloqueo(res_eval)
-
-    tramite.fecha_inicio = date.today()
-    db.session.commit()
     return jsonify({'ok': True, 'nivel': res_eval.nivel, 'norma_compilada': res_eval.norma_compilada, 'url_norma': res_eval.url_norma})
 
 
@@ -460,15 +436,9 @@ def finalizar_tramite(tram_id):
     resultado = verificar_acceso_expediente(tramite.fase.solicitud.expediente, 'editar')
     if resultado:
         return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
-    if tramite.fecha_fin is not None:
-        return jsonify({'ok': False, 'error': 'El trámite ya está finalizado'}), 422
-
     res_eval = evaluar_multi('FINALIZAR', tramite.fase.solicitud.expediente, objeto=tramite)
     if not res_eval.permitido:
         return _bloqueo(res_eval)
-
-    tramite.fecha_fin = date.today()
-    db.session.commit()
     return jsonify({'ok': True, 'nivel': res_eval.nivel, 'norma_compilada': res_eval.norma_compilada, 'url_norma': res_eval.url_norma})
 
 
@@ -479,15 +449,9 @@ def iniciar_tarea(tarea_id):
     resultado = verificar_acceso_expediente(tarea.tramite.fase.solicitud.expediente, 'editar')
     if resultado:
         return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
-    if tarea.fecha_inicio is not None:
-        return jsonify({'ok': False, 'error': 'La tarea ya está iniciada'}), 422
-
     res_eval = evaluar_multi('INICIAR', tarea.tramite.fase.solicitud.expediente, objeto=tarea)
     if not res_eval.permitido:
         return _bloqueo(res_eval)
-
-    tarea.fecha_inicio = date.today()
-    db.session.commit()
     return jsonify({'ok': True, 'nivel': res_eval.nivel, 'norma_compilada': res_eval.norma_compilada, 'url_norma': res_eval.url_norma})
 
 
@@ -498,13 +462,10 @@ def finalizar_tarea(tarea_id):
     resultado = verificar_acceso_expediente(tarea.tramite.fase.solicitud.expediente, 'editar')
     if resultado:
         return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
-    if tarea.fecha_fin is not None:
+    if tarea.documento_producido_id is not None:
         return jsonify({'ok': False, 'error': 'La tarea ya está finalizada'}), 422
 
     res_eval = evaluar_multi('FINALIZAR', tarea.tramite.fase.solicitud.expediente, objeto=tarea)
     if not res_eval.permitido:
         return _bloqueo(res_eval)
-
-    tarea.fecha_fin = date.today()
-    db.session.commit()
     return jsonify({'ok': True, 'nivel': res_eval.nivel, 'norma_compilada': res_eval.norma_compilada, 'url_norma': res_eval.url_norma})
