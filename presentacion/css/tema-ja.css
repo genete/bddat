@@ -791,7 +791,7 @@
 .reveal .fragment {
   opacity: 0;
   visibility: hidden;
-  transition: opacity 0.3s ease, visibility 0.3s ease;
+  transition: opacity 0.3s ease;
 }
 
 .reveal .fragment.visible {
