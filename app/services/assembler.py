@@ -49,21 +49,27 @@ class ExpedienteContext:
 
     @property
     def solicitud(self) -> Optional[Any]:
-        """Solicitud en contexto, derivada del objeto actuado."""
+        """Solicitud en contexto, derivada del objeto actuado.
+
+        Duck-typing por atributos (no por nombre de clase) para soportar mocks:
+          Solicitud → tiene 'fases', NO tiene 'solicitud'
+          Fase      → tiene 'solicitud' y 'tramites'
+          Tramite   → tiene 'fase', NO tiene 'tramites'
+          Tarea     → tiene 'tramite'
+        """
         obj = self._objeto
         if obj is None:
             return None
         if isinstance(obj, dict):
             return obj.get('solicitud')
-        cls = type(obj).__name__
-        if cls == 'Solicitud':
-            return obj
-        if cls == 'Fase':
-            return obj.solicitud
-        if cls == 'Tramite':
-            return obj.fase.solicitud
-        if cls == 'Tarea':
-            return obj.tramite.fase.solicitud
+        if hasattr(obj, 'fases') and not hasattr(obj, 'solicitud'):
+            return obj                        # es Solicitud
+        if hasattr(obj, 'solicitud') and hasattr(obj, 'tramites'):
+            return obj.solicitud              # es Fase
+        if hasattr(obj, 'fase') and not hasattr(obj, 'tramites'):
+            return obj.fase.solicitud         # es Tramite
+        if hasattr(obj, 'tramite'):
+            return obj.tramite.fase.solicitud # es Tarea
         return None
 
     @property
@@ -74,13 +80,12 @@ class ExpedienteContext:
             return None
         if isinstance(obj, dict):
             return obj.get('fase')
-        cls = type(obj).__name__
-        if cls == 'Fase':
-            return obj
-        if cls == 'Tramite':
-            return obj.fase
-        if cls == 'Tarea':
-            return obj.tramite.fase
+        if hasattr(obj, 'solicitud') and hasattr(obj, 'tramites'):
+            return obj                        # es Fase
+        if hasattr(obj, 'fase') and not hasattr(obj, 'tramites'):
+            return obj.fase                   # es Tramite
+        if hasattr(obj, 'tramite'):
+            return obj.tramite.fase           # es Tarea
         return None
 
     @property
@@ -91,11 +96,10 @@ class ExpedienteContext:
             return None
         if isinstance(obj, dict):
             return None
-        cls = type(obj).__name__
-        if cls == 'Tramite':
-            return obj
-        if cls == 'Tarea':
-            return obj.tramite
+        if hasattr(obj, 'fase') and not hasattr(obj, 'tramites'):
+            return obj                        # es Tramite
+        if hasattr(obj, 'tramite'):
+            return obj.tramite                # es Tarea
         return None
 
 
