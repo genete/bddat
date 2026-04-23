@@ -192,21 +192,9 @@ def editar_solicitud(sol_id):
         return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
 
     try:
-        nueva_fecha_fin = date.fromisoformat(request.form['fecha_fin']) if request.form.get('fecha_fin') else None
-
-        res_eval = None
-        if sol.fecha_fin is None and nueva_fecha_fin is not None:
-            res_eval = evaluar_multi('FINALIZAR', sol.expediente, objeto=sol)
-            if not res_eval.permitido:
-                return _bloqueo(res_eval)
-
-        sol.fecha_fin = nueva_fecha_fin
-        if request.form.get('estado'):
-            sol.estado = request.form['estado']
         sol.observaciones = request.form.get('observaciones') or None
         db.session.commit()
-
-        return jsonify({'ok': True, 'advertencia': _advertencia(res_eval)})
+        return jsonify({'ok': True})
     except Exception as e:
         db.session.rollback()
         return jsonify({'ok': False, 'error': str(e)}), 500
@@ -221,28 +209,11 @@ def editar_fase(fase_id):
         return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
 
     try:
-        nueva_fecha_inicio = date.fromisoformat(request.form['fecha_inicio']) if request.form.get('fecha_inicio') else None
-        nueva_fecha_fin = date.fromisoformat(request.form['fecha_fin']) if request.form.get('fecha_fin') else None
-
-        res_eval = None
-        if fase.fecha_inicio is None and nueva_fecha_inicio is not None:
-            res_eval = evaluar_multi('INICIAR', fase.solicitud.expediente, objeto=fase)
-            if not res_eval.permitido:
-                return _bloqueo(res_eval)
-
-        if fase.fecha_fin is None and nueva_fecha_fin is not None:
-            res_eval = evaluar_multi('FINALIZAR', fase.solicitud.expediente, objeto=fase)
-            if not res_eval.permitido:
-                return _bloqueo(res_eval)
-
-        fase.fecha_inicio = nueva_fecha_inicio
-        fase.fecha_fin = nueva_fecha_fin
         resultado_id = request.form.get('resultado_fase_id')
         fase.resultado_fase_id = int(resultado_id) if resultado_id else None
         fase.observaciones = request.form.get('observaciones') or None
         db.session.commit()
-
-        return jsonify({'ok': True, 'advertencia': _advertencia(res_eval)})
+        return jsonify({'ok': True})
     except Exception as e:
         db.session.rollback()
         return jsonify({'ok': False, 'error': str(e)}), 500
@@ -257,26 +228,9 @@ def editar_tramite(tram_id):
         return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
 
     try:
-        nueva_fecha_inicio = date.fromisoformat(request.form['fecha_inicio']) if request.form.get('fecha_inicio') else None
-        nueva_fecha_fin = date.fromisoformat(request.form['fecha_fin']) if request.form.get('fecha_fin') else None
-
-        res_eval = None
-        if tramite.fecha_inicio is None and nueva_fecha_inicio is not None:
-            res_eval = evaluar_multi('INICIAR', tramite.fase.solicitud.expediente, objeto=tramite)
-            if not res_eval.permitido:
-                return _bloqueo(res_eval)
-
-        if tramite.fecha_fin is None and nueva_fecha_fin is not None:
-            res_eval = evaluar_multi('FINALIZAR', tramite.fase.solicitud.expediente, objeto=tramite)
-            if not res_eval.permitido:
-                return _bloqueo(res_eval)
-
-        tramite.fecha_inicio = nueva_fecha_inicio
-        tramite.fecha_fin = nueva_fecha_fin
         tramite.observaciones = request.form.get('observaciones') or None
         db.session.commit()
-
-        return jsonify({'ok': True, 'advertencia': _advertencia(res_eval)})
+        return jsonify({'ok': True})
     except Exception as e:
         db.session.rollback()
         return jsonify({'ok': False, 'error': str(e)}), 500
@@ -293,9 +247,6 @@ def editar_tarea(tarea_id):
     expediente = tarea.tramite.fase.solicitud.expediente
 
     try:
-        nueva_fecha_inicio = date.fromisoformat(request.form['fecha_inicio']) if request.form.get('fecha_inicio') else None
-        nueva_fecha_fin = date.fromisoformat(request.form['fecha_fin']) if request.form.get('fecha_fin') else None
-
         doc_usado_raw     = request.form.get('documento_usado_id') or None
         doc_producido_raw = request.form.get('documento_producido_id') or None
         nuevo_doc_usado_id     = int(doc_usado_raw)     if doc_usado_raw     else None
@@ -308,24 +259,10 @@ def editar_tarea(tarea_id):
 
         tarea.documento_usado_id     = nuevo_doc_usado_id
         tarea.documento_producido_id = nuevo_doc_producido_id
-
-        res_eval = None
-        if tarea.fecha_inicio is None and nueva_fecha_inicio is not None:
-            res_eval = evaluar_multi('INICIAR', expediente, objeto=tarea)
-            if not res_eval.permitido:
-                return _bloqueo(res_eval)
-
-        if tarea.fecha_fin is None and nueva_fecha_fin is not None:
-            res_eval = evaluar_multi('FINALIZAR', expediente, objeto=tarea)
-            if not res_eval.permitido:
-                return _bloqueo(res_eval)
-
-        tarea.fecha_inicio = nueva_fecha_inicio
-        tarea.fecha_fin = nueva_fecha_fin
         tarea.notas = request.form.get('notas') or None
         db.session.commit()
 
-        return jsonify({'ok': True, 'advertencia': _advertencia(res_eval)})
+        return jsonify({'ok': True})
     except IntegrityError:
         db.session.rollback()
         return jsonify({'ok': False, 'error': 'Este documento ya está asignado como producido a otra tarea'}), 422
@@ -486,14 +423,13 @@ def finalizar_fase(fase_id):
     resultado = verificar_acceso_expediente(fase.solicitud.expediente, 'editar')
     if resultado:
         return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
-    if fase.fecha_fin is not None:
+    if fase.finalizada:
         return jsonify({'ok': False, 'error': 'La fase ya está finalizada'}), 422
 
     res_eval = evaluar_multi('FINALIZAR', fase.solicitud.expediente, objeto=fase)
     if not res_eval.permitido:
         return _bloqueo(res_eval)
 
-    fase.fecha_fin = date.today()
     db.session.commit()
     return jsonify({'ok': True, 'nivel': res_eval.nivel, 'norma_compilada': res_eval.norma_compilada, 'url_norma': res_eval.url_norma})
 
