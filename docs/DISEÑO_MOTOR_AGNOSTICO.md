@@ -407,10 +407,10 @@ Seis pasos, de más interior a más exterior. Actualizado sesión 2026-04-16 (no
 
 1. ✅ **MRA — API + esquema tablas** — firma `evaluar(accion, sujeto, tipo_sujeto_id, variables)`, `EvaluacionResult` con `variables_trigger`/`norma_compilada`/`url_norma`, tablas `normas`/`reglas_motor`/`condiciones_regla`/`catalogo_variables` cerradas. Sin capa EventHandler — patrón dos líneas en ruta Flask.
 2. ✅ **MRA — implementación motor** — `motor_reglas.py` refactorizado: agnóstico de BDDAT, nueva firma, nuevo `EvaluacionResult`, criterios específicos eliminados.
-3. **Migración manual** — una sola migración con este orden interno: (1) crear `normas`, (2) crear `catalogo_variables`, (3) añadir `norma_id`/`articulo`/`apartado` a `reglas_motor` + eliminar `norma_compilada`, (4) renombrar `condiciones_regla.nombre_variable → variable_id FK → catalogo_variables`. Ver §Esquema de tablas.
-4. **Variables — recatalogación** — revisar `DISEÑO_CONTEXT_ASSEMBLER.md`, decidir primeras variables implementables; seed de `catalogo_variables`; resolver modelo de BD de `Proyecto`/`Solicitud` para variables `dato` → issue #279
-5. **Variable Registry + ContextAssembler** — `app/services/variables/` con patrón registry (`@variable` decorator); `build(expediente_id) → dict`; integrar `plazos.py`. Ver `DISEÑO_CONTEXT_ASSEMBLER.md §Ciclo de vida de una variable`.
-6. **Fuego real** — seed `normas` + 2-3 reglas + condiciones; wiring dos líneas en 2-3 rutas Flask; prueba con expediente real
+3. ✅ **Migración manual** — una sola migración con este orden interno: (1) crear `normas`, (2) crear `catalogo_variables`, (3) añadir `norma_id`/`articulo`/`apartado` a `reglas_motor` + eliminar `norma_compilada`, (4) renombrar `condiciones_regla.nombre_variable → variable_id FK → catalogo_variables`. Ver §Esquema de tablas.
+4. ✅ **Variables — recatalogación** — revisar `DISEÑO_CONTEXT_ASSEMBLER.md`, decidir primeras variables implementables; seed de `catalogo_variables`; resolver modelo de BD de `Proyecto`/`Solicitud` para variables `dato` → issue #279
+5. ✅ **Variable Registry + ContextAssembler** — `app/services/variables/` con patrón registry (`@variable` decorator); `build(expediente_id) → dict`; integrar `plazos.py`. Ver `DISEÑO_CONTEXT_ASSEMBLER.md §Ciclo de vida de una variable`.
+6. ✅ **Fuego real** — seed `normas` + 2-3 reglas + condiciones; wiring dos líneas en 2-3 rutas Flask; prueba con expediente real
 
 Issues afectados (no desbloquear hasta paso 5):
 - **#279** — campos extra Proyecto (tensión, potencia, tipo suelo): modelo de BD se define en paso 4
