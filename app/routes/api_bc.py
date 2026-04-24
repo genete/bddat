@@ -32,6 +32,7 @@ def _bloqueo(res_eval):
     """Respuesta de error cuando el motor bloquea la acción."""
     return jsonify({
         'ok': False,
+        'motivo': res_eval.motivo,
         'error': res_eval.norma_compilada or 'Acción no permitida',
         'url_norma': res_eval.url_norma,
     }), 422
@@ -40,7 +41,7 @@ def _bloqueo(res_eval):
 def _advertencia(res_eval):
     """Dict de advertencia para incluir en la respuesta ok (o None si no hay)."""
     if res_eval and res_eval.nivel == 'ADVERTIR':
-        return {'norma_compilada': res_eval.norma_compilada, 'url_norma': res_eval.url_norma}
+        return {'motivo': res_eval.motivo, 'norma_compilada': res_eval.norma_compilada, 'url_norma': res_eval.url_norma}
     return None
 
 
@@ -373,7 +374,7 @@ def iniciar_solicitud(sol_id):
     res_eval = evaluar_multi('INICIAR', sol.expediente, objeto=sol)
     if not res_eval.permitido:
         return _bloqueo(res_eval)
-    return jsonify({'ok': True, 'nivel': res_eval.nivel, 'norma_compilada': res_eval.norma_compilada, 'url_norma': res_eval.url_norma})
+    return jsonify({'ok': True, 'nivel': res_eval.nivel, 'motivo': res_eval.motivo, 'norma_compilada': res_eval.norma_compilada, 'url_norma': res_eval.url_norma})
 
 
 @bp.route('/solicitud/<int:sol_id>/finalizar', methods=['POST'])
@@ -388,7 +389,7 @@ def finalizar_solicitud(sol_id):
     res_eval = evaluar_multi('FINALIZAR', sol.expediente, objeto=sol)
     if not res_eval.permitido:
         return _bloqueo(res_eval)
-    return jsonify({'ok': True, 'nivel': res_eval.nivel, 'norma_compilada': res_eval.norma_compilada, 'url_norma': res_eval.url_norma})
+    return jsonify({'ok': True, 'nivel': res_eval.nivel, 'motivo': res_eval.motivo, 'norma_compilada': res_eval.norma_compilada, 'url_norma': res_eval.url_norma})
 
 
 @bp.route('/fase/<int:fase_id>/iniciar', methods=['POST'])
@@ -403,7 +404,7 @@ def iniciar_fase(fase_id):
     res_eval = evaluar_multi('INICIAR', fase.solicitud.expediente, objeto=fase)
     if not res_eval.permitido:
         return _bloqueo(res_eval)
-    return jsonify({'ok': True, 'nivel': res_eval.nivel, 'norma_compilada': res_eval.norma_compilada, 'url_norma': res_eval.url_norma})
+    return jsonify({'ok': True, 'nivel': res_eval.nivel, 'motivo': res_eval.motivo, 'norma_compilada': res_eval.norma_compilada, 'url_norma': res_eval.url_norma})
 
 
 @bp.route('/fase/<int:fase_id>/finalizar', methods=['POST'])
@@ -420,7 +421,7 @@ def finalizar_fase(fase_id):
     if not res_eval.permitido:
         return _bloqueo(res_eval)
 
-    return jsonify({'ok': True, 'nivel': res_eval.nivel, 'norma_compilada': res_eval.norma_compilada, 'url_norma': res_eval.url_norma})
+    return jsonify({'ok': True, 'nivel': res_eval.nivel, 'motivo': res_eval.motivo, 'norma_compilada': res_eval.norma_compilada, 'url_norma': res_eval.url_norma})
 
 
 @bp.route('/tramite/<int:tram_id>/iniciar', methods=['POST'])
@@ -435,7 +436,7 @@ def iniciar_tramite(tram_id):
     res_eval = evaluar_multi('INICIAR', tramite.fase.solicitud.expediente, objeto=tramite)
     if not res_eval.permitido:
         return _bloqueo(res_eval)
-    return jsonify({'ok': True, 'nivel': res_eval.nivel, 'norma_compilada': res_eval.norma_compilada, 'url_norma': res_eval.url_norma})
+    return jsonify({'ok': True, 'nivel': res_eval.nivel, 'motivo': res_eval.motivo, 'norma_compilada': res_eval.norma_compilada, 'url_norma': res_eval.url_norma})
 
 
 @bp.route('/tramite/<int:tram_id>/finalizar', methods=['POST'])
@@ -450,7 +451,7 @@ def finalizar_tramite(tram_id):
     res_eval = evaluar_multi('FINALIZAR', tramite.fase.solicitud.expediente, objeto=tramite)
     if not res_eval.permitido:
         return _bloqueo(res_eval)
-    return jsonify({'ok': True, 'nivel': res_eval.nivel, 'norma_compilada': res_eval.norma_compilada, 'url_norma': res_eval.url_norma})
+    return jsonify({'ok': True, 'nivel': res_eval.nivel, 'motivo': res_eval.motivo, 'norma_compilada': res_eval.norma_compilada, 'url_norma': res_eval.url_norma})
 
 
 @bp.route('/tarea/<int:tarea_id>/iniciar', methods=['POST'])
@@ -465,7 +466,7 @@ def iniciar_tarea(tarea_id):
     res_eval = evaluar_multi('INICIAR', tarea.tramite.fase.solicitud.expediente, objeto=tarea)
     if not res_eval.permitido:
         return _bloqueo(res_eval)
-    return jsonify({'ok': True, 'nivel': res_eval.nivel, 'norma_compilada': res_eval.norma_compilada, 'url_norma': res_eval.url_norma})
+    return jsonify({'ok': True, 'nivel': res_eval.nivel, 'motivo': res_eval.motivo, 'norma_compilada': res_eval.norma_compilada, 'url_norma': res_eval.url_norma})
 
 
 @bp.route('/tarea/<int:tarea_id>/finalizar', methods=['POST'])
@@ -481,4 +482,4 @@ def finalizar_tarea(tarea_id):
     res_eval = evaluar_multi('FINALIZAR', tarea.tramite.fase.solicitud.expediente, objeto=tarea)
     if not res_eval.permitido:
         return _bloqueo(res_eval)
-    return jsonify({'ok': True, 'nivel': res_eval.nivel, 'norma_compilada': res_eval.norma_compilada, 'url_norma': res_eval.url_norma})
+    return jsonify({'ok': True, 'nivel': res_eval.nivel, 'motivo': res_eval.motivo, 'norma_compilada': res_eval.norma_compilada, 'url_norma': res_eval.url_norma})
