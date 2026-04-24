@@ -1,16 +1,13 @@
 # Documentación BDDAT
 
-## Estado actual
-> Actualizar cuando cambie el foco de trabajo.
+Sistema de tramitación administrativa de expedientes de autorización de instalaciones de alta tensión en Andalucía.
 
-**En vuelo:** motor de reglas operativo · plazos pendiente de implementar
-**Próximo sin bloqueante:** [consultar GitHub M2/M3 abiertos]
-**Decisiones abiertas:** buscar issues con label `design-decision` en GitHub
+**Para saber qué está vivo ahora mismo:** [CONTEXTO_ACTUAL.md](CONTEXTO_ACTUAL.md)
 
 ---
 
-## Guías operativas
-Leer cuando se trabaja en ese área. Estables.
+## guias/
+Documentos operativos estables. Leer cuando se trabaja en ese área.
 
 - [REGLAS_BASH.md](guias/REGLAS_BASH.md) — patrones prohibidos en Bash y workarounds
 - [REGLAS_DESARROLLO.md](guias/REGLAS_DESARROLLO.md) — Git, commits, ramas, migraciones
@@ -19,9 +16,7 @@ Leer cuando se trabaja en ese área. Estables.
 - [GUIA_GENERAL.md](guias/GUIA_GENERAL.md) — arquitectura general y lógica de negocio
 - [GUIA_ROLES.md](guias/GUIA_ROLES.md) — roles y permisos
 
----
-
-## Referencia por subsistema
+## referencia/
 Consultar cuando se trabaja ese subsistema. No cargar por defecto.
 
 ### Motor de reglas y plazos
@@ -52,17 +47,13 @@ Consultar cuando se trabaja ese subsistema. No cargar por defecto.
 ### Visión
 - [PLAN_ESTRATEGIA.md](referencia/PLAN_ESTRATEGIA.md) — 14 bloques funcionales
 
----
-
-## Decisiones de arquitectura (ADRs)
-Registro append-only. Solo las decisiones no obvias desde el código.
+## decisiones/
+ADRs — registro append-only de decisiones arquitectónicas no obvias desde el código.
 
 - [ADR-001](decisiones/ADR-001-motor-agnostico.md) — Motor agnóstico de dominio
 - [ADR-002](decisiones/ADR-002-esftt-sin-fechas.md) — Ningún elemento ESFTT almacena fechas
 
----
+## historial/
+Documentos congelados. Contexto histórico, no referencia activa.
 
-## Historial
-Documentos congelados. Existen como contexto histórico, no como referencia activa.
-
-- [historial/](historial/) — ANALISIS_*, DISEÑO_MOTOR_*, DISEÑO_NUMERACION_AT, PROCEDIMIENTO_*, REGLAS_ARQUITECTURA
+- ANALISIS_*, DISEÑO_MOTOR_*, DISEÑO_NUMERACION_AT, PROCEDIMIENTO_*, REGLAS_ARQUITECTURA

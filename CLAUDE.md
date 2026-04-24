@@ -10,7 +10,9 @@ Desarrollado para la Consejería de Industria, Energía y Minas (Junta de Andalu
 
 ## Documentos de referencia
 
-Índice completo y estado actual: `docs/README.md`
+- Para programar: leer `docs/guias/REGLAS_BASH.md` — patrones prohibidos en Bash
+- Para entender la estructura de docs: leer `docs/README.md`
+- Para entrar en contexto de lo que está vivo: leer **siempre** `docs/CONTEXTO_ACTUAL.md`
 
 ---
 
