@@ -7,7 +7,6 @@ bc-edicion.js actualiza el DOM directamente desde los valores del formulario.
 
 Creado para resolver el bug #314.
 """
-from datetime import date
 from flask import Blueprint, jsonify, request
 from flask_login import login_required
 from sqlalchemy.exc import IntegrityError
@@ -60,21 +59,12 @@ def crear_solicitud(exp_id):
 
     # El template envía tipo_solicitud_id[] (multi-select)
     tipo_ids = request.form.getlist('tipo_solicitud_id[]') or request.form.getlist('tipo_solicitud_id')
-    fecha_str = request.form.get('fecha_solicitud')
     entidad_id = request.form.get('entidad_id', type=int) or expediente.titular_id
 
     if not tipo_ids:
         return jsonify({'ok': False, 'error': 'Selecciona al menos un tipo de solicitud'}), 400
     if not entidad_id:
         return jsonify({'ok': False, 'error': 'El expediente no tiene titular asignado. Asígnelo antes de crear solicitudes.'}), 422
-
-    if fecha_str:
-        try:
-            fecha = date.fromisoformat(fecha_str)
-        except ValueError:
-            return jsonify({'ok': False, 'error': 'Fecha inválida'}), 400
-    else:
-        fecha = None
 
     creadas = []
     try:
@@ -87,8 +77,7 @@ def crear_solicitud(exp_id):
             if not tipo:
                 return jsonify({'ok': False, 'error': f'Tipo de solicitud {tid_int} no encontrado'}), 404
             sol = Solicitud(expediente_id=exp_id, entidad_id=entidad_id,
-                            tipo_solicitud_id=tid_int,
-                            fecha_solicitud=fecha, estado='EN_TRAMITE')
+                            tipo_solicitud_id=tid_int)
             db.session.add(sol)
             creadas.append(sol)
         db.session.commit()
@@ -208,9 +197,22 @@ def editar_fase(fase_id):
     if resultado:
         return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
 
+    doc_resultado_raw = request.form.get('documento_resultado_id')
+    nuevo_doc_resultado_id = int(doc_resultado_raw) if doc_resultado_raw else None
+
+    # Motor FINALIZAR cuando documento_resultado_id transiciona None → valor
+    if nuevo_doc_resultado_id and fase.documento_resultado_id is None:
+        doc = Documento.query.get(nuevo_doc_resultado_id)
+        if not doc or doc.expediente_id != fase.solicitud.expediente_id:
+            return jsonify({'ok': False, 'error': 'Documento no válido para este expediente'}), 422
+        res_eval = evaluar_multi('FINALIZAR', fase.solicitud.expediente, objeto=fase)
+        if not res_eval.permitido:
+            return _bloqueo(res_eval)
+
     try:
         resultado_id = request.form.get('resultado_fase_id')
         fase.resultado_fase_id = int(resultado_id) if resultado_id else None
+        fase.documento_resultado_id = nuevo_doc_resultado_id
         fase.observaciones = request.form.get('observaciones') or None
         db.session.commit()
         return jsonify({'ok': True})
@@ -366,6 +368,8 @@ def iniciar_solicitud(sol_id):
     resultado = verificar_acceso_expediente(sol.expediente, 'editar')
     if resultado:
         return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
+    if sol.fases:
+        return jsonify({'ok': False, 'error': 'La solicitud ya tiene fases en trámite'}), 422
     res_eval = evaluar_multi('INICIAR', sol.expediente, objeto=sol)
     if not res_eval.permitido:
         return _bloqueo(res_eval)
@@ -379,6 +383,8 @@ def finalizar_solicitud(sol_id):
     resultado = verificar_acceso_expediente(sol.expediente, 'editar')
     if resultado:
         return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
+    if sol.estado == 'RESUELTA':
+        return jsonify({'ok': False, 'error': 'La solicitud ya está resuelta'}), 422
     res_eval = evaluar_multi('FINALIZAR', sol.expediente, objeto=sol)
     if not res_eval.permitido:
         return _bloqueo(res_eval)
@@ -392,6 +398,8 @@ def iniciar_fase(fase_id):
     resultado = verificar_acceso_expediente(fase.solicitud.expediente, 'editar')
     if resultado:
         return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
+    if not fase.planificada:
+        return jsonify({'ok': False, 'error': 'La fase ya está en curso'}), 422
     res_eval = evaluar_multi('INICIAR', fase.solicitud.expediente, objeto=fase)
     if not res_eval.permitido:
         return _bloqueo(res_eval)
@@ -412,7 +420,6 @@ def finalizar_fase(fase_id):
     if not res_eval.permitido:
         return _bloqueo(res_eval)
 
-    db.session.commit()
     return jsonify({'ok': True, 'nivel': res_eval.nivel, 'norma_compilada': res_eval.norma_compilada, 'url_norma': res_eval.url_norma})
 
 
@@ -423,6 +430,8 @@ def iniciar_tramite(tram_id):
     resultado = verificar_acceso_expediente(tramite.fase.solicitud.expediente, 'editar')
     if resultado:
         return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
+    if not tramite.planificado:
+        return jsonify({'ok': False, 'error': 'El trámite ya está en curso'}), 422
     res_eval = evaluar_multi('INICIAR', tramite.fase.solicitud.expediente, objeto=tramite)
     if not res_eval.permitido:
         return _bloqueo(res_eval)
@@ -436,6 +445,8 @@ def finalizar_tramite(tram_id):
     resultado = verificar_acceso_expediente(tramite.fase.solicitud.expediente, 'editar')
     if resultado:
         return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
+    if tramite.finalizado:
+        return jsonify({'ok': False, 'error': 'El trámite ya está finalizado'}), 422
     res_eval = evaluar_multi('FINALIZAR', tramite.fase.solicitud.expediente, objeto=tramite)
     if not res_eval.permitido:
         return _bloqueo(res_eval)
@@ -449,6 +460,8 @@ def iniciar_tarea(tarea_id):
     resultado = verificar_acceso_expediente(tarea.tramite.fase.solicitud.expediente, 'editar')
     if resultado:
         return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
+    if not tarea.planificada:
+        return jsonify({'ok': False, 'error': 'La tarea ya está en curso o ejecutada'}), 422
     res_eval = evaluar_multi('INICIAR', tarea.tramite.fase.solicitud.expediente, objeto=tarea)
     if not res_eval.permitido:
         return _bloqueo(res_eval)
