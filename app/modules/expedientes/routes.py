@@ -256,16 +256,16 @@ def tramitacion_bc(exp_id):
         tipos_str = s.tipo_solicitud.siglas if s.tipo_solicitud else f'Solicitud #{s.id}'
         fecha_sol = s.documento_solicitud.fecha_administrativa if s.documento_solicitud else None
         hijos.append({
-            'nombre':        tipos_str,
-            'fecha_inicio':  _fmt_fecha(fecha_sol),
-            'estado':        _estado_indicador_solicitud(s),
-            'url_detalle':   url_for('expedientes.tramitacion_bc_solicitud',
-                                    exp_id=exp_id, sol_id=s.id),
+            'nombre':          tipos_str,
+            'fecha_solicitud': _fmt_fecha(fecha_sol),
+            'estado':          _estado_indicador_solicitud(s),
+            'url_detalle':     url_for('expedientes.tramitacion_bc_solicitud',
+                                      exp_id=exp_id, sol_id=s.id),
         })
 
     columnas = [
-        {'key': 'nombre',       'label': 'Tipos de solicitud'},
-        {'key': 'fecha_inicio', 'label': 'F. Solicitud'},
+        {'key': 'nombre',          'label': 'Tipos de solicitud'},
+        {'key': 'fecha_solicitud', 'label': 'F. Solicitud'},
     ]
 
     tipos_solicitud = TipoSolicitud.query.order_by(TipoSolicitud.siglas).all()
