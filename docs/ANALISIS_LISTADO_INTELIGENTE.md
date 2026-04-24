@@ -32,7 +32,7 @@ Cada pista es una entrada de tipo `"pista"` con los `tipos_fase` que le correspo
 |-------------------|---------------|------|-------|
 | **Nº AT** | `num_at` | Texto + estilo | Badge si el AT aparece en más de una fila (varias solicitudes activas simultáneas) |
 | **SOLICITUD** | `tipo_solicitud` | Texto + color | AAP_AAC, AAE, DUP… El color de fondo codifica el estado global de la solicitud: sin fondo = EN_TRAMITE con pistas en curso; **naranja** = todas las pistas en FIN pero solicitud aún EN_TRAMITE (pendiente de cierre formal); **verde** = solicitud cerrada (RESUELTA / DESISTIDA / ARCHIVADA). Tooltip muestra el estado BD exacto. |
-| **FECHA** | `fecha_solicitud` | Fecha | Ordenación principal por defecto desc |
+| **FECHA** | `fecha_solicitud` | Fecha | Derivado de `solicitud.documento_solicitud.fecha_administrativa`. Ordenación principal por defecto desc |
 | **TITULAR** | `titular_nombre` | Texto + estilo | Titular directo del expediente. PROMOTOR = negrita; ORGANISMO_PUBLICO = negrita+color; GRAN_DISTRIBUIDORA = gris; resto = normal |
 | **PROYECTO** | `proyecto_descripcion` | Texto | Descripción del proyecto |
 | **ANÁLISIS** | `pista_analisis` | Estado | Pista de análisis y subsanación (antes SOL/REQ/SUB) |
@@ -105,8 +105,8 @@ La columna **Prioridad** determina qué estado se muestra cuando hay varias fase
 | PENDIENTE_PUBLICAR | PUBLICAR | azul | PUBLICAR con doc firmado pero sin justificante |
 | PENDIENTE_SUBSANAR | SUBSANAR | gris | ESPERAR_PLAZO activo en pista ANÁLISIS |
 | PENDIENTE_PLAZOS | PLAZOS | gris | ESPERAR_PLAZO activo en pistas CONSULTAS, MA o IP |
-| PENDIENTE_CERRAR | CERRAR | naranja | Tarea/trámite/fase completos pero sin `fecha_fin` |
-| FIN | FIN | verde | Fase finalizada (`fecha_fin IS NOT NULL`) |
+| PENDIENTE_CERRAR | CERRAR | naranja | Tarea/trámite/fase completos pero pendiente de formalizar. Para Fase: `pdte_cierre` (todos los trámites finalizados, `documento_resultado_id IS NULL`) |
+| FIN | FIN | verde | Fase finalizada (`documento_resultado_id IS NOT NULL`, property `finalizada`) |
 
 ### 4.4 Subestados internos por tipo de tarea
 
@@ -158,11 +158,11 @@ función estado_pista(solicitud, tipos_fase_pista):
         devolver (vacío)        # N/A o fase obligatoria ausente
                                 # DIFERIDO — depende del motor de reglas; por ahora celda vacía
 
-    si todas las fases tienen fecha_fin IS NOT NULL:
+    si todas las fases están finalizadas (fase.finalizada):
         devolver (FIN, 1)       # pista terminada
 
     acumulado ← {}
-    para cada fase en fases donde fecha_fin IS NULL:
+    para cada fase en fases donde not fase.finalizada:
         (estado, n) ← estado_fase(fase)
         acumulado[estado] += n
 
@@ -174,23 +174,19 @@ función estado_pista(solicitud, tipos_fase_pista):
 # ──────────────────────────────────────────────────
 
 función estado_fase(fase):
-    si fase.fecha_inicio IS NULL:
-        devolver (PENDIENTE_TRAMITAR, 1)    # fase no arrancada
+    si fase.planificada (sin trámites aún):
+        devolver (PENDIENTE_TRAMITAR, 1)    # fase sin trámites
 
     tramites ← trámites de la fase
 
-    si tramites está vacío:
-        devolver (PENDIENTE_TRAMITAR, 1)    # fase iniciada pero sin trámites creados
-
-    si todos los trámites tienen fecha_fin IS NOT NULL:
-        # fase en curso pero todos los trámites cerrados
+    si fase.pdte_cierre (todos los trámites finalizados, sin documento_resultado_id):
         si fase.resultado_fase IS NULL:
             devolver (PENDIENTE_ESTUDIO, 1) # hay que estudiar y decidir resultado
         sino:
-            devolver (PENDIENTE_CERRAR, 1)  # resultado decidido, falta cerrar la fase
+            devolver (PENDIENTE_CERRAR, 1)  # resultado decidido, falta formalizar
 
     acumulado ← {}
-    para cada tramite en tramites donde fecha_fin IS NULL:
+    para cada tramite en tramites donde not tramite.finalizado:
         (estado, n) ← estado_tramite(tramite)
         acumulado[estado] += n
 
@@ -202,8 +198,8 @@ función estado_fase(fase):
 # ──────────────────────────────────────────────────
 
 función estado_tramite(tramite):
-    si tramite.fecha_inicio IS NULL:
-        devolver (PENDIENTE_TRAMITAR, 1)    # trámite no arrancado
+    si tramite.planificado (sin tareas aún):
+        devolver (PENDIENTE_TRAMITAR, 1)    # trámite sin tareas
 
     tareas ← tareas del trámite
 

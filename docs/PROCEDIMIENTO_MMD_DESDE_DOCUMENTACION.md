@@ -28,7 +28,7 @@ Aporta el modelo mental de la tramitación:
 ### 3. `DISEÑO_MOTOR_REGLAS.md`
 Aporta las condiciones del motor para INFORMACION_PUBLICA:
 - INICIAR: `EXISTS DR_NO_DUP AND ia NOT IN {AAU, AAUS}` → BLOQUEAR
-- FINALIZAR (universal): `EXISTS tramite con fecha_fin IS NULL` → BLOQUEAR
+- FINALIZAR (universal): EXISTS trámite sin finalizar (`not tramite.finalizado`: tareas con tipo documental sin `documento_producido_id`) → BLOQUEAR
 - Vocabulario de eventos: CREAR, INICIAR, FINALIZAR, BORRAR.
 - Principio rector: todo permitido excepto lo prohibido. El motor no
   conduce el flujo — responde a preguntas del usuario.

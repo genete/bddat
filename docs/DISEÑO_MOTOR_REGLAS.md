@@ -1,6 +1,6 @@
 # MOTOR_REGLAS — Arquitectura de diseño
 
-> **Última revisión:** 2026-04-05
+> **Última revisión:** 2026-04-24
 > Documento derivado del análisis de dos ejemplos reales de tramitación AT en Andalucía
 > y revisión exhaustiva en sesión con el técnico del servicio.
 
@@ -36,17 +36,17 @@ El motor distingue cuatro eventos en el ciclo de vida de cualquier entidad ESFTT
 | **CREAR** | ¿Es conceptualmente válido planificar esto en este contexto? | ADVERTIR (absurdo pero no imposible) o BLOQUEAR (imposible) |
 | **INICIAR** | ¿Están cumplidos los prerequisitos para comenzar a ejecutar? | BLOQUEAR (restricción dura) |
 | **FINALIZAR** | ¿Pueden cerrarse sus hijos? ¿Tiene documento requerido? | BLOQUEAR |
-| **BORRAR** | ¿Ha sido ya iniciada la entidad? | BLOQUEAR si `fecha_inicio IS NOT NULL` |
+| **BORRAR** | ¿Ha sido ya iniciada la entidad? | BLOQUEAR si `not planificada` |
 
 **Distinción CREAR vs INICIAR:**
-- CREAR corresponde al momento de insertar el registro, que puede ser sin `fecha_inicio` (planificación). Valida coherencia conceptual con el contexto.
-- INICIAR corresponde al momento de poner `fecha_inicio` por primera vez (puede ocurrir en el mismo formulario de creación o en una edición posterior). Valida que los prerequisitos estén cumplidos.
+- CREAR corresponde al momento de insertar el registro, que puede quedar en estado planificado (sin trámites/tareas aún). Valida coherencia conceptual con el contexto.
+- INICIAR corresponde al momento de comenzar a ejecutar la entidad (primer trámite en una fase, primera tarea en un trámite). Valida que los prerequisitos estén cumplidos.
 
-**SOLICITUD** no tiene `fecha_inicio` — se crea siempre activa con `fecha_solicitud` (NOT NULL).
+**SOLICITUD** no tiene evento INICIAR explícito — su fecha de referencia es `documento_solicitud.fecha_administrativa`.
 Solo tiene CREAR, FINALIZAR y BORRAR.
 
 **Sobre el borrado:**
-Una entidad iniciada (`fecha_inicio IS NOT NULL`) implica actividad administrativa con posible rastro externo (documentos en servidor de archivos, notificaciones enviadas). El criterio es binario: si se ha iniciado, no se borra — se finaliza ordenadamente incluso si hay incumplimiento de otras reglas, dejando rastro justificado. Si una entidad finalizada impide crear una nueva por reglas, la solución es revisar las reglas, no permitir el borrado.
+Una entidad no planificada (con trámites o documentos asociados) implica actividad administrativa con posible rastro externo (documentos en servidor de archivos, notificaciones enviadas). El criterio es binario: si se ha iniciado, no se borra — se finaliza ordenadamente incluso si hay incumplimiento de otras reglas, dejando rastro justificado. Si una entidad finalizada impide crear una nueva por reglas, la solución es revisar las reglas, no permitir el borrado.
 
 ---
 
@@ -154,8 +154,8 @@ Si es **FALSE → operación permitida** (principio de todo permitido excepto pr
 | CREAR | RENUNCIA | NOT EXISTS solicitud resuelta favorablemente en este expediente | BLOQUEAR |
 | CREAR | RECURSO | NOT EXISTS resolución emitida en este expediente | BLOQUEAR |
 | CREAR | RAIPEE_DEFINITIVA | NOT EXISTS RAIPEE_PREVIA resuelta en este expediente | ADVERTIR |
-| FINALIZAR | cualquiera | NOT EXISTS fase RESOLUCION con `fecha_fin IS NOT NULL` en esta solicitud | BLOQUEAR |
-| BORRAR | cualquiera | EXISTS fase con `fecha_inicio IS NOT NULL` en esta solicitud | BLOQUEAR |
+| FINALIZAR | cualquiera | NOT EXISTS fase RESOLUCION finalizada (`documento_resultado_id IS NOT NULL`) en esta solicitud | BLOQUEAR |
+| BORRAR | cualquiera | EXISTS fase iniciada (`not planificada`) en esta solicitud | BLOQUEAR |
 
 **Nota FINALIZAR:** Solo se requiere que exista una fase RESOLUCION completada.
 El resultado de la resolución (favorable o desfavorable) es irrelevante para el cierre
@@ -178,9 +178,9 @@ Nota: el texto legal solo menciona AAU; la extensión a AAUS es decisión de pol
 | INICIAR | FIGURA_AMBIENTAL_EXTERNA | `proyecto.ia.siglas` NOT IN {CA, AAI} AND NOT (`proyecto.ia.siglas` IN {AAU, AAUS} AND `proyecto.es_modificacion` = true) | BLOQUEAR |
 | INICIAR | AAU_AAUS_INTEGRADA | `proyecto.ia.siglas` NOT IN {AAU, AAUS} OR `proyecto.es_modificacion` = true | BLOQUEAR |
 | INICIAR | RESOLUCION | (`proyecto.ia.siglas` IN {CA, AAI} OR (`proyecto.ia.siglas` IN {AAU, AAUS} AND `proyecto.es_modificacion` = true)) AND NOT EXISTS fase FIGURA_AMBIENTAL_EXTERNA con `cerrada_favorable` = true | BLOQUEAR |
-| INICIAR | RESOLUCION | NOT EXISTS fase ANALISIS_SOLICITUD con `fecha_fin IS NOT NULL` (regla interna del servicio) | BLOQUEAR |
-| FINALIZAR | cualquiera | EXISTS trámite con `fecha_fin IS NULL` en esta fase | BLOQUEAR |
-| BORRAR | cualquiera | `fecha_inicio IS NOT NULL` | BLOQUEAR |
+| INICIAR | RESOLUCION | NOT EXISTS fase ANALISIS_SOLICITUD finalizada (`documento_resultado_id IS NOT NULL`) (regla interna del servicio) | BLOQUEAR |
+| FINALIZAR | cualquiera | EXISTS trámite sin finalizar (`not tramite.finalizado`) en esta fase | BLOQUEAR |
+| BORRAR | cualquiera | `not planificada` (tiene trámites) | BLOQUEAR |
 
 **Notas sobre tramitación ambiental:**
 - **CA:** siempre se tramita externamente (FIGURA_AMBIENTAL_EXTERNA)
@@ -199,10 +199,10 @@ Nota: el texto legal solo menciona AAU; la extensión a AAUS es decisión de pol
 | evento | tipo (codigo) | Condición (si TRUE → acción) | Acción |
 |--------|--------------|------------------------------|--------|
 | CREAR | ANUNCIO_BOE / ANUNCIO_BOP / ANUNCIO_PRENSA | tipo de la fase padre NOT IN {INFORMACION_PUBLICA} | BLOQUEAR |
-| INICIAR | PUBLICACION_RESOLUCION | NOT EXISTS trámite ELABORACION_RESOLUCION con `fecha_fin IS NOT NULL` AND `doc_producido_id IS NOT NULL` | BLOQUEAR |
-| INICIAR | NOTIFICACION_RESOLUCION | NOT EXISTS trámite ELABORACION_RESOLUCION con `fecha_fin IS NOT NULL` AND `doc_producido_id IS NOT NULL` | BLOQUEAR |
-| FINALIZAR | cualquiera | EXISTS tarea con `fecha_fin IS NULL` en este trámite | BLOQUEAR |
-| BORRAR | cualquiera | `fecha_inicio IS NOT NULL` | BLOQUEAR |
+| INICIAR | PUBLICACION_RESOLUCION | NOT EXISTS trámite ELABORACION_RESOLUCION finalizado con `doc_producido_id IS NOT NULL` | BLOQUEAR |
+| INICIAR | NOTIFICACION_RESOLUCION | NOT EXISTS trámite ELABORACION_RESOLUCION finalizado con `doc_producido_id IS NOT NULL` | BLOQUEAR |
+| FINALIZAR | cualquiera | EXISTS tarea sin ejecutar (`not tarea.ejecutada`) en este trámite | BLOQUEAR |
+| BORRAR | cualquiera | `not planificado` (tiene tareas) | BLOQUEAR |
 
 **Nota SEPARATAS:** Eliminada de las reglas conocidas. Requiere diseño previo de
 la tabla `entidades_consultadas`. Ver `docs/DISEÑO_CONSULTAS_ORGANISMOS.md`.
@@ -220,12 +220,12 @@ Las tareas tienen solo 7 tipos genéricos. Sus reglas son de secuencia interna
 
 | evento | tipo (codigo) | Condición (si TRUE → acción) | Acción |
 |--------|--------------|------------------------------|--------|
-| INICIAR | FIRMAR | NOT EXISTS tarea REDACTAR con `fecha_fin IS NOT NULL` AND `doc_producido_id IS NOT NULL` en este trámite | BLOQUEAR |
-| INICIAR | NOTIFICAR | NOT EXISTS tarea FIRMAR con `fecha_fin IS NOT NULL` AND `doc_producido_id IS NOT NULL` en este trámite | BLOQUEAR |
-| INICIAR | PUBLICAR | NOT EXISTS tarea FIRMAR con `fecha_fin IS NOT NULL` AND `doc_producido_id IS NOT NULL` en este trámite | BLOQUEAR |
+| INICIAR | FIRMAR | NOT EXISTS tarea REDACTAR ejecutada (`doc_producido_id IS NOT NULL`) en este trámite | BLOQUEAR |
+| INICIAR | NOTIFICAR | NOT EXISTS tarea FIRMAR ejecutada (`doc_producido_id IS NOT NULL`) en este trámite | BLOQUEAR |
+| INICIAR | PUBLICAR | NOT EXISTS tarea FIRMAR ejecutada (`doc_producido_id IS NOT NULL`) en este trámite | BLOQUEAR |
 | FINALIZAR | REDACTAR / FIRMAR / INCORPORAR | `doc_producido_id IS NULL` | BLOQUEAR |
 | FINALIZAR | NOTIFICAR / PUBLICAR | `doc_usado_id IS NULL` | BLOQUEAR |
-| BORRAR | cualquiera | `fecha_inicio IS NOT NULL` | BLOQUEAR |
+| BORRAR | cualquiera | `not planificada` (tiene documentos) | BLOQUEAR |
 
 ---
 
@@ -474,17 +474,20 @@ referencian el expediente/proyecto/solicitud/resolución que las dejó en ese es
 No afectan al modelo ESFTT actual.
 
 ### SOLICITUD
-`estado` es **campo persistido** (varchar, NOT NULL, default `EN_TRAMITE`).
-Valores: `EN_TRAMITE`, `RESUELTA`, `DESISTIDA`, `ARCHIVADA`.
+`estado` es **@property derivada** (no persistida). Valores posibles: `EN_TRAMITE`, `RESUELTA`.
 
-**@property ya implementadas:**
+Lógica actual: si todas las fases están finalizadas (`fase.finalizada`) → `RESUELTA`; si no → `EN_TRAMITE`.
+Estados `DESISTIDA` y `ARCHIVADA` pendientes de implementar (issue #311 P4).
+
+**@property implementadas:**
+- `estado` → derivado de fases (ver arriba)
 - `activa` → `estado == 'EN_TRAMITE'`
 - `es_desistimiento_o_renuncia` → `solicitud_afectada_id is not None` *(temporal — ver TODO en modelo)*
 
 **Tipos de solicitud — relación N:M deliberada:**
 No hay `tipo_solicitud_id` directo. Los tipos se gestionan en tabla puente `SolicitudTipo`.
 
-**Limitación del campo `estado`:** `RESUELTA` no distingue favorable de desfavorable.
+**Limitación:** `RESUELTA` no distingue favorable de desfavorable.
 Para reglas que necesiten esa distinción, el motor debe consultar `resultado_fase_id`
 de la fase RESOLUCION asociada.
 
@@ -493,28 +496,28 @@ de la fase RESOLUCION asociada.
 desactualizada; el modelo Python ya usa FK).
 Valores: `FAVORABLE`, `FAVORABLE_CONDICIONADO`, `DESFAVORABLE`, `NO_PROCEDE`, `DESISTIDA`, `ARCHIVADA`.
 
-**Estados deducibles** (sin `@property` implementada aún):
-- `PLANIFICADA`: `fecha_inicio IS NULL`
-- `EN_CURSO`: `fecha_inicio IS NOT NULL AND fecha_fin IS NULL`
-- `FINALIZADA`: `fecha_fin IS NOT NULL`
-- `FINALIZADA_FAVORABLE`: `fecha_fin IS NOT NULL AND resultado_fase.codigo IN ('FAVORABLE','FAVORABLE_CONDICIONADO')`
+**@property implementadas:**
+- `planificada`: `len(tramites) == 0`
+- `en_curso`: `not planificada and not finalizada and not pdte_cierre`
+- `pdte_cierre`: todos los trámites finalizados pero `documento_resultado_id IS NULL`
+- `finalizada`: `documento_resultado_id IS NOT NULL`
+- `finalizada_favorable`: `finalizada and resultado_fase.codigo in ('FAVORABLE','FAVORABLE_CONDICIONADO')`
 
 ### TRÁMITE
-Sin campo de resultado — solo fechas. Sin `@property` implementada.
+Sin campo de resultado.
 
-**Estados deducibles:**
-- `PLANIFICADO`: `fecha_inicio IS NULL`
-- `EN_CURSO`: `fecha_inicio IS NOT NULL AND fecha_fin IS NULL`
-- `FINALIZADO`: `fecha_fin IS NOT NULL`
+**@property implementadas:**
+- `planificado`: `len(tareas) == 0`
+- `finalizado`: todas las tareas con tipos documentales tienen `documento_producido_id IS NOT NULL`
+- `en_curso`: `not planificado and not finalizado`
 
 ### TAREA
-Sin `@property` implementada.
 
-**Estados deducibles:**
-- `PLANIFICADA`: `fecha_inicio IS NULL`
-- `EN_CURSO`: `fecha_inicio IS NOT NULL AND fecha_fin IS NULL`
-- `EJECUTADA`: `fecha_fin IS NOT NULL`
-- `EJECUTADA_CON_DOC`: `fecha_fin IS NOT NULL AND documento_producido_id IS NOT NULL`
+**@property implementadas:**
+- `planificada`: `documento_producido_id IS NULL AND documento_usado_id IS NULL`
+- `en_curso`: `not planificada and not ejecutada`
+- `ejecutada`: `documento_producido_id IS NOT NULL`
+- `ejecutada_con_doc`: alias de `ejecutada`
 
 ---
 
@@ -522,24 +525,25 @@ Sin `@property` implementada.
 
 El motor referencia nombres de estado, no condiciones SQL crudas.
 Las `@property` son el contrato entre el modelo y el motor.
-Fase, Trámite y Tarea implementadas. Pendientes en Solicitud: `cerrada` y `resuelta_favorable`.
+Fase, Trámite y Tarea implementadas. En Solicitud: `estado` y `activa` implementadas; pendientes `cerrada` y `resuelta_favorable`.
 
 | Entidad | @property | Condición |
 |---------|-----------|-----------|
 | Solicitud | `activa` ✅ | `estado == 'EN_TRAMITE'` |
 | Solicitud | `cerrada` ⬜ | `estado in ('RESUELTA','DESISTIDA','ARCHIVADA')` |
 | Solicitud | `resuelta_favorable` ⬜ | `estado == 'RESUELTA'` AND fase RESOLUCION con resultado favorable |
-| Fase | `planificada` ✅ | `fecha_inicio is None` |
-| Fase | `en_curso` ✅ | `fecha_inicio is not None and fecha_fin is None` |
-| Fase | `finalizada` ✅ | `fecha_fin is not None` |
-| Fase | `finalizada_favorable` ✅ | `fecha_fin is not None and resultado_fase.codigo in ('FAVORABLE','FAVORABLE_CONDICIONADO')` |
-| Tramite | `planificado` ✅ | `fecha_inicio is None` |
-| Tramite | `en_curso` ✅ | `fecha_fin is None and fecha_inicio is not None` |
-| Tramite | `finalizado` ✅ | `fecha_fin is not None` |
-| Tarea | `planificada` ✅ | `fecha_inicio is None` |
-| Tarea | `en_curso` ✅ | `fecha_inicio is not None and fecha_fin is None` |
-| Tarea | `ejecutada` ✅ | `fecha_fin is not None` |
-| Tarea | `ejecutada_con_doc` ✅ | `fecha_fin is not None and documento_producido_id is not None` |
+| Fase | `planificada` ✅ | `len(tramites) == 0` |
+| Fase | `en_curso` ✅ | `not planificada and not finalizada and not pdte_cierre` |
+| Fase | `pdte_cierre` ✅ | `not planificada and not finalizada and all(t.finalizado for t in tramites)` |
+| Fase | `finalizada` ✅ | `documento_resultado_id is not None` |
+| Fase | `finalizada_favorable` ✅ | `finalizada and resultado_fase.codigo in ('FAVORABLE','FAVORABLE_CONDICIONADO')` |
+| Tramite | `planificado` ✅ | `len(tareas) == 0` |
+| Tramite | `en_curso` ✅ | `not planificado and not finalizado` |
+| Tramite | `finalizado` ✅ | todas las tareas doc-type con `documento_producido_id is not None` |
+| Tarea | `planificada` ✅ | `documento_producido_id is None and documento_usado_id is None` |
+| Tarea | `en_curso` ✅ | `not planificada and not ejecutada` |
+| Tarea | `ejecutada` ✅ | `documento_producido_id is not None` |
+| Tarea | `ejecutada_con_doc` ✅ | alias de `ejecutada` |
 
 ✅ implementada · ⬜ pendiente
 
