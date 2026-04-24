@@ -419,6 +419,47 @@ Issues afectados (no desbloquear hasta paso 5):
 
 ---
 
+## Validación de cierre de Fase y estado de Solicitud (issue #311 / 2026-04-23)
+
+> **Estado:** Cerrado — sesión 2026-04-23.
+
+### P3 — Fase: estado PDTE_CIERRE y validación por motor al cerrar
+
+`Fase.pdte_cierre` (nueva property) es `True` cuando todos los trámites hijos están finalizados pero `documento_resultado_id IS NULL`. El técnico ve la fase en este estado y sabe que puede formalizarla; el sistema no lo hace automáticamente porque puede haber trámites pendientes por ley que el motor aún no detecta.
+
+**Mecanismo de cierre:** la transición `NULL → NOT NULL` en `resultado_fase_id` / `documento_resultado_id` pasa por el motor. La ruta que recibe esa actualización llama al ContextAssembler + motor antes de persistir:
+
+```python
+variables = context_assembler.build(fase.expediente_id)
+resultado  = motor_reglas.evaluar('FINALIZAR', 'FASE', fase.tipo_fase_id, variables)
+if not resultado.permitido:
+    return jsonify({'norma': resultado.norma_compilada}), 422
+```
+
+El motor evalúa reglas como "no puede cerrarse si existe un trámite obligatorio sin finalizar". La lógica de qué trámites son obligatorios vive en BD (`reglas_motor`), no en código.
+
+> **Nota:** ESPERAR_PLAZO no bloquea `Tramite.finalizado` a nivel de modelo (su completitud es temporal). El ContextAssembler lo resuelve antes de llamar al motor — ver §4.1 DISEÑO_FECHAS_PLAZOS.md.
+
+### P4 — Solicitud.estado: verificación en dos pasos
+
+El `@property estado` de `Solicitud` es una **primera comprobación** (todas las fases finalizadas → RESUELTA). Es condición necesaria pero no suficiente: la solicitud no es resuelta solo porque sus fases estén cerradas — requiere que exista la resolución que la norma exige.
+
+**Segundo paso — confirmación por motor:** el código que consume el estado (listados de seguimiento, vistas de detalle, etc.) debe llamar al motor si la property devuelve RESUELTA:
+
+```python
+if solicitud.estado == 'RESUELTA':
+    variables = context_assembler.build(solicitud.expediente_id)
+    confirmacion = motor_reglas.evaluar('VERIFICAR_RESOLUCION', 'SOLICITUD',
+                                        solicitud.tipo_solicitud_id, variables)
+    estado_final = 'RESUELTA' if confirmacion.permitido else 'EN_TRAMITE'
+```
+
+Las reglas configuradas por el Supervisor para `VERIFICAR_RESOLUCION` comprueban que exista el documento de resolución requerido para ese tipo de solicitud. El resultado definitivo de la solicitud (RESUELTA_FAVORABLE, RESUELTA_ARCHIVADA, etc.) se deriva del `resultado_fase_id` de las fases que esa regla obliga a existir.
+
+> **Pendiente de implementar:** la acción `VERIFICAR_RESOLUCION` y sus reglas en BD. La property actual queda como primera comprobación sin motor hasta que el motor esté operativo.
+
+---
+
 ## Advertencia: el refactor tiene riesgos reales
 
 Esta sección recoge una reflexión crítica sobre si el rediseño es realmente lo correcto ahora,

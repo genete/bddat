@@ -508,7 +508,7 @@ Pendiente de diseño:
 
 ## 4. Cadena de evaluación
 
-> **Estado:** Pendiente de sesión de diseño.
+> **Estado:** Parcialmente cerrado — §4.1 cerrado sesión 2026-04-23. Contrato de interfaz `plazos.py` pendiente.
 
 Arquitectura acordada en conversación (2026-04-01):
 
@@ -517,6 +517,7 @@ Motor agnóstico (evalúa variables, no conoce plazos)
     ↑  variables: plazo_vencido, dias_transcurridos, fecha_limite, silencio_producido...
 ContextAssembler
     ↑  llama a plazos.py para obtener variables de plazo
+    ↑  llama a plazos.py para derivar estado de tareas ESPERAR_PLAZO (§4.1)
 plazos.py
     ├── Norma sectorial → plazo específico por tipo de Fase/Trámite
     │       Si no hay respuesta ↓
@@ -527,6 +528,30 @@ plazos.py
 ```
 
 Pendiente de formalizar: contrato de interfaz de `plazos.py` (qué recibe, qué devuelve).
+
+---
+
+### 4.1 Estado de tareas ESPERAR_PLAZO — derivación temporal
+
+> **Estado:** Cerrado — sesión 2026-04-23.
+
+`ESPERAR_PLAZO` es el único tipo de tarea cuyo estado **no es derivable del estado de la BD en un momento fijo**. Todas las demás tareas codifican su completación en la BD: completada si existe `documento_producido_id`, pendiente si no existe. `ESPERAR_PLAZO` no produce documento — su completación es un umbral temporal:
+
+```
+completada ↔ hoy() > fecha_administrativa(documento_usado_id) + plazo_del_trámite_padre
+```
+
+**Consecuencia para el ContextAssembler:** el Assembler no puede derivar el estado de una tarea `ESPERAR_PLAZO` consultando únicamente la BD. Debe llamar a `plazos.py` pasándole el trámite padre para obtener `estado_plazo`. La tarea se considera completada si y solo si `estado_plazo == VENCIDO`.
+
+| Condición | Estado de la tarea |
+|---|---|
+| `documento_usado_id IS NULL` | `PENDIENTE` — tarea no iniciada; el tramitador aún no ha asociado el documento de inicio |
+| `documento_usado_id NOT NULL` y `estado_plazo != VENCIDO` | `PENDIENTE` — plazo en curso |
+| `documento_usado_id NOT NULL` y `estado_plazo == VENCIDO` | `COMPLETADA` — plazo transcurrido |
+
+**Simetría con el cómputo de plazo del trámite:** el `campo_fecha` de `catalogo_plazos` para un trámite con `ESPERAR_PLAZO` es `{"via_tarea_tipo": "ESPERAR_PLAZO", "fk": "documento_usado_id"}` (ver §3.2). La llamada que el Assembler ya necesita hacer a `plazos.py` para calcular las variables de plazo del trámite es la misma que resuelve el estado de la tarea. No se requiere una interfaz separada.
+
+**Ausencia de plazo configurado:** si `catalogo_plazos` no tiene entrada para el trámite padre, `plazos.py` devuelve `SIN_PLAZO` → la tarea queda `PENDIENTE` indefinidamente. El Supervisor debe configurar el plazo; sin esa configuración el motor no puede avanzar por ese trámite.
 
 ---
 

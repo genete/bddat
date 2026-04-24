@@ -34,24 +34,18 @@ class Solicitud(db.Model):
         - NULLABLE: Solo para DESISTIMIENTO o RENUNCIA
         - Referencia a otra SOLICITUD previa que se desiste/renuncia
         - Permite rastrear dependencias entre solicitudes
-    
-    CAMPO FECHA_SOLICITUD:
-        - NOT NULL: Fecha oficial de presentación
-        - Determina plazos de resolución
-        - Fecha administrativa con efectos jurídicos
-    
-    CAMPO FECHA_FIN:
-        - NULLABLE: Fecha real de finalización de la solicitud
-        - Puede ser rellenada manualmente o automáticamente por el sistema
-        - Fuente de verdad alternativa vs. "todas las fases finalizadas"
-        - Protección contra confusiones: solicitud cerrada con fases pendientes
-        - Si NULL: solicitud aún en curso
-    
-    CAMPO ESTADO:
-        - EN_TRAMITE: Solicitud activa en procedimiento
-        - RESUELTA: Resolución firme emitida
-        - DESISTIDA: Peticionario desiste
-        - ARCHIVADA: Procedimiento finalizado sin resolución (caducidad, etc.)
+
+    CAMPO DOCUMENTO_SOLICITUD_ID:
+        - NULLABLE: FK al documento de solicitud en el pool
+        - La fecha administrativa de ese documento es la fecha de inicio del cómputo de plazos
+        - Ver §2.bis DISEÑO_FECHAS_PLAZOS.md
+
+    CAMPO ESTADO (property derivada, no columna):
+        - EN_TRAMITE: alguna fase no está finalizada
+        - RESUELTA: todas las fases finalizadas Y motor confirma existencia de resolución exigida
+        - El resultado final (RESUELTA_FAVORABLE, RESUELTA_ARCHIVADA, etc.) se deriva
+          del resultado de las fases que el motor obliga a existir
+        - Ver §311 P4 en DISEÑO_MOTOR_AGNOSTICO.md
     
     RELACIONES:
         - expediente → EXPEDIENTES.id (FK, expediente contenedor)
@@ -62,15 +56,7 @@ class Solicitud(db.Model):
     REGLAS DE NEGOCIO:
         - DESISTIMIENTO/RENUNCIA: Requiere SOLICITUD_AFECTADA_ID NOT NULL
         - MOD: Debe existir AAC previa en el expediente (validar en interfaz)
-        - Estado RESUELTA: Debe existir resolución asociada (validar)
-        - FECHA_FIN: Si estado = RESUELTA/DESISTIDA/ARCHIVADA, debería tener fecha_fin
-    
-    NOTAS DE VERSIÓN:
-        v3.0: ELIMINADO tipo_solicitud_id → SOLICITUDES_TIPOS N:M.
-              AÑADIDO solicitud_afectada_id.
-        v3.1: AÑADIDO entidad_id. AÑADIDO fecha_fin.
-        v4.0 (#167): RESTAURADO tipo_solicitud_id como FK directa (atómico o combinado).
-              ELIMINADA tabla puente solicitudes_tipos.
+        - Estado RESUELTA: requiere confirmación del motor (ver CAMPO ESTADO)
     """
     __tablename__ = 'solicitudes'
     __table_args__ = (
@@ -152,7 +138,9 @@ class Solicitud(db.Model):
 
     @property
     def estado(self):
-        """Estado derivado de las fases: RESUELTA si todas están finalizadas, EN_TRAMITE en caso contrario."""
+        """Primera comprobación del estado: RESUELTA si todas las fases están finalizadas.
+        Si devuelve RESUELTA, el llamador debe confirmar via motor de reglas que existe la
+        resolución exigida por el tipo de solicitud (issue #311 P4 — pendiente de implementar)."""
         if not self.fases:
             return 'EN_TRAMITE'
         if all(f.finalizada for f in self.fases):
@@ -166,33 +154,8 @@ class Solicitud(db.Model):
     
     @property
     def es_desistimiento_o_renuncia(self):
-        """
-        IMPLEMENTACIÓN TEMPORAL - Fase "TODO VALE"
-        
-        Heurística simple: Si tiene solicitud_afectada_id, probablemente sea
-        desistimiento o renuncia de otra solicitud previa.
-        
-        Returns:
-            bool: True si tiene solicitud_afectada_id (referencia a otra solicitud).
-        
-        LIMITACIÓN ACTUAL:
-            No verifica los tipos reales en solicitudes_tipos. Puede generar
-            falsos positivos si en el futuro hay otros tipos de solicitud
-            que también referencien otra solicitud (ej: MODIFICACIÓN, AMPLIACIÓN).
-        
-        Regla de negocio real (no implementada aún):
-            - Consultar solicitudes_tipos → obtener códigos de tipos
-            - Verificar si algún código IN ['DESISTIMIENTO', 'RENUNCIA']
-            - Validar que solicitud_afectada_id NOT NULL si aplica
-        
-        TODO (Fase Motor de Reglas):
-            Implementar verificación real consultando tipos asociados
-            cuando exista motor de validaciones configurables por tablas.
-        
-        Uso actual:
-            if solicitud.es_desistimiento_o_renuncia:
-                solicitud_original = solicitud.solicitud_afectada
-        """
+        """True si tiene solicitud_afectada_id. Heurística — no verifica el tipo real.
+        Pendiente: cruzar contra tipo_solicitud cuando el motor esté implementado."""
         return self.solicitud_afectada_id is not None
     
     def __repr__(self):

@@ -39,15 +39,6 @@ class Tarea(db.Model):
         - Ej: Documento generado (informe, resolución, justificante)
         - NULL para ESPERARPLAZO o tareas no finalizadas
     
-    CAMPO FECHA_INICIO:
-        - NULLABLE: NULL = tarea planificada no iniciada
-        - NOT NULL = tarea en curso o finalizada
-    
-    CAMPO FECHA_FIN:
-        - NULLABLE: NULL = tarea pendiente o en curso
-        - NOT NULL = tarea completada
-        - Determina cierre administrativo
-    
     CAMPO NOTAS:
         - Campo libre para información adicional
         - Puede contener datos específicos según tipo:
@@ -72,13 +63,9 @@ class Tarea(db.Model):
         - documento_producido → DOCUMENTOS.id (FK UNIQUE, output)
     
     REGLAS DE NEGOCIO:
-        - Antes de FECHA_FIN NOT NULL: Verificar documento_producido para tipos que lo requieren
         - documento_usado y documento_producido deben pertenecer al mismo expediente
         - UNIQUE en documento_producido_id garantiza un solo productor
-    
-    NOTAS DE VERSIÓN:
-        v3.0: AÑADIDO documento_usado_id (antes en DOCUMENTOS.tarea_destino_id).
-              AÑADIDO documento_producido_id (antes en DOCUMENTOS.tarea_origen_id).
+        - Sin campos de fecha propios: ver §2.bis DISEÑO_FECHAS_PLAZOS.md
     """
     __tablename__ = 'tareas'
     __table_args__ = (
@@ -150,7 +137,9 @@ class Tarea(db.Model):
 
     @property
     def ejecutada(self):
-        """True si la tarea ha producido su documento de salida. Para ESPERAR_PLAZO, siempre False hasta que EstadoSFTT implemente el cómputo de plazo."""
+        """True si la tarea ha producido su documento de salida.
+        ESPERAR_PLAZO no produce documento — su completitud se evalúa via plazos.py
+        en el ContextAssembler (ver §4.1 DISEÑO_FECHAS_PLAZOS.md)."""
         return self.documento_producido_id is not None
 
     @property

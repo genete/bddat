@@ -3,56 +3,44 @@ from app import db
 class Tramite(db.Model):
     """
     Contenedor organizativo de tareas dentro de una fase.
-    
+
     PROPÓSITO:
         Representa actuaciones administrativas concretas (solicitud de informe,
         anuncio BOP, recepción de alegación, etc.) realizadas durante una fase.
         Agrupa tareas atómicas bajo un patrón procedimental.
-    
+
     FILOSOFÍA:
         - Contenedor organizativo de tareas
-        - Estructura mínima: Solo fechas, tipo y observaciones
+        - Estructura mínima: Solo tipo y observaciones
         - Semántica en TIPO: Patrones de tareas viven en TIPOS_TRAMITES
-        - Sin campos específicos: Remitentes, destinatarios, documentos viven en tareas
-        - Fecha fin sugerida: Puede calcularse como MAX(TAREAS.FECHA_FIN), pero se registra manualmente
-    
+        - Sin documentos ni fechas propios: ambos viven en las tareas hijas
+        - Sin campos de fecha propios: ver §2.bis DISEÑO_FECHAS_PLAZOS.md
+
     CAMPO FASE_ID:
         - NOT NULL: Todo trámite pertenece a una fase
         - FK a FASES (public schema)
-        - Contexto procedimental del trámite
-    
+
     CAMPO TIPO_TRAMITE_ID:
         - NOT NULL: Define qué tipo de trámite es
         - FK a TIPOS_TRAMITES (estructura schema)
         - Determina patrón de tareas obligatorias
-    
-    CAMPO FECHA_INICIO:
-        - NULLABLE: NULL = trámite planificado no iniciado
-        - NOT NULL = trámite en curso o finalizado
-    
-    CAMPO FECHA_FIN:
-        - NULLABLE: NULL = trámite pendiente o en curso
-        - NOT NULL = trámite completado
-        - Se deduce como MAX(TAREAS.FECHA_FIN), pero se registra manualmente
-    
-    ESTADOS DEDUCIBLES:
-        - PENDIENTE: FECHA_INICIO IS NULL
-        - EN_CURSO: FECHA_INICIO NOT NULL AND FECHA_FIN IS NULL
-        - COMPLETADO: FECHA_FIN IS NOT NULL
-    
+
+    ESTADOS DEDUCIBLES (properties, no columna):
+        - PLANIFICADO: len(tareas) == 0
+        - EN_CURSO: tareas presentes, no todas finalizadas
+        - FINALIZADO: todas las tareas con tipos documentales tienen documento_producido_id
+                      ESPERAR_PLAZO requiere evaluación adicional via plazos.py
+                      (ver §4.1 DISEÑO_FECHAS_PLAZOS.md)
+
     RELACIONES:
         - fase → FASES.id (FK CASCADE, fase contenedora)
         - tipo_tramite → TIPOS_TRAMITES.id (FK, definición del trámite)
         - tareas ← TAREAS.tramite_id (tareas realizadas en este trámite)
-    
+
     REGLAS DE NEGOCIO:
         - No puede finalizarse si hay tareas sin finalizar
         - Secuencias determinadas por motor de reglas
         - Trámites pueden ejecutarse en paralelo dentro de una fase
-        - FECHA_FIN debe ser >= FECHA_INICIO
-    
-    NOTAS DE VERSIÓN:
-        v3.0: Sin cambios estructurales. Diseño minimalista mantenido.
     """
     __tablename__ = 'tramites'
     __table_args__ = (
@@ -105,8 +93,9 @@ class Tramite(db.Model):
 
     @property
     def finalizado(self):
-        """True si todas las tareas del trámite que requieren documento producido lo tienen.
-        Devuelve True si no hay tareas (trámite vacío — estado transitorio)."""
+        """True si todas las tareas con tipos documentales tienen documento_producido_id.
+        ESPERAR_PLAZO se excluye de este chequeo — su completitud es temporal y la evalúa
+        plazos.py via ContextAssembler (ver §4.1 DISEÑO_FECHAS_PLAZOS.md)."""
         _requieren = {'INCORPORAR', 'ANALISIS', 'REDACTAR', 'FIRMAR', 'NOTIFICAR', 'PUBLICAR'}
         tareas_pendientes = [
             t for t in self.tareas
