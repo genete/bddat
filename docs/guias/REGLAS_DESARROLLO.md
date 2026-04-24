@@ -872,11 +872,11 @@ git checkout -b hotfix/fix-validacion-nif
 ### 17.2 Documentos Clave en Repositorio
 
 - `CLAUDE.md` — instrucciones de proyecto para Claude Code (punto de entrada)
-- `docs/REGLAS_DESARROLLO.md` — este documento
-- `docs/GUIA_GENERAL.md` — arquitectura general y lógica de negocio
-- `docs/PLAN_ROADMAP.md` — estado de implementación por milestones
-- `docs/PLAN_ESTRATEGIA.md` — visión estratégica, 14 bloques funcionales
-- `docs/DISEÑO_SUBSISTEMA_DOCUMENTAL.md` — decisiones subsistema documental
+- `docs/guias/REGLAS_DESARROLLO.md` — este documento
+- `docs/guias/GUIA_GENERAL.md` — arquitectura general y lógica de negocio
+- `docs/README.md` — índice completo de documentación
+- `docs/referencia/PLAN_ESTRATEGIA.md` — visión estratégica, 14 bloques funcionales
+- `docs/referencia/DISEÑO_SUBSISTEMA_DOCUMENTAL.md` — decisiones subsistema documental
 
 ---
 

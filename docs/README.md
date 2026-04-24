@@ -1,107 +1,68 @@
 # Documentación BDDAT
 
-Sistema de tramitación administrativa de expedientes de autorización de instalaciones de alta tensión en Andalucía.
+## Estado actual
+> Actualizar cuando cambie el foco de trabajo.
+
+**En vuelo:** motor de reglas operativo · plazos pendiente de implementar
+**Próximo sin bloqueante:** [consultar GitHub M2/M3 abiertos]
+**Decisiones abiertas:** buscar issues con label `design-decision` en GitHub
 
 ---
 
-## 📘 Guías de referencia activas
+## Guías operativas
+Leer cuando se trabaja en ese área. Estables.
 
-### [GUIA_VISTAS_BOOTSTRAP.md](GUIA_VISTAS_BOOTSTRAP.md)
-**Referencia principal de diseño UI** — layout, vistas V0/V1/V2/V3/V4, CSS corporativo, errores comunes.
-
-### [GUIA_COMPONENTES_INTERACTIVOS.md](GUIA_COMPONENTES_INTERACTIVOS.md)
-Catálogo de componentes JS reutilizables: SelectorBusqueda, ScrollInfinito, AcordeonLazy.
-Leer antes de implementar cualquier componente interactivo.
+- [REGLAS_BASH.md](guias/REGLAS_BASH.md) — patrones prohibidos en Bash y workarounds
+- [REGLAS_DESARROLLO.md](guias/REGLAS_DESARROLLO.md) — Git, commits, ramas, migraciones
+- [GUIA_VISTAS_BOOTSTRAP.md](guias/GUIA_VISTAS_BOOTSTRAP.md) — UI, layouts, Bootstrap
+- [GUIA_COMPONENTES_INTERACTIVOS.md](guias/GUIA_COMPONENTES_INTERACTIVOS.md) — JS, SelectorBusqueda, ScrollInfinito
+- [GUIA_GENERAL.md](guias/GUIA_GENERAL.md) — arquitectura general y lógica de negocio
+- [GUIA_ROLES.md](guias/GUIA_ROLES.md) — roles y permisos
 
 ---
 
-## Estructura de Documentación
+## Referencia por subsistema
+Consultar cuando se trabaja ese subsistema. No cargar por defecto.
 
-Todos los documentos viven en `docs/` raíz. Subdirectorios solo para no-MDs.
+### Motor de reglas y plazos
+- [DISEÑO_CONTEXT_ASSEMBLER.md](referencia/DISEÑO_CONTEXT_ASSEMBLER.md)
+- [DISEÑO_FECHAS_PLAZOS.md](referencia/DISEÑO_FECHAS_PLAZOS.md)
 
-### 🎨 [estilos/](estilos/)
-- [guia_colores_junta_andalucia.html](estilos/guia_colores_junta_andalucia.html) - Paleta interactiva
+### Subsistema documental y escritos
+- [DISEÑO_SUBSISTEMA_DOCUMENTAL.md](referencia/DISEÑO_SUBSISTEMA_DOCUMENTAL.md)
+- [DISEÑO_GENERACION_ESCRITOS.md](referencia/DISEÑO_GENERACION_ESCRITOS.md)
+- [GUIA_CONTEXT_BUILDERS.md](referencia/GUIA_CONTEXT_BUILDERS.md)
 
-### Reglas y workflow
-- [REGLAS_DESARROLLO.md](REGLAS_DESARROLLO.md) — workflow Git, commits, ramas, migraciones
-- [REGLAS_ARQUITECTURA.md](REGLAS_ARQUITECTURA.md) — flujo de decisiones arquitectónicas, sincronización documental
-- [REGLAS_BASH.md](REGLAS_BASH.md) — patrones prohibidos en Bash y workarounds
+### Procedimiento AT — fases pendientes
+- [DISEÑO_ANALISIS_SOLICITUD.md](referencia/DISEÑO_ANALISIS_SOLICITUD.md)
+- [DISEÑO_CONSULTAS_ORGANISMOS.md](referencia/DISEÑO_CONSULTAS_ORGANISMOS.md)
 
 ### Normativa
-- [NORMATIVA_PLAZOS.md](NORMATIVA_PLAZOS.md) — plazos administrativos aplicables: LPACAP artículo a artículo + leyes sectoriales AT
-- [NORMATIVA_MAPA_PROCEDIMENTAL.md](NORMATIVA_MAPA_PROCEDIMENTAL.md) — fases obligatorias, orden y base legal por tipo de procedimiento (AAP, AAC, AE, Trans., Cierre)
-- [NORMATIVA_EXCEPCIONES_AT.md](NORMATIVA_EXCEPCIONES_AT.md) — excepciones, regímenes especiales y casos límite (tramitación conjunta, EIA, simplificaciones)
-- [NORMATIVA_LEGISLACION_AT.md](NORMATIVA_LEGISLACION_AT.md) — recursos de navegación y fichas de procedimiento (catálogo de normas en `normas_catalog.csv`)
-- [NORMATIVA_SOLICITUDES.md](NORMATIVA_SOLICITUDES.md) — tipos de solicitud y su base normativa
-- [GUIA_NORMAS.md](GUIA_NORMAS.md) — proceso de trabajo normativo: protocolo de extracción, cola de pendientes
+- [NORMATIVA_PLAZOS.md](referencia/NORMATIVA_PLAZOS.md)
+- [NORMATIVA_EXCEPCIONES_AT.md](referencia/NORMATIVA_EXCEPCIONES_AT.md)
+- [NORMATIVA_MAPA_PROCEDIMENTAL.md](referencia/NORMATIVA_MAPA_PROCEDIMENTAL.md)
+- [NORMATIVA_LEGISLACION_AT.md](referencia/NORMATIVA_LEGISLACION_AT.md)
+- [NORMATIVA_SOLICITUDES.md](referencia/NORMATIVA_SOLICITUDES.md)
+- [normas/](referencia/normas/) — textos consolidados extraídos (BOE/BOJA)
 
-### Arquitectura y diseño
-- [GUIA_GENERAL.md](GUIA_GENERAL.md) — arquitectura general y lógica de negocio
-- [DISEÑO_MOTOR_REGLAS.md](DISEÑO_MOTOR_REGLAS.md) — diseño del motor de reglas ESFTT
-- [DISEÑO_MOTOR_AGNOSTICO.md](DISEÑO_MOTOR_AGNOSTICO.md) — decisiones de rediseño hacia motor agnóstico de dominio
-- [DISEÑO_CONTEXT_ASSEMBLER.md](DISEÑO_CONTEXT_ASSEMBLER.md) — ContextAssembler: diccionario de variables y contrato con el motor
-- [DISEÑO_FECHAS_PLAZOS.md](DISEÑO_FECHAS_PLAZOS.md) — subsistema de fechas y plazos: modelo de datos, vocabulario, `plazos.py`
-- [DISEÑO_SUBSISTEMA_DOCUMENTAL.md](DISEÑO_SUBSISTEMA_DOCUMENTAL.md) — pool documental: tipos, vías de entrada, decisiones
-- [DISEÑO_ANALISIS_SOLICITUD.md](DISEÑO_ANALISIS_SOLICITUD.md) — fase ANÁLISIS_SOLICITUD, checklist documental (#248)
-- [DISEÑO_CONSULTAS_ORGANISMOS.md](DISEÑO_CONSULTAS_ORGANISMOS.md) — fase consultas a organismos (#247)
-- [GUIA_DIAGRAMAS_ESFTT.md](GUIA_DIAGRAMAS_ESFTT.md) — diagramas de flujo ESFTT: decisiones, capas y convenciones (#249)
-- [ESTRUCTURA_FTT.md](ESTRUCTURA_FTT.md) — catálogo de fases, trámites y tareas por tipo de solicitud
+### Estructura ESFTT
+- [ESTRUCTURA_FTT.md](referencia/ESTRUCTURA_FTT.md) — catálogo legible
+- [ESTRUCTURA_FTT.json](referencia/ESTRUCTURA_FTT.json) — fuente de verdad para código
 
-### Planificación
-- [PLAN_ROADMAP.md](PLAN_ROADMAP.md) — estado actual de implementación por milestones
-- [PLAN_ESTRATEGIA.md](PLAN_ESTRATEGIA.md) — visión estratégica, 14 bloques funcionales
-
-### Guías técnicas
-- [GUIA_CONTEXT_BUILDERS.md](GUIA_CONTEXT_BUILDERS.md) — context builders para generación de escritos
-- [GUIA_ROLES.md](GUIA_ROLES.md) — roles y permisos del sistema
-
-### Análisis
-- [ANALISIS_TAREAS_INVERSO.md](ANALISIS_TAREAS_INVERSO.md) — tabla inversa de tareas atómicas ESFTT
-- [ANALISIS_HOMOGENEIZACION_UI.md](ANALISIS_HOMOGENEIZACION_UI.md) — estudio de homogeneización de la interfaz
-
-### Procedimientos
-- [PROCEDIMIENTO_SETUP_PC.md](PROCEDIMIENTO_SETUP_PC.md) — configuración del entorno de desarrollo
-- [PROCEDIMIENTO_MMD_DESDE_DOCUMENTACION.md](PROCEDIMIENTO_MMD_DESDE_DOCUMENTACION.md) — generación de diagramas Mermaid
-- [PROCEDIMIENTO_MMD_DESDE_IMAGEN.md](PROCEDIMIENTO_MMD_DESDE_IMAGEN.md) — generación de diagramas desde imagen
+### Visión
+- [PLAN_ESTRATEGIA.md](referencia/PLAN_ESTRATEGIA.md) — 14 bloques funcionales
 
 ---
 
-## Enlaces Rápidos
+## Decisiones de arquitectura (ADRs)
+Registro append-only. Solo las decisiones no obvias desde el código.
 
-- [📘 Guía Vistas Bootstrap](GUIA_VISTAS_BOOTSTRAP.md) — **Referencia principal UI**
-- [Reglas de Desarrollo](REGLAS_DESARROLLO.md) — flujo de trabajo Git
-- [PLAN_ROADMAP](PLAN_ROADMAP.md) — qué está hecho, qué está pendiente
-- [Repositorio en GitHub](https://github.com/genete/bddat)
-
----
-
-## Historial de cambios de documentación
-
-### Marzo 2026 — Limpieza era Perplexity
-Eliminados ficheros que solo tenían valor en el flujo anterior (Perplexity Pro + conector GitHub).
-El contenido sigue accesible via `git log` en el commit `[DOCS] Limpieza documentación era Perplexity`.
-
-**Eliminados (artefactos de flujo Perplexity):**
-- `fuentesIA/ACCESO_RAPIDO_PROYECTO.md` — punto de entrada para Perplexity; reemplazado por `CLAUDE.md`
-- `fuentesIA/referencias/Tablas.md` y `TablasResumen.md` — generados por `merge_tables.py`; reemplazados por PostgreSQL MCP
-- `fuentesIA/referencias/tablas/` — 20 ficheros individuales de tablas (O_001…O_022, E_001…E_008); ídem
-- `fuentesIA/MOTOR_REGLAS_plan_perplexity.md` y `MOTOR_REGLAS_prompts_perplexity.md` — prompts de sesión Perplexity
-- `fuentesIA/CONTEXTO_ISSUE_*.md` (issues #61, #73, #93, #117) — contexto pre-masticado para Perplexity; issues cerrados
-- `utils/generar_estructura.bat`, `sincronizar_drive.bat/.sh` — utilidades de sincronización con espacio Perplexity
-
-**Eliminados (históricos redundantes ya compactados en GUIA_VISTAS_BOOTSTRAP.md):**
-- `arquitectura/historico/` — PATRONES_UI, VISTAS, VISTA_V0_LOGIN, VISTA_V1_DASHBOARD
-- `estilos/historico/` — CSS_v2_GUIA_USO
-- `implementaciones/historico/` — ISSUE_94_ESTRUCTURA, SCROLL_INFINITO, UI_PATTERNS_DATA_TABLE
-
-### Febrero 2026 — Transición a Claude Code
-- Nueva guía compactada: [GUIA_VISTAS_BOOTSTRAP.md](GUIA_VISTAS_BOOTSTRAP.md)
-- Documentos detallados movidos a carpetas `historico/` (ahora eliminadas, ver arriba)
-- Vista V3: cambio arquitectónico de sidebar → acordeón → V3-BC breadcrumbs (12/02/2026)
-- Vistas completadas: V0 (Login), V1 (Dashboard), V2 (Listado scroll infinito)
+- [ADR-001](decisiones/ADR-001-motor-agnostico.md) — Motor agnóstico de dominio
+- [ADR-002](decisiones/ADR-002-esftt-sin-fechas.md) — Ningún elemento ESFTT almacena fechas
 
 ---
 
-**Stack:** PostgreSQL + Flask (SQLAlchemy) + Bootstrap 5
-**Rama de desarrollo:** `develop`
-**Última actualización:** 7 de marzo de 2026
+## Historial
+Documentos congelados. Existen como contexto histórico, no como referencia activa.
+
+- [historial/](historial/) — ANALISIS_*, DISEÑO_MOTOR_*, DISEÑO_NUMERACION_AT, PROCEDIMIENTO_*, REGLAS_ARQUITECTURA

@@ -10,12 +10,7 @@ Desarrollado para la Consejería de Industria, Energía y Minas (Junta de Andalu
 
 ## Documentos de referencia
 
-Índice completo de documentación: `docs/README.md`
-
-Leer **siempre** antes de actuar:
-- `docs/REGLAS_DESARROLLO.md` — workflow Git, commits, ramas, migraciones (reglas que debo seguir)
-- `docs/GUIA_VISTAS_BOOTSTRAP.md` — antes de crear cualquier vista
-- `docs/GUIA_COMPONENTES_INTERACTIVOS.md` — antes de implementar cualquier componente JS
+Índice completo y estado actual: `docs/README.md`
 
 ---
 
@@ -70,15 +65,6 @@ Las FK deben referenciar con prefijo: `db.ForeignKey('public.tabla.campo')`
 
 ## Convenciones Bash (anti-bloqueos del parser)
 
-Ver referencia completa: `docs/REGLAS_BASH.md`
+Ver referencia completa: `docs/guias/REGLAS_BASH.md`
 
-Resumen de patrones obligatorios:
 - **Activar venv:** NUNCA `source venv/Scripts/activate` — usar `venv/Scripts/python.exe script.py`
-- **`$()` y backticks:** NUNCA — separar en llamadas Bash secuenciales
-- **`sed -i`:** usar tool `Edit` — nunca sed para escribir ficheros
-- **Newlines en comandos Bash:** NUNCA saltos de línea dentro del cuerpo de un comando (heredocs, `python -c "..."` multilínea, etc.) → escribir el contenido con `Write` a `docs_prueba/temp/` y pasarlo como fichero
-- **`python -c "...multilínea..."`:** `Write` el script → `python docs_prueba/temp/script.py`
-- **`git commit` / `gh pr create` con texto largo o `#`:** `Write` a `docs_prueba/temp/` → `-F`/`--body-file`
-- **`grep 'pat1\|pat2'`:** usar `grep -E 'pat1|pat2'` (ERE) o `-e pat1 -e pat2` — nunca `\|`
-- **`git -C /ruta`:** SIEMPRE en vez de `cd /ruta && git`
-- **Ficheros temporales:** SIEMPRE en `D:\BDDAT\docs_prueba\temp\` (allowlisted, gitignored)
