@@ -1,34 +1,12 @@
 # Contexto actual — BDDAT
 
-> Este documento es el hilo vivo del proyecto. Actualizarlo al empezar y terminar cada sesión de trabajo.
+> Actualizar al cerrar cada issue. Una entrada por sección, no listas.
 
 ---
 
-## En vuelo
+**Último cerrado:** #319 — campo `descripcion` en `reglas_motor` (mensajes de bloqueo legibles en UI)
 
-<!-- Qué issues/ramas están abiertos ahora mismo -->
+**Próximo:** #290 — Tarea INCORPORAR: tabla `documentos_tarea` (multi-doc)
+Desbloquea: modelo FTT correcto para INCORPORAR; cimenta la decisión de señal de resultado (#296).
 
----
-
-## Próximo sin bloqueante
-
-<!-- Qué puede arrancarse ya -->
-
----
-
-## Bloqueado / en espera
-
-<!-- Qué está parado y por qué -->
-
----
-
-## Decisiones abiertas
-
-<!-- Preguntas de diseño sin respuesta todavía -->
-
----
-
-## Últimos cambios relevantes
-
-<!-- Lo que acaba de aterrizar y puede afectar al trabajo de hoy -->
-
+**En espera:** #296 — Señal de resultado en Tarea y Trámite — decisión de diseño pendiente; bloquea trabajo de motor de reglas (M3).
