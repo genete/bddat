@@ -335,7 +335,6 @@ def paso3():
                 entidad_id=solicitante.id,
                 tipo_solicitud_id=tipo_solicitud_id,
                 documento_solicitud_id=None,
-                estado='EN_TRAMITE',
                 observaciones=observaciones,
             )
             db.session.add(solicitud)

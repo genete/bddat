@@ -135,7 +135,7 @@ def crear_doc(exp, url, tipo_doc_id, asunto, fecha_adm=None):
     return d
 
 
-def crear_fase(sol, tipo_fase_id, fecha_ini=None, fin=None, resultado_id=None):
+def crear_fase(sol, tipo_fase_id, resultado_id=None):
     f = Fase(
         solicitud_id=sol.id,
         tipo_fase_id=tipo_fase_id,
@@ -146,7 +146,7 @@ def crear_fase(sol, tipo_fase_id, fecha_ini=None, fin=None, resultado_id=None):
     return f
 
 
-def crear_tramite(fase, tipo_tramite_id, fecha_ini=None):
+def crear_tramite(fase, tipo_tramite_id):
     t = Tramite(
         fase_id=fase.id,
         tipo_tramite_id=tipo_tramite_id,
@@ -156,7 +156,7 @@ def crear_tramite(fase, tipo_tramite_id, fecha_ini=None):
     return t
 
 
-def crear_tarea(tramite, tipo_tarea_id, fecha_ini=None,
+def crear_tarea(tramite, tipo_tarea_id,
                 doc_usado=None, doc_producido=None, notas=None):
     t = Tarea(
         tramite_id=tramite.id,
@@ -170,7 +170,7 @@ def crear_tarea(tramite, tipo_tarea_id, fecha_ini=None,
     return t
 
 
-def fase_fin(sol, tipo_fase_id, fecha_ini=None, fecha_fin=None, resultado_id=None):
+def fase_fin(sol, tipo_fase_id, resultado_id=None):
     return crear_fase(sol, tipo_fase_id, resultado_id=resultado_id)
 
 
@@ -383,11 +383,11 @@ with app.app_context():
             'expedientes/AT-2001/entrada/2024-09-15_Planos_general_y_parcelas.pdf',
             TDOC_OTROS, 'Planos — situación general y parcelas afectadas', date(2024, 9, 15))
         sol01 = crear_sol(exp01, TS_AAP_AAC, gestora, sol01_entrada)
-        f01 = crear_fase(sol01, TF_SOL, date(2024, 9, 18))
-        t01 = crear_tramite(f01, TT_ANAL, date(2024, 9, 18))
-        crear_tarea(t01, TAREA_ANAL, date(2024, 9, 18), doc_usado=sol01_entrada)
-        t01b = crear_tramite(f01, TT_REQ, date(2024, 10, 14))
-        crear_tarea(t01b, TAREA_RED, date(2024, 10, 14), doc_usado=sol01_mem)
+        f01 = crear_fase(sol01, TF_SOL)
+        t01 = crear_tramite(f01, TT_ANAL)
+        crear_tarea(t01, TAREA_ANAL, doc_usado=sol01_entrada)
+        t01b = crear_tramite(f01, TT_REQ)
+        crear_tarea(t01b, TAREA_RED, doc_usado=sol01_mem)
         print('AT-2001 OK — Renovable, AAP+AAC, fase SOL pendiente redactar req.')
     else:
         print('AT-2001 ya existe — omitido')
@@ -418,10 +418,10 @@ with app.app_context():
             'expedientes/AT-2002/salida/2024-07-08_Separata_consultas.pdf',
             TDOC_OTROS, 'Separata para organismos consultados', date(2024, 7, 8))
         sol02 = crear_sol(exp02, TS_AAP_AAC, gestora, sol02_entrada)
-        fase_fin(sol02, TF_SOL, date(2024, 3, 12), date(2024, 6, 20), TRES_FAV)
-        f02_cons = crear_fase(sol02, TF_CONS, date(2024, 7, 8))
-        t02_sep = crear_tramite(f02_cons, TT_SEP, date(2024, 7, 8))
-        crear_tarea(t02_sep, TAREA_NOT, date(2024, 7, 8), doc_usado=sol02_sep)
+        fase_fin(sol02, TF_SOL, TRES_FAV)
+        f02_cons = crear_fase(sol02, TF_CONS)
+        t02_sep = crear_tramite(f02_cons, TT_SEP)
+        crear_tarea(t02_sep, TAREA_NOT, doc_usado=sol02_sep)
         print('AT-2002 OK — Renovable, AAP+AAC, SOL=FIN, CONSULTAS pendiente notificar')
     else:
         print('AT-2002 ya existe — omitido')
@@ -449,12 +449,12 @@ with app.app_context():
             'expedientes/AT-2003/salida/2024-08-15_Anuncio_informacion_publica_BOP.pdf',
             TDOC_OTROS, 'Anuncio para publicación en BOP — Información Pública', date(2024, 8, 15))
         sol03 = crear_sol(exp03, TS_AAP_AAC_DUP, gestora, sol03_entrada)
-        fase_fin(sol03, TF_SOL,  date(2023, 6, 5),  date(2023, 9, 10), TRES_FAV)
-        fase_fin(sol03, TF_CONS, date(2023, 9, 12), date(2024, 1, 20), TRES_FAV)
-        fase_fin(sol03, TF_MA,   date(2024, 1, 22), date(2024, 7, 30), TRES_FAV)
-        f03_ip = crear_fase(sol03, TF_IP, date(2024, 8, 15))
-        t03_bop = crear_tramite(f03_ip, TT_BOP, date(2024, 8, 15))
-        crear_tarea(t03_bop, TAREA_PUB, date(2024, 8, 15), doc_usado=sol03_anuncio)
+        fase_fin(sol03, TF_SOL, TRES_FAV)
+        fase_fin(sol03, TF_CONS, TRES_FAV)
+        fase_fin(sol03, TF_MA, TRES_FAV)
+        f03_ip = crear_fase(sol03, TF_IP)
+        t03_bop = crear_tramite(f03_ip, TT_BOP)
+        crear_tarea(t03_bop, TAREA_PUB, doc_usado=sol03_anuncio)
         print('AT-2003 OK — Eólico, AAP+AAC+DUP+AAE, IP pendiente publicar BOP')
     else:
         print('AT-2003 ya existe — omitido')
@@ -479,13 +479,13 @@ with app.app_context():
             'expedientes/AT-2004/salida/2024-09-20_Resolucion_AAP_firmada.pdf',
             TDOC_OTROS, 'Resolución AAP — firmada y sellada', date(2024, 9, 20))
         sol04 = crear_sol(exp04, TS_AAP_AAC_DUP, gestora, sol04_entrada)
-        fase_fin(sol04, TF_SOL,  date(2022, 11, 9),  date(2023, 2, 28), TRES_FAV)
-        fase_fin(sol04, TF_CONS, date(2023, 3, 1),   date(2023, 7, 15), TRES_FAV)
-        fase_fin(sol04, TF_MA,   date(2023, 7, 17),  date(2024, 2, 10), TRES_FAV)
-        fase_fin(sol04, TF_IP,   date(2024, 2, 12),  date(2024, 8, 30), TRES_FAV)
-        f04_res = crear_fase(sol04, TF_RES, date(2024, 9, 2))
-        t04_not = crear_tramite(f04_res, TT_NOTIF, date(2024, 9, 20))
-        crear_tarea(t04_not, TAREA_NOT, date(2024, 9, 20), doc_usado=sol04_res)
+        fase_fin(sol04, TF_SOL, TRES_FAV)
+        fase_fin(sol04, TF_CONS, TRES_FAV)
+        fase_fin(sol04, TF_MA, TRES_FAV)
+        fase_fin(sol04, TF_IP, TRES_FAV)
+        f04_res = crear_fase(sol04, TF_RES)
+        t04_not = crear_tramite(f04_res, TT_NOTIF)
+        crear_tarea(t04_not, TAREA_NOT, doc_usado=sol04_res)
         print('AT-2004 OK — Eólico, AAP+AAC+DUP+AAE, RES pendiente notificar resolución')
     else:
         print('AT-2004 ya existe — omitido')
@@ -510,12 +510,11 @@ with app.app_context():
             'expedientes/AT-2005/salida/2024-07-12_Solicitud_compatibilidad_ambiental.pdf',
             TDOC_OTROS, 'Solicitud de Compatibilidad Ambiental al órgano ambiental', date(2024, 7, 12))
         sol05 = crear_sol(exp05, TS_AAP_AAC, endesa, sol05_entrada)
-        fase_fin(sol05, TF_SOL,  date(2024, 2, 6),  date(2024, 5, 20), TRES_FAV)
-        fase_fin(sol05, TF_CONS, date(2024, 5, 21), date(2024, 7, 10), TRES_FAV)
-        f05_ma = crear_fase(sol05, TF_MA, date(2024, 7, 12))
-        t05_comp = crear_tramite(f05_ma, TT_COMP, date(2024, 7, 12))
-        crear_tarea(t05_comp, TAREA_ESP, date(2024, 7, 12),
-                    doc_usado=sol05_comp, notas='PLAZO_DIAS=30')
+        fase_fin(sol05, TF_SOL, TRES_FAV)
+        fase_fin(sol05, TF_CONS, TRES_FAV)
+        f05_ma = crear_fase(sol05, TF_MA)
+        t05_comp = crear_tramite(f05_ma, TT_COMP)
+        crear_tarea(t05_comp, TAREA_ESP, doc_usado=sol05_comp, notas='PLAZO_DIAS=30')
         print('AT-2005 OK — Distribución Endesa, AAP+AAC, MA pendiente plazo')
     else:
         print('AT-2005 ya existe — omitido')
@@ -540,9 +539,9 @@ with app.app_context():
             'expedientes/AT-2006/entrada/2024-10-03_Acta_inspeccion_previa.pdf',
             TDOC_OTROS, 'Acta de inspección previa favorable', date(2024, 10, 3))
         sol06 = crear_sol(exp06, TS_AAE_DEF, endesa, sol06_acta)
-        f06 = crear_fase(sol06, TF_SOL, date(2024, 10, 7))
-        t06 = crear_tramite(f06, TT_ANAL, date(2024, 10, 7))
-        crear_tarea(t06, TAREA_ANAL, date(2024, 10, 7), doc_usado=sol06_acta)
+        f06 = crear_fase(sol06, TF_SOL)
+        t06 = crear_tramite(f06, TT_ANAL)
+        crear_tarea(t06, TAREA_ANAL, doc_usado=sol06_acta)
         print('AT-2006 OK — Distribución Endesa, AAE Definitiva, fase SOL pendiente estudio')
     else:
         print('AT-2006 ya existe — omitido')
@@ -567,11 +566,11 @@ with app.app_context():
             'expedientes/AT-2007/salida/2024-09-30_Requerimiento_documentacion_tecnica.pdf',
             TDOC_OTROS, 'Requerimiento de documentación técnica complementaria', date(2024, 9, 30))
         sol07 = crear_sol(exp07, TS_AAP_AAC, sevillana, sol07_sol)
-        f07 = crear_fase(sol07, TF_SOL, date(2024, 8, 21))
-        t07a = crear_tramite(f07, TT_ANAL, date(2024, 8, 21))
-        crear_tarea(t07a, TAREA_ANAL, date(2024, 8, 21), doc_usado=sol07_sol)
-        t07b = crear_tramite(f07, TT_REQ, date(2024, 9, 30))
-        crear_tarea(t07b, TAREA_FIR, date(2024, 9, 30), doc_usado=sol07_req)
+        f07 = crear_fase(sol07, TF_SOL)
+        t07a = crear_tramite(f07, TT_ANAL)
+        crear_tarea(t07a, TAREA_ANAL, doc_usado=sol07_sol)
+        t07b = crear_tramite(f07, TT_REQ)
+        crear_tarea(t07b, TAREA_FIR, doc_usado=sol07_req)
         print('AT-2007 OK — Distribución cedida Sevillana, AAC, SOL pendiente firma req.')
     else:
         print('AT-2007 ya existe — omitido')
@@ -623,18 +622,17 @@ with app.app_context():
             'expedientes/AT-2009/entrada/2024-02-15_Respuestas_organismos_consulta.pdf',
             TDOC_OTROS, 'Respuestas recibidas de organismos consultados', date(2024, 2, 15))
         sol09a = crear_sol(exp09, TS_AAP_AAC, gestora, sol09a_entrada)
-        fase_fin(sol09a, TF_SOL, date(2023, 3, 16), date(2023, 8, 20), TRES_FAV)
-        f09a_cons = crear_fase(sol09a, TF_CONS, date(2023, 9, 10))
-        t09a_sep = crear_tramite(f09a_cons, TT_SEP, date(2023, 9, 10))
-        crear_tarea(t09a_sep, TAREA_ESP, date(2023, 9, 10),
-                    doc_usado=sol09a_sep, notas='PLAZO_DIAS=0')
+        fase_fin(sol09a, TF_SOL, TRES_FAV)
+        f09a_cons = crear_fase(sol09a, TF_CONS)
+        t09a_sep = crear_tramite(f09a_cons, TT_SEP)
+        crear_tarea(t09a_sep, TAREA_ESP, doc_usado=sol09a_sep, notas='PLAZO_DIAS=0')
         sol09b_sol = crear_doc(exp09,
             'expedientes/AT-2009/entrada/2024-10-28_Solicitud_AAE_definitiva.pdf',
             TDOC_OTROS, 'Solicitud de AAE Definitiva', date(2024, 10, 28))
         sol09b = crear_sol(exp09, TS_AAE_DEF, gestora, sol09b_sol)
-        f09b = crear_fase(sol09b, TF_SOL, date(2024, 10, 30))
-        t09b = crear_tramite(f09b, TT_ANAL, date(2024, 10, 30))
-        crear_tarea(t09b, TAREA_ANAL, date(2024, 10, 30), doc_usado=sol09b_sol)
+        f09b = crear_fase(sol09b, TF_SOL)
+        t09b = crear_tramite(f09b, TT_ANAL)
+        crear_tarea(t09b, TAREA_ANAL, doc_usado=sol09b_sol)
         print('AT-2009 OK — Renovable Almería (GEA), dos solicitudes activas')
     else:
         print('AT-2009 ya existe — omitido')
@@ -659,8 +657,8 @@ with app.app_context():
             'expedientes/AT-2010/salida/2023-04-18_Resolucion_AAT_firmada.pdf',
             TDOC_OTROS, 'Resolución AAT — favorable y notificada', date(2023, 4, 18))
         sol10 = crear_sol(exp10, TS_AAT, endesa, sol10_sol)
-        fase_fin(sol10, TF_SOL, date(2023, 1, 12), date(2023, 4, 18), TRES_FAV)
-        fase_fin(sol10, TF_RES, date(2023, 4, 18), date(2023, 4, 25), TRES_FAV)
+        fase_fin(sol10, TF_SOL, TRES_FAV)
+        fase_fin(sol10, TF_RES, TRES_FAV)
         print('AT-2010 OK — Distribución Endesa, AAT, expediente completamente resuelto')
     else:
         print('AT-2010 ya existe — omitido')

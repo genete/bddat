@@ -123,7 +123,7 @@ def crear_doc(exp, url, tipo_doc_id, fecha_adm=None):
     return d
 
 
-def crear_fase(sol, tipo_fase_id, fin=None, resultado_id=None):
+def crear_fase(sol, tipo_fase_id, resultado_id=None):
     f = Fase(
         solicitud_id=sol.id,
         tipo_fase_id=tipo_fase_id,

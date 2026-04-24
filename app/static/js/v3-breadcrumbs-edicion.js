@@ -59,13 +59,13 @@ document.addEventListener('DOMContentLoaded', function () {
       const json = await resp.json();
 
       if (!json.ok) {
-        _mostrar_alert('danger', json.error + (json.url_norma ? ` (<a href="${json.url_norma}" target="_blank">ver norma</a>)` : ''));
+        _mostrar_alert('danger', (json.motivo ? json.motivo + ' ' : '') + json.error + (json.url_norma ? ` (<a href="${json.url_norma}" target="_blank">ver norma</a>)` : ''));
       } else {
         _actualizar_display(datos);
         activar_modo_ver();
         form.dispatchEvent(new CustomEvent('bc:guardado', { bubbles: false }));
         if (json.advertencia) {
-          _mostrar_alert('warning', json.advertencia.norma_compilada || '');
+          _mostrar_alert('warning', (json.advertencia.motivo ? json.advertencia.motivo + ' ' : '') + (json.advertencia.norma_compilada || ''));
         }
       }
     } catch (_e) {

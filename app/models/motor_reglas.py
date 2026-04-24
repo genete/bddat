@@ -121,6 +121,10 @@ class ReglaMotor(db.Model):
         db.Boolean, nullable=False, default=True,
         comment='Desactivar en lugar de borrar — preserva trazabilidad'
     )
+    descripcion = db.Column(
+        db.String(500), nullable=True,
+        comment='Explicación en lenguaje natural para el usuario al bloquear'
+    )
 
     norma       = db.relationship('Norma')
     condiciones = db.relationship(

@@ -63,9 +63,10 @@ def q1(sql, **params):
 
 
 def fases_de_sol(sol_id):
-    """Devuelve lista de (tipo_fase_codigo, fecha_fin, resultado_fase_codigo)."""
+    """Devuelve lista de (tipo_fase_codigo, documento_resultado_id, resultado_fase_codigo).
+    f[1] IS NULL → fase no finalizada; f[1] IS NOT NULL → fase finalizada (doc de resultado asignado)."""
     return q("""
-        SELECT tf.codigo, f.fecha_fin, trf.codigo
+        SELECT tf.codigo, f.documento_resultado_id, trf.codigo
         FROM fases f
         JOIN tipos_fases tf ON tf.id = f.tipo_fase_id
         LEFT JOIN tipos_resultados_fases trf ON trf.id = f.resultado_fase_id
@@ -137,7 +138,7 @@ def verificar_T01():
     fases = fases_de_sol(sid)
     check('T01: exactamente 1 fase', len(fases) == 1, f'hay {len(fases)}')
     check('T01: fase es ANALISIS_SOLICITUD', any(f[0] == 'ANALISIS_SOLICITUD' for f in fases))
-    check('T01: fase abierta (sin fecha_fin)', all(f[1] is None for f in fases))
+    check('T01: fase no finalizada (sin doc_resultado)', all(f[1] is None for f in fases))
 
     trams = tramites_de_fase('ANALISIS_SOLICITUD', sid)
     check('T01: 1 trámite ANALISIS_DOCUMENTAL', len(trams) == 1 and trams[0][0] == 'ANALISIS_DOCUMENTAL',
@@ -366,11 +367,17 @@ def verificar_T10():
     check('T10: 5 fases presentes', pistas_esperadas == codigos,
           f'hay: {codigos}')
     check('T10: todas las fases finalizadas', all(f[1] is not None for f in fases),
-          f'abiertas: {[f[0] for f in fases if f[1] is None]}')
+          f'sin doc_resultado: {[f[0] for f in fases if f[1] is None]}')
     check('T10: todas con resultado', all(f[2] is not None for f in fases),
           f'sin resultado: {[f[0] for f in fases if f[2] is None]}')
-    check('T10: sin trámites ni tareas abiertas',
-          q1("SELECT COUNT(*) FROM tramites tr JOIN fases f ON f.id=tr.fase_id WHERE f.solicitud_id=:s AND tr.fecha_fin IS NULL", s=sid) == 0)
+    check('T10: sin tareas documentales pendientes',
+          q1("""SELECT COUNT(*) FROM tareas ta
+                JOIN tramites tr ON tr.id = ta.tramite_id
+                JOIN fases f ON f.id = tr.fase_id
+                JOIN tipos_tareas tt ON tt.id = ta.tipo_tarea_id
+                WHERE f.solicitud_id = :s
+                AND tt.codigo IN ('INCORPORAR','ANALISIS','REDACTAR','FIRMAR','NOTIFICAR','PUBLICAR')
+                AND ta.documento_producido_id IS NULL""", s=sid) == 0)
 
 
 def verificar_T11():
