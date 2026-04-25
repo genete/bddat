@@ -18,6 +18,7 @@ ni el modo "accept edits". Evitarlos cambiando el patrón.
 | `sed command contains operations that require explicit approval` | `sed -i` u otras operaciones de escritura con sed | Usar tool `Edit` en su lugar |
 | `command contains consecutive quote characters at word start (potential obfuscation)` | `""` o `''` como primer carácter de un argumento, p. ej. `echo ""texto` o `cmd ''arg` | Nunca empezar un argumento con comilla doble vacía; si el valor puede quedar vacío, usar variable o fichero temporal |
 | `allow reading from <ruta>\` / `allow access to <ruta>\` | Ruta con **backslash** Windows en comando Bash (p. ej. `app\models\`) | En Bash (MSYS2) las rutas van con `/`. Usar siempre `app/models/`, nunca `app\models\` |
+| `cd with two or more directory arguments` | `cd ruta1 ruta2` — ocurre al partir una ruta por espacios o pasar dos argumentos accidentalmente | Un solo argumento; entrecomillar si hay espacios: `cd "/d/ruta con espacios"` |
 
 ---
 
