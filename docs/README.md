@@ -38,6 +38,7 @@ Consultar cuando se trabaja ese subsistema. No cargar por defecto.
 - [NORMATIVA_MAPA_PROCEDIMENTAL.md](referencia/NORMATIVA_MAPA_PROCEDIMENTAL.md)
 - [NORMATIVA_LEGISLACION_AT.md](referencia/NORMATIVA_LEGISLACION_AT.md)
 - [NORMATIVA_SOLICITUDES.md](referencia/NORMATIVA_SOLICITUDES.md)
+- [normas_catalog.csv](referencia/normas_catalog.csv) — catálogo de normas indexadas
 - [normas/](referencia/normas/) — textos consolidados extraídos (BOE/BOJA)
 
 ### Estructura ESFTT
