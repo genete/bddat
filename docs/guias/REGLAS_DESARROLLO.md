@@ -1,5 +1,17 @@
 # Reglas de desarrollo — BDDAT
 
+## Qué leer según la tarea
+
+| Tarea | Secciones relevantes |
+|---|---|
+| Solo HTML / CSS / JS | Flask: Templates · Flask: Notificaciones · Commits |
+| Modelos o migraciones | Flask: Modelos · Migraciones · Naming · Commits |
+| Commit o rama | Ramas · Commit directo vs rama · Commits |
+| Cierre de milestone | Releases |
+| Decisión de diseño | Decisiones arquitectónicas |
+
+---
+
 ## Ramas
 
 - `develop` — rama por defecto; todo cambio pasa por aquí
