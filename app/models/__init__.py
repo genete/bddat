@@ -59,6 +59,7 @@ from app.models.municipios_proyecto import MunicipioProyecto  # Depende de Munic
 # Modelos operacionales con dependencias complejas (al final)
 from app.models.tramites import Tramite  # Depende de Fase, TipoTramite
 from app.models.tareas import Tarea  # Depende de Tramite, TipoTarea, Documento
+from app.models.documentos_tarea import DocumentoTarea  # Depende de Tarea, Documento
 
 # Motor de reglas (depende de TipoSolicitud; tipo_id sin FK por diseño polimórfico)
 from app.models.motor_reglas import ReglaMotor, CondicionRegla
@@ -102,6 +103,7 @@ __all__ = [
     'MunicipioProyecto',
     'Tramite',
     'Tarea',
+    'DocumentoTarea',
     # Motor de reglas
     'ReglaMotor',
     'CondicionRegla',
