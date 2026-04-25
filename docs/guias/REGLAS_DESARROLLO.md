@@ -4,8 +4,8 @@
 
 | Tarea | Secciones relevantes |
 |---|---|
-| Solo HTML / CSS / JS | Flask: Templates · Flask: Notificaciones · Commits |
-| Modelos o migraciones | Flask: Modelos · Migraciones · Naming · Commits |
+| Solo HTML / CSS / JS | Flask › Templates · Notificaciones · Commits |
+| Modelos o migraciones | Flask › Modelos · Migraciones · Naming · Commits |
 | Commit o rama | Ramas · Commit directo vs rama · Commits |
 | Cierre de milestone | Releases |
 | Decisión de diseño | Decisiones arquitectónicas |
@@ -89,23 +89,21 @@ Registrar en `docs/decisiones/` como ADR numerado. Ver ADR-001 y ADR-002 como re
 
 ---
 
-## Flask: Templates
+## Flask
+
+### Templates
 
 - `app/modules/X/` → blueprint con `template_folder` propio → templates en `app/modules/X/templates/X/`
 - `app/routes/` → sin `template_folder` → templates en `app/templates/` global
 
 No mezclar. Flask hace fallback silencioso a la global sin lanzar error — difícil de depurar. (#127)
 
----
-
-## Flask: Modelos
+### Modelos
 
 Orden de imports en `app/models/__init__.py`: primero modelos sin FKs operacionales, luego dependencias simples, luego múltiples. Romper el orden causa circular imports.
 
 FK format: `db.ForeignKey('public.tabla.campo')` — siempre con prefijo de schema.
 
----
-
-## Flask: Notificaciones
+### Notificaciones
 
 `flash()` con toasts Bootstrap, categorías `success/danger/warning/info`. Nunca modales para notificaciones.
