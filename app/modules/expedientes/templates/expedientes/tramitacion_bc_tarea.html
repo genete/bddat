@@ -72,7 +72,7 @@
               </a>
             </li>
             {% endif %}
-            {% if tarea.en_curso %}
+            {% if tarea.en_curso or (es_tarea_incorporar and tarea.ejecutada) %}
             <li>
               <a class="dropdown-item" href="#"
                  data-accion="finalizar"
@@ -143,7 +143,48 @@
   </div>
   <div class="card-body card-body-tinted py-3">
 
-    {% if not requiere_doc_usado and not doc_usado_opcional and not requiere_doc_producido %}
+    {% if es_tarea_incorporar %}
+
+    {# ── INCORPORAR: listado multi-doc + añadir desde pool ─────────────────── #}
+    <div id="incorporar-lista" class="mb-3">
+      {% if documentos_incorporar %}
+        {% for item in documentos_incorporar %}
+        <div class="d-flex align-items-center gap-2 flex-wrap mb-2 incorporar-fila"
+             data-vinculo-id="{{ item.vinculo_id }}">
+          <i class="fas fa-file-import text-secondary"></i>
+          <span class="fw-semibold">{{ item.nombre_display }}</span>
+          <small class="text-secondary">
+            — {{ item.doc.tipo_doc.nombre if item.doc.tipo_doc else '' }}
+            {% if item.doc.fecha_administrativa %}
+              — {{ item.doc.fecha_administrativa.strftime('%d/%m/%Y') }}
+            {% endif %}
+          </small>
+          <a href="{{ url_for('expedientes.pool_descargar_documento', id=expediente.id, doc_id=item.doc.id) }}"
+             class="btn btn-sm btn-outline-secondary ms-auto"
+             target="_blank" rel="noopener">
+            <i class="fas fa-download me-1"></i>Descargar
+          </a>
+          <button type="button" class="btn btn-sm btn-outline-danger btn-desvincular-incorporar"
+                  data-vinculo-id="{{ item.vinculo_id }}"
+                  data-url="{{ url_for('api_bc.tarea_incorporar_desvincular', tarea_id=tarea.id, vinculo_id=item.vinculo_id) }}">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        {% endfor %}
+      {% else %}
+        <p id="incorporar-vacio" class="fst-italic text-secondary small mb-2">Sin documentos vinculados.</p>
+      {% endif %}
+    </div>
+
+    <div class="d-flex gap-2 align-items-start">
+      <div id="sb-incorporar" style="flex:1"></div>
+      <button type="button" id="btn-vincular-incorporar" class="btn btn-sm btn-outline-primary" disabled>
+        <i class="fas fa-plus me-1"></i>Añadir
+      </button>
+    </div>
+    <div id="alert-incorporar" class="alert d-none mt-2 py-2 mb-0" role="alert"></div>
+
+    {% elif not requiere_doc_usado and not doc_usado_opcional and not requiere_doc_producido %}
     <p class="text-secondary mb-0 fst-italic small">Este tipo de tarea no requiere documentos.</p>
 
     {% else %}
@@ -288,6 +329,16 @@
 <script src="{{ url_for('static', filename='js/selector_busqueda.js') }}"></script>
 <script src="{{ url_for('static', filename='js/v3-breadcrumbs-edicion.js') }}"></script>
 <script src="{{ url_for('static', filename='js/v3-breadcrumbs-acciones.js') }}"></script>
+{% if es_tarea_incorporar %}
+<script>
+window.INCORPORAR_CONFIG = {
+  urlVincular:    "{{ url_for('api_bc.tarea_incorporar_vincular', tarea_id=tarea.id) }}",
+  urlDesvincularBase: "/api/bc/tarea/{{ tarea.id }}/incorporar/",
+  urlApiDocs:     "{{ url_for('expedientes.pool_documentos_json', id=expediente.id) }}"
+};
+</script>
+<script src="{{ url_for('static', filename='js/incorporar_documentos.js') }}"></script>
+{% else %}
 <script>
 window.TAREA_DOCS_CONFIG = {
   requiereDocUsado:     {{ requiere_doc_usado | tojson }},
@@ -299,6 +350,7 @@ window.TAREA_DOCS_CONFIG = {
 };
 </script>
 <script src="{{ url_for('static', filename='js/tarea_documentos.js') }}"></script>
+{% endif %}
 {% if es_tarea_redactar %}
 <script>window.GE_CONFIG = { tareaId: {{ tarea.id }} };</script>
 <script src="{{ url_for('static', filename='js/generar_escrito.js') }}"></script>
