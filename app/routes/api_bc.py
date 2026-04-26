@@ -25,6 +25,7 @@ from app.models.tipos_tareas import TipoTarea
 from app.models.documentos_tarea import DocumentoTarea
 from app.utils.permisos import verificar_acceso_expediente
 from app.services.assembler import evaluar_multi
+from app.services.invariantes_esftt import check_invariante
 
 bp = Blueprint('api_bc', __name__, url_prefix='/api/bc')
 
@@ -479,6 +480,10 @@ def finalizar_tarea(tarea_id):
         return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
     if tarea.ejecutada:
         return jsonify({'ok': False, 'error': 'La tarea ya está finalizada'}), 422
+
+    res_inv = check_invariante('FINALIZAR', 'TAREA', tarea_id)
+    if res_inv:
+        return _bloqueo(res_inv)
 
     res_eval = evaluar_multi('FINALIZAR', tarea.tramite.fase.solicitud.expediente, objeto=tarea)
     if not res_eval.permitido:
