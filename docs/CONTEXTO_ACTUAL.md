@@ -4,7 +4,7 @@
 
 ---
 
-**Último cerrado:** #290 — Tarea INCORPORAR: tabla `documentos_tarea` (multi-doc, v5.5)
+**Último cerrado:** #331 — Instalación y configuración WSL completa (Ubuntu 24.04, Flask, PostgreSQL 16 en puerto 5433, Claude Code, legalize-es, memory y plans en git).
 
 **Próximo:** #296 — Señal de resultado en Tarea y Trámite — decisión de diseño pendiente; bloquea trabajo de motor de reglas (M3).
 
