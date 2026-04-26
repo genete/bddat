@@ -4,9 +4,8 @@
 
 ---
 
-**Último cerrado:** #319 — campo `descripcion` en `reglas_motor` (mensajes de bloqueo legibles en UI)
+**Último cerrado:** #290 — Tarea INCORPORAR: tabla `documentos_tarea` (multi-doc, v5.5)
 
-**Próximo:** #290 — Tarea INCORPORAR: tabla `documentos_tarea` (multi-doc)
-Desbloquea: modelo FTT correcto para INCORPORAR; cimenta la decisión de señal de resultado (#296).
+**Próximo:** #296 — Señal de resultado en Tarea y Trámite — decisión de diseño pendiente; bloquea trabajo de motor de reglas (M3).
 
-**En espera:** #296 — Señal de resultado en Tarea y Trámite — decisión de diseño pendiente; bloquea trabajo de motor de reglas (M3).
+**En espera:** #332 — CI: ejecutar tests en GitHub Actions (infraestructura, bloques A+B sin BD primero).
