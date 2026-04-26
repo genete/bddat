@@ -20,7 +20,7 @@ from app.models.tareas import Tarea
 from app.models.solicitudes import Solicitud
 from app.services.motor_reglas import EvaluacionResult
 
-_TIPOS_REQUIEREN_DOC_PRODUCIDO = {'INCORPORAR', 'ANALISIS', 'REDACTAR', 'FIRMAR', 'NOTIFICAR', 'PUBLICAR'}
+_TIPOS_REQUIEREN_DOC_PRODUCIDO = {'ANALISIS', 'REDACTAR', 'FIRMAR', 'NOTIFICAR', 'PUBLICAR'}
 _TIPOS_REQUIEREN_DOC_USADO     = {'ANALISIS', 'FIRMAR', 'NOTIFICAR', 'PUBLICAR'}
 
 
@@ -107,6 +107,7 @@ def _check_finalizar(sujeto: str, entidad_id: int) -> Optional[EvaluacionResult]
 
 def _check_finalizar_fase(fase_id: int) -> Optional[EvaluacionResult]:
     from app.models.tipos_tareas import TipoTarea
+    from app.models.documentos_tarea import DocumentoTarea
     tarea_incompleta = (
         db.session.query(Tarea)
         .join(Tramite, Tarea.tramite_id == Tramite.id)
@@ -120,11 +121,27 @@ def _check_finalizar_fase(fase_id: int) -> Optional[EvaluacionResult]:
     )
     if tarea_incompleta:
         return _bloquear('Hay tareas sin documento producido en esta fase. Finalice todas las tareas antes de cerrar la fase.')
+
+    incorporar_incompleta = (
+        db.session.query(Tarea)
+        .join(Tramite, Tarea.tramite_id == Tramite.id)
+        .join(TipoTarea, Tarea.tipo_tarea_id == TipoTarea.id)
+        .outerjoin(DocumentoTarea, DocumentoTarea.tarea_id == Tarea.id)
+        .filter(
+            Tramite.fase_id == fase_id,
+            TipoTarea.codigo == 'INCORPORAR',
+            DocumentoTarea.id.is_(None)
+        )
+        .first()
+    )
+    if incorporar_incompleta:
+        return _bloquear('Hay tareas INCORPORAR sin documentos vinculados. Añada al menos un documento antes de cerrar la fase.')
     return None
 
 
 def _check_finalizar_tramite(tramite_id: int) -> Optional[EvaluacionResult]:
     from app.models.tipos_tareas import TipoTarea
+    from app.models.documentos_tarea import DocumentoTarea
     tarea_incompleta = (
         db.session.query(Tarea)
         .join(TipoTarea, Tarea.tipo_tarea_id == TipoTarea.id)
@@ -137,6 +154,20 @@ def _check_finalizar_tramite(tramite_id: int) -> Optional[EvaluacionResult]:
     )
     if tarea_incompleta:
         return _bloquear('Hay tareas sin ejecutar. Finalice todas las tareas antes de cerrar el trámite.')
+
+    incorporar_incompleta = (
+        db.session.query(Tarea)
+        .join(TipoTarea, Tarea.tipo_tarea_id == TipoTarea.id)
+        .outerjoin(DocumentoTarea, DocumentoTarea.tarea_id == Tarea.id)
+        .filter(
+            Tarea.tramite_id == tramite_id,
+            TipoTarea.codigo == 'INCORPORAR',
+            DocumentoTarea.id.is_(None)
+        )
+        .first()
+    )
+    if incorporar_incompleta:
+        return _bloquear('Hay tareas INCORPORAR sin documentos vinculados. Añada al menos un documento antes de cerrar el trámite.')
     return None
 
 
@@ -146,6 +177,11 @@ def _check_finalizar_tarea(tarea_id: int) -> Optional[EvaluacionResult]:
         return None
 
     codigo = tarea.tipo_tarea.codigo
+
+    if codigo == 'INCORPORAR':
+        if not tarea.documentos_tarea:
+            return _bloquear('Falta vincular al menos un documento. Añádalo antes de finalizar la tarea.')
+        return None
 
     if codigo in _TIPOS_REQUIEREN_DOC_PRODUCIDO and tarea.documento_producido_id is None:
         return _bloquear('Falta el documento producido. Asócielo antes de finalizar la tarea.')

@@ -137,14 +137,20 @@ class Tarea(db.Model):
 
     @property
     def ejecutada(self):
-        """True si la tarea ha producido su documento de salida.
-        ESPERAR_PLAZO no produce documento — su completitud se evalúa via plazos.py
-        en el ContextAssembler (ver §4.1 DISEÑO_FECHAS_PLAZOS.md)."""
+        """True si la tarea está completa.
+        INCORPORAR: completitud = ≥1 registro en documentos_tarea (v5.5).
+        Resto: completitud = documento_producido_id not None.
+        ESPERAR_PLAZO: completitud vía plazos.py (ContextAssembler)."""
+        if self.tipo_tarea and self.tipo_tarea.codigo == 'INCORPORAR':
+            return bool(self.documentos_tarea)
         return self.documento_producido_id is not None
 
     @property
     def planificada(self):
-        """True si la tarea no tiene ningún documento asignado aún."""
+        """True si la tarea no tiene ningún documento asignado aún.
+        INCORPORAR: planificada = sin documentos_tarea vinculados."""
+        if self.tipo_tarea and self.tipo_tarea.codigo == 'INCORPORAR':
+            return not bool(self.documentos_tarea)
         return self.documento_producido_id is None and self.documento_usado_id is None
 
     @property

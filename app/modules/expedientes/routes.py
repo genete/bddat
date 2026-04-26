@@ -35,6 +35,7 @@ from app.models.tramites import Tramite
 from app.models.tareas import Tarea
 from app.models.documentos import Documento
 from app.models.tipos_documentos import TipoDocumento
+from app.models.documentos_tarea import DocumentoTarea
 from app.decorators import role_required
 from app.utils.permisos import (
     puede_cambiar_responsable,
@@ -454,6 +455,20 @@ def tramitacion_bc_tarea(exp_id, sol_id, fase_id, tram_id, tarea_id):
     doc_usado_opcional     = codigo_tipo in _TIPOS_DOC_USADO_OPCIONAL
     requiere_doc_producido = codigo_tipo in _TIPOS_REQUIEREN_DOC_PRODUCIDO
     es_tarea_redactar      = (codigo_tipo == 'REDACTAR')
+    es_tarea_incorporar    = (codigo_tipo == 'INCORPORAR')
+
+    documentos_incorporar = []
+    if es_tarea_incorporar:
+        vinculos = DocumentoTarea.query.filter_by(tarea_id=tarea_id).all()
+        for v in vinculos:
+            doc = v.documento
+            filename = doc.url.replace('\\', '/').rsplit('/', 1)[-1] if doc.url else ''
+            filename_limpio = filename.split('?')[0].split('#')[0]
+            documentos_incorporar.append({
+                'vinculo_id': v.id,
+                'doc': doc,
+                'nombre_display': filename_limpio or f'Documento {doc.id}',
+            })
 
     return render_template(
         'expedientes/tramitacion_bc_tarea.html',
@@ -466,13 +481,16 @@ def tramitacion_bc_tarea(exp_id, sol_id, fase_id, tram_id, tarea_id):
         doc_usado_opcional=doc_usado_opcional,
         requiere_doc_producido=requiere_doc_producido,
         es_tarea_redactar=es_tarea_redactar,
+        es_tarea_incorporar=es_tarea_incorporar,
+        documentos_incorporar=documentos_incorporar,
     )
 
 
 # Conjuntos de tipos de tarea que requieren documentos (espejo de invariantes_esftt.py)
 _TIPOS_REQUIEREN_DOC_USADO     = {'ANALISIS', 'FIRMAR', 'NOTIFICAR', 'PUBLICAR'}
 _TIPOS_DOC_USADO_OPCIONAL      = {'REDACTAR'}   # visible en UI pero no obligatorio al finalizar
-_TIPOS_REQUIEREN_DOC_PRODUCIDO = {'INCORPORAR', 'ANALISIS', 'REDACTAR', 'FIRMAR', 'NOTIFICAR', 'PUBLICAR'}
+_TIPOS_REQUIEREN_DOC_PRODUCIDO = {'ANALISIS', 'REDACTAR', 'FIRMAR', 'NOTIFICAR', 'PUBLICAR'}
+# INCORPORAR usa documentos_tarea (N docs) — no documento_producido_id
 
 
 # ===========================================================================
@@ -499,6 +517,8 @@ def _documento_es_referenciado(doc):
     if doc.tareas_que_usan:
         return True
     if doc.tarea_productora:
+        return True
+    if doc.documentos_tarea:
         return True
     return False
 

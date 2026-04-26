@@ -22,8 +22,10 @@ from app.models.tipos_resultados_fases import TipoResultadoFase
 from app.models.tipos_fases import TipoFase
 from app.models.tipos_tramites import TipoTramite
 from app.models.tipos_tareas import TipoTarea
+from app.models.documentos_tarea import DocumentoTarea
 from app.utils.permisos import verificar_acceso_expediente
 from app.services.assembler import evaluar_multi
+from app.services.invariantes_esftt import check_invariante
 
 bp = Blueprint('api_bc', __name__, url_prefix='/api/bc')
 
@@ -476,10 +478,87 @@ def finalizar_tarea(tarea_id):
     resultado = verificar_acceso_expediente(tarea.tramite.fase.solicitud.expediente, 'editar')
     if resultado:
         return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
-    if tarea.documento_producido_id is not None:
+    if tarea.ejecutada:
         return jsonify({'ok': False, 'error': 'La tarea ya está finalizada'}), 422
+
+    res_inv = check_invariante('FINALIZAR', 'TAREA', tarea_id)
+    if res_inv:
+        return _bloqueo(res_inv)
 
     res_eval = evaluar_multi('FINALIZAR', tarea.tramite.fase.solicitud.expediente, objeto=tarea)
     if not res_eval.permitido:
         return _bloqueo(res_eval)
     return jsonify({'ok': True, 'nivel': res_eval.nivel, 'motivo': res_eval.motivo, 'norma_compilada': res_eval.norma_compilada, 'url_norma': res_eval.url_norma})
+
+
+# ============================================
+# ENDPOINTS INCORPORAR — documentos_tarea
+# ============================================
+
+@bp.route('/tarea/<int:tarea_id>/incorporar/vincular', methods=['POST'])
+@login_required
+def tarea_incorporar_vincular(tarea_id):
+    """Vincula un documento del pool a una tarea INCORPORAR."""
+    tarea = Tarea.query.get_or_404(tarea_id)
+    expediente = tarea.tramite.fase.solicitud.expediente
+    resultado = verificar_acceso_expediente(expediente, 'editar')
+    if resultado:
+        return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
+
+    if not tarea.tipo_tarea or tarea.tipo_tarea.codigo != 'INCORPORAR':
+        return jsonify({'ok': False, 'error': 'Solo aplicable a tareas INCORPORAR'}), 422
+
+    doc_id = request.form.get('documento_id', type=int)
+    if not doc_id:
+        return jsonify({'ok': False, 'error': 'documento_id es obligatorio'}), 400
+
+    doc = Documento.query.get(doc_id)
+    if not doc or doc.expediente_id != expediente.id:
+        return jsonify({'ok': False, 'error': 'Documento no válido para este expediente'}), 422
+
+    existente = DocumentoTarea.query.filter_by(tarea_id=tarea_id, documento_id=doc_id).first()
+    if existente:
+        return jsonify({'ok': False, 'error': 'Este documento ya está vinculado a la tarea'}), 422
+
+    try:
+        vinculo = DocumentoTarea(tarea_id=tarea_id, documento_id=doc_id)
+        db.session.add(vinculo)
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+    filename = doc.url.replace('\\', '/').rsplit('/', 1)[-1] if doc.url else ''
+    filename_limpio = filename.split('?')[0].split('#')[0]
+    return jsonify({
+        'ok': True,
+        'vinculo_id': vinculo.id,
+        'doc_id': doc.id,
+        'nombre_display': filename_limpio or f'Documento {doc.id}',
+        'tipo_nombre': doc.tipo_doc.nombre if doc.tipo_doc else '',
+        'fecha': doc.fecha_administrativa.strftime('%d/%m/%Y') if doc.fecha_administrativa else '',
+        'url_descargar': f'/expedientes/{expediente.id}/documentos/{doc.id}/fichero',
+    })
+
+
+@bp.route('/tarea/<int:tarea_id>/incorporar/<int:vinculo_id>/desvincular', methods=['POST'])
+@login_required
+def tarea_incorporar_desvincular(tarea_id, vinculo_id):
+    """Elimina el vínculo entre un documento y una tarea INCORPORAR."""
+    tarea = Tarea.query.get_or_404(tarea_id)
+    resultado = verificar_acceso_expediente(tarea.tramite.fase.solicitud.expediente, 'editar')
+    if resultado:
+        return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
+
+    vinculo = DocumentoTarea.query.get_or_404(vinculo_id)
+    if vinculo.tarea_id != tarea_id:
+        return jsonify({'ok': False, 'error': 'Vínculo no pertenece a esta tarea'}), 422
+
+    try:
+        db.session.delete(vinculo)
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+    return jsonify({'ok': True})
