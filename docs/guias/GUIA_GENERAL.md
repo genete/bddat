@@ -484,4 +484,11 @@ Una fecha de fin no nula implica que se debe comprobar que las tareas con salida
 
 ---
 
+## ⚠️ Trampas de implementación conocidas
+
+### AutorizadoTitular — reutilizar registro revocado
+Al crear un `AutorizadoTitular` desde ruta, verificar primero si existe un registro revocado para esa combinación titular+expediente. Si existe, llamar `existente.restaurar()` en lugar de crear uno nuevo — respeta el unique constraint que impide duplicados activos.
+
+---
+
 **Documento creado:** 15 de enero de 2026  

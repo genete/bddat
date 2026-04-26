@@ -780,6 +780,15 @@ container.addEventListener('scroll', toggleButton);
 - C.1/C.2 es para listas largas con scroll
 - Formularios usan `.content-constrained` directamente en `.app-main`
 
+### 6. `text-muted` = #bebebe (casi invisible)
+Usar `fw-semibold` sin color en labels visibles. **Nunca** `text-muted` en labels.
+
+### 7. `calc()` con rem en `table-layout: fixed`
+No funciona en Chrome → usar JS para reparto porcentual de columnas (ver `ajustarFlexiblesSeguimiento`).
+
+### 8. `SelectorBusqueda`: método limpiar es `clear()` (NO `limpiar()`)
+Formato de opciones: `{v: String(id), t: texto}`.
+
 ---
 
 ## 📝 Checklist Implementación Vista
@@ -826,6 +835,55 @@ container.addEventListener('scroll', toggleButton);
 - [Accordion](https://getbootstrap.com/docs/5.3/components/accordion/)
 - [Badges](https://getbootstrap.com/docs/5.3/components/badge/)
 - [Buttons](https://getbootstrap.com/docs/5.3/components/buttons/)
+
+---
+
+## 🌐 CDN Junta de Andalucía
+
+| Recurso | URL |
+|---------|-----|
+| `fonts.css` | `https://cdn.juntadeandalucia.es/components/sass/1.2.5/css/fonts.css` |
+| `all.css` | `https://cdn.juntadeandalucia.es/components/sass/1.2.5/css/all.css` |
+| `custom-jda-bootstrap.css` | `https://cdn.juntadeandalucia.es/components/sass/1.2.5/css/custom-jda-bootstrap.css` |
+| Bootstrap bundle JS | `https://cdn.juntadeandalucia.es/components/sass/1.2.5/js/bootstrap.bundle.min.js` |
+
+Bootstrap Icons: vía jsdelivr (no incluido en CDN JA).
+
+**⚠️ CORS-blocked:** no inspeccionable vía `cssRules` en DevTools — las hojas se cargan pero las reglas no son accesibles desde JS.
+
+**Override acordeones en `custom.css`:** chevron-right cerrado, chevron-down abierto.
+
+---
+
+## 🎨 Sistema visual — Plantilla JA (PDF oficial)
+
+Colores y layouts del manual de identidad corporativa. Difieren de las variables del CDN (`#087021`).
+
+### Colores (plantilla oficial)
+- Verde institucional: `#3d8b2f` aprox (subtítulos, headers tabla, cifras, barra top)
+- Verde oscuro (chevron portada): `#5a7a3a` aprox
+- Gris oscuro (títulos): `#333333`
+- Gris claro (body): `#999999`, cursiva/light
+- Blanco puro: `#ffffff`
+
+### Elementos fijos en slides de contenido
+- Barra verde muy fina (~6-8px) en el top (full-width)
+- Numeración de sección (ej. `2.1`) + línea gris separadora, arriba-izquierda
+- Pie izquierdo: "Junta de Andalucía" italic gris pequeño
+- Pie derecho: "< Volver al índice | N" con enlace y número de página
+- Margen derecho: nombre de sección en texto vertical gris, rotado 90°
+
+### Portada / Portadillas
+- Chevron decorativo: dos polígonos superpuestos (verde oscuro + verde claro) en esquina derecha, apuntando izquierda. Reproducible con `clip-path` o SVG inline.
+- Logo JA (SVG): esquina inferior derecha
+
+### Layouts disponibles (del manual)
+- Portada / Portadilla interior (con/sin foto de fondo)
+- Contenido 1 col con foto derecha (50/50), 2 col texto puro, 3 col texto puro
+- Tabla estilo 1: header verde sólido, celdas nivel 1 bold + nivel 2 italic
+- Tabla estilo 2: headers gris, ítems en verde (para datos numéricos)
+- Línea de tiempo: bloques numerados en cuadro verde, 3 columnas con bullets
+- Cifras: icono gris + número verde grande + descripción italic
 
 ---
 

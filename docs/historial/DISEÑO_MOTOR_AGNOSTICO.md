@@ -289,6 +289,29 @@ Supervisor puede leer la regla y entenderla, puede validar que es correcta.
 
 ---
 
+## Principios del sistema de reglas
+
+### El sistema de reglas es caótico — el motor no
+
+El motor es predecible y determinista: dado un dict de variables y un conjunto de reglas en BD, siempre produce el mismo resultado. El sistema de reglas que el Supervisor construye sobre él es potencialmente caótico. Fuentes de caos conocidas:
+
+- **Cambios legislativos** — una norma nueva puede invalidar condiciones existentes sin que ningún test lo detecte.
+- **Razonamientos incorrectos previos** — una regla puede haber sido definida con una lectura errónea de la norma; corregirla sin entender sus interacciones puede introducir otro error.
+- **Combinaciones de variables no contempladas** — una regla cubre el caso A y otra el caso B; la combinación A+B puede producir un resultado no deseado que ninguna de las dos reglas anticipaba.
+- **Deadlocks** — dos reglas que, en combinación, crean un estado imposible de desbloquear (bloquean mutuamente las acciones necesarias para resolverse).
+
+**Consecuencia práctica:** toda regla nueva debe razonarse con cuidado antes de entrar en la tabla. El Supervisor es la última barrera antes del caos. La vista en lenguaje natural del formulario (§Interfaz del Supervisor) es precisamente ese mecanismo: si el Supervisor puede leer la regla y entenderla, puede detectar inconsistencias antes de guardarla.
+
+### Cuando dos condiciones eximen el mismo hito: evaluar secuencialmente, no como OR
+
+Si existen condición A (exención legal objetiva, ej: instalación de categoría exenta por normativa) y condición B (requisito procedimental cumplido, ej: documento de declaración de ausencia aportado) que ambas eximen el mismo hito, **no son intercambiables**. El orden de evaluación importa y debe estar documentado en la regla.
+
+Si se modelan como OR en una sola regla, el usuario puede satisfacer la condición incorrecta (aportar el documento B cuando en realidad aplica la exención A, o viceversa), produciendo un resultado aparentemente válido pero jurídicamente incorrecto.
+
+**Solución:** definir reglas separadas con prioridad distinta. La regla de exención objetiva (A) tiene prioridad más alta; si no aplica, se evalúa la regla de requisito procedimental (B). Nunca combinar ambas condiciones con OR dentro de una misma regla.
+
+---
+
 ## Problemas que resuelve respecto al diseño actual
 
 | Problema con diseño actual | Solución con motor agnóstico |
