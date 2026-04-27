@@ -42,3 +42,15 @@ def _(ctx) -> bool:
                 if tramite.tipo_tramite and tramite.tipo_tramite.codigo == 'PUBLICACION':
                     return True
     return False
+
+
+@variable('existe_fase_finalizadora_cerrada')
+def _(ctx) -> bool:
+    """True si la solicitud en contexto tiene al menos una fase finalizadora cerrada."""
+    solicitud = ctx.solicitud
+    if solicitud is None:
+        return False
+    for fase in solicitud.fases:
+        if fase.tipo_fase and fase.tipo_fase.es_finalizadora and fase.finalizada:
+            return True
+    return False

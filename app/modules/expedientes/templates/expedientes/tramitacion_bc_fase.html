@@ -45,6 +45,11 @@
     <span class="fw-semibold d-flex align-items-center gap-2">
       <i class="fas fa-layer-group fs-5 bc-icon-fase"></i>
       <span>Fase: {{ fase.tipo_fase.nombre if fase.tipo_fase else '#' ~ fase.id }}</span>
+      {% if fase.tipo_fase and fase.tipo_fase.es_finalizadora %}
+      <span class="badge bg-warning text-dark ms-1" title="Esta fase cierra la solicitud">
+        <i class="fas fa-flag-checkered me-1"></i>Cierra solicitud
+      </span>
+      {% endif %}
       <span class="badge {{ fase_badge_class }} ms-1">{{ fase_badge_label }}</span>
     </span>
     <div class="bc-acciones-bar">

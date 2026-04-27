@@ -32,14 +32,15 @@ INSERT INTO tipos_expedientes (id, tipo, descripcion, nombre_en_plantilla) VALUE
 -- -----------------------------------------------------------------------------
 -- tipos_fases
 -- -----------------------------------------------------------------------------
-INSERT INTO tipos_fases (id, codigo, nombre, abrev, nombre_en_plantilla) VALUES (1, 'ANALISIS_SOLICITUD', 'Análisis de Solicitud', NULL, NULL);
-INSERT INTO tipos_fases (id, codigo, nombre, abrev, nombre_en_plantilla) VALUES (2, 'CONSULTA_MINISTERIO', 'Consulta al Ministerio', NULL, NULL);
-INSERT INTO tipos_fases (id, codigo, nombre, abrev, nombre_en_plantilla) VALUES (3, 'COMPATIBILIDAD_AMBIENTAL', 'Compatibilidad Ambiental', NULL, NULL);
-INSERT INTO tipos_fases (id, codigo, nombre, abrev, nombre_en_plantilla) VALUES (4, 'CONSULTAS', 'Consultas a Organismos', NULL, NULL);
-INSERT INTO tipos_fases (id, codigo, nombre, abrev, nombre_en_plantilla) VALUES (5, 'INFORMACION_PUBLICA', 'Información Pública', NULL, NULL);
-INSERT INTO tipos_fases (id, codigo, nombre, abrev, nombre_en_plantilla) VALUES (6, 'FIGURA_AMBIENTAL_EXTERNA', 'Instrumento Ambiental Externo', NULL, NULL);
-INSERT INTO tipos_fases (id, codigo, nombre, abrev, nombre_en_plantilla) VALUES (7, 'AAU_AAUS_INTEGRADA', 'AAU/AAUS Integrada', NULL, NULL);
-INSERT INTO tipos_fases (id, codigo, nombre, abrev, nombre_en_plantilla) VALUES (8, 'RESOLUCION', 'Resolución', NULL, NULL);
+INSERT INTO tipos_fases (id, codigo, nombre, abrev, nombre_en_plantilla, es_finalizadora) VALUES (1, 'ANALISIS_SOLICITUD', 'Análisis de Solicitud', NULL, NULL, FALSE);
+INSERT INTO tipos_fases (id, codigo, nombre, abrev, nombre_en_plantilla, es_finalizadora) VALUES (2, 'CONSULTA_MINISTERIO', 'Consulta al Ministerio', NULL, NULL, FALSE);
+INSERT INTO tipos_fases (id, codigo, nombre, abrev, nombre_en_plantilla, es_finalizadora) VALUES (3, 'COMPATIBILIDAD_AMBIENTAL', 'Compatibilidad Ambiental', NULL, NULL, FALSE);
+INSERT INTO tipos_fases (id, codigo, nombre, abrev, nombre_en_plantilla, es_finalizadora) VALUES (4, 'CONSULTAS', 'Consultas a Organismos', NULL, NULL, FALSE);
+INSERT INTO tipos_fases (id, codigo, nombre, abrev, nombre_en_plantilla, es_finalizadora) VALUES (5, 'INFORMACION_PUBLICA', 'Información Pública', NULL, NULL, FALSE);
+INSERT INTO tipos_fases (id, codigo, nombre, abrev, nombre_en_plantilla, es_finalizadora) VALUES (6, 'FIGURA_AMBIENTAL_EXTERNA', 'Instrumento Ambiental Externo', NULL, NULL, FALSE);
+INSERT INTO tipos_fases (id, codigo, nombre, abrev, nombre_en_plantilla, es_finalizadora) VALUES (7, 'AAU_AAUS_INTEGRADA', 'AAU/AAUS Integrada', NULL, NULL, FALSE);
+INSERT INTO tipos_fases (id, codigo, nombre, abrev, nombre_en_plantilla, es_finalizadora) VALUES (8, 'RESOLUCION', 'Resolución', NULL, NULL, TRUE);
+INSERT INTO tipos_fases (id, codigo, nombre, abrev, nombre_en_plantilla, es_finalizadora) VALUES (9, 'RECONOCIMIENTO_INTERESADO', 'Reconocimiento de Interesado', 'Rec. Interesado', 'Reconocimiento de Interesado', TRUE);
 
 -- -----------------------------------------------------------------------------
 -- tipos_tramites
@@ -97,6 +98,8 @@ INSERT INTO fases_tramites (tipo_fase_id, tipo_tramite_id) VALUES (7, 21);
 INSERT INTO fases_tramites (tipo_fase_id, tipo_tramite_id) VALUES (8, 22);
 INSERT INTO fases_tramites (tipo_fase_id, tipo_tramite_id) VALUES (8, 23);
 INSERT INTO fases_tramites (tipo_fase_id, tipo_tramite_id) VALUES (8, 24);
+INSERT INTO fases_tramites (tipo_fase_id, tipo_tramite_id) VALUES (9, 22);
+INSERT INTO fases_tramites (tipo_fase_id, tipo_tramite_id) VALUES (9, 23);
 
 -- -----------------------------------------------------------------------------
 -- tipos_tareas
@@ -160,6 +163,13 @@ INSERT INTO tipos_ia (id, siglas, descripcion) VALUES (4, 'CA', 'Calificación A
 INSERT INTO tipos_ia (id, siglas, descripcion) VALUES (5, 'EXENTO', 'Exento de instrumento ambiental');
 
 -- -----------------------------------------------------------------------------
+-- solicitudes_fases (whitelist tipo_solicitud × tipo_fase)
+-- -----------------------------------------------------------------------------
+INSERT INTO solicitudes_fases (tipo_solicitud_id, tipo_fase_id) VALUES (14, 9);  -- INTERESADO → RECONOCIMIENTO_INTERESADO
+INSERT INTO solicitudes_fases (tipo_solicitud_id, tipo_fase_id) VALUES (11, 8);  -- DESISTIMIENTO → RESOLUCION
+INSERT INTO solicitudes_fases (tipo_solicitud_id, tipo_fase_id) VALUES (12, 8);  -- RENUNCIA → RESOLUCION
+INSERT INTO solicitudes_fases (tipo_solicitud_id, tipo_fase_id) VALUES (17, 8);  -- OTRO → RESOLUCION
+
 -- normas
 -- -----------------------------------------------------------------------------
 INSERT INTO normas (id, codigo, titulo, url_eli) VALUES (3, 'RD1955_2000', 'Real Decreto 1955/2000, de 1 de diciembre', NULL);
@@ -173,5 +183,6 @@ INSERT INTO catalogo_variables (id, nombre, etiqueta, tipo_dato, norma_id, activ
 INSERT INTO catalogo_variables (id, nombre, etiqueta, tipo_dato, norma_id, activa) VALUES (3, 'sin_linea_aerea', 'Sin línea aérea (instalación íntegramente subterránea)', 'boolean', NULL, true);
 INSERT INTO catalogo_variables (id, nombre, etiqueta, tipo_dato, norma_id, activa) VALUES (4, 'max_tension_nominal_kv', 'Tensión nominal máxima (kV)', 'numerico', NULL, true);
 INSERT INTO catalogo_variables (id, nombre, etiqueta, tipo_dato, norma_id, activa) VALUES (5, 'solo_suelo_urbano_urbanizable', 'Recorrido íntegro en suelo urbano o urbanizable', 'boolean', NULL, true);
+INSERT INTO catalogo_variables (id, nombre, etiqueta, tipo_dato, norma_id, activa) VALUES (6, 'existe_fase_finalizadora_cerrada', 'Existe fase finalizadora cerrada en la solicitud', 'boolean', NULL, true);
 
 -- municipios: cargar aparte con scripts/data/municipios.sql
