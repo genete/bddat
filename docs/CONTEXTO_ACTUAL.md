@@ -4,8 +4,8 @@
 
 ---
 
-**Último cerrado:** #331 — Instalación y configuración WSL completa (Ubuntu 24.04, Flask, PostgreSQL 16 en puerto 5433, Claude Code, legalize-es, memory y plans en git).
+**Último cerrado:** #302 — Fase finalizadora (`es_finalizadora` en `tipos_fases`, nuevo tipo `RECONOCIMIENTO_INTERESADO`, regla FINALIZAR en motor).
 
-**Próximo:** #296 — Señal de resultado en Tarea y Trámite — decisión de diseño pendiente; bloquea trabajo de motor de reglas (M3).
+**Próximo:** #296 — Señal de resultado en Tarea y Trámite (desbloqueado tras cierre de #302).
 
-**En espera:** #332 — CI: ejecutar tests en GitHub Actions (infraestructura, bloques A+B sin BD primero).
+**En espera:** #190 — Criterio PLAZO_ESTADO en motor + contrato interfaz plazos.py (bloqueado hasta que cierre #296).
