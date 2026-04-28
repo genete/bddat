@@ -51,3 +51,22 @@ Esta ruta está en la allowlist del proyecto (`always allow access`).
 - **`sed -i`:** usar tool `Edit` siempre
 - **`python -c "...multilínea..."`:** `Write` el script a `docs_prueba/temp/` → `python docs_prueba/temp/script.py`
 - **`grep 'pat1\|pat2'`:** usar `grep -E 'pat1|pat2'` (ERE sin barra) o `-e pat1 -e pat2`
+
+---
+
+## Cuándo usar el PowerShell tool en lugar de Bash
+
+El PowerShell tool (PS7+) es la alternativa cuando un patrón Bash dispararía un anti-bloqueo
+y el workaround sería más complejo que el comando equivalente en PS7.
+
+| Situación | Bash (problemático) | PowerShell (limpio) |
+|-----------|--------------------|--------------------|
+| Heredoc multilínea con `#` o `$` | dispara prompt | `@'...'@` here-string literal sin expansión |
+| Redirección `>` a fichero | dispara prompt | `Set-Content` / `Out-File` |
+| Sustitución `$()` o backtick | dispara prompt | variable normal `$var = cmd` |
+| Lógica condicional encadenada | `&&` / `\|\|` a veces falla | `&&` y `\|\|` nativos en PS7 |
+| Operaciones Windows (registro, procesos) | requiere `cmd.exe` | cmdlets nativos (`Get-Process`, etc.) |
+
+**Paralelismo:** no usar `ForEach-Object -Parallel` para búsquedas o lecturas — el
+paralelismo real ya viene de llamar varias tools (Grep, Read, Glob) simultáneamente
+en la misma respuesta. ripgrep (Grep tool) ya es multi-hilo internamente.
