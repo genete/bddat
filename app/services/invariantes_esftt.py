@@ -108,6 +108,8 @@ def _check_finalizar(sujeto: str, entidad_id: int) -> Optional[EvaluacionResult]
 def _check_finalizar_fase(fase_id: int) -> Optional[EvaluacionResult]:
     from app.models.tipos_tareas import TipoTarea
     from app.models.documentos_tarea import DocumentoTarea
+    from app.models.resultados_documentos import ResultadoDocumento
+    from app.models.tipos_resultado_documentos import TipoResultadoDocumento
     tarea_incompleta = (
         db.session.query(Tarea)
         .join(Tramite, Tarea.tramite_id == Tramite.id)
@@ -136,12 +138,32 @@ def _check_finalizar_fase(fase_id: int) -> Optional[EvaluacionResult]:
     )
     if incorporar_incompleta:
         return _bloquear('Hay tareas INCORPORAR sin documentos vinculados. Añada al menos un documento antes de cerrar la fase.')
+
+    # Tarea NOTIFICAR con resultado INCORRECTA bloquea el cierre de la fase (#296)
+    notificar_incorrecta = (
+        db.session.query(Tarea)
+        .join(Tramite, Tarea.tramite_id == Tramite.id)
+        .join(TipoTarea, Tarea.tipo_tarea_id == TipoTarea.id)
+        .join(ResultadoDocumento, ResultadoDocumento.documento_id == Tarea.documento_producido_id)
+        .join(TipoResultadoDocumento, TipoResultadoDocumento.id == ResultadoDocumento.tipo_resultado_documento_id)
+        .filter(
+            Tramite.fase_id == fase_id,
+            TipoTarea.codigo == 'NOTIFICAR',
+            TipoResultadoDocumento.efecto_tarea == 'INCORRECTA',
+        )
+        .first()
+    )
+    if notificar_incorrecta:
+        return _bloquear('Hay notificaciones caducadas o fallidas en esta fase. Subsane el resultado antes de cerrar la fase.')
+
     return None
 
 
 def _check_finalizar_tramite(tramite_id: int) -> Optional[EvaluacionResult]:
     from app.models.tipos_tareas import TipoTarea
     from app.models.documentos_tarea import DocumentoTarea
+    from app.models.resultados_documentos import ResultadoDocumento
+    from app.models.tipos_resultado_documentos import TipoResultadoDocumento
     tarea_incompleta = (
         db.session.query(Tarea)
         .join(TipoTarea, Tarea.tipo_tarea_id == TipoTarea.id)
@@ -168,6 +190,23 @@ def _check_finalizar_tramite(tramite_id: int) -> Optional[EvaluacionResult]:
     )
     if incorporar_incompleta:
         return _bloquear('Hay tareas INCORPORAR sin documentos vinculados. Añada al menos un documento antes de cerrar el trámite.')
+
+    # Tarea NOTIFICAR con resultado INCORRECTA bloquea el cierre del trámite (#296)
+    notificar_incorrecta = (
+        db.session.query(Tarea)
+        .join(TipoTarea, Tarea.tipo_tarea_id == TipoTarea.id)
+        .join(ResultadoDocumento, ResultadoDocumento.documento_id == Tarea.documento_producido_id)
+        .join(TipoResultadoDocumento, TipoResultadoDocumento.id == ResultadoDocumento.tipo_resultado_documento_id)
+        .filter(
+            Tarea.tramite_id == tramite_id,
+            TipoTarea.codigo == 'NOTIFICAR',
+            TipoResultadoDocumento.efecto_tarea == 'INCORRECTA',
+        )
+        .first()
+    )
+    if notificar_incorrecta:
+        return _bloquear('Hay notificaciones caducadas o fallidas en este trámite. Subsane el resultado antes de cerrarlo.')
+
     return None
 
 

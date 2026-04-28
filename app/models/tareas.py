@@ -162,3 +162,24 @@ class Tarea(db.Model):
     def ejecutada_con_doc(self):
         """Alias de ejecutada — idéntico desde que la completitud se deduce del documento."""
         return self.ejecutada
+
+    @property
+    def resultado(self):
+        """Efecto de resultado: INDIFERENTE | CORRECTA | INCORRECTA.
+
+        Deriva del documento_producido via resultados_documentos.
+        Sin fila en resultados_documentos → INDIFERENTE.
+        Solo NOTIFICAR puede producir INCORRECTA (#296).
+        """
+        if self.documento_producido and self.documento_producido.resultado_doc:
+            return self.documento_producido.resultado_doc.tipo_resultado.efecto_tarea
+        return 'INDIFERENTE'
+
+    @property
+    def estado(self):
+        """Estado de la tarea: PLANIFICADA | EN_CURSO | EJECUTADA."""
+        if self.planificada:
+            return 'PLANIFICADA'
+        if self.ejecutada:
+            return 'EJECUTADA'
+        return 'EN_CURSO'
