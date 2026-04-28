@@ -31,7 +31,7 @@ Intenta extraer el número de issue de:
 Analiza los commits y ficheros cambiados para redactar:
 
 - **Título:** breve (≤70 caracteres), en imperativo, sin prefijo de categoría
-- **Cuerpo:** sección "## Cambios" con bullets de los cambios principales + línea `Closes #XX` si hay issue
+- **Cuerpo:** sección "## Cambios" con bullets de los cambios principales. Si se detectó un issue, la **última línea del cuerpo DEBE ser `Closes #XX`** — GitHub cierra el issue automáticamente al mergear, sin necesidad de `gh issue close`.
 
 Escribe el cuerpo con la tool `Write` en `D:\BDDAT\docs_prueba\temp\gh_body.md` (nunca usar heredoc ni redirección bash).
 
@@ -64,3 +64,5 @@ git checkout develop
 git pull origin develop
 git branch -D <nombre-rama>
 ```
+
+**No ejecutar `gh issue close`** — si el cuerpo del PR incluía `Closes #XX`, GitHub ya cerró el issue al mergear.
