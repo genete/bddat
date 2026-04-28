@@ -353,7 +353,19 @@ Estos controles son de integridad administrativa, no de plazo. Deben decidirse e
 
 ---
 
-### 3.2 Catálogo de plazos — CERRADO (campo_fecha rediseñado 2026-04-19)
+### 3.2 Catálogo de plazos — CERRADO (campo_fecha rediseñado 2026-04-19) — DEUDA #341
+
+> **Deuda de diseño (#341, 2026-04-28):** La selección de la entrada aplicable en `catalogo_plazos`
+> por `(tipo_elemento, tipo_elemento_id)` es insuficiente. Muchos plazos del RD 1955/2000 dependen
+> del contexto ESFTT completo. Ejemplo real: art. 131.2 RD 1955/2000 — el plazo de informe de AAPP
+> en AAC se reduce de 30 a 15 días naturales si concurren tres condiciones simultáneas:
+> `tiene_aap_previa AND sin_modificacion_aap AND NOT solicita_dup`.
+>
+> **Diseño pendiente:** tabla `condiciones_plazo` paralela a `condiciones_regla`, campo `orden` en
+> `catalogo_plazos`, y evaluador en `obtener_estado_plazo` que recorra las entradas por orden y
+> evalúe condiciones contra el contexto completo ESFTT (igual que el motor de reglas).
+> Las variables derivadas necesarias (`tiene_aap_previa`, `solicita_dup`, etc.) se registran
+> como `@variable` en `app/services/variables/`. Ver #341.
 
 > **Decisión:** Tabla separada `catalogo_plazos`, administrable por el Supervisor.
 
@@ -736,5 +748,7 @@ Issues preexistentes relacionados (pendientes de revisar contra este diseño):
 - [ ] **§4 Cadena de evaluación** — formalizar contrato de interfaz `plazos.py`
 - [x] **Leyes sectoriales (parcial)** — ~~RD 1955/2000~~: ✅ añadido en §5.2 (sesión 2026-04-04). ~~Decreto 9/2011~~: sin plazos propios (suprime trámite). ~~DL 26/2021~~: sin plazos propios (suprime trámite). Pendiente: Ley 21/2013 (EIA) — en revisión previa, ver `normas_catalog.csv`.
 - [x] **Revisar #190** — reorientado (2026-04-28): criterio `PLAZO_ESTADO` queda obsoleto; reemplazado por variables motor-agnósticas `estado_plazo`/`efecto_plazo` expuestas via `plazos.py` stub (Fase 2). Lógica real en #172.
-- [ ] **Revisar #172 y #173** — actualizar alcance según arquitectura agnóstica
+- [x] **Revisar #172** — cerrado 2026-04-28: `calcular_fecha_fin` y tablas válidas; deuda de condiciones de aplicabilidad → #341
+- [ ] **#341 Condiciones de aplicabilidad en `catalogo_plazos`** — tabla `condiciones_plazo` + campo `orden` + evaluador en `obtener_estado_plazo`; bloqueante para seed real de `catalogo_plazos` (§5.2)
+- [ ] **Revisar #173** — actualizar alcance según arquitectura agnóstica
 - [ ] **Reutilización de trámites entre expedientes** — art. 95.3: procedimiento caducado cuyo derecho no ha prescrito permite nuevo procedimiento incorporando actos del anterior. Implica modelo de enlace entre expedientes y reutilización del pool documental. Diseñar cuando se estudie normativa sectorial.

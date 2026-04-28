@@ -78,6 +78,9 @@ def obtener_estado_plazo(elemento, tipo_elemento: str) -> EstadoPlazo:
         return _SIN_PLAZO
 
     from app.models.catalogo_plazos import CatalogoPlazo
+    # TODO #341: sustituir por evaluador de condiciones (paralelo a motor de reglas).
+    # La búsqueda simple por tipo_elemento_id es insuficiente cuando el plazo depende
+    # del contexto ESFTT completo (p.ej. art. 131.2 RD 1955/2000: AAC + AAP previa + sin DUP).
     catalogo = CatalogoPlazo.query.filter_by(
         tipo_elemento=tipo_elemento,
         tipo_elemento_id=tipo_elemento_id,
