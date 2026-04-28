@@ -508,15 +508,15 @@ Pendiente de diseño:
 
 ## 4. Cadena de evaluación
 
-> **Estado:** Parcialmente cerrado — §4.1 cerrado sesión 2026-04-23. Contrato de interfaz `plazos.py` pendiente.
+> **Estado:** Cerrado — §4.1 cerrado 2026-04-23; contrato de interfaz formalizado en #190 (2026-04-28).
 
 Arquitectura acordada en conversación (2026-04-01):
 
 ```
 Motor agnóstico (evalúa variables, no conoce plazos)
-    ↑  variables: plazo_vencido, dias_transcurridos, fecha_limite, silencio_producido...
+    ↑  variables: estado_plazo, efecto_plazo  (operadores estándar EQ/IN/etc.)
 ContextAssembler
-    ↑  llama a plazos.py para obtener variables de plazo
+    ↑  llama a variables/plazo.py (@variable 'estado_plazo', 'efecto_plazo')
     ↑  llama a plazos.py para derivar estado de tareas ESPERAR_PLAZO (§4.1)
 plazos.py
     ├── Norma sectorial → plazo específico por tipo de Fase/Trámite
@@ -527,7 +527,38 @@ plazos.py
     └── Calendario inhábiles Junta de Andalucía
 ```
 
-Pendiente de formalizar: contrato de interfaz de `plazos.py` (qué recibe, qué devuelve).
+### Contrato de interfaz — `app/services/plazos.py`
+
+```python
+from dataclasses import dataclass
+from datetime import date
+from typing import Optional
+
+@dataclass
+class EstadoPlazo:
+    estado: str                    # 'SIN_PLAZO' | 'EN_PLAZO' | 'PROXIMO_VENCER' | 'VENCIDO'
+    efecto: str                    # 'NINGUNO' | 'SILENCIO_ESTIMATORIO' | ... (ver §2.4)
+    fecha_limite: Optional[date]   # None si SIN_PLAZO
+    dias_restantes: Optional[int]  # None si SIN_PLAZO; negativo si VENCIDO
+
+def obtener_estado_plazo(elemento, tipo_elemento: str) -> EstadoPlazo:
+    """
+    elemento:      objeto ORM (Solicitud, Fase, Tramite, Tarea)
+    tipo_elemento: 'SOLICITUD' | 'FASE' | 'TRAMITE' | 'TAREA'
+    """
+```
+
+**Variables expuestas al motor** (registradas en `catalogo_variables`, ambas `activa=TRUE`):
+
+| Variable | tipo_dato | Valores posibles |
+|---|---|---|
+| `estado_plazo` | texto | `SIN_PLAZO` · `EN_PLAZO` · `PROXIMO_VENCER` · `VENCIDO` |
+| `efecto_plazo` | texto | `NINGUNO` · `SILENCIO_ESTIMATORIO` · `RESPONSABILIDAD_DISCIPLINARIA` · `SILENCIO_DESESTIMATORIO` · `CADUCIDAD_PROCEDIMIENTO` · `PERDIDA_TRAMITE` · `APERTURA_RECURSO` · `PRESCRIPCION_CONDICIONADO` · `CONFORMIDAD_PRESUNTA` · `SIN_EFECTO_AUTOMATICO` |
+
+**Stub Fase 2 (#190):** `obtener_estado_plazo` devuelve `SIN_PLAZO`/`NINGUNO` siempre.
+Ninguna regla del motor disparará por plazo hasta que #172 implemente la lógica real.
+
+**M3 (#172):** la función leerá `catalogo_plazos`, resolverá `campo_fecha` JSONB → `Documento.fecha_administrativa`, calculará `fecha_limite` con `dias_inhabiles` y `suspensiones_plazo`, y devolverá el estado calculado según las condiciones de §2.4.
 
 ---
 
@@ -704,6 +735,6 @@ Issues preexistentes relacionados (pendientes de revisar contra este diseño):
 - [ ] **§3.6 Condicionados de resolución** — diseñar nombre y tipos de fase, régimen de plazos (sujeto = administrado), mecanismo de generación desde la resolución, reglas de colisión y distinción visual en UI
 - [ ] **§4 Cadena de evaluación** — formalizar contrato de interfaz `plazos.py`
 - [x] **Leyes sectoriales (parcial)** — ~~RD 1955/2000~~: ✅ añadido en §5.2 (sesión 2026-04-04). ~~Decreto 9/2011~~: sin plazos propios (suprime trámite). ~~DL 26/2021~~: sin plazos propios (suprime trámite). Pendiente: Ley 21/2013 (EIA) — en revisión previa, ver `normas_catalog.csv`.
-- [ ] **Revisar #190** — determinar si el criterio `PLAZO_ESTADO` queda obsoleto o se reorienta
+- [x] **Revisar #190** — reorientado (2026-04-28): criterio `PLAZO_ESTADO` queda obsoleto; reemplazado por variables motor-agnósticas `estado_plazo`/`efecto_plazo` expuestas via `plazos.py` stub (Fase 2). Lógica real en #172.
 - [ ] **Revisar #172 y #173** — actualizar alcance según arquitectura agnóstica
 - [ ] **Reutilización de trámites entre expedientes** — art. 95.3: procedimiento caducado cuyo derecho no ha prescrito permite nuevo procedimiento incorporando actos del anterior. Implica modelo de enlace entre expedientes y reutilización del pool documental. Diseñar cuando se estudie normativa sectorial.
