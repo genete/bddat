@@ -21,6 +21,7 @@ from app.models.tipos_solicitudes import TipoSolicitud
 from app.models.tipos_tareas import TipoTarea
 from app.models.tipos_tramites import TipoTramite
 from app.models.tipos_documentos import TipoDocumento
+from app.models.tipos_resultado_documentos import TipoResultadoDocumento
 from app.models.consultas_nombradas import ConsultaNombrada
 from app.models.plantillas import Plantilla
 
@@ -50,6 +51,7 @@ from app.models.historico_titular_expediente import HistoricoTitularExpediente  
 from app.models.expedientes_solicitudes import ExpedienteSolicitud
 from app.models.solicitudes_fases import SolicitudFase
 from app.models.fases_tramites import FaseTramite
+from app.models.tipos_documentos_resultados_validos import TipoDocumentoResultadoValido
 
 # Modelos operacionales con dependencias múltiples
 from app.models.documentos_proyecto import DocumentoProyecto  # Depende de Documento, Proyecto
@@ -60,6 +62,7 @@ from app.models.municipios_proyecto import MunicipioProyecto  # Depende de Munic
 from app.models.tramites import Tramite  # Depende de Fase, TipoTramite
 from app.models.tareas import Tarea  # Depende de Tramite, TipoTarea, Documento
 from app.models.documentos_tarea import DocumentoTarea  # Depende de Tarea, Documento
+from app.models.resultados_documentos import ResultadoDocumento  # Depende de Documento, TipoResultadoDocumento
 
 # Motor de reglas (depende de TipoSolicitud; tipo_id sin FK por diseño polimórfico)
 from app.models.motor_reglas import ReglaMotor, CondicionRegla
@@ -77,6 +80,7 @@ __all__ = [
     'TipoTarea',
     'TipoTramite',
     'TipoDocumento',
+    'TipoResultadoDocumento',
     'ConsultaNombrada',
     'Plantilla',
     # Metadata del sistema
@@ -97,6 +101,7 @@ __all__ = [
     'ExpedienteSolicitud',
     'SolicitudFase',
     'FaseTramite',
+    'TipoDocumentoResultadoValido',
     # Operacionales (continuación)
     'DocumentoProyecto',
     'Fase',
@@ -104,6 +109,7 @@ __all__ = [
     'Tramite',
     'Tarea',
     'DocumentoTarea',
+    'ResultadoDocumento',
     # Motor de reglas
     'ReglaMotor',
     'CondicionRegla',
