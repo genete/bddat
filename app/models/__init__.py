@@ -11,6 +11,8 @@ ORDEN IMPORTANTE:
 """
 
 # Modelos maestros primero (no tienen FKs entre ellos)
+from app.models.efectos_plazo import EfectoPlazo
+from app.models.ambitos_inhabilidad import AmbitoInhabilidad
 from app.models.usuarios import Usuario, Rol
 from app.models.municipios import Municipio
 from app.models.tipos_expedientes import TipoExpediente
@@ -64,11 +66,17 @@ from app.models.tareas import Tarea  # Depende de Tramite, TipoTarea, Documento
 from app.models.documentos_tarea import DocumentoTarea  # Depende de Tarea, Documento
 from app.models.resultados_documentos import ResultadoDocumento  # Depende de Documento, TipoResultadoDocumento
 
+# Plazos — maestros sin dependencias operacionales (efectos_plazo, ambitos ya importados arriba)
+from app.models.dias_inhabiles import DiaInhabil        # depende de AmbitoInhabilidad
+from app.models.catalogo_plazos import CatalogoPlazo    # depende de EfectoPlazo
+
 # Motor de reglas (depende de TipoSolicitud; tipo_id sin FK por diseño polimórfico)
 from app.models.motor_reglas import ReglaMotor, CondicionRegla
 
 __all__ = [
     # Maestros
+    'EfectoPlazo',
+    'AmbitoInhabilidad',
     'Usuario',
     'Rol',
     'Municipio',
@@ -110,6 +118,9 @@ __all__ = [
     'Tarea',
     'DocumentoTarea',
     'ResultadoDocumento',
+    # Plazos
+    'DiaInhabil',
+    'CatalogoPlazo',
     # Motor de reglas
     'ReglaMotor',
     'CondicionRegla',
