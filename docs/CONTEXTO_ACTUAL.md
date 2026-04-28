@@ -4,8 +4,8 @@
 
 ---
 
-**Último cerrado:** #302 — Fase finalizadora (`es_finalizadora` en `tipos_fases`, nuevo tipo `RECONOCIMIENTO_INTERESADO`, regla FINALIZAR en motor).
+**Último cerrado:** #296 — Señal de resultado en Tarea y Trámite (3 tablas nuevas, properties `estado`/`resultado`, bloqueo NOTIFICAR INCORRECTA en invariantes, `Solicitud.estado` cualificado).
 
-**Próximo:** #296 — Señal de resultado en Tarea y Trámite (desbloqueado tras cierre de #302).
+**Próximo:** #190 — Criterio PLAZO_ESTADO en motor + contrato interfaz plazos.py (desbloqueado tras cierre de #296; camino directo a #328).
 
-**En espera:** #190 — Criterio PLAZO_ESTADO en motor + contrato interfaz plazos.py (bloqueado hasta que cierre #296).
+**En espera:** #172 — Plazos legales: cómputo días hábiles, `catalogo_plazos`, `dias_inhabiles` (también en árbol de #328; sin bloqueador explícito, puede ir en paralelo o tras #190).
