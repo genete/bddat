@@ -37,3 +37,4 @@ def get_registry() -> dict[str, Callable]:
 # Importar submódulos para que sus @variable se registren al arrancar Flask
 from app.services.variables import dato        # noqa: E402, F401
 from app.services.variables import calculado   # noqa: E402, F401
+from app.services.variables import plazo       # noqa: E402, F401
