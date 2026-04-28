@@ -93,16 +93,21 @@ class Tramite(db.Model):
 
     @property
     def finalizado(self):
-        """True si todas las tareas con tipos documentales tienen documento_producido_id.
-        ESPERAR_PLAZO se excluye de este chequeo — su completitud es temporal y la evalúa
-        plazos.py via ContextAssembler (ver §4.1 DISEÑO_FECHAS_PLAZOS.md)."""
+        """True si todas las tareas con tipos documentales tienen documento_producido_id
+        y ninguna tarea NOTIFICAR tiene resultado INCORRECTA (#296).
+
+        ESPERAR_PLAZO se excluye — su completitud la evalúa plazos.py via ContextAssembler.
+        """
         _requieren = {'INCORPORAR', 'ANALISIS', 'REDACTAR', 'FIRMAR', 'NOTIFICAR', 'PUBLICAR'}
-        tareas_pendientes = [
-            t for t in self.tareas
-            if t.tipo_tarea and t.tipo_tarea.codigo in _requieren
-            and t.documento_producido_id is None
-        ]
-        return len(tareas_pendientes) == 0
+        for t in self.tareas:
+            if not t.tipo_tarea:
+                continue
+            codigo = t.tipo_tarea.codigo
+            if codigo in _requieren and t.documento_producido_id is None:
+                return False
+            if codigo == 'NOTIFICAR' and t.resultado == 'INCORRECTA':
+                return False
+        return True
 
     @property
     def planificado(self):
@@ -113,3 +118,12 @@ class Tramite(db.Model):
     def en_curso(self):
         """True si el trámite tiene tareas pero no está finalizado."""
         return not self.planificado and not self.finalizado
+
+    @property
+    def estado(self):
+        """Estado del trámite: PLANIFICADO | EN_CURSO | FINALIZADO."""
+        if self.planificado:
+            return 'PLANIFICADO'
+        if self.finalizado:
+            return 'FINALIZADO'
+        return 'EN_CURSO'

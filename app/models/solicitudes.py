@@ -138,14 +138,26 @@ class Solicitud(db.Model):
 
     @property
     def estado(self):
-        """Primera comprobación del estado: RESUELTA si todas las fases están finalizadas.
-        Si devuelve RESUELTA, el llamador debe confirmar via motor de reglas que existe la
-        resolución exigida por el tipo de solicitud (issue #311 P4 — pendiente de implementar)."""
-        if not self.fases:
+        """Estado de la solicitud.
+
+        EN_TRAMITE si alguna fase no está finalizada.
+        Si todas las fases están finalizadas, cualifica con el resultado de la fase
+        finalizadora: RESUELTA_FAVORABLE, RESUELTA_DESFAVORABLE, etc.
+        Fallback RESUELTA cuando la finalizadora no tiene resultado_fase registrado.
+
+        El llamador debe confirmar via motor de reglas (accion=FINALIZAR, rule id=5)
+        que existe la resolución exigida por el tipo de solicitud (#311 P4).
+        """
+        if not self.fases or not all(f.finalizada for f in self.fases):
             return 'EN_TRAMITE'
-        if all(f.finalizada for f in self.fases):
-            return 'RESUELTA'
-        return 'EN_TRAMITE'
+        fase_fin = next(
+            (f for f in self.fases
+             if f.tipo_fase and f.tipo_fase.es_finalizadora and f.finalizada),
+            None
+        )
+        if fase_fin and fase_fin.resultado_fase:
+            return 'RESUELTA_' + fase_fin.resultado_fase.codigo
+        return 'RESUELTA'
 
     @property
     def activa(self):

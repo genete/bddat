@@ -85,7 +85,7 @@ class Fase(db.Model):
         db.Integer,
         db.ForeignKey('tipos_resultados_fases.id'),
         nullable=True,
-        comment='FK a TIPOS_RESULTADOS_FASES. Resultado de la fase al finalizar'
+        comment='FK a TIPOS_RESULTADOS_FASES. Solo relevante en fases finalizadoras (es_finalizadora=True). Las fases intermedias cierran por documento_resultado_id; su resultado_fase_id debe quedar NULL.'
     )
     
     documento_resultado_id = db.Column(
@@ -153,3 +153,14 @@ class Fase(db.Model):
             and self.resultado_fase_id is not None
             and self.resultado_fase.codigo in ('FAVORABLE', 'FAVORABLE_CONDICIONADO')
         )
+
+    @property
+    def estado(self):
+        """Estado de la fase: PLANIFICADA | EN_CURSO | PDTE_CIERRE | FINALIZADA."""
+        if self.finalizada:
+            return 'FINALIZADA'
+        if self.pdte_cierre:
+            return 'PDTE_CIERRE'
+        if self.planificada:
+            return 'PLANIFICADA'
+        return 'EN_CURSO'
