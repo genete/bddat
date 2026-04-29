@@ -143,10 +143,8 @@ Margen real estimado: 16-18 h.
 1. **Código `tipo_fase` para INFORME_AAPP en AAC** — no existe en el seed de #172. Hay que crearlo en el catálogo de tipos de fase antes de la sesión 5.
 2. **Semántica exacta de `es_solicitud_aac_pura`** — resuelto: `solicitud.contiene_tipo('AAC') and not contiene_tipo('AAP') and not contiene_tipo('DUP')`. Sin ambigüedad.
 3. **UI Supervisor para `condiciones_plazo`** — no existe formulario. Por ahora solo vía migración/shell. Issue futuro.
-4. **Caso "plazo eliminado" Decreto 9/2011 DA 1ª** — requiere regla en `motor_reglas` + variables `clasificacion_suelo`, `discurre_subterranea`. Issue separado.
-5. **Cache del dict de variables** — si una request llama `evaluar_multi` y luego `obtener_estado_plazo`, `_compilar_variables` se ejecuta dos veces. Issue de optimización.
-6. **`CondicionPlazo.valor` JSON vs JSONB** — `condiciones_regla` usa JSON. Armonizar a JSONB en ambas tablas: issue futuro.
-7. **Caso EIA Ley 21/2013** — modelable con #341 cuando `longitud_km` esté implementada. Issue posterior.
+4. **Cache del dict de variables** — si una request llama `evaluar_multi` y luego `obtener_estado_plazo`, `_compilar_variables` se ejecuta dos veces. Issue de optimización.
+6. **Caso EIA Ley 21/2013** — modelable con #341 cuando `longitud_km` esté implementada. Issue posterior.
 8. **Ordenación AAP+AAC combinadas** — si una solicitud combinada pudiera tener plazos distintos por sigla, habría que iterar como hace `evaluar_multi`. Issue a abrir si emerge el caso.
 9. **Refactor `tipos_resultados_fases` → enum en código** — la tabla no es configurable por el Supervisor y nunca debería serlo (rompería el motor). Patrón ya existente en el proyecto: `tipo_elemento` como String sin FK. Refactor: cambiar `Fase.resultado_fase_id` FK por `Fase.resultado_fase_codigo String(30)` + CHECK constraint + mover los valores a constante en `invariantes_esftt.py`. Issue separado, no bloquea #341. Mientras tanto, definir `RESULTADO_FASE_FAVORABLE_CODIGOS = frozenset({'FAVORABLE', 'FAVORABLE_CONDICIONADO'})` en `invariantes_esftt.py` usando la tabla existente.
 
