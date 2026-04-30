@@ -156,19 +156,23 @@ def _compilar_sujeto(ctx: ExpedienteContext, siglas_override: str = None) -> str
 # Compilación del dict de variables
 # ---------------------------------------------------------------------------
 
-def _compilar_variables(ctx: ExpedienteContext) -> dict:
+def _compilar_variables(ctx: ExpedienteContext, excluir: set = None) -> dict:
     """
     Evalúa todas las variables activas en catalogo_variables invocando el registry.
 
     Las variables inactivas (activa=False) se omiten del dict.
     Las que fallan o no tienen función devuelven None con warning en log.
+    excluir: nombres de variables a omitir (anti-recursión con plazos.py).
     """
     from app.models.motor_reglas import CatalogoVariable
     from app.services.variables import _REGISTRY  # importación tardía: evita circular
 
+    excluir = excluir or set()
     variables_activas = CatalogoVariable.query.filter_by(activa=True).all()
     resultado = {}
     for var in variables_activas:
+        if var.nombre in excluir:
+            continue
         fn = _REGISTRY.get(var.nombre)
         if fn is None:
             log.warning('assembler: variable activa sin función en registry: %s', var.nombre)

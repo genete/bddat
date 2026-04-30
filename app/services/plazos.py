@@ -19,9 +19,14 @@ Lógica real (#172):
 from __future__ import annotations
 
 import calendar
+import logging
 from dataclasses import dataclass
 from datetime import date, timedelta
 from typing import Optional
+
+from sqlalchemy.orm import joinedload
+
+log = logging.getLogger(__name__)
 
 UMBRAL_ALERTA = 5  # días hábiles (DISEÑO_FECHAS_PLAZOS.md §2.4)
 
@@ -57,7 +62,12 @@ _SIN_PLAZO = EstadoPlazo(
 # API pública
 # ---------------------------------------------------------------------------
 
-def obtener_estado_plazo(elemento, tipo_elemento: str) -> EstadoPlazo:
+def obtener_estado_plazo(
+    elemento,
+    tipo_elemento: str,
+    ctx=None,
+    variables=None,
+) -> EstadoPlazo:
     """
     Devuelve el estado del plazo legal asociado a un elemento ESFTT.
 
@@ -65,10 +75,17 @@ def obtener_estado_plazo(elemento, tipo_elemento: str) -> EstadoPlazo:
         elemento:      Instancia ORM del elemento evaluado
                        (Solicitud, Fase, Tramite o Tarea).
                        None o dict → SIN_PLAZO sin consultar BD.
-        tipo_elemento: Literal del tipo: 'SOLICITUD' | 'FASE' | 'TRAMITE' | 'TAREA'.
+        tipo_elemento: 'SOLICITUD' | 'FASE' | 'TRAMITE' | 'TAREA'
+        ctx:           ExpedienteContext. Si se pasa, construye variables internamente
+                       (excluyendo estado_plazo/efecto_plazo para evitar recursión).
+        variables:     Dict de variables pre-construido. Tiene precedencia sobre ctx.
 
-    Returns:
-        EstadoPlazo con estado, efecto, fecha_limite y dias_restantes.
+    Ruta legacy (ctx=None, variables=None):
+        Usa CatalogoPlazo.query.filter_by(...).first() — compatible con mocks de test_172.
+        La llaman las variables de plazo.py antes de la sesión 4; se elimina en sesión 6.
+
+    Ruta nueva (ctx o variables proporcionados):
+        Delega en _seleccionar_catalogo con el dict de variables para evaluar condiciones.
     """
     if elemento is None or isinstance(elemento, dict):
         return _SIN_PLAZO
@@ -77,15 +94,25 @@ def obtener_estado_plazo(elemento, tipo_elemento: str) -> EstadoPlazo:
     if tipo_elemento_id is None:
         return _SIN_PLAZO
 
-    from app.models.catalogo_plazos import CatalogoPlazo
-    # TODO #341: sustituir por evaluador de condiciones (paralelo a motor de reglas).
-    # La búsqueda simple por tipo_elemento_id es insuficiente cuando el plazo depende
-    # del contexto ESFTT completo (p.ej. art. 131.2 RD 1955/2000: AAC + AAP previa + sin DUP).
-    catalogo = CatalogoPlazo.query.filter_by(
-        tipo_elemento=tipo_elemento,
-        tipo_elemento_id=tipo_elemento_id,
-        activo=True,
-    ).first()
+    if ctx is None and variables is None:
+        # Ruta legacy: query simple, sin evaluador de condiciones.
+        # Mantiene la cadena .filter_by(...).first() que mockean los tests #172 y #190
+        # para que sigan verdes sin modificación.
+        from app.models.catalogo_plazos import CatalogoPlazo
+        catalogo = CatalogoPlazo.query.filter_by(
+            tipo_elemento=tipo_elemento,
+            tipo_elemento_id=tipo_elemento_id,
+            activo=True,
+        ).first()
+    else:
+        if variables is not None:
+            variables_dict = variables
+        else:
+            from app.services.assembler import _compilar_variables
+            variables_dict = _compilar_variables(
+                ctx, excluir={'estado_plazo', 'efecto_plazo'}
+            )
+        catalogo = _seleccionar_catalogo(tipo_elemento, tipo_elemento_id, variables_dict)
 
     if catalogo is None:
         return _SIN_PLAZO
@@ -203,6 +230,74 @@ def _dias_habiles_entre(fecha_ini: date, fecha_fin: date, inhabiles: frozenset) 
             cuenta += 1
         cursor += timedelta(days=1)
     return cuenta
+
+
+def _evaluar_condiciones_plazo(condiciones, variables: dict) -> bool:
+    """
+    Evalúa lista de condiciones con AND implícito.
+
+    Sin condiciones → siempre True.
+    Variable ausente en dict → False con warning (decisión F de IMPLEMENTACION_341.md).
+    Usa _OPERADORES de operadores.py (S1) — no depende de motor_reglas.
+    """
+    from app.services.operadores import _OPERADORES
+
+    for cond in sorted(condiciones, key=lambda c: c.orden):
+        nombre = cond.variable.nombre
+        if nombre not in variables:
+            log.warning('plazos: variable ausente en dict de condiciones: %s', nombre)
+            return False
+        op_fn = _OPERADORES.get(cond.operador)
+        if op_fn is None:
+            log.warning('plazos: operador desconocido en condicion_plazo: %s', cond.operador)
+            return False
+        try:
+            if not bool(op_fn(variables[nombre], cond.valor)):
+                return False
+        except Exception as exc:
+            log.warning('plazos: error evaluando %s %s %r: %s',
+                        nombre, cond.operador, cond.valor, exc)
+            return False
+    return True
+
+
+def _seleccionar_catalogo(tipo_elemento: str, tipo_id: int, variables_dict: dict):
+    """
+    Devuelve la primera entrada activa de catalogo_plazos que supera sus condiciones.
+
+    Algoritmo (IMPLEMENTACION_341.md §Sesión 4):
+      1. Carga entradas activas con joinedload de condiciones+variable.
+      2. Ordena por orden ASC, id ASC (menor orden = mayor prioridad).
+      3. Itera: entrada sin condiciones → candidata válida inmediata.
+              entrada con condiciones → evalúa con AND implícito.
+      4. Devuelve la primera que pasa; si ninguna → None con warning.
+    """
+    from app.models.catalogo_plazos import CatalogoPlazo
+    from app.models.condiciones_plazo import CondicionPlazo
+
+    entradas = (
+        CatalogoPlazo.query
+        .options(
+            joinedload(CatalogoPlazo.condiciones).joinedload(CondicionPlazo.variable)
+        )
+        .filter_by(tipo_elemento=tipo_elemento, tipo_elemento_id=tipo_id, activo=True)
+        .order_by(CatalogoPlazo.orden.asc(), CatalogoPlazo.id.asc())
+        .all()
+    )
+
+    for entrada in entradas:
+        if not entrada.condiciones:
+            return entrada
+        if _evaluar_condiciones_plazo(entrada.condiciones, variables_dict):
+            return entrada
+
+    if entradas:
+        log.warning(
+            'plazos: ninguna entrada de catalogo_plazos satisface condiciones '
+            'para %s/%s — se devuelve SIN_PLAZO',
+            tipo_elemento, tipo_id,
+        )
+    return None
 
 
 def _get_tipo_elemento_id(elemento, tipo_elemento: str) -> Optional[int]:
