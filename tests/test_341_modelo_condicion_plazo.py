@@ -124,13 +124,22 @@ def test_condicion_plazo_check_operador_invalido(app_ctx, plazo_base):
 
 
 def test_catalogo_plazo_orden_default(app_ctx):
-    """Entradas existentes tienen orden=100 tras la migración."""
+    """Una nueva entrada sin orden explícito recibe orden=100 por server_default."""
+    from app import db
     from app.models.catalogo_plazos import CatalogoPlazo
-    plazos = CatalogoPlazo.query.all()
-    if not plazos:
-        pytest.skip('BD sin seed en catalogo_plazos — server_default verificado vía ciclo upgrade/downgrade')
-    assert all(p.orden == 100 for p in plazos), (
-        'Alguna entrada existente tiene orden != 100; el server_default no se aplicó'
+    from app.models.efectos_plazo import EfectoPlazo
+    efecto = EfectoPlazo.query.filter_by(codigo='NINGUNO').first()
+    plazo = CatalogoPlazo(
+        tipo_elemento='FASE',
+        tipo_elemento_id=9998,
+        plazo_valor=10,
+        plazo_unidad='DIAS_HABILES',
+        efecto_vencimiento_id=efecto.id,
+    )
+    db.session.add(plazo)
+    db.session.flush()
+    assert plazo.orden == 100, (
+        f'server_default no aplicó orden=100; obtenido {plazo.orden}'
     )
 
 
