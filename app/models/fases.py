@@ -21,12 +21,12 @@ class Fase(db.Model):
 
     CAMPO TIPO_FASE_ID:
         - NOT NULL: Define qué tipo de fase es (ADMISIBILIDAD, CONSULTAS, etc.)
-        - FK a TIPOS_FASES (estructura schema)
+        - FK a TIPOS_FASES (public schema)
         - Determina trámites obligatorios según motor de reglas
 
     CAMPO RESULTADO_FASE_ID:
         - NULLABLE: Se rellena al formalizar el cierre de la fase
-        - FK a TIPOS_RESULTADOS_FASES (estructura schema)
+        - FK a TIPOS_RESULTADOS_FASES (public schema)
 
     CAMPO DOCUMENTO_RESULTADO_ID:
         - NULLABLE: Documento oficial que formaliza el resultado

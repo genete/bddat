@@ -22,7 +22,7 @@ class Tramite(db.Model):
 
     CAMPO TIPO_TRAMITE_ID:
         - NOT NULL: Define qué tipo de trámite es
-        - FK a TIPOS_TRAMITES (estructura schema)
+        - FK a TIPOS_TRAMITES (public schema)
         - Determina patrón de tareas obligatorias
 
     ESTADOS DEDUCIBLES (properties, no columna):

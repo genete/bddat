@@ -23,7 +23,7 @@ class Tarea(db.Model):
     
     CAMPO TIPO_TAREA_ID:
         - NOT NULL: Define qué tipo de tarea atómica es
-        - FK a TIPOS_TAREAS (estructura schema)
+        - FK a TIPOS_TAREAS (public schema)
         - Solo 7 tipos atómicos posibles
     
     CAMPO DOCUMENTO_USADO_ID:

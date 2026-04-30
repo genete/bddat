@@ -46,7 +46,7 @@ target_db = current_app.extensions['migrate'].db
 
 # IMPORTANTE: Importar explícitamente app.models para garantizar que Alembic
 # cargue todos los modelos en el orden correcto ANTES de construir el grafo
-# de dependencias. Esto es crítico para FK cross-schema (public <-> estructura)
+# de dependencias. Esto es crítico para resolver el orden de FK entre modelos.
 # Referencias: 
 # - https://github.com/sqlalchemy/alembic/discussions/1571
 # - https://www.technetexperts.com/alembic-multitenant-fk-order/

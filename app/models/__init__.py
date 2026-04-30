@@ -2,7 +2,7 @@
 
 Estructura de importaciones:
 - Modelos operacionales (public schema)
-- Modelos maestros (estructura schema)
+- Modelos maestros (public schema)
 - Modelos auxiliares y relaciones
 
 ORDEN IMPORTANTE:

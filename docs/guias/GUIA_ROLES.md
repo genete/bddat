@@ -2,7 +2,7 @@
 
 ## Descripción General
 
-El sistema BDDAT implementa cuatro roles con permisos diferenciados sobre los distintos schemas y tablas de la base de datos PostgreSQL. Esta estructura permite una gestión segura y eficiente de las operaciones administrativas y de tramitación.
+El sistema BDDAT implementa cuatro roles con permisos diferenciados sobre las tablas de la base de datos PostgreSQL. Esta estructura permite una gestión segura y eficiente de las operaciones administrativas y de tramitación.
 
 ---
 
@@ -31,7 +31,7 @@ Rol de gestión y configuración del sistema, orientado a la supervisión operat
 
 **Permisos:**
 - Lectura y escritura completa sobre tabla `USUARIOS` (incluyendo asignación de roles)
-- Lectura y escritura sobre schema `estructura` (tablas maestras y configuración)
+- Lectura y escritura sobre tablas maestras del schema `public` (TIPOS_*, motor de reglas)
 - Lectura sobre schema `legacy` (sin permisos de modificación)
 - Lectura y escritura sobre todas las tablas operacionales del schema `public`
 
@@ -42,7 +42,7 @@ Rol de gestión y configuración del sistema, orientado a la supervisión operat
 
 **Funciones principales:**
 1. Gestión completa de usuarios y roles del sistema
-2. Configuración del sistema mediante schema `estructura`:
+2. Configuración del sistema (tablas maestras del schema `public`):
    - Gestión de tablas maestras (TIPOSEXPEDIENTES, TIPOSSOLICITUDES, TIPOSFASES, etc.)
    - Administración del motor de reglas de negocio
 3. Supervisión de expedientes y procesos de tramitación
@@ -58,13 +58,13 @@ Usuario operativo encargado de la tramitación de expedientes.
 **Permisos:**
 - Lectura y escritura sobre tablas operacionales: EXPEDIENTES, SOLICITUDES, FASES, TRAMITES, TAREAS, DOCUMENTOS
 - Lectura sobre tabla `USUARIOS` (consultar datos de compañeros, modificar propios datos personales)
-- Lectura sobre schema `estructura` (necesario para tramitar según tipos, fases y reglas de negocio)
+- Lectura sobre tablas maestras del schema `public` (necesario para tramitar según tipos, fases y reglas de negocio)
 - Lectura sobre schema `legacy`
 
 **No puede acceder a:**
 - Gestión de usuarios (crear/eliminar/asignar roles)
 - Tabla `alembic_version`
-- Modificación del schema `estructura`
+- Modificación de tablas maestras (TIPOS_*)
 - Modificación del schema `legacy`
 
 **Características:**
@@ -81,13 +81,13 @@ Usuario de apoyo administrativo con permisos similares a TRAMITADOR pero con int
 **Permisos:**
 - Lectura y escritura sobre tablas operacionales relevantes para tareas administrativas
 - Lectura sobre tabla `USUARIOS` (consultar datos de compañeros, modificar propios datos personales)
-- Lectura sobre schema `estructura`
+- Lectura sobre tablas maestras del schema `public`
 - Lectura sobre schema `legacy`
 
 **No puede acceder a:**
 - Gestión de usuarios (crear/eliminar/asignar roles)
 - Tabla `alembic_version`
-- Modificación del schema `estructura`
+- Modificación de tablas maestras (TIPOS_*)
 - Modificación del schema `legacy`
 - Vistas e interfaces del perfil TRAMITADOR
 
@@ -99,7 +99,7 @@ Usuario de apoyo administrativo con permisos similares a TRAMITADOR pero con int
 
 ## Tabla Resumen de Permisos
 
-| Rol | USUARIOS | estructura | legacy | alembic_version | Tablas operacionales |
+| Rol | USUARIOS | Tablas maestras | legacy | alembic_version | Tablas operacionales |
 |:---|:---|:---|:---|:---|:---|
 | **ADMIN** | RW | RW | RW | RW | RW |
 | **SUPERVISOR** | RW | RW | R | - | RW |
@@ -118,10 +118,7 @@ Usuario de apoyo administrativo con permisos similares a TRAMITADOR pero con int
 ## Schemas del Sistema
 
 ### Schema `public`
-Contiene las tablas operacionales del sistema: EXPEDIENTES, SOLICITUDES, FASES, TRAMITES, TAREAS, DOCUMENTOS, USUARIOS, etc.
-
-### Schema `estructura`
-Contiene las tablas maestras y de configuración: TIPOSEXPEDIENTES, TIPOSSOLICITUDES, TIPOSFASES, TIPOSTRAMITES, TIPOSTAREAS, motor de reglas, etc.
+Contiene todas las tablas del sistema: tablas operacionales (EXPEDIENTES, SOLICITUDES, FASES, TRAMITES, TAREAS, DOCUMENTOS, USUARIOS) y tablas maestras de configuración (TIPOSEXPEDIENTES, TIPOSSOLICITUDES, TIPOSFASES, TIPOSTRAMITES, TIPOSTAREAS, motor de reglas, etc.).
 
 ### Schema `legacy`
 Contiene los datos heredados del sistema anterior. Solo lectura para todos los roles excepto ADMIN.
@@ -132,11 +129,11 @@ Contiene los datos heredados del sistema anterior. Solo lectura para todos los r
 
 1. **Separación de responsabilidades**: Cada rol tiene un propósito claramente definido
 2. **Principio de mínimo privilegio**: Los usuarios solo tienen los permisos necesarios para su función
-3. **Protección de datos críticos**: Schemas de configuración y legacy protegidos contra modificaciones no autorizadas
+3. **Protección de datos críticos**: Schema legacy protegido contra modificaciones no autorizadas
 4. **Trazabilidad**: Cada usuario trabaja bajo su propio rol, facilitando auditorías
 
 ---
 
-**Versión:** 1.0  
-**Fecha:** Enero 2026  
+**Versión:** 1.1
+**Fecha:** Abril 2026
 **Proyecto:** BDDAT - Sistema de Tramitación de Expedientes de Alta Tensión

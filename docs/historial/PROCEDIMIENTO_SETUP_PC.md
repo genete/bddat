@@ -87,22 +87,7 @@ CREATE DATABASE bddat;
 \q
 ```
 
-Ahora crear el esquema `estructura` y asegurar ownership:
-
-```bash
-# Conectar a la BD bddat como bddat_admin
-psql -U bddat_admin -d bddat
-```
-
-```sql
--- Crear esquema estructura
-CREATE SCHEMA estructura;
-
--- Salir
-\q
-```
-
-Como usuario postgres, dar permisos completos sobre los schemas:
+Como usuario postgres, dar permisos completos sobre el schema public:
 
 ```bash
 psql -U postgres -d bddat
@@ -111,7 +96,6 @@ psql -U postgres -d bddat
 ```sql
 -- Dar ownership completo a bddat_admin
 GRANT ALL ON SCHEMA public TO bddat_admin;
-GRANT ALL ON SCHEMA estructura TO bddat_admin;
 
 -- Salir
 \q
@@ -127,7 +111,7 @@ psql -U bddat_admin -d bddat
 ```sql
 -- Deberías estar conectado sin errores
 \l  -- Lista bases de datos
-\dn -- Lista esquemas (debe aparecer estructura y public)
+\dn -- Lista esquemas (debe aparecer public)
 \q  -- Salir
 ```
 
@@ -206,10 +190,9 @@ Debería mostrar Flask y Python instalados.
 flask db upgrade
 ```
 
-Esto crea automáticamente:
-
-- **Esquema `estructura`** con tablas: `municipios`, `tipos_entidades`, `tipos_ia`, `tipos_fases`, `tipos_tramites`, `tipos_tareas`, `tipos_solicitudes`, `tipos_expedientes`, `tipos_resultados_fases`
-- **Esquema `public`** con tablas: `usuarios`, `roles`, `usuarios_roles`, `expedientes`, `proyectos`, `municipios_proyecto`, `solicitudes`, `solicitudes_tipos`, `documentos`, `documentos_proyecto`, `fases`, `tramites`, `tareas`, `entidades`, `entidades_administrados`, `entidades_ayuntamientos`, `entidades_diputaciones`, `entidades_empresas_servicio_publico`, `entidades_organismos_publicos`
+Esto crea automáticamente en el **schema `public`**:
+- Tablas maestras: `municipios`, `tipos_entidades`, `tipos_ia`, `tipos_fases`, `tipos_tramites`, `tipos_tareas`, `tipos_solicitudes`, `tipos_expedientes`, `tipos_resultados_fases`
+- Tablas operacionales: `usuarios`, `roles`, `usuarios_roles`, `expedientes`, `proyectos`, `municipios_proyecto`, `solicitudes`, `solicitudes_tipos`, `documentos`, `documentos_proyecto`, `fases`, `tramites`, `tareas`, `entidades`, `entidades_administrados`, `entidades_ayuntamientos`, `entidades_diputaciones`, `entidades_empresas_servicio_publico`, `entidades_organismos_publicos`
 - Todas las relaciones, índices y constraints
 
 **Las tablas están creadas pero VACÍAS** (sin datos).
@@ -273,10 +256,10 @@ Esto inserta los 4 roles:
 psql -U bddat_admin -d bddat
 
 -- Verificar municipios
-SELECT COUNT(*) FROM estructura.municipios;  -- Debe devolver 773
+SELECT COUNT(*) FROM public.municipios;  -- Debe devolver 773
 
 -- Verificar tipos de entidades
-SELECT COUNT(*) FROM estructura.tipos_entidades;  -- Debe devolver 5
+SELECT COUNT(*) FROM public.tipos_entidades;  -- Debe devolver 5
 
 -- Verificar roles
 SELECT * FROM public.roles;  -- Debe mostrar 4 roles
@@ -526,7 +509,7 @@ ALTER USER bddat_admin WITH PASSWORD 'nuevo_password';
 **Síntoma**:
 
 ```
-ERROR: permission denied for schema estructura
+ERROR: permission denied for schema public
 ```
 
 **Solución**:
@@ -539,11 +522,8 @@ psql -U postgres -d bddat
 -- Dar permisos completos al usuario bddat_admin
 GRANT ALL PRIVILEGES ON DATABASE bddat TO bddat_admin;
 GRANT ALL PRIVILEGES ON SCHEMA public TO bddat_admin;
-GRANT ALL PRIVILEGES ON SCHEMA estructura TO bddat_admin;
 GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO bddat_admin;
-GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA estructura TO bddat_admin;
 GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO bddat_admin;
-GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA estructura TO bddat_admin;
 
 \q
 ```
@@ -560,9 +540,9 @@ psql -U bddat_admin -d bddat
 ```
 
 ```sql
-SELECT COUNT(*) FROM estructura.municipios;  -- Debe ser 773
-SELECT COUNT(*) FROM estructura.tipos_entidades;  -- Debe ser 5
-SELECT COUNT(*) FROM estructura.tipos_ia;    -- Debe ser 5
+SELECT COUNT(*) FROM public.municipios;  -- Debe ser 773
+SELECT COUNT(*) FROM public.tipos_entidades;  -- Debe ser 5
+SELECT COUNT(*) FROM public.tipos_ia;    -- Debe ser 5
 SELECT COUNT(*) FROM public.roles;           -- Debe ser 4
 ```
 
@@ -622,8 +602,7 @@ psql -U bddat_admin -d bddat -c "SELECT conname FROM pg_constraint WHERE conname
 2. Crear usuario PostgreSQL: CREATE USER bddat_admin WITH PASSWORD '...';
 3. Dar privilegios: ALTER USER bddat_admin CREATEDB;
 4. Crear BD: CREATE DATABASE bddat; (como bddat_admin)
-4b. Crear schema estructura: CREATE SCHEMA estructura;
-4c. Dar ownership: GRANT ALL ON SCHEMA public/estructura TO bddat_admin; (como postgres)
+4b. Dar ownership: GRANT ALL ON SCHEMA public TO bddat_admin; (como postgres)
 5. Clonar repositorio: git clone + git checkout develop
 6. Crear entorno virtual: python -m venv venv
 7. Activar entorno: venv\Scripts\activate
@@ -651,7 +630,6 @@ psql -U bddat_admin -d bddat -c "SELECT conname FROM pg_constraint WHERE conname
 - [ ] PostgreSQL instalado y corriendo
 - [ ] Usuario PostgreSQL `bddat_admin` creado con password
 - [ ] Base de datos `bddat` creada
-- [ ] Esquema `estructura` creado con ownership bddat_admin
 - [ ] Python 3.9+ instalado
 - [ ] Repositorio clonado (rama develop)
 - [ ] Entorno virtual creado y activado
@@ -694,9 +672,9 @@ ERROR: debe ser dueño de la tabla [nombre_tabla]
 psql -U postgres -d bddat -c "
 SELECT schemaname, tablename, tableowner 
 FROM pg_tables 
-WHERE schemaname IN ('public', 'estructura')
+WHERE schemaname = 'public'
   AND tableowner != 'bddat_admin'
-ORDER BY schemaname, tablename;"
+ORDER BY tablename;"
 ```
 
 **Si devuelve filas**, hay tablas con owner incorrecto.
@@ -719,12 +697,6 @@ DO $$
 DECLARE
     r RECORD;
 BEGIN
-    -- Cambiar owner de todas las tablas en estructura
-    FOR r IN SELECT tablename FROM pg_tables WHERE schemaname = 'estructura'
-    LOOP
-        EXECUTE 'ALTER TABLE estructura.' || quote_ident(r.tablename) || ' OWNER TO bddat_admin';
-    END LOOP;
-    
     -- Cambiar owner de todas las tablas en public
     FOR r IN SELECT tablename FROM pg_tables WHERE schemaname = 'public'
     LOOP
@@ -732,11 +704,10 @@ BEGIN
     END LOOP;
     
     -- Cambiar owner de todas las secuencias
-    FOR r IN SELECT sequence_name, sequence_schema FROM information_schema.sequences 
-             WHERE sequence_schema IN ('public', 'estructura')
+    FOR r IN SELECT sequence_name FROM information_schema.sequences 
+             WHERE sequence_schema = 'public'
     LOOP
-        EXECUTE 'ALTER SEQUENCE ' || quote_ident(r.sequence_schema) || '.' || 
-                quote_ident(r.sequence_name) || ' OWNER TO bddat_admin';
+        EXECUTE 'ALTER SEQUENCE public.' || quote_ident(r.sequence_name) || ' OWNER TO bddat_admin';
     END LOOP;
 END $$;
 ```
@@ -748,7 +719,7 @@ END $$;
 psql -U postgres -d bddat -c "
 SELECT DISTINCT tableowner 
 FROM pg_tables 
-WHERE schemaname IN ('public', 'estructura');"
+WHERE schemaname = 'public';"
 ```
 
 **Resultado esperado**: Solo debe aparecer `bddat_admin`.
