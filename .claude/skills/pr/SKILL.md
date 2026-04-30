@@ -33,12 +33,12 @@ Analiza los commits y ficheros cambiados para redactar:
 - **Título:** breve (≤70 caracteres), en imperativo, sin prefijo de categoría
 - **Cuerpo:** sección "## Cambios" con bullets de los cambios principales. Si se detectó un issue, la **última línea del cuerpo DEBE ser `Closes #XX`** — GitHub cierra el issue automáticamente al mergear, sin necesidad de `gh issue close`.
 
-Escribe el cuerpo con la tool `Write` en `D:\BDDAT\docs_prueba\temp\gh_body.md` (nunca usar heredoc ni redirección bash).
+Escribe el cuerpo con la tool `Write` en `D:\BDDAT\docs_prueba\temp\pr_body_XX.md` donde `XX` es el número de issue detectado (o el número de PR si no hay issue). Nunca uses heredoc ni redirección bash. Nunca reutilices un fichero existente — el nombre con el número garantiza unicidad.
 
 ### 4. Crear el PR
 
 ```
-gh pr create --base develop --title "..." --body-file /d/BDDAT/docs_prueba/temp/gh_body.md
+gh pr create --base develop --title "..." --body-file /d/BDDAT/docs_prueba/temp/pr_body_XX.md
 ```
 
 Muestra la URL del PR al usuario.
@@ -53,10 +53,7 @@ gh pr merge --merge --delete-branch
 
 ### 6. Limpieza
 
-Borra el fichero temporal:
-```
-rm /d/BDDAT/docs_prueba/temp/gh_body.md
-```
+No borres el fichero temporal — el usuario gestiona `docs_prueba/temp/` manualmente.
 
 Informa al usuario de que debe ejecutar localmente:
 ```
