@@ -32,13 +32,13 @@ La selección de la entrada aplicable en `catalogo_plazos` por `(tipo_elemento, 
 
 ## División en sesiones
 
-### Sesión 1 — Refactor `OPERADORES` a módulo común
+### Sesión 1 ✓ — Refactor `OPERADORES` a módulo común
 **Ficheros:** `app/services/operadores.py` (NUEVO), `app/services/motor_reglas.py` (importa)
 **Tests:** `tests/test_341_operadores.py` (NUEVO) — 12 tests, uno por operador
 **Criterio:** `pytest tests/test_341_operadores.py tests/test_190_plazos_contrato.py` verde
 **Tiempo:** ~1.5 h | **Dep.:** ninguna
 
-### Sesión 2 — Modelo `CondicionPlazo` y migración
+### Sesión 2 ✓ — Modelo `CondicionPlazo` y migración
 **Ficheros:**
 - `app/models/condiciones_plazo.py` (NUEVO)
 - `app/models/catalogo_plazos.py` (añadir `orden`, relationship `condiciones`)
@@ -54,7 +54,7 @@ La selección de la entrada aplicable en `catalogo_plazos` por `(tipo_elemento, 
 **Criterio:** `flask db upgrade/downgrade` limpio; tests #172 sin tocar siguen verdes
 **Tiempo:** ~2 h | **Dep.:** ninguna (puede solaparse con S1)
 
-### Sesión 3 — Variables derivadas para art. 131.2
+### Sesión 3 ✓ — Variables derivadas para art. 131.1 párr. 2
 **Ficheros:**
 - `app/services/variables/calculado.py` (añadir 3 `@variable`)
 - `migrations/versions/YYY_341_variables_aap_dup_mod.py` (NUEVO)
@@ -70,7 +70,7 @@ La selección de la entrada aplicable en `catalogo_plazos` por `(tipo_elemento, 
 **Criterio:** variables visibles en `_REGISTRY`; `catalogo_variables` con `activa=TRUE`
 **Tiempo:** ~2 h | **Dep.:** ninguna (puede solaparse con S1-S2)
 
-### Sesión 4 — Evaluador en `obtener_estado_plazo`
+### Sesión 4 ✓ — Evaluador en `obtener_estado_plazo`
 **Ficheros:**
 - `app/services/plazos.py` (refactorizar `obtener_estado_plazo` + nueva `_seleccionar_catalogo`)
 - `app/services/assembler.py` (añadir `excluir: set[str]` a `_compilar_variables`)
@@ -94,7 +94,7 @@ La selección de la entrada aplicable en `catalogo_plazos` por `(tipo_elemento, 
 **Criterio:** tests #172 originales sin tocar siguen verdes; nuevos tests verdes
 **Tiempo:** ~4 h | **Dep.:** sesiones 1, 2, 3
 
-### Sesión 5 — Seed art. 131.2 y tests E2E con BD real
+### Sesión 5 ✓ — Seed art. 131.1 párr. 2 y tests E2E con BD real
 **Ficheros:**
 - `migrations/versions/ZZZ_341_seed_art131_2.py` (NUEVO)
 
@@ -110,7 +110,7 @@ La selección de la entrada aplicable en `catalogo_plazos` por `(tipo_elemento, 
 **Criterio:** los 3 tests E2E verdes con BD real (fixture `app_ctx`)
 **Tiempo:** ~3 h | **Dep.:** sesiones 1-4
 
-### Sesión 6 — Documentación y cierre
+### Sesión 6 ✓ — Documentación y cierre
 **Ficheros:**
 - `docs/referencia/DISEÑO_FECHAS_PLAZOS.md` (quitar nota DEUDA #341, añadir §3.2.1)
 - `docs/CONTEXTO_ACTUAL.md` (marcar #341 cerrado)
@@ -147,6 +147,13 @@ Margen real estimado: 16-18 h.
 6. **Caso EIA Ley 21/2013** — modelable con #341 cuando `longitud_km` esté implementada. Issue posterior.
 8. **Ordenación AAP+AAC combinadas** — si una solicitud combinada pudiera tener plazos distintos por sigla, habría que iterar como hace `evaluar_multi`. Issue a abrir si emerge el caso.
 9. **Refactor `tipos_resultados_fases` → enum en código** — la tabla no es configurable por el Supervisor y nunca debería serlo (rompería el motor). Patrón ya existente en el proyecto: `tipo_elemento` como String sin FK. Refactor: cambiar `Fase.resultado_fase_id` FK por `Fase.resultado_fase_codigo String(30)` + CHECK constraint + mover los valores a constante en `invariantes_esftt.py`. Issue separado, no bloquea #341. Mientras tanto, definir `RESULTADO_FASE_FAVORABLE_CODIGOS = frozenset({'FAVORABLE', 'FAVORABLE_CONDICIONADO'})` en `invariantes_esftt.py` usando la tabla existente.
+
+---
+
+## Estado final
+
+**Cerrado 2026-04-30.** Todas las sesiones completadas. Issue #341 resuelto.
+Desbloqueados: #173 (suspensiones de plazos), #328 (seed catálogo real).
 
 ---
 

@@ -4,8 +4,13 @@
 
 ---
 
-**Último cerrado:** #172 — Plazos legales: `calcular_fecha_fin` art. 30 LPACAP (4 unidades), tablas `efectos_plazo`/`ambitos_inhabilidad`/`dias_inhabiles`/`catalogo_plazos`, seed festivos 2025-2026. Deuda de diseño identificada: la selección de plazo por `(tipo_elemento_id)` es insuficiente para condicionantes normativos complejos (art. 131.2 RD 1955/2000) → #341.
+**Último cerrado:** #341 — Condiciones de aplicabilidad en `catalogo_plazos`:
+módulo `operadores.py`, tabla `condiciones_plazo`, campo `orden`,
+variables `tiene_solicitud_aap_favorable`/`es_solicitud_aac_pura`,
+evaluador `_seleccionar_catalogo` en `obtener_estado_plazo`,
+seed art. 131.1 párr. 2 RD 1955/2000 (15 días con AAP previa / 30 sin ella).
+Desbloquea #173 y #328.
 
-**Próximo:** #341 — Condiciones de aplicabilidad en `catalogo_plazos`: tabla `condiciones_plazo` paralela a `condiciones_regla`, campo `orden`, evaluador en `obtener_estado_plazo`. Bloqueante para seed real del catálogo y cierre de #328.
+**Próximo:** #173 — Suspensión de plazos (art. 22 LPACAP).
 
-**En espera:** #173 — Suspensión de plazos (depende de #341).
+**En espera:** #328 — seed real de `catalogo_plazos` (depende de #173).

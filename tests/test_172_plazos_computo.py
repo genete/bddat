@@ -176,6 +176,7 @@ def _mock_catalogo(plazo_valor, plazo_unidad, campo_fecha, efecto_codigo):
     m.plazo_unidad = plazo_unidad
     m.campo_fecha = campo_fecha
     m.efecto_plazo.codigo = efecto_codigo
+    m.condiciones = []
     return m
 
 
@@ -216,8 +217,11 @@ class TestObtenerEstadoPlazoSinPlazo:
     def test_sin_entrada_catalogo(self):
         from app.services.plazos import obtener_estado_plazo
         fase = _mock_fase(tipo_fase_id=999, fecha_administrativa=date(2025, 1, 1))
-        with patch('app.models.catalogo_plazos.CatalogoPlazo') as mock_cp:
-            mock_cp.query.filter_by.return_value.first.return_value = None
+        with patch('app.models.catalogo_plazos.CatalogoPlazo') as mock_cp, \
+             patch('app.models.condiciones_plazo.CondicionPlazo'), \
+             patch('app.services.plazos.joinedload', return_value=MagicMock()):
+            mock_cp.query.options.return_value.filter_by.return_value\
+                  .order_by.return_value.all.return_value = []
             r = obtener_estado_plazo(fase, 'FASE')
         assert r.estado == 'SIN_PLAZO'
 
@@ -226,10 +230,13 @@ class TestObtenerEstadoPlazoSinPlazo:
         fase = MagicMock()
         fase.tipo_fase_id = 1
         fase.documento_resultado = None
-        fase.solicitud = None   # evitar que el fallback FASE genere un MagicMock auto
+        fase.solicitud = None
         catalogo = _mock_catalogo(20, 'DIAS_HABILES', {'fk': 'documento_resultado_id'}, 'SILENCIO_DESESTIMATORIO')
-        with patch('app.models.catalogo_plazos.CatalogoPlazo') as mock_cp:
-            mock_cp.query.filter_by.return_value.first.return_value = catalogo
+        with patch('app.models.catalogo_plazos.CatalogoPlazo') as mock_cp, \
+             patch('app.models.condiciones_plazo.CondicionPlazo'), \
+             patch('app.services.plazos.joinedload', return_value=MagicMock()):
+            mock_cp.query.options.return_value.filter_by.return_value\
+                  .order_by.return_value.all.return_value = [catalogo]
             r = obtener_estado_plazo(fase, 'FASE')
         assert r.estado == 'SIN_PLAZO'
 
@@ -243,8 +250,11 @@ class TestObtenerEstadoPlazoEnPlazo:
         catalogo = _mock_catalogo(20, 'DIAS_HABILES', {'fk': 'documento_resultado_id'}, 'SILENCIO_DESESTIMATORIO')
         with (patch('app.services.plazos._hoy', return_value=HOY),
               patch('app.services.plazos._obtener_inhabiles_bd', return_value=frozenset()),
-              patch('app.models.catalogo_plazos.CatalogoPlazo') as mock_cp):
-            mock_cp.query.filter_by.return_value.first.return_value = catalogo
+              patch('app.models.catalogo_plazos.CatalogoPlazo') as mock_cp,
+              patch('app.models.condiciones_plazo.CondicionPlazo'),
+              patch('app.services.plazos.joinedload', return_value=MagicMock())):
+            mock_cp.query.options.return_value.filter_by.return_value\
+                  .order_by.return_value.all.return_value = [catalogo]
             r = obtener_estado_plazo(fase, 'FASE')
         assert r.estado == 'EN_PLAZO'
         assert r.efecto == 'SILENCIO_DESESTIMATORIO'
@@ -261,8 +271,11 @@ class TestObtenerEstadoPlazoProximoVencer:
         catalogo = _mock_catalogo(20, 'DIAS_HABILES', {'fk': 'documento_resultado_id'}, 'RESPONSABILIDAD_DISCIPLINARIA')
         with (patch('app.services.plazos._hoy', return_value=HOY),
               patch('app.services.plazos._obtener_inhabiles_bd', return_value=frozenset()),
-              patch('app.models.catalogo_plazos.CatalogoPlazo') as mock_cp):
-            mock_cp.query.filter_by.return_value.first.return_value = catalogo
+              patch('app.models.catalogo_plazos.CatalogoPlazo') as mock_cp,
+              patch('app.models.condiciones_plazo.CondicionPlazo'),
+              patch('app.services.plazos.joinedload', return_value=MagicMock())):
+            mock_cp.query.options.return_value.filter_by.return_value\
+                  .order_by.return_value.all.return_value = [catalogo]
             r = obtener_estado_plazo(fase, 'FASE')
         assert r.estado == 'PROXIMO_VENCER'
         assert r.efecto == 'RESPONSABILIDAD_DISCIPLINARIA'
@@ -279,8 +292,11 @@ class TestObtenerEstadoPlazoVencido:
         catalogo = _mock_catalogo(10, 'DIAS_HABILES', {'fk': 'documento_resultado_id'}, 'SILENCIO_ESTIMATORIO')
         with (patch('app.services.plazos._hoy', return_value=HOY),
               patch('app.services.plazos._obtener_inhabiles_bd', return_value=frozenset()),
-              patch('app.models.catalogo_plazos.CatalogoPlazo') as mock_cp):
-            mock_cp.query.filter_by.return_value.first.return_value = catalogo
+              patch('app.models.catalogo_plazos.CatalogoPlazo') as mock_cp,
+              patch('app.models.condiciones_plazo.CondicionPlazo'),
+              patch('app.services.plazos.joinedload', return_value=MagicMock())):
+            mock_cp.query.options.return_value.filter_by.return_value\
+                  .order_by.return_value.all.return_value = [catalogo]
             r = obtener_estado_plazo(fase, 'FASE')
         assert r.estado == 'VENCIDO'
         assert r.efecto == 'SILENCIO_ESTIMATORIO'

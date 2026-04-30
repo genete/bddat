@@ -44,7 +44,7 @@ def _(ctx) -> str:
     if elemento is None:
         return 'SIN_PLAZO'
     from app.services import plazos
-    return plazos.obtener_estado_plazo(elemento, tipo).estado
+    return plazos.obtener_estado_plazo(elemento, tipo, ctx=ctx).estado
 
 
 @variable('efecto_plazo')
@@ -57,4 +57,4 @@ def _(ctx) -> str:
     if elemento is None:
         return 'NINGUNO'
     from app.services import plazos
-    return plazos.obtener_estado_plazo(elemento, tipo).efecto
+    return plazos.obtener_estado_plazo(elemento, tipo, ctx=ctx).efecto

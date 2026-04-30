@@ -353,19 +353,7 @@ Estos controles son de integridad administrativa, no de plazo. Deben decidirse e
 
 ---
 
-### 3.2 Catálogo de plazos — CERRADO (campo_fecha rediseñado 2026-04-19) — DEUDA #341
-
-> **Deuda de diseño (#341, 2026-04-28):** La selección de la entrada aplicable en `catalogo_plazos`
-> por `(tipo_elemento, tipo_elemento_id)` es insuficiente. Muchos plazos del RD 1955/2000 dependen
-> del contexto ESFTT completo. Ejemplo real: art. 131.2 RD 1955/2000 — el plazo de informe de AAPP
-> en AAC se reduce de 30 a 15 días naturales si concurren tres condiciones simultáneas:
-> `tiene_aap_previa AND sin_modificacion_aap AND NOT solicita_dup`.
->
-> **Diseño pendiente:** tabla `condiciones_plazo` paralela a `condiciones_regla`, campo `orden` en
-> `catalogo_plazos`, y evaluador en `obtener_estado_plazo` que recorra las entradas por orden y
-> evalúe condiciones contra el contexto completo ESFTT (igual que el motor de reglas).
-> Las variables derivadas necesarias (`tiene_aap_previa`, `solicita_dup`, etc.) se registran
-> como `@variable` en `app/services/variables/`. Ver #341.
+### 3.2 Catálogo de plazos — CERRADO (campo_fecha 2026-04-19, condiciones_plazo #341 2026-04-30)
 
 > **Decisión:** Tabla separada `catalogo_plazos`, administrable por el Supervisor.
 
@@ -417,6 +405,53 @@ El campo `campo` es siempre `fecha_administrativa` (el resolver lo asume). FKs n
 **`plazos.py` — resolver:** recibe el objeto ORM del elemento y el JSON de `campo_fecha`. Cuatro ramas según `tipo_elemento`; si hay `via_tarea_tipo`, busca la tarea hija antes de seguir el FK. Devuelve `Documento.fecha_administrativa` o `None` (con alarma si el plazo tiene valor > 0 y el documento no existe).
 
 > La FK `efecto_vencimiento` referencia una tabla de efectos (no ENUM hardcodeado). Ver decisión §3.3 nota.
+
+#### §3.2.1 Condiciones de aplicabilidad — `_seleccionar_catalogo` (#341)
+
+Cuando `obtener_estado_plazo` recibe `ctx` o `variables`, delega la selección de
+la entrada aplicable en `_seleccionar_catalogo(tipo_elemento, tipo_id, variables_dict)`.
+
+**Algoritmo:**
+
+1. **Carga** todas las entradas activas de `catalogo_plazos` para
+   `(tipo_elemento, tipo_elemento_id)` con `joinedload` de `condiciones` y la
+   `variable` de cada condición (una sola query).
+2. **Ordena** por `orden ASC, id ASC` (menor `orden` = mayor prioridad;
+   `id` como desempate estable ante empate de `orden`).
+3. **Itera** en orden:
+   - Entrada **sin condiciones** → candidata válida; se devuelve inmediatamente.
+   - Entrada **con condiciones** → evalúa AND implícito:
+     si todas las condiciones se cumplen → se devuelve;
+     si alguna falla → se salta, se evalúa la siguiente.
+4. Si ninguna entrada supera la evaluación → `None` + `log.warning`.
+   El llamante devuelve `SIN_PLAZO` sin lanzar excepción.
+
+**Semántica AND implícito:**
+
+- Cada condición evalúa `variables_dict[nombre] OPERADOR valor`.
+- Variable ausente en el dict → condición falla silenciosamente con `log.warning`
+  (decisión F de IMPLEMENTACION_341.md: el catálogo nunca lanza excepción por
+  variable no calculada).
+- Operadores: los de `app/services/operadores.py`
+  (`EQ`, `NEQ`, `GT`, `GTE`, `LT`, `LTE`, `IN`, `NOT_IN`).
+
+**Compatibilidad hacia atrás:**
+
+Sin `ctx` ni `variables`, `variables_dict = {}`. Solo las entradas sin condiciones
+son candidatas válidas — reproduce el comportamiento pre-#341 para cualquier
+llamada que no pase contexto.
+
+**Caso de uso canónico — art. 131.1 párr. 2 RD 1955/2000:**
+
+```
+catalogo_plazos para INFORME_AAPP_AAC:
+  orden=10,  plazo=15 días naturales,
+             condiciones: tiene_solicitud_aap_favorable=True
+                        + es_solicitud_aac_pura=True
+  orden=100, plazo=30 días naturales, sin condiciones (fallback)
+```
+
+Si las dos condiciones se cumplen → 15 días; en caso contrario → 30 días.
 
 ---
 

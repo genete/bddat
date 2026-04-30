@@ -23,6 +23,10 @@ from app.services.motor_reglas import EvaluacionResult
 _TIPOS_REQUIEREN_DOC_PRODUCIDO = {'ANALISIS', 'REDACTAR', 'FIRMAR', 'NOTIFICAR', 'PUBLICAR'}
 _TIPOS_REQUIEREN_DOC_USADO     = {'ANALISIS', 'FIRMAR', 'NOTIFICAR', 'PUBLICAR'}
 
+# Códigos de resultado de fase finalizadora que se consideran resolución favorable.
+# Usado por tiene_solicitud_aap_favorable (art. 131.1 párr. 2 RD 1955/2000).
+RESULTADO_FASE_FAVORABLE_CODIGOS = frozenset({'FAVORABLE', 'FAVORABLE_CONDICIONADO'})
+
 
 def _bloquear(mensaje: str) -> EvaluacionResult:
     return EvaluacionResult(
