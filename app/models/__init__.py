@@ -69,6 +69,7 @@ from app.models.resultados_documentos import ResultadoDocumento  # Depende de Do
 # Plazos — maestros sin dependencias operacionales (efectos_plazo, ambitos ya importados arriba)
 from app.models.dias_inhabiles import DiaInhabil        # depende de AmbitoInhabilidad
 from app.models.catalogo_plazos import CatalogoPlazo    # depende de EfectoPlazo
+from app.models.condiciones_plazo import CondicionPlazo # depende de CatalogoPlazo y CatalogoVariable
 
 # Motor de reglas (depende de TipoSolicitud; tipo_id sin FK por diseño polimórfico)
 from app.models.motor_reglas import ReglaMotor, CondicionRegla
@@ -121,6 +122,7 @@ __all__ = [
     # Plazos
     'DiaInhabil',
     'CatalogoPlazo',
+    'CondicionPlazo',
     # Motor de reglas
     'ReglaMotor',
     'CondicionRegla',

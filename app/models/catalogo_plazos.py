@@ -30,7 +30,8 @@ class CatalogoPlazo(db.Model):
     """
     __tablename__ = 'catalogo_plazos'
     __table_args__ = (
-        db.Index('idx_catalogo_plazos_tipo_elem', 'tipo_elemento', 'tipo_elemento_id'),
+        db.Index('idx_catalogo_plazos_tipo_elem',  'tipo_elemento', 'tipo_elemento_id'),
+        db.Index('idx_catalogo_plazos_tipo_orden', 'tipo_elemento', 'tipo_elemento_id', 'orden'),
         {'schema': 'public'},
     )
 
@@ -77,11 +78,22 @@ class CatalogoPlazo(db.Model):
         db.Boolean, nullable=False, default=True, server_default='TRUE',
         comment='FALSE para entradas desactivadas sin borrar',
     )
+    orden = db.Column(
+        db.Integer, nullable=False, default=100, server_default='100',
+        comment='Prioridad de selección: menor → se evalúa primero. '
+                'Fallback sin condiciones: orden alto (100). No unique.',
+    )
 
     efecto_plazo = db.relationship(
         'EfectoPlazo',
         foreign_keys=[efecto_vencimiento_id],
         back_populates='plazos',
+    )
+    condiciones = db.relationship(
+        'CondicionPlazo',
+        backref='catalogo_plazo',
+        cascade='all, delete-orphan',
+        order_by='CondicionPlazo.orden',
     )
 
     def __repr__(self):
