@@ -72,20 +72,13 @@ def obtener_estado_plazo(
     Devuelve el estado del plazo legal asociado a un elemento ESFTT.
 
     Args:
-        elemento:      Instancia ORM del elemento evaluado
-                       (Solicitud, Fase, Tramite o Tarea).
+        elemento:      Instancia ORM del elemento evaluado.
                        None o dict → SIN_PLAZO sin consultar BD.
         tipo_elemento: 'SOLICITUD' | 'FASE' | 'TRAMITE' | 'TAREA'
-        ctx:           ExpedienteContext. Si se pasa, construye variables internamente
+        ctx:           ExpedienteContext. Construye variables internamente
                        (excluyendo estado_plazo/efecto_plazo para evitar recursión).
         variables:     Dict de variables pre-construido. Tiene precedencia sobre ctx.
-
-    Ruta legacy (ctx=None, variables=None):
-        Usa CatalogoPlazo.query.filter_by(...).first() — compatible con mocks de test_172.
-        La llaman las variables de plazo.py antes de la sesión 4; se elimina en sesión 6.
-
-    Ruta nueva (ctx o variables proporcionados):
-        Delega en _seleccionar_catalogo con el dict de variables para evaluar condiciones.
+                       Sin ctx ni variables → dict vacío (solo entradas sin condiciones).
     """
     if elemento is None or isinstance(elemento, dict):
         return _SIN_PLAZO
@@ -94,25 +87,17 @@ def obtener_estado_plazo(
     if tipo_elemento_id is None:
         return _SIN_PLAZO
 
-    if ctx is None and variables is None:
-        # Ruta legacy: query simple, sin evaluador de condiciones.
-        # Mantiene la cadena .filter_by(...).first() que mockean los tests #172 y #190
-        # para que sigan verdes sin modificación.
-        from app.models.catalogo_plazos import CatalogoPlazo
-        catalogo = CatalogoPlazo.query.filter_by(
-            tipo_elemento=tipo_elemento,
-            tipo_elemento_id=tipo_elemento_id,
-            activo=True,
-        ).first()
+    if variables is not None:
+        variables_dict = variables
+    elif ctx is not None:
+        from app.services.assembler import _compilar_variables
+        variables_dict = _compilar_variables(
+            ctx, excluir={'estado_plazo', 'efecto_plazo'}
+        )
     else:
-        if variables is not None:
-            variables_dict = variables
-        else:
-            from app.services.assembler import _compilar_variables
-            variables_dict = _compilar_variables(
-                ctx, excluir={'estado_plazo', 'efecto_plazo'}
-            )
-        catalogo = _seleccionar_catalogo(tipo_elemento, tipo_elemento_id, variables_dict)
+        variables_dict = {}
+
+    catalogo = _seleccionar_catalogo(tipo_elemento, tipo_elemento_id, variables_dict)
 
     if catalogo is None:
         return _SIN_PLAZO

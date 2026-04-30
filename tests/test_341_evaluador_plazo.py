@@ -229,11 +229,9 @@ def test_seleccionar_todas_condicionadas_fallan_retorna_none():
 HOY = date(2025, 6, 2)
 
 
-def test_ctx_none_variables_none_usa_ruta_legacy():
-    """Sin ctx ni variables → usa .filter_by(...).first() (compatibilidad #172)."""
+def test_ctx_none_variables_none_usa_variables_dict_vacio():
+    """Sin ctx ni variables → variables_dict={} → solo entradas sin condiciones aplican."""
     from app.services.plazos import obtener_estado_plazo
-    # Sin ctx ni variables: el argumento tipo_elemento_id se resuelve pero
-    # falta en el objeto → SIN_PLAZO (camino previo a la query)
     r = obtener_estado_plazo(object(), 'FASE')
     assert r.estado == 'SIN_PLAZO'
 
