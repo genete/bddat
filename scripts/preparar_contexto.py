@@ -4,9 +4,9 @@ import argparse
 
 # --- CONFIGURACIÓN ---
 # Carpetas a ignorar
-CARPETAS_IGNORAR = {"venv", ".venv", "__pycache__", ".git", ".playwright-mcp", "docs_prueba", "utils", "node_modules", "dist", ".vite", "normas"}
+CARPETAS_IGNORAR = {"venv", ".venv", "__pycache__", ".git", ".playwright-mcp", "docs_prueba", "utils", "node_modules", "dist", ".vite", "normas", "react-diagramas"}
 # Archivos específicos a ignorar
-ARCHIVOS_IGNORAR = {".env", ".DS_Store", "contexto_completo_gemini.txt", "package-lock.json"}
+ARCHIVOS_IGNORAR = {".env", ".DS_Store", "contexto_completo_gemini.txt", "package-lock.json", "diagrama-esftt.iife.js"}
 # Extensiones permitidas
 EXTENSIONES_VALIDAS = {
     ".py", ".html", ".md", ".css", ".js", ".json", 
