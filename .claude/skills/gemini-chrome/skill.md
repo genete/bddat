@@ -46,56 +46,90 @@ query: "Introduce una petición para Gemini"
 
 ## Paso 3 — Subir fichero de contexto (solo si se proporcionó ruta)
 
-Si el argumento incluye una ruta de fichero, sigue este flujo exacto. Los clicks deben ser **reales** (con `computer`), no JavaScript — Chrome requiere gesto de usuario real para activar el file picker.
+Chrome abre un diálogo nativo de selección de fichero cuando Gemini activa el `<input type=file>`. Para evitarlo, instala un interceptor JS **antes** de pulsar el menú:
 
-1. Haz click en el botón "Abrir menú para subir archivos" con `find` + `computer left_click`
-2. Haz click en el menuitem "Subir archivos" con `find` + `computer left_click`
-3. Localiza el `input[type=file]` generado con `find` (query: "file input")
-4. Sube el fichero con `file_upload` usando la ruta absoluta
+```javascript
+// Paso 3a — Interceptor: bloquea el click del input antes de que Chrome abra el diálogo
+window.__fileInput = null;
+var obs = new MutationObserver(function(muts) {
+  muts.forEach(function(m) {
+    m.addedNodes.forEach(function(n) {
+      if (n.nodeName === 'INPUT' && n.type === 'file') {
+        window.__fileInput = n;
+        n.addEventListener('click', function(e) {
+          e.stopImmediatePropagation(); e.preventDefault();
+        }, true);
+      }
+    });
+  });
+});
+obs.observe(document.body, { childList: true, subtree: true });
+window.__fileObserver = obs;
+'interceptor listo'
+```
+
+Luego el flujo de clicks (reales con `computer`):
+1. Click en "Abrir menú para subir archivos" con `find` + `computer left_click`
+2. Click en menuitem "Subir archivos" con `find` + `computer left_click`
+3. Recupera el input interceptado y asígnale un id para localizarlo:
+
+```javascript
+window.__fileObserver.disconnect();
+var el = window.__fileInput;
+if (el) { el.id = '__claude_file_input'; 'ok: ' + el.accept; }
+else 'no encontrado';
+```
+
+4. Localiza el ref con `find` (query: `"__claude_file_input"`) y sube con `file_upload`
 
 ```
-# Ejemplo de ruta válida:
 paths: ["D:\\BDDAT\\docs_prueba\\temp\\contexto_reducido_historial.txt"]
 ```
 
-Si `file_upload` falla con "Not allowed": la opción "Allow access to file URLs" no está activada en la extensión (ver prerequisitos).
+⚠️ **Limitación conocida**: el interceptor puede no ser suficiente en todas las versiones de Chrome — el diálogo nativo puede abrirse igualmente. Si el usuario reporta que el diálogo está abierto, pedirle que lo cierre manualmente (botón Cancelar del diálogo) antes de continuar con el Paso 4.
+
+Si `file_upload` falla con "Not allowed": activar "Permitir acceso a URL de archivo" en `chrome://extensions/` → extensión Claude in Chrome.
 
 ---
 
-## Paso 4 — Inyectar pregunta, enviar y leer respuesta (una sola llamada JS)
+## Paso 4 — Inyectar pregunta, enviar y leer respuesta
 
-Usa `javascript_tool` con este script. Captura `prevCount` antes de enviar para saber cuál es la respuesta nueva:
+### 4a — Inyectar texto (llamada JS separada)
+
+Usa `execCommand('insertText')` — **no** `box.innerText =`, que no activa el estado interno de React de Gemini:
 
 ```javascript
-await (async () => {
-  // 1. Inyectar texto en el contenteditable
-  const box = document.querySelector('div[contenteditable="true"]');
-  box.focus();
-  box.innerText = `PREGUNTA_AQUI`;
-  box.dispatchEvent(new Event('input', { bubbles: true }));
-
-  // 2. Contar respuestas actuales y pulsar enviar
-  const prevCount = document.querySelectorAll('model-response').length;
-  document.querySelector('button[aria-label*="Enviar"]').click();
-
-  // 3. Polling: esperar nueva respuesta completa (botón Stop desaparece)
-  await new Promise((resolve, reject) => {
-    const start = Date.now();
-    const check = setInterval(() => {
-      const n = document.querySelectorAll('model-response').length;
-      const sending = document.querySelector('button[aria-label*="Detener"]');
-      if (n > prevCount && !sending) { clearInterval(check); resolve(); }
-      if (Date.now() - start > 120000) { clearInterval(check); reject('timeout'); }
-    }, 800);
-  });
-
-  // 4. Extraer la nueva respuesta
-  const responses = document.querySelectorAll('model-response');
-  return responses[prevCount].querySelector('message-content')?.innerText || 'sin texto';
-})()
+var box = document.querySelector('div[contenteditable="true"]');
+box.focus();
+document.execCommand('selectAll', false, null);
+document.execCommand('insertText', false, 'PREGUNTA_AQUI');
+JSON.stringify({ texto: box.innerText.slice(0, 80) })
 ```
 
-Sustituye `PREGUNTA_AQUI` por la pregunta elaborada (ver Paso 5).
+Verifica que el campo `texto` en el resultado contiene el inicio de la pregunta antes de continuar.
+
+### 4b — Enviar y esperar respuesta (Promise)
+
+⚠️ `await` de nivel raíz no está soportado en el evaluador de la extensión. Usa una `Promise` directa — el evaluador la resuelve antes de devolver el resultado:
+
+```javascript
+new Promise(function(resolve, reject) {
+  var prevCount = document.querySelectorAll('model-response').length;
+  document.querySelector('button[aria-label*="Enviar"]').click();
+
+  var start = Date.now();
+  var check = setInterval(function() {
+    var n = document.querySelectorAll('model-response').length;
+    var sending = document.querySelector('button[aria-label*="Detener"]');
+    if (n > prevCount && !sending) {
+      clearInterval(check);
+      var responses = document.querySelectorAll('model-response');
+      resolve(responses[prevCount].querySelector('message-content')?.innerText || 'sin texto');
+    }
+    if (Date.now() - start > 180000) { clearInterval(check); reject('timeout'); }
+  }, 800);
+})
+```
 
 ---
 
