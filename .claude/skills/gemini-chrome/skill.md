@@ -46,49 +46,77 @@ query: "Introduce una petición para Gemini"
 
 ## Paso 3 — Subir fichero de contexto (solo si se proporcionó ruta)
 
-Chrome abre un diálogo nativo de selección de fichero cuando Gemini activa el `<input type=file>`. Para evitarlo, instala un interceptor JS **antes** de pulsar el menú:
+### 3a — Instalar interceptor de createElement (llamada JS separada)
+
+**Importante:** usar `document.createElement` override, NO MutationObserver. El MO es asíncrono y llega tarde; el override de createElement es síncrono — añade el listener de click ANTES de que Angular llame a `.click()`.
 
 ```javascript
-// Paso 3a — Interceptor: bloquea el click del input antes de que Chrome abra el diálogo
-window.__fileInput = null;
-var obs = new MutationObserver(function(muts) {
-  muts.forEach(function(m) {
-    m.addedNodes.forEach(function(n) {
-      if (n.nodeName === 'INPUT' && n.type === 'file') {
-        window.__fileInput = n;
-        n.addEventListener('click', function(e) {
-          e.stopImmediatePropagation(); e.preventDefault();
-        }, true);
+var _orig = document.createElement.bind(document);
+document.createElement = function(tag) {
+  var el = _orig(tag);
+  if (tag.toLowerCase() === 'input') {
+    el.addEventListener('click', function(e) {
+      if (el.type === 'file') {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        window.__interceptedFileInput = el;
+        el.id = '__claude_file_input';
+        // Garantizar que esté en el DOM para que file_upload lo encuentre
+        if (!document.contains(el)) {
+          el.style.cssText = 'position:fixed;top:-200px;left:0;opacity:0.01;width:1px;height:1px';
+          document.body.appendChild(el);
+        }
+        console.log('interceptado - inDOM:', document.contains(el));
       }
-    });
-  });
-});
-obs.observe(document.body, { childList: true, subtree: true });
-window.__fileObserver = obs;
+    }, true);
+  }
+  return el;
+};
 'interceptor listo'
 ```
 
-Luego el flujo de clicks (reales con `computer`):
-1. Click en "Abrir menú para subir archivos" con `find` + `computer left_click`
-2. Click en menuitem "Subir archivos" con `find` + `computer left_click`
-3. Recupera el input interceptado y asígnale un id para localizarlo:
+### 3b — Abrir menú y seleccionar "Subir archivos"
+
+Usa `computer` para clicks reales (gesto de usuario requerido por Chrome):
+
+1. Toma screenshot para ver coordenadas del botón `+`
+2. Click en el botón `+` con `computer left_click`
+3. Click en "Subir archivos" del menú desplegable con `computer left_click`
+
+### 3c — Verificar intercepción
 
 ```javascript
-window.__fileObserver.disconnect();
-var el = window.__fileInput;
-if (el) { el.id = '__claude_file_input'; 'ok: ' + el.accept; }
-else 'no encontrado';
+var el = window.__interceptedFileInput;
+el ? 'ok - inDOM:' + document.contains(el) : 'NO interceptado'
 ```
 
-4. Localiza el ref con `find` (query: `"__claude_file_input"`) y sube con `file_upload`
+Si `inDOM:false`, añadirlo manualmente al body:
+
+```javascript
+var el = window.__interceptedFileInput;
+el.style.cssText = 'position:fixed;top:-200px;left:0;opacity:0.01;width:1px;height:1px';
+document.body.appendChild(el);
+document.contains(el) + ''
+```
+
+### 3d — Subir fichero con file_upload
+
+Localiza el input con `find` (query: `"file input button"`) — será el input sin nombre / unnamed:
 
 ```
-paths: ["D:\\BDDAT\\docs_prueba\\temp\\contexto_reducido_historial.txt"]
+paths: ["D:\\BDDAT\\docs_prueba\\temp\\FICHERO.txt"]
+ref: <ref del input interceptado>
 ```
 
-⚠️ **Limitación conocida**: el interceptor puede no ser suficiente en todas las versiones de Chrome — el diálogo nativo puede abrirse igualmente. Si el usuario reporta que el diálogo está abierto, pedirle que lo cierre manualmente (botón Cancelar del diálogo) antes de continuar con el Paso 4.
+### 3e — Disparar evento change para que Angular procese el fichero
 
-Si `file_upload` falla con "Not allowed": activar "Permitir acceso a URL de archivo" en `chrome://extensions/` → extensión Claude in Chrome.
+```javascript
+var el = window.__interceptedFileInput;
+el.dispatchEvent(new Event('change', {bubbles: true}));
+'files=' + el.files.length
+```
+
+Toma un screenshot para confirmar que el chip del fichero aparece en la UI de Gemini antes de continuar.
 
 ---
 
@@ -96,21 +124,22 @@ Si `file_upload` falla con "Not allowed": activar "Permitir acceso a URL de arch
 
 ### 4a — Inyectar texto (llamada JS separada)
 
-Usa `execCommand('insertText')` — **no** `box.innerText =`, que no activa el estado interno de React de Gemini:
+Gemini usa un editor Quill. Usar `quill.setText()` para actualizar el modelo Quill, y luego disparar `input` en el div contenteditable para que Angular detecte el cambio:
 
 ```javascript
-var box = document.querySelector('div[contenteditable="true"]');
-box.focus();
-document.execCommand('selectAll', false, null);
-document.execCommand('insertText', false, 'PREGUNTA_AQUI');
-JSON.stringify({ texto: box.innerText.slice(0, 80) })
+var richTextarea = document.querySelector('rich-textarea');
+var quill = richTextarea.__quill;
+quill.setText('PREGUNTA_AQUI');
+// Forzar detección de cambios de Angular — sin esto, el texto se pierde al enviar
+richTextarea.querySelector('div[contenteditable]').dispatchEvent(new Event('input', {bubbles: true}));
+JSON.stringify({ texto: quill.getText().slice(0, 80) })
 ```
 
 Verifica que el campo `texto` en el resultado contiene el inicio de la pregunta antes de continuar.
 
 ### 4b — Enviar y esperar respuesta (Promise)
 
-⚠️ `await` de nivel raíz no está soportado en el evaluador de la extensión. Usa una `Promise` directa — el evaluador la resuelve antes de devolver el resultado:
+⚠️ `await` de nivel raíz no está soportado en el evaluador de la extensión. Usar `Promise` directa:
 
 ```javascript
 new Promise(function(resolve, reject) {
@@ -155,8 +184,11 @@ Lee el resultado del script JS. **No lo muestres al usuario directamente.** Pres
 
 ## Notas de comportamiento conocido
 
+- **Interceptor createElement vs MutationObserver**: el MO llega tarde (asíncrono); el override de createElement es síncrono y garantizado. Siempre usar createElement override.
+- **event `input` obligatorio tras quill.setText**: sin él, Angular no detecta el cambio y el texto se pierde al enviar (Gemini recibe solo el fichero sin pregunta).
+- **inDOM del input interceptado**: Angular a veces appenda el input al documento directamente; otras veces lo deja en un DIV detached. Siempre verificar con `document.contains(el)` y hacer `appendChild` al body si es false.
 - **Título de pestaña**: solo cambia en la primera pregunta de una conversación nueva. No usarlo como indicador de respuesta completada.
 - **Indicador fiable**: `model-response` count + ausencia del botón "Detener".
-- **Refs dinámicos**: los refs de `read_page`/`find` cambian entre interacciones. Usar siempre `find` para relocalizar elementos en vez de reutilizar refs viejos.
+- **Refs dinámicos**: los refs de `find` cambian entre interacciones. Usar siempre `find` para relocalizar elementos en vez de reutilizar refs viejos.
 - **Streaming**: si se lee la respuesta demasiado pronto, está incompleta. El polling del Paso 4 garantiza que el streaming terminó.
 - **Conversación existente**: si se reutiliza un tab con historial, `prevCount` captura el estado previo correctamente y la lógica funciona igual.
