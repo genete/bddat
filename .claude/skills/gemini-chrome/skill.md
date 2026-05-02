@@ -124,14 +124,13 @@ Toma un screenshot para confirmar que el chip del fichero aparece en la UI de Ge
 
 ### 4a — Inyectar texto (llamada JS separada)
 
-Gemini usa un editor Quill. Usar `quill.setText()` para actualizar el modelo Quill, y luego disparar `input` en el div contenteditable para que Angular detecte el cambio:
+Gemini usa un editor Quill. Usar `quill.insertText(..., 'user')` con source `'user'` para que Angular detecte el cambio. **No usar `quill.setText()`** — usa source `'api'` y Angular lo ignora; el texto queda visible pero no se envía.
 
 ```javascript
-var richTextarea = document.querySelector('rich-textarea');
-var quill = richTextarea.__quill;
-quill.setText('PREGUNTA_AQUI');
-// Forzar detección de cambios de Angular — sin esto, el texto se pierde al enviar
-richTextarea.querySelector('div[contenteditable]').dispatchEvent(new Event('input', {bubbles: true}));
+var quill = document.querySelector('rich-textarea').__quill;
+quill.focus();
+quill.deleteText(0, quill.getLength(), 'user');
+quill.insertText(0, 'PREGUNTA_AQUI', 'user');
 JSON.stringify({ texto: quill.getText().slice(0, 80) })
 ```
 
@@ -185,7 +184,7 @@ Lee el resultado del script JS. **No lo muestres al usuario directamente.** Pres
 ## Notas de comportamiento conocido
 
 - **Interceptor createElement vs MutationObserver**: el MO llega tarde (asíncrono); el override de createElement es síncrono y garantizado. Siempre usar createElement override.
-- **event `input` obligatorio tras quill.setText**: sin él, Angular no detecta el cambio y el texto se pierde al enviar (Gemini recibe solo el fichero sin pregunta).
+- **`quill.insertText(0, text, 'user')` obligatorio**: `quill.setText()` usa source `'api'` y Angular lo ignora — el texto queda visible pero no se envía. Con source `'user'` Angular lo procesa correctamente.
 - **inDOM del input interceptado**: Angular a veces appenda el input al documento directamente; otras veces lo deja en un DIV detached. Siempre verificar con `document.contains(el)` y hacer `appendChild` al body si es false.
 - **Título de pestaña**: solo cambia en la primera pregunta de una conversación nueva. No usarlo como indicador de respuesta completada.
 - **Indicador fiable**: `model-response` count + ausencia del botón "Detener".
