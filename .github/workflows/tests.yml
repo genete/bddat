@@ -29,6 +29,7 @@ jobs:
       DATABASE_URL: postgresql://bddat_ci:bddat_ci@localhost:5432/bddat_ci
       SECRET_KEY: github-actions-ci-secret
       FLASK_APP: run.py
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
     steps:
       - uses: actions/checkout@v4
