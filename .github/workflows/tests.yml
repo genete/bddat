@@ -1,0 +1,51 @@
+name: Tests
+
+on:
+  push:
+    branches: [ develop ]
+  pull_request:
+    branches: [ develop ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: bddat_ci
+          POSTGRES_PASSWORD: bddat_ci
+          POSTGRES_DB: bddat_ci
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    env:
+      DATABASE_URL: postgresql://bddat_ci:bddat_ci@localhost:5432/bddat_ci
+      SECRET_KEY: github-actions-ci-secret
+      FLASK_APP: run.py
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configurar Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: 'pip'
+
+      - name: Instalar dependencias
+        run: |
+          pip install -r requirements.txt
+          pip install pytest
+
+      - name: Aplicar migraciones
+        run: flask db upgrade
+
+      - name: Ejecutar tests
+        run: pytest tests/ -v
