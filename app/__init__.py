@@ -7,11 +7,15 @@ Responsabilidades:
 - Configuración de Jinja2
 - Manejo de errores HTTP
 """
-from flask import Flask, render_template, request
+import logging
+
+from flask import Flask, jsonify, render_template, request
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_login import LoginManager, current_user
 from app.config import config
+
+log = logging.getLogger(__name__)
 
 # Instancias de extensiones (sin vincular a app aún)
 db = SQLAlchemy()
@@ -41,6 +45,11 @@ def create_app(config_name='development'):
     db.init_app(app)
     migrate.init_app(app, db)
     login_manager.init_app(app)
+
+    # Validar catálogo estructural al arranque (#347)
+    with app.app_context():
+        from app.checks.catalogo_requerido import validar_catalogo
+        validar_catalogo()
 
     # Configuración de Flask-Login
     login_manager.login_view = 'auth.login'
@@ -170,5 +179,24 @@ def create_app(config_name='development'):
     def internal_error(error):
         db.session.rollback()
         return render_template('errors/500.html'), 500
+
+    # Manejadores de errores de infraestructura (#347)
+    from sqlalchemy.exc import OperationalError, ProgrammingError
+
+    @app.errorhandler(OperationalError)
+    def handle_db_operational(exc):
+        db.session.rollback()
+        log.error('BD no disponible: %s', exc)
+        if request.path.startswith('/api/'):
+            return jsonify({'error': 'Servicio de base de datos no disponible', 'code': 'DB_ERROR'}), 503
+        return render_template('errors/500.html'), 503
+
+    @app.errorhandler(ProgrammingError)
+    def handle_db_programming(exc):
+        db.session.rollback()
+        log.error('Error de esquema de BD: %s', exc)
+        if request.path.startswith('/api/'):
+            return jsonify({'error': 'Servicio de base de datos no disponible', 'code': 'DB_ERROR'}), 503
+        return render_template('errors/500.html'), 503
 
     return app

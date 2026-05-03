@@ -104,6 +104,31 @@ Orden de imports en `app/models/__init__.py`: primero modelos sin FKs operaciona
 
 FK format: `db.ForeignKey('public.tabla.campo')` — siempre con prefijo de schema.
 
+### Servicios con dependencias de catálogo (#347)
+
+Todo servicio que acceda a una tabla de catálogo (`TipoTramite`, `TipoTarea`, `TipoFase`, `TipoSolicitud`, `CatalogoPlazo`, etc.) debe:
+
+1. Capturar `OperationalError` / `ProgrammingError` (tabla inexistente o BD caída).
+2. Tratar resultado `None` de `.first()` / `.get()` como registro ausente.
+3. Devolver un valor degradado y loguear con `log.warning`, **sin propagar la excepción**.
+
+```python
+from sqlalchemy.exc import OperationalError, ProgrammingError
+
+def mi_servicio(elemento):
+    try:
+        resultado = MiModelo.query.filter_by(codigo='ESPERADO').first()
+        if resultado is None:
+            log.warning("Registro de catálogo 'ESPERADO' no encontrado")
+            return VALOR_DEGRADADO
+        return resultado
+    except (OperationalError, ProgrammingError):
+        log.warning("Tabla de catálogo no disponible — devolviendo valor degradado")
+        return VALOR_DEGRADADO
+```
+
+Cuando se use un código nuevo en cualquier servicio, añadirlo en `app/checks/catalogo_requerido.py` (`REGISTROS_REQUERIDOS`).
+
 ### Notificaciones
 
 `flash()` con toasts Bootstrap, categorías `success/danger/warning/info`. Nunca modales para notificaciones.

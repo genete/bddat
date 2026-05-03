@@ -45,6 +45,7 @@ def plazo_base(app_ctx):
     plazo = CatalogoPlazo(
         tipo_elemento='FASE',
         tipo_elemento_id=9999,
+        tipo_elemento_codigo='TEST_FIXTURE',
         plazo_valor=30,
         plazo_unidad='DIAS_NATURALES',
         efecto_vencimiento_id=efecto.id,
@@ -132,6 +133,7 @@ def test_catalogo_plazo_orden_default(app_ctx):
     plazo = CatalogoPlazo(
         tipo_elemento='FASE',
         tipo_elemento_id=9998,
+        tipo_elemento_codigo='TEST_ORDEN',
         plazo_valor=10,
         plazo_unidad='DIAS_HABILES',
         efecto_vencimiento_id=efecto.id,

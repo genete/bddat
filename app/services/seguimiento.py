@@ -25,7 +25,13 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 from typing import Optional
 
+import logging
+
+from sqlalchemy.exc import OperationalError, ProgrammingError
+
 from app.models.solicitudes import Solicitud
+
+log = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -101,15 +107,29 @@ def estado_solicitud(solicitud_id: int) -> dict[str, Optional[EstadoPista]]:
         Dict con claves SOL, CONSULTAS, MA, IP, RES.
         None  → pista N/A (sin fases de ese tipo).
         EstadoPista → estado más urgente, con contador acumulado desde los niveles inferiores.
+        PENDIENTE_TRAMITAR en todas las pistas obligatorias si la BD no está disponible.
     """
-    sol = Solicitud.query.get(solicitud_id)
+    try:
+        sol = Solicitud.query.get(solicitud_id)
+    except (OperationalError, ProgrammingError) as exc:
+        log.warning('seguimiento: BD no disponible para solicitud %s — %s', solicitud_id, exc)
+        return {p: EstadoPista('PENDIENTE_TRAMITAR', 'rojo') for p in PISTAS_OBLIGATORIAS}
+
     if sol is None:
         raise ValueError(f'Solicitud {solicitud_id} no encontrada')
 
     result: dict[str, Optional[EstadoPista]] = {}
 
     for pista, tipos_fases in PISTAS.items():
-        fases = [f for f in sol.fases if f.tipo_fase.codigo in tipos_fases]
+        try:
+            fases = [f for f in sol.fases if f.tipo_fase.codigo in tipos_fases]
+        except (AttributeError, OperationalError, ProgrammingError) as exc:
+            log.warning('seguimiento: error accediendo a fases de pista %s — %s', pista, exc)
+            if pista in PISTAS_OBLIGATORIAS:
+                result[pista] = EstadoPista('PENDIENTE_TRAMITAR', 'rojo')
+            else:
+                result[pista] = None
+            continue
 
         if not fases:
             if pista in PISTAS_OBLIGATORIAS:
@@ -183,7 +203,11 @@ def _estado_tarea(tarea, pista: str) -> tuple[str, int]:
     if tarea.planificada:  # sin documentos asignados aún
         return ('PENDIENTE_TRAMITAR', 1)
 
-    tipo = tarea.tipo_tarea.codigo
+    tipo_rel = getattr(tarea, 'tipo_tarea', None)
+    if tipo_rel is None:
+        log.warning('seguimiento: tarea %s sin tipo_tarea — tratando como PENDIENTE_TRAMITAR', getattr(tarea, 'id', '?'))
+        return ('PENDIENTE_TRAMITAR', 1)
+    tipo = tipo_rel.codigo
 
     if tipo == 'ANALIZAR':
         if tarea.documento_usado_id is None:
