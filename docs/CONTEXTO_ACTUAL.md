@@ -4,11 +4,8 @@
 
 ---
 
-**Último cerrado:** #349 — Código tipo tarea `'ANALISIS'` → `'ANALIZAR'` en 4 ficheros:
-`invariantes_esftt.py` (sets `_TIPOS_REQUIEREN_DOC_PRODUCIDO`/`_TIPOS_REQUIEREN_DOC_USADO`),
-`tramites.py` (property `finalizado`), `routes.py` (espejo de invariantes),
-`__init__.py` (icono semántico). Sin migración de BD.
+**Último cerrado:** #347 — Defensividad del backend: `tipo_elemento_codigo` en `catalogo_plazos` (fix polimorfismo frágil), `app/checks/catalogo_requerido.py` (manifiesto + validación arranque), manejadores globales `DB_ERROR` HTTP 503, degradación en `plazos.py` y `seguimiento.py`.
 
-**Actuales:** #350 (bloqueado — requiere seeds de #348)
+**Actuales:** #348
 
-**Próximo:** #347 → #348 → #350 → #337 + #345 → #346 → #173 → #328
+**Próximo:** #348 → #350 → #337 + #345 → #346 → #173 → #328

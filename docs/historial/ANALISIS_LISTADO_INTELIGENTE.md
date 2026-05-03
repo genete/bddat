@@ -342,7 +342,7 @@ Además del filtro por `tipo_titular`, el listado necesita filtros que no tienen
 1. ~~Revisar y aprobar este análisis (especialmente §8)~~ — en curso
 2. ~~Migración `tipo_titular` en `Entidad`~~ — **HECHO** (issue #169). Migración `f77b09ef7c1e`, campo `tipo_titular VARCHAR(30) nullable`. Titulares existentes poblados con `'OTRO'` hasta revisión manual.
 3. ~~Crear script `docs_prueba/seed_listado.py` con los escenarios de §6~~ — hecho
-4. ~~**Limpieza BD ADMISION_TRAMITE**~~ — **HECHO** (issue #257). JSON actualizado a v5.6. Scripts promovidos a `scripts/`. Sin migración Alembic — los maestros FTT nunca se insertan por migración, siempre por `reset_maestros_ftt.py`.
+4. ~~**Limpieza BD ADMISION_TRAMITE**~~ — **HECHO** (issue #257). JSON actualizado a v5.6. Scripts promovidos a `scripts/`. ~~Sin migración Alembic — los maestros FTT nunca se insertan por migración, siempre por `reset_maestros_ftt.py`.~~ **DECISIÓN REVISADA (#348):** los maestros FTT (tipos_fases, tipos_tramites, tipos_tareas, fases_tramites) van en migraciones Alembic como el resto del catálogo. `reset_maestros_ftt.py` queda como herramienta de reset en desarrollo, no como mecanismo de instalación.
 5. ~~Terminar decisiones §8 pendientes~~ — **HECHO.** `tecnologia` → #279; `Notas` → tooltip via #280.
 5b. ~~**Escribir `scripts/verificar_seed.py`**~~ — **HECHO** (issue #257). 77 checks T01-T11: tipos de fase/trámite/tarea, campos doc_usado/doc_producido/notas. Test de regresión para cuando exista `seguimiento.py`.
 6. ~~Implementar `app/services/seguimiento.py`~~ — **HECHO** (issue #169). Servicio `app/services/seguimiento.py` con deducción jerárquica de estados de pista.
