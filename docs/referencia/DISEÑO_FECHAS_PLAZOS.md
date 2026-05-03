@@ -444,7 +444,7 @@ llamada que no pase contexto.
 **Caso de uso canónico — art. 131.1 párr. 2 RD 1955/2000:**
 
 ```
-catalogo_plazos para INFORME_AAPP_AAC:
+catalogo_plazos para CONSULTAS (fase válida para AAP y AAC — art. 131 RD 1955/2000):
   orden=10,  plazo=15 días naturales,
              condiciones: tiene_solicitud_aap_favorable=True
                         + es_solicitud_aac_pura=True
@@ -738,8 +738,7 @@ Estos valores son el seed del `catalogo_plazos` para las fases y trámites del p
 | INFORME_AAPP_AAP | **[PENDIENTE — via ESPERAR_PLAZO.documento_usado_id]** | 30 | DIAS_NATURALES | CONFORMIDAD_PRESUNTA | Art. 127 RD 1955/2000 |
 | TRASLADO_CONDICIONADO_AAP | **[PENDIENTE — via ESPERAR_PLAZO.documento_usado_id]** | 15 | DIAS_NATURALES | SIN_EFECTO_AUTOMATICO | Art. 127 RD 1955/2000 |
 | REPLICA_AAPP_AAP | **[PENDIENTE — via ESPERAR_PLAZO.documento_usado_id]** | 15 | DIAS_NATURALES | CONFORMIDAD_PRESUNTA | Art. 127 RD 1955/2000 |
-| INFORME_AAPP_AAC | **[PENDIENTE — via ESPERAR_PLAZO.documento_usado_id]** | 30 | DIAS_NATURALES | CONFORMIDAD_PRESUNTA | Art. 131 RD 1955/2000 |
-| INFORME_AAPP_AAC_REDUCIDO | **[PENDIENTE — via ESPERAR_PLAZO.documento_usado_id]** | 15 | DIAS_NATURALES | CONFORMIDAD_PRESUNTA | Art. 131 RD 1955/2000 — solo AAC sin DUP con AAP previa |
+| ~~INFORME_AAPP_AAC~~ | ~~INFORME_AAPP_AAC~~ no existe. El plazo del art. 131 se gestiona a nivel de **fase CONSULTAS** (30 días fallback / 15 días condicionado — seed `90655e484fb2`). | — | — | — | — |
 | TRASLADO_CONDICIONADO_AAC | **[PENDIENTE — via ESPERAR_PLAZO.documento_usado_id]** | 15 | DIAS_NATURALES | SIN_EFECTO_AUTOMATICO | Art. 131 RD 1955/2000 |
 | REPLICA_AAPP_AAC | **[PENDIENTE — via ESPERAR_PLAZO.documento_usado_id]** | 15 | DIAS_NATURALES | CONFORMIDAD_PRESUNTA | Art. 131 RD 1955/2000 |
 | INFORME_REE_CIERRE | **[PENDIENTE — via ESPERAR_PLAZO.documento_usado_id]** | 3 | MESES | SIN_EFECTO_AUTOMATICO | Art. 136 RD 1955/2000 — silencio: se continúa sin informe |

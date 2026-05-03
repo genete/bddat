@@ -307,7 +307,7 @@ def test_variables_directo_no_llama_compilar_variables():
 # E) Caso real art. 131.1 párr. 2 RD 1955/2000
 # ---------------------------------------------------------------------------
 #
-# Dos entradas en catalogo_plazos para INFORME_AAPP_AAC (tipo_fase_id=42):
+# Dos entradas en catalogo_plazos para la fase CONSULTAS (válida para AAP y AAC):
 #   - orden=10,  plazo=15 días naturales, condiciones: tiene_solicitud_aap_favorable=True
 #                                                     + es_solicitud_aac_pura=True
 #   - orden=100, plazo=30 días naturales, sin condiciones (fallback general)
@@ -337,7 +337,7 @@ def _entradas_art131():
 
 
 def _mock_fase_aac(fecha_admin):
-    """Fase INFORME_AAPP_AAC con documento_solicitud."""
+    """Fase CONSULTAS (cubre AAP y AAC) con documento_solicitud."""
     fase = MagicMock()
     fase.tipo_fase_id = 42
     fase.tipo_fase = MagicMock(codigo='CONSULTAS')
