@@ -30,8 +30,10 @@ class CatalogoPlazo(db.Model):
     """
     __tablename__ = 'catalogo_plazos'
     __table_args__ = (
-        db.Index('idx_catalogo_plazos_tipo_elem',  'tipo_elemento', 'tipo_elemento_id'),
-        db.Index('idx_catalogo_plazos_tipo_orden', 'tipo_elemento', 'tipo_elemento_id', 'orden'),
+        db.Index('idx_catalogo_plazos_tipo_elem',        'tipo_elemento', 'tipo_elemento_id'),
+        db.Index('idx_catalogo_plazos_tipo_orden',       'tipo_elemento', 'tipo_elemento_id', 'orden'),
+        db.Index('idx_catalogo_plazos_tipo_codigo',      'tipo_elemento', 'tipo_elemento_codigo'),
+        db.Index('idx_catalogo_plazos_tipo_codigo_orden','tipo_elemento', 'tipo_elemento_codigo', 'orden'),
         {'schema': 'public'},
     )
 
@@ -42,7 +44,11 @@ class CatalogoPlazo(db.Model):
     )
     tipo_elemento_id = db.Column(
         db.Integer, nullable=False,
-        comment='ID en tipos_solicitudes / tipos_fases / tipos_tramites / tipos_tareas (sin FK BD — polimórfico)',
+        comment='DEPRECATED — usar tipo_elemento_codigo. Se eliminará en issue posterior.',
+    )
+    tipo_elemento_codigo = db.Column(
+        db.String(60), nullable=False,
+        comment='Código estable del tipo (reemplaza tipo_elemento_id — polimorfismo seguro)',
     )
     campo_fecha = db.Column(
         JSONB, nullable=True,

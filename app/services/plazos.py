@@ -37,6 +37,23 @@ _TIPO_ID_CAMPO = {
     'TAREA':     'tipo_tarea_id',
 }
 
+# Relación ORM que expone el identificador estable del tipo (sin FK BD)
+_TIPO_REL_CAMPO = {
+    'SOLICITUD': 'tipo_solicitud',
+    'FASE':      'tipo_fase',
+    'TRAMITE':   'tipo_tramite',
+    'TAREA':     'tipo_tarea',
+}
+
+# Atributo del modelo tipo que contiene el identificador estable.
+# TipoSolicitud usa 'siglas'; el resto usa 'codigo'.
+_TIPO_CODIGO_ATTR = {
+    'SOLICITUD': 'siglas',
+    'FASE':      'codigo',
+    'TRAMITE':   'codigo',
+    'TAREA':     'codigo',
+}
+
 
 @dataclass
 class EstadoPlazo:
@@ -83,8 +100,8 @@ def obtener_estado_plazo(
     if elemento is None or isinstance(elemento, dict):
         return _SIN_PLAZO
 
-    tipo_elemento_id = _get_tipo_elemento_id(elemento, tipo_elemento)
-    if tipo_elemento_id is None:
+    tipo_codigo = _get_tipo_elemento_codigo(elemento, tipo_elemento)
+    if tipo_codigo is None:
         return _SIN_PLAZO
 
     if variables is not None:
@@ -97,7 +114,7 @@ def obtener_estado_plazo(
     else:
         variables_dict = {}
 
-    catalogo = _seleccionar_catalogo(tipo_elemento, tipo_elemento_id, variables_dict)
+    catalogo = _seleccionar_catalogo(tipo_elemento, tipo_codigo, variables_dict)
 
     if catalogo is None:
         return _SIN_PLAZO
@@ -246,9 +263,12 @@ def _evaluar_condiciones_plazo(condiciones, variables: dict) -> bool:
     return True
 
 
-def _seleccionar_catalogo(tipo_elemento: str, tipo_id: int, variables_dict: dict):
+def _seleccionar_catalogo(tipo_elemento: str, tipo_codigo: str, variables_dict: dict):
     """
     Devuelve la primera entrada activa de catalogo_plazos que supera sus condiciones.
+
+    Filtra por tipo_elemento_codigo (código estable) en lugar del ID autoincremental
+    frágil ante borrado+reinserción (#347).
 
     Algoritmo (IMPLEMENTACION_341.md §Sesión 4):
       1. Carga entradas activas con joinedload de condiciones+variable.
@@ -259,16 +279,21 @@ def _seleccionar_catalogo(tipo_elemento: str, tipo_id: int, variables_dict: dict
     """
     from app.models.catalogo_plazos import CatalogoPlazo
     from app.models.condiciones_plazo import CondicionPlazo
+    from sqlalchemy.exc import OperationalError, ProgrammingError
 
-    entradas = (
-        CatalogoPlazo.query
-        .options(
-            joinedload(CatalogoPlazo.condiciones).joinedload(CondicionPlazo.variable)
+    try:
+        entradas = (
+            CatalogoPlazo.query
+            .options(
+                joinedload(CatalogoPlazo.condiciones).joinedload(CondicionPlazo.variable)
+            )
+            .filter_by(tipo_elemento=tipo_elemento, tipo_elemento_codigo=tipo_codigo, activo=True)
+            .order_by(CatalogoPlazo.orden.asc(), CatalogoPlazo.id.asc())
+            .all()
         )
-        .filter_by(tipo_elemento=tipo_elemento, tipo_elemento_id=tipo_id, activo=True)
-        .order_by(CatalogoPlazo.orden.asc(), CatalogoPlazo.id.asc())
-        .all()
-    )
+    except (OperationalError, ProgrammingError) as exc:
+        log.warning('plazos: tabla catalogo_plazos no disponible (%s) — devolviendo SIN_PLAZO', exc)
+        return None
 
     for entrada in entradas:
         if not entrada.condiciones:
@@ -280,7 +305,7 @@ def _seleccionar_catalogo(tipo_elemento: str, tipo_id: int, variables_dict: dict
         log.warning(
             'plazos: ninguna entrada de catalogo_plazos satisface condiciones '
             'para %s/%s — se devuelve SIN_PLAZO',
-            tipo_elemento, tipo_id,
+            tipo_elemento, tipo_codigo,
         )
     return None
 
@@ -288,6 +313,15 @@ def _seleccionar_catalogo(tipo_elemento: str, tipo_id: int, variables_dict: dict
 def _get_tipo_elemento_id(elemento, tipo_elemento: str) -> Optional[int]:
     campo = _TIPO_ID_CAMPO.get(tipo_elemento)
     return getattr(elemento, campo, None) if campo else None
+
+
+def _get_tipo_elemento_codigo(elemento, tipo_elemento: str) -> Optional[str]:
+    rel_nombre = _TIPO_REL_CAMPO.get(tipo_elemento)
+    attr_nombre = _TIPO_CODIGO_ATTR.get(tipo_elemento, 'codigo')
+    if not rel_nombre:
+        return None
+    tipo_rel = getattr(elemento, rel_nombre, None)
+    return getattr(tipo_rel, attr_nombre, None) if tipo_rel else None
 
 
 def _resolver_campo_fecha(elemento, tipo_elemento: str, campo_fecha: dict) -> Optional[date]:

@@ -41,10 +41,11 @@ def _mock_entrada(orden=100, entrada_id=1, condiciones=None,
     return e
 
 
-def _mock_fase(tipo_fase_id, fecha_administrativa):
+def _mock_fase(tipo_fase_id, fecha_administrativa, tipo_fase_codigo='CONSULTAS'):
     """Fase mínima para obtener_estado_plazo."""
     fase = MagicMock()
     fase.tipo_fase_id = tipo_fase_id
+    fase.tipo_fase = MagicMock(codigo=tipo_fase_codigo)
     doc = MagicMock()
     doc.fecha_administrativa = fecha_administrativa
     fase.documento_resultado = doc
@@ -286,7 +287,7 @@ def test_ctx_llama_compilar_variables_con_excluir():
         obtener_estado_plazo(fase, 'FASE', ctx=ctx)
 
     mock_cv.assert_called_once_with(ctx, excluir={'estado_plazo', 'efecto_plazo'})
-    mock_sel.assert_called_once_with('FASE', 1, {})
+    mock_sel.assert_called_once_with('FASE', 'CONSULTAS', {})
 
 
 def test_variables_directo_no_llama_compilar_variables():
@@ -339,6 +340,7 @@ def _mock_fase_aac(fecha_admin):
     """Fase INFORME_AAPP_AAC con documento_solicitud."""
     fase = MagicMock()
     fase.tipo_fase_id = 42
+    fase.tipo_fase = MagicMock(codigo='CONSULTAS')
     fase.tareas = []
     doc_sol = MagicMock()
     doc_sol.fecha_administrativa = fecha_admin
