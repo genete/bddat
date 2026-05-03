@@ -98,7 +98,7 @@ class Tramite(db.Model):
 
         ESPERAR_PLAZO se excluye — su completitud la evalúa plazos.py via ContextAssembler.
         """
-        _requieren = {'INCORPORAR', 'ANALISIS', 'REDACTAR', 'FIRMAR', 'NOTIFICAR', 'PUBLICAR'}
+        _requieren = {'INCORPORAR', 'ANALIZAR', 'REDACTAR', 'FIRMAR', 'NOTIFICAR', 'PUBLICAR'}
         for t in self.tareas:
             if not t.tipo_tarea:
                 continue

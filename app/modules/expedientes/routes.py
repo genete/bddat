@@ -487,9 +487,9 @@ def tramitacion_bc_tarea(exp_id, sol_id, fase_id, tram_id, tarea_id):
 
 
 # Conjuntos de tipos de tarea que requieren documentos (espejo de invariantes_esftt.py)
-_TIPOS_REQUIEREN_DOC_USADO     = {'ANALISIS', 'FIRMAR', 'NOTIFICAR', 'PUBLICAR'}
+_TIPOS_REQUIEREN_DOC_USADO     = {'ANALIZAR', 'FIRMAR', 'NOTIFICAR', 'PUBLICAR'}
 _TIPOS_DOC_USADO_OPCIONAL      = {'REDACTAR'}   # visible en UI pero no obligatorio al finalizar
-_TIPOS_REQUIEREN_DOC_PRODUCIDO = {'ANALISIS', 'REDACTAR', 'FIRMAR', 'NOTIFICAR', 'PUBLICAR'}
+_TIPOS_REQUIEREN_DOC_PRODUCIDO = {'ANALIZAR', 'REDACTAR', 'FIRMAR', 'NOTIFICAR', 'PUBLICAR'}
 # INCORPORAR usa documentos_tarea (N docs) — no documento_producido_id
 
 

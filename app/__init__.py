@@ -136,7 +136,7 @@ def create_app(config_name='development'):
     def _icono_tarea_tipo(codigo):
         """Icono semántico por tipo de tarea (mockup icons_ESFTT)."""
         return {
-            'ANALISIS':     'bi bi-person-gear',
+            'ANALIZAR':     'bi bi-person-gear',
             'REDACTAR':     'bi bi-pencil',
             'FIRMAR':       'bi bi-pen',
             'NOTIFICAR':    'bi bi-send',
