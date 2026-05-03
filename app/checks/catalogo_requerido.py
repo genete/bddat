@@ -83,6 +83,13 @@ def validar_catalogo() -> List[str]:
             }
         except (OperationalError, ProgrammingError) as exc:
             log.warning('catalogo: tabla de %s no disponible — %s', nombre_modelo, exc)
+            # Rollback necesario: en PostgreSQL un error aborta la transacción
+            # y las queries siguientes fallarían con InFailedSqlTransaction.
+            try:
+                from app import db as _db
+                _db.session.rollback()
+            except Exception:
+                pass
             continue
 
         for codigo in codigos:
