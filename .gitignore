@@ -11,6 +11,8 @@ app/static/uploads/*
 # Se ignora el contenido pero no el directorio, para poder exceptuar skills/
 .claude/*
 !.claude/skills
+!.claude/launch.json
+!.claude/settings.json
 # Documentos de prueba locales (no versionar binarios ni datos reales)
 docs_prueba/
 contexto_completo_gemini.txt
