@@ -79,6 +79,11 @@ _SIN_PLAZO = EstadoPlazo(
 # API pública
 # ---------------------------------------------------------------------------
 
+def tiene_plazo_configurado(tipo_elemento: str, tipo_codigo: str, variables: dict) -> bool:
+    """True si existe al menos una entrada activa en catalogo_plazos que supera sus condiciones."""
+    return _seleccionar_catalogo(tipo_elemento, tipo_codigo, variables) is not None
+
+
 def obtener_estado_plazo(
     elemento,
     tipo_elemento: str,
