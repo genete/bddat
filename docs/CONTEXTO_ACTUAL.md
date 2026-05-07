@@ -4,8 +4,8 @@
 
 ---
 
-**Último cerrado:** #353 — Corregir `catalogo_requerido.py`: añadir `RECONOCIMIENTO_INTERESADO` a `TipoFase` y corregir mensaje de error (`.codigo=` → `.{attr}=`).
+**Último cerrado:** #350 — Migrar `_estado_esperar_plazo` en `seguimiento.py` de `_parse_plazo_dias` a `catalogo_plazos`; seed de 6 plazos ESPERAR_PLAZO; añadir `tipo_tramite` a `catalogo_variables`.
 
-**Actuales:** #350
+**Actuales:** #337 + #345
 
-**Próximo:** #337 + #345 → #346 → #173 → #328
+**Próximo:** #346 → #173 → #328
