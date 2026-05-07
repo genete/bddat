@@ -4,8 +4,8 @@
 
 ---
 
-**Último cerrado:** #348 — Seeds en migraciones: 2 migraciones seed paralelas (`seed_catalogo_base`, `seed_normas_base`), corrección PASO 7 en `a1b2c3d4e5f6`, eliminación `datos_estructurales.sql`, limpieza phantoms `catalogo_requerido`.
+**Último cerrado:** #353 — Corregir `catalogo_requerido.py`: añadir `RECONOCIMIENTO_INTERESADO` a `TipoFase` y corregir mensaje de error (`.codigo=` → `.{attr}=`).
 
-**Actuales:** #353
+**Actuales:** —
 
 **Próximo:** #350 → #337 + #345 → #346 → #173 → #328
