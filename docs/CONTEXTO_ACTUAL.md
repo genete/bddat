@@ -4,8 +4,8 @@
 
 ---
 
-**Último cerrado:** #347 — Defensividad del backend: `tipo_elemento_codigo` en `catalogo_plazos` (fix polimorfismo frágil), `app/checks/catalogo_requerido.py` (manifiesto + validación arranque), manejadores globales `DB_ERROR` HTTP 503, degradación en `plazos.py` y `seguimiento.py`.
+**Último cerrado:** #348 — Seeds en migraciones: 2 migraciones seed paralelas (`seed_catalogo_base`, `seed_normas_base`), corrección PASO 7 en `a1b2c3d4e5f6`, eliminación `datos_estructurales.sql`, limpieza phantoms `catalogo_requerido`.
 
-**Actuales:** #348
+**Actuales:** #353
 
-**Próximo:** (#348 + #353) → #350 → #337 + #345 → #346 → #173 → #328
+**Próximo:** #350 → #337 + #345 → #346 → #173 → #328
