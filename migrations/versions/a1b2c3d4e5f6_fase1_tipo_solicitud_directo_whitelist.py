@@ -19,7 +19,7 @@ import sqlalchemy as sa
 revision = 'a1b2c3d4e5f6'
 down_revision = '20c5d1e9d782'
 branch_labels = None
-depends_on = None
+depends_on = 'seed_catalogo_base'
 
 
 def upgrade():
@@ -165,21 +165,19 @@ def upgrade():
     op.drop_table('solicitudes_tipos', schema='public')
 
     # =========================================================================
-    # PASO 7 — Seed fases_tramites desde estructura JSON
+    # PASO 7 — Seed fases_tramites (fases 1-8; fase 9 la añade 8deef1de808e)
     # =========================================================================
     op.execute("""
         INSERT INTO public.fases_tramites (tipo_fase_id, tipo_tramite_id) VALUES
-        (1, 1), (1, 2),
-        (2, 3), (2, 4),
-        (3, 5), (3, 6),
-        (4, 7), (4, 8),
-        (5, 9), (5, 10), (5, 11),
-        (6, 12), (6, 13),
-        (7, 14), (7, 15), (7, 16),
-        (8, 17), (8, 18), (8, 19), (8, 20), (8, 21), (8, 22), (8, 23),
-        (9, 24), (9, 25),
-        (10, 26), (10, 27),
-        (11, 28), (11, 29), (11, 30)
+        (1, 1), (1, 2), (1, 3),
+        (2, 4), (2, 5),
+        (3, 5), (3, 6), (3, 7),
+        (4, 8), (4, 9), (4, 10),
+        (5, 11), (5, 12), (5, 13), (5, 14), (5, 15), (5, 16), (5, 17),
+        (6, 18), (6, 19),
+        (7, 20), (7, 21),
+        (8, 22), (8, 23), (8, 24)
+        ON CONFLICT DO NOTHING
     """)
 
 
