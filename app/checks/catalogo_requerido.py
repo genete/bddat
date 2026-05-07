@@ -30,6 +30,7 @@ REGISTROS_REQUERIDOS: dict = {
         'AAU_AAUS_INTEGRADA',
         'INFORMACION_PUBLICA',
         'RESOLUCION',
+        'RECONOCIMIENTO_INTERESADO',
     ],
     # TipoSolicitud usa 'siglas' como identificador estable (no 'codigo')
     'TipoSolicitud': ['AAC', 'AAP'],
@@ -91,7 +92,7 @@ def validar_catalogo() -> List[str]:
 
         for codigo in codigos:
             if codigo not in existentes:
-                faltantes.append(f"{nombre_modelo}.codigo='{codigo}' → no encontrado")
+                faltantes.append(f"{nombre_modelo}.{attr}='{codigo}' → no encontrado")
 
     if faltantes:
         log.error(
