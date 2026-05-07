@@ -183,19 +183,18 @@ Debería mostrar Flask y Python instalados.
 
 ***
 
-## 7. Crear TODAS las Tablas con Alembic
+## 7. Crear Tablas y Datos de Catálogo con Alembic
 
 ```bash
-# Aplicar migraciones
-flask db upgrade
+# Aplicar migraciones (esquema + seeds de catálogo)
+flask db upgrade heads
 ```
 
 Esto crea automáticamente en el **schema `public`**:
 - Tablas maestras: `municipios`, `tipos_entidades`, `tipos_ia`, `tipos_fases`, `tipos_tramites`, `tipos_tareas`, `tipos_solicitudes`, `tipos_expedientes`, `tipos_resultados_fases`
-- Tablas operacionales: `usuarios`, `roles`, `usuarios_roles`, `expedientes`, `proyectos`, `municipios_proyecto`, `solicitudes`, `solicitudes_tipos`, `documentos`, `documentos_proyecto`, `fases`, `tramites`, `tareas`, `entidades`, `entidades_administrados`, `entidades_ayuntamientos`, `entidades_diputaciones`, `entidades_empresas_servicio_publico`, `entidades_organismos_publicos`
+- Tablas operacionales: `usuarios`, `roles`, `usuarios_roles`, `expedientes`, `proyectos`, `municipios_proyecto`, `solicitudes`, `documentos`, `documentos_proyecto`, `fases`, `tramites`, `tareas`, `entidades`, `entidades_administrados`, `entidades_ayuntamientos`, `entidades_diputaciones`, `entidades_empresas_servicio_publico`, `entidades_organismos_publicos`
 - Todas las relaciones, índices y constraints
-
-**Las tablas están creadas pero VACÍAS** (sin datos).
+- **Datos de catálogo** insertados automáticamente por las migraciones seed
 
 ### Verificar FK crítica
 
@@ -212,42 +211,24 @@ Si no aparece, revisar la sección **Problema 5** más adelante.
 
 ## 8. Cargar Datos Maestros
 
-### Cargar datos estructurales
+Los datos estructurales de catálogo (roles, tipos_fases, tipos_tramites, tipos_solicitudes,
+tipos_tareas, tipos_ia, tipos_resultados_fases, normas…) se insertan automáticamente
+mediante las migraciones de seed. El comando del paso anterior ya los cargó:
 
 ```bash
-psql -U bddat_admin -d bddat -f bd/scripts/datos_estructurales.sql
+flask db upgrade heads   # esquema + todos los datos de catálogo
 ```
 
-O desde pgAdmin:
+> **Nota:** `flask db upgrade` (sin `heads`) también funciona si solo hay un head activo.
+> Usar `flask db heads` para ver los heads disponibles.
 
-1. Conectar con usuario `bddat_admin`
-2. Clic derecho en base de datos `bddat` → Query Tool
-3. Abrir archivo `bd/scripts/datos_estructurales.sql`
-4. Ejecutar (botón play o F5)
+### Cargar municipios (opcional)
 
-Esto inserta:
-
-- 773 municipios de Andalucía con códigos INE
-- Provincias
-- 5 tipos de entidades (ADMINISTRADO, EMPRESA_SERVICIO_PUBLICO, ORGANISMO_PUBLICO, AYUNTAMIENTO, DIPUTACION)
-- Tipos de instalaciones AT
-- Tipos de instrumentos ambientales (AAI, AAU, AAUS, CA, EXENTO)
-- Tipos de fases, trámites, tareas, solicitudes
-
-
-### Cargar roles del sistema
+Los municipios de Andalucía se cargan aparte por su volumen (8132 registros):
 
 ```bash
-psql -U bddat_admin -d bddat -f bd/scripts/datos_roles.sql
+psql -U bddat_admin -h localhost bddat < scripts/data/municipios.sql
 ```
-
-Esto inserta los 4 roles:
-
-- ADMIN (Administrador del sistema)
-- SUPERVISOR (Supervisor de tramitación)
-- TRAMITADOR (Tramitador de expedientes)
-- ADMINISTRATIVO (Personal administrativo)
-
 
 ### Verificar que los datos se cargaron
 
@@ -255,14 +236,11 @@ Esto inserta los 4 roles:
 -- Conectar a la BD
 psql -U bddat_admin -d bddat
 
--- Verificar municipios
-SELECT COUNT(*) FROM public.municipios;  -- Debe devolver 773
+-- Verificar roles (debe mostrar 4)
+SELECT * FROM public.roles;
 
--- Verificar tipos de entidades
-SELECT COUNT(*) FROM public.tipos_entidades;  -- Debe devolver 5
-
--- Verificar roles
-SELECT * FROM public.roles;  -- Debe mostrar 4 roles
+-- Verificar tipos de fases (debe mostrar 9)
+SELECT COUNT(*) FROM public.tipos_fases;
 
 -- Salir
 \q
@@ -540,17 +518,17 @@ psql -U bddat_admin -d bddat
 ```
 
 ```sql
-SELECT COUNT(*) FROM public.municipios;  -- Debe ser 773
-SELECT COUNT(*) FROM public.tipos_entidades;  -- Debe ser 5
 SELECT COUNT(*) FROM public.tipos_ia;    -- Debe ser 5
-SELECT COUNT(*) FROM public.roles;           -- Debe ser 4
+SELECT COUNT(*) FROM public.roles;       -- Debe ser 4
+SELECT COUNT(*) FROM public.tipos_fases; -- Debe ser 9
 ```
 
-**Solución**: Si los conteos son 0 o menores:
+**Solución**: Los datos de catálogo se insertan mediante migraciones seed.
+Si faltan, verificar que se aplicaron todos los heads:
 
 ```bash
-psql -U bddat_admin -d bddat -f bd/scripts/datos_estructurales.sql
-psql -U bddat_admin -d bddat -f bd/scripts/datos_roles.sql
+flask db upgrade heads
+flask db heads   # debe mostrar varios heads en HEAD
 ```
 
 ***
@@ -608,11 +586,10 @@ psql -U bddat_admin -d bddat -c "SELECT conname FROM pg_constraint WHERE conname
 7. Activar entorno: venv\Scripts\activate
 8. Instalar dependencias: pip install -r requirements.txt
 9. Crear .env con DATABASE_URL (usuario bddat_admin)
-10. ✅ Aplicar migraciones: flask db upgrade
+10. ✅ Aplicar migraciones + seeds: flask db upgrade heads
 10b. ✅ Verificar FK crítica: fk_documentos_proyecto_proyecto
-11. ✅ Cargar datos estructurales: psql -U bddat_admin -f datos_estructurales.sql
-12. ✅ Cargar roles: psql -U bddat_admin -f datos_roles.sql
-13. Generar password hash: flask shell → generate_password_hash()
+11. (opcional) Cargar municipios: psql -U bddat_admin < scripts/data/municipios.sql
+12. Generar password hash: flask shell → generate_password_hash()
 14. Crear usuario app: INSERT INTO usuarios
 15. ⚠️ Asignar rol: INSERT INTO usuarios_roles
 16. ✅ Verificar rol: SELECT ... LEFT JOIN (no debe ser NULL)
@@ -635,12 +612,10 @@ psql -U bddat_admin -d bddat -c "SELECT conname FROM pg_constraint WHERE conname
 - [ ] Entorno virtual creado y activado
 - [ ] Dependencias instaladas
 - [ ] Archivo `.env` con `DATABASE_URL` correcto (usuario bddat_admin)
-- [ ] Migraciones aplicadas: `flask db upgrade`
-- [ ] Migración actual es 8d33446946ff o posterior
+- [ ] Migraciones aplicadas: `flask db upgrade heads`
 - [ ] FK `fk_documentos_proyecto_proyecto` verificada
 - [ ] Ownership verificado (todas las tablas son de bddat_admin)
-- [ ] `datos_estructurales.sql` cargado (773 municipios, 5 tipos entidades)
-- [ ] `datos_roles.sql` cargado (4 roles)
+- [ ] Datos de catálogo verificados (4 roles, 9 tipos_fases, etc.)
 - [ ] Usuario aplicación creado con password hash
 - [ ] **Rol ADMIN asignado en `usuarios_roles`**
 - [ ] **Verificado con SELECT que rol = 'ADMIN' (no NULL)**

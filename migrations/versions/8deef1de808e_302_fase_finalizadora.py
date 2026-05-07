@@ -13,7 +13,7 @@ import sqlalchemy as sa
 revision = '8deef1de808e'
 down_revision = 'a3f1c8e290bd'
 branch_labels = None
-depends_on = None
+depends_on = 'seed_catalogo_base'
 
 
 def upgrade():
