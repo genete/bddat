@@ -14,11 +14,8 @@ log = logging.getLogger(__name__)
 # Añadir aquí cuando se use un código nuevo en cualquier servicio o ruta.
 REGISTROS_REQUERIDOS: dict = {
     'TipoTramite': [
-        'AAC', 'AAP',
         'PUBLICACION', 'NOTIFICACION',
-        'SUBSANACION', 'AUDIENCIA',
-        'ADMISIBILIDAD_TECNICA',
-        'INFORME_AAPP', 'INFORME_SERVICIOS',
+        'REQUERIMIENTO_SUBSANACION', 'AUDIENCIA',
     ],
     'TipoTarea': [
         'ANALIZAR', 'REDACTAR', 'FIRMAR',
