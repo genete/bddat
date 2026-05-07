@@ -71,15 +71,15 @@ class TestTareaEjecutadaIncorporar:
         assert _en_curso(con_docs) is False
 
     def test_analisis_sin_doc_producido_no_ejecutada(self):
-        t = _StubTarea('ANALISIS', doc_producido_id=None)
+        t = _StubTarea('ANALIZAR', doc_producido_id=None)
         assert _ejecutada(t) is False
 
     def test_analisis_con_doc_producido_ejecutada(self):
-        t = _StubTarea('ANALISIS', doc_producido_id=42)
+        t = _StubTarea('ANALIZAR', doc_producido_id=42)
         assert _ejecutada(t) is True
 
     def test_analisis_con_doc_usado_en_curso(self):
-        t = _StubTarea('ANALISIS', doc_producido_id=None, doc_usado_id=7)
+        t = _StubTarea('ANALIZAR', doc_producido_id=None, doc_usado_id=7)
         assert _planificada(t) is False
         assert _ejecutada(t) is False
         assert _en_curso(t) is True
@@ -126,7 +126,7 @@ class TestCheckFinalizarTareaIncorporar:
 
     def test_analisis_sin_doc_producido_bloquea(self, app):
         with app.app_context():
-            tarea = self._mock_tarea('ANALISIS', doc_producido_id=None)
+            tarea = self._mock_tarea('ANALIZAR', doc_producido_id=None)
             with patch('app.services.invariantes_esftt.Tarea') as MockTarea:
                 MockTarea.query.get.return_value = tarea
                 resultado = _check_finalizar_tarea(99)
@@ -135,7 +135,7 @@ class TestCheckFinalizarTareaIncorporar:
 
     def test_analisis_con_ambos_docs_no_bloquea(self, app):
         with app.app_context():
-            tarea = self._mock_tarea('ANALISIS', doc_producido_id=5, doc_usado_id=3)
+            tarea = self._mock_tarea('ANALIZAR', doc_producido_id=5, doc_usado_id=3)
             with patch('app.services.invariantes_esftt.Tarea') as MockTarea:
                 MockTarea.query.get.return_value = tarea
                 resultado = _check_finalizar_tarea(99)

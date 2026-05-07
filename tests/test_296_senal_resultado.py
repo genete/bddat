@@ -154,22 +154,22 @@ class TestTareaResultado:
 
     def test_analisis_siempre_indiferente(self):
         # ANALISIS no puede tener resultado != INDIFERENTE por diseño
-        t = _StubTarea('ANALISIS', doc_producido=_doc_producido(efecto=None))
+        t = _StubTarea('ANALIZAR', doc_producido=_doc_producido(efecto=None))
         assert _tarea_resultado(t) == 'INDIFERENTE'
 
 
 class TestTareaEstado:
 
     def test_planificada_devuelve_planificada(self):
-        t = _StubTarea('ANALISIS', doc_producido_id=None, doc_usado_id=None)
+        t = _StubTarea('ANALIZAR', doc_producido_id=None, doc_usado_id=None)
         assert _tarea_estado(t) == 'PLANIFICADA'
 
     def test_ejecutada_devuelve_ejecutada(self):
-        t = _StubTarea('ANALISIS', doc_producido_id=5)
+        t = _StubTarea('ANALIZAR', doc_producido_id=5)
         assert _tarea_estado(t) == 'EJECUTADA'
 
     def test_en_curso_devuelve_en_curso(self):
-        t = _StubTarea('ANALISIS', doc_producido_id=None, doc_usado_id=3)
+        t = _StubTarea('ANALIZAR', doc_producido_id=None, doc_usado_id=3)
         assert _tarea_estado(t) == 'EN_CURSO'
 
     def test_incorporar_sin_docs_planificada(self):
@@ -229,7 +229,7 @@ class TestTramiteFinalizadoConResultado:
         assert _tramite_finalizado(tr) is False
 
     def test_analisis_sin_doc_no_finalizado(self):
-        t = _StubTareaConResultado('ANALISIS', doc_producido_id=None)
+        t = _StubTareaConResultado('ANALIZAR', doc_producido_id=None)
         tr = _StubTramite(tareas=[t])
         assert _tramite_finalizado(tr) is False
 
