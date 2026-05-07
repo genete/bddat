@@ -20,9 +20,7 @@ Uso:
 """
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
-from datetime import date, timedelta
 from typing import Optional
 
 import logging
@@ -258,52 +256,39 @@ def _estado_tarea(tarea, pista: str) -> tuple[str, int]:
 
 def _estado_esperar_plazo(tarea, pista: str) -> str:
     """
-    ESPERAR_PLAZO: §4.4
-    - documento_usado_id IS NULL (plazo=0 o aún sin configurar) → PENDIENTE_PLAZOS / PENDIENTE_SUBSANAR
-    - documento_usado_id IS NOT NULL y plazo=0 → espera indefinida
-    - documento_usado_id IS NOT NULL y plazo>0 con plazo activo → PENDIENTE_PLAZOS / PENDIENTE_SUBSANAR
-    - documento_usado_id IS NOT NULL y plazo vencido → PENDIENTE_ESTUDIO
-
-    El inicio del cómputo es documento_usado.fecha_administrativa (no fecha_inicio de la tarea).
+    ESPERAR_PLAZO: §4.4 — consulta catalogo_plazos en lugar de parsear Tarea.notas.
+    Sin entrada configurada → PENDIENTE_TRAMITAR (tarea sin configurar).
+    Con entrada pero sin documento_usado aún → estado_espera (esperando inicio de cómputo).
+    Plazo vencido → PENDIENTE_ESTUDIO.
     """
-    plazo = _parse_plazo_dias(tarea.notas)
+    from app.services.plazos import obtener_estado_plazo, tiene_plazo_configurado
 
-    if plazo is None:
-        return 'PENDIENTE_TRAMITAR'  # PLAZO_DIAS no presente en notas: tarea sin configurar
+    variables = _variables_esperar_plazo(tarea)
+
+    if not tiene_plazo_configurado('TAREA', 'ESPERAR_PLAZO', variables):
+        return 'PENDIENTE_TRAMITAR'
 
     estado_espera = 'PENDIENTE_SUBSANAR' if pista == 'SOL' else 'PENDIENTE_PLAZOS'
 
-    if plazo == 0:
-        return estado_espera  # espera indefinida: siempre activo
+    ep = obtener_estado_plazo(tarea, 'TAREA', variables=variables)
 
-    fecha_inicio_computo = (
-        tarea.documento_usado.fecha_administrativa
-        if tarea.documento_usado and tarea.documento_usado.fecha_administrativa
-        else None
-    )
+    if ep.estado == 'VENCIDO':
+        return 'PENDIENTE_ESTUDIO'
+    return estado_espera   # SIN_PLAZO (sin doc), EN_PLAZO, PROXIMO_VENCER
 
-    if fecha_inicio_computo:
-        vencimiento = fecha_inicio_computo + timedelta(days=plazo)
-        if vencimiento < date.today():
-            return 'PENDIENTE_ESTUDIO'  # plazo vencido: hay que estudiar la respuesta
 
-    return estado_espera
+def _variables_esperar_plazo(tarea) -> dict:
+    try:
+        tt = tarea.tramite.tipo_tramite
+        return {'tipo_tramite': tt.codigo} if tt else {}
+    except Exception:
+        log.warning('seguimiento: no se pudo acceder a tipo_tramite de tarea %s', getattr(tarea, 'id', '?'))
+        return {}
 
 
 # ---------------------------------------------------------------------------
 # Helpers internos
 # ---------------------------------------------------------------------------
-
-def _parse_plazo_dias(notas: Optional[str]) -> Optional[int]:
-    """
-    Extrae PLAZO_DIAS=N de notas.
-    Devuelve None si la clave no está presente (tarea sin configurar).
-    Devuelve 0 si PLAZO_DIAS=0 (espera indefinida).
-    """
-    if not notas:
-        return None
-    m = re.search(r'PLAZO_DIAS=(\d+)', notas)
-    return int(m.group(1)) if m else None
 
 
 def _nota_activa(fases_abiertas) -> Optional[str]:
