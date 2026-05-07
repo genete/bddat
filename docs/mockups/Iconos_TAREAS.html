@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Iconografía de Gestión de Expedientes - FINAL</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <style>
+        :root {
+            --dark-slate: #0f172a;
+            --border-light: #e2e8f0;
+        }
+        body { background-color: #f8fafc; padding: 50px 0; color: #334155; font-family: 'Segoe UI', system-ui, sans-serif; }
+        .matrix-card { border: none; border-radius: 16px; background: white; box-shadow: 0 10px 30px rgba(0,0,0,0.05); margin-bottom: 40px; overflow: hidden; }
+        .matrix-header { background: var(--dark-slate); color: white; padding: 20px 25px; font-weight: 600; font-size: 1.1rem; }
+        
+        .table thead th { background: #f1f5f9; color: #64748b; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; padding: 15px; border: none; }
+        .table td { vertical-align: middle; padding: 16px; border-color: #f1f5f9; text-align: center; }
+        .type-label { text-align: left !important; font-weight: 700; color: var(--dark-slate); padding-left: 25px !important; }
+        
+        /* Colores de estado */
+        .c-todo { color: #94a3b8; } /* Gris: Pendiente */
+        .c-active { color: #f59e0b; } /* Naranja: En curso */
+        .c-process { color: #3b82f6; } /* Azul: En trámite/proceso */
+        .c-success { color: #10b981; } /* Verde: Éxito */
+        .c-error { color: #ef4444; } /* Rojo: Error */
+
+        code { font-size: 0.85rem; color: #be185d; background: #fdf2f8; padding: 3px 6px; border-radius: 4px; }
+        .sz-24 { font-size: 24px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header class="text-center mb-5">
+        <h1 class="fw-bold text-dark">Matriz de Iconografía Consolidada</h1>
+        <p class="lead">Guía de estados y tipologías para la gestión de expedientes</p>
+    </header>
+
+    <div class="matrix-card">
+        <div class="matrix-header bg-primary bg-gradient">
+            <i class="bi bi-person-gear me-2"></i> TIPOLOGÍA DE TAREAS (ACCIONES)
+        </div>
+        <table class="table mb-0">
+            <thead>
+                <tr>
+                    <th class="text-start ps-4">Acción</th>
+                    <th>Icono (24px)</th>
+                    <th>Clase Real</th>
+                    <th>Descripción</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="type-label">ANALISIS</td>
+                    <td><i class="bi bi-person-gear sz-24 c-process"></i></td>
+                    <td><code>bi-person-gear</code></td>
+                    <td>Análisis técnico o procesado humano</td>
+                </tr>
+                <tr>
+                    <td class="type-label">REDACTAR</td>
+                    <td><i class="bi bi-pencil sz-24 c-process"></i></td>
+                    <td><code>bi-pencil</code></td>
+                    <td>Escritura de informes y documentos</td>
+                </tr>
+                <tr>
+                    <td class="type-label">FIRMAR</td>
+                    <td><i class="bi bi-pen sz-24 text-dark"></i></td>
+                    <td><code>bi-pen</code></td>
+                    <td>Validación jurídica y firma</td>
+                </tr>
+                <tr>
+                    <td class="type-label">NOTIFICAR</td>
+                    <td><i class="bi bi-send sz-24 c-success"></i></td>
+                    <td><code>bi-send</code></td>
+                    <td>Comunicación externa al interesado</td>
+                </tr>
+                <tr>
+                    <td class="type-label">PUBLICAR</td>
+                    <td><i class="bi bi-megaphone sz-24 text-secondary"></i></td>
+                    <td><code>bi-megaphone</code></td>
+                    <td>Difusión en boletines o tablones</td>
+                </tr>
+                <tr>
+                    <td class="type-label">ESPERAR_PLAZO</td>
+                    <td><i class="bi bi-hourglass-split sz-24 c-active"></i></td>
+                    <td><code>bi-hourglass-split</code></td>
+                    <td>Suspensión por plazo legal</td>
+                </tr>
+                <tr>
+                    <td class="type-label">INCORPORAR</td>
+                    <td><i class="bi bi-box-arrow-in-down sz-24 text-muted"></i></td>
+                    <td><code>bi-box-arrow-in-down</code></td>
+                    <td>Anexar documentación al expediente</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="matrix-card">
+        <div class="matrix-header">
+            <i class="bi bi-layers me-2"></i> JERARQUÍA Y ESTADOS POR NIVEL
+        </div>
+        <table class="table mb-0">
+            <thead>
+                <tr>
+                    <th class="text-start ps-4">Nivel de Entidad</th>
+                    <th>Pendiente</th>
+                    <th>En Trámite</th>
+                    <th>Éxito / Hecho</th>
+                    <th>Error / Fallo</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="type-label">N1. Expediente</td>
+                    <td><i class="bi bi-folder2 sz-24 c-todo"></i></td>
+                    <td><i class="bi bi-folder2-open sz-24 c-active"></i></td>
+                    <td><i class="bi bi-folder-check sz-24 c-success"></i></td>
+                    <td><i class="bi bi-folder-x sz-24 c-error"></i></td>
+                </tr>
+                <tr>
+                    <td class="type-label">N2. Solicitud</td>
+                    <td><i class="bi bi-file-earmark sz-24 c-todo"></i></td>
+                    <td><i class="bi bi-file-earmark-text sz-24 c-process"></i></td>
+                    <td><i class="bi bi-file-earmark-check sz-24 c-success"></i></td>
+                    <td><i class="bi bi-file-earmark-x sz-24 c-error"></i></td>
+                </tr>
+                <tr>
+                    <td class="type-label">N3. Fase</td>
+                    <td><i class="bi bi-diagram-3 sz-24 c-todo"></i></td>
+                    <td><i class="bi bi-diagram-3-fill sz-24 c-active"></i></td>
+                    <td><i class="bi bi-diagram-3 sz-24 c-success"></i></td>
+                    <td><i class="bi bi-exclamation-triangle sz-24 c-error"></i></td>
+                </tr>
+                <tr>
+                    <td class="type-label">N4. Trámite</td>
+                    <td><i class="bi bi-clipboard sz-24 c-todo"></i></td>
+                    <td><i class="bi bi-clipboard-pulse sz-24 c-active"></i></td>
+                    <td><i class="bi bi-clipboard-check sz-24 c-success"></i></td>
+                    <td><i class="bi bi-clipboard-x sz-24 c-error"></i></td>
+                </tr>
+                <tr>
+                    <td class="type-label">N5. Tarea</td>
+                    <td><i class="bi bi-square sz-24 c-todo"></i></td>
+                    <td><i class="bi bi-pencil-square sz-24 c-active"></i></td>
+                    <td><i class="bi bi-check-square sz-24 c-success"></i></td>
+                    <td><i class="bi bi-x-square sz-24 c-error"></i></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <footer class="text-center text-muted small">
+        Sistema diseñado con Bootstrap 5 e Iconos 1.11.3 - Uso de colores semánticos para accesibilidad visual.
+    </footer>
+</div>
+
+</body>
+</html>

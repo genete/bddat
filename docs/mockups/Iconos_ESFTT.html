@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Catálogo de Iconografía - App de Expedientes</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <style>
+        :root {
+            --dark-bg: #0f172a;
+            --border-color: #e2e8f0;
+        }
+        body { background-color: #f8fafc; padding: 50px 0; color: #1e293b; font-family: 'Inter', system-ui, -apple-system, sans-serif; }
+        .card-catalog { border: none; border-radius: 12px; background: white; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 40px; overflow: hidden; }
+        .card-header { background: var(--dark-bg); color: white; padding: 18px 25px; font-weight: 600; border: none; }
+        
+        /* Tabla de Iconos */
+        .table thead th { background: #f1f5f9; color: #64748b; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; border: none; padding: 12px; }
+        .table td { vertical-align: middle; padding: 15px; border-color: #f1f5f9; }
+        
+        /* Contenedores de tamaños */
+        .i-16 { font-size: 16px; width: 32px; display: inline-block; }
+        .i-24 { font-size: 24px; width: 48px; display: inline-block; }
+        .i-40 { font-size: 40px; width: 64px; display: inline-block; }
+
+        /* Etiquetas de estado */
+        .status-cell { min-width: 220px; }
+        .st-badge { font-size: 0.65rem; font-weight: 800; padding: 3px 8px; border-radius: 5px; text-transform: uppercase; margin-bottom: 5px; display: inline-block; }
+        .st-todo { background: #f1f5f9; color: #475569; }
+        .st-doing { background: #fff7ed; color: #c2410c; }
+        .st-done { background: #dcfce7; color: #15803d; }
+        .st-error { background: #fee2e2; color: #b91c1c; }
+        
+        code { font-size: 0.85rem; color: #be185d; background: #fdf2f8; padding: 2px 6px; border-radius: 4px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="text-center mb-5">
+        <h1 class="fw-bold">Matriz de Iconografía Consolidada</h1>
+        <p class="lead text-secondary">Estados, Tamaños y Consistencia Visual</p>
+    </div>
+
+    <div class="card-catalog">
+        <div class="card-header"><i class="bi bi-folder2-open me-2"></i> NIVEL 1: EXPEDIENTE</div>
+        <table class="table mb-0 text-center">
+            <thead>
+                <tr>
+                    <th class="text-start ps-4">Estado Lógico</th>
+                    <th>16px</th>
+                    <th>24px</th>
+                    <th>40px</th>
+                    <th>Bootstrap Icon Class</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="text-start ps-4 status-cell"><span class="st-badge st-todo">Pendiente</span><br><b>Sin tramitar</b></td>
+                    <td><i class="bi bi-folder2 i-16 text-secondary"></i></td>
+                    <td><i class="bi bi-folder2 i-24 text-secondary"></i></td>
+                    <td><i class="bi bi-folder2 i-40 text-secondary"></i></td>
+                    <td><code>bi-folder2</code></td>
+                </tr>
+                <tr>
+                    <td class="text-start ps-4 status-cell"><span class="st-badge st-doing">Activo</span><br><b>En trámite</b></td>
+                    <td><i class="bi bi-folder2-open i-16 text-warning"></i></td>
+                    <td><i class="bi bi-folder2-open i-24 text-warning"></i></td>
+                    <td><i class="bi bi-folder2-open i-40 text-warning"></i></td>
+                    <td><code>bi-folder2-open</code></td>
+                </tr>
+                <tr>
+                    <td class="text-start ps-4 status-cell"><span class="st-badge st-done">Éxito</span><br><b>Finalizado</b></td>
+                    <td><i class="bi bi-folder-check i-16 text-success"></i></td>
+                    <td><i class="bi bi-folder-check i-24 text-success"></i></td>
+                    <td><i class="bi bi-folder-check i-40 text-success"></i></td>
+                    <td><code>bi-folder-check</code></td>
+                </tr>
+                <tr>
+                    <td class="text-start ps-4 status-cell"><span class="st-badge st-error">Error</span><br><b>Anulado / Denegado</b></td>
+                    <td><i class="bi bi-folder-x i-16 text-danger"></i></td>
+                    <td><i class="bi bi-folder-x i-24 text-danger"></i></td>
+                    <td><i class="bi bi-folder-x i-40 text-danger"></i></td>
+                    <td><code>bi-folder-x</code></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="card-catalog">
+        <div class="card-header bg-secondary bg-opacity-10 text-dark border-bottom"><i class="bi bi-file-earmark-text me-2"></i> NIVEL 2: SOLICITUD</div>
+        <table class="table mb-0 text-center">
+            <tbody>
+                <tr>
+                    <td class="text-start ps-4 status-cell"><span class="st-badge st-todo">Nueva</span><br><b>Sin tramitar</b></td>
+                    <td><i class="bi bi-file-earmark i-16 text-secondary"></i></td>
+                    <td><i class="bi bi-file-earmark i-24 text-secondary"></i></td>
+                    <td><i class="bi bi-file-earmark i-40 text-secondary"></i></td>
+                    <td><code>bi-file-earmark</code></td>
+                </tr>
+                <tr>
+                    <td class="text-start ps-4 status-cell"><span class="st-badge st-doing">Procesando</span><br><b>En trámite</b></td>
+                    <td><i class="bi bi-file-earmark-text i-16 text-primary"></i></td>
+                    <td><i class="bi bi-file-earmark-text i-24 text-primary"></i></td>
+                    <td><i class="bi bi-file-earmark-text i-40 text-primary"></i></td>
+                    <td><code>bi-file-earmark-text</code></td>
+                </tr>
+                <tr>
+                    <td class="text-start ps-4 status-cell"><span class="st-badge st-done">Admitida</span><br><b>Finalizada</b></td>
+                    <td><i class="bi bi-file-earmark-check i-16 text-success"></i></td>
+                    <td><i class="bi bi-file-earmark-check i-24 text-success"></i></td>
+                    <td><i class="bi bi-file-earmark-check i-40 text-success"></i></td>
+                    <td><code>bi-file-earmark-check</code></td>
+                </tr>
+                <tr>
+                    <td class="text-start ps-4 status-cell"><span class="st-badge st-error">Rechazada</span><br><b>Error / X</b></td>
+                    <td><i class="bi bi-file-earmark-x i-16 text-danger"></i></td>
+                    <td><i class="bi bi-file-earmark-x i-24 text-danger"></i></td>
+                    <td><i class="bi bi-file-earmark-x i-40 text-danger"></i></td>
+                    <td><code>bi-file-earmark-x</code></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+<div class="card-catalog">
+        <div class="card-header bg-warning text-dark"><i class="bi bi-diagram-3 me-2"></i> NIVEL 3: FASE DEL PROCEDIMIENTO</div>
+        <table class="table mb-0 text-center">
+            <tbody>
+                <tr>
+                    <td class="text-start ps-4 status-cell"><span class="st-badge st-todo">Pendiente</span><br><b>Fase inactiva</b></td>
+                    <td><i class="bi bi-diagram-3 i-16 text-secondary"></i></td>
+                    <td><i class="bi bi-diagram-3 i-24 text-secondary"></i></td>
+                    <td><i class="bi bi-diagram-3 i-40 text-secondary"></i></td>
+                    <td><code>bi-diagram-3</code></td>
+                </tr>
+                <tr>
+                    <td class="text-start ps-4 status-cell"><span class="st-badge st-doing">En curso</span><br><b>Fase actual</b></td>
+                    <td><i class="bi bi-diagram-3-fill i-16 text-warning"></i></td>
+                    <td><i class="bi bi-diagram-3-fill i-24 text-warning"></i></td>
+                    <td><i class="bi bi-diagram-3-fill i-40 text-warning"></i></td>
+                    <td><code>bi-diagram-3-fill</code></td>
+                </tr>
+                <tr>
+                    <td class="text-start ps-4 status-cell"><span class="st-badge st-done">Superada</span><br><b>Fase completada</b></td>
+                    <td><i class="bi bi-diagram-3 i-16 text-success"></i></td>
+                    <td><i class="bi bi-diagram-3 i-24 text-success"></i></td>
+                    <td><i class="bi bi-diagram-3 i-40 text-success"></i></td>
+                    <td><code>bi-diagram-3</code></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    <div class="card-catalog">
+        <div class="card-header bg-primary text-white"><i class="bi bi-clipboard-check me-2"></i> NIVEL 4: TRÁMITE</div>
+        <table class="table mb-0 text-center">
+            <tbody>
+                <tr>
+                    <td class="text-start ps-4 status-cell"><span class="st-badge st-todo">Pendiente</span><br><b>Sin tramitar</b></td>
+                    <td><i class="bi bi-clipboard i-16 text-secondary"></i></td>
+                    <td><i class="bi bi-clipboard i-24 text-secondary"></i></td>
+                    <td><i class="bi bi-clipboard i-40 text-secondary"></i></td>
+                    <td><code>bi-clipboard</code></td>
+                </tr>
+                <tr>
+                    <td class="text-start ps-4 status-cell"><span class="st-badge st-doing">Activo</span><br><b>En tramitación</b></td>
+                    <td><i class="bi bi-clipboard-pulse i-16 text-warning"></i></td>
+                    <td><i class="bi bi-clipboard-pulse i-24 text-warning"></i></td>
+                    <td><i class="bi bi-clipboard-pulse i-40 text-warning"></i></td>
+                    <td><code>bi-clipboard-pulse</code></td>
+                </tr>
+                <tr>
+                    <td class="text-start ps-4 status-cell"><span class="st-badge st-done">Hecho</span><br><b>Finalizado</b></td>
+                    <td><i class="bi bi-clipboard-check i-16 text-success"></i></td>
+                    <td><i class="bi bi-clipboard-check i-24 text-success"></i></td>
+                    <td><i class="bi bi-clipboard-check i-40 text-success"></i></td>
+                    <td><code>bi-clipboard-check</code></td>
+                </tr>
+                <tr>
+                    <td class="text-start ps-4 status-cell"><span class="st-badge st-error">Fallido</span><br><b>Error / X</b></td>
+                    <td><i class="bi bi-clipboard-x i-16 text-danger"></i></td>
+                    <td><i class="bi bi-clipboard-x i-24 text-danger"></i></td>
+                    <td><i class="bi bi-clipboard-x i-40 text-danger"></i></td>
+                    <td><code>bi-clipboard-x</code></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="card-catalog">
+        <div class="card-header bg-dark text-white"><i class="bi bi-check-square me-2"></i> NIVEL 5: TAREA</div>
+        <table class="table mb-0 text-center">
+            <tbody>
+                <tr>
+                    <td class="text-start ps-4 status-cell"><span class="st-badge st-todo">A la espera</span><br><b>Sin tramitar</b></td>
+                    <td><i class="bi bi-square i-16 text-secondary"></i></td>
+                    <td><i class="bi bi-square i-24 text-secondary"></i></td>
+                    <td><i class="bi bi-square i-40 text-secondary"></i></td>
+                    <td><code>bi-square</code></td>
+                </tr>
+                <tr>
+                    <td class="text-start ps-4 status-cell"><span class="st-badge st-doing">Trabajando</span><br><b>En trámite</b></td>
+                    <td><i class="bi bi-pencil-square i-16 text-warning"></i></td>
+                    <td><i class="bi bi-pencil-square i-24 text-warning"></i></td>
+                    <td><i class="bi bi-pencil-square i-40 text-warning"></i></td>
+                    <td><code>bi-pencil-square</code></td>
+                </tr>
+                <tr>
+                    <td class="text-start ps-4 status-cell"><span class="st-badge st-done">Cerrada</span><br><b>Hecha</b></td>
+                    <td><i class="bi bi-check-square i-16 text-success"></i></td>
+                    <td><i class="bi bi-check-square i-24 text-success"></i></td>
+                    <td><i class="bi bi-check-square i-40 text-success"></i></td>
+                    <td><code>bi-check-square</code></td>
+                </tr>
+                <tr>
+                    <td class="text-start ps-4 status-cell"><span class="st-badge st-error">Incidencia</span><br><b>Fallo / X</b></td>
+                    <td><i class="bi bi-x-square i-16 text-danger"></i></td>
+                    <td><i class="bi bi-x-square i-24 text-danger"></i></td>
+                    <td><i class="bi bi-x-square i-40 text-danger"></i></td>
+                    <td><code>bi-x-square</code></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+	<div class="card-catalog">
+    <div class="card-header bg-dark text-white">CATÁLOGO DE TIPOS DE TAREA</div>
+    <div class="table-responsive">
+        <table class="table align-middle text-center mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th class="text-start ps-4">Tipo de Tarea</th>
+                    <th>Icono (24px)</th>
+                    <th>Bootstrap Class</th>
+                    <th>Uso sugerido</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="text-start ps-4"><strong>ANALISIS</strong></td>
+                    <td><i class="bi bi-search text-primary fs-4"></i></td>
+                    <td><code>bi-search</code></td>
+                    <td>Revisión de requisitos y datos</td>
+                </tr>
+                <tr>
+                    <td class="text-start ps-4"><strong>REDACTAR</strong></td>
+                    <td><i class="bi bi-pencil text-primary fs-4"></i></td>
+                    <td><code>bi-pencil</code></td>
+                    <td>Elaboración de informes o borradores</td>
+                </tr>
+                <tr>
+                    <td class="text-start ps-4"><strong>FIRMAR</strong></td>
+                    <td><i class="bi bi-pen text-dark fs-4"></i></td>
+                    <td><code>bi-pen</code></td>
+                    <td>Firma electrónica o validación de firmas</td>
+                </tr>
+                <tr>
+                    <td class="text-start ps-4"><strong>NOTIFICAR</strong></td>
+                    <td><i class="bi bi-send text-success fs-4"></i></td>
+                    <td><code>bi-send</code></td>
+                    <td>Envío de comunicaciones oficiales</td>
+                </tr>
+                <tr>
+                    <td class="text-start ps-4"><strong>PUBLICAR</strong></td>
+                    <td><i class="bi bi-megaphone text-info fs-4"></i></td>
+                    <td><code>bi-megaphone</code></td>
+                    <td>Inserción en diarios o tablones públicos</td>
+                </tr>
+                <tr>
+                    <td class="text-start ps-4"><strong>ESPERAR_PLAZO</strong></td>
+                    <td><i class="bi bi-hourglass-split text-warning fs-4"></i></td>
+                    <td><code>bi-hourglass-split</code></td>
+                    <td>Pausa legal o tiempo de exposición</td>
+                </tr>
+                <tr>
+                    <td class="text-start ps-4"><strong>INCORPORAR</strong></td>
+                    <td><i class="bi bi-file-earmark-plus text-secondary fs-4"></i></td>
+                    <td><code>bi-file-earmark-plus</code></td>
+                    <td>Anexar documentos al expediente</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+</div>
+
+</body>
+</html>

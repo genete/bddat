@@ -735,7 +735,7 @@ Estos valores son el seed del `catalogo_plazos` para las fases y trámites del p
 | Tipo elemento ID | Campo inicio cómputo | Valor | Unidad | Efecto vencimiento | Norma origen |
 |---|---|---|---|---|---|
 | TRASLADO_ALEGACIONES_AAP | **[PENDIENTE — via ESPERAR_PLAZO.documento_usado_id]** | 15 | DIAS_NATURALES | SIN_EFECTO_AUTOMATICO | Art. 126 RD 1955/2000 |
-| INFORME_AAPP_AAP | **[PENDIENTE — via ESPERAR_PLAZO.documento_usado_id]** | 30 | DIAS_NATURALES | CONFORMIDAD_PRESUNTA | Art. 127 RD 1955/2000 |
+| ~~INFORME_AAPP_AAP~~ | ~~INFORME_AAPP_AAP~~ no existe. El trámite canónico es **`CONSULTA_SEPARATA`** (DISEÑO_CONSULTAS_ORGANISMOS.md §4). El plazo de 30 días (15 condicionado) se asocia a nivel de **fase CONSULTAS**, no de trámite. | — | — | — | — |
 | TRASLADO_CONDICIONADO_AAP | **[PENDIENTE — via ESPERAR_PLAZO.documento_usado_id]** | 15 | DIAS_NATURALES | SIN_EFECTO_AUTOMATICO | Art. 127 RD 1955/2000 |
 | REPLICA_AAPP_AAP | **[PENDIENTE — via ESPERAR_PLAZO.documento_usado_id]** | 15 | DIAS_NATURALES | CONFORMIDAD_PRESUNTA | Art. 127 RD 1955/2000 |
 | ~~INFORME_AAPP_AAC~~ | ~~INFORME_AAPP_AAC~~ no existe. El plazo del art. 131 se gestiona a nivel de **fase CONSULTAS** (30 días fallback / 15 días condicionado — seed `90655e484fb2`). | — | — | — | — |
