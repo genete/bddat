@@ -53,6 +53,7 @@ from app.models.historico_titular_expediente import HistoricoTitularExpediente  
 from app.models.expedientes_solicitudes import ExpedienteSolicitud
 from app.models.solicitudes_fases import SolicitudFase
 from app.models.fases_tramites import FaseTramite
+from app.models.tramites_tareas import TramiteTarea
 from app.models.tipos_documentos_resultados_validos import TipoDocumentoResultadoValido
 
 # Modelos operacionales con dependencias múltiples
@@ -110,6 +111,7 @@ __all__ = [
     'ExpedienteSolicitud',
     'SolicitudFase',
     'FaseTramite',
+    'TramiteTarea',
     'TipoDocumentoResultadoValido',
     # Operacionales (continuación)
     'DocumentoProyecto',
