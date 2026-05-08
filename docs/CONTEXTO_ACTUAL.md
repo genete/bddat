@@ -4,8 +4,8 @@
 
 ---
 
-**Último cerrado:** #350 — Migrar `_estado_esperar_plazo` en `seguimiento.py` de `_parse_plazo_dias` a `catalogo_plazos`; seed de 6 plazos ESPERAR_PLAZO; añadir `tipo_tramite` a `catalogo_variables`.
+**Último cerrado:** #345 — Tabla `tramites_tareas` con seed completo de 24 trámites desde `ESTRUCTURA_FTT.json`; modelo ORM `TramiteTarea`. El seed de `expedientes_solicitudes` se desglosó a #360 (requiere análisis normativo previo).
 
-**Actuales:** #337 + #345
+**Actuales:** #337 + #360
 
 **Próximo:** #346 → #173 → #328
