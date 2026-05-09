@@ -27,6 +27,14 @@
 | `OFICIO_INICIO` | Oficio de comunicación de inicio de expediente | INTERNO | COMUNICACION_INICIO.ELABORAR (producido) | | fecha_administrativa = fecha de firma. Lleva stamp ESFTT invisible. Norma: pendiente. No incompatible con REQUERIMIENTO_SUBSANACION posterior |
 | `OFICIO_114_RD1955` | Oficio de solicitud de informe preceptivo al Ministerio (art. 114 RD 1955/2000) | INTERNO | SOLICITUD_INFORME.ELABORAR (producido) | RD 1955/2000 art. 114 | fecha_administrativa = fecha de firma. Lleva stamp ESFTT invisible |
 | `INFORME_114_RD1955` | Informe preceptivo del Ministerio (art. 114 RD 1955/2000) | EXTERNO | RECEPCION_INFORME.ESPERAR_PLAZO (consumido por ANALIZAR) | RD 1955/2000 art. 114 | |
+| `DOC_SOLICITUD_AAU` | Solicitud de autorización ambiental unificada (modelo oficial) | EXTERNO | SOLICITUD_COMPATIBILIDAD (consumido) | Decreto 356/2010, de 3 de agosto (Anexo II); Instrucción Conjunta 1/2022 SGE/DGSAyCC (Anexo I, apt. 1) | Aportado por el administrado usando el modelo oficial. fecha_administrativa = fecha de registro. Debe incluir justificante de pago de tasa AAU |
+| `OFICIO_COMPATIBILIDAD_AMBIENTAL` | Oficio de remisión de solicitud de compatibilidad ambiental (AAU/AAUS) | INTERNO | SOLICITUD_COMPATIBILIDAD.ELABORAR (producido) | | fecha_administrativa = fecha de firma. Lleva stamp ESFTT invisible. Norma: pendiente |
+| `INFORME_COMPATIBILIDAD_AMBIENTAL` | Informe de compatibilidad ambiental del órgano ambiental | EXTERNO | RECEPCION_INFORME.ESPERAR_PLAZO (consumido por ANALIZAR) | | El sentido (compatible/incompatible) lo evalúa el técnico, no el tipo |
+| `DOC_SEPARATA` | Separata del proyecto aportada por el solicitante | EXTERNO | CONSULTA_SEPARATA.ELABORAR (consumido) | | Sin calificación adicional; también consumido por NOTIFICAR junto a OFICIO_SEPARATA (primer caso N:M en consumo — ver #361) |
+| `OFICIO_SEPARATA` | Oficio de consulta a organismo sectorial | INTERNO | CONSULTA_SEPARATA.ELABORAR (producido) | RD 1955/2000 arts. 127/131 | fecha_administrativa = fecha de firma. Lleva stamp ESFTT invisible |
+| `RESPUESTA_ORGANISMO` | Respuesta del organismo sectorial a la consulta | EXTERNO | CONSULTA_SEPARATA.ESPERAR_PLAZO (producido — Caso A) | RD 1955/2000 arts. 127/131 | Cubre conformidad, oposición, reparos y condicionado. La calificación vive en organismos_expediente, no en el tipo |
+| `OFICIO_TRASLADO_RESPUESTA` | Oficio de traslado de respuesta del organismo al titular | INTERNO | CONSULTA_TRASLADO_TITULAR.ELABORAR (producido) | RD 1955/2000 arts. 127.3/131.3 | fecha_administrativa = fecha de firma. Lleva stamp ESFTT invisible. Notificar consume este oficio + RESPUESTA_ORGANISMO (N:M) |
+| `RESPUESTA_TITULAR` | Respuesta del titular a los reparos del organismo | EXTERNO | CONSULTA_TRASLADO_TITULAR.ESPERAR_PLAZO (producido — Caso A) | RD 1955/2000 arts. 127.3/131.3 | La calificación del sentido vive en el DIAGNOSTICO de ANALIZAR y en organismos_expediente |
 
 ---
 
@@ -37,6 +45,15 @@
 | tipo_doc (codigo) | resultado_valido | fundamento |
 |-------------------|-----------------|------------|
 | | | |
+
+---
+
+## Punto de retoma
+
+> Última sesión: 2026-05-09
+> Próximo trámite a catalogar: **CONSULTAS.CONSULTA_TRASLADO_ORGANISMO**
+> Pendiente tras CONSULTAS: INFORMACION_PUBLICA (7 trámites), FIGURA_AMBIENTAL_EXTERNA, AAU_AAUS_INTEGRADA, RESOLUCION (3 trámites)
+> Issues abiertos en esta sesión: #361 #362 #363 #364 #365 #366 #367
 
 ---
 
