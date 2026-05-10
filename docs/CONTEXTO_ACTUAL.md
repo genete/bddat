@@ -8,4 +8,4 @@
 
 **Actuales:** #337 — en curso; catálogo `docs/referencia/TIPOS_DOCUMENTOS_CATALOGO.md` prácticamente completo (~37 tipos). Pendiente solo `AAU_AAUS_INTEGRADA` bloqueada en #372 (estructura por cerrar antes de catalogar tipos). Issues derivados de esta fase: #361–#373 (diseño estructural, nuevos trámites detectados, `CERT_FIN_INSTRUCCION`, revisión FTT)
 
-**Próximo:** #346 → #173 → #328
+**Próximo:** (#361 + #363 + #371 en paralelo) → (#368 + #369 + #370 + #373) → #346 → #173 → #328
