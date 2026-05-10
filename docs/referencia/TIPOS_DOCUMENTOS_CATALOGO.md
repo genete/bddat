@@ -46,6 +46,11 @@
 | `ALEGACION_IP` | Alegación de información pública | EXTERNO | RECEPCION_ALEGACION.ANALIZAR (consumido); ANALISIS_ALEGACIONES.ANALIZAR (consumido — todas las del expediente) | | Aportada por el administrado durante el período de IP. Puede haber varias por expediente |
 | `OFICIO_TRASLADO_ALEGACION` | Oficio de traslado de alegación al titular | INTERNO | RECEPCION_ALEGACION.ELABORAR (producido) | | Parseable; firmado; stamp ESFTT invisible; fecha_administrativa = fecha de firma. NOTIFICAR consume solo este oficio (sin N:M) |
 | `RESPUESTA_TITULAR_ALEGACION` | Respuesta del titular a la alegación | EXTERNO | RECEPCION_ALEGACION.ESPERAR_PLAZO (producido); ANALISIS_ALEGACIONES.ANALIZAR (consumido — todas las del expediente) | | Una por alegación trasladada. El sentido de la respuesta lo evalúa ANALIZAR en ANALISIS_ALEGACIONES |
+| `OFICIO_SOLICITUD_FIGURA` | Oficio de solicitud de figura ambiental externa | INTERNO | SOLICITUD_FIGURA.ELABORAR (producido) | Instrucción Conjunta 1/2022 | Parseable; firmado; stamp ESFTT invisible; fecha_administrativa = fecha de firma. Consumido: DOC_PROYECTO (proxy para verificar condición es_modificacion, no como fuente de contenido). ESPERAR_PLAZO indefinido: el promotor obtiene la figura por su cuenta con el órgano ambiental |
+| `FIGURA_AMBIENTAL_EXTERNA` | Figura ambiental externa obtenida por el promotor | EXTERNO | SOLICITUD_FIGURA.ESPERAR_PLAZO (producido) | Instrucción Conjunta 1/2022 | Aportada por el promotor. Sin plazo definido (espera indefinida). Cubre cualquier figura ambiental aplicable a modificaciones de instalaciones ya autorizadas |
+| `CERT_FIN_INSTRUCCION` | Certificado de fin de instrucción del expediente | INTERNO | RESOLUCION.ELABORACION (generado automáticamente por BDDAT al crear la fase) | LPACAP art. 82 | Generado por el motor de reglas cuando las fases requeridas para el tipo de expediente están cerradas con resultado. Recoge: tipo de expediente, solicitudes, fases completadas y sus resultados, fundamento jurídico que habilita la resolución. fecha_administrativa = fecha de generación (hecho objetivo). url = bddat://cert_fin_instruccion/{id}. Parseable; stamp ESFTT. No hay ANALIZAR en ELABORACION: el motor hace el análisis. Ver #373 |
+| `RESOLUCION` | Resolución de autorización administrativa | INTERNO | RESOLUCION.ELABORACION.ELABORAR (producido) | RD 1955/2000 arts. 128 y 131 | Parseable; firmado; fecha_administrativa = fecha de firma (efecto jurídico propio). ELABORAR consume CERT_FIN_INSTRUCCION. NOTIFICACION consume esta resolución sin oficio adicional (el asunto del sistema de notificación es suficiente); múltiples instancias, una por interesado/organismo/titular. PUBLICACION la publica mediante trámites PUBLICAR_* |
+| `RESOLUCION_PUBLICADA` | Resolución publicada en boletín oficial | EXTERNO | RESOLUCION.PUBLICACION.ESPERAR_PLAZO (producido) | | Una instancia por boletín (BOP, BOJA…); no aplica al titular. ELABORAR y NOTIFICAR de PUBLICACION reutilizan OFICIO_PUBLICAR_TITULAR y OFICIO_PUBLICAR_BOLETIN (misma plantilla con condicional, sin nombres nuevos). Sin segundo ESPERAR_PLAZO: la publicación de la resolución no abre plazo de alegaciones |
 
 ---
 
@@ -62,11 +67,10 @@
 ## Punto de retoma
 
 > Última sesión: 2026-05-10
-> Próximo trámite a catalogar: **INFORMACION_PUBLICA.ALEGACIONES** (2 trámites: APERTURA_ALEGACIONES y CIERRE_ALEGACIONES o equivalentes)
-> Cubiertos en INFORMACION_PUBLICA: REDACTAR_ANUNCIO, ANUNCIO_TITULAR, ANUNCIO_BOE, ANUNCIO_PRENSA, ANUNCIO_BOP, ANUNCIO_BOJA, TABLON_AYUNTAMIENTOS, PORTAL_TRANSPARENCIA
-> PORTAL_TRANSPARENCIA: sin tipos nuevos (consume ANUNCIO_IP, produce JUSTIFICANTE_PORTAL y CERT_PLAZO_CUMPLIDO, ya catalogados). Patrón con pares NOTIFICAR+ESPERAR_PLAZO repetidos según boletines activos — pendiente confirmar con jefatura si se cierra por certificado automático del sistema o por pares manuales
-> Pendiente tras INFORMACION_PUBLICA: FIGURA_AMBIENTAL_EXTERNA, AAU_AAUS_INTEGRADA, RESOLUCION (3 trámites)
-> Issues abiertos en esta sesión: #361 #362 #363 #364 #365 #366 #367 #368 #369 #370 #371
+> Estado: catálogo COMPLETO para las fases catalogables. Pendiente solo AAU_AAUS_INTEGRADA (ver #372, estructura por cerrar)
+> Fases cubiertas: CONSULTAS (todos), INFORMACION_PUBLICA (todos excepto AAU_AAUS_INTEGRADA), FIGURA_AMBIENTAL_EXTERNA, RESOLUCION
+> PORTAL_TRANSPARENCIA: sin tipos nuevos. Patrón NOTIFICAR+ESPERAR_PLAZO repetido según boletines — pendiente confirmar con jefatura (pares manuales vs certificado automático del sistema)
+> Issues abiertos en esta sesión: #361 #362 #363 #364 #365 #366 #367 #368 #369 #370 #371 #372 #373
 
 ---
 
