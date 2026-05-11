@@ -93,7 +93,7 @@ def test_consulta_orm_secuencia_ordenada(app_ctx):
     )
 
     codigos = [tt.tipo_tarea.codigo for tt in secuencia]
-    assert codigos == ['REDACTAR', 'FIRMAR', 'NOTIFICAR', 'ESPERAR_PLAZO', 'INCORPORAR', 'ANALIZAR']
+    assert codigos == ['ELABORAR', 'NOTIFICAR', 'ESPERAR_PLAZO', 'ANALIZAR']
 
 
 def test_consulta_orm_relaciones_cargadas(app_ctx):
