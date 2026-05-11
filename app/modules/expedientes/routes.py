@@ -454,21 +454,6 @@ def tramitacion_bc_tarea(exp_id, sol_id, fase_id, tram_id, tarea_id):
     requiere_doc_usado     = codigo_tipo in _TIPOS_REQUIEREN_DOC_USADO
     doc_usado_opcional     = codigo_tipo in _TIPOS_DOC_USADO_OPCIONAL
     requiere_doc_producido = codigo_tipo in _TIPOS_REQUIEREN_DOC_PRODUCIDO
-    es_tarea_redactar      = (codigo_tipo == 'REDACTAR')
-    es_tarea_incorporar    = (codigo_tipo == 'INCORPORAR')
-
-    documentos_incorporar = []
-    if es_tarea_incorporar:
-        vinculos = DocumentoTarea.query.filter_by(tarea_id=tarea_id).all()
-        for v in vinculos:
-            doc = v.documento
-            filename = doc.url.replace('\\', '/').rsplit('/', 1)[-1] if doc.url else ''
-            filename_limpio = filename.split('?')[0].split('#')[0]
-            documentos_incorporar.append({
-                'vinculo_id': v.id,
-                'doc': doc,
-                'nombre_display': filename_limpio or f'Documento {doc.id}',
-            })
 
     return render_template(
         'expedientes/tramitacion_bc_tarea.html',
@@ -480,17 +465,16 @@ def tramitacion_bc_tarea(exp_id, sol_id, fase_id, tram_id, tarea_id):
         requiere_doc_usado=requiere_doc_usado,
         doc_usado_opcional=doc_usado_opcional,
         requiere_doc_producido=requiere_doc_producido,
-        es_tarea_redactar=es_tarea_redactar,
-        es_tarea_incorporar=es_tarea_incorporar,
-        documentos_incorporar=documentos_incorporar,
+        es_tarea_redactar=False,        # TODO #370: dead code — INCORPORAR/REDACTAR eliminados
+        es_tarea_incorporar=False,      # TODO #370: dead code — INCORPORAR eliminado
+        documentos_incorporar=[],       # TODO #370: dead code — INCORPORAR eliminado
     )
 
 
 # Conjuntos de tipos de tarea que requieren documentos (espejo de invariantes_esftt.py)
-_TIPOS_REQUIEREN_DOC_USADO     = {'ANALIZAR', 'FIRMAR', 'NOTIFICAR', 'PUBLICAR'}
-_TIPOS_DOC_USADO_OPCIONAL      = {'REDACTAR'}   # visible en UI pero no obligatorio al finalizar
-_TIPOS_REQUIEREN_DOC_PRODUCIDO = {'ANALIZAR', 'REDACTAR', 'FIRMAR', 'NOTIFICAR', 'PUBLICAR'}
-# INCORPORAR usa documentos_tarea (N docs) — no documento_producido_id
+_TIPOS_REQUIEREN_DOC_USADO     = {'ANALIZAR', 'NOTIFICAR'}
+_TIPOS_DOC_USADO_OPCIONAL      = {'ELABORAR'}   # visible en UI pero no obligatorio al finalizar
+_TIPOS_REQUIEREN_DOC_PRODUCIDO = {'ANALIZAR', 'ELABORAR', 'NOTIFICAR'}
 
 
 # ===========================================================================
