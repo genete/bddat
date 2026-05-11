@@ -493,7 +493,6 @@ def finalizar_tarea(tarea_id):
 
 # ============================================
 # ENDPOINTS INCORPORAR — documentos_tarea
-# TODO #370: dead code — INCORPORAR eliminado
 # ============================================
 
 @bp.route('/tarea/<int:tarea_id>/incorporar/vincular', methods=['POST'])

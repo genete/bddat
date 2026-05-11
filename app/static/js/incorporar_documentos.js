@@ -1,5 +1,4 @@
 // incorporar_documentos.js — issue #290
-// TODO #370: dead code — INCORPORAR eliminado
 // Gestiona el listado multi-doc y el selector de vincular en tareas INCORPORAR.
 //
 // Depende de: selector_busqueda.js
