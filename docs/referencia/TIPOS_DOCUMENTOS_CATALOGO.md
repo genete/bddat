@@ -51,6 +51,15 @@
 | `CERT_FIN_INSTRUCCION` | Certificado de fin de instrucción del expediente | INTERNO | RESOLUCION.ELABORACION (generado automáticamente por BDDAT al crear la fase) | LPACAP art. 82 | Generado por el motor de reglas cuando las fases requeridas para el tipo de expediente están cerradas con resultado. Recoge: tipo de expediente, solicitudes, fases completadas y sus resultados, fundamento jurídico que habilita la resolución. fecha_administrativa = fecha de generación (hecho objetivo). url = bddat://cert_fin_instruccion/{id}. Parseable; stamp ESFTT. No hay ANALIZAR en ELABORACION: el motor hace el análisis. Ver #373 |
 | `RESOLUCION` | Resolución de autorización administrativa | INTERNO | RESOLUCION.ELABORACION.ELABORAR (producido) | RD 1955/2000 arts. 128 y 131 | Parseable; firmado; fecha_administrativa = fecha de firma (efecto jurídico propio). ELABORAR consume CERT_FIN_INSTRUCCION. NOTIFICACION consume esta resolución sin oficio adicional (el asunto del sistema de notificación es suficiente); múltiples instancias, una por interesado/organismo/titular. PUBLICACION la publica mediante trámites PUBLICAR_* |
 | `RESOLUCION_PUBLICADA` | Resolución publicada en boletín oficial | EXTERNO | RESOLUCION.PUBLICACION.ESPERAR_PLAZO (producido) | | Una instancia por boletín (BOP, BOJA…); no aplica al titular. ELABORAR y NOTIFICAR de PUBLICACION reutilizan OFICIO_PUBLICAR_TITULAR y OFICIO_PUBLICAR_BOLETIN (misma plantilla con condicional, sin nombres nuevos). Sin segundo ESPERAR_PLAZO: la publicación de la resolución no abre plazo de alegaciones |
+| `CERT_FIN_IP_CONSULTAS` | Certificado de fin de IP y consultas | INTERNO | REMISION_RESULTADO_IP_CONSULTAS.ELABORAR (consumido) | Instrucción Conjunta 1/2022, IV.4.5 | Generado automáticamente por el motor de reglas o a petición del usuario cuando las fases de IP y consultas han concluido con resultado. Acredita que la fase AAU_AAUS_INTEGRADA está habilitada. fecha_administrativa = fecha de finalización de la última fase habilitante. Firma opcional. Tipo de certificado pendiente de unificar con CERT_FIN_INSTRUCCION (ver #373) |
+| `OFICIO_RESULTADO_IP_CON` | Oficio de remisión del resultado de IP y consultas al órgano ambiental | INTERNO | REMISION_RESULTADO_IP_CONSULTAS.ELABORAR (producido); consumido por NOTIFICAR del mismo trámite | Instrucción Conjunta 1/2022, IV.4.5 | Parseable; firmado; stamp ESFTT invisible. fecha_administrativa = fecha de firma. Comunica las contestaciones a consultas ambientales y alegaciones recibidas en una sola remisión |
+| `DOC_DICTAMEN_AMBIENTAL` | Dictamen ambiental del órgano ambiental | EXTERNO | REMISION_RESULTADO_IP_CONSULTAS.ESPERAR_PLAZO (producido); consumido por RECEPCION_DICTAMEN.ANALIZAR | Instrucción Conjunta 1/2022, IV.5.1.1; Decreto 356/2010, art. 32.3 | Emitido por el órgano ambiental. Puede ser favorable, condicionado o desfavorable. La valoración y sus consecuencias viven en el DIAGNOSTICO de ANALIZAR |
+| `OFICIO_OBS_DICTAMEN` | Oficio de observaciones al dictamen ambiental | INTERNO | RECEPCION_DICTAMEN.ELABORAR (producido); consumido por NOTIFICAR del mismo trámite | Instrucción Conjunta 1/2022, IV.5.1.1 | Parseable; firmado; stamp ESFTT invisible. fecha_administrativa = fecha de firma. Se emite siempre (incluso sin observaciones sustantivas) para activar el cómputo del plazo siguiente |
+| `DOC_PROPUESTA_INF_VINC` | Propuesta de informe vinculante del órgano ambiental | EXTERNO | RECEPCION_DICTAMEN.ESPERAR_PLAZO (producido); consumido por RECEPCION_PROPUESTA_INF_VINC.ANALIZAR | Instrucción Conjunta 1/2022, IV.5.2; Decreto 356/2010, art. 32.4 | Emitido por el órgano ambiental tras la audiencia a interesados del procedimiento ambiental |
+| `OFICIO_OBS_PROP_INF_VINC` | Oficio de observaciones a la propuesta de informe vinculante | INTERNO | RECEPCION_PROPUESTA_INF_VINC.ELABORAR (producido); consumido por NOTIFICAR del mismo trámite | Instrucción Conjunta 1/2022, IV.5.2 | Parseable; firmado; stamp ESFTT invisible. fecha_administrativa = fecha de firma. Se emite siempre |
+| `DOC_INFORME_VINCULANTE` | Informe vinculante del órgano ambiental | EXTERNO | RECEPCION_PROPUESTA_INF_VINC.ESPERAR_PLAZO (producido); consumido por RECEPCION_INFORME_VINCULANTE.ANALIZAR | Instrucción Conjunta 1/2022, IV.5.3; Decreto 356/2010, arts. 32.5 y 33 | Incluye lista de interesados del procedimiento ambiental (ver #374). Sus condiciones se incorporan a la autorización |
+| `OFICIO_DISCREPANCIA_INF_VINC` | Oficio de planteamiento de discrepancia sobre el informe vinculante | INTERNO | DISCREPANCIA_INF_VINC.ELABORAR (producido); consumido por NOTIFICAR del mismo trámite | Decreto 356/2010, art. 33 | Parseable; firmado; stamp ESFTT invisible. fecha_administrativa = fecha de firma. Condicional: solo si RECEPCION_INFORME_VINCULANTE.ANALIZAR diagnostica discrepancia |
+| `RESOLUCION_DISCREPANCIA_INF_VINC` | Resolución del Consejo de Gobierno sobre discrepancia en informe vinculante | EXTERNO | DISCREPANCIA_INF_VINC.ESPERAR_PLAZO (producido) | Decreto 356/2010, art. 33 | Emitida por el Consejo de Gobierno. Vincula al órgano sustantivo. Sin segundo ESPERAR_PLAZO: la resolución cierra el trámite DISCREPANCIA_INF_VINC |
 
 ---
 
@@ -66,11 +75,12 @@
 
 ## Punto de retoma
 
-> Última sesión: 2026-05-10
-> Estado: catálogo COMPLETO para las fases catalogables. Pendiente solo AAU_AAUS_INTEGRADA (ver #372, estructura por cerrar)
-> Fases cubiertas: CONSULTAS (todos), INFORMACION_PUBLICA (todos excepto AAU_AAUS_INTEGRADA), FIGURA_AMBIENTAL_EXTERNA, RESOLUCION
+> Última sesión: 2026-05-11
+> Estado: catálogo COMPLETO — trabajo normativo de #337 terminado. Criterio 1 (tabla candidatos) cerrado.
+> Fases cubiertas: todas — CONSULTAS, INFORMACION_PUBLICA, AAU_AAUS_INTEGRADA, FIGURA_AMBIENTAL_EXTERNA, RESOLUCION
 > PORTAL_TRANSPARENCIA: sin tipos nuevos. Patrón NOTIFICAR+ESPERAR_PLAZO repetido según boletines — pendiente confirmar con jefatura (pares manuales vs certificado automático del sistema)
-> Issues abiertos en esta sesión: #361 #362 #363 #364 #365 #366 #367 #368 #369 #370 #371 #372 #373
+> Pendiente para cierre completo de #337: criterio 2 (migración Alembic), criterio 3 (poblar tipos_documentos_resultados_validos), criterio 4 (UI seleccionable)
+> Issues abiertos relacionados: #361 #362 #363 #364 #365 #366 #367 #368 #369 #370 #371 #372 #373 #374
 
 ---
 
