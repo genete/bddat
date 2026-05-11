@@ -4,6 +4,7 @@ from app import db
 class DocumentoTarea(db.Model):
     """
     Tabla puente N:N entre tareas INCORPORAR y sus documentos vinculados.
+    TODO #370: dead code — INCORPORAR eliminado
 
     Desde v5.5, la tarea INCORPORAR no usa documento_producido_id.
     En su lugar, este modelo registra los N documentos incorporados en un acto
