@@ -55,10 +55,8 @@ PISTAS_OBLIGATORIAS = {'SOL'}
 COLOR: dict[str, str] = {
     'PENDIENTE_TRAMITAR':  'rojo',
     'PENDIENTE_ESTUDIO':   'rojo',
-    'PENDIENTE_REDACTAR':  'rojo',
-    'PENDIENTE_FIRMA':     'amarillo',
+    'PENDIENTE_ELABORAR':  'amarillo',
     'PENDIENTE_NOTIFICAR': 'azul',
-    'PENDIENTE_PUBLICAR':  'azul',
     'PENDIENTE_SUBSANAR':  'gris',
     'PENDIENTE_PLAZOS':    'gris',
     'PENDIENTE_CERRAR':    'naranja',
@@ -69,14 +67,12 @@ COLOR: dict[str, str] = {
 PRIORIDAD: dict[str, int] = {
     'PENDIENTE_TRAMITAR':  1,
     'PENDIENTE_ESTUDIO':   2,
-    'PENDIENTE_REDACTAR':  3,
+    'PENDIENTE_ELABORAR':  3,
     'PENDIENTE_CERRAR':    4,
-    'PENDIENTE_FIRMA':     5,
-    'PENDIENTE_NOTIFICAR': 6,
-    'PENDIENTE_PUBLICAR':  7,
-    'PENDIENTE_SUBSANAR':  8,
-    'PENDIENTE_PLAZOS':    9,
-    'FIN':                 10,
+    'PENDIENTE_NOTIFICAR': 5,
+    'PENDIENTE_SUBSANAR':  6,
+    'PENDIENTE_PLAZOS':    7,
+    'FIN':                 8,
 }
 
 
@@ -214,19 +210,11 @@ def _estado_tarea(tarea, pista: str) -> tuple[str, int]:
             return ('PENDIENTE_ESTUDIO', 1)    # doc recibido, hay que estudiar y redactar informe
         return ('PENDIENTE_CERRAR', 1)         # ambos documentos presentes
 
-    if tipo == 'REDACTAR':
+    if tipo == 'ELABORAR':
+        # Entrada opcional → no hay estado "en espera de documento_usado"
         if tarea.documento_producido_id is not None:
-            return ('PENDIENTE_CERRAR', 1)     # borrador ya producido
-        if tarea.documento_usado_id is not None:
-            return ('PENDIENTE_REDACTAR', 1)   # tiene doc de entrada, falta redactar
-        return ('PENDIENTE_TRAMITAR', 1)       # sin ningún doc: hay que tramitar
-
-    if tipo == 'FIRMAR':
-        if tarea.documento_usado_id is None:
-            return ('PENDIENTE_TRAMITAR', 1)   # falta borrador
-        if tarea.documento_producido_id is None:
-            return ('PENDIENTE_FIRMA', 1)      # borrador presente, falta firmado
-        return ('PENDIENTE_CERRAR', 1)
+            return ('PENDIENTE_CERRAR', 1)
+        return ('PENDIENTE_ELABORAR', 1)
 
     if tipo == 'NOTIFICAR':
         if tarea.documento_usado_id is None:
@@ -235,21 +223,8 @@ def _estado_tarea(tarea, pista: str) -> tuple[str, int]:
             return ('PENDIENTE_NOTIFICAR', 1)  # doc firmado, falta justificante
         return ('PENDIENTE_CERRAR', 1)
 
-    if tipo == 'PUBLICAR':
-        if tarea.documento_usado_id is None:
-            return ('PENDIENTE_TRAMITAR', 1)   # falta doc firmado
-        if tarea.documento_producido_id is None:
-            return ('PENDIENTE_PUBLICAR', 1)   # doc firmado, falta justificante publicación
-        return ('PENDIENTE_CERRAR', 1)
-
     if tipo == 'ESPERAR_PLAZO':
         return (_estado_esperar_plazo(tarea, pista), 1)
-
-    if tipo == 'INCORPORAR':
-        # INCORPORAR usa documentos_tarea (N:M). documento_producido_id = NULL siempre.
-        # Si planificada ya filtrado arriba; si en_curso, siempre pendiente hasta que
-        # el técnico registre documentos vía documentos_tarea.
-        return ('PENDIENTE_TRAMITAR', 1)
 
     return ('PENDIENTE_TRAMITAR', 1)  # tipo desconocido — seguro por defecto
 
