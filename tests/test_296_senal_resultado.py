@@ -176,6 +176,7 @@ class TestTareaEstado:
         t = _StubTarea('INCORPORAR', documentos_tarea=[])
         assert _tarea_estado(t) == 'PLANIFICADA'
 
+    @pytest.mark.skip(reason="#370 — INCORPORAR eliminado")
     def test_incorporar_con_docs_ejecutada(self):
         t = _StubTarea('INCORPORAR', documentos_tarea=[MagicMock()])
         assert _tarea_estado(t) == 'EJECUTADA'
@@ -374,11 +375,11 @@ def _make_query_chain(first_returns):
 class TestCheckFinalizarTramiteNotificar:
 
     def test_notificar_incorrecta_bloquea(self, app):
-        """La tercera query encuentra una NOTIFICAR INCORRECTA → bloquea."""
+        """La segunda query encuentra una NOTIFICAR INCORRECTA → bloquea."""
         from app.services.invariantes_esftt import _check_finalizar_tramite as fn
         with app.app_context():
             with patch('app.services.invariantes_esftt.db') as mock_db:
-                q = _make_query_chain([None, None, MagicMock()])
+                q = _make_query_chain([None, MagicMock()])
                 mock_db.session.query.return_value = q
                 resultado = fn(tramite_id=99)
         assert resultado is not None
@@ -386,11 +387,11 @@ class TestCheckFinalizarTramiteNotificar:
         assert 'notificaci' in resultado.norma_compilada.lower()
 
     def test_sin_notificar_incorrecta_no_bloquea(self, app):
-        """Las tres queries devuelven None → sin bloqueo."""
+        """Las dos queries devuelven None → sin bloqueo."""
         from app.services.invariantes_esftt import _check_finalizar_tramite as fn
         with app.app_context():
             with patch('app.services.invariantes_esftt.db') as mock_db:
-                q = _make_query_chain([None, None, None])
+                q = _make_query_chain([None, None])
                 mock_db.session.query.return_value = q
                 resultado = fn(tramite_id=99)
         assert resultado is None
@@ -400,7 +401,7 @@ class TestCheckFinalizarTramiteNotificar:
         from app.services.invariantes_esftt import _check_finalizar_tramite as fn
         with app.app_context():
             with patch('app.services.invariantes_esftt.db') as mock_db:
-                q = _make_query_chain([MagicMock(), None, None])
+                q = _make_query_chain([MagicMock()])
                 mock_db.session.query.return_value = q
                 resultado = fn(tramite_id=99)
         assert resultado is not None
@@ -410,11 +411,11 @@ class TestCheckFinalizarTramiteNotificar:
 class TestCheckFinalizarFaseNotificar:
 
     def test_notificar_incorrecta_en_fase_bloquea(self, app):
-        """La tercera query de _check_finalizar_fase detecta NOTIFICAR INCORRECTA."""
+        """La segunda query de _check_finalizar_fase detecta NOTIFICAR INCORRECTA."""
         from app.services.invariantes_esftt import _check_finalizar_fase as fn
         with app.app_context():
             with patch('app.services.invariantes_esftt.db') as mock_db:
-                q = _make_query_chain([None, None, MagicMock()])
+                q = _make_query_chain([None, MagicMock()])
                 mock_db.session.query.return_value = q
                 resultado = fn(fase_id=99)
         assert resultado is not None
@@ -425,7 +426,7 @@ class TestCheckFinalizarFaseNotificar:
         from app.services.invariantes_esftt import _check_finalizar_fase as fn
         with app.app_context():
             with patch('app.services.invariantes_esftt.db') as mock_db:
-                q = _make_query_chain([None, None, None])
+                q = _make_query_chain([None, None])
                 mock_db.session.query.return_value = q
                 resultado = fn(fase_id=99)
         assert resultado is None
