@@ -155,7 +155,7 @@ def verificar_T01():
 
 
 def verificar_T02():
-    seccion('T02 | AT=1002 | SOL=PENDIENTE_REDACTAR (REDACTAR sin borrador)')
+    seccion('T02 | AT=1002 | SOL=PENDIENTE_ELABORAR (ELABORAR sin doc_producido)')
     sid = sol_de_at(1002, 'AAP_AAC')
     check('T02: solicitud AAP_AAC existe', sid is not None)
     if not sid:
@@ -169,33 +169,28 @@ def verificar_T02():
           f'trámites: {[t[0] for t in trams]}')
 
     tareas = tareas_de_tramite('REQUERIMIENTO_SUBSANACION', sid)
-    check('T02: tarea REDACTAR', len(tareas) == 1 and tareas[0][0] == 'REDACTAR',
+    check('T02: tarea ELABORAR', len(tareas) == 1 and tareas[0][0] == 'ELABORAR',
           f'tareas: {[t[0] for t in tareas]}')
     if tareas:
-        check('T02: REDACTAR sin doc_producido', tareas[0][2] is None,
+        check('T02: ELABORAR sin doc_producido', tareas[0][2] is None,
               f'doc_producido={tareas[0][2]}')
 
 
 def verificar_T03():
-    seccion('T03 | AT=1003 | SOL=PENDIENTE_FIRMA (FIRMAR con borrador, sin firmado)')
+    seccion('T03 | AT=1003 | SOL=PENDIENTE_CERRAR (ELABORAR con doc_producido, trámite sin cerrar)')
     sid = sol_de_at(1003, 'AAP_AAC')
     check('T03: solicitud AAP_AAC existe', sid is not None)
     if not sid:
         return
 
-    # Documento borrador en el expediente
-    exp_id = q1("SELECT e.id FROM expedientes e WHERE e.numero_at=1003")
-    n_docs = q1("SELECT COUNT(*) FROM documentos WHERE expediente_id=:eid", eid=exp_id)
-    check('T03: 1 documento (borrador) en expediente', n_docs == 1, f'hay {n_docs}')
-
     tareas = tareas_de_tramite('REQUERIMIENTO_SUBSANACION', sid)
-    check('T03: tarea FIRMAR', len(tareas) == 1 and tareas[0][0] == 'FIRMAR',
+    check('T03: tarea ELABORAR', len(tareas) == 1 and tareas[0][0] == 'ELABORAR',
           f'tareas: {[t[0] for t in tareas]}')
     if tareas:
-        check('T03: FIRMAR con doc_usado (borrador)', tareas[0][1] is not None,
-              'doc_usado es NULL')
-        check('T03: FIRMAR sin doc_producido (firmado ausente)', tareas[0][2] is None,
-              f'doc_producido={tareas[0][2]}')
+        check('T03: ELABORAR con doc_producido presente', tareas[0][2] is not None,
+              'doc_producido es NULL')
+        check('T03: ELABORAR sin doc_usado (entrada opcional ausente)', tareas[0][1] is None,
+              f'doc_usado={tareas[0][1]}')
 
 
 def verificar_T04():
@@ -281,7 +276,7 @@ def verificar_T06():
 
 
 def verificar_T07():
-    seccion('T07 | AT=1007 | SOL=FIN, CONSULTAS=FIN, MA=FIN, IP=PENDIENTE_PUBLICAR')
+    seccion('T07 | AT=1007 | SOL=FIN, CONSULTAS=FIN, MA=FIN, IP=PENDIENTE_ELABORAR')
     sid = sol_de_at(1007, 'AAP_AAC')
     check('T07: solicitud AAP_AAC existe', sid is not None)
     if not sid:
@@ -294,11 +289,11 @@ def verificar_T07():
     check('T07: INFORMACION_PUBLICA abierta', 'INFORMACION_PUBLICA' in fases_dict and fases_dict['INFORMACION_PUBLICA'][1] is None)
 
     tareas = tareas_de_tramite('ANUNCIO_BOP', sid)
-    check('T07: tarea PUBLICAR en IP', len(tareas) == 1 and tareas[0][0] == 'PUBLICAR',
+    check('T07: tarea ELABORAR en IP', len(tareas) == 1 and tareas[0][0] == 'ELABORAR',
           f'tareas: {[t[0] for t in tareas]}')
     if tareas:
-        check('T07: PUBLICAR con doc_usado (firmado)', tareas[0][1] is not None)
-        check('T07: PUBLICAR sin doc_producido (justificante ausente)', tareas[0][2] is None)
+        check('T07: ELABORAR sin doc_producido', tareas[0][2] is None,
+              f'doc_producido={tareas[0][2]}')
 
 
 def verificar_T08():
@@ -376,7 +371,7 @@ def verificar_T10():
                 JOIN fases f ON f.id = tr.fase_id
                 JOIN tipos_tareas tt ON tt.id = ta.tipo_tarea_id
                 WHERE f.solicitud_id = :s
-                AND tt.codigo IN ('INCORPORAR','ANALISIS','REDACTAR','FIRMAR','NOTIFICAR','PUBLICAR')
+                AND tt.codigo IN ('ANALIZAR','ELABORAR','NOTIFICAR')
                 AND ta.documento_producido_id IS NULL""", s=sid) == 0)
 
 
@@ -406,13 +401,13 @@ from app.services.seguimiento import estado_solicitud, fin_total
 ESPERADOS = {
     # (numero_at, tipo_siglas): {pista: estado_esperado}
     (1001, 'AAP_AAC'):      {'SOL': 'PENDIENTE_ESTUDIO',   'CONSULTAS': None,                'MA': None, 'IP': None, 'RES': None},
-    (1002, 'AAP_AAC'):      {'SOL': 'PENDIENTE_REDACTAR',  'CONSULTAS': None,                'MA': None, 'IP': None, 'RES': None},
-    (1003, 'AAP_AAC'):      {'SOL': 'PENDIENTE_FIRMA',     'CONSULTAS': None,                'MA': None, 'IP': None, 'RES': None},
+    (1002, 'AAP_AAC'):      {'SOL': 'PENDIENTE_ELABORAR',  'CONSULTAS': None,                'MA': None, 'IP': None, 'RES': None},
+    (1003, 'AAP_AAC'):      {'SOL': 'PENDIENTE_CERRAR',    'CONSULTAS': None,                'MA': None, 'IP': None, 'RES': None},
     (1004, 'AAP_AAC'):      {'SOL': 'PENDIENTE_SUBSANAR',  'CONSULTAS': 'PENDIENTE_PLAZOS',  'MA': None, 'IP': None, 'RES': None},
     (1004, 'AAE_DEFINITIVA'):{'SOL': 'PENDIENTE_ESTUDIO',  'CONSULTAS': None,                'MA': None, 'IP': None, 'RES': None},
     (1005, 'AAP_AAC'):      {'SOL': 'FIN',                 'CONSULTAS': 'PENDIENTE_NOTIFICAR','MA': None, 'IP': None, 'RES': None},
     (1006, 'AAP_AAC'):      {'SOL': 'FIN',                 'CONSULTAS': 'FIN',               'MA': 'PENDIENTE_PLAZOS', 'IP': None, 'RES': None},
-    (1007, 'AAP_AAC'):      {'SOL': 'FIN',                 'CONSULTAS': 'FIN',               'MA': 'FIN', 'IP': 'PENDIENTE_PUBLICAR', 'RES': None},
+    (1007, 'AAP_AAC'):      {'SOL': 'FIN',                 'CONSULTAS': 'FIN',               'MA': 'FIN', 'IP': 'PENDIENTE_ELABORAR', 'RES': None},
     (1008, 'AAP_AAC'):      {'SOL': 'FIN',                 'CONSULTAS': 'FIN',               'MA': 'FIN', 'IP': 'PENDIENTE_PLAZOS', 'RES': 'PENDIENTE_ESTUDIO'},
     (1009, 'AAP_AAC'):      {'SOL': 'FIN',                 'CONSULTAS': 'FIN',               'MA': 'FIN', 'IP': 'FIN', 'RES': 'PENDIENTE_NOTIFICAR'},
     (1010, 'AAP_AAC'):      {'SOL': 'FIN',                 'CONSULTAS': 'FIN',               'MA': 'FIN', 'IP': 'FIN', 'RES': 'FIN'},

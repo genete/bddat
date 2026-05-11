@@ -192,10 +192,8 @@ with app.app_context():
     TRES_FAV   = TRES.get('FAVORABLE', next(iter(TRES.values())))
 
     TAREA_ANAL = TTAREA['ANALIZAR']
-    TAREA_RED  = TTAREA['REDACTAR']
-    TAREA_FIR  = TTAREA['FIRMAR']
+    TAREA_ELAB = TTAREA['ELABORAR']
     TAREA_NOT  = TTAREA['NOTIFICAR']
-    TAREA_PUB  = TTAREA['PUBLICAR']
     TAREA_ESP  = TTAREA['ESPERAR_PLAZO']
 
     print('Limpiando datos operativos previos...')
@@ -219,27 +217,27 @@ with app.app_context():
     print('T01 OK — SOL=PENDIENTE_ESTUDIO')
 
     # ------------------------------------------------------------------
-    # T02 | AAP_AAC | SOL=PENDIENTE_REDACTAR | REDACTAR con doc_usado, sin doc_producido
+    # T02 | AAP_AAC | SOL=PENDIENTE_ELABORAR | ELABORAR sin doc_producido
     # ------------------------------------------------------------------
     exp02 = crear_exp(1002, e_dist, TE_DIST)
     sol_recibida02 = crear_doc(exp02, 'seed://sol_recibida_T02', TDOC_OTROS, fecha_adm=FECHA_INI)
     sol02 = crear_sol(exp02, TS_AAP_AAC, e_dist, doc_solicitud=sol_recibida02)
     f02 = crear_fase(sol02, TF_SOL)
     t02 = crear_tramite(f02, TT_REQ_SUB)
-    crear_tarea(t02, TAREA_RED, doc_usado=sol_recibida02)
-    print('T02 OK — SOL=PENDIENTE_REDACTAR')
+    crear_tarea(t02, TAREA_ELAB)
+    print('T02 OK — SOL=PENDIENTE_ELABORAR')
 
     # ------------------------------------------------------------------
-    # T03 | AAP_AAC | SOL=PENDIENTE_FIRMA | FIRMAR con borrador, sin firmado
+    # T03 | AAP_AAC | SOL=PENDIENTE_CERRAR | ELABORAR con doc_producido, trámite sin cerrar
     # ------------------------------------------------------------------
     exp03 = crear_exp(1003, e_dist, TE_DIST)
     sol_recibida03 = crear_doc(exp03, 'seed://sol_recibida_T03', TDOC_OTROS, fecha_adm=FECHA_INI)
-    borrador03 = crear_doc(exp03, 'seed://borrador_T03', TDOC_OTROS)
+    elaborado03 = crear_doc(exp03, 'seed://elaborado_T03', TDOC_OTROS)
     sol03 = crear_sol(exp03, TS_AAP_AAC, e_dist, doc_solicitud=sol_recibida03)
     f03 = crear_fase(sol03, TF_SOL)
     t03 = crear_tramite(f03, TT_REQ_SUB)
-    crear_tarea(t03, TAREA_FIR, doc_usado=borrador03)
-    print('T03 OK — SOL=PENDIENTE_FIRMA')
+    crear_tarea(t03, TAREA_ELAB, doc_producido=elaborado03)
+    print('T03 OK — SOL=PENDIENTE_CERRAR')
 
     # ------------------------------------------------------------------
     # T04 | Mismo AT, dos solicitudes activas (indicador visual)
@@ -291,19 +289,18 @@ with app.app_context():
     print('T06 OK — SOL=FIN, CONSULTAS=FIN, MA=PENDIENTE_PLAZOS')
 
     # ------------------------------------------------------------------
-    # T07 | AAP_AAC | SOL=FIN, CONSULTAS=FIN, MA=FIN, IP=PENDIENTE_PUBLICAR
+    # T07 | AAP_AAC | SOL=FIN, CONSULTAS=FIN, MA=FIN, IP=PENDIENTE_ELABORAR
     # ------------------------------------------------------------------
     exp07 = crear_exp(1007, e_dist, TE_DIST)
     sol_recibida07 = crear_doc(exp07, 'seed://sol_recibida_T07', TDOC_OTROS, fecha_adm=FECHA_INI)
-    firmado07 = crear_doc(exp07, 'seed://firmado_T07', TDOC_OTROS)
     sol07 = crear_sol(exp07, TS_AAP_AAC, e_dist, doc_solicitud=sol_recibida07)
     fase_fin(sol07, TF_SOL, TRES_FAV)
     fase_fin(sol07, TF_CONS, TRES_FAV)
     fase_fin(sol07, TF_MA, TRES_FAV)
     f07_ip = crear_fase(sol07, TF_IP)
     t07_bop = crear_tramite(f07_ip, TT_BOP)
-    crear_tarea(t07_bop, TAREA_PUB, doc_usado=firmado07)
-    print('T07 OK — SOL=FIN, CONSULTAS=FIN, MA=FIN, IP=PENDIENTE_PUBLICAR')
+    crear_tarea(t07_bop, TAREA_ELAB)
+    print('T07 OK — SOL=FIN, CONSULTAS=FIN, MA=FIN, IP=PENDIENTE_ELABORAR')
 
     # ------------------------------------------------------------------
     # T08 | AAP_AAC | SOL=FIN, CONSULTAS=FIN, MA=FIN, IP=PENDIENTE_PLAZOS, RES=PENDIENTE_ESTUDIO
