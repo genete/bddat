@@ -1,9 +1,9 @@
 # Estructura de Fases, Trámites y Tareas (ESFTT)
 
 > Fuente de verdad: `docs/ESTRUCTURA_FTT.json`
-> Última sincronización: 2026-03-29
+> Última sincronización: 2026-05-11
 
-**Versión:** 5.6 | **Fecha:** 2026-03-26
+**Versión:** 6.0 | **Fecha:** 2026-05-11
 
 Este documento es la versión legible por humanos del JSON estructural. El JSON es la fuente de verdad para código e IA; este MD es la referencia de consulta rápida.
 
@@ -15,15 +15,16 @@ Para decisiones de diseño, motivaciones y reglas del motor: ver documentos refe
 
 | Código | Nombre | Entrada | Salida | Habilita |
 |---|---|---|---|---|
-| `ANALIZAR` | Análisis | documento_usado_id (oblig.) | documento_producido_id (oblig.) | REDACTAR |
-| `REDACTAR` | Redactar | documento_usado_id (opt.) | documento_producido_id (oblig. — borrador) | FIRMAR |
-| `FIRMAR` | Firmar | documento_usado_id (oblig. — borrador) | documento_producido_id (oblig. — firmado) | NOTIFICAR, PUBLICAR |
-| `NOTIFICAR` | Notificar | documento_usado_id (oblig. — firmado) | documento_producido_id (oblig. — justificante) | ESPERAR_PLAZO, INCORPORAR |
-| `PUBLICAR` | Publicar | documento_usado_id (oblig. — firmado) | documento_producido_id (oblig. — justificante) | ESPERAR_PLAZO |
-| `ESPERAR_PLAZO` | Esperar Plazo | documento_usado_id (oblig. si plazo>0 — justificante que inicia cómputo; NULL si plazo=0) | — | INCORPORAR (si respuesta), FIN (si vence) |
-| `INCORPORAR` | Incorporar | — | documentos_tarea N:M (oblig. ≥1) | ANALIZAR |
+| `ANALIZAR` | Análisis | documento_usado_id (oblig.) | documento_producido_id (oblig. — tipo DIAGNOSTICO) | ELABORAR |
+| `ELABORAR` | Elaborar | documento_usado_id (opt. — DIAGNOSTICO de ANALIZAR si existe) | documento_producido_id (oblig.) | NOTIFICAR |
+| `NOTIFICAR` | Notificar | documento_usado_id (oblig. — doc de ELABORAR) | documento_producido_id (oblig. — justificante) | ESPERAR_PLAZO |
+| `ESPERAR_PLAZO` | Esperar Plazo | documento_usado_id (oblig. si plazo>0 — justificante de NOTIFICAR; NULL si plazo=0) | — | FIN (si vence) |
 
-**Nota INCORPORAR (v5.5):** usa tabla `documentos_tarea` en lugar de `documento_producido_id` (deprecado para esta tarea). Ver `DISEÑO_ANALISIS_SOLICITUD.md §5` y `DISEÑO_SUBSISTEMA_DOCUMENTAL.md`.
+**Cambios v6.0 (ADR-003/004/005, #371):**
+- `ELABORAR` reemplaza a `REDACTAR`+`FIRMAR` (redacción y firma en acto único)
+- `INCORPORAR` eliminado: recepción de documentación externa pasa a `ESPERAR_PLAZO.documento_producido`
+- `PUBLICAR` eliminado: se modela como patrón C (ELABORAR → NOTIFICAR → ESPERAR_PLAZO)
+- `ANALIZAR` siempre produce tipo `DIAGNOSTICO`
 
 ---
 
@@ -32,13 +33,11 @@ Para decisiones de diseño, motivaciones y reglas del motor: ver documentos refe
 | Código | Nombre | Secuencia | Destinatario |
 |---|---|---|---|
 | A | Análisis Interno | ANALIZAR | Interno |
-| B | Comunicación Simple | REDACTAR → FIRMAR → NOTIFICAR | Externo identificado |
-| C | Comunicación con Espera | REDACTAR → FIRMAR → NOTIFICAR → ESPERAR_PLAZO | Externo identificado |
-| D | Publicación Oficial | REDACTAR → FIRMAR → PUBLICAR → ESPERAR_PLAZO | Difusión pública |
-| E | Recepción y Análisis | INCORPORAR → ANALIZAR | Interno |
+| B | Comunicación Simple | ELABORAR → NOTIFICAR | Externo identificado |
+| C | Comunicación con Espera | ELABORAR → NOTIFICAR → ESPERAR_PLAZO | Externo identificado |
 | F | Espera Pasiva | ESPERAR_PLAZO | Sistema |
 
-Los patrones son orientativos y combinables. `C+` = patrón C extendido con INCORPORAR+ANALIZAR al final.
+Los patrones son orientativos y combinables (p.ej. `A+C` = ANALIZAR → ELABORAR → NOTIFICAR → ESPERAR_PLAZO).
 
 ---
 
@@ -50,8 +49,8 @@ Los patrones son orientativos y combinables. `C+` = patrón C extendido con INCO
 | Trámite | Patrón | Tareas indicativas |
 |---|---|---|
 | `ANALISIS_DOCUMENTAL` | A | ANALIZAR |
-| `REQUERIMIENTO_SUBSANACION` | C+ | REDACTAR → FIRMAR → NOTIFICAR → ESPERAR_PLAZO → INCORPORAR → ANALIZAR |
-| `COMUNICACION_INICIO` | B | REDACTAR → FIRMAR → NOTIFICAR |
+| `REQUERIMIENTO_SUBSANACION` | C+A | ELABORAR → NOTIFICAR → ESPERAR_PLAZO → ANALIZAR |
+| `COMUNICACION_INICIO` | B | ELABORAR → NOTIFICAR |
 
 ---
 
@@ -60,8 +59,8 @@ Los patrones son orientativos y combinables. `C+` = patrón C extendido con INCO
 
 | Trámite | Patrón | Tareas indicativas |
 |---|---|---|
-| `SOLICITUD_INFORME` | C | REDACTAR → FIRMAR → NOTIFICAR → ESPERAR_PLAZO |
-| `RECEPCION_INFORME` | E | INCORPORAR → ANALIZAR |
+| `SOLICITUD_INFORME` | C | ELABORAR → NOTIFICAR → ESPERAR_PLAZO |
+| `RECEPCION_INFORME` | A | ANALIZAR |
 
 ---
 
@@ -70,9 +69,9 @@ Los patrones son orientativos y combinables. `C+` = patrón C extendido con INCO
 
 | Trámite | Patrón | Tareas indicativas |
 |---|---|---|
-| `SOLICITUD_COMPATIBILIDAD` | C | REDACTAR → FIRMAR → NOTIFICAR → ESPERAR_PLAZO |
-| `AUDIENCIA` | EC | INCORPORAR → ANALIZAR → REDACTAR → FIRMAR → NOTIFICAR → ESPERAR_PLAZO |
-| `RECEPCION_INFORME` | E | INCORPORAR → ANALIZAR |
+| `SOLICITUD_COMPATIBILIDAD` | C | ELABORAR → NOTIFICAR → ESPERAR_PLAZO |
+| `AUDIENCIA` | A+C | ANALIZAR → ELABORAR → NOTIFICAR → ESPERAR_PLAZO |
+| `RECEPCION_INFORME` | A | ANALIZAR |
 
 ---
 
@@ -81,28 +80,31 @@ Los patrones son orientativos y combinables. `C+` = patrón C extendido con INCO
 
 | Trámite | Patrón | Plazo legal | Resultados ANALIZAR |
 |---|---|---|---|
-| `CONSULTA_SEPARATA` | C+ | 30 días (15 en AAC sin DUP con AAP previa) | sin_respuesta, conformidad, oposicion, reparos_organismo, condicionado |
-| `CONSULTA_TRASLADO_TITULAR` | C+ | 15 días | sin_respuesta, conformidad, reparos_titular |
-| `CONSULTA_TRASLADO_ORGANISMO` | C+ | 15 días | sin_respuesta, conformidad, oposicion, reparos_organismo, condicionado |
+| `CONSULTA_SEPARATA` | C+A | 30 días (15 en AAC sin DUP con AAP previa) | sin_respuesta, conformidad, oposicion, reparos_organismo, condicionado |
+| `CONSULTA_TRASLADO_TITULAR` | C+A | 15 días | sin_respuesta, conformidad, reparos_titular |
+| `CONSULTA_TRASLADO_ORGANISMO` | C+A | 15 días | sin_respuesta, conformidad, oposicion, reparos_organismo, condicionado |
 
-Tareas indicativas en los tres trámites: REDACTAR → FIRMAR → NOTIFICAR → ESPERAR_PLAZO → INCORPORAR → ANALIZAR
+Tareas indicativas en los tres trámites: ELABORAR → NOTIFICAR → ESPERAR_PLAZO → ANALIZAR
 
 ---
 
 ### INFORMACION_PUBLICA
-*Exposición pública del proyecto para alegaciones.*
+*Exposición pública del proyecto para alegaciones. Ver #368, #369.*
 
 | Trámite | Patrón | Tareas indicativas | Nota |
 |---|---|---|---|
-| `ANUNCIO_BOE` | C+E(parcial)+F | R→F→N→EP→INC→EP | Doble espera: hasta publicación + plazo alegaciones |
-| `ANUNCIO_BOP` | C+E(parcial)+F | R→F→N→EP→INC→EP | Doble espera: hasta publicación + plazo alegaciones |
-| `ANUNCIO_PRENSA` | C+E(parcial)+F | R→F→N→EP→INC→EP | Doble espera: hasta publicación + plazo alegaciones |
-| `TABLON_AYUNTAMIENTOS` | C+E(parcial) | R→F→N→EP→INC | Certificado llega al final del plazo |
-| `PORTAL_TRANSPARENCIA` | D | REDACTAR→FIRMAR→PUBLICAR→EP | Controlamos fecha de publicación |
-| `RECEPCION_ALEGACION` | EC | INC→ANALIZAR→R→F→N→EP | — |
+| `REDACTAR_ANUNCIO` | A (solo ELABORAR) | ELABORAR | Produce ANUNCIO_IP; consumido por ANUNCIO_* y TABLON (#368) |
+| `ANUNCIO_BOE` | F+F | NOTIFICAR → EP → EP | Doble espera: hasta publicación + plazo alegaciones |
+| `ANUNCIO_BOP` | F+F | NOTIFICAR → EP → EP | Doble espera: hasta publicación + plazo alegaciones |
+| `ANUNCIO_PRENSA` | F+F | NOTIFICAR → EP → EP | Doble espera: hasta publicación + plazo alegaciones |
+| `ANUNCIO_BOJA` | F+F | NOTIFICAR → EP → EP | Doble espera: hasta publicación + plazo alegaciones (#368) |
+| `TABLON_AYUNTAMIENTOS` | C (sin ELABORAR) | NOTIFICAR → EP | Certificado llega en EP.documento_producido |
+| `PORTAL_TRANSPARENCIA` | C | ELABORAR → NOTIFICAR → EP | Patrón C (#371, elimina PUBLICAR) |
+| `ANUNCIO_TITULAR` | B | ELABORAR → NOTIFICAR | Notificación al titular sobre publicación IP (#369) |
+| `RECEPCION_ALEGACION` | A+C | ANALIZAR → ELABORAR → NOTIFICAR → EP | ANALIZAR clasifica al alegante |
 | `ANALISIS_ALEGACIONES` | A | ANALIZAR | Resultado referenciado en plantilla de resolución |
 
-*R=REDACTAR, F=FIRMAR, N=NOTIFICAR, EP=ESPERAR_PLAZO, INC=INCORPORAR*
+*EP=ESPERAR_PLAZO*
 
 ---
 
@@ -111,18 +113,23 @@ Tareas indicativas en los tres trámites: REDACTAR → FIRMAR → NOTIFICAR → 
 
 | Trámite | Patrón | Tareas indicativas |
 |---|---|---|
-| `SOLICITUD_FIGURA` | C | REDACTAR → FIRMAR → NOTIFICAR → ESPERAR_PLAZO (plazo=0) |
-| `RECEPCION_FIGURA` | E | INCORPORAR → ANALIZAR |
+| `SOLICITUD_FIGURA` | C | ELABORAR → NOTIFICAR → ESPERAR_PLAZO (plazo=0) |
+| `RECEPCION_FIGURA` | A | ANALIZAR |
 
 ---
 
 ### AAU_AAUS_INTEGRADA
-*AAU/AAUS integrada en el procedimiento sustantivo.*
+*AAU/AAUS integrada en el procedimiento sustantivo. 2 → 5 trámites (#372).*
 
-| Trámite | Patrón | Tareas indicativas |
-|---|---|---|
-| `REMISION_MEDIO_AMBIENTE` | C | REDACTAR → FIRMAR → NOTIFICAR → ESPERAR_PLAZO (plazo=0) |
-| `RECEPCION_DICTAMEN` | E | INCORPORAR → ANALIZAR |
+| Trámite | Patrón | Tareas indicativas | Nota |
+|---|---|---|---|
+| `REMISION_RESULTADO_IP_CONSULTAS` | C | ELABORAR → NOTIFICAR → EP(0) | Renombrado desde REMISION_MEDIO_AMBIENTE |
+| `RECEPCION_DICTAMEN` | A+C | ANALIZAR → ELABORAR → NOTIFICAR → EP(0) | — |
+| `RECEPCION_PROPUESTA_INF_VINC` | A+C | ANALIZAR → ELABORAR → NOTIFICAR → EP(0) | Nuevo #372 |
+| `RECEPCION_INFORME_VINCULANTE` | A | ANALIZAR | Nuevo #372 |
+| `DISCREPANCIA_INF_VINC` | C | ELABORAR → NOTIFICAR → EP(0) | Condicional; nuevo #372 |
+
+*EP(0)=ESPERAR_PLAZO con plazo indefinido*
 
 ---
 
@@ -131,6 +138,6 @@ Tareas indicativas en los tres trámites: REDACTAR → FIRMAR → NOTIFICAR → 
 
 | Trámite | Patrón | Tareas indicativas |
 |---|---|---|
-| `ELABORACION` | AB (sin NOTIFICAR) | ANALIZAR → REDACTAR → FIRMAR |
-| `NOTIFICACION` | B (simplificado) | REDACTAR → NOTIFICAR |
-| `PUBLICACION` | D (sin ESPERAR_PLAZO) | REDACTAR → FIRMAR → PUBLICAR |
+| `ELABORACION` | A+B (sin NOTIFICAR) | ANALIZAR → ELABORAR |
+| `NOTIFICACION` | B (solo NOTIFICAR) | NOTIFICAR |
+| `PUBLICACION` | C | ELABORAR → NOTIFICAR → ESPERAR_PLAZO |
