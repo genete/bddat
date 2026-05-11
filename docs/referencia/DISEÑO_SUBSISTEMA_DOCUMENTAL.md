@@ -87,10 +87,10 @@ Las dos vías son completamente independientes y no deben confundirse:
 Pantalla de gestión documental (#180). Ejecutada por el administrativo antes o al margen
 del flujo de tramitación. No genera tareas en el ESFTT.
 
-**Vía 2 — Tarea INCORPORAR (durante tramitación activa)**
-Solo para documentos externos que llegan mientras el expediente está en tramitación:
+**Vía 2 — Recepción externa via `ESPERAR_PLAZO.documento_producido` (durante tramitación activa)**
+Para documentos externos que llegan mientras el expediente está en tramitación:
 informes de organismos, alegaciones, respuestas del titular, justificantes de publicación.
-El documento debe existir ya en el pool antes de ejecutar la tarea.
+El documento se asigna como `documento_producido` de la tarea `ESPERAR_PLAZO` que modelaba la espera.
 **No aplica a la recepción inicial de solicitudes.**
 
 ### RECEPCION_SOLICITUD sin INCORPORAR

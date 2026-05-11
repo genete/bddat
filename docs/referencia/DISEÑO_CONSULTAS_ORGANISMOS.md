@@ -63,12 +63,12 @@ La fase CONSULTAS requiere los siguientes cambios en el catálogo:
 
 | Acción | Código anterior | Código nuevo | Cambio |
 |---|---|---|---|
-| Redefinir | `SEPARATAS` | `CONSULTA_SEPARATA` | Uno por organismo; sin ANALISIS inicial; añadir INCORPORAR+ANALIZAR al final |
+| Redefinir | `SEPARATAS` | `CONSULTA_SEPARATA` | Uno por organismo; sin ANALISIS inicial; secuencia ELABORAR, NOTIFICAR, ESPERAR_PLAZO, ANALIZAR |
 | Eliminar | `RECEPCION_INFORME_ORGANISMO` | — | Absorbido en `CONSULTA_SEPARATA` y `CONSULTA_TRASLADO_ORGANISMO` |
 | Crear | — | `CONSULTA_TRASLADO_TITULAR` | Nuevo tipo, no existía |
 | Redefinir | `TRASLADO_REPAROS` | `CONSULTA_TRASLADO_ORGANISMO` | Renombrar y cambiar patrón de EC a C+ |
 
-Para `ANALISIS_TECNICO`: añadir tarea `INCORPORAR` al final de `REQUERIMIENTO_MEJORA` (actualmente patrón C, pasa a C+).
+Para `ANALISIS_TECNICO`: secuencia de `REQUERIMIENTO_SUBSANACION` es ELABORAR, NOTIFICAR, ESPERAR_PLAZO, ANALIZAR (patrón C+A).
 
 ---
 
@@ -87,10 +87,10 @@ No se añade ningún campo FK de trámite-a-trámite por ahora. Si en el futuro 
 **`REQUERIMIENTO_DE_MEJORA`** — Comunicación formal al titular de los defectos detectados y solicitud de subsanación. Cadena de tareas:
 
 ```
-REDACTAR → FIRMAR → NOTIFICAR → ESPERAR → INCORPORAR
+ELABORAR → NOTIFICAR → ESPERAR_PLAZO → ANALIZAR
 ```
 
-La tarea **INCORPORAR** registra la recepción de la documentación subsanada aportada por el titular. El trámite se cierra **manualmente** por el tramitador, con comentario obligatorio, cuando considera el asunto subsanado. El comentario puede referenciar el documento producido por la tarea de análisis del `COMPROBACION_DOCUMENTAL` asociado.
+La tarea **ANALIZAR** registra el análisis de la documentación subsanada aportada por el titular. La recepción del documento subsanado queda en `ESPERAR_PLAZO.documento_producido`. El trámite se cierra **manualmente** por el tramitador, con comentario obligatorio, cuando considera el asunto subsanado.
 
 ### Casuística de secuencias posibles
 
@@ -125,9 +125,10 @@ Estos tres tipos son compartidos entre AAP, AAC y AAP+AAC. Las diferencias de no
 Los trámites `CONSULTA_TRASLADO_TITULAR` y `CONSULTA_TRASLADO_ORGANISMO` incluyen la siguiente cadena de tareas:
 
 ```
-REDACTAR → FIRMAR → NOTIFICAR → ESPERAR → INCORPORAR_RESPUESTA → ANALIZAR
+ELABORAR → NOTIFICAR → ESPERAR_PLAZO → ANALIZAR
 ```
 
+La recepción de la respuesta del organismo o del titular queda en `ESPERAR_PLAZO.documento_producido`.
 La tarea **ANALIZAR** es la productora del documento con significado semántico que determina el resultado del trámite. Ese resultado es el que controla el estado del organismo y el siguiente paso en el flujo. Ver concepto "tarea productora" más abajo.
 
 ### Concepto: tarea productora de documento con significado semántico

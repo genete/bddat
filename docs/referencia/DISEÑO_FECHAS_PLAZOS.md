@@ -254,10 +254,10 @@ El análisis tipo a tipo reveló qué documento porta la fecha administrativa re
 | CONSULTA_MINISTERIO | Notificación al Ministerio | Doc. de notificación | NOTIFICAR en `SOLICITUD_INFORME` |
 | COMPATIBILIDAD_AMBIENTAL | Notificación a Medio Ambiente | Doc. de notificación | NOTIFICAR en `SOLICITUD_COMPATIBILIDAD` |
 | CONSULTAS | Notificación a cada organismo (30/15 días) | Doc. de separata/traslado | NOTIFICAR en `CONSULTA_SEPARATA` y traslados |
-| INFORMACION_PUBLICA | Fecha de publicación en cada medio | Doc. publicado/incorporado | PUBLICAR o INCORPORAR por trámite |
+| INFORMACION_PUBLICA | Fecha de publicación en cada medio | Doc. producido/recibido por trámite de anuncio | NOTIFICAR (fecha de publicación efectiva por trámite) |
 | FIGURA_AMBIENTAL_EXTERNA | Notificación al titular | Doc. de notificación al titular | NOTIFICAR en `SOLICITUD_FIGURA` |
-| AAU_AAUS_INTEGRADA | Notificación al órgano ambiental | Doc. de notificación | NOTIFICAR en `REMISION_MEDIO_AMBIENTE` |
-| RESOLUCION | Firma, notificación y publicación | Doc. de resolución / notif. / publicación | FIRMAR, NOTIFICAR, PUBLICAR (un doc. por trámite) |
+| AAU_AAUS_INTEGRADA | Notificación al órgano ambiental | Doc. de notificación | NOTIFICAR en `REMISION_RESULTADO_IP_CONSULTAS` |
+| RESOLUCION | Elaboración, notificación y publicación | Doc. de resolución / notif. / publicación | ELABORAR, NOTIFICAR, ESPERAR_PLAZO (un doc. por trámite) |
 
 > **Nota RESOLUCION:** los tres trámites interiores portan fechas con efectos jurídicos distintos (inicio de plazo de recurso, publicidad registral, etc.). Se analizarán en detalle cuando se aborde el nivel Trámite.
 

@@ -37,8 +37,8 @@ class Documento(db.Model):
         - Determina plazos, efectos jurídicos y secuencia administrativa
         - NULLABLE: dos casos legítimos de NULL:
           1. Documento cargado al pool pendiente de revisión posterior.
-          2. Documento sin valor jurídico propio (borrador REDACTAR, informe
-             ANALISIS): el efecto jurídico lo tiene el documento firmado sucesor.
+          2. Documento sin valor jurídico propio (informe ANALIZAR): el efecto
+             jurídico lo tiene el documento producido por ELABORAR.
         - La API de asignación a tareas debe rechazar documentos con NULL
           cuando el tipo de tarea lo requiera (validación de negocio, no de BD).
 
