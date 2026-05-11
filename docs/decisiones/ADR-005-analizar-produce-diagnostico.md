@@ -23,7 +23,8 @@ el documento de salida. Garantiza trazabilidad completa del análisis en el expe
 - Modelo `Documento`: `url` para diagnósticos sigue patrón `bddat://diagnosticos/{id}`,
   análogo a `bddat://cert_fin_instruccion/{id}` (#373)
 - `fecha_administrativa = NULL` por diseño: el diagnóstico no es un acto administrativo
-- `DIAGNOSTICO` ya está catalogado en `docs/referencia/TIPOS_DOCUMENTOS_CATALOGO.md` (#337, #365)
+- `DIAGNOSTICO` ya está catalogado en `docs/referencia/TIPOS_DOCUMENTOS_CATALOGO.md` (#337)
+- La URI `bddat://diagnosticos/{id}` sigue el patrón definido en ADR-006 (issue #365)
 
 ## Alternativa descartada
 Permitir `ANALIZAR` sin documento producido cuando el análisis es implícito o auxiliar.
