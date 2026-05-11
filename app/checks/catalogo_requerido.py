@@ -18,9 +18,7 @@ REGISTROS_REQUERIDOS: dict = {
         'REQUERIMIENTO_SUBSANACION', 'AUDIENCIA',
     ],
     'TipoTarea': [
-        'ANALIZAR', 'REDACTAR', 'FIRMAR',
-        'NOTIFICAR', 'PUBLICAR',
-        'ESPERAR_PLAZO', 'INCORPORAR',
+        'ANALIZAR', 'ELABORAR', 'NOTIFICAR', 'ESPERAR_PLAZO',
     ],
     'TipoFase': [
         'ANALISIS_SOLICITUD',

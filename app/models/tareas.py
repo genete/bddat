@@ -24,13 +24,12 @@ class Tarea(db.Model):
     CAMPO TIPO_TAREA_ID:
         - NOT NULL: Define qué tipo de tarea atómica es
         - FK a TIPOS_TAREAS (public schema)
-        - Solo 7 tipos atómicos posibles
-    
+        - 4 tipos posibles: ANALIZAR, ELABORAR, NOTIFICAR, ESPERAR_PLAZO
+
     CAMPO DOCUMENTO_USADO_ID:
         - NULLABLE: Documento que se usa como input
         - FK a DOCUMENTOS (public schema)
-        - Ej: Documento que se analiza, firma, publica
-        - NULL para INCORPORAR, ESPERARPLAZO
+        - NULL para ESPERAR_PLAZO (plazo=0) y ELABORAR (entrada opcional)
     
     CAMPO DOCUMENTO_PRODUCIDO_ID:
         - NULLABLE: Documento que se genera como output
@@ -41,20 +40,14 @@ class Tarea(db.Model):
     
     CAMPO NOTAS:
         - Campo libre para información adicional
-        - Puede contener datos específicos según tipo:
-          * Referencia publicación (PUBLICAR)
-          * Remitente (INCORPORAR)
         - ESPERARPLAZO: el plazo NO vive aquí — viene de `catalogo_plazos` por tipo de trámite.
           La fecha de inicio del cómputo es `documento_usado.fecha_administrativa`.
     
     SEMÁNTICA SEGÚN TIPO:
-        - INCORPORAR: usado=NULL, producido=obligatorio
-        - ANALISIS: usado=obligatorio, producido=obligatorio
-        - REDACTAR: usado=opcional, producido=obligatorio
-        - FIRMAR: usado=obligatorio, producido=obligatorio
-        - NOTIFICAR: usado=obligatorio, producido=obligatorio
-        - PUBLICAR: usado=obligatorio, producido=obligatorio
-        - ESPERARPLAZO: usado=obligatorio (doc. de notificación — fuente de fecha inicio cómputo), producido=NULL
+        - ANALIZAR:      usado=obligatorio, producido=obligatorio (tipo DIAGNOSTICO)
+        - ELABORAR:      usado=opcional (DIAGNOSTICO de ANALIZAR previo), producido=obligatorio
+        - NOTIFICAR:     usado=obligatorio, producido=obligatorio (justificante)
+        - ESPERAR_PLAZO: usado=obligatorio si plazo>0 (justificante inicio cómputo), producido=NULL
     
     RELACIONES:
         - tramite → TRAMITES.id (FK CASCADE, trámite contenedor)
@@ -93,7 +86,7 @@ class Tarea(db.Model):
         db.Integer,
         db.ForeignKey('tipos_tareas.id'),
         nullable=False,
-        comment='FK a TIPOS_TAREAS. Tipo de tarea atómica (7 tipos posibles)'
+        comment='FK a TIPOS_TAREAS. Tipo de tarea atómica (4 tipos posibles)'
     )
     
     documento_usado_id = db.Column(
@@ -137,20 +130,13 @@ class Tarea(db.Model):
 
     @property
     def ejecutada(self):
-        """True si la tarea está completa.
-        INCORPORAR: completitud = ≥1 registro en documentos_tarea (v5.5).
-        Resto: completitud = documento_producido_id not None.
+        """True si la tarea está completa (tiene documento_producido).
         ESPERAR_PLAZO: completitud vía plazos.py (ContextAssembler)."""
-        if self.tipo_tarea and self.tipo_tarea.codigo == 'INCORPORAR':
-            return bool(self.documentos_tarea)
         return self.documento_producido_id is not None
 
     @property
     def planificada(self):
-        """True si la tarea no tiene ningún documento asignado aún.
-        INCORPORAR: planificada = sin documentos_tarea vinculados."""
-        if self.tipo_tarea and self.tipo_tarea.codigo == 'INCORPORAR':
-            return not bool(self.documentos_tarea)
+        """True si la tarea no tiene ningún documento asignado aún."""
         return self.documento_producido_id is None and self.documento_usado_id is None
 
     @property

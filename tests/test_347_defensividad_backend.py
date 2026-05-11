@@ -34,7 +34,7 @@ def test_validar_catalogo_registro_ausente(caplog):
 
     mocks = {}
     for nombre_modelo, codigos in REGISTROS_REQUERIDOS.items():
-        presentes = [c for c in codigos if not (nombre_modelo == 'TipoTarea' and c == 'FIRMAR')]
+        presentes = [c for c in codigos if not (nombre_modelo == 'TipoTarea' and c == 'ELABORAR')]
         mocks[nombre_modelo] = _mock_modelo_con_codigos(nombre_modelo, presentes)
 
     def fake_importar(modulo, clase):
@@ -44,8 +44,8 @@ def test_validar_catalogo_registro_ausente(caplog):
         with caplog.at_level(logging.ERROR, logger='app.checks.catalogo_requerido'):
             faltantes = validar_catalogo()
 
-    assert any("TipoTarea.codigo='FIRMAR'" in f for f in faltantes)
-    assert "TipoTarea.codigo='FIRMAR' → no encontrado" in faltantes
+    assert any("TipoTarea.codigo='ELABORAR'" in f for f in faltantes)
+    assert "TipoTarea.codigo='ELABORAR' → no encontrado" in faltantes
 
 
 def test_validar_catalogo_bd_completa():

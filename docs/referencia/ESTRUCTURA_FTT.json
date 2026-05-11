@@ -1,9 +1,9 @@
 {
   "metadata": {
-    "version": "5.6",
+    "version": "6.0",
     "descripcion": "Estructura jerárquica de fases, trámites y tareas para expedientes de AT",
     "principio": "Minimalismo estructural — la semántica vive en los TIPOS",
-    "fecha_actualizacion": "2026-03-26",
+    "fecha_actualizacion": "2026-05-11",
     "ref_diseño": [
       "docs/DISEÑO_ANALISIS_SOLICITUD.md",
       "docs/DISEÑO_MOTOR_REGLAS.md",
@@ -15,65 +15,38 @@
     {
       "codigo": "ANALIZAR",
       "nombre": "Análisis",
-      "descripcion": "Revisión técnica o jurídica de documentación con generación obligatoria de documento formal (informe o nota técnica)",
+      "descripcion": "Revisión técnica o jurídica de documentación con generación obligatoria de documento formal (informe o diagnóstico)",
       "entrada": "documento_usado_id (obligatorio)",
+      "salida": "documento_producido_id (obligatorio — tipo DIAGNOSTICO)",
+      "habilita_tareas": ["ELABORAR"],
+      "nota": "documento_producido_id IS NOT NULL para completitud de la tarea. Salida siempre tipo DIAGNOSTICO (ADR-005). Ver DISEÑO_MOTOR_REGLAS.md §TAREA."
+    },
+    {
+      "codigo": "ELABORAR",
+      "nombre": "Elaborar",
+      "descripcion": "Redacción y firma de documento administrativo en acto único (fusiona REDACTAR+FIRMAR, ADR-003). Produce documento con validez jurídica inmediata.",
+      "entrada": "documento_usado_id (opcional — DIAGNOSTICO de ANALIZAR previo si existe)",
       "salida": "documento_producido_id (obligatorio)",
-      "habilita_tareas": ["REDACTAR"],
-      "nota": "documento_producido_id IS NOT NULL para completitud de la tarea. Ver DISEÑO_MOTOR_REGLAS.md §TAREA."
-    },
-    {
-      "codigo": "REDACTAR",
-      "nombre": "Redactar",
-      "descripcion": "Creación de documento administrativo (borrador, sin validez jurídica hasta FIRMAR)",
-      "entrada": "documento_usado_id (opcional — informe ANALIZAR previo si existe)",
-      "salida": "documento_producido_id (obligatorio — borrador)",
-      "habilita_tareas": ["FIRMAR"],
+      "habilita_tareas": ["NOTIFICAR"],
       "nota": "documento_producido_id IS NOT NULL para completitud de la tarea."
-    },
-    {
-      "codigo": "FIRMAR",
-      "nombre": "Firmar",
-      "descripcion": "Firma autorizada del borrador — lo convierte en documento con validez jurídica",
-      "entrada": "documento_usado_id (obligatorio — borrador de REDACTAR)",
-      "salida": "documento_producido_id (obligatorio — documento firmado)",
-      "habilita_tareas": ["NOTIFICAR", "PUBLICAR"],
-      "nota": "documento_producido.fecha_administrativa porta la fecha del acto de firma. documento_producido_id IS NOT NULL para completitud de la tarea."
     },
     {
       "codigo": "NOTIFICAR",
       "nombre": "Notificar",
       "descripcion": "Comunicación a destinatario identificado con justificante de notificación",
-      "entrada": "documento_usado_id (obligatorio — documento firmado de FIRMAR)",
+      "entrada": "documento_usado_id (obligatorio — documento de ELABORAR)",
       "salida": "documento_producido_id (obligatorio — justificante de notificación)",
-      "habilita_tareas": ["ESPERAR_PLAZO", "INCORPORAR"],
-      "nota": "documento_producido.fecha_administrativa porta la fecha de la notificación. documento_producido_id IS NOT NULL para completitud de la tarea."
-    },
-    {
-      "codigo": "PUBLICAR",
-      "nombre": "Publicar",
-      "descripcion": "Publicación en medios oficiales (BOE, BOP, tablón, portal de transparencia)",
-      "entrada": "documento_usado_id (obligatorio — documento firmado de FIRMAR)",
-      "salida": "documento_producido_id (obligatorio — justificante de publicación)",
       "habilita_tareas": ["ESPERAR_PLAZO"],
-      "nota": "documento_producido.fecha_administrativa porta la fecha de publicación. Campo NOTAS: referencia de publicación (ej. BOE-A-2025-1234)."
+      "nota": "documento_producido.fecha_administrativa porta la fecha de la notificación. documento_producido_id IS NOT NULL para completitud de la tarea."
     },
     {
       "codigo": "ESPERAR_PLAZO",
       "nombre": "Esperar Plazo",
       "descripcion": "Suspensión temporal con fecha límite (PLAZO_DIAS=0: paralización indefinida hasta evento externo)",
-      "entrada": "documento_usado_id (obligatorio si plazo > 0 — justificante de NOTIFICAR o PUBLICAR que inicia el cómputo del plazo; NULL si plazo = 0, espera pasiva indefinida)",
+      "entrada": "documento_usado_id (obligatorio si plazo > 0 — justificante de NOTIFICAR que inicia el cómputo del plazo; NULL si plazo = 0, espera pasiva indefinida)",
       "salida": "Ninguno",
-      "habilita_tareas": ["INCORPORAR (si llega respuesta)", "FIN (si vence sin respuesta)"],
-      "nota": "Campo NOTAS: PLAZO_DIAS y TIPO_DIAS. PLAZO_DIAS=0 = indefinido."
-    },
-    {
-      "codigo": "INCORPORAR",
-      "nombre": "Incorporar",
-      "descripcion": "Incorporación formal de documentación externa al expediente durante tramitación activa",
-      "entrada": "Ninguno (documentos externos ya presentes en pool del expediente)",
-      "salida": "documentos_tarea (N documentos vinculados — documento_producido_id deprecado desde v5.5)",
-      "habilita_tareas": ["ANALIZAR"],
-      "nota": "Desde v5.5: tabla documentos_tarea (1 acto de recepción = N docs). Completitud requiere ≥1 registro en documentos_tarea. Solo para documentación externa durante tramitación activa — no para carga inicial. Ver DISEÑO_SUBSISTEMA_DOCUMENTAL.md §INCORPORAR y DISEÑO_ANALISIS_SOLICITUD.md §5."
+      "habilita_tareas": ["FIN (si vence sin respuesta)"],
+      "nota": "Campo NOTAS: PLAZO_DIAS y TIPO_DIAS. PLAZO_DIAS=0 = indefinido. Recepción de documentación externa queda en documento_producido de esta tarea (ADR-004, elimina INCORPORAR)."
     }
   ],
   "PATRONES_FLUJO": [
@@ -81,36 +54,22 @@
       "codigo": "A",
       "nombre": "Análisis Interno",
       "secuencia": ["ANALIZAR"],
-      "descripcion": "Análisis con generación obligatoria de informe",
+      "descripcion": "Análisis con generación obligatoria de diagnóstico",
       "destinatario": "Interno"
     },
     {
       "codigo": "B",
       "nombre": "Comunicación Simple",
-      "secuencia": ["REDACTAR", "FIRMAR", "NOTIFICAR"],
+      "secuencia": ["ELABORAR", "NOTIFICAR"],
       "descripcion": "Comunicación sin espera de respuesta",
       "destinatario": "Externo identificado"
     },
     {
       "codigo": "C",
       "nombre": "Comunicación con Espera",
-      "secuencia": ["REDACTAR", "FIRMAR", "NOTIFICAR", "ESPERAR_PLAZO"],
-      "descripcion": "Comunicación con espera de respuesta. Si llega documento externo, el técnico crea INCORPORAR.",
+      "secuencia": ["ELABORAR", "NOTIFICAR", "ESPERAR_PLAZO"],
+      "descripcion": "Comunicación con espera de respuesta",
       "destinatario": "Externo identificado"
-    },
-    {
-      "codigo": "D",
-      "nombre": "Publicación Oficial",
-      "secuencia": ["REDACTAR", "FIRMAR", "PUBLICAR", "ESPERAR_PLAZO"],
-      "descripcion": "Publicación en medios oficiales con plazo de alegaciones",
-      "destinatario": "Difusión pública"
-    },
-    {
-      "codigo": "E",
-      "nombre": "Recepción y Análisis",
-      "secuencia": ["INCORPORAR", "ANALIZAR"],
-      "descripcion": "Procesamiento de documentación externa recibida con análisis formal",
-      "destinatario": "Interno"
     },
     {
       "codigo": "F",
@@ -129,24 +88,24 @@
         {
           "codigo": "ANALISIS_DOCUMENTAL",
           "nombre": "Análisis Documental",
-          "descripcion": "El técnico cualifica tipos de documentos del pool, contrasta con el checklist de documentación requerida y emite informe con resultado. Con defectos habilita REQUERIMIENTO_SUBSANACION; sin defectos habilita COMUNICACION_INICIO.",
+          "descripcion": "El técnico cualifica tipos de documentos del pool, contrasta con el checklist de documentación requerida y emite diagnóstico con resultado. Con defectos habilita REQUERIMIENTO_SUBSANACION; sin defectos habilita COMUNICACION_INICIO.",
           "tareas_indicativas": ["ANALIZAR"],
           "patron": "A",
-          "nota": "Motor consulta resultado del ANALIZAR para habilitar el trámite siguiente. Ver DISEÑO_ANALISIS_SOLICITUD.md §3."
+          "nota": "Motor consulta resultado del ANALIZAR (tipo DIAGNOSTICO) para habilitar el trámite siguiente. Ver DISEÑO_ANALISIS_SOLICITUD.md §3."
         },
         {
           "codigo": "REQUERIMIENTO_SUBSANACION",
           "nombre": "Requerimiento de Subsanación",
           "descripcion": "Escrito de requerimiento con los defectos detectados. El titular aporta documentación subsanada. ANALIZAR final evalúa si la subsanación es correcta.",
-          "tareas_indicativas": ["REDACTAR", "FIRMAR", "NOTIFICAR", "ESPERAR_PLAZO", "INCORPORAR", "ANALIZAR"],
-          "patron": "C+",
-          "nota": "INCORPORAR usa documentos_tarea (multi-doc, v5.5). Si persisten defectos, motor puede habilitar nuevo REQUERIMIENTO_SUBSANACION. Ver DISEÑO_ANALISIS_SOLICITUD.md §3."
+          "tareas_indicativas": ["ELABORAR", "NOTIFICAR", "ESPERAR_PLAZO", "ANALIZAR"],
+          "patron": "C+A",
+          "nota": "Recepción de documentación subsanada queda en ESPERAR_PLAZO.documento_producido. Si persisten defectos, motor puede habilitar nuevo REQUERIMIENTO_SUBSANACION. Ver DISEÑO_ANALISIS_SOLICITUD.md §3."
         },
         {
           "codigo": "COMUNICACION_INICIO",
           "nombre": "Comunicación de Inicio",
           "descripcion": "Comunicación al titular del número de expediente e inicio del procedimiento. Solo si no hay defectos en ANALISIS_DOCUMENTAL.",
-          "tareas_indicativas": ["REDACTAR", "FIRMAR", "NOTIFICAR"],
+          "tareas_indicativas": ["ELABORAR", "NOTIFICAR"],
           "patron": "B",
           "nota": "Opcional según política organizativa."
         }
@@ -161,15 +120,15 @@
           "codigo": "SOLICITUD_INFORME",
           "nombre": "Solicitud de Informe",
           "descripcion": "Remisión de documentación y solicitud de informe preceptivo",
-          "tareas_indicativas": ["REDACTAR", "FIRMAR", "NOTIFICAR", "ESPERAR_PLAZO"],
+          "tareas_indicativas": ["ELABORAR", "NOTIFICAR", "ESPERAR_PLAZO"],
           "patron": "C"
         },
         {
           "codigo": "RECEPCION_INFORME",
           "nombre": "Recepción de Informe",
-          "descripcion": "Incorporación del informe recibido y análisis",
-          "tareas_indicativas": ["INCORPORAR", "ANALIZAR"],
-          "patron": "E"
+          "descripcion": "Análisis del informe recibido",
+          "tareas_indicativas": ["ANALIZAR"],
+          "patron": "A"
         }
       ]
     },
@@ -182,23 +141,23 @@
           "codigo": "SOLICITUD_COMPATIBILIDAD",
           "nombre": "Solicitud de Compatibilidad",
           "descripcion": "Remisión a Medio Ambiente para obtención de compatibilidad con la legislación medioambiental",
-          "tareas_indicativas": ["REDACTAR", "FIRMAR", "NOTIFICAR", "ESPERAR_PLAZO"],
+          "tareas_indicativas": ["ELABORAR", "NOTIFICAR", "ESPERAR_PLAZO"],
           "patron": "C"
         },
         {
           "codigo": "AUDIENCIA",
           "nombre": "Audiencia",
-          "descripcion": "Audiencia iniciada por Medio Ambiente en caso de incompatibilidad. Se incorpora propuesta de incompatibilidad, se analiza y se redactan alegaciones.",
-          "tareas_indicativas": ["INCORPORAR", "ANALIZAR", "REDACTAR", "FIRMAR", "NOTIFICAR", "ESPERAR_PLAZO"],
-          "patron": "EC",
-          "nota": "Medio Ambiente notifica propuesta de incompatibilidad → INCORPORAR+ANALIZAR antes de redactar alegaciones."
+          "descripcion": "Audiencia iniciada por Medio Ambiente en caso de incompatibilidad. Se analiza propuesta de incompatibilidad y se elaboran alegaciones.",
+          "tareas_indicativas": ["ANALIZAR", "ELABORAR", "NOTIFICAR", "ESPERAR_PLAZO"],
+          "patron": "A+C",
+          "nota": "Medio Ambiente notifica propuesta de incompatibilidad → ANALIZAR antes de elaborar alegaciones."
         },
         {
           "codigo": "RECEPCION_INFORME",
           "nombre": "Recepción de Informe Vinculante",
-          "descripcion": "Recepción de informe vinculante (compatible o incompatible)",
-          "tareas_indicativas": ["INCORPORAR", "ANALIZAR"],
-          "patron": "E"
+          "descripcion": "Análisis de informe vinculante (compatible o incompatible)",
+          "tareas_indicativas": ["ANALIZAR"],
+          "patron": "A"
         }
       ]
     },
@@ -211,8 +170,8 @@
           "codigo": "CONSULTA_SEPARATA",
           "nombre": "Separata a Organismo",
           "descripcion": "Envío de separata a un organismo concreto y gestión de su respuesta. Un trámite por organismo.",
-          "tareas_indicativas": ["REDACTAR", "FIRMAR", "NOTIFICAR", "ESPERAR_PLAZO", "INCORPORAR", "ANALIZAR"],
-          "patron": "C+",
+          "tareas_indicativas": ["ELABORAR", "NOTIFICAR", "ESPERAR_PLAZO", "ANALIZAR"],
+          "patron": "C+A",
           "plazo_legal": "30 días (15 si existe AAP previa y tramitación es AAC sin DUP)",
           "resultado_analizar": ["sin_respuesta", "conformidad", "oposicion", "reparos_organismo", "condicionado"],
           "nota": "Sin respuesta: resultado sin_respuesta (conformidad tácita). ANALIZAR actualiza estado del registro organismos_expediente. Ver DISEÑO_CONSULTAS_ORGANISMOS.md."
@@ -221,8 +180,8 @@
           "codigo": "CONSULTA_TRASLADO_TITULAR",
           "nombre": "Traslado al Titular",
           "descripcion": "Traslado al titular de la respuesta del organismo (oposición, reparos o condicionados). Inicia el ciclo de reparos.",
-          "tareas_indicativas": ["REDACTAR", "FIRMAR", "NOTIFICAR", "ESPERAR_PLAZO", "INCORPORAR", "ANALIZAR"],
-          "patron": "C+",
+          "tareas_indicativas": ["ELABORAR", "NOTIFICAR", "ESPERAR_PLAZO", "ANALIZAR"],
+          "patron": "C+A",
           "plazo_legal": "15 días",
           "resultado_analizar": ["sin_respuesta", "conformidad", "reparos_titular"],
           "nota": "Sin respuesta en AAP: activa audiencia previa a archivo. En AAC equivale a aceptación tácita de condicionados. Ver DISEÑO_CONSULTAS_ORGANISMOS.md."
@@ -231,8 +190,8 @@
           "codigo": "CONSULTA_TRASLADO_ORGANISMO",
           "nombre": "Traslado al Organismo",
           "descripcion": "Traslado al organismo de los reparos formulados por el titular. Segunda ronda del ciclo.",
-          "tareas_indicativas": ["REDACTAR", "FIRMAR", "NOTIFICAR", "ESPERAR_PLAZO", "INCORPORAR", "ANALIZAR"],
-          "patron": "C+",
+          "tareas_indicativas": ["ELABORAR", "NOTIFICAR", "ESPERAR_PLAZO", "ANALIZAR"],
+          "patron": "C+A",
           "plazo_legal": "15 días",
           "resultado_analizar": ["sin_respuesta", "conformidad", "oposicion", "reparos_organismo", "condicionado"],
           "nota": "Motor puede contar iteraciones por organismo_expediente para advertir si se supera 1 iteración. Ver DISEÑO_CONSULTAS_ORGANISMOS.md."
@@ -245,51 +204,75 @@
       "descripcion": "Exposición pública del proyecto para alegaciones",
       "tramites": [
         {
+          "codigo": "REDACTAR_ANUNCIO",
+          "nombre": "Redacción del Anuncio",
+          "descripcion": "Elaboración del documento de anuncio de información pública que será publicado en los distintos medios",
+          "tareas_indicativas": ["ELABORAR"],
+          "patron": "A (solo ELABORAR)",
+          "nota": "Produce documento tipo ANUNCIO_IP que consumen los trámites ANUNCIO_* y TABLON_AYUNTAMIENTOS (#368)."
+        },
+        {
           "codigo": "ANUNCIO_BOE",
           "nombre": "Anuncio en BOE",
           "descripcion": "Publicación de anuncio en Boletín Oficial del Estado",
-          "tareas_indicativas": ["REDACTAR", "FIRMAR", "NOTIFICAR", "ESPERAR_PLAZO", "INCORPORAR", "ESPERAR_PLAZO"],
-          "patron": "C+E(parcial)+F",
-          "nota": "Doble ESPERAR_PLAZO: hasta publicación efectiva + plazo de alegaciones. INCORPORAR registra justificante con fecha real de publicación."
+          "tareas_indicativas": ["NOTIFICAR", "ESPERAR_PLAZO", "ESPERAR_PLAZO"],
+          "patron": "F+F",
+          "nota": "Consume ANUNCIO_IP de REDACTAR_ANUNCIO. Doble ESPERAR_PLAZO: hasta publicación efectiva + plazo de alegaciones (#368)."
         },
         {
           "codigo": "ANUNCIO_BOP",
           "nombre": "Anuncio en BOP",
           "descripcion": "Publicación de anuncio en Boletín Oficial Provincial",
-          "tareas_indicativas": ["REDACTAR", "FIRMAR", "NOTIFICAR", "ESPERAR_PLAZO", "INCORPORAR", "ESPERAR_PLAZO"],
-          "patron": "C+E(parcial)+F",
-          "nota": "Doble ESPERAR_PLAZO: hasta publicación efectiva + plazo de alegaciones. INCORPORAR registra justificante con fecha real de publicación."
+          "tareas_indicativas": ["NOTIFICAR", "ESPERAR_PLAZO", "ESPERAR_PLAZO"],
+          "patron": "F+F",
+          "nota": "Consume ANUNCIO_IP de REDACTAR_ANUNCIO. Doble ESPERAR_PLAZO: hasta publicación efectiva + plazo de alegaciones (#368)."
         },
         {
           "codigo": "ANUNCIO_PRENSA",
           "nombre": "Anuncio en Prensa",
           "descripcion": "Publicación de anuncio en diario de mayor difusión",
-          "tareas_indicativas": ["REDACTAR", "FIRMAR", "NOTIFICAR", "ESPERAR_PLAZO", "INCORPORAR", "ESPERAR_PLAZO"],
-          "patron": "C+E(parcial)+F",
-          "nota": "Doble ESPERAR_PLAZO: hasta publicación efectiva + plazo de alegaciones. INCORPORAR registra justificante con fecha real de publicación."
+          "tareas_indicativas": ["NOTIFICAR", "ESPERAR_PLAZO", "ESPERAR_PLAZO"],
+          "patron": "F+F",
+          "nota": "Consume ANUNCIO_IP de REDACTAR_ANUNCIO. Doble ESPERAR_PLAZO: hasta publicación efectiva + plazo de alegaciones (#368)."
+        },
+        {
+          "codigo": "ANUNCIO_BOJA",
+          "nombre": "Anuncio en BOJA",
+          "descripcion": "Publicación de anuncio en Boletín Oficial de la Junta de Andalucía",
+          "tareas_indicativas": ["NOTIFICAR", "ESPERAR_PLAZO", "ESPERAR_PLAZO"],
+          "patron": "F+F",
+          "nota": "Consume ANUNCIO_IP de REDACTAR_ANUNCIO. Doble ESPERAR_PLAZO: hasta publicación efectiva + plazo de alegaciones (#368)."
         },
         {
           "codigo": "TABLON_AYUNTAMIENTOS",
           "nombre": "Tablón de Ayuntamientos",
           "descripcion": "Publicación en tablones de ayuntamientos afectados (uno por ayuntamiento)",
-          "tareas_indicativas": ["REDACTAR", "FIRMAR", "NOTIFICAR", "ESPERAR_PLAZO", "INCORPORAR"],
-          "patron": "C+E(parcial)",
-          "nota": "Certificado de exposición llega al finalizar el plazo completo — no controlamos fecha de inicio."
+          "tareas_indicativas": ["NOTIFICAR", "ESPERAR_PLAZO"],
+          "patron": "C (sin ELABORAR)",
+          "nota": "Consume ANUNCIO_IP de REDACTAR_ANUNCIO. Certificado de exposición queda en ESPERAR_PLAZO.documento_producido (#368)."
         },
         {
           "codigo": "PORTAL_TRANSPARENCIA",
           "nombre": "Portal de Transparencia",
           "descripcion": "Publicación en portal web institucional",
-          "tareas_indicativas": ["REDACTAR", "FIRMAR", "PUBLICAR", "ESPERAR_PLAZO"],
-          "patron": "D",
-          "nota": "Controlamos fecha de publicación y plazo — no requiere doble espera como BOE/BOP/PRENSA."
+          "tareas_indicativas": ["ELABORAR", "NOTIFICAR", "ESPERAR_PLAZO"],
+          "patron": "C",
+          "nota": "Controlamos fecha de publicación y plazo. PUBLICAR eliminado → patrón C (#371)."
+        },
+        {
+          "codigo": "ANUNCIO_TITULAR",
+          "nombre": "Notificación al Titular",
+          "descripcion": "Notificación al titular sobre publicación del anuncio de información pública",
+          "tareas_indicativas": ["ELABORAR", "NOTIFICAR"],
+          "patron": "B",
+          "nota": "Trámite nuevo (#369). Comunica al titular la publicación del anuncio IP."
         },
         {
           "codigo": "RECEPCION_ALEGACION",
           "nombre": "Recepción de Alegación",
-          "descripcion": "Incorporación de alegación individual y traslado al titular para respuesta",
-          "tareas_indicativas": ["INCORPORAR", "ANALIZAR", "REDACTAR", "FIRMAR", "NOTIFICAR", "ESPERAR_PLAZO"],
-          "patron": "EC",
+          "descripcion": "Análisis de alegación individual y traslado al titular para respuesta",
+          "tareas_indicativas": ["ANALIZAR", "ELABORAR", "NOTIFICAR", "ESPERAR_PLAZO"],
+          "patron": "A+C",
           "nota": "ANALIZAR clasifica al alegante/interesado."
         },
         {
@@ -311,16 +294,16 @@
           "codigo": "SOLICITUD_FIGURA",
           "nombre": "Solicitud de Instrumento Ambiental",
           "descripcion": "Solicitud de AAU/AAUS/CA al órgano ambiental competente y espera de resolución",
-          "tareas_indicativas": ["REDACTAR", "FIRMAR", "NOTIFICAR", "ESPERAR_PLAZO"],
+          "tareas_indicativas": ["ELABORAR", "NOTIFICAR", "ESPERAR_PLAZO"],
           "patron": "C",
           "nota": "ESPERAR_PLAZO con plazo=0 (indefinido) hasta recepción de resolución ambiental."
         },
         {
           "codigo": "RECEPCION_FIGURA",
           "nombre": "Recepción de Instrumento Ambiental",
-          "descripcion": "Incorporación de resolución ambiental (AAU/AAUS/CA) y análisis. Puede ser favorable o negativa.",
-          "tareas_indicativas": ["INCORPORAR", "ANALIZAR"],
-          "patron": "E",
+          "descripcion": "Análisis de resolución ambiental (AAU/AAUS/CA). Puede ser favorable o negativa.",
+          "tareas_indicativas": ["ANALIZAR"],
+          "patron": "A",
           "nota": "Si la resolución es negativa puede paralizar el expediente."
         }
       ]
@@ -328,23 +311,47 @@
     {
       "codigo": "AAU_AAUS_INTEGRADA",
       "nombre": "AAU/AAUS Integrada",
-      "descripcion": "Tramitación de AAU/AAUS integrada en el procedimiento sustantivo",
+      "descripcion": "Tramitación de AAU/AAUS integrada en el procedimiento sustantivo (#372: 2 → 5 trámites)",
       "tramites": [
         {
-          "codigo": "REMISION_MEDIO_AMBIENTE",
-          "nombre": "Remisión a Medio Ambiente",
-          "descripcion": "Traslado a Medio Ambiente del resultado de IP y consultas para dictamen y espera de respuesta",
-          "tareas_indicativas": ["REDACTAR", "FIRMAR", "NOTIFICAR", "ESPERAR_PLAZO"],
+          "codigo": "REMISION_RESULTADO_IP_CONSULTAS",
+          "nombre": "Remisión del resultado de IP y consultas a Medio Ambiente",
+          "descripcion": "Traslado a Medio Ambiente del resultado de IP y consultas para dictamen ambiental. ESPERAR_PLAZO indefinido hasta recepción.",
+          "tareas_indicativas": ["ELABORAR", "NOTIFICAR", "ESPERAR_PLAZO"],
           "patron": "C",
-          "nota": "ESPERAR_PLAZO con plazo=0 (indefinido) hasta recepción de dictamen."
+          "nota": "ESPERAR_PLAZO con plazo=0. Renombrado desde REMISION_MEDIO_AMBIENTE (#372)."
         },
         {
           "codigo": "RECEPCION_DICTAMEN",
           "nombre": "Recepción de Dictamen Ambiental",
-          "descripcion": "Incorporación del dictamen de Medio Ambiente y análisis. Puede ser favorable, desfavorable o condicionado.",
-          "tareas_indicativas": ["INCORPORAR", "ANALIZAR"],
-          "patron": "E",
-          "nota": "Si el dictamen es desfavorable puede condicionar o paralizar la autorización sustantiva."
+          "descripcion": "Análisis del dictamen de Medio Ambiente y elaboración de propuesta de resolución sustantiva. Puede ser favorable, desfavorable o condicionado.",
+          "tareas_indicativas": ["ANALIZAR", "ELABORAR", "NOTIFICAR", "ESPERAR_PLAZO"],
+          "patron": "A+C",
+          "nota": "ESPERAR_PLAZO con plazo=0. Si el dictamen es desfavorable puede condicionar o paralizar la autorización sustantiva (#372)."
+        },
+        {
+          "codigo": "RECEPCION_PROPUESTA_INF_VINC",
+          "nombre": "Recepción de Propuesta de Informe Vinculante",
+          "descripcion": "Análisis de propuesta de informe vinculante emitida por Medio Ambiente y elaboración de respuesta",
+          "tareas_indicativas": ["ANALIZAR", "ELABORAR", "NOTIFICAR", "ESPERAR_PLAZO"],
+          "patron": "A+C",
+          "nota": "ESPERAR_PLAZO con plazo=0. Trámite nuevo (#372)."
+        },
+        {
+          "codigo": "RECEPCION_INFORME_VINCULANTE",
+          "nombre": "Recepción de Informe Vinculante",
+          "descripcion": "Análisis del informe vinculante definitivo emitido por Medio Ambiente",
+          "tareas_indicativas": ["ANALIZAR"],
+          "patron": "A",
+          "nota": "Trámite nuevo (#372)."
+        },
+        {
+          "codigo": "DISCREPANCIA_INF_VINC",
+          "nombre": "Discrepancia con Informe Vinculante",
+          "descripcion": "Elaboración y remisión de escrito de discrepancia al órgano superior cuando el informe vinculante es contrario a la autorización",
+          "tareas_indicativas": ["ELABORAR", "NOTIFICAR", "ESPERAR_PLAZO"],
+          "patron": "C",
+          "nota": "Condicional: solo si el informe vinculante es negativo y se decide elevar discrepancia. Trámite nuevo (#372)."
         }
       ]
     },
@@ -356,25 +363,26 @@
         {
           "codigo": "ELABORACION",
           "nombre": "Elaboración de Resolución",
-          "descripcion": "Redacción de la resolución con base en informes y trámites previos",
-          "tareas_indicativas": ["ANALIZAR", "REDACTAR", "FIRMAR"],
-          "patron": "AB (sin NOTIFICAR)",
-          "nota": "No requiere INCORPORAR — documento interno generado por el sistema."
+          "descripcion": "Análisis de informes previos y elaboración de la resolución con validez jurídica",
+          "tareas_indicativas": ["ANALIZAR", "ELABORAR"],
+          "patron": "A+B (sin NOTIFICAR)",
+          "nota": "No requiere recepción externa — documento interno generado por el sistema."
         },
         {
           "codigo": "NOTIFICACION",
           "nombre": "Notificación de Resolución",
           "descripcion": "Notificación a interesados de la resolución adoptada",
-          "tareas_indicativas": ["REDACTAR", "NOTIFICAR"],
-          "patron": "B (simplificado)",
-          "nota": "Puede omitir FIRMAR si se reutiliza el documento ya firmado en ELABORACION."
+          "tareas_indicativas": ["NOTIFICAR"],
+          "patron": "B (solo NOTIFICAR)",
+          "nota": "El documento ya fue elaborado y firmado en ELABORACION. documento_usado_id apunta al producido en ELABORACION."
         },
         {
           "codigo": "PUBLICACION",
           "nombre": "Publicación de Resolución",
           "descripcion": "Publicación en medios oficiales (si procede)",
-          "tareas_indicativas": ["REDACTAR", "FIRMAR", "PUBLICAR"],
-          "patron": "D (sin ESPERAR_PLAZO)"
+          "tareas_indicativas": ["ELABORAR", "NOTIFICAR", "ESPERAR_PLAZO"],
+          "patron": "C",
+          "nota": "PUBLICAR eliminado → patrón C (#371)."
         }
       ]
     }
