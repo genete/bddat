@@ -24,7 +24,7 @@ from app.models.tipos_tramites import TipoTramite
 from app.models.tipos_tareas import TipoTarea
 from app.models.documentos_tarea import DocumentoTarea
 from app.utils.permisos import verificar_acceso_expediente
-from app.services.assembler import evaluar_multi
+from app.services.assembler import evaluar_multi, auditar_multi
 from app.services.invariantes_esftt import check_invariante
 
 bp = Blueprint('api_bc', __name__, url_prefix='/api/bc')
@@ -45,6 +45,43 @@ def _advertencia(res_eval):
     if res_eval and res_eval.nivel == 'ADVERTIR':
         return {'motivo': res_eval.motivo, 'norma_compilada': res_eval.norma_compilada, 'url_norma': res_eval.url_norma}
     return None
+
+
+def _certs_auto_para_fase(tipo_fase) -> list:
+    """
+    Devuelve los códigos de TipoDocumento con origen='INTERNO' requeridos por
+    alguna tarea de los trámites de esta fase (FaseTramite → TramiteTarea → TipoDocumento).
+    """
+    from app.models.fases_tramites import FaseTramite
+    from app.models.tramites_tareas import TramiteTarea
+    from app.models.tipos_documentos import TipoDocumento
+    from sqlalchemy.exc import OperationalError, ProgrammingError
+    import logging
+    log = logging.getLogger(__name__)
+
+    try:
+        fases_tramites = FaseTramite.query.filter_by(tipo_fase_id=tipo_fase.id).all()
+        tt_ids = [ft.tipo_tramite_id for ft in fases_tramites]
+        if not tt_ids:
+            return []
+
+        tareas_con_doc = TramiteTarea.query.filter(
+            TramiteTarea.tipo_tramite_id.in_(tt_ids),
+            TramiteTarea.doc_consumido_tipo_id.isnot(None),
+        ).all()
+
+        codigos = []
+        vistos = set()
+        for tarea in tareas_con_doc:
+            from app import db as _db
+            td = _db.session.get(TipoDocumento, tarea.doc_consumido_tipo_id)
+            if td and td.origen == 'INTERNO' and td.codigo not in vistos:
+                codigos.append(td.codigo)
+                vistos.add(td.codigo)
+        return codigos
+    except (OperationalError, ProgrammingError) as exc:
+        log.warning('_certs_auto_para_fase: error consultando BD: %s', exc)
+        return []
 
 
 # ============================================
@@ -113,6 +150,23 @@ def crear_fase(sol_id):
 
     fase = Fase(solicitud_id=sol_id, tipo_fase_id=tipo_fase_id)
     db.session.add(fase)
+    db.session.flush()  # necesario para tener fase.id antes del commit
+
+    codigos_cert = _certs_auto_para_fase(tipo_fase)
+    if codigos_cert:
+        auditoria = auditar_multi('CREAR', sol.expediente,
+                                  objeto={'solicitud': sol, 'tipo_fase': tipo_fase})
+        for tipo_cert in codigos_cert:
+            try:
+                from app.services.generador_cert import generar_certificado_fase
+                generar_certificado_fase(sol.expediente, fase, auditoria, tipo_cert)
+            except Exception as exc:
+                import logging
+                logging.getLogger(__name__).error(
+                    'crear_fase: error generando cert %s para fase %s: %s',
+                    tipo_cert, fase.id, exc
+                )
+
     db.session.commit()
 
     return jsonify({'ok': True, 'id': fase.id, 'advertencia': _advertencia(res_eval)})

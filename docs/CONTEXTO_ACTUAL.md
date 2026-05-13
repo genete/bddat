@@ -4,8 +4,8 @@
 
 ---
 
-**Último cerrado:** #368 + #369 — INFORMACION_PUBLICA: REDACTAR_ANUNCIO, ANUNCIO_BOJA, ANUNCIO_TITULAR (FTT + tests). Trabajo estructural ya venía de #370; commits d708f94 y b99a398.
+**Último cerrado:** #373 — CERT_FIN_INSTRUCCION: certificado automático al crear fase RESOLUCION. auditar() + auditar_multi() en motor, tabla certificados_fase, generador_cert.py (reportlab), trigger en crear_fase(). 13 tests pasando.
 
 **Actuales:** —
 
-**Próximo:** #373 → #346 → #173 → #328
+**Próximo:** #346 → #173 → #328

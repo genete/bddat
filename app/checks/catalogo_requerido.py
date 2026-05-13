@@ -32,6 +32,7 @@ REGISTROS_REQUERIDOS: dict = {
     ],
     # TipoSolicitud usa 'siglas' como identificador estable (no 'codigo')
     'TipoSolicitud': ['AAC', 'AAP'],
+    'TipoDocumento': ['CERT_FIN_INSTRUCCION'],
 }
 
 # Atributo del modelo que contiene el identificador estable.
@@ -41,6 +42,7 @@ _CODIGO_ATTR: dict[str, str] = {
     'TipoTarea':     'codigo',
     'TipoFase':      'codigo',
     'TipoSolicitud': 'siglas',
+    'TipoDocumento': 'codigo',
 }
 
 
@@ -56,10 +58,11 @@ def validar_catalogo() -> List[str]:
     from sqlalchemy.exc import OperationalError, ProgrammingError
 
     _MODELOS = {
-        'TipoTramite':   _importar('app.models.tipos_tramites',  'TipoTramite'),
-        'TipoTarea':     _importar('app.models.tipos_tareas',    'TipoTarea'),
-        'TipoFase':      _importar('app.models.tipos_fases',     'TipoFase'),
+        'TipoTramite':   _importar('app.models.tipos_tramites',   'TipoTramite'),
+        'TipoTarea':     _importar('app.models.tipos_tareas',     'TipoTarea'),
+        'TipoFase':      _importar('app.models.tipos_fases',      'TipoFase'),
         'TipoSolicitud': _importar('app.models.tipos_solicitudes', 'TipoSolicitud'),
+        'TipoDocumento': _importar('app.models.tipos_documentos', 'TipoDocumento'),
     }
 
     faltantes: List[str] = []

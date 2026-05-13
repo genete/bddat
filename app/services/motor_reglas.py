@@ -51,7 +51,7 @@ log = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
-# Resultado público
+# Resultado público — evaluar()
 # ---------------------------------------------------------------------------
 
 @dataclass
@@ -68,6 +68,34 @@ PERMITIDO = EvaluacionResult(
     permitido=True, nivel='',
     variables_trigger={}, norma_compilada='', url_norma='', motivo=''
 )
+
+
+# ---------------------------------------------------------------------------
+# Resultado público — auditar()
+# ---------------------------------------------------------------------------
+
+@dataclass
+class ResultadoRegla:
+    """Snapshot de la evaluación de una regla individual dentro de auditar()."""
+    regla_id:          int
+    sujeto_patron:     str
+    descripcion:       str
+    norma_compilada:   str
+    url_norma:         str
+    efecto:            str   # 'BLOQUEAR' | 'ADVERTIR'
+    disparada:         bool  # True si sus condiciones se cumplieron
+    neutralizada:      bool  # True si disparó pero una excepción la anuló
+    variables_trigger: dict
+
+
+@dataclass
+class AuditoriaResult:
+    """Resultado completo de auditar(): todas las reglas evaluadas sin short-circuit."""
+    permitido:        bool
+    accion:           str
+    sujeto:           str
+    reglas_evaluadas: list  # list[ResultadoRegla] — todas las que casaron con (accion, sujeto)
+    variables_ctx:    dict  # snapshot completo del dict de variables
 
 
 # ---------------------------------------------------------------------------
@@ -208,3 +236,66 @@ def evaluar(
             )
 
     return resultado_advertir or PERMITIDO
+
+
+def auditar(
+    accion:    str,
+    sujeto:    str,
+    variables: dict,
+) -> AuditoriaResult:
+    """
+    Companion de evaluar() que recorre TODAS las reglas sin short-circuit.
+
+    Devuelve el resultado completo de la auditoría: cada regla que casó con
+    (accion, sujeto), si disparó y si fue neutralizada por excepción.
+    Usar como fuente de datos del CERT_FIN_INSTRUCCION y similares.
+
+    permitido=True si ninguna regla bloqueante quedó sin neutralizar.
+    """
+    reglas_candidatas = ReglaMotor.query.options(
+        joinedload(ReglaMotor.condiciones).joinedload(CondicionRegla.variable),
+        joinedload(ReglaMotor.excepciones).joinedload(ExcepcionMotor.condiciones)
+            .joinedload(CondicionExcepcion.variable),
+        joinedload(ReglaMotor.excepciones).joinedload(ExcepcionMotor.norma),
+        joinedload(ReglaMotor.norma),
+    ).filter_by(accion=accion, activa=True).all()
+
+    reglas = [r for r in reglas_candidatas if _sujeto_casa(r.sujeto, sujeto)]
+
+    reglas_evaluadas = []
+    permitido = True
+
+    for regla in sorted(reglas, key=lambda r: r.prioridad):
+        disparada, trigger = _evaluar_condiciones(regla.condiciones, variables)
+
+        neutralizada = False
+        if disparada and regla.efecto == 'BLOQUEAR':
+            excepciones_activas = [e for e in regla.excepciones if e.activa]
+            for exc in excepciones_activas:
+                exc_dispara, _ = _evaluar_condiciones(exc.condiciones, variables)
+                if exc_dispara:
+                    neutralizada = True
+                    break
+            if not neutralizada:
+                permitido = False
+
+        norma_ref, url_norma = _norma_ref(regla) if regla.norma else ('', '')
+        reglas_evaluadas.append(ResultadoRegla(
+            regla_id=regla.id,
+            sujeto_patron=regla.sujeto,
+            descripcion=regla.descripcion or '',
+            norma_compilada=norma_ref,
+            url_norma=url_norma,
+            efecto=regla.efecto,
+            disparada=disparada,
+            neutralizada=neutralizada,
+            variables_trigger=trigger,
+        ))
+
+    return AuditoriaResult(
+        permitido=permitido,
+        accion=accion,
+        sujeto=sujeto,
+        reglas_evaluadas=reglas_evaluadas,
+        variables_ctx=variables,
+    )

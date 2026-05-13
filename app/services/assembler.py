@@ -215,6 +215,46 @@ def build(expediente: Any, objeto: Any = None) -> tuple[str, dict]:
     return sujeto, variables
 
 
+def auditar_multi(accion: str, expediente: Any, objeto: Any = None):
+    """
+    Companion de evaluar_multi que llama a auditar() y acumula reglas de todos los tipos.
+
+    Para solicitudes con tipo combinado (AAP+AAC) evalúa el motor una vez por
+    cada tipo simple, acumulando todas las reglas evaluadas.
+    permitido = AND de todos los AuditoriaResult parciales.
+
+    Returns:
+        AuditoriaResult con reglas_evaluadas = unión de todos los tipos.
+    """
+    from app.services.motor_reglas import auditar, AuditoriaResult
+
+    ctx = ExpedienteContext(expediente, objeto)
+    variables = _compilar_variables(ctx)
+    sol = ctx.solicitud
+
+    tipos = sol.tipos_simples if (sol and sol.tipo_solicitud) else [None]
+
+    todas_reglas = []
+    permitido = True
+    ultimo_sujeto = ''
+
+    for tipo in tipos:
+        sujeto = _compilar_sujeto(ctx, siglas_override=tipo)
+        resultado = auditar(accion, sujeto, variables)
+        todas_reglas.extend(resultado.reglas_evaluadas)
+        if not resultado.permitido:
+            permitido = False
+        ultimo_sujeto = sujeto
+
+    return AuditoriaResult(
+        permitido=permitido,
+        accion=accion,
+        sujeto=ultimo_sujeto,
+        reglas_evaluadas=todas_reglas,
+        variables_ctx=variables,
+    )
+
+
 def evaluar_multi(accion: str, expediente: Any, objeto: Any = None):
     """
     Evalúa una acción para todos los tipos simples de la solicitud en contexto.

@@ -75,6 +75,9 @@ from app.models.condiciones_plazo import CondicionPlazo # depende de CatalogoPla
 # Motor de reglas (depende de TipoSolicitud; tipo_id sin FK por diseño polimórfico)
 from app.models.motor_reglas import ReglaMotor, CondicionRegla
 
+# Certificados de fase (#373 — depende de Expediente, Fase)
+from app.models.certificados_fase import CertificadoFase
+
 __all__ = [
     # Maestros
     'EfectoPlazo',
@@ -128,4 +131,6 @@ __all__ = [
     # Motor de reglas
     'ReglaMotor',
     'CondicionRegla',
+    # Certificados de fase
+    'CertificadoFase',
 ]

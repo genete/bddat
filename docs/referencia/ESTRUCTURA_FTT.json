@@ -363,10 +363,11 @@
         {
           "codigo": "ELABORACION",
           "nombre": "Elaboración de Resolución",
-          "descripcion": "Análisis de informes previos y elaboración de la resolución con validez jurídica",
-          "tareas_indicativas": ["ANALIZAR", "ELABORAR"],
-          "patron": "A+B (sin NOTIFICAR)",
-          "nota": "No requiere recepción externa — documento interno generado por el sistema."
+          "descripcion": "Elaboración de la resolución con validez jurídica. El análisis previo queda acreditado por CERT_FIN_INSTRUCCION, generado automáticamente al crear la fase RESOLUCION.",
+          "tareas_indicativas": ["ELABORAR"],
+          "patron": "B (sin NOTIFICAR)",
+          "documento_consumido": "CERT_FIN_INSTRUCCION (generado automáticamente por BDDAT al crear la fase RESOLUCION, #373)",
+          "nota": "ANALIZAR eliminado (#373): el CERT_FIN_INSTRUCCION es el recibo auditado de que el motor evaluó todas las condiciones previas. ELABORAR lo consume como documento_usado_id."
         },
         {
           "codigo": "NOTIFICACION",
