@@ -4,8 +4,8 @@
 
 ---
 
-**Último cerrado:** #373 — CERT_FIN_INSTRUCCION: certificado automático al crear fase RESOLUCION. auditar() + auditar_multi() en motor, tabla certificados_fase, generador_cert.py (reportlab), trigger en crear_fase(). 13 tests pasando.
+**Último cerrado:** #346 — Mapa semántico tramites_tareas_documentos. Migración prerequisito #337 (seed 53 tipos_documentos). Corrección de tramites_tareas (BOP, BOJA, TABLON, AUDIENCIA). Tabla nueva con PK (tipo_tramite_id, orden_tarea, rol), 158 filas seed. 8 tests pasando.
 
 **Actuales:** —
 
-**Próximo:** #346 → #173 → #328
+**Próximo:** #173 → #328
