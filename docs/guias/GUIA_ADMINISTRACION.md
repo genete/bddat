@@ -17,7 +17,10 @@ visible solo para usuarios con rol ADMIN en todas las páginas.
 ### Comando
 
 ```bash
-# En el servidor, con el entorno virtual activado:
+# En el servidor (desde el directorio raíz del proyecto):
+source venv/Scripts/activate   # Windows
+# source venv/bin/activate     # Linux/Mac
+
 flask inhabiles importar --year 2027
 ```
 
