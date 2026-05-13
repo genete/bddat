@@ -2,7 +2,7 @@
 id: ADR-003
 título: Fusión de REDACTAR y FIRMAR en tarea única ELABORAR
 fecha: 2026-05-11
-estado: decidida — pendiente de implementar (#370)
+estado: implementada (#370, migración 370_actualizar_tipos_tareas; cerrada en #363)
 ---
 
 ## Decisión

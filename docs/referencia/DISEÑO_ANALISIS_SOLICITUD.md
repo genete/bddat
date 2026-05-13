@@ -68,19 +68,19 @@ Los dos trámites son mutuamente excluyentes: no tiene sentido comunicar el inic
 
 Combina el resultado del ANÁLISIS_DOCUMENTAL en un escrito de requerimiento dirigido al titular.
 
-**Tareas:** `REDACTAR → FIRMAR → NOTIFICAR → ESPERAR_PLAZO → INCORPORAR (multi-doc) → ANALIZAR`
+**Tareas:** `ELABORAR → NOTIFICAR → ESPERAR_PLAZO → ANALIZAR`
 
 La plantilla del escrito usa el token `{{ resultado_analisis_documental }}` (resultado del trámite anterior, inyectado por el context builder). Si en ese resultado no hay defectos de un tipo concreto, el bloque correspondiente queda vacío en el documento.
 
-Tras ESPERAR_PLAZO, el titular aporta la documentación subsanada. INCORPORAR registra formalmente la recepción (puede ser N documentos — ver sección 5). ANALIZAR evalúa la subsanación: si persisten defectos, el motor puede habilitar un nuevo `REQUERIMIENTO_SUBSANACIÓN`; si la subsanación es correcta, habilita el cierre de la fase.
+Tras ESPERAR_PLAZO, el titular aporta la documentación subsanada. El documento recibido se registra como `documento_producido_id` de la tarea `ESPERAR_PLAZO` (ADR-004). ANALIZAR evalúa la subsanación: si persisten defectos, el motor puede habilitar un nuevo `REQUERIMIENTO_SUBSANACIÓN`; si la subsanación es correcta, habilita el cierre de la fase.
 
-> El técnico dispone en la tarea ANALIZAR del selector de requerimientos tipo (ver sección 6) para redactar los defectos detectados. El documento producido por ANALIZAR es el que alimenta el REDACTAR posterior.
+> El técnico dispone en la tarea ANALIZAR del selector de requerimientos tipo (ver sección 6) para redactar los defectos detectados. El documento producido por ANALIZAR es el que alimenta el ELABORAR posterior.
 
 ### Trámite: `COMUNICACIÓN_INICIO`
 
 Si no hay defectos, se comunica al titular el número de expediente e inicio del procedimiento.
 
-**Tareas:** `REDACTAR → FIRMAR → NOTIFICAR`
+**Tareas:** `ELABORAR → NOTIFICAR`
 
 Opcional según política organizativa.
 
@@ -89,8 +89,8 @@ Opcional según política organizativa.
 | Trámite | Patrón | Tareas |
 |---|---|---|
 | `ANÁLISIS_DOCUMENTAL` | A | ANALIZAR |
-| `REQUERIMIENTO_SUBSANACIÓN` | C+ | REDACTAR → FIRMAR → NOTIFICAR → ESPERAR_PLAZO → INCORPORAR → ANALIZAR |
-| `COMUNICACIÓN_INICIO` | B | REDACTAR → FIRMAR → NOTIFICAR |
+| `REQUERIMIENTO_SUBSANACIÓN` | C+A | ELABORAR → NOTIFICAR → ESPERAR_PLAZO → ANALIZAR |
+| `COMUNICACIÓN_INICIO` | B | ELABORAR → NOTIFICAR |
 
 ---
 
@@ -128,21 +128,17 @@ Esta asociación se almacena en una tabla `checklist_asociacion`:
 
 ---
 
-## 5. INCORPORAR multi-documento
+## 5. Recepción externa vía ESPERAR_PLAZO (ADR-004)
 
-### Problema
+### Contexto
 
-La tarea INCORPORAR tiene `documento_producido_id` (FK simple). En la respuesta a un requerimiento de subsanación el titular puede aportar N documentos simultáneamente. Crear una tarea INCORPORAR por documento es trabajo ímprobo e innatural.
+Con la eliminación de INCORPORAR (ADR-004, #361), la recepción de un documento externo durante tramitación activa se modela como `documento_producido_id` de la tarea `ESPERAR_PLAZO` que modelaba la espera. `ANALIZAR` consume ese documento directamente.
 
-### Decisión: tabla puente `documentos_tarea` y deprecación de `documento_producido_id`
+En `REQUERIMIENTO_SUBSANACIÓN`, el documento de subsanación del titular se asigna como `documento_producido_id` del `ESPERAR_PLAZO` correspondiente.
 
-Se añade una tabla `documentos_tarea (tarea_id, documento_id)` para las tareas INCORPORAR. Una sola tarea INCORPORAR = un acto formal de recepción → N documentos vinculados. Aunque solo llegue un documento, se usa igualmente esta tabla — no existe mecanismo dual.
+### Problema pendiente: N documentos simultáneos
 
-`documento_producido_id` en `public.tareas` queda **deprecado para tareas INCORPORAR**. Esto simplifica el motor (un solo sitio donde buscar) y elimina el riesgo de duplicidad entre ambos mecanismos. Los registros existentes con `documento_producido_id` en tareas INCORPORAR se migran a `documentos_tarea`.
-
-**Validación:** una tarea INCORPORAR no puede completarse (`fecha_fin`) si no existe al menos un registro en `documentos_tarea` para esa tarea. Esta validación se aplica tanto en la UI como en el motor.
-
-**UI:** El técnico abre la tarea INCORPORAR, ve los documentos del pool sin trámite de origen, selecciona en bloque los recibidos como respuesta, y confirma. La tarea queda completada con todos vinculados.
+ADR-004 modela un único documento por acto de recepción (FK simple en `ESPERAR_PLAZO`). El caso en que el titular aporta N documentos simultáneamente como respuesta a un requerimiento queda sin resolver. La tabla `documentos_tarea` (N:M, diseñada originalmente para INCORPORAR) está pendiente de decisión de diseño: reproponer para ESPERAR_PLAZO o eliminar. Ver issue específico derivado de #361.
 
 ---
 
@@ -176,7 +172,7 @@ Exactamente uno de los dos campos de contenido (`catalogo_requerimientos_id` o `
 
 ### Dónde se usa
 
-En la tarea **ANALIZAR** de los trámites `ANÁLISIS_DOCUMENTAL` y `REQUERIMIENTO_SUBSANACIÓN` (iteración) — no en REDACTAR. El técnico analiza → selecciona defectos → produce documento de análisis. REDACTAR solo ensambla con plantilla.
+En la tarea **ANALIZAR** de los trámites `ANÁLISIS_DOCUMENTAL` y `REQUERIMIENTO_SUBSANACIÓN` (iteración) — no en ELABORAR. El técnico analiza → selecciona defectos → produce documento de análisis. ELABORAR ensambla el resultado con la plantilla y lo firma en acto único.
 
 ### Context builder y plantilla
 
@@ -235,5 +231,6 @@ Se añade el campo `siglas_escritos` en el modelo `Usuario`. Su valor es las sig
 
 - Eliminar fases: `REGISTRO_SOLICITUD`, `ADMISIBILIDAD`, `ANÁLISIS_TÉCNICO`
 - Añadir fase: `ANÁLISIS_SOLICITUD` con trámites `ANÁLISIS_DOCUMENTAL`, `REQUERIMIENTO_SUBSANACIÓN`, `COMUNICACIÓN_INICIO`
-- Actualizar definición de tarea `INCORPORAR`: `documento_producido_id` deprecado; los documentos se vinculan mediante `documentos_tarea`; fecha_fin requiere al menos un registro en `documentos_tarea`
-- Versión: 5.5
+- Eliminar `INCORPORAR` del catálogo de tareas; recepción externa pasa a `ESPERAR_PLAZO.documento_producido_id` (ADR-004)
+- Reemplazar `REDACTAR`+`FIRMAR` por `ELABORAR` en todos los trámites (ADR-003)
+- Versión actual: 6.0

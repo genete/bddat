@@ -2,7 +2,7 @@
 id: ADR-004
 título: Eliminación de la tarea INCORPORAR
 fecha: 2026-05-11
-estado: decidida — pendiente de implementar (#370)
+estado: implementada (#370, migración 370_actualizar_tipos_tareas; cerrada en #361)
 ---
 
 ## Decisión

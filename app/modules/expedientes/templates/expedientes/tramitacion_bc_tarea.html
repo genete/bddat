@@ -72,20 +72,12 @@
               </a>
             </li>
             {% endif %}
-            {% if tarea.en_curso or (es_tarea_incorporar and tarea.ejecutada) %}
+            {% if tarea.en_curso %}
             <li>
               <a class="dropdown-item" href="#"
                  data-accion="finalizar"
                  data-url="{{ url_for('api_bc.finalizar_tarea', tarea_id=tarea.id) }}">
                 <i class="fas fa-flag-checkered me-2 text-primary"></i> Finalizar
-              </a>
-            </li>
-            {% endif %}
-            {% if es_tarea_redactar %}
-            <li>
-              <a class="dropdown-item" href="#"
-                 data-bs-toggle="modal" data-bs-target="#modalGenerarEscrito">
-                <i class="fas fa-file-word me-2 text-primary"></i> Generar escrito
               </a>
             </li>
             {% endif %}
@@ -143,48 +135,7 @@
   </div>
   <div class="card-body card-body-tinted py-3">
 
-    {% if es_tarea_incorporar %}
-
-    {# ── INCORPORAR: listado multi-doc + añadir desde pool ─────────────────── #}
-    <div id="incorporar-lista" class="mb-3">
-      {% if documentos_incorporar %}
-        {% for item in documentos_incorporar %}
-        <div class="d-flex align-items-center gap-2 flex-wrap mb-2 incorporar-fila"
-             data-vinculo-id="{{ item.vinculo_id }}">
-          <i class="fas fa-file-import text-secondary"></i>
-          <span class="fw-semibold">{{ item.nombre_display }}</span>
-          <small class="text-secondary">
-            — {{ item.doc.tipo_doc.nombre if item.doc.tipo_doc else '' }}
-            {% if item.doc.fecha_administrativa %}
-              — {{ item.doc.fecha_administrativa.strftime('%d/%m/%Y') }}
-            {% endif %}
-          </small>
-          <a href="{{ url_for('expedientes.pool_descargar_documento', id=expediente.id, doc_id=item.doc.id) }}"
-             class="btn btn-sm btn-outline-secondary ms-auto"
-             target="_blank" rel="noopener">
-            <i class="fas fa-download me-1"></i>Descargar
-          </a>
-          <button type="button" class="btn btn-sm btn-outline-danger btn-desvincular-incorporar"
-                  data-vinculo-id="{{ item.vinculo_id }}"
-                  data-url="{{ url_for('api_bc.tarea_incorporar_desvincular', tarea_id=tarea.id, vinculo_id=item.vinculo_id) }}">
-            <i class="fas fa-times"></i>
-          </button>
-        </div>
-        {% endfor %}
-      {% else %}
-        <p id="incorporar-vacio" class="fst-italic text-secondary small mb-2">Sin documentos vinculados.</p>
-      {% endif %}
-    </div>
-
-    <div class="d-flex gap-2 align-items-start">
-      <div id="sb-incorporar" style="flex:1"></div>
-      <button type="button" id="btn-vincular-incorporar" class="btn btn-sm btn-outline-primary" disabled>
-        <i class="fas fa-plus me-1"></i>Añadir
-      </button>
-    </div>
-    <div id="alert-incorporar" class="alert d-none mt-2 py-2 mb-0" role="alert"></div>
-
-    {% elif not requiere_doc_usado and not doc_usado_opcional and not requiere_doc_producido %}
+    {% if not requiere_doc_usado and not doc_usado_opcional and not requiere_doc_producido %}
     <p class="text-secondary mb-0 fst-italic small">Este tipo de tarea no requiere documentos.</p>
 
     {% else %}
@@ -258,70 +209,6 @@
   </div>
 </div>
 
-{% if es_tarea_redactar %}
-{# ── Modal Generar Escrito (#167 Fase 5) ───────────────────────────── #}
-<div class="modal fade" id="modalGenerarEscrito" tabindex="-1"
-     aria-labelledby="modalGenerarEscritoLabel" aria-hidden="true">
-  <div class="modal-dialog modal-lg">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="modalGenerarEscritoLabel">
-          <i class="fas fa-file-word me-2 text-primary"></i>Generar escrito
-        </h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-      </div>
-      <div class="modal-body">
-        <div id="ge-paso1">
-          <label class="form-label fw-semibold mb-1">Plantilla</label>
-          <div id="ge-selector-plantilla"></div>
-          <small class="text-secondary" id="ge-contador">Cargando plantillas...</small>
-        </div>
-        <div id="ge-paso2" class="d-none mt-3">
-          <hr>
-          <h6 class="fw-semibold mb-2">Datos del contexto</h6>
-          <div id="ge-preview-campos" class="row g-2 mb-3"></div>
-          <div class="row g-2 mb-3">
-            <div class="col-12">
-              <label class="form-label fw-semibold mb-1">Nombre del fichero</label>
-              <input type="text" class="form-control form-control-sm" id="ge-nombre-fichero">
-            </div>
-            <div class="col-12">
-              <label class="form-label fw-semibold mb-1">Ruta destino</label>
-              <input type="text" class="form-control form-control-sm" id="ge-ruta-destino" readonly>
-            </div>
-          </div>
-          <div class="d-flex flex-column gap-1">
-            <div class="form-check">
-              <input class="form-check-input" type="checkbox" id="ge-check-pool" checked>
-              <label class="form-check-label" for="ge-check-pool">Registrar en pool del expediente</label>
-            </div>
-            <div class="form-check">
-              <input class="form-check-input" type="checkbox" id="ge-check-doc-producido" checked>
-              <label class="form-check-label" for="ge-check-doc-producido">Asignar como documento producido</label>
-            </div>
-            <div class="form-check">
-              <input class="form-check-input" type="checkbox" id="ge-check-abrir-carpeta">
-              <label class="form-check-label" for="ge-check-abrir-carpeta">Abrir carpeta tras generar</label>
-            </div>
-          </div>
-        </div>
-        <div id="ge-spinner" class="d-none text-center py-4">
-          <div class="spinner-border text-primary" role="status">
-            <span class="visually-hidden">Generando...</span>
-          </div>
-          <p class="mt-2 text-secondary">Generando escrito...</p>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-        <button type="button" class="btn btn-primary" id="ge-btn-generar" disabled>
-          <i class="fas fa-file-word me-1"></i> Generar
-        </button>
-      </div>
-    </div>
-  </div>
-</div>
-{% endif %}
 
 {% endblock %}
 
@@ -329,16 +216,6 @@
 <script src="{{ url_for('static', filename='js/selector_busqueda.js') }}"></script>
 <script src="{{ url_for('static', filename='js/v3-breadcrumbs-edicion.js') }}"></script>
 <script src="{{ url_for('static', filename='js/v3-breadcrumbs-acciones.js') }}"></script>
-{% if es_tarea_incorporar %}
-<script>
-window.INCORPORAR_CONFIG = {
-  urlVincular:    "{{ url_for('api_bc.tarea_incorporar_vincular', tarea_id=tarea.id) }}",
-  urlDesvincularBase: "/api/bc/tarea/{{ tarea.id }}/incorporar/",
-  urlApiDocs:     "{{ url_for('expedientes.pool_documentos_json', id=expediente.id) }}"
-};
-</script>
-<script src="{{ url_for('static', filename='js/incorporar_documentos.js') }}"></script>
-{% else %}
 <script>
 window.TAREA_DOCS_CONFIG = {
   requiereDocUsado:     {{ requiere_doc_usado | tojson }},
@@ -350,9 +227,4 @@ window.TAREA_DOCS_CONFIG = {
 };
 </script>
 <script src="{{ url_for('static', filename='js/tarea_documentos.js') }}"></script>
-{% endif %}
-{% if es_tarea_redactar %}
-<script>window.GE_CONFIG = { tareaId: {{ tarea.id }} };</script>
-<script src="{{ url_for('static', filename='js/generar_escrito.js') }}"></script>
-{% endif %}
 {% endblock %}

@@ -112,3 +112,41 @@ def test_expedientes_solicitudes_no_vacia(app_ctx):
     from app import db
     from app.models.expedientes_solicitudes import ExpedienteSolicitud
     assert db.session.query(ExpedienteSolicitud).count() > 0
+
+
+# ---------------------------------------------------------------------------
+# C) Catálogo v6.0 — ADR-003/004/005, #361, #363, #371
+# ---------------------------------------------------------------------------
+
+def test_elaborar_en_catalogo(app_ctx):
+    """ELABORAR existe como tipo de tarea tras la migración 370."""
+    from app import db
+    from app.models.tipos_tareas import TipoTarea
+    elaborar = db.session.query(TipoTarea).filter_by(codigo='ELABORAR').first()
+    assert elaborar is not None
+
+
+@pytest.mark.parametrize('codigo', ['REDACTAR', 'FIRMAR', 'INCORPORAR', 'PUBLICAR'])
+def test_tipos_obsoletos_eliminados(app_ctx, codigo):
+    """Los tipos de tarea eliminados en v6.0 no deben existir en el catálogo."""
+    from app import db
+    from app.models.tipos_tareas import TipoTarea
+    tipo = db.session.query(TipoTarea).filter_by(codigo=codigo).first()
+    assert tipo is None, f"TipoTarea '{codigo}' debería haber sido eliminado (ADR-003/004, #371)"
+
+
+def test_requerimiento_subsanacion_usa_elaborar(app_ctx):
+    """REQUERIMIENTO_SUBSANACION sigue el patrón C+A: ELABORAR→NOTIFICAR→ESPERAR_PLAZO→ANALIZAR."""
+    from app import db
+    from app.models.tramites_tareas import TramiteTarea
+    from app.models.tipos_tramites import TipoTramite
+
+    tramite = db.session.query(TipoTramite).filter_by(codigo='REQUERIMIENTO_SUBSANACION').one()
+    secuencia = (
+        db.session.query(TramiteTarea)
+        .filter_by(tipo_tramite_id=tramite.id)
+        .order_by(TramiteTarea.orden)
+        .all()
+    )
+    codigos = [tt.tipo_tarea.codigo for tt in secuencia]
+    assert codigos == ['ELABORAR', 'NOTIFICAR', 'ESPERAR_PLAZO', 'ANALIZAR']

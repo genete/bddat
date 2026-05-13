@@ -1,10 +1,13 @@
 """
 Tests issue #290 — tabla documentos_tarea (INCORPORAR multi-doc v5.5).
 
-Tres bloques:
-  A) Propiedades Tarea.ejecutada / planificada — sin BD, sin app context.
-  B) Invariantes _check_finalizar_tarea — con patching de Tarea.query.
-  C) API endpoints /api/bc/tarea/<id>/incorporar/* — Flask test client + BD real.
+INCORPORAR eliminado en ADR-004 (#361). Los bloques A y B están skipped.
+La tabla documentos_tarea está pendiente de decisión de diseño (issue derivado de #361).
+
+Bloques conservados para historial:
+  A) Propiedades Tarea.ejecutada / planificada — skipped (#361)
+  B) Invariantes _check_finalizar_tarea — skipped (#361)
+  C) API endpoints — eliminados (#361, endpoints ya no existen)
 """
 import pytest
 from unittest.mock import MagicMock, patch
