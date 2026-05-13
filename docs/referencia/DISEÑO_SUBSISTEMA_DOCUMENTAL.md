@@ -55,7 +55,7 @@ No implementar como @property en `Documento` ni como Event Sourcing completo.
 
 NULL tiene dos significados legítimos:
 1. **Pendiente de revisión** — documento cargado al pool sin fecha asignada aún.
-2. **Sin valor jurídico propio por diseño** — borradores (`REDACTAR`) e informes internos (`ANALISIS`); el efecto jurídico lo tiene el documento firmado sucesor.
+2. **Sin valor jurídico propio por diseño** — el borrador es un estado interno de la tarea `ELABORAR`, no se registra como documento en el pool; informes internos (`ANALIZAR`): el efecto jurídico lo tiene el documento firmado producido por `ELABORAR`.
 
 La API de asignación a tareas debe rechazar documentos con NULL cuando el tipo de tarea lo requiera. Es validación de negocio en capa de servicio, no constraint de BD.
 
@@ -165,7 +165,7 @@ plantillas
   tipo_tramite_id       FK tipos_tramites NULL    ← NULL = aplica a cualquier trámite
   contexto_clase        TEXT NULL                 ← nombre clase Python; NULL = solo capa base
   filtros_adicionales   JSONB DEFAULT '{}'        ← variables de negocio futuras (tensión, tecnología…)
-  activo                BOOLEAN DEFAULT TRUE      ← FALSE = oculta en REDACTAR, conservada para histórico
+  activo                BOOLEAN DEFAULT TRUE      ← FALSE = retirada del catálogo activo, conservada para histórico
 ```
 
 **Cambios respecto al diseño original (`tipos_escritos`):**
@@ -246,7 +246,6 @@ API REST: `app/routes/api_escritos.py` — endpoints `/api/escritos/plantillas`,
 | Campo `nombre_display` | Eliminado; deducible de URL | Campo editable por usuario |
 | `fecha_administrativa` | Nullable (dos semánticas de NULL documentadas) | NOT NULL con fecha placeholder |
 | `prioridad` | Mantener, pseudo-bool, validación solo frontend | Eliminar / CHECK constraint BD |
-| Carga inicial al pool | Pantalla de gestión (#180), sin tarea ESFTT | Tarea INCORPORAR |
-| INCORPORAR | Solo externos durante tramitación activa | También para carga inicial |
+| Carga inicial al pool | Pantalla de gestión (#180), sin tarea ESFTT | Tarea INCORPORAR (eliminada ADR-004) |
 | ZIP como documento | Solo referencia histórica, no unidad de trabajo | Documento clasificable |
 | Requisitos documentales legales | Issue #192 (M5, futuro) | Sin soporte |
