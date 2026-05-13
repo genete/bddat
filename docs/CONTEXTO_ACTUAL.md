@@ -4,8 +4,8 @@
 
 ---
 
-**Último cerrado:** #346 — Mapa semántico tramites_tareas_documentos. Migración prerequisito #337 (seed 53 tipos_documentos). Corrección de tramites_tareas (BOP, BOJA, TABLON, AUDIENCIA). Tabla nueva con PK (tipo_tramite_id, orden_tarea, rol), 158 filas seed. 8 tests pasando.
+**Último cerrado:** #173 — Suspensión de plazos (art. 22 LPACAP). Inferencia real de intervalos desde el árbol documental de trámites; sin tabla propia. Mapa para REQUERIMIENTO_SUBSANACION, SOLICITUD_INFORME, CONSULTA_SEPARATA, SOLICITUD_COMPATIBILIDAD con triple fallback de cierre (ANALIZAR propio → ESPERAR_PLAZO.doc_producido → trámite hermano receptor). Constantes _TRAMITES_SUSPENSION/_TRAMITES_CIERRE y 4 helpers privados en plazos.py. 7 códigos nuevos en catalogo_requerido.py. 17 tests, 221 pasando. Cierra #328 (tracking — todos los hijos cerrados).
 
 **Actuales:** —
 
-**Próximo:** #173 → #328
+**Próximo:** —
