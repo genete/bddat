@@ -8,4 +8,4 @@
 
 **Actuales:** —
 
-**Próximo:** —
+**Próximo:** #339 — Carga del calendario de días inhábiles y aviso de año N+1. Deuda técnica de #172: investigar fuente oficial (CSV Junta/BOJA, API, carga manual) e implementar mecanismo de importación anual. Bloqueante para cierre de #328.
