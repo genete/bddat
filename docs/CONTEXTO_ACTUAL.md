@@ -4,8 +4,8 @@
 
 ---
 
-**Último cerrado:** #363 + #361 + #371 en bloque — refactorización v6.0: ELABORAR in; REDACTAR/FIRMAR/INCORPORAR/PUBLICAR out. Derivado: #380 (decisión tabla documentos_tarea).
+**Último cerrado:** #368 + #369 — INFORMACION_PUBLICA: REDACTAR_ANUNCIO, ANUNCIO_BOJA, ANUNCIO_TITULAR (FTT + tests). Trabajo estructural ya venía de #370; commits d708f94 y b99a398.
 
 **Actuales:** —
 
-**Próximo:** (#368 + #369 + #373) → #346 → #173 → #328
+**Próximo:** #373 → #346 → #173 → #328
