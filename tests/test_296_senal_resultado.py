@@ -172,6 +172,7 @@ class TestTareaEstado:
         t = _StubTarea('ANALIZAR', doc_producido_id=None, doc_usado_id=3)
         assert _tarea_estado(t) == 'EN_CURSO'
 
+    @pytest.mark.skip(reason="#361 — INCORPORAR eliminado; tipo ya no existe en el catálogo")
     def test_incorporar_sin_docs_planificada(self):
         t = _StubTarea('INCORPORAR', documentos_tarea=[])
         assert _tarea_estado(t) == 'PLANIFICADA'
