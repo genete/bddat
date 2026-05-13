@@ -4,8 +4,8 @@
 
 ---
 
-**Último cerrado:** #173 — Suspensión de plazos (art. 22 LPACAP). Inferencia real de intervalos desde el árbol documental de trámites; sin tabla propia. Mapa para REQUERIMIENTO_SUBSANACION, SOLICITUD_INFORME, CONSULTA_SEPARATA, SOLICITUD_COMPATIBILIDAD con triple fallback de cierre (ANALIZAR propio → ESPERAR_PLAZO.doc_producido → trámite hermano receptor). Constantes _TRAMITES_SUSPENSION/_TRAMITES_CIERRE y 4 helpers privados en plazos.py. 7 códigos nuevos en catalogo_requerido.py. 17 tests, 221 pasando. Cierra #328 (tracking — todos los hijos cerrados).
+**Último cerrado:** #333 — Bug `flask db upgrade` en BD vacía (M1 Bloqueantes). Detectado como ya resuelto: `a1b2c3d4e5f6` tiene `depends_on='seed_catalogo_base'`, garantizando que `348_seed_catalogo_base` se ejecuta primero. Cerrado sin implementación adicional. En la misma sesión se cerraron #339 (comando CLI `flask inhabiles importar` + banner admin + GUIA_ADMINISTRACION.md) y #328 (tracking gestor de plazos — todos los criterios cubiertos).
 
 **Actuales:** —
 
-**Próximo:** #339 — Carga del calendario de días inhábiles y aviso de año N+1. Deuda técnica de #172: investigar fuente oficial (CSV Junta/BOJA, API, carga manual) e implementar mecanismo de importación anual. Bloqueante para cierre de #328.
+**Próximo:** —
