@@ -70,7 +70,7 @@ Los patrones son orientativos y combinables (p.ej. `A+C` = ANALIZAR → ELABORAR
 | Trámite | Patrón | Tareas indicativas |
 |---|---|---|
 | `SOLICITUD_COMPATIBILIDAD` | C | ELABORAR → NOTIFICAR → ESPERAR_PLAZO |
-| `AUDIENCIA` | A+C | ANALIZAR → ELABORAR → NOTIFICAR → ESPERAR_PLAZO |
+| `COMUNICACION_AUDIENCIA` | A | ANALIZAR (condicional: solo si MA aprecia incompatibilidad; IC 1/2022, IV.3.3) |
 | `RECEPCION_INFORME` | A | ANALIZAR |
 
 ---
@@ -138,6 +138,6 @@ Tareas indicativas en los tres trámites: ELABORAR → NOTIFICAR → ESPERAR_PLA
 
 | Trámite | Patrón | Tareas indicativas |
 |---|---|---|
-| `ELABORACION` | A+B (sin NOTIFICAR) | ANALIZAR → ELABORAR |
+| `ELABORACION` | B (sin NOTIFICAR) | ELABORAR (consume CERT_FIN_INSTRUCCION — #373) |
 | `NOTIFICACION` | B (solo NOTIFICAR) | NOTIFICAR |
 | `PUBLICACION` | C | ELABORAR → NOTIFICAR → ESPERAR_PLAZO |

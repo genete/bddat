@@ -67,6 +67,14 @@ flask db upgrade
 
 `env.py` sin `include_schemas` (estado por defecto del repo). Todas las tablas usan `schema='public'` explícito.
 
+Toda migración que cree una tabla nueva debe incluir el GRANT al usuario MCP de desarrollo:
+
+```python
+op.execute("GRANT SELECT ON public.<tabla> TO claude_desktop")
+```
+
+En producción este usuario no existe y el GRANT se omite o revoca, pero en desarrollo es necesario para que el MCP PostgreSQL pueda leerla.
+
 ---
 
 ## Naming

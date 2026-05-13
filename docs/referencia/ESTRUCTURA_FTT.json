@@ -145,19 +145,20 @@
           "patron": "C"
         },
         {
-          "codigo": "AUDIENCIA",
-          "nombre": "Audiencia",
-          "descripcion": "Audiencia iniciada por Medio Ambiente en caso de incompatibilidad. Se analiza propuesta de incompatibilidad y se elaboran alegaciones.",
-          "tareas_indicativas": ["ANALIZAR", "ELABORAR", "NOTIFICAR", "ESPERAR_PLAZO"],
-          "patron": "A+C",
-          "nota": "Medio Ambiente notifica propuesta de incompatibilidad → ANALIZAR antes de elaborar alegaciones."
+          "codigo": "COMUNICACION_AUDIENCIA",
+          "nombre": "Comunicación de audiencia al interesado",
+          "descripcion": "El órgano ambiental emite escrito al órgano sustantivo para conocimiento del trámite de audiencia abierto a la persona interesada, al apreciar posible incompatibilidad ambiental. El órgano sustantivo registra y analiza la comunicación. No hay actuación ni respuesta del órgano sustantivo en este trámite.",
+          "tareas_indicativas": ["ANALIZAR"],
+          "patron": "A",
+          "nota": "Condicional: solo si el órgano ambiental considera que la actuación incurre en alguna de las prohibiciones previstas en la normativa ambiental. El escrito se emite simultáneamente con el inicio del trámite de audiencia al interesado que realiza el propio órgano ambiental. IC 1/2022, IV.3.3."
         },
         {
           "codigo": "RECEPCION_INFORME",
-          "nombre": "Recepción de Informe Vinculante",
-          "descripcion": "Análisis de informe vinculante (compatible o incompatible)",
+          "nombre": "Recepción de informe de compatibilidad ambiental",
+          "descripcion": "El órgano ambiental notifica al órgano sustantivo el informe de compatibilidad ambiental. En caso de incompatibilidad, el informe tiene carácter vinculante y ordena el archivo de las actuaciones (IC 1/2022, IV.3.3); en caso de compatibilidad, habilita la fase de IP y consultas (IV.3.4). El órgano sustantivo analiza el informe y actúa en consecuencia.",
           "tareas_indicativas": ["ANALIZAR"],
-          "patron": "A"
+          "patron": "A",
+          "nota": "IC 1/2022, IV.3.3 (informe vinculante de archivo) y IV.3.4 (conformidad y alcance de IP/consultas)."
         }
       ]
     },
