@@ -150,3 +150,44 @@ def test_requerimiento_subsanacion_usa_elaborar(app_ctx):
     )
     codigos = [tt.tipo_tarea.codigo for tt in secuencia]
     assert codigos == ['ELABORAR', 'NOTIFICAR', 'ESPERAR_PLAZO', 'ANALIZAR']
+
+
+# ---------------------------------------------------------------------------
+# D) #368 — REDACTAR_ANUNCIO y ANUNCIO_BOJA
+# ---------------------------------------------------------------------------
+
+def test_redactar_anuncio_secuencia(app_ctx):
+    """REDACTAR_ANUNCIO tiene exactamente una tarea ELABORAR."""
+    from app import db
+    from app.models.tramites_tareas import TramiteTarea
+    from app.models.tipos_tramites import TipoTramite
+
+    tramite = db.session.query(TipoTramite).filter_by(codigo='REDACTAR_ANUNCIO').one()
+    secuencia = (
+        db.session.query(TramiteTarea)
+        .filter_by(tipo_tramite_id=tramite.id)
+        .order_by(TramiteTarea.orden)
+        .all()
+    )
+    codigos = [tt.tipo_tarea.codigo for tt in secuencia]
+    assert codigos == ['ELABORAR']
+
+
+def test_anuncio_boja_doble_esperar_plazo(app_ctx):
+    """ANUNCIO_BOJA tiene exactamente 2 tareas ESPERAR_PLAZO en órdenes distintos."""
+    from app import db
+    from app.models.tramites_tareas import TramiteTarea
+    from app.models.tipos_tramites import TipoTramite
+    from app.models.tipos_tareas import TipoTarea
+
+    boja = db.session.query(TipoTramite).filter_by(codigo='ANUNCIO_BOJA').one()
+    esperar = db.session.query(TipoTarea).filter_by(codigo='ESPERAR_PLAZO').one()
+
+    filas = (
+        db.session.query(TramiteTarea)
+        .filter_by(tipo_tramite_id=boja.id, tipo_tarea_id=esperar.id)
+        .order_by(TramiteTarea.orden)
+        .all()
+    )
+    assert len(filas) == 2
+    assert filas[0].orden != filas[1].orden
