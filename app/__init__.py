@@ -91,18 +91,42 @@ def create_app(config_name='development'):
     from app.modules import ModuleRegistry
     ModuleRegistry.register_all(app)
 
+    # Registrar comandos CLI
+    from app.cli.inhabiles import inhabiles
+    app.cli.add_command(inhabiles)
+
     # Context processor — inyecta navegación de módulos en todos los templates
     @app.context_processor
     def inject_module_nav():
+        from datetime import date as _date
+        from sqlalchemy.exc import OperationalError, ProgrammingError
+
         user_roles = (
             [r.nombre for r in current_user.roles]
             if current_user.is_authenticated else []
         )
         nav = ModuleRegistry.get_navigation(user_roles)
 
+        # Alerta de calendario inhábil para admins: avisa si falta el año N+1
+        alerta_calendario = False
+        if current_user.is_authenticated and current_user.es_admin:
+            try:
+                from app.models.dias_inhabiles import DiaInhabil
+                anyo_siguiente = _date.today().year + 1
+                tiene_datos = db.session.query(
+                    DiaInhabil.query.filter(
+                        DiaInhabil.fecha >= _date(anyo_siguiente, 1, 1),
+                        DiaInhabil.fecha <= _date(anyo_siguiente, 12, 31),
+                    ).exists()
+                ).scalar()
+                alerta_calendario = not tiene_datos
+            except (OperationalError, ProgrammingError):
+                pass
+
         return {
-            'module_nav':    nav,
-            'active_module': request.blueprint,
+            'module_nav':        nav,
+            'active_module':     request.blueprint,
+            'alerta_calendario': alerta_calendario,
         }
 
     # Configuración de Jinja2
