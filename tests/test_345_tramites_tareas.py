@@ -191,3 +191,24 @@ def test_anuncio_boja_doble_esperar_plazo(app_ctx):
     )
     assert len(filas) == 2
     assert filas[0].orden != filas[1].orden
+
+
+# ---------------------------------------------------------------------------
+# E) #369 — ANUNCIO_TITULAR
+# ---------------------------------------------------------------------------
+
+def test_anuncio_titular_secuencia(app_ctx):
+    """ANUNCIO_TITULAR sigue el patrón B: ELABORAR→NOTIFICAR."""
+    from app import db
+    from app.models.tramites_tareas import TramiteTarea
+    from app.models.tipos_tramites import TipoTramite
+
+    tramite = db.session.query(TipoTramite).filter_by(codigo='ANUNCIO_TITULAR').one()
+    secuencia = (
+        db.session.query(TramiteTarea)
+        .filter_by(tipo_tramite_id=tramite.id)
+        .order_by(TramiteTarea.orden)
+        .all()
+    )
+    codigos = [tt.tipo_tarea.codigo for tt in secuencia]
+    assert codigos == ['ELABORAR', 'NOTIFICAR']

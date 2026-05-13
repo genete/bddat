@@ -265,7 +265,7 @@
           "descripcion": "Notificación al titular sobre publicación del anuncio de información pública",
           "tareas_indicativas": ["ELABORAR", "NOTIFICAR"],
           "patron": "B",
-          "nota": "Trámite nuevo (#369). Comunica al titular la publicación del anuncio IP."
+          "nota": "Trámite nuevo (#369). ELABORAR: consume ANUNCIO_IP, produce OFICIO_PUBLICAR_TITULAR (interno, parseable, firmado). NOTIFICAR: consume ANUNCIO_IP + OFICIO_PUBLICAR_TITULAR (N:M, pendiente #380), produce JUSTIFICANTE."
         },
         {
           "codigo": "RECEPCION_ALEGACION",
