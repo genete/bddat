@@ -14,7 +14,10 @@ Lógica real (#172):
     2. Resuelve campo_fecha JSONB → Documento.fecha_administrativa.
     3. Calcula fecha_limite con calcular_fecha_fin() (art. 30 LPACAP).
     4. Deriva estado según condiciones de §2.4 (umbral 5 días hábiles).
-    Suspensiones: hook _obtener_suspensiones() → [] hasta que #173 lo implemente.
+
+Suspensiones (#173):
+    _obtener_suspensiones() infiere intervalos de art. 22 LPACAP desde el árbol
+    documental de los trámites de la Fase/Trámite evaluado. No usa tabla propia.
 """
 from __future__ import annotations
 
@@ -52,6 +55,28 @@ _TIPO_CODIGO_ATTR = {
     'FASE':      'codigo',
     'TRAMITE':   'codigo',
     'TAREA':     'codigo',
+}
+
+# ---------------------------------------------------------------------------
+# Suspensiones — constantes de inferencia (art. 22 LPACAP, #173)
+# ---------------------------------------------------------------------------
+
+# Trámites que inician una suspensión del plazo del elemento evaluado
+_TRAMITES_SUSPENSION = frozenset({
+    'REQUERIMIENTO_SUBSANACION',   # art. 22.1.a — subsanación al interesado
+    'SOLICITUD_INFORME',           # art. 22.1.b — informe preceptivo a organismo
+    'CONSULTA_SEPARATA',           # art. 22.1.b — separata a organismo en consultas
+    'SOLICITUD_COMPATIBILIDAD',    # art. 22.1.c — EIA preceptiva a Medio Ambiente
+})
+
+# Para trámites sin ANALIZAR propio, el trámite hermano que cierra la suspensión
+_TRAMITES_CIERRE = {
+    'SOLICITUD_INFORME': frozenset({
+        'RECEPCION_INFORME', 'RECEPCION_INFORME_VINCULANTE',
+    }),
+    'SOLICITUD_COMPATIBILIDAD': frozenset({
+        'RECEPCION_DICTAMEN', 'RECEPCION_FIGURA',
+    }),
 }
 
 
@@ -379,9 +404,99 @@ def _obtener_inhabiles_bd(fecha_ini: date, fecha_fin: date) -> frozenset:
     return frozenset(r.fecha for r in registros)
 
 
+def _codigo_tramite(tramite) -> str:
+    tipo = getattr(tramite, 'tipo_tramite', None)
+    return getattr(tipo, 'codigo', '') if tipo else ''
+
+
+def _tarea_de_tipo(tramite, codigo_tarea: str):
+    """Primera tarea del tipo indicado en el trámite, o None."""
+    for t in getattr(tramite, 'tareas', []):
+        if getattr(getattr(t, 'tipo_tarea', None), 'codigo', None) == codigo_tarea:
+            return t
+    return None
+
+
+def _fecha_doc_admin(doc) -> Optional[date]:
+    return getattr(doc, 'fecha_administrativa', None) if doc else None
+
+
+def _fecha_cierre_suspension(tramite_trigger, todos_tramites: list) -> Optional[date]:
+    """
+    Fecha de fin de la suspensión iniciada por tramite_trigger.
+
+    Orden de búsqueda:
+    1. ANALIZAR.documento_usado del propio trámite (REQUERIMIENTO_SUBSANACION, CONSULTA_SEPARATA).
+    2. ESPERAR_PLAZO.documento_producido del propio trámite (ADR-004 para SOLICITUD_INFORME).
+    3. ANALIZAR.documento_usado del primer trámite hermano receptor (RECEPCION_INFORME, etc.)
+       con id > tramite_trigger.id.
+    """
+    analizar = _tarea_de_tipo(tramite_trigger, 'ANALIZAR')
+    if analizar:
+        f = _fecha_doc_admin(getattr(analizar, 'documento_usado', None))
+        if f:
+            return f
+
+    esperar = _tarea_de_tipo(tramite_trigger, 'ESPERAR_PLAZO')
+    if esperar:
+        f = _fecha_doc_admin(getattr(esperar, 'documento_producido', None))
+        if f:
+            return f
+
+    cierre_tipos = _TRAMITES_CIERRE.get(_codigo_tramite(tramite_trigger), frozenset())
+    if cierre_tipos:
+        for hermano in sorted(todos_tramites, key=lambda x: x.id):
+            if hermano.id <= tramite_trigger.id:
+                continue
+            if _codigo_tramite(hermano) not in cierre_tipos:
+                continue
+            a = _tarea_de_tipo(hermano, 'ANALIZAR')
+            if a:
+                f = _fecha_doc_admin(getattr(a, 'documento_usado', None))
+                if f:
+                    return f
+
+    return None
+
+
 def _obtener_suspensiones(elemento) -> list:
-    """Hook de suspensiones — stub hasta #173."""
-    return []
+    """
+    Deriva los intervalos de suspensión (art. 22 LPACAP) del elemento ESFTT
+    consultando el árbol documental de sus trámites. No usa tabla propia.
+
+    Retorna list de dict {'fecha_inicio': date, 'fecha_fin': date}.
+    Suspensión sin cierre detectado → fecha_fin = hoy (suspensión activa).
+    """
+    from sqlalchemy.exc import OperationalError, ProgrammingError
+    try:
+        tramites_attr = getattr(elemento, 'tramites', None)
+        if tramites_attr is not None:
+            todos_tramites = list(tramites_attr)
+        else:
+            # Elemento es un Trámite → usa tramites de su Fase para búsqueda de hermanos
+            fase = getattr(elemento, 'fase', None)
+            if fase:
+                todos_tramites = list(getattr(fase, 'tramites', []) or [])
+            else:
+                todos_tramites = [elemento] if hasattr(elemento, 'tipo_tramite') else []
+    except (OperationalError, ProgrammingError) as exc:
+        log.warning('plazos: error cargando trámites para suspensiones (%s)', exc)
+        return []
+
+    suspensiones = []
+    for tramite in todos_tramites:
+        if _codigo_tramite(tramite) not in _TRAMITES_SUSPENSION:
+            continue
+        notificar = _tarea_de_tipo(tramite, 'NOTIFICAR')
+        if not notificar:
+            continue
+        fecha_inicio = _fecha_doc_admin(getattr(notificar, 'documento_producido', None))
+        if not fecha_inicio:
+            continue
+        fecha_fin = _fecha_cierre_suspension(tramite, todos_tramites) or _hoy()
+        suspensiones.append({'fecha_inicio': fecha_inicio, 'fecha_fin': fecha_fin})
+
+    return suspensiones
 
 
 def _aplicar_suspensiones(fecha_limite: date, suspensiones: list, inhabiles: frozenset) -> date:
