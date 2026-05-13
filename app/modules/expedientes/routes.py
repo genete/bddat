@@ -465,9 +465,6 @@ def tramitacion_bc_tarea(exp_id, sol_id, fase_id, tram_id, tarea_id):
         requiere_doc_usado=requiere_doc_usado,
         doc_usado_opcional=doc_usado_opcional,
         requiere_doc_producido=requiere_doc_producido,
-        es_tarea_redactar=False,        # TODO #370: dead code — INCORPORAR/REDACTAR eliminados
-        es_tarea_incorporar=False,      # TODO #370: dead code — INCORPORAR eliminado
-        documentos_incorporar=[],       # TODO #370: dead code — INCORPORAR eliminado
     )
 
 

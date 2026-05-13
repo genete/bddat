@@ -3,16 +3,18 @@ from app import db
 
 class DocumentoTarea(db.Model):
     """
-    Tabla puente N:N entre tareas INCORPORAR y sus documentos vinculados.
+    Tabla puente N:N originalmente diseñada para INCORPORAR (v5.5).
 
-    Desde v5.5, la tarea INCORPORAR no usa documento_producido_id.
-    En su lugar, este modelo registra los N documentos incorporados en un acto
-    de recepción. Completitud: ≥1 registro con el tarea_id de la tarea INCORPORAR.
+    INCORPORAR fue eliminada en ADR-004 (#361). Esta tabla no tiene consumidor activo.
+    Pendiente de decisión de diseño: reproponer para ESPERAR_PLAZO (N documentos
+    recibidos en un acto) o eliminar. Ver issue derivado de #361.
+
+    NO USAR hasta que la decisión esté documentada en un ADR.
 
     REGLAS:
         - tarea_id → TAREAS (CASCADE delete)
         - documento_id → DOCUMENTOS (CASCADE delete)
-        - (tarea_id, documento_id) UNIQUE: un documento solo se vincula una vez por acto
+        - (tarea_id, documento_id) UNIQUE
     """
     __tablename__ = 'documentos_tarea'
     __table_args__ = (
