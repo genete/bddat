@@ -138,6 +138,6 @@ Tareas indicativas en los tres trámites: ELABORAR → NOTIFICAR → ESPERAR_PLA
 
 | Trámite | Patrón | Tareas indicativas |
 |---|---|---|
-| `ELABORACION` | A+B (sin NOTIFICAR) | ANALIZAR → ELABORAR |
+| `ELABORACION` | B (sin NOTIFICAR) | ELABORAR (consume CERT_FIN_INSTRUCCION — #373) |
 | `NOTIFICACION` | B (solo NOTIFICAR) | NOTIFICAR |
 | `PUBLICACION` | C | ELABORAR → NOTIFICAR → ESPERAR_PLAZO |
