@@ -50,6 +50,19 @@
             </div>
         </header>
 
+        <!-- Alerta admin: calendario inhábil año N+1 no cargado (#339) -->
+        {% if alerta_calendario %}
+        <div class="alert alert-warning alert-dismissible fade show mb-0 rounded-0 border-0 border-bottom"
+             role="alert" style="z-index:1040">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            <strong>Acción requerida:</strong>
+            No hay días inhábiles registrados para el año siguiente.
+            Ejecute <code>flask inhabiles importar</code> antes de que existan plazos que aterricen en ese año.
+            Consulte <code>docs/guias/GUIA_ADMINISTRACION.md</code> para el procedimiento completo.
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+        </div>
+        {% endif %}
+
         <!-- B.2: Main Content (scrollable si C.1+C.2+C.3 > espacio) -->
         <main class="app-main">
             {% block content %}{% endblock %}
