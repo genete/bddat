@@ -4,8 +4,8 @@
 
 ---
 
-**Último cerrado:** #333 — Bug `flask db upgrade` en BD vacía (M1 Bloqueantes). Detectado como ya resuelto: `a1b2c3d4e5f6` tiene `depends_on='seed_catalogo_base'`, garantizando que `348_seed_catalogo_base` se ejecuta primero. Cerrado sin implementación adicional. En la misma sesión se cerraron #339 (comando CLI `flask inhabiles importar` + banner admin + GUIA_ADMINISTRACION.md) y #328 (tracking gestor de plazos — todos los criterios cubiertos).
+**Último cerrado:** #360 y #335 — whitelists `expedientes_solicitudes` (E→S) y `solicitudes_fases` (S→F), cerrados en favor de #387. Decisión arquitectónica adoptada (ADR-007): las tres tablas whitelist E-S-F-T son blacklists implícitas que contradicen el principio del motor; se eliminan y sus reglas pasan al motor como reglas CREAR con base legal. Los verbos INICIAR y FINALIZAR se eliminan del motor (estados derivados, no acciones de usuario desde ADR-002). `tramites_tareas` y `tramites_tareas_documentos` se mantienen como capa de sugerencias. #192 marcado como semi-obsoleto (usa FINALIZAR y propone tabla que solapa con tipos existentes).
 
 **Actuales:** —
 
-**Próximo:** (#360 + #335) → #289 → #386 (semáforos de plazo en vista BC, M3).
+**Próximo:** #387 (refactoring motor+whitelists, M3) → #289 → #386 (semáforos de plazo en vista BC, M3).
