@@ -8,4 +8,4 @@
 
 **Actuales:** —
 
-**Próximo:** —
+**Próximo:** Abrir issue «Semáforos de plazo en vista BC de tramitación» (gap sin issue, gravedad Alta para MVP; asignar M3). A continuación: (#360 + #335) → #289 → nuevo issue semáforos.
