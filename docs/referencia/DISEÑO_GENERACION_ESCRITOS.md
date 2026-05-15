@@ -21,11 +21,9 @@
 | Panel de tokens copiables | HECHO | `_panel_tokens.html` |
 | Protocolo URI `bddat-explorador://` | HECHO | Issue #231 |
 | Config `PLANTILLAS_BASE` | HECHO | `app/config.py` |
-| Guía Context Builders | HECHO (doc) | `docs/GUIA_CONTEXT_BUILDERS.md` |
+| Guía Context Builders | HECHO (doc) | `docs/referencia/GUIA_CONTEXT_BUILDERS.md` |
 
-**Stubs pendientes:**
-- `_ejecutar_consultas()` devuelve `{}` — no ejecuta consultas nombradas aún
-- Context Builders (Capa 2): arquitectura lista, cero implementaciones
+**Pendiente:**
 - Sin endpoint que dispare la generación desde la UI de tramitación
 
 ---
@@ -157,7 +155,7 @@ si sobreviven el pipeline .docx → portafirmas → PDF.
 | ID | Necesidad | Decisión |
 |----|-----------|----------|
 | C1 | Ejecución de consultas nombradas | Implementar stub `_ejecutar_consultas()` (Fase 5) |
-| C2 | Context Builders (Capa 2) | DIFERIBLE — bajo demanda del primer tipo complejo |
+| C2 | Context Builders (Capa 2) | EN CURSO — #289. Implementados: #391, #393, #394. Bloqueado: #392 |
 | C3 | Trazabilidad y código embebido | Código en custom properties + QR (Fase 6) |
 | C4 | Metadatos del documento generado | `fecha_administrativa=NULL`, `prioridad=0`, `asunto=` descripción plantilla + ESFTT real |
 | C7 | Gestión de errores de generación | Toast con detalle del error Jinja2 (Fase 5) |
