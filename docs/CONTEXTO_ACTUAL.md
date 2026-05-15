@@ -4,8 +4,8 @@
 
 ---
 
-**Último cerrado:** #388 — variable `tipo_sujeto_solicitado` expuesta en el assembler: propiedad `tipo_sujeto` añadida a `ExpedienteContext` y registrada en `calculado.py` + catálogo de variables. Prerrequisito de #387.
+**Último cerrado:** #387 — eliminar whitelists E-S-F-T y verbos INICIAR/FINALIZAR del motor (ADR-007): DROP 3 tablas whitelist, DROP `doc_consumido_tipo_id`, CHECK constraint `reglas_motor.accion` → solo CREAR|BORRAR, rutas INICIAR eliminadas, FINALIZAR sin motor. Script zombie `reset_maestros_ftt.py` eliminado. Protocolo de análisis de impacto añadido a REGLAS_DESARROLLO.
 
-**Actuales:** #387 — eliminar whitelists E-S-F-T y refactorizar verbos INICIAR/FINALIZAR del motor (M3). Ver ADR-007.
+**Actuales:** —
 
 **Próximo:** #289 → #386 (semáforos de plazo en vista BC, M3).
