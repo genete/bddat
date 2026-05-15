@@ -51,6 +51,21 @@
       </span>
       {% endif %}
       <span class="badge {{ fase_badge_class }} ms-1">{{ fase_badge_label }}</span>
+      {% if estado_plazo_fase.estado != 'SIN_PLAZO' %}
+      <span class="badge semaforo-plazo semaforo-{{ estado_plazo_fase.estado }}"
+            title="Plazo de fase{% if estado_plazo_fase.fecha_limite %} — vence {{ estado_plazo_fase.fecha_limite.strftime('%d/%m/%Y') }}{% endif %}">
+        <i class="fas fa-clock me-1"></i>
+        {%- if estado_plazo_fase.dias_restantes is not none -%}
+          {%- if estado_plazo_fase.dias_restantes >= 0 -%}
+            {{ estado_plazo_fase.dias_restantes }} d.h.
+          {%- else -%}
+            {{ -estado_plazo_fase.dias_restantes }} d.h. vencido
+          {%- endif -%}
+        {%- else -%}
+          {{ estado_plazo_fase.estado }}
+        {%- endif -%}
+      </span>
+      {% endif %}
     </span>
     <div class="bc-acciones-bar">
       <div data-modo-ver class="d-flex gap-1">
