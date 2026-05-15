@@ -102,6 +102,22 @@ class ExpedienteContext:
             return obj.tramite                # es Tarea
         return None
 
+    @property
+    def tipo_sujeto(self) -> Optional[Any]:
+        """Tipo más interno en contexto: TipoTramite o TipoFase, o None.
+
+        Para CREAR (dict): lee tipo_tramite primero, luego tipo_fase.
+        Para objetos existentes: usa ctx.tramite o ctx.fase.
+        """
+        obj = self._objeto
+        if isinstance(obj, dict):
+            return obj.get('tipo_tramite') or obj.get('tipo_fase')
+        if self.tramite and self.tramite.tipo_tramite:
+            return self.tramite.tipo_tramite
+        if self.fase and self.fase.tipo_fase:
+            return self.fase.tipo_fase
+        return None
+
 
 # ---------------------------------------------------------------------------
 # Compilación del sujeto calificado
