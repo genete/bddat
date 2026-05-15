@@ -4,8 +4,8 @@
 
 ---
 
-**Último cerrado:** #289 — re-scope Context Builders Capa 2: GUIA_CONTEXT_BUILDERS corregida (firma CB, carga dinámica, convención `as_contexto_cb()`, tabla de candidatos, campos base actualizados), paquete `app/services/context_builders/` creado.
+**Último cerrado:** #391 — OrganismoExpediente (modelo + migración + `as_contexto_cb()`), `ContextoConsultaSeparata`, interface `tarea` en generador, 11 tests. Issues derivados: #395 (ConsultaNombrada organismos_consulta), #396 (UI gestión organismos_expediente, M2 backlog).
 
-**Actuales:** #391 — implementar `ContextoConsultaSeparata` (verificar `OrganismoExpediente` y modelo; bloqueado si la tabla no está implementada).
+**Actuales:** —
 
-**Próximo:** #392 (ContextoAnalisisDocumental) · #393 (ContextoRecepcionAlegacion) · #394 (ContextoAnalisisAlegaciones) → #386 (semáforos de plazo en vista BC, M3).
+**Próximo:** #395 (ConsultaNombrada `organismos_consulta`) · #392 (ContextoAnalisisDocumental) · #393 (ContextoRecepcionAlegacion) · #394 (ContextoAnalisisAlegaciones) → desbloqueo #386 (semáforos de plazo en vista BC, M3).
