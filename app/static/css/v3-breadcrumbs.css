@@ -126,6 +126,17 @@
     }
 }
 
+/* ── Semáforo de plazo (#386) ───────────────────────────────────────────── */
+
+.semaforo-plazo {
+    font-weight: 500;
+    font-size: 0.75rem;
+}
+
+.semaforo-EN_PLAZO       { background-color: #198754; color: #fff; }
+.semaforo-PROXIMO_VENCER { background-color: #fd7e14; color: #fff; }
+.semaforo-VENCIDO        { background-color: #dc3545; color: #fff; }
+
 /* ── Botones de acción en la cabecera (placeholders) ────────────────────── */
 
 .bc-acciones-bar {

@@ -37,6 +37,7 @@ from app.models.documentos import Documento
 from app.models.tipos_documentos import TipoDocumento
 from app.models.documentos_tarea import DocumentoTarea
 from app.decorators import role_required
+from app.services.plazos import obtener_estado_plazo
 from app.utils.permisos import (
     puede_cambiar_responsable,
     verificar_acceso_expediente
@@ -360,6 +361,8 @@ def tramitacion_bc_fase(exp_id, sol_id, fase_id):
     resultados_fase = TipoResultadoFase.query.order_by(TipoResultadoFase.nombre).all()
     tipos_tramite = TipoTramite.query.order_by(TipoTramite.nombre).all()
 
+    estado_plazo_fase = obtener_estado_plazo(fase, 'FASE')
+
     return render_template(
         'expedientes/tramitacion_bc_fase.html',
         expediente=expediente,
@@ -369,6 +372,7 @@ def tramitacion_bc_fase(exp_id, sol_id, fase_id):
         columnas=columnas,
         resultados_fase=resultados_fase,
         tipos_tramite=tipos_tramite,
+        estado_plazo_fase=estado_plazo_fase,
     )
 
 
@@ -455,6 +459,8 @@ def tramitacion_bc_tarea(exp_id, sol_id, fase_id, tram_id, tarea_id):
     doc_usado_opcional     = codigo_tipo in _TIPOS_DOC_USADO_OPCIONAL
     requiere_doc_producido = codigo_tipo in _TIPOS_REQUIEREN_DOC_PRODUCIDO
 
+    estado_plazo_fase = obtener_estado_plazo(fase, 'FASE')
+
     return render_template(
         'expedientes/tramitacion_bc_tarea.html',
         expediente=expediente,
@@ -465,6 +471,7 @@ def tramitacion_bc_tarea(exp_id, sol_id, fase_id, tram_id, tarea_id):
         requiere_doc_usado=requiere_doc_usado,
         doc_usado_opcional=doc_usado_opcional,
         requiere_doc_producido=requiere_doc_producido,
+        estado_plazo_fase=estado_plazo_fase,
     )
 
 
