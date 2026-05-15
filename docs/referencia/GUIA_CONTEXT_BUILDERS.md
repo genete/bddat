@@ -74,9 +74,10 @@ class ContextoNotificacionOrganismo:
     - fecha_limite: Fecha límite calculada para el plazo
     """
 
-    def __init__(self, expediente, db_session):
+    def __init__(self, expediente, db_session, tarea=None):
         self._expediente = expediente
         self._db = db_session
+        self._tarea = tarea  # disponible si el CB necesita navegar al trámite
 
     def get_contexto(self) -> dict:
         """Devuelve los campos adicionales para esta plantilla."""
@@ -141,7 +142,7 @@ que son accedidos directamente por `ContextoBaseExpediente`.
 
 | Clase | Fichero | Trámite | Estado | Issue |
 |-------|---------|---------|--------|-------|
-| `ContextoConsultaSeparata` | `consulta_separata.py` | `CONSULTA_SEPARATA` | Pendiente — verificar `OrganismoExpediente` | #391 |
+| `ContextoConsultaSeparata` | `consulta_separata.py` | `CONSULTA_SEPARATA` | Implementado | #391 |
 | `ContextoAnalisisDocumental` | `analisis_documental.py` | `ANALISIS_DOCUMENTAL` | Bloqueado — tabla diagnosticos no diseñada | #392 |
 | `ContextoRecepcionAlegacion` | `recepcion_alegacion.py` | `RECEPCION_ALEGACION` | Bloqueado — modelo alegante no definido | #393 |
 | `ContextoAnalisisAlegaciones` | `analisis_alegaciones.py` | `ANALISIS_ALEGACIONES` | Bloqueado — depende de #393 | #394 |
