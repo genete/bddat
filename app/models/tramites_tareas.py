@@ -26,16 +26,8 @@ class TramiteTarea(db.Model):
         nullable=False
     )
 
-    doc_consumido_tipo_id = db.Column(
-        db.Integer,
-        db.ForeignKey('public.tipos_documentos.id', name='fk_tram_tareas_doc_consumido_tipo'),
-        nullable=True,
-        comment='FK a TIPOS_DOCUMENTOS. Si NOT NULL y origen=INTERNO, el sistema lo genera automáticamente al crear la fase (#373)'
-    )
-
     tipo_tramite = db.relationship('TipoTramite')
     tipo_tarea = db.relationship('TipoTarea')
-    doc_consumido_tipo = db.relationship('TipoDocumento', foreign_keys=[doc_consumido_tipo_id])
 
     def __repr__(self):
         return f'<TramiteTarea tramite={self.tipo_tramite_id} orden={self.orden} tarea={self.tipo_tarea_id}>'

@@ -176,7 +176,7 @@ def evaluar(
     Evalúa si una acción sobre un sujeto calificado está permitida.
 
     Args:
-        accion:    'CREAR' | 'INICIAR' | 'FINALIZAR' | 'BORRAR'
+        accion:    'CREAR' | 'BORRAR'
         sujeto:    Sujeto calificado compilado por el ContextAssembler.
                    Ejemplo: 'Distribucion/AAP/RESOLUCION'
         variables: Dict plano compilado por el ContextAssembler.
@@ -185,6 +185,9 @@ def evaluar(
         EvaluacionResult. Lanza excepción ante error interno — nunca devuelve
         PERMITIDO silenciosamente ante un fallo.
     """
+    if accion not in ('CREAR', 'BORRAR'):
+        raise ValueError(f'Acción no soportada: {accion!r}. Solo CREAR y BORRAR.')
+
     # Carga todas las reglas activas para esta acción con sus condiciones y excepciones
     reglas_candidatas = ReglaMotor.query.options(
         joinedload(ReglaMotor.condiciones).joinedload(CondicionRegla.variable),
@@ -252,6 +255,9 @@ def auditar(
 
     permitido=True si ninguna regla bloqueante quedó sin neutralizar.
     """
+    if accion not in ('CREAR', 'BORRAR'):
+        raise ValueError(f'Acción no soportada: {accion!r}. Solo CREAR y BORRAR.')
+
     reglas_candidatas = ReglaMotor.query.options(
         joinedload(ReglaMotor.condiciones).joinedload(CondicionRegla.variable),
         joinedload(ReglaMotor.excepciones).joinedload(ExcepcionMotor.condiciones)

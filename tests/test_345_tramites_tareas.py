@@ -107,13 +107,6 @@ def test_consulta_orm_relaciones_cargadas(app_ctx):
     assert primera.tipo_tarea is not None
 
 
-@pytest.mark.skip(reason="#345 — expedientes_solicitudes: seed pendiente de sesión de análisis normativo")
-def test_expedientes_solicitudes_no_vacia(app_ctx):
-    from app import db
-    from app.models.expedientes_solicitudes import ExpedienteSolicitud
-    assert db.session.query(ExpedienteSolicitud).count() > 0
-
-
 # ---------------------------------------------------------------------------
 # C) Catálogo v6.0 — ADR-003/004/005, #361, #363, #371
 # ---------------------------------------------------------------------------

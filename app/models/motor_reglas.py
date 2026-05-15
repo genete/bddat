@@ -66,7 +66,7 @@ class ReglaMotor(db.Model):
     Principio rector: todo permitido excepto lo expresamente prohibido.
 
     CAMPOS CLAVE:
-        accion:  CREAR|INICIAR|FINALIZAR|BORRAR
+        accion:  CREAR|BORRAR
         sujeto:  patrón calificado ESFTT: 'ANY/AAP/RESOLUCION'
                  El assembler produce el sujeto concreto; el motor hace matching
                  posicional por segmentos separados por '/'.
@@ -81,7 +81,7 @@ class ReglaMotor(db.Model):
     """
     __tablename__ = 'reglas_motor'
     __table_args__ = (
-        db.CheckConstraint("accion IN ('CREAR','INICIAR','FINALIZAR','BORRAR')", name='ck_reglas_motor_accion'),
+        db.CheckConstraint("accion IN ('CREAR','BORRAR')", name='ck_reglas_motor_accion'),
         db.CheckConstraint("efecto IN ('BLOQUEAR','ADVERTIR')", name='ck_reglas_motor_efecto'),
         db.Index('idx_reglas_motor_accion_sujeto', 'accion', 'sujeto'),
         {'schema': 'public'}
@@ -91,7 +91,7 @@ class ReglaMotor(db.Model):
 
     accion = db.Column(
         db.String(10), nullable=False,
-        comment='Acción evaluada: CREAR | INICIAR | FINALIZAR | BORRAR'
+        comment='Acción evaluada: CREAR | BORRAR'
     )
     sujeto = db.Column(
         db.String(200), nullable=False,

@@ -24,7 +24,7 @@ from app.models.tipos_tramites import TipoTramite
 from app.models.tipos_tareas import TipoTarea
 from app.models.documentos_tarea import DocumentoTarea
 from app.utils.permisos import verificar_acceso_expediente
-from app.services.assembler import evaluar_multi, auditar_multi
+from app.services.assembler import evaluar_multi
 from app.services.invariantes_esftt import check_invariante
 
 bp = Blueprint('api_bc', __name__, url_prefix='/api/bc')
@@ -45,43 +45,6 @@ def _advertencia(res_eval):
     if res_eval and res_eval.nivel == 'ADVERTIR':
         return {'motivo': res_eval.motivo, 'norma_compilada': res_eval.norma_compilada, 'url_norma': res_eval.url_norma}
     return None
-
-
-def _certs_auto_para_fase(tipo_fase) -> list:
-    """
-    Devuelve los códigos de TipoDocumento con origen='INTERNO' requeridos por
-    alguna tarea de los trámites de esta fase (FaseTramite → TramiteTarea → TipoDocumento).
-    """
-    from app.models.fases_tramites import FaseTramite
-    from app.models.tramites_tareas import TramiteTarea
-    from app.models.tipos_documentos import TipoDocumento
-    from sqlalchemy.exc import OperationalError, ProgrammingError
-    import logging
-    log = logging.getLogger(__name__)
-
-    try:
-        fases_tramites = FaseTramite.query.filter_by(tipo_fase_id=tipo_fase.id).all()
-        tt_ids = [ft.tipo_tramite_id for ft in fases_tramites]
-        if not tt_ids:
-            return []
-
-        tareas_con_doc = TramiteTarea.query.filter(
-            TramiteTarea.tipo_tramite_id.in_(tt_ids),
-            TramiteTarea.doc_consumido_tipo_id.isnot(None),
-        ).all()
-
-        codigos = []
-        vistos = set()
-        for tarea in tareas_con_doc:
-            from app import db as _db
-            td = _db.session.get(TipoDocumento, tarea.doc_consumido_tipo_id)
-            if td and td.origen == 'INTERNO' and td.codigo not in vistos:
-                codigos.append(td.codigo)
-                vistos.add(td.codigo)
-        return codigos
-    except (OperationalError, ProgrammingError) as exc:
-        log.warning('_certs_auto_para_fase: error consultando BD: %s', exc)
-        return []
 
 
 # ============================================
@@ -150,23 +113,6 @@ def crear_fase(sol_id):
 
     fase = Fase(solicitud_id=sol_id, tipo_fase_id=tipo_fase_id)
     db.session.add(fase)
-    db.session.flush()  # necesario para tener fase.id antes del commit
-
-    codigos_cert = _certs_auto_para_fase(tipo_fase)
-    if codigos_cert:
-        auditoria = auditar_multi('CREAR', sol.expediente,
-                                  objeto={'solicitud': sol, 'tipo_fase': tipo_fase})
-        for tipo_cert in codigos_cert:
-            try:
-                from app.services.generador_cert import generar_certificado_fase
-                generar_certificado_fase(sol.expediente, fase, auditoria, tipo_cert)
-            except Exception as exc:
-                import logging
-                logging.getLogger(__name__).error(
-                    'crear_fase: error generando cert %s para fase %s: %s',
-                    tipo_cert, fase.id, exc
-                )
-
     db.session.commit()
 
     return jsonify({'ok': True, 'id': fase.id, 'advertencia': _advertencia(res_eval)})
@@ -257,14 +203,10 @@ def editar_fase(fase_id):
     doc_resultado_raw = request.form.get('documento_resultado_id')
     nuevo_doc_resultado_id = int(doc_resultado_raw) if doc_resultado_raw else None
 
-    # Motor FINALIZAR cuando documento_resultado_id transiciona None → valor
     if nuevo_doc_resultado_id and fase.documento_resultado_id is None:
         doc = Documento.query.get(nuevo_doc_resultado_id)
         if not doc or doc.expediente_id != fase.solicitud.expediente_id:
             return jsonify({'ok': False, 'error': 'Documento no válido para este expediente'}), 422
-        res_eval = evaluar_multi('FINALIZAR', fase.solicitud.expediente, objeto=fase)
-        if not res_eval.permitido:
-            return _bloqueo(res_eval)
 
     try:
         resultado_id = request.form.get('resultado_fase_id')
@@ -415,23 +357,8 @@ def borrar_tarea(tarea_id):
 
 
 # ============================================
-# ENDPOINTS POST — ACCIONES contextuales (INICIAR / FINALIZAR)
+# ENDPOINTS POST — ACCIONES FINALIZAR
 # ============================================
-
-@bp.route('/solicitud/<int:sol_id>/iniciar', methods=['POST'])
-@login_required
-def iniciar_solicitud(sol_id):
-    sol = Solicitud.query.get_or_404(sol_id)
-    resultado = verificar_acceso_expediente(sol.expediente, 'editar')
-    if resultado:
-        return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
-    if sol.fases:
-        return jsonify({'ok': False, 'error': 'La solicitud ya tiene fases en trámite'}), 422
-    res_eval = evaluar_multi('INICIAR', sol.expediente, objeto=sol)
-    if not res_eval.permitido:
-        return _bloqueo(res_eval)
-    return jsonify({'ok': True, 'nivel': res_eval.nivel, 'motivo': res_eval.motivo, 'norma_compilada': res_eval.norma_compilada, 'url_norma': res_eval.url_norma})
-
 
 @bp.route('/solicitud/<int:sol_id>/finalizar', methods=['POST'])
 @login_required
@@ -442,25 +369,7 @@ def finalizar_solicitud(sol_id):
         return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
     if sol.estado == 'RESUELTA':
         return jsonify({'ok': False, 'error': 'La solicitud ya está resuelta'}), 422
-    res_eval = evaluar_multi('FINALIZAR', sol.expediente, objeto=sol)
-    if not res_eval.permitido:
-        return _bloqueo(res_eval)
-    return jsonify({'ok': True, 'nivel': res_eval.nivel, 'motivo': res_eval.motivo, 'norma_compilada': res_eval.norma_compilada, 'url_norma': res_eval.url_norma})
-
-
-@bp.route('/fase/<int:fase_id>/iniciar', methods=['POST'])
-@login_required
-def iniciar_fase(fase_id):
-    fase = Fase.query.get_or_404(fase_id)
-    resultado = verificar_acceso_expediente(fase.solicitud.expediente, 'editar')
-    if resultado:
-        return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
-    if not fase.planificada:
-        return jsonify({'ok': False, 'error': 'La fase ya está en curso'}), 422
-    res_eval = evaluar_multi('INICIAR', fase.solicitud.expediente, objeto=fase)
-    if not res_eval.permitido:
-        return _bloqueo(res_eval)
-    return jsonify({'ok': True, 'nivel': res_eval.nivel, 'motivo': res_eval.motivo, 'norma_compilada': res_eval.norma_compilada, 'url_norma': res_eval.url_norma})
+    return jsonify({'ok': True})
 
 
 @bp.route('/fase/<int:fase_id>/finalizar', methods=['POST'])
@@ -472,27 +381,7 @@ def finalizar_fase(fase_id):
         return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
     if fase.finalizada:
         return jsonify({'ok': False, 'error': 'La fase ya está finalizada'}), 422
-
-    res_eval = evaluar_multi('FINALIZAR', fase.solicitud.expediente, objeto=fase)
-    if not res_eval.permitido:
-        return _bloqueo(res_eval)
-
-    return jsonify({'ok': True, 'nivel': res_eval.nivel, 'motivo': res_eval.motivo, 'norma_compilada': res_eval.norma_compilada, 'url_norma': res_eval.url_norma})
-
-
-@bp.route('/tramite/<int:tram_id>/iniciar', methods=['POST'])
-@login_required
-def iniciar_tramite(tram_id):
-    tramite = Tramite.query.get_or_404(tram_id)
-    resultado = verificar_acceso_expediente(tramite.fase.solicitud.expediente, 'editar')
-    if resultado:
-        return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
-    if not tramite.planificado:
-        return jsonify({'ok': False, 'error': 'El trámite ya está en curso'}), 422
-    res_eval = evaluar_multi('INICIAR', tramite.fase.solicitud.expediente, objeto=tramite)
-    if not res_eval.permitido:
-        return _bloqueo(res_eval)
-    return jsonify({'ok': True, 'nivel': res_eval.nivel, 'motivo': res_eval.motivo, 'norma_compilada': res_eval.norma_compilada, 'url_norma': res_eval.url_norma})
+    return jsonify({'ok': True})
 
 
 @bp.route('/tramite/<int:tram_id>/finalizar', methods=['POST'])
@@ -504,25 +393,7 @@ def finalizar_tramite(tram_id):
         return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
     if tramite.finalizado:
         return jsonify({'ok': False, 'error': 'El trámite ya está finalizado'}), 422
-    res_eval = evaluar_multi('FINALIZAR', tramite.fase.solicitud.expediente, objeto=tramite)
-    if not res_eval.permitido:
-        return _bloqueo(res_eval)
-    return jsonify({'ok': True, 'nivel': res_eval.nivel, 'motivo': res_eval.motivo, 'norma_compilada': res_eval.norma_compilada, 'url_norma': res_eval.url_norma})
-
-
-@bp.route('/tarea/<int:tarea_id>/iniciar', methods=['POST'])
-@login_required
-def iniciar_tarea(tarea_id):
-    tarea = Tarea.query.get_or_404(tarea_id)
-    resultado = verificar_acceso_expediente(tarea.tramite.fase.solicitud.expediente, 'editar')
-    if resultado:
-        return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
-    if not tarea.planificada:
-        return jsonify({'ok': False, 'error': 'La tarea ya está en curso o ejecutada'}), 422
-    res_eval = evaluar_multi('INICIAR', tarea.tramite.fase.solicitud.expediente, objeto=tarea)
-    if not res_eval.permitido:
-        return _bloqueo(res_eval)
-    return jsonify({'ok': True, 'nivel': res_eval.nivel, 'motivo': res_eval.motivo, 'norma_compilada': res_eval.norma_compilada, 'url_norma': res_eval.url_norma})
+    return jsonify({'ok': True})
 
 
 @bp.route('/tarea/<int:tarea_id>/finalizar', methods=['POST'])
@@ -539,8 +410,5 @@ def finalizar_tarea(tarea_id):
     if res_inv:
         return _bloqueo(res_inv)
 
-    res_eval = evaluar_multi('FINALIZAR', tarea.tramite.fase.solicitud.expediente, objeto=tarea)
-    if not res_eval.permitido:
-        return _bloqueo(res_eval)
-    return jsonify({'ok': True, 'nivel': res_eval.nivel, 'motivo': res_eval.motivo, 'norma_compilada': res_eval.norma_compilada, 'url_norma': res_eval.url_norma})
+    return jsonify({'ok': True})
 

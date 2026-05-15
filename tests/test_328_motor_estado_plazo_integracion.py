@@ -57,16 +57,16 @@ def _crear_fase_consultas(db, solicitud, tipo_fase_consultas, fecha_admin):
 
 
 def _insertar_regla_estado_plazo(db, sujeto_patron, valor_bloqueo):
-    """Inserta ReglaMotor + CondicionRegla: FINALIZAR bloqueado si estado_plazo == valor_bloqueo."""
+    """Inserta ReglaMotor + CondicionRegla: BORRAR bloqueado si estado_plazo == valor_bloqueo."""
     from app.models.motor_reglas import ReglaMotor, CondicionRegla, CatalogoVariable
     var = CatalogoVariable.query.filter_by(nombre='estado_plazo').first()
     assert var is not None, 'catalogo_variables sin estado_plazo — seed pendiente'
 
     regla = ReglaMotor(
-        accion='FINALIZAR',
+        accion='BORRAR',
         sujeto=sujeto_patron,
         efecto='BLOQUEAR',
-        descripcion=f'Test #328: bloquear FINALIZAR cuando estado_plazo={valor_bloqueo}',
+        descripcion=f'Test #328: bloquear BORRAR cuando estado_plazo={valor_bloqueo}',
     )
     db.session.add(regla)
     db.session.flush()
@@ -127,8 +127,8 @@ def expediente_328(app_ctx, tipos_328):
 
 def test_evaluar_multi_bloquea_cuando_estado_plazo_vencido(app_ctx, tipos_328, expediente_328):
     """
-    evaluar_multi('FINALIZAR', exp, fase) devuelve BLOQUEAR cuando:
-      - Existe ReglaMotor: FINALIZAR/estado_plazo==VENCIDO → BLOQUEAR
+    evaluar_multi('BORRAR', exp, fase) devuelve BLOQUEAR cuando:
+      - Existe ReglaMotor: BORRAR/estado_plazo==VENCIDO → BLOQUEAR
       - fecha_admin=2024-01-01 + _hoy=2025-05-01 → VENCIDO (>30 días naturales)
     """
     from app import db
@@ -142,7 +142,7 @@ def test_evaluar_multi_bloquea_cuando_estado_plazo_vencido(app_ctx, tipos_328, e
 
     with patch('app.services.plazos._hoy', return_value=date(2025, 5, 1)), \
          patch('app.services.plazos._obtener_inhabiles_bd', return_value=frozenset()):
-        resultado = evaluar_multi('FINALIZAR', expediente_328, fase)
+        resultado = evaluar_multi('BORRAR', expediente_328, fase)
 
     assert not resultado.permitido, (
         'Se esperaba BLOQUEAR (estado_plazo=VENCIDO); obtenido permitido=True'
@@ -170,7 +170,7 @@ def test_evaluar_multi_permite_cuando_estado_plazo_en_plazo(app_ctx, tipos_328, 
 
     with patch('app.services.plazos._hoy', return_value=date(2025, 5, 1)), \
          patch('app.services.plazos._obtener_inhabiles_bd', return_value=frozenset()):
-        resultado = evaluar_multi('FINALIZAR', expediente_328, fase)
+        resultado = evaluar_multi('BORRAR', expediente_328, fase)
 
     assert resultado.permitido, (
         'Se esperaba PERMITIR (estado_plazo=EN_PLAZO); obtenido permitido=False'
