@@ -20,7 +20,7 @@ ni el modo "accept edits". Evitarlos cambiando el patrón.
 | `allow reading from <ruta>\` / `allow access to <ruta>\` | Ruta con **backslash** Windows en comando Bash (p. ej. `app\models\`) | En Bash (MSYS2) las rutas van con `/`. Usar siempre `app/models/`, nunca `app\models\` |
 | `cd with two or more directory arguments` | `cd ruta1 ruta2` — ocurre al partir una ruta por espacios o pasar dos argumentos accidentalmente | Un solo argumento; entrecomillar si hay espacios: `cd "/d/ruta con espacios"` |
 | `contains shell syntax that cannot be statically analyzed` | Bucle `while/for/until` en una sola línea con `;` como separador, **o** variable expandida dentro de patrón con comillas mixtas (`"...'$var'..."`) | `Write` el script completo a `docs_prueba/temp/script.sh` → `bash /d/BDDAT/docs_prueba/temp/script.sh` |
-| `Contains shell syntax (string) that cannot be statically analyzed` | `$()` dentro del valor de un flag de `gh` u otro comando: `gh ... --comment "$(cat fichero)"` | Usar PowerShell MCP: `$var = Get-Content fichero -Raw` → `gh ... --comment $var` |
+| `Contains shell syntax (string) that cannot be statically analyzed` | `$()` dentro del valor de un flag de `gh` u otro comando: `gh ... --comment "$(cat fichero)"` | Separar: `gh issue comment N --body-file fichero` (añade el comentario) + `gh issue close N` (cierra sin comentario) |
 
 ---
 
