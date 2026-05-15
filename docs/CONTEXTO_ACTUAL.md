@@ -4,8 +4,8 @@
 
 ---
 
-**Último cerrado:** #395 — `ConsultaNombrada` `organismos_consulta` (migración seed + SQL corregido para evitar producto cartesiano en JOIN tareas + 11 tests con fixture SAVEPOINT).
+**Último cerrado:** #392 — modelo `Diagnostico` + CB `ContextoAnalisisDocumental` (tabla diagnosticos, `as_contexto_cb()`, 8 tests sin BD).
 
 **Actuales:** —
 
-**Próximo:** #392 (ContextoAnalisisDocumental) · #393 (ContextoRecepcionAlegacion) · #394 (ContextoAnalisisAlegaciones) → desbloqueo #386 (semáforos de plazo en vista BC, M3).
+**Próximo:** #393 (ContextoRecepcionAlegacion) · #394 (ContextoAnalisisAlegaciones) → desbloqueo #386 (semáforos de plazo en vista BC, M3).
