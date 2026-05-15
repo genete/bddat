@@ -53,7 +53,3 @@ class TestCatalogoBaseTrasUpgrade:
         codigos = {n.codigo for n in db_session.query(Norma).filter(Norma.id.in_([3, 4])).all()}
         assert codigos == {'RD1955_2000', 'D9_2011'}
 
-    def test_fases_tramites_count(self, db_session):
-        from app.models import FaseTramite
-        # 25 de seed_catalogo_base/a1b2c3d4e5f6 + 2 de 8deef1de808e = 27
-        assert db_session.query(FaseTramite).count() == 27

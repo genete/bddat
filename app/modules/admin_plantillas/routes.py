@@ -12,9 +12,9 @@ Rutas de formulario:
 - POST /admin/plantillas/<id>/activar — Activar/desactivar plantilla
 
 Endpoints AJAX (cascada ESFTT):
-- GET  /admin/plantillas/api/tipos-solicitud  — Tipos solicitud (filtrar=1: solo whitelist por exp)
-- GET  /admin/plantillas/api/tipos-fase       — Tipos fase (filtrar=1: solo whitelist por sol)
-- GET  /admin/plantillas/api/tipos-tramite    — Tipos trámite (filtrar=1: solo whitelist por fase)
+- GET  /admin/plantillas/api/tipos-solicitud  — Todos los tipos de solicitud
+- GET  /admin/plantillas/api/tipos-fase       — Todos los tipos de fase
+- GET  /admin/plantillas/api/tipos-tramite    — Todos los tipos de trámite
 - GET  /admin/plantillas/api/tokens           — Tokens Capa 1 (stub — Capa 2 en Fase 5)
 - GET  /admin/plantillas/api/fs               — Explorador de servidor restringido a PLANTILLAS_BASE/plantillas/
 """
@@ -29,10 +29,7 @@ from flask_login import login_required
 from app import db
 from app.decorators import role_required
 from app.models.consultas_nombradas import ConsultaNombrada
-from app.models.expedientes_solicitudes import ExpedienteSolicitud
-from app.models.fases_tramites import FaseTramite
 from app.models.plantillas import Plantilla
-from app.models.solicitudes_fases import SolicitudFase
 from app.models.tipos_documentos import TipoDocumento
 from app.models.tipos_expedientes import TipoExpediente
 from app.models.tipos_fases import TipoFase
@@ -195,26 +192,8 @@ def _selects_context():
 @login_required
 @role_required('ADMIN', 'SUPERVISOR')
 def api_tipos_solicitud():
-    """
-    Devuelve tipos de solicitud disponibles.
-    Si filtrar=1 y tipo_expediente_id dado: solo los de la whitelist expedientes_solicitudes.
-    Sin filtro: todos.
-    """
-    tipo_expediente_id = request.args.get('tipo_expediente_id', type=int)
-    filtrar = request.args.get('filtrar') == '1'
-
-    if filtrar and tipo_expediente_id:
-        tipos = (
-            TipoSolicitud.query
-            .join(ExpedienteSolicitud,
-                  ExpedienteSolicitud.tipo_solicitud_id == TipoSolicitud.id)
-            .filter(ExpedienteSolicitud.tipo_expediente_id == tipo_expediente_id)
-            .order_by(TipoSolicitud.siglas)
-            .all()
-        )
-    else:
-        tipos = TipoSolicitud.query.order_by(TipoSolicitud.siglas).all()
-
+    """Devuelve todos los tipos de solicitud disponibles."""
+    tipos = TipoSolicitud.query.order_by(TipoSolicitud.siglas).all()
     return jsonify([
         {'id': t.id, 'texto': f'{t.siglas} — {t.descripcion}'}
         for t in tipos
@@ -225,25 +204,8 @@ def api_tipos_solicitud():
 @login_required
 @role_required('ADMIN', 'SUPERVISOR')
 def api_tipos_fase():
-    """
-    Devuelve tipos de fase disponibles.
-    Si filtrar=1 y tipo_solicitud_id dado: solo los de la whitelist solicitudes_fases.
-    """
-    tipo_solicitud_id = request.args.get('tipo_solicitud_id', type=int)
-    filtrar = request.args.get('filtrar') == '1'
-
-    if filtrar and tipo_solicitud_id:
-        tipos = (
-            TipoFase.query
-            .join(SolicitudFase,
-                  SolicitudFase.tipo_fase_id == TipoFase.id)
-            .filter(SolicitudFase.tipo_solicitud_id == tipo_solicitud_id)
-            .order_by(TipoFase.nombre)
-            .all()
-        )
-    else:
-        tipos = TipoFase.query.order_by(TipoFase.nombre).all()
-
+    """Devuelve todos los tipos de fase disponibles."""
+    tipos = TipoFase.query.order_by(TipoFase.nombre).all()
     return jsonify([
         {'id': t.id, 'texto': t.nombre}
         for t in tipos
@@ -254,25 +216,8 @@ def api_tipos_fase():
 @login_required
 @role_required('ADMIN', 'SUPERVISOR')
 def api_tipos_tramite():
-    """
-    Devuelve tipos de trámite disponibles.
-    Si filtrar=1 y tipo_fase_id dado: solo los de la whitelist fases_tramites.
-    """
-    tipo_fase_id = request.args.get('tipo_fase_id', type=int)
-    filtrar = request.args.get('filtrar') == '1'
-
-    if filtrar and tipo_fase_id:
-        tipos = (
-            TipoTramite.query
-            .join(FaseTramite,
-                  FaseTramite.tipo_tramite_id == TipoTramite.id)
-            .filter(FaseTramite.tipo_fase_id == tipo_fase_id)
-            .order_by(TipoTramite.nombre)
-            .all()
-        )
-    else:
-        tipos = TipoTramite.query.order_by(TipoTramite.nombre).all()
-
+    """Devuelve todos los tipos de trámite disponibles."""
+    tipos = TipoTramite.query.order_by(TipoTramite.nombre).all()
     return jsonify([
         {'id': t.id, 'texto': t.nombre}
         for t in tipos

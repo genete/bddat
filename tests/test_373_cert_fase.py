@@ -260,14 +260,3 @@ def test_cert_pdf_existe_en_disco(app_ctx, ctx):
     assert os.path.getsize(cert.ruta_pdf) > 0
 
 
-# ---------------------------------------------------------------------------
-# E) _certs_auto_para_fase devuelve CERT_FIN_INSTRUCCION para RESOLUCION
-# ---------------------------------------------------------------------------
-
-def test_certs_auto_para_fase_resolucion(app_ctx, ctx):
-    """_certs_auto_para_fase devuelve ['CERT_FIN_INSTRUCCION'] para la fase RESOLUCION."""
-    from app.routes.api_bc import _certs_auto_para_fase
-
-    tipo_fase = ctx['tf_resolucion']
-    codigos = _certs_auto_para_fase(tipo_fase)
-    assert 'CERT_FIN_INSTRUCCION' in codigos

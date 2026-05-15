@@ -7,10 +7,6 @@ Uso en rutas Flask:
     from app.services.assembler import build
     from app.services.motor_reglas import evaluar
 
-    # Para FINALIZAR un objeto existente (Fase, Tramite...):
-    sujeto, variables = build(expediente, objeto=fase)
-    resultado = evaluar('FINALIZAR', sujeto, variables)
-
     # Para CREAR (objeto aún no existe):
     sujeto, variables = build(expediente, objeto={'solicitud': sol, 'tipo_fase': tipo_fase})
     resultado = evaluar('CREAR', sujeto, variables)
@@ -280,7 +276,7 @@ def evaluar_multi(accion: str, expediente: Any, objeto: Any = None):
     o el último resultado (PERMITIDO) si ninguno bloquea.
 
     Args:
-        accion:     Acción a evaluar ('CREAR', 'INICIAR', 'FINALIZAR', 'BORRAR').
+        accion:     Acción a evaluar ('CREAR' | 'BORRAR').
         expediente: Instancia de Expediente.
         objeto:     Objeto actuado (misma semántica que build()).
 
