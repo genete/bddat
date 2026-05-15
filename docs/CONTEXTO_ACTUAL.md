@@ -8,4 +8,4 @@
 
 **Actuales:** —
 
-**Próximo:** #387 (refactoring motor+whitelists, M3) → #289 → #386 (semáforos de plazo en vista BC, M3).
+**Próximo:** #388 (exponer tipo_sujeto_solicitado, prerrequisito) → #387 (refactoring motor+whitelists, M3) → #289 → #386 (semáforos de plazo en vista BC, M3).
