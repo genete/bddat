@@ -4,8 +4,8 @@
 
 ---
 
-**Último cerrado:** #391 — OrganismoExpediente (modelo + migración + `as_contexto_cb()`), `ContextoConsultaSeparata`, interface `tarea` en generador, 11 tests. Issues derivados: #395 (ConsultaNombrada organismos_consulta), #396 (UI gestión organismos_expediente, M2 backlog).
+**Último cerrado:** #395 — `ConsultaNombrada` `organismos_consulta` (migración seed + SQL corregido para evitar producto cartesiano en JOIN tareas + 11 tests con fixture SAVEPOINT).
 
 **Actuales:** —
 
-**Próximo:** #395 (ConsultaNombrada `organismos_consulta`) · #392 (ContextoAnalisisDocumental) · #393 (ContextoRecepcionAlegacion) · #394 (ContextoAnalisisAlegaciones) → desbloqueo #386 (semáforos de plazo en vista BC, M3).
+**Próximo:** #392 (ContextoAnalisisDocumental) · #393 (ContextoRecepcionAlegacion) · #394 (ContextoAnalisisAlegaciones) → desbloqueo #386 (semáforos de plazo en vista BC, M3).
