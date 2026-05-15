@@ -72,7 +72,7 @@ def generar_escrito(plantilla, expediente, db_session, tarea=None) -> bytes:
     # Capa 2: Context Builder opcional
     if plantilla.contexto_clase:
         builder = _cargar_context_builder(plantilla.contexto_clase)
-        ctx.update(builder(expediente, db_session).get_contexto())
+        ctx.update(builder(expediente, db_session, tarea=tarea).get_contexto())
 
     # Consultas nombradas: se añaden al contexto con su nombre como clave
     ctx.update(_ejecutar_consultas(plantilla, expediente, db_session))
