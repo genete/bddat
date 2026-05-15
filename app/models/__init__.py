@@ -77,6 +77,9 @@ from app.models.certificados_fase import CertificadoFase
 # Diagnóstico documental de tareas ANALIZAR (#392 — depende de Documento)
 from app.models.diagnosticos import Diagnostico
 
+# Alegante en trámites RECEPCION_ALEGACION (#393 — depende de Tramite, Entidad)
+from app.models.alegantes import Alegante
+
 # Organismos consultados por expediente (#391 — depende de Expediente, Entidad, Documento, Tramite)
 from app.models.organismos_expediente import OrganismoExpediente
 
@@ -140,4 +143,6 @@ __all__ = [
     'Diagnostico',
     # Organismos consultados por expediente
     'OrganismoExpediente',
+    # Alegante en trámites RECEPCION_ALEGACION
+    'Alegante',
 ]
