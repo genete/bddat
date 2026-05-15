@@ -6,7 +6,7 @@
 > **Audiencia:** Técnico de sistemas + Claude Code.
 > El Supervisor gestiona plantillas; esta guía es para el responsable técnico.
 >
-> **Diseño de referencia:** `docs/DISEÑO_SUBSISTEMA_DOCUMENTAL.md`
+> **Diseño de referencia:** `docs/referencia/DISEÑO_GENERACION_ESCRITOS.md`
 
 ---
 
@@ -54,79 +54,97 @@ Cuando el Supervisor necesita un campo en la plantilla que NO está en el catál
 
 ## Estructura de un Context Builder
 
+Todo CB vive en `app/services/context_builders/` con nombre en snake_case derivado de la clase.
+La clase implementa exactamente dos métodos públicos:
+
 ```python
 # app/services/context_builders/notificacion_organismo.py
 
 from app.models import Documento, TipoDocumento
-from app.services.escritos import ContextoBaseExpediente
 
 class ContextoNotificacionOrganismo:
     """
     Context Builder para escritos de notificación a organismos consultados.
 
-    Campos adicionales que aporta (ver consultas_nombradas en plantillas):
+    Campos adicionales que aporta:
     - organismo_nombre: Nombre del organismo consultado
+    - organismo_nif: NIF del organismo
     - fecha_respuesta: Fecha administrativa del documento de respuesta
     - plazo_alegaciones: Plazo legal para presentar alegaciones (texto)
     - fecha_limite: Fecha límite calculada para el plazo
     """
 
-    def get_contexto(self, tarea_id: int) -> dict:
-        """Devuelve el contexto enriquecido para la tarea indicada."""
-        from app.models import Tarea
+    def __init__(self, expediente, db_session):
+        self._expediente = expediente
+        self._db = db_session
 
-        # 1. Subir el árbol ESFTT hasta el nivel necesario
-        tarea = Tarea.query.get_or_404(tarea_id)
-        tramite = tarea.tramite
-        fase = tramite.fase
-        solicitud = fase.solicitud
-        expediente = solicitud.expediente
-
-        # 2. Partir siempre del contexto base
-        contexto = ContextoBaseExpediente.get_contexto(expediente.id)
-
-        # 3. Enriquecer con campos específicos
+    def get_contexto(self) -> dict:
+        """Devuelve los campos adicionales para esta plantilla."""
         doc_respuesta = (Documento.query
             .join(TipoDocumento)
             .filter(
                 TipoDocumento.codigo == 'RESPUESTA_ORGANISMO',
-                Documento.expediente_id == expediente.id
+                Documento.expediente_id == self._expediente.id
             )
             .order_by(Documento.fecha_administrativa.desc())
             .first())
 
         if doc_respuesta and doc_respuesta.organismo_vinculado:
-            organismo = doc_respuesta.organismo_vinculado.organismo
-            contexto.update({
-                'organismo_nombre': organismo.nombre,
-                'organismo_nif': organismo.nif,
-                'fecha_respuesta': doc_respuesta.fecha_administrativa.strftime('%d/%m/%Y'),
-                'plazo_alegaciones': '15 días hábiles',
-                'fecha_limite': '',  # calculado por plazos.py cuando esté en M3
-            })
+            return doc_respuesta.organismo_vinculado.as_contexto_cb()
 
-        return contexto
+        return {}
 ```
+
+El generador llama al CB así (no hay que registrarlo en ningún dict):
+
+```python
+# app/services/generador_escritos.py (infraestructura — no modificar)
+builder = _cargar_context_builder(plantilla.contexto_clase)
+ctx.update(builder(expediente, db_session).get_contexto())
+```
+
+`_cargar_context_builder` resuelve el módulo por convenio snake_case automáticamente:
+
+- `ContextoNotificacionOrganismo` → `app.services.context_builders.contexto_notificacion_organismo`
+- `ContextoConsultaSeparata` → `app.services.context_builders.consulta_separata`
+
+**No hay dict de registro que mantener.** Basta con crear el fichero en el paquete.
 
 ---
 
-## Registrar el Context Builder en el dispatcher
+## Convención `as_contexto_cb()`
+
+Todo modelo que aporte datos enriquecidos a un CB implementa:
 
 ```python
-# app/services/escritos.py → diccionario CONTEXT_BUILDERS
-
-CONTEXT_BUILDERS = {
-    'ContextoNotificacionOrganismo': ContextoNotificacionOrganismo,
-    # añadir nuevos aquí
-}
-
-def get_contexto(plantilla: Plantilla, tarea_id: int) -> dict:
-    """Devuelve el contexto apropiado según la plantilla."""
-    if plantilla.contexto_clase and plantilla.contexto_clase in CONTEXT_BUILDERS:
-        builder = CONTEXT_BUILDERS[plantilla.contexto_clase]()
-        return builder.get_contexto(tarea_id)
-    return ContextoBaseExpediente.get_contexto_desde_tarea(tarea_id)
+def as_contexto_cb(self) -> dict:
+    """Devuelve el fragmento de contexto que este modelo aporta a una plantilla."""
+    ...
 ```
+
+El CB es delgado: navega la cadena ESFTT hasta el modelo relevante y llama a su método.
+La lógica de serialización vive en el modelo, no en el CB:
+
+```python
+def get_contexto(self) -> dict:
+    # El CB delega en el modelo; no serializa aquí
+    organismo_exp = self._expediente.organismos[0]
+    return organismo_exp.as_contexto_cb()
+```
+
+Esta convención **no** aplica a los modelos de Capa 1 (`Expediente`, `Titular`, `Proyecto`),
+que son accedidos directamente por `ContextoBaseExpediente`.
+
+---
+
+## Context Builders disponibles
+
+| Clase | Fichero | Trámite | Estado | Issue |
+|-------|---------|---------|--------|-------|
+| `ContextoConsultaSeparata` | `consulta_separata.py` | `CONSULTA_SEPARATA` | Pendiente — verificar `OrganismoExpediente` | #391 |
+| `ContextoAnalisisDocumental` | `analisis_documental.py` | `ANALISIS_DOCUMENTAL` | Bloqueado — tabla diagnosticos no diseñada | #392 |
+| `ContextoRecepcionAlegacion` | `recepcion_alegacion.py` | `RECEPCION_ALEGACION` | Bloqueado — modelo alegante no definido | #393 |
+| `ContextoAnalisisAlegaciones` | `analisis_alegaciones.py` | `ANALISIS_ALEGACIONES` | Bloqueado — depende de #393 | #394 |
 
 ---
 
@@ -160,19 +178,20 @@ def downgrade():
 
 | Campo | Descripción |
 |-------|-------------|
-| `expediente_codigo` | AT-XXXXX |
-| `expediente_tipo` | Tipo de expediente (Distribución, Transporte...) |
+| `expediente_id` | ID técnico interno |
+| `numero_at` | Número administrativo (AT-XXXXX) |
 | `titular_nombre` | Nombre o razón social del titular |
 | `titular_nif` | NIF/CIF del titular |
-| `titular_direccion` | Dirección postal del titular |
-| `titular_municipio` | Municipio del titular |
-| `proyecto_denominacion` | Denominación del proyecto |
-| `proyecto_municipio` | Municipio/s del proyecto |
-| `proyecto_tension` | Tensión nominal (kV) |
-| `proyecto_ia` | Instrumento ambiental (AAI, CA, EXENTO...) |
+| `titular_direccion` | Dirección de notificación preferente |
+| `proyecto_titulo` | Título del proyecto técnico |
+| `proyecto_finalidad` | Finalidad de la instalación |
+| `proyecto_emplazamiento` | Emplazamiento descriptivo |
+| `instrumento_ambiental` | Siglas del instrumento (AAI, AAU, EXENTO...) |
+| `responsable_nombre` | Nombre completo del tramitador asignado |
+| `municipios` | Lista de nombres de municipios afectados (`list[str]`) |
 | `fecha_hoy` | Fecha actual formateada (DD/MM/AAAA) |
 
-*(Lista completa en `app/services/escritos.py` → clase `ContextoBaseExpediente`)*
+*(Fuente: `app/services/escritos.py` → clase `ContextoBaseExpediente`)*
 
 ---
 
@@ -185,25 +204,21 @@ git checkout -b feature/issue-XXX-context-builder-nombre
 # 2. Crear el fichero de la clase
 # app/services/context_builders/nombre.py
 
-# 3. Registrar en el dispatcher
-# app/services/escritos.py → diccionario CONTEXT_BUILDERS
-
-# 4. Añadir la plantilla .docx al repositorio
+# 3. Añadir la plantilla .docx al repositorio
 # app/static/escritos/nombre.docx
 
-# 5. Crear migración manual
+# 4. Crear migración manual
 flask db revision -m "Añadir tipo escrito NOMBRE"
 # Editar manualmente el .py generado con el INSERT
 
-# 6. Commit con todos los ficheros relacionados
+# 5. Commit con todos los ficheros relacionados
 git add app/services/context_builders/nombre.py
-git add app/services/escritos.py
 git add app/static/escritos/nombre.docx
 git add migrations/versions/XXXX_nombre.py
-git commit -m "[SERVICIO]: Añadir Context Builder [nombre] — issue #XXX"
+git commit -m "[SERVICIO] #XXX añadir Context Builder nombre"
 
-# 7. PR contra develop
-gh pr create --title "Context Builder: [nombre]" --body "..."
+# 6. PR contra develop
+gh pr create --title "CB nombre" --body-file /d/BDDAT/docs_prueba/temp/gh_body.md
 ```
 
 ---
@@ -229,5 +244,4 @@ Abrir Claude Code en el proyecto y describir:
 > Los campos que necesito son: [lista de campos y de dónde vienen en el expediente].
 > El escrito se usa en la tarea [tipo_tarea] del trámite [tipo_tramite]."
 
-Claude Code leerá esta guía y creará el Context Builder siguiendo el patrón,
-incluyendo migración, registro en el dispatcher y commit.
+Claude Code leerá esta guía y creará el Context Builder siguiendo el patrón.
