@@ -84,6 +84,12 @@ def _(ctx) -> bool:
     return False
 
 
+@variable('tipo_sujeto_solicitado')
+def _(ctx) -> str | None:
+    tipo = ctx.tipo_sujeto
+    return tipo.codigo if tipo else None
+
+
 @variable('es_solicitud_aac_pura')
 def _(ctx) -> bool:
     """
