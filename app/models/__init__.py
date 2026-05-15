@@ -74,6 +74,9 @@ from app.models.motor_reglas import ReglaMotor, CondicionRegla
 # Certificados de fase (#373 — depende de Expediente, Fase)
 from app.models.certificados_fase import CertificadoFase
 
+# Organismos consultados por expediente (#391 — depende de Expediente, Entidad, Documento, Tramite)
+from app.models.organismos_expediente import OrganismoExpediente
+
 # Mapa semántico de documentos por tarea (#346 — sin FK operacional propia)
 from app.models.tramites_tareas_documentos import TramiteTareaDocumento
 
@@ -130,4 +133,6 @@ __all__ = [
     'CertificadoFase',
     # Mapa semántico de documentos por tarea
     'TramiteTareaDocumento',
+    # Organismos consultados por expediente
+    'OrganismoExpediente',
 ]
