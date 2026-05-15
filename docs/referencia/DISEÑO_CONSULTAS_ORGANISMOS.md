@@ -36,6 +36,8 @@ Inicialmente se contempló separar `organismos_afectados` y `organismos_consulta
 
 ### Estructura de `organismos_expediente`
 
+> **Implementado en #391.** Modelo: `app/models/organismos_expediente.py`
+
 | Campo | Descripción |
 |---|---|
 | `expediente_id` | FK `expedientes.id` |
@@ -44,12 +46,18 @@ Inicialmente se contempló separar `organismos_afectados` y `organismos_consulta
 | `documento_id` | FK `documentos.id` (solo si `via = declaracion_responsable`) |
 | `estado` | Estado del ciclo de vida. Actualización manual por tramitador, con puerta abierta al motor de reglas |
 | `num_iteraciones_organismo` | Contador de trámites `CONSULTA_TRASLADO_ORGANISMO` creados para este organismo. Permite al motor advertir o bloquear si se supera el límite de 1 iteración del bucle de reparos |
+| `tramite_id` | FK `tramites.id` (nullable). Vínculo al trámite `CONSULTA_SEPARATA` creado para este organismo. Necesario para que `ContextoConsultaSeparata` identifique el organismo activo en tramitaciones paralelas |
+| `plazo_legal_dias` | INTEGER (nullable). Plazo legal aplicable capturado en el momento de crear la separata. 30 días con carácter general; 15 si existe AAP previa y la tramitación es solo AAC sin DUP |
 
 **Sobre `organismo_id`:** la tabla `entidades` centraliza todas las entidades del sistema con roles booleanos. Los organismos consultables tienen `rol_consultado = True`. No existe tabla de organismos separada.
 
 **Sobre `estado`:** se actualiza manualmente por el tramitador al registrar el resultado de la tarea ANALIZAR de cada trámite. El campo está diseñado para que el motor de reglas pueda actualizarlo automáticamente en el futuro sin cambios de modelo.
 
 **Sobre `num_iteraciones_organismo`:** se incrementa cada vez que se crea un trámite `CONSULTA_TRASLADO_ORGANISMO` para este registro. El motor puede leerlo para emitir advertencia (soft) o bloqueo (hard) si supera 1.
+
+**Sobre `tramite_id`:** se rellena al crear el trámite `CONSULTA_SEPARATA` asociado al organismo. La unicidad (UNIQUE constraint) garantiza la correspondencia 1:1 tramite↔organismo. Se usa en `ContextoConsultaSeparata` para navegar hasta el organismo desde la tarea activa.
+
+**Sobre `plazo_legal_dias`:** se captura al crear la separata porque el plazo depende del tipo y combinación de autorizaciones del expediente en ese momento. Almacenarlo evita tener que recalcularlo en cada renderizado de plantilla.
 
 ### Estados de `organismos_expediente`
 
@@ -261,7 +269,7 @@ El motor comprueba sobre los trámites de la fase:
 
 - **Diagrama de flujo DUP:** La casuística está analizada y documentada en la sección 6. Pendiente crear diagrama visual equivalente a los de AAP/AAC.
 - **Renombrar tarea ANALISIS → ANALIZAR:** El JSON `ESTRUCTURA_FTT.json` ya usa ANALIZAR (v5.4). Pendiente migrar en base de datos: `UPDATE public.tipos_tareas SET codigo = 'ANALIZAR' WHERE codigo = 'ANALISIS'` (migración manual) y actualizar todas las referencias al código en el motor de reglas y en el código de la aplicación.
-- **Implementación de `organismos_expediente`:** Tabla nueva, migración manual.
+- ~~**Implementación de `organismos_expediente`:** Tabla nueva, migración manual.~~ **HECHO** — #391: modelo + migración + `ContextoConsultaSeparata`.
 - **Redefinición de `REQUERIMIENTO_DE_MEJORA`:** El patrón actualizado es C+A (`ELABORAR → NOTIFICAR → ESPERAR_PLAZO → ANALIZAR`); la respuesta del titular queda en `ESPERAR_PLAZO.documento_producido_id` (ADR-004).
 - **Definición de tipos de trámite** `CONSULTA_SEPARATA`, `CONSULTA_TRASLADO_TITULAR`, `CONSULTA_TRASLADO_ORGANISMO` en el catálogo de tipos.
 - **Cadena de tareas** dentro de los trámites de traslado: `ELABORAR → NOTIFICAR → ESPERAR_PLAZO → ANALIZAR` (patrón C+A).
