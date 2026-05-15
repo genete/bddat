@@ -10,7 +10,7 @@ Uso:
     source venv/Scripts/activate
     python scripts/seed_listado.py
 
-Prerequisito: haber ejecutado scripts/reset_maestros_ftt.py al menos una vez.
+Prerequisito: haber ejecutado `flask db upgrade` (tipos de fase y trámite vienen de migraciones).
 """
 import sys
 import os
