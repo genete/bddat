@@ -33,6 +33,33 @@ Si el commit resuelve un issue, cerrarlo a mano (sin PR no hay auto-close):
 
 ---
 
+## Análisis de impacto previo a refactorizaciones
+
+Ante cualquier cambio de diseño que elimine o cambie el contrato de un concepto
+(tabla, modelo, servicio, función, endpoint, verbo del motor, script...):
+
+**Antes de escribir código**, enumerar todos los consumidores en TODO el sistema
+y clasificar cada uno con una acción:
+
+| Capa | Dónde buscar |
+|------|--------------|
+| Modelos y servicios | `app/models/`, `app/services/` |
+| Rutas y módulos | `app/routes/`, `app/modules/` |
+| Tests | `tests/` |
+| Scripts | `scripts/` — incluyendo prerequisitos documentados entre scripts |
+| Migraciones | `migrations/versions/` |
+| Documentación | `docs/*/*`, `*/README.md`, docstrings de módulo |
+
+Acción para cada consumidor encontrado:
+- **Actualizar** — sigue siendo válido con el nuevo diseño
+- **Eliminar** — asumía algo que ya no existe
+- **Dejar** — zona congelada (historial, ADRs); anotarlo explícitamente
+
+Presentar ese mapa como tabla al usuario y esperar confirmación **antes de implementar**.
+No hay excepciones por "es pequeño" o "es evidente".
+
+---
+
 ## Commits
 
 Formato: `[CATEGORÍA] #N descripción en imperativo`

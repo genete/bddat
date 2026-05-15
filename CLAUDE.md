@@ -11,6 +11,7 @@ Desarrollado para la Consejería de Industria, Energía y Minas (Junta de Andalu
 ## Documentos de referencia
 
 - Antes de escribir código, templates, modelos, migraciones o commits: leer `docs/guias/REGLAS_DESARROLLO.md`
+- Ante refactorizaciones o cambios de diseño: seguir §"Análisis de impacto previo" de `REGLAS_DESARROLLO.md` — presentar tabla de consumidores al usuario antes de escribir código
 - Antes de cualquier comando Bash: leer `docs/guias/REGLAS_BASH.md`
 - Para entender la estructura de docs: leer `docs/README.md`
 - Para entrar en contexto de lo que está vivo: leer **siempre** `docs/CONTEXTO_ACTUAL.md`
