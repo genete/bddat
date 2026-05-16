@@ -21,6 +21,7 @@ ni el modo "accept edits". Evitarlos cambiando el patrón.
 | `cd with two or more directory arguments` | `cd ruta1 ruta2` — ocurre al partir una ruta por espacios o pasar dos argumentos accidentalmente | Un solo argumento; entrecomillar si hay espacios: `cd "/d/ruta con espacios"` |
 | `contains shell syntax that cannot be statically analyzed` | Bucle `while/for/until` en una sola línea con `;` como separador, **o** variable expandida dentro de patrón con comillas mixtas (`"...'$var'..."`) | `Write` el script completo a `docs_prueba/temp/script.sh` → `bash /d/BDDAT/docs_prueba/temp/script.sh` |
 | `Contains shell syntax (string) that cannot be statically analyzed` | `$()` dentro del valor de un flag de `gh` u otro comando: `gh ... --comment "$(cat fichero)"` | Separar: `gh issue comment N --body-file fichero` (añade el comentario) + `gh issue close N` (cierra sin comentario) |
+| `contains ansi_c_string` | Sintaxis `$'\t'`, `$'\n'` u otras secuencias ANSI C en argumentos Bash | Usar Python para procesar JSON/TSV: `Write` script → `python script.py`; o reformular sin `$'...'` |
 
 ---
 
