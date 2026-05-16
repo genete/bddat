@@ -6,11 +6,11 @@
 
 ---
 
-**Último cerrado:** #386 — semáforo de plazo de fase en vistas BC de tarea y fase.
+**Último cerrado:** #297 — logotipo de la Junta incrustado en escritos (función `img()` + ADR-009).
 
 **Actuales:** —
 
-**Próximo:** #300 (primer ítem de la hoja de ruta).
+**Próximo:** #300.
 
 ---
 
@@ -24,8 +24,7 @@
 ### Bloque 1 — Correcciones M2 inmediatas
 
 1. **#300** — dirección de notificación del titular en escritos
-2. **#297** — logotipo de la Junta incrustado en escritos
-3. **#366** — eliminar trámite AUDIENCIA de COMPATIBILIDAD_AMBIENTAL
+2. **#366** — eliminar trámite AUDIENCIA de COMPATIBILIDAD_AMBIENTAL
 
 ### Bloque 2 — Catálogo y documentos internos (fundacional)
 
