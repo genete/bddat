@@ -17,9 +17,9 @@
 ## Hoja de ruta — orden propuesto para próximas sesiones
 
 > Una sesión limpia por ítem. Las dependencias se indican con «(tras #X)».
-> Antes de arrancar: limpieza de GitHub según §4.1 del documento de revisión
-> (cerrar #318, #153, #357, #364; trocear #248; cerrar y reabrir #276; reescribir
-> cuerpos de #297, #324, #365; reetiquetar #365; asignar M3 a #374).
+> Limpieza de GitHub §4.1 completada el 2026-05-16: cerrados #318, #153, #357, #364,
+> #248, #276; reescritos los cuerpos de #297, #332, #283, #324, #365, #247;
+> creados #402-#410; #374 asignado a M3.
 
 ### Bloque 1 — Correcciones M2 inmediatas
 
@@ -38,11 +38,11 @@
 ### Bloque 3 — Modelo de interesados y Context Builders de escritos
 
 9. **#374** — tabla de interesados del expediente y trámite REGISTRO_INTERESADOS
-10. **#nuevo1** — CB `ContextoNotificacionOrganismo` (notificación a organismo consultado)
-11. **#nuevo2** — CB `ContextoResolucion` (escrito de resolución)
-12. **#nuevo3** — CB `ContextoInformacionPublica` (anuncio de información pública)
-13. **#nuevo4** — tablas `catalogo_requerimientos` y `requerimientos_tarea`
-14. **#nuevo5** — CB `ContextoSubsanacion` (requerimiento de subsanación; tras #nuevo4)
+10. **#402** — CB `ContextoNotificacionOrganismo` (notificación a organismo consultado)
+11. **#403** — CB `ContextoResolucion` (escrito de resolución)
+12. **#404** — CB `ContextoInformacionPublica` (anuncio de información pública)
+13. **#405** — tablas `catalogo_requerimientos` y `requerimientos_tarea`
+14. **#406** — CB `ContextoSubsanacion` (requerimiento de subsanación; tras #405)
 
 ### Bloque 4 — Motor de reglas
 
@@ -57,6 +57,12 @@
 
 ### Bloque 6 — Issues con rediseño previo necesario
 
-20. **#276** — compatibilidad de tipos de solicitud como reglas del motor
+20. **#410** — compatibilidad de tipos de solicitud como reglas del motor
 21. **#192** — requisitos documentales por procedimiento
 22. **#174** — permisos blandos con traza en bitácora
+
+### Backlog M3 sin posición en la ruta
+
+Troceo de #248 fuera del recorrido priorizado: **#407** (campo `siglas_escritos`),
+**#408** (checklist documental — posible post-producción), **#409** (regla de tasas;
+tras #408).
