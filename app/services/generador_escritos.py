@@ -80,6 +80,12 @@ def generar_escrito(plantilla, expediente, db_session, tarea=None) -> bytes:
     # Renderizado
     tpl = DocxTemplate(plantilla_path)
 
+    # Función img() para incrustar imágenes desde PLANTILLAS_BASE/recursos/
+    # Uso en plantilla: {{ img('logo.png', '3.5', '1.98') }}
+    from flask import current_app
+    _recursos = os.path.join(current_app.config.get('PLANTILLAS_BASE', ''), 'recursos')
+    ctx['img'] = _fn_imagen(tpl, _recursos)
+
     # Fragmentos insertables: {{r NombreFragmento}} → tpl.new_subdoc(ruta)
     ctx.update(_cargar_fragmentos(tpl, plantilla_path))
 
@@ -190,6 +196,34 @@ def guardar_docx(docx_bytes, ruta_destino) -> str:
 # ------------------------------------------------------------------
 # Helpers privados
 # ------------------------------------------------------------------
+
+def _fn_imagen(tpl, recursos_dir: str):
+    """
+    Devuelve la función img() que las plantillas Jinja2 usan para incrustar imágenes.
+
+    Uso en plantilla .docx:
+        {{ img('logo_portada.png', '3.5', '1.98') }}   — ancho y alto en cm
+        {{ img('firma.png', '4.0') }}                  — solo ancho; alto proporcional
+        {{ img('sello.png') }}                         — tamaño original del fichero
+
+    El fichero se busca en PLANTILLAS_BASE/recursos/<nombre_fichero>.
+    El anclaje lo controla la plantilla (inline, dentro de cuadro de texto, etc.),
+    no esta función — ver ADR-009.
+    """
+    from docxtpl import InlineImage
+    from docx.shared import Cm
+
+    def img(nombre_fichero: str, ancho=None, alto=None) -> InlineImage:
+        ruta = os.path.join(recursos_dir, nombre_fichero)
+        kwargs = {}
+        if ancho is not None:
+            kwargs['width'] = Cm(float(ancho))
+        if alto is not None:
+            kwargs['height'] = Cm(float(alto))
+        return InlineImage(tpl, ruta, **kwargs)
+
+    return img
+
 
 def _ruta_plantilla(ruta_relativa: str) -> str:
     """Resuelve la ruta absoluta de la plantilla dentro de PLANTILLAS_BASE."""
