@@ -112,8 +112,7 @@ def _check_finalizar(sujeto: str, entidad_id: int) -> Optional[EvaluacionResult]
 def _check_finalizar_fase(fase_id: int) -> Optional[EvaluacionResult]:
     from app.models.tipos_tareas import TipoTarea
     from app.models.documentos_tarea import DocumentoTarea
-    from app.models.resultados_documentos import ResultadoDocumento
-    from app.models.tipos_resultado_documentos import TipoResultadoDocumento
+    from app.models.notificaciones import Notificacion
 
     # Una tarea está completa si tiene un vínculo PRODUCIDO en documentos_tarea (ADR-010)
     _tiene_producido = (
@@ -136,19 +135,18 @@ def _check_finalizar_fase(fase_id: int) -> Optional[EvaluacionResult]:
     if tarea_incompleta:
         return _bloquear('Hay tareas sin documento producido en esta fase. Finalice todas las tareas antes de cerrar la fase.')
 
-    # Tarea NOTIFICAR con resultado INCORRECTA bloquea el cierre de la fase (#296)
+    # Tarea NOTIFICAR con resultado INCORRECTA bloquea el cierre de la fase (#418)
     notificar_incorrecta = (
         db.session.query(Tarea)
         .join(Tramite, Tarea.tramite_id == Tramite.id)
         .join(TipoTarea, Tarea.tipo_tarea_id == TipoTarea.id)
         .join(DocumentoTarea, db.and_(DocumentoTarea.tarea_id == Tarea.id,
                                       DocumentoTarea.rol == 'PRODUCIDO'))
-        .join(ResultadoDocumento, ResultadoDocumento.documento_id == DocumentoTarea.documento_id)
-        .join(TipoResultadoDocumento, TipoResultadoDocumento.id == ResultadoDocumento.tipo_resultado_documento_id)
+        .join(Notificacion, Notificacion.documento_id == DocumentoTarea.documento_id)
         .filter(
             Tramite.fase_id == fase_id,
             TipoTarea.codigo == 'NOTIFICAR',
-            TipoResultadoDocumento.efecto_tarea == 'INCORRECTA',
+            Notificacion.resultado == 'INCORRECTA',
         )
         .first()
     )
@@ -161,8 +159,7 @@ def _check_finalizar_fase(fase_id: int) -> Optional[EvaluacionResult]:
 def _check_finalizar_tramite(tramite_id: int) -> Optional[EvaluacionResult]:
     from app.models.tipos_tareas import TipoTarea
     from app.models.documentos_tarea import DocumentoTarea
-    from app.models.resultados_documentos import ResultadoDocumento
-    from app.models.tipos_resultado_documentos import TipoResultadoDocumento
+    from app.models.notificaciones import Notificacion
 
     _tiene_producido = (
         db.session.query(DocumentoTarea.id)
@@ -183,18 +180,17 @@ def _check_finalizar_tramite(tramite_id: int) -> Optional[EvaluacionResult]:
     if tarea_incompleta:
         return _bloquear('Hay tareas sin ejecutar. Finalice todas las tareas antes de cerrar el trámite.')
 
-    # Tarea NOTIFICAR con resultado INCORRECTA bloquea el cierre del trámite (#296)
+    # Tarea NOTIFICAR con resultado INCORRECTA bloquea el cierre del trámite (#418)
     notificar_incorrecta = (
         db.session.query(Tarea)
         .join(TipoTarea, Tarea.tipo_tarea_id == TipoTarea.id)
         .join(DocumentoTarea, db.and_(DocumentoTarea.tarea_id == Tarea.id,
                                       DocumentoTarea.rol == 'PRODUCIDO'))
-        .join(ResultadoDocumento, ResultadoDocumento.documento_id == DocumentoTarea.documento_id)
-        .join(TipoResultadoDocumento, TipoResultadoDocumento.id == ResultadoDocumento.tipo_resultado_documento_id)
+        .join(Notificacion, Notificacion.documento_id == DocumentoTarea.documento_id)
         .filter(
             Tarea.tramite_id == tramite_id,
             TipoTarea.codigo == 'NOTIFICAR',
-            TipoResultadoDocumento.efecto_tarea == 'INCORRECTA',
+            Notificacion.resultado == 'INCORRECTA',
         )
         .first()
     )

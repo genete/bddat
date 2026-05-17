@@ -53,26 +53,32 @@ PISTAS_OBLIGATORIAS = {'SOL'}
 
 # Color canónico de cada estado (§4.1)
 COLOR: dict[str, str] = {
-    'PENDIENTE_TRAMITAR':  'rojo',
-    'PENDIENTE_ESTUDIO':   'rojo',
-    'PENDIENTE_ELABORAR':  'amarillo',
-    'PENDIENTE_NOTIFICAR': 'azul',
-    'PENDIENTE_SUBSANAR':  'gris',
-    'PENDIENTE_PLAZOS':    'gris',
-    'PENDIENTE_CERRAR':    'naranja',
-    'FIN':                 'verde',
+    'PENDIENTE_TRAMITAR':               'rojo',
+    'PENDIENTE_ESTUDIO':                'rojo',
+    'NOTIFICACION_AGOTADA':             'rojo',
+    'PENDIENTE_ELABORAR':               'amarillo',
+    'NOTIFICACION_FALLIDA':             'naranja',
+    'PENDIENTE_CERRAR':                 'naranja',
+    'PENDIENTE_NOTIFICAR':              'azul',
+    'PENDIENTE_RESULTADO_NOTIFICACION': 'azul',
+    'PENDIENTE_SUBSANAR':               'gris',
+    'PENDIENTE_PLAZOS':                 'gris',
+    'FIN':                              'verde',
 }
 
 # Prioridad numérica por §4.2 (1 = más urgente, 10 = menos urgente)
 PRIORIDAD: dict[str, int] = {
-    'PENDIENTE_TRAMITAR':  1,
-    'PENDIENTE_ESTUDIO':   2,
-    'PENDIENTE_ELABORAR':  3,
-    'PENDIENTE_CERRAR':    4,
-    'PENDIENTE_NOTIFICAR': 5,
-    'PENDIENTE_SUBSANAR':  6,
-    'PENDIENTE_PLAZOS':    7,
-    'FIN':                 8,
+    'PENDIENTE_TRAMITAR':               1,
+    'PENDIENTE_ESTUDIO':                2,
+    'NOTIFICACION_AGOTADA':             3,
+    'PENDIENTE_ELABORAR':               3,
+    'NOTIFICACION_FALLIDA':             4,
+    'PENDIENTE_CERRAR':                 4,
+    'PENDIENTE_NOTIFICAR':              5,
+    'PENDIENTE_RESULTADO_NOTIFICACION': 5,
+    'PENDIENTE_SUBSANAR':               6,
+    'PENDIENTE_PLAZOS':                 7,
+    'FIN':                              8,
 }
 
 
@@ -182,14 +188,31 @@ def _estado_tramite(tramite, pista: str) -> tuple[str, int]:
         return ('PENDIENTE_TRAMITAR', 1)
 
     tareas = list(tramite.tareas)
-    tareas_pendientes = [t for t in tareas if not t.ejecutada]
+    tareas_sin_ejecutar = [t for t in tareas if not t.ejecutada]
 
-    if not tareas_pendientes:
-        # Todas las tareas completadas — trámite pendiente de cerrar (transitorio)
-        return ('PENDIENTE_CERRAR', 1)
+    if not tareas_sin_ejecutar:
+        # Todas ejecutadas — verificar notificaciones pendientes o fallidas (#418)
+        estado_notif = _estado_notificaciones_tramite(tareas)
+        if estado_notif:
+            return (estado_notif, 1)
+        return ('PENDIENTE_CERRAR', 1)  # fallback: no debería alcanzarse
 
-    acc = _acumular([_estado_tarea(t, pista) for t in tareas_pendientes])
+    acc = _acumular([_estado_tarea(t, pista) for t in tareas_sin_ejecutar])
     return _mayor_prioridad(acc)
+
+
+def _estado_notificaciones_tramite(tareas) -> Optional[str]:
+    """Detecta tareas NOTIFICAR ejecutadas sin resultado registrado o con resultado fallido."""
+    for t in tareas:
+        if not (t.tipo_tarea and t.tipo_tarea.codigo == 'NOTIFICAR' and t.ejecutada):
+            continue
+        doc = t.documento_producido
+        notif = getattr(doc, 'notificacion', None) if doc else None
+        if notif is None:
+            return 'PENDIENTE_RESULTADO_NOTIFICACION'
+        if notif.resultado == 'INCORRECTA':
+            return 'NOTIFICACION_AGOTADA' if notif.numero_intento == 2 else 'NOTIFICACION_FALLIDA'
+    return None
 
 
 def _estado_tarea(tarea, pista: str) -> tuple[str, int]:
@@ -205,23 +228,16 @@ def _estado_tarea(tarea, pista: str) -> tuple[str, int]:
 
     if tipo == 'ANALIZAR':
         if not tarea.documentos_consumidos:
-            return ('PENDIENTE_TRAMITAR', 1)   # sin doc de entrada: hay que tramitar
-        if not tarea.ejecutada:
-            return ('PENDIENTE_ESTUDIO', 1)    # doc recibido, hay que estudiar y redactar informe
-        return ('PENDIENTE_CERRAR', 1)         # entrada y salida presentes
+            return ('PENDIENTE_TRAMITAR', 1)
+        return ('PENDIENTE_ESTUDIO', 1)    # doc recibido, hay que analizar y redactar informe
 
     if tipo == 'ELABORAR':
-        # Entrada opcional → no hay estado "en espera de documento de entrada"
-        if tarea.ejecutada:
-            return ('PENDIENTE_CERRAR', 1)
         return ('PENDIENTE_ELABORAR', 1)
 
     if tipo == 'NOTIFICAR':
         if not tarea.documentos_consumidos:
             return ('PENDIENTE_TRAMITAR', 1)   # falta doc firmado
-        if not tarea.ejecutada:
-            return ('PENDIENTE_NOTIFICAR', 1)  # doc firmado, falta justificante
-        return ('PENDIENTE_CERRAR', 1)
+        return ('PENDIENTE_NOTIFICAR', 1)      # doc firmado, falta justificante
 
     if tipo == 'ESPERAR_PLAZO':
         return (_estado_esperar_plazo(tarea, pista), 1)
