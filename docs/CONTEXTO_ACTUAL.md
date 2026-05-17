@@ -6,11 +6,11 @@
 
 ---
 
-**Último cerrado:** #377 — poblar columna `descripcion` en `tipos_documentos` con el catálogo ESFTT (50 tipos con guía de fecha administrativa).
+**Último cerrado:** #420 — modelo N:M documento↔tarea: tabla multiusos `documentos_tarea` con campo `rol`, eliminación de las FK `documento_usado_id`/`documento_producido_id` de `tareas` (ADR-010).
 
 **Actuales:** —
 
-**Próximo:** #420.
+**Próximo:** #418.
 
 ---
 
@@ -26,7 +26,7 @@
 ### Bloque 2 — Catálogo y documentos internos (fundacional)
 
 4. ~~**#377** — seed de tipos_documentos del catálogo ESFTT~~ ✓
-5. **#420** — modelo N:M documento↔tarea: tabla multiusos con rol (ADR-010; sustituye a #380 y #376)
+5. ~~**#420** — modelo N:M documento↔tarea: tabla multiusos con rol (ADR-010; sustituye a #380 y #376)~~ ✓
 6. **#418** — tabla `notificaciones`: documento vitaminado para NOTIFICAR (tras #420; sustituye a #378; ver ADR-008)
 7. **#419** — invariante ANALIZAR: bloquear cierre si diagnóstico desfavorable no consumido (tras #418)
 8. **#365** — implementar URI `bddat://` y helper `resolver_url()` (ADR-006)
