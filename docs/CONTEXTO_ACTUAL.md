@@ -10,7 +10,7 @@
 
 **Actuales:** —
 
-**Próximo:** #378.
+**Próximo:** #418.
 
 ---
 
@@ -26,7 +26,7 @@
 ### Bloque 2 — Catálogo y documentos internos (fundacional)
 
 4. ~~**#377** — seed de tipos_documentos del catálogo ESFTT~~ ✓
-5. **#378** — seed de resultados válidos de notificación (tras #377)
+5. **#418** — tabla `notificaciones`: documento vitaminado para NOTIFICAR (sustituye a #378; ver ADR-008)
 6. **#380** — ADR-008: decisión sobre la tabla documentos_tarea
 7. **#365** — implementar URI `bddat://` y helper `resolver_url()` (ADR-006)
 8. **#362** — certificado de plazo cumplido (tras #365; absorbe la limpieza de #357)
