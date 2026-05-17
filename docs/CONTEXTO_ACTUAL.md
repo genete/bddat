@@ -6,24 +6,21 @@
 
 ---
 
-**Último cerrado:** #297 — logotipo de la Junta incrustado en escritos (función `img()` + ADR-009).
+**Último cerrado:** #300 — dirección de notificación del titular en escritos (`ContextoBaseExpediente`, dict granular `titular_dir`).
 
 **Actuales:** —
 
-**Próximo:** #300.
+**Próximo:** #366.
 
 ---
 
 ## Hoja de ruta — orden propuesto para próximas sesiones
 
 > Una sesión limpia por ítem. Las dependencias se indican con «(tras #X)».
-> Limpieza de GitHub §4.1 completada el 2026-05-16: cerrados #318, #153, #357, #364,
-> #248, #276; reescritos los cuerpos de #297, #332, #283, #324, #365, #247;
-> creados #402-#410; #374 asignado a M3.
 
 ### Bloque 1 — Correcciones M2 inmediatas
 
-1. **#300** — dirección de notificación del titular en escritos
+1. ~~**#300** — dirección de notificación del titular en escritos~~ ✓
 2. **#366** — eliminar trámite AUDIENCIA de COMPATIBILIDAD_AMBIENTAL
 
 ### Bloque 2 — Catálogo y documentos internos (fundacional)
