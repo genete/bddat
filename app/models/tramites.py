@@ -94,9 +94,10 @@ class Tramite(db.Model):
     @property
     def finalizado(self):
         """True si todas las tareas con tipos documentales tienen documento producido
-        y ninguna tarea NOTIFICAR tiene resultado INCORRECTA (#296).
+        y toda tarea NOTIFICAR tiene resultado CORRECTA registrado en notificaciones.
 
         ESPERAR_PLAZO se excluye — su completitud la evalúa plazos.py via ContextAssembler.
+        NOTIFICAR ejecutada sin fila en notificaciones → INDIFERENTE → no finalizado (#418).
         """
         _requieren = {'ANALIZAR', 'ELABORAR', 'NOTIFICAR'}
         for t in self.tareas:
@@ -105,7 +106,7 @@ class Tramite(db.Model):
             codigo = t.tipo_tarea.codigo
             if codigo in _requieren and not t.ejecutada:
                 return False
-            if codigo == 'NOTIFICAR' and t.resultado == 'INCORRECTA':
+            if codigo == 'NOTIFICAR' and t.ejecutada and t.resultado != 'CORRECTA':
                 return False
         return True
 
