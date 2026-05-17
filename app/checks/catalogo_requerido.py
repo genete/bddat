@@ -36,17 +36,20 @@ REGISTROS_REQUERIDOS: dict = {
     ],
     # TipoSolicitud usa 'siglas' como identificador estable (no 'codigo')
     'TipoSolicitud': ['AAC', 'AAP'],
+    # TipoResultadoFase — código usado en invariantes_esftt (#419)
+    'TipoResultadoFase': ['DESFAVORABLE'],
     'TipoDocumento': ['CERT_FIN_INSTRUCCION'],
 }
 
 # Atributo del modelo que contiene el identificador estable.
 # TipoSolicitud usa 'siglas'; el resto usa 'codigo'.
 _CODIGO_ATTR: dict[str, str] = {
-    'TipoTramite':   'codigo',
-    'TipoTarea':     'codigo',
-    'TipoFase':      'codigo',
-    'TipoSolicitud': 'siglas',
-    'TipoDocumento': 'codigo',
+    'TipoTramite':        'codigo',
+    'TipoTarea':          'codigo',
+    'TipoFase':           'codigo',
+    'TipoSolicitud':      'siglas',
+    'TipoDocumento':      'codigo',
+    'TipoResultadoFase':  'codigo',
 }
 
 
@@ -62,11 +65,12 @@ def validar_catalogo() -> List[str]:
     from sqlalchemy.exc import OperationalError, ProgrammingError
 
     _MODELOS = {
-        'TipoTramite':   _importar('app.models.tipos_tramites',   'TipoTramite'),
-        'TipoTarea':     _importar('app.models.tipos_tareas',     'TipoTarea'),
-        'TipoFase':      _importar('app.models.tipos_fases',      'TipoFase'),
-        'TipoSolicitud': _importar('app.models.tipos_solicitudes', 'TipoSolicitud'),
-        'TipoDocumento': _importar('app.models.tipos_documentos', 'TipoDocumento'),
+        'TipoTramite':       _importar('app.models.tipos_tramites',         'TipoTramite'),
+        'TipoTarea':         _importar('app.models.tipos_tareas',           'TipoTarea'),
+        'TipoFase':          _importar('app.models.tipos_fases',            'TipoFase'),
+        'TipoSolicitud':     _importar('app.models.tipos_solicitudes',      'TipoSolicitud'),
+        'TipoDocumento':     _importar('app.models.tipos_documentos',       'TipoDocumento'),
+        'TipoResultadoFase': _importar('app.models.tipos_resultados_fases', 'TipoResultadoFase'),
     }
 
     faltantes: List[str] = []

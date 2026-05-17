@@ -25,7 +25,7 @@ from app.models.tipos_tareas import TipoTarea
 from app.models.documentos_tarea import DocumentoTarea
 from app.utils.permisos import verificar_acceso_expediente
 from app.services.assembler import evaluar_multi
-from app.services.invariantes_esftt import check_invariante
+from app.services.invariantes_esftt import check_invariante, _check_cierre_fase
 
 bp = Blueprint('api_bc', __name__, url_prefix='/api/bc')
 
@@ -207,6 +207,14 @@ def editar_fase(fase_id):
         doc = Documento.query.get(nuevo_doc_resultado_id)
         if not doc or doc.expediente_id != fase.solicitud.expediente_id:
             return jsonify({'ok': False, 'error': 'Documento no válido para este expediente'}), 422
+
+        resultado_id_raw = request.form.get('resultado_fase_id')
+        if resultado_id_raw:
+            tipo_res = TipoResultadoFase.query.get(int(resultado_id_raw))
+            if tipo_res:
+                res_inv = _check_cierre_fase(fase_id, tipo_res.codigo)
+                if res_inv:
+                    return _bloqueo(res_inv)
 
     try:
         resultado_id = request.form.get('resultado_fase_id')
