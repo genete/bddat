@@ -200,6 +200,64 @@ def _check_finalizar_tramite(tramite_id: int) -> Optional[EvaluacionResult]:
     return None
 
 
+def _check_cierre_fase(fase_id: int, codigo_resultado: str) -> Optional[EvaluacionResult]:
+    """Bloquea el cierre de la fase si hay diagnóstico desfavorable sin consumir y el resultado no es DESFAVORABLE (#419).
+
+    El único resultado de cierre permitido cuando hay diagnósticos desfavorables
+    sin consumir es DESFAVORABLE. Cualquier otro resultado queda bloqueado.
+    Un diagnóstico se considera consumido cuando su documento aparece como
+    CONSUMIDO en cualquier otra tarea de la fase.
+    """
+    if codigo_resultado == 'DESFAVORABLE':
+        return None
+
+    from app.models.tipos_tareas import TipoTarea
+    from app.models.documentos_tarea import DocumentoTarea
+    from app.models.diagnosticos import Diagnostico
+
+    DT_cons      = db.aliased(DocumentoTarea)
+    Tarea_cons   = db.aliased(Tarea)
+    Tramite_cons = db.aliased(Tramite)
+
+    # Subquery: el documento producido está siendo consumido por alguna tarea de la fase
+    _consumido = (
+        db.session.query(DT_cons.id)
+        .join(Tarea_cons, DT_cons.tarea_id == Tarea_cons.id)
+        .join(Tramite_cons, Tarea_cons.tramite_id == Tramite_cons.id)
+        .filter(
+            Tramite_cons.fase_id == fase_id,
+            DT_cons.documento_id == DocumentoTarea.documento_id,
+            DT_cons.rol == 'CONSUMIDO',
+        )
+        .exists()
+    )
+
+    diagnostico_sin_consumir = (
+        db.session.query(Tarea)
+        .join(Tramite, Tarea.tramite_id == Tramite.id)
+        .join(TipoTarea, Tarea.tipo_tarea_id == TipoTarea.id)
+        .join(DocumentoTarea, db.and_(
+            DocumentoTarea.tarea_id == Tarea.id,
+            DocumentoTarea.rol == 'PRODUCIDO',
+        ))
+        .join(Diagnostico, Diagnostico.documento_id == DocumentoTarea.documento_id)
+        .filter(
+            Tramite.fase_id == fase_id,
+            TipoTarea.codigo == 'ANALIZAR',
+            Diagnostico.resultado == 'desfavorable',
+            ~_consumido,
+        )
+        .first()
+    )
+
+    if diagnostico_sin_consumir:
+        return _bloquear(
+            'Hay un diagnóstico desfavorable sin consumir en esta fase. '
+            'No es posible cerrarla con un resultado no desfavorable.'
+        )
+    return None
+
+
 def _check_finalizar_tarea(tarea_id: int) -> Optional[EvaluacionResult]:
     tarea = Tarea.query.get(tarea_id)
     if not tarea or not tarea.tipo_tarea:
