@@ -27,9 +27,10 @@
 
 4. ~~**#377** — seed de tipos_documentos del catálogo ESFTT~~ ✓
 5. **#418** — tabla `notificaciones`: documento vitaminado para NOTIFICAR (sustituye a #378; ver ADR-008)
-6. **#380** — ADR-008: decisión sobre la tabla documentos_tarea
-7. **#365** — implementar URI `bddat://` y helper `resolver_url()` (ADR-006)
-8. **#362** — certificado de plazo cumplido (tras #365; absorbe la limpieza de #357)
+6. **#419** — invariante ANALIZAR: bloquear cierre si diagnóstico desfavorable no consumido (tras #418)
+8. **#380** — decisión sobre la tabla documentos_tarea
+9. **#365** — implementar URI `bddat://` y helper `resolver_url()` (ADR-006)
+10. **#362** — certificado de plazo cumplido (tras #365; absorbe la limpieza de #357)
 
 ### Bloque 3 — Modelo de interesados y Context Builders de escritos
 
