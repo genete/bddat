@@ -59,7 +59,8 @@ class ContextoAnalisisAlegaciones:
         tareas = {t.tipo_tarea.codigo: t for t in tramite.tareas if t.tipo_tarea}
 
         tarea_analizar = tareas.get('ANALIZAR')
-        doc_alegacion = tarea_analizar.documento_usado if tarea_analizar else None
+        _consumidos = tarea_analizar.documentos_consumidos if tarea_analizar else []
+        doc_alegacion = _consumidos[0] if _consumidos else None
 
         tarea_esperar = tareas.get('ESPERAR_PLAZO')
         doc_respuesta = tarea_esperar.documento_producido if tarea_esperar else None

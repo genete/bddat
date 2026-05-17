@@ -155,34 +155,42 @@
 
     {% else %}
 
-    {# ── Documento usado ────────────────────────────────────────────────────── #}
+    {# ── Documentos consumidos (entrada) ────────────────────────────────────── #}
     {% if requiere_doc_usado or doc_usado_opcional %}
     <div class="mb-3">
-      <label class="form-label fw-semibold mb-1">Documento de entrada{% if doc_usado_opcional %} <span class="text-secondary fw-normal small">(opcional)</span>{% endif %}</label>
+      <label class="form-label fw-semibold mb-1">Documentos de entrada{% if doc_usado_opcional %} <span class="text-secondary fw-normal small">(opcional)</span>{% endif %}</label>
       <div class="doc-modo-ver">
-        {% if tarea.documento_usado %}
-          {% set nombre_usado = tarea.documento_usado.url.replace('\\', '/').rsplit('/', 1)[-1].split('?')[0].split('#')[0] %}
-          <div class="d-flex align-items-center gap-2 flex-wrap">
-            <i class="fas fa-file-import text-secondary"></i>
-            <span id="disp-doc-usado" class="fw-semibold">{{ nombre_usado }}</span>
-            <small class="text-secondary">
-              — {{ tarea.documento_usado.tipo_doc.nombre if tarea.documento_usado.tipo_doc else '' }}
-              {% if tarea.documento_usado.fecha_administrativa %}
-                — {{ tarea.documento_usado.fecha_administrativa.strftime('%d/%m/%Y') }}
-              {% endif %}
-            </small>
-            <a href="{{ url_for('expedientes.pool_descargar_documento', id=expediente.id, doc_id=tarea.documento_usado.id) }}"
-               class="btn btn-sm btn-outline-secondary ms-auto"
-               target="_blank" rel="noopener">
-              <i class="fas fa-download me-1"></i>Descargar
-            </a>
-          </div>
+        {% if tarea.documentos_consumidos %}
+          {% for d in tarea.documentos_consumidos %}
+            {% set nombre_d = d.url.replace('\\', '/').rsplit('/', 1)[-1].split('?')[0].split('#')[0] %}
+            <div class="d-flex align-items-center gap-2 flex-wrap mb-1">
+              <i class="fas fa-file-import text-secondary"></i>
+              <span class="fw-semibold">{{ nombre_d }}</span>
+              <small class="text-secondary">
+                — {{ d.tipo_doc.nombre if d.tipo_doc else '' }}
+                {% if d.fecha_administrativa %}
+                  — {{ d.fecha_administrativa.strftime('%d/%m/%Y') }}
+                {% endif %}
+              </small>
+              <a href="{{ url_for('expedientes.pool_descargar_documento', id=expediente.id, doc_id=d.id) }}"
+                 class="btn btn-sm btn-outline-secondary ms-auto"
+                 target="_blank" rel="noopener">
+                <i class="fas fa-download me-1"></i>Descargar
+              </a>
+            </div>
+          {% endfor %}
         {% else %}
-          <span id="disp-doc-usado" class="fst-italic text-secondary small">Sin documento asociado</span>
+          <span class="fst-italic text-secondary small">Sin documentos asociados</span>
         {% endif %}
       </div>
       <div class="doc-modo-editar d-none">
-        <div id="sb-doc-usado"></div>
+        <div id="lista-docs-consumidos" class="mb-2"></div>
+        <div class="d-flex gap-2 align-items-start">
+          <div id="sb-doc-consumido" class="flex-grow-1"></div>
+          <button type="button" class="btn btn-sm btn-outline-primary" id="btn-add-consumido">
+            <i class="fas fa-plus me-1"></i>Añadir
+          </button>
+        </div>
       </div>
     </div>
     {% endif %}
@@ -236,8 +244,8 @@ window.TAREA_DOCS_CONFIG = {
   requiereDocUsado:     {{ requiere_doc_usado | tojson }},
   docUsadoOpcional:     {{ doc_usado_opcional | tojson }},
   requiereDocProducido: {{ requiere_doc_producido | tojson }},
-  docUsadoId:      {{ tarea.documento_usado_id | tojson }},
-  docProducidoId:  {{ tarea.documento_producido_id | tojson }},
+  docsConsumidos:  {{ tarea.documentos_consumidos | map(attribute='id') | list | tojson }},
+  docProducidoId:  {{ (tarea.documento_producido.id if tarea.documento_producido else None) | tojson }},
   urlApiDocs: "{{ url_for('expedientes.pool_documentos_json', id=expediente.id) }}"
 };
 </script>

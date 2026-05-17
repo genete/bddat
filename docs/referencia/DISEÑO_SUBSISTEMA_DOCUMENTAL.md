@@ -66,7 +66,7 @@ La API de asignación a tareas debe rechazar documentos con NULL cuando el tipo 
 asociado a una tarea: cuándo se firmó, se notificó, se registró.
 
 La completitud de una tarea se deduce de documentos, no de fechas:
-`tarea.ejecutada` ↔ `documento_producido_id IS NOT NULL`.
+`tarea.ejecutada` ↔ existe un vínculo PRODUCIDO en `documentos_tarea` (ADR-010).
 
 `Documento.fecha_administrativa` sirve además para: ordenar la bandeja de entrada por antigüedad,
 sugerir fechas al crear tareas relacionadas, y como referencia temporal para plazos
@@ -90,7 +90,7 @@ del flujo de tramitación. No genera tareas en el ESFTT.
 **Vía 2 — Recepción externa via `ESPERAR_PLAZO.documento_producido` (durante tramitación activa)**
 Para documentos externos que llegan mientras el expediente está en tramitación:
 informes de organismos, alegaciones, respuestas del titular, justificantes de publicación.
-El documento se asigna como `documento_producido` de la tarea `ESPERAR_PLAZO` que modelaba la espera.
+El documento se vincula con rol PRODUCIDO a la tarea `ESPERAR_PLAZO` que modelaba la espera.
 **No aplica a la recepción inicial de solicitudes.**
 
 ### RECEPCION_SOLICITUD sin INCORPORAR

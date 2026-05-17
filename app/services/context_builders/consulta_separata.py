@@ -47,7 +47,8 @@ class ContextoConsultaSeparata:
         tarea_anal = tareas_por_codigo.get('ANALIZAR')
 
         doc_envio = tarea_notif.documento_producido if tarea_notif else None
-        doc_respuesta = tarea_anal.documento_usado if tarea_anal else None
+        _consumidos_anal = tarea_anal.documentos_consumidos if tarea_anal else []
+        doc_respuesta = _consumidos_anal[0] if _consumidos_anal else None
 
         ctx['organismo_fecha_envio'] = (
             doc_envio.fecha_administrativa.strftime('%d/%m/%Y')

@@ -66,15 +66,25 @@ def organismos_data(app_ctx):
             "VALUES (:e,'test://resp_endesa.pdf','2026-03-20') RETURNING id"
         ), {"e": _EXP_ID}).scalar()
 
+        # NOTIFICAR de ORG1 — vínculo PRODUCIDO en documentos_tarea (ADR-010)
+        t_notif1 = conn.execute(text(
+            "INSERT INTO public.tareas (tramite_id, tipo_tarea_id) "
+            "VALUES (:tr,:tt) RETURNING id"
+        ), {"tr": tr1, "tt": _TIPO_NOTIFICAR_ID}).scalar()
         conn.execute(text(
-            "INSERT INTO public.tareas (tramite_id, tipo_tarea_id, documento_producido_id) "
-            "VALUES (:tr,:tt,:dp)"
-        ), {"tr": tr1, "tt": _TIPO_NOTIFICAR_ID, "dp": doc_notif1})
+            "INSERT INTO public.documentos_tarea (tarea_id, documento_id, rol) "
+            "VALUES (:t,:d,'PRODUCIDO')"
+        ), {"t": t_notif1, "d": doc_notif1})
 
+        # ANALIZAR de ORG1 — vínculo CONSUMIDO en documentos_tarea
+        t_anal1 = conn.execute(text(
+            "INSERT INTO public.tareas (tramite_id, tipo_tarea_id) "
+            "VALUES (:tr,:tt) RETURNING id"
+        ), {"tr": tr1, "tt": _TIPO_ANALIZAR_ID}).scalar()
         conn.execute(text(
-            "INSERT INTO public.tareas (tramite_id, tipo_tarea_id, documento_usado_id) "
-            "VALUES (:tr,:tt,:du)"
-        ), {"tr": tr1, "tt": _TIPO_ANALIZAR_ID, "du": doc_resp1})
+            "INSERT INTO public.documentos_tarea (tarea_id, documento_id, rol) "
+            "VALUES (:t,:d,'CONSUMIDO')"
+        ), {"t": t_anal1, "d": doc_resp1})
 
         conn.execute(text(
             "INSERT INTO public.organismos_expediente "
@@ -93,10 +103,15 @@ def organismos_data(app_ctx):
             "VALUES (:e,'test://sep_sevillana.docx','2026-03-01') RETURNING id"
         ), {"e": _EXP_ID}).scalar()
 
+        # NOTIFICAR de ORG2 — vínculo PRODUCIDO en documentos_tarea
+        t_notif2 = conn.execute(text(
+            "INSERT INTO public.tareas (tramite_id, tipo_tarea_id) "
+            "VALUES (:tr,:tt) RETURNING id"
+        ), {"tr": tr2, "tt": _TIPO_NOTIFICAR_ID}).scalar()
         conn.execute(text(
-            "INSERT INTO public.tareas (tramite_id, tipo_tarea_id, documento_producido_id) "
-            "VALUES (:tr,:tt,:dp)"
-        ), {"tr": tr2, "tt": _TIPO_NOTIFICAR_ID, "dp": doc_notif2})
+            "INSERT INTO public.documentos_tarea (tarea_id, documento_id, rol) "
+            "VALUES (:t,:d,'PRODUCIDO')"
+        ), {"t": t_notif2, "d": doc_notif2})
 
         conn.execute(text(
             "INSERT INTO public.organismos_expediente "

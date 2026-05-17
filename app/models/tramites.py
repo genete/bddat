@@ -28,7 +28,7 @@ class Tramite(db.Model):
     ESTADOS DEDUCIBLES (properties, no columna):
         - PLANIFICADO: len(tareas) == 0
         - EN_CURSO: tareas presentes, no todas finalizadas
-        - FINALIZADO: todas las tareas con tipos documentales tienen documento_producido_id
+        - FINALIZADO: todas las tareas con tipos documentales tienen documento producido
                       ESPERAR_PLAZO requiere evaluación adicional via plazos.py
                       (ver §4.1 DISEÑO_FECHAS_PLAZOS.md)
 
@@ -93,7 +93,7 @@ class Tramite(db.Model):
 
     @property
     def finalizado(self):
-        """True si todas las tareas con tipos documentales tienen documento_producido_id
+        """True si todas las tareas con tipos documentales tienen documento producido
         y ninguna tarea NOTIFICAR tiene resultado INCORRECTA (#296).
 
         ESPERAR_PLAZO se excluye — su completitud la evalúa plazos.py via ContextAssembler.
@@ -103,7 +103,7 @@ class Tramite(db.Model):
             if not t.tipo_tarea:
                 continue
             codigo = t.tipo_tarea.codigo
-            if codigo in _requieren and t.documento_producido_id is None:
+            if codigo in _requieren and not t.ejecutada:
                 return False
             if codigo == 'NOTIFICAR' and t.resultado == 'INCORRECTA':
                 return False

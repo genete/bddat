@@ -1,9 +1,9 @@
 # Estructura de Fases, Trámites y Tareas (ESFTT)
 
-> Fuente de verdad: `docs/ESTRUCTURA_FTT.json`
-> Última sincronización: 2026-05-11
+> Fuente de verdad: `docs/referencia/ESTRUCTURA_FTT.json`
+> Última sincronización: 2026-05-17
 
-**Versión:** 6.0 | **Fecha:** 2026-05-11
+**Versión:** 6.1 | **Fecha:** 2026-05-17
 
 Este documento es la versión legible por humanos del JSON estructural. El JSON es la fuente de verdad para código e IA; este MD es la referencia de consulta rápida.
 
@@ -15,10 +15,13 @@ Para decisiones de diseño, motivaciones y reglas del motor: ver documentos refe
 
 | Código | Nombre | Entrada | Salida | Habilita |
 |---|---|---|---|---|
-| `ANALIZAR` | Análisis | documento_usado_id (oblig.) | documento_producido_id (oblig. — tipo DIAGNOSTICO) | ELABORAR |
-| `ELABORAR` | Elaborar | documento_usado_id (opt. — DIAGNOSTICO de ANALIZAR si existe) | documento_producido_id (oblig.) | NOTIFICAR |
-| `NOTIFICAR` | Notificar | documento_usado_id (oblig. — doc de ELABORAR) | documento_producido_id (oblig. — justificante) | ESPERAR_PLAZO |
-| `ESPERAR_PLAZO` | Esperar Plazo | documento_usado_id (oblig. si plazo>0 — justificante de NOTIFICAR; NULL si plazo=0) | — | FIN (si vence) |
+| `ANALIZAR` | Análisis | 1..N consumidos (≥1 oblig.) | documento producido (oblig. — tipo DIAGNOSTICO) | ELABORAR |
+| `ELABORAR` | Elaborar | consumidos (opt. — DIAGNOSTICO de ANALIZAR si existe) | documento producido (oblig.) | NOTIFICAR |
+| `NOTIFICAR` | Notificar | 1..N consumidos (incluye doc de ELABORAR) | documento producido (oblig. — justificante) | ESPERAR_PLAZO |
+| `ESPERAR_PLAZO` | Esperar Plazo | consumido (oblig. si plazo>0 — justificante de NOTIFICAR; ninguno si plazo=0) | — | FIN (si vence) |
+
+**Cambios v6.1 (ADR-010, #420):**
+- Los vínculos documentales de la tarea viven en `documentos_tarea` (N:M con campo `rol`), no en FK propias. Una tarea consume 0..N documentos y produce 0..1.
 
 **Cambios v6.0 (ADR-003/004/005, #371):**
 - `ELABORAR` reemplaza a `REDACTAR`+`FIRMAR` (redacción y firma en acto único)

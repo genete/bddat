@@ -145,14 +145,21 @@ def crear_tramite(fase, tipo_tramite_id):
 
 
 def crear_tarea(tramite, tipo_tarea_id, doc_usado=None, doc_producido=None, notas=None):
+    from app.models.documentos_tarea import DocumentoTarea
     t = Tarea(
         tramite_id=tramite.id,
         tipo_tarea_id=tipo_tarea_id,
-        documento_usado_id=doc_usado.id if doc_usado else None,
-        documento_producido_id=doc_producido.id if doc_producido else None,
         notas=notas,
     )
     db.session.add(t)
+    db.session.flush()
+    # Vínculos documentales N:M con rol (ADR-010)
+    if doc_usado:
+        db.session.add(DocumentoTarea(
+            tarea_id=t.id, documento_id=doc_usado.id, rol='CONSUMIDO'))
+    if doc_producido:
+        db.session.add(DocumentoTarea(
+            tarea_id=t.id, documento_id=doc_producido.id, rol='PRODUCIDO'))
     db.session.flush()
     return t
 

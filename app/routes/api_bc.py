@@ -248,18 +248,32 @@ def editar_tarea(tarea_id):
     expediente = tarea.tramite.fase.solicitud.expediente
 
     try:
-        doc_usado_raw     = request.form.get('documento_usado_id') or None
-        doc_producido_raw = request.form.get('documento_producido_id') or None
-        nuevo_doc_usado_id     = int(doc_usado_raw)     if doc_usado_raw     else None
-        nuevo_doc_producido_id = int(doc_producido_raw) if doc_producido_raw else None
+        # Documentos consumidos: lista de ids (campo repetido o CSV). Documento
+        # producido: id único. Vínculos vía documentos_tarea con rol (ADR-010).
+        consumidos_raw = request.form.getlist('documentos_consumidos_ids')
+        if len(consumidos_raw) == 1 and ',' in consumidos_raw[0]:
+            consumidos_raw = consumidos_raw[0].split(',')
+        ids_consumidos = [int(x) for x in consumidos_raw if x.strip()]
 
-        for doc_id in filter(None, [nuevo_doc_usado_id, nuevo_doc_producido_id]):
+        doc_producido_raw = request.form.get('documento_producido_id') or None
+        id_producido = int(doc_producido_raw) if doc_producido_raw else None
+
+        ids_todos = list(ids_consumidos) + ([id_producido] if id_producido else [])
+        for doc_id in ids_todos:
             doc = Documento.query.get(doc_id)
             if not doc or doc.expediente_id != expediente.id:
                 return jsonify({'ok': False, 'error': 'Documento no válido para este expediente'}), 422
 
-        tarea.documento_usado_id     = nuevo_doc_usado_id
-        tarea.documento_producido_id = nuevo_doc_producido_id
+        # Reconstruir los vínculos de la tarea
+        tarea.vinculos_documento.clear()
+        db.session.flush()
+        for doc_id in dict.fromkeys(ids_consumidos):   # sin duplicados, orden estable
+            tarea.vinculos_documento.append(
+                DocumentoTarea(documento_id=doc_id, rol='CONSUMIDO'))
+        if id_producido:
+            tarea.vinculos_documento.append(
+                DocumentoTarea(documento_id=id_producido, rol='PRODUCIDO'))
+
         tarea.notas = request.form.get('notas') or None
         db.session.commit()
 

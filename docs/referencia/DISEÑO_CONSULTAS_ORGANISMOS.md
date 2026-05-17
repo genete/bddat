@@ -260,7 +260,7 @@ El motor comprueba el **estado de `organismos_expediente`**, no los trámites in
 
 ### Fase de análisis técnico
 El motor comprueba sobre los trámites de la fase:
-- Ningún `REQUERIMIENTO_DE_MEJORA` tiene la tarea `ESPERAR_PLAZO` sin `documento_producido_id` (el titular ha respondido a todos los requerimientos).
+- Ningún `REQUERIMIENTO_DE_MEJORA` tiene la tarea `ESPERAR_PLAZO` sin documento producido (el titular ha respondido a todos los requerimientos).
 - Ninguna `COMPROBACION_DOCUMENTAL` tiene resultado distinto de `OK` (el análisis técnico da el visto bueno).
 
 ---
@@ -270,7 +270,7 @@ El motor comprueba sobre los trámites de la fase:
 - **Diagrama de flujo DUP:** La casuística está analizada y documentada en la sección 6. Pendiente crear diagrama visual equivalente a los de AAP/AAC.
 - **Renombrar tarea ANALISIS → ANALIZAR:** El JSON `ESTRUCTURA_FTT.json` ya usa ANALIZAR (v5.4). Pendiente migrar en base de datos: `UPDATE public.tipos_tareas SET codigo = 'ANALIZAR' WHERE codigo = 'ANALISIS'` (migración manual) y actualizar todas las referencias al código en el motor de reglas y en el código de la aplicación.
 - ~~**Implementación de `organismos_expediente`:** Tabla nueva, migración manual.~~ **HECHO** — #391: modelo + migración + `ContextoConsultaSeparata`.
-- **Redefinición de `REQUERIMIENTO_DE_MEJORA`:** El patrón actualizado es C+A (`ELABORAR → NOTIFICAR → ESPERAR_PLAZO → ANALIZAR`); la respuesta del titular queda en `ESPERAR_PLAZO.documento_producido_id` (ADR-004).
+- **Redefinición de `REQUERIMIENTO_DE_MEJORA`:** El patrón actualizado es C+A (`ELABORAR → NOTIFICAR → ESPERAR_PLAZO → ANALIZAR`); la respuesta del titular queda en `ESPERAR_PLAZO` como documento producido (ADR-004).
 - **Definición de tipos de trámite** `CONSULTA_SEPARATA`, `CONSULTA_TRASLADO_TITULAR`, `CONSULTA_TRASLADO_ORGANISMO` en el catálogo de tipos.
 - **Cadena de tareas** dentro de los trámites de traslado: `ELABORAR → NOTIFICAR → ESPERAR_PLAZO → ANALIZAR` (patrón C+A).
 - **Acción en bloque** de creación de separatas desde `organismos_expediente`.

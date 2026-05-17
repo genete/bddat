@@ -13,8 +13,8 @@ class Documento(db.Model):
         - El documento es una entidad pura del expediente
         - Solo tiene UN FK: expediente_id
         - Es completamente agnóstico respecto a:
-          * Qué tarea lo produjo (se define en TAREAS.documento_producido_id)
-          * Qué tareas lo usan (se define en TAREAS.documento_usado_id)
+          * Qué tarea lo produjo (se define en DOCUMENTOS_TAREA, rol PRODUCIDO)
+          * Qué tareas lo consumen (se define en DOCUMENTOS_TAREA, rol CONSUMIDO)
           * Si es parte de un proyecto (se define en DOCUMENTOS_PROYECTO)
         - Pool único de documentos por expediente, relaciones viven fuera
     
@@ -65,8 +65,7 @@ class Documento(db.Model):
         - expediente → EXPEDIENTES.id (FK, expediente contenedor)
         - tipo_doc → TIPOS_DOCUMENTOS.id (FK, clasificación semántica)
         - documentos_proyecto ← DOCUMENTOS_PROYECTO.documento_id (tabla puente con proyectos)
-        - tareas_producidas ← TAREAS.documento_producido_id (tareas que lo generaron)
-        - tareas_usadas ← TAREAS.documento_usado_id (tareas que lo utilizan)
+        - vinculos_tarea ← DOCUMENTOS_TAREA (vínculos con tareas, con rol)
 
     PROCEDENCIA DEL EMISOR:
         No existe campo origen en esta tabla (eliminado en #191).
@@ -77,7 +76,7 @@ class Documento(db.Model):
     REGLAS DE NEGOCIO:
         - Un documento pertenece a UN expediente
         - Un documento puede estar en N proyectos (vía DOCUMENTOS_PROYECTO)
-        - Un documento puede ser producido por UNA tarea (UNIQUE en tareas.documento_producido_id)
+        - Un documento puede ser producido por UNA tarea (índice parcial único en documentos_tarea)
         - Un documento puede ser usado por N tareas
 
     NOTAS DE VERSIÓN:

@@ -204,22 +204,22 @@ def _estado_tarea(tarea, pista: str) -> tuple[str, int]:
     tipo = tipo_rel.codigo
 
     if tipo == 'ANALIZAR':
-        if tarea.documento_usado_id is None:
+        if not tarea.documentos_consumidos:
             return ('PENDIENTE_TRAMITAR', 1)   # sin doc de entrada: hay que tramitar
-        if tarea.documento_producido_id is None:
+        if not tarea.ejecutada:
             return ('PENDIENTE_ESTUDIO', 1)    # doc recibido, hay que estudiar y redactar informe
-        return ('PENDIENTE_CERRAR', 1)         # ambos documentos presentes
+        return ('PENDIENTE_CERRAR', 1)         # entrada y salida presentes
 
     if tipo == 'ELABORAR':
-        # Entrada opcional → no hay estado "en espera de documento_usado"
-        if tarea.documento_producido_id is not None:
+        # Entrada opcional → no hay estado "en espera de documento de entrada"
+        if tarea.ejecutada:
             return ('PENDIENTE_CERRAR', 1)
         return ('PENDIENTE_ELABORAR', 1)
 
     if tipo == 'NOTIFICAR':
-        if tarea.documento_usado_id is None:
+        if not tarea.documentos_consumidos:
             return ('PENDIENTE_TRAMITAR', 1)   # falta doc firmado
-        if tarea.documento_producido_id is None:
+        if not tarea.ejecutada:
             return ('PENDIENTE_NOTIFICAR', 1)  # doc firmado, falta justificante
         return ('PENDIENTE_CERRAR', 1)
 
@@ -233,7 +233,7 @@ def _estado_esperar_plazo(tarea, pista: str) -> str:
     """
     ESPERAR_PLAZO: §4.4 — consulta catalogo_plazos en lugar de parsear Tarea.notas.
     Sin entrada configurada → PENDIENTE_TRAMITAR (tarea sin configurar).
-    Con entrada pero sin documento_usado aún → estado_espera (esperando inicio de cómputo).
+    Con entrada pero sin documento consumido aún → estado_espera (esperando inicio de cómputo).
     Plazo vencido → PENDIENTE_ESTUDIO.
     """
     from app.services.plazos import obtener_estado_plazo, tiene_plazo_configurado

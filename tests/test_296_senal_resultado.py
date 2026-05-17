@@ -34,19 +34,24 @@ def _doc_producido(efecto=None):
     return doc
 
 
+class _Vinculo:
+    """Stub de DocumentoTarea (vínculo documento↔tarea con rol)."""
+    def __init__(self, rol, documento=None):
+        self.rol = rol
+        self.documento = documento if documento is not None else object()
+
+
 class _StubTarea:
     """Stub de Tarea con atributos mínimos para las properties.
 
     Expone `planificada` y `ejecutada` delegando al fget del modelo,
     de forma que `Tarea.estado.fget(stub)` funciona sin instanciar SQLAlchemy.
+    Los vínculos documentales viven en `vinculos_documento` (ADR-010, #420).
     """
-    def __init__(self, codigo, doc_producido=None, doc_producido_id=None,
-                 doc_usado_id=None, documentos_tarea=None):
+    def __init__(self, codigo, doc_producido=None, vinculos=None):
         self.tipo_tarea = _tipo_tarea(codigo)
         self.documento_producido = doc_producido
-        self.documento_producido_id = doc_producido_id
-        self.documento_usado_id = doc_usado_id
-        self.documentos_tarea = documentos_tarea or []
+        self.vinculos_documento = vinculos or []
 
     @property
     def planificada(self):
@@ -112,7 +117,8 @@ class _StubTareaConResultado(_StubTarea):
     directo para controlar el valor sin necesidad de ResultadoDocumento en BD.
     """
     def __init__(self, codigo, doc_producido_id=None, resultado='INDIFERENTE'):
-        super().__init__(codigo, doc_producido_id=doc_producido_id)
+        vinculos = [_Vinculo('PRODUCIDO')] if doc_producido_id is not None else []
+        super().__init__(codigo, vinculos=vinculos)
         self._resultado_override = resultado
 
     @property
@@ -161,26 +167,16 @@ class TestTareaResultado:
 class TestTareaEstado:
 
     def test_planificada_devuelve_planificada(self):
-        t = _StubTarea('ANALIZAR', doc_producido_id=None, doc_usado_id=None)
+        t = _StubTarea('ANALIZAR')
         assert _tarea_estado(t) == 'PLANIFICADA'
 
     def test_ejecutada_devuelve_ejecutada(self):
-        t = _StubTarea('ANALIZAR', doc_producido_id=5)
+        t = _StubTarea('ANALIZAR', vinculos=[_Vinculo('PRODUCIDO')])
         assert _tarea_estado(t) == 'EJECUTADA'
 
     def test_en_curso_devuelve_en_curso(self):
-        t = _StubTarea('ANALIZAR', doc_producido_id=None, doc_usado_id=3)
+        t = _StubTarea('ANALIZAR', vinculos=[_Vinculo('CONSUMIDO')])
         assert _tarea_estado(t) == 'EN_CURSO'
-
-    @pytest.mark.skip(reason="#361 — INCORPORAR eliminado; tipo ya no existe en el catálogo")
-    def test_incorporar_sin_docs_planificada(self):
-        t = _StubTarea('INCORPORAR', documentos_tarea=[])
-        assert _tarea_estado(t) == 'PLANIFICADA'
-
-    @pytest.mark.skip(reason="#370 — INCORPORAR eliminado")
-    def test_incorporar_con_docs_ejecutada(self):
-        t = _StubTarea('INCORPORAR', documentos_tarea=[MagicMock()])
-        assert _tarea_estado(t) == 'EJECUTADA'
 
 
 # ───────────────────────────────────────────────────────────────────────────────
