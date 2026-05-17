@@ -1,7 +1,7 @@
 # Tabla Inversa de Tareas Atómicas — ESFTT
 
 > Fuente de verdad: `ESTRUCTURA_FTT.json`
-> Última sincronización: 2026-05-13
+> Última sincronización: 2026-05-17
 
 **Propósito de este documento:**
 
@@ -41,7 +41,7 @@ Este documento invierte esa jerarquía. **La tarea es el nudo primario.**
 | ANALISIS_SOLICITUD | ANALISIS_DOCUMENTAL | A | Documentación del pool (cualifica tipos, contrasta checklist) | Informe de resultado (admisible / con defectos) |
 | ANALISIS_SOLICITUD | REQUERIMIENTO_SUBSANACION | C+A | Documentación de subsanación (`ESPERAR_PLAZO.documento_producido`) | Informe de evaluación de subsanación |
 | CONSULTA_MINISTERIO | RECEPCION_INFORME | A | Informe del Ministerio (`ESPERAR_PLAZO.documento_producido`) | Nota/informe de análisis |
-| COMPATIBILIDAD_AMBIENTAL | AUDIENCIA | A+C | Propuesta de incompatibilidad (`ESPERAR_PLAZO.documento_producido`) | Informe para elaborar alegaciones |
+| COMPATIBILIDAD_AMBIENTAL | COMUNICACION_AUDIENCIA | A | Escrito de MA comunicando apertura de audiencia al interesado (IC 1/2022, IV.3.3) | Registro informativo — sin documento producido formal |
 | COMPATIBILIDAD_AMBIENTAL | RECEPCION_INFORME | A | Informe vinculante MA (`ESPERAR_PLAZO.documento_producido`) | Nota de análisis |
 | CONSULTAS | CONSULTA_SEPARATA | C+A | Respuesta del organismo (`ESPERAR_PLAZO.documento_producido`) | Nota de análisis con resultado |
 | CONSULTAS | CONSULTA_TRASLADO_TITULAR | C+A | Respuesta del titular (`ESPERAR_PLAZO.documento_producido`) | Nota de análisis con resultado |
@@ -67,7 +67,6 @@ Produce documento con validez jurídica inmediata. El borrador es estado interno
 | ANALISIS_SOLICITUD | COMUNICACION_INICIO | B | Acuse de recibo con número de expediente |
 | CONSULTA_MINISTERIO | SOLICITUD_INFORME | C | Solicitud de informe preceptivo al Ministerio |
 | COMPATIBILIDAD_AMBIENTAL | SOLICITUD_COMPATIBILIDAD | C | Solicitud de compatibilidad ambiental a MA |
-| COMPATIBILIDAD_AMBIENTAL | AUDIENCIA | A+C | Alegaciones a propuesta de incompatibilidad |
 | CONSULTAS | CONSULTA_SEPARATA | C+A | Separata al organismo afectado |
 | CONSULTAS | CONSULTA_TRASLADO_TITULAR | C+A | Traslado al titular de la respuesta del organismo |
 | CONSULTAS | CONSULTA_TRASLADO_ORGANISMO | C+A | Traslado al organismo de los reparos del titular |
@@ -97,7 +96,6 @@ El justificante proviene de Notifica o sistema corporativo externo.
 | ANALISIS_SOLICITUD | COMUNICACION_INICIO | B | Titular/Solicitante | Acuse de recibo |
 | CONSULTA_MINISTERIO | SOLICITUD_INFORME | C | Ministerio | Acuse solicitud informe |
 | COMPATIBILIDAD_AMBIENTAL | SOLICITUD_COMPATIBILIDAD | C | Medio Ambiente | Acuse solicitud compatibilidad |
-| COMPATIBILIDAD_AMBIENTAL | AUDIENCIA | A+C | MA (alegaciones) | Acuse alegaciones audiencia |
 | CONSULTAS | CONSULTA_SEPARATA | C+A | Organismo afectado | Acuse por organismo |
 | CONSULTAS | CONSULTA_TRASLADO_TITULAR | C+A | Titular | Acuse traslado al titular |
 | CONSULTAS | CONSULTA_TRASLADO_ORGANISMO | C+A | Organismo | Acuse traslado al organismo |
@@ -130,7 +128,6 @@ El justificante proviene de Notifica o sistema corporativo externo.
 | ANALISIS_SOLICITUD | REQUERIMIENTO_SUBSANACION | C+A | Plazo de subsanación | Documentación subsanada del titular |
 | CONSULTA_MINISTERIO | SOLICITUD_INFORME | C | Indefinida (plazo=0) hasta informe | Informe del Ministerio |
 | COMPATIBILIDAD_AMBIENTAL | SOLICITUD_COMPATIBILIDAD | C | Indefinida (plazo=0) hasta compatibilidad | Informe de compatibilidad MA |
-| COMPATIBILIDAD_AMBIENTAL | AUDIENCIA | A+C | Plazo audiencia | Respuesta de MA (o NULL si no responde) |
 | CONSULTAS | CONSULTA_SEPARATA | C+A | Plazo de respuesta del organismo | Informe del organismo (o NULL: conformidad tácita) |
 | CONSULTAS | CONSULTA_TRASLADO_TITULAR | C+A | Plazo respuesta del titular | Respuesta del titular (o NULL: aceptación tácita) |
 | CONSULTAS | CONSULTA_TRASLADO_ORGANISMO | C+A | Plazo respuesta final del organismo | Respuesta final (o NULL: conformidad tácita) |
