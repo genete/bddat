@@ -20,17 +20,18 @@ def _tipo_tarea(codigo):
     return MagicMock(codigo=codigo)
 
 
-def _resultado_doc(efecto):
-    """Stub de ResultadoDocumento con efecto_tarea dado."""
-    rd = MagicMock()
-    rd.tipo_resultado = MagicMock(efecto_tarea=efecto)
-    return rd
+def _notificacion_stub(resultado):
+    """Stub de Notificacion con resultado dado."""
+    n = MagicMock()
+    n.resultado = resultado
+    n.numero_intento = 1
+    return n
 
 
-def _doc_producido(efecto=None):
-    """Stub de Documento con resultado_doc opcional."""
+def _doc_producido(resultado=None):
+    """Stub de Documento con notificacion opcional (ADR-008, #418)."""
     doc = MagicMock()
-    doc.resultado_doc = _resultado_doc(efecto) if efecto else None
+    doc.notificacion = _notificacion_stub(resultado) if resultado else None
     return doc
 
 
@@ -146,8 +147,9 @@ class TestTareaResultado:
         t = _StubTarea('NOTIFICAR', doc_producido=None)
         assert _tarea_resultado(t) == 'INDIFERENTE'
 
-    def test_doc_sin_resultado_doc_es_indiferente(self):
-        t = _StubTarea('NOTIFICAR', doc_producido=_doc_producido(efecto=None))
+    def test_doc_sin_notificacion_es_indiferente(self):
+        # Justificante cargado pero sin fila en notificaciones → INDIFERENTE
+        t = _StubTarea('NOTIFICAR', doc_producido=_doc_producido(resultado=None))
         assert _tarea_resultado(t) == 'INDIFERENTE'
 
     def test_doc_con_resultado_incorrecta(self):
@@ -159,8 +161,8 @@ class TestTareaResultado:
         assert _tarea_resultado(t) == 'CORRECTA'
 
     def test_analisis_siempre_indiferente(self):
-        # ANALISIS no puede tener resultado != INDIFERENTE por diseño
-        t = _StubTarea('ANALIZAR', doc_producido=_doc_producido(efecto=None))
+        # ANALIZAR no tiene notificacion — siempre INDIFERENTE
+        t = _StubTarea('ANALIZAR', doc_producido=_doc_producido(resultado=None))
         assert _tarea_resultado(t) == 'INDIFERENTE'
 
 
@@ -199,10 +201,11 @@ class TestTramiteFinalizadoConResultado:
         tr = _StubTramite(tareas=[])
         assert _tramite_finalizado(tr) is True
 
-    def test_notificar_doc_producido_indiferente_finalizado(self):
+    def test_notificar_doc_producido_sin_resultado_no_finalizado(self):
+        # NOTIFICAR ejecutada sin resultado registrado (INDIFERENTE) no finaliza (#418)
         t = _StubTareaConResultado('NOTIFICAR', doc_producido_id=10, resultado='INDIFERENTE')
         tr = _StubTramite(tareas=[t])
-        assert _tramite_finalizado(tr) is True
+        assert _tramite_finalizado(tr) is False
 
     def test_notificar_doc_producido_correcta_finalizado(self):
         t = _StubTareaConResultado('NOTIFICAR', doc_producido_id=10, resultado='CORRECTA')
