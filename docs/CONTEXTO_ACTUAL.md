@@ -6,11 +6,11 @@
 
 ---
 
-**Último cerrado:** #300 — dirección de notificación del titular en escritos (`ContextoBaseExpediente`, dict granular `titular_dir`).
+**Último cerrado:** #366 — renombrar AUDIENCIA → COMUNICACION_AUDIENCIA en BD y código (sincronización con diseño corregido en #346).
 
 **Actuales:** —
 
-**Próximo:** #366.
+**Próximo:** #377.
 
 ---
 
@@ -21,7 +21,7 @@
 ### Bloque 1 — Correcciones M2 inmediatas
 
 1. ~~**#300** — dirección de notificación del titular en escritos~~ ✓
-2. **#366** — eliminar trámite AUDIENCIA de COMPATIBILIDAD_AMBIENTAL
+2. ~~**#366** — renombrar AUDIENCIA → COMUNICACION_AUDIENCIA (corrección de diseño #346)~~ ✓
 
 ### Bloque 2 — Catálogo y documentos internos (fundacional)
 
