@@ -6,11 +6,11 @@
 
 ---
 
-**Último cerrado:** #420 — modelo N:M documento↔tarea: tabla multiusos `documentos_tarea` con campo `rol`, eliminación de las FK `documento_usado_id`/`documento_producido_id` de `tareas` (ADR-010).
+**Último cerrado:** #418 — tabla `notificaciones`: documento vitaminado para NOTIFICAR; eliminación de 3 tablas del diseño previo; nuevos estados de seguimiento `NOTIFICACION_FALLIDA`, `NOTIFICACION_AGOTADA`, `PENDIENTE_RESULTADO_NOTIFICACION` (ADR-008).
 
 **Actuales:** —
 
-**Próximo:** #418.
+**Próximo:** #419.
 
 ---
 
@@ -27,7 +27,7 @@
 
 4. ~~**#377** — seed de tipos_documentos del catálogo ESFTT~~ ✓
 5. ~~**#420** — modelo N:M documento↔tarea: tabla multiusos con rol (ADR-010; sustituye a #380 y #376)~~ ✓
-6. **#418** — tabla `notificaciones`: documento vitaminado para NOTIFICAR (tras #420; sustituye a #378; ver ADR-008)
+6. ~~**#418** — tabla `notificaciones`: documento vitaminado para NOTIFICAR (tras #420; sustituye a #378; ver ADR-008)~~ ✓
 7. **#419** — invariante ANALIZAR: bloquear cierre si diagnóstico desfavorable no consumido (tras #418)
 8. **#365** — implementar URI `bddat://` y helper `resolver_url()` (ADR-006)
 9. **#362** — certificado de plazo cumplido (tras #365; absorbe la limpieza de #357)
