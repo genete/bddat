@@ -6,11 +6,11 @@
 
 ---
 
-**Último cerrado:** #366 — renombrar AUDIENCIA → COMUNICACION_AUDIENCIA en BD y código (sincronización con diseño corregido en #346).
+**Último cerrado:** #377 — poblar columna `descripcion` en `tipos_documentos` con el catálogo ESFTT (50 tipos con guía de fecha administrativa).
 
 **Actuales:** —
 
-**Próximo:** #377.
+**Próximo:** #378.
 
 ---
 
@@ -25,7 +25,7 @@
 
 ### Bloque 2 — Catálogo y documentos internos (fundacional)
 
-4. **#377** — seed de tipos_documentos del catálogo ESFTT
+4. ~~**#377** — seed de tipos_documentos del catálogo ESFTT~~ ✓
 5. **#378** — seed de resultados válidos de notificación (tras #377)
 6. **#380** — ADR-008: decisión sobre la tabla documentos_tarea
 7. **#365** — implementar URI `bddat://` y helper `resolver_url()` (ADR-006)
