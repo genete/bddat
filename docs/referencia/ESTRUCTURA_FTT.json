@@ -3,7 +3,7 @@
     "version": "6.0",
     "descripcion": "Estructura jerárquica de fases, trámites y tareas para expedientes de AT",
     "principio": "Minimalismo estructural — la semántica vive en los TIPOS",
-    "fecha_actualizacion": "2026-05-11",
+    "fecha_actualizacion": "2026-05-17",
     "ref_diseño": [
       "docs/DISEÑO_ANALISIS_SOLICITUD.md",
       "docs/DISEÑO_MOTOR_REGLAS.md",
@@ -216,25 +216,25 @@
           "codigo": "ANUNCIO_BOE",
           "nombre": "Anuncio en BOE",
           "descripcion": "Publicación de anuncio en Boletín Oficial del Estado",
-          "tareas_indicativas": ["NOTIFICAR", "ESPERAR_PLAZO", "ESPERAR_PLAZO"],
+          "tareas_indicativas": ["ESPERAR_PLAZO", "ESPERAR_PLAZO"],
           "patron": "F+F",
-          "nota": "Consume ANUNCIO_IP de REDACTAR_ANUNCIO. Doble ESPERAR_PLAZO: hasta publicación efectiva + plazo de alegaciones (#368)."
+          "nota": "Publicación gestionada íntegramente por el promotor. ESPERAR_PLAZO(1): plazo indefinido alimentado por justificante de ANUNCIO_TITULAR.NOTIFICAR + OFICIO_PUBLICAR_TITULAR; cierra cuando el promotor aporta JUSTIFICANTE_BOE. ESPERAR_PLAZO(2): transcurso del plazo de IP."
         },
         {
           "codigo": "ANUNCIO_BOP",
           "nombre": "Anuncio en BOP",
           "descripcion": "Publicación de anuncio en Boletín Oficial Provincial",
-          "tareas_indicativas": ["NOTIFICAR", "ESPERAR_PLAZO", "ESPERAR_PLAZO"],
-          "patron": "F+F",
-          "nota": "Consume ANUNCIO_IP de REDACTAR_ANUNCIO. Doble ESPERAR_PLAZO: hasta publicación efectiva + plazo de alegaciones (#368)."
+          "tareas_indicativas": ["ELABORAR", "NOTIFICAR", "ESPERAR_PLAZO", "ESPERAR_PLAZO"],
+          "patron": "C+F",
+          "nota": "ELABORAR produce OFICIO_PUBLICAR_BOLETIN; NOTIFICAR remite OFICIO + ANUNCIO_IP al BOP. ESPERAR_PLAZO(1): la administración vigila la plataforma del BOP e introduce manualmente ANUNCIO_PUBLICADO — no requiere entrada registral del titular. ESPERAR_PLAZO(2): transcurso del plazo de IP."
         },
         {
           "codigo": "ANUNCIO_PRENSA",
           "nombre": "Anuncio en Prensa",
           "descripcion": "Publicación de anuncio en diario de mayor difusión",
-          "tareas_indicativas": ["NOTIFICAR", "ESPERAR_PLAZO", "ESPERAR_PLAZO"],
+          "tareas_indicativas": ["ESPERAR_PLAZO", "ESPERAR_PLAZO"],
           "patron": "F+F",
-          "nota": "Consume ANUNCIO_IP de REDACTAR_ANUNCIO. Doble ESPERAR_PLAZO: hasta publicación efectiva + plazo de alegaciones (#368)."
+          "nota": "Publicación gestionada íntegramente por el promotor. ESPERAR_PLAZO(1): plazo indefinido alimentado por ANUNCIO_TITULAR.NOTIFICAR + OFICIO_PUBLICAR_TITULAR; cierra cuando el promotor aporta JUSTIFICANTE_PRENSA (siempre del titular, que conoce cuándo y dónde publicó). ESPERAR_PLAZO(2): transcurso del plazo de IP — puede consumirse de inmediato si el promotor envía la copia del anuncio publicado al vencer el plazo."
         },
         {
           "codigo": "ANUNCIO_BOJA",
@@ -242,15 +242,15 @@
           "descripcion": "Publicación de anuncio en Boletín Oficial de la Junta de Andalucía",
           "tareas_indicativas": ["NOTIFICAR", "ESPERAR_PLAZO", "ESPERAR_PLAZO"],
           "patron": "F+F",
-          "nota": "Consume ANUNCIO_IP de REDACTAR_ANUNCIO. Doble ESPERAR_PLAZO: hasta publicación efectiva + plazo de alegaciones (#368)."
+          "nota": "Sin ELABORAR: la remisión se realiza mediante la plataforma SIBOJA, sin oficio previo. NOTIFICAR: sube ANUNCIO_IP a través de SIBOJA. ESPERAR_PLAZO(1): la administración vigila la plataforma BOJA e introduce manualmente ANUNCIO_PUBLICADO — no requiere entrada registral del titular. ESPERAR_PLAZO(2): transcurso del plazo de IP."
         },
         {
           "codigo": "TABLON_AYUNTAMIENTOS",
           "nombre": "Tablón de Ayuntamientos",
           "descripcion": "Publicación en tablones de ayuntamientos afectados (uno por ayuntamiento)",
-          "tareas_indicativas": ["NOTIFICAR", "ESPERAR_PLAZO"],
-          "patron": "C (sin ELABORAR)",
-          "nota": "Consume ANUNCIO_IP de REDACTAR_ANUNCIO. Certificado de exposición queda en ESPERAR_PLAZO.documento_producido (#368)."
+          "tareas_indicativas": ["ELABORAR", "NOTIFICAR", "ESPERAR_PLAZO"],
+          "patron": "C",
+          "nota": "ELABORAR produce OFICIO_TABLON; NOTIFICAR remite OFICIO_TABLON + ANUNCIO_IP a cada ayuntamiento. ESPERAR_PLAZO: el plazo lo acredita el propio ayuntamiento mediante CERT_PLAZO_TABLON; sin segundo ESPERAR_PLAZO."
         },
         {
           "codigo": "PORTAL_TRANSPARENCIA",
