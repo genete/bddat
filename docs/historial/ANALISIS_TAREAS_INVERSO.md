@@ -19,8 +19,8 @@ Este documento invierte esa jerarquía. **La tarea es el nudo primario.**
 
 | Tarea | Nº trámites | Patrón dominante |
 |---|---|---|
-| ELABORAR | 19 | B, C, C+A, A+C, A+B |
-| NOTIFICAR | 23 | B, C, C+A, A+C, F+F |
+| ELABORAR | 21 | B, C, C+A, A+C, A+B, C+F |
+| NOTIFICAR | 21 | B, C, C+A, A+C, F+F |
 | ESPERAR_PLAZO | 19 | C, C+A, A+C, F+F |
 | ANALIZAR | 14 | A, C+A, A+C, A+B |
 
@@ -74,6 +74,8 @@ Produce documento con validez jurídica inmediata. El borrador es estado interno
 | INFORMACION_PUBLICA | PORTAL_TRANSPARENCIA | C | Anuncio para portal institucional |
 | INFORMACION_PUBLICA | RECEPCION_ALEGACION | A+C | Traslado de alegación al titular |
 | INFORMACION_PUBLICA | ANUNCIO_TITULAR | B | Comunicación al titular de la publicación del anuncio IP |
+| INFORMACION_PUBLICA | ANUNCIO_BOP | C+F | Oficio de remisión de anuncio al BOP (produce OFICIO_PUBLICAR_BOLETIN) |
+| INFORMACION_PUBLICA | TABLON_AYUNTAMIENTOS | C | Oficio de solicitud de exposición en tablón (produce OFICIO_TABLON) |
 | FIGURA_AMBIENTAL_EXTERNA | SOLICITUD_FIGURA | C | Solicitud de instrumento ambiental |
 | AAU_AAUS_INTEGRADA | REMISION_RESULTADO_IP_CONSULTAS | C | Traslado a MA del resultado de IP y consultas |
 | AAU_AAUS_INTEGRADA | RECEPCION_DICTAMEN | A+C | Propuesta de resolución sustantiva tras dictamen MA |
@@ -99,11 +101,9 @@ El justificante proviene de Notifica o sistema corporativo externo.
 | CONSULTAS | CONSULTA_SEPARATA | C+A | Organismo afectado | Acuse por organismo |
 | CONSULTAS | CONSULTA_TRASLADO_TITULAR | C+A | Titular | Acuse traslado al titular |
 | CONSULTAS | CONSULTA_TRASLADO_ORGANISMO | C+A | Organismo | Acuse traslado al organismo |
-| INFORMACION_PUBLICA | ANUNCIO_BOE | F+F | BOE | Acuse envío BOE |
-| INFORMACION_PUBLICA | ANUNCIO_BOP | F+F | BOP | Acuse envío BOP |
-| INFORMACION_PUBLICA | ANUNCIO_PRENSA | F+F | Diario | Acuse envío prensa |
-| INFORMACION_PUBLICA | ANUNCIO_BOJA | F+F | BOJA | Acuse envío BOJA |
-| INFORMACION_PUBLICA | TABLON_AYUNTAMIENTOS | C (sin ELABORAR) | Ayuntamientos afectados | Acuse envío a ayuntamientos |
+| INFORMACION_PUBLICA | ANUNCIO_BOP | C+F | BOP | Acuse remisión OFICIO_PUBLICAR_BOLETIN + ANUNCIO_IP |
+| INFORMACION_PUBLICA | ANUNCIO_BOJA | F+F | BOJA (vía SIBOJA) | Acuse de carga en plataforma SIBOJA |
+| INFORMACION_PUBLICA | TABLON_AYUNTAMIENTOS | C | Ayuntamientos afectados | Acuse envío a ayuntamientos |
 | INFORMACION_PUBLICA | PORTAL_TRANSPARENCIA | C | Portal institucional | Acuse publicación portal |
 | INFORMACION_PUBLICA | RECEPCION_ALEGACION | A+C | Titular (traslado alegación) | Acuse traslado |
 | INFORMACION_PUBLICA | ANUNCIO_TITULAR | B | Titular | Acuse notificación IP al titular |
@@ -131,15 +131,15 @@ El justificante proviene de Notifica o sistema corporativo externo.
 | CONSULTAS | CONSULTA_SEPARATA | C+A | Plazo de respuesta del organismo | Informe del organismo (o NULL: conformidad tácita) |
 | CONSULTAS | CONSULTA_TRASLADO_TITULAR | C+A | Plazo respuesta del titular | Respuesta del titular (o NULL: aceptación tácita) |
 | CONSULTAS | CONSULTA_TRASLADO_ORGANISMO | C+A | Plazo respuesta final del organismo | Respuesta final (o NULL: conformidad tácita) |
-| INFORMACION_PUBLICA | ANUNCIO_BOE | F+F | ×1: hasta publicación efectiva | Justificante de publicación BOE |
-| INFORMACION_PUBLICA | ANUNCIO_BOE | F+F | ×2: plazo de alegaciones | NULL (vence sin documento esperado) |
-| INFORMACION_PUBLICA | ANUNCIO_BOP | F+F | ×1: hasta publicación efectiva | Justificante de publicación BOP |
-| INFORMACION_PUBLICA | ANUNCIO_BOP | F+F | ×2: plazo de alegaciones | NULL |
-| INFORMACION_PUBLICA | ANUNCIO_PRENSA | F+F | ×1: hasta publicación efectiva | Justificante de publicación en prensa |
-| INFORMACION_PUBLICA | ANUNCIO_PRENSA | F+F | ×2: plazo de alegaciones | NULL |
-| INFORMACION_PUBLICA | ANUNCIO_BOJA | F+F | ×1: hasta publicación efectiva | Justificante de publicación BOJA |
-| INFORMACION_PUBLICA | ANUNCIO_BOJA | F+F | ×2: plazo de alegaciones | NULL |
-| INFORMACION_PUBLICA | TABLON_AYUNTAMIENTOS | C (sin ELABORAR) | Hasta recibir certificado | Certificado de exposición en tablón |
+| INFORMACION_PUBLICA | ANUNCIO_BOE | F+F | ×1: indefinida hasta que promotor aporte JUSTIFICANTE_BOE | JUSTIFICANTE_BOE (aportado por el promotor) |
+| INFORMACION_PUBLICA | ANUNCIO_BOE | F+F | ×2: transcurso del plazo de IP | NULL |
+| INFORMACION_PUBLICA | ANUNCIO_BOP | C+F | ×1: hasta publicación efectiva | ANUNCIO_PUBLICADO (la administración lo obtiene de la plataforma BOP e introduce manualmente) |
+| INFORMACION_PUBLICA | ANUNCIO_BOP | C+F | ×2: transcurso del plazo de IP | NULL |
+| INFORMACION_PUBLICA | ANUNCIO_PRENSA | F+F | ×1: indefinida hasta que el titular aporte JUSTIFICANTE_PRENSA | JUSTIFICANTE_PRENSA (siempre del titular, que conoce cuándo y dónde publicó) |
+| INFORMACION_PUBLICA | ANUNCIO_PRENSA | F+F | ×2: transcurso del plazo de IP — puede consumirse de inmediato | NULL |
+| INFORMACION_PUBLICA | ANUNCIO_BOJA | F+F | ×1: hasta publicación efectiva | ANUNCIO_PUBLICADO (la administración lo obtiene de la plataforma BOJA e introduce manualmente) |
+| INFORMACION_PUBLICA | ANUNCIO_BOJA | F+F | ×2: transcurso del plazo de IP | NULL |
+| INFORMACION_PUBLICA | TABLON_AYUNTAMIENTOS | C | Hasta recibir certificado del ayuntamiento | CERT_PLAZO_TABLON (emitido por el ayuntamiento) |
 | INFORMACION_PUBLICA | PORTAL_TRANSPARENCIA | C | Plazo de alegaciones | NULL (vence sin documento esperado) |
 | FIGURA_AMBIENTAL_EXTERNA | SOLICITUD_FIGURA | C | Indefinida (plazo=0) hasta resolución ambiental | Resolución AAU/AAUS/CA |
 | AAU_AAUS_INTEGRADA | REMISION_RESULTADO_IP_CONSULTAS | C | Indefinida (plazo=0) hasta dictamen MA | Dictamen ambiental integrado (MA) |
