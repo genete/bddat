@@ -146,15 +146,14 @@ class Tarea(db.Model):
 
     @property
     def resultado(self):
-        """Efecto de resultado: INDIFERENTE | CORRECTA | INCORRECTA.
+        """Resultado de la notificación: CORRECTA | INCORRECTA | INDIFERENTE.
 
-        Deriva del documento producido vía resultados_documentos.
-        Sin fila en resultados_documentos → INDIFERENTE.
-        Solo NOTIFICAR puede producir INCORRECTA (#296).
+        Solo aplica a tareas NOTIFICAR. Lee de notificaciones (ADR-008, #418).
+        Sin fila en notificaciones → INDIFERENTE (resultado no registrado aún).
         """
         doc = self.documento_producido
-        if doc and doc.resultado_doc:
-            return doc.resultado_doc.tipo_resultado.efecto_tarea
+        if doc and doc.notificacion:
+            return doc.notificacion.resultado
         return 'INDIFERENTE'
 
     @property

@@ -23,7 +23,6 @@ from app.models.tipos_solicitudes import TipoSolicitud
 from app.models.tipos_tareas import TipoTarea
 from app.models.tipos_tramites import TipoTramite
 from app.models.tipos_documentos import TipoDocumento
-from app.models.tipos_resultado_documentos import TipoResultadoDocumento
 from app.models.consultas_nombradas import ConsultaNombrada
 from app.models.plantillas import Plantilla
 
@@ -50,7 +49,6 @@ from app.models.solicitudes import Solicitud  # Depende de Expediente
 from app.models.historico_titular_expediente import HistoricoTitularExpediente  # Depende de Expediente, Entidad, Solicitud
 
 from app.models.tramites_tareas import TramiteTarea
-from app.models.tipos_documentos_resultados_validos import TipoDocumentoResultadoValido
 
 # Modelos operacionales con dependencias múltiples
 from app.models.documentos_proyecto import DocumentoProyecto  # Depende de Documento, Proyecto
@@ -61,7 +59,7 @@ from app.models.municipios_proyecto import MunicipioProyecto  # Depende de Munic
 from app.models.tramites import Tramite  # Depende de Fase, TipoTramite
 from app.models.tareas import Tarea  # Depende de Tramite, TipoTarea, Documento
 from app.models.documentos_tarea import DocumentoTarea  # Depende de Tarea, Documento
-from app.models.resultados_documentos import ResultadoDocumento  # Depende de Documento, TipoResultadoDocumento
+from app.models.notificaciones import Notificacion  # Depende de Documento (#418)
 
 # Plazos — maestros sin dependencias operacionales (efectos_plazo, ambitos ya importados arriba)
 from app.models.dias_inhabiles import DiaInhabil        # depende de AmbitoInhabilidad
@@ -101,7 +99,6 @@ __all__ = [
     'TipoTarea',
     'TipoTramite',
     'TipoDocumento',
-    'TipoResultadoDocumento',
     'ConsultaNombrada',
     'Plantilla',
     # Metadata del sistema
@@ -119,7 +116,6 @@ __all__ = [
     # Histórico
     'HistoricoTitularExpediente',
     'TramiteTarea',
-    'TipoDocumentoResultadoValido',
     # Operacionales (continuación)
     'DocumentoProyecto',
     'Fase',
@@ -127,7 +123,7 @@ __all__ = [
     'Tramite',
     'Tarea',
     'DocumentoTarea',
-    'ResultadoDocumento',
+    'Notificacion',
     # Plazos
     'DiaInhabil',
     'CatalogoPlazo',
