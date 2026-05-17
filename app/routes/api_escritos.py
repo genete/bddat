@@ -236,7 +236,14 @@ def generar():
         doc_id = doc.id
 
         if asignar_doc_producido:
-            tarea.documento_producido_id = doc_id
+            from app.models.documentos_tarea import DocumentoTarea
+            existente = next(
+                (v for v in tarea.vinculos_documento if v.rol == 'PRODUCIDO'), None)
+            if existente:
+                existente.documento_id = doc_id
+            else:
+                tarea.vinculos_documento.append(
+                    DocumentoTarea(documento_id=doc_id, rol='PRODUCIDO'))
 
     db.session.commit()
 

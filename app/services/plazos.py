@@ -358,11 +358,13 @@ def _resolver_campo_fecha(elemento, tipo_elemento: str, campo_fecha: dict) -> Op
     """Resuelve campo_fecha JSONB → Documento.fecha_administrativa.
 
     Navega el ORM según el JSON configurado en catalogo_plazos:
-      {'fk': 'documento_resultado_id'}             → elemento.documento_resultado
-      {'via_tarea_tipo': 'T', 'fk': 'doc_id'}     → tarea hija tipo T → rel
+      {'fk': 'documento_resultado_id'}              → elemento.documento_resultado
+      {'via_tarea_tipo': 'T', 'rol': 'CONSUMIDO'}   → tarea hija tipo T → documento por rol
+      {'rol': 'CONSUMIDO'}                          → el propio elemento (Tarea) → documento por rol
     Para FASE con 'documento_solicitud_id': navega vía fase.solicitud.
     """
     fk_col = campo_fecha.get('fk', '')
+    rol = campo_fecha.get('rol')
     via_tarea_tipo = campo_fecha.get('via_tarea_tipo')
 
     obj = elemento
@@ -377,13 +379,18 @@ def _resolver_campo_fecha(elemento, tipo_elemento: str, campo_fecha: dict) -> Op
         if obj is None:
             return None
 
-    rel_name = fk_col[:-3] if fk_col.endswith('_id') else fk_col
-
-    doc = getattr(obj, rel_name, None)
-
-    if doc is None and tipo_elemento == 'FASE' and not via_tarea_tipo:
-        solicitud = getattr(obj, 'solicitud', None)
-        doc = getattr(solicitud, rel_name, None) if solicitud else None
+    if rol:
+        # obj es una Tarea — el documento se obtiene por rol del vínculo (ADR-010)
+        if rol == 'PRODUCIDO':
+            doc = getattr(obj, 'documento_producido', None)
+        else:
+            doc = _primer_consumido(obj)
+    else:
+        rel_name = fk_col[:-3] if fk_col.endswith('_id') else fk_col
+        doc = getattr(obj, rel_name, None)
+        if doc is None and tipo_elemento == 'FASE' and not via_tarea_tipo:
+            solicitud = getattr(obj, 'solicitud', None)
+            doc = getattr(solicitud, rel_name, None) if solicitud else None
 
     if doc is None:
         return None
@@ -421,19 +428,30 @@ def _fecha_doc_admin(doc) -> Optional[date]:
     return getattr(doc, 'fecha_administrativa', None) if doc else None
 
 
+def _primer_consumido(tarea):
+    """Primer documento consumido por la tarea (rol CONSUMIDO), o None.
+
+    Las tareas con un único documento de entrada (ANALIZAR, ESPERAR_PLAZO en
+    los patrones de plazo) lo exponen aquí de forma determinista por orden de
+    vínculo. Ver ADR-010.
+    """
+    docs = getattr(tarea, 'documentos_consumidos', None) or []
+    return docs[0] if docs else None
+
+
 def _fecha_cierre_suspension(tramite_trigger, todos_tramites: list) -> Optional[date]:
     """
     Fecha de fin de la suspensión iniciada por tramite_trigger.
 
     Orden de búsqueda:
-    1. ANALIZAR.documento_usado del propio trámite (REQUERIMIENTO_SUBSANACION, CONSULTA_SEPARATA).
-    2. ESPERAR_PLAZO.documento_producido del propio trámite (ADR-004 para SOLICITUD_INFORME).
-    3. ANALIZAR.documento_usado del primer trámite hermano receptor (RECEPCION_INFORME, etc.)
+    1. Primer documento consumido de ANALIZAR del propio trámite (REQUERIMIENTO_SUBSANACION, CONSULTA_SEPARATA).
+    2. Documento producido de ESPERAR_PLAZO del propio trámite (ADR-004 para SOLICITUD_INFORME).
+    3. Primer documento consumido de ANALIZAR del primer trámite hermano receptor (RECEPCION_INFORME, etc.)
        con id > tramite_trigger.id.
     """
     analizar = _tarea_de_tipo(tramite_trigger, 'ANALIZAR')
     if analizar:
-        f = _fecha_doc_admin(getattr(analizar, 'documento_usado', None))
+        f = _fecha_doc_admin(_primer_consumido(analizar))
         if f:
             return f
 
@@ -452,7 +470,7 @@ def _fecha_cierre_suspension(tramite_trigger, todos_tramites: list) -> Optional[
                 continue
             a = _tarea_de_tipo(hermano, 'ANALIZAR')
             if a:
-                f = _fecha_doc_admin(getattr(a, 'documento_usado', None))
+                f = _fecha_doc_admin(_primer_consumido(a))
                 if f:
                     return f
 

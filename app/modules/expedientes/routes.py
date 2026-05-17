@@ -35,7 +35,6 @@ from app.models.tramites import Tramite
 from app.models.tareas import Tarea
 from app.models.documentos import Documento
 from app.models.tipos_documentos import TipoDocumento
-from app.models.documentos_tarea import DocumentoTarea
 from app.decorators import role_required
 from app.services.plazos import obtener_estado_plazo
 from app.utils.permisos import (
@@ -497,16 +496,11 @@ def _documento_es_referenciado(doc):
 
     Backrefs consultados:
       doc.proyecto_vinculado  → DocumentoProyecto.documento_id  (uselist=False)
-      doc.tareas_que_usan     → Tarea.documento_usado_id        (lista)
-      doc.tarea_productora    → Tarea.documento_producido_id    (lista, UNIQUE en BD)
+      doc.vinculos_tarea      → DocumentoTarea.documento_id     (lista, vínculos con rol)
     """
     if doc.proyecto_vinculado:
         return True
-    if doc.tareas_que_usan:
-        return True
-    if doc.tarea_productora:
-        return True
-    if doc.documentos_tarea:
+    if doc.vinculos_tarea:
         return True
     return False
 

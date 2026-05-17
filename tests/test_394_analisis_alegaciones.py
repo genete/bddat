@@ -43,7 +43,8 @@ def _tipo_tarea(codigo):
 def _tarea(codigo, documento_usado=None, documento_producido=None):
     t = MagicMock()
     t.tipo_tarea = _tipo_tarea(codigo)
-    t.documento_usado = documento_usado
+    # Vínculos N:M (ADR-010): el documento de entrada se expone como lista
+    t.documentos_consumidos = [documento_usado] if documento_usado is not None else []
     t.documento_producido = documento_producido
     return t
 

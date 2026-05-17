@@ -56,7 +56,7 @@ def check_invariante(accion: str, sujeto: str, entidad_id: int) -> Optional[Eval
 def _check_borrar(sujeto: str, entidad_id: int) -> Optional[EvaluacionResult]:
     if sujeto == 'TAREA':
         tarea = Tarea.query.get(entidad_id)
-        if tarea and (tarea.documento_producido_id is not None or tarea.documento_usado_id is not None):
+        if tarea and tarea.vinculos_documento:
             return _bloquear('No se puede eliminar una tarea que ya tiene documentos asignados.')
 
     elif sujeto == 'TRAMITE':
@@ -111,8 +111,17 @@ def _check_finalizar(sujeto: str, entidad_id: int) -> Optional[EvaluacionResult]
 
 def _check_finalizar_fase(fase_id: int) -> Optional[EvaluacionResult]:
     from app.models.tipos_tareas import TipoTarea
+    from app.models.documentos_tarea import DocumentoTarea
     from app.models.resultados_documentos import ResultadoDocumento
     from app.models.tipos_resultado_documentos import TipoResultadoDocumento
+
+    # Una tarea está completa si tiene un vínculo PRODUCIDO en documentos_tarea (ADR-010)
+    _tiene_producido = (
+        db.session.query(DocumentoTarea.id)
+        .filter(DocumentoTarea.tarea_id == Tarea.id,
+                DocumentoTarea.rol == 'PRODUCIDO')
+        .exists()
+    )
     tarea_incompleta = (
         db.session.query(Tarea)
         .join(Tramite, Tarea.tramite_id == Tramite.id)
@@ -120,7 +129,7 @@ def _check_finalizar_fase(fase_id: int) -> Optional[EvaluacionResult]:
         .filter(
             Tramite.fase_id == fase_id,
             TipoTarea.codigo.in_(_TIPOS_REQUIEREN_DOC_PRODUCIDO),
-            Tarea.documento_producido_id.is_(None)
+            ~_tiene_producido
         )
         .first()
     )
@@ -132,7 +141,9 @@ def _check_finalizar_fase(fase_id: int) -> Optional[EvaluacionResult]:
         db.session.query(Tarea)
         .join(Tramite, Tarea.tramite_id == Tramite.id)
         .join(TipoTarea, Tarea.tipo_tarea_id == TipoTarea.id)
-        .join(ResultadoDocumento, ResultadoDocumento.documento_id == Tarea.documento_producido_id)
+        .join(DocumentoTarea, db.and_(DocumentoTarea.tarea_id == Tarea.id,
+                                      DocumentoTarea.rol == 'PRODUCIDO'))
+        .join(ResultadoDocumento, ResultadoDocumento.documento_id == DocumentoTarea.documento_id)
         .join(TipoResultadoDocumento, TipoResultadoDocumento.id == ResultadoDocumento.tipo_resultado_documento_id)
         .filter(
             Tramite.fase_id == fase_id,
@@ -149,15 +160,23 @@ def _check_finalizar_fase(fase_id: int) -> Optional[EvaluacionResult]:
 
 def _check_finalizar_tramite(tramite_id: int) -> Optional[EvaluacionResult]:
     from app.models.tipos_tareas import TipoTarea
+    from app.models.documentos_tarea import DocumentoTarea
     from app.models.resultados_documentos import ResultadoDocumento
     from app.models.tipos_resultado_documentos import TipoResultadoDocumento
+
+    _tiene_producido = (
+        db.session.query(DocumentoTarea.id)
+        .filter(DocumentoTarea.tarea_id == Tarea.id,
+                DocumentoTarea.rol == 'PRODUCIDO')
+        .exists()
+    )
     tarea_incompleta = (
         db.session.query(Tarea)
         .join(TipoTarea, Tarea.tipo_tarea_id == TipoTarea.id)
         .filter(
             Tarea.tramite_id == tramite_id,
             TipoTarea.codigo.in_(_TIPOS_REQUIEREN_DOC_PRODUCIDO),
-            Tarea.documento_producido_id.is_(None)
+            ~_tiene_producido
         )
         .first()
     )
@@ -168,7 +187,9 @@ def _check_finalizar_tramite(tramite_id: int) -> Optional[EvaluacionResult]:
     notificar_incorrecta = (
         db.session.query(Tarea)
         .join(TipoTarea, Tarea.tipo_tarea_id == TipoTarea.id)
-        .join(ResultadoDocumento, ResultadoDocumento.documento_id == Tarea.documento_producido_id)
+        .join(DocumentoTarea, db.and_(DocumentoTarea.tarea_id == Tarea.id,
+                                      DocumentoTarea.rol == 'PRODUCIDO'))
+        .join(ResultadoDocumento, ResultadoDocumento.documento_id == DocumentoTarea.documento_id)
         .join(TipoResultadoDocumento, TipoResultadoDocumento.id == ResultadoDocumento.tipo_resultado_documento_id)
         .filter(
             Tarea.tramite_id == tramite_id,
@@ -190,10 +211,10 @@ def _check_finalizar_tarea(tarea_id: int) -> Optional[EvaluacionResult]:
 
     codigo = tarea.tipo_tarea.codigo
 
-    if codigo in _TIPOS_REQUIEREN_DOC_PRODUCIDO and tarea.documento_producido_id is None:
+    if codigo in _TIPOS_REQUIEREN_DOC_PRODUCIDO and not tarea.ejecutada:
         return _bloquear('Falta el documento producido. Asócielo antes de finalizar la tarea.')
 
-    if codigo in _TIPOS_REQUIEREN_DOC_USADO and tarea.documento_usado_id is None:
+    if codigo in _TIPOS_REQUIEREN_DOC_USADO and not tarea.documentos_consumidos:
         return _bloquear('Falta el documento de entrada. Asócielo antes de finalizar la tarea.')
 
     return None

@@ -51,7 +51,8 @@ def generar_escrito(plantilla, expediente, db_session, tarea=None) -> bytes:
         expediente:  Instancia de Expediente con relaciones cargadas.
         db_session:  Sesión SQLAlchemy activa (para ejecutar consultas nombradas).
         tarea:       Instancia de Tarea opcional. Si se proporciona y tiene
-                     documento_usado, se añade al contexto como 'doc_entrada'.
+                     documentos consumidos, el primero se añade al contexto
+                     como 'doc_entrada'.
 
     Returns:
         bytes — Contenido del .docx generado, listo para guardar en disco.
@@ -65,9 +66,11 @@ def generar_escrito(plantilla, expediente, db_session, tarea=None) -> bytes:
     # Capa 1: contexto base del expediente
     ctx = ContextoBaseExpediente(expediente).get_contexto()
 
-    # Documento de entrada: si la tarea tiene documento_usado, se expone en el contexto
-    if tarea and tarea.documento_usado:
-        ctx['doc_entrada'] = tarea.documento_usado
+    # Documento de entrada: el primer documento consumido por la tarea (ADR-010)
+    if tarea:
+        _consumidos = tarea.documentos_consumidos
+        if _consumidos:
+            ctx['doc_entrada'] = _consumidos[0]
 
     # Capa 2: Context Builder opcional
     if plantilla.contexto_clase:

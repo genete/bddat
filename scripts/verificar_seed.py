@@ -91,7 +91,13 @@ def tramites_de_fase(fase_codigo, sol_id):
 def tareas_de_tramite(tramite_codigo, sol_id):
     """Devuelve lista de (tipo_tarea_codigo, doc_usado_id, doc_producido_id, notas)."""
     return q("""
-        SELECT tta.codigo, ta.documento_usado_id, ta.documento_producido_id, ta.notas
+        SELECT tta.codigo,
+               (SELECT dt.documento_id FROM documentos_tarea dt
+                WHERE dt.tarea_id = ta.id AND dt.rol = 'CONSUMIDO'
+                ORDER BY dt.id LIMIT 1)               AS documento_usado_id,
+               (SELECT dt.documento_id FROM documentos_tarea dt
+                WHERE dt.tarea_id = ta.id AND dt.rol = 'PRODUCIDO') AS documento_producido_id,
+               ta.notas
         FROM tareas ta
         JOIN tramites tr ON tr.id = ta.tramite_id
         JOIN fases f ON f.id = tr.fase_id
@@ -372,7 +378,9 @@ def verificar_T10():
                 JOIN tipos_tareas tt ON tt.id = ta.tipo_tarea_id
                 WHERE f.solicitud_id = :s
                 AND tt.codigo IN ('ANALIZAR','ELABORAR','NOTIFICAR')
-                AND ta.documento_producido_id IS NULL""", s=sid) == 0)
+                AND NOT EXISTS (SELECT 1 FROM documentos_tarea dt
+                                WHERE dt.tarea_id = ta.id AND dt.rol = 'PRODUCIDO')""",
+             s=sid) == 0)
 
 
 def verificar_T11():

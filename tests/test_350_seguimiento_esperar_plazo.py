@@ -33,7 +33,8 @@ def _mock_tarea(tipo_tramite_codigo, doc_fecha=None):
 
     - tipo_tarea.codigo = 'ESPERAR_PLAZO'  (requerido por _get_tipo_elemento_codigo)
     - tramite.tipo_tramite.codigo          (requerido por _variables_esperar_plazo)
-    - documento_usado.fecha_administrativa (requerido por _resolver_campo_fecha)
+    - documentos_consumidos[0].fecha_administrativa (requerido por
+      _resolver_campo_fecha con campo_fecha {'rol': 'CONSUMIDO'} — ADR-010)
     """
     tarea = MagicMock()
     tarea.tipo_tarea = MagicMock(codigo='ESPERAR_PLAZO')
@@ -42,9 +43,9 @@ def _mock_tarea(tipo_tramite_codigo, doc_fecha=None):
     if doc_fecha is not None:
         doc = MagicMock()
         doc.fecha_administrativa = doc_fecha
-        tarea.documento_usado = doc
+        tarea.documentos_consumidos = [doc]
     else:
-        tarea.documento_usado = None
+        tarea.documentos_consumidos = []
     return tarea
 
 

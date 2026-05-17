@@ -20,9 +20,9 @@ class CatalogoPlazo(db.Model):
         FK polimórfica sin constraint BD (como motor_reglas).
     CAMPO campo_fecha: JSONB que indica qué Documento.fecha_administrativa
         es el inicio del cómputo. Formato:
-            {'fk': 'documento_solicitud_id'}           -- caso directo
+            {'fk': 'documento_solicitud_id'}           -- caso directo (FK del elemento)
             {'via_tarea_tipo': 'ESPERAR_PLAZO',
-             'fk': 'documento_usado_id'}               -- vía tarea hija
+             'rol': 'CONSUMIDO'}                       -- vía tarea hija (rol en documentos_tarea)
     CAMPO plazo_unidad: 'DIAS_HABILES' | 'DIAS_NATURALES' | 'MESES' | 'ANOS'
     CAMPO efecto_vencimiento_id: FK a efectos_plazo.
     CAMPO vigencia_desde / vigencia_hasta: rango de vigencia. NULL = sin límite.
@@ -52,7 +52,7 @@ class CatalogoPlazo(db.Model):
     )
     campo_fecha = db.Column(
         JSONB, nullable=True,
-        comment='Referencia al Documento.fecha_administrativa de inicio: {"fk":"..."} o {"via_tarea_tipo":"...","fk":"..."}',
+        comment='Referencia al Documento.fecha_administrativa de inicio: {"fk":"..."} (FK del elemento) o {"via_tarea_tipo":"...","rol":"CONSUMIDO|PRODUCIDO"} (vía tarea hija)',
     )
     plazo_valor = db.Column(
         db.Integer, nullable=False,

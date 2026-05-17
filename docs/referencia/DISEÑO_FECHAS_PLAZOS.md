@@ -380,27 +380,29 @@ catalogo_plazos
 
 `campo_fecha` no es código — es **configuración de dominio administrable por el Supervisor**. La legislación fija el valor y la unidad del plazo; también fija *desde qué momento* empieza a contar. Ese momento tiene un reflejo en BDDAT (algún `Documento.fecha_administrativa` accesible desde el elemento ESFTT). El Supervisor lo define en el catálogo; puede corregirlo sin tocar código si la norma cambia.
 
-El campo `campo` es siempre `fecha_administrativa` (el resolver lo asume). FKs navegables por nivel:
+El campo `campo` es siempre `fecha_administrativa` (el resolver lo asume). Referencias navegables por nivel:
 
-| Nivel | FKs navegables a `documentos` |
+| Nivel | Referencia al documento de inicio |
 |---|---|
-| `SOLICITUD` | `documento_solicitud_id` |
-| `FASE` | `documento_resultado_id` |
-| `TAREA` | `documento_usado_id`, `documento_producido_id` |
+| `SOLICITUD` | `fk: documento_solicitud_id` |
+| `FASE` | `fk: documento_resultado_id` |
+| `TAREA` | `rol: CONSUMIDO` o `rol: PRODUCIDO` (vínculo en `documentos_tarea`, ADR-010) |
 | `TRAMITE` | — directo; requiere `via_tarea_tipo` |
 
 ```jsonc
-// Caso directo — Solicitud, Fase, Tarea:
-// "fk" = nombre del atributo ORM con FK a documentos en ese nivel
+// Caso directo — Solicitud, Fase: "fk" = atributo ORM con FK a documentos
 { "fk": "documento_solicitud_id" }
 
-// Caso Trámite — sin FKs directas; se navega a tarea hija del tipo indicado:
-{ "via_tarea_tipo": "ESPERAR_PLAZO", "fk": "documento_usado_id" }
+// Caso Tarea — el documento se obtiene por rol del vínculo documentos_tarea:
+{ "rol": "CONSUMIDO" }
+
+// Caso Trámite — sin FK directa; se navega a tarea hija del tipo indicado:
+{ "via_tarea_tipo": "ESPERAR_PLAZO", "rol": "CONSUMIDO" }
 ```
 
-**UI de Supervisión:** selector en cascada (nivel ESFTT → tipo de tarea si Trámite → FK disponible etiquetada en lenguaje administrativo). El POST traduce la selección al JSON. La presentación inversa lo traduce a texto legible:
+**UI de Supervisión:** selector en cascada (nivel ESFTT → tipo de tarea si Trámite → referencia disponible etiquetada en lenguaje administrativo). El POST traduce la selección al JSON. La presentación inversa lo traduce a texto legible:
 - `{"fk": "documento_solicitud_id"}` → "Fecha administrativa del documento de solicitud"
-- `{"via_tarea_tipo": "ESPERAR_PLAZO", "fk": "documento_usado_id"}` → "Fecha administrativa del justificante de notificación (vía tarea Esperar Plazo)"
+- `{"via_tarea_tipo": "ESPERAR_PLAZO", "rol": "CONSUMIDO"}` → "Fecha administrativa del justificante de notificación (vía tarea Esperar Plazo)"
 
 **`plazos.py` — resolver:** recibe el objeto ORM del elemento y el JSON de `campo_fecha`. Cuatro ramas según `tipo_elemento`; si hay `via_tarea_tipo`, busca la tarea hija antes de seguir el FK. Devuelve `Documento.fecha_administrativa` o `None` (con alarma si el plazo tiene valor > 0 y el documento no existe).
 
@@ -613,21 +615,21 @@ Ninguna regla del motor disparará por plazo hasta que #172 implemente la lógic
 
 > **Estado:** Cerrado — sesión 2026-04-23.
 
-`ESPERAR_PLAZO` es el único tipo de tarea cuyo estado **no es derivable del estado de la BD en un momento fijo**. Todas las demás tareas codifican su completación en la BD: completada si existe `documento_producido_id`, pendiente si no existe. `ESPERAR_PLAZO` no produce documento — su completación es un umbral temporal:
+`ESPERAR_PLAZO` es el único tipo de tarea cuyo estado **no es derivable del estado de la BD en un momento fijo**. Todas las demás tareas codifican su completación en la BD: completada si existe un documento producido (vínculo PRODUCIDO en `documentos_tarea`), pendiente si no existe. `ESPERAR_PLAZO` no produce documento — su completación es un umbral temporal:
 
 ```
-completada ↔ hoy() > fecha_administrativa(documento_usado_id) + plazo_del_trámite_padre
+completada ↔ hoy() > fecha_administrativa(documento consumido) + plazo_del_trámite_padre
 ```
 
 **Consecuencia para el ContextAssembler:** el Assembler no puede derivar el estado de una tarea `ESPERAR_PLAZO` consultando únicamente la BD. Debe llamar a `plazos.py` pasándole el trámite padre para obtener `estado_plazo`. La tarea se considera completada si y solo si `estado_plazo == VENCIDO`.
 
 | Condición | Estado de la tarea |
 |---|---|
-| `documento_usado_id IS NULL` | `PENDIENTE` — tarea no iniciada; el tramitador aún no ha asociado el documento de inicio |
-| `documento_usado_id NOT NULL` y `estado_plazo != VENCIDO` | `PENDIENTE` — plazo en curso |
-| `documento_usado_id NOT NULL` y `estado_plazo == VENCIDO` | `COMPLETADA` — plazo transcurrido |
+| sin documento consumido | `PENDIENTE` — tarea no iniciada; el tramitador aún no ha asociado el documento de inicio |
+| con documento consumido y `estado_plazo != VENCIDO` | `PENDIENTE` — plazo en curso |
+| con documento consumido y `estado_plazo == VENCIDO` | `COMPLETADA` — plazo transcurrido |
 
-**Simetría con el cómputo de plazo del trámite:** el `campo_fecha` de `catalogo_plazos` para un trámite con `ESPERAR_PLAZO` es `{"via_tarea_tipo": "ESPERAR_PLAZO", "fk": "documento_usado_id"}` (ver §3.2). La llamada que el Assembler ya necesita hacer a `plazos.py` para calcular las variables de plazo del trámite es la misma que resuelve el estado de la tarea. No se requiere una interfaz separada.
+**Simetría con el cómputo de plazo del trámite:** el `campo_fecha` de `catalogo_plazos` para un trámite con `ESPERAR_PLAZO` es `{"via_tarea_tipo": "ESPERAR_PLAZO", "rol": "CONSUMIDO"}` (ver §3.2). La llamada que el Assembler ya necesita hacer a `plazos.py` para calcular las variables de plazo del trámite es la misma que resuelve el estado de la tarea. No se requiere una interfaz separada.
 
 **Ausencia de plazo configurado:** si `catalogo_plazos` no tiene entrada para el trámite padre, `plazos.py` devuelve `SIN_PLAZO` → la tarea queda `PENDIENTE` indefinidamente. El Supervisor debe configurar el plazo; sin esa configuración el motor no puede avanzar por ese trámite.
 
@@ -734,15 +736,15 @@ Estos valores son el seed del `catalogo_plazos` para las fases y trámites del p
 
 | Tipo elemento ID | Campo inicio cómputo | Valor | Unidad | Efecto vencimiento | Norma origen |
 |---|---|---|---|---|---|
-| TRASLADO_ALEGACIONES_AAP | **[PENDIENTE — via ESPERAR_PLAZO.documento_usado_id]** | 15 | DIAS_NATURALES | SIN_EFECTO_AUTOMATICO | Art. 126 RD 1955/2000 |
+| TRASLADO_ALEGACIONES_AAP | **[PENDIENTE — via ESPERAR_PLAZO rol CONSUMIDO]** | 15 | DIAS_NATURALES | SIN_EFECTO_AUTOMATICO | Art. 126 RD 1955/2000 |
 | ~~INFORME_AAPP_AAP~~ | ~~INFORME_AAPP_AAP~~ no existe. El trámite canónico es **`CONSULTA_SEPARATA`** (DISEÑO_CONSULTAS_ORGANISMOS.md §4). El plazo de 30 días (15 condicionado) se asocia a nivel de **fase CONSULTAS**, no de trámite. | — | — | — | — |
-| TRASLADO_CONDICIONADO_AAP | **[PENDIENTE — via ESPERAR_PLAZO.documento_usado_id]** | 15 | DIAS_NATURALES | SIN_EFECTO_AUTOMATICO | Art. 127 RD 1955/2000 |
-| REPLICA_AAPP_AAP | **[PENDIENTE — via ESPERAR_PLAZO.documento_usado_id]** | 15 | DIAS_NATURALES | CONFORMIDAD_PRESUNTA | Art. 127 RD 1955/2000 |
+| TRASLADO_CONDICIONADO_AAP | **[PENDIENTE — via ESPERAR_PLAZO rol CONSUMIDO]** | 15 | DIAS_NATURALES | SIN_EFECTO_AUTOMATICO | Art. 127 RD 1955/2000 |
+| REPLICA_AAPP_AAP | **[PENDIENTE — via ESPERAR_PLAZO rol CONSUMIDO]** | 15 | DIAS_NATURALES | CONFORMIDAD_PRESUNTA | Art. 127 RD 1955/2000 |
 | ~~INFORME_AAPP_AAC~~ | ~~INFORME_AAPP_AAC~~ no existe. El plazo del art. 131 se gestiona a nivel de **fase CONSULTAS** (30 días fallback / 15 días condicionado — seed `90655e484fb2`). | — | — | — | — |
-| TRASLADO_CONDICIONADO_AAC | **[PENDIENTE — via ESPERAR_PLAZO.documento_usado_id]** | 15 | DIAS_NATURALES | SIN_EFECTO_AUTOMATICO | Art. 131 RD 1955/2000 |
-| REPLICA_AAPP_AAC | **[PENDIENTE — via ESPERAR_PLAZO.documento_usado_id]** | 15 | DIAS_NATURALES | CONFORMIDAD_PRESUNTA | Art. 131 RD 1955/2000 |
-| INFORME_REE_CIERRE | **[PENDIENTE — via ESPERAR_PLAZO.documento_usado_id]** | 3 | MESES | SIN_EFECTO_AUTOMATICO | Art. 136 RD 1955/2000 — silencio: se continúa sin informe |
-| INFORME_DGPEM | **[PENDIENTE — via ESPERAR_PLAZO.documento_usado_id]** | 2 | MESES | SIN_EFECTO_AUTOMATICO | Art. 114 RD 1955/2000 — solo instalaciones de transporte CCAA; se continúa sin informe |
+| TRASLADO_CONDICIONADO_AAC | **[PENDIENTE — via ESPERAR_PLAZO rol CONSUMIDO]** | 15 | DIAS_NATURALES | SIN_EFECTO_AUTOMATICO | Art. 131 RD 1955/2000 |
+| REPLICA_AAPP_AAC | **[PENDIENTE — via ESPERAR_PLAZO rol CONSUMIDO]** | 15 | DIAS_NATURALES | CONFORMIDAD_PRESUNTA | Art. 131 RD 1955/2000 |
+| INFORME_REE_CIERRE | **[PENDIENTE — via ESPERAR_PLAZO rol CONSUMIDO]** | 3 | MESES | SIN_EFECTO_AUTOMATICO | Art. 136 RD 1955/2000 — silencio: se continúa sin informe |
+| INFORME_DGPEM | **[PENDIENTE — via ESPERAR_PLAZO rol CONSUMIDO]** | 2 | MESES | SIN_EFECTO_AUTOMATICO | Art. 114 RD 1955/2000 — solo instalaciones de transporte CCAA; se continúa sin informe |
 
 > **CONFORMIDAD_PRESUNTA:** efecto del silencio de un organismo consultado — el procedimiento sigue como si hubiera conformidad expresa. Diferente del silencio estimatorio del §2.4 (que recae sobre la Administración resolutora, no sobre un organismo consultado). Añadir `CONFORMIDAD_PRESUNTA` a la tabla `efectos_plazo`.
 

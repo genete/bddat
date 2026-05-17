@@ -72,7 +72,7 @@ Combina el resultado del ANÁLISIS_DOCUMENTAL en un escrito de requerimiento dir
 
 La plantilla del escrito usa el token `{{ resultado_analisis_documental }}` (resultado del trámite anterior, inyectado por el context builder). Si en ese resultado no hay defectos de un tipo concreto, el bloque correspondiente queda vacío en el documento.
 
-Tras ESPERAR_PLAZO, el titular aporta la documentación subsanada. El documento recibido se registra como `documento_producido_id` de la tarea `ESPERAR_PLAZO` (ADR-004). ANALIZAR evalúa la subsanación: si persisten defectos, el motor puede habilitar un nuevo `REQUERIMIENTO_SUBSANACIÓN`; si la subsanación es correcta, habilita el cierre de la fase.
+Tras ESPERAR_PLAZO, el titular aporta la documentación subsanada. El documento recibido se vincula con rol PRODUCIDO a la tarea `ESPERAR_PLAZO` (ADR-004, ADR-010). ANALIZAR evalúa la subsanación: si persisten defectos, el motor puede habilitar un nuevo `REQUERIMIENTO_SUBSANACIÓN`; si la subsanación es correcta, habilita el cierre de la fase.
 
 > El técnico dispone en la tarea ANALIZAR del selector de requerimientos tipo (ver sección 6) para redactar los defectos detectados. El documento producido por ANALIZAR es el que alimenta el ELABORAR posterior.
 
@@ -132,9 +132,9 @@ Esta asociación se almacena en una tabla `checklist_asociacion`:
 
 ### Contexto
 
-Con la eliminación de INCORPORAR (ADR-004, #361), la recepción de un documento externo durante tramitación activa se modela como `documento_producido_id` de la tarea `ESPERAR_PLAZO` que modelaba la espera. `ANALIZAR` consume ese documento directamente.
+Con la eliminación de INCORPORAR (ADR-004, #361), la recepción de un documento externo durante tramitación activa se modela como documento producido (vínculo PRODUCIDO en `documentos_tarea`) de la tarea `ESPERAR_PLAZO` que modelaba la espera. `ANALIZAR` consume ese documento directamente.
 
-En `REQUERIMIENTO_SUBSANACIÓN`, el documento de subsanación del titular se asigna como `documento_producido_id` del `ESPERAR_PLAZO` correspondiente.
+En `REQUERIMIENTO_SUBSANACIÓN`, el documento de subsanación del titular se vincula con rol PRODUCIDO al `ESPERAR_PLAZO` correspondiente.
 
 ### Problema pendiente: N documentos simultáneos
 
@@ -231,6 +231,6 @@ Se añade el campo `siglas_escritos` en el modelo `Usuario`. Su valor es las sig
 
 - Eliminar fases: `REGISTRO_SOLICITUD`, `ADMISIBILIDAD`, `ANÁLISIS_TÉCNICO`
 - Añadir fase: `ANÁLISIS_SOLICITUD` con trámites `ANÁLISIS_DOCUMENTAL`, `REQUERIMIENTO_SUBSANACIÓN`, `COMUNICACIÓN_INICIO`
-- Eliminar `INCORPORAR` del catálogo de tareas; recepción externa pasa a `ESPERAR_PLAZO.documento_producido_id` (ADR-004)
+- Eliminar `INCORPORAR` del catálogo de tareas; recepción externa pasa a `ESPERAR_PLAZO` como documento producido (ADR-004)
 - Reemplazar `REDACTAR`+`FIRMAR` por `ELABORAR` en todos los trámites (ADR-003)
 - Versión actual: 6.0

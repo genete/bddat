@@ -37,7 +37,8 @@ def _tarea_stub(codigo, doc_producido=None, doc_usado=None, tramite_id=1):
     t.tramite_id = tramite_id
     t.tipo_tarea = MagicMock(codigo=codigo)
     t.documento_producido = doc_producido
-    t.documento_usado = doc_usado
+    # Vínculos N:M (ADR-010): documento de entrada como lista de consumidos
+    t.documentos_consumidos = [doc_usado] if doc_usado is not None else []
     return t
 
 

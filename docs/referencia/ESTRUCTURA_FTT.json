@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "version": "6.0",
+    "version": "6.1",
     "descripcion": "Estructura jerárquica de fases, trámites y tareas para expedientes de AT",
     "principio": "Minimalismo estructural — la semántica vive en los TIPOS",
     "fecha_actualizacion": "2026-05-17",
@@ -16,34 +16,34 @@
       "codigo": "ANALIZAR",
       "nombre": "Análisis",
       "descripcion": "Revisión técnica o jurídica de documentación con generación obligatoria de documento formal (informe o diagnóstico)",
-      "entrada": "documento_usado_id (obligatorio)",
-      "salida": "documento_producido_id (obligatorio — tipo DIAGNOSTICO)",
+      "entrada": "1..N documentos consumidos (al menos 1 obligatorio; vínculo CONSUMIDO en documentos_tarea)",
+      "salida": "documento producido (obligatorio — tipo DIAGNOSTICO; vínculo PRODUCIDO en documentos_tarea)",
       "habilita_tareas": ["ELABORAR"],
-      "nota": "documento_producido_id IS NOT NULL para completitud de la tarea. Salida siempre tipo DIAGNOSTICO (ADR-005). Ver DISEÑO_MOTOR_REGLAS.md §TAREA."
+      "nota": "Existe vínculo PRODUCIDO en documentos_tarea para completitud de la tarea (ADR-010). Salida siempre tipo DIAGNOSTICO (ADR-005). Ver DISEÑO_MOTOR_REGLAS.md §TAREA."
     },
     {
       "codigo": "ELABORAR",
       "nombre": "Elaborar",
       "descripcion": "Redacción y firma de documento administrativo en acto único (fusiona REDACTAR+FIRMAR, ADR-003). Produce documento con validez jurídica inmediata.",
-      "entrada": "documento_usado_id (opcional — DIAGNOSTICO de ANALIZAR previo si existe)",
-      "salida": "documento_producido_id (obligatorio)",
+      "entrada": "documentos consumidos (opcional — DIAGNOSTICO de ANALIZAR previo si existe; vínculo CONSUMIDO en documentos_tarea)",
+      "salida": "documento producido (obligatorio; vínculo PRODUCIDO en documentos_tarea)",
       "habilita_tareas": ["NOTIFICAR"],
-      "nota": "documento_producido_id IS NOT NULL para completitud de la tarea."
+      "nota": "Existe vínculo PRODUCIDO en documentos_tarea para completitud de la tarea (ADR-010)."
     },
     {
       "codigo": "NOTIFICAR",
       "nombre": "Notificar",
       "descripcion": "Comunicación a destinatario identificado con justificante de notificación",
-      "entrada": "documento_usado_id (obligatorio — documento de ELABORAR)",
-      "salida": "documento_producido_id (obligatorio — justificante de notificación)",
+      "entrada": "1..N documentos consumidos (incluye el documento de ELABORAR; vínculo CONSUMIDO en documentos_tarea)",
+      "salida": "documento producido (obligatorio — justificante de notificación; vínculo PRODUCIDO en documentos_tarea)",
       "habilita_tareas": ["ESPERAR_PLAZO"],
-      "nota": "documento_producido.fecha_administrativa porta la fecha de la notificación. documento_producido_id IS NOT NULL para completitud de la tarea."
+      "nota": "documento_producido.fecha_administrativa porta la fecha de la notificación. Existe vínculo PRODUCIDO en documentos_tarea para completitud de la tarea (ADR-010)."
     },
     {
       "codigo": "ESPERAR_PLAZO",
       "nombre": "Esperar Plazo",
       "descripcion": "Suspensión temporal con fecha límite (PLAZO_DIAS=0: paralización indefinida hasta evento externo)",
-      "entrada": "documento_usado_id (obligatorio si plazo > 0 — justificante de NOTIFICAR que inicia el cómputo del plazo; NULL si plazo = 0, espera pasiva indefinida)",
+      "entrada": "documento consumido (obligatorio si plazo > 0 — justificante de NOTIFICAR que inicia el cómputo del plazo; ninguno si plazo = 0, espera pasiva indefinida; vínculo CONSUMIDO en documentos_tarea)",
       "salida": "Ninguno",
       "habilita_tareas": ["FIN (si vence sin respuesta)"],
       "nota": "Campo NOTAS: PLAZO_DIAS y TIPO_DIAS. PLAZO_DIAS=0 = indefinido. Recepción de documentación externa queda en documento_producido de esta tarea (ADR-004, elimina INCORPORAR)."
@@ -368,7 +368,7 @@
           "tareas_indicativas": ["ELABORAR"],
           "patron": "B (sin NOTIFICAR)",
           "documento_consumido": "CERT_FIN_INSTRUCCION (generado automáticamente por BDDAT al crear la fase RESOLUCION, #373)",
-          "nota": "ANALIZAR eliminado (#373): el CERT_FIN_INSTRUCCION es el recibo auditado de que el motor evaluó todas las condiciones previas. ELABORAR lo consume como documento_usado_id."
+          "nota": "ANALIZAR eliminado (#373): el CERT_FIN_INSTRUCCION es el recibo auditado de que el motor evaluó todas las condiciones previas. ELABORAR lo consume como documento de entrada (vínculo CONSUMIDO en documentos_tarea)."
         },
         {
           "codigo": "NOTIFICACION",
@@ -376,7 +376,7 @@
           "descripcion": "Notificación a interesados de la resolución adoptada",
           "tareas_indicativas": ["NOTIFICAR"],
           "patron": "B (solo NOTIFICAR)",
-          "nota": "El documento ya fue elaborado y firmado en ELABORACION. documento_usado_id apunta al producido en ELABORACION."
+          "nota": "El documento ya fue elaborado y firmado en ELABORACION. El documento consumido (vínculo CONSUMIDO en documentos_tarea) es el producido en ELABORACION."
         },
         {
           "codigo": "PUBLICACION",
