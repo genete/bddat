@@ -6,11 +6,11 @@
 
 ---
 
-**Último cerrado:** #418 — tabla `notificaciones`: documento vitaminado para NOTIFICAR; eliminación de 3 tablas del diseño previo; nuevos estados de seguimiento `NOTIFICACION_FALLIDA`, `NOTIFICACION_AGOTADA`, `PENDIENTE_RESULTADO_NOTIFICACION` (ADR-008).
+**Último cerrado:** #419 — invariante cierre de fase: `_check_cierre_fase` bloquea resultado no-desfavorable si hay diagnóstico `desfavorable` sin consumir; gancho en `editar_fase`; `TipoResultadoFase.DESFAVORABLE` registrado en catálogo requerido.
 
 **Actuales:** —
 
-**Próximo:** #419.
+**Próximo:** #365.
 
 ---
 
@@ -28,7 +28,7 @@
 4. ~~**#377** — seed de tipos_documentos del catálogo ESFTT~~ ✓
 5. ~~**#420** — modelo N:M documento↔tarea: tabla multiusos con rol (ADR-010; sustituye a #380 y #376)~~ ✓
 6. ~~**#418** — tabla `notificaciones`: documento vitaminado para NOTIFICAR (tras #420; sustituye a #378; ver ADR-008)~~ ✓
-7. **#419** — invariante ANALIZAR: bloquear cierre si diagnóstico desfavorable no consumido (tras #418)
+7. ~~**#419** — invariante ANALIZAR: bloquear cierre si diagnóstico desfavorable no consumido (tras #418)~~ ✓
 8. **#365** — implementar URI `bddat://` y helper `resolver_url()` (ADR-006)
 9. **#362** — certificado de plazo cumplido (tras #365; absorbe la limpieza de #357)
 
