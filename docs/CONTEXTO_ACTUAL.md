@@ -6,11 +6,11 @@
 
 ---
 
-**Último cerrado:** #419 — invariante cierre de fase: `_check_cierre_fase` bloquea resultado no-desfavorable si hay diagnóstico `desfavorable` sin consumir; gancho en `editar_fase`; `TipoResultadoFase.DESFAVORABLE` registrado en catálogo requerido.
+**Último cerrado:** #365 — URI `bddat://` y helper `resolver_url()` (ADR-006): validación de esquemas, `fecha_administrativa=NULL` para `bddat://`, despacho a ORM/fichero/http; `ContextoAnalisisDocumental` normalizado; ADR-006 enmendado (CERT_* no son `bddat://`).
 
 **Actuales:** —
 
-**Próximo:** #365.
+**Próximo:** #362.
 
 ---
 
