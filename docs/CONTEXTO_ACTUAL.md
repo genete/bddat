@@ -6,11 +6,11 @@
 
 ---
 
-**Último cerrado:** #362 — certificado de plazo cumplido (CERT_PLAZO_CUMPLIDO): `Tramite.finalizado` incluye ESPERAR_PLAZO, servicio `crear_cert(tarea)`, endpoint + botón en UI, stub `bddat://certificados/0` pending #425, ADR-006 enmendado.
+**Último cerrado:** #425 — tabla `certificados` completa: modelo `Certificado`, migración, `_resolver_bddat` implementado, `crear_cert()` inserta con JSONB completo, ruta `GET /expedientes/cert/<cert_id>/pdf` con PDF reportlab on-demand, ADR-006 enmendado.
 
 **Actuales:** —
 
-**Próximo:** #425 — tabla `certificados` (cierre del stub bddat://certificados/ introducido en #362).
+**Próximo:** por confirmar.
 
 ---
 
@@ -41,22 +41,26 @@
 13. **#405** — tablas `catalogo_requerimientos` y `requerimientos_tarea`
 14. **#406** — CB `ContextoSubsanacion` (requerimiento de subsanación; tras #405)
 
-### Bloque 4 — Motor de reglas
+### Bloque 4 — Motor de reglas y plazos
 
-15. **#323** — modo global del motor + tabla configuracion_sistema
-16. **#324** — mecanismo de escape con bitácora (tras #323)
+15. **#417** — limpiar referencias a tareas obsoletas v6.0 en `seed_demo.py` y `GUIA_GENERAL.md` (deuda técnica pequeña; independiente)
+16. **#283** — completar `ESTRUCTURA_FTT.json` con todos los tipos de expediente; reescribir cuerpo antes de planificar (referencias a `PUBLICAR`/`INCORPORAR` obsoletas)
+17. **#247** — cerrar las fases CONSULTAS y ANALISIS_TECNICO con reglas del motor (lo ya implementado en #391 cubre el modelo; queda la lógica de cierre); reescribir cuerpo antes de planificar
+18. **#323** — modo global del motor + tabla `configuracion_sistema`
+19. **#324** — mecanismo de escape con bitácora (tras #323; reescribir cuerpo: enum CREAR|BORRAR, no INICIAR|FINALIZAR)
+20. **#416** — motor de plazos para TABLON_AYUNTAMIENTOS: fecha administrativa y cierre retroactivo de ESPERAR_PLAZO (edge case del servicio de plazos)
 
 ### Bloque 5 — Análisis heurístico de PDF
 
-17. **#304** — script de detección del tipo de solicitud
-18. **#305** — script de detección del tipo de expediente
-19. **#306** — helper de cálculo de tasa y extracción de presupuesto (tras #304)
+21. **#304** — script de detección del tipo de solicitud
+22. **#305** — script de detección del tipo de expediente
+23. **#306** — helper de cálculo de tasa y extracción de presupuesto (tras #304)
 
 ### Bloque 6 — Issues con rediseño previo necesario
 
-20. **#410** — compatibilidad de tipos de solicitud como reglas del motor
-21. **#192** — requisitos documentales por procedimiento
-22. **#174** — permisos blandos con traza en bitácora
+24. **#410** — compatibilidad de tipos de solicitud como reglas del motor
+25. **#192** — requisitos documentales por procedimiento (rediseñar: anclar a CREAR fase siguiente, sin tabla `procedimientos`)
+26. **#174** — permisos blandos con traza en bitácora (rediseñar: permiso blando + bitácora, no permiso duro por expediente)
 
 ### Backlog M3 sin posición en la ruta
 
