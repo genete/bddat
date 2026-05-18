@@ -34,7 +34,9 @@ class ContextoAnalisisDocumental:
         if not doc:
             return {}
 
-        if not doc.diagnostico:
-            return {}
-
-        return doc.diagnostico.as_contexto_cb()
+        datos = doc.resolver_url()
+        return {
+            'diagnostico_resultado': datos['resultado'],
+            'diagnostico_defectos': datos['defectos'],
+            'diagnostico_tiene_defectos': len(datos['defectos']) > 0,
+        }

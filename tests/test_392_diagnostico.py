@@ -39,6 +39,14 @@ def _tramite_con_tareas(tareas):
 def _doc(diagnostico=None):
     d = MagicMock()
     d.diagnostico = diagnostico
+    if diagnostico is not None:
+        defectos = diagnostico.defectos if diagnostico.defectos is not None else []
+        d.resolver_url.return_value = {
+            'id': 1,
+            'documento_id': 1,
+            'resultado': diagnostico.resultado,
+            'defectos': defectos,
+        }
     return d
 
 
