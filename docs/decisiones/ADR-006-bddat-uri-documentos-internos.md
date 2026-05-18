@@ -7,14 +7,17 @@ estado: implementada (#365)
 
 ## Decisión
 `documentos.url` admite tres esquemas: ruta local, `http(s)://`, y `bddat://`.
-Solo los documentos **sin fichero físico** usan `bddat://`. Actualmente el único
-tipo que cumple esa condición es `DIAGNOSTICO` — el resultado estructurado de
-la tarea ANALIZAR, que vive íntegramente en la tabla `diagnosticos`.
+Solo los documentos **sin fichero físico** usan `bddat://`. Los tipos que cumplen
+esa condición son:
 
-Los certificados (`CERT_FIN_INSTRUCCION`, `CERT_PLAZO_CUMPLIDO`) **no** usan
-`bddat://`: el generador de certificados produce un PDF en disco y el `Documento`
-apunta a esa ruta local. La tabla `certificados_fase` es su fuente de auditoría
-interna, no su URL en el pool.
+- `DIAGNOSTICO` — resultado estructurado de la tarea ANALIZAR, vive en la tabla
+  `diagnosticos` → URI `bddat://diagnosticos/<id>`.
+- `CERT_PLAZO_CUMPLIDO` — certificado interno generado por el motor cuando vence
+  un plazo, vive en la tabla `certificados` (pending #425) → URI
+  `bddat://certificados/<id>`.
+
+`CERT_FIN_INSTRUCCION` sí produce un PDF en disco (vía `generador_cert.py`) y
+apunta a ruta local; no usa `bddat://`.
 
 El modelo `Documento` añade el helper `resolver_url()` que despacha según el esquema.
 
@@ -38,7 +41,10 @@ incorpora al pool universal sin forzar su serialización a disco.
   y fuerza `fecha_administrativa = NULL` para `bddat://`
 - `Documento.resolver_url()` + `_resolver_bddat()`: implementados en `app/models/documentos.py`
 - Tabla destino activa: `diagnosticos` → URI `bddat://diagnosticos/<id>`
+- Tabla destino stub: `certificados` → URI `bddat://certificados/<id>` (pending #425;
+  hasta entonces el Documento se crea con placeholder `bddat://certificados/0`)
 - `ContextoAnalisisDocumental` normalizado para usar `resolver_url()` en lugar de acceso directo ORM
+- `app/services/certificados.py` — `crear_cert(tarea)` genera CERT_PLAZO_CUMPLIDO (#362)
 
 ## Alternativa descartada
 Serializar las decisiones internas como PDF o JSON en disco.
