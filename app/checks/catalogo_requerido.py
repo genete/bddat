@@ -38,7 +38,7 @@ REGISTROS_REQUERIDOS: dict = {
     'TipoSolicitud': ['AAC', 'AAP'],
     # TipoResultadoFase — código usado en invariantes_esftt (#419)
     'TipoResultadoFase': ['DESFAVORABLE'],
-    'TipoDocumento': ['CERT_FIN_INSTRUCCION'],
+    'TipoDocumento': ['CERT_FIN_INSTRUCCION', 'CERT_PLAZO_CUMPLIDO'],
 }
 
 # Atributo del modelo que contiene el identificador estable.

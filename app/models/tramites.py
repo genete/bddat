@@ -29,8 +29,7 @@ class Tramite(db.Model):
         - PLANIFICADO: len(tareas) == 0
         - EN_CURSO: tareas presentes, no todas finalizadas
         - FINALIZADO: todas las tareas con tipos documentales tienen documento producido
-                      ESPERAR_PLAZO requiere evaluación adicional via plazos.py
-                      (ver §4.1 DISEÑO_FECHAS_PLAZOS.md)
+                      (ANALIZAR, ELABORAR, NOTIFICAR y ESPERAR_PLAZO incluidos)
 
     RELACIONES:
         - fase → FASES.id (FK CASCADE, fase contenedora)
@@ -96,10 +95,11 @@ class Tramite(db.Model):
         """True si todas las tareas con tipos documentales tienen documento producido
         y toda tarea NOTIFICAR tiene resultado CORRECTA registrado en notificaciones.
 
-        ESPERAR_PLAZO se excluye — su completitud la evalúa plazos.py via ContextAssembler.
+        ESPERAR_PLAZO produce CERT_PLAZO_CUMPLIDO (Caso B) o un doc externo (Caso A).
         NOTIFICAR ejecutada sin fila en notificaciones → INDIFERENTE → no finalizado (#418).
+        Deuda #357 eliminada: ESPERAR_PLAZO ya participa en finalizado (#362).
         """
-        _requieren = {'ANALIZAR', 'ELABORAR', 'NOTIFICAR'}
+        _requieren = {'ANALIZAR', 'ELABORAR', 'NOTIFICAR', 'ESPERAR_PLAZO'}
         for t in self.tareas:
             if not t.tipo_tarea:
                 continue
