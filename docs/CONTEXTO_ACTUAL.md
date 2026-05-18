@@ -6,11 +6,11 @@
 
 ---
 
-**Último cerrado:** #365 — URI `bddat://` y helper `resolver_url()` (ADR-006): validación de esquemas, `fecha_administrativa=NULL` para `bddat://`, despacho a ORM/fichero/http; `ContextoAnalisisDocumental` normalizado; ADR-006 enmendado (CERT_* no son `bddat://`).
+**Último cerrado:** #362 — certificado de plazo cumplido (CERT_PLAZO_CUMPLIDO): `Tramite.finalizado` incluye ESPERAR_PLAZO, servicio `crear_cert(tarea)`, endpoint + botón en UI, stub `bddat://certificados/0` pending #425, ADR-006 enmendado.
 
 **Actuales:** —
 
-**Próximo:** #362.
+**Próximo:** #425 — tabla `certificados` (cierre del stub bddat://certificados/ introducido en #362).
 
 ---
 
@@ -30,7 +30,7 @@
 6. ~~**#418** — tabla `notificaciones`: documento vitaminado para NOTIFICAR (tras #420; sustituye a #378; ver ADR-008)~~ ✓
 7. ~~**#419** — invariante ANALIZAR: bloquear cierre si diagnóstico desfavorable no consumido (tras #418)~~ ✓
 8. ~~**#365** — implementar URI `bddat://` y helper `resolver_url()` (ADR-006)~~ ✓
-9. **#362** — certificado de plazo cumplido (tras #365; absorbe la limpieza de #357)
+9. ~~**#362** — certificado de plazo cumplido (tras #365; absorbe la limpieza de #357)~~ ✓
 
 ### Bloque 3 — Modelo de interesados y Context Builders de escritos
 
