@@ -460,6 +460,12 @@ def tramitacion_bc_tarea(exp_id, sol_id, fase_id, tram_id, tarea_id):
 
     estado_plazo_fase = obtener_estado_plazo(fase, 'FASE')
 
+    estado_plazo_tarea = None
+    if codigo_tipo == 'ESPERAR_PLAZO':
+        from app.services.seguimiento import _variables_esperar_plazo
+        variables_tarea = _variables_esperar_plazo(tarea)
+        estado_plazo_tarea = obtener_estado_plazo(tarea, 'TAREA', variables=variables_tarea)
+
     return render_template(
         'expedientes/tramitacion_bc_tarea.html',
         expediente=expediente,
@@ -471,13 +477,31 @@ def tramitacion_bc_tarea(exp_id, sol_id, fase_id, tram_id, tarea_id):
         doc_usado_opcional=doc_usado_opcional,
         requiere_doc_producido=requiere_doc_producido,
         estado_plazo_fase=estado_plazo_fase,
+        estado_plazo_tarea=estado_plazo_tarea,
     )
+
+
+@bp.route('/tarea/<int:tarea_id>/generar_cert', methods=['POST'])
+@login_required
+def generar_cert(tarea_id):
+    """Genera el certificado de plazo cumplido para una tarea ESPERAR_PLAZO."""
+    from app.services.certificados import crear_cert
+    tarea = Tarea.query.get_or_404(tarea_id)
+    resultado = verificar_acceso_expediente(tarea.tramite.fase.solicitud.expediente, 'editar')
+    if resultado:
+        return resultado
+    try:
+        crear_cert(tarea)
+        flash('Certificado de plazo cumplido generado.', 'success')
+    except (ValueError, NotImplementedError) as exc:
+        flash(str(exc), 'danger')
+    return redirect(request.referrer or url_for('expedientes.listado_v2'))
 
 
 # Conjuntos de tipos de tarea que requieren documentos (espejo de invariantes_esftt.py)
 _TIPOS_REQUIEREN_DOC_USADO     = {'ANALIZAR', 'NOTIFICAR'}
 _TIPOS_DOC_USADO_OPCIONAL      = {'ELABORAR'}   # visible en UI pero no obligatorio al finalizar
-_TIPOS_REQUIEREN_DOC_PRODUCIDO = {'ANALIZAR', 'ELABORAR', 'NOTIFICAR'}
+_TIPOS_REQUIEREN_DOC_PRODUCIDO = {'ANALIZAR', 'ELABORAR', 'NOTIFICAR', 'ESPERAR_PLAZO'}
 
 
 # ===========================================================================
