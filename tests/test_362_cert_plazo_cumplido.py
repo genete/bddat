@@ -131,7 +131,14 @@ class TestCrearCertValidaciones:
         from app.services.certificados import _TIPO_CERT_POR_TAREA
         assert _TIPO_CERT_POR_TAREA.get('ESPERAR_PLAZO') == 'CERT_PLAZO_CUMPLIDO'
 
-    def test_url_placeholder_es_bddat(self):
-        """El placeholder de URL usa esquema bddat://."""
-        from app.services.certificados import _URL_PLACEHOLDER
-        assert _URL_PLACEHOLDER.startswith('bddat://certificados/')
+    def test_crear_cert_usa_bddat_uri(self):
+        """crear_cert() genera URLs bddat://certificados/<id> (no placeholder fijo)."""
+        # La lógica real requiere BD; este test verifica que _URL_PLACEHOLDER
+        # ya no existe (se eliminó en #425) y que la URL final la asigna el servicio
+        # tras insertar en la tabla certificados.
+        import importlib
+        import app.services.certificados as mod
+        assert not hasattr(mod, '_URL_PLACEHOLDER'), (
+            '_URL_PLACEHOLDER debe haberse eliminado en #425; '
+            'crear_cert() ahora asigna bddat://certificados/{cert.id} tras el INSERT'
+        )

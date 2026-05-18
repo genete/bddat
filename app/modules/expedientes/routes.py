@@ -498,6 +498,37 @@ def generar_cert(tarea_id):
     return redirect(request.referrer or url_for('expedientes.listado_v2'))
 
 
+@bp.route('/cert/<int:cert_id>/pdf')
+@login_required
+def cert_pdf(cert_id):
+    """Genera y devuelve el PDF de un certificado interno (bddat://)."""
+    from app.models.certificados import Certificado
+    from app.services.cert_pdf import generar_pdf_certificado
+
+    cert = Certificado.query.get_or_404(cert_id)
+    expediente = cert.documento.solicitud_expediente if hasattr(cert.documento, 'solicitud_expediente') else None
+
+    # Acceder al expediente vía documento → expediente
+    from app.models.expedientes import Expediente
+    expediente = Expediente.query.get_or_404(cert.documento.expediente_id)
+
+    resultado = verificar_acceso_expediente(expediente, 'ver')
+    if resultado:
+        return resultado
+
+    tipo_cert = cert.documento.tipo_documento.codigo if cert.documento.tipo_documento else ''
+    pdf_bytes = generar_pdf_certificado(cert, expediente, tipo_cert)
+
+    from flask import Response
+    return Response(
+        pdf_bytes,
+        mimetype='application/pdf',
+        headers={
+            'Content-Disposition': f'inline; filename="cert_{tipo_cert}_{cert.id}.pdf"'
+        },
+    )
+
+
 # Conjuntos de tipos de tarea que requieren documentos (espejo de invariantes_esftt.py)
 _TIPOS_REQUIEREN_DOC_USADO     = {'ANALIZAR', 'NOTIFICAR'}
 _TIPOS_DOC_USADO_OPCIONAL      = {'ELABORAR'}   # visible en UI pero no obligatorio al finalizar

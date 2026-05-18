@@ -2,7 +2,7 @@
 id: ADR-006
 título: URI bddat:// para documentos internos del sistema en el pool de documentos
 fecha: 2026-05-11
-estado: implementada (#365)
+estado: implementada (#365, enmendada #425)
 ---
 
 ## Decisión
@@ -12,12 +12,15 @@ esa condición son:
 
 - `DIAGNOSTICO` — resultado estructurado de la tarea ANALIZAR, vive en la tabla
   `diagnosticos` → URI `bddat://diagnosticos/<id>`.
-- `CERT_PLAZO_CUMPLIDO` — certificado interno generado por el motor cuando vence
-  un plazo, vive en la tabla `certificados` (pending #425) → URI
-  `bddat://certificados/<id>`.
+- `CERT_*` — certificados internos generados por el motor, viven en la tabla
+  `certificados` → URI `bddat://certificados/<id>`. El tipo concreto se deduce de
+  `documento.tipo_documento.codigo`. Tipos implementados o previstos:
+    - `CERT_PLAZO_CUMPLIDO` — generado por `crear_cert()` al vencer ESPERAR_PLAZO (#362, #425).
+    - `CERT_FIN_INSTRUCCION` — producido al cerrar la fase de instrucción (#373).
+    - `CERT_FIN_IP_CONSULTAS` — producido al cerrar IP/consultas (issue futuro).
 
-`CERT_FIN_INSTRUCCION` sí produce un PDF en disco (vía `generador_cert.py`) y
-apunta a ruta local; no usa `bddat://`.
+Los certificados `CERT_*` no generan PDF a disco; el PDF se genera on-demand vía
+`GET /expedientes/cert/<cert_id>/pdf` usando reportlab (`app/services/cert_pdf.py`).
 
 El modelo `Documento` añade el helper `resolver_url()` que despacha según el esquema.
 
@@ -41,10 +44,10 @@ incorpora al pool universal sin forzar su serialización a disco.
   y fuerza `fecha_administrativa = NULL` para `bddat://`
 - `Documento.resolver_url()` + `_resolver_bddat()`: implementados en `app/models/documentos.py`
 - Tabla destino activa: `diagnosticos` → URI `bddat://diagnosticos/<id>`
-- Tabla destino stub: `certificados` → URI `bddat://certificados/<id>` (pending #425;
-  hasta entonces el Documento se crea con placeholder `bddat://certificados/0`)
+- Tabla destino activa: `certificados` → URI `bddat://certificados/<id>` (#425)
 - `ContextoAnalisisDocumental` normalizado para usar `resolver_url()` en lugar de acceso directo ORM
-- `app/services/certificados.py` — `crear_cert(tarea)` genera CERT_PLAZO_CUMPLIDO (#362)
+- `app/services/certificados.py` — `crear_cert(tarea)` genera CERT_PLAZO_CUMPLIDO (#362, #425)
+- `app/services/cert_pdf.py` — genera PDF on-demand por tipo de certificado (#425)
 
 ## Alternativa descartada
 Serializar las decisiones internas como PDF o JSON en disco.
