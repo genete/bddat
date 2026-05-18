@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(mv /d/BDDAT/docs_prueba/temp/*)",
-      "Bash(mv D:/BDDAT/docs_prueba/temp/*)"
+      "Bash(mv D:/BDDAT/docs_prueba/temp/*)",
+      "Bash(PYTHONPATH=/d/BDDAT venv/Scripts/python.exe -m pytest *)"
     ]
   }
 }
