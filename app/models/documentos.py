@@ -1,3 +1,5 @@
+from sqlalchemy.orm import validates
+
 from app import db
 
 class Documento(db.Model):
@@ -43,10 +45,13 @@ class Documento(db.Model):
           cuando el tipo de tarea lo requiera (validación de negocio, no de BD).
 
     CAMPO URL:
-        - Ruta o URL del archivo físico
-        - Sistema de archivos local o repositorio documental
-        - NOT NULL: Todo documento tiene ubicación física
-        - El nombre a mostrar en interfaz se deduce del último segmento de la URL.
+        Admite tres esquemas:
+        - Ruta local (sin '://'): fichero en el servidor de archivos.
+        - 'http://' / 'https://': recurso externo.
+        - 'bddat://<recurso>/<id>': registro interno de BD sin fichero físico.
+          Solo DIAGNOSTICO usa este esquema. fecha_administrativa = NULL obligatorio.
+        El helper resolver_url() despacha al mecanismo correcto según el esquema.
+        El nombre a mostrar en interfaz se deduce del último segmento de la URL.
 
     CAMPO HASH_MD5:
         - Verificación de integridad del archivo
@@ -120,7 +125,7 @@ class Documento(db.Model):
     url = db.Column(
         db.Text,
         nullable=False,
-        comment='Ruta absoluta en servidor de ficheros o URL externa (http/https)'
+        comment='Ruta local, http(s):// o bddat://<recurso>/<id> (ADR-006)'
     )
     
     tipo_contenido = db.Column(
@@ -163,7 +168,53 @@ class Documento(db.Model):
     # Relaciones
     expediente = db.relationship('Expediente', foreign_keys=[expediente_id], backref='documentos')
     tipo_doc = db.relationship('TipoDocumento', foreign_keys=[tipo_doc_id])
-    
+
+    @validates('url')
+    def _validar_url(self, key, value):
+        if value is not None and '://' in value:
+            if not value.startswith(('http://', 'https://', 'bddat://')):
+                raise ValueError(f'Esquema de URL no admitido: {value!r}')
+        if value and value.startswith('bddat://'):
+            self.fecha_administrativa = None
+        return value
+
+    def resolver_url(self):
+        """Despacha según el esquema de url (ADR-006).
+
+        - Ruta local  → file object abierto en modo binario
+        - http(s)://  → requests.Response
+        - bddat://    → dict completo del registro ORM destino
+        """
+        url = self.url or ''
+        if url.startswith('bddat://'):
+            return self._resolver_bddat(url)
+        if url.startswith(('http://', 'https://')):
+            import urllib.request
+            return urllib.request.urlopen(url)
+        return open(url, 'rb')
+
+    def _resolver_bddat(self, url: str) -> dict:
+        partes = url[len('bddat://'):].split('/')
+        if len(partes) != 2:
+            raise ValueError(f'URI bddat:// malformada: {url!r}')
+        recurso, id_str = partes
+        try:
+            registro_id = int(id_str)
+        except ValueError:
+            raise ValueError(f'ID no numérico en URI bddat://: {url!r}')
+        if recurso == 'diagnosticos':
+            from app.models.diagnosticos import Diagnostico
+            diag = Diagnostico.query.get(registro_id)
+            if diag is None:
+                raise LookupError(f'Diagnostico id={registro_id} no encontrado')
+            return {
+                'id': diag.id,
+                'documento_id': diag.documento_id,
+                'resultado': diag.resultado,
+                'defectos': diag.defectos or [],
+            }
+        raise NotImplementedError(f'Recurso bddat:// no implementado: {recurso!r}')
+
     def __repr__(self):
         """Representación técnica para debugging."""
         return f'<Documento id={self.id} expediente={self.expediente_id}>'
