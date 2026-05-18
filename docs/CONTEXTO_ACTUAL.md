@@ -10,7 +10,7 @@
 
 **Actuales:** —
 
-**Próximo:** por confirmar.
+**Próximo:** #374 — tabla de interesados del expediente y trámite REGISTRO_INTERESADOS.
 
 ---
 
