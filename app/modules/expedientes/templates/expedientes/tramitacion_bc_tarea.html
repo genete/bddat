@@ -232,6 +232,29 @@
   </div>
 </div>
 
+{# Botón de generación de certificado de plazo cumplido (Caso B) #}
+{% if tarea.tipo_tarea and tarea.tipo_tarea.codigo == 'ESPERAR_PLAZO'
+      and not tarea.documento_producido
+      and estado_plazo_tarea and estado_plazo_tarea.estado == 'VENCIDO' %}
+<div class="card mt-3 border-warning">
+  <div class="card-body py-2 d-flex align-items-center gap-3">
+    <i class="fas fa-exclamation-triangle text-warning fs-5"></i>
+    <div class="flex-grow-1">
+      <strong>Plazo vencido</strong>
+      {% if estado_plazo_tarea.fecha_limite %}
+        — venció el {{ estado_plazo_tarea.fecha_limite.strftime('%d/%m/%Y') }}
+      {% endif %}
+    </div>
+    <form method="post"
+          action="{{ url_for('expedientes.generar_cert', tarea_id=tarea.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="btn btn-warning btn-sm">
+        <i class="fas fa-certificate me-1"></i>Generar certificado de plazo cumplido
+      </button>
+    </form>
+  </div>
+</div>
+{% endif %}
 
 {% endblock %}
 
