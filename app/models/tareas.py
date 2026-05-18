@@ -40,7 +40,8 @@ class Tarea(db.Model):
         - ANALIZAR:      consume 1..N (documentos analizados), produce 1 (DIAGNOSTICO)
         - ELABORAR:      consume 0..N (DIAGNOSTICO de ANALIZAR previo), produce 1
         - NOTIFICAR:     consume 1..N (documentos notificados), produce 1 (justificante)
-        - ESPERAR_PLAZO: consume 0..1 (justificante que inicia el cómputo), no produce
+        - ESPERAR_PLAZO: consume 0..1 (justificante que inicia el cómputo),
+                         produce 0..1 (CERT_PLAZO_CUMPLIDO — Caso B — o doc externo — Caso A)
 
     RELACIONES:
         - tramite → TRAMITES.id (FK CASCADE, trámite contenedor)
@@ -121,12 +122,10 @@ class Tarea(db.Model):
 
     # --- Estados deducibles ---
     # La completitud se deduce de documentos, no de campos de fecha.
-    # ESPERAR_PLAZO: la completitud vive en catalogo_plazos (pendiente EstadoSFTT).
 
     @property
     def ejecutada(self):
-        """True si la tarea está completa (tiene documento producido).
-        ESPERAR_PLAZO: completitud vía plazos.py (ContextAssembler)."""
+        """True si la tarea está completa (tiene documento producido)."""
         return any(v.rol == 'PRODUCIDO' for v in self.vinculos_documento)
 
     @property
