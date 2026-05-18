@@ -215,9 +215,15 @@ class Documento(db.Model):
                 'defectos': diag.defectos or [],
             }
         if recurso == 'certificados':
-            raise NotImplementedError(
-                'Tabla certificados pendiente de implementar — #425'
-            )
+            from app.models.certificados import Certificado
+            cert = Certificado.query.get(registro_id)
+            if cert is None:
+                raise LookupError(f'Certificado id={registro_id} no encontrado')
+            return {
+                'id': cert.id,
+                'generado_en': cert.generado_en.isoformat(),
+                'datos': cert.datos,
+            }
         raise NotImplementedError(f'Recurso bddat:// no implementado: {recurso!r}')
 
     def __repr__(self):

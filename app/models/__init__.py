@@ -75,6 +75,9 @@ from app.models.certificados_fase import CertificadoFase
 # Diagnóstico documental de tareas ANALIZAR (#392 — depende de Documento)
 from app.models.diagnosticos import Diagnostico
 
+# Certificados internos del motor vinculados al pool (#425 — depende de Documento)
+from app.models.certificados import Certificado
+
 # Alegante en trámites RECEPCION_ALEGACION (#393 — depende de Tramite, Entidad)
 from app.models.alegantes import Alegante
 
@@ -137,6 +140,8 @@ __all__ = [
     'TramiteTareaDocumento',
     # Diagnóstico documental
     'Diagnostico',
+    # Certificados internos del motor
+    'Certificado',
     # Organismos consultados por expediente
     'OrganismoExpediente',
     # Alegante en trámites RECEPCION_ALEGACION
