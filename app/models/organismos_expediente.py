@@ -111,5 +111,5 @@ class OrganismoExpediente(db.Model):
             'organismo_nombre': self.organismo.nombre_completo if self.organismo else None,
             'organismo_nif': self.organismo.nif if self.organismo else None,
             'organismo_plazo_legal': self.plazo_legal_dias,
-            'organismo_resultado': self.estado,
+            'organismo_resultado': self.estado,  # estado interno del motor; no usar en plantillas de escritos
         }
