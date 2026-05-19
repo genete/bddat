@@ -6,11 +6,11 @@
 
 ---
 
-**Último cerrado:** #425 — tabla `certificados` completa: modelo `Certificado`, migración, `_resolver_bddat` implementado, `crear_cert()` inserta con JSONB completo, ruta `GET /expedientes/cert/<cert_id>/pdf` con PDF reportlab on-demand, ADR-006 enmendado.
+**Último cerrado:** #374 — tabla `interesados_expediente` completa: modelo `InteresadoExpediente`, migración, seed `TipoTramite REGISTRO_INTERESADOS`, `catalogo_requerido` actualizado, `ESTRUCTURA_FTT.json` con trámite en `AAU_AAUS_INTEGRADA`, signal `after_insert` registra TITULAR automáticamente.
 
 **Actuales:** —
 
-**Próximo:** #374 — tabla de interesados del expediente y trámite REGISTRO_INTERESADOS.
+**Próximo:** #402 — CB `ContextoNotificacionOrganismo` (notificación a organismo consultado).
 
 ---
 
