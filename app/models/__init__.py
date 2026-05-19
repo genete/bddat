@@ -84,6 +84,9 @@ from app.models.alegantes import Alegante
 # Organismos consultados por expediente (#391 — depende de Expediente, Entidad, Documento, Tramite)
 from app.models.organismos_expediente import OrganismoExpediente
 
+# Interesados del expediente (#374 — depende de Expediente, Entidad, Documento)
+from app.models.interesados_expediente import InteresadoExpediente
+
 # Mapa semántico de documentos por tarea (#346 — sin FK operacional propia)
 from app.models.tramites_tareas_documentos import TramiteTareaDocumento
 
@@ -146,4 +149,6 @@ __all__ = [
     'OrganismoExpediente',
     # Alegante en trámites RECEPCION_ALEGACION
     'Alegante',
+    # Interesados del expediente
+    'InteresadoExpediente',
 ]

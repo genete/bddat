@@ -353,6 +353,14 @@
           "tareas_indicativas": ["ELABORAR", "NOTIFICAR", "ESPERAR_PLAZO"],
           "patron": "C",
           "nota": "Condicional: solo si el informe vinculante es negativo y se decide elevar discrepancia. Trámite nuevo (#372)."
+        },
+        {
+          "codigo": "REGISTRO_INTERESADOS",
+          "nombre": "Registro de Interesados",
+          "descripcion": "Revisión del informe vinculante de Medio Ambiente para identificar y registrar los interesados del procedimiento ambiental en la tabla interesados_expediente",
+          "tareas_indicativas": ["ANALIZAR"],
+          "patron": "A",
+          "nota": "ANALIZAR consume DOC_INFORME_VINCULANTE. El tramitador registra los interesados vía UI de gestión de interesados. El diagnóstico producido certifica los registros creados en interesados_expediente. Condicional: solo cuando el informe vinculante incluye lista de interesados. La fase RECONOCIMIENTO_INTERESADO (TipoFase en BD) pertenece al flujo de solicitud tipo INTERESADO, no desarrollada aún."
         }
       ]
     },
