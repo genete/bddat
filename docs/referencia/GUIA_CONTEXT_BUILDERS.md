@@ -146,6 +146,7 @@ que son accedidos directamente por `ContextoBaseExpediente`.
 | `ContextoAnalisisDocumental` | `analisis_documental.py` | `ANALISIS_DOCUMENTAL` | Bloqueado — tabla diagnosticos no diseñada | #392 |
 | `ContextoRecepcionAlegacion` | `recepcion_alegacion.py` | `RECEPCION_ALEGACION` | Implementado | #393 |
 | `ContextoAnalisisAlegaciones` | `analisis_alegaciones.py` | `ANALISIS_ALEGACIONES` | Implementado | #394 |
+| `ContextoNotificacionOrganismo` | `notificacion_organismo.py` | `CONSULTA_TRASLADO_ORGANISMO` | Implementado | #402 |
 
 ---
 
