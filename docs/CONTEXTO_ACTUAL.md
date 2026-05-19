@@ -6,11 +6,11 @@
 
 ---
 
-**Último cerrado:** #374 — tabla `interesados_expediente` completa: modelo `InteresadoExpediente`, migración, seed `TipoTramite REGISTRO_INTERESADOS`, `catalogo_requerido` actualizado, `ESTRUCTURA_FTT.json` con trámite en `AAU_AAUS_INTEGRADA`, signal `after_insert` registra TITULAR automáticamente.
+**Último cerrado:** #402 — CB `ContextoNotificacionOrganismo` para `CONSULTA_TRASLADO_ORGANISMO`: clase, migración seed `NOTIF_ORGANISMO` en plantillas, 7 tests sin BD.
 
 **Actuales:** —
 
-**Próximo:** #402 — CB `ContextoNotificacionOrganismo` (notificación a organismo consultado).
+**Próximo:** #403 — CB `ContextoResolucion` (escrito de resolución).
 
 ---
 
