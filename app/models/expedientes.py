@@ -289,3 +289,23 @@ def crear_registro_historico_inicial(mapper, connection, target):
             created_at=func.now()
         )
     )
+
+    # Registrar TITULAR en interesados_expediente (#374)
+    interesados_table = table(
+        'interesados_expediente',
+        column('expediente_id'),
+        column('entidad_id'),
+        column('tipo_origen'),
+        column('fuente_doc_id'),
+        column('activo'),
+        schema='public'
+    )
+    connection.execute(
+        insert(interesados_table).values(
+            expediente_id=target.id,
+            entidad_id=target.titular_id,
+            tipo_origen='TITULAR',
+            fuente_doc_id=None,  # transitorio — rellenar tras rediseño wizard
+            activo=True,
+        )
+    )
