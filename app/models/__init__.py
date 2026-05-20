@@ -87,6 +87,9 @@ from app.models.organismos_expediente import OrganismoExpediente
 # Interesados del expediente (#374 — depende de Expediente, Entidad, Documento)
 from app.models.interesados_expediente import InteresadoExpediente
 
+# Resolución de fase RESOLUCION (#403 — depende de Fase)
+from app.models.resolucion import Resolucion
+
 # Mapa semántico de documentos por tarea (#346 — sin FK operacional propia)
 from app.models.tramites_tareas_documentos import TramiteTareaDocumento
 
@@ -151,4 +154,6 @@ __all__ = [
     'Alegante',
     # Interesados del expediente
     'InteresadoExpediente',
+    # Resolución de fase RESOLUCION
+    'Resolucion',
 ]
