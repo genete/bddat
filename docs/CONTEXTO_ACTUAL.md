@@ -6,11 +6,11 @@
 
 ---
 
-**Último cerrado:** #404 — CB `ContextoInformacionPublica` para `INFORMACION_PUBLICA` (tarea `REDACTAR_ANUNCIO`): tabla `informaciones_publicas`, modelo (3 bloques: antecedentes, fundamentos, exposicion_publica), migración seed `ANUNCIO_IP` en plantillas, 5 tests sin BD. Nota en #435 para reutilizar despensa de fundamentos en este CB.
+**Último cerrado:** #405 — tablas `catalogo_requerimientos` y `requerimientos_tarea`: modelo maestro `CatalogoRequerimiento` (texto, categoria, activo), modelo `RequerimientoTarea` (FK tarea + FK catálogo nullable + texto_libre nullable, CHECK exactamente uno, property `texto`), migración con índices y GRANTs, 10 tests sin BD. Issues derivados creados: #440 (UI selector shuttle), #441 (seed catálogo), #442 (tabla `documentos_analizar`).
 
 **Actuales:** —
 
-**Próximo:** #405 — tablas `catalogo_requerimientos` y `requerimientos_tarea`.
+**Próximo:** #406 — CB `ContextoSubsanacion` (escrito de requerimiento de subsanación; tras #405).
 
 ---
 
@@ -38,7 +38,7 @@
 10. ~~**#402** — CB `ContextoNotificacionOrganismo` (notificación a organismo consultado)~~ ✓
 11. ~~**#403** — CB `ContextoResolucion` (escrito de resolución)~~ ✓
 12. ~~**#404** — CB `ContextoInformacionPublica` (anuncio de información pública)~~ ✓
-13. **#405** — tablas `catalogo_requerimientos` y `requerimientos_tarea`
+13. ~~**#405** — tablas `catalogo_requerimientos` y `requerimientos_tarea`~~ ✓
 14. **#406** — CB `ContextoSubsanacion` (requerimiento de subsanación; tras #405)
 
 ### Bloque 4 — Motor de reglas y plazos
