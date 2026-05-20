@@ -3,7 +3,7 @@
 > Fuente de verdad: `docs/referencia/ESTRUCTURA_FTT.json`
 > Última sincronización: 2026-05-17
 
-**Versión:** 6.1 | **Fecha:** 2026-05-17
+**Versión:** 6.2 | **Fecha:** 2026-05-20
 
 Este documento es la versión legible por humanos del JSON estructural. El JSON es la fuente de verdad para código e IA; este MD es la referencia de consulta rápida.
 
@@ -53,7 +53,7 @@ Los patrones son orientativos y combinables (p.ej. `A+C` = ANALIZAR → ELABORAR
 |---|---|---|
 | `ANALISIS_DOCUMENTAL` | A | ANALIZAR |
 | `REQUERIMIENTO_SUBSANACION` | C+A | ELABORAR → NOTIFICAR → ESPERAR_PLAZO → ANALIZAR |
-| `COMUNICACION_INICIO` | B | ELABORAR → NOTIFICAR |
+| `COMUNICACION_INICIO` | B | ELABORAR → NOTIFICAR | Obligatoria para Renovable (Hito 1 RD-ley 23/2020 art. 1.2). Opcional para otros tipos. |
 
 ---
 
@@ -133,6 +133,26 @@ Tareas indicativas en los tres trámites: ELABORAR → NOTIFICAR → ESPERAR_PLA
 | `DISCREPANCIA_INF_VINC` | C | ELABORAR → NOTIFICAR → EP(0) | Condicional; nuevo #372 |
 
 *EP(0)=ESPERAR_PLAZO con plazo indefinido*
+
+---
+
+### CONSULTA_OPERADOR_SISTEMA
+*Consulta preceptiva al operador del sistema o gestor de red antes de resolver el cierre (art. 136 RD 1955/2000). Silencio positivo en 3 meses. Exclusivo del procedimiento CIERRE.*
+
+| Trámite | Patrón | Tareas indicativas | Nota |
+|---|---|---|---|
+| `SOLICITUD_INFORME_OPERADOR` | C | ELABORAR → NOTIFICAR → ESPERAR_PLAZO | PLAZO_DIAS=90, silencio=positivo |
+| `RECEPCION_INFORME_OPERADOR` | A | ANALIZAR | Condicional: solo si el operador responde en plazo |
+
+---
+
+### RECONOCIMIENTO_INTERESADO
+*Resolución sobre condición de interesado (art. 4 LPACAP). Fase finalizadora exclusiva de solicitudes tipo INTERESADO.*
+
+| Trámite | Patrón | Tareas indicativas |
+|---|---|---|
+| `ELABORACION` | B (sin NOTIFICAR) | ELABORAR |
+| `NOTIFICACION` | B (solo NOTIFICAR) | NOTIFICAR |
 
 ---
 

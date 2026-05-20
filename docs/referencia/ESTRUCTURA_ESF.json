@@ -1,0 +1,604 @@
+{
+  "metadata": {
+    "version": "1.0",
+    "descripcion": "Mapa Expediente-Solicitud-Fase (ESF) — derivado de ESTRUCTURA_ESF.md (fuente de verdad). En caso de discrepancia, prevalece el MD.",
+    "principio": "S-dominante — la solicitud define el procedimiento; el tipo de expediente actúa como condición modificadora. Cuando el tipo de expediente altera sustancialmente el flujo se crean entradas separadas.",
+    "fecha_actualizacion": "2026-05-20",
+    "ref_ftt": "docs/referencia/ESTRUCTURA_FTT.json",
+    "ref_normativa": [
+      "docs/referencia/NORMATIVA_MAPA_PROCEDIMENTAL.md",
+      "docs/referencia/NORMATIVA_SOLICITUDES.md",
+      "docs/referencia/NORMATIVA_EXCEPCIONES_AT.md"
+    ],
+    "nota_finalizadora": "La propiedad es_finalizadora de cada fase está en tipos_fases (FTT). RESOLUCION y RECONOCIMIENTO_INTERESADO son finalizadoras. No se repite aquí.",
+    "nota_estado": "v1.0 — borrador inicial. Las fases de cada procedimiento son orientativas; las restricciones operativas viven en el motor de reglas (ADR-007)."
+  },
+
+  "PROCEDIMIENTOS": [
+
+    {
+      "_grupo": "Instrucción completa de nueva instalación",
+      "codigo": "AAP",
+      "nombre": "Autorización Administrativa Previa — sola",
+      "tipos_solicitud": ["AAP"],
+      "tipos_expediente": ["Transporte", "Distribución", "Distribución cedida", "Renovable", "Convencional", "LineaDirecta", "Autoconsumo"],
+      "secuencia_fases": [
+        {
+          "fase": "ANALISIS_SOLICITUD",
+          "obligatoria": true,
+          "base_legal": "RD 1955/2000 arts. 122-123",
+          "nota_renovable": "Para tipo_expediente == Renovable: el tramite COMUNICACION_INICIO es obligatorio — la notificación de admisión a trámite acredita el Hito 1 del RD-ley 23/2020 (art. 1.2 in fine)."
+        },
+        {
+          "fase": "CONSULTA_MINISTERIO",
+          "obligatoria": false,
+          "condicion": "tipo_expediente == Transporte",
+          "base_legal": "RD 1955/2000 art. 114"
+        },
+        {
+          "fase": "COMPATIBILIDAD_AMBIENTAL",
+          "obligatoria": false,
+          "condicion": "ia_previa en [AAU, AAUS]",
+          "base_legal": "Decreto 356/2010; IC 1/2022 IV.3.3"
+        },
+        {
+          "fase": "CONSULTAS",
+          "obligatoria": true,
+          "base_legal": "RD 1955/2000 art. 127",
+          "nota": "Plazo: 30 días, silencio positivo."
+        },
+        {
+          "fase": "INFORMACION_PUBLICA",
+          "obligatoria": true,
+          "base_legal": "RD 1955/2000 art. 125",
+          "nota": "Suprimible cuando se cumplen los cuatro criterios del Decreto 9/2011 DA 1ª. Ver NORMATIVA_EXCEPCIONES_AT §3.1."
+        },
+        {
+          "fase": "FIGURA_AMBIENTAL_EXTERNA",
+          "obligatoria": false,
+          "condicion": "ia_tipo == externa"
+        },
+        {
+          "fase": "AAU_AAUS_INTEGRADA",
+          "obligatoria": false,
+          "condicion": "ia_tipo == integrada"
+        },
+        {
+          "fase": "RESOLUCION",
+          "obligatoria": true,
+          "base_legal": "RD 1955/2000 art. 128"
+        }
+      ]
+    },
+
+    {
+      "_grupo": "Instrucción completa de nueva instalación",
+      "codigo": "AAC",
+      "nombre": "Autorización Administrativa de Construcción — sola",
+      "tipos_solicitud": ["AAC"],
+      "tipos_expediente": ["Transporte", "Distribución", "Distribución cedida", "Renovable", "Convencional", "LineaDirecta", "Autoconsumo"],
+      "secuencia_fases": [
+        {
+          "fase": "ANALISIS_SOLICITUD",
+          "obligatoria": true,
+          "base_legal": "RD 1955/2000 art. 130"
+        },
+        {
+          "fase": "CONSULTAS",
+          "obligatoria": true,
+          "base_legal": "RD 1955/2000 art. 131",
+          "nota": "Plazo: 30 días (15 días si existe AAP previa y no hay DUP ni modificación de AAP — art. 131.1)."
+        },
+        {
+          "fase": "RESOLUCION",
+          "obligatoria": true,
+          "base_legal": "RD 1955/2000 art. 131.7",
+          "nota": "Sin IP: la AAC no tiene información pública propia. Plazo: 3 meses."
+        }
+      ]
+    },
+
+    {
+      "_grupo": "Instrucción completa de nueva instalación",
+      "codigo": "AAP+AAC",
+      "nombre": "Instrucción AAP+AAC — nueva instalación",
+      "tipos_solicitud": ["AAP+AAC"],
+      "tipos_expediente": ["Transporte", "Distribución", "Distribución cedida", "Renovable", "Convencional", "LineaDirecta", "Autoconsumo"],
+      "secuencia_fases": [
+        {
+          "fase": "ANALISIS_SOLICITUD",
+          "obligatoria": true,
+          "base_legal": "LPACAP art. 68; RD 1955/2000 arts. 122-123 (AAP), 130 (AAC)",
+          "nota_renovable": "Para tipo_expediente == Renovable: el tramite COMUNICACION_INICIO es obligatorio — la notificación de admisión a trámite acredita el Hito 1 del RD-ley 23/2020 (art. 1.2 in fine)."
+        },
+        {
+          "fase": "CONSULTA_MINISTERIO",
+          "obligatoria": false,
+          "condicion": "tipo_expediente == Transporte",
+          "base_legal": "RD 1955/2000 art. 114",
+          "nota": "Informe preceptivo de la DGPEM al Ministerio. Plazo: 2 meses."
+        },
+        {
+          "fase": "COMPATIBILIDAD_AMBIENTAL",
+          "obligatoria": false,
+          "condicion": "ia_previa en [AAU, AAUS]",
+          "base_legal": "Decreto 356/2010; IC 1/2022 IV.3.3",
+          "nota": "Solo si el expediente ya tiene una AAU o AAUS previa pendiente de resolución o condicionada."
+        },
+        {
+          "fase": "CONSULTAS",
+          "obligatoria": true,
+          "base_legal": "RD 1955/2000 art. 127 (AAP), art. 131 (AAC)",
+          "nota": "Plazo: 30 días (15 días si solo AAC con AAP previa y sin DUP). Un trámite CONSULTA_SEPARATA por organismo."
+        },
+        {
+          "fase": "INFORMACION_PUBLICA",
+          "obligatoria": true,
+          "base_legal": "RD 1955/2000 art. 125 (AAP)",
+          "nota": "Obligatoria con carácter general. Suprimida cuando se cumplen los cuatro criterios del Decreto 9/2011 DA 1ª (3ª categoría AT, subterránea, suelo urbano, sin DUP). Ver NORMATIVA_EXCEPCIONES_AT §3.1."
+        },
+        {
+          "fase": "FIGURA_AMBIENTAL_EXTERNA",
+          "obligatoria": false,
+          "condicion": "ia_tipo == externa",
+          "nota": "AAU/AAUS/CA tramitada por separado ante el órgano ambiental, en paralelo."
+        },
+        {
+          "fase": "AAU_AAUS_INTEGRADA",
+          "obligatoria": false,
+          "condicion": "ia_tipo == integrada",
+          "nota": "AAU/AAUS integrada en el procedimiento sustantivo. IP puede ser conjunta si el promotor lo solicitó al inicio."
+        },
+        {
+          "fase": "RESOLUCION",
+          "obligatoria": true,
+          "base_legal": "RD 1955/2000 art. 128 (AAP), art. 131.7 (AAC)"
+        }
+      ]
+    },
+
+    {
+      "_grupo": "Instrucción completa de nueva instalación",
+      "codigo": "AAP+AAC+DUP",
+      "nombre": "Instrucción AAP+AAC con DUP",
+      "tipos_solicitud": ["AAP+AAC+DUP"],
+      "tipos_expediente": ["Transporte", "Distribución", "Distribución cedida", "Renovable", "Convencional", "LineaDirecta"],
+      "secuencia_fases": [
+        {
+          "fase": "ANALISIS_SOLICITUD",
+          "obligatoria": true,
+          "base_legal": "LPACAP art. 68; RD 1955/2000 arts. 122-123, 130, 143",
+          "nota_renovable": "Para tipo_expediente == Renovable: el tramite COMUNICACION_INICIO es obligatorio — la notificación de admisión a trámite acredita el Hito 1 del RD-ley 23/2020 (art. 1.2 in fine)."
+        },
+        {
+          "fase": "CONSULTA_MINISTERIO",
+          "obligatoria": false,
+          "condicion": "tipo_expediente == Transporte",
+          "base_legal": "RD 1955/2000 art. 114"
+        },
+        {
+          "fase": "COMPATIBILIDAD_AMBIENTAL",
+          "obligatoria": false,
+          "condicion": "ia_previa en [AAU, AAUS]",
+          "base_legal": "Decreto 356/2010; IC 1/2022 IV.3.3"
+        },
+        {
+          "fase": "CONSULTAS",
+          "obligatoria": true,
+          "base_legal": "RD 1955/2000 arts. 127, 131",
+          "nota": "Plazo: 30 días. La DUP no reduce el plazo de consultas."
+        },
+        {
+          "fase": "INFORMACION_PUBLICA",
+          "obligatoria": true,
+          "base_legal": "RD 1955/2000 art. 125; LSE art. 54",
+          "nota": "La DUP suprime la excepción de IP (Decreto 9/2011 DA 1ª). IP siempre obligatoria en AAP+AAC+DUP. Puede ser conjunta con la IP ambiental (AAU)."
+        },
+        {
+          "fase": "FIGURA_AMBIENTAL_EXTERNA",
+          "obligatoria": false,
+          "condicion": "ia_tipo == externa"
+        },
+        {
+          "fase": "AAU_AAUS_INTEGRADA",
+          "obligatoria": false,
+          "condicion": "ia_tipo == integrada"
+        },
+        {
+          "fase": "RESOLUCION",
+          "obligatoria": true,
+          "base_legal": "RD 1955/2000 arts. 128, 131.7, 143"
+        }
+      ]
+    },
+
+    {
+      "_grupo": "Instrucción completa de nueva instalación",
+      "codigo": "DUP",
+      "nombre": "Declaración de Utilidad Pública autónoma",
+      "tipos_solicitud": ["DUP"],
+      "tipos_expediente": ["Transporte", "Distribución", "Distribución cedida", "Renovable", "Convencional", "LineaDirecta"],
+      "secuencia_fases": [
+        {
+          "fase": "ANALISIS_SOLICITUD",
+          "obligatoria": true,
+          "base_legal": "RD 1955/2000 art. 143",
+          "nota": "La solicitud incluye obligatoriamente un anejo de afecciones con relación concreta e individualizada de bienes y derechos a expropiar o sobre los que imponer servidumbre (art. 143.3)."
+        },
+        {
+          "fase": "INFORMACION_PUBLICA",
+          "obligatoria": true,
+          "base_legal": "RD 1955/2000 art. 144",
+          "nota": "30 días. Publicación en BOE (no BOJA) + BOP de provincias afectadas + prensa + tablones Ayuntamientos. Aplican tramites ANUNCIO_BOE, ANUNCIO_BOP, ANUNCIO_PRENSA, TABLON_AYUNTAMIENTOS. Si la IP ya se realizó conjuntamente en la AAP o AAC, puede no ser necesaria."
+        },
+        {
+          "fase": "CONSULTAS",
+          "obligatoria": true,
+          "base_legal": "RD 1955/2000 art. 146",
+          "nota": "Simultáneas a IP. AAPP, organismos y empresas de servicios con bienes o intereses afectados. Plazo 30 días, silencio positivo (art. 146.1). Si DUP se tramita con AAC, las consultas del art. 127 satisfacen este requisito (art. 146.2)."
+        },
+        {
+          "fase": "RESOLUCION",
+          "obligatoria": true,
+          "base_legal": "RD 1955/2000 arts. 145-146; LSE art. 54",
+          "nota": "La resolución de DUP habilita la expropiación forzosa y/o imposición de servidumbre de paso. Competencia de la Consejería para instalaciones intra-CCAA."
+        }
+      ]
+    },
+
+    {
+      "_grupo": "Instrucción completa de nueva instalación",
+      "codigo": "AAC+DUP",
+      "nombre": "AAC con DUP posterior a AAP ya obtenida",
+      "tipos_solicitud": ["AAC+DUP"],
+      "tipos_expediente": ["Transporte", "Distribución", "Distribución cedida", "Renovable", "Convencional", "LineaDirecta"],
+      "secuencia_fases": [
+        {
+          "fase": "ANALISIS_SOLICITUD",
+          "obligatoria": true,
+          "base_legal": "LPACAP art. 68; RD 1955/2000 arts. 130, 143.2"
+        },
+        {
+          "fase": "CONSULTAS",
+          "obligatoria": true,
+          "base_legal": "RD 1955/2000 art. 131",
+          "nota": "Plazo: 15 días (AAP ya obtenida, sin nueva DUP pendiente de IP propia)."
+        },
+        {
+          "fase": "INFORMACION_PUBLICA",
+          "obligatoria": false,
+          "condicion": "DUP requiere IP separada",
+          "base_legal": "RD 1955/2000 art. 143",
+          "nota": "PENDIENTE CONFIRMACIÓN NORMATIVA: si la AAP ya incluyó IP con alcance suficiente para la DUP, puede no ser necesaria IP adicional. Confirmar con el servicio."
+        },
+        {
+          "fase": "RESOLUCION",
+          "obligatoria": true,
+          "base_legal": "RD 1955/2000 arts. 131.7, 143.2"
+        }
+      ]
+    },
+
+    {
+      "_grupo": "Puesta en servicio",
+      "codigo": "AE_PROVISIONAL",
+      "nombre": "Autorización de Explotación Provisional — generación",
+      "tipos_solicitud": ["AE_PROVISIONAL"],
+      "tipos_expediente": ["Renovable", "Convencional"],
+      "secuencia_fases": [
+        {
+          "fase": "ANALISIS_SOLICITUD",
+          "obligatoria": true,
+          "base_legal": "RD 1955/2000 art. 132 bis"
+        },
+        {
+          "fase": "RESOLUCION",
+          "obligatoria": true,
+          "base_legal": "RD 1955/2000 art. 132 bis",
+          "nota": "Plazo de resolución: 1 mes. Silencio desestimatorio (DA 3ª LSE). Habilita el período de pruebas previo a la AE_DEFINITIVA."
+        }
+      ]
+    },
+
+    {
+      "_grupo": "Puesta en servicio",
+      "codigo": "AE_DEFINITIVA — distribución y transporte",
+      "nombre": "Autorización de Explotación Definitiva — instalaciones de red",
+      "tipos_solicitud": ["AE_DEFINITIVA"],
+      "tipos_expediente": ["Transporte", "Distribución", "Distribución cedida"],
+      "secuencia_fases": [
+        {
+          "fase": "ANALISIS_SOLICITUD",
+          "obligatoria": true,
+          "base_legal": "RD 1955/2000 art. 132"
+        },
+        {
+          "fase": "RESOLUCION",
+          "obligatoria": true,
+          "base_legal": "RD 1955/2000 art. 132",
+          "nota": "Procedimiento simplificado. Plazo de resolución: 1 mes. Silencio desestimatorio (DA 3ª LSE)."
+        }
+      ]
+    },
+
+    {
+      "_grupo": "Puesta en servicio",
+      "codigo": "AE_DEFINITIVA — generación",
+      "nombre": "Autorización de Explotación Definitiva — instalaciones de generación",
+      "tipos_solicitud": ["AE_DEFINITIVA"],
+      "tipos_expediente": ["Renovable", "Convencional"],
+      "secuencia_fases": [
+        {
+          "fase": "ANALISIS_SOLICITUD",
+          "obligatoria": true,
+          "base_legal": "RD 1955/2000 art. 132 ter"
+        },
+        {
+          "fase": "RESOLUCION",
+          "obligatoria": true,
+          "base_legal": "RD 1955/2000 art. 132 ter",
+          "nota": "Requiere AE_PROVISIONAL resuelta favorablemente y período de pruebas completado. Plazo: 1 mes. Silencio desestimatorio. Excepción DL 2/2018 DA única apdo. 2: instalaciones ≤ 500 kW tramitan puesta en servicio industrial, no AE administrativa."
+        }
+      ]
+    },
+
+    {
+      "_grupo": "Puesta en servicio",
+      "codigo": "AE_DEFINITIVA+AAT",
+      "nombre": "Explotación definitiva con transmisión en resolución única",
+      "tipos_solicitud": ["AE_DEFINITIVA+AAT"],
+      "tipos_expediente": ["Distribución", "Distribución cedida"],
+      "secuencia_fases": [
+        {
+          "fase": "ANALISIS_SOLICITUD",
+          "obligatoria": true,
+          "base_legal": "RD 1955/2000 arts. 132, 133"
+        },
+        {
+          "fase": "RESOLUCION",
+          "obligatoria": true,
+          "base_legal": "RD 1955/2000 arts. 132, 133",
+          "nota": "Resolución única que concede la AE definitiva y autoriza simultáneamente la transmisión de titularidad al distribuidor. Típico en instalaciones cedidas por promotor a distribuidora."
+        }
+      ]
+    },
+
+    {
+      "_grupo": "Post-autorización",
+      "codigo": "AAT",
+      "nombre": "Autorización de Transmisión de Titularidad",
+      "tipos_solicitud": ["AAT"],
+      "tipos_expediente": "todos",
+      "secuencia_fases": [
+        {
+          "fase": "ANALISIS_SOLICITUD",
+          "obligatoria": true,
+          "base_legal": "RD 1955/2000 art. 133"
+        },
+        {
+          "fase": "RESOLUCION",
+          "obligatoria": true,
+          "base_legal": "RD 1955/2000 art. 133",
+          "nota": "Solicitud conjunta transmitente + adquirente. Plazo: 3 meses. La formalización posterior (art. 133) y la comunicación del adquirente en 1 mes (art. 134) son obligaciones del administrado, no fases del procedimiento en BDDAT."
+        }
+      ]
+    },
+
+    {
+      "_grupo": "Post-autorización",
+      "codigo": "CIERRE",
+      "nombre": "Cierre definitivo de instalación",
+      "tipos_solicitud": ["CIERRE"],
+      "tipos_expediente": "todos",
+      "secuencia_fases": [
+        {
+          "fase": "ANALISIS_SOLICITUD",
+          "obligatoria": true,
+          "base_legal": "RD 1955/2000 art. 135"
+        },
+        {
+          "fase": "CONSULTA_OPERADOR_SISTEMA",
+          "obligatoria": true,
+          "base_legal": "RD 1955/2000 art. 136",
+          "nota": "Operador del sistema: REE (Transporte) o distribuidora (Distribución). Plazo: 3 meses, silencio positivo. El procedimiento continúa aunque no haya informe."
+        },
+        {
+          "fase": "RESOLUCION",
+          "obligatoria": true,
+          "base_legal": "RD 1955/2000 art. 137",
+          "nota": "Plazo: 3 meses. La resolución fija el plazo de ejecución del cierre; si vence sin ejecución → caducidad (art. 138)."
+        }
+      ]
+    },
+
+    {
+      "_grupo": "Post-autorización",
+      "codigo": "AMPLIACION_PLAZO",
+      "nombre": "Ampliación de Plazo de Ejecución",
+      "tipos_solicitud": ["AMPLIACION_PLAZO"],
+      "tipos_expediente": "todos",
+      "secuencia_fases": [
+        {
+          "fase": "ANALISIS_SOLICITUD",
+          "obligatoria": true,
+          "base_legal": "RD 1955/2000 art. 128.4; LPACAP art. 32"
+        },
+        {
+          "fase": "RESOLUCION",
+          "obligatoria": true,
+          "base_legal": "RD 1955/2000 art. 128.4; LPACAP art. 32",
+          "nota": "Art. 128.4: prórroga del plazo fijado en la AAP para solicitar la AAC, por razones justificadas. LPACAP art. 32: ampliación de plazos administrativos en general. Aplica también a prórrogas del plazo de ejecución de la AAC o de la AE."
+        }
+      ]
+    },
+
+    {
+      "_grupo": "Post-autorización",
+      "codigo": "CORRECCION_ERRORES",
+      "nombre": "Corrección de Errores en Resolución",
+      "tipos_solicitud": ["CORRECCION_ERRORES"],
+      "tipos_expediente": "todos",
+      "secuencia_fases": [
+        {
+          "fase": "ANALISIS_SOLICITUD",
+          "obligatoria": true,
+          "base_legal": "LPACAP art. 109.2"
+        },
+        {
+          "fase": "RESOLUCION",
+          "obligatoria": true,
+          "base_legal": "LPACAP art. 109.2",
+          "nota": "Corrección de errores materiales, aritméticos o de hecho en resolución ya dictada. No puede alterar el fondo de la resolución."
+        }
+      ]
+    },
+
+    {
+      "_grupo": "Registros",
+      "codigo": "RAIPEE_PREVIA",
+      "nombre": "Inscripción Previa en RAIPEE",
+      "tipos_solicitud": ["RAIPEE_PREVIA"],
+      "tipos_expediente": ["Renovable", "Convencional"],
+      "secuencia_fases": [
+        {
+          "fase": "ANALISIS_SOLICITUD",
+          "obligatoria": true,
+          "base_legal": "RD 1183/2020"
+        },
+        {
+          "fase": "RESOLUCION",
+          "obligatoria": true,
+          "base_legal": "RD 1183/2020",
+          "nota": "Resolución de Aptitud de Infraestructuras Previas al Expediente de Evacuación. Previa a RAIPEE_DEFINITIVA."
+        }
+      ]
+    },
+
+    {
+      "_grupo": "Registros",
+      "codigo": "RAIPEE_DEFINITIVA",
+      "nombre": "Inscripción Definitiva en RAIPEE",
+      "tipos_solicitud": ["RAIPEE_DEFINITIVA"],
+      "tipos_expediente": ["Renovable", "Convencional"],
+      "secuencia_fases": [
+        {
+          "fase": "ANALISIS_SOLICITUD",
+          "obligatoria": true,
+          "base_legal": "RD 1183/2020"
+        },
+        {
+          "fase": "RESOLUCION",
+          "obligatoria": true,
+          "base_legal": "RD 1183/2020",
+          "nota": "Requiere RAIPEE_PREVIA resuelta favorablemente."
+        }
+      ]
+    },
+
+    {
+      "_grupo": "Registros",
+      "codigo": "RADNE",
+      "nombre": "Inscripción en Registro de Autoconsumo (RADNE)",
+      "tipos_solicitud": ["RADNE"],
+      "tipos_expediente": ["Autoconsumo"],
+      "secuencia_fases": [
+        {
+          "fase": "ANALISIS_SOLICITUD",
+          "obligatoria": true,
+          "base_legal": "RD 244/2019"
+        },
+        {
+          "fase": "RESOLUCION",
+          "obligatoria": true,
+          "base_legal": "RD 244/2019",
+          "nota": "Inscripción en el Registro Administrativo de Instalaciones de Producción de Energía Eléctrica en modalidad de autoconsumo."
+        }
+      ]
+    },
+
+    {
+      "_grupo": "Incidencias procedimentales",
+      "codigo": "DESISTIMIENTO",
+      "nombre": "Desistimiento de Solicitud",
+      "tipos_solicitud": ["DESISTIMIENTO"],
+      "tipos_expediente": "todos",
+      "secuencia_fases": [
+        {
+          "fase": "RESOLUCION",
+          "obligatoria": true,
+          "base_legal": "LPACAP art. 93",
+          "nota": "Fase finalizadora directa sin instrucción previa. Requiere solicitud_afectada_id. La Administración acepta el desistimiento y archiva la solicitud afectada."
+        }
+      ]
+    },
+
+    {
+      "_grupo": "Incidencias procedimentales",
+      "codigo": "RENUNCIA",
+      "nombre": "Renuncia a Autorización",
+      "tipos_solicitud": ["RENUNCIA"],
+      "tipos_expediente": "todos",
+      "secuencia_fases": [
+        {
+          "fase": "RESOLUCION",
+          "obligatoria": true,
+          "base_legal": "LPACAP art. 94",
+          "nota": "Fase finalizadora directa. Requiere solicitud_afectada_id. El titular renuncia a derechos ya concedidos por resolución firme."
+        }
+      ]
+    },
+
+    {
+      "_grupo": "Incidencias procedimentales",
+      "codigo": "RECURSO",
+      "nombre": "Recurso Administrativo",
+      "tipos_solicitud": ["RECURSO"],
+      "tipos_expediente": "todos",
+      "secuencia_fases": [
+        {
+          "fase": "ANALISIS_SOLICITUD",
+          "obligatoria": true,
+          "base_legal": "LPACAP arts. 112-126"
+        },
+        {
+          "fase": "RESOLUCION",
+          "obligatoria": true,
+          "base_legal": "LPACAP arts. 112-126",
+          "nota": "La resolución puede ser estimatoria, desestimatoria o inadmisión a trámite. No autoriza nada; su fase finalizadora es igualmente RESOLUCION."
+        }
+      ]
+    },
+
+    {
+      "_grupo": "Especiales",
+      "codigo": "INTERESADO",
+      "nombre": "Reconocimiento de Condición de Interesado",
+      "tipos_solicitud": ["INTERESADO"],
+      "tipos_expediente": "todos",
+      "secuencia_fases": [
+        {
+          "fase": "RECONOCIMIENTO_INTERESADO",
+          "obligatoria": true,
+          "base_legal": "LPACAP art. 4",
+          "nota": "Fase finalizadora propia — no utiliza RESOLUCION. Evalúa si el solicitante acredita interés legítimo en el procedimiento principal."
+        }
+      ]
+    },
+
+    {
+      "_grupo": "Especiales",
+      "codigo": "OTRO",
+      "nombre": "Otro Tipo de Solicitud",
+      "tipos_solicitud": ["OTRO"],
+      "tipos_expediente": "todos",
+      "secuencia_fases": [
+        {
+          "fase": "RESOLUCION",
+          "obligatoria": true,
+          "nota": "Tipo comodín para solicitudes no clasificadas. Fase finalizadora directa. El tramitador gestiona discrecionalmente las actuaciones previas."
+        }
+      ]
+    }
+
+  ]
+}
