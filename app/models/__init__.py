@@ -26,6 +26,9 @@ from app.models.tipos_documentos import TipoDocumento
 from app.models.consultas_nombradas import ConsultaNombrada
 from app.models.plantillas import Plantilla
 
+# Catálogo de requerimientos de subsanación (#405 — sin FK operacionales)
+from app.models.catalogo_requerimientos import CatalogoRequerimiento
+
 # Modelo de metadata del sistema (issue #85)
 from app.models.tabla_metadata import TablaMetadata
 
@@ -93,6 +96,9 @@ from app.models.resolucion import Resolucion
 # Anuncio de información pública (#404 — depende de Fase)
 from app.models.informacion_publica import InformacionPublica
 
+# Requerimientos de tarea ANALIZAR (#405 — depende de Tarea y CatalogoRequerimiento)
+from app.models.requerimientos_tarea import RequerimientoTarea
+
 # Mapa semántico de documentos por tarea (#346 — sin FK operacional propia)
 from app.models.tramites_tareas_documentos import TramiteTareaDocumento
 
@@ -113,6 +119,8 @@ __all__ = [
     'TipoDocumento',
     'ConsultaNombrada',
     'Plantilla',
+    # Catálogo de requerimientos
+    'CatalogoRequerimiento',
     # Metadata del sistema
     'TablaMetadata',
     # Arquitectura Entidades (simplificada en issue #103)
@@ -161,4 +169,6 @@ __all__ = [
     'Resolucion',
     # Anuncio de información pública
     'InformacionPublica',
+    # Requerimientos de tarea ANALIZAR
+    'RequerimientoTarea',
 ]
