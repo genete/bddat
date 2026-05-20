@@ -6,11 +6,11 @@
 
 ---
 
-**Último cerrado:** #405 — tablas `catalogo_requerimientos` y `requerimientos_tarea`: modelo maestro `CatalogoRequerimiento` (texto, categoria, activo), modelo `RequerimientoTarea` (FK tarea + FK catálogo nullable + texto_libre nullable, CHECK exactamente uno, property `texto`), migración con índices y GRANTs, 10 tests sin BD. Issues derivados creados: #440 (UI selector shuttle), #441 (seed catálogo), #442 (tabla `documentos_analizar`).
+**Último cerrado:** #406 — CB `ContextoSubsanacion` para el trámite `REQUERIMIENTO_SUBSANACION`: consulta `tarea.requerimientos` e inyecta lista `{texto, orden}` en el contexto; 5 tests sin BD. Hotfix incluido: renombrado módulos `notificacion_organismo` y `resolucion` al path que espera `_cargar_context_builder` + tests actualizados. Issue #444 creado en M4 para plantillas `.docx` definitivas.
 
 **Actuales:** —
 
-**Próximo:** #406 — CB `ContextoSubsanacion` (escrito de requerimiento de subsanación; tras #405).
+**Próximo:** #417 — limpiar referencias a tareas obsoletas v6.0 en `seed_demo.py` y `GUIA_GENERAL.md` (deuda técnica pequeña, independiente).
 
 ---
 
@@ -34,12 +34,12 @@
 
 ### Bloque 3 — Modelo de interesados y Context Builders de escritos
 
-9. **#374** — tabla de interesados del expediente y trámite REGISTRO_INTERESADOS
+9. ~~**#374** — tabla de interesados del expediente y trámite REGISTRO_INTERESADOS~~ ✓
 10. ~~**#402** — CB `ContextoNotificacionOrganismo` (notificación a organismo consultado)~~ ✓
 11. ~~**#403** — CB `ContextoResolucion` (escrito de resolución)~~ ✓
 12. ~~**#404** — CB `ContextoInformacionPublica` (anuncio de información pública)~~ ✓
 13. ~~**#405** — tablas `catalogo_requerimientos` y `requerimientos_tarea`~~ ✓
-14. **#406** — CB `ContextoSubsanacion` (requerimiento de subsanación; tras #405)
+14. ~~**#406** — CB `ContextoSubsanacion` (requerimiento de subsanación; tras #405)~~ ✓
 
 ### Bloque 4 — Motor de reglas y plazos
 
