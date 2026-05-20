@@ -244,10 +244,8 @@ with app.app_context():
 
     # --- Atajos tareas ---
     TAREA_ANAL = TTAREA.get('ANALIZAR') or TTAREA.get('ANALISIS')
-    TAREA_RED  = TTAREA['REDACTAR']
-    TAREA_FIR  = TTAREA['FIRMAR']
+    TAREA_ELAB = TTAREA['ELABORAR']
     TAREA_NOT  = TTAREA['NOTIFICAR']
-    TAREA_PUB  = TTAREA['PUBLICAR']
     TAREA_ESP  = TTAREA['ESPERAR_PLAZO']
 
     # Modo aditivo — no se borra nada
@@ -394,8 +392,8 @@ with app.app_context():
         t01 = crear_tramite(f01, TT_ANAL)
         crear_tarea(t01, TAREA_ANAL, doc_usado=sol01_entrada)
         t01b = crear_tramite(f01, TT_REQ)
-        crear_tarea(t01b, TAREA_RED, doc_usado=sol01_mem)
-        print('AT-2001 OK — Renovable, AAP+AAC, fase SOL pendiente redactar req.')
+        crear_tarea(t01b, TAREA_ELAB, doc_usado=sol01_mem)
+        print('AT-2001 OK — Renovable, AAP+AAC, fase SOL pendiente elaborar req.')
     else:
         print('AT-2001 ya existe — omitido')
 
@@ -461,8 +459,8 @@ with app.app_context():
         fase_fin(sol03, TF_MA, TRES_FAV)
         f03_ip = crear_fase(sol03, TF_IP)
         t03_bop = crear_tramite(f03_ip, TT_BOP)
-        crear_tarea(t03_bop, TAREA_PUB, doc_usado=sol03_anuncio)
-        print('AT-2003 OK — Eólico, AAP+AAC+DUP+AAE, IP pendiente publicar BOP')
+        crear_tarea(t03_bop, TAREA_NOT, doc_usado=sol03_anuncio)
+        print('AT-2003 OK — Eólico, AAP+AAC+DUP+AAE, IP pendiente notificar BOP')
     else:
         print('AT-2003 ya existe — omitido')
 
@@ -577,8 +575,8 @@ with app.app_context():
         t07a = crear_tramite(f07, TT_ANAL)
         crear_tarea(t07a, TAREA_ANAL, doc_usado=sol07_sol)
         t07b = crear_tramite(f07, TT_REQ)
-        crear_tarea(t07b, TAREA_FIR, doc_usado=sol07_req)
-        print('AT-2007 OK — Distribución cedida Sevillana, AAC, SOL pendiente firma req.')
+        crear_tarea(t07b, TAREA_ELAB, doc_usado=sol07_req)
+        print('AT-2007 OK — Distribución cedida Sevillana, AAC, SOL pendiente elaborar req.')
     else:
         print('AT-2007 ya existe — omitido')
 
