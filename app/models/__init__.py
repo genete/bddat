@@ -90,6 +90,9 @@ from app.models.interesados_expediente import InteresadoExpediente
 # Resolución de fase RESOLUCION (#403 — depende de Fase)
 from app.models.resolucion import Resolucion
 
+# Anuncio de información pública (#404 — depende de Fase)
+from app.models.informacion_publica import InformacionPublica
+
 # Mapa semántico de documentos por tarea (#346 — sin FK operacional propia)
 from app.models.tramites_tareas_documentos import TramiteTareaDocumento
 
@@ -156,4 +159,6 @@ __all__ = [
     'InteresadoExpediente',
     # Resolución de fase RESOLUCION
     'Resolucion',
+    # Anuncio de información pública
+    'InformacionPublica',
 ]
