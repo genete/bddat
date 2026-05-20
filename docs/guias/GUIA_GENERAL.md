@@ -429,7 +429,7 @@ Tras la revisión detallada de los tipos de trámites en uno de los diagramas de
 
 Estos 3 datos diferenciales (secuencia, actores y documentos) se deberían poder deducir de la combinación `TIPO_TRAMITE` y de la tarea en si, así como de las reglas de negocio.
 
-Por ejemplo, del trámite `ANUNCIO_BOP` se debería deducir que la secuencia es del tipo `REDACTAR→FIRMA→NOTIFICAR→PUBLICAR→ESPERAR`, que las tareas `REDACTAR` y `FIRMA` los documentos son el anuncio y el oficio que lo acompaña, que la tarea `NOTIFICAR` es al titular y a la Diputación encargada del BOP y que la tarea `ESPERAR` es el transcurso de tiempo.
+Por ejemplo, del trámite `ANUNCIO_BOP` se debería deducir que la secuencia es del tipo `ELABORAR → NOTIFICAR → ESPERAR_PLAZO × 2`, que la tarea `ELABORAR` produce el anuncio y el oficio que lo acompaña, que la tarea `NOTIFICAR` es al titular y a la Diputación encargada del BOP y que las dos tareas `ESPERAR_PLAZO` son el plazo de publicación en BOP y el plazo de exposición pública.
 
 Es por esto que un trámite es solo un **contenedor temporal y organizativo de tareas** dentro de una fase.
 
@@ -462,7 +462,7 @@ La tarea es la unidad de trabajo registrable con entrada de documento y salida d
 - **Un documento, un productor:** Un documento solo puede ser producido por una tarea (índice único)
 - **Un documento, múltiples consumidores:** Varias tareas pueden usar el mismo documento de entrada
 
-Tras la revisión de las fases, trámites y tareas se concluye que solo hay **7 tipos de tareas**: `INCORPORAR`, `ANALISIS`, `REDACTAR`, `FIRMAR`, `NOTIFICAR`, `PUBLICAR` y `ESPERARPLAZO`.
+Tras la revisión de las fases, trámites y tareas se concluye que solo hay **4 tipos de tareas**: `ANALIZAR`, `ELABORAR`, `NOTIFICAR` y `ESPERAR_PLAZO`.
 
 La tarea tiene claves foráneas hacia documentos (documento usado y documento producido). Pueden ser nulas pero son sometidas a las comprobaciones de las reglas de negocio.
 
