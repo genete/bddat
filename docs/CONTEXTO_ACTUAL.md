@@ -6,11 +6,11 @@
 
 ---
 
-**Último cerrado:** #402 — CB `ContextoNotificacionOrganismo` para `CONSULTA_TRASLADO_ORGANISMO`: clase, migración seed `NOTIF_ORGANISMO` en plantillas, 7 tests sin BD.
+**Último cerrado:** #403 — CB `ContextoResolucion` para `ELABORACION` (fase `RESOLUCION`): tabla `resoluciones`, modelo, migración seed `RESOLUCION` en plantillas, 4 tests sin BD. Issues derivados: #435 (despensa fundamentos), #436 (despensa condicionados).
 
 **Actuales:** —
 
-**Próximo:** #403 — CB `ContextoResolucion` (escrito de resolución).
+**Próximo:** #404 — CB `ContextoInformacionPublica` (anuncio de información pública).
 
 ---
 
@@ -35,8 +35,8 @@
 ### Bloque 3 — Modelo de interesados y Context Builders de escritos
 
 9. **#374** — tabla de interesados del expediente y trámite REGISTRO_INTERESADOS
-10. **#402** — CB `ContextoNotificacionOrganismo` (notificación a organismo consultado)
-11. **#403** — CB `ContextoResolucion` (escrito de resolución)
+10. ~~**#402** — CB `ContextoNotificacionOrganismo` (notificación a organismo consultado)~~ ✓
+11. ~~**#403** — CB `ContextoResolucion` (escrito de resolución)~~ ✓
 12. **#404** — CB `ContextoInformacionPublica` (anuncio de información pública)
 13. **#405** — tablas `catalogo_requerimientos` y `requerimientos_tarea`
 14. **#406** — CB `ContextoSubsanacion` (requerimiento de subsanación; tras #405)
