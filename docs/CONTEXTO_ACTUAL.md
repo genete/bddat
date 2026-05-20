@@ -6,11 +6,11 @@
 
 ---
 
-**Último cerrado:** #406 — CB `ContextoSubsanacion` para el trámite `REQUERIMIENTO_SUBSANACION`: consulta `tarea.requerimientos` e inyecta lista `{texto, orden}` en el contexto; 5 tests sin BD. Hotfix incluido: renombrado módulos `notificacion_organismo` y `resolucion` al path que espera `_cargar_context_builder` + tests actualizados. Issue #444 creado en M4 para plantillas `.docx` definitivas.
+**Último cerrado:** #417 — limpiar referencias a tareas obsoletas v6.0: eliminados atajos `REDACTAR`/`FIRMAR`/`PUBLICAR` de `seed_demo.py` (KeyError en ejecución) y usos sustituidos por `ELABORAR`/`NOTIFICAR`; catálogo actualizado de 7 → 4 tipos de tarea en `GUIA_GENERAL.md` con ejemplo de secuencia `ANUNCIO_BOP` corregido.
 
 **Actuales:** —
 
-**Próximo:** #417 — limpiar referencias a tareas obsoletas v6.0 en `seed_demo.py` y `GUIA_GENERAL.md` (deuda técnica pequeña, independiente).
+**Próximo:** #283 — completar `ESTRUCTURA_FTT.json` con todos los tipos de expediente; reescribir cuerpo antes de planificar (referencias a `PUBLICAR`/`INCORPORAR` obsoletas).
 
 ---
 
@@ -43,7 +43,7 @@
 
 ### Bloque 4 — Motor de reglas y plazos
 
-15. **#417** — limpiar referencias a tareas obsoletas v6.0 en `seed_demo.py` y `GUIA_GENERAL.md` (deuda técnica pequeña; independiente)
+15. ~~**#417** — limpiar referencias a tareas obsoletas v6.0 en `seed_demo.py` y `GUIA_GENERAL.md` (deuda técnica pequeña; independiente)~~ ✓
 16. **#283** — completar `ESTRUCTURA_FTT.json` con todos los tipos de expediente; reescribir cuerpo antes de planificar (referencias a `PUBLICAR`/`INCORPORAR` obsoletas)
 17. **#247** — cerrar las fases CONSULTAS y ANALISIS_TECNICO con reglas del motor (lo ya implementado en #391 cubre el modelo; queda la lógica de cierre); reescribir cuerpo antes de planificar
 18. **#323** — modo global del motor + tabla `configuracion_sistema`
