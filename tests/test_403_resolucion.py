@@ -48,7 +48,7 @@ def _resolucion_bd(antecedentes=None, fundamentos=None, resuelve=None, condicion
 
 
 def _cb(tarea):
-    from app.services.context_builders.resolucion import ContextoResolucion
+    from app.services.context_builders.contexto_resolucion import ContextoResolucion
     return ContextoResolucion(MagicMock(), MagicMock(), tarea=tarea)
 
 
@@ -59,7 +59,7 @@ def _cb(tarea):
 class TestContextoResolucion:
 
     def test_sin_tarea_devuelve_vacio(self):
-        from app.services.context_builders.resolucion import ContextoResolucion
+        from app.services.context_builders.contexto_resolucion import ContextoResolucion
         cb = ContextoResolucion(MagicMock(), MagicMock(), tarea=None)
         assert cb.get_contexto() == {}
 

@@ -51,7 +51,7 @@ def _doc(fecha=None):
 
 
 def _cb(tarea):
-    from app.services.context_builders.notificacion_organismo import ContextoNotificacionOrganismo
+    from app.services.context_builders.contexto_notificacion_organismo import ContextoNotificacionOrganismo
     return ContextoNotificacionOrganismo(MagicMock(), MagicMock(), tarea=tarea)
 
 
@@ -62,14 +62,14 @@ def _cb(tarea):
 class TestContextoNotificacionOrganismo:
 
     def test_sin_tarea_devuelve_vacio(self):
-        from app.services.context_builders.notificacion_organismo import ContextoNotificacionOrganismo
+        from app.services.context_builders.contexto_notificacion_organismo import ContextoNotificacionOrganismo
         cb = ContextoNotificacionOrganismo(MagicMock(), MagicMock(), tarea=None)
         assert cb.get_contexto() == {}
 
     def test_sin_organismo_expediente_devuelve_vacio(self):
         tarea = _tarea_stub('ELABORAR', tramite_id=99)
         cb = _cb(tarea)
-        with patch('app.services.context_builders.notificacion_organismo.OrganismoExpediente') as mock_cls:
+        with patch('app.services.context_builders.contexto_notificacion_organismo.OrganismoExpediente') as mock_cls:
             mock_cls.query.filter_by.return_value.first.return_value = None
             result = cb.get_contexto()
         assert result == {}
@@ -80,7 +80,7 @@ class TestContextoNotificacionOrganismo:
 
         oe = _org_exp(estado='en_tramitacion', plazo_legal_dias=30)
         cb = _cb(tarea_elab)
-        with patch('app.services.context_builders.notificacion_organismo.OrganismoExpediente') as mock_cls:
+        with patch('app.services.context_builders.contexto_notificacion_organismo.OrganismoExpediente') as mock_cls:
             mock_cls.query.filter_by.return_value.first.return_value = oe
             ctx = cb.get_contexto()
 
@@ -96,7 +96,7 @@ class TestContextoNotificacionOrganismo:
 
         oe = _org_exp(estado='cerrado_con_condicionados', plazo_legal_dias=30)
         cb = _cb(tarea_elab)
-        with patch('app.services.context_builders.notificacion_organismo.OrganismoExpediente') as mock_cls:
+        with patch('app.services.context_builders.contexto_notificacion_organismo.OrganismoExpediente') as mock_cls:
             mock_cls.query.filter_by.return_value.first.return_value = oe
             ctx = cb.get_contexto()
 
@@ -113,7 +113,7 @@ class TestContextoNotificacionOrganismo:
 
         oe = _org_exp(plazo_legal_dias=15)
         cb = _cb(tarea_elab)
-        with patch('app.services.context_builders.notificacion_organismo.OrganismoExpediente') as mock_cls:
+        with patch('app.services.context_builders.contexto_notificacion_organismo.OrganismoExpediente') as mock_cls:
             mock_cls.query.filter_by.return_value.first.return_value = oe
             ctx = cb.get_contexto()
 
@@ -127,7 +127,7 @@ class TestContextoNotificacionOrganismo:
 
         oe = _org_exp(plazo_legal_dias=None)
         cb = _cb(tarea_elab)
-        with patch('app.services.context_builders.notificacion_organismo.OrganismoExpediente') as mock_cls:
+        with patch('app.services.context_builders.contexto_notificacion_organismo.OrganismoExpediente') as mock_cls:
             mock_cls.query.filter_by.return_value.first.return_value = oe
             ctx = cb.get_contexto()
 
@@ -141,7 +141,7 @@ class TestContextoNotificacionOrganismo:
 
         oe = _org_exp(plazo_legal_dias=30)
         cb = _cb(tarea_elab)
-        with patch('app.services.context_builders.notificacion_organismo.OrganismoExpediente') as mock_cls:
+        with patch('app.services.context_builders.contexto_notificacion_organismo.OrganismoExpediente') as mock_cls:
             mock_cls.query.filter_by.return_value.first.return_value = oe
             ctx = cb.get_contexto()
 
