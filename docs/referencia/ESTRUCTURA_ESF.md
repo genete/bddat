@@ -1,8 +1,8 @@
 # Estructura Expediente-Solicitud-Fase (ESF)
 
-**Versión:** 2.0 | **Fecha:** 2026-05-20
+**Versión:** 2.1 | **Fecha:** 2026-05-21
 
-Fuente de verdad de qué fases aplican a cada combinación (tipo_solicitud × tipo_expediente). El JSON derivado `ESTRUCTURA_ESF.json` refleja este documento; en caso de discrepancia prevalece este MD.
+Fuente de verdad de qué fases aplican a cada combinación (tipo_solicitud × tipo_expediente). El JSON `ESTRUCTURA_ESF.json` es derivado de este documento; en caso de discrepancia prevalece este MD.
 
 Las fases referenciadas son las definidas en `ESTRUCTURA_FTT.json`. Las restricciones operativas viven en el motor de reglas (ADR-007).
 
@@ -14,9 +14,11 @@ Las fases referenciadas son las definidas en `ESTRUCTURA_FTT.json`. Las restricc
 
 | Símbolo | Significado |
 |---|---|
-| ✅ | Fase obligatoria para este tipo de expediente |
-| ⚠️ | Condicional — condición en nota al pie (no depende del tipo de expediente) |
-| — | No aplica |
+| ✅ | Fase obligatoria para este tipo de solicitud y expediente — siempre ocurre |
+| ⚠️ | Fase obligatoria si se dan condiciones adicionales (ajenas al par solicitud/expediente) — ver nota |
+| 🔀 | Fase opcional: no es obligatoria ni condicionada, pero si ocurre es una fase completa del procedimiento |
+| 🚫 | Fase no aplicable y prohibida — no procede crearla para esta combinación |
+| — | Fase inaplicable por diseño del procedimiento (no depende del tipo de expediente) |
 
 **Abreviaturas de tipos de expediente:**
 `Transp.`=Transporte · `Distrib.`=Distribución · `D.Ced.`=Distribución cedida · `Renov.`=Renovable · `Autocons.`=Autoconsumo · `L.Dir.`=Línea directa · `Convenc.`=Convencional · `Otros`=Otros
@@ -33,18 +35,18 @@ Las fases referenciadas son las definidas en `ESTRUCTURA_FTT.json`. Las restricc
 | `CONSULTA_MINISTERIO` | ✅ | — | — | — | — | — | — |
 | `COMPATIBILIDAD_AMBIENTAL` | ⚠️² | ⚠️² | ⚠️² | ⚠️² | ⚠️² | ⚠️² | ⚠️² |
 | `CONSULTAS` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `INFORMACION_PUBLICA` | ✅³ | ✅³ | ✅³ | ✅³ | ✅³ | ✅³ | ✅³ |
+| `INFORMACION_PUBLICA` | ⚠️³ | ⚠️³ | ⚠️³ | ⚠️³ | ⚠️³ | ⚠️³ | ⚠️³ |
 | `FIGURA_AMBIENTAL_EXTERNA` | ⚠️⁴ | ⚠️⁴ | ⚠️⁴ | ⚠️⁴ | ⚠️⁴ | ⚠️⁴ | ⚠️⁴ |
 | `AAU_AAUS_INTEGRADA` | ⚠️⁵ | ⚠️⁵ | ⚠️⁵ | ⚠️⁵ | ⚠️⁵ | ⚠️⁵ | ⚠️⁵ |
 | `CONSULTA_OPERADOR_SISTEMA` | — | — | — | — | — | — | — |
 | `RECONOCIMIENTO_INTERESADO` | — | — | — | — | — | — | — |
 | `RESOLUCION` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 
-¹ Trámite `COMUNICACION_INICIO` obligatorio — acredita Hito 1 ante el gestor de red (RD-ley 23/2020 art. 1.2 in fine).  
-² Solo si `ia_previa ∈ {AAU, AAUS}` — Decreto 356/2010; IC 1/2022 IV.3.3.  
-³ Suprimible si 3ª cat. AT + subterránea + suelo urbano + sin DUP — Decreto 9/2011 DA 1ª; ver NORMATIVA_EXCEPCIONES_AT §3.1.  
-⁴ Solo si `ia_tipo == externa`.  
-⁵ Solo si `ia_tipo == integrada`.
+¹ Trámite `COMUNICACION_INICIO` obligatorio — la notificación de admisión a trámite de la AAP acredita el Hito 1 ante el gestor de red (RD-ley 23/2020 art. 1.2 in fine).  
+² Solo si `proyecto.ia.siglas ∈ {AAU, AAUS}` — Decreto 356/2010; IC 1/2022 IV.3.3.  
+³ Suprimible si `requiere_dup = false` AND `proyecto.ia.siglas ∉ {AAU, AAUS}` (DL 26/2021 DF 4ª). La publicación de la resolución en BOP (art. 128.3 RD 1955/2000) se suprime adicionalmente si tensión ≤ 30 kV + subterránea o CT interior + suelo urbano/urbanizable (Decreto 9/2011 DA 1ª).  
+⁴ Solo si el instrumento ambiental se tramita externamente al procedimiento sustantivo (procedimiento separado ante órgano ambiental).  
+⁵ Solo si el instrumento ambiental se tramita integrado en el procedimiento sustantivo.
 
 ---
 
@@ -65,34 +67,36 @@ Las fases referenciadas son las definidas en `ESTRUCTURA_FTT.json`. Las restricc
 | `RECONOCIMIENTO_INTERESADO` | — | — | — | — | — | — | — |
 | `RESOLUCION` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 
-¹ 30 días. 15 días si AAP previa y sin DUP ni modificación de AAP (art. 131.1 RD 1955/2000).
+¹ 30 días. 15 días si existe AAP concedida en el mismo expediente y sin DUP pendiente (art. 131.1 RD 1955/2000).
 
 ---
 
 ### `DUP` — Declaración de Utilidad Pública autónoma
 
-*Posterior a AAP o AAC ya obtenida (art. 143.2 RD 1955/2000). No aplica a Autoconsumo ni Otros.*
+*Posterior a AAP o AAC ya obtenida (art. 143.2 RD 1955/2000).*
 
-| Fase | Transp. | Distrib. | D.Ced. | Renov. | L.Dir. | Convenc. |
-|---|:---:|:---:|:---:|:---:|:---:|:---:|
-| `ANALISIS_SOLICITUD` | ✅¹ | ✅¹ | ✅¹ | ✅¹ | ✅¹ | ✅¹ |
-| `CONSULTA_MINISTERIO` | — | — | — | — | — | — |
-| `COMPATIBILIDAD_AMBIENTAL` | — | — | — | — | — | — |
-| `CONSULTAS` | ✅² | ✅² | ✅² | ✅² | ✅² | ✅² |
-| `INFORMACION_PUBLICA` | ✅³ | ✅³ | ✅³ | ✅³ | ✅³ | ✅³ |
-| `FIGURA_AMBIENTAL_EXTERNA` | — | — | — | — | — | — |
-| `AAU_AAUS_INTEGRADA` | — | — | — | — | — | — |
-| `CONSULTA_OPERADOR_SISTEMA` | — | — | — | — | — | — |
-| `RECONOCIMIENTO_INTERESADO` | — | — | — | — | — | — |
-| `RESOLUCION` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+🚫 **Autoconsumo / Otros:** la DUP habilita la expropiación forzosa y/o servidumbre de paso de bienes ajenos. Las instalaciones de autoconsumo no implican ocupación de dominio público ajeno (excluidas estructuralmente). El tipo Otros es un comodín residual sin vocación expropiadora propia; cualquier instalación que requiera DUP pertenece a una categoría tipificada.
 
-¹ Incluye anejo de afecciones con relación concreta de bienes/derechos a expropiar o servidumbre (art. 143.3).  
-² Simultáneas a IP; 30 días, silencio positivo. Si DUP va con AAC, consultas del art. 127 satisfacen este requisito (art. 146.2).  
-³ 30 días. BOE + BOP provincias afectadas + prensa + tablones ayuntamientos. Si la IP ya se realizó conjuntamente en la AAP/AAC, puede no requerirse IP separada.
+| Fase | Transp. | Distrib. | D.Ced. | Renov. | L.Dir. | Convenc. | Autocons. | Otros |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| `ANALISIS_SOLICITUD` | ✅¹ | ✅¹ | ✅¹ | ✅¹ | ✅¹ | ✅¹ | 🚫 | 🚫 |
+| `CONSULTA_MINISTERIO` | — | — | — | — | — | — | 🚫 | 🚫 |
+| `COMPATIBILIDAD_AMBIENTAL` | — | — | — | — | — | — | 🚫 | 🚫 |
+| `CONSULTAS` | ✅² | ✅² | ✅² | ✅² | ✅² | ✅² | 🚫 | 🚫 |
+| `INFORMACION_PUBLICA` | ✅³ | ✅³ | ✅³ | ✅³ | ✅³ | ✅³ | 🚫 | 🚫 |
+| `FIGURA_AMBIENTAL_EXTERNA` | — | — | — | — | — | — | 🚫 | 🚫 |
+| `AAU_AAUS_INTEGRADA` | — | — | — | — | — | — | 🚫 | 🚫 |
+| `CONSULTA_OPERADOR_SISTEMA` | — | — | — | — | — | — | 🚫 | 🚫 |
+| `RECONOCIMIENTO_INTERESADO` | — | — | — | — | — | — | 🚫 | 🚫 |
+| `RESOLUCION` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🚫 | 🚫 |
+
+¹ La solicitud debe incluir anejo de afecciones con relación concreta e individualizada de bienes/derechos a expropiar o sobre los que imponer servidumbre (art. 143.3 RD 1955/2000).  
+² Simultáneas a IP; 30 días, silencio positivo. Si DUP va con AAC, las consultas del art. 127 satisfacen este requisito (art. 146.2 RD 1955/2000).  
+³ 30 días. BOE + BOP de provincias afectadas + prensa + tablones de ayuntamientos. Si la IP se realizó conjuntamente durante la tramitación de la AAP (art. 125 + 143.4), puede no requerirse IP separada — **PENDIENTE CONFIRMACIÓN NORMATIVA**.
 
 ---
 
-### `AAP+AAC` — Instrucción conjunta nueva instalación
+### `AAP+AAC` — Tramitación conjunta nueva instalación
 
 | Fase | Transp. | Distrib. | D.Ced. | Renov. | Autocons. | L.Dir. | Convenc. |
 |---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
@@ -100,7 +104,7 @@ Las fases referenciadas son las definidas en `ESTRUCTURA_FTT.json`. Las restricc
 | `CONSULTA_MINISTERIO` | ✅ | — | — | — | — | — | — |
 | `COMPATIBILIDAD_AMBIENTAL` | ⚠️² | ⚠️² | ⚠️² | ⚠️² | ⚠️² | ⚠️² | ⚠️² |
 | `CONSULTAS` | ✅³ | ✅³ | ✅³ | ✅³ | ✅³ | ✅³ | ✅³ |
-| `INFORMACION_PUBLICA` | ✅⁴ | ✅⁴ | ✅⁴ | ✅⁴ | ✅⁴ | ✅⁴ | ✅⁴ |
+| `INFORMACION_PUBLICA` | ⚠️⁴ | ⚠️⁴ | ⚠️⁴ | ⚠️⁴ | ⚠️⁴ | ⚠️⁴ | ⚠️⁴ |
 | `FIGURA_AMBIENTAL_EXTERNA` | ⚠️⁵ | ⚠️⁵ | ⚠️⁵ | ⚠️⁵ | ⚠️⁵ | ⚠️⁵ | ⚠️⁵ |
 | `AAU_AAUS_INTEGRADA` | ⚠️⁶ | ⚠️⁶ | ⚠️⁶ | ⚠️⁶ | ⚠️⁶ | ⚠️⁶ | ⚠️⁶ |
 | `CONSULTA_OPERADOR_SISTEMA` | — | — | — | — | — | — | — |
@@ -108,59 +112,59 @@ Las fases referenciadas son las definidas en `ESTRUCTURA_FTT.json`. Las restricc
 | `RESOLUCION` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 
 ¹ Trámite `COMUNICACION_INICIO` obligatorio — acredita Hito 1 (RD-ley 23/2020 art. 1.2 in fine).  
-² Solo si `ia_previa ∈ {AAU, AAUS}`.  
-³ 30 días. 15 días si solo AAC con AAP previa y sin DUP (art. 131.1).  
-⁴ Suprimible si 3ª cat. AT + subterránea + suelo urbano + sin DUP.  
-⁵ Solo si `ia_tipo == externa`.  
-⁶ Solo si `ia_tipo == integrada`.
+² Solo si `proyecto.ia.siglas ∈ {AAU, AAUS}`.  
+³ 30 días (arts. 127, 131 RD 1955/2000). 15 días si la tramitación es exclusivamente la AAC con AAP ya concedida en el mismo expediente y sin DUP.  
+⁴ Suprimible si `requiere_dup = false` AND `proyecto.ia.siglas ∉ {AAU, AAUS}` (DL 26/2021 DF 4ª). La publicación en BOP se suprime adicionalmente con los criterios del Decreto 9/2011 DA 1ª.  
+⁵ Solo si el instrumento ambiental se tramita externamente al procedimiento sustantivo.  
+⁶ Solo si el instrumento ambiental se tramita integrado en el procedimiento sustantivo.
 
 ---
 
-### `AAP+AAC+DUP` — Instrucción conjunta con declaración de utilidad pública
+### `AAP+AAC+DUP` — Tramitación conjunta con declaración de utilidad pública
 
-*No aplica a Autoconsumo ni Otros.*
+🚫 **Autoconsumo / Otros:** misma razón que en `DUP` sola.
 
-| Fase | Transp. | Distrib. | D.Ced. | Renov. | L.Dir. | Convenc. |
-|---|:---:|:---:|:---:|:---:|:---:|:---:|
-| `ANALISIS_SOLICITUD` | ✅ | ✅ | ✅ | ✅¹ | ✅ | ✅ |
-| `CONSULTA_MINISTERIO` | ✅ | — | — | — | — | — |
-| `COMPATIBILIDAD_AMBIENTAL` | ⚠️² | ⚠️² | ⚠️² | ⚠️² | ⚠️² | ⚠️² |
-| `CONSULTAS` | ✅³ | ✅³ | ✅³ | ✅³ | ✅³ | ✅³ |
-| `INFORMACION_PUBLICA` | ✅⁴ | ✅⁴ | ✅⁴ | ✅⁴ | ✅⁴ | ✅⁴ |
-| `FIGURA_AMBIENTAL_EXTERNA` | ⚠️⁵ | ⚠️⁵ | ⚠️⁵ | ⚠️⁵ | ⚠️⁵ | ⚠️⁵ |
-| `AAU_AAUS_INTEGRADA` | ⚠️⁶ | ⚠️⁶ | ⚠️⁶ | ⚠️⁶ | ⚠️⁶ | ⚠️⁶ |
-| `CONSULTA_OPERADOR_SISTEMA` | — | — | — | — | — | — |
-| `RECONOCIMIENTO_INTERESADO` | — | — | — | — | — | — |
-| `RESOLUCION` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Fase | Transp. | Distrib. | D.Ced. | Renov. | L.Dir. | Convenc. | Autocons. | Otros |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| `ANALISIS_SOLICITUD` | ✅ | ✅ | ✅ | ✅¹ | ✅ | ✅ | 🚫 | 🚫 |
+| `CONSULTA_MINISTERIO` | ✅ | — | — | — | — | — | 🚫 | 🚫 |
+| `COMPATIBILIDAD_AMBIENTAL` | ⚠️² | ⚠️² | ⚠️² | ⚠️² | ⚠️² | ⚠️² | 🚫 | 🚫 |
+| `CONSULTAS` | ✅³ | ✅³ | ✅³ | ✅³ | ✅³ | ✅³ | 🚫 | 🚫 |
+| `INFORMACION_PUBLICA` | ✅⁴ | ✅⁴ | ✅⁴ | ✅⁴ | ✅⁴ | ✅⁴ | 🚫 | 🚫 |
+| `FIGURA_AMBIENTAL_EXTERNA` | ⚠️⁵ | ⚠️⁵ | ⚠️⁵ | ⚠️⁵ | ⚠️⁵ | ⚠️⁵ | 🚫 | 🚫 |
+| `AAU_AAUS_INTEGRADA` | ⚠️⁶ | ⚠️⁶ | ⚠️⁶ | ⚠️⁶ | ⚠️⁶ | ⚠️⁶ | 🚫 | 🚫 |
+| `CONSULTA_OPERADOR_SISTEMA` | — | — | — | — | — | — | 🚫 | 🚫 |
+| `RECONOCIMIENTO_INTERESADO` | — | — | — | — | — | — | 🚫 | 🚫 |
+| `RESOLUCION` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🚫 | 🚫 |
 
 ¹ Trámite `COMUNICACION_INICIO` obligatorio — acredita Hito 1 (RD-ley 23/2020 art. 1.2 in fine).  
-² Solo si `ia_previa ∈ {AAU, AAUS}`.  
+² Solo si `proyecto.ia.siglas ∈ {AAU, AAUS}`.  
 ³ 30 días. La DUP no reduce el plazo de consultas.  
-⁴ IP **siempre** obligatoria — la DUP suprime la excepción del Decreto 9/2011 DA 1ª.  
-⁵ Solo si `ia_tipo == externa`.  
-⁶ Solo si `ia_tipo == integrada`.
+⁴ IP **siempre** obligatoria — la DUP suprime tanto la excepción del DL 26/2021 DF 4ª como la del Decreto 9/2011 DA 1ª.  
+⁵ Solo si el instrumento ambiental se tramita externamente al procedimiento sustantivo.  
+⁶ Solo si el instrumento ambiental se tramita integrado en el procedimiento sustantivo.
 
 ---
 
 ### `AAC+DUP` — AAC con DUP posterior a AAP ya obtenida
 
-*No aplica a Autoconsumo ni Otros.*
+🚫 **Autoconsumo / Otros:** misma razón que en `DUP` sola.
 
-| Fase | Transp. | Distrib. | D.Ced. | Renov. | L.Dir. | Convenc. |
-|---|:---:|:---:|:---:|:---:|:---:|:---:|
-| `ANALISIS_SOLICITUD` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `CONSULTA_MINISTERIO` | — | — | — | — | — | — |
-| `COMPATIBILIDAD_AMBIENTAL` | — | — | — | — | — | — |
-| `CONSULTAS` | ✅¹ | ✅¹ | ✅¹ | ✅¹ | ✅¹ | ✅¹ |
-| `INFORMACION_PUBLICA` | ⚠️² | ⚠️² | ⚠️² | ⚠️² | ⚠️² | ⚠️² |
-| `FIGURA_AMBIENTAL_EXTERNA` | — | — | — | — | — | — |
-| `AAU_AAUS_INTEGRADA` | — | — | — | — | — | — |
-| `CONSULTA_OPERADOR_SISTEMA` | — | — | — | — | — | — |
-| `RECONOCIMIENTO_INTERESADO` | — | — | — | — | — | — |
-| `RESOLUCION` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Fase | Transp. | Distrib. | D.Ced. | Renov. | L.Dir. | Convenc. | Autocons. | Otros |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| `ANALISIS_SOLICITUD` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🚫 | 🚫 |
+| `CONSULTA_MINISTERIO` | — | — | — | — | — | — | 🚫 | 🚫 |
+| `COMPATIBILIDAD_AMBIENTAL` | — | — | — | — | — | — | 🚫 | 🚫 |
+| `CONSULTAS` | ✅¹ | ✅¹ | ✅¹ | ✅¹ | ✅¹ | ✅¹ | 🚫 | 🚫 |
+| `INFORMACION_PUBLICA` | ✅² | ✅² | ✅² | ✅² | ✅² | ✅² | 🚫 | 🚫 |
+| `FIGURA_AMBIENTAL_EXTERNA` | — | — | — | — | — | — | 🚫 | 🚫 |
+| `AAU_AAUS_INTEGRADA` | — | — | — | — | — | — | 🚫 | 🚫 |
+| `CONSULTA_OPERADOR_SISTEMA` | — | — | — | — | — | — | 🚫 | 🚫 |
+| `RECONOCIMIENTO_INTERESADO` | — | — | — | — | — | — | 🚫 | 🚫 |
+| `RESOLUCION` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🚫 | 🚫 |
 
-¹ 15 días — AAP ya obtenida (art. 131.1 RD 1955/2000).  
-² PENDIENTE CONFIRMACIÓN NORMATIVA: si la AAP ya incluyó IP con alcance suficiente para la DUP, puede no requerirse IP adicional.
+¹ 15 días — AAP ya concedida, sin nueva AAP ni modificación (art. 131.1 RD 1955/2000).  
+² IP obligatoria aunque la AAP ya incluyera IP con igual alcance: los efectos jurídicos de la DUP son distintos a los de la AAP y requieren su propia publicidad (confirmado).
 
 ---
 
@@ -168,65 +172,67 @@ Las fases referenciadas son las definidas en `ESTRUCTURA_FTT.json`. Las restricc
 
 ### `AE_PROVISIONAL` — Autorización de Explotación Provisional
 
-*Exclusivo generación. Habilita período de pruebas previo a AE_DEFINITIVA.*
+🚫 **Transp., Distrib., D.Ced., Autocons., L.Dir., Otros:** la AE provisional es exclusiva del procedimiento de puesta en servicio de instalaciones de generación (período de pruebas previo a la AE definitiva). Estas categorías no son instalaciones de generación en el sentido del art. 132 bis RD 1955/2000.
 
-| Fase | Renov. | Convenc. |
-|---|:---:|:---:|
-| `ANALISIS_SOLICITUD` | ✅ | ✅ |
-| `CONSULTA_MINISTERIO` | — | — |
-| `COMPATIBILIDAD_AMBIENTAL` | — | — |
-| `CONSULTAS` | — | — |
-| `INFORMACION_PUBLICA` | — | — |
-| `FIGURA_AMBIENTAL_EXTERNA` | — | — |
-| `AAU_AAUS_INTEGRADA` | — | — |
-| `CONSULTA_OPERADOR_SISTEMA` | — | — |
-| `RECONOCIMIENTO_INTERESADO` | — | — |
-| `RESOLUCION` | ✅¹ | ✅¹ |
+| Fase | Transp. | Distrib. | D.Ced. | Renov. | Autocons. | L.Dir. | Convenc. | Otros |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| `ANALISIS_SOLICITUD` | 🚫 | 🚫 | 🚫 | ✅ | 🚫 | 🚫 | ✅ | 🚫 |
+| `CONSULTA_MINISTERIO` | 🚫 | 🚫 | 🚫 | — | 🚫 | 🚫 | — | 🚫 |
+| `COMPATIBILIDAD_AMBIENTAL` | 🚫 | 🚫 | 🚫 | — | 🚫 | 🚫 | — | 🚫 |
+| `CONSULTAS` | 🚫 | 🚫 | 🚫 | — | 🚫 | 🚫 | — | 🚫 |
+| `INFORMACION_PUBLICA` | 🚫 | 🚫 | 🚫 | — | 🚫 | 🚫 | — | 🚫 |
+| `FIGURA_AMBIENTAL_EXTERNA` | 🚫 | 🚫 | 🚫 | — | 🚫 | 🚫 | — | 🚫 |
+| `AAU_AAUS_INTEGRADA` | 🚫 | 🚫 | 🚫 | — | 🚫 | 🚫 | — | 🚫 |
+| `CONSULTA_OPERADOR_SISTEMA` | 🚫 | 🚫 | 🚫 | — | 🚫 | 🚫 | — | 🚫 |
+| `RECONOCIMIENTO_INTERESADO` | 🚫 | 🚫 | 🚫 | — | 🚫 | 🚫 | — | 🚫 |
+| `RESOLUCION` | 🚫 | 🚫 | 🚫 | ✅¹ | 🚫 | 🚫 | ✅¹ | 🚫 |
 
-¹ Plazo 1 mes. Silencio desestimatorio (DA 3ª LSE). Base legal: art. 132 bis RD 1955/2000.
+¹ Plazo 1 mes. Silencio desestimatorio (DA 3ª LSE). Habilita el período de pruebas previo a la AE definitiva (art. 132 bis RD 1955/2000).
 
 ---
 
 ### `AE_DEFINITIVA` — Autorización de Explotación Definitiva
 
-*Procedimiento distinto según tipo de instalación: red (Transp./Distrib./D.Ced.) vs. generación (Renov./Convenc.).*
+🚫 **Autocons., L.Dir., Otros:** sin procedimiento de AE definitiva reglado en este marco. Autoconsumo ≤500 kW usa puesta en servicio industrial (DL 2/2018 DA única apdo. 2). Línea directa y Otros carecen de régimen AE propio en RD 1955/2000 arts. 132-132 ter.
 
-| Fase | Transp. | Distrib. | D.Ced. | Renov. | Convenc. |
-|---|:---:|:---:|:---:|:---:|:---:|
-| `ANALISIS_SOLICITUD` | ✅¹ | ✅¹ | ✅¹ | ✅² | ✅² |
-| `CONSULTA_MINISTERIO` | — | — | — | — | — |
-| `COMPATIBILIDAD_AMBIENTAL` | — | — | — | — | — |
-| `CONSULTAS` | — | — | — | — | — |
-| `INFORMACION_PUBLICA` | — | — | — | — | — |
-| `FIGURA_AMBIENTAL_EXTERNA` | — | — | — | — | — |
-| `AAU_AAUS_INTEGRADA` | — | — | — | — | — |
-| `CONSULTA_OPERADOR_SISTEMA` | — | — | — | — | — |
-| `RECONOCIMIENTO_INTERESADO` | — | — | — | — | — |
-| `RESOLUCION` | ✅¹ | ✅¹ | ✅¹ | ✅² | ✅² |
+*Procedimiento diferenciado según naturaleza: instalaciones de red (arts. 132) vs. generación (art. 132 ter).*
 
-¹ Instalaciones de red — art. 132 RD 1955/2000. Procedimiento simplificado. Plazo 1 mes.  
-² Generación — art. 132 ter. Requiere AE_PROVISIONAL resuelta favorablemente y período de pruebas completado. Plazo 1 mes. Excepción ≤500 kW: puesta en servicio industrial (DL 2/2018 DA única apdo. 2).
+| Fase | Transp. | Distrib. | D.Ced. | Renov. | Autocons. | L.Dir. | Convenc. | Otros |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| `ANALISIS_SOLICITUD` | ✅¹ | ✅¹ | ✅¹ | ✅² | 🚫 | 🚫 | ✅² | 🚫 |
+| `CONSULTA_MINISTERIO` | — | — | — | — | 🚫 | 🚫 | — | 🚫 |
+| `COMPATIBILIDAD_AMBIENTAL` | — | — | — | — | 🚫 | 🚫 | — | 🚫 |
+| `CONSULTAS` | — | — | — | — | 🚫 | 🚫 | — | 🚫 |
+| `INFORMACION_PUBLICA` | — | — | — | — | 🚫 | 🚫 | — | 🚫 |
+| `FIGURA_AMBIENTAL_EXTERNA` | — | — | — | — | 🚫 | 🚫 | — | 🚫 |
+| `AAU_AAUS_INTEGRADA` | — | — | — | — | 🚫 | 🚫 | — | 🚫 |
+| `CONSULTA_OPERADOR_SISTEMA` | — | — | — | — | 🚫 | 🚫 | — | 🚫 |
+| `RECONOCIMIENTO_INTERESADO` | — | — | — | — | 🚫 | 🚫 | — | 🚫 |
+| `RESOLUCION` | ✅¹ | ✅¹ | ✅¹ | ✅² | 🚫 | 🚫 | ✅² | 🚫 |
+
+¹ Instalaciones de red — art. 132 RD 1955/2000. Procedimiento simplificado. Plazo 1 mes. Silencio desestimatorio.  
+² Instalaciones de generación — art. 132 ter RD 1955/2000. Requiere AE_PROVISIONAL resuelta favorablemente y período de pruebas completado. Plazo 1 mes. Excepción ≤500 kW: puesta en servicio industrial (DL 2/2018 DA única apdo. 2).
 
 ---
 
 ### `AE_DEFINITIVA+AAT` — Explotación definitiva con transmisión en resolución única
 
-*Típico en instalaciones construidas por promotor y cedidas a la distribuidora.*
+🚫 **Todos excepto D.Ced.:** la resolución simultánea AE+AAT es el mecanismo jurídico para la cesión de la instalación al distribuidor en el mismo acto de autorización de explotación. Solo aplica a instalaciones construidas por un promotor y cedidas a la distribuidora (D.Ced.). En instalaciones de Distribución ordinaria la titularidad ya es del distribuidor desde el inicio; en el resto no hay cesión de este tipo.
 
-| Fase | Distrib. | D.Ced. |
-|---|:---:|:---:|
-| `ANALISIS_SOLICITUD` | ✅ | ✅ |
-| `CONSULTA_MINISTERIO` | — | — |
-| `COMPATIBILIDAD_AMBIENTAL` | — | — |
-| `CONSULTAS` | — | — |
-| `INFORMACION_PUBLICA` | — | — |
-| `FIGURA_AMBIENTAL_EXTERNA` | — | — |
-| `AAU_AAUS_INTEGRADA` | — | — |
-| `CONSULTA_OPERADOR_SISTEMA` | — | — |
-| `RECONOCIMIENTO_INTERESADO` | — | — |
-| `RESOLUCION` | ✅¹ | ✅¹ |
+| Fase | Transp. | Distrib. | D.Ced. | Renov. | Autocons. | L.Dir. | Convenc. | Otros |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| `ANALISIS_SOLICITUD` | 🚫 | 🚫 | ✅ | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 |
+| `CONSULTA_MINISTERIO` | 🚫 | 🚫 | — | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 |
+| `COMPATIBILIDAD_AMBIENTAL` | 🚫 | 🚫 | — | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 |
+| `CONSULTAS` | 🚫 | 🚫 | — | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 |
+| `INFORMACION_PUBLICA` | 🚫 | 🚫 | — | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 |
+| `FIGURA_AMBIENTAL_EXTERNA` | 🚫 | 🚫 | — | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 |
+| `AAU_AAUS_INTEGRADA` | 🚫 | 🚫 | — | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 |
+| `CONSULTA_OPERADOR_SISTEMA` | 🚫 | 🚫 | — | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 |
+| `RECONOCIMIENTO_INTERESADO` | 🚫 | 🚫 | — | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 |
+| `RESOLUCION` | 🚫 | 🚫 | ✅¹ | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 |
 
-¹ Resolución única: concede AE definitiva y autoriza simultáneamente la transmisión al distribuidor (arts. 132, 133 RD 1955/2000).
+¹ Resolución única que concede la AE definitiva y autoriza simultáneamente la transmisión de titularidad al distribuidor (arts. 132, 133 RD 1955/2000).
 
 ---
 
@@ -247,7 +253,7 @@ Las fases referenciadas son las definidas en `ESTRUCTURA_FTT.json`. Las restricc
 | `RECONOCIMIENTO_INTERESADO` | — | — | — | — | — | — | — | — |
 | `RESOLUCION` | ✅¹ | ✅¹ | ✅¹ | ✅¹ | ✅¹ | ✅¹ | ✅¹ | ✅¹ |
 
-¹ Plazo 3 meses. Solicitud conjunta transmitente + adquirente. Formalización posterior (art. 133) y comunicación del adquirente en 1 mes (art. 134) son obligaciones del administrado, no fases del procedimiento.
+¹ Plazo 3 meses. Solicitud conjunta transmitente + adquirente. La formalización (art. 133) y comunicación del adquirente en 1 mes (art. 134) son obligaciones del administrado, no fases del procedimiento (art. 133 RD 1955/2000).
 
 ---
 
@@ -266,8 +272,8 @@ Las fases referenciadas son las definidas en `ESTRUCTURA_FTT.json`. Las restricc
 | `RECONOCIMIENTO_INTERESADO` | — | — | — | — | — | — | — | — |
 | `RESOLUCION` | ✅² | ✅² | ✅² | ✅² | ✅² | ✅² | ✅² | ✅² |
 
-¹ 90 días, silencio positivo (art. 136 RD 1955/2000). Operador: REE en Transporte, distribuidora en Distribución.  
-² Plazo 3 meses. La resolución fija el plazo de ejecución; caducidad si vence sin ejecución (art. 138).
+¹ Informe previo del operador del sistema; plazo 90 días; silencio: se continúa el procedimiento (art. 137 RD 1955/2000, modificado por RD 88/2026). Operador: REE en Transporte, distribuidora en Distribución. Para instalaciones de transporte cuya autorización corresponde a la CCAA se solicita además informe previo a la DGPEM (art. 137.2).  
+² Plazo: 6 meses (LSE art. 53.5, prevalece sobre los 3 meses del art. 138.1 RD 1955/2000 por rango jerárquico). La resolución **se publica obligatoriamente en el BOE y en el BOP** de las provincias donde radique la instalación ("en todo caso" — art. 138.3 RD 1955/2000). Sin posibilidad de excepción ni supresión.
 
 ---
 
@@ -286,7 +292,7 @@ Las fases referenciadas son las definidas en `ESTRUCTURA_FTT.json`. Las restricc
 | `RECONOCIMIENTO_INTERESADO` | — | — | — | — | — | — | — | — |
 | `RESOLUCION` | ✅¹ | ✅¹ | ✅¹ | ✅¹ | ✅¹ | ✅¹ | ✅¹ | ✅¹ |
 
-¹ Art. 128.4 RD 1955/2000: prórroga del plazo fijado en la AAP para solicitar la AAC. LPACAP art. 32: ampliación de plazos administrativos. Aplica también a prórrogas del plazo de ejecución de la AAC o de la AE.
+¹ Art. 128.4 RD 1955/2000: prórroga del plazo fijado en la AAP para solicitar la AAC, por razones justificadas. LPACAP art. 32: ampliación de plazos administrativos de carácter general.
 
 ---
 
@@ -313,58 +319,62 @@ Las fases referenciadas son las definidas en `ESTRUCTURA_FTT.json`. Las restricc
 
 ### `RAIPEE_PREVIA` — Inscripción Previa en RAIPEE
 
-*Resolución de Aptitud de Infraestructuras Previas al Expediente de Evacuación. Exclusivo generación.*
+🚫 **Transp., Distrib., D.Ced., Autocons., L.Dir., Otros:** el RAIPEE (Registro de Aptitud de Instalaciones para Percibir la Energía Evacuada) es exclusivo de instalaciones de generación bajo el régimen del RD 1183/2020. Las categorías marcadas no son instalaciones de generación en este sentido.
 
-| Fase | Renov. | Convenc. |
-|---|:---:|:---:|
-| `ANALISIS_SOLICITUD` | ✅ | ✅ |
-| `CONSULTA_MINISTERIO` | — | — |
-| `COMPATIBILIDAD_AMBIENTAL` | — | — |
-| `CONSULTAS` | — | — |
-| `INFORMACION_PUBLICA` | — | — |
-| `FIGURA_AMBIENTAL_EXTERNA` | — | — |
-| `AAU_AAUS_INTEGRADA` | — | — |
-| `CONSULTA_OPERADOR_SISTEMA` | — | — |
-| `RECONOCIMIENTO_INTERESADO` | — | — |
-| `RESOLUCION` | ✅¹ | ✅¹ |
+| Fase | Transp. | Distrib. | D.Ced. | Renov. | Autocons. | L.Dir. | Convenc. | Otros |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| `ANALISIS_SOLICITUD` | 🚫 | 🚫 | 🚫 | ✅ | 🚫 | 🚫 | ✅ | 🚫 |
+| `CONSULTA_MINISTERIO` | 🚫 | 🚫 | 🚫 | — | 🚫 | 🚫 | — | 🚫 |
+| `COMPATIBILIDAD_AMBIENTAL` | 🚫 | 🚫 | 🚫 | — | 🚫 | 🚫 | — | 🚫 |
+| `CONSULTAS` | 🚫 | 🚫 | 🚫 | — | 🚫 | 🚫 | — | 🚫 |
+| `INFORMACION_PUBLICA` | 🚫 | 🚫 | 🚫 | — | 🚫 | 🚫 | — | 🚫 |
+| `FIGURA_AMBIENTAL_EXTERNA` | 🚫 | 🚫 | 🚫 | — | 🚫 | 🚫 | — | 🚫 |
+| `AAU_AAUS_INTEGRADA` | 🚫 | 🚫 | 🚫 | — | 🚫 | 🚫 | — | 🚫 |
+| `CONSULTA_OPERADOR_SISTEMA` | 🚫 | 🚫 | 🚫 | — | 🚫 | 🚫 | — | 🚫 |
+| `RECONOCIMIENTO_INTERESADO` | 🚫 | 🚫 | 🚫 | — | 🚫 | 🚫 | — | 🚫 |
+| `RESOLUCION` | 🚫 | 🚫 | 🚫 | ✅¹ | 🚫 | 🚫 | ✅¹ | 🚫 |
 
-¹ Base legal: RD 1183/2020. Previa a RAIPEE_DEFINITIVA.
+¹ Resolución de aptitud de infraestructuras previas al expediente de evacuación. Previa a RAIPEE_DEFINITIVA (RD 1183/2020).
 
 ---
 
 ### `RAIPEE_DEFINITIVA` — Inscripción Definitiva en RAIPEE
 
-| Fase | Renov. | Convenc. |
-|---|:---:|:---:|
-| `ANALISIS_SOLICITUD` | ✅ | ✅ |
-| `CONSULTA_MINISTERIO` | — | — |
-| `COMPATIBILIDAD_AMBIENTAL` | — | — |
-| `CONSULTAS` | — | — |
-| `INFORMACION_PUBLICA` | — | — |
-| `FIGURA_AMBIENTAL_EXTERNA` | — | — |
-| `AAU_AAUS_INTEGRADA` | — | — |
-| `CONSULTA_OPERADOR_SISTEMA` | — | — |
-| `RECONOCIMIENTO_INTERESADO` | — | — |
-| `RESOLUCION` | ✅¹ | ✅¹ |
+🚫 mismas categorías y razón que `RAIPEE_PREVIA`.
 
-¹ Base legal: RD 1183/2020. Requiere RAIPEE_PREVIA resuelta favorablemente.
+| Fase | Transp. | Distrib. | D.Ced. | Renov. | Autocons. | L.Dir. | Convenc. | Otros |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| `ANALISIS_SOLICITUD` | 🚫 | 🚫 | 🚫 | ✅ | 🚫 | 🚫 | ✅ | 🚫 |
+| `CONSULTA_MINISTERIO` | 🚫 | 🚫 | 🚫 | — | 🚫 | 🚫 | — | 🚫 |
+| `COMPATIBILIDAD_AMBIENTAL` | 🚫 | 🚫 | 🚫 | — | 🚫 | 🚫 | — | 🚫 |
+| `CONSULTAS` | 🚫 | 🚫 | 🚫 | — | 🚫 | 🚫 | — | 🚫 |
+| `INFORMACION_PUBLICA` | 🚫 | 🚫 | 🚫 | — | 🚫 | 🚫 | — | 🚫 |
+| `FIGURA_AMBIENTAL_EXTERNA` | 🚫 | 🚫 | 🚫 | — | 🚫 | 🚫 | — | 🚫 |
+| `AAU_AAUS_INTEGRADA` | 🚫 | 🚫 | 🚫 | — | 🚫 | 🚫 | — | 🚫 |
+| `CONSULTA_OPERADOR_SISTEMA` | 🚫 | 🚫 | 🚫 | — | 🚫 | 🚫 | — | 🚫 |
+| `RECONOCIMIENTO_INTERESADO` | 🚫 | 🚫 | 🚫 | — | 🚫 | 🚫 | — | 🚫 |
+| `RESOLUCION` | 🚫 | 🚫 | 🚫 | ✅¹ | 🚫 | 🚫 | ✅¹ | 🚫 |
+
+¹ Requiere RAIPEE_PREVIA resuelta favorablemente (RD 1183/2020).
 
 ---
 
 ### `RADNE` — Inscripción en Registro de Autoconsumo
 
-| Fase | Autocons. |
-|---|:---:|
-| `ANALISIS_SOLICITUD` | ✅ |
-| `CONSULTA_MINISTERIO` | — |
-| `COMPATIBILIDAD_AMBIENTAL` | — |
-| `CONSULTAS` | — |
-| `INFORMACION_PUBLICA` | — |
-| `FIGURA_AMBIENTAL_EXTERNA` | — |
-| `AAU_AAUS_INTEGRADA` | — |
-| `CONSULTA_OPERADOR_SISTEMA` | — |
-| `RECONOCIMIENTO_INTERESADO` | — |
-| `RESOLUCION` | ✅¹ |
+🚫 **Transp., Distrib., D.Ced., Renov., L.Dir., Convenc., Otros:** el RADNE (Registro Administrativo de Instalaciones de Producción en modalidad de autoconsumo) es exclusivo de instalaciones de autoconsumo (RD 244/2019).
+
+| Fase | Transp. | Distrib. | D.Ced. | Renov. | Autocons. | L.Dir. | Convenc. | Otros |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| `ANALISIS_SOLICITUD` | 🚫 | 🚫 | 🚫 | 🚫 | ✅ | 🚫 | 🚫 | 🚫 |
+| `CONSULTA_MINISTERIO` | 🚫 | 🚫 | 🚫 | 🚫 | — | 🚫 | 🚫 | 🚫 |
+| `COMPATIBILIDAD_AMBIENTAL` | 🚫 | 🚫 | 🚫 | 🚫 | — | 🚫 | 🚫 | 🚫 |
+| `CONSULTAS` | 🚫 | 🚫 | 🚫 | 🚫 | — | 🚫 | 🚫 | 🚫 |
+| `INFORMACION_PUBLICA` | 🚫 | 🚫 | 🚫 | 🚫 | — | 🚫 | 🚫 | 🚫 |
+| `FIGURA_AMBIENTAL_EXTERNA` | 🚫 | 🚫 | 🚫 | 🚫 | — | 🚫 | 🚫 | 🚫 |
+| `AAU_AAUS_INTEGRADA` | 🚫 | 🚫 | 🚫 | 🚫 | — | 🚫 | 🚫 | 🚫 |
+| `CONSULTA_OPERADOR_SISTEMA` | 🚫 | 🚫 | 🚫 | 🚫 | — | 🚫 | 🚫 | 🚫 |
+| `RECONOCIMIENTO_INTERESADO` | 🚫 | 🚫 | 🚫 | 🚫 | — | 🚫 | 🚫 | 🚫 |
+| `RESOLUCION` | 🚫 | 🚫 | 🚫 | 🚫 | ✅¹ | 🚫 | 🚫 | 🚫 |
 
 ¹ Inscripción en el Registro Administrativo de Instalaciones de Producción en modalidad de autoconsumo (RD 244/2019).
 
@@ -374,7 +384,7 @@ Las fases referenciadas son las definidas en `ESTRUCTURA_FTT.json`. Las restricc
 
 ### `DESISTIMIENTO` — Desistimiento de Solicitud
 
-*Requiere `solicitud_afectada_id`. Finalizadora directa sin instrucción.*
+*Requiere `solicitud_afectada_id`. Finalizadora directa sin instrucción previa.*
 
 | Fase | Transp. | Distrib. | D.Ced. | Renov. | Autocons. | L.Dir. | Convenc. | Otros |
 |---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
@@ -389,7 +399,7 @@ Las fases referenciadas son las definidas en `ESTRUCTURA_FTT.json`. Las restricc
 | `RECONOCIMIENTO_INTERESADO` | — | — | — | — | — | — | — | — |
 | `RESOLUCION` | ✅¹ | ✅¹ | ✅¹ | ✅¹ | ✅¹ | ✅¹ | ✅¹ | ✅¹ |
 
-¹ LPACAP art. 93. La Administración acepta el desistimiento y archiva la solicitud afectada.
+¹ La Administración acepta el desistimiento y archiva la solicitud afectada (LPACAP art. 93).
 
 ---
 
@@ -410,7 +420,7 @@ Las fases referenciadas son las definidas en `ESTRUCTURA_FTT.json`. Las restricc
 | `RECONOCIMIENTO_INTERESADO` | — | — | — | — | — | — | — | — |
 | `RESOLUCION` | ✅¹ | ✅¹ | ✅¹ | ✅¹ | ✅¹ | ✅¹ | ✅¹ | ✅¹ |
 
-¹ LPACAP art. 94. Finalizadora directa.
+¹ Finalizadora directa. Requiere resolución expresa que acepte la renuncia (LPACAP art. 94).
 
 ---
 
@@ -429,7 +439,7 @@ Las fases referenciadas son las definidas en `ESTRUCTURA_FTT.json`. Las restricc
 | `RECONOCIMIENTO_INTERESADO` | — | — | — | — | — | — | — | — |
 | `RESOLUCION` | ✅¹ | ✅¹ | ✅¹ | ✅¹ | ✅¹ | ✅¹ | ✅¹ | ✅¹ |
 
-¹ LPACAP arts. 112-126. Puede ser estimatoria, desestimatoria o inadmisión.
+¹ Puede ser estimatoria, desestimatoria o inadmisión (LPACAP arts. 112-126).
 
 ---
 
@@ -452,23 +462,23 @@ Las fases referenciadas son las definidas en `ESTRUCTURA_FTT.json`. Las restricc
 | `RECONOCIMIENTO_INTERESADO` | ✅¹ | ✅¹ | ✅¹ | ✅¹ | ✅¹ | ✅¹ | ✅¹ | ✅¹ |
 | `RESOLUCION` | — | — | — | — | — | — | — | — |
 
-¹ LPACAP art. 4. Evalúa si el solicitante acredita interés legítimo en el procedimiento principal.
+¹ Evalúa si el solicitante acredita interés legítimo en el procedimiento principal (LPACAP art. 4).
 
 ---
 
 ### `OTRO` — Otro Tipo de Solicitud
 
-*Comodín para solicitudes no clasificadas. El tramitador gestiona discrecionalmente las actuaciones previas.*
+*Comodín para solicitudes no clasificadas. El tramitador gestiona discrecionalmente todas las actuaciones previas a la resolución.*
 
 | Fase | Transp. | Distrib. | D.Ced. | Renov. | Autocons. | L.Dir. | Convenc. | Otros |
 |---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| `ANALISIS_SOLICITUD` | — | — | — | — | — | — | — | — |
-| `CONSULTA_MINISTERIO` | — | — | — | — | — | — | — | — |
-| `COMPATIBILIDAD_AMBIENTAL` | — | — | — | — | — | — | — | — |
-| `CONSULTAS` | — | — | — | — | — | — | — | — |
-| `INFORMACION_PUBLICA` | — | — | — | — | — | — | — | — |
-| `FIGURA_AMBIENTAL_EXTERNA` | — | — | — | — | — | — | — | — |
-| `AAU_AAUS_INTEGRADA` | — | — | — | — | — | — | — | — |
-| `CONSULTA_OPERADOR_SISTEMA` | — | — | — | — | — | — | — | — |
-| `RECONOCIMIENTO_INTERESADO` | — | — | — | — | — | — | — | — |
+| `ANALISIS_SOLICITUD` | 🔀 | 🔀 | 🔀 | 🔀 | 🔀 | 🔀 | 🔀 | 🔀 |
+| `CONSULTA_MINISTERIO` | 🔀 | 🔀 | 🔀 | 🔀 | 🔀 | 🔀 | 🔀 | 🔀 |
+| `COMPATIBILIDAD_AMBIENTAL` | 🔀 | 🔀 | 🔀 | 🔀 | 🔀 | 🔀 | 🔀 | 🔀 |
+| `CONSULTAS` | 🔀 | 🔀 | 🔀 | 🔀 | 🔀 | 🔀 | 🔀 | 🔀 |
+| `INFORMACION_PUBLICA` | 🔀 | 🔀 | 🔀 | 🔀 | 🔀 | 🔀 | 🔀 | 🔀 |
+| `FIGURA_AMBIENTAL_EXTERNA` | 🔀 | 🔀 | 🔀 | 🔀 | 🔀 | 🔀 | 🔀 | 🔀 |
+| `AAU_AAUS_INTEGRADA` | 🔀 | 🔀 | 🔀 | 🔀 | 🔀 | 🔀 | 🔀 | 🔀 |
+| `CONSULTA_OPERADOR_SISTEMA` | 🔀 | 🔀 | 🔀 | 🔀 | 🔀 | 🔀 | 🔀 | 🔀 |
+| `RECONOCIMIENTO_INTERESADO` | 🔀 | 🔀 | 🔀 | 🔀 | 🔀 | 🔀 | 🔀 | 🔀 |
 | `RESOLUCION` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
