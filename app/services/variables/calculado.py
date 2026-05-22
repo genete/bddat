@@ -90,6 +90,22 @@ def _(ctx) -> str | None:
     return tipo.codigo if tipo else None
 
 
+@variable('tipo_solicitud')
+def _(ctx) -> str | None:
+    """
+    Siglas (literal, sin descomponer) del tipo de solicitud en contexto.
+
+    Devuelve 'AAP', 'AAC', 'AAP+AAC', 'AAP+AAC+DUP', 'CIERRE'… exactamente como
+    están en tipos_solicitudes.siglas. Las condiciones de `catalogo_plazos`
+    usan operador IN con el array de combinaciones cubiertas por una misma
+    cita normativa (ver seed 448_seed_plazos_resolucion).
+    """
+    solicitud = ctx.solicitud
+    if solicitud is None or solicitud.tipo_solicitud is None:
+        return None
+    return solicitud.tipo_solicitud.siglas
+
+
 @variable('es_solicitud_aac_pura')
 def _(ctx) -> bool:
     """
