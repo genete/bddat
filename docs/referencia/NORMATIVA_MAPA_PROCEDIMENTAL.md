@@ -146,8 +146,8 @@ El procedimiento varía según el tipo de instalación:
 | # | Fase / Trámite | Obligatorio | Base |
 |---|---|---|---|
 | 1 | Solicitud del titular | ✅ | Art. 135 |
-| 2 | Informe del operador del sistema (REE) (3 meses; silencio: se continúa sin informe) | ✅ | Art. 136 |
-| 3 | **Resolución** (3 meses; silencio desestimatorio) | ✅ | Art. 137 |
+| 2 | Informe del operador del sistema (REE) (3 meses; silencio: se continúa sin informe) | ✅ | Art. 137 (mod. RD 88/2026) |
+| 3 | **Resolución** (3 meses; silencio desestimatorio) | ✅ | Art. 138 (mod. RD 88/2026) |
 | 4 | Ejecución del cierre en el plazo fijado en la resolución (si vence → caducidad) | ✅ | Art. 138 |
 
 > **Régimen especial cierre AGE (LSE art. 53):** si pasan 6 meses desde la solicitud

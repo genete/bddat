@@ -42,8 +42,10 @@ Consultar cuando se trabaja ese subsistema. No cargar por defecto.
 - [normas/](referencia/normas/) — textos consolidados extraídos (BOE/BOJA)
 
 ### Estructura ESFTT
-- [ESTRUCTURA_FTT.md](referencia/ESTRUCTURA_FTT.md) — catálogo legible
-- [ESTRUCTURA_FTT.json](referencia/ESTRUCTURA_FTT.json) — fuente de verdad para código
+- [ESTRUCTURA_FTT.md](referencia/ESTRUCTURA_FTT.md) — catálogo legible de fases, trámites y tareas
+- [ESTRUCTURA_FTT.json](referencia/ESTRUCTURA_FTT.json) — fuente de verdad (F-T-Ta)
+- [ESTRUCTURA_ESF.md](referencia/ESTRUCTURA_ESF.md) — **fuente de verdad** (E-S-F): tablas de doble entrada por tipo de solicitud
+- [ESTRUCTURA_ESF.json](referencia/ESTRUCTURA_ESF.json) — derivado del MD anterior
 
 ### Visión
 - [PLAN_ESTRATEGIA.md](referencia/PLAN_ESTRATEGIA.md) — 14 bloques funcionales

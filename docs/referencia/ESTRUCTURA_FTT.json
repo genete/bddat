@@ -1,15 +1,15 @@
 {
   "metadata": {
-    "version": "6.1",
+    "version": "6.2",
     "descripcion": "Estructura jerárquica de fases, trámites y tareas para expedientes de AT",
     "principio": "Minimalismo estructural — la semántica vive en los TIPOS",
-    "fecha_actualizacion": "2026-05-17",
+    "fecha_actualizacion": "2026-05-20",
     "ref_diseño": [
-      "docs/DISEÑO_ANALISIS_SOLICITUD.md",
-      "docs/DISEÑO_MOTOR_REGLAS.md",
-      "docs/DISEÑO_CONSULTAS_ORGANISMOS.md",
-      "docs/DISEÑO_SUBSISTEMA_DOCUMENTAL.md"
-    ]
+      "docs/referencia/DISEÑO_ANALISIS_SOLICITUD.md",
+      "docs/referencia/DISEÑO_CONSULTAS_ORGANISMOS.md",
+      "docs/referencia/DISEÑO_SUBSISTEMA_DOCUMENTAL.md"
+    ],
+    "ref_esf": "docs/referencia/ESTRUCTURA_ESF.json"
   },
   "TAREAS_ATOMICAS": [
     {
@@ -107,7 +107,7 @@
           "descripcion": "Comunicación al titular del número de expediente e inicio del procedimiento. Solo si no hay defectos en ANALISIS_DOCUMENTAL.",
           "tareas_indicativas": ["ELABORAR", "NOTIFICAR"],
           "patron": "B",
-          "nota": "Opcional según política organizativa."
+          "nota": "Obligatoria para tipo_expediente Renovable: la notificación de admisión a trámite de la AAP es el documento con el que el promotor acredita el Hito 1 ante el gestor de red (RD-ley 23/2020 art. 1.2 in fine). Opcional para los demás tipos según política organizativa."
         }
       ]
     },
@@ -361,6 +361,50 @@
           "tareas_indicativas": ["ANALIZAR"],
           "patron": "A",
           "nota": "ANALIZAR consume DOC_INFORME_VINCULANTE. El tramitador registra los interesados vía UI de gestión de interesados. El diagnóstico producido certifica los registros creados en interesados_expediente. Condicional: solo cuando el informe vinculante incluye lista de interesados. La fase RECONOCIMIENTO_INTERESADO (TipoFase en BD) pertenece al flujo de solicitud tipo INTERESADO, no desarrollada aún."
+        }
+      ]
+    },
+    {
+      "codigo": "CONSULTA_OPERADOR_SISTEMA",
+      "nombre": "Consulta al Operador del Sistema",
+      "descripcion": "Consulta preceptiva al operador del sistema o gestor de red sobre la viabilidad del cierre de la instalación antes de resolver (art. 137 RD 1955/2000 (mod. RD 88/2026)). Plazo de 3 meses; silencio positivo. Exclusivo del procedimiento CIERRE.",
+      "tramites": [
+        {
+          "codigo": "SOLICITUD_INFORME_OPERADOR",
+          "nombre": "Solicitud de informe al operador",
+          "descripcion": "Remisión al operador del sistema (REE en transporte; distribuidora en distribución) de la solicitud de informe sobre el impacto del cierre previsto.",
+          "tareas_indicativas": ["ELABORAR", "NOTIFICAR", "ESPERAR_PLAZO"],
+          "patron": "C",
+          "nota": "PLAZO_DIAS=90, TIPO_DIAS=naturales, silencio=positivo: si el operador no emite informe en 3 meses el procedimiento continúa sin él (art. 136.1 RD 1955/2000)."
+        },
+        {
+          "codigo": "RECEPCION_INFORME_OPERADOR",
+          "nombre": "Recepción del informe del operador",
+          "descripcion": "Análisis del informe emitido por el operador del sistema o gestor de red dentro del plazo. Condicional: solo si el operador responde antes de que venza el plazo.",
+          "tareas_indicativas": ["ANALIZAR"],
+          "patron": "A",
+          "nota": "El informe puede ser favorable, condicionado o contrario al cierre. Si es contrario, el técnico valora la continuación del procedimiento."
+        }
+      ]
+    },
+    {
+      "codigo": "RECONOCIMIENTO_INTERESADO",
+      "nombre": "Reconocimiento de Interesado",
+      "descripcion": "Resolución sobre la condición de interesado en el expediente (art. 4 LPACAP). Fase finalizadora propia de la solicitud tipo INTERESADO. Exclusiva de ese tipo de solicitud.",
+      "tramites": [
+        {
+          "codigo": "ELABORACION",
+          "nombre": "Elaboración de resolución de reconocimiento",
+          "descripcion": "Elaboración de la resolución que reconoce o deniega la condición de interesado al solicitante.",
+          "tareas_indicativas": ["ELABORAR"],
+          "patron": "B (sin NOTIFICAR)"
+        },
+        {
+          "codigo": "NOTIFICACION",
+          "nombre": "Notificación de resolución de reconocimiento",
+          "descripcion": "Notificación al solicitante del reconocimiento o denegación de la condición de interesado.",
+          "tareas_indicativas": ["NOTIFICAR"],
+          "patron": "B (solo NOTIFICAR)"
         }
       ]
     },
