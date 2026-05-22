@@ -711,16 +711,24 @@ Estos valores son el seed del `catalogo_plazos` para las fases y trámites del p
 
 > **Nota 2026-04-19:** Las entradas que usan `campo_inicio = fecha_inicio` o `campo_inicio = fecha_solicitud (solicitud)` requieren reconceptualización conforme al rediseño de `campo_fecha` (§3.2). `fecha_solicitud` desaparece del modelo `Solicitud`; pasa a `Documento.fecha_administrativa` del doc de solicitud (`{"fk": "documento_solicitud_id"}`). `fecha_inicio` de Fase/Trámite tampoco existe: la referencia de inicio pasa al Documento navegable desde el elemento. **Marcar como PENDIENTE DE REDISEÑO `campo_fecha`** hasta confirmar el documento fuente en cada caso.
 
-| Tipo elemento ID | Campo inicio cómputo | Valor | Unidad | Efecto vencimiento | Norma origen |
+> **Nota 2026-05-22 (hotfix #448):** Los identificadores `RESOLUCION_AAP`, `RESOLUCION_AAC`, `RESOLUCION_AE_*`, `RESOLUCION_TRANSMISION`, `RESOLUCION_CIERRE`, `RESOLUCION_DUP` de la tabla siguiente son **etiquetas conceptuales** de cada plazo — **no códigos de `tipos_fases`**. En BD existe un único `tipos_fases.codigo = 'RESOLUCION'` (id=8). Los 7 plazos se modelan como 7 filas en `catalogo_plazos` con `tipo_elemento_codigo = 'RESOLUCION'`, diferenciadas por una condición en `condiciones_plazo` que usa la variable `tipo_solicitud` (texto, siglas literal) con operador `IN` enumerando las combinaciones cubiertas por la misma cita normativa. El seed real está en la migración `448_seed_plazos_resolucion`.
+
+| Etiqueta conceptual | `tipo_solicitud IN` (condición) | Valor | Unidad | Efecto vencimiento | Norma origen |
 |---|---|---|---|---|---|
-| RESOLUCION_AAP | `{"fk":"documento_solicitud_id"}` | 3 | MESES | SILENCIO_DESESTIMATORIO | Art. 128 RD 1955/2000 |
-| RESOLUCION_AAC | `{"fk":"documento_solicitud_id"}` | 3 | MESES | SILENCIO_DESESTIMATORIO | Art. 131.7 RD 1955/2000 |
-| RESOLUCION_AE (transporte/distribución) | `{"fk":"documento_solicitud_id"}` | 1 | MESES | SILENCIO_DESESTIMATORIO | Art. 132 RD 1955/2000 + DA 3ª LSE |
-| RESOLUCION_AE_PROVISIONAL (generación) | `{"fk":"documento_solicitud_id"}` | 1 | MESES | SILENCIO_DESESTIMATORIO | Art. 132 bis RD 1955/2000 + DA 3ª LSE |
-| RESOLUCION_AE_DEFINITIVA (generación) | `{"fk":"documento_solicitud_id"}` | 1 | MESES | SILENCIO_DESESTIMATORIO | Art. 132 ter RD 1955/2000 + DA 3ª LSE |
-| RESOLUCION_TRANSMISION | `{"fk":"documento_solicitud_id"}` | 3 | MESES | SILENCIO_DESESTIMATORIO | Art. 133 RD 1955/2000 |
-| RESOLUCION_CIERRE | `{"fk":"documento_solicitud_id"}` | 3 | MESES | SILENCIO_DESESTIMATORIO | Art. 138 RD 1955/2000 (mod. RD 88/2026) |
+| RESOLUCION_AE_PROVISIONAL | `['AE_PROVISIONAL']` | 1 | MESES | SILENCIO_DESESTIMATORIO | Art. 132 bis RD 1955/2000 + DA 3ª LSE |
+| RESOLUCION_AE_DEFINITIVA | `['AE_DEFINITIVA','AE_DEFINITIVA+AAT']` | 1 | MESES | SILENCIO_DESESTIMATORIO | Art. 132 ter RD 1955/2000 + DA 3ª LSE |
+| RESOLUCION_AAP | `['AAP']` | 3 | MESES | SILENCIO_DESESTIMATORIO | Art. 128 RD 1955/2000 |
+| RESOLUCION_AAC | `['AAC','AAP+AAC','AAP+AAC+DUP','AAC+DUP']` | 3 | MESES | SILENCIO_DESESTIMATORIO | Art. 131.7 RD 1955/2000 |
+| RESOLUCION_TRANSMISION | `['AAT']` | 3 | MESES | SILENCIO_DESESTIMATORIO | Art. 133 RD 1955/2000 |
+| RESOLUCION_CIERRE | `['CIERRE']` | 3 | MESES | SILENCIO_DESESTIMATORIO | Art. 138 RD 1955/2000 (mod. RD 88/2026) |
+| RESOLUCION_DUP | `['DUP']` | 3 | MESES | SILENCIO_DESESTIMATORIO | Art. 145.4 RD 1955/2000 |
 | INFORMACION_PUBLICA | **[PENDIENTE REDISEÑO campo_fecha]** | 30 | DIAS_NATURALES | SIN_EFECTO_AUTOMATICO | Art. 125 RD 1955/2000 |
+
+`campo_fecha` para todas las filas RESOLUCION_*: `{"fk": "documento_solicitud_id"}`.
+
+**Diferencias respecto al seed previo (172, código muerto):** descartado `RESOLUCION_AE` (sin sufijo — no existe ese tipo_solicitud); añadido `RESOLUCION_DUP` (procedimiento DUP autónomo, ausente del 172); CIERRE corregido (art. 137 → art. 138, mod. RD 88/2026); combinadas con AAC (`AAP+AAC`, `AAP+AAC+DUP`, `AAC+DUP`) consolidadas en la fila AAC porque art. 131.7 fija el plazo conjunto; `AE_DEFINITIVA+AAT` consume el plazo de AE_DEFINITIVA.
+
+**Fuera de scope del hotfix (deuda de #247):** plazos de RESOLUCION para `RAIPEE_PREVIA`, `RAIPEE_DEFINITIVA`, `RADNE`, `AMPLIACION_PLAZO`, `CORRECCION_ERRORES`, `DESISTIMIENTO`, `RENUNCIA`, `RECURSO`, `INTERESADO`, `OTRO`.
 
 > **Nota INFORMACION_PUBLICA:** trámite condicional. Suprimido bajo Decreto 9/2011 DA 1ª (AT 3ª categoría ≤ 30 kV, línea subterránea o CT interior, suelo urbano/urbanizable, sin DUP) y bajo DL 26/2021 DF 4ª (cualquier instalación del Título VII sin DUP y sin AAU). Ver `NORMATIVA_EXCEPCIONES_AT.md §3.1` y `§4.1`.
 
