@@ -367,7 +367,7 @@
     {
       "codigo": "CONSULTA_OPERADOR_SISTEMA",
       "nombre": "Consulta al Operador del Sistema",
-      "descripcion": "Consulta preceptiva al operador del sistema o gestor de red sobre la viabilidad del cierre de la instalación antes de resolver (art. 136 RD 1955/2000). Plazo de 3 meses; silencio positivo. Exclusivo del procedimiento CIERRE.",
+      "descripcion": "Consulta preceptiva al operador del sistema o gestor de red sobre la viabilidad del cierre de la instalación antes de resolver (art. 137 RD 1955/2000 (mod. RD 88/2026)). Plazo de 3 meses; silencio positivo. Exclusivo del procedimiento CIERRE.",
       "tramites": [
         {
           "codigo": "SOLICITUD_INFORME_OPERADOR",

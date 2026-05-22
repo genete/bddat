@@ -719,7 +719,7 @@ Estos valores son el seed del `catalogo_plazos` para las fases y trámites del p
 | RESOLUCION_AE_PROVISIONAL (generación) | `{"fk":"documento_solicitud_id"}` | 1 | MESES | SILENCIO_DESESTIMATORIO | Art. 132 bis RD 1955/2000 + DA 3ª LSE |
 | RESOLUCION_AE_DEFINITIVA (generación) | `{"fk":"documento_solicitud_id"}` | 1 | MESES | SILENCIO_DESESTIMATORIO | Art. 132 ter RD 1955/2000 + DA 3ª LSE |
 | RESOLUCION_TRANSMISION | `{"fk":"documento_solicitud_id"}` | 3 | MESES | SILENCIO_DESESTIMATORIO | Art. 133 RD 1955/2000 |
-| RESOLUCION_CIERRE | `{"fk":"documento_solicitud_id"}` | 3 | MESES | SILENCIO_DESESTIMATORIO | Art. 137 RD 1955/2000 |
+| RESOLUCION_CIERRE | `{"fk":"documento_solicitud_id"}` | 3 | MESES | SILENCIO_DESESTIMATORIO | Art. 138 RD 1955/2000 (mod. RD 88/2026) |
 | INFORMACION_PUBLICA | **[PENDIENTE REDISEÑO campo_fecha]** | 30 | DIAS_NATURALES | SIN_EFECTO_AUTOMATICO | Art. 125 RD 1955/2000 |
 
 > **Nota INFORMACION_PUBLICA:** trámite condicional. Suprimido bajo Decreto 9/2011 DA 1ª (AT 3ª categoría ≤ 30 kV, línea subterránea o CT interior, suelo urbano/urbanizable, sin DUP) y bajo DL 26/2021 DF 4ª (cualquier instalación del Título VII sin DUP y sin AAU). Ver `NORMATIVA_EXCEPCIONES_AT.md §3.1` y `§4.1`.
@@ -743,7 +743,7 @@ Estos valores son el seed del `catalogo_plazos` para las fases y trámites del p
 | ~~INFORME_AAPP_AAC~~ | ~~INFORME_AAPP_AAC~~ no existe. El plazo del art. 131 se gestiona a nivel de **fase CONSULTAS** (30 días fallback / 15 días condicionado — seed `90655e484fb2`). | — | — | — | — |
 | TRASLADO_CONDICIONADO_AAC | **[PENDIENTE — via ESPERAR_PLAZO rol CONSUMIDO]** | 15 | DIAS_NATURALES | SIN_EFECTO_AUTOMATICO | Art. 131 RD 1955/2000 |
 | REPLICA_AAPP_AAC | **[PENDIENTE — via ESPERAR_PLAZO rol CONSUMIDO]** | 15 | DIAS_NATURALES | CONFORMIDAD_PRESUNTA | Art. 131 RD 1955/2000 |
-| INFORME_REE_CIERRE | **[PENDIENTE — via ESPERAR_PLAZO rol CONSUMIDO]** | 3 | MESES | SIN_EFECTO_AUTOMATICO | Art. 136 RD 1955/2000 — silencio: se continúa sin informe |
+| INFORME_REE_CIERRE | **[PENDIENTE — via ESPERAR_PLAZO rol CONSUMIDO]** | 3 | MESES | SIN_EFECTO_AUTOMATICO | Art. 137 RD 1955/2000 (mod. RD 88/2026) — silencio: se continúa sin informe |
 | INFORME_DGPEM | **[PENDIENTE — via ESPERAR_PLAZO rol CONSUMIDO]** | 2 | MESES | SIN_EFECTO_AUTOMATICO | Art. 114 RD 1955/2000 — solo instalaciones de transporte CCAA; se continúa sin informe |
 
 > **CONFORMIDAD_PRESUNTA:** efecto del silencio de un organismo consultado — el procedimiento sigue como si hubiera conformidad expresa. Diferente del silencio estimatorio del §2.4 (que recae sobre la Administración resolutora, no sobre un organismo consultado). Añadir `CONFORMIDAD_PRESUNTA` a la tabla `efectos_plazo`.

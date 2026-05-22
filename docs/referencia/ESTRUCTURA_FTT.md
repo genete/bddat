@@ -137,7 +137,7 @@ Tareas indicativas en los tres trámites: ELABORAR → NOTIFICAR → ESPERAR_PLA
 ---
 
 ### CONSULTA_OPERADOR_SISTEMA
-*Consulta preceptiva al operador del sistema o gestor de red antes de resolver el cierre (art. 136 RD 1955/2000). Silencio positivo en 3 meses. Exclusivo del procedimiento CIERRE.*
+*Consulta preceptiva al operador del sistema o gestor de red antes de resolver el cierre (art. 137 RD 1955/2000, mod. RD 88/2026). Silencio positivo en 3 meses. Exclusivo del procedimiento CIERRE.*
 
 | Trámite | Patrón | Tareas indicativas | Nota |
 |---|---|---|---|

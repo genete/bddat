@@ -1,9 +1,9 @@
 {
   "metadata": {
-    "version": "1.0",
+    "version": "2.2",
     "descripcion": "Mapa Expediente-Solicitud-Fase (ESF) — derivado de ESTRUCTURA_ESF.md (fuente de verdad). En caso de discrepancia, prevalece el MD.",
     "principio": "S-dominante — la solicitud define el procedimiento; el tipo de expediente actúa como condición modificadora. Cuando el tipo de expediente altera sustancialmente el flujo se crean entradas separadas.",
-    "fecha_actualizacion": "2026-05-20",
+    "fecha_actualizacion": "2026-05-21",
     "ref_ftt": "docs/referencia/ESTRUCTURA_FTT.json",
     "ref_normativa": [
       "docs/referencia/NORMATIVA_MAPA_PROCEDIMENTAL.md",
@@ -11,7 +11,7 @@
       "docs/referencia/NORMATIVA_EXCEPCIONES_AT.md"
     ],
     "nota_finalizadora": "La propiedad es_finalizadora de cada fase está en tipos_fases (FTT). RESOLUCION y RECONOCIMIENTO_INTERESADO son finalizadoras. No se repite aquí.",
-    "nota_estado": "v1.0 — borrador inicial. Las fases de cada procedimiento son orientativas; las restricciones operativas viven en el motor de reglas (ADR-007)."
+    "nota_estado": "v2.2 — sincronizado con ESTRUCTURA_ESF.md v2.2. Las fases de cada procedimiento son orientativas; las restricciones operativas viven en el motor de reglas (ADR-007)."
   },
 
   "PROCEDIMIENTOS": [
@@ -38,14 +38,14 @@
         {
           "fase": "COMPATIBILIDAD_AMBIENTAL",
           "obligatoria": false,
-          "condicion": "ia_previa en [AAU, AAUS]",
+          "condicion": "proyecto.ia.siglas en [AAU, AAUS]",
           "base_legal": "Decreto 356/2010; IC 1/2022 IV.3.3"
         },
         {
           "fase": "CONSULTAS",
-          "obligatoria": true,
+          "obligatoria": false,
           "base_legal": "RD 1955/2000 art. 127",
-          "nota": "Plazo: 30 días, silencio positivo."
+          "nota": "Opcional (🔀): si se realizan son simultáneas a IP. Plazo: 30 días, silencio positivo."
         },
         {
           "fase": "INFORMACION_PUBLICA",
@@ -85,9 +85,9 @@
         },
         {
           "fase": "CONSULTAS",
-          "obligatoria": true,
+          "obligatoria": false,
           "base_legal": "RD 1955/2000 art. 131",
-          "nota": "Plazo: 30 días (15 días si existe AAP previa y no hay DUP ni modificación de AAP — art. 131.1)."
+          "nota": "Opcional (🔀). Plazo: 30 días (15 días si existe AAP previa y no hay DUP ni modificación de AAP — art. 131.1)."
         },
         {
           "fase": "RESOLUCION",
@@ -101,7 +101,7 @@
     {
       "_grupo": "Instrucción completa de nueva instalación",
       "codigo": "AAP+AAC",
-      "nombre": "Instrucción AAP+AAC — nueva instalación",
+      "nombre": "Tramitación conjunta AAP+AAC — nueva instalación",
       "tipos_solicitud": ["AAP+AAC"],
       "tipos_expediente": ["Transporte", "Distribución", "Distribución cedida", "Renovable", "Convencional", "LineaDirecta", "Autoconsumo"],
       "secuencia_fases": [
@@ -121,15 +121,15 @@
         {
           "fase": "COMPATIBILIDAD_AMBIENTAL",
           "obligatoria": false,
-          "condicion": "ia_previa en [AAU, AAUS]",
+          "condicion": "proyecto.ia.siglas en [AAU, AAUS]",
           "base_legal": "Decreto 356/2010; IC 1/2022 IV.3.3",
           "nota": "Solo si el expediente ya tiene una AAU o AAUS previa pendiente de resolución o condicionada."
         },
         {
           "fase": "CONSULTAS",
-          "obligatoria": true,
+          "obligatoria": false,
           "base_legal": "RD 1955/2000 art. 127 (AAP), art. 131 (AAC)",
-          "nota": "Plazo: 30 días (15 días si solo AAC con AAP previa y sin DUP). Un trámite CONSULTA_SEPARATA por organismo."
+          "nota": "Opcional (🔀); si se realizan son simultáneas a IP. Plazo: 30 días (15 días si solo AAC con AAP previa y sin DUP). Un trámite CONSULTA_SEPARATA por organismo."
         },
         {
           "fase": "INFORMACION_PUBLICA",
@@ -160,7 +160,7 @@
     {
       "_grupo": "Instrucción completa de nueva instalación",
       "codigo": "AAP+AAC+DUP",
-      "nombre": "Instrucción AAP+AAC con DUP",
+      "nombre": "Tramitación conjunta AAP+AAC con DUP",
       "tipos_solicitud": ["AAP+AAC+DUP"],
       "tipos_expediente": ["Transporte", "Distribución", "Distribución cedida", "Renovable", "Convencional", "LineaDirecta"],
       "secuencia_fases": [
@@ -179,14 +179,14 @@
         {
           "fase": "COMPATIBILIDAD_AMBIENTAL",
           "obligatoria": false,
-          "condicion": "ia_previa en [AAU, AAUS]",
+          "condicion": "proyecto.ia.siglas en [AAU, AAUS]",
           "base_legal": "Decreto 356/2010; IC 1/2022 IV.3.3"
         },
         {
           "fase": "CONSULTAS",
-          "obligatoria": true,
+          "obligatoria": false,
           "base_legal": "RD 1955/2000 arts. 127, 131",
-          "nota": "Plazo: 30 días. La DUP no reduce el plazo de consultas."
+          "nota": "Opcional (🔀); simultáneas a IP. Plazo: 30 días. La DUP no reduce el plazo de consultas."
         },
         {
           "fase": "INFORMACION_PUBLICA",
@@ -233,9 +233,9 @@
         },
         {
           "fase": "CONSULTAS",
-          "obligatoria": true,
+          "obligatoria": false,
           "base_legal": "RD 1955/2000 art. 146",
-          "nota": "Simultáneas a IP. AAPP, organismos y empresas de servicios con bienes o intereses afectados. Plazo 30 días, silencio positivo (art. 146.1). Si DUP se tramita con AAC, las consultas del art. 127 satisfacen este requisito (art. 146.2)."
+          "nota": "Opcional (🔀); simultáneas a IP. AAPP, organismos y empresas de servicios con bienes o intereses afectados. Plazo 30 días, silencio positivo (art. 146.1). Si DUP se tramita con AAC, las consultas del art. 127 satisfacen este requisito (art. 146.2)."
         },
         {
           "fase": "RESOLUCION",
@@ -260,16 +260,15 @@
         },
         {
           "fase": "CONSULTAS",
-          "obligatoria": true,
+          "obligatoria": false,
           "base_legal": "RD 1955/2000 art. 131",
-          "nota": "Plazo: 15 días (AAP ya obtenida, sin nueva DUP pendiente de IP propia)."
+          "nota": "Opcional (🔀); simultáneas a IP. Plazo: 15 días (AAP ya obtenida, sin nueva DUP pendiente de IP propia)."
         },
         {
           "fase": "INFORMACION_PUBLICA",
-          "obligatoria": false,
-          "condicion": "DUP requiere IP separada",
-          "base_legal": "RD 1955/2000 art. 143",
-          "nota": "PENDIENTE CONFIRMACIÓN NORMATIVA: si la AAP ya incluyó IP con alcance suficiente para la DUP, puede no ser necesaria IP adicional. Confirmar con el servicio."
+          "obligatoria": true,
+          "base_legal": "RD 1955/2000 arts. 143-144; LSE art. 54",
+          "nota": "Obligatoria aunque la AAP ya incluyera IP con igual alcance: los efectos jurídicos de la DUP son distintos a los de la AAP y requieren su propia publicidad."
         },
         {
           "fase": "RESOLUCION",
@@ -347,7 +346,7 @@
       "codigo": "AE_DEFINITIVA+AAT",
       "nombre": "Explotación definitiva con transmisión en resolución única",
       "tipos_solicitud": ["AE_DEFINITIVA+AAT"],
-      "tipos_expediente": ["Distribución", "Distribución cedida"],
+      "tipos_expediente": ["Distribución cedida"],
       "secuencia_fases": [
         {
           "fase": "ANALISIS_SOLICITUD",
@@ -399,14 +398,14 @@
         {
           "fase": "CONSULTA_OPERADOR_SISTEMA",
           "obligatoria": true,
-          "base_legal": "RD 1955/2000 art. 136",
-          "nota": "Operador del sistema: REE (Transporte) o distribuidora (Distribución). Plazo: 3 meses, silencio positivo. El procedimiento continúa aunque no haya informe."
+          "base_legal": "RD 1955/2000 art. 137 (mod. RD 88/2026)",
+          "nota": "Operador del sistema: REE (Transporte) o distribuidora (Distribución). Plazo: 3 meses, silencio positivo. El procedimiento continúa aunque no haya informe (art. 137.1)."
         },
         {
           "fase": "RESOLUCION",
           "obligatoria": true,
-          "base_legal": "RD 1955/2000 art. 137",
-          "nota": "Plazo: 3 meses. La resolución fija el plazo de ejecución del cierre; si vence sin ejecución → caducidad (art. 138)."
+          "base_legal": "RD 1955/2000 art. 138 (mod. RD 88/2026)",
+          "nota": "Plazo: 6 meses (LSE art. 53.5, prevalece sobre los 3 meses del art. 138.1). Publicación obligatoria en BOE y BOP de las provincias donde radique la instalación (art. 138.3). Sin posibilidad de excepción ni supresión."
         }
       ]
     },
@@ -427,7 +426,7 @@
           "fase": "RESOLUCION",
           "obligatoria": true,
           "base_legal": "RD 1955/2000 art. 128.4; LPACAP art. 32",
-          "nota": "Art. 128.4: prórroga del plazo fijado en la AAP para solicitar la AAC, por razones justificadas. LPACAP art. 32: ampliación de plazos administrativos en general. Aplica también a prórrogas del plazo de ejecución de la AAC o de la AE."
+          "nota": "Art. 128.4: prórroga del plazo fijado en la AAP para solicitar la AAC, por razones justificadas. LPACAP art. 32: ampliación de plazos administrativos en general."
         }
       ]
     },
@@ -524,10 +523,16 @@
       "tipos_expediente": "todos",
       "secuencia_fases": [
         {
+          "fase": "ANALISIS_SOLICITUD",
+          "obligatoria": true,
+          "base_legal": "LPACAP art. 93",
+          "nota": "Produce CERT_FIN_INSTRUCCION: certifica el estado de tramitación de la solicitud afectada en el momento del desistimiento."
+        },
+        {
           "fase": "RESOLUCION",
           "obligatoria": true,
           "base_legal": "LPACAP art. 93",
-          "nota": "Fase finalizadora directa sin instrucción previa. Requiere solicitud_afectada_id. La Administración acepta el desistimiento y archiva la solicitud afectada."
+          "nota": "Fase finalizadora. Requiere solicitud_afectada_id. La Administración acepta el desistimiento y archiva la solicitud afectada. Consume CERT_FIN_INSTRUCCION."
         }
       ]
     },
@@ -540,10 +545,16 @@
       "tipos_expediente": "todos",
       "secuencia_fases": [
         {
+          "fase": "ANALISIS_SOLICITUD",
+          "obligatoria": true,
+          "base_legal": "LPACAP art. 94",
+          "nota": "Produce CERT_FIN_INSTRUCCION: certifica el estado de la autorización a la que se renuncia."
+        },
+        {
           "fase": "RESOLUCION",
           "obligatoria": true,
           "base_legal": "LPACAP art. 94",
-          "nota": "Fase finalizadora directa. Requiere solicitud_afectada_id. El titular renuncia a derechos ya concedidos por resolución firme."
+          "nota": "Fase finalizadora. Requiere solicitud_afectada_id. El titular renuncia a derechos ya concedidos por resolución firme. Consume CERT_FIN_INSTRUCCION."
         }
       ]
     },
@@ -577,10 +588,16 @@
       "tipos_expediente": "todos",
       "secuencia_fases": [
         {
+          "fase": "ANALISIS_SOLICITUD",
+          "obligatoria": true,
+          "base_legal": "LPACAP art. 4",
+          "nota": "Produce CERT_FIN_INSTRUCCION: certifica la situación del procedimiento principal al que se pretende incorporar el interesado."
+        },
+        {
           "fase": "RECONOCIMIENTO_INTERESADO",
           "obligatoria": true,
           "base_legal": "LPACAP art. 4",
-          "nota": "Fase finalizadora propia — no utiliza RESOLUCION. Evalúa si el solicitante acredita interés legítimo en el procedimiento principal."
+          "nota": "Fase finalizadora propia — no utiliza RESOLUCION. Evalúa si el solicitante acredita interés legítimo en el procedimiento principal. Consume CERT_FIN_INSTRUCCION."
         }
       ]
     },
