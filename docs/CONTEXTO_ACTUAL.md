@@ -6,11 +6,13 @@
 
 ---
 
-**Último cerrado:** #417 — limpiar referencias a tareas obsoletas v6.0: eliminados atajos `REDACTAR`/`FIRMAR`/`PUBLICAR` de `seed_demo.py` (KeyError en ejecución) y usos sustituidos por `ELABORAR`/`NOTIFICAR`; catálogo actualizado de 7 → 4 tipos de tarea en `GUIA_GENERAL.md` con ejemplo de secuencia `ANUNCIO_BOP` corregido.
+**Último cerrado:** #283 — completar la capa ES de ESFTT: `ESTRUCTURA_ESF.md` v2.2 + `ESTRUCTURA_ESF.json` v2.2 (mapeo tipo_solicitud × tipo_expediente → secuencia de fases con leyenda 4 símbolos ✅⚠️🔀🚫, principio S-dominante); CONSULTAS marcado como 🔀 en todos los procedimientos; DESISTIMIENTO/RENUNCIA/INTERESADO incorporan `ANALISIS_SOLICITUD` para activar `CERT_FIN_INSTRUCCION`; renumeración RD 88/2026 (art. 136→137, 137→138) aplicada en FTT.json/md, NORMATIVA_MAPA y DISEÑO_FECHAS_PLAZOS.
+
+**Hallazgo posterior — auditoría exhaustiva de migraciones (22 mayo 2026):** 1 bug crítico (#448, seed plazos RESOLUCION nunca insertó), 1 deuda menor (#449, GRANT olvidado en `organismos_expediente`), 2 seeds pendientes (#450 CIERRE, #451 catálogo normas). Informe en `docs_prueba/temp/AUDITORIA_MIGRACIONES_2026-05-22.md`. **Acción inmediata aplicable antes de cualquier issue:** `flask db upgrade` para llevar la BD local de `403_resolucion` a la HEAD `405_catalogo_requerimientos` (aplica las migraciones de #404 y #405 ya committed).
 
 **Actuales:** —
 
-**Próximo:** #283 — completar `ESTRUCTURA_FTT.json` con todos los tipos de expediente; reescribir cuerpo antes de planificar (referencias a `PUBLICAR`/`INCORPORAR` obsoletas).
+**Próximo:** a confirmar — propuesta: **#449** (fix GRANT, ~5 min, deuda menor independiente) como warm-up antes de **#448** (HOTFIX crítico, requiere rediseño del seed de plazos).
 
 ---
 
@@ -44,23 +46,27 @@
 ### Bloque 4 — Motor de reglas y plazos
 
 15. ~~**#417** — limpiar referencias a tareas obsoletas v6.0 en `seed_demo.py` y `GUIA_GENERAL.md` (deuda técnica pequeña; independiente)~~ ✓
-16. **#283** — completar `ESTRUCTURA_FTT.json` con todos los tipos de expediente; reescribir cuerpo antes de planificar (referencias a `PUBLICAR`/`INCORPORAR` obsoletas)
-17. **#247** — cerrar las fases CONSULTAS y ANALISIS_TECNICO con reglas del motor (lo ya implementado en #391 cubre el modelo; queda la lógica de cierre); reescribir cuerpo antes de planificar
-18. **#323** — modo global del motor + tabla `configuracion_sistema`
-19. **#324** — mecanismo de escape con bitácora (tras #323; reescribir cuerpo: enum CREAR|BORRAR, no INICIAR|FINALIZAR)
-20. **#416** — motor de plazos para TABLON_AYUNTAMIENTOS: fecha administrativa y cierre retroactivo de ESPERAR_PLAZO (edge case del servicio de plazos)
+16. ~~**#283** — capa ES de ESFTT: `ESTRUCTURA_ESF` (.md v2.2 + .json) + renumeración RD 88/2026~~ ✓
+17. **#449** — fix `GRANT SELECT` olvidado en `organismos_expediente` (deuda menor M2, ~5 min, totalmente independiente) — *de la auditoría 22/05*
+18. **#448** — HOTFIX seed `catalogo_plazos` RESOLUCION (crítico, bloqueante para motor de plazos): rediseño con `condiciones_plazo` por `tipo_solicitud` + nueva migración + sincronizar `DISEÑO_FECHAS_PLAZOS.md §5.2` — *de la auditoría 22/05*
+19. **#247** — cerrar las fases CONSULTAS y ANALISIS_TECNICO con reglas del motor (lo ya implementado en #391 cubre el modelo; queda la lógica de cierre); reescribir cuerpo antes de planificar
+20. **#451** — ampliar catálogo `normas` (LSE, LPACAP, DL 2/2018, DL 26/2021, RD 1183/2020, RD 244/2019, RD 88/2026) — prerrequisito de #323 — *de la auditoría 22/05*
+21. **#323** — modo global del motor + tabla `configuracion_sistema`
+22. **#324** — mecanismo de escape con bitácora (tras #323; reescribir cuerpo: enum CREAR|BORRAR, no INICIAR|FINALIZAR)
+23. **#450** — seed procedimiento CIERRE: fase `CONSULTA_OPERADOR_SISTEMA` + trámites `SOLICITUD_INFORME_OPERADOR` / `RECEPCION_INFORME_OPERADOR` + plazo (art. 137 RD 1955/2000 mod. RD 88/2026) — *de la auditoría 22/05*
+24. **#416** — motor de plazos para TABLON_AYUNTAMIENTOS: fecha administrativa y cierre retroactivo de ESPERAR_PLAZO (edge case del servicio de plazos)
 
 ### Bloque 5 — Análisis heurístico de PDF
 
-21. **#304** — script de detección del tipo de solicitud
-22. **#305** — script de detección del tipo de expediente
-23. **#306** — helper de cálculo de tasa y extracción de presupuesto (tras #304)
+25. **#304** — script de detección del tipo de solicitud
+26. **#305** — script de detección del tipo de expediente
+27. **#306** — helper de cálculo de tasa y extracción de presupuesto (tras #304)
 
 ### Bloque 6 — Issues con rediseño previo necesario
 
-24. **#410** — compatibilidad de tipos de solicitud como reglas del motor
-25. **#192** — requisitos documentales por procedimiento (rediseñar: anclar a CREAR fase siguiente, sin tabla `procedimientos`)
-26. **#174** — permisos blandos con traza en bitácora (rediseñar: permiso blando + bitácora, no permiso duro por expediente)
+28. **#410** — compatibilidad de tipos de solicitud como reglas del motor
+29. **#192** — requisitos documentales por procedimiento (rediseñar: anclar a CREAR fase siguiente, sin tabla `procedimientos`)
+30. **#174** — permisos blandos con traza en bitácora (rediseñar: permiso blando + bitácora, no permiso duro por expediente)
 
 ### Backlog M3 sin posición en la ruta
 
