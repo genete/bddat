@@ -6,11 +6,11 @@
 
 ---
 
-**Último cerrado:** #454 — auditoría migraciones 345 vs 370 en `tramites_tareas`: conflicto inexistente — `370_actualizar_tipos_tareas` hace `DELETE FROM tramites_tareas` antes de re-seedar, BD limpia con patrón v6.0 correcto; comentario añadido en migración.
+**Último cerrado:** #247 + #458 + #459 (PR #465) — API CRUD `organismos_expediente` (4 endpoints REST GET/POST/PATCH/DELETE), hook #458 `editar_tarea` ANALIZAR+CONSULTA_SEPARATA → `en_tramitacion`, hook #459 `crear_tramite` CONSULTA_TRASLADO_ORGANISMO → incrementa `num_iteraciones`; 17 tests unitarios.
 
 **Actuales:** —
 
-**Próximo:** **#247** — API CRUD `organismos_expediente` + automatismos #458 y #459 — los tres cierran en el mismo PR. Plan: `docs_prueba/temp/plan_247_458_459.md`.
+**Próximo:** **#461** — endpoint `GET /api/entidades/consultables` (desbloquea UI #396).
 
 **Plan de trabajo CONSULTAS (sesión 2026-05-24):** análisis completo de #247 en `docs/historial/ANALISIS_CONSULTAS_ORGANISMOS_2026-05-24.md`. Orden acordado:
 1. **#454** — auditoría 345 vs 370: verificar duplicados en `tramites_tareas` antes de tocar cualquier trámite CONSULTA_*.
@@ -54,7 +54,7 @@
 17. ~~**#449** — fix `GRANT SELECT` olvidado en `organismos_expediente` (deuda menor M2, ~5 min, totalmente independiente) — *de la auditoría 22/05*~~ ✓
 18. ~~**#448** — HOTFIX seed `catalogo_plazos` RESOLUCION (crítico, bloqueante para motor de plazos): rediseño con `condiciones_plazo` por `tipo_solicitud` + nueva migración + sincronizar `DISEÑO_FECHAS_PLAZOS.md §5.2` — *de la auditoría 22/05*~~ ✓
 19. ~~**#454** — auditoría migraciones 345 vs 370 en `tramites_tareas` (prerequisito crítico de #247)~~ ✓
-20. **#247** — API CRUD `organismos_expediente` + automatismos #458 + #459 (un único PR; cierra los tres)
+20. ~~**#247** — API CRUD `organismos_expediente` + automatismos #458 + #459 (un único PR; cierra los tres)~~ ✓
 21. **#461** — endpoint `GET /api/entidades/consultables` (desbloquea #396)
 22. **#456** — diseño vinculación trámite-traslado → `organismos_expediente` → **#457** CB traslados (tras #456)
 23. **#460** — variables motor cierre CONSULTAS: `organismos_todos_terminados`, `organismo_supera_iteraciones` (tras #458)
