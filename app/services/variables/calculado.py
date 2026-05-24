@@ -123,3 +123,52 @@ def _(ctx) -> bool:
         and not solicitud.contiene_tipo('AAP')
         and not solicitud.contiene_tipo('DUP')
     )
+
+
+_ESTADOS_TERMINALES_CONSULTAS = frozenset({
+    'cerrado_favorable', 'cerrado_con_condicionados', 'audiencia_previa', 'exonerado'
+})
+
+
+@variable('organismos_todos_terminados')
+def _(ctx) -> bool:
+    """
+    True si todos los organismos del expediente han alcanzado un estado terminal.
+    Precondición del cierre de fase CONSULTAS (ver #470).
+    """
+    organismos = ctx.expediente.organismos
+    if not organismos:
+        return True
+    return all(org.estado in _ESTADOS_TERMINALES_CONSULTAS for org in organismos)
+
+
+@variable('organismo_supera_iteraciones')
+def _(ctx) -> bool:
+    """
+    True si algún organismo acumula ≥ 1 CONSULTA_TRASLADO_ORGANISMO en tramites_organismos,
+    lo que indica que se va a crear una segunda iteración.
+
+    Devuelve False mientras #471 (vincular tramites TRASLADO a tramites_organismos)
+    no esté implementado, ya que la tabla no tendrá entradas para TRASLADOs.
+
+    Evaluar al CREAR CONSULTA_TRASLADO_ORGANISMO (motor: ADVERTIR).
+    """
+    from app.models.tramites_organismos import TramiteOrganismo
+    from app.models.tramites import Tramite as _Tramite
+    from app.models.tipos_tramites import TipoTramite
+    from app import db
+
+    for org in ctx.expediente.organismos:
+        count = (
+            db.session.query(TramiteOrganismo)
+            .join(_Tramite, TramiteOrganismo.tramite_id == _Tramite.id)
+            .join(TipoTramite, _Tramite.tipo_tramite_id == TipoTramite.id)
+            .filter(
+                TramiteOrganismo.organismo_expediente_id == org.id,
+                TipoTramite.codigo == 'CONSULTA_TRASLADO_ORGANISMO',
+            )
+            .count()
+        )
+        if count >= 1:
+            return True
+    return False
