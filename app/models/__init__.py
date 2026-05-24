@@ -86,6 +86,8 @@ from app.models.alegantes import Alegante
 
 # Organismos consultados por expediente (#391 — depende de Expediente, Entidad, Documento, Tramite)
 from app.models.organismos_expediente import OrganismoExpediente
+# Vínculo trámites↔organismos (#456 — depende de Tramite, OrganismoExpediente)
+from app.models.tramites_organismos import TramiteOrganismo
 
 # Interesados del expediente (#374 — depende de Expediente, Entidad, Documento)
 from app.models.interesados_expediente import InteresadoExpediente
@@ -161,6 +163,8 @@ __all__ = [
     'Certificado',
     # Organismos consultados por expediente
     'OrganismoExpediente',
+    # Vínculo trámites↔organismos
+    'TramiteOrganismo',
     # Alegante en trámites RECEPCION_ALEGACION
     'Alegante',
     # Interesados del expediente
