@@ -6,18 +6,18 @@
 
 ---
 
-**Último cerrado:** #457 (PR #469) — CBs `ContextoConsultaTrasladoTitular` y `ContextoConsultaTrasladoOrganismo`: navegación vía `TramiteOrganismo`, campos `organismo_fecha_respuesta` / `titular_fecha_respuesta` / `organismo_num_iteraciones` (COUNT derivado, ADR-011 §2).
+**Último cerrado:** #460 (PR #472) — variables motor CONSULTAS `organismos_todos_terminados` y `organismo_supera_iteraciones`; migración seed `catalogo_variables` + regla ADVERTIR al crear segundo `CONSULTA_TRASLADO_ORGANISMO`; limpieza stub `_hook_459`; 10 tests unitarios.
 
 **Actuales:** —
 
-**Próximo:** **#460** — variables motor CONSULTAS: `organismos_todos_terminados` y `organismo_supera_iteraciones` (tras #458/#459, implementados en #247/#456).
+**Próximo:** **#462** — acción en bloque «Enviar consultas» (tras #247).
 
 **Plan de trabajo CONSULTAS (sesión 2026-05-24):** análisis completo de #247 en `docs/historial/ANALISIS_CONSULTAS_ORGANISMOS_2026-05-24.md`. Orden acordado:
 1. ~~**#454** — auditoría 345 vs 370: verificar duplicados en `tramites_tareas` antes de tocar cualquier trámite CONSULTA_*.~~ ✓
 2. ~~**#247** — núcleo: API CRUD `organismos_expediente` + #458 + #459 en un único PR (decisión sesión 2026-05-24: #458 y #459 absorbidos, no PRs propios).~~ ✓
 3. ~~**#461** — endpoint `GET /api/entidades/consultables`: desbloquea la UI #396.~~ ✓
 4. ~~**#456** — `tramites_organismos` + ADR-011.~~ ✓
-5. ~~**#457** — CB traslados (titular y organismo) tras #456.~~ ✓ Resto: **#460** (variables motor CONSULTAS, tras #458); #462 (acción en bloque «Enviar consultas»); #463 (seed plazos CONSULTAS); #464 (seed demo organismos, M4). Independiente: #455 (variables motor ANALISIS_SOLICITUD, tras #442).
+5. ~~**#457** — CB traslados (titular y organismo) tras #456.~~ ✓ ~~**#460** (variables motor CONSULTAS, tras #458)~~ ✓ Resto: #462 (acción en bloque «Enviar consultas»); #463 (seed plazos CONSULTAS); #464 (seed demo organismos, M4). Independiente: #455 (variables motor ANALISIS_SOLICITUD, tras #442).
 
 ---
 
@@ -58,7 +58,7 @@
 20. ~~**#247** — API CRUD `organismos_expediente` + automatismos #458 + #459 (un único PR; cierra los tres)~~ ✓
 21. ~~**#461** — endpoint `GET /api/entidades/consultables` (desbloquea #396)~~ ✓
 22. ~~**#456** — `tramites_organismos` + `condicionados_doc_id` + `CONDICIONADO_OFICIO` + criterios completitud CONSULTAS (ADR-011)~~ ✓ → ~~**#457** CB traslados (tras #456)~~ ✓
-23. **#460** — variables motor cierre CONSULTAS: `organismos_todos_terminados`, `organismo_supera_iteraciones` (tras #458)
+23. ~~**#460** — variables motor cierre CONSULTAS: `organismos_todos_terminados`, `organismo_supera_iteraciones` (tras #458)~~ ✓
 24. **#462** — acción en bloque «Enviar consultas» (tras #247)
 25. **#463** — seed `catalogo_plazos` para CONSULTAS (independiente, M3)
 26. **#455** — variables motor cierre `ANALISIS_SOLICITUD` (independiente de CONSULTAS; tras #442)
