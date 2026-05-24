@@ -341,5 +341,5 @@ El motor comprueba sobre los trámites de la fase:
 - **Acción en bloque** de creación de separatas desde `organismos_expediente` — issue #462.
 - ~~**Mover los diagramas PNG** de `docs_prueba/mockups/` a una ubicación permanente dentro de `docs/`.~~ **HECHO** — SVGs en `docs/diagramas_flujo/`.
 - **Tabla `tramites_organismos` + `condicionados_doc_id` + tipo `CONDICIONADO_OFICIO`:** implementar en #456 (ADR-011).
-- **CBs de traslado** (`ContextoConsultaTrasladoTitular`, `ContextoConsultaTrasladoOrganismo`): implementar en #457, tras #456.
+- ~~**CBs de traslado** (`ContextoConsultaTrasladoTitular`, `ContextoConsultaTrasladoOrganismo`): implementar en #457, tras #456.~~ **HECHO** — #457.
 - **Certificado de consultas:** el cierre favorable de la fase requiere `CERT_FIN_IP_CONSULTAS` con `favorable=True` validado por el motor — issue pendiente de crear (alcance a definir junto con #462).
