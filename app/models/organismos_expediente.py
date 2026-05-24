@@ -22,12 +22,14 @@ class OrganismoExpediente(db.Model):
     ordinaria (separata + trámites de traslado) como la vía de declaración
     responsable (el titular acredita disponer ya de la autorización del organismo).
 
-    Diseño de referencia: DISEÑO_CONSULTAS_ORGANISMOS.md §2
+    Los trámites del ciclo de consulta se vinculan a este registro mediante
+    la tabla `tramites_organismos` (ADR-011 §1).
+
+    Diseño de referencia: DISEÑO_CONSULTAS_ORGANISMOS.md §2, ADR-011
     """
     __tablename__ = 'organismos_expediente'
     __table_args__ = (
         db.UniqueConstraint('expediente_id', 'organismo_id', name='uq_org_exp_expediente_organismo'),
-        db.UniqueConstraint('tramite_id', name='uq_org_exp_tramite'),
         db.CheckConstraint("via IN ('consulta', 'declaracion_responsable')", name='ck_org_exp_via'),
         db.CheckConstraint(
             "estado IN ('pendiente','separata_enviada','en_tramitacion',"
@@ -76,18 +78,11 @@ class OrganismoExpediente(db.Model):
         comment='Estado del ciclo de vida del organismo en el expediente',
     )
 
-    num_iteraciones_organismo = db.Column(
+    condicionados_doc_id = db.Column(
         db.Integer,
-        nullable=False,
-        default=0,
-        comment='Contador de trámites CONSULTA_TRASLADO_ORGANISMO creados. Motor usa este valor para advertir o bloquear si supera 1',
-    )
-
-    tramite_id = db.Column(
-        db.Integer,
-        db.ForeignKey('public.tramites.id'),
+        db.ForeignKey('public.documentos.id'),
         nullable=True,
-        comment='FK al trámite CONSULTA_SEPARATA asociado a este organismo. NULL hasta que se crea el trámite',
+        comment='FK documento CONDICIONADO_OFICIO. Solo cuando titular sin_respuesta en AAC tras condicionado (ADR-011 §2)',
     )
 
     plazo_legal_dias = db.Column(
@@ -100,10 +95,23 @@ class OrganismoExpediente(db.Model):
     expediente = db.relationship('Expediente', backref='organismos')
     organismo = db.relationship('Entidad', foreign_keys=[organismo_id])
     documento = db.relationship('Documento', foreign_keys=[documento_id])
-    tramite = db.relationship('Tramite', foreign_keys=[tramite_id])
+    condicionados_doc = db.relationship('Documento', foreign_keys=[condicionados_doc_id])
 
     def __repr__(self):
         return f'<OrganismoExpediente exp={self.expediente_id} org={self.organismo_id} estado={self.estado}>'
+
+    @property
+    def consulta_completa(self) -> bool:
+        """True cuando la consulta está completamente resuelta (ADR-011 §6).
+
+        Para declaracion_responsable: completa cuando estado es exonerado.
+        Para consulta ordinaria: completa cuando el ciclo alcanzó un estado de cierre.
+        La evaluación detallada por resultado de cada trámite (casos A-D del ADR)
+        se implementará cuando TramiteOrganismo.resultado esté disponible (#460).
+        """
+        if self.via == 'declaracion_responsable':
+            return self.estado == 'exonerado'
+        return self.estado in ('cerrado_favorable', 'cerrado_con_condicionados')
 
     def as_contexto_cb(self) -> dict:
         """Fragmento de contexto para plantillas de CONSULTA_SEPARATA."""

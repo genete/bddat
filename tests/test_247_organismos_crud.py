@@ -7,16 +7,15 @@ from unittest.mock import MagicMock
 
 
 def _oe_stub(id=1, organismo_id=5, via='consulta', estado='pendiente',
-             num_iteraciones=0, plazo_legal_dias=30, tramite_id=12):
+             plazo_legal_dias=30, condicionados_doc_id=None):
     oe = MagicMock()
     oe.id = id
     oe.organismo_id = organismo_id
     oe.organismo = MagicMock(nombre_completo='Red Eléctrica de España, S.A.', nif='A78003662')
     oe.via = via
     oe.estado = estado
-    oe.num_iteraciones_organismo = num_iteraciones
     oe.plazo_legal_dias = plazo_legal_dias
-    oe.tramite_id = tramite_id
+    oe.condicionados_doc_id = condicionados_doc_id
     return oe
 
 
@@ -32,9 +31,8 @@ class TestSerializarOrgExp:
         assert result['nif'] == 'A78003662'
         assert result['via'] == 'consulta'
         assert result['estado'] == 'pendiente'
-        assert result['num_iteraciones_organismo'] == 0
         assert result['plazo_legal_dias'] == 30
-        assert result['tramite_id'] == 12
+        assert result['condicionados_doc_id'] is None
 
     def test_get_expediente_no_existe(self):
         # get_or_404 gestiona la respuesta 404; sin organismo los campos vienen None
@@ -48,7 +46,7 @@ class TestSerializarOrgExp:
     def test_post_organismo_ok(self):
         # Verifica que los campos del POST se serializan correctamente al crearse el registro
         from app.routes.api_bc import _serializar_org_exp
-        oe = _oe_stub(id=7, organismo_id=5, via='consulta', plazo_legal_dias=None, tramite_id=None)
+        oe = _oe_stub(id=7, organismo_id=5, via='consulta', plazo_legal_dias=None)
         oe.organismo = MagicMock(nombre_completo='Endesa, S.A.', nif='A81947556')
         result = _serializar_org_exp(oe)
         assert result['id'] == 7

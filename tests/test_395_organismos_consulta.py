@@ -86,11 +86,15 @@ def organismos_data(app_ctx):
             "VALUES (:t,:d,'CONSUMIDO')"
         ), {"t": t_anal1, "d": doc_resp1})
 
-        conn.execute(text(
+        oe1 = conn.execute(text(
             "INSERT INTO public.organismos_expediente "
-            "(expediente_id, organismo_id, via, estado, plazo_legal_dias, tramite_id) "
-            "VALUES (:e,:o,'consulta','cerrado_favorable',30,:tr)"
-        ), {"e": _EXP_ID, "o": _ORG1_ID, "tr": tr1})
+            "(expediente_id, organismo_id, via, estado, plazo_legal_dias) "
+            "VALUES (:e,:o,'consulta','cerrado_favorable',30) RETURNING id"
+        ), {"e": _EXP_ID, "o": _ORG1_ID}).scalar()
+        conn.execute(text(
+            "INSERT INTO public.tramites_organismos (tramite_id, organismo_expediente_id) "
+            "VALUES (:tr,:oe)"
+        ), {"tr": tr1, "oe": oe1})
 
         # ── Organismo 2: sin respuesta ───────────────────────────────────
         tr2 = conn.execute(text(
@@ -113,11 +117,15 @@ def organismos_data(app_ctx):
             "VALUES (:t,:d,'PRODUCIDO')"
         ), {"t": t_notif2, "d": doc_notif2})
 
-        conn.execute(text(
+        oe2 = conn.execute(text(
             "INSERT INTO public.organismos_expediente "
-            "(expediente_id, organismo_id, via, estado, plazo_legal_dias, tramite_id) "
-            "VALUES (:e,:o,'consulta','separata_enviada',30,:tr)"
-        ), {"e": _EXP_ID, "o": _ORG2_ID, "tr": tr2})
+            "(expediente_id, organismo_id, via, estado, plazo_legal_dias) "
+            "VALUES (:e,:o,'consulta','separata_enviada',30) RETURNING id"
+        ), {"e": _EXP_ID, "o": _ORG2_ID}).scalar()
+        conn.execute(text(
+            "INSERT INTO public.tramites_organismos (tramite_id, organismo_expediente_id) "
+            "VALUES (:tr,:oe)"
+        ), {"tr": tr2, "oe": oe2})
 
         yield _EXP_ID, conn
 
