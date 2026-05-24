@@ -8,6 +8,12 @@ ENDPOINTS:
                                Devuelve {results: [{id, text}, ...]}
                                Pensado para selects de titular en wizard expediente.
 
+    GET /api/entidades/consultables
+        Entidades activas con rol_consultado=True y sus direcciones de notificación
+        CONSULTADO activas. Parámetro opcional ?q (búsqueda por nombre, NIF o DIR3).
+        Devuelve {results: [{id, nombre, nif, direcciones_consultado}, ...]}
+        Pensado para el selector de organismos en formulario de expedientes (#396).
+
     GET /api/entidades/<titular_id>/autorizados
         Autorizados vigentes de un titular (incluye al propio titular).
         Devuelve {data: [{id, text}, ...]}
@@ -17,9 +23,9 @@ ENDPOINTS:
         Excluye al propio titular y a los ya autorizados con autorización activa.
         Devuelve {data: [{v, t}, ...]}  (formato SelectorBusqueda)
 
-VERSIÓN: 1.2
-FECHA: 2026-02-22
-ISSUE: #137
+VERSIÓN: 1.3
+FECHA: 2026-05-24
+ISSUE: #137, #461
 """
 
 from flask import Blueprint, request, jsonify
@@ -28,8 +34,119 @@ from sqlalchemy import func, or_
 from app import db
 from app.models.entidad import Entidad
 from app.models.autorizados_titular import AutorizadoTitular
+from app.models.direccion_notificacion import DireccionNotificacion
 
 api_entidades_bp = Blueprint('api_entidades', __name__, url_prefix='/api')
+
+
+def _serializar_dir_consultado(d):
+    """Serializa una DireccionNotificacion para el selector de organismos."""
+    partes = d.direccion_formateada()
+    lineas = [p for p in [partes.get('linea1'), partes.get('linea2')] if p]
+    return {
+        'id':          d.id,
+        'descripcion': d.descripcion,
+        'dir3':        d.codigo_dir3,
+        'sir':         d.codigo_sir,
+        'email':       d.email,
+        'direccion':   ' — '.join(lineas) if lineas else None,
+    }
+
+
+def _serializar_consultable(e, dirs):
+    """Serializa una Entidad con sus DireccionNotificacion CONSULTADO activas."""
+    return {
+        'id':                    e.id,
+        'nombre':                e.nombre_completo,
+        'nif':                   e.nif,
+        'direcciones_consultado': [_serializar_dir_consultado(d) for d in dirs],
+    }
+
+
+def _dirs_consultado(entidad_id):
+    """Devuelve las DireccionNotificacion activas con bit CONSULTADO (tipo_rol & 2)."""
+    return (
+        DireccionNotificacion.query
+        .filter(
+            DireccionNotificacion.entidad_id == entidad_id,
+            DireccionNotificacion.activo == True,
+            DireccionNotificacion.tipo_rol.op('&')(2) > 0,
+        )
+        .order_by(DireccionNotificacion.fecha_inicio.desc())
+        .all()
+    )
+
+
+@api_entidades_bp.route('/entidades/consultables', methods=['GET'])
+@login_required
+def listar_consultables():
+    """
+    GET /api/entidades/consultables
+
+    Entidades activas con rol_consultado=True y sus direcciones de notificación
+    CONSULTADO activas. Diseñado para el selector de organismos en expedientes.
+
+    Query Parameters:
+        q (str, opcional, mín 2 chars): Búsqueda por nombre, NIF o código DIR3.
+            Con q  → máx 10 resultados (typeahead).
+            Sin q  → todas las consultables activas.
+
+    Respuesta JSON:
+        {
+          "results": [
+            {
+              "id": 1,
+              "nombre": "Ministerio de Industria",
+              "nif": "S2801047B",
+              "direcciones_consultado": [
+                {
+                  "id": 5,
+                  "descripcion": "Sede Central",
+                  "dir3": "EA0015285",
+                  "sir": "E04926801",
+                  "email": "notif@minind.gob.es",
+                  "direccion": "Paseo de la Castellana, 160 — 28046 Madrid"
+                }
+              ]
+            }
+          ]
+        }
+
+    Returns:
+        200 OK  con JSON.
+        401 Unauthorized si no autenticado.
+    """
+    q = request.args.get('q', '').strip()
+
+    if q and len(q) < 2:
+        return jsonify({'results': []}), 200
+
+    query = Entidad.query.filter(
+        Entidad.rol_consultado == True,
+        Entidad.activo == True,
+    )
+
+    if q:
+        ids_con_dir3 = (
+            db.session.query(DireccionNotificacion.entidad_id)
+            .filter(
+                DireccionNotificacion.activo == True,
+                DireccionNotificacion.tipo_rol.op('&')(2) > 0,
+                func.lower(DireccionNotificacion.codigo_dir3).contains(func.lower(q)),
+            )
+        )
+        query = query.filter(
+            or_(
+                func.lower(Entidad.nombre_completo).contains(func.lower(q)),
+                func.lower(Entidad.nif).contains(func.lower(q)),
+                Entidad.id.in_(ids_con_dir3),
+            )
+        ).limit(10)
+
+    entidades = query.order_by(Entidad.nombre_completo).all()
+
+    results = [_serializar_consultable(e, _dirs_consultado(e.id)) for e in entidades]
+    return jsonify({'results': results}), 200
 
 
 @api_entidades_bp.route('/entidades', methods=['GET'])
