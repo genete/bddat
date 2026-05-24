@@ -7,9 +7,11 @@ bc-edicion.js actualiza el DOM directamente desde los valores del formulario.
 
 Creado para resolver el bug #314.
 """
+import logging
+
 from flask import Blueprint, jsonify, request
 from flask_login import login_required
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, OperationalError, ProgrammingError
 from app import db
 from app.models.expedientes import Expediente
 from app.models.solicitudes import Solicitud
@@ -28,9 +30,13 @@ from app.models.organismos_expediente import OrganismoExpediente, ESTADOS_ORGANI
 from app.models.tramites_organismos import TramiteOrganismo
 from app.utils.permisos import verificar_acceso_expediente
 from app.services.assembler import evaluar_multi
-from app.services.invariantes_esftt import check_invariante, _check_cierre_fase
+from app.services.invariantes_esftt import (
+    check_invariante, _check_cierre_fase, RESULTADO_FASE_FAVORABLE_CODIGOS,
+)
 
 bp = Blueprint('api_bc', __name__, url_prefix='/api/bc')
+
+log = logging.getLogger(__name__)
 
 
 def _bloqueo(res_eval):
@@ -576,6 +582,83 @@ def borrar_organismo(exp_id, oid):
         db.session.delete(oe)
         db.session.commit()
         return jsonify({'ok': True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+# ============================================
+# HELPERS — acción en bloque enviar consultas (#462)
+# ============================================
+
+def _calcular_plazo_consulta(expediente, solicitud) -> int:
+    """30 días general; 15 si AAC pura + AAP previa favorable (art. 131.1 párr. 2 RD 1955/2000)."""
+    if not (solicitud.contiene_tipo('AAC')
+            and not solicitud.contiene_tipo('AAP')
+            and not solicitud.contiene_tipo('DUP')):
+        return 30
+    for sol in expediente.solicitudes:
+        if sol is solicitud:
+            continue
+        if not sol.contiene_tipo('AAP'):
+            continue
+        for fase_sol in sol.fases:
+            if (fase_sol.tipo_fase
+                    and fase_sol.tipo_fase.es_finalizadora
+                    and fase_sol.finalizada
+                    and fase_sol.resultado_fase
+                    and fase_sol.resultado_fase.codigo in RESULTADO_FASE_FAVORABLE_CODIGOS):
+                return 15
+    return 30
+
+
+# ============================================
+# ENDPOINT — acción en bloque «Enviar consultas» (#462)
+# ============================================
+
+@bp.route('/fase/<int:fase_id>/consultas/enviar', methods=['POST'])
+@login_required
+def enviar_consultas(fase_id):
+    fase = Fase.query.get_or_404(fase_id)
+    resultado = verificar_acceso_expediente(fase.solicitud.expediente, 'editar')
+    if resultado:
+        return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
+
+    expediente = fase.solicitud.expediente
+    solicitud = fase.solicitud
+
+    try:
+        tipo_tramite = TipoTramite.query.filter_by(codigo='CONSULTA_SEPARATA').first()
+        if tipo_tramite is None:
+            log.warning('enviar_consultas: TipoTramite CONSULTA_SEPARATA no encontrado en catálogo')
+            return jsonify({'ok': False, 'error': 'Tipo de trámite CONSULTA_SEPARATA no configurado'}), 500
+    except (OperationalError, ProgrammingError):
+        log.warning('enviar_consultas: tabla tipos_tramites no disponible')
+        return jsonify({'ok': False, 'error': 'Error de configuración del catálogo'}), 500
+
+    res_eval = evaluar_multi('CREAR', expediente, objeto={'fase': fase, 'tipo_tramite': tipo_tramite})
+    if not res_eval.permitido:
+        return _bloqueo(res_eval)
+
+    pendientes = [
+        oe for oe in expediente.organismos
+        if oe.via == 'consulta' and oe.estado == 'pendiente'
+    ]
+
+    plazo = _calcular_plazo_consulta(expediente, solicitud)
+
+    try:
+        ids = []
+        for oe in pendientes:
+            tramite = Tramite(fase_id=fase_id, tipo_tramite_id=tipo_tramite.id)
+            db.session.add(tramite)
+            db.session.flush()
+            db.session.add(TramiteOrganismo(tramite_id=tramite.id, organismo_expediente_id=oe.id))
+            oe.estado = 'separata_enviada'
+            oe.plazo_legal_dias = plazo
+            ids.append(tramite.id)
+        db.session.commit()
+        return jsonify({'ok': True, 'ids': ids, 'advertencia': _advertencia(res_eval)})
     except Exception as e:
         db.session.rollback()
         return jsonify({'ok': False, 'error': str(e)}), 500
