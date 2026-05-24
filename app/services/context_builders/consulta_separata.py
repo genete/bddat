@@ -1,4 +1,4 @@
-from app.models.organismos_expediente import OrganismoExpediente
+from app.models.tramites_organismos import TramiteOrganismo
 
 
 class ContextoConsultaSeparata:
@@ -6,8 +6,8 @@ class ContextoConsultaSeparata:
     Context Builder para escritos del trámite CONSULTA_SEPARATA.
 
     Enriquece el contexto base con datos del organismo consultado y las
-    fechas del ciclo de consulta. Requiere que el trámite tenga un registro
-    en organismos_expediente (campo tramite_id enlazado).
+    fechas del ciclo de consulta. Navega al organismo vía tramites_organismos
+    (ADR-011 §1).
 
     Campos adicionales aportados:
     - organismo_nombre       str   Nombre oficial del organismo
@@ -27,9 +27,10 @@ class ContextoConsultaSeparata:
         if not self._tarea:
             return {}
 
-        org_exp = (OrganismoExpediente.query
+        vinculo = (TramiteOrganismo.query
                    .filter_by(tramite_id=self._tarea.tramite_id)
                    .first())
+        org_exp = vinculo.organismo_expediente if vinculo else None
 
         if not org_exp:
             return {}

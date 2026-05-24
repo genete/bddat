@@ -25,6 +25,7 @@ from app.models.tipos_tareas import TipoTarea
 from app.models.documentos_tarea import DocumentoTarea
 from app.models.entidad import Entidad
 from app.models.organismos_expediente import OrganismoExpediente, ESTADOS_ORGANISMO, VIAS_ORGANISMO
+from app.models.tramites_organismos import TramiteOrganismo
 from app.utils.permisos import verificar_acceso_expediente
 from app.services.assembler import evaluar_multi
 from app.services.invariantes_esftt import check_invariante, _check_cierre_fase
@@ -452,9 +453,8 @@ def _serializar_org_exp(oe):
         'nif': oe.organismo.nif if oe.organismo else None,
         'via': oe.via,
         'estado': oe.estado,
-        'num_iteraciones_organismo': oe.num_iteraciones_organismo,
         'plazo_legal_dias': oe.plazo_legal_dias,
-        'tramite_id': oe.tramite_id,
+        'condicionados_doc_id': oe.condicionados_doc_id,
     }
 
 
@@ -463,13 +463,18 @@ def _hook_458_analizar_separata(tarea, id_producido):
     if (id_producido is not None
             and tarea.tipo_tarea.codigo == 'ANALIZAR'
             and tarea.tramite.tipo_tramite.codigo == 'CONSULTA_SEPARATA'):
-        org = OrganismoExpediente.query.filter_by(tramite_id=tarea.tramite_id).first()
-        if org:
-            org.estado = 'en_tramitacion'
+        vinculo = TramiteOrganismo.query.filter_by(tramite_id=tarea.tramite_id).first()
+        if vinculo:
+            vinculo.organismo_expediente.estado = 'en_tramitacion'
 
 
 def _hook_459_traslado_organismo(tipo_tramite, fase):
-    """Hook #459: al crear CONSULTA_TRASLADO_ORGANISMO incrementa num_iteraciones si hay exactamente 1 organismo."""
+    """Hook #459: al crear CONSULTA_TRASLADO_ORGANISMO navega al organismo vía tramites_organismos.
+
+    La lógica de incrementar un contador ya no aplica (#456 elimina num_iteraciones_organismo).
+    El conteo de iteraciones se obtiene con COUNT de filas CONSULTA_TRASLADO_ORGANISMO
+    en tramites_organismos (#460).
+    """
     if tipo_tramite.codigo != 'CONSULTA_TRASLADO_ORGANISMO':
         return
     cod_separata = TipoTramite.query.filter_by(codigo='CONSULTA_SEPARATA').first()
@@ -482,11 +487,10 @@ def _hook_459_traslado_organismo(tipo_tramite, fase):
     ids_sep = [t.id for t in tram_separatas]
     if not ids_sep:
         return
-    orgs = OrganismoExpediente.query.filter(
-        OrganismoExpediente.tramite_id.in_(ids_sep)
+    vinculos = TramiteOrganismo.query.filter(
+        TramiteOrganismo.tramite_id.in_(ids_sep)
     ).all()
-    if len(orgs) == 1:
-        orgs[0].num_iteraciones_organismo += 1
+    _ = vinculos  # reservado para #460: COUNT de TRASLADO_ORGANISMO por organismo
 
 
 # ============================================

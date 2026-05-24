@@ -1,6 +1,6 @@
 from datetime import timedelta
 
-from app.models.organismos_expediente import OrganismoExpediente
+from app.models.tramites_organismos import TramiteOrganismo
 
 
 class ContextoNotificacionOrganismo:
@@ -9,6 +9,7 @@ class ContextoNotificacionOrganismo:
 
     Enriquece el contexto base con datos del organismo consultado, la fecha
     de su última respuesta y la fecha límite calculada para la siguiente.
+    Navega al organismo vía tramites_organismos (ADR-011 §1).
 
     Campos adicionales aportados:
     - organismo_nombre          str   Nombre oficial del organismo
@@ -28,9 +29,10 @@ class ContextoNotificacionOrganismo:
         if not self._tarea:
             return {}
 
-        org_exp = (OrganismoExpediente.query
+        vinculo = (TramiteOrganismo.query
                    .filter_by(tramite_id=self._tarea.tramite_id)
                    .first())
+        org_exp = vinculo.organismo_expediente if vinculo else None
 
         if not org_exp:
             return {}
