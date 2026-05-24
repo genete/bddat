@@ -469,28 +469,13 @@ def _hook_458_analizar_separata(tarea, id_producido):
 
 
 def _hook_459_traslado_organismo(tipo_tramite, fase):
-    """Hook #459: al crear CONSULTA_TRASLADO_ORGANISMO navega al organismo vía tramites_organismos.
+    """Hook #459: guard para CONSULTA_TRASLADO_ORGANISMO.
 
-    La lógica de incrementar un contador ya no aplica (#456 elimina num_iteraciones_organismo).
-    El conteo de iteraciones se obtiene con COUNT de filas CONSULTA_TRASLADO_ORGANISMO
-    en tramites_organismos (#460).
+    La vinculación del trámite a su OrganismoExpediente en tramites_organismos
+    se implementará en #471.
     """
     if tipo_tramite.codigo != 'CONSULTA_TRASLADO_ORGANISMO':
         return
-    cod_separata = TipoTramite.query.filter_by(codigo='CONSULTA_SEPARATA').first()
-    if not cod_separata:
-        return
-    tram_separatas = Tramite.query.filter_by(
-        fase_id=fase.id,
-        tipo_tramite_id=cod_separata.id,
-    ).all()
-    ids_sep = [t.id for t in tram_separatas]
-    if not ids_sep:
-        return
-    vinculos = TramiteOrganismo.query.filter(
-        TramiteOrganismo.tramite_id.in_(ids_sep)
-    ).all()
-    _ = vinculos  # reservado para #460: COUNT de TRASLADO_ORGANISMO por organismo
 
 
 # ============================================
