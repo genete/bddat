@@ -45,19 +45,34 @@ Inicialmente se contempló separar `organismos_afectados` y `organismos_consulta
 | `via` | enum: `consulta` / `declaracion_responsable` |
 | `documento_id` | FK `documentos.id` (solo si `via = declaracion_responsable`) |
 | `estado` | Estado del ciclo de vida. Actualización manual por tramitador, con puerta abierta al motor de reglas |
-| `num_iteraciones_organismo` | Contador de trámites `CONSULTA_TRASLADO_ORGANISMO` creados para este organismo. Permite al motor advertir o bloquear si se supera el límite de 1 iteración del bucle de reparos |
-| `tramite_id` | FK `tramites.id` (nullable). Vínculo al trámite `CONSULTA_SEPARATA` creado para este organismo. Necesario para que `ContextoConsultaSeparata` identifique el organismo activo en tramitaciones paralelas |
+| `condicionados_doc_id` | FK `documentos.id` (nullable). Solo no nulo cuando el organismo respondió con `condicionado` y el titular no respondió al TRASLADO_TITULAR en un expediente AAC. Contiene el documento `CONDICIONADO_OFICIO` producido por el tramitador; consumido por el CB de resolución |
 | `plazo_legal_dias` | INTEGER (nullable). Plazo legal aplicable capturado en el momento de crear la separata. 30 días con carácter general; 15 si existe AAP previa y la tramitación es solo AAC sin DUP |
 
 **Sobre `organismo_id`:** la tabla `entidades` centraliza todas las entidades del sistema con roles booleanos. Los organismos consultables tienen `rol_consultado = True`. No existe tabla de organismos separada.
 
 **Sobre `estado`:** se actualiza manualmente por el tramitador al registrar el resultado de la tarea ANALIZAR de cada trámite. El campo está diseñado para que el motor de reglas pueda actualizarlo automáticamente en el futuro sin cambios de modelo.
 
-**Sobre `num_iteraciones_organismo`:** se incrementa cada vez que se crea un trámite `CONSULTA_TRASLADO_ORGANISMO` para este registro. El motor puede leerlo para emitir advertencia (soft) o bloqueo (hard) si supera 1.
-
-**Sobre `tramite_id`:** se rellena al crear el trámite `CONSULTA_SEPARATA` asociado al organismo. La unicidad (UNIQUE constraint) garantiza la correspondencia 1:1 tramite↔organismo. Se usa en `ContextoConsultaSeparata` para navegar hasta el organismo desde la tarea activa.
+**Sobre `condicionados_doc_id`:** ver ADR-011 §2. Solo aplica al cruce `condicionado` de organismo + `sin_respuesta` de titular en AAC.
 
 **Sobre `plazo_legal_dias`:** se captura al crear la separata porque el plazo depende del tipo y combinación de autorizaciones del expediente en ese momento. Almacenarlo evita tener que recalcularlo en cada renderizado de plantilla.
+
+### Tabla `tramites_organismos` (ADR-011)
+
+> **Implementar en #456.**
+
+Tabla de vínculo entre trámites de consulta y su registro de organismo. Sustituye al campo `tramite_id` que existía en `organismos_expediente` (que solo apuntaba al SEPARATA) y permite que TRASLADO_TITULAR y TRASLADO_ORGANISMO también estén enlazados.
+
+| Campo | Tipo | Descripción |
+|---|---|---|
+| `id` | SERIAL PK | — |
+| `tramite_id` | INTEGER UNIQUE FK → `tramites.id` | Cada trámite pertenece a un solo organismo |
+| `organismo_expediente_id` | INTEGER FK → `organismos_expediente.id` | Un organismo tiene N trámites |
+
+El `UNIQUE` en `tramite_id` garantiza 1 trámite → 1 organismo. La dirección inversa no tiene UNIQUE: un organismo puede tener SEPARATA + 0–2 TRASLADOs.
+
+El número de iteraciones de TRASLADO_ORGANISMO —antes en `num_iteraciones_organismo`— es ahora derivable como `COUNT` de filas con tipo `CONSULTA_TRASLADO_ORGANISMO` en esta tabla.
+
+Navegación desde un CB: `TramiteOrganismo.query.filter_by(tramite_id=tramite.id).first().organismo_expediente`.
 
 ### Estados de `organismos_expediente`
 
@@ -128,6 +143,15 @@ La acción "Enviar consultas" lee todos los `organismos_expediente` con `via = c
 
 Estos tres tipos son compartidos entre AAP, AAC y AAP+AAC. Las diferencias de nomenclatura legal y de plazos se resuelven por el contexto del expediente.
 
+### Regla de creación de TRASLADO_TITULAR (ADR-011)
+
+`CONSULTA_TRASLADO_TITULAR` se crea **siempre** que el organismo haya dado cualquier
+respuesta (resultado ≠ `sin_respuesta`). Cuando el resultado del organismo es
+`sin_respuesta` (conformidad por silencio, arts. 127.2, 131.1, 146.1 RD 1955/2000)
+no hay nada que trasladar y no se crea TRASLADO_TITULAR.
+
+Esta regla aplica tanto tras CONSULTA_SEPARATA como tras CONSULTA_TRASLADO_ORGANISMO.
+
 ### Cadena de tareas en los trámites de traslado
 
 Los trámites `CONSULTA_TRASLADO_TITULAR` y `CONSULTA_TRASLADO_ORGANISMO` incluyen la siguiente cadena de tareas:
@@ -155,6 +179,15 @@ Una tarea como ANALIZAR no solo produce un documento sino que su resultado (regi
 | `reparos_titular` | — | — | ✓ |
 
 **Nota:** el organismo puede responder con `condicionado` tanto tras la SEPARATA como tras un TRASLADO_ORGANISMO. El valor `condicionado` en TRASLADO_ORGANISMO indica que el organismo acepta pero con nuevas condiciones técnicas tras el intercambio de reparos.
+
+**Evaluación OK/NOK por resultado (ADR-011):**
+
+| Trámite | Resultado | Evaluación |
+|---|---|---|
+| SEPARATA / TRASLADO_ORGANISMO | `conformidad`, `condicionado`, `sin_respuesta` | **OK** |
+| SEPARATA / TRASLADO_ORGANISMO | `oposicion`, `reparos_organismo` | **NOK** |
+| TRASLADO_TITULAR | `conformidad`, `reparos_titular` | **OK** |
+| TRASLADO_TITULAR | `sin_respuesta` | **NOK** (ver §7 para casos especiales) |
 
 ---
 
@@ -254,9 +287,41 @@ Siempre es una única ronda de consultas por organismo independientemente de cu�
 
 ## 7. Motor de reglas: cierre de fases
 
-### Fase de consultas
-El motor comprueba el **estado de `organismos_expediente`**, no los trámites individuales:
-- La fase de consultas no puede cerrarse si algún `organismo_expediente` no está en estado terminal (`cerrado_favorable`, `cerrado_con_condicionados`, `exonerado`, o `audiencia_previa` resuelta).
+### Fase de consultas (ADR-011)
+
+La fase CONSULTAS cierra cuando el tramitador emite el **certificado de consultas**
+(`CERT_FIN_IP_CONSULTAS`) con el campo `favorable = True`. El motor valida que ese
+certificado sea emitible comprobando que **todos** los organismos del expediente
+están completos.
+
+#### Completitud de un organismo (`via = consulta`)
+
+Un organismo está completo cuando se cumple uno de los cuatro casos siguientes.
+La evaluación usa los resultados ANALIZAR registrados en los trámites vinculados
+en `tramites_organismos`.
+
+| Caso | Condición | Cierre |
+|---|---|---|
+| **A** | Trámite de organismo = `sin_respuesta` (conformidad por silencio) | Favorable. No se crea TRASLADO_TITULAR |
+| **B** | Trámite de organismo OK ≠ `sin_respuesta` + TRASLADO_TITULAR OK (`conformidad` o `reparos_titular`) | Favorable |
+| **C** | Trámite de organismo NOK → trámite de organismo OK + TRASLADO_TITULAR `conformidad` (máx. 1 iteración) | Favorable |
+| **D** | Trámite de organismo `condicionado` + TRASLADO_TITULAR `sin_respuesta` en AAC + `condicionados_doc_id` poblado | Favorable con condicionados de oficio |
+
+Fuera de alcance (#456): TRASLADO_TITULAR `sin_respuesta` con organismo NOK
+(audiencia previa a archivo en AAP) se gestiona en la fase RESOLUCION.
+
+Los organismos con `via = declaracion_responsable` (estado `exonerado`) no
+participan en la evaluación de trámites.
+
+#### Dos niveles de verificación
+
+| Nivel | Qué comprueba |
+|---|---|
+| **Estructural** | Todos los trámites vinculados al organismo en `tramites_organismos` están FINALIZADOS |
+| **Semántico** | El resultado del último ANALIZAR del organismo corresponde a un caso de completitud A–D |
+
+El nivel estructural garantiza que no hay trámites abiertos; el semántico que el
+resultado es favorable. Ambos deben cumplirse para que el certificado sea emitible.
 
 ### Fase de análisis técnico
 El motor comprueba sobre los trámites de la fase:
@@ -271,7 +336,10 @@ El motor comprueba sobre los trámites de la fase:
 - **Renombrar tarea ANALISIS → ANALIZAR:** El JSON `ESTRUCTURA_FTT.json` ya usa ANALIZAR (v5.4). Pendiente migrar en base de datos: `UPDATE public.tipos_tareas SET codigo = 'ANALIZAR' WHERE codigo = 'ANALISIS'` (migración manual) y actualizar todas las referencias al código en el motor de reglas y en el código de la aplicación.
 - ~~**Implementación de `organismos_expediente`:** Tabla nueva, migración manual.~~ **HECHO** — #391: modelo + migración + `ContextoConsultaSeparata`.
 - **Redefinición de `REQUERIMIENTO_DE_MEJORA`:** El patrón actualizado es C+A (`ELABORAR → NOTIFICAR → ESPERAR_PLAZO → ANALIZAR`); la respuesta del titular queda en `ESPERAR_PLAZO` como documento producido (ADR-004).
-- **Definición de tipos de trámite** `CONSULTA_SEPARATA`, `CONSULTA_TRASLADO_TITULAR`, `CONSULTA_TRASLADO_ORGANISMO` en el catálogo de tipos.
-- **Cadena de tareas** dentro de los trámites de traslado: `ELABORAR → NOTIFICAR → ESPERAR_PLAZO → ANALIZAR` (patrón C+A).
-- **Acción en bloque** de creación de separatas desde `organismos_expediente`.
+- ~~**Definición de tipos de trámite** `CONSULTA_SEPARATA`, `CONSULTA_TRASLADO_TITULAR`, `CONSULTA_TRASLADO_ORGANISMO` en el catálogo de tipos.~~ **HECHO** — implementados en BD (ids 8, 9, 10).
+- **Cadena de tareas** dentro de los trámites de traslado: `ELABORAR → NOTIFICAR → ESPERAR_PLAZO → ANALIZAR` (patrón C+A). Pendiente seed en `tramites_tareas`.
+- **Acción en bloque** de creación de separatas desde `organismos_expediente` — issue #462.
 - ~~**Mover los diagramas PNG** de `docs_prueba/mockups/` a una ubicación permanente dentro de `docs/`.~~ **HECHO** — SVGs en `docs/diagramas_flujo/`.
+- **Tabla `tramites_organismos` + `condicionados_doc_id` + tipo `CONDICIONADO_OFICIO`:** implementar en #456 (ADR-011).
+- **CBs de traslado** (`ContextoConsultaTrasladoTitular`, `ContextoConsultaTrasladoOrganismo`): implementar en #457, tras #456.
+- **Certificado de consultas:** el cierre favorable de la fase requiere `CERT_FIN_IP_CONSULTAS` con `favorable=True` validado por el motor — issue pendiente de crear (alcance a definir junto con #462).
