@@ -148,6 +148,8 @@ que son accedidos directamente por `ContextoBaseExpediente`.
 | `ContextoAnalisisAlegaciones` | `analisis_alegaciones.py` | `ANALISIS_ALEGACIONES` | Implementado | #394 |
 | `ContextoNotificacionOrganismo` | `notificacion_organismo.py` | `CONSULTA_TRASLADO_ORGANISMO` | Implementado | #402 |
 | `ContextoResolucion` | `resolucion.py` | `ELABORACION` (fase `RESOLUCION`) | Implementado | #403 |
+| `ContextoConsultaTrasladoTitular` | `contexto_consulta_traslado_titular.py` | `CONSULTA_TRASLADO_TITULAR` | Implementado | #457 |
+| `ContextoConsultaTrasladoOrganismo` | `contexto_consulta_traslado_organismo.py` | `CONSULTA_TRASLADO_ORGANISMO` | Implementado | #457 |
 
 ---
 
