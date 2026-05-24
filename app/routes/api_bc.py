@@ -23,6 +23,8 @@ from app.models.tipos_fases import TipoFase
 from app.models.tipos_tramites import TipoTramite
 from app.models.tipos_tareas import TipoTarea
 from app.models.documentos_tarea import DocumentoTarea
+from app.models.entidad import Entidad
+from app.models.organismos_expediente import OrganismoExpediente, ESTADOS_ORGANISMO, VIAS_ORGANISMO
 from app.utils.permisos import verificar_acceso_expediente
 from app.services.assembler import evaluar_multi
 from app.services.invariantes_esftt import check_invariante, _check_cierre_fase
@@ -139,6 +141,7 @@ def crear_tramite(fase_id):
 
     tramite = Tramite(fase_id=fase_id, tipo_tramite_id=tipo_tramite_id)
     db.session.add(tramite)
+    _hook_459_traslado_organismo(tipo_tramite, fase)
     db.session.commit()
 
     return jsonify({'ok': True, 'id': tramite.id, 'advertencia': _advertencia(res_eval)})
@@ -283,6 +286,7 @@ def editar_tarea(tarea_id):
                 DocumentoTarea(documento_id=id_producido, rol='PRODUCIDO'))
 
         tarea.notas = request.form.get('notas') or None
+        _hook_458_analizar_separata(tarea, id_producido)
         db.session.commit()
 
         return jsonify({'ok': True})
@@ -433,4 +437,157 @@ def finalizar_tarea(tarea_id):
         return _bloqueo(res_inv)
 
     return jsonify({'ok': True})
+
+
+# ============================================
+# HELPERS CRUD organismos (testables sin Flask)
+# ============================================
+
+def _serializar_org_exp(oe):
+    """Serializa OrganismoExpediente a dict para la API."""
+    return {
+        'id': oe.id,
+        'organismo_id': oe.organismo_id,
+        'nombre_completo': oe.organismo.nombre_completo if oe.organismo else None,
+        'nif': oe.organismo.nif if oe.organismo else None,
+        'via': oe.via,
+        'estado': oe.estado,
+        'num_iteraciones_organismo': oe.num_iteraciones_organismo,
+        'plazo_legal_dias': oe.plazo_legal_dias,
+        'tramite_id': oe.tramite_id,
+    }
+
+
+def _hook_458_analizar_separata(tarea, id_producido):
+    """Hook #458: al producir diagnóstico en CONSULTA_SEPARATA pasa el organismo a en_tramitacion."""
+    if (id_producido is not None
+            and tarea.tipo_tarea.codigo == 'ANALIZAR'
+            and tarea.tramite.tipo_tramite.codigo == 'CONSULTA_SEPARATA'):
+        org = OrganismoExpediente.query.filter_by(tramite_id=tarea.tramite_id).first()
+        if org:
+            org.estado = 'en_tramitacion'
+
+
+def _hook_459_traslado_organismo(tipo_tramite, fase):
+    """Hook #459: al crear CONSULTA_TRASLADO_ORGANISMO incrementa num_iteraciones si hay exactamente 1 organismo."""
+    if tipo_tramite.codigo != 'CONSULTA_TRASLADO_ORGANISMO':
+        return
+    cod_separata = TipoTramite.query.filter_by(codigo='CONSULTA_SEPARATA').first()
+    if not cod_separata:
+        return
+    tram_separatas = Tramite.query.filter_by(
+        fase_id=fase.id,
+        tipo_tramite_id=cod_separata.id,
+    ).all()
+    ids_sep = [t.id for t in tram_separatas]
+    if not ids_sep:
+        return
+    orgs = OrganismoExpediente.query.filter(
+        OrganismoExpediente.tramite_id.in_(ids_sep)
+    ).all()
+    if len(orgs) == 1:
+        orgs[0].num_iteraciones_organismo += 1
+
+
+# ============================================
+# ENDPOINTS — CRUD organismos_expediente (#247)
+# ============================================
+
+@bp.route('/expediente/<int:exp_id>/organismos', methods=['GET'])
+@login_required
+def listar_organismos(exp_id):
+    expediente = Expediente.query.get_or_404(exp_id)
+    resultado = verificar_acceso_expediente(expediente, 'editar')
+    if resultado:
+        return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
+
+    oes = OrganismoExpediente.query.filter_by(expediente_id=exp_id).all()
+    return jsonify({'ok': True, 'organismos': [_serializar_org_exp(oe) for oe in oes]})
+
+
+@bp.route('/expediente/<int:exp_id>/organismos', methods=['POST'])
+@login_required
+def crear_organismo(exp_id):
+    expediente = Expediente.query.get_or_404(exp_id)
+    resultado = verificar_acceso_expediente(expediente, 'editar')
+    if resultado:
+        return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
+
+    organismo_id = request.form.get('organismo_id', type=int)
+    via = request.form.get('via')
+    documento_id = request.form.get('documento_id', type=int)
+    plazo_legal_dias = request.form.get('plazo_legal_dias', type=int)
+
+    if not organismo_id:
+        return jsonify({'ok': False, 'error': 'organismo_id es obligatorio'}), 400
+
+    entidad = Entidad.query.get(organismo_id)
+    if not entidad or not entidad.rol_consultado:
+        return jsonify({'ok': False, 'error': 'El organismo no existe o no tiene rol consultado'}), 422
+
+    if via not in VIAS_ORGANISMO:
+        return jsonify({'ok': False, 'error': f'via debe ser uno de: {", ".join(VIAS_ORGANISMO)}'}), 400
+
+    duplicado = OrganismoExpediente.query.filter_by(
+        expediente_id=exp_id, organismo_id=organismo_id
+    ).first()
+    if duplicado:
+        return jsonify({'ok': False, 'error': 'Este organismo ya está añadido al expediente'}), 409
+
+    try:
+        oe = OrganismoExpediente(
+            expediente_id=exp_id,
+            organismo_id=organismo_id,
+            via=via,
+            documento_id=documento_id,
+            plazo_legal_dias=plazo_legal_dias,
+        )
+        db.session.add(oe)
+        db.session.commit()
+        return jsonify({'ok': True, 'id': oe.id}), 201
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@bp.route('/expediente/<int:exp_id>/organismos/<int:oid>', methods=['PATCH'])
+@login_required
+def editar_organismo(exp_id, oid):
+    expediente = Expediente.query.get_or_404(exp_id)
+    resultado = verificar_acceso_expediente(expediente, 'editar')
+    if resultado:
+        return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
+
+    oe = OrganismoExpediente.query.filter_by(id=oid, expediente_id=exp_id).first_or_404()
+
+    estado = request.form.get('estado')
+    if estado not in ESTADOS_ORGANISMO:
+        return jsonify({'ok': False, 'error': f'estado debe ser uno de: {", ".join(ESTADOS_ORGANISMO)}'}), 422
+
+    try:
+        oe.estado = estado
+        db.session.commit()
+        return jsonify({'ok': True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@bp.route('/expediente/<int:exp_id>/organismos/<int:oid>', methods=['DELETE'])
+@login_required
+def borrar_organismo(exp_id, oid):
+    expediente = Expediente.query.get_or_404(exp_id)
+    resultado = verificar_acceso_expediente(expediente, 'editar')
+    if resultado:
+        return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
+
+    oe = OrganismoExpediente.query.filter_by(id=oid, expediente_id=exp_id).first_or_404()
+
+    try:
+        db.session.delete(oe)
+        db.session.commit()
+        return jsonify({'ok': True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'ok': False, 'error': str(e)}), 500
 
