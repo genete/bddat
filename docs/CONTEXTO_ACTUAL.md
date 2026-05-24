@@ -6,13 +6,17 @@
 
 ---
 
-**Último cerrado:** #283 — completar la capa ES de ESFTT: `ESTRUCTURA_ESF.md` v2.2 + `ESTRUCTURA_ESF.json` v2.2 (mapeo tipo_solicitud × tipo_expediente → secuencia de fases con leyenda 4 símbolos ✅⚠️🔀🚫, principio S-dominante); CONSULTAS marcado como 🔀 en todos los procedimientos; DESISTIMIENTO/RENUNCIA/INTERESADO incorporan `ANALISIS_SOLICITUD` para activar `CERT_FIN_INSTRUCCION`; renumeración RD 88/2026 (art. 136→137, 137→138) aplicada en FTT.json/md, NORMATIVA_MAPA y DISEÑO_FECHAS_PLAZOS.
-
-**Hallazgo posterior — auditoría exhaustiva de migraciones (22 mayo 2026):** 1 bug crítico (#448, seed plazos RESOLUCION nunca insertó), 1 deuda menor (#449, GRANT olvidado en `organismos_expediente`), 2 seeds pendientes (#450 CIERRE, #451 catálogo normas). Informe en `docs_prueba/temp/AUDITORIA_MIGRACIONES_2026-05-22.md`. **Acción inmediata aplicable antes de cualquier issue:** `flask db upgrade` para llevar la BD local de `403_resolucion` a la HEAD `405_catalogo_requerimientos` (aplica las migraciones de #404 y #405 ya committed).
+**Último cerrado:** #448 — HOTFIX seed `catalogo_plazos` RESOLUCION: rediseño con `condiciones_plazo` por `tipo_solicitud` + nueva migración `406_plazos_resolucion`; #449 — fix `GRANT SELECT` olvidado en `organismos_expediente` (ambos de la auditoría de migraciones 22/05/2026).
 
 **Actuales:** —
 
-**Próximo:** a confirmar — propuesta: **#449** (fix GRANT, ~5 min, deuda menor independiente) como warm-up antes de **#448** (HOTFIX crítico, requiere rediseño del seed de plazos).
+**Próximo:** **#454** — auditoría migraciones 345 vs 370 en `tramites_tareas` (prerequisito crítico antes de implementar #247).
+
+**Plan de trabajo CONSULTAS (sesión 2026-05-24):** análisis completo de #247 en `docs/historial/ANALISIS_CONSULTAS_ORGANISMOS_2026-05-24.md`. Orden acordado:
+1. **#454** — auditoría 345 vs 370: verificar duplicados en `tramites_tareas` antes de tocar cualquier trámite CONSULTA_*.
+2. **#247** — núcleo: API CRUD `organismos_expediente` + #458 (actualizar estado en ANALIZAR) + #459 (incrementar iteraciones en traslado).
+3. **#461** — endpoint `GET /api/entidades/consultables`: desbloquea la UI #396.
+4. Resto en paralelo o por prioridad de negocio: #456 (diseño vinculación traslado→organismo) → #457 (CB traslados); #460 (variables motor CONSULTAS, tras #458); #462 (acción en bloque «Enviar consultas»); #463 (seed plazos CONSULTAS); #464 (seed demo organismos, M4). Independiente: #455 (variables motor ANALISIS_SOLICITUD, tras #442).
 
 ---
 
@@ -47,29 +51,40 @@
 
 15. ~~**#417** — limpiar referencias a tareas obsoletas v6.0 en `seed_demo.py` y `GUIA_GENERAL.md` (deuda técnica pequeña; independiente)~~ ✓
 16. ~~**#283** — capa ES de ESFTT: `ESTRUCTURA_ESF` (.md v2.2 + .json) + renumeración RD 88/2026~~ ✓
-17. **#449** — fix `GRANT SELECT` olvidado en `organismos_expediente` (deuda menor M2, ~5 min, totalmente independiente) — *de la auditoría 22/05*
-18. **#448** — HOTFIX seed `catalogo_plazos` RESOLUCION (crítico, bloqueante para motor de plazos): rediseño con `condiciones_plazo` por `tipo_solicitud` + nueva migración + sincronizar `DISEÑO_FECHAS_PLAZOS.md §5.2` — *de la auditoría 22/05*
-19. **#247** — cerrar las fases CONSULTAS y ANALISIS_TECNICO con reglas del motor (lo ya implementado en #391 cubre el modelo; queda la lógica de cierre); reescribir cuerpo antes de planificar
-20. **#451** — ampliar catálogo `normas` (LSE, LPACAP, DL 2/2018, DL 26/2021, RD 1183/2020, RD 244/2019, RD 88/2026) — prerrequisito de #323 — *de la auditoría 22/05*
-21. **#323** — modo global del motor + tabla `configuracion_sistema`
-22. **#324** — mecanismo de escape con bitácora (tras #323; reescribir cuerpo: enum CREAR|BORRAR, no INICIAR|FINALIZAR)
-23. **#450** — seed procedimiento CIERRE: fase `CONSULTA_OPERADOR_SISTEMA` + trámites `SOLICITUD_INFORME_OPERADOR` / `RECEPCION_INFORME_OPERADOR` + plazo (art. 137 RD 1955/2000 mod. RD 88/2026) — *de la auditoría 22/05*
-24. **#416** — motor de plazos para TABLON_AYUNTAMIENTOS: fecha administrativa y cierre retroactivo de ESPERAR_PLAZO (edge case del servicio de plazos)
+17. ~~**#449** — fix `GRANT SELECT` olvidado en `organismos_expediente` (deuda menor M2, ~5 min, totalmente independiente) — *de la auditoría 22/05*~~ ✓
+18. ~~**#448** — HOTFIX seed `catalogo_plazos` RESOLUCION (crítico, bloqueante para motor de plazos): rediseño con `condiciones_plazo` por `tipo_solicitud` + nueva migración + sincronizar `DISEÑO_FECHAS_PLAZOS.md §5.2` — *de la auditoría 22/05*~~ ✓
+19. **#454** — auditoría migraciones 345 vs 370 en `tramites_tareas` (prerequisito crítico de #247)
+20. **#247** — API CRUD `organismos_expediente` + automatismos #458 (estado en ANALIZAR) + #459 (iteraciones en traslado)
+21. **#461** — endpoint `GET /api/entidades/consultables` (desbloquea #396)
+22. **#456** — diseño vinculación trámite-traslado → `organismos_expediente` → **#457** CB traslados (tras #456)
+23. **#460** — variables motor cierre CONSULTAS: `organismos_todos_terminados`, `organismo_supera_iteraciones` (tras #458)
+24. **#462** — acción en bloque «Enviar consultas» (tras #247)
+25. **#463** — seed `catalogo_plazos` para CONSULTAS (independiente, M3)
+26. **#455** — variables motor cierre `ANALISIS_SOLICITUD` (independiente de CONSULTAS; tras #442)
+27. **#451** — ampliar catálogo `normas` (LSE, LPACAP, DL 2/2018, DL 26/2021, RD 1183/2020, RD 244/2019, RD 88/2026) — prerrequisito de #323 — *de la auditoría 22/05*
+28. **#323** — modo global del motor + tabla `configuracion_sistema`
+29. **#324** — mecanismo de escape con bitácora (tras #323; reescribir cuerpo: enum CREAR|BORRAR, no INICIAR|FINALIZAR)
+30. **#450** — seed procedimiento CIERRE: fase `CONSULTA_OPERADOR_SISTEMA` + trámites `SOLICITUD_INFORME_OPERADOR` / `RECEPCION_INFORME_OPERADOR` + plazo (art. 137 RD 1955/2000 mod. RD 88/2026) — *de la auditoría 22/05*
+31. **#416** — motor de plazos para TABLON_AYUNTAMIENTOS: fecha administrativa y cierre retroactivo de ESPERAR_PLAZO (edge case del servicio de plazos)
 
 ### Bloque 5 — Análisis heurístico de PDF
 
-25. **#304** — script de detección del tipo de solicitud
-26. **#305** — script de detección del tipo de expediente
-27. **#306** — helper de cálculo de tasa y extracción de presupuesto (tras #304)
+32. **#304** — script de detección del tipo de solicitud
+33. **#305** — script de detección del tipo de expediente
+34. **#306** — helper de cálculo de tasa y extracción de presupuesto (tras #304)
 
 ### Bloque 6 — Issues con rediseño previo necesario
 
-28. **#410** — compatibilidad de tipos de solicitud como reglas del motor
-29. **#192** — requisitos documentales por procedimiento (rediseñar: anclar a CREAR fase siguiente, sin tabla `procedimientos`)
-30. **#174** — permisos blandos con traza en bitácora (rediseñar: permiso blando + bitácora, no permiso duro por expediente)
+35. **#410** — compatibilidad de tipos de solicitud como reglas del motor
+36. **#192** — requisitos documentales por procedimiento (rediseñar: anclar a CREAR fase siguiente, sin tabla `procedimientos`)
+37. **#174** — permisos blandos con traza en bitácora (rediseñar: permiso blando + bitácora, no permiso duro por expediente)
 
 ### Backlog M3 sin posición en la ruta
 
 Troceo de #248 fuera del recorrido priorizado: **#407** (campo `siglas_escritos`),
 **#408** (checklist documental — posible post-producción), **#409** (regla de tasas;
 tras #408).
+
+### Backlog M4 — Pre-producción
+
+- **#464** — ampliar `seed_demo` con registros reales en `organismos_expediente` (tras #247).
