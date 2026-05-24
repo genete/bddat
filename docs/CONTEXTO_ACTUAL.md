@@ -6,11 +6,11 @@
 
 ---
 
-**Último cerrado:** #448 — HOTFIX seed `catalogo_plazos` RESOLUCION: rediseño con `condiciones_plazo` por `tipo_solicitud` + nueva migración `406_plazos_resolucion`; #449 — fix `GRANT SELECT` olvidado en `organismos_expediente` (ambos de la auditoría de migraciones 22/05/2026).
+**Último cerrado:** #454 — auditoría migraciones 345 vs 370 en `tramites_tareas`: conflicto inexistente — `370_actualizar_tipos_tareas` hace `DELETE FROM tramites_tareas` antes de re-seedar, BD limpia con patrón v6.0 correcto; comentario añadido en migración.
 
 **Actuales:** —
 
-**Próximo:** **#454** — auditoría migraciones 345 vs 370 en `tramites_tareas` (prerequisito crítico antes de implementar #247).
+**Próximo:** **#247** — API CRUD `organismos_expediente` + automatismos #458 (estado en ANALIZAR) + #459 (iteraciones en traslado).
 
 **Plan de trabajo CONSULTAS (sesión 2026-05-24):** análisis completo de #247 en `docs/historial/ANALISIS_CONSULTAS_ORGANISMOS_2026-05-24.md`. Orden acordado:
 1. **#454** — auditoría 345 vs 370: verificar duplicados en `tramites_tareas` antes de tocar cualquier trámite CONSULTA_*.
@@ -53,7 +53,7 @@
 16. ~~**#283** — capa ES de ESFTT: `ESTRUCTURA_ESF` (.md v2.2 + .json) + renumeración RD 88/2026~~ ✓
 17. ~~**#449** — fix `GRANT SELECT` olvidado en `organismos_expediente` (deuda menor M2, ~5 min, totalmente independiente) — *de la auditoría 22/05*~~ ✓
 18. ~~**#448** — HOTFIX seed `catalogo_plazos` RESOLUCION (crítico, bloqueante para motor de plazos): rediseño con `condiciones_plazo` por `tipo_solicitud` + nueva migración + sincronizar `DISEÑO_FECHAS_PLAZOS.md §5.2` — *de la auditoría 22/05*~~ ✓
-19. **#454** — auditoría migraciones 345 vs 370 en `tramites_tareas` (prerequisito crítico de #247)
+19. ~~**#454** — auditoría migraciones 345 vs 370 en `tramites_tareas` (prerequisito crítico de #247)~~ ✓
 20. **#247** — API CRUD `organismos_expediente` + automatismos #458 (estado en ANALIZAR) + #459 (iteraciones en traslado)
 21. **#461** — endpoint `GET /api/entidades/consultables` (desbloquea #396)
 22. **#456** — diseño vinculación trámite-traslado → `organismos_expediente` → **#457** CB traslados (tras #456)

@@ -23,7 +23,9 @@ depends_on = None
 def upgrade():
     conn = op.get_bind()
 
-    # 1. Eliminar catálogo de secuencias (FK tramites_tareas → tipos_tareas)
+    # 1. Vaciar catálogo de secuencias antes de borrar los tipos obsoletos.
+    #    Esto supersede intencionalmente el seed de 345_seed_tramites_tareas;
+    #    370_seed_tramites_tareas re-inserta el patrón v6.0 desde cero.
     conn.execute(sa.text("DELETE FROM public.tramites_tareas"))
 
     # 2. Eliminar instancias de tareas con tipos obsoletos.
