@@ -6,18 +6,18 @@
 
 ---
 
-**Último cerrado:** #460 (PR #472) — variables motor CONSULTAS `organismos_todos_terminados` y `organismo_supera_iteraciones`; migración seed `catalogo_variables` + regla ADVERTIR al crear segundo `CONSULTA_TRASLADO_ORGANISMO`; limpieza stub `_hook_459`; 10 tests unitarios.
+**Último cerrado:** #462 (PR #473) — endpoint `POST /api/bc/fase/<fase_id>/consultas/enviar`; crea `CONSULTA_SEPARATA` + `TramiteOrganismo` por cada organismo pendiente; helper `_calcular_plazo_consulta` (30 días general / 15 si AAC pura + AAP previa favorable, art. 131.1 párr. 2 RD 1955/2000); 11 tests unitarios.
 
 **Actuales:** —
 
-**Próximo:** **#462** — acción en bloque «Enviar consultas» (tras #247).
+**Próximo:** **#463** — seed `catalogo_plazos` para CONSULTAS (independiente, M3).
 
 **Plan de trabajo CONSULTAS (sesión 2026-05-24):** análisis completo de #247 en `docs/historial/ANALISIS_CONSULTAS_ORGANISMOS_2026-05-24.md`. Orden acordado:
 1. ~~**#454** — auditoría 345 vs 370: verificar duplicados en `tramites_tareas` antes de tocar cualquier trámite CONSULTA_*.~~ ✓
 2. ~~**#247** — núcleo: API CRUD `organismos_expediente` + #458 + #459 en un único PR (decisión sesión 2026-05-24: #458 y #459 absorbidos, no PRs propios).~~ ✓
 3. ~~**#461** — endpoint `GET /api/entidades/consultables`: desbloquea la UI #396.~~ ✓
 4. ~~**#456** — `tramites_organismos` + ADR-011.~~ ✓
-5. ~~**#457** — CB traslados (titular y organismo) tras #456.~~ ✓ ~~**#460** (variables motor CONSULTAS, tras #458)~~ ✓ Resto: #462 (acción en bloque «Enviar consultas»); #463 (seed plazos CONSULTAS); #464 (seed demo organismos, M4). Independiente: #455 (variables motor ANALISIS_SOLICITUD, tras #442).
+5. ~~**#457** — CB traslados (titular y organismo) tras #456.~~ ✓ ~~**#460** (variables motor CONSULTAS, tras #458)~~ ✓ ~~**#462** (acción en bloque «Enviar consultas»)~~ ✓ Resto: #463 (seed plazos CONSULTAS); #464 (seed demo organismos, M4). Independiente: #455 (variables motor ANALISIS_SOLICITUD, tras #442).
 
 ---
 
@@ -59,7 +59,7 @@
 21. ~~**#461** — endpoint `GET /api/entidades/consultables` (desbloquea #396)~~ ✓
 22. ~~**#456** — `tramites_organismos` + `condicionados_doc_id` + `CONDICIONADO_OFICIO` + criterios completitud CONSULTAS (ADR-011)~~ ✓ → ~~**#457** CB traslados (tras #456)~~ ✓
 23. ~~**#460** — variables motor cierre CONSULTAS: `organismos_todos_terminados`, `organismo_supera_iteraciones` (tras #458)~~ ✓
-24. **#462** — acción en bloque «Enviar consultas» (tras #247)
+24. ~~**#462** — acción en bloque «Enviar consultas» (tras #247)~~ ✓
 25. **#463** — seed `catalogo_plazos` para CONSULTAS (independiente, M3)
 26. **#455** — variables motor cierre `ANALISIS_SOLICITUD` (independiente de CONSULTAS; tras #442)
 27. **#451** — ampliar catálogo `normas` (LSE, LPACAP, DL 2/2018, DL 26/2021, RD 1183/2020, RD 244/2019, RD 88/2026) — prerrequisito de #323 — *de la auditoría 22/05*
