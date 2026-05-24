@@ -20,16 +20,22 @@ def _organismo(nombre='Red Eléctrica de España', nif='A78003662'):
     return org
 
 
-def _org_exp(organismo=None, plazo_legal_dias=30, estado='pendiente', tramite_id=1):
+def _org_exp(organismo=None, plazo_legal_dias=30, estado='pendiente'):
     """Stub de OrganismoExpediente con as_contexto_cb() delegando al método real."""
     from app.models.organismos_expediente import OrganismoExpediente
     oe = MagicMock()
     oe.organismo = organismo or _organismo()
     oe.plazo_legal_dias = plazo_legal_dias
     oe.estado = estado
-    oe.tramite_id = tramite_id
     oe.as_contexto_cb = lambda: OrganismoExpediente.as_contexto_cb(oe)
     return oe
+
+
+def _vinculo_stub(oe):
+    """Stub de TramiteOrganismo apuntando a un OrganismoExpediente."""
+    v = MagicMock()
+    v.organismo_expediente = oe
+    return v
 
 
 def _tarea_stub(codigo, doc_producido=None, doc_usado=None, tramite_id=1):
@@ -113,7 +119,7 @@ class TestContextoConsultaSeparata:
         from app.services.context_builders.consulta_separata import ContextoConsultaSeparata
         tarea = _tarea_stub('ELABORAR', tramite_id=99)
         cb = ContextoConsultaSeparata(MagicMock(), MagicMock(), tarea=tarea)
-        with patch('app.services.context_builders.consulta_separata.OrganismoExpediente') as mock_cls:
+        with patch('app.services.context_builders.consulta_separata.TramiteOrganismo') as mock_cls:
             mock_cls.query.filter_by.return_value.first.return_value = None
             result = cb.get_contexto()
         assert result == {}
@@ -125,8 +131,8 @@ class TestContextoConsultaSeparata:
 
         oe = _org_exp(estado='pendiente')
         cb = ContextoConsultaSeparata(MagicMock(), MagicMock(), tarea=tarea_elab)
-        with patch('app.services.context_builders.consulta_separata.OrganismoExpediente') as mock_cls:
-            mock_cls.query.filter_by.return_value.first.return_value = oe
+        with patch('app.services.context_builders.consulta_separata.TramiteOrganismo') as mock_cls:
+            mock_cls.query.filter_by.return_value.first.return_value = _vinculo_stub(oe)
             ctx = cb.get_contexto()
 
         assert ctx['organismo_fecha_envio'] is None
@@ -142,8 +148,8 @@ class TestContextoConsultaSeparata:
 
         oe = _org_exp(estado='separata_enviada')
         cb = ContextoConsultaSeparata(MagicMock(), MagicMock(), tarea=tarea_elab)
-        with patch('app.services.context_builders.consulta_separata.OrganismoExpediente') as mock_cls:
-            mock_cls.query.filter_by.return_value.first.return_value = oe
+        with patch('app.services.context_builders.consulta_separata.TramiteOrganismo') as mock_cls:
+            mock_cls.query.filter_by.return_value.first.return_value = _vinculo_stub(oe)
             ctx = cb.get_contexto()
 
         assert ctx['organismo_fecha_envio'] == '15/05/2026'
@@ -160,8 +166,8 @@ class TestContextoConsultaSeparata:
 
         oe = _org_exp(estado='cerrado_con_condicionados', plazo_legal_dias=30)
         cb = ContextoConsultaSeparata(MagicMock(), MagicMock(), tarea=tarea_elab)
-        with patch('app.services.context_builders.consulta_separata.OrganismoExpediente') as mock_cls:
-            mock_cls.query.filter_by.return_value.first.return_value = oe
+        with patch('app.services.context_builders.consulta_separata.TramiteOrganismo') as mock_cls:
+            mock_cls.query.filter_by.return_value.first.return_value = _vinculo_stub(oe)
             ctx = cb.get_contexto()
 
         assert ctx['organismo_fecha_envio'] == '15/05/2026'
@@ -177,8 +183,8 @@ class TestContextoConsultaSeparata:
 
         oe = _org_exp()
         cb = ContextoConsultaSeparata(MagicMock(), MagicMock(), tarea=tarea_elab)
-        with patch('app.services.context_builders.consulta_separata.OrganismoExpediente') as mock_cls:
-            mock_cls.query.filter_by.return_value.first.return_value = oe
+        with patch('app.services.context_builders.consulta_separata.TramiteOrganismo') as mock_cls:
+            mock_cls.query.filter_by.return_value.first.return_value = _vinculo_stub(oe)
             ctx = cb.get_contexto()
 
         assert ctx['organismo_fecha_envio'] is None

@@ -18,16 +18,22 @@ def _organismo(nombre='Confederación Hidrográfica del Guadalquivir', nif='Q415
     return org
 
 
-def _org_exp(organismo=None, plazo_legal_dias=30, estado='en_tramitacion', tramite_id=1):
+def _org_exp(organismo=None, plazo_legal_dias=30, estado='en_tramitacion'):
     """Stub de OrganismoExpediente con as_contexto_cb() delegando al método real."""
     from app.models.organismos_expediente import OrganismoExpediente
     oe = MagicMock()
     oe.organismo = organismo or _organismo()
     oe.plazo_legal_dias = plazo_legal_dias
     oe.estado = estado
-    oe.tramite_id = tramite_id
     oe.as_contexto_cb = lambda: OrganismoExpediente.as_contexto_cb(oe)
     return oe
+
+
+def _vinculo_stub(oe):
+    """Stub de TramiteOrganismo apuntando a un OrganismoExpediente."""
+    v = MagicMock()
+    v.organismo_expediente = oe
+    return v
 
 
 def _tarea_stub(codigo, doc_usado=None, tramite_id=1):
@@ -69,7 +75,7 @@ class TestContextoNotificacionOrganismo:
     def test_sin_organismo_expediente_devuelve_vacio(self):
         tarea = _tarea_stub('ELABORAR', tramite_id=99)
         cb = _cb(tarea)
-        with patch('app.services.context_builders.contexto_notificacion_organismo.OrganismoExpediente') as mock_cls:
+        with patch('app.services.context_builders.contexto_notificacion_organismo.TramiteOrganismo') as mock_cls:
             mock_cls.query.filter_by.return_value.first.return_value = None
             result = cb.get_contexto()
         assert result == {}
@@ -80,8 +86,8 @@ class TestContextoNotificacionOrganismo:
 
         oe = _org_exp(estado='en_tramitacion', plazo_legal_dias=30)
         cb = _cb(tarea_elab)
-        with patch('app.services.context_builders.contexto_notificacion_organismo.OrganismoExpediente') as mock_cls:
-            mock_cls.query.filter_by.return_value.first.return_value = oe
+        with patch('app.services.context_builders.contexto_notificacion_organismo.TramiteOrganismo') as mock_cls:
+            mock_cls.query.filter_by.return_value.first.return_value = _vinculo_stub(oe)
             ctx = cb.get_contexto()
 
         assert ctx['organismo_fecha_respuesta'] is None
@@ -96,8 +102,8 @@ class TestContextoNotificacionOrganismo:
 
         oe = _org_exp(estado='cerrado_con_condicionados', plazo_legal_dias=30)
         cb = _cb(tarea_elab)
-        with patch('app.services.context_builders.contexto_notificacion_organismo.OrganismoExpediente') as mock_cls:
-            mock_cls.query.filter_by.return_value.first.return_value = oe
+        with patch('app.services.context_builders.contexto_notificacion_organismo.TramiteOrganismo') as mock_cls:
+            mock_cls.query.filter_by.return_value.first.return_value = _vinculo_stub(oe)
             ctx = cb.get_contexto()
 
         assert ctx['organismo_fecha_respuesta'] == '10/04/2026'
@@ -113,8 +119,8 @@ class TestContextoNotificacionOrganismo:
 
         oe = _org_exp(plazo_legal_dias=15)
         cb = _cb(tarea_elab)
-        with patch('app.services.context_builders.contexto_notificacion_organismo.OrganismoExpediente') as mock_cls:
-            mock_cls.query.filter_by.return_value.first.return_value = oe
+        with patch('app.services.context_builders.contexto_notificacion_organismo.TramiteOrganismo') as mock_cls:
+            mock_cls.query.filter_by.return_value.first.return_value = _vinculo_stub(oe)
             ctx = cb.get_contexto()
 
         assert ctx['organismo_fecha_limite'] == '16/05/2026'  # +15 días
@@ -127,8 +133,8 @@ class TestContextoNotificacionOrganismo:
 
         oe = _org_exp(plazo_legal_dias=None)
         cb = _cb(tarea_elab)
-        with patch('app.services.context_builders.contexto_notificacion_organismo.OrganismoExpediente') as mock_cls:
-            mock_cls.query.filter_by.return_value.first.return_value = oe
+        with patch('app.services.context_builders.contexto_notificacion_organismo.TramiteOrganismo') as mock_cls:
+            mock_cls.query.filter_by.return_value.first.return_value = _vinculo_stub(oe)
             ctx = cb.get_contexto()
 
         assert ctx['organismo_fecha_respuesta'] == '01/05/2026'
@@ -141,8 +147,8 @@ class TestContextoNotificacionOrganismo:
 
         oe = _org_exp(plazo_legal_dias=30)
         cb = _cb(tarea_elab)
-        with patch('app.services.context_builders.contexto_notificacion_organismo.OrganismoExpediente') as mock_cls:
-            mock_cls.query.filter_by.return_value.first.return_value = oe
+        with patch('app.services.context_builders.contexto_notificacion_organismo.TramiteOrganismo') as mock_cls:
+            mock_cls.query.filter_by.return_value.first.return_value = _vinculo_stub(oe)
             ctx = cb.get_contexto()
 
         assert ctx['organismo_fecha_respuesta'] is None

@@ -15,6 +15,13 @@ def _tarea_stub(codigo_tarea, codigo_tramite, tramite_id=5):
     return tarea
 
 
+def _vinculo_stub(org):
+    """Stub de TramiteOrganismo apuntando a un OrganismoExpediente."""
+    v = MagicMock()
+    v.organismo_expediente = org
+    return v
+
+
 class TestHook458EstadoOrganismo:
 
     def test_analizar_separata_pone_en_tramitacion(self):
@@ -23,8 +30,8 @@ class TestHook458EstadoOrganismo:
         org = MagicMock()
         org.estado = 'separata_enviada'
 
-        with patch('app.routes.api_bc.OrganismoExpediente') as mock_cls:
-            mock_cls.query.filter_by.return_value.first.return_value = org
+        with patch('app.routes.api_bc.TramiteOrganismo') as mock_cls:
+            mock_cls.query.filter_by.return_value.first.return_value = _vinculo_stub(org)
             _hook_458_analizar_separata(tarea, id_producido=10)
 
         assert org.estado == 'en_tramitacion'
@@ -36,8 +43,8 @@ class TestHook458EstadoOrganismo:
         org = MagicMock()
         org.estado = 'separata_enviada'
 
-        with patch('app.routes.api_bc.OrganismoExpediente') as mock_cls:
-            mock_cls.query.filter_by.return_value.first.return_value = org
+        with patch('app.routes.api_bc.TramiteOrganismo') as mock_cls:
+            mock_cls.query.filter_by.return_value.first.return_value = _vinculo_stub(org)
             _hook_458_analizar_separata(tarea, id_producido=10)
 
         assert org.estado == 'separata_enviada'
@@ -47,7 +54,7 @@ class TestHook458EstadoOrganismo:
         from app.routes.api_bc import _hook_458_analizar_separata
         tarea = _tarea_stub('ANALIZAR', 'CONSULTA_SEPARATA', tramite_id=99)
 
-        with patch('app.routes.api_bc.OrganismoExpediente') as mock_cls:
+        with patch('app.routes.api_bc.TramiteOrganismo') as mock_cls:
             mock_cls.query.filter_by.return_value.first.return_value = None
             # No debe lanzar excepción
             _hook_458_analizar_separata(tarea, id_producido=10)
@@ -58,8 +65,8 @@ class TestHook458EstadoOrganismo:
         org = MagicMock()
         org.estado = 'separata_enviada'
 
-        with patch('app.routes.api_bc.OrganismoExpediente') as mock_cls:
-            mock_cls.query.filter_by.return_value.first.return_value = org
+        with patch('app.routes.api_bc.TramiteOrganismo') as mock_cls:
+            mock_cls.query.filter_by.return_value.first.return_value = _vinculo_stub(org)
             _hook_458_analizar_separata(tarea, id_producido=None)
 
         assert org.estado == 'separata_enviada'
