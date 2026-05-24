@@ -10,11 +10,11 @@
 
 **Actuales:** —
 
-**Próximo:** **#247** — API CRUD `organismos_expediente` + automatismos #458 (estado en ANALIZAR) + #459 (iteraciones en traslado).
+**Próximo:** **#247** — API CRUD `organismos_expediente` + automatismos #458 y #459 — los tres cierran en el mismo PR. Plan: `docs_prueba/temp/plan_247_458_459.md`.
 
 **Plan de trabajo CONSULTAS (sesión 2026-05-24):** análisis completo de #247 en `docs/historial/ANALISIS_CONSULTAS_ORGANISMOS_2026-05-24.md`. Orden acordado:
 1. **#454** — auditoría 345 vs 370: verificar duplicados en `tramites_tareas` antes de tocar cualquier trámite CONSULTA_*.
-2. **#247** — núcleo: API CRUD `organismos_expediente` + #458 (actualizar estado en ANALIZAR) + #459 (incrementar iteraciones en traslado).
+2. **#247** — núcleo: API CRUD `organismos_expediente` + #458 + #459 en un único PR (decisión sesión 2026-05-24: #458 y #459 absorbidos, no PRs propios).
 3. **#461** — endpoint `GET /api/entidades/consultables`: desbloquea la UI #396.
 4. Resto en paralelo o por prioridad de negocio: #456 (diseño vinculación traslado→organismo) → #457 (CB traslados); #460 (variables motor CONSULTAS, tras #458); #462 (acción en bloque «Enviar consultas»); #463 (seed plazos CONSULTAS); #464 (seed demo organismos, M4). Independiente: #455 (variables motor ANALISIS_SOLICITUD, tras #442).
 
@@ -54,7 +54,7 @@
 17. ~~**#449** — fix `GRANT SELECT` olvidado en `organismos_expediente` (deuda menor M2, ~5 min, totalmente independiente) — *de la auditoría 22/05*~~ ✓
 18. ~~**#448** — HOTFIX seed `catalogo_plazos` RESOLUCION (crítico, bloqueante para motor de plazos): rediseño con `condiciones_plazo` por `tipo_solicitud` + nueva migración + sincronizar `DISEÑO_FECHAS_PLAZOS.md §5.2` — *de la auditoría 22/05*~~ ✓
 19. ~~**#454** — auditoría migraciones 345 vs 370 en `tramites_tareas` (prerequisito crítico de #247)~~ ✓
-20. **#247** — API CRUD `organismos_expediente` + automatismos #458 (estado en ANALIZAR) + #459 (iteraciones en traslado)
+20. **#247** — API CRUD `organismos_expediente` + automatismos #458 + #459 (un único PR; cierra los tres)
 21. **#461** — endpoint `GET /api/entidades/consultables` (desbloquea #396)
 22. **#456** — diseño vinculación trámite-traslado → `organismos_expediente` → **#457** CB traslados (tras #456)
 23. **#460** — variables motor cierre CONSULTAS: `organismos_todos_terminados`, `organismo_supera_iteraciones` (tras #458)
