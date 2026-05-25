@@ -227,6 +227,11 @@ def build(expediente: Any, objeto: Any = None) -> tuple[str, dict]:
     return sujeto, variables
 
 
+def build_sujeto(expediente: Any, objeto: Any = None) -> str:
+    """Compila solo el sujeto calificado sin calcular variables (operación barata)."""
+    return _compilar_sujeto(ExpedienteContext(expediente, objeto))
+
+
 def auditar_multi(accion: str, expediente: Any, objeto: Any = None):
     """
     Companion de evaluar_multi que llama a auditar() y acumula reglas de todos los tipos.
