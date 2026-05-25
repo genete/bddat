@@ -10,7 +10,7 @@
 
 **Actuales:** —
 
-**Próximo:** **#324** — mecanismo de escape con bitácora (reescribir cuerpo: enum `CREAR|BORRAR`, no `INICIAR|FINALIZAR`).
+**Próximo:** **#1** — cuaderno de bitácora agnóstico (tabla `bitacora`, modelo, servicio `registrar()`); prerequisito de #324. Análisis y diseño de #324 completados en sesión 2026-05-25 (ver cuerpos actualizados en GitHub).
 
 **Plan de trabajo CONSULTAS (sesión 2026-05-24):** análisis completo de #247 en `docs/historial/ANALISIS_CONSULTAS_ORGANISMOS_2026-05-24.md`. Orden acordado:
 1. ~~**#454** — auditoría 345 vs 370: verificar duplicados en `tramites_tareas` antes de tocar cualquier trámite CONSULTA_*.~~ ✓
@@ -65,7 +65,8 @@
 27. ~~**#455** — variables motor cierre `ANALISIS_SOLICITUD` (independiente de CONSULTAS; tras #442).~~ ✓
 27. ~~**#451** — ampliar catálogo `normas` (LSE, LPACAP, DL 2/2018, DL 26/2021, RD 1183/2020, RD 244/2019, RD 88/2026) — prerrequisito de #323 — *de la auditoría 22/05*~~ ✓
 28. ~~**#323** — modo global del motor + tabla `configuracion_sistema`~~ ✓
-29. **#324** — mecanismo de escape con bitácora (tras #323; reescribir cuerpo: enum CREAR|BORRAR, no INICIAR|FINALIZAR)
+28b. **#1** — cuaderno de bitácora agnóstico: tabla `bitacora`, modelo, servicio `registrar()` (prerequisito de #324, #174, #435, #436; movido de M5 a M3 en sesión 2026-05-25)
+29. **#324** — mecanismo de escape del motor (backend puro): `puede_escapar` en `EvaluacionResult`, parámetro `bypass+justificacion` en endpoints, registro en `bitacora`; sin frontend (coordinado aparte); tras #1
 30. **#450** — seed procedimiento CIERRE: fase `CONSULTA_OPERADOR_SISTEMA` + trámites `SOLICITUD_INFORME_OPERADOR` / `RECEPCION_INFORME_OPERADOR` + plazo (art. 137 RD 1955/2000 mod. RD 88/2026) — *de la auditoría 22/05*
 31. **#416** — motor de plazos para TABLON_AYUNTAMIENTOS: fecha administrativa y cierre retroactivo de ESPERAR_PLAZO (edge case del servicio de plazos)
 
