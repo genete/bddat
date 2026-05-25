@@ -74,6 +74,11 @@ def _aplicar_modo_global(res_eval: EvaluacionResult) -> EvaluacionResult:
     return res_eval
 
 
+def _evaluar(accion: str, expediente, *, objeto) -> EvaluacionResult:
+    """Punto único de llamada al motor desde api_bc.py — aplica el modo global."""
+    return _aplicar_modo_global(evaluar_multi(accion, expediente, objeto=objeto))
+
+
 # ============================================
 # ENDPOINTS POST — CREAR entidades
 # ============================================
@@ -134,7 +139,7 @@ def crear_fase(sol_id):
     if not tipo_fase:
         return jsonify({'ok': False, 'error': 'Tipo de fase no encontrado'}), 404
 
-    res_eval = _aplicar_modo_global(evaluar_multi('CREAR', sol.expediente, objeto={'solicitud': sol, 'tipo_fase': tipo_fase}))
+    res_eval = _evaluar('CREAR', sol.expediente, objeto={'solicitud': sol, 'tipo_fase': tipo_fase})
     if not res_eval.permitido:
         return _bloqueo(res_eval)
 
@@ -160,7 +165,7 @@ def crear_tramite(fase_id):
     if not tipo_tramite:
         return jsonify({'ok': False, 'error': 'Tipo de trámite no encontrado'}), 404
 
-    res_eval = _aplicar_modo_global(evaluar_multi('CREAR', fase.solicitud.expediente, objeto={'fase': fase, 'tipo_tramite': tipo_tramite}))
+    res_eval = _evaluar('CREAR', fase.solicitud.expediente, objeto={'fase': fase, 'tipo_tramite': tipo_tramite})
     if not res_eval.permitido:
         return _bloqueo(res_eval)
 
@@ -187,7 +192,7 @@ def crear_tarea(tram_id):
     if not tipo_tarea:
         return jsonify({'ok': False, 'error': 'Tipo de tarea no encontrado'}), 404
 
-    res_eval = _aplicar_modo_global(evaluar_multi('CREAR', tramite.fase.solicitud.expediente, objeto={'tramite': tramite, 'tipo_tarea': tipo_tarea}))
+    res_eval = _evaluar('CREAR', tramite.fase.solicitud.expediente, objeto={'tramite': tramite, 'tipo_tarea': tipo_tarea})
     if not res_eval.permitido:
         return _bloqueo(res_eval)
 
@@ -335,7 +340,7 @@ def borrar_solicitud(sol_id):
     if resultado:
         return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
 
-    res_eval = _aplicar_modo_global(evaluar_multi('BORRAR', sol.expediente, objeto=sol))
+    res_eval = _evaluar('BORRAR', sol.expediente, objeto=sol)
     if not res_eval.permitido:
         return _bloqueo(res_eval)
 
@@ -359,7 +364,7 @@ def borrar_fase(fase_id):
     if resultado:
         return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
 
-    res_eval = _aplicar_modo_global(evaluar_multi('BORRAR', fase.solicitud.expediente, objeto=fase))
+    res_eval = _evaluar('BORRAR', fase.solicitud.expediente, objeto=fase)
     if not res_eval.permitido:
         return _bloqueo(res_eval)
 
@@ -380,7 +385,7 @@ def borrar_tramite(tram_id):
     if resultado:
         return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
 
-    res_eval = _aplicar_modo_global(evaluar_multi('BORRAR', tramite.fase.solicitud.expediente, objeto=tramite))
+    res_eval = _evaluar('BORRAR', tramite.fase.solicitud.expediente, objeto=tramite)
     if not res_eval.permitido:
         return _bloqueo(res_eval)
 
@@ -398,7 +403,7 @@ def borrar_tarea(tarea_id):
     if resultado:
         return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
 
-    res_eval = _aplicar_modo_global(evaluar_multi('BORRAR', tarea.tramite.fase.solicitud.expediente, objeto=tarea))
+    res_eval = _evaluar('BORRAR', tarea.tramite.fase.solicitud.expediente, objeto=tarea)
     if not res_eval.permitido:
         return _bloqueo(res_eval)
 
@@ -654,7 +659,7 @@ def enviar_consultas(fase_id):
         log.warning('enviar_consultas: tabla tipos_tramites no disponible')
         return jsonify({'ok': False, 'error': 'Error de configuración del catálogo'}), 500
 
-    res_eval = _aplicar_modo_global(evaluar_multi('CREAR', expediente, objeto={'fase': fase, 'tipo_tramite': tipo_tramite}))
+    res_eval = _evaluar('CREAR', expediente, objeto={'fase': fase, 'tipo_tramite': tipo_tramite})
     if not res_eval.permitido:
         return _bloqueo(res_eval)
 
