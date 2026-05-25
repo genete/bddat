@@ -10,7 +10,7 @@
 
 **Actuales:** —
 
-**Próximo:** **#483** — corregir tests obsoletos `test_296` y `test_328` (commit directo en develop; independiente).
+**Próximo:** **#416** — motor de plazos para TABLON_AYUNTAMIENTOS: fecha administrativa y cierre retroactivo de ESPERAR_PLAZO (edge case del servicio de plazos). Cierra el Bloque 4.
 
 **Plan de trabajo CONSULTAS (sesión 2026-05-24):** análisis completo de #247 en `docs/historial/ANALISIS_CONSULTAS_ORGANISMOS_2026-05-24.md`. Orden acordado:
 1. ~~**#454** — auditoría 345 vs 370: verificar duplicados en `tramites_tareas` antes de tocar cualquier trámite CONSULTA_*.~~ ✓
