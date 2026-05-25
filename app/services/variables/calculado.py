@@ -125,6 +125,71 @@ def _(ctx) -> bool:
     )
 
 
+# ---------------------------------------------------------------------------
+# Variables ANALISIS_SOLICITUD (#455)
+# ---------------------------------------------------------------------------
+
+@variable('tramite_analisis_con_deficiencias')
+def _(ctx) -> bool:
+    """
+    True si algún trámite ANALISIS_DOCUMENTAL de la solicitud en contexto
+    tiene un Diagnostico con resultado = 'desfavorable'.
+
+    Bloquea CREAR ANALISIS_SOLICITUD/COMUNICACION_INICIO: si hay defectos
+    pendientes el técnico debe emitir un requerimiento, no comunicar el inicio.
+
+    Fuente: tabla diagnosticos (implementada en #392).
+    ANALISIS_DOCUMENTAL nunca emite resultado 'condicionado'.
+    """
+    solicitud = ctx.solicitud
+    if solicitud is None:
+        return False
+    for fase in solicitud.fases:
+        for tramite in fase.tramites:
+            if (tramite.tipo_tramite
+                    and tramite.tipo_tramite.codigo == 'ANALISIS_DOCUMENTAL'):
+                for tarea in tramite.tareas:
+                    if (tarea.tipo_tarea
+                            and tarea.tipo_tarea.codigo == 'ANALIZAR'):
+                        doc = tarea.documento_producido
+                        if (doc
+                                and doc.diagnostico
+                                and doc.diagnostico.resultado == 'desfavorable'):
+                            return True
+    return False
+
+
+@variable('tramite_requerimiento_sin_respuesta')
+def _(ctx) -> bool:
+    """
+    True si algún trámite REQUERIMIENTO_SUBSANACION de la solicitud en contexto
+    tiene la tarea ESPERAR_PLAZO sin documento producido (titular no ha respondido).
+
+    Bloquea CREAR fase RESOLUCION. Las fases intermedias (p.ej. CONSULTAS) pueden
+    avanzar si los defectos no las afectan.
+
+    La vinculación documental usa la propiedad tarea.ejecutada (rol PRODUCIDO
+    en documentos_tarea — ADR-010).
+    """
+    solicitud = ctx.solicitud
+    if solicitud is None:
+        return False
+    for fase in solicitud.fases:
+        for tramite in fase.tramites:
+            if (tramite.tipo_tramite
+                    and tramite.tipo_tramite.codigo == 'REQUERIMIENTO_SUBSANACION'):
+                for tarea in tramite.tareas:
+                    if (tarea.tipo_tarea
+                            and tarea.tipo_tarea.codigo == 'ESPERAR_PLAZO'):
+                        if not tarea.ejecutada:
+                            return True
+    return False
+
+
+# ---------------------------------------------------------------------------
+# Variables CONSULTAS (#460)
+# ---------------------------------------------------------------------------
+
 _ESTADOS_TERMINALES_CONSULTAS = frozenset({
     'cerrado_favorable', 'cerrado_con_condicionados', 'audiencia_previa', 'exonerado'
 })
