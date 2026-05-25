@@ -12,14 +12,6 @@
 
 **Próximo:** **#475** — señalización de `CONSULTA_TRASLADO_TITULAR` vencido en organismo: detectar vencimiento + exponer estado en API/variables (backend independiente de UI #396).
 
-**Plan de trabajo CONSULTAS (sesión 2026-05-24):** análisis completo de #247 en `docs/historial/ANALISIS_CONSULTAS_ORGANISMOS_2026-05-24.md`. Orden acordado:
-1. ~~**#454** — auditoría 345 vs 370: verificar duplicados en `tramites_tareas` antes de tocar cualquier trámite CONSULTA_*.~~ ✓
-2. ~~**#247** — núcleo: API CRUD `organismos_expediente` + #458 + #459 en un único PR (decisión sesión 2026-05-24: #458 y #459 absorbidos, no PRs propios).~~ ✓
-3. ~~**#461** — endpoint `GET /api/entidades/consultables`: desbloquea la UI #396.~~ ✓
-4. ~~**#456** — `tramites_organismos` + ADR-011.~~ ✓
-5. ~~**#457** — CB traslados (titular y organismo) tras #456.~~ ✓ ~~**#460** (variables motor CONSULTAS, tras #458)~~ ✓ ~~**#462** (acción en bloque «Enviar consultas»)~~ ✓ Resto: #463 (seed plazos CONSULTAS); #464 (seed demo organismos, M4). Independiente: #455 (variables motor ANALISIS_SOLICITUD, tras #442).
-
----
 
 ## Hoja de ruta — orden propuesto para próximas sesiones
 
