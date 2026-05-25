@@ -61,7 +61,8 @@ class EvaluacionResult:
     variables_trigger: dict  # subconjunto del dict que disparó la regla
     norma_compilada:   str   # referencia normativa compilada
     url_norma:         str   # URL BOE/BOJA; '' si no existe
-    motivo:            str = ''  # descripción editorial de la regla; '' si no configurada
+    motivo:            str = ''   # descripción editorial de la regla; '' si no configurada
+    puede_escapar:     bool = False  # True solo cuando el bloqueo viene del motor (no de invariantes)
 
 
 PERMITIDO = EvaluacionResult(
@@ -225,6 +226,7 @@ def evaluar(
                     norma_compilada=norma_ref,
                     url_norma=url_norma,
                     motivo=regla.descripcion or '',
+                    puede_escapar=True,
                 )
 
         elif regla.efecto == 'ADVERTIR' and resultado_advertir is None:
