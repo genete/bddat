@@ -10,7 +10,7 @@ Creado para resolver el bug #314.
 import logging
 
 from flask import Blueprint, jsonify, request
-from flask_login import login_required
+from flask_login import login_required, current_user
 from sqlalchemy.exc import IntegrityError, OperationalError, ProgrammingError
 from app import db
 from app.models.expedientes import Expediente
@@ -29,7 +29,8 @@ from app.models.entidad import Entidad
 from app.models.organismos_expediente import OrganismoExpediente, ESTADOS_ORGANISMO, VIAS_ORGANISMO
 from app.models.tramites_organismos import TramiteOrganismo
 from app.utils.permisos import verificar_acceso_expediente
-from app.services.assembler import evaluar_multi
+from app.services.assembler import evaluar_multi, build_sujeto
+from app.services import bitacora as bitacora_svc
 from app.services.motor_reglas import EvaluacionResult, PERMITIDO
 from app.models.configuracion_sistema import ConfiguracionSistema
 from app.services.invariantes_esftt import (
@@ -48,7 +49,24 @@ def _bloqueo(res_eval):
         'motivo': res_eval.motivo,
         'error': res_eval.norma_compilada or 'Acción no permitida',
         'url_norma': res_eval.url_norma,
+        'puede_escapar': res_eval.puede_escapar,
     }), 422
+
+
+def _leer_bypass(form):
+    """
+    Lee bypass + justificacion del form de la petición.
+
+    Devuelve (justificacion, None) si bypass=true con texto válido,
+    (None, None) si bypass está ausente o es false,
+    (None, respuesta_400) si bypass=true pero justificacion está vacía.
+    """
+    if form.get('bypass') not in ('true', '1', 'True'):
+        return None, None
+    justificacion = (form.get('justificacion') or '').strip()
+    if not justificacion:
+        return None, (jsonify({'ok': False, 'error': 'justificacion es obligatoria para el bypass'}), 400)
+    return justificacion, None
 
 
 def _advertencia(res_eval):
@@ -139,14 +157,29 @@ def crear_fase(sol_id):
     if not tipo_fase:
         return jsonify({'ok': False, 'error': 'Tipo de fase no encontrado'}), 404
 
-    res_eval = _evaluar('CREAR', sol.expediente, objeto={'solicitud': sol, 'tipo_fase': tipo_fase})
-    if not res_eval.permitido:
-        return _bloqueo(res_eval)
+    justificacion, err = _leer_bypass(request.form)
+    if err:
+        return err
+
+    if justificacion is None:
+        res_eval = _evaluar('CREAR', sol.expediente, objeto={'solicitud': sol, 'tipo_fase': tipo_fase})
+        if not res_eval.permitido:
+            return _bloqueo(res_eval)
+    else:
+        res_eval = PERMITIDO
 
     fase = Fase(solicitud_id=sol_id, tipo_fase_id=tipo_fase_id)
     db.session.add(fase)
-    db.session.commit()
+    db.session.flush()
 
+    if justificacion:
+        sujeto = build_sujeto(sol.expediente, {'solicitud': sol, 'tipo_fase': tipo_fase})
+        bitacora_svc.registrar(
+            current_user.id, 'CREAR', 'fases', fase.id,
+            detalle={'escape': True, 'justificacion': justificacion, 'sujeto': sujeto},
+        )
+
+    db.session.commit()
     return jsonify({'ok': True, 'id': fase.id, 'advertencia': _advertencia(res_eval)})
 
 
@@ -165,15 +198,31 @@ def crear_tramite(fase_id):
     if not tipo_tramite:
         return jsonify({'ok': False, 'error': 'Tipo de trámite no encontrado'}), 404
 
-    res_eval = _evaluar('CREAR', fase.solicitud.expediente, objeto={'fase': fase, 'tipo_tramite': tipo_tramite})
-    if not res_eval.permitido:
-        return _bloqueo(res_eval)
+    justificacion, err = _leer_bypass(request.form)
+    if err:
+        return err
+
+    expediente = fase.solicitud.expediente
+    if justificacion is None:
+        res_eval = _evaluar('CREAR', expediente, objeto={'fase': fase, 'tipo_tramite': tipo_tramite})
+        if not res_eval.permitido:
+            return _bloqueo(res_eval)
+    else:
+        res_eval = PERMITIDO
 
     tramite = Tramite(fase_id=fase_id, tipo_tramite_id=tipo_tramite_id)
     db.session.add(tramite)
     _hook_459_traslado_organismo(tipo_tramite, fase)
-    db.session.commit()
+    db.session.flush()
 
+    if justificacion:
+        sujeto = build_sujeto(expediente, {'fase': fase, 'tipo_tramite': tipo_tramite})
+        bitacora_svc.registrar(
+            current_user.id, 'CREAR', 'tramites', tramite.id,
+            detalle={'escape': True, 'justificacion': justificacion, 'sujeto': sujeto},
+        )
+
+    db.session.commit()
     return jsonify({'ok': True, 'id': tramite.id, 'advertencia': _advertencia(res_eval)})
 
 
@@ -192,14 +241,30 @@ def crear_tarea(tram_id):
     if not tipo_tarea:
         return jsonify({'ok': False, 'error': 'Tipo de tarea no encontrado'}), 404
 
-    res_eval = _evaluar('CREAR', tramite.fase.solicitud.expediente, objeto={'tramite': tramite, 'tipo_tarea': tipo_tarea})
-    if not res_eval.permitido:
-        return _bloqueo(res_eval)
+    justificacion, err = _leer_bypass(request.form)
+    if err:
+        return err
+
+    expediente = tramite.fase.solicitud.expediente
+    if justificacion is None:
+        res_eval = _evaluar('CREAR', expediente, objeto={'tramite': tramite, 'tipo_tarea': tipo_tarea})
+        if not res_eval.permitido:
+            return _bloqueo(res_eval)
+    else:
+        res_eval = PERMITIDO
 
     tarea = Tarea(tramite_id=tram_id, tipo_tarea_id=tipo_tarea_id)
     db.session.add(tarea)
-    db.session.commit()
+    db.session.flush()
 
+    if justificacion:
+        sujeto = build_sujeto(expediente, tramite)
+        bitacora_svc.registrar(
+            current_user.id, 'CREAR', 'tareas', tarea.id,
+            detalle={'escape': True, 'justificacion': justificacion, 'sujeto': sujeto},
+        )
+
+    db.session.commit()
     return jsonify({'ok': True, 'id': tarea.id, 'advertencia': _advertencia(res_eval)})
 
 
@@ -340,9 +405,21 @@ def borrar_solicitud(sol_id):
     if resultado:
         return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
 
-    res_eval = _evaluar('BORRAR', sol.expediente, objeto=sol)
-    if not res_eval.permitido:
-        return _bloqueo(res_eval)
+    justificacion, err = _leer_bypass(request.form)
+    if err:
+        return err
+
+    if justificacion is None:
+        res_eval = _evaluar('BORRAR', sol.expediente, objeto=sol)
+        if not res_eval.permitido:
+            return _bloqueo(res_eval)
+
+    if justificacion:
+        sujeto = build_sujeto(sol.expediente, sol)
+        bitacora_svc.registrar(
+            current_user.id, 'BORRAR', 'solicitudes', sol.id,
+            detalle={'escape': True, 'justificacion': justificacion, 'sujeto': sujeto},
+        )
 
     fase_ids = [f.id for f in Fase.query.filter_by(solicitud_id=sol_id).all()]
     if fase_ids:
@@ -364,9 +441,22 @@ def borrar_fase(fase_id):
     if resultado:
         return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
 
-    res_eval = _evaluar('BORRAR', fase.solicitud.expediente, objeto=fase)
-    if not res_eval.permitido:
-        return _bloqueo(res_eval)
+    justificacion, err = _leer_bypass(request.form)
+    if err:
+        return err
+
+    expediente = fase.solicitud.expediente
+    if justificacion is None:
+        res_eval = _evaluar('BORRAR', expediente, objeto=fase)
+        if not res_eval.permitido:
+            return _bloqueo(res_eval)
+
+    if justificacion:
+        sujeto = build_sujeto(expediente, fase)
+        bitacora_svc.registrar(
+            current_user.id, 'BORRAR', 'fases', fase.id,
+            detalle={'escape': True, 'justificacion': justificacion, 'sujeto': sujeto},
+        )
 
     tram_ids = [t.id for t in Tramite.query.filter_by(fase_id=fase_id).all()]
     if tram_ids:
@@ -385,9 +475,22 @@ def borrar_tramite(tram_id):
     if resultado:
         return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
 
-    res_eval = _evaluar('BORRAR', tramite.fase.solicitud.expediente, objeto=tramite)
-    if not res_eval.permitido:
-        return _bloqueo(res_eval)
+    justificacion, err = _leer_bypass(request.form)
+    if err:
+        return err
+
+    expediente = tramite.fase.solicitud.expediente
+    if justificacion is None:
+        res_eval = _evaluar('BORRAR', expediente, objeto=tramite)
+        if not res_eval.permitido:
+            return _bloqueo(res_eval)
+
+    if justificacion:
+        sujeto = build_sujeto(expediente, tramite)
+        bitacora_svc.registrar(
+            current_user.id, 'BORRAR', 'tramites', tramite.id,
+            detalle={'escape': True, 'justificacion': justificacion, 'sujeto': sujeto},
+        )
 
     Tarea.query.filter_by(tramite_id=tram_id).delete()
     db.session.delete(tramite)
@@ -403,9 +506,22 @@ def borrar_tarea(tarea_id):
     if resultado:
         return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
 
-    res_eval = _evaluar('BORRAR', tarea.tramite.fase.solicitud.expediente, objeto=tarea)
-    if not res_eval.permitido:
-        return _bloqueo(res_eval)
+    justificacion, err = _leer_bypass(request.form)
+    if err:
+        return err
+
+    expediente = tarea.tramite.fase.solicitud.expediente
+    if justificacion is None:
+        res_eval = _evaluar('BORRAR', expediente, objeto=tarea)
+        if not res_eval.permitido:
+            return _bloqueo(res_eval)
+
+    if justificacion:
+        sujeto = build_sujeto(expediente, tarea.tramite)
+        bitacora_svc.registrar(
+            current_user.id, 'BORRAR', 'tareas', tarea.id,
+            detalle={'escape': True, 'justificacion': justificacion, 'sujeto': sujeto},
+        )
 
     db.session.delete(tarea)
     db.session.commit()
@@ -659,9 +775,16 @@ def enviar_consultas(fase_id):
         log.warning('enviar_consultas: tabla tipos_tramites no disponible')
         return jsonify({'ok': False, 'error': 'Error de configuración del catálogo'}), 500
 
-    res_eval = _evaluar('CREAR', expediente, objeto={'fase': fase, 'tipo_tramite': tipo_tramite})
-    if not res_eval.permitido:
-        return _bloqueo(res_eval)
+    justificacion, err = _leer_bypass(request.form)
+    if err:
+        return err
+
+    if justificacion is None:
+        res_eval = _evaluar('CREAR', expediente, objeto={'fase': fase, 'tipo_tramite': tipo_tramite})
+        if not res_eval.permitido:
+            return _bloqueo(res_eval)
+    else:
+        res_eval = PERMITIDO
 
     pendientes = [
         oe for oe in expediente.organismos
@@ -669,6 +792,7 @@ def enviar_consultas(fase_id):
     ]
 
     plazo = _calcular_plazo_consulta(expediente, solicitud)
+    objeto_sujeto = {'fase': fase, 'tipo_tramite': tipo_tramite}
 
     try:
         ids = []
@@ -680,6 +804,14 @@ def enviar_consultas(fase_id):
             oe.estado = 'separata_enviada'
             oe.plazo_legal_dias = plazo
             ids.append(tramite.id)
+
+            if justificacion:
+                sujeto = build_sujeto(expediente, objeto_sujeto)
+                bitacora_svc.registrar(
+                    current_user.id, 'CREAR', 'tramites', tramite.id,
+                    detalle={'escape': True, 'justificacion': justificacion, 'sujeto': sujeto},
+                )
+
         db.session.commit()
         return jsonify({'ok': True, 'ids': ids, 'advertencia': _advertencia(res_eval)})
     except Exception as e:
