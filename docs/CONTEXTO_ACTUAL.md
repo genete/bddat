@@ -6,11 +6,11 @@
 
 ---
 
-**Último cerrado:** #462 (PR #473) — endpoint `POST /api/bc/fase/<fase_id>/consultas/enviar`; crea `CONSULTA_SEPARATA` + `TramiteOrganismo` por cada organismo pendiente; helper `_calcular_plazo_consulta` (30 días general / 15 si AAC pura + AAP previa favorable, art. 131.1 párr. 2 RD 1955/2000); 11 tests unitarios.
+**Último cerrado:** #463 (PR #474) — migración `463_seed_plazos_consultas`: 4 entradas en `catalogo_plazos` (TRAMITE) para CONSULTA_SEPARATA ×2 (15 días con condiciones AAC pura + AAP favorable / 30 días fallback), CONSULTA_TRASLADO_TITULAR (15 días, SIN_EFECTO_AUTOMATICO) y CONSULTA_TRASLADO_ORGANISMO (15 días, CONFORMIDAD_PRESUNTA); 6 tests.
 
 **Actuales:** —
 
-**Próximo:** **#463** — seed `catalogo_plazos` para CONSULTAS (independiente, M3).
+**Próximo:** **#455** — variables motor cierre `ANALISIS_SOLICITUD` (independiente de CONSULTAS; tras #442).
 
 **Plan de trabajo CONSULTAS (sesión 2026-05-24):** análisis completo de #247 en `docs/historial/ANALISIS_CONSULTAS_ORGANISMOS_2026-05-24.md`. Orden acordado:
 1. ~~**#454** — auditoría 345 vs 370: verificar duplicados en `tramites_tareas` antes de tocar cualquier trámite CONSULTA_*.~~ ✓
@@ -60,8 +60,9 @@
 22. ~~**#456** — `tramites_organismos` + `condicionados_doc_id` + `CONDICIONADO_OFICIO` + criterios completitud CONSULTAS (ADR-011)~~ ✓ → ~~**#457** CB traslados (tras #456)~~ ✓
 23. ~~**#460** — variables motor cierre CONSULTAS: `organismos_todos_terminados`, `organismo_supera_iteraciones` (tras #458)~~ ✓
 24. ~~**#462** — acción en bloque «Enviar consultas» (tras #247)~~ ✓
-25. **#463** — seed `catalogo_plazos` para CONSULTAS (independiente, M3)
-26. **#455** — variables motor cierre `ANALISIS_SOLICITUD` (independiente de CONSULTAS; tras #442)
+25. ~~**#463** — seed `catalogo_plazos` para CONSULTAS (independiente, M3)~~ ✓
+26. **#475** — señalización de `CONSULTA_TRASLADO_TITULAR` vencido en organismo (M3; requiere UI #396). **Nota:** el issue usa estados `cerrado_favorable` / `cerrado_con_condicionados` que pueden ser conceptos obsoletos — revisar nomenclatura antes de implementar.
+27. **#455** — variables motor cierre `ANALISIS_SOLICITUD` (independiente de CONSULTAS; tras #442)
 27. **#451** — ampliar catálogo `normas` (LSE, LPACAP, DL 2/2018, DL 26/2021, RD 1183/2020, RD 244/2019, RD 88/2026) — prerrequisito de #323 — *de la auditoría 22/05*
 28. **#323** — modo global del motor + tabla `configuracion_sistema`
 29. **#324** — mecanismo de escape con bitácora (tras #323; reescribir cuerpo: enum CREAR|BORRAR, no INICIAR|FINALIZAR)
