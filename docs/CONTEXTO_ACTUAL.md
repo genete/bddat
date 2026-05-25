@@ -6,11 +6,11 @@
 
 ---
 
-**Último cerrado:** #1 (PR #481) — tabla `bitacora`, modelo `Bitacora`, servicio `registrar()`; migración `001_bitacora`; 5 tests.
+**Último cerrado:** #324 (PR #482) — mecanismo de escape del motor: `puede_escapar` en `EvaluacionResult`, `_leer_bypass`, bypass+bitácora en 8 endpoints ESFTT, `build_sujeto()` en assembler; 12 tests.
 
 **Actuales:** —
 
-**Próximo:** **#324** — mecanismo de escape del motor (backend puro): `puede_escapar` en `EvaluacionResult`, parámetro `bypass+justificacion` en endpoints, registro en `bitacora`; sin frontend; diseño completado en sesión 2026-05-25 (ver cuerpo en GitHub).
+**Próximo:** **#416** — motor de plazos para TABLON_AYUNTAMIENTOS: fecha administrativa y cierre retroactivo de ESPERAR_PLAZO (edge case del servicio de plazos). Cierra el Bloque 4.
 
 **Plan de trabajo CONSULTAS (sesión 2026-05-24):** análisis completo de #247 en `docs/historial/ANALISIS_CONSULTAS_ORGANISMOS_2026-05-24.md`. Orden acordado:
 1. ~~**#454** — auditoría 345 vs 370: verificar duplicados en `tramites_tareas` antes de tocar cualquier trámite CONSULTA_*.~~ ✓
@@ -66,8 +66,9 @@
 27. ~~**#451** — ampliar catálogo `normas` (LSE, LPACAP, DL 2/2018, DL 26/2021, RD 1183/2020, RD 244/2019, RD 88/2026) — prerrequisito de #323 — *de la auditoría 22/05*~~ ✓
 28. ~~**#323** — modo global del motor + tabla `configuracion_sistema`~~ ✓
 28b. ~~**#1** — cuaderno de bitácora agnóstico: tabla `bitacora`, modelo, servicio `registrar()` (prerequisito de #324, #174, #435, #436; movido de M5 a M3 en sesión 2026-05-25)~~ ✓
-29. **#324** — mecanismo de escape del motor (backend puro): `puede_escapar` en `EvaluacionResult`, parámetro `bypass+justificacion` en endpoints, registro en `bitacora`; sin frontend (coordinado aparte); tras #1
-30. **#450** — seed procedimiento CIERRE: fase `CONSULTA_OPERADOR_SISTEMA` + trámites `SOLICITUD_INFORME_OPERADOR` / `RECEPCION_INFORME_OPERADOR` + plazo (art. 137 RD 1955/2000 mod. RD 88/2026) — *de la auditoría 22/05*
+29. ~~**#324** — mecanismo de escape del motor: `puede_escapar`, `_leer_bypass`, bypass+bitácora en 8 endpoints, `build_sujeto()`; 12 tests~~ ✓
+29b. **#483** — corregir tests obsoletos `test_296` y `test_328` (commit directo en develop; independiente)
+30. ~~**#450**~~ → movido a M5: seed CIERRE/CONSULTA_OPERADOR_SISTEMA pendiente de UI de catálogo del supervisor
 31. **#416** — motor de plazos para TABLON_AYUNTAMIENTOS: fecha administrativa y cierre retroactivo de ESPERAR_PLAZO (edge case del servicio de plazos)
 
 ### Bloque 5 — Análisis heurístico de PDF
