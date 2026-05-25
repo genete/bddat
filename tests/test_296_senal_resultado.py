@@ -234,9 +234,15 @@ class TestTramiteFinalizadoConResultado:
         tr = _StubTramite(tareas=[t])
         assert _tramite_finalizado(tr) is False
 
-    def test_esperar_plazo_no_bloquea(self):
-        """ESPERAR_PLAZO no forma parte de _requieren — no impide finalizar."""
+    def test_esperar_plazo_sin_ejecutar_bloquea(self):
+        """ESPERAR_PLAZO está en _requieren (#362) — sin doc producido impide finalizar."""
         t = _StubTareaConResultado('ESPERAR_PLAZO', doc_producido_id=None)
+        tr = _StubTramite(tareas=[t])
+        assert _tramite_finalizado(tr) is False
+
+    def test_esperar_plazo_ejecutada_no_bloquea(self):
+        """ESPERAR_PLAZO con doc producido no impide finalizar."""
+        t = _StubTareaConResultado('ESPERAR_PLAZO', doc_producido_id=99)
         tr = _StubTramite(tareas=[t])
         assert _tramite_finalizado(tr) is True
 

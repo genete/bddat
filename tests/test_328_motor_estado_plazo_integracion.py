@@ -43,7 +43,7 @@ def _crear_fase_consultas(db, solicitud, tipo_fase_consultas, fecha_admin):
     from app.models import Fase, Documento
     doc_sol = Documento(
         expediente=solicitud.expediente,
-        url='test://doc-sol-328',
+        url='https://docs.test/doc-328',
         fecha_administrativa=fecha_admin,
     )
     db.session.add(doc_sol)
