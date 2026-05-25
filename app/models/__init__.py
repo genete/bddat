@@ -32,6 +32,9 @@ from app.models.catalogo_requerimientos import CatalogoRequerimiento
 # Modelo de metadata del sistema (issue #85)
 from app.models.tabla_metadata import TablaMetadata
 
+# Configuración global del sistema (#323 — sin FKs)
+from app.models.configuracion_sistema import ConfiguracionSistema
+
 # Arquitectura Entidades Simplificada (refactorizada en issue #103)
 # Elimina jerarquía polimórfica, usa roles booleanos
 from app.models.entidad import Entidad
@@ -125,6 +128,8 @@ __all__ = [
     'CatalogoRequerimiento',
     # Metadata del sistema
     'TablaMetadata',
+    # Configuración global del sistema
+    'ConfiguracionSistema',
     # Arquitectura Entidades (simplificada en issue #103)
     'Entidad',
     'DireccionNotificacion',
