@@ -61,8 +61,8 @@
 23. ~~**#460** — variables motor cierre CONSULTAS: `organismos_todos_terminados`, `organismo_supera_iteraciones` (tras #458)~~ ✓
 24. ~~**#462** — acción en bloque «Enviar consultas» (tras #247)~~ ✓
 25. ~~**#463** — seed `catalogo_plazos` para CONSULTAS (independiente, M3)~~ ✓
-26. **#475** — señalización de `CONSULTA_TRASLADO_TITULAR` vencido en organismo (M3; requiere UI #396). **Nota:** el issue usa estados `cerrado_favorable` / `cerrado_con_condicionados` que pueden ser conceptos obsoletos — revisar nomenclatura antes de implementar.
-27. **#455** — variables motor cierre `ANALISIS_SOLICITUD` (independiente de CONSULTAS; tras #442)
+26. **#475** — señalización de `CONSULTA_TRASLADO_TITULAR` vencido en organismo (M3; requiere UI #396).
+27. **#455** — variables motor cierre `ANALISIS_SOLICITUD` (independiente de CONSULTAS; tras #442). **Nota:** el issue usa conceptos obsoletos ligados a "cerrar" — requiere refactorización del enunciado antes de implementar.
 27. **#451** — ampliar catálogo `normas` (LSE, LPACAP, DL 2/2018, DL 26/2021, RD 1183/2020, RD 244/2019, RD 88/2026) — prerrequisito de #323 — *de la auditoría 22/05*
 28. **#323** — modo global del motor + tabla `configuracion_sistema`
 29. **#324** — mecanismo de escape con bitácora (tras #323; reescribir cuerpo: enum CREAR|BORRAR, no INICIAR|FINALIZAR)
