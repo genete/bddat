@@ -6,11 +6,11 @@
 
 ---
 
-**Último cerrado:** #463 (PR #474) — migración `463_seed_plazos_consultas`: 4 entradas en `catalogo_plazos` (TRAMITE) para CONSULTA_SEPARATA ×2 (15 días con condiciones AAC pura + AAP favorable / 30 días fallback), CONSULTA_TRASLADO_TITULAR (15 días, SIN_EFECTO_AUTOMATICO) y CONSULTA_TRASLADO_ORGANISMO (15 días, CONFORMIDAD_PRESUNTA); 6 tests.
+**Último cerrado:** #455 (PR #476) — variables motor `ANALISIS_SOLICITUD`: `tramite_analisis_con_deficiencias` (bloquea CREAR `COMUNICACION_INICIO` si diagnóstico desfavorable) y `tramite_requerimiento_sin_respuesta` (bloquea CREAR `RESOLUCION` si `ESPERAR_PLAZO` sin respuesta); migración `455_variables_motor_analisis`; 16 tests.
 
 **Actuales:** —
 
-**Próximo:** **#455** — variables motor cierre `ANALISIS_SOLICITUD` (independiente de CONSULTAS; tras #442).
+**Próximo:** **#451** — ampliar catálogo `normas` (LSE, LPACAP, DL 2/2018, DL 26/2021, RD 1183/2020, RD 244/2019, RD 88/2026); prerrequisito de #323.
 
 **Plan de trabajo CONSULTAS (sesión 2026-05-24):** análisis completo de #247 en `docs/historial/ANALISIS_CONSULTAS_ORGANISMOS_2026-05-24.md`. Orden acordado:
 1. ~~**#454** — auditoría 345 vs 370: verificar duplicados en `tramites_tareas` antes de tocar cualquier trámite CONSULTA_*.~~ ✓
@@ -62,7 +62,7 @@
 24. ~~**#462** — acción en bloque «Enviar consultas» (tras #247)~~ ✓
 25. ~~**#463** — seed `catalogo_plazos` para CONSULTAS (independiente, M3)~~ ✓
 26. **#475** — señalización de `CONSULTA_TRASLADO_TITULAR` vencido en organismo (M3; requiere UI #396).
-27. **#455** — variables motor cierre `ANALISIS_SOLICITUD` (independiente de CONSULTAS; tras #442). **Nota:** el issue usa conceptos obsoletos ligados a "cerrar" — requiere refactorización del enunciado antes de implementar.
+27. ~~**#455** — variables motor cierre `ANALISIS_SOLICITUD` (independiente de CONSULTAS; tras #442).~~ ✓
 27. **#451** — ampliar catálogo `normas` (LSE, LPACAP, DL 2/2018, DL 26/2021, RD 1183/2020, RD 244/2019, RD 88/2026) — prerrequisito de #323 — *de la auditoría 22/05*
 28. **#323** — modo global del motor + tabla `configuracion_sistema`
 29. **#324** — mecanismo de escape con bitácora (tras #323; reescribir cuerpo: enum CREAR|BORRAR, no INICIAR|FINALIZAR)
