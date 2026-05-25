@@ -10,7 +10,7 @@
 
 **Actuales:** —
 
-**Próximo:** **#450** — seed procedimiento CIERRE: fase `CONSULTA_OPERADOR_SISTEMA` + trámites `SOLICITUD_INFORME_OPERADOR` / `RECEPCION_INFORME_OPERADOR` + plazo (art. 137 RD 1955/2000 mod. RD 88/2026).
+**Próximo:** **#483** — corregir tests obsoletos `test_296` y `test_328` (commit directo en develop; independiente).
 
 **Plan de trabajo CONSULTAS (sesión 2026-05-24):** análisis completo de #247 en `docs/historial/ANALISIS_CONSULTAS_ORGANISMOS_2026-05-24.md`. Orden acordado:
 1. ~~**#454** — auditoría 345 vs 370: verificar duplicados en `tramites_tareas` antes de tocar cualquier trámite CONSULTA_*.~~ ✓
@@ -68,7 +68,7 @@
 28b. ~~**#1** — cuaderno de bitácora agnóstico: tabla `bitacora`, modelo, servicio `registrar()` (prerequisito de #324, #174, #435, #436; movido de M5 a M3 en sesión 2026-05-25)~~ ✓
 29. ~~**#324** — mecanismo de escape del motor: `puede_escapar`, `_leer_bypass`, bypass+bitácora en 8 endpoints, `build_sujeto()`; 12 tests~~ ✓
 29b. **#483** — corregir tests obsoletos `test_296` y `test_328` (commit directo en develop; independiente)
-30. **#450** — seed procedimiento CIERRE: fase `CONSULTA_OPERADOR_SISTEMA` + trámites `SOLICITUD_INFORME_OPERADOR` / `RECEPCION_INFORME_OPERADOR` + plazo (art. 137 RD 1955/2000 mod. RD 88/2026) — *de la auditoría 22/05*
+30. ~~**#450**~~ → movido a M5: seed CIERRE/CONSULTA_OPERADOR_SISTEMA pendiente de UI de catálogo del supervisor
 31. **#416** — motor de plazos para TABLON_AYUNTAMIENTOS: fecha administrativa y cierre retroactivo de ESPERAR_PLAZO (edge case del servicio de plazos)
 
 ### Bloque 5 — Análisis heurístico de PDF
