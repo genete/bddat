@@ -6,11 +6,11 @@
 
 ---
 
-**Último cerrado:** #324 (PR #482) — mecanismo de escape del motor: `puede_escapar` en `EvaluacionResult`, `_leer_bypass`, bypass+bitácora en 8 endpoints ESFTT, `build_sujeto()` en assembler; 12 tests.
+**Último cerrado:** #416 (PR #484) — motor plazos `TABLON_AYUNTAMIENTOS`: seed `catalogo_plazos` con `campo_fecha = {via_tarea_tipo: ESPERAR_PLAZO, rol: PRODUCIDO}`; 30 días naturales (art. 125 RD 1955/2000); sin cambios en `plazos.py`. Cierra el Bloque 4.
 
 **Actuales:** —
 
-**Próximo:** **#416** — motor de plazos para TABLON_AYUNTAMIENTOS: fecha administrativa y cierre retroactivo de ESPERAR_PLAZO (edge case del servicio de plazos). Cierra el Bloque 4.
+**Próximo:** **#475** — señalización de `CONSULTA_TRASLADO_TITULAR` vencido en organismo: detectar vencimiento + exponer estado en API/variables (backend independiente de UI #396).
 
 **Plan de trabajo CONSULTAS (sesión 2026-05-24):** análisis completo de #247 en `docs/historial/ANALISIS_CONSULTAS_ORGANISMOS_2026-05-24.md`. Orden acordado:
 1. ~~**#454** — auditoría 345 vs 370: verificar duplicados en `tramites_tareas` antes de tocar cualquier trámite CONSULTA_*.~~ ✓
@@ -61,15 +61,15 @@
 23. ~~**#460** — variables motor cierre CONSULTAS: `organismos_todos_terminados`, `organismo_supera_iteraciones` (tras #458)~~ ✓
 24. ~~**#462** — acción en bloque «Enviar consultas» (tras #247)~~ ✓
 25. ~~**#463** — seed `catalogo_plazos` para CONSULTAS (independiente, M3)~~ ✓
-26. **#475** — señalización de `CONSULTA_TRASLADO_TITULAR` vencido en organismo (M3; requiere UI #396).
+26. **#475** — señalización de `CONSULTA_TRASLADO_TITULAR` vencido en organismo (M3; backend independiente; UI #396 necesaria solo para mostrar la alerta al tramitador).
 27. ~~**#455** — variables motor cierre `ANALISIS_SOLICITUD` (independiente de CONSULTAS; tras #442).~~ ✓
 27. ~~**#451** — ampliar catálogo `normas` (LSE, LPACAP, DL 2/2018, DL 26/2021, RD 1183/2020, RD 244/2019, RD 88/2026) — prerrequisito de #323 — *de la auditoría 22/05*~~ ✓
 28. ~~**#323** — modo global del motor + tabla `configuracion_sistema`~~ ✓
 28b. ~~**#1** — cuaderno de bitácora agnóstico: tabla `bitacora`, modelo, servicio `registrar()` (prerequisito de #324, #174, #435, #436; movido de M5 a M3 en sesión 2026-05-25)~~ ✓
 29. ~~**#324** — mecanismo de escape del motor: `puede_escapar`, `_leer_bypass`, bypass+bitácora en 8 endpoints, `build_sujeto()`; 12 tests~~ ✓
-29b. **#483** — corregir tests obsoletos `test_296` y `test_328` (commit directo en develop; independiente)
+29b. ~~**#483** — corregir tests obsoletos `test_296` y `test_328` (commit directo en develop; independiente)~~ ✓
 30. ~~**#450**~~ → movido a M5: seed CIERRE/CONSULTA_OPERADOR_SISTEMA pendiente de UI de catálogo del supervisor
-31. **#416** — motor de plazos para TABLON_AYUNTAMIENTOS: fecha administrativa y cierre retroactivo de ESPERAR_PLAZO (edge case del servicio de plazos)
+31. ~~**#416** — motor de plazos para TABLON_AYUNTAMIENTOS: fecha administrativa y cierre retroactivo de ESPERAR_PLAZO (edge case del servicio de plazos)~~ ✓
 
 ### Bloque 5 — Análisis heurístico de PDF
 
