@@ -720,13 +720,13 @@ Estos valores son el seed del `catalogo_plazos` para las fases y trámites del p
 | RESOLUCION_AAP | `['AAP']` | 3 | MESES | SILENCIO_DESESTIMATORIO | Art. 128 RD 1955/2000 |
 | RESOLUCION_AAC | `['AAC','AAP+AAC','AAP+AAC+DUP','AAC+DUP']` | 3 | MESES | SILENCIO_DESESTIMATORIO | Art. 131.7 RD 1955/2000 |
 | RESOLUCION_TRANSMISION | `['AAT']` | 3 | MESES | SILENCIO_DESESTIMATORIO | Art. 133 RD 1955/2000 |
-| RESOLUCION_CIERRE | `['CIERRE']` | 3 | MESES | SILENCIO_DESESTIMATORIO | Art. 138 RD 1955/2000 (mod. RD 88/2026) |
+| RESOLUCION_CIERRE | `['CIERRE']` | 3 | MESES | SILENCIO_DESESTIMATORIO | Art. 138 RD 1955/2000 |
 | RESOLUCION_DUP | `['DUP']` | 3 | MESES | SILENCIO_DESESTIMATORIO | Art. 145.4 RD 1955/2000 |
 | INFORMACION_PUBLICA | **[PENDIENTE REDISEÑO campo_fecha]** | 30 | DIAS_NATURALES | SIN_EFECTO_AUTOMATICO | Art. 125 RD 1955/2000 |
 
 `campo_fecha` para todas las filas RESOLUCION_*: `{"fk": "documento_solicitud_id"}`.
 
-**Diferencias respecto al seed previo (172, código muerto):** descartado `RESOLUCION_AE` (sin sufijo — no existe ese tipo_solicitud); añadido `RESOLUCION_DUP` (procedimiento DUP autónomo, ausente del 172); CIERRE corregido (art. 137 → art. 138, mod. RD 88/2026); combinadas con AAC (`AAP+AAC`, `AAP+AAC+DUP`, `AAC+DUP`) consolidadas en la fila AAC porque art. 131.7 fija el plazo conjunto; `AE_DEFINITIVA+AAT` consume el plazo de AE_DEFINITIVA.
+**Diferencias respecto al seed previo (172, código muerto):** descartado `RESOLUCION_AE` (sin sufijo — no existe ese tipo_solicitud); añadido `RESOLUCION_DUP` (procedimiento DUP autónomo, ausente del 172); CIERRE corregido (art. 137 → art. 138; el 137 corresponde al informe del operador, no a la resolución; RD 88/2026 solo modifica art. 137); combinadas con AAC (`AAP+AAC`, `AAP+AAC+DUP`, `AAC+DUP`) consolidadas en la fila AAC porque art. 131.7 fija el plazo conjunto; `AE_DEFINITIVA+AAT` consume el plazo de AE_DEFINITIVA.
 
 **Fuera de scope del hotfix (deuda de #247):** plazos de RESOLUCION para `RAIPEE_PREVIA`, `RAIPEE_DEFINITIVA`, `RADNE`, `AMPLIACION_PLAZO`, `CORRECCION_ERRORES`, `DESISTIMIENTO`, `RENUNCIA`, `RECURSO`, `INTERESADO`, `OTRO`.
 

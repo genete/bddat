@@ -37,8 +37,9 @@ Diferencias respecto al seed original (172):
     en BD (solo AE_PROVISIONAL y AE_DEFINITIVA).
   - Añadido DUP (3 meses, art. 145.4 RD 1955/2000): el procedimiento DUP
     autónomo no estaba en el seed 172.
-  - Corregido CIERRE: art. 137 → art. 138 RD 1955/2000 (mod. RD 88/2026).
+  - Corregido CIERRE: art. 137 → art. 138 RD 1955/2000.
     Art. 137 corresponde al informe del operador, no a la resolución.
+    RD 88/2026 modifica art. 137, no art. 138 (sin renumeración).
   - AAC consolida sus combinadas en una sola entrada (art. 131.7 fija el
     plazo conjunto): `IN ('AAC','AAP+AAC','AAP+AAC+DUP','AAC+DUP')`.
   - AE_DEFINITIVA+AAT consume el plazo del AE_DEFINITIVA (art. 132 ter).
@@ -69,7 +70,7 @@ _PLAZOS_RESOLUCION = [
      ['AAC', 'AAP+AAC', 'AAP+AAC+DUP', 'AAC+DUP']),
     (50, 3, 'MESES', 'Art. 133 RD 1955/2000',
      ['AAT']),
-    (60, 3, 'MESES', 'Art. 138 RD 1955/2000 (mod. RD 88/2026)',
+    (60, 3, 'MESES', 'Art. 138 RD 1955/2000',
      ['CIERRE']),
     (70, 3, 'MESES', 'Art. 145.4 RD 1955/2000',
      ['DUP']),
