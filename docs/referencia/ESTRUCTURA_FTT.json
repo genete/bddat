@@ -250,7 +250,7 @@
           "descripcion": "Publicación en tablones de ayuntamientos afectados (uno por ayuntamiento)",
           "tareas_indicativas": ["ELABORAR", "NOTIFICAR", "ESPERAR_PLAZO"],
           "patron": "C",
-          "nota": "ELABORAR produce OFICIO_TABLON; NOTIFICAR remite OFICIO_TABLON + ANUNCIO_IP a cada ayuntamiento. ESPERAR_PLAZO: el plazo lo acredita el propio ayuntamiento mediante CERT_PLAZO_TABLON; sin segundo ESPERAR_PLAZO."
+          "nota": "ELABORAR produce OFICIO_TABLON; NOTIFICAR remite OFICIO_TABLON + ANUNCIO_IP a cada ayuntamiento. ESPERAR_PLAZO: produce CERT_PLAZO_TABLON (certificado del ayuntamiento). campo_fecha = {via_tarea_tipo: ESPERAR_PLAZO, rol: PRODUCIDO} — caso retroactivo: fecha_administrativa del certificado = inicio de la exposición; el motor calcula fin = inicio + 30 días naturales (art. 125 RD 1955/2000). Sin segundo ESPERAR_PLAZO. Ver #416."
         },
         {
           "codigo": "PORTAL_TRANSPARENCIA",

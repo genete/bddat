@@ -396,8 +396,13 @@ El campo `campo` es siempre `fecha_administrativa` (el resolver lo asume). Refer
 // Caso Tarea — el documento se obtiene por rol del vínculo documentos_tarea:
 { "rol": "CONSUMIDO" }
 
-// Caso Trámite — sin FK directa; se navega a tarea hija del tipo indicado:
+// Caso Trámite (habitual) — navega a la tarea hija ESPERAR_PLAZO y toma su documento consumido:
 { "via_tarea_tipo": "ESPERAR_PLAZO", "rol": "CONSUMIDO" }
+
+// Caso Trámite (retroactivo, #416) — navega a ESPERAR_PLAZO y toma su documento producido.
+// El documento llega cuando el período ya ha concluido; su fecha_administrativa = inicio del período.
+// Uso: TABLON_AYUNTAMIENTOS (CERT_PLAZO_TABLON porta la fecha de inicio de la exposición).
+{ "via_tarea_tipo": "ESPERAR_PLAZO", "rol": "PRODUCIDO" }
 ```
 
 **UI de Supervisión:** selector en cascada (nivel ESFTT → tipo de tarea si Trámite → referencia disponible etiquetada en lenguaje administrativo). El POST traduce la selección al JSON. La presentación inversa lo traduce a texto legible:
@@ -613,23 +618,27 @@ Ninguna regla del motor disparará por plazo hasta que #172 implemente la lógic
 
 ### 4.1 Estado de tareas ESPERAR_PLAZO — derivación temporal
 
-> **Estado:** Cerrado — sesión 2026-04-23.
+> **Estado:** Cerrado — sesión 2026-04-23; rev. 2026-05-25 (#416).
 
 `ESPERAR_PLAZO` es el único tipo de tarea cuyo estado **no es derivable del estado de la BD en un momento fijo**. Todas las demás tareas codifican su completación en la BD: completada si existe un documento producido (vínculo PRODUCIDO en `documentos_tarea`), pendiente si no existe. `ESPERAR_PLAZO` no produce documento — su completación es un umbral temporal:
 
 ```
-completada ↔ hoy() > fecha_administrativa(documento consumido) + plazo_del_trámite_padre
+completada ↔ hoy() > fecha_administrativa(documento_referencia) + plazo_del_trámite_padre
 ```
+
+`documento_referencia` es el documento cuyo rol está configurado en `campo_fecha.rol` del `catalogo_plazos`:
+- **`rol: CONSUMIDO`** (caso habitual): el documento que inicia el período de espera llega antes de que el plazo empiece (p. ej. `ANUNCIO_PUBLICADO` para los trámites `ANUNCIO_BOP/BOJA`).
+- **`rol: PRODUCIDO`** (caso retroactivo): el documento llega cuando el período ya ha concluido y porta como `fecha_administrativa` la fecha de inicio del período (p. ej. `CERT_PLAZO_TABLON` para `TABLON_AYUNTAMIENTOS` — el ayuntamiento certifica cuándo empezó la exposición). Ver #416.
 
 **Consecuencia para el ContextAssembler:** el Assembler no puede derivar el estado de una tarea `ESPERAR_PLAZO` consultando únicamente la BD. Debe llamar a `plazos.py` pasándole el trámite padre para obtener `estado_plazo`. La tarea se considera completada si y solo si `estado_plazo == VENCIDO`.
 
 | Condición | Estado de la tarea |
 |---|---|
-| sin documento consumido | `PENDIENTE` — tarea no iniciada; el tramitador aún no ha asociado el documento de inicio |
-| con documento consumido y `estado_plazo != VENCIDO` | `PENDIENTE` — plazo en curso |
-| con documento consumido y `estado_plazo == VENCIDO` | `COMPLETADA` — plazo transcurrido |
+| sin documento_referencia | `PENDIENTE` — tarea no iniciada; el tramitador aún no ha asociado el documento |
+| con documento_referencia y `estado_plazo != VENCIDO` | `PENDIENTE` — plazo en curso |
+| con documento_referencia y `estado_plazo == VENCIDO` | `COMPLETADA` — plazo transcurrido |
 
-**Simetría con el cómputo de plazo del trámite:** el `campo_fecha` de `catalogo_plazos` para un trámite con `ESPERAR_PLAZO` es `{"via_tarea_tipo": "ESPERAR_PLAZO", "rol": "CONSUMIDO"}` (ver §3.2). La llamada que el Assembler ya necesita hacer a `plazos.py` para calcular las variables de plazo del trámite es la misma que resuelve el estado de la tarea. No se requiere una interfaz separada.
+**Simetría con el cómputo de plazo del trámite:** el `campo_fecha` de `catalogo_plazos` para un trámite con `ESPERAR_PLAZO` es `{"via_tarea_tipo": "ESPERAR_PLAZO", "rol": "CONSUMIDO"}` en el caso habitual, o `{"via_tarea_tipo": "ESPERAR_PLAZO", "rol": "PRODUCIDO"}` en el caso retroactivo (ver §3.2). La llamada que el Assembler ya necesita hacer a `plazos.py` para calcular las variables de plazo del trámite es la misma que resuelve el estado de la tarea. No se requiere una interfaz separada.
 
 **Ausencia de plazo configurado:** si `catalogo_plazos` no tiene entrada para el trámite padre, `plazos.py` devuelve `SIN_PLAZO` → la tarea queda `PENDIENTE` indefinidamente. El Supervisor debe configurar el plazo; sin esa configuración el motor no puede avanzar por ese trámite.
 
