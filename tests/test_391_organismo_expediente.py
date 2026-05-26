@@ -1,9 +1,11 @@
 """
 Tests issue #391 — OrganismoExpediente.as_contexto_cb() y ContextoConsultaSeparata.
+Tests issue #466 — direccion_notificacion_id en as_contexto_cb() con fallback.
 
 Bloques:
   A) OrganismoExpediente.as_contexto_cb()  — stubs, sin BD ni app context.
   B) ContextoConsultaSeparata.get_contexto() — stubs + mock de query.
+  C) #466 — as_contexto_cb() con direccion_notificacion_id y fallback.
 """
 from datetime import date
 from unittest.mock import MagicMock, patch
@@ -20,13 +22,16 @@ def _organismo(nombre='Red Eléctrica de España', nif='A78003662'):
     return org
 
 
-def _org_exp(organismo=None, plazo_legal_dias=30, estado='pendiente'):
+def _org_exp(organismo=None, plazo_legal_dias=30, estado='pendiente',
+             organismo_id=None, direccion_notificacion=None):
     """Stub de OrganismoExpediente con as_contexto_cb() delegando al método real."""
     from app.models.organismos_expediente import OrganismoExpediente
     oe = MagicMock()
     oe.organismo = organismo or _organismo()
     oe.plazo_legal_dias = plazo_legal_dias
     oe.estado = estado
+    oe.organismo_id = organismo_id
+    oe.direccion_notificacion = direccion_notificacion
     oe.as_contexto_cb = lambda: OrganismoExpediente.as_contexto_cb(oe)
     return oe
 
@@ -188,3 +193,75 @@ class TestContextoConsultaSeparata:
             ctx = cb.get_contexto()
 
         assert ctx['organismo_fecha_envio'] is None
+
+
+# ───────────────────────────────────────────────────────────────────────────────
+# C) #466 — direccion_notificacion_id: campos de contacto y fallback
+# ───────────────────────────────────────────────────────────────────────────────
+
+def _dir_notif_stub(email=None, dir3=None, sir=None,
+                    linea1='C/ Ejemplo 1', linea2='41001 Sevilla', provincia='SEVILLA'):
+    """Stub de DireccionNotificacion."""
+    d = MagicMock()
+    d.email = email
+    d.codigo_dir3 = dir3
+    d.codigo_sir = sir
+    d.direccion_formateada.return_value = {
+        'linea1': linea1,
+        'linea2': linea2,
+        'provincia': provincia,
+    }
+    return d
+
+
+class TestAsContextoCbDireccion:
+
+    def test_sin_direccion_campos_son_none(self):
+        """Sin direccion_notificacion ni organismo_id → campos de dirección None."""
+        oe = _org_exp(organismo_id=None, direccion_notificacion=None)
+        ctx = oe.as_contexto_cb()
+        assert ctx['organismo_email'] is None
+        assert ctx['organismo_dir3'] is None
+        assert ctx['organismo_sir'] is None
+        assert ctx['organismo_direccion_linea1'] is None
+        assert ctx['organismo_direccion_linea2'] is None
+        assert ctx['organismo_provincia'] is None
+
+    def test_direccion_notificacion_guardada_se_usa_directamente(self):
+        """Cuando hay direccion_notificacion en el registro, se usa sin fallback."""
+        dir_stub = _dir_notif_stub(email='org@ejemplo.es', dir3='A12345678', linea1='Av. Test 5')
+        oe = _org_exp(organismo_id=99, direccion_notificacion=dir_stub)
+        ctx = oe.as_contexto_cb()
+        assert ctx['organismo_email'] == 'org@ejemplo.es'
+        assert ctx['organismo_dir3'] == 'A12345678'
+        assert ctx['organismo_direccion_linea1'] == 'Av. Test 5'
+
+    def test_fallback_a_obtener_direccion_cuando_fk_es_none(self):
+        """Sin direccion_notificacion pero con organismo_id → se llama al fallback."""
+        dir_stub = _dir_notif_stub(email='fallback@org.es', sir='SIR001')
+        oe = _org_exp(organismo_id=42, direccion_notificacion=None)
+        with patch('app.models.organismos_expediente.DireccionNotificacion') as mock_dn:
+            mock_dn.obtener_direccion_notificacion.return_value = dir_stub
+            ctx = oe.as_contexto_cb()
+        mock_dn.obtener_direccion_notificacion.assert_called_once_with(42, es_consultado=True)
+        assert ctx['organismo_email'] == 'fallback@org.es'
+        assert ctx['organismo_sir'] == 'SIR001'
+
+    def test_fallback_sin_resultado_campos_none(self):
+        """Fallback devuelve None (organismo sin dirección en BD) → campos None."""
+        oe = _org_exp(organismo_id=42, direccion_notificacion=None)
+        with patch('app.models.organismos_expediente.DireccionNotificacion') as mock_dn:
+            mock_dn.obtener_direccion_notificacion.return_value = None
+            ctx = oe.as_contexto_cb()
+        assert ctx['organismo_email'] is None
+        assert ctx['organismo_provincia'] is None
+
+    def test_campos_basicos_no_se_ven_afectados(self):
+        """Los campos existentes (nombre, nif, plazo, resultado) siguen funcionando."""
+        oe = _org_exp(plazo_legal_dias=15, estado='cerrado_favorable',
+                      organismo_id=None, direccion_notificacion=None)
+        ctx = oe.as_contexto_cb()
+        assert ctx['organismo_nombre'] == 'Red Eléctrica de España'
+        assert ctx['organismo_nif'] == 'A78003662'
+        assert ctx['organismo_plazo_legal'] == 15
+        assert ctx['organismo_resultado'] == 'cerrado_favorable'
