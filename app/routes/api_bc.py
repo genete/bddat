@@ -183,6 +183,9 @@ def crear_fase(sol_id):
     return jsonify({'ok': True, 'id': fase.id, 'advertencia': _advertencia(res_eval)})
 
 
+_CODIGOS_TRASLADO = frozenset({'CONSULTA_TRASLADO_ORGANISMO', 'CONSULTA_TRASLADO_TITULAR'})
+
+
 @bp.route('/fase/<int:fase_id>/tramites/nuevo', methods=['POST'])
 @login_required
 def crear_tramite(fase_id):
@@ -198,6 +201,12 @@ def crear_tramite(fase_id):
     if not tipo_tramite:
         return jsonify({'ok': False, 'error': 'Tipo de trámite no encontrado'}), 404
 
+    if tipo_tramite.codigo in _CODIGOS_TRASLADO:
+        return jsonify({
+            'ok': False,
+            'error': 'Los trámites de traslado se crean desde la acción específica de organismo',
+        }), 400
+
     justificacion, err = _leer_bypass(request.form)
     if err:
         return err
@@ -212,7 +221,6 @@ def crear_tramite(fase_id):
 
     tramite = Tramite(fase_id=fase_id, tipo_tramite_id=tipo_tramite_id)
     db.session.add(tramite)
-    _hook_459_traslado_organismo(tipo_tramite, fase)
     db.session.flush()
 
     if justificacion:
@@ -641,14 +649,83 @@ def _hook_458_analizar_separata(tarea, id_producido):
             vinculo.organismo_expediente.estado = 'en_tramitacion'
 
 
-def _hook_459_traslado_organismo(tipo_tramite, fase):
-    """Hook #459: guard para CONSULTA_TRASLADO_ORGANISMO.
+# ============================================
+# ENDPOINT — crear trámite de traslado (#471)
+# ============================================
 
-    La vinculación del trámite a su OrganismoExpediente en tramites_organismos
-    se implementará en #471.
+@bp.route('/fase/<int:fase_id>/consultas/traslado/nuevo', methods=['POST'])
+@login_required
+def crear_traslado(fase_id):
+    """Crea un trámite CONSULTA_TRASLADO_* y lo vincula al OrganismoExpediente.
+
+    form:
+        organismo_expediente_id  int   Registro OrganismoExpediente destino
+        tipo                     str   'ORGANISMO' | 'TITULAR'
     """
-    if tipo_tramite.codigo != 'CONSULTA_TRASLADO_ORGANISMO':
-        return
+    fase = Fase.query.get_or_404(fase_id)
+    resultado = verificar_acceso_expediente(fase.solicitud.expediente, 'editar')
+    if resultado:
+        return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
+    return _ejecutar_crear_traslado(fase, request.form)
+
+
+def _ejecutar_crear_traslado(fase, form):
+    """Núcleo de crear_traslado, separado para facilitar tests."""
+    expediente = fase.solicitud.expediente
+
+    tipo = form.get('tipo', '').upper()
+    if tipo not in ('ORGANISMO', 'TITULAR'):
+        return jsonify({'ok': False, 'error': "tipo debe ser 'ORGANISMO' o 'TITULAR'"}), 400
+
+    oe_id = form.get('organismo_expediente_id', type=int)
+    if not oe_id:
+        return jsonify({'ok': False, 'error': 'organismo_expediente_id es obligatorio'}), 400
+
+    oe = OrganismoExpediente.query.get(oe_id)
+    if not oe or oe.expediente_id != expediente.id:
+        return jsonify({'ok': False, 'error': 'Organismo no encontrado en el expediente'}), 404
+
+    codigo = f'CONSULTA_TRASLADO_{tipo}'
+    try:
+        tipo_tramite = TipoTramite.query.filter_by(codigo=codigo).first()
+        if tipo_tramite is None:
+            log.warning('crear_traslado: TipoTramite %s no encontrado en catálogo', codigo)
+            return jsonify({'ok': False, 'error': f'Tipo de trámite {codigo} no configurado'}), 500
+    except (OperationalError, ProgrammingError):
+        log.warning('crear_traslado: tabla tipos_tramites no disponible')
+        return jsonify({'ok': False, 'error': 'Error de configuración del catálogo'}), 500
+
+    justificacion, err = _leer_bypass(form)
+    if err:
+        return err
+
+    if justificacion is None:
+        res_eval = _evaluar('CREAR', expediente,
+                            objeto={'fase': fase, 'tipo_tramite': tipo_tramite,
+                                    'organismo_expediente': oe})
+        if not res_eval.permitido:
+            return _bloqueo(res_eval)
+    else:
+        res_eval = PERMITIDO
+
+    try:
+        tramite = Tramite(fase_id=fase.id, tipo_tramite_id=tipo_tramite.id)
+        db.session.add(tramite)
+        db.session.flush()
+        db.session.add(TramiteOrganismo(tramite_id=tramite.id, organismo_expediente_id=oe.id))
+
+        if justificacion:
+            sujeto = build_sujeto(expediente, {'fase': fase, 'tipo_tramite': tipo_tramite})
+            bitacora_svc.registrar(
+                current_user.id, 'CREAR', 'tramites', tramite.id,
+                detalle={'escape': True, 'justificacion': justificacion, 'sujeto': sujeto},
+            )
+
+        db.session.commit()
+        return jsonify({'ok': True, 'id': tramite.id, 'advertencia': _advertencia(res_eval)}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'ok': False, 'error': str(e)}), 500
 
 
 # ============================================
