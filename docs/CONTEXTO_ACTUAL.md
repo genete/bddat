@@ -6,11 +6,11 @@
 
 ---
 
-**Último cerrado:** #475 (PR #485) — variable motor `traslado_organismo_titular_vencido` + campo `traslado_titular_vencido` en serialización de organismos; `variables={}` para evitar recursión; 10 tests sin BD real.
+**Último cerrado:** #471 (PR #486) — nuevo endpoint `crear_traslado` que vincula `CONSULTA_TRASLADO_*` a `OrganismoExpediente`; guard en endpoint genérico; 13 tests; corrige `organismo_supera_iteraciones` y `traslado_organismo_titular_vencido` que devolvían siempre False.
 
 **Actuales:** —
 
-**Próximo:** **#471** — vincular trámites `CONSULTA_TRASLADO_*` a `OrganismoExpediente` en `tramites_organismos`; corrige `organismo_supera_iteraciones` que devuelve False para TRASLADOs hasta que esto esté implementado.
+**Próximo:** **#488** — seed de secuencias de tareas para `CONSULTA_TRASLADO_ORGANISMO` y `CONSULTA_TRASLADO_TITULAR` en `tramites_tareas`; sin esto el flujo de traslados creado en #471 no puede ejecutarse.
 
 
 ## Hoja de ruta — orden propuesto para próximas sesiones
@@ -22,7 +22,7 @@
 Estos cuatro issues deben cerrarse antes de arrancar la UI porque condicionan
 el diseño del frontend o tienen código activo con huecos conocidos.
 
-1. **#471** — vincular trámites `CONSULTA_TRASLADO_*` a `tramites_organismos`: corrige hueco activo en `organismo_supera_iteraciones` y en `_traslado_titular_vencido` (#475)
+1. **#488** — seed de secuencias de tareas para `CONSULTA_TRASLADO_ORGANISMO` y `CONSULTA_TRASLADO_TITULAR` en `tramites_tareas`: sin esto el flujo de traslados creado en #471 no puede ejecutarse
 2. **#470** — certificado de cierre de fase CONSULTAS (`CERT_FIN_IP_CONSULTAS`) y reglas del motor: cierra el bloque CONSULTAS de extremo a extremo
 3. **#466** — `direccion_notificacion_id` en `organismos_expediente`: cambio de schema antes de que la UI (#396) construya sobre el modelo actual
 4. **#174** — permisos granulares con traza en bitácora (rediseño: permiso blando + bitácora): afecta todos los endpoints que el frontend va a consumir
@@ -43,6 +43,9 @@ el diseño del frontend o tienen código activo con huecos conocidos.
 Troceo de #248 fuera del recorrido priorizado: **#407** (campo `siglas_escritos`),
 **#408** (checklist documental — posible post-producción), **#409** (regla de tasas;
 tras #408).
+
+Correcciones de tests preexistentes: **#487** (app context en `TestSerializarOrgExp` + URL de stub en e2e art. 131),
+**#489** (texto de `norma_origen` en seed de `catalogo_plazos`: RD 88/2026).
 
 ### Backlog M4 — Pre-producción
 
