@@ -600,7 +600,35 @@ def _serializar_org_exp(oe):
         'estado': oe.estado,
         'plazo_legal_dias': oe.plazo_legal_dias,
         'condicionados_doc_id': oe.condicionados_doc_id,
+        'traslado_titular_vencido': _traslado_titular_vencido(oe),
     }
+
+
+def _traslado_titular_vencido(oe) -> bool:
+    """True si el CONSULTA_TRASLADO_TITULAR más reciente del organismo tiene plazo VENCIDO.
+
+    Llamada con variables={} para evitar recursión en _compilar_variables (#475).
+    """
+    from app.models.tramites_organismos import TramiteOrganismo
+    from app.models.tramites import Tramite as _Tramite
+    from app.models.tipos_tramites import TipoTramite
+    from app.services import plazos
+
+    vinculo = (
+        TramiteOrganismo.query
+        .join(_Tramite, TramiteOrganismo.tramite_id == _Tramite.id)
+        .join(TipoTramite, _Tramite.tipo_tramite_id == TipoTramite.id)
+        .filter(
+            TramiteOrganismo.organismo_expediente_id == oe.id,
+            TipoTramite.codigo == 'CONSULTA_TRASLADO_TITULAR',
+        )
+        .order_by(TramiteOrganismo.tramite_id.desc())
+        .first()
+    )
+    if vinculo is None:
+        return False
+    ep = plazos.obtener_estado_plazo(vinculo.tramite, 'TRAMITE', variables={})
+    return ep.estado == 'VENCIDO'
 
 
 def _hook_458_analizar_separata(tarea, id_producido):

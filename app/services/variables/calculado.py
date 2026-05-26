@@ -237,3 +237,48 @@ def _(ctx) -> bool:
         if count >= 1:
             return True
     return False
+
+
+@variable('traslado_organismo_titular_vencido')
+def _(ctx) -> bool:
+    """
+    True si algún organismo en en_tramitacion tiene su CONSULTA_TRASLADO_TITULAR
+    más reciente con plazo VENCIDO.
+
+    Permite al motor emitir una alerta diferenciada cuando el titular no ha
+    respondido al traslado dentro del plazo legal (15 días hábiles, art. 127.3 /
+    131.3 RD 1955/2000). El efecto es SIN_EFECTO_AUTOMATICO: el sistema no puede
+    inferir la acción correcta sin leer el resultado del trámite de organismo
+    precedente (ADR-011 §5).
+
+    Implementación — variables={} para evitar recursión: el seed #463 no define
+    condiciones en la entrada de CONSULTA_TRASLADO_TITULAR, por lo que pasar un
+    dict vacío produce el mismo resultado que el contexto completo. Si en el futuro
+    se añaden condiciones a ese plazo, revisar esta llamada (#475).
+    """
+    from app.models.tramites_organismos import TramiteOrganismo
+    from app.models.tramites import Tramite as _Tramite
+    from app.models.tipos_tramites import TipoTramite
+    from app.services import plazos
+    from app import db
+
+    for org in ctx.expediente.organismos:
+        if org.estado != 'en_tramitacion':
+            continue
+        vinculo = (
+            db.session.query(TramiteOrganismo)
+            .join(_Tramite, TramiteOrganismo.tramite_id == _Tramite.id)
+            .join(TipoTramite, _Tramite.tipo_tramite_id == TipoTramite.id)
+            .filter(
+                TramiteOrganismo.organismo_expediente_id == org.id,
+                TipoTramite.codigo == 'CONSULTA_TRASLADO_TITULAR',
+            )
+            .order_by(TramiteOrganismo.tramite_id.desc())
+            .first()
+        )
+        if vinculo is None:
+            continue
+        ep = plazos.obtener_estado_plazo(vinculo.tramite, 'TRAMITE', variables={})
+        if ep.estado == 'VENCIDO':
+            return True
+    return False
