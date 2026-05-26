@@ -1,4 +1,5 @@
 from app import db
+from app.models.direccion_notificacion import DireccionNotificacion
 
 
 ESTADOS_ORGANISMO = (
@@ -85,6 +86,14 @@ class OrganismoExpediente(db.Model):
         comment='FK documento CONDICIONADO_OFICIO. Solo cuando titular sin_respuesta en AAC tras condicionado (ADR-011 §2)',
     )
 
+    direccion_notificacion_id = db.Column(
+        db.Integer,
+        db.ForeignKey('public.direcciones_notificacion.id', name='fk_org_exp_direccion_notif'),
+        nullable=True,
+        index=True,
+        comment='FK direcciones_notificacion. Dirección elegida al añadir el organismo; NULL = usar la más reciente activa con rol CONSULTADO',
+    )
+
     plazo_legal_dias = db.Column(
         db.Integer,
         nullable=True,
@@ -96,6 +105,7 @@ class OrganismoExpediente(db.Model):
     organismo = db.relationship('Entidad', foreign_keys=[organismo_id])
     documento = db.relationship('Documento', foreign_keys=[documento_id])
     condicionados_doc = db.relationship('Documento', foreign_keys=[condicionados_doc_id])
+    direccion_notificacion = db.relationship('DireccionNotificacion', foreign_keys=[direccion_notificacion_id])
 
     def __repr__(self):
         return f'<OrganismoExpediente exp={self.expediente_id} org={self.organismo_id} estado={self.estado}>'
@@ -115,9 +125,39 @@ class OrganismoExpediente(db.Model):
 
     def as_contexto_cb(self) -> dict:
         """Fragmento de contexto para plantillas de CONSULTA_SEPARATA."""
-        return {
+        ctx = {
             'organismo_nombre': self.organismo.nombre_completo if self.organismo else None,
             'organismo_nif': self.organismo.nif if self.organismo else None,
             'organismo_plazo_legal': self.plazo_legal_dias,
             'organismo_resultado': self.estado,  # estado interno del motor; no usar en plantillas de escritos
         }
+        dir_notif = (
+            self.direccion_notificacion
+            or (
+                DireccionNotificacion.obtener_direccion_notificacion(
+                    self.organismo_id, es_consultado=True
+                )
+                if self.organismo_id
+                else None
+            )
+        )
+        if dir_notif:
+            df = dir_notif.direccion_formateada()
+            ctx.update({
+                'organismo_email': dir_notif.email,
+                'organismo_dir3': dir_notif.codigo_dir3,
+                'organismo_sir': dir_notif.codigo_sir,
+                'organismo_direccion_linea1': df['linea1'],
+                'organismo_direccion_linea2': df['linea2'],
+                'organismo_provincia': df['provincia'],
+            })
+        else:
+            ctx.update({
+                'organismo_email': None,
+                'organismo_dir3': None,
+                'organismo_sir': None,
+                'organismo_direccion_linea1': None,
+                'organismo_direccion_linea2': None,
+                'organismo_provincia': None,
+            })
+        return ctx
