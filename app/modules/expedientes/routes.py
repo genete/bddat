@@ -358,7 +358,11 @@ def tramitacion_bc_fase(exp_id, sol_id, fase_id):
     ]
 
     resultados_fase = TipoResultadoFase.query.order_by(TipoResultadoFase.nombre).all()
-    tipos_tramite = TipoTramite.query.order_by(TipoTramite.nombre).all()
+    tipos_tramite = (TipoTramite.query
+                     .filter(TipoTramite.codigo.notin_(
+                         ['CONSULTA_TRASLADO_ORGANISMO', 'CONSULTA_TRASLADO_TITULAR']
+                     ))
+                     .order_by(TipoTramite.nombre).all())
 
     estado_plazo_fase = obtener_estado_plazo(fase, 'FASE')
 
