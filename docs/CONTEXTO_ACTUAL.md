@@ -1,79 +1,42 @@
 # Contexto actual — BDDAT
 
 > Actualizar al cerrar cada issue. La sección de estado lleva una entrada por línea.
-> La hoja de ruta es la propuesta de orden para las próximas sesiones — el detalle y
-> el porqué de cada decisión está en `docs/historial/REVISION_VALIDEZ_ISSUES_MAYO_2026.md`.
+> El detalle y el porqué de cada decisión está en `docs/historial/REVISION_VALIDEZ_ISSUES_MAYO_2026.md`.
+> Los issues cerrados están en `git log` — no se duplican aquí.
 
 ---
 
-**Último cerrado:** #416 (PR #484) — motor plazos `TABLON_AYUNTAMIENTOS`: seed `catalogo_plazos` con `campo_fecha = {via_tarea_tipo: ESPERAR_PLAZO, rol: PRODUCIDO}`; 30 días naturales (art. 125 RD 1955/2000); sin cambios en `plazos.py`. Cierra el Bloque 4.
+**Último cerrado:** #475 (PR #485) — variable motor `traslado_organismo_titular_vencido` + campo `traslado_titular_vencido` en serialización de organismos; `variables={}` para evitar recursión; 10 tests sin BD real.
 
 **Actuales:** —
 
-**Próximo:** **#475** — señalización de `CONSULTA_TRASLADO_TITULAR` vencido en organismo: detectar vencimiento + exponer estado en API/variables (backend independiente de UI #396).
+**Próximo:** **#471** — vincular trámites `CONSULTA_TRASLADO_*` a `OrganismoExpediente` en `tramites_organismos`; corrige `organismo_supera_iteraciones` que devuelve False para TRASLADOs hasta que esto esté implementado.
 
 
 ## Hoja de ruta — orden propuesto para próximas sesiones
 
 > Una sesión limpia por ítem. Las dependencias se indican con «(tras #X)».
 
-### Bloque 1 — Correcciones M2 inmediatas
+### Pre-frontend — Requisitos estructurales
 
-1. ~~**#300** — dirección de notificación del titular en escritos~~ ✓
-2. ~~**#366** — renombrar AUDIENCIA → COMUNICACION_AUDIENCIA (corrección de diseño #346)~~ ✓
+Estos cuatro issues deben cerrarse antes de arrancar la UI porque condicionan
+el diseño del frontend o tienen código activo con huecos conocidos.
 
-### Bloque 2 — Catálogo y documentos internos (fundacional)
-
-4. ~~**#377** — seed de tipos_documentos del catálogo ESFTT~~ ✓
-5. ~~**#420** — modelo N:M documento↔tarea: tabla multiusos con rol (ADR-010; sustituye a #380 y #376)~~ ✓
-6. ~~**#418** — tabla `notificaciones`: documento vitaminado para NOTIFICAR (tras #420; sustituye a #378; ver ADR-008)~~ ✓
-7. ~~**#419** — invariante ANALIZAR: bloquear cierre si diagnóstico desfavorable no consumido (tras #418)~~ ✓
-8. ~~**#365** — implementar URI `bddat://` y helper `resolver_url()` (ADR-006)~~ ✓
-9. ~~**#362** — certificado de plazo cumplido (tras #365; absorbe la limpieza de #357)~~ ✓
-
-### Bloque 3 — Modelo de interesados y Context Builders de escritos
-
-9. ~~**#374** — tabla de interesados del expediente y trámite REGISTRO_INTERESADOS~~ ✓
-10. ~~**#402** — CB `ContextoNotificacionOrganismo` (notificación a organismo consultado)~~ ✓
-11. ~~**#403** — CB `ContextoResolucion` (escrito de resolución)~~ ✓
-12. ~~**#404** — CB `ContextoInformacionPublica` (anuncio de información pública)~~ ✓
-13. ~~**#405** — tablas `catalogo_requerimientos` y `requerimientos_tarea`~~ ✓
-14. ~~**#406** — CB `ContextoSubsanacion` (requerimiento de subsanación; tras #405)~~ ✓
-
-### Bloque 4 — Motor de reglas y plazos
-
-15. ~~**#417** — limpiar referencias a tareas obsoletas v6.0 en `seed_demo.py` y `GUIA_GENERAL.md` (deuda técnica pequeña; independiente)~~ ✓
-16. ~~**#283** — capa ES de ESFTT: `ESTRUCTURA_ESF` (.md v2.2 + .json) + arts. 137-138 RD 88/2026~~ ✓
-17. ~~**#449** — fix `GRANT SELECT` olvidado en `organismos_expediente` (deuda menor M2, ~5 min, totalmente independiente) — *de la auditoría 22/05*~~ ✓
-18. ~~**#448** — HOTFIX seed `catalogo_plazos` RESOLUCION (crítico, bloqueante para motor de plazos): rediseño con `condiciones_plazo` por `tipo_solicitud` + nueva migración + sincronizar `DISEÑO_FECHAS_PLAZOS.md §5.2` — *de la auditoría 22/05*~~ ✓
-19. ~~**#454** — auditoría migraciones 345 vs 370 en `tramites_tareas` (prerequisito crítico de #247)~~ ✓
-20. ~~**#247** — API CRUD `organismos_expediente` + automatismos #458 + #459 (un único PR; cierra los tres)~~ ✓
-21. ~~**#461** — endpoint `GET /api/entidades/consultables` (desbloquea #396)~~ ✓
-22. ~~**#456** — `tramites_organismos` + `condicionados_doc_id` + `CONDICIONADO_OFICIO` + criterios completitud CONSULTAS (ADR-011)~~ ✓ → ~~**#457** CB traslados (tras #456)~~ ✓
-23. ~~**#460** — variables motor cierre CONSULTAS: `organismos_todos_terminados`, `organismo_supera_iteraciones` (tras #458)~~ ✓
-24. ~~**#462** — acción en bloque «Enviar consultas» (tras #247)~~ ✓
-25. ~~**#463** — seed `catalogo_plazos` para CONSULTAS (independiente, M3)~~ ✓
-26. **#475** — señalización de `CONSULTA_TRASLADO_TITULAR` vencido en organismo (M3; backend independiente; UI #396 necesaria solo para mostrar la alerta al tramitador).
-27. ~~**#455** — variables motor cierre `ANALISIS_SOLICITUD` (independiente de CONSULTAS; tras #442).~~ ✓
-27. ~~**#451** — ampliar catálogo `normas` (LSE, LPACAP, DL 2/2018, DL 26/2021, RD 1183/2020, RD 244/2019, RD 88/2026) — prerrequisito de #323 — *de la auditoría 22/05*~~ ✓
-28. ~~**#323** — modo global del motor + tabla `configuracion_sistema`~~ ✓
-28b. ~~**#1** — cuaderno de bitácora agnóstico: tabla `bitacora`, modelo, servicio `registrar()` (prerequisito de #324, #174, #435, #436; movido de M5 a M3 en sesión 2026-05-25)~~ ✓
-29. ~~**#324** — mecanismo de escape del motor: `puede_escapar`, `_leer_bypass`, bypass+bitácora en 8 endpoints, `build_sujeto()`; 12 tests~~ ✓
-29b. ~~**#483** — corregir tests obsoletos `test_296` y `test_328` (commit directo en develop; independiente)~~ ✓
-30. ~~**#450**~~ → movido a M5: seed CIERRE/CONSULTA_OPERADOR_SISTEMA pendiente de UI de catálogo del supervisor
-31. ~~**#416** — motor de plazos para TABLON_AYUNTAMIENTOS: fecha administrativa y cierre retroactivo de ESPERAR_PLAZO (edge case del servicio de plazos)~~ ✓
+1. **#471** — vincular trámites `CONSULTA_TRASLADO_*` a `tramites_organismos`: corrige hueco activo en `organismo_supera_iteraciones` y en `_traslado_titular_vencido` (#475)
+2. **#470** — certificado de cierre de fase CONSULTAS (`CERT_FIN_IP_CONSULTAS`) y reglas del motor: cierra el bloque CONSULTAS de extremo a extremo
+3. **#466** — `direccion_notificacion_id` en `organismos_expediente`: cambio de schema antes de que la UI (#396) construya sobre el modelo actual
+4. **#174** — permisos granulares con traza en bitácora (rediseño: permiso blando + bitácora): afecta todos los endpoints que el frontend va a consumir
 
 ### Bloque 5 — Análisis heurístico de PDF
 
-32. **#304** — script de detección del tipo de solicitud
-33. **#305** — script de detección del tipo de expediente
-34. **#306** — helper de cálculo de tasa y extracción de presupuesto (tras #304)
+5. **#304** — script de detección del tipo de solicitud
+6. **#305** — script de detección del tipo de expediente
+7. **#306** — helper de cálculo de tasa y extracción de presupuesto (tras #304)
 
 ### Bloque 6 — Issues con rediseño previo necesario
 
-35. **#410** — compatibilidad de tipos de solicitud como reglas del motor
-36. **#192** — requisitos documentales por procedimiento (rediseñar: anclar a CREAR fase siguiente, sin tabla `procedimientos`)
-37. **#174** — permisos blandos con traza en bitácora (rediseñar: permiso blando + bitácora, no permiso duro por expediente)
+8. **#410** — compatibilidad de tipos de solicitud como reglas del motor
+9. **#192** — requisitos documentales por procedimiento (rediseñar: anclar a CREAR fase siguiente, sin tabla `procedimientos`)
 
 ### Backlog M3 sin posición en la ruta
 
