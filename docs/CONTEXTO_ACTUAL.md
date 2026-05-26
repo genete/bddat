@@ -6,11 +6,11 @@
 
 ---
 
-**Último cerrado:** #470 (PR #491) — certificado de cierre de fase CONSULTAS (`CERT_FIN_IP_CONSULTAS`): plantilla PDF on-demand, servicio `crear_cert_fin_ip_consultas`, ruta `crear_fase` emite el certificado al crear RESOLUCIÓN o AAU_AAUS_INTEGRADA, reglas del motor en BD y tests.
+**Último cerrado:** #466 (PR #492) — `direccion_notificacion_id` en `organismos_expediente`: migración FK nullable, relación en modelo, `as_contexto_cb()` enriquecido con campos de contacto y fallback a `obtener_direccion_notificacion`.
 
 **Actuales:** —
 
-**Próximo:** **#466** — `direccion_notificacion_id` en `organismos_expediente`: cambio de schema antes de que la UI (#396) construya sobre el modelo actual.
+**Próximo:** **#174** — permisos blandos con traza en bitácora (rediseño de la propuesta original de permisos duros; conecta con #1 y #324).
 
 
 ## Hoja de ruta — orden propuesto para próximas sesiones
@@ -24,7 +24,7 @@ el diseño del frontend o tienen código activo con huecos conocidos.
 
 1. ~~**#488**~~ — ✓ cerrado (PR #490)
 2. ~~**#470**~~ — ✓ cerrado (PR #491)
-3. **#466** — `direccion_notificacion_id` en `organismos_expediente`: cambio de schema antes de que la UI (#396) construya sobre el modelo actual
+3. ~~**#466**~~ — ✓ cerrado (PR #492)
 4. **#174** — permisos granulares con traza en bitácora (rediseño: permiso blando + bitácora): afecta todos los endpoints que el frontend va a consumir
 
 ### Bloque 5 — Análisis heurístico de PDF
