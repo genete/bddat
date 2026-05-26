@@ -6,11 +6,11 @@
 
 ---
 
-**Último cerrado:** #471 (PR #486) — nuevo endpoint `crear_traslado` que vincula `CONSULTA_TRASLADO_*` a `OrganismoExpediente`; guard en endpoint genérico; 13 tests; corrige `organismo_supera_iteraciones` y `traslado_organismo_titular_vencido` que devolvían siempre False.
+**Último cerrado:** #488 (PR #490) — migración seed `tramites_tareas` para `REGISTRO_INTERESADOS` (patrón A: `ANALIZAR`); corrige `test_todos_tramites_tienen_tarea` que fallaba `assert 30 == 31`.
 
 **Actuales:** —
 
-**Próximo:** **#488** — seed de secuencias de tareas para `CONSULTA_TRASLADO_ORGANISMO` y `CONSULTA_TRASLADO_TITULAR` en `tramites_tareas`; sin esto el flujo de traslados creado en #471 no puede ejecutarse.
+**Próximo:** **#470** — certificado de cierre de fase CONSULTAS (`CERT_FIN_IP_CONSULTAS`) y reglas del motor; cierra el bloque CONSULTAS de extremo a extremo.
 
 
 ## Hoja de ruta — orden propuesto para próximas sesiones
@@ -22,7 +22,7 @@
 Estos cuatro issues deben cerrarse antes de arrancar la UI porque condicionan
 el diseño del frontend o tienen código activo con huecos conocidos.
 
-1. **#488** — seed de secuencias de tareas para `CONSULTA_TRASLADO_ORGANISMO` y `CONSULTA_TRASLADO_TITULAR` en `tramites_tareas`: sin esto el flujo de traslados creado en #471 no puede ejecutarse
+1. ~~**#488**~~ — ✓ cerrado (PR #490)
 2. **#470** — certificado de cierre de fase CONSULTAS (`CERT_FIN_IP_CONSULTAS`) y reglas del motor: cierra el bloque CONSULTAS de extremo a extremo
 3. **#466** — `direccion_notificacion_id` en `organismos_expediente`: cambio de schema antes de que la UI (#396) construya sobre el modelo actual
 4. **#174** — permisos granulares con traza en bitácora (rediseño: permiso blando + bitácora): afecta todos los endpoints que el frontend va a consumir
