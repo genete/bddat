@@ -44,7 +44,7 @@ def test_fk_tipo_tarea():
 # ---------------------------------------------------------------------------
 
 def test_todos_tramites_tienen_tarea(app_ctx):
-    """Los 24 tipos de trámite del catálogo tienen al menos una tarea."""
+    """Todos los tipos de trámite del catálogo tienen al menos una tarea."""
     from app import db
     from app.models.tramites_tareas import TramiteTarea
     from app.models.tipos_tramites import TipoTramite
