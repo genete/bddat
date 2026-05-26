@@ -11,17 +11,20 @@ from app.services.invariantes_esftt import RESULTADO_FASE_FAVORABLE_CODIGOS
 @variable('fase_ip_finalizada')
 def _(ctx) -> bool:
     """
-    True si existe al menos una fase de tipo INFORMACION_PUBLICA finalizada
-    (con documento_resultado_id) en cualquier solicitud del expediente.
+    True si la solicitud en contexto tiene al menos una fase INFORMACION_PUBLICA
+    finalizada (documento_resultado_id IS NOT NULL).
 
-    Devuelve False si la fase no existe o existe pero no está finalizada.
+    Devuelve False si no hay solicitud en contexto, si la fase no existe o
+    existe pero no está finalizada.
     """
-    for solicitud in ctx.expediente.solicitudes:
-        for fase in solicitud.fases:
-            if (fase.tipo_fase
-                    and fase.tipo_fase.codigo == 'INFORMACION_PUBLICA'
-                    and fase.finalizada):
-                return True
+    solicitud = ctx.solicitud
+    if solicitud is None:
+        return False
+    for fase in solicitud.fases:
+        if (fase.tipo_fase
+                and fase.tipo_fase.codigo == 'INFORMACION_PUBLICA'
+                and fase.finalizada):
+            return True
     return False
 
 
