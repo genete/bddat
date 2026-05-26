@@ -172,6 +172,10 @@ def crear_fase(sol_id):
     db.session.add(fase)
     db.session.flush()
 
+    if tipo_fase.codigo in _FASES_QUE_REQUIEREN_CERT_IP_CONSULTAS:
+        from app.services.cert_fin_ip_consultas import crear_cert_fin_ip_consultas
+        crear_cert_fin_ip_consultas(sol.expediente, sol)
+
     if justificacion:
         sujeto = build_sujeto(sol.expediente, {'solicitud': sol, 'tipo_fase': tipo_fase})
         bitacora_svc.registrar(
@@ -184,6 +188,7 @@ def crear_fase(sol_id):
 
 
 _CODIGOS_TRASLADO = frozenset({'CONSULTA_TRASLADO_ORGANISMO', 'CONSULTA_TRASLADO_TITULAR'})
+_FASES_QUE_REQUIEREN_CERT_IP_CONSULTAS = frozenset({'RESOLUCION', 'AAU_AAUS_INTEGRADA'})
 
 
 @bp.route('/fase/<int:fase_id>/tramites/nuevo', methods=['POST'])
