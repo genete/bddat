@@ -9,6 +9,7 @@
 | Commit o rama | Ramas · Commit directo vs rama · Commits |
 | Cierre de milestone | Releases |
 | Decisión de diseño | Decisiones arquitectónicas |
+| Nueva ruta o template con expediente / rol | Control de acceso |
 
 ---
 
@@ -121,6 +122,39 @@ No hay CHANGELOG.md — los PRs cerrados en GitHub son la fuente de verdad.
 ## Decisiones arquitectónicas
 
 Registrar en `docs/decisiones/` como ADR numerado. Ver ADR-001 y ADR-002 como referencia de formato.
+
+---
+
+## Control de acceso
+
+El sistema de permisos está centralizado en `app/utils/permisos.py` (ADR-012).
+**Nunca** usar `current_user.tiene_rol('ADMIN', ...)` directamente en rutas ni templates nuevos.
+
+### Qué usar en cada caso
+
+| Situación | Qué usar |
+|---|---|
+| Ruta que opera sobre un expediente concreto | `verificar_acceso_expediente(expediente, 'ver'\|'editar')` al inicio del handler |
+| Endpoint de sección admin (usuarios, plantillas…) | `@require_permiso('nombre_permiso')` como decorador |
+| Filtro de lista según rol (proyectos, seguimiento…) | `if not tiene_permiso('ver_todos_proyectos'):` |
+| Mostrar/ocultar control en template | `{% if tiene_permiso('nombre_permiso') %}` |
+| Permiso nuevo necesario | Añadir entrada en `PERMISOS` de `app/utils/permisos.py` |
+
+### Efectos automáticos de `verificar_acceso_expediente`
+
+Llamar a esta función en una ruta activa **gratuitamente**:
+
+- El indicador de bombilla en el header (verde/rojo) para TRAMITADOR.
+- El registro en bitácora si TRAMITADOR edita un expediente no asignado.
+- La protección de acceso según `PERMISOS['editar_expediente']` o `PERMISOS['acceder_expediente']`.
+
+Si la ruta no llama a `verificar_acceso_expediente`, el indicador no aparece aunque haya un expediente en contexto.
+
+### Añadir un permiso nuevo
+
+1. Añadir la clave y el conjunto de roles en `PERMISOS` (`app/utils/permisos.py`).
+2. Usar `tiene_permiso('nueva_clave')` o `@require_permiso('nueva_clave')` en el punto de uso.
+3. No hay migración de BD ni cambio de esquema.
 
 ---
 
