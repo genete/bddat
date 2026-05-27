@@ -107,6 +107,13 @@ from app.models.informacion_publica import InformacionPublica
 # Requerimientos de tarea ANALIZAR (#405 — depende de Tarea y CatalogoRequerimiento)
 from app.models.requerimientos_tarea import RequerimientoTarea
 
+# Requisitos documentales por solicitud (#192 — depende de Solicitud, Documento, TipoDocumento)
+from app.models.requisitos_documentales import (
+    RequisitoDocumental,
+    CondicionRequisito,
+    DocumentoRequisito,
+)
+
 # Mapa semántico de documentos por tarea (#346 — sin FK operacional propia)
 from app.models.tramites_tareas_documentos import TramiteTareaDocumento
 
@@ -185,4 +192,8 @@ __all__ = [
     'InformacionPublica',
     # Requerimientos de tarea ANALIZAR
     'RequerimientoTarea',
+    # Requisitos documentales por solicitud
+    'RequisitoDocumental',
+    'CondicionRequisito',
+    'DocumentoRequisito',
 ]
