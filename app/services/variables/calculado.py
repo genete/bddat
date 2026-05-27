@@ -246,6 +246,24 @@ def _(ctx) -> bool:
 # Variables compatibilidad de tipos de solicitud (#410)
 # ---------------------------------------------------------------------------
 
+@variable('tipo_expediente')
+def _(ctx) -> str | None:
+    """
+    Tipo de expediente como string: 'Distribucion', 'Transporte', 'Renovable', 'Convencional'.
+
+    Devuelve el valor del campo TipoExpediente.tipo del expediente en contexto,
+    o None si no está definido. Se usa en condiciones de requisitos documentales
+    y en condiciones del motor que dependen del tipo de instalación.
+
+    Nota: los valores son los de la tabla tipos_expedientes.tipo — no cambiar
+    sin actualizar las condiciones_requisito que los referencian.
+    """
+    tipo_exp = ctx.expediente.tipo_expediente if ctx.expediente else None
+    if tipo_exp is None:
+        return None
+    return tipo_exp.tipo
+
+
 @variable('es_expediente_produccion')
 def _(ctx) -> bool:
     """
