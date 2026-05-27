@@ -119,20 +119,52 @@ def crear_solicitud(exp_id):
     if not entidad_id:
         return jsonify({'ok': False, 'error': 'El expediente no tiene titular asignado. Asígnelo antes de crear solicitudes.'}), 422
 
+    justificacion, err = _leer_bypass(request.form)
+    if err:
+        return err
+
+    # Fase 1: validar tipos y evaluar motor antes de crear ninguna solicitud.
+    # Si cualquiera está bloqueada, se rechaza todo sin modificar la BD.
+    tipos_a_crear = []
+    for tid in tipo_ids:
+        try:
+            tid_int = int(tid)
+        except (ValueError, TypeError):
+            return jsonify({'ok': False, 'error': f'Tipo de solicitud inválido: {tid}'}), 400
+        tipo = TipoSolicitud.query.get(tid_int)
+        if not tipo:
+            return jsonify({'ok': False, 'error': f'Tipo de solicitud {tid_int} no encontrado'}), 404
+
+        if justificacion is None:
+            # stub transiente: precarga tipo_solicitud para que el assembler
+            # compile el sujeto sin necesitar flush
+            sol_stub = Solicitud(expediente_id=exp_id, entidad_id=entidad_id,
+                                 tipo_solicitud_id=tid_int)
+            sol_stub.tipo_solicitud = tipo
+            res_eval = _evaluar('CREAR', expediente, objeto=sol_stub)
+            if not res_eval.permitido:
+                return _bloqueo(res_eval)
+
+        tipos_a_crear.append(tipo)
+
+    # Fase 2: crear y persistir
     creadas = []
     try:
-        for tid in tipo_ids:
-            try:
-                tid_int = int(tid)
-            except (ValueError, TypeError):
-                return jsonify({'ok': False, 'error': f'Tipo de solicitud inválido: {tid}'}), 400
-            tipo = TipoSolicitud.query.get(tid_int)
-            if not tipo:
-                return jsonify({'ok': False, 'error': f'Tipo de solicitud {tid_int} no encontrado'}), 404
+        for tipo in tipos_a_crear:
             sol = Solicitud(expediente_id=exp_id, entidad_id=entidad_id,
-                            tipo_solicitud_id=tid_int)
+                            tipo_solicitud_id=tipo.id)
             db.session.add(sol)
+            db.session.flush()  # obtener sol.id para la bitácora
+
+            if justificacion:
+                sujeto = build_sujeto(expediente, sol)
+                bitacora_svc.registrar(
+                    current_user.id, 'CREAR', 'solicitudes', sol.id,
+                    detalle={'escape': True, 'justificacion': justificacion,
+                             'sujeto': sujeto},
+                )
             creadas.append(sol)
+
         db.session.commit()
     except Exception as e:
         db.session.rollback()

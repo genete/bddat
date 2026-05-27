@@ -242,6 +242,54 @@ def _(ctx) -> bool:
     return False
 
 
+# ---------------------------------------------------------------------------
+# Variables compatibilidad de tipos de solicitud (#410)
+# ---------------------------------------------------------------------------
+
+@variable('es_expediente_produccion')
+def _(ctx) -> bool:
+    """
+    True si el tipo de expediente es de producción (Renovable o Convencional).
+
+    Los registros RAIPEE y la autorización de explotación provisional (AE_PROVISIONAL)
+    solo aplican a instalaciones de generación. En distribución, transporte y demás
+    tipos carecen de base legal y se bloquean al crear la solicitud.
+    """
+    tipo_exp = ctx.expediente.tipo_expediente
+    if tipo_exp is None:
+        return False
+    return tipo_exp.tipo in ('Renovable', 'Convencional')
+
+
+@variable('tiene_aac_resuelta_favorable')
+def _(ctx) -> bool:
+    """
+    True si existe en el expediente una solicitud con tipo AAC cuya fase
+    finalizadora está cerrada con resultado favorable.
+
+    Prerequisito para AE_PROVISIONAL y AE_DEFINITIVA: la explotación requiere
+    que la construcción haya sido autorizada favorablemente. Crear una AE sin
+    AAC resuelta constituiría una infracción administrativa (RD 1955/2000).
+
+    Patrón idéntico a tiene_solicitud_aap_favorable pero evaluando AAC.
+    La solicitud en contexto (la AE que se intenta crear) se excluye del recorrido.
+    """
+    solicitud_actual = ctx.solicitud
+    for sol in ctx.expediente.solicitudes:
+        if sol is solicitud_actual:
+            continue
+        if not sol.contiene_tipo('AAC'):
+            continue
+        for fase in sol.fases:
+            if (fase.tipo_fase
+                    and fase.tipo_fase.es_finalizadora
+                    and fase.finalizada
+                    and fase.resultado_fase
+                    and fase.resultado_fase.codigo in RESULTADO_FASE_FAVORABLE_CODIGOS):
+                return True
+    return False
+
+
 @variable('traslado_organismo_titular_vencido')
 def _(ctx) -> bool:
     """
