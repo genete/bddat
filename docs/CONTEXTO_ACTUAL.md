@@ -6,11 +6,11 @@
 
 ---
 
-**Último cerrado:** #466 (PR #492) — `direccion_notificacion_id` en `organismos_expediente`: migración FK nullable, relación en modelo, `as_contexto_cb()` enriquecido con campos de contacto y fallback a `obtener_direccion_notificacion`.
+**Último cerrado:** #174 (PR #493) — permisos centralizados (`PERMISOS` dict), permiso blando en expedientes con traza en bitácora, indicador de asignación en header, `require_permiso` decorator, ADR-012.
 
 **Actuales:** —
 
-**Próximo:** **#174** — permisos blandos con traza en bitácora (rediseño de la propuesta original de permisos duros; conecta con #1 y #324).
+**Próximos:** **#410** y **#192** — últimos requisitos estructurales antes del revamping de UI.
 
 
 ## Hoja de ruta — orden propuesto para próximas sesiones
@@ -19,24 +19,28 @@
 
 ### Pre-frontend — Requisitos estructurales
 
-Estos cuatro issues deben cerrarse antes de arrancar la UI porque condicionan
+Estos issues deben cerrarse antes de arrancar la UI porque condicionan
 el diseño del frontend o tienen código activo con huecos conocidos.
 
 1. ~~**#488**~~ — ✓ cerrado (PR #490)
 2. ~~**#470**~~ — ✓ cerrado (PR #491)
 3. ~~**#466**~~ — ✓ cerrado (PR #492)
-4. **#174** — permisos granulares con traza en bitácora (rediseño: permiso blando + bitácora): afecta todos los endpoints que el frontend va a consumir
+4. ~~**#174**~~ — ✓ cerrado (PR #493)
+5. **#410** — compatibilidad de tipos de solicitud como reglas del motor
+6. **#192** — requisitos documentales por procedimiento (rediseñar: anclar a CREAR fase siguiente, sin tabla `procedimientos`)
+
+### Bloque UI — Revamping de interfaz de usuario
+
+Una vez cerrados #410 y #192, arrancar con un **estudio a fondo de la UI** antes
+de añadir pantallas nuevas: auditar lo existente, decidir qué se poda, qué se
+refactoriza y qué se construye desde cero. El resultado es un plan de UI como
+etapa propia, no un apéndice incremental.
 
 ### Bloque 5 — Análisis heurístico de PDF
 
-5. **#304** — script de detección del tipo de solicitud
-6. **#305** — script de detección del tipo de expediente
-7. **#306** — helper de cálculo de tasa y extracción de presupuesto (tras #304)
-
-### Bloque 6 — Issues con rediseño previo necesario
-
-8. **#410** — compatibilidad de tipos de solicitud como reglas del motor
-9. **#192** — requisitos documentales por procedimiento (rediseñar: anclar a CREAR fase siguiente, sin tabla `procedimientos`)
+7. **#304** — script de detección del tipo de solicitud
+8. **#305** — script de detección del tipo de expediente
+9. **#306** — helper de cálculo de tasa y extracción de presupuesto (tras #304)
 
 ### Backlog M3 sin posición en la ruta
 
