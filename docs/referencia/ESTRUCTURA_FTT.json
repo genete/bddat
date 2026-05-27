@@ -1,0 +1,444 @@
+{
+  "metadata": {
+    "version": "6.2",
+    "descripcion": "Estructura jerárquica de fases, trámites y tareas para expedientes de AT",
+    "principio": "Minimalismo estructural — la semántica vive en los TIPOS",
+    "fecha_actualizacion": "2026-05-20",
+    "ref_diseño": [
+      "docs/referencia/DISEÑO_ANALISIS_SOLICITUD.md",
+      "docs/referencia/DISEÑO_CONSULTAS_ORGANISMOS.md",
+      "docs/referencia/DISEÑO_SUBSISTEMA_DOCUMENTAL.md"
+    ],
+    "ref_esf": "docs/referencia/ESTRUCTURA_ESF.json"
+  },
+  "TAREAS_ATOMICAS": [
+    {
+      "codigo": "ANALIZAR",
+      "nombre": "Análisis",
+      "descripcion": "Revisión técnica o jurídica de documentación con generación obligatoria de documento formal (informe o diagnóstico)",
+      "entrada": "1..N documentos consumidos (al menos 1 obligatorio; vínculo CONSUMIDO en documentos_tarea)",
+      "salida": "documento producido (obligatorio — tipo DIAGNOSTICO; vínculo PRODUCIDO en documentos_tarea)",
+      "habilita_tareas": ["ELABORAR"],
+      "nota": "Existe vínculo PRODUCIDO en documentos_tarea para completitud de la tarea (ADR-010). Salida siempre tipo DIAGNOSTICO (ADR-005). Ver DISEÑO_MOTOR_REGLAS.md §TAREA."
+    },
+    {
+      "codigo": "ELABORAR",
+      "nombre": "Elaborar",
+      "descripcion": "Redacción y firma de documento administrativo en acto único (fusiona REDACTAR+FIRMAR, ADR-003). Produce documento con validez jurídica inmediata.",
+      "entrada": "documentos consumidos (opcional — DIAGNOSTICO de ANALIZAR previo si existe; vínculo CONSUMIDO en documentos_tarea)",
+      "salida": "documento producido (obligatorio; vínculo PRODUCIDO en documentos_tarea)",
+      "habilita_tareas": ["NOTIFICAR"],
+      "nota": "Existe vínculo PRODUCIDO en documentos_tarea para completitud de la tarea (ADR-010)."
+    },
+    {
+      "codigo": "NOTIFICAR",
+      "nombre": "Notificar",
+      "descripcion": "Comunicación a destinatario identificado con justificante de notificación",
+      "entrada": "1..N documentos consumidos (incluye el documento de ELABORAR; vínculo CONSUMIDO en documentos_tarea)",
+      "salida": "documento producido (obligatorio — justificante de notificación; vínculo PRODUCIDO en documentos_tarea)",
+      "habilita_tareas": ["ESPERAR_PLAZO"],
+      "nota": "documento_producido.fecha_administrativa porta la fecha de la notificación. Existe vínculo PRODUCIDO en documentos_tarea para completitud de la tarea (ADR-010)."
+    },
+    {
+      "codigo": "ESPERAR_PLAZO",
+      "nombre": "Esperar Plazo",
+      "descripcion": "Suspensión temporal con fecha límite (PLAZO_DIAS=0: paralización indefinida hasta evento externo)",
+      "entrada": "documento consumido (obligatorio si plazo > 0 — justificante de NOTIFICAR que inicia el cómputo del plazo; ninguno si plazo = 0, espera pasiva indefinida; vínculo CONSUMIDO en documentos_tarea)",
+      "salida": "Ninguno",
+      "habilita_tareas": ["FIN (si vence sin respuesta)"],
+      "nota": "Campo NOTAS: PLAZO_DIAS y TIPO_DIAS. PLAZO_DIAS=0 = indefinido. Recepción de documentación externa queda en documento_producido de esta tarea (ADR-004, elimina INCORPORAR)."
+    }
+  ],
+  "PATRONES_FLUJO": [
+    {
+      "codigo": "A",
+      "nombre": "Análisis Interno",
+      "secuencia": ["ANALIZAR"],
+      "descripcion": "Análisis con generación obligatoria de diagnóstico",
+      "destinatario": "Interno"
+    },
+    {
+      "codigo": "B",
+      "nombre": "Comunicación Simple",
+      "secuencia": ["ELABORAR", "NOTIFICAR"],
+      "descripcion": "Comunicación sin espera de respuesta",
+      "destinatario": "Externo identificado"
+    },
+    {
+      "codigo": "C",
+      "nombre": "Comunicación con Espera",
+      "secuencia": ["ELABORAR", "NOTIFICAR", "ESPERAR_PLAZO"],
+      "descripcion": "Comunicación con espera de respuesta",
+      "destinatario": "Externo identificado"
+    },
+    {
+      "codigo": "F",
+      "nombre": "Espera Pasiva",
+      "secuencia": ["ESPERAR_PLAZO"],
+      "descripcion": "Suspensión con o sin plazo definido",
+      "destinatario": "Sistema"
+    }
+  ],
+  "FASES": [
+    {
+      "codigo": "ANALISIS_SOLICITUD",
+      "nombre": "Análisis de Solicitud",
+      "descripcion": "Verificación de documentación, admisibilidad y análisis técnico en acto único. Fusiona REGISTRO_SOLICITUD + ADMISIBILIDAD + ANALISIS_TECNICO (eliminadas en v5.5). Produce requerimiento si hay defectos o comunicación de inicio si la solicitud es completa.",
+      "tramites": [
+        {
+          "codigo": "ANALISIS_DOCUMENTAL",
+          "nombre": "Análisis Documental",
+          "descripcion": "El técnico cualifica tipos de documentos del pool, contrasta con el checklist de documentación requerida y emite diagnóstico con resultado. Con defectos habilita REQUERIMIENTO_SUBSANACION; sin defectos habilita COMUNICACION_INICIO.",
+          "tareas_indicativas": ["ANALIZAR"],
+          "patron": "A",
+          "nota": "Motor consulta resultado del ANALIZAR (tipo DIAGNOSTICO) para habilitar el trámite siguiente. Ver DISEÑO_ANALISIS_SOLICITUD.md §3."
+        },
+        {
+          "codigo": "REQUERIMIENTO_SUBSANACION",
+          "nombre": "Requerimiento de Subsanación",
+          "descripcion": "Escrito de requerimiento con los defectos detectados. El titular aporta documentación subsanada. ANALIZAR final evalúa si la subsanación es correcta.",
+          "tareas_indicativas": ["ELABORAR", "NOTIFICAR", "ESPERAR_PLAZO", "ANALIZAR"],
+          "patron": "C+A",
+          "nota": "Recepción de documentación subsanada queda en ESPERAR_PLAZO.documento_producido. Si persisten defectos, motor puede habilitar nuevo REQUERIMIENTO_SUBSANACION. Ver DISEÑO_ANALISIS_SOLICITUD.md §3."
+        },
+        {
+          "codigo": "COMUNICACION_INICIO",
+          "nombre": "Comunicación de Inicio",
+          "descripcion": "Comunicación al titular del número de expediente e inicio del procedimiento. Solo si no hay defectos en ANALISIS_DOCUMENTAL.",
+          "tareas_indicativas": ["ELABORAR", "NOTIFICAR"],
+          "patron": "B",
+          "nota": "Obligatoria para tipo_expediente Renovable: la notificación de admisión a trámite de la AAP es el documento con el que el promotor acredita el Hito 1 ante el gestor de red (RD-ley 23/2020 art. 1.2 in fine). Opcional para los demás tipos según política organizativa."
+        }
+      ]
+    },
+    {
+      "codigo": "CONSULTA_MINISTERIO",
+      "nombre": "Consulta al Ministerio",
+      "descripcion": "Solicitud de informe preceptivo al Ministerio competente (exclusivo instalaciones de transporte)",
+      "tramites": [
+        {
+          "codigo": "SOLICITUD_INFORME",
+          "nombre": "Solicitud de Informe",
+          "descripcion": "Remisión de documentación y solicitud de informe preceptivo",
+          "tareas_indicativas": ["ELABORAR", "NOTIFICAR", "ESPERAR_PLAZO"],
+          "patron": "C"
+        },
+        {
+          "codigo": "RECEPCION_INFORME",
+          "nombre": "Recepción de Informe",
+          "descripcion": "Análisis del informe recibido",
+          "tareas_indicativas": ["ANALIZAR"],
+          "patron": "A"
+        }
+      ]
+    },
+    {
+      "codigo": "COMPATIBILIDAD_AMBIENTAL",
+      "nombre": "Compatibilidad Ambiental",
+      "descripcion": "Obtención de informe de compatibilidad ambiental (exclusivo para instalaciones con AAU o AAUS previas)",
+      "tramites": [
+        {
+          "codigo": "SOLICITUD_COMPATIBILIDAD",
+          "nombre": "Solicitud de Compatibilidad",
+          "descripcion": "Remisión a Medio Ambiente para obtención de compatibilidad con la legislación medioambiental",
+          "tareas_indicativas": ["ELABORAR", "NOTIFICAR", "ESPERAR_PLAZO"],
+          "patron": "C"
+        },
+        {
+          "codigo": "COMUNICACION_AUDIENCIA",
+          "nombre": "Comunicación de audiencia al interesado",
+          "descripcion": "El órgano ambiental emite escrito al órgano sustantivo para conocimiento del trámite de audiencia abierto a la persona interesada, al apreciar posible incompatibilidad ambiental. El órgano sustantivo registra y analiza la comunicación. No hay actuación ni respuesta del órgano sustantivo en este trámite.",
+          "tareas_indicativas": ["ANALIZAR"],
+          "patron": "A",
+          "nota": "Condicional: solo si el órgano ambiental considera que la actuación incurre en alguna de las prohibiciones previstas en la normativa ambiental. El escrito se emite simultáneamente con el inicio del trámite de audiencia al interesado que realiza el propio órgano ambiental. IC 1/2022, IV.3.3."
+        },
+        {
+          "codigo": "RECEPCION_INFORME",
+          "nombre": "Recepción de informe de compatibilidad ambiental",
+          "descripcion": "El órgano ambiental notifica al órgano sustantivo el informe de compatibilidad ambiental. En caso de incompatibilidad, el informe tiene carácter vinculante y ordena el archivo de las actuaciones (IC 1/2022, IV.3.3); en caso de compatibilidad, habilita la fase de IP y consultas (IV.3.4). El órgano sustantivo analiza el informe y actúa en consecuencia.",
+          "tareas_indicativas": ["ANALIZAR"],
+          "patron": "A",
+          "nota": "IC 1/2022, IV.3.3 (informe vinculante de archivo) y IV.3.4 (conformidad y alcance de IP/consultas)."
+        }
+      ]
+    },
+    {
+      "codigo": "CONSULTAS",
+      "nombre": "Consultas a Organismos",
+      "descripcion": "Solicitud de informes sectoriales a organismos competentes (conforme RD 1955/2000 arts. 127, 131, 146-147). Cada trámite es individual por organismo (registro en organismos_expediente).",
+      "tramites": [
+        {
+          "codigo": "CONSULTA_SEPARATA",
+          "nombre": "Separata a Organismo",
+          "descripcion": "Envío de separata a un organismo concreto y gestión de su respuesta. Un trámite por organismo.",
+          "tareas_indicativas": ["ELABORAR", "NOTIFICAR", "ESPERAR_PLAZO", "ANALIZAR"],
+          "patron": "C+A",
+          "plazo_legal": "30 días (15 si existe AAP previa y tramitación es AAC sin DUP)",
+          "resultado_analizar": ["sin_respuesta", "conformidad", "oposicion", "reparos_organismo", "condicionado"],
+          "nota": "Sin respuesta: resultado sin_respuesta (conformidad tácita). ANALIZAR actualiza estado del registro organismos_expediente. Ver DISEÑO_CONSULTAS_ORGANISMOS.md."
+        },
+        {
+          "codigo": "CONSULTA_TRASLADO_TITULAR",
+          "nombre": "Traslado al Titular",
+          "descripcion": "Traslado al titular de la respuesta del organismo (oposición, reparos o condicionados). Inicia el ciclo de reparos.",
+          "tareas_indicativas": ["ELABORAR", "NOTIFICAR", "ESPERAR_PLAZO", "ANALIZAR"],
+          "patron": "C+A",
+          "plazo_legal": "15 días",
+          "resultado_analizar": ["sin_respuesta", "conformidad", "reparos_titular"],
+          "nota": "Sin respuesta en AAP: activa audiencia previa a archivo. En AAC equivale a aceptación tácita de condicionados. Ver DISEÑO_CONSULTAS_ORGANISMOS.md."
+        },
+        {
+          "codigo": "CONSULTA_TRASLADO_ORGANISMO",
+          "nombre": "Traslado al Organismo",
+          "descripcion": "Traslado al organismo de los reparos formulados por el titular. Segunda ronda del ciclo.",
+          "tareas_indicativas": ["ELABORAR", "NOTIFICAR", "ESPERAR_PLAZO", "ANALIZAR"],
+          "patron": "C+A",
+          "plazo_legal": "15 días",
+          "resultado_analizar": ["sin_respuesta", "conformidad", "oposicion", "reparos_organismo", "condicionado"],
+          "nota": "Motor puede contar iteraciones por organismo_expediente para advertir si se supera 1 iteración. Ver DISEÑO_CONSULTAS_ORGANISMOS.md."
+        }
+      ]
+    },
+    {
+      "codigo": "INFORMACION_PUBLICA",
+      "nombre": "Información Pública",
+      "descripcion": "Exposición pública del proyecto para alegaciones",
+      "tramites": [
+        {
+          "codigo": "REDACTAR_ANUNCIO",
+          "nombre": "Redacción del Anuncio",
+          "descripcion": "Elaboración del documento de anuncio de información pública que será publicado en los distintos medios",
+          "tareas_indicativas": ["ELABORAR"],
+          "patron": "A (solo ELABORAR)",
+          "nota": "Produce documento tipo ANUNCIO_IP que consumen los trámites ANUNCIO_* y TABLON_AYUNTAMIENTOS (#368)."
+        },
+        {
+          "codigo": "ANUNCIO_BOE",
+          "nombre": "Anuncio en BOE",
+          "descripcion": "Publicación de anuncio en Boletín Oficial del Estado",
+          "tareas_indicativas": ["ESPERAR_PLAZO", "ESPERAR_PLAZO"],
+          "patron": "F+F",
+          "nota": "Publicación gestionada íntegramente por el promotor. ESPERAR_PLAZO(1): plazo indefinido alimentado por justificante de ANUNCIO_TITULAR.NOTIFICAR + OFICIO_PUBLICAR_TITULAR; cierra cuando el promotor aporta JUSTIFICANTE_BOE. ESPERAR_PLAZO(2): transcurso del plazo de IP."
+        },
+        {
+          "codigo": "ANUNCIO_BOP",
+          "nombre": "Anuncio en BOP",
+          "descripcion": "Publicación de anuncio en Boletín Oficial Provincial",
+          "tareas_indicativas": ["ELABORAR", "NOTIFICAR", "ESPERAR_PLAZO", "ESPERAR_PLAZO"],
+          "patron": "C+F",
+          "nota": "ELABORAR produce OFICIO_PUBLICAR_BOLETIN; NOTIFICAR remite OFICIO + ANUNCIO_IP al BOP. ESPERAR_PLAZO(1): la administración vigila la plataforma del BOP e introduce manualmente ANUNCIO_PUBLICADO — no requiere entrada registral del titular. ESPERAR_PLAZO(2): transcurso del plazo de IP."
+        },
+        {
+          "codigo": "ANUNCIO_PRENSA",
+          "nombre": "Anuncio en Prensa",
+          "descripcion": "Publicación de anuncio en diario de mayor difusión",
+          "tareas_indicativas": ["ESPERAR_PLAZO", "ESPERAR_PLAZO"],
+          "patron": "F+F",
+          "nota": "Publicación gestionada íntegramente por el promotor. ESPERAR_PLAZO(1): plazo indefinido alimentado por ANUNCIO_TITULAR.NOTIFICAR + OFICIO_PUBLICAR_TITULAR; cierra cuando el promotor aporta JUSTIFICANTE_PRENSA (siempre del titular, que conoce cuándo y dónde publicó). ESPERAR_PLAZO(2): transcurso del plazo de IP — puede consumirse de inmediato si el promotor envía la copia del anuncio publicado al vencer el plazo."
+        },
+        {
+          "codigo": "ANUNCIO_BOJA",
+          "nombre": "Anuncio en BOJA",
+          "descripcion": "Publicación de anuncio en Boletín Oficial de la Junta de Andalucía",
+          "tareas_indicativas": ["NOTIFICAR", "ESPERAR_PLAZO", "ESPERAR_PLAZO"],
+          "patron": "F+F",
+          "nota": "Sin ELABORAR: la remisión se realiza mediante la plataforma SIBOJA, sin oficio previo. NOTIFICAR: sube ANUNCIO_IP a través de SIBOJA. ESPERAR_PLAZO(1): la administración vigila la plataforma BOJA e introduce manualmente ANUNCIO_PUBLICADO — no requiere entrada registral del titular. ESPERAR_PLAZO(2): transcurso del plazo de IP."
+        },
+        {
+          "codigo": "TABLON_AYUNTAMIENTOS",
+          "nombre": "Tablón de Ayuntamientos",
+          "descripcion": "Publicación en tablones de ayuntamientos afectados (uno por ayuntamiento)",
+          "tareas_indicativas": ["ELABORAR", "NOTIFICAR", "ESPERAR_PLAZO"],
+          "patron": "C",
+          "nota": "ELABORAR produce OFICIO_TABLON; NOTIFICAR remite OFICIO_TABLON + ANUNCIO_IP a cada ayuntamiento. ESPERAR_PLAZO: produce CERT_PLAZO_TABLON (certificado del ayuntamiento). campo_fecha = {via_tarea_tipo: ESPERAR_PLAZO, rol: PRODUCIDO} — caso retroactivo: fecha_administrativa del certificado = inicio de la exposición; el motor calcula fin = inicio + 30 días naturales (art. 125 RD 1955/2000). Sin segundo ESPERAR_PLAZO. Ver #416."
+        },
+        {
+          "codigo": "PORTAL_TRANSPARENCIA",
+          "nombre": "Portal de Transparencia",
+          "descripcion": "Publicación en portal web institucional",
+          "tareas_indicativas": ["ELABORAR", "NOTIFICAR", "ESPERAR_PLAZO"],
+          "patron": "C",
+          "nota": "Controlamos fecha de publicación y plazo. PUBLICAR eliminado → patrón C (#371)."
+        },
+        {
+          "codigo": "ANUNCIO_TITULAR",
+          "nombre": "Notificación al Titular",
+          "descripcion": "Notificación al titular sobre publicación del anuncio de información pública",
+          "tareas_indicativas": ["ELABORAR", "NOTIFICAR"],
+          "patron": "B",
+          "nota": "Trámite nuevo (#369). ELABORAR: consume ANUNCIO_IP, produce OFICIO_PUBLICAR_TITULAR (interno, parseable, firmado). NOTIFICAR: consume ANUNCIO_IP + OFICIO_PUBLICAR_TITULAR (N:M, pendiente #380), produce JUSTIFICANTE."
+        },
+        {
+          "codigo": "RECEPCION_ALEGACION",
+          "nombre": "Recepción de Alegación",
+          "descripcion": "Análisis de alegación individual y traslado al titular para respuesta",
+          "tareas_indicativas": ["ANALIZAR", "ELABORAR", "NOTIFICAR", "ESPERAR_PLAZO"],
+          "patron": "A+C",
+          "nota": "ANALIZAR clasifica al alegante/interesado."
+        },
+        {
+          "codigo": "ANALISIS_ALEGACIONES",
+          "nombre": "Análisis de Alegaciones",
+          "descripcion": "Informe técnico-jurídico sobre el conjunto de alegaciones recibidas y propuesta de respuesta",
+          "tareas_indicativas": ["ANALIZAR"],
+          "patron": "A",
+          "nota": "Documento producido referenciado en plantilla de resolución. La respuesta a alegaciones se materializa en la resolución, no en comunicación separada."
+        }
+      ]
+    },
+    {
+      "codigo": "FIGURA_AMBIENTAL_EXTERNA",
+      "nombre": "Instrumento Ambiental Externo",
+      "descripcion": "Gestión de AAU/AAUS/CA no integrada en tramitación sustantiva",
+      "tramites": [
+        {
+          "codigo": "SOLICITUD_FIGURA",
+          "nombre": "Solicitud de Instrumento Ambiental",
+          "descripcion": "Solicitud de AAU/AAUS/CA al órgano ambiental competente y espera de resolución",
+          "tareas_indicativas": ["ELABORAR", "NOTIFICAR", "ESPERAR_PLAZO"],
+          "patron": "C",
+          "nota": "ESPERAR_PLAZO con plazo=0 (indefinido) hasta recepción de resolución ambiental."
+        },
+        {
+          "codigo": "RECEPCION_FIGURA",
+          "nombre": "Recepción de Instrumento Ambiental",
+          "descripcion": "Análisis de resolución ambiental (AAU/AAUS/CA). Puede ser favorable o negativa.",
+          "tareas_indicativas": ["ANALIZAR"],
+          "patron": "A",
+          "nota": "Si la resolución es negativa puede paralizar el expediente."
+        }
+      ]
+    },
+    {
+      "codigo": "AAU_AAUS_INTEGRADA",
+      "nombre": "AAU/AAUS Integrada",
+      "descripcion": "Tramitación de AAU/AAUS integrada en el procedimiento sustantivo (#372: 2 → 5 trámites)",
+      "tramites": [
+        {
+          "codigo": "REMISION_RESULTADO_IP_CONSULTAS",
+          "nombre": "Remisión del resultado de IP y consultas a Medio Ambiente",
+          "descripcion": "Traslado a Medio Ambiente del resultado de IP y consultas para dictamen ambiental. ESPERAR_PLAZO indefinido hasta recepción.",
+          "tareas_indicativas": ["ELABORAR", "NOTIFICAR", "ESPERAR_PLAZO"],
+          "patron": "C",
+          "nota": "ESPERAR_PLAZO con plazo=0. Renombrado desde REMISION_MEDIO_AMBIENTE (#372)."
+        },
+        {
+          "codigo": "RECEPCION_DICTAMEN",
+          "nombre": "Recepción de Dictamen Ambiental",
+          "descripcion": "Análisis del dictamen de Medio Ambiente y elaboración de propuesta de resolución sustantiva. Puede ser favorable, desfavorable o condicionado.",
+          "tareas_indicativas": ["ANALIZAR", "ELABORAR", "NOTIFICAR", "ESPERAR_PLAZO"],
+          "patron": "A+C",
+          "nota": "ESPERAR_PLAZO con plazo=0. Si el dictamen es desfavorable puede condicionar o paralizar la autorización sustantiva (#372)."
+        },
+        {
+          "codigo": "RECEPCION_PROPUESTA_INF_VINC",
+          "nombre": "Recepción de Propuesta de Informe Vinculante",
+          "descripcion": "Análisis de propuesta de informe vinculante emitida por Medio Ambiente y elaboración de respuesta",
+          "tareas_indicativas": ["ANALIZAR", "ELABORAR", "NOTIFICAR", "ESPERAR_PLAZO"],
+          "patron": "A+C",
+          "nota": "ESPERAR_PLAZO con plazo=0. Trámite nuevo (#372)."
+        },
+        {
+          "codigo": "RECEPCION_INFORME_VINCULANTE",
+          "nombre": "Recepción de Informe Vinculante",
+          "descripcion": "Análisis del informe vinculante definitivo emitido por Medio Ambiente",
+          "tareas_indicativas": ["ANALIZAR"],
+          "patron": "A",
+          "nota": "Trámite nuevo (#372)."
+        },
+        {
+          "codigo": "DISCREPANCIA_INF_VINC",
+          "nombre": "Discrepancia con Informe Vinculante",
+          "descripcion": "Elaboración y remisión de escrito de discrepancia al órgano superior cuando el informe vinculante es contrario a la autorización",
+          "tareas_indicativas": ["ELABORAR", "NOTIFICAR", "ESPERAR_PLAZO"],
+          "patron": "C",
+          "nota": "Condicional: solo si el informe vinculante es negativo y se decide elevar discrepancia. Trámite nuevo (#372)."
+        },
+        {
+          "codigo": "REGISTRO_INTERESADOS",
+          "nombre": "Registro de Interesados",
+          "descripcion": "Revisión del informe vinculante de Medio Ambiente para identificar y registrar los interesados del procedimiento ambiental en la tabla interesados_expediente",
+          "tareas_indicativas": ["ANALIZAR"],
+          "patron": "A",
+          "nota": "ANALIZAR consume DOC_INFORME_VINCULANTE. El tramitador registra los interesados vía UI de gestión de interesados. El diagnóstico producido certifica los registros creados en interesados_expediente. Condicional: solo cuando el informe vinculante incluye lista de interesados. La fase RECONOCIMIENTO_INTERESADO (TipoFase en BD) pertenece al flujo de solicitud tipo INTERESADO, no desarrollada aún."
+        }
+      ]
+    },
+    {
+      "codigo": "CONSULTA_OPERADOR_SISTEMA",
+      "nombre": "Consulta al Operador del Sistema",
+      "descripcion": "Consulta preceptiva al operador del sistema o gestor de red sobre la viabilidad del cierre de la instalación antes de resolver (art. 137 RD 1955/2000 (mod. RD 88/2026)). Plazo de 3 meses; silencio positivo. Exclusivo del procedimiento CIERRE.",
+      "tramites": [
+        {
+          "codigo": "SOLICITUD_INFORME_OPERADOR",
+          "nombre": "Solicitud de informe al operador",
+          "descripcion": "Remisión al operador del sistema (REE en transporte; distribuidora en distribución) de la solicitud de informe sobre el impacto del cierre previsto.",
+          "tareas_indicativas": ["ELABORAR", "NOTIFICAR", "ESPERAR_PLAZO"],
+          "patron": "C",
+          "nota": "PLAZO_DIAS=90, TIPO_DIAS=naturales, silencio=positivo: si el operador no emite informe en 3 meses el procedimiento continúa sin él (art. 136.1 RD 1955/2000)."
+        },
+        {
+          "codigo": "RECEPCION_INFORME_OPERADOR",
+          "nombre": "Recepción del informe del operador",
+          "descripcion": "Análisis del informe emitido por el operador del sistema o gestor de red dentro del plazo. Condicional: solo si el operador responde antes de que venza el plazo.",
+          "tareas_indicativas": ["ANALIZAR"],
+          "patron": "A",
+          "nota": "El informe puede ser favorable, condicionado o contrario al cierre. Si es contrario, el técnico valora la continuación del procedimiento."
+        }
+      ]
+    },
+    {
+      "codigo": "RECONOCIMIENTO_INTERESADO",
+      "nombre": "Reconocimiento de Interesado",
+      "descripcion": "Resolución sobre la condición de interesado en el expediente (art. 4 LPACAP). Fase finalizadora propia de la solicitud tipo INTERESADO. Exclusiva de ese tipo de solicitud.",
+      "tramites": [
+        {
+          "codigo": "ELABORACION",
+          "nombre": "Elaboración de resolución de reconocimiento",
+          "descripcion": "Elaboración de la resolución que reconoce o deniega la condición de interesado al solicitante.",
+          "tareas_indicativas": ["ELABORAR"],
+          "patron": "B (sin NOTIFICAR)"
+        },
+        {
+          "codigo": "NOTIFICACION",
+          "nombre": "Notificación de resolución de reconocimiento",
+          "descripcion": "Notificación al solicitante del reconocimiento o denegación de la condición de interesado.",
+          "tareas_indicativas": ["NOTIFICAR"],
+          "patron": "B (solo NOTIFICAR)"
+        }
+      ]
+    },
+    {
+      "codigo": "RESOLUCION",
+      "nombre": "Resolución",
+      "descripcion": "Resolución finalizadora de la solicitud (favorable, condicionada, denegatoria, etc.)",
+      "tramites": [
+        {
+          "codigo": "ELABORACION",
+          "nombre": "Elaboración de Resolución",
+          "descripcion": "Elaboración de la resolución con validez jurídica. El análisis previo queda acreditado por CERT_FIN_INSTRUCCION, generado automáticamente al crear la fase RESOLUCION.",
+          "tareas_indicativas": ["ELABORAR"],
+          "patron": "B (sin NOTIFICAR)",
+          "documento_consumido": "CERT_FIN_INSTRUCCION (generado automáticamente por BDDAT al crear la fase RESOLUCION, #373)",
+          "nota": "ANALIZAR eliminado (#373): el CERT_FIN_INSTRUCCION es el recibo auditado de que el motor evaluó todas las condiciones previas. ELABORAR lo consume como documento de entrada (vínculo CONSUMIDO en documentos_tarea)."
+        },
+        {
+          "codigo": "NOTIFICACION",
+          "nombre": "Notificación de Resolución",
+          "descripcion": "Notificación a interesados de la resolución adoptada",
+          "tareas_indicativas": ["NOTIFICAR"],
+          "patron": "B (solo NOTIFICAR)",
+          "nota": "El documento ya fue elaborado y firmado en ELABORACION. El documento consumido (vínculo CONSUMIDO en documentos_tarea) es el producido en ELABORACION."
+        },
+        {
+          "codigo": "PUBLICACION",
+          "nombre": "Publicación de Resolución",
+          "descripcion": "Publicación en medios oficiales (si procede)",
+          "tareas_indicativas": ["ELABORAR", "NOTIFICAR", "ESPERAR_PLAZO"],
+          "patron": "C",
+          "nota": "PUBLICAR eliminado → patrón C (#371)."
+        }
+      ]
+    }
+  ]
+}

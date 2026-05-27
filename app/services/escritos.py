@@ -20,14 +20,16 @@ USO:
 
 from datetime import date
 
+from app.models.direccion_notificacion import DireccionNotificacion
+
 
 class ContextoBaseExpediente:
     """
     Capa 1 del sistema de generación de escritos.
 
     Extrae del expediente un dict plano con los campos más habituales en
-    plantillas administrativas. Todos los valores son strings o None para
-    facilitar la inserción directa en Jinja2 sin conversiones adicionales.
+    plantillas administrativas. Todos los valores son strings, dicts o None
+    para facilitar la inserción directa en Jinja2 sin conversiones adicionales.
 
     CAMPOS DISPONIBLES EN EL CONTEXTO:
         Expediente:
@@ -37,7 +39,9 @@ class ContextoBaseExpediente:
         Titular:
             titular_nombre      — Nombre / Razón Social del titular
             titular_nif         — NIF del titular
-            titular_direccion   — Dirección de notificación (si existe)
+            titular_dir         — Dict {calle, cp, municipio, provincia, nif, email} o None
+                                  Acceso en plantilla: {{titular_dir.calle}}, {{titular_dir.email}} etc.
+                                  Prioridad: DireccionNotificacion(rol=TITULAR) > dirección principal de Entidad
 
         Proyecto:
             proyecto_titulo     — Título del proyecto técnico
@@ -70,7 +74,7 @@ class ContextoBaseExpediente:
             # Titular
             'titular_nombre':       exp.titular.nombre_completo if exp.titular else None,
             'titular_nif':          exp.titular.nif            if exp.titular else None,
-            'titular_direccion':    self._direccion_titular(),
+            'titular_dir':          self._direccion_titular(),
 
             # Proyecto
             'proyecto_titulo':         proyecto.titulo        if proyecto else None,
@@ -95,15 +99,34 @@ class ContextoBaseExpediente:
     # Helpers privados
     # ------------------------------------------------------------------
 
-    def _direccion_titular(self) -> str | None:
-        """Devuelve la dirección de notificación preferente del titular."""
+    def _direccion_titular(self) -> dict | None:
+        """Devuelve {calle, cp, municipio, provincia} de la dirección de notificación del titular.
+
+        Prioridad: DireccionNotificacion con rol TITULAR > dirección principal de Entidad.
+        """
         if not self._exp.titular:
             return None
-        direcciones = getattr(self._exp.titular, 'direcciones_notificacion', [])
-        activa = next((d for d in direcciones if d.activo), None)
-        if activa:
-            return str(activa)
-        return None
+        src = DireccionNotificacion.obtener_direccion_notificacion(
+            self._exp.titular.id, es_titular=True
+        ) or self._exp.titular
+        return self._dir_a_dict(src)
+
+    @staticmethod
+    def _dir_a_dict(src) -> dict:
+        """Convierte un objeto con campos dirección/nif/email a dict granular para plantillas."""
+        mun = getattr(src, 'municipio', None)
+        if src.direccion_fallback:
+            postal = {'calle': src.direccion_fallback, 'cp': '', 'municipio': '', 'provincia': ''}
+        else:
+            postal = {
+                'calle':     src.direccion or '',
+                'cp':        src.codigo_postal or '',
+                'municipio': mun.nombre    if mun else '',
+                'provincia': mun.provincia if mun else '',
+            }
+        postal['nif']   = src.nif   or ''
+        postal['email'] = src.email or ''
+        return postal
 
     def _nombre_responsable(self) -> str | None:
         """Construye nombre completo del responsable (Usuario no tiene nombre_completo)."""

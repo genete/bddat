@@ -20,8 +20,12 @@ from app.models.tareas import Tarea
 from app.models.solicitudes import Solicitud
 from app.services.motor_reglas import EvaluacionResult
 
-_TIPOS_REQUIEREN_DOC_PRODUCIDO = {'INCORPORAR', 'ANALISIS', 'REDACTAR', 'FIRMAR', 'NOTIFICAR', 'PUBLICAR'}
-_TIPOS_REQUIEREN_DOC_USADO     = {'ANALISIS', 'FIRMAR', 'NOTIFICAR', 'PUBLICAR'}
+_TIPOS_REQUIEREN_DOC_PRODUCIDO = {'ANALIZAR', 'ELABORAR', 'NOTIFICAR'}
+_TIPOS_REQUIEREN_DOC_USADO     = {'ANALIZAR', 'NOTIFICAR'}
+
+# Códigos de resultado de fase finalizadora que se consideran resolución favorable.
+# Usado por tiene_solicitud_aap_favorable (art. 131.1 párr. 2 RD 1955/2000).
+RESULTADO_FASE_FAVORABLE_CODIGOS = frozenset({'FAVORABLE', 'FAVORABLE_CONDICIONADO'})
 
 
 def _bloquear(mensaje: str) -> EvaluacionResult:
@@ -52,7 +56,7 @@ def check_invariante(accion: str, sujeto: str, entidad_id: int) -> Optional[Eval
 def _check_borrar(sujeto: str, entidad_id: int) -> Optional[EvaluacionResult]:
     if sujeto == 'TAREA':
         tarea = Tarea.query.get(entidad_id)
-        if tarea and (tarea.documento_producido_id is not None or tarea.documento_usado_id is not None):
+        if tarea and tarea.vinculos_documento:
             return _bloquear('No se puede eliminar una tarea que ya tiene documentos asignados.')
 
     elif sujeto == 'TRAMITE':
@@ -107,6 +111,16 @@ def _check_finalizar(sujeto: str, entidad_id: int) -> Optional[EvaluacionResult]
 
 def _check_finalizar_fase(fase_id: int) -> Optional[EvaluacionResult]:
     from app.models.tipos_tareas import TipoTarea
+    from app.models.documentos_tarea import DocumentoTarea
+    from app.models.notificaciones import Notificacion
+
+    # Una tarea está completa si tiene un vínculo PRODUCIDO en documentos_tarea (ADR-010)
+    _tiene_producido = (
+        db.session.query(DocumentoTarea.id)
+        .filter(DocumentoTarea.tarea_id == Tarea.id,
+                DocumentoTarea.rol == 'PRODUCIDO')
+        .exists()
+    )
     tarea_incompleta = (
         db.session.query(Tarea)
         .join(Tramite, Tarea.tramite_id == Tramite.id)
@@ -114,29 +128,133 @@ def _check_finalizar_fase(fase_id: int) -> Optional[EvaluacionResult]:
         .filter(
             Tramite.fase_id == fase_id,
             TipoTarea.codigo.in_(_TIPOS_REQUIEREN_DOC_PRODUCIDO),
-            Tarea.documento_producido_id.is_(None)
+            ~_tiene_producido
         )
         .first()
     )
     if tarea_incompleta:
         return _bloquear('Hay tareas sin documento producido en esta fase. Finalice todas las tareas antes de cerrar la fase.')
+
+    # Tarea NOTIFICAR con resultado INCORRECTA bloquea el cierre de la fase (#418)
+    notificar_incorrecta = (
+        db.session.query(Tarea)
+        .join(Tramite, Tarea.tramite_id == Tramite.id)
+        .join(TipoTarea, Tarea.tipo_tarea_id == TipoTarea.id)
+        .join(DocumentoTarea, db.and_(DocumentoTarea.tarea_id == Tarea.id,
+                                      DocumentoTarea.rol == 'PRODUCIDO'))
+        .join(Notificacion, Notificacion.documento_id == DocumentoTarea.documento_id)
+        .filter(
+            Tramite.fase_id == fase_id,
+            TipoTarea.codigo == 'NOTIFICAR',
+            Notificacion.resultado == 'INCORRECTA',
+        )
+        .first()
+    )
+    if notificar_incorrecta:
+        return _bloquear('Hay notificaciones caducadas o fallidas en esta fase. Subsane el resultado antes de cerrar la fase.')
+
     return None
 
 
 def _check_finalizar_tramite(tramite_id: int) -> Optional[EvaluacionResult]:
     from app.models.tipos_tareas import TipoTarea
+    from app.models.documentos_tarea import DocumentoTarea
+    from app.models.notificaciones import Notificacion
+
+    _tiene_producido = (
+        db.session.query(DocumentoTarea.id)
+        .filter(DocumentoTarea.tarea_id == Tarea.id,
+                DocumentoTarea.rol == 'PRODUCIDO')
+        .exists()
+    )
     tarea_incompleta = (
         db.session.query(Tarea)
         .join(TipoTarea, Tarea.tipo_tarea_id == TipoTarea.id)
         .filter(
             Tarea.tramite_id == tramite_id,
             TipoTarea.codigo.in_(_TIPOS_REQUIEREN_DOC_PRODUCIDO),
-            Tarea.documento_producido_id.is_(None)
+            ~_tiene_producido
         )
         .first()
     )
     if tarea_incompleta:
         return _bloquear('Hay tareas sin ejecutar. Finalice todas las tareas antes de cerrar el trámite.')
+
+    # Tarea NOTIFICAR con resultado INCORRECTA bloquea el cierre del trámite (#418)
+    notificar_incorrecta = (
+        db.session.query(Tarea)
+        .join(TipoTarea, Tarea.tipo_tarea_id == TipoTarea.id)
+        .join(DocumentoTarea, db.and_(DocumentoTarea.tarea_id == Tarea.id,
+                                      DocumentoTarea.rol == 'PRODUCIDO'))
+        .join(Notificacion, Notificacion.documento_id == DocumentoTarea.documento_id)
+        .filter(
+            Tarea.tramite_id == tramite_id,
+            TipoTarea.codigo == 'NOTIFICAR',
+            Notificacion.resultado == 'INCORRECTA',
+        )
+        .first()
+    )
+    if notificar_incorrecta:
+        return _bloquear('Hay notificaciones caducadas o fallidas en este trámite. Subsane el resultado antes de cerrarlo.')
+
+    return None
+
+
+def _check_cierre_fase(fase_id: int, codigo_resultado: str) -> Optional[EvaluacionResult]:
+    """Bloquea el cierre de la fase si hay diagnóstico desfavorable sin consumir y el resultado no es DESFAVORABLE (#419).
+
+    El único resultado de cierre permitido cuando hay diagnósticos desfavorables
+    sin consumir es DESFAVORABLE. Cualquier otro resultado queda bloqueado.
+    Un diagnóstico se considera consumido cuando su documento aparece como
+    CONSUMIDO en cualquier otra tarea de la fase.
+    """
+    if codigo_resultado == 'DESFAVORABLE':
+        return None
+
+    from app.models.tipos_tareas import TipoTarea
+    from app.models.documentos_tarea import DocumentoTarea
+    from app.models.diagnosticos import Diagnostico
+
+    DT_cons      = db.aliased(DocumentoTarea)
+    Tarea_cons   = db.aliased(Tarea)
+    Tramite_cons = db.aliased(Tramite)
+
+    # Subquery: el documento producido está siendo consumido por alguna tarea de la fase
+    _consumido = (
+        db.session.query(DT_cons.id)
+        .join(Tarea_cons, DT_cons.tarea_id == Tarea_cons.id)
+        .join(Tramite_cons, Tarea_cons.tramite_id == Tramite_cons.id)
+        .filter(
+            Tramite_cons.fase_id == fase_id,
+            DT_cons.documento_id == DocumentoTarea.documento_id,
+            DT_cons.rol == 'CONSUMIDO',
+        )
+        .exists()
+    )
+
+    diagnostico_sin_consumir = (
+        db.session.query(Tarea)
+        .join(Tramite, Tarea.tramite_id == Tramite.id)
+        .join(TipoTarea, Tarea.tipo_tarea_id == TipoTarea.id)
+        .join(DocumentoTarea, db.and_(
+            DocumentoTarea.tarea_id == Tarea.id,
+            DocumentoTarea.rol == 'PRODUCIDO',
+        ))
+        .join(Diagnostico, Diagnostico.documento_id == DocumentoTarea.documento_id)
+        .filter(
+            Tramite.fase_id == fase_id,
+            TipoTarea.codigo == 'ANALIZAR',
+            Diagnostico.resultado == 'desfavorable',
+            ~_consumido,
+        )
+        .first()
+    )
+
+    if diagnostico_sin_consumir:
+        return _bloquear(
+            'Hay un diagnóstico desfavorable sin consumir en esta fase. '
+            'No es posible cerrarla con un resultado no desfavorable.'
+        )
     return None
 
 
@@ -147,10 +265,10 @@ def _check_finalizar_tarea(tarea_id: int) -> Optional[EvaluacionResult]:
 
     codigo = tarea.tipo_tarea.codigo
 
-    if codigo in _TIPOS_REQUIEREN_DOC_PRODUCIDO and tarea.documento_producido_id is None:
+    if codigo in _TIPOS_REQUIEREN_DOC_PRODUCIDO and not tarea.ejecutada:
         return _bloquear('Falta el documento producido. Asócielo antes de finalizar la tarea.')
 
-    if codigo in _TIPOS_REQUIEREN_DOC_USADO and tarea.documento_usado_id is None:
+    if codigo in _TIPOS_REQUIEREN_DOC_USADO and not tarea.documentos_consumidos:
         return _bloquear('Falta el documento de entrada. Asócielo antes de finalizar la tarea.')
 
     return None

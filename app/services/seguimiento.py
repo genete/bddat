@@ -20,12 +20,16 @@ Uso:
 """
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
-from datetime import date, timedelta
 from typing import Optional
 
+import logging
+
+from sqlalchemy.exc import OperationalError, ProgrammingError
+
 from app.models.solicitudes import Solicitud
+
+log = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -49,30 +53,32 @@ PISTAS_OBLIGATORIAS = {'SOL'}
 
 # Color canónico de cada estado (§4.1)
 COLOR: dict[str, str] = {
-    'PENDIENTE_TRAMITAR':  'rojo',
-    'PENDIENTE_ESTUDIO':   'rojo',
-    'PENDIENTE_REDACTAR':  'rojo',
-    'PENDIENTE_FIRMA':     'amarillo',
-    'PENDIENTE_NOTIFICAR': 'azul',
-    'PENDIENTE_PUBLICAR':  'azul',
-    'PENDIENTE_SUBSANAR':  'gris',
-    'PENDIENTE_PLAZOS':    'gris',
-    'PENDIENTE_CERRAR':    'naranja',
-    'FIN':                 'verde',
+    'PENDIENTE_TRAMITAR':               'rojo',
+    'PENDIENTE_ESTUDIO':                'rojo',
+    'NOTIFICACION_AGOTADA':             'rojo',
+    'PENDIENTE_ELABORAR':               'amarillo',
+    'NOTIFICACION_FALLIDA':             'naranja',
+    'PENDIENTE_CERRAR':                 'naranja',
+    'PENDIENTE_NOTIFICAR':              'azul',
+    'PENDIENTE_RESULTADO_NOTIFICACION': 'azul',
+    'PENDIENTE_SUBSANAR':               'gris',
+    'PENDIENTE_PLAZOS':                 'gris',
+    'FIN':                              'verde',
 }
 
 # Prioridad numérica por §4.2 (1 = más urgente, 10 = menos urgente)
 PRIORIDAD: dict[str, int] = {
-    'PENDIENTE_TRAMITAR':  1,
-    'PENDIENTE_ESTUDIO':   2,
-    'PENDIENTE_REDACTAR':  3,
-    'PENDIENTE_CERRAR':    4,
-    'PENDIENTE_FIRMA':     5,
-    'PENDIENTE_NOTIFICAR': 6,
-    'PENDIENTE_PUBLICAR':  7,
-    'PENDIENTE_SUBSANAR':  8,
-    'PENDIENTE_PLAZOS':    9,
-    'FIN':                 10,
+    'PENDIENTE_TRAMITAR':               1,
+    'PENDIENTE_ESTUDIO':                2,
+    'NOTIFICACION_AGOTADA':             3,
+    'PENDIENTE_ELABORAR':               3,
+    'NOTIFICACION_FALLIDA':             4,
+    'PENDIENTE_CERRAR':                 4,
+    'PENDIENTE_NOTIFICAR':              5,
+    'PENDIENTE_RESULTADO_NOTIFICACION': 5,
+    'PENDIENTE_SUBSANAR':               6,
+    'PENDIENTE_PLAZOS':                 7,
+    'FIN':                              8,
 }
 
 
@@ -101,15 +107,29 @@ def estado_solicitud(solicitud_id: int) -> dict[str, Optional[EstadoPista]]:
         Dict con claves SOL, CONSULTAS, MA, IP, RES.
         None  → pista N/A (sin fases de ese tipo).
         EstadoPista → estado más urgente, con contador acumulado desde los niveles inferiores.
+        PENDIENTE_TRAMITAR en todas las pistas obligatorias si la BD no está disponible.
     """
-    sol = Solicitud.query.get(solicitud_id)
+    try:
+        sol = Solicitud.query.get(solicitud_id)
+    except (OperationalError, ProgrammingError) as exc:
+        log.warning('seguimiento: BD no disponible para solicitud %s — %s', solicitud_id, exc)
+        return {p: EstadoPista('PENDIENTE_TRAMITAR', 'rojo') for p in PISTAS_OBLIGATORIAS}
+
     if sol is None:
         raise ValueError(f'Solicitud {solicitud_id} no encontrada')
 
     result: dict[str, Optional[EstadoPista]] = {}
 
     for pista, tipos_fases in PISTAS.items():
-        fases = [f for f in sol.fases if f.tipo_fase.codigo in tipos_fases]
+        try:
+            fases = [f for f in sol.fases if f.tipo_fase.codigo in tipos_fases]
+        except (AttributeError, OperationalError, ProgrammingError) as exc:
+            log.warning('seguimiento: error accediendo a fases de pista %s — %s', pista, exc)
+            if pista in PISTAS_OBLIGATORIAS:
+                result[pista] = EstadoPista('PENDIENTE_TRAMITAR', 'rojo')
+            else:
+                result[pista] = None
+            continue
 
         if not fases:
             if pista in PISTAS_OBLIGATORIAS:
@@ -168,14 +188,31 @@ def _estado_tramite(tramite, pista: str) -> tuple[str, int]:
         return ('PENDIENTE_TRAMITAR', 1)
 
     tareas = list(tramite.tareas)
-    tareas_pendientes = [t for t in tareas if not t.ejecutada]
+    tareas_sin_ejecutar = [t for t in tareas if not t.ejecutada]
 
-    if not tareas_pendientes:
-        # Todas las tareas completadas — trámite pendiente de cerrar (transitorio)
-        return ('PENDIENTE_CERRAR', 1)
+    if not tareas_sin_ejecutar:
+        # Todas ejecutadas — verificar notificaciones pendientes o fallidas (#418)
+        estado_notif = _estado_notificaciones_tramite(tareas)
+        if estado_notif:
+            return (estado_notif, 1)
+        return ('PENDIENTE_CERRAR', 1)  # fallback: no debería alcanzarse
 
-    acc = _acumular([_estado_tarea(t, pista) for t in tareas_pendientes])
+    acc = _acumular([_estado_tarea(t, pista) for t in tareas_sin_ejecutar])
     return _mayor_prioridad(acc)
+
+
+def _estado_notificaciones_tramite(tareas) -> Optional[str]:
+    """Detecta tareas NOTIFICAR ejecutadas sin resultado registrado o con resultado fallido."""
+    for t in tareas:
+        if not (t.tipo_tarea and t.tipo_tarea.codigo == 'NOTIFICAR' and t.ejecutada):
+            continue
+        doc = t.documento_producido
+        notif = getattr(doc, 'notificacion', None) if doc else None
+        if notif is None:
+            return 'PENDIENTE_RESULTADO_NOTIFICACION'
+        if notif.resultado == 'INCORRECTA':
+            return 'NOTIFICACION_AGOTADA' if notif.numero_intento == 2 else 'NOTIFICACION_FALLIDA'
+    return None
 
 
 def _estado_tarea(tarea, pista: str) -> tuple[str, int]:
@@ -183,103 +220,66 @@ def _estado_tarea(tarea, pista: str) -> tuple[str, int]:
     if tarea.planificada:  # sin documentos asignados aún
         return ('PENDIENTE_TRAMITAR', 1)
 
-    tipo = tarea.tipo_tarea.codigo
+    tipo_rel = getattr(tarea, 'tipo_tarea', None)
+    if tipo_rel is None:
+        log.warning('seguimiento: tarea %s sin tipo_tarea — tratando como PENDIENTE_TRAMITAR', getattr(tarea, 'id', '?'))
+        return ('PENDIENTE_TRAMITAR', 1)
+    tipo = tipo_rel.codigo
 
     if tipo == 'ANALIZAR':
-        if tarea.documento_usado_id is None:
-            return ('PENDIENTE_TRAMITAR', 1)   # sin doc de entrada: hay que tramitar
-        if tarea.documento_producido_id is None:
-            return ('PENDIENTE_ESTUDIO', 1)    # doc recibido, hay que estudiar y redactar informe
-        return ('PENDIENTE_CERRAR', 1)         # ambos documentos presentes
+        if not tarea.documentos_consumidos:
+            return ('PENDIENTE_TRAMITAR', 1)
+        return ('PENDIENTE_ESTUDIO', 1)    # doc recibido, hay que analizar y redactar informe
 
-    if tipo == 'REDACTAR':
-        if tarea.documento_producido_id is not None:
-            return ('PENDIENTE_CERRAR', 1)     # borrador ya producido
-        if tarea.documento_usado_id is not None:
-            return ('PENDIENTE_REDACTAR', 1)   # tiene doc de entrada, falta redactar
-        return ('PENDIENTE_TRAMITAR', 1)       # sin ningún doc: hay que tramitar
-
-    if tipo == 'FIRMAR':
-        if tarea.documento_usado_id is None:
-            return ('PENDIENTE_TRAMITAR', 1)   # falta borrador
-        if tarea.documento_producido_id is None:
-            return ('PENDIENTE_FIRMA', 1)      # borrador presente, falta firmado
-        return ('PENDIENTE_CERRAR', 1)
+    if tipo == 'ELABORAR':
+        return ('PENDIENTE_ELABORAR', 1)
 
     if tipo == 'NOTIFICAR':
-        if tarea.documento_usado_id is None:
+        if not tarea.documentos_consumidos:
             return ('PENDIENTE_TRAMITAR', 1)   # falta doc firmado
-        if tarea.documento_producido_id is None:
-            return ('PENDIENTE_NOTIFICAR', 1)  # doc firmado, falta justificante
-        return ('PENDIENTE_CERRAR', 1)
-
-    if tipo == 'PUBLICAR':
-        if tarea.documento_usado_id is None:
-            return ('PENDIENTE_TRAMITAR', 1)   # falta doc firmado
-        if tarea.documento_producido_id is None:
-            return ('PENDIENTE_PUBLICAR', 1)   # doc firmado, falta justificante publicación
-        return ('PENDIENTE_CERRAR', 1)
+        return ('PENDIENTE_NOTIFICAR', 1)      # doc firmado, falta justificante
 
     if tipo == 'ESPERAR_PLAZO':
         return (_estado_esperar_plazo(tarea, pista), 1)
-
-    if tipo == 'INCORPORAR':
-        # INCORPORAR usa documentos_tarea (N:M). documento_producido_id = NULL siempre.
-        # Si planificada ya filtrado arriba; si en_curso, siempre pendiente hasta que
-        # el técnico registre documentos vía documentos_tarea.
-        return ('PENDIENTE_TRAMITAR', 1)
 
     return ('PENDIENTE_TRAMITAR', 1)  # tipo desconocido — seguro por defecto
 
 
 def _estado_esperar_plazo(tarea, pista: str) -> str:
     """
-    ESPERAR_PLAZO: §4.4
-    - documento_usado_id IS NULL (plazo=0 o aún sin configurar) → PENDIENTE_PLAZOS / PENDIENTE_SUBSANAR
-    - documento_usado_id IS NOT NULL y plazo=0 → espera indefinida
-    - documento_usado_id IS NOT NULL y plazo>0 con plazo activo → PENDIENTE_PLAZOS / PENDIENTE_SUBSANAR
-    - documento_usado_id IS NOT NULL y plazo vencido → PENDIENTE_ESTUDIO
-
-    El inicio del cómputo es documento_usado.fecha_administrativa (no fecha_inicio de la tarea).
+    ESPERAR_PLAZO: §4.4 — consulta catalogo_plazos en lugar de parsear Tarea.notas.
+    Sin entrada configurada → PENDIENTE_TRAMITAR (tarea sin configurar).
+    Con entrada pero sin documento consumido aún → estado_espera (esperando inicio de cómputo).
+    Plazo vencido → PENDIENTE_ESTUDIO.
     """
-    plazo = _parse_plazo_dias(tarea.notas)
+    from app.services.plazos import obtener_estado_plazo, tiene_plazo_configurado
 
-    if plazo is None:
-        return 'PENDIENTE_TRAMITAR'  # PLAZO_DIAS no presente en notas: tarea sin configurar
+    variables = _variables_esperar_plazo(tarea)
+
+    if not tiene_plazo_configurado('TAREA', 'ESPERAR_PLAZO', variables):
+        return 'PENDIENTE_TRAMITAR'
 
     estado_espera = 'PENDIENTE_SUBSANAR' if pista == 'SOL' else 'PENDIENTE_PLAZOS'
 
-    if plazo == 0:
-        return estado_espera  # espera indefinida: siempre activo
+    ep = obtener_estado_plazo(tarea, 'TAREA', variables=variables)
 
-    fecha_inicio_computo = (
-        tarea.documento_usado.fecha_administrativa
-        if tarea.documento_usado and tarea.documento_usado.fecha_administrativa
-        else None
-    )
+    if ep.estado == 'VENCIDO':
+        return 'PENDIENTE_ESTUDIO'
+    return estado_espera   # SIN_PLAZO (sin doc), EN_PLAZO, PROXIMO_VENCER
 
-    if fecha_inicio_computo:
-        vencimiento = fecha_inicio_computo + timedelta(days=plazo)
-        if vencimiento < date.today():
-            return 'PENDIENTE_ESTUDIO'  # plazo vencido: hay que estudiar la respuesta
 
-    return estado_espera
+def _variables_esperar_plazo(tarea) -> dict:
+    try:
+        tt = tarea.tramite.tipo_tramite
+        return {'tipo_tramite': tt.codigo} if tt else {}
+    except Exception:
+        log.warning('seguimiento: no se pudo acceder a tipo_tramite de tarea %s', getattr(tarea, 'id', '?'))
+        return {}
 
 
 # ---------------------------------------------------------------------------
 # Helpers internos
 # ---------------------------------------------------------------------------
-
-def _parse_plazo_dias(notas: Optional[str]) -> Optional[int]:
-    """
-    Extrae PLAZO_DIAS=N de notas.
-    Devuelve None si la clave no está presente (tarea sin configurar).
-    Devuelve 0 si PLAZO_DIAS=0 (espera indefinida).
-    """
-    if not notas:
-        return None
-    m = re.search(r'PLAZO_DIAS=(\d+)', notas)
-    return int(m.group(1)) if m else None
 
 
 def _nota_activa(fases_abiertas) -> Optional[str]:

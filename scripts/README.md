@@ -229,26 +229,11 @@ python scripts/flask_console.py
 
 ---
 
-## reset_maestros_ftt.py — Sincronización de maestros FTT
-
-Lee `docs/ESTRUCTURA_FTT.json` y reconstruye desde cero las tablas maestras:
-`tipos_fases`, `tipos_tramites`, `fases_tramites`. Los IDs son deterministas
-(orden de aparición en el JSON). Re-ejecutable sin efectos secundarios.
-
-### Uso
-
-```bash
-python scripts/reset_maestros_ftt.py           # solo maestros FTT
-python scripts/reset_maestros_ftt.py --full    # + datos operativos (dev completo)
-```
-
----
-
 ## seed_listado.py — Escenarios de prueba para el listado inteligente
 
 Crea los 11 escenarios de `ANALISIS_LISTADO_INTELIGENTE.md §6`.
 Re-ejecutable: borra datos operativos previos antes de insertar.
-Requiere haber ejecutado `reset_maestros_ftt.py` al menos una vez.
+Prerequisito: `flask db upgrade` (tipos de fase y trámite vienen de migraciones).
 
 ### Uso
 

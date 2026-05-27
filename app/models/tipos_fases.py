@@ -79,6 +79,13 @@ class TipoFase(db.Model):
         comment='Nombre legible usado en nombres de documentos generados'
     )
 
+    es_finalizadora = db.Column(
+        db.Boolean,
+        nullable=False,
+        server_default='false',
+        comment='True si esta fase cierra la solicitud al finalizarse'
+    )
+
     @property
     def label_bc(self):
         """Etiqueta corta para breadcrumb: abreviatura si existe, nombre completo si no."""

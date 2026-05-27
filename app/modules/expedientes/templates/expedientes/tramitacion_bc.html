@@ -39,7 +39,7 @@
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <form class="form-nueva-bc"
-            data-url="{{ url_for('vista3.crear_solicitud', exp_id=expediente.id) }}">
+            data-url="{{ url_for('api_bc.crear_solicitud', exp_id=expediente.id) }}">
         <div class="modal-body">
           <div class="mb-3">
             <label class="form-label fw-semibold">

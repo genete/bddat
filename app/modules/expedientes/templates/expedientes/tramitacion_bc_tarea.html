@@ -51,6 +51,21 @@
     <span class="fw-semibold d-flex align-items-center gap-2">
       <i class="fas fa-check-square fs-5 bc-icon-tarea"></i>
       <span>Tarea: {{ tarea.tipo_tarea.nombre if tarea.tipo_tarea else '#' ~ tarea.id }}</span>
+      {% if estado_plazo_fase.estado != 'SIN_PLAZO' %}
+      <span class="badge semaforo-plazo semaforo-{{ estado_plazo_fase.estado }}"
+            title="Plazo de fase{% if estado_plazo_fase.fecha_limite %} — vence {{ estado_plazo_fase.fecha_limite.strftime('%d/%m/%Y') }}{% endif %}">
+        <i class="fas fa-clock me-1"></i>
+        {%- if estado_plazo_fase.dias_restantes is not none -%}
+          {%- if estado_plazo_fase.dias_restantes >= 0 -%}
+            {{ estado_plazo_fase.dias_restantes }} d.h.
+          {%- else -%}
+            {{ -estado_plazo_fase.dias_restantes }} d.h. vencido
+          {%- endif -%}
+        {%- else -%}
+          {{ estado_plazo_fase.estado }}
+        {%- endif -%}
+      </span>
+      {% endif %}
     </span>
     <div class="bc-acciones-bar">
       <div data-modo-ver class="d-flex gap-1">
@@ -67,7 +82,7 @@
             <li>
               <a class="dropdown-item" href="#"
                  data-accion="iniciar"
-                 data-url="{{ url_for('vista3.iniciar_tarea', tarea_id=tarea.id) }}">
+                 data-url="{{ url_for('api_bc.iniciar_tarea', tarea_id=tarea.id) }}">
                 <i class="fas fa-play me-2 text-success"></i> Iniciar
               </a>
             </li>
@@ -76,16 +91,8 @@
             <li>
               <a class="dropdown-item" href="#"
                  data-accion="finalizar"
-                 data-url="{{ url_for('vista3.finalizar_tarea', tarea_id=tarea.id) }}">
+                 data-url="{{ url_for('api_bc.finalizar_tarea', tarea_id=tarea.id) }}">
                 <i class="fas fa-flag-checkered me-2 text-primary"></i> Finalizar
-              </a>
-            </li>
-            {% endif %}
-            {% if es_tarea_redactar %}
-            <li>
-              <a class="dropdown-item" href="#"
-                 data-bs-toggle="modal" data-bs-target="#modalGenerarEscrito">
-                <i class="fas fa-file-word me-2 text-primary"></i> Generar escrito
               </a>
             </li>
             {% endif %}
@@ -93,7 +100,7 @@
             <li>
               <a class="dropdown-item text-danger" href="#"
                  data-accion="borrar"
-                 data-url="{{ url_for('vista3.borrar_tarea', tarea_id=tarea.id) }}"
+                 data-url="{{ url_for('api_bc.borrar_tarea', tarea_id=tarea.id) }}"
                  data-redirect="{{ url_for('expedientes.tramitacion_bc_tramite', exp_id=expediente.id, sol_id=solicitud.id, fase_id=fase.id, tram_id=tramite.id) }}">
                 <i class="fas fa-trash me-2"></i> Borrar
               </a>
@@ -117,7 +124,7 @@
     <div data-modo-ver></div>
 
     <form data-modo-editar class="d-none row g-2 pt-1"
-          data-url="{{ url_for('vista3.editar_tarea', tarea_id=tarea.id) }}">
+          data-url="{{ url_for('api_bc.editar_tarea', tarea_id=tarea.id) }}">
       <div class="col-md-4">
         <label class="form-label fw-semibold mb-1">Tipo</label>
         <input type="text" class="form-control form-control-sm" readonly
@@ -148,34 +155,42 @@
 
     {% else %}
 
-    {# ── Documento usado ────────────────────────────────────────────────────── #}
+    {# ── Documentos consumidos (entrada) ────────────────────────────────────── #}
     {% if requiere_doc_usado or doc_usado_opcional %}
     <div class="mb-3">
-      <label class="form-label fw-semibold mb-1">Documento de entrada{% if doc_usado_opcional %} <span class="text-secondary fw-normal small">(opcional)</span>{% endif %}</label>
+      <label class="form-label fw-semibold mb-1">Documentos de entrada{% if doc_usado_opcional %} <span class="text-secondary fw-normal small">(opcional)</span>{% endif %}</label>
       <div class="doc-modo-ver">
-        {% if tarea.documento_usado %}
-          {% set nombre_usado = tarea.documento_usado.url.replace('\\', '/').rsplit('/', 1)[-1].split('?')[0].split('#')[0] %}
-          <div class="d-flex align-items-center gap-2 flex-wrap">
-            <i class="fas fa-file-import text-secondary"></i>
-            <span id="disp-doc-usado" class="fw-semibold">{{ nombre_usado }}</span>
-            <small class="text-secondary">
-              — {{ tarea.documento_usado.tipo_doc.nombre if tarea.documento_usado.tipo_doc else '' }}
-              {% if tarea.documento_usado.fecha_administrativa %}
-                — {{ tarea.documento_usado.fecha_administrativa.strftime('%d/%m/%Y') }}
-              {% endif %}
-            </small>
-            <a href="{{ url_for('expedientes.pool_descargar_documento', id=expediente.id, doc_id=tarea.documento_usado.id) }}"
-               class="btn btn-sm btn-outline-secondary ms-auto"
-               target="_blank" rel="noopener">
-              <i class="fas fa-download me-1"></i>Descargar
-            </a>
-          </div>
+        {% if tarea.documentos_consumidos %}
+          {% for d in tarea.documentos_consumidos %}
+            {% set nombre_d = d.url.replace('\\', '/').rsplit('/', 1)[-1].split('?')[0].split('#')[0] %}
+            <div class="d-flex align-items-center gap-2 flex-wrap mb-1">
+              <i class="fas fa-file-import text-secondary"></i>
+              <span class="fw-semibold">{{ nombre_d }}</span>
+              <small class="text-secondary">
+                — {{ d.tipo_doc.nombre if d.tipo_doc else '' }}
+                {% if d.fecha_administrativa %}
+                  — {{ d.fecha_administrativa.strftime('%d/%m/%Y') }}
+                {% endif %}
+              </small>
+              <a href="{{ url_for('expedientes.pool_descargar_documento', id=expediente.id, doc_id=d.id) }}"
+                 class="btn btn-sm btn-outline-secondary ms-auto"
+                 target="_blank" rel="noopener">
+                <i class="fas fa-download me-1"></i>Descargar
+              </a>
+            </div>
+          {% endfor %}
         {% else %}
-          <span id="disp-doc-usado" class="fst-italic text-secondary small">Sin documento asociado</span>
+          <span class="fst-italic text-secondary small">Sin documentos asociados</span>
         {% endif %}
       </div>
       <div class="doc-modo-editar d-none">
-        <div id="sb-doc-usado"></div>
+        <div id="lista-docs-consumidos" class="mb-2"></div>
+        <div class="d-flex gap-2 align-items-start">
+          <div id="sb-doc-consumido" class="flex-grow-1"></div>
+          <button type="button" class="btn btn-sm btn-outline-primary" id="btn-add-consumido">
+            <i class="fas fa-plus me-1"></i>Añadir
+          </button>
+        </div>
       </div>
     </div>
     {% endif %}
@@ -217,67 +232,26 @@
   </div>
 </div>
 
-{% if es_tarea_redactar %}
-{# ── Modal Generar Escrito (#167 Fase 5) ───────────────────────────── #}
-<div class="modal fade" id="modalGenerarEscrito" tabindex="-1"
-     aria-labelledby="modalGenerarEscritoLabel" aria-hidden="true">
-  <div class="modal-dialog modal-lg">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="modalGenerarEscritoLabel">
-          <i class="fas fa-file-word me-2 text-primary"></i>Generar escrito
-        </h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-      </div>
-      <div class="modal-body">
-        <div id="ge-paso1">
-          <label class="form-label fw-semibold mb-1">Plantilla</label>
-          <div id="ge-selector-plantilla"></div>
-          <small class="text-secondary" id="ge-contador">Cargando plantillas...</small>
-        </div>
-        <div id="ge-paso2" class="d-none mt-3">
-          <hr>
-          <h6 class="fw-semibold mb-2">Datos del contexto</h6>
-          <div id="ge-preview-campos" class="row g-2 mb-3"></div>
-          <div class="row g-2 mb-3">
-            <div class="col-12">
-              <label class="form-label fw-semibold mb-1">Nombre del fichero</label>
-              <input type="text" class="form-control form-control-sm" id="ge-nombre-fichero">
-            </div>
-            <div class="col-12">
-              <label class="form-label fw-semibold mb-1">Ruta destino</label>
-              <input type="text" class="form-control form-control-sm" id="ge-ruta-destino" readonly>
-            </div>
-          </div>
-          <div class="d-flex flex-column gap-1">
-            <div class="form-check">
-              <input class="form-check-input" type="checkbox" id="ge-check-pool" checked>
-              <label class="form-check-label" for="ge-check-pool">Registrar en pool del expediente</label>
-            </div>
-            <div class="form-check">
-              <input class="form-check-input" type="checkbox" id="ge-check-doc-producido" checked>
-              <label class="form-check-label" for="ge-check-doc-producido">Asignar como documento producido</label>
-            </div>
-            <div class="form-check">
-              <input class="form-check-input" type="checkbox" id="ge-check-abrir-carpeta">
-              <label class="form-check-label" for="ge-check-abrir-carpeta">Abrir carpeta tras generar</label>
-            </div>
-          </div>
-        </div>
-        <div id="ge-spinner" class="d-none text-center py-4">
-          <div class="spinner-border text-primary" role="status">
-            <span class="visually-hidden">Generando...</span>
-          </div>
-          <p class="mt-2 text-secondary">Generando escrito...</p>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-        <button type="button" class="btn btn-primary" id="ge-btn-generar" disabled>
-          <i class="fas fa-file-word me-1"></i> Generar
-        </button>
-      </div>
+{# Botón de generación de certificado de plazo cumplido (Caso B) #}
+{% if tarea.tipo_tarea and tarea.tipo_tarea.codigo == 'ESPERAR_PLAZO'
+      and not tarea.documento_producido
+      and estado_plazo_tarea and estado_plazo_tarea.estado == 'VENCIDO' %}
+<div class="card mt-3 border-warning">
+  <div class="card-body py-2 d-flex align-items-center gap-3">
+    <i class="fas fa-exclamation-triangle text-warning fs-5"></i>
+    <div class="flex-grow-1">
+      <strong>Plazo vencido</strong>
+      {% if estado_plazo_tarea.fecha_limite %}
+        — venció el {{ estado_plazo_tarea.fecha_limite.strftime('%d/%m/%Y') }}
+      {% endif %}
     </div>
+    <form method="post"
+          action="{{ url_for('expedientes.generar_cert', tarea_id=tarea.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="btn btn-warning btn-sm">
+        <i class="fas fa-certificate me-1"></i>Generar certificado de plazo cumplido
+      </button>
+    </form>
   </div>
 </div>
 {% endif %}
@@ -293,14 +267,10 @@ window.TAREA_DOCS_CONFIG = {
   requiereDocUsado:     {{ requiere_doc_usado | tojson }},
   docUsadoOpcional:     {{ doc_usado_opcional | tojson }},
   requiereDocProducido: {{ requiere_doc_producido | tojson }},
-  docUsadoId:      {{ tarea.documento_usado_id | tojson }},
-  docProducidoId:  {{ tarea.documento_producido_id | tojson }},
+  docsConsumidos:  {{ tarea.documentos_consumidos | map(attribute='id') | list | tojson }},
+  docProducidoId:  {{ (tarea.documento_producido.id if tarea.documento_producido else None) | tojson }},
   urlApiDocs: "{{ url_for('expedientes.pool_documentos_json', id=expediente.id) }}"
 };
 </script>
 <script src="{{ url_for('static', filename='js/tarea_documentos.js') }}"></script>
-{% if es_tarea_redactar %}
-<script>window.GE_CONFIG = { tareaId: {{ tarea.id }} };</script>
-<script src="{{ url_for('static', filename='js/generar_escrito.js') }}"></script>
-{% endif %}
 {% endblock %}

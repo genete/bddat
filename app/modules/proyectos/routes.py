@@ -12,6 +12,7 @@ ISSUE: #128
 
 from flask import Blueprint, render_template, redirect, url_for, abort
 from flask_login import login_required, current_user
+from app.utils.permisos import tiene_permiso
 from app import db
 from app.models.proyectos import Proyecto
 from app.models.expedientes import Expediente
@@ -67,10 +68,6 @@ def detalle(id):
     if not proyecto:
         abort(404)
 
-    if current_user.tiene_rol('TRAMITADOR') and not current_user.tiene_rol('ADMIN', 'SUPERVISOR'):
-        if proyecto.expediente.responsable_id != current_user.id:
-            abort(403)
-
     # La Vista V4 de expediente contiene toda la info del proyecto → redirigir
     return redirect(url_for('expedientes.detalle', id=proyecto.expediente.id))
 
@@ -97,9 +94,5 @@ def editar_proyecto(id):
 
     if not proyecto:
         abort(404)
-
-    if current_user.tiene_rol('TRAMITADOR') and not current_user.tiene_rol('ADMIN', 'SUPERVISOR'):
-        if proyecto.expediente.responsable_id != current_user.id:
-            abort(403)
 
     return redirect(url_for('expedientes.editar', id=proyecto.expediente.id) + '#proyecto')

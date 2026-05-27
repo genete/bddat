@@ -12,9 +12,9 @@ Rutas de formulario:
 - POST /admin/plantillas/<id>/activar — Activar/desactivar plantilla
 
 Endpoints AJAX (cascada ESFTT):
-- GET  /admin/plantillas/api/tipos-solicitud  — Tipos solicitud (filtrar=1: solo whitelist por exp)
-- GET  /admin/plantillas/api/tipos-fase       — Tipos fase (filtrar=1: solo whitelist por sol)
-- GET  /admin/plantillas/api/tipos-tramite    — Tipos trámite (filtrar=1: solo whitelist por fase)
+- GET  /admin/plantillas/api/tipos-solicitud  — Todos los tipos de solicitud
+- GET  /admin/plantillas/api/tipos-fase       — Todos los tipos de fase
+- GET  /admin/plantillas/api/tipos-tramite    — Todos los tipos de trámite
 - GET  /admin/plantillas/api/tokens           — Tokens Capa 1 (stub — Capa 2 en Fase 5)
 - GET  /admin/plantillas/api/fs               — Explorador de servidor restringido a PLANTILLAS_BASE/plantillas/
 """
@@ -27,12 +27,9 @@ from flask import (Blueprint, abort, current_app, flash, jsonify, redirect,
 from flask_login import login_required
 
 from app import db
-from app.decorators import role_required
+from app.decorators import require_permiso
 from app.models.consultas_nombradas import ConsultaNombrada
-from app.models.expedientes_solicitudes import ExpedienteSolicitud
-from app.models.fases_tramites import FaseTramite
 from app.models.plantillas import Plantilla
-from app.models.solicitudes_fases import SolicitudFase
 from app.models.tipos_documentos import TipoDocumento
 from app.models.tipos_expedientes import TipoExpediente
 from app.models.tipos_fases import TipoFase
@@ -52,7 +49,12 @@ CAMPOS_BASE = [
     {'campo': 'expediente_id',          'descripcion': 'ID técnico interno del expediente'},
     {'campo': 'titular_nombre',         'descripcion': 'Nombre / Razón Social del titular'},
     {'campo': 'titular_nif',            'descripcion': 'NIF del titular'},
-    {'campo': 'titular_direccion',      'descripcion': 'Dirección de notificación preferente'},
+    {'campo': 'titular_dir.calle',      'descripcion': 'Dirección postal (calle y número)'},
+    {'campo': 'titular_dir.cp',         'descripcion': 'Código postal'},
+    {'campo': 'titular_dir.municipio',  'descripcion': 'Municipio de notificación'},
+    {'campo': 'titular_dir.provincia',  'descripcion': 'Provincia de notificación'},
+    {'campo': 'titular_dir.nif',        'descripcion': 'NIF para notificación (puede diferir del NIF principal)'},
+    {'campo': 'titular_dir.email',      'descripcion': 'Email de notificación electrónica'},
     {'campo': 'proyecto_titulo',        'descripcion': 'Título del proyecto técnico'},
     {'campo': 'proyecto_finalidad',     'descripcion': 'Finalidad de la instalación'},
     {'campo': 'proyecto_emplazamiento', 'descripcion': 'Emplazamiento descriptivo'},
@@ -193,28 +195,10 @@ def _selects_context():
 
 @bp.route('/api/tipos-solicitud')
 @login_required
-@role_required('ADMIN', 'SUPERVISOR')
+@require_permiso('gestionar_plantillas')
 def api_tipos_solicitud():
-    """
-    Devuelve tipos de solicitud disponibles.
-    Si filtrar=1 y tipo_expediente_id dado: solo los de la whitelist expedientes_solicitudes.
-    Sin filtro: todos.
-    """
-    tipo_expediente_id = request.args.get('tipo_expediente_id', type=int)
-    filtrar = request.args.get('filtrar') == '1'
-
-    if filtrar and tipo_expediente_id:
-        tipos = (
-            TipoSolicitud.query
-            .join(ExpedienteSolicitud,
-                  ExpedienteSolicitud.tipo_solicitud_id == TipoSolicitud.id)
-            .filter(ExpedienteSolicitud.tipo_expediente_id == tipo_expediente_id)
-            .order_by(TipoSolicitud.siglas)
-            .all()
-        )
-    else:
-        tipos = TipoSolicitud.query.order_by(TipoSolicitud.siglas).all()
-
+    """Devuelve todos los tipos de solicitud disponibles."""
+    tipos = TipoSolicitud.query.order_by(TipoSolicitud.siglas).all()
     return jsonify([
         {'id': t.id, 'texto': f'{t.siglas} — {t.descripcion}'}
         for t in tipos
@@ -223,27 +207,10 @@ def api_tipos_solicitud():
 
 @bp.route('/api/tipos-fase')
 @login_required
-@role_required('ADMIN', 'SUPERVISOR')
+@require_permiso('gestionar_plantillas')
 def api_tipos_fase():
-    """
-    Devuelve tipos de fase disponibles.
-    Si filtrar=1 y tipo_solicitud_id dado: solo los de la whitelist solicitudes_fases.
-    """
-    tipo_solicitud_id = request.args.get('tipo_solicitud_id', type=int)
-    filtrar = request.args.get('filtrar') == '1'
-
-    if filtrar and tipo_solicitud_id:
-        tipos = (
-            TipoFase.query
-            .join(SolicitudFase,
-                  SolicitudFase.tipo_fase_id == TipoFase.id)
-            .filter(SolicitudFase.tipo_solicitud_id == tipo_solicitud_id)
-            .order_by(TipoFase.nombre)
-            .all()
-        )
-    else:
-        tipos = TipoFase.query.order_by(TipoFase.nombre).all()
-
+    """Devuelve todos los tipos de fase disponibles."""
+    tipos = TipoFase.query.order_by(TipoFase.nombre).all()
     return jsonify([
         {'id': t.id, 'texto': t.nombre}
         for t in tipos
@@ -252,27 +219,10 @@ def api_tipos_fase():
 
 @bp.route('/api/tipos-tramite')
 @login_required
-@role_required('ADMIN', 'SUPERVISOR')
+@require_permiso('gestionar_plantillas')
 def api_tipos_tramite():
-    """
-    Devuelve tipos de trámite disponibles.
-    Si filtrar=1 y tipo_fase_id dado: solo los de la whitelist fases_tramites.
-    """
-    tipo_fase_id = request.args.get('tipo_fase_id', type=int)
-    filtrar = request.args.get('filtrar') == '1'
-
-    if filtrar and tipo_fase_id:
-        tipos = (
-            TipoTramite.query
-            .join(FaseTramite,
-                  FaseTramite.tipo_tramite_id == TipoTramite.id)
-            .filter(FaseTramite.tipo_fase_id == tipo_fase_id)
-            .order_by(TipoTramite.nombre)
-            .all()
-        )
-    else:
-        tipos = TipoTramite.query.order_by(TipoTramite.nombre).all()
-
+    """Devuelve todos los tipos de trámite disponibles."""
+    tipos = TipoTramite.query.order_by(TipoTramite.nombre).all()
     return jsonify([
         {'id': t.id, 'texto': t.nombre}
         for t in tipos
@@ -281,7 +231,7 @@ def api_tipos_tramite():
 
 @bp.route('/api/fs')
 @login_required
-@role_required('ADMIN', 'SUPERVISOR')
+@require_permiso('gestionar_plantillas')
 def api_explorador_fs():
     """
     Explorador de ficheros del servidor restringido a PLANTILLAS_BASE/plantillas/.
@@ -314,7 +264,7 @@ def api_explorador_fs():
 
 @bp.route('/api/tokens')
 @login_required
-@role_required('ADMIN', 'SUPERVISOR')
+@require_permiso('gestionar_plantillas')
 def api_tokens():
     """
     Stub para refresco dinámico de tokens (Capa 2 — Fase 5+).
@@ -337,7 +287,7 @@ def api_tokens():
 
 @bp.route('/')
 @login_required
-@role_required('ADMIN', 'SUPERVISOR')
+@require_permiso('gestionar_plantillas')
 def listado():
     plantillas = Plantilla.query.order_by(Plantilla.nombre).all()
     return render_template('admin_plantillas/listado.html', plantillas=plantillas)
@@ -345,7 +295,7 @@ def listado():
 
 @bp.route('/nueva/', methods=['GET', 'POST'])
 @login_required
-@role_required('ADMIN', 'SUPERVISOR')
+@require_permiso('gestionar_plantillas')
 def nueva():
     if request.method == 'POST':
         ruta_rel = request.form.get('ruta_plantilla', '').strip()
@@ -416,7 +366,7 @@ def nueva():
 
 @bp.route('/<int:id>/')
 @login_required
-@role_required('ADMIN', 'SUPERVISOR')
+@require_permiso('gestionar_plantillas')
 def detalle(id):
     plantilla = Plantilla.query.get_or_404(id)
     tokens = _build_tokens(plantilla)
@@ -434,7 +384,7 @@ def detalle(id):
 
 @bp.route('/<int:id>/editar', methods=['GET', 'POST'])
 @login_required
-@role_required('ADMIN', 'SUPERVISOR')
+@require_permiso('gestionar_plantillas')
 def editar(id):
     plantilla = Plantilla.query.get_or_404(id)
 
@@ -498,7 +448,7 @@ def editar(id):
 
 @bp.route('/<int:id>/descargar')
 @login_required
-@role_required('ADMIN', 'SUPERVISOR')
+@require_permiso('gestionar_plantillas')
 def descargar(id):
     plantilla = Plantilla.query.get_or_404(id)
     d = _plantillas_dir()
@@ -512,7 +462,7 @@ def descargar(id):
 
 @bp.route('/<int:id>/activar', methods=['POST'])
 @login_required
-@role_required('ADMIN', 'SUPERVISOR')
+@require_permiso('gestionar_plantillas')
 def activar(id):
     plantilla = Plantilla.query.get_or_404(id)
     plantilla.activo = not plantilla.activo

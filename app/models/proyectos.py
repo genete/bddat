@@ -140,7 +140,25 @@ class Proyecto(db.Model):
         default=False,
         comment='True si el proyecto tramita modificación de instalaciones existentes (afecta tramitación ambiental AAU/AAUS)'
     )
-    
+
+    sin_linea_aerea = db.Column(
+        db.Boolean,
+        nullable=True,
+        comment='True si la instalación no contiene ninguna línea aérea (futuro: deducible de elementos)'
+    )
+
+    max_tension_nominal_kv = db.Column(
+        db.Numeric(6, 2),
+        nullable=True,
+        comment='Tensión nominal máxima de los elementos de la instalación en kV (futuro: deducible)'
+    )
+
+    solo_suelo_urbano_urbanizable = db.Column(
+        db.Boolean,
+        nullable=True,
+        comment='True si el recorrido íntegro de las instalaciones es en suelo urbano o urbanizable'
+    )
+
     # Relación con TipoIA
     ia = db.relationship(
         'TipoIA', 

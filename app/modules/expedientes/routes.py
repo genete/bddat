@@ -19,7 +19,6 @@ from flask import Blueprint, render_template, request, flash, redirect, url_for,
 from flask_login import login_required
 from app import db
 from app.models.expedientes import Expediente
-from app.routes.vista3 import _get_solicitudes_con_stats, _construir_arbol
 from app.models.proyectos import Proyecto
 from app.models.usuarios import Usuario
 from app.models.tipos_expedientes import TipoExpediente
@@ -36,7 +35,7 @@ from app.models.tramites import Tramite
 from app.models.tareas import Tarea
 from app.models.documentos import Documento
 from app.models.tipos_documentos import TipoDocumento
-from app.decorators import role_required
+from app.services.plazos import obtener_estado_plazo
 from app.utils.permisos import (
     puede_cambiar_responsable,
     verificar_acceso_expediente
@@ -257,16 +256,16 @@ def tramitacion_bc(exp_id):
         tipos_str = s.tipo_solicitud.siglas if s.tipo_solicitud else f'Solicitud #{s.id}'
         fecha_sol = s.documento_solicitud.fecha_administrativa if s.documento_solicitud else None
         hijos.append({
-            'nombre':        tipos_str,
-            'fecha_inicio':  _fmt_fecha(fecha_sol),
-            'estado':        _estado_indicador_solicitud(s),
-            'url_detalle':   url_for('expedientes.tramitacion_bc_solicitud',
-                                    exp_id=exp_id, sol_id=s.id),
+            'nombre':          tipos_str,
+            'fecha_solicitud': _fmt_fecha(fecha_sol),
+            'estado':          _estado_indicador_solicitud(s),
+            'url_detalle':     url_for('expedientes.tramitacion_bc_solicitud',
+                                      exp_id=exp_id, sol_id=s.id),
         })
 
     columnas = [
-        {'key': 'nombre',       'label': 'Tipos de solicitud'},
-        {'key': 'fecha_inicio', 'label': 'F. Solicitud'},
+        {'key': 'nombre',          'label': 'Tipos de solicitud'},
+        {'key': 'fecha_solicitud', 'label': 'F. Solicitud'},
     ]
 
     tipos_solicitud = TipoSolicitud.query.order_by(TipoSolicitud.siglas).all()
@@ -358,7 +357,13 @@ def tramitacion_bc_fase(exp_id, sol_id, fase_id):
     ]
 
     resultados_fase = TipoResultadoFase.query.order_by(TipoResultadoFase.nombre).all()
-    tipos_tramite = TipoTramite.query.order_by(TipoTramite.nombre).all()
+    tipos_tramite = (TipoTramite.query
+                     .filter(TipoTramite.codigo.notin_(
+                         ['CONSULTA_TRASLADO_ORGANISMO', 'CONSULTA_TRASLADO_TITULAR']
+                     ))
+                     .order_by(TipoTramite.nombre).all())
+
+    estado_plazo_fase = obtener_estado_plazo(fase, 'FASE')
 
     return render_template(
         'expedientes/tramitacion_bc_fase.html',
@@ -369,6 +374,7 @@ def tramitacion_bc_fase(exp_id, sol_id, fase_id):
         columnas=columnas,
         resultados_fase=resultados_fase,
         tipos_tramite=tipos_tramite,
+        estado_plazo_fase=estado_plazo_fase,
     )
 
 
@@ -454,7 +460,14 @@ def tramitacion_bc_tarea(exp_id, sol_id, fase_id, tram_id, tarea_id):
     requiere_doc_usado     = codigo_tipo in _TIPOS_REQUIEREN_DOC_USADO
     doc_usado_opcional     = codigo_tipo in _TIPOS_DOC_USADO_OPCIONAL
     requiere_doc_producido = codigo_tipo in _TIPOS_REQUIEREN_DOC_PRODUCIDO
-    es_tarea_redactar      = (codigo_tipo == 'REDACTAR')
+
+    estado_plazo_fase = obtener_estado_plazo(fase, 'FASE')
+
+    estado_plazo_tarea = None
+    if codigo_tipo == 'ESPERAR_PLAZO':
+        from app.services.seguimiento import _variables_esperar_plazo
+        variables_tarea = _variables_esperar_plazo(tarea)
+        estado_plazo_tarea = obtener_estado_plazo(tarea, 'TAREA', variables=variables_tarea)
 
     return render_template(
         'expedientes/tramitacion_bc_tarea.html',
@@ -466,14 +479,63 @@ def tramitacion_bc_tarea(exp_id, sol_id, fase_id, tram_id, tarea_id):
         requiere_doc_usado=requiere_doc_usado,
         doc_usado_opcional=doc_usado_opcional,
         requiere_doc_producido=requiere_doc_producido,
-        es_tarea_redactar=es_tarea_redactar,
+        estado_plazo_fase=estado_plazo_fase,
+        estado_plazo_tarea=estado_plazo_tarea,
+    )
+
+
+@bp.route('/tarea/<int:tarea_id>/generar_cert', methods=['POST'])
+@login_required
+def generar_cert(tarea_id):
+    """Genera el certificado de plazo cumplido para una tarea ESPERAR_PLAZO."""
+    from app.services.certificados import crear_cert
+    tarea = Tarea.query.get_or_404(tarea_id)
+    resultado = verificar_acceso_expediente(tarea.tramite.fase.solicitud.expediente, 'editar')
+    if resultado:
+        return resultado
+    try:
+        crear_cert(tarea)
+        flash('Certificado de plazo cumplido generado.', 'success')
+    except (ValueError, NotImplementedError) as exc:
+        flash(str(exc), 'danger')
+    return redirect(request.referrer or url_for('expedientes.listado_v2'))
+
+
+@bp.route('/cert/<int:cert_id>/pdf')
+@login_required
+def cert_pdf(cert_id):
+    """Genera y devuelve el PDF de un certificado interno (bddat://)."""
+    from app.models.certificados import Certificado
+    from app.services.cert_pdf import generar_pdf_certificado
+
+    cert = Certificado.query.get_or_404(cert_id)
+    expediente = cert.documento.solicitud_expediente if hasattr(cert.documento, 'solicitud_expediente') else None
+
+    # Acceder al expediente vía documento → expediente
+    from app.models.expedientes import Expediente
+    expediente = Expediente.query.get_or_404(cert.documento.expediente_id)
+
+    resultado = verificar_acceso_expediente(expediente, 'ver')
+    if resultado:
+        return resultado
+
+    tipo_cert = cert.documento.tipo_documento.codigo if cert.documento.tipo_documento else ''
+    pdf_bytes = generar_pdf_certificado(cert, expediente, tipo_cert)
+
+    from flask import Response
+    return Response(
+        pdf_bytes,
+        mimetype='application/pdf',
+        headers={
+            'Content-Disposition': f'inline; filename="cert_{tipo_cert}_{cert.id}.pdf"'
+        },
     )
 
 
 # Conjuntos de tipos de tarea que requieren documentos (espejo de invariantes_esftt.py)
-_TIPOS_REQUIEREN_DOC_USADO     = {'ANALISIS', 'FIRMAR', 'NOTIFICAR', 'PUBLICAR'}
-_TIPOS_DOC_USADO_OPCIONAL      = {'REDACTAR'}   # visible en UI pero no obligatorio al finalizar
-_TIPOS_REQUIEREN_DOC_PRODUCIDO = {'INCORPORAR', 'ANALISIS', 'REDACTAR', 'FIRMAR', 'NOTIFICAR', 'PUBLICAR'}
+_TIPOS_REQUIEREN_DOC_USADO     = {'ANALIZAR', 'NOTIFICAR'}
+_TIPOS_DOC_USADO_OPCIONAL      = {'ELABORAR'}   # visible en UI pero no obligatorio al finalizar
+_TIPOS_REQUIEREN_DOC_PRODUCIDO = {'ANALIZAR', 'ELABORAR', 'NOTIFICAR', 'ESPERAR_PLAZO'}
 
 
 # ===========================================================================
@@ -492,14 +554,11 @@ def _documento_es_referenciado(doc):
 
     Backrefs consultados:
       doc.proyecto_vinculado  → DocumentoProyecto.documento_id  (uselist=False)
-      doc.tareas_que_usan     → Tarea.documento_usado_id        (lista)
-      doc.tarea_productora    → Tarea.documento_producido_id    (lista, UNIQUE en BD)
+      doc.vinculos_tarea      → DocumentoTarea.documento_id     (lista, vínculos con rol)
     """
     if doc.proyecto_vinculado:
         return True
-    if doc.tareas_que_usan:
-        return True
-    if doc.tarea_productora:
+    if doc.vinculos_tarea:
         return True
     return False
 

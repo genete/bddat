@@ -2,10 +2,22 @@
 Motor de reglas agnóstico.
 
 No conoce el dominio BDDAT. No importa modelos de negocio. No hace queries propias.
-Recibe un dict de variables compilado por el ContextAssembler y evalúa las reglas
-configuradas en BD (reglas_motor + condiciones_regla).
+Recibe el sujeto calificado compilado por el ContextAssembler y un dict de variables,
+y evalúa las reglas configuradas en BD.
 
 Principio rector: todo PERMITIDO excepto lo expresamente prohibido.
+
+SUJETO CALIFICADO:
+    El assembler produce siempre un sujeto concreto con la cadena ESFTT completa:
+        'Distribucion/AAP/RESOLUCION'
+    Las reglas en BD usan 'ANY' como comodín posicional:
+        'ANY/AAP/RESOLUCION'  →  casa con cualquier tipo de expediente
+
+DOS BARRIDOS:
+    1. Se evalúan las reglas activas que casan con (accion, sujeto).
+    2. Por cada regla que dispara se comprueban sus excepciones activas.
+       Si alguna excepción casa → esa prohibición queda neutralizada.
+    3. Cualquier prohibición no neutralizada → BLOQUEAR.
 
 Los checks estructurales de negocio (entidad ya iniciada, hijos sin cerrar, etc.)
 viven en app/services/invariantes_esftt.py — son BDDAT-aware y se invocan antes
@@ -13,14 +25,9 @@ de llamar a este motor.
 
 Uso:
     from app.services.motor_reglas import evaluar
-    from app.services.invariantes_esftt import check_invariante
 
-    bloqueo = check_invariante('FINALIZAR', 'FASE', fase.id)
-    if bloqueo:
-        return jsonify({'ok': False, 'error': bloqueo.norma_compilada}), 422
-
-    variables = {}  # TODO paso 5: context_assembler.build(expediente_id)
-    resultado = evaluar('FINALIZAR', 'FASE', fase.tipo_fase_id, variables)
+    variables = {}  # TODO paso 5: variables = build(expediente_id)
+    resultado = evaluar('CREAR', 'Distribucion/AAP/RESOLUCION', variables)
     if not resultado.permitido:
         return jsonify({'ok': False, 'error': resultado.norma_compilada,
                         'norma': resultado.url_norma}), 422
@@ -31,14 +38,20 @@ import logging
 from dataclasses import dataclass, field
 from typing import Optional
 
+from sqlalchemy.orm import joinedload
+
 from app import db
-from app.models.motor_reglas import ReglaMotor, CondicionRegla
+from app.models.motor_reglas import (
+    ReglaMotor, CondicionRegla,
+    ExcepcionMotor, CondicionExcepcion,
+)
+from app.services.operadores import _OPERADORES
 
 log = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
-# Resultado público
+# Resultado público — evaluar()
 # ---------------------------------------------------------------------------
 
 @dataclass
@@ -48,66 +61,107 @@ class EvaluacionResult:
     variables_trigger: dict  # subconjunto del dict que disparó la regla
     norma_compilada:   str   # referencia normativa compilada
     url_norma:         str   # URL BOE/BOJA; '' si no existe
+    motivo:            str = ''   # descripción editorial de la regla; '' si no configurada
+    puede_escapar:     bool = False  # True solo cuando el bloqueo viene del motor (no de invariantes)
 
 
 PERMITIDO = EvaluacionResult(
     permitido=True, nivel='',
-    variables_trigger={}, norma_compilada='', url_norma=''
+    variables_trigger={}, norma_compilada='', url_norma='', motivo=''
 )
+
+
+# ---------------------------------------------------------------------------
+# Resultado público — auditar()
+# ---------------------------------------------------------------------------
+
+@dataclass
+class ResultadoRegla:
+    """Snapshot de la evaluación de una regla individual dentro de auditar()."""
+    regla_id:          int
+    sujeto_patron:     str
+    descripcion:       str
+    norma_compilada:   str
+    url_norma:         str
+    efecto:            str   # 'BLOQUEAR' | 'ADVERTIR'
+    disparada:         bool  # True si sus condiciones se cumplieron
+    neutralizada:      bool  # True si disparó pero una excepción la anuló
+    variables_trigger: dict
+
+
+@dataclass
+class AuditoriaResult:
+    """Resultado completo de auditar(): todas las reglas evaluadas sin short-circuit."""
+    permitido:        bool
+    accion:           str
+    sujeto:           str
+    reglas_evaluadas: list  # list[ResultadoRegla] — todas las que casaron con (accion, sujeto)
+    variables_ctx:    dict  # snapshot completo del dict de variables
+
+
+# ---------------------------------------------------------------------------
+# Matching posicional del sujeto
+# ---------------------------------------------------------------------------
+
+def _sujeto_casa(patron: str, sujeto_real: str) -> bool:
+    """
+    Compara segmento a segmento separando por '/'.
+    'ANY' en el patrón casa con cualquier valor real en esa posición.
+    Distinto número de segmentos → no casa.
+    """
+    partes_patron = patron.split('/')
+    partes_real   = sujeto_real.split('/')
+    if len(partes_patron) != len(partes_real):
+        return False
+    return all(
+        p == 'ANY' or p == r
+        for p, r in zip(partes_patron, partes_real)
+    )
 
 
 # ---------------------------------------------------------------------------
 # Evaluación de condiciones
 # ---------------------------------------------------------------------------
 
-_OPERADORES = {
-    'EQ':          lambda v, ref: v == ref,
-    'NEQ':         lambda v, ref: v != ref,
-    'IN':          lambda v, ref: v in (ref if isinstance(ref, list) else [ref]),
-    'NOT_IN':      lambda v, ref: v not in (ref if isinstance(ref, list) else [ref]),
-    'IS_NULL':     lambda v, _: v is None,
-    'NOT_NULL':    lambda v, _: v is not None,
-    'GT':          lambda v, ref: v is not None and v > ref,
-    'GTE':         lambda v, ref: v is not None and v >= ref,
-    'LT':          lambda v, ref: v is not None and v < ref,
-    'LTE':         lambda v, ref: v is not None and v <= ref,
-    'BETWEEN':     lambda v, ref: v is not None and ref[0] <= v <= ref[1],
-    'NOT_BETWEEN': lambda v, ref: v is not None and not (ref[0] <= v <= ref[1]),
-}
-
-
-def _evaluar_condicion(cond: CondicionRegla, variables: dict) -> bool:
-    nombre = cond.nombre_variable
-    if nombre not in variables:
-        log.warning('motor_reglas: variable ausente en dict: %s', nombre)
-        return False
-    op_fn = _OPERADORES.get(cond.operador)
-    if op_fn is None:
-        log.warning('motor_reglas: operador desconocido: %s', cond.operador)
-        return False
-    try:
-        return bool(op_fn(variables[nombre], cond.valor))
-    except Exception as exc:
-        log.warning('motor_reglas: error evaluando %s %s %r: %s', nombre, cond.operador, cond.valor, exc)
-        return False
-
-
-def _evaluar_regla(regla: ReglaMotor, variables: dict) -> tuple[bool, dict]:
+def _evaluar_condiciones(condiciones, variables: dict) -> tuple[bool, dict]:
     """
-    Evalúa todas las condiciones con AND implícito.
-    Devuelve (disparada, variables_trigger).
-    Sin condiciones → regla siempre dispara.
+    Evalúa una lista de condiciones con AND implícito.
+    Devuelve (disparadas, variables_trigger).
+    Sin condiciones → siempre dispara.
     """
-    condiciones = sorted(regla.condiciones, key=lambda c: c.orden)
     if not condiciones:
         return True, {}
 
     trigger = {}
-    for cond in condiciones:
-        if not _evaluar_condicion(cond, variables):
+    for cond in sorted(condiciones, key=lambda c: c.orden):
+        nombre = cond.variable.nombre
+        if nombre not in variables:
+            log.warning('motor_reglas: variable ausente en dict: %s', nombre)
             return False, {}
-        trigger[cond.nombre_variable] = variables.get(cond.nombre_variable)
+        op_fn = _OPERADORES.get(cond.operador)
+        if op_fn is None:
+            log.warning('motor_reglas: operador desconocido: %s', cond.operador)
+            return False, {}
+        try:
+            if not bool(op_fn(variables[nombre], cond.valor)):
+                return False, {}
+        except Exception as exc:
+            log.warning('motor_reglas: error evaluando %s %s %r: %s',
+                        nombre, cond.operador, cond.valor, exc)
+            return False, {}
+        trigger[nombre] = variables[nombre]
+
     return True, trigger
+
+
+def _norma_ref(regla_o_exc) -> tuple[str, str]:
+    """Devuelve (norma_compilada, url_norma) para una regla o excepción."""
+    if not regla_o_exc.norma:
+        return '', ''
+    art = regla_o_exc.articulo or ''
+    apt = f'.{regla_o_exc.apartado}' if regla_o_exc.apartado else ''
+    ref = f'Art. {art}{apt} — {regla_o_exc.norma.titulo}' if art else regla_o_exc.norma.titulo
+    return ref, regla_o_exc.norma.url_eli or ''
 
 
 # ---------------------------------------------------------------------------
@@ -115,55 +169,141 @@ def _evaluar_regla(regla: ReglaMotor, variables: dict) -> tuple[bool, dict]:
 # ---------------------------------------------------------------------------
 
 def evaluar(
-    accion:         str,
-    sujeto:         str,
-    tipo_sujeto_id: Optional[int],
-    variables:      dict,
+    accion:    str,
+    sujeto:    str,
+    variables: dict,
 ) -> EvaluacionResult:
     """
-    Evalúa si una acción sobre un sujeto está permitida.
+    Evalúa si una acción sobre un sujeto calificado está permitida.
 
     Args:
-        accion:         'CREAR' | 'INICIAR' | 'FINALIZAR' | 'BORRAR'
-        sujeto:         'SOLICITUD' | 'FASE' | 'TRAMITE' | 'TAREA' | 'EXPEDIENTE'
-        tipo_sujeto_id: ID en tipos_* del sujeto. NULL = solo reglas genéricas.
-        variables:      dict plano compilado por ContextAssembler.
+        accion:    'CREAR' | 'BORRAR'
+        sujeto:    Sujeto calificado compilado por el ContextAssembler.
+                   Ejemplo: 'Distribucion/AAP/RESOLUCION'
+        variables: Dict plano compilado por el ContextAssembler.
 
     Returns:
         EvaluacionResult. Lanza excepción ante error interno — nunca devuelve
         PERMITIDO silenciosamente ante un fallo.
     """
-    q = ReglaMotor.query.filter_by(accion=accion, sujeto=sujeto, activa=True)
-    if tipo_sujeto_id is not None:
-        q = q.filter(
-            db.or_(ReglaMotor.tipo_sujeto_id == tipo_sujeto_id,
-                   ReglaMotor.tipo_sujeto_id.is_(None))
-        )
-    else:
-        q = q.filter(ReglaMotor.tipo_sujeto_id.is_(None))
+    if accion not in ('CREAR', 'BORRAR'):
+        raise ValueError(f'Acción no soportada: {accion!r}. Solo CREAR y BORRAR.')
 
-    reglas = q.order_by(ReglaMotor.prioridad).all()
+    # Carga todas las reglas activas para esta acción con sus condiciones y excepciones
+    reglas_candidatas = ReglaMotor.query.options(
+        joinedload(ReglaMotor.condiciones).joinedload(CondicionRegla.variable),
+        joinedload(ReglaMotor.excepciones).joinedload(ExcepcionMotor.condiciones)
+            .joinedload(CondicionExcepcion.variable),
+        joinedload(ReglaMotor.excepciones).joinedload(ExcepcionMotor.norma),
+        joinedload(ReglaMotor.norma),
+    ).filter_by(accion=accion, activa=True).all()
+
+    # Primer filtro: matching posicional del sujeto
+    reglas = [r for r in reglas_candidatas if _sujeto_casa(r.sujeto, sujeto)]
 
     resultado_advertir = None
-    for regla in reglas:
-        disparada, trigger = _evaluar_regla(regla, variables)
+
+    for regla in sorted(reglas, key=lambda r: r.prioridad):
+        # Barrido 1: ¿dispara la prohibición?
+        disparada, trigger = _evaluar_condiciones(regla.condiciones, variables)
         if not disparada:
             continue
+
         if regla.efecto == 'BLOQUEAR':
-            return EvaluacionResult(
-                permitido=False,
-                nivel='BLOQUEAR',
-                variables_trigger=trigger,
-                norma_compilada=regla.norma_compilada or '',
-                url_norma='',
-            )
-        if regla.efecto == 'ADVERTIR' and resultado_advertir is None:
+            # Barrido 2: ¿alguna excepción activa neutraliza esta prohibición?
+            excepciones_activas = [e for e in regla.excepciones if e.activa]
+            for exc in excepciones_activas:
+                exc_dispara, _ = _evaluar_condiciones(exc.condiciones, variables)
+                if exc_dispara:
+                    break  # excepción casa → prohibición neutralizada
+            else:
+                # Ninguna excepción neutralizó → BLOQUEAR
+                norma_ref, url_norma = _norma_ref(regla)
+                return EvaluacionResult(
+                    permitido=False,
+                    nivel='BLOQUEAR',
+                    variables_trigger=trigger,
+                    norma_compilada=norma_ref,
+                    url_norma=url_norma,
+                    motivo=regla.descripcion or '',
+                    puede_escapar=True,
+                )
+
+        elif regla.efecto == 'ADVERTIR' and resultado_advertir is None:
+            norma_ref, url_norma = _norma_ref(regla)
             resultado_advertir = EvaluacionResult(
                 permitido=True,
                 nivel='ADVERTIR',
                 variables_trigger=trigger,
-                norma_compilada=regla.norma_compilada or '',
-                url_norma='',
+                norma_compilada=norma_ref,
+                url_norma=url_norma,
+                motivo=regla.descripcion or '',
             )
 
     return resultado_advertir or PERMITIDO
+
+
+def auditar(
+    accion:    str,
+    sujeto:    str,
+    variables: dict,
+) -> AuditoriaResult:
+    """
+    Companion de evaluar() que recorre TODAS las reglas sin short-circuit.
+
+    Devuelve el resultado completo de la auditoría: cada regla que casó con
+    (accion, sujeto), si disparó y si fue neutralizada por excepción.
+    Usar como fuente de datos del CERT_FIN_INSTRUCCION y similares.
+
+    permitido=True si ninguna regla bloqueante quedó sin neutralizar.
+    """
+    if accion not in ('CREAR', 'BORRAR'):
+        raise ValueError(f'Acción no soportada: {accion!r}. Solo CREAR y BORRAR.')
+
+    reglas_candidatas = ReglaMotor.query.options(
+        joinedload(ReglaMotor.condiciones).joinedload(CondicionRegla.variable),
+        joinedload(ReglaMotor.excepciones).joinedload(ExcepcionMotor.condiciones)
+            .joinedload(CondicionExcepcion.variable),
+        joinedload(ReglaMotor.excepciones).joinedload(ExcepcionMotor.norma),
+        joinedload(ReglaMotor.norma),
+    ).filter_by(accion=accion, activa=True).all()
+
+    reglas = [r for r in reglas_candidatas if _sujeto_casa(r.sujeto, sujeto)]
+
+    reglas_evaluadas = []
+    permitido = True
+
+    for regla in sorted(reglas, key=lambda r: r.prioridad):
+        disparada, trigger = _evaluar_condiciones(regla.condiciones, variables)
+
+        neutralizada = False
+        if disparada and regla.efecto == 'BLOQUEAR':
+            excepciones_activas = [e for e in regla.excepciones if e.activa]
+            for exc in excepciones_activas:
+                exc_dispara, _ = _evaluar_condiciones(exc.condiciones, variables)
+                if exc_dispara:
+                    neutralizada = True
+                    break
+            if not neutralizada:
+                permitido = False
+
+        norma_ref, url_norma = _norma_ref(regla) if regla.norma else ('', '')
+        reglas_evaluadas.append(ResultadoRegla(
+            regla_id=regla.id,
+            sujeto_patron=regla.sujeto,
+            descripcion=regla.descripcion or '',
+            norma_compilada=norma_ref,
+            url_norma=url_norma,
+            efecto=regla.efecto,
+            disparada=disparada,
+            neutralizada=neutralizada,
+            variables_trigger=trigger,
+        ))
+
+    return AuditoriaResult(
+        permitido=permitido,
+        accion=accion,
+        sujeto=sujeto,
+        reglas_evaluadas=reglas_evaluadas,
+        variables_ctx=variables,
+    )

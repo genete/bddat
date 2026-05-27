@@ -7,11 +7,15 @@ Responsabilidades:
 - Configuración de Jinja2
 - Manejo de errores HTTP
 """
-from flask import Flask, render_template, request
+import logging
+
+from flask import Flask, jsonify, render_template, request
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_login import LoginManager, current_user
 from app.config import config
+
+log = logging.getLogger(__name__)
 
 # Instancias de extensiones (sin vincular a app aún)
 db = SQLAlchemy()
@@ -42,6 +46,11 @@ def create_app(config_name='development'):
     migrate.init_app(app, db)
     login_manager.init_app(app)
 
+    # Validar catálogo estructural al arranque (#347)
+    with app.app_context():
+        from app.checks.catalogo_requerido import validar_catalogo
+        validar_catalogo()
+
     # Configuración de Flask-Login
     login_manager.login_view = 'auth.login'
     login_manager.login_message = 'Debe iniciar sesión para acceder a esta página.'
@@ -68,7 +77,7 @@ def create_app(config_name='development'):
     app.register_blueprint(wizard_expediente.bp)  # Issue #67
 
     # Registrar blueprints - APIs
-    from app.routes import api_expedientes, api_municipios, api_entidades, api_proyectos, api_escritos, api_seguimiento
+    from app.routes import api_expedientes, api_municipios, api_entidades, api_proyectos, api_escritos, api_seguimiento, api_bc
 
     app.register_blueprint(api_expedientes.api_bp)                  # usa 'api_bp'
     app.register_blueprint(api_municipios.bp)                       # usa 'bp'
@@ -76,23 +85,70 @@ def create_app(config_name='development'):
     app.register_blueprint(api_proyectos.api_proyectos_bp)          # usa 'api_proyectos_bp' — Issue #123
     app.register_blueprint(api_escritos.api_escritos_bp)            # usa 'api_escritos_bp' — Issue #167
     app.register_blueprint(api_seguimiento.api_seguimiento_bp)      # usa 'api_seguimiento_bp' — Issue #262
+    app.register_blueprint(api_bc.bp)                               # usa 'bp' — fix #314
 
     # Registrar módulos (app/modules/) — Fase 4: auto-discovery
     from app.modules import ModuleRegistry
     ModuleRegistry.register_all(app)
 
+    # Registrar comandos CLI
+    from app.cli.inhabiles import inhabiles
+    app.cli.add_command(inhabiles)
+
+    # Context processor — indicador de asignación de expediente (#174)
+    @app.context_processor
+    def inject_indicador_asignacion():
+        from flask import g, session as _s
+        indicador_asignacion = None
+        indicador_exp_id = None
+        if (current_user.is_authenticated
+                and _s.get('rol_activo_nombre') == 'TRAMITADOR'
+                and hasattr(g, 'expediente_actual')
+                and g.expediente_actual is not None):
+            from app.utils.permisos import es_expediente_ajeno
+            indicador_asignacion = es_expediente_ajeno(g.expediente_actual)
+            indicador_exp_id = g.expediente_actual.id
+        return {
+            'indicador_asignacion': indicador_asignacion,
+            'indicador_exp_id':     indicador_exp_id,
+        }
+
+    # Global Jinja2 — tiene_permiso disponible en todos los templates (#174)
+    from app.utils.permisos import tiene_permiso
+    app.jinja_env.globals['tiene_permiso'] = tiene_permiso
+
     # Context processor — inyecta navegación de módulos en todos los templates
     @app.context_processor
     def inject_module_nav():
+        from datetime import date as _date
+        from sqlalchemy.exc import OperationalError, ProgrammingError
+
         user_roles = (
             [r.nombre for r in current_user.roles]
             if current_user.is_authenticated else []
         )
         nav = ModuleRegistry.get_navigation(user_roles)
 
+        # Alerta de calendario inhábil para admins: avisa si falta el año N+1
+        alerta_calendario = False
+        if current_user.is_authenticated and current_user.es_admin:
+            try:
+                from app.models.dias_inhabiles import DiaInhabil
+                anyo_siguiente = _date.today().year + 1
+                tiene_datos = db.session.query(
+                    DiaInhabil.query.filter(
+                        DiaInhabil.fecha >= _date(anyo_siguiente, 1, 1),
+                        DiaInhabil.fecha <= _date(anyo_siguiente, 12, 31),
+                    ).exists()
+                ).scalar()
+                alerta_calendario = not tiene_datos
+            except (OperationalError, ProgrammingError):
+                pass
+
         return {
-            'module_nav':    nav,
-            'active_module': request.blueprint,
+            'module_nav':        nav,
+            'active_module':     request.blueprint,
+            'alerta_calendario': alerta_calendario,
         }
 
     # Configuración de Jinja2
@@ -135,13 +191,10 @@ def create_app(config_name='development'):
     def _icono_tarea_tipo(codigo):
         """Icono semántico por tipo de tarea (mockup icons_ESFTT)."""
         return {
-            'ANALISIS':     'bi bi-person-gear',
-            'REDACTAR':     'bi bi-pencil',
-            'FIRMAR':       'bi bi-pen',
+            'ANALIZAR':     'bi bi-person-gear',
+            'ELABORAR':     'bi bi-pencil-square',
             'NOTIFICAR':    'bi bi-send',
-            'PUBLICAR':     'bi bi-megaphone',
             'ESPERAR_PLAZO':'bi bi-hourglass-split',
-            'INCORPORAR':   'bi bi-box-arrow-in-down',
         }.get(codigo, 'bi bi-square')
 
     def _color_tarea(estado):
@@ -169,5 +222,24 @@ def create_app(config_name='development'):
     def internal_error(error):
         db.session.rollback()
         return render_template('errors/500.html'), 500
+
+    # Manejadores de errores de infraestructura (#347)
+    from sqlalchemy.exc import OperationalError, ProgrammingError
+
+    @app.errorhandler(OperationalError)
+    def handle_db_operational(exc):
+        db.session.rollback()
+        log.error('BD no disponible: %s', exc)
+        if request.path.startswith('/api/'):
+            return jsonify({'error': 'Servicio de base de datos no disponible', 'code': 'DB_ERROR'}), 503
+        return render_template('errors/500.html'), 503
+
+    @app.errorhandler(ProgrammingError)
+    def handle_db_programming(exc):
+        db.session.rollback()
+        log.error('Error de esquema de BD: %s', exc)
+        if request.path.startswith('/api/'):
+            return jsonify({'error': 'Servicio de base de datos no disponible', 'code': 'DB_ERROR'}), 503
+        return render_template('errors/500.html'), 503
 
     return app

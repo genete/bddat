@@ -118,7 +118,7 @@
                        placeholder="Sin asignar">
                 {% else %}
                 <select class="form-select form-select-sm" id="responsable_id" name="responsable_id"
-                        {% if not current_user.tiene_rol('ADMIN', 'SUPERVISOR') %}disabled{% endif %}>
+                        {% if not tiene_permiso('cambiar_responsable') %}disabled{% endif %}>
                     <option value="">-- Sin asignar (huérfano) --</option>
                     {% for usuario in usuarios %}
                         <option value="{{ usuario.id }}"
@@ -127,7 +127,7 @@
                         </option>
                     {% endfor %}
                 </select>
-                {% if not current_user.tiene_rol('ADMIN', 'SUPERVISOR') %}
+                {% if not tiene_permiso('cambiar_responsable') %}
                     <small>Solo ADMIN/SUPERVISOR</small>
                 {% endif %}
                 {% endif %}

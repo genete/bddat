@@ -1,3 +1,5 @@
+from sqlalchemy.orm import validates
+
 from app import db
 
 class Documento(db.Model):
@@ -13,8 +15,8 @@ class Documento(db.Model):
         - El documento es una entidad pura del expediente
         - Solo tiene UN FK: expediente_id
         - Es completamente agnóstico respecto a:
-          * Qué tarea lo produjo (se define en TAREAS.documento_producido_id)
-          * Qué tareas lo usan (se define en TAREAS.documento_usado_id)
+          * Qué tarea lo produjo (se define en DOCUMENTOS_TAREA, rol PRODUCIDO)
+          * Qué tareas lo consumen (se define en DOCUMENTOS_TAREA, rol CONSUMIDO)
           * Si es parte de un proyecto (se define en DOCUMENTOS_PROYECTO)
         - Pool único de documentos por expediente, relaciones viven fuera
     
@@ -37,16 +39,20 @@ class Documento(db.Model):
         - Determina plazos, efectos jurídicos y secuencia administrativa
         - NULLABLE: dos casos legítimos de NULL:
           1. Documento cargado al pool pendiente de revisión posterior.
-          2. Documento sin valor jurídico propio (borrador REDACTAR, informe
-             ANALISIS): el efecto jurídico lo tiene el documento firmado sucesor.
+          2. Documento sin valor jurídico propio (informe ANALIZAR): el efecto
+             jurídico lo tiene el documento producido por ELABORAR.
         - La API de asignación a tareas debe rechazar documentos con NULL
           cuando el tipo de tarea lo requiera (validación de negocio, no de BD).
 
     CAMPO URL:
-        - Ruta o URL del archivo físico
-        - Sistema de archivos local o repositorio documental
-        - NOT NULL: Todo documento tiene ubicación física
-        - El nombre a mostrar en interfaz se deduce del último segmento de la URL.
+        Admite tres esquemas:
+        - Ruta local (sin '://'): fichero en el servidor de archivos.
+        - 'http://' / 'https://': recurso externo.
+        - 'bddat://<recurso>/<id>': registro interno de BD sin fichero físico.
+          Tablas activas: diagnosticos. Pending #425: certificados.
+          fecha_administrativa = NULL obligatorio para este esquema.
+        El helper resolver_url() despacha al mecanismo correcto según el esquema.
+        El nombre a mostrar en interfaz se deduce del último segmento de la URL.
 
     CAMPO HASH_MD5:
         - Verificación de integridad del archivo
@@ -65,8 +71,7 @@ class Documento(db.Model):
         - expediente → EXPEDIENTES.id (FK, expediente contenedor)
         - tipo_doc → TIPOS_DOCUMENTOS.id (FK, clasificación semántica)
         - documentos_proyecto ← DOCUMENTOS_PROYECTO.documento_id (tabla puente con proyectos)
-        - tareas_producidas ← TAREAS.documento_producido_id (tareas que lo generaron)
-        - tareas_usadas ← TAREAS.documento_usado_id (tareas que lo utilizan)
+        - vinculos_tarea ← DOCUMENTOS_TAREA (vínculos con tareas, con rol)
 
     PROCEDENCIA DEL EMISOR:
         No existe campo origen en esta tabla (eliminado en #191).
@@ -77,7 +82,7 @@ class Documento(db.Model):
     REGLAS DE NEGOCIO:
         - Un documento pertenece a UN expediente
         - Un documento puede estar en N proyectos (vía DOCUMENTOS_PROYECTO)
-        - Un documento puede ser producido por UNA tarea (UNIQUE en tareas.documento_producido_id)
+        - Un documento puede ser producido por UNA tarea (índice parcial único en documentos_tarea)
         - Un documento puede ser usado por N tareas
 
     NOTAS DE VERSIÓN:
@@ -121,7 +126,7 @@ class Documento(db.Model):
     url = db.Column(
         db.Text,
         nullable=False,
-        comment='Ruta absoluta en servidor de ficheros o URL externa (http/https)'
+        comment='Ruta local, http(s):// o bddat://<recurso>/<id> (ADR-006)'
     )
     
     tipo_contenido = db.Column(
@@ -164,7 +169,63 @@ class Documento(db.Model):
     # Relaciones
     expediente = db.relationship('Expediente', foreign_keys=[expediente_id], backref='documentos')
     tipo_doc = db.relationship('TipoDocumento', foreign_keys=[tipo_doc_id])
-    
+
+    @validates('url')
+    def _validar_url(self, key, value):
+        if value is not None and '://' in value:
+            if not value.startswith(('http://', 'https://', 'bddat://')):
+                raise ValueError(f'Esquema de URL no admitido: {value!r}')
+        if value and value.startswith('bddat://'):
+            self.fecha_administrativa = None
+        return value
+
+    def resolver_url(self):
+        """Despacha según el esquema de url (ADR-006).
+
+        - Ruta local  → file object abierto en modo binario
+        - http(s)://  → requests.Response
+        - bddat://    → dict completo del registro ORM destino
+        """
+        url = self.url or ''
+        if url.startswith('bddat://'):
+            return self._resolver_bddat(url)
+        if url.startswith(('http://', 'https://')):
+            import urllib.request
+            return urllib.request.urlopen(url)
+        return open(url, 'rb')
+
+    def _resolver_bddat(self, url: str) -> dict:
+        partes = url[len('bddat://'):].split('/')
+        if len(partes) != 2:
+            raise ValueError(f'URI bddat:// malformada: {url!r}')
+        recurso, id_str = partes
+        try:
+            registro_id = int(id_str)
+        except ValueError:
+            raise ValueError(f'ID no numérico en URI bddat://: {url!r}')
+        if recurso == 'diagnosticos':
+            from app.models.diagnosticos import Diagnostico
+            diag = Diagnostico.query.get(registro_id)
+            if diag is None:
+                raise LookupError(f'Diagnostico id={registro_id} no encontrado')
+            return {
+                'id': diag.id,
+                'documento_id': diag.documento_id,
+                'resultado': diag.resultado,
+                'defectos': diag.defectos or [],
+            }
+        if recurso == 'certificados':
+            from app.models.certificados import Certificado
+            cert = Certificado.query.get(registro_id)
+            if cert is None:
+                raise LookupError(f'Certificado id={registro_id} no encontrado')
+            return {
+                'id': cert.id,
+                'generado_en': cert.generado_en.isoformat(),
+                'datos': cert.datos,
+            }
+        raise NotImplementedError(f'Recurso bddat:// no implementado: {recurso!r}')
+
     def __repr__(self):
         """Representación técnica para debugging."""
         return f'<Documento id={self.id} expediente={self.expediente_id}>'

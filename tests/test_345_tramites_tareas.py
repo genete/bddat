@@ -1,0 +1,207 @@
+"""Tests issue #345 — tramites_tareas: catálogo formal de secuencias de tareas.
+
+Requieren BD con migraciones 345 aplicadas:
+    345_tramites_tareas        (crea la tabla)
+    345_seed_tramites_tareas   (pobla las 24 secuencias)
+"""
+import pytest
+
+
+# ---------------------------------------------------------------------------
+# A) Sin BD — estructura del modelo
+# ---------------------------------------------------------------------------
+
+def test_modelo_importable():
+    from app.models.tramites_tareas import TramiteTarea
+    assert TramiteTarea.__tablename__ == 'tramites_tareas'
+
+
+def test_modelo_en_all():
+    import app.models as m
+    assert 'TramiteTarea' in m.__all__
+
+
+def test_pk_compuesta():
+    from app.models.tramites_tareas import TramiteTarea
+    pk_cols = {c.name for c in TramiteTarea.__table__.primary_key.columns}
+    assert pk_cols == {'tipo_tramite_id', 'orden'}
+
+
+def test_fk_tipo_tramite():
+    from app.models.tramites_tareas import TramiteTarea
+    col = TramiteTarea.__table__.c['tipo_tramite_id']
+    assert col.foreign_keys
+
+
+def test_fk_tipo_tarea():
+    from app.models.tramites_tareas import TramiteTarea
+    col = TramiteTarea.__table__.c['tipo_tarea_id']
+    assert col.foreign_keys
+
+
+# ---------------------------------------------------------------------------
+# B) Con BD — integridad del seed
+# ---------------------------------------------------------------------------
+
+def test_todos_tramites_tienen_tarea(app_ctx):
+    """Todos los tipos de trámite del catálogo tienen al menos una tarea."""
+    from app import db
+    from app.models.tramites_tareas import TramiteTarea
+    from app.models.tipos_tramites import TipoTramite
+
+    total_tramites = db.session.query(TipoTramite).count()
+    tramites_con_tarea = (
+        db.session.query(TramiteTarea.tipo_tramite_id)
+        .distinct()
+        .count()
+    )
+    assert tramites_con_tarea == total_tramites
+
+
+def test_anuncio_boe_doble_esperar_plazo(app_ctx):
+    """ANUNCIO_BOE tiene exactamente 2 tareas ESPERAR_PLAZO en órdenes distintos."""
+    from app import db
+    from app.models.tramites_tareas import TramiteTarea
+    from app.models.tipos_tramites import TipoTramite
+    from app.models.tipos_tareas import TipoTarea
+
+    boe = db.session.query(TipoTramite).filter_by(codigo='ANUNCIO_BOE').one()
+    esperar = db.session.query(TipoTarea).filter_by(codigo='ESPERAR_PLAZO').one()
+
+    filas = (
+        db.session.query(TramiteTarea)
+        .filter_by(tipo_tramite_id=boe.id, tipo_tarea_id=esperar.id)
+        .order_by(TramiteTarea.orden)
+        .all()
+    )
+    assert len(filas) == 2
+    assert filas[0].orden != filas[1].orden
+
+
+def test_consulta_orm_secuencia_ordenada(app_ctx):
+    """Dado un TipoTramite, la secuencia de tareas devuelta está ordenada por orden."""
+    from app import db
+    from app.models.tramites_tareas import TramiteTarea
+    from app.models.tipos_tramites import TipoTramite
+
+    tramite = db.session.query(TipoTramite).filter_by(codigo='REQUERIMIENTO_SUBSANACION').one()
+    secuencia = (
+        db.session.query(TramiteTarea)
+        .filter_by(tipo_tramite_id=tramite.id)
+        .order_by(TramiteTarea.orden)
+        .all()
+    )
+
+    codigos = [tt.tipo_tarea.codigo for tt in secuencia]
+    assert codigos == ['ELABORAR', 'NOTIFICAR', 'ESPERAR_PLAZO', 'ANALIZAR']
+
+
+def test_consulta_orm_relaciones_cargadas(app_ctx):
+    """TramiteTarea carga las relaciones tipo_tramite y tipo_tarea correctamente."""
+    from app import db
+    from app.models.tramites_tareas import TramiteTarea
+
+    primera = db.session.query(TramiteTarea).first()
+    assert primera is not None
+    assert primera.tipo_tramite is not None
+    assert primera.tipo_tarea is not None
+
+
+# ---------------------------------------------------------------------------
+# C) Catálogo v6.0 — ADR-003/004/005, #361, #363, #371
+# ---------------------------------------------------------------------------
+
+def test_elaborar_en_catalogo(app_ctx):
+    """ELABORAR existe como tipo de tarea tras la migración 370."""
+    from app import db
+    from app.models.tipos_tareas import TipoTarea
+    elaborar = db.session.query(TipoTarea).filter_by(codigo='ELABORAR').first()
+    assert elaborar is not None
+
+
+@pytest.mark.parametrize('codigo', ['REDACTAR', 'FIRMAR', 'INCORPORAR', 'PUBLICAR'])
+def test_tipos_obsoletos_eliminados(app_ctx, codigo):
+    """Los tipos de tarea eliminados en v6.0 no deben existir en el catálogo."""
+    from app import db
+    from app.models.tipos_tareas import TipoTarea
+    tipo = db.session.query(TipoTarea).filter_by(codigo=codigo).first()
+    assert tipo is None, f"TipoTarea '{codigo}' debería haber sido eliminado (ADR-003/004, #371)"
+
+
+def test_requerimiento_subsanacion_usa_elaborar(app_ctx):
+    """REQUERIMIENTO_SUBSANACION sigue el patrón C+A: ELABORAR→NOTIFICAR→ESPERAR_PLAZO→ANALIZAR."""
+    from app import db
+    from app.models.tramites_tareas import TramiteTarea
+    from app.models.tipos_tramites import TipoTramite
+
+    tramite = db.session.query(TipoTramite).filter_by(codigo='REQUERIMIENTO_SUBSANACION').one()
+    secuencia = (
+        db.session.query(TramiteTarea)
+        .filter_by(tipo_tramite_id=tramite.id)
+        .order_by(TramiteTarea.orden)
+        .all()
+    )
+    codigos = [tt.tipo_tarea.codigo for tt in secuencia]
+    assert codigos == ['ELABORAR', 'NOTIFICAR', 'ESPERAR_PLAZO', 'ANALIZAR']
+
+
+# ---------------------------------------------------------------------------
+# D) #368 — REDACTAR_ANUNCIO y ANUNCIO_BOJA
+# ---------------------------------------------------------------------------
+
+def test_redactar_anuncio_secuencia(app_ctx):
+    """REDACTAR_ANUNCIO tiene exactamente una tarea ELABORAR."""
+    from app import db
+    from app.models.tramites_tareas import TramiteTarea
+    from app.models.tipos_tramites import TipoTramite
+
+    tramite = db.session.query(TipoTramite).filter_by(codigo='REDACTAR_ANUNCIO').one()
+    secuencia = (
+        db.session.query(TramiteTarea)
+        .filter_by(tipo_tramite_id=tramite.id)
+        .order_by(TramiteTarea.orden)
+        .all()
+    )
+    codigos = [tt.tipo_tarea.codigo for tt in secuencia]
+    assert codigos == ['ELABORAR']
+
+
+def test_anuncio_boja_doble_esperar_plazo(app_ctx):
+    """ANUNCIO_BOJA tiene exactamente 2 tareas ESPERAR_PLAZO en órdenes distintos."""
+    from app import db
+    from app.models.tramites_tareas import TramiteTarea
+    from app.models.tipos_tramites import TipoTramite
+    from app.models.tipos_tareas import TipoTarea
+
+    boja = db.session.query(TipoTramite).filter_by(codigo='ANUNCIO_BOJA').one()
+    esperar = db.session.query(TipoTarea).filter_by(codigo='ESPERAR_PLAZO').one()
+
+    filas = (
+        db.session.query(TramiteTarea)
+        .filter_by(tipo_tramite_id=boja.id, tipo_tarea_id=esperar.id)
+        .order_by(TramiteTarea.orden)
+        .all()
+    )
+    assert len(filas) == 2
+    assert filas[0].orden != filas[1].orden
+
+
+# ---------------------------------------------------------------------------
+# E) #369 — ANUNCIO_TITULAR
+# ---------------------------------------------------------------------------
+
+def test_anuncio_titular_secuencia(app_ctx):
+    """ANUNCIO_TITULAR sigue el patrón B: ELABORAR→NOTIFICAR."""
+    from app import db
+    from app.models.tramites_tareas import TramiteTarea
+    from app.models.tipos_tramites import TipoTramite
+
+    tramite = db.session.query(TipoTramite).filter_by(codigo='ANUNCIO_TITULAR').one()
+    secuencia = (
+        db.session.query(TramiteTarea)
+        .filter_by(tipo_tramite_id=tramite.id)
+        .order_by(TramiteTarea.orden)
+        .all()
+    )
+    codigos = [tt.tipo_tarea.codigo for tt in secuencia]
+    assert codigos == ['ELABORAR', 'NOTIFICAR']
