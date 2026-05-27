@@ -17,6 +17,7 @@ from app.models.proyectos import Proyecto
 from app.models.expedientes import Expediente
 from app.models.usuarios import Usuario
 from app.models.tipos_ia import TipoIA
+from app.utils.permisos import tiene_permiso
 
 api_proyectos_bp = Blueprint('api_proyectos', __name__, url_prefix='/api')
 
@@ -90,8 +91,8 @@ def listar_proyectos():
         .outerjoin(TipoIA, Proyecto.ia_id == TipoIA.id)
     )
 
-    # Filtro de permisos: TRAMITADOR solo ve sus expedientes
-    if current_user.tiene_rol('TRAMITADOR') and not current_user.tiene_rol('ADMIN', 'SUPERVISOR'):
+    # TRAMITADOR solo ve sus expedientes; ADMIN/SUPERVISOR/ADMINISTRATIVO ven todos
+    if not tiene_permiso('ver_todos_proyectos'):
         query = query.filter(Expediente.responsable_id == current_user.id)
 
     # Cursor
@@ -130,7 +131,7 @@ def listar_proyectos():
             .join(Expediente)
             .outerjoin(TipoIA, Proyecto.ia_id == TipoIA.id)
         )
-        if current_user.tiene_rol('TRAMITADOR') and not current_user.tiene_rol('ADMIN', 'SUPERVISOR'):
+        if not tiene_permiso('ver_todos_proyectos'):
             count_query = count_query.filter(Expediente.responsable_id == current_user.id)
         if cursor > 0:
             count_query = count_query.filter(Proyecto.id > cursor)

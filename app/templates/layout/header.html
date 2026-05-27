@@ -55,6 +55,42 @@
 
     <div class="spacer"></div>
 
+    {# Indicador de asignación de expediente — solo para TRAMITADOR (#174) #}
+    {% if indicador_asignacion is not none %}
+    <span id="indicador-asignacion"
+          class="bi bi-lightbulb-fill me-2 {{ 'text-danger' if indicador_asignacion else 'text-success' }}"
+          style="font-size: 1.2rem;"
+          title="{{ 'Expediente no asignado a ti — actuación registrada en bitácora' if indicador_asignacion else 'Tu expediente' }}"
+          data-bs-toggle="tooltip" data-bs-placement="bottom">
+    </span>
+    {% if indicador_asignacion %}
+    <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index:1100">
+        <div id="toast-asignacion" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="toast-header bg-warning text-dark">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                <strong class="me-auto">Expediente no asignado</strong>
+                <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Cerrar"></button>
+            </div>
+            <div class="toast-body">
+                Este expediente no está asignado a ti. La actuación quedará registrada en bitácora.
+            </div>
+        </div>
+    </div>
+    <script>
+        (function () {
+            var key = 'warned_exp_{{ indicador_exp_id }}';
+            if (!sessionStorage.getItem(key)) {
+                var el = document.getElementById('toast-asignacion');
+                if (el && typeof bootstrap !== 'undefined') {
+                    new bootstrap.Toast(el, { delay: 6000 }).show();
+                    sessionStorage.setItem(key, '1');
+                }
+            }
+        }());
+    </script>
+    {% endif %}
+    {% endif %}
+
     <div class="user-menu">
         {% if current_user.is_authenticated %}
         <div class="dropdown">

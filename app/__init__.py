@@ -95,6 +95,28 @@ def create_app(config_name='development'):
     from app.cli.inhabiles import inhabiles
     app.cli.add_command(inhabiles)
 
+    # Context processor — indicador de asignación de expediente (#174)
+    @app.context_processor
+    def inject_indicador_asignacion():
+        from flask import g, session as _s
+        indicador_asignacion = None
+        indicador_exp_id = None
+        if (current_user.is_authenticated
+                and _s.get('rol_activo_nombre') == 'TRAMITADOR'
+                and hasattr(g, 'expediente_actual')
+                and g.expediente_actual is not None):
+            from app.utils.permisos import es_expediente_ajeno
+            indicador_asignacion = es_expediente_ajeno(g.expediente_actual)
+            indicador_exp_id = g.expediente_actual.id
+        return {
+            'indicador_asignacion': indicador_asignacion,
+            'indicador_exp_id':     indicador_exp_id,
+        }
+
+    # Global Jinja2 — tiene_permiso disponible en todos los templates (#174)
+    from app.utils.permisos import tiene_permiso
+    app.jinja_env.globals['tiene_permiso'] = tiene_permiso
+
     # Context processor — inyecta navegación de módulos en todos los templates
     @app.context_processor
     def inject_module_nav():

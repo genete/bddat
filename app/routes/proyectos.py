@@ -9,6 +9,7 @@ from app.models.usuarios import Usuario, Rol
 from app.models.tipos_ia import TipoIA
 from app.models.municipios import Municipio
 from app.models.municipios_proyecto import MunicipioProyecto
+from app.utils.permisos import tiene_permiso
 
 bp = Blueprint('proyectos', __name__, url_prefix='/proyectos')
 
@@ -36,11 +37,9 @@ def index():
         TipoIA, Proyecto.ia_id == TipoIA.id
     )
     
-    # Aplicar filtro de permisos según rol
-    if current_user.tiene_rol('TRAMITADOR') and not current_user.tiene_rol('ADMIN', 'SUPERVISOR'):
-        # TRAMITADOR puro: solo proyectos de sus expedientes
+    # TRAMITADOR solo ve sus expedientes; ADMIN/SUPERVISOR/ADMINISTRATIVO ven todos
+    if not tiene_permiso('ver_todos_proyectos'):
         query = query.filter(Expediente.responsable_id == current_user.id)
-    # ADMIN y SUPERVISOR ven todos los proyectos (incluyendo huérfanos con responsable=NULL)
     
     # Filtro por texto libre (título, descripción, número AT, municipio)
     buscar = request.args.get('buscar', '').strip()
@@ -73,8 +72,8 @@ def index():
         
         query = query.filter(Proyecto.id.in_(subquery))
     
-    # Filtro por responsable (solo para ADMIN/SUPERVISOR)
-    if current_user.tiene_rol('ADMIN', 'SUPERVISOR'):
+    # Filtro por responsable (solo para quienes ven todos los proyectos)
+    if tiene_permiso('ver_todos_proyectos'):
         responsable_id = request.args.get('responsable', type=int)
         if responsable_id:
             query = query.filter(Expediente.responsable_id == responsable_id)
@@ -121,10 +120,9 @@ def index():
         ('41', 'Sevilla')
     ]
     
-    # Responsables (solo para ADMIN/SUPERVISOR)
-    # Obtener usuarios que son responsables de al menos un expediente
+    # Responsables (solo para quienes ven todos los proyectos)
     responsables = []
-    if current_user.tiene_rol('ADMIN', 'SUPERVISOR'):
+    if tiene_permiso('ver_todos_proyectos'):
         responsables = db.session.query(Usuario).join(
             Expediente, Usuario.id == Expediente.responsable_id
         ).distinct().order_by(Usuario.nombre).all()
@@ -178,12 +176,6 @@ def detalle(id):
     if not proyecto:
         abort(404)
     
-    # Verificar permisos
-    if current_user.tiene_rol('TRAMITADOR') and not current_user.tiene_rol('ADMIN', 'SUPERVISOR'):
-        # TRAMITADOR solo ve proyectos de sus expedientes
-        if proyecto.expediente.responsable_id != current_user.id:
-            abort(403)
-    
     return render_template(
         'proyectos/detalle.html',
         proyecto=proyecto
@@ -224,10 +216,4 @@ def editar_proyecto(id):
     if not proyecto:
         abort(404)
     
-    # Verificar permisos (mismo criterio que detalle)
-    if current_user.tiene_rol('TRAMITADOR') and not current_user.tiene_rol('ADMIN', 'SUPERVISOR'):
-        if proyecto.expediente.responsable_id != current_user.id:
-            abort(403)
-    
-    # Redirigir a edición de expediente con anchor #proyecto
     return redirect(url_for('expedientes.editar', id=proyecto.expediente.id) + '#proyecto')
