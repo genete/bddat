@@ -3,7 +3,7 @@ from flask_login import login_required, current_user
 from sqlalchemy.exc import IntegrityError
 from app import db
 from app.models.usuarios import Usuario, Rol
-from app.decorators import role_required
+from app.decorators import require_permiso
 
 # Definimos el Blueprint con template_folder propio (convención app/modules/)
 bp = Blueprint('usuarios', __name__, url_prefix='/usuarios',
@@ -19,7 +19,7 @@ def current_user_es_admin():
 
 @bp.route('/', methods=['GET', 'POST'])
 @login_required
-@role_required('ADMIN', 'SUPERVISOR')
+@require_permiso('gestionar_usuarios')
 def index():
     # Recuperamos todos los roles para el formulario
     todos_los_roles = Rol.query.all()
@@ -153,7 +153,7 @@ def index():
 
 @bp.route('/<int:id>')
 @login_required
-@role_required('ADMIN', 'SUPERVISOR')
+@require_permiso('gestionar_usuarios')
 def detalle(id):
     usuario = Usuario.query.get_or_404(id)
     roles = Rol.query.all()
@@ -166,7 +166,7 @@ def detalle(id):
 
 @bp.route('/<int:id>/editar', methods=['GET', 'POST'])
 @login_required
-@role_required('ADMIN', 'SUPERVISOR')
+@require_permiso('gestionar_usuarios')
 def editar(id):
     usuario = Usuario.query.get_or_404(id)
     todos_los_roles = Rol.query.all()
@@ -344,7 +344,7 @@ def editar(id):
 
 @bp.route('/<int:id>/toggle_estado', methods=['POST'])
 @login_required
-@role_required('ADMIN', 'SUPERVISOR')
+@require_permiso('gestionar_usuarios')
 def toggle_estado(id):
     """Toggle rápido del estado activo/inactivo"""
     usuario = Usuario.query.get_or_404(id)

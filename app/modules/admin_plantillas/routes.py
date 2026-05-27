@@ -27,7 +27,7 @@ from flask import (Blueprint, abort, current_app, flash, jsonify, redirect,
 from flask_login import login_required
 
 from app import db
-from app.decorators import role_required
+from app.decorators import require_permiso
 from app.models.consultas_nombradas import ConsultaNombrada
 from app.models.plantillas import Plantilla
 from app.models.tipos_documentos import TipoDocumento
@@ -195,7 +195,7 @@ def _selects_context():
 
 @bp.route('/api/tipos-solicitud')
 @login_required
-@role_required('ADMIN', 'SUPERVISOR')
+@require_permiso('gestionar_plantillas')
 def api_tipos_solicitud():
     """Devuelve todos los tipos de solicitud disponibles."""
     tipos = TipoSolicitud.query.order_by(TipoSolicitud.siglas).all()
@@ -207,7 +207,7 @@ def api_tipos_solicitud():
 
 @bp.route('/api/tipos-fase')
 @login_required
-@role_required('ADMIN', 'SUPERVISOR')
+@require_permiso('gestionar_plantillas')
 def api_tipos_fase():
     """Devuelve todos los tipos de fase disponibles."""
     tipos = TipoFase.query.order_by(TipoFase.nombre).all()
@@ -219,7 +219,7 @@ def api_tipos_fase():
 
 @bp.route('/api/tipos-tramite')
 @login_required
-@role_required('ADMIN', 'SUPERVISOR')
+@require_permiso('gestionar_plantillas')
 def api_tipos_tramite():
     """Devuelve todos los tipos de trámite disponibles."""
     tipos = TipoTramite.query.order_by(TipoTramite.nombre).all()
@@ -231,7 +231,7 @@ def api_tipos_tramite():
 
 @bp.route('/api/fs')
 @login_required
-@role_required('ADMIN', 'SUPERVISOR')
+@require_permiso('gestionar_plantillas')
 def api_explorador_fs():
     """
     Explorador de ficheros del servidor restringido a PLANTILLAS_BASE/plantillas/.
@@ -264,7 +264,7 @@ def api_explorador_fs():
 
 @bp.route('/api/tokens')
 @login_required
-@role_required('ADMIN', 'SUPERVISOR')
+@require_permiso('gestionar_plantillas')
 def api_tokens():
     """
     Stub para refresco dinámico de tokens (Capa 2 — Fase 5+).
@@ -287,7 +287,7 @@ def api_tokens():
 
 @bp.route('/')
 @login_required
-@role_required('ADMIN', 'SUPERVISOR')
+@require_permiso('gestionar_plantillas')
 def listado():
     plantillas = Plantilla.query.order_by(Plantilla.nombre).all()
     return render_template('admin_plantillas/listado.html', plantillas=plantillas)
@@ -295,7 +295,7 @@ def listado():
 
 @bp.route('/nueva/', methods=['GET', 'POST'])
 @login_required
-@role_required('ADMIN', 'SUPERVISOR')
+@require_permiso('gestionar_plantillas')
 def nueva():
     if request.method == 'POST':
         ruta_rel = request.form.get('ruta_plantilla', '').strip()
@@ -366,7 +366,7 @@ def nueva():
 
 @bp.route('/<int:id>/')
 @login_required
-@role_required('ADMIN', 'SUPERVISOR')
+@require_permiso('gestionar_plantillas')
 def detalle(id):
     plantilla = Plantilla.query.get_or_404(id)
     tokens = _build_tokens(plantilla)
@@ -384,7 +384,7 @@ def detalle(id):
 
 @bp.route('/<int:id>/editar', methods=['GET', 'POST'])
 @login_required
-@role_required('ADMIN', 'SUPERVISOR')
+@require_permiso('gestionar_plantillas')
 def editar(id):
     plantilla = Plantilla.query.get_or_404(id)
 
@@ -448,7 +448,7 @@ def editar(id):
 
 @bp.route('/<int:id>/descargar')
 @login_required
-@role_required('ADMIN', 'SUPERVISOR')
+@require_permiso('gestionar_plantillas')
 def descargar(id):
     plantilla = Plantilla.query.get_or_404(id)
     d = _plantillas_dir()
@@ -462,7 +462,7 @@ def descargar(id):
 
 @bp.route('/<int:id>/activar', methods=['POST'])
 @login_required
-@role_required('ADMIN', 'SUPERVISOR')
+@require_permiso('gestionar_plantillas')
 def activar(id):
     plantilla = Plantilla.query.get_or_404(id)
     plantilla.activo = not plantilla.activo

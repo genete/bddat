@@ -35,7 +35,6 @@ from app.models.tramites import Tramite
 from app.models.tareas import Tarea
 from app.models.documentos import Documento
 from app.models.tipos_documentos import TipoDocumento
-from app.decorators import role_required
 from app.services.plazos import obtener_estado_plazo
 from app.utils.permisos import (
     puede_cambiar_responsable,
