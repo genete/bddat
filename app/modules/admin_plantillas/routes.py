@@ -287,7 +287,7 @@ def api_tokens():
 
 @bp.route('/')
 @login_required
-@require_permiso('gestionar_plantillas')
+@require_permiso('acceder_plantillas')
 def listado():
     plantillas = Plantilla.query.order_by(Plantilla.nombre).all()
     return render_template('admin_plantillas/listado.html', plantillas=plantillas)
@@ -366,7 +366,7 @@ def nueva():
 
 @bp.route('/<int:id>/')
 @login_required
-@require_permiso('gestionar_plantillas')
+@require_permiso('acceder_plantillas')
 def detalle(id):
     plantilla = Plantilla.query.get_or_404(id)
     tokens = _build_tokens(plantilla)
@@ -448,7 +448,7 @@ def editar(id):
 
 @bp.route('/<int:id>/descargar')
 @login_required
-@require_permiso('gestionar_plantillas')
+@require_permiso('acceder_plantillas')
 def descargar(id):
     plantilla = Plantilla.query.get_or_404(id)
     d = _plantillas_dir()

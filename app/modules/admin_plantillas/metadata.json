@@ -4,7 +4,7 @@
   "icon": "fa-file-word",
   "order": 80,
   "permissions": {
-    "list":   ["ADMIN", "SUPERVISOR"],
+    "list":   ["ADMIN", "SUPERVISOR", "TRAMITADOR", "ADMINISTRATIVO"],
     "create": ["ADMIN", "SUPERVISOR"],
     "edit":   ["ADMIN", "SUPERVISOR"],
     "delete": ["ADMIN"]

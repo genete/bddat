@@ -29,9 +29,11 @@
             <a href="{{ url_for('admin_plantillas.listado') }}" class="btn btn-outline-primary">
                 <i class="fas fa-arrow-left me-1"></i> Volver
             </a>
+            {% if tiene_permiso('gestionar_plantillas') %}
             <a href="{{ url_for('admin_plantillas.editar', id=plantilla.id) }}" class="btn btn-primary">
                 <i class="fas fa-edit me-1"></i> Editar
             </a>
+            {% endif %}
         </div>
     </div>
 </div>
@@ -160,12 +162,14 @@
             {% endif %}
 
             {# Acción desactivar/activar #}
+            {% if tiene_permiso('gestionar_plantillas') %}
             <form method="POST" action="{{ url_for('admin_plantillas.activar', id=plantilla.id) }}">
                 <button type="submit" class="btn {% if plantilla.activo %}btn-outline-danger{% else %}btn-outline-success{% endif %}">
                     <i class="fas {% if plantilla.activo %}fa-toggle-off{% else %}fa-toggle-on{% endif %} me-1"></i>
                     {% if plantilla.activo %}Desactivar plantilla{% else %}Activar plantilla{% endif %}
                 </button>
             </form>
+            {% endif %}
 
         </div>{# fin col-lg-7 #}
 
@@ -174,12 +178,14 @@
             <div class="sticky-top" style="top: 1rem">
                 {% set solo_lectura = true %}
                 {% include 'admin_plantillas/_panel_tokens.html' %}
+                {% if tiene_permiso('gestionar_plantillas') %}
                 <div class="mt-2 text-center">
                     <a href="{{ url_for('admin_plantillas.editar', id=plantilla.id) }}"
                        class="btn btn-sm btn-outline-primary">
                         <i class="fas fa-edit me-1"></i> Editar para copiar tokens
                     </a>
                 </div>
+                {% endif %}
             </div>
         </div>
 
