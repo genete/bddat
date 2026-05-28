@@ -35,9 +35,11 @@
         <a href="{{ url_for('usuarios.index') }}" class="btn btn-outline-primary">
             <i class="fas fa-arrow-left me-1"></i> Volver
         </a>
+        {% if tiene_permiso('gestionar_usuarios') %}
         <a href="{{ url_for('usuarios.editar', id=usuario.id) }}" class="btn btn-primary">
             <i class="fas fa-edit me-1"></i> Editar
         </a>
+        {% endif %}
     {% else %}
         <a href="{{ url_for('usuarios.detalle', id=usuario.id) }}" class="btn btn-outline-primary">
             <i class="fas fa-times me-1"></i> Cancelar

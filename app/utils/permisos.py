@@ -14,12 +14,28 @@ from flask_login import current_user
 from app.services import bitacora
 
 PERMISOS = {
-    'acceder_expediente':   {'ADMIN', 'SUPERVISOR', 'TRAMITADOR', 'ADMINISTRATIVO'},
-    'editar_expediente':    {'ADMIN', 'SUPERVISOR', 'TRAMITADOR'},
-    'cambiar_responsable':  {'ADMIN', 'SUPERVISOR'},
-    'ver_todos_proyectos':  {'ADMIN', 'SUPERVISOR', 'ADMINISTRATIVO'},
-    'gestionar_usuarios':   {'ADMIN', 'SUPERVISOR'},
-    'gestionar_plantillas': {'ADMIN', 'SUPERVISOR'},
+    # Expedientes (ADR-012)
+    'acceder_expediente':        {'ADMIN', 'SUPERVISOR', 'TRAMITADOR', 'ADMINISTRATIVO'},
+    'editar_expediente':         {'ADMIN', 'SUPERVISOR', 'TRAMITADOR'},
+    'cambiar_responsable':       {'ADMIN', 'SUPERVISOR'},
+    'ver_todos_proyectos':       {'ADMIN', 'SUPERVISOR', 'ADMINISTRATIVO'},
+
+    # Áreas administrativas — patrón acceder/gestionar (ADR-013)
+    'acceder_plantillas':        {'ADMIN', 'SUPERVISOR', 'TRAMITADOR', 'ADMINISTRATIVO'},
+    'gestionar_plantillas':      {'ADMIN', 'SUPERVISOR'},
+
+    'acceder_usuarios':          {'ADMIN', 'SUPERVISOR', 'TRAMITADOR', 'ADMINISTRATIVO'},
+    'gestionar_usuarios':        {'ADMIN', 'SUPERVISOR'},
+
+    # Sin UI aún — reservados para #170/#171
+    'acceder_reglas_motor':      {'ADMIN', 'SUPERVISOR', 'TRAMITADOR', 'ADMINISTRATIVO'},
+    'gestionar_reglas_motor':    {'ADMIN', 'SUPERVISOR'},
+
+    'acceder_catalogo_plazos':   {'ADMIN', 'SUPERVISOR', 'TRAMITADOR', 'ADMINISTRATIVO'},
+    'gestionar_catalogo_plazos': {'ADMIN', 'SUPERVISOR'},
+
+    'acceder_tablas_maestras':   {'ADMIN', 'SUPERVISOR', 'TRAMITADOR', 'ADMINISTRATIVO'},
+    'gestionar_tablas_maestras': {'ADMIN', 'SUPERVISOR'},
 }
 
 

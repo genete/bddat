@@ -12,9 +12,11 @@
 <div class="lista-cabecera">
     <div class="page-header content-constrained">
         <h1><i class="fas fa-file-word"></i> Plantillas de escritos</h1>
+        {% if tiene_permiso('gestionar_plantillas') %}
         <a href="{{ url_for('admin_plantillas.nueva') }}" class="btn btn-primary">
             <i class="fas fa-plus me-1"></i> Nueva plantilla
         </a>
+        {% endif %}
     </div>
 </div>
 
@@ -67,10 +69,12 @@
                            class="btn-accion-ver me-1">
                             <i class="fas fa-eye"></i> Ver
                         </a>
+                        {% if tiene_permiso('gestionar_plantillas') %}
                         <a href="{{ url_for('admin_plantillas.editar', id=p.id) }}"
                            class="btn btn-sm btn-outline-secondary">
                             <i class="fas fa-edit"></i>
                         </a>
+                        {% endif %}
                     </td>
                 </tr>
                 {% else %}

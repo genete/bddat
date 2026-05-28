@@ -16,10 +16,12 @@
         <h1>
             <i class="fas fa-users"></i> Usuarios
         </h1>
+        {% if tiene_permiso('gestionar_usuarios') %}
         <button type="button" class="btn btn-primary"
                 data-bs-toggle="modal" data-bs-target="#crearUsuarioModal">
             <i class="fas fa-plus"></i> Nuevo Usuario
         </button>
+        {% endif %}
     </div>
     <div class="filters-row content-constrained">
         <div class="filters">
@@ -91,6 +93,7 @@
                             {% endfor %}
                         </td>
                         <td>
+                            {% if tiene_permiso('gestionar_usuarios') %}
                             <form action="{{ url_for('usuarios.toggle_estado', id=usuario.id) }}"
                                   method="POST" style="display: inline;"
                                   {% if usuario.id == current_user.id %}
@@ -113,6 +116,13 @@
                                     </label>
                                 </div>
                             </form>
+                            {% else %}
+                                {% if usuario.activo %}
+                                    <span class="badge bg-success">Activo</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">Inactivo</span>
+                                {% endif %}
+                            {% endif %}
                         </td>
                         <td>
                             <a href="{{ url_for('usuarios.detalle', id=usuario.id) }}"
@@ -134,6 +144,7 @@
     </div>
 </div>
 
+{% if tiene_permiso('gestionar_usuarios') %}
 <!-- Modal de Creación -->
 <div class="modal fade" id="crearUsuarioModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg">
@@ -248,6 +259,7 @@
         </div>
     </div>
 </div>
+{% endif %}
 
 <script>
 // Inicializar tooltips

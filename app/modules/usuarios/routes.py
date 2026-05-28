@@ -19,7 +19,7 @@ def current_user_es_admin():
 
 @bp.route('/', methods=['GET', 'POST'])
 @login_required
-@require_permiso('gestionar_usuarios')
+@require_permiso('acceder_usuarios')
 def index():
     # Recuperamos todos los roles para el formulario
     todos_los_roles = Rol.query.all()
@@ -31,6 +31,10 @@ def index():
     error_email = None
 
     if request.method == 'POST':
+        from flask import abort
+        from app.utils.permisos import tiene_permiso as _tp
+        if not _tp('gestionar_usuarios'):
+            abort(403)
         # Lógica para crear usuario
         try:
             siglas = request.form['siglas']
@@ -153,7 +157,7 @@ def index():
 
 @bp.route('/<int:id>')
 @login_required
-@require_permiso('gestionar_usuarios')
+@require_permiso('acceder_usuarios')
 def detalle(id):
     usuario = Usuario.query.get_or_404(id)
     roles = Rol.query.all()
