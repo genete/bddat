@@ -1,0 +1,38 @@
+{# _sidebar.html — Navegación lateral persistente (ADR-014 §4).
+   Generado desde ModuleRegistry (mismo origen que module_nav). El filtrado
+   por rol seguirá aplicándose hasta que #497 lo neutralice (permisos blandos).
+#}
+<nav class="app-sidebar" aria-label="Navegación principal">
+
+  <div class="app-sidebar__nav">
+
+    {# Inicio: dashboard, no es un módulo del registry #}
+    <a href="{{ url_for('dashboard.index') }}"
+       class="app-sidebar__link {%- if request.endpoint == 'dashboard.index' %} is-active{% endif %}"
+       data-label="Inicio">
+      <i class="fas fa-home"></i>
+      <span class="app-sidebar__link-text">Inicio</span>
+    </a>
+
+    {% for item in module_nav %}
+    <a href="{{ url_for(item.route) }}"
+       class="app-sidebar__link {%- if active_module == item.module %} is-active{% endif %}"
+       data-label="{{ item.label }}">
+      <i class="fas {{ item.icon }}"></i>
+      <span class="app-sidebar__link-text">{{ item.label }}</span>
+    </a>
+    {% endfor %}
+
+  </div>
+
+  <div class="app-sidebar__footer">
+    <button type="button" class="app-sidebar__toggle"
+            data-app-shell-toggle="sidebar"
+            aria-label="Colapsar barra lateral"
+            title="Colapsar / expandir">
+      <i class="bi bi-chevron-double-left app-only-expanded"></i>
+      <i class="bi bi-chevron-double-right app-only-collapsed"></i>
+    </button>
+  </div>
+
+</nav>
