@@ -522,6 +522,8 @@ Cobertura amplia del backend de motor, plazos, ESFTT, documentos y CBs. La UI pr
 
 ### 10.6.2 `scripts/` — 22 ficheros
 
+> **Aviso:** algunos scripts pueden estar desactualizados respecto al estado actual del modelo (seeds antiguos, rutas obsoletas, dependencias retiradas). No se ha auditado uno por uno — verificar antes de ejecutar cualquiera. Auditoría individual queda fuera del alcance de esta fase.
+
 | Familia | Ficheros | Propósito |
 |---|---|---|
 | Seeds | `seed_demo.py`, `seed_listado.py`, `seed_motor_variables.py`, `verificar_seed.py` | Datos de prueba (incluye los 11 escenarios T01-T11 del listado inteligente) |
