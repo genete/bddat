@@ -31,6 +31,7 @@ El **análisis crítico es snapshot inmutable** del estado de reflexión al 28-m
 | **ADR-015** | Stack JS: React montado como islas sobre templates Jinja. CSS único Bootstrap+JdA. Sin SPA, sin React Router, sin tokens. Vite para build | #499 | 2026-05-28 |
 | **ADR-016** | Vista de árbol del expediente — primera isla React productiva. Sustituye las 5 vistas `tramitacion_bc_*` y resuelve los 3 intentos previos fallidos (acordeón/tabs/breadcrumbs) | #500 | 2026-05-28 |
 | **ADR-017** | Vista "Mi trabajo" del administrativo — cola común de tareas pendientes + subida de docs al pool. Reutiliza el árbol como destino de acción. Amplía permisos con `gestionar_tareas` y `gestionar_estructura_expediente` | #501 | 2026-05-28 |
+| **ADR-018** | Command Palette (Ctrl+K) — búsqueda global de expedientes/entidades + navegación + recientes. Versión básica en M4, iteraciones extendidas en M5. Sustituye #75 | #502 (M4) | 2026-05-28 |
 
 ---
 
@@ -52,7 +53,7 @@ El **análisis crítico es snapshot inmutable** del estado de reflexión al 28-m
 | **5.5** | Sub-stack React concreto: librerías específicas (cmdk, react-arborist, etc.), state management si crece, data fetching avanzado si se necesita | ANALISIS_CRITICO §5.5 + ADR-015 §6 | Decisión por isla en su implementación | — (incremental) |
 | ~~**5.6**~~ | ~~Mini-estudio del administrativo antes de diseñar su vista~~ → **Resuelta: NO se hace mini-estudio** (supervisor conoce el flujo). Diseño cerrado en ADR-017 #501 | — | cerrada | — |
 | **5.7** | Tests UI mínimos: ¿se introducen Playwright E2E? ¿solo smoke tests Jinja? ¿RTL para componentes React? | ANALISIS_CRITICO §5.7 | Decisión política | — (independiente) |
-| **— nuevo —** | Command palette (Ctrl+K): isla React además del árbol. Librería (cmdk vs. custom), alcance (búsqueda + acciones + navegación) | ANALISIS_CRITICO §2.5 (búsqueda) + ADR-014 (input ya reservado en topbar) | ADR + issue | ADR-015 (scaffolding) |
+| ~~**— nuevo —**~~ | ~~Command palette (Ctrl+K)~~ → **Cerrada en ADR-018 #502 (M4)**. Iteraciones extendidas pendientes para M5 (creación inline, tokens avanzados, prefijos, pinned items) | — | cerrada (básica) | — |
 | ~~**— nuevo —**~~ | ~~Vista del administrativo~~ → **Cerrada en ADR-017 #501** | — | cerrada | — |
 | **— deuda ADR-016 —** | Líneas de dependencia hermano-hermano en el árbol | ADR-016 §15 | Retomable cuando motor completamente seeded o emerja otra solución | motor seeded |
 | **— deuda ADR-016 —** | Modo "solo camino activo" (tecla F) en árbol | ADR-016 §15 | Iteración posterior a v1 del árbol | — |
@@ -97,6 +98,7 @@ De ANALISIS_CRITICO §6:
 - **2026-05-28** — ADR-015 cerrado (#499). Stack JS: React islas.
 - **2026-05-28** — ADR-016 cerrado (#500). Vista de árbol del expediente — primera isla React productiva.
 - **2026-05-28** — ADR-017 cerrado (#501). Vista "Mi trabajo" del administrativo + ampliación de permisos.
+- **2026-05-28** — ADR-018 cerrado (#502 M4, sustituye #75). Command Palette (Ctrl+K) versión básica.
 
 ---
 
