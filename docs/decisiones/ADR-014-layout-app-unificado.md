@@ -136,6 +136,65 @@ Elementos retirados del header:
 
 ---
 
+## Nomenclatura de áreas
+
+Para evitar deriva terminológica entre código y conversación, las siete áreas del layout llevan estos nombres fijos. Cualquier referencia en CSS, Jinja, JS, commits, issues, ADRs y conversación debe usar este vocabulario.
+
+### Tabla de nombres
+
+| # | Función | Nombre | grid-area | CSS class | Bloque Jinja | Etiqueta HTML |
+|---|---|---|---|---|---|---|
+| 1 | Barra superior global | **topbar** | `topbar` | `.app-topbar` | (partial) | `<header>` |
+| 2 | Navegación lateral persistente | **sidebar** | `sidebar` | `.app-sidebar` | (partial) | `<nav aria-label="Principal">` |
+| 3 | Cabecera contextual de la vista | **viewbar** | `viewbar` | `.app-viewbar` | `{% block viewbar %}` | `<header>` |
+| 4 | Cuerpo de la vista | **main** | `main` | `.app-main` | `{% block content %}` | `<main>` |
+| 5 | Panel lateral derecho | **inspector** | `inspector` | `.app-inspector` | `{% block inspector %}` | `<aside>` |
+| 6 | Panel inferior | **dock** | `dock` | `.app-dock` | `{% block dock %}` | `<section>` |
+| 7 | Pie global | **footer** | `footer` | `.app-footer` | (partial) | `<footer>` |
+
+### Verificación de no-colisión
+
+Comprobados los siete nombres contra etiquetas HTML estándar, clases Bootstrap 5 y componentes del CDN JdA:
+
+- **topbar, viewbar, inspector, dock**: términos no usados en HTML/Bootstrap/JdA. Sin colisión.
+- **sidebar**: genérico pero no es clase Bootstrap oficial. Sin colisión técnica.
+- **main, footer**: deliberadamente coinciden con etiquetas HTML semánticas `<main>` y `<footer>`. Se usan coordinadamente (`<main class="app-main">` con `grid-area: main`).
+
+### Notas de uso
+
+- **`<header>` HTML aparece dos veces** (topbar y viewbar). Ambos son `<header>` semánticos legítimos. Las clases (`.app-topbar` / `.app-viewbar`) los distinguen sin ambigüedad.
+- **El sidebar usa `<nav aria-label="Principal">`** por su función primaria de navegación. Si en algún momento alberga contenido no navegacional, puede usar `<aside>`.
+- **`dock` NO es el dock de macOS** ni una dependencia externa. Es el panel inferior anclable de la app, tomado del término de IDEs (VS Code, Photoshop, Visual Studio).
+- **`inspector` NO es el inspector del navegador**. Es el panel lateral derecho de la app, tomado del término de DevTools (metáfora: "inspecciono el elemento seleccionado en main").
+
+### Variables CSS
+
+```css
+--topbar-height
+--sidebar-width-expanded
+--sidebar-width-collapsed
+--viewbar-height
+--inspector-width
+--dock-height
+--footer-height
+```
+
+### `localStorage` keys
+
+- `bddat.sidebar.collapsed` — boolean
+- `bddat.inspector.open` — boolean (persiste última elección del usuario)
+- `bddat.dock.open` — boolean (idem)
+
+### Convención de lenguaje
+
+En conversación, commits, issues y ADRs:
+
+- **Sustantivos**: "el topbar", "el sidebar", "la viewbar", "el inspector", "el dock", "el footer".
+- **Verbos**: "colapsar el sidebar", "abrir el inspector", "anclar/desanclar el dock".
+- **Prefijo de commits que tocan estas áreas**: `[UI][topbar]`, `[UI][sidebar]`, `[UI][viewbar]`, `[UI][inspector]`, `[UI][dock]`.
+
+---
+
 ## Alternativa descartada
 
 ### A. Dos templates separados (`base_pagina` + `base_workbench`)
