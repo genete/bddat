@@ -1,9 +1,13 @@
 {#
-  base_bc.html — Layout compartido para todas las vistas de tramitación bc (#274)
+  base_bc.html — Layout para vistas de tramitación bc (#274).
+
+  DEPRECATED (Issue #498): este template y sus 5 hijos `tramitacion_bc_*`
+  se eliminan cuando se cierre #500 (vista de árbol del expediente).
+  Hasta entonces se mantiene funcional sobre base_app.html.
 
   Bloques que los templates hijo deben/pueden definir:
     title        — título de página (obligatorio)
-    breadcrumb   — migas de pan (obligatorio)
+    breadcrumb   — migas de pan (obligatorio, se descarta visualmente — sustituido por sidebar+viewbar)
     bc_content   — contenido del tab "Expediente" (obligatorio)
     extra_css_bc — CSS adicional específico del nivel (opcional)
     extra_js_bc  — JS adicional específico del nivel (opcional)
@@ -11,7 +15,7 @@
   Variables de contexto requeridas en todas las rutas bc:
     expediente — objeto Expediente (siempre disponible)
 #}
-{% extends 'layout/base_fullwidth.html' %}
+{% extends 'layout/base_app.html' %}
 
 {% from 'macros/page_header.html' import page_header %}
 {% from 'macros/bc_cards.html' import bc_card_compacto %}

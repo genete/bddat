@@ -82,9 +82,13 @@
   --bs-accordion-btn-focus-box-shadow: 0 0 0 0.25rem var(--focus-ring);
 }
 
-/* ===== TIPOGRAFÍA BASE ===== */
+/* ===== TIPOGRAFÍA BASE =====
+   Source Sans Pro: tipografía corporativa de la Junta de Andalucía para
+   edición de textos (Decreto 218/2020 + corrección BOJA 36/2021). Cargada
+   por el CDN v1.2.5 con pesos 200/300/400/600/700/900.
+   Fallback a system stack si el CDN está caído. */
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  font-family: 'Source Sans Pro', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, system-ui, sans-serif;
   font-size: 16px;
   line-height: 1.5;
   color: var(--text-primary);

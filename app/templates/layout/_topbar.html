@@ -1,0 +1,90 @@
+{# _topbar.html — Barra superior global (ADR-014 §5).
+   Cuatro elementos: marca · búsqueda Ctrl+K · notificaciones · menú usuario.
+   Sin module-nav (movido al sidebar). Sin breadcrumb. Sin hamburguesa fija
+   (solo aparece <768px). #}
+<header class="app-topbar" role="banner">
+
+  {# Hamburguesa: solo visible en mobile (<768px) — abre el sidebar en overlay #}
+  <button type="button" class="app-topbar__icon-btn app-topbar__hamburger"
+          data-app-shell-toggle="sidebar-mobile" aria-label="Abrir menú">
+    <i class="bi bi-list"></i>
+  </button>
+
+  <a href="{{ url_for('dashboard.index') }}" class="app-topbar__brand">
+    <i class="fas fa-bolt"></i>
+    <span class="app-topbar__brand-text">BDDAT</span>
+  </a>
+
+  {# Buscador global Ctrl+K — placeholder visual. La lógica del Command Palette
+     se implementará en #502 (M4). #}
+  <div class="app-topbar__search">
+    <i class="bi bi-search app-topbar__search-icon"></i>
+    <input type="search"
+           placeholder="Buscar"
+           aria-label="Búsqueda global"
+           data-app-shell-search
+           autocomplete="off">
+    <span class="app-topbar__search-kbd">Ctrl K</span>
+  </div>
+
+  <div class="app-topbar__spacer"></div>
+
+  <div class="app-topbar__actions">
+
+    {# Notificaciones — placeholder, sin lógica todavía #}
+    <button type="button" class="app-topbar__icon-btn"
+            aria-label="Notificaciones" title="Notificaciones (próximamente)">
+      <i class="bi bi-bell"></i>
+    </button>
+
+    {# Menú usuario #}
+    {% if current_user.is_authenticated %}
+    <div class="dropdown app-topbar__user">
+      <button class="app-topbar__user-btn dropdown-toggle" type="button"
+              data-bs-toggle="dropdown" aria-expanded="false">
+        <i class="bi bi-person-circle"></i>
+        <span>{{ current_user.nombre }}</span>
+        {% if session.get('rol_activo_nombre') %}
+        <span class="app-topbar__rol">{{ session.rol_activo_nombre }}</span>
+        {% endif %}
+      </button>
+      <ul class="dropdown-menu dropdown-menu-end">
+        {% if current_user.roles | length > 1 %}
+          {% for rol in current_user.roles %}
+          <li>
+            {% if rol.id == session.get('rol_activo_id') %}
+            <span class="dropdown-item disabled d-flex align-items-center gap-2">
+              <i class="bi bi-check text-primary"></i> {{ rol.nombre }}
+            </span>
+            {% else %}
+            <a class="dropdown-item ps-4" href="{{ url_for('auth.cambiar_rol', rol_id=rol.id) }}">
+              {{ rol.nombre }}
+            </a>
+            {% endif %}
+          </li>
+          {% endfor %}
+          <li><hr class="dropdown-divider"></li>
+        {% endif %}
+        <li>
+          <a class="dropdown-item d-flex align-items-center gap-2"
+             href="{{ url_for('perfil.index') }}">
+            <i class="bi bi-pencil"></i> Editar perfil
+          </a>
+        </li>
+        <li><hr class="dropdown-divider"></li>
+        <li>
+          <a class="dropdown-item d-flex align-items-center gap-2 text-danger"
+             href="{{ url_for('auth.logout') }}">
+            <i class="bi bi-box-arrow-right"></i> Cerrar sesión
+          </a>
+        </li>
+      </ul>
+    </div>
+    {% else %}
+    <a href="{{ url_for('auth.login') }}" class="app-topbar__user-btn">
+      <i class="fas fa-sign-in-alt"></i>
+      <span>Iniciar sesión</span>
+    </a>
+    {% endif %}
+  </div>
+</header>

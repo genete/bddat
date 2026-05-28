@@ -1,0 +1,158 @@
+{# base_app.html — Layout único de la app (ADR-014 / Issue #498).
+
+   Bloques:
+     - title     (obligatorio)  · título de pestaña
+     - viewbar   (opcional)     · cabecera contextual sticky de la vista
+     - content   (obligatorio)  · cuerpo
+     - inspector (opcional)     · panel derecho
+     - dock      (opcional)     · panel inferior
+     - extra_css / extra_js     · recursos por vista
+
+   Vistas "página" (listado, formulario, detalle simple): no definen viewbar/inspector/dock.
+   Vistas "workbench" (expediente): definen todos los slots.
+
+   Vocabulario fijo: docs/guias/NOMENCLATURA_LAYOUT.md
+#}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}BDDAT{% endblock %} · Junta de Andalucía</title>
+  <link rel="icon" href="data:,">
+
+  {# CDN oficial Junta de Andalucía v1.2.5 (#132) #}
+  <link href="https://cdn.juntadeandalucia.es/components/sass/1.2.5/css/fonts.css" rel="stylesheet">
+  <link href="https://cdn.juntadeandalucia.es/components/sass/1.2.5/css/all.css" rel="stylesheet">
+  <link href="https://cdn.juntadeandalucia.es/components/sass/1.2.5/css/custom-jda-bootstrap.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+
+  {# Tema BDDAT (variables corporativas + tipografía) #}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/v2-theme.css') }}">
+  {# Shell de la app (grid 7 áreas) — ADR-014 #}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app-shell.css') }}">
+  {# Patrones de listados V2 y componentes de página
+     (lista-cabecera, scroll-container, page-header, etc. — todavía usados por listados V2 y base_bc) #}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/v2-layout.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/v2-components.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}">
+
+  {% block extra_css %}{% endblock %}
+</head>
+<body>
+  {# Captura de bloques opcionales sin doble render: {% set ... %}...{% endset %} #}
+  {% set viewbar_html %}{% block viewbar %}{% if indicador_asignacion is not none %}
+    <div class="app-viewbar__title">
+      <i class="bi bi-lightbulb-fill app-viewbar__indicador {{ 'text-danger' if indicador_asignacion else 'text-success' }}"
+         data-bs-toggle="tooltip" data-bs-placement="bottom"
+         title="{{ 'Expediente no asignado a ti — actuación registrada en bitácora' if indicador_asignacion else 'Tu expediente' }}"></i>
+      {% set _exp = g.get('expediente_actual') %}
+      {% if _exp %}<span>AT-{{ _exp.numero_at }}</span>{% endif %}
+    </div>
+  {% endif %}{% endblock %}{% endset %}
+
+  {% set inspector_html %}{% block inspector %}{% endblock %}{% endset %}
+  {% set dock_html      %}{% block dock      %}{% endblock %}{% endset %}
+
+  {% set _sidebar_collapsed = request.cookies.get('bddat_sidebar_collapsed') == '1' %}
+
+  <div class="app-shell
+              {%- if _sidebar_collapsed %} is-sidebar-collapsed{% endif -%}
+              {%- if inspector_html | trim %} has-inspector{% endif -%}
+              {%- if dock_html      | trim %} has-dock{% endif -%}">
+
+    {% include 'layout/_topbar.html' %}
+    {% include 'layout/_sidebar.html' %}
+
+    {% if viewbar_html | trim %}
+    <header class="app-viewbar" role="banner">
+      {{ viewbar_html }}
+    </header>
+    {% endif %}
+
+    <main class="app-main" id="app-main">
+      {% block content %}{% endblock %}
+    </main>
+
+    {% if inspector_html | trim %}
+    <aside class="app-inspector" aria-label="Inspector">
+      {{ inspector_html }}
+    </aside>
+    {% endif %}
+
+    {% if dock_html | trim %}
+    <section class="app-dock" aria-label="Panel inferior">
+      {{ dock_html }}
+    </section>
+    {% endif %}
+
+    {% include 'layout/footer.html' %}
+
+    {# Backdrop del sidebar en mobile (<768px) #}
+    <div class="app-sidebar-backdrop" data-app-shell-backdrop></div>
+  </div>
+
+  {# Alerta admin: calendario inhábil año N+1 no cargado (#339) #}
+  {% if alerta_calendario %}
+  <div class="app-alert-banner alert alert-warning alert-dismissible fade show" role="alert">
+    <i class="fas fa-exclamation-triangle me-2"></i>
+    <strong>Acción requerida:</strong>
+    No hay días inhábiles registrados para el año siguiente.
+    Ejecute <code>flask inhabiles importar</code> antes de que existan plazos que aterricen en ese año.
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+  </div>
+  {% endif %}
+
+  {# Toasts de flash messages (#44) #}
+  <div class="toast-container position-fixed bottom-0 end-0 p-3">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+        <div class="toast toast-{{ category }}" role="alert"
+             aria-live="assertive" aria-atomic="true"
+             data-bs-autohide="true" data-bs-delay="8000">
+          <div class="d-flex align-items-center p-3">
+            <div class="flex-grow-1">
+              {% if category == 'success' %}
+                <i class="fas fa-check-circle me-2"></i><strong>Correcto:</strong> {{ message }}
+              {% elif category == 'danger' %}
+                <i class="fas fa-exclamation-circle me-2"></i><strong>Error:</strong> {{ message }}
+              {% elif category == 'warning' %}
+                <i class="fas fa-exclamation-triangle me-2"></i><strong>Atención:</strong> {{ message }}
+              {% elif category == 'info' %}
+                <i class="fas fa-info-circle me-2"></i><strong>Información:</strong> {{ message }}
+              {% endif %}
+            </div>
+            <button type="button" class="btn-close ms-3" data-bs-dismiss="toast" aria-label="Cerrar"></button>
+          </div>
+        </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+  </div>
+
+  <script src="https://cdn.juntadeandalucia.es/components/sass/1.2.5/js/bootstrap.bundle.min.js"></script>
+  <script src="{{ url_for('static', filename='js/app-shell.js') }}"></script>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      // Auto-inicializar toasts (#44)
+      [].slice.call(document.querySelectorAll('.toast')).forEach(function (toastEl) {
+        toastEl.classList.add('showing');
+        var t = new bootstrap.Toast(toastEl);
+        t.show();
+        setTimeout(function () { toastEl.classList.remove('showing'); }, 300);
+        toastEl.addEventListener('hide.bs.toast', function () { toastEl.classList.add('hide'); });
+        toastEl.addEventListener('click', function (e) {
+          if (!e.target.closest('.btn-close')) { t.hide(); }
+        });
+      });
+      // Tooltips Bootstrap
+      [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+        .forEach(function (el) { new bootstrap.Tooltip(el); });
+    });
+  </script>
+
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

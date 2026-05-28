@@ -75,7 +75,7 @@ Vistas tipo "página" (listado, formulario, detalle simple) no definen `aside_ri
 
 - **Mismo sidebar para todos los roles** (gracias a ADR-013, permisos blandos).
 - Dos estados:
-  - **Expandido** (240px): icono + texto. Estado por defecto en pantallas ≥1280px.
+  - **Expandido** (208px): icono + texto. Estado por defecto en pantallas ≥1280px. *(Deviación tras revisión visual en #498: las etiquetas en castellano son cortas — máx. 10 caracteres — y 240px dejaba ~130px vacíos a la derecha de cada link. Se reduce a 208px y se libera espacio para el main.)*
   - **Colapsado** (60px): solo icono, tooltip al hover con el texto. Estado por defecto en 900-1280px.
 - **Chevron `«` / `»` en la esquina superior del sidebar** alterna entre estados.
 - **Estado persistido en `localStorage`** (`bddat.sidebar.collapsed`).

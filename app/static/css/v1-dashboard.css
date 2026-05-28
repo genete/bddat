@@ -4,7 +4,7 @@
  * 
  * Epic: #93 (Sistema de Navegación UI Modular)
  * Vista: V1 - Dashboard sin sidebar
- * Layout: base_fullwidth.html (header + main + footer)
+ * Layout: base_app.html (topbar + sidebar + main + footer — ADR-014, #498)
  * Colores: Junta de Andalucía (v2-theme.css)
  */
 

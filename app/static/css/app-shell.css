@@ -1,0 +1,540 @@
+/**
+ * app-shell.css — Layout único de la app (ADR-014 / Issue #498)
+ *
+ * Grid 7 áreas:
+ *   topbar    (siempre)
+ *   sidebar   (siempre, colapsable)
+ *   viewbar   (opcional, cabecera contextual de la vista)
+ *   main      (siempre)
+ *   inspector (opcional, panel derecho)
+ *   dock      (opcional, panel inferior)
+ *   footer    (siempre)
+ *
+ * Nomenclatura fija: docs/guias/NOMENCLATURA_LAYOUT.md
+ * Estado de paneles: localStorage (bddat.sidebar.collapsed, bddat.inspector.open, bddat.dock.open)
+ */
+
+:root {
+  /* Alturas del shell (compactas — look desktop, no weblike) */
+  --topbar-height:  48px;
+  --viewbar-height: 44px;
+  --footer-height:  28px;
+
+  /* Sidebar (208px expandido en lugar de 240px del ADR — las etiquetas en
+     castellano son cortas y 240px dejaba ~130px vacíos a la derecha) */
+  --sidebar-width-expanded:  208px;
+  --sidebar-width-collapsed: 56px;
+
+  /* Inspector / Dock */
+  --inspector-width: 380px;
+  --dock-height:     240px;
+
+  /* Paleta del chrome (deriva de v2-theme.css) */
+  --shell-topbar-bg:         var(--primary);
+  --shell-topbar-fg:         var(--text-inverse);
+  --shell-sidebar-bg:        #ffffff;
+  --shell-sidebar-fg:        var(--gris-principal);
+  --shell-sidebar-border:    var(--border-color);
+  --shell-sidebar-hover-bg:  var(--gris-especifico);
+  --shell-sidebar-active-bg: var(--primary-lighter);
+  --shell-sidebar-active-fg: var(--primary);
+  --shell-viewbar-bg:        #ffffff;
+  --shell-viewbar-fg:        var(--gris-principal);
+  --shell-viewbar-border:    var(--border-color);
+  --shell-footer-bg:         var(--gris-principal);
+  --shell-footer-fg:         var(--text-inverse);
+}
+
+/* ============================================================
+   GRID PRINCIPAL
+   ============================================================ */
+
+.app-shell {
+  display: grid;
+  height: 100vh;
+  width: 100%;
+  background-color: var(--bg-page);
+
+  /* Columnas: sidebar | main | inspector (oculto por defecto) */
+  grid-template-columns: var(--sidebar-width-expanded) 1fr 0;
+
+  /* Filas:
+     topbar fijo · viewbar auto (0 si vacío) · main 1fr · dock auto (0 si vacío) · footer fijo */
+  grid-template-rows:
+    var(--topbar-height)
+    auto
+    1fr
+    auto
+    var(--footer-height);
+
+  grid-template-areas:
+    "topbar  topbar  topbar"
+    "sidebar viewbar inspector"
+    "sidebar main    inspector"
+    "sidebar dock    dock"
+    "footer  footer  footer";
+}
+
+.app-shell.is-sidebar-collapsed {
+  grid-template-columns: var(--sidebar-width-collapsed) 1fr 0;
+}
+
+.app-shell.has-inspector {
+  grid-template-columns: var(--sidebar-width-expanded) 1fr var(--inspector-width);
+}
+
+.app-shell.has-inspector.is-sidebar-collapsed {
+  grid-template-columns: var(--sidebar-width-collapsed) 1fr var(--inspector-width);
+}
+
+/* ============================================================
+   TOPBAR — barra superior global (48px)
+   ============================================================ */
+
+.app-topbar {
+  grid-area: topbar;
+  position: relative; /* inmuniza frente a position:fixed heredado del CDN Junta */
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 16px 0 0;
+  background: var(--shell-topbar-bg);
+  color: var(--shell-topbar-fg);
+  font-size: 13px;
+  z-index: 100;
+}
+
+.app-topbar__brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 100%;
+  padding: 0 16px;
+  text-decoration: none;
+  color: inherit;
+  font-weight: 600;
+  font-size: 15px;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  /* Ancho alineado con el sidebar */
+  flex: 0 0 var(--sidebar-width-expanded);
+  box-sizing: border-box;
+  transition: flex-basis 0.15s ease;
+}
+
+.app-shell.is-sidebar-collapsed .app-topbar__brand {
+  flex-basis: var(--sidebar-width-collapsed);
+  padding: 0;
+  justify-content: center;
+}
+
+.app-shell.is-sidebar-collapsed .app-topbar__brand-text { display: none; }
+
+.app-topbar__brand:hover {
+  color: inherit;
+  text-decoration: none;
+  opacity: 0.92;
+}
+
+.app-topbar__brand i { font-size: 17px; }
+
+.app-topbar__search {
+  flex: 1;
+  max-width: 460px;
+  position: relative;
+}
+
+.app-topbar__search input {
+  width: 100%;
+  height: 30px;
+  padding: 0 56px 0 32px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.10);
+  color: #fff;
+  border-radius: 4px;
+  font-size: 13px;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.app-topbar__search input::placeholder { color: rgba(255, 255, 255, 0.7); }
+.app-topbar__search input:hover { background: rgba(255, 255, 255, 0.16); }
+.app-topbar__search input:focus {
+  outline: none;
+  background: rgba(255, 255, 255, 0.22);
+  border-color: rgba(255, 255, 255, 0.45);
+  box-shadow: none;
+}
+
+.app-topbar__search-icon {
+  position: absolute;
+  left: 10px; top: 50%;
+  transform: translateY(-50%);
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 12px;
+  pointer-events: none;
+}
+
+.app-topbar__search-kbd {
+  position: absolute;
+  right: 6px; top: 50%;
+  transform: translateY(-50%);
+  font-size: 10.5px;
+  color: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  padding: 1px 5px;
+  border-radius: 3px;
+  pointer-events: none;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  letter-spacing: 0.03em;
+}
+
+.app-topbar__spacer { flex: 1; }
+
+.app-topbar__actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.app-topbar__icon-btn {
+  background: transparent;
+  border: 0;
+  color: var(--shell-topbar-fg);
+  font-size: 15px;
+  padding: 0;
+  border-radius: 4px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px; height: 32px;
+  transition: background 0.15s;
+  position: relative;
+}
+
+.app-topbar__icon-btn:hover { background: rgba(255, 255, 255, 0.15); }
+.app-topbar__icon-btn .badge-dot {
+  position: absolute;
+  top: 5px; right: 5px;
+  width: 7px; height: 7px;
+  background: var(--warning);
+  border-radius: 50%;
+  border: 1.5px solid var(--shell-topbar-bg);
+}
+
+.app-topbar__user {
+  margin-left: 4px;
+}
+
+.app-topbar__user-btn {
+  background: transparent;
+  border: 0;
+  color: var(--shell-topbar-fg);
+  font-size: 13px;
+  padding: 4px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.app-topbar__user-btn:hover { background: rgba(255, 255, 255, 0.15); }
+.app-topbar__user-btn .app-topbar__rol {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 1px 6px;
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.app-topbar__user-btn::after { font-size: 10px; opacity: 0.7; }
+
+/* Dropdown bajo el botón de usuario: integra con Bootstrap */
+.app-topbar .dropdown-menu { font-size: 13px; }
+.app-topbar .dropdown-item { padding: 6px 12px; }
+
+/* Indicador de bombilla cuando NO hay viewbar definido por la vista (fallback) */
+.app-topbar__indicador-fallback {
+  font-size: 16px;
+  padding: 0 4px;
+}
+
+/* ============================================================
+   SIDEBAR — navegación lateral persistente
+   ============================================================ */
+
+.app-sidebar {
+  grid-area: sidebar;
+  display: flex;
+  flex-direction: column;
+  background: var(--shell-sidebar-bg);
+  color: var(--shell-sidebar-fg);
+  border-right: 1px solid var(--shell-sidebar-border);
+  overflow-x: hidden;
+  overflow-y: auto;
+  z-index: 50;
+  transition: width 0.15s ease;
+}
+
+.app-sidebar__nav {
+  display: flex;
+  flex-direction: column;
+  padding: 8px;
+  gap: 1px;
+  flex: 1;
+}
+
+.app-sidebar__link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  border-radius: 4px;
+  text-decoration: none;
+  color: var(--shell-sidebar-fg);
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: background 0.12s, color 0.12s;
+  position: relative;
+}
+
+.app-sidebar__link:hover {
+  background: var(--shell-sidebar-hover-bg);
+  color: var(--shell-sidebar-fg);
+  text-decoration: none;
+}
+
+.app-sidebar__link.is-active {
+  background: var(--shell-sidebar-active-bg);
+  color: var(--shell-sidebar-active-fg);
+  font-weight: 600;
+}
+
+.app-sidebar__link i {
+  font-size: 15px;
+  width: 20px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.app-shell.is-sidebar-collapsed .app-sidebar__link-text { display: none; }
+.app-shell.is-sidebar-collapsed .app-sidebar__link {
+  justify-content: center;
+  padding: 8px 0;
+}
+
+/* Tooltip al hover cuando está colapsado (custom, sin JS) */
+.app-shell.is-sidebar-collapsed .app-sidebar__link:hover::after {
+  content: attr(data-label);
+  position: absolute;
+  left: calc(100% + 8px);
+  top: 50%;
+  transform: translateY(-50%);
+  background: var(--gris-principal);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 4px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+  z-index: 300;
+  pointer-events: none;
+  box-shadow: var(--shadow-sm);
+}
+
+.app-sidebar__footer {
+  margin-top: auto;
+  border-top: 1px solid var(--shell-sidebar-border);
+  padding: 6px;
+}
+
+.app-sidebar__toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 28px;
+  border: 0;
+  background: transparent;
+  border-radius: 4px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 12px;
+  transition: background 0.12s, color 0.12s;
+}
+
+.app-sidebar__toggle:hover {
+  background: var(--shell-sidebar-hover-bg);
+  color: var(--shell-sidebar-active-fg);
+}
+
+/* ============================================================
+   VIEWBAR — cabecera contextual de la vista (44px)
+   ============================================================ */
+
+.app-viewbar {
+  grid-area: viewbar;
+  position: relative; /* inmuniza frente a position:fixed heredado del CDN Junta */
+  top: auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 16px;
+  background: var(--shell-viewbar-bg);
+  color: var(--shell-viewbar-fg);
+  border-bottom: 1px solid var(--shell-viewbar-border);
+  min-height: var(--viewbar-height);
+  font-size: 13px;
+  z-index: 40;
+}
+
+.app-viewbar__title {
+  font-weight: 600;
+  font-size: 14px;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.app-viewbar__indicador {
+  font-size: 15px;
+  cursor: help;
+}
+
+.app-viewbar__spacer { flex: 1; }
+
+.app-viewbar__actions { display: flex; align-items: center; gap: 6px; }
+
+/* ============================================================
+   MAIN
+   ============================================================ */
+
+.app-main {
+  grid-area: main;
+  overflow: auto;
+  background: var(--bg-page);
+  min-height: 0;
+}
+
+/* ============================================================
+   INSPECTOR — panel derecho opcional (380px)
+   ============================================================ */
+
+.app-inspector {
+  grid-area: inspector;
+  background: #ffffff;
+  border-left: 1px solid var(--border-color);
+  overflow: auto;
+  font-size: 13px;
+  z-index: 30;
+}
+
+/* ============================================================
+   DOCK — panel inferior opcional (240px)
+   ============================================================ */
+
+.app-dock {
+  grid-area: dock;
+  background: #ffffff;
+  border-top: 1px solid var(--border-color);
+  overflow: auto;
+  min-height: var(--dock-height);
+  font-size: 13px;
+  z-index: 30;
+}
+
+/* ============================================================
+   FOOTER
+   ============================================================ */
+
+.app-footer {
+  grid-area: footer;
+  position: relative; /* inmuniza frente a position:fixed heredado del CDN Junta */
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  background: var(--shell-footer-bg);
+  color: var(--shell-footer-fg);
+  font-size: 11px;
+  height: var(--footer-height);
+}
+
+.app-footer a {
+  color: rgba(255, 255, 255, 0.85);
+  text-decoration: none;
+}
+
+.app-footer a:hover {
+  color: #fff;
+  text-decoration: underline;
+}
+
+/* ============================================================
+   ALERTA ADMIN (calendario inhábil) — banner debajo del topbar
+   ============================================================ */
+
+.app-alert-banner {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  align-self: end;
+  /* posición flotante para no romper el grid */
+  position: absolute;
+  top: var(--topbar-height);
+  left: 0; right: 0;
+  z-index: 90;
+  margin: 0;
+  border-radius: 0;
+  border-left: 0;
+  border-right: 0;
+}
+
+/* ============================================================
+   RESPONSIVE
+   - <768px: sidebar overlay con backdrop; inspector oculto
+   ============================================================ */
+
+@media (max-width: 767px) {
+  .app-shell {
+    grid-template-columns: 0 1fr 0;
+    grid-template-areas:
+      "topbar  topbar  topbar"
+      "viewbar viewbar viewbar"
+      "main    main    main"
+      "dock    dock    dock"
+      "footer  footer  footer";
+  }
+  .app-shell.has-inspector { grid-template-columns: 0 1fr 0; }
+
+  .app-sidebar {
+    position: fixed;
+    top: var(--topbar-height);
+    left: 0; bottom: 0;
+    width: var(--sidebar-width-expanded);
+    transform: translateX(-100%);
+    transition: transform 0.2s ease;
+    z-index: 200;
+    box-shadow: var(--shadow);
+  }
+  .app-shell.is-sidebar-open .app-sidebar { transform: translateX(0); }
+  .app-shell.is-sidebar-open .app-sidebar-backdrop {
+    position: fixed;
+    top: var(--topbar-height); left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 150;
+  }
+
+  .app-topbar__brand { flex: 0 0 auto; padding: 0 0 0 12px; }
+  .app-topbar__search { display: none; }
+  .app-topbar__hamburger { display: inline-flex; }
+
+  .app-inspector { display: none; }
+}
+
+.app-topbar__hamburger { display: none; }
