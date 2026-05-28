@@ -469,7 +469,32 @@ TRAMITADOR puede editar cualquier expediente, no solo el asignado. La traza qued
 | `docs/diagramas_flujo/` | Diagramas del flujo (vacío o pendiente) |
 | `docs/implementaciones/` | (vacío o pendiente) |
 
-**Presentación POC:** no se ha encontrado fichero `.html` con presentación reveal/slides ni markdown explícito. Si existe, podría estar fuera de `docs/` (revisar `temp/` o gitignored).
+### 10.5 Presentación POC (`presentacion/` en la raíz, fuera de `docs/`)
+
+Sistema Reveal.js con tema CSS propio de la Junta de Andalucía. **16 slides** organizadas en bloques (problema → qué es → roles → características implementadas → demo → roadmap → feedback) más 2 apéndices técnicos.
+
+Contenidos clave para el revamping:
+
+| Slide | Mensaje vendido | Implicación para el rediseño |
+|---|---|---|
+| S01 Problema | "Hojas Calc + Access + servidor — sin contexto unificado" | Confirma el dolor relatado en fase 2 |
+| S02 Qué es | "Centraliza expediente, guía al tramitador, genera escritos, traza" | 4 pilares declarados — el revamping debe reforzarlos, no diluirlos |
+| S04 Identidad | "Misma imagen JA — sin curva de aprendizaje" | **La identidad JA es compromiso intencional**, no inercia. El revamping debe mantenerla pero puede tensarla hacia "app profesional" |
+| S08 Listado | "Estado de cada pista se calcula automáticamente. Colores dicen qué toca. Trabajo por lotes. Jefatura ve estado global sin preguntar" | Es exactamente la varita mágica nº 2 del estudio de usuario — **pero los bullets 5.1 y 6.1 ya están marcados "🚧 pendiente de implementar"** en la propia slide |
+| S10 Roadmap | 3 columnas: disponible / próximamente / más adelante | Línea narrativa pública que el revamping debe respetar (orden y promesas) |
+| S11 Feedback | 4 preguntas: ¿flujos útiles? ¿casuística no cubierta? ¿qué te preocupa del cambio? ¿cómo participar en pruebas? | Cuestionario explícito que el usuario lanzó a la audiencia — el estudio de usuario fase 2 contesta varias |
+
+Assets (capturas reales del POC actual, útiles para el "antes" del revamping):
+- `DetalleExpediente.png`, `GeneracionEscrito.png`, `GestorDocumentos.png`, `ListadoSeguimiento.png`
+- `Diagrama_ESFTT.svg`, `Estructura_en_capas.svg`
+- Logotipos JdA en CMYK (horizontal, vertical, positivo, negativo)
+
+Otros: `diagrama.html` (visualización interactiva ESFTT, distinta de `app/templates/demo/diagrama.html`), `js/popups.js`, `PLAN_BADGES_POPUP.md`.
+
+**Cruces relevantes con la fase 3:**
+- S08 declara públicamente que la "vista jefatura" y la "vista administrativo propia" están pendientes — coherente con que las dos primeras varitas mágicas del estudio de usuario sigan sin soporte backend.
+- S10 columna 2 menciona "Diagrama visual interactivo del árbol", "Auditoría de actividad por técnico" y "Vista del administrativo" como próximas — el revamping puede aterrizar esas promesas o redirigirlas si la fase 3 lo justifica.
+- S04 cierra la puerta a un cambio visual radical: el compromiso "ya conocéis esta interfaz" obliga a evolución dentro del lenguaje JdA, no salto a otro sistema visual.
 
 ---
 
