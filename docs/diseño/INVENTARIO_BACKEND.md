@@ -498,6 +498,59 @@ Otros: `diagrama.html` (visualización interactiva ESFTT, distinta de `app/templ
 
 ---
 
+## 10.6 Otras carpetas del repositorio
+
+### 10.6.1 `tests/` — 51 ficheros
+
+`conftest.py` define 3 fixtures: `app` (session), `app_ctx` (function, con rollback nested automático) y `client`. 50 tests numerados por issue/feature:
+
+| Bloque | Cobertura |
+|---|---|
+| Plazos | `test_172_plazos_computo`, `test_173_suspensiones`, `test_190_plazos_contrato`, `test_341_evaluador_plazo`, `test_341_modelo_condicion_plazo`, `test_341_operadores`, `test_341_e2e_art131`, `test_341_variables_art131`, `test_328_motor_estado_plazo_integracion`, `test_350_seguimiento_esperar_plazo`, `test_362_cert_plazo_cumplido`, `test_448_seed_plazos_resolucion`, `test_463_seed_plazos_consultas`, `test_475_traslado_titular_vencido` |
+| Motor | `test_323_modo_global_motor`, `test_324_escape_motor`, `test_373_auditar`, `test_388_tipo_sujeto_solicitado`, `test_455_variables_motor_analisis`, `test_460_variables_motor_consultas` |
+| Documentos / vínculos | `test_346_mapa_documentos`, `test_365_bddat_uri`, `test_420_documentos_tarea`, `test_392_diagnostico` |
+| Trámites / tareas / estructura | `test_345_tramites_tareas`, `test_419_invariante_cierre_fase`, `test_405_requerimientos_tarea` |
+| Organismos | `test_247_organismos_crud` *(roto, #487)*, `test_391_organismo_expediente`, `test_395_organismos_consulta`, `test_456_tramites_organismos`, `test_457_cbs_traslado`, `test_458_estado_organismo`, `test_461_entidades_consultables`, `test_462_enviar_consultas`, `test_471_crear_traslado` |
+| Resolución / IP / alegaciones | `test_403_resolucion`, `test_404_informacion_publica`, `test_393_alegante`, `test_394_analisis_alegaciones`, `test_406_subsanacion`, `test_402_notificacion_organismo`, `test_470_cert_fin_ip_consultas` |
+| Requisitos documentales | `test_192_requisitos_documentales` (#192 PR #496) |
+| Certificados / fase | `test_373_cert_fase` |
+| Bitácora | `test_001_bitacora` |
+| Entidades / direcciones | `test_300_direccion_titular` |
+| Misceláneos | `test_296_senal_resultado`, `test_347_defensividad_backend`, `test_348_instalacion_limpia` |
+
+Cobertura amplia del backend de motor, plazos, ESFTT, documentos y CBs. La UI prácticamente sin tests automatizados.
+
+### 10.6.2 `scripts/` — 22 ficheros
+
+| Familia | Ficheros | Propósito |
+|---|---|---|
+| Seeds | `seed_demo.py`, `seed_listado.py`, `seed_motor_variables.py`, `verificar_seed.py` | Datos de prueba (incluye los 11 escenarios T01-T11 del listado inteligente) |
+| SQL bootstrap | `crear_usuario_admin.sql`, `datos_roles.sql`, `data/municipios.sql` | Carga inicial fuera de Alembic |
+| Normativa BOJA | `sedeboja_buscar.py`, `sedeboja_extract.py` | Scraping de BOJA sin navegador (2 peticiones HTTP). Genera `docs/referencia/normas/sedeboja_*.md` |
+| Normativa BOE / cruce | `legalize_xref.py`, `legalize_compile.py`, `compile_hallazgos.py` | Integración con repo externo `legalize-es`; compilación para NotebookLM |
+| Contexto IA | `preparar_contexto.py`, `preparar_contexto_nblm.py` | Volcado del proyecto a fichero único para Gemini/NotebookLM |
+| Operativa | `flask_console.py` (GUI tkinter para servidor dev), `gen_issues.py` | |
+| Cliente Windows | `cliente/install.bat`, `cliente/install.ps1`, `cliente/bddat-explorador-handler.ps1`, `cliente/bddat-explorador-launcher.vbs` | Instalador del handler URL `bddat://` para abrir documentos desde navegador remoto (referenciado en issue #195) |
+| Build | `build_react.sh` | Compilación del bundle React (`react-diagramas/` → `app/static/js/react/diagrama-esftt.iife.js`) |
+
+### 10.6.3 `react-diagramas/` — POC React aislado
+
+Proyecto Vite/Rollup independiente del backend Flask. **3 ficheros fuente** en `src/`:
+
+| Fichero | Rol |
+|---|---|
+| `DiagramaEsftt.jsx` | Componente principal. Usa `@xyflow/react` (ReactFlow) con `Background`, `Controls`, `MiniMap`. Layout fijo en 3 columnas (Solicitud/Fase/Trámite) con cálculo de Y centrado para evitar solapamientos. Hace toasts Bootstrap reusando `.toast-container` del layout Flask al hacer clic en nodos |
+| `main.jsx` | Entry standalone (modo desarrollo) |
+| `main.lib.jsx` | Bundle IIFE: expone `window.DiagramaEsftt.mount(element)` que el template Flask invoca |
+
+Dependencias principales (de `package.json`): React 18, `@xyflow/react`, `d3-dispatch`, scheduler. Compilador: esbuild/Rollup.
+
+**Estado**: POC con datos mockeados (`mockData.js`). El issue **#320** ("UI/BE Integrar diagrama ReactFlow en vista de tramitación — datos reales y comportamiento completo") es el que cierra el gap entre POC y producción. Solo aparece en `demo/diagrama.html`.
+
+**Implicación para el revamping**: la decisión de subir React de "POC en una vista" a "componente productivo en tramitación" debe tomarse en fase 4 — define si el stack JS de BDDAT pasa a ser híbrido (Jinja + React por componente) o si el revamping consolida en uno solo.
+
+---
+
 ## 11. Issues abiertos
 
 67 issues abiertos agrupados por milestone (datos vía `gh issue list`):
