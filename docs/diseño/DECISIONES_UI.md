@@ -92,6 +92,56 @@ De ANALISIS_CRITICO §6:
 
 ---
 
+## Anotaciones para futuros casos de layout
+
+Patrones identificados durante la validación del layout `base_app.html` contra siete casos previstos: descripción del proyecto técnico, mapa cartográfico, mantenimiento de plantillas con despensa de tokens, listado de legacy, migración individual de legacy, dashboard del supervisor, y vista timeline alternativa del expediente.
+
+**Conclusión de la validación**: el layout aguanta los siete casos sin rediseño. Las siguientes tres extensiones del shell se documentarán formalmente en `NOMENCLATURA_LAYOUT.md` cuando llegue el primer caso productivo que las necesite — no antes (no inventar abstracciones sin caso real).
+
+### Patrón A — Split horizontal dentro de `main`
+
+Vistas que necesitan dos sub-zonas dentro de main: típicamente árbol/lista a la izquierda + detalle del elemento seleccionado a la derecha.
+
+Ejemplos previstos:
+- Editor del proyecto técnico (árbol de elementos del proyecto + formulario del elemento seleccionado).
+- Vistas maestra-detalle dentro del workbench.
+
+Implementación previsible: CSS Grid o flex dentro de `<main class="app-main">` con convención de clase modificadora (por ejemplo `app-main--split-h`). **No es slot nuevo del layout** — main sigue siendo main; cambia su geometría interna.
+
+### Patrón B — Shell inmersivo (sin sidebar ni footer)
+
+Vistas que necesitan maximizar el área de contenido minimizando UI auxiliar.
+
+Ejemplos previstos:
+- Visualización cartográfica (PostGIS + Leaflet/OpenLayers, issue #27).
+- Eventualmente, modo presentación o pantalla completa de un expediente.
+
+Implementación previsible: clase opcional `app-shell--immersive` en `<body>` o equivalente que colapsa sidebar y footer dejando topbar + main (+ inspector/dock opcionales). El topbar permanece para no perder navegación y búsqueda global. **Es extensión del shell, no template nuevo.**
+
+### Patrón C — Tabs internas del inspector
+
+Vistas donde el inspector necesita mostrar varias secciones al mismo tiempo.
+
+Ejemplos previstos:
+- Despensa de tokens en mantenimiento de plantillas (Capa 1 base / Capa 2 CB / Consultas nombradas / Preview).
+- Inspector de instalación cartográfica (Ficha técnica / Documentos / Histórico).
+
+Implementación previsible: `nav-tabs` Bootstrap dentro de `<aside class="app-inspector">`. **Es contenido del inspector, no extensión del layout.** Sin cambios en `base_app.html`; sí merece convención escrita para que el patrón sea consistente entre islas.
+
+### Tabla resumen de casos validados
+
+| Caso | Modo | Extensiones aplicadas |
+|---|---|---|
+| 1. Descripción del proyecto técnico por elementos | workbench | patrón A (split en main) |
+| 2. Visualización cartográfica | workbench inmersivo | patrón B |
+| 3. Mantenimiento de plantillas con despensa de tokens | workbench | patrón C (tabs en inspector) |
+| 4. Listado de expedientes legacy importados | página simple | ninguna |
+| 5. Migración individual de expediente legacy | workbench | ninguna |
+| 6. Dashboard del supervisor con gráficos | workbench ligero | ninguna |
+| 7. Vista alternativa del expediente como línea temporal | workbench | ninguna (toggle desde viewbar; inspector y dock idénticos al modo árbol) |
+
+---
+
 ## Cómo se mantiene este documento
 
 - Cada ADR nuevo del revamping se anota arriba en "Decisiones cerradas" y abajo en "Histórico".
