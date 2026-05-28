@@ -6,11 +6,11 @@
 
 ---
 
-**Último cerrado:** #498 — Layout único `base_app.html` (ADR-014). Shell de 7 áreas operativo (topbar/sidebar/viewbar/main/inspector/dock/footer), tipografía corporativa Source Sans Pro activada, 28 templates migrados, base_fullwidth/base_acordeon/header viejos eliminados, 18 smoke tests pytest inaugurando la convención de #503.
+**Último cerrado:** #497 — Permisos blandos generalizados (ADR-013). Dict `PERMISOS` expandido con pares `acceder_X`/`gestionar_X` para plantillas, usuarios y áreas futuras; sidebar único para todos los roles; 14 smoke tests en verde.
 
 **Actuales:** —
 
-**Próximos:** **#497 — Permisos blandos (ADR-013).** Refactor backend mecánico (~2-3 días) que limpia la base de permisos. Cerrará el filtrado por rol del sidebar que en #498 quedó como compat.
+**Próximos:** **#499 — ADR-015 Scaffolding React islas.** Reestructura `react-diagramas/` → `react-src/`, prepara multi-bundle, helpers de auth/permisos/API. ~1 semana.
 
 ## Hoja de ruta — Bloque UI: Implementación del revamping
 
@@ -18,7 +18,7 @@ Toda la fase de diseño está cerrada (auditoría UI, estudio de usuario, invent
 
 Orden técnico recomendado de implementación (dependencias de las cabeceras hacia abajo):
 
-1. **#497 — ADR-013 Permisos blandos generalizados.** Refactor backend mecánico. No bloquea otros pero limpia base. ~2-3 días.
+1. ~~**#497 — ADR-013 Permisos blandos generalizados.**~~ ✅ Cerrado. Dict `PERMISOS` con pares `acceder_X`/`gestionar_X`; sidebar único para todos los roles.
 2. ~~**#498 — ADR-014 Layout único `base_app.html`.**~~ ✅ Cerrado. Shell de 7 áreas operativo; `lista_v2_base` y `base_bc` (deprecated) migrados a `base_app`; `base_fullwidth`/`base_acordeon`/`header` eliminados.
 3. **#499 — ADR-015 Scaffolding React islas.** Reestructura `react-diagramas/` → `react-src/`, prepara multi-bundle, helpers de auth/permisos/API. ~1 semana.
 4. **#503 — ADR-019 Smoke tests pytest (Fase 1).** Transversal. Conviene arrancar a la par que #497/#498 — convención "una vista nueva = un smoke test nuevo". ~3-5 días.
