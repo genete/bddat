@@ -6,11 +6,11 @@
 
 ---
 
-**Último cerrado:** Fase de diseño del revamping UI — 7 ADRs aprobados (#497 a #503), `DECISIONES_UI.md` como registro vivo. Issue #75 sustituido y cerrado.
+**Último cerrado:** #498 — Layout único `base_app.html` (ADR-014). Shell de 7 áreas operativo (topbar/sidebar/viewbar/main/inspector/dock/footer), tipografía corporativa Source Sans Pro activada, 28 templates migrados, base_fullwidth/base_acordeon/header viejos eliminados, 18 smoke tests pytest inaugurando la convención de #503.
 
 **Actuales:** —
 
-**Próximos:** **Implementación del revamping UI** — empezar por #497 (permisos blandos).
+**Próximos:** **#497 — Permisos blandos (ADR-013).** Refactor backend mecánico (~2-3 días) que limpia la base de permisos. Cerrará el filtrado por rol del sidebar que en #498 quedó como compat.
 
 ## Hoja de ruta — Bloque UI: Implementación del revamping
 
@@ -19,7 +19,7 @@ Toda la fase de diseño está cerrada (auditoría UI, estudio de usuario, invent
 Orden técnico recomendado de implementación (dependencias de las cabeceras hacia abajo):
 
 1. **#497 — ADR-013 Permisos blandos generalizados.** Refactor backend mecánico. No bloquea otros pero limpia base. ~2-3 días.
-2. **#498 — ADR-014 Layout único `base_app.html`.** Esqueleto sobre el que monta todo el resto. Sustituye `base_fullwidth`/`lista_v2_base`/`base_bc`/`base_acordeon`. ~1 semana.
+2. ~~**#498 — ADR-014 Layout único `base_app.html`.**~~ ✅ Cerrado. Shell de 7 áreas operativo; `lista_v2_base` y `base_bc` (deprecated) migrados a `base_app`; `base_fullwidth`/`base_acordeon`/`header` eliminados.
 3. **#499 — ADR-015 Scaffolding React islas.** Reestructura `react-diagramas/` → `react-src/`, prepara multi-bundle, helpers de auth/permisos/API. ~1 semana.
 4. **#503 — ADR-019 Smoke tests pytest (Fase 1).** Transversal. Conviene arrancar a la par que #497/#498 — convención "una vista nueva = un smoke test nuevo". ~3-5 días.
 5. **#500 — ADR-016 Vista de árbol del expediente.** Primera isla React productiva. Pieza estrella. Sustituye las 5 vistas `tramitacion_bc_*`. ~3-4 semanas.
