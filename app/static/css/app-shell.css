@@ -20,8 +20,9 @@
   --viewbar-height: 44px;
   --footer-height:  28px;
 
-  /* Sidebar */
-  --sidebar-width-expanded:  240px;
+  /* Sidebar (208px expandido en lugar de 240px del ADR — las etiquetas en
+     castellano son cortas y 240px dejaba ~130px vacíos a la derecha) */
+  --sidebar-width-expanded:  208px;
   --sidebar-width-collapsed: 56px;
 
   /* Inspector / Dock */
