@@ -6,11 +6,11 @@
 
 ---
 
-**Último cerrado:** #499 — Scaffolding React islas multi-bundle (ADR-015). `react-diagramas/`→`react-src/`; Vite multi-entry (ES modules) + `manifest.json`; helpers `shared/` (auth/api/ui) y Jinja (`react_bundle`, `user_ctx_attrs`); meta CSRF preparado (sin Flask-WTF aún); botón "Build React" en flask_console; guía `GUIA_REACT_ISLAS.md`. POC verificado con Playwright (0 errores de consola).
+**Último cerrado:** #503 — Smoke tests pytest Fase 1 (ADR-019). `tests/smoke/` con 15 ficheros y 20 tests; fixtures de rol vía `session_transaction` (`usuario_admin/supervisor/tramitador/administrativo`) + fixtures de datos (`expediente_seed`, `entidad_seed`, `plantilla_seed`, `primer_usuario_id`); convención "una vista nueva = un smoke test nuevo" documentada en `REGLAS_DESARROLLO.md`.
 
 **Actuales:** —
 
-**Próximos:** **#503 — ADR-019 Smoke tests pytest (Fase 1).** Transversal; convención «una vista nueva = un smoke test nuevo». ~3-5 días.
+**Próximos:** **#500 — ADR-016 Vista de árbol del expediente.** Primera isla React productiva. Sustituye las 5 vistas `tramitacion_bc_*`. ~3-4 semanas.
 
 ## Hoja de ruta — Bloque UI: Implementación del revamping
 
@@ -21,7 +21,7 @@ Orden técnico recomendado de implementación (dependencias de las cabeceras hac
 1. ~~**#497 — ADR-013 Permisos blandos generalizados.**~~ ✅ Cerrado. Dict `PERMISOS` con pares `acceder_X`/`gestionar_X`; sidebar único para todos los roles.
 2. ~~**#498 — ADR-014 Layout único `base_app.html`.**~~ ✅ Cerrado. Shell de 7 áreas operativo; `lista_v2_base` y `base_bc` (deprecated) migrados a `base_app`; `base_fullwidth`/`base_acordeon`/`header` eliminados.
 3. ~~**#499 — ADR-015 Scaffolding React islas.**~~ ✅ Cerrado. `react-diagramas/`→`react-src/`, multi-bundle ES + manifest, helpers `shared/` + Jinja, POC verificado con Playwright.
-4. **#503 — ADR-019 Smoke tests pytest (Fase 1).** Transversal. Conviene arrancar a la par que #497/#498 — convención "una vista nueva = un smoke test nuevo". ~3-5 días.
+4. ~~**#503 — ADR-019 Smoke tests pytest (Fase 1).**~~ ✅ Cerrado. `tests/smoke/` 20 tests; fixtures por rol vía `session_transaction`; convención documentada en REGLAS_DESARROLLO.
 5. **#500 — ADR-016 Vista de árbol del expediente.** Primera isla React productiva. Pieza estrella. Sustituye las 5 vistas `tramitacion_bc_*`. ~3-4 semanas.
 6. **#501 — ADR-017 Vista "Mi trabajo" del administrativo.** Reutiliza el árbol como destino de acción. ~2-3 semanas.
 7. **#502 — ADR-018 Command Palette (Ctrl+K).** En M4 — Pre-producción, no M2. ~1-2 semanas cuando llegue su momento.
