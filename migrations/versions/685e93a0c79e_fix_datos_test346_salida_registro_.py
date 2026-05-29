@@ -17,17 +17,7 @@ depends_on = None
 
 
 def upgrade():
-    # test_346: REGISTRO_INTERESADOS (tipo_tramite_id=31) le faltaba la fila SALIDA
-    # en tramites_tareas_documentos. Mismo patrón que el resto de tareas ANALIZAR orden=1.
-    op.execute("""
-        INSERT INTO public.tramites_tareas_documentos
-            (tipo_tramite_id, orden_tarea, rol, tipo_documento_id, obligatorio)
-        VALUES (31, 1, 'SALIDA', 15, true)
-        ON CONFLICT DO NOTHING
-    """)
-
-    # test_448: norma_origen de CIERRE en catalogo_plazos desactualizada.
-    # RD 88/2026 modifica el art. 138 RD 1955/2000.
+    # RD 88/2026 modifica el art. 138 RD 1955/2000 — actualizar cita en catálogo de plazos.
     op.execute("""
         UPDATE public.catalogo_plazos
         SET norma_origen = 'Art. 138 RD 1955/2000 (mod. RD 88/2026)'
@@ -37,10 +27,6 @@ def upgrade():
 
 
 def downgrade():
-    op.execute("""
-        DELETE FROM public.tramites_tareas_documentos
-        WHERE tipo_tramite_id = 31 AND orden_tarea = 1 AND rol = 'SALIDA'
-    """)
     op.execute("""
         UPDATE public.catalogo_plazos
         SET norma_origen = 'Art. 138 RD 1955/2000'
