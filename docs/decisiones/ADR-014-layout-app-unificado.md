@@ -19,7 +19,7 @@ Más `base_login.html` para vista no autenticada.
 
 La auditoría UI (fase 1) y el análisis crítico (fase 3) detectaron tres problemas estructurales:
 
-1. **El layout es 1D vertical**. No admite sidebar lateral persistente ni paneles laterales/inferiores. La vista de expediente del revamping necesita un modelo **workbench** (sidebar + main + aside + panel-bottom).
+1. **El layout es 1D vertical**. No admite sidebar lateral persistente ni paneles laterales/inferiores. La vista de expediente del revamping necesita un modelo **workbench** (sidebar + main + inspector + dock).
 2. **Tres iteraciones fallidas en la vista de tramitación** (acordeón → tabs → breadcrumbs) sintomatizan que un stack vertical no comunica la jerarquía completa del expediente.
 3. **El header acumula funciones** (logo + módulos horizontales + breadcrumb + usuario + hamburguesa). Con el sidebar persistente decidido en la fase 3, varias funciones del header pasan al sidebar o a un patrón distinto.
 
@@ -37,22 +37,42 @@ Se consolida `base_app.html` como **único template base** para todas las vistas
 
 Grid CSS 2D con áreas nombradas. Cinco zonas, dos de ellas opcionales:
 
+### Modo página (sin inspector ni dock)
+
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│ HEADER (56px) — siempre                                             │
-├──────────┬──────────────────────────────────────────┬───────────────┤
-│ SIDEBAR  │ MAIN (1fr)                               │ ASIDE         │
-│ (60/240) │   ├─ main_header (opcional, sticky)      │ (380px,       │
-│ siempre  │   └─ content                             │  opcional)    │
-│          ├──────────────────────────────────────────┴───────────────┤
-│          │ PANEL-BOTTOM (240px, opcional)                           │
-├──────────┴──────────────────────────────────────────────────────────┤
-│ FOOTER — siempre                                                    │
-└─────────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────┐
+│ topbar (56px fijo) — siempre                                         │
+├──────────┬───────────────────────────────────────────────────────────┤
+│          │ viewbar — siempre                                         │
+│ sidebar  ├───────────────────────────────────────────────────────────┤
+│ (60/208) │                                                           │
+│ siempre  │ main (1fr)                                                │
+│          │                                                           │
+├──────────┴───────────────────────────────────────────────────────────┤
+│ footer — siempre                                                     │
+└──────────────────────────────────────────────────────────────────────┘
 ```
 
-- **Header, sidebar, main y footer**: siempre presentes.
-- **Aside derecho y panel inferior**: opcionales. Solo se renderizan si la vista define los bloques Jinja correspondientes; si no, el CSS Grid colapsa esas áreas a `0fr`.
+### Modo workbench (con inspector y dock activos)
+
+```
+┌──────────────────────────────────────────────────────────────────────┐
+│ topbar (56px fijo) — siempre                                         │
+├──────────┬─────────────────────────────────────────┬─────────────────┤
+│          │ viewbar — siempre                        │                 │
+│ sidebar  ├─────────────────────────────────────────┤  inspector      │
+│ (60/208) │                                         │  (380px,        │
+│ siempre  │ main (1fr)                              │  opcional)      │
+│          │                                         │                 │
+│          ├─────────────────────────────────────────┴─────────────────┤
+│          │ dock (240px, opcional)                                     │
+├──────────┴───────────────────────────────────────────────────────────┤
+│ footer — siempre                                                     │
+└──────────────────────────────────────────────────────────────────────┘
+```
+
+- **topbar, sidebar, viewbar, main y footer**: siempre presentes.
+- **inspector y dock**: opcionales. Solo se renderizan si la vista define los bloques Jinja correspondientes; si no, el CSS Grid colapsa esas áreas a `0fr`.
 
 ### 3. Slots Jinja
 
@@ -61,15 +81,15 @@ Grid CSS 2D con áreas nombradas. Cinco zonas, dos de ellas opcionales:
 | Bloque | Obligatorio | Propósito |
 |---|---|---|
 | `title` | sí | Título de la pestaña del navegador |
-| `main_header` | no | Cabecera contextual sticky dentro del main (título de página, acciones, tabs) |
+| `viewbar` | no | Cabecera contextual de la vista (título, acciones, resumen) |
 | `content` | sí | Contenido principal |
-| `aside_right` | no | Panel lateral derecho (pool documentos, detalle nodo, etc.) |
-| `panel_bottom` | no | Panel inferior (bitácora, alertas, plazos vivos) |
-| `aside_state` | no | `"open"` / `"closed"` — estado inicial del aside |
-| `panel_state` | no | `"open"` / `"closed"` — estado inicial del panel |
+| `inspector` | no | Panel lateral derecho (detalle nodo, pool documentos, etc.) |
+| `dock` | no | Panel inferior (bitácora, alertas, plazos vivos) |
+| `inspector_state` | no | `"open"` / `"closed"` — estado inicial del inspector |
+| `dock_state` | no | `"open"` / `"closed"` — estado inicial del dock |
 | `extra_css` / `extra_js` | no | Recursos adicionales por vista |
 
-Vistas tipo "página" (listado, formulario, detalle simple) no definen `aside_right` ni `panel_bottom` y main ocupa el 100% del espacio. Vistas tipo "workbench" (expediente) los definen y reciben el grid 2D completo.
+Vistas tipo "página" (listado, formulario, detalle simple) no definen `{% block inspector %}` ni `{% block dock %}` y main ocupa el 100% del espacio. Vistas tipo "workbench" (expediente) los definen y reciben el grid 2D completo.
 
 ### 4. Sidebar persistente con chevron de colapsar/expandir
 
@@ -106,7 +126,7 @@ Elementos retirados del header:
 |---|---|
 | `base_fullwidth.html` | renombrado / sustituido por `base_app.html` |
 | `lista_v2_base.html` | mantenido como mixin opcional o absorbido en `base_app.html` (decidir en implementación) |
-| `base_bc.html` | eliminado — sustituido por una única vista de expediente que usa `base_app.html` con `aside_right` y `panel_bottom` definidos |
+| `base_bc.html` | eliminado — sustituido por una única vista de expediente que usa `base_app.html` con `{% block inspector %}` y `{% block dock %}` definidos |
 | `base_acordeon.html` | eliminado (huérfano confirmado) |
 | `base_login.html` | sin cambios — sigue siendo template separado para vista no autenticada |
 
@@ -119,13 +139,13 @@ Elementos retirados del header:
 - **Workbench como patrón, no como template**: la vista de expediente es `base_app.html` con todos los slots activos. Si en el futuro la vista del administrativo necesita un patrón similar, se materializa sin nuevo template.
 - **Sidebar persistente decidido de facto**: cierra la decisión 5.4 del análisis crítico fase 3.
 - **Header simplificado** elimina la deuda acumulada (module-nav + breadcrumb + hamburguesa) en un solo movimiento.
-- **Cierre de los tres intentos fallidos** (acordeón / tabs / BC) para la vista de tramitación: el slot `aside_right` y el `panel_bottom` dan espacio para mostrar el árbol del expediente + detalle simultáneamente, que es lo que las tres iteraciones intentaron sin conseguirlo en un layout 1D.
+- **Cierre de los tres intentos fallidos** (acordeón / tabs / BC) para la vista de tramitación: el inspector y el dock dan espacio para mostrar el árbol del expediente + detalle simultáneamente, que es lo que las tres iteraciones intentaron sin conseguirlo en un layout 1D.
 
 ---
 
 ## Cómo implementar
 
-1. **CSS Grid con `grid-template-areas`** en `app/static/css/v2-layout.css` (sustituyendo el grid actual). Áreas: `header`, `sidebar`, `main`, `aside`, `panel`, `footer`. Columnas y filas se adaptan según los `data-aside` y `data-panel` del shell.
+1. **CSS Grid con `grid-template-areas`** en `app/static/css/v2-layout.css` (sustituyendo el grid actual). Áreas: `topbar`, `sidebar`, `viewbar`, `main`, `inspector`, `dock`, `footer`. Columnas y filas se adaptan según los `data-inspector` y `data-dock` del shell.
 2. **Construir `app/templates/layout/base_app.html`** con la estructura descrita. Incluir partials `layout/_header.html` (nuevo, simplificado), `layout/_sidebar.html` (nuevo), `layout/_footer.html` (existente, conservar).
 3. **Sidebar con metadata**: el sidebar se genera desde `app/metadata.json` (mismo origen que el `module_nav` actual). Cada entrada lleva icono Bootstrap Icons + label + ruta + condición opcional de visibilidad (que tras ADR-013 será casi siempre `True`).
 4. **JS mínimo para colapsar/expandir** sidebar y paneles. Estado en `localStorage`. ~30 líneas vanilla.
