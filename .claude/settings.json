@@ -3,7 +3,8 @@
     "allow": [
       "Bash(mv /d/BDDAT/docs_prueba/temp/*)",
       "Bash(mv D:/BDDAT/docs_prueba/temp/*)",
-      "Bash(PYTHONPATH=/d/BDDAT venv/Scripts/python.exe -m pytest *)"
+      "Bash(PYTHONPATH=/d/BDDAT venv/Scripts/python.exe -m pytest *)",
+      "mcp__ccd_session_mgmt__search_session_transcripts"
     ]
   }
 }
