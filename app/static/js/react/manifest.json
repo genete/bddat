@@ -1,0 +1,11 @@
+{
+  "src/diagrama-esftt/index.jsx": {
+    "file": "bundle.diagrama-esftt.Cc_asUKw.js",
+    "name": "diagrama-esftt",
+    "src": "src/diagrama-esftt/index.jsx",
+    "isEntry": true,
+    "css": [
+      "asset.diagrama-esftt.BYfMoe3K.css"
+    ]
+  }
+}

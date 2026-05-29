@@ -117,6 +117,11 @@ def create_app(config_name='development'):
     from app.utils.permisos import tiene_permiso
     app.jinja_env.globals['tiene_permiso'] = tiene_permiso
 
+    # Globals Jinja2 — montaje de islas React (#499, ADR-015)
+    from app.utils.react_islas import react_bundle, user_ctx_attrs
+    app.jinja_env.globals['react_bundle'] = react_bundle
+    app.jinja_env.globals['user_ctx_attrs'] = user_ctx_attrs
+
     # Context processor — inyecta navegación de módulos en todos los templates
     @app.context_processor
     def inject_module_nav():
