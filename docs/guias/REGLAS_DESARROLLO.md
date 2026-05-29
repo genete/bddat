@@ -62,6 +62,22 @@ No hay excepciones por "es pequeño" o "es evidente".
 
 ---
 
+## Tests
+
+### Smoke tests pytest (ADR-019 Fase 1)
+
+**Convención: cada PR que introduce una nueva vista debe añadir su smoke test en el mismo PR.**
+
+- Ubicación: `tests/smoke/test_smoke_<vista>.py`
+- Un fichero por vista (o dominio relacionado).
+- Contenido mínimo: `GET <ruta>` → `assert status_code == 200` + `assert b'class="app-main"' in r.data`.
+- Login via fixture de rol: `usuario_admin`, `usuario_supervisor`, `usuario_tramitador`, `usuario_administrativo` (definidos en `tests/conftest.py`).
+- Si la vista necesita datos (expediente, entidad…): usar `expediente_seed` o consultar `Model.query.first()` + `pytest.skip` si no hay datos.
+- Vistas sin login: usar `client` directamente.
+- Los smoke tests se ejecutan con el resto de la suite pytest (`pytest tests/`). No hay configuración separada.
+
+---
+
 ## Commits
 
 Formato: `[CATEGORÍA] #N descripción en imperativo`
