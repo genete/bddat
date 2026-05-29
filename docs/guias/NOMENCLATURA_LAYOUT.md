@@ -54,7 +54,7 @@
 | 3 | Cabecera contextual de la vista | **viewbar** | `viewbar` | `.app-viewbar` | `{% block viewbar %}` | `<header>` |
 | 4 | Cuerpo de la vista | **main** | `main` | `.app-main` | `{% block content %}` | `<main>` |
 | 5 | Panel lateral derecho | **inspector** | `inspector` | `.app-inspector` | `{% block inspector %}` | `<aside>` |
-| 6 | Panel inferior | **dock** | `dock` | `.app-dock` | `{% block dock %}` | `<section>` |
+| 6 | Panel inferior | **dock** | `dock` | `.app-dock` | (partial) | `<section>` |
 | 7 | Pie global | **footer** | `footer` | `.app-footer` | (partial) | `<footer>` |
 
 ---
@@ -62,10 +62,10 @@
 ## Cuándo se activa cada área opcional
 
 - **topbar, sidebar, viewbar, main, footer**: siempre presentes en `base_app.html`.
+- **dock**: siempre presente en `base_app.html` como partial de chrome global. Su visibilidad la controla el usuario mediante la campana 🔔 del topbar (toggle). Estado en `localStorage` (`bddat.dock.open`). Las vistas no lo definen ni lo sobreescriben. Ver ADR-020.
 - **inspector**: opcional. Se activa cuando la vista define `{% block inspector %}...{% endblock %}`. Si no, el grid colapsa esa columna a `0fr`.
-- **dock**: opcional. Se activa cuando la vista define `{% block dock %}...{% endblock %}`. Si no, el grid colapsa esa fila a `0fr`.
 
-Una vista de listado/formulario no define ni inspector ni dock — automáticamente queda en "modo página". Una vista tipo workbench (expediente) los define ambos y queda en "modo workbench".
+Una vista de listado/formulario no define inspector — queda en "modo página" (main ocupa el 100% horizontal). Una vista tipo workbench (expediente) define el inspector y queda en "modo workbench". El dock está presente en ambos modos.
 
 ---
 

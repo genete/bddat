@@ -33,6 +33,7 @@ El **análisis crítico es snapshot inmutable** del estado de reflexión al 28-m
 | **ADR-017** | Vista "Mi trabajo" del administrativo — cola común de tareas pendientes + subida de docs al pool. Reutiliza el árbol como destino de acción. Amplía permisos con `gestionar_tareas` y `gestionar_estructura_expediente` | #501 | 2026-05-28 |
 | **ADR-018** | Command Palette (Ctrl+K) — búsqueda global de expedientes/entidades + navegación + recientes. Versión básica en M4, iteraciones extendidas en M5. Sustituye #75 | #502 (M4) | 2026-05-28 |
 | **ADR-019** | Estrategia de tests UI por 3 fases. Fase 1 (durante revamping): solo smoke tests pytest + verificación manual Playwright MCP. NO E2E ni RTL hasta que la UI estabilice | #503 | 2026-05-28 |
+| **ADR-020** | Dock global: deja de ser slot Jinja por vista y pasa a chrome global (partial del shell). Toggle vía campana del topbar. Dos tabs verticales: Bitácora (por usuario, BD) + Avisos (toasts de sesión, sessionStorage). Badge de no leídos, modal por tab, botón limpiar | #506 | 2026-05-29 |
 
 ---
 
@@ -50,7 +51,8 @@ El **análisis crítico es snapshot inmutable** del estado de reflexión al 28-m
 
 | # | Decisión | Origen | Próximo paso | Bloqueada por |
 |---|---|---|---|---|
-| **5.3-bis** | Contenidos concretos del inspector (refinamiento por nivel, dock con 3 tabs, resumen-mini de pistas en viewbar) | ANALISIS_CRITICO §2.7 + ADR-016 §15 | Refinable en implementación de #500; no requiere ADR específico | — |
+| **5.3-bis** | Contenidos concretos del inspector por nivel (refinamiento adaptativo Solicitud/Fase/Trámite/Tarea) | ADR-016 §15 | Refinable en implementación de #500 | — |
+| **5.3-ter** | Viewbar del expediente: contenido exacto, mini-indicadores de alertas del motor y plazos vivos (migrados del dock por ADR-020) | ADR-020 + ANALISIS_CRITICO §2.7 | Diseño pendiente — discutir antes de implementar #500 | — |
 | **5.5** | Sub-stack React concreto: librerías específicas (cmdk, react-arborist, etc.), state management si crece, data fetching avanzado si se necesita | ANALISIS_CRITICO §5.5 + ADR-015 §6 | Decisión por isla en su implementación | — (incremental) |
 | ~~**5.6**~~ | ~~Mini-estudio del administrativo antes de diseñar su vista~~ → **Resuelta: NO se hace mini-estudio** (supervisor conoce el flujo). Diseño cerrado en ADR-017 #501 | — | cerrada | — |
 | ~~**5.7**~~ | ~~Tests UI mínimos~~ → **Cerrada en ADR-019 #503**. Estrategia por 3 fases. Fase 1 inmediata = solo smoke tests pytest | — | cerrada | — |
@@ -101,6 +103,7 @@ De ANALISIS_CRITICO §6:
 - **2026-05-28** — ADR-017 cerrado (#501). Vista "Mi trabajo" del administrativo + ampliación de permisos.
 - **2026-05-28** — ADR-018 cerrado (#502 M4, sustituye #75). Command Palette (Ctrl+K) versión básica.
 - **2026-05-28** — ADR-019 cerrado (#503). Estrategia de tests UI por 3 fases. Fase 1 inmediata: smoke tests pytest.
+- **2026-05-29** — ADR-020 cerrado (#506). Dock global: chrome partial + toggle campana topbar + tabs Bitácora/Avisos.
 
 ---
 

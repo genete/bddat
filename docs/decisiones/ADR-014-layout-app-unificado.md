@@ -84,12 +84,12 @@ Grid CSS 2D con áreas nombradas. Cinco zonas, dos de ellas opcionales:
 | `viewbar` | no | Cabecera contextual de la vista (título, acciones, resumen) |
 | `content` | sí | Contenido principal |
 | `inspector` | no | Panel lateral derecho (detalle nodo, pool documentos, etc.) |
-| `dock` | no | Panel inferior (bitácora, alertas, plazos vivos) |
 | `inspector_state` | no | `"open"` / `"closed"` — estado inicial del inspector |
-| `dock_state` | no | `"open"` / `"closed"` — estado inicial del dock |
 | `extra_css` / `extra_js` | no | Recursos adicionales por vista |
 
-Vistas tipo "página" (listado, formulario, detalle simple) no definen `{% block inspector %}` ni `{% block dock %}` y main ocupa el 100% del espacio. Vistas tipo "workbench" (expediente) los definen y reciben el grid 2D completo.
+El dock **no es un bloque Jinja**: es un partial de chrome global incluido siempre en el shell (ver ADR-020). Las vistas no lo definen ni lo sobreescriben.
+
+Vistas tipo "página" (listado, formulario, detalle simple) no definen `{% block inspector %}` y main ocupa el 100% del espacio horizontal. Vistas tipo "workbench" (expediente) definen el inspector y reciben el grid 2D completo.
 
 ### 4. Sidebar persistente con chevron de colapsar/expandir
 
@@ -111,7 +111,7 @@ El header pasa a tener **cuatro elementos**:
 
 - **Marca** (logo + nombre): enlace a dashboard.
 - **Búsqueda global** (Ctrl+K): command palette — operación primaria de localización (decisión 5.5 fase 3, varita mágica de fase 2).
-- **Notificaciones** (icono campana): placeholder por ahora; futuro para alertas del motor, plazos vencidos, etc.
+- **Notificaciones** (icono campana): toggle del dock. Abre y cierra el panel inferior global (bitácora por usuario + avisos de sesión). Ver ADR-020.
 - **Menú usuario**: nombre + badge de rol activo + dropdown (cambiar rol, perfil, logout).
 
 Elementos retirados del header:

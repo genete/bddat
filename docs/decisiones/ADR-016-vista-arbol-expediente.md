@@ -284,14 +284,15 @@ Diferida. La viewbar puede preparar el espacio para un toggle "🌳 árbol / �
 
 Propuesta planteada en discusión: en la viewbar de la vista de expediente, mostrar las 5 pistas del seguimiento (SOL / CONSULTAS / MA / IP / RES) con sus colores actuales como recordatorio permanente del estado. Refinable en implementación; no afecta a la decisión del árbol.
 
-#### Contenido específico del inspector y del dock
+#### Contenido específico del inspector
 
-Propuestas esbozadas en discusión:
+Propuesta esbozada en discusión: cabecera del nodo + datos completos + documentos asociados + estado de plazo + acciones rápidas + (en edición) despensa adaptativa.
 
-- **Inspector** contiene: cabecera del nodo + datos completos + documentos asociados + estado de plazo + acciones rápidas + (en edición) despensa adaptativa.
-- **Dock** contiene 3 tabs: 📜 Bitácora del expediente / 🔔 Alertas del motor activas / 🕓 Plazos vivos.
+Refinable en implementación sin afectar al esqueleto.
 
-Refinables en implementación sin afectar al esqueleto.
+#### Dock
+
+La propuesta original de 3 tabs (Bitácora / Alertas motor / Plazos vivos) quedó **anulada por ADR-020**: el dock pasó a ser chrome global con bitácora por usuario y avisos de sesión. Las alertas del motor activas y los plazos vivos quedan pendientes de asignación a la viewbar (diseño futuro).
 
 ---
 
@@ -308,7 +309,7 @@ Refinables en implementación sin afectar al esqueleto.
    - Permisos vía `tienePermiso()` leído del data-attribute inyectado por Jinja (ADR-013).
 5. **Tematizado de xyflow** para que respete paleta Bootstrap + JdA. Documentar el patrón.
 6. **Template Jinja** `app/templates/expedientes/arbol.html` que extiende `base_app.html`:
-   - `aside_state="open"`, `panel_state="open"`.
+   - `inspector_state="open"` (el dock es chrome global, no se configura por vista).
    - Monta `<div id="app-root" data-expediente-id="..." data-user="..." data-permisos="...">`.
 7. **Ruta Flask** `GET /expedientes/<id>/arbol` con `@require_permiso('acceder_expediente')` (ADR-013).
 8. **Smoke test** Playwright MCP del flujo: cargar, seleccionar, entrar en edición, crear hijo desde despensa, guardar, cancelar.
