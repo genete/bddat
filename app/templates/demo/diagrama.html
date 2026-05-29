@@ -31,27 +31,16 @@
       <span class="badge bg-secondary">POC #291</span>
     </div>
     <div class="card-body p-0">
-      {# Contenedor donde React monta el diagrama #}
-      <div id="diagrama-esftt-root" class="diagrama-esftt-wrapper"></div>
+      {# Contenedor de la isla React (auto-montaje por data-react-island). #}
+      <div id="app-root" class="diagrama-esftt-wrapper"
+           data-react-island="diagrama-esftt" {{ user_ctx_attrs() }}></div>
     </div>
   </div>
 </div>
 {% endblock %}
 
-{% block extra_css %}
-{# CSS de ReactFlow extraído por Vite build — debe cargarse antes del bundle #}
-<link rel="stylesheet" href="{{ url_for('static', filename='js/react/diagrama-esftt.css') }}">
-{% endblock %}
-
 {% block extra_js %}
-{# Bundle IIFE — incluye React y ReactFlow #}
-<script src="{{ url_for('static', filename='js/react/diagrama-esftt.iife.js') }}"></script>
-<script>
-  document.addEventListener('DOMContentLoaded', function () {
-    var el = document.getElementById('diagrama-esftt-root');
-    if (el && window.DiagramaEsftt) {
-      window.DiagramaEsftt.mount(el);
-    }
-  });
-</script>
+{# Isla React: react_bundle() emite los <link>/<script type=module> con el hash
+   actual del manifest. La isla se auto-monta en [data-react-island]. (#499) #}
+{{ react_bundle('diagrama-esftt') }}
 {% endblock %}

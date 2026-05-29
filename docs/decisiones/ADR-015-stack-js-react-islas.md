@@ -68,6 +68,10 @@ Vite + Rollup (ya en uso en `react-diagramas/`). Configuración:
 - **Modo producción**: `npm run build` genera bundles IIFE en `app/static/js/react/`. Flask los sirve estáticos. Hash en filename para cache busting.
 - **Script `flask_console.py` extendido** con botón "Build React" para no salir de la GUI.
 
+> **Nota de implementación (#499).** Al construir el scaffolding se afinaron dos puntos de §4:
+> - **Modo desarrollo = rebuild**, no HMR. `npm run dev` (Vite standalone) sigue disponible para iterar un componente aislado, pero el flujo sobre Flask es "Build React → recargar". El HMR integrado en Flask (helper `react_bundle` ramificado dev/prod) se pospone a #500, donde la iteración del árbol del expediente lo justifica; meterlo ahora sería complejidad sin caso de uso.
+> - **Formato ES modules**, no IIFE. IIFE en Vite solo admite una entry por build y duplicaría React en cada isla. Con módulos ES (`<script type="module">`) las islas comparten React y chunks comunes, y Vite genera el `manifest.json` (nombre→hash) que lee `react_bundle()`.
+
 ### 5. Estructura de carpetas
 
 ```

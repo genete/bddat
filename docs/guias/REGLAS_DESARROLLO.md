@@ -10,6 +10,7 @@
 | Cierre de milestone | Releases |
 | Decisión de diseño | Decisiones arquitectónicas |
 | Nueva ruta o template con expediente / rol | Control de acceso |
+| Isla React (nueva o cambio) | React (islas) · `docs/guias/GUIA_REACT_ISLAS.md` |
 
 ---
 
@@ -201,3 +202,13 @@ Cuando se use un código nuevo en cualquier servicio, añadirlo en `app/checks/c
 ### Notificaciones
 
 `flash()` con toasts Bootstrap, categorías `success/danger/warning/info`. Nunca modales para notificaciones.
+
+---
+
+## React (islas)
+
+Stack JS del revamping: islas React sobre templates Jinja (ADR-015). Detalle operativo y cómo crear una isla: `docs/guias/GUIA_REACT_ISLAS.md`.
+
+- **CSS único:** los componentes React usan **exclusivamente clases de Bootstrap 5.3 + CDN JdA**. Prohibido Tailwind, Material UI, shadcn/ui o cualquier librería con sistema visual propio. Toda librería externa con CSS propio (xyflow, cmdk, react-arborist…) requiere un **pase de tematizado documentado** que sobrescriba sus variables/clases con la paleta JdA.
+- **Auth:** las islas no autentican. Leen permisos del data-attribute inyectado por Jinja (`user_ctx_attrs()`) solo para condicionar la UI. La autorización real la imponen los decoradores del backend (ver Control de acceso).
+- **Build:** una isla = una entry en `react-src/vite.config.js`. Compilar con el botón "Build React" de `flask_console.py` o `scripts/build_react.sh`. Montar con `{{ react_bundle('nombre') }}` + `<div data-react-island="nombre">`.

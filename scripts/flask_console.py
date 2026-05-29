@@ -9,13 +9,14 @@ from datetime import datetime
 
 BDDAT_DIR = r"D:\BDDAT"
 VENV_PYTHON = r"D:\BDDAT\venv\Scripts\python.exe"
+REACT_DIR = os.path.join(BDDAT_DIR, "react-src")  # bundles React (#499)
 
 
 class FlaskControlGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("BDDAT - Flask Server Control")
-        self.root.geometry("650x580")
+        self.root.geometry("780x600")
         self.process = None
 
         # --- Botones de control del servidor ---
@@ -40,6 +41,16 @@ class FlaskControlGUI:
             state=tk.DISABLED,
         )
         self.btn_stop.grid(row=0, column=1, padx=5)
+
+        # Compilar bundles React (#499) — npm install + npm run build en react-src
+        self.btn_build_react = tk.Button(
+            control_frame,
+            text="Build React",
+            command=self.build_react,
+            width=20,
+            font=("Arial", 10),
+        )
+        self.btn_build_react.grid(row=0, column=2, padx=5)
 
         # --- Opción de red ---
         network_frame = tk.Frame(root)
@@ -245,6 +256,45 @@ class FlaskControlGUI:
         self.btn_stop.config(state=tk.DISABLED)
         # Volver a habilitar el checkbox al detener
         self.chk_network.config(state=tk.NORMAL)
+
+    def build_react(self):
+        """Compila los bundles React (#499): npm install + npm run build en react-src."""
+        self.btn_build_react.config(state=tk.DISABLED)
+        self.status_label.config(text="Estado: Compilando bundles React...", fg="orange")
+        self.log_area.insert(tk.END, "\n" + "=" * 60 + "\n", "cyan")
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        self.log_area.insert(tk.END, f"Build React - {timestamp}\n", "bright_green")
+        self.log_area.insert(tk.END, f"Directorio: {REACT_DIR}\n", "yellow")
+        self.log_area.insert(tk.END, "=" * 60 + "\n\n", "cyan")
+        threading.Thread(target=self._run_build_react, daemon=True).start()
+
+    def _run_build_react(self):
+        # npm.cmd en Windows (npm.ps1 lo bloquea PowerShell); npm en el resto.
+        npm = "npm.cmd" if os.name == "nt" else "npm"
+        try:
+            for fase in ("install", "run build"):
+                self.log_area.insert(tk.END, f"--- {npm} {fase} ---\n", "blue")
+                proc = subprocess.Popen(
+                    [npm] + fase.split(),
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    text=True,
+                    cwd=REACT_DIR,
+                    env={**os.environ, "FORCE_COLOR": "1", "PYTHONUNBUFFERED": "1"},
+                )
+                for line in iter(proc.stdout.readline, ""):
+                    if line:
+                        self.insert_colored_text(line)
+                proc.wait()
+                if proc.returncode != 0:
+                    raise RuntimeError(f"'{npm} {fase}' devolvio codigo {proc.returncode}")
+            self.log_area.insert(tk.END, "\n=== Build React completado ===\n", "bright_green")
+            self.status_label.config(text="Estado: Build React completado", fg="green")
+        except Exception as e:
+            self.log_area.insert(tk.END, f"\nERROR en Build React:\n{str(e)}\n", "red")
+            self.status_label.config(text="Estado: Error en Build React", fg="red")
+        finally:
+            self.btn_build_react.config(state=tk.NORMAL)
 
     def copy_logs(self):
         try:
