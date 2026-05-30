@@ -106,6 +106,24 @@ def detalle(id):
     return render_template('expedientes/detalle.html', expediente=expediente, modo='ver')
 
 
+@bp.route('/<int:id>/arbol')
+@login_required
+def arbol(id):
+    """Vista de árbol del expediente (#500, ADR-016): isla React 'expediente-arbol'.
+
+    El árbol y su detalle se sirven vía API (/api/expedientes/<id>/arbol). Aquí solo
+    se renderiza el contenedor de la isla; el control de acceso real lo imponen tanto
+    esta ruta como cada endpoint de la API.
+    """
+    expediente = Expediente.query.get_or_404(id)
+
+    resultado = verificar_acceso_expediente(expediente, 'ver')
+    if resultado:
+        return resultado
+
+    return render_template('expedientes/arbol.html', expediente=expediente)
+
+
 @bp.route('/<int:id>/editar', methods=['GET', 'POST'])
 @login_required
 def editar(id):

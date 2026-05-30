@@ -1,0 +1,25 @@
+/* arbol.css — estilos de la isla del árbol (#500, ADR-016 §2).
+ *
+ * ANDAMIAJE: aquí solo va lo ESTRUCTURAL (que el lienzo tenga altura). El
+ * TEMATIZADO de xyflow (--xy-* → paleta JdA + modulación por estado) y la
+ * estética de los nodos se definen en la conversación de "formas y colores".
+ */
+
+/* El contenedor de la isla ocupa toda el área app-main del shell. ReactFlow
+ * exige que su contenedor tenga dimensiones explícitas. */
+[data-react-island="expediente-arbol"] {
+  display: block;
+  height: 100%;
+  min-height: 0;
+}
+
+/* El wrapper directo de <ReactFlow> también necesita altura completa. */
+[data-react-island="expediente-arbol"] .react-flow {
+  height: 100%;
+}
+
+/* ───────────────────────────────────────────────────────────────────────────
+ * TEMATIZADO xyflow (pendiente — conversación de formas/colores).
+ * Ejemplo del patrón a rellenar:
+ *   .react-flow { --xy-edge-stroke: var(--bs-border-color); }
+ * ─────────────────────────────────────────────────────────────────────────── */

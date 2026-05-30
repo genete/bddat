@@ -1,0 +1,21 @@
+{# arbol.html — Vista de árbol del expediente (#500, ADR-016).
+
+   Isla React "expediente-arbol" montada sobre base_app. La viewbar de la isla
+   (cabecera + toggle "Colapsar finalizados") vive dentro del propio componente;
+   el slot viewbar de base_app conserva su default (código AT + bombilla de acceso).
+   El inspector/dock son chrome de S3: aquí no se definen esos slots. #}
+{% extends "layout/base_app.html" %}
+
+{% block title %}AT-{{ expediente.numero_at }} · Árbol{% endblock %}
+
+{% block content %}
+  <div id="app-root"
+       class="h-100"
+       data-react-island="expediente-arbol"
+       data-expediente-id="{{ expediente.id }}"
+       {{ user_ctx_attrs() }}></div>
+{% endblock %}
+
+{% block extra_js %}
+  {{ react_bundle('expediente-arbol') }}
+{% endblock %}

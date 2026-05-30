@@ -14,7 +14,8 @@ import { resolve } from 'path'
 // y un manifest.json (nombre con hash) que lee el helper Jinja react_bundle().
 // ---------------------------------------------------------------------------
 const ISLANDS = {
-  'diagrama-esftt': resolve(__dirname, 'src/diagrama-esftt/index.jsx'),
+  'diagrama-esftt':   resolve(__dirname, 'src/diagrama-esftt/index.jsx'),
+  'expediente-arbol': resolve(__dirname, 'src/expediente-arbol/index.jsx'),
 }
 
 export default defineConfig(({ command }) => {
