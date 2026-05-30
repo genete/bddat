@@ -47,6 +47,9 @@ Consultar cuando se trabaja ese subsistema. No cargar por defecto.
 - [ESTRUCTURA_ESF.md](referencia/ESTRUCTURA_ESF.md) — **fuente de verdad** (E-S-F): tablas de doble entrada por tipo de solicitud
 - [ESTRUCTURA_ESF.json](referencia/ESTRUCTURA_ESF.json) — derivado del MD anterior
 
+### Ecosistema externo
+- [DISEÑO_ECOSISTEMA_MANAGERS.md](referencia/DISEÑO_ECOSISTEMA_MANAGERS.md) — bandeja-manager, ptwanda-manager: arquitectura, integración con BDDAT, campo plataforma_codigo
+
 ### Visión
 - [PLAN_ESTRATEGIA.md](referencia/PLAN_ESTRATEGIA.md) — 14 bloques funcionales
 
