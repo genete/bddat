@@ -23,6 +23,7 @@ from app.models import (
     Proyecto, TipoIA, Usuario
 )
 from app.services.arbol_expediente import construir_arbol
+from app.services.tipos_creables import tipos_creables_de_nodo
 from app.utils.permisos import verificar_acceso_expediente
 
 # Blueprint para API
@@ -474,3 +475,31 @@ def get_arbol_expediente(expediente_id):
     if arbol is None:
         return jsonify({'error': 'Expediente no encontrado'}), 404
     return jsonify(arbol), 200
+
+
+# =============================================================================
+# ENDPOINT 4: Tipos de hijo creables bajo un nodo (despensa + menú, ADR-016 §16/§8)
+# =============================================================================
+
+@api_bp.route('/expedientes/<int:expediente_id>/nodo/<tipo>/<int:nodo_id>/tipos-creables', methods=['GET'])
+@login_required
+def get_tipos_creables(expediente_id, tipo, nodo_id):
+    """
+    GET .../nodo/<tipo>/<nodo_id>/tipos-creables — tipos de hijo creables (ADR-016 §16, §8).
+
+    <tipo> ∈ {expediente, solicitud, fase, tramite}. Fuente única para la despensa
+    de tipos del inspector y el submenú 'Crear hijo' del menú contextual. Cada tipo
+    llega marcado permitido/no-permitido (motor + modo global); los no-permitidos
+    incluyen norma + motivo para el 'Mostrar todos…' atenuado.
+    """
+    expediente = Expediente.query.get_or_404(expediente_id)
+
+    denegado = verificar_acceso_expediente(expediente)
+    if denegado:
+        return denegado
+
+    try:
+        data = tipos_creables_de_nodo(expediente, tipo, nodo_id)
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 404
+    return jsonify(data), 200
