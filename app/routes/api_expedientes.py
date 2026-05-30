@@ -22,6 +22,8 @@ from app.models import (
     Solicitud, Fase, TipoSolicitud, TipoFase,
     Proyecto, TipoIA, Usuario
 )
+from app.services.arbol_expediente import construir_arbol
+from app.utils.permisos import verificar_acceso_expediente
 
 # Blueprint para API
 api_bp = Blueprint('api', __name__, url_prefix='/api')
@@ -439,3 +441,36 @@ def get_jerarquia_expediente(expediente_id):
     }
 
     return jsonify(response), 200
+
+
+# =============================================================================
+# ENDPOINT 3: Árbol completo del expediente (Vista de árbol, ADR-016)
+# =============================================================================
+
+@api_bp.route('/expedientes/<int:expediente_id>/arbol', methods=['GET'])
+@login_required
+def get_arbol_expediente(expediente_id):
+    """
+    GET /api/expedientes/<id>/arbol — árbol completo para la vista de árbol (ADR-016).
+
+    Payload: ADR-016 §16 — JSON anidado de dominio (expediente → solicitudes →
+    fases → trámites → tareas) con decoradores por nodo, estado SEMÁNTICO (el color
+    lo pone el front en el tematizado de xyflow), plazos resueltos en backend y
+    agregadores de subárbol (§11) en cada nodo no-hoja.
+
+    El detalle fino de cada nodo NO viaja aquí: va en el endpoint lazy
+    /nodo/<tipo>/<id> consultado al seleccionar (§16).
+    """
+    expediente = Expediente.query.get_or_404(expediente_id)
+
+    # Control de acceso sobre expediente concreto (REGLAS_DESARROLLO §Control de acceso).
+    # Devuelve None si hay acceso, o un redirect si no. De paso habilita el
+    # indicador de bombilla del header para TRAMITADOR.
+    denegado = verificar_acceso_expediente(expediente)
+    if denegado:
+        return denegado
+
+    arbol = construir_arbol(expediente_id)
+    if arbol is None:
+        return jsonify({'error': 'Expediente no encontrado'}), 404
+    return jsonify(arbol), 200
