@@ -11,10 +11,10 @@ export function getArbol(expedienteId) {
 
 // --- Esqueletos S3 (no usados en S2) ------------------------------------------
 
-// Detalle lazy de un nodo para el inspector (§16). El endpoint backend aún NO
-// existe (S1 entregó arbol + tipos-creables); se implementa en S3.
-export function getNodo(expedienteId, tipo, nodoId) {
-  return api.get(`/api/expedientes/${expedienteId}/nodo/${tipo}/${nodoId}`)
+// Detalle lazy de un nodo para el inspector (§16). `opts` permite pasar { signal }
+// para cancelar la petición anterior al cambiar de selección (AbortController).
+export function getNodo(expedienteId, tipo, nodoId, opts) {
+  return api.get(`/api/expedientes/${expedienteId}/nodo/${tipo}/${nodoId}`, opts)
 }
 
 // Tipos de hijo creables bajo un nodo: despensa + menú contextual (§16/§8).

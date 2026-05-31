@@ -135,7 +135,17 @@ Inspector muestra:
 - Estado del plazo si aplica.
 - Acciones rápidas no destructivas (abrir documento, abrir carpeta, copiar referencia).
 
-Contenido específico por nivel a definir en implementación (propuesta esbozada en discusión; el inspector tiene mucho margen de iteración sin afectar al esqueleto del árbol).
+**Contenido fino por nivel** (concretado en implementación S3a, #500 — cierra la deuda §15; el `estado`/semáforo, el nombre y los `agregados` los toma el front del nodo ya cargado en el árbol, el endpoint lazy §16 aporta solo lo que el árbol no trae):
+
+| Nivel | Datos read-only | Documentos | Plazo | Acciones |
+|---|---|---|---|---|
+| **Expediente** | Tipo · Titular (+NIF) · Responsable · Heredado · nº solicitudes · Proyecto (título, emplazamiento, finalidad) | — | — | Abrir carpeta · Copiar ref. |
+| **Solicitud** | Estado · Tipo · Fecha presentación · Solicitante (+NIF) · nº fases · (afectada si desist./renuncia) · Observaciones | Doc. solicitud (consumido) | — | Abrir doc · Abrir carpeta · Copiar ref. |
+| **Fase** | Estado · Resultado (si finalizada) · nº trámites · Observaciones · agregados de plazos del subárbol | Doc. resultado (si finalizada) | resumen vía agregados | Abrir doc · Abrir carpeta · Copiar ref. |
+| **Trámite** | Estado · nº tareas · Observaciones · agregados de plazos del subárbol | — | resumen vía agregados | Abrir carpeta · Copiar ref. |
+| **Tarea** | Estado · Tipo · (NOTIFICAR: resultado) · Notas | Consumidos[] + Producido (asunto, tipo_doc, fecha, enlace) | bloque plazo si ESPERAR_PLAZO | Abrir doc(s) · Abrir carpeta del doc · Copiar ref. |
+
+Fuera de v1 (alcance S3a): plazo de solicitud, lectura de notificación por intento, iteración de trámite. El inspector mantiene margen de iteración: añadir/quitar/reordenar un campo es una línea en `services/detalle_nodo.py` (payload de campos genérico), sin tocar el front.
 
 #### En modo edición
 
@@ -290,9 +300,7 @@ Propuesta planteada en discusión: en la viewbar de la vista de expediente, most
 
 #### Contenido específico del inspector
 
-Propuesta esbozada en discusión: cabecera del nodo + datos completos + documentos asociados + estado de plazo + acciones rápidas + (en edición) despensa adaptativa.
-
-Refinable en implementación sin afectar al esqueleto.
+**Resuelto en S3a (#500):** el contenido fino del inspector en modo lectura por nivel está concretado en la tabla de §5 (cabecera + datos + documentos + plazo + agregados + acciones rápidas). El contrato del endpoint de detalle lazy está en §16. La despensa adaptativa (modo edición) sigue diferida a S3b.
 
 #### Dock
 
@@ -322,7 +330,8 @@ Decidido durante la sesión de implementación de #500 (2026-05-30). Concreta lo
 
 - El árbol **no** lleva el detalle completo de cada nodo: solo decoradores. El detalle del inspector se pide **bajo demanda** al seleccionar (y, en el futuro, al hacer hover con delay — §2.4).
 - Ventaja: árbol ligero, detalle siempre fresco, payload acotado en expedientes grandes.
-- El contenido fino por nivel se refina en implementación (deuda §15 «Contenido específico del inspector»).
+- **Ruta** (implementada en S3a, #500): `GET /api/expedientes/<exp_id>/nodo/<tipo>/<nodo_id>`, `<tipo>` ∈ {expediente, solicitud, fase, tramite, tarea}. Sirve también la raíz (uniforme).
+- **Payload**: `{nodo:{tipo,id}, campos:[{etiqueta,valor}], documentos:[{id,rol,nombre,tipo_doc,fecha,enlace,externo,puede_abrir_carpeta}], plazo:{estado,fecha_limite,dias_restantes}|null, referencia}`. La cabecera (nombre/estado/semáforo) y los `agregados` NO viajan aquí: el front los toma del árbol ya cargado. El servicio es `services/detalle_nodo.py`, defensivo ante catálogo y con `ValueError`→404 si el nodo no pertenece al expediente. Contenido por nivel: §5.
 
 #### `GET /api/expediente/<exp_id>/nodo/<tipo>/<nodo_id>/tipos-creables`
 

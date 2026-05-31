@@ -955,3 +955,34 @@ def pool_abrir_en_carpeta(id, doc_id):
         return jsonify({'ok': False, 'error': str(e)}), 500
 
 
+@bp.route('/<int:id>/abrir-carpeta', methods=['POST'])
+@login_required
+def abrir_carpeta_expediente(id):
+    """
+    Abre el Explorador de Windows en la carpeta del expediente (FILESYSTEM_BASE/AT-N).
+
+    Acción rápida del inspector de la vista de árbol (#500, ADR-016 §5). Misma
+    limitación que pool_abrir_en_carpeta: Flask debe correr en el PC del navegador.
+    """
+    import subprocess
+
+    expediente = Expediente.query.get_or_404(id)
+    resultado = verificar_acceso_expediente(expediente, 'ver')
+    if resultado:
+        return resultado
+
+    base = current_app.config.get('FILESYSTEM_BASE', '')
+    if not base or not os.path.isdir(base):
+        return jsonify({'ok': False, 'error': 'Servidor de ficheros no accesible'}), 503
+
+    carpeta = os.path.normpath(os.path.join(os.path.abspath(base), f'AT-{expediente.numero_at}'))
+    if not os.path.isdir(carpeta):
+        return jsonify({'ok': False, 'error': 'La carpeta del expediente aún no existe'}), 404
+
+    try:
+        subprocess.Popen(f'explorer "{carpeta}"', shell=True)
+        return jsonify({'ok': True})
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+

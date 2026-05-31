@@ -261,7 +261,7 @@ def _serializar_tarea(tarea, tramite) -> tuple[dict, dict]:
     agg = _agregados_vacios()
 
     if codigo == 'ESPERAR_PLAZO':
-        plazo = _plazo_tarea(tarea, tramite)
+        plazo = plazo_tarea(tarea, tramite)
         nodo['plazo'] = plazo
         # El agregado solo cuenta plazos accionables (tarea aún no ejecutada).
         if plazo and not tarea.ejecutada:
@@ -286,10 +286,12 @@ def _serializar_tarea(tarea, tramite) -> tuple[dict, dict]:
     return nodo, agg
 
 
-def _plazo_tarea(tarea, tramite) -> Optional[dict]:
+def plazo_tarea(tarea, tramite) -> Optional[dict]:
     """
     Resuelve el estado de plazo de una tarea ESPERAR_PLAZO (server-only).
     Defensivo: cualquier fallo degrada a None sin romper el árbol completo.
+
+    Público: lo reutiliza también services/detalle_nodo.py (inspector lazy, S3a).
     """
     try:
         from app.services.plazos import obtener_estado_plazo

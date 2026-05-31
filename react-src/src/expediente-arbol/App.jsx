@@ -4,9 +4,15 @@
 // Sincroniza la selección con la URL (?nodo=tipo-id, ADR §12) vía history.replaceState.
 // El Inspector real es S3 (aquí solo Viewbar + Arbol).
 import React, { useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { useArbolStore } from './store.js'
 import Viewbar from './components/Viewbar.jsx'
 import Arbol from './components/Arbol.jsx'
+import Inspector from './components/Inspector.jsx'
+
+// Slot del inspector en el shell base_app (lo define arbol.html como block inspector).
+// El Inspector se renderiza ahí vía portal: un único árbol React / un único store.
+const inspectorSlot = () => document.getElementById('arbol-inspector-slot')
 
 function expedienteIdDesdeDOM() {
   const el = document.querySelector('[data-react-island="expediente-arbol"]')
@@ -65,12 +71,15 @@ export default function App() {
   }
   if (!arbol) return null
 
+  const slot = inspectorSlot()
+
   return (
     <div className="d-flex flex-column" style={{ height: '100%' }}>
       <Viewbar />
       <div style={{ flex: 1, minHeight: 0 }}>
         <Arbol />
       </div>
+      {slot && createPortal(<Inspector />, slot)}
     </div>
   )
 }

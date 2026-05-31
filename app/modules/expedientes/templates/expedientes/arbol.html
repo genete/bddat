@@ -3,7 +3,8 @@
    Isla React "expediente-arbol" montada sobre base_app. La viewbar de la isla
    (cabecera + toggle "Colapsar finalizados") vive dentro del propio componente;
    el slot viewbar de base_app conserva su default (código AT + bombilla de acceso).
-   El inspector/dock son chrome de S3: aquí no se definen esos slots. #}
+   El inspector (S3a) es un slot del shell: aquí se declara su contenedor vacío y
+   React monta el panel dentro vía portal (App.jsx). El dock es chrome global. #}
 {% extends "layout/base_app.html" %}
 
 {% block title %}AT-{{ expediente.numero_at }} · Árbol{% endblock %}
@@ -14,6 +15,12 @@
        data-react-island="expediente-arbol"
        data-expediente-id="{{ expediente.id }}"
        {{ user_ctx_attrs() }}></div>
+{% endblock %}
+
+{% block inspector %}
+  {# Contenedor del inspector React (ADR-016 §5). El panel lo renderiza App.jsx
+     vía createPortal sobre este nodo; declararlo activa el <aside> del shell. #}
+  <div id="arbol-inspector-slot" class="h-100"></div>
 {% endblock %}
 
 {% block extra_js %}

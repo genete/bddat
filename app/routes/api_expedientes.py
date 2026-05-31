@@ -24,6 +24,7 @@ from app.models import (
 )
 from app.services.arbol_expediente import construir_arbol
 from app.services.tipos_creables import tipos_creables_de_nodo
+from app.services.detalle_nodo import detalle_de_nodo
 from app.utils.permisos import verificar_acceso_expediente
 
 # Blueprint para API
@@ -500,6 +501,35 @@ def get_tipos_creables(expediente_id, tipo, nodo_id):
 
     try:
         data = tipos_creables_de_nodo(expediente, tipo, nodo_id)
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 404
+    return jsonify(data), 200
+
+
+# =============================================================================
+# ENDPOINT 5: Detalle lazy de un nodo para el inspector (ADR-016 §5/§16)
+# =============================================================================
+
+@api_bp.route('/expedientes/<int:expediente_id>/nodo/<tipo>/<int:nodo_id>', methods=['GET'])
+@login_required
+def get_detalle_nodo(expediente_id, tipo, nodo_id):
+    """
+    GET .../nodo/<tipo>/<nodo_id> — detalle read-only del nodo (ADR-016 §5/§16).
+
+    <tipo> ∈ {expediente, solicitud, fase, tramite, tarea}. El árbol solo lleva
+    decoradores; el detalle fino del nodo seleccionado se pide aquí bajo demanda.
+    Payload: campos adaptativos por nivel + documentos clicables + plazo (si
+    ESPERAR_PLAZO) + referencia de ancestros. La cabecera y los agregados los toma
+    el front del árbol ya cargado.
+    """
+    expediente = Expediente.query.get_or_404(expediente_id)
+
+    denegado = verificar_acceso_expediente(expediente)
+    if denegado:
+        return denegado
+
+    try:
+        data = detalle_de_nodo(expediente, tipo, nodo_id)
     except ValueError as e:
         return jsonify({'error': str(e)}), 404
     return jsonify(data), 200
