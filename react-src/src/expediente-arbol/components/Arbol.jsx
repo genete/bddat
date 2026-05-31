@@ -13,15 +13,18 @@ import NodoExpediente from './nodos/NodoExpediente.jsx'
 import NodoSolicitud from './nodos/NodoSolicitud.jsx'
 import NodoFase from './nodos/NodoFase.jsx'
 import NodoTramite from './nodos/NodoTramite.jsx'
-import NodoTarea from './nodos/NodoTarea.jsx'
+import NodoTareas from './nodos/NodoTareas.jsx'
 
 const nodeTypes = {
   expediente: NodoExpediente,
   solicitud:  NodoSolicitud,
   fase:       NodoFase,
   tramite:    NodoTramite,
-  tarea:      NodoTarea,
+  tareas:     NodoTareas,
 }
+
+// Edges estructurales: ortogonales con esquinas redondeadas (ADR §1).
+const defaultEdgeOptions = { type: 'smoothstep' }
 
 export default function Arbol() {
   const arbol = useArbolStore((s) => s.arbol)
@@ -35,7 +38,11 @@ export default function Arbol() {
   )
 
   const onNodeClick = useCallback(
-    (_, node) => seleccionar({ tipo: node.data.tipo, id: node.data.id }),
+    (_, node) => {
+      // El bloque-tareas no se selecciona como tal: cada fila-tarea maneja su click.
+      if (node.data.tipo === 'tareas') return
+      seleccionar({ tipo: node.data.tipo, id: node.data.id })
+    },
     [seleccionar],
   )
   const onPaneClick = useCallback(() => seleccionar(null), [seleccionar])
@@ -47,6 +54,7 @@ export default function Arbol() {
       nodeTypes={nodeTypes}
       onNodeClick={onNodeClick}
       onPaneClick={onPaneClick}
+      defaultEdgeOptions={defaultEdgeOptions}
       nodesDraggable={false}
       nodesConnectable={false}
       fitView

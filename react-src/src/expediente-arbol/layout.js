@@ -1,133 +1,168 @@
-// layout.js — construcción del grafo xyflow desde el árbol de dominio (ADR-016 §1).
+// layout.js — construcción del grafo xyflow con tidy-tree (d3-flextree). #500, ADR-016 §1.
 //
-// Layout TOP-DOWN HÍBRIDO:
-//   - 4 bandas horizontales fijas por nivel: expediente / solicitud / fase / tramite.
-//     Cada padre se centra horizontalmente sobre sus hijos.
-//   - El empaquetado horizontal se calcula sobre la fila de TRÁMITES; las tareas no
-//     reparten ancho: cuelgan en columna vertical bajo su trámite (hojas en columna).
+// MODELO (acordado con el usuario; enmienda ADR §1/§2):
+//   - 5 niveles de NODOS: expediente → solicitud → fase → trámite → bloque-tareas.
+//   - El TRÁMITE y sus TAREAS son DOS nodos independientes: el trámite tiene como
+//     ÚNICO hijo un nodo "tareas" (las tareas juntas, como filas internas). Así el
+//     trámite nunca tiene N hijos en vertical → flextree lo centra debajo sin hacks.
+//     Las tareas NO se encadenan entre sí; son filas dentro del nodo-bloque.
+//   - flextree reparte el ancho proporcionalmente al tamaño de cada subárbol
+//     (los hijos expandidos ocupan más espacio) — requisito (d) del usuario.
 //
-// Es el buildGraph del POC (#291) transpuesto (X↔Y) para los 4 niveles superiores,
-// más el caso especial de las tareas verticales → de ahí "híbrido".
+// Colapso (ADR §11): con "Colapsar finalizados", un nodo no-hoja finalizado se
+// muestra plegado (sin hijos, con badge de agregados); su subárbol se omite.
 //
-// Colapso (ADR §11): con "Colapsar finalizados" activo, un nodo no-hoja finalizado
-// se muestra plegado (sin hijos, con badge de agregados); su subárbol se omite.
-//
-// NOTA: las dimensiones/separaciones son PROVISIONALES (andamiaje). Los valores
-// finales se fijan en la conversación de "formas y colores".
+// NOTA: tamaños base PROVISIONALES (andamiaje). El color es una fase aparte.
 
-const ANCHO_SLOT = 210                                          // ancho reservado por trámite
-const BANDA_Y = { expediente: 0, solicitud: 130, fase: 260, tramite: 390 }
-const TAREA_Y0 = 480                                            // Y de la primera tarea
-const TAREA_DY = 64                                             // separación vertical entre tareas
+import { flextree } from 'd3-flextree'
 
-function clave(tipo, id) {
-  return `${tipo}-${id}`
+// --- dimensiones base por nivel (mínimos; el alto del bloque-tareas es variable) ---
+const TAM = {
+  expediente: [200, 56],
+  solicitud:  [200, 64],
+  fase:       [180, 56],
+  tramite:    [170, 52],
+}
+const HGAP = 36                  // separación horizontal mínima entre hermanos
+const VGAP = 56                  // separación vertical entre niveles
+export const FILA_TAREA_H = 28   // alto de cada fila-tarea (debe casar con arbol.css)
+const TAREAS_PAD = 12            // padding vertical del bloque-tareas
+const TAREAS_W = 200             // ancho del bloque-tareas
+
+function claveDom(dom) {
+  return `${dom.tipo}-${dom.id}`
 }
 
-// Estado "finalizado" por nivel (criterio de dominio, no estético).
-function esFinalizado(nodo) {
-  switch (nodo.tipo) {
-    case 'solicitud': return nodo.estado !== 'EN_TRAMITE'
-    case 'fase':      return nodo.estado === 'FINALIZADA'
-    case 'tramite':   return nodo.estado === 'FINALIZADO'
-    case 'tarea':     return nodo.estado === 'EJECUTADA'
+// Estado "finalizado" por nivel (criterio de dominio).
+function esFinalizado(dom) {
+  switch (dom.tipo) {
+    case 'solicitud': return dom.estado !== 'EN_TRAMITE'
+    case 'fase':      return dom.estado === 'FINALIZADA'
+    case 'tramite':   return dom.estado === 'FINALIZADO'
     default:          return false
   }
 }
 
+// Texto que se pinta en la caja (en MAYÚSCULAS vía CSS).
+function derivarTitulo(dom) {
+  switch (dom.tipo) {
+    case 'expediente': return dom.codigo || ''
+    case 'solicitud':  return (dom.siglas || '').replace(/_/g, ' ')   // AE_DEFINITIVA → AE DEFINITIVA
+    case 'fase':
+    case 'tramite':    return dom.abrev || dom.nombre || dom.tipo_codigo || ''
+    default:           return ''
+  }
+}
+
+function tamano(dom) {
+  if (dom.tipo === 'tareas') {
+    const n = Math.max(1, (dom.tareas || []).length)
+    return [TAREAS_W, TAREAS_PAD + n * FILA_TAREA_H]
+  }
+  return TAM[dom.tipo] || [160, 48]
+}
+
+// Construye la jerarquía {ref, children, colapsado} aplicando el colapso.
+function construirJerarquia(arbol, colapsarFinalizados) {
+  const colapso = (dom, tieneHijos) =>
+    colapsarFinalizados && esFinalizado(dom) && tieneHijos
+
+  const exp = { ref: arbol.expediente, children: [], colapsado: false }
+
+  for (const sol of arbol.solicitudes || []) {
+    const cSol = colapso(sol, (sol.fases || []).length > 0)
+    const nSol = { ref: sol, children: [], colapsado: cSol }
+    if (!cSol) {
+      for (const fase of sol.fases || []) {
+        const cFase = colapso(fase, (fase.tramites || []).length > 0)
+        const nFase = { ref: fase, children: [], colapsado: cFase }
+        if (!cFase) {
+          for (const tram of fase.tramites || []) {
+            const cTram = colapso(tram, (tram.tareas || []).length > 0)
+            const nTram = { ref: tram, children: [], colapsado: cTram }
+            if (!cTram && (tram.tareas || []).length > 0) {
+              // Bloque de tareas: hijo ÚNICO del trámite (nodo sintético).
+              nTram.children.push({
+                ref: { tipo: 'tareas', id: tram.id, tareas: tram.tareas },
+                children: [],
+                colapsado: false,
+              })
+            }
+            nFase.children.push(nTram)
+          }
+        }
+        nSol.children.push(nFase)
+      }
+    }
+    exp.children.push(nSol)
+  }
+  return exp
+}
+
 export function construirGrafo(arbol, { colapsarFinalizados = false, seleccion = null } = {}) {
+  if (!arbol || !arbol.expediente) return { nodes: [], edges: [] }
+
+  const raiz = construirJerarquia(arbol, colapsarFinalizados)
+
+  // tidy-tree con tamaños variables: el gap va dentro del nodeSize.
+  const layout = flextree({
+    nodeSize: (n) => {
+      const [w, h] = tamano(n.data.ref)
+      return [w + HGAP, h + VGAP]
+    },
+    spacing: 0,
+  })
+  const tree = layout.hierarchy(raiz)
+  layout(tree)
+
+  const selTarea = seleccion && seleccion.tipo === 'tarea' ? seleccion.id : null
+  const seleccionado = (dom) =>
+    !!seleccion && seleccion.tipo === dom.tipo && seleccion.id === dom.id
+
   const nodes = []
   const edges = []
-  let cursorX = 0
 
-  const seleccionado = (tipo, id) =>
-    !!seleccion && seleccion.tipo === tipo && seleccion.id === id
+  tree.each((n) => {
+    const dom = n.data.ref
+    const [w, h] = tamano(dom)
+    const node = {
+      id: claveDom(dom),
+      type: dom.tipo,
+      // flextree centra el nodo en (x, y); ReactFlow posiciona por la esquina.
+      position: { x: n.x - w / 2, y: n.y - h / 2 },
+      data: {},
+    }
+    if (dom.tipo === 'tareas') {
+      node.data = {
+        tipo: 'tareas',
+        tramiteId: dom.id,
+        tareas: dom.tareas,
+        seleccionTarea: selTarea,
+      }
+    } else {
+      node.data = {
+        tipo: dom.tipo,
+        id: dom.id,
+        titulo: derivarTitulo(dom),
+        tituloCompleto: dom.nombre || dom.descripcion || null,
+        estado: dom.estado || null,
+        agregados: dom.agregados || null,
+        colapsado: n.data.colapsado,
+        seleccionado: seleccionado(dom),
+        raw: dom,
+      }
+    }
+    nodes.push(node)
 
-  // Reserva un hueco horizontal y devuelve su X (hojas/colapsados sin hijos).
-  const slotVacio = () => {
-    const x = cursorX
-    cursorX += ANCHO_SLOT
-    return x
-  }
-  // Centro entre el primer y último hijo (centrado del padre sobre sus hijos).
-  const centro = (xs) => (xs[0] + xs[xs.length - 1]) / 2
-
-  function emitir(nodo, x, y, extra = {}) {
-    nodes.push({
-      id: clave(nodo.tipo, nodo.id),
-      type: nodo.tipo,
-      position: { x, y },
-      data: {
-        tipo: nodo.tipo,
-        id: nodo.id,
-        nombre: nodo.nombre ?? nodo.descripcion ?? nodo.codigo ?? null,
-        estado: nodo.estado ?? null,
-        agregados: nodo.agregados ?? null,
-        seleccionado: seleccionado(nodo.tipo, nodo.id),
-        raw: nodo,
-        ...extra,
-      },
-    })
-  }
-
-  function arista(padre, hijo) {
-    edges.push({
-      id: `e-${clave(padre.tipo, padre.id)}-${clave(hijo.tipo, hijo.id)}`,
-      source: clave(padre.tipo, padre.id),
-      target: clave(hijo.tipo, hijo.id),
-    })
-  }
-
-  // --- nivel trámite: asigna X (un slot por trámite) y apila sus tareas ---
-  function colocarTramite(tramite) {
-    const x = slotVacio()
-    const colapsado = colapsarFinalizados && esFinalizado(tramite) && tramite.tareas.length > 0
-    emitir(tramite, x, BANDA_Y.tramite, { colapsado })
-    if (!colapsado) {
-      tramite.tareas.forEach((tarea, i) => {
-        emitir(tarea, x, TAREA_Y0 + i * TAREA_DY)
-        arista(tramite, tarea)
+    if (n.parent) {
+      const pdom = n.parent.data.ref
+      edges.push({
+        id: `e-${claveDom(pdom)}-${claveDom(dom)}`,
+        source: claveDom(pdom),
+        target: claveDom(dom),
       })
     }
-    return x
-  }
-
-  // --- nivel fase: centra sobre sus trámites ---
-  function colocarFase(fase) {
-    const colapsado = colapsarFinalizados && esFinalizado(fase) && fase.tramites.length > 0
-    if (colapsado || fase.tramites.length === 0) {
-      const x = slotVacio()
-      emitir(fase, x, BANDA_Y.fase, { colapsado })
-      return x
-    }
-    const xs = fase.tramites.map(colocarTramite)
-    const x = centro(xs)
-    emitir(fase, x, BANDA_Y.fase, { colapsado: false })
-    fase.tramites.forEach((t) => arista(fase, t))
-    return x
-  }
-
-  // --- nivel solicitud: centra sobre sus fases ---
-  function colocarSolicitud(sol) {
-    const colapsado = colapsarFinalizados && esFinalizado(sol) && sol.fases.length > 0
-    if (colapsado || sol.fases.length === 0) {
-      const x = slotVacio()
-      emitir(sol, x, BANDA_Y.solicitud, { colapsado })
-      return x
-    }
-    const xs = sol.fases.map(colocarFase)
-    const x = centro(xs)
-    emitir(sol, x, BANDA_Y.solicitud, { colapsado: false })
-    sol.fases.forEach((f) => arista(sol, f))
-    return x
-  }
-
-  // --- raíz expediente: centra sobre las solicitudes ---
-  const solicitudes = arbol.solicitudes || []
-  const xs = solicitudes.map(colocarSolicitud)
-  const xExp = xs.length ? centro(xs) : 0
-  emitir(arbol.expediente, xExp, BANDA_Y.expediente)
-  solicitudes.forEach((s) => arista(arbol.expediente, s))
+  })
 
   return { nodes, edges }
 }
