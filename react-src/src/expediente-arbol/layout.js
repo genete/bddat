@@ -17,17 +17,18 @@
 import { flextree } from 'd3-flextree'
 
 // --- dimensiones base por nivel (mínimos; el alto del bloque-tareas es variable) ---
+// Ajustados al contenido real (cabecera icono+título+círculo; solicitud lleva docs).
 const TAM = {
-  expediente: [200, 56],
-  solicitud:  [200, 64],
-  fase:       [180, 56],
-  tramite:    [170, 52],
+  expediente: [210, 60],
+  solicitud:  [232, 76],
+  fase:       [190, 60],
+  tramite:    [182, 56],
 }
 const HGAP = 36                  // separación horizontal mínima entre hermanos
-const VGAP = 56                  // separación vertical entre niveles
-export const FILA_TAREA_H = 28   // alto de cada fila-tarea (debe casar con arbol.css)
+const VGAP = 58                  // separación vertical entre niveles
+export const FILA_TAREA_H = 30   // alto de cada fila-tarea (la barra de plazo va superpuesta)
 const TAREAS_PAD = 12            // padding vertical del bloque-tareas
-const TAREAS_W = 200             // ancho del bloque-tareas
+const TAREAS_W = 212             // ancho del bloque-tareas
 
 function claveDom(dom) {
   return `${dom.tipo}-${dom.id}`
@@ -146,6 +147,10 @@ export function construirGrafo(arbol, { colapsarFinalizados = false, seleccion =
         titulo: derivarTitulo(dom),
         tituloCompleto: dom.nombre || dom.descripcion || null,
         estado: dom.estado || null,
+        semaforo: dom.semaforo || null,
+        // Columna de documentos solo en solicitud (§8); el resto no la trae.
+        docConsumido: dom.doc_consumido || null,
+        docProducido: dom.doc_producido || null,
         agregados: dom.agregados || null,
         colapsado: n.data.colapsado,
         seleccionado: seleccionado(dom),

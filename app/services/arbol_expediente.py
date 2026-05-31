@@ -30,6 +30,8 @@ from app.models.fases import Fase
 from app.models.tramites import Tramite
 from app.models.tareas import Tarea
 from app.models.documentos_tarea import DocumentoTarea
+from app.models.documentos import Documento
+from app.services import estado_semaforo as sem
 
 log = logging.getLogger(__name__)
 
@@ -94,10 +96,20 @@ def construir_arbol(expediente_id: int) -> Optional[dict]:
                 selectinload(Solicitud.fases)
                 .selectinload(Fase.tramites)
                 .selectinload(Tramite.tareas).joinedload(Tarea.tipo_tarea),
+                # Documento + tipo_doc (detectar BORRADOR_FIRMA en ELABORAR, §3).
                 selectinload(Solicitud.fases)
                 .selectinload(Fase.tramites)
                 .selectinload(Tramite.tareas)
-                .selectinload(Tarea.vinculos_documento).joinedload(DocumentoTarea.documento),
+                .selectinload(Tarea.vinculos_documento)
+                .joinedload(DocumentoTarea.documento)
+                .joinedload(Documento.tipo_doc),
+                # Documento + notificacion (resultado/intento de NOTIFICAR, §3).
+                selectinload(Solicitud.fases)
+                .selectinload(Fase.tramites)
+                .selectinload(Tramite.tareas)
+                .selectinload(Tarea.vinculos_documento)
+                .joinedload(DocumentoTarea.documento)
+                .joinedload(Documento.notificacion),
             )
             .order_by(Solicitud.id)
             .all()
@@ -106,10 +118,21 @@ def construir_arbol(expediente_id: int) -> Optional[dict]:
         log.warning('arbol_expediente: error cargando jerarquía de expediente %s — %s', expediente_id, exc)
         solicitudes = []
 
-    return {
-        'expediente': _serializar_expediente(expediente),
-        'solicitudes': [_serializar_solicitud(s) for s in solicitudes],
-    }
+    exp_data = _serializar_expediente(expediente)
+    sols_data = [_serializar_solicitud(s) for s in solicitudes]
+
+    # Semáforo del expediente: agregado de la mayor prioridad de sus solicitudes (§4/§5).
+    est_exp, propio_exp = sem.estado_expediente(
+        expediente, [s['semaforo']['estado'] for s in sols_data]
+    )
+    exp_data['semaforo'] = _semaforo(est_exp, propio_exp)
+
+    return {'expediente': exp_data, 'solicitudes': sols_data}
+
+
+def _semaforo(estado: str, propio: bool) -> dict:
+    """Bloque semáforo del contrato: estado + nombre de color (§2) + flag de relleno."""
+    return {'estado': estado, 'color': sem.color(estado), 'propio': propio}
 
 
 # ---------------------------------------------------------------------------
@@ -135,6 +158,11 @@ def _serializar_solicitud(sol) -> dict:
         fases_data.append(fd)
         _sumar_agregados(agg, fd['agregados'])
 
+    est, propio = sem.estado_solicitud(sol, [f['semaforo']['estado'] for f in fases_data])
+
+    # Documentos (§8): la solicitud consume el documento de solicitud presentado;
+    # no produce documento → producido marcado N/A (-) para el front.
+    doc_sol = sol.documento_solicitud
     ts = sol.tipo_solicitud
     return {
         'tipo': 'solicitud',
@@ -143,10 +171,13 @@ def _serializar_solicitud(sol) -> dict:
         'descripcion': ts.descripcion if ts else None,
         'estado': sol.estado,
         'fecha_presentacion': (
-            sol.documento_solicitud.fecha_administrativa.isoformat()
-            if sol.documento_solicitud and sol.documento_solicitud.fecha_administrativa
+            doc_sol.fecha_administrativa.isoformat()
+            if doc_sol and doc_sol.fecha_administrativa
             else None
         ),
+        'doc_consumido': {'presente': doc_sol is not None, 'count': 1 if doc_sol else 0},
+        'doc_producido': {'presente': False, 'count': 0, 'na': True},
+        'semaforo': _semaforo(est, propio),
         'agregados': agg,
         'fases': fases_data,
     }
@@ -160,6 +191,8 @@ def _serializar_fase(fase) -> dict:
         tramites_data.append(td)
         _sumar_agregados(agg, td['agregados'])
 
+    est, propio = sem.estado_fase(fase, [t['semaforo']['estado'] for t in tramites_data])
+
     tf = fase.tipo_fase
     return {
         'tipo': 'fase',
@@ -169,6 +202,7 @@ def _serializar_fase(fase) -> dict:
         'abrev': tf.abrev if tf else None,
         'estado': fase.estado,
         'resultado': fase.resultado_fase.codigo if (fase.finalizada and fase.resultado_fase) else None,
+        'semaforo': _semaforo(est, propio),
         'agregados': agg,
         'tramites': tramites_data,
     }
@@ -182,6 +216,8 @@ def _serializar_tramite(tr) -> dict:
         tareas_data.append(nodo)
         _sumar_agregados(agg, nodo_agg)
 
+    est, propio = sem.estado_tramite(tr, [t['semaforo']['estado'] for t in tareas_data])
+
     tt = tr.tipo_tramite
     return {
         'tipo': 'tramite',
@@ -190,6 +226,7 @@ def _serializar_tramite(tr) -> dict:
         'nombre': tt.nombre if tt else None,
         'abrev': tt.abrev if tt else None,
         'estado': tr.estado,
+        'semaforo': _semaforo(est, propio),
         'agregados': agg,
         'tareas': tareas_data,
     }
@@ -240,6 +277,11 @@ def _serializar_tarea(tarea, tramite) -> tuple[dict, dict]:
         nodo['resultado'] = tarea.resultado
         if not tarea.ejecutada:
             agg['pendientes_notificar'] += 1
+
+    # Semáforo de la tarea (§3). Hoja → siempre rellena (propio=True). El plazo ya
+    # está resuelto en nodo['plazo'] para ESPERAR_PLAZO; estado_tarea no lo recalcula.
+    estado_sem = sem.estado_tarea(tarea, plazo=nodo['plazo'])
+    nodo['semaforo'] = _semaforo(estado_sem, True)
 
     return nodo, agg
 

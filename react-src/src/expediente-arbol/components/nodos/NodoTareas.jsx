@@ -1,26 +1,43 @@
 // NodoTareas.jsx — bloque de tareas, hijo ÚNICO del trámite (#500, modelo acordado).
 //
-// NO es "el trámite con cabecera": es un contenedor independiente con las tareas
-// como filas. Cada fila es seleccionable individualmente (?nodo=tarea-id) con su
-// propio onClick + stopPropagation (no pasa por onNodeClick de ReactFlow).
-// Iconos monocromos (Bootstrap Icons, ya cargado); el color es fase aparte.
+// Cada tarea es una FILA compacta (no una caja): versión horizontal de la anatomía
+// (MODELO §6) → [icono-tipo] ABREV ··· ▼(n) ▲(n) ○círculo, con una barra fina de plazo
+// en el borde inferior SOLO en ESPERAR_PLAZO (§9, v1 semántica). El círculo es el único
+// canal de color (en NOTIFICAR codifica el resultado → sin ✓/✗ aparte).
 import React from 'react'
 import { Handle, Position } from '@xyflow/react'
 import { useArbolStore } from '../../store.js'
+import Semaforo from './Semaforo.jsx'
+import Docs from './Docs.jsx'
 
+// Icono de tipo de tarea (MODELO §6).
 const ICONO = {
-  ANALIZAR:      'bi-search',
-  ELABORAR:      'bi-pencil',
-  NOTIFICAR:     'bi-envelope',
+  ANALIZAR:      'bi-person-gear',
+  ELABORAR:      'bi-pen',
+  NOTIFICAR:     'bi-send',
   ESPERAR_PLAZO: 'bi-hourglass-split',
 }
 
+// Barra de plazo SEMÁNTICA (v1, §9): el relleno refleja el estado del plazo, no el
+// progreso real. Verde congelado cuando la tarea está ejecutada (FIN).
+function barraPlazo(tarea) {
+  const ejecutada = tarea.semaforo && tarea.semaforo.estado === 'FIN'
+  if (ejecutada) return { color: 'verde', width: '100%' }
+  const estado = tarea.plazo && tarea.plazo.estado
+  switch (estado) {
+    case 'VENCIDO':        return { color: 'rojo',    width: '100%' }
+    case 'PROXIMO_VENCER': return { color: 'naranja', width: '72%' }
+    case 'EN_PLAZO':
+    case 'INDEFINIDO':     return { color: 'gris',    width: '35%' }
+    default:               return null   // SIN_PLAZO / sin configurar → sin barra
+  }
+}
+
 function FilaTarea({ tarea, seleccionada, onSelect }) {
-  const cons = tarea.doc_consumido || { presente: false, count: 0 }
-  const prod = tarea.doc_producido || { presente: false, count: 0 }
   const titulo = tarea.abrev || tarea.nombre || tarea.tipo_codigo || ''
-  const resultadoIcono =
-    tarea.resultado === 'CORRECTA' ? '✓' : tarea.resultado === 'INCORRECTA' ? '✗' : tarea.resultado ? '–' : null
+  const sem = tarea.semaforo || { color: 'gris' }
+  const esPlazo = tarea.tipo_codigo === 'ESPERAR_PLAZO'
+  const barra = esPlazo ? barraPlazo(tarea) : null
 
   return (
     <div
@@ -28,14 +45,17 @@ function FilaTarea({ tarea, seleccionada, onSelect }) {
       title={tarea.nombre || ''}
       onClick={(e) => { e.stopPropagation(); onSelect(tarea.id) }}
     >
-      <i className={`bi ${ICONO[tarea.tipo_codigo] || 'bi-dot'} arbol-tarea__icono`} />
-      <span className="arbol-tarea__titulo">{titulo}</span>
-      <span className="arbol-tarea__deco">
-        <span className="arbol-dot" data-on={cons.presente ? '1' : '0'} title={`consumido: ${cons.count}`} />
-        <span className="arbol-dot" data-on={prod.presente ? '1' : '0'} title={`producido: ${prod.count}`} />
-        {tarea.plazo && <span className="arbol-plazo">{tarea.plazo.estado}</span>}
-        {resultadoIcono && <span className="arbol-result">{resultadoIcono}</span>}
-      </span>
+      <div className="arbol-tarea__fila">
+        <i className={`bi ${ICONO[tarea.tipo_codigo] || 'bi-dot'} arbol-tarea__icono`} />
+        <span className="arbol-tarea__titulo">{titulo}</span>
+        <Docs consumido={tarea.doc_consumido} producido={tarea.doc_producido} className="arbol-docs--row" />
+        <Semaforo color={sem.color} relleno />
+      </div>
+      {barra && (
+        <div className="arbol-tarea__track">
+          <div className="arbol-tarea__fill" data-color={barra.color} style={{ width: barra.width }} />
+        </div>
+      )}
     </div>
   )
 }

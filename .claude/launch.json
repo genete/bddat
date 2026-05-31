@@ -6,6 +6,12 @@
       "runtimeExecutable": "venv/Scripts/python",
       "runtimeArgs": ["run.py"],
       "port": 5000
+    },
+    {
+      "name": "arbol-mock",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "react-src", "run", "dev"],
+      "port": 5173
     }
   ]
 }
