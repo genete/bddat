@@ -260,8 +260,9 @@ Refinamiento detallado pendiente de implementación (qué rol asigna por defecto
 
 ### 13. Minimapa
 
-- **Minimapa de xyflow activado por defecto**, esquina inferior derecha del área del árbol.
-- Botón discreto para ocultarlo si molesta. Estado en sessionStorage.
+> **Revertida (#500, 2026-05-31):** el minimapa se **elimina**. En la implementación no aportaba valor (además salía sin tematizar): los controles de zoom (+/−), el fit-view y el pan del fondo con el ratón cubren toda la navegación. Decisión del usuario durante S3a.
+
+~~Minimapa de xyflow activado por defecto, esquina inferior derecha del área del árbol. Botón discreto para ocultarlo si molesta. Estado en sessionStorage.~~
 
 ### 14. Redimensionamiento de paneles
 

@@ -1,12 +1,13 @@
-// Arbol.jsx — lienzo ReactFlow del árbol (#500, ADR-016 §1/§3/§13).
+// Arbol.jsx — lienzo ReactFlow del árbol (#500, ADR-016 §1/§3).
 //
 // Modo LECTURA: nodos no arrastrables ni conectables; solo selección única + pan/zoom.
+// Sin minimapa (§13 revertido, #500): zoom (+/−), fit-view y el pan del fondo bastan.
 // El tematizado JdA (arbol.css) y los decoradores de cada nodo se afinan en la
 // conversación de "formas y colores"; aquí va el wiring estructural.
 import '@xyflow/react/dist/style.css'
 import '../styles/arbol.css'
 import React, { useMemo, useCallback } from 'react'
-import { ReactFlow, Background, Controls, MiniMap } from '@xyflow/react'
+import { ReactFlow, Background, Controls } from '@xyflow/react'
 import { useArbolStore } from '../store.js'
 import { construirGrafo } from '../layout.js'
 import NodoExpediente from './nodos/NodoExpediente.jsx'
@@ -65,7 +66,6 @@ export default function Arbol() {
     >
       <Background />
       <Controls showInteractive={false} />
-      <MiniMap pannable zoomable />
     </ReactFlow>
   )
 }
