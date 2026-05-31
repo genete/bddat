@@ -126,11 +126,20 @@ export function construirGrafo(arbol, { colapsarFinalizados = false, seleccion =
   tree.each((n) => {
     const dom = n.data.ref
     const [w, h] = tamano(dom)
+    // flextree centra el nodo en (x, y); ReactFlow posiciona por la esquina.
+    let posY = n.y - h / 2
+    if (dom.tipo === 'tareas' && n.parent) {
+      // Top-alinear los bloques-tarea primos: flextree los centra en la línea del
+      // nivel, así que con alturas distintas (nº de tareas) sus topes se desalinean.
+      // Como todos los trámites comparten centro vertical, anclamos el TOPE del bloque
+      // un VGAP por debajo del trámite padre → todos arrancan igual y crecen hacia abajo.
+      const [, ph] = tamano(n.parent.data.ref)
+      posY = n.parent.y + ph / 2 + VGAP
+    }
     const node = {
       id: claveDom(dom),
       type: dom.tipo,
-      // flextree centra el nodo en (x, y); ReactFlow posiciona por la esquina.
-      position: { x: n.x - w / 2, y: n.y - h / 2 },
+      position: { x: n.x - w / 2, y: posY },
       data: {},
     }
     if (dom.tipo === 'tareas') {

@@ -130,11 +130,13 @@
 .arbol-nodo__estado { font-size: 10px; color: #777; }
 .arbol-nodo__badges { font-size: 10px; color: #a30; }
 
-/* Tamaños MÍNIMOS por nivel (deben casar con TAM de layout.js). */
-.arbol-nodo--expediente { min-width: 210px; min-height: 60px; }
-.arbol-nodo--solicitud  { min-width: 232px; min-height: 76px; }
-.arbol-nodo--fase       { min-width: 190px; min-height: 60px; }
-.arbol-nodo--tramite    { min-width: 182px; min-height: 56px; }
+/* Ancho FIJO por nivel (debe casar EXACTO con TAM de layout.js: flextree reserva ese
+ * ancho; si la caja creciera con el texto invadiría a su vecina). El título recorta con
+ * ellipsis. Alto mínimo (la caja puede crecer hacia abajo). */
+.arbol-nodo--expediente { width: 210px; min-height: 60px; }
+.arbol-nodo--solicitud  { width: 232px; min-height: 76px; }
+.arbol-nodo--fase       { width: 190px; min-height: 60px; }
+.arbol-nodo--tramite    { width: 182px; min-height: 56px; }
 
 /* ── Bloque de tareas (nodo independiente, hijo único del trámite) ──────────── */
 .arbol-tareas {
