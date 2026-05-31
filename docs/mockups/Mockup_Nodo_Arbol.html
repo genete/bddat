@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Mockup anatomía del nodo — árbol del expediente (#500)</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+<style>
+  body { font-family: system-ui, sans-serif; background:#fafafa; margin:0; padding:32px; color:#333; }
+  h1 { font-size:18px; } p.lead { color:#666; max-width:780px; }
+  .fila { display:flex; gap:28px; flex-wrap:wrap; align-items:flex-start; margin-top:24px; }
+
+  .nodo { width:236px; border:1px solid #b0b0b0; border-radius:10px; background:#f4f4f4; overflow:hidden; }
+
+  /* Cabecera: [icono-tipo]  TÍTULO centrado  semáforo  (sin rayas verticales) */
+  .cabecera { display:flex; align-items:center; border-bottom:1px solid #cfcfcf; }
+  .tipo { padding-left:9px; color:#777; font-size:14px; display:flex; align-items:center; }
+  .titulo { flex:1; text-align:center; font-weight:700; text-transform:uppercase;
+            letter-spacing:.4px; font-size:13px; padding:7px 6px; }
+  .sem-wrap { display:flex; align-items:center; padding:0 11px 0 4px; }
+  .sem { width:13px; height:13px; border-radius:50%; border:1.5px solid #9a9a9a; background:transparent; }
+  .sem.rojo{background:#cc3b3b;border-color:#cc3b3b}.sem.naranja{background:#e0892b;border-color:#e0892b}
+  .sem.amarillo{background:#e9c43d;border-color:#e9c43d}.sem.azul{background:#3b78cc;border-color:#3b78cc}
+  .sem.verde{background:#3a9b4e;border-color:#3a9b4e}
+
+  /* Cuerpo: central libre + documentos a la derecha (sin raya, solo espacio) */
+  .cuerpo { display:flex; align-items:stretch; min-height:44px; }
+  .cuerpo-c { flex:1; padding:7px 9px; font-size:11px; color:#555; display:flex; flex-direction:column; gap:4px; }
+  .badge { align-self:flex-start; background:#e6e6e6; border-radius:4px; padding:1px 6px; font-size:10px; }
+  .docs { display:flex; flex-direction:column; justify-content:center; gap:7px; padding:4px 11px 4px 4px; }
+  .doc { display:flex; align-items:center; gap:3px; font-size:13px; color:#c2c2c2; }   /* vacío = gris */
+  .doc.has { color:#555; }                                                            /* existe */
+  .doc.na  { color:#bbb; }                                                            /* no aplica */
+  .doc b { font-size:11px; font-weight:700; }
+
+  /* Footer: barra(s) de progreso lado a lado */
+  .footer { border-top:1px solid #cfcfcf; padding:5px 8px; display:flex; flex-direction:column; gap:4px; }
+  .track { height:6px; background:#e9e9e9; border-radius:3px; overflow:hidden; }
+  .fill { height:100%; background:#9a9a9a; }
+  .fill.naranja{background:#e0892b}.fill.rojo{background:#cc3b3b}.fill.verde{background:#3a9b4e}
+
+  .nota { font-size:11px; color:#888; margin-top:8px; width:236px; }
+  .leyenda { margin-top:36px; font-size:13px; color:#444; max-width:780px; line-height:1.7; }
+  .leyenda code { background:#eee; padding:1px 5px; border-radius:3px; }
+</style>
+</head>
+<body>
+  <h1>Anatomía del bloque — árbol del expediente (#500)</h1>
+  <p class="lead">Referencia de diseño. Todo en gris neutro a propósito: la paleta JdA es una
+  fase posterior. Icono de tipo (izq, sin separador) · título centrado · semáforo (der, sin raya) ·
+  documentos a la derecha del cuerpo sin raya · barra(s) de progreso como footer. Sin rayas verticales.</p>
+
+  <div class="fila">
+
+    <!-- EXPEDIENTE: sin documentos, sin barra -->
+    <div>
+      <div class="nodo">
+        <div class="cabecera">
+          <div class="tipo"><i class="bi bi-folder2"></i></div>
+          <div class="titulo">AT-2009</div>
+          <div class="sem-wrap"><div class="sem rojo"></div></div>
+        </div>
+        <div class="cuerpo"><div class="cuerpo-c"><span class="badge">Renovable</span></div></div>
+      </div>
+      <div class="nota">Expediente · sin columna de documentos · semáforo = mayor prioridad del árbol.</div>
+    </div>
+
+    <!-- SOLICITUD: docs consumido (1) / producido (-), barra plazo admin -->
+    <div>
+      <div class="nodo">
+        <div class="cabecera">
+          <div class="tipo"><i class="bi bi-file-earmark"></i></div>
+          <div class="titulo">AAP+AAC</div>
+          <div class="sem-wrap"><div class="sem azul"></div></div>
+        </div>
+        <div class="cuerpo">
+          <div class="cuerpo-c">
+            <span class="badge">EN TRÁMITE</span>
+            <span style="font-size:10px;color:#888;">presentada 10/02/2024</span>
+          </div>
+          <div class="docs">
+            <div class="doc has"><i class="bi bi-file-earmark-arrow-down"></i><b>(1)</b></div>
+            <div class="doc na"><i class="bi bi-file-earmark-arrow-up"></i><b>(-)</b></div>
+          </div>
+        </div>
+        <div class="footer"><div class="track"><div class="fill" style="width:35%"></div></div></div>
+      </div>
+      <div class="nota">Solicitud · producido <code>(-)</code> = no produce documento · barra de plazo admin.</div>
+    </div>
+
+    <!-- FASE: sin documentos -->
+    <div>
+      <div class="nodo">
+        <div class="cabecera">
+          <div class="tipo"><i class="bi bi-diagram-3"></i></div>
+          <div class="titulo">CONSULTAS</div>
+          <div class="sem-wrap"><div class="sem"></div></div>
+        </div>
+        <div class="cuerpo"><div class="cuerpo-c"><span class="badge">EN CURSO</span></div></div>
+      </div>
+      <div class="nota">Fase · sin documentos · semáforo hueco.</div>
+    </div>
+
+    <!-- TAREA ESPERAR_PLAZO: barra naranja -->
+    <div>
+      <div class="nodo">
+        <div class="cabecera">
+          <div class="tipo"><i class="bi bi-hourglass-split"></i></div>
+          <div class="titulo">PLAZO</div>
+          <div class="sem-wrap"><div class="sem"></div></div>
+        </div>
+        <div class="cuerpo">
+          <div class="cuerpo-c"><span class="badge">ESPERAR_PLAZO</span></div>
+          <div class="docs">
+            <div class="doc"><i class="bi bi-file-earmark-arrow-down"></i><b>(0)</b></div>
+            <div class="doc"><i class="bi bi-file-earmark-arrow-up"></i><b>(0)</b></div>
+          </div>
+        </div>
+        <div class="footer"><div class="track"><div class="fill naranja" style="width:72%"></div></div></div>
+      </div>
+      <div class="nota">Tarea ESPERAR_PLAZO · barra próxima a vencer.</div>
+    </div>
+
+    <!-- TAREA ELABORAR: icono pen, semáforo amarillo, sin barra -->
+    <div>
+      <div class="nodo">
+        <div class="cabecera">
+          <div class="tipo"><i class="bi bi-pen"></i></div>
+          <div class="titulo">ELABORAR</div>
+          <div class="sem-wrap"><div class="sem amarillo"></div></div>
+        </div>
+        <div class="cuerpo">
+          <div class="cuerpo-c"><span class="badge">pdte. firma</span></div>
+          <div class="docs">
+            <div class="doc has"><i class="bi bi-file-earmark-arrow-down"></i><b>(2)</b></div>
+            <div class="doc"><i class="bi bi-file-earmark-arrow-up"></i><b>(0)</b></div>
+          </div>
+        </div>
+      </div>
+      <div class="nota">Tarea ELABORAR (icono pen) · sin plazo → sin footer.</div>
+    </div>
+
+    <!-- TAREA NOTIFICAR 2º intento: DOS barras -->
+    <div>
+      <div class="nodo">
+        <div class="cabecera">
+          <div class="tipo"><i class="bi bi-send"></i></div>
+          <div class="titulo">NOTIFICAR</div>
+          <div class="sem-wrap"><div class="sem naranja"></div></div>
+        </div>
+        <div class="cuerpo">
+          <div class="cuerpo-c"><span class="badge">2º intento</span></div>
+          <div class="docs">
+            <div class="doc has"><i class="bi bi-file-earmark-arrow-down"></i><b>(1)</b></div>
+            <div class="doc has"><i class="bi bi-file-earmark-arrow-up"></i><b>(1)</b></div>
+          </div>
+        </div>
+        <div class="footer">
+          <div class="track"><div class="fill rojo" style="width:100%"></div></div>
+          <div class="track"><div class="fill" style="width:40%"></div></div>
+        </div>
+      </div>
+      <div class="nota">Notificar 2º intento → dos barras (1ª agotada roja, 2ª en curso).</div>
+    </div>
+
+  </div>
+
+  <div class="leyenda">
+    <strong>Iconos de tipo</strong> (base; el estado lo da el semáforo): Expediente <code>bi-folder2</code> ·
+    Solicitud <code>bi-file-earmark</code> · Fase <code>bi-diagram-3</code> · Trámite <code>bi-clipboard</code> ·
+    Tareas: ANALIZAR <code>bi-person-gear</code> · ELABORAR <code>bi-pen</code> · NOTIFICAR <code>bi-send</code> ·
+    ESPERAR_PLAZO <code>bi-hourglass-split</code>.
+  </div>
+</body>
+</html>
