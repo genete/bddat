@@ -51,7 +51,7 @@ El **análisis crítico es snapshot inmutable** del estado de reflexión al 28-m
 
 | # | Decisión | Origen | Próximo paso | Bloqueada por |
 |---|---|---|---|---|
-| **5.3-bis** | Contenidos concretos del inspector por nivel (refinamiento adaptativo Solicitud/Fase/Trámite/Tarea) | ADR-016 §15 | Refinable en implementación de #500 | — |
+| **5.3-bis** | Contenidos concretos del inspector por nivel (refinamiento adaptativo Solicitud/Fase/Trámite/Tarea) | ADR-016 §15 | **Modo lectura resuelto en S3a (#500)** — tabla por nivel en ADR-016 §5, contrato del endpoint lazy en §16. Modo edición (despensa) → S3b | — |
 | **5.3-ter** | Viewbar del expediente: contenido exacto, mini-indicadores de alertas del motor y plazos vivos (migrados del dock por ADR-020) | ADR-020 + ANALISIS_CRITICO §2.7 | Diseño pendiente — discutir antes de implementar #500 | — |
 | **5.5** | Sub-stack React concreto: librerías específicas (cmdk, react-arborist, etc.), state management si crece, data fetching avanzado si se necesita | ANALISIS_CRITICO §5.5 + ADR-015 §6 | Decisión por isla en su implementación | — (incremental) |
 | ~~**5.6**~~ | ~~Mini-estudio del administrativo antes de diseñar su vista~~ → **Resuelta: NO se hace mini-estudio** (supervisor conoce el flujo). Diseño cerrado en ADR-017 #501 | — | cerrada | — |

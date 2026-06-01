@@ -3,6 +3,7 @@
 **Estado:** Adoptada
 **Fecha:** 2026-05-28
 **Issue:** #500
+**Enmendada:** 2026-05-30 (#500, sesión de implementación) — añadidos §16 (contrato de endpoints), agregadores en colapso (§11), tooltip-peek de hover (§2.4/§15); iteración de trámite fuera de v1 (§2).
 
 ---
 
@@ -69,7 +70,7 @@ Esta vista es la **pieza estrella del revamping** porque:
 - **Decoradores específicos por tipo** (Solicitud / Fase / Trámite / Tarea):
   - **Solicitud**: siglas + descripción + estado deducido + (opcional) fecha presentación.
   - **Fase**: tipo + estado + resultado si finalizada + indicador de plazo si aplica.
-  - **Trámite**: tipo + estado + iteración si aplica.
+  - **Trámite**: tipo + estado. (La **iteración** —nº de vuelta de consultas a organismos— **queda fuera de v1**: se computa con la variable de motor `organismo_supera_iteraciones` y depende de #471; se añadirá como decorador cuando esa pieza exista.)
   - **Tarea**: tipo (ANALIZAR/ELABORAR/NOTIFICAR/ESPERAR_PLAZO) + 2 puntos de documento (consumido arriba-derecha, producido abajo-derecha — gris=ausente, verde=presente, `(n)` para múltiples) + plazo con semáforo si ESPERAR_PLAZO + resultado ✓/✗ si NOTIFICAR.
 
 #### Color por estado
@@ -84,6 +85,8 @@ Modulación del color principal según estado deducido por las properties existe
 #### Hover
 
 Hover sobre un bloque resalta visualmente (sombra suave, borde más marcado) sin abrir tooltip. El detalle completo va al inspector tras selección.
+
+> **Enmienda (#500, 2026-05-30):** el resalte instantáneo se mantiene tal cual. Como mejora futura se contempla un *tooltip-peek* de detalle que aparece **solo tras ratón quieto** (delay / hover-intent) sobre el nodo, reutilizando el endpoint de detalle lazy (§16) con caché y cancelación. No es instantáneo, así que no reintroduce el ruido que esta decisión evita. Diferido — ver §15.
 
 ### 3. Selección
 
@@ -132,7 +135,17 @@ Inspector muestra:
 - Estado del plazo si aplica.
 - Acciones rápidas no destructivas (abrir documento, abrir carpeta, copiar referencia).
 
-Contenido específico por nivel a definir en implementación (propuesta esbozada en discusión; el inspector tiene mucho margen de iteración sin afectar al esqueleto del árbol).
+**Contenido fino por nivel** (concretado en implementación S3a, #500 — cierra la deuda §15; el `estado`/semáforo, el nombre y los `agregados` los toma el front del nodo ya cargado en el árbol, el endpoint lazy §16 aporta solo lo que el árbol no trae):
+
+| Nivel | Datos read-only | Documentos | Plazo | Acciones |
+|---|---|---|---|---|
+| **Expediente** | Tipo · Titular (+NIF) · Responsable · Heredado · nº solicitudes · Proyecto (título, emplazamiento, finalidad) | — | — | Abrir carpeta · Copiar ref. |
+| **Solicitud** | Estado · Tipo · Fecha presentación · Solicitante (+NIF) · nº fases · (afectada si desist./renuncia) · Observaciones | Doc. solicitud (consumido) | — | Abrir doc · Abrir carpeta · Copiar ref. |
+| **Fase** | Estado · Resultado (si finalizada) · nº trámites · Observaciones · agregados de plazos del subárbol | Doc. resultado (si finalizada) | resumen vía agregados | Abrir doc · Abrir carpeta · Copiar ref. |
+| **Trámite** | Estado · nº tareas · Observaciones · agregados de plazos del subárbol | — | resumen vía agregados | Abrir carpeta · Copiar ref. |
+| **Tarea** | Estado · Tipo · (NOTIFICAR: resultado) · Notas | Consumidos[] + Producido (asunto, tipo_doc, fecha, enlace) | bloque plazo si ESPERAR_PLAZO | Abrir doc(s) · Abrir carpeta del doc · Copiar ref. |
+
+Fuera de v1 (alcance S3a): plazo de solicitud, lectura de notificación por intento, iteración de trámite. El inspector mantiene margen de iteración: añadir/quitar/reordenar un campo es una línea en `services/detalle_nodo.py` (payload de campos genérico), sin tocar el front.
 
 #### En modo edición
 
@@ -236,6 +249,7 @@ Refinamiento detallado pendiente de implementación (qué rol asigna por defecto
 
 - **Toggle "Colapsar finalizados"** en viewbar. Colapsa visualmente (no oculta) los nodos en estado finalizado, permitiendo concentrarse en lo vivo.
 - **Toggles adicionales de colapso/expansión por nivel** (propuestos, a refinar en implementación): "Colapsar trámites", "Expandir hasta fases", etc. Útiles en expedientes complejos.
+- **Agregadores en nodos colapsados.** Cada nodo no-hoja lleva en el contrato un objeto `agregados` con **contadores de todo su subárbol** por métrica accionable (plazos vencidos / próximos / en plazo, pendientes de notificar; "pendientes de firma" diferido — §15). Se calculan **en el backend** de abajo arriba (mismo recorrido que `services/seguimiento.py`). Regla de presentación: el badge se muestra **solo cuando el nodo está colapsado**; el agregado es **total y fijo**. Como un nodo colapsado oculta todo su subárbol, no hay doble conteo ni recálculo dinámico en cliente — el front solo decide mostrar/ocultar según el estado de colapso de cada nodo. Resuelve también el "indicador de plazo de fase" de §2 (la fase agrega los plazos de sus tareas).
 - **Filtros por pista, por estado, por plazo vencido** → **iteración posterior**, no v1.
 
 ### 12. Sincronización con URL
@@ -246,8 +260,9 @@ Refinamiento detallado pendiente de implementación (qué rol asigna por defecto
 
 ### 13. Minimapa
 
-- **Minimapa de xyflow activado por defecto**, esquina inferior derecha del área del árbol.
-- Botón discreto para ocultarlo si molesta. Estado en sessionStorage.
+> **Revertida (#500, 2026-05-31):** el minimapa se **elimina**. En la implementación no aportaba valor (además salía sin tematizar): los controles de zoom (+/−), el fit-view y el pan del fondo con el ratón cubren toda la navegación. Decisión del usuario durante S3a.
+
+~~Minimapa de xyflow activado por defecto, esquina inferior derecha del área del árbol. Botón discreto para ocultarlo si molesta. Estado en sessionStorage.~~
 
 ### 14. Redimensionamiento de paneles
 
@@ -286,13 +301,42 @@ Propuesta planteada en discusión: en la viewbar de la vista de expediente, most
 
 #### Contenido específico del inspector
 
-Propuesta esbozada en discusión: cabecera del nodo + datos completos + documentos asociados + estado de plazo + acciones rápidas + (en edición) despensa adaptativa.
-
-Refinable en implementación sin afectar al esqueleto.
+**Resuelto en S3a (#500):** el contenido fino del inspector en modo lectura por nivel está concretado en la tabla de §5 (cabecera + datos + documentos + plazo + agregados + acciones rápidas). El contrato del endpoint de detalle lazy está en §16. La despensa adaptativa (modo edición) sigue diferida a S3b.
 
 #### Dock
 
 La propuesta original de 3 tabs (Bitácora / Alertas motor / Plazos vivos) quedó **anulada por ADR-020**: el dock pasó a ser chrome global con bitácora por usuario y avisos de sesión. Las alertas del motor activas y los plazos vivos quedan pendientes de asignación a la viewbar (diseño futuro).
+
+#### Agregador "pendientes de firma"
+
+El catálogo de agregadores de nodo colapsado (§11) arranca con los directos: plazos y pendientes de notificar. **"Pendientes de firma"** (tareas ELABORAR cuyo documento producido aún no tiene valor administrativo firme) queda **fuera de v1**: requiere primero **definir el criterio de dominio**, porque `Documento.fecha_administrativa` NULL también lo usan los informes sin valor jurídico propio. Añadirlo después toca solo el serializador del árbol y el componente de badges — deuda barata.
+
+#### Tooltip-peek en hover
+
+§2.4 mantiene el resalte instantáneo sin tooltip. Como mejora futura se contempla un *tooltip* de detalle tras **ratón quieto** (hover-intent con delay) que reutiliza el endpoint de detalle lazy (§16) con caché y `AbortController`. Disponible **igual en lectura y en edición**: el tooltip es consulta de información (lectura), y la lectura fluye idéntica en ambos modos — lo único que distingue a la edición es poder editar. La única limitación es física: durante el **lock** con cambios pendientes el árbol tiene `pointer-events: none` (§4), así que no hay hover de ninguna clase —ni resalte ni tooltip— hasta guardar o cancelar. Diferido; el contrato lazy ya lo soporta sin cambios de backend.
+
+### 16. Contrato de los endpoints del árbol
+
+Decidido durante la sesión de implementación de #500 (2026-05-30). Concreta los puntos 1-3 de «Cómo implementar».
+
+#### `GET /api/expediente/<exp_id>/arbol`
+
+- **Forma:** JSON **anidado de dominio** `expediente → solicitudes[] → fases[] → tramites[] → tareas[]`. El frontend deriva los `nodes`/`edges` y el layout de xyflow; el backend es **agnóstico** de la librería de diagramas.
+- **Estado semántico, nunca color:** cada nodo lleva su `estado` deducido de las properties `.estado` de los modelos (PLANIFICADA / EN_CURSO / PDTE_CIERRE / FINALIZADA, etc.). El mapeo estado→color de la paleta JdA vive en el tematizado de xyflow (un único punto en el front).
+- **Una sola query** con `joinedload` de toda la jerarquía + relaciones de decorador.
+- **Decoradores por nodo** según §2. El `plazo` de las tareas ESPERAR_PLAZO se resuelve **en el backend** (`services/plazos.obtener_estado_plazo`) porque su cómputo depende del calendario hábil, suspensiones y `catalogo_plazos` — inaccesibles desde el cliente —; viaja como `{estado, fecha_limite, dias_restantes}` y el front solo mapea `estado` → icono de semáforo.
+- **Agregadores** (`agregados`) por nodo no-hoja: ver §11.
+
+#### `GET /api/expediente/<exp_id>/nodo/<tipo>/<nodo_id>` — detalle lazy
+
+- El árbol **no** lleva el detalle completo de cada nodo: solo decoradores. El detalle del inspector se pide **bajo demanda** al seleccionar (y, en el futuro, al hacer hover con delay — §2.4).
+- Ventaja: árbol ligero, detalle siempre fresco, payload acotado en expedientes grandes.
+- **Ruta** (implementada en S3a, #500): `GET /api/expedientes/<exp_id>/nodo/<tipo>/<nodo_id>`, `<tipo>` ∈ {expediente, solicitud, fase, tramite, tarea}. Sirve también la raíz (uniforme).
+- **Payload**: `{nodo:{tipo,id}, campos:[{etiqueta,valor}], documentos:[{id,rol,nombre,tipo_doc,fecha,enlace,externo,puede_abrir_carpeta}], plazo:{estado,fecha_limite,dias_restantes}|null, referencia}`. La cabecera (nombre/estado/semáforo) y los `agregados` NO viajan aquí: el front los toma del árbol ya cargado. El servicio es `services/detalle_nodo.py`, defensivo ante catálogo y con `ValueError`→404 si el nodo no pertenece al expediente. Contenido por nivel: §5.
+
+#### `GET /api/expediente/<exp_id>/nodo/<tipo>/<nodo_id>/tipos-creables`
+
+- Como «Cómo implementar»·2: **misma fuente** para la despensa de tipos del inspector y el submenú «Crear hijo» del menú contextual (consulta única cacheada). Devuelve los tipos de hijo creables según motor + reglas FTT.
 
 ---
 

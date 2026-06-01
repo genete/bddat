@@ -22,6 +22,10 @@ from app.models import (
     Solicitud, Fase, TipoSolicitud, TipoFase,
     Proyecto, TipoIA, Usuario
 )
+from app.services.arbol_expediente import construir_arbol
+from app.services.tipos_creables import tipos_creables_de_nodo
+from app.services.detalle_nodo import detalle_de_nodo
+from app.utils.permisos import verificar_acceso_expediente
 
 # Blueprint para API
 api_bp = Blueprint('api', __name__, url_prefix='/api')
@@ -439,3 +443,93 @@ def get_jerarquia_expediente(expediente_id):
     }
 
     return jsonify(response), 200
+
+
+# =============================================================================
+# ENDPOINT 3: Árbol completo del expediente (Vista de árbol, ADR-016)
+# =============================================================================
+
+@api_bp.route('/expedientes/<int:expediente_id>/arbol', methods=['GET'])
+@login_required
+def get_arbol_expediente(expediente_id):
+    """
+    GET /api/expedientes/<id>/arbol — árbol completo para la vista de árbol (ADR-016).
+
+    Payload: ADR-016 §16 — JSON anidado de dominio (expediente → solicitudes →
+    fases → trámites → tareas) con decoradores por nodo, estado SEMÁNTICO (el color
+    lo pone el front en el tematizado de xyflow), plazos resueltos en backend y
+    agregadores de subárbol (§11) en cada nodo no-hoja.
+
+    El detalle fino de cada nodo NO viaja aquí: va en el endpoint lazy
+    /nodo/<tipo>/<id> consultado al seleccionar (§16).
+    """
+    expediente = Expediente.query.get_or_404(expediente_id)
+
+    # Control de acceso sobre expediente concreto (REGLAS_DESARROLLO §Control de acceso).
+    # Devuelve None si hay acceso, o un redirect si no. De paso habilita el
+    # indicador de bombilla del header para TRAMITADOR.
+    denegado = verificar_acceso_expediente(expediente)
+    if denegado:
+        return denegado
+
+    arbol = construir_arbol(expediente_id)
+    if arbol is None:
+        return jsonify({'error': 'Expediente no encontrado'}), 404
+    return jsonify(arbol), 200
+
+
+# =============================================================================
+# ENDPOINT 4: Tipos de hijo creables bajo un nodo (despensa + menú, ADR-016 §16/§8)
+# =============================================================================
+
+@api_bp.route('/expedientes/<int:expediente_id>/nodo/<tipo>/<int:nodo_id>/tipos-creables', methods=['GET'])
+@login_required
+def get_tipos_creables(expediente_id, tipo, nodo_id):
+    """
+    GET .../nodo/<tipo>/<nodo_id>/tipos-creables — tipos de hijo creables (ADR-016 §16, §8).
+
+    <tipo> ∈ {expediente, solicitud, fase, tramite}. Fuente única para la despensa
+    de tipos del inspector y el submenú 'Crear hijo' del menú contextual. Cada tipo
+    llega marcado permitido/no-permitido (motor + modo global); los no-permitidos
+    incluyen norma + motivo para el 'Mostrar todos…' atenuado.
+    """
+    expediente = Expediente.query.get_or_404(expediente_id)
+
+    denegado = verificar_acceso_expediente(expediente)
+    if denegado:
+        return denegado
+
+    try:
+        data = tipos_creables_de_nodo(expediente, tipo, nodo_id)
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 404
+    return jsonify(data), 200
+
+
+# =============================================================================
+# ENDPOINT 5: Detalle lazy de un nodo para el inspector (ADR-016 §5/§16)
+# =============================================================================
+
+@api_bp.route('/expedientes/<int:expediente_id>/nodo/<tipo>/<int:nodo_id>', methods=['GET'])
+@login_required
+def get_detalle_nodo(expediente_id, tipo, nodo_id):
+    """
+    GET .../nodo/<tipo>/<nodo_id> — detalle read-only del nodo (ADR-016 §5/§16).
+
+    <tipo> ∈ {expediente, solicitud, fase, tramite, tarea}. El árbol solo lleva
+    decoradores; el detalle fino del nodo seleccionado se pide aquí bajo demanda.
+    Payload: campos adaptativos por nivel + documentos clicables + plazo (si
+    ESPERAR_PLAZO) + referencia de ancestros. La cabecera y los agregados los toma
+    el front del árbol ya cargado.
+    """
+    expediente = Expediente.query.get_or_404(expediente_id)
+
+    denegado = verificar_acceso_expediente(expediente)
+    if denegado:
+        return denegado
+
+    try:
+        data = detalle_de_nodo(expediente, tipo, nodo_id)
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 404
+    return jsonify(data), 200

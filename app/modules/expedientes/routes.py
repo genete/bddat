@@ -106,6 +106,24 @@ def detalle(id):
     return render_template('expedientes/detalle.html', expediente=expediente, modo='ver')
 
 
+@bp.route('/<int:id>/arbol')
+@login_required
+def arbol(id):
+    """Vista de árbol del expediente (#500, ADR-016): isla React 'expediente-arbol'.
+
+    El árbol y su detalle se sirven vía API (/api/expedientes/<id>/arbol). Aquí solo
+    se renderiza el contenedor de la isla; el control de acceso real lo imponen tanto
+    esta ruta como cada endpoint de la API.
+    """
+    expediente = Expediente.query.get_or_404(id)
+
+    resultado = verificar_acceso_expediente(expediente, 'ver')
+    if resultado:
+        return resultado
+
+    return render_template('expedientes/arbol.html', expediente=expediente)
+
+
 @bp.route('/<int:id>/editar', methods=['GET', 'POST'])
 @login_required
 def editar(id):
@@ -932,6 +950,37 @@ def pool_abrir_en_carpeta(id, doc_id):
         # shell=True necesario: explorer.exe no parsea /select,ruta como argumento de lista.
         # La ruta viene de BD (ya validada), no de input directo del usuario.
         subprocess.Popen(f'explorer /select,"{ruta_abs}"', shell=True)
+        return jsonify({'ok': True})
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@bp.route('/<int:id>/abrir-carpeta', methods=['POST'])
+@login_required
+def abrir_carpeta_expediente(id):
+    """
+    Abre el Explorador de Windows en la carpeta del expediente (FILESYSTEM_BASE/AT-N).
+
+    Acción rápida del inspector de la vista de árbol (#500, ADR-016 §5). Misma
+    limitación que pool_abrir_en_carpeta: Flask debe correr en el PC del navegador.
+    """
+    import subprocess
+
+    expediente = Expediente.query.get_or_404(id)
+    resultado = verificar_acceso_expediente(expediente, 'ver')
+    if resultado:
+        return resultado
+
+    base = current_app.config.get('FILESYSTEM_BASE', '')
+    if not base or not os.path.isdir(base):
+        return jsonify({'ok': False, 'error': 'Servidor de ficheros no accesible'}), 503
+
+    carpeta = os.path.normpath(os.path.join(os.path.abspath(base), f'AT-{expediente.numero_at}'))
+    if not os.path.isdir(carpeta):
+        return jsonify({'ok': False, 'error': 'La carpeta del expediente aún no existe'}), 404
+
+    try:
+        subprocess.Popen(f'explorer "{carpeta}"', shell=True)
         return jsonify({'ok': True})
     except Exception as e:
         return jsonify({'ok': False, 'error': str(e)}), 500

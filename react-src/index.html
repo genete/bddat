@@ -3,14 +3,18 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Diagrama ESFTT — desarrollo standalone</title>
+  <title>Expediente-árbol — desarrollo standalone</title>
+  <!-- Standalone: replica el contexto CSS de Flask (Bootstrap 5.3 + iconos) para que
+       las clases de utilidad y los iconos bi-* rendericen igual que sobre el shell. -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
   <style>
-    body { margin: 0; }
+    html, body { margin: 0; height: 100%; }
     #root { width: 100vw; height: 100vh; }
   </style>
 </head>
 <body>
   <div id="root"></div>
-  <script type="module" src="/src/diagrama-esftt/main.jsx"></script>
+  <script type="module" src="/src/expediente-arbol/main.jsx"></script>
 </body>
 </html>

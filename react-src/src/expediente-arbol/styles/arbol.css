@@ -1,0 +1,202 @@
+/* arbol.css — estilos de la isla del árbol (#500, ADR-016 §2, MODELO §6/§7/§8/§9).
+ *
+ * FASE COLOR: el nivel se distingue por el ICONO de tipo (no por forma ni color de
+ * borde). El único canal cromático es el círculo-semáforo. Los 6 colores semáforo
+ * (MODELO §2) se definen como variables — valores v0 tomados del mockup; el mapeo
+ * fino a la paleta JdA se itera con preview.
+ */
+
+/* ── Paleta semáforo (v0; iterar a JdA) ─────────────────────────────────────── */
+/* En `.react-flow` (no en el wrapper de isla) para que las variables cascadeen a los
+ * nodos tanto sobre el shell de Flask como en el dev standalone (sin data-react-island). */
+.react-flow {
+  --sem-rojo:     #cc3b3b;
+  --sem-naranja:  #e0892b;
+  --sem-amarillo: #e9c43d;
+  --sem-azul:     #3b78cc;
+  --sem-gris:     #9a9a9a;
+  --sem-verde:    #3a9b4e;
+
+  --nodo-borde:   #b0b0b0;
+  --nodo-bg:      #f4f4f4;
+  --nodo-raya:    #cfcfcf;
+  --tareas-bg:    #fafafa;
+}
+
+/* El contenedor de la isla ocupa toda el área app-main del shell. */
+[data-react-island="expediente-arbol"] {
+  display: block;
+  height: 100%;
+  min-height: 0;
+}
+[data-react-island="expediente-arbol"] .react-flow {
+  height: 100%;
+}
+
+/* Handles invisibles: solo sirven de anclaje a los edges. */
+.arbol-handle {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ── Círculo-semáforo (único canal cromático, §7) ───────────────────────────── */
+.arbol-sem {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  border: 1.5px solid var(--sem-gris);
+  background: transparent;            /* hueco por defecto */
+  flex-shrink: 0;
+  display: inline-block;
+}
+.arbol-sem.is-relleno[data-color="rojo"]     { background: var(--sem-rojo);     border-color: var(--sem-rojo); }
+.arbol-sem.is-relleno[data-color="naranja"]  { background: var(--sem-naranja);  border-color: var(--sem-naranja); }
+.arbol-sem.is-relleno[data-color="amarillo"] { background: var(--sem-amarillo); border-color: var(--sem-amarillo); }
+.arbol-sem.is-relleno[data-color="azul"]     { background: var(--sem-azul);     border-color: var(--sem-azul); }
+.arbol-sem.is-relleno[data-color="gris"]     { background: var(--sem-gris);     border-color: var(--sem-gris); }
+.arbol-sem.is-relleno[data-color="verde"]    { background: var(--sem-verde);    border-color: var(--sem-verde); }
+
+/* ── Decorador de documentos (§8) ───────────────────────────────────────────── */
+.arbol-docs { display: flex; gap: 7px; }
+.arbol-docs--col { flex-direction: column; justify-content: center; }   /* cajas (solicitud) */
+.arbol-docs--row { flex-direction: row; align-items: center; }          /* filas (tareas) */
+.arbol-doc {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 12px;
+  color: #c2c2c2;                     /* vacío = gris atenuado */
+}
+.arbol-doc.has { color: #4a4a4a; }    /* presente */
+.arbol-doc.na  { color: #c8c8c8; }    /* no aplica (-) */
+.arbol-doc b { font-size: 10px; font-weight: 700; }
+
+/* ── Caja genérica de nodo (expediente/solicitud/fase/trámite, §6) ──────────── */
+.arbol-nodo {
+  box-sizing: border-box;
+  border: 1px solid var(--nodo-borde);
+  border-radius: 10px;
+  background: var(--nodo-bg);
+  color: #333;
+  overflow: hidden;
+  font-size: 12px;
+}
+.arbol-nodo.is-selected {
+  border-color: #555;
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.12);
+}
+
+/* Cabecera: [icono-tipo] TÍTULO centrado [círculo] · raya horizontal inferior. */
+.arbol-nodo__cab {
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--nodo-raya);
+}
+.arbol-nodo__icono {
+  padding-left: 9px;
+  color: #777;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+}
+.arbol-nodo__titulo {
+  flex: 1;
+  text-align: center;
+  font-weight: 700;
+  text-transform: uppercase;          /* título de caja siempre en MAYÚSCULAS */
+  letter-spacing: 0.4px;
+  font-size: 13px;
+  padding: 7px 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.arbol-nodo__cab .arbol-sem { margin: 0 11px 0 4px; }
+
+/* Cuerpo: zona libre + documentos a la derecha SIN raya (solo separación). */
+.arbol-nodo__cuerpo {
+  display: flex;
+  align-items: stretch;
+  min-height: 30px;
+}
+.arbol-nodo__cuerpo-c {
+  flex: 1;
+  padding: 6px 9px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.arbol-nodo__cuerpo .arbol-docs--col { padding: 4px 11px 4px 4px; }
+.arbol-nodo__estado { font-size: 10px; color: #777; }
+.arbol-nodo__badges { font-size: 10px; color: #a30; }
+
+/* Ancho FIJO por nivel (debe casar EXACTO con TAM de layout.js: flextree reserva ese
+ * ancho; si la caja creciera con el texto invadiría a su vecina). El título recorta con
+ * ellipsis. Alto mínimo (la caja puede crecer hacia abajo). */
+.arbol-nodo--expediente { width: 210px; min-height: 60px; }
+.arbol-nodo--solicitud  { width: 232px; min-height: 76px; }
+.arbol-nodo--fase       { width: 190px; min-height: 60px; }
+.arbol-nodo--tramite    { width: 182px; min-height: 56px; }
+
+/* ── Bloque de tareas (nodo independiente, hijo único del trámite) ──────────── */
+.arbol-tareas {
+  box-sizing: border-box;
+  width: 212px;
+  border: 1px solid var(--nodo-borde);
+  border-radius: 10px;
+  background: var(--tareas-bg);
+  padding: 6px 5px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* Fila-tarea: versión compacta de la anatomía. La barra de plazo va superpuesta
+ * al borde inferior (position absolute) para no alterar la altura de la fila. */
+.arbol-tarea {
+  position: relative;
+  height: 30px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.arbol-tarea:hover { background: #eee; }
+.arbol-tarea.is-selected {
+  background: #e2e2e2;
+  box-shadow: inset 0 0 0 2px #888;
+}
+.arbol-tarea__fila {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 100%;
+  padding: 0 8px;
+}
+.arbol-tarea__icono { color: #666; flex-shrink: 0; font-size: 13px; }
+.arbol-tarea__titulo {
+  flex: 1;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.2px;
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.arbol-tarea__fila .arbol-doc b { font-size: 9px; }
+
+/* Barra de plazo semántica (§9): track tenue + relleno por estado. */
+.arbol-tarea__track {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 2px;
+  height: 3px;
+  background: #e6e6e6;
+  border-radius: 2px;
+  overflow: hidden;
+}
+.arbol-tarea__fill { height: 100%; background: var(--sem-gris); }
+.arbol-tarea__fill[data-color="naranja"] { background: var(--sem-naranja); }
+.arbol-tarea__fill[data-color="rojo"]    { background: var(--sem-rojo); }
+.arbol-tarea__fill[data-color="verde"]   { background: var(--sem-verde); }
+.arbol-tarea__fill[data-color="gris"]    { background: var(--sem-gris); }

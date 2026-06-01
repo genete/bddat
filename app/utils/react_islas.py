@@ -55,9 +55,28 @@ def react_bundle(nombre):
     def static_react(fichero):
         return url_for('static', filename=f'js/react/{fichero}')
 
+    # CSS a enlazar: el de los chunks importados (transitivo) + el del propio entry,
+    # sin duplicar. Cuando dos islas comparten una librería con CSS (p. ej. xyflow),
+    # Vite extrae ese CSS al chunk compartido; si solo enlazáramos entry['css'] se
+    # perdería. Recorremos imports en profundidad PRIMERO para que el CSS compartido
+    # quede antes que el del entry y el tematizado de la isla pueda sobrescribirlo.
+    css_files = []
+    vistos = set()
+
+    def recoger_css(nodo):
+        for imp in nodo.get('imports', []):
+            chunk = manifest.get(imp)
+            if chunk:
+                recoger_css(chunk)
+        for css in nodo.get('css', []):
+            if css not in vistos:
+                vistos.add(css)
+                css_files.append(css)
+
+    recoger_css(entry)
+
     tags = []
-    # CSS del entry (Vite agrupa aquí el CSS del entry y de sus imports estáticos).
-    for css in entry.get('css', []):
+    for css in css_files:
         tags.append(f'<link rel="stylesheet" href="{static_react(css)}">')
     # Precarga de los chunks compartidos (React, etc.) que el módulo importa.
     for imp in entry.get('imports', []):
