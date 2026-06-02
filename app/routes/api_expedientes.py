@@ -20,11 +20,14 @@ from app.models.entidad import Entidad
 from app.models.tipos_expedientes import TipoExpediente
 from app.models import (
     Solicitud, Fase, TipoSolicitud, TipoFase,
-    Proyecto, TipoIA, Usuario
+    Proyecto, TipoIA, Usuario,
+    Tramite, Tarea, TipoTramite, TipoTarea, Documento,
 )
 from app.services.arbol_expediente import construir_arbol
 from app.services.tipos_creables import tipos_creables_de_nodo
 from app.services.detalle_nodo import detalle_de_nodo
+from app.services.esquema_editable import esquema_de_nodo
+from app.services import mutaciones_arbol as svc
 from app.utils.permisos import verificar_acceso_expediente
 
 # Blueprint para API
@@ -530,6 +533,257 @@ def get_detalle_nodo(expediente_id, tipo, nodo_id):
 
     try:
         data = detalle_de_nodo(expediente, tipo, nodo_id)
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 404
+    return jsonify(data), 200
+
+
+# =============================================================================
+# Helper privado de resolución de nodo
+# =============================================================================
+
+def _resolver_nodo(expediente, tipo: str, nodo_id: int):
+    """(tipo, nodo_id) → objeto del modelo validando pertenencia. ValueError si no."""
+    if tipo == 'expediente':
+        if nodo_id != expediente.id:
+            raise ValueError(
+                f'Nodo expediente {nodo_id} no coincide con el expediente {expediente.id}')
+        return expediente
+    if tipo == 'solicitud':
+        obj = Solicitud.query.get(nodo_id)
+        if obj is None or obj.expediente_id != expediente.id:
+            raise ValueError(f'Solicitud {nodo_id} no encontrada en expediente {expediente.id}')
+        return obj
+    if tipo == 'fase':
+        obj = Fase.query.get(nodo_id)
+        if obj is None or obj.solicitud.expediente_id != expediente.id:
+            raise ValueError(f'Fase {nodo_id} no encontrada en expediente {expediente.id}')
+        return obj
+    if tipo == 'tramite':
+        obj = Tramite.query.get(nodo_id)
+        if obj is None or obj.fase.solicitud.expediente_id != expediente.id:
+            raise ValueError(f'Trámite {nodo_id} no encontrado en expediente {expediente.id}')
+        return obj
+    if tipo == 'tarea':
+        obj = Tarea.query.get(nodo_id)
+        if obj is None or obj.tramite.fase.solicitud.expediente_id != expediente.id:
+            raise ValueError(f'Tarea {nodo_id} no encontrada en expediente {expediente.id}')
+        return obj
+    raise ValueError(f'Tipo de nodo desconocido: {tipo!r}')
+
+
+def _bloqueo_422(res):
+    """Respuesta uniforme árbol para bloqueo del motor."""
+    return jsonify({
+        'error': 'Bloqueado por el motor',
+        'motivo': res.bloqueo.motivo,
+        'url_norma': res.bloqueo.url_norma,
+    }), 422
+
+
+# =============================================================================
+# ENDPOINT 6: Crear hijo bajo un nodo (ADR-016 S3b)
+# =============================================================================
+
+@api_bp.route('/expedientes/<int:expediente_id>/nodo/<padre_tipo>/<int:padre_id>/hijos',
+              methods=['POST'])
+@login_required
+def crear_hijo_nodo(expediente_id, padre_tipo, padre_id):
+    """
+    POST .../nodo/<padre_tipo>/<padre_id>/hijos — crear hijo bajo un nodo (ADR-016 §S3b).
+
+    Body JSON: {tipo_id} o {tipo_ids:[...]} cuando padre_tipo=='expediente'.
+    Respuesta éxito: {ok:true, ids:[...]} 201.
+    Bloqueo motor: {error, motivo, url_norma} 422.
+    """
+    expediente = Expediente.query.get_or_404(expediente_id)
+    denegado = verificar_acceso_expediente(expediente, 'editar')
+    if denegado:
+        return denegado
+
+    try:
+        padre = _resolver_nodo(expediente, padre_tipo, padre_id)
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 404
+
+    data = request.get_json(silent=True) or {}
+
+    if padre_tipo == 'expediente':
+        tipo_ids = data.get('tipo_ids') or (
+            [data['tipo_id']] if 'tipo_id' in data else None)
+        if not tipo_ids:
+            return jsonify({'error': 'Se requiere tipo_id o tipo_ids'}), 422
+        tipos = []
+        for tid in tipo_ids:
+            t = TipoSolicitud.query.get(tid)
+            if not t:
+                return jsonify({'error': f'TipoSolicitud {tid} no encontrado'}), 404
+            tipos.append(t)
+        res = svc.crear_solicitud(expediente, tipos, expediente.titular_id)
+
+    elif padre_tipo == 'solicitud':
+        tipo_id = data.get('tipo_id')
+        if not tipo_id:
+            return jsonify({'error': 'Se requiere tipo_id'}), 422
+        tipo = TipoFase.query.get(tipo_id)
+        if not tipo:
+            return jsonify({'error': f'TipoFase {tipo_id} no encontrado'}), 404
+        res = svc.crear_fase(padre, tipo)
+
+    elif padre_tipo == 'fase':
+        tipo_id = data.get('tipo_id')
+        if not tipo_id:
+            return jsonify({'error': 'Se requiere tipo_id'}), 422
+        tipo = TipoTramite.query.get(tipo_id)
+        if not tipo:
+            return jsonify({'error': f'TipoTramite {tipo_id} no encontrado'}), 404
+        res = svc.crear_tramite(padre, tipo)
+
+    elif padre_tipo == 'tramite':
+        tipo_id = data.get('tipo_id')
+        if not tipo_id:
+            return jsonify({'error': 'Se requiere tipo_id'}), 422
+        tipo = TipoTarea.query.get(tipo_id)
+        if not tipo:
+            return jsonify({'error': f'TipoTarea {tipo_id} no encontrado'}), 404
+        res = svc.crear_tarea(padre, tipo)
+
+    else:
+        return jsonify({'error': f'Tipo de nodo no admite hijos: {padre_tipo!r}'}), 422
+
+    if res.bloqueo:
+        return _bloqueo_422(res)
+    if not res.ok:
+        return jsonify({'error': res.error}), 422
+
+    payload = {'ok': True, 'ids': res.ids}
+    if res.advertencia:
+        payload['advertencia'] = res.advertencia
+    return jsonify(payload), 201
+
+
+# =============================================================================
+# ENDPOINT 7: Editar un nodo (ADR-016 S3b)
+# =============================================================================
+
+@api_bp.route('/expedientes/<int:expediente_id>/nodo/<tipo>/<int:nodo_id>',
+              methods=['PATCH'])
+@login_required
+def editar_nodo(expediente_id, tipo, nodo_id):
+    """
+    PATCH .../nodo/<tipo>/<nodo_id> — editar campos de un nodo (ADR-016 §S3b).
+
+    Body JSON varía por nivel:
+      solicitud: {observaciones}
+      fase:      {resultado_fase_id, documento_resultado_id, observaciones}
+      tramite:   {observaciones}
+      tarea:     {documentos_consumidos_ids, documento_producido_id, notas}
+    Respuesta éxito: {ok:true} 200. Bloqueo motor: {error, motivo, url_norma} 422.
+    """
+    expediente = Expediente.query.get_or_404(expediente_id)
+    denegado = verificar_acceso_expediente(expediente, 'editar')
+    if denegado:
+        return denegado
+
+    try:
+        nodo = _resolver_nodo(expediente, tipo, nodo_id)
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 404
+
+    data = request.get_json(silent=True) or {}
+
+    if tipo == 'solicitud':
+        res = svc.editar_solicitud(nodo, observaciones=data.get('observaciones'))
+    elif tipo == 'fase':
+        res = svc.editar_fase(
+            nodo,
+            resultado_fase_id=data.get('resultado_fase_id'),
+            documento_resultado_id=data.get('documento_resultado_id'),
+            observaciones=data.get('observaciones'),
+        )
+    elif tipo == 'tramite':
+        res = svc.editar_tramite(nodo, observaciones=data.get('observaciones'))
+    elif tipo == 'tarea':
+        res = svc.editar_tarea(
+            nodo,
+            documentos_consumidos_ids=data.get('documentos_consumidos_ids') or [],
+            documento_producido_id=data.get('documento_producido_id'),
+            notas=data.get('notas'),
+        )
+    else:
+        return jsonify({'error': f'Tipo de nodo no editable: {tipo!r}'}), 422
+
+    if res.bloqueo:
+        return _bloqueo_422(res)
+    if not res.ok:
+        return jsonify({'error': res.error}), 422
+    return jsonify({'ok': True}), 200
+
+
+# =============================================================================
+# ENDPOINT 8: Borrar un nodo (ADR-016 S3b)
+# =============================================================================
+
+@api_bp.route('/expedientes/<int:expediente_id>/nodo/<tipo>/<int:nodo_id>',
+              methods=['DELETE'])
+@login_required
+def borrar_nodo(expediente_id, tipo, nodo_id):
+    """
+    DELETE .../nodo/<tipo>/<nodo_id> — borrar un nodo (ADR-016 §S3b).
+
+    Sin body. Respuesta éxito: {ok:true} 200. Bloqueo motor: {error, motivo, url_norma} 422.
+    """
+    expediente = Expediente.query.get_or_404(expediente_id)
+    denegado = verificar_acceso_expediente(expediente, 'editar')
+    if denegado:
+        return denegado
+
+    try:
+        nodo = _resolver_nodo(expediente, tipo, nodo_id)
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 404
+
+    if tipo == 'solicitud':
+        res = svc.borrar_solicitud(nodo)
+    elif tipo == 'fase':
+        res = svc.borrar_fase(nodo)
+    elif tipo == 'tramite':
+        res = svc.borrar_tramite(nodo)
+    elif tipo == 'tarea':
+        res = svc.borrar_tarea(nodo)
+    else:
+        return jsonify({'error': f'Tipo de nodo no borrable: {tipo!r}'}), 422
+
+    if res.bloqueo:
+        return _bloqueo_422(res)
+    if not res.ok:
+        return jsonify({'error': res.error}), 422
+    return jsonify({'ok': True}), 200
+
+
+# =============================================================================
+# ENDPOINT 9: Esquema editable de un nodo (ADR-016 S3b)
+# =============================================================================
+
+@api_bp.route('/expedientes/<int:expediente_id>/nodo/<tipo>/<int:nodo_id>/editable',
+              methods=['GET'])
+@login_required
+def get_esquema_editable(expediente_id, tipo, nodo_id):
+    """
+    GET .../nodo/<tipo>/<nodo_id>/editable — esquema de campos editables (ADR-016 §S3b).
+
+    Devuelve el contrato genérico que el inspector usa para pintar el formulario editor:
+    {nodo:{tipo,id}, campos:[{campo, etiqueta, control, valor, opciones?}]}.
+    El expediente devuelve campos:[] (no editable en v1).
+    """
+    expediente = Expediente.query.get_or_404(expediente_id)
+
+    denegado = verificar_acceso_expediente(expediente)
+    if denegado:
+        return denegado
+
+    try:
+        data = esquema_de_nodo(expediente, tipo, nodo_id)
     except ValueError as e:
         return jsonify({'error': str(e)}), 404
     return jsonify(data), 200
