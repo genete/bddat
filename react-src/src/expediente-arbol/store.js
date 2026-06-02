@@ -131,8 +131,11 @@ export const useArbolStore = create((set, get) => ({
   setCampo: (campo, valor) => set((s) => ({ borrador: { ...s.borrador, [campo]: valor } })),
 
   cancelar: () => {
+    const { seleccion } = get()
     set({ modoEdicion: false, editableCampos: [], borrador: {}, borradorInicial: {}, edicionCargando: false,
-          tiposCreables: null, tipoCreacionPendiente: null })
+          tiposCreables: null, tipoCreacionPendiente: null,
+          detalle: null, detalleCargando: false, detalleError: null })
+    get().cargarDetalle(seleccion)
     showToast('Cambios descartados', 'info')
   },
 
