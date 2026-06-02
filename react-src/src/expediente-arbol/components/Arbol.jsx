@@ -32,6 +32,8 @@ export default function Arbol() {
   const colapsarFinalizados = useArbolStore((s) => s.colapsarFinalizados)
   const seleccion = useArbolStore((s) => s.seleccion)
   const seleccionar = useArbolStore((s) => s.seleccionar)
+  const modoEdicion = useArbolStore((s) => s.modoEdicion)
+  const entrarEdicion = useArbolStore((s) => s.entrarEdicion)
 
   const { nodes, edges } = useMemo(
     () => construirGrafo(arbol, { colapsarFinalizados, seleccion }),
@@ -46,14 +48,25 @@ export default function Arbol() {
     },
     [seleccionar],
   )
+  // Doble-clic = atajo para editar ese nodo (en lectura). En edición el overlay
+  // intercepta los clics del lienzo, así que no permite cambiar de nodo objetivo.
+  const onNodeDoubleClick = useCallback(
+    (_, node) => {
+      if (node.data.tipo === 'tareas') return
+      entrarEdicion({ tipo: node.data.tipo, id: node.data.id })
+    },
+    [entrarEdicion],
+  )
   const onPaneClick = useCallback(() => seleccionar(null), [seleccionar])
 
   return (
     <ReactFlow
+      className={modoEdicion ? 'arbol-lienzo--edicion' : undefined}
       nodes={nodes}
       edges={edges}
       nodeTypes={nodeTypes}
       onNodeClick={onNodeClick}
+      onNodeDoubleClick={onNodeDoubleClick}
       onPaneClick={onPaneClick}
       defaultEdgeOptions={defaultEdgeOptions}
       nodesDraggable={false}

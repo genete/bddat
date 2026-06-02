@@ -3,7 +3,12 @@
 // Vive DENTRO de la isla (no en el slot viewbar de Jinja) para no cruzar estado
 // React↔Jinja con el toggle. El slot viewbar de base_app conserva su default
 // (código AT + bombilla de acceso).
-// Botón "Editar" y resumen-mini de pistas → S3.
+// Viewbar.jsx — cabecera de la isla del árbol (#500, ADR-016 §11).
+//
+// Vive DENTRO de la isla (no en el slot viewbar de Jinja) para no cruzar estado
+// React↔Jinja con el toggle. Muestra info del expediente + toggle "Colapsar
+// finalizados". Los botones de modo (Editar/Guardar/Cancelar) viven en el INSPECTOR
+// (decisión S3b-1): editar es "editar este nodo", no "editar toda la vista".
 import React from 'react'
 import { useArbolStore } from '../store.js'
 

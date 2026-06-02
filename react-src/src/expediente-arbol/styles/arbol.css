@@ -200,3 +200,29 @@
 .arbol-tarea__fill[data-color="rojo"]    { background: var(--sem-rojo); }
 .arbol-tarea__fill[data-color="verde"]   { background: var(--sem-verde); }
 .arbol-tarea__fill[data-color="gris"]    { background: var(--sem-gris); }
+
+/* ── Modo edición / lock (S3b-1) ─────────────────────────────────────────────── */
+/* Tono del lienzo en modo edición (señal inequívoca, ADR §4). */
+.react-flow.arbol-lienzo--edicion { background-color: #fff8ef; }
+
+/* Lock activo: atenúa el chrome fuera del inspector. El inspector queda nítido y se
+   eleva por encima del overlay transparente que captura los clics (App.jsx). */
+body.arbol-lock .app-topbar,
+body.arbol-lock .app-sidebar,
+body.arbol-lock .app-viewbar,
+body.arbol-lock .app-main,
+body.arbol-lock .app-footer,
+body.arbol-lock .app-dock {            /* .app-dock no existe en esta vista; inocuo */
+  opacity: .5;
+  transition: opacity .15s ease;
+}
+body.arbol-lock .app-inspector {
+  position: relative;
+  z-index: 1050;                       /* > overlay (1040), < toasts de Bootstrap (1090) */
+}
+
+/* Inspector destacado mientras el lock está activo (zona interactiva). */
+.arbol-inspector--lock {
+  box-shadow: 0 0 0 3px rgba(13, 110, 253, .35);
+  border-radius: 8px;
+}

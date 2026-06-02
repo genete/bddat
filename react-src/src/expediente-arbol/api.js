@@ -21,3 +21,13 @@ export function getNodo(expedienteId, tipo, nodoId, opts) {
 export function getTiposCreables(expedienteId, tipo, nodoId) {
   return api.get(`/api/expedientes/${expedienteId}/nodo/${tipo}/${nodoId}/tipos-creables`)
 }
+
+// Esquema editable del nodo (editor del inspector, S3b-1).
+export function getEditable(expedienteId, tipo, nodoId) {
+  return api.get(`/api/expedientes/${expedienteId}/nodo/${tipo}/${nodoId}/editable`)
+}
+
+// Editar campos de un nodo (PATCH, S3b-1).
+export function patchNodo(expedienteId, tipo, nodoId, body) {
+  return api.patch(`/api/expedientes/${expedienteId}/nodo/${tipo}/${nodoId}`, body)
+}
