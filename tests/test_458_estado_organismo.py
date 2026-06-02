@@ -25,12 +25,12 @@ def _vinculo_stub(org):
 class TestHook458EstadoOrganismo:
 
     def test_analizar_separata_pone_en_tramitacion(self):
-        from app.routes.api_bc import _hook_458_analizar_separata
+        from app.services.mutaciones_arbol import _hook_458_analizar_separata
         tarea = _tarea_stub('ANALIZAR', 'CONSULTA_SEPARATA', tramite_id=5)
         org = MagicMock()
         org.estado = 'separata_enviada'
 
-        with patch('app.routes.api_bc.TramiteOrganismo') as mock_cls:
+        with patch('app.services.mutaciones_arbol.TramiteOrganismo') as mock_cls:
             mock_cls.query.filter_by.return_value.first.return_value = _vinculo_stub(org)
             _hook_458_analizar_separata(tarea, id_producido=10)
 
@@ -38,12 +38,12 @@ class TestHook458EstadoOrganismo:
         mock_cls.query.filter_by.assert_called_once_with(tramite_id=5)
 
     def test_analizar_otro_tramite_no_cambia_estado(self):
-        from app.routes.api_bc import _hook_458_analizar_separata
+        from app.services.mutaciones_arbol import _hook_458_analizar_separata
         tarea = _tarea_stub('ANALIZAR', 'REQUERIMIENTO_DE_MEJORA', tramite_id=5)
         org = MagicMock()
         org.estado = 'separata_enviada'
 
-        with patch('app.routes.api_bc.TramiteOrganismo') as mock_cls:
+        with patch('app.services.mutaciones_arbol.TramiteOrganismo') as mock_cls:
             mock_cls.query.filter_by.return_value.first.return_value = _vinculo_stub(org)
             _hook_458_analizar_separata(tarea, id_producido=10)
 
@@ -51,21 +51,21 @@ class TestHook458EstadoOrganismo:
         mock_cls.query.filter_by.assert_not_called()
 
     def test_sin_organismo_no_falla(self):
-        from app.routes.api_bc import _hook_458_analizar_separata
+        from app.services.mutaciones_arbol import _hook_458_analizar_separata
         tarea = _tarea_stub('ANALIZAR', 'CONSULTA_SEPARATA', tramite_id=99)
 
-        with patch('app.routes.api_bc.TramiteOrganismo') as mock_cls:
+        with patch('app.services.mutaciones_arbol.TramiteOrganismo') as mock_cls:
             mock_cls.query.filter_by.return_value.first.return_value = None
             # No debe lanzar excepción
             _hook_458_analizar_separata(tarea, id_producido=10)
 
     def test_sin_doc_producido_no_activa_hook(self):
-        from app.routes.api_bc import _hook_458_analizar_separata
+        from app.services.mutaciones_arbol import _hook_458_analizar_separata
         tarea = _tarea_stub('ANALIZAR', 'CONSULTA_SEPARATA', tramite_id=5)
         org = MagicMock()
         org.estado = 'separata_enviada'
 
-        with patch('app.routes.api_bc.TramiteOrganismo') as mock_cls:
+        with patch('app.services.mutaciones_arbol.TramiteOrganismo') as mock_cls:
             mock_cls.query.filter_by.return_value.first.return_value = _vinculo_stub(org)
             _hook_458_analizar_separata(tarea, id_producido=None)
 
