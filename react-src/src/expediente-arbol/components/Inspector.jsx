@@ -218,7 +218,15 @@ function Editor() {
 
   if (cargando) return <div className="text-muted small">Cargando editor…</div>
   if (!campos.length)
-    return <div className="text-muted small">Este elemento no tiene campos editables.</div>
+    // Sin campos editables (p.ej. expediente): NO atrapar al usuario en edición.
+    // Siempre debe poder salir → botón Cancelar (no hay nada que Guardar). (#511)
+    return (
+      <div>
+        <div className="text-muted small mb-3">Este elemento no tiene campos editables.</div>
+        <button type="button" className="btn btn-sm btn-outline-secondary"
+                onClick={cancelar}>Cancelar</button>
+      </div>
+    )
 
   const ctrl = (c, ref) => {
     const val = borrador[c.campo] ?? ''
@@ -297,7 +305,9 @@ export default function Inspector() {
   const nodo = buscarNodo(arbol, seleccion)
   if (modoEdicion) return <InspectorEdicion nodo={nodo} />
   const esHoja = seleccion.tipo === 'tarea'
-  const puedeEditar = tienePermiso('editar_expediente')
+  // El nodo expediente no tiene campos editables (esquema_editable → []): no ofrecer
+  // Editar para no entrar en una edición vacía (#511, alternativa "deshabilitar editar").
+  const puedeEditar = tienePermiso('editar_expediente') && seleccion.tipo !== 'expediente'
 
   return (
     <div className="p-3 d-flex flex-column h-100">
