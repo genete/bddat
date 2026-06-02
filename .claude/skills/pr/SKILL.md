@@ -33,7 +33,7 @@ Analiza los commits y ficheros cambiados para redactar:
 - **Título:** breve (≤70 caracteres), en imperativo, sin prefijo de categoría
 - **Cuerpo:** sección "## Cambios" con bullets de los cambios principales. Si se detectó un issue, la **última línea del cuerpo DEBE ser `Closes #XX`** — GitHub cierra el issue automáticamente al mergear, sin necesidad de `gh issue close`.
 
-Escribe el cuerpo con la tool `Write` en `D:\BDDAT\docs_prueba\temp\pr_body_XX.md` donde `XX` es el número de issue detectado (o el número de PR si no hay issue). Nunca uses heredoc ni redirección bash. Nunca reutilices un fichero existente — el nombre con el número garantiza unicidad.
+Escribe el cuerpo con la tool `Write` en un fichero **nuevo y único** dentro de `D:\BDDAT\docs_prueba\temp\`, y **redáctalo desde cero** a partir de los commits/diff actuales — **nunca copies el texto de un PR anterior ni reutilices/sobrescribas** un `pr_body_*.md` existente. El número de issue NO garantiza unicidad (un mismo issue puede tener varios PRs en distintas sesiones), así que añade un sufijo distintivo: p. ej. `pr_body_<issue>_<rama-o-fecha>.md` (ej. `pr_body_500_arbol-edicion.md`); si aun así existe, usa `-v2`, `-v3`… Nunca uses heredoc ni redirección bash.
 
 ### 4. Crear el PR
 
