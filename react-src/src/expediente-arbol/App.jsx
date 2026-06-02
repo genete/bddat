@@ -5,7 +5,8 @@
 // El Inspector real es S3 (aquí solo Viewbar + Arbol).
 import React, { useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { useArbolStore } from './store.js'
+import { useArbolStore, selectHayCambios } from './store.js'
+import { showToast } from '../shared/ui/toast.js'
 import Viewbar from './components/Viewbar.jsx'
 import Arbol from './components/Arbol.jsx'
 import Inspector from './components/Inspector.jsx'
@@ -46,6 +47,8 @@ export default function App() {
   const cargando = useArbolStore((s) => s.cargando)
   const error = useArbolStore((s) => s.error)
   const arbol = useArbolStore((s) => s.arbol)
+  const enEdicion = useArbolStore((s) => s.modoEdicion)
+  const hayCambios = useArbolStore(selectHayCambios)
 
   // Carga inicial + restaurar selección desde la URL. (En dev standalone no hay
   // data-expediente-id: el mock se preinyecta en el store desde main.jsx.)
@@ -60,6 +63,24 @@ export default function App() {
   useEffect(() => {
     escribirSeleccionURL(seleccion)
   }, [seleccion])
+
+  // Lock de la UI: al ENTRAR en edición se atenúa el chrome Jinja vía body.arbol-lock
+  // (CSS) y se monta el overlay (más abajo). Idempotente (add/remove simétricos) →
+  // resiste el doble-invoke de StrictMode en dev.
+  useEffect(() => {
+    if (!enEdicion) return
+    document.body.classList.add('arbol-lock')
+    return () => document.body.classList.remove('arbol-lock')
+  }, [enEdicion])
+
+  // beforeunload (diálogo nativo "cambios sin guardar"): solo si hay cambios reales que
+  // perder. El overlay ya impide navegar dentro de la app durante la edición.
+  useEffect(() => {
+    if (!(enEdicion && hayCambios)) return
+    const handler = (e) => { e.preventDefault(); e.returnValue = '' }
+    window.addEventListener('beforeunload', handler)
+    return () => window.removeEventListener('beforeunload', handler)
+  }, [enEdicion, hayCambios])
 
   if (cargando) return <div className="p-4 text-muted">Cargando árbol…</div>
   if (error) {
@@ -80,6 +101,11 @@ export default function App() {
         <Arbol />
       </div>
       {slot && createPortal(<Inspector />, slot)}
+      {enEdicion && createPortal(
+        <div aria-hidden="true"
+             onClick={() => showToast('Estás editando este elemento — Guarda o cancela primero.', 'warning')}
+             style={{ position: 'fixed', inset: 0, zIndex: 1040, background: 'transparent', cursor: 'not-allowed' }} />,
+        document.body)}
     </div>
   )
 }

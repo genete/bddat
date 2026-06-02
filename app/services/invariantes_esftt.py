@@ -29,6 +29,12 @@ RESULTADO_FASE_FAVORABLE_CODIGOS = frozenset({'FAVORABLE', 'FAVORABLE_CONDICIONA
 
 
 def _bloquear(mensaje: str) -> EvaluacionResult:
+    # CONVENIO de mensajería de bloqueos (invariantes vs motor):
+    # el mensaje humano del invariante va en `norma_compilada` (no hay norma
+    # compilada que mostrar) y `motivo` queda ''. El motor, en cambio, rellena
+    # `motivo`. Por eso TODO consumidor que muestre un bloqueo debe leer
+    # `motivo or norma_compilada` (ver api_expedientes._bloqueo_422 y
+    # api_bc._res_error). No basta con leer solo `motivo`.
     return EvaluacionResult(
         permitido=False, nivel='BLOQUEAR',
         variables_trigger={}, norma_compilada=mensaje, url_norma=''

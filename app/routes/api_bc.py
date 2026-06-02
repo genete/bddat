@@ -36,6 +36,7 @@ from app.models.configuracion_sistema import ConfiguracionSistema
 from app.services.invariantes_esftt import (
     check_invariante, _check_cierre_fase, RESULTADO_FASE_FAVORABLE_CODIGOS,
 )
+from app.services import mutaciones_arbol as svc
 
 bp = Blueprint('api_bc', __name__, url_prefix='/api/bc')
 
@@ -97,6 +98,11 @@ def _evaluar(accion: str, expediente, *, objeto) -> EvaluacionResult:
     return _aplicar_modo_global(evaluar_multi(accion, expediente, objeto=objeto))
 
 
+def _res_error(res):
+    """Traduce ResultadoMutacion de error a respuesta HTTP 422."""
+    return jsonify({'ok': False, 'error': res.error}), 422
+
+
 # ============================================
 # ENDPOINTS POST — CREAR entidades
 # ============================================
@@ -123,8 +129,6 @@ def crear_solicitud(exp_id):
     if err:
         return err
 
-    # Fase 1: validar tipos y evaluar motor antes de crear ninguna solicitud.
-    # Si cualquiera está bloqueada, se rechaza todo sin modificar la BD.
     tipos_a_crear = []
     for tid in tipo_ids:
         try:
@@ -134,44 +138,14 @@ def crear_solicitud(exp_id):
         tipo = TipoSolicitud.query.get(tid_int)
         if not tipo:
             return jsonify({'ok': False, 'error': f'Tipo de solicitud {tid_int} no encontrado'}), 404
-
-        if justificacion is None:
-            # stub transiente: precarga tipo_solicitud para que el assembler
-            # compile el sujeto sin necesitar flush
-            sol_stub = Solicitud(expediente_id=exp_id, entidad_id=entidad_id,
-                                 tipo_solicitud_id=tid_int)
-            sol_stub.tipo_solicitud = tipo
-            res_eval = _evaluar('CREAR', expediente, objeto=sol_stub)
-            if not res_eval.permitido:
-                return _bloqueo(res_eval)
-
         tipos_a_crear.append(tipo)
 
-    # Fase 2: crear y persistir
-    creadas = []
-    try:
-        for tipo in tipos_a_crear:
-            sol = Solicitud(expediente_id=exp_id, entidad_id=entidad_id,
-                            tipo_solicitud_id=tipo.id)
-            db.session.add(sol)
-            db.session.flush()  # obtener sol.id para la bitácora
-
-            if justificacion:
-                sujeto = build_sujeto(expediente, sol)
-                bitacora_svc.registrar(
-                    current_user.id, 'CREAR', 'solicitudes', sol.id,
-                    detalle={'escape': True, 'justificacion': justificacion,
-                             'sujeto': sujeto},
-                )
-            creadas.append(sol)
-
-        db.session.commit()
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'ok': False, 'error': str(e)}), 500
-
-    ids = [s.id for s in creadas]
-    return jsonify({'ok': True, 'ids': ids})
+    res = svc.crear_solicitud(expediente, tipos_a_crear, entidad_id, justificacion=justificacion)
+    if res.bloqueo:
+        return _bloqueo(res.bloqueo)
+    if not res.ok:
+        return _res_error(res)
+    return jsonify({'ok': True, 'ids': res.ids})
 
 
 @bp.route('/solicitud/<int:sol_id>/fases/nueva', methods=['POST'])
@@ -193,30 +167,12 @@ def crear_fase(sol_id):
     if err:
         return err
 
-    if justificacion is None:
-        res_eval = _evaluar('CREAR', sol.expediente, objeto={'solicitud': sol, 'tipo_fase': tipo_fase})
-        if not res_eval.permitido:
-            return _bloqueo(res_eval)
-    else:
-        res_eval = PERMITIDO
-
-    fase = Fase(solicitud_id=sol_id, tipo_fase_id=tipo_fase_id)
-    db.session.add(fase)
-    db.session.flush()
-
-    if tipo_fase.codigo in _FASES_QUE_REQUIEREN_CERT_IP_CONSULTAS:
-        from app.services.cert_fin_ip_consultas import crear_cert_fin_ip_consultas
-        crear_cert_fin_ip_consultas(sol.expediente, sol)
-
-    if justificacion:
-        sujeto = build_sujeto(sol.expediente, {'solicitud': sol, 'tipo_fase': tipo_fase})
-        bitacora_svc.registrar(
-            current_user.id, 'CREAR', 'fases', fase.id,
-            detalle={'escape': True, 'justificacion': justificacion, 'sujeto': sujeto},
-        )
-
-    db.session.commit()
-    return jsonify({'ok': True, 'id': fase.id, 'advertencia': _advertencia(res_eval)})
+    res = svc.crear_fase(sol, tipo_fase, justificacion=justificacion)
+    if res.bloqueo:
+        return _bloqueo(res.bloqueo)
+    if not res.ok:
+        return _res_error(res)
+    return jsonify({'ok': True, 'id': res.ids[0], 'advertencia': res.advertencia})
 
 
 _CODIGOS_TRASLADO = frozenset({'CONSULTA_TRASLADO_ORGANISMO', 'CONSULTA_TRASLADO_TITULAR'})
@@ -238,37 +194,16 @@ def crear_tramite(fase_id):
     if not tipo_tramite:
         return jsonify({'ok': False, 'error': 'Tipo de trámite no encontrado'}), 404
 
-    if tipo_tramite.codigo in _CODIGOS_TRASLADO:
-        return jsonify({
-            'ok': False,
-            'error': 'Los trámites de traslado se crean desde la acción específica de organismo',
-        }), 400
-
     justificacion, err = _leer_bypass(request.form)
     if err:
         return err
 
-    expediente = fase.solicitud.expediente
-    if justificacion is None:
-        res_eval = _evaluar('CREAR', expediente, objeto={'fase': fase, 'tipo_tramite': tipo_tramite})
-        if not res_eval.permitido:
-            return _bloqueo(res_eval)
-    else:
-        res_eval = PERMITIDO
-
-    tramite = Tramite(fase_id=fase_id, tipo_tramite_id=tipo_tramite_id)
-    db.session.add(tramite)
-    db.session.flush()
-
-    if justificacion:
-        sujeto = build_sujeto(expediente, {'fase': fase, 'tipo_tramite': tipo_tramite})
-        bitacora_svc.registrar(
-            current_user.id, 'CREAR', 'tramites', tramite.id,
-            detalle={'escape': True, 'justificacion': justificacion, 'sujeto': sujeto},
-        )
-
-    db.session.commit()
-    return jsonify({'ok': True, 'id': tramite.id, 'advertencia': _advertencia(res_eval)})
+    res = svc.crear_tramite(fase, tipo_tramite, justificacion=justificacion)
+    if res.bloqueo:
+        return _bloqueo(res.bloqueo)
+    if not res.ok:
+        return _res_error(res)
+    return jsonify({'ok': True, 'id': res.ids[0], 'advertencia': res.advertencia})
 
 
 @bp.route('/tramite/<int:tram_id>/tareas/nueva', methods=['POST'])
@@ -290,27 +225,12 @@ def crear_tarea(tram_id):
     if err:
         return err
 
-    expediente = tramite.fase.solicitud.expediente
-    if justificacion is None:
-        res_eval = _evaluar('CREAR', expediente, objeto={'tramite': tramite, 'tipo_tarea': tipo_tarea})
-        if not res_eval.permitido:
-            return _bloqueo(res_eval)
-    else:
-        res_eval = PERMITIDO
-
-    tarea = Tarea(tramite_id=tram_id, tipo_tarea_id=tipo_tarea_id)
-    db.session.add(tarea)
-    db.session.flush()
-
-    if justificacion:
-        sujeto = build_sujeto(expediente, tramite)
-        bitacora_svc.registrar(
-            current_user.id, 'CREAR', 'tareas', tarea.id,
-            detalle={'escape': True, 'justificacion': justificacion, 'sujeto': sujeto},
-        )
-
-    db.session.commit()
-    return jsonify({'ok': True, 'id': tarea.id, 'advertencia': _advertencia(res_eval)})
+    res = svc.crear_tarea(tramite, tipo_tarea, justificacion=justificacion)
+    if res.bloqueo:
+        return _bloqueo(res.bloqueo)
+    if not res.ok:
+        return _res_error(res)
+    return jsonify({'ok': True, 'id': res.ids[0], 'advertencia': res.advertencia})
 
 
 # ============================================
@@ -326,13 +246,10 @@ def editar_solicitud(sol_id):
     if resultado:
         return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
 
-    try:
-        sol.observaciones = request.form.get('observaciones') or None
-        db.session.commit()
-        return jsonify({'ok': True})
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'ok': False, 'error': str(e)}), 500
+    res = svc.editar_solicitud(sol, observaciones=request.form.get('observaciones'))
+    if not res.ok:
+        return _res_error(res)
+    return jsonify({'ok': True})
 
 
 @bp.route('/fase/<int:fase_id>/editar', methods=['POST'])
@@ -345,30 +262,17 @@ def editar_fase(fase_id):
 
     doc_resultado_raw = request.form.get('documento_resultado_id')
     nuevo_doc_resultado_id = int(doc_resultado_raw) if doc_resultado_raw else None
+    resultado_id = request.form.get('resultado_fase_id')
+    resultado_fase_id = int(resultado_id) if resultado_id else None
 
-    if nuevo_doc_resultado_id and fase.documento_resultado_id is None:
-        doc = Documento.query.get(nuevo_doc_resultado_id)
-        if not doc or doc.expediente_id != fase.solicitud.expediente_id:
-            return jsonify({'ok': False, 'error': 'Documento no válido para este expediente'}), 422
-
-        resultado_id_raw = request.form.get('resultado_fase_id')
-        if resultado_id_raw:
-            tipo_res = TipoResultadoFase.query.get(int(resultado_id_raw))
-            if tipo_res:
-                res_inv = _check_cierre_fase(fase_id, tipo_res.codigo)
-                if res_inv:
-                    return _bloqueo(res_inv)
-
-    try:
-        resultado_id = request.form.get('resultado_fase_id')
-        fase.resultado_fase_id = int(resultado_id) if resultado_id else None
-        fase.documento_resultado_id = nuevo_doc_resultado_id
-        fase.observaciones = request.form.get('observaciones') or None
-        db.session.commit()
-        return jsonify({'ok': True})
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'ok': False, 'error': str(e)}), 500
+    res = svc.editar_fase(fase, resultado_fase_id=resultado_fase_id,
+                          documento_resultado_id=nuevo_doc_resultado_id,
+                          observaciones=request.form.get('observaciones'))
+    if res.bloqueo:
+        return _bloqueo(res.bloqueo)
+    if not res.ok:
+        return _res_error(res)
+    return jsonify({'ok': True})
 
 
 @bp.route('/tramite/<int:tram_id>/editar', methods=['POST'])
@@ -379,13 +283,10 @@ def editar_tramite(tram_id):
     if resultado:
         return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
 
-    try:
-        tramite.observaciones = request.form.get('observaciones') or None
-        db.session.commit()
-        return jsonify({'ok': True})
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'ok': False, 'error': str(e)}), 500
+    res = svc.editar_tramite(tramite, observaciones=request.form.get('observaciones'))
+    if not res.ok:
+        return _res_error(res)
+    return jsonify({'ok': True})
 
 
 @bp.route('/tarea/<int:tarea_id>/editar', methods=['POST'])
@@ -396,46 +297,20 @@ def editar_tarea(tarea_id):
     if resultado:
         return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
 
-    expediente = tarea.tramite.fase.solicitud.expediente
+    consumidos_raw = request.form.getlist('documentos_consumidos_ids')
+    if len(consumidos_raw) == 1 and ',' in consumidos_raw[0]:
+        consumidos_raw = consumidos_raw[0].split(',')
+    ids_consumidos = [int(x) for x in consumidos_raw if x.strip()]
 
-    try:
-        # Documentos consumidos: lista de ids (campo repetido o CSV). Documento
-        # producido: id único. Vínculos vía documentos_tarea con rol (ADR-010).
-        consumidos_raw = request.form.getlist('documentos_consumidos_ids')
-        if len(consumidos_raw) == 1 and ',' in consumidos_raw[0]:
-            consumidos_raw = consumidos_raw[0].split(',')
-        ids_consumidos = [int(x) for x in consumidos_raw if x.strip()]
+    doc_producido_raw = request.form.get('documento_producido_id') or None
+    id_producido = int(doc_producido_raw) if doc_producido_raw else None
 
-        doc_producido_raw = request.form.get('documento_producido_id') or None
-        id_producido = int(doc_producido_raw) if doc_producido_raw else None
-
-        ids_todos = list(ids_consumidos) + ([id_producido] if id_producido else [])
-        for doc_id in ids_todos:
-            doc = Documento.query.get(doc_id)
-            if not doc or doc.expediente_id != expediente.id:
-                return jsonify({'ok': False, 'error': 'Documento no válido para este expediente'}), 422
-
-        # Reconstruir los vínculos de la tarea
-        tarea.vinculos_documento.clear()
-        db.session.flush()
-        for doc_id in dict.fromkeys(ids_consumidos):   # sin duplicados, orden estable
-            tarea.vinculos_documento.append(
-                DocumentoTarea(documento_id=doc_id, rol='CONSUMIDO'))
-        if id_producido:
-            tarea.vinculos_documento.append(
-                DocumentoTarea(documento_id=id_producido, rol='PRODUCIDO'))
-
-        tarea.notas = request.form.get('notas') or None
-        _hook_458_analizar_separata(tarea, id_producido)
-        db.session.commit()
-
-        return jsonify({'ok': True})
-    except IntegrityError:
-        db.session.rollback()
-        return jsonify({'ok': False, 'error': 'Este documento ya está asignado como producido a otra tarea'}), 422
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'ok': False, 'error': str(e)}), 500
+    res = svc.editar_tarea(tarea, documentos_consumidos_ids=ids_consumidos,
+                           documento_producido_id=id_producido,
+                           notas=request.form.get('notas'))
+    if not res.ok:
+        return _res_error(res)
+    return jsonify({'ok': True})
 
 
 # ============================================
@@ -454,27 +329,11 @@ def borrar_solicitud(sol_id):
     if err:
         return err
 
-    if justificacion is None:
-        res_eval = _evaluar('BORRAR', sol.expediente, objeto=sol)
-        if not res_eval.permitido:
-            return _bloqueo(res_eval)
-
-    if justificacion:
-        sujeto = build_sujeto(sol.expediente, sol)
-        bitacora_svc.registrar(
-            current_user.id, 'BORRAR', 'solicitudes', sol.id,
-            detalle={'escape': True, 'justificacion': justificacion, 'sujeto': sujeto},
-        )
-
-    fase_ids = [f.id for f in Fase.query.filter_by(solicitud_id=sol_id).all()]
-    if fase_ids:
-        tram_ids = [t.id for t in Tramite.query.filter(Tramite.fase_id.in_(fase_ids)).all()]
-        if tram_ids:
-            Tarea.query.filter(Tarea.tramite_id.in_(tram_ids)).delete()
-        Tramite.query.filter(Tramite.fase_id.in_(fase_ids)).delete()
-    Fase.query.filter_by(solicitud_id=sol_id).delete()
-    db.session.delete(sol)
-    db.session.commit()
+    res = svc.borrar_solicitud(sol, justificacion=justificacion)
+    if res.bloqueo:
+        return _bloqueo(res.bloqueo)
+    if not res.ok:
+        return _res_error(res)
     return jsonify({'ok': True})
 
 
@@ -490,25 +349,11 @@ def borrar_fase(fase_id):
     if err:
         return err
 
-    expediente = fase.solicitud.expediente
-    if justificacion is None:
-        res_eval = _evaluar('BORRAR', expediente, objeto=fase)
-        if not res_eval.permitido:
-            return _bloqueo(res_eval)
-
-    if justificacion:
-        sujeto = build_sujeto(expediente, fase)
-        bitacora_svc.registrar(
-            current_user.id, 'BORRAR', 'fases', fase.id,
-            detalle={'escape': True, 'justificacion': justificacion, 'sujeto': sujeto},
-        )
-
-    tram_ids = [t.id for t in Tramite.query.filter_by(fase_id=fase_id).all()]
-    if tram_ids:
-        Tarea.query.filter(Tarea.tramite_id.in_(tram_ids)).delete()
-    Tramite.query.filter_by(fase_id=fase_id).delete()
-    db.session.delete(fase)
-    db.session.commit()
+    res = svc.borrar_fase(fase, justificacion=justificacion)
+    if res.bloqueo:
+        return _bloqueo(res.bloqueo)
+    if not res.ok:
+        return _res_error(res)
     return jsonify({'ok': True})
 
 
@@ -524,22 +369,11 @@ def borrar_tramite(tram_id):
     if err:
         return err
 
-    expediente = tramite.fase.solicitud.expediente
-    if justificacion is None:
-        res_eval = _evaluar('BORRAR', expediente, objeto=tramite)
-        if not res_eval.permitido:
-            return _bloqueo(res_eval)
-
-    if justificacion:
-        sujeto = build_sujeto(expediente, tramite)
-        bitacora_svc.registrar(
-            current_user.id, 'BORRAR', 'tramites', tramite.id,
-            detalle={'escape': True, 'justificacion': justificacion, 'sujeto': sujeto},
-        )
-
-    Tarea.query.filter_by(tramite_id=tram_id).delete()
-    db.session.delete(tramite)
-    db.session.commit()
+    res = svc.borrar_tramite(tramite, justificacion=justificacion)
+    if res.bloqueo:
+        return _bloqueo(res.bloqueo)
+    if not res.ok:
+        return _res_error(res)
     return jsonify({'ok': True})
 
 
@@ -555,21 +389,11 @@ def borrar_tarea(tarea_id):
     if err:
         return err
 
-    expediente = tarea.tramite.fase.solicitud.expediente
-    if justificacion is None:
-        res_eval = _evaluar('BORRAR', expediente, objeto=tarea)
-        if not res_eval.permitido:
-            return _bloqueo(res_eval)
-
-    if justificacion:
-        sujeto = build_sujeto(expediente, tarea.tramite)
-        bitacora_svc.registrar(
-            current_user.id, 'BORRAR', 'tareas', tarea.id,
-            detalle={'escape': True, 'justificacion': justificacion, 'sujeto': sujeto},
-        )
-
-    db.session.delete(tarea)
-    db.session.commit()
+    res = svc.borrar_tarea(tarea, justificacion=justificacion)
+    if res.bloqueo:
+        return _bloqueo(res.bloqueo)
+    if not res.ok:
+        return _res_error(res)
     return jsonify({'ok': True})
 
 
@@ -674,16 +498,6 @@ def _traslado_titular_vencido(oe) -> bool:
         return False
     ep = plazos.obtener_estado_plazo(vinculo.tramite, 'TRAMITE', variables={})
     return ep.estado == 'VENCIDO'
-
-
-def _hook_458_analizar_separata(tarea, id_producido):
-    """Hook #458: al producir diagnóstico en CONSULTA_SEPARATA pasa el organismo a en_tramitacion."""
-    if (id_producido is not None
-            and tarea.tipo_tarea.codigo == 'ANALIZAR'
-            and tarea.tramite.tipo_tramite.codigo == 'CONSULTA_SEPARATA'):
-        vinculo = TramiteOrganismo.query.filter_by(tramite_id=tarea.tramite_id).first()
-        if vinculo:
-            vinculo.organismo_expediente.estado = 'en_tramitacion'
 
 
 # ============================================

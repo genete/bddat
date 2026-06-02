@@ -59,8 +59,11 @@ class EvaluacionResult:
     permitido:         bool
     nivel:             str   # 'BLOQUEAR' | 'ADVERTIR' | ''
     variables_trigger: dict  # subconjunto del dict que disparó la regla
-    norma_compilada:   str   # referencia normativa compilada
+    norma_compilada:   str   # referencia normativa compilada (motor); en invariantes ESFTT, el mensaje del bloqueo
     url_norma:         str   # URL BOE/BOJA; '' si no existe
+    # Mensaje editorial del bloqueo. OJO: solo lo rellena el MOTOR. Los invariantes
+    # ESFTT (_bloquear) dejan motivo='' y ponen su mensaje en norma_compilada. Para
+    # mostrar un bloqueo, leer SIEMPRE `motivo or norma_compilada` (no solo motivo).
     motivo:            str = ''   # descripción editorial de la regla; '' si no configurada
     puede_escapar:     bool = False  # True solo cuando el bloqueo viene del motor (no de invariantes)
 

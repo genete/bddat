@@ -5,10 +5,12 @@
 // + acciones rápidas no destructivas (abrir doc, abrir carpeta, copiar referencia).
 // Edición / despensa → S3b.
 import React from 'react'
-import { useArbolStore } from '../store.js'
+import { useArbolStore, selectHayCambios } from '../store.js'
 import { api } from '../../shared/api.js'
 import { showToast } from '../../shared/ui/toast.js'
+import { tienePermiso } from '../../shared/auth.js'
 import Semaforo from './nodos/Semaforo.jsx'
+import Despensa from './Despensa.jsx'
 
 const ETIQUETA_TIPO = {
   expediente: 'Expediente',
@@ -198,6 +200,80 @@ function Acciones({ referencia, expedienteId }) {
   )
 }
 
+// --- Edición (S3b-1): editor genérico + split editor/despensa ------------------
+
+// Editor genérico: pinta un control por campo del esquema editable, autofocus en
+// el primero, botonera Guardar/Cancelar. value/onChange contra borrador/setCampo.
+function Editor() {
+  const campos    = useArbolStore((s) => s.editableCampos)
+  const cargando  = useArbolStore((s) => s.edicionCargando)
+  const borrador  = useArbolStore((s) => s.borrador)
+  const setCampo  = useArbolStore((s) => s.setCampo)
+  const guardando = useArbolStore((s) => s.guardando)
+  const guardar   = useArbolStore((s) => s.guardar)
+  const cancelar  = useArbolStore((s) => s.cancelar)
+  const hayCambios = useArbolStore(selectHayCambios)
+  const firstRef = React.useRef(null)
+  React.useEffect(() => { if (firstRef.current) firstRef.current.focus() }, [campos])
+
+  if (cargando) return <div className="text-muted small">Cargando editor…</div>
+  if (!campos.length)
+    return <div className="text-muted small">Este elemento no tiene campos editables.</div>
+
+  const ctrl = (c, ref) => {
+    const val = borrador[c.campo] ?? ''
+    if (c.control === 'textarea')
+      return <textarea ref={ref} className="form-control form-control-sm" rows={3}
+               value={val} onChange={(e) => setCampo(c.campo, e.target.value)} />
+    if (c.control === 'select')
+      return (
+        <select ref={ref} className="form-select form-select-sm" value={val}
+          onChange={(e) => setCampo(c.campo, e.target.value === '' ? null : Number(e.target.value))}>
+          <option value="">—</option>
+          {(c.opciones || []).map((o) => <option key={o.valor} value={o.valor}>{o.texto}</option>)}
+        </select>
+      )
+    return <input ref={ref} type="text" className="form-control form-control-sm"
+             value={val} onChange={(e) => setCampo(c.campo, e.target.value)} />
+  }
+
+  return (
+    <form onSubmit={(e) => { e.preventDefault(); if (hayCambios && !guardando) guardar() }}>
+      {campos.map((c, i) => (
+        <div className="mb-2" key={c.campo}>
+          <label className="form-label small text-muted mb-1">{c.etiqueta}</label>
+          {ctrl(c, i === 0 ? firstRef : null)}
+        </div>
+      ))}
+      <div className="d-flex gap-2 mt-3">
+        <button type="button" className="btn btn-sm btn-primary"
+                disabled={guardando || !hayCambios} onClick={guardar}>Guardar</button>
+        <button type="button" className="btn btn-sm btn-outline-secondary"
+                onClick={cancelar}>Cancelar</button>
+      </div>
+    </form>
+  )
+}
+
+// Split vertical en edición: editor arriba (flex:1, scroll) + despensa abajo (120px
+// fija). En lectura NO hay split (igual que S3a). El inspector lleva siempre el
+// borde+sombra de edición (arbol-inspector--lock, CSS) porque editar bloquea el resto
+// de la UI desde que se entra; el inspector NUNCA se atenúa (es la zona interactiva).
+function InspectorEdicion({ nodo }) {
+  const seleccion = useArbolStore((s) => s.seleccion)
+  return (
+    <div className="d-flex flex-column h-100 arbol-inspector--lock">
+      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }} className="p-3">
+        <Cabecera tipo={seleccion.tipo} nodo={nodo} />
+        <Editor />
+      </div>
+      <div style={{ flex: '0 0 120px' }} className="border-top">
+        <Despensa />
+      </div>
+    </div>
+  )
+}
+
 // --- Componente principal -------------------------------------------------------
 
 export default function Inspector() {
@@ -207,6 +283,8 @@ export default function Inspector() {
   const cargando = useArbolStore((s) => s.detalleCargando)
   const error = useArbolStore((s) => s.detalleError)
   const expedienteId = useArbolStore((s) => s.expedienteId)
+  const modoEdicion = useArbolStore((s) => s.modoEdicion)
+  const entrarEdicion = useArbolStore((s) => s.entrarEdicion)
 
   if (!seleccion) {
     return (
@@ -217,11 +295,23 @@ export default function Inspector() {
   }
 
   const nodo = buscarNodo(arbol, seleccion)
+  if (modoEdicion) return <InspectorEdicion nodo={nodo} />
   const esHoja = seleccion.tipo === 'tarea'
+  const puedeEditar = tienePermiso('editar_expediente')
 
   return (
     <div className="p-3 d-flex flex-column h-100">
       <Cabecera tipo={seleccion.tipo} nodo={nodo} />
+
+      {puedeEditar && (
+        <div className="mb-3">
+          {/* Editar vive en el inspector: edita el nodo inspeccionado (no "toda la vista"). */}
+          <button type="button" className="btn btn-sm btn-outline-primary"
+                  onClick={() => entrarEdicion(seleccion)}>
+            ✏️ Editar
+          </button>
+        </div>
+      )}
 
       {cargando && <div className="text-muted small">Cargando detalle…</div>}
       {error && (
