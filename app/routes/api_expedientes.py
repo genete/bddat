@@ -2,10 +2,11 @@
 
 ENDPOINTS:
     1. GET /api/expedientes - Listado paginado con cursor (scroll infinito)
-    2. GET /api/expedientes/<id>/jerarquia - Estructura completa para Vista V3 Tramitación
 
-VERSIÓN: 2.1
-FECHA: 2026-02-19
+VERSIÓN: 2.2
+FECHA: 2026-06-03
+CAMBIOS v2.2: Eliminado endpoint /jerarquia (solo consumido por vistas BC obsoletas, issue #500).
+              url_tramitacion apunta a expedientes.arbol.
 CAMBIOS v2.1: Añadido campo 'codigo' ("AT-{numero_at}") a serialización del listado
               para compatibilidad con ScrollInfinito genérico (Opción B, Issue #61).
 """
@@ -258,7 +259,7 @@ def listar_expedientes():
             'num_solicitudes':     num_solicitudes,
             'num_activas':         num_activas,
             'estado_tramitacion':  estado_tramitacion,
-            'url_tramitacion':     url_for('expedientes.tramitacion_bc', exp_id=exp.id)
+            'url_tramitacion':     url_for('expedientes.arbol', id=exp.id)
         }
         data.append(expediente_dict)
 
@@ -277,175 +278,6 @@ def listar_expedientes():
 
     return jsonify(response), 200
 
-
-# =============================================================================
-# ENDPOINT 2: Jerarquía completa para Vista V3 Tramitación
-# =============================================================================
-
-@api_bp.route('/expedientes/<int:expediente_id>/jerarquia', methods=['GET'])
-@login_required
-def get_jerarquia_expediente(expediente_id):
-    """
-    Endpoint GET /api/expedientes/<id>/jerarquia - Estructura jerárquica para Vista V3.
-
-    PROPÓSITO:
-        Devolver estructura completa de un expediente para renderizar acordeónes de Vista V3:
-        - Panel contexto fijo: Expediente + Proyecto
-        - Acordeón principal: Solicitudes + Fases
-
-    ESTRUCTURA JSON:
-        {
-            "expediente": {
-                "id": 104,
-                "numero_at": 1,
-                "codigo": "AT-1",
-                "titular": {"id": 6, "nombre": "...", "nif": "..."},
-                "responsable": {"id": 2, "siglas": "CLG", "nombre_completo": "..."},
-                "tipo_expediente_id": null,
-                "heredado": false
-            },
-            "proyecto": {
-                "id": 105,
-                "titulo": "...",
-                "descripcion": "...",
-                "fecha": "2026-02-11",
-                "finalidad": "...",
-                "emplazamiento": "...",
-                "tipo_ia": {"id": 1, "siglas": "EIA", "descripcion": "..."}
-            },
-            "solicitudes": [
-                {
-                    "id": 1,
-                    "codigo": "SOL-1",
-                    "tipos": "AAP + AAC",
-                    "fecha_solicitud": "2025-06-15",
-                    "num_fases": 6,
-                    "fases": [...]
-                }
-            ]
-        }
-
-    Path Parameters:
-        expediente_id (int): ID del expediente
-
-    Returns:
-        JSON con expediente, proyecto, solicitudes
-        HTTP Status: 200 OK, 404 Not Found, 401 Unauthorized
-    """
-
-    # Verificar que el expediente existe
-    expediente = Expediente.query.get_or_404(expediente_id)
-
-    # =====================================================
-    # EXPEDIENTE - Datos básicos
-    # =====================================================
-    titular = None
-    if expediente.titular_id:
-        entidad = Entidad.query.get(expediente.titular_id)
-        if entidad:
-            titular = {
-                'id':     entidad.id,
-                'nombre': entidad.nombre_completo,
-                'nif':    entidad.nif
-            }
-
-    responsable = None
-    if expediente.responsable_id:
-        usuario = Usuario.query.get(expediente.responsable_id)
-        if usuario:
-            responsable = {
-                'id':             usuario.id,
-                'siglas':         usuario.siglas,
-                'nombre_completo': f"{usuario.nombre} {usuario.apellido1 or ''}".strip()
-            }
-
-    expediente_data = {
-        'id':                 expediente.id,
-        'numero_at':          expediente.numero_at,
-        'codigo':             f'AT-{expediente.numero_at}',
-        'titular':            titular,
-        'responsable':        responsable,
-        'tipo_expediente_id': expediente.tipo_expediente_id,
-        'heredado':           expediente.heredado
-    }
-
-    # =====================================================
-    # PROYECTO - Datos asociados al expediente (relación 1:1)
-    # =====================================================
-    proyecto_data = None
-    if expediente.proyecto_id:
-        proyecto = Proyecto.query.get(expediente.proyecto_id)
-        if proyecto:
-            tipo_ia = None
-            if proyecto.ia_id:
-                ia = TipoIA.query.get(proyecto.ia_id)
-                if ia:
-                    tipo_ia = {
-                        'id':          ia.id,
-                        'siglas':      ia.siglas,
-                        'descripcion': ia.descripcion
-                    }
-
-            proyecto_data = {
-                'id':           proyecto.id,
-                'titulo':       proyecto.titulo,
-                'descripcion':  proyecto.descripcion,
-                'fecha':        proyecto.fecha.isoformat() if proyecto.fecha else None,
-                'finalidad':    proyecto.finalidad,
-                'emplazamiento': proyecto.emplazamiento,
-                'tipo_ia':      tipo_ia
-            }
-
-    # =====================================================
-    # SOLICITUDES + FASES - Jerarquía para acordeón
-    # =====================================================
-    solicitudes = Solicitud.query.filter_by(
-        expediente_id=expediente_id
-    ).order_by(Solicitud.id).all()
-
-    solicitudes_data = []
-    for solicitud in solicitudes:
-        tipos_str = solicitud.tipo_solicitud.siglas if solicitud.tipo_solicitud else 'Sin tipo'
-
-        # Obtener fases de la solicitud
-        fases = Fase.query.filter_by(
-            solicitud_id=solicitud.id
-        ).order_by(Fase.id).all()
-
-        fases_data = []
-        for fase in fases:
-            tipo_fase = TipoFase.query.get(fase.tipo_fase_id)
-
-            fase_data = {
-                'id':            fase.id,
-                'codigo':        tipo_fase.codigo if tipo_fase else 'SIN_CODIGO',
-                'nombre':        tipo_fase.nombre if tipo_fase else 'Sin nombre',
-                'estado':        'completada' if fase.finalizada else 'en-curso',
-                'observaciones': fase.observaciones
-            }
-            fases_data.append(fase_data)
-
-        # Construir objeto solicitud
-        solicitud_data = {
-            'id':             solicitud.id,
-            'codigo':         f'SOL-{solicitud.id}',
-            'tipos':          tipos_str,
-            'fecha_solicitud': solicitud.documento_solicitud.fecha_administrativa.isoformat() if solicitud.documento_solicitud and solicitud.documento_solicitud.fecha_administrativa else None,
-            'num_fases':      len(fases_data),
-            'fases':          fases_data
-        }
-        solicitudes_data.append(solicitud_data)
-
-    # =====================================================
-    # RESPUESTA FINAL
-    # =====================================================
-    response = {
-        'expediente':  expediente_data,
-        'proyecto':    proyecto_data,
-        'solicitudes': solicitudes_data
-    }
-
-    return jsonify(response), 200
 
 
 # =============================================================================
