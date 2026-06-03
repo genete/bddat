@@ -129,7 +129,14 @@ export const useArbolStore = create((set, get) => ({
       const data = await getEditable(expedienteId, sel.tipo, sel.id)
       const campos = data.campos || []
       const borrador = Object.fromEntries(campos.map((c) => [c.campo, c.valor ?? null]))
-      set({ editableCampos: campos, borrador, borradorInicial: borrador, edicionCargando: false })
+      // Para tarea: incluir vínculos documentales actuales en el borrador para que
+      // el ciclo dirty → Guardar/Cancelar cubra también la despensa de documentos.
+      if (sel.tipo === 'tarea') {
+        const docs = (get().detalle && get().detalle.documentos) || []
+        borrador.documentos_consumidos_ids = docs.filter((d) => d.rol === 'CONSUMIDO').map((d) => d.id)
+        borrador.documento_producido_id    = (docs.find((d) => d.rol === 'PRODUCIDO') || {}).id ?? null
+      }
+      set({ editableCampos: campos, borrador, borradorInicial: { ...borrador }, edicionCargando: false })
     } catch (e) {
       set({ edicionCargando: false })
       if (e.status !== 401 && e.status !== 403) showToast(e.message || 'No se pudo cargar el editor', 'danger')
@@ -266,19 +273,18 @@ export const useArbolStore = create((set, get) => ({
 
   cancelarVincular: () => set({ docVinculandoPendiente: null }),
 
-  // Vincula `docVinculandoPendiente` a la tarea seleccionada con el rol dado.
-  // El PATCH reconstruye el conjunto COMPLETO (no incremental): toma los vínculos
-  // actuales del `detalle` + añade el nuevo. Preserva `notas` del borrador activo.
-  vincularDoc: async (rol) => {
-    const { expedienteId, seleccion, docVinculandoPendiente, detalle, borrador } = get()
-    if (!seleccion || seleccion.tipo !== 'tarea' || !docVinculandoPendiente || !expedienteId) return
+  // Añade `docVinculandoPendiente` al borrador con el rol dado.
+  // No hace PATCH directamente: sigue el ciclo borrador → hayCambios → Guardar/Cancelar.
+  // El PATCH lo ejecuta `guardar` con el borrador completo.
+  vincularDoc: (rol) => {
+    const { seleccion, docVinculandoPendiente, borrador } = get()
+    if (!seleccion || seleccion.tipo !== 'tarea' || !docVinculandoPendiente) return
 
-    const docs = (detalle && detalle.documentos) || []
-    const consumidosIds = docs.filter((d) => d.rol === 'CONSUMIDO').map((d) => d.id)
-    const producidoId = (docs.find((d) => d.rol === 'PRODUCIDO') || {}).id || null
+    const consumidosIds = borrador.documentos_consumidos_ids || []
+    const producidoId   = borrador.documento_producido_id ?? null
 
     let nuevosConsumidosIds = [...consumidosIds]
-    let nuevoProducidoId = producidoId
+    let nuevoProducidoId    = producidoId
 
     if (rol === 'CONSUMIDO') {
       if (!nuevosConsumidosIds.includes(docVinculandoPendiente.id)) {
@@ -288,25 +294,14 @@ export const useArbolStore = create((set, get) => ({
       nuevoProducidoId = docVinculandoPendiente.id
     }
 
-    set({ vinculando: true })
-    try {
-      await patchNodo(expedienteId, 'tarea', seleccion.id, {
+    set((s) => ({
+      borrador: {
+        ...s.borrador,
         documentos_consumidos_ids: nuevosConsumidosIds,
         documento_producido_id:    nuevoProducidoId,
-        notas:                     borrador['notas'] ?? null,
-      })
-      set({ vinculando: false, docVinculandoPendiente: null })
-      showToast('Documento vinculado', 'success')
-      await get().refrescarArbol()
-    } catch (e) {
-      set({ vinculando: false })
-      if (e.status === 401 || e.status === 403) return
-      if (e.status === 422 && e.payload) {
-        showToast(e.payload.motivo || e.payload.error || 'No se pudo vincular el documento', 'danger')
-      } else {
-        showToast(e.message || 'No se pudo vincular el documento', 'danger')
-      }
-    }
+      },
+      docVinculandoPendiente: null,
+    }))
   },
 
   // Re-pide /arbol e invalida TODA la caché de detalle (una mutación puede recomputar

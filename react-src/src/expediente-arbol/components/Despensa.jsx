@@ -195,11 +195,10 @@ function FichaDoc({ doc, vinculado, seleccionada, onClick }) {
 
 function DespensaDocs() {
   const seleccion               = useArbolStore((s) => s.seleccion)
-  const detalle                 = useArbolStore((s) => s.detalle)
+  const borrador                = useArbolStore((s) => s.borrador)
   const pool                    = useArbolStore((s) => s.pool)
   const poolCargando            = useArbolStore((s) => s.poolCargando)
   const docVinculandoPendiente  = useArbolStore((s) => s.docVinculandoPendiente)
-  const vinculando              = useArbolStore((s) => s.vinculando)
   const cargarPool              = useArbolStore((s) => s.cargarPool)
   const seleccionarDocVincular  = useArbolStore((s) => s.seleccionarDocVincular)
   const cancelarVincular        = useArbolStore((s) => s.cancelarVincular)
@@ -209,11 +208,12 @@ function DespensaDocs() {
     cargarPool()
   }, [seleccion?.id])  // eslint-disable-line
 
-  // Ids de docs ya vinculados a esta tarea (para marcarlos visualmente)
+  // Ids de docs vinculados según el borrador activo (refleja cambios pendientes de guardar)
   const vinculadosIds = React.useMemo(() => {
-    const docs = (detalle && detalle.documentos) || []
-    return new Set(docs.map((d) => d.id))
-  }, [detalle])
+    const ids = new Set(borrador.documentos_consumidos_ids || [])
+    if (borrador.documento_producido_id) ids.add(borrador.documento_producido_id)
+    return ids
+  }, [borrador.documentos_consumidos_ids, borrador.documento_producido_id])
 
   if (poolCargando) {
     return <div className="p-2 text-muted small fst-italic">Cargando documentos…</div>
@@ -251,23 +251,20 @@ function DespensaDocs() {
             <button
               type="button"
               className="btn btn-sm btn-success flex-grow-1"
-              disabled={vinculando}
               onClick={() => vincularDoc('CONSUMIDO')}
             >
-              {vinculando ? '…' : '+ Consumido'}
+              + Consumido
             </button>
             <button
               type="button"
               className="btn btn-sm btn-primary flex-grow-1"
-              disabled={vinculando}
               onClick={() => vincularDoc('PRODUCIDO')}
             >
-              {vinculando ? '…' : '+ Producido'}
+              + Producido
             </button>
             <button
               type="button"
               className="btn btn-sm btn-outline-secondary"
-              disabled={vinculando}
               onClick={cancelarVincular}
             >
               ✕
