@@ -139,7 +139,7 @@ const renderFns = {
     'pista_RES':       (val) => renderPista(val),
 
     '_acciones': (val, item) =>
-        `<a href="/expedientes/${item.expediente_id}/tramitacion/solicitud/${item.id}"
+        `<a href="/expedientes/${item.expediente_id}/arbol?nodo=solicitud-${item.id}"
              class="btn-accion-ver">
             <i class="fas fa-eye"></i> Ver
          </a>`,
