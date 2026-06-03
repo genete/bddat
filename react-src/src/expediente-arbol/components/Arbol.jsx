@@ -71,6 +71,7 @@ export default function Arbol() {
       defaultEdgeOptions={defaultEdgeOptions}
       nodesDraggable={false}
       nodesConnectable={false}
+      zoomOnDoubleClick={false}
       fitView
       fitViewOptions={{ padding: 0.2 }}
       minZoom={0.2}
