@@ -796,3 +796,37 @@ def get_esquema_editable(expediente_id, tipo, nodo_id):
     except ValueError as e:
         return jsonify({'error': str(e)}), 404
     return jsonify(data), 200
+
+
+# =============================================================================
+# ENDPOINT 10: Pool de documentos del expediente (despensa de tarea, ADR-016 §S3b-3)
+# =============================================================================
+
+@api_bp.route('/expedientes/<int:expediente_id>/pool', methods=['GET'])
+@login_required
+def pool_documentos(expediente_id):
+    """
+    GET /api/expedientes/<id>/pool — pool estructurado para la despensa de tareas (S3b-3).
+
+    Devuelve: {documentos: [{id, nombre, tipo_doc, fecha}]}, orden id DESC.
+    """
+    expediente = Expediente.query.get_or_404(expediente_id)
+    denegado = verificar_acceso_expediente(expediente)
+    if denegado:
+        return denegado
+
+    docs = Documento.query.filter_by(
+        expediente_id=expediente_id
+    ).order_by(Documento.id.desc()).all()
+
+    result = []
+    for doc in docs:
+        filename = (doc.url or '').replace('\\', '/').rsplit('/', 1)[-1]
+        filename = filename.split('?')[0].split('#')[0]
+        result.append({
+            'id': doc.id,
+            'nombre': filename or f'Documento {doc.id}',
+            'tipo_doc': doc.tipo_doc.nombre if doc.tipo_doc else None,
+            'fecha': doc.fecha_administrativa.strftime('%d/%m/%Y') if doc.fecha_administrativa else None,
+        })
+    return jsonify({'documentos': result}), 200

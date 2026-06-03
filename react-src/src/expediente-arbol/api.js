@@ -36,3 +36,8 @@ export function patchNodo(expedienteId, tipo, nodoId, body) {
 export function postHijo(expedienteId, padreTipo, padreId, body) {
   return api.post(`/api/expedientes/${expedienteId}/nodo/${padreTipo}/${padreId}/hijos`, body)
 }
+
+// Pool de documentos del expediente (GET, S3b-3). Respuesta: {documentos:[{id,nombre,tipo_doc,fecha}]}.
+export function getPool(expedienteId) {
+  return api.get(`/api/expedientes/${expedienteId}/pool`)
+}

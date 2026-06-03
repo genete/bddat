@@ -269,18 +269,15 @@ function Editor() {
 // de la UI desde que se entra; el inspector NUNCA se atenúa (es la zona interactiva).
 function InspectorEdicion({ nodo }) {
   const seleccion = useArbolStore((s) => s.seleccion)
-  const mostrarDespensa = seleccion && seleccion.tipo !== 'tarea'
   return (
     <div className="d-flex flex-column h-100 arbol-inspector--lock">
       <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }} className="p-3">
         <Cabecera tipo={seleccion.tipo} nodo={nodo} />
         <Editor />
       </div>
-      {mostrarDespensa && (
-        <div style={{ flex: '0 0 auto' }} className="border-top">
-          <Despensa />
-        </div>
-      )}
+      <div style={{ flex: '0 0 auto' }} className="border-top">
+        <Despensa />
+      </div>
     </div>
   )
 }
