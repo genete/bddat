@@ -33,7 +33,7 @@ function barraPlazo(tarea) {
   }
 }
 
-function FilaTarea({ tarea, seleccionada, onSelect }) {
+function FilaTarea({ tarea, seleccionada, onSelect, onContextMenu }) {
   const titulo = tarea.abrev || tarea.nombre || tarea.tipo_codigo || ''
   const sem = tarea.semaforo || { color: 'gris' }
   const esPlazo = tarea.tipo_codigo === 'ESPERAR_PLAZO'
@@ -44,6 +44,7 @@ function FilaTarea({ tarea, seleccionada, onSelect }) {
       className={`arbol-tarea${seleccionada ? ' is-selected' : ''}`}
       title={tarea.nombre || ''}
       onClick={(e) => { e.stopPropagation(); onSelect(tarea.id) }}
+      onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); onContextMenu(e, tarea.id) }}
     >
       <div className="arbol-tarea__fila">
         <i className={`bi ${ICONO[tarea.tipo_codigo] || 'bi-dot'} arbol-tarea__icono`} />
@@ -62,7 +63,9 @@ function FilaTarea({ tarea, seleccionada, onSelect }) {
 
 export default function NodoTareas({ data }) {
   const seleccionar = useArbolStore((s) => s.seleccionar)
+  const abrirMenu   = useArbolStore((s) => s.abrirMenu)
   const onSelect = (id) => seleccionar({ tipo: 'tarea', id })
+  const onContextMenu = (e, id) => abrirMenu(e.clientX, e.clientY, { tipo: 'tarea', id })
 
   return (
     <div className="arbol-tareas">
@@ -73,6 +76,7 @@ export default function NodoTareas({ data }) {
           tarea={t}
           seleccionada={data.seleccionTarea === t.id}
           onSelect={onSelect}
+          onContextMenu={onContextMenu}
         />
       ))}
       <Handle type="source" position={Position.Bottom} className="arbol-handle" />

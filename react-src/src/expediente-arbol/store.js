@@ -7,7 +7,7 @@
 // S3b-1: modoEdicion + lock + editor genérico (entrar/guardar/cancelar + refresco).
 // S3b añadirá: despensa, colapsos manuales por nivel.
 import { create } from 'zustand'
-import { getArbol, getNodo, getEditable, patchNodo, getTiposCreables, postHijo, getPool } from './api.js'
+import { getArbol, getNodo, getEditable, patchNodo, getTiposCreables, postHijo, getPool, deleteNodo } from './api.js'
 import { showToast } from '../shared/ui/toast.js'
 
 // AbortController de la petición de detalle en curso (fuera del estado: no re-render).
@@ -46,6 +46,13 @@ export const useArbolStore = create((set, get) => ({
   docVinculandoPendiente: null,   // {id, nombre, tipo_doc, fecha} staged para vincular
   vinculando: false,
 
+  // --- borrar (S3b-4) ---
+  borrarPendienteConfirm: false, // true = inspector muestra bloque de consecuencias + "Borrar definitivamente"
+  borrando: false,
+
+  // --- menú contextual (S3b-4) ---
+  menuCtx: null,           // { x, y, sel } | null
+
   // --- detalle del inspector (S3a) ---
   detalle: null,              // payload del endpoint lazy del nodo seleccionado
   detalleCargando: false,
@@ -64,7 +71,7 @@ export const useArbolStore = create((set, get) => ({
 
   // Selección única: además dispara la carga del detalle del nodo (o lo limpia).
   seleccionar: (sel) => {
-    set({ seleccion: sel })
+    set({ seleccion: sel, borrarPendienteConfirm: false })
     get().cargarDetalle(sel)
   },
 
@@ -122,7 +129,8 @@ export const useArbolStore = create((set, get) => ({
     set({ seleccion: sel, modoEdicion: true, edicionCargando: true,
           editableCampos: [], borrador: {}, borradorInicial: {},
           tiposCreables: null, tipoCreacionPendiente: null,
-          docVinculandoPendiente: null })
+          docVinculandoPendiente: null,
+          menuCtx: null, borrarPendienteConfirm: false })
     const expedienteId = get().expedienteId
     if (!expedienteId) { set({ edicionCargando: false }); return }  // mock standalone: editor vacío
     try {
@@ -150,6 +158,7 @@ export const useArbolStore = create((set, get) => ({
     set({ modoEdicion: false, editableCampos: [], borrador: {}, borradorInicial: {}, edicionCargando: false,
           tiposCreables: null, tipoCreacionPendiente: null,
           docVinculandoPendiente: null,
+          borrarPendienteConfirm: false,
           detalle: null, detalleCargando: false, detalleError: null })
     get().cargarDetalle(seleccion)
     showToast('Cambios descartados', 'info')
@@ -178,6 +187,52 @@ export const useArbolStore = create((set, get) => ({
       }
     }
   },
+
+  // --- acciones de borrado (S3b-4) ---
+
+  // Paso 1: muestra el bloque de consecuencias en el inspector (sin llamada API).
+  solicitarBorrado: () => set({ borrarPendienteConfirm: true }),
+
+  cancelarBorrado: () => set({ borrarPendienteConfirm: false }),
+
+  // Paso 2: ejecuta el DELETE real. Motor 422 → toast + vuelve al editor; éxito → limpia.
+  borrarNodo: async () => {
+    const { expedienteId, seleccion } = get()
+    if (!seleccion || !expedienteId) return
+    set({ borrando: true })
+    try {
+      await deleteNodo(expedienteId, seleccion.tipo, seleccion.id)
+      showToast('Elemento borrado', 'success')
+      set({
+        borrando: false, borrarPendienteConfirm: false,
+        seleccion: null,
+        modoEdicion: false, editableCampos: [], borrador: {}, borradorInicial: {},
+        edicionCargando: false, tiposCreables: null, tipoCreacionPendiente: null,
+        docVinculandoPendiente: null,
+        detalle: null, detalleCargando: false, detalleError: null, _detalleCache: {},
+      })
+      await get().refrescarArbol()
+    } catch (e) {
+      set({ borrando: false, borrarPendienteConfirm: false })
+      if (e.status === 401 || e.status === 403) return
+      if (e.status === 422 && e.payload && e.payload.motivo) {
+        showToast(e.payload.motivo, 'danger')
+      } else {
+        showToast(e.message || 'No se pudo borrar el elemento', 'danger')
+      }
+    }
+  },
+
+  // --- menú contextual (S3b-4) ---
+
+  // Selecciona el nodo, carga su detalle y tipos-creables, abre el menú.
+  abrirMenu: (x, y, sel) => {
+    get().seleccionar(sel)
+    if (sel.tipo !== 'tarea') get().cargarTiposCreables(sel)
+    set({ menuCtx: { x, y, sel } })
+  },
+
+  cerrarMenu: () => set({ menuCtx: null }),
 
   // --- acciones de creación (S3b-2) ---
 

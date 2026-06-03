@@ -4,6 +4,7 @@
 **Fecha:** 2026-05-28
 **Issue:** #500
 **Enmendada:** 2026-05-30 (#500, sesión de implementación) — añadidos §16 (contrato de endpoints), agregadores en colapso (§11), tooltip-peek de hover (§2.4/§15); iteración de trámite fuera de v1 (§2).
+**Enmendada:** 2026-06-03 (#500, sesión S3b-4) — §7 y §8: Borrar eliminado del menú contextual; vive exclusivamente en inspector modo edición con flujo de dos pasos. §9: doble clic funcional (`zoomOnDoubleClick=false`, commit 71d9b5e); atajos F2 y Supr eliminados.
 
 ---
 
@@ -175,6 +176,15 @@ Inspector se **divide en split vertical** mediante un splitter ajustable por el 
 
 Otras "acciones" (finalizar fase, cerrar trámite, registrar resultado de notificación, marcar diagnóstico) son **resultados de edición + guardar**, no acciones independientes. Ejemplo: cerrar una fase = editar la fase + rellenar `resultado_fase_id` y `documento_resultado_id` + Guardar.
 
+**Borrar es una modificación** y vive exclusivamente en modo edición (inspector). No es accesible desde modo lectura — ni por menú contextual ni por atajo de teclado. El inspector en modo edición muestra `Cancelar | Borrar | Guardar`.
+
+**Flujo de borrado (dos pasos, inline en inspector):**
+1. Clic "Borrar" → el motor valida. Si 422 → toast con motivo, permanece en edición.
+2. Si el motor permite → el inspector muestra las consecuencias usando los `agregados` ya disponibles en el store (contadores del subárbol) con aviso de irreversibilidad y botón "Borrar definitivamente".
+3. Clic "Borrar definitivamente" → DELETE → toast success + refrescar árbol + deseleccionar + salir edición.
+
+El overlay de edición (commit 898094b) bloquea el árbol cuando hay cambios pendientes, por lo que el menú contextual (modo lectura) nunca aparece en edición — la separación es estructural.
+
 ### 8. Menú contextual (right-click)
 
 #### Sobre nodo no-tarea (Solicitud / Fase / Trámite)
@@ -182,8 +192,7 @@ Otras "acciones" (finalizar fase, cerrar trámite, registrar resultado de notifi
 ```
 ➕ Crear hijo                  ▶   (submenú con tipos creables filtrados por motor;
                                      "Mostrar todos..." expande con atenuados + tooltip norma)
-✏️ Editar                  F2
-🗑️ Borrar                  Supr
+✏️ Editar
 ─────────────────────────────────
 📂 Abrir carpeta del expediente
 📋 Copiar referencia
@@ -194,13 +203,14 @@ Otras "acciones" (finalizar fase, cerrar trámite, registrar resultado de notifi
 ```
 📄 Abrir documento producido       (solo si lo tiene)
 📄 Abrir consumido(s)           ▶   (submenú si hay >1, directo si 1)
-✏️ Editar                  F2
-🗑️ Borrar                  Supr
+✏️ Editar
 ─────────────────────────────────
 📂 Abrir carpeta del documento     (si tarea tiene doc; texto adaptativo)
 📂 Abrir carpeta del expediente    (si no tiene doc — fallback)
 📋 Copiar referencia
 ```
+
+> **Enmendado (2026-06-03):** Borrar eliminado del menú contextual. Ver §7 — vive en inspector modo edición.
 
 #### Prioridad para "Abrir carpeta del documento"
 
@@ -227,7 +237,7 @@ Copia al portapapeles algo como: `AT-1234 · AAP · Fase Información Pública �
 | **Click izquierdo** sobre nodo | Selecciona |
 | **Click izquierdo** sobre fondo | Deselecciona |
 | **Click derecho** sobre nodo | Menú contextual (§8) |
-| **Doble clic** sobre nodo | Selecciona + activa edición + enfoca primer editable |
+| **Doble clic** sobre nodo | Selecciona + activa edición + enfoca primer editable (`zoomOnDoubleClick=false`, commit 71d9b5e) |
 | **Drag-drop** desde despensa (tipos) sobre nodo padre | Crea hijo del tipo arrastrado |
 | **Drag-drop** desde despensa (documentos) sobre tarea | Vincula documento a la tarea |
 | **Scroll del ratón** sobre área del árbol | Zoom in/out de xyflow |

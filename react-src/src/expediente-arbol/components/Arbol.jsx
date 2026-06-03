@@ -15,6 +15,7 @@ import NodoSolicitud from './nodos/NodoSolicitud.jsx'
 import NodoFase from './nodos/NodoFase.jsx'
 import NodoTramite from './nodos/NodoTramite.jsx'
 import NodoTareas from './nodos/NodoTareas.jsx'
+import MenuContextual from './MenuContextual.jsx'
 
 const nodeTypes = {
   expediente: NodoExpediente,
@@ -34,6 +35,7 @@ export default function Arbol() {
   const seleccionar = useArbolStore((s) => s.seleccionar)
   const modoEdicion = useArbolStore((s) => s.modoEdicion)
   const entrarEdicion = useArbolStore((s) => s.entrarEdicion)
+  const abrirMenu = useArbolStore((s) => s.abrirMenu)
 
   const { nodes, edges } = useMemo(
     () => construirGrafo(arbol, { colapsarFinalizados, seleccion }),
@@ -59,7 +61,17 @@ export default function Arbol() {
   )
   const onPaneClick = useCallback(() => seleccionar(null), [seleccionar])
 
+  const onNodeContextMenu = useCallback(
+    (e, node) => {
+      if (node.data.tipo === 'tareas') return  // container-nodo; cada tarea lo gestiona internamente
+      e.preventDefault()
+      abrirMenu(e.clientX, e.clientY, { tipo: node.data.tipo, id: node.data.id })
+    },
+    [abrirMenu],
+  )
+
   return (
+    <>
     <ReactFlow
       className={modoEdicion ? 'arbol-lienzo--edicion' : undefined}
       nodes={nodes}
@@ -67,6 +79,7 @@ export default function Arbol() {
       nodeTypes={nodeTypes}
       onNodeClick={onNodeClick}
       onNodeDoubleClick={onNodeDoubleClick}
+      onNodeContextMenu={onNodeContextMenu}
       onPaneClick={onPaneClick}
       defaultEdgeOptions={defaultEdgeOptions}
       nodesDraggable={false}
@@ -81,5 +94,7 @@ export default function Arbol() {
       <Background />
       <Controls showInteractive={false} />
     </ReactFlow>
+    <MenuContextual />
+    </>
   )
 }

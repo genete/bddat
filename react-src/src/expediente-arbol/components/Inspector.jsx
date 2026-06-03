@@ -30,7 +30,7 @@ const ETIQUETA_PLAZO = {
 
 const ROL_DOC = { CONSUMIDO: 'Consumido', PRODUCIDO: 'Producido' }
 
-// --- Búsqueda del nodo en el árbol del store (cabecera + agregados, §5) ---------
+// --- Búsqueda y conteo de subárbol (para confirmación de borrado, §7) -----------
 
 function buscarNodo(arbol, sel) {
   if (!arbol || !sel) return null
@@ -48,6 +48,28 @@ function buscarNodo(arbol, sel) {
     }
   }
   return null
+}
+
+function contarSubarbol(arbol, sel) {
+  if (!sel || !arbol) return {}
+  const nodo = buscarNodo(arbol, sel)
+  if (!nodo) return {}
+  if (sel.tipo === 'solicitud') {
+    const fases = nodo.fases || []
+    const tramites = fases.reduce((n, f) => n + (f.tramites || []).length, 0)
+    const tareas = fases.reduce((n, f) =>
+      n + (f.tramites || []).reduce((n2, tr) => n2 + (tr.tareas || []).length, 0), 0)
+    return { fases: fases.length, tramites, tareas }
+  }
+  if (sel.tipo === 'fase') {
+    const tramites = nodo.tramites || []
+    const tareas = tramites.reduce((n, tr) => n + (tr.tareas || []).length, 0)
+    return { tramites: tramites.length, tareas }
+  }
+  if (sel.tipo === 'tramite') {
+    return { tareas: (nodo.tareas || []).length }
+  }
+  return {}
 }
 
 function tituloNodo(tipo, nodo) {
@@ -200,29 +222,76 @@ function Acciones({ referencia, expedienteId }) {
   )
 }
 
+// --- Borrado (S3b-4): bloque inline de consecuencias + confirmación dos pasos ---
+
+function ConfirmacionBorrado({ nodo }) {
+  const seleccion      = useArbolStore((s) => s.seleccion)
+  const arbol          = useArbolStore((s) => s.arbol)
+  const borrando       = useArbolStore((s) => s.borrando)
+  const borrarNodo     = useArbolStore((s) => s.borrarNodo)
+  const cancelarBorrado = useArbolStore((s) => s.cancelarBorrado)
+
+  const titulo = tituloNodo(seleccion.tipo, nodo)
+  const conteo = contarSubarbol(arbol, seleccion)
+
+  const partes = []
+  if (conteo.fases)    partes.push(`${conteo.fases} fase${conteo.fases    !== 1 ? 's' : ''}`)
+  if (conteo.tramites) partes.push(`${conteo.tramites} trámite${conteo.tramites !== 1 ? 's' : ''}`)
+  if (conteo.tareas)   partes.push(`${conteo.tareas} tarea${conteo.tareas   !== 1 ? 's' : ''}`)
+
+  return (
+    <div>
+      <div className="alert alert-warning py-2 px-3 mb-3 small">
+        <div className="fw-semibold mb-1">
+          ¿Borrar {ETIQUETA_TIPO[seleccion.tipo]?.toLowerCase()} «{titulo || '—'}»?
+        </div>
+        {partes.length > 0 && (
+          <div>Contiene: {partes.join(', ')}.</div>
+        )}
+        <div className="text-danger fw-semibold mt-1">Esta acción es irreversible.</div>
+      </div>
+      <div className="d-flex gap-2">
+        <button type="button" className="btn btn-sm btn-danger"
+                disabled={borrando} onClick={borrarNodo}>
+          {borrando ? 'Borrando…' : 'Borrar definitivamente'}
+        </button>
+        <button type="button" className="btn btn-sm btn-outline-secondary"
+                disabled={borrando} onClick={cancelarBorrado}>
+          Cancelar
+        </button>
+      </div>
+    </div>
+  )
+}
+
 // --- Edición (S3b-1): editor genérico + split editor/despensa ------------------
 
 // Editor genérico: pinta un control por campo del esquema editable, autofocus en
 // el primero, botonera Guardar/Cancelar. value/onChange contra borrador/setCampo.
 function Editor() {
-  const campos    = useArbolStore((s) => s.editableCampos)
-  const cargando  = useArbolStore((s) => s.edicionCargando)
-  const borrador  = useArbolStore((s) => s.borrador)
-  const setCampo  = useArbolStore((s) => s.setCampo)
-  const guardando = useArbolStore((s) => s.guardando)
-  const guardar   = useArbolStore((s) => s.guardar)
-  const cancelar  = useArbolStore((s) => s.cancelar)
+  const seleccion  = useArbolStore((s) => s.seleccion)
+  const campos     = useArbolStore((s) => s.editableCampos)
+  const cargando   = useArbolStore((s) => s.edicionCargando)
+  const borrador   = useArbolStore((s) => s.borrador)
+  const setCampo   = useArbolStore((s) => s.setCampo)
+  const guardando  = useArbolStore((s) => s.guardando)
+  const guardar    = useArbolStore((s) => s.guardar)
+  const cancelar   = useArbolStore((s) => s.cancelar)
   const hayCambios = useArbolStore(selectHayCambios)
+  const solicitarBorrado = useArbolStore((s) => s.solicitarBorrado)
   const firstRef = React.useRef(null)
   React.useEffect(() => { if (firstRef.current) firstRef.current.focus() }, [campos])
 
+  const puedeBorrar = tienePermiso('editar_expediente') &&
+                      seleccion && seleccion.tipo !== 'expediente'
+
   if (cargando) return <div className="text-muted small">Cargando editor…</div>
   if (!campos.length)
-    // Sin campos editables (p.ej. expediente): NO atrapar al usuario en edición.
-    // Siempre debe poder salir → botón Cancelar (no hay nada que Guardar). (#511)
     return (
       <div>
-        <div className="text-muted small mb-3">Este elemento no tiene campos editables.</div>
+        <div className="text-muted small mb-3">
+          Sin campos editables. Usa la despensa inferior para añadir elementos al árbol.
+        </div>
         <button type="button" className="btn btn-sm btn-outline-secondary"
                 onClick={cancelar}>Cancelar</button>
       </div>
@@ -258,6 +327,10 @@ function Editor() {
                 disabled={guardando || !hayCambios} onClick={guardar}>Guardar</button>
         <button type="button" className="btn btn-sm btn-outline-secondary"
                 onClick={cancelar}>Cancelar</button>
+        {puedeBorrar && (
+          <button type="button" className="btn btn-sm btn-outline-danger ms-auto"
+                  onClick={solicitarBorrado}>🗑️ Borrar</button>
+        )}
       </div>
     </form>
   )
@@ -268,16 +341,22 @@ function Editor() {
 // borde+sombra de edición (arbol-inspector--lock, CSS) porque editar bloquea el resto
 // de la UI desde que se entra; el inspector NUNCA se atenúa (es la zona interactiva).
 function InspectorEdicion({ nodo }) {
-  const seleccion = useArbolStore((s) => s.seleccion)
+  const seleccion             = useArbolStore((s) => s.seleccion)
+  const borrarPendienteConfirm = useArbolStore((s) => s.borrarPendienteConfirm)
   return (
     <div className="d-flex flex-column h-100 arbol-inspector--lock">
       <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }} className="p-3">
         <Cabecera tipo={seleccion.tipo} nodo={nodo} />
-        <Editor />
+        {borrarPendienteConfirm
+          ? <ConfirmacionBorrado nodo={nodo} />
+          : <Editor />
+        }
       </div>
-      <div style={{ flex: '0 0 auto' }} className="border-top">
-        <Despensa />
-      </div>
+      {!borrarPendienteConfirm && (
+        <div style={{ flex: '0 0 auto' }} className="border-top">
+          <Despensa />
+        </div>
+      )}
     </div>
   )
 }
@@ -305,9 +384,7 @@ export default function Inspector() {
   const nodo = buscarNodo(arbol, seleccion)
   if (modoEdicion) return <InspectorEdicion nodo={nodo} />
   const esHoja = seleccion.tipo === 'tarea'
-  // El nodo expediente no tiene campos editables (esquema_editable → []): no ofrecer
-  // Editar para no entrar en una edición vacía (#511, alternativa "deshabilitar editar").
-  const puedeEditar = tienePermiso('editar_expediente') && seleccion.tipo !== 'expediente'
+  const puedeEditar = tienePermiso('editar_expediente')
 
   return (
     <div className="p-3 d-flex flex-column h-100">
