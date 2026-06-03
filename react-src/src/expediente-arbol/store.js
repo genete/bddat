@@ -304,6 +304,21 @@ export const useArbolStore = create((set, get) => ({
     }))
   },
 
+  // Quita un documento del borrador según su rol (#517).
+  // No hace PATCH directamente: sigue el ciclo borrador → hayCambios → Guardar/Cancelar.
+  quitarDoc: (rol, docId) => {
+    if (rol === 'CONSUMIDO') {
+      set((s) => ({
+        borrador: {
+          ...s.borrador,
+          documentos_consumidos_ids: (s.borrador.documentos_consumidos_ids || []).filter((id) => id !== docId),
+        },
+      }))
+    } else {
+      set((s) => ({ borrador: { ...s.borrador, documento_producido_id: null } }))
+    }
+  },
+
   // Re-pide /arbol e invalida TODA la caché de detalle (una mutación puede recomputar
   // agregados/plazos de los ancestros → decisión F). Tras refrescar, re-dispara el
   // detalle de lectura del nodo seleccionado.

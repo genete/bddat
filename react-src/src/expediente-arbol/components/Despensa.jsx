@@ -203,24 +203,80 @@ function DespensaDocs() {
   const seleccionarDocVincular  = useArbolStore((s) => s.seleccionarDocVincular)
   const cancelarVincular        = useArbolStore((s) => s.cancelarVincular)
   const vincularDoc             = useArbolStore((s) => s.vincularDoc)
+  const quitarDoc               = useArbolStore((s) => s.quitarDoc)
 
   React.useEffect(() => {
     cargarPool()
   }, [seleccion?.id])  // eslint-disable-line
 
-  // Ids de docs vinculados según el borrador activo (refleja cambios pendientes de guardar)
-  const vinculadosIds = React.useMemo(() => {
-    const ids = new Set(borrador.documentos_consumidos_ids || [])
-    if (borrador.documento_producido_id) ids.add(borrador.documento_producido_id)
-    return ids
-  }, [borrador.documentos_consumidos_ids, borrador.documento_producido_id])
+  // Separar roles para poder distinguirlos (#517: validaciones y lista activos)
+  const consumidosIds = React.useMemo(
+    () => new Set(borrador.documentos_consumidos_ids || []),
+    [borrador.documentos_consumidos_ids],
+  )
+  const producidoId = borrador.documento_producido_id ?? null
+
+  // Lookup rápido id→doc del pool para mostrar nombres en la lista de vínculos activos
+  const poolById = React.useMemo(
+    () => Object.fromEntries(pool.map((d) => [d.id, d])),
+    [pool],
+  )
+
+  // Lista ordenada: consumidos primero, producido al final
+  const vinculadosActivos = React.useMemo(() => {
+    const items = []
+    for (const id of consumidosIds) {
+      const doc = poolById[id]
+      if (doc) items.push({ doc, rol: 'CONSUMIDO' })
+    }
+    if (producidoId) {
+      const doc = poolById[producidoId]
+      if (doc) items.push({ doc, rol: 'PRODUCIDO' })
+    }
+    return items
+  }, [consumidosIds, producidoId, poolById])
 
   if (poolCargando) {
     return <div className="p-2 text-muted small fst-italic">Cargando documentos…</div>
   }
 
+  // Guards de staging: un doc no puede ser consumido y producido a la vez
+  const docPendienteId = docVinculandoPendiente?.id
+  const yaConsumido    = docPendienteId ? consumidosIds.has(docPendienteId) : false
+  const yaProducido    = docPendienteId ? producidoId === docPendienteId : false
+
   return (
     <div className="p-2 d-flex flex-column gap-2">
+
+      {/* ── Vínculos activos (solo si hay alguno) ── */}
+      {vinculadosActivos.length > 0 && (
+        <div className="d-flex flex-column gap-1">
+          <span className="text-muted small fw-semibold">Documentos de esta tarea</span>
+          {vinculadosActivos.map(({ doc, rol }) => (
+            <div
+              key={`${rol}-${doc.id}`}
+              className="d-flex align-items-center gap-1 px-2 py-1 rounded border border-success-subtle bg-success-subtle"
+              style={{ fontSize: '0.78rem' }}
+            >
+              <span className={`badge me-1 ${rol === 'CONSUMIDO' ? 'text-bg-success' : 'text-bg-primary'}`}>
+                {rol === 'CONSUMIDO' ? 'Consumido' : 'Producido'}
+              </span>
+              <span className="text-truncate flex-grow-1 fw-semibold" title={doc.nombre}>{doc.nombre}</span>
+              <button
+                type="button"
+                className="btn btn-sm btn-link text-danger p-0 lh-1"
+                style={{ fontSize: '0.9rem' }}
+                title="Quitar vínculo"
+                onClick={() => quitarDoc(rol, doc.id)}
+              >
+                ✕
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ── Pool ── */}
       <span className="text-muted small fw-semibold">Pool de documentos</span>
 
       {pool.length === 0 ? (
@@ -231,7 +287,7 @@ function DespensaDocs() {
             <FichaDoc
               key={doc.id}
               doc={doc}
-              vinculado={vinculadosIds.has(doc.id)}
+              vinculado={consumidosIds.has(doc.id) || producidoId === doc.id}
               seleccionada={docVinculandoPendiente?.id === doc.id}
               onClick={() =>
                 docVinculandoPendiente?.id === doc.id
@@ -243,7 +299,7 @@ function DespensaDocs() {
         </div>
       )}
 
-      {/* Zona de confirmación / staging */}
+      {/* ── Zona de staging ── */}
       {docVinculandoPendiente ? (
         <div className="d-flex flex-column gap-1 px-2 py-1 rounded border bg-primary-subtle border-primary-subtle">
           <span className="small text-truncate fw-semibold">{docVinculandoPendiente.nombre}</span>
@@ -251,16 +307,28 @@ function DespensaDocs() {
             <button
               type="button"
               className="btn btn-sm btn-success flex-grow-1"
+              disabled={yaConsumido || yaProducido}
+              title={
+                yaConsumido ? 'Ya está como consumido' :
+                yaProducido ? 'No puede ser consumido y producido a la vez' :
+                undefined
+              }
               onClick={() => vincularDoc('CONSUMIDO')}
             >
-              + Consumido
+              {yaConsumido ? 'Ya consumido' : '+ Consumido'}
             </button>
             <button
               type="button"
               className="btn btn-sm btn-primary flex-grow-1"
+              disabled={yaProducido || yaConsumido}
+              title={
+                yaProducido ? 'Ya está como producido' :
+                yaConsumido ? 'No puede ser consumido y producido a la vez' :
+                undefined
+              }
               onClick={() => vincularDoc('PRODUCIDO')}
             >
-              + Producido
+              {yaProducido ? 'Ya producido' : '+ Producido'}
             </button>
             <button
               type="button"
