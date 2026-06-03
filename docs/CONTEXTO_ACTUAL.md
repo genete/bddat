@@ -6,11 +6,11 @@
 
 ---
 
-**Último cerrado:** #503 — Smoke tests pytest Fase 1 (ADR-019). `tests/smoke/` con 15 ficheros y 20 tests; fixtures de rol vía `session_transaction` (`usuario_admin/supervisor/tramitador/administrativo`) + fixtures de datos (`expediente_seed`, `entidad_seed`, `plantilla_seed`, `primer_usuario_id`); convención "una vista nueva = un smoke test nuevo" documentada en `REGLAS_DESARROLLO.md`.
+**Último cerrado:** #500 — ADR-016 Vista de árbol del expediente. Primera isla React productiva; sustituye las 5 vistas `tramitacion_bc_*`; smoke tests ampliados en área K (control acceso + `url_tramitacion`); vistas BC eliminadas en PR #519.
 
 **Actuales:** —
 
-**Próximos:** **#500 — ADR-016 Vista de árbol del expediente.** Primera isla React productiva. Sustituye las 5 vistas `tramitacion_bc_*`. ~3-4 semanas.
+**Próximos:** **#512** — Fix urgente: banner `.app-alert-banner` solapa el `app-viewbar` (CSS/layout del shell, detectado durante #500). Luego **#501 — ADR-017 Vista "Mi trabajo" del administrativo.**
 
 ## Hoja de ruta — Bloque UI: Implementación del revamping
 
@@ -22,7 +22,7 @@ Orden técnico recomendado de implementación (dependencias de las cabeceras hac
 2. ~~**#498 — ADR-014 Layout único `base_app.html`.**~~ ✅ Cerrado. Shell de 7 áreas operativo; `lista_v2_base` y `base_bc` (deprecated) migrados a `base_app`; `base_fullwidth`/`base_acordeon`/`header` eliminados.
 3. ~~**#499 — ADR-015 Scaffolding React islas.**~~ ✅ Cerrado. `react-diagramas/`→`react-src/`, multi-bundle ES + manifest, helpers `shared/` + Jinja, POC verificado con Playwright.
 4. ~~**#503 — ADR-019 Smoke tests pytest (Fase 1).**~~ ✅ Cerrado. `tests/smoke/` 20 tests; fixtures por rol vía `session_transaction`; convención documentada en REGLAS_DESARROLLO.
-5. **#500 — ADR-016 Vista de árbol del expediente.** Primera isla React productiva. Pieza estrella. Sustituye las 5 vistas `tramitacion_bc_*`. ~3-4 semanas.
+5. ~~**#500 — ADR-016 Vista de árbol del expediente.**~~ ✅ Cerrado. Primera isla React productiva; sustituye las 5 vistas `tramitacion_bc_*`; vistas BC eliminadas (PR #519); smoke tests K completo.
 6. **#501 — ADR-017 Vista "Mi trabajo" del administrativo.** Reutiliza el árbol como destino de acción. ~2-3 semanas.
 7. **#502 — ADR-018 Command Palette (Ctrl+K).** En M4 — Pre-producción, no M2. ~1-2 semanas cuando llegue su momento.
 
