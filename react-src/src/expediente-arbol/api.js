@@ -41,3 +41,8 @@ export function postHijo(expedienteId, padreTipo, padreId, body) {
 export function getPool(expedienteId) {
   return api.get(`/api/expedientes/${expedienteId}/pool`)
 }
+
+// Borrar un nodo (DELETE, S3b-4). Respuesta éxito: {ok:true} 200. Motor: {motivo,url_norma} 422.
+export function deleteNodo(expedienteId, tipo, nodoId) {
+  return api.delete(`/api/expedientes/${expedienteId}/nodo/${tipo}/${nodoId}`)
+}

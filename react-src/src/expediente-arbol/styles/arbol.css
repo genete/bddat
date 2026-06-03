@@ -226,3 +226,49 @@ body.arbol-lock .app-inspector {
   box-shadow: 0 0 0 3px rgba(13, 110, 253, .35);
   border-radius: 8px;
 }
+
+/* ── Menú contextual (S3b-4) ──────────────────────────────────────────────── */
+.arbol-menu {
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, .12);
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, .15);
+  min-width: 200px;
+  padding: 4px 0;
+  font-size: 13px;
+  user-select: none;
+}
+.arbol-menu__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  cursor: pointer;
+  white-space: nowrap;
+  color: #333;
+  text-decoration: none;
+}
+.arbol-menu__item:hover { background: #f0f4ff; }
+.arbol-menu__item--disabled {
+  opacity: .4;
+  cursor: not-allowed;
+}
+.arbol-menu__item--disabled:hover { background: transparent; }
+.arbol-menu__sep {
+  height: 1px;
+  background: #e8e8e8;
+  margin: 4px 0;
+}
+.arbol-menu__submenu-wrap { position: relative; }
+.arbol-menu__submenu {
+  position: absolute;
+  left: 100%;
+  top: -4px;
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, .12);
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, .15);
+  min-width: 180px;
+  padding: 4px 0;
+  z-index: 10000;
+}
