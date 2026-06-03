@@ -7,7 +7,7 @@
 // S3b-1: modoEdicion + lock + editor genérico (entrar/guardar/cancelar + refresco).
 // S3b añadirá: despensa, colapsos manuales por nivel.
 import { create } from 'zustand'
-import { getArbol, getNodo, getEditable, patchNodo, getTiposCreables, postHijo } from './api.js'
+import { getArbol, getNodo, getEditable, patchNodo, getTiposCreables, postHijo, getPool } from './api.js'
 import { showToast } from '../shared/ui/toast.js'
 
 // AbortController de la petición de detalle en curso (fuera del estado: no re-render).
@@ -38,6 +38,13 @@ export const useArbolStore = create((set, get) => ({
   tiposCreablesCargando: false,
   tipoCreacionPendiente: null, // { tipo_id, codigo, nombre } staged para crear
   creando: false,
+
+  // --- pool de documentos (S3b-3) ---
+  pool: [],                       // [{id, nombre, tipo_doc, fecha}] del expediente
+  poolCargado: false,             // carga perezosa una vez por isla (el pool no cambia en esta vista)
+  poolCargando: false,
+  docVinculandoPendiente: null,   // {id, nombre, tipo_doc, fecha} staged para vincular
+  vinculando: false,
 
   // --- detalle del inspector (S3a) ---
   detalle: null,              // payload del endpoint lazy del nodo seleccionado
@@ -114,7 +121,8 @@ export const useArbolStore = create((set, get) => ({
     if (!sel) return
     set({ seleccion: sel, modoEdicion: true, edicionCargando: true,
           editableCampos: [], borrador: {}, borradorInicial: {},
-          tiposCreables: null, tipoCreacionPendiente: null })
+          tiposCreables: null, tipoCreacionPendiente: null,
+          docVinculandoPendiente: null })
     const expedienteId = get().expedienteId
     if (!expedienteId) { set({ edicionCargando: false }); return }  // mock standalone: editor vacío
     try {
@@ -134,6 +142,7 @@ export const useArbolStore = create((set, get) => ({
     const { seleccion } = get()
     set({ modoEdicion: false, editableCampos: [], borrador: {}, borradorInicial: {}, edicionCargando: false,
           tiposCreables: null, tipoCreacionPendiente: null,
+          docVinculandoPendiente: null,
           detalle: null, detalleCargando: false, detalleError: null })
     get().cargarDetalle(seleccion)
     showToast('Cambios descartados', 'info')
@@ -232,6 +241,70 @@ export const useArbolStore = create((set, get) => ({
         showToast(e.payload.motivo || e.payload.error || 'Operación bloqueada', 'danger')
       } else {
         showToast(e.message || 'No se pudo crear el elemento', 'danger')
+      }
+    }
+  },
+
+  // --- acciones del pool (S3b-3) ---
+
+  // Carga el pool una sola vez por vida de la isla (lazy). El pool no cambia mientras
+  // se usa la despensa de tareas (las subidas viven en otra vista).
+  cargarPool: async () => {
+    if (get().poolCargado || get().poolCargando) return
+    const expedienteId = get().expedienteId
+    if (!expedienteId) return
+    set({ poolCargando: true })
+    try {
+      const data = await getPool(expedienteId)
+      set({ pool: data.documentos || [], poolCargado: true, poolCargando: false })
+    } catch {
+      set({ poolCargando: false })
+    }
+  },
+
+  seleccionarDocVincular: (doc) => set({ docVinculandoPendiente: doc }),
+
+  cancelarVincular: () => set({ docVinculandoPendiente: null }),
+
+  // Vincula `docVinculandoPendiente` a la tarea seleccionada con el rol dado.
+  // El PATCH reconstruye el conjunto COMPLETO (no incremental): toma los vínculos
+  // actuales del `detalle` + añade el nuevo. Preserva `notas` del borrador activo.
+  vincularDoc: async (rol) => {
+    const { expedienteId, seleccion, docVinculandoPendiente, detalle, borrador } = get()
+    if (!seleccion || seleccion.tipo !== 'tarea' || !docVinculandoPendiente || !expedienteId) return
+
+    const docs = (detalle && detalle.documentos) || []
+    const consumidosIds = docs.filter((d) => d.rol === 'CONSUMIDO').map((d) => d.id)
+    const producidoId = (docs.find((d) => d.rol === 'PRODUCIDO') || {}).id || null
+
+    let nuevosConsumidosIds = [...consumidosIds]
+    let nuevoProducidoId = producidoId
+
+    if (rol === 'CONSUMIDO') {
+      if (!nuevosConsumidosIds.includes(docVinculandoPendiente.id)) {
+        nuevosConsumidosIds = [...nuevosConsumidosIds, docVinculandoPendiente.id]
+      }
+    } else {
+      nuevoProducidoId = docVinculandoPendiente.id
+    }
+
+    set({ vinculando: true })
+    try {
+      await patchNodo(expedienteId, 'tarea', seleccion.id, {
+        documentos_consumidos_ids: nuevosConsumidosIds,
+        documento_producido_id:    nuevoProducidoId,
+        notas:                     borrador['notas'] ?? null,
+      })
+      set({ vinculando: false, docVinculandoPendiente: null })
+      showToast('Documento vinculado', 'success')
+      await get().refrescarArbol()
+    } catch (e) {
+      set({ vinculando: false })
+      if (e.status === 401 || e.status === 403) return
+      if (e.status === 422 && e.payload) {
+        showToast(e.payload.motivo || e.payload.error || 'No se pudo vincular el documento', 'danger')
+      } else {
+        showToast(e.message || 'No se pudo vincular el documento', 'danger')
       }
     }
   },
