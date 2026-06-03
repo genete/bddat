@@ -71,7 +71,7 @@ export const useArbolStore = create((set, get) => ({
 
   // Selección única: además dispara la carga del detalle del nodo (o lo limpia).
   seleccionar: (sel) => {
-    set({ seleccion: sel, borrarPendienteConfirm: false })
+    set({ seleccion: sel, borrarPendienteConfirm: false, menuCtx: null })
     get().cargarDetalle(sel)
   },
 

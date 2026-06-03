@@ -10,6 +10,7 @@ import React, { useMemo, useCallback } from 'react'
 import { ReactFlow, Background, Controls } from '@xyflow/react'
 import { useArbolStore } from '../store.js'
 import { construirGrafo } from '../layout.js'
+import { tienePermiso } from '../../shared/auth.js'
 import NodoExpediente from './nodos/NodoExpediente.jsx'
 import NodoSolicitud from './nodos/NodoSolicitud.jsx'
 import NodoFase from './nodos/NodoFase.jsx'
@@ -36,6 +37,7 @@ export default function Arbol() {
   const modoEdicion = useArbolStore((s) => s.modoEdicion)
   const entrarEdicion = useArbolStore((s) => s.entrarEdicion)
   const abrirMenu = useArbolStore((s) => s.abrirMenu)
+  const cerrarMenu = useArbolStore((s) => s.cerrarMenu)
 
   const { nodes, edges } = useMemo(
     () => construirGrafo(arbol, { colapsarFinalizados, seleccion }),
@@ -50,16 +52,20 @@ export default function Arbol() {
     },
     [seleccionar],
   )
-  // Doble-clic = atajo para editar ese nodo (en lectura). En edición el overlay
-  // intercepta los clics del lienzo, así que no permite cambiar de nodo objetivo.
+  // Doble-clic = atajo para editar ese nodo (en lectura), solo si el rol tiene permiso.
+  // En edición el overlay intercepta los clics del lienzo, así que no permite cambiar de nodo.
   const onNodeDoubleClick = useCallback(
     (_, node) => {
       if (node.data.tipo === 'tareas') return
+      if (!tienePermiso('editar_expediente')) return
       entrarEdicion({ tipo: node.data.tipo, id: node.data.id })
     },
     [entrarEdicion],
   )
-  const onPaneClick = useCallback(() => seleccionar(null), [seleccionar])
+  // ReactFlow absorbe los eventos del pane sin que lleguen al document, así que el
+  // listener mousedown de MenuContextual no se dispara al pulsar el fondo del árbol.
+  // Cerramos el menú explícitamente aquí.
+  const onPaneClick = useCallback(() => { cerrarMenu(); seleccionar(null) }, [cerrarMenu, seleccionar])
 
   const onNodeContextMenu = useCallback(
     (e, node) => {
