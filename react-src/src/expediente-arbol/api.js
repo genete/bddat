@@ -31,3 +31,8 @@ export function getEditable(expedienteId, tipo, nodoId) {
 export function patchNodo(expedienteId, tipo, nodoId, body) {
   return api.patch(`/api/expedientes/${expedienteId}/nodo/${tipo}/${nodoId}`, body)
 }
+
+// Crear hijo bajo un nodo (POST, S3b-2). Respuesta: {ok, ids:[...], advertencia?}.
+export function postHijo(expedienteId, padreTipo, padreId, body) {
+  return api.post(`/api/expedientes/${expedienteId}/nodo/${padreTipo}/${padreId}/hijos`, body)
+}

@@ -161,9 +161,13 @@ def estado_fase(fase, estados_tramites: list[str]) -> tuple[str, bool]:
     if fase.planificada:                   # sin trámites aún
         return ('PENDIENTE_TRAMITAR', True)
     if fase.pdte_cierre:                   # todos los trámites cerrados, falta formalizar
-        if fase.resultado_fase_id is None:
+        # Solo las finalizadoras requieren resultado_fase_id explícito (el técnico
+        # tiene la última palabra). Las intermedias cierran por documento_resultado_id;
+        # su resultado_fase_id debe quedar NULL.
+        es_finalizadora = getattr(fase.tipo_fase, 'es_finalizadora', False)
+        if es_finalizadora and fase.resultado_fase_id is None:
             return ('PENDIENTE_ESTUDIO', True)   # 🔴 falta decidir resultado
-        return ('PENDIENTE_CERRAR', True)        # 🟠 resultado puesto, falta documento
+        return ('PENDIENTE_CERRAR', True)        # 🟠 falta documento formalizador
     return (_mayor_prioridad(estados_tramites), False)
 
 

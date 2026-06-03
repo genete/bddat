@@ -7,7 +7,7 @@
 // S3b-1: modoEdicion + lock + editor genérico (entrar/guardar/cancelar + refresco).
 // S3b añadirá: despensa, colapsos manuales por nivel.
 import { create } from 'zustand'
-import { getArbol, getNodo, getEditable, patchNodo } from './api.js'
+import { getArbol, getNodo, getEditable, patchNodo, getTiposCreables, postHijo } from './api.js'
 import { showToast } from '../shared/ui/toast.js'
 
 // AbortController de la petición de detalle en curso (fuera del estado: no re-render).
@@ -31,6 +31,13 @@ export const useArbolStore = create((set, get) => ({
   borradorInicial: {},        // snapshot al entrar (detección de cambios → lock)
   edicionCargando: false,
   guardando: false,
+
+  // --- creación de hijo (S3b-2) ---
+  _tiposCreablesCache: {},    // { 'tipo-id': payload } — compartida con menú contextual S3b-4
+  tiposCreables: null,        // payload de GET tipos-creables del nodo seleccionado
+  tiposCreablesCargando: false,
+  tipoCreacionPendiente: null, // { tipo_id, codigo, nombre } staged para crear
+  creando: false,
 
   // --- detalle del inspector (S3a) ---
   detalle: null,              // payload del endpoint lazy del nodo seleccionado
@@ -106,7 +113,8 @@ export const useArbolStore = create((set, get) => ({
   entrarEdicion: async (sel) => {
     if (!sel) return
     set({ seleccion: sel, modoEdicion: true, edicionCargando: true,
-          editableCampos: [], borrador: {}, borradorInicial: {} })
+          editableCampos: [], borrador: {}, borradorInicial: {},
+          tiposCreables: null, tipoCreacionPendiente: null })
     const expedienteId = get().expedienteId
     if (!expedienteId) { set({ edicionCargando: false }); return }  // mock standalone: editor vacío
     try {
@@ -123,7 +131,11 @@ export const useArbolStore = create((set, get) => ({
   setCampo: (campo, valor) => set((s) => ({ borrador: { ...s.borrador, [campo]: valor } })),
 
   cancelar: () => {
-    set({ modoEdicion: false, editableCampos: [], borrador: {}, borradorInicial: {}, edicionCargando: false })
+    const { seleccion } = get()
+    set({ modoEdicion: false, editableCampos: [], borrador: {}, borradorInicial: {}, edicionCargando: false,
+          tiposCreables: null, tipoCreacionPendiente: null,
+          detalle: null, detalleCargando: false, detalleError: null })
+    get().cargarDetalle(seleccion)
     showToast('Cambios descartados', 'info')
   },
 
@@ -147,6 +159,79 @@ export const useArbolStore = create((set, get) => ({
         showToast(e.payload.motivo, 'danger')          // bloqueo motor: PERMANECE en edición
       } else {
         showToast(e.message || 'No se pudo guardar', 'danger')
+      }
+    }
+  },
+
+  // --- acciones de creación (S3b-2) ---
+
+  // Carga tipos-creables del nodo `sel` (con caché compartida con el menú S3b-4).
+  cargarTiposCreables: async (sel) => {
+    if (!sel || sel.tipo === 'tarea') {
+      set({ tiposCreables: null, tiposCreablesCargando: false })
+      return
+    }
+    const key = `${sel.tipo}-${sel.id}`
+    const cacheado = get()._tiposCreablesCache[key]
+    if (cacheado) {
+      set({ tiposCreables: cacheado, tiposCreablesCargando: false })
+      return
+    }
+    const expedienteId = get().expedienteId
+    if (!expedienteId) { set({ tiposCreables: null, tiposCreablesCargando: false }); return }
+    set({ tiposCreablesCargando: true })
+    try {
+      const data = await getTiposCreables(expedienteId, sel.tipo, sel.id)
+      set((s) => ({
+        tiposCreables: data,
+        tiposCreablesCargando: false,
+        _tiposCreablesCache: { ...s._tiposCreablesCache, [key]: data },
+      }))
+    } catch {
+      set({ tiposCreables: null, tiposCreablesCargando: false })
+    }
+  },
+
+  seleccionarTipoCrear: (tipo) => set({ tipoCreacionPendiente: tipo }),
+
+  cancelarCrear: () => set({ tipoCreacionPendiente: null }),
+
+  crearHijo: async () => {
+    const { expedienteId, seleccion, tipoCreacionPendiente, tiposCreables } = get()
+    if (!seleccion || !tipoCreacionPendiente || !expedienteId) return
+    set({ creando: true })
+    try {
+      const esMulti = seleccion.tipo === 'expediente'
+      const body = esMulti
+        ? { tipo_ids: [tipoCreacionPendiente.tipo_id] }
+        : { tipo_id: tipoCreacionPendiente.tipo_id }
+      const data = await postHijo(expedienteId, seleccion.tipo, seleccion.id, body)
+      const nuevoTipo = tiposCreables?.tipo_hijo   // 'solicitud', 'fase', 'tramite', 'tarea'
+      const nuevoId = (data.ids || [])[0]
+
+      set({ creando: false, tipoCreacionPendiente: null })
+      showToast('Elemento creado', 'success')
+      if (data.advertencia) {
+        const a = data.advertencia
+        showToast(typeof a === 'string' ? a : (a.mensaje || a.texto || 'Revisa la advertencia'), 'warning')
+      }
+      // Invalidar caché de tipos del padre (el nuevo hijo puede cambiar lo creable).
+      set((s) => {
+        const cache = { ...s._tiposCreablesCache }
+        delete cache[`${seleccion.tipo}-${seleccion.id}`]
+        return { _tiposCreablesCache: cache }
+      })
+      await get().refrescarArbol()
+      if (nuevoId && nuevoTipo) {
+        await get().entrarEdicion({ tipo: nuevoTipo, id: nuevoId })
+      }
+    } catch (e) {
+      set({ creando: false })
+      if (e.status === 401 || e.status === 403) return
+      if (e.status === 422 && e.payload) {
+        showToast(e.payload.motivo || e.payload.error || 'Operación bloqueada', 'danger')
+      } else {
+        showToast(e.message || 'No se pudo crear el elemento', 'danger')
       }
     }
   },
