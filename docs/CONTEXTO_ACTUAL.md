@@ -6,11 +6,11 @@
 
 ---
 
-**Último cerrado:** #500 — ADR-016 Vista de árbol del expediente. Primera isla React productiva; sustituye las 5 vistas `tramitacion_bc_*`; smoke tests ampliados en área K (control acceso + `url_tramitacion`); vistas BC eliminadas en PR #519.
+**Último cerrado:** #525 — Bombilla de asignación TRAMITADOR movida a chrome del shell (viewbar). Precedido de: #523 (viewbar React como portal a `app-viewbar`, elimina doble cabecera), #521 (toast global `toast.js` + wrapper React, elimina copias inline), #512 (banner calendario: área grid propia + dismiss por sessionStorage).
 
 **Actuales:** —
 
-**Próximos:** **#512** (fix urgente banner CSS) → **#506** (ADR-020 Dock global) → **#502 backend** (endpoints `/api/search/`) → **#501** (ADR-017 Vista "Mi trabajo" del administrativo) → **#502 frontend** (UI palette, M4).
+**Próximos:** **#506** (ADR-020 Dock global) → **#502 backend** (endpoints `/api/search/`) → **#501** (ADR-017 Vista "Mi trabajo" del administrativo) → **#502 frontend** (UI palette, M4).
 
 ## Hoja de ruta — Bloque UI: Implementación del revamping
 
