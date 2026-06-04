@@ -24,6 +24,7 @@
     inspectorOpen:    'bddat.inspector.open',
     dockOpen:         'bddat.dock.open'
   };
+  var SS_BANNER   = 'bddat.banner.dismissed';
   var COOKIE_SIDEBAR = 'bddat_sidebar_collapsed';
   var BREAKPOINT_COLLAPSED = 1280;
   var BREAKPOINT_MOBILE    = 768;
@@ -70,6 +71,24 @@
 
   function toggleSidebarMobile(shell) {
     shell.classList.toggle('is-sidebar-open');
+  }
+
+  // -- Banner admin (sessionStorage — persiste dentro de la sesión del navegador)
+
+  function applyBannerState() {
+    try {
+      if (sessionStorage.getItem(SS_BANNER) !== '1') return;
+      var banner = document.getElementById('js-alert-banner');
+      if (banner) banner.remove();
+    } catch (e) { /* ignore */ }
+  }
+
+  function initBannerDismiss() {
+    var banner = document.getElementById('js-alert-banner');
+    if (!banner) return;
+    banner.addEventListener('close.bs.alert', function () {
+      try { sessionStorage.setItem(SS_BANNER, '1'); } catch (e) { /* ignore */ }
+    });
   }
 
   // -- Inspector / Dock (estado solo en localStorage — el server no lo necesita)
@@ -124,6 +143,8 @@
     if (!shell) return;
     applySidebarState(shell);
     applyPanelStates(shell);
+    applyBannerState();
+    initBannerDismiss();
     document.addEventListener('click', onClick);
     document.addEventListener('keydown', onKeydown);
     // Re-aplicar al cambiar de tamaño (mobile ↔ desktop)
