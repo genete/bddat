@@ -59,8 +59,11 @@ export function showToast(mensaje, categoria = 'info') {
 
   const bs = window.bootstrap
   if (bs && bs.Toast) {
+    el.classList.add('showing')
     const t = new bs.Toast(el)
     t.show()
+    setTimeout(() => el.classList.remove('showing'), 300)
+    el.addEventListener('hide.bs.toast',   () => el.classList.add('hide'))
     el.addEventListener('hidden.bs.toast', () => el.remove())
     el.addEventListener('click', e => { if (!e.target.closest('.btn-close')) t.hide() })
   } else {
