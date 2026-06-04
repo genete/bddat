@@ -151,13 +151,26 @@
 
   function cargarBitacora() {
     fetch('/api/bitacora/reciente', { credentials: 'same-origin' })
-      .then(function (r) { return r.ok ? r.json() : []; })
+      .then(function (r) {
+        if (!r.ok) {
+          console.error('dock/bitácora: HTTP ' + r.status + ' ' + r.url);
+          return [];
+        }
+        var ct = r.headers.get('content-type') || '';
+        if (!ct.includes('application/json')) {
+          // Redirect a login seguido → respuesta HTML con r.ok=true
+          console.warn('dock/bitácora: respuesta no-JSON (¿sesión expirada o redirect a login?)');
+          return [];
+        }
+        return r.json();
+      })
       .then(function (items) {
         _bitacoraItems = items;
         renderStream('js-dock-bitacora-list', items, lineaBitacora, 'Sin actividad registrada.');
         setBadge('dock-badge-bitacora', items.length);
       })
-      .catch(function () {
+      .catch(function (err) {
+        console.error('dock/bitácora: error al parsear respuesta', err);
         renderStream('js-dock-bitacora-list', [], lineaBitacora, 'Error al cargar la bitácora.');
       });
   }
