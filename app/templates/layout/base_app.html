@@ -44,15 +44,8 @@
 </head>
 <body>
   {# Captura de bloques opcionales sin doble render: {% set ... %}...{% endset %} #}
-  {% set viewbar_html %}{% block viewbar %}{% if indicador_asignacion is not none %}
-    <div class="app-viewbar__title">
-      <i class="bi bi-lightbulb-fill app-viewbar__indicador {{ 'text-danger' if indicador_asignacion else 'text-success' }}"
-         data-bs-toggle="tooltip" data-bs-placement="bottom"
-         title="{{ 'Expediente no asignado a ti — actuación registrada en bitácora' if indicador_asignacion else 'Tu expediente' }}"></i>
-      {% set _exp = g.get('expediente_actual') %}
-      {% if _exp %}<span>AT-{{ _exp.numero_at }}</span>{% endif %}
-    </div>
-  {% endif %}{% endblock %}{% endset %}
+  {# Bombilla fuera del bloque: es chrome del shell, no responsabilidad de cada isla (#525). #}
+  {% set viewbar_html %}{% block viewbar %}{% endblock %}{% endset %}
 
   {% set inspector_html %}{% block inspector %}{% endblock %}{% endset %}
   {% set dock_html      %}{% block dock      %}{% endblock %}{% endset %}
@@ -67,8 +60,13 @@
     {% include 'layout/_topbar.html' %}
     {% include 'layout/_sidebar.html' %}
 
-    {% if viewbar_html | trim %}
+    {% if indicador_asignacion is not none or viewbar_html | trim %}
     <header class="app-viewbar" role="banner">
+      {% if indicador_asignacion is not none %}
+        <i class="bi bi-lightbulb-fill app-viewbar__indicador {{ 'text-danger' if indicador_asignacion else 'text-success' }}"
+           data-bs-toggle="tooltip" data-bs-placement="bottom"
+           title="{{ 'Expediente no asignado a ti — actuación registrada en bitácora' if indicador_asignacion else 'Tu expediente' }}"></i>
+      {% endif %}
       {{ viewbar_html }}
     </header>
     {% endif %}

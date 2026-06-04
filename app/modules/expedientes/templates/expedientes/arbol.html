@@ -10,10 +10,9 @@
 {% block title %}AT-{{ expediente.numero_at }} · Árbol{% endblock %}
 
 {# Slot para la isla React de la viewbar (#523).
-   data-indicador codifica indicador_asignacion: 'ajeno'|'propio' o ausente si no aplica. #}
+   La bombilla es chrome del shell (base_app.html #525); aquí solo el contenido de la isla. #}
 {% block viewbar %}
-  <div id="arbol-viewbar-slot"
-       {% if indicador_asignacion is not none %}data-indicador="{{ 'ajeno' if indicador_asignacion else 'propio' }}"{% endif %}></div>
+  <div id="arbol-viewbar-slot"></div>
 {% endblock %}
 
 {% block content %}
