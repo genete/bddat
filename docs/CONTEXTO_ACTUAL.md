@@ -10,7 +10,7 @@
 
 **Actuales:** —
 
-**Próximos:** **#512** — Fix urgente: banner `.app-alert-banner` solapa el `app-viewbar` (CSS/layout del shell, detectado durante #500). Luego **#501 — ADR-017 Vista "Mi trabajo" del administrativo.**
+**Próximos:** **#512** (fix urgente banner CSS) → **#506** (ADR-020 Dock global) → **#502 backend** (endpoints `/api/search/`) → **#501** (ADR-017 Vista "Mi trabajo" del administrativo) → **#502 frontend** (UI palette, M4).
 
 ## Hoja de ruta — Bloque UI: Implementación del revamping
 
@@ -23,10 +23,14 @@ Orden técnico recomendado de implementación (dependencias de las cabeceras hac
 3. ~~**#499 — ADR-015 Scaffolding React islas.**~~ ✅ Cerrado. `react-diagramas/`→`react-src/`, multi-bundle ES + manifest, helpers `shared/` + Jinja, POC verificado con Playwright.
 4. ~~**#503 — ADR-019 Smoke tests pytest (Fase 1).**~~ ✅ Cerrado. `tests/smoke/` 20 tests; fixtures por rol vía `session_transaction`; convención documentada en REGLAS_DESARROLLO.
 5. ~~**#500 — ADR-016 Vista de árbol del expediente.**~~ ✅ Cerrado. Primera isla React productiva; sustituye las 5 vistas `tramitacion_bc_*`; vistas BC eliminadas (PR #519); smoke tests K completo.
-6. **#501 — ADR-017 Vista "Mi trabajo" del administrativo.** Reutiliza el árbol como destino de acción. ~2-3 semanas.
-7. **#502 — ADR-018 Command Palette (Ctrl+K).** En M4 — Pre-producción, no M2. ~1-2 semanas cuando llegue su momento.
+6. **#506 — ADR-020 Dock global: bitácora + avisos de sesión.** Chrome global del shell (`base_app.html`); prerequisito de estabilidad de layout antes de #501.
+7. **#502 backend — ADR-018 Command Palette, endpoints de búsqueda.** `GET /api/search/expedientes` y `GET /api/search/entidades`. Dependencia directa de #501 (autocompletado en modo Subir documento). El frontend del palette se implementa en M4.
+8. **#501 — ADR-017 Vista "Mi trabajo" del administrativo.** Reutiliza el árbol como destino de acción. ~2-3 semanas.
+9. **#502 frontend — ADR-018 Command Palette (isla React, cmdk).** M4 — Pre-producción. ~1-2 semanas cuando llegue su momento.
 
-**Total estimado bloque UI sin Command Palette: ~10-13 semanas** (1 dev + IA, ratio observado).
+**Total estimado bloque UI sin Command Palette frontend: ~10-13 semanas** (1 dev + IA, ratio observado).
+
+**ADR-021 — Operaciones externas** (firma en BandeJA, notificación en Notifica-PNT): diseño acordado, issue pendiente de crear. No bloquea el bloque UI; sus formularios viven en el inspector del árbol y en la cola del admin.
 
 ## Decisiones pendientes a tomar en construcción
 
@@ -39,7 +43,7 @@ No requieren ADR específico — se cierran al implementar:
 
 - `docs/diseño/DECISIONES_UI.md` — punto de entrada al estado del revamping.
 - `docs/guias/NOMENCLATURA_LAYOUT.md` — referencia rápida de las 7 áreas del layout.
-- `docs/decisiones/ADR-013` a `ADR-019` — fuente de verdad de cada decisión.
+- `docs/decisiones/ADR-013` a `ADR-021` — fuente de verdad de cada decisión.
 
 ## Backlog M3/M4/M5 no afectado por el revamping
 
