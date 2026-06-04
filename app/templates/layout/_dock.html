@@ -34,10 +34,6 @@
               title="Ver todo">
         <i class="bi bi-arrows-fullscreen"></i>
       </button>
-      <button type="button" class="dock-action-btn" id="js-dock-clear-btn"
-              title="Limpiar tab">
-        <i class="bi bi-trash3"></i>
-      </button>
       <button type="button" class="dock-action-btn"
               data-app-shell-toggle="dock"
               title="Cerrar panel">
@@ -196,21 +192,6 @@
     if (n > 0) { el.textContent = n > 99 ? '99+' : n; el.style.display = ''; }
     else        { el.style.display = 'none'; }
   }
-
-  // --- Limpiar ---
-
-  document.getElementById('js-dock-clear-btn').addEventListener('click', function () {
-    var activo = document.querySelector('#dockTabs .nav-link.active');
-    if (activo && activo.id === 'dock-tab-avisos') {
-      if (window.DockBuffer) window.DockBuffer.clear();
-      renderAvisos();
-    } else {
-      // Bitácora: solo colapsa la vista local (no borra la BD)
-      _bitacoraItems = [];
-      renderStream('js-dock-bitacora-list', [], lineaBitacora, 'Vista limpiada. Recarga para volver a ver.');
-      setBadge('dock-badge-bitacora', 0);
-    }
-  });
 
   // --- Modal: muestra contenido del tab activo ---
 
