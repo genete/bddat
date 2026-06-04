@@ -13,6 +13,8 @@
   };
 
   window.mostrar_toast = function (tipo, mensaje) {
+    if (window.DockBuffer) window.DockBuffer.push(tipo, mensaje);
+
     var estilo    = ESTILOS[tipo] || ESTILOS.info;
     var container = document.querySelector('.toast-container');
     if (!container || !window.bootstrap) return;

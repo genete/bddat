@@ -1,0 +1,265 @@
+{# _dock.html — Dock global: bitácora + avisos de sesión (ADR-020 / Issue #506).
+   Chrome del shell: siempre presente en base_app.html, toggle via campana del topbar.
+   Tabs horizontales (variación sobre ADR-020 que especificaba vertical — más espacio útil).
+#}
+<section class="app-dock" aria-label="Panel inferior" id="js-dock">
+
+  {# Cabecera con tabs horizontales + acciones del tab activo #}
+  <div class="dock-header">
+    <ul class="nav dock-tabs" id="dockTabs" role="tablist">
+      <li class="nav-item" role="presentation">
+        <button class="nav-link active dock-tab-btn" id="dock-tab-bitacora"
+                data-bs-toggle="tab" data-bs-target="#dock-pane-bitacora"
+                type="button" role="tab" aria-selected="true">
+          <i class="bi bi-journal-text"></i>
+          <span>Bitácora</span>
+          <span class="dock-badge" id="dock-badge-bitacora" style="display:none"></span>
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link dock-tab-btn" id="dock-tab-avisos"
+                data-bs-toggle="tab" data-bs-target="#dock-pane-avisos"
+                type="button" role="tab" aria-selected="false">
+          <i class="bi bi-bell"></i>
+          <span>Avisos</span>
+          <span class="dock-badge" id="dock-badge-avisos" style="display:none"></span>
+        </button>
+      </li>
+    </ul>
+
+    {# Botones de acción del tab activo (modal + limpiar) #}
+    <div class="dock-header__actions">
+      <button type="button" class="dock-action-btn" id="js-dock-modal-btn"
+              data-bs-toggle="modal" data-bs-target="#js-dock-modal"
+              title="Ver todo">
+        <i class="bi bi-arrows-fullscreen"></i>
+      </button>
+      <button type="button" class="dock-action-btn" id="js-dock-clear-btn"
+              title="Limpiar">
+        <i class="bi bi-x-lg"></i>
+      </button>
+    </div>
+  </div>
+
+  {# Contenido de los tabs #}
+  <div class="tab-content dock-content" id="dockTabContent">
+
+    {# Tab Bitácora #}
+    <div class="tab-pane fade show active dock-stream" id="dock-pane-bitacora"
+         role="tabpanel" aria-labelledby="dock-tab-bitacora">
+      <div class="dock-stream__inner" id="js-dock-bitacora-list">
+        <span class="dock-empty">Cargando…</span>
+      </div>
+    </div>
+
+    {# Tab Avisos #}
+    <div class="tab-pane fade dock-stream" id="dock-pane-avisos"
+         role="tabpanel" aria-labelledby="dock-tab-avisos">
+      <div class="dock-stream__inner" id="js-dock-avisos-list">
+        <span class="dock-empty">Sin avisos en esta sesión.</span>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+{# Modal — muestra la lista completa del tab activo #}
+<div class="modal fade" id="js-dock-modal" tabindex="-1" aria-labelledby="js-dock-modal-label" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="js-dock-modal-label">Bitácora</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body" id="js-dock-modal-body">
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cerrar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var ICONOS_AVISO = {
+    success: 'bi-check-circle text-success',
+    danger:  'bi-exclamation-circle text-danger',
+    warning: 'bi-exclamation-triangle text-warning',
+    info:    'bi-info-circle text-info',
+  };
+
+  // --- Helpers de renderizado ---
+
+  function lineaBitacora(item) {
+    var el = document.createElement('div');
+    el.className = 'dock-line';
+    el.innerHTML =
+      '<span class="dock-line__time">' + item.hora + '</span>' +
+      '<i class="bi ' + item.icono + ' dock-line__icon"></i>' +
+      '<span class="dock-line__text" title="' + _esc(item.descripcion) + '">' + _esc(item.descripcion) + '</span>';
+    return el;
+  }
+
+  function lineaAviso(item) {
+    var icono = ICONOS_AVISO[item.tipo] || 'bi-circle';
+    var el    = document.createElement('div');
+    el.className = 'dock-line';
+    el.innerHTML =
+      '<span class="dock-line__time">' + item.hora + '</span>' +
+      '<i class="bi ' + icono + ' dock-line__icon"></i>' +
+      '<span class="dock-line__text" title="' + _esc(item.texto) + '">' + _esc(item.texto) + '</span>';
+    return el;
+  }
+
+  function _esc(str) {
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/"/g, '&quot;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+  }
+
+  function renderStream(containerId, items, renderFn, emptyMsg) {
+    var el = document.getElementById(containerId);
+    if (!el) return;
+    el.innerHTML = '';
+    if (!items || !items.length) {
+      el.innerHTML = '<span class="dock-empty">' + emptyMsg + '</span>';
+      return;
+    }
+    var frag = document.createDocumentFragment();
+    items.forEach(function (item) { frag.appendChild(renderFn(item)); });
+    el.appendChild(frag);
+  }
+
+  // --- Badge ---
+
+  function setBadge(id, n) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    if (n > 0) { el.textContent = n > 99 ? '99+' : n; el.style.display = ''; }
+    else        { el.style.display = 'none'; }
+  }
+
+  // --- Bitácora: carga desde API ---
+
+  var _bitacoraItems = [];
+
+  function cargarBitacora() {
+    fetch('/api/bitacora/reciente', { credentials: 'same-origin' })
+      .then(function (r) { return r.ok ? r.json() : []; })
+      .then(function (items) {
+        _bitacoraItems = items;
+        renderStream('js-dock-bitacora-list', items, lineaBitacora, 'Sin actividad registrada.');
+        setBadge('dock-badge-bitacora', items.length);
+      })
+      .catch(function () {
+        renderStream('js-dock-bitacora-list', [], lineaBitacora, 'Error al cargar la bitácora.');
+      });
+  }
+
+  // --- Avisos: carga desde DockBuffer ---
+
+  function renderAvisos() {
+    var items = window.DockBuffer ? window.DockBuffer.getAll() : [];
+    renderStream('js-dock-avisos-list', items, lineaAviso, 'Sin avisos en esta sesión.');
+    setBadge('dock-badge-avisos', window.DockBuffer ? window.DockBuffer.getUnread() : 0);
+  }
+
+  // --- Marcar leídos al cambiar de tab ---
+
+  document.addEventListener('shown.bs.tab', function (e) {
+    if (e.target.id === 'dock-tab-avisos') {
+      if (window.DockBuffer) window.DockBuffer.markRead();
+      setBadge('dock-badge-avisos', 0);
+      actualizarBadgeTopbar();
+    }
+    if (e.target.id === 'dock-tab-bitacora') {
+      setBadge('dock-badge-bitacora', 0);
+    }
+  });
+
+  // --- Badge en la campana del topbar ---
+
+  function actualizarBadgeTopbar() {
+    var el = document.getElementById('js-dock-topbar-badge');
+    if (!el) return;
+    var n = window.DockBuffer ? window.DockBuffer.getUnread() : 0;
+    if (n > 0) { el.textContent = n > 99 ? '99+' : n; el.style.display = ''; }
+    else        { el.style.display = 'none'; }
+  }
+
+  // --- Limpiar ---
+
+  document.getElementById('js-dock-clear-btn').addEventListener('click', function () {
+    var activo = document.querySelector('#dockTabs .nav-link.active');
+    if (activo && activo.id === 'dock-tab-avisos') {
+      if (window.DockBuffer) window.DockBuffer.clear();
+      renderAvisos();
+    } else {
+      // Bitácora: solo colapsa la vista local (no borra la BD)
+      _bitacoraItems = [];
+      renderStream('js-dock-bitacora-list', [], lineaBitacora, 'Vista limpiada. Recarga para volver a ver.');
+      setBadge('dock-badge-bitacora', 0);
+    }
+  });
+
+  // --- Modal: muestra contenido del tab activo ---
+
+  document.getElementById('js-dock-modal').addEventListener('show.bs.modal', function () {
+    var activo = document.querySelector('#dockTabs .nav-link.active');
+    var esAvisos = activo && activo.id === 'dock-tab-avisos';
+    var titulo = document.getElementById('js-dock-modal-label');
+    var cuerpo = document.getElementById('js-dock-modal-body');
+
+    titulo.textContent = esAvisos ? 'Avisos de sesión' : 'Bitácora';
+    cuerpo.innerHTML   = '';
+
+    var items    = esAvisos ? (window.DockBuffer ? window.DockBuffer.getAll() : []) : _bitacoraItems;
+    var renderFn = esAvisos ? lineaAviso : lineaBitacora;
+    var emptyMsg = esAvisos ? 'Sin avisos en esta sesión.' : 'Sin actividad registrada.';
+
+    if (!items.length) {
+      cuerpo.innerHTML = '<p class="text-muted mb-0">' + emptyMsg + '</p>';
+    } else {
+      var lista = document.createElement('div');
+      lista.className = 'dock-modal-list';
+      items.forEach(function (item) { lista.appendChild(renderFn(item)); });
+      cuerpo.appendChild(lista);
+    }
+  });
+
+  // --- Inicialización ---
+
+  document.addEventListener('DOMContentLoaded', function () {
+    // DockBuffer ya está disponible (scripts externos cargados antes de DOMContentLoaded)
+    if (window.DockBuffer) {
+      window.DockBuffer.onChange(function () {
+        renderAvisos();
+        actualizarBadgeTopbar();
+      });
+    }
+
+    cargarBitacora();
+    renderAvisos();
+    actualizarBadgeTopbar();
+
+    // Recargar bitácora cuando el dock pasa de cerrado a abierto
+    var shell = document.querySelector('.app-shell');
+    if (shell) {
+      new MutationObserver(function (mutations) {
+        mutations.forEach(function (m) {
+          if (m.attributeName !== 'class') return;
+          var eraCerrado  = m.oldValue && m.oldValue.includes('is-dock-closed');
+          var ahoraAbierto = !shell.classList.contains('is-dock-closed');
+          if (eraCerrado && ahoraAbierto) cargarBitacora();
+        });
+      }).observe(shell, { attributes: true, attributeOldValue: true });
+    }
+  });
+
+}());
+</script>

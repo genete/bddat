@@ -31,10 +31,12 @@
 
   <div class="app-topbar__actions">
 
-    {# Notificaciones — placeholder, sin lógica todavía #}
-    <button type="button" class="app-topbar__icon-btn"
-            aria-label="Notificaciones" title="Notificaciones (próximamente)">
+    {# Campana — toggle del dock global (ADR-020 / #506) #}
+    <button type="button" class="app-topbar__icon-btn app-topbar__dock-toggle"
+            data-app-shell-toggle="dock"
+            aria-label="Abrir/cerrar panel de avisos" title="Avisos y bitácora">
       <i class="bi bi-bell"></i>
+      <span class="dock-topbar-badge" id="js-dock-topbar-badge" style="display:none"></span>
     </button>
 
     {# Menú usuario #}
