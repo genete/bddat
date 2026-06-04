@@ -62,6 +62,7 @@ export function showToast(mensaje, categoria = 'info') {
     const t = new bs.Toast(el)
     t.show()
     el.addEventListener('hidden.bs.toast', () => el.remove())
+    el.addEventListener('click', e => { if (!e.target.closest('.btn-close')) t.hide() })
   } else {
     // Fallback si Bootstrap no estuviera cargado en la página.
     el.classList.add('show')
