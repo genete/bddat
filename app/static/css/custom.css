@@ -14,6 +14,7 @@
 
 /* Base toast - fondo con transparencia inicial y transiciones */
 .toast {
+    --bs-toast-spacing: 0.5rem;
     width: 100%;
     background-color: #ffffff;
     /* Sin borde, solo fondo coloreado */
@@ -22,8 +23,8 @@
     opacity: 0.9;
     cursor: pointer;
     /* Transiciones suaves de 300ms */
-    transition: opacity 300ms ease-in-out, 
-                box-shadow 300ms ease-in-out, 
+    transition: opacity 300ms ease-in-out,
+                box-shadow 300ms ease-in-out,
                 transform 300ms ease-in-out;
 }
 
