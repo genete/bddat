@@ -37,35 +37,7 @@
   var plantilla_id_seleccionada = null;
   var selector = null;
 
-  // ── Toast helper ───────────────────────────────────────────────────
-  function mostrar_toast(tipo, mensaje) {
-    var iconos    = { success: 'fa-check-circle', danger: 'fa-exclamation-circle',
-                      warning: 'fa-exclamation-triangle', info: 'fa-info-circle' };
-    var etiquetas = { success: 'Correcto', danger: 'Error',
-                      warning: 'Atención',  info: 'Información' };
-    var id   = 'toast-js-' + Date.now();
-    var html =
-      '<div id="' + id + '" class="toast toast-' + tipo + '" role="alert"' +
-      ' aria-live="assertive" aria-atomic="true" data-bs-autohide="true" data-bs-delay="5000">' +
-      '<div class="d-flex align-items-center p-3"><div class="flex-grow-1">' +
-      '<i class="fas ' + (iconos[tipo] || iconos.info) + ' me-2"></i>' +
-      '<strong>' + (etiquetas[tipo] || 'Aviso') + ':</strong> ' + mensaje +
-      '</div><button type="button" class="btn-close ms-3"' +
-      ' data-bs-dismiss="toast" aria-label="Cerrar"></button></div></div>';
-    var container = document.querySelector('.toast-container');
-    if (!container) return;
-    container.insertAdjacentHTML('beforeend', html);
-    var el = document.getElementById(id);
-    el.classList.add('showing');
-    var t = new bootstrap.Toast(el);
-    t.show();
-    setTimeout(function () { el.classList.remove('showing'); }, 300);
-    el.addEventListener('hide.bs.toast', function () { el.classList.add('hide'); });
-    el.addEventListener('click', function (e) {
-      if (!e.target.closest('.btn-close')) { t.hide(); }
-    });
-    el.addEventListener('hidden.bs.toast', function () { el.remove(); });
-  }
+
 
   // ── Inicializar SelectorBusqueda ───────────────────────────────────
   selector = new SelectorBusqueda('#ge-selector-plantilla', [], {

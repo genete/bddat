@@ -3,6 +3,7 @@ import './styles/diagrama.css'
 import React, { useMemo, useCallback } from 'react'
 import { ReactFlow, Background, Controls, MiniMap, useNodesState, useEdgesState } from '@xyflow/react'
 import { COLORES, MOCK } from './mockData.js'
+import { showToast } from '../shared/ui/toast.js'
 
 // Posición X fija por nivel (columnas)
 const X = { solicitud: 0, fase: 320, tramite: 640 }
@@ -81,37 +82,6 @@ function buildGraph(data) {
   return { nodes, edges }
 }
 
-// Deduce el nivel del nodo a partir del prefijo de su id
-function nivelNodo(id) {
-  if (id.startsWith('sol')) return { label: 'Solicitud', icon: 'fa-file-alt' }
-  if (id.startsWith('f-'))  return { label: 'Fase',      icon: 'fa-layer-group' }
-  return                           { label: 'Trámite',   icon: 'fa-tasks' }
-}
-
-// Muestra un toast Bootstrap usando el .toast-container del layout Flask
-function mostrarToast(nombre, nivel) {
-  const container = document.querySelector('.toast-container')
-  if (!container || !window.bootstrap) return
-
-  const el = document.createElement('div')
-  el.className = 'toast toast-info'
-  el.setAttribute('role', 'alert')
-  el.setAttribute('data-bs-autohide', 'true')
-  el.setAttribute('data-bs-delay', '4000')
-  el.innerHTML = `
-    <div class="d-flex align-items-center p-3">
-      <div class="flex-grow-1">
-        <i class="fas ${nivel.icon} me-2"></i>
-        <strong>${nivel.label}:</strong> ${nombre}
-      </div>
-      <button type="button" class="btn-close ms-3" data-bs-dismiss="toast" aria-label="Cerrar"></button>
-    </div>`
-  container.appendChild(el)
-  const toast = new window.bootstrap.Toast(el)
-  toast.show()
-  el.addEventListener('hidden.bs.toast', () => el.remove())
-}
-
 export default function DiagramaEsftt() {
   const { nodes: initialNodes, edges: initialEdges } = useMemo(() => buildGraph(MOCK), [])
   // useNodesState/useEdgesState habilitan el drag: onNodesChange actualiza posiciones en el store
@@ -119,7 +89,7 @@ export default function DiagramaEsftt() {
   const [edges, , onEdgesChange] = useEdgesState(initialEdges)
 
   const handleNodeClick = useCallback((_, node) => {
-    mostrarToast(node.data.label, nivelNodo(node.id))
+    showToast(node.data.label, 'info')
   }, [])
 
   return (
