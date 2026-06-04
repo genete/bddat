@@ -48,14 +48,12 @@
   {% set viewbar_html %}{% block viewbar %}{% endblock %}{% endset %}
 
   {% set inspector_html %}{% block inspector %}{% endblock %}{% endset %}
-  {% set dock_html      %}{% block dock      %}{% endblock %}{% endset %}
 
   {% set _sidebar_collapsed = request.cookies.get('bddat_sidebar_collapsed') == '1' %}
 
   <div class="app-shell
               {%- if _sidebar_collapsed %} is-sidebar-collapsed{% endif -%}
-              {%- if inspector_html | trim %} has-inspector{% endif -%}
-              {%- if dock_html      | trim %} has-dock{% endif -%}">
+              {%- if inspector_html | trim %} has-inspector{% endif -%}">
 
     {% include 'layout/_topbar.html' %}
     {% include 'layout/_sidebar.html' %}
@@ -81,11 +79,7 @@
     </aside>
     {% endif %}
 
-    {% if dock_html | trim %}
-    <section class="app-dock" aria-label="Panel inferior">
-      {{ dock_html }}
-    </section>
-    {% endif %}
+    {% include 'layout/_dock.html' %}
 
     {% include 'layout/footer.html' %}
 
@@ -134,12 +128,22 @@
 
   <script src="https://cdn.juntadeandalucia.es/components/sass/1.2.5/js/bootstrap.bundle.min.js"></script>
   <script src="{{ url_for('static', filename='js/app-shell.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/dock-buffer.js') }}"></script>
   <script src="{{ url_for('static', filename='js/toast.js') }}"></script>
 
   <script>
     document.addEventListener('DOMContentLoaded', function () {
-      // Auto-inicializar toasts (#44)
+      // Auto-inicializar toasts (#44) y capturar al DockBuffer los flash messages de Jinja
       [].slice.call(document.querySelectorAll('.toast')).forEach(function (toastEl) {
+        // Capturar al DockBuffer antes de mostrar (flash messages de Jinja)
+        if (window.DockBuffer) {
+          var tipo  = ['success','danger','warning','info'].find(function (c) {
+            return toastEl.classList.contains('toast-' + c);
+          }) || 'info';
+          var texto = (toastEl.querySelector('.flex-grow-1') || toastEl).textContent.trim()
+                        .replace(/^(Correcto|Error|Atención|Información):\s*/i, '');
+          window.DockBuffer.push(tipo, texto);
+        }
         toastEl.classList.add('showing');
         var t = new bootstrap.Toast(toastEl);
         t.show();
@@ -152,6 +156,15 @@
       // Tooltips Bootstrap
       [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
         .forEach(function (el) { new bootstrap.Tooltip(el); });
+
+      // Capturar cierre del banner al DockBuffer (#506 / #512)
+      var banner = document.getElementById('js-alert-banner');
+      if (banner && window.DockBuffer) {
+        banner.addEventListener('close.bs.alert', function () {
+          var texto = banner.querySelector('strong') ? banner.textContent.trim() : 'Banner de advertencia cerrado.';
+          window.DockBuffer.push('warning', texto.replace(/\s+/g, ' ').trim());
+        });
+      }
     });
   </script>
 

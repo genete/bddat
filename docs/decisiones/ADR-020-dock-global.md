@@ -47,14 +47,14 @@ El dock mantiene el span **main + inspector** (anchura completa menos sidebar), 
 - Redimensionable con drag splitter en el borde superior.
 - Estado de altura persistido en `sessionStorage` (no entre sesiones).
 
-### 4. Dos tabs verticales
+### 4. Dos tabs horizontales
 
-Los tabs van en el **lateral izquierdo del dock** (orientación vertical). Roban poca anchura en un panel ancho y permiten distinguir el contenido sin sacrificar espacio de línea.
+Los tabs van en la **cabecera del dock** (orientación horizontal, cabecera de 32px). Aunque el ADR original especificaba tabs verticales en el lateral izquierdo, en la sesión de implementación (#506) se adoptaron horizontales: el patrón es el estándar reconocible de paneles IDE (VS Code, DevTools) y la pérdida de altura (32px sobre ~220px de contenido) es menor que la mejora en usabilidad y familiaridad.
 
 | Tab | Icono | Contenido | Persistencia |
 |---|---|---|---|
-| **Bitácora** | 📜 | Entradas del cuaderno de bitácora (issue #1) del usuario en sesión | BD (permanente) |
-| **Avisos** | 🔔 | Toasts capturados durante la sesión | `sessionStorage` (solo sesión) |
+| **Bitácora** | 📜 | Entradas del cuaderno de bitácora (issue #1) del usuario en sesión | BD (permanente); carga vía `GET /api/bitacora/reciente` |
+| **Avisos** | 🔔 | Toasts capturados durante la sesión | `sessionStorage` vía `dock-buffer.js` (solo sesión) |
 
 ### 5. Comportamiento de cada tab
 
