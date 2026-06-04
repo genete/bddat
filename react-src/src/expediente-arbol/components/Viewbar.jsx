@@ -1,34 +1,20 @@
-// Viewbar.jsx — cabecera de la isla del árbol (#500, ADR-016 §11 / #523).
+// Viewbar.jsx — cabecera de la isla del árbol (#500, ADR-016 §11 / #523 / #525).
 //
 // Montada vía createPortal en #arbol-viewbar-slot (declarado en arbol.html
 // {% block viewbar %}), igual que el Inspector. Usa clases app-viewbar__* del
-// shell; el <header class="app-viewbar"> del shell ya aporta flex + padding + borde.
-//
-// indicador_asignacion se pasa como data-indicador='ajeno'|'propio' en el slot
-// desde Jinja (context processor inject_indicador_asignacion).
+// shell; el <header class="app-viewbar"> del shell aporta flex + padding + borde
+// y renderiza la bombilla de asignación como chrome propio (#525).
 import React from 'react'
 import { useArbolStore } from '../store.js'
-
-function leerIndicador() {
-  const slot = document.getElementById('arbol-viewbar-slot')
-  return slot ? slot.dataset.indicador : undefined  // 'ajeno' | 'propio' | undefined
-}
 
 export default function Viewbar() {
   const arbol = useArbolStore((s) => s.arbol)
   const colapsarFinalizados = useArbolStore((s) => s.colapsarFinalizados)
   const toggle = useArbolStore((s) => s.toggleColapsarFinalizados)
   const exp = arbol && arbol.expediente
-  const indicador = leerIndicador()
 
   return (
     <>
-      {indicador !== undefined && (
-        <i className={`bi bi-lightbulb-fill app-viewbar__indicador ${indicador === 'ajeno' ? 'text-danger' : 'text-success'}`}
-           title={indicador === 'ajeno'
-             ? 'Expediente no asignado a ti — actuación registrada en bitácora'
-             : 'Tu expediente'} />
-      )}
       <div className="app-viewbar__title" style={{ minWidth: 0, overflow: 'hidden' }}>
         <strong className="text-truncate">{exp && exp.codigo}</strong>
         {exp && exp.tipo_expediente && (
