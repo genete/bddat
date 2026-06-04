@@ -11,9 +11,9 @@ import Viewbar from './components/Viewbar.jsx'
 import Arbol from './components/Arbol.jsx'
 import Inspector from './components/Inspector.jsx'
 
-// Slot del inspector en el shell base_app (lo define arbol.html como block inspector).
-// El Inspector se renderiza ahí vía portal: un único árbol React / un único store.
+// Slots del shell declarados en arbol.html. Portales: un único árbol React / store.
 const inspectorSlot = () => document.getElementById('arbol-inspector-slot')
+const viewbarSlot   = () => document.getElementById('arbol-viewbar-slot')
 
 function expedienteIdDesdeDOM() {
   const el = document.querySelector('[data-react-island="expediente-arbol"]')
@@ -92,15 +92,11 @@ export default function App() {
   }
   if (!arbol) return null
 
-  const slot = inspectorSlot()
-
   return (
-    <div className="d-flex flex-column" style={{ height: '100%' }}>
-      <Viewbar />
-      <div style={{ flex: 1, minHeight: 0 }}>
-        <Arbol />
-      </div>
-      {slot && createPortal(<Inspector />, slot)}
+    <div style={{ height: '100%' }}>
+      <Arbol />
+      {inspectorSlot() && createPortal(<Inspector />, inspectorSlot())}
+      {viewbarSlot()   && createPortal(<Viewbar />,   viewbarSlot())}
       {enEdicion && createPortal(
         <div aria-hidden="true"
              onClick={() => showToast('Estás editando este elemento — Guarda o cancela primero.', 'warning')}
