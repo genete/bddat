@@ -3,6 +3,9 @@
 > Documento semilla. Los proyectos aquí descritos (bandeja-manager, ptwanda-manager)
 > son futuros repositorios independientes. Este fichero recoge las decisiones de
 > integración con BDDAT para que sean coherentes desde el inicio.
+>
+> **Estudio de campo del DOM de PTWANDA** (acceso, flujo de scraping, descarga de documentos):
+> [ESTUDIO_DOM_PTWANDA.md](ESTUDIO_DOM_PTWANDA.md).
 
 ---
 

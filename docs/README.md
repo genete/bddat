@@ -49,6 +49,7 @@ Consultar cuando se trabaja ese subsistema. No cargar por defecto.
 
 ### Ecosistema externo
 - [DISEÑO_ECOSISTEMA_MANAGERS.md](referencia/DISEÑO_ECOSISTEMA_MANAGERS.md) — bandeja-manager, ptwanda-manager: arquitectura, integración con BDDAT, campo plataforma_codigo
+- [ESTUDIO_DOM_PTWANDA.md](referencia/ESTUDIO_DOM_PTWANDA.md) — estudio de campo del DOM de PTWANDA (acceso, búsqueda, listado, detalle, descarga por refdoc); insumo para ptwanda-manager
 
 ### Visión
 - [PLAN_ESTRATEGIA.md](referencia/PLAN_ESTRATEGIA.md) — 14 bloques funcionales
