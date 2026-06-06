@@ -88,6 +88,55 @@ PC servidor
 
 ---
 
+## Flujo ptwanda-manager
+
+> Detalle técnico del DOM y del scraping en [ESTUDIO_DOM_PTWANDA.md](ESTUDIO_DOM_PTWANDA.md).
+> Esta sección recoge el flujo de negocio y la integración con BDDAT.
+
+PTWANDA es la plataforma de entrada de solicitudes telemáticas (VEAJA). El manager opera sobre la
+cola de solicitudes en estado **"solicitud telemática (firmada)"** (procedimiento `ENERG_INST`,
+fase `SOLICITUD TELEMATICA`): las solicitudes nuevas presentadas y firmadas, aún sin tramitar.
+
+### Visión de integración (objetivo — aún NO integrable)
+
+1. ptwanda-manager **descarga** automáticamente la documentación de toda solicitud firmada.
+2. BDDAT ofrece a los **administrativos avanzados** una interfaz a esos ficheros descargados.
+3. Los **administrativos avanzados** (los más antiguos del servicio — **no es un rol nuevo**)
+   asumen la **nueva labor** de crear en BDDAT el expediente correspondiente (huérfano, sin
+   asignar) a partir de esos ficheros. BDDAT es solo **una parte** del trabajo del servicio:
+   sigue habiendo carga administrativa relevante (Notifica, etc.); esta labor se integra en ese
+   conjunto, no lo sustituye.
+4. Creado el expediente en BDDAT, ptwanda-manager **finaliza automáticamente** el expediente en
+   PTWANDA (paso aún no explorado en el DOM; se prevé sencillo). Así deja de aparecer como
+   "solicitud firmada" en la siguiente iteración del scraping.
+
+### Por qué todavía no se puede integrar
+
+La finalización automática (paso 4) no puede activarse mientras siga vigente el **flujo de
+producción actual sin BDDAT**: hoy son los técnicos quienes finalizan a mano. Integrarla ahora
+colisionaría con ese trabajo. La integración completa queda condicionada a que BDDAT esté en
+producción.
+
+### Flujo manual actual (vigente hoy)
+
+1. Un **técnico avanzado con labores extra** entra en PTWANDA, lee de qué trata cada solicitud firmada y la **asigna** a un técnico.
+2. El **técnico**, periódicamente, entra en PTWANDA, **descarga** la documentación y **finaliza** el expediente.
+3. Ese técnico avanzado **itera** buscando nuevas solicitudes firmadas y repite el ciclo.
+
+### Paso intermedio inmediato (app autónoma — repositorio aparte)
+
+Mientras la integración con BDDAT no es posible, una **aplicación Python autónoma** automatiza el
+trabajo del técnico (paso 2 del flujo manual), sin depender de BDDAT:
+
+- Recibe el **DNI del técnico** al que la jefatura ha asignado los expedientes.
+- Descarga **todos los expedientes a su cargo** en estado solicitud firmada.
+- **Finaliza** cada uno tras la descarga.
+
+El código de descarga y finalización será reutilizable por ptwanda-manager cuando llegue la
+integración completa.
+
+---
+
 ## Integración con BDDAT — campo `plataforma_codigo`
 
 Nuevo campo `plataforma_codigo VARCHAR` (nullable) en la tabla `documentos` de BDDAT.
