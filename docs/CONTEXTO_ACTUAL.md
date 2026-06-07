@@ -6,11 +6,13 @@
 
 ---
 
-**Último cerrado:** #525 — Bombilla de asignación TRAMITADOR movida a chrome del shell (viewbar). Precedido de: #523 (viewbar React como portal a `app-viewbar`, elimina doble cabecera), #521 (toast global `toast.js` + wrapper React, elimina copias inline), #512 (banner calendario: área grid propia + dismiss por sessionStorage).
+**Último cerrado:** #528 (fix bitácora dock vacía: errores visibles en consola + guard en `_descripcion()`) / #506 (ADR-020 Dock global: bitácora + avisos de sesión). Precedido de: #525 (bombilla TRAMITADOR → viewbar), #523 (viewbar React portal), #521 (toast global), #512 (banner calendario).
 
 **Actuales:** —
 
-**Próximos:** **#506** (ADR-020 Dock global) → **#502 backend** (endpoints `/api/search/`) → **#501** (ADR-017 Vista "Mi trabajo" del administrativo) → **#502 frontend** (UI palette, M4).
+**Próximos:** **#531** (backend palette: `/api/search/expedientes` + `/api/search/entidades`) → **#501** (ADR-017 Vista "Mi trabajo") → **#532** (frontend palette: isla React cmdk, M4).
+
+> #502 queda como épica/referencia de ADR-018. Se cierra al mergear #532.
 
 ## Hoja de ruta — Bloque UI: Implementación del revamping
 
@@ -23,10 +25,10 @@ Orden técnico recomendado de implementación (dependencias de las cabeceras hac
 3. ~~**#499 — ADR-015 Scaffolding React islas.**~~ ✅ Cerrado. `react-diagramas/`→`react-src/`, multi-bundle ES + manifest, helpers `shared/` + Jinja, POC verificado con Playwright.
 4. ~~**#503 — ADR-019 Smoke tests pytest (Fase 1).**~~ ✅ Cerrado. `tests/smoke/` 20 tests; fixtures por rol vía `session_transaction`; convención documentada en REGLAS_DESARROLLO.
 5. ~~**#500 — ADR-016 Vista de árbol del expediente.**~~ ✅ Cerrado. Primera isla React productiva; sustituye las 5 vistas `tramitacion_bc_*`; vistas BC eliminadas (PR #519); smoke tests K completo.
-6. **#506 — ADR-020 Dock global: bitácora + avisos de sesión.** Chrome global del shell (`base_app.html`); prerequisito de estabilidad de layout antes de #501.
-7. **#502 backend — ADR-018 Command Palette, endpoints de búsqueda.** `GET /api/search/expedientes` y `GET /api/search/entidades`. Dependencia directa de #501 (autocompletado en modo Subir documento). El frontend del palette se implementa en M4.
+6. ~~**#506 — ADR-020 Dock global: bitácora + avisos de sesión.**~~ ✅ Cerrado. Chrome global del shell (`base_app.html`); fix de bitácora vacía en #528.
+7. **#531 — ADR-018 Command Palette, endpoints de búsqueda.** `GET /api/search/expedientes` y `GET /api/search/entidades`. Blueprint `api_search_bp`, fichero `app/routes/api_search.py`. Prerequisito de #501 y de #532.
 8. **#501 — ADR-017 Vista "Mi trabajo" del administrativo.** Reutiliza el árbol como destino de acción. ~2-3 semanas.
-9. **#502 frontend — ADR-018 Command Palette (isla React, cmdk).** M4 — Pre-producción. ~1-2 semanas cuando llegue su momento.
+9. **#532 — ADR-018 Command Palette (isla React, cmdk).** M4 — Pre-producción. Primera isla global del shell (`base_app.html`). Instalar `cmdk`, entrada en `vite.config.js`. ~1-2 semanas cuando llegue su momento.
 
 **Total estimado bloque UI sin Command Palette frontend: ~10-13 semanas** (1 dev + IA, ratio observado).
 
