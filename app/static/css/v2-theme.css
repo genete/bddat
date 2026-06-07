@@ -82,6 +82,17 @@
   --bs-accordion-btn-focus-box-shadow: 0 0 0 0.25rem var(--focus-ring);
 }
 
+/* ===== ESCALA TIPOGRÁFICA — MANDO MAESTRO (ADR-022 / #533) =====
+   Un único parámetro (font-size del root) gobierna toda la densidad: Bootstrap,
+   el CDN de la Junta, las tablas y el shell van en rem, así que cambiar este
+   valor los densifica de forma coherente. Calibrado a 15px con verificación
+   visual Playwright (ver ADR-022 §1): a 15px los datos de tabla quedan en
+   ~13px (rango "13-14px base" del ADR) y el chrome del shell en ~14px, sin
+   descuadres del CDN Junta. Antes el root heredaba los 16px del navegador. */
+html {
+  font-size: 15px;
+}
+
 /* ===== TIPOGRAFÍA BASE =====
    Source Sans Pro: tipografía corporativa de la Junta de Andalucía para
    edición de textos (Decreto 218/2020 + corrección BOJA 36/2021). Cargada
@@ -89,7 +100,7 @@
    Fallback a system stack si el CDN está caído. */
 body {
   font-family: 'Source Sans Pro', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, system-ui, sans-serif;
-  font-size: 16px;
+  font-size: 1rem;   /* = root (14px); obedece al mando maestro */
   line-height: 1.5;
   color: var(--text-primary);
   background-color: var(--bg-page);
