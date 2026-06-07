@@ -115,7 +115,10 @@
                 <tr>
                     {% if columns is defined and columns %}
                         {% for col in columns %}
-                            <th>{{ col.label }}</th>
+                            {# Clases declarativas de ocultación/truncado (ADR-022 §3);
+                               el <td> equivalente las recibe en v2-scroll-infinito.js #}
+                            {% set th_cls %}{% if col.hide %}lt-hide-{{ col.hide }} {% endif %}{% if col.truncate %}lt-truncate{% endif %}{% endset %}
+                            <th{% if th_cls|trim %} class="{{ th_cls|trim }}"{% endif %}>{{ col.label }}</th>
                         {% endfor %}
                     {% else %}
                         {% block thead_cols %}{% endblock %}

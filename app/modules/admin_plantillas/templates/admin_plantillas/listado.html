@@ -27,12 +27,12 @@
             <thead>
                 <tr>
                     <th>Nombre</th>
-                    <th>Código</th>
-                    <th>Tipo documento</th>
-                    <th>Expediente</th>
-                    <th>Solicitud</th>
-                    <th>Fase</th>
-                    <th>Trámite</th>
+                    <th class="lt-truncate">Código</th>
+                    <th class="lt-hide-md">Tipo documento</th>
+                    <th class="lt-hide-lg">Expediente</th>
+                    <th class="lt-hide-xl">Solicitud</th>
+                    <th class="lt-hide-xl">Fase</th>
+                    <th class="lt-hide-xl">Trámite</th>
                     <th>Estado</th>
                     <th>Acciones</th>
                 </tr>
@@ -51,12 +51,12 @@
                         <div class="small text-secondary">{{ p.descripcion }}</div>
                         {% endif %}
                     </td>
-                    <td><code>{{ p.codigo }}</code></td>
-                    <td>{{ p.tipo_documento.nombre if p.tipo_documento else '—' }}</td>
-                    <td>{{ p.tipo_expediente.tipo if p.tipo_expediente else '<span class="text-secondary">Cualquiera</span>'|safe }}</td>
-                    <td>{{ p.tipo_solicitud.siglas if p.tipo_solicitud else '<span class="text-secondary">Cualquiera</span>'|safe }}</td>
-                    <td>{{ p.tipo_fase.nombre if p.tipo_fase else '<span class="text-secondary">Cualquiera</span>'|safe }}</td>
-                    <td>{{ p.tipo_tramite.nombre if p.tipo_tramite else '<span class="text-secondary">Cualquiera</span>'|safe }}</td>
+                    <td class="lt-truncate"><code>{{ p.codigo }}</code></td>
+                    <td class="lt-hide-md">{{ p.tipo_documento.nombre if p.tipo_documento else '—' }}</td>
+                    <td class="lt-hide-lg">{{ p.tipo_expediente.tipo if p.tipo_expediente else '<span class="text-secondary">Cualquiera</span>'|safe }}</td>
+                    <td class="lt-hide-xl">{{ p.tipo_solicitud.siglas if p.tipo_solicitud else '<span class="text-secondary">Cualquiera</span>'|safe }}</td>
+                    <td class="lt-hide-xl">{{ p.tipo_fase.nombre if p.tipo_fase else '<span class="text-secondary">Cualquiera</span>'|safe }}</td>
+                    <td class="lt-hide-xl">{{ p.tipo_tramite.nombre if p.tipo_tramite else '<span class="text-secondary">Cualquiera</span>'|safe }}</td>
                     <td>
                         {% if p.activo %}
                             <span class="badge bg-success">Activa</span>

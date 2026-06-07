@@ -60,8 +60,8 @@
                     <tr>
                         <th>Siglas</th>
                         <th>Nombre Completo</th>
-                        <th>Roles</th>
-                        <th>Estado</th>
+                        <th class="lt-hide-lg">Roles</th>
+                        <th class="lt-hide-md">Estado</th>
                         <th>Acciones</th>
                     </tr>
                 </thead>
@@ -77,7 +77,7 @@
                             {% endif %}
                         </td>
                         <td>{{ usuario.nombre }} {{ usuario.apellido1 }} {{ usuario.apellido2 or '' }}</td>
-                        <td>
+                        <td class="lt-hide-lg">
                             {% for rol in usuario.roles %}
                                 {% if rol.nombre == 'ADMIN' %}
                                     <span class="badge bg-danger me-1">{{ rol.nombre }}</span>
@@ -92,7 +92,7 @@
                                 <span class="text-secondary small">Sin roles</span>
                             {% endfor %}
                         </td>
-                        <td>
+                        <td class="lt-hide-md">
                             {% if tiene_permiso('gestionar_usuarios') %}
                             <form action="{{ url_for('usuarios.toggle_estado', id=usuario.id) }}"
                                   method="POST" style="display: inline;"

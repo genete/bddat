@@ -15,10 +15,10 @@
   },
   "listado_v2": {
     "columns": [
-      { "key": "nombre_completo", "label": "Nombre / Raz\u00f3n Social", "type": "text"     },
+      { "key": "nombre_completo", "label": "Nombre / Raz\u00f3n Social", "type": "text",     "truncate": true },
       { "key": "nif",             "label": "NIF",                        "type": "text"     },
-      { "key": "roles",           "label": "Roles",                      "type": "text"     },
-      { "key": "activo",          "label": "Activo",                     "type": "bool"     },
+      { "key": "roles",           "label": "Roles",                      "type": "text",     "hide": "lg" },
+      { "key": "activo",          "label": "Activo",                     "type": "bool",     "hide": "md" },
       { "key": "_acciones",       "label": "Acciones",                   "type": "acciones" }
     ]
   }

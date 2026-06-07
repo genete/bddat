@@ -185,6 +185,11 @@ class ScrollInfinito {
         const tr = document.createElement('tr');
         this.columns.forEach(col => {
             const td = document.createElement('td');
+            // Clases declarativas de ocultación responsive y truncado (ADR-022 §3).
+            // col.hide = 'xl'|'lg'|'md'; col.truncate = true. El <th> equivalente
+            // las recibe en lista_v2_base.html.
+            if (col.hide)     td.classList.add('lt-hide-' + col.hide);
+            if (col.truncate) td.classList.add('lt-truncate');
             switch (col.type) {
                 case 'text':
                     td.textContent = (item[col.key] !== undefined && item[col.key] !== null)
