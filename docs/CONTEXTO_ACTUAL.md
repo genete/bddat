@@ -10,7 +10,7 @@
 
 **Actuales:** —
 
-**Próximos:** **#531** (backend palette: `/api/search/expedientes` + `/api/search/entidades`) → **#501** (ADR-017 Vista "Mi trabajo") → **#532** (frontend palette: isla React cmdk, M4).
+**Próximos:** **#531** (backend palette endpoints) → **#533** (ADR-022 sistema visual base) → **#534** (ADR-023 list-detail + inspector universal) → **#501** (ADR-017 Vista "Mi trabajo") → **#532** (frontend palette: isla React cmdk, M4).
 
 > #502 queda como épica/referencia de ADR-018. Se cierra al mergear #532.
 
@@ -26,9 +26,11 @@ Orden técnico recomendado de implementación (dependencias de las cabeceras hac
 4. ~~**#503 — ADR-019 Smoke tests pytest (Fase 1).**~~ ✅ Cerrado. `tests/smoke/` 20 tests; fixtures por rol vía `session_transaction`; convención documentada en REGLAS_DESARROLLO.
 5. ~~**#500 — ADR-016 Vista de árbol del expediente.**~~ ✅ Cerrado. Primera isla React productiva; sustituye las 5 vistas `tramitacion_bc_*`; vistas BC eliminadas (PR #519); smoke tests K completo.
 6. ~~**#506 — ADR-020 Dock global: bitácora + avisos de sesión.**~~ ✅ Cerrado. Chrome global del shell (`base_app.html`); fix de bitácora vacía en #528.
-7. **#531 — ADR-018 Command Palette, endpoints de búsqueda.** `GET /api/search/expedientes` y `GET /api/search/entidades`. Blueprint `api_search_bp`, fichero `app/routes/api_search.py`. Prerequisito de #501 y de #532.
-8. **#501 — ADR-017 Vista "Mi trabajo" del administrativo.** Reutiliza el árbol como destino de acción. ~2-3 semanas.
-9. **#532 — ADR-018 Command Palette (isla React, cmdk).** M4 — Pre-producción. Primera isla global del shell (`base_app.html`). Instalar `cmdk`, entrada en `vite.config.js`. ~1-2 semanas cuando llegue su momento.
+7. **#531 — ADR-018 Command Palette, endpoints de búsqueda.** `GET /api/search/expedientes` y `GET /api/search/entidades`. Blueprint `api_search_bp`, fichero `app/routes/api_search.py`. Prerequisito de #501 y de #532. No toca UI — puede correr en paralelo con #533.
+8. **#533 — ADR-022 Sistema visual base.** Rem global único (14-15px), tabla unificada (elimina dualidad `data-table`/`expedientes-table`), tokens de color sin fugas en el shell, retirada del recorte ~95% en `main`. Absorbe migración #281 (Plantillas y Usuarios al nuevo componente de tabla). Prerequisito de #534.
+9. **#534 — ADR-023 List-detail + inspector universal.** Inspector redimensionable a nivel de shell (CSS Grid + JS ligero, agnóstico Jinja/React). Patrón selección-en-fila → inspector para todos los listados. Cada listado existente (seguimiento, entidades, plantillas, usuarios) migra en su propio issue; #534 pone la infraestructura de shell y el primer listado de referencia. Requiere #533.
+10. **#501 — ADR-017 Vista "Mi trabajo" del administrativo.** Reutiliza el árbol como destino de acción. ~2-3 semanas. Requiere #534 (tabla unificada + patrón inspector ya operativos).
+11. **#532 — ADR-018 Command Palette (isla React, cmdk).** M4 — Pre-producción. Primera isla global del shell (`base_app.html`). Instalar `cmdk`, entrada en `vite.config.js`. ~1-2 semanas cuando llegue su momento.
 
 **Total estimado bloque UI sin Command Palette frontend: ~10-13 semanas** (1 dev + IA, ratio observado).
 
