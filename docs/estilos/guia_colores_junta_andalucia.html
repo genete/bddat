@@ -100,6 +100,14 @@
             </div>
             <p class="mb-0"><strong>CDN:</strong> <code>https://cdn.juntadeandalucia.es/components/sass/latest/</code></p>
             <p class="mb-0"><strong>Fecha:</strong> 30 de enero de 2026</p>
+            <div class="alert alert-secondary mt-3 mb-0">
+                <strong><i class="fas fa-code me-2"></i>Tokens de color (ADR-022 / #533):</strong>
+                la paleta mostrada aquí <strong>no cambia</strong>. Lo que cambió es la consistencia:
+                los grises hardcodeados del shell (<code>#ebebeb</code>, <code>#888</code>, <code>#666</code>…)
+                se consolidaron sobre las variables de <code>v2-theme.css</code>
+                (<code>--gris-*</code>, <code>--text-secondary</code>, <code>--border-color</code>…).
+                En CSS nuevo, usar siempre las variables, nunca hex sueltos.
+            </div>
         </div>
 
         <!-- Colores Corporativos Junta -->
