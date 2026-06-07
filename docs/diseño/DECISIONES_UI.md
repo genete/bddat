@@ -34,6 +34,8 @@ El **análisis crítico es snapshot inmutable** del estado de reflexión al 28-m
 | **ADR-018** | Command Palette (Ctrl+K) — búsqueda global de expedientes/entidades + navegación + recientes. Versión básica en M4, iteraciones extendidas en M5. Sustituye #75 | #502 (M4) | 2026-05-28 |
 | **ADR-019** | Estrategia de tests UI por 3 fases. Fase 1 (durante revamping): solo smoke tests pytest + verificación manual Playwright MCP. NO E2E ni RTL hasta que la UI estabilice | #503 | 2026-05-28 |
 | **ADR-020** | Dock global: deja de ser slot Jinja por vista y pasa a chrome global (partial del shell). Toggle vía campana del topbar. Dos tabs verticales: Bitácora (por usuario, BD) + Avisos (toasts de sesión, sessionStorage). Badge de no leídos, modal por tab, botón limpiar | #506 | 2026-05-29 |
+| **ADR-022** | Sistema visual base — escala tipográfica única (rem global 14-15px + shell a rem), tokens de color sin fugas, componente de tabla unificado con overrides heredables, retirada del recorte ~95% en `main`. Prerrequisito de ADR-023 | #533 | 2026-06-07 |
+| **ADR-023** | List-detail + inspector universal — selección de fila en lugar de botón "Ver", inspector resizable a nivel de shell con negociación de espacio (maestro reducido por listado, viewbar en `main_min`, automático parco/manual libre, overlay con histéresis). Enmienda ADR-016 §14 | #534 | 2026-06-07 |
 
 ---
 
@@ -104,6 +106,8 @@ De ANALISIS_CRITICO §6:
 - **2026-05-28** — ADR-018 cerrado (#502 M4, sustituye #75). Command Palette (Ctrl+K) versión básica.
 - **2026-05-28** — ADR-019 cerrado (#503). Estrategia de tests UI por 3 fases. Fase 1 inmediata: smoke tests pytest.
 - **2026-05-29** — ADR-020 cerrado (#506). Dock global: chrome partial + toggle campana topbar + tabs Bitácora/Avisos.
+- **2026-06-07** — ADR-022 cerrado (#533). Sistema visual base: escala tipográfica única + tokens de color + tabla unificada.
+- **2026-06-07** — ADR-023 cerrado (#534). List-detail + inspector universal con negociación de espacio. Enmienda ADR-016 §14. Deriva del PRE-ADR `PRE-ADR-workbench-listados.md`.
 
 ---
 
