@@ -14,6 +14,11 @@
   flex-shrink: 0; /* No se comprime */
   background: var(--gris-especifico);
   padding-bottom: 0; /* El contenido interno maneja su padding */
+  /* Padding lateral modesto del listado (#533): sustituye al recorte ~95% que
+     antes daba .content-constrained. Alinea cabecera y filtros con el texto de
+     las celdas (1rem). */
+  padding-left: 1rem;
+  padding-right: 1rem;
 }
 
 /* C.2: Contenedor con scroll independiente */
@@ -29,7 +34,7 @@
 }
 
 /* Ajuste sticky header dentro de C.2 (ya no relativo a viewport) */
-.lista-scroll-container .expedientes-table thead th {
+.lista-scroll-container .lista-table thead th {
   position: sticky;
   top: 0; /* Pegado al top de C.2, no al viewport */
   z-index: 10;
@@ -56,7 +61,7 @@
  * Los th:first/last-child tienen border-radius, pero el card background (blanco)
  * quedaba visible en el hueco de la esquina redondeada.
  * Solución: igualar el bg del card al color del thead → el hueco es invisible. */
-.tabla-bloque:has(> table.expedientes-table) {
+.tabla-bloque:has(> table.lista-table) {
   background-color: var(--primary-light, #c4ddca);
   /* overflow:clip recorta el contenido a border-radius sin crear scroll container,
    * por lo que position:sticky del thead sigue funcionando en C.2. */
@@ -68,17 +73,17 @@
  * hasta la esquina del elemento, cruzando la zona de border-radius del card y creando
  * un artefacto visible. La separación visual la aportan el box-shadow del card y el
  * border-bottom de los th. */
-.tabla-bloque > table.expedientes-table {
+.tabla-bloque > table.lista-table {
   border-top: none;
   border-bottom: none;
 }
 
 /* Redondeado superior del thead cuando la tabla es hija directa del card (V2).
- * expedientes-table usa border-collapse:separate → border-radius en th funciona. */
-.tabla-bloque > table.expedientes-table thead th:first-child {
+ * lista-table usa border-collapse:separate → border-radius en th funciona. */
+.tabla-bloque > table.lista-table thead th:first-child {
   border-top-left-radius: calc(var(--border-radius-lg, 0.5rem) - 1px);
 }
-.tabla-bloque > table.expedientes-table thead th:last-child {
+.tabla-bloque > table.lista-table thead th:last-child {
   border-top-right-radius: calc(var(--border-radius-lg, 0.5rem) - 1px);
 }
 
@@ -96,7 +101,7 @@
 }
 
 /* ===== TABLA RESPONSIVE (FULL-WIDTH) ===== */
-.expedientes-table {
+.lista-table {
   width: 100%;
   background: var(--bg-card);
   border-radius: 0; /* Sin border-radius — la da .tabla-bloque */
@@ -109,12 +114,12 @@
   border-bottom: 1px solid var(--border-color);
 }
 
-.expedientes-table thead {
+.lista-table thead {
   /* Background se aplica en TH para que funcione sticky */
 }
 
-.expedientes-table th {
-  padding: 1rem var(--content-padding); /* Padding lateral usa variable */
+.lista-table th {
+  padding: 1rem; /* Lateral fijo 1rem; recorte --content-padding retirado (#533) */
   text-align: left;
   font-weight: 600;
   font-size: 0.875rem;
@@ -131,51 +136,51 @@
   color: var(--gris-principal, #111);
 }
 
-.expedientes-table td {
-  padding: 1rem var(--content-padding); /* Padding lateral usa variable */
+.lista-table td {
+  padding: 1rem; /* Lateral fijo 1rem; recorte --content-padding retirado (#533) */
   border-bottom: 1px solid var(--border-color);
   font-size: 0.875rem;
 }
 
-.expedientes-table tbody tr {
+.lista-table tbody tr {
   transition: background-color 0.2s ease;
 }
 
-.expedientes-table tbody tr:hover {
+.lista-table tbody tr:hover {
   background-color: var(--primary-lighter);
 }
 
-.expedientes-table tbody tr:last-child td {
+.lista-table tbody tr:last-child td {
   border-bottom: none;
 }
 
-/* Responsive tabla (expedientes/proyectos/entidades) */
-@media (max-width: 991px) {
-  .expedientes-table th:nth-child(3), /* Solicitudes */
-  .expedientes-table td:nth-child(3) {
-    display: none;
-  }
+/* ===== OCULTACIÓN RESPONSIVE DECLARATIVA (ADR-022 §3) =====
+   Mecanismo general que sustituye los nth-child ad-hoc por tabla. Cada columna
+   ocultable declara su prioridad con una clase en su <th> y su <td>; el sistema
+   oculta de menor a mayor prioridad según el ancho disponible. Las columnas sin
+   clase no se ocultan nunca. Breakpoints = max-width de Bootstrap xl/lg/md.
+     .lt-hide-xl → se oculta a ≤1199px (la primera en irse)
+     .lt-hide-lg → se oculta a ≤991px
+     .lt-hide-md → se oculta a ≤767px (la última de las ocultables) */
+@media (max-width: 1199px) {
+  .lista-table .lt-hide-xl { display: none; }
 }
-
+@media (max-width: 991px) {
+  .lista-table .lt-hide-lg { display: none; }
+}
 @media (max-width: 767px) {
-  .expedientes-table th:nth-child(4), /* Estado */
-  .expedientes-table td:nth-child(4),
-  .expedientes-table th:nth-child(5), /* Vencimiento */
-  .expedientes-table td:nth-child(5) {
-    display: none;
-  }
+  .lista-table .lt-hide-md { display: none; }
 
-  .expedientes-table th,
-  .expedientes-table td {
-    padding: 0.75rem 1rem; /* Padding reducido en mobile */
+  /* Densidad reducida en móvil */
+  .lista-table th,
+  .lista-table td {
+    padding: 0.75rem 1rem;
     font-size: 0.8rem;
   }
 
-  /* Sticky header usa var(--header-height) que en mobile es 92px */
-
-  /* Ajuste sticky en C.2 mobile */
-  .lista-scroll-container .expedientes-table thead th {
-    top: 0; /* Dentro de C.2 siempre top: 0 */
+  /* Ajuste sticky en C.2 mobile (dentro de C.2 siempre top: 0) */
+  .lista-scroll-container .lista-table thead th {
+    top: 0;
   }
 
   /* En mobile, min-height más pequeño (thead + 2 filas) */
@@ -184,42 +189,19 @@
   }
 }
 
-/* Columna Código de plantillas: texto largo sin espacios (ej. REQUERIMIENTO_SUBSANACION)
- * puede estirar la tabla por encima del viewport. Se trunca con ellipsis. */
-.plantillas-table td:nth-child(2) {
-  max-width: 180px;
-  overflow-wrap: break-word;
-  word-break: break-all;
+/* ===== TRUNCADO CON ELIPSIS (ADR-022 §3) =====
+   Para columnas de texto largo. max-width configurable por columna con la
+   variable --lt-trunc (p. ej. style="--lt-trunc: 12rem"). */
+.lista-table .lt-truncate {
+  max-width: var(--lt-trunc, 16rem);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-/* Responsive tabla plantillas (9 columnas):
- * ≤1199px: ocultar Solicitud(5), Fase(6), Trámite(7)  → 6 cols
- * ≤991px:  ocultar además Expediente(4)               → 5 cols
- * ≤767px:  ocultar además Tipo documento(3)           → 4 cols: Nombre, Código, Estado, Acciones */
-@media (max-width: 1199px) {
-  .plantillas-table th:nth-child(5),
-  .plantillas-table td:nth-child(5),
-  .plantillas-table th:nth-child(6),
-  .plantillas-table td:nth-child(6),
-  .plantillas-table th:nth-child(7),
-  .plantillas-table td:nth-child(7) {
-    display: none;
-  }
-}
-
-@media (max-width: 991px) {
-  .plantillas-table th:nth-child(4),
-  .plantillas-table td:nth-child(4) {
-    display: none;
-  }
-}
-
-@media (max-width: 767px) {
-  .plantillas-table th:nth-child(3),
-  .plantillas-table td:nth-child(3) {
-    display: none;
-  }
-}
+/* La tabla de plantillas (9 columnas) usa el mecanismo declarativo de ocultación
+ * (.lt-hide-*) y de truncado (.lt-truncate) directamente en su template
+ * (admin_plantillas/listado.html). Ya no necesita reglas nth-child propias. */
 
 /* ===== BADGES ESTADOS ===== */
 .badge {

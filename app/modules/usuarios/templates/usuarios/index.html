@@ -12,7 +12,7 @@
 
 <!-- C.1: Cabecera fija (sin scroll) -->
 <div class="lista-cabecera">
-    <div class="page-header content-constrained">
+    <div class="page-header">
         <h1>
             <i class="fas fa-users"></i> Usuarios
         </h1>
@@ -23,7 +23,7 @@
         </button>
         {% endif %}
     </div>
-    <div class="filters-row content-constrained">
+    <div class="filters-row">
         <div class="filters">
             <input type="search" id="usuarios-search"
                    placeholder="Buscar por siglas o nombre..."
@@ -53,15 +53,15 @@
 
 <!-- C.2: Contenedor scrollable independiente -->
 <div class="lista-scroll-container">
-    <div class="content-constrained py-3">
+    <div class="py-3">
         <div class="card tabla-bloque">
-            <table class="expedientes-table">
+            <table class="lista-table">
                 <thead>
                     <tr>
                         <th>Siglas</th>
                         <th>Nombre Completo</th>
-                        <th>Roles</th>
-                        <th>Estado</th>
+                        <th class="lt-hide-lg">Roles</th>
+                        <th class="lt-hide-md">Estado</th>
                         <th>Acciones</th>
                     </tr>
                 </thead>
@@ -77,7 +77,7 @@
                             {% endif %}
                         </td>
                         <td>{{ usuario.nombre }} {{ usuario.apellido1 }} {{ usuario.apellido2 or '' }}</td>
-                        <td>
+                        <td class="lt-hide-lg">
                             {% for rol in usuario.roles %}
                                 {% if rol.nombre == 'ADMIN' %}
                                     <span class="badge bg-danger me-1">{{ rol.nombre }}</span>
@@ -92,7 +92,7 @@
                                 <span class="text-secondary small">Sin roles</span>
                             {% endfor %}
                         </td>
-                        <td>
+                        <td class="lt-hide-md">
                             {% if tiene_permiso('gestionar_usuarios') %}
                             <form action="{{ url_for('usuarios.toggle_estado', id=usuario.id) }}"
                                   method="POST" style="display: inline;"

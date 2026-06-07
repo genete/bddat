@@ -81,15 +81,29 @@ Una vista de listado/formulario no define inspector — queda en "modo página" 
 
 ## Variables CSS
 
+**Escala tipográfica — mando maestro** (`v2-theme.css`, ADR-022 / #533): un único
+parámetro gobierna la densidad; como el shell, Bootstrap y el CDN Junta van en
+`rem`, cambiarlo los reescala de forma coherente.
+
 ```css
---topbar-height
---sidebar-width-expanded     /* 240px por defecto */
---sidebar-width-collapsed    /* 60px por defecto */
---viewbar-height
---inspector-width            /* 380px por defecto */
---dock-height                /* 240px por defecto */
---footer-height
+html { font-size: 15px; }   /* a 15px: datos de tabla ~13px, chrome ~14px */
 ```
+
+**Dimensiones del shell** (`app-shell.css`):
+
+```css
+--topbar-height              /* 48px */
+--viewbar-height             /* 44px */
+--footer-height              /* 28px */
+--sidebar-width-expanded     /* 208px */
+--sidebar-width-collapsed    /* 56px */
+--inspector-width            /* 380px */
+--dock-height                /* 240px */
+```
+
+> Los `font-size` del shell van en `rem` y obedecen al mando maestro. Las
+> alturas/anchuras de layout permanecen en px. La densidad propia de **sidebar**
+> y **dock** queda diferida (ADR-022 §5).
 
 ---
 

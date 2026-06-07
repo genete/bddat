@@ -116,7 +116,7 @@
   padding: 0 16px 0 0;
   background: var(--shell-topbar-bg);
   color: var(--shell-topbar-fg);
-  font-size: 13px;
+  font-size: 0.929rem;
   z-index: 100;
 }
 
@@ -129,7 +129,7 @@
   text-decoration: none;
   color: inherit;
   font-weight: 600;
-  font-size: 15px;
+  font-size: 1.071rem;
   letter-spacing: 0.02em;
   white-space: nowrap;
   /* Ancho alineado con el sidebar */
@@ -152,7 +152,7 @@
   opacity: 0.92;
 }
 
-.app-topbar__brand i { font-size: 17px; }
+.app-topbar__brand i { font-size: 1.214rem; }
 
 .app-topbar__search {
   flex: 1;
@@ -168,7 +168,7 @@
   background: rgba(255, 255, 255, 0.10);
   color: #fff;
   border-radius: 4px;
-  font-size: 13px;
+  font-size: 0.929rem;
   transition: background 0.15s, border-color 0.15s;
 }
 
@@ -186,7 +186,7 @@
   left: 10px; top: 50%;
   transform: translateY(-50%);
   color: rgba(255, 255, 255, 0.7);
-  font-size: 12px;
+  font-size: 0.857rem;
   pointer-events: none;
 }
 
@@ -194,7 +194,7 @@
   position: absolute;
   right: 6px; top: 50%;
   transform: translateY(-50%);
-  font-size: 10.5px;
+  font-size: 0.75rem;
   color: rgba(255, 255, 255, 0.7);
   border: 1px solid rgba(255, 255, 255, 0.3);
   padding: 1px 5px;
@@ -217,7 +217,7 @@
   background: transparent;
   border: 0;
   color: var(--shell-topbar-fg);
-  font-size: 15px;
+  font-size: 1.071rem;
   padding: 0;
   border-radius: 4px;
   cursor: pointer;
@@ -247,7 +247,7 @@
   background: transparent;
   border: 0;
   color: var(--shell-topbar-fg);
-  font-size: 13px;
+  font-size: 0.929rem;
   padding: 4px 10px;
   border-radius: 4px;
   cursor: pointer;
@@ -258,7 +258,7 @@
 
 .app-topbar__user-btn:hover { background: rgba(255, 255, 255, 0.15); }
 .app-topbar__user-btn .app-topbar__rol {
-  font-size: 11px;
+  font-size: 0.786rem;
   font-weight: 500;
   padding: 1px 6px;
   background: rgba(255, 255, 255, 0.18);
@@ -267,15 +267,15 @@
   letter-spacing: 0.04em;
 }
 
-.app-topbar__user-btn::after { font-size: 10px; opacity: 0.7; }
+.app-topbar__user-btn::after { font-size: 0.714rem; opacity: 0.7; }
 
 /* Dropdown bajo el botón de usuario: integra con Bootstrap */
-.app-topbar .dropdown-menu { font-size: 13px; }
+.app-topbar .dropdown-menu { font-size: 0.929rem; }
 .app-topbar .dropdown-item { padding: 6px 12px; }
 
 /* Indicador de bombilla cuando NO hay viewbar definido por la vista (fallback) */
 .app-topbar__indicador-fallback {
-  font-size: 16px;
+  font-size: 1.143rem;
   padding: 0 4px;
 }
 
@@ -312,7 +312,7 @@
   border-radius: 4px;
   text-decoration: none;
   color: var(--shell-sidebar-fg);
-  font-size: 13px;
+  font-size: 0.929rem;
   font-weight: 500;
   white-space: nowrap;
   transition: background 0.12s, color 0.12s;
@@ -332,7 +332,7 @@
 }
 
 .app-sidebar__link i {
-  font-size: 15px;
+  font-size: 1.071rem;
   width: 20px;
   text-align: center;
   flex-shrink: 0;
@@ -353,7 +353,7 @@
   transform: translateY(-50%);
   background: var(--gris-principal);
   color: #fff;
-  font-size: 12px;
+  font-size: 0.857rem;
   font-weight: 500;
   padding: 4px 8px;
   border-radius: 4px;
@@ -380,7 +380,7 @@
   border-radius: 4px;
   color: var(--text-secondary);
   cursor: pointer;
-  font-size: 12px;
+  font-size: 0.857rem;
   transition: background 0.12s, color 0.12s;
 }
 
@@ -405,13 +405,13 @@
   color: var(--shell-viewbar-fg);
   border-bottom: 1px solid var(--shell-viewbar-border);
   min-height: var(--viewbar-height);
-  font-size: 13px;
+  font-size: 0.929rem;
   z-index: 40;
 }
 
 .app-viewbar__title {
   font-weight: 600;
-  font-size: 14px;
+  font-size: 1rem;
   margin: 0;
   display: flex;
   align-items: center;
@@ -419,7 +419,7 @@
 }
 
 .app-viewbar__indicador {
-  font-size: 15px;
+  font-size: 1.071rem;
   cursor: help;
 }
 
@@ -447,7 +447,7 @@
   background: #ffffff;
   border-left: 1px solid var(--border-color);
   overflow: auto;
-  font-size: 13px;
+  font-size: 0.929rem;
   z-index: 30;
 }
 
@@ -460,7 +460,7 @@
   background: #ffffff;
   border-top: 1px solid var(--border-color);
   overflow: hidden;      /* clipa el contenido durante la transición de cierre */
-  font-size: 13px;
+  font-size: 0.929rem;
   z-index: 30;
   display: flex;
   flex-direction: column;
@@ -475,7 +475,7 @@
   align-items: center;
   height: var(--dock-header-height);
   border-bottom: 1px solid var(--border-color);
-  background: var(--gris-especifico, #f5f5f5);
+  background: var(--gris-especifico);
   flex-shrink: 0;
 }
 
@@ -499,8 +499,8 @@
   border-right: 1px solid var(--border-color);
   border-radius: 0;
   background: transparent;
-  color: var(--gris-principal, #555);
-  font-size: 12px;
+  color: var(--gris-principal);
+  font-size: 0.857rem;
   cursor: pointer;
   position: relative;
   transition: background 0.15s, color 0.15s;
@@ -508,14 +508,14 @@
 }
 
 .dock-tab-btn:hover {
-  background: #ebebeb;
+  background: var(--gris-contenedor);
 }
 
 .dock-tab-btn.active {
   background: #ffffff;
-  color: var(--primary, #005494);
+  color: var(--primary);
   font-weight: 600;
-  box-shadow: inset 0 -2px 0 var(--primary, #005494);
+  box-shadow: inset 0 -2px 0 var(--primary);
 }
 
 .dock-badge {
@@ -525,9 +525,9 @@
   min-width: 16px;
   height: 16px;
   padding: 0 4px;
-  background: var(--danger, #dc3545);
+  background: var(--danger);
   color: #fff;
-  font-size: 10px;
+  font-size: 0.714rem;
   font-weight: 700;
   border-radius: 8px;
   line-height: 1;
@@ -550,14 +550,14 @@
   border: none;
   border-radius: 3px;
   background: transparent;
-  color: var(--gris-principal, #555);
+  color: var(--gris-principal);
   cursor: pointer;
-  font-size: 12px;
+  font-size: 0.857rem;
   transition: background 0.15s;
 }
 
 .dock-action-btn:hover {
-  background: #ddd;
+  background: var(--border-color);
 }
 
 .dock-content {
@@ -585,21 +585,21 @@
 }
 
 .dock-line:hover {
-  background: #f8f8f8;
+  background: var(--bg-page);
 }
 
 .dock-line__time {
   flex-shrink: 0;
   font-variant-numeric: tabular-nums;
-  color: #888;
-  font-size: 11px;
+  color: var(--text-secondary);
+  font-size: 0.786rem;
   width: 36px;
 }
 
 .dock-line__icon {
   flex-shrink: 0;
-  font-size: 12px;
-  color: #666;
+  font-size: 0.857rem;
+  color: var(--text-secondary);
   width: 14px;
   text-align: center;
 }
@@ -609,15 +609,15 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 12px;
-  color: var(--gris-principal, #333);
+  font-size: 0.857rem;
+  color: var(--gris-principal);
 }
 
 .dock-empty {
   display: block;
   padding: 8px 10px;
-  color: #999;
-  font-size: 12px;
+  color: var(--text-secondary);
+  font-size: 0.857rem;
   font-style: italic;
 }
 
@@ -633,9 +633,9 @@
   min-width: 14px;
   height: 14px;
   padding: 0 3px;
-  background: var(--danger, #dc3545);
+  background: var(--danger);
   color: #fff;
-  font-size: 9px;
+  font-size: 0.643rem;
   font-weight: 700;
   border-radius: 7px;
   line-height: 14px;
@@ -651,7 +651,7 @@
 }
 
 .dock-modal-list .dock-line {
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .dock-modal-list .dock-line__text {
@@ -673,7 +673,7 @@
   padding: 0 16px;
   background: var(--shell-footer-bg);
   color: var(--shell-footer-fg);
-  font-size: 11px;
+  font-size: 0.786rem;
   height: var(--footer-height);
 }
 

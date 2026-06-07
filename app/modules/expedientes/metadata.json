@@ -16,11 +16,11 @@
   "listado_v2": {
     "columns": [
       { "key": "codigo",             "label": "N\u00b0 Expediente", "type": "text"   },
-      { "key": "titular",            "label": "Titular",            "type": "text"   },
-      { "key": "tipo_expediente",    "label": "Tipo",               "type": "text"   },
-      { "key": "responsable",        "label": "Responsable",        "type": "text"   },
-      { "key": "num_solicitudes",    "label": "Solicitudes",        "type": "custom" },
-      { "key": "estado_tramitacion", "label": "Estado",             "type": "custom" },
+      { "key": "titular",            "label": "Titular",            "type": "text",   "truncate": true },
+      { "key": "tipo_expediente",    "label": "Tipo",               "type": "text",   "hide": "xl" },
+      { "key": "responsable",        "label": "Responsable",        "type": "text",   "hide": "xl" },
+      { "key": "num_solicitudes",    "label": "Solicitudes",        "type": "custom", "hide": "lg" },
+      { "key": "estado_tramitacion", "label": "Estado",             "type": "custom", "hide": "md" },
       { "key": "_acciones",          "label": "Acciones",           "type": "custom" }
     ]
   },
@@ -28,9 +28,9 @@
     "columns": [
       { "key": "num_at",               "label": "N\u00ba AT",      "type": "custom" },
       { "key": "tipo_solicitud",       "label": "SOLICITUD",        "type": "custom" },
-      { "key": "fecha_solicitud",      "label": "FECHA",            "type": "custom" },
+      { "key": "fecha_solicitud",      "label": "FECHA",            "type": "custom", "hide": "xl" },
       { "key": "titular_nombre",       "label": "TITULAR",          "type": "custom" },
-      { "key": "proyecto_descripcion", "label": "PROYECTO",         "type": "custom" },
+      { "key": "proyecto_descripcion", "label": "PROYECTO",         "type": "custom", "hide": "lg" },
       { "key": "pista_SOL",            "label": "AN\u00c1LISIS",   "type": "custom" },
       { "key": "pista_CONSULTAS",      "label": "CONSULTAS",        "type": "custom" },
       { "key": "pista_MA",             "label": "MA",               "type": "custom" },

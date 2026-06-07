@@ -13,10 +13,9 @@
      {% block extra_js %}           — Inicialización de ScrollInfinito (OBLIGATORIO)
 
    NOTA CSS:
-     La clase base de la tabla es 'expedientes-table' (clase con estilos definidos
-     en v2-components.css). En Epic #93 Fase 3 se renombrará a 'lista-table' y
-     se extraerán los estilos como clase genérica.
-     Cada módulo puede añadir su propia clase adicional via {% block tabla_clase %}.
+     La clase base de la tabla es 'lista-table' (componente unificado de tabla,
+     estilos en v2-components.css — ADR-022 / #533). Cada módulo puede añadir su
+     propia clase adicional via {% block tabla_clase %}.
 
    USO MÍNIMO:
      {% extends 'layout/lista_v2_base.html' %}
@@ -59,8 +58,9 @@
      </script>
      {% endblock %}
 
-   VERSIÓN: 1.1
-   FECHA: 2026-02-19
+   VERSIÓN: 1.2
+   FECHA: 2026-06-07
+   CAMBIOS v1.2: Clase base tabla unificada a 'lista-table' (ADR-022 / #533)
    CAMBIOS v1.1: Clase base tabla cambiada de 'lista-table' a 'expedientes-table'
    EPIC: #93 (Fase 3 prep.) — Issue #61
 #}
@@ -74,7 +74,7 @@
 <div class="lista-cabecera">
 
     <!-- Page Header -->
-    <div class="page-header content-constrained">
+    <div class="page-header">
         <div>
             <h1>
                 {% block page_icon %}<i class="fas fa-list"></i>{% endblock %}
@@ -89,7 +89,7 @@
     </div>
 
     <!-- Filtros -->
-    <div class="filters-row content-constrained">
+    <div class="filters-row">
         <div class="filters">
             <input type="search"
                    placeholder="{% block search_placeholder %}Buscar...{% endblock %}"
@@ -105,18 +105,20 @@
 <!-- C.2: Contenedor scrollable independiente -->
 <div class="lista-scroll-container">
     {#
-       Clase base: 'expedientes-table' (estilos en v2-components.css).
-       TODO Epic #93 Fase 3: renombrar a 'lista-table' en CSS y aquí.
+       Clase base: 'lista-table' (componente unificado, estilos en v2-components.css).
        Envuelta en .tabla-bloque para bordes redondeados y sombra (#202).
     #}
-    <div class="content-constrained py-3">
+    <div class="py-3">
       <div class="card tabla-bloque">
-        <table class="expedientes-table {% block tabla_clase %}{% endblock %}">
+        <table class="lista-table {% block tabla_clase %}{% endblock %}">
             <thead>
                 <tr>
                     {% if columns is defined and columns %}
                         {% for col in columns %}
-                            <th>{{ col.label }}</th>
+                            {# Clases declarativas de ocultación/truncado (ADR-022 §3);
+                               el <td> equivalente las recibe en v2-scroll-infinito.js #}
+                            {% set th_cls %}{% if col.hide %}lt-hide-{{ col.hide }} {% endif %}{% if col.truncate %}lt-truncate{% endif %}{% endset %}
+                            <th{% if th_cls|trim %} class="{{ th_cls|trim }}"{% endif %}>{{ col.label }}</th>
                         {% endfor %}
                     {% else %}
                         {% block thead_cols %}{% endblock %}

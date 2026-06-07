@@ -1,8 +1,13 @@
 # Guía de Vistas Bootstrap - BDDAT
 
-**Versión:** 2.2
-**Fecha:** 25 de marzo de 2026
+**Versión:** 2.3
+**Fecha:** 7 de junio de 2026
 **Para:** Claude Code - Referencia de diseño UI
+
+> **v2.3 (ADR-022 / #533):** escala tipográfica única (rem global 15px), tabla
+> unificada `.lista-table` con ocultación responsive declarativa (`.lt-hide-*`)
+> y truncado (`.lt-truncate`), y retirada del recorte `.content-constrained` en
+> los listados del workbench.
 
 ---
 
@@ -15,10 +20,10 @@
 | **C.1** | Zona fija superior sin scroll (`lista-cabecera`) |
 | **C.2** | Zona scrollable independiente (`lista-scroll-container`) |
 | **Listado embebido** | Tabla dentro de una card V4 (ej: documentos en detalle de expediente, direcciones en detalle de entidad) |
-| **Tabla V2** | Tabla `expedientes-table` dentro de `card.tabla-bloque`, thead verde claro sticky, scroll infinito JS |
+| **Tabla V2** | Tabla `lista-table` dentro de `card.tabla-bloque`, thead verde claro sticky, scroll infinito JS |
 | **Tabla BC** | Tabla `_tabla_hijos.html` dentro de `card.tabla-bloque`, thead verde claro (unificado con V2), sin sticky |
 | **Tabla Pool** | Tabla `#pool-tabla`, `table-layout: fixed`, thead sticky gris con `box-shadow inset` |
-| **`.tabla-bloque`** | Card contenedor de tabla (V2 y BC): bordes redondeados, sombra. Con `card-header` → `overflow:hidden` (esquinas limpias); con `expedientes-table` directa → bg verde claro (esquinas seamless + sticky intacto) |
+| **`.tabla-bloque`** | Card contenedor de tabla (V2 y BC): bordes redondeados, sombra. Con `card-header` → `overflow:hidden` (esquinas limpias); con `lista-table` directa → bg verde claro (esquinas seamless + sticky intacto) |
 
 ---
 
@@ -138,14 +143,14 @@ A: app-container (grid header/main/footer)
 ```html
 <main class="app-main"> <!-- flexbox, overflow: hidden -->
   <div class="lista-cabecera"> <!-- C.1: flex-shrink: 0 -->
-    <div class="page-header content-constrained">Título + botón</div>
-    <div class="filters-row content-constrained">Filtros + paginación</div>
+    <div class="page-header">Título + botón</div>      <!-- sin content-constrained (#533): padding lateral 1rem vía .lista-cabecera -->
+    <div class="filters-row">Filtros + paginación</div>
   </div>
 
   <div class="lista-scroll-container"> <!-- C.2: flex: 1, overflow-y: auto -->
-    <div class="content-constrained py-3">
+    <div class="py-3"> <!-- tabla a ancho completo de main (#533) -->
       <div class="card tabla-bloque"> <!-- bordes redondeados + sombra; bg verde → esquinas seamless -->
-        <table class="expedientes-table"> <!-- thead sticky top: 0 -->
+        <table class="lista-table"> <!-- thead sticky top: 0 -->
           <thead>...</thead>
           <tbody><!-- filas JS ScrollInfinito --></tbody>
         </table>
@@ -175,7 +180,7 @@ A: app-container (grid header/main/footer)
   min-height: 220px; /* Mantiene visibilidad */
 }
 
-.lista-scroll-container .expedientes-table thead th {
+.lista-scroll-container .lista-table thead th {
   position: sticky;
   top: 0; /* Pegado a C.2, no al viewport */
   z-index: 10;
@@ -620,7 +625,7 @@ Ejemplos: documentos en detalle de expediente, direcciones y autorizaciones en d
 | Contenedor | C.2 (`lista-scroll-container`) | Card body V4 |
 | Thead | Verde corporativo, sticky, uppercase | `table-light`, no sticky |
 | Scroll | Infinito (JS) | Página completa |
-| Clase tabla | `expedientes-table` | `table table-sm table-hover table-embedded` |
+| Clase tabla | `lista-table` | `table table-sm table-hover table-embedded` |
 
 ---
 
@@ -652,13 +657,15 @@ particularidades propias.
 ## 🎨 Patrones CSS Reutilizables
 
 ### `.content-constrained` - Márgenes Laterales
-**Usar cuando:** Contenido normal (page-header, filtros, formularios)  
-**NO usar cuando:** Tablas full-width
+**Usar cuando:** Vistas de detalle (V4), formularios, dashboard.
+**NO usar en:** los listados del workbench (V2). Desde ADR-022 / #533 el listado
+ocupa el ancho completo de `main`; el padding lateral lo dan `.lista-cabecera`
+(1rem) y las celdas de `.lista-table` (1rem). Añadir `.content-constrained` ahí
+reintroduce el recorte ~95% que se retiró.
 
 ```css
 .content-constrained {
-  padding-left: 2rem;
-  padding-right: 2rem;
+  padding: 0 var(--content-padding); /* --content-padding: max(1rem, 2.5vw) */
 }
 ```
 
@@ -693,6 +700,27 @@ particularidades propias.
 
 ---
 
+## 🔡 Escala tipográfica (ADR-022 / #533)
+
+**Mando maestro único:** `html { font-size: 15px }` en `v2-theme.css`. Es el
+único parámetro de densidad: como Bootstrap, el CDN de la Junta, las tablas y el
+shell van en `rem`, cambiar ese valor los reescala de forma coherente.
+
+- `body` va a `1rem` (= 15px).
+- El shell (`app-shell.css`) está en `rem`, no en px, para obedecer al mando.
+- A 15px: datos de tabla ~13px, chrome del shell ~14px.
+
+**Reglas:**
+- Dimensionar en `rem` (o unidades relativas), nunca en `px` para tipografía.
+- No fijar `font-size` en px en CSS nuevo del shell o de vistas.
+- Tokens `--fs-*` solo para excepciones tipográficas deliberadas (un dato
+  numérico destacado), no como mecanismo general de densidad.
+
+> Alturas de **sidebar** y **dock**: densidad con estudio propio diferido
+> (ADR-022 §5); no se redimensionan en este issue.
+
+---
+
 ## 📱 Responsive - Breakpoints
 
 | Tamaño | Ancho | Comportamiento |
@@ -702,25 +730,36 @@ particularidades propias.
 | Tablet | 768-991px | Grid 2 columnas, ocultar más columnas |
 | Mobile | <768px | Grid 1 columna, solo columnas esenciales |
 
-### Ejemplo Ocultar Columnas en Tabla
-```css
-/* Tablet: Ocultar "Solicitudes" */
-@media (max-width: 991px) {
-  .expedientes-table th:nth-child(3),
-  .expedientes-table td:nth-child(3) {
-    display: none;
-  }
-}
+### Ocultar columnas en tabla — mecanismo declarativo (ADR-022 / #533)
 
-/* Mobile: Solo Expediente + Titular + Acciones */
-@media (max-width: 767px) {
-  .expedientes-table th:nth-child(4),
-  .expedientes-table td:nth-child(4),
-  .expedientes-table th:nth-child(5),
-  .expedientes-table td:nth-child(5) {
-    display: none;
-  }
-}
+No usar `nth-child` por tabla. Cada columna declara su prioridad con una clase en
+su `<th>` **y** su `<td>`; el sistema oculta de menor a mayor prioridad según el
+ancho. Las columnas sin clase no se ocultan nunca.
+
+| Clase | Se oculta a | Breakpoint Bootstrap |
+|-------|-------------|----------------------|
+| `.lt-hide-xl` | ≤1199px | la primera en irse |
+| `.lt-hide-lg` | ≤991px  | intermedia |
+| `.lt-hide-md` | ≤767px  | la última de las ocultables |
+
+Para truncar texto largo: `.lt-truncate` (elipsis; `max-width` configurable por
+columna con `style="--lt-trunc: 12rem"`, 16rem por defecto).
+
+**Listados dinámicos** (scroll infinito): se declara en `metadata.json` con los
+campos `"hide": "xl"|"lg"|"md"` y `"truncate": true`; el `<th>` lo pinta
+`lista_v2_base.html` y el `<td>` `v2-scroll-infinito.js`.
+
+**Listados estáticos** (usuarios, plantillas): clases puestas a mano en `th`/`td`.
+
+```html
+<!-- estático -->
+<th class="lt-hide-lg">Roles</th>
+...
+<td class="lt-hide-lg">{{ ... }}</td>
+```
+```json
+// dinámico (metadata.json)
+{ "key": "roles", "label": "Roles", "type": "text", "hide": "lg" }
 ```
 
 ---
@@ -803,7 +842,7 @@ Formato de opciones: `{v: String(id), t: texto}`.
 - [ ] CSS: Cargar v2-theme.css, v2-layout.css, v2-components.css (en ese orden)
 - [ ] Layout: Usar estructura A/B.1/B.2/B.3
 - [ ] Colores: Usar variables CSS `var(--primary)`, NO hardcodear
-- [ ] Padding: Usar `.content-constrained` selectivamente
+- [ ] Padding: `.content-constrained` en detalle/formularios/dashboard; NO en listados V2 (#533)
 - [ ] Sticky: Verificar que funciona (sin `overflow: hidden` en padre)
 
 ### Testing Final
