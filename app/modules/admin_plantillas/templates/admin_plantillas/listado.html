@@ -10,7 +10,7 @@
 
 {% block content %}
 <div class="lista-cabecera">
-    <div class="page-header content-constrained">
+    <div class="page-header">
         <h1><i class="fas fa-file-word"></i> Plantillas de escritos</h1>
         {% if tiene_permiso('gestionar_plantillas') %}
         <a href="{{ url_for('admin_plantillas.nueva') }}" class="btn btn-primary">
@@ -21,7 +21,7 @@
 </div>
 
 <div class="lista-scroll-container">
-<div class="content-constrained py-3">
+<div class="py-3">
     <div class="card tabla-bloque">
         <table class="lista-table plantillas-table">
             <thead>

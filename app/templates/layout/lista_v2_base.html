@@ -74,7 +74,7 @@
 <div class="lista-cabecera">
 
     <!-- Page Header -->
-    <div class="page-header content-constrained">
+    <div class="page-header">
         <div>
             <h1>
                 {% block page_icon %}<i class="fas fa-list"></i>{% endblock %}
@@ -89,7 +89,7 @@
     </div>
 
     <!-- Filtros -->
-    <div class="filters-row content-constrained">
+    <div class="filters-row">
         <div class="filters">
             <input type="search"
                    placeholder="{% block search_placeholder %}Buscar...{% endblock %}"
@@ -108,7 +108,7 @@
        Clase base: 'lista-table' (componente unificado, estilos en v2-components.css).
        Envuelta en .tabla-bloque para bordes redondeados y sombra (#202).
     #}
-    <div class="content-constrained py-3">
+    <div class="py-3">
       <div class="card tabla-bloque">
         <table class="lista-table {% block tabla_clase %}{% endblock %}">
             <thead>

@@ -14,6 +14,11 @@
   flex-shrink: 0; /* No se comprime */
   background: var(--gris-especifico);
   padding-bottom: 0; /* El contenido interno maneja su padding */
+  /* Padding lateral modesto del listado (#533): sustituye al recorte ~95% que
+     antes daba .content-constrained. Alinea cabecera y filtros con el texto de
+     las celdas (1rem). */
+  padding-left: 1rem;
+  padding-right: 1rem;
 }
 
 /* C.2: Contenedor con scroll independiente */
@@ -114,7 +119,7 @@
 }
 
 .lista-table th {
-  padding: 1rem var(--content-padding); /* Padding lateral usa variable */
+  padding: 1rem; /* Lateral fijo 1rem; recorte --content-padding retirado (#533) */
   text-align: left;
   font-weight: 600;
   font-size: 0.875rem;
@@ -132,7 +137,7 @@
 }
 
 .lista-table td {
-  padding: 1rem var(--content-padding); /* Padding lateral usa variable */
+  padding: 1rem; /* Lateral fijo 1rem; recorte --content-padding retirado (#533) */
   border-bottom: 1px solid var(--border-color);
   font-size: 0.875rem;
 }
