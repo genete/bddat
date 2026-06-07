@@ -24,6 +24,12 @@ Guías de estilos CSS, sistema de diseño y recursos visuales del proyecto.
 - Reglas de aplicación
 - **Abrir en navegador para ver ejemplos visuales**
 
+> **Tokens de color (ADR-022 / #533):** la paleta JdA **se mantiene** sin cambios.
+> Lo que cambió es la consistencia: los grises hardcodeados del shell (`#ebebeb`,
+> `#888`, `#666`, fallbacks sueltos…) se consolidaron sobre las variables de
+> `v2-theme.css` (`--gris-*`, `--text-secondary`, `--border-color`, etc.). En CSS
+> nuevo, usar siempre las variables, nunca hex sueltos.
+
 ---
 
 ## Recursos Relacionados
