@@ -52,7 +52,7 @@ class ScrollInfinito {
      * @param {number}   options.limit       - Registros por página. Default: 50
      * @param {number}   options.threshold   - Umbral de scroll 0-1. Default: 0.8
      * @param {Array}    options.columns     - Config columnas (modo genérico). Default: null (usa legacy)
-     * @param {string}   options.tableClass  - Selector CSS de la tabla. Default: '.expedientes-table'
+     * @param {string}   options.tableClass  - Selector CSS de la tabla. Default: '.lista-table'
      * @param {string}   options.entityLabel - Nombre de la entidad para mensajes. Default: 'expedientes'
      * @param {Function} options.detailUrl   - Función id => URL del detalle. Default: BC expedientes
      * @param {Object}   options.fixedParams - Parámetros fijos añadidos a cada petición. Default: {}
@@ -66,7 +66,7 @@ class ScrollInfinito {
 
         // Configuración genérica (nueva en v1.2)
         this.columns     = options.columns     || null;
-        this.tableClass  = options.tableClass  || '.expedientes-table';
+        this.tableClass  = options.tableClass  || '.lista-table';
         this.entityLabel = options.entityLabel || 'expedientes';
         this.detailUrl   = options.detailUrl   || (id => `/expedientes/${id}/tramitacion`);
 

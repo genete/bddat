@@ -29,7 +29,7 @@
 }
 
 /* Ajuste sticky header dentro de C.2 (ya no relativo a viewport) */
-.lista-scroll-container .expedientes-table thead th {
+.lista-scroll-container .lista-table thead th {
   position: sticky;
   top: 0; /* Pegado al top de C.2, no al viewport */
   z-index: 10;
@@ -56,7 +56,7 @@
  * Los th:first/last-child tienen border-radius, pero el card background (blanco)
  * quedaba visible en el hueco de la esquina redondeada.
  * Solución: igualar el bg del card al color del thead → el hueco es invisible. */
-.tabla-bloque:has(> table.expedientes-table) {
+.tabla-bloque:has(> table.lista-table) {
   background-color: var(--primary-light, #c4ddca);
   /* overflow:clip recorta el contenido a border-radius sin crear scroll container,
    * por lo que position:sticky del thead sigue funcionando en C.2. */
@@ -68,17 +68,17 @@
  * hasta la esquina del elemento, cruzando la zona de border-radius del card y creando
  * un artefacto visible. La separación visual la aportan el box-shadow del card y el
  * border-bottom de los th. */
-.tabla-bloque > table.expedientes-table {
+.tabla-bloque > table.lista-table {
   border-top: none;
   border-bottom: none;
 }
 
 /* Redondeado superior del thead cuando la tabla es hija directa del card (V2).
- * expedientes-table usa border-collapse:separate → border-radius en th funciona. */
-.tabla-bloque > table.expedientes-table thead th:first-child {
+ * lista-table usa border-collapse:separate → border-radius en th funciona. */
+.tabla-bloque > table.lista-table thead th:first-child {
   border-top-left-radius: calc(var(--border-radius-lg, 0.5rem) - 1px);
 }
-.tabla-bloque > table.expedientes-table thead th:last-child {
+.tabla-bloque > table.lista-table thead th:last-child {
   border-top-right-radius: calc(var(--border-radius-lg, 0.5rem) - 1px);
 }
 
@@ -96,7 +96,7 @@
 }
 
 /* ===== TABLA RESPONSIVE (FULL-WIDTH) ===== */
-.expedientes-table {
+.lista-table {
   width: 100%;
   background: var(--bg-card);
   border-radius: 0; /* Sin border-radius — la da .tabla-bloque */
@@ -109,11 +109,11 @@
   border-bottom: 1px solid var(--border-color);
 }
 
-.expedientes-table thead {
+.lista-table thead {
   /* Background se aplica en TH para que funcione sticky */
 }
 
-.expedientes-table th {
+.lista-table th {
   padding: 1rem var(--content-padding); /* Padding lateral usa variable */
   text-align: left;
   font-weight: 600;
@@ -131,42 +131,42 @@
   color: var(--gris-principal, #111);
 }
 
-.expedientes-table td {
+.lista-table td {
   padding: 1rem var(--content-padding); /* Padding lateral usa variable */
   border-bottom: 1px solid var(--border-color);
   font-size: 0.875rem;
 }
 
-.expedientes-table tbody tr {
+.lista-table tbody tr {
   transition: background-color 0.2s ease;
 }
 
-.expedientes-table tbody tr:hover {
+.lista-table tbody tr:hover {
   background-color: var(--primary-lighter);
 }
 
-.expedientes-table tbody tr:last-child td {
+.lista-table tbody tr:last-child td {
   border-bottom: none;
 }
 
 /* Responsive tabla (expedientes/proyectos/entidades) */
 @media (max-width: 991px) {
-  .expedientes-table th:nth-child(3), /* Solicitudes */
-  .expedientes-table td:nth-child(3) {
+  .lista-table th:nth-child(3), /* Solicitudes */
+  .lista-table td:nth-child(3) {
     display: none;
   }
 }
 
 @media (max-width: 767px) {
-  .expedientes-table th:nth-child(4), /* Estado */
-  .expedientes-table td:nth-child(4),
-  .expedientes-table th:nth-child(5), /* Vencimiento */
-  .expedientes-table td:nth-child(5) {
+  .lista-table th:nth-child(4), /* Estado */
+  .lista-table td:nth-child(4),
+  .lista-table th:nth-child(5), /* Vencimiento */
+  .lista-table td:nth-child(5) {
     display: none;
   }
 
-  .expedientes-table th,
-  .expedientes-table td {
+  .lista-table th,
+  .lista-table td {
     padding: 0.75rem 1rem; /* Padding reducido en mobile */
     font-size: 0.8rem;
   }
@@ -174,7 +174,7 @@
   /* Sticky header usa var(--header-height) que en mobile es 92px */
 
   /* Ajuste sticky en C.2 mobile */
-  .lista-scroll-container .expedientes-table thead th {
+  .lista-scroll-container .lista-table thead th {
     top: 0; /* Dentro de C.2 siempre top: 0 */
   }
 
