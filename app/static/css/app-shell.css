@@ -475,7 +475,7 @@
   align-items: center;
   height: var(--dock-header-height);
   border-bottom: 1px solid var(--border-color);
-  background: var(--gris-especifico, #f5f5f5);
+  background: var(--gris-especifico);
   flex-shrink: 0;
 }
 
@@ -499,7 +499,7 @@
   border-right: 1px solid var(--border-color);
   border-radius: 0;
   background: transparent;
-  color: var(--gris-principal, #555);
+  color: var(--gris-principal);
   font-size: 0.857rem;
   cursor: pointer;
   position: relative;
@@ -508,14 +508,14 @@
 }
 
 .dock-tab-btn:hover {
-  background: #ebebeb;
+  background: var(--gris-contenedor);
 }
 
 .dock-tab-btn.active {
   background: #ffffff;
-  color: var(--primary, #005494);
+  color: var(--primary);
   font-weight: 600;
-  box-shadow: inset 0 -2px 0 var(--primary, #005494);
+  box-shadow: inset 0 -2px 0 var(--primary);
 }
 
 .dock-badge {
@@ -525,7 +525,7 @@
   min-width: 16px;
   height: 16px;
   padding: 0 4px;
-  background: var(--danger, #dc3545);
+  background: var(--danger);
   color: #fff;
   font-size: 0.714rem;
   font-weight: 700;
@@ -550,14 +550,14 @@
   border: none;
   border-radius: 3px;
   background: transparent;
-  color: var(--gris-principal, #555);
+  color: var(--gris-principal);
   cursor: pointer;
   font-size: 0.857rem;
   transition: background 0.15s;
 }
 
 .dock-action-btn:hover {
-  background: #ddd;
+  background: var(--border-color);
 }
 
 .dock-content {
@@ -585,13 +585,13 @@
 }
 
 .dock-line:hover {
-  background: #f8f8f8;
+  background: var(--bg-page);
 }
 
 .dock-line__time {
   flex-shrink: 0;
   font-variant-numeric: tabular-nums;
-  color: #888;
+  color: var(--text-secondary);
   font-size: 0.786rem;
   width: 36px;
 }
@@ -599,7 +599,7 @@
 .dock-line__icon {
   flex-shrink: 0;
   font-size: 0.857rem;
-  color: #666;
+  color: var(--text-secondary);
   width: 14px;
   text-align: center;
 }
@@ -610,13 +610,13 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 0.857rem;
-  color: var(--gris-principal, #333);
+  color: var(--gris-principal);
 }
 
 .dock-empty {
   display: block;
   padding: 8px 10px;
-  color: #999;
+  color: var(--text-secondary);
   font-size: 0.857rem;
   font-style: italic;
 }
@@ -633,7 +633,7 @@
   min-width: 14px;
   height: 14px;
   padding: 0 3px;
-  background: var(--danger, #dc3545);
+  background: var(--danger);
   color: #fff;
   font-size: 0.643rem;
   font-weight: 700;
@@ -651,7 +651,7 @@
 }
 
 .dock-modal-list .dock-line {
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .dock-modal-list .dock-line__text {
