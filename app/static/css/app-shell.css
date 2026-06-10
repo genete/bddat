@@ -436,6 +436,10 @@
   overflow: auto;
   background: var(--bg-page);
   min-height: 0;
+  /* Flex column para que .lista-cabecera (flex-shrink:0) y
+     .lista-scroll-container (flex:1) ocupen correctamente la altura disponible */
+  display: flex;
+  flex-direction: column;
 }
 
 /* ============================================================
