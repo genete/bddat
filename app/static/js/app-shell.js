@@ -26,6 +26,7 @@
   };
   var SS_BANNER   = 'bddat.banner.dismissed';
   var COOKIE_SIDEBAR = 'bddat_sidebar_collapsed';
+  var COOKIE_DOCK    = 'bddat_dock_closed';
   var BREAKPOINT_COLLAPSED = 1280;
   var BREAKPOINT_MOBILE    = 768;
 
@@ -96,14 +97,20 @@
   function applyPanelStates(shell) {
     var insp = readLS(LS.inspectorOpen);
     if (insp === 'false') shell.classList.add('is-inspector-closed');
-    var dock = readLS(LS.dockOpen);
-    if (dock === 'false') shell.classList.add('is-dock-closed');
+    // Dock: localStorage es la fuente de verdad; la cookie es su espejo para que
+    // el servidor pueda renderizar is-dock-closed en el HTML inicial y no se
+    // produzca el parpadeo abrir→cerrar al cargar cada vista (#539).
+    var dockClosed = readLS(LS.dockOpen) === 'false';
+    shell.classList.toggle('is-dock-closed', dockClosed);
+    setCookie(COOKIE_DOCK, dockClosed ? '1' : '0');
   }
 
-  function togglePanel(shell, klass, storageKey) {
+  function togglePanel(shell, klass, storageKey, cookieName) {
     var closed = !shell.classList.contains(klass);
     shell.classList.toggle(klass, closed);
     writeLS(storageKey, String(!closed));
+    // Espejo en cookie para render server-side sin parpadeo (#539; solo el dock lo usa).
+    if (cookieName) setCookie(cookieName, closed ? '1' : '0');
   }
 
   // -- Listeners
@@ -121,7 +128,7 @@
     if (action === 'sidebar')        toggleSidebar(shell);
     else if (action === 'sidebar-mobile') toggleSidebarMobile(shell);
     else if (action === 'inspector') togglePanel(shell, 'is-inspector-closed', LS.inspectorOpen);
-    else if (action === 'dock')      togglePanel(shell, 'is-dock-closed', LS.dockOpen);
+    else if (action === 'dock')      togglePanel(shell, 'is-dock-closed', LS.dockOpen, COOKIE_DOCK);
   }
 
   function onKeydown(e) {

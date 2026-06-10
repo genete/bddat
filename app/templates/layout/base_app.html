@@ -50,9 +50,13 @@
   {% set inspector_html %}{% block inspector %}{% endblock %}{% endset %}
 
   {% set _sidebar_collapsed = request.cookies.get('bddat_sidebar_collapsed') == '1' %}
+  {# Estado del dock en cookie (espejo de localStorage) para renderizarlo cerrado
+     ya en el HTML inicial y evitar el parpadeo abrir→cerrar al cargar (#539). #}
+  {% set _dock_closed = request.cookies.get('bddat_dock_closed') == '1' %}
 
   <div class="app-shell
               {%- if _sidebar_collapsed %} is-sidebar-collapsed{% endif -%}
+              {%- if _dock_closed %} is-dock-closed{% endif -%}
               {%- if inspector_html | trim %} has-inspector{% endif -%}">
 
     {% include 'layout/_topbar.html' %}
