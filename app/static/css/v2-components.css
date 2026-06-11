@@ -13,7 +13,8 @@
 .lista-cabecera {
   flex-shrink: 0; /* No se comprime */
   background: var(--gris-especifico);
-  padding-bottom: 0; /* El contenido interno maneja su padding */
+  padding-top: 0.625rem;
+  padding-bottom: 0; /* El contenido interno maneja su margen inferior */
   /* Padding lateral modesto del listado (#533): sustituye al recorte ~95% que
      antes daba .content-constrained. Alinea cabecera y filtros con el texto de
      las celdas (1rem). */

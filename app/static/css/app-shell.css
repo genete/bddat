@@ -42,7 +42,7 @@
   --shell-sidebar-hover-bg:  var(--gris-especifico);
   --shell-sidebar-active-bg: var(--primary-lighter);
   --shell-sidebar-active-fg: var(--primary);
-  --shell-viewbar-bg:        #ffffff;
+  --shell-viewbar-bg:        var(--gris-especifico);
   --shell-viewbar-fg:        var(--gris-principal);
   --shell-viewbar-border:    var(--border-color);
   --shell-footer-bg:         var(--gris-principal);
