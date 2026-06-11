@@ -433,6 +433,13 @@
 
 .app-viewbar__actions { display: flex; align-items: center; gap: 6px; }
 
+/* Botones en el viewbar normalizados a sm (44px viewbar, misma escala que el inspector) */
+.app-viewbar__actions .btn {
+  padding-top: 0.25rem;
+  padding-bottom: 0.25rem;
+  font-size: 0.75rem;
+}
+
 /* ============================================================
    MAIN
    ============================================================ */
