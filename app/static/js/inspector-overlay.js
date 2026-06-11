@@ -2,13 +2,14 @@
  * inspector-overlay.js — API de shell para el inspector overlay (ADR-023 / #534).
  *
  * Expone window.AppInspector con los métodos:
- *   open({ selId, title, fragmentUrl })  — abre/swap; carga fragmento HTML si procede
- *   mountReact({ selId, title })         — abre sin tocar el body (islas React)
- *   close()                              — cierra; emite inspector:closed
- *   refresh()                            — re-fetch del último fragmentUrl
- *   setLocked(bool)                      — backdrop bloqueante (modo edición)
- *   isOpen()                             — true si el panel está visible
- *   currentSel()                         — selId activo o null
+ *   open({ selId, fragmentUrl })  — abre/swap; carga fragmento HTML si procede
+ *                                   (parámetro title aceptado pero ignorado — sin cabecera)
+ *   mountReact({ selId })         — abre sin tocar el body (islas React)
+ *   close()                       — cierra; emite inspector:closed
+ *   refresh()                     — re-fetch del último fragmentUrl
+ *   setLocked(bool)               — backdrop bloqueante (modo edición)
+ *   isOpen()                      — true si el panel está visible
+ *   currentSel()                  — selId activo o null
  *
  * Eventos emitidos en document:
  *   inspector:opened  { detail: { selId } }
@@ -28,15 +29,9 @@
 
   // ── Accesores DOM ─────────────────────────────────────────────────────────
 
-  function getShell()   { return document.querySelector('.app-shell'); }
-  function getAside()   { return document.getElementById('app-inspector'); }
-  function getBody()    { return document.getElementById('app-inspector-body'); }
-  function getTitleEl() { return document.getElementById('app-inspector-title'); }
-
-  function setTitle(title) {
-    var el = getTitleEl();
-    if (el) el.textContent = title || '';
-  }
+  function getShell() { return document.querySelector('.app-shell'); }
+  function getAside() { return document.getElementById('app-inspector'); }
+  function getBody()  { return document.getElementById('app-inspector-body'); }
 
   // ── Estado ────────────────────────────────────────────────────────────────
 
@@ -75,7 +70,6 @@
     var eventName = wasOpen ? 'inspector:swapped' : 'inspector:opened';
 
     _selId = selId;
-    setTitle(title);
 
     if (fragmentUrl) {
       _lastFragUrl = fragmentUrl;
@@ -102,7 +96,6 @@
     var eventName = wasOpen ? 'inspector:swapped' : 'inspector:opened';
 
     _selId = selId;
-    setTitle(title);
     _show();
     document.dispatchEvent(new CustomEvent(eventName, { detail: { selId: selId } }));
   }
@@ -118,9 +111,7 @@
   function refresh() {
     if (!_lastFragUrl || !_selId) return;
     _lastCache = null;  // invalida caché para forzar refetch
-    var selId   = _selId;
-    var title   = getTitleEl() ? getTitleEl().textContent : '';
-    open({ selId: selId, title: title, fragmentUrl: _lastFragUrl });
+    open({ selId: _selId, fragmentUrl: _lastFragUrl });
   }
 
   function setLocked(bool) {
@@ -202,25 +193,35 @@
       }
     } catch (e) { /* ignore */ }
 
-    var startX, startWidth;
+    var startX, startWidth, dragged;
 
     handle.addEventListener('pointerdown', function (e) {
       e.preventDefault();
-      startX = e.clientX;
+      startX     = e.clientX;
       startWidth = aside.getBoundingClientRect().width;
+      dragged    = false;
       handle.setPointerCapture(e.pointerId);
     });
 
     handle.addEventListener('pointermove', function (e) {
       if (startX === undefined) return;
-      var delta    = startX - e.clientX;  // arrastrar ← aumenta ancho
-      var newWidth = Math.max(MIN_WIDTH, startWidth + delta);
-      document.documentElement.style.setProperty('--inspector-width', newWidth + 'px');
+      var delta = startX - e.clientX;  // arrastrar ← aumenta ancho
+      if (Math.abs(delta) >= 4) {
+        dragged = true;
+        var newWidth = Math.max(MIN_WIDTH, startWidth + delta);
+        document.documentElement.style.setProperty('--inspector-width', newWidth + 'px');
+      }
     });
 
     handle.addEventListener('pointerup', function (e) {
       if (startX === undefined) return;
-      startX = undefined;
+      var wasDragged = dragged;
+      startX = dragged = undefined;
+      if (!wasDragged) {
+        // Clic sin arrastre: colapsar el inspector
+        close();
+        return;
+      }
       try {
         var w = parseInt(getComputedStyle(document.documentElement)
                   .getPropertyValue('--inspector-width'), 10);

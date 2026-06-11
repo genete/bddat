@@ -75,15 +75,11 @@
       {% block content %}{% endblock %}
     </main>
 
-    {# Inspector overlay (ADR-023 / #534): siempre en el DOM; visible vía AppInspector.open/mountReact. #}
+    {# Inspector overlay (ADR-023 / #534): siempre en el DOM; visible vía AppInspector.open/mountReact.
+       La franja de resize (izquierda) actúa también como toggle-cerrar: clic sin arrastre = colapso. #}
     <aside class="app-inspector" id="app-inspector" aria-label="Inspector">
-      <div class="app-inspector__resize" data-inspector-resize aria-hidden="true"></div>
-      <header class="app-inspector__header">
-        <span class="app-inspector__title" id="app-inspector-title"></span>
-        <button type="button" class="app-inspector__close" data-app-inspector-close aria-label="Cerrar">
-          <i class="bi bi-x-lg"></i>
-        </button>
-      </header>
+      <div class="app-inspector__resize" data-inspector-resize
+           aria-label="Redimensionar / cerrar inspector" role="button" tabindex="-1"></div>
       <div class="app-inspector__body" id="app-inspector-body">
         {% block inspector %}{% endblock %}
       </div>

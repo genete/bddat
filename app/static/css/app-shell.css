@@ -472,53 +472,41 @@
 
 /* ── Sub-componentes del inspector ──────────────────────────── */
 
-/* Franja de resize en el borde izquierdo */
+/* Franja de resize en el borde izquierdo: arrastre = resize, clic = cerrar */
 .app-inspector__resize {
   position: absolute;
   left: 0; top: 0; bottom: 0;
   width: 6px;
   cursor: ew-resize;
   z-index: 1;
-}
-
-.app-inspector__header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 0 10px 0 14px;
-  height: 40px;
-  border-bottom: 1px solid var(--border-color);
-  flex-shrink: 0;
-  background: var(--gris-especifico);
-}
-
-.app-inspector__title {
-  flex: 1;
-  font-weight: 600;
-  font-size: 0.929rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  min-width: 0;
-}
-
-.app-inspector__close {
-  border: 0;
   background: transparent;
-  cursor: pointer;
-  color: var(--gris-principal);
-  padding: 4px 6px;
-  border-radius: 3px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  font-size: 0.857rem;
-  transition: background 0.12s;
+  transition: background 0.15s;
 }
 
-.app-inspector__close:hover {
+.app-inspector__resize:hover {
+  background: var(--primary-light);
+}
+
+/* Tres puntos de grip centrados verticalmente */
+.app-inspector__resize::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 3px; height: 3px;
+  border-radius: 50%;
   background: var(--border-color);
+  box-shadow: 0 -8px 0 var(--border-color),
+              0  8px 0 var(--border-color);
+  pointer-events: none;
+  transition: background 0.15s, box-shadow 0.15s;
+}
+
+.app-inspector__resize:hover::after {
+  background: var(--gris-principal);
+  box-shadow: 0 -8px 0 var(--gris-principal),
+              0  8px 0 var(--gris-principal);
 }
 
 .app-inspector__body {
