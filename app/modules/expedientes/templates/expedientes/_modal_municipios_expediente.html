@@ -73,6 +73,17 @@
     const emptyMsg    = document.getElementById('gm-empty-msg');
     const errDiv      = document.getElementById('gm-errors');
     const form        = document.getElementById('gm-form');
+    const initialIds  = new Set(municipiosActuales.map(m => String(m.id)));
+
+    function isDirty() {
+        const keys = Object.keys(seleccionados);
+        if (keys.length !== initialIds.size) return true;
+        return keys.some(id => !initialIds.has(id));
+    }
+
+    function syncGuardar() {
+        document.getElementById('gm-btn-guardar').disabled = !isDirty();
+    }
 
     // Precargar municipios actuales
     municipiosActuales.forEach(m => { seleccionados[m.id] = m.nombre; });
@@ -143,7 +154,15 @@
             hidden.value = id;
             hiddenDiv.appendChild(hidden);
         });
+        syncGuardar();
     }
+
+    // Cancelar: toast si hay cambios pendientes
+    form.querySelector('[data-modal-large-close]').addEventListener('click', function () {
+        if (isDirty() && window.mostrar_toast) {
+            window.mostrar_toast('info', 'Cambios descartados.');
+        }
+    });
 
     // Envío del formulario vía XHR
     form.addEventListener('submit', async function (e) {
@@ -163,10 +182,8 @@
             });
             const json = await resp.json();
             if (json.ok) {
-                // Cerrar modal y refrescar inspector
-                document.dispatchEvent(new CustomEvent('modal-large:saved', {
-                    detail: { message: json.message }
-                }));
+                if (window.mostrar_toast) window.mostrar_toast('success', json.message || 'Municipios guardados correctamente.');
+                if (window.AppModalLarge) window.AppModalLarge.close();
             } else {
                 errDiv.textContent = (json.errors || ['Error desconocido']).join(' ');
                 errDiv.style.display = '';
