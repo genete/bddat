@@ -303,7 +303,7 @@ def nueva_direccion(entidad_id):
             return jsonify({'ok': False, 'errors': errores})
         for msg in errores:
             flash(msg, 'danger')
-        return redirect(url_for('entidades.detalle', entidad_id=entidad_id))
+        return redirect(url_for('entidades.index', sel=entidad_id))
 
     dir_nueva = DireccionNotificacion(
         entidad_id=entidad_id,
@@ -323,7 +323,7 @@ def nueva_direccion(entidad_id):
     if is_xhr:
         return jsonify({'ok': True, 'message': 'Dirección de notificación añadida.'})
     flash('Dirección de notificación añadida.', 'success')
-    return redirect(url_for('entidades.detalle', entidad_id=entidad_id))
+    return redirect(url_for('entidades.index', sel=entidad_id))
 
 
 @bp.route('/<int:entidad_id>/direcciones/<int:dir_id>/editar', methods=['POST'])
@@ -343,7 +343,7 @@ def editar_direccion(entidad_id, dir_id):
             return jsonify({'ok': False, 'errors': errores})
         for msg in errores:
             flash(msg, 'danger')
-        return redirect(url_for('entidades.detalle', entidad_id=entidad_id))
+        return redirect(url_for('entidades.index', sel=entidad_id))
 
     direccion.descripcion        = datos['descripcion']
     direccion.tipo_rol           = datos['tipo_rol']
@@ -358,7 +358,7 @@ def editar_direccion(entidad_id, dir_id):
     if is_xhr:
         return jsonify({'ok': True, 'message': 'Dirección de notificación actualizada.'})
     flash('Dirección de notificación actualizada.', 'success')
-    return redirect(url_for('entidades.detalle', entidad_id=entidad_id))
+    return redirect(url_for('entidades.index', sel=entidad_id))
 
 
 @bp.route('/<int:entidad_id>/direcciones/<int:dir_id>/toggle', methods=['POST'])
@@ -378,7 +378,7 @@ def toggle_direccion(entidad_id, dir_id):
     if is_xhr:
         return jsonify({'ok': True, 'message': f'Dirección "{direccion.descripcion or dir_id}" {estado}.'})
     flash(f'Dirección "{direccion.descripcion or dir_id}" {estado}.', 'success')
-    return redirect(url_for('entidades.detalle', entidad_id=entidad_id))
+    return redirect(url_for('entidades.index', sel=entidad_id))
 
 
 # =============================================================================
@@ -396,14 +396,14 @@ def nueva_autorizacion(entidad_id):
         if is_xhr:
             return jsonify({'ok': False, 'errors': ['Esta entidad no tiene rol Titular.']})
         flash('Esta entidad no tiene rol Titular.', 'danger')
-        return redirect(url_for('entidades.detalle', entidad_id=entidad_id))
+        return redirect(url_for('entidades.index', sel=entidad_id))
 
     autorizado_id_str = request.form.get('autorizado_id', '').strip()
     if not autorizado_id_str or not autorizado_id_str.isdigit():
         if is_xhr:
             return jsonify({'ok': False, 'errors': ['Debe seleccionar una entidad autorizada.']})
         flash('Debe seleccionar una entidad autorizada.', 'danger')
-        return redirect(url_for('entidades.detalle', entidad_id=entidad_id))
+        return redirect(url_for('entidades.index', sel=entidad_id))
 
     autorizado_id = int(autorizado_id_str)
 
@@ -411,7 +411,7 @@ def nueva_autorizacion(entidad_id):
         if is_xhr:
             return jsonify({'ok': False, 'errors': ['Una entidad no puede autorizarse a sí misma.']})
         flash('Una entidad no puede autorizarse a sí misma.', 'danger')
-        return redirect(url_for('entidades.detalle', entidad_id=entidad_id))
+        return redirect(url_for('entidades.index', sel=entidad_id))
 
     # Comprobar que no existe ya una autorización activa
     existente = AutorizadoTitular.query.filter_by(
@@ -424,14 +424,14 @@ def nueva_autorizacion(entidad_id):
             if is_xhr:
                 return jsonify({'ok': False, 'errors': ['Ya existe una autorización activa con esa entidad.']})
             flash('Ya existe una autorización activa con esa entidad.', 'warning')
-            return redirect(url_for('entidades.detalle', entidad_id=entidad_id))
+            return redirect(url_for('entidades.index', sel=entidad_id))
         # Reutilizar la revocada en vez de crear un duplicado
         existente.restaurar()
         db.session.commit()
         if is_xhr:
             return jsonify({'ok': True, 'message': f'Autorización restaurada para "{existente.autorizado.nombre_completo}".'})
         flash(f'Autorización restaurada para "{existente.autorizado.nombre_completo}".', 'success')
-        return redirect(url_for('entidades.detalle', entidad_id=entidad_id))
+        return redirect(url_for('entidades.index', sel=entidad_id))
 
     try:
         nueva = AutorizadoTitular.crear_autorizacion(entidad_id, autorizado_id)
@@ -445,7 +445,7 @@ def nueva_autorizacion(entidad_id):
             return jsonify({'ok': False, 'errors': [str(e)]})
         flash(str(e), 'danger')
 
-    return redirect(url_for('entidades.detalle', entidad_id=entidad_id))
+    return redirect(url_for('entidades.index', sel=entidad_id))
 
 
 @bp.route('/<int:entidad_id>/autorizados/<int:aut_id>/revocar', methods=['POST'])
@@ -463,7 +463,7 @@ def revocar_autorizacion(entidad_id, aut_id):
     if is_xhr:
         return jsonify({'ok': True, 'message': f'Autorización de "{aut.autorizado.nombre_completo}" revocada.'})
     flash(f'Autorización de "{aut.autorizado.nombre_completo}" revocada.', 'success')
-    return redirect(url_for('entidades.detalle', entidad_id=entidad_id))
+    return redirect(url_for('entidades.index', sel=entidad_id))
 
 
 @bp.route('/<int:entidad_id>/autorizados/<int:aut_id>/restaurar', methods=['POST'])
@@ -481,4 +481,4 @@ def restaurar_autorizacion(entidad_id, aut_id):
     if is_xhr:
         return jsonify({'ok': True, 'message': f'Autorización de "{aut.autorizado.nombre_completo}" restaurada.'})
     flash(f'Autorización de "{aut.autorizado.nombre_completo}" restaurada.', 'success')
-    return redirect(url_for('entidades.detalle', entidad_id=entidad_id))
+    return redirect(url_for('entidades.index', sel=entidad_id))

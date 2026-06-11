@@ -146,7 +146,7 @@ def buscar_entidades():
             'id': e.id,
             'label': e.nombre_completo,
             'breadcrumb': e.nif or '',
-            'url': url_for('entidades.detalle', entidad_id=e.id),
+            'url': url_for('entidades.index', sel=e.id),
         }
         for e in entidades
     ]
