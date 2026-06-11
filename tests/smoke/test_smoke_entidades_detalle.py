@@ -20,3 +20,17 @@ def test_entidad_fragmento_render(usuario_supervisor, entidad_seed):
     r = usuario_supervisor.get(f'/entidades/{entidad_seed}/fragmento')
     assert r.status_code == 200
     assert b'Identificaci' in r.data
+
+
+def test_entidad_editar_fragmento_render(usuario_supervisor, entidad_seed):
+    """GET /entidades/<id>/editar-fragmento → 200 con formulario de edición."""
+    r = usuario_supervisor.get(f'/entidades/{entidad_seed}/editar-fragmento')
+    assert r.status_code == 200
+    assert b'nombre_completo' in r.data
+
+
+def test_entidad_editar_get_redirige(usuario_supervisor, entidad_seed):
+    """GET /entidades/<id>/editar redirige al listado con sel= (ADR-023 §9)."""
+    r = usuario_supervisor.get(f'/entidades/{entidad_seed}/editar')
+    assert r.status_code == 302
+    assert f'sel={entidad_seed}' in r.location

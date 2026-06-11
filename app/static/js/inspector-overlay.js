@@ -23,9 +23,11 @@
   var MIN_WIDTH = 320;
 
   var _selId        = null;
-  var _lastCache    = null;  // { selId, html } — retención del último fragmento
+  var _lastCache    = null;  // { selId, html } — retención del último fragmento de lectura
+  var _editCache    = null;  // { selId, html } — caché del fragmento de edición
   var _lastFragUrl  = null;  // última fragmentUrl usada (para refresh)
   var _locked       = false;
+  var _formDirty    = false;
 
   // ── Accesores DOM ─────────────────────────────────────────────────────────
 
@@ -55,7 +57,8 @@
       shell.classList.remove('is-inspector-open');
       shell.classList.remove('is-inspector-locked');
     }
-    _locked = false;
+    _locked    = false;
+    _formDirty = false;
   }
 
   // ── API pública ───────────────────────────────────────────────────────────
@@ -69,7 +72,9 @@
     var isSameId  = wasOpen && _selId === selId;
     var eventName = wasOpen ? 'inspector:swapped' : 'inspector:opened';
 
-    _selId = selId;
+    _selId     = selId;
+    _formDirty = false;
+    _editCache = null;
 
     if (fragmentUrl) {
       _lastFragUrl = fragmentUrl;
@@ -125,7 +130,8 @@
   function _loadFragment(url, selId) {
     var body = getBody();
     if (!body) return;
-    body.innerHTML = '<div class="p-3 text-muted small">Cargando…</div>';
+    // No limpiar el body antes del fetch: el contenido anterior permanece
+    // visible hasta que llega el nuevo (evita flash blanco en swap y en editar).
     fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
       .then(function (r) {
         if (!r.ok) throw new Error('HTTP ' + r.status);
@@ -142,6 +148,35 @@
         if (_selId !== selId) return;
         var b = getBody();
         if (b) b.innerHTML = '<div class="p-3 text-danger small">No se pudo cargar el detalle.</div>';
+      });
+  }
+
+  // ── Carga de fragmento de edición (sin borrar body hasta que llegue) ─────
+
+  function _loadEditFragment(url, selId) {
+    var body = getBody();
+    if (!body) return;
+    // Caché hit: instantáneo, sin flash
+    if (_editCache && _editCache.selId === selId) {
+      body.innerHTML = _editCache.html;
+      return;
+    }
+    // Caché miss: fetch; mantener contenido actual hasta que llegue
+    fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+      .then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.text();
+      })
+      .then(function (html) {
+        if (_selId !== selId) return;
+        _editCache = { selId: selId, html: html };
+        var b = getBody();
+        if (b) b.innerHTML = html;
+      })
+      .catch(function () {
+        if (_selId !== selId) return;
+        var b = getBody();
+        if (b) b.innerHTML = '<div class="p-3 text-danger small">No se pudo cargar el formulario.</div>';
       });
   }
 
@@ -163,7 +198,37 @@
     if (e.key === 'Escape' && isOpen() && !_locked) close();
   });
 
-  // Botón de cierre del panel
+  // ── Restaurar fragmento de lectura desde caché (sin flash) ──────────────
+
+  function _restoreReadFragment() {
+    var body = getBody();
+    if (!body) return;
+    if (_lastCache && _lastCache.selId === _selId) {
+      body.innerHTML = _lastCache.html;
+    } else {
+      refresh();  // fallback: refetch si la caché no está
+    }
+  }
+
+  // ── Errores de formulario inline ─────────────────────────────────────────
+
+  function _showFormErrors(form, errors) {
+    var box = form ? form.querySelector('#inspector-form-errors') : null;
+    if (!box) return;
+    if (!errors || errors.length === 0) {
+      box.style.display = 'none';
+      box.innerHTML = '';
+    } else {
+      box.innerHTML = errors.map(function (msg) {
+        return '<div>' + msg + '</div>';
+      }).join('');
+      box.style.display = '';
+      box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }
+
+  // ── Botón cierre, editar y cancelar edición ───────────────────────────────
+
   document.addEventListener('click', function (e) {
     if (e.target.closest('[data-app-inspector-close]')) {
       close();
@@ -171,9 +236,80 @@
     }
     // Clic en backdrop con lock activo → aviso
     if (_locked && e.target.closest('[data-inspector-backdrop]')) {
-      if (window.showToast) {
-        window.showToast('Estás editando este elemento — Guarda o cancela primero.', 'warning');
+      if (window.mostrar_toast) {
+        window.mostrar_toast('warning', 'Estás editando este elemento — Guarda o cancela primero.');
       }
+      return;
+    }
+    // Botón "Editar" del fragmento de lectura
+    var editBtn = e.target.closest('[data-inspector-edit]');
+    if (editBtn) {
+      var editUrl = editBtn.dataset.editUrl;
+      if (editUrl) {
+        _loadEditFragment(editUrl, _selId);
+        setLocked(true);
+        _formDirty = false;
+      }
+      return;
+    }
+    // Botón "Cancelar" del formulario de edición
+    if (e.target.closest('[data-inspector-cancel-edit]')) {
+      setLocked(false);
+      _formDirty = false;
+      _restoreReadFragment();
+      return;
+    }
+  });
+
+  // ── Submit del formulario de edición (interceptado via XHR) ──────────────
+
+  document.addEventListener('submit', function (e) {
+    var form = e.target.closest('form[data-inspector-form]');
+    if (!form) return;
+    e.preventDefault();
+    var action = form.dataset.action || form.action;
+    var data   = new FormData(form);
+    fetch(action, {
+      method:  'POST',
+      headers: { 'X-Requested-With': 'XMLHttpRequest' },
+      body:    data,
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (json) {
+        if (json.ok) {
+          _formDirty = false;
+          setLocked(false);
+          _lastCache = null;   // invalida retención para forzar refetch de lectura
+          _editCache = null;   // invalida caché de edición (datos cambiaron)
+          refresh();
+          if (window.mostrar_toast) {
+            window.mostrar_toast('success', json.message || 'Guardado correctamente.');
+          }
+        } else {
+          _showFormErrors(form, json.errors || []);
+        }
+      })
+      .catch(function () {
+        if (window.mostrar_toast) {
+          window.mostrar_toast('danger', 'Error al guardar. Inténtalo de nuevo.');
+        }
+      });
+  });
+
+  // ── Seguimiento de cambios en el formulario (dirty) ───────────────────────
+
+  document.addEventListener('change', function (e) {
+    if (e.target.closest('form[data-inspector-form]')) {
+      _formDirty = true;
+    }
+  });
+
+  // ── beforeunload cuando hay cambios sin guardar ───────────────────────────
+
+  window.addEventListener('beforeunload', function (e) {
+    if (_locked && _formDirty) {
+      e.preventDefault();
+      e.returnValue = '';
     }
   });
 

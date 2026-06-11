@@ -6,18 +6,19 @@ RUTAS:
     POST /entidades/nueva                              → crear entidad
     GET  /entidades/<id>                               → redirect a /entidades/?sel=<id> (ADR-023 #534)
     GET  /entidades/<id>/fragmento                     → parcial lectura para el inspector (ADR-023 #534)
-    GET  /entidades/<id>/editar                        → edición V4 mismo template (#135)
-    POST /entidades/<id>/editar                        → guardar cambios entidad (#135)
+    GET  /entidades/<id>/editar-fragmento              → parcial edición para el inspector (ADR-023 §5 #534)
+    GET  /entidades/<id>/editar                        → redirect a /entidades/?sel=<id> (ADR-023 #534)
+    POST /entidades/<id>/editar                        → guardar cambios; JSON si XHR, redirect si no (#534)
     POST /entidades/<id>/direcciones/nueva             → añadir dirección de notificación (#136)
     POST /entidades/<id>/direcciones/<dir_id>/editar   → editar dirección (#136)
     POST /entidades/<id>/direcciones/<dir_id>/toggle   → activar/desactivar dirección (#136)
 
-VERSIÓN: 1.3
+VERSIÓN: 1.4
 FECHA: 2026-06-11
 ISSUE: #534
 """
 
-from flask import Blueprint, render_template, request, redirect, url_for, flash
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
 from flask_login import login_required
 from app import db
 from app.models.entidad import Entidad
@@ -133,24 +134,26 @@ def fragmento(entidad_id):
     )
 
 
+@bp.route('/<int:entidad_id>/editar-fragmento')
+@login_required
+def editar_fragmento(entidad_id):
+    """Fragmento HTML de edición para el inspector (ADR-023 §5 / #534)."""
+    entidad = Entidad.query.get_or_404(entidad_id)
+    return render_template('entidades/_editar_fragmento.html', entidad=entidad)
+
+
 @bp.route('/<int:entidad_id>/editar', methods=['GET', 'POST'])
 @login_required
 def editar(entidad_id):
-    """Edición de entidad — patrón V4 mismo template con modo='editar' (#135)."""
+    """Edición de entidad (ADR-023 §5 / #534).
+
+    GET  → redirect al listado con inspector abierto (ya no es página).
+    POST → JSON si X-Requested-With:XMLHttpRequest; redirect si no (fallback).
+    """
     entidad = Entidad.query.get_or_404(entidad_id)
 
     if request.method == 'GET':
-        autorizaciones = []
-        if entidad.rol_titular:
-            autorizaciones = AutorizadoTitular.obtener_autorizados_de_titular(
-                entidad_id, solo_activos=False
-            )
-        return render_template(
-            'entidades/detalle.html',
-            entidad=entidad,
-            autorizaciones=autorizaciones,
-            modo='editar',
-        )
+        return redirect(url_for('entidades.index', sel=entidad_id))
 
     # --- POST: recoger y validar ---
     nombre_completo = request.form.get('nombre_completo', '').strip()
@@ -180,20 +183,14 @@ def editar(entidad_id):
         if duplicado and duplicado.id != entidad_id:
             errores.append(f'Ya existe otra entidad con el NIF {nif}.')
 
+    is_xhr = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+
     if errores:
+        if is_xhr:
+            return jsonify({'ok': False, 'errors': errores})
         for msg in errores:
             flash(msg, 'danger')
-        autorizaciones = []
-        if entidad.rol_titular:
-            autorizaciones = AutorizadoTitular.obtener_autorizados_de_titular(
-                entidad_id, solo_activos=False
-            )
-        return render_template(
-            'entidades/detalle.html',
-            entidad=entidad,
-            autorizaciones=autorizaciones,
-            modo='editar',
-        )
+        return redirect(url_for('entidades.index', sel=entidad_id))
 
     # --- Actualizar ---
     entidad.nombre_completo    = nombre_completo
@@ -211,8 +208,13 @@ def editar(entidad_id):
 
     db.session.commit()
 
+    if is_xhr:
+        return jsonify({
+            'ok': True,
+            'message': f'Entidad "{entidad.nombre_completo}" actualizada correctamente.',
+        })
     flash(f'Entidad "{entidad.nombre_completo}" actualizada correctamente.', 'success')
-    return redirect(url_for('entidades.detalle', entidad_id=entidad_id))
+    return redirect(url_for('entidades.index', sel=entidad_id))
 
 
 # =============================================================================

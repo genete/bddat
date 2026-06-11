@@ -5,6 +5,14 @@
 
 <div class="p-3">
 
+<div class="d-flex justify-content-end mb-3">
+    <button type="button" class="btn btn-primary btn-sm"
+            data-inspector-edit
+            data-edit-url="{{ url_for('entidades.editar_fragmento', entidad_id=entidad.id) }}">
+        <i class="fas fa-edit me-1"></i> Editar
+    </button>
+</div>
+
 <!-- CARD 1 — Identificación -->
 <div class="card mb-3">
     <div class="card-header card-header-accent fw-semibold">
@@ -71,13 +79,15 @@
                 <label class="form-label fw-semibold small">Teléfono</label>
                 <input type="text" class="form-control form-control-sm" value="{{ entidad.telefono or '—' }}" readonly>
             </div>
-            {% if entidad.notas %}
             <div class="col-12">
                 <label class="form-label fw-semibold small">Notas</label>
+                {% if entidad.notas %}
                 <textarea class="form-control form-control-sm" rows="3" readonly
                           style="background:#fff; resize:none;">{{ entidad.notas }}</textarea>
+                {% else %}
+                <input type="text" class="form-control form-control-sm" value="—" readonly>
+                {% endif %}
             </div>
-            {% endif %}
         </div>
     </div>
 </div>
