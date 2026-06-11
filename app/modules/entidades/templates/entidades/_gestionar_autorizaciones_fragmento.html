@@ -1,0 +1,151 @@
+{# _gestionar_autorizaciones_fragmento.html — Modal grande: gestión de autorizaciones.
+   Solo para entidades con rol_titular.
+   Cargado por AppModalLarge vía GET /entidades/<id>/gestionar-autorizaciones (ADR-023 §6 / #534).
+   Submit del form interceptado por modal-large.js (data-modal-form → XHR → JSON).
+   SelectorBusqueda inicializado en el <script> del fragmento (re-ejecutado por AppModalLarge).
+   Revocar/Restaurar via fetch directo.
+#}
+
+<div class="p-3">
+
+<p class="text-secondary small mb-3">
+    Entidades que pueden actuar en nombre de <strong>{{ entidad.nombre_completo }}</strong>.
+</p>
+
+{# Formulario: nueva autorización (siempre visible — el modal es grande) #}
+<div class="card mb-3 border-primary">
+    <div class="card-header card-header-accent fw-semibold">
+        <i class="fas fa-user-plus me-1"></i> Añadir autorizado
+    </div>
+    <div class="card-body card-body-tinted">
+        <form id="gaut-form" data-modal-form method="POST"
+              action="{{ url_for('entidades.nueva_autorizacion', entidad_id=entidad.id) }}">
+            <div data-modal-errors class="alert alert-danger py-2 mb-3 small" style="display:none;"></div>
+            <div class="row g-2 align-items-end">
+                <div class="col-md-8 col-12">
+                    <label class="form-label fw-semibold small">Entidad autorizada</label>
+                    <div id="gaut-sb"></div>
+                    <input type="hidden" name="autorizado_id" id="gaut-autorizado-id">
+                    <div id="gaut-aviso" class="text-secondary small mt-1" style="display:none;">
+                        Cargando entidades...
+                    </div>
+                </div>
+                <div class="col-md-4 col-12 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary btn-sm w-100" id="gaut-btn-guardar" disabled>
+                        <i class="fas fa-save me-1"></i> Autorizar
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+{# Tabla de autorizaciones #}
+{% if autorizaciones %}
+<table class="table table-sm table-hover table-embedded">
+    <thead class="table-light">
+        <tr>
+            <th>Entidad autorizada</th>
+            <th>NIF</th>
+            <th>Alta</th>
+            <th>Estado</th>
+            <th class="text-end">Acciones</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for aut in autorizaciones %}
+        <tr class="{% if not aut.activo %}text-secondary{% endif %}">
+            <td>{{ aut.autorizado.nombre_completo }}</td>
+            <td>{{ aut.autorizado.nif or '—' }}</td>
+            <td>{{ aut.created_at.strftime('%d/%m/%Y') }}</td>
+            <td>
+                {% if aut.activo %}
+                    <span class="badge bg-success">Activa</span>
+                {% else %}
+                    <span class="badge bg-secondary">Revocada</span>
+                {% endif %}
+            </td>
+            <td class="text-end">
+                {% if aut.activo %}
+                <button type="button"
+                        class="btn btn-sm btn-outline-warning"
+                        data-toggle-url="{{ url_for('entidades.revocar_autorizacion', entidad_id=entidad.id, aut_id=aut.id) }}"
+                        data-toggle-confirm="¿Revocar la autorización de {{ aut.autorizado.nombre_completo }}?"
+                        title="Revocar">
+                    <i class="fas fa-ban"></i>
+                </button>
+                {% else %}
+                <button type="button"
+                        class="btn btn-sm btn-outline-success"
+                        data-toggle-url="{{ url_for('entidades.restaurar_autorizacion', entidad_id=entidad.id, aut_id=aut.id) }}"
+                        data-toggle-confirm="¿Restaurar la autorización de {{ aut.autorizado.nombre_completo }}?"
+                        title="Restaurar">
+                    <i class="fas fa-redo"></i>
+                </button>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p class="text-secondary mb-0 p-2">
+    <i class="fas fa-info-circle me-1"></i> Sin autorizaciones registradas.
+</p>
+{% endif %}
+
+</div>{# /p-3 #}
+
+<script>
+(function () {
+    var URL_CANDIDATOS = {{ url_for('api_entidades.candidatos_autorizacion', titular_id=entidad.id) | tojson }};
+
+    // SelectorBusqueda para elegir entidad autorizada
+    var selAut = new SelectorBusqueda('#gaut-sb', [], {
+        placeholder: '— Buscar entidad —',
+        name: '_gaut_sel',
+        onChange: function (v) {
+            document.getElementById('gaut-autorizado-id').value = v;
+            document.getElementById('gaut-btn-guardar').disabled = !v;
+        }
+    });
+
+    // Cargar candidatos al montar el fragmento
+    var aviso = document.getElementById('gaut-aviso');
+    aviso.style.display = 'block';
+    fetch(URL_CANDIDATOS, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        .then(function (r) { return r.json(); })
+        .then(function (json) {
+            aviso.style.display = 'none';
+            if (json.data && json.data.length) {
+                selAut.setOpciones(json.data);
+            } else {
+                aviso.textContent = 'No hay entidades disponibles para autorizar.';
+                aviso.style.display = 'block';
+            }
+        })
+        .catch(function () {
+            aviso.textContent = 'Error al cargar entidades.';
+            aviso.style.display = 'block';
+        });
+
+    // Toggle revocar / restaurar
+    document.querySelectorAll('[data-toggle-url]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            if (!confirm(btn.dataset.toggleConfirm || '¿Confirmar?')) return;
+            fetch(btn.dataset.toggleUrl, {
+                method:  'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            })
+            .then(function (r) { return r.json(); })
+            .then(function (json) {
+                if (json.ok && window.mostrar_toast) window.mostrar_toast('success', json.message || 'Actualizado.');
+                if (window.AppModalLarge) window.AppModalLarge.refresh();
+            })
+            .catch(function () {
+                if (window.mostrar_toast) window.mostrar_toast('danger', 'Error al actualizar.');
+            });
+        });
+    });
+})();
+</script>

@@ -40,6 +40,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/v2-layout.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/v2-components.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/selector_busqueda.css') }}">
 
   {% block extra_css %}{% endblock %}
 </head>
@@ -136,7 +137,9 @@
 
   <script src="https://cdn.juntadeandalucia.es/components/sass/1.2.5/js/bootstrap.bundle.min.js"></script>
   <script src="{{ url_for('static', filename='js/app-shell.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/selector_busqueda.js') }}"></script>
   <script src="{{ url_for('static', filename='js/inspector-overlay.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/modal-large.js') }}"></script>
   <script src="{{ url_for('static', filename='js/dock-buffer.js') }}"></script>
   <script src="{{ url_for('static', filename='js/toast.js') }}"></script>
 

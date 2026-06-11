@@ -1,0 +1,260 @@
+{# _gestionar_direcciones_fragmento.html — Modal grande: gestión de direcciones de notificación.
+   Cargado por AppModalLarge vía GET /entidades/<id>/gestionar-direcciones (ADR-023 §6 / #534).
+   Submit del form interceptado por modal-large.js (data-modal-form → XHR → JSON).
+   Toggle activar/desactivar via fetch directo desde el <script> del fragmento.
+#}
+
+<div class="p-3">
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <span class="text-secondary small">
+        {{ entidad.direcciones_notificacion | length }}
+        dirección{{ 'es' if entidad.direcciones_notificacion | length != 1 else '' }} registrada{{ 's' if entidad.direcciones_notificacion | length != 1 else '' }}
+    </span>
+    <button type="button" class="btn btn-sm btn-outline-primary" id="gdir-btn-nueva">
+        <i class="fas fa-plus me-1"></i> Nueva dirección
+    </button>
+</div>
+
+{# Formulario inline alta / edición — oculto por defecto #}
+<div id="gdir-form-wrap" class="card mb-3 border-primary" style="display:none;">
+    <div class="card-header card-header-accent fw-semibold d-flex justify-content-between align-items-center">
+        <span id="gdir-form-titulo"><i class="fas fa-bell me-1"></i> Nueva dirección de notificación</span>
+        <button type="button" class="btn-close btn-close-white" id="gdir-btn-cancelar" aria-label="Cancelar"></button>
+    </div>
+    <div class="card-body card-body-tinted">
+        <form id="gdir-form" data-modal-form method="POST"
+              action="{{ url_for('entidades.nueva_direccion', entidad_id=entidad.id) }}">
+            <div data-modal-errors class="alert alert-danger py-2 mb-3 small" style="display:none;"></div>
+            <div class="row g-2">
+
+                <div class="col-12">
+                    <label class="form-label fw-semibold small" for="gdir_descripcion">Descripción</label>
+                    <input type="text" class="form-control form-control-sm" id="gdir_descripcion" name="descripcion"
+                           placeholder="Ej: Sede Central, Delegación Sur...">
+                </div>
+
+                <div class="col-12">
+                    <label class="form-label fw-semibold small">Roles</label>
+                    <div class="d-flex gap-4 flex-wrap">
+                        {% if entidad.rol_titular %}
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="gdir_rol_titular" name="rol_titular">
+                            <label class="form-check-label small" for="gdir_rol_titular">Titular</label>
+                        </div>
+                        {% endif %}
+                        {% if entidad.rol_consultado %}
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="gdir_rol_consultado" name="rol_consultado">
+                            <label class="form-check-label small" for="gdir_rol_consultado">Consultado</label>
+                        </div>
+                        {% endif %}
+                        {% if entidad.rol_publicador %}
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="gdir_rol_publicador" name="rol_publicador">
+                            <label class="form-check-label small" for="gdir_rol_publicador">Publicador</label>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="col-md-6 col-12">
+                    <label class="form-label fw-semibold small" for="gdir_email">Email</label>
+                    <input type="email" class="form-control form-control-sm" id="gdir_email" name="email"
+                           placeholder="notificaciones@ejemplo.es">
+                </div>
+                <div class="col-md-3 col-6">
+                    <label class="form-label fw-semibold small" for="gdir_telefono">Teléfono</label>
+                    <input type="text" class="form-control form-control-sm" id="gdir_telefono" name="telefono"
+                           placeholder="958 000 000">
+                </div>
+
+                <div class="col-md-8 col-12">
+                    <label class="form-label fw-semibold small" for="gdir_direccion">Dirección postal</label>
+                    <input type="text" class="form-control form-control-sm" id="gdir_direccion" name="direccion"
+                           placeholder="Calle, número, piso...">
+                </div>
+                <div class="col-md-2 col-4">
+                    <label class="form-label fw-semibold small" for="gdir_cp">CP</label>
+                    <input type="text" class="form-control form-control-sm" id="gdir_cp" name="codigo_postal"
+                           maxlength="10" placeholder="18001">
+                </div>
+
+                <div class="col-12">
+                    <label class="form-label fw-semibold small" for="gdir_fallback">
+                        Dirección libre
+                        <span class="text-secondary fw-normal">(extranjero / casos especiales)</span>
+                    </label>
+                    <input type="text" class="form-control form-control-sm" id="gdir_fallback" name="direccion_fallback"
+                           placeholder="Dirección completa en texto libre...">
+                </div>
+
+                <div class="col-12">
+                    <label class="form-label fw-semibold small" for="gdir_notas">Notas</label>
+                    <textarea class="form-control form-control-sm" id="gdir_notas" name="notas" rows="2"
+                              placeholder="Observaciones sobre esta dirección..."></textarea>
+                </div>
+
+            </div>
+            <div class="d-flex justify-content-end gap-2 mt-3">
+                <button type="button" class="btn btn-outline-secondary btn-sm" id="gdir-btn-cancelar2">
+                    <i class="fas fa-times me-1"></i> Cancelar
+                </button>
+                <button type="submit" class="btn btn-primary btn-sm">
+                    <i class="fas fa-save me-1"></i> Guardar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{# Tabla de direcciones #}
+{% if entidad.direcciones_notificacion %}
+<table class="table table-sm table-hover table-embedded">
+    <thead class="table-light">
+        <tr>
+            <th>Descripción</th>
+            <th>Roles</th>
+            <th>Email</th>
+            <th>Dirección</th>
+            <th>Estado</th>
+            <th class="text-end">Acciones</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for d in entidad.direcciones_notificacion %}
+        <tr class="{% if not d.activo %}text-secondary{% endif %}">
+            <td>{{ d.descripcion or '—' }}</td>
+            <td>
+                {% if d.es_titular %}<span class="badge bg-success">Titular</span>{% endif %}
+                {% if d.es_consultado %}<span class="badge bg-info text-dark">Consultado</span>{% endif %}
+                {% if d.es_publicador %}<span class="badge bg-warning text-dark">Publicador</span>{% endif %}
+            </td>
+            <td>
+                {% if d.email %}<a href="mailto:{{ d.email }}">{{ d.email }}</a>{% else %}—{% endif %}
+            </td>
+            <td class="small">
+                {% set df = d.direccion_formateada() %}
+                {% if df.linea1 %}{{ df.linea1 }}{% if df.linea2 %}, {{ df.linea2 }}{% endif %}{% else %}—{% endif %}
+            </td>
+            <td>
+                {% if d.activo %}
+                    <span class="badge bg-success">Activa</span>
+                {% else %}
+                    <span class="badge bg-secondary">Inactiva</span>
+                {% endif %}
+            </td>
+            <td class="text-end text-nowrap">
+                <button type="button"
+                        class="btn btn-sm btn-outline-secondary gdir-edit-btn"
+                        data-edit-url="{{ url_for('entidades.editar_direccion', entidad_id=entidad.id, dir_id=d.id) }}"
+                        data-descripcion="{{ d.descripcion or '' }}"
+                        data-email="{{ d.email or '' }}"
+                        data-telefono="{{ d.telefono or '' }}"
+                        data-direccion="{{ d.direccion or '' }}"
+                        data-codigo-postal="{{ d.codigo_postal or '' }}"
+                        data-direccion-fallback="{{ d.direccion_fallback or '' }}"
+                        data-notas="{{ d.notas or '' }}"
+                        data-rol-titular="{{ '1' if d.es_titular else '0' }}"
+                        data-rol-consultado="{{ '1' if d.es_consultado else '0' }}"
+                        data-rol-publicador="{{ '1' if d.es_publicador else '0' }}"
+                        title="Editar">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button type="button"
+                        class="btn btn-sm {{ 'btn-outline-warning' if d.activo else 'btn-outline-success' }}"
+                        data-toggle-url="{{ url_for('entidades.toggle_direccion', entidad_id=entidad.id, dir_id=d.id) }}"
+                        data-toggle-confirm="{{ '¿Desactivar' if d.activo else '¿Activar' }} esta dirección de notificación?"
+                        title="{{ 'Desactivar' if d.activo else 'Activar' }}">
+                    <i class="fas fa-{{ 'ban' if d.activo else 'check' }}"></i>
+                </button>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p class="text-secondary mb-0 p-2">
+    <i class="fas fa-info-circle me-1"></i> Sin direcciones de notificación registradas.
+</p>
+{% endif %}
+
+</div>{# /p-3 #}
+
+<script>
+(function () {
+    var URL_NUEVA = {{ url_for('entidades.nueva_direccion', entidad_id=entidad.id) | tojson }};
+    var formWrap  = document.getElementById('gdir-form-wrap');
+    var formEl    = document.getElementById('gdir-form');
+    var formTit   = document.getElementById('gdir-form-titulo');
+    var btnNueva  = document.getElementById('gdir-btn-nueva');
+
+    function mostrar() {
+        formWrap.style.display = '';
+        btnNueva.style.display = 'none';
+        formWrap.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function ocultar() {
+        formWrap.style.display = 'none';
+        btnNueva.style.display = '';
+        formEl.reset();
+        var errBox = formEl.querySelector('[data-modal-errors]');
+        if (errBox) { errBox.style.display = 'none'; errBox.innerHTML = ''; }
+    }
+
+    btnNueva.addEventListener('click', function () {
+        formTit.innerHTML = '<i class="fas fa-bell me-1"></i> Nueva dirección de notificación';
+        formEl.action = URL_NUEVA;
+        formEl.reset();
+        mostrar();
+    });
+
+    document.getElementById('gdir-btn-cancelar').addEventListener('click', ocultar);
+    document.getElementById('gdir-btn-cancelar2').addEventListener('click', ocultar);
+
+    // Botones editar por fila
+    document.querySelectorAll('.gdir-edit-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            formTit.innerHTML = '<i class="fas fa-edit me-1"></i> Editar dirección de notificación';
+            formEl.action = btn.dataset.editUrl;
+
+            document.getElementById('gdir_descripcion').value = btn.dataset.descripcion || '';
+            document.getElementById('gdir_email').value       = btn.dataset.email        || '';
+            document.getElementById('gdir_telefono').value    = btn.dataset.telefono     || '';
+            document.getElementById('gdir_direccion').value   = btn.dataset.direccion    || '';
+            document.getElementById('gdir_cp').value          = btn.dataset.codigoPostal || '';
+            document.getElementById('gdir_fallback').value    = btn.dataset.direccionFallback || '';
+            document.getElementById('gdir_notas').value       = btn.dataset.notas        || '';
+
+            var chkT = document.getElementById('gdir_rol_titular');
+            var chkC = document.getElementById('gdir_rol_consultado');
+            var chkP = document.getElementById('gdir_rol_publicador');
+            if (chkT) chkT.checked = btn.dataset.rolTitular    === '1';
+            if (chkC) chkC.checked = btn.dataset.rolConsultado === '1';
+            if (chkP) chkP.checked = btn.dataset.rolPublicador === '1';
+
+            mostrar();
+        });
+    });
+
+    // Toggle activar / desactivar
+    document.querySelectorAll('[data-toggle-url]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            if (!confirm(btn.dataset.toggleConfirm || '¿Confirmar?')) return;
+            fetch(btn.dataset.toggleUrl, {
+                method:  'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            })
+            .then(function (r) { return r.json(); })
+            .then(function (json) {
+                if (json.ok && window.mostrar_toast) window.mostrar_toast('success', json.message || 'Actualizado.');
+                if (window.AppModalLarge) window.AppModalLarge.refresh();
+            })
+            .catch(function () {
+                if (window.mostrar_toast) window.mostrar_toast('danger', 'Error al actualizar.');
+            });
+        });
+    });
+})();
+</script>

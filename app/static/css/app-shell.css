@@ -532,6 +532,34 @@
 }
 
 /* ============================================================
+   MODAL GRANDE — overlay de shell para gestión compleja (ADR-023 §6 / #534)
+   Casi pantalla completa con margen; z-index por encima del inspector (60).
+   Bootstrap gestiona el z-index del modal (1055+); aquí controlamos tamaño.
+   ============================================================ */
+
+.modal-app-xl .modal-dialog {
+  max-width: calc(100vw - 3rem);
+  width:     calc(100vw - 3rem);
+  margin:    1.5rem auto;
+  /* Estirar hasta llenar la altura disponible */
+  min-height: calc(100% - 3rem);
+  display: flex;
+  align-items: stretch;
+}
+
+.modal-app-xl .modal-content {
+  flex: 1;
+  max-height: calc(100vh - 3rem);
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-app-xl .modal-body {
+  overflow-y: auto;
+  flex: 1 1 auto;
+}
+
+/* ============================================================
    DOCK — panel inferior opcional (240px)
    ============================================================ */
 

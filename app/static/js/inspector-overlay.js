@@ -184,6 +184,8 @@
 
   document.addEventListener('pointerdown', function (e) {
     if (!isOpen() || _locked) return;
+    // Mientras hay un modal Bootstrap abierto encima, no hacer light-dismiss
+    if (document.querySelector('.modal.show')) return;
     var aside = getAside();
     if (!aside || aside.contains(e.target)) return;
     // Las islas React gestionan su propia selección; no cerrar desde aquí
@@ -239,6 +241,12 @@
       if (window.mostrar_toast) {
         window.mostrar_toast('warning', 'Estás editando este elemento — Guarda o cancela primero.');
       }
+      return;
+    }
+    // Botón "Gestionar…" del fragmento de lectura → abre modal grande
+    var modalBtn = e.target.closest('[data-modal-large-url]');
+    if (modalBtn && window.AppModalLarge) {
+      AppModalLarge.open(modalBtn.dataset.modalLargeUrl, { title: modalBtn.dataset.modalLargeTitle || '' });
       return;
     }
     // Botón "Editar" del fragmento de lectura
