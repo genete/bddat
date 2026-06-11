@@ -1,0 +1,211 @@
+{# _detalle_fragmento.html — Parcial de lectura para el inspector (ADR-023 §9 / #534).
+   No extiende base_app.html. Inyectado vía AppInspector.open({ fragmentUrl }).
+   Fase 2: solo lectura. Botón "Editar" (Fase 3), "Gestionar…" (Fase 4).
+#}
+
+<div class="p-3">
+
+<!-- CARD 1 — Identificación -->
+<div class="card mb-3">
+    <div class="card-header card-header-accent fw-semibold">
+        <i class="fas fa-id-card me-1"></i> Identificación
+    </div>
+    <div class="card-body card-body-tinted">
+        <div class="row g-2">
+            <div class="col-12">
+                <label class="form-label fw-semibold small">Nombre / Razón social</label>
+                <input type="text" class="form-control form-control-sm" value="{{ entidad.nombre_completo }}" readonly>
+            </div>
+            <div class="col-6">
+                <label class="form-label fw-semibold small">NIF</label>
+                <input type="text" class="form-control form-control-sm" value="{{ entidad.nif or '—' }}" readonly>
+            </div>
+            <div class="col-3">
+                <label class="form-label fw-semibold small">Estado</label>
+                <div class="form-control form-control-sm d-flex align-items-center gap-2"
+                     style="background:#fff; pointer-events:none;">
+                    {% if entidad.activo %}
+                        <i class="fas fa-check-circle text-success"></i> Activa
+                    {% else %}
+                        <i class="fas fa-times-circle text-danger"></i> Inactiva
+                    {% endif %}
+                </div>
+            </div>
+            <div class="col-3">
+                <label class="form-label fw-semibold small">Roles</label>
+                <div class="form-control form-control-sm d-flex align-items-center gap-1 flex-wrap"
+                     style="background:#fff; min-height:31px; pointer-events:none;">
+                    {% if entidad.rol_titular %}
+                        <span class="badge bg-success">Titular</span>
+                    {% endif %}
+                    {% if entidad.rol_consultado %}
+                        <span class="badge bg-info text-dark">Consultado</span>
+                    {% endif %}
+                    {% if entidad.rol_publicador %}
+                        <span class="badge bg-warning text-dark">Publicador</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- CARD 2 — Contacto -->
+<div class="card mb-3">
+    <div class="card-header card-header-accent fw-semibold">
+        <i class="fas fa-envelope me-1"></i> Contacto
+    </div>
+    <div class="card-body card-body-tinted">
+        <div class="row g-2">
+            <div class="col-6">
+                <label class="form-label fw-semibold small">Email</label>
+                {% if entidad.email %}
+                <div class="form-control form-control-sm" style="background:#fff; pointer-events:none;">
+                    <a href="mailto:{{ entidad.email }}" style="pointer-events:auto;">{{ entidad.email }}</a>
+                </div>
+                {% else %}
+                <input type="text" class="form-control form-control-sm" value="—" readonly>
+                {% endif %}
+            </div>
+            <div class="col-6">
+                <label class="form-label fw-semibold small">Teléfono</label>
+                <input type="text" class="form-control form-control-sm" value="{{ entidad.telefono or '—' }}" readonly>
+            </div>
+            {% if entidad.notas %}
+            <div class="col-12">
+                <label class="form-label fw-semibold small">Notas</label>
+                <textarea class="form-control form-control-sm" rows="3" readonly
+                          style="background:#fff; resize:none;">{{ entidad.notas }}</textarea>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- CARD 3 — Dirección (solo si hay datos) -->
+{% set dir = entidad.direccion_formateada() %}
+{% if dir.linea1 or dir.linea2 %}
+<div class="card mb-3">
+    <div class="card-header card-header-accent fw-semibold">
+        <i class="fas fa-map-marker-alt me-1"></i> Dirección
+    </div>
+    <div class="card-body card-body-tinted">
+        <div class="row g-2">
+            <div class="col-8">
+                <label class="form-label fw-semibold small">Calle / Dirección</label>
+                <input type="text" class="form-control form-control-sm" value="{{ dir.linea1 or '—' }}" readonly>
+            </div>
+            <div class="col-4">
+                <label class="form-label fw-semibold small">CP y Municipio</label>
+                <input type="text" class="form-control form-control-sm" value="{{ dir.linea2 or '—' }}" readonly>
+            </div>
+            {% if dir.provincia %}
+            <div class="col-12">
+                <label class="form-label fw-semibold small">Provincia</label>
+                <input type="text" class="form-control form-control-sm" value="{{ dir.provincia }}" readonly>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- CARD 4 — Direcciones de notificación -->
+<div class="card mb-3">
+    <div class="card-header card-header-accent fw-semibold">
+        <i class="fas fa-bell me-1"></i> Direcciones de notificación
+    </div>
+    <div class="card-body p-0">
+        {% if entidad.direcciones_notificacion %}
+        <table class="table table-sm table-hover table-embedded">
+            <thead class="table-light">
+                <tr>
+                    <th>Descripción</th>
+                    <th>Roles</th>
+                    <th>Email</th>
+                    <th>Estado</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for d in entidad.direcciones_notificacion %}
+                <tr class="{% if not d.activo %}text-secondary{% endif %}">
+                    <td>{{ d.descripcion or '—' }}</td>
+                    <td>
+                        {% if d.es_titular %}
+                            <span class="badge bg-success">Titular</span>
+                        {% endif %}
+                        {% if d.es_consultado %}
+                            <span class="badge bg-info text-dark">Consultado</span>
+                        {% endif %}
+                        {% if d.es_publicador %}
+                            <span class="badge bg-warning text-dark">Publicador</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if d.email %}
+                            <a href="mailto:{{ d.email }}">{{ d.email }}</a>
+                        {% else %}—{% endif %}
+                    </td>
+                    <td>
+                        {% if d.activo %}
+                            <span class="badge bg-success">Activa</span>
+                        {% else %}
+                            <span class="badge bg-secondary">Inactiva</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="text-secondary mb-0 p-3">
+            <i class="fas fa-info-circle me-1"></i> Sin direcciones de notificación registradas.
+        </p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- CARD 5 — Autorizaciones (solo si es titular) -->
+{% if entidad.rol_titular %}
+<div class="card mb-3">
+    <div class="card-header card-header-accent fw-semibold">
+        <i class="fas fa-user-check me-1"></i> Autorizaciones
+    </div>
+    <div class="card-body p-0">
+        {% if autorizaciones %}
+        <table class="table table-sm table-hover table-embedded">
+            <thead class="table-light">
+                <tr>
+                    <th>Entidad autorizada</th>
+                    <th>NIF</th>
+                    <th>Alta</th>
+                    <th>Estado</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for aut in autorizaciones %}
+                <tr class="{% if not aut.activo %}text-secondary{% endif %}">
+                    <td>{{ aut.autorizado.nombre_completo }}</td>
+                    <td>{{ aut.autorizado.nif or '—' }}</td>
+                    <td>{{ aut.created_at.strftime('%d/%m/%Y') }}</td>
+                    <td>
+                        {% if aut.activo %}
+                            <span class="badge bg-success">Activa</span>
+                        {% else %}
+                            <span class="badge bg-secondary">Revocada</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="text-secondary mb-0 p-3">
+            <i class="fas fa-info-circle me-1"></i> Sin autorizaciones registradas.
+        </p>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+</div>{# /p-3 #}

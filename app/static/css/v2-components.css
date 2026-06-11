@@ -150,6 +150,16 @@
   background-color: var(--primary-lighter);
 }
 
+.lista-table tbody tr.is-selectable {
+  cursor: pointer;
+}
+
+/* Estado seleccionado: más intenso que el hover (--primary-lighter) */
+.lista-table tbody tr.is-selected,
+.lista-table tbody tr.is-selected:hover {
+  background-color: rgba(var(--bs-primary-rgb), 0.15);
+}
+
 .lista-table tbody tr:last-child td {
   border-bottom: none;
 }

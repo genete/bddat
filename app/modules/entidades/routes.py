@@ -4,16 +4,17 @@ RUTAS:
     GET  /entidades/                                   → listado (shell V2, datos vía API)
     GET  /entidades/nueva                              → formulario nueva entidad
     POST /entidades/nueva                              → crear entidad
-    GET  /entidades/<id>                               → detalle entidad V4 solo lectura (#134)
+    GET  /entidades/<id>                               → redirect a /entidades/?sel=<id> (ADR-023 #534)
+    GET  /entidades/<id>/fragmento                     → parcial lectura para el inspector (ADR-023 #534)
     GET  /entidades/<id>/editar                        → edición V4 mismo template (#135)
     POST /entidades/<id>/editar                        → guardar cambios entidad (#135)
     POST /entidades/<id>/direcciones/nueva             → añadir dirección de notificación (#136)
     POST /entidades/<id>/direcciones/<dir_id>/editar   → editar dirección (#136)
     POST /entidades/<id>/direcciones/<dir_id>/toggle   → activar/desactivar dirección (#136)
 
-VERSIÓN: 1.2
-FECHA: 2026-02-22
-ISSUE: #136
+VERSIÓN: 1.3
+FECHA: 2026-06-11
+ISSUE: #534
 """
 
 from flask import Blueprint, render_template, request, redirect, url_for, flash
@@ -111,21 +112,24 @@ def nueva():
 @bp.route('/<int:entidad_id>')
 @login_required
 def detalle(entidad_id):
-    """Vista detalle de entidad — patrón V4 solo lectura."""
-    entidad = Entidad.query.get_or_404(entidad_id)
+    """Redirige al listado con el inspector abierto en esa entidad (ADR-023 §9)."""
+    return redirect(url_for('entidades.index', sel=entidad_id))
 
-    # Cargar historial completo de autorizaciones si es titular
+
+@bp.route('/<int:entidad_id>/fragmento')
+@login_required
+def fragmento(entidad_id):
+    """Fragmento HTML de lectura para el inspector (ADR-023 §9 / #534)."""
+    entidad = Entidad.query.get_or_404(entidad_id)
     autorizaciones = []
     if entidad.rol_titular:
         autorizaciones = AutorizadoTitular.obtener_autorizados_de_titular(
             entidad_id, solo_activos=False
         )
-
     return render_template(
-        'entidades/detalle.html',
+        'entidades/_detalle_fragmento.html',
         entidad=entidad,
         autorizaciones=autorizaciones,
-        modo='ver',
     )
 
 
