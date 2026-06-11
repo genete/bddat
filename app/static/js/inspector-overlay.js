@@ -265,6 +265,7 @@
       setLocked(false);
       _formDirty = false;
       _restoreReadFragment();
+      if (window.mostrar_toast) window.mostrar_toast('info', 'Cambios descartados.');
       return;
     }
   });
