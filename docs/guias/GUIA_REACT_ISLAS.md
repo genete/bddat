@@ -242,6 +242,53 @@ además emite `modulepreload` de los chunks compartidos.
 
 ---
 
+## Inspector overlay desde una isla React (ADR-023)
+
+El inspector es un **overlay de shell** (`window.AppInspector`), no una columna del grid.
+Las islas React interactúan con él sin definir `{% block inspector %}` — solo notifican al
+shell cuándo abrir/cerrar y cuándo entrar/salir de edición.
+
+### Patrón de selección ↔ inspector (bidireccional)
+
+```js
+// En el effect de selección del store (p.ej. al clicar un nodo):
+AppInspector.mountReact({ selId: nodo.id, title: nodo.nombre })
+
+// Al deseleccionar (o al recibir el evento de cierre desde el panel):
+AppInspector.close()
+
+// Escuchar el cierre desde el panel (clic en ×, Escape, light-dismiss):
+document.addEventListener('inspector:closed', () => {
+  store.deseleccionar()  // coherencia bidireccional
+})
+```
+
+### Edición en el inspector
+
+```js
+// Al entrar en modo edición:
+AppInspector.setLocked(true)   // activa backdrop bloqueante
+
+// Al guardar o cancelar:
+AppInspector.setLocked(false)  // desbloquea
+AppInspector.refresh()         // si el contenido es un fragmento Jinja
+```
+
+### Slot Jinja para islas
+
+El `{% block inspector %}` sirve como punto de montaje para islas que pientan dentro
+del cuerpo del panel. La isla no necesita gestionar el `<aside>` — solo su propio
+contenedor dentro de `#app-inspector-body`.
+
+```jinja
+{% block inspector %}
+  {# La isla árbol pinta aquí su slot de detalle #}
+  <div id="arbol-inspector-slot"></div>
+{% endblock %}
+```
+
+---
+
 ## Verificación de una isla
 
 - **Backend:** smoke test que la vista responde 200 y contiene `data-react-island="..."`.
