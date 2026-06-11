@@ -84,18 +84,17 @@ No se expone en la fila del listado — la fila selecciona y abre el inspector; 
 - `ia_id` (selector instrumento ambiental)
 - `fecha` del proyecto (fecha técnica firma/visado)
 - `es_modificacion` (checkbox)
-
-#### 4.5 Variables del motor — editable ADMIN/SUPERVISOR
-
 - `sin_linea_aerea` (checkbox)
 - `max_tension_nominal_kv` (numérico)
 - `solo_suelo_urbano_urbanizable` (checkbox)
 
-#### 4.6 Municipios — solo lectura + delegación a modal
+Todos son datos del proyecto que el usuario introduce al registrar o actualizar la instalación. No se exponen como "variables del motor" — esa es una categoría interna del sistema.
+
+#### 4.5 Municipios — solo lectura + delegación a modal
 
 Lista compacta de municipios afectados + botón "Gestionar municipios" → modal grande (§5).
 
-#### 4.7 Placeholder "Instalaciones"
+#### 4.6 Placeholder "Instalaciones"
 
 Botón **desactivado** "Instalaciones" con tooltip informativo. Punto de entrada reservado para la futura vista de entidades técnicas del proyecto (isla React). Se activa cuando esa isla exista; mientras tanto es un marcador visual de que la entidad tiene esa dimensión.
 
@@ -103,7 +102,7 @@ No se muestra como "slot vacío" — es un botón con texto claro que comunica q
 
 ### 5. Modal grande — municipios (capa 3 ADR-023)
 
-`SelectorBusqueda` múltiple con búsqueda para los municipios afectados por el proyecto. Se lanza desde §4.6. Al cerrar, el inspector se refresca con la lista actualizada.
+`SelectorBusqueda` múltiple con búsqueda para los municipios afectados por el proyecto. Se lanza desde §4.5. Al cerrar, el inspector se refresca con la lista actualizada.
 
 Municipios no va en el inspector directo porque el widget de selección múltiple con búsqueda no es cómodo en el panel estrecho (contrasta con la lectura compacta de §4.6). Es el criterio de "lo que no cabe" de ADR-023 §6.
 
