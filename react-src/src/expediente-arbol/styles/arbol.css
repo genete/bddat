@@ -217,8 +217,9 @@ body.arbol-lock .app-dock {            /* .app-dock no existe en esta vista; ino
   transition: opacity .15s ease;
 }
 body.arbol-lock .app-inspector {
-  position: relative;
-  z-index: 1050;                       /* > overlay (1040), < toasts de Bootstrap (1090) */
+  /* inspector sigue position:fixed (ADR-023); solo elevamos z-index sobre el
+     overlay transparente de App.jsx (1040) para que el panel sea interaccionable */
+  z-index: 1050;
 }
 
 /* Inspector destacado mientras el lock está activo (zona interactiva). */

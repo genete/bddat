@@ -5,23 +5,23 @@
  *   - Colapsar/expandir sidebar y persistir en localStorage + cookie
  *     (cookie permite que el server renderice el estado correcto sin flash).
  *   - Abrir sidebar como overlay en mobile (<768px).
- *   - Toggle inspector / dock (persistido en localStorage).
+ *   - Toggle dock (persistido en localStorage).
  *   - Atajos: Ctrl+B colapsa sidebar; Ctrl+K enfoca buscador.
+ *
+ * Inspector: gestionado por inspector-overlay.js (ADR-023 / #534).
  *
  * Convenciones (NOMENCLATURA_LAYOUT.md):
  *   - localStorage:
  *       bddat.sidebar.collapsed (string "true"/"false")
- *       bddat.inspector.open    (string "true"/"false")
  *       bddat.dock.open         (string "true"/"false")
  *   - Cookie: bddat_sidebar_collapsed (=1 cuando colapsado)
- *   - Atributos data-app-shell-toggle="sidebar|sidebar-mobile|inspector|dock"
+ *   - Atributos data-app-shell-toggle="sidebar|sidebar-mobile|dock"
  */
 (function () {
   'use strict';
 
   var LS = {
     sidebarCollapsed: 'bddat.sidebar.collapsed',
-    inspectorOpen:    'bddat.inspector.open',
     dockOpen:         'bddat.dock.open'
   };
   var SS_BANNER   = 'bddat.banner.dismissed';
@@ -92,11 +92,10 @@
     });
   }
 
-  // -- Inspector / Dock (estado solo en localStorage — el server no lo necesita)
+  // -- Dock (estado solo en localStorage — el server no lo necesita)
+  // Inspector: gestionado por inspector-overlay.js.
 
   function applyPanelStates(shell) {
-    var insp = readLS(LS.inspectorOpen);
-    if (insp === 'false') shell.classList.add('is-inspector-closed');
     // Dock: localStorage es la fuente de verdad; la cookie es su espejo para que
     // el servidor pueda renderizar is-dock-closed en el HTML inicial y no se
     // produzca el parpadeo abrir→cerrar al cargar cada vista (#539).
@@ -125,10 +124,9 @@
     var shell = getShell();
     if (!shell) return;
     var action = btn.getAttribute('data-app-shell-toggle');
-    if (action === 'sidebar')        toggleSidebar(shell);
+    if (action === 'sidebar')             toggleSidebar(shell);
     else if (action === 'sidebar-mobile') toggleSidebarMobile(shell);
-    else if (action === 'inspector') togglePanel(shell, 'is-inspector-closed', LS.inspectorOpen);
-    else if (action === 'dock')      togglePanel(shell, 'is-dock-closed', LS.dockOpen, COOKIE_DOCK);
+    else if (action === 'dock')           togglePanel(shell, 'is-dock-closed', LS.dockOpen, COOKIE_DOCK);
   }
 
   function onKeydown(e) {

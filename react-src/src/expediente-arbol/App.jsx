@@ -64,13 +64,38 @@ export default function App() {
     escribirSeleccionURL(seleccion)
   }, [seleccion])
 
-  // Lock de la UI: al ENTRAR en edición se atenúa el chrome Jinja vía body.arbol-lock
-  // (CSS) y se monta el overlay (más abajo). Idempotente (add/remove simétricos) →
-  // resiste el doble-invoke de StrictMode en dev.
+  // Sincronizar selección con el inspector overlay (ADR-023 / #534).
+  // mountReact abre/mantiene el panel; close lo recoge al deseleccionar.
   useEffect(() => {
-    if (!enEdicion) return
-    document.body.classList.add('arbol-lock')
-    return () => document.body.classList.remove('arbol-lock')
+    if (!window.AppInspector) return
+    if (seleccion) {
+      const tipo = seleccion.tipo.charAt(0).toUpperCase() + seleccion.tipo.slice(1)
+      AppInspector.mountReact({
+        selId: `${seleccion.tipo}-${seleccion.id}`,
+        title: `${tipo} #${seleccion.id}`,
+      })
+    } else {
+      AppInspector.close()
+    }
+  }, [seleccion])
+
+  // Coherencia bidireccional: si el shell cierra el panel (botón ×, Escape, light-dismiss),
+  // deseleccionamos en el store para que el árbol refleje el estado.
+  useEffect(() => {
+    function onInspectorClosed() { seleccionar(null) }
+    document.addEventListener('inspector:closed', onInspectorClosed)
+    return () => document.removeEventListener('inspector:closed', onInspectorClosed)
+  }, [seleccionar])
+
+  // Lock de la UI: al ENTRAR en edición se atenúa el chrome Jinja vía body.arbol-lock
+  // y se bloquea el inspector overlay (setLocked). Idempotente → resiste StrictMode.
+  useEffect(() => {
+    document.body.classList.toggle('arbol-lock', enEdicion)
+    if (window.AppInspector) AppInspector.setLocked(enEdicion)
+    return () => {
+      document.body.classList.remove('arbol-lock')
+      if (window.AppInspector) AppInspector.setLocked(false)
+    }
   }, [enEdicion])
 
   // beforeunload (diálogo nativo "cambios sin guardar"): solo si hay cambios reales que
@@ -97,11 +122,6 @@ export default function App() {
       <Arbol />
       {inspectorSlot() && createPortal(<Inspector />, inspectorSlot())}
       {viewbarSlot()   && createPortal(<Viewbar />,   viewbarSlot())}
-      {enEdicion && createPortal(
-        <div aria-hidden="true"
-             onClick={() => showToast('Estás editando este elemento — Guarda o cancela primero.', 'warning')}
-             style={{ position: 'fixed', inset: 0, zIndex: 1040, background: 'transparent', cursor: 'not-allowed' }} />,
-        document.body)}
     </div>
   )
 }

@@ -1,17 +1,19 @@
 /**
- * app-shell.css — Layout único de la app (ADR-014 / Issue #498)
+ * app-shell.css — Layout único de la app (ADR-014 / Issue #498, ADR-023 / Issue #534)
  *
- * Grid 7 áreas:
+ * Grid 6 áreas (inspector es overlay fijo, ya no columna):
  *   topbar    (siempre)
  *   sidebar   (siempre, colapsable)
  *   viewbar   (opcional, cabecera contextual de la vista)
  *   main      (siempre)
- *   inspector (opcional, panel derecho)
  *   dock      (opcional, panel inferior)
  *   footer    (siempre)
  *
+ * Inspector: overlay position:fixed, ancho var(--inspector-width), z-index 60.
+ *            Visible vía .app-shell.is-inspector-open (AppInspector JS).
+ *
  * Nomenclatura fija: docs/guias/NOMENCLATURA_LAYOUT.md
- * Estado de paneles: localStorage (bddat.sidebar.collapsed, bddat.inspector.open, bddat.dock.open)
+ * Estado de paneles: localStorage (bddat.sidebar.collapsed, bddat.dock.open)
  */
 
 :root {
@@ -25,8 +27,8 @@
   --sidebar-width-expanded:  208px;
   --sidebar-width-collapsed: 56px;
 
-  /* Inspector / Dock */
-  --inspector-width:   380px;
+  /* Inspector overlay / Dock */
+  --inspector-width:   900px;
   --dock-height:       240px;
   --dock-open-height:  clamp(160px, 25vh, 400px);
   --dock-header-height: 32px;
@@ -57,8 +59,8 @@
   width: 100%;
   background-color: var(--bg-page);
 
-  /* Columnas: sidebar | main | inspector (oculto por defecto) */
-  grid-template-columns: var(--sidebar-width-expanded) 1fr 0;
+  /* Columnas: sidebar | main  (el inspector es overlay fixed, no columna) */
+  grid-template-columns: var(--sidebar-width-expanded) 1fr;
 
   /* Filas:
      topbar fijo · banner auto · viewbar auto · main 1fr · dock open-height (0 si cerrado) · footer fijo */
@@ -73,16 +75,16 @@
   transition: grid-template-rows 0.25s ease;
 
   grid-template-areas:
-    "topbar  topbar  topbar"
-    "banner  banner  banner"
-    "sidebar viewbar inspector"
-    "sidebar main    inspector"
-    "sidebar dock    dock"
-    "footer  footer  footer";
+    "topbar  topbar"
+    "banner  banner"
+    "sidebar viewbar"
+    "sidebar main"
+    "sidebar dock"
+    "footer  footer";
 }
 
 .app-shell.is-sidebar-collapsed {
-  grid-template-columns: var(--sidebar-width-collapsed) 1fr 0;
+  grid-template-columns: var(--sidebar-width-collapsed) 1fr;
 }
 
 .app-shell.is-dock-closed {
@@ -93,14 +95,6 @@
     1fr
     0px
     var(--footer-height);
-}
-
-.app-shell.has-inspector {
-  grid-template-columns: var(--sidebar-width-expanded) 1fr var(--inspector-width);
-}
-
-.app-shell.has-inspector.is-sidebar-collapsed {
-  grid-template-columns: var(--sidebar-width-collapsed) 1fr var(--inspector-width);
 }
 
 /* ============================================================
@@ -443,16 +437,110 @@
 }
 
 /* ============================================================
-   INSPECTOR — panel derecho opcional (380px)
+   INSPECTOR — overlay fixed anclado al borde derecho (ADR-023 / #534)
    ============================================================ */
 
 .app-inspector {
-  grid-area: inspector;
+  position: fixed;
+  top: var(--topbar-height);
+  right: 0;
+  /* Cuando el dock está abierto, descontamos su altura */
+  bottom: calc(var(--footer-height) + var(--dock-open-height));
+  width: var(--inspector-width);
+  max-width: calc(100vw - var(--sidebar-width-collapsed));
+  z-index: 60;
   background: #ffffff;
   border-left: 1px solid var(--border-color);
-  overflow: auto;
+  overflow: hidden;
   font-size: 0.929rem;
-  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  /* Slide-in desde la derecha */
+  transform: translateX(100%);
+  transition: transform 0.2s ease;
+}
+
+/* Dock cerrado: el inspector llega hasta el footer */
+.app-shell.is-dock-closed .app-inspector {
+  bottom: var(--footer-height);
+}
+
+/* Inspector visible */
+.app-shell.is-inspector-open .app-inspector {
+  transform: translateX(0);
+}
+
+/* ── Sub-componentes del inspector ──────────────────────────── */
+
+/* Franja de resize en el borde izquierdo */
+.app-inspector__resize {
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 6px;
+  cursor: ew-resize;
+  z-index: 1;
+}
+
+.app-inspector__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px 0 14px;
+  height: 40px;
+  border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0;
+  background: var(--gris-especifico);
+}
+
+.app-inspector__title {
+  flex: 1;
+  font-weight: 600;
+  font-size: 0.929rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.app-inspector__close {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  color: var(--gris-principal);
+  padding: 4px 6px;
+  border-radius: 3px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 0.857rem;
+  transition: background 0.12s;
+}
+
+.app-inspector__close:hover {
+  background: var(--border-color);
+}
+
+.app-inspector__body {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0;
+}
+
+/* Backdrop bloqueante durante edición (is-inspector-locked) */
+.app-inspector__backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 59;   /* por debajo del inspector (60); bloquea main, sidebar, etc. */
+  background: transparent;
+  pointer-events: auto;
+  cursor: not-allowed;
+}
+
+.app-shell.is-inspector-locked .app-inspector__backdrop {
+  display: block;
 }
 
 /* ============================================================
@@ -710,16 +798,15 @@
 
 @media (max-width: 767px) {
   .app-shell {
-    grid-template-columns: 0 1fr 0;
+    grid-template-columns: 0 1fr;
     grid-template-areas:
-      "topbar  topbar  topbar"
-      "banner  banner  banner"
-      "viewbar viewbar viewbar"
-      "main    main    main"
-      "dock    dock    dock"
-      "footer  footer  footer";
+      "topbar  topbar"
+      "banner  banner"
+      "viewbar viewbar"
+      "main    main"
+      "dock    dock"
+      "footer  footer";
   }
-  .app-shell.has-inspector { grid-template-columns: 0 1fr 0; }
 
   .app-sidebar {
     position: fixed;
@@ -743,7 +830,8 @@
   .app-topbar__search { display: none; }
   .app-topbar__hamburger { display: inline-flex; }
 
-  .app-inspector { display: none; }
+  /* En viewport estrecho el overlay ocupa casi todo el ancho (ADR-023 §8) */
+  .app-inspector { max-width: 100vw; }
 }
 
 .app-topbar__hamburger { display: none; }

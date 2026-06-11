@@ -23,7 +23,7 @@
     ]
   },
   "src/expediente-arbol/index.jsx": {
-    "file": "bundle.expediente-arbol.BveZz2AN.js",
+    "file": "bundle.expediente-arbol.0keG_5yb.js",
     "name": "expediente-arbol",
     "src": "src/expediente-arbol/index.jsx",
     "isEntry": true,
@@ -31,7 +31,7 @@
       "_chunk.toast.BzEloO_G.js"
     ],
     "css": [
-      "asset.expediente-arbol.Cpt8VahC.css"
+      "asset.expediente-arbol.hbg5rhwl.css"
     ]
   }
 }

@@ -1,15 +1,16 @@
-{# base_app.html — Layout único de la app (ADR-014 / Issue #498).
+{# base_app.html — Layout único de la app (ADR-014 / Issue #498, ADR-023 / Issue #534).
 
    Bloques:
      - title     (obligatorio)  · título de pestaña
      - viewbar   (opcional)     · cabecera contextual sticky de la vista
      - content   (obligatorio)  · cuerpo
-     - inspector (opcional)     · panel derecho
+     - inspector (opcional)     · slot del panel inspector (ADR-023: overlay de shell)
      - dock      (opcional)     · panel inferior
      - extra_css / extra_js     · recursos por vista
 
-   Vistas "página" (listado, formulario, detalle simple): no definen viewbar/inspector/dock.
-   Vistas "workbench" (expediente): definen todos los slots.
+   El inspector es un overlay siempre presente en el DOM; se muestra/oculta vía
+   window.AppInspector (inspector-overlay.js). El bloque `inspector` sirve solo para
+   que las islas React monten su slot portal dentro del body del panel.
 
    Vocabulario fijo: docs/guias/NOMENCLATURA_LAYOUT.md
 #}
@@ -47,8 +48,6 @@
   {# Bombilla fuera del bloque: es chrome del shell, no responsabilidad de cada isla (#525). #}
   {% set viewbar_html %}{% block viewbar %}{% endblock %}{% endset %}
 
-  {% set inspector_html %}{% block inspector %}{% endblock %}{% endset %}
-
   {% set _sidebar_collapsed = request.cookies.get('bddat_sidebar_collapsed') == '1' %}
   {# Estado del dock en cookie (espejo de localStorage) para renderizarlo cerrado
      ya en el HTML inicial y evitar el parpadeo abrir→cerrar al cargar (#539). #}
@@ -56,8 +55,7 @@
 
   <div class="app-shell
               {%- if _sidebar_collapsed %} is-sidebar-collapsed{% endif -%}
-              {%- if _dock_closed %} is-dock-closed{% endif -%}
-              {%- if inspector_html | trim %} has-inspector{% endif -%}">
+              {%- if _dock_closed %} is-dock-closed{% endif -%}">
 
     {% include 'layout/_topbar.html' %}
     {% include 'layout/_sidebar.html' %}
@@ -77,11 +75,21 @@
       {% block content %}{% endblock %}
     </main>
 
-    {% if inspector_html | trim %}
-    <aside class="app-inspector" aria-label="Inspector">
-      {{ inspector_html }}
+    {# Inspector overlay (ADR-023 / #534): siempre en el DOM; visible vía AppInspector.open/mountReact. #}
+    <aside class="app-inspector" id="app-inspector" aria-label="Inspector">
+      <div class="app-inspector__resize" data-inspector-resize aria-hidden="true"></div>
+      <header class="app-inspector__header">
+        <span class="app-inspector__title" id="app-inspector-title"></span>
+        <button type="button" class="app-inspector__close" data-app-inspector-close aria-label="Cerrar">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </header>
+      <div class="app-inspector__body" id="app-inspector-body">
+        {% block inspector %}{% endblock %}
+      </div>
     </aside>
-    {% endif %}
+    {# Backdrop bloqueante del inspector en modo edición (is-inspector-locked). #}
+    <div class="app-inspector__backdrop" data-inspector-backdrop></div>
 
     {% include 'layout/_dock.html' %}
 
@@ -132,6 +140,7 @@
 
   <script src="https://cdn.juntadeandalucia.es/components/sass/1.2.5/js/bootstrap.bundle.min.js"></script>
   <script src="{{ url_for('static', filename='js/app-shell.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/inspector-overlay.js') }}"></script>
   <script src="{{ url_for('static', filename='js/dock-buffer.js') }}"></script>
   <script src="{{ url_for('static', filename='js/toast.js') }}"></script>
 
