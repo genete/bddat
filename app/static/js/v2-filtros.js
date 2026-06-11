@@ -29,7 +29,7 @@ class FiltrosListado {
         this.scroll  = scrollInfinitoInstance;
         this.delay   = opciones.delay ?? 400;
 
-        this.searchInput  = document.querySelector('input[type="search"]');
+        this.searchInput  = document.querySelector('.filters input[type="search"]');
         this.selects      = document.querySelectorAll('.filters-row select');
         this.inputsFiltro = document.querySelectorAll('.filters-row .if-input');
         this.btnFiltrar   = document.querySelector('.btn-filtrar');
