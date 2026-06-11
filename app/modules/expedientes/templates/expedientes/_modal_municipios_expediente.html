@@ -1,0 +1,183 @@
+{# _modal_municipios_expediente.html — Modal grande gestión de municipios (ADR-023 §6 / #543).
+   No extiende base_app.html. Inyectado por AppInspector / modal-large.js.
+   Submit XHR → POST /expedientes/<id>/municipios → JSON { ok, errors, message }.
+   Al cerrar, el inspector se refresca con la lista de municipios actualizada.
+#}
+
+<div class="p-3">
+
+<form id="gm-form"
+      data-action="{{ url_for('expedientes.actualizar_municipios', id=expediente.id) }}">
+
+<div id="gm-errors" class="alert alert-danger py-2 mb-3 small" style="display:none;"></div>
+
+<!-- Cabecera informativa -->
+<p class="text-secondary small mb-3">
+    <i class="fas fa-info-circle me-1"></i>
+    Selecciona primero una provincia y después un municipio. Puedes añadir varios.
+    La lista actual se reemplazará al guardar.
+</p>
+
+<!-- Selección de municipios -->
+<div class="row g-2 mb-3">
+    <div class="col-sm-5">
+        <label class="form-label fw-semibold small">Provincia</label>
+        <div id="gm-sb-prov"></div>
+    </div>
+    <div class="col-sm-7">
+        <label class="form-label fw-semibold small">Municipio</label>
+        <div id="gm-sb-muni"></div>
+    </div>
+</div>
+
+<!-- Chips de municipios seleccionados -->
+<div class="mb-3">
+    <label class="form-label fw-semibold small">Municipios seleccionados</label>
+    <div id="gm-badges" class="d-flex flex-wrap gap-1 p-2 border rounded"
+         style="min-height:38px; background:#fff;">
+        <em class="text-secondary small" id="gm-empty-msg">Ninguno seleccionado</em>
+    </div>
+    <div id="gm-hidden-inputs"></div>
+</div>
+
+<!-- Botones -->
+<div class="d-flex justify-content-end gap-2">
+    <button type="button" class="btn btn-outline-secondary btn-sm"
+            data-modal-large-close>
+        <i class="fas fa-times me-1"></i> Cancelar
+    </button>
+    <button type="submit" class="btn btn-primary btn-sm" id="gm-btn-guardar">
+        <i class="fas fa-save me-1"></i> Guardar municipios
+    </button>
+</div>
+
+</form>
+</div>
+
+<link rel="stylesheet" href="{{ url_for('static', filename='css/selector_busqueda.css') }}">
+<script src="{{ url_for('static', filename='js/selector_busqueda.js') }}"></script>
+<script>
+(function () {
+    'use strict';
+
+    // Municipios precargados del proyecto actual
+    const municipiosActuales = [
+        {% for m in expediente.proyecto.municipios if expediente.proyecto %}
+        { id: '{{ m.id }}', nombre: {{ m.nombre | tojson }} },
+        {% endfor %}
+    ];
+
+    const seleccionados = {};  // { id: nombre }
+    const badgesDiv   = document.getElementById('gm-badges');
+    const hiddenDiv   = document.getElementById('gm-hidden-inputs');
+    const emptyMsg    = document.getElementById('gm-empty-msg');
+    const errDiv      = document.getElementById('gm-errors');
+    const form        = document.getElementById('gm-form');
+
+    // Precargar municipios actuales
+    municipiosActuales.forEach(m => { seleccionados[m.id] = m.nombre; });
+    renderBadges();
+
+    // Selectores de provincia y municipio
+    let muniSel;
+
+    const provSel = new SelectorBusqueda('#gm-sb-prov', [], {
+        placeholder: '— Seleccione provincia —',
+        onChange: async (v, t) => {
+            muniSel.setOpciones([]);
+            muniSel.clear();
+            if (!t) { muniSel.disable(); return; }
+            try {
+                const resp = await fetch(`/api/municipios?provincia=${encodeURIComponent(t)}`);
+                const data = await resp.json();
+                muniSel.setOpciones(data.map(m => ({ v: String(m.id), t: m.nombre })));
+                muniSel.enable();
+            } catch (e) { console.error('Error cargando municipios:', e); }
+        }
+    });
+
+    muniSel = new SelectorBusqueda('#gm-sb-muni', [], {
+        placeholder: '— Seleccione primero una provincia —',
+        onChange: (v, t) => {
+            if (!v) return;
+            seleccionados[v] = t;
+            renderBadges();
+            muniSel.clear();
+        }
+    });
+    muniSel.disable();
+
+    // Cargar provincias (solo Andalucía)
+    fetch('/api/provincias?solo_andalucia=true')
+        .then(r => r.json())
+        .then(lista => provSel.setOpciones(lista.map(n => ({ v: n, t: n }))))
+        .catch(e => console.error('Error cargando provincias:', e));
+
+    function renderBadges() {
+        badgesDiv.innerHTML = '';
+        hiddenDiv.innerHTML = '';
+        const ids = Object.keys(seleccionados);
+        if (ids.length === 0) {
+            badgesDiv.appendChild(emptyMsg);
+            emptyMsg.style.display = '';
+            return;
+        }
+        emptyMsg.style.display = 'none';
+        ids.forEach(id => {
+            // Badge visual con botón eliminar
+            const badge = document.createElement('span');
+            badge.className = 'badge bg-primary d-flex align-items-center gap-1';
+            badge.innerHTML =
+                `${seleccionados[id]}<button type="button" class="btn-close btn-close-white ms-1"
+                    style="font-size:.6em;" aria-label="Quitar"></button>`;
+            badge.querySelector('button').addEventListener('click', () => {
+                delete seleccionados[id];
+                renderBadges();
+            });
+            badgesDiv.appendChild(badge);
+
+            // Hidden input para el submit
+            const hidden = document.createElement('input');
+            hidden.type  = 'hidden';
+            hidden.name  = 'municipios[]';
+            hidden.value = id;
+            hiddenDiv.appendChild(hidden);
+        });
+    }
+
+    // Envío del formulario vía XHR
+    form.addEventListener('submit', async function (e) {
+        e.preventDefault();
+        errDiv.style.display = 'none';
+
+        const btn = document.getElementById('gm-btn-guardar');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Guardando…';
+
+        const formData = new FormData(form);
+        try {
+            const resp = await fetch(form.dataset.action, {
+                method: 'POST',
+                body: formData,
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            });
+            const json = await resp.json();
+            if (json.ok) {
+                // Cerrar modal y refrescar inspector
+                document.dispatchEvent(new CustomEvent('modal-large:saved', {
+                    detail: { message: json.message }
+                }));
+            } else {
+                errDiv.textContent = (json.errors || ['Error desconocido']).join(' ');
+                errDiv.style.display = '';
+            }
+        } catch (err) {
+            errDiv.textContent = 'Error de red al guardar.';
+            errDiv.style.display = '';
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-save me-1"></i> Guardar municipios';
+        }
+    });
+}());
+</script>

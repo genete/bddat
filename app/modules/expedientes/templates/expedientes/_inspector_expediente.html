@@ -1,0 +1,215 @@
+{# _inspector_expediente.html — Parcial de lectura para el inspector (ADR-024 §4 / #543).
+   No extiende base_app.html. Inyectado vía AppInspector.open({ fragmentUrl }).
+#}
+
+<div class="p-3">
+
+{% if puede_editar %}
+<div class="d-flex justify-content-end mb-3">
+    <button type="button" class="btn btn-primary btn-sm"
+            data-inspector-edit
+            data-edit-url="{{ url_for('expedientes.editar_fragmento', id=expediente.id) }}">
+        <i class="fas fa-edit me-1"></i> Editar
+    </button>
+</div>
+{% endif %}
+
+<!-- CABECERA — AT, tipo, titular, estado (ADR-024 §4.1) -->
+<div class="card mb-3">
+    <div class="card-body card-body-tinted py-2">
+        <div class="d-flex align-items-start justify-content-between gap-2 mb-1">
+            <div>
+                <span class="fw-bold fs-5">AT-{{ expediente.numero_at }}</span>
+                {% if expediente.tipo_expediente %}
+                <span class="badge bg-secondary ms-2">{{ expediente.tipo_expediente.tipo }}</span>
+                {% endif %}
+                {% if expediente.heredado %}
+                <span class="badge bg-warning text-dark ms-1" title="Datos migrados del sistema anterior">Heredado</span>
+                {% endif %}
+            </div>
+            <div>
+                {% if estado_tramitacion == 'SIN_SOLICITUDES' %}
+                    <span class="badge bg-secondary">Sin solicitudes</span>
+                {% elif estado_tramitacion == 'EN_TRAMITE' %}
+                    <span class="badge bg-primary">En trámite</span>
+                {% elif estado_tramitacion == 'RESUELTO' %}
+                    <span class="badge bg-success">Resuelto</span>
+                {% endif %}
+            </div>
+        </div>
+        <div class="small text-secondary">
+            <i class="fas fa-building me-1"></i>
+            <strong>Titular:</strong>
+            {{ expediente.titular.nombre_completo if expediente.titular else '— Sin titular —' }}
+        </div>
+    </div>
+</div>
+
+<!-- ACCIÓN PRIMARIA — "Tramitar" (ADR-024 §4.2) -->
+<div class="d-grid mb-3">
+    <a href="{{ url_for('expedientes.arbol', id=expediente.id) }}"
+       class="btn btn-primary">
+        <i class="fas fa-sitemap me-1"></i> Tramitar
+    </a>
+</div>
+
+<!-- CARD datos administrativos — solo lectura (ADR-024 §4.3) -->
+<div class="card mb-3">
+    <div class="card-header card-header-accent fw-semibold">
+        <i class="fas fa-file-alt me-1"></i> Datos administrativos
+    </div>
+    <div class="card-body card-body-tinted">
+        <div class="row g-2">
+            <div class="col-8">
+                <label class="form-label fw-semibold small">Tipo de expediente</label>
+                <input type="text" class="form-control form-control-sm"
+                       value="{{ expediente.tipo_expediente.tipo if expediente.tipo_expediente else '—' }}"
+                       readonly>
+            </div>
+            <div class="col-4">
+                <label class="form-label fw-semibold small">Heredado</label>
+                <div class="form-control form-control-sm d-flex align-items-center"
+                     style="background:#fff; pointer-events:none;">
+                    {% if expediente.heredado %}
+                        <i class="fas fa-check-square text-warning me-1"></i> Sí
+                    {% else %}
+                        <i class="fas fa-square text-secondary me-1"></i> No
+                    {% endif %}
+                </div>
+            </div>
+            {% if puede_cambiar_resp %}
+            <div class="col-12">
+                <label class="form-label fw-semibold small">Responsable</label>
+                <input type="text" class="form-control form-control-sm"
+                       value="{{ expediente.responsable.apellido1 ~ ' ' ~ (expediente.responsable.nombre or '') if expediente.responsable else 'Sin asignar' }}"
+                       readonly>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- CARD datos del proyecto — solo lectura (ADR-024 §4.4) -->
+<div class="card mb-3">
+    <div class="card-header card-header-accent fw-semibold">
+        <i class="fas fa-bolt me-1"></i> Datos del proyecto
+    </div>
+    {% set proy = expediente.proyecto %}
+    <div class="card-body card-body-tinted">
+        <div class="row g-2">
+            <div class="col-12">
+                <label class="form-label fw-semibold small">Título</label>
+                <input type="text" class="form-control form-control-sm"
+                       value="{{ proy.titulo if proy else '—' }}" readonly>
+            </div>
+            <div class="col-6">
+                <label class="form-label fw-semibold small">IA</label>
+                <input type="text" class="form-control form-control-sm"
+                       value="{{ proy.ia.siglas ~ ' — ' ~ proy.ia.descripcion if proy and proy.ia else '—' }}"
+                       readonly>
+            </div>
+            <div class="col-6">
+                <label class="form-label fw-semibold small">Fecha técnica</label>
+                <input type="text" class="form-control form-control-sm"
+                       value="{{ proy.fecha.strftime('%d/%m/%Y') if proy and proy.fecha else '—' }}"
+                       readonly>
+            </div>
+            <div class="col-12">
+                <label class="form-label fw-semibold small">Finalidad</label>
+                <input type="text" class="form-control form-control-sm"
+                       value="{{ proy.finalidad if proy else '—' }}" readonly>
+            </div>
+            <div class="col-12">
+                <label class="form-label fw-semibold small">Emplazamiento</label>
+                <input type="text" class="form-control form-control-sm"
+                       value="{{ proy.emplazamiento if proy else '—' }}" readonly>
+            </div>
+            <!-- Descripción colapsable si es larga -->
+            {% if proy and proy.descripcion %}
+            <div class="col-12">
+                <label class="form-label fw-semibold small">Descripción</label>
+                {% if proy.descripcion | length > 200 %}
+                <div>
+                    <textarea class="form-control form-control-sm" rows="2" readonly
+                              style="background:#fff; resize:none;"
+                              id="desc-collapsed-{{ expediente.id }}">{{ proy.descripcion[:200] }}…</textarea>
+                    <button type="button" class="btn btn-link btn-sm p-0 mt-1"
+                            onclick="this.previousElementSibling.rows=8;this.previousElementSibling.value={{ proy.descripcion | tojson }};this.style.display='none'">
+                        Ver completa
+                    </button>
+                </div>
+                {% else %}
+                <textarea class="form-control form-control-sm" rows="2" readonly
+                          style="background:#fff; resize:none;">{{ proy.descripcion }}</textarea>
+                {% endif %}
+            </div>
+            {% endif %}
+            <!-- Flags técnicos -->
+            <div class="col-12">
+                <div class="d-flex gap-3 flex-wrap">
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="checkbox"
+                               {% if proy and proy.es_modificacion %}checked{% endif %} disabled>
+                        <label class="form-check-label small">Es modificación</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="checkbox"
+                               {% if proy and proy.sin_linea_aerea %}checked{% endif %} disabled>
+                        <label class="form-check-label small">Sin línea aérea</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="checkbox"
+                               {% if proy and proy.solo_suelo_urbano_urbanizable %}checked{% endif %} disabled>
+                        <label class="form-check-label small">Solo suelo urbano/urbanizable</label>
+                    </div>
+                </div>
+            </div>
+            {% if proy and proy.max_tension_nominal_kv %}
+            <div class="col-6">
+                <label class="form-label fw-semibold small">Tensión máx. (kV)</label>
+                <input type="text" class="form-control form-control-sm"
+                       value="{{ proy.max_tension_nominal_kv }}" readonly>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- CARD municipios — lectura + delegación a modal (ADR-024 §4.5) -->
+<div class="card mb-3">
+    <div class="card-header card-header-accent fw-semibold d-flex justify-content-between align-items-center">
+        <span><i class="fas fa-map-marker-alt me-1"></i> Municipios afectados</span>
+        {% if puede_editar %}
+        <button type="button" class="btn btn-outline-primary btn-sm"
+                data-modal-large-url="{{ url_for('expedientes.gestionar_municipios', id=expediente.id) }}"
+                data-modal-large-title="Gestionar municipios">
+            <i class="fas fa-cog me-1"></i> Gestionar
+        </button>
+        {% endif %}
+    </div>
+    <div class="card-body card-body-tinted py-2">
+        {% set municipios = expediente.proyecto.municipios if expediente.proyecto else [] %}
+        {% if municipios %}
+        <div class="d-flex flex-wrap gap-1">
+            {% for m in municipios %}
+            <span class="badge bg-light text-dark border">{{ m.nombre }}</span>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-secondary mb-0 small">
+            <i class="fas fa-info-circle me-1"></i> Sin municipios asignados.
+        </p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- PLACEHOLDER instalaciones — botón desactivado (ADR-024 §4.6) -->
+<div class="d-grid mb-2">
+    <button type="button" class="btn btn-outline-secondary btn-sm" disabled
+            title="Las instalaciones técnicas del proyecto (líneas, CT, subestaciones) estarán disponibles en una próxima versión.">
+        <i class="fas fa-plug me-1"></i> Instalaciones
+        <span class="badge bg-secondary ms-1">Próximamente</span>
+    </button>
+</div>
+
+</div>{# /p-3 #}
