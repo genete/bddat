@@ -6,14 +6,13 @@
 
 ---
 
-**Último cerrado:** #534 (ADR-023 — inspector overlay de shell + modelo de tres capas + Entidades como listado de referencia; 5 fases implementadas; PR de cierre contra develop). Precedido de: #533 (ADR-022 sistema visual base: rem global 15px, tokens de color, tabla unificada `.lista-table`; PR #538), #531, #528/#506.
+**Último cerrado:** #537 (viewbar: cabecera de listados → viewbar, contador en fila de filtros, botones sm, fondo gris unificado; PR #542). Precedido de: #534 (ADR-023 inspector overlay), #533 (ADR-022 sistema visual base), #531, #528/#506.
 
-**Actuales:** **#537** (cabecera del listado → viewbar, M2 — consolidar antes de migrar otras vistas).
+**Actuales:** **Crear issues de migración de listados restantes** al patrón inspector (seguimiento, proyectos, usuarios, plantillas — issues nuevos a crear).
 
-**Próximos:** **#537** (viewbar) → **#532** (Command Palette isla React, cmdk, M4) → **Migrar listados restantes** al patrón inspector (seguimiento\*, plantillas, usuarios, proyectos — issues a crear) → **#501** (ADR-017 "Mi trabajo del administrativo") → **Mi trabajo del supervisor** (issue por crear; posible extensión de #501).
+**Próximos:** Migrar listados restantes (issues por crear) → **#532** (Command Palette isla React, cmdk, M4) → **#501** (ADR-017 "Mi trabajo del administrativo") → **Mi trabajo del supervisor** (issue por crear).
 
 > #502 queda como épica/referencia de ADR-018. Se cierra al mergear #532.
-> #537 (cabecera del listado → viewbar con prioridades de colapso, M2): abierto desde #533; coordinar con #534 al tocar la estructura del listado en `main`.
 > \* seguimiento y "Mi trabajo" (#501) son agregados que navegan al árbol, sin inspector-detalle. **ADR-017 candidato a revisión** al implementar #501. Primero consolidar infra + migrar lo existente; las vistas nuevas aisladas se construyen con la lección aprendida.
 
 ## Hoja de ruta — Bloque UI: Implementación del revamping
