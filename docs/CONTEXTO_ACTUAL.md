@@ -6,11 +6,11 @@
 
 ---
 
-**Último cerrado:** #537 (viewbar: cabecera de listados → viewbar, contador en fila de filtros, botones sm, fondo gris unificado; PR #542). Precedido de: #534 (ADR-023 inspector overlay), #533 (ADR-022 sistema visual base), #531, #528/#506.
+**Último cerrado:** #543 (inspector expedientes: selector en listado, redirect proyectos→expedientes, parcial lectura/edición, modal municipios, defectos UI; PR #549). Precedido de: #537 (viewbar), #534 (ADR-023 inspector overlay), #533 (ADR-022 sistema visual base), #531, #528/#506.
 
-**Actuales:** Migrar listados restantes al patrón inspector: **#543** (fusionar expedientes+proyectos — diseño cerrado en ADR-024; pendiente implementación), **#544** (usuarios), **#545** (plantillas), **#546** (seguimiento — caso especial sin inspector).
+**Actuales:** Migrar listados restantes al patrón inspector: **#544** (usuarios), **#545** (plantillas), **#546** (seguimiento — caso especial sin inspector).
 
-**Próximos:** **#543** (expedientes/proyectos, primero por las dudas de diseño) → **#544** → **#545** → **#546** → **#532** (Command Palette isla React, cmdk, M4) → **#501** (ADR-017 "Mi trabajo del administrativo") → **Mi trabajo del supervisor** (issue por crear).
+**Próximos:** **#544** → **#545** → **#546** → **#532** (Command Palette isla React, cmdk, M4) → **#501** (ADR-017 "Mi trabajo del administrativo") → **Mi trabajo del supervisor** (issue por crear).
 
 > #502 queda como épica/referencia de ADR-018. Se cierra al mergear #532.
 > \* seguimiento y "Mi trabajo" (#501) son agregados que navegan al árbol, sin inspector-detalle. **ADR-017 candidato a revisión** al implementar #501. Primero consolidar infra + migrar lo existente; las vistas nuevas aisladas se construyen con la lección aprendida.
