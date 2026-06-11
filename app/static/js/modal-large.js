@@ -168,6 +168,12 @@
       });
   });
 
+  // ── Botón [data-modal-large-close] dentro del modal ───────────────────────
+
+  document.addEventListener('click', function (e) {
+    if (e.target.closest('[data-modal-large-close]')) close();
+  });
+
   window.AppModalLarge = { open: open, close: close, refresh: refresh };
 
 })();
