@@ -30,11 +30,36 @@
         apiUrl:      '{{ url_for("api_entidades.listar_entidades") }}',
         tableClass:  '.entidades-table',
         entityLabel: 'entidades',
-        detailUrl:   id => `/entidades/${id}`,
-        columns:     {{ columns | tojson }}
+        columns:     {{ columns | tojson }},
+        selection: {
+            fragmentUrl: id   => `/entidades/${id}/fragmento`,
+            title:       item => item.nombre_completo || ''
+        }
     });
 
     const filtros = new FiltrosListado(scrollInfinito);
+
+    // Sync inspector ↔ URL ?sel (ADR-023 §1)
+    function _updateSelParam(selId) {
+        const url = new URL(location.href);
+        if (selId) url.searchParams.set('sel', selId);
+        else url.searchParams.delete('sel');
+        history.replaceState(null, '', url.toString());
+    }
+    document.addEventListener('inspector:opened',  e => _updateSelParam(e.detail.selId));
+    document.addEventListener('inspector:swapped', e => _updateSelParam(e.detail.selId));
+    document.addEventListener('inspector:closed',  () => _updateSelParam(null));
+
+    // Abrir inspector si la URL trae ?sel=<id>
+    const _selParam = new URLSearchParams(location.search).get('sel');
+    if (_selParam && window.AppInspector) {
+        AppInspector.open({
+            selId:       _selParam,
+            title:       '',
+            fragmentUrl: `/entidades/${_selParam}/fragmento`
+        });
+    }
+
     console.log('Listado de entidades v2 inicializado');
 </script>
 {% endblock %}

@@ -506,6 +506,70 @@ inf.enable() / inf.disable()
 
 ---
 
+---
+
+## APIs de shell — Inspector y Modal grande (ADR-023)
+
+Disponibles como globals en `window` desde `inspector-overlay.js`, cargado en `base_app.html`.
+
+### `window.AppInspector`
+
+Control del inspector overlay de shell. Funciona en cualquier vista (Jinja o React).
+
+```javascript
+AppInspector.open({ selId, title, fragmentUrl })
+// Abre o hace swap del inspector. Si fragmentUrl: carga el fragmento en el panel.
+// Si ya está abierto con el mismo selId: no-op (retención, §7 ADR-023).
+
+AppInspector.mountReact({ selId, title })
+// Variante para islas React: abre el panel sin tocar el body
+// (la isla pinta por portal en #app-inspector-body).
+
+AppInspector.close()
+// Popdown + limpia selId + emite CustomEvent 'inspector:closed'.
+
+AppInspector.refresh()
+// Re-fetch del último fragmentUrl (usar tras guardar en el modal grande).
+
+AppInspector.setLocked(bool)
+// true → backdrop bloqueante (modo edición); false → lectura.
+// Sustituye/coexiste con el body.arbol-lock del árbol.
+
+AppInspector.isOpen()        // → boolean
+AppInspector.currentSel()   // → selId actual o null
+```
+
+**Eventos CustomEvent emitidos** (escuchables en `document`):
+
+| Evento | `detail` | Cuándo |
+|---|---|---|
+| `inspector:opened` | `{ selId }` | Popup (cerrado → abierto) |
+| `inspector:swapped` | `{ selId }` | Cambio de ítem in-place |
+| `inspector:closed` | — | Popdown |
+
+**Clases de estado** (sobre `.app-shell` / `<body>`):
+
+| Clase | Significado |
+|---|---|
+| `.app-shell.is-inspector-open` | Inspector visible |
+| `.app-shell.is-inspector-locked` | Edición — backdrop bloqueante |
+
+---
+
+### `window.AppModalLarge`
+
+Modal Bootstrap maximizado (`.modal-app-xl`) para gestión compleja desde el inspector (capa 3, ADR-023 §6).
+
+```javascript
+AppModalLarge.open(fragmentUrl, { title, onSaved })
+// Carga el fragmento en el modal y lo muestra.
+// onSaved (opcional): callback al guardar — por defecto AppInspector.refresh() + cierre.
+```
+
+`.modal-app-xl` se define en `app-shell.css`: maximizado con margen (~`calc(100% - 3rem)`), casi pantalla completa. Es un modal Bootstrap estándar (backdrop bloqueante, `z-index` > inspector).
+
+---
+
 ## Próximos componentes (pendientes)
 
 - `SelectorMultiple` — selección acumulable con badges (variante del anterior)

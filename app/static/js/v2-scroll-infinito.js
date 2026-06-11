@@ -33,14 +33,27 @@
  *       ]
  *     });
  *
+ *   Modo selección (ADR-023 — inspector overlay, #534):
+ *     const s = new ScrollInfinito({
+ *       ...
+ *       selection: {
+ *         fragmentUrl: id   => `/entidades/${id}/fragmento`,
+ *         title:       item => item.nombre_completo || ''
+ *       }
+ *     });
+ *     Con selection activo: no se renderiza columna type:'acciones'; cada fila
+ *     recibe data-inspector-sel y un click handler que llama AppInspector.open.
+ *     Requiere window.AppInspector (inspector-overlay.js) cargado antes.
+ *
  *   Tipos de columna soportados:
  *     - text     : textContent plano
  *     - badge    : <span class="badge badge-info">
  *     - bool     : icono check si true, vacío si false
- *     - acciones : botón "Ver" que navega a detailUrl(id)
+ *     - acciones : botón "Ver" que navega a detailUrl(id); omitido en modo selección
  *
- * VERSIÓN: 1.2
- * FECHA: 2026-02-19
+ * VERSIÓN: 1.3
+ * FECHA: 2026-06-11
+ * CAMBIOS v1.3: Modo selección (selection option) para inspector overlay (ADR-023 / #534)
  * CAMBIOS v1.2: Generalizado con config columnas — backward compatible con v1.1
  * CAMBIOS v1.1: Botón Ver apunta a /expedientes/<id>/tramitacion_v3
  */
@@ -56,6 +69,9 @@ class ScrollInfinito {
      * @param {string}   options.entityLabel - Nombre de la entidad para mensajes. Default: 'expedientes'
      * @param {Function} options.detailUrl   - Función id => URL del detalle. Default: BC expedientes
      * @param {Object}   options.fixedParams - Parámetros fijos añadidos a cada petición. Default: {}
+     * @param {Object}   options.selection   - Config modo selección (ADR-023). Si se pasa: activa inspector
+     *                                         overlay en lugar del botón "Ver". Campos:
+     *                                         { fragmentUrl: id => '...', title: item => '...' }
      */
     constructor(options = {}) {
         // Configuración base
@@ -69,6 +85,9 @@ class ScrollInfinito {
         this.tableClass  = options.tableClass  || '.lista-table';
         this.entityLabel = options.entityLabel || 'expedientes';
         this.detailUrl   = options.detailUrl   || (id => `/expedientes/${id}/tramitacion`);
+
+        // Modo selección — inspector overlay (v1.3 / ADR-023 / #534)
+        this.selection   = options.selection   || null;
 
         // Estado
         this.cursor         = 0;
@@ -102,6 +121,9 @@ class ScrollInfinito {
         this.createLoader();
         this.loadMore();
         this.container.addEventListener('scroll', () => this.handleScroll());
+        if (this.selection) {
+            document.addEventListener('inspector:closed', () => this._clearSelected());
+        }
         console.log(`ScrollInfinito inicializado — ${this.entityLabel}`);
     }
 
@@ -167,6 +189,7 @@ class ScrollInfinito {
         const fragment = document.createDocumentFragment();
         items.forEach(item => fragment.appendChild(this.createRow(item)));
         this.tbody.appendChild(fragment);
+        if (this.selection) this._reapplySelected();
     }
 
     /**
@@ -179,11 +202,17 @@ class ScrollInfinito {
 
     /**
      * Motor genérico: crea fila a partir de config columnas.
-     * Tipos soportados: text | badge | bool | acciones
+     * Tipos soportados: text | badge | bool | custom | acciones (omitido en modo selection)
      */
     createRowFromColumns(item) {
         const tr = document.createElement('tr');
+        if (this.selection) {
+            tr.setAttribute('data-inspector-sel', String(item.id));
+            tr.classList.add('is-selectable');
+            tr.addEventListener('click', () => this._handleRowClick(tr, item));
+        }
         this.columns.forEach(col => {
+            if (col.type === 'acciones' && this.selection) return;
             const td = document.createElement('td');
             // Clases declarativas de ocultación responsive y truncado (ADR-022 §3).
             // col.hide = 'xl'|'lg'|'md'; col.truncate = true. El <th> equivalente
@@ -278,6 +307,38 @@ class ScrollInfinito {
 
     verExpediente(id) {
         window.location.href = this.detailUrl(id);
+    }
+
+    // ---------------------------------------------------------------------------
+    // MODO SELECCIÓN (ADR-023 / #534)
+    // ---------------------------------------------------------------------------
+
+    _handleRowClick(tr, item) {
+        const selId = String(item.id);
+        if (window.AppInspector && AppInspector.isOpen() && AppInspector.currentSel() === selId) {
+            AppInspector.close();
+        } else {
+            this._clearSelected();
+            tr.classList.add('is-selected');
+            if (window.AppInspector) {
+                AppInspector.open({
+                    selId:       selId,
+                    title:       this.selection.title ? this.selection.title(item) : '',
+                    fragmentUrl: this.selection.fragmentUrl(item.id),
+                });
+            }
+        }
+    }
+
+    _clearSelected() {
+        this.tbody.querySelectorAll('tr.is-selected').forEach(r => r.classList.remove('is-selected'));
+    }
+
+    _reapplySelected() {
+        if (!window.AppInspector || !AppInspector.isOpen()) return;
+        const cur = AppInspector.currentSel();
+        if (!cur) return;
+        this.tbody.querySelectorAll(`tr[data-inspector-sel="${cur}"]`).forEach(r => r.classList.add('is-selected'));
     }
 
     // ---------------------------------------------------------------------------

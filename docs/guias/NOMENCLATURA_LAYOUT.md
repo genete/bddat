@@ -7,7 +7,7 @@
 
 ## Mapa visual
 
-### Modo página (sin inspector, sin dock)
+### Sin inspector
 
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
@@ -25,23 +25,27 @@
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
-### Modo workbench (con inspector y dock activos)
+### Con inspector abierto (overlay sobre main)
 
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
 │                              topbar                                  │
-├──────────┬─────────────────────────────────────────┬─────────────────┤
-│          │                viewbar                  │                 │
-│          ├─────────────────────────────────────────┤                 │
-│          │                                         │                 │
-│ sidebar  │                  main                   │    inspector    │
-│          │                                         │                 │
-│          ├─────────────────────────────────────────┴─────────────────┤
-│          │                       dock                                │
+├──────────┬───────────────────────────────────────────────────────────┤
+│          │                       viewbar                             │
+│          ├───────────────────────────────────────────────────────────┤
+│          │                              ┌──────────────────────────┐ │
+│ sidebar  │                              │       inspector          │ │
+│          │        main                  │   (overlay, fixed right) │ │
+│          │       (sin reflow)           │                          │ │
+│          │                              └──────────────────────────┘ │
 ├──────────┴───────────────────────────────────────────────────────────┤
 │                              footer                                  │
 └──────────────────────────────────────────────────────────────────────┘
 ```
+
+> El inspector **no empuja ni reflowa** el `main`. Es un panel `position:fixed`
+> superpuesto sobre el borde derecho del viewport. Modelo de tres capas: **listado
+> (main) → inspector (overlay) → modal grande (overlay sobre inspector)**.
 
 ---
 
@@ -53,7 +57,7 @@
 | 2 | Navegación lateral persistente | **sidebar** | `sidebar` | `.app-sidebar` | (partial) | `<nav aria-label="Principal">` |
 | 3 | Cabecera contextual de la vista | **viewbar** | `viewbar` | `.app-viewbar` | `{% block viewbar %}` | `<header>` |
 | 4 | Cuerpo de la vista | **main** | `main` | `.app-main` | `{% block content %}` | `<main>` |
-| 5 | Panel lateral derecho | **inspector** | `inspector` | `.app-inspector` | `{% block inspector %}` | `<aside>` |
+| 5 | Panel lateral derecho | **inspector** | *(overlay, no grid-area)* | `.app-inspector` | `{% block inspector %}` *(solo slot para islas React)* | `<aside>` |
 | 6 | Panel inferior | **dock** | `dock` | `.app-dock` | (partial) | `<section>` |
 | 7 | Pie global | **footer** | `footer` | `.app-footer` | (partial) | `<footer>` |
 
@@ -63,9 +67,9 @@
 
 - **topbar, sidebar, viewbar, main, footer**: siempre presentes en `base_app.html`.
 - **dock**: siempre presente en `base_app.html` como partial de chrome global. Su visibilidad la controla el usuario mediante la campana 🔔 del topbar (toggle). Estado en `localStorage` (`bddat.dock.open`). Las vistas no lo definen ni lo sobreescriben. Ver ADR-020.
-- **inspector**: opcional. Se activa cuando la vista define `{% block inspector %}...{% endblock %}`. Si no, el grid colapsa esa columna a `0fr`.
+- **inspector**: siempre presente en `base_app.html` como contenedor de shell (recogido por defecto). **No es una columna del grid**: es un overlay `position:fixed` en el borde derecho. Se abre/cierra mediante `window.AppInspector` (JS) al seleccionar un ítem en cualquier vista. El `{% block inspector %}` existe solo para que las islas React monten su slot dentro del body del panel; las vistas Jinja no lo definen.
 
-Una vista de listado/formulario no define inspector — queda en "modo página" (main ocupa el 100% horizontal). Una vista tipo workbench (expediente) define el inspector y queda en "modo workbench". El dock está presente en ambos modos.
+El grid del shell es siempre `sidebar | main` (+ filas viewbar/dock/footer). El inspector no ocupa área de grid y **nunca reflowa** el contenido.
 
 ---
 
@@ -97,7 +101,7 @@ html { font-size: 15px; }   /* a 15px: datos de tabla ~13px, chrome ~14px */
 --footer-height              /* 28px */
 --sidebar-width-expanded     /* 208px */
 --sidebar-width-collapsed    /* 56px */
---inspector-width            /* 380px */
+--inspector-width            /* 900px (default de apertura; ajustable por el usuario) */
 --dock-height                /* 240px */
 ```
 
@@ -107,13 +111,46 @@ html { font-size: 15px; }   /* a 15px: datos de tabla ~13px, chrome ~14px */
 
 ---
 
+## Clases de estado del shell
+
+| Clase | Sobre | Significado |
+|---|---|---|
+| `.app-shell.is-inspector-open` | `<body>` | Inspector visible (overlay desplegado) |
+| `.app-shell.is-inspector-locked` | `<body>` | Inspector en modo edición — backdrop bloqueante activo |
+
+---
+
 ## `localStorage` keys
 
 | Key | Tipo | Propósito |
 |---|---|---|
 | `bddat.sidebar.collapsed` | boolean | Estado del sidebar (expandido/colapsado) |
-| `bddat.inspector.open` | boolean | Última elección del usuario sobre el inspector |
+| `bddat.inspector.width` | number (px) | Ancho del inspector persistido tras resize (default 900) |
 | `bddat.dock.open` | boolean | Última elección del usuario sobre el dock |
+
+> `bddat.inspector.open` ha quedado en desuso (ADR-023 #534): el inspector ya no se
+> "deja abierto vacío"; se abre al seleccionar un ítem y se cierra al deseleccionar.
+
+---
+
+## Modelo de tres capas (ADR-023)
+
+Las vistas list-detail operan con tres capas superpuestas en una sola página:
+
+```
+listado (main)                     ← capa base, nunca se abandona
+  └─ inspector (overlay)           ← lectura + edición de campos del elemento
+       └─ modal grande (.modal-app-xl) ← gestión compleja (sub-colecciones, CRUD)
+```
+
+- **Capa 1 — listado**: la vista Jinja/React en `main`. Siempre visible.
+- **Capa 2 — inspector**: overlay `position:fixed`, anclado al borde derecho. Se abre
+  al seleccionar una fila (`AppInspector.open()`). En lectura es no modal (el main sigue
+  interactivo). En edición de campos, `AppInspector.setLocked(true)` activa el backdrop
+  bloqueante (`is-inspector-locked`).
+- **Capa 3 — modal grande**: Bootstrap modal con clase `.modal-app-xl` (maximizado con
+  margen), apilado sobre el inspector. Se lanza desde el inspector para gestión compleja
+  que no cabe en el panel (sub-tablas con CRUD propio). Al cerrarse refresca el inspector.
 
 ---
 

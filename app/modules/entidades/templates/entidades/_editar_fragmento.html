@@ -1,0 +1,140 @@
+{# _editar_fragmento.html — Parcial de edición para el inspector (ADR-023 §5 / #534).
+   No extiende base_app.html. Inyectado por inspector-overlay.js vía data-inspector-edit.
+   Submit interceptado por inspector-overlay.js: POST XHR → JSON { ok, errors, message }.
+#}
+
+<div class="p-3">
+
+<form data-inspector-form
+      data-action="{{ url_for('entidades.editar', entidad_id=entidad.id) }}">
+
+<div id="inspector-form-errors" class="alert alert-danger py-2 mb-3 small"
+     style="display:none;"></div>
+
+<div class="d-flex justify-content-end gap-2 mb-3">
+    <button type="button" class="btn btn-outline-secondary btn-sm"
+            data-inspector-cancel-edit>
+        <i class="fas fa-times me-1"></i> Cancelar
+    </button>
+    <button type="submit" class="btn btn-primary btn-sm">
+        <i class="fas fa-save me-1"></i> Guardar cambios
+    </button>
+</div>
+
+<!-- CARD 1 — Identificación -->
+<div class="card mb-3">
+    <div class="card-header card-header-accent fw-semibold">
+        <i class="fas fa-id-card me-1"></i> Identificación
+    </div>
+    <div class="card-body card-body-tinted">
+        <div class="row g-2">
+            <div class="col-12">
+                <label class="form-label fw-semibold small" for="ef_nombre">Nombre / Razón social</label>
+                <input type="text" class="form-control form-control-sm" id="ef_nombre"
+                       name="nombre_completo" value="{{ entidad.nombre_completo }}"
+                       required maxlength="200">
+            </div>
+            <div class="col-6">
+                <label class="form-label fw-semibold small" for="ef_nif">NIF</label>
+                <input type="text" class="form-control form-control-sm" id="ef_nif"
+                       name="nif" value="{{ entidad.nif or '' }}" maxlength="20"
+                       placeholder="Ej: B12345678">
+            </div>
+            <div class="col-3">
+                <label class="form-label fw-semibold small">Estado</label>
+                <div class="form-control form-control-sm d-flex align-items-center"
+                     style="background:#fff; min-height:31px;">
+                    <div class="form-check mb-0">
+                        <input class="form-check-input" type="checkbox" id="ef_activo"
+                               name="activo" {% if entidad.activo %}checked{% endif %}>
+                        <label class="form-check-label small" for="ef_activo">Activa</label>
+                    </div>
+                </div>
+            </div>
+            <div class="col-3">
+                <label class="form-label fw-semibold small">Roles</label>
+                <div class="form-control form-control-sm d-flex flex-column gap-1"
+                     style="background:#fff; min-height:60px;">
+                    <div class="form-check mb-0">
+                        <input class="form-check-input" type="checkbox" id="ef_titular"
+                               name="rol_titular" {% if entidad.rol_titular %}checked{% endif %}>
+                        <label class="form-check-label small" for="ef_titular">Titular</label>
+                    </div>
+                    <div class="form-check mb-0">
+                        <input class="form-check-input" type="checkbox" id="ef_consultado"
+                               name="rol_consultado" {% if entidad.rol_consultado %}checked{% endif %}>
+                        <label class="form-check-label small" for="ef_consultado">Consultado</label>
+                    </div>
+                    <div class="form-check mb-0">
+                        <input class="form-check-input" type="checkbox" id="ef_publicador"
+                               name="rol_publicador" {% if entidad.rol_publicador %}checked{% endif %}>
+                        <label class="form-check-label small" for="ef_publicador">Publicador</label>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- CARD 2 — Contacto -->
+<div class="card mb-3">
+    <div class="card-header card-header-accent fw-semibold">
+        <i class="fas fa-envelope me-1"></i> Contacto
+    </div>
+    <div class="card-body card-body-tinted">
+        <div class="row g-2">
+            <div class="col-6">
+                <label class="form-label fw-semibold small" for="ef_email">Email</label>
+                <input type="email" class="form-control form-control-sm" id="ef_email"
+                       name="email" value="{{ entidad.email or '' }}" maxlength="120"
+                       placeholder="correo@ejemplo.es">
+            </div>
+            <div class="col-6">
+                <label class="form-label fw-semibold small" for="ef_telefono">Teléfono</label>
+                <input type="text" class="form-control form-control-sm" id="ef_telefono"
+                       name="telefono" value="{{ entidad.telefono or '' }}" maxlength="20"
+                       placeholder="958 000 000">
+            </div>
+            <div class="col-12">
+                <label class="form-label fw-semibold small" for="ef_notas">Notas</label>
+                <textarea class="form-control form-control-sm" id="ef_notas"
+                          name="notas" rows="3">{{ entidad.notas or '' }}</textarea>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- CARD 3 — Dirección -->
+<div class="card mb-3">
+    <div class="card-header card-header-accent fw-semibold">
+        <i class="fas fa-map-marker-alt me-1"></i> Dirección
+    </div>
+    <div class="card-body card-body-tinted">
+        <div class="row g-2">
+            <div class="col-8">
+                <label class="form-label fw-semibold small" for="ef_direccion">Calle / Dirección</label>
+                <input type="text" class="form-control form-control-sm" id="ef_direccion"
+                       name="direccion" value="{{ entidad.direccion or '' }}"
+                       placeholder="Calle, número, piso...">
+            </div>
+            <div class="col-4">
+                <label class="form-label fw-semibold small" for="ef_cp">Código Postal</label>
+                <input type="text" class="form-control form-control-sm" id="ef_cp"
+                       name="codigo_postal" value="{{ entidad.codigo_postal or '' }}"
+                       maxlength="10" placeholder="18001">
+            </div>
+            <div class="col-12">
+                <label class="form-label fw-semibold small" for="ef_fallback">
+                    Dirección libre
+                    <span class="text-secondary fw-normal">(extranjero / casos especiales)</span>
+                </label>
+                <input type="text" class="form-control form-control-sm" id="ef_fallback"
+                       name="direccion_fallback" value="{{ entidad.direccion_fallback or '' }}"
+                       placeholder="Dirección completa en texto libre...">
+            </div>
+        </div>
+    </div>
+</div>
+
+</form>
+</div>{# /p-3 #}

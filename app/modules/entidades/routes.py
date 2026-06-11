@@ -4,19 +4,24 @@ RUTAS:
     GET  /entidades/                                   → listado (shell V2, datos vía API)
     GET  /entidades/nueva                              → formulario nueva entidad
     POST /entidades/nueva                              → crear entidad
-    GET  /entidades/<id>                               → detalle entidad V4 solo lectura (#134)
-    GET  /entidades/<id>/editar                        → edición V4 mismo template (#135)
-    POST /entidades/<id>/editar                        → guardar cambios entidad (#135)
-    POST /entidades/<id>/direcciones/nueva             → añadir dirección de notificación (#136)
-    POST /entidades/<id>/direcciones/<dir_id>/editar   → editar dirección (#136)
-    POST /entidades/<id>/direcciones/<dir_id>/toggle   → activar/desactivar dirección (#136)
+    GET  /entidades/<id>                               → redirect a /entidades/?sel=<id> (ADR-023 #534)
+    GET  /entidades/<id>/fragmento                     → parcial lectura para el inspector (ADR-023 #534)
+    GET  /entidades/<id>/editar-fragmento              → parcial edición para el inspector (ADR-023 §5 #534)
+    GET  /entidades/<id>/editar                        → redirect a /entidades/?sel=<id> (ADR-023 #534)
+    POST /entidades/<id>/editar                        → guardar cambios; JSON si XHR, redirect si no (#534)
+    POST /entidades/<id>/direcciones/nueva             → añadir dirección; JSON si XHR, redirect si no (#136 #534)
+    POST /entidades/<id>/direcciones/<dir_id>/editar   → editar dirección; JSON si XHR, redirect si no (#136 #534)
+    POST /entidades/<id>/direcciones/<dir_id>/toggle   → activar/desactivar dirección; JSON si XHR (#136 #534)
+    POST /entidades/<id>/autorizados/nueva             → nueva autorización; JSON si XHR (#137 #534)
+    POST /entidades/<id>/autorizados/<aut_id>/revocar  → revocar autorización; JSON si XHR (#137 #534)
+    POST /entidades/<id>/autorizados/<aut_id>/restaurar → restaurar autorización; JSON si XHR (#137 #534)
 
-VERSIÓN: 1.2
-FECHA: 2026-02-22
-ISSUE: #136
+VERSIÓN: 1.5
+FECHA: 2026-06-11
+ISSUE: #534
 """
 
-from flask import Blueprint, render_template, request, redirect, url_for, flash
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
 from flask_login import login_required
 from app import db
 from app.models.entidad import Entidad
@@ -111,42 +116,75 @@ def nueva():
 @bp.route('/<int:entidad_id>')
 @login_required
 def detalle(entidad_id):
-    """Vista detalle de entidad — patrón V4 solo lectura."""
-    entidad = Entidad.query.get_or_404(entidad_id)
+    """Redirige al listado con el inspector abierto en esa entidad (ADR-023 §9)."""
+    return redirect(url_for('entidades.index', sel=entidad_id))
 
-    # Cargar historial completo de autorizaciones si es titular
+
+@bp.route('/<int:entidad_id>/fragmento')
+@login_required
+def fragmento(entidad_id):
+    """Fragmento HTML de lectura para el inspector (ADR-023 §9 / #534)."""
+    entidad = Entidad.query.get_or_404(entidad_id)
     autorizaciones = []
     if entidad.rol_titular:
         autorizaciones = AutorizadoTitular.obtener_autorizados_de_titular(
             entidad_id, solo_activos=False
         )
-
     return render_template(
-        'entidades/detalle.html',
+        'entidades/_detalle_fragmento.html',
         entidad=entidad,
         autorizaciones=autorizaciones,
-        modo='ver',
     )
+
+
+@bp.route('/<int:entidad_id>/gestionar-direcciones')
+@login_required
+def gestionar_direcciones(entidad_id):
+    """Fragmento modal grande — gestión de direcciones de notificación (ADR-023 §6 / #534)."""
+    entidad = Entidad.query.get_or_404(entidad_id)
+    return render_template(
+        'entidades/_gestionar_direcciones_fragmento.html',
+        entidad=entidad,
+    )
+
+
+@bp.route('/<int:entidad_id>/gestionar-autorizaciones')
+@login_required
+def gestionar_autorizaciones(entidad_id):
+    """Fragmento modal grande — gestión de autorizaciones (ADR-023 §6 / #534). Solo titulares."""
+    entidad = Entidad.query.get_or_404(entidad_id)
+    if not entidad.rol_titular:
+        return '', 403
+    autorizaciones = AutorizadoTitular.obtener_autorizados_de_titular(
+        entidad_id, solo_activos=False
+    )
+    return render_template(
+        'entidades/_gestionar_autorizaciones_fragmento.html',
+        entidad=entidad,
+        autorizaciones=autorizaciones,
+    )
+
+
+@bp.route('/<int:entidad_id>/editar-fragmento')
+@login_required
+def editar_fragmento(entidad_id):
+    """Fragmento HTML de edición para el inspector (ADR-023 §5 / #534)."""
+    entidad = Entidad.query.get_or_404(entidad_id)
+    return render_template('entidades/_editar_fragmento.html', entidad=entidad)
 
 
 @bp.route('/<int:entidad_id>/editar', methods=['GET', 'POST'])
 @login_required
 def editar(entidad_id):
-    """Edición de entidad — patrón V4 mismo template con modo='editar' (#135)."""
+    """Edición de entidad (ADR-023 §5 / #534).
+
+    GET  → redirect al listado con inspector abierto (ya no es página).
+    POST → JSON si X-Requested-With:XMLHttpRequest; redirect si no (fallback).
+    """
     entidad = Entidad.query.get_or_404(entidad_id)
 
     if request.method == 'GET':
-        autorizaciones = []
-        if entidad.rol_titular:
-            autorizaciones = AutorizadoTitular.obtener_autorizados_de_titular(
-                entidad_id, solo_activos=False
-            )
-        return render_template(
-            'entidades/detalle.html',
-            entidad=entidad,
-            autorizaciones=autorizaciones,
-            modo='editar',
-        )
+        return redirect(url_for('entidades.index', sel=entidad_id))
 
     # --- POST: recoger y validar ---
     nombre_completo = request.form.get('nombre_completo', '').strip()
@@ -176,20 +214,14 @@ def editar(entidad_id):
         if duplicado and duplicado.id != entidad_id:
             errores.append(f'Ya existe otra entidad con el NIF {nif}.')
 
+    is_xhr = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+
     if errores:
+        if is_xhr:
+            return jsonify({'ok': False, 'errors': errores})
         for msg in errores:
             flash(msg, 'danger')
-        autorizaciones = []
-        if entidad.rol_titular:
-            autorizaciones = AutorizadoTitular.obtener_autorizados_de_titular(
-                entidad_id, solo_activos=False
-            )
-        return render_template(
-            'entidades/detalle.html',
-            entidad=entidad,
-            autorizaciones=autorizaciones,
-            modo='editar',
-        )
+        return redirect(url_for('entidades.index', sel=entidad_id))
 
     # --- Actualizar ---
     entidad.nombre_completo    = nombre_completo
@@ -207,8 +239,13 @@ def editar(entidad_id):
 
     db.session.commit()
 
+    if is_xhr:
+        return jsonify({
+            'ok': True,
+            'message': f'Entidad "{entidad.nombre_completo}" actualizada correctamente.',
+        })
     flash(f'Entidad "{entidad.nombre_completo}" actualizada correctamente.', 'success')
-    return redirect(url_for('entidades.detalle', entidad_id=entidad_id))
+    return redirect(url_for('entidades.index', sel=entidad_id))
 
 
 # =============================================================================
@@ -259,8 +296,11 @@ def nueva_direccion(entidad_id):
     """Añade una nueva dirección de notificación a la entidad."""
     entidad = Entidad.query.get_or_404(entidad_id)
     datos, errores = _recoger_datos_direccion(request.form, entidad)
+    is_xhr = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
 
     if errores:
+        if is_xhr:
+            return jsonify({'ok': False, 'errors': errores})
         for msg in errores:
             flash(msg, 'danger')
         return redirect(url_for('entidades.detalle', entidad_id=entidad_id))
@@ -280,6 +320,8 @@ def nueva_direccion(entidad_id):
     db.session.add(dir_nueva)
     db.session.commit()
 
+    if is_xhr:
+        return jsonify({'ok': True, 'message': 'Dirección de notificación añadida.'})
     flash('Dirección de notificación añadida.', 'success')
     return redirect(url_for('entidades.detalle', entidad_id=entidad_id))
 
@@ -294,8 +336,11 @@ def editar_direccion(entidad_id, dir_id):
     ).first_or_404()
 
     datos, errores = _recoger_datos_direccion(request.form, entidad)
+    is_xhr = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
 
     if errores:
+        if is_xhr:
+            return jsonify({'ok': False, 'errors': errores})
         for msg in errores:
             flash(msg, 'danger')
         return redirect(url_for('entidades.detalle', entidad_id=entidad_id))
@@ -310,6 +355,8 @@ def editar_direccion(entidad_id, dir_id):
     direccion.notas              = datos['notas']
 
     db.session.commit()
+    if is_xhr:
+        return jsonify({'ok': True, 'message': 'Dirección de notificación actualizada.'})
     flash('Dirección de notificación actualizada.', 'success')
     return redirect(url_for('entidades.detalle', entidad_id=entidad_id))
 
@@ -327,6 +374,9 @@ def toggle_direccion(entidad_id, dir_id):
     db.session.commit()
 
     estado = 'activada' if direccion.activo else 'desactivada'
+    is_xhr = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+    if is_xhr:
+        return jsonify({'ok': True, 'message': f'Dirección "{direccion.descripcion or dir_id}" {estado}.'})
     flash(f'Dirección "{direccion.descripcion or dir_id}" {estado}.', 'success')
     return redirect(url_for('entidades.detalle', entidad_id=entidad_id))
 
@@ -340,18 +390,26 @@ def toggle_direccion(entidad_id, dir_id):
 def nueva_autorizacion(entidad_id):
     """Crea una nueva autorización para que otra entidad actúe en nombre del titular."""
     entidad = Entidad.query.get_or_404(entidad_id)
+    is_xhr = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+
     if not entidad.rol_titular:
+        if is_xhr:
+            return jsonify({'ok': False, 'errors': ['Esta entidad no tiene rol Titular.']})
         flash('Esta entidad no tiene rol Titular.', 'danger')
         return redirect(url_for('entidades.detalle', entidad_id=entidad_id))
 
     autorizado_id_str = request.form.get('autorizado_id', '').strip()
     if not autorizado_id_str or not autorizado_id_str.isdigit():
+        if is_xhr:
+            return jsonify({'ok': False, 'errors': ['Debe seleccionar una entidad autorizada.']})
         flash('Debe seleccionar una entidad autorizada.', 'danger')
         return redirect(url_for('entidades.detalle', entidad_id=entidad_id))
 
     autorizado_id = int(autorizado_id_str)
 
     if autorizado_id == entidad_id:
+        if is_xhr:
+            return jsonify({'ok': False, 'errors': ['Una entidad no puede autorizarse a sí misma.']})
         flash('Una entidad no puede autorizarse a sí misma.', 'danger')
         return redirect(url_for('entidades.detalle', entidad_id=entidad_id))
 
@@ -363,11 +421,15 @@ def nueva_autorizacion(entidad_id):
 
     if existente:
         if existente.activo:
+            if is_xhr:
+                return jsonify({'ok': False, 'errors': ['Ya existe una autorización activa con esa entidad.']})
             flash('Ya existe una autorización activa con esa entidad.', 'warning')
             return redirect(url_for('entidades.detalle', entidad_id=entidad_id))
         # Reutilizar la revocada en vez de crear un duplicado
         existente.restaurar()
         db.session.commit()
+        if is_xhr:
+            return jsonify({'ok': True, 'message': f'Autorización restaurada para "{existente.autorizado.nombre_completo}".'})
         flash(f'Autorización restaurada para "{existente.autorizado.nombre_completo}".', 'success')
         return redirect(url_for('entidades.detalle', entidad_id=entidad_id))
 
@@ -375,8 +437,12 @@ def nueva_autorizacion(entidad_id):
         nueva = AutorizadoTitular.crear_autorizacion(entidad_id, autorizado_id)
         db.session.add(nueva)
         db.session.commit()
+        if is_xhr:
+            return jsonify({'ok': True, 'message': f'Autorización concedida a "{nueva.autorizado.nombre_completo}".'})
         flash(f'Autorización concedida a "{nueva.autorizado.nombre_completo}".', 'success')
     except ValueError as e:
+        if is_xhr:
+            return jsonify({'ok': False, 'errors': [str(e)]})
         flash(str(e), 'danger')
 
     return redirect(url_for('entidades.detalle', entidad_id=entidad_id))
@@ -393,6 +459,9 @@ def revocar_autorizacion(entidad_id, aut_id):
 
     aut.revocar()
     db.session.commit()
+    is_xhr = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+    if is_xhr:
+        return jsonify({'ok': True, 'message': f'Autorización de "{aut.autorizado.nombre_completo}" revocada.'})
     flash(f'Autorización de "{aut.autorizado.nombre_completo}" revocada.', 'success')
     return redirect(url_for('entidades.detalle', entidad_id=entidad_id))
 
@@ -408,5 +477,8 @@ def restaurar_autorizacion(entidad_id, aut_id):
 
     aut.restaurar()
     db.session.commit()
+    is_xhr = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+    if is_xhr:
+        return jsonify({'ok': True, 'message': f'Autorización de "{aut.autorizado.nombre_completo}" restaurada.'})
     flash(f'Autorización de "{aut.autorizado.nombre_completo}" restaurada.', 'success')
     return redirect(url_for('entidades.detalle', entidad_id=entidad_id))

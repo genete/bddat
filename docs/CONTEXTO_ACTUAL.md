@@ -6,11 +6,11 @@
 
 ---
 
-**Último cerrado:** #533 (ADR-022 sistema visual base: rem global 15px como mando maestro, tokens de color sin fugas en el shell, tabla unificada `.lista-table` con ocultación responsive declarativa `.lt-hide-*` y truncado `.lt-truncate`, retirada del recorte ~95%; absorbe la migración #281; PR #538). Precedido de: #531 (backend palette `/api/search`), #528/#506 (dock bitácora).
+**Último cerrado:** #534 (ADR-023 — inspector overlay de shell + modelo de tres capas + Entidades como listado de referencia; 5 fases implementadas; PR de cierre contra develop). Precedido de: #533 (ADR-022 sistema visual base: rem global 15px, tokens de color, tabla unificada `.lista-table`; PR #538), #531, #528/#506.
 
-**Actuales:** **#534** (ADR-023 — estudio cerrado; inspector overlay + tres capas; implementación en 5 fases, ver issue).
+**Actuales:** *(pendiente de confirmar — ver sección "Próximos" abajo)*
 
-**Próximos:** **Migrar los listados existentes** al patrón inspector (seguimiento\*, plantillas, usuarios, proyectos — issues a crear) → **#501** (ADR-017 "Mi trabajo", ya con patrón maduro; clona seguimiento) → **#532** (frontend palette: isla React cmdk, M4 — aislada, no preceptiva).
+**Próximos:** *(confirmación pendiente del usuario)* — candidatos: **Migrar los listados restantes** al patrón inspector (seguimiento\*, plantillas, usuarios, proyectos — issues a crear) → **#501** (ADR-017 "Mi trabajo", ya con patrón maduro) → **#532** (frontend palette: isla React cmdk, M4 — aislada, no preceptiva).
 
 > #502 queda como épica/referencia de ADR-018. Se cierra al mergear #532.
 > #537 (cabecera del listado → viewbar con prioridades de colapso, M2): abierto desde #533; coordinar con #534 al tocar la estructura del listado en `main`.
@@ -30,7 +30,7 @@ Orden técnico recomendado de implementación (dependencias de las cabeceras hac
 6. ~~**#506 — ADR-020 Dock global: bitácora + avisos de sesión.**~~ ✅ Cerrado. Chrome global del shell (`base_app.html`); fix de bitácora vacía en #528.
 7. ~~**#531 — ADR-018 Command Palette, endpoints de búsqueda.**~~ ✅ Cerrado. `GET /api/search/expedientes` y `GET /api/search/entidades`. Blueprint `api_search_bp`, fichero `app/routes/api_search.py`. 6 smoke tests.
 8. ~~**#533 — ADR-022 Sistema visual base.**~~ ✅ Cerrado. Rem global 15px como mando maestro, tabla unificada `.lista-table` (elimina la dualidad `data-table`/`expedientes-table`; ocultación responsive declarativa `.lt-hide-*` + truncado `.lt-truncate`), tokens de color sin fugas en el shell, retirada del recorte ~95% en `main`. Absorbió la migración #281. PR #538. Deja abierto #537 (cabecera del listado → viewbar).
-9. **#534 — ADR-023 List-detail + inspector overlay + tres capas.** Inspector **overlay** a nivel de shell (no columna del grid; sin negociación de espacio), agnóstico Jinja/React. Modelo de **tres capas** (listado · inspector · modal grande) con **navegación por capas, no por rutas**. #534 pone la infraestructura (validada contra el árbol) + **Entidades** como listado de referencia, en 5 fases. Cada listado existente restante (seguimiento, plantillas, usuarios, proyectos) migra en su propio issue. Requiere #533. Detalle en ADR-023.
+9. ~~**#534 — ADR-023 List-detail + inspector overlay + tres capas.**~~ ✅ Cerrado. Inspector **overlay** a nivel de shell (no columna del grid; sin negociación de espacio), agnóstico Jinja/React. Modelo de **tres capas** (listado · inspector · modal grande) con **navegación por capas, no por rutas**. Infraestructura validada contra el árbol + **Entidades** como listado de referencia. Cada listado restante (seguimiento, plantillas, usuarios, proyectos) migra en su propio issue.
 10. **#501 — ADR-017 Vista "Mi trabajo" del administrativo.** Agregado que navega al árbol (gemelo de seguimiento), **sin inspector-detalle**. Reutiliza el árbol como destino de acción. ~2-3 semanas. Se construye **tras migrar los listados existentes** (patrón maduro). ADR-017 candidato a revisión. Requiere tabla unificada (#533) + scroll infinito.
 11. **#532 — ADR-018 Command Palette (isla React, cmdk).** M4 — Pre-producción. Primera isla global del shell (`base_app.html`). Instalar `cmdk`, entrada en `vite.config.js`. ~1-2 semanas cuando llegue su momento.
 

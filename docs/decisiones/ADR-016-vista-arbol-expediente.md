@@ -280,9 +280,9 @@ Refinamiento detallado pendiente de implementación (qué rol asigna por defecto
 Aplica lo decidido en ADR-014 + refinamientos posteriores:
 
 - **Sidebar**: dos estados (expandido 240px / colapsado 60px) con chevron. Sin drag.
-- **Inspector**: redimensionable con drag splitter (borde izquierdo). Valor inicial `clamp(320px, 25vw, 600px)`. Persistido en `sessionStorage` (no entre sesiones).
+- **Inspector**: ~~redimensionable con drag splitter (borde izquierdo). Valor inicial `clamp(320px, 25vw, 600px)`. Persistido en `sessionStorage` (no entre sesiones).~~ **Enmendado por ADR-023 (#534, 2026-06-10):** el inspector pasa a ser **overlay de shell** (mecanismo CSS + JS + `localStorage`), no `react-resizable-panels`. El resize se hace arrastrando la franja izquierda del panel; el ancho se persiste en `localStorage` (`bddat.inspector.width`). Default 900 px. Ver ADR-023 §2 y §8.
 - **Dock**: redimensionable con drag splitter (borde superior). Valor inicial `clamp(160px, 25vh, 400px)`. Persistido en `sessionStorage`.
-- Librería propuesta: `react-resizable-panels` (headless, ligera).
+- ~~Librería propuesta: `react-resizable-panels` (headless, ligera).~~ **Enmendado:** `react-resizable-panels` queda **solo para splitters internos de una isla** (p. ej. el split despensa/detalle del árbol). El inspector ya no la usa.
 
 ### 15. Deudas explícitas
 

@@ -83,13 +83,19 @@ Grid CSS 2D con áreas nombradas. Cinco zonas, dos de ellas opcionales:
 | `title` | sí | Título de la pestaña del navegador |
 | `viewbar` | no | Cabecera contextual de la vista (título, acciones, resumen) |
 | `content` | sí | Contenido principal |
-| `inspector` | no | Panel lateral derecho (detalle nodo, pool documentos, etc.) |
-| `inspector_state` | no | `"open"` / `"closed"` — estado inicial del inspector |
+| `inspector` | no | Slot de montaje para islas React dentro del body del inspector |
 | `extra_css` / `extra_js` | no | Recursos adicionales por vista |
 
 El dock **no es un bloque Jinja**: es un partial de chrome global incluido siempre en el shell (ver ADR-020). Las vistas no lo definen ni lo sobreescriben.
 
-Vistas tipo "página" (listado, formulario, detalle simple) no definen `{% block inspector %}` y main ocupa el 100% del espacio horizontal. Vistas tipo "workbench" (expediente) definen el inspector y reciben el grid 2D completo.
+> **Enmienda — ADR-023 (#534, 2026-06-10):** el inspector **no es una columna del grid**.
+> Es un overlay `position:fixed` siempre presente en el shell (recogido hasta que se
+> selecciona un ítem). Los listados no definen `{% block inspector %}` para activarlo;
+> en cambio, cualquier vista puede abrir el inspector via `window.AppInspector.open()`
+> sin definir ningún bloque Jinja. El bloque `inspector` subsiste únicamente como slot
+> de montaje para las islas React. El slot `inspector_state` queda en desuso.
+> El grid queda siempre como `sidebar | main`; el inspector nunca es área del grid.
+> Ver ADR-023 — `docs/decisiones/ADR-023-list-detail-inspector-universal.md`.
 
 ### 4. Sidebar persistente con chevron de colapsar/expandir
 
