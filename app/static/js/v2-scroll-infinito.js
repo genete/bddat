@@ -100,7 +100,7 @@ class ScrollInfinito {
         this.container      = document.querySelector('.lista-scroll-container');
         this.tbody          = document.querySelector(`${this.tableClass} tbody`);
         this.paginationInfo = document.querySelector('.pagination-info');
-        this.searchInput    = document.querySelector('input[type="search"]');
+        this.searchInput    = document.querySelector('.filters input[type="search"]');
         this.estadoSelect   = document.querySelector('.filters select');
 
         // Validar elementos necesarios
