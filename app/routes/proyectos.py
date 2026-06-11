@@ -127,21 +127,9 @@ def index():
             Expediente, Usuario.id == Expediente.responsable_id
         ).distinct().order_by(Usuario.nombre).all()
     
-    return render_template(
-        'proyectos/index.html',
-        proyectos=proyectos,
-        tipos_ia=tipos_ia,
-        provincias=provincias,
-        responsables=responsables,
-        filtros_activos={
-            'buscar': buscar,
-            'tipo_ia': tipo_ia_id,
-            'provincia': provincia_codigo,
-            'responsable': request.args.get('responsable', type=int)
-        },
-        sort_by=sort_by,
-        order=order
-    )
+    # app/routes/proyectos.py no está registrado — archivo de código histórico.
+    # Listado fusionado en expedientes (ADR-024 #543).
+    return redirect(url_for('expedientes.listado_v2'))
 
 
 @bp.route('/<int:id>')

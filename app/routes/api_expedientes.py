@@ -3,8 +3,10 @@
 ENDPOINTS:
     1. GET /api/expedientes - Listado paginado con cursor (scroll infinito)
 
-VERSIÓN: 2.2
-FECHA: 2026-06-03
+VERSIÓN: 2.3
+FECHA: 2026-06-11
+CAMBIOS v2.3: Añadidos campos titulo_proyecto, ia, municipios_resumen (#543).
+              Nuevos filtros ia_id y municipio_id (#543).
 CAMBIOS v2.2: Eliminado endpoint /jerarquia (solo consumido por vistas BC obsoletas, issue #500).
               url_tramitacion apunta a expedientes.arbol.
 CAMBIOS v2.1: Añadido campo 'codigo' ("AT-{numero_at}") a serialización del listado
@@ -19,6 +21,7 @@ from app import db
 from app.models.expedientes import Expediente
 from app.models.entidad import Entidad
 from app.models.tipos_expedientes import TipoExpediente
+from app.models.municipios_proyecto import MunicipioProyecto
 from app.models import (
     Solicitud, Fase, TipoSolicitud, TipoFase,
     Proyecto, TipoIA, Usuario,
@@ -104,6 +107,9 @@ def listar_expedientes():
 
         estado_filter = request.args.get('estado', '').strip()
         responsable_filter = request.args.get('responsable', '').strip()
+        ia_id_filter = request.args.get('ia_id', '').strip()
+        municipio_id_filter = request.args.get('municipio_id', '').strip()
+        tipo_exp_filter = request.args.get('tipo_expediente_id', '').strip()
 
     except ValueError:
         return jsonify({'error': 'Parámetros numéricos inválidos'}), 400
@@ -115,7 +121,8 @@ def listar_expedientes():
     query = db.session.query(Expediente).options(
         joinedload(Expediente.titular),
         joinedload(Expediente.tipo_expediente),
-        joinedload(Expediente.responsable)
+        joinedload(Expediente.responsable),
+        joinedload(Expediente.proyecto).joinedload(Proyecto.ia),
     )
 
     # ==========================================================================
@@ -152,6 +159,30 @@ def listar_expedientes():
 
     if responsable_filter == 'yo':
         query = query.filter(Expediente.responsable_id == current_user.id)
+
+    if tipo_exp_filter:
+        try:
+            query = query.filter(Expediente.tipo_expediente_id == int(tipo_exp_filter))
+        except ValueError:
+            return jsonify({'error': 'tipo_expediente_id debe ser entero'}), 400
+
+    if ia_id_filter:
+        try:
+            ia_pids = db.session.query(Proyecto.id).filter(
+                Proyecto.ia_id == int(ia_id_filter)
+            ).subquery()
+            query = query.filter(Expediente.proyecto_id.in_(ia_pids))
+        except ValueError:
+            return jsonify({'error': 'ia_id debe ser entero'}), 400
+
+    if municipio_id_filter:
+        try:
+            muni_pids = db.session.query(MunicipioProyecto.proyecto_id).filter(
+                MunicipioProyecto.municipio_id == int(municipio_id_filter)
+            ).subquery()
+            query = query.filter(Expediente.proyecto_id.in_(muni_pids))
+        except ValueError:
+            return jsonify({'error': 'municipio_id debe ser entero'}), 400
 
     if estado_filter:
         estados_validos = ['borrador', 'tramitacion', 'finalizado', 'archivado']
@@ -196,6 +227,18 @@ def listar_expedientes():
             Solicitud.expediente_id.in_(ids_pagina)
         ).group_by(Solicitud.expediente_id).all()
         sol_stats = {row.expediente_id: row for row in rows}
+
+    # Conteo de municipios por proyecto (batch, evita N+1)
+    proyecto_ids = [e.proyecto_id for e in expedientes if e.proyecto_id]
+    muni_counts = {}
+    if proyecto_ids:
+        muni_rows = db.session.query(
+            MunicipioProyecto.proyecto_id,
+            func.count(MunicipioProyecto.municipio_id).label('cnt')
+        ).filter(
+            MunicipioProyecto.proyecto_id.in_(proyecto_ids)
+        ).group_by(MunicipioProyecto.proyecto_id).all()
+        muni_counts = {row.proyecto_id: row.cnt for row in muni_rows}
 
     # ==========================================================================
     # PASO 6: Calcular total (solo si hay filtros)
@@ -247,12 +290,22 @@ def listar_expedientes():
         else:
             estado_tramitacion = 'RESUELTO'
 
+        muni_cnt = muni_counts.get(exp.proyecto_id, 0)
+        titulo_proyecto = exp.proyecto.titulo if exp.proyecto else '—'
+        ia_siglas = (exp.proyecto.ia.siglas if exp.proyecto and exp.proyecto.ia else '—')
+        municipios_resumen = (
+            f'{muni_cnt} municipio{"s" if muni_cnt != 1 else ""}' if muni_cnt else '—'
+        )
+
         expediente_dict = {
             'id':                  exp.id,
             'codigo':              f'AT-{exp.numero_at}',   # Opción B Issue #61
             'numero_at':           exp.numero_at,
             'titular':             exp.titular.nombre_completo if exp.titular else 'Sin titular',
             'tipo_expediente':     exp.tipo_expediente.tipo if exp.tipo_expediente else 'Sin tipo',
+            'titulo_proyecto':     titulo_proyecto,
+            'ia':                  ia_siglas,
+            'municipios_resumen':  municipios_resumen,
             'responsable':         nombre_responsable,
             'heredado':            exp.heredado if exp.heredado is not None else False,
             # Campos SFTT (#70)

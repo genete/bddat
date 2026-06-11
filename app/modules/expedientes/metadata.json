@@ -15,13 +15,14 @@
   },
   "listado_v2": {
     "columns": [
-      { "key": "codigo",             "label": "N\u00b0 Expediente", "type": "text"   },
-      { "key": "titular",            "label": "Titular",            "type": "text",   "truncate": true },
-      { "key": "tipo_expediente",    "label": "Tipo",               "type": "text",   "hide": "xl" },
-      { "key": "responsable",        "label": "Responsable",        "type": "text",   "hide": "xl" },
-      { "key": "num_solicitudes",    "label": "Solicitudes",        "type": "custom", "hide": "lg" },
-      { "key": "estado_tramitacion", "label": "Estado",             "type": "custom", "hide": "md" },
-      { "key": "_acciones",          "label": "Acciones",           "type": "custom" }
+      { "key": "codigo",             "label": "AT",          "type": "text" },
+      { "key": "tipo_expediente",    "label": "Tipo",        "type": "text",   "hide": "xl" },
+      { "key": "titulo_proyecto",    "label": "T\u00edtulo", "type": "text",   "truncate": true },
+      { "key": "titular",            "label": "Titular",     "type": "text",   "truncate": true, "hide": "lg" },
+      { "key": "ia",                 "label": "IA",          "type": "text",   "hide": "xl" },
+      { "key": "municipios_resumen", "label": "Municipios",  "type": "text",   "hide": "xl" },
+      { "key": "responsable",        "label": "Resp.",       "type": "text",   "hide": "lg" },
+      { "key": "estado_tramitacion", "label": "Estado",      "type": "custom", "hide": "md" }
     ]
   },
   "seguimiento": {

@@ -1,15 +1,24 @@
-"""
-Blueprint para gestión de expedientes.
+"""Blueprint para gestión de expedientes.
 
-Rutas:
-- GET  /expedientes/                                                            - Listado con scroll infinito (Fase 2)
-- GET  /expedientes/<id>                 - Ver detalle expediente
-- GET  /expedientes/<id>/editar          - Formulario editar expediente
-- POST /expedientes/<id>/editar          - Actualizar expediente + proyecto
+RUTAS:
+    GET  /expedientes/                          → listado (shell V2, datos vía API)
+    GET  /expedientes/<id>                      → redirect a /expedientes/?sel=<id> (ADR-023 #543)
+    GET  /expedientes/<id>/fragmento            → parcial lectura para el inspector (ADR-023 #543)
+    GET  /expedientes/<id>/editar-fragmento     → parcial edición para el inspector (ADR-023 §5 #543)
+    GET  /expedientes/<id>/editar               → redirect a /expedientes/?sel=<id> (ADR-023 #543)
+    POST /expedientes/<id>/editar               → guardar cambios; JSON si XHR, redirect si no (#543)
+    GET  /expedientes/<id>/gestionar-municipios → parcial modal grande municipios (ADR-023 §6 #543)
+    POST /expedientes/<id>/municipios           → guardar municipios; JSON si XHR (#543)
+    GET  /expedientes/<id>/seguimiento/         → listado de seguimiento (ruta auxiliar)
+    (otros: arbol, pool_documentos, cert_pdf…)
+
+VERSIÓN: 2.0
+FECHA: 2026-06-11
+ISSUE: #543
 """
 import os
 from datetime import date
-from flask import current_app, send_file
+from flask import current_app, send_file, g
 from flask import Blueprint, render_template, request, flash, redirect, url_for, abort, jsonify
 from flask_login import login_required
 from app import db
@@ -28,10 +37,10 @@ from app.models.tipos_documentos import TipoDocumento
 from app.services.plazos import obtener_estado_plazo
 from app.utils.permisos import (
     puede_cambiar_responsable,
-    verificar_acceso_expediente
+    verificar_acceso_expediente,
+    tiene_permiso,
 )
 from app.utils.metadata import cargar_metadata
-from app.models.tipos_expedientes import TipoExpediente
 
 # template_folder apunta a app/modules/expedientes/templates/
 bp = Blueprint('expedientes', __name__,
@@ -85,15 +94,127 @@ def listado_v2():
 @bp.route('/<int:id>')
 @login_required
 def detalle(id):
-    """Vista detallada de un expediente con toda su información"""
-    expediente = Expediente.query.get_or_404(id)
+    """Redirige al listado con el inspector abierto en ese expediente (ADR-023 §9 / #543)."""
+    return redirect(url_for('expedientes.listado_v2', sel=id))
 
-    # Verificación usando la utilidad
-    resultado = verificar_acceso_expediente(expediente, 'ver')
+
+# =============================================================================
+# FRAGMENTO INSPECTOR — lectura y edición (ADR-023 §5, ADR-024 §4 / #543)
+# =============================================================================
+
+@bp.route('/<int:id>/fragmento')
+@login_required
+def fragmento(id):
+    """Fragmento HTML de lectura para el inspector (ADR-024 §4 / #543)."""
+    expediente = Expediente.query.get_or_404(id)
+    g.expediente_actual = expediente
+    if not tiene_permiso('acceder_expediente'):
+        return '', 403
+
+    num_solicitudes = len(expediente.solicitudes) if expediente.solicitudes else 0
+    num_activas = sum(1 for s in expediente.solicitudes if s.activa)
+    if num_solicitudes == 0:
+        estado_tramitacion = 'SIN_SOLICITUDES'
+    elif num_activas > 0:
+        estado_tramitacion = 'EN_TRAMITE'
+    else:
+        estado_tramitacion = 'RESUELTO'
+
+    return render_template(
+        'expedientes/_inspector_expediente.html',
+        expediente=expediente,
+        estado_tramitacion=estado_tramitacion,
+        num_solicitudes=num_solicitudes,
+        num_activas=num_activas,
+        puede_cambiar_resp=puede_cambiar_responsable(),
+        puede_editar=tiene_permiso('editar_expediente'),
+    )
+
+
+@bp.route('/<int:id>/editar-fragmento')
+@login_required
+def editar_fragmento(id):
+    """Fragmento HTML de edición para el inspector (ADR-023 §5 / #543)."""
+    expediente = Expediente.query.get_or_404(id)
+    resultado = verificar_acceso_expediente(expediente, 'editar')
     if resultado:
+        return '', 403
+
+    tipos_expedientes = TipoExpediente.query.order_by(TipoExpediente.tipo).all()
+    tipos_ia = TipoIA.query.order_by(TipoIA.siglas).all()
+    usuarios = Usuario.query.filter_by(activo=True).order_by(
+        Usuario.apellido1, Usuario.apellido2
+    ).all()
+
+    return render_template(
+        'expedientes/_editar_fragmento_expediente.html',
+        expediente=expediente,
+        tipos_expedientes=tipos_expedientes,
+        tipos_ia=tipos_ia,
+        usuarios=usuarios,
+        puede_cambiar_resp=puede_cambiar_responsable(),
+    )
+
+
+@bp.route('/<int:id>/gestionar-municipios')
+@login_required
+def gestionar_municipios(id):
+    """Fragmento modal grande — gestión de municipios del proyecto (ADR-023 §6 / #543)."""
+    expediente = Expediente.query.get_or_404(id)
+    resultado = verificar_acceso_expediente(expediente, 'editar')
+    if resultado:
+        return '', 403
+
+    return render_template(
+        'expedientes/_modal_municipios_expediente.html',
+        expediente=expediente,
+    )
+
+
+@bp.route('/<int:id>/municipios', methods=['POST'])
+@login_required
+def actualizar_municipios(id):
+    """Reemplaza los municipios del proyecto. JSON si XHR, redirect si no (#543)."""
+    expediente = Expediente.query.get_or_404(id)
+    resultado = verificar_acceso_expediente(expediente, 'editar')
+    is_xhr = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+    if resultado:
+        if is_xhr:
+            return jsonify({'ok': False, 'errors': ['Sin permiso para editar este expediente']}), 403
         return resultado
 
-    return render_template('expedientes/detalle.html', expediente=expediente, modo='ver')
+    municipios_ids_raw = request.form.getlist('municipios[]')
+    try:
+        municipios_ids = [int(mid) for mid in municipios_ids_raw if mid]
+    except ValueError:
+        if is_xhr:
+            return jsonify({'ok': False, 'errors': ['IDs de municipios inválidos']}), 400
+        flash('IDs de municipios inválidos', 'danger')
+        return redirect(url_for('expedientes.listado_v2', sel=id))
+
+    if not municipios_ids:
+        if is_xhr:
+            return jsonify({'ok': False, 'errors': ['Debe añadir al menos un municipio afectado']}), 400
+        flash('Debe añadir al menos un municipio afectado', 'danger')
+        return redirect(url_for('expedientes.listado_v2', sel=id))
+
+    try:
+        proyecto = expediente.proyecto
+        MunicipioProyecto.query.filter_by(proyecto_id=proyecto.id).delete()
+        for municipio_id in municipios_ids:
+            db.session.add(MunicipioProyecto(municipio_id=municipio_id, proyecto_id=proyecto.id))
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        if is_xhr:
+            return jsonify({'ok': False, 'errors': [str(e)]}), 500
+        flash(f'Error al actualizar municipios: {str(e)}', 'danger')
+        return redirect(url_for('expedientes.listado_v2', sel=id))
+
+    if is_xhr:
+        return jsonify({'ok': True, 'message': 'Municipios actualizados correctamente.'})
+    flash('Municipios actualizados correctamente.', 'success')
+    return redirect(url_for('expedientes.listado_v2', sel=id))
 
 
 @bp.route('/<int:id>/arbol')
@@ -117,89 +238,70 @@ def arbol(id):
 @bp.route('/<int:id>/editar', methods=['GET', 'POST'])
 @login_required
 def editar(id):
-    """Editar expediente y proyecto asociado"""
+    """Edición de expediente y proyecto asociado (ADR-023 §5 / #543).
+
+    GET  → redirect al listado con inspector abierto (ya no es página).
+    POST → JSON si X-Requested-With:XMLHttpRequest; redirect si no (fallback).
+    Municipios se gestionan en endpoint separado /municipios (modal grande).
+    """
     expediente = Expediente.query.get_or_404(id)
 
-    # Verificación usando la utilidad
+    if request.method == 'GET':
+        return redirect(url_for('expedientes.listado_v2', sel=id))
+
+    # --- POST ---
     resultado = verificar_acceso_expediente(expediente, 'editar')
+    is_xhr = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
     if resultado:
+        if is_xhr:
+            return jsonify({'ok': False, 'errors': ['Sin permiso para editar este expediente']}), 403
         return resultado
 
-    if request.method == 'POST':
-        try:
-            # ============================================
-            # 1. VALIDAR MUNICIPIOS (OBLIGATORIO)
-            # ============================================
-            municipios_ids = request.form.getlist('municipios[]')
-            if not municipios_ids:
-                flash('Debe añadir al menos un municipio afectado', 'danger')
-                return redirect(url_for('expedientes.editar', id=id))
+    try:
+        # Actualizar expediente
+        expediente.tipo_expediente_id = request.form.get('tipo_expediente_id') or None
+        expediente.heredado = request.form.get('heredado') == 'on'
 
+        if puede_cambiar_responsable():
+            nuevo_resp_id = request.form.get('responsable_id')
+            expediente.responsable_id = int(nuevo_resp_id) if nuevo_resp_id else None
+
+        # Actualizar proyecto
+        proyecto = expediente.proyecto
+        fecha_raw = request.form.get('fecha') or None
+        if fecha_raw:
             try:
-                municipios_ids = [int(mid) for mid in municipios_ids]
+                from datetime import date as _date
+                proyecto.fecha = _date.fromisoformat(fecha_raw)
             except ValueError:
-                flash('IDs de municipios inválidos', 'danger')
-                return redirect(url_for('expedientes.editar', id=id))
+                pass
+        proyecto.titulo = request.form.get('titulo') or proyecto.titulo
+        proyecto.finalidad = request.form.get('finalidad') or proyecto.finalidad
+        proyecto.emplazamiento = request.form.get('emplazamiento') or proyecto.emplazamiento
+        proyecto.descripcion = request.form.get('descripcion') or proyecto.descripcion
+        proyecto.ia_id = request.form.get('ia_id') or None
+        proyecto.es_modificacion = request.form.get('es_modificacion') == 'on'
+        proyecto.sin_linea_aerea = request.form.get('sin_linea_aerea') == 'on'
+        max_kv_raw = request.form.get('max_tension_nominal_kv', '').strip()
+        proyecto.max_tension_nominal_kv = float(max_kv_raw) if max_kv_raw else None
+        proyecto.solo_suelo_urbano_urbanizable = request.form.get('solo_suelo_urbano_urbanizable') == 'on'
 
-            # ============================================
-            # 2. ACTUALIZAR EXPEDIENTE
-            # ============================================
-            expediente.tipo_expediente_id = request.form.get('tipo_expediente_id') or None
-            expediente.heredado = request.form.get('heredado') == 'on'
+        db.session.commit()
 
-            if puede_cambiar_responsable():
-                nuevo_responsable_id = request.form.get('responsable_id')
-                expediente.responsable_id = int(nuevo_responsable_id) if nuevo_responsable_id else None
+    except Exception as e:
+        db.session.rollback()
+        if is_xhr:
+            return jsonify({'ok': False, 'errors': [str(e)]}), 500
+        flash(f'Error al actualizar expediente: {str(e)}', 'danger')
+        return redirect(url_for('expedientes.listado_v2', sel=id))
 
-            # ============================================
-            # 3. ACTUALIZAR PROYECTO
-            # ============================================
-            proyecto = expediente.proyecto
-            proyecto.titulo = request.form.get('titulo_proyecto') or None
-            proyecto.descripcion = request.form.get('descripcion_proyecto') or None
-            proyecto.finalidad = request.form.get('finalidad') or None
-            proyecto.emplazamiento = request.form.get('emplazamiento') or None
-            proyecto.ia_id = request.form.get('ia_id') or None
-
-            # ============================================
-            # 4. ACTUALIZAR MUNICIPIOS (REEMPLAZAR)
-            # ============================================
-            # Eliminar asociaciones actuales
-            MunicipioProyecto.query.filter_by(
-                proyecto_id=proyecto.id
-            ).delete()
-
-            # Crear nuevas asociaciones
-            for municipio_id in municipios_ids:
-                mp = MunicipioProyecto(
-                    municipio_id=municipio_id,
-                    proyecto_id=proyecto.id
-                )
-                db.session.add(mp)
-
-            # ============================================
-            # 5. COMMIT TRANSACCIONAL
-            # ============================================
-            db.session.commit()
-
-            flash(f'Expediente AT-{expediente.numero_at} actualizado correctamente', 'success')
-            return redirect(url_for('expedientes.detalle', id=expediente.id))
-
-        except Exception as e:
-            db.session.rollback()
-            flash(f'Error al actualizar expediente: {str(e)}', 'danger')
-
-    # GET: Mostrar formulario
-    tipos_expedientes = TipoExpediente.query.all()
-    tipos_ia = TipoIA.query.all()
-    usuarios = Usuario.query.filter_by(activo=True).all()
-
-    return render_template('expedientes/detalle.html',
-                         expediente=expediente,
-                         modo='editar',
-                         tipos_expedientes=tipos_expedientes,
-                         tipos_ia=tipos_ia,
-                         usuarios=usuarios)
+    if is_xhr:
+        return jsonify({
+            'ok': True,
+            'message': f'Expediente AT-{expediente.numero_at} actualizado correctamente.',
+        })
+    flash(f'Expediente AT-{expediente.numero_at} actualizado correctamente.', 'success')
+    return redirect(url_for('expedientes.listado_v2', sel=id))
 
 
 
