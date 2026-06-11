@@ -4,15 +4,27 @@
 
 <div class="p-3">
 
-{% if puede_editar %}
-<div class="d-flex justify-content-end mb-3">
-    <button type="button" class="btn btn-primary btn-sm"
-            data-inspector-edit
-            data-edit-url="{{ url_for('expedientes.editar_fragmento', id=expediente.id) }}">
-        <i class="fas fa-edit me-1"></i> Editar
+<!-- Botones de acción (ADR-024 §4.2) -->
+<div class="d-flex gap-2 mb-3">
+    <button type="button" class="btn btn-outline-secondary btn-sm" disabled
+            title="Las instalaciones técnicas del proyecto (líneas, CT, subestaciones) estarán disponibles en una próxima versión.">
+        <i class="fas fa-plug me-1"></i> Instalaciones
+        <span class="badge bg-secondary ms-1">Próximamente</span>
     </button>
+    <div class="ms-auto d-flex gap-2">
+        <a href="{{ url_for('expedientes.arbol', id=expediente.id) }}"
+           class="btn btn-primary btn-sm">
+            <i class="fas fa-sitemap me-1"></i> Tramitar
+        </a>
+        {% if puede_editar %}
+        <button type="button" class="btn btn-success btn-sm"
+                data-inspector-edit
+                data-edit-url="{{ url_for('expedientes.editar_fragmento', id=expediente.id) }}">
+            <i class="fas fa-edit me-1"></i> Editar
+        </button>
+        {% endif %}
+    </div>
 </div>
-{% endif %}
 
 <!-- CABECERA — AT, tipo, titular, estado (ADR-024 §4.1) -->
 <div class="card mb-3">
@@ -43,14 +55,6 @@
             {{ expediente.titular.nombre_completo if expediente.titular else '— Sin titular —' }}
         </div>
     </div>
-</div>
-
-<!-- ACCIÓN PRIMARIA — "Tramitar" (ADR-024 §4.2) -->
-<div class="d-grid mb-3">
-    <a href="{{ url_for('expedientes.arbol', id=expediente.id) }}"
-       class="btn btn-primary">
-        <i class="fas fa-sitemap me-1"></i> Tramitar
-    </a>
 </div>
 
 <!-- CARD datos administrativos — solo lectura (ADR-024 §4.3) -->
@@ -203,13 +207,5 @@
     </div>
 </div>
 
-<!-- PLACEHOLDER instalaciones — botón desactivado (ADR-024 §4.6) -->
-<div class="d-grid mb-2">
-    <button type="button" class="btn btn-outline-secondary btn-sm" disabled
-            title="Las instalaciones técnicas del proyecto (líneas, CT, subestaciones) estarán disponibles en una próxima versión.">
-        <i class="fas fa-plug me-1"></i> Instalaciones
-        <span class="badge bg-secondary ms-1">Próximamente</span>
-    </button>
-</div>
 
 </div>{# /p-3 #}

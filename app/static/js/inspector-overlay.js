@@ -307,11 +307,16 @@
 
   // ── Seguimiento de cambios en el formulario (dirty) ───────────────────────
 
-  document.addEventListener('change', function (e) {
-    if (e.target.closest('form[data-inspector-form]')) {
-      _formDirty = true;
-    }
-  });
+  function _markDirty(e) {
+    var form = e.target.closest('form[data-inspector-form]');
+    if (!form) return;
+    _formDirty = true;
+    var btn = form.querySelector('[type=submit]');
+    if (btn && btn.disabled) btn.disabled = false;
+  }
+
+  document.addEventListener('input',  _markDirty);
+  document.addEventListener('change', _markDirty);
 
   // ── beforeunload cuando hay cambios sin guardar ───────────────────────────
 
