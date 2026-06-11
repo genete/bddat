@@ -42,7 +42,7 @@
   --shell-sidebar-hover-bg:  var(--gris-especifico);
   --shell-sidebar-active-bg: var(--primary-lighter);
   --shell-sidebar-active-fg: var(--primary);
-  --shell-viewbar-bg:        #ffffff;
+  --shell-viewbar-bg:        var(--gris-especifico);
   --shell-viewbar-fg:        var(--gris-principal);
   --shell-viewbar-border:    var(--border-color);
   --shell-footer-bg:         var(--gris-principal);
@@ -410,6 +410,18 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  flex: 0 1 auto;  /* puede encogerse si el viewbar se estrecha */
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* El icono no se toca; el texto trunca con elipsis */
+.app-viewbar__title > i { flex-shrink: 0; }
+.app-viewbar__title > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
 }
 
 .app-viewbar__indicador {
@@ -420,6 +432,13 @@
 .app-viewbar__spacer { flex: 1; }
 
 .app-viewbar__actions { display: flex; align-items: center; gap: 6px; }
+
+/* Botones en el viewbar normalizados a sm (44px viewbar, misma escala que el inspector) */
+.app-viewbar__actions .btn {
+  padding-top: 0.25rem;
+  padding-bottom: 0.25rem;
+  font-size: 0.75rem;
+}
 
 /* ============================================================
    MAIN

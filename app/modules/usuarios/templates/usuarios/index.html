@@ -2,27 +2,26 @@
 
 {% block title %}Usuarios — BDDAT{% endblock %}
 
-{% block breadcrumb %}
-<a href="{{ url_for('dashboard.index') }}">Inicio</a>
-<span>›</span>
-<span>Usuarios</span>
+{% block viewbar %}
+<span class="app-viewbar__title">
+  <i class="fas fa-users"></i>
+  <span>Usuarios</span>
+</span>
+<div class="app-viewbar__spacer"></div>
+<div class="app-viewbar__actions">
+  {% if tiene_permiso('gestionar_usuarios') %}
+  <button type="button" class="btn btn-primary btn-sm"
+          data-bs-toggle="modal" data-bs-target="#crearUsuarioModal">
+      <i class="fas fa-plus"></i> Nuevo Usuario
+  </button>
+  {% endif %}
+</div>
 {% endblock %}
 
 {% block content %}
 
-<!-- C.1: Cabecera fija (sin scroll) -->
+<!-- C.1: Filtros + contador (sin scroll, altura fija) -->
 <div class="lista-cabecera">
-    <div class="page-header">
-        <h1>
-            <i class="fas fa-users"></i> Usuarios
-        </h1>
-        {% if tiene_permiso('gestionar_usuarios') %}
-        <button type="button" class="btn btn-primary"
-                data-bs-toggle="modal" data-bs-target="#crearUsuarioModal">
-            <i class="fas fa-plus"></i> Nuevo Usuario
-        </button>
-        {% endif %}
-    </div>
     <div class="filters-row">
         <div class="filters">
             <input type="search" id="usuarios-search"
@@ -44,9 +43,7 @@
             </button>
         </div>
         <div class="pagination-info">
-            <i class="fas fa-filter filtro-indicador me-1"></i>Mostrando
-            <span id="usuarios-visibles">{{ usuarios|length }}</span> de
-            <span id="usuarios-total">{{ usuarios|length }}</span> usuarios
+            <i class="fas fa-filter filtro-indicador me-1"></i><span id="usuarios-visibles">{{ usuarios|length }}</span> de <span id="usuarios-total">{{ usuarios|length }}</span>
         </div>
     </div>
 </div>

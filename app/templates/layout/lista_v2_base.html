@@ -68,27 +68,21 @@
 
 {% block title %}{% block page_title %}Listado{% endblock %} — BDDAT{% endblock %}
 
+{% block viewbar %}
+<span class="app-viewbar__title">
+  {% block page_icon %}<i class="fas fa-list"></i>{% endblock %}
+  <span>{{ self.page_title() }}</span>
+</span>
+<div class="app-viewbar__spacer"></div>
+<div class="app-viewbar__actions">
+  {% block btn_nuevo %}{% endblock %}
+</div>
+{% endblock %}
+
 {% block content %}
 
-<!-- C.1: Super-cabecera del listado (sin scroll) -->
+<!-- C.1: Filtros + contador (sin scroll, altura fija) -->
 <div class="lista-cabecera">
-
-    <!-- Page Header -->
-    <div class="page-header">
-        <div>
-            <h1>
-                {% block page_icon %}<i class="fas fa-list"></i>{% endblock %}
-                {% block page_title_h1 %}{{ self.page_title() }}{% endblock %}
-            </h1>
-            <div class="pagination-info">
-                <i class="fas fa-filter filtro-indicador me-1"></i><span>0</span> de <span>0</span>
-                {% block entity_label_plural %}registros{% endblock %}
-            </div>
-        </div>
-        {% block btn_nuevo %}{% endblock %}
-    </div>
-
-    <!-- Filtros -->
     <div class="filters-row">
         <div class="filters">
             <input type="search"
@@ -98,6 +92,9 @@
             <button class="btn btn-outline-primary btn-limpiar" disabled>
                 <i class="fas fa-times"></i> Limpiar
             </button>
+        </div>
+        <div class="pagination-info">
+            <i class="fas fa-filter filtro-indicador me-1"></i><span>0</span> de <span>0</span>
         </div>
     </div>
 </div>
