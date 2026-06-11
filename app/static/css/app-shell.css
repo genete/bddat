@@ -410,6 +410,18 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  flex: 0 1 auto;  /* puede encogerse si el viewbar se estrecha */
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* El icono no se toca; el texto trunca con elipsis */
+.app-viewbar__title > i { flex-shrink: 0; }
+.app-viewbar__title > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
 }
 
 .app-viewbar__indicador {

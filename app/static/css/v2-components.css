@@ -408,23 +408,24 @@
 }
 
 
-/* Contenedor que une filtros + paginación en 1 línea */
+/* Contenedor que une filtros + contador en 1 línea — nunca crece en altura */
 .filters-row {
   display: flex;
-  justify-content: space-between;
   align-items: center;
   gap: 1rem;
   margin-bottom: 1rem;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  overflow: hidden;
 }
 
-/* Filtros (izquierda) */
+/* Filtros (izquierda) — se encogen si el espacio es escaso */
 .filters {
   display: flex;
   gap: 0.75rem;
   align-items: center;
   flex: 1;
-  min-width: 300px;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .filters input[type="search"],
@@ -461,11 +462,12 @@
   cursor: pointer;
 }
 
-/* ===== INDICADOR PAGINACIÓN — subtítulo bajo el h1 ===== */
+/* ===== INDICADOR PAGINACIÓN — al final de .filters-row ===== */
 .pagination-info {
   color: var(--text-secondary);
   font-size: 0.8rem;
-  margin-top: 0.2rem;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .pagination-info span {
@@ -588,19 +590,23 @@
   .filters-row {
     flex-direction: column;
     align-items: stretch;
+    flex-wrap: wrap;   /* en mobile sí se permite crecer */
+    overflow: visible;
   }
-  
+
   .filters {
     flex-direction: column;
-    min-width: auto;
+    overflow: visible;
   }
-  
+
   .filters input[type="search"],
   .filters select,
   .filters .btn {
     width: 100%;
     min-width: auto;
   }
-  
-  /* pagination-info es subtítulo del h1, no necesita override en mobile */
+
+  .pagination-info {
+    align-self: flex-start;
+  }
 }
