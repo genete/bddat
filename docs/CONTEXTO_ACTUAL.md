@@ -8,9 +8,9 @@
 
 **Último cerrado:** #534 (ADR-023 — inspector overlay de shell + modelo de tres capas + Entidades como listado de referencia; 5 fases implementadas; PR de cierre contra develop). Precedido de: #533 (ADR-022 sistema visual base: rem global 15px, tokens de color, tabla unificada `.lista-table`; PR #538), #531, #528/#506.
 
-**Actuales:** **#537** (cabecera del listado → viewbar con prioridades de colapso, M2 — consolidar antes de migrar otras vistas).
+**Actuales:** **#537** (cabecera del listado → viewbar, M2 — consolidar antes de migrar otras vistas).
 
-**Próximos:** **#537** → **#532** (Command Palette isla React, cmdk, M4) → **Migrar listados restantes** al patrón inspector (seguimiento\*, plantillas, usuarios, proyectos — issues a crear) → **#501** (ADR-017 "Mi trabajo del administrativo") → **Mi trabajo del supervisor** (issue por crear; posible extensión de #501).
+**Próximos:** **#537** (viewbar) → **#532** (Command Palette isla React, cmdk, M4) → **Migrar listados restantes** al patrón inspector (seguimiento\*, plantillas, usuarios, proyectos — issues a crear) → **#501** (ADR-017 "Mi trabajo del administrativo") → **Mi trabajo del supervisor** (issue por crear; posible extensión de #501).
 
 > #502 queda como épica/referencia de ADR-018. Se cierra al mergear #532.
 > #537 (cabecera del listado → viewbar con prioridades de colapso, M2): abierto desde #533; coordinar con #534 al tocar la estructura del listado en `main`.
