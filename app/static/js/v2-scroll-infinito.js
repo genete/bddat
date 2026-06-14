@@ -51,8 +51,11 @@
  *     - bool     : icono check si true, vacío si false
  *     - acciones : botón "Ver" que navega a detailUrl(id); omitido en modo selección
  *
- * VERSIÓN: 1.3
- * FECHA: 2026-06-11
+ * VERSIÓN: 1.4
+ * FECHA: 2026-06-14
+ * CAMBIOS v1.4: Multi-filtro — envía todos los .filters select por su atributo `name`
+ *               (antes solo el primero como 'estado'). Habilita 2+ filtros por listado
+ *               (usuarios: activo+rol) y activa filtros ya soportados por backend (#544).
  * CAMBIOS v1.3: Modo selección (selection option) para inspector overlay (ADR-023 / #534)
  * CAMBIOS v1.2: Generalizado con config columnas — backward compatible con v1.1
  * CAMBIOS v1.1: Botón Ver apunta a /expedientes/<id>/tramitacion_v3
@@ -101,7 +104,6 @@ class ScrollInfinito {
         this.tbody          = document.querySelector(`${this.tableClass} tbody`);
         this.paginationInfo = document.querySelector('.pagination-info');
         this.searchInput    = document.querySelector('.filters input[type="search"]');
-        this.estadoSelect   = document.querySelector('.filters select');
 
         // Validar elementos necesarios
         if (!this.container) {
@@ -147,10 +149,15 @@ class ScrollInfinito {
             if (this.searchInput && this.searchInput.value.trim()) {
                 params.append('search', this.searchInput.value.trim());
             }
-            if (this.estadoSelect && this.estadoSelect.value &&
-                this.estadoSelect.value !== 'Estado: Todos') {
-                params.append('estado', this.estadoSelect.value);
-            }
+            // Filtros select (multi-filtro): cada select activo se envía por su atributo `name`.
+            // Se consultan en cada carga para incluir selects inyectados de forma diferida
+            // (p. ej. un SelectorFiltro creado tras una llamada async). Un select sin `name`
+            // cae al parámetro 'estado' por compatibilidad con listados legacy.
+            document.querySelectorAll('.filters select').forEach(sel => {
+                const val = (sel.value || '').trim();
+                if (!val) return;
+                params.append(sel.getAttribute('name') || 'estado', val);
+            });
 
             const response = await fetch(`${this.apiUrl}?${params.toString()}`);
             if (!response.ok) throw new Error(`Error ${response.status}: ${response.statusText}`);
