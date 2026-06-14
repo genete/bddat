@@ -12,5 +12,13 @@
   "navigation": {
     "label": "Usuarios",
     "route": "usuarios.index"
+  },
+  "listado_v2": {
+    "columns": [
+      { "key": "siglas",          "label": "Siglas",          "type": "text"  },
+      { "key": "nombre_completo", "label": "Nombre Completo",  "type": "text",  "truncate": true },
+      { "key": "roles",           "label": "Roles",            "type": "text",  "hide": "lg" },
+      { "key": "activo",          "label": "Estado",           "type": "bool",  "hide": "md" }
+    ]
   }
 }
