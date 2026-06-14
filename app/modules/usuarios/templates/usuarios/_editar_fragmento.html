@@ -1,0 +1,150 @@
+{# _editar_fragmento.html — Parcial de edición para el inspector (ADR-023 §5 / #544).
+   No extiende base_app.html. Inyectado por inspector-overlay.js vía data-inspector-edit.
+   Submit interceptado: POST XHR → JSON { ok, errors, message }.
+#}
+
+<div class="p-3">
+
+<form data-inspector-form
+      data-action="{{ url_for('usuarios.editar', id=usuario.id) }}">
+
+<div id="inspector-form-errors" class="alert alert-danger py-2 mb-3 small"
+     style="display:none;"></div>
+
+<div class="d-flex justify-content-end gap-2 mb-3">
+    <button type="button" class="btn btn-outline-secondary btn-sm"
+            data-inspector-cancel-edit>
+        <i class="fas fa-times me-1"></i> Cancelar
+    </button>
+    <button type="submit" class="btn btn-primary btn-sm">
+        <i class="fas fa-save me-1"></i> Guardar cambios
+    </button>
+</div>
+
+<!-- CARD 1 — Identificación -->
+<div class="card mb-3">
+    <div class="card-header card-header-accent fw-semibold">
+        <i class="fas fa-id-card me-1"></i> Identificación
+    </div>
+    <div class="card-body card-body-tinted">
+        <div class="row g-2">
+            <div class="col-3">
+                <label class="form-label fw-semibold small" for="uf_siglas">Siglas</label>
+                {% if puede_editar_siglas %}
+                <input type="text" class="form-control form-control-sm" id="uf_siglas"
+                       name="siglas" value="{{ form_data.siglas if form_data else usuario.siglas }}"
+                       required maxlength="50">
+                {% else %}
+                <input type="text" class="form-control form-control-sm" id="uf_siglas"
+                       name="siglas" value="{{ usuario.siglas }}" readonly
+                       title="Solo los administradores pueden cambiar las siglas">
+                {% endif %}
+            </div>
+            <div class="col-9">
+                <label class="form-label fw-semibold small" for="uf_nombre">Nombre</label>
+                <input type="text" class="form-control form-control-sm" id="uf_nombre"
+                       name="nombre" value="{{ form_data.nombre if form_data else usuario.nombre }}"
+                       required maxlength="100">
+            </div>
+            <div class="col-6">
+                <label class="form-label fw-semibold small" for="uf_apellido1">Primer apellido</label>
+                <input type="text" class="form-control form-control-sm" id="uf_apellido1"
+                       name="apellido1" value="{{ form_data.apellido1 if form_data else usuario.apellido1 }}"
+                       required maxlength="50">
+            </div>
+            <div class="col-6">
+                <label class="form-label fw-semibold small" for="uf_apellido2">Segundo apellido</label>
+                <input type="text" class="form-control form-control-sm" id="uf_apellido2"
+                       name="apellido2" value="{{ form_data.apellido2 if form_data else (usuario.apellido2 or '') }}"
+                       maxlength="50">
+            </div>
+            <div class="col-8">
+                <label class="form-label fw-semibold small" for="uf_email">Email</label>
+                <input type="email" class="form-control form-control-sm {% if error_email %}is-invalid{% endif %}"
+                       id="uf_email" name="email"
+                       value="{{ form_data.email if form_data else (usuario.email or '') }}"
+                       placeholder="usuario@ejemplo.com">
+                {% if error_email %}<div class="invalid-feedback">{{ error_email }}</div>{% endif %}
+            </div>
+            <div class="col-4">
+                <label class="form-label fw-semibold small">Estado</label>
+                <div class="form-control form-control-sm d-flex align-items-center"
+                     style="background:#fff; min-height:31px;">
+                    <div class="form-check mb-0">
+                        {% if usuario.id == current_user.id %}
+                        {# No puedes desactivar tu propia cuenta: checkbox bloqueado + hidden #}
+                        <input type="hidden" name="activo" value="on">
+                        <input class="form-check-input" type="checkbox" id="uf_activo" checked disabled
+                               title="No puedes desactivar tu propia cuenta">
+                        {% else %}
+                        <input class="form-check-input" type="checkbox" id="uf_activo" name="activo"
+                               {% if form_data %}{{ 'checked' if form_data.activo else '' }}{% else %}{{ 'checked' if usuario.activo else '' }}{% endif %}>
+                        {% endif %}
+                        <label class="form-check-label small" for="uf_activo">Activo</label>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- CARD 2 — Roles y acceso -->
+<div class="card mb-3">
+    <div class="card-header card-header-accent fw-semibold">
+        <i class="fas fa-user-tag me-1"></i> Roles y acceso
+    </div>
+    <div class="card-body card-body-tinted">
+        <div class="row g-2">
+            {% for rol in roles %}
+            <div class="col-md-6">
+                <div class="form-check">
+                    {% set es_admin_rol = rol.nombre == 'ADMIN' %}
+                    {% set tiene_rol = rol in usuario.roles %}
+                    {% set en_form = form_data and (rol.id|string) in form_data.roles_ids %}
+                    <input class="form-check-input" type="checkbox"
+                           name="roles" value="{{ rol.id }}" id="uf_rol_{{ rol.id }}"
+                           {% if form_data %}{{ 'checked' if en_form else '' }}{% else %}{{ 'checked' if tiene_rol else '' }}{% endif %}
+                           {% if es_admin_rol and not puede_editar_admin %}disabled
+                           title="Solo los administradores pueden asignar o quitar el rol ADMIN"{% endif %}>
+                    <label class="form-check-label" for="uf_rol_{{ rol.id }}">
+                        <strong>{{ rol.nombre }}</strong>
+                        {% if rol.descripcion %}
+                        <small class="d-block text-secondary">{{ rol.descripcion }}</small>
+                        {% endif %}
+                    </label>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- CARD 3 — Seguridad -->
+<div class="card mb-3">
+    <div class="card-header card-header-accent fw-semibold">
+        <i class="fas fa-lock me-1"></i> Seguridad
+    </div>
+    <div class="card-body card-body-tinted">
+        <div class="row g-2">
+            <div class="col-6">
+                <label class="form-label fw-semibold small" for="uf_nueva_password">Nueva contraseña</label>
+                <input type="password" class="form-control form-control-sm"
+                       id="uf_nueva_password" name="nueva_password" autocomplete="new-password">
+            </div>
+            <div class="col-6">
+                <label class="form-label fw-semibold small" for="uf_confirm_password">Confirmar contraseña</label>
+                <input type="password" class="form-control form-control-sm"
+                       id="uf_confirm_password" name="confirm_password" autocomplete="new-password">
+            </div>
+            <div class="col-12">
+                <p class="text-secondary small mb-0">
+                    <i class="fas fa-info-circle me-1"></i>
+                    Dejar vacío para no cambiar la contraseña.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+</form>
+</div>{# /p-3 #}
