@@ -5,6 +5,7 @@ from app import db
 from app.models.usuarios import Usuario, Rol
 from app.decorators import require_permiso
 from app.utils.metadata import cargar_metadata
+from app.utils.permisos import tiene_permiso
 
 # Definimos el Blueprint con template_folder propio (convención app/modules/)
 bp = Blueprint('usuarios', __name__, url_prefix='/usuarios',
@@ -172,7 +173,15 @@ def detalle(id):
 def fragmento(id):
     """Fragmento HTML de lectura para el inspector (ADR-023 §9 / #544)."""
     usuario = Usuario.query.get_or_404(id)
-    return render_template('usuarios/_detalle_fragmento.html', usuario=usuario)
+    # El botón "Editar" solo se ofrece si quien mira puede editar a ESTE usuario:
+    # con gestionar_usuarios y, salvo que sea admin, no sobre un usuario ADMIN.
+    # Evita que el inspector llegue al 403 de editar_fragmento (SUPERVISOR→ADMIN).
+    puede_editar = (
+        tiene_permiso('gestionar_usuarios')
+        and (current_user_es_admin() or not usuario_es_admin(usuario))
+    )
+    return render_template('usuarios/_detalle_fragmento.html',
+                           usuario=usuario, puede_editar=puede_editar)
 
 
 @bp.route('/<int:id>/editar-fragmento')
