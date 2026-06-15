@@ -1,148 +1,30 @@
-{% extends 'layout/base_app.html' %}
+{% extends 'layout/lista_v2_base.html' %}
 
-{% block title %}Usuarios — BDDAT{% endblock %}
+{% block page_title %}Usuarios{% endblock %}
+{% block page_icon %}<i class="fas fa-users"></i>{% endblock %}
+{% block search_placeholder %}Buscar por siglas o nombre...{% endblock %}
 
-{% block viewbar %}
-<span class="app-viewbar__title">
-  <i class="fas fa-users"></i>
-  <span>Usuarios</span>
-</span>
-<div class="app-viewbar__spacer"></div>
-<div class="app-viewbar__actions">
-  {% if tiene_permiso('gestionar_usuarios') %}
-  <button type="button" class="btn btn-primary btn-sm"
-          data-bs-toggle="modal" data-bs-target="#crearUsuarioModal">
-      <i class="fas fa-plus"></i> Nuevo Usuario
-  </button>
-  {% endif %}
-</div>
+{% block btn_nuevo %}
+{% if tiene_permiso('gestionar_usuarios') %}
+<button type="button" class="btn btn-primary btn-sm"
+        data-bs-toggle="modal" data-bs-target="#crearUsuarioModal">
+    <i class="fas fa-plus"></i> Nuevo Usuario
+</button>
+{% endif %}
 {% endblock %}
 
+{% block filtros_extra %}
+<div id="sf-activo"></div>
+<div id="sf-rol"></div>
+{% endblock %}
+
+{% block tabla_clase %}usuarios-table{% endblock %}
+
 {% block content %}
-
-<!-- C.1: Filtros + contador (sin scroll, altura fija) -->
-<div class="lista-cabecera">
-    <div class="filters-row">
-        <div class="filters">
-            <input type="search" id="usuarios-search"
-                   placeholder="Buscar por siglas o nombre..."
-                   aria-label="Buscar usuario">
-            <select id="usuarios-activo" aria-label="Filtrar por estado">
-                <option value="">Estado: Todos</option>
-                <option value="true">Activos</option>
-                <option value="false">Inactivos</option>
-            </select>
-            <select id="usuarios-rol" aria-label="Filtrar por rol">
-                <option value="">Rol: Todos</option>
-                {% for rol in roles %}
-                <option value="{{ rol.nombre }}">{{ rol.nombre }}</option>
-                {% endfor %}
-            </select>
-            <button class="btn btn-outline-primary btn-limpiar" id="usuarios-limpiar" disabled>
-                <i class="fas fa-times"></i> Limpiar
-            </button>
-        </div>
-        <div class="pagination-info">
-            <i class="fas fa-filter filtro-indicador me-1"></i><span id="usuarios-visibles">{{ usuarios|length }}</span> de <span id="usuarios-total">{{ usuarios|length }}</span>
-        </div>
-    </div>
-</div>
-
-<!-- C.2: Contenedor scrollable independiente -->
-<div class="lista-scroll-container">
-    <div class="py-3">
-        <div class="card tabla-bloque">
-            <table class="lista-table">
-                <thead>
-                    <tr>
-                        <th>Siglas</th>
-                        <th>Nombre Completo</th>
-                        <th class="lt-hide-lg">Roles</th>
-                        <th class="lt-hide-md">Estado</th>
-                        <th>Acciones</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for usuario in usuarios %}
-                    <tr data-activo="{{ 'true' if usuario.activo else 'false' }}"
-                        data-roles="{{ usuario.roles | map(attribute='nombre') | join(' ') }}"
-                        data-search="{{ usuario.siglas|lower }} {{ usuario.nombre|lower }} {{ usuario.apellido1|lower }} {{ (usuario.apellido2 or '')|lower }}">
-                        <td>
-                            <strong>{{ usuario.siglas }}</strong>
-                            {% if usuario.id == current_user.id %}
-                                <span class="badge bg-primary ms-1">Tú</span>
-                            {% endif %}
-                        </td>
-                        <td>{{ usuario.nombre }} {{ usuario.apellido1 }} {{ usuario.apellido2 or '' }}</td>
-                        <td class="lt-hide-lg">
-                            {% for rol in usuario.roles %}
-                                {% if rol.nombre == 'ADMIN' %}
-                                    <span class="badge bg-danger me-1">{{ rol.nombre }}</span>
-                                {% elif rol.nombre == 'SUPERVISOR' %}
-                                    <span class="badge bg-warning text-dark me-1">{{ rol.nombre }}</span>
-                                {% elif rol.nombre == 'TRAMITADOR' %}
-                                    <span class="badge bg-primary me-1">{{ rol.nombre }}</span>
-                                {% else %}
-                                    <span class="badge bg-secondary me-1">{{ rol.nombre }}</span>
-                                {% endif %}
-                            {% else %}
-                                <span class="text-secondary small">Sin roles</span>
-                            {% endfor %}
-                        </td>
-                        <td class="lt-hide-md">
-                            {% if tiene_permiso('gestionar_usuarios') %}
-                            <form action="{{ url_for('usuarios.toggle_estado', id=usuario.id) }}"
-                                  method="POST" style="display: inline;"
-                                  {% if usuario.id == current_user.id %}
-                                  data-bs-toggle="tooltip" title="No puedes desactivar tu propia cuenta"
-                                  {% endif %}>
-                                <div class="form-check form-switch"
-                                     {% if usuario.id == current_user.id %}
-                                     style="pointer-events: none; opacity: 0.65;"
-                                     {% endif %}>
-                                    <input class="form-check-input" type="checkbox" role="switch"
-                                           id="switch_{{ usuario.id }}"
-                                           {{ 'checked' if usuario.activo else '' }}
-                                           {{ 'onchange="this.form.submit();"' if usuario.id != current_user.id else '' }}>
-                                    <label class="form-check-label" for="switch_{{ usuario.id }}">
-                                        {% if usuario.activo %}
-                                            <span class="badge bg-success">Activo</span>
-                                        {% else %}
-                                            <span class="badge bg-secondary">Inactivo</span>
-                                        {% endif %}
-                                    </label>
-                                </div>
-                            </form>
-                            {% else %}
-                                {% if usuario.activo %}
-                                    <span class="badge bg-success">Activo</span>
-                                {% else %}
-                                    <span class="badge bg-secondary">Inactivo</span>
-                                {% endif %}
-                            {% endif %}
-                        </td>
-                        <td>
-                            <a href="{{ url_for('usuarios.detalle', id=usuario.id) }}"
-                               class="btn-accion-ver">
-                                <i class="fas fa-eye"></i> Ver
-                            </a>
-                        </td>
-                    </tr>
-                    {% else %}
-                    <tr>
-                        <td colspan="5" class="text-center py-3 text-secondary">
-                            No hay usuarios registrados. ¡Crea el primero!
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
-</div>
+{{ super() }}
 
 {% if tiene_permiso('gestionar_usuarios') %}
-<!-- Modal de Creación -->
+<!-- Modal de Creación (se mantiene como estaba; su unificación es un estudio aparte) -->
 <div class="modal fade" id="crearUsuarioModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -257,67 +139,70 @@
     </div>
 </div>
 {% endif %}
+{% endblock %}
 
+{% block extra_js %}
+{{ super() }}
 <script>
-// Inicializar tooltips
-document.addEventListener('DOMContentLoaded', function () {
+    new SelectorFiltro('#sf-activo', [
+        { v: 'true',  t: 'Activos'   },
+        { v: 'false', t: 'Inactivos' }
+    ], { label: 'Estado', name: 'activo' });
+
+    new SelectorFiltro('#sf-rol', [
+        {% for rol in roles %}{ v: '{{ rol.nombre }}', t: '{{ rol.nombre }}' }{{ ',' if not loop.last }}{% endfor %}
+    ], { label: 'Rol', name: 'rol' });
+
+    const scrollInfinito = new ScrollInfinito({
+        apiUrl:      '{{ url_for("api_usuarios.listar_usuarios") }}',
+        tableClass:  '.usuarios-table',
+        entityLabel: 'usuarios',
+        columns:     {{ columns | tojson }},
+        selection: {
+            fragmentUrl: id   => `/usuarios/${id}/fragmento`,
+            title:       item => item.nombre_completo || item.siglas || ''
+        }
+    });
+
+    const filtros = new FiltrosListado(scrollInfinito);
+
+    // Sync inspector ↔ URL ?sel (ADR-023 §1)
+    function _updateSelParam(selId) {
+        const url = new URL(location.href);
+        if (selId) url.searchParams.set('sel', selId);
+        else url.searchParams.delete('sel');
+        history.replaceState(null, '', url.toString());
+    }
+    document.addEventListener('inspector:opened',  e => _updateSelParam(e.detail.selId));
+    document.addEventListener('inspector:swapped', e => _updateSelParam(e.detail.selId));
+    document.addEventListener('inspector:closed',  () => _updateSelParam(null));
+
+    // Abrir inspector si la URL trae ?sel=<id>
+    const _selParam = new URLSearchParams(location.search).get('sel');
+    if (_selParam && window.AppInspector) {
+        AppInspector.open({
+            selId:       _selParam,
+            title:       '',
+            fragmentUrl: `/usuarios/${_selParam}/fragmento`
+        });
+    }
+
+    function togglePassword(fieldId) {
+        const field = document.getElementById(fieldId);
+        field.type = field.type === 'password' ? 'text' : 'password';
+    }
+
+    // Tooltips del modal
     document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function (el) {
         new bootstrap.Tooltip(el);
     });
-});
 
-// Filtrado cliente de la tabla de usuarios
-(function() {
-    const search      = document.getElementById('usuarios-search');
-    const selActivo   = document.getElementById('usuarios-activo');
-    const selRol      = document.getElementById('usuarios-rol');
-    const limpiar     = document.getElementById('usuarios-limpiar');
-    const filas       = document.querySelectorAll('tbody tr[data-search]');
-
-    const filtersRow     = document.querySelector('.filters-row');
-    const spanVisibles   = document.getElementById('usuarios-visibles');
-
-    function filtrar() {
-        const texto  = search.value.toLowerCase();
-        const activo = selActivo.value;
-        const rol    = selRol.value;
-        let visibles = 0;
-
-        filas.forEach(tr => {
-            const ok = (!texto  || tr.dataset.search.includes(texto))
-                    && (!activo || tr.dataset.activo === activo)
-                    && (!rol    || tr.dataset.roles.split(' ').includes(rol));
-            tr.style.display = ok ? '' : 'none';
-            if (ok) visibles++;
-        });
-
-        if (spanVisibles) spanVisibles.textContent = visibles;
-        const hayFiltros = !!(search.value.trim() || selActivo.value || selRol.value);
-        filtersRow.classList.toggle('filtros-activos', hayFiltros);
-        limpiar.disabled = !hayFiltros;
-    }
-
-    let timer;
-    search.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(filtrar, 300); });
-    selActivo.addEventListener('change', filtrar);
-    selRol.addEventListener('change', filtrar);
-    limpiar.addEventListener('click', () => {
-        search.value = ''; selActivo.value = ''; selRol.value = '';
-        filtrar();
+    {% if show_modal %}
+    document.addEventListener('DOMContentLoaded', function() {
+        new bootstrap.Modal(document.getElementById('crearUsuarioModal')).show();
     });
-})();
+    {% endif %}
 
-function togglePassword(fieldId) {
-    const field = document.getElementById(fieldId);
-    field.type = field.type === 'password' ? 'text' : 'password';
-}
-
-{% if show_modal %}
-document.addEventListener('DOMContentLoaded', function() {
-    var modal = new bootstrap.Modal(document.getElementById('crearUsuarioModal'));
-    modal.show();
-});
-{% endif %}
+    console.log('Listado de usuarios v2 inicializado (#544)');
 </script>
-
 {% endblock %}

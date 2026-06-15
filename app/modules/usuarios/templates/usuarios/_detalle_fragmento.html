@@ -1,0 +1,89 @@
+{# _detalle_fragmento.html — Parcial de lectura para el inspector (ADR-023 §9 / #544).
+   No extiende base_app.html. Inyectado vía AppInspector.open({ fragmentUrl }).
+   Botón "Editar" carga el fragmento de edición (data-inspector-edit).
+#}
+
+<div class="p-3">
+
+{% if puede_editar %}
+<div class="d-flex justify-content-end mb-3">
+    <button type="button" class="btn btn-primary btn-sm"
+            data-inspector-edit
+            data-edit-url="{{ url_for('usuarios.editar_fragmento', id=usuario.id) }}">
+        <i class="fas fa-edit me-1"></i> Editar
+    </button>
+</div>
+{% endif %}
+
+<!-- CARD 1 — Identificación -->
+<div class="card mb-3">
+    <div class="card-header card-header-accent fw-semibold">
+        <i class="fas fa-id-card me-1"></i> Identificación
+    </div>
+    <div class="card-body card-body-tinted">
+        <div class="row g-2">
+            <div class="col-3">
+                <label class="form-label fw-semibold small">Siglas</label>
+                <div class="form-control form-control-sm d-flex align-items-center gap-2"
+                     style="background:#fff; pointer-events:none;">
+                    <strong>{{ usuario.siglas }}</strong>
+                    {% if usuario.id == current_user.id %}
+                        <span class="badge bg-primary">Tú</span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="col-9">
+                <label class="form-label fw-semibold small">Nombre completo</label>
+                <input type="text" class="form-control form-control-sm"
+                       value="{{ usuario.nombre }} {{ usuario.apellido1 }} {{ usuario.apellido2 or '' }}" readonly>
+            </div>
+            <div class="col-8">
+                <label class="form-label fw-semibold small">Email</label>
+                {% if usuario.email %}
+                <div class="form-control form-control-sm" style="background:#fff; pointer-events:none;">
+                    <a href="mailto:{{ usuario.email }}" style="pointer-events:auto;">{{ usuario.email }}</a>
+                </div>
+                {% else %}
+                <input type="text" class="form-control form-control-sm" value="—" readonly>
+                {% endif %}
+            </div>
+            <div class="col-4">
+                <label class="form-label fw-semibold small">Estado</label>
+                <div class="form-control form-control-sm d-flex align-items-center gap-2"
+                     style="background:#fff; pointer-events:none;">
+                    {% if usuario.activo %}
+                        <span class="badge bg-success">Activo</span>
+                    {% else %}
+                        <span class="badge bg-secondary">Inactivo</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- CARD 2 — Roles y acceso -->
+<div class="card mb-3">
+    <div class="card-header card-header-accent fw-semibold">
+        <i class="fas fa-user-tag me-1"></i> Roles y acceso
+    </div>
+    <div class="card-body card-body-tinted">
+        <div class="d-flex flex-wrap gap-2">
+            {% for rol in usuario.roles %}
+                {% if rol.nombre == 'ADMIN' %}
+                    <span class="badge bg-danger">{{ rol.nombre }}</span>
+                {% elif rol.nombre == 'SUPERVISOR' %}
+                    <span class="badge bg-warning text-dark">{{ rol.nombre }}</span>
+                {% elif rol.nombre == 'TRAMITADOR' %}
+                    <span class="badge bg-primary">{{ rol.nombre }}</span>
+                {% else %}
+                    <span class="badge bg-secondary">{{ rol.nombre }}</span>
+                {% endif %}
+            {% else %}
+                <span class="text-secondary small">Sin roles asignados</span>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+</div>{# /p-3 #}
