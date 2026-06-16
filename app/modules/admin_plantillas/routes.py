@@ -11,10 +11,7 @@ Rutas de formulario:
 - GET  /admin/plantillas/<id>/descargar — Descarga del .docx registrado
 - POST /admin/plantillas/<id>/activar — Activar/desactivar plantilla
 
-Endpoints AJAX (cascada ESFTT):
-- GET  /admin/plantillas/api/tipos-solicitud  — Todos los tipos de solicitud
-- GET  /admin/plantillas/api/tipos-fase       — Todos los tipos de fase
-- GET  /admin/plantillas/api/tipos-tramite    — Todos los tipos de trámite
+Endpoints AJAX:
 - GET  /admin/plantillas/api/tokens           — Tokens Capa 1 (stub — Capa 2 en Fase 5)
 - GET  /admin/plantillas/api/fs               — Explorador de servidor restringido a PLANTILLAS_BASE/plantillas/
 """
@@ -202,44 +199,8 @@ def _selects_context():
 
 
 # ---------------------------------------------------------------------------
-# Endpoints AJAX (cascada ESFTT)
+# Endpoints AJAX
 # ---------------------------------------------------------------------------
-
-@bp.route('/api/tipos-solicitud')
-@login_required
-@require_permiso('gestionar_plantillas')
-def api_tipos_solicitud():
-    """Devuelve todos los tipos de solicitud disponibles."""
-    tipos = TipoSolicitud.query.order_by(TipoSolicitud.siglas).all()
-    return jsonify([
-        {'id': t.id, 'texto': f'{t.siglas} — {t.descripcion}'}
-        for t in tipos
-    ])
-
-
-@bp.route('/api/tipos-fase')
-@login_required
-@require_permiso('gestionar_plantillas')
-def api_tipos_fase():
-    """Devuelve todos los tipos de fase disponibles."""
-    tipos = TipoFase.query.order_by(TipoFase.nombre).all()
-    return jsonify([
-        {'id': t.id, 'texto': t.nombre}
-        for t in tipos
-    ])
-
-
-@bp.route('/api/tipos-tramite')
-@login_required
-@require_permiso('gestionar_plantillas')
-def api_tipos_tramite():
-    """Devuelve todos los tipos de trámite disponibles."""
-    tipos = TipoTramite.query.order_by(TipoTramite.nombre).all()
-    return jsonify([
-        {'id': t.id, 'texto': t.nombre}
-        for t in tipos
-    ])
-
 
 @bp.route('/api/fs')
 @login_required
