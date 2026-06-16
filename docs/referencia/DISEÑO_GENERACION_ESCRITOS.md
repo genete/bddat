@@ -3,6 +3,7 @@
 > **Issue principal:** #167
 > **Fecha análisis:** 2026-03-15 (3 sesiones)
 > **Estado:** Análisis completo. Cabos 1-5 cerrados. Implementación pendiente → #277 (M2).
+> **Actualizado:** 2026-06-16 (#553) — modelo de Context Builder y de tokens reencuadrado por **ADR-025**; ver §"Modelo de tokens del modal".
 > **Issues relacionados:** #189 (cerrado), #181 y #182 (vinculados via C3)
 
 ---
@@ -36,7 +37,7 @@
 | 2 | **Añadir `tipo_expediente_id` FK nullable a `plantillas`** | Completa la E que falta en ESFTT. NULL = cualquier tipo de expediente |
 | 3 | **Eliminar `campos_catalogo` de `plantillas`** | Cálculo dinámico según contexto, no dato estático — evita inconsistencias |
 | 4 | **Añadir `origen` (INTERNO/EXTERNO/AMBOS) a `tipos_documentos`** | Impide que una plantilla apunte a un tipo de documento externo |
-| 5 | **Mantener `contexto_clase`** | Necesario para Capa 2 (Context Builders) |
+| 5 | **Mantener `contexto_clase`** | Capa 2: declara el CB **ensamblador del escrito** (no del trámite). Relación plantilla→CB **N:1** — varias plantillas comparten clase. Ver ADR-025 |
 | 6 | **Mantener `filtros_adicionales` JSONB** | Absorbe futuro sin migración |
 | 7 | **Añadir campo `variante` TEXT nullable a `plantillas`** | Texto libre para distinguir plantillas del mismo contexto ESFTT ("Favorable", "Denegatoria") |
 
@@ -81,15 +82,29 @@ no en el filesystem. La convención de nombres evita colisiones sin subdirectori
 
 ---
 
-## Filtrado dinámico de tokens por contexto ESFTT (Cabo 4 cerrado)
+## Modelo de tokens del modal (Cabo 4 — reencuadrado por ADR-007 + ADR-025)
 
-- **3 tablas whitelist** E→S→F→T. Ver `docs/DISEÑO_MOTOR_REGLAS.md`.
-- **Tipos de solicitud combinados** como entidades propias en `tipos_solicitudes`. Ver `docs/NORMATIVA_SOLICITUDES.md`.
-- **Tokens Capa 1** son siempre los mismos (12 campos base del expediente).
-- La dinamicidad de tokens llega con Capa 2 / Context Builders (diferible).
-- **Toggle "Solo aplicables al contexto"** (principio de escape). Defecto = todas las opciones.
+> El diseño original de este cabo (3 tablas whitelist E→S→F→T + toggle "Solo aplicables al
+> contexto") quedó **obsoleto**: ADR-007 eliminó las whitelists y #552 retira el toggle huérfano.
+> El modelo vigente es el siguiente.
 
-**Implementación:** Issue #167 Fase 4 (admin plantillas en cascada).
+Los tokens válidos de una plantilla son la unión de cuatro fuentes, y **solo una** depende del
+contexto de la plantilla:
+
+| Fuente | Alcance | ¿Depende del encuadramiento? |
+|---|---|---|
+| Capa 1 (`ContextoBaseExpediente`) | universal | No |
+| Consultas nombradas | universal (`:expediente_id`, vacío-seguras) | No |
+| Fragmentos `.docx` | universal (extractos repetibles) | No |
+| Context Builder (Capa 2) | el CB declarado en `contexto_clase` | **Sí — por `contexto_clase`, no por los FKs ESFT** |
+
+- Los **FKs ESFT** de la plantilla no intervienen en la generación; solo gobiernan **dónde se
+  ofrece** la plantilla en ELABORAR (match NULL-comodín, `api_escritos.py`). Se eligen con
+  **selects planos** (no validables en abstracto, ADR-007) — ver #552.
+- La **dinamicidad de tokens** del modal se ancla a `contexto_clase`: cada CB declara sus tokens
+  y el modal se re-consulta al cambiar la clase — ver #553.
+
+**Implementación:** limpieza del alta (#552) + modal contextual (#553).
 
 ---
 
@@ -131,7 +146,7 @@ si sobreviven el pipeline .docx → portafirmas → PDF.
 
 | ID | Necesidad | Decisión |
 |----|-----------|----------|
-| A0 | Filtrado dinámico de tokens por contexto ESFTT | Whitelist 3 tablas + toggle escape (Fase 4) |
+| A0 | Filtrado dinámico de tokens | Por `contexto_clase` (CB), no por ESFT. Sin whitelist (ADR-007) ni toggle (#552). Ver ADR-025 y §"Modelo de tokens del modal" |
 | A1 | Validación de sintaxis del .docx subido | `DocxTemplate(ruta)` antes de registrar (Fase 4) |
 | A2 | Probar plantilla con datos reales | DIFERIBLE |
 | A3 | Parseo automático del .docx (detectar campos/consultas/fragmentos) | Necesario parcial (Fase 6) |
@@ -155,7 +170,7 @@ si sobreviven el pipeline .docx → portafirmas → PDF.
 | ID | Necesidad | Decisión |
 |----|-----------|----------|
 | C1 | Ejecución de consultas nombradas | Implementar stub `_ejecutar_consultas()` (Fase 5) |
-| C2 | Context Builders (Capa 2) | EN CURSO — #289. Implementados: #391, #393, #394. Bloqueado: #392 |
+| C2 | Context Builders (Capa 2) | EN CURSO — #289. Implementados: #391, #393, #394. Bloqueado: #392. Modelo reencuadrado en ADR-025 (ensamblador del escrito) |
 | C3 | Trazabilidad y código embebido | Código en custom properties + QR (Fase 6) |
 | C4 | Metadatos del documento generado | `fecha_administrativa=NULL`, `prioridad=0`, `asunto=` descripción plantilla + ESFTT real |
 | C7 | Gestión de errores de generación | Toast con detalle del error Jinja2 (Fase 5) |
