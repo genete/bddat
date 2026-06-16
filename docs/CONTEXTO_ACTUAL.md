@@ -6,11 +6,11 @@
 
 ---
 
-**Último cerrado:** #544 (listado de usuarios al patrón inspector ADR-023: API `/api/usuarios` con cursor, `ScrollInfinito` multi-filtro estado+rol, inspector lectura/edición, eliminado el switch inline `toggle_estado`; PR #551). Deja #550 (deuda: el inspector no maneja un fragmento de edición fallido — afecta a todos los módulos). Precedido de: #543 (inspector expedientes; PR #549), #537 (viewbar), #534 (ADR-023 inspector overlay), #533 (ADR-022 sistema visual base).
+**Último cerrado:** #545 (listado de plantillas al patrón inspector ADR-023: API `/api/admin-plantillas` con cursor + filtros estado/tipo-doc/tipo-fase; inspector lectura/edición con selects ESFTT **planos** —la whitelist se eliminó en ADR-007 y no aplica a un catálogo abstracto sin expediente—; panel de tokens y explorador de fichero en **modal grande** (capa 3); `detalle`→redirect `?sel`; PR #554). Deja follow-ups del mismo módulo, claves para la **redacción de documentos**: **#552** (limpiar vestigio de whitelist del alta) y **#553** (tokens del modal filtrados por encuadramiento ESFT, con **fase de diseño previa**) — a resolver juntos; y **#555** (decisión de datos: clasificación ESFT por fase). Precedido de: #544 (inspector usuarios; deja **#550** deuda del inspector ante edición fallida —afecta a todos los módulos—; PR #551), #543 (inspector expedientes; PR #549), #534 (ADR-023 inspector overlay), #533 (ADR-022 sistema visual base).
 
-**Actuales:** Migrar listados restantes al patrón inspector: **#545** (plantillas), **#546** (seguimiento — caso especial sin inspector).
+**Actuales:** **#552 + #553** — diseño e implementación, **juntos** (mismo PR): la **redacción de documentos** depende de ellos. #553 arranca por una **fase de diseño** (modelo de aplicabilidad ESFT de los tokens; ver §"Decisiones de diseño pendientes" del issue). Queda pendiente migrar **#546** (seguimiento — caso especial sin inspector).
 
-**Próximos:** **#545** → **#546** → **#532** (Command Palette isla React, cmdk, M4) → **#501** (ADR-017 "Mi trabajo del administrativo") → **Mi trabajo del supervisor** (issue por crear).
+**Próximos:** **#552 + #553** (claves para la redacción de documentos) → **#546** (seguimiento — caso especial sin inspector) → **#532** (Command Palette isla React, cmdk, M4) → **#501** (ADR-017 "Mi trabajo del administrativo") → **Mi trabajo del supervisor** (issue por crear).
 
 > #502 queda como épica/referencia de ADR-018. Se cierra al mergear #532.
 > \* seguimiento y "Mi trabajo" (#501) son agregados que navegan al árbol, sin inspector-detalle. **ADR-017 candidato a revisión** al implementar #501. Primero consolidar infra + migrar lo existente; las vistas nuevas aisladas se construyen con la lección aprendida.
