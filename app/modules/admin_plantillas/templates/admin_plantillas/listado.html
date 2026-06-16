@@ -1,91 +1,126 @@
-{% extends 'layout/base_app.html' %}
+{% extends 'layout/lista_v2_base.html' %}
 
-{% block title %}Plantillas de escritos — BDDAT{% endblock %}
+{% block page_title %}Plantillas de escritos{% endblock %}
+{% block page_icon %}<i class="fas fa-file-word"></i>{% endblock %}
+{% block entity_label_plural %}plantillas{% endblock %}
+{% block search_placeholder %}Buscar por nombre o código...{% endblock %}
+{% block tabla_clase %}plantillas-table{% endblock %}
 
-{% block viewbar %}
-<span class="app-viewbar__title">
-  <i class="fas fa-file-word"></i>
-  <span>Plantillas de escritos</span>
-</span>
-<div class="app-viewbar__spacer"></div>
-<div class="app-viewbar__actions">
-  {% if tiene_permiso('gestionar_plantillas') %}
-  <a href="{{ url_for('admin_plantillas.nueva') }}" class="btn btn-primary btn-sm">
-      <i class="fas fa-plus me-1"></i> Nueva plantilla
-  </a>
-  {% endif %}
-</div>
+{% block btn_nuevo %}
+{% if tiene_permiso('gestionar_plantillas') %}
+<a href="{{ url_for('admin_plantillas.nueva') }}" class="btn btn-primary btn-sm">
+    <i class="fas fa-plus me-1"></i> Nueva plantilla
+</a>
+{% endif %}
 {% endblock %}
 
-{% block content %}
-<div class="lista-scroll-container">
-<div class="py-3">
-    <div class="card tabla-bloque">
-        <table class="lista-table plantillas-table">
-            <thead>
-                <tr>
-                    <th>Nombre</th>
-                    <th class="lt-truncate">Código</th>
-                    <th class="lt-hide-md">Tipo documento</th>
-                    <th class="lt-hide-lg">Expediente</th>
-                    <th class="lt-hide-xl">Solicitud</th>
-                    <th class="lt-hide-xl">Fase</th>
-                    <th class="lt-hide-xl">Trámite</th>
-                    <th>Estado</th>
-                    <th>Acciones</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for p in plantillas %}
-                <tr>
-                    <td>
-                        <a href="{{ url_for('admin_plantillas.detalle', id=p.id) }}" class="fw-semibold">
-                            {{ p.nombre }}
-                        </a>
-                        {% if p.variante %}
-                        <span class="badge bg-secondary ms-1" style="font-weight:400">{{ p.variante }}</span>
-                        {% endif %}
-                        {% if p.descripcion %}
-                        <div class="small text-secondary">{{ p.descripcion }}</div>
-                        {% endif %}
-                    </td>
-                    <td class="lt-truncate"><code>{{ p.codigo }}</code></td>
-                    <td class="lt-hide-md">{{ p.tipo_documento.nombre if p.tipo_documento else '—' }}</td>
-                    <td class="lt-hide-lg">{{ p.tipo_expediente.tipo if p.tipo_expediente else '<span class="text-secondary">Cualquiera</span>'|safe }}</td>
-                    <td class="lt-hide-xl">{{ p.tipo_solicitud.siglas if p.tipo_solicitud else '<span class="text-secondary">Cualquiera</span>'|safe }}</td>
-                    <td class="lt-hide-xl">{{ p.tipo_fase.nombre if p.tipo_fase else '<span class="text-secondary">Cualquiera</span>'|safe }}</td>
-                    <td class="lt-hide-xl">{{ p.tipo_tramite.nombre if p.tipo_tramite else '<span class="text-secondary">Cualquiera</span>'|safe }}</td>
-                    <td>
-                        {% if p.activo %}
-                            <span class="badge bg-success">Activa</span>
-                        {% else %}
-                            <span class="badge bg-secondary">Inactiva</span>
-                        {% endif %}
-                    </td>
-                    <td class="text-end text-nowrap">
-                        <a href="{{ url_for('admin_plantillas.detalle', id=p.id) }}"
-                           class="btn-accion-ver me-1">
-                            <i class="fas fa-eye"></i> Ver
-                        </a>
-                        {% if tiene_permiso('gestionar_plantillas') %}
-                        <a href="{{ url_for('admin_plantillas.editar', id=p.id) }}"
-                           class="btn btn-sm btn-outline-secondary">
-                            <i class="fas fa-edit"></i>
-                        </a>
-                        {% endif %}
-                    </td>
-                </tr>
-                {% else %}
-                <tr>
-                    <td colspan="9" class="text-center text-secondary py-4">
-                        No hay plantillas registradas.
-                        <a href="{{ url_for('admin_plantillas.nueva') }}">Crear la primera</a>.
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-</div>
-</div>
+{% block filtros_extra %}
+<div id="sf-estado"></div>
+<div id="sf-documento"></div>
+<div id="sf-fase"></div>
+{% endblock %}
+
+{% block thead_cols %}
+<th>Nombre</th>
+<th class="lt-truncate">Código</th>
+<th class="lt-hide-md">Tipo documento</th>
+<th class="lt-hide-lg">Expediente</th>
+<th class="lt-hide-xl">Solicitud</th>
+<th class="lt-hide-xl">Fase</th>
+<th class="lt-hide-xl">Trámite</th>
+<th>Estado</th>
+{% endblock %}
+
+{% block extra_js %}
+{{ super() }}
+<script src="{{ url_for('static', filename='js/plantillas-inspector.js') }}"></script>
+<script>
+    // Escape básico para valores de texto libre antes de inyectarlos como innerHTML
+    function _esc(s) {
+        if (s === null || s === undefined) return '';
+        return String(s)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+    }
+    // Render "Cualquiera" en gris cuando la dimensión ESFTT es NULL
+    function _cualquiera(val) {
+        return val ? _esc(val) : '<span class="text-secondary">Cualquiera</span>';
+    }
+
+    // Filtros
+    new SelectorFiltro('#sf-estado', [
+        { v: 'true',  t: 'Activas'   },
+        { v: 'false', t: 'Inactivas' }
+    ], { label: 'Estado', name: 'estado' });
+
+    new SelectorFiltro('#sf-documento', [
+        {% for td in tipos_documento %}{ v: '{{ td.id }}', t: '{{ td.nombre|e }}' }{{ ',' if not loop.last }}{% endfor %}
+    ], { label: 'Tipo documento', name: 'tipo_documento' });
+
+    new SelectorFiltro('#sf-fase', [
+        {% for tf in tipos_fase %}{ v: '{{ tf.id }}', t: '{{ tf.nombre|e }}' }{{ ',' if not loop.last }}{% endfor %}
+    ], { label: 'Fase', name: 'tipo_fase' });
+
+    const scrollInfinito = new ScrollInfinito({
+        apiUrl:      '{{ url_for("api_plantillas.listar_plantillas") }}',
+        tableClass:  '.plantillas-table',
+        entityLabel: 'plantillas',
+        columns: [
+            { key: 'nombre', label: 'Nombre', type: 'custom', renderFn: (v, item) => {
+                let html = '<span class="fw-semibold">' + _esc(item.nombre) + '</span>';
+                if (item.variante) {
+                    html += ' <span class="badge bg-secondary" style="font-weight:400">'
+                          + _esc(item.variante) + '</span>';
+                }
+                if (item.descripcion) {
+                    html += '<div class="small text-secondary">' + _esc(item.descripcion) + '</div>';
+                }
+                return html;
+            }},
+            { key: 'codigo', label: 'Código', type: 'custom', truncate: true,
+              renderFn: v => '<code>' + _esc(v) + '</code>' },
+            { key: 'tipo_documento', label: 'Tipo documento', type: 'text', hide: 'md' },
+            { key: 'tipo_expediente', label: 'Expediente', type: 'custom', hide: 'lg',
+              renderFn: v => _cualquiera(v) },
+            { key: 'tipo_solicitud', label: 'Solicitud', type: 'custom', hide: 'xl',
+              renderFn: v => _cualquiera(v) },
+            { key: 'tipo_fase', label: 'Fase', type: 'custom', hide: 'xl',
+              renderFn: v => _cualquiera(v) },
+            { key: 'tipo_tramite', label: 'Trámite', type: 'custom', hide: 'xl',
+              renderFn: v => _cualquiera(v) },
+            { key: 'activo', label: 'Estado', type: 'custom', renderFn: v => v
+                ? '<span class="badge bg-success">Activa</span>'
+                : '<span class="badge bg-secondary">Inactiva</span>' },
+        ],
+        selection: {
+            fragmentUrl: id   => `/admin/plantillas/${id}/fragmento`,
+            title:       item => item.nombre || ''
+        }
+    });
+
+    const filtros = new FiltrosListado(scrollInfinito);
+
+    // Sync inspector ↔ URL ?sel (ADR-023 §1)
+    function _updateSelParam(selId) {
+        const url = new URL(location.href);
+        if (selId) url.searchParams.set('sel', selId);
+        else url.searchParams.delete('sel');
+        history.replaceState(null, '', url.toString());
+    }
+    document.addEventListener('inspector:opened',  e => _updateSelParam(e.detail.selId));
+    document.addEventListener('inspector:swapped', e => _updateSelParam(e.detail.selId));
+    document.addEventListener('inspector:closed',  () => _updateSelParam(null));
+
+    // Abrir inspector si la URL trae ?sel=<id>
+    const _selParam = new URLSearchParams(location.search).get('sel');
+    if (_selParam && window.AppInspector) {
+        AppInspector.open({
+            selId:       _selParam,
+            title:       '',
+            fragmentUrl: `/admin/plantillas/${_selParam}/fragmento`
+        });
+    }
+
+    console.log('Listado de plantillas v2 inicializado (#545)');
+</script>
 {% endblock %}

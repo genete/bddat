@@ -127,7 +127,7 @@ class Plantilla(db.Model):
         nullable=False,
         default=True,
         server_default='true',
-        comment='FALSE = oculta en tarea REDACTAR pero conservada para histórico'
+        comment='FALSE = oculta en tarea ELABORAR pero conservada para histórico'
     )
 
     # Relaciones

@@ -1,0 +1,118 @@
+{# _explorador_fragmento.html — Explorador de ficheros del servidor como modal grande
+   (ADR-023 §6 / #545). Reusa la API /api/fs (restringida a PLANTILLAS_BASE/plantillas/).
+   Al confirmar, escribe la ruta elegida en el input oculto del form de edición del
+   inspector y cierra el modal. Su <script> se re-ejecuta vía modal-large.js.
+#}
+<div class="p-3" id="pl-exp-root">
+    <nav class="small mb-2" id="pl-exp-breadcrumb"><span class="text-secondary">Cargando…</span></nav>
+    <div class="alert alert-danger d-none small py-2" id="pl-exp-error"></div>
+    <table class="table table-sm table-hover mb-0">
+        <tbody id="pl-exp-tbody"></tbody>
+    </table>
+    <div class="d-flex justify-content-end gap-2 mt-3">
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-modal-large-close>Cancelar</button>
+        <button type="button" class="btn btn-primary btn-sm" id="pl-exp-confirmar" disabled>
+            <i class="fas fa-check me-1"></i> Seleccionar
+        </button>
+    </div>
+</div>
+
+<script>
+(function () {
+    'use strict';
+    var URL_FS = "{{ url_for('admin_plantillas.api_explorador_fs') }}";
+    var _seleccionado = null;  // {ruta, nombre}
+
+    function el(id) { return document.getElementById(id); }
+
+    function cargarCarpeta(ruta) {
+        var qs = ruta ? '?ruta=' + encodeURIComponent(ruta) : '';
+        fetch(URL_FS + qs)
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (!data.ok) { mostrarError(data.error || 'Error al cargar'); return; }
+                ocultarError();
+                renderBreadcrumb(data.partes);
+                renderTabla(data.directorios, data.ficheros);
+                _seleccionado = null;
+                el('pl-exp-confirmar').disabled = true;
+            })
+            .catch(function () { mostrarError('Error de red'); });
+    }
+
+    function renderBreadcrumb(partes) {
+        var nav = el('pl-exp-breadcrumb');
+        var html = '<a href="#" class="text-decoration-none" data-pl-exp-nav="">Inicio</a>';
+        var acum = [];
+        partes.forEach(function (p, i) {
+            acum.push(p);
+            var ruta = acum.join('/');
+            if (i === partes.length - 1) {
+                html += ' / <span class="fw-semibold">' + p + '</span>';
+            } else {
+                html += ' / <a href="#" class="text-decoration-none" data-pl-exp-nav="' + ruta + '">' + p + '</a>';
+            }
+        });
+        nav.innerHTML = html;
+    }
+
+    function renderTabla(dirs, files) {
+        var tbody = el('pl-exp-tbody');
+        var html = '';
+        dirs.forEach(function (d) {
+            html += '<tr style="cursor:pointer" data-pl-exp-dir="' + encodeURIComponent(d.ruta) + '">'
+                  + '<td><i class="fas fa-folder text-warning me-2"></i>' + d.nombre + '</td>'
+                  + '<td class="text-secondary small text-end">Carpeta</td></tr>';
+        });
+        files.forEach(function (f) {
+            var kb = (f.tamano / 1024).toFixed(1) + ' KB';
+            html += '<tr style="cursor:pointer" class="pl-exp-fila-doc"'
+                  + ' data-pl-exp-file="' + encodeURIComponent(f.ruta) + '"'
+                  + ' data-pl-exp-name="' + encodeURIComponent(f.nombre) + '">'
+                  + '<td><i class="fas fa-file-word text-primary me-2"></i>' + f.nombre + '</td>'
+                  + '<td class="text-secondary small text-end">' + kb + '</td></tr>';
+        });
+        if (!html) html = '<tr><td colspan="2" class="text-secondary small text-center py-3">Carpeta vacía</td></tr>';
+        tbody.innerHTML = html;
+    }
+
+    function mostrarError(msg) { var e = el('pl-exp-error'); e.textContent = msg; e.classList.remove('d-none'); }
+    function ocultarError() { el('pl-exp-error').classList.add('d-none'); }
+
+    // Delegación de clicks dentro del fragmento (el div raíz es nuevo en cada
+    // apertura, así que no se acumulan listeners al reabrir el explorador).
+    el('pl-exp-root').addEventListener('click', function (e) {
+        var nav = e.target.closest('[data-pl-exp-nav]');
+        if (nav) { e.preventDefault(); cargarCarpeta(nav.getAttribute('data-pl-exp-nav')); return; }
+        var dir = e.target.closest('[data-pl-exp-dir]');
+        if (dir) { cargarCarpeta(decodeURIComponent(dir.getAttribute('data-pl-exp-dir'))); return; }
+        var file = e.target.closest('[data-pl-exp-file]');
+        if (file) {
+            document.querySelectorAll('.pl-exp-fila-doc').forEach(function (tr) { tr.classList.remove('table-active'); });
+            file.classList.add('table-active');
+            _seleccionado = {
+                ruta:   decodeURIComponent(file.getAttribute('data-pl-exp-file')),
+                nombre: decodeURIComponent(file.getAttribute('data-pl-exp-name'))
+            };
+            el('pl-exp-confirmar').disabled = false;
+            return;
+        }
+        if (e.target.closest('#pl-exp-confirmar')) { confirmar(); return; }
+    });
+
+    function confirmar() {
+        if (!_seleccionado) return;
+        // Escribir la ruta elegida en el form de edición del inspector (capa inferior)
+        var input = document.querySelector('[data-pl-ruta-input]');
+        if (input) {
+            input.value = _seleccionado.ruta;
+            input.dispatchEvent(new Event('change', { bubbles: true }));  // marca el form dirty
+        }
+        var label = document.querySelector('[data-pl-ruta-label]');
+        if (label) label.innerHTML = 'Nuevo: <strong>' + _seleccionado.nombre + '</strong>';
+        if (window.AppModalLarge) AppModalLarge.close();
+    }
+
+    cargarCarpeta('');
+})();
+</script>

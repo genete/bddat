@@ -1,0 +1,153 @@
+{# _detalle_fragmento.html — Parcial de lectura para el inspector (ADR-023 §9 / #545).
+   No extiende base_app.html. Inyectado vía AppInspector.open({ fragmentUrl }).
+   - "Editar" → fragmento de edición (data-inspector-edit).
+   - "Tokens disponibles" → modal grande global (data-modal-large-url).
+   - Activar/desactivar → form data-inspector-form (POST XHR → JSON → refresh).
+   El JS de copiar ruta vive en plantillas-inspector.js (el inspector no re-ejecuta <script>).
+#}
+
+<div class="p-3">
+
+<div class="d-flex justify-content-end gap-2 mb-3">
+    <button type="button" class="btn btn-outline-primary btn-sm"
+            data-modal-large-url="{{ url_for('admin_plantillas.tokens_fragmento') }}"
+            data-modal-large-title="Tokens disponibles">
+        <i class="fas fa-tags me-1"></i> Tokens disponibles
+    </button>
+    {% if puede_editar %}
+    <button type="button" class="btn btn-primary btn-sm"
+            data-inspector-edit
+            data-edit-url="{{ url_for('admin_plantillas.editar_fragmento', id=plantilla.id) }}">
+        <i class="fas fa-edit me-1"></i> Editar
+    </button>
+    {% endif %}
+</div>
+
+<!-- CARD 1 — Identificación -->
+<div class="card mb-3">
+    <div class="card-header card-header-accent fw-semibold">
+        <i class="fas fa-tag me-1"></i> Identificación
+        {% if plantilla.activo %}
+            <span class="badge bg-success ms-1">Activa</span>
+        {% else %}
+            <span class="badge bg-secondary ms-1">Inactiva</span>
+        {% endif %}
+    </div>
+    <div class="card-body card-body-tinted">
+        <div class="row g-2">
+            <div class="col-4">
+                <label class="form-label fw-semibold small">Código</label>
+                <div class="form-control form-control-sm font-monospace" style="background:#fff; pointer-events:none;">
+                    {{ plantilla.codigo }}
+                </div>
+            </div>
+            <div class="col-8">
+                <label class="form-label fw-semibold small">Nombre</label>
+                <input type="text" class="form-control form-control-sm"
+                       value="{{ plantilla.nombre }}{% if plantilla.variante %} ({{ plantilla.variante }}){% endif %}" readonly>
+            </div>
+            <div class="col-12">
+                <label class="form-label fw-semibold small">Descripción</label>
+                <input type="text" class="form-control form-control-sm" value="{{ plantilla.descripcion or '—' }}" readonly>
+            </div>
+            <div class="col-12">
+                <label class="form-label fw-semibold small">Tipo de documento resultante</label>
+                <input type="text" class="form-control form-control-sm"
+                       value="{% if plantilla.tipo_documento %}{{ plantilla.tipo_documento.codigo }} — {{ plantilla.tipo_documento.nombre }}{% else %}—{% endif %}" readonly>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- CARD 2 — Contexto ESFTT -->
+<div class="card mb-3">
+    <div class="card-header card-header-accent fw-semibold">
+        <i class="fas fa-sitemap me-1"></i> Contexto ESFTT
+    </div>
+    <div class="card-body card-body-tinted">
+        <div class="row g-2">
+            <div class="col-6">
+                <label class="form-label fw-semibold small">Tipo expediente</label>
+                <input type="text" class="form-control form-control-sm"
+                       value="{% if plantilla.tipo_expediente %}{{ plantilla.tipo_expediente.tipo }}{% else %}Cualquiera{% endif %}" readonly>
+            </div>
+            <div class="col-6">
+                <label class="form-label fw-semibold small">Tipo solicitud</label>
+                <input type="text" class="form-control form-control-sm"
+                       value="{% if plantilla.tipo_solicitud %}{{ plantilla.tipo_solicitud.siglas }} — {{ plantilla.tipo_solicitud.descripcion }}{% else %}Cualquiera{% endif %}" readonly>
+            </div>
+            <div class="col-6">
+                <label class="form-label fw-semibold small">Fase</label>
+                <input type="text" class="form-control form-control-sm"
+                       value="{% if plantilla.tipo_fase %}{{ plantilla.tipo_fase.nombre }}{% else %}Cualquiera{% endif %}" readonly>
+            </div>
+            <div class="col-6">
+                <label class="form-label fw-semibold small">Trámite</label>
+                <input type="text" class="form-control form-control-sm"
+                       value="{% if plantilla.tipo_tramite %}{{ plantilla.tipo_tramite.nombre }}{% else %}Cualquiera{% endif %}" readonly>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- CARD 3 — Fichero de plantilla -->
+<div class="card mb-3">
+    <div class="card-header card-header-accent fw-semibold">
+        <i class="fas fa-file-word me-1"></i> Fichero de plantilla
+    </div>
+    <div class="card-body card-body-tinted">
+        <div class="fw-semibold mb-2">
+            {{ plantilla.ruta_plantilla }}
+            <a href="{{ url_for('admin_plantillas.descargar', id=plantilla.id) }}"
+               class="ms-2 small"><i class="fas fa-download me-1"></i>Descargar</a>
+        </div>
+        {% if ruta_absoluta %}
+        <div class="input-group input-group-sm">
+            <input type="text" class="form-control font-monospace" value="{{ ruta_absoluta }}" readonly
+                   data-pl-ruta-abs>
+            <button class="btn btn-outline-secondary" type="button"
+                    data-pl-copy data-pl-copy-target="[data-pl-ruta-abs]"
+                    title="Pega esta ruta en la barra del Explorador de Windows">
+                <i class="fas fa-copy me-1"></i> Copiar ruta
+            </button>
+        </div>
+        {% if uri_explorador %}
+        <div class="mt-2">
+            <a href="{{ uri_explorador }}" class="btn btn-sm btn-outline-success"
+               title="Requiere el protocolo bddat-explorador:// instalado en este PC">
+                <i class="fas fa-folder-open me-1"></i> Abrir en Explorador
+            </a>
+        </div>
+        {% endif %}
+        {% endif %}
+    </div>
+</div>
+
+<!-- CARD 4 — Context Builder (solo si tiene clase configurada) -->
+{% if plantilla.contexto_clase %}
+<div class="card mb-3">
+    <div class="card-header card-header-accent fw-semibold">
+        <i class="fas fa-code me-1"></i> Context Builder (Capa 2)
+    </div>
+    <div class="card-body card-body-tinted">
+        <label class="form-label fw-semibold small">Clase</label>
+        <div class="form-control form-control-sm font-monospace" style="background:#fff; pointer-events:none;">
+            {{ plantilla.contexto_clase }}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Acción activar / desactivar -->
+{% if puede_editar %}
+<form data-inspector-form
+      data-action="{{ url_for('admin_plantillas.activar', id=plantilla.id) }}">
+    <button type="submit"
+            class="btn btn-sm {% if plantilla.activo %}btn-outline-danger{% else %}btn-outline-success{% endif %}">
+        <i class="fas {% if plantilla.activo %}fa-toggle-off{% else %}fa-toggle-on{% endif %} me-1"></i>
+        {% if plantilla.activo %}Desactivar plantilla{% else %}Activar plantilla{% endif %}
+    </button>
+</form>
+{% endif %}
+
+</div>{# /p-3 #}

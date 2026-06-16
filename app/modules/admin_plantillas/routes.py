@@ -35,6 +35,7 @@ from app.models.tipos_expedientes import TipoExpediente
 from app.models.tipos_fases import TipoFase
 from app.models.tipos_solicitudes import TipoSolicitud
 from app.models.tipos_tramites import TipoTramite
+from app.utils.permisos import tiene_permiso
 
 bp = Blueprint(
     'admin_plantillas',
@@ -138,25 +139,36 @@ def _path_seguro_plantillas(ruta_relativa: str) -> str | None:
     return ruta_full
 
 
-def _form_data_to_plantilla(plantilla: Plantilla) -> bool:
+def _rellenar_plantilla(plantilla: Plantilla) -> list[str]:
     """
     Rellena los campos de una Plantilla desde request.form.
-    Devuelve False si hay errores de validación (con flash).
+    Devuelve la lista de errores de validación (vacía si todo OK).
+
+    No flashea: el llamador decide cómo mostrarlos (flash en la página de alta,
+    JSON en el inspector XHR — ADR-023 §5).
     """
+    errores = []
     codigo = request.form.get('codigo', '').strip().upper()
     nombre = request.form.get('nombre', '').strip()
+    tipo_documento_id = request.form.get('tipo_documento_id') or None
 
     if not codigo:
-        flash('El código es obligatorio.', 'danger')
-        return False
+        errores.append('El código es obligatorio.')
     if not nombre:
-        flash('El nombre es obligatorio.', 'danger')
-        return False
-
-    tipo_documento_id = request.form.get('tipo_documento_id') or None
+        errores.append('El nombre es obligatorio.')
     if not tipo_documento_id:
-        flash('El tipo de documento es obligatorio.', 'danger')
-        return False
+        errores.append('El tipo de documento es obligatorio.')
+
+    # Unicidad del código (uq_plantillas_codigo), excluyendo la propia plantilla en edición
+    if codigo:
+        q = Plantilla.query.filter(Plantilla.codigo == codigo)
+        if plantilla.id:
+            q = q.filter(Plantilla.id != plantilla.id)
+        if q.first():
+            errores.append(f'El código «{codigo}» ya está en uso por otra plantilla.')
+
+    if errores:
+        return errores
 
     plantilla.codigo           = codigo
     plantilla.nombre           = nombre
@@ -169,7 +181,7 @@ def _form_data_to_plantilla(plantilla: Plantilla) -> bool:
     plantilla.tipo_tramite_id     = int(request.form['tipo_tramite_id'])    if request.form.get('tipo_tramite_id')    else None
     plantilla.contexto_clase      = request.form.get('contexto_clase', '').strip() or None
     plantilla.activo              = 'activo' in request.form
-    return True
+    return []
 
 
 def _selects_context():
@@ -289,8 +301,23 @@ def api_tokens():
 @login_required
 @require_permiso('acceder_plantillas')
 def listado():
-    plantillas = Plantilla.query.order_by(Plantilla.nombre).all()
-    return render_template('admin_plantillas/listado.html', plantillas=plantillas)
+    """Listado de plantillas — scroll infinito + inspector overlay (ADR-023 / #545).
+
+    Las filas las sirve la API /api/admin-plantillas; aquí solo se pasan las
+    opciones de los filtros (tipo de documento y fase) para los SelectorFiltro.
+    """
+    tipos_documento = (
+        TipoDocumento.query
+        .filter(TipoDocumento.origen != 'EXTERNO')
+        .order_by(TipoDocumento.nombre)
+        .all()
+    )
+    tipos_fase = TipoFase.query.order_by(TipoFase.nombre).all()
+    return render_template(
+        'admin_plantillas/listado.html',
+        tipos_documento=tipos_documento,
+        tipos_fase=tipos_fase,
+    )
 
 
 @bp.route('/nueva/', methods=['GET', 'POST'])
@@ -329,7 +356,10 @@ def nueva():
             )
 
         p = Plantilla()
-        if not _form_data_to_plantilla(p):
+        errores = _rellenar_plantilla(p)
+        if errores:
+            for msg in errores:
+                flash(msg, 'danger')
             return render_template(
                 'admin_plantillas/form.html',
                 modo='nueva', plantilla=None,
@@ -364,22 +394,84 @@ def nueva():
     )
 
 
-@bp.route('/<int:id>/')
-@login_required
-@require_permiso('acceder_plantillas')
-def detalle(id):
-    plantilla = Plantilla.query.get_or_404(id)
-    tokens = _build_tokens(plantilla)
+def _rutas_fichero(plantilla):
+    """Calcula la ruta absoluta y el URI bddat-explorador:// del .docx de la plantilla."""
     d = _plantillas_dir()
     ruta_absoluta = os.path.join(d, plantilla.ruta_plantilla).replace('/', '\\') if d else None
     uri_explorador = (
         'bddat-explorador://' + ruta_absoluta.replace('\\', '/').replace(':', '%3A')
     ) if ruta_absoluta else None
+    return ruta_absoluta, uri_explorador
+
+
+@bp.route('/<int:id>/')
+@login_required
+@require_permiso('acceder_plantillas')
+def detalle(id):
+    """Redirige al listado con el inspector abierto en esta plantilla (ADR-023 §9 / #545).
+
+    La ruta se conserva para no romper enlaces externos/marcadores; el detalle
+    de página deja de ser un destino de navegación.
+    """
+    Plantilla.query.get_or_404(id)
+    return redirect(url_for('admin_plantillas.listado', sel=id))
+
+
+@bp.route('/<int:id>/fragmento')
+@login_required
+@require_permiso('acceder_plantillas')
+def fragmento(id):
+    """Fragmento HTML de lectura para el inspector (ADR-023 §9 / #545)."""
+    plantilla = Plantilla.query.get_or_404(id)
+    ruta_absoluta, uri_explorador = _rutas_fichero(plantilla)
     return render_template(
-        'admin_plantillas/detalle.html',
-        plantilla=plantilla, tokens=tokens,
+        'admin_plantillas/_detalle_fragmento.html',
+        plantilla=plantilla,
         ruta_absoluta=ruta_absoluta, uri_explorador=uri_explorador,
+        puede_editar=tiene_permiso('gestionar_plantillas'),
     )
+
+
+@bp.route('/<int:id>/editar-fragmento')
+@login_required
+@require_permiso('gestionar_plantillas')
+def editar_fragmento(id):
+    """Fragmento HTML de edición para el inspector (ADR-023 §5 / #545).
+
+    Solo metadatos escalares con selects planos (sin cascada ESFTT: los endpoints
+    api_tipos_* no filtran hoy). El cambio del .docx se delega al modal grande
+    del explorador (ADR-023 §6).
+    """
+    plantilla = Plantilla.query.get_or_404(id)
+    return render_template(
+        'admin_plantillas/_editar_fragmento.html',
+        plantilla=plantilla,
+        **_selects_context(),
+    )
+
+
+@bp.route('/tokens/fragmento')
+@login_required
+@require_permiso('acceder_plantillas')
+def tokens_fragmento():
+    """Panel de tokens (catálogo global de autoría) para el modal grande (ADR-023 §6 / #545).
+
+    No depende de ninguna plantilla concreta: los tokens de Capa 1 son fijos.
+    """
+    return render_template('admin_plantillas/_tokens_fragmento.html', tokens=_build_tokens())
+
+
+@bp.route('/<int:id>/explorador-fragmento')
+@login_required
+@require_permiso('gestionar_plantillas')
+def explorador_fragmento(id):
+    """Explorador de ficheros del servidor como modal grande (ADR-023 §6 / #545).
+
+    Reusa la API /api/fs. El JS del fragmento (re-ejecutado por modal-large.js)
+    escribe la ruta elegida en el input oculto del form de edición del inspector.
+    """
+    plantilla = Plantilla.query.get_or_404(id)
+    return render_template('admin_plantillas/_explorador_fragmento.html', plantilla=plantilla)
 
 
 @bp.route('/<int:id>/editar', methods=['GET', 'POST'])
@@ -387,63 +479,48 @@ def detalle(id):
 @require_permiso('gestionar_plantillas')
 def editar(id):
     plantilla = Plantilla.query.get_or_404(id)
+    is_xhr = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
 
-    if request.method == 'POST':
-        ruta_rel = request.form.get('ruta_plantilla', '').strip()
+    # GET → la edición vive en el inspector (ADR-023 §5); el acceso directo redirige.
+    if request.method == 'GET':
+        return redirect(url_for('admin_plantillas.listado', sel=id))
 
-        if ruta_rel:
-            # El supervisor ha seleccionado un nuevo fichero en el servidor
-            ruta_abs = _path_seguro_plantillas(ruta_rel)
-            if not ruta_abs or not os.path.isfile(ruta_abs):
-                flash('La ruta del fichero seleccionado no es válida.', 'danger')
-                return render_template(
-                    'admin_plantillas/form.html',
-                    modo='editar', plantilla=plantilla,
-                    tokens=_build_tokens(plantilla),
-                    **_selects_context(),
-                )
-            error_docx = _validar_plantilla_docx(ruta_abs)
-            if error_docx:
-                flash(f'El fichero .docx tiene errores de sintaxis: {error_docx}', 'danger')
-                return render_template(
-                    'admin_plantillas/form.html',
-                    modo='editar', plantilla=plantilla,
-                    tokens=_build_tokens(plantilla),
-                    **_selects_context(),
-                )
+    def _responder_errores(errores):
+        """Errores como JSON (XHR) o flash + redirect al inspector (fallback sin JS)."""
+        if is_xhr:
+            return jsonify({'ok': False, 'errors': errores})
+        for msg in errores:
+            flash(msg, 'danger')
+        return redirect(url_for('admin_plantillas.listado', sel=id))
 
-        if not _form_data_to_plantilla(plantilla):
-            return render_template(
-                'admin_plantillas/form.html',
-                modo='editar', plantilla=plantilla,
-                tokens=_build_tokens(plantilla),
-                **_selects_context(),
-            )
+    ruta_rel = request.form.get('ruta_plantilla', '').strip()
+    if ruta_rel:
+        # El supervisor ha seleccionado un nuevo fichero en el servidor
+        ruta_abs = _path_seguro_plantillas(ruta_rel)
+        if not ruta_abs or not os.path.isfile(ruta_abs):
+            return _responder_errores(['La ruta del fichero seleccionado no es válida.'])
+        error_docx = _validar_plantilla_docx(ruta_abs)
+        if error_docx:
+            return _responder_errores([f'El fichero .docx tiene errores de sintaxis: {error_docx}'])
 
-        if ruta_rel:
-            plantilla.ruta_plantilla = os.path.basename(ruta_rel)
+    errores = _rellenar_plantilla(plantilla)
+    if errores:
+        return _responder_errores(errores)
 
-        try:
-            db.session.commit()
-        except Exception as e:
-            db.session.rollback()
-            flash(f'Error al guardar: {e}', 'danger')
-            return render_template(
-                'admin_plantillas/form.html',
-                modo='editar', plantilla=plantilla,
-                tokens=_build_tokens(plantilla),
-                **_selects_context(),
-            )
+    if ruta_rel:
+        plantilla.ruta_plantilla = os.path.basename(ruta_rel)
 
-        flash(f'Plantilla «{plantilla.nombre}» actualizada correctamente.', 'success')
-        return redirect(url_for('admin_plantillas.detalle', id=plantilla.id))
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        return _responder_errores([f'Error al guardar: {e}'])
 
-    return render_template(
-        'admin_plantillas/form.html',
-        modo='editar', plantilla=plantilla,
-        tokens=_build_tokens(plantilla),
-        **_selects_context(),
-    )
+    msg = f'Plantilla «{plantilla.nombre}» actualizada correctamente.'
+    if is_xhr:
+        return jsonify({'ok': True, 'message': msg})
+    flash(msg, 'success')
+    return redirect(url_for('admin_plantillas.listado', sel=id))
 
 
 @bp.route('/<int:id>/descargar')
@@ -465,8 +542,12 @@ def descargar(id):
 @require_permiso('gestionar_plantillas')
 def activar(id):
     plantilla = Plantilla.query.get_or_404(id)
+    is_xhr = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
     plantilla.activo = not plantilla.activo
     db.session.commit()
     estado = 'activada' if plantilla.activo else 'desactivada'
-    flash(f'Plantilla «{plantilla.nombre}» {estado}.', 'success')
-    return redirect(url_for('admin_plantillas.detalle', id=plantilla.id))
+    msg = f'Plantilla «{plantilla.nombre}» {estado}.'
+    if is_xhr:
+        return jsonify({'ok': True, 'message': msg, 'activo': plantilla.activo})
+    flash(msg, 'success')
+    return redirect(url_for('admin_plantillas.listado', sel=id))
