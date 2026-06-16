@@ -1,0 +1,7 @@
+{# _tokens_fragmento.html — Panel de tokens para el modal grande (ADR-023 §6 / #545).
+   Catálogo global de autoría (campos, consultas nombradas, fragmentos insertables).
+   Reusa _panel_tokens.html tal cual; su <script> de copiar se re-ejecuta en capa 3
+   (modal-large.js sí reconstruye los <script>, a diferencia del inspector).
+#}
+{% set solo_lectura = true %}
+{% include 'admin_plantillas/_panel_tokens.html' %}

@@ -1,0 +1,175 @@
+{# _editar_fragmento.html — Parcial de edición para el inspector (ADR-023 §5 / #545).
+   No extiende base_app.html. Inyectado por inspector-overlay.js vía data-inspector-edit.
+   Submit interceptado: POST XHR → JSON { ok, errors, message }.
+   Selects ESFTT planos (sin cascada/whitelist — los endpoints api_tipos_* no filtran hoy).
+   "Cambiar fichero" abre el explorador como modal grande (plantillas-inspector.js, onSaved no-op).
+#}
+
+<div class="p-3">
+
+<form data-inspector-form
+      data-action="{{ url_for('admin_plantillas.editar', id=plantilla.id) }}">
+
+<div id="inspector-form-errors" class="alert alert-danger py-2 mb-3 small" style="display:none;"></div>
+
+<div class="d-flex justify-content-end gap-2 mb-3">
+    <button type="button" class="btn btn-outline-secondary btn-sm" data-inspector-cancel-edit>
+        <i class="fas fa-times me-1"></i> Cancelar
+    </button>
+    <button type="submit" class="btn btn-primary btn-sm">
+        <i class="fas fa-save me-1"></i> Guardar cambios
+    </button>
+</div>
+
+<!-- CARD 1 — Identificación -->
+<div class="card mb-3">
+    <div class="card-header card-header-accent fw-semibold">
+        <i class="fas fa-tag me-1"></i> Identificación
+    </div>
+    <div class="card-body card-body-tinted">
+        <div class="row g-2">
+            <div class="col-12">
+                <label class="form-label fw-semibold small" for="pf_nombre">Nombre <span class="text-danger">*</span></label>
+                <input type="text" class="form-control form-control-sm" id="pf_nombre" name="nombre"
+                       value="{{ plantilla.nombre }}" required>
+            </div>
+            <div class="col-7">
+                <label class="form-label fw-semibold small" for="pf_codigo">Código <span class="text-danger">*</span></label>
+                <input type="text" class="form-control form-control-sm font-monospace" id="pf_codigo" name="codigo"
+                       value="{{ plantilla.codigo }}" pattern="[A-Z0-9_]+"
+                       title="Solo mayúsculas, números y guiones bajos" required>
+            </div>
+            <div class="col-5">
+                <label class="form-label fw-semibold small" for="pf_variante">Variante</label>
+                <input type="text" class="form-control form-control-sm" id="pf_variante" name="variante"
+                       value="{{ plantilla.variante or '' }}" placeholder="Favorable, Denegatoria…">
+            </div>
+            <div class="col-12">
+                <label class="form-label fw-semibold small" for="pf_descripcion">Descripción</label>
+                <textarea class="form-control form-control-sm" id="pf_descripcion" name="descripcion"
+                          rows="2">{{ plantilla.descripcion or '' }}</textarea>
+            </div>
+            <div class="col-12">
+                <label class="form-label fw-semibold small" for="pf_tipo_documento">
+                    Tipo de documento resultante <span class="text-danger">*</span>
+                </label>
+                <select class="form-select form-select-sm" id="pf_tipo_documento" name="tipo_documento_id" required>
+                    <option value="">— Seleccionar —</option>
+                    {% for td in tipos_documento %}
+                    <option value="{{ td.id }}" {% if plantilla.tipo_documento_id == td.id %}selected{% endif %}>
+                        {{ td.codigo }} — {{ td.nombre }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- CARD 2 — Contexto ESFTT (todos los campos opcionales; vacío = cualquiera) -->
+<div class="card mb-3">
+    <div class="card-header card-header-accent fw-semibold">
+        <i class="fas fa-sitemap me-1"></i> Contexto ESFTT
+        <span class="badge bg-secondary ms-1" style="font-weight:400">Opcional</span>
+    </div>
+    <div class="card-body card-body-tinted">
+        <div class="row g-2">
+            <div class="col-6">
+                <label class="form-label fw-semibold small" for="pf_tipo_expediente">Tipo de expediente</label>
+                <select class="form-select form-select-sm" id="pf_tipo_expediente" name="tipo_expediente_id">
+                    <option value="">— Cualquier expediente —</option>
+                    {% for te in tipos_expediente %}
+                    <option value="{{ te.id }}" {% if plantilla.tipo_expediente_id == te.id %}selected{% endif %}>
+                        {{ te.tipo }}{% if te.descripcion %} — {{ te.descripcion }}{% endif %}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-6">
+                <label class="form-label fw-semibold small" for="pf_tipo_solicitud">Tipo de solicitud</label>
+                <select class="form-select form-select-sm" id="pf_tipo_solicitud" name="tipo_solicitud_id">
+                    <option value="">— Cualquier solicitud —</option>
+                    {% for ts in tipos_solicitud %}
+                    <option value="{{ ts.id }}" {% if plantilla.tipo_solicitud_id == ts.id %}selected{% endif %}>
+                        {{ ts.siglas }} — {{ ts.descripcion }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-6">
+                <label class="form-label fw-semibold small" for="pf_tipo_fase">Fase</label>
+                <select class="form-select form-select-sm" id="pf_tipo_fase" name="tipo_fase_id">
+                    <option value="">— Cualquier fase —</option>
+                    {% for tf in tipos_fase %}
+                    <option value="{{ tf.id }}" {% if plantilla.tipo_fase_id == tf.id %}selected{% endif %}>
+                        {{ tf.nombre }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-6">
+                <label class="form-label fw-semibold small" for="pf_tipo_tramite">Trámite</label>
+                <select class="form-select form-select-sm" id="pf_tipo_tramite" name="tipo_tramite_id">
+                    <option value="">— Cualquier trámite —</option>
+                    {% for tt in tipos_tramite %}
+                    <option value="{{ tt.id }}" {% if plantilla.tipo_tramite_id == tt.id %}selected{% endif %}>
+                        {{ tt.nombre }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- CARD 3 — Fichero de plantilla -->
+<div class="card mb-3">
+    <div class="card-header card-header-accent fw-semibold">
+        <i class="fas fa-file-word me-1"></i> Fichero de plantilla
+    </div>
+    <div class="card-body card-body-tinted">
+        {# Input oculto con la ruta relativa; vacío = conservar el fichero actual #}
+        <input type="hidden" name="ruta_plantilla" value="" data-pl-ruta-input>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <button type="button" class="btn btn-outline-secondary btn-sm"
+                    data-pl-explorador
+                    data-pl-explorador-url="{{ url_for('admin_plantillas.explorador_fragmento', id=plantilla.id) }}">
+                <i class="fas fa-folder-open me-1"></i> Cambiar fichero…
+            </button>
+            <span class="text-secondary small" data-pl-ruta-label>
+                Actual: <strong>{{ plantilla.ruta_plantilla }}</strong>
+            </span>
+        </div>
+        <div class="form-text mt-1">Si no seleccionas ninguno, se conserva el fichero actual.</div>
+    </div>
+</div>
+
+<!-- CARD 4 — Context Builder avanzado (opcional) -->
+<div class="card mb-3">
+    <div class="card-header card-header-accent fw-semibold">
+        <i class="fas fa-code me-1"></i> Context Builder
+        <span class="badge bg-secondary ms-1" style="font-weight:400">Opcional — Capa 2</span>
+    </div>
+    <div class="card-body card-body-tinted">
+        <label class="form-label fw-semibold small" for="pf_contexto_clase">Clase Python</label>
+        <input type="text" class="form-control form-control-sm font-monospace" id="pf_contexto_clase"
+               name="contexto_clase" value="{{ plantilla.contexto_clase or '' }}"
+               placeholder="RequerimientoSubsanacion">
+        <div class="form-text">Vacío si la plantilla solo usa campos base (Capa 1).</div>
+    </div>
+</div>
+
+<!-- CARD 5 — Estado -->
+<div class="card mb-3">
+    <div class="card-body card-body-tinted">
+        <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" id="pf_activo" name="activo" role="switch"
+                   {% if plantilla.activo %}checked{% endif %}>
+            <label class="form-check-label fw-semibold small" for="pf_activo">Plantilla activa</label>
+        </div>
+        <div class="form-text">Las inactivas no se muestran en la tarea ELABORAR, pero se conservan para histórico.</div>
+    </div>
+</div>
+
+</form>
+</div>{# /p-3 #}
