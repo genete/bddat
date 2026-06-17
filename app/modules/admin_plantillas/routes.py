@@ -11,10 +11,7 @@ Rutas de formulario:
 - GET  /admin/plantillas/<id>/descargar — Descarga del .docx registrado
 - POST /admin/plantillas/<id>/activar — Activar/desactivar plantilla
 
-Endpoints AJAX (cascada ESFTT):
-- GET  /admin/plantillas/api/tipos-solicitud  — Todos los tipos de solicitud
-- GET  /admin/plantillas/api/tipos-fase       — Todos los tipos de fase
-- GET  /admin/plantillas/api/tipos-tramite    — Todos los tipos de trámite
+Endpoints AJAX:
 - GET  /admin/plantillas/api/tokens           — Tokens Capa 1 (stub — Capa 2 en Fase 5)
 - GET  /admin/plantillas/api/fs               — Explorador de servidor restringido a PLANTILLAS_BASE/plantillas/
 """
@@ -90,13 +87,33 @@ def _listar_fragmentos() -> list[str]:
     return sorted(f for f in os.listdir(d) if f.lower().endswith('.docx'))
 
 
-def _build_tokens(plantilla=None) -> dict:
+def _tokens_context_builder(contexto_clase) -> list:
+    """Manifiesto TOKENS del Context Builder declarado, o [] si no existe.
+
+    El supervisor puede teclear una clase inexistente; en ese caso no hay
+    tokens de Capa 2 que ofrecer y el panel no se rompe (ADR-025).
+    """
+    if not contexto_clase:
+        return []
+    try:
+        from app.services.generador_escritos import _cargar_context_builder
+        cls = _cargar_context_builder(contexto_clase)
+    except Exception:
+        return []
+    return list(getattr(cls, 'TOKENS', []) or [])
+
+
+def _build_tokens(contexto_clase=None) -> dict:
     """
     Construye el contexto de tokens para el panel del supervisor.
 
-    campos:     CAMPOS_BASE (Capa 1 fija)
-    consultas:  ConsultaNombrada activas (ordenadas por nombre)
-    fragmentos: ficheros .docx en PLANTILLAS_BASE/fragmentos/
+    campos:     CAMPOS_BASE (Capa 1 fija, universal)
+    consultas:  ConsultaNombrada activas (universal, nivel expediente)
+    fragmentos: ficheros .docx en PLANTILLAS_BASE/fragmentos/ (universal)
+    cb_tokens:  manifiesto TOKENS del Context Builder en contexto_clase (Capa 2).
+                Vacío si la plantilla no usa CB. Es lo único que varía por
+                plantilla — se ancla a contexto_clase, no al ESFT (ADR-025).
+    cb_clase:   nombre de la clase del Context Builder, para la cabecera de la sección.
     """
     consultas = (
         ConsultaNombrada.query
@@ -105,7 +122,13 @@ def _build_tokens(plantilla=None) -> dict:
         .all()
     )
     fragmentos = _listar_fragmentos()
-    return {'campos': list(CAMPOS_BASE), 'consultas': consultas, 'fragmentos': fragmentos}
+    return {
+        'campos': list(CAMPOS_BASE),
+        'consultas': consultas,
+        'fragmentos': fragmentos,
+        'cb_tokens': _tokens_context_builder(contexto_clase),
+        'cb_clase': contexto_clase or None,
+    }
 
 
 def _validar_plantilla_docx(ruta_abs: str) -> str | None:
@@ -184,6 +207,30 @@ def _rellenar_plantilla(plantilla: Plantilla) -> list[str]:
     return []
 
 
+def _plantilla_form_provisional():
+    """Plantilla NO persistida con los valores del formulario de alta.
+
+    Repinta el alta tras un error de validación sin perder lo ya tecleado.
+    No valida ni toca BD (#552). La plantilla Jinja ya lee de `plantilla.X`,
+    así que con esto los campos sobreviven al re-render.
+    """
+    def _int(v):
+        return int(v) if v else None
+    p = Plantilla()
+    p.codigo             = request.form.get('codigo', '').strip().upper() or None
+    p.nombre             = request.form.get('nombre', '').strip() or None
+    p.descripcion        = request.form.get('descripcion', '').strip() or None
+    p.variante           = request.form.get('variante', '').strip() or None
+    p.tipo_documento_id  = _int(request.form.get('tipo_documento_id'))
+    p.tipo_expediente_id = _int(request.form.get('tipo_expediente_id'))
+    p.tipo_solicitud_id  = _int(request.form.get('tipo_solicitud_id'))
+    p.tipo_fase_id       = _int(request.form.get('tipo_fase_id'))
+    p.tipo_tramite_id    = _int(request.form.get('tipo_tramite_id'))
+    p.contexto_clase     = request.form.get('contexto_clase', '').strip() or None
+    p.activo             = 'activo' in request.form
+    return p
+
+
 def _selects_context():
     """Devuelve los querysets para los selects del formulario."""
     return {
@@ -202,44 +249,8 @@ def _selects_context():
 
 
 # ---------------------------------------------------------------------------
-# Endpoints AJAX (cascada ESFTT)
+# Endpoints AJAX
 # ---------------------------------------------------------------------------
-
-@bp.route('/api/tipos-solicitud')
-@login_required
-@require_permiso('gestionar_plantillas')
-def api_tipos_solicitud():
-    """Devuelve todos los tipos de solicitud disponibles."""
-    tipos = TipoSolicitud.query.order_by(TipoSolicitud.siglas).all()
-    return jsonify([
-        {'id': t.id, 'texto': f'{t.siglas} — {t.descripcion}'}
-        for t in tipos
-    ])
-
-
-@bp.route('/api/tipos-fase')
-@login_required
-@require_permiso('gestionar_plantillas')
-def api_tipos_fase():
-    """Devuelve todos los tipos de fase disponibles."""
-    tipos = TipoFase.query.order_by(TipoFase.nombre).all()
-    return jsonify([
-        {'id': t.id, 'texto': t.nombre}
-        for t in tipos
-    ])
-
-
-@bp.route('/api/tipos-tramite')
-@login_required
-@require_permiso('gestionar_plantillas')
-def api_tipos_tramite():
-    """Devuelve todos los tipos de trámite disponibles."""
-    tipos = TipoTramite.query.order_by(TipoTramite.nombre).all()
-    return jsonify([
-        {'id': t.id, 'texto': t.nombre}
-        for t in tipos
-    ])
-
 
 @bp.route('/api/fs')
 @login_required
@@ -330,8 +341,8 @@ def nueva():
             flash('Debes seleccionar el fichero .docx de la plantilla desde el servidor.', 'danger')
             return render_template(
                 'admin_plantillas/form.html',
-                modo='nueva', plantilla=None,
-                tokens=_build_tokens(),
+                modo='nueva', plantilla=_plantilla_form_provisional(),
+                tokens=_build_tokens(request.form.get('contexto_clase')),
                 **_selects_context(),
             )
 
@@ -340,8 +351,8 @@ def nueva():
             flash('La ruta del fichero seleccionado no es válida.', 'danger')
             return render_template(
                 'admin_plantillas/form.html',
-                modo='nueva', plantilla=None,
-                tokens=_build_tokens(),
+                modo='nueva', plantilla=_plantilla_form_provisional(),
+                tokens=_build_tokens(request.form.get('contexto_clase')),
                 **_selects_context(),
             )
 
@@ -350,8 +361,8 @@ def nueva():
             flash(f'El fichero .docx tiene errores de sintaxis: {error_docx}', 'danger')
             return render_template(
                 'admin_plantillas/form.html',
-                modo='nueva', plantilla=None,
-                tokens=_build_tokens(),
+                modo='nueva', plantilla=_plantilla_form_provisional(),
+                tokens=_build_tokens(request.form.get('contexto_clase')),
                 **_selects_context(),
             )
 
@@ -362,8 +373,8 @@ def nueva():
                 flash(msg, 'danger')
             return render_template(
                 'admin_plantillas/form.html',
-                modo='nueva', plantilla=None,
-                tokens=_build_tokens(),
+                modo='nueva', plantilla=_plantilla_form_provisional(),
+                tokens=_build_tokens(request.form.get('contexto_clase')),
                 **_selects_context(),
             )
 
@@ -378,8 +389,8 @@ def nueva():
             flash(f'Error al guardar: {e}', 'danger')
             return render_template(
                 'admin_plantillas/form.html',
-                modo='nueva', plantilla=None,
-                tokens=_build_tokens(),
+                modo='nueva', plantilla=_plantilla_form_provisional(),
+                tokens=_build_tokens(request.form.get('contexto_clase')),
                 **_selects_context(),
             )
 
@@ -454,11 +465,17 @@ def editar_fragmento(id):
 @login_required
 @require_permiso('acceder_plantillas')
 def tokens_fragmento():
-    """Panel de tokens (catálogo global de autoría) para el modal grande (ADR-023 §6 / #545).
+    """Panel de tokens para el modal grande (ADR-023 §6 / #545).
 
-    No depende de ninguna plantilla concreta: los tokens de Capa 1 son fijos.
+    Contextual por ?contexto_clase (ADR-025 / #553): Capa 1, consultas y
+    fragmentos son universales; los tokens de Capa 2 dependen del Context
+    Builder declarado en la plantilla.
     """
-    return render_template('admin_plantillas/_tokens_fragmento.html', tokens=_build_tokens())
+    contexto_clase = request.args.get('contexto_clase', '').strip() or None
+    return render_template(
+        'admin_plantillas/_tokens_fragmento.html',
+        tokens=_build_tokens(contexto_clase),
+    )
 
 
 @bp.route('/<int:id>/explorador-fragmento')

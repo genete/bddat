@@ -96,7 +96,7 @@ def _tarea_cb(solicitud):
 
 
 def _cb(solicitud):
-    from app.services.context_builders.analisis_alegaciones import ContextoAnalisisAlegaciones
+    from app.services.context_builders.contexto_analisis_alegaciones import ContextoAnalisisAlegaciones
     return ContextoAnalisisAlegaciones(MagicMock(), MagicMock(), tarea=_tarea_cb(solicitud))
 
 
@@ -107,7 +107,7 @@ def _cb(solicitud):
 class TestSinDatos:
 
     def test_sin_tarea_devuelve_vacio(self):
-        from app.services.context_builders.analisis_alegaciones import ContextoAnalisisAlegaciones
+        from app.services.context_builders.contexto_analisis_alegaciones import ContextoAnalisisAlegaciones
         cb = ContextoAnalisisAlegaciones(MagicMock(), MagicMock(), tarea=None)
         assert cb.get_contexto() == {}
 

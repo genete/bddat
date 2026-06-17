@@ -22,6 +22,21 @@ class ContextoAnalisisAlegaciones:
     - respuesta_titular_fecha      str   fecha_administrativa de RESPUESTA_TITULAR_ALEGACION (DD/MM/AAAA o None)
     """
 
+    TOKENS = [
+        {'campo': 'num_alegaciones', 'descripcion': 'Total de alegaciones registradas'},
+        {'campo': 'alegaciones', 'descripcion': 'Una fila por alegante', 'tipo': 'tabla', 'columnas': [
+            {'campo': 'alegante_nombre',            'descripcion': 'Nombre del alegante'},
+            {'campo': 'alegante_nif',               'descripcion': 'NIF (puede ser vacío)'},
+            {'campo': 'alegante_tipo_interesado',   'descripcion': 'particular / administracion / asociacion / empresa'},
+            {'campo': 'alegacion_asunto',           'descripcion': 'Asunto del escrito de alegación'},
+            {'campo': 'alegacion_fecha',            'descripcion': 'Fecha de la alegación (DD/MM/AAAA)'},
+            {'campo': 'respuesta_titular_recibida', 'descripcion': 'Verdadero si el titular respondió'},
+            {'campo': 'respuesta_titular_asunto',   'descripcion': 'Asunto de la respuesta del titular'},
+            {'campo': 'respuesta_titular_fecha',    'descripcion': 'Fecha de la respuesta del titular (DD/MM/AAAA)'},
+        ]},
+        {'campo': 'resumen_clasificacion', 'descripcion': 'Conteo por tipo de interesado; ej. {{resumen_clasificacion.particular}}'},
+    ]
+
     def __init__(self, expediente, db_session, tarea=None):
         self._expediente = expediente
         self._db = db_session

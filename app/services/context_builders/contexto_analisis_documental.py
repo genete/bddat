@@ -11,6 +11,12 @@ class ContextoAnalisisDocumental:
     - diagnostico_tiene_defectos   bool  True si hay al menos un defecto
     """
 
+    TOKENS = [
+        {'campo': 'diagnostico_resultado',      'descripcion': 'favorable, condicionado o desfavorable'},
+        {'campo': 'diagnostico_defectos',       'descripcion': 'Lista de defectos detectados', 'tipo': 'lista'},
+        {'campo': 'diagnostico_tiene_defectos', 'descripcion': 'Verdadero si hay al menos un defecto (para {% if %})'},
+    ]
+
     def __init__(self, expediente, db_session, tarea=None):
         self._expediente = expediente
         self._db = db_session

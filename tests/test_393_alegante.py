@@ -81,18 +81,18 @@ class TestAleganteAsContextoCb:
 class TestContextoRecepcionAlegacion:
 
     def test_sin_tarea_devuelve_vacio(self):
-        from app.services.context_builders.recepcion_alegacion import ContextoRecepcionAlegacion
+        from app.services.context_builders.contexto_recepcion_alegacion import ContextoRecepcionAlegacion
         cb = ContextoRecepcionAlegacion(MagicMock(), MagicMock(), tarea=None)
         assert cb.get_contexto() == {}
 
     def test_tramite_sin_alegante_devuelve_vacio(self):
-        from app.services.context_builders.recepcion_alegacion import ContextoRecepcionAlegacion
+        from app.services.context_builders.contexto_recepcion_alegacion import ContextoRecepcionAlegacion
         tarea = _tarea_con_tramite(_tramite_con_alegante(alegante=None))
         cb = ContextoRecepcionAlegacion(MagicMock(), MagicMock(), tarea=tarea)
         assert cb.get_contexto() == {}
 
     def test_con_alegante_ocasional_campos_correctos(self):
-        from app.services.context_builders.recepcion_alegacion import ContextoRecepcionAlegacion
+        from app.services.context_builders.contexto_recepcion_alegacion import ContextoRecepcionAlegacion
         a = _alegante(tipo='particular', nombre='María López', nif='87654321B')
         tarea = _tarea_con_tramite(_tramite_con_alegante(alegante=a))
         cb = ContextoRecepcionAlegacion(MagicMock(), MagicMock(), tarea=tarea)
@@ -102,7 +102,7 @@ class TestContextoRecepcionAlegacion:
         assert ctx['alegante_tipo_interesado'] == 'particular'
 
     def test_con_alegante_vinculado_a_entidad(self):
-        from app.services.context_builders.recepcion_alegacion import ContextoRecepcionAlegacion
+        from app.services.context_builders.contexto_recepcion_alegacion import ContextoRecepcionAlegacion
         ent = _entidad(nombre_completo='Endesa S.A.', nif='A28023430')
         a = _alegante(tipo='empresa', nombre='ignorar', nif='ignorar', entidad=ent)
         tarea = _tarea_con_tramite(_tramite_con_alegante(alegante=a))

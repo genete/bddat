@@ -71,6 +71,39 @@ def test_plantilla_tokens_fragmento_render(usuario_supervisor):
     assert b'Tokens disponibles' in r.data
 
 
+def test_plantilla_tokens_fragmento_contextual(usuario_supervisor):
+    """GET .../tokens/fragmento?contexto_clase=X → añade los tokens del CB (ADR-025 / #553).
+
+    Con contexto_clase aparece la sección Capa 2 y sus tokens; sin él, no.
+    """
+    r = usuario_supervisor.get(
+        '/admin/plantillas/tokens/fragmento?contexto_clase=ContextoResolucion'
+    )
+    assert r.status_code == 200
+    assert b'Contexto avanzado' in r.data
+    assert b'sentido_acto_nombre' in r.data
+    # Universal: sin contexto_clase no se ofrece ningún token de Capa 2
+    r_global = usuario_supervisor.get('/admin/plantillas/tokens/fragmento')
+    assert b'sentido_acto_nombre' not in r_global.data
+
+
+def test_alta_error_conserva_campos(usuario_supervisor):
+    """POST alta sin fichero → re-render con error pero conservando lo tecleado (#552).
+
+    Antes el alta repintaba con plantilla=None y borraba todos los campos.
+    """
+    r = usuario_supervisor.post('/admin/plantillas/nueva/', data={
+        'nombre': 'Plantilla de prueba XYZ',
+        'codigo': 'PRUEBA_XYZ',
+        'contexto_clase': 'ContextoResolucion',
+        # sin ruta_plantilla → error de validación; no se persiste
+    }, follow_redirects=True)
+    assert r.status_code == 200
+    assert b'Plantilla de prueba XYZ' in r.data   # nombre conservado
+    assert b'PRUEBA_XYZ' in r.data                 # código conservado
+    assert b'Contexto avanzado' in r.data          # la clase tecleada repuebla el panel
+
+
 def test_plantilla_editar_get_redirige(usuario_supervisor, primera_plantilla_id):
     """GET /admin/plantillas/<id>/editar redirige al listado con sel= (ADR-023 §9)."""
     r = usuario_supervisor.get(f'/admin/plantillas/{primera_plantilla_id}/editar')

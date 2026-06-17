@@ -12,6 +12,12 @@ class ContextoInformacionPublica:
     - ip_exposicion_publica str   Bloque de exposición pública y plazo (None si no redactado)
     """
 
+    TOKENS = [
+        {'campo': 'ip_antecedentes',       'descripcion': 'Narración de la necesidad del anuncio (vacío si no redactado)'},
+        {'campo': 'ip_fundamentos',        'descripcion': 'Base normativa del trámite de IP (vacío si no redactado)'},
+        {'campo': 'ip_exposicion_publica', 'descripcion': 'Bloque de exposición pública y plazo (vacío si no redactado)'},
+    ]
+
     def __init__(self, expediente, db_session, tarea=None):
         self._expediente = expediente
         self._db = db_session

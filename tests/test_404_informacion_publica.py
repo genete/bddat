@@ -39,7 +39,7 @@ def _ip_bd(antecedentes=None, fundamentos=None, exposicion_publica=None):
 
 
 def _cb(tarea):
-    from app.services.context_builders.informacion_publica import ContextoInformacionPublica
+    from app.services.context_builders.contexto_informacion_publica import ContextoInformacionPublica
     return ContextoInformacionPublica(MagicMock(), MagicMock(), tarea=tarea)
 
 
@@ -50,7 +50,7 @@ def _cb(tarea):
 class TestContextoInformacionPublica:
 
     def test_sin_tarea_devuelve_vacio(self):
-        from app.services.context_builders.informacion_publica import ContextoInformacionPublica
+        from app.services.context_builders.contexto_informacion_publica import ContextoInformacionPublica
         cb = ContextoInformacionPublica(MagicMock(), MagicMock(), tarea=None)
         assert cb.get_contexto() == {}
 

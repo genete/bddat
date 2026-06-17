@@ -21,6 +21,31 @@ con campos específicos necesarios para un tipo de escrito concreto.
 El Supervisor no distingue la diferencia — en ambos casos prepara su plantilla .docx
 con `{{campo}}` y el sistema la rellena. La diferencia es interna.
 
+### El CB es el ensamblador del *escrito*, no del trámite (ADR-025)
+
+Aunque la tabla de más abajo liste cada CB junto a un trámite, **esa correspondencia es
+circunstancial**, no estructural:
+
+- Un CB es el **ensamblador de contexto de una plantilla (escrito)**, anclado en la tarea
+  de ELABORAR, con licencia para recorrer todo el expediente.
+- La relación es **plantilla → usa → CB**, de cardinalidad **N:1**: varias plantillas pueden
+  compartir el mismo CB (un escrito y su reiteración; o "anuncio al promotor" y "anuncio al
+  diario" — mismo trámite, escritos distintos).
+- Lo que determina los tokens de una plantilla es su `contexto_clase`, **no** su encuadramiento
+  ESFT (los cuatro FKs ESFT solo gobiernan *dónde se ofrece* la plantilla en ELABORAR).
+
+**Anclaje (relevante al reutilizar):** cada CB codifica en su navegación un "yo" — su
+tarea/trámite. Hay dos clases, y solo la segunda es segura de reutilizar fuera de su trámite:
+
+| Anclaje | Navega | ¿Seguro bajo la tarea de otro escrito? |
+|---|---|---|
+| **Auto-trámite** | `tarea.tramite_id` / `tarea.requerimientos` → datos de *este* trámite | **No** — devuelve vacío en silencio |
+| **Solicitud/fase-scoped** | usa la tarea solo para alcanzar `solicitud`/`fase` y agregar | Sí, dentro de la misma solicitud |
+
+Por eso una plantilla **no** compone varios CBs. Un escrito de síntesis (la resolución) tiene
+**un** CB que compone explícitamente, correctamente anclado, tirando de consultas nombradas
+(datos tabulares) y de funciones compartidas / `as_contexto_cb()` (escalares computados).
+
 ### Relación con el renderizador de plantillas
 
 El Context Builder y el renderizador de plantillas son dos capas distintas que trabajan en secuencia:
@@ -49,6 +74,16 @@ Cuando el Supervisor necesita un campo en la plantilla que NO está en el catál
 - Combinación de fechas (`fecha_inicio` + días hábiles = `fecha_límite`)
 - Datos de múltiples entidades (cotitulares, representantes legales)
 - Cualquier dato que requiera JOINs o lógica más allá del expediente directo
+
+### Extender un CB existente vs crear uno nuevo (ADR-025)
+
+- Si falta un dato **para el mismo escrito** → **extiende** el CB existente, preferentemente
+  delegando en un `as_contexto_cb()` del modelo o en un helper compartido. No clones un CB
+  para robarle un campo.
+- Si el dato es un **sub-contexto reutilizable** por otros escritos → **extrae una función o
+  método compartido** y que ambos CBs lo llamen.
+- Crea un **CB nuevo** solo cuando hay un **escrito nuevo con anclaje propio**. La unidad de
+  "CB nuevo" es "escrito nuevo", no "campo nuevo".
 
 ---
 
@@ -104,10 +139,12 @@ builder = _cargar_context_builder(plantilla.contexto_clase)
 ctx.update(builder(expediente, db_session).get_contexto())
 ```
 
-`_cargar_context_builder` resuelve el módulo por convenio snake_case automáticamente:
+`_cargar_context_builder` resuelve el módulo por convenio snake_case automáticamente.
+El módulo es el snake_case **completo** de la clase, **incluido el prefijo `Contexto`**
+(regla única — ver ADR-025):
 
 - `ContextoNotificacionOrganismo` → `app.services.context_builders.contexto_notificacion_organismo`
-- `ContextoConsultaSeparata` → `app.services.context_builders.consulta_separata`
+- `ContextoConsultaSeparata` → `app.services.context_builders.contexto_consulta_separata`
 
 **No hay dict de registro que mantener.** Basta con crear el fichero en el paquete.
 
@@ -142,14 +179,17 @@ que son accedidos directamente por `ContextoBaseExpediente`.
 
 | Clase | Fichero | Trámite | Estado | Issue |
 |-------|---------|---------|--------|-------|
-| `ContextoConsultaSeparata` | `consulta_separata.py` | `CONSULTA_SEPARATA` | Implementado | #391 |
-| `ContextoAnalisisDocumental` | `analisis_documental.py` | `ANALISIS_DOCUMENTAL` | Bloqueado — tabla diagnosticos no diseñada | #392 |
-| `ContextoRecepcionAlegacion` | `recepcion_alegacion.py` | `RECEPCION_ALEGACION` | Implementado | #393 |
-| `ContextoAnalisisAlegaciones` | `analisis_alegaciones.py` | `ANALISIS_ALEGACIONES` | Implementado | #394 |
-| `ContextoNotificacionOrganismo` | `notificacion_organismo.py` | `CONSULTA_TRASLADO_ORGANISMO` | Implementado | #402 |
-| `ContextoResolucion` | `resolucion.py` | `ELABORACION` (fase `RESOLUCION`) | Implementado | #403 |
+| `ContextoConsultaSeparata` | `contexto_consulta_separata.py` | `CONSULTA_SEPARATA` | Implementado | #391 |
+| `ContextoAnalisisDocumental` | `contexto_analisis_documental.py` | `ANALISIS_DOCUMENTAL` | Bloqueado — tabla diagnosticos no diseñada | #392 |
+| `ContextoRecepcionAlegacion` | `contexto_recepcion_alegacion.py` | `RECEPCION_ALEGACION` | Implementado | #393 |
+| `ContextoAnalisisAlegaciones` | `contexto_analisis_alegaciones.py` | `ANALISIS_ALEGACIONES` | Implementado | #394 |
+| `ContextoNotificacionOrganismo` | `contexto_notificacion_organismo.py` | `CONSULTA_TRASLADO_ORGANISMO` | Implementado | #402 |
+| `ContextoResolucion` | `contexto_resolucion.py` | `ELABORACION` (fase `RESOLUCION`) | Implementado | #403 |
 | `ContextoConsultaTrasladoTitular` | `contexto_consulta_traslado_titular.py` | `CONSULTA_TRASLADO_TITULAR` | Implementado | #457 |
 | `ContextoConsultaTrasladoOrganismo` | `contexto_consulta_traslado_organismo.py` | `CONSULTA_TRASLADO_ORGANISMO` | Implementado | #457 |
+
+> La columna **Trámite** es el *anclaje* habitual de cada CB, no una atadura dura: un mismo CB
+> puede servir a varias plantillas y un escrito de síntesis recorre el expediente entero (ADR-025).
 
 ---
 

@@ -20,6 +20,11 @@
 {% endblock %}
 
 {% block content %}
+<style>
+  /* Placeholders de ejemplo en gris muy tenue: indican que el campo está vacío y que
+     lo mostrado es solo un ejemplo de lo que se debe rellenar (#552). Scoped al alta. */
+  #form-plantilla ::placeholder { color: #b9bec7 !important; opacity: 1; }
+</style>
 <div class="lista-cabecera">
     <div class="page-header content-constrained">
         <h1>
@@ -33,7 +38,7 @@
 </div>
 
 <div class="content-constrained py-4">
-    <form method="POST"
+    <form id="form-plantilla" method="POST"
           action="{% if modo == 'editar' %}{{ url_for('admin_plantillas.editar', id=plantilla.id) }}{% else %}{{ url_for('admin_plantillas.nueva') }}{% endif %}">
 
         <div class="row g-4">
@@ -108,23 +113,14 @@
 
                 {# Bloque: Contexto ESFTT #}
                 <div class="card mb-4">
-                    <div class="card-header fw-semibold d-flex align-items-center justify-content-between flex-wrap gap-2">
-                        <span><i class="fas fa-sitemap me-1"></i> Contexto ESFTT
-                            <span class="badge bg-secondary ms-2" style="font-weight:400">Todos los campos son opcionales</span>
-                        </span>
-                        <div class="form-check form-switch mb-0">
-                            <input class="form-check-input" type="checkbox" role="switch"
-                                   id="toggle-solo-aplicables">
-                            <label class="form-check-label small fw-normal" for="toggle-solo-aplicables">
-                                Solo aplicables al contexto
-                            </label>
-                        </div>
+                    <div class="card-header fw-semibold">
+                        <i class="fas fa-sitemap me-1"></i> Contexto ESFTT
+                        <span class="badge bg-secondary ms-2" style="font-weight:400">Todos los campos son opcionales</span>
                     </div>
                     <div class="card-body">
                         <p class="text-secondary small mb-3">
                             Deja en blanco los campos que no apliquen.
                             <strong>Vacío = aplica a cualquier valor</strong> de esa dimensión.
-                            Activa el filtro para ver solo las opciones válidas según la whitelist ESFTT.
                         </p>
 
                         <div class="mb-3">
@@ -282,7 +278,10 @@
             {# ── Columna derecha: panel de tokens ── #}
             <div class="col-lg-5">
                 <div class="sticky-top" style="top: 1rem; z-index: 100">
-                    {% include 'admin_plantillas/_panel_tokens.html' %}
+                    <div id="panel-tokens-host"
+                         data-tokens-url="{{ url_for('admin_plantillas.tokens_fragmento') }}">
+                        {% include 'admin_plantillas/_panel_tokens.html' %}
+                    </div>
                 </div>
             </div>
 
@@ -447,84 +446,29 @@
         this.value = this.value.toUpperCase().replace(/[^A-Z0-9_]/g, '_');
         this.setSelectionRange(pos, pos);
     });
+</script>
+<script>
+    // Re-fetch del panel de tokens al cambiar la clase del Context Builder (ADR-025 / #553).
+    // Los tokens de Capa 2 dependen de contexto_clase; Capa 1, consultas y fragmentos no.
+    (function () {
+        var input = document.getElementById('contexto_clase');
+        var host = document.getElementById('panel-tokens-host');
+        if (!input || !host) return;
+        var baseUrl = host.dataset.tokensUrl;
+        var ultimo = input.value.trim();
 
-    // -----------------------------------------------------------------------
-    // Selectores en cascada ESFTT
-    // -----------------------------------------------------------------------
-    const URL_SOL  = "{{ url_for('admin_plantillas.api_tipos_solicitud') }}";
-    const URL_FASE = "{{ url_for('admin_plantillas.api_tipos_fase') }}";
-    const URL_TRAM = "{{ url_for('admin_plantillas.api_tipos_tramite') }}";
-
-    const selExp  = document.getElementById('tipo_expediente_id');
-    const selSol  = document.getElementById('tipo_solicitud_id');
-    const selFase = document.getElementById('tipo_fase_id');
-    const selTram = document.getElementById('tipo_tramite_id');
-    const toggle  = document.getElementById('toggle-solo-aplicables');
-
-    function filtrarActivo() { return toggle.checked; }
-
-    async function fetchOpciones(url, params) {
-        const qs = new URLSearchParams(params).toString();
-        const resp = await fetch(url + (qs ? '?' + qs : ''));
-        if (!resp.ok) return null;
-        return resp.json();
-    }
-
-    function reconstruirSelect(sel, opciones, placeholder) {
-        const valActual = sel.value;
-        sel.innerHTML = '<option value="">' + placeholder + '</option>';
-        for (const d of opciones) {
-            const opt = document.createElement('option');
-            opt.value = d.id;
-            opt.textContent = d.texto;
-            if (String(d.id) === String(valActual)) opt.selected = true;
-            sel.appendChild(opt);
+        function refrescar() {
+            var clase = input.value.trim();
+            if (clase === ultimo) return;
+            ultimo = clase;
+            var url = baseUrl + (clase ? '?contexto_clase=' + encodeURIComponent(clase) : '');
+            fetch(url)
+                .then(function (r) { return r.ok ? r.text() : null; })
+                .then(function (html) { if (html != null) host.innerHTML = html; })
+                .catch(function () {});
         }
-    }
-
-    // Actualiza los tres selectores dependientes a partir del nivel indicado.
-    // desde=1 → recalcula S, F y T; desde=2 → recalcula F y T; desde=3 → recalcula T.
-    async function actualizarCascada(desde) {
-        const filtrar = filtrarActivo() ? '1' : '0';
-
-        if (desde <= 1) {
-            const params = (filtrar === '1' && selExp.value)
-                ? { tipo_expediente_id: selExp.value, filtrar: '1' }
-                : {};
-            const data = await fetchOpciones(URL_SOL, params);
-            if (data) reconstruirSelect(selSol, data, '— Cualquier solicitud —');
-        }
-
-        if (desde <= 2) {
-            const params = (filtrar === '1' && selSol.value)
-                ? { tipo_solicitud_id: selSol.value, filtrar: '1' }
-                : {};
-            const data = await fetchOpciones(URL_FASE, params);
-            if (data) reconstruirSelect(selFase, data, '— Cualquier fase —');
-        }
-
-        if (desde <= 3) {
-            const params = (filtrar === '1' && selFase.value)
-                ? { tipo_fase_id: selFase.value, filtrar: '1' }
-                : {};
-            const data = await fetchOpciones(URL_TRAM, params);
-            if (data) reconstruirSelect(selTram, data, '— Cualquier trámite —');
-        }
-    }
-
-    // Al cambiar E: si toggle ON, recascada desde S
-    selExp.addEventListener('change', () => {
-        if (filtrarActivo()) actualizarCascada(1);
-    });
-    // Al cambiar S: si toggle ON, recascada desde F
-    selSol.addEventListener('change', () => {
-        if (filtrarActivo()) actualizarCascada(2);
-    });
-    // Al cambiar F: si toggle ON, recascada desde T
-    selFase.addEventListener('change', () => {
-        if (filtrarActivo()) actualizarCascada(3);
-    });
-    // Al cambiar toggle: recascada completa (filtrar=1 aplica filtro, filtrar=0 restaura todo)
-    toggle.addEventListener('change', () => actualizarCascada(1));
+        input.addEventListener('change', refrescar);
+        input.addEventListener('blur', refrescar);
+    })();
 </script>
 {% endblock %}
