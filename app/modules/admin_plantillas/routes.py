@@ -207,6 +207,30 @@ def _rellenar_plantilla(plantilla: Plantilla) -> list[str]:
     return []
 
 
+def _plantilla_form_provisional():
+    """Plantilla NO persistida con los valores del formulario de alta.
+
+    Repinta el alta tras un error de validación sin perder lo ya tecleado.
+    No valida ni toca BD (#552). La plantilla Jinja ya lee de `plantilla.X`,
+    así que con esto los campos sobreviven al re-render.
+    """
+    def _int(v):
+        return int(v) if v else None
+    p = Plantilla()
+    p.codigo             = request.form.get('codigo', '').strip().upper() or None
+    p.nombre             = request.form.get('nombre', '').strip() or None
+    p.descripcion        = request.form.get('descripcion', '').strip() or None
+    p.variante           = request.form.get('variante', '').strip() or None
+    p.tipo_documento_id  = _int(request.form.get('tipo_documento_id'))
+    p.tipo_expediente_id = _int(request.form.get('tipo_expediente_id'))
+    p.tipo_solicitud_id  = _int(request.form.get('tipo_solicitud_id'))
+    p.tipo_fase_id       = _int(request.form.get('tipo_fase_id'))
+    p.tipo_tramite_id    = _int(request.form.get('tipo_tramite_id'))
+    p.contexto_clase     = request.form.get('contexto_clase', '').strip() or None
+    p.activo             = 'activo' in request.form
+    return p
+
+
 def _selects_context():
     """Devuelve los querysets para los selects del formulario."""
     return {
@@ -317,8 +341,8 @@ def nueva():
             flash('Debes seleccionar el fichero .docx de la plantilla desde el servidor.', 'danger')
             return render_template(
                 'admin_plantillas/form.html',
-                modo='nueva', plantilla=None,
-                tokens=_build_tokens(),
+                modo='nueva', plantilla=_plantilla_form_provisional(),
+                tokens=_build_tokens(request.form.get('contexto_clase')),
                 **_selects_context(),
             )
 
@@ -327,8 +351,8 @@ def nueva():
             flash('La ruta del fichero seleccionado no es válida.', 'danger')
             return render_template(
                 'admin_plantillas/form.html',
-                modo='nueva', plantilla=None,
-                tokens=_build_tokens(),
+                modo='nueva', plantilla=_plantilla_form_provisional(),
+                tokens=_build_tokens(request.form.get('contexto_clase')),
                 **_selects_context(),
             )
 
@@ -337,8 +361,8 @@ def nueva():
             flash(f'El fichero .docx tiene errores de sintaxis: {error_docx}', 'danger')
             return render_template(
                 'admin_plantillas/form.html',
-                modo='nueva', plantilla=None,
-                tokens=_build_tokens(),
+                modo='nueva', plantilla=_plantilla_form_provisional(),
+                tokens=_build_tokens(request.form.get('contexto_clase')),
                 **_selects_context(),
             )
 
@@ -349,8 +373,8 @@ def nueva():
                 flash(msg, 'danger')
             return render_template(
                 'admin_plantillas/form.html',
-                modo='nueva', plantilla=None,
-                tokens=_build_tokens(),
+                modo='nueva', plantilla=_plantilla_form_provisional(),
+                tokens=_build_tokens(request.form.get('contexto_clase')),
                 **_selects_context(),
             )
 
@@ -365,8 +389,8 @@ def nueva():
             flash(f'Error al guardar: {e}', 'danger')
             return render_template(
                 'admin_plantillas/form.html',
-                modo='nueva', plantilla=None,
-                tokens=_build_tokens(),
+                modo='nueva', plantilla=_plantilla_form_provisional(),
+                tokens=_build_tokens(request.form.get('contexto_clase')),
                 **_selects_context(),
             )
 

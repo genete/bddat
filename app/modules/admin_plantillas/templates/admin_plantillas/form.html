@@ -20,6 +20,11 @@
 {% endblock %}
 
 {% block content %}
+<style>
+  /* Placeholders de ejemplo en gris muy tenue: indican que el campo está vacío y que
+     lo mostrado es solo un ejemplo de lo que se debe rellenar (#552). Scoped al alta. */
+  #form-plantilla ::placeholder { color: #b9bec7 !important; opacity: 1; }
+</style>
 <div class="lista-cabecera">
     <div class="page-header content-constrained">
         <h1>
@@ -33,7 +38,7 @@
 </div>
 
 <div class="content-constrained py-4">
-    <form method="POST"
+    <form id="form-plantilla" method="POST"
           action="{% if modo == 'editar' %}{{ url_for('admin_plantillas.editar', id=plantilla.id) }}{% else %}{{ url_for('admin_plantillas.nueva') }}{% endif %}">
 
         <div class="row g-4">
