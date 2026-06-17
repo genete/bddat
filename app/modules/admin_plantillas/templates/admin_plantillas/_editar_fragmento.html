@@ -7,7 +7,12 @@
 
 <div class="p-3">
 
-<form data-inspector-form
+<style>
+  /* Placeholders de ejemplo en gris muy tenue (campo vacío = ejemplo), igual que el alta (#552). */
+  .form-plantilla-editar ::placeholder { color: #b9bec7 !important; opacity: 1; }
+</style>
+
+<form data-inspector-form class="form-plantilla-editar"
       data-action="{{ url_for('admin_plantillas.editar', id=plantilla.id) }}">
 
 <div id="inspector-form-errors" class="alert alert-danger py-2 mb-3 small" style="display:none;"></div>
