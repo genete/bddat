@@ -81,6 +81,85 @@
     </div>
     {% endif %}
 
+    {# ── Sección: Contexto avanzado (Capa 2 — Context Builder) ── #}
+    {% if tokens.cb_tokens %}
+    <div class="card-body pb-0 border-top pt-3">
+        <h6 class="mb-2 text-primary">
+            <i class="fas fa-code me-1"></i> Contexto avanzado (Capa 2)
+            {% if tokens.cb_clase %}<code class="small text-secondary ms-1">{{ tokens.cb_clase }}</code>{% endif %}
+        </h6>
+        <p class="small text-secondary mb-2">
+            Campos que aporta el Context Builder de esta plantilla.
+        </p>
+        <div class="list-group list-group-flush mb-3">
+            {% for t in tokens.cb_tokens %}
+            {% if t.get('tipo') == 'tabla' %}
+            {# Lista de filas → bloque de tabla #}
+            <div class="list-group-item py-2 px-2">
+                <span class="text-secondary d-block mb-1" style="font-size:.8rem">{{ t.descripcion }}</span>
+                <div class="d-flex align-items-center gap-2 mb-1">
+                    <code class="small flex-grow-1 text-primary">{{ '{%tr for row in ' }}{{ t.campo }}{{ ' %}' }}</code>
+                    <button type="button" class="btn btn-sm btn-outline-primary flex-shrink-0 btn-copiar"
+                            data-token="{{ '{%tr for row in ' }}{{ t.campo }}{{ ' %}' }}" title="Copiar apertura de bucle">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                </div>
+                {% for col in t.get('columnas', []) %}
+                <div class="d-flex align-items-center gap-2 mb-1 ps-2">
+                    <code class="small flex-grow-1">{{ '{{row.' }}{{ col.campo }}{{ '}}' }}</code>
+                    <span class="text-secondary small me-auto">{{ col.descripcion }}</span>
+                    <button type="button" class="btn btn-sm btn-outline-primary flex-shrink-0 btn-copiar"
+                            data-token="{{ '{{row.' }}{{ col.campo }}{{ '}}' }}" title="Copiar campo de fila">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                </div>
+                {% endfor %}
+                <div class="d-flex align-items-center gap-2 mt-1">
+                    <code class="small flex-grow-1 text-primary">{{ '{%tr endfor %}' }}</code>
+                    <button type="button" class="btn btn-sm btn-outline-primary flex-shrink-0 btn-copiar"
+                            data-token="{{ '{%tr endfor %}' }}" title="Copiar cierre de bucle">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                </div>
+            </div>
+            {% elif t.get('tipo') == 'lista' %}
+            {# Lista de valores simples → bucle de párrafo #}
+            {% set t_open = '{%p for item in ' ~ t.campo ~ ' %}' %}
+            {% set snippet = t_open ~ '&#10;{{item}}&#10;{%p endfor %}' %}
+            <div class="list-group-item py-2 px-2">
+                <div class="d-flex align-items-start gap-2">
+                    <div class="flex-grow-1 min-w-0">
+                        <span class="text-secondary d-block" style="font-size:.8rem">{{ t.descripcion }}</span>
+                        <code class="d-block text-primary small mt-1 lh-base" style="white-space:pre-line">{{ t_open }}
+{{ '{{item}}' }}
+{{ '{%p endfor %}' }}</code>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-primary flex-shrink-0 btn-copiar"
+                            data-token="{{ snippet }}" title="Copiar bloque de bucle">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                </div>
+            </div>
+            {% else %}
+            {# Campo simple #}
+            <div class="list-group-item list-group-item-action py-2 px-2">
+                <div class="d-flex align-items-start gap-2">
+                    <div class="flex-grow-1 min-w-0">
+                        <code class="d-block text-primary small">{{ '{{' }}{{ t.campo }}{{ '}}' }}</code>
+                        <span class="text-secondary" style="font-size:.8rem">{{ t.descripcion }}</span>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-primary flex-shrink-0 btn-copiar"
+                            data-token="{{ '{{' }}{{ t.campo }}{{ '}}' }}" title="Copiar token">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                </div>
+            </div>
+            {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
     {# ── Sección: Consultas nombradas (tablas dinámicas) ── #}
     <div class="card-body pb-0 border-top pt-3">
         <h6 class="mb-2 text-primary">

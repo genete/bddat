@@ -10,6 +10,12 @@ class ContextoRecepcionAlegacion:
     - alegante_tipo_interesado str   'particular', 'administracion', 'asociacion' o 'empresa'
     """
 
+    TOKENS = [
+        {'campo': 'alegante_nombre',          'descripcion': 'Nombre completo del alegante'},
+        {'campo': 'alegante_nif',             'descripcion': 'NIF del alegante (puede ser vacío)'},
+        {'campo': 'alegante_tipo_interesado', 'descripcion': 'particular, administracion, asociacion o empresa'},
+    ]
+
     def __init__(self, expediente, db_session, tarea=None):
         self._expediente = expediente
         self._db = db_session

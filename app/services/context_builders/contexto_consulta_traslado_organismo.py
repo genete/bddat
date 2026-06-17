@@ -26,6 +26,16 @@ class ContextoConsultaTrasladoOrganismo:
                                       organismo (incluye el actual). Derivado de ADR-011 §2
     """
 
+    TOKENS = [
+        {'campo': 'organismo_nombre',          'descripcion': 'Nombre oficial del organismo'},
+        {'campo': 'organismo_nif',             'descripcion': 'NIF del organismo (puede ser vacío)'},
+        {'campo': 'organismo_plazo_legal',     'descripcion': 'Plazo legal en días capturado al crear la separata'},
+        {'campo': 'organismo_resultado',       'descripcion': 'Estado del ciclo del organismo'},
+        {'campo': 'organismo_fecha_respuesta', 'descripcion': 'Fecha de respuesta del trámite anterior del organismo (DD/MM/AAAA)'},
+        {'campo': 'titular_fecha_respuesta',   'descripcion': 'Fecha de respuesta del traslado al titular más reciente (DD/MM/AAAA)'},
+        {'campo': 'organismo_num_iteraciones', 'descripcion': 'Número de traslados al organismo (incluye el actual)'},
+    ]
+
     def __init__(self, expediente, db_session, tarea=None):
         self._expediente = expediente
         self._db = db_session

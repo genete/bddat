@@ -87,13 +87,33 @@ def _listar_fragmentos() -> list[str]:
     return sorted(f for f in os.listdir(d) if f.lower().endswith('.docx'))
 
 
-def _build_tokens(plantilla=None) -> dict:
+def _tokens_context_builder(contexto_clase) -> list:
+    """Manifiesto TOKENS del Context Builder declarado, o [] si no existe.
+
+    El supervisor puede teclear una clase inexistente; en ese caso no hay
+    tokens de Capa 2 que ofrecer y el panel no se rompe (ADR-025).
+    """
+    if not contexto_clase:
+        return []
+    try:
+        from app.services.generador_escritos import _cargar_context_builder
+        cls = _cargar_context_builder(contexto_clase)
+    except Exception:
+        return []
+    return list(getattr(cls, 'TOKENS', []) or [])
+
+
+def _build_tokens(contexto_clase=None) -> dict:
     """
     Construye el contexto de tokens para el panel del supervisor.
 
-    campos:     CAMPOS_BASE (Capa 1 fija)
-    consultas:  ConsultaNombrada activas (ordenadas por nombre)
-    fragmentos: ficheros .docx en PLANTILLAS_BASE/fragmentos/
+    campos:     CAMPOS_BASE (Capa 1 fija, universal)
+    consultas:  ConsultaNombrada activas (universal, nivel expediente)
+    fragmentos: ficheros .docx en PLANTILLAS_BASE/fragmentos/ (universal)
+    cb_tokens:  manifiesto TOKENS del Context Builder en contexto_clase (Capa 2).
+                Vacío si la plantilla no usa CB. Es lo único que varía por
+                plantilla — se ancla a contexto_clase, no al ESFT (ADR-025).
+    cb_clase:   nombre de la clase del Context Builder, para la cabecera de la sección.
     """
     consultas = (
         ConsultaNombrada.query
@@ -102,7 +122,13 @@ def _build_tokens(plantilla=None) -> dict:
         .all()
     )
     fragmentos = _listar_fragmentos()
-    return {'campos': list(CAMPOS_BASE), 'consultas': consultas, 'fragmentos': fragmentos}
+    return {
+        'campos': list(CAMPOS_BASE),
+        'consultas': consultas,
+        'fragmentos': fragmentos,
+        'cb_tokens': _tokens_context_builder(contexto_clase),
+        'cb_clase': contexto_clase or None,
+    }
 
 
 def _validar_plantilla_docx(ruta_abs: str) -> str | None:
@@ -415,11 +441,17 @@ def editar_fragmento(id):
 @login_required
 @require_permiso('acceder_plantillas')
 def tokens_fragmento():
-    """Panel de tokens (catálogo global de autoría) para el modal grande (ADR-023 §6 / #545).
+    """Panel de tokens para el modal grande (ADR-023 §6 / #545).
 
-    No depende de ninguna plantilla concreta: los tokens de Capa 1 son fijos.
+    Contextual por ?contexto_clase (ADR-025 / #553): Capa 1, consultas y
+    fragmentos son universales; los tokens de Capa 2 dependen del Context
+    Builder declarado en la plantilla.
     """
-    return render_template('admin_plantillas/_tokens_fragmento.html', tokens=_build_tokens())
+    contexto_clase = request.args.get('contexto_clase', '').strip() or None
+    return render_template(
+        'admin_plantillas/_tokens_fragmento.html',
+        tokens=_build_tokens(contexto_clase),
+    )
 
 
 @bp.route('/<int:id>/explorador-fragmento')

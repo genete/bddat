@@ -20,6 +20,15 @@ class ContextoNotificacionOrganismo:
     - organismo_fecha_limite    str   Fecha límite = respuesta + plazo_legal días (DD/MM/AAAA o None)
     """
 
+    TOKENS = [
+        {'campo': 'organismo_nombre',          'descripcion': 'Nombre oficial del organismo'},
+        {'campo': 'organismo_nif',             'descripcion': 'NIF del organismo (puede ser vacío)'},
+        {'campo': 'organismo_plazo_legal',     'descripcion': 'Plazo legal en días (30 o 15)'},
+        {'campo': 'organismo_resultado',       'descripcion': 'Estado actual del ciclo del organismo'},
+        {'campo': 'organismo_fecha_respuesta', 'descripcion': 'Fecha de la respuesta recibida (DD/MM/AAAA)'},
+        {'campo': 'organismo_fecha_limite',    'descripcion': 'Fecha límite = respuesta + plazo legal (DD/MM/AAAA)'},
+    ]
+
     def __init__(self, expediente, db_session, tarea=None):
         self._expediente = expediente
         self._db = db_session

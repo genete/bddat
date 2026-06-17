@@ -139,10 +139,12 @@ builder = _cargar_context_builder(plantilla.contexto_clase)
 ctx.update(builder(expediente, db_session).get_contexto())
 ```
 
-`_cargar_context_builder` resuelve el módulo por convenio snake_case automáticamente:
+`_cargar_context_builder` resuelve el módulo por convenio snake_case automáticamente.
+El módulo es el snake_case **completo** de la clase, **incluido el prefijo `Contexto`**
+(regla única — ver ADR-025):
 
 - `ContextoNotificacionOrganismo` → `app.services.context_builders.contexto_notificacion_organismo`
-- `ContextoConsultaSeparata` → `app.services.context_builders.consulta_separata`
+- `ContextoConsultaSeparata` → `app.services.context_builders.contexto_consulta_separata`
 
 **No hay dict de registro que mantener.** Basta con crear el fichero en el paquete.
 
@@ -177,12 +179,12 @@ que son accedidos directamente por `ContextoBaseExpediente`.
 
 | Clase | Fichero | Trámite | Estado | Issue |
 |-------|---------|---------|--------|-------|
-| `ContextoConsultaSeparata` | `consulta_separata.py` | `CONSULTA_SEPARATA` | Implementado | #391 |
-| `ContextoAnalisisDocumental` | `analisis_documental.py` | `ANALISIS_DOCUMENTAL` | Bloqueado — tabla diagnosticos no diseñada | #392 |
-| `ContextoRecepcionAlegacion` | `recepcion_alegacion.py` | `RECEPCION_ALEGACION` | Implementado | #393 |
-| `ContextoAnalisisAlegaciones` | `analisis_alegaciones.py` | `ANALISIS_ALEGACIONES` | Implementado | #394 |
-| `ContextoNotificacionOrganismo` | `notificacion_organismo.py` | `CONSULTA_TRASLADO_ORGANISMO` | Implementado | #402 |
-| `ContextoResolucion` | `resolucion.py` | `ELABORACION` (fase `RESOLUCION`) | Implementado | #403 |
+| `ContextoConsultaSeparata` | `contexto_consulta_separata.py` | `CONSULTA_SEPARATA` | Implementado | #391 |
+| `ContextoAnalisisDocumental` | `contexto_analisis_documental.py` | `ANALISIS_DOCUMENTAL` | Bloqueado — tabla diagnosticos no diseñada | #392 |
+| `ContextoRecepcionAlegacion` | `contexto_recepcion_alegacion.py` | `RECEPCION_ALEGACION` | Implementado | #393 |
+| `ContextoAnalisisAlegaciones` | `contexto_analisis_alegaciones.py` | `ANALISIS_ALEGACIONES` | Implementado | #394 |
+| `ContextoNotificacionOrganismo` | `contexto_notificacion_organismo.py` | `CONSULTA_TRASLADO_ORGANISMO` | Implementado | #402 |
+| `ContextoResolucion` | `contexto_resolucion.py` | `ELABORACION` (fase `RESOLUCION`) | Implementado | #403 |
 | `ContextoConsultaTrasladoTitular` | `contexto_consulta_traslado_titular.py` | `CONSULTA_TRASLADO_TITULAR` | Implementado | #457 |
 | `ContextoConsultaTrasladoOrganismo` | `contexto_consulta_traslado_organismo.py` | `CONSULTA_TRASLADO_ORGANISMO` | Implementado | #457 |
 

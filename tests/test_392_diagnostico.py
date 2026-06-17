@@ -88,19 +88,19 @@ class TestAsContextoCb:
 class TestContextoAnalisisDocumental:
 
     def test_sin_tarea_devuelve_vacio(self):
-        from app.services.context_builders.analisis_documental import ContextoAnalisisDocumental
+        from app.services.context_builders.contexto_analisis_documental import ContextoAnalisisDocumental
         cb = ContextoAnalisisDocumental(MagicMock(), MagicMock(), tarea=None)
         assert cb.get_contexto() == {}
 
     def test_sin_tarea_analizar_devuelve_vacio(self):
-        from app.services.context_builders.analisis_documental import ContextoAnalisisDocumental
+        from app.services.context_builders.contexto_analisis_documental import ContextoAnalisisDocumental
         tarea_elab = _tarea_stub('ELABORAR', tramite_id=1)
         tarea_elab.tramite = _tramite_con_tareas([tarea_elab])
         cb = ContextoAnalisisDocumental(MagicMock(), MagicMock(), tarea=tarea_elab)
         assert cb.get_contexto() == {}
 
     def test_analizar_sin_documento_producido_devuelve_vacio(self):
-        from app.services.context_builders.analisis_documental import ContextoAnalisisDocumental
+        from app.services.context_builders.contexto_analisis_documental import ContextoAnalisisDocumental
         tarea_anal = _tarea_stub('ANALIZAR', doc_producido=None, tramite_id=1)
         tarea_elab = _tarea_stub('ELABORAR', tramite_id=1)
         tarea_elab.tramite = _tramite_con_tareas([tarea_elab, tarea_anal])
@@ -108,7 +108,7 @@ class TestContextoAnalisisDocumental:
         assert cb.get_contexto() == {}
 
     def test_con_diagnostico_completo_campos_correctos(self):
-        from app.services.context_builders.analisis_documental import ContextoAnalisisDocumental
+        from app.services.context_builders.contexto_analisis_documental import ContextoAnalisisDocumental
         diag = _diagnostico(resultado='condicionado', defectos=[{'texto': 'Falta memoria'}])
         doc = _doc(diagnostico=diag)
         tarea_anal = _tarea_stub('ANALIZAR', doc_producido=doc, tramite_id=1)

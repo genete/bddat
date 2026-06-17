@@ -17,6 +17,15 @@ class ContextoResolucion:
     - resolucion_condicionado   str   Condicionado técnico (None si no redactado)
     """
 
+    TOKENS = [
+        {'campo': 'sentido_acto_codigo',     'descripcion': 'Código del resultado de fase: FAVORABLE, DESFAVORABLE…'},
+        {'campo': 'sentido_acto_nombre',     'descripcion': 'Nombre legible del resultado de fase'},
+        {'campo': 'resolucion_antecedentes', 'descripcion': 'Antecedentes del expediente (vacío si no redactado)'},
+        {'campo': 'resolucion_fundamentos',  'descripcion': 'Fundamentos jurídicos (vacío si no redactado)'},
+        {'campo': 'resolucion_resuelve',     'descripcion': 'Expresión verbal del sentido (vacío si no redactado)'},
+        {'campo': 'resolucion_condicionado', 'descripcion': 'Condicionado técnico (vacío si no redactado)'},
+    ]
+
     def __init__(self, expediente, db_session, tarea=None):
         self._expediente = expediente
         self._db = db_session

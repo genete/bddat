@@ -22,6 +22,15 @@ class ContextoConsultaTrasladoTitular:
                                      no se ha recibido respuesta
     """
 
+    TOKENS = [
+        {'campo': 'organismo_nombre',          'descripcion': 'Nombre oficial del organismo'},
+        {'campo': 'organismo_nif',             'descripcion': 'NIF del organismo (puede ser vacío)'},
+        {'campo': 'organismo_plazo_legal',     'descripcion': 'Plazo legal en días capturado al crear la separata'},
+        {'campo': 'organismo_resultado',       'descripcion': 'Estado del ciclo del organismo'},
+        {'campo': 'organismo_fecha_respuesta', 'descripcion': 'Fecha de la respuesta del organismo que se traslada (DD/MM/AAAA)'},
+        {'campo': 'titular_fecha_respuesta',   'descripcion': 'Fecha de la respuesta del titular (DD/MM/AAAA)'},
+    ]
+
     def __init__(self, expediente, db_session, tarea=None):
         self._expediente = expediente
         self._db = db_session

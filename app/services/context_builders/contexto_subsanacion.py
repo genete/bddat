@@ -13,6 +13,13 @@ class ContextoSubsanacion:
     - orden   int  Posición 1-based en el listado del escrito
     """
 
+    TOKENS = [
+        {'campo': 'requerimientos', 'descripcion': 'Lista ordenada de requerimientos', 'tipo': 'tabla', 'columnas': [
+            {'campo': 'texto', 'descripcion': 'Texto del requerimiento'},
+            {'campo': 'orden', 'descripcion': 'Posición en el listado'},
+        ]},
+    ]
+
     def __init__(self, expediente, db_session, tarea=None):
         self._expediente = expediente
         self._db = db_session

@@ -18,6 +18,15 @@ class ContextoConsultaSeparata:
     - organismo_fecha_respuesta str Fecha del documento de respuesta recibido (DD/MM/AAAA o None)
     """
 
+    TOKENS = [
+        {'campo': 'organismo_nombre',         'descripcion': 'Nombre oficial del organismo consultado'},
+        {'campo': 'organismo_nif',            'descripcion': 'NIF del organismo (puede ser vacío)'},
+        {'campo': 'organismo_plazo_legal',    'descripcion': 'Plazo legal en días (30 o 15 según tipo de expediente)'},
+        {'campo': 'organismo_resultado',      'descripcion': 'Estado del ciclo: pendiente, conformidad, condicionado…'},
+        {'campo': 'organismo_fecha_envio',    'descripcion': 'Fecha de la notificación enviada (DD/MM/AAAA)'},
+        {'campo': 'organismo_fecha_respuesta', 'descripcion': 'Fecha del documento de respuesta recibido (DD/MM/AAAA)'},
+    ]
+
     def __init__(self, expediente, db_session, tarea=None):
         self._expediente = expediente
         self._db = db_session

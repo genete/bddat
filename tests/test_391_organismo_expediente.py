@@ -111,32 +111,32 @@ class TestContextoConsultaSeparata:
 
     def _cb(self, tarea=None, org_exp_found=None):
         """Construye el CB con mock de la query a OrganismoExpediente."""
-        from app.services.context_builders.consulta_separata import ContextoConsultaSeparata
+        from app.services.context_builders.contexto_consulta_separata import ContextoConsultaSeparata
         cb = ContextoConsultaSeparata(MagicMock(), MagicMock(), tarea=tarea)
         return cb, org_exp_found
 
     def test_sin_tarea_devuelve_vacio(self):
-        from app.services.context_builders.consulta_separata import ContextoConsultaSeparata
+        from app.services.context_builders.contexto_consulta_separata import ContextoConsultaSeparata
         cb = ContextoConsultaSeparata(MagicMock(), MagicMock(), tarea=None)
         assert cb.get_contexto() == {}
 
     def test_sin_organismo_expediente_devuelve_vacio(self):
-        from app.services.context_builders.consulta_separata import ContextoConsultaSeparata
+        from app.services.context_builders.contexto_consulta_separata import ContextoConsultaSeparata
         tarea = _tarea_stub('ELABORAR', tramite_id=99)
         cb = ContextoConsultaSeparata(MagicMock(), MagicMock(), tarea=tarea)
-        with patch('app.services.context_builders.consulta_separata.TramiteOrganismo') as mock_cls:
+        with patch('app.services.context_builders.contexto_consulta_separata.TramiteOrganismo') as mock_cls:
             mock_cls.query.filter_by.return_value.first.return_value = None
             result = cb.get_contexto()
         assert result == {}
 
     def test_elaborar_sin_notificar_ni_analizar_fechas_none(self):
-        from app.services.context_builders.consulta_separata import ContextoConsultaSeparata
+        from app.services.context_builders.contexto_consulta_separata import ContextoConsultaSeparata
         tarea_elab = _tarea_stub('ELABORAR', tramite_id=1)
         tarea_elab.tramite = _tramite_con_tareas([tarea_elab])
 
         oe = _org_exp(estado='pendiente')
         cb = ContextoConsultaSeparata(MagicMock(), MagicMock(), tarea=tarea_elab)
-        with patch('app.services.context_builders.consulta_separata.TramiteOrganismo') as mock_cls:
+        with patch('app.services.context_builders.contexto_consulta_separata.TramiteOrganismo') as mock_cls:
             mock_cls.query.filter_by.return_value.first.return_value = _vinculo_stub(oe)
             ctx = cb.get_contexto()
 
@@ -145,7 +145,7 @@ class TestContextoConsultaSeparata:
         assert ctx['organismo_nombre'] == 'Red Eléctrica de España'
 
     def test_con_notificar_ejecutado_fecha_envio(self):
-        from app.services.context_builders.consulta_separata import ContextoConsultaSeparata
+        from app.services.context_builders.contexto_consulta_separata import ContextoConsultaSeparata
         doc_notif = _doc(fecha=date(2026, 5, 15))
         tarea_notif = _tarea_stub('NOTIFICAR', doc_producido=doc_notif, tramite_id=1)
         tarea_elab = _tarea_stub('ELABORAR', tramite_id=1)
@@ -153,7 +153,7 @@ class TestContextoConsultaSeparata:
 
         oe = _org_exp(estado='separata_enviada')
         cb = ContextoConsultaSeparata(MagicMock(), MagicMock(), tarea=tarea_elab)
-        with patch('app.services.context_builders.consulta_separata.TramiteOrganismo') as mock_cls:
+        with patch('app.services.context_builders.contexto_consulta_separata.TramiteOrganismo') as mock_cls:
             mock_cls.query.filter_by.return_value.first.return_value = _vinculo_stub(oe)
             ctx = cb.get_contexto()
 
@@ -161,7 +161,7 @@ class TestContextoConsultaSeparata:
         assert ctx['organismo_fecha_respuesta'] is None
 
     def test_con_analizar_ejecutado_fecha_respuesta(self):
-        from app.services.context_builders.consulta_separata import ContextoConsultaSeparata
+        from app.services.context_builders.contexto_consulta_separata import ContextoConsultaSeparata
         doc_notif = _doc(fecha=date(2026, 5, 15))
         doc_respuesta = _doc(fecha=date(2026, 6, 2))
         tarea_notif = _tarea_stub('NOTIFICAR', doc_producido=doc_notif, tramite_id=1)
@@ -171,7 +171,7 @@ class TestContextoConsultaSeparata:
 
         oe = _org_exp(estado='cerrado_con_condicionados', plazo_legal_dias=30)
         cb = ContextoConsultaSeparata(MagicMock(), MagicMock(), tarea=tarea_elab)
-        with patch('app.services.context_builders.consulta_separata.TramiteOrganismo') as mock_cls:
+        with patch('app.services.context_builders.contexto_consulta_separata.TramiteOrganismo') as mock_cls:
             mock_cls.query.filter_by.return_value.first.return_value = _vinculo_stub(oe)
             ctx = cb.get_contexto()
 
@@ -181,14 +181,14 @@ class TestContextoConsultaSeparata:
         assert ctx['organismo_plazo_legal'] == 30
 
     def test_notificar_sin_doc_producido_fecha_envio_none(self):
-        from app.services.context_builders.consulta_separata import ContextoConsultaSeparata
+        from app.services.context_builders.contexto_consulta_separata import ContextoConsultaSeparata
         tarea_notif = _tarea_stub('NOTIFICAR', doc_producido=None, tramite_id=1)
         tarea_elab = _tarea_stub('ELABORAR', tramite_id=1)
         tarea_elab.tramite = _tramite_con_tareas([tarea_elab, tarea_notif])
 
         oe = _org_exp()
         cb = ContextoConsultaSeparata(MagicMock(), MagicMock(), tarea=tarea_elab)
-        with patch('app.services.context_builders.consulta_separata.TramiteOrganismo') as mock_cls:
+        with patch('app.services.context_builders.contexto_consulta_separata.TramiteOrganismo') as mock_cls:
             mock_cls.query.filter_by.return_value.first.return_value = _vinculo_stub(oe)
             ctx = cb.get_contexto()
 
