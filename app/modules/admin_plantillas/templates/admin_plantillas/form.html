@@ -273,7 +273,10 @@
             {# ── Columna derecha: panel de tokens ── #}
             <div class="col-lg-5">
                 <div class="sticky-top" style="top: 1rem; z-index: 100">
-                    {% include 'admin_plantillas/_panel_tokens.html' %}
+                    <div id="panel-tokens-host"
+                         data-tokens-url="{{ url_for('admin_plantillas.tokens_fragmento') }}">
+                        {% include 'admin_plantillas/_panel_tokens.html' %}
+                    </div>
                 </div>
             </div>
 
@@ -438,5 +441,29 @@
         this.value = this.value.toUpperCase().replace(/[^A-Z0-9_]/g, '_');
         this.setSelectionRange(pos, pos);
     });
+</script>
+<script>
+    // Re-fetch del panel de tokens al cambiar la clase del Context Builder (ADR-025 / #553).
+    // Los tokens de Capa 2 dependen de contexto_clase; Capa 1, consultas y fragmentos no.
+    (function () {
+        var input = document.getElementById('contexto_clase');
+        var host = document.getElementById('panel-tokens-host');
+        if (!input || !host) return;
+        var baseUrl = host.dataset.tokensUrl;
+        var ultimo = input.value.trim();
+
+        function refrescar() {
+            var clase = input.value.trim();
+            if (clase === ultimo) return;
+            ultimo = clase;
+            var url = baseUrl + (clase ? '?contexto_clase=' + encodeURIComponent(clase) : '');
+            fetch(url)
+                .then(function (r) { return r.ok ? r.text() : null; })
+                .then(function (html) { if (html != null) host.innerHTML = html; })
+                .catch(function () {});
+        }
+        input.addEventListener('change', refrescar);
+        input.addEventListener('blur', refrescar);
+    })();
 </script>
 {% endblock %}

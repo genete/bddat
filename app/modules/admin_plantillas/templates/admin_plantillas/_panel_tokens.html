@@ -274,32 +274,46 @@
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-    document.querySelectorAll('.btn-copiar').forEach(function (btn) {
-        btn.addEventListener('click', function () {
-            const token = btn.dataset.token;
+// Copiar token: delegación global guardada. Funciona en el panel estático, en el
+// modal grande (modal-large.js re-ejecuta este <script>) y tras un swap de innerHTML
+// en la alta sin re-enlazar handlers (ADR-025 / #553).
+(function () {
+    if (window.__btnCopiarDelegado) return;
+    window.__btnCopiarDelegado = true;
+
+    function marcarCopiado(btn) {
+        var icon = btn.querySelector('i');
+        if (!icon) return;
+        icon.className = 'fas fa-check text-success';
+        setTimeout(function () { icon.className = 'fas fa-copy'; }, 1500);
+    }
+
+    function copiarFallback(token, btn) {
+        // Contextos sin clipboard API (HTTP sin TLS)
+        var tmp = document.createElement('textarea');
+        tmp.value = token;
+        tmp.style.position = 'fixed';
+        tmp.style.opacity = '0';
+        document.body.appendChild(tmp);
+        tmp.focus();
+        tmp.select();
+        try { document.execCommand('copy'); } catch (err) {}
+        document.body.removeChild(tmp);
+        marcarCopiado(btn);
+    }
+
+    document.addEventListener('click', function (e) {
+        var btn = e.target.closest('.btn-copiar');
+        if (!btn) return;
+        var token = btn.dataset.token;
+        if (token == null) return;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
             navigator.clipboard.writeText(token).then(function () {
-                const icon = btn.querySelector('i');
-                icon.className = 'fas fa-check text-success';
-                setTimeout(function () {
-                    icon.className = 'fas fa-copy';
-                }, 1500);
-            }).catch(function () {
-                // Fallback para contextos sin clipboard API (HTTP sin TLS)
-                const tmp = document.createElement('textarea');
-                tmp.value = token;
-                tmp.style.position = 'fixed';
-                tmp.style.opacity = '0';
-                document.body.appendChild(tmp);
-                tmp.focus();
-                tmp.select();
-                document.execCommand('copy');
-                document.body.removeChild(tmp);
-                const icon = btn.querySelector('i');
-                icon.className = 'fas fa-check text-success';
-                setTimeout(function () { icon.className = 'fas fa-copy'; }, 1500);
-            });
-        });
+                marcarCopiado(btn);
+            }).catch(function () { copiarFallback(token, btn); });
+        } else {
+            copiarFallback(token, btn);
+        }
     });
-});
+})();
 </script>

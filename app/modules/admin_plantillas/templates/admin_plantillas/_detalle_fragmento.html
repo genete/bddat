@@ -10,7 +10,7 @@
 
 <div class="d-flex justify-content-end gap-2 mb-3">
     <button type="button" class="btn btn-outline-primary btn-sm"
-            data-modal-large-url="{{ url_for('admin_plantillas.tokens_fragmento') }}"
+            data-modal-large-url="{{ url_for('admin_plantillas.tokens_fragmento', contexto_clase=plantilla.contexto_clase) if plantilla.contexto_clase else url_for('admin_plantillas.tokens_fragmento') }}"
             data-modal-large-title="Tokens disponibles">
         <i class="fas fa-tags me-1"></i> Tokens disponibles
     </button>
