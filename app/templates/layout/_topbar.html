@@ -15,14 +15,16 @@
     <span class="app-topbar__brand-text">BDDAT</span>
   </a>
 
-  {# Buscador global Ctrl+K — placeholder visual. La lógica del Command Palette
-     se implementará en #502 (M4). #}
+  {# Buscador global Ctrl+K — disparador del Command Palette (isla React, #532).
+     readonly a propósito: no se escribe aquí, sino en el modal que abre el clic /
+     Ctrl+K. Así el control no aparenta ser un campo editable que no lo es. #}
   <div class="app-topbar__search">
     <i class="bi bi-search app-topbar__search-icon"></i>
     <input type="search"
            placeholder="Buscar"
-           aria-label="Búsqueda global"
+           aria-label="Abrir buscador global (Ctrl+K)"
            data-app-shell-search
+           readonly
            autocomplete="off">
     <span class="app-topbar__search-kbd">Ctrl K</span>
   </div>

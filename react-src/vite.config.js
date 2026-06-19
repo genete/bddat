@@ -16,6 +16,7 @@ import { resolve } from 'path'
 const ISLANDS = {
   'diagrama-esftt':   resolve(__dirname, 'src/diagrama-esftt/index.jsx'),
   'expediente-arbol': resolve(__dirname, 'src/expediente-arbol/index.jsx'),
+  'command-palette':  resolve(__dirname, 'src/command-palette/index.jsx'),
 }
 
 export default defineConfig(({ command }) => {

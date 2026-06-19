@@ -80,6 +80,7 @@ Esta es la decisión que se planifica para implementación inmediata previa al a
 
 - Búsqueda de **expedientes** (número, titular, peticionario, municipio, nombre proyecto).
 - Búsqueda de **entidades** (nombre, NIF).
+- Búsqueda de **usuarios** (siglas, nombre, apellidos) — *ampliado en la implementación (#532)*. Todos los roles pueden **localizar** usuarios (`acceder_usuarios` es de todos); la **edición** sigue restringida a ADMIN/SUPERVISOR (`gestionar_usuarios`) en sus propias rutas.
 - **Navegación** a áreas principales del sidebar (Mi trabajo, Expedientes, Entidades, Plantillas, Usuarios, Motor, Plazos).
 - **Recientes** desde `sessionStorage` (últimos expedientes visitados en la sesión actual).
 - Teclado completo (`Ctrl+K`, `/`, `↑↓`, `Enter`, `Esc`).
@@ -109,10 +110,15 @@ Estas iteraciones se materializarán en uno o varios issues nuevos en M5, sin pr
 
 #### Backend — endpoints nuevos
 
-- **`GET /api/search/expedientes?q=...&limit=10`**: búsqueda fuzzy en `numero_at`, `titular.nombre_completo`, `proyecto.titulo`, `municipios_proyecto.municipio.nombre`. Ordenada por: match exacto de número primero, después relevancia.
-- **`GET /api/search/entidades?q=...&limit=10`**: búsqueda fuzzy en `nombre`, `nif`. Ordenada por relevancia.
+**Endpoint unificado (#532):**
 
-Ambos con `@require_permiso('acceder_expediente')` (todos los roles tras ADR-013).
+- **`GET /api/search?q=...&tipos=expedientes,entidades,usuarios,plantillas&limit=10`** → `{'grupos': [{'tipo', 'resultados': [...]}]}`. Recorre un **registro** `BUSCADORES` (tipo → permiso + helper `_buscar_*`) en el orden de `tipos`, **saltando** los tipos cuyo permiso no tenga el rol activo (igual que el sidebar). Añadir una entidad buscable = un helper `_buscar_X(q, limit)` + una línea en el registro (backend) + una línea de config en la isla (frontend).
+
+Búsqueda por entidad (campos): **expedientes** en `numero_at`, `titular.nombre_completo`, `proyecto.titulo`, `municipio.nombre` (match exacto de número primero); **entidades** en `nombre_completo`, `nif`; **usuarios** en `siglas`, `nombre`, `apellido1/2`; **plantillas** en `nombre`, `codigo`, `descripcion`, `variante`. **Sin filtro de `activo`** (#532): el palette busca TODO (activos e inactivos), como los listados, que por defecto no distinguen estado.
+
+Permisos por tipo: expedientes/entidades `acceder_expediente`, usuarios `acceder_usuarios`, plantillas `acceder_plantillas` — todos de los 4 roles tras ADR-013; la **edición** de cada dominio sigue restringida en sus propias rutas.
+
+**Histórico:** las rutas por-entidad `GET /api/search/{expedientes,entidades,usuarios}` (#531) se **retiraron** al unificar la búsqueda (#532 fase 2), una vez validado el endpoint unificado en vivo.
 
 #### Recientes en `sessionStorage`
 

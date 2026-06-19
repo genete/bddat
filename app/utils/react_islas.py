@@ -88,6 +88,42 @@ def react_bundle(nombre):
     return Markup('\n'.join(tags))
 
 
+def palette_nav():
+    """Atajos "IR A" del Command Palette (ADR-018 / #532).
+
+    Derivados de la MISMA fuente que el sidebar (`ModuleRegistry.get_navigation`),
+    no de una tabla hardcodeada. Así un módulo nuevo aparece en el palette
+    automáticamente al existir su metadata.json, y una ruta inexistente nunca se
+    enlaza (no hay módulo → no hay item → imposible un 404). El filtrado por rol
+    es gratis: get_navigation ya aplica el permiso 'list' del módulo.
+
+    Devuelve una lista de dicts {label, url, icon}. El único atajo fijo es
+    "Inicio": el dashboard no es un módulo del registry (vive en app/routes/),
+    igual que el enlace "Inicio" hardcodeado del propio sidebar.
+    """
+    from app.modules import ModuleRegistry
+
+    if not current_user.is_authenticated:
+        return []
+
+    roles = [r.nombre for r in current_user.roles]
+    items = [{'label': 'Inicio', 'url': url_for('dashboard.index'), 'icon': 'fa-home'}]
+
+    for it in ModuleRegistry.get_navigation(roles):
+        try:
+            url = url_for(it['route'])
+        except Exception:
+            # Endpoint declarado en metadata pero no registrado: omitir el item
+            # en vez de romper TODAS las páginas (la isla es global).
+            current_app.logger.warning(
+                "palette_nav: ruta '%s' no resoluble, item omitido", it.get('route')
+            )
+            continue
+        items.append({'label': it['label'], 'url': url, 'icon': it.get('icon', 'fa-circle')})
+
+    return items
+
+
 def user_ctx_attrs():
     """Emite data-user / data-permisos / data-rol del usuario y rol activo actuales.
 

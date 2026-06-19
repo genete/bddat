@@ -1,0 +1,156 @@
+/* Command Palette (ADR-018 / #532) — tematizado con la paleta JdA.
+   cmdk es headless (no trae CSS propio): aquí se define todo el aspecto usando
+   exclusivamente las variables del tema (v2-theme.css), sin colores inventados.
+   Disciplina CSS de ADR-015 (REGLAS_DESARROLLO.md › React islas). */
+
+.cmdp-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2000; /* por encima del shell, inspector overlay y modal-large */
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding-top: 12vh;
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.cmdp-modal {
+  width: min(720px, 92vw);
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+}
+
+.cmdp-modal [cmdk-root] {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-height: 70vh;
+}
+
+/* ----- Fila del input ----- */
+.cmdp-input-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.cmdp-input-icon {
+  color: var(--text-secondary);
+  font-size: 1rem;
+}
+
+.cmdp-modal [cmdk-input] {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 1rem;
+  padding: 0.15rem 0;
+}
+
+.cmdp-modal [cmdk-input]::placeholder {
+  color: var(--text-muted);
+}
+
+/* ----- Lista de resultados ----- */
+.cmdp-list {
+  overflow-y: auto;
+  padding: 0.35rem;
+  min-height: 0;
+}
+
+.cmdp-modal [cmdk-group-heading] {
+  padding: 0.5rem 0.6rem 0.25rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.cmdp-modal [cmdk-item] {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 0.6rem;
+  border-radius: var(--border-radius);
+  color: var(--text-primary);
+  cursor: pointer;
+  user-select: none;
+}
+
+/* cmdk marca el item activo con data-selected="true" (navegación por teclado/hover) */
+.cmdp-modal [cmdk-item][data-selected='true'] {
+  background: var(--primary-lighter);
+  color: var(--primary-hover);
+}
+
+.cmdp-modal [cmdk-item][data-selected='true'] .cmdp-item-icon {
+  color: var(--primary);
+}
+
+.cmdp-item-icon {
+  flex: 0 0 auto;
+  width: 1.1rem;
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+.cmdp-item-label {
+  flex: 1 1 auto;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cmdp-item-breadcrumb {
+  flex: 0 1 auto;
+  margin-left: auto;
+  padding-left: 0.75rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cmdp-status {
+  padding: 1rem 0.6rem;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+/* ----- Pie con ayuda de teclado ----- */
+.cmdp-footer {
+  display: flex;
+  gap: 1.25rem;
+  padding: 0.5rem 1rem;
+  border-top: 1px solid var(--border-color);
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.cmdp-kbd {
+  display: inline-block;
+  min-width: 1.4em;
+  padding: 0.05rem 0.35rem;
+  margin: 0 0.1rem;
+  font-family: inherit;
+  font-size: 0.72rem;
+  line-height: 1.4;
+  text-align: center;
+  color: var(--text-secondary);
+  background: var(--gris-especifico);
+  border: 1px solid var(--border-color);
+  border-radius: 0.25rem;
+}
