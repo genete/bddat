@@ -118,7 +118,7 @@ Búsqueda por entidad (campos): **expedientes** en `numero_at`, `titular.nombre_
 
 Permisos por tipo: expedientes/entidades `acceder_expediente`, usuarios `acceder_usuarios`, plantillas `acceder_plantillas` — todos de los 4 roles tras ADR-013; la **edición** de cada dominio sigue restringida en sus propias rutas.
 
-**Endpoints por-entidad (transitorios):** `GET /api/search/{expedientes,entidades,usuarios}` se conservan como respaldo (comparten los helpers `_buscar_*`, sin deriva) y se **retiran** cuando el unificado quede validado en vivo. No se añaden nuevos: plantillas existe solo en el registro.
+**Histórico:** las rutas por-entidad `GET /api/search/{expedientes,entidades,usuarios}` (#531) se **retiraron** al unificar la búsqueda (#532 fase 2), una vez validado el endpoint unificado en vivo.
 
 #### Recientes en `sessionStorage`
 

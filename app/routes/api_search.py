@@ -1,21 +1,15 @@
 """API de búsqueda para el Command Palette (ADR-018 / #531, #532).
 
-ENDPOINT ACTUAL (recomendado):
+ENDPOINT:
     GET /api/search?q=...&tipos=expedientes,entidades,usuarios,plantillas&limit=10
         Búsqueda unificada multi-entidad. Devuelve {'grupos': [{tipo, resultados}]}
         en el orden de `tipos`, saltando los tipos cuyo permiso no tenga el rol
         activo (igual que el sidebar). Cada tipo aporta hasta `limit` resultados.
 
-ENDPOINTS POR-ENTIDAD (transitorios, #532 fase 1):
-    GET /api/search/expedientes?q=...&limit=10
-    GET /api/search/entidades?q=...&limit=10
-    GET /api/search/usuarios?q=...&limit=10
-        Se conservan como respaldo hasta verificar el unificado en vivo; comparten
-        la misma lógica (helpers _buscar_*), así que no hay deriva. Se retiran en
-        la fase 2 cuando el unificado quede validado. NO añadir nuevos aquí:
-        las entidades nuevas (p. ej. plantillas) entran solo en el registro.
-
 Añadir una entidad buscable = un helper _buscar_X(q, limit) + una línea en BUSCADORES.
+
+Las rutas por-entidad GET /api/search/<tipo> existieron en #531 y se retiraron al
+unificar la búsqueda (#532).
 """
 
 from flask import Blueprint, request, jsonify, url_for
@@ -269,34 +263,3 @@ def buscar():
         grupos.append({'tipo': tipo, 'resultados': cfg['buscar'](q, limit)})
 
     return jsonify({'grupos': grupos}), 200
-
-
-# ---------------------------------------------------------------------------
-# Rutas por-entidad (transitorias, #532 fase 1). Thin wrappers sobre los helpers.
-# ---------------------------------------------------------------------------
-
-@api_search_bp.route('/expedientes', methods=['GET'])
-@login_required
-def buscar_expedientes():
-    q = request.args.get('q', '').strip()
-    if len(q) < 2:
-        return jsonify({'results': []}), 200
-    return jsonify({'results': _buscar_expedientes(q, _limit_param())}), 200
-
-
-@api_search_bp.route('/entidades', methods=['GET'])
-@login_required
-def buscar_entidades():
-    q = request.args.get('q', '').strip()
-    if len(q) < 2:
-        return jsonify({'results': []}), 200
-    return jsonify({'results': _buscar_entidades(q, _limit_param())}), 200
-
-
-@api_search_bp.route('/usuarios', methods=['GET'])
-@login_required
-def buscar_usuarios():
-    q = request.args.get('q', '').strip()
-    if len(q) < 2:
-        return jsonify({'results': []}), 200
-    return jsonify({'results': _buscar_usuarios(q, _limit_param())}), 200
