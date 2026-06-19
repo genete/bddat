@@ -35,6 +35,30 @@ def test_search_entidades_ok(usuario_supervisor, entidad_seed, app):
     assert isinstance(data['results'], list)
 
 
+def test_search_usuarios_ok(usuario_supervisor, app):
+    """GET /api/search/usuarios con q válida → 200, clave 'results'."""
+    with app.app_context():
+        from app.models.usuarios import Usuario
+        u = Usuario.query.filter(Usuario.activo == True).first()
+        if u is None:
+            import pytest as _pytest
+            _pytest.skip('No hay usuarios activos sembrados')
+        q = (u.apellido1 or u.nombre or u.siglas)[:3]
+
+    r = usuario_supervisor.get(f'/api/search/usuarios?q={q}')
+    assert r.status_code == 200
+    data = r.get_json()
+    assert 'results' in data
+    assert isinstance(data['results'], list)
+
+
+def test_search_usuarios_q_corto(usuario_supervisor):
+    """q de 1 char → 200, results vacío."""
+    r = usuario_supervisor.get('/api/search/usuarios?q=x')
+    assert r.status_code == 200
+    assert r.get_json()['results'] == []
+
+
 def test_search_expedientes_q_corto(usuario_supervisor):
     """q de 1 char → 200, results vacío."""
     r = usuario_supervisor.get('/api/search/expedientes?q=x')

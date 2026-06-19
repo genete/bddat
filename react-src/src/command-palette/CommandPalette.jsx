@@ -50,6 +50,12 @@ function leerNav() {
   }
 }
 
+function iconoTipo(tipo) {
+  if (tipo === 'entidad') return 'bi-building'
+  if (tipo === 'usuario') return 'bi-person'
+  return 'bi-folder2-open'
+}
+
 function focoEsEditable() {
   const el = document.activeElement
   if (!el) return false
@@ -62,6 +68,7 @@ export default function CommandPalette() {
   const [query, setQuery] = useState('')
   const [expedientes, setExpedientes] = useState([])
   const [entidades, setEntidades] = useState([])
+  const [usuarios, setUsuarios] = useState([])
   const [loading, setLoading] = useState(false)
   const [recientes, setRecientes] = useState([])
   const [nav] = useState(leerNav)
@@ -110,6 +117,7 @@ export default function CommandPalette() {
       setQuery('')
       setExpedientes([])
       setEntidades([])
+      setUsuarios([])
     }
   }, [open])
 
@@ -120,6 +128,7 @@ export default function CommandPalette() {
     if (q.length < 2) {
       setExpedientes([])
       setEntidades([])
+      setUsuarios([])
       setLoading(false)
       return
     }
@@ -127,17 +136,20 @@ export default function CommandPalette() {
     setLoading(true)
     const t = setTimeout(async () => {
       try {
-        const [exp, ent] = await Promise.all([
+        const [exp, ent, usr] = await Promise.all([
           api.get(`/api/search/expedientes?q=${encodeURIComponent(q)}`),
           api.get(`/api/search/entidades?q=${encodeURIComponent(q)}`),
+          api.get(`/api/search/usuarios?q=${encodeURIComponent(q)}`),
         ])
         if (cancelled) return
         setExpedientes(exp.results || [])
         setEntidades(ent.results || [])
+        setUsuarios(usr.results || [])
       } catch {
         if (!cancelled) {
           setExpedientes([])
           setEntidades([])
+          setUsuarios([])
         }
       } finally {
         if (!cancelled) setLoading(false)
@@ -150,8 +162,9 @@ export default function CommandPalette() {
   }, [query])
 
   function navegar(item) {
-    // Solo expedientes/entidades alimentan recientes; los atajos "IR A" no.
-    if (item.tipo === 'expediente' || item.tipo === 'entidad') {
+    // Los registros (expediente/entidad/usuario) alimentan recientes; los
+    // atajos "IR A" (sin tipo) no.
+    if (['expediente', 'entidad', 'usuario'].includes(item.tipo)) {
       guardarReciente({ tipo: item.tipo, id: item.id, label: item.label, url: item.url })
     }
     window.location.href = item.url
@@ -206,7 +219,7 @@ export default function CommandPalette() {
                         onSelect={() => navegar(r)}
                       >
                         <i
-                          className={`bi ${r.tipo === 'entidad' ? 'bi-building' : 'bi-folder2-open'} cmdp-item-icon`}
+                          className={`bi ${iconoTipo(r.tipo)} cmdp-item-icon`}
                           aria-hidden="true"
                         ></i>
                         <span className="cmdp-item-label">{r.label}</span>
@@ -263,6 +276,24 @@ export default function CommandPalette() {
                         <span className="cmdp-item-label">{ent.label}</span>
                         {ent.breadcrumb && (
                           <span className="cmdp-item-breadcrumb">{ent.breadcrumb}</span>
+                        )}
+                      </Command.Item>
+                    ))}
+                  </Command.Group>
+                )}
+
+                {usuarios.length > 0 && (
+                  <Command.Group heading="USUARIOS">
+                    {usuarios.map((u) => (
+                      <Command.Item
+                        key={`usr-${u.id}`}
+                        value={`usr-${u.id}`}
+                        onSelect={() => navegar(u)}
+                      >
+                        <i className="bi bi-person cmdp-item-icon" aria-hidden="true"></i>
+                        <span className="cmdp-item-label">{u.label}</span>
+                        {u.breadcrumb && (
+                          <span className="cmdp-item-breadcrumb">{u.breadcrumb}</span>
                         )}
                       </Command.Item>
                     ))}

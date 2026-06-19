@@ -80,6 +80,7 @@ Esta es la decisión que se planifica para implementación inmediata previa al a
 
 - Búsqueda de **expedientes** (número, titular, peticionario, municipio, nombre proyecto).
 - Búsqueda de **entidades** (nombre, NIF).
+- Búsqueda de **usuarios** (siglas, nombre, apellidos) — *ampliado en la implementación (#532)*. Todos los roles pueden **localizar** usuarios (`acceder_usuarios` es de todos); la **edición** sigue restringida a ADMIN/SUPERVISOR (`gestionar_usuarios`) en sus propias rutas.
 - **Navegación** a áreas principales del sidebar (Mi trabajo, Expedientes, Entidades, Plantillas, Usuarios, Motor, Plazos).
 - **Recientes** desde `sessionStorage` (últimos expedientes visitados en la sesión actual).
 - Teclado completo (`Ctrl+K`, `/`, `↑↓`, `Enter`, `Esc`).
@@ -111,8 +112,9 @@ Estas iteraciones se materializarán en uno o varios issues nuevos en M5, sin pr
 
 - **`GET /api/search/expedientes?q=...&limit=10`**: búsqueda fuzzy en `numero_at`, `titular.nombre_completo`, `proyecto.titulo`, `municipios_proyecto.municipio.nombre`. Ordenada por: match exacto de número primero, después relevancia.
 - **`GET /api/search/entidades?q=...&limit=10`**: búsqueda fuzzy en `nombre`, `nif`. Ordenada por relevancia.
+- **`GET /api/search/usuarios?q=...&limit=10`** (ampliado en #532): búsqueda fuzzy en `siglas`, `nombre`, `apellido1`, `apellido2`; solo activos. `@require_permiso('acceder_usuarios')` (todos los roles).
 
-Ambos con `@require_permiso('acceder_expediente')` (todos los roles tras ADR-013).
+Expedientes y entidades con `@require_permiso('acceder_expediente')` (todos los roles tras ADR-013); usuarios con `acceder_usuarios`.
 
 #### Recientes en `sessionStorage`
 

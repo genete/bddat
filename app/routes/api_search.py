@@ -3,6 +3,7 @@
 ENDPOINTS:
     GET /api/search/expedientes?q=...&limit=10
     GET /api/search/entidades?q=...&limit=10
+    GET /api/search/usuarios?q=...&limit=10   (#532: todos ven, edición aparte)
 """
 
 from flask import Blueprint, request, jsonify, url_for
@@ -11,11 +12,13 @@ from sqlalchemy import or_, case
 from sqlalchemy.orm import joinedload
 
 from app import db
+from app.decorators import require_permiso
 from app.models.expedientes import Expediente
 from app.models.entidad import Entidad
 from app.models.proyectos import Proyecto
 from app.models.municipios_proyecto import MunicipioProyecto
 from app.models.municipios import Municipio
+from app.models.usuarios import Usuario
 
 api_search_bp = Blueprint('api_search', __name__, url_prefix='/api/search')
 
@@ -150,5 +153,52 @@ def buscar_entidades():
         }
         for e in entidades
     ]
+
+    return jsonify({'results': results}), 200
+
+
+@api_search_bp.route('/usuarios', methods=['GET'])
+@login_required
+@require_permiso('acceder_usuarios')
+def buscar_usuarios():
+    # Todos los roles tienen 'acceder_usuarios' (ven la ficha); la edición se
+    # protege aparte con 'gestionar_usuarios'. Aquí solo se localiza/navega.
+    q = request.args.get('q', '').strip()
+    if len(q) < 2:
+        return jsonify({'results': []}), 200
+
+    try:
+        limit = min(int(request.args.get('limit', 10)), 20)
+    except ValueError:
+        limit = 10
+
+    usuarios = (
+        Usuario.query
+        .filter(
+            Usuario.activo == True,
+            or_(
+                Usuario.siglas.ilike(f'%{q}%'),
+                Usuario.nombre.ilike(f'%{q}%'),
+                Usuario.apellido1.ilike(f'%{q}%'),
+                Usuario.apellido2.ilike(f'%{q}%'),
+            ),
+        )
+        .order_by(Usuario.apellido1.asc(), Usuario.nombre.asc())
+        .limit(limit)
+        .all()
+    )
+
+    results = []
+    for u in usuarios:
+        nombre_completo = ' '.join(p for p in [u.nombre, u.apellido1, u.apellido2] if p)
+        roles = ' / '.join(r.nombre for r in u.roles) if u.roles else ''
+        breadcrumb = f'{u.siglas} · {roles}' if roles else u.siglas
+        results.append({
+            'tipo': 'usuario',
+            'id': u.id,
+            'label': nombre_completo or u.siglas,
+            'breadcrumb': breadcrumb,
+            'url': url_for('usuarios.detalle', id=u.id),
+        })
 
     return jsonify({'results': results}), 200
