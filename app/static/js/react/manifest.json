@@ -1,34 +1,64 @@
 {
-  "_asset.toast.BZV40eAE.css": {
-    "file": "asset.toast.BZV40eAE.css",
-    "src": "_asset.toast.BZV40eAE.css"
+  "_asset.index.BZV40eAE.css": {
+    "file": "asset.index.BZV40eAE.css",
+    "src": "_asset.index.BZV40eAE.css"
   },
-  "_chunk.toast.BzEloO_G.js": {
-    "file": "chunk.toast.BzEloO_G.js",
-    "name": "toast",
+  "_chunk.api.D03Nd58a.js": {
+    "file": "chunk.api.D03Nd58a.js",
+    "name": "api",
+    "imports": [
+      "_chunk.toast.JponFgs_.js"
+    ]
+  },
+  "_chunk.index.BGb-7RRr.js": {
+    "file": "chunk.index.BGb-7RRr.js",
+    "name": "index",
+    "imports": [
+      "_chunk.toast.JponFgs_.js"
+    ],
     "css": [
-      "asset.toast.BZV40eAE.css"
+      "asset.index.BZV40eAE.css"
+    ]
+  },
+  "_chunk.toast.JponFgs_.js": {
+    "file": "chunk.toast.JponFgs_.js",
+    "name": "toast"
+  },
+  "src/command-palette/index.jsx": {
+    "file": "bundle.command-palette.sJlncfe_.js",
+    "name": "command-palette",
+    "src": "src/command-palette/index.jsx",
+    "isEntry": true,
+    "imports": [
+      "_chunk.toast.JponFgs_.js",
+      "_chunk.api.D03Nd58a.js"
+    ],
+    "css": [
+      "asset.command-palette.Ce9U0oTV.css"
     ]
   },
   "src/diagrama-esftt/index.jsx": {
-    "file": "bundle.diagrama-esftt.ns1Tx0fi.js",
+    "file": "bundle.diagrama-esftt.CVoLAEPI.js",
     "name": "diagrama-esftt",
     "src": "src/diagrama-esftt/index.jsx",
     "isEntry": true,
     "imports": [
-      "_chunk.toast.BzEloO_G.js"
+      "_chunk.toast.JponFgs_.js",
+      "_chunk.index.BGb-7RRr.js"
     ],
     "css": [
       "asset.diagrama-esftt.REmY7xCc.css"
     ]
   },
   "src/expediente-arbol/index.jsx": {
-    "file": "bundle.expediente-arbol.0keG_5yb.js",
+    "file": "bundle.expediente-arbol.CmEm8cdo.js",
     "name": "expediente-arbol",
     "src": "src/expediente-arbol/index.jsx",
     "isEntry": true,
     "imports": [
-      "_chunk.toast.BzEloO_G.js"
+      "_chunk.toast.JponFgs_.js",
+      "_chunk.api.D03Nd58a.js",
+      "_chunk.index.BGb-7RRr.js"
     ],
     "css": [
       "asset.expediente-arbol.hbg5rhwl.css"

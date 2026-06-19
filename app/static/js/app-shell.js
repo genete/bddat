@@ -131,10 +131,9 @@
 
   function onKeydown(e) {
     var ctrl = e.ctrlKey || e.metaKey;
-    if (ctrl && (e.key === 'k' || e.key === 'K')) {
-      var inp = document.querySelector('[data-app-shell-search]');
-      if (inp) { e.preventDefault(); inp.focus(); inp.select(); }
-    } else if (ctrl && (e.key === 'b' || e.key === 'B')) {
+    // Ctrl+K lo gobierna la isla Command Palette (#532): abre/cierra el modal y
+    // enfoca su propio input. Aquí ya no se trata para no duplicar el atajo.
+    if (ctrl && (e.key === 'b' || e.key === 'B')) {
       var s = getShell();
       if (s) { e.preventDefault(); toggleSidebar(s); }
     } else if (e.key === 'Escape') {

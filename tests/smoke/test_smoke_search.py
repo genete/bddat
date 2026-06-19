@@ -55,6 +55,15 @@ def test_search_sin_auth_redirige(client):
     assert r.status_code != 200
 
 
+def test_palette_bundle_en_shell(usuario_supervisor):
+    """El dashboard incluye el contenedor de la isla global Command Palette (#532)."""
+    r = usuario_supervisor.get('/dashboard')
+    assert r.status_code == 200
+    assert b'data-react-island="command-palette"' in r.data
+    # Los atajos "IR A" llegan derivados de palette_nav() (no hardcodeados).
+    assert b'data-nav=' in r.data
+
+
 def test_search_expedientes_formato(usuario_supervisor, expediente_seed, app):
     """Cada ítem del resultado tiene tipo, id, label, breadcrumb y url."""
     with app.app_context():

@@ -108,6 +108,37 @@ Tras compilar, recarga la página en el navegador.
 
 ---
 
+## Isla global (vs isla por vista)
+
+La mayoría de islas son **por vista**: una plantilla concreta pone el contenedor y monta el
+bundle en su `{% block content %}` / `{% block extra_js %}`. Solo se cargan en esa página.
+
+Una **isla global** se monta en el shell `base_app.html`, así que **se carga en TODAS las
+páginas autenticadas**. Caso de referencia: el **Command Palette** (Ctrl+K, #532, ADR-018).
+
+Diferencias frente a una isla por vista:
+
+- **El contenedor lo pone el shell, no la vista.** Va al final de `base_app.html`, dentro de
+  `{% if current_user.is_authenticated %}`:
+  ```jinja
+  <div data-react-island="command-palette"
+       {{ user_ctx_attrs() }}
+       data-nav='{{ palette_nav() | tojson }}'></div>
+  {{ react_bundle('command-palette') }}
+  ```
+- **Se carga en todas las páginas → mantener el bundle ligero.** Cada dependencia pesa en
+  cada carga; no es el sitio para librerías grandes.
+- **Datos del shell por data-attribute.** Además de `user_ctx_attrs()`, una isla global puede
+  recibir datos calculados en servidor. El palette recibe `data-nav` con los atajos "IR A",
+  derivados de `palette_nav()` (`app/utils/react_islas.py`) — **misma fuente que el sidebar**
+  (`ModuleRegistry`), no una lista hardcodeada: un módulo nuevo aparece solo y una ruta
+  inexistente nunca se enlaza.
+- **Atajos de teclado globales.** El listener (`keydown` en `document`) vive en la propia isla
+  (`useEffect`), no en un `<script>` del template. Si el atajo coincide con uno del shell
+  (`app-shell.js`), el shell cede: Ctrl+K lo gobierna la isla.
+
+---
+
 ## Inyectar contexto desde Jinja → React
 
 El backend es la única fuente de verdad de auth. Las islas **no autentican**; solo leen el

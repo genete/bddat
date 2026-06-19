@@ -180,6 +180,18 @@
     });
   </script>
 
+  {# Command Palette — isla React GLOBAL del shell (ADR-018 / #532).
+     Se carga en TODAS las páginas autenticadas (no en una vista concreta): el
+     contenedor lo pone el shell, no la vista. Mantener el bundle ligero.
+     Los atajos "IR A" (data-nav) se derivan de palette_nav() — misma fuente que
+     el sidebar (ModuleRegistry), no hardcodeados. #}
+  {% if current_user.is_authenticated %}
+  <div data-react-island="command-palette"
+       {{ user_ctx_attrs() }}
+       data-nav='{{ palette_nav() | tojson }}'></div>
+  {{ react_bundle('command-palette') }}
+  {% endif %}
+
   {% block extra_js %}{% endblock %}
 </body>
 </html>
