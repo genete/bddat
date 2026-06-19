@@ -6,17 +6,17 @@
 
 ---
 
-**Último cerrado:** **#546** — **listado de seguimiento** migrado a ADR-023 (issue de verificación). Del estudio surgen **#558** (unificar el núcleo de reglas de estado `seguimiento.py`↔`estado_semaforo.py`) y **#559** (inspector-detalle del seguimiento, edición delegada al árbol).
+**Último cerrado:** **#532** — **Command Palette** (isla React global del shell, cmdk + Ctrl+K). **Búsqueda unificada** de expedientes/entidades/usuarios/plantillas vía `GET /api/search` (registro `BUSCADORES`, sin filtro `activo`: busca todo); atajos "IR A" derivados del sidebar (`palette_nav`). PR #564; cierra también **#502** (épica ADR-018). Spin-off vivo: **#563** (lazy-load del bundle al primer Ctrl+K, M4).
 
-**Actuales:** **#532** — Command Palette (isla React, cmdk, M4).
+**Actuales:** **#558** — Unificar el núcleo de reglas de estado (`seguimiento.py`↔`estado_semaforo.py`); desbloquea #501 y #559.
 
-**Próximos:** hilo UI — **#532** (Command Palette, en curso) → **#558** (núcleo de estado; desbloquea #501 y #559) → **#501** (Mi trabajo del administrativo) y **#559** (inspector-detalle del seguimiento) → **Mi trabajo del supervisor** (por crear). Después, bloque **escritos / motor adaptativo (M4)**: **#555** (clasificación ESFT de plantillas) → **#556** (variables del motor en plantillas) → **#561** (drop de `catalogo_variables.activa` + red de tests).
+**Próximos:** hilo UI — **#558** (núcleo de estado, en curso; desbloquea #501 y #559) → **#501** (Mi trabajo del administrativo) y **#559** (inspector-detalle del seguimiento) → **Mi trabajo del supervisor** (por crear). Después, bloque **escritos / motor adaptativo (M4)**: **#555** (clasificación ESFT de plantillas) → **#556** (variables del motor en plantillas) → **#561** (drop de `catalogo_variables.activa` + red de tests).
 
 > **Notas a Próximos:**
 > - **#558** unifica el núcleo de reglas de estado (`seguimiento.py`↔`estado_semaforo.py`, deuda `MODELO_ESTADOS_SEMAFORO` §10); **bloquea #501** y **#559** depende de él.
 > - seguimiento y "Mi trabajo" (**#501**) son agregados que navegan al árbol; se decidió dotarlos de **inspector-detalle del agregado** (lectura) con la edición delegada al árbol — **#559** (seguimiento) y **#501** (Mi trabajo). **ADR-017 candidato a revisión** al implementar #501. Primero consolidar infra + migrar lo existente; las vistas nuevas aisladas se construyen con la lección aprendida.
 > - **Bloque escritos / motor adaptativo (M4):** **#555** clasificación ESFT de plantillas (fase concreta vs comodín); **#556** variables del motor en plantillas (documento adaptativo, **depende de la cobertura de catálogo, M3**); **#561** drop de `catalogo_variables.activa` + red de seguridad por tests (**ADR-026**, spin-off de #556). El hilo se aborda **tras** el hilo UI en curso.
-> - **#502** queda como épica/referencia de ADR-018; se cierra al mergear #532.
+> - **#502** (épica/referencia de ADR-018) **cerrada** al mergear #532 (PR #564).
 
 ## Hoja de ruta — Implementación
 
@@ -35,8 +35,8 @@ Orden técnico recomendado de implementación (dependencias de las cabeceras hac
 7. ~~**#531 — ADR-018 Command Palette, endpoints de búsqueda.**~~ ✅ Cerrado. Blueprint `api_search_bp`, fichero `app/routes/api_search.py`. Las rutas por-entidad iniciales (`/api/search/expedientes`, `/entidades`) las **unificó #532** en `GET /api/search?tipos=…` (registro `BUSCADORES`); las rutas por-entidad se retiraron.
 8. ~~**#533 — ADR-022 Sistema visual base.**~~ ✅ Cerrado. Rem global 15px como mando maestro, tabla unificada `.lista-table` (elimina la dualidad `data-table`/`expedientes-table`; ocultación responsive declarativa `.lt-hide-*` + truncado `.lt-truncate`), tokens de color sin fugas en el shell, retirada del recorte ~95% en `main`. Absorbió la migración #281. PR #538. Deja abierto #537 (cabecera del listado → viewbar).
 9. ~~**#534 — ADR-023 List-detail + inspector overlay + tres capas.**~~ ✅ Cerrado. Inspector **overlay** a nivel de shell (no columna del grid; sin negociación de espacio), agnóstico Jinja/React. Modelo de **tres capas** (listado · inspector · modal grande) con **navegación por capas, no por rutas**. Infraestructura validada contra el árbol + **Entidades** como listado de referencia. Cada listado restante (seguimiento, plantillas, usuarios, proyectos) migra en su propio issue.
-10. **#532 — ADR-018 Command Palette (isla React, cmdk).** M4, **en curso**. Primera isla global del shell (`base_app.html`). Instalar `cmdk`, entrada en `vite.config.js`. ~1-2 semanas.
-11. **#558 — Unificar el núcleo de reglas de estado.** Una sola fuente para `seguimiento.py`↔`estado_semaforo.py` (deuda `MODELO_ESTADOS_SEMAFORO` §10). **Requisito de #501 y #559.**
+10. ~~**#532 — ADR-018 Command Palette (isla React, cmdk).**~~ ✅ Cerrado. Primera isla global del shell (`base_app.html`); input del topbar como disparador `readonly`. **Búsqueda unificada** `GET /api/search` con registro `BUSCADORES` (expedientes/entidades/usuarios/plantillas, sin filtro `activo`); atajos "IR A" vía `palette_nav` (fuente del sidebar). PR #564; cierra #502. Spin-off: #563 (lazy-load del bundle).
+11. **#558 — Unificar el núcleo de reglas de estado.** M4, **en curso**. Una sola fuente para `seguimiento.py`↔`estado_semaforo.py` (deuda `MODELO_ESTADOS_SEMAFORO` §10). **Requisito de #501 y #559.**
 12. **#501 — ADR-017 Vista "Mi trabajo" del administrativo.** Agregado que navega al árbol (gemelo de seguimiento), con **inspector-detalle del agregado** (lectura) y edición delegada al árbol. **Bloqueado por #558.** ADR-017 candidato a revisión. Requiere tabla unificada (#533) + scroll infinito. ~2-3 semanas.
 13. **#559 — Inspector-detalle del listado de seguimiento.** Lectura del agregado, edición delegada al árbol. **Depende de #558.**
 14. **Mi trabajo del supervisor.** Gemelo de #501 para el rol supervisor. Issue por crear.
