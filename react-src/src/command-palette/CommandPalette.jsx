@@ -6,7 +6,7 @@
 //   - Clic en el input del topbar [data-app-shell-search] → abre.
 //   - Esc / clic fuera / seleccionar un resultado → cierra.
 //
-// Búsqueda: con ≥2 caracteres, fetch en paralelo a /api/search/{expedientes,entidades}
+// Búsqueda: con ≥2 caracteres, UN fetch al endpoint unificado /api/search?tipos=…
 // con debounce de 150 ms. Con el input vacío: recientes (sessionStorage) + atajos "IR A".
 //
 // Los atajos "IR A" NO están hardcodeados: llegan en data-nav, derivados de
@@ -50,10 +50,21 @@ function leerNav() {
   }
 }
 
+// --- Entidades buscables (config-driven, #532) --------------------------------
+// Añadir una entidad = una línea aquí + su _buscar_X en api_search.py (backend).
+// `clave` = tipo plural del endpoint unificado; `tipo` = tipo singular del item.
+const ENTIDADES_BUSCABLES = [
+  { clave: 'expedientes', tipo: 'expediente', heading: 'EXPEDIENTES', icon: 'bi-folder2-open' },
+  { clave: 'entidades',   tipo: 'entidad',    heading: 'ENTIDADES',   icon: 'bi-building' },
+  { clave: 'usuarios',    tipo: 'usuario',    heading: 'USUARIOS',    icon: 'bi-person' },
+  { clave: 'plantillas',  tipo: 'plantilla',  heading: 'PLANTILLAS',  icon: 'bi-file-earmark-word' },
+]
+const TIPOS_PARAM = ENTIDADES_BUSCABLES.map((e) => e.clave).join(',')
+const ICONO_POR_TIPO = Object.fromEntries(ENTIDADES_BUSCABLES.map((e) => [e.tipo, e.icon]))
+const TIPOS_REGISTRO = new Set(ENTIDADES_BUSCABLES.map((e) => e.tipo))
+
 function iconoTipo(tipo) {
-  if (tipo === 'entidad') return 'bi-building'
-  if (tipo === 'usuario') return 'bi-person'
-  return 'bi-folder2-open'
+  return ICONO_POR_TIPO[tipo] || 'bi-folder2-open'
 }
 
 function focoEsEditable() {
@@ -66,9 +77,8 @@ function focoEsEditable() {
 export default function CommandPalette() {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
-  const [expedientes, setExpedientes] = useState([])
-  const [entidades, setEntidades] = useState([])
-  const [usuarios, setUsuarios] = useState([])
+  // resultados: mapa clave→array (p. ej. {expedientes: [...], plantillas: [...]}).
+  const [resultados, setResultados] = useState({})
   const [loading, setLoading] = useState(false)
   const [recientes, setRecientes] = useState([])
   const [nav] = useState(leerNav)
@@ -115,9 +125,7 @@ export default function CommandPalette() {
       if (topbar) topbar.blur()
     } else {
       setQuery('')
-      setExpedientes([])
-      setEntidades([])
-      setUsuarios([])
+      setResultados({})
     }
   }, [open])
 
@@ -126,9 +134,7 @@ export default function CommandPalette() {
   useEffect(() => {
     const q = query.trim()
     if (q.length < 2) {
-      setExpedientes([])
-      setEntidades([])
-      setUsuarios([])
+      setResultados({})
       setLoading(false)
       return
     }
@@ -136,21 +142,15 @@ export default function CommandPalette() {
     setLoading(true)
     const t = setTimeout(async () => {
       try {
-        const [exp, ent, usr] = await Promise.all([
-          api.get(`/api/search/expedientes?q=${encodeURIComponent(q)}`),
-          api.get(`/api/search/entidades?q=${encodeURIComponent(q)}`),
-          api.get(`/api/search/usuarios?q=${encodeURIComponent(q)}`),
-        ])
+        const resp = await api.get(
+          `/api/search?q=${encodeURIComponent(q)}&tipos=${TIPOS_PARAM}`,
+        )
         if (cancelled) return
-        setExpedientes(exp.results || [])
-        setEntidades(ent.results || [])
-        setUsuarios(usr.results || [])
+        const mapa = {}
+        for (const g of resp.grupos || []) mapa[g.tipo] = g.resultados || []
+        setResultados(mapa)
       } catch {
-        if (!cancelled) {
-          setExpedientes([])
-          setEntidades([])
-          setUsuarios([])
-        }
+        if (!cancelled) setResultados({})
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -162,9 +162,8 @@ export default function CommandPalette() {
   }, [query])
 
   function navegar(item) {
-    // Los registros (expediente/entidad/usuario) alimentan recientes; los
-    // atajos "IR A" (sin tipo) no.
-    if (['expediente', 'entidad', 'usuario'].includes(item.tipo)) {
+    // Los registros buscables alimentan recientes; los atajos "IR A" (sin tipo) no.
+    if (TIPOS_REGISTRO.has(item.tipo)) {
       guardarReciente({ tipo: item.tipo, id: item.id, label: item.label, url: item.url })
     }
     window.location.href = item.url
@@ -246,59 +245,27 @@ export default function CommandPalette() {
                   Sin resultados para «{query.trim()}»
                 </Command.Empty>
 
-                {expedientes.length > 0 && (
-                  <Command.Group heading="EXPEDIENTES">
-                    {expedientes.map((exp) => (
-                      <Command.Item
-                        key={`exp-${exp.id}`}
-                        value={`exp-${exp.id}`}
-                        onSelect={() => navegar(exp)}
-                      >
-                        <i className="bi bi-folder2-open cmdp-item-icon" aria-hidden="true"></i>
-                        <span className="cmdp-item-label">{exp.label}</span>
-                        {exp.breadcrumb && (
-                          <span className="cmdp-item-breadcrumb">{exp.breadcrumb}</span>
-                        )}
-                      </Command.Item>
-                    ))}
-                  </Command.Group>
-                )}
-
-                {entidades.length > 0 && (
-                  <Command.Group heading="ENTIDADES">
-                    {entidades.map((ent) => (
-                      <Command.Item
-                        key={`ent-${ent.id}`}
-                        value={`ent-${ent.id}`}
-                        onSelect={() => navegar(ent)}
-                      >
-                        <i className="bi bi-building cmdp-item-icon" aria-hidden="true"></i>
-                        <span className="cmdp-item-label">{ent.label}</span>
-                        {ent.breadcrumb && (
-                          <span className="cmdp-item-breadcrumb">{ent.breadcrumb}</span>
-                        )}
-                      </Command.Item>
-                    ))}
-                  </Command.Group>
-                )}
-
-                {usuarios.length > 0 && (
-                  <Command.Group heading="USUARIOS">
-                    {usuarios.map((u) => (
-                      <Command.Item
-                        key={`usr-${u.id}`}
-                        value={`usr-${u.id}`}
-                        onSelect={() => navegar(u)}
-                      >
-                        <i className="bi bi-person cmdp-item-icon" aria-hidden="true"></i>
-                        <span className="cmdp-item-label">{u.label}</span>
-                        {u.breadcrumb && (
-                          <span className="cmdp-item-breadcrumb">{u.breadcrumb}</span>
-                        )}
-                      </Command.Item>
-                    ))}
-                  </Command.Group>
-                )}
+                {ENTIDADES_BUSCABLES.map(({ clave, tipo, heading, icon }) => {
+                  const items = resultados[clave] || []
+                  if (items.length === 0) return null
+                  return (
+                    <Command.Group key={clave} heading={heading}>
+                      {items.map((it) => (
+                        <Command.Item
+                          key={`${tipo}-${it.id}`}
+                          value={`${tipo}-${it.id}`}
+                          onSelect={() => navegar(it)}
+                        >
+                          <i className={`bi ${icon} cmdp-item-icon`} aria-hidden="true"></i>
+                          <span className="cmdp-item-label">{it.label}</span>
+                          {it.breadcrumb && (
+                            <span className="cmdp-item-breadcrumb">{it.breadcrumb}</span>
+                          )}
+                        </Command.Item>
+                      ))}
+                    </Command.Group>
+                  )
+                })}
 
                 {navFiltrado.length > 0 && (
                   <Command.Group heading="IR A">

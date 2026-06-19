@@ -110,11 +110,15 @@ Estas iteraciones se materializarán en uno o varios issues nuevos en M5, sin pr
 
 #### Backend — endpoints nuevos
 
-- **`GET /api/search/expedientes?q=...&limit=10`**: búsqueda fuzzy en `numero_at`, `titular.nombre_completo`, `proyecto.titulo`, `municipios_proyecto.municipio.nombre`. Ordenada por: match exacto de número primero, después relevancia.
-- **`GET /api/search/entidades?q=...&limit=10`**: búsqueda fuzzy en `nombre`, `nif`. Ordenada por relevancia.
-- **`GET /api/search/usuarios?q=...&limit=10`** (ampliado en #532): búsqueda fuzzy en `siglas`, `nombre`, `apellido1`, `apellido2`; solo activos. `@require_permiso('acceder_usuarios')` (todos los roles).
+**Endpoint unificado (#532):**
 
-Expedientes y entidades con `@require_permiso('acceder_expediente')` (todos los roles tras ADR-013); usuarios con `acceder_usuarios`.
+- **`GET /api/search?q=...&tipos=expedientes,entidades,usuarios,plantillas&limit=10`** → `{'grupos': [{'tipo', 'resultados': [...]}]}`. Recorre un **registro** `BUSCADORES` (tipo → permiso + helper `_buscar_*`) en el orden de `tipos`, **saltando** los tipos cuyo permiso no tenga el rol activo (igual que el sidebar). Añadir una entidad buscable = un helper `_buscar_X(q, limit)` + una línea en el registro (backend) + una línea de config en la isla (frontend).
+
+Búsqueda por entidad (campos): **expedientes** en `numero_at`, `titular.nombre_completo`, `proyecto.titulo`, `municipio.nombre` (match exacto de número primero); **entidades** en `nombre_completo`, `nif`; **usuarios** en `siglas`, `nombre`, `apellido1/2`; **plantillas** en `nombre`, `codigo`, `descripcion`, `variante`. **Sin filtro de `activo`** (#532): el palette busca TODO (activos e inactivos), como los listados, que por defecto no distinguen estado.
+
+Permisos por tipo: expedientes/entidades `acceder_expediente`, usuarios `acceder_usuarios`, plantillas `acceder_plantillas` — todos de los 4 roles tras ADR-013; la **edición** de cada dominio sigue restringida en sus propias rutas.
+
+**Endpoints por-entidad (transitorios):** `GET /api/search/{expedientes,entidades,usuarios}` se conservan como respaldo (comparten los helpers `_buscar_*`, sin deriva) y se **retiran** cuando el unificado quede validado en vivo. No se añaden nuevos: plantillas existe solo en el registro.
 
 #### Recientes en `sessionStorage`
 

@@ -1,10 +1,56 @@
-"""Smoke tests — endpoints de búsqueda del Command Palette (#531).
+"""Smoke tests — endpoints de búsqueda del Command Palette (#531, #532).
 
 Cubre:
-    GET /api/search/expedientes?q=...
+    GET /api/search?q=...&tipos=...   (unificado, #532)
+    GET /api/search/expedientes?q=... (por-entidad, transitorio)
     GET /api/search/entidades?q=...
+    GET /api/search/usuarios?q=...
 """
 import pytest
+
+
+# --- Endpoint unificado (#532) -------------------------------------------------
+
+def test_search_unificado_ok(usuario_supervisor):
+    """GET /api/search con q válida → 200 y clave 'grupos' (lista)."""
+    r = usuario_supervisor.get('/api/search?q=test&tipos=expedientes,entidades')
+    assert r.status_code == 200
+    data = r.get_json()
+    assert 'grupos' in data
+    assert isinstance(data['grupos'], list)
+
+
+def test_search_unificado_q_corto(usuario_supervisor):
+    """q de 1 char → 200, grupos vacío."""
+    r = usuario_supervisor.get('/api/search?q=x')
+    assert r.status_code == 200
+    assert r.get_json()['grupos'] == []
+
+
+def test_search_unificado_plantillas(usuario_supervisor, app):
+    """tipos=plantillas → 200; si hay datos, el grupo trae items bien formados."""
+    with app.app_context():
+        from app.models.plantillas import Plantilla
+        p = Plantilla.query.filter(Plantilla.activo == True).first()
+        if p is None:
+            pytest.skip('No hay plantillas activas sembradas')
+        q = p.nombre[:3]
+
+    r = usuario_supervisor.get(f'/api/search?q={q}&tipos=plantillas')
+    assert r.status_code == 200
+    grupos = r.get_json()['grupos']
+    assert isinstance(grupos, list)
+    assert all(g['tipo'] == 'plantillas' for g in grupos)
+    for g in grupos:
+        for item in g['resultados']:
+            assert item['tipo'] == 'plantilla'
+            assert {'id', 'label', 'breadcrumb', 'url'} <= item.keys()
+
+
+def test_search_unificado_sin_auth_redirige(client):
+    """Sin sesión → no 200."""
+    r = client.get('/api/search?q=test')
+    assert r.status_code != 200
 
 
 def test_search_expedientes_ok(usuario_supervisor, expediente_seed, app):
