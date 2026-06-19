@@ -1,8 +1,8 @@
 # ContextAssembler — Diseño del contrato de variables
 
-> **Fecha:** 2026-04-05 · **Actualizado:** 2026-04-21
-> **Estado:** En construcción — diccionario de variables activo; patrón Variable Registry y ciclo de vida definidos (sesión 2026-04-21).
-> **Referencia de arquitectura:** `DISEÑO_MOTOR_AGNOSTICO.md`
+> **Fecha:** 2026-04-05 · **Actualizado:** 2026-06-18
+> **Estado:** En construcción — diccionario de variables activo; patrón Variable Registry y ciclo de vida definidos (sesión 2026-04-21). Vigencia normativa reencuadrada como propiedad de la regla, no de la variable (ADR-026, sesión 2026-06-18).
+> **Referencia de arquitectura:** `DISEÑO_MOTOR_AGNOSTICO.md` · `decisiones/ADR-026` (vigencia = regla, no variable)
 
 Este documento define el contrato de entrada del ContextAssembler: qué variables
 existen, cómo se tipan, de qué norma proceden y cuál es su estado de implementación.
@@ -97,16 +97,34 @@ vive ahí. Si es calculado, no persiste.
 
 ## Columna Estado — valores y significado
 
+El estado refleja **un único eje: la implementación de la variable** (de papel a código).
+No refleja vigencia normativa (eso es de la regla) ni uso (eso es derivado).
+
 | Valor | Significado |
 |---|---|
 | `definida` | Variable nombrada, tipada y con norma de origen registrada. Puede o no estar en código. |
 | `pendiente de implementar` | Definida aquí pero aún no existe en modelo, ContextAssembler ni motor. |
-| `implementada` | Existe en el modelo de BD (si es `dato`), o en el ContextAssembler (si es `calculado`/`derivado_documento`), y el motor la evalúa. |
-| `obsoleta` | Ya no aplica (norma derogada, diseño cambiado). Mantener fila para trazabilidad; no borrar. |
+| `implementada` | Existe en el modelo de BD (si es `dato`), o en el ContextAssembler (si es `calculado`/`derivado_*`), y el motor la evalúa. Una vez aquí, **se computa siempre**. |
+| `retirada` | El **concepto** que medía ya no existe en el dominio (se eliminó el campo del modelo, desapareció la distinción en la realidad) **y** ningún consumidor la referencia. Mantener fila para trazabilidad. **Nunca se retira por derogación de una norma** — eso desactiva la regla, no la variable. |
 
 > Mantener este campo actualizado es tan importante como la propia definición: es el
 > **inventario de cobertura real del motor**. Cuando una variable pasa a `implementada`,
 > significa que la regla jurídica asociada está activa en producción.
+
+> **Principio (ADR-026) — la vigencia normativa no es un estado de la variable.**
+> Una variable es un hecho del expediente (una realidad física o administrativa),
+> evaluable con independencia de qué norma esté vigente, y puede alimentar varias
+> reglas de normas distintas. Cuando una norma se deroga se desactiva la **regla**
+> (`reglas_motor.activa`) y/o se crea la complementaria; la variable se sigue
+> computando igual. El "uso" de una variable (qué reglas o plantillas la referencian)
+> es derivado e informativo: **nunca impide computarla**.
+>
+> **Por qué se computa siempre:** si una variable dejara de evaluarse y pasara a `null`,
+> el comportamiento queda *descontrolado*, no neutro. En el motor, las actuaciones
+> condicionadas a su `true` se dejarían de bloquear → se ejecutarían indebidamente.
+> En las plantillas, un fragmento gobernado por `true`/`false` pasa a incierto. Una
+> variable, una vez en el catálogo, se computa siempre (valor definido, o `None`
+> deliberado para "no aplica"); nunca se deja caer en silencio.
 
 ---
 
@@ -114,6 +132,12 @@ vive ahí. Si es calculado, no persiste.
 
 Las variables crecen en el paso `MAPEO_CONTEXTO` del protocolo de extracción
 (`GUIA_NORMAS.md §5`). Antes de tocar código, toda variable nueva se define aquí.
+
+> **"Norma de origen" es documental, no dueña del ciclo de vida** (ADR-026). Indica
+> dónde apareció el concepto; puede ser múltiple (varias variables ya citan dos o más
+> normas). Que una de esas normas se derogue no afecta a la variable; afecta a la regla
+> que la usaba. En el modelo, `catalogo_variables.norma_id` es solo la norma principal
+> a efectos de presentación.
 
 | Variable | Tipo | Naturaleza | Norma de origen y descripción | Estado |
 |---|---|---|---|---|
@@ -234,9 +258,11 @@ variables = build(expediente.id)   # dict completo de todas las variables
 resultado  = evaluar('INICIAR', 'FASE', fase.tipo_fase_id, variables)
 ```
 
-`build()` recorre `_REGISTRY` y llama cada función con el contexto del expediente.
-Devuelve un dict plano: `{'intermunicipal': True, 'tension_nominal_kv': 220, ...}`.
-Las variables no aplicables llegan como `None`.
+`build()` consulta `catalogo_variables` (hoy con `activa = True`) y, por cada fila,
+invoca su función en `_REGISTRY` con el contexto del expediente. Devuelve un dict plano:
+`{'intermunicipal': True, 'tension_nominal_kv': 220, ...}`. Las variables no aplicables
+llegan como `None`. *(El flag `activa` resultó ser portante, no vestigial; su posible
+eliminación —pasando `build()` a iterar el registry directamente— se evalúa en #561.)*
 
 `evaluar()` carga las reglas activas para `(accion, sujeto, tipo_sujeto_id)` de BD,
 resuelve cada condición buscando `variables[v.nombre]` en el dict y aplicando el operador
@@ -248,3 +274,8 @@ esa regla se activa.
 Toda variable referenciada en `condiciones_regla` debe existir en `catalogo_variables`
 (integridad referencial por FK) y tener su función en el registry (`activa = true`).
 Un comando `flask sync_variables` puede verificar que ambos lados están alineados.
+
+> La red de seguridad frente a borrar el código de cómputo de una variable se construye
+> con **tests de existencia/resolubilidad** sobre conjuntos enumerables (registry,
+> consultas nombradas, plantillas registradas), no con un registro de qué consumidor usa
+> qué variable. Alcance y diseño en **#561**.
