@@ -2,7 +2,8 @@
 
 **Estado:** Vigente
 **Fecha:** 2026-05-30
-**Relacionado:** #500 (vista de árbol), ADR-016, `app/services/seguimiento.py`,
+**Relacionado:** #500 (vista de árbol), #558 (núcleo unificado), ADR-016,
+`app/services/estado_dominio.py` (núcleo), `app/services/seguimiento.py`,
 mockup `docs/mockups/Mockup_Nodo_Arbol.html`.
 **Supera:** §4.1–§4.4 de `docs/historial/ANALISIS_LISTADO_INTELIGENTE.md` (histórico; allí
 `PUBLICAR`, `REDACTAR`/`FIRMAR` como tareas e `INCORPORAR` ya no existen).
@@ -34,12 +35,14 @@ mockup `docs/mockups/Mockup_Nodo_Arbol.html`.
 
 ## 2. Semántica de colores
 
+Ordenados por urgencia; la prioridad de §5 es coherente con esta escala (#558).
+
 | Color | Significado |
 |---|---|
-| 🔴 Rojo | Acción pendiente del tramitador |
-| 🟡 Amarillo | En espera de algo interno que no depende del tramitador (firma) |
-| 🔵 Azul | En espera de un externo ajeno a la administración (destinatario, boletín) |
-| 🟠 Naranja | Listo para cerrar / reintento disponible |
+| 🔴 Rojo | Acción del tramitador (incl. notificación agotada → procede boletín) |
+| 🟠 Naranja | Gestión nuestra: cerrar fase / 2.º intento de notificación |
+| 🟡 Amarillo | Espera interna que no depende del tramitador (firma); paraliza si falta |
+| 🔵 Azul | Espera de un externo ajeno a la administración (destinatario, boletín) |
 | ⚪ Gris | Espera pasiva (plazo legal, respuesta de administrado u organismo) |
 | 🟢 Verde | Finalizado |
 
@@ -98,8 +101,9 @@ con la **barra de progreso** (§9).
 | Nodo | Situación | Estado | Color |
 |---|---|---|---|
 | Cualquiera | sin hijos (planificado) | PENDIENTE_TRAMITAR | 🔴 |
-| Fase | `PDTE_CIERRE` sin `resultado_fase` | PENDIENTE_ESTUDIO | 🔴 |
-| Fase | `PDTE_CIERRE` con resultado, falta formalizar | PENDIENTE_CERRAR | 🟠 |
+| Fase finalizadora | `PDTE_CIERRE` sin `resultado_fase` (falta decidir) | PENDIENTE_ESTUDIO | 🔴 |
+| Fase finalizadora | `PDTE_CIERRE` con resultado, falta formalizar | PENDIENTE_CERRAR | 🟠 |
+| Fase intermedia | `PDTE_CIERRE` (cierra por certificado; `resultado_fase` NULL) | PENDIENTE_CERRAR | 🟠 |
 | Solicitud | todas las pistas en FIN pero aún EN_TRAMITE | PENDIENTE_CERRAR | 🟠 |
 | Cualquiera | en curso con hijos | **mayor prioridad** del subárbol (§5) |
 | Cualquiera | finalizado | FIN | 🟢 |
@@ -108,23 +112,27 @@ con la **barra de progreso** (§9).
 
 ## 5. Agregación de abajo arriba (colapso) y prioridad
 
-Mismo algoritmo que `seguimiento.py`: se recorre de abajo arriba y prevalece el estado de
-**mayor prioridad**; el contador acumula a través de niveles.
+El núcleo `estado_dominio` (#558) es la única fuente, compartida por la vista de árbol y
+por `seguimiento.py`: se recorre de abajo arriba y prevalece el estado de **mayor
+prioridad**; cada proyección acumula su propio contador.
 
-**Prioridad** (1 = más urgente; alineada con `seguimiento.PRIORIDAD`, refinable):
+**Prioridad canónica** (1 = más urgente; orden total, coherente con el color):
 
 | # | Estado | Color |
 |---|---|---|
 | 1 | PENDIENTE_TRAMITAR | 🔴 |
 | 2 | PENDIENTE_ESTUDIO | 🔴 |
 | 3 | PENDIENTE_REDACTAR | 🔴 |
-| 3 | NOTIFICACION_AGOTADA | 🔴 |
-| 4 | PENDIENTE_FIRMA | 🟡 |
-| 5 | PENDIENTE_NOTIFICAR | 🔵 |
+| 4 | NOTIFICACION_AGOTADA | 🔴 |
+| 5 | PENDIENTE_CERRAR | 🟠 |
 | 6 | NOTIFICACION_FALLIDA | 🟠 |
-| 6 | PENDIENTE_CERRAR | 🟠 |
-| 7 | PENDIENTE_SUBSANAR / PENDIENTE_PLAZOS | ⚪ |
-| 8 | FIN | 🟢 |
+| 7 | PENDIENTE_FIRMA | 🟡 |
+| 8 | PENDIENTE_NOTIFICAR | 🔵 |
+| 9 | PENDIENTE_PLAZOS | ⚪ |
+| 10 | FIN | 🟢 |
+
+`PENDIENTE_SUBSANAR` no es del núcleo: es el relabel de `PENDIENTE_PLAZOS` en la pista SOL
+del seguimiento (mismo gris).
 
 ---
 
@@ -220,15 +228,15 @@ inicio/fin), en el **footer** (raya superior), simple y sin adornos.
   `estado` de dominio). `services/arbol_expediente.py` deberá computarlo por nodo —mirando
   **tipos** de documento consumidos (ELABORAR → `BORRADOR_FIRMA`) y filas **`Notificacion`**
   (resultado + `numero_intento`)— y propagar la mayor prioridad a los no-hoja, **reutilizando
-  `seguimiento.py`** (vía servicio nuevo `estado_semaforo.py`, sin tocar la lógica de pistas).
+  `seguimiento.py`** (hecho en #558 vía el núcleo `estado_dominio.py`).
 - **Plazo (barra):** la v1 semántica usa el `estado` de plazo ya disponible. La proporcional
   (diferida) exigirá el progreso en días hábiles + plazo de **solicitud** y de **lectura de
   notificación** por intento.
 - **Documentos:** sin cambios de backend.
 
-**Deuda a alinear:** `seguimiento.py` tiene hoy `PENDIENTE_ELABORAR` (🟡 único); este modelo lo
-desdobla en `PENDIENTE_REDACTAR` (🔴) + `PENDIENTE_FIRMA` (🟡). Unificar ambos consumidores
-contra este documento al implementar el círculo.
+**Deuda resuelta (#558):** unificada en el núcleo `estado_dominio`. `seguimiento.py` y la
+vista de árbol son ahora proyecciones sobre la misma fuente; `PENDIENTE_ELABORAR` (🟡 único)
+queda desdoblado en `PENDIENTE_REDACTAR` (🔴) + `PENDIENTE_FIRMA` (🟡).
 
 ---
 
@@ -238,4 +246,4 @@ contra este documento al implementar el círculo.
 - Scheduler + Playwright que envíe a firma las tareas en estado FIRMA.
 - Barra de plazo **proporcional** (progreso en días hábiles), plazo de **solicitud** y de
   **lectura de notificación** por intento.
-- Refinar la prioridad numérica fina al unificar con `seguimiento.PRIORIDAD`.
+- ~~Refinar la prioridad numérica fina al unificar con `seguimiento.PRIORIDAD`.~~ Hecho en #558 (§5).
