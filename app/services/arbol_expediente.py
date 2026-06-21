@@ -31,7 +31,7 @@ from app.models.tramites import Tramite
 from app.models.tareas import Tarea
 from app.models.documentos_tarea import DocumentoTarea
 from app.models.documentos import Documento
-from app.services import estado_semaforo as sem
+from app.services import estado_dominio as sem
 
 log = logging.getLogger(__name__)
 
