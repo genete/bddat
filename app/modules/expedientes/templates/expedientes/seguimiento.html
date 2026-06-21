@@ -52,16 +52,21 @@ const sfTipoExpediente = new SelectorFiltro('#sf-tipo-expediente', [
 
 const colsMeta = {{ columns | tojson }};
 
-// Mapas de texto y color por estado interno (§4.2 / §4.3)
+// Mapas de texto y color por estado del núcleo (estado_dominio, #558).
+// La familia de notificar (NOTIFICAR/FALLIDA/AGOTADA) comparte la etiqueta
+// "NOTIFICAR"; lo que escala es el color (azul → naranja → rojo).
 const TEXTO_ESTADO = {
-    'PENDIENTE_TRAMITAR':  'TRAMITAR',
-    'PENDIENTE_ESTUDIO':   'ESTUDIAR',
-    'PENDIENTE_ELABORAR':  'ELABORAR',
-    'PENDIENTE_NOTIFICAR': 'NOTIFICAR',
-    'PENDIENTE_SUBSANAR':  'SUBSANAR',
-    'PENDIENTE_PLAZOS':    'PLAZOS',
-    'PENDIENTE_CERRAR':    'CERRAR',
-    'FIN':                 'FIN',
+    'PENDIENTE_TRAMITAR':   'TRAMITAR',
+    'PENDIENTE_ESTUDIO':    'ESTUDIO',
+    'PENDIENTE_REDACTAR':   'REDACTAR',
+    'PENDIENTE_FIRMA':      'FIRMA',
+    'PENDIENTE_NOTIFICAR':  'NOTIFICAR',
+    'NOTIFICACION_FALLIDA': 'NOTIFICAR',
+    'NOTIFICACION_AGOTADA': 'NOTIFICAR',
+    'PENDIENTE_CERRAR':     'CERRAR',
+    'PENDIENTE_SUBSANAR':   'SUBSANAR',
+    'PENDIENTE_PLAZOS':     'PLAZOS',
+    'FIN':                  'FIN',
 };
 const COLOR_CLASE = {
     'rojo':     'pista-rojo',

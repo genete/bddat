@@ -1,56 +1,65 @@
 """
-estado_semaforo.py — Estado-semáforo (color fino) por nodo del árbol del expediente.
+estado_dominio.py — Núcleo único de reglas de estado del árbol ESFTT.
 
-FUENTE DE VERDAD: docs/referencia/MODELO_ESTADOS_SEMAFORO.md (§2 colores, §3 tareas,
-§4 contenedores, §5 agregación/prioridad). Lo consume `services/arbol_expediente.py`
-para decorar cada nodo con `semaforo {estado, color, propio}`.
+FUENTE DE VERDAD: docs/referencia/MODELO_ESTADOS_SEMAFORO.md.
+Una sola fuente para las dos proyecciones que deducen el estado del mismo árbol de
+dominio (Solicitud → Fase → Trámite → Tarea):
+  - `services/arbol_expediente.py` — proyección por NODO (vista de árbol): decora
+    cada nodo 1:1 y usa el flag `propio`.
+  - `services/seguimiento.py` — proyección por PISTAS (listado de seguimiento):
+    agrega varias fases en una celda, con contador y nota.
 
-Por qué un servicio NUEVO y no `seguimiento.py`:
-  - `seguimiento.py` razona por PISTAS (grupos de fases por tipo), no por nodo del árbol.
-  - Arrastra la deuda `PENDIENTE_ELABORAR` (un único 🟡); este modelo lo desdobla en
-    `PENDIENTE_REDACTAR` 🔴 + `PENDIENTE_FIRMA` 🟡 mirando el tipo de doc BORRADOR_FIRMA.
-  Se reutiliza el *algoritmo* (recorrido abajo-arriba + mayor prioridad), no su código.
-  La unificación de ambos consumidores queda como deuda (MODELO §10).
+De aquí salen, compartidos por ambas: el vocabulario canónico, la regla de hoja
+`estado_tarea`, las reglas de contenedor (`estado_tramite/fase/solicitud/expediente`),
+las tablas `COLOR`/`PRIORIDAD` y el helper `mayor_prioridad`. Lo que NO vive aquí es
+el *alcance* de la agregación (qué nodos compiten) ni las decoraciones propias de
+cada vista (contador/nota/relabel de seguimiento; serialización del árbol).
+
+Unifica la deuda histórica `seguimiento.py`↔`estado_semaforo.py` (MODELO §10, #558):
+vocabulario fino (REDACTAR/FIRMA), escalada de notificar (🔵→🟠→🔴, derivada de
+`Notificacion`) y un único orden de prioridad canónico, coherente con el color
+(🔴 > 🟠 > 🟡 > 🔵 > ⚪ > 🟢).
 
 CONTRATO de las funciones contenedor: devuelven `(estado, propio)`.
-  - `estado`: código del estado-semáforo (agregado del subárbol si el nodo está en curso).
-  - `propio`: True si el nodo "tiene algo que decir POR SÍ MISMO" (sin hijos → TRAMITAR;
-    fase PDTE_CIERRE; solicitud todo-FIN-pero-EN_TRAMITE). El front rellena el círculo
-    cuando `propio` (nodo expandido) o siempre con el color agregado si el nodo está
-    colapsado (MODELO §5/§7). Las tareas (hojas) van siempre rellenas.
+  - `estado`: código de estado de dominio (agregado del subárbol si está en curso).
+  - `propio`: True si el nodo "tiene algo que decir POR SÍ MISMO" (sin hijos →
+    TRAMITAR; fase PDTE_CIERRE; solicitud todo-FIN-pero-EN_TRAMITE). El árbol rellena
+    el círculo cuando `propio` (nodo expandido) o con el color agregado si está
+    colapsado. Las tareas (hojas) van siempre rellenas.
 """
 from __future__ import annotations
 
 from typing import Optional
 
-# --- §2: nombre de color por estado (el front mapea nombre → paleta JdA) ---
+# --- Color por estado (MODELO §2; el front mapea nombre → paleta JdA) ---
+# El orden refleja la prioridad: el color es coherente con la urgencia (#558).
 COLOR: dict[str, str] = {
     'PENDIENTE_TRAMITAR':   'rojo',
     'PENDIENTE_ESTUDIO':    'rojo',
     'PENDIENTE_REDACTAR':   'rojo',
     'NOTIFICACION_AGOTADA': 'rojo',
+    'PENDIENTE_CERRAR':     'naranja',
+    'NOTIFICACION_FALLIDA': 'naranja',
     'PENDIENTE_FIRMA':      'amarillo',
     'PENDIENTE_NOTIFICAR':  'azul',
-    'NOTIFICACION_FALLIDA': 'naranja',
-    'PENDIENTE_CERRAR':     'naranja',
     'PENDIENTE_PLAZOS':     'gris',
-    'PENDIENTE_SUBSANAR':   'gris',
     'FIN':                  'verde',
 }
 
-# --- §5: prioridad (1 = más urgente; se queda el de menor número al agregar) ---
+# --- Prioridad canónica (1 = más urgente; al agregar se queda el de menor número) ---
+# Orden ratificado #558: gradiente de "trabajo del tramitador". Monótono con el color,
+# sin empates entre bandas distintas (el ganador de cada celda es determinista).
 PRIORIDAD: dict[str, int] = {
-    'PENDIENTE_TRAMITAR':   1,
-    'PENDIENTE_ESTUDIO':    2,
-    'PENDIENTE_REDACTAR':   3,
-    'NOTIFICACION_AGOTADA': 3,
-    'PENDIENTE_FIRMA':      4,
-    'PENDIENTE_NOTIFICAR':  5,
-    'NOTIFICACION_FALLIDA': 6,
-    'PENDIENTE_CERRAR':     6,
-    'PENDIENTE_SUBSANAR':   7,
-    'PENDIENTE_PLAZOS':     7,
-    'FIN':                  8,
+    'PENDIENTE_TRAMITAR':   1,   # 🔴 trabajo del tramitador
+    'PENDIENTE_ESTUDIO':    2,   # 🔴 (analizar · decidir resultado de fase finalizadora)
+    'PENDIENTE_REDACTAR':   3,   # 🔴
+    'NOTIFICACION_AGOTADA': 4,   # 🔴 procede publicación en boletín
+    'PENDIENTE_CERRAR':     5,   # 🟠 nuestra gestión (formalizar cierre de fase)
+    'NOTIFICACION_FALLIDA': 6,   # 🟠 2º intento de notificación pendiente
+    'PENDIENTE_FIRMA':      7,   # 🟡 no depende del tramitador, pero paraliza si falta
+    'PENDIENTE_NOTIFICAR':  8,   # 🔵 a la espera de un externo
+    'PENDIENTE_PLAZOS':     9,   # ⚪ espera pasiva
+    'FIN':                  10,  # 🟢
 }
 
 # Tipo de documento cuyo consumo distingue PENDIENTE_FIRMA de PENDIENTE_REDACTAR (§3 ELABORAR).
@@ -58,12 +67,12 @@ _TIPO_BORRADOR_FIRMA = 'BORRADOR_FIRMA'
 
 
 def color(estado: str) -> str:
-    """Nombre de color (§2) de un estado-semáforo; 'gris' si desconocido."""
+    """Nombre de color (MODELO §2) de un estado; 'gris' si desconocido."""
     return COLOR.get(estado, 'gris')
 
 
-def _mayor_prioridad(estados: list[str]) -> str:
-    """Estado de mayor prioridad (menor número §5) de una lista no vacía.
+def mayor_prioridad(estados: list[str]) -> str:
+    """Estado de mayor prioridad (menor número) de una lista no vacía.
 
     Si la lista llega vacía (no debería en un nodo en curso), degrada a FIN.
     """
@@ -78,9 +87,9 @@ def _mayor_prioridad(estados: list[str]) -> str:
 
 def estado_tarea(tarea, plazo: Optional[dict] = None) -> str:
     """
-    Estado-semáforo de una tarea según su tipo (MODELO §3).
+    Estado de dominio de una tarea según su tipo (MODELO §3).
 
-    `plazo` es el dict ya resuelto por arbol_expediente para ESPERAR_PLAZO
+    `plazo` es el dict ya resuelto por la proyección para ESPERAR_PLAZO
     ({estado, fecha_limite, dias_restantes} o None) — no se recalcula aquí.
     Regla general §3: verde = tarea ejecutada (salvo NOTIFICAR, que depende del
     resultado de la notificación).
@@ -148,13 +157,13 @@ def _tiene_borrador_firma(tarea) -> bool:
 
 
 # ---------------------------------------------------------------------------
-# Contenedores (§4) — reciben los estados-semáforo ya computados de sus hijos
+# Contenedores (§4) — reciben los estados ya computados de sus hijos
 # ---------------------------------------------------------------------------
 
 def estado_tramite(tramite, estados_tareas: list[str]) -> tuple[str, bool]:
     if not tramite.tareas:                 # planificado: sin tareas aún
         return ('PENDIENTE_TRAMITAR', True)
-    return (_mayor_prioridad(estados_tareas), False)
+    return (mayor_prioridad(estados_tareas), False)
 
 
 def estado_fase(fase, estados_tramites: list[str]) -> tuple[str, bool]:
@@ -162,13 +171,13 @@ def estado_fase(fase, estados_tramites: list[str]) -> tuple[str, bool]:
         return ('PENDIENTE_TRAMITAR', True)
     if fase.pdte_cierre:                   # todos los trámites cerrados, falta formalizar
         # Solo las finalizadoras requieren resultado_fase_id explícito (el técnico
-        # tiene la última palabra). Las intermedias cierran por documento_resultado_id;
-        # su resultado_fase_id debe quedar NULL.
+        # tiene la última palabra). Las intermedias cierran por documento_resultado_id
+        # (un certificado de fase); su resultado_fase_id debe quedar NULL → van a CERRAR.
         es_finalizadora = getattr(fase.tipo_fase, 'es_finalizadora', False)
         if es_finalizadora and fase.resultado_fase_id is None:
             return ('PENDIENTE_ESTUDIO', True)   # 🔴 falta decidir resultado
         return ('PENDIENTE_CERRAR', True)        # 🟠 falta documento formalizador
-    return (_mayor_prioridad(estados_tramites), False)
+    return (mayor_prioridad(estados_tramites), False)
 
 
 def estado_solicitud(solicitud, estados_fases: list[str]) -> tuple[str, bool]:
@@ -176,7 +185,7 @@ def estado_solicitud(solicitud, estados_fases: list[str]) -> tuple[str, bool]:
         return ('PENDIENTE_TRAMITAR', True)
     if solicitud.estado != 'EN_TRAMITE':   # finalizada / archivada
         return ('FIN', False)
-    agregado = _mayor_prioridad(estados_fases)
+    agregado = mayor_prioridad(estados_fases)
     if agregado == 'FIN':                  # todas las fases en FIN pero sigue EN_TRAMITE
         return ('PENDIENTE_CERRAR', True)  # 🟠 lista para cerrar
     return (agregado, False)
@@ -185,4 +194,4 @@ def estado_solicitud(solicitud, estados_fases: list[str]) -> tuple[str, bool]:
 def estado_expediente(expediente, estados_solicitudes: list[str]) -> tuple[str, bool]:
     if not estados_solicitudes:            # expediente sin solicitudes
         return ('PENDIENTE_TRAMITAR', True)
-    return (_mayor_prioridad(estados_solicitudes), False)
+    return (mayor_prioridad(estados_solicitudes), False)

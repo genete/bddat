@@ -132,10 +132,11 @@ La cascada de la deducción:
 
 Existe además un **expediente.heredado** booleano que marca expedientes legacy con datos incompletos (decoupling del motor).
 
-### 2.2 Estado para listado de seguimiento (`services/seguimiento.py`)
+### 2.2 Estado por pista del listado de seguimiento (`services/seguimiento.py`)
 
-Calcula por solicitud el estado por **pista** (SOL, CONSULTAS, MA, IP, RES). Cada pista devuelve un `EstadoPista(codigo, color, count, nota)`. 11 estados posibles ordenados por prioridad:
-`PENDIENTE_TRAMITAR` (rojo) > `PENDIENTE_ESTUDIO` > `NOTIFICACION_AGOTADA` > `PENDIENTE_ELABORAR` (amarillo) > `NOTIFICACION_FALLIDA` (naranja) > `PENDIENTE_CERRAR` > `PENDIENTE_NOTIFICAR` (azul) > `PENDIENTE_RESULTADO_NOTIFICACION` > `PENDIENTE_SUBSANAR` (gris) > `PENDIENTE_PLAZOS` > `FIN` (verde).
+Proyección por **pista** (SOL, CONSULTAS, MA, IP, RES) del núcleo `services/estado_dominio.py` (#558). Cada pista devuelve un `EstadoPista(codigo, color, count, nota)`. Vocabulario y prioridad canónicos (1 = más urgente, coherente con el color):
+`PENDIENTE_TRAMITAR` (🔴) > `PENDIENTE_ESTUDIO` (🔴) > `PENDIENTE_REDACTAR` (🔴) > `NOTIFICACION_AGOTADA` (🔴) > `PENDIENTE_CERRAR` (🟠) > `NOTIFICACION_FALLIDA` (🟠) > `PENDIENTE_FIRMA` (🟡) > `PENDIENTE_NOTIFICAR` (🔵) > `PENDIENTE_PLAZOS` (⚪) > `FIN` (🟢).
+La familia de notificar comparte la etiqueta "NOTIFICAR" (lo que escala es el color). `PENDIENTE_SUBSANAR` es el relabel de `PENDIENTE_PLAZOS` en la pista SOL.
 
 Insumo directo para reemplazar la hoja Calc "pendiente de *".
 
