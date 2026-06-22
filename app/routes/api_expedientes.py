@@ -491,9 +491,11 @@ def crear_hijo_nodo(expediente_id, padre_tipo, padre_id):
     Bloqueo motor: {error, motivo, url_norma} 422.
     """
     expediente = Expediente.query.get_or_404(expediente_id)
-    denegado = verificar_acceso_expediente(expediente, 'editar')
-    if denegado:
-        return denegado
+    # Hoja vs estructura (ADR-017 §6): bajo trámite se crean tareas (gestionar_tareas,
+    # incluye ADMINISTRATIVO); el resto crea estructura (gestionar_estructura_expediente).
+    accion = 'gestionar_tarea' if padre_tipo == 'tramite' else 'gestionar_estructura'
+    if verificar_acceso_expediente(expediente, accion):
+        return jsonify({'error': 'No tienes permiso para esta acción'}), 403
 
     try:
         padre = _resolver_nodo(expediente, padre_tipo, padre_id)
@@ -575,9 +577,11 @@ def editar_nodo(expediente_id, tipo, nodo_id):
     Respuesta éxito: {ok:true} 200. Bloqueo motor: {error, motivo, url_norma} 422.
     """
     expediente = Expediente.query.get_or_404(expediente_id)
-    denegado = verificar_acceso_expediente(expediente, 'editar')
-    if denegado:
-        return denegado
+    # Hoja (tarea → gestionar_tareas, incluye ADMINISTRATIVO) vs estructura
+    # (solicitud/fase/trámite → gestionar_estructura_expediente). ADR-017 §6.
+    accion = 'gestionar_tarea' if tipo == 'tarea' else 'gestionar_estructura'
+    if verificar_acceso_expediente(expediente, accion):
+        return jsonify({'error': 'No tienes permiso para esta acción'}), 403
 
     try:
         nodo = _resolver_nodo(expediente, tipo, nodo_id)
@@ -628,9 +632,10 @@ def borrar_nodo(expediente_id, tipo, nodo_id):
     Sin body. Respuesta éxito: {ok:true} 200. Bloqueo motor: {error, motivo, url_norma} 422.
     """
     expediente = Expediente.query.get_or_404(expediente_id)
-    denegado = verificar_acceso_expediente(expediente, 'editar')
-    if denegado:
-        return denegado
+    # Mismo criterio hoja/estructura que editar_nodo (ADR-017 §6).
+    accion = 'gestionar_tarea' if tipo == 'tarea' else 'gestionar_estructura'
+    if verificar_acceso_expediente(expediente, accion):
+        return jsonify({'error': 'No tienes permiso para esta acción'}), 403
 
     try:
         nodo = _resolver_nodo(expediente, tipo, nodo_id)

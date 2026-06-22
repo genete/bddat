@@ -1,8 +1,9 @@
 // Cola.jsx — listado transversal de tareas administrativas pendientes (#501, ADR-017 §2).
 //
-// Tabla densa con scroll infinito por cursor. Click en fila → inspector overlay de
-// LECTURA del agregado (Opción A, ADR-023 §9): el fragmento es el detalle de la
-// tarea en lenguaje del árbol, con "Ir a tramitar". La edición se delega al árbol.
+// Usa el chrome de listados de la app (lista-cabecera / lista-scroll-container /
+// card.tabla-bloque / lista-table, ADR-022) para que se vea como el resto. Scroll
+// infinito por cursor. Click en fila → inspector overlay de LECTURA (Opción A,
+// ADR-023 §9): detalle de la tarea en lenguaje del árbol + "Ir a tramitar".
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { api } from '../../shared/api.js'
 
@@ -34,8 +35,8 @@ export default function Cola({ tiposExpediente }) {
     return p
   }, [search, tipoExp, plazo])
 
-  // Carga una página. En reset arranca de cursor 0. El bucle salta ventanas que solo
-  // traen tareas FIN (data vacía pero has_more): así el scroll nunca se "atasca".
+  // Carga una página. El bucle salta ventanas que solo traen tareas FIN (data vacía
+  // pero has_more): así el scroll nunca se "atasca".
   const cargar = useCallback(async (reset = false) => {
     if (cargandoRef.current) return
     if (!reset && !hasMore) return
@@ -60,7 +61,7 @@ export default function Cola({ tiposExpediente }) {
     }
   }, [cursor, hasMore, params])
 
-  // Recargar al cambiar filtros (con debounce para el search).
+  // Recargar al cambiar filtros (debounce para el search).
   useEffect(() => {
     const t = setTimeout(() => cargar(true), 250)
     return () => clearTimeout(t)
@@ -91,67 +92,70 @@ export default function Cola({ tiposExpediente }) {
   }
 
   return (
-    <div className="d-flex flex-column h-100">
-      {/* Filtros */}
-      <div className="d-flex flex-wrap align-items-center gap-2 p-2 border-bottom">
-        <input
-          type="search" className="form-control form-control-sm" style={{ maxWidth: 240 }}
-          placeholder="Nº AT o titular…" value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-        <select className="form-select form-select-sm" style={{ width: 'auto' }}
-                value={tipoExp} onChange={(e) => setTipoExp(e.target.value)}>
-          <option value="">Tipo: todos</option>
-          {tiposExpediente.map((te) => <option key={te.id} value={te.id}>{te.tipo}</option>)}
-        </select>
-        <select className="form-select form-select-sm" style={{ width: 'auto' }}
-                value={plazo} onChange={(e) => setPlazo(e.target.value)}>
-          {PLAZOS.map((p) => <option key={p.v} value={p.v}>{p.t}</option>)}
-        </select>
-        <span className="text-secondary small ms-auto">{filas.length} tarea(s)</span>
+    <div className="d-flex flex-column" style={{ flex: 1, minHeight: 0 }}>
+      {/* C.1 — filtros + contador (chrome de listados) */}
+      <div className="lista-cabecera">
+        <div className="filters-row">
+          <div className="filters">
+            <input type="search" placeholder="Nº AT o titular…" aria-label="Buscar"
+                   value={search} onChange={(e) => setSearch(e.target.value)} />
+            <select value={tipoExp} onChange={(e) => setTipoExp(e.target.value)} aria-label="Tipo de expediente">
+              <option value="">Tipo: todos</option>
+              {tiposExpediente.map((te) => <option key={te.id} value={te.id}>{te.tipo}</option>)}
+            </select>
+            <select value={plazo} onChange={(e) => setPlazo(e.target.value)} aria-label="Plazo">
+              {PLAZOS.map((p) => <option key={p.v} value={p.v}>{p.t}</option>)}
+            </select>
+          </div>
+          <div className="pagination-info"><span>{filas.length}</span> tarea(s)</div>
+        </div>
       </div>
 
-      {/* Tabla densa con scroll infinito */}
-      <div ref={scrollRef} onScroll={onScroll} className="flex-grow-1" style={{ overflowY: 'auto' }}>
-        <table className="table table-hover table-sm align-middle small mb-0">
-          <thead className="table-light" style={{ position: 'sticky', top: 0, zIndex: 1 }}>
-            <tr>
-              <th>AT</th><th>Titular</th><th>Solicitud</th><th>Fase</th>
-              <th>Trámite</th><th>Tarea</th><th>Pendiente</th><th>Tocado por</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filas.map((f) => (
-              <tr key={f.tarea_id}
-                  className={selId === f.tarea_id ? 'table-active' : ''}
-                  style={{ cursor: 'pointer' }}
-                  onClick={() => abrirFila(f)}>
-                <td className="fw-semibold text-nowrap">AT-{f.num_at}</td>
-                <td className="text-truncate" style={{ maxWidth: 160 }} title={f.titular}>{f.titular}</td>
-                <td className="text-nowrap">{f.solicitud}</td>
-                <td className="text-truncate" style={{ maxWidth: 150 }} title={f.fase}>{f.fase}</td>
-                <td className="text-truncate" style={{ maxWidth: 170 }} title={f.tramite}>{f.tramite}</td>
-                <td className="text-nowrap">{f.tarea}</td>
-                <td>
-                  {f.pendiente}
-                  {f.plazo && f.plazo.fecha_limite && (
-                    <span className="badge bg-light text-dark border ms-1">
-                      {f.plazo.dias_restantes != null ? `${f.plazo.dias_restantes} d` : f.plazo.estado}
-                    </span>
-                  )}
-                </td>
-                <td className="text-secondary">{f.tocado_por || '—'}</td>
-              </tr>
-            ))}
-            {!cargando && filas.length === 0 && (
-              <tr>
-                <td colSpan={8} className="text-center text-secondary py-4">
-                  No hay tareas administrativas pendientes con estos filtros.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+      {/* C.2 — contenedor scrollable con la tabla unificada */}
+      <div className="lista-scroll-container" ref={scrollRef} onScroll={onScroll}>
+        <div className="py-3">
+          <div className="card tabla-bloque">
+            <table className="lista-table cola-table">
+              <thead>
+                <tr>
+                  <th>AT</th><th>Titular</th><th>Solicitud</th><th>Fase</th>
+                  <th>Trámite</th><th>Tarea</th><th>Pendiente</th><th>Tocado por</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filas.map((f) => (
+                  <tr key={f.tarea_id}
+                      className={selId === f.tarea_id ? 'table-active' : ''}
+                      style={{ cursor: 'pointer' }}
+                      onClick={() => abrirFila(f)}>
+                    <td className="fw-semibold text-nowrap">AT-{f.num_at}</td>
+                    <td title={f.titular}>{f.titular}</td>
+                    <td className="text-nowrap">{f.solicitud}</td>
+                    <td title={f.fase}>{f.fase}</td>
+                    <td title={f.tramite}>{f.tramite}</td>
+                    <td className="text-nowrap">{f.tarea}</td>
+                    <td>
+                      {f.pendiente}
+                      {f.plazo && f.plazo.fecha_limite && (
+                        <span className="badge bg-light text-dark border ms-1">
+                          {f.plazo.dias_restantes != null ? `${f.plazo.dias_restantes} d` : f.plazo.estado}
+                        </span>
+                      )}
+                    </td>
+                    <td className="text-secondary">{f.tocado_por || '—'}</td>
+                  </tr>
+                ))}
+                {!cargando && filas.length === 0 && (
+                  <tr>
+                    <td colSpan={8} className="text-center text-secondary py-4">
+                      No hay tareas administrativas pendientes con estos filtros.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
         {cargando && (
           <div className="text-center text-secondary small py-3">
             <i className="fas fa-spinner fa-spin me-1" /> Cargando…

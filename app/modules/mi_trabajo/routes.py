@@ -17,7 +17,6 @@ from flask_login import login_required
 
 from app.models.tareas import Tarea
 from app.models.tipos_expedientes import TipoExpediente
-from app.models.tipos_documentos import TipoDocumento
 from app.utils.permisos import verificar_acceso_expediente
 from app.services.detalle_nodo import detalle_de_nodo
 
@@ -38,13 +37,7 @@ def index():
         {'id': te.id, 'tipo': te.tipo}
         for te in TipoExpediente.query.order_by(TipoExpediente.tipo).all()
     ]
-    tipos_doc = [
-        {'id': td.id, 'nombre': td.nombre}
-        for td in TipoDocumento.query.order_by(TipoDocumento.nombre).all()
-    ]
-    return render_template('mi_trabajo/index.html',
-                           tipos_expediente=tipos_expediente,
-                           tipos_doc=tipos_doc)
+    return render_template('mi_trabajo/index.html', tipos_expediente=tipos_expediente)
 
 
 @bp.route('/tarea/<int:tarea_id>/fragmento')

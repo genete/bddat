@@ -84,6 +84,43 @@ def test_administrativo_puede_subir_al_pool(usuario_administrativo, expediente_s
     )
 
 
+_NODO_INEXISTENTE = 999999999
+
+
+def test_admin_puede_editar_tarea_en_arbol(usuario_administrativo, expediente_seed):
+    """Endpoint REAL del árbol (api_expedientes): editar una TAREA pasa el permiso.
+
+    Se usa un nodo inexistente para no mutar datos: si el permiso pasa, el endpoint
+    llega a resolver el nodo y devuelve 404 (no 403/405). Eso prueba gestionar_tareas.
+    """
+    r = usuario_administrativo.patch(
+        f'/api/expedientes/{expediente_seed}/nodo/tarea/{_NODO_INEXISTENTE}',
+        json={'notas': 'x'},
+    )
+    assert r.status_code not in (403, 405), (
+        f'El ADMINISTRATIVO debería poder editar tareas en el árbol (status {r.status_code})'
+    )
+
+
+def test_admin_no_puede_editar_estructura_en_arbol(usuario_administrativo, expediente_seed):
+    """Editar una FASE (estructura) está vedado al ADMINISTRATIVO → 403 JSON (no redirect)."""
+    r = usuario_administrativo.patch(
+        f'/api/expedientes/{expediente_seed}/nodo/fase/{_NODO_INEXISTENTE}',
+        json={'observaciones': 'x'},
+    )
+    assert r.status_code == 403, f'Editar estructura no debería permitirse al admin (status {r.status_code})'
+    assert r.is_json, 'La denegación debe ser 403 JSON, no un redirect (evita el 405 al seguirlo)'
+
+
+def test_admin_no_puede_crear_fase_en_arbol(usuario_administrativo, expediente_seed):
+    """Crear hijo bajo una SOLICITUD (=fase, estructura) vedado al admin → 403."""
+    r = usuario_administrativo.post(
+        f'/api/expedientes/{expediente_seed}/nodo/solicitud/{_NODO_INEXISTENTE}/hijos',
+        json={'tipo_id': 1},
+    )
+    assert r.status_code == 403
+
+
 def test_tramitador_sigue_pudiendo_crear_fase(usuario_tramitador, solicitud_id):
     """Control de no-regresión: el TRAMITADOR conserva la gestión de estructura.
 

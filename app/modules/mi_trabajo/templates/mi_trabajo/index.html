@@ -14,10 +14,9 @@
 
 {% block content %}
   <div id="app-root"
-       class="h-100"
+       style="flex:1; min-height:0; display:flex; flex-direction:column"
        data-react-island="mi-trabajo"
        data-tipos-expediente='{{ tipos_expediente | tojson }}'
-       data-tipos-doc='{{ tipos_doc | tojson }}'
        {{ user_ctx_attrs() }}></div>
 {% endblock %}
 

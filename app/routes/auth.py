@@ -136,7 +136,10 @@ def cambiar_rol(rol_id):
     session['rol_activo_id'] = rol.id
     session['rol_activo_nombre'] = rol.nombre
     flash(f'Rol cambiado a {rol.nombre}.', 'info')
-    return redirect(request.referrer or url_for('dashboard.index'))
+    # Aterrizar en el "home" del nuevo rol (#501): cambiar a ADMINISTRATIVO lleva a su
+    # cola; a tramitador/supervisor, al seguimiento. Evita quedarse en una vista del
+    # rol anterior (p. ej. el seguimiento del tramitador al volver a administrativo).
+    return redirect(url_for(_destino_post_login(rol.nombre)))
 
 
 @bp.route('/logout')

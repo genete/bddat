@@ -8,7 +8,7 @@ Añadir un permiso nuevo = una entrada aquí + el check en el endpoint.
 La evaluación usa siempre el rol ACTIVO de sesión, no todos los roles del usuario,
 para que el cambio de rol tenga efecto real.
 """
-from flask import flash, g, redirect, session, url_for
+from flask import flash, g, redirect, request, session, url_for
 from flask_login import current_user
 
 from app.services import bitacora
@@ -72,6 +72,15 @@ def tiene_permiso(nombre):
     return rol_activo in PERMISOS.get(nombre, set())
 
 
+def _es_peticion_json():
+    """True si la petición es de una API/isla (espera JSON), no una navegación HTML."""
+    return (
+        'application/json' in request.headers.get('Accept', '')
+        or request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+        or request.is_json
+    )
+
+
 def es_expediente_ajeno(expediente):
     """
     True si el rol activo es TRAMITADOR y el expediente no está asignado al usuario.
@@ -119,7 +128,11 @@ def verificar_acceso_expediente(expediente, accion='acceder'):
 
     permiso = _PERMISO_POR_ACCION.get(accion, 'acceder_expediente')
     if not tiene_permiso(permiso):
-        flash(f'No tienes permisos para {accion} este expediente', 'danger')
+        # En peticiones JSON/XHR (API de islas React) NO encolar flash: se quedaría
+        # colgado para la siguiente página HTML. El front muestra su propio aviso y
+        # el endpoint debe devolver 403 JSON (no este redirect, que el fetch seguiría).
+        if not _es_peticion_json():
+            flash(f'No tienes permisos para {accion} este expediente', 'danger')
         return redirect(url_for('expedientes.listado_v2'))
 
     if accion in _ACCIONES_CON_TRAZA_AJENA and es_expediente_ajeno(expediente):

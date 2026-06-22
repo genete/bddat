@@ -25,16 +25,15 @@ function leerJSON(attr, fallback) {
 export default function App() {
   const [tab, setTab] = useState('cola')
   const [tiposExpediente] = useState(() => leerJSON('data-tipos-expediente', []))
-  const [tiposDoc] = useState(() => leerJSON('data-tipos-doc', []))
 
   return (
-    <div className="h-100 d-flex flex-column">
+    <div className="d-flex flex-column" style={{ flex: 1, minHeight: 0 }}>
       {viewbarSlot() && createPortal(
         <Viewbar tab={tab} onTab={setTab} />, viewbarSlot(),
       )}
       {tab === 'cola'
         ? <Cola tiposExpediente={tiposExpediente} />
-        : <SubirDocumento tiposDoc={tiposDoc} />}
+        : <SubirDocumento />}
     </div>
   )
 }
