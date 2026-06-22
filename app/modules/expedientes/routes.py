@@ -67,6 +67,34 @@ def seguimiento():
     )
 
 
+@bp.route('/seguimiento/<int:solicitud_id>/fragmento')
+@login_required
+def seguimiento_fragmento(solicitud_id):
+    """Fragmento de lectura del inspector de seguimiento (ADR-023 §9 / #559).
+
+    Detalle del agregado de una solicitud en el lenguaje del árbol (semáforo por
+    nodo). Solo lectura: la edición se delega al árbol vía "Ir a tramitar". El color
+    de cada nodo sale de estado_dominio (#558) → misma verdad que verás al saltar.
+    """
+    from app.services.arbol_expediente import construir_arbol_solicitud
+
+    sol = Solicitud.query.get_or_404(solicitud_id)
+    resultado = verificar_acceso_expediente(sol.expediente, 'ver')
+    if resultado:
+        return '', 403
+
+    arbol = construir_arbol_solicitud(solicitud_id)
+    if arbol is None:
+        return '', 404
+
+    return render_template(
+        'expedientes/_inspector_seguimiento.html',
+        solicitud=arbol['solicitud'],
+        expediente=arbol['expediente'],
+        cuello_botella=arbol['cuello_botella'],
+    )
+
+
 @bp.route('/')
 @login_required
 def listado_v2():
