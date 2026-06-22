@@ -1,0 +1,134 @@
+{# _inspector_seguimiento.html — Parcial de lectura del inspector de seguimiento (ADR-023 §9 / #559).
+
+   No extiende base_app.html. Inyectado vía AppInspector.open({ fragmentUrl }).
+   Lenguaje = el del ÁRBOL (semáforo por nodo), no el de pistas: el inspector enseña
+   exactamente el mismo estado que verás al saltar al árbol (cero "tercera verdad").
+   El color de cada nodo sale de estado_dominio (#558); aquí solo se pinta.
+
+   Solo lectura: toda mutación se delega al árbol vía "Ir a tramitar" y los enlaces
+   por nodo (?nodo=<tipo>-<id>).
+
+   Contexto:
+     solicitud      — nodo serializado (arbol_expediente._serializar_solicitud)
+     expediente     — {id, numero_at, codigo, titular}
+     cuello_botella — {tipo, id} del nodo de mayor prioridad
+#}
+
+{# Significado del color (paridad con el hover del árbol, Semaforo.jsx) #}
+{% set SIGNIFICADO = {
+    'rojo':     'Acción pendiente del tramitador',
+    'amarillo': 'En espera de firma',
+    'azul':     'En espera de un externo (destinatario o boletín)',
+    'naranja':  'Listo para cerrar o reintento disponible',
+    'gris':     'Espera pasiva (plazo legal o respuesta)',
+    'verde':    'Finalizado',
+} %}
+
+{% set arbol_url = url_for('expedientes.arbol', id=expediente.id) %}
+
+{# Círculo-semáforo: relleno si el nodo "tiene algo que decir por sí mismo" (propio),
+   hueco con borde gris si agrega a sus hijos (idéntico criterio que el árbol). #}
+{% macro sem_dot(s) %}
+<span class="seg-sem{% if s.propio %} is-relleno{% endif %}"
+      data-color="{{ s.color }}" title="{{ SIGNIFICADO.get(s.color, '') }}"></span>
+{% endmacro %}
+
+{# dd/mm/yyyy a partir de un ISO 'YYYY-MM-DD' (sin dependencias de filtros) #}
+{% macro fecha(iso) %}{{ iso[8:10] }}/{{ iso[5:7] }}/{{ iso[0:4] }}{% endmacro %}
+
+<div class="p-3 seg-inspector">
+
+  {# ── Cabecera: solicitud + salto al árbol ─────────────────────────────── #}
+  <div class="d-flex justify-content-between align-items-start gap-2 mb-3">
+    <div class="seg-cab">
+      <div class="d-flex align-items-center gap-2">
+        {{ sem_dot(solicitud.semaforo) }}
+        <span class="fw-semibold">{{ expediente.codigo }}</span>
+        <span class="badge bg-secondary">{{ solicitud.siglas or '—' }}</span>
+      </div>
+      <div class="text-secondary small mt-1">{{ solicitud.descripcion or '' }}</div>
+      <div class="text-secondary small">
+        {{ expediente.titular or '—' }}
+        {% if solicitud.fecha_presentacion %}
+          · Presentada {{ fecha(solicitud.fecha_presentacion) }}
+        {% endif %}
+      </div>
+    </div>
+    <a class="btn btn-primary btn-sm flex-shrink-0"
+       href="{{ arbol_url }}?nodo={{ cuello_botella.tipo }}-{{ cuello_botella.id }}">
+      <i class="fas fa-arrow-right me-1"></i> Ir a tramitar
+    </a>
+  </div>
+
+  {# ── Árbol de lectura: fase → trámite → tarea ─────────────────────────── #}
+  {% if solicitud.fases %}
+  <div class="seg-arbol">
+    {% for fase in solicitud.fases %}
+    <div class="seg-nivel seg-nivel--fase">
+      <a class="seg-nodo" href="{{ arbol_url }}?nodo=fase-{{ fase.id }}">
+        {{ sem_dot(fase.semaforo) }}
+        <i class="fas fa-layer-group seg-ico"></i>
+        <span class="seg-nombre">{{ fase.nombre or fase.tipo_codigo }}</span>
+        {% if fase.resultado %}
+          <span class="badge bg-light text-dark border ms-1">{{ fase.resultado }}</span>
+        {% endif %}
+      </a>
+
+      {% for tramite in fase.tramites %}
+      <div class="seg-nivel seg-nivel--tramite">
+        <a class="seg-nodo" href="{{ arbol_url }}?nodo=tramite-{{ tramite.id }}">
+          {{ sem_dot(tramite.semaforo) }}
+          <i class="fas fa-diagram-project seg-ico"></i>
+          <span class="seg-nombre">{{ tramite.nombre or tramite.tipo_codigo }}</span>
+        </a>
+
+        {% for tarea in tramite.tareas %}
+        <div class="seg-nivel seg-nivel--tarea">
+          <a class="seg-nodo" href="{{ arbol_url }}?nodo=tarea-{{ tarea.id }}">
+            {{ sem_dot(tarea.semaforo) }}
+            <i class="fas fa-circle-dot seg-ico"></i>
+            <span class="seg-nombre">{{ tarea.nombre or tarea.tipo_codigo }}</span>
+
+            {# Decoradores de tarea: plazo (ESPERAR_PLAZO), resultado (NOTIFICAR), docs #}
+            {% if tarea.plazo and tarea.plazo.fecha_limite %}
+              <span class="seg-dec seg-plazo seg-plazo--{{ tarea.plazo.estado|lower }}">
+                <i class="fas fa-hourglass-half"></i>
+                {{ fecha(tarea.plazo.fecha_limite) }}
+                {% if tarea.plazo.dias_restantes is not none %}
+                  ({{ tarea.plazo.dias_restantes }} d)
+                {% endif %}
+              </span>
+            {% endif %}
+            {% if tarea.resultado %}
+              <span class="seg-dec badge bg-light text-dark border">{{ tarea.resultado }}</span>
+            {% endif %}
+            {% if tarea.doc_consumido.presente %}
+              <span class="seg-dec text-secondary" title="Documentos consumidos">
+                <i class="fas fa-arrow-down"></i>{{ tarea.doc_consumido.count }}
+              </span>
+            {% endif %}
+            {% if tarea.doc_producido.presente %}
+              <span class="seg-dec text-secondary" title="Documento producido">
+                <i class="fas fa-arrow-up"></i>{{ tarea.doc_producido.count }}
+              </span>
+            {% endif %}
+          </a>
+          {% if tarea.notas %}
+          <div class="seg-notas text-secondary small">
+            <i class="fas fa-sticky-note me-1"></i>{{ tarea.notas }}
+          </div>
+          {% endif %}
+        </div>
+        {% endfor %}{# tareas #}
+      </div>
+      {% endfor %}{# tramites #}
+    </div>
+    {% endfor %}{# fases #}
+  </div>
+  {% else %}
+  <p class="text-secondary mb-0">
+    <i class="fas fa-info-circle me-1"></i> Esta solicitud aún no tiene fases en tramitación.
+  </p>
+  {% endif %}
+
+</div>{# /seg-inspector #}
