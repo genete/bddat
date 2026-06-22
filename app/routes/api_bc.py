@@ -112,7 +112,7 @@ def _res_error(res):
 def crear_solicitud(exp_id):
     """Crea una o varias solicitudes en el expediente (multi-select de tipos)."""
     expediente = Expediente.query.get_or_404(exp_id)
-    resultado = verificar_acceso_expediente(expediente, 'editar')
+    resultado = verificar_acceso_expediente(expediente, 'gestionar_estructura')
     if resultado:
         return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
 
@@ -152,7 +152,7 @@ def crear_solicitud(exp_id):
 @login_required
 def crear_fase(sol_id):
     sol = Solicitud.query.get_or_404(sol_id)
-    resultado = verificar_acceso_expediente(sol.expediente, 'editar')
+    resultado = verificar_acceso_expediente(sol.expediente, 'gestionar_estructura')
     if resultado:
         return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
 
@@ -183,7 +183,7 @@ _FASES_QUE_REQUIEREN_CERT_IP_CONSULTAS = frozenset({'RESOLUCION', 'AAU_AAUS_INTE
 @login_required
 def crear_tramite(fase_id):
     fase = Fase.query.get_or_404(fase_id)
-    resultado = verificar_acceso_expediente(fase.solicitud.expediente, 'editar')
+    resultado = verificar_acceso_expediente(fase.solicitud.expediente, 'gestionar_estructura')
     if resultado:
         return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
 
@@ -210,7 +210,7 @@ def crear_tramite(fase_id):
 @login_required
 def crear_tarea(tram_id):
     tramite = Tramite.query.get_or_404(tram_id)
-    resultado = verificar_acceso_expediente(tramite.fase.solicitud.expediente, 'editar')
+    resultado = verificar_acceso_expediente(tramite.fase.solicitud.expediente, 'gestionar_tarea')
     if resultado:
         return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
 
@@ -242,7 +242,7 @@ def crear_tarea(tram_id):
 @login_required
 def editar_solicitud(sol_id):
     sol = Solicitud.query.get_or_404(sol_id)
-    resultado = verificar_acceso_expediente(sol.expediente, 'editar')
+    resultado = verificar_acceso_expediente(sol.expediente, 'gestionar_estructura')
     if resultado:
         return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
 
@@ -256,7 +256,7 @@ def editar_solicitud(sol_id):
 @login_required
 def editar_fase(fase_id):
     fase = Fase.query.get_or_404(fase_id)
-    resultado = verificar_acceso_expediente(fase.solicitud.expediente, 'editar')
+    resultado = verificar_acceso_expediente(fase.solicitud.expediente, 'gestionar_estructura')
     if resultado:
         return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
 
@@ -279,7 +279,7 @@ def editar_fase(fase_id):
 @login_required
 def editar_tramite(tram_id):
     tramite = Tramite.query.get_or_404(tram_id)
-    resultado = verificar_acceso_expediente(tramite.fase.solicitud.expediente, 'editar')
+    resultado = verificar_acceso_expediente(tramite.fase.solicitud.expediente, 'gestionar_estructura')
     if resultado:
         return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
 
@@ -293,7 +293,7 @@ def editar_tramite(tram_id):
 @login_required
 def editar_tarea(tarea_id):
     tarea = Tarea.query.get_or_404(tarea_id)
-    resultado = verificar_acceso_expediente(tarea.tramite.fase.solicitud.expediente, 'editar')
+    resultado = verificar_acceso_expediente(tarea.tramite.fase.solicitud.expediente, 'gestionar_tarea')
     if resultado:
         return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
 
@@ -321,7 +321,7 @@ def editar_tarea(tarea_id):
 @login_required
 def borrar_solicitud(sol_id):
     sol = Solicitud.query.get_or_404(sol_id)
-    resultado = verificar_acceso_expediente(sol.expediente, 'editar')
+    resultado = verificar_acceso_expediente(sol.expediente, 'gestionar_estructura')
     if resultado:
         return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
 
@@ -341,7 +341,7 @@ def borrar_solicitud(sol_id):
 @login_required
 def borrar_fase(fase_id):
     fase = Fase.query.get_or_404(fase_id)
-    resultado = verificar_acceso_expediente(fase.solicitud.expediente, 'editar')
+    resultado = verificar_acceso_expediente(fase.solicitud.expediente, 'gestionar_estructura')
     if resultado:
         return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
 
@@ -361,7 +361,7 @@ def borrar_fase(fase_id):
 @login_required
 def borrar_tramite(tram_id):
     tramite = Tramite.query.get_or_404(tram_id)
-    resultado = verificar_acceso_expediente(tramite.fase.solicitud.expediente, 'editar')
+    resultado = verificar_acceso_expediente(tramite.fase.solicitud.expediente, 'gestionar_estructura')
     if resultado:
         return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
 
@@ -381,7 +381,7 @@ def borrar_tramite(tram_id):
 @login_required
 def borrar_tarea(tarea_id):
     tarea = Tarea.query.get_or_404(tarea_id)
-    resultado = verificar_acceso_expediente(tarea.tramite.fase.solicitud.expediente, 'editar')
+    resultado = verificar_acceso_expediente(tarea.tramite.fase.solicitud.expediente, 'gestionar_tarea')
     if resultado:
         return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
 
@@ -405,7 +405,7 @@ def borrar_tarea(tarea_id):
 @login_required
 def finalizar_solicitud(sol_id):
     sol = Solicitud.query.get_or_404(sol_id)
-    resultado = verificar_acceso_expediente(sol.expediente, 'editar')
+    resultado = verificar_acceso_expediente(sol.expediente, 'gestionar_estructura')
     if resultado:
         return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
     if sol.estado == 'RESUELTA':
@@ -417,7 +417,7 @@ def finalizar_solicitud(sol_id):
 @login_required
 def finalizar_fase(fase_id):
     fase = Fase.query.get_or_404(fase_id)
-    resultado = verificar_acceso_expediente(fase.solicitud.expediente, 'editar')
+    resultado = verificar_acceso_expediente(fase.solicitud.expediente, 'gestionar_estructura')
     if resultado:
         return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
     if fase.finalizada:
@@ -429,7 +429,7 @@ def finalizar_fase(fase_id):
 @login_required
 def finalizar_tramite(tram_id):
     tramite = Tramite.query.get_or_404(tram_id)
-    resultado = verificar_acceso_expediente(tramite.fase.solicitud.expediente, 'editar')
+    resultado = verificar_acceso_expediente(tramite.fase.solicitud.expediente, 'gestionar_estructura')
     if resultado:
         return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
     if tramite.finalizado:
@@ -441,7 +441,7 @@ def finalizar_tramite(tram_id):
 @login_required
 def finalizar_tarea(tarea_id):
     tarea = Tarea.query.get_or_404(tarea_id)
-    resultado = verificar_acceso_expediente(tarea.tramite.fase.solicitud.expediente, 'editar')
+    resultado = verificar_acceso_expediente(tarea.tramite.fase.solicitud.expediente, 'gestionar_tarea')
     if resultado:
         return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
     if tarea.ejecutada:
@@ -514,7 +514,7 @@ def crear_traslado(fase_id):
         tipo                     str   'ORGANISMO' | 'TITULAR'
     """
     fase = Fase.query.get_or_404(fase_id)
-    resultado = verificar_acceso_expediente(fase.solicitud.expediente, 'editar')
+    resultado = verificar_acceso_expediente(fase.solicitud.expediente, 'gestionar_estructura')
     if resultado:
         return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
     return _ejecutar_crear_traslado(fase, request.form)
@@ -587,7 +587,7 @@ def _ejecutar_crear_traslado(fase, form):
 @login_required
 def listar_organismos(exp_id):
     expediente = Expediente.query.get_or_404(exp_id)
-    resultado = verificar_acceso_expediente(expediente, 'editar')
+    resultado = verificar_acceso_expediente(expediente, 'gestionar_estructura')
     if resultado:
         return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
 
@@ -599,7 +599,7 @@ def listar_organismos(exp_id):
 @login_required
 def crear_organismo(exp_id):
     expediente = Expediente.query.get_or_404(exp_id)
-    resultado = verificar_acceso_expediente(expediente, 'editar')
+    resultado = verificar_acceso_expediente(expediente, 'gestionar_estructura')
     if resultado:
         return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
 
@@ -644,7 +644,7 @@ def crear_organismo(exp_id):
 @login_required
 def editar_organismo(exp_id, oid):
     expediente = Expediente.query.get_or_404(exp_id)
-    resultado = verificar_acceso_expediente(expediente, 'editar')
+    resultado = verificar_acceso_expediente(expediente, 'gestionar_estructura')
     if resultado:
         return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
 
@@ -667,7 +667,7 @@ def editar_organismo(exp_id, oid):
 @login_required
 def borrar_organismo(exp_id, oid):
     expediente = Expediente.query.get_or_404(exp_id)
-    resultado = verificar_acceso_expediente(expediente, 'editar')
+    resultado = verificar_acceso_expediente(expediente, 'gestionar_estructura')
     if resultado:
         return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
 
@@ -715,7 +715,7 @@ def _calcular_plazo_consulta(expediente, solicitud) -> int:
 @login_required
 def enviar_consultas(fase_id):
     fase = Fase.query.get_or_404(fase_id)
-    resultado = verificar_acceso_expediente(fase.solicitud.expediente, 'editar')
+    resultado = verificar_acceso_expediente(fase.solicitud.expediente, 'gestionar_estructura')
     if resultado:
         return jsonify({'ok': False, 'error': 'Acceso denegado'}), 403
 
