@@ -4,6 +4,13 @@
 **Fecha:** 2026-05-28
 **Issue:** #501
 
+> **Revisión 2026-06-22 (#501, en implementación):**
+> 1. **Permiso "puerta abierta"** — `gestionar_tareas` habilita completar **cualquier tarea ya prevista** (no solo las que la cola ofrece); la frontera es **hoja / estructura**, no el tipo de tarea. Trazabilidad por bitácora. Ver §6.
+> 2. **La cola lista todo `ESPERAR_PLAZO`** que espera un producido externo (ADR-004), no solo el de publicación: ese es el grueso del trabajo administrativo ("incorporar lo que llega"). Ver §2.
+> 3. **Columna y filtro "Tocado por" diferidos** a spin-off (placeholder en v1). Ver §3.
+>
+> **Apartado B (resuelto 2026-06-22):** (a) el `CERT_PLAZO_CUMPLIDO` del Caso B de `ESPERAR_PLAZO` **no se restringe por rol** — lo emite quien sea (admin, técnico o trabajo programado); no es un juicio de valor sino una **comprobación objetiva del motor** (solo emite si el plazo ha vencido), así que su validez es independiente de quién lo registre. Ver §2. (b) La pertenencia documental al EXPEDIENTE y el concepto de **documentos huérfanos** quedan fijados en **ADR-027** (#572).
+
 ---
 
 ## Contexto
@@ -54,13 +61,29 @@ Un tercer modo (📅 Calendario de publicaciones) se difiere a v1.5 — la cola 
 
 #### Origen de filas en la cola
 
+Toda recepción de documento externo se modela como `ESPERAR_PLAZO` esperando su
+`documento_producido` (ADR-004). La cola los lista **todos**, no solo los de publicación —
+el grueso del trabajo administrativo es precisamente incorporar lo que llega del exterior.
+
 | Estado de la tarea | Mensaje en cola |
 |---|---|
 | NOTIFICAR sin doc consumido | "falta doc firmado" |
 | NOTIFICAR con consumido sin producido | "esperando justificante" |
 | NOTIFICAR con producido sin resultado | "esperando registro de resultado" |
 | ELABORAR pendiente para tramitación admin (oficio remisión, etc.) | "pendiente elaborar" |
+| ESPERAR_PLAZO esperando producido externo — información pública | "esperando alegaciones" |
+| ESPERAR_PLAZO esperando producido externo — consulta a organismo | "esperando informe del organismo" |
+| ESPERAR_PLAZO esperando producido externo — requerimiento / subsanación | "esperando subsanación" |
 | ESPERAR_PLAZO de trámite PUBLICACION sin doc producido | "esperando publicación efectiva" |
+
+Los tres orígenes `ESPERAR_PLAZO` no-publicación son **nuevos en la revisión 2026-06-22**.
+La tabla es ilustrativa: el mensaje genérico de cualquier `ESPERAR_PLAZO` que espere un
+producido externo es "esperando recepción", afinable por tipo de trámite. **Añadirlos no
+toca columnas** del listado — solo amplía qué tareas selecciona el agregador y el texto de
+"Pendiente". El **Caso B** (plazo vencido → `CERT_PLAZO_CUMPLIDO`) **lo puede emitir cualquier
+rol**: no es un juicio de valor sino una comprobación del motor (solo emite si el plazo ha
+vencido), por lo que su validez es independiente de quién lo registre — admin, técnico o el
+trabajo programado nocturno.
 
 #### Contexto por fila
 
@@ -85,6 +108,12 @@ Cada fila lleva contexto completo para que el admin sepa rápido qué hace y por
 Click en fila → abre la **vista de árbol del expediente** (ADR-016) con la tarea seleccionada y modo edición activado. El admin actúa sobre la tarea (sube doc, registra resultado, etc.) desde el inspector del árbol, no desde la cola.
 
 ### 3. Modo "Tocado por" como tag puramente informativo
+
+> **Diferido en #501 (revisión 2026-06-22).** La columna y el filtro "Tocado por" se dejan
+> como **placeholder** (`—` atenuado) en v1, por dos motivos que se suman: (a) el modelo de
+> "propiedad emergente" está aún por validar con el equipo administrativo real; (b) requiere
+> agregación por tarea sobre bitácora (coste no trivial en una cola transversal). Se cablea
+> en un spin-off cuando se decida. Ninguna otra columna depende de esta.
 
 - **No hay asignación**, no hay timeout, no hay botón "soltar".
 - La columna "Tocado por" muestra el **último usuario que actuó sobre la tarea**, deducido de la bitácora (`tabla='tareas' AND registro_id=X ORDER BY created_at DESC LIMIT 1`).
@@ -159,6 +188,18 @@ PERMISOS = {
 | Cambiar responsable | `cambiar_responsable` (ya existe) | ✗ |
 
 Esto materializa **"admin actúa solo sobre hojas del árbol"**.
+
+**Principio "puerta abierta" (revisión 2026-06-22, #501).** El permiso es de **grano
+grueso**: `gestionar_tareas` habilita **completar cualquier tarea ya prevista** —incluida
+ANALIZAR— sin discriminar por tipo de tarea ni por trámite. La frontera real es **hoja sí /
+estructura no**: el admin nunca **tramita** (crear trámites, fases, solicitudes y sus
+ancestros) — eso es `gestionar_estructura_expediente`, propio del rol TRAMITADOR ("tramitar"
+es literalmente su función). Se decide **dejar la puerta abierta a propósito**: en caso de
+necesidad el admin puede impulsar tareas que normalmente hace el tramitador, y eso beneficia
+al sistema. La **bitácora** registra quién hizo qué, de modo que la apertura no compromete la
+trazabilidad. El admin no tiene capada la búsqueda de expedientes ni la entrada al árbol; el
+camino para cualquier tarea es siempre el mismo: hacia el árbol. La cola (§2) solo **ofrece**
+el subconjunto que es trabajo administrativo típico — es una guía, no un límite de acceso.
 
 En la vista de árbol del expediente, las acciones (botón Crear hijo, menú contextual Crear/Borrar sobre nodos no-tarea) se filtran por permiso: el admin las ve atenuadas con tooltip explicativo, o no las ve, según política — refinable en implementación.
 
