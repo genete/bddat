@@ -4,6 +4,18 @@ from app.models.usuarios import Usuario
 
 bp = Blueprint('auth', __name__, url_prefix='/auth')
 
+# Roles que aterrizan en "Mi trabajo" tras login (#501, ADR-017 §1). La vista se
+# adapta al rol: ADMINISTRATIVO ve la cola; TRAMITADOR/SUPERVISOR van al seguimiento.
+# ADMIN sigue aterrizando en el dashboard.
+_ROLES_MI_TRABAJO = {'ADMINISTRATIVO', 'TRAMITADOR', 'SUPERVISOR'}
+
+
+def _destino_post_login(rol_nombre):
+    """Endpoint de aterrizaje tras login según el rol activo (#501)."""
+    if rol_nombre in _ROLES_MI_TRABAJO:
+        return 'mi_trabajo.index'
+    return 'dashboard.index'
+
 
 @bp.route('/login', methods=['GET', 'POST'])
 def login():
@@ -43,7 +55,7 @@ def login():
             session['rol_activo_nombre'] = rol.nombre
             flash(f'Bienvenido, {usuario.nombre}! Trabajando como {rol.nombre}.', 'success')
             next_page = session.pop('next_after_rol', None) or request.args.get('next')
-            return redirect(next_page if next_page else url_for('dashboard.index'))
+            return redirect(next_page if next_page else url_for(_destino_post_login(rol.nombre)))
 
         # Primera pasada: validar credenciales
         siglas = request.form.get('siglas')
@@ -66,7 +78,7 @@ def login():
                 session['rol_activo_nombre'] = rol.nombre
                 flash(f'Bienvenido, {usuario.nombre}!', 'success')
                 next_page = request.args.get('next')
-                return redirect(next_page if next_page else url_for('dashboard.index'))
+                return redirect(next_page if next_page else url_for(_destino_post_login(rol.nombre)))
             else:
                 # Guardar usuario pendiente y next en sesión para la segunda pasada
                 session['pending_login_id'] = usuario.id

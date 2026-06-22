@@ -1,0 +1,71 @@
+{# _inspector_cola.html — Parcial de lectura del inspector de la cola (ADR-023 §9 / #501).
+
+   No extiende base_app. Inyectado vía AppInspector.open({ fragmentUrl }).
+   Reutiliza el payload de detalle_nodo (mismo detalle que el inspector del árbol):
+   campos, documentos y plazo de la tarea. Solo lectura — la edición se delega al
+   árbol vía "Ir a tramitar" (deep link al nodo en modo edición).
+
+   Contexto:
+     detalle      — payload de services.detalle_nodo.detalle_de_nodo (tarea)
+     expediente   — Expediente de la tarea
+     tarea_id     — id de la tarea (para el deep link)
+#}
+<div class="p-3 cola-inspector">
+
+  {# ── Cabecera: referencia (ancestros) + cerrar ─────────────────────────── #}
+  <div class="d-flex justify-content-between align-items-start gap-2 mb-3">
+    <div class="text-secondary small">{{ detalle.referencia }}</div>
+    <button type="button" class="btn-close flex-shrink-0"
+            data-app-inspector-close aria-label="Cerrar"></button>
+  </div>
+
+  {# ── Plazo (solo ESPERAR_PLAZO) ────────────────────────────────────────── #}
+  {% if detalle.plazo and detalle.plazo.fecha_limite %}
+  <div class="alert alert-light border py-2 px-3 mb-3 small">
+    <i class="fas fa-hourglass-half me-1"></i>
+    <strong>Plazo:</strong> {{ detalle.plazo.fecha_limite }}
+    {% if detalle.plazo.dias_restantes is not none %}
+      ({{ detalle.plazo.dias_restantes }} d)
+    {% endif %}
+    {% if detalle.plazo.estado %}
+      · {{ detalle.plazo.estado }}
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {# ── Campos del nodo ───────────────────────────────────────────────────── #}
+  {% if detalle.campos %}
+  <dl class="row mb-3 small gx-2 gy-1">
+    {% for c in detalle.campos %}
+    <dt class="col-5 text-secondary fw-normal">{{ c.etiqueta }}</dt>
+    <dd class="col-7 mb-0">{{ c.valor }}</dd>
+    {% endfor %}
+  </dl>
+  {% endif %}
+
+  {# ── Documentos vinculados ─────────────────────────────────────────────── #}
+  {% if detalle.documentos %}
+  <div class="mb-3">
+    <div class="fw-semibold small mb-1">Documentos</div>
+    <ul class="list-unstyled small mb-0">
+      {% for d in detalle.documentos %}
+      <li class="mb-1">
+        <span class="badge bg-light text-dark border me-1">{{ d.rol|capitalize }}</span>
+        <a href="{{ d.enlace }}" target="_blank" rel="noopener">{{ d.nombre }}</a>
+        {% if d.tipo_doc %}<span class="text-secondary">· {{ d.tipo_doc }}</span>{% endif %}
+        {% if d.fecha %}<span class="text-secondary">· {{ d.fecha }}</span>{% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% else %}
+  <p class="text-secondary small">Sin documentos vinculados todavía.</p>
+  {% endif %}
+
+  {# ── CTA: la edición vive en el árbol (deep link a la tarea) ────────────── #}
+  <a class="btn btn-primary btn-sm w-100"
+     href="{{ url_for('expedientes.arbol', id=expediente.id) }}?nodo=tarea-{{ tarea_id }}">
+    <i class="fas fa-arrow-right me-1"></i> Ir a tramitar
+  </a>
+
+</div>
