@@ -132,12 +132,8 @@ const renderFns = {
     'pista_MA':        (val) => renderPista(val),
     'pista_IP':        (val) => renderPista(val),
     'pista_RES':       (val) => renderPista(val),
-
-    '_acciones': (val, item) =>
-        `<a href="/expedientes/${item.expediente_id}/arbol?nodo=solicitud-${item.id}"
-             class="btn-accion-ver">
-            <i class="fas fa-eye"></i> Ver
-         </a>`,
+    // La columna _acciones (type:'acciones') la omite el modo selección de
+    // ScrollInfinito: la fila entera abre el inspector (ADR-023 / #559).
 };
 
 const columns = colsMeta.map(col =>
@@ -210,6 +206,12 @@ const scrollInfinito = new SeguimientoScroll({
     tableClass:  '.seguimiento-table',
     entityLabel: 'solicitudes',
     columns,
+    // Modo selección (ADR-023 / #559): click en fila → inspector de lectura del
+    // agregado; la edición se delega al árbol vía "Ir a tramitar".
+    selection: {
+        fragmentUrl: id   => `/expedientes/seguimiento/${id}/fragmento`,
+        title:       item => `AT-${item.num_at} · ${item.tipo_solicitud || ''}`,
+    },
 });
 
 // FiltrosSeguimiento extiende FiltrosListado para gestionar los dos filtros
@@ -248,6 +250,26 @@ class FiltrosSeguimiento extends FiltrosListado {
 }
 
 const filtros = new FiltrosSeguimiento(scrollInfinito);
+
+// ===== SYNC INSPECTOR ↔ URL ?sel (ADR-023 §1, igual que entidades) =====
+function _updateSelParam(selId) {
+    const url = new URL(location.href);
+    if (selId) url.searchParams.set('sel', selId);
+    else url.searchParams.delete('sel');
+    history.replaceState(null, '', url.toString());
+}
+document.addEventListener('inspector:opened',  e => _updateSelParam(e.detail.selId));
+document.addEventListener('inspector:swapped', e => _updateSelParam(e.detail.selId));
+document.addEventListener('inspector:closed',  () => _updateSelParam(null));
+
+// Abrir el inspector si la URL trae ?sel=<solicitud_id> al cargar.
+const _selParam = new URLSearchParams(location.search).get('sel');
+if (_selParam && window.AppInspector) {
+    AppInspector.open({
+        selId:       _selParam,
+        fragmentUrl: `/expedientes/seguimiento/${_selParam}/fragmento`,
+    });
+}
 
 // Reparte el espacio sobrante: TITULAR 40% / PROYECTO 60% (mínimo 100px cada uno)
 // CSS calc() no funciona con rem en table-layout:fixed → medimos el DOM.

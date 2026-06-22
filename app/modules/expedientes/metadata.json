@@ -36,8 +36,7 @@
       { "key": "pista_CONSULTAS",      "label": "CONSULTAS",        "type": "custom" },
       { "key": "pista_MA",             "label": "MA",               "type": "custom" },
       { "key": "pista_IP",             "label": "IP",               "type": "custom" },
-      { "key": "pista_RES",            "label": "RESOLUCI\u00d3N",  "type": "custom" },
-      { "key": "_acciones",            "label": "",                 "type": "custom" }
+      { "key": "pista_RES",            "label": "RESOLUCI\u00d3N",  "type": "custom" }
     ]
   }
 }
