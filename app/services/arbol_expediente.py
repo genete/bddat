@@ -55,6 +55,44 @@ def _sumar_agregados(acc: dict, otro: dict) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Opciones de carga ansiosa (compartidas por el árbol completo y la solicitud única)
+# ---------------------------------------------------------------------------
+
+def _opciones_solicitud() -> list:
+    """Eager-loading de la jerarquía Solicitud→Fase→Trámite→Tarea→Documento.
+
+    selectinload para colecciones (evita el producto cartesiano de joinedload
+    anidado) + joinedload para escalares → sin N+1. Lo comparten construir_arbol
+    (todas las solicitudes del expediente) y construir_arbol_solicitud (una sola).
+    """
+    return [
+        joinedload(Solicitud.tipo_solicitud),
+        joinedload(Solicitud.documento_solicitud),
+        selectinload(Solicitud.fases).joinedload(Fase.tipo_fase),
+        selectinload(Solicitud.fases).joinedload(Fase.resultado_fase),
+        selectinload(Solicitud.fases)
+        .selectinload(Fase.tramites).joinedload(Tramite.tipo_tramite),
+        selectinload(Solicitud.fases)
+        .selectinload(Fase.tramites)
+        .selectinload(Tramite.tareas).joinedload(Tarea.tipo_tarea),
+        # Documento + tipo_doc (detectar BORRADOR_FIRMA en ELABORAR, §3).
+        selectinload(Solicitud.fases)
+        .selectinload(Fase.tramites)
+        .selectinload(Tramite.tareas)
+        .selectinload(Tarea.vinculos_documento)
+        .joinedload(DocumentoTarea.documento)
+        .joinedload(Documento.tipo_doc),
+        # Documento + notificacion (resultado/intento de NOTIFICAR, §3).
+        selectinload(Solicitud.fases)
+        .selectinload(Fase.tramites)
+        .selectinload(Tramite.tareas)
+        .selectinload(Tarea.vinculos_documento)
+        .joinedload(DocumentoTarea.documento)
+        .joinedload(Documento.notificacion),
+    ]
+
+
+# ---------------------------------------------------------------------------
 # API pública
 # ---------------------------------------------------------------------------
 
@@ -86,31 +124,7 @@ def construir_arbol(expediente_id: int) -> Optional[dict]:
         solicitudes = (
             Solicitud.query
             .filter_by(expediente_id=expediente_id)
-            .options(
-                joinedload(Solicitud.tipo_solicitud),
-                joinedload(Solicitud.documento_solicitud),
-                selectinload(Solicitud.fases).joinedload(Fase.tipo_fase),
-                selectinload(Solicitud.fases).joinedload(Fase.resultado_fase),
-                selectinload(Solicitud.fases)
-                .selectinload(Fase.tramites).joinedload(Tramite.tipo_tramite),
-                selectinload(Solicitud.fases)
-                .selectinload(Fase.tramites)
-                .selectinload(Tramite.tareas).joinedload(Tarea.tipo_tarea),
-                # Documento + tipo_doc (detectar BORRADOR_FIRMA en ELABORAR, §3).
-                selectinload(Solicitud.fases)
-                .selectinload(Fase.tramites)
-                .selectinload(Tramite.tareas)
-                .selectinload(Tarea.vinculos_documento)
-                .joinedload(DocumentoTarea.documento)
-                .joinedload(Documento.tipo_doc),
-                # Documento + notificacion (resultado/intento de NOTIFICAR, §3).
-                selectinload(Solicitud.fases)
-                .selectinload(Fase.tramites)
-                .selectinload(Tramite.tareas)
-                .selectinload(Tarea.vinculos_documento)
-                .joinedload(DocumentoTarea.documento)
-                .joinedload(Documento.notificacion),
-            )
+            .options(*_opciones_solicitud())
             .order_by(Solicitud.id)
             .all()
         )
@@ -128,6 +142,88 @@ def construir_arbol(expediente_id: int) -> Optional[dict]:
     exp_data['semaforo'] = _semaforo(est_exp, propio_exp)
 
     return {'expediente': exp_data, 'solicitudes': sols_data}
+
+
+def construir_arbol_solicitud(solicitud_id: int) -> Optional[dict]:
+    """
+    Árbol serializado de UNA solicitud para el inspector de seguimiento (#559).
+
+    Reutiliza el serializador por nodo del árbol completo (`_serializar_solicitud`)
+    cargando solo la solicitud pedida con el mismo eager-loading — no el expediente
+    entero. Así el inspector enseña EXACTAMENTE el mismo estado/semáforo que el árbol
+    al que delega la edición (cero "tercera verdad": el color sale de estado_dominio,
+    #558).
+
+    Devuelve None si la solicitud no existe o la BD no está disponible. Si existe:
+        {
+          'solicitud':      <nodo serializado, ADR-016 §16>,
+          'expediente':     {'id', 'numero_at', 'codigo', 'titular'},  # contexto del salto
+          'cuello_botella': {'tipo', 'id'},  # nodo de mayor prioridad → "Ir a tramitar"
+        }
+    """
+    try:
+        sol = (
+            Solicitud.query
+            .options(
+                joinedload(Solicitud.expediente).joinedload(Expediente.titular),
+                *_opciones_solicitud(),
+            )
+            .get(solicitud_id)
+        )
+    except (OperationalError, ProgrammingError) as exc:
+        log.warning('arbol_expediente: BD no disponible para solicitud %s — %s', solicitud_id, exc)
+        return None
+
+    if sol is None:
+        return None
+
+    sol_data = _serializar_solicitud(sol)
+    exp = sol.expediente
+
+    return {
+        'solicitud': sol_data,
+        'expediente': {
+            'id': exp.id if exp else None,
+            'numero_at': exp.numero_at if exp else None,
+            'codigo': f'AT-{exp.numero_at}' if exp else None,
+            'titular': exp.titular.nombre_completo if exp and exp.titular else None,
+        },
+        'cuello_botella': _cuello_botella(sol_data),
+    }
+
+
+def _cuello_botella(sol_data: dict) -> dict:
+    """
+    Nodo de mayor prioridad del subárbol de una solicitud → destino de "Ir a tramitar".
+
+    Recorre el árbol ya serializado y se queda con el nodo cuyo estado tiene la menor
+    PRIORIDAD del núcleo (más urgente). A igualdad de prioridad prefiere el nodo más
+    profundo (la tarea concreta sobre su trámite/fase), que es la acción accionable.
+
+    Si nada gana a la propia solicitud (p. ej. todo en FIN pero pendiente de cerrar),
+    devuelve la solicitud. Siempre devuelve {'tipo', 'id'} navegable con ?nodo.
+    """
+    mejor = {
+        'tipo': 'solicitud',
+        'id': sol_data['id'],
+        'prio': sem.PRIORIDAD.get(sol_data['semaforo']['estado'], 99),
+        'prof': 0,
+    }
+
+    def _visitar(nodo: dict, prof: int) -> None:
+        nonlocal mejor
+        prio = sem.PRIORIDAD.get(nodo['semaforo']['estado'], 99)
+        if prio < mejor['prio'] or (prio == mejor['prio'] and prof > mejor['prof']):
+            mejor = {'tipo': nodo['tipo'], 'id': nodo['id'], 'prio': prio, 'prof': prof}
+        # Cada nivel guarda sus hijos bajo una única clave (fases/tramites/tareas).
+        for clave in ('fases', 'tramites', 'tareas'):
+            for hijo in nodo.get(clave, []):
+                _visitar(hijo, prof + 1)
+
+    for fase in sol_data['fases']:
+        _visitar(fase, 1)
+
+    return {'tipo': mejor['tipo'], 'id': mejor['id']}
 
 
 def _semaforo(estado: str, propio: bool) -> dict:
@@ -254,6 +350,7 @@ def _serializar_tarea(tarea, tramite) -> tuple[dict, dict]:
         'estado': tarea.estado,
         'doc_consumido': {'presente': bool(consumidos), 'count': len(consumidos)},
         'doc_producido': {'presente': producido is not None, 'count': 1 if producido is not None else 0},
+        'notas': tarea.notas or None,
         'plazo': None,       # solo ESPERAR_PLAZO
         'resultado': None,   # solo NOTIFICAR
     }
