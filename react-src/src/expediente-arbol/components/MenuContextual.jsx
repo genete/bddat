@@ -5,7 +5,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { useArbolStore } from '../store.js'
 import { api } from '../../shared/api.js'
 import { showToast } from '../../shared/ui/toast.js'
-import { tienePermiso } from '../../shared/auth.js'
+import { puedeEditarNodo, puedeCrearHijoDe } from '../../shared/auth.js'
 
 async function copiarReferencia(ref) {
   try {
@@ -71,7 +71,8 @@ export default function MenuContextual() {
   const py = Math.min(y, window.innerHeight - MENU_H - 8)
 
   const esTarea    = sel.tipo === 'tarea'
-  const puedeEditar = tienePermiso('editar_expediente') && sel.tipo !== 'expediente'
+  const puedeEditar    = puedeEditarNodo(sel.tipo) && sel.tipo !== 'expediente'
+  const puedeCrearHijo = puedeCrearHijoDe(sel.tipo)
 
   const tipos        = tiposCreables?.tipos || []
   const permitidos   = tipos.filter((t) => t.permitido)
@@ -114,6 +115,7 @@ export default function MenuContextual() {
       {/* ── Nodo no-tarea ── */}
       {!esTarea && (
         <>
+          {puedeCrearHijo && (
           <div className="arbol-menu__submenu-wrap"
                onMouseEnter={() => setSubmenuActivo('crear-hijo')}
                onMouseLeave={() => setSubmenuActivo(null)}>
@@ -148,6 +150,7 @@ export default function MenuContextual() {
               </div>
             )}
           </div>
+          )}
           {puedeEditar && (
             <div className="arbol-menu__item" onClick={handleEditar}>✏️ Editar</div>
           )}

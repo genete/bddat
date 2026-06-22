@@ -339,7 +339,7 @@ def generar_cert(tarea_id):
     """Genera el certificado de plazo cumplido para una tarea ESPERAR_PLAZO."""
     from app.services.certificados import crear_cert
     tarea = Tarea.query.get_or_404(tarea_id)
-    resultado = verificar_acceso_expediente(tarea.tramite.fase.solicitud.expediente, 'editar')
+    resultado = verificar_acceso_expediente(tarea.tramite.fase.solicitud.expediente, 'gestionar_tarea')
     if resultado:
         return resultado
     try:
@@ -543,9 +543,13 @@ def pool_registrar_rutas(id):
     Recibe JSON: [{ruta, tipo_doc_id, fecha_administrativa, asunto, prioridad}, ...]
     donde ruta es relativa a FILESYSTEM_BASE (con '/' como separador).
     Almacena la ruta absoluta normalizada en Documento.url.
+
+    Permiso 'subir_documento' (ADR-027 / #501): aportar al pool no edita el
+    expediente — el documento nace sin vínculo (huérfano) y es el técnico quien
+    decide si lo encaja. Sin limitación de rol.
     """
     expediente = Expediente.query.get_or_404(id)
-    resultado = verificar_acceso_expediente(expediente, 'editar')
+    resultado = verificar_acceso_expediente(expediente, 'subir_documento')
     if resultado:
         return resultado
 
@@ -631,9 +635,12 @@ def pool_registrar_url_externa(id):
     """
     Registra una URL externa en el pool (BOE, Notifica, sede electrónica, etc.)
     sin subir ningún fichero. Recibe JSON, devuelve JSON.
+
+    Permiso 'subir_documento' (ADR-027 / #501): aportar al pool no edita el
+    expediente; sin limitación de rol (igual que pool_registrar_rutas).
     """
     expediente = Expediente.query.get_or_404(id)
-    resultado = verificar_acceso_expediente(expediente, 'editar')
+    resultado = verificar_acceso_expediente(expediente, 'subir_documento')
     if resultado:
         return resultado
 

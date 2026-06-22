@@ -10,7 +10,7 @@ import React, { useMemo, useCallback } from 'react'
 import { ReactFlow, Background, Controls } from '@xyflow/react'
 import { useArbolStore } from '../store.js'
 import { construirGrafo } from '../layout.js'
-import { tienePermiso } from '../../shared/auth.js'
+import { puedeEditarNodo } from '../../shared/auth.js'
 import NodoExpediente from './nodos/NodoExpediente.jsx'
 import NodoSolicitud from './nodos/NodoSolicitud.jsx'
 import NodoFase from './nodos/NodoFase.jsx'
@@ -57,7 +57,7 @@ export default function Arbol() {
   const onNodeDoubleClick = useCallback(
     (_, node) => {
       if (node.data.tipo === 'tareas') return
-      if (!tienePermiso('editar_expediente')) return
+      if (!puedeEditarNodo(node.data.tipo)) return
       entrarEdicion({ tipo: node.data.tipo, id: node.data.id })
     },
     [entrarEdicion],

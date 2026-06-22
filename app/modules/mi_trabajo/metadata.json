@@ -1,0 +1,13 @@
+{
+  "module": "mi_trabajo",
+  "name": "Mi trabajo",
+  "icon": "fa-inbox",
+  "order": 5,
+  "permissions": {
+    "list": ["ADMIN", "SUPERVISOR", "TRAMITADOR", "ADMINISTRATIVO"]
+  },
+  "navigation": {
+    "label": "Mi trabajo",
+    "route": "mi_trabajo.index"
+  }
+}

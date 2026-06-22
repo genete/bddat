@@ -8,7 +8,7 @@ import React from 'react'
 import { useArbolStore, selectHayCambios } from '../store.js'
 import { api } from '../../shared/api.js'
 import { showToast } from '../../shared/ui/toast.js'
-import { tienePermiso } from '../../shared/auth.js'
+import { puedeEditarNodo } from '../../shared/auth.js'
 import Semaforo from './nodos/Semaforo.jsx'
 import Despensa from './Despensa.jsx'
 
@@ -282,8 +282,8 @@ function Editor() {
   const firstRef = React.useRef(null)
   React.useEffect(() => { if (firstRef.current) firstRef.current.focus() }, [campos])
 
-  const puedeBorrar = tienePermiso('editar_expediente') &&
-                      seleccion && seleccion.tipo !== 'expediente'
+  const puedeBorrar = seleccion && seleccion.tipo !== 'expediente' &&
+                      puedeEditarNodo(seleccion.tipo)
 
   if (cargando) return <div className="text-muted small">Cargando editor…</div>
   if (!campos.length)
@@ -384,7 +384,7 @@ export default function Inspector() {
   const nodo = buscarNodo(arbol, seleccion)
   if (modoEdicion) return <InspectorEdicion nodo={nodo} />
   const esHoja = seleccion.tipo === 'tarea'
-  const puedeEditar = tienePermiso('editar_expediente')
+  const puedeEditar = puedeEditarNodo(seleccion.tipo)
 
   return (
     <div className="p-3 d-flex flex-column h-100">

@@ -1,0 +1,25 @@
+{# index.html — Vista "Mi trabajo" del administrativo (#501, ADR-017).
+
+   Isla React "mi-trabajo" sobre base_app. La viewbar (título + tabs
+   [Cola] [Subir documento]) la renderiza la propia isla por portal sobre el slot,
+   igual que el árbol (#523). El inspector de la cola usa el overlay global del
+   shell (AppInspector.open) — no se declara {% block inspector %}. #}
+{% extends "layout/base_app.html" %}
+
+{% block title %}Mi trabajo{% endblock %}
+
+{% block viewbar %}
+  <div id="mi-trabajo-viewbar-slot" style="display:contents"></div>
+{% endblock %}
+
+{% block content %}
+  <div id="app-root"
+       style="flex:1; min-height:0; display:flex; flex-direction:column"
+       data-react-island="mi-trabajo"
+       data-tipos-expediente='{{ tipos_expediente | tojson }}'
+       {{ user_ctx_attrs() }}></div>
+{% endblock %}
+
+{% block extra_js %}
+  {{ react_bundle('mi-trabajo') }}
+{% endblock %}
