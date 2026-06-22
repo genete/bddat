@@ -51,7 +51,7 @@
     ]
   },
   "src/expediente-arbol/index.jsx": {
-    "file": "bundle.expediente-arbol.CmEm8cdo.js",
+    "file": "bundle.expediente-arbol.CexMODXC.js",
     "name": "expediente-arbol",
     "src": "src/expediente-arbol/index.jsx",
     "isEntry": true,
@@ -62,6 +62,16 @@
     ],
     "css": [
       "asset.expediente-arbol.hbg5rhwl.css"
+    ]
+  },
+  "src/mi-trabajo/index.jsx": {
+    "file": "bundle.mi-trabajo.DiB4Xv3L.js",
+    "name": "mi-trabajo",
+    "src": "src/mi-trabajo/index.jsx",
+    "isEntry": true,
+    "imports": [
+      "_chunk.toast.JponFgs_.js",
+      "_chunk.api.D03Nd58a.js"
     ]
   }
 }

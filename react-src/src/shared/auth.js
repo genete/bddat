@@ -42,3 +42,21 @@ export function getRolActivo() {
 export function tienePermiso(nombre) {
   return getPermisos().includes(nombre)
 }
+
+// Permisos del árbol por tipo de nodo (ADR-017 §6 / #501). Frontera hoja/estructura:
+// las tareas se gobiernan con gestionar_tareas (incluye ADMINISTRATIVO); la estructura
+// (solicitud/fase/trámite) con gestionar_estructura_expediente; el expediente con
+// editar_expediente. El backend impone lo mismo; esto solo oculta botones que darían 403.
+
+export function puedeEditarNodo(tipo) {
+  if (tipo === 'tarea') return tienePermiso('gestionar_tareas')
+  if (tipo === 'expediente') return tienePermiso('editar_expediente')
+  return tienePermiso('gestionar_estructura_expediente')  // solicitud / fase / tramite
+}
+
+export function puedeCrearHijoDe(tipoPadre) {
+  // El permiso depende del tipo de HIJO: bajo trámite se crean tareas (hoja →
+  // gestionar_tareas); bajo expediente/solicitud/fase se crea estructura.
+  if (tipoPadre === 'tramite') return tienePermiso('gestionar_tareas')
+  return tienePermiso('gestionar_estructura_expediente')
+}
