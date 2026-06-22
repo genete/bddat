@@ -29,6 +29,19 @@
   --warning: #ffc107;          /* Bootstrap warning - Advertencias, próximo vencimiento */
   --danger: #dc3545;           /* Bootstrap danger - Errores, vencido */
   --info: #0dcaf0;             /* Bootstrap info - En trámite, información */
+
+  /* ===== PALETA SEMÁFORO (estado de dominio, MODELO §2 / #558) ===== */
+  /* Único canal cromático del estado de cada nodo del árbol. estado_dominio.COLOR
+   * mapea estado→NOMBRE (rojo, naranja…); estos tokens mapean NOMBRE→hex sólido.
+   * Hogar canónico en el shell: lo consume el inspector de seguimiento (#559).
+   * Valores v0 (mockup); iterar a paleta JdA. El bundle del árbol aún define su
+   * propia copia en .react-flow (deuda: que herede de aquí — spin-off #559). */
+  --sem-rojo:     #cc3b3b;
+  --sem-naranja:  #e0892b;
+  --sem-amarillo: #e9c43d;
+  --sem-azul:     #3b78cc;
+  --sem-gris:     #9a9a9a;
+  --sem-verde:    #3a9b4e;
   
   /* Grises corporativos Junta */
   --gris-principal: #111111;   /* Texto principal (var(--bs-gris-principal)) */

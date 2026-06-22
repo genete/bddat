@@ -332,6 +332,69 @@ table a.badge:hover {
 .pista-naranja  { background-color: #ffe5d0; color: #7d3f00; }
 .pista-verde    { background-color: #d1e7dd; color: #0a3622; }
 
+/* ─────────────────────────────────────────────────────────────────────────────
+   Inspector de seguimiento (#559, ADR-023) — árbol de lectura en el lenguaje del
+   árbol (semáforo por nodo). Reusa los tokens --sem-* del shell (v2-theme.css).
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/* Círculo-semáforo: hueco con borde gris por defecto; relleno con el color del
+   estado cuando el nodo "tiene algo que decir por sí mismo" (propio). Réplica del
+   .arbol-sem del bundle React, pero a nivel de shell. */
+.seg-sem {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 1.5px solid var(--sem-gris);
+    background: transparent;
+    flex-shrink: 0;
+    display: inline-block;
+}
+.seg-sem.is-relleno[data-color="rojo"]     { background: var(--sem-rojo);     border-color: var(--sem-rojo); }
+.seg-sem.is-relleno[data-color="naranja"]  { background: var(--sem-naranja);  border-color: var(--sem-naranja); }
+.seg-sem.is-relleno[data-color="amarillo"] { background: var(--sem-amarillo); border-color: var(--sem-amarillo); }
+.seg-sem.is-relleno[data-color="azul"]     { background: var(--sem-azul);     border-color: var(--sem-azul); }
+.seg-sem.is-relleno[data-color="gris"]     { background: var(--sem-gris);     border-color: var(--sem-gris); }
+.seg-sem.is-relleno[data-color="verde"]    { background: var(--sem-verde);    border-color: var(--sem-verde); }
+
+/* Indentación por nivel mediante guía vertical izquierda (fase→trámite→tarea). */
+.seg-arbol { margin-top: 0.25rem; }
+.seg-nivel--tramite,
+.seg-nivel--tarea {
+    margin-left: 0.65rem;
+    padding-left: 0.65rem;
+    border-left: 1px solid var(--border-color);
+}
+.seg-nivel--fase + .seg-nivel--fase { margin-top: 0.35rem; }
+
+/* Fila-nodo clicable: salta al árbol al ?nodo correspondiente. */
+.seg-nodo {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.28rem 0.4rem;
+    border-radius: 0.25rem;
+    color: var(--text-primary);
+    text-decoration: none;
+    font-size: 0.86rem;
+    line-height: 1.2;
+}
+.seg-nodo:hover { background: var(--gris-especifico); color: var(--text-primary); }
+.seg-nivel--fase    > .seg-nodo { font-weight: 600; }
+.seg-nivel--tramite > .seg-nodo { font-weight: 500; }
+
+.seg-ico { color: var(--text-secondary); width: 1em; text-align: center; flex-shrink: 0; }
+.seg-nombre { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Decoradores de tarea (plazo, resultado, documentos): no rompen línea, a la derecha. */
+.seg-dec { margin-left: 0.35rem; font-size: 0.76rem; white-space: nowrap; flex-shrink: 0; }
+.seg-plazo { padding: 0.05em 0.4em; border-radius: 0.2rem; }
+.seg-plazo--vencido        { background-color: #f8d7da; color: #721c24; }
+.seg-plazo--proximo_vencer { background-color: #ffe5d0; color: #7d3f00; }
+.seg-plazo--en_plazo,
+.seg-plazo--indefinido     { background-color: #e2e3e5; color: #41464b; }
+
+.seg-notas { margin: 0 0 0.25rem 1.9rem; }
+
 /* Columna SOLICITUD — color según estado global (§2) */
 .tipo-solicitud-celda {
     display: inline-block;
@@ -431,8 +494,7 @@ table a.badge:hover {
 .seguimiento-table th:nth-child(10),
 .seguimiento-table td:nth-child(10) { width: var(--seg-pista-w); } /* RESOLUCIÓN */
 
-.seguimiento-table th:nth-child(11),
-.seguimiento-table td:nth-child(11) { width: 4.5rem; }             /* Acciones */
+/* (La columna 11 "Acciones" se retiró en #559: la fila abre el inspector.) */
 
 /* Pill base Nº AT — mismo tamaño en todas las filas, solo cambia el color (#263) */
 .num-at-pill {
