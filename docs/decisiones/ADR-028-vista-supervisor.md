@@ -1,8 +1,8 @@
 # ADR-028 — Vista del Supervisor: bloques de Control y Gestión
 
-**Estado:** Borrador — en refinamiento
-**Fecha:** 2026-06-22
-**Issue:** por crear (contenedor "Mi trabajo del supervisor")
+**Estado:** Vigente — marco y rama Control fijados (sesión 23-jun); bloques en construcción
+**Fecha:** 2026-06-22 (rev. 2026-06-23)
+**Issue:** #579 (contenedor "Mi trabajo del supervisor")
 
 > **Naturaleza de este documento.** Nace de reencajar el material preparatorio
 > `docs/diseño/PRE-ADR-supervisor.md` (04-jun, 4 ejes A/B/C/D) en la estructura de
@@ -65,17 +65,22 @@ ejes del PRE-ADR:
 El criterio del reparto es **leer vs. escribir**: Control no muta datos del dominio (agrega y
 exporta); Gestión administra catálogos, usuarios y datos en lote.
 
-> `[ABIERTO]` **Layout concreto.** Si los dos bloques viven en una sola vista con tabs/secciones
-> o en entradas separadas de la sidebar; y si el bloque de Control es la **pantalla por defecto**
-> al login del supervisor (como "Mi trabajo" lo es del administrativo en ADR-017). El layout
-> `base_app.html` aguanta el "dashboard con gráficos" en modo workbench ligero sin rediseño
+> `[FIJADO 23-jun, #579]` **Layout y entrada.** La vista nuclear de partida es un **hub de
+> dos columnas** (Control · Gestión): cada herramienta es una tarjeta que navega a su hoja, y
+> los huecos sin construir se muestran como "pronto" con su issue (el hub sirve de mapa del
+> roadmap). Sin tabs anidados. La entrada de sidebar **no se duplica**: se reusa la entrada
+> role-adaptive **"Mi trabajo"** (ADR-013); `mi_trabajo.index` para SUPERVISOR/ADMIN redirige
+> al hub `supervisor.index`. El hub es la **pantalla por defecto** del supervisor (aterrizaje
+> post-login y cambio de rol ya cableados). Se implementa en un **blueprint `supervisor`
+> dedicado, deliberadamente sin `metadata.json`** (así no genera una segunda entrada de
+> sidebar). El layout `base_app.html` aguanta el hub en modo workbench ligero sin rediseño
 > (DECISIONES_UI §caso 6).
 
 ---
 
 ### Bloque CONTROL
 
-#### 2. Panel de estadísticas  `[FIJADO el contenido, ABIERTO el detalle visual]`
+#### 2. Panel de estadísticas  `[FIJADO contenido y alcance v1; ABIERTO ejes pendientes]`
 
 Métricas pedidas explícitamente (sesión 22-jun):
 
@@ -88,6 +93,16 @@ Métricas pedidas explícitamente (sesión 22-jun):
 
 Apoyos existentes: el núcleo `estado_dominio` (#558, cerrado) ya proyecta estados de forma
 canónica — los agregados se construyen sobre él, no sobre lógica nueva.
+
+**Aspecto y alcance v1** `[FIJADO 23-jun, #579]`: la hoja es un panel de **gráficos
+agregados** (no la tabla operativa, que es auditoría §3). v1 = fila de **KPIs** (total · en
+trámite · plazos vencidos · finalizados), **tarta de expedientes por estado** (los 10 estados
+canónicos del núcleo agrupados por banda de color de `COLOR`) y **barras de carga por técnico**
+(completados vs. en trámite, vía `responsable_id`). "Plazos vencidos" entra como KPI numérico
+hasta fijar su eje (`[ABIERTO]` técnico o pista); la vista exterior/interior queda aparcada.
+**Render:** isla React + **Recharts**, con pase de tematizado a la paleta JdA documentado
+(REGLAS §React). Backend: servicio agregado que cuenta `estado_expediente` sobre todos los
+expedientes. Construcción en sesión propia.
 
 #### 3. Vista de auditoría (#256)  `[FIJADO — issue existente]`
 
@@ -172,7 +187,7 @@ propios (siguientes libres desde **ADR-029**). Posible partición:
 
 | Futuro ADR | Bloque / contenido | Issues |
 |---|---|---|
-| ADR-028 (este) | Marco de dos bloques + decisiones fijadas | contenedor |
+| ADR-028 (este) | Marco de dos bloques + decisiones fijadas | #579 (contenedor) |
 | ¿ADR-029? | Configuración del sistema (Gestión §6-7) | #170, #171, #479, +plazos |
 | ¿ADR-030? | Estadísticas + auditoría (Control §2-4) | #256, #74, +stats usuarios |
 | ¿ADR-031? | Informes y exportaciones (Control §5) | #76, +nuevos |
