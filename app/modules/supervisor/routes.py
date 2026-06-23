@@ -15,9 +15,10 @@ La entrada de sidebar NO vive aquí (este módulo no tiene metadata.json): se re
 "Mi trabajo" (ADR-013), cuyo index redirige al supervisor a `supervisor.index`.
 El acceso lo controla `acceder_supervision` (ADR-028, grano grueso).
 """
-from flask import Blueprint, render_template
+from flask import Blueprint, jsonify, render_template
 
 from app.decorators import require_permiso
+from app.services.estadisticas_supervisor import calcular_estadisticas
 
 bp = Blueprint('supervisor', __name__,
                url_prefix='/supervisor',
@@ -36,8 +37,20 @@ def index():
 def estadisticas():
     """Hoja del panel de estadísticas (bloque CONTROL).
 
-    Placeholder funcional: la vista existe y es navegable, pero el diseño de los
-    agregados (tartas por estado, barras de plazos, stats por técnico) se decide
-    en sesión aparte y se construirá sobre el núcleo `estado_dominio` (#558).
+    La hoja monta la isla React `estadisticas`, que consume el endpoint JSON
+    `supervisor.api_estadisticas`. Los agregados se construyen sobre el núcleo
+    `estado_dominio` (#558) vía `estadisticas_supervisor`.
     """
     return render_template('supervisor/estadisticas.html')
+
+
+@bp.route('/api/estadisticas')
+@require_permiso('acceder_supervision')
+def api_estadisticas():
+    """Agregados del panel de estadísticas: {kpis, por_estado, por_tecnico}.
+
+    Lo consume la isla React `estadisticas`. La autorización real la impone el
+    decorador (las islas no autentican, ADR-015); el cálculo reusa el núcleo de
+    estado sin reimplementar reglas (ver `estadisticas_supervisor`).
+    """
+    return jsonify(calcular_estadisticas())
