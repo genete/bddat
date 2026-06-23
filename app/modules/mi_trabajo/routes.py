@@ -2,8 +2,9 @@
 
 RUTAS:
     GET /mi_trabajo/                         → role-adaptive:
-        ADMINISTRATIVO  → isla React (cola + subir documento).
-        Resto de roles  → redirect al seguimiento (su "mi trabajo" actual).
+        ADMINISTRATIVO    → isla React (cola + subir documento).
+        SUPERVISOR/ADMIN  → hub de dos bloques del supervisor (#579, ADR-028).
+        TRAMITADOR        → redirect al seguimiento (su "mi trabajo" actual).
     GET /mi_trabajo/tarea/<id>/fragmento     → parcial de lectura del inspector de
         la cola (ADR-023 §9 / Opción A): detalle de la tarea en lenguaje del árbol,
         con "Ir a tramitar". La edición se delega al árbol.
@@ -28,9 +29,17 @@ bp = Blueprint('mi_trabajo', __name__,
 @bp.route('/')
 @login_required
 def index():
-    """Vista "Mi trabajo" — cola + subir documento para el ADMINISTRATIVO."""
-    if session.get('rol_activo_nombre') != 'ADMINISTRATIVO':
-        # Para tramitador/supervisor/admin su "mi trabajo" hoy es el seguimiento.
+    """Vista "Mi trabajo" — role-adaptive (#501, #579).
+
+    ADMINISTRATIVO ve la cola; SUPERVISOR/ADMIN su hub de dos bloques; el
+    TRAMITADOR cae al seguimiento.
+    """
+    rol_activo = session.get('rol_activo_nombre')
+    if rol_activo in ('SUPERVISOR', 'ADMIN'):
+        # El "mi trabajo" del supervisor es su hub de dos bloques (#579, ADR-028).
+        return redirect(url_for('supervisor.index'))
+    if rol_activo != 'ADMINISTRATIVO':
+        # Para el tramitador su "mi trabajo" hoy es el seguimiento.
         return redirect(url_for('expedientes.seguimiento'))
 
     tipos_expediente = [

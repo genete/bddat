@@ -1,0 +1,45 @@
+{# estadisticas.html — Panel de estadísticas del supervisor (#579, ADR-028 §2).
+
+   PLACEHOLDER. La vista existe y es navegable desde el bloque CONTROL del hub,
+   pero el diseño de los agregados se decide en sesión aparte y se construirá
+   sobre el núcleo `estado_dominio` (#558):
+
+     · Expedientes por estado    → tarta sobre el total.
+     · Plazos vencidos           → barras.
+     · Plazos por dependencia    → exterior vs. interior (a definir).
+     · Estadísticas por técnico  → asignados / completados / totales.
+
+   Probablemente isla React (gráficos). Hasta entonces, esqueleto informativo. #}
+{% extends "layout/base_app.html" %}
+
+{% block title %}Estadísticas · Supervisor{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/v1-dashboard.css') }}">
+{% endblock %}
+
+{% block breadcrumb %}
+<a href="{{ url_for('supervisor.index') }}">Mi trabajo</a>
+<span class="breadcrumb-sep">/</span>
+<span>Estadísticas</span>
+{% endblock %}
+
+{% block content %}
+<div class="lista-cabecera">
+  <div class="page-header content-constrained">
+    <div>
+      <h1><i class="fas fa-chart-pie"></i> Estadísticas</h1>
+      <p class="user-welcome">Panel de control del supervisor — agregados sobre el estado del dominio</p>
+    </div>
+  </div>
+</div>
+
+<div class="content-constrained" style="padding-top: 2rem; padding-bottom: 3rem;">
+  <div class="alert alert-info" role="status">
+    <i class="fas fa-info-circle"></i>
+    Panel en construcción. Su diseño (tartas por estado, barras de plazos vencidos,
+    plazos por dependencia y carga por técnico) se está decidiendo. Se construirá
+    sobre el núcleo <code>estado_dominio</code> (#558).
+  </div>
+</div>
+{% endblock %}

@@ -112,21 +112,22 @@
     {% endif %}
     
     {% if 'SUPERVISOR' in user_roles or 'ADMIN' in user_roles %}
-    <div class="dashboard-card disabled">
+    <!-- Estadísticas y Configuración → bloques CONTROL / GESTIÓN del supervisor (#579, ADR-028) -->
+    <a href="{{ url_for('supervisor.estadisticas') }}" class="dashboard-card">
         <div class="card-icon">
             <i class="fas fa-chart-bar"></i>
         </div>
         <h2 class="card-title">Estadísticas</h2>
-        <p class="card-description">Próximamente</p>
-    </div>
-    
-    <div class="dashboard-card disabled">
+        <p class="card-description">Panel de control — expedientes, plazos y técnicos</p>
+    </a>
+
+    <a href="{{ url_for('supervisor.index') }}" class="dashboard-card">
         <div class="card-icon">
             <i class="fas fa-cog"></i>
         </div>
         <h2 class="card-title">Configuración</h2>
-        <p class="card-description">Próximamente</p>
-    </div>
+        <p class="card-description">Gestión del sistema — motor, plazos y usuarios</p>
+    </a>
     {% endif %}
     
 </div>
