@@ -17,20 +17,16 @@
 <a href="{{ url_for('supervisor.index') }}">Mi trabajo</a>
 {% endblock %}
 
-{% block content %}
-<div class="lista-cabecera">
-  <div class="page-header content-constrained">
-    <div>
-      <h1><i class="fas fa-clipboard-check"></i> Mi trabajo · Supervisor</h1>
-      <p class="user-welcome">
-        Control y configuración del sistema —
-        <strong>{{ current_user.nombre }} {{ current_user.apellido1 }}</strong>
-        <span class="badge badge-secondary">{{ session.get('rol_activo_nombre') }}</span>
-      </p>
-    </div>
-  </div>
-</div>
+{# Título en la viewbar estándar (mismo patrón que los listados, lista_v2_base).
+   El nombre y el rol activo ya los muestra la topbar — no se duplican aquí. #}
+{% block viewbar %}
+<span class="app-viewbar__title">
+  <i class="fas fa-clipboard-check"></i>
+  <span>Mi trabajo · Supervisor</span>
+</span>
+{% endblock %}
 
+{% block content %}
 <div class="sup-bloques content-constrained">
 
   {# ===== BLOQUE CONTROL — lectura / visualización ===== #}

@@ -15,16 +15,15 @@
 <span>Estadísticas</span>
 {% endblock %}
 
-{% block content %}
-<div class="lista-cabecera">
-  <div class="page-header content-constrained">
-    <div>
-      <h1><i class="fas fa-chart-pie"></i> Estadísticas</h1>
-      <p class="user-welcome">Panel de control del supervisor — agregados sobre el estado del dominio</p>
-    </div>
-  </div>
-</div>
+{# Título en la viewbar estándar (mismo patrón que los listados, lista_v2_base). #}
+{% block viewbar %}
+<span class="app-viewbar__title">
+  <i class="fas fa-chart-pie"></i>
+  <span>Estadísticas</span>
+</span>
+{% endblock %}
 
+{% block content %}
 <div id="app-root"
      data-react-island="estadisticas"
      {{ user_ctx_attrs() }}></div>
