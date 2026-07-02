@@ -8,9 +8,11 @@
 
 **Último cerrado:** **#501** — Vista **"Mi trabajo" del administrativo** (ADR-017): permisos **hoja/estructura** (`gestionar_tareas` / `gestionar_estructura_expediente`, denegación 403 JSON, aplicados en el CRUD real del árbol `api_expedientes`); **cola transversal** (`GET /api/administrativo/cola` sobre el núcleo `estado_dominio`); **módulo role-adaptive** + entrada única de sidebar (admin → cola/subir; resto → seguimiento); isla React con **inspector-detalle del agregado** (Opción A, lectura) y "Ir a tramitar" al árbol; **pool abierto a todos los roles** (subir no edita el expediente, ADR-027); redirección post-login y cambio de rol al *home* del rol. PR #576. Spin-offs: limpiar `api_bc` muerto (sin consumidores tras #519); fix del test `toggle_estado`.
 
-**Actuales:** **#579** — **Mi trabajo del supervisor** (ADR-028), gemelo de #501. **Rama Control construida** (rama `feature/issue-579-mi-trabajo-supervisor`): blueprint `supervisor` dedicado (sin entrada propia de sidebar), hub de dos bloques CONTROL/GESTIÓN (Propuesta A, hub de dos columnas) como pantalla de entrada role-adaptive vía `mi_trabajo.index`, permiso `acceder_supervision`, tarjetas del dashboard activadas, hoja de estadísticas como placeholder, smoke tests. **Aspecto del panel de estadísticas decidido** (v1: KPIs + tarta por estado + barras de carga por técnico; render isla React + Recharts) — **construcción pendiente** (sesión propia).
+**Último hito:** **PR #580 mergeado** (parte de **#579**) — **panel de estadísticas del supervisor** (ADR-028 §2): servicio agregado `estadisticas_supervisor` que **reusa el núcleo `estado_dominio`** vía `construir_arbol` por expediente (estado agregado + plazos vencidos, sin reimplementar reglas); endpoint `GET /supervisor/api/estadisticas` (`{kpis, por_estado, por_tecnico}`, `acceder_supervision`); isla React **+ Recharts** (KPIs · tarta por estado · barras de carga por técnico) con **tematizado JdA documentado** (banda azul → `--bs-blue`, porque en JdA `--bs-primary` es verde); título de las hojas del supervisor movido a la **viewbar estándar**; smoke tests. Antes se construyó la **rama Control** de #579 (blueprint `supervisor`, hub de dos bloques role-adaptive vía `mi_trabajo.index`, permiso `acceder_supervision`, tarjetas del dashboard).
 
-**Próximos:** construcción del **panel de estadísticas** de #579 (servicio agregado sobre `estado_dominio` + isla React/Recharts tematizado). Después, bloque **escritos / motor adaptativo (M4)**: **#555** (clasificación ESFT de plantillas) → **#556** (variables del motor en plantillas) → **#561** (drop de `catalogo_variables.activa` + red de tests).
+**#579 sigue abierto:** el **bloque GESTIÓN del supervisor queda APARCADO** por decisión (2026-07-02) para priorizar el hilo de análisis documental y escritos. Sus piezas viven en issues propios (config motor #170/#171/#479, plazos legales, operaciones masivas #295).
+
+**Próximos:** foco elegido (2026-07-02) en la **fase de análisis documental / requerimientos (M3)**, base de datos+motor sobre la que luego se generan los escritos de requerimiento/subsanación. Clúster: **#408** (checklist documental: `requisito_documental` + `checklist_asociacion`), **#441** (seed `catalogo_requerimientos`), **#440** (selector de requerimientos en tarea ANALIZAR, UI/BE), **#495** (integrar checklist en `ContextoAnalisisDocumental`); relacionado **#442** (formulario diagnóstico en ANALIZAR). *Orden interno a afinar al abrir el hilo* (arranque natural por el modelo, #408). Después, **escritos / motor adaptativo (M4)**: **#555** (clasificación ESFT de plantillas) → **#556** (variables del motor en plantillas, **depende de la cobertura de catálogo M3**) → **#561** (drop de `catalogo_variables.activa` + red de tests). La **gestión de consultas** (pista CONSULTAS) entra después; necesita issue-cabecera propio.
 
 > **Notas a Próximos:**
 > - **#559 cerrado:** inspector-detalle del seguimiento (implementación del patrón ADR-023 para agregados que navegan al árbol, sobre el caso más simple). Spin-offs: **#570** (filtros v2 en URL), **#571** (tokens semáforo del árbol heredan del shell). Siguen vivos de #558: **#566**/**#567** (árbol), **#568** (`NOTIFICACION_INFRUCTUOSA`, M3).
@@ -39,13 +41,25 @@ Orden técnico recomendado de implementación (dependencias de las cabeceras hac
 11. ~~**#558 — Unificar el núcleo de reglas de estado.**~~ ✅ Cerrado. Núcleo `estado_dominio` consumido por árbol y `seguimiento.py` como proyecciones; tabla prioridad/color canónica + regla `es_finalizadora`. PR #565. Spin-offs: #566/#567 (árbol), #568 (`NOTIFICACION_INFRUCTUOSA`, M3).
 12. ~~**#501 — ADR-017 Vista "Mi trabajo" del administrativo.**~~ ✅ Cerrado. Permisos hoja/estructura en el CRUD del árbol (`api_expedientes`), cola transversal (`/api/administrativo/cola` sobre `estado_dominio`), módulo role-adaptive + sidebar, isla React con inspector-detalle (Opción A) y "Ir a tramitar"; pool abierto a todos los roles (ADR-027). PR #576. Spin-offs: limpiar `api_bc` muerto; fix test `toggle_estado`.
 13. ~~**#559 — Inspector-detalle del listado de seguimiento.**~~ ✅ Cerrado. Lectura del agregado en el lenguaje del árbol (`construir_arbol_solicitud` + `_cuello_botella`); edición delegada vía "Ir a tramitar". Tokens `--sem-*` al shell (paso 1 de unificación de color). PR #569. Spin-offs: #570 (filtros v2 en URL), #571 (tokens del árbol heredan del shell).
-14. **#579 — Mi trabajo del supervisor (ADR-028).** **En curso.** Gemelo de #501. Rama Control construida: blueprint `supervisor`, hub de dos bloques (Propuesta A) role-adaptive vía `mi_trabajo.index`, permiso `acceder_supervision`, tarjetas dashboard, smoke tests. Pendiente: construir el panel de estadísticas (v1 decidido: KPIs + tarta por estado + barras por técnico; isla React + Recharts) y los bloques de Gestión.
+14. **#579 — Mi trabajo del supervisor (ADR-028).** **Bloque CONTROL hecho** (PR #580 mergeado): hub de dos bloques role-adaptive vía `mi_trabajo.index` + blueprint `supervisor` + permiso `acceder_supervision`; **panel de estadísticas** (servicio agregado `estadisticas_supervisor` sobre `estado_dominio` + isla React/Recharts tematizado: KPIs, tarta por estado, barras por técnico). **Bloque GESTIÓN aparcado** (2026-07-02); sus piezas en issues propios (#170/#171/#479, plazos, #295). Issue #579 permanece abierto como paraguas.
 
 **Total estimado bloque UI: ~10-13 semanas** (1 dev + IA, ratio observado).
 
+### Bloque análisis documental / requerimientos (M3) — foco actual
+
+Foco elegido tras cerrar la rama Control de #579 (2026-07-02). Fase de análisis de la
+solicitud (tarea ANALIZAR): datos+motor de requerimientos, base de los escritos de
+requerimiento/subsanación del bloque M4. Orden interno a afinar al abrir el hilo.
+
+- **#408 — Checklist documental:** modelo `requisito_documental` + `checklist_asociacion`.
+- **#441 — Seed `catalogo_requerimientos`.**
+- **#440 — Selector de requerimientos en tarea ANALIZAR** (UI/BE).
+- **#495 — Integrar checklist de requisitos en `ContextoAnalisisDocumental`.**
+- **#442 — Formulario diagnóstico en tarea ANALIZAR** (tabla `diagnosticos`, UI) — relacionado.
+
 ### Bloque escritos / motor adaptativo (M4)
 
-Hilo independiente del revamping UI; se aborda **tras** el hilo UI en curso.
+Hilo independiente del revamping UI; se aborda **tras** consolidar el análisis documental.
 
 15. **#555 — Clasificación ESFT de plantillas:** fase concreta vs comodín.
 16. **#556 — Variables del motor en plantillas (documento adaptativo).** Inyectar `build(expediente_id)` namespaced en el contexto del escrito. **Depende de la cobertura del catálogo (M3).**
