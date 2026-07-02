@@ -1,0 +1,34 @@
+{# estadisticas.html — Panel de estadísticas del supervisor (#579, ADR-028 §2).
+
+   Isla React "estadisticas" (Recharts) sobre base_app. La isla pide los agregados a
+   supervisor.api_estadisticas y pinta KPIs + tarta por estado + barras por técnico.
+   Los agregados se construyen sobre el núcleo `estado_dominio` (#558) en el servicio
+   `estadisticas_supervisor`. La autorización real la impone @require_permiso en la
+   ruta; la isla solo lee el contexto inyectado por Jinja. #}
+{% extends "layout/base_app.html" %}
+
+{% block title %}Estadísticas · Supervisor{% endblock %}
+
+{% block breadcrumb %}
+<a href="{{ url_for('supervisor.index') }}">Mi trabajo</a>
+<span class="breadcrumb-sep">/</span>
+<span>Estadísticas</span>
+{% endblock %}
+
+{# Título en la viewbar estándar (mismo patrón que los listados, lista_v2_base). #}
+{% block viewbar %}
+<span class="app-viewbar__title">
+  <i class="fas fa-chart-pie"></i>
+  <span>Estadísticas</span>
+</span>
+{% endblock %}
+
+{% block content %}
+<div id="app-root"
+     data-react-island="estadisticas"
+     {{ user_ctx_attrs() }}></div>
+{% endblock %}
+
+{% block extra_js %}
+  {{ react_bundle('estadisticas') }}
+{% endblock %}

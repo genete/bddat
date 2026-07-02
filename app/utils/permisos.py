@@ -27,6 +27,11 @@ PERMISOS = {
     'acceder_usuarios':          {'ADMIN', 'SUPERVISOR', 'TRAMITADOR', 'ADMINISTRATIVO'},
     'gestionar_usuarios':        {'ADMIN', 'SUPERVISOR'},
 
+    # Vista del supervisor — hub de dos bloques (ADR-028, #579). Permiso de grano
+    # grueso de entrada; los permisos finos por bloque (generar_informes,
+    # configurar_sistema, operar_masivo) se concretan al construir cada bloque.
+    'acceder_supervision':       {'ADMIN', 'SUPERVISOR'},
+
     # Sin UI aún — reservados para #170/#171
     'acceder_reglas_motor':      {'ADMIN', 'SUPERVISOR', 'TRAMITADOR', 'ADMINISTRATIVO'},
     'gestionar_reglas_motor':    {'ADMIN', 'SUPERVISOR'},

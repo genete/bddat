@@ -267,3 +267,39 @@ Descartada en análisis crítico §2.4. El flujo del admin es **estructuralmente
 ### D. Botón "Soltar tarea" + timeout
 
 Considerada como mecánica de liberación de propiedad. Descartada porque introduce ceremonia que el flujo real no necesita: si el admin tiene el dato para actuar, actúa. El "Tocado por" es solo un filtro de ayuda, no un mecanismo de bloqueo.
+
+---
+
+## Deuda conocida — heterogeneidad de URLs del concepto «Mi trabajo»  `[ABIERTO]`
+
+> Anotado 2026-06-23, en contexto de #579 (al completar el hub del supervisor, que
+> cierra el tercer patrón distinto del mismo concepto).
+
+El concepto «Mi trabajo» **está unificado donde importa**: una sola entrada de sidebar
+role-adaptive (ADR-013) y un único punto de entrada navegable `/mi_trabajo/`, que
+despacha por rol activo (`mi_trabajo.index`):
+
+| Rol activo | Destino tras el dispatcher | Naturaleza del destino |
+|---|---|---|
+| ADMINISTRATIVO | `/mi_trabajo/` (render directo) | Isla cola/subir (este ADR) |
+| SUPERVISOR / ADMIN | `redirect → /supervisor/` | Hub de dos bloques (#579, ADR-028) |
+| TRAMITADOR | `redirect → /expedientes/seguimiento/` | **Vista prestada** de otro dominio |
+
+La heterogeneidad de las URLs finales **no es un bug**: es reflejo fiel de que los tres
+roles están en fases de madurez distintas. El usuario nunca teclea esas URLs (clica la
+entrada única); la indirección del dispatcher permite cambiar los destinos por debajo
+sin tocar la navegación. Matices, por gravedad:
+
+1. `/supervisor/` — sano: blueprint con identidad propia, será más que «mi trabajo».
+2. `/mi_trabajo/` (administrativo) — colisión semántica leve: la raíz hace de dispatcher
+   genérico **y** de vista concreta del administrativo (único rol sin URL propia distinta
+   del paraguas).
+3. `/expedientes/seguimiento/` (tramitador) — **única deuda real**: su «mi trabajo» es una
+   vista prestada del dominio de expedientes; no tiene espacio propio.
+
+**Decisión: no unificar ahora.** Renombrar rutas y reubicar la cola del administrativo
+rompería bookmarks, enlaces y los «IR A» del command palette a cambio de pulcritud sin
+valor funcional, y obligaría a redirecciones de compatibilidad. El **momento natural** para
+fijar el patrón canónico de los tres es cuando el TRAMITADOR necesite su propio hub (como
+ya lo tiene el supervisor): ahí `/expedientes/seguimiento/` se queda corto y fuerza la
+decisión de forma informada, en vez de inventarla en frío.

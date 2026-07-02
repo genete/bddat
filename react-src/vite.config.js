@@ -18,6 +18,7 @@ const ISLANDS = {
   'expediente-arbol': resolve(__dirname, 'src/expediente-arbol/index.jsx'),
   'command-palette':  resolve(__dirname, 'src/command-palette/index.jsx'),
   'mi-trabajo':       resolve(__dirname, 'src/mi-trabajo/index.jsx'),
+  'estadisticas':     resolve(__dirname, 'src/estadisticas/index.jsx'),
 }
 
 export default defineConfig(({ command }) => {
