@@ -42,6 +42,13 @@ PERMISOS = {
     'acceder_tablas_maestras':   {'ADMIN', 'SUPERVISOR', 'TRAMITADOR', 'ADMINISTRATIVO'},
     'gestionar_tablas_maestras': {'ADMIN', 'SUPERVISOR'},
 
+    # CRUD admin de requisitos_documentales (#583) — catálogo normativo del checklist
+    'acceder_requisitos_documentales':   {'ADMIN', 'SUPERVISOR', 'TRAMITADOR', 'ADMINISTRATIVO'},
+    'gestionar_requisitos_documentales': {'ADMIN', 'SUPERVISOR'},
+    # Baja física (DELETE real) — más restrictivo que gestionar: solo ADMIN.
+    # El SUPERVISOR sigue pudiendo crear/editar/activar-desactivar (baja lógica).
+    'eliminar_requisitos_documentales':  {'ADMIN'},
+
     # Árbol del expediente — frontera hoja / estructura (ADR-017 §6, #501).
     # "Puerta abierta": gestionar_tareas habilita COMPLETAR cualquier tarea ya
     # prevista (incluye ADMINISTRATIVO); la bitácora es la rendición de cuentas.

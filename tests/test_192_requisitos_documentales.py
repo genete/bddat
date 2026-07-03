@@ -69,7 +69,7 @@ def _evaluar(requisitos, vinculaciones, sol_id=1):
     solicitud = _solicitud(sol_id)
 
     mock_req_query = MagicMock()
-    mock_req_query.order_by.return_value.all.return_value = requisitos
+    mock_req_query.filter_by.return_value.order_by.return_value.all.return_value = requisitos
 
     mock_dr_query = MagicMock()
     mock_dr_query.filter_by.return_value.all.return_value = vinculaciones
@@ -224,7 +224,7 @@ class TestCondicionEQ:
 
         solicitud = _solicitud(1)
         mock_req_q = MagicMock()
-        mock_req_q.order_by.return_value.all.return_value = [req]
+        mock_req_q.filter_by.return_value.order_by.return_value.all.return_value = [req]
         mock_dr_q = MagicMock()
         mock_dr_q.filter_by.return_value.all.return_value = []
 
@@ -247,7 +247,7 @@ class TestCondicionEQ:
 
         solicitud = _solicitud(1)
         mock_req_q = MagicMock()
-        mock_req_q.order_by.return_value.all.return_value = [req]
+        mock_req_q.filter_by.return_value.order_by.return_value.all.return_value = [req]
         mock_dr_q = MagicMock()
         mock_dr_q.filter_by.return_value.all.return_value = []
 
@@ -276,7 +276,7 @@ class TestCondicionIN:
 
         solicitud = _solicitud(1)
         mock_req_q = MagicMock()
-        mock_req_q.order_by.return_value.all.return_value = [req]
+        mock_req_q.filter_by.return_value.order_by.return_value.all.return_value = [req]
         mock_dr_q = MagicMock()
         mock_dr_q.filter_by.return_value.all.return_value = []
 
@@ -316,7 +316,7 @@ class TestCondicionAND:
 
         solicitud = _solicitud(1)
         mock_req_q = MagicMock()
-        mock_req_q.order_by.return_value.all.return_value = [req]
+        mock_req_q.filter_by.return_value.order_by.return_value.all.return_value = [req]
         mock_dr_q = MagicMock()
         mock_dr_q.filter_by.return_value.all.return_value = []
 
@@ -341,7 +341,7 @@ class TestCondicionAND:
 
         solicitud = _solicitud(1)
         mock_req_q = MagicMock()
-        mock_req_q.order_by.return_value.all.return_value = [req]
+        mock_req_q.filter_by.return_value.order_by.return_value.all.return_value = [req]
         mock_dr_q = MagicMock()
         mock_dr_q.filter_by.return_value.all.return_value = []
 
@@ -379,7 +379,7 @@ class TestOR:
 
         solicitud = _solicitud(1)
         mock_req_q = MagicMock()
-        mock_req_q.order_by.return_value.all.return_value = [req_a, req_b]
+        mock_req_q.filter_by.return_value.order_by.return_value.all.return_value = [req_a, req_b]
         mock_dr_q = MagicMock()
         mock_dr_q.filter_by.return_value.all.return_value = []
 
@@ -407,7 +407,7 @@ class TestErrorBD:
 
         solicitud = _solicitud(1)
         mock_req_q = MagicMock()
-        mock_req_q.order_by.return_value.all.side_effect = OperationalError(
+        mock_req_q.filter_by.return_value.order_by.return_value.all.side_effect = OperationalError(
             'stmt', 'params', Exception('tabla no existe')
         )
 

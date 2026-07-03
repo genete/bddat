@@ -78,6 +78,16 @@ class RequisitoDocumental(db.Model):
         comment='Orden de presentación en el checklist de la UI (informativo, sin unicidad)'
     )
 
+    activo = db.Column(
+        db.Boolean,
+        nullable=False,
+        default=True,
+        server_default=db.text('true'),
+        comment='Baja lógica (decisión humana del Supervisor, no automática). '
+                'Los expedientes antiguos conservan su DocumentoRequisito aunque '
+                'el requisito se desactive — evita huérfanos al reconstruir histórico.'
+    )
+
     # Relaciones
     tipo_documento = db.relationship('TipoDocumento')
     norma          = db.relationship('Norma')
