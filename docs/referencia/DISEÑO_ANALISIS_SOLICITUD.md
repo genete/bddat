@@ -126,6 +126,12 @@ Esta asociación se almacena en una tabla `checklist_asociacion`:
 | `documento_id` | FK `documentos.id` (documento del pool que cumple el requisito) |
 | `validado` | Boolean — el técnico confirma que cumple el requisito |
 
+### Estado real (nota 2026-07-03)
+
+La implementación de #192 (2026-05-27, posterior tanto a esta sección como a la redacción original del propio #192) generalizó el modelo aquí previsto: en vez de columnas fijas `tipo_instalacion`/`tipo_solicitud`, la tabla real `requisitos_documentales` admite condiciones sobre cualquier variable del motor (`condiciones_requisito` → `catalogo_variables`, mismo patrón que `condiciones_regla`) — permite encuadrar por tensión, tipo de suelo o cualquier combinación normativa. La tabla `checklist_asociacion` de esta sección no se construyó; su lugar lo ocupa `documentos_requisito`, con clave por **solicitud** (no por trámite), lo que permite reutilizar una misma cobertura entre vueltas de subsanación. Esta sección no se actualizó en su momento — la mejora surgió al implementar, no estaba prevista aquí ni en la redacción original de #192.
+
+UI pendiente: #495. Población de contenido: #408. Checklist gemelo de contenido técnico del proyecto (RD 223/2008, RD 337/2014 — ítems dentro del proyecto, no presencia de documento): #581.
+
 ---
 
 ## 5. Recepción externa vía ESPERAR_PLAZO (ADR-004)
@@ -209,9 +215,11 @@ Panel lateral en la tarea ANALIZAR con dos columnas:
 
 El art. 45.1 de la Ley 10/2021, de 28 de diciembre, de tasas y precios públicos de la Comunidad Autónoma de Andalucía establece que ninguna actuación administrativa «se realizará o tramitará sin que se haya efectuado el pago correspondiente». En la práctica, por economía procesal, el análisis se completa antes de detener la tramitación (la tasa es siempre subsanable y conviene agotar el análisis en la primera iteración).
 
-**Regla del motor:** cualquier fase posterior a `ANÁLISIS_SOLICITUD` tiene como pre-condición que el item del checklist correspondiente a las tasas (`categoria = tasas`) esté marcado como `validado = True` en la tabla `checklist_asociacion` del expediente.
+**Regla del motor:** cualquier fase posterior a `ANÁLISIS_SOLICITUD` tiene como pre-condición que el requisito del checklist correspondiente a las tasas (`categoria = tasas`) esté cubierto en `documentos_requisito` (tabla real — ver §4; esta sección preveía `checklist_asociacion`, que no se construyó) para la solicitud.
 
 Esta regla no bloquea el análisis de otros defectos ni la emisión del requerimiento — solo bloquea el avance a fases posteriores.
+
+**Estado real (nota 2026-07-03):** a diferencia de otros bloqueos entre fases —p.ej. una consulta a organismo sin separata presentada, que simplemente no tiene documento que consumir en su ELABORAR, sin necesitar regla de motor— la tasa es la única condición que debe bloquear *toda* fase posterior sin excepción incluso si todo lo demás está completo, porque así lo exige la ley con independencia del resto del expediente. Por eso sí necesita una `ReglaMotor` explícita, y no basta con la imposibilidad natural de la tarea. Regla aún sin implementar: #582.
 
 ---
 

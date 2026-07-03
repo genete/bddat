@@ -12,7 +12,7 @@
 
 **#579 sigue abierto:** el **bloque GESTIÓN del supervisor queda APARCADO** por decisión (2026-07-02) para priorizar el hilo de análisis documental y escritos. Sus piezas viven en issues propios (config motor #170/#171/#479, plazos legales, operaciones masivas #295).
 
-**Próximos:** foco elegido (2026-07-02) en la **fase de análisis documental / requerimientos (M3)**, base de datos+motor sobre la que luego se generan los escritos de requerimiento/subsanación. Clúster: **#408** (checklist documental: `requisito_documental` + `checklist_asociacion`), **#441** (seed `catalogo_requerimientos`), **#440** (selector de requerimientos en tarea ANALIZAR, UI/BE), **#495** (integrar checklist en `ContextoAnalisisDocumental`); relacionado **#442** (formulario diagnóstico en ANALIZAR). *Orden interno a afinar al abrir el hilo* (arranque natural por el modelo, #408). Después, **escritos / motor adaptativo (M4)**: **#555** (clasificación ESFT de plantillas) → **#556** (variables del motor en plantillas, **depende de la cobertura de catálogo M3**) → **#561** (drop de `catalogo_variables.activa` + red de tests). La **gestión de consultas** (pista CONSULTAS) entra después; necesita issue-cabecera propio.
+**Próximos:** foco elegido (2026-07-02) en la **fase de análisis documental / requerimientos (M3)**, base de datos+motor sobre la que luego se generan los escritos de requerimiento/subsanación. Sesión de análisis (2026-07-03) revisó el clúster contra el código real (no solo los issues) y amplió el diseño — ver `docs/referencia/DISEÑO_ANALISIS_SOLICITUD.md` §4/§7. Clúster: **#408** (re-scope: poblar `requisitos_documentales` — el modelo ya está construido en #192, más general de lo previsto), **#441** (seed `catalogo_requerimientos`), **#440** (selector de requerimientos en tarea ANALIZAR, UI/BE), **#495** (check documental completo: UI + integración en `ContextoAnalisisDocumental` + auto-generación de defectos), **#442** (formulario diagnóstico en ANALIZAR, cierre del hilo); nuevos **#581** (checklist gemelo de contenido técnico del proyecto, RD 223/2008 y RD 337/2014) y **#582** (regla de motor: tasa impagada bloquea toda fase posterior — único bloqueo de este clúster que es de motor; separata→Consultas y EIA→AAU_AAUS_INTEGRADA son imposibilidad natural de tarea, sin issue). *Orden: #441/#408/#581(diseño) en paralelo → #495 → UI de #581 → #440 → #442 → #582 al final.* Después, **escritos / motor adaptativo (M4)**: **#555** (clasificación ESFT de plantillas) → **#556** (variables del motor en plantillas, **depende de la cobertura de catálogo M3**) → **#561** (drop de `catalogo_variables.activa` + red de tests). La **gestión de consultas** (pista CONSULTAS) entra después; necesita issue-cabecera propio.
 
 > **Notas a Próximos:**
 > - **#559 cerrado:** inspector-detalle del seguimiento (implementación del patrón ADR-023 para agregados que navegan al árbol, sobre el caso más simple). Spin-offs: **#570** (filtros v2 en URL), **#571** (tokens semáforo del árbol heredan del shell). Siguen vivos de #558: **#566**/**#567** (árbol), **#568** (`NOTIFICACION_INFRUCTUOSA`, M3).
@@ -49,13 +49,17 @@ Orden técnico recomendado de implementación (dependencias de las cabeceras hac
 
 Foco elegido tras cerrar la rama Control de #579 (2026-07-02). Fase de análisis de la
 solicitud (tarea ANALIZAR): datos+motor de requerimientos, base de los escritos de
-requerimiento/subsanación del bloque M4. Orden interno a afinar al abrir el hilo.
+requerimiento/subsanación del bloque M4. Orden afinado en sesión de análisis (2026-07-03,
+ver `docs/referencia/DISEÑO_ANALISIS_SOLICITUD.md` §4/§7): #441/#408/#581(diseño) en
+paralelo → #495 → UI de #581 → #440 → #442 (cierre) → #582 al final.
 
-- **#408 — Checklist documental:** modelo `requisito_documental` + `checklist_asociacion`.
+- **#408 — Poblar catálogo de requisitos documentales:** modelo ya construido en #192 (más general de lo previsto aquí); queda el contenido normativo.
 - **#441 — Seed `catalogo_requerimientos`.**
 - **#440 — Selector de requerimientos en tarea ANALIZAR** (UI/BE).
-- **#495 — Integrar checklist de requisitos en `ContextoAnalisisDocumental`.**
-- **#442 — Formulario diagnóstico en tarea ANALIZAR** (tabla `diagnosticos`, UI) — relacionado.
+- **#495 — Check documental completo en tarea ANALIZAR:** UI + integración en `ContextoAnalisisDocumental` + auto-generación de defectos.
+- **#442 — Formulario diagnóstico en tarea ANALIZAR** (tabla `diagnosticos`, UI) — cierre del hilo.
+- **#581 — Checklist de contenido técnico del proyecto** (RD 223/2008, RD 337/2014) — nuevo, mecanismo gemelo del check documental.
+- **#582 — Regla de motor: tasa impagada bloquea toda fase posterior** — nuevo; único bloqueo de este clúster que es de motor (separata→Consultas y EIA→AAU_AAUS_INTEGRADA son imposibilidad natural de tarea, sin issue).
 
 ### Bloque escritos / motor adaptativo (M4)
 
