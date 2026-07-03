@@ -1,0 +1,122 @@
+{# _detalle_fragmento.html — Parcial de lectura para el inspector (ADR-023 / #583).
+   No extiende base_app.html. Inyectado vía AppInspector.open({ fragmentUrl }).
+   - "Editar" → fragmento de edición (data-inspector-edit).
+   - Activar/desactivar → form data-inspector-form (POST XHR → JSON → refresh).
+   - Eliminar → <form> plano (no data-inspector-form): tras borrar el fragmento
+     deja de existir, así que navega al listado en vez de refrescar el inspector.
+#}
+
+<div class="p-3">
+
+<div class="d-flex justify-content-end gap-2 mb-3">
+    {% if puede_editar %}
+    <button type="button" class="btn btn-primary btn-sm"
+            data-inspector-edit
+            data-edit-url="{{ url_for('admin_requisitos.editar_fragmento', id=requisito.id) }}">
+        <i class="fas fa-edit me-1"></i> Editar
+    </button>
+    {% endif %}
+</div>
+
+<!-- CARD 1 — Identificación -->
+<div class="card mb-3">
+    <div class="card-header card-header-accent fw-semibold">
+        <i class="fas fa-file-alt me-1"></i> Documento requerido
+        {% if requisito.activo %}
+            <span class="badge bg-success ms-1">Activo</span>
+        {% else %}
+            <span class="badge bg-secondary ms-1">Inactivo</span>
+        {% endif %}
+    </div>
+    <div class="card-body card-body-tinted">
+        <div class="row g-2">
+            <div class="col-12">
+                <label class="form-label fw-semibold small">Tipo de documento</label>
+                <input type="text" class="form-control form-control-sm"
+                       value="{% if requisito.tipo_documento %}{{ requisito.tipo_documento.codigo }} — {{ requisito.tipo_documento.nombre }}{% else %}—{% endif %}" readonly>
+            </div>
+            <div class="col-12">
+                <label class="form-label fw-semibold small">Descripción legal</label>
+                <textarea class="form-control form-control-sm" rows="2" readonly>{{ requisito.descripcion_legal or '—' }}</textarea>
+            </div>
+            <div class="col-8">
+                <label class="form-label fw-semibold small">Norma</label>
+                <input type="text" class="form-control form-control-sm"
+                       value="{% if requisito.norma %}{{ requisito.norma.codigo }} — {{ requisito.norma.titulo }}{% else %}—{% endif %}" readonly>
+            </div>
+            <div class="col-4">
+                <label class="form-label fw-semibold small">Artículo</label>
+                <input type="text" class="form-control form-control-sm" value="{{ requisito.articulo or '—' }}" readonly>
+            </div>
+            <div class="col-4">
+                <label class="form-label fw-semibold small">Orden</label>
+                <input type="text" class="form-control form-control-sm" value="{{ requisito.orden }}" readonly>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- CARD 2 — Condiciones de aplicación -->
+<div class="card mb-3">
+    <div class="card-header card-header-accent fw-semibold">
+        <i class="fas fa-filter me-1"></i> Condiciones de aplicación
+        {% if not requisito.condiciones %}
+            <span class="badge bg-secondary ms-1" style="font-weight:400">Universal</span>
+        {% endif %}
+    </div>
+    <div class="card-body card-body-tinted">
+        {% if requisito.condiciones %}
+        <ul class="list-unstyled mb-0 small">
+            {% for c in requisito.condiciones %}
+            <li class="mb-1">
+                <code>{{ c.variable.etiqueta if c.variable else ('var_id=' ~ c.variable_id) }}</code>
+                <span class="text-secondary">{{ c.operador }}</span>
+                {% if c.valor is not none %}<strong>{{ c.valor }}</strong>{% endif %}
+            </li>
+            {% endfor %}
+        </ul>
+        <div class="form-text mt-1">Todas las condiciones se evalúan en AND — aplica solo si se cumplen todas.</div>
+        {% else %}
+        <div class="text-secondary small">Sin condiciones — aplica a cualquier solicitud.</div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- CARD 3 — Uso en solicitudes -->
+<div class="card mb-3">
+    <div class="card-header card-header-accent fw-semibold">
+        <i class="fas fa-link me-1"></i> Uso en solicitudes
+    </div>
+    <div class="card-body card-body-tinted">
+        {% if requisito.usos %}
+        <span class="badge bg-info-subtle text-info-emphasis">{{ requisito.usos|length }} solicitud(es) con documento vinculado</span>
+        <div class="form-text mt-1">No se puede eliminar mientras tenga usos — desactívalo para retirarlo del catálogo vivo sin perder el histórico.</div>
+        {% else %}
+        <span class="text-secondary small">Sin vinculaciones todavía.</span>
+        {% endif %}
+    </div>
+</div>
+
+{% if puede_editar %}
+<div class="d-flex gap-2">
+    <form data-inspector-form
+          data-action="{{ url_for('admin_requisitos.activar', id=requisito.id) }}">
+        <button type="submit"
+                class="btn btn-sm {% if requisito.activo %}btn-outline-danger{% else %}btn-outline-success{% endif %}">
+            <i class="fas {% if requisito.activo %}fa-toggle-off{% else %}fa-toggle-on{% endif %} me-1"></i>
+            {% if requisito.activo %}Desactivar{% else %}Activar{% endif %}
+        </button>
+    </form>
+
+    {% if puede_eliminar and not requisito.usos %}
+    <form method="POST" action="{{ url_for('admin_requisitos.eliminar', id=requisito.id) }}"
+          onsubmit="return confirm('¿Eliminar definitivamente este requisito? No tiene usos vinculados, pero la acción no se puede deshacer.');">
+        <button type="submit" class="btn btn-sm btn-outline-danger">
+            <i class="fas fa-trash me-1"></i> Eliminar
+        </button>
+    </form>
+    {% endif %}
+</div>
+{% endif %}
+
+</div>{# /p-3 #}

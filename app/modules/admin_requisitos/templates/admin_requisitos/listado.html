@@ -1,0 +1,176 @@
+{% extends 'layout/lista_v2_base.html' %}
+
+{% block page_title %}Requisitos documentales{% endblock %}
+{% block page_icon %}<i class="fas fa-clipboard-check"></i>{% endblock %}
+{% block entity_label_plural %}requisitos{% endblock %}
+{% block search_placeholder %}Buscar por descripción o artículo...{% endblock %}
+{% block tabla_clase %}requisitos-table{% endblock %}
+
+{% block btn_nuevo %}
+{% if tiene_permiso('gestionar_requisitos_documentales') %}
+<button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#crearRequisitoModal">
+    <i class="fas fa-plus me-1"></i> Nuevo requisito
+</button>
+{% endif %}
+{% endblock %}
+
+{% block filtros_extra %}
+<div id="sf-estado"></div>
+<div id="sf-documento"></div>
+{% endblock %}
+
+{% block thead_cols %}
+<th>Tipo documento</th>
+<th class="lt-hide-md">Descripción legal</th>
+<th class="lt-hide-lg">Norma / Artículo</th>
+<th class="lt-hide-md">Condiciones</th>
+<th class="lt-truncate">Orden</th>
+<th>Estado</th>
+{% endblock %}
+
+{% block content %}
+{{ super() }}
+
+<!-- Modal de alta (patrón usuarios/index.html) -->
+{% if tiene_permiso('gestionar_requisitos_documentales') %}
+<div class="modal fade" id="crearRequisitoModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <form method="POST" action="{{ url_for('admin_requisitos.crear') }}" class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fas fa-clipboard-check me-1"></i> Nuevo requisito documental</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row g-2">
+          <div class="col-12">
+            <label class="form-label fw-semibold small" for="rq_tipo_documento">
+              Tipo de documento requerido <span class="text-danger">*</span>
+            </label>
+            <select class="form-select form-select-sm" id="rq_tipo_documento" name="tipo_documento_id" required>
+              <option value="">— Seleccionar —</option>
+              {% for td in tipos_documento %}
+              <option value="{{ td.id }}" {% if form_data and form_data.get('tipo_documento_id')|string == td.id|string %}selected{% endif %}>
+                  {{ td.codigo }} — {{ td.nombre }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-12">
+            <label class="form-label fw-semibold small" for="rq_descripcion">Descripción legal</label>
+            <textarea class="form-control form-control-sm" id="rq_descripcion" name="descripcion_legal" rows="2"
+                      >{{ form_data.get('descripcion_legal', '') if form_data else '' }}</textarea>
+          </div>
+          <div class="col-8">
+            <label class="form-label fw-semibold small" for="rq_norma">Norma</label>
+            <select class="form-select form-select-sm" id="rq_norma" name="norma_id">
+              <option value="">— Sin norma asociada —</option>
+              {% for n in normas %}
+              <option value="{{ n.id }}" {% if form_data and form_data.get('norma_id')|string == n.id|string %}selected{% endif %}>
+                  {{ n.codigo }} — {{ n.titulo }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-4">
+            <label class="form-label fw-semibold small" for="rq_articulo">Artículo</label>
+            <input type="text" class="form-control form-control-sm" id="rq_articulo" name="articulo"
+                   value="{{ form_data.get('articulo', '') if form_data else '' }}" placeholder="4.1">
+          </div>
+          <div class="col-4">
+            <label class="form-label fw-semibold small" for="rq_orden">Orden</label>
+            <input type="number" class="form-control form-control-sm" id="rq_orden" name="orden" min="1"
+                   value="{{ form_data.get('orden', '1') if form_data else '1' }}">
+          </div>
+        </div>
+        <div class="form-text mt-2">
+          Las condiciones de aplicación (variable + operador + valor) se añaden después, editando el requisito ya creado.
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+        <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-save me-1"></i> Crear requisito</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+{{ super() }}
+<script src="{{ url_for('static', filename='js/requisitos-inspector.js') }}"></script>
+<script>
+    function _esc(s) {
+        if (s === null || s === undefined) return '';
+        return String(s)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+    }
+    function _vacio(val) {
+        return val ? _esc(val) : '<span class="text-secondary">—</span>';
+    }
+
+    new SelectorFiltro('#sf-estado', [
+        { v: 'true',  t: 'Activos'   },
+        { v: 'false', t: 'Inactivos' }
+    ], { label: 'Estado', name: 'estado' });
+
+    new SelectorFiltro('#sf-documento', [
+        {% for td in tipos_documento %}{ v: '{{ td.id }}', t: '{{ td.nombre|e }}' }{{ ',' if not loop.last }}{% endfor %}
+    ], { label: 'Tipo documento', name: 'tipo_documento' });
+
+    const scrollInfinito = new ScrollInfinito({
+        apiUrl:      '{{ url_for("api_requisitos_documentales.listar_requisitos") }}',
+        tableClass:  '.requisitos-table',
+        entityLabel: 'requisitos',
+        columns: [
+            { key: 'tipo_documento', label: 'Tipo documento', type: 'text' },
+            { key: 'descripcion_legal', label: 'Descripción legal', type: 'custom', hide: 'md',
+              renderFn: v => _vacio(v) },
+            { key: 'norma', label: 'Norma / Artículo', type: 'custom', hide: 'lg', renderFn: (v, item) => {
+                if (!v) return '<span class="text-secondary">—</span>';
+                return _esc(v) + (item.articulo ? ' <span class="text-secondary">art. ' + _esc(item.articulo) + '</span>' : '');
+            }},
+            { key: 'num_condiciones', label: 'Condiciones', type: 'custom', hide: 'md', renderFn: v =>
+                v > 0 ? '<span class="badge bg-info-subtle text-info-emphasis">' + v + '</span>' : '<span class="text-secondary">Universal</span>' },
+            { key: 'orden', label: 'Orden', type: 'text', truncate: true },
+            { key: 'activo', label: 'Estado', type: 'custom', renderFn: v => v
+                ? '<span class="badge bg-success">Activo</span>'
+                : '<span class="badge bg-secondary">Inactivo</span>' },
+        ],
+        selection: {
+            fragmentUrl: id   => `/admin/requisitos/${id}/fragmento`,
+            title:       item => item.tipo_documento || ''
+        }
+    });
+
+    const filtros = new FiltrosListado(scrollInfinito);
+
+    // Sync inspector ↔ URL ?sel (ADR-023 §1)
+    function _updateSelParam(selId) {
+        const url = new URL(location.href);
+        if (selId) url.searchParams.set('sel', selId);
+        else url.searchParams.delete('sel');
+        history.replaceState(null, '', url.toString());
+    }
+    document.addEventListener('inspector:opened',  e => _updateSelParam(e.detail.selId));
+    document.addEventListener('inspector:swapped', e => _updateSelParam(e.detail.selId));
+    document.addEventListener('inspector:closed',  () => _updateSelParam(null));
+
+    const _selParam = new URLSearchParams(location.search).get('sel');
+    if (_selParam && window.AppInspector) {
+        AppInspector.open({
+            selId:       _selParam,
+            title:       '',
+            fragmentUrl: `/admin/requisitos/${_selParam}/fragmento`
+        });
+    }
+
+    {% if show_modal %}
+    new bootstrap.Modal(document.getElementById('crearRequisitoModal')).show();
+    {% endif %}
+
+    console.log('Listado de requisitos documentales inicializado (#583)');
+</script>
+{% endblock %}
