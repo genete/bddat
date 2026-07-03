@@ -20,6 +20,10 @@ Semántica de condiciones:
     Todas se evalúan en AND. Un requisito sin condiciones es universal
     (aplica siempre). Los operadores soportados son los mismos que
     CondicionRegla: EQ, NEQ, IN, NOT_IN, IS_NULL, NOT_NULL.
+
+    Solo se evalúan requisitos con activo=True (baja lógica del Supervisor,
+    #583). Los DocumentoRequisito de expedientes antiguos no se ven afectados
+    al desactivar un requisito — solo deja de proponerse en análisis nuevos.
 """
 from __future__ import annotations
 
@@ -104,6 +108,7 @@ def evaluar_requisitos(solicitud: Any, variables: dict) -> dict:
     try:
         todos_requisitos = (
             RequisitoDocumental.query
+            .filter_by(activo=True)
             .order_by(RequisitoDocumental.orden)
             .all()
         )
