@@ -22,6 +22,9 @@ REGISTROS_REQUERIDOS: dict = {
         'RECEPCION_DICTAMEN', 'RECEPCION_FIGURA',
         # Interesados del expediente (#374)
         'REGISTRO_INTERESADOS',
+        # Traslados de consulta y análisis documental — auditoría 2026-07-04
+        'CONSULTA_TRASLADO_ORGANISMO', 'CONSULTA_TRASLADO_TITULAR',
+        'ANALISIS_DOCUMENTAL', 'RECEPCION_ALEGACION',
     ],
     'TipoTarea': [
         'ANALIZAR', 'ELABORAR', 'NOTIFICAR', 'ESPERAR_PLAZO',
@@ -39,12 +42,14 @@ REGISTROS_REQUERIDOS: dict = {
     # TipoSolicitud usa 'siglas' como identificador estable (no 'codigo')
     'TipoSolicitud': ['AAC', 'AAP'],
     # TipoResultadoFase — código usado en invariantes_esftt (#419)
-    'TipoResultadoFase': ['DESFAVORABLE'],
-    'TipoDocumento': ['CERT_FIN_INSTRUCCION', 'CERT_PLAZO_CUMPLIDO', 'BORRADOR_FIRMA'],
+    'TipoResultadoFase': ['DESFAVORABLE', 'FIN', 'FAVORABLE', 'FAVORABLE_CONDICIONADO'],
+    'TipoDocumento': ['CERT_FIN_INSTRUCCION', 'CERT_PLAZO_CUMPLIDO', 'BORRADOR_FIRMA', 'CERT_FIN_IP_CONSULTAS'],
+    # Rol usa 'nombre' como identificador estable — anclado en PERMISOS (app/utils/permisos.py)
+    'Rol': ['ADMIN', 'SUPERVISOR', 'TRAMITADOR', 'ADMINISTRATIVO'],
 }
 
 # Atributo del modelo que contiene el identificador estable.
-# TipoSolicitud usa 'siglas'; el resto usa 'codigo'.
+# TipoSolicitud usa 'siglas'; Rol usa 'nombre'; el resto usa 'codigo'.
 _CODIGO_ATTR: dict[str, str] = {
     'TipoTramite':        'codigo',
     'TipoTarea':          'codigo',
@@ -52,6 +57,7 @@ _CODIGO_ATTR: dict[str, str] = {
     'TipoSolicitud':      'siglas',
     'TipoDocumento':      'codigo',
     'TipoResultadoFase':  'codigo',
+    'Rol':                'nombre',
 }
 
 
@@ -73,6 +79,7 @@ def validar_catalogo() -> List[str]:
         'TipoSolicitud':     _importar('app.models.tipos_solicitudes',      'TipoSolicitud'),
         'TipoDocumento':     _importar('app.models.tipos_documentos',       'TipoDocumento'),
         'TipoResultadoFase': _importar('app.models.tipos_resultados_fases', 'TipoResultadoFase'),
+        'Rol':               _importar('app.models.usuarios',               'Rol'),
     }
 
     faltantes: List[str] = []
