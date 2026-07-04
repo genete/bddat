@@ -1,5 +1,13 @@
 """Modelo para gestión de permisos por tabla mediante metadatos.
 
+DEPRECATED (issue #585): sin consumidores en el código — ninguna ruta, decorador
+ni servicio consulta este modelo. El control de acceso real vive en el dict
+PERMISOS de app/utils/permisos.py (ADR-012/ADR-013). Además, su premisa de
+diseño (restringir LECTURA por rol vía roles_lectura) contradice ADR-013,
+que establece que la visibilidad no se restringe por rol ("evitar los
+manazas, no los ojos"). No usar en código nuevo — pendiente de eliminación
+en #585 (modelo, tabla y migración de baja).
+
 Este modelo implementa un sistema de control de accesos basado en metadatos
 con tres niveles de permisos: lectura, escritura (INSERT+UPDATE) y eliminación (DELETE).
 
@@ -21,7 +29,10 @@ from datetime import datetime
 
 class TablaMetadata(db.Model):
     """Configuración de permisos por tabla para control de accesos.
-    
+
+    DEPRECATED (issue #585) — no usar en código nuevo. Ver docstring de
+    módulo para el porqué. Pendiente de eliminación.
+
     PROPÓSITO:
         Define qué roles tienen permisos de lectura, escritura y eliminación
         sobre cada tabla del sistema.
