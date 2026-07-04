@@ -42,7 +42,7 @@ REGISTROS_REQUERIDOS: dict = {
     # TipoSolicitud usa 'siglas' como identificador estable (no 'codigo')
     'TipoSolicitud': ['AAC', 'AAP'],
     # TipoResultadoFase — código usado en invariantes_esftt (#419)
-    'TipoResultadoFase': ['DESFAVORABLE', 'FIN', 'FAVORABLE', 'FAVORABLE_CONDICIONADO'],
+    'TipoResultadoFase': ['DESFAVORABLE', 'FAVORABLE', 'FAVORABLE_CONDICIONADO'],
     'TipoDocumento': ['CERT_FIN_INSTRUCCION', 'CERT_PLAZO_CUMPLIDO', 'BORRADOR_FIRMA', 'CERT_FIN_IP_CONSULTAS'],
     # Rol usa 'nombre' como identificador estable — anclado en PERMISOS (app/utils/permisos.py)
     'Rol': ['ADMIN', 'SUPERVISOR', 'TRAMITADOR', 'ADMINISTRATIVO'],
