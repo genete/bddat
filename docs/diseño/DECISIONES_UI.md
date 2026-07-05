@@ -37,6 +37,7 @@ El **análisis crítico es snapshot inmutable** del estado de reflexión al 28-m
 | **ADR-022** | Sistema visual base — escala tipográfica única (rem global 14-15px + shell a rem), tokens de color sin fugas, componente de tabla unificado con overrides heredables, retirada del recorte ~95% en `main`. Prerrequisito de ADR-023 | #533 | 2026-06-07 |
 | **ADR-023** | List-detail + inspector universal — selección de fila en lugar de botón "Ver"; inspector **overlay** `position:fixed` a nivel de shell (no columna del grid; sin negociación de espacio ni histéresis); modelo de **tres capas** (listado · inspector · modal grande). Enmienda ADR-016 §14. Revisado a modelo overlay el 2026-06-10 | #534 | 2026-06-10 |
 | **ADR-024** | Listado único y inspector de expediente/proyecto — fusión de los dos listados (`/expedientes/` + `/proyectos/`) en uno; estructura de secciones del inspector (cabecera, botón "Tramitar", datos admin, datos proyecto, variables motor, municipios→modal grande, placeholder botón "Instalaciones") | #543 | 2026-06-11 |
+| **ADR-029** | Navegación administrativa — sidebar y dashboard como proyección 1:1 de `module_nav`; hub del supervisor gana entrada universal "Control y Gestión" (enmienda ADR-028 §1); `/admin` se reserva para lo exclusivo de ADMIN | #588, #589, #590 | 2026-07-05 |
 
 ---
 
@@ -110,6 +111,9 @@ De ANALISIS_CRITICO §6:
 - **2026-06-07** — ADR-022 cerrado (#533). Sistema visual base: escala tipográfica única + tokens de color + tabla unificada.
 - **2026-06-10** — ADR-023 cerrado (#534). List-detail + inspector overlay universal (modelo de tres capas; sin negociación de espacio). Enmienda ADR-016 §14. Deriva del PRE-ADR `PRE-ADR-workbench-listados.md`.
 - **2026-06-11** — ADR-024 cerrado (#543). Listado único expediente/proyecto + estructura de inspector (secciones, municipios→modal, botón "Instalaciones" placeholder).
+- **2026-07-05** — ADR-029 cerrado (#588/#589/#590). Navegación administrativa: sidebar y
+  dashboard 1:1 desde `module_nav`, hub del supervisor universal ("Control y Gestión",
+  enmienda ADR-028 §1), `/admin` reservado para lo exclusivo de ADMIN.
 
 ---
 

@@ -188,10 +188,15 @@ propios (siguientes libres desde **ADR-029**). Posible partición:
 | Futuro ADR | Bloque / contenido | Issues |
 |---|---|---|
 | ADR-028 (este) | Marco de dos bloques + decisiones fijadas | #579 (contenedor) |
-| ¿ADR-029? | Configuración del sistema (Gestión §6-7) | #170, #171, #479, +plazos |
-| ¿ADR-030? | Estadísticas + auditoría (Control §2-4) | #256, #74, +stats usuarios |
-| ¿ADR-031? | Informes y exportaciones (Control §5) | #76, +nuevos |
-| ¿ADR-032? | Operaciones masivas (Gestión §9) | #295, #105, +asignación masiva |
+| **ADR-029** | Navegación administrativa (sidebar/dashboard 1:1, hub universal) — enmienda §1 de este ADR | #588, #589, #590 |
+| ¿ADR-030? | Configuración del sistema (Gestión §6-7) | #170, #171, #479, +plazos |
+| ¿ADR-031? | Estadísticas + auditoría (Control §2-4) | #256, #74, +stats usuarios |
+| ¿ADR-032? | Informes y exportaciones (Control §5) | #76, +nuevos |
+| ¿ADR-033? | Operaciones masivas (Gestión §9) | #295, #105, +asignación masiva |
+
+> **Nota (2026-07-05):** ADR-029 se asignó a la enmienda de navegación de este ADR, no al
+> bloque de "Configuración del sistema" previsto originalmente en esta tabla — el resto de
+> números se desplaza una posición. Eran solo previsión, no compromiso.
 
 `[ABIERTO]` decidir si conviene partir o mantener uno solo; y el orden de construcción entre
 bloques (la Gestión es construible ya; el Control de estadísticas también, sobre `estado_dominio`).

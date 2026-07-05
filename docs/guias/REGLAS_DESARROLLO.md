@@ -147,6 +147,10 @@ Registrar en `docs/decisiones/` como ADR numerado. Ver ADR-001 y ADR-002 como re
 El sistema de permisos está centralizado en `app/utils/permisos.py` (ADR-012).
 **Nunca** usar `current_user.tiene_rol('ADMIN', ...)` directamente en rutas ni templates nuevos.
 
+Antes de dar de alta una pantalla administrativa nueva, decidir **dónde vive** con el
+criterio de ADR-029 (entrada propia de sidebar vs. tarjeta dentro del hub del supervisor) —
+no copiar el emplazamiento de navegación del módulo hermano más parecido sin releerlo primero.
+
 ### Qué usar en cada caso
 
 | Situación | Qué usar |
