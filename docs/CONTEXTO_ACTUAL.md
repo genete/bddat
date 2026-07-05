@@ -9,7 +9,7 @@
 
 **Último hito:** PR #580 (parte de #579) — panel de estadísticas del supervisor: servicio `estadisticas_supervisor` sobre el núcleo `estado_dominio`, isla React + Recharts tematizada.
 
-**#579 sigue abierto:** bloque GESTIÓN aparcado (2026-07-02) para priorizar M3. Piezas en issues propios: config motor #170/#171/#479, plazos legales, operaciones masivas #295.
+**#579 sigue abierto:** bloque GESTIÓN aparcado (2026-07-02) para priorizar M3. Piezas en issues propios: config motor #170/#171/#479, plazos legales, operaciones masivas #295 — **antes de construir cualquiera de estas, resolver #588/#589/#590 (ADR-029, navegación administrativa)**, que fijan dónde encajan (hub universal "Control y Gestión"); construirlas antes repetiría el problema que #583 destapó.
 
 **Próximos:** foco en M3 — análisis documental/requerimientos (ver hoja de ruta abajo). Spin-offs vivos de #558/#559 pendientes: #566/#567 (árbol), #568 (`NOTIFICACION_INFRUCTUOSA`), #570/#571 (filtros y tokens del seguimiento). Tras M3: bloque escritos/motor adaptativo (M4).
 
@@ -22,6 +22,7 @@ Diseño cerrado (7 ADRs + `DECISIONES_UI.md`). Implementados y cerrados: #497 (A
 Activo:
 
 - **#579 — Mi trabajo del supervisor (ADR-028).** Bloque CONTROL hecho (PR #580). Bloque GESTIÓN aparcado. Permanece abierto como paraguas.
+- **#588/#589/#590 — Navegación administrativa (ADR-029).** Van **antes** que cualquier issue que pueble el bloque GESTIÓN de #579 (#170/#171/#479/plazos/#295): fijan la estructura (hub universal "Control y Gestión", dashboard 1:1 con el sidebar, retirada del prefijo `/admin`) donde esas piezas tienen que encajar.
 
 **Total estimado bloque UI: ~10-13 semanas** (1 dev + IA, ratio observado).
 
@@ -58,7 +59,7 @@ Se aborda tras consolidar M3.
 
 - `docs/diseño/DECISIONES_UI.md` — punto de entrada al estado del revamping.
 - `docs/guias/NOMENCLATURA_LAYOUT.md` — referencia de las 7 áreas del layout.
-- `docs/decisiones/ADR-013` a `ADR-021`.
+- `docs/decisiones/` — ADR-013 en adelante (revamping); `DECISIONES_UI.md` mantiene el listado curado y actualizado, no un rango fijo aquí.
 
 ## Backlog M3/M4/M5 no afectado por el revamping
 
