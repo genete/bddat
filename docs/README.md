@@ -47,6 +47,9 @@ Consultar cuando se trabaja ese subsistema. No cargar por defecto.
 - [ESTRUCTURA_ESF.md](referencia/ESTRUCTURA_ESF.md) — **fuente de verdad** (E-S-F): tablas de doble entrada por tipo de solicitud
 - [ESTRUCTURA_ESF.json](referencia/ESTRUCTURA_ESF.json) — derivado del MD anterior
 
+### Tablas estructurales
+- [CATALOGO_TABLAS_ESTRUCTURALES.md](referencia/CATALOGO_TABLAS_ESTRUCTURALES.md) — clasificación fundacional/derivada, CRUD vs migración-only, arquitectura en 3 capas del motor de reglas
+
 ### Ecosistema externo
 - [DISEÑO_ECOSISTEMA_MANAGERS.md](referencia/DISEÑO_ECOSISTEMA_MANAGERS.md) — bandeja-manager, ptwanda-manager: arquitectura, integración con BDDAT, campo plataforma_codigo
 - [ESTUDIO_DOM_PTWANDA.md](referencia/ESTUDIO_DOM_PTWANDA.md) — estudio de campo del DOM de PTWANDA (acceso, búsqueda, listado, detalle, descarga por refdoc); insumo para ptwanda-manager
