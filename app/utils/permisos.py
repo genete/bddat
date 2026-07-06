@@ -58,6 +58,15 @@ PERMISOS = {
     # ADMIN: el SUPERVISOR puede crear/editar pero no archivar (criterio del issue).
     'archivar_catalogo_requerimientos':  {'ADMIN'},
 
+    # CRUD admin de items_tecnicos (#594) — catálogo de apartados de contenido
+    # técnico exigidos por RD 223/2008 / RD 337/2014. Gemelo de
+    # requisitos_documentales con editor de condiciones anidado. Entra como
+    # tarjeta del hub del supervisor (ADR-029 §1), sin metadata.json propio.
+    'acceder_items_tecnicos':   {'ADMIN', 'SUPERVISOR', 'TRAMITADOR', 'ADMINISTRATIVO'},
+    'gestionar_items_tecnicos': {'ADMIN', 'SUPERVISOR'},
+    # Baja física (DELETE real) — solo ADMIN, mismo criterio que requisitos_documentales.
+    'eliminar_items_tecnicos':  {'ADMIN'},
+
     # Árbol del expediente — frontera hoja / estructura (ADR-017 §6, #501).
     # "Puerta abierta": gestionar_tareas habilita COMPLETAR cualquier tarea ya
     # prevista (incluye ADMINISTRATIVO); la bitácora es la rendición de cuentas.
