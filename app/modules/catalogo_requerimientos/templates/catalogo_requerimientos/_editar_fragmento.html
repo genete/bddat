@@ -1,0 +1,55 @@
+{# _editar_fragmento.html — Parcial de edición para el inspector (ADR-023 / #593).
+   No extiende base_app.html. Inyectado por inspector-overlay.js vía data-inspector-edit.
+   Submit interceptado: POST XHR → JSON { ok, errors, message }.
+   Sin editor de condiciones anidado (no aplica, #593 — tabla plana).
+#}
+
+<div class="p-3">
+
+<form data-inspector-form class="form-requerimiento-editar"
+      data-action="{{ url_for('catalogo_requerimientos.editar', id=requerimiento.id) }}">
+
+<div id="inspector-form-errors" class="alert alert-danger py-2 mb-3 small" style="display:none;"></div>
+
+<div class="d-flex justify-content-end gap-2 mb-3">
+    <button type="button" class="btn btn-outline-secondary btn-sm" data-inspector-cancel-edit>
+        <i class="fas fa-times me-1"></i> Cancelar
+    </button>
+    <button type="submit" class="btn btn-primary btn-sm">
+        <i class="fas fa-save me-1"></i> Guardar cambios
+    </button>
+</div>
+
+<!-- CARD 1 — Identificación -->
+<div class="card mb-3">
+    <div class="card-header card-header-accent fw-semibold">
+        <i class="fas fa-list-check me-1"></i> Requerimiento
+    </div>
+    <div class="card-body card-body-tinted">
+        <div class="row g-2">
+            <div class="col-12">
+                <label class="form-label fw-semibold small" for="rf_texto">
+                    Texto <span class="text-danger">*</span>
+                </label>
+                <textarea class="form-control form-control-sm" id="rf_texto" name="texto"
+                          rows="4" required>{{ requerimiento.texto }}</textarea>
+                <div class="form-text">Puede incluir huecos {placeholder} para completar en cada uso.</div>
+            </div>
+            <div class="col-12">
+                <label class="form-label fw-semibold small" for="rf_categoria">
+                    Categoría <span class="text-danger">*</span>
+                </label>
+                <select class="form-select form-select-sm" id="rf_categoria" name="categoria" required>
+                    {% for codigo, etiqueta in categorias %}
+                    <option value="{{ codigo }}" {% if requerimiento.categoria == codigo %}selected{% endif %}>
+                        {{ etiqueta }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+    </div>
+</div>
+
+</form>
+</div>{# /p-3 #}
