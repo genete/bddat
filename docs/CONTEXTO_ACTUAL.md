@@ -5,13 +5,13 @@
 
 ---
 
-**Último cerrado:** trabajo en paralelo con tres worktrees (sesión 2026-07-06) — #593 CRUD de `catalogo_requerimientos` (PR #597), #591 corte mínimo `activo_red`/`envolvente`/tabla puente (PR #598), #582 regla de motor tasa impagada (PR #596). Migraciones de #591/#582 coordinadas manualmente (misma cabeza `b88f9bb4755b`, rebasada para cadena lineal en vez de heads divergentes). Además, cerrada del todo la deuda de tests preexistente que las tres sesiones venían reverificando sin corregir: #487 (app_context en `test_247`, esquema de URL en `test_341`), #578 (test de `toggle_estado` obsoleto) y #227 (ya resuelto sin querer por #544) — PR #599. Suite completa: 0 fallos (antes 8).
+**Último cerrado:** #594 — `items_tecnicos` + `condiciones_item_tecnico` + `coberturas_item_tecnico` (catálogo de apartados de contenido técnico exigidos por RD 223/2008 / RD 337/2014) y su CRUD Supervisor, mismo patrón que `requisitos_documentales` (#583) con editor de condiciones anidado. `coberturas_item_tecnico` usa una máquina de 2 campos/3 estados (`texto` + `cubierto`: NO REVISADO / DESFAVORABLE / FAVORABLE) en vez de indexar contra un documento concreto. Entra como tarjeta del hub "Control y Gestión" (ADR-029 §1), sin `metadata.json` propio. PR #600.
 
 **Último hito:** PR #580 (parte de #579) — panel de estadísticas del supervisor: servicio `estadisticas_supervisor` sobre el núcleo `estado_dominio`, isla React + Recharts tematizada.
 
 **#579 sigue abierto:** bloque GESTIÓN aparcado (2026-07-02) para priorizar M3. Piezas en issues propios: config motor #170/#171/#479, plazos legales, operaciones masivas #295 — **antes de construir cualquiera de estas, resolver #588/#589/#590 (ADR-029, navegación administrativa)**, que fijan dónde encajan (hub universal "Control y Gestión"); construirlas antes repetiría el problema que #583 destapó.
 
-**Próximos:** foco en M3 — análisis documental/requerimientos (ver hoja de ruta abajo). Spin-offs vivos de #558/#559 pendientes: #566/#567 (árbol), #568 (`NOTIFICACION_INFRUCTUOSA`), #570/#571 (filtros y tokens del seguimiento). Tras M3: bloque escritos/motor adaptativo (M4).
+**Próximo: #581** — UI de verificación del tramitador en tarea ANALIZAR (rama ítems técnicos, ver hoja de ruta abajo). No bloqueado por #595 (poblado puro, aparcado — mismo criterio que #408/#441): se construye y prueba con ítems técnicos inventados a mano. Resto del foco M3 sigue igual (ver hoja de ruta). Spin-offs vivos de #558/#559 pendientes: #566/#567 (árbol), #568 (`NOTIFICACION_INFRUCTUOSA`), #570/#571 (filtros y tokens del seguimiento). Tras M3: bloque escritos/motor adaptativo (M4).
 
 ## Hoja de ruta — Implementación
 
@@ -47,12 +47,15 @@ paralelo, cada una CRUD→poblado antes que su UI, convergen en #495 → UI #581
 - ~~**#591**~~ ✅ Corte mínimo de integración con
   [bddat-instalaciones](https://github.com/genete/bddat-instalaciones)
   (`activo_red`/`envolvente`/tabla puente) — deriva el RD aplicable sin campo proxy. PR #598.
-- **#594** — [MODELO][ADMIN] `items_tecnicos` + `condiciones_item_tecnico` + CRUD
-  Supervisor. Ya no bloqueado (#591 resuelto).
-- **#595** — poblado normativo de `items_tecnicos` (RD 223/2008, RD 337/2014). Depende
-  de #594.
-- **#581** — redefinido a solo la UI de verificación del tramitador en tarea ANALIZAR
-  (antes bundlaba diseño+poblado+UI). Depende de #594/#595.
+- ~~**#594**~~ ✅ [MODELO][ADMIN] `items_tecnicos` + `condiciones_item_tecnico` + CRUD
+  Supervisor. PR #600.
+- **#595** — poblado normativo puro de `items_tecnicos` (RD 223/2008, RD 337/2014). Ya
+  no bloqueado (#594 resuelto), pero no se prioriza mientras se pueda avanzar sin él —
+  mismo criterio que #408/#441: la UI de #581 solo depende de #595 para tener datos
+  reales, no para construirse; se puede probar con ítems técnicos inventados a mano.
+- **#581 — siguiente.** Redefinido a solo la UI de verificación del tramitador en tarea
+  ANALIZAR (antes bundlaba diseño+poblado+UI). Ya no bloqueado en la práctica (#594
+  resuelto); #595 solo aporta datos reales, no es prerrequisito de construcción.
 
 **Convergencia:**
 - **#495** — Check documental completo + auto-generación de defectos.
