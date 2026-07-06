@@ -28,16 +28,36 @@ Activo:
 
 ### Bloque análisis documental / requerimientos (M3) — foco actual
 
-Orden (sesión 2026-07-03, detalle en `docs/referencia/DISEÑO_ANALISIS_SOLICITUD.md` §4/§7):
-#441/#408/#581 (diseño) en paralelo → #495 → UI #581 → #440 → #442 (cierre) → #582.
+Orden (sesión 2026-07-03, re-troceado en sesión 2026-07-05 — detalle en
+`docs/referencia/DISEÑO_ANALISIS_SOLICITUD.md` §4/§7): tres ramas de diseño/poblado en
+paralelo, cada una CRUD→poblado antes que su UI, convergen en #495 → UI #581 → #440 →
+#442 (cierre) → #582.
 
-- **#408** — Poblar catálogo de requisitos documentales (siembra mínima; modelo ya construido en #192).
-- ~~**#583**~~ ✅ CRUD admin del catálogo. PR #584.
-- **#441** — Seed `catalogo_requerimientos`.
-- **#440** — Selector de requerimientos en tarea ANALIZAR.
+**Rama documental (sin cambios):**
+- ~~**#583**~~ ✅ CRUD admin de `requisitos_documentales`. PR #584.
+- **#408** — Poblar catálogo de requisitos documentales (modelo ya construido en #192).
+
+**Rama requerimientos (#441 re-troceado 2026-07-05):**
+- **#593** — [ADMIN] CRUD de `catalogo_requerimientos` (gemelo simplificado de #583, sin
+  condiciones anidadas).
+- **#441** — poblado puro de `catalogo_requerimientos`, redefinido para depender de #593
+  (antes pedía script+migración; descartado, mismo criterio que #408).
+
+**Rama ítems técnicos (#581 re-troceado 2026-07-05):**
+- **#591** — Corte mínimo de integración con
+  [bddat-instalaciones](https://github.com/genete/bddat-instalaciones)
+  (`activo_red`/`envolvente`/tabla puente) — deriva el RD aplicable sin campo proxy.
+- **#594** — [MODELO][ADMIN] `items_tecnicos` + `condiciones_item_tecnico` + CRUD
+  Supervisor. Depende de #591.
+- **#595** — poblado normativo de `items_tecnicos` (RD 223/2008, RD 337/2014). Depende
+  de #594.
+- **#581** — redefinido a solo la UI de verificación del tramitador en tarea ANALIZAR
+  (antes bundlaba diseño+poblado+UI). Depende de #594/#595.
+
+**Convergencia:**
 - **#495** — Check documental completo + auto-generación de defectos.
+- **#440** — Selector de requerimientos en tarea ANALIZAR.
 - **#442** — Formulario diagnóstico en ANALIZAR (cierre del hilo).
-- **#581** — Checklist de contenido técnico del proyecto (RD 223/2008, RD 337/2014).
 - **#582** — Regla de motor: tasa impagada bloquea toda fase posterior.
 
 ### Bloque escritos / motor adaptativo (M4)
@@ -64,3 +84,7 @@ Se aborda tras consolidar M3.
 ## Backlog M3/M4/M5 no afectado por el revamping
 
 Sigue en GitHub con sus milestones. Ejemplos: #170, #171, #322, #408, #409, #432, #495, etc.
+
+**#592** (M5) — Integración completa del modelo de activos técnicos de
+[bddat-instalaciones](https://github.com/genete/bddat-instalaciones) (líneas, aparamenta,
+geometría/PostGIS, generación). Corte mínimo ya resuelto en #591 (M3).
