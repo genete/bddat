@@ -1,8 +1,12 @@
 """582 regla tasa impagada
 
 Revision ID: 07948f0f5f2c
-Revises: b88f9bb4755b
+Revises: fd603abba8af
 Create Date: 2026-07-06 08:55:02.054181
+
+Rebased sobre fd603abba8af (#591) al coordinar el merge de ambas ramas
+paralelas desde la misma cabeza (b88f9bb4755b) — evita el head divergente,
+mantiene la cadena de migraciones lineal.
 
 Issue #582 — Regla de motor: tasa impagada bloquea toda fase posterior a
 ANÁLISIS_SOLICITUD (art. 45.1 Ley 10/2021, de 28 de diciembre, de tasas y
@@ -33,7 +37,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = '07948f0f5f2c'
-down_revision = 'b88f9bb4755b'
+down_revision = 'fd603abba8af'
 branch_labels = None
 depends_on = None
 
