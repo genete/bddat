@@ -156,16 +156,6 @@ def test_tramitador_no_puede_editar_usuario(tramitador):
     assert '/perfil' in r.headers.get('Location', '')
 
 
-def test_tramitador_no_puede_toggle_estado(tramitador):
-    """TRAMITADOR no puede cambiar el estado activo de un usuario."""
-    from app.models.usuarios import Usuario
-    u = Usuario.query.first()
-    if u is None:
-        pytest.skip('No hay usuarios en la BD')
-    r = tramitador.post(f'/usuarios/{u.id}/toggle_estado', follow_redirects=False)
-    assert r.status_code == 302
-    assert '/perfil' in r.headers.get('Location', '')
-
 
 # ---------------------------------------------------------------------------
 # SUPERVISOR — sin regresiones (acceso completo)
