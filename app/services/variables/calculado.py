@@ -4,8 +4,12 @@ o propiedades de los modelos. No se persisten; se recalculan en cada invocación
 """
 from __future__ import annotations
 
+import logging
+
 from app.services.variables import variable
 from app.services.invariantes_esftt import RESULTADO_FASE_FAVORABLE_CODIGOS
+
+log = logging.getLogger(__name__)
 
 
 @variable('fase_ip_finalizada')
@@ -187,6 +191,48 @@ def _(ctx) -> bool:
                         if not tarea.ejecutada:
                             return True
     return False
+
+
+@variable('tasa_impagada')
+def _(ctx) -> bool:
+    """
+    True si el requisito documental de la tasa (RequisitoDocumental cuyo
+    TipoDocumento tiene codigo='JUSTIFICANTE_PAGO_TASA') no está cubierto
+    en documentos_requisito para la solicitud en contexto (#582, art. 45.1
+    Ley 10/2021).
+
+    Ese TipoDocumento/RequisitoDocumental lo puebla #408. Mientras el
+    catálogo no lo tenga, degrada a False (no bloquea) y loguea warning —
+    mismo criterio que app/services/requisitos.py::evaluar_requisitos (#347).
+    """
+    from app.models.requisitos_documentales import RequisitoDocumental, DocumentoRequisito
+    from app.models.tipos_documentos import TipoDocumento
+
+    solicitud = ctx.solicitud
+    if solicitud is None:
+        return False
+
+    requisitos_tasa = (
+        RequisitoDocumental.query
+        .join(TipoDocumento)
+        .filter(TipoDocumento.codigo == 'JUSTIFICANTE_PAGO_TASA',
+                RequisitoDocumental.activo.is_(True))
+        .all()
+    )
+    if not requisitos_tasa:
+        log.warning(
+            'tasa_impagada: no existe RequisitoDocumental activo con '
+            "tipo_documento.codigo='JUSTIFICANTE_PAGO_TASA' — catálogo aún no poblado (#408)"
+        )
+        return False
+
+    ids_requisito = {r.id for r in requisitos_tasa}
+    cubiertos = {
+        dr.requisito_id
+        for dr in DocumentoRequisito.query.filter_by(solicitud_id=solicitud.id).all()
+        if dr.requisito_id in ids_requisito
+    }
+    return len(cubiertos) < len(ids_requisito)
 
 
 # ---------------------------------------------------------------------------

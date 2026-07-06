@@ -43,7 +43,9 @@ REGISTROS_REQUERIDOS: dict = {
     'TipoSolicitud': ['AAC', 'AAP'],
     # TipoResultadoFase — código usado en invariantes_esftt (#419)
     'TipoResultadoFase': ['DESFAVORABLE', 'FAVORABLE', 'FAVORABLE_CONDICIONADO'],
-    'TipoDocumento': ['CERT_FIN_INSTRUCCION', 'CERT_PLAZO_CUMPLIDO', 'BORRADOR_FIRMA', 'CERT_FIN_IP_CONSULTAS'],
+    'TipoDocumento': ['CERT_FIN_INSTRUCCION', 'CERT_PLAZO_CUMPLIDO', 'BORRADOR_FIRMA', 'CERT_FIN_IP_CONSULTAS',
+                      # #582 — consumido por la variable de motor tasa_impagada; lo puebla #408
+                      'JUSTIFICANTE_PAGO_TASA'],
     # Rol usa 'nombre' como identificador estable — anclado en PERMISOS (app/utils/permisos.py)
     'Rol': ['ADMIN', 'SUPERVISOR', 'TRAMITADOR', 'ADMINISTRATIVO'],
 }
