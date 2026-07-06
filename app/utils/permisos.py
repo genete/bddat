@@ -49,6 +49,15 @@ PERMISOS = {
     # El SUPERVISOR sigue pudiendo crear/editar/activar-desactivar (baja lógica).
     'eliminar_requisitos_documentales':  {'ADMIN'},
 
+    # CRUD admin de catalogo_requerimientos (#593) — catálogo de defectos tipo
+    # reutilizables en la tarea ANALIZAR. Tabla plana, sin condiciones anidadas
+    # (gemelo simplificado de requisitos_documentales, #583).
+    'acceder_catalogo_requerimientos':   {'ADMIN', 'SUPERVISOR', 'TRAMITADOR', 'ADMINISTRATIVO'},
+    'gestionar_catalogo_requerimientos': {'ADMIN', 'SUPERVISOR'},
+    # Baja lógica (activo=False) — a diferencia de #583, aquí es exclusiva de
+    # ADMIN: el SUPERVISOR puede crear/editar pero no archivar (criterio del issue).
+    'archivar_catalogo_requerimientos':  {'ADMIN'},
+
     # Árbol del expediente — frontera hoja / estructura (ADR-017 §6, #501).
     # "Puerta abierta": gestionar_tareas habilita COMPLETAR cualquier tarea ya
     # prevista (incluye ADMINISTRATIVO); la bitácora es la rendición de cuentas.
