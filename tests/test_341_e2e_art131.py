@@ -45,7 +45,7 @@ def _crear_fase_finalizadora_favorable(db, solicitud, tipo_fase_resolucion, resu
     from app.models import Fase, Documento
     doc = Documento(
         expediente=solicitud.expediente,
-        url='test://resolucion-aap',
+        url='https://test.local/resolucion-aap',
         fecha_administrativa=date(2025, 1, 15),
     )
     db.session.add(doc)
@@ -70,7 +70,7 @@ def _crear_fase_consultas(db, solicitud, tipo_fase_consultas, fecha_admin):
     from app.models import Fase, Documento
     doc_sol = Documento(
         expediente=solicitud.expediente,
-        url='test://doc-solicitud-aac',
+        url='https://test.local/doc-solicitud-aac',
         fecha_administrativa=fecha_admin,
     )
     db.session.add(doc_sol)
