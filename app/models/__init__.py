@@ -29,6 +29,10 @@ from app.models.plantillas import Plantilla
 # Catálogo de requerimientos de subsanación (#405 — sin FK operacionales)
 from app.models.catalogo_requerimientos import CatalogoRequerimiento
 
+# Activos de red — corte mínimo de integración con bddat-instalaciones
+# (#591 — activo_red autorreferenciada, sin FK operacionales de BDDAT)
+from app.models.activo_red import ActivoRed, Envolvente
+
 # Modelo de metadata del sistema (issue #85)
 from app.models.tabla_metadata import TablaMetadata
 
@@ -117,6 +121,9 @@ from app.models.requisitos_documentales import (
 # Mapa semántico de documentos por tarea (#346 — sin FK operacional propia)
 from app.models.tramites_tareas_documentos import TramiteTareaDocumento
 
+# Tabla puente activo_red × expediente (#591 — depende de ActivoRed y Expediente)
+from app.models.activos_expediente import ActivoExpediente
+
 __all__ = [
     # Maestros
     'EfectoPlazo',
@@ -136,6 +143,9 @@ __all__ = [
     'Plantilla',
     # Catálogo de requerimientos
     'CatalogoRequerimiento',
+    # Activos de red (integración bddat-instalaciones)
+    'ActivoRed',
+    'Envolvente',
     # Metadata del sistema
     'TablaMetadata',
     # Configuración global del sistema
@@ -174,6 +184,8 @@ __all__ = [
     'CertificadoFase',
     # Mapa semántico de documentos por tarea
     'TramiteTareaDocumento',
+    # Tabla puente activo_red × expediente
+    'ActivoExpediente',
     # Diagnóstico documental
     'Diagnostico',
     # Certificados internos del motor

@@ -351,3 +351,43 @@ def _(ctx) -> bool:
         if ep.estado == 'VENCIDO':
             return True
     return False
+
+
+# ---------------------------------------------------------------------------
+# Variables activos de red (#591)
+# ---------------------------------------------------------------------------
+
+@variable('aplica_rd223_2008')
+def _(ctx) -> bool:
+    """
+    True si el expediente en contexto tiene algún activo vinculado con
+    envolvente lógica (linea/circuito) — aplica RD 223/2008 (líneas).
+
+    Un expediente puede tener a la vez aplica_rd223_2008 y aplica_rd337_2014
+    (p. ej. una línea que llega a una subestación nueva).
+    """
+    expediente = ctx.expediente
+    if expediente is None:
+        return False
+    for vinculo in expediente.activos_expediente:
+        envolvente = vinculo.activo.envolvente
+        if envolvente and envolvente.es_logica:
+            return True
+    return False
+
+
+@variable('aplica_rd337_2014')
+def _(ctx) -> bool:
+    """
+    True si el expediente en contexto tiene algún activo vinculado con
+    envolvente física (CT/subestación/posición...) — aplica RD 337/2014
+    (instalaciones). Ver aplica_rd223_2008.
+    """
+    expediente = ctx.expediente
+    if expediente is None:
+        return False
+    for vinculo in expediente.activos_expediente:
+        envolvente = vinculo.activo.envolvente
+        if envolvente and envolvente.es_fisica:
+            return True
+    return False
