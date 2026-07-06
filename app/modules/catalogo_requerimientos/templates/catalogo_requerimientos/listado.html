@@ -1,0 +1,143 @@
+{% extends 'layout/lista_v2_base.html' %}
+
+{% block page_title %}Catálogo de requerimientos{% endblock %}
+{% block page_icon %}<i class="fas fa-list-check"></i>{% endblock %}
+{% block entity_label_plural %}requerimientos{% endblock %}
+{% block search_placeholder %}Buscar por texto...{% endblock %}
+{% block tabla_clase %}catalogo-requerimientos-table{% endblock %}
+
+{% block btn_nuevo %}
+{% if tiene_permiso('gestionar_catalogo_requerimientos') %}
+<button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#crearRequerimientoModal">
+    <i class="fas fa-plus me-1"></i> Nuevo requerimiento
+</button>
+{% endif %}
+{% endblock %}
+
+{% block filtros_extra %}
+<div id="sf-estado"></div>
+<div id="sf-categoria"></div>
+{% endblock %}
+
+{% block thead_cols %}
+<th>Texto</th>
+<th class="lt-hide-md">Categoría</th>
+<th class="lt-hide-lg">Usos</th>
+<th>Estado</th>
+{% endblock %}
+
+{% block content %}
+{{ super() }}
+
+<!-- Modal de alta (patrón usuarios/index.html) -->
+{% if tiene_permiso('gestionar_catalogo_requerimientos') %}
+<div class="modal fade" id="crearRequerimientoModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <form method="POST" action="{{ url_for('catalogo_requerimientos.crear') }}" class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fas fa-list-check me-1"></i> Nuevo requerimiento</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row g-2">
+          <div class="col-12">
+            <label class="form-label fw-semibold small" for="rq_texto">
+              Texto <span class="text-danger">*</span>
+            </label>
+            <textarea class="form-control form-control-sm" id="rq_texto" name="texto" rows="3"
+                      required>{{ form_data.get('texto', '') if form_data else '' }}</textarea>
+            <div class="form-text">Puede incluir huecos {placeholder} para completar en cada uso.</div>
+          </div>
+          <div class="col-12">
+            <label class="form-label fw-semibold small" for="rq_categoria">
+              Categoría <span class="text-danger">*</span>
+            </label>
+            <select class="form-select form-select-sm" id="rq_categoria" name="categoria" required>
+              <option value="">— Seleccionar —</option>
+              {% for codigo, etiqueta in categorias %}
+              <option value="{{ codigo }}" {% if form_data and form_data.get('categoria') == codigo %}selected{% endif %}>
+                  {{ etiqueta }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+        <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-save me-1"></i> Crear requerimiento</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+{{ super() }}
+<script>
+    function _esc(s) {
+        if (s === null || s === undefined) return '';
+        return String(s)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+    }
+
+    new SelectorFiltro('#sf-estado', [
+        { v: 'true',  t: 'Activos'   },
+        { v: 'false', t: 'Inactivos' }
+    ], { label: 'Estado', name: 'estado' });
+
+    new SelectorFiltro('#sf-categoria', [
+        {% for codigo, etiqueta in categorias %}{ v: '{{ codigo }}', t: '{{ etiqueta|e }}' }{{ ',' if not loop.last }}{% endfor %}
+    ], { label: 'Categoría', name: 'categoria' });
+
+    const scrollInfinito = new ScrollInfinito({
+        apiUrl:      '{{ url_for("api_catalogo_requerimientos.listar_requerimientos") }}',
+        tableClass:  '.catalogo-requerimientos-table',
+        entityLabel: 'requerimientos',
+        columns: [
+            { key: 'texto', label: 'Texto', type: 'custom', renderFn: v => _esc(v) },
+            { key: 'categoria_label', label: 'Categoría', type: 'text', hide: 'md' },
+            { key: 'num_usos', label: 'Usos', type: 'custom', hide: 'lg', renderFn: v =>
+                v > 0 ? '<span class="badge bg-info-subtle text-info-emphasis">' + v + '</span>' : '<span class="text-secondary">—</span>' },
+            { key: 'activo', label: 'Estado', type: 'custom', renderFn: v => v
+                ? '<span class="badge bg-success">Activo</span>'
+                : '<span class="badge bg-secondary">Inactivo</span>' },
+        ],
+        selection: {
+            fragmentUrl: id   => `/catalogo_requerimientos/${id}/fragmento`,
+            title:       item => item.texto || ''
+        }
+    });
+
+    const filtros = new FiltrosListado(scrollInfinito);
+
+    // Sync inspector ↔ URL ?sel (ADR-023 §1)
+    function _updateSelParam(selId) {
+        const url = new URL(location.href);
+        if (selId) url.searchParams.set('sel', selId);
+        else url.searchParams.delete('sel');
+        history.replaceState(null, '', url.toString());
+    }
+    document.addEventListener('inspector:opened',  e => _updateSelParam(e.detail.selId));
+    document.addEventListener('inspector:swapped', e => _updateSelParam(e.detail.selId));
+    document.addEventListener('inspector:closed',  () => _updateSelParam(null));
+
+    const _selParam = new URLSearchParams(location.search).get('sel');
+    if (_selParam && window.AppInspector) {
+        AppInspector.open({
+            selId:       _selParam,
+            title:       '',
+            fragmentUrl: `/catalogo_requerimientos/${_selParam}/fragmento`
+        });
+    }
+
+    {% if show_modal %}
+    new bootstrap.Modal(document.getElementById('crearRequerimientoModal')).show();
+    {% endif %}
+
+    console.log('Listado de catálogo de requerimientos inicializado (#593)');
+</script>
+{% endblock %}

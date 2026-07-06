@@ -1,0 +1,74 @@
+{# _detalle_fragmento.html — Parcial de lectura para el inspector (ADR-023 / #593).
+   No extiende base_app.html. Inyectado vía AppInspector.open({ fragmentUrl }).
+   - "Editar" → fragmento de edición (data-inspector-edit).
+   - Activar/desactivar → form data-inspector-form (POST XHR → JSON → refresh).
+     Solo visible con permiso archivar_catalogo_requerimientos (ADMIN).
+#}
+
+<div class="p-3">
+
+<div class="d-flex justify-content-end gap-2 mb-3">
+    {% if puede_editar %}
+    <button type="button" class="btn btn-primary btn-sm"
+            data-inspector-edit
+            data-edit-url="{{ url_for('catalogo_requerimientos.editar_fragmento', id=requerimiento.id) }}">
+        <i class="fas fa-edit me-1"></i> Editar
+    </button>
+    {% endif %}
+</div>
+
+<!-- CARD 1 — Identificación -->
+<div class="card mb-3">
+    <div class="card-header card-header-accent fw-semibold">
+        <i class="fas fa-list-check me-1"></i> Requerimiento
+        {% if requerimiento.activo %}
+            <span class="badge bg-success ms-1">Activo</span>
+        {% else %}
+            <span class="badge bg-secondary ms-1">Inactivo</span>
+        {% endif %}
+    </div>
+    <div class="card-body card-body-tinted">
+        <div class="row g-2">
+            <div class="col-12">
+                <label class="form-label fw-semibold small">Texto</label>
+                <textarea class="form-control form-control-sm" rows="4" readonly>{{ requerimiento.texto }}</textarea>
+            </div>
+            <div class="col-12">
+                <label class="form-label fw-semibold small">Categoría</label>
+                <input type="text" class="form-control form-control-sm"
+                       value="{{ categorias_labels.get(requerimiento.categoria, requerimiento.categoria) }}" readonly>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- CARD 2 — Uso en tareas -->
+<div class="card mb-3">
+    <div class="card-header card-header-accent fw-semibold">
+        <i class="fas fa-link me-1"></i> Uso en tareas
+    </div>
+    <div class="card-body card-body-tinted">
+        {% set num_usos = requerimiento.usos.count() %}
+        {% if num_usos > 0 %}
+        <span class="badge bg-info-subtle text-info-emphasis">{{ num_usos }} tarea(s) con este requerimiento</span>
+        <div class="form-text mt-1">No se puede eliminar físicamente — desactívalo para retirarlo del selector sin perder el histórico.</div>
+        {% else %}
+        <span class="text-secondary small">Sin usos todavía.</span>
+        {% endif %}
+    </div>
+</div>
+
+{% if puede_archivar %}
+<div class="d-flex gap-2">
+    <form data-inspector-form
+          data-action="{{ url_for('catalogo_requerimientos.activar', id=requerimiento.id) }}">
+        <button type="submit"
+                class="btn btn-sm {% if requerimiento.activo %}btn-outline-danger{% else %}btn-outline-success{% endif %}">
+            <i class="fas {% if requerimiento.activo %}fa-toggle-off{% else %}fa-toggle-on{% endif %} me-1"></i>
+            {% if requerimiento.activo %}Desactivar{% else %}Activar{% endif %}
+        </button>
+    </form>
+</div>
+{% endif %}
+
+</div>{# /p-3 #}
