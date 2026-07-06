@@ -118,6 +118,14 @@ from app.models.requisitos_documentales import (
     DocumentoRequisito,
 )
 
+# Ítems técnicos del proyecto — apartados de contenido exigidos por RD 223/2008 /
+# RD 337/2014 (#594 — depende de Solicitud, Norma, CatalogoVariable)
+from app.models.items_tecnicos import (
+    ItemTecnico,
+    CondicionItemTecnico,
+    CoberturaItemTecnico,
+)
+
 # Mapa semántico de documentos por tarea (#346 — sin FK operacional propia)
 from app.models.tramites_tareas_documentos import TramiteTareaDocumento
 
@@ -208,4 +216,8 @@ __all__ = [
     'RequisitoDocumental',
     'CondicionRequisito',
     'DocumentoRequisito',
+    # Ítems técnicos del proyecto
+    'ItemTecnico',
+    'CondicionItemTecnico',
+    'CoberturaItemTecnico',
 ]

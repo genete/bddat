@@ -1,0 +1,157 @@
+{# _editar_fragmento.html — Parcial de edición para el inspector (ADR-023 / #594).
+   No extiende base_app.html. Inyectado por inspector-overlay.js vía data-inspector-edit.
+   Submit interceptado: POST XHR → JSON { ok, errors, message }.
+
+   Editor de condiciones anidado (variable + operador + valor + orden): filas
+   sin indexar (mismo name repetido); el servidor las reconstruye con
+   request.form.getlist() en el mismo orden del DOM. La lógica de añadir/quitar
+   fila vive en requisitos-inspector.js (genérica, reutilizada tal cual — ver
+   project_inspector_vs_modal_scripts.md).
+#}
+
+{% set TIPO_LABELS = {'boolean': 'verdadero/falso', 'numerico': 'número', 'texto': 'texto', 'fecha': 'AAAA-MM-DD', 'enum': 'valor del catálogo'} %}
+
+<div class="p-3">
+
+<form data-inspector-form class="form-item-tecnico-editar"
+      data-action="{{ url_for('items_tecnicos.editar', id=item.id) }}">
+
+<div id="inspector-form-errors" class="alert alert-danger py-2 mb-3 small" style="display:none;"></div>
+
+<div class="d-flex justify-content-end gap-2 mb-3">
+    <button type="button" class="btn btn-outline-secondary btn-sm" data-inspector-cancel-edit>
+        <i class="fas fa-times me-1"></i> Cancelar
+    </button>
+    <button type="submit" class="btn btn-primary btn-sm">
+        <i class="fas fa-save me-1"></i> Guardar cambios
+    </button>
+</div>
+
+<!-- CARD 1 — Identificación -->
+<div class="card mb-3">
+    <div class="card-header card-header-accent fw-semibold">
+        <i class="fas fa-ruler-combined me-1"></i> Ítem técnico
+    </div>
+    <div class="card-body card-body-tinted">
+        <div class="row g-2">
+            <div class="col-12">
+                <label class="form-label fw-semibold small" for="if_descripcion">
+                    Descripción <span class="text-danger">*</span>
+                </label>
+                <textarea class="form-control form-control-sm" id="if_descripcion" name="descripcion"
+                          rows="2" required>{{ item.descripcion }}</textarea>
+            </div>
+            <div class="col-8">
+                <label class="form-label fw-semibold small" for="if_norma">Norma</label>
+                <select class="form-select form-select-sm" id="if_norma" name="norma_id">
+                    <option value="">— Sin norma asociada —</option>
+                    {% for n in normas %}
+                    <option value="{{ n.id }}" {% if item.norma_id == n.id %}selected{% endif %}>
+                        {{ n.codigo }} — {{ n.titulo }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-2">
+                <label class="form-label fw-semibold small" for="if_articulo">Artículo</label>
+                <input type="text" class="form-control form-control-sm" id="if_articulo" name="articulo"
+                       value="{{ item.articulo or '' }}" placeholder="4.1">
+            </div>
+            <div class="col-2">
+                <label class="form-label fw-semibold small" for="if_orden">Orden</label>
+                <input type="number" class="form-control form-control-sm" id="if_orden" name="orden"
+                       value="{{ item.orden }}" min="1">
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- CARD 2 — Condiciones de aplicación -->
+<div class="card mb-3" data-condiciones-editor>
+    <div class="card-header card-header-accent fw-semibold d-flex justify-content-between align-items-center">
+        <span><i class="fas fa-filter me-1"></i> Condiciones de aplicación</span>
+        <button type="button" class="btn btn-sm btn-outline-primary" data-cond-add>
+            <i class="fas fa-plus me-1"></i> Añadir
+        </button>
+    </div>
+    <div class="card-body card-body-tinted">
+        <div class="form-text mb-2">
+            Todas se evalúan en AND. Una fila sin variable seleccionada se descarta al guardar.
+            Para "Está en" / "No está en", separa varios valores con comas.
+        </div>
+
+        <div data-cond-rows>
+            {% for c in item.condiciones %}
+            <div class="row g-1 align-items-center mb-2" data-cond-row>
+                <div class="col-4">
+                    <select class="form-select form-select-sm" name="cond_variable_id" data-cond-variable>
+                        <option value="">— Variable —</option>
+                        {% for v in variables %}
+                        <option value="{{ v.id }}" data-tipo="{{ v.tipo_dato }}" {% if c.variable_id == v.id %}selected{% endif %}>
+                            {{ v.etiqueta }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <div class="form-text small" data-cond-tipo-hint>{{ TIPO_LABELS.get(c.variable.tipo_dato, '') if c.variable else '' }}</div>
+                </div>
+                <div class="col-3">
+                    <select class="form-select form-select-sm" name="cond_operador" data-cond-operador>
+                        {% for codigo, etiqueta in operadores %}
+                        <option value="{{ codigo }}" {% if c.operador == codigo %}selected{% endif %}>{{ etiqueta }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-3" data-cond-valor-wrap {% if c.operador in ('IS_NULL', 'NOT_NULL') %}style="display:none"{% endif %}>
+                    <input type="text" class="form-control form-control-sm" name="cond_valor" data-cond-valor
+                           value="{{ valor_display.get(c.id, '') }}" placeholder="valor1, valor2…"
+                           {% if c.operador in ('IS_NULL', 'NOT_NULL') %}disabled{% endif %}>
+                </div>
+                <div class="col-1">
+                    <input type="number" class="form-control form-control-sm" name="cond_orden" data-cond-orden
+                           value="{{ c.orden }}" min="1">
+                </div>
+                <div class="col-1 text-end">
+                    <button type="button" class="btn btn-sm btn-outline-danger" data-cond-remove title="Quitar condición">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <template data-cond-template>
+            <div class="row g-1 align-items-center mb-2" data-cond-row>
+                <div class="col-4">
+                    <select class="form-select form-select-sm" name="cond_variable_id" data-cond-variable>
+                        <option value="">— Variable —</option>
+                        {% for v in variables %}
+                        <option value="{{ v.id }}" data-tipo="{{ v.tipo_dato }}">{{ v.etiqueta }}</option>
+                        {% endfor %}
+                    </select>
+                    <div class="form-text small" data-cond-tipo-hint></div>
+                </div>
+                <div class="col-3">
+                    <select class="form-select form-select-sm" name="cond_operador" data-cond-operador>
+                        {% for codigo, etiqueta in operadores %}
+                        <option value="{{ codigo }}">{{ etiqueta }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-3" data-cond-valor-wrap>
+                    <input type="text" class="form-control form-control-sm" name="cond_valor" data-cond-valor placeholder="valor1, valor2…">
+                </div>
+                <div class="col-1">
+                    <input type="number" class="form-control form-control-sm" name="cond_orden" data-cond-orden value="1" min="1">
+                </div>
+                <div class="col-1 text-end">
+                    <button type="button" class="btn btn-sm btn-outline-danger" data-cond-remove title="Quitar condición">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+        </template>
+    </div>
+</div>
+
+</form>
+</div>{# /p-3 #}
