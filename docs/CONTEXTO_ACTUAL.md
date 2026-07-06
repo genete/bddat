@@ -5,7 +5,7 @@
 
 ---
 
-**Último cerrado:** #583 — CRUD admin de `requisitos_documentales` (listado + inspector, editor de condiciones anidado, permisos ADR-013, baja lógica). PR #584.
+**Último cerrado:** trabajo en paralelo con tres worktrees (sesión 2026-07-06) — #593 CRUD de `catalogo_requerimientos` (PR #597), #591 corte mínimo `activo_red`/`envolvente`/tabla puente (PR #598), #582 regla de motor tasa impagada (PR #596). Migraciones de #591/#582 coordinadas manualmente (misma cabeza `b88f9bb4755b`, rebasada para cadena lineal en vez de heads divergentes). Además, cerrada del todo la deuda de tests preexistente que las tres sesiones venían reverificando sin corregir: #487 (app_context en `test_247`, esquema de URL en `test_341`), #578 (test de `toggle_estado` obsoleto) y #227 (ya resuelto sin querer por #544) — PR #599. Suite completa: 0 fallos (antes 8).
 
 **Último hito:** PR #580 (parte de #579) — panel de estadísticas del supervisor: servicio `estadisticas_supervisor` sobre el núcleo `estado_dominio`, isla React + Recharts tematizada.
 
@@ -38,17 +38,17 @@ paralelo, cada una CRUD→poblado antes que su UI, convergen en #495 → UI #581
 - **#408** — Poblar catálogo de requisitos documentales (modelo ya construido en #192).
 
 **Rama requerimientos (#441 re-troceado 2026-07-05):**
-- **#593** — [ADMIN] CRUD de `catalogo_requerimientos` (gemelo simplificado de #583, sin
-  condiciones anidadas).
-- **#441** — poblado puro de `catalogo_requerimientos`, redefinido para depender de #593
-  (antes pedía script+migración; descartado, mismo criterio que #408).
+- ~~**#593**~~ ✅ [ADMIN] CRUD de `catalogo_requerimientos` (gemelo simplificado de #583,
+  sin condiciones anidadas). PR #597.
+- **#441** — poblado puro de `catalogo_requerimientos`, ya no bloqueado (CRUD de #593
+  existe). Antes pedía script+migración; descartado, mismo criterio que #408.
 
 **Rama ítems técnicos (#581 re-troceado 2026-07-05):**
-- **#591** — Corte mínimo de integración con
+- ~~**#591**~~ ✅ Corte mínimo de integración con
   [bddat-instalaciones](https://github.com/genete/bddat-instalaciones)
-  (`activo_red`/`envolvente`/tabla puente) — deriva el RD aplicable sin campo proxy.
+  (`activo_red`/`envolvente`/tabla puente) — deriva el RD aplicable sin campo proxy. PR #598.
 - **#594** — [MODELO][ADMIN] `items_tecnicos` + `condiciones_item_tecnico` + CRUD
-  Supervisor. Depende de #591.
+  Supervisor. Ya no bloqueado (#591 resuelto).
 - **#595** — poblado normativo de `items_tecnicos` (RD 223/2008, RD 337/2014). Depende
   de #594.
 - **#581** — redefinido a solo la UI de verificación del tramitador en tarea ANALIZAR
@@ -58,7 +58,7 @@ paralelo, cada una CRUD→poblado antes que su UI, convergen en #495 → UI #581
 - **#495** — Check documental completo + auto-generación de defectos.
 - **#440** — Selector de requerimientos en tarea ANALIZAR.
 - **#442** — Formulario diagnóstico en ANALIZAR (cierre del hilo).
-- **#582** — Regla de motor: tasa impagada bloquea toda fase posterior.
+- ~~**#582**~~ ✅ Regla de motor: tasa impagada bloquea toda fase posterior. PR #596.
 
 ### Bloque escritos / motor adaptativo (M4)
 
