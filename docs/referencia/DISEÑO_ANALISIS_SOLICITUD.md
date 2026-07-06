@@ -219,7 +219,9 @@ El art. 45.1 de la Ley 10/2021, de 28 de diciembre, de tasas y precios públicos
 
 Esta regla no bloquea el análisis de otros defectos ni la emisión del requerimiento — solo bloquea el avance a fases posteriores.
 
-**Estado real (nota 2026-07-03):** a diferencia de otros bloqueos entre fases —p.ej. una consulta a organismo sin separata presentada, que simplemente no tiene documento que consumir en su ELABORAR, sin necesitar regla de motor— la tasa es la única condición que debe bloquear *toda* fase posterior sin excepción incluso si todo lo demás está completo, porque así lo exige la ley con independencia del resto del expediente. Por eso sí necesita una `ReglaMotor` explícita, y no basta con la imposibilidad natural de la tarea. Regla aún sin implementar: #582.
+**Estado real (nota 2026-07-03):** a diferencia de otros bloqueos entre fases —p.ej. una consulta a organismo sin separata presentada, que simplemente no tiene documento que consumir en su ELABORAR, sin necesitar regla de motor— la tasa es la única condición que debe bloquear *toda* fase posterior sin excepción incluso si todo lo demás está completo, porque así lo exige la ley con independencia del resto del expediente. Por eso sí necesita una `ReglaMotor` explícita, y no basta con la imposibilidad natural de la tarea.
+
+**Implementado en #582** (migración `07948f0f5f2c_582_regla_tasa_impagada`): una única regla `BLOQUEAR CREAR ANY/ANY/ANY` (sujeto de 3 segmentos → solo casa con creación de fase) con dos condiciones en AND: `tipo_sujeto_solicitado NEQ 'ANALISIS_SOLICITUD'` (variable genérica #388, evita enumerar las 7 fases posteriores una a una — cualquier fase nueva del catálogo queda cubierta automáticamente) y `tasa_impagada EQ true` (variable nueva en `app/services/variables/calculado.py`). La variable identifica el requisito de la tasa por `TipoDocumento.codigo='JUSTIFICANTE_PAGO_TASA'` — contrato que debe respetar #408 al poblar el catálogo; mientras esa fila no exista, la variable degrada a `False` (no bloquea) y loguea warning, mismo criterio que `evaluar_requisitos` (#347).
 
 ---
 
