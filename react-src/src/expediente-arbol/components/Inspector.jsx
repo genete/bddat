@@ -11,6 +11,7 @@ import { showToast } from '../../shared/ui/toast.js'
 import { puedeEditarNodo } from '../../shared/auth.js'
 import Semaforo from './nodos/Semaforo.jsx'
 import Despensa from './Despensa.jsx'
+import AnalizarEditor from './AnalizarEditor.jsx'
 
 const ETIQUETA_TIPO = {
   expediente: 'Expediente',
@@ -343,18 +344,25 @@ function Editor() {
 function InspectorEdicion({ nodo }) {
   const seleccion             = useArbolStore((s) => s.seleccion)
   const borrarPendienteConfirm = useArbolStore((s) => s.borrarPendienteConfirm)
+  // ANALIZAR (#442): contenedor bespoke en vez del Editor genérico — secciones de
+  // checklist + resultado + producir diagnóstico no encajan en el esquema
+  // campo-a-campo. InspectorEdicion (cabecera, lock, split con Despensa) se
+  // reutiliza igual para el resto de tareas.
+  const esAnalizar = seleccion.tipo === 'tarea' && nodo && nodo.tipo_codigo === 'ANALIZAR'
   return (
     <div className="d-flex flex-column h-100 arbol-inspector--lock">
       <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }} className="p-3">
         <Cabecera tipo={seleccion.tipo} nodo={nodo} />
         {borrarPendienteConfirm
           ? <ConfirmacionBorrado nodo={nodo} />
-          : <Editor />
+          : esAnalizar
+            ? <AnalizarEditor tareaId={seleccion.id} />
+            : <Editor />
         }
       </div>
       {!borrarPendienteConfirm && (
         <div style={{ flex: '0 0 auto' }} className="border-top">
-          <Despensa />
+          <Despensa deshabilitarProducido={esAnalizar} />
         </div>
       )}
     </div>

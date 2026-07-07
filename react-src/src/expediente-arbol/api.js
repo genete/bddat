@@ -46,3 +46,16 @@ export function getPool(expedienteId) {
 export function deleteNodo(expedienteId, tipo, nodoId) {
   return api.delete(`/api/expedientes/${expedienteId}/nodo/${tipo}/${nodoId}`)
 }
+
+// Contenedor de la tarea ANALIZAR (#442). Respuesta: {resultado, documento_producido,
+// secciones_extendidas, defectos_consolidado, completo}.
+export function getAnalizar(expedienteId, tareaId) {
+  return api.get(`/api/expedientes/${expedienteId}/nodo/tarea/${tareaId}/analizar`)
+}
+
+// Produce el documento de diagnóstico (POST, #442). body: {resultado, justificacion?}.
+// Respuesta éxito: {ok:true, documento:{id,nombre,tipo_doc,fecha}} 200.
+// Bloqueo (ya producido / incompleto sin justificación): {error, motivo?, defectos_consolidado?} 422.
+export function postAnalizar(expedienteId, tareaId, body) {
+  return api.post(`/api/expedientes/${expedienteId}/nodo/tarea/${tareaId}/analizar`, body)
+}

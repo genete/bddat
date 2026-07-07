@@ -193,7 +193,7 @@ function FichaDoc({ doc, vinculado, seleccionada, onClick }) {
   )
 }
 
-function DespensaDocs() {
+function DespensaDocs({ deshabilitarProducido }) {
   const seleccion               = useArbolStore((s) => s.seleccion)
   const borrador                = useArbolStore((s) => s.borrador)
   const pool                    = useArbolStore((s) => s.pool)
@@ -320,8 +320,9 @@ function DespensaDocs() {
             <button
               type="button"
               className="btn btn-sm btn-primary flex-grow-1"
-              disabled={yaProducido || yaConsumido}
+              disabled={yaProducido || yaConsumido || deshabilitarProducido}
               title={
+                deshabilitarProducido ? 'Se genera automáticamente al fijar el resultado (#442)' :
                 yaProducido ? 'Ya está como producido' :
                 yaConsumido ? 'No puede ser consumido y producido a la vez' :
                 undefined
@@ -353,12 +354,12 @@ function DespensaDocs() {
 
 // ─── Componente principal (adaptativo) ──────────────────────────────────────
 
-export default function Despensa() {
+export default function Despensa({ deshabilitarProducido }) {
   const seleccion   = useArbolStore((s) => s.seleccion)
   const modoEdicion = useArbolStore((s) => s.modoEdicion)
 
   if (!modoEdicion || !seleccion) return null
 
-  if (seleccion.tipo === 'tarea') return <DespensaDocs />
+  if (seleccion.tipo === 'tarea') return <DespensaDocs deshabilitarProducido={deshabilitarProducido} />
   return <DespensaTipos />
 }
