@@ -11,7 +11,7 @@
 
 **#579 sigue abierto:** bloque GESTIÓN aparcado (2026-07-02) para priorizar M3. Piezas en issues propios: config motor #170/#171/#479, plazos legales, operaciones masivas #295 — **antes de construir cualquiera de estas, resolver #588/#589/#590 (ADR-029, navegación administrativa)**, que fijan dónde encajan (hub universal "Control y Gestión"); construirlas antes repetiría el problema que #583 destapó.
 
-**Próximo: #581** — UI de verificación del tramitador en tarea ANALIZAR (rama ítems técnicos, ver hoja de ruta abajo). No bloqueado por #595 (poblado puro, aparcado — mismo criterio que #408/#441): se construye y prueba con ítems técnicos inventados a mano. Resto del foco M3 sigue igual (ver hoja de ruta). Spin-offs vivos de #558/#559 pendientes: #566/#567 (árbol), #568 (`NOTIFICACION_INFRUCTUOSA`), #570/#571 (filtros y tokens del seguimiento). Tras M3: bloque escritos/motor adaptativo (M4).
+**Próximo: #442** — redefinido en sesión 2026-07-06/07 (al analizar el alcance de #581): pasa de "formulario suelto" a dueño del fragmento contenedor del inspector de la tarea ANALIZAR (ADR-023) — layout + contrato de consolidación de defectos + formulario de resultado. Va primero porque #495/#581/#440 se enchufan a su contrato; #581 deja de ser "el siguiente" en solitario y pasa a ser una de las tres secciones que confluyen ahí, en otro plano de la secuencia (ver hoja de ruta abajo, bloque análisis documental/requerimientos redefinido). Resto del foco M3 sigue igual. Spin-offs vivos de #558/#559 pendientes: #566/#567 (árbol), #568 (`NOTIFICACION_INFRUCTUOSA`), #570/#571 (filtros y tokens del seguimiento). Tras M3: bloque escritos/motor adaptativo (M4).
 
 ## Hoja de ruta — Implementación
 
@@ -28,10 +28,18 @@ Activo:
 
 ### Bloque análisis documental / requerimientos (M3) — foco actual
 
-Orden (sesión 2026-07-03, re-troceado en sesión 2026-07-05 — detalle en
-`docs/referencia/DISEÑO_ANALISIS_SOLICITUD.md` §4/§7): tres ramas de diseño/poblado en
-paralelo, cada una CRUD→poblado antes que su UI, convergen en #495 → UI #581 → #440 →
-#442 (cierre) → #582.
+Orden (sesión 2026-07-03, re-troceado 2026-07-05, **redefinido 2026-07-06/07** al
+analizar el alcance de #581 — detalle en `docs/referencia/DISEÑO_ANALISIS_SOLICITUD.md`
+§4/§7 y en el alcance actualizado de #442 en GitHub): las tres ramas de catálogo
+(documental, requerimientos, ítems técnicos) siguen su CRUD→poblado propio, pero la
+convergencia en la tarea ANALIZAR ya no es una cola `#495 → #581 → #440 → #442`.
+Aplicando ADR-023 (seleccionar→inspector→modal), **#442 pasa a ir primero**: es el
+dueño del fragmento contenedor del inspector (layout + contrato de consolidación de
+defectos + formulario de resultado). #495 (check documental) y #581 (check ítems
+técnicos) son secciones inline que se enchufan a ese contrato; #440 (selector de
+requerimientos) es el modal grande lanzado desde el contenedor. Los tres son
+**independientes entre sí** una vez existe #442 — no hace falta construirlos a la vez
+ni en un orden fijo (sugerido por esfuerzo: #440 → #495 → #581).
 
 **Rama documental (sin cambios):**
 - ~~**#583**~~ ✅ CRUD admin de `requisitos_documentales`. PR #584.
@@ -43,24 +51,32 @@ paralelo, cada una CRUD→poblado antes que su UI, convergen en #495 → UI #581
 - **#441** — poblado puro de `catalogo_requerimientos`, ya no bloqueado (CRUD de #593
   existe). Antes pedía script+migración; descartado, mismo criterio que #408.
 
-**Rama ítems técnicos (#581 re-troceado 2026-07-05):**
+**Rama ítems técnicos (#581 redefinido 2026-07-06/07 — ya no es "el siguiente" en
+solitario, ver "Contenedor + secciones" abajo):**
 - ~~**#591**~~ ✅ Corte mínimo de integración con
   [bddat-instalaciones](https://github.com/genete/bddat-instalaciones)
   (`activo_red`/`envolvente`/tabla puente) — deriva el RD aplicable sin campo proxy. PR #598.
 - ~~**#594**~~ ✅ [MODELO][ADMIN] `items_tecnicos` + `condiciones_item_tecnico` + CRUD
   Supervisor. PR #600.
-- **#595** — poblado normativo puro de `items_tecnicos` (RD 223/2008, RD 337/2014). Ya
-  no bloqueado (#594 resuelto), pero no se prioriza mientras se pueda avanzar sin él —
-  mismo criterio que #408/#441: la UI de #581 solo depende de #595 para tener datos
-  reales, no para construirse; se puede probar con ítems técnicos inventados a mano.
-- **#581 — siguiente.** Redefinido a solo la UI de verificación del tramitador en tarea
-  ANALIZAR (antes bundlaba diseño+poblado+UI). Ya no bloqueado en la práctica (#594
-  resuelto); #595 solo aporta datos reales, no es prerrequisito de construcción.
+- **#595** — poblado normativo puro de `items_tecnicos` (RD 223/2008, RD 337/2014). No
+  bloqueado (#594 resuelto), no se prioriza mientras se pueda avanzar sin él — la
+  sección de #581 solo depende de #595 para tener datos reales, no para construirse.
+- **#581** — check de contenido técnico del proyecto, sección inline en el contenedor
+  de #442. Redefinido a solo la UI de verificación del tramitador (antes bundlaba
+  diseño+poblado+UI). Necesita un evaluador nuevo (`evaluar_items_tecnicos`, gemelo de
+  `evaluar_requisitos`). No bloqueado por #594/#595; sí depende de que exista el
+  contrato de consolidación de #442.
 
-**Convergencia:**
-- **#495** — Check documental completo + auto-generación de defectos.
-- **#440** — Selector de requerimientos en tarea ANALIZAR.
-- **#442** — Formulario diagnóstico en ANALIZAR (cierre del hilo).
+**Contenedor + secciones (tarea ANALIZAR, ADR-023):**
+- **#442 — primero.** Redefinido: fragmento contenedor del inspector + contrato de
+  consolidación de defectos + formulario de resultado (`favorable`/`desfavorable`) +
+  persistencia en `diagnosticos`. Detalle del reparto y de la regla de cita normativa
+  en su alcance actualizado (GitHub).
+- **#495** — check documental, sección inline (evaluador `evaluar_requisitos` ya
+  existe, falta integrarlo + fragmento).
+- **#581** — check de ítems técnicos, sección inline (ver arriba).
+- **#440** — selector de requerimientos, modal grande (CRUD del catálogo ya existe en
+  #593, falta el modal + rutas de shuttle).
 - ~~**#582**~~ ✅ Regla de motor: tasa impagada bloquea toda fase posterior. PR #596.
 
 ### Bloque escritos / motor adaptativo (M4)
