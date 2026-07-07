@@ -6,10 +6,13 @@
 //     requerimientos #440), solo si el backend las declara (secciones_extendidas)
 //     — no todo trámite con ANALIZAR las necesita (p.ej. CONSULTA_SEPARATA).
 //   - Núcleo común (resultado + producir documento), siempre presente.
-// notas / documentos_consumidos_ids siguen gestionándose por Despensa; este
-// componente no los reimplementa.
+// documentos_consumidos_ids se sigue eligiendo desde Despensa, pero Despensa
+// solo apila el borrador (store.js::vincularDoc) — el PATCH real lo dispara
+// `guardar()` del store, igual que en el Editor genérico. Por eso este
+// componente incluye el mismo par Guardar/Cancelar, o el consumido elegido
+// nunca llegaría a persistirse.
 import React from 'react'
-import { useArbolStore } from '../store.js'
+import { useArbolStore, selectHayCambios } from '../store.js'
 import { getAnalizar, postAnalizar } from '../api.js'
 import { showToast } from '../../shared/ui/toast.js'
 
@@ -191,6 +194,9 @@ export default function AnalizarEditor({ tareaId }) {
   const seleccion = useArbolStore((s) => s.seleccion)
   const cargarDetalle = useArbolStore((s) => s.cargarDetalle)
   const cancelar = useArbolStore((s) => s.cancelar)
+  const guardar = useArbolStore((s) => s.guardar)
+  const guardando = useArbolStore((s) => s.guardando)
+  const hayCambios = useArbolStore(selectHayCambios)
 
   const [payload, setPayload] = React.useState(null)
   const [cargando, setCargando] = React.useState(true)
@@ -248,12 +254,22 @@ export default function AnalizarEditor({ tareaId }) {
         />
       )}
 
-      {/* Sin ciclo borrador/hayCambios (a diferencia del Editor genérico): nada
-          queda a medias fuera de la propia confirmación de producir, así que
-          "Cerrar" siempre puede salir de edición sin aviso de cambios sin guardar. */}
-      <div className="border-top pt-3 mt-3">
-        <button type="button" className="btn btn-sm btn-outline-secondary" onClick={cancelar}>
-          Cerrar
+      {/* Mismo par Guardar/Cancelar que el Editor genérico — persiste lo que
+          Despensa apiló en el borrador (documentos_consumidos_ids; el
+          producido lo fija crear_diagnostico, no este PATCH). El resultado y
+          la producción del documento son un circuito aparte (arriba), no
+          pasan por este borrador. */}
+      <div className="d-flex gap-2 border-top pt-3 mt-3">
+        <button
+          type="button"
+          className="btn btn-sm btn-primary"
+          disabled={guardando || !hayCambios}
+          onClick={guardar}
+        >
+          {guardando ? 'Guardando…' : 'Guardar'}
+        </button>
+        <button type="button" className="btn btn-sm btn-outline-secondary" disabled={guardando} onClick={cancelar}>
+          Cancelar
         </button>
       </div>
     </div>
