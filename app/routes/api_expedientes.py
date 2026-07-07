@@ -719,11 +719,17 @@ def pool_documentos(expediente_id):
 
     result = []
     for doc in docs:
-        filename = (doc.url or '').replace('\\', '/').rsplit('/', 1)[-1]
-        filename = filename.split('?')[0].split('#')[0]
+        url = doc.url or ''
+        if url.startswith('bddat://'):
+            # Sin fichero real — el "segmento final" sería solo el id numérico.
+            nombre = doc.tipo_doc.nombre if doc.tipo_doc else f'Documento {doc.id}'
+        else:
+            filename = url.replace('\\', '/').rsplit('/', 1)[-1]
+            filename = filename.split('?')[0].split('#')[0]
+            nombre = filename or f'Documento {doc.id}'
         result.append({
             'id': doc.id,
-            'nombre': filename or f'Documento {doc.id}',
+            'nombre': nombre,
             'tipo_doc': doc.tipo_doc.nombre if doc.tipo_doc else None,
             'fecha': doc.fecha_administrativa.strftime('%d/%m/%Y') if doc.fecha_administrativa else None,
         })
