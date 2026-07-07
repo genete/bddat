@@ -5,13 +5,13 @@
 
 ---
 
-**Último cerrado:** #594 — `items_tecnicos` + `condiciones_item_tecnico` + `coberturas_item_tecnico` (catálogo de apartados de contenido técnico exigidos por RD 223/2008 / RD 337/2014) y su CRUD Supervisor, mismo patrón que `requisitos_documentales` (#583) con editor de condiciones anidado. `coberturas_item_tecnico` usa una máquina de 2 campos/3 estados (`texto` + `cubierto`: NO REVISADO / DESFAVORABLE / FAVORABLE) en vez de indexar contra un documento concreto. Entra como tarjeta del hub "Control y Gestión" (ADR-029 §1), sin `metadata.json` propio. PR #600.
+**Último cerrado:** #442 — fragmento contenedor del inspector de la tarea `ANALIZAR` (ADR-023 §6): componente React bespoke `AnalizarEditor` (no extensión del esquema genérico — el árbol ya es isla React, ver estudio de arquitectura anotado en el issue), con núcleo común (resultado a 3 estados, confirmación de dos pasos con vía de escape por justificación + bitácora, producir documento de diagnóstico como `bddat://diagnosticos/{id}`) y secciones extendidas (check documental/técnico placeholder, requerimientos con botón deshabilitado hasta #440) decididas por el backend según el trámite. Contrato de consolidación de defectos (`consolidar_defectos`) degradado permisivo mientras #495/#581/#440 no existan. PR #603.
 
 **Último hito:** PR #580 (parte de #579) — panel de estadísticas del supervisor: servicio `estadisticas_supervisor` sobre el núcleo `estado_dominio`, isla React + Recharts tematizada.
 
 **#579 sigue abierto:** bloque GESTIÓN aparcado (2026-07-02) para priorizar M3. Piezas en issues propios: config motor #170/#171/#479, plazos legales, operaciones masivas #295 — **antes de construir cualquiera de estas, resolver #588/#589/#590 (ADR-029, navegación administrativa)**, que fijan dónde encajan (hub universal "Control y Gestión"); construirlas antes repetiría el problema que #583 destapó.
 
-**Próximo: #442** — redefinido en sesión 2026-07-06/07 (al analizar el alcance de #581): pasa de "formulario suelto" a dueño del fragmento contenedor del inspector de la tarea ANALIZAR (ADR-023) — layout + contrato de consolidación de defectos + formulario de resultado. Va primero porque #495/#581/#440 se enchufan a su contrato; #581 deja de ser "el siguiente" en solitario y pasa a ser una de las tres secciones que confluyen ahí, en otro plano de la secuencia (ver hoja de ruta abajo, bloque análisis documental/requerimientos redefinido). Resto del foco M3 sigue igual. Spin-offs vivos de #558/#559 pendientes: #566/#567 (árbol), #568 (`NOTIFICACION_INFRUCTUOSA`), #570/#571 (filtros y tokens del seguimiento). Tras M3: bloque escritos/motor adaptativo (M4).
+**Próximo: #440** — selector de requerimientos, modal grande lanzado desde el contenedor de #442 (ADR-023 §6). El CRUD del catálogo ya existe (#593); falta el modal de shuttle + rutas. Se enchufa al contrato de consolidación de defectos ya construido en #442 — no bloqueado por #495/#581, que quedan como secciones independientes para otra sesión (sugerido por esfuerzo: #440 → #495 → #581). Resto del foco M3 sigue igual. Spin-offs vivos de #558/#559 pendientes: #566/#567 (árbol), #568 (`NOTIFICACION_INFRUCTUOSA`), #570/#571 (filtros y tokens del seguimiento); #602 (entrada a gestión de documentos del expediente, detectado al construir #442). Tras M3: bloque escritos/motor adaptativo (M4).
 
 ## Hoja de ruta — Implementación
 
@@ -68,15 +68,15 @@ solitario, ver "Contenedor + secciones" abajo):**
   contrato de consolidación de #442.
 
 **Contenedor + secciones (tarea ANALIZAR, ADR-023):**
-- **#442 — primero.** Redefinido: fragmento contenedor del inspector + contrato de
-  consolidación de defectos + formulario de resultado (`favorable`/`desfavorable`) +
-  persistencia en `diagnosticos`. Detalle del reparto y de la regla de cita normativa
-  en su alcance actualizado (GitHub).
+- ~~**#442**~~ ✅ Fragmento contenedor del inspector (`AnalizarEditor`, componente React
+  bespoke) + contrato de consolidación de defectos (degradado permisivo) +
+  formulario de resultado (3 estados) + persistencia en `diagnosticos`. PR #603.
+- **#440 — próximo.** Selector de requerimientos, modal grande (CRUD del catálogo ya
+  existe en #593, falta el modal + rutas de shuttle). Se enchufa al contrato de
+  consolidación ya construido en #442.
 - **#495** — check documental, sección inline (evaluador `evaluar_requisitos` ya
   existe, falta integrarlo + fragmento).
 - **#581** — check de ítems técnicos, sección inline (ver arriba).
-- **#440** — selector de requerimientos, modal grande (CRUD del catálogo ya existe en
-  #593, falta el modal + rutas de shuttle).
 - ~~**#582**~~ ✅ Regla de motor: tasa impagada bloquea toda fase posterior. PR #596.
 
 ### Bloque escritos / motor adaptativo (M4)
