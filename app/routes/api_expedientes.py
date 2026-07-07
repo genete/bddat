@@ -32,7 +32,15 @@ from app.services.tipos_creables import tipos_creables_de_nodo
 from app.services.detalle_nodo import detalle_de_nodo
 from app.services.esquema_editable import esquema_de_nodo
 from app.services import mutaciones_arbol as svc
+from app.services.consolidacion_defectos import consolidar_defectos
+from app.services.diagnosticos import crear_diagnostico
 from app.utils.permisos import verificar_acceso_expediente
+
+# Trámites cuya tarea ANALIZAR lleva las secciones extendidas del contenedor
+# (#442: check documental #495, check técnico #581, requerimientos #440).
+# El resto de trámites cuya tarea ANALIZAR produce un DIAGNOSTICO (CONSULTA_SEPARATA,
+# AUDIENCIA...) solo necesita el núcleo común (resultado + producir documento).
+_TRAMITES_CON_SECCIONES_ANALISIS = {'ANALISIS_DOCUMENTAL', 'REQUERIMIENTO_SUBSANACION'}
 
 # Blueprint para API
 api_bp = Blueprint('api', __name__, url_prefix='/api')
@@ -720,3 +728,118 @@ def pool_documentos(expediente_id):
             'fecha': doc.fecha_administrativa.strftime('%d/%m/%Y') if doc.fecha_administrativa else None,
         })
     return jsonify({'documentos': result}), 200
+
+
+# =============================================================================
+# ENDPOINT 11: Contenedor de la tarea ANALIZAR (#442)
+# =============================================================================
+
+def _resolver_tarea_analizar(expediente, tarea_id):
+    """(expediente, tarea_id) → Tarea de tipo ANALIZAR. ValueError si no."""
+    tarea = _resolver_nodo(expediente, 'tarea', tarea_id)
+    codigo = tarea.tipo_tarea.codigo if tarea.tipo_tarea else None
+    if codigo != 'ANALIZAR':
+        raise ValueError(f'La tarea {tarea_id} no es de tipo ANALIZAR (es {codigo!r})')
+    return tarea
+
+
+@api_bp.route('/expedientes/<int:expediente_id>/nodo/tarea/<int:tarea_id>/analizar',
+              methods=['GET'])
+@login_required
+def get_analizar(expediente_id, tarea_id):
+    """
+    GET .../nodo/tarea/<tarea_id>/analizar — payload del contenedor de #442.
+
+    {resultado, documento_producido: {...}|null, secciones_extendidas: bool,
+     defectos_consolidado: [...], completo: bool}
+    """
+    expediente = Expediente.query.get_or_404(expediente_id)
+    denegado = verificar_acceso_expediente(expediente)
+    if denegado:
+        return denegado
+
+    try:
+        tarea = _resolver_tarea_analizar(expediente, tarea_id)
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 404
+
+    codigo_tramite = (
+        tarea.tramite.tipo_tramite.codigo
+        if tarea.tramite and tarea.tramite.tipo_tramite else None
+    )
+    consolidado = consolidar_defectos(tarea)
+
+    documento_producido = None
+    resultado = None
+    doc = tarea.documento_producido
+    if doc is not None and doc.diagnostico is not None:
+        diag = doc.diagnostico
+        resultado = diag.resultado
+        documento_producido = {
+            'id': doc.id,
+            'diagnostico_id': diag.id,
+            'resultado': diag.resultado,
+            'defectos': diag.defectos or [],
+            'nombre': doc.tipo_doc.nombre if doc.tipo_doc else 'Diagnóstico',
+        }
+
+    return jsonify({
+        'resultado': resultado,
+        'documento_producido': documento_producido,
+        'secciones_extendidas': codigo_tramite in _TRAMITES_CON_SECCIONES_ANALISIS,
+        'defectos_consolidado': consolidado['items'],
+        'completo': consolidado['completo'],
+    }), 200
+
+
+@api_bp.route('/expedientes/<int:expediente_id>/nodo/tarea/<int:tarea_id>/analizar',
+              methods=['POST'])
+@login_required
+def post_analizar(expediente_id, tarea_id):
+    """
+    POST .../nodo/tarea/<tarea_id>/analizar — produce el documento de diagnóstico.
+
+    Body JSON: {resultado, justificacion?}. `resultado` ∈ favorable|condicionado|
+    desfavorable. Si el consolidado no está completo y no se aporta
+    `justificacion`, se bloquea (422, mismo shape que un bloqueo de motor) — con
+    `justificacion` se salta el gate y se registra en bitácora (ver
+    crear_diagnostico). Bloqueo también si la tarea ya tiene documento producido.
+    """
+    expediente = Expediente.query.get_or_404(expediente_id)
+    if verificar_acceso_expediente(expediente, 'gestionar_tarea'):
+        return jsonify({'error': 'No tienes permiso para esta acción'}), 403
+
+    try:
+        tarea = _resolver_tarea_analizar(expediente, tarea_id)
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 404
+
+    data = request.get_json(silent=True) or {}
+    resultado = data.get('resultado')
+    if resultado not in ('favorable', 'condicionado', 'desfavorable'):
+        return jsonify({'error': 'resultado debe ser favorable, condicionado o desfavorable'}), 422
+    justificacion = (data.get('justificacion') or '').strip() or None
+
+    consolidado = consolidar_defectos(tarea)
+    if not consolidado['completo'] and not justificacion:
+        return jsonify({
+            'error': 'Quedan ítems sin revisar',
+            'motivo': 'El checklist no está completo. Aporta una justificación para producir '
+                      'el documento igualmente, o termina de revisarlo primero.',
+            'defectos_consolidado': consolidado['items'],
+        }), 422
+
+    try:
+        doc = crear_diagnostico(tarea, resultado, consolidado['items'], justificacion=justificacion)
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 422
+
+    return jsonify({
+        'ok': True,
+        'documento': {
+            'id': doc.id,
+            'nombre': doc.tipo_doc.nombre if doc.tipo_doc else 'Diagnóstico',
+            'tipo_doc': doc.tipo_doc.nombre if doc.tipo_doc else None,
+            'fecha': None,
+        },
+    }), 200
