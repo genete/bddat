@@ -7,219 +7,214 @@
 > cuando toque decidir "trabajad esta celda ya".
 > **Fuente del %:** código real (`app/`, `migrations/`, `scripts/`, config de
 > despliegue) — nunca issues ni documentos de diseño, que quedan desactualizados
-> con frecuencia en este proyecto.
-> **Última auditoría completa:** 2026-07-08 (primera pasada — 6 agentes en
-> paralelo sobre el código + auditoría directa de infraestructura/datos
-> estructurales).
-> Columna 1 (Id) compartida con `DETALLE_NECESIDADES_BDDAT.md` — acude allí para
-> el alcance completo de cualquier necesidad.
+> con frecuencia en este proyecto. Todo % está respaldado por evidencia directa
+> de código, verificada — no hay filas con "pendiente de verificar".
+> **Última auditoría completa:** 2026-07-08 (6 agentes en paralelo sobre el
+> código + auditoría directa de infraestructura/datos estructurales + repaso de
+> correcciones de Carlos sobre el primer borrador).
+> Columna "Necesidad" es una copia legible de `DETALLE_NECESIDADES_BDDAT.md` —
+> ese documento sigue siendo la fuente de verdad si hace falta más contexto.
 
 ---
 
 ## Lectura rápida
 
-Antes de la tabla completa, lo que más destaca de esta primera pasada:
-
 - **Peor de lo que "está abierto" sugería:** varios mecanismos que la memoria del
   proyecto daba por vivos resultaron estar desconectados de la ruta real que usa
   el usuario — el backend existe, pero nadie puede llegar a él desde la interfaz.
-  Ver N012/N013 (modal de generar escrito huérfano), N017 (escape de motor sin
-  conectar a la ruta viva), N040 (cambio de titularidad sin ningún caller).
+  Ver N012/N013 (modal de generar escrito huérfano), N040 (cambio de titularidad
+  sin ningún caller).
 - **Un ADR "Adoptado" con 0% de implementación real:** N057 — ADR-027 dice
   "Adoptada" en su cabecera, pero su propio plan de implementación nunca se
   ejecutó en código.
 - **Una interfaz que miente:** N054 — el botón de "solicitar cambio de rol"
   muestra un mensaje de éxito aunque no persiste nada (`# TODO` explícito en el
   código).
-- **El propio código ya se declara incompleto:** el hub del Supervisor
-  (`app/modules/supervisor/templates/supervisor/index.html`) tiene varias
-  tarjetas marcadas `is-soon` con su issue de referencia (#170/#479 motor,
-  #256 auditoría, #74 semáforos, #76 informes, #295 operaciones masivas) — no
-  hace falta abrir el código para saber que esas piezas no están: lo dice la
-  propia pantalla.
+- **El propio código ya se declara incompleto:** el hub del Supervisor tiene
+  varias tarjetas marcadas "próximamente" con su issue de referencia (#170/#479
+  motor, #256 auditoría, #74 semáforos, #76 informes, #295 operaciones masivas).
 - **Mensajería interna (Bloque 13) y Manual (Bloque 12): 0-15% real**, confirmado
-  con evidencia negativa exhaustiva, no por falta de búsqueda.
-- **Mejor de lo esperado:** N067 (festivos) tiene un comando real
-  (`flask inhabiles importar`) contra la API oficial de la Junta, con aviso
-  proactivo si falta el año siguiente — no es solo un fichero subido a mano.
-- **5 necesidades nuevas** aparecieron auditando código que no tenían fila propia
-  (N073-N077 en `DETALLE_NECESIDADES_BDDAT.md`) — la más llamativa: una columna
-  `hash_md5` para detectar documentos duplicados que nadie calcula nunca (N077).
-- **1 duplicado encontrado y resuelto:** N014 y N055 eran la misma necesidad
-  escrita dos veces — retirada N014.
+  con evidencia negativa exhaustiva.
+- **Mejor de lo esperado:** N067 (festivos) tiene un comando real contra la API
+  oficial de la Junta, con aviso proactivo. N073 (representación) tiene una
+  pantalla de gestión completa que el primer borrador de esta matriz no había
+  encontrado.
+- **6 necesidades nuevas** aparecieron auditando código que no tenía fila propia
+  (N073-N077 en `DETALLE_NECESIDADES_BDDAT.md`).
+- **2 duplicados/redundancias resueltas:** N014 retirada (= N055); N030 retirada
+  por decisión directa de Carlos.
+- **N017 y N022 (Admin, sobreescritura de emergencia)**: revisadas tras
+  corrección de Carlos — ninguna de las dos tiene mecanismo real en la
+  aplicación; ambas serían hoy una intervención directa en BD. Pregunta abierta
+  de Carlos sin resolver: si eso necesita codificarse alguna vez.
 
 ---
 
 ## Bloque 1 — Tramitación ESFTT
 
-| Id | % Cobertura | Qué falta |
-|---|---|---|
-| N001 | 95% | Nada funcionalmente relevante — es la zona más madura del código (CRUD completo de los 4 niveles ESFTT + isla React sobre ADR-016). |
-| N002 | 90% | Confirmados permisos y la cola dedicada del Administrativo; sin verificar el detalle interno de esa cola ni su UI consumidora al 100%. |
-| N003 | 90% | El borrado consulta correctamente al motor antes de ejecutarse, con escape justificado y registrado en bitácora. Hallazgo colateral sin resolver: `api_bc.py` sigue montado como blueprint activo pese a estar documentado como código muerto — sin confirmar si recibe tráfico real. |
-| N069 | 95% | Nada relevante — wizard de 3 pasos completo con commit transaccional único. |
-| N072 | 20% | Lo que existe es un log automático de sistema *por usuario* (feed de actividad, no narrativo). Falta: vista/endpoint filtrado por expediente, capacidad de anotación libre del Tramitador no ligada a un bypass del motor, y UI de consulta para Supervisor/Administrativo. |
-| N073 | 50% | El modelo y un consumidor real (verificación de representación en el wizard de alta) están confirmados. Sin verificar si existe una pantalla de gestión (alta/consulta/revocación) del catálogo de autorizaciones fuera de ese consumo puntual. |
+| Id | Necesidad | % Cobertura | Qué falta |
+|---|---|---|---|
+| N001 | Crear, editar, avanzar y cerrar Solicitudes/Fases/Trámites/Tareas de un expediente | 95% | Nada funcionalmente relevante — es la zona más madura del código (CRUD completo de los 4 niveles ESFTT + isla React sobre ADR-016). |
+| N002 | Realizar tareas auxiliares asignadas dentro de la tramitación, sin capacidad de decisión | 90% | Permisos y cola dedicada del Administrativo confirmados (`gestionar_tareas` incluye ADMINISTRATIVO, excluido explícitamente de crear/editar/borrar estructura; endpoint `/api/administrativo/cola`). |
+| N003 | Borrado de elementos ESFTT condicionado por el motor de reglas | 90% | El borrado consulta al motor antes de ejecutarse, con escape justificado (Tramitador) registrado en bitácora. Nota aparte, sin afectar este %: `api_bc.py` sigue montado como blueprint activo pese a documentarse como código muerto — ver Hallazgo 4 de `DETALLE_NECESIDADES_BDDAT.md`. |
+| N069 | Apertura de expedientes (alta / wizard de creación) | 95% | Nada relevante — wizard de 3 pasos completo con commit transaccional único. |
+| N072 | Bitácora narrativa del expediente (anotaciones datadas con autor) | 20% | Lo que existe es un log automático de sistema *por usuario* (feed de actividad, no narrativo). Falta: vista/endpoint filtrado por expediente, capacidad de anotación libre del Tramitador no ligada a un bypass del motor, y UI de consulta para Supervisor/Administrativo. |
+| N073 | Gestionar autorizaciones de representación: quién puede actuar en nombre de un titular en la tramitación | 95% | Pantalla de gestión completa (conceder, revocar, restaurar autorización) con validaciones (no autoautorización, no duplicar autorización activa), más consumo real en el wizard de alta. Nada relevante pendiente. |
 
 ## Bloque 2 — Sistema documental
 
-| Id | % Cobertura | Qué falta |
-|---|---|---|
-| N004 | 50% | La organización automática en carpeta solo existe para documentos generados por el propio sistema (escritos); lo que Tramitador/Administrativo incorporan a mano solo se registra donde ya estuviera, sin mover ni copiar nada. |
-| N006 | 100% | Nada — consulta, descarga y protección contra path traversal cubiertas. |
-| N007 | 0% | No existe ningún mecanismo que compruebe accesibilidad de URLs/ficheros de forma proactiva, ni por expediente ni global — solo hay comprobaciones reactivas puntuales al pedir un documento concreto. |
-| N008 | 75% | Mecanismo de incorporación genérico + catálogo de tipos `JUSTIFICANTE_*` ya existen. Falta cualquier verificación real de que el documento lleve una firma válida — hoy es solo clasificación por tipo. |
-| N009 | 25% | La convención de carpeta predecible solo se aplica a documentos generados por el sistema. Falta forzarla también en la incorporación manual, y generar un manifest/índice en disco por expediente — sin BD, una carpeta es hoy un montón de ficheros sin diferenciar. |
-| N076 | 50% | La señal de "sin vincular a tarea" existe y se muestra como columna en el listado general de documentos del pool. Falta una vista dedicada de triage (radar) que la use como filtro/prioridad, no solo como dato de contexto. |
-| N077 | 0% | La columna de verificación de integridad existe en el modelo pero ningún punto de código la calcula nunca — funcionalidad diseñada y nunca conectada. |
+| Id | Necesidad | % Cobertura | Qué falta |
+|---|---|---|---|
+| N004 | Incorporar documentos al expediente, con organización automática en ruta predeterminada y registro de su localización | 50% | La organización automática en carpeta solo existe para documentos generados por el propio sistema (escritos); lo que Tramitador/Administrativo incorporan a mano solo se registra donde ya estuviera, sin mover ni copiar nada. |
+| N006 | Consultar y descargar documentos del expediente | 100% | Nada — consulta, descarga y protección contra path traversal cubiertas. |
+| N007 | Auditoría automática de URLs a documentos rotas, globales o por expediente | 0% | No existe ningún mecanismo que compruebe accesibilidad de URLs/ficheros de forma proactiva, ni por expediente ni global — solo hay comprobaciones reactivas puntuales al pedir un documento concreto. |
+| N008 | Incorporar documentos firmados externamente y justificantes | 75% | Mecanismo de incorporación genérico + catálogo de tipos `JUSTIFICANTE_*` ya existen. Falta cualquier verificación real de que el documento lleve una firma válida — hoy es solo clasificación por tipo. |
+| N009 | Expediente documental reconstruible sin BDDAT — estructura predecible fuera de BD | 25% | La convención de carpeta predecible solo se aplica a documentos generados por el sistema. Falta forzarla también en la incorporación manual, y generar un manifest/índice en disco por expediente — sin BD, una carpeta es hoy un montón de ficheros sin diferenciar. |
+| N076 | Detectar documentos del pool sin vincular a ninguna tarea de tramitación ("radar de huérfanos") | 50% | La señal de "sin vincular a tarea" existe y se muestra como columna en el listado general de documentos del pool. Falta una vista dedicada de triage (radar) que la use como filtro/prioridad, no solo como dato de contexto. |
+| N077 | Detectar documentos duplicados en el pool del expediente (verificación de integridad) | 0% | La columna de verificación de integridad existe en el modelo pero ningún punto de código la calcula nunca — funcionalidad diseñada y nunca conectada. |
 
 ## Bloque 3 — Generación de escritos
 
-| Id | % Cobertura | Qué falta |
-|---|---|---|
-| N010 | 90% | CRUD de plantillas completo. Falta CRUD de consultas nombradas reutilizables en plantillas — hoy solo se pueden dar de alta por BD/migración directa. |
-| N011 | 0% | No existe ninguna rutina de análisis estático de la plantilla; el único aviso de "hueco" es reactivo, al fallar la generación contra un expediente real. |
-| N012 | 50% | El backend de generación está prácticamente completo y es sofisticado. El modal/wizard que lo dispara desde la interfaz existe como fichero pero no está enganchado a ninguna vista real — hoy un Tramitador no puede llegar a esta función desde la UI. |
-| N013 | 50% | Mismo caso que N012 — mismo backend, mismo modal sin enganchar. |
+| Id | Necesidad | % Cobertura | Qué falta |
+|---|---|---|---|
+| N010 | Crear, modificar y gestionar plantillas de escritos | 90% | CRUD de plantillas completo. Falta CRUD de consultas nombradas reutilizables en plantillas — hoy solo se pueden dar de alta por BD/migración directa. |
+| N011 | Detección de plantillas con tokens vacíos (aviso de hueco antes de generar) | 0% | No existe ninguna rutina de análisis estático de la plantilla; el único aviso de "hueco" es reactivo, al fallar la generación contra un expediente real. |
+| N012 | Generar escrito desde plantilla y descargar versión borrador/firmada | 50% | El backend de generación está prácticamente completo. El modal/wizard que lo dispara desde la interfaz existe como fichero pero no está enganchado a ninguna vista real — hoy un Tramitador no puede llegar a esta función desde la UI. |
+| N013 | Generar escritos estándar y avanzar tramitación | 50% | Mismo backend que N012, mismo modal sin enganchar a ninguna vista. |
 
 ## Bloque 4 — Motor de reglas y configuración estructural
 
-| Id | % Cobertura | Qué falta |
-|---|---|---|
-| N015 | 85% | El motor evalúa y nunca degrada a "permitido" en silencio; los bloqueos llegan con motivo y norma legibles. Sin verificar exhaustivamente que absolutamente todos los puntos de cierre llamen al invariante correspondiente. |
-| N016 | 15% | El modelo de reglas y el motor de evaluación están completos y en uso real — pero cero interfaz de alta/edición/baja. El propio hub del Supervisor lo marca "próximamente" (#170/#479). |
-| N017 | 40% | El escape de emergencia (saltar el motor con justificación registrada en bitácora) está construido y funciona en el servicio — pero la ruta actualmente en uso no extrae ni pasa ese parámetro. Es reconexión, no reconstrucción. |
-| N018 | 20% | La lectura y aplicación del modo global (bloquear/advertir/inactivo) está viva en el flujo real. Falta el selector de escritura — hoy solo se puede cambiar directamente en BD. |
-| N019 | 0% | El catálogo se puebla solo por migración; cero interfaz de gestión. |
-| N020 | 0% | Lo único que existe es búsqueda de autocompletado para formularios (solo lectura) — no hay ninguna gestión de cambios sobre la tabla. |
-| N021 | 0% | Las rutas del filesystem son variables de entorno leídas una vez al arrancar; no hay ni siquiera un modelo de datos que sostenga un futuro CRUD. |
-| N022 | 0% | No existe ningún mecanismo de sobreescritura equivalente al del motor (N017) aplicado al catálogo estructural. |
+| Id | Necesidad | % Cobertura | Qué falta |
+|---|---|---|---|
+| N015 | Validación de flujo en tiempo real: qué se puede crear/iniciar/cerrar y cuándo, sin bloqueo silencioso | 85% | El motor evalúa y nunca degrada a "permitido" en silencio; los bloqueos llegan con motivo y norma legibles (HTTP 422 explícito), y los invariantes de cierre están hardcoded con mensajes propios. |
+| N016 | Configurar reglas del motor por tipo de expediente | 15% | El modelo de reglas y el motor de evaluación están completos y en uso real — pero cero interfaz de alta/edición/baja. El propio hub del Supervisor lo marca "próximamente" (#170/#479). |
+| N017 | Sobreescritura de emergencia sobre el motor | 0% | Esta necesidad es del Admin BDDAT resolviendo una situación en la que el Tramitador ya no puede salir por la vía normal (justificación) — no debe confundirse con esa vía normal, que es de Tramitador y ya está cubierta en N003. No existe en la aplicación ningún mecanismo de intervención directa sobre el motor a nivel Admin; hoy solo sería posible mediante acceso directo a la base de datos, fuera de la aplicación. Ver Hallazgo 5 de `DETALLE_NECESIDADES_BDDAT.md` (relación con N022). |
+| N018 | Selector de modo global del motor (bloquear / advertir / inactivo) | 20% | La lectura y aplicación del modo global está viva en el flujo real de creación. Falta el selector de escritura — hoy solo se puede cambiar directamente en BD. |
+| N019 | CRUD de tipos de ESFTT (Fase/Trámite/Tarea/Solicitud) | 0% | El catálogo se puebla solo por migración; cero interfaz de gestión. |
+| N020 | Gestión de cambios en municipios (fusión/escisión, recarga correcta de la tabla) | 0% | Lo único que existe es búsqueda de autocompletado para formularios (solo lectura) — no hay ninguna gestión de cambios sobre la tabla. |
+| N021 | CRUD de rutas del filesystem | 0% | Las rutas del filesystem son variables de entorno leídas una vez al arrancar; no hay ni siquiera un modelo de datos que sostenga un futuro CRUD. |
+| N022 | Sobreescritura técnica de emergencia sobre catálogo estructural | 0% | Misma naturaleza que N017 aplicada al catálogo estructural en vez de al motor: hoy sería una intervención directa en BD, sin ningún mecanismo en la aplicación. Ver Hallazgo 5 de `DETALLE_NECESIDADES_BDDAT.md`. |
 
 ## Bloque 5 — Plazos legales
 
-| Id | % Cobertura | Qué falta |
-|---|---|---|
-| N023 | 5% | El catálogo de plazos es rico y está en uso real en el cálculo, pero cero interfaz de configuración — peor situación que N016: ni siquiera tiene un issue de referencia asignado en el propio hub. |
-| N024 | 55% | El dato de plazo/vencimiento por tarea es correcto y se agrega hasta expediente, pero vive embebido en el árbol y el listado general — falta una vista dedicada de "mis vencimientos". |
-| N025 | 20% | Solo hay un número agregado suelto dentro del panel de estadísticas. El dashboard de alertas dedicado sigue marcado "próximamente" (#74) en el propio hub. |
-| N026 | 50% | Comparte la misma infraestructura de lectura que N024 — la diferencia es solo de permisos de rol, no de funcionalidad. Sin verificar el detalle de qué ve exactamente el Administrativo frente al Tramitador. |
-| N027 | 70% | El cálculo de intervalos de suspensión es automático (se infiere del árbol documental, sin toggle manual) y ya se aplica al plazo real. Falta una superficie visual explícita que diga "este elemento tiene una suspensión activa" — hoy es invisible salvo por ver que la fecha límite es más tardía. |
-| N067 | 80% | Existe un comando real que importa el calendario desde la API oficial de la Junta de Andalucía, con aviso proactivo si falta el año siguiente. Sigue siendo un comando de servidor (CLI), no un botón en la interfaz web. |
-| N068 | 90% | Motor de cálculo de plazo muy sólido (los 4 tipos de unidad, prórroga a hábil, suspensiones). Sin verificación exhaustiva de casos límite (fin de mes, años bisiestos) contra tests automatizados. |
+| Id | Necesidad | % Cobertura | Qué falta |
+|---|---|---|---|
+| N023 | Configurar plazos por tipo de ESFTT | 5% | El catálogo de plazos es rico y está en uso real en el cálculo, pero cero interfaz de configuración — peor situación que N016: ni siquiera tiene un issue de referencia asignado en el propio hub del Supervisor. |
+| N024 | Consultar plazos y vencimientos de expedientes propios | 55% | El dato de plazo/vencimiento por tarea es correcto y se agrega hasta expediente (árbol + listado de seguimiento), pero falta una vista dedicada de "mis vencimientos". |
+| N025 | Dashboard de alertas de plazos de toda la unidad | 20% | Solo hay un número agregado suelto dentro del panel de estadísticas. El dashboard de alertas dedicado sigue marcado "próximamente" (#74) en el propio hub del Supervisor. |
+| N026 | Consultar información de plazos | 50% | Comparte la misma infraestructura de lectura que N024 (árbol + listado de seguimiento) — la diferencia es de permisos de rol, no de funcionalidad distinta. |
+| N027 | Sistema de suspensión de plazos (activa/cerrada) | 70% | El cálculo de intervalos de suspensión es automático (se infiere del árbol documental, sin toggle manual) y ya desplaza la fecha límite real. Comprobado directamente en el árbol React (`Semaforo.jsx`, `NodoTareas.jsx`): el bloque de la tarea ESPERAR_PLAZO no muestra un estado "suspendido" explícito, solo la barra de color derivada del plazo ya ajustado — el efecto está, la señal visual distintiva de "esto está suspendido ahora mismo" no. |
+| N067 | Cargar y mantener el calendario oficial de festivos | 80% | Existe un comando (`flask inhabiles importar`) que carga el calendario desde la API oficial de la Junta de Andalucía, con aviso proactivo en toda la aplicación si falta el año siguiente. Sigue siendo un comando de servidor, no un botón en la interfaz web. |
+| N068 | Motor de cálculo de plazo pendiente según días hábiles y suspensiones | 90% | Motor de cálculo sólido: los 4 tipos de unidad de plazo, prórroga a hábil, suspensiones aplicadas al cálculo real, usado en producción por árbol, listado y estadísticas. |
 
 ## Bloque 6 — Proyectos e instalaciones
 
-| Id | % Cobertura | Qué falta |
-|---|---|---|
-| N028 | 10% | La edición de elementos técnicos anidados (líneas, CT, subestaciones) está **explícitamente deshabilitada en la interfaz** ("Próximamente"). Solo existe un esqueleto de identidad/contención sin ningún campo técnico ni formulario. |
-| N029 | 100% | Nada — todos los campos editables del proyecto tienen representación en el formulario, incluida la edición de municipios. |
-| N030 | 10% | Pendiente de que Carlos decida qué significa esta necesidad — ver `DETALLE_NECESIDADES_BDDAT.md`, Hallazgo 3: bajo ninguna lectura razonable hay hoy una acción distintiva de "revisar/auditar proyecto" separada de la visibilidad general o del mecanismo de N074 (que hoy ejecuta el Tramitador, no el Supervisor). |
-| N031 | 10% | El hueco de esquema para vincular activos técnicos al estado administrativo del expediente ya existe en el modelo — pero nada escribe en él, y las resoluciones no enlazan con ningún elemento técnico concreto. |
-| N074 | 90% | CRUD completo del catálogo de apartados técnicos exigidos por normativa (alta, edición con condiciones anidadas, activar/desactivar). Sin verificar matices menores de UI. |
+| Id | Necesidad | % Cobertura | Qué falta |
+|---|---|---|---|
+| N028 | Editar proyecto y elementos técnicos anidados (líneas, CT, subestaciones...) | 10% | La edición de elementos técnicos anidados está **explícitamente deshabilitada en la interfaz** ("Próximamente"). Solo existe un esqueleto de identidad/contención sin ningún campo técnico ni formulario. |
+| N029 | Editar datos básicos de proyecto (denominación, municipio...) | 100% | Nada — todos los campos editables del proyecto tienen representación en el formulario, incluida la edición de municipios. |
+| N031 | Relacionar elementos del proyecto con el estado del expediente y sus resoluciones | 10% | El hueco de esquema para vincular activos técnicos al estado administrativo del expediente ya existe en el modelo — pero nada escribe en él, y las resoluciones no enlazan con ningún elemento técnico concreto. |
+| N074 | Mantener el catálogo de apartados de contenido técnico exigidos por normativa, con condiciones de aplicabilidad según la instalación | 90% | CRUD completo del catálogo (alta, edición con condiciones anidadas, activar/desactivar). Nada relevante pendiente. |
 
 ## Bloque 7 — GIS / Cartografía
 
-| Id | % Cobertura | Qué falta |
-|---|---|---|
-| N032 | 0% | Todo — sin modelo de geometría, sin librería de mapas, sin ruta ni template. Confirmado tras descartar falsos positivos de búsqueda. |
-| N033 | 0% | Todo — ninguna vista muestra expedientes/proyectos sobre un mapa, para ningún rol. |
+| Id | Necesidad | % Cobertura | Qué falta |
+|---|---|---|---|
+| N032 | Editar geometría y visualizar mapa | 0% | Todo — sin modelo de geometría, sin librería de mapas, sin ruta ni template. Confirmado tras descartar falsos positivos de búsqueda. |
+| N033 | Consultar vista global de mapa | 0% | Todo — ninguna vista muestra expedientes/proyectos sobre un mapa, para ningún rol. |
 
 ## Bloque 8 — Gestión de carga y usuarios
 
-| Id | % Cobertura | Qué falta |
-|---|---|---|
-| N034 | 50% | La asignación de un expediente a la vez, desde su formulario individual, funciona. Falta selección múltiple / asignación en lote — el propio hub del Supervisor lo marca "próximamente" (#295). |
-| N036 | 90% | Alta, edición, activar/desactivar usuarios y asignación de roles, con protecciones (no autodesactivarse, no quitar el último Admin). El catálogo de tipos de rol en sí es fijo por diseño (probablemente intencional, no un hueco real). |
-| N037 | 50% | KPIs, desglose por estado y por técnico ya construidos y visibles (isla React de estadísticas). Falta desglose por pista y por antigüedad — el propio hub lo marca "próximamente" (#256). |
-| N038 | 0% | Todo — sin servicio, sin ruta, solo una tarjeta "próximamente" (#76) en el hub. |
-| N039 | 0% | Todo — ningún exportador de datos agregados encontrado en el código. |
-| N040 | 0% | El modelo de histórico de titulares está completo, con el método que haría el cambio — pero sin ningún punto del código que lo invoque. Ni siquiera existe el cambio individual conectado a una ruta, y mucho menos el masivo. |
+| Id | Necesidad | % Cobertura | Qué falta |
+|---|---|---|---|
+| N034 | Asignar expedientes a técnicos (uno o varios, mismo interfaz) | 50% | La asignación de un expediente a la vez, desde su formulario individual, funciona. Falta selección múltiple / asignación en lote — el propio hub del Supervisor lo marca "próximamente" (#295). |
+| N036 | Gestionar altas/bajas de usuarios y roles | 90% | Alta, edición, activar/desactivar usuarios y asignación de roles, con protecciones (no autodesactivarse, no quitar el último Admin). El catálogo de los 4 tipos de rol en sí es fijo por diseño (son los 4 actores de negocio que fija `PLAN_ESTRATEGIA.md` §B, no un catálogo abierto) — no es un hueco real. |
+| N037 | Consultar estadísticas de carga interna (por técnico/pista/estado, plazos vencidos, antigüedad) | 50% | KPIs, desglose por estado y por técnico ya construidos y visibles (isla React de estadísticas). Falta desglose por pista y por antigüedad — el propio hub lo marca "próximamente" (#256). |
+| N038 | Generar informes de estado de situación bajo demanda para servicios centrales | 0% | Todo — sin servicio, sin ruta, solo una tarjeta "próximamente" (#76) en el hub. |
+| N039 | Exportar datos agregados (Excel/CSV) | 0% | Todo — ningún exportador de datos agregados encontrado en el código. |
+| N040 | Cambiar titularidad de forma masiva en agrupaciones | 0% | El modelo de histórico de titulares está completo, con el método que haría el cambio — pero sin ningún punto del código que lo invoque. Ni siquiera existe el cambio individual conectado a una ruta, y mucho menos el masivo. |
 
 ## Bloque 9 — Listado inteligente
 
-| Id | % Cobertura | Qué falta |
-|---|---|---|
-| N041 | 75% | Filtros, paginación y estado por pista de cada solicitud, construidos y en uso. Falta un contador dedicado de "escritos pendientes" — hoy se infiere indirectamente de los códigos de pista. |
-| N042 | 30% (verificación incompleta) | La única cola de trabajo real encontrada es la del Administrativo, no la del Tramitador — y ninguna de las dos ordena por urgencia/plazo, solo por antigüedad de alta. No se descartó del todo que exista algo específico para Tramitador fuera de los puntos de partida explorados. |
-| N043 | 75% (verificación incompleta) | Probablemente reutiliza el mismo listado de seguimiento que Supervisor/Tramitador (coherente con el patrón de fuente única de verdad del proyecto), pero no se confirmó si existe alguna vista específicamente optimizada para el Administrativo. |
-| N044 | 25% | Solo cubre catálogo estructural (códigos de tipos ausentes), comprobado una vez al arrancar y visible solo en el log del servidor — no huérfanos/referencias rotas genéricos de BD, y no consultable bajo demanda desde la aplicación. |
+| Id | Necesidad | % Cobertura | Qué falta |
+|---|---|---|---|
+| N041 | Filtrar y consultar datos agregados por expediente (plazos, tareas activas, escritos pendientes) | 75% | Filtros, paginación y estado por pista de cada solicitud, construidos y en uso. Falta un contador dedicado de "escritos pendientes" — hoy se infiere indirectamente de los códigos de pista. |
+| N042 | Consultar cola de trabajo priorizada | 75% | El listado de seguimiento filtrado a "mis expedientes" (`ver=mis`, mismo endpoint que usa N043 para Administrativo) es la vista real del Tramitador: cada solicitud lleva un color por pista calculado con lógica de prioridad real (el estado más urgente entre los abiertos gana la celda). Lo que falta: el orden de las filas en sí no está ordenado por urgencia, solo por antigüedad de alta — la priorización hoy es visual (color), no de orden. |
+| N043 | Consultar vista global de expedientes para localizar dónde actuar | 75% | Mismo listado de seguimiento que N042, filtrado a "todos" (`ver=todos`) en vez de "mis" — el Administrativo ve el mismo estado por pista de cualquier expediente. No hay una vista distinta ni más simplificada específica para este rol; reutiliza la misma fuente de verdad que Supervisor/Tramitador. |
+| N044 | Consultar inconsistencias y huérfanos de BD | 25% | Solo cubre catálogo estructural (códigos de tipos ausentes), comprobado una vez al arrancar y visible solo en el log del servidor — no huérfanos/referencias rotas genéricos de BD, y no consultable bajo demanda desde la aplicación. |
 
 ## Bloque 10 — Auditoría configurable
 
-| Id | % Cobertura | Qué falta |
-|---|---|---|
-| N045 | 0% | No existe ningún panel de configuración. El registro en bitácora está hardcoded a dos casos muy concretos (escape de motor, acceso a expediente ajeno) — la inmensa mayoría de mutaciones normales no se auditan hoy. |
-| N046 | 15% | El único endpoint de consulta filtra por usuario ("mis últimas 50 acciones"), no por expediente. Reconstruir el historial de un expediente concreto exigiría además un join que hoy no existe, porque las mutaciones se registran por tabla afectada, no por expediente. |
-| N047 | 0% | Todo — logging estándar de Python sin persistencia estructurada ni panel de consulta. |
-| N075 | 85% | Construido y funcionando: aviso automático + registro en bitácora cuando un Tramitador actúa sobre expediente ajeno. Sin verificar matices de UI del indicador. |
+| Id | Necesidad | % Cobertura | Qué falta |
+|---|---|---|---|
+| N045 | Definir qué operaciones/elementos se auditan | 0% | No existe ningún panel de configuración. El registro en bitácora está hardcoded a dos casos muy concretos (escape de motor, acceso a expediente ajeno) — la inmensa mayoría de mutaciones normales no se auditan hoy. |
+| N046 | Consultar historial por expediente | 15% | El único endpoint de consulta filtra por usuario ("mis últimas 50 acciones"), no por expediente. Reconstruir el historial de un expediente concreto exigiría además un cruce que hoy no existe, porque las mutaciones se registran por tabla afectada, no por expediente. |
+| N047 | Consultar logs técnicos del sistema | 0% | Todo — logging estándar de Python sin persistencia estructurada ni panel de consulta. |
+| N075 | Advertir en el momento y dejar constancia automática cuando se actúa sobre un expediente fuera de la propia asignación | 85% | Construido y funcionando: aviso automático (indicador visible en el layout) + registro en bitácora cuando un Tramitador actúa sobre expediente ajeno. |
 
 ## Bloque 11 — Importación legacy
 
-| Id | % Cobertura | Qué falta |
-|---|---|---|
-| N048 | 0% | Confirmado sin ambigüedad — sin schema `legacy`, sin segundo bind de base de datos, sin script de importación desde Access. La única mención de "legacy" en el código es texto descriptivo aspiracional en un seed de roles. |
-| N049 | 15% | La parte de respetar huecos de numeración histórica está resuelta (contador gapless con instrucción de arranque documentada). La operación de "activar" en sí no existe — coherente con que no hay ningún dato legacy real que activar (N048 = 0%). |
-| N050 | 35% | El formulario genérico de edición de expediente permite completar los mismos campos que tendría uno heredado, pero no está pensado ni verificado para ese caso — y hoy no hay ningún expediente real al que aplicarlo. |
+| Id | Necesidad | % Cobertura | Qué falta |
+|---|---|---|---|
+| N048 | Cargar datos legacy (Access → schema `legacy`, solo lectura permanente) | 0% | Confirmado sin ambigüedad — sin schema `legacy`, sin segundo bind de base de datos, sin script de importación desde Access. La única mención de "legacy" en el código es texto descriptivo aspiracional en un seed de roles. |
+| N049 | Activar expediente legacy individualmente, respetando huecos de numeración AT histórica | 15% | La parte de respetar huecos de numeración histórica está resuelta (contador gapless con instrucción de arranque documentada). La operación de "activar" en sí no existe — coherente con que no hay ningún dato legacy real que activar (N048 = 0%). |
+| N050 | Completar campos básicos de expedientes heredados | 35% | El formulario genérico de edición de expediente permite completar los mismos campos que tendría uno heredado, pero no está pensado ni verificado para ese caso — y hoy no hay ningún expediente real al que aplicarlo. |
 
 ## Bloque 12 — Manual de usuario
 
-| Id | % Cobertura | Qué falta |
-|---|---|---|
-| N051 | 0% | Todo — confirmado con búsqueda negativa exhaustiva. Ninguna ruta `/manual`, `/ayuda` ni `/help` registrada. |
-| N071 | 0% | Todo — ningún contenido ni mecanismo de autoría/mantenimiento del manual en código. |
+| Id | Necesidad | % Cobertura | Qué falta |
+|---|---|---|---|
+| N051 | Consultar documentación con ayuda contextual | 0% | Todo — confirmado con búsqueda negativa exhaustiva. Ninguna ruta `/manual`, `/ayuda` ni `/help` registrada. |
+| N071 | Generar y mantener el contenido del manual de usuario | 0% | Todo — ningún contenido ni mecanismo de autoría/mantenimiento del manual en código. |
 
 ## Bloque 13 — Mensajería interna
 
-| Id | % Cobertura | Qué falta |
-|---|---|---|
-| N053 | 15% | La cola compartida de tareas es autoservicio (cualquiera se autoasigna trabajo pendiente) — falta la mitad "dirigida": que alguien empuje una tarea concreta a una persona concreta, y una capacidad de aviso con destinatario. Ninguna de las dos tiene persistencia hoy. |
-| N054 | 15% | La ruta está enganchada y alcanzable desde la interfaz, pero el backend no hace nada real: muestra un mensaje de éxito sin persistir ninguna solicitud (`# TODO` explícito en el propio código). |
-| N055 | 0% | Todo — ningún canal de petición dirigido al Supervisor, en ningún punto del código. |
-| N056 | 0% | Todo — sin segmentación de avisos técnicos a Admin BDDAT en ningún punto. |
-| N070 | 0% | Depende de que exista el manual (N051/N071) y un canal de mensajería funcional (N053-056) — ninguno de los dos existe hoy. |
+| Id | Necesidad | % Cobertura | Qué falta |
+|---|---|---|---|
+| N053 | Enviar avisos y delegar tareas al pool de administrativos (no es chat) | 15% | La cola compartida de tareas es autoservicio (cualquiera se autoasigna trabajo pendiente) — falta la mitad "dirigida": que alguien empuje una tarea concreta a una persona concreta, y una capacidad de aviso con destinatario. Ninguna de las dos tiene persistencia hoy. |
+| N054 | Solicitar alta o cambio de rol | 15% | La ruta está enganchada y alcanzable desde la interfaz, pero el backend no hace nada real: muestra un mensaje de éxito sin persistir ninguna solicitud (`# TODO` explícito en el propio código). |
+| N055 | Solicitar cambios de plantillas | 0% | Todo — ningún canal de petición dirigido al Supervisor, en ningún punto del código. |
+| N056 | Recibir avisos técnicos del sistema | 0% | Todo — sin segmentación de avisos técnicos a Admin BDDAT en ningún punto. |
+| N070 | Solicitar mejoras del manual | 0% | Depende de que exista el manual (N051/N071) y un canal de mensajería funcional (N053-056) — ninguno de los dos existe hoy. |
 
 ## Bloque 14 — Índice y compilación de expediente
 
-| Id | % Cobertura | Qué falta |
-|---|---|---|
-| N057 | 0% | ADR-027 figura como "Adoptada" pero su plan de implementación nunca se ejecutó: no existe la columna que decide qué documentos integran el expediente, no existe la consulta que los recopila, no existe generador de dossier alguno (foliado, índice numerado, empaquetado). El diseño existe; el código no. |
+| Id | Necesidad | % Cobertura | Qué falta |
+|---|---|---|---|
+| N057 | Compilar expediente completo (documentos + bitácora + estado) en dossier exportable, autocontenido, para envío al exterior | 0% | ADR-027 figura como "Adoptada" pero su plan de implementación nunca se ejecutó: no existe la columna que decide qué documentos integran el expediente, no existe la consulta que los recopila, no existe generador de dossier alguno (foliado, índice numerado, empaquetado). El diseño existe; el código no. |
 
 ## Bloque 15 — Infraestructura técnica y operación
 
-| Id | % Cobertura | Qué falta |
-|---|---|---|
-| N058 | 10% | Solo el entrypoint mínimo de desarrollo (`run.py`) y dependencias declaradas. Sin gestión de procesos de producción (gunicorn/systemd) en el repo. |
-| N059 | 45% | La gestión de esquema vía migraciones Alembic está muy madura (~90 migraciones). La gestión del propio servidor de BD (usuarios, rendimiento, actualizaciones del motor) es responsabilidad externa al repo, sin rastro aquí. |
-| N060 | 0% | Todo — y ni siquiera el diseño está cerrado: el propio documento de estrategia lo marca como "decisión de arquitectura abierta". |
-| N061 | 0% | Todo — ningún script de backup en el repositorio. |
-| N062 | 20% | Buena higiene de código (secretos vía variables de entorno, `.env` excluido de git). El propio `SECURITY.md` declara explícitamente que SSL, firewall y credenciales de producción son responsabilidad del despliegue, no del repositorio. |
-| N063 | 15% | El único procedimiento documentado es manual (clonar, crear venv, migrar, arrancar). El único workflow de CI/CD del repo despliega una presentación estática, no la aplicación. |
-| N064 | 0% | Todo — sin endpoint de salud ni integración con ningún servicio de monitorización encontrada. |
-| N065 | 0% | No es una carencia de desarrollo — es un acto puntual de IT (entregar el fichero Access) que ocurrirá cuando toque la migración real, no algo que el código pueda resolver. |
+| Id | Necesidad | % Cobertura | Qué falta |
+|---|---|---|---|
+| N058 | Servidor de aplicación operativo, actualizado y con procesos gestionados | 10% | Solo el entrypoint mínimo de desarrollo (`run.py`) y dependencias declaradas. Sin gestión de procesos de producción (gunicorn/systemd) en el repo. |
+| N059 | Base de datos PostgreSQL gestionada (usuarios, schemas, rendimiento, actualizaciones) | 45% | La gestión de esquema vía migraciones Alembic está muy madura (~90 migraciones). La gestión del propio servidor de BD (usuarios, rendimiento, actualizaciones del motor) es responsabilidad externa al repo, sin rastro aquí. |
+| N060 | Servidor de archivos con estructura, permisos y cuota | 0% | Todo — y ni siquiera el diseño está cerrado: el propio documento de estrategia lo marca como "decisión de arquitectura abierta". |
+| N061 | Backups verificados (BD + documentos + servidor) con política de retención | 0% | Todo — ningún script de backup en el repositorio. |
+| N062 | Seguridad y acceso (SSL, firewall, gestión de secrets, contraseñas) | 20% | Buena higiene de código (secretos vía variables de entorno, `.env` excluido de git). El propio `SECURITY.md` declara explícitamente que SSL, firewall y credenciales de producción son responsabilidad del despliegue, no del repositorio. |
+| N063 | Despliegue reproducible de la aplicación | 15% | El único procedimiento documentado es manual (clonar, crear venv, migrar, arrancar). El único workflow de CI/CD del repo despliega una presentación estática, no la aplicación. |
+| N064 | Monitorización y alertas de disponibilidad | 0% | Todo — sin endpoint de salud ni integración con ningún servicio de monitorización encontrada. |
+| N065 | Acceso a base de datos legacy para la carga inicial | 0% | No es una carencia de desarrollo — es un acto puntual de IT (entregar el fichero Access) que ocurrirá cuando toque la migración real, no algo que el código pueda resolver. |
 
 ## Bloque 16 — Datos estructurales mínimos para producción
 
-| Id | % Cobertura | Qué falta |
-|---|---|---|
-| N066 | 35% | El mecanismo de carga de datos reales vía migración existe y se ha usado de forma sostenida (decenas de migraciones de seed para tipos, plazos, normas, organismos). Falta: (a) no se detectó ninguna migración que cargue el catálogo completo de municipios andaluces — la tabla se crea vacía; (b) la completitud del contenido normativo frente a lo que exige la legislación por tipo de trámite no está verificada — es el eje "motor-contenido normativo" que sigue pendiente de su propia auditoría en profundidad. |
+| Id | Necesidad | % Cobertura | Qué falta |
+|---|---|---|---|
+| N066 | Catálogo estructural mínimo cargado para producción: tipos de ESFTT/trámite/tarea reales, reglas de motor con contenido normativo real, plazos legales reales por tipo, municipios completos | 35% | El mecanismo de carga de datos reales vía migración existe y se ha usado de forma sostenida (decenas de migraciones de seed para tipos, plazos, normas, organismos). Falta: (a) ninguna migración carga el catálogo completo de municipios andaluces — la tabla se crea vacía; (b) la completitud del contenido normativo frente a lo que exige la legislación por tipo de trámite es el eje "motor-contenido normativo" que sigue pendiente de su propia auditoría en profundidad. |
 
 ---
 
-## Necesidades sin cobertura evaluada aquí
-
-- **N030** — cobertura provisional (10%) sujeta a que Carlos resuelva qué significa la fila (ver Hallazgo 3 de `DETALLE_NECESIDADES_BDDAT.md`).
-- **N042, N043** — % marcado explícitamente como verificación incompleta por el agente que los auditó; confirmar antes de tratarlos como definitivos si se van a usar para decidir prioridad.
-
 ## Referencia rápida — necesidades a 0%
 
-N007, N011, N019, N020, N021, N022, N032, N033, N038, N039, N040, N045, N047,
-N048, N051, N055, N056, N057, N060, N061, N064, N065, N070, N071, N077 — 25 de
-73 necesidades activas sin ninguna cobertura real detectada.
+N007, N011, N017, N019, N020, N021, N022, N032, N033, N038, N039, N040, N045,
+N047, N048, N051, N055, N056, N057, N060, N061, N064, N065, N070, N071, N077 —
+26 de 72 necesidades activas sin ninguna cobertura real detectada.
 
 ---
 
 Metodología completa de esta auditoría (6 agentes en paralelo por bloques
-temáticos + auditoría directa de infraestructura y datos estructurales) y
+temáticos + auditoría directa de infraestructura y datos estructurales, con
+verificación adicional de código en la ronda de correcciones de Carlos) y
 evidencia detallada (archivo:línea) de cada fila: sesión de diseño 2026-07-08.
 No se traslada aquí para no romper la naturaleza de "plan maestro" de este
 documento — disponible bajo petición.
