@@ -5,7 +5,8 @@
 > de interfaz que la resuelve (eso es decisión de diseño, cambia con el tiempo).
 > **Estado:** En revisión iterativa con Carlos, necesidad a necesidad. Los ids son
 > permanentes desde ahora — no se renumeran; se añaden o se retiran (ver "Ids
-> retirados").
+> retirados"). Ampliado 2026-07-08 con 5 necesidades descubiertas al auditar el
+> código real para construir `MATRIZ_COBERTURA_BDDAT.md` (N073-N077).
 > **Fecha:** 2026-07-08
 
 ---
@@ -40,6 +41,7 @@
 | N003 | Borrado de elementos ESFTT condicionado por el motor de reglas | Tramitador (depende de Bloque 4) | 1 — Tramitación ESFTT | M1 |
 | N069 | Apertura de expedientes (alta / wizard de creación) | Tramitador/Administrativo | 1 — Tramitación ESFTT | M1 |
 | N072 | Bitácora narrativa del expediente (anotaciones datadas con autor) | Tramitador (Supervisor/Administrativo consultan) | 1 — Tramitación ESFTT | M1 |
+| N073 | Gestionar autorizaciones de representación: quién puede actuar en nombre de un titular en la tramitación | Tramitador/Administrativo | 1 — Tramitación ESFTT | M1 |
 
 ---
 
@@ -52,6 +54,8 @@
 | N007 | Auditoría automática de URLs a documentos rotas, globales o por expediente | Todos | 2 — Sistema documental | M1 |
 | N008 | Incorporar documentos firmados externamente y justificantes | Tramitador/Administrativo | 2 — Sistema documental | M1 |
 | N009 | Expediente documental reconstruible sin BDDAT — estructura predecible fuera de BD | Todos | 2 — Sistema documental | M1 |
+| N076 | Detectar documentos del pool sin vincular a ninguna tarea de tramitación ("radar de huérfanos") | Tramitador/Administrativo | 2 — Sistema documental | M1 |
+| N077 | Detectar documentos duplicados en el pool del expediente (verificación de integridad) | Tramitador/Administrativo | 2 — Sistema documental | M1 |
 
 ---
 
@@ -63,7 +67,6 @@
 | N011 | Detección de plantillas con tokens vacíos (aviso de hueco antes de generar) | Supervisor (con ayuda de una rutina BDDAT) | 3 — Generación de escritos | M2 |
 | N012 | Generar escrito desde plantilla y descargar versión borrador/firmada | Tramitador | 3 — Generación de escritos | M2 |
 | N013 | Generar escritos estándar y avanzar tramitación | Administrativo | 3 — Generación de escritos | M2 |
-| N014 | Solicitar cambios de plantilla | Tramitador/Administrativo (cruce con Bloque 13) | 3 — Generación de escritos | M2 |
 
 ---
 
@@ -107,6 +110,7 @@
 | N029 | Editar datos básicos de proyecto (denominación, municipio...) — edición posterior a la creación | Tramitador | 6 — Proyectos e instalaciones | M3 |
 | N030 | Revisar proyecto — pendiente de confirmar si es "auditar estructura del proyecto" y si es realmente necesidad del Supervisor (ver Hallazgos) | Supervisor ?? | 6 — Proyectos e instalaciones | M3 |
 | N031 | Relacionar elementos del proyecto con el estado del expediente y sus resoluciones | Sin asignar — "punto denso, desarrollo posterior" | 6 — Proyectos e instalaciones | M3 |
+| N074 | Mantener el catálogo de apartados de contenido técnico exigidos por normativa, con condiciones de aplicabilidad según la instalación | Supervisor | 6 — Proyectos e instalaciones | M3 |
 
 ---
 
@@ -150,6 +154,7 @@
 | N045 | Definir qué operaciones/elementos se auditan | Supervisor/Admin | 10 — Auditoría configurable | M3/M5 |
 | N046 | Consultar historial por expediente | Tramitador | 10 — Auditoría configurable | M3/M5 |
 | N047 | Consultar logs técnicos del sistema | Admin BDDAT | 10 — Auditoría configurable | M3/M5 |
+| N075 | Advertir en el momento y dejar constancia automática cuando se actúa sobre un expediente fuera de la propia asignación | Tramitador (advertido); Supervisor/Admin (consultan la constancia) | 10 — Auditoría configurable | M3/M5 |
 
 ---
 
@@ -239,9 +244,32 @@
    más división al revisarlos — se irá viendo.
 2. **Bloque 16 es un marcador de una sola fila** — confirmar si se queda así hasta
    la sesión dedicada al eje motor-contenido normativo, o si se profundiza ya.
-3. **N030** ("Revisar proyecto" — Supervisor) — pendiente de confirmar: ¿es en
-   realidad "auditar estructura del proyecto"? ¿Es una necesidad real del
-   Supervisor o se retira?
+3. **N030** ("Revisar proyecto" — Supervisor) — auditoría de código (2026-07-08)
+   confirma que bajo ninguna lectura razonable existe hoy una acción distintiva de
+   "revisar/auditar proyecto" para el Supervisor. Dos lecturas posibles, ninguna
+   cierra la necesidad tal como está redactada: (a) si es solo "poder ver
+   cualquier proyecto", ya está cubierto por un permiso de lectura ampliada que
+   tiene cualquier rol de supervisión — la fila sería redundante y candidata a
+   retirar; (b) si es "auditar estructura técnica", el mecanismo real
+   (`ItemTecnico`/`CoberturaItemTecnico`, ver N074) hoy lo ejecuta el Tramitador
+   durante la tarea ANALIZAR, no el Supervisor — el hueco sería dar al Supervisor
+   un punto de entrada sobre ese mecanismo, no construir algo desde cero.
+   Pendiente de que Carlos decida cuál lectura es la correcta (o si se retira).
+4. **N046 vs N072 (bitácora/historial)** — auditoría de código confirma que
+   *no son* el mismo mecanismo hoy: `bitacora` es un log automático de sistema
+   (operación + tabla + registro_id), sin ningún modelo de anotación narrativa
+   con autor en ningún punto del código. Se mantienen separadas por describir
+   necesidades de datos distintas, con una advertencia: si ambas se construyen,
+   es previsible que converjan en la misma pantalla de "historial del
+   expediente" — decisión de diseño para cuando toque implementar, no de este
+   documento.
+5. **`api_bc.py` — discrepancia con memoria de proyecto** — dos auditorías de
+   código independientes (Bloques 1 y 4) encontraron que `app/routes/api_bc.py`
+   sigue registrado como blueprint activo en `app/__init__.py` y sigue
+   conteniendo lógica viva (incluido el paso de `justificacion` al motor, que la
+   ruta actualmente en uso —`api_expedientes.py`— no expone). Esto contradice la
+   memoria de que está "muerto desde #519". Ninguna auditoría confirmó si recibe
+   tráfico real hoy — queda como pregunta abierta, no resuelta aquí.
 
 ---
 
@@ -255,9 +283,11 @@ hueco en la numeración no se lea como un error.
 | N005 | Fusionada en N004. ADR-027 no distingue documentos "auxiliares": la pertenencia al expediente es propiedad del tipo de documento, no de quién lo incorpora — Tramitador y Administrativo cubren la misma necesidad. |
 | N035 | Fusionada en N034. Asignar uno o varios expedientes es el mismo interfaz, no dos necesidades distintas. |
 | N052 | Trasladada a N070 (Bloque 13 — Mensajería interna). Sin mensajería interna, "solicitar mejoras del manual" no tiene ningún mecanismo real en BDDAT — es un caso más del mismo patrón que N054/N055, no una necesidad aparte del Bloque 12. |
+| N014 | Duplicada de N055 (Bloque 13). Confirmado por auditoría de código (sesión 2026-07-08): mismo texto, mismos actores, cero diferencia funcional encontrada — ninguna de las dos tiene mecanismo real hoy. Se mantiene N055 porque "solicitar cambios" es, por naturaleza, un caso de mensajería (Bloque 13), no de escritos (Bloque 3). |
 
 ---
 
 Basado en `PLAN_ESTRATEGIA.md` (§A/§D/§E/§G), el detalle ya existente para
 Supervisor (`PRE-ADR-supervisor.md`), `ESTUDIO_USUARIO.md` y ADR-027 — sesión
-2026-07-08.
+2026-07-08. N073-N077 descubiertas por auditoría directa de código (`app/`),
+misma sesión — ver `MATRIZ_COBERTURA_BDDAT.md` para su cobertura.
