@@ -110,7 +110,7 @@ sincronizado gratis.
 ```
 ┌─────────────────────────── CICLO DE REPOSICIÓN (raro) ───────────────────────────┐
 │  Matriz (filtrada por milestone) → CEO elige celda → gh issue list --label       │
-│  (evita duplicar) → crear 2-3 issues, etiquetados → Próximos                     │
+│  (busca qué ya existe) → crear o rescatar 2-3 issues, etiquetados → Próximos     │
 └───────────────────────────────────┬───────────────────────────────────────────────┘
                                      ▼
               ┌───────────── CICLO DIARIO (cada sesión) ─────────────┐
@@ -147,8 +147,12 @@ sincronizado gratis.
 1. Mirar `MATRIZ_COBERTURA_BDDAT.md` filtrada por milestone (M1/M2 incompletos
    primero, salvo decisión explícita de adelantar algo).
 2. Carlos elige la celda — decisión de CEO, no automatizable.
-3. Comprobar labels existentes antes de crear nada (punto 5).
-4. Crear los 2-3 issues del siguiente bloque, etiquetados desde su creación.
+3. Buscar qué ya existe abierto en el backlog para esa necesidad, con o sin
+   label todavía (`gh issue list --label necesidad:N0XX --state all`, más una
+   revisión manual si el label aún no se aplicó — punto 6).
+4. Completar hasta 2-3 issues activos: **rescatar** (etiquetar y mover a
+   Próximos) los que ya sirvan, **crear** solo los que falten. No siempre son
+   issues nuevos.
 5. Entran en Próximos → vuelta al ciclo diario.
 
 ### 8. Retoma la disciplina de "issues mínimos" de `PLAN_ESTRATEGIA.md` §H
