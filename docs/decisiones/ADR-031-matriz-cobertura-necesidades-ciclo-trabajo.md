@@ -110,12 +110,14 @@ sincronizado gratis.
 ```
 ┌─────────────────────────── CICLO DE REPOSICIÓN (raro) ───────────────────────────┐
 │  Matriz (filtrada por milestone) → CEO elige celda → gh issue list --label       │
-│  (busca qué ya existe)                                                           │
+│  (busca qué ya existe, celda puede ser mixta)                                    │
 │       │                                                                          │
-│       ├─ hay issues rescatables → etiquetar y mover a Próximos (2-3 activos)     │
+│       ├─ issues rescatables → etiquetar y mover a Próximos (2-3 activos)         │
 │       │                                                                          │
-│       └─ no hay ningún issue → nada a Próximos. Próxima sesión = definir el      │
-│          issue de esa necesidad (no es una sesión de implementación)            │
+│       └─ hueco sin issue, descrito con sustancia → anotar en Próximos como       │
+│          tarea de DEFINICIÓN (marcada como tal, no como issue implementable)    │
+│                                                                                   │
+│  Ambas ramas conviven en Próximos — no son excluyentes dentro de una celda      │
 └───────────────────────────────────┬───────────────────────────────────────────────┘
                                      ▼
               ┌───────────── CICLO DIARIO (cada sesión) ─────────────┐
@@ -162,30 +164,39 @@ contuviera ya. `CONTEXTO_ACTUAL.md` queda con solo **Hecho** y **Próximos**
 3. Buscar qué ya existe abierto en el backlog para esa necesidad, con o sin
    label todavía (`gh issue list --label necesidad:N0XX --state all`, más una
    revisión manual si el label aún no se aplicó — punto 6).
-4. **Bifurcación** según lo que devuelva el paso 3:
+4. **Bifurcación** según lo que devuelva el paso 3 — puede ser mixta: dentro de
+   la misma celda, unas necesidades tienen issue y otras no.
    - **Hay issues rescatables** — etiquetarlos (si falta el label) y moverlos a
-     Próximos, hasta completar 2-3 activos. Entran en Próximos → vuelta al
-     ciclo diario.
-   - **No hay ningún issue para esa necesidad** — no se crean issues dentro de
+     Próximos, hasta completar 2-3 activos.
+   - **Queda hueco sin issue** (parcial o total) — no se crean issues dentro de
      este mismo pase de reposición: redactar un issue es trabajo real (alcance,
      prerrequisitos, criterios de aceptación), no una etiqueta de 30 segundos.
-     **Próximos queda vacío** para esa celda — no se anota la necesidad ahí ni
-     de ninguna otra forma como placeholder (ver nota 2026-07-09 más abajo). La
-     siguiente sesión no es de implementación: su objetivo es **definir y
-     escribir el/los issue(s)** de esa necesidad. Al cerrarla, el issue
-     resultante entra al ciclo diario como cualquier otro.
+     El hueco se anota en Próximos como **tarea de definición**, marcada
+     explícitamente como tal (no como issue listo para implementar) — ver nota
+     2026-07-09 más abajo sobre qué distingue una anotación válida de un
+     puntero vacío.
+5. Entran en Próximos (issues rescatados + huecos de definición marcados como
+   tales) → vuelta al ciclo diario. Un hueco de definición no se "implementa"
+   en modo plan — su sesión busca primero qué ya existe (repetir el paso 3
+   para ese hueco concreto: puede que el director lo describa de memoria y ya
+   haya algo sin label todavía) y solo entonces abre issue(s) nuevos si hace
+   falta.
 
-**Nota (2026-07-09):** corrección de Carlos tras usar el ciclo por primera vez.
-El punto 4 original mezclaba "rescatar" (mecánico, con label) y "crear"
-(trabajo real de diseño/alcance) como si fueran intercambiables dentro del
-mismo pase rápido de reposición — no lo son. `CONTEXTO_ACTUAL.md` §**Próximos**
-solo contiene **números de issue reales, listos para implementar** — nunca un
-id de necesidad suelto a modo de recordatorio ("N0XX: pendiente de issue").
-Si una necesidad elegida no tiene ningún issue, sencillamente no se escribe
-nada en Próximos para ella: la próxima vez que se re-consulte la matriz (o se
-retome consciente de este hueco) se sabrá que toca una sesión de definición,
-sin necesidad de un tracker paralelo — el mismo principio anti-duplicación de
-GitHub que ya rige el resto de este ADR (§1, §3, §6).
+**Nota (2026-07-09):** corrección de Carlos tras usar el ciclo por primera vez,
+matizada en una segunda ronda el mismo día. Lo que el punto 4 original
+prohíbe **no es describir un hueco** en Próximos — es escribir un **puntero
+vacío sin información** ("N0XX: pendiente de issue"), el mismo antipatrón que
+mató a `PLAN_ROADMAP.md` (duplicar GitHub sin aportar nada, §1 de este ADR).
+Si el director describe un hueco con sustancia (qué falta, por qué, dónde
+mirar), esa descripción **sí** se escribe en Próximos — es información real
+que de otro modo se pierde, no un recordatorio vacío. La situación habitual de
+reposición es **mixta**: la celda elegida trae algunos issues rescatables y
+dejar otras necesidades sin cubrir; Próximos entonces lleva ambas cosas,
+issues y huecos, distinguibles a simple vista. Lo que sigue vigente sin
+cambios: la sesión que retome un hueco de definición no empieza redactando el
+issue a ciegas — repite primero la búsqueda en el backlog (paso 3), porque el
+director puede haber descrito el hueco de memoria sin comprobar si ya existe
+algo parcial sin etiquetar.
 
 ### 8. Retoma la disciplina de "issues mínimos" de `PLAN_ESTRATEGIA.md` §H
 

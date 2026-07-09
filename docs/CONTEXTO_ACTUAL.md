@@ -17,8 +17,8 @@ reclasificación de ADR-025 §4. PRs #604, #605, #606.
 
 **Próximos:**
 
-1. **[sin issue todavía — próxima sesión es de definición, ADR-031 §7 punto
-   4]** Gap detectado por Carlos en N012/N013 (generación de escritos,
+1. **[hueco de definición, no issue implementable — ADR-031 §7 punto 4]** Gap
+   detectado por Carlos en N012/N013 (generación de escritos,
    `docs/diseño/MATRIZ_COBERTURA_BDDAT.md`), distinto del 50%/modal sin
    enganchar ya registrado ahí. Sin analizar en código todavía: hoy solo está
    confirmado que un escrito de ELABORAR construye bien su contenido en **un**
@@ -27,9 +27,11 @@ reclasificación de ADR-025 §4. PRs #604, #605, #606.
    si el resto de trámites con tarea ELABORAR tienen su Context Builder
    correctamente enganchado (ADR-025), ni si existen otros casos con el mismo
    patrón de bug que tenía `ContextoSubsanacion` (leer una tabla de borrador
-   en vez del documento de salida correcto). Tarea de la próxima sesión:
-   auditar los CBs existentes por trámite/plantilla y abrir el/los issue(s)
-   que falten para cubrir el hueco.
+   en vez del documento de salida correcto). **Primer paso de la próxima
+   sesión:** `gh issue list --label necesidad:N012 --state all` y lo mismo
+   para N013 — puede que ya exista algo parcial sin label. Solo si no cubre
+   el hueco, auditar los CBs por trámite/plantilla y abrir el/los issue(s)
+   que falten.
 
 ---
 
