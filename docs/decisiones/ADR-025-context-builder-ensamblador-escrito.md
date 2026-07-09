@@ -54,8 +54,16 @@ Los CBs se anclan de dos formas, y esto es lo que hace insegura la composición 
 
 | Anclaje | Ejemplos | Navegación | ¿Componible bajo otra tarea? |
 |---|---|---|---|
-| **Auto-trámite** | `ConsultaTrasladoOrganismo`, `Subsanacion`, `ConsultaSeparata`, `ConsultaTrasladoTitular`, `NotificacionOrganismo` | usan `tarea.tramite_id` / `tarea.requerimientos` → datos de **este** trámite | **No** — bajo otra tarea buscan "su" trámite y devuelven vacío **en silencio** |
-| **Solicitud/fase-scoped** | `AnalisisAlegaciones`, `Resolucion`, `InformacionPublica` | usan la tarea solo para alcanzar `solicitud`/`fase` y **agregar** | Sí, dentro de la misma solicitud |
+| **Auto-trámite** | `ConsultaTrasladoOrganismo`, `ConsultaSeparata`, `ConsultaTrasladoTitular`, `NotificacionOrganismo` | usan `tarea.tramite_id` → datos de **este** trámite | **No** — bajo otra tarea buscan "su" trámite y devuelven vacío **en silencio** |
+| **Solicitud/fase-scoped** | `AnalisisAlegaciones`, `Resolucion`, `InformacionPublica`, `Subsanacion` (reclasificado en #440) | usan la tarea solo para alcanzar `solicitud`/`fase` y **agregar** | Sí, dentro de la misma solicitud |
+
+**Nota (#440, 2026-07-09):** `Subsanacion` se reclasificó de Auto-trámite a
+Solicitud/fase-scoped. Hasta #440 leía `tarea.requerimientos` (su propio
+trámite) — encajaba en Auto-trámite. El fix de #440 corrige esa lectura: el
+shuttle de `requerimientos_tarea` es solo borrador de trabajo (#442), no el
+documento de salida. Ahora navega a `tarea.tramite.fase` y busca el
+`Diagnostico` de la tarea ANALIZAR del trámite *anterior* dentro de la misma
+fase — cruza de trámite, característico de Solicitud/fase-scoped.
 
 Un CB codifica un "yo" (su trámite) en su navegación; ejecutarlo bajo la tarea de otro escrito produce datos vacíos/incorrectos sin error. La composición data-driven sería segura solo para la clase *scoped* — exactamente lo que ya cubren las consultas nombradas.
 
