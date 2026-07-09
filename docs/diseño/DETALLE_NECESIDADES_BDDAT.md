@@ -6,8 +6,10 @@
 > **Estado:** En revisión iterativa con Carlos, necesidad a necesidad. Los ids son
 > permanentes desde ahora — no se renumeran; se añaden o se retiran (ver "Ids
 > retirados"). Ampliado 2026-07-08 con 5 necesidades descubiertas al auditar el
-> código real para construir `MATRIZ_COBERTURA_BDDAT.md` (N073-N077).
-> **Fecha:** 2026-07-08
+> código real para construir `MATRIZ_COBERTURA_BDDAT.md` (N073-N077). Ampliado
+> 2026-07-09 con 4 necesidades descubiertas durante el etiquetado retroactivo
+> `necesidad:N0XX` de issues abiertos (ADR-031) — N078-N081.
+> **Fecha:** 2026-07-09
 
 ---
 
@@ -42,6 +44,7 @@
 | N069 | Apertura de expedientes (alta / wizard de creación) | Tramitador/Administrativo | 1 — Tramitación ESFTT | M1 |
 | N072 | Bitácora narrativa del expediente (anotaciones datadas con autor) | Tramitador (Supervisor/Administrativo consultan) | 1 — Tramitación ESFTT | M1 |
 | N073 | Gestionar autorizaciones de representación: quién puede actuar en nombre de un titular en la tramitación | Tramitador/Administrativo | 1 — Tramitación ESFTT | M1 |
+| N081 | Gestionar el catálogo de organismos administrativos (DIR3) y su vínculo con interesados institucionales del expediente | Tramitador/Administrativo | 1 — Tramitación ESFTT | M2 |
 
 ---
 
@@ -56,6 +59,7 @@
 | N009 | Expediente documental reconstruible sin BDDAT — estructura predecible fuera de BD | Todos | 2 — Sistema documental | M1 |
 | N076 | Detectar documentos del pool sin vincular a ninguna tarea de tramitación ("radar de huérfanos") | Tramitador/Administrativo | 2 — Sistema documental | M1 |
 | N077 | Detectar documentos duplicados en el pool del expediente (verificación de integridad) | Tramitador/Administrativo | 2 — Sistema documental | M1 |
+| N078 | Mantener el catálogo de requisitos documentales exigidos por normativa, con condiciones de aplicabilidad según el trámite/instalación | Supervisor | 2 — Sistema documental | M3 |
 
 ---
 
@@ -67,6 +71,8 @@
 | N011 | Detección de plantillas con tokens vacíos (aviso de hueco antes de generar) | Supervisor (con ayuda de una rutina BDDAT) | 3 — Generación de escritos | M2 |
 | N012 | Generar escrito desde plantilla y descargar versión borrador/firmada | Tramitador | 3 — Generación de escritos | M2 |
 | N013 | Generar escritos estándar y avanzar tramitación | Administrativo | 3 — Generación de escritos | M2 |
+| N079 | Mantener el catálogo de requerimientos administrativos exigibles al interesado, con su contenido normativo | Supervisor | 3 — Generación de escritos | M3 |
+| N080 | Exponer las variables del motor de reglas y catálogos estructurales en las plantillas de escritos, como documento adaptativo al contexto del expediente | Supervisor (define plantilla) / Tramitador (recibe escrito resultante) | 3 — Generación de escritos | M4 |
 
 ---
 
@@ -288,4 +294,9 @@ hueco en la numeración no se lea como un error.
 Basado en `PLAN_ESTRATEGIA.md` (§A/§D/§E/§G), el detalle ya existente para
 Supervisor (`PRE-ADR-supervisor.md`), `ESTUDIO_USUARIO.md` y ADR-027 — sesión
 2026-07-08. N073-N077 descubiertas por auditoría directa de código (`app/`),
-misma sesión — ver `MATRIZ_COBERTURA_BDDAT.md` para su cobertura.
+misma sesión — ver `MATRIZ_COBERTURA_BDDAT.md` para su cobertura. N078-N081
+descubiertas el 2026-07-09 al mapear los 96 issues abiertos contra este
+documento para el etiquetado retroactivo `necesidad:N0XX` (ADR-031 §"Próximos
+pasos") — bloque asignado por Carlos, sin motivación explícita por ser
+deducible del patrón de necesidades hermanas del mismo bloque. Pendiente de
+auditar su % real en `MATRIZ_COBERTURA_BDDAT.md`.
