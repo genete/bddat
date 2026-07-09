@@ -15,7 +15,9 @@
 > N078-N081 (auditoría individual de código, no re-auditoría completa),
 > surgidas del etiquetado retroactivo `necesidad:N0XX` de ADR-031; #593 cerrado
 > tras confirmar en código que su PR (#597, "Refs" en vez de "Closes") sí
-> completó el alcance.
+> completó el alcance. N001 subida a 97% tras #440/#495/#581 (checklist de
+> diagnóstico completo en la tarea ANALIZAR) — auditoría de esa sub-área, no
+> re-auditoría completa de la fila.
 > Columna "Necesidad" es una copia legible de `DETALLE_NECESIDADES_BDDAT.md` —
 > ese documento sigue siendo la fuente de verdad si hace falta más contexto.
 
@@ -58,7 +60,7 @@
 
 | Id | Necesidad | % Cobertura | Qué falta |
 |---|---|---|---|
-| N001 | Crear, editar, avanzar y cerrar Solicitudes/Fases/Trámites/Tareas de un expediente | 95% | Nada funcionalmente relevante — es la zona más madura del código (CRUD completo de los 4 niveles ESFTT + isla React sobre ADR-016). |
+| N001 | Crear, editar, avanzar y cerrar Solicitudes/Fases/Trámites/Tareas de un expediente | 97% | Nada funcionalmente relevante — CRUD completo de los 4 niveles ESFTT + isla React (ADR-016). El "avanzar" de la tarea ANALIZAR queda completo con su checklist de diagnóstico: documental (#495) + técnico (#581) + requerimientos (#440) → `Diagnostico.defectos` (#442), único documento de salida. |
 | N002 | Realizar tareas auxiliares asignadas dentro de la tramitación, sin capacidad de decisión | 90% | Permisos y cola dedicada del Administrativo confirmados (`gestionar_tareas` incluye ADMINISTRATIVO, excluido explícitamente de crear/editar/borrar estructura; endpoint `/api/administrativo/cola`). |
 | N003 | Borrado de elementos ESFTT condicionado por el motor de reglas | 90% | El borrado consulta al motor antes de ejecutarse, con escape justificado (Tramitador) registrado en bitácora. Nota aparte, sin afectar este %: `api_bc.py` sigue montado como blueprint activo pese a documentarse como código muerto — ver Hallazgo 4 de `DETALLE_NECESIDADES_BDDAT.md`. |
 | N069 | Apertura de expedientes (alta / wizard de creación) | 95% | Nada relevante — wizard de 3 pasos completo con commit transaccional único. |
