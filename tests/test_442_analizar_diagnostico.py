@@ -46,13 +46,82 @@ class _StubTarea:
 # ---------------------------------------------------------------------------
 
 class TestConsolidarDefectos:
+    """Los tres proveedores (#495/#581/#440) ya existen — se mockean sus
+    evaluadores para probar la agregación de consolidar_defectos() en
+    aislamiento (sin BD), no su lógica interna (ya cubierta en sus propios
+    tests: test_495_*, test_581_*)."""
 
-    def test_degrada_permisivo_sin_proveedores(self):
-        """Ningún proveedor (#495/#581/#440) existe todavía — lista vacía y completo=True."""
-        from app.services.consolidacion_defectos import consolidar_defectos
+    def _tarea_stub(self, requerimientos=()):
+        from unittest.mock import MagicMock
+        tarea = MagicMock()
+        tarea.id = 999999
+        tarea.requerimientos = list(requerimientos)
+        return tarea
 
-        resultado = consolidar_defectos(_StubTarea())
+    def test_degrada_permisivo_sin_datos(self):
+        """Sin catálogo poblado ni requerimientos añadidos — vacío y completo=True,
+        mismo criterio permisivo que evaluar_requisitos (#347)."""
+        from unittest.mock import patch
+
+        with patch('app.services.consolidacion_defectos.build', return_value=(None, {})), \
+             patch('app.services.consolidacion_defectos.evaluar_requisitos',
+                   return_value={'items': [], 'todos_cubiertos': True, 'error': False}), \
+             patch('app.services.consolidacion_defectos.evaluar_items_tecnicos',
+                   return_value={'items': [], 'todos_revisados': True, 'error': False}):
+            from app.services.consolidacion_defectos import consolidar_defectos
+            resultado = consolidar_defectos(self._tarea_stub())
+
         assert resultado == {'items': [], 'completo': True, 'error': False}
+
+    def test_agrega_los_tres_origenes(self):
+        """Un defecto de cada proveedor aparece en el consolidado con su origen."""
+        from unittest.mock import MagicMock, patch
+
+        req = {
+            'cubierto': False,
+            'requisito': MagicMock(descripcion_legal='Falta memoria técnica', norma=None, articulo=None),
+            'documento': None,
+        }
+
+        item_tec = {
+            'cobertura': MagicMock(texto='No se encuentra el anejo', cubierto=False),
+            'item': MagicMock(descripcion='Anejo de cálculo', norma=None, articulo=None),
+        }
+
+        requerimiento = MagicMock()
+        requerimiento.texto = 'Defecto libre añadido por el técnico'
+
+        with patch('app.services.consolidacion_defectos.build', return_value=(None, {})), \
+             patch('app.services.consolidacion_defectos.evaluar_requisitos',
+                   return_value={'items': [req], 'todos_cubiertos': False, 'error': False}), \
+             patch('app.services.consolidacion_defectos.evaluar_items_tecnicos',
+                   return_value={'items': [item_tec], 'todos_revisados': True, 'error': False}):
+            from app.services.consolidacion_defectos import consolidar_defectos
+            resultado = consolidar_defectos(self._tarea_stub(requerimientos=[requerimiento]))
+
+        origenes = {it['origen'] for it in resultado['items']}
+        assert origenes == {'documental', 'tecnico', 'requerimiento'}
+        assert len(resultado['items']) == 3
+        assert resultado['completo'] is False  # documental no cubierto -> False AND True
+
+    def test_requerimiento_no_afecta_a_completo(self):
+        """Los requerimientos del shuttle nunca bajan 'completo' — selección voluntaria."""
+        from unittest.mock import MagicMock, patch
+
+        requerimiento = MagicMock()
+        requerimiento.texto = 'Defecto libre'
+
+        with patch('app.services.consolidacion_defectos.build', return_value=(None, {})), \
+             patch('app.services.consolidacion_defectos.evaluar_requisitos',
+                   return_value={'items': [], 'todos_cubiertos': True, 'error': False}), \
+             patch('app.services.consolidacion_defectos.evaluar_items_tecnicos',
+                   return_value={'items': [], 'todos_revisados': True, 'error': False}):
+            from app.services.consolidacion_defectos import consolidar_defectos
+            resultado = consolidar_defectos(self._tarea_stub(requerimientos=[requerimiento]))
+
+        assert resultado['completo'] is True
+        assert len(resultado['items']) == 1
+        assert resultado['items'][0]['origen'] == 'requerimiento'
 
 
 # ---------------------------------------------------------------------------

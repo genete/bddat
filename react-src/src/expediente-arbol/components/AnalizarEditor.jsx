@@ -17,6 +17,7 @@ import {
   getAnalizar, postAnalizar,
   vincularRequisitoDocumental, desvincularRequisitoDocumental,
   guardarCoberturaTecnica,
+  getRequerimientos, postRequerimientos, crearRequerimientoCatalogo,
 } from '../api.js'
 import { showToast } from '../../shared/ui/toast.js'
 
@@ -271,22 +272,326 @@ function SeccionTecnica({ checklist, expedienteId, tareaId, onRecargar }) {
   )
 }
 
-function SeccionRequerimientos() {
+// Selector de requerimientos — panel shuttle (#440, DISEÑO_ANALISIS_SOLICITUD.md §6).
+// Estado en memoria mientras el técnico trabaja (añadir/quitar/reordenar/editar);
+// se persiste completo con un único "Guardar cambios" (POST reemplaza la lista).
+const CATEGORIAS_REQUERIMIENTO = [
+  ['documental', 'Documental'],
+  ['tecnica', 'Técnica'],
+  ['administrativa', 'Administrativa'],
+  ['tasas', 'Tasas'],
+]
+const ETIQUETA_CATEGORIA = Object.fromEntries(CATEGORIAS_REQUERIMIENTO)
+
+function FilaSeleccionado({ item, idx, total, onQuitar, onMover, onEditar }) {
+  const [editando, setEditando] = React.useState(false)
+  const [texto, setTexto] = React.useState(item.texto)
+
+  const empezarEdicion = () => { setTexto(item.texto); setEditando(true) }
+
+  const confirmarEdicion = () => {
+    const t = texto.trim()
+    if (t) onEditar(idx, t)
+    setEditando(false)
+  }
+
+  return (
+    <div className="d-flex align-items-start gap-1 border-bottom pb-1 mb-1">
+      <span className="text-muted" style={{ cursor: 'grab' }} title="Arrastrar para reordenar">⠿</span>
+      <div className="flex-grow-1 small">
+        {editando ? (
+          <div className="d-flex gap-1">
+            <textarea
+              className="form-control form-control-sm"
+              rows={2}
+              value={texto}
+              onChange={(e) => setTexto(e.target.value)}
+              autoFocus
+            />
+            <button type="button" className="btn btn-sm btn-primary" onClick={confirmarEdicion}>✓</button>
+            <button
+              type="button"
+              className="btn btn-sm btn-outline-secondary"
+              onClick={() => { setTexto(item.texto); setEditando(false) }}
+            >
+              ✕
+            </button>
+          </div>
+        ) : (
+          <span>{item.texto}</span>
+        )}
+      </div>
+      {!editando && !item.catalogo_requerimientos_id && (
+        <button
+          type="button"
+          className="btn btn-sm btn-link p-0 lh-1"
+          title="Editar"
+          onClick={empezarEdicion}
+        >
+          ✏️
+        </button>
+      )}
+      <div className="d-flex flex-column">
+        <button
+          type="button"
+          className="btn btn-sm btn-link p-0 lh-1"
+          disabled={idx === 0}
+          title="Subir"
+          onClick={() => onMover(idx, -1)}
+        >
+          ↑
+        </button>
+        <button
+          type="button"
+          className="btn btn-sm btn-link p-0 lh-1"
+          disabled={idx === total - 1}
+          title="Bajar"
+          onClick={() => onMover(idx, 1)}
+        >
+          ↓
+        </button>
+      </div>
+      <button
+        type="button"
+        className="btn btn-sm btn-link text-danger p-0 lh-1"
+        title="Quitar"
+        onClick={() => onQuitar(idx)}
+      >
+        ✕
+      </button>
+    </div>
+  )
+}
+
+function SeccionRequerimientos({ expedienteId, tareaId, onRecargarConsolidado }) {
+  const [catalogo, setCatalogo] = React.useState([])
+  const [seleccionados, setSeleccionados] = React.useState([])
+  const [cargando, setCargando] = React.useState(true)
+  const [guardando, setGuardando] = React.useState(false)
+  const [hayCambiosShuttle, setHayCambiosShuttle] = React.useState(false)
+  const [filtro, setFiltro] = React.useState('')
+  const [textoLibre, setTextoLibre] = React.useState('')
+  const [guardarEnCatalogo, setGuardarEnCatalogo] = React.useState(false)
+  const [categoriaNueva, setCategoriaNueva] = React.useState('administrativa')
+  const [anadiendoLibre, setAnadiendoLibre] = React.useState(false)
+  const nextKeyRef = React.useRef(0)
+  const nuevaKey = () => `k${nextKeyRef.current++}`
+
+  const cargar = React.useCallback(async () => {
+    setCargando(true)
+    try {
+      const data = await getRequerimientos(expedienteId, tareaId)
+      setCatalogo(data.catalogo || [])
+      setSeleccionados((data.seleccionados || []).map((s) => ({ ...s, _key: nuevaKey() })))
+      setHayCambiosShuttle(false)
+    } catch (e) {
+      showToast((e && e.message) || 'No se pudo cargar el selector de requerimientos', 'danger')
+    } finally {
+      setCargando(false)
+    }
+  }, [expedienteId, tareaId])
+
+  React.useEffect(() => { cargar() }, [cargar])
+
+  const marcarCambio = (fn) => (...args) => { fn(...args); setHayCambiosShuttle(true) }
+
+  const idsCatalogoSeleccionados = new Set(
+    seleccionados.filter((s) => s.catalogo_requerimientos_id).map((s) => s.catalogo_requerimientos_id)
+  )
+  const catalogoDisponible = catalogo.filter(
+    (c) => !idsCatalogoSeleccionados.has(c.id)
+      && (!filtro.trim() || c.texto.toLowerCase().includes(filtro.trim().toLowerCase()))
+  )
+  const catalogoPorCategoria = CATEGORIAS_REQUERIMIENTO
+    .map(([cod, etiqueta]) => [cod, etiqueta, catalogoDisponible.filter((c) => c.categoria === cod)])
+    .filter(([, , items]) => items.length > 0)
+
+  const anadirDelCatalogo = marcarCambio((item) => {
+    setSeleccionados((prev) => [...prev, {
+      catalogo_requerimientos_id: item.id, texto_libre: null, texto: item.texto, _key: nuevaKey(),
+    }])
+  })
+
+  const quitar = marcarCambio((idx) => {
+    setSeleccionados((prev) => prev.filter((_, i) => i !== idx))
+  })
+
+  const mover = marcarCambio((idx, delta) => {
+    setSeleccionados((prev) => {
+      const j = idx + delta
+      if (j < 0 || j >= prev.length) return prev
+      const next = [...prev]
+      ;[next[idx], next[j]] = [next[j], next[idx]]
+      return next
+    })
+  })
+
+  const editarInline = marcarCambio((idx, nuevoTexto) => {
+    setSeleccionados((prev) => prev.map(
+      (s, i) => (i === idx ? { ...s, texto_libre: nuevoTexto, texto: nuevoTexto } : s)
+    ))
+  })
+
+  const anadirTextoLibre = async () => {
+    const texto = textoLibre.trim()
+    if (!texto) return
+    setAnadiendoLibre(true)
+    try {
+      if (guardarEnCatalogo) {
+        const data = await crearRequerimientoCatalogo(expedienteId, tareaId, texto, categoriaNueva)
+        setCatalogo((prev) => [...prev, data.requerimiento])
+        setSeleccionados((prev) => [...prev, {
+          catalogo_requerimientos_id: data.requerimiento.id, texto_libre: null, texto: data.requerimiento.texto,
+          _key: nuevaKey(),
+        }])
+      } else {
+        setSeleccionados((prev) => [...prev, {
+          catalogo_requerimientos_id: null, texto_libre: texto, texto, _key: nuevaKey(),
+        }])
+      }
+      setHayCambiosShuttle(true)
+      setTextoLibre('')
+    } catch (e) {
+      showToast((e && e.message) || 'No se pudo añadir el requerimiento', 'danger')
+    } finally {
+      setAnadiendoLibre(false)
+    }
+  }
+
+  const guardarShuttle = async () => {
+    setGuardando(true)
+    try {
+      await postRequerimientos(expedienteId, tareaId, seleccionados.map((s) => ({
+        catalogo_requerimientos_id: s.catalogo_requerimientos_id,
+        texto_libre: s.texto_libre,
+      })))
+      showToast('Requerimientos guardados', 'success')
+      await cargar()
+      await onRecargarConsolidado()
+    } catch (e) {
+      showToast((e && e.message) || 'No se pudieron guardar los requerimientos', 'danger')
+    } finally {
+      setGuardando(false)
+    }
+  }
+
   return (
     <div className="card mb-3">
       <div className="card-header card-header-accent fw-semibold small d-flex justify-content-between align-items-center">
         <span>Requerimientos</span>
         <button
           type="button"
-          className="btn btn-sm btn-outline-secondary"
-          disabled
-          title="Disponible cuando se implemente #440"
+          className="btn btn-sm btn-primary"
+          disabled={!hayCambiosShuttle || guardando || cargando}
+          onClick={guardarShuttle}
         >
-          Gestionar requerimientos…
+          {guardando ? 'Guardando…' : 'Guardar cambios'}
         </button>
       </div>
       <div className="card-body card-body-tinted">
-        <div className="text-muted small fst-italic">Sin requerimientos seleccionados todavía.</div>
+        {cargando ? (
+          <div className="text-muted small fst-italic">Cargando…</div>
+        ) : (
+          <div className="row g-2">
+            {/* Columna izquierda: catálogo */}
+            <div className="col-6">
+              <input
+                type="text"
+                className="form-control form-control-sm mb-2"
+                placeholder="Filtrar catálogo…"
+                value={filtro}
+                onChange={(e) => setFiltro(e.target.value)}
+              />
+              <div style={{ maxHeight: 220, overflowY: 'auto' }}>
+                {catalogoPorCategoria.length === 0 ? (
+                  <div className="text-muted small fst-italic">Sin ítems disponibles.</div>
+                ) : (
+                  catalogoPorCategoria.map(([cod, etiqueta, items]) => (
+                    <div key={cod} className="mb-2">
+                      <div className="text-muted small fw-semibold">{etiqueta}</div>
+                      {items.map((c) => (
+                        <div key={c.id} className="d-flex align-items-start gap-1 small mb-1">
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-outline-secondary lh-1"
+                            title="Añadir"
+                            onClick={() => anadirDelCatalogo(c)}
+                          >
+                            →
+                          </button>
+                          <span className="flex-grow-1">{c.texto}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ))
+                )}
+              </div>
+
+              <div className="border-top pt-2 mt-2">
+                <textarea
+                  className="form-control form-control-sm mb-1"
+                  rows={2}
+                  placeholder="Requerimiento no catalogado…"
+                  value={textoLibre}
+                  onChange={(e) => setTextoLibre(e.target.value)}
+                />
+                <div className="d-flex align-items-center gap-2 mb-1">
+                  <div className="form-check mb-0">
+                    <input
+                      type="checkbox"
+                      className="form-check-input"
+                      id="req-guardar-catalogo"
+                      checked={guardarEnCatalogo}
+                      onChange={(e) => setGuardarEnCatalogo(e.target.checked)}
+                    />
+                    <label className="form-check-label small" htmlFor="req-guardar-catalogo">
+                      Guardar en catálogo
+                    </label>
+                  </div>
+                  {guardarEnCatalogo && (
+                    <select
+                      className="form-select form-select-sm w-auto"
+                      value={categoriaNueva}
+                      onChange={(e) => setCategoriaNueva(e.target.value)}
+                    >
+                      {CATEGORIAS_REQUERIMIENTO.map(([cod, etiqueta]) => (
+                        <option key={cod} value={cod}>{etiqueta}</option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline-secondary"
+                  disabled={!textoLibre.trim() || anadiendoLibre}
+                  onClick={anadirTextoLibre}
+                >
+                  {anadiendoLibre ? 'Añadiendo…' : '→ Añadir'}
+                </button>
+              </div>
+            </div>
+
+            {/* Columna derecha: seleccionados */}
+            <div className="col-6">
+              <div className="text-muted small fw-semibold mb-2">Seleccionados</div>
+              {seleccionados.length === 0 ? (
+                <div className="text-muted small fst-italic">Sin requerimientos seleccionados todavía.</div>
+              ) : (
+                seleccionados.map((item, idx) => (
+                  <FilaSeleccionado
+                    key={item._key}
+                    item={item}
+                    idx={idx}
+                    total={seleccionados.length}
+                    onQuitar={quitar}
+                    onMover={mover}
+                    onEditar={editarInline}
+                  />
+                ))
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
@@ -486,7 +791,11 @@ export default function AnalizarEditor({ tareaId }) {
             tareaId={tareaId}
             onRecargar={cargar}
           />
-          <SeccionRequerimientos />
+          <SeccionRequerimientos
+            expedienteId={expedienteId}
+            tareaId={tareaId}
+            onRecargarConsolidado={cargar}
+          />
           <DefectosConsolidados items={payload.defectos_consolidado} />
         </>
       )}

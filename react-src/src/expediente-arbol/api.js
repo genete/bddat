@@ -83,3 +83,22 @@ export function guardarCoberturaTecnica(expedienteId, tareaId, itemTecnicoId, bo
     body,
   )
 }
+
+// Selector de requerimientos (#440): estado inicial del panel shuttle (catálogo + selección).
+export function getRequerimientos(expedienteId, tareaId) {
+  return api.get(`/api/expedientes/${expedienteId}/nodo/tarea/${tareaId}/requerimientos`)
+}
+
+// Sustituye la lista completa de requerimientos_tarea en una sola llamada.
+// body: {items: [{catalogo_requerimientos_id, texto_libre}, ...]}.
+export function postRequerimientos(expedienteId, tareaId, items) {
+  return api.post(`/api/expedientes/${expedienteId}/nodo/tarea/${tareaId}/requerimientos`, { items })
+}
+
+// Crea una entrada nueva en catalogo_requerimientos desde el shuttle ("Guardar en catálogo").
+export function crearRequerimientoCatalogo(expedienteId, tareaId, texto, categoria) {
+  return api.post(
+    `/api/expedientes/${expedienteId}/nodo/tarea/${tareaId}/requerimientos/catalogo`,
+    { texto, categoria },
+  )
+}

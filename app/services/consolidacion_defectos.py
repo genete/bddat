@@ -77,6 +77,19 @@ def _items_tecnico(tarea) -> tuple[list, bool]:
     return items, resultado['todos_revisados']
 
 
+def _items_requerimiento(tarea) -> list:
+    """Requerimientos seleccionados por el técnico en el shuttle (#440).
+
+    A diferencia de documental/técnico, no contribuyen a 'completo' — la
+    selección del técnico es siempre "revisada" por definición, al ser
+    voluntaria. Tampoco componen cita normativa (el modelo no tiene norma_id).
+    """
+    return [
+        {'texto': r.texto, 'origen': 'requerimiento', 'tarea_id': tarea.id}
+        for r in tarea.requerimientos
+    ]
+
+
 def consolidar_defectos(tarea) -> dict:
     """
     Consolida los defectos aplicables a la tarea ANALIZAR dada.
@@ -86,9 +99,10 @@ def consolidar_defectos(tarea) -> dict:
     """
     items_documental, completo_documental = _items_documental(tarea)
     items_tecnico, completo_tecnico = _items_tecnico(tarea)
+    items_requerimiento = _items_requerimiento(tarea)
 
     return {
-        'items': items_documental + items_tecnico,
+        'items': items_documental + items_tecnico + items_requerimiento,
         'completo': completo_documental and completo_tecnico,
         'error': False,
     }

@@ -29,6 +29,8 @@ from app.models import (
 )
 from app.models.requisitos_documentales import RequisitoDocumental, DocumentoRequisito
 from app.models.items_tecnicos import ItemTecnico, CoberturaItemTecnico
+from app.models.catalogo_requerimientos import CatalogoRequerimiento
+from app.models.requerimientos_tarea import RequerimientoTarea
 from app.services.arbol_expediente import construir_arbol
 from app.services.tipos_creables import tipos_creables_de_nodo
 from app.services.detalle_nodo import detalle_de_nodo
@@ -1020,3 +1022,131 @@ def guardar_cobertura_tecnica(expediente_id, tarea_id, item_tecnico_id):
     db.session.commit()
 
     return jsonify({'ok': True, 'checklist_tecnico': _checklist_tecnico_json(tarea)}), 200
+
+
+# Mismos valores que el CHECK ck_catalogo_requerimientos_categoria (#440, ver catalogo_requerimientos/routes.py)
+_CATEGORIAS_REQUERIMIENTO_VALIDAS = {'documental', 'tecnica', 'administrativa', 'tasas'}
+
+
+def _seleccionados_json(tarea) -> list:
+    return [{
+        'id': r.id,
+        'texto': r.texto,
+        'orden': r.orden,
+        'desde_catalogo': r.desde_catalogo,
+        'catalogo_requerimientos_id': r.catalogo_requerimientos_id,
+    } for r in sorted(tarea.requerimientos, key=lambda r: r.orden)]
+
+
+@api_bp.route('/expedientes/<int:expediente_id>/nodo/tarea/<int:tarea_id>/requerimientos', methods=['GET'])
+@login_required
+def get_requerimientos(expediente_id, tarea_id):
+    """
+    GET .../requerimientos — estado inicial del panel shuttle: catálogo activo
+    agrupado y selección actual de la tarea (#440).
+    """
+    expediente = Expediente.query.get_or_404(expediente_id)
+    denegado = verificar_acceso_expediente(expediente)
+    if denegado:
+        return denegado
+
+    try:
+        tarea = _resolver_tarea_analizar(expediente, tarea_id)
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 404
+
+    catalogo = (
+        CatalogoRequerimiento.query
+        .filter_by(activo=True)
+        .order_by(CatalogoRequerimiento.categoria, CatalogoRequerimiento.id)
+        .all()
+    )
+
+    return jsonify({
+        'catalogo': [{'id': c.id, 'texto': c.texto, 'categoria': c.categoria} for c in catalogo],
+        'seleccionados': _seleccionados_json(tarea),
+    }), 200
+
+
+@api_bp.route('/expedientes/<int:expediente_id>/nodo/tarea/<int:tarea_id>/requerimientos', methods=['POST'])
+@login_required
+def post_requerimientos(expediente_id, tarea_id):
+    """
+    POST .../requerimientos — sustituye la lista completa de `requerimientos_tarea`
+    en una sola llamada: crear, reordenar y borrar (#440).
+
+    Body JSON: {items: [{catalogo_requerimientos_id: int|null, texto_libre: str|null}, ...]}
+    Orden = posición en la lista (1-based). Exactamente uno de los dos campos
+    de cada item debe tener valor (ck_requerimientos_tarea_exactamente_uno).
+    """
+    expediente = Expediente.query.get_or_404(expediente_id)
+    if verificar_acceso_expediente(expediente, 'gestionar_tarea'):
+        return jsonify({'error': 'No tienes permiso para esta acción'}), 403
+
+    try:
+        tarea = _resolver_tarea_analizar(expediente, tarea_id)
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 404
+
+    data = request.get_json(silent=True) or {}
+    items = data.get('items')
+    if not isinstance(items, list):
+        return jsonify({'error': 'items debe ser una lista'}), 422
+
+    nuevas = []
+    for i, it in enumerate(items, start=1):
+        catalogo_id = it.get('catalogo_requerimientos_id')
+        texto_libre = (it.get('texto_libre') or '').strip() or None
+        if bool(catalogo_id) == bool(texto_libre):
+            return jsonify({
+                'error': f'Ítem {i}: exactamente uno de catalogo_requerimientos_id o texto_libre',
+            }), 422
+        nuevas.append(RequerimientoTarea(
+            tarea_id=tarea.id, catalogo_requerimientos_id=catalogo_id,
+            texto_libre=texto_libre, orden=i,
+        ))
+
+    RequerimientoTarea.query.filter_by(tarea_id=tarea.id).delete()
+    db.session.add_all(nuevas)
+    db.session.commit()
+
+    return jsonify({'ok': True, 'seleccionados': _seleccionados_json(tarea)}), 200
+
+
+@api_bp.route(
+    '/expedientes/<int:expediente_id>/nodo/tarea/<int:tarea_id>/requerimientos/catalogo',
+    methods=['POST'])
+@login_required
+def crear_requerimiento_catalogo(expediente_id, tarea_id):
+    """
+    POST .../requerimientos/catalogo — crea una entrada nueva en `catalogo_requerimientos`
+    desde el shuttle ("Guardar en catálogo", #440). Gate por `gestionar_tarea` —
+    distinto del CRUD de administración del catálogo (#593, solo Supervisor):
+    aquí el técnico da de alta un texto reutilizable como subproducto de su
+    trabajo en ANALIZAR, no está gestionando el catálogo.
+    """
+    expediente = Expediente.query.get_or_404(expediente_id)
+    if verificar_acceso_expediente(expediente, 'gestionar_tarea'):
+        return jsonify({'error': 'No tienes permiso para esta acción'}), 403
+
+    try:
+        _resolver_tarea_analizar(expediente, tarea_id)
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 404
+
+    data = request.get_json(silent=True) or {}
+    texto = (data.get('texto') or '').strip()
+    categoria = data.get('categoria')
+    if not texto:
+        return jsonify({'error': 'texto es obligatorio'}), 422
+    if categoria not in _CATEGORIAS_REQUERIMIENTO_VALIDAS:
+        return jsonify({'error': 'categoria no es válida'}), 422
+
+    requerimiento = CatalogoRequerimiento(texto=texto, categoria=categoria)
+    db.session.add(requerimiento)
+    db.session.commit()
+
+    return jsonify({
+        'ok': True,
+        'requerimiento': {'id': requerimiento.id, 'texto': requerimiento.texto, 'categoria': requerimiento.categoria},
+    }), 200
