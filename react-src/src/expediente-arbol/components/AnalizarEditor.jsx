@@ -16,6 +16,7 @@ import { useArbolStore, selectHayCambios } from '../store.js'
 import {
   getAnalizar, postAnalizar,
   vincularRequisitoDocumental, desvincularRequisitoDocumental,
+  guardarCoberturaTecnica,
 } from '../api.js'
 import { showToast } from '../../shared/ui/toast.js'
 
@@ -160,6 +161,107 @@ function SeccionDocumental({ checklist, expedienteId, tareaId, onRecargar }) {
               expedienteId={expedienteId}
               tareaId={tareaId}
               pool={pool}
+              onRecargar={onRecargar}
+            />
+          ))
+        )}
+      </div>
+    </div>
+  )
+}
+
+// Fila de un ítem técnico (#581): checkbox (deshabilitado sin texto) + texto de
+// justificación/ubicación. Máquina de 3 estados de CoberturaItemTecnico
+// (app/models/items_tecnicos.py): sin texto = no revisado; texto+cubierto=false =
+// desfavorable; texto+cubierto=true = favorable.
+function FilaItemTecnico({ item, expedienteId, tareaId, onRecargar }) {
+  const [texto, setTexto] = React.useState(item.texto || '')
+  const [cubierto, setCubierto] = React.useState(item.cubierto)
+  const [enviando, setEnviando] = React.useState(false)
+
+  const hayCambios = texto !== (item.texto || '') || cubierto !== item.cubierto
+
+  const guardar = async () => {
+    setEnviando(true)
+    try {
+      await guardarCoberturaTecnica(expedienteId, tareaId, item.item_tecnico_id, {
+        texto: texto.trim(), cubierto,
+      })
+      await onRecargar()
+    } catch (e) {
+      showToast((e && e.message) || 'No se pudo guardar la verificación', 'danger')
+    } finally {
+      setEnviando(false)
+    }
+  }
+
+  const estado = !texto.trim() ? 'no_revisado' : (cubierto ? 'favorable' : 'desfavorable')
+  const ETIQUETA_ESTADO = { favorable: 'Favorable', desfavorable: 'Desfavorable', no_revisado: 'No revisado' }
+  const BADGE_ESTADO = { favorable: 'text-bg-success', desfavorable: 'text-bg-warning', no_revisado: 'text-bg-secondary' }
+  const cita = [item.articulo, item.norma].filter(Boolean).join(', ')
+
+  return (
+    <div className="border-bottom pb-2 mb-2">
+      <div className="d-flex justify-content-between align-items-start gap-2 mb-1">
+        <div className="small">
+          <div className="fw-semibold">{item.descripcion}</div>
+          {cita && <div className="text-muted fst-italic">{cita}</div>}
+        </div>
+        <span className={`badge ${BADGE_ESTADO[estado]}`}>{ETIQUETA_ESTADO[estado]}</span>
+      </div>
+
+      <div className="form-check mb-1">
+        <input
+          type="checkbox"
+          className="form-check-input"
+          id={`tecnico-cubierto-${item.item_tecnico_id}`}
+          checked={cubierto}
+          disabled={!texto.trim()}
+          onChange={(e) => setCubierto(e.target.checked)}
+        />
+        <label className="form-check-label small" htmlFor={`tecnico-cubierto-${item.item_tecnico_id}`}>
+          Cumple
+        </label>
+      </div>
+
+      <textarea
+        className="form-control form-control-sm mb-1"
+        rows={2}
+        placeholder="Ubicación si cumple, o justificación de por qué falta…"
+        value={texto}
+        onChange={(e) => {
+          const v = e.target.value
+          setTexto(v)
+          if (!v.trim()) setCubierto(false)
+        }}
+      />
+
+      <button
+        type="button"
+        className="btn btn-sm btn-outline-secondary"
+        disabled={!hayCambios || enviando}
+        onClick={guardar}
+      >
+        {enviando ? 'Guardando…' : 'Guardar'}
+      </button>
+    </div>
+  )
+}
+
+function SeccionTecnica({ checklist, expedienteId, tareaId, onRecargar }) {
+  return (
+    <div className="card mb-3">
+      <div className="card-header card-header-accent fw-semibold small">Check técnico</div>
+      <div className="card-body card-body-tinted">
+        {checklist.length === 0 ? (
+          <div className="text-muted small fst-italic">No hay ítems técnicos aplicables.</div>
+        ) : (
+          checklist.map((item) => (
+            <FilaItemTecnico
+              key={item.item_tecnico_id}
+              item={item}
+              expedienteId={expedienteId}
+              tareaId={tareaId}
               onRecargar={onRecargar}
             />
           ))
@@ -378,7 +480,12 @@ export default function AnalizarEditor({ tareaId }) {
             tareaId={tareaId}
             onRecargar={cargar}
           />
-          <SeccionPlaceholder titulo="Check técnico" texto="Disponible cuando se implemente #581." />
+          <SeccionTecnica
+            checklist={payload.checklist_tecnico || []}
+            expedienteId={expedienteId}
+            tareaId={tareaId}
+            onRecargar={cargar}
+          />
           <SeccionRequerimientos />
           <DefectosConsolidados items={payload.defectos_consolidado} />
         </>
