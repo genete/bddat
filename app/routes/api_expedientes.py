@@ -27,11 +27,14 @@ from app.models import (
     Proyecto, TipoIA, Usuario,
     Tramite, Tarea, TipoTramite, TipoTarea, Documento,
 )
+from app.models.requisitos_documentales import RequisitoDocumental, DocumentoRequisito
 from app.services.arbol_expediente import construir_arbol
 from app.services.tipos_creables import tipos_creables_de_nodo
 from app.services.detalle_nodo import detalle_de_nodo
 from app.services.esquema_editable import esquema_de_nodo
 from app.services import mutaciones_arbol as svc
+from app.services.assembler import build
+from app.services.requisitos import evaluar_requisitos
 from app.services.consolidacion_defectos import consolidar_defectos
 from app.services.diagnosticos import crear_diagnostico
 from app.utils.permisos import verificar_acceso_expediente
@@ -700,6 +703,17 @@ def get_esquema_editable(expediente_id, tipo, nodo_id):
 # ENDPOINT 10: Pool de documentos del expediente (despensa de tarea, ADR-016 §S3b-3)
 # =============================================================================
 
+def _nombre_documento(doc) -> str:
+    """Nombre de presentación de un Documento: tipo (interno bddat://) o filename (real)."""
+    url = doc.url or ''
+    if url.startswith('bddat://'):
+        # Sin fichero real — el "segmento final" sería solo el id numérico.
+        return doc.tipo_doc.nombre if doc.tipo_doc else f'Documento {doc.id}'
+    filename = url.replace('\\', '/').rsplit('/', 1)[-1]
+    filename = filename.split('?')[0].split('#')[0]
+    return filename or f'Documento {doc.id}'
+
+
 @api_bp.route('/expedientes/<int:expediente_id>/pool', methods=['GET'])
 @login_required
 def pool_documentos(expediente_id):
@@ -717,22 +731,12 @@ def pool_documentos(expediente_id):
         expediente_id=expediente_id
     ).order_by(Documento.id.desc()).all()
 
-    result = []
-    for doc in docs:
-        url = doc.url or ''
-        if url.startswith('bddat://'):
-            # Sin fichero real — el "segmento final" sería solo el id numérico.
-            nombre = doc.tipo_doc.nombre if doc.tipo_doc else f'Documento {doc.id}'
-        else:
-            filename = url.replace('\\', '/').rsplit('/', 1)[-1]
-            filename = filename.split('?')[0].split('#')[0]
-            nombre = filename or f'Documento {doc.id}'
-        result.append({
-            'id': doc.id,
-            'nombre': nombre,
-            'tipo_doc': doc.tipo_doc.nombre if doc.tipo_doc else None,
-            'fecha': doc.fecha_administrativa.strftime('%d/%m/%Y') if doc.fecha_administrativa else None,
-        })
+    result = [{
+        'id': doc.id,
+        'nombre': _nombre_documento(doc),
+        'tipo_doc': doc.tipo_doc.nombre if doc.tipo_doc else None,
+        'fecha': doc.fecha_administrativa.strftime('%d/%m/%Y') if doc.fecha_administrativa else None,
+    } for doc in docs]
     return jsonify({'documentos': result}), 200
 
 
@@ -749,6 +753,28 @@ def _resolver_tarea_analizar(expediente, tarea_id):
     return tarea
 
 
+def _checklist_documental_json(tarea) -> list:
+    """Checklist documental completo —cubiertos y pendientes— para la sección inline (#495)."""
+    solicitud = tarea.tramite.fase.solicitud
+    _, variables = build(solicitud.expediente, objeto=tarea)
+    resultado = evaluar_requisitos(solicitud, variables)
+
+    items = []
+    for it in resultado['items']:
+        req = it['requisito']
+        doc = it['documento']
+        items.append({
+            'requisito_id': req.id,
+            'tipo_documento': req.tipo_documento.nombre if req.tipo_documento else None,
+            'descripcion_legal': req.descripcion_legal,
+            'norma': req.norma.titulo if req.norma else None,
+            'articulo': req.articulo,
+            'cubierto': it['cubierto'],
+            'documento': {'id': doc.id, 'nombre': _nombre_documento(doc)} if doc else None,
+        })
+    return items
+
+
 @api_bp.route('/expedientes/<int:expediente_id>/nodo/tarea/<int:tarea_id>/analizar',
               methods=['GET'])
 @login_required
@@ -757,7 +783,7 @@ def get_analizar(expediente_id, tarea_id):
     GET .../nodo/tarea/<tarea_id>/analizar — payload del contenedor de #442.
 
     {resultado, documento_producido: {...}|null, secciones_extendidas: bool,
-     defectos_consolidado: [...], completo: bool}
+     defectos_consolidado: [...], completo: bool, checklist_documental: [...]}
     """
     expediente = Expediente.query.get_or_404(expediente_id)
     denegado = verificar_acceso_expediente(expediente)
@@ -773,6 +799,7 @@ def get_analizar(expediente_id, tarea_id):
         tarea.tramite.tipo_tramite.codigo
         if tarea.tramite and tarea.tramite.tipo_tramite else None
     )
+    secciones_extendidas = codigo_tramite in _TRAMITES_CON_SECCIONES_ANALISIS
     consolidado = consolidar_defectos(tarea)
 
     documento_producido = None
@@ -792,9 +819,10 @@ def get_analizar(expediente_id, tarea_id):
     return jsonify({
         'resultado': resultado,
         'documento_producido': documento_producido,
-        'secciones_extendidas': codigo_tramite in _TRAMITES_CON_SECCIONES_ANALISIS,
+        'secciones_extendidas': secciones_extendidas,
         'defectos_consolidado': consolidado['items'],
         'completo': consolidado['completo'],
+        'checklist_documental': _checklist_documental_json(tarea) if secciones_extendidas else [],
     }), 200
 
 
@@ -849,3 +877,75 @@ def post_analizar(expediente_id, tarea_id):
             'fecha': None,
         },
     }), 200
+
+
+@api_bp.route(
+    '/expedientes/<int:expediente_id>/nodo/tarea/<int:tarea_id>/requisitos-documentales/<int:requisito_id>',
+    methods=['POST'])
+@login_required
+def vincular_requisito_documental(expediente_id, tarea_id, requisito_id):
+    """
+    POST .../requisitos-documentales/<requisito_id> — vincula un documento del pool
+    al requisito documental para la solicitud de la tarea (#495).
+
+    Body JSON: {documento_id}. Upsert por (requisito_id, solicitud_id) — reasigna
+    el documento si ya había un vínculo (ver DocumentoRequisito, #192).
+    """
+    expediente = Expediente.query.get_or_404(expediente_id)
+    if verificar_acceso_expediente(expediente, 'gestionar_tarea'):
+        return jsonify({'error': 'No tienes permiso para esta acción'}), 403
+
+    try:
+        tarea = _resolver_tarea_analizar(expediente, tarea_id)
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 404
+
+    requisito = RequisitoDocumental.query.get_or_404(requisito_id)
+
+    data = request.get_json(silent=True) or {}
+    documento = Documento.query.filter_by(
+        id=data.get('documento_id'), expediente_id=expediente_id
+    ).first()
+    if documento is None:
+        return jsonify({'error': 'Documento no encontrado en este expediente'}), 422
+
+    solicitud = tarea.tramite.fase.solicitud
+    vinculo = DocumentoRequisito.query.filter_by(
+        requisito_id=requisito.id, solicitud_id=solicitud.id
+    ).first()
+    if vinculo is None:
+        vinculo = DocumentoRequisito(
+            requisito_id=requisito.id, solicitud_id=solicitud.id, documento_id=documento.id
+        )
+        db.session.add(vinculo)
+    else:
+        vinculo.documento_id = documento.id
+    db.session.commit()
+
+    return jsonify({'ok': True, 'checklist_documental': _checklist_documental_json(tarea)}), 200
+
+
+@api_bp.route(
+    '/expedientes/<int:expediente_id>/nodo/tarea/<int:tarea_id>/requisitos-documentales/<int:requisito_id>',
+    methods=['DELETE'])
+@login_required
+def desvincular_requisito_documental(expediente_id, tarea_id, requisito_id):
+    """DELETE .../requisitos-documentales/<requisito_id> — quita el vínculo documento↔requisito (#495)."""
+    expediente = Expediente.query.get_or_404(expediente_id)
+    if verificar_acceso_expediente(expediente, 'gestionar_tarea'):
+        return jsonify({'error': 'No tienes permiso para esta acción'}), 403
+
+    try:
+        tarea = _resolver_tarea_analizar(expediente, tarea_id)
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 404
+
+    solicitud = tarea.tramite.fase.solicitud
+    vinculo = DocumentoRequisito.query.filter_by(
+        requisito_id=requisito_id, solicitud_id=solicitud.id
+    ).first()
+    if vinculo is not None:
+        db.session.delete(vinculo)
+        db.session.commit()
+
+    return jsonify({'ok': True, 'checklist_documental': _checklist_documental_json(tarea)}), 200

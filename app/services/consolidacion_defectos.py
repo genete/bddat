@@ -3,24 +3,51 @@ Consolidación de defectos para el contenedor de la tarea ANALIZAR (#442).
 
 Agrega las contribuciones de los tres proveedores que se enchufan al
 contenedor: check documental (#495), check de ítems técnicos (#581) y
-selector de requerimientos (#440). Ninguno existe todavía — cada uno es un
-issue propio, fuera de alcance de #442 (ver "Orden de construcción" del
-issue). Mientras no existan, degrada de forma permisiva: lista vacía y
-completo=True, mismo criterio que evaluar_requisitos (#347) — la ausencia
-de un proveedor nunca bloquea el contenedor.
+selector de requerimientos (#440).
 
-FORMA DEL ITEM (cuando existan los proveedores):
+FORMA DEL ITEM:
     {'texto': str, 'origen': 'documental'|'tecnico'|'requerimiento', 'tarea_id': int}
 
 CAMPO 'completo':
-    Señal para el gate de producción del documento de diagnóstico. Cuando
-    #495/#581 aterricen, será el AND de "¿queda algo sin revisar?" de cada
-    uno — distinto de "sin cubrir" (CoberturaItemTecnico ya distingue
-    NO_REVISADO de DESFAVORABLE; lo primero es trabajo pendiente, lo
-    segundo es un defecto ya evaluado). Hoy no hay nada que revisar, así
-    que degrada a True.
+    AND de "¿queda algo sin revisar?" de los proveedores con estado de
+    revisión (documental #495, técnico #581 cuando aterrice). El proveedor
+    de requerimientos (#440) no contribuye a completo — la selección del
+    técnico es siempre "revisada" por definición, al ser voluntaria.
 """
 from __future__ import annotations
+
+from app.services.assembler import build
+from app.services.requisitos import evaluar_requisitos
+
+
+def _cita_normativa(norma, articulo) -> str:
+    """' (art. X, Título de la norma)' si hay norma; cadena vacía si no.
+
+    Regla acordada 2026-07-06: la cita solo se compone si `norma_id` está
+    relleno — que esté vacío no implica arbitrio administrativo, puede que
+    la norma exista y esté pendiente de catalogar (#408/#595).
+    """
+    if norma is None:
+        return ''
+    return f' (art. {articulo or "—"}, {norma.titulo})'
+
+
+def _items_documental(tarea) -> tuple[list, bool]:
+    """Defectos documentales no cubiertos (#495) + si el checklist está completo."""
+    solicitud = tarea.tramite.fase.solicitud
+    _, variables = build(solicitud.expediente, objeto=tarea)
+    resultado = evaluar_requisitos(solicitud, variables)
+    if resultado['error']:
+        return [], True
+
+    items = []
+    for it in resultado['items']:
+        if it['cubierto']:
+            continue
+        req = it['requisito']
+        texto = (req.descripcion_legal or '') + _cita_normativa(req.norma, req.articulo)
+        items.append({'texto': texto, 'origen': 'documental', 'tarea_id': tarea.id})
+    return items, resultado['todos_cubiertos']
 
 
 def consolidar_defectos(tarea) -> dict:
@@ -30,4 +57,10 @@ def consolidar_defectos(tarea) -> dict:
     Returns:
         {'items': list, 'completo': bool, 'error': bool}
     """
-    return {'items': [], 'completo': True, 'error': False}
+    items_documental, completo_documental = _items_documental(tarea)
+
+    return {
+        'items': items_documental,
+        'completo': completo_documental,
+        'error': False,
+    }

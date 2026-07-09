@@ -2,7 +2,7 @@
 id: ADR-005
 título: ANALIZAR siempre produce un documento DIAGNOSTICO
 fecha: 2026-05-11
-estado: decidida — pendiente de implementar (#370)
+estado: decidida — implementada (#392 modelo Diagnostico, #442 consolidar_defectos/crear_diagnostico)
 ---
 
 ## Decisión
