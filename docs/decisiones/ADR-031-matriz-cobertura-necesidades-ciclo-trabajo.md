@@ -114,7 +114,7 @@ sincronizado gratis.
 └───────────────────────────────────┬───────────────────────────────────────────────┘
                                      ▼
               ┌───────────── CICLO DIARIO (cada sesión) ─────────────┐
-              │  Leer CONTEXTO_ACTUAL → tomar Actual/Próximos →      │
+              │  Leer CONTEXTO_ACTUAL → tomar primero de Próximos →  │
               │  plan de Claude → implementar → verificar en código  │
               │  → actualizar Matriz → actualizar CONTEXTO_ACTUAL    │
               │  (confirma Carlos) → ¿queda algo en Próximos?        │
@@ -130,17 +130,24 @@ sincronizado gratis.
 **Ciclo diario (cada sesión):**
 
 1. Leer `docs/CONTEXTO_ACTUAL.md` (ya es regla existente en `CLAUDE.md`).
-2. Tomar el issue de **Actual** (o el primero de **Próximos** si no hay nada en
-   marcha) — se abre en modo plan de Claude antes de implementar
-   (`PLAN_ESTRATEGIA.md` §H).
+2. Tomar el primero de **Próximos** — se abre en modo plan de Claude antes de
+   implementar (`PLAN_ESTRATEGIA.md` §H).
 3. Implementar.
 4. Al cerrar el issue: identificar qué necesidad(es) tocaba por su label,
    verificar en código el % real, actualizar la fila en
-   `MATRIZ_COBERTURA_BDDAT.md`, actualizar `CONTEXTO_ACTUAL.md` (Actual→Hecho,
-   propuesta de próximo Actual **con confirmación de Carlos**, regla ya
-   existente). Si aparece una necesidad no descrita, se añade con id nuevo
+   `MATRIZ_COBERTURA_BDDAT.md`, mover el issue de **Próximos** a **Hecho** en
+   `CONTEXTO_ACTUAL.md` **con confirmación de Carlos** (regla ya existente en
+   `CLAUDE.md`). Si aparece una necesidad no descrita, se añade con id nuevo
    (punto 4).
 5. Repetir desde el paso 2 mientras quede algo en Próximos.
+
+**Nota (2026-07-09):** el ciclo original distinguía un campo "Actual" separado
+de "Próximos". Se retira: el propio mecanismo (el documento solo se toca al
+cerrar un issue, momento en el que "Actual" y "propuesta de próximo Actual"
+ocurrían en el mismo paso) hacía que "Actual" fuera siempre indistinguible de
+"el primero de Próximos" — nunca aportaba una decisión que Próximos no
+contuviera ya. `CONTEXTO_ACTUAL.md` queda con solo **Hecho** y **Próximos**
+(≤3), como ya reflejaba de facto el punto 8 de este ADR.
 
 **Ciclo de reposición (solo cuando Próximos se vacía):**
 
@@ -184,9 +191,6 @@ vuelva a crecer sin control. Sigue sin usarse GitHub Projects/Kanban — el
 
 ## Próximos pasos (fuera de este ADR)
 
-- Etiquetado retroactivo (`necesidad:N0XX`) de los issues abiertos existentes.
-- Poda de `docs/CONTEXTO_ACTUAL.md` a esqueleto (Hecho/Actual/Próximos ≤3) —
-  acordado en la misma sesión, pendiente de ejecutar.
 - Primera vuelta real del ciclo de reposición: Carlos elige las primeras
   celdas de foco desde `MATRIZ_COBERTURA_BDDAT.md`.
 
