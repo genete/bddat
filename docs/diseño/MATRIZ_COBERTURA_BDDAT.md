@@ -11,7 +11,11 @@
 > de código, verificada — no hay filas con "pendiente de verificar".
 > **Última auditoría completa:** 2026-07-08 (6 agentes en paralelo sobre el
 > código + auditoría directa de infraestructura/datos estructurales + repaso de
-> correcciones de Carlos sobre el primer borrador).
+> correcciones de Carlos sobre el primer borrador). **2026-07-09:** añadidas
+> N078-N081 (auditoría individual de código, no re-auditoría completa),
+> surgidas del etiquetado retroactivo `necesidad:N0XX` de ADR-031; #593 cerrado
+> tras confirmar en código que su PR (#597, "Refs" en vez de "Closes") sí
+> completó el alcance.
 > Columna "Necesidad" es una copia legible de `DETALLE_NECESIDADES_BDDAT.md` —
 > ese documento sigue siendo la fuente de verdad si hace falta más contexto.
 
@@ -60,6 +64,7 @@
 | N069 | Apertura de expedientes (alta / wizard de creación) | 95% | Nada relevante — wizard de 3 pasos completo con commit transaccional único. |
 | N072 | Bitácora narrativa del expediente (anotaciones datadas con autor) | 20% | Lo que existe es un log automático de sistema *por usuario* (feed de actividad, no narrativo). Falta: vista/endpoint filtrado por expediente, capacidad de anotación libre del Tramitador no ligada a un bypass del motor, y UI de consulta para Supervisor/Administrativo. |
 | N073 | Gestionar autorizaciones de representación: quién puede actuar en nombre de un titular en la tramitación | 95% | Pantalla de gestión completa (conceder, revocar, restaurar autorización) con validaciones (no autoautorización, no duplicar autorización activa), más consumo real en el wizard de alta. Nada relevante pendiente. |
+| N081 | Gestionar el catálogo de organismos administrativos (DIR3) y su vínculo con interesados institucionales del expediente | 40% | Modelos maduros (`OrganismoExpediente`, `InteresadoExpediente`, campo `codigo_dir3`) en uso real para generar escritos automáticos (context builders + plantilla `.docx` de notificación a organismo). Cero interfaz de gestión manual — la única ruta encontrada vive en `api_bc.py` (blueprint cuestionado, ver Hallazgo 4 de `DETALLE_NECESIDADES_BDDAT.md`), y no hay listado de códigos DIR3 (#106, #396 abiertos). |
 
 ## Bloque 2 — Sistema documental
 
@@ -72,6 +77,7 @@
 | N009 | Expediente documental reconstruible sin BDDAT — estructura predecible fuera de BD | 25% | La convención de carpeta predecible solo se aplica a documentos generados por el sistema. Falta forzarla también en la incorporación manual, y generar un manifest/índice en disco por expediente — sin BD, una carpeta es hoy un montón de ficheros sin diferenciar. |
 | N076 | Detectar documentos del pool sin vincular a ninguna tarea de tramitación ("radar de huérfanos") | 50% | La señal de "sin vincular a tarea" existe y se muestra como columna en el listado general de documentos del pool. Falta una vista dedicada de triage (radar) que la use como filtro/prioridad, no solo como dato de contexto. |
 | N077 | Detectar documentos duplicados en el pool del expediente (verificación de integridad) | 0% | La columna de verificación de integridad existe en el modelo pero ningún punto de código la calcula nunca — funcionalidad diseñada y nunca conectada. |
+| N078 | Mantener el catálogo de requisitos documentales exigidos por normativa, con condiciones de aplicabilidad según el trámite/instalación | 75% | CRUD completo (#583/#584: modelo `RequisitoDocumental`/`CondicionRequisito`/`DocumentoRequisito`, módulo `admin_requisitos`). El motor que evalúa las condiciones (`app/services/requisitos.py`) solo soporta EQ/NEQ/IN/NOT_IN/IS_NULL/NOT_NULL — GT/GTE/LT/LTE/BETWEEN/NOT_BETWEEN se ignoran en silencio (bug confirmado, #601 abierto). Contenido normativo real sin poblar (#408 abierto). |
 
 ## Bloque 3 — Generación de escritos
 
@@ -81,6 +87,8 @@
 | N011 | Detección de plantillas con tokens vacíos (aviso de hueco antes de generar) | 0% | No existe ninguna rutina de análisis estático de la plantilla; el único aviso de "hueco" es reactivo, al fallar la generación contra un expediente real. |
 | N012 | Generar escrito desde plantilla y descargar versión borrador/firmada | 50% | El backend de generación está prácticamente completo. El modal/wizard que lo dispara desde la interfaz existe como fichero pero no está enganchado a ninguna vista real — hoy un Tramitador no puede llegar a esta función desde la UI. |
 | N013 | Generar escritos estándar y avanzar tramitación | 50% | Mismo backend que N012, mismo modal sin enganchar a ninguna vista. |
+| N079 | Mantener el catálogo de requerimientos administrativos exigibles al interesado, con su contenido normativo | 70% | CRUD completo y verificado en código (#593/#597: módulo `catalogo_requerimientos`, permisos `acceder/gestionar/archivar_catalogo_requerimientos`, smoke test). Poblado normativo en 0% — la única migración (405) crea el esquema, sin contenido real (#441 abierto). |
+| N080 | Exponer las variables del motor de reglas y catálogos estructurales en las plantillas de escritos, como documento adaptativo al contexto del expediente | 0% | `CatalogoVariable` (`app/models/motor_reglas.py`) existe y está en uso real del motor de reglas y del Context Assembler (`assembler.py`) — pero ningún punto de `generador_escritos.py`/`escritos.py` lo consume. Cero conexión con la generación de escritos hoy (#556 sin construir, #561/#587 sin resolver). |
 
 ## Bloque 4 — Motor de reglas y configuración estructural
 
@@ -207,8 +215,8 @@
 ## Referencia rápida — necesidades a 0%
 
 N007, N011, N017, N019, N020, N021, N022, N032, N033, N038, N039, N040, N045,
-N047, N048, N051, N055, N056, N057, N060, N061, N064, N065, N070, N071, N077 —
-26 de 72 necesidades activas sin ninguna cobertura real detectada.
+N047, N048, N051, N055, N056, N057, N060, N061, N064, N065, N070, N071, N077,
+N080 — 27 de 76 necesidades activas sin ninguna cobertura real detectada.
 
 ---
 
