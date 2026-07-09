@@ -13,7 +13,10 @@
 // nunca llegaría a persistirse.
 import React from 'react'
 import { useArbolStore, selectHayCambios } from '../store.js'
-import { getAnalizar, postAnalizar } from '../api.js'
+import {
+  getAnalizar, postAnalizar,
+  vincularRequisitoDocumental, desvincularRequisitoDocumental,
+} from '../api.js'
 import { showToast } from '../../shared/ui/toast.js'
 
 const ETIQUETA_RESULTADO = {
@@ -28,6 +31,139 @@ function SeccionPlaceholder({ titulo, texto }) {
       <div className="card-header card-header-accent fw-semibold small">{titulo}</div>
       <div className="card-body card-body-tinted">
         <div className="text-muted small fst-italic">{texto}</div>
+      </div>
+    </div>
+  )
+}
+
+// Fila de un requisito documental (#495): estado + selector de documento del pool.
+function FilaRequisitoDocumental({ item, expedienteId, tareaId, pool, onRecargar }) {
+  const [seleccionando, setSeleccionando] = React.useState(false)
+  const [documentoId, setDocumentoId] = React.useState('')
+  const [enviando, setEnviando] = React.useState(false)
+
+  const vincular = async () => {
+    if (!documentoId) return
+    setEnviando(true)
+    try {
+      await vincularRequisitoDocumental(expedienteId, tareaId, item.requisito_id, Number(documentoId))
+      setSeleccionando(false)
+      setDocumentoId('')
+      await onRecargar()
+    } catch (e) {
+      showToast((e && e.message) || 'No se pudo vincular el documento', 'danger')
+    } finally {
+      setEnviando(false)
+    }
+  }
+
+  const desvincular = async () => {
+    setEnviando(true)
+    try {
+      await desvincularRequisitoDocumental(expedienteId, tareaId, item.requisito_id)
+      await onRecargar()
+    } catch (e) {
+      showToast((e && e.message) || 'No se pudo desvincular el documento', 'danger')
+    } finally {
+      setEnviando(false)
+    }
+  }
+
+  const cita = [item.articulo, item.norma].filter(Boolean).join(', ')
+
+  return (
+    <div className="border-bottom pb-2 mb-2">
+      <div className="d-flex justify-content-between align-items-start gap-2 mb-1">
+        <div className="small">
+          <div className="fw-semibold">{item.tipo_documento || 'Documento'}</div>
+          {item.descripcion_legal && <div className="text-muted">{item.descripcion_legal}</div>}
+          {cita && <div className="text-muted fst-italic">{cita}</div>}
+        </div>
+        <span className={`badge ${item.cubierto ? 'text-bg-success' : 'text-bg-warning'}`}>
+          {item.cubierto ? 'Cubierto' : 'Pendiente'}
+        </span>
+      </div>
+
+      {item.documento && (
+        <div className="d-flex align-items-center gap-2 small mb-1">
+          <span className="text-truncate">{item.documento.nombre}</span>
+          <button
+            type="button"
+            className="btn btn-sm btn-link text-danger p-0 lh-1"
+            disabled={enviando}
+            onClick={desvincular}
+          >
+            Quitar
+          </button>
+        </div>
+      )}
+
+      {seleccionando ? (
+        <div className="d-flex gap-1">
+          <select
+            className="form-select form-select-sm"
+            value={documentoId}
+            onChange={(e) => setDocumentoId(e.target.value)}
+          >
+            <option value="">Selecciona un documento…</option>
+            {pool.map((d) => (
+              <option key={d.id} value={d.id}>{d.nombre}</option>
+            ))}
+          </select>
+          <button
+            type="button"
+            className="btn btn-sm btn-primary"
+            disabled={!documentoId || enviando}
+            onClick={vincular}
+          >
+            Vincular
+          </button>
+          <button
+            type="button"
+            className="btn btn-sm btn-outline-secondary"
+            disabled={enviando}
+            onClick={() => { setSeleccionando(false); setDocumentoId('') }}
+          >
+            Cancelar
+          </button>
+        </div>
+      ) : (
+        <button
+          type="button"
+          className="btn btn-sm btn-outline-secondary"
+          onClick={() => setSeleccionando(true)}
+        >
+          {item.documento ? 'Cambiar documento' : 'Vincular documento'}
+        </button>
+      )}
+    </div>
+  )
+}
+
+function SeccionDocumental({ checklist, expedienteId, tareaId, onRecargar }) {
+  const pool = useArbolStore((s) => s.pool)
+  const cargarPool = useArbolStore((s) => s.cargarPool)
+
+  React.useEffect(() => { cargarPool() }, [cargarPool])
+
+  return (
+    <div className="card mb-3">
+      <div className="card-header card-header-accent fw-semibold small">Check documental</div>
+      <div className="card-body card-body-tinted">
+        {checklist.length === 0 ? (
+          <div className="text-muted small fst-italic">No hay requisitos documentales aplicables.</div>
+        ) : (
+          checklist.map((item) => (
+            <FilaRequisitoDocumental
+              key={item.requisito_id}
+              item={item}
+              expedienteId={expedienteId}
+              tareaId={tareaId}
+              pool={pool}
+              onRecargar={onRecargar}
+            />
+          ))
+        )}
       </div>
     </div>
   )
@@ -236,7 +372,12 @@ export default function AnalizarEditor({ tareaId }) {
     <div>
       {payload.secciones_extendidas && (
         <>
-          <SeccionPlaceholder titulo="Check documental" texto="Disponible cuando se implemente #495." />
+          <SeccionDocumental
+            checklist={payload.checklist_documental || []}
+            expedienteId={expedienteId}
+            tareaId={tareaId}
+            onRecargar={cargar}
+          />
           <SeccionPlaceholder titulo="Check técnico" texto="Disponible cuando se implemente #581." />
           <SeccionRequerimientos />
           <DefectosConsolidados items={payload.defectos_consolidado} />

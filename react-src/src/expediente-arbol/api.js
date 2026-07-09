@@ -59,3 +59,18 @@ export function getAnalizar(expedienteId, tareaId) {
 export function postAnalizar(expedienteId, tareaId, body) {
   return api.post(`/api/expedientes/${expedienteId}/nodo/tarea/${tareaId}/analizar`, body)
 }
+
+// Check documental (#495): vincula/desvincula un documento del pool a un requisito.
+// Respuesta ambas: {ok:true, checklist_documental:[...]}.
+export function vincularRequisitoDocumental(expedienteId, tareaId, requisitoId, documentoId) {
+  return api.post(
+    `/api/expedientes/${expedienteId}/nodo/tarea/${tareaId}/requisitos-documentales/${requisitoId}`,
+    { documento_id: documentoId },
+  )
+}
+
+export function desvincularRequisitoDocumental(expedienteId, tareaId, requisitoId) {
+  return api.delete(
+    `/api/expedientes/${expedienteId}/nodo/tarea/${tareaId}/requisitos-documentales/${requisitoId}`,
+  )
+}
