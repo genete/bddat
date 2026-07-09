@@ -28,6 +28,7 @@ from app.models import (
     Tramite, Tarea, TipoTramite, TipoTarea, Documento,
 )
 from app.models.requisitos_documentales import RequisitoDocumental, DocumentoRequisito
+from app.models.items_tecnicos import ItemTecnico, CoberturaItemTecnico
 from app.services.arbol_expediente import construir_arbol
 from app.services.tipos_creables import tipos_creables_de_nodo
 from app.services.detalle_nodo import detalle_de_nodo
@@ -35,6 +36,7 @@ from app.services.esquema_editable import esquema_de_nodo
 from app.services import mutaciones_arbol as svc
 from app.services.assembler import build
 from app.services.requisitos import evaluar_requisitos
+from app.services.items_tecnicos import evaluar_items_tecnicos
 from app.services.consolidacion_defectos import consolidar_defectos
 from app.services.diagnosticos import crear_diagnostico
 from app.utils.permisos import verificar_acceso_expediente
@@ -775,6 +777,27 @@ def _checklist_documental_json(tarea) -> list:
     return items
 
 
+def _checklist_tecnico_json(tarea) -> list:
+    """Checklist técnico completo —favorable/desfavorable/no revisado— (#581)."""
+    solicitud = tarea.tramite.fase.solicitud
+    _, variables = build(solicitud.expediente, objeto=tarea)
+    resultado = evaluar_items_tecnicos(solicitud, variables)
+
+    items = []
+    for it in resultado['items']:
+        item = it['item']
+        cobertura = it['cobertura']
+        items.append({
+            'item_tecnico_id': item.id,
+            'descripcion': item.descripcion,
+            'norma': item.norma.titulo if item.norma else None,
+            'articulo': item.articulo,
+            'texto': cobertura.texto if cobertura else '',
+            'cubierto': cobertura.cubierto if cobertura else False,
+        })
+    return items
+
+
 @api_bp.route('/expedientes/<int:expediente_id>/nodo/tarea/<int:tarea_id>/analizar',
               methods=['GET'])
 @login_required
@@ -783,7 +806,8 @@ def get_analizar(expediente_id, tarea_id):
     GET .../nodo/tarea/<tarea_id>/analizar — payload del contenedor de #442.
 
     {resultado, documento_producido: {...}|null, secciones_extendidas: bool,
-     defectos_consolidado: [...], completo: bool, checklist_documental: [...]}
+     defectos_consolidado: [...], completo: bool, checklist_documental: [...],
+     checklist_tecnico: [...]}
     """
     expediente = Expediente.query.get_or_404(expediente_id)
     denegado = verificar_acceso_expediente(expediente)
@@ -823,6 +847,7 @@ def get_analizar(expediente_id, tarea_id):
         'defectos_consolidado': consolidado['items'],
         'completo': consolidado['completo'],
         'checklist_documental': _checklist_documental_json(tarea) if secciones_extendidas else [],
+        'checklist_tecnico': _checklist_tecnico_json(tarea) if secciones_extendidas else [],
     }), 200
 
 
@@ -949,3 +974,49 @@ def desvincular_requisito_documental(expediente_id, tarea_id, requisito_id):
         db.session.commit()
 
     return jsonify({'ok': True, 'checklist_documental': _checklist_documental_json(tarea)}), 200
+
+
+@api_bp.route(
+    '/expedientes/<int:expediente_id>/nodo/tarea/<int:tarea_id>/coberturas-tecnicas/<int:item_tecnico_id>',
+    methods=['POST'])
+@login_required
+def guardar_cobertura_tecnica(expediente_id, tarea_id, item_tecnico_id):
+    """
+    POST .../coberturas-tecnicas/<item_tecnico_id> — registra el veredicto del
+    tramitador sobre un ítem técnico para la solicitud de la tarea (#581).
+
+    Body JSON: {texto, cubierto}. Upsert por (item_tecnico_id, solicitud_id).
+    `cubierto` se fuerza a False si `texto` está vacío — evita el estado
+    inválido de CoberturaItemTecnico (ver su docstring).
+    """
+    expediente = Expediente.query.get_or_404(expediente_id)
+    if verificar_acceso_expediente(expediente, 'gestionar_tarea'):
+        return jsonify({'error': 'No tienes permiso para esta acción'}), 403
+
+    try:
+        tarea = _resolver_tarea_analizar(expediente, tarea_id)
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 404
+
+    ItemTecnico.query.get_or_404(item_tecnico_id)
+
+    data = request.get_json(silent=True) or {}
+    texto = (data.get('texto') or '').strip()
+    cubierto = bool(data.get('cubierto')) and bool(texto)
+
+    solicitud = tarea.tramite.fase.solicitud
+    cobertura = CoberturaItemTecnico.query.filter_by(
+        item_tecnico_id=item_tecnico_id, solicitud_id=solicitud.id
+    ).first()
+    if cobertura is None:
+        cobertura = CoberturaItemTecnico(
+            item_tecnico_id=item_tecnico_id, solicitud_id=solicitud.id,
+            texto=texto, cubierto=cubierto,
+        )
+        db.session.add(cobertura)
+    else:
+        cobertura.texto = texto
+        cobertura.cubierto = cubierto
+    db.session.commit()
+
+    return jsonify({'ok': True, 'checklist_tecnico': _checklist_tecnico_json(tarea)}), 200

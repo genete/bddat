@@ -74,3 +74,12 @@ export function desvincularRequisitoDocumental(expedienteId, tareaId, requisitoI
     `/api/expedientes/${expedienteId}/nodo/tarea/${tareaId}/requisitos-documentales/${requisitoId}`,
   )
 }
+
+// Check técnico (#581): registra el veredicto (texto + cubierto) de un ítem técnico.
+// Respuesta: {ok:true, checklist_tecnico:[...]}.
+export function guardarCoberturaTecnica(expedienteId, tareaId, itemTecnicoId, body) {
+  return api.post(
+    `/api/expedientes/${expedienteId}/nodo/tarea/${tareaId}/coberturas-tecnicas/${itemTecnicoId}`,
+    body,
+  )
+}
