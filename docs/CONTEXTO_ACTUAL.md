@@ -8,19 +8,28 @@
 
 ---
 
-**Hecho:** #442 — contenedor del inspector de la tarea ANALIZAR (ADR-023 §6),
-componente React `AnalizarEditor` con contrato de consolidación de defectos
-(degradado permisivo mientras #495/#581/#440 no existan). PR #603.
+**Hecho:** #440, #495, #581 — confluencia completa de la tarea ANALIZAR
+(ADR-023 §6): check documental, check de ítems técnicos, selector de
+requerimientos shuttle. Los tres alimentan `consolidar_defectos()` →
+`Diagnostico.defectos`, único documento de salida. Incluye fix de
+`ContextoSubsanacion` (dejaba de leer `requerimientos_tarea` directamente) y
+reclasificación de ADR-025 §4. PRs #604, #605, #606.
 
 **Próximos:**
 
-1. #440 — selector de requerimientos (modal shuttle); CRUD del catálogo ya
-   existe (#593), falta el modal + rutas. Se enchufa al contrato de
-   consolidación de #442.
-2. #495 — check documental, sección inline en el contenedor de #442
-   (evaluador `evaluar_requisitos` ya existe, falta integrarlo + fragmento).
-3. #581 — check de ítems técnicos, sección inline en el contenedor de #442
-   (necesita evaluador nuevo `evaluar_items_tecnicos`).
+1. **[sin issue todavía — próxima sesión es de definición, ADR-031 §7 punto
+   4]** Gap detectado por Carlos en N012/N013 (generación de escritos,
+   `docs/diseño/MATRIZ_COBERTURA_BDDAT.md`), distinto del 50%/modal sin
+   enganchar ya registrado ahí. Sin analizar en código todavía: hoy solo está
+   confirmado que un escrito de ELABORAR construye bien su contenido en **un**
+   camino — el diagnóstico de ANALIZAR de ANÁLISIS_DOCUMENTAL →
+   REQUERIMIENTO_SUBSANACIÓN (fix de `ContextoSubsanacion`, #440). No se sabe
+   si el resto de trámites con tarea ELABORAR tienen su Context Builder
+   correctamente enganchado (ADR-025), ni si existen otros casos con el mismo
+   patrón de bug que tenía `ContextoSubsanacion` (leer una tabla de borrador
+   en vez del documento de salida correcto). Tarea de la próxima sesión:
+   auditar los CBs existentes por trámite/plantilla y abrir el/los issue(s)
+   que falten para cubrir el hueco.
 
 ---
 
