@@ -110,7 +110,12 @@ sincronizado gratis.
 ```
 ┌─────────────────────────── CICLO DE REPOSICIÓN (raro) ───────────────────────────┐
 │  Matriz (filtrada por milestone) → CEO elige celda → gh issue list --label       │
-│  (busca qué ya existe) → crear o rescatar 2-3 issues, etiquetados → Próximos     │
+│  (busca qué ya existe)                                                           │
+│       │                                                                          │
+│       ├─ hay issues rescatables → etiquetar y mover a Próximos (2-3 activos)     │
+│       │                                                                          │
+│       └─ no hay ningún issue → nada a Próximos. Próxima sesión = definir el      │
+│          issue de esa necesidad (no es una sesión de implementación)            │
 └───────────────────────────────────┬───────────────────────────────────────────────┘
                                      ▼
               ┌───────────── CICLO DIARIO (cada sesión) ─────────────┐
@@ -157,10 +162,30 @@ contuviera ya. `CONTEXTO_ACTUAL.md` queda con solo **Hecho** y **Próximos**
 3. Buscar qué ya existe abierto en el backlog para esa necesidad, con o sin
    label todavía (`gh issue list --label necesidad:N0XX --state all`, más una
    revisión manual si el label aún no se aplicó — punto 6).
-4. Completar hasta 2-3 issues activos: **rescatar** (etiquetar y mover a
-   Próximos) los que ya sirvan, **crear** solo los que falten. No siempre son
-   issues nuevos.
-5. Entran en Próximos → vuelta al ciclo diario.
+4. **Bifurcación** según lo que devuelva el paso 3:
+   - **Hay issues rescatables** — etiquetarlos (si falta el label) y moverlos a
+     Próximos, hasta completar 2-3 activos. Entran en Próximos → vuelta al
+     ciclo diario.
+   - **No hay ningún issue para esa necesidad** — no se crean issues dentro de
+     este mismo pase de reposición: redactar un issue es trabajo real (alcance,
+     prerrequisitos, criterios de aceptación), no una etiqueta de 30 segundos.
+     **Próximos queda vacío** para esa celda — no se anota la necesidad ahí ni
+     de ninguna otra forma como placeholder (ver nota 2026-07-09 más abajo). La
+     siguiente sesión no es de implementación: su objetivo es **definir y
+     escribir el/los issue(s)** de esa necesidad. Al cerrarla, el issue
+     resultante entra al ciclo diario como cualquier otro.
+
+**Nota (2026-07-09):** corrección de Carlos tras usar el ciclo por primera vez.
+El punto 4 original mezclaba "rescatar" (mecánico, con label) y "crear"
+(trabajo real de diseño/alcance) como si fueran intercambiables dentro del
+mismo pase rápido de reposición — no lo son. `CONTEXTO_ACTUAL.md` §**Próximos**
+solo contiene **números de issue reales, listos para implementar** — nunca un
+id de necesidad suelto a modo de recordatorio ("N0XX: pendiente de issue").
+Si una necesidad elegida no tiene ningún issue, sencillamente no se escribe
+nada en Próximos para ella: la próxima vez que se re-consulte la matriz (o se
+retome consciente de este hueco) se sabrá que toca una sesión de definición,
+sin necesidad de un tracker paralelo — el mismo principio anti-duplicación de
+GitHub que ya rige el resto de este ADR (§1, §3, §6).
 
 ### 8. Retoma la disciplina de "issues mínimos" de `PLAN_ESTRATEGIA.md` §H
 
