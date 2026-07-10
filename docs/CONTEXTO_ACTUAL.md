@@ -8,27 +8,21 @@
 
 ---
 
-**Hecho:** #440, #495, #581 — confluencia completa de la tarea ANALIZAR
-(ADR-023 §6): check documental, check de ítems técnicos, selector de
-requerimientos shuttle. Los tres alimentan `consolidar_defectos()` →
-`Diagnostico.defectos`, único documento de salida. Incluye fix de
-`ContextoSubsanacion` (dejaba de leer `requerimientos_tarea` directamente) y
-reclasificación de ADR-025 §4. PRs #604, #605, #606.
+**Hecho:** #608 — N012/N013 (Generación de escritos, `MATRIZ_COBERTURA_BDDAT.md`,
+50%→95% ambas). Enganchado `ElaborarEditor.jsx` (patrón `AnalizarEditor.jsx`) a
+la tarea ELABORAR: generar desde plantilla, preview, vinculación automática del
+`.docx` como consumido (inocuo para el semáforo). Reutiliza el backend #167 sin
+tocarlo. Ciclo verificado end-to-end hasta PENDIENTE_FIRMA. Elimina el JS legacy
+huérfano desde la eliminación del sistema BC en #500. PR #611.
 
-Hueco de definición de CB/ADR-031 §7 punto 4: cerrado, sin issue propio.
-Derivado: #607.
+Spinoffs detectados en la misma sesión, sin tocar: token de trazabilidad
+embebido en el `.docx` documentado pero no implementado ni probado (#181/#182);
+enlace de documentos `bddat://` en el inspector siempre da 404, sin rama para
+ese esquema (#610, nuevo). #609 (abrir documento sin salir de la tarea) se
+descartó — ya existe el mecanismo en modo lectura.
 
-**Próximos:**
-
-1. **N012/N013** (Generación de escritos, `MATRIZ_COBERTURA_BDDAT.md`, 50%
-   ambas). Backend de generación completo — confirmado por la auditoría de
-   CB de esta sesión. Falta enganchar el modal/wizard existente (fichero ya
-   creado) a una vista real: hoy un Tramitador no puede llegar a generar un
-   escrito desde la UI. `gh issue list --label necesidad:N012 --state all`
-   devuelve #435/#407/#246/#243 — ninguno cubre este enganche. N013 no tiene
-   ningún issue con label. Próxima sesión: repetir esa búsqueda por si algo
-   quedó sin etiquetar (ADR-031 §7 ciclo de reposición) antes de abrir
-   issue(s) nuevos.
+**Próximos:** (vacío — ciclo de reposición pendiente, ADR-031 §7, decisión de
+Carlos cuando retome).
 
 ---
 
