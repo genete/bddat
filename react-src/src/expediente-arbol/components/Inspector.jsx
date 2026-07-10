@@ -12,6 +12,7 @@ import { puedeEditarNodo } from '../../shared/auth.js'
 import Semaforo from './nodos/Semaforo.jsx'
 import Despensa from './Despensa.jsx'
 import AnalizarEditor from './AnalizarEditor.jsx'
+import ElaborarEditor from './ElaborarEditor.jsx'
 
 const ETIQUETA_TIPO = {
   expediente: 'Expediente',
@@ -349,6 +350,9 @@ function InspectorEdicion({ nodo }) {
   // campo-a-campo. InspectorEdicion (cabecera, lock, split con Despensa) se
   // reutiliza igual para el resto de tareas.
   const esAnalizar = seleccion.tipo === 'tarea' && nodo && nodo.tipo_codigo === 'ANALIZAR'
+  // ELABORAR (#608): idem, para enganchar "Generar escrito" (backend #167, huérfano
+  // de UI desde la eliminación del sistema BC en #500).
+  const esElaborar = seleccion.tipo === 'tarea' && nodo && nodo.tipo_codigo === 'ELABORAR'
   return (
     <div className="d-flex flex-column h-100 arbol-inspector--lock">
       <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }} className="p-3">
@@ -357,7 +361,9 @@ function InspectorEdicion({ nodo }) {
           ? <ConfirmacionBorrado nodo={nodo} />
           : esAnalizar
             ? <AnalizarEditor tareaId={seleccion.id} />
-            : <Editor />
+            : esElaborar
+              ? <ElaborarEditor tareaId={seleccion.id} nodo={nodo} />
+              : <Editor />
         }
       </div>
       {!borrarPendienteConfirm && (
