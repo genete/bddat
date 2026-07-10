@@ -102,3 +102,30 @@ export function crearRequerimientoCatalogo(expedienteId, tareaId, texto, categor
     { texto, categoria },
   )
 }
+
+// Generación de escritos (#167/#608) — Blueprint aparte (/api/escritos), no bajo
+// /api/expedientes. Plantillas ESFTT compatibles con la tarea. Respuesta:
+// {ok, plantillas:[{id, nombre, variante, descripcion, especificidad}]}.
+export function getEscritosPlantillas(tareaId) {
+  return api.get(`/api/escritos/plantillas?tarea_id=${tareaId}`)
+}
+
+// Preview de campos + nombre/ruta propuestos antes de generar.
+// Respuesta: {ok, campos, nombre_propuesto, ruta_destino}.
+export function getEscritosPreview(plantillaId, tareaId) {
+  return api.get(`/api/escritos/preview?plantilla_id=${plantillaId}&tarea_id=${tareaId}`)
+}
+
+// Genera el .docx y lo guarda en disco + pool (#608: asignar_doc_producido siempre
+// false — el .docx es un auxiliar de trabajo, no dispara cambio de estado de la
+// tarea; el ciclo BORRADOR_FIRMA/firmado se gestiona aparte vía Despensa).
+// Respuesta: {ok, nombre_fichero, ruta, doc_id, uri_explorador}.
+export function postEscritosGenerar(plantillaId, tareaId, nombreFichero) {
+  return api.post('/api/escritos/generar', {
+    plantilla_id: plantillaId,
+    tarea_id: tareaId,
+    nombre_fichero: nombreFichero,
+    registrar_pool: true,
+    asignar_doc_producido: false,
+  })
+}
