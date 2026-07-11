@@ -90,8 +90,9 @@ TIPOS = {
         'permite_alta':      True,
         'aviso_combinacion': False,
         'protegidos':   set(REGISTROS_REQUERIDOS.get('TipoTramite', [])),
-        # Editor anidado de tramites_tareas/tramites_tareas_documentos: #171 fase 2,
-        # no incluido en este primer corte.
+        # Editor anidado de tramites_tareas/tramites_tareas_documentos: rutas
+        # en routes.py (_serializar_pasos/_guardar_pasos), UI en
+        # _editar_fragmento.html + tablas-maestras-pasos.js.
     },
     'tarea': {
         'model':        TipoTarea,
