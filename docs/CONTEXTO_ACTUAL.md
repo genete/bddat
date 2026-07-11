@@ -21,8 +21,15 @@ enlace de documentos `bddat://` en el inspector siempre da 404, sin rama para
 ese esquema (#610, nuevo). #609 (abrir documento sin salir de la tarea) se
 descartó — ya existe el mecanismo en modo lectura.
 
-**Próximos:** (vacío — ciclo de reposición pendiente, ADR-031 §7, decisión de
-Carlos cuando retome).
+**Próximos:** Reposición completada (2026-07-11 — mapeo de huecos rol Supervisor sobre
+`MATRIZ_COBERTURA_BDDAT.md` bloques 4/5/8/10, issue paraguas #579 "Mi trabajo del
+supervisor"). Foco elegido: **#171** — CRUD de tipos ESFTT (ampliado por Carlos de "tablas
+maestras Fase/Trámite/Tarea" al conjunto completo de catálogos ESFTT, ver alcance en el
+propio issue), seguido de **#479** (selector UI de modo global del motor).
+
+Spinoff de la sesión de reposición: **#612** (N034 — asignación masiva de expedientes a
+técnico) — abierto sin issue previo pese a estar referenciado en la tarjeta "Operaciones
+masivas" del hub del supervisor.
 
 ---
 
