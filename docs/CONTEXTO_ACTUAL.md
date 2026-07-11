@@ -24,9 +24,9 @@ figurar en el manifiesto); docstring desactualizado de `TipoSolicitud`
 Verificado en navegador con los 4 roles. Suite completa: 820 passed, 24
 skipped. PR #613.
 
-**Próximos:** siguiente foco acordado con Carlos al cerrar la reposición:
-**#479** (selector UI de modo global del motor — backend ya en #323). A
-confirmar al retomar.
+**Próximos:** #479 (selector UI de modo global del motor — backend ya en #323)
+y #612 (N034 — asignación masiva de expedientes a técnico, abierto en la
+sesión de reposición de #171).
 
 ---
 
