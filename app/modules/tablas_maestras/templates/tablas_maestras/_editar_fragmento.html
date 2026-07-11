@@ -64,5 +64,144 @@
     </div>
 </div>
 
+{% if tipo == 'tramite' %}
+{# Editor anidado tarea→documentos. Markup estático (no <script> de fragmento:
+   el inspector lo inyecta con innerHTML y no lo ejecuta — ver
+   project_inspector_vs_modal_scripts.md). La lógica vive en el script
+   global tablas-maestras-pasos.js (delegación de eventos + MutationObserver
+   para serializar el estado inicial), cargado una sola vez en listado.html. #}
+<div class="card mb-3" data-pasos-editor>
+    <div class="card-header card-header-accent fw-semibold d-flex justify-content-between align-items-center">
+        <span><i class="fas fa-list-ol me-1"></i> Secuencia de tareas</span>
+        <button type="button" class="btn btn-sm btn-outline-primary" data-paso-add>
+            <i class="fas fa-plus me-1"></i> Añadir paso
+        </button>
+    </div>
+    <div class="card-body card-body-tinted">
+        <div class="form-text mb-2">
+            El orden de esta lista es el orden real de ejecución. Cada paso puede exigir
+            documentos de ENTRADA (que ya deben existir) y/o de SALIDA (que la tarea produce).
+        </div>
+
+        <div data-pasos-list>
+            {% for paso in pasos %}
+            <div class="card mb-2" data-paso>
+                <div class="card-body py-2">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <span class="badge bg-secondary" data-paso-orden>{{ loop.index }}</span>
+                        <select class="form-select form-select-sm" data-paso-tarea>
+                            {% for tid, tcod in tareas_opciones %}
+                            <option value="{{ tid }}" {% if tid == paso.tipo_tarea_id %}selected{% endif %}>{{ tcod }}</option>
+                            {% endfor %}
+                        </select>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" data-paso-up title="Subir">
+                            <i class="fas fa-arrow-up"></i>
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" data-paso-down title="Bajar">
+                            <i class="fas fa-arrow-down"></i>
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-danger" data-paso-remove title="Quitar paso">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div data-paso-docs>
+                        {% for doc in paso.documentos %}
+                        <div class="row g-1 align-items-center mb-1" data-doc-row>
+                            <div class="col-3">
+                                <select class="form-select form-select-sm" data-doc-rol>
+                                    <option value="ENTRADA" {% if doc.rol == 'ENTRADA' %}selected{% endif %}>Entrada</option>
+                                    <option value="SALIDA" {% if doc.rol == 'SALIDA' %}selected{% endif %}>Salida</option>
+                                </select>
+                            </div>
+                            <div class="col-5">
+                                <select class="form-select form-select-sm" data-doc-tipo>
+                                    <option value="" {% if doc.tipo_documento_id is none %}selected{% endif %}>Cualquiera</option>
+                                    {% for did, dcod in documentos_opciones %}
+                                    <option value="{{ did }}" {% if did == doc.tipo_documento_id %}selected{% endif %}>{{ dcod }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-3 form-check">
+                                <input type="checkbox" class="form-check-input" data-doc-obligatorio {% if doc.obligatorio %}checked{% endif %}>
+                                <label class="form-check-label small">Oblig.</label>
+                            </div>
+                            <div class="col-1 text-end">
+                                <button type="button" class="btn btn-sm btn-outline-danger" data-doc-remove title="Quitar documento">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-primary" data-doc-add>
+                        <i class="fas fa-plus me-1"></i> Documento
+                    </button>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        {# Plantillas para filas nuevas — clonadas por tablas-maestras-pasos.js #}
+        <template data-paso-template>
+            <div class="card mb-2" data-paso>
+                <div class="card-body py-2">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <span class="badge bg-secondary" data-paso-orden>?</span>
+                        <select class="form-select form-select-sm" data-paso-tarea>
+                            {% for tid, tcod in tareas_opciones %}
+                            <option value="{{ tid }}">{{ tcod }}</option>
+                            {% endfor %}
+                        </select>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" data-paso-up title="Subir">
+                            <i class="fas fa-arrow-up"></i>
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" data-paso-down title="Bajar">
+                            <i class="fas fa-arrow-down"></i>
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-danger" data-paso-remove title="Quitar paso">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div data-paso-docs></div>
+                    <button type="button" class="btn btn-sm btn-outline-primary" data-doc-add>
+                        <i class="fas fa-plus me-1"></i> Documento
+                    </button>
+                </div>
+            </div>
+        </template>
+
+        <template data-doc-template>
+            <div class="row g-1 align-items-center mb-1" data-doc-row>
+                <div class="col-3">
+                    <select class="form-select form-select-sm" data-doc-rol>
+                        <option value="ENTRADA" selected>Entrada</option>
+                        <option value="SALIDA">Salida</option>
+                    </select>
+                </div>
+                <div class="col-5">
+                    <select class="form-select form-select-sm" data-doc-tipo>
+                        <option value="" selected>Cualquiera</option>
+                        {% for did, dcod in documentos_opciones %}
+                        <option value="{{ did }}">{{ dcod }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-3 form-check">
+                    <input type="checkbox" class="form-check-input" data-doc-obligatorio checked>
+                    <label class="form-check-label small">Oblig.</label>
+                </div>
+                <div class="col-1 text-end">
+                    <button type="button" class="btn btn-sm btn-outline-danger" data-doc-remove title="Quitar documento">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+        </template>
+
+        <input type="hidden" name="pasos_json" data-pasos-json>
+    </div>
+</div>
+{% endif %}
+
 </form>
 </div>{# /p-3 #}

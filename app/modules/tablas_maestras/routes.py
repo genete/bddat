@@ -14,11 +14,17 @@ Rutas:
 - GET  /tablas_maestras/<tipo>/<id>/editar-fragmento — Fragmento de edición
 - POST /tablas_maestras/<tipo>/<id>/editar           — Guardar cambios
 """
+import json
+
 from flask import Blueprint, abort, flash, jsonify, redirect, render_template, request, url_for
 from flask_login import login_required
 
 from app import db
 from app.decorators import require_permiso
+from app.models.tipos_documentos import TipoDocumento
+from app.models.tipos_tareas import TipoTarea
+from app.models.tramites_tareas import TramiteTarea
+from app.models.tramites_tareas_documentos import TramiteTareaDocumento
 from app.modules.tablas_maestras.config import TIPOS
 from app.utils.permisos import tiene_permiso
 
@@ -28,6 +34,8 @@ bp = Blueprint(
     url_prefix='/tablas_maestras',
     template_folder='templates',
 )
+
+_ROLES_DOC_VALIDOS = {'ENTRADA', 'SALIDA'}
 
 
 def _config(tipo):
@@ -69,6 +77,110 @@ def _rellenar_campos(obj, cfg, es_alta):
         setattr(obj, campo, valor or None)
 
     return errores
+
+
+# ---------------------------------------------------------------------------
+# Pasos del trámite (tramites_tareas + tramites_tareas_documentos, #171 fase 2)
+#
+# Editor anidado, tarea→documentos de dos niveles: se serializa como JSON en
+# un input oculto (patrón simple para 2 niveles; el patrón de filas repetidas
+# sin indexar de items_tecnicos solo cubre 1 nivel). Al guardar se reemplaza
+# la secuencia completa del trámite (borrar todo + reinsertar en el orden del
+# formulario) en vez de intentar reordenar in-place — evita la coordinación
+# manual entre las dos tablas que motivó dejarlas congeladas hasta ahora.
+# ---------------------------------------------------------------------------
+
+def _tareas_disponibles():
+    return TipoTarea.query.order_by(TipoTarea.codigo).all()
+
+
+def _documentos_disponibles():
+    return TipoDocumento.query.order_by(TipoDocumento.codigo).all()
+
+
+def _serializar_pasos(tipo_tramite_id):
+    """Pasos actuales de un trámite, listos para renderizar (lectura y edición)."""
+    tareas = TramiteTarea.query.filter_by(tipo_tramite_id=tipo_tramite_id) \
+        .order_by(TramiteTarea.orden).all()
+    docs = TramiteTareaDocumento.query.filter_by(tipo_tramite_id=tipo_tramite_id).all()
+    docs_por_orden = {}
+    for d in docs:
+        docs_por_orden.setdefault(d.orden_tarea, []).append(d)
+
+    pasos = []
+    for t in tareas:
+        documentos = [
+            {
+                'rol': d.rol,
+                'tipo_documento_id': d.tipo_documento_id,
+                'tipo_documento_label': d.tipo_documento.codigo if d.tipo_documento else 'Cualquiera',
+                'obligatorio': d.obligatorio,
+            }
+            for d in sorted(docs_por_orden.get(t.orden, []), key=lambda d: d.rol)
+        ]
+        pasos.append({
+            'orden': t.orden,
+            'tipo_tarea_id': t.tipo_tarea_id,
+            'tipo_tarea_codigo': t.tipo_tarea.codigo,
+            'documentos': documentos,
+        })
+    return pasos
+
+
+def _guardar_pasos(tramite, pasos_json_raw):
+    """Reemplaza la secuencia completa de pasos de `tramite` desde el JSON del form.
+
+    Formato esperado: lista de {tipo_tarea_id, documentos: [{rol,
+    tipo_documento_id, obligatorio}]}. Devuelve la lista de errores (vacía si
+    todo OK) — no escribe nada en BD si hay algún error.
+    """
+    try:
+        pasos_raw = json.loads(pasos_json_raw or '[]')
+    except (TypeError, ValueError):
+        return ['Secuencia de pasos: formato inválido.']
+
+    if not isinstance(pasos_raw, list):
+        return ['Secuencia de pasos: formato inválido.']
+
+    tareas_validas = {t.id for t in _tareas_disponibles()}
+    documentos_validos = {d.id for d in _documentos_disponibles()}
+
+    filas_tarea = []
+    filas_doc = []
+    for i, paso in enumerate(pasos_raw, start=1):
+        tipo_tarea_id = paso.get('tipo_tarea_id') if isinstance(paso, dict) else None
+        if tipo_tarea_id not in tareas_validas:
+            return [f'Paso {i}: tipo de tarea no válido.']
+
+        filas_tarea.append({'orden': i, 'tipo_tarea_id': tipo_tarea_id})
+
+        for doc in paso.get('documentos', []):
+            rol = doc.get('rol')
+            if rol not in _ROLES_DOC_VALIDOS:
+                return [f'Paso {i}: rol de documento no válido ({rol!r}).']
+            tipo_documento_id = doc.get('tipo_documento_id') or None
+            if tipo_documento_id is not None and tipo_documento_id not in documentos_validos:
+                return [f'Paso {i}: tipo de documento no válido.']
+            filas_doc.append({
+                'orden_tarea': i,
+                'rol': rol,
+                'tipo_documento_id': tipo_documento_id,
+                'obligatorio': bool(doc.get('obligatorio', True)),
+            })
+
+    # Borrar hijos antes que padres (FK tramites_tareas_documentos -> tramites_tareas)
+    TramiteTareaDocumento.query.filter_by(tipo_tramite_id=tramite.id).delete(synchronize_session=False)
+    TramiteTarea.query.filter_by(tipo_tramite_id=tramite.id).delete(synchronize_session=False)
+    db.session.flush()
+
+    for fila in filas_tarea:
+        db.session.add(TramiteTarea(tipo_tramite_id=tramite.id, **fila))
+    db.session.flush()  # las filas de arriba deben existir antes de insertar hijos (FK)
+
+    for fila in filas_doc:
+        db.session.add(TramiteTareaDocumento(tipo_tramite_id=tramite.id, **fila))
+
+    return []
 
 
 @bp.route('/')
@@ -117,6 +229,7 @@ def fragmento(tipo, id):
         obj=obj, cfg=cfg, tipo=tipo, valor_id=valor_id,
         protegido=valor_id in cfg['protegidos'],
         puede_editar=tiene_permiso('gestionar_tablas_maestras'),
+        pasos=_serializar_pasos(obj.id) if tipo == 'tramite' else None,
     )
 
 
@@ -127,10 +240,18 @@ def editar_fragmento(tipo, id):
     cfg = _config(tipo)
     obj = cfg['model'].query.get_or_404(id)
     valor_id = getattr(obj, cfg['id_field'])
+    extra = {}
+    if tipo == 'tramite':
+        extra = {
+            'pasos': _serializar_pasos(obj.id),
+            'tareas_opciones': [[t.id, t.codigo] for t in _tareas_disponibles()],
+            'documentos_opciones': [[d.id, d.codigo] for d in _documentos_disponibles()],
+        }
     return render_template(
         'tablas_maestras/_editar_fragmento.html',
         obj=obj, cfg=cfg, tipo=tipo, valor_id=valor_id,
         protegido=valor_id in cfg['protegidos'],
+        **extra,
     )
 
 
@@ -143,7 +264,10 @@ def editar(tipo, id):
     is_xhr = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
 
     errores = _rellenar_campos(obj, cfg, es_alta=False)
+    if not errores and tipo == 'tramite':
+        errores = _guardar_pasos(obj, request.form.get('pasos_json'))
     if errores:
+        db.session.rollback()
         if is_xhr:
             return jsonify({'ok': False, 'errors': errores})
         for msg in errores:
