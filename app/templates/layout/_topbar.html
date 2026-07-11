@@ -33,6 +33,17 @@
 
   <div class="app-topbar__actions">
 
+    {# Semáforo del modo global del motor (#479) — visible a los 4 roles.
+       Título con title nativo (no data-bs-toggle) para que el JS de polling
+       pueda actualizarlo sin pelear con la instancia de tooltip de Bootstrap. #}
+    {% if modo_motor %}
+    <span id="js-motor-estado"
+          class="badge rounded-pill text-bg-{{ modo_motor.clase }}"
+          title="Modo global del motor: {{ modo_motor.etiqueta }}">
+      <i class="bi bi-shield-check"></i> {{ modo_motor.etiqueta }}
+    </span>
+    {% endif %}
+
     {# Campana — toggle del dock global (ADR-020 / #506) #}
     <button type="button" class="app-topbar__icon-btn app-topbar__dock-toggle"
             data-app-shell-toggle="dock"

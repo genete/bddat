@@ -1,0 +1,68 @@
+{# index.html — Configuración del motor (#479, ADR-028 bloque Gestión).
+
+   Hoy solo la sección de modo global. La sección de reglas (#170) se añade
+   aquí mismo cuando se construya — no es una pantalla aparte. #}
+{% extends "layout/base_app.html" %}
+
+{% block title %}Configuración del motor{% endblock %}
+
+{% block viewbar %}
+<span class="app-viewbar__title">
+  <i class="fas fa-sliders-h"></i>
+  <span>Configuración del motor</span>
+</span>
+{% endblock %}
+
+{% block content %}
+<div class="content-constrained" style="max-width: 720px;">
+
+  <section class="card mb-4">
+    <div class="card-header">
+      <i class="fas fa-toggle-on me-1"></i> Modo global del motor
+    </div>
+    <div class="card-body">
+      <p class="text-secondary small">
+        Controla cómo responde el motor de reglas a las acciones de creación/borrado
+        en toda la aplicación. El cambio se aplica en caliente, sin reiniciar el servidor.
+      </p>
+
+      <form method="POST" action="{{ url_for('configuracion_motor.guardar_modo_global') }}">
+        {% for codigo, etiqueta, descripcion in modos %}
+        <div class="form-check mb-3">
+          <input class="form-check-input" type="radio" name="modo" id="modo-{{ codigo }}"
+                 value="{{ codigo }}" {% if codigo == modo_actual %}checked{% endif %}
+                 {% if not puede_gestionar %}disabled{% endif %}>
+          <label class="form-check-label" for="modo-{{ codigo }}">
+            <strong>{{ etiqueta }}</strong>
+            <span class="d-block text-secondary small">{{ descripcion }}</span>
+          </label>
+        </div>
+        {% endfor %}
+
+        {% if puede_gestionar %}
+        <button type="submit" class="btn btn-primary btn-sm">
+          <i class="fas fa-save me-1"></i> Guardar
+        </button>
+        {% else %}
+        <p class="text-secondary small mb-0">
+          <i class="fas fa-lock me-1"></i> Solo ADMIN/SUPERVISOR pueden cambiar el modo.
+        </p>
+        {% endif %}
+      </form>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-header text-secondary">
+      <i class="fas fa-list-check me-1"></i> Reglas del motor
+    </div>
+    <div class="card-body text-secondary">
+      <p class="small mb-0">
+        CRUD de <code>reglas_motor</code>, condiciones y excepciones — próximamente
+        (<a href="https://github.com/genete/bddat/issues/170" target="_blank" rel="noopener">#170</a>).
+      </p>
+    </div>
+  </section>
+
+</div>
+{% endblock %}

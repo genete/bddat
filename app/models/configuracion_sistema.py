@@ -29,3 +29,16 @@ class ConfiguracionSistema(db.Model):
         except (OperationalError, ProgrammingError):
             log.warning('configuracion_sistema: tabla no disponible, devolviendo default para %s', clave)
             return default
+
+    @classmethod
+    def set(cls, clave: str, valor: str, *, tipo_dato: str = 'texto', etiqueta: Optional[str] = None) -> None:
+        """Actualiza el valor de una clave existente, o la crea si no existe.
+
+        No hace commit — responsabilidad del llamador (mismo criterio que bitacora_svc.registrar).
+        """
+        row = cls.query.filter_by(clave=clave).first()
+        if row is None:
+            row = cls(clave=clave, valor=valor, tipo_dato=tipo_dato, etiqueta=etiqueta)
+            db.session.add(row)
+        else:
+            row.valor = valor

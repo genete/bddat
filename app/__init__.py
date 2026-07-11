@@ -122,6 +122,14 @@ def create_app(config_name='development'):
             'indicador_exp_id':     indicador_exp_id,
         }
 
+    # Context processor — semáforo del modo global del motor en la topbar (#479)
+    @app.context_processor
+    def inject_modo_motor():
+        if not current_user.is_authenticated:
+            return {}
+        from app.modules.configuracion_motor.routes import estado_semaforo
+        return {'modo_motor': estado_semaforo()}
+
     # Global Jinja2 — tiene_permiso disponible en todos los templates (#174)
     from app.utils.permisos import tiene_permiso
     app.jinja_env.globals['tiene_permiso'] = tiene_permiso
