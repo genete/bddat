@@ -1,0 +1,85 @@
+{# _detalle_fragmento.html — Parcial de lectura para el inspector (ADR-023 / #171).
+   No extiende base_app.html. Inyectado vía AppInspector.open({ fragmentUrl }).
+   Genérico para las 5 tablas (config.py) — id_field siempre de solo lectura.
+#}
+
+<div class="p-3">
+
+<div class="d-flex justify-content-end gap-2 mb-3">
+    {% if puede_editar %}
+    <button type="button" class="btn btn-primary btn-sm"
+            data-inspector-edit
+            data-edit-url="{{ url_for('tablas_maestras.editar_fragmento', tipo=tipo, id=obj.id) }}">
+        <i class="fas fa-edit me-1"></i> Editar
+    </button>
+    {% endif %}
+</div>
+
+<div class="card mb-3">
+    <div class="card-header card-header-accent fw-semibold">
+        <i class="fas {{ cfg.icon }} me-1"></i> {{ cfg.singular }}
+        {% if protegido %}
+        <span class="badge bg-warning-subtle text-warning-emphasis ms-1"
+              title="Este código tiene comportamiento especial hardcodeado en Python (app/checks/catalogo_requerido.py) — renombrarlo rompería esa lógica.">
+            <i class="fas fa-lock me-1"></i>Anclado en código
+        </span>
+        {% endif %}
+    </div>
+    <div class="card-body card-body-tinted">
+        <div class="row g-2">
+            <div class="col-12">
+                <label class="form-label fw-semibold small">{{ cfg.id_label }}</label>
+                <input type="text" class="form-control form-control-sm" value="{{ valor_id }}" readonly>
+                <div class="form-text">Fijo desde el alta — no se puede renombrar (#171).</div>
+            </div>
+            {% for campo, label, tipo_campo, requerido, maxlen in cfg.campos %}
+            <div class="col-12">
+                <label class="form-label fw-semibold small">{{ label }}</label>
+                {% if tipo_campo == 'bool' %}
+                <div><span class="badge {{ 'bg-success' if obj[campo] else 'bg-secondary' }}">
+                    {{ 'Sí' if obj[campo] else 'No' }}
+                </span></div>
+                {% elif tipo_campo == 'textarea' %}
+                <textarea class="form-control form-control-sm" rows="2" readonly>{{ obj[campo] or '' }}</textarea>
+                {% else %}
+                <input type="text" class="form-control form-control-sm" value="{{ obj[campo] or '' }}" readonly>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+{% if pasos is not none %}
+<div class="card mb-3">
+    <div class="card-header card-header-accent fw-semibold">
+        <i class="fas fa-list-ol me-1"></i> Secuencia de tareas
+    </div>
+    <div class="card-body card-body-tinted">
+        {% if pasos %}
+        <ol class="tm-pasos-lista mb-0">
+            {% for paso in pasos %}
+            <li class="mb-2">
+                <strong>{{ paso.tipo_tarea_codigo }}</strong>
+                {% if paso.documentos %}
+                <ul class="small text-secondary mb-0">
+                    {% for doc in paso.documentos %}
+                    <li>{{ doc.rol }}: {{ doc.tipo_documento_label }}{% if doc.obligatorio %} (obligatorio){% endif %}</li>
+                    {% endfor %}
+                </ul>
+                {% endif %}
+            </li>
+            {% endfor %}
+        </ol>
+        {% else %}
+        <span class="text-secondary small">Sin pasos definidos todavía.</span>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+<div class="form-text">
+    <i class="fas fa-ban me-1"></i>Sin baja: es un catálogo referenciado por otras tablas del sistema.
+</div>
+
+</div>{# /p-3 #}

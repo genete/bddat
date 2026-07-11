@@ -1,0 +1,251 @@
+{# listado.html — Shell de pestañas para los 5 catálogos ESFTT (#171).
+   No extiende lista_v2_base.html (asume una sola tabla) — construye el mismo
+   patrón (cabecera de filtros + tabla con scroll + inspector) 5 veces, una
+   por pestaña, con un ScrollInfinito propio por pestaña (init perezosa al
+   activarla la primera vez). Estética de pestañas: nav-tabs plano (referencia
+   PTWANDA), recoloreado con la paleta JdA — ver v1-tablas-maestras.css.
+#}
+{% extends 'layout/base_app.html' %}
+
+{% block title %}Tablas maestras · Control y Gestión — BDDAT{% endblock %}
+
+{% block extra_css %}{{ super() }}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/selector_filtro.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/input_filtro.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/v1-tablas-maestras.css') }}">
+{% endblock %}
+
+{% block viewbar %}
+<span class="app-viewbar__title">
+  <i class="fas fa-table-list"></i>
+  <span>Tablas maestras ESFTT</span>
+</span>
+{% endblock %}
+
+{% block content %}
+<div class="tm-shell">
+
+  <ul class="nav nav-tabs tm-tabs" id="tmTabs" role="tablist">
+    {% for tipo, cfg in tipos.items() %}
+    <li class="nav-item" role="presentation">
+      <button class="nav-link{{ ' active' if loop.first }}" id="tm-tab-{{ tipo }}"
+              data-bs-toggle="tab" data-bs-target="#pane-{{ tipo }}" type="button"
+              role="tab" aria-controls="pane-{{ tipo }}" data-tipo="{{ tipo }}">
+        <i class="fas {{ cfg.icon }} me-1"></i>{{ cfg.plural }}
+      </button>
+    </li>
+    {% endfor %}
+  </ul>
+
+  <div class="tab-content tm-tab-content">
+    {% for tipo, cfg in tipos.items() %}
+    <div class="tab-pane fade{{ ' show active' if loop.first }}" id="pane-{{ tipo }}"
+         role="tabpanel" aria-labelledby="tm-tab-{{ tipo }}">
+
+      <div class="lista-cabecera">
+        <div class="filters-row">
+          <div class="filters">
+            <input type="search" class="tm-search" data-tipo="{{ tipo }}"
+                   placeholder="Buscar {{ cfg.plural|lower }}..." aria-label="Buscar">
+            <button class="btn btn-outline-primary btn-limpiar" disabled>
+              <i class="fas fa-times"></i> Limpiar
+            </button>
+          </div>
+          <div class="d-flex align-items-center gap-3">
+            <div class="pagination-info">
+              <i class="fas fa-filter filtro-indicador me-1"></i><span>0</span> de <span>0</span>
+            </div>
+            {% if cfg.permite_alta and tiene_permiso('gestionar_tablas_maestras') %}
+            <button type="button" class="btn btn-primary btn-sm"
+                    data-bs-toggle="modal" data-bs-target="#crearModal-{{ tipo }}">
+              <i class="fas fa-plus me-1"></i> Nuevo
+            </button>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <div class="lista-scroll-container">
+        <div class="py-3">
+          <div class="card tabla-bloque">
+            <table class="lista-table tm-table-{{ tipo }}">
+              <thead>
+                <tr>
+                  <th>{{ cfg.id_label }}</th>
+                  {% for campo, label, tipo_campo, requerido, maxlen in cfg.campos %}
+                  <th{% if tipo_campo == 'textarea' %} class="lt-hide-md"{% endif %}>{{ label }}</th>
+                  {% endfor %}
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+        <button class="tm-scroll-to-top" data-tipo="{{ tipo }}" aria-label="Volver arriba de la tabla">
+          <i class="fas fa-chevron-up"></i>
+        </button>
+      </div>
+
+    </div>
+    {% endfor %}
+  </div>
+
+</div>
+
+{% for tipo, cfg in tipos.items() if cfg.permite_alta and tiene_permiso('gestionar_tablas_maestras') %}
+<div class="modal fade" id="crearModal-{{ tipo }}" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <form method="POST" action="{{ url_for('tablas_maestras.crear', tipo=tipo) }}" class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fas {{ cfg.icon }} me-1"></i> Nuevo {{ cfg.singular|lower }}</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row g-2">
+          <div class="col-12">
+            <label class="form-label fw-semibold small" for="cm_{{ tipo }}_id">
+              {{ cfg.id_label }} <span class="text-danger">*</span>
+            </label>
+            <input type="text" class="form-control form-control-sm" id="cm_{{ tipo }}_id"
+                   name="{{ cfg.id_field }}" maxlength="{{ cfg.id_maxlen }}" required>
+            <div class="form-text">No se podrá cambiar después de crear (#171).</div>
+            {% if cfg.aviso_combinacion %}
+            <div class="form-text text-warning-emphasis">
+              <i class="fas fa-triangle-exclamation me-1"></i>Si es una combinación, únelas con
+              '+' (p.ej. AAP+AAC) — el separador está fijado en el motor.
+            </div>
+            {% endif %}
+          </div>
+          {% for campo, label, tipo_campo, requerido, maxlen in cfg.campos %}
+          <div class="col-12">
+            {% if tipo_campo == 'bool' %}
+            <div class="form-check">
+              <input type="checkbox" class="form-check-input" id="cm_{{ tipo }}_{{ campo }}" name="{{ campo }}">
+              <label class="form-check-label small fw-semibold" for="cm_{{ tipo }}_{{ campo }}">{{ label }}</label>
+            </div>
+            {% else %}
+            <label class="form-label fw-semibold small" for="cm_{{ tipo }}_{{ campo }}">
+              {{ label }}{% if requerido %} <span class="text-danger">*</span>{% endif %}
+            </label>
+            {% if tipo_campo == 'textarea' %}
+            <textarea class="form-control form-control-sm" id="cm_{{ tipo }}_{{ campo }}" name="{{ campo }}"
+                      rows="2" {% if requerido %}required{% endif %}></textarea>
+            {% else %}
+            <input type="text" class="form-control form-control-sm" id="cm_{{ tipo }}_{{ campo }}" name="{{ campo }}"
+                   {% if maxlen %}maxlength="{{ maxlen }}"{% endif %} {% if requerido %}required{% endif %}>
+            {% endif %}
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+        <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-save me-1"></i> Crear</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endfor %}
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/v2-scroll-infinito.js') }}"></script>
+<script src="{{ url_for('static', filename='js/v2-filtros.js') }}"></script>
+<script src="{{ url_for('static', filename='js/selector_filtro.js') }}"></script>
+<script src="{{ url_for('static', filename='js/input_filtro.js') }}"></script>
+<script src="{{ url_for('static', filename='js/tablas-maestras-pasos.js') }}"></script>
+<script>
+(function () {
+    const CONFIG = {
+        {% for tipo, cfg in tipos.items() %}
+        '{{ tipo }}': {
+            columns: [
+                { key: 'id_field', label: '{{ cfg.id_label|e }}', type: 'custom', renderFn: (v, row) =>
+                    (row.protegido ? '<i class="fas fa-lock text-warning me-1" title="Anclado en código"></i>' : '') +
+                    String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') },
+                {% for campo, label, tipo_campo, requerido, maxlen in cfg.campos %}
+                { key: '{{ campo }}', label: '{{ label|e }}',
+                  {% if tipo_campo == 'bool' %}
+                  type: 'custom', hide: 'md', renderFn: v => v
+                      ? '<span class="badge bg-success">Sí</span>' : '<span class="text-secondary">—</span>' },
+                  {% elif tipo_campo == 'textarea' %}
+                  type: 'text', hide: 'md', truncate: true },
+                  {% else %}
+                  type: 'text' },
+                  {% endif %}
+                {% endfor %}
+            ],
+        },
+        {% endfor %}
+    };
+
+    const instances = {};
+
+    function initTab(tipo) {
+        if (instances[tipo]) return instances[tipo];
+        const cfg = CONFIG[tipo];
+        const scrollInfinito = new ScrollInfinito({
+            apiUrl:      '{{ url_for("api_tablas_maestras.listar", tipo="__TIPO__") }}'.replace('__TIPO__', tipo),
+            tableClass:  '.tm-table-' + tipo,
+            entityLabel: tipo,
+            columns:     cfg.columns,
+            selection: {
+                fragmentUrl: id   => `/tablas_maestras/${tipo}/${id}/fragmento`,
+                title:       item => String(item.id_field || '')
+            }
+        });
+        const filtros = new FiltrosListado(scrollInfinito);
+        const searchInput = document.querySelector(`#pane-${tipo} .tm-search`);
+        if (searchInput) searchInput.addEventListener('input', () => filtros.setSearch(searchInput.value));
+        instances[tipo] = { scrollInfinito, filtros };
+        return instances[tipo];
+    }
+
+    function updateUrl(tipo, selId) {
+        const url = new URL(location.href);
+        url.searchParams.set('tab', tipo);
+        if (selId) url.searchParams.set('sel', selId);
+        else url.searchParams.delete('sel');
+        history.replaceState(null, '', url.toString());
+    }
+
+    document.addEventListener('inspector:opened',  e => updateUrl(_activeTipo(), e.detail.selId));
+    document.addEventListener('inspector:swapped', e => updateUrl(_activeTipo(), e.detail.selId));
+    document.addEventListener('inspector:closed',  () => updateUrl(_activeTipo(), null));
+
+    function _activeTipo() {
+        const activeBtn = document.querySelector('#tmTabs .nav-link.active');
+        return activeBtn ? activeBtn.dataset.tipo : Object.keys(CONFIG)[0];
+    }
+
+    document.querySelectorAll('#tmTabs button[data-bs-toggle="tab"]').forEach(btn => {
+        btn.addEventListener('shown.bs.tab', () => {
+            initTab(btn.dataset.tipo);
+            updateUrl(btn.dataset.tipo, null);
+        });
+    });
+
+    // Estado inicial desde ?tab=&sel=
+    const params = new URLSearchParams(location.search);
+    const tabInicial = params.get('tab') || Object.keys(CONFIG)[0];
+    const selInicial = params.get('sel');
+
+    const tabBtn = document.getElementById('tm-tab-' + tabInicial);
+    if (tabBtn && tabInicial !== _activeTipo()) {
+        new bootstrap.Tab(tabBtn).show();
+    }
+    initTab(tabInicial);
+
+    if (selInicial && window.AppInspector) {
+        AppInspector.open({
+            selId:       selInicial,
+            title:       '',
+            fragmentUrl: `/tablas_maestras/${tabInicial}/${selInicial}/fragmento`
+        });
+    }
+
+    console.log('Tablas maestras ESFTT inicializado (#171)');
+})();
+</script>
+{% endblock %}
