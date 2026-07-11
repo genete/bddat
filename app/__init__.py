@@ -77,7 +77,7 @@ def create_app(config_name='development'):
     app.register_blueprint(wizard_expediente.bp)  # Issue #67
 
     # Registrar blueprints - APIs
-    from app.routes import api_expedientes, api_municipios, api_entidades, api_proyectos, api_escritos, api_seguimiento, api_bc, api_bitacora, api_search, api_usuarios, api_plantillas, api_administrativo, api_requisitos_documentales, api_catalogo_requerimientos, api_items_tecnicos
+    from app.routes import api_expedientes, api_municipios, api_entidades, api_proyectos, api_escritos, api_seguimiento, api_bc, api_bitacora, api_search, api_usuarios, api_plantillas, api_administrativo, api_requisitos_documentales, api_catalogo_requerimientos, api_items_tecnicos, api_tablas_maestras
 
     app.register_blueprint(api_expedientes.api_bp)                  # usa 'api_bp'
     app.register_blueprint(api_municipios.bp)                       # usa 'bp'
@@ -94,6 +94,7 @@ def create_app(config_name='development'):
     app.register_blueprint(api_requisitos_documentales.api_requisitos_documentales_bp)  # Issue #583
     app.register_blueprint(api_catalogo_requerimientos.api_catalogo_requerimientos_bp)  # Issue #593
     app.register_blueprint(api_items_tecnicos.api_items_tecnicos_bp)                    # Issue #594
+    app.register_blueprint(api_tablas_maestras.api_tablas_maestras_bp)                  # Issue #171
 
     # Registrar módulos (app/modules/) — Fase 4: auto-discovery
     from app.modules import ModuleRegistry
