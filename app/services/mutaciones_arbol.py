@@ -29,10 +29,10 @@ from app.models.documentos import Documento
 from app.models.tipos_solicitudes import TipoSolicitud
 from app.models.documentos_tarea import DocumentoTarea
 from app.models.tramites_organismos import TramiteOrganismo
-from app.models.configuracion_sistema import ConfiguracionSistema
-from app.services.assembler import evaluar_multi, build_sujeto
+from app.services.assembler import build_sujeto
 from app.services import bitacora as bitacora_svc
 from app.services.motor_reglas import EvaluacionResult, PERMITIDO
+from app.services.motor_modo_global import evaluar_con_modo_global as _evaluar
 from app.services.invariantes_esftt import _check_cierre_fase
 
 log = logging.getLogger(__name__)
@@ -55,26 +55,6 @@ class ResultadoMutacion:
 # ---------------------------------------------------------------------------
 # Helpers internos
 # ---------------------------------------------------------------------------
-
-def _aplicar_modo_global(res_eval: EvaluacionResult) -> EvaluacionResult:
-    # DEUDA: duplicado de api_bc._aplicar_modo_global — unificar cuando se toque api_bc
-    modo = ConfiguracionSistema.get('motor.modo_operacion', 'BLOQUEAR')
-    if modo == 'INACTIVO':
-        return PERMITIDO
-    if modo == 'SOLO_ADVERTIR' and res_eval.nivel == 'BLOQUEAR':
-        return EvaluacionResult(
-            permitido=True, nivel='ADVERTIR',
-            variables_trigger=res_eval.variables_trigger,
-            norma_compilada=res_eval.norma_compilada,
-            url_norma=res_eval.url_norma,
-            motivo=res_eval.motivo,
-        )
-    return res_eval
-
-
-def _evaluar(accion: str, expediente, *, objeto) -> EvaluacionResult:
-    return _aplicar_modo_global(evaluar_multi(accion, expediente, objeto=objeto))
-
 
 def _advertencia_dict(res_eval: EvaluacionResult) -> Optional[dict]:
     if res_eval and res_eval.nivel == 'ADVERTIR':

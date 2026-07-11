@@ -29,10 +29,10 @@ from app.models.entidad import Entidad
 from app.models.organismos_expediente import OrganismoExpediente, ESTADOS_ORGANISMO, VIAS_ORGANISMO
 from app.models.tramites_organismos import TramiteOrganismo
 from app.utils.permisos import verificar_acceso_expediente
-from app.services.assembler import evaluar_multi, build_sujeto
+from app.services.assembler import build_sujeto
 from app.services import bitacora as bitacora_svc
 from app.services.motor_reglas import EvaluacionResult, PERMITIDO
-from app.models.configuracion_sistema import ConfiguracionSistema
+from app.services.motor_modo_global import evaluar_con_modo_global as _evaluar
 from app.services.invariantes_esftt import (
     check_invariante, _check_cierre_fase, RESULTADO_FASE_FAVORABLE_CODIGOS,
 )
@@ -75,27 +75,6 @@ def _advertencia(res_eval):
     if res_eval and res_eval.nivel == 'ADVERTIR':
         return {'motivo': res_eval.motivo, 'norma_compilada': res_eval.norma_compilada, 'url_norma': res_eval.url_norma}
     return None
-
-
-def _aplicar_modo_global(res_eval: EvaluacionResult) -> EvaluacionResult:
-    """Ajusta el resultado del motor según el modo global configurado en BD."""
-    modo = ConfiguracionSistema.get('motor.modo_operacion', 'BLOQUEAR')
-    if modo == 'INACTIVO':
-        return PERMITIDO
-    if modo == 'SOLO_ADVERTIR' and res_eval.nivel == 'BLOQUEAR':
-        return EvaluacionResult(
-            permitido=True, nivel='ADVERTIR',
-            variables_trigger=res_eval.variables_trigger,
-            norma_compilada=res_eval.norma_compilada,
-            url_norma=res_eval.url_norma,
-            motivo=res_eval.motivo,
-        )
-    return res_eval
-
-
-def _evaluar(accion: str, expediente, *, objeto) -> EvaluacionResult:
-    """Punto único de llamada al motor desde api_bc.py — aplica el modo global."""
-    return _aplicar_modo_global(evaluar_multi(accion, expediente, objeto=objeto))
 
 
 def _res_error(res):

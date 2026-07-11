@@ -25,7 +25,7 @@ def _res(nivel):
 
 
 def _mock_modo(valor):
-    return patch('app.routes.api_bc.ConfiguracionSistema.get', return_value=valor)
+    return patch('app.services.motor_modo_global.ConfiguracionSistema.get', return_value=valor)
 
 
 # ---------------------------------------------------------------------------
@@ -71,7 +71,7 @@ def test_configuracion_get_programming_error_devuelve_default(app_ctx):
 # ---------------------------------------------------------------------------
 
 def test_modo_bloquear_no_modifica_bloquear():
-    from app.routes.api_bc import _aplicar_modo_global
+    from app.services.motor_modo_global import aplicar_modo_global as _aplicar_modo_global
     res = _res('BLOQUEAR')
     with _mock_modo('BLOQUEAR'):
         out = _aplicar_modo_global(res)
@@ -79,7 +79,7 @@ def test_modo_bloquear_no_modifica_bloquear():
 
 
 def test_modo_bloquear_no_modifica_advertir():
-    from app.routes.api_bc import _aplicar_modo_global
+    from app.services.motor_modo_global import aplicar_modo_global as _aplicar_modo_global
     res = _res('ADVERTIR')
     with _mock_modo('BLOQUEAR'):
         out = _aplicar_modo_global(res)
@@ -87,7 +87,7 @@ def test_modo_bloquear_no_modifica_advertir():
 
 
 def test_modo_inactivo_devuelve_permitido_siempre():
-    from app.routes.api_bc import _aplicar_modo_global
+    from app.services.motor_modo_global import aplicar_modo_global as _aplicar_modo_global
     for nivel in ('BLOQUEAR', 'ADVERTIR', ''):
         res = _res(nivel)
         with _mock_modo('INACTIVO'):
@@ -97,7 +97,7 @@ def test_modo_inactivo_devuelve_permitido_siempre():
 
 def test_modo_solo_advertir_convierte_bloquear():
     """SOLO_ADVERTIR: BLOQUEAR → ADVERTIR y permitido=True, preservando motivo y norma."""
-    from app.routes.api_bc import _aplicar_modo_global
+    from app.services.motor_modo_global import aplicar_modo_global as _aplicar_modo_global
     res = _res('BLOQUEAR')
     with _mock_modo('SOLO_ADVERTIR'):
         out = _aplicar_modo_global(res)
@@ -110,7 +110,7 @@ def test_modo_solo_advertir_convierte_bloquear():
 
 def test_modo_solo_advertir_no_modifica_advertir():
     """SOLO_ADVERTIR: un ADVERTIR original no se toca."""
-    from app.routes.api_bc import _aplicar_modo_global
+    from app.services.motor_modo_global import aplicar_modo_global as _aplicar_modo_global
     res = _res('ADVERTIR')
     with _mock_modo('SOLO_ADVERTIR'):
         out = _aplicar_modo_global(res)
@@ -119,7 +119,7 @@ def test_modo_solo_advertir_no_modifica_advertir():
 
 def test_modo_solo_advertir_no_modifica_permitido():
     """SOLO_ADVERTIR: PERMITIDO (nivel='') no se toca."""
-    from app.routes.api_bc import _aplicar_modo_global
+    from app.services.motor_modo_global import aplicar_modo_global as _aplicar_modo_global
     with _mock_modo('SOLO_ADVERTIR'):
         out = _aplicar_modo_global(PERMITIDO)
     assert out is PERMITIDO
@@ -127,9 +127,9 @@ def test_modo_solo_advertir_no_modifica_permitido():
 
 def test_bd_no_disponible_defaultea_a_bloquear():
     """Si BD falla al leer el modo, el default BLOQUEAR mantiene el comportamiento estricto."""
-    from app.routes.api_bc import _aplicar_modo_global
+    from app.services.motor_modo_global import aplicar_modo_global as _aplicar_modo_global
     res = _res('BLOQUEAR')
-    with patch('app.routes.api_bc.ConfiguracionSistema.get', return_value='BLOQUEAR'):
+    with patch('app.services.motor_modo_global.ConfiguracionSistema.get', return_value='BLOQUEAR'):
         out = _aplicar_modo_global(res)
     assert out is res
     assert out.permitido is False

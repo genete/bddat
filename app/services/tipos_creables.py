@@ -31,8 +31,7 @@ from app.models.tipos_fases import TipoFase
 from app.models.tipos_tramites import TipoTramite
 from app.models.tipos_tareas import TipoTarea
 from app.models.tramites_tareas import TramiteTarea
-from app.models.configuracion_sistema import ConfiguracionSistema
-from app.services.assembler import evaluar_multi
+from app.services.motor_modo_global import evaluar_con_modo_global
 from app.services.motor_reglas import EvaluacionResult, PERMITIDO
 
 log = logging.getLogger(__name__)
@@ -42,32 +41,10 @@ log = logging.getLogger(__name__)
 _CODIGOS_TRASLADO = frozenset({'CONSULTA_TRASLADO_ORGANISMO', 'CONSULTA_TRASLADO_TITULAR'})
 
 
-# ---------------------------------------------------------------------------
-# Modo global del motor
-# DEUDA: duplica api_bc._aplicar_modo_global. Unificar en un helper del motor
-# (BDDAT-aware, p.ej. assembler) cuando se toque api_bc — no hacerlo ahora para
-# no arriesgar el flujo de creación en producción.
-# ---------------------------------------------------------------------------
-
-def _aplicar_modo_global(res: EvaluacionResult) -> EvaluacionResult:
-    modo = ConfiguracionSistema.get('motor.modo_operacion', 'BLOQUEAR')
-    if modo == 'INACTIVO':
-        return PERMITIDO
-    if modo == 'SOLO_ADVERTIR' and res.nivel == 'BLOQUEAR':
-        return EvaluacionResult(
-            permitido=True, nivel='ADVERTIR',
-            variables_trigger=res.variables_trigger,
-            norma_compilada=res.norma_compilada,
-            url_norma=res.url_norma,
-            motivo=res.motivo,
-        )
-    return res
-
-
 def _evaluar_creacion(expediente, objeto) -> EvaluacionResult:
-    """evaluar_multi('CREAR', …) + modo global. Defensivo: error → no-permitido."""
+    """evaluar_multi('CREAR', …) + modo global (motor_modo_global). Defensivo: error → no-permitido."""
     try:
-        return _aplicar_modo_global(evaluar_multi('CREAR', expediente, objeto=objeto))
+        return evaluar_con_modo_global('CREAR', expediente, objeto=objeto)
     except Exception as exc:  # noqa: BLE001 — un candidato no debe tumbar la despensa
         log.warning('tipos_creables: fallo evaluando creación %s: %s', objeto, exc)
         return EvaluacionResult(
