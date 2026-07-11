@@ -8,25 +8,22 @@
 
 ---
 
-**Hecho:** #171 — CRUD de tipos ESFTT (Expediente/Solicitud/Fase/Trámite/Tarea;
-`MATRIZ_COBERTURA_BDDAT.md` N016 15%→bloque de tablas estructurales resuelto, N019
-0%→cubierto). Módulo único con pestañas (`app/modules/tablas_maestras/`),
-patrón config-driven en vez de 5 módulos duplicados. Campo identificador
-inmutable tras el alta en las 5 tablas — protege capa 2 (datos de
-`reglas_motor`/condiciones) además de capa 3 (Python), no solo lo que cubre
-`catalogo_requerido.py`. Editor anidado de `tramites_tareas`/
-`tramites_tareas_documentos` para la secuencia de tareas del Trámite, con una
-FK compuesta nueva entre ambas tablas (antes solo "coincidían" por convención
-documentada, sin garantía de BD). Fixes de paso: gap `DUP` en
-`catalogo_requerido.py['TipoSolicitud']` (hardcodeado en `contiene_tipo`, sin
-figurar en el manifiesto); docstring desactualizado de `TipoSolicitud`
-(mencionaba una tabla puente `solicitudes_tipos` que nunca se construyó).
-Verificado en navegador con los 4 roles. Suite completa: 820 passed, 24
-skipped. PR #613.
+**Hecho:** #479 — Selector de modo global del motor (BLOQUEAR/SOLO_ADVERTIR/
+INACTIVO) en el hub del supervisor (ADR-028 bloque Gestión), sobre
+`configuracion_sistema` ya sembrada en #323. De paso, unificado
+`_aplicar_modo_global` (antes copiado en `mutaciones_arbol.py`,
+`tipos_creables.py` y el `api_bc.py` muerto) en un único
+`app/services/motor_modo_global.py`. Cada cambio de modo queda en bitácora
+(quién, cuándo, de qué modo a qué modo) — pieza mínima para el futuro #614.
+Semáforo permanente del modo en la topbar, visible a los 4 roles, con polling
+cada 60s (sin infraestructura de push todavía). Verificado en navegador con
+una regla real del motor (AAC no resuelta) en los tres modos. Suite completa:
+824 passed, 24 skipped. PR #615. Del análisis surgió #614 (certificado fin de
+instrucción / justificación retroactiva de desviaciones del motor, bloqueado
+por un futuro ADR de bitácora ampliada a log completo de transacciones).
 
-**Próximos:** #479 (selector UI de modo global del motor — backend ya en #323)
-y #612 (N034 — asignación masiva de expedientes a técnico, abierto en la
-sesión de reposición de #171).
+**Próximos:** #612 (N034 — asignación masiva de expedientes a técnico, abierto
+en la sesión de reposición de #171).
 
 ---
 
