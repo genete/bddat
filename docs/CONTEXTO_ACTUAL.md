@@ -8,28 +8,25 @@
 
 ---
 
-**Hecho:** #608 — N012/N013 (Generación de escritos, `MATRIZ_COBERTURA_BDDAT.md`,
-50%→95% ambas). Enganchado `ElaborarEditor.jsx` (patrón `AnalizarEditor.jsx`) a
-la tarea ELABORAR: generar desde plantilla, preview, vinculación automática del
-`.docx` como consumido (inocuo para el semáforo). Reutiliza el backend #167 sin
-tocarlo. Ciclo verificado end-to-end hasta PENDIENTE_FIRMA. Elimina el JS legacy
-huérfano desde la eliminación del sistema BC en #500. PR #611.
+**Hecho:** #171 — CRUD de tipos ESFTT (Expediente/Solicitud/Fase/Trámite/Tarea;
+`MATRIZ_COBERTURA_BDDAT.md` N016 15%→bloque de tablas estructurales resuelto, N019
+0%→cubierto). Módulo único con pestañas (`app/modules/tablas_maestras/`),
+patrón config-driven en vez de 5 módulos duplicados. Campo identificador
+inmutable tras el alta en las 5 tablas — protege capa 2 (datos de
+`reglas_motor`/condiciones) además de capa 3 (Python), no solo lo que cubre
+`catalogo_requerido.py`. Editor anidado de `tramites_tareas`/
+`tramites_tareas_documentos` para la secuencia de tareas del Trámite, con una
+FK compuesta nueva entre ambas tablas (antes solo "coincidían" por convención
+documentada, sin garantía de BD). Fixes de paso: gap `DUP` en
+`catalogo_requerido.py['TipoSolicitud']` (hardcodeado en `contiene_tipo`, sin
+figurar en el manifiesto); docstring desactualizado de `TipoSolicitud`
+(mencionaba una tabla puente `solicitudes_tipos` que nunca se construyó).
+Verificado en navegador con los 4 roles. Suite completa: 820 passed, 24
+skipped. PR #613.
 
-Spinoffs detectados en la misma sesión, sin tocar: token de trazabilidad
-embebido en el `.docx` documentado pero no implementado ni probado (#181/#182);
-enlace de documentos `bddat://` en el inspector siempre da 404, sin rama para
-ese esquema (#610, nuevo). #609 (abrir documento sin salir de la tarea) se
-descartó — ya existe el mecanismo en modo lectura.
-
-**Próximos:** Reposición completada (2026-07-11 — mapeo de huecos rol Supervisor sobre
-`MATRIZ_COBERTURA_BDDAT.md` bloques 4/5/8/10, issue paraguas #579 "Mi trabajo del
-supervisor"). Foco elegido: **#171** — CRUD de tipos ESFTT (ampliado por Carlos de "tablas
-maestras Fase/Trámite/Tarea" al conjunto completo de catálogos ESFTT, ver alcance en el
-propio issue), seguido de **#479** (selector UI de modo global del motor).
-
-Spinoff de la sesión de reposición: **#612** (N034 — asignación masiva de expedientes a
-técnico) — abierto sin issue previo pese a estar referenciado en la tarjeta "Operaciones
-masivas" del hub del supervisor.
+**Próximos:** siguiente foco acordado con Carlos al cerrar la reposición:
+**#479** (selector UI de modo global del motor — backend ya en #323). A
+confirmar al retomar.
 
 ---
 
