@@ -5,28 +5,36 @@ class TipoSolicitud(db.Model):
     Catálogo maestro de tipos de actos administrativos solicitables.
     
     PROPÓSITO:
-        Define los tipos individuales de solicitudes administrativas según normativa
-        sectorial eléctrica. Las combinaciones (AAP+AAC+DUP) se gestionan mediante
-        la tabla puente solicitudes_tipos, permitiendo lógica de reglas basada en
-        tipos atómicos sin duplicación.
-    
+        Define los tipos de actos administrativos solicitables según normativa
+        sectorial eléctrica. Las combinaciones (AAP+AAC, AAP+AAC+DUP...) NO viven
+        en una tabla puente — son filas propias de este catálogo, con las siglas
+        atómicas unidas por '+' (p.ej. 'AAP+AAC'). No existe modelo `SolicitudTipo`
+        ni tabla `solicitudes_tipos`: se descartó esa tabla puente porque el número
+        de combinaciones que permite la legislación es pequeño y cerrado. El
+        separador '+' está hardcodeado en `Solicitud.tipos_simples`/`contiene_tipo()`
+        (`solicitudes.py`) — antes se usaba '_', pero colisionaba con códigos que
+        llevan '_' de forma nativa (no como combinador), de ahí el cambio a '+'.
+        Toda combinación nueva debe seguir esa convención.
+
     FILOSOFÍA:
-        - Motor de reglas aplica lógica sobre tipos INDIVIDUALES, no combinaciones
+        - Motor de reglas aplica lógica sobre tipos INDIVIDUALES vía `contiene_tipo()`,
+          que descompone la siglas combinada por '+' en tiempo de evaluación
         - Cada tipo determina fases procedimentales obligatorias
         - Define requisitos documentales específicos y plazos de resolución
         - Basado en nomenclatura legal
-    
+
     TIPOS ESPECIALES:
         DESISTIMIENTO:
             - Afecta a otra solicitud previa (requiere SOLICITUD_AFECTADA_ID)
             - Finaliza la solicitud referenciada sin resolución de fondo
-        
+
         RENUNCIA:
             - Similar a DESISTIMIENTO pero con efectos jurídicos diferentes
             - Requiere SOLICITUD_AFECTADA_ID NOT NULL en tabla SOLICITUDES
-    
+
     RELACIONES:
-        - solicitudes_tipos (N:M) → SOLICITUDES: Permite múltiples tipos por solicitud
+        - solicitudes.tipo_solicitud_id → esta tabla (N:1, una sola fila por solicitud,
+          las combinaciones son la propia fila combinada, no una relación N:M)
         - Referenciada por motor de reglas para determinar flujos procedimentales
     
     REGLAS DE NEGOCIO:

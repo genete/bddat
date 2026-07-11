@@ -39,8 +39,10 @@ REGISTROS_REQUERIDOS: dict = {
         'RESOLUCION',
         'RECONOCIMIENTO_INTERESADO',
     ],
-    # TipoSolicitud usa 'siglas' como identificador estable (no 'codigo')
-    'TipoSolicitud': ['AAC', 'AAP'],
+    # TipoSolicitud usa 'siglas' como identificador estable (no 'codigo').
+    # DUP añadida en #171: estaba hardcodeada en contiene_tipo('DUP')
+    # (calculado.py, api_bc.py — art. 131.1 RD 1955/2000) sin figurar aquí.
+    'TipoSolicitud': ['AAC', 'AAP', 'DUP'],
     # TipoResultadoFase — código usado en invariantes_esftt (#419)
     'TipoResultadoFase': ['DESFAVORABLE', 'FAVORABLE', 'FAVORABLE_CONDICIONADO'],
     'TipoDocumento': ['CERT_FIN_INSTRUCCION', 'CERT_PLAZO_CUMPLIDO', 'BORRADOR_FIRMA', 'CERT_FIN_IP_CONSULTAS',

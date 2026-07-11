@@ -15,6 +15,11 @@ class TramiteTareaDocumento(db.Model):
             'tipo_tramite_id', 'orden_tarea', 'rol',
             name='pk_ttd'
         ),
+        db.ForeignKeyConstraint(
+            ['tipo_tramite_id', 'orden_tarea'],
+            ['public.tramites_tareas.tipo_tramite_id', 'public.tramites_tareas.orden'],
+            name='fk_ttd_tramite_tarea',
+        ),
         {'schema': 'public'}
     )
 
