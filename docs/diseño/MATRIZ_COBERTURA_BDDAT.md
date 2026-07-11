@@ -17,7 +17,9 @@
 > tras confirmar en código que su PR (#597, "Refs" en vez de "Closes") sí
 > completó el alcance. N001 subida a 97% tras #440/#495/#581 (checklist de
 > diagnóstico completo en la tarea ANALIZAR) — auditoría de esa sub-área, no
-> re-auditoría completa de la fila.
+> re-auditoría completa de la fila. **2026-07-11:** N019 0%→90% tras #171
+> (CRUD de tipos ESFTT: Expediente/Solicitud/Fase/Trámite/Tarea, módulo
+> `tablas_maestras`) — auditoría de esa fila, no re-auditoría completa.
 > Columna "Necesidad" es una copia legible de `DETALLE_NECESIDADES_BDDAT.md` —
 > ese documento sigue siendo la fuente de verdad si hace falta más contexto.
 
@@ -100,7 +102,7 @@
 | N016 | Configurar reglas del motor por tipo de expediente | 15% | El modelo de reglas y el motor de evaluación están completos y en uso real — pero cero interfaz de alta/edición/baja. El propio hub del Supervisor lo marca "próximamente" (#170/#479). |
 | N017 | Sobreescritura de emergencia sobre el motor | 0% | Esta necesidad es del Admin BDDAT resolviendo una situación en la que el Tramitador ya no puede salir por la vía normal (justificación) — no debe confundirse con esa vía normal, que es de Tramitador y ya está cubierta en N003. No existe en la aplicación ningún mecanismo de intervención directa sobre el motor a nivel Admin; hoy solo sería posible mediante acceso directo a la base de datos, fuera de la aplicación. Ver Hallazgo 5 de `DETALLE_NECESIDADES_BDDAT.md` (relación con N022). |
 | N018 | Selector de modo global del motor (bloquear / advertir / inactivo) | 20% | La lectura y aplicación del modo global está viva en el flujo real de creación. Falta el selector de escritura — hoy solo se puede cambiar directamente en BD. |
-| N019 | CRUD de tipos de ESFTT (Fase/Trámite/Tarea/Solicitud) | 0% | El catálogo se puebla solo por migración; cero interfaz de gestión. |
+| N019 | CRUD de tipos de ESFTT (Fase/Trámite/Tarea/Solicitud) | 90% | CRUD completo de las 5 tablas ESFTT (ampliado por Carlos a incluir también Expediente, #171): módulo único `tablas_maestras` con pestañas, campo identificador inmutable tras el alta (protege capa 2 y capa 3), editor anidado de `tramites_tareas`/`tramites_tareas_documentos` para la secuencia del Trámite. Tarea sin alta por diseño (catálogo cerrado, no es hueco). Falta: baja lógica (`activo`) aplazada, pendiente de decisión de Carlos. |
 | N020 | Gestión de cambios en municipios (fusión/escisión, recarga correcta de la tabla) | 0% | Lo único que existe es búsqueda de autocompletado para formularios (solo lectura) — no hay ninguna gestión de cambios sobre la tabla. |
 | N021 | CRUD de rutas del filesystem | 0% | Las rutas del filesystem son variables de entorno leídas una vez al arrancar; no hay ni siquiera un modelo de datos que sostenga un futuro CRUD. |
 | N022 | Sobreescritura técnica de emergencia sobre catálogo estructural | 0% | Misma naturaleza que N017 aplicada al catálogo estructural en vez de al motor: hoy sería una intervención directa en BD, sin ningún mecanismo en la aplicación. Ver Hallazgo 5 de `DETALLE_NECESIDADES_BDDAT.md`. |
@@ -216,9 +218,9 @@
 
 ## Referencia rápida — necesidades a 0%
 
-N007, N011, N017, N019, N020, N021, N022, N032, N033, N038, N039, N040, N045,
+N007, N011, N017, N020, N021, N022, N032, N033, N038, N039, N040, N045,
 N047, N048, N051, N055, N056, N057, N060, N061, N064, N065, N070, N071, N077,
-N080 — 27 de 76 necesidades activas sin ninguna cobertura real detectada.
+N080 — 26 de 76 necesidades activas sin ninguna cobertura real detectada.
 
 ---
 
