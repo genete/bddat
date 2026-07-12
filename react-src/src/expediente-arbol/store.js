@@ -36,7 +36,9 @@ export const useArbolStore = create((set, get) => ({
   _tiposCreablesCache: {},    // { 'tipo-id': payload } — compartida con menú contextual S3b-4
   tiposCreables: null,        // payload de GET tipos-creables del nodo seleccionado
   tiposCreablesCargando: false,
-  tipoCreacionPendiente: null, // { tipo_id, codigo, nombre } staged para crear
+  tipoCreacionPendiente: null, // tipo staged para crear (item completo de tipos-creables:
+                                // {tipo_id, codigo, nombre, permitido, motivo?, puede_escapar?})
+  justificacionForzar: '',    // texto del bypass cuando tipoCreacionPendiente no está permitido (#616)
   creando: false,
 
   // --- pool de documentos (S3b-3) ---
@@ -128,7 +130,7 @@ export const useArbolStore = create((set, get) => ({
     if (!sel) return
     set({ seleccion: sel, modoEdicion: true, edicionCargando: true,
           editableCampos: [], borrador: {}, borradorInicial: {},
-          tiposCreables: null, tipoCreacionPendiente: null,
+          tiposCreables: null, tipoCreacionPendiente: null, justificacionForzar: '',
           docVinculandoPendiente: null,
           menuCtx: null, borrarPendienteConfirm: false })
     const expedienteId = get().expedienteId
@@ -156,7 +158,7 @@ export const useArbolStore = create((set, get) => ({
   cancelar: () => {
     const { seleccion } = get()
     set({ modoEdicion: false, editableCampos: [], borrador: {}, borradorInicial: {}, edicionCargando: false,
-          tiposCreables: null, tipoCreacionPendiente: null,
+          tiposCreables: null, tipoCreacionPendiente: null, justificacionForzar: '',
           docVinculandoPendiente: null,
           borrarPendienteConfirm: false,
           detalle: null, detalleCargando: false, detalleError: null })
@@ -173,7 +175,7 @@ export const useArbolStore = create((set, get) => ({
       showToast('Cambios guardados', 'success')
       if (data && data.advertencia) {                 // defensivo (PATCH editar no lo emite hoy)
         const a = data.advertencia
-        showToast(typeof a === 'string' ? a : (a.mensaje || a.texto || 'Revisa la advertencia'), 'warning')
+        showToast(typeof a === 'string' ? a : (a.motivo || 'Revisa la advertencia'), 'warning')
       }
       set({ guardando: false, modoEdicion: false, editableCampos: [], borrador: {}, borradorInicial: {} })
       await get().refrescarArbol()
@@ -207,7 +209,7 @@ export const useArbolStore = create((set, get) => ({
         borrando: false, borrarPendienteConfirm: false,
         seleccion: null,
         modoEdicion: false, editableCampos: [], borrador: {}, borradorInicial: {},
-        edicionCargando: false, tiposCreables: null, tipoCreacionPendiente: null,
+        edicionCargando: false, tiposCreables: null, tipoCreacionPendiente: null, justificacionForzar: '',
         docVinculandoPendiente: null,
         detalle: null, detalleCargando: false, detalleError: null, _detalleCache: {},
       })
@@ -263,28 +265,45 @@ export const useArbolStore = create((set, get) => ({
     }
   },
 
-  seleccionarTipoCrear: (tipo) => set({ tipoCreacionPendiente: tipo }),
+  // Selecciona un tipo (permitido o bloqueado forzable) para stagearlo en la despensa.
+  // Recibe el item completo de tipos-creables (permitido, motivo, puede_escapar…).
+  seleccionarTipoCrear: (tipo) => set({ tipoCreacionPendiente: tipo, justificacionForzar: '' }),
 
-  cancelarCrear: () => set({ tipoCreacionPendiente: null }),
+  cancelarCrear: () => set({ tipoCreacionPendiente: null, justificacionForzar: '' }),
+
+  setJustificacionForzar: (texto) => set({ justificacionForzar: texto }),
 
   crearHijo: async () => {
-    const { expedienteId, seleccion, tipoCreacionPendiente, tiposCreables } = get()
+    const { expedienteId, seleccion, tipoCreacionPendiente, tiposCreables, justificacionForzar } = get()
     if (!seleccion || !tipoCreacionPendiente || !expedienteId) return
+
+    // Forzado (#616): el tipo llegó marcado no-permitido — exige justificación no vacía,
+    // mismo criterio que valida el backend (_leer_bypass).
+    const forzando = tipoCreacionPendiente.permitido === false
+    if (forzando && !justificacionForzar.trim()) {
+      showToast('La justificación es obligatoria para forzar la creación', 'danger')
+      return
+    }
+
     set({ creando: true })
     try {
       const esMulti = seleccion.tipo === 'expediente'
       const body = esMulti
         ? { tipo_ids: [tipoCreacionPendiente.tipo_id] }
         : { tipo_id: tipoCreacionPendiente.tipo_id }
+      if (forzando) {
+        body.bypass = true
+        body.justificacion = justificacionForzar.trim()
+      }
       const data = await postHijo(expedienteId, seleccion.tipo, seleccion.id, body)
       const nuevoTipo = tiposCreables?.tipo_hijo   // 'solicitud', 'fase', 'tramite', 'tarea'
       const nuevoId = (data.ids || [])[0]
 
-      set({ creando: false, tipoCreacionPendiente: null })
-      showToast('Elemento creado', 'success')
+      set({ creando: false, tipoCreacionPendiente: null, justificacionForzar: '' })
+      showToast(forzando ? 'Elemento creado (forzado, registrado en bitácora)' : 'Elemento creado', 'success')
       if (data.advertencia) {
         const a = data.advertencia
-        showToast(typeof a === 'string' ? a : (a.mensaje || a.texto || 'Revisa la advertencia'), 'warning')
+        showToast(typeof a === 'string' ? a : (a.motivo || 'Revisa la advertencia'), 'warning')
       }
       // Invalidar caché de tipos del padre (el nuevo hijo puede cambiar lo creable).
       set((s) => {
@@ -389,6 +408,19 @@ export const useArbolStore = create((set, get) => ({
     get().cargarDetalle(seleccion)
   },
 }))
+
+// Invalida la caché de tipos-creables al cambiar el modo global del motor (#618).
+// motor-estado.js (topbar, polling 60s) dispara este evento cuando detecta que
+// el modo difiere del último conocido. Si hay un nodo con despensa/menú abiertos,
+// se recarga directamente para que el usuario vea el estado vigente sin esperar
+// a reabrir el menú.
+window.addEventListener('bddat:motor-modo-cambio', () => {
+  useArbolStore.setState({ _tiposCreablesCache: {} })
+  const { seleccion, menuCtx, tiposCreables } = useArbolStore.getState()
+  if (seleccion && (menuCtx || tiposCreables)) {
+    useArbolStore.getState().cargarTiposCreables(seleccion)
+  }
+})
 
 // --- selectores derivados de edición (S3b-1) ----------------------------------
 // hayCambios = el borrador difiere del snapshot inicial.

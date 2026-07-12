@@ -133,6 +133,14 @@ def test_leer_bypass_acepta_bypass_uno():
     assert err is None
 
 
+def test_leer_bypass_acepta_bool_true_de_json():
+    """bypass=True (bool nativo, body JSON de api_expedientes.py #616) también activa el escape."""
+    from app.routes.api_bc import _leer_bypass
+    justificacion, err = _leer_bypass({'bypass': True, 'justificacion': 'justificado'})
+    assert justificacion == 'justificado'
+    assert err is None
+
+
 # ---------------------------------------------------------------------------
 # D) Invariantes — bloqueos de invariantes_esftt no son escapables
 # ---------------------------------------------------------------------------

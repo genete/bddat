@@ -36,6 +36,7 @@ from app.services.tipos_creables import tipos_creables_de_nodo
 from app.services.detalle_nodo import detalle_de_nodo
 from app.services.esquema_editable import esquema_de_nodo
 from app.services import mutaciones_arbol as svc
+from app.routes.api_bc import _leer_bypass
 from app.services.assembler import build
 from app.services.requisitos import evaluar_requisitos
 from app.services.items_tecnicos import evaluar_items_tecnicos
@@ -487,6 +488,7 @@ def _bloqueo_422(res):
         'error': 'Bloqueado por el motor',
         'motivo': b.motivo or b.norma_compilada,
         'url_norma': b.url_norma,
+        'puede_escapar': b.puede_escapar,
     }), 422
 
 
@@ -502,8 +504,11 @@ def crear_hijo_nodo(expediente_id, padre_tipo, padre_id):
     POST .../nodo/<padre_tipo>/<padre_id>/hijos — crear hijo bajo un nodo (ADR-016 §S3b).
 
     Body JSON: {tipo_id} o {tipo_ids:[...]} cuando padre_tipo=='expediente'.
+    Bypass del motor (#324/#616): {..., bypass:true, justificacion:'...'} salta la
+    evaluación y registra la creación en bitácora con detalle {escape:true, justificacion}.
+    bypass=true sin justificacion → 400.
     Respuesta éxito: {ok:true, ids:[...]} 201.
-    Bloqueo motor: {error, motivo, url_norma} 422.
+    Bloqueo motor: {error, motivo, url_norma, puede_escapar} 422.
     """
     expediente = Expediente.query.get_or_404(expediente_id)
     # Hoja vs estructura (ADR-017 §6): bajo trámite se crean tareas (gestionar_tareas,
@@ -519,6 +524,10 @@ def crear_hijo_nodo(expediente_id, padre_tipo, padre_id):
 
     data = request.get_json(silent=True) or {}
 
+    justificacion, err = _leer_bypass(data)
+    if err:
+        return err
+
     if padre_tipo == 'expediente':
         tipo_ids = data.get('tipo_ids') or (
             [data['tipo_id']] if 'tipo_id' in data else None)
@@ -530,7 +539,8 @@ def crear_hijo_nodo(expediente_id, padre_tipo, padre_id):
             if not t:
                 return jsonify({'error': f'TipoSolicitud {tid} no encontrado'}), 404
             tipos.append(t)
-        res = svc.crear_solicitud(expediente, tipos, expediente.titular_id)
+        res = svc.crear_solicitud(expediente, tipos, expediente.titular_id,
+                                   justificacion=justificacion)
 
     elif padre_tipo == 'solicitud':
         tipo_id = data.get('tipo_id')
@@ -539,7 +549,7 @@ def crear_hijo_nodo(expediente_id, padre_tipo, padre_id):
         tipo = TipoFase.query.get(tipo_id)
         if not tipo:
             return jsonify({'error': f'TipoFase {tipo_id} no encontrado'}), 404
-        res = svc.crear_fase(padre, tipo)
+        res = svc.crear_fase(padre, tipo, justificacion=justificacion)
 
     elif padre_tipo == 'fase':
         tipo_id = data.get('tipo_id')
@@ -548,7 +558,7 @@ def crear_hijo_nodo(expediente_id, padre_tipo, padre_id):
         tipo = TipoTramite.query.get(tipo_id)
         if not tipo:
             return jsonify({'error': f'TipoTramite {tipo_id} no encontrado'}), 404
-        res = svc.crear_tramite(padre, tipo)
+        res = svc.crear_tramite(padre, tipo, justificacion=justificacion)
 
     elif padre_tipo == 'tramite':
         tipo_id = data.get('tipo_id')
@@ -557,7 +567,7 @@ def crear_hijo_nodo(expediente_id, padre_tipo, padre_id):
         tipo = TipoTarea.query.get(tipo_id)
         if not tipo:
             return jsonify({'error': f'TipoTarea {tipo_id} no encontrado'}), 404
-        res = svc.crear_tarea(padre, tipo)
+        res = svc.crear_tarea(padre, tipo, justificacion=justificacion)
 
     else:
         return jsonify({'error': f'Tipo de nodo no admite hijos: {padre_tipo!r}'}), 422

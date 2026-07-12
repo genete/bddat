@@ -16,29 +16,44 @@ const ETIQUETA_TIPO_HIJO = {
 }
 
 function ChipTipo({ tipo, seleccionado, onClickChip, onDragStart }) {
+  // Bloqueado por el motor (#616): clicable para stagear el forzado con justificación.
+  // Bloqueado estructural/invariante (puede_escapar=false): solo informativo, no clicable.
+  // Permitido con advertencia: mismo tratamiento visual que forzable, sin justificación.
+  const forzable = !tipo.permitido && tipo.puede_escapar
+  const advierte = tipo.permitido && !!tipo.advertencia
+  const clicable = tipo.permitido || forzable
   const tooltip = !tipo.permitido
-    ? [tipo.motivo, tipo.norma].filter(Boolean).join(' — ')
-    : tipo.advertencia ? `Advertencia: ${tipo.advertencia}` : ''
+    ? [tipo.motivo, tipo.norma].filter(Boolean).join(' — ') + (forzable ? ' (forzable con justificación)' : '')
+    : advierte ? `Advertencia: ${[tipo.advertencia.motivo, tipo.advertencia.norma].filter(Boolean).join(' — ')}` : ''
 
   return (
     <span
       className={`badge border small ${
         seleccionado
-          ? 'text-bg-primary border-primary'
+          ? tipo.permitido && !advierte ? 'text-bg-primary border-primary' : 'text-bg-warning border-warning'
           : tipo.permitido
-            ? 'text-bg-light border-secondary-subtle'
-            : 'text-bg-secondary opacity-50 border-0'
+            ? advierte
+              // text-bg-warning-subtle NO existe como clase combinada (los combos text-bg-*
+              // solo cubren los 8 colores base, no su variante -subtle) — quedaba blanco
+              // sobre blanco. Reutiliza text-bg-warning (ya usado arriba, seleccionado) con
+              // opacidad reducida para diferenciar del estado seleccionado.
+              ? 'text-bg-warning border-warning opacity-75'
+              : 'text-bg-light border-secondary-subtle'
+            : forzable
+              ? 'text-bg-warning border-warning opacity-75'
+              : 'text-bg-secondary opacity-50 border-0'
       }`}
       style={{
-        cursor: tipo.permitido ? 'grab' : 'not-allowed',
+        cursor: tipo.permitido ? 'grab' : forzable ? 'pointer' : 'not-allowed',
         userSelect: 'none',
       }}
       draggable={tipo.permitido}
       onDragStart={tipo.permitido ? onDragStart : undefined}
-      onClick={tipo.permitido ? onClickChip : undefined}
+      onClick={clicable ? onClickChip : undefined}
       title={tooltip || undefined}
     >
-      {tipo.advertencia && <span className="me-1">⚠</span>}
+      {advierte && <span className="me-1">⚠</span>}
+      {forzable && <span className="me-1">🔒</span>}
       {tipo.codigo}
     </span>
   )
@@ -49,10 +64,12 @@ function DespensaTipos() {
   const tiposCreables          = useArbolStore((s) => s.tiposCreables)
   const tiposCreablesCargando  = useArbolStore((s) => s.tiposCreablesCargando)
   const tipoCreacionPendiente  = useArbolStore((s) => s.tipoCreacionPendiente)
+  const justificacionForzar    = useArbolStore((s) => s.justificacionForzar)
   const creando                = useArbolStore((s) => s.creando)
   const cargarTiposCreables    = useArbolStore((s) => s.cargarTiposCreables)
   const seleccionarTipoCrear   = useArbolStore((s) => s.seleccionarTipoCrear)
   const cancelarCrear          = useArbolStore((s) => s.cancelarCrear)
+  const setJustificacionForzar = useArbolStore((s) => s.setJustificacionForzar)
   const crearHijo              = useArbolStore((s) => s.crearHijo)
 
   const [mostrarTodos, setMostrarTodos] = React.useState(false)
@@ -67,10 +84,13 @@ function DespensaTipos() {
   }
   if (!tiposCreables) return null
 
-  const tipos      = tiposCreables.tipos || []
-  const permitidos = tipos.filter((t) => t.permitido)
-  const hayNoPermitidos = permitidos.length < tipos.length
-  const mostrados  = mostrarTodos ? tipos : permitidos
+  const tipos   = tiposCreables.tipos || []
+  // "Solo permitidos" = sin ninguna reserva (ni bloqueo ni advertencia). Antes
+  // los permitidos-con-advertencia se colaban aquí (permitido:true), así que en
+  // SOLO_ADVERTIR "Mostrar todos" no tenía ningún efecto — todo ya se veía.
+  const limpios = tipos.filter((t) => t.permitido && !t.advertencia)
+  const mostrados = mostrarTodos ? tipos : limpios
+  const hayOcultos = limpios.length < tipos.length
   const tipoHijo   = ETIQUETA_TIPO_HIJO[tiposCreables.tipo_hijo] || tiposCreables.tipo_hijo || 'hijo'
 
   const onDragStart = (tipo) => (e) => {
@@ -102,14 +122,22 @@ function DespensaTipos() {
     <div className="p-2 d-flex flex-column gap-2">
       <div className="d-flex justify-content-between align-items-center">
         <span className="text-muted small fw-semibold">Crear {tipoHijo}</span>
-        {hayNoPermitidos && (
-          <button
-            type="button"
-            className="btn btn-link btn-sm p-0 small"
-            onClick={() => setMostrarTodos((v) => !v)}
-          >
-            {mostrarTodos ? 'Solo permitidos' : 'Mostrar todos'}
-          </button>
+        {tipos.length > 0 && (
+          <div className="form-check form-switch d-flex align-items-center gap-1 m-0">
+            <input
+              className="form-check-input"
+              type="checkbox"
+              role="switch"
+              id="despensa-mostrar-todos"
+              checked={mostrarTodos}
+              disabled={!hayOcultos}
+              onChange={() => setMostrarTodos((v) => !v)}
+              title={!hayOcultos ? 'No hay tipos bloqueados o con advertencia que ocultar' : undefined}
+            />
+            <label className="form-check-label small text-muted" htmlFor="despensa-mostrar-todos">
+              Mostrar todos
+            </label>
+          </div>
         )}
       </div>
 
@@ -120,7 +148,7 @@ function DespensaTipos() {
               key={t.tipo_id}
               tipo={t}
               seleccionado={tipoCreacionPendiente?.tipo_id === t.tipo_id}
-              onClickChip={() => seleccionarTipoCrear({ tipo_id: t.tipo_id, codigo: t.codigo, nombre: t.nombre })}
+              onClickChip={() => seleccionarTipoCrear(t)}
               onDragStart={onDragStart(t)}
             />
           ))}
@@ -129,7 +157,73 @@ function DespensaTipos() {
         <div className="text-muted small fst-italic">No hay tipos disponibles</div>
       )}
 
-      {tipoCreacionPendiente ? (
+      {tipoCreacionPendiente && tipoCreacionPendiente.permitido === false ? (
+        // Forzado con justificación (#616) — el tipo staged está bloqueado por el motor.
+        <div className="d-flex flex-column gap-1 px-2 py-2 rounded border bg-warning-subtle border-warning-subtle">
+          <span className="small">
+            <strong>{tipoCreacionPendiente.nombre}</strong> — bloqueado por el motor
+          </span>
+          <span className="small text-muted">
+            {[tipoCreacionPendiente.motivo, tipoCreacionPendiente.norma].filter(Boolean).join(' — ')}
+          </span>
+          <textarea
+            className="form-control form-control-sm"
+            rows={2}
+            placeholder="Justificación obligatoria para forzar la creación (queda en bitácora)"
+            value={justificacionForzar}
+            onChange={(e) => setJustificacionForzar(e.target.value)}
+            disabled={creando}
+          />
+          <div className="d-flex gap-2">
+            <button
+              type="button"
+              className="btn btn-sm btn-warning flex-grow-1"
+              disabled={creando || !justificacionForzar.trim()}
+              onClick={crearHijo}
+            >
+              {creando ? '…' : 'Forzar creación'}
+            </button>
+            <button
+              type="button"
+              className="btn btn-sm btn-outline-secondary"
+              disabled={creando}
+              onClick={cancelarCrear}
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      ) : tipoCreacionPendiente && tipoCreacionPendiente.advertencia ? (
+        // Permitido con advertencia — mismo tratamiento visual que el forzado (#616 feedback),
+        // sin justificación: el motor ya lo permite, solo avisa.
+        <div className="d-flex flex-column gap-1 px-2 py-2 rounded border bg-warning-subtle border-warning-subtle">
+          <span className="small">
+            <strong>{tipoCreacionPendiente.nombre}</strong> — se creará con advertencia
+          </span>
+          <span className="small text-muted">
+            {[tipoCreacionPendiente.advertencia.motivo, tipoCreacionPendiente.advertencia.norma]
+              .filter(Boolean).join(' — ')}
+          </span>
+          <div className="d-flex gap-2">
+            <button
+              type="button"
+              className="btn btn-sm btn-warning flex-grow-1"
+              disabled={creando}
+              onClick={crearHijo}
+            >
+              {creando ? '…' : 'Crear'}
+            </button>
+            <button
+              type="button"
+              className="btn btn-sm btn-outline-secondary"
+              disabled={creando}
+              onClick={cancelarCrear}
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      ) : tipoCreacionPendiente ? (
         <div className="d-flex align-items-center gap-2 px-2 py-1 rounded border bg-primary-subtle border-primary-subtle">
           <span className="small flex-grow-1 text-truncate">
             <strong>{tipoCreacionPendiente.nombre}</strong>

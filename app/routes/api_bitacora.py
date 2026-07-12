@@ -18,11 +18,30 @@ _ICONOS = {
     'BORRAR':  'bi-trash3',
 }
 
+_VERBOS_OP = {'CREAR': 'creación', 'BORRAR': 'borrado'}
+
 
 def _descripcion(entrada):
     tabla   = entrada.tabla
     detalle = entrada.detalle or {}
     op      = entrada.operacion
+
+    # Vía de escape del motor (#324/#616): mutaciones_arbol.py y api_bc.py graban
+    # {escape, justificacion, sujeto} en detalle para CREAR/BORRAR en cualquier
+    # tabla — priorizar sobre el genérico para que la justificación sea visible.
+    if detalle.get('escape'):
+        sujeto = detalle.get('sujeto') or f'{tabla} #{entrada.registro_id}'
+        verbo = _VERBOS_OP.get(op, op.lower())
+        justificacion = detalle.get('justificacion')
+        return f'Forzó {verbo} de {sujeto} — {justificacion}' if justificacion else f'Forzó {verbo} de {sujeto}'
+
+    # Creación permitida con advertencia (#616 feedback): mismo criterio que el
+    # escape pero sin justificación — la crea el motor, solo avisa.
+    if detalle.get('advertencia'):
+        sujeto = detalle.get('sujeto') or f'{tabla} #{entrada.registro_id}'
+        verbo = _VERBOS_OP.get(op, op.lower()).capitalize()
+        motivo = detalle.get('motivo')
+        return f'{verbo} con advertencia de {sujeto} — {motivo}' if motivo else f'{verbo} con advertencia de {sujeto}'
 
     if tabla == 'expedientes':
         try:

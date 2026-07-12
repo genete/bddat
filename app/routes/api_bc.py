@@ -56,13 +56,15 @@ def _bloqueo(res_eval):
 
 def _leer_bypass(form):
     """
-    Lee bypass + justificacion del form de la petición.
+    Lee bypass + justificacion de la petición (form-urlencoded o dict JSON — #616:
+    api_expedientes.py reutiliza esta función con el body JSON, donde bypass llega
+    como bool nativo en vez de string).
 
     Devuelve (justificacion, None) si bypass=true con texto válido,
     (None, None) si bypass está ausente o es false,
     (None, respuesta_400) si bypass=true pero justificacion está vacía.
     """
-    if form.get('bypass') not in ('true', '1', 'True'):
+    if form.get('bypass') not in ('true', '1', 'True', True):
         return None, None
     justificacion = (form.get('justificacion') or '').strip()
     if not justificacion:
