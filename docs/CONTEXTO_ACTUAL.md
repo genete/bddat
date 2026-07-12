@@ -8,9 +8,9 @@
 
 ---
 
-**Hecho:** #621 (CRUD catálogo de tipos de documento, PR #622).
+**Hecho:** #379 (selector de tipo de documento al incorporar — ya resuelto en develop sin PR, cerrado con comentario explicativo).
 
-**Próximo:** #379 (selector de tipo de documento al incorporar).
+**Próximo:** #588, #589, #590 (ADR-029 — hub del supervisor universal, dashboard 1:1 del sidebar + Mi Perfil, retirar prefijo /admin).
 
 ---
 
