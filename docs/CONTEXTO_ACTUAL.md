@@ -8,14 +8,9 @@
 
 ---
 
-**Hecho:** #616/#617/#618 — Bugs del árbol evidenciados al verificar #479: vía
-de escape del motor (bypass/justificación) alcanzable desde la despensa real,
-con la misma auditoría en bitácora para advertencias; toast de advertencia y
-caché de tipos creables corregidos. Suite completa: 837 passed, 24 skipped.
-PR #619.
+**Hecho:** #612 (N034 — asignación masiva de expedientes a técnico
 
-**Próximos:** #612 (N034 — asignación masiva de expedientes a técnico, abierto
-en la sesión de reposición de #171).
+**Próximo:** Reposición de necesidades en próxima sesión.
 
 ---
 
