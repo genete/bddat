@@ -173,7 +173,7 @@ export const useArbolStore = create((set, get) => ({
       showToast('Cambios guardados', 'success')
       if (data && data.advertencia) {                 // defensivo (PATCH editar no lo emite hoy)
         const a = data.advertencia
-        showToast(typeof a === 'string' ? a : (a.mensaje || a.texto || 'Revisa la advertencia'), 'warning')
+        showToast(typeof a === 'string' ? a : (a.motivo || 'Revisa la advertencia'), 'warning')
       }
       set({ guardando: false, modoEdicion: false, editableCampos: [], borrador: {}, borradorInicial: {} })
       await get().refrescarArbol()
@@ -284,7 +284,7 @@ export const useArbolStore = create((set, get) => ({
       showToast('Elemento creado', 'success')
       if (data.advertencia) {
         const a = data.advertencia
-        showToast(typeof a === 'string' ? a : (a.mensaje || a.texto || 'Revisa la advertencia'), 'warning')
+        showToast(typeof a === 'string' ? a : (a.motivo || 'Revisa la advertencia'), 'warning')
       }
       // Invalidar caché de tipos del padre (el nuevo hijo puede cambiar lo creable).
       set((s) => {
