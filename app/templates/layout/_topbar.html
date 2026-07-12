@@ -39,6 +39,7 @@
     {% if modo_motor %}
     <span id="js-motor-estado"
           class="badge rounded-pill text-bg-{{ modo_motor.clase }}"
+          data-modo="{{ modo_motor.modo }}"
           title="Modo global del motor: {{ modo_motor.etiqueta }}">
       <i class="bi bi-shield-check"></i> {{ modo_motor.etiqueta }}
     </span>

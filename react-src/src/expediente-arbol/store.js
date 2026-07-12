@@ -390,6 +390,19 @@ export const useArbolStore = create((set, get) => ({
   },
 }))
 
+// Invalida la caché de tipos-creables al cambiar el modo global del motor (#618).
+// motor-estado.js (topbar, polling 60s) dispara este evento cuando detecta que
+// el modo difiere del último conocido. Si hay un nodo con despensa/menú abiertos,
+// se recarga directamente para que el usuario vea el estado vigente sin esperar
+// a reabrir el menú.
+window.addEventListener('bddat:motor-modo-cambio', () => {
+  useArbolStore.setState({ _tiposCreablesCache: {} })
+  const { seleccion, menuCtx, tiposCreables } = useArbolStore.getState()
+  if (seleccion && (menuCtx || tiposCreables)) {
+    useArbolStore.getState().cargarTiposCreables(seleccion)
+  }
+})
+
 // --- selectores derivados de edición (S3b-1) ----------------------------------
 // hayCambios = el borrador difiere del snapshot inicial.
 //   · habilita/inhabilita Guardar
