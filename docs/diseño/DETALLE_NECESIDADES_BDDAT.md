@@ -60,6 +60,7 @@
 | N076 | Detectar documentos del pool sin vincular a ninguna tarea de tramitación ("radar de huérfanos") | Tramitador/Administrativo | 2 — Sistema documental | M1 |
 | N077 | Detectar documentos duplicados en el pool del expediente (verificación de integridad) | Tramitador/Administrativo | 2 — Sistema documental | M1 |
 | N078 | Mantener el catálogo de requisitos documentales exigidos por normativa, con condiciones de aplicabilidad según el trámite/instalación | Supervisor | 2 — Sistema documental | M3 |
+| N082 | Mantener el catálogo de tipos de documento (código identificador inmutable tras el alta, usado en el motor de reglas y en el código, mismo régimen que los tipos ESFTT de N019) | Supervisor | 2 — Sistema documental | M3 |
 
 ---
 

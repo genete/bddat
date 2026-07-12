@@ -8,9 +8,12 @@
 
 ---
 
-**Hecho:** #612 (N034 — asignación masiva de expedientes a técnico
+**Hecho:** Reposición de necesidades — N082 (CRUD catálogo de tipos de documento)
+añadida a MATRIZ_COBERTURA/DETALLE_NECESIDADES; issue #621 creado; #379 reencuadrado
+(quitada `necesidad:N004` sin sustituto real, `bug` en vez de `enhancement`).
 
-**Próximo:** Reposición de necesidades en próxima sesión.
+**Próximo:** #621 (CRUD tipos de documento) y #379 (selector de tipo de documento al
+incorporar).
 
 ---
 
