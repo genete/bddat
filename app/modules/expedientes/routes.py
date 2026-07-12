@@ -116,7 +116,18 @@ def listado_v2():
     """
     meta = cargar_metadata('expedientes')
     columns = meta.get('listado_v2', {}).get('columns', [])
-    return render_template('expedientes/listado_v2.html', columns=columns)
+    puede_cambiar_resp = puede_cambiar_responsable()
+    usuarios = []
+    if puede_cambiar_resp:
+        usuarios = Usuario.query.filter_by(activo=True).order_by(
+            Usuario.apellido1, Usuario.apellido2
+        ).all()
+    return render_template(
+        'expedientes/listado_v2.html',
+        columns=columns,
+        puede_cambiar_resp=puede_cambiar_resp,
+        usuarios=usuarios,
+    )
 
 
 @bp.route('/<int:id>')
@@ -331,6 +342,56 @@ def editar(id):
     flash(f'Expediente AT-{expediente.numero_at} actualizado correctamente.', 'success')
     return redirect(url_for('expedientes.listado_v2', sel=id))
 
+
+@bp.route('/asignacion-masiva', methods=['POST'])
+@login_required
+def asignacion_masiva():
+    """Asigna un técnico a varios expedientes huérfanos a la vez (#612 / N034).
+
+    Solo actúa sobre expedientes SIN responsable — nunca reasigna uno que ya
+    tiene técnico (eso sigue siendo exclusivamente individual, vía /editar).
+    El filtro server-side por responsable_id IS NULL es defensa en profundidad:
+    aunque el listado ya solo muestra huérfanos, evita pisar una asignación
+    hecha por otra persona entre la carga de la lista y el envío del formulario.
+    """
+    if not puede_cambiar_responsable():
+        return jsonify({'ok': False, 'errors': ['Sin permiso para asignar expedientes']}), 403
+
+    data = request.get_json(silent=True) or {}
+    ids_raw = data.get('expediente_ids') or []
+    responsable_id_raw = data.get('responsable_id')
+
+    try:
+        ids = [int(i) for i in ids_raw]
+    except (TypeError, ValueError):
+        return jsonify({'ok': False, 'errors': ['Identificadores de expediente inválidos']}), 400
+
+    if not ids or not responsable_id_raw:
+        return jsonify({'ok': False, 'errors': ['Selecciona expedientes y un técnico']}), 400
+
+    try:
+        responsable_id = int(responsable_id_raw)
+    except (TypeError, ValueError):
+        return jsonify({'ok': False, 'errors': ['Técnico inválido']}), 400
+
+    if not Usuario.query.get(responsable_id):
+        return jsonify({'ok': False, 'errors': ['Técnico no encontrado']}), 400
+
+    expedientes = Expediente.query.filter(
+        Expediente.id.in_(ids), Expediente.responsable_id.is_(None)
+    ).all()
+    omitidos = sorted(set(ids) - {e.id for e in expedientes})
+
+    for e in expedientes:
+        e.responsable_id = responsable_id
+
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'ok': False, 'errors': [f'Error al guardar: {e}']}), 500
+
+    return jsonify({'ok': True, 'actualizados': len(expedientes), 'omitidos': omitidos})
 
 
 @bp.route('/tarea/<int:tarea_id>/generar_cert', methods=['POST'])
