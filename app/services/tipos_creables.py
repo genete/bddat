@@ -60,6 +60,9 @@ def _item(tipo_id, codigo, nombre, res: EvaluacionResult) -> dict:
         item['motivo'] = res.motivo
         item['norma'] = res.norma_compilada
         item['url_norma'] = res.url_norma
+        # Solo los bloqueos del motor son forzables con justificación (#324/#616);
+        # los estructurales (_item_estructural) y de invariantes no lo son.
+        item['puede_escapar'] = res.puede_escapar
     elif res.nivel == 'ADVERTIR':
         item['advertencia'] = {'motivo': res.motivo, 'norma': res.norma_compilada, 'url_norma': res.url_norma}
     return item
