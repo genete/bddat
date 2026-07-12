@@ -1,0 +1,69 @@
+{# _editar_fragmento.html — Parcial de edición para el inspector (ADR-023 / #621).
+   No extiende base_app.html. Inyectado por inspector-overlay.js vía data-inspector-edit.
+   Submit interceptado: POST XHR → JSON { ok, errors, message }.
+   El código se muestra pero nunca se envía (inmutable, el backend lo ignora
+   aunque llegara — mismo patrón que tablas_maestras).
+#}
+
+<div class="p-3">
+
+<form data-inspector-form class="form-tipo-documento-editar"
+      data-action="{{ url_for('tipos_documentos.editar', id=tipo.id) }}">
+
+<div id="inspector-form-errors" class="alert alert-danger py-2 mb-3 small" style="display:none;"></div>
+
+<div class="d-flex justify-content-end gap-2 mb-3">
+    <button type="button" class="btn btn-outline-secondary btn-sm" data-inspector-cancel-edit>
+        <i class="fas fa-times me-1"></i> Cancelar
+    </button>
+    <button type="submit" class="btn btn-primary btn-sm">
+        <i class="fas fa-save me-1"></i> Guardar cambios
+    </button>
+</div>
+
+<div class="card mb-3">
+    <div class="card-header card-header-accent fw-semibold">
+        <i class="fas fa-tags me-1"></i> Tipo de documento
+        {% if protegido %}
+        <span class="badge bg-warning-subtle text-warning-emphasis ms-1">
+            <i class="fas fa-lock me-1"></i>Anclado en código
+        </span>
+        {% endif %}
+    </div>
+    <div class="card-body card-body-tinted">
+        <div class="row g-2">
+            <div class="col-12">
+                <label class="form-label fw-semibold small">Código</label>
+                <input type="text" class="form-control form-control-sm" value="{{ tipo.codigo }}" disabled>
+                <div class="form-text">No editable tras el alta (#621).</div>
+            </div>
+            <div class="col-12">
+                <label class="form-label fw-semibold small" for="tf_nombre">
+                    Nombre <span class="text-danger">*</span>
+                </label>
+                <input type="text" class="form-control form-control-sm" id="tf_nombre" name="nombre"
+                       value="{{ tipo.nombre }}" required>
+            </div>
+            <div class="col-12">
+                <label class="form-label fw-semibold small" for="tf_descripcion">Descripción</label>
+                <textarea class="form-control form-control-sm" id="tf_descripcion" name="descripcion"
+                          rows="2">{{ tipo.descripcion or '' }}</textarea>
+            </div>
+            <div class="col-12">
+                <label class="form-label fw-semibold small" for="tf_origen">
+                    Origen <span class="text-danger">*</span>
+                </label>
+                <select class="form-select form-select-sm" id="tf_origen" name="origen" required>
+                    {% for codigo, etiqueta in origenes %}
+                    <option value="{{ codigo }}" {% if tipo.origen == codigo %}selected{% endif %}>
+                        {{ etiqueta }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+    </div>
+</div>
+
+</form>
+</div>{# /p-3 #}

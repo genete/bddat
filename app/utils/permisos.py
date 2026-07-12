@@ -67,6 +67,14 @@ PERMISOS = {
     # Baja física (DELETE real) — solo ADMIN, mismo criterio que requisitos_documentales.
     'eliminar_items_tecnicos':  {'ADMIN'},
 
+    # CRUD admin de tipos_documentos (#621) — catálogo de tipos semánticos de
+    # documento (código inmutable usado en motor de reglas y código, mismo
+    # régimen que N019/tablas_maestras). Tabla plana, sin baja (ni lógica ni
+    # física: el modelo no tiene columna `activo`). Entra como tarjeta del hub
+    # del supervisor (ADR-029 §1), sin metadata.json propio.
+    'acceder_tipos_documentos':   {'ADMIN', 'SUPERVISOR', 'TRAMITADOR', 'ADMINISTRATIVO'},
+    'gestionar_tipos_documentos': {'ADMIN', 'SUPERVISOR'},
+
     # Árbol del expediente — frontera hoja / estructura (ADR-017 §6, #501).
     # "Puerta abierta": gestionar_tareas habilita COMPLETAR cualquier tarea ya
     # prevista (incluye ADMINISTRATIVO); la bitácora es la rendición de cuentas.

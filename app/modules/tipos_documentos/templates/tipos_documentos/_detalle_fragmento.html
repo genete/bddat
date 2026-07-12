@@ -1,0 +1,57 @@
+{# _detalle_fragmento.html — Parcial de lectura para el inspector (ADR-023 / #621).
+   No extiende base_app.html. Inyectado vía AppInspector.open({ fragmentUrl }).
+   - "Editar" → fragmento de edición (data-inspector-edit).
+   - Sin baja: ni lógica ni física (el modelo no tiene columna `activo`, #621).
+#}
+
+<div class="p-3">
+
+<div class="d-flex justify-content-end gap-2 mb-3">
+    {% if puede_editar %}
+    <button type="button" class="btn btn-primary btn-sm"
+            data-inspector-edit
+            data-edit-url="{{ url_for('tipos_documentos.editar_fragmento', id=tipo.id) }}">
+        <i class="fas fa-edit me-1"></i> Editar
+    </button>
+    {% endif %}
+</div>
+
+<div class="card mb-3">
+    <div class="card-header card-header-accent fw-semibold">
+        <i class="fas fa-tags me-1"></i> Tipo de documento
+        {% if protegido %}
+        <span class="badge bg-warning-subtle text-warning-emphasis ms-1"
+              title="Este código tiene comportamiento especial hardcodeado en Python (app/checks/catalogo_requerido.py) — cambiarlo rompería esa lógica.">
+            <i class="fas fa-lock me-1"></i>Anclado en código
+        </span>
+        {% endif %}
+    </div>
+    <div class="card-body card-body-tinted">
+        <div class="row g-2">
+            <div class="col-12">
+                <label class="form-label fw-semibold small">Código</label>
+                <input type="text" class="form-control form-control-sm" value="{{ tipo.codigo }}" readonly>
+                <div class="form-text">Fijo desde el alta — no se puede renombrar (#621).</div>
+            </div>
+            <div class="col-12">
+                <label class="form-label fw-semibold small">Nombre</label>
+                <input type="text" class="form-control form-control-sm" value="{{ tipo.nombre }}" readonly>
+            </div>
+            <div class="col-12">
+                <label class="form-label fw-semibold small">Descripción</label>
+                <textarea class="form-control form-control-sm" rows="2" readonly>{{ tipo.descripcion or '' }}</textarea>
+            </div>
+            <div class="col-12">
+                <label class="form-label fw-semibold small">Origen</label>
+                <input type="text" class="form-control form-control-sm"
+                       value="{{ origenes_labels.get(tipo.origen, tipo.origen) }}" readonly>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="form-text">
+    <i class="fas fa-ban me-1"></i>Sin baja: es un catálogo referenciado por otras tablas del sistema.
+</div>
+
+</div>{# /p-3 #}
