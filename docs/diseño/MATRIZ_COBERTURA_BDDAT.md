@@ -9,52 +9,11 @@
 > despliegue) — nunca issues ni documentos de diseño, que quedan desactualizados
 > con frecuencia en este proyecto. Todo % está respaldado por evidencia directa
 > de código, verificada — no hay filas con "pendiente de verificar".
-> **Última auditoría completa:** 2026-07-08 (6 agentes en paralelo sobre el
-> código + auditoría directa de infraestructura/datos estructurales + repaso de
-> correcciones de Carlos sobre el primer borrador). **2026-07-09:** añadidas
-> N078-N081 (auditoría individual de código, no re-auditoría completa),
-> surgidas del etiquetado retroactivo `necesidad:N0XX` de ADR-031; #593 cerrado
-> tras confirmar en código que su PR (#597, "Refs" en vez de "Closes") sí
-> completó el alcance. N001 subida a 97% tras #440/#495/#581 (checklist de
-> diagnóstico completo en la tarea ANALIZAR) — auditoría de esa sub-área, no
-> re-auditoría completa de la fila. **2026-07-11:** N019 0%→90% tras #171
-> (CRUD de tipos ESFTT: Expediente/Solicitud/Fase/Trámite/Tarea, módulo
-> `tablas_maestras`) — auditoría de esa fila, no re-auditoría completa.
+> **Origen:** auditoría inicial de código (sesión de diseño 2026-07-08). Ciclo de
+> trabajo que gobierna esta matriz: ADR-031. Historial de cambios fila a fila:
+> `git log` sobre este fichero.
 > Columna "Necesidad" es una copia legible de `DETALLE_NECESIDADES_BDDAT.md` —
 > ese documento sigue siendo la fuente de verdad si hace falta más contexto.
-
----
-
-## Lectura rápida
-
-- **Peor de lo que "está abierto" sugería:** varios mecanismos que la memoria del
-  proyecto daba por vivos resultaron estar desconectados de la ruta real que usa
-  el usuario — el backend existe, pero nadie puede llegar a él desde la interfaz.
-  Ver N012/N013 (modal de generar escrito huérfano), N040 (cambio de titularidad
-  sin ningún caller).
-- **Un ADR "Adoptado" con 0% de implementación real:** N057 — ADR-027 dice
-  "Adoptada" en su cabecera, pero su propio plan de implementación nunca se
-  ejecutó en código.
-- **Una interfaz que miente:** N054 — el botón de "solicitar cambio de rol"
-  muestra un mensaje de éxito aunque no persiste nada (`# TODO` explícito en el
-  código).
-- **El propio código ya se declara incompleto:** el hub del Supervisor tiene
-  varias tarjetas marcadas "próximamente" con su issue de referencia (#170/#479
-  motor, #256 auditoría, #74 semáforos, #76 informes, #295 operaciones masivas).
-- **Mensajería interna (Bloque 13) y Manual (Bloque 12): 0-15% real**, confirmado
-  con evidencia negativa exhaustiva.
-- **Mejor de lo esperado:** N067 (festivos) tiene un comando real contra la API
-  oficial de la Junta, con aviso proactivo. N073 (representación) tiene una
-  pantalla de gestión completa que el primer borrador de esta matriz no había
-  encontrado.
-- **6 necesidades nuevas** aparecieron auditando código que no tenía fila propia
-  (N073-N077 en `DETALLE_NECESIDADES_BDDAT.md`).
-- **2 duplicados/redundancias resueltas:** N014 retirada (= N055); N030 retirada
-  por decisión directa de Carlos.
-- **N017 y N022 (Admin, sobreescritura de emergencia)**: revisadas tras
-  corrección de Carlos — ninguna de las dos tiene mecanismo real en la
-  aplicación; ambas serían hoy una intervención directa en BD. Pregunta abierta
-  de Carlos sin resolver: si eso necesita codificarse alguna vez.
 
 ---
 
@@ -139,7 +98,7 @@
 
 | Id | Necesidad | % Cobertura | Qué falta |
 |---|---|---|---|
-| N034 | Asignar expedientes a técnicos (uno o varios, mismo interfaz) | 50% | La asignación de un expediente a la vez, desde su formulario individual, funciona. Falta selección múltiple / asignación en lote — el propio hub del Supervisor lo marca "próximamente" (#295). |
+| N034 | Asignar expedientes a técnicos (uno o varios, mismo interfaz) | 100% | Nada — asignación individual (cualquier expediente, incluida desasignación) y asignación masiva (selección múltiple sobre expedientes sin asignar, desde el listado) cubiertas (#612). La reasignación masiva de un expediente que ya tiene técnico queda deliberadamente fuera — decisión de diseño para evitar pisar sin querer el trabajo ya asignado de otro técnico, no un hueco; esa vía sigue siendo exclusivamente individual. |
 | N036 | Gestionar altas/bajas de usuarios y roles | 90% | Alta, edición, activar/desactivar usuarios y asignación de roles, con protecciones (no autodesactivarse, no quitar el último Admin). El catálogo de los 4 tipos de rol en sí es fijo por diseño (son los 4 actores de negocio que fija `PLAN_ESTRATEGIA.md` §B, no un catálogo abierto) — no es un hueco real. |
 | N037 | Consultar estadísticas de carga interna (por técnico/pista/estado, plazos vencidos, antigüedad) | 50% | KPIs, desglose por estado y por técnico ya construidos y visibles (isla React de estadísticas). Falta desglose por pista y por antigüedad — el propio hub lo marca "próximamente" (#256). |
 | N038 | Generar informes de estado de situación bajo demanda para servicios centrales | 0% | Todo — sin servicio, sin ruta, solo una tarjeta "próximamente" (#76) en el hub. |
@@ -214,19 +173,3 @@
 |---|---|---|---|
 | N066 | Catálogo estructural mínimo cargado para producción: tipos de ESFTT/trámite/tarea reales, reglas de motor con contenido normativo real, plazos legales reales por tipo, municipios completos | 35% | El mecanismo de carga de datos reales vía migración existe y se ha usado de forma sostenida (decenas de migraciones de seed para tipos, plazos, normas, organismos). Falta: (a) ninguna migración carga el catálogo completo de municipios andaluces — la tabla se crea vacía; (b) la completitud del contenido normativo frente a lo que exige la legislación por tipo de trámite es el eje "motor-contenido normativo" que sigue pendiente de su propia auditoría en profundidad. |
 
----
-
-## Referencia rápida — necesidades a 0%
-
-N007, N011, N017, N020, N021, N022, N032, N033, N038, N039, N040, N045,
-N047, N048, N051, N055, N056, N057, N060, N061, N064, N065, N070, N071, N077,
-N080 — 26 de 76 necesidades activas sin ninguna cobertura real detectada.
-
----
-
-Metodología completa de esta auditoría (6 agentes en paralelo por bloques
-temáticos + auditoría directa de infraestructura y datos estructurales, con
-verificación adicional de código en la ronda de correcciones de Carlos) y
-evidencia detallada (archivo:línea) de cada fila: sesión de diseño 2026-07-08.
-No se traslada aquí para no romper la naturaleza de "plan maestro" de este
-documento — disponible bajo petición.
