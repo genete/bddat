@@ -64,8 +64,14 @@
  *     - bool     : icono check si true, vacío si false
  *     - acciones : botón "Ver" que navega a detailUrl(id); omitido en modo selección
  *
- * VERSIÓN: 1.5
+ * VERSIÓN: 1.6
  * FECHA: 2026-07-12
+ * CAMBIOS v1.6: reload() ahora invalida con seguridad un loadMore() en vuelo (token
+ *               _loadGen) en vez de quedar bloqueado por la guarda `this.loading`.
+ *               Sin esto, llamar reload()/setBulkMode() justo tras construir la
+ *               instancia (mientras la carga inicial del constructor sigue en curso)
+ *               perdía el reload: la respuesta vieja, sin el filtro nuevo, acababa
+ *               poblando la tabla (#612).
  * CAMBIOS v1.5: Modo checkbox masivo opt-in (bulkCheckbox / setBulkMode) para
  *               asignación en lote (#612). Sin bulkCheckbox, cero cambio de
  *               comportamiento — el resto de listados no lo pasan.
@@ -122,6 +128,12 @@ class ScrollInfinito {
         this.loading        = false;
         this.totalLoaded    = 0;
         this.totalAvailable = null;
+        // Token de generación: invalida cualquier loadMore() en vuelo cuando reload()
+        // se dispara antes de que termine (p.ej. setBulkMode() llamado justo tras
+        // construir la instancia, mientras la carga inicial del constructor sigue en
+        // curso — sin esto, la guarda `this.loading` bloquea la recarga con el filtro
+        // nuevo y la respuesta vieja, sin filtrar, acaba poblando la tabla).
+        this._loadGen        = 0;
 
         // Referencias DOM
         this.container      = document.querySelector('.lista-scroll-container');
@@ -165,6 +177,7 @@ class ScrollInfinito {
 
     async loadMore() {
         if (this.loading || !this.hasMore) return;
+        const myGen = this._loadGen;
         this.loading = true;
         this.showLoader();
 
@@ -187,6 +200,9 @@ class ScrollInfinito {
             if (!response.ok) throw new Error(`Error ${response.status}: ${response.statusText}`);
 
             const data = await response.json();
+            // Una recarga más reciente (reload()) invalidó esta petición mientras
+            // estaba en vuelo — descartar en silencio, no tocar tbody ni estado.
+            if (myGen !== this._loadGen) return;
 
             this.cursor         = data.next_cursor;
             this.hasMore        = data.has_more;
@@ -200,11 +216,14 @@ class ScrollInfinito {
             console.log(`[${this.entityLabel}] Cargados ${data.data.length}. Total: ${this.totalLoaded}. HasMore: ${this.hasMore}`);
 
         } catch (error) {
+            if (myGen !== this._loadGen) return;
             console.error(`Error cargando ${this.entityLabel}:`, error);
             this.showError(`Error al cargar ${this.entityLabel}. Inténtalo de nuevo.`);
         } finally {
-            this.loading = false;
-            this.hideLoader();
+            if (myGen === this._loadGen) {
+                this.loading = false;
+                this.hideLoader();
+            }
         }
     }
 
@@ -411,6 +430,17 @@ class ScrollInfinito {
     }
 
     /**
+     * Vacía la selección sin salir del modo masivo (a diferencia de setBulkMode(false),
+     * no toca el filtro ni recarga). Cubre lo que hoy solo se lograba con doble click
+     * en "seleccionar todos" del thead.
+     */
+    clearBulkSelection() {
+        this._toggleAllVisibleBulk(false);
+        const headChk = this.tbody.closest('table')?.querySelector('thead .bulk-check-col input');
+        if (headChk) headChk.checked = false;
+    }
+
+    /**
      * Enciende/apaga el modo checkbox masivo en runtime. Requiere bulkCheckbox:true
      * en el constructor. Al activar, fuerza el filtro a expedientes sin asignar y
      * recarga desde cero (misma entrada siempre limpia — no hay selección previa que
@@ -502,8 +532,10 @@ class ScrollInfinito {
     }
 
     reload() {
+        this._loadGen++;
         this.cursor         = 0;
         this.hasMore        = true;
+        this.loading        = false;
         this.totalLoaded    = 0;
         this.totalAvailable = null;
         this.tbody.innerHTML = '';
