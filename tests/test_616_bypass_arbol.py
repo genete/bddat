@@ -8,6 +8,7 @@ Bloques:
   A) crear_hijo_nodo lee bypass+justificacion del JSON y los propaga a svc.crear_*.
   B) _bloqueo_422 incluye puede_escapar (antes ausente, #616).
   C) tipos_creables._item propaga puede_escapar solo en bloqueos del motor.
+  D) api_bitacora._descripcion surfacea justificación en entradas de escape.
 """
 from unittest.mock import patch
 
@@ -97,3 +98,45 @@ def test_tipos_creables_item_no_incluye_puede_escapar_si_permitido():
 
     item = _item(1, 'COD', 'Nombre', PERMITIDO)
     assert 'puede_escapar' not in item
+
+
+# ---------------------------------------------------------------------------
+# D) api_bitacora._descripcion — justificación visible en entradas de escape
+# ---------------------------------------------------------------------------
+
+class _EntradaFake:
+    def __init__(self, tabla, registro_id, operacion, detalle):
+        self.tabla = tabla
+        self.registro_id = registro_id
+        self.operacion = operacion
+        self.detalle = detalle
+
+
+def test_descripcion_escape_muestra_justificacion_y_sujeto():
+    from app.routes.api_bitacora import _descripcion
+
+    entrada = _EntradaFake('solicitudes', 680, 'CREAR', {
+        'escape': True,
+        'justificacion': 'Tramitación urgente por plazo administrativo',
+        'sujeto': 'Distribucion/AAP/AE_DEFINITIVA',
+    })
+    desc = _descripcion(entrada)
+    assert desc == ('Forzó creación de Distribucion/AAP/AE_DEFINITIVA — '
+                     'Tramitación urgente por plazo administrativo')
+
+
+def test_descripcion_escape_borrar_usa_verbo_borrado():
+    from app.routes.api_bitacora import _descripcion
+
+    entrada = _EntradaFake('tareas', 42, 'BORRAR', {
+        'escape': True, 'justificacion': 'Duplicada', 'sujeto': 'ANY/AAP/RESOLUCION',
+    })
+    assert _descripcion(entrada) == 'Forzó borrado de ANY/AAP/RESOLUCION — Duplicada'
+
+
+def test_descripcion_sin_escape_mantiene_generico():
+    """No-regresión: entradas normales (sin detalle.escape) siguen con el genérico."""
+    from app.routes.api_bitacora import _descripcion
+
+    entrada = _EntradaFake('solicitudes', 680, 'CREAR', {})
+    assert _descripcion(entrada) == 'Crear en solicitudes #680'
