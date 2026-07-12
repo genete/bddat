@@ -45,14 +45,30 @@
  *     recibe data-inspector-sel y un click handler que llama AppInspector.open.
  *     Requiere window.AppInspector (inspector-overlay.js) cargado antes.
  *
+ *   Modo checkbox masivo (asignación en lote, #612):
+ *     const s = new ScrollInfinito({
+ *       ...
+ *       bulkCheckbox: true
+ *     });
+ *     Con bulkCheckbox activo, el modo se enciende/apaga en runtime con
+ *     `s.setBulkMode(true|false)` — no en el constructor. Mientras está activo:
+ *     cada fila gana un checkbox inicial (sustituye al comportamiento de `selection`,
+ *     que queda suspendido) y el <thead> gana un checkbox "seleccionar todos". La
+ *     selección vive en `s._bulkSelected` (Set de ids) y cada cambio dispara
+ *     `document.dispatchEvent(new CustomEvent('bulk:selection-changed', {detail}))`.
+ *     `setBulkMode` fuerza `fixedParams.responsable = 'sin_asignar'` y hace `reload()`.
+ *
  *   Tipos de columna soportados:
  *     - text     : textContent plano
  *     - badge    : <span class="badge badge-info">
  *     - bool     : icono check si true, vacío si false
  *     - acciones : botón "Ver" que navega a detailUrl(id); omitido en modo selección
  *
- * VERSIÓN: 1.4
- * FECHA: 2026-06-14
+ * VERSIÓN: 1.5
+ * FECHA: 2026-07-12
+ * CAMBIOS v1.5: Modo checkbox masivo opt-in (bulkCheckbox / setBulkMode) para
+ *               asignación en lote (#612). Sin bulkCheckbox, cero cambio de
+ *               comportamiento — el resto de listados no lo pasan.
  * CAMBIOS v1.4: Multi-filtro — envía todos los .filters select por su atributo `name`
  *               (antes solo el primero como 'estado'). Habilita 2+ filtros por listado
  *               (usuarios: activo+rol) y activa filtros ya soportados por backend (#544).
@@ -75,6 +91,8 @@ class ScrollInfinito {
      * @param {Object}   options.selection   - Config modo selección (ADR-023). Si se pasa: activa inspector
      *                                         overlay en lugar del botón "Ver". Campos:
      *                                         { fragmentUrl: id => '...', title: item => '...' }
+     * @param {boolean}  options.bulkCheckbox - Habilita el modo checkbox masivo (#612). Opt-in: sin esta
+     *                                         opción, cero cambio de comportamiento. Ver setBulkMode().
      */
     constructor(options = {}) {
         // Configuración base
@@ -91,6 +109,12 @@ class ScrollInfinito {
 
         // Modo selección — inspector overlay (v1.3 / ADR-023 / #534)
         this.selection   = options.selection   || null;
+
+        // Modo checkbox masivo — asignación en lote (v1.5 / #612). Capacidad opt-in;
+        // el modo en sí se enciende/apaga en runtime con setBulkMode().
+        this.bulkCheckbox     = options.bulkCheckbox || false;
+        this._bulkModeActive  = false;
+        this._bulkSelected    = new Set();
 
         // Estado
         this.cursor         = 0;
@@ -213,7 +237,9 @@ class ScrollInfinito {
      */
     createRowFromColumns(item) {
         const tr = document.createElement('tr');
-        if (this.selection) {
+        if (this.bulkCheckbox && this._bulkModeActive) {
+            tr.appendChild(this._createBulkCheckCell(item));
+        } else if (this.selection) {
             tr.setAttribute('data-inspector-sel', String(item.id));
             tr.classList.add('is-selectable');
             tr.addEventListener('click', () => this._handleRowClick(tr, item));
@@ -346,6 +372,82 @@ class ScrollInfinito {
         const cur = AppInspector.currentSel();
         if (!cur) return;
         this.tbody.querySelectorAll(`tr[data-inspector-sel="${cur}"]`).forEach(r => r.classList.add('is-selected'));
+    }
+
+    // ---------------------------------------------------------------------------
+    // MODO CHECKBOX MASIVO — asignación en lote (v1.5 / #612)
+    // ---------------------------------------------------------------------------
+
+    _createBulkCheckCell(item) {
+        const td = document.createElement('td');
+        const chk = document.createElement('input');
+        chk.type = 'checkbox';
+        chk.className = 'form-check-input bulk-row-check';
+        chk.dataset.id = String(item.id);
+        chk.checked = this._bulkSelected.has(item.id);
+        chk.addEventListener('change', () => {
+            if (chk.checked) this._bulkSelected.add(item.id);
+            else this._bulkSelected.delete(item.id);
+            this._dispatchBulkChange();
+        });
+        td.appendChild(chk);
+        return td;
+    }
+
+    _dispatchBulkChange() {
+        document.dispatchEvent(new CustomEvent('bulk:selection-changed', {
+            detail: { size: this._bulkSelected.size, ids: Array.from(this._bulkSelected) },
+        }));
+    }
+
+    _toggleAllVisibleBulk(checked) {
+        this.tbody.querySelectorAll('.bulk-row-check').forEach(chk => {
+            chk.checked = checked;
+            const id = parseInt(chk.dataset.id, 10);
+            if (checked) this._bulkSelected.add(id);
+            else this._bulkSelected.delete(id);
+        });
+        this._dispatchBulkChange();
+    }
+
+    /**
+     * Enciende/apaga el modo checkbox masivo en runtime. Requiere bulkCheckbox:true
+     * en el constructor. Al activar, fuerza el filtro a expedientes sin asignar y
+     * recarga desde cero (misma entrada siempre limpia — no hay selección previa que
+     * conservar). Al desactivar, retira ese filtro y recarga.
+     */
+    setBulkMode(active) {
+        if (!this.bulkCheckbox) return;
+        this._bulkModeActive = active;
+        this._bulkSelected.clear();
+        this._dispatchBulkChange();
+
+        const headRow = this.tbody.closest('table')?.querySelector('thead tr');
+        if (headRow) {
+            let th = headRow.querySelector('.bulk-check-col');
+            if (active && !th) {
+                th = document.createElement('th');
+                th.className = 'bulk-check-col';
+                th.style.width = '2rem';
+                const chk = document.createElement('input');
+                chk.type = 'checkbox';
+                chk.className = 'form-check-input';
+                chk.title = 'Seleccionar / deseleccionar todos';
+                chk.addEventListener('change', () => this._toggleAllVisibleBulk(chk.checked));
+                th.appendChild(chk);
+                headRow.prepend(th);
+            } else if (!active && th) {
+                th.remove();
+            }
+        }
+
+        if (active) {
+            this.fixedParams = { ...this.fixedParams, responsable: 'sin_asignar' };
+        } else {
+            const { responsable, ...rest } = this.fixedParams;
+            this.fixedParams = rest;
+        }
+        this.reload();
     }
 
     // ---------------------------------------------------------------------------
