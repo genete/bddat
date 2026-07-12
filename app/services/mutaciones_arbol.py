@@ -66,6 +66,24 @@ def _advertencia_dict(res_eval: EvaluacionResult) -> Optional[dict]:
     return None
 
 
+def _registrar_advertencia(operacion, tabla, registro_id, sujeto, res_eval: EvaluacionResult) -> None:
+    """Bitácora para creaciones permitidas con advertencia (#616 feedback).
+
+    Mismo criterio que el escape (detalle con sujeto), sin justificacion: el motor
+    ya lo permite, solo avisa — no hay override que justificar, pero sí queda
+    auditado igual que el bypass.
+    """
+    bitacora_svc.registrar(
+        current_user.id, operacion, tabla, registro_id,
+        detalle={
+            'advertencia': True,
+            'motivo': res_eval.motivo,
+            'norma_compilada': res_eval.norma_compilada,
+            'sujeto': sujeto,
+        },
+    )
+
+
 # ---------------------------------------------------------------------------
 # Hook #458 (movido desde api_bc; test_458 actualizado para importar de aquí)
 # ---------------------------------------------------------------------------
@@ -92,7 +110,10 @@ def crear_solicitud(expediente, tipos: list[TipoSolicitud], entidad_id: int,
     if not entidad_id:
         return ResultadoMutacion(ok=False, error='El expediente no tiene titular asignado.')
 
-    # Fase 1: evaluar motor para todos los tipos; si alguno bloquea, rechazar todo
+    # Fase 1: evaluar motor para todos los tipos; si alguno bloquea, rechazar todo.
+    # Se conserva la evaluación de cada tipo (evaluaciones) para poder auditar y
+    # devolver la advertencia en Fase 2 sin re-evaluar contra el objeto ya persistido.
+    evaluaciones: dict[int, EvaluacionResult] = {}
     if justificacion is None:
         for tipo in tipos:
             sol_stub = Solicitud(expediente_id=exp_id, entidad_id=entidad_id,
@@ -101,28 +122,35 @@ def crear_solicitud(expediente, tipos: list[TipoSolicitud], entidad_id: int,
             res_eval = _evaluar('CREAR', expediente, objeto=sol_stub)
             if not res_eval.permitido:
                 return ResultadoMutacion(ok=False, bloqueo=res_eval)
+            evaluaciones[tipo.id] = res_eval
 
     # Fase 2: persistir
     creadas = []
+    advertencia = None
     try:
         for tipo in tipos:
             sol = Solicitud(expediente_id=exp_id, entidad_id=entidad_id,
                             tipo_solicitud_id=tipo.id)
             db.session.add(sol)
             db.session.flush()
+            res_eval = evaluaciones.get(tipo.id)
             if justificacion:
                 sujeto = build_sujeto(expediente, sol)
                 bitacora_svc.registrar(
                     current_user.id, 'CREAR', 'solicitudes', sol.id,
                     detalle={'escape': True, 'justificacion': justificacion, 'sujeto': sujeto},
                 )
+            elif res_eval and res_eval.nivel == 'ADVERTIR':
+                sujeto = build_sujeto(expediente, sol)
+                _registrar_advertencia('CREAR', 'solicitudes', sol.id, sujeto, res_eval)
+                advertencia = _advertencia_dict(res_eval)  # multi-tipo: la última advertencia gana
             creadas.append(sol)
         db.session.commit()
     except Exception as e:
         db.session.rollback()
         return ResultadoMutacion(ok=False, error=str(e))
 
-    return ResultadoMutacion(ok=True, ids=[s.id for s in creadas])
+    return ResultadoMutacion(ok=True, ids=[s.id for s in creadas], advertencia=advertencia)
 
 
 def crear_fase(solicitud, tipo_fase, *, justificacion: Optional[str] = None) -> ResultadoMutacion:
@@ -149,6 +177,9 @@ def crear_fase(solicitud, tipo_fase, *, justificacion: Optional[str] = None) -> 
             current_user.id, 'CREAR', 'fases', fase.id,
             detalle={'escape': True, 'justificacion': justificacion, 'sujeto': sujeto},
         )
+    elif res_eval.nivel == 'ADVERTIR':
+        sujeto = build_sujeto(expediente, {'solicitud': solicitud, 'tipo_fase': tipo_fase})
+        _registrar_advertencia('CREAR', 'fases', fase.id, sujeto, res_eval)
 
     db.session.commit()
     return ResultadoMutacion(ok=True, ids=[fase.id], advertencia=_advertencia_dict(res_eval))
@@ -180,6 +211,9 @@ def crear_tramite(fase, tipo_tramite, *, justificacion: Optional[str] = None) ->
             current_user.id, 'CREAR', 'tramites', tramite.id,
             detalle={'escape': True, 'justificacion': justificacion, 'sujeto': sujeto},
         )
+    elif res_eval.nivel == 'ADVERTIR':
+        sujeto = build_sujeto(expediente, {'fase': fase, 'tipo_tramite': tipo_tramite})
+        _registrar_advertencia('CREAR', 'tramites', tramite.id, sujeto, res_eval)
 
     db.session.commit()
     return ResultadoMutacion(ok=True, ids=[tramite.id], advertencia=_advertencia_dict(res_eval))
@@ -205,6 +239,9 @@ def crear_tarea(tramite, tipo_tarea, *, justificacion: Optional[str] = None) -> 
             current_user.id, 'CREAR', 'tareas', tarea.id,
             detalle={'escape': True, 'justificacion': justificacion, 'sujeto': sujeto},
         )
+    elif res_eval.nivel == 'ADVERTIR':
+        sujeto = build_sujeto(expediente, tramite)
+        _registrar_advertencia('CREAR', 'tareas', tarea.id, sujeto, res_eval)
 
     db.session.commit()
     return ResultadoMutacion(ok=True, ids=[tarea.id], advertencia=_advertencia_dict(res_eval))
