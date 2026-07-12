@@ -5,6 +5,8 @@
      {% block page_title %}         — Texto del <h1> y <title>
      {% block page_icon %}          — Icono FontAwesome del <h1> (default: fa-list)
      {% block btn_nuevo %}          — Botón "Nuevo" (omitir si no aplica)
+     {% block panel_masivo %}       — Panel de acción en lote, sustituye .filters-row
+                                       cuando está activo (vacío por defecto — #612)
      {% block filtros_extra %}      — Selects/inputs adicionales tras el buscador
      {% block search_placeholder %} — Placeholder del input búsqueda
      {% block tabla_clase %}        — Clase CSS adicional de la <table>
@@ -83,6 +85,7 @@
 
 <!-- C.1: Filtros + contador (sin scroll, altura fija) -->
 <div class="lista-cabecera">
+    {% block panel_masivo %}{% endblock %}
     <div class="filters-row">
         <div class="filters">
             <input type="search"
