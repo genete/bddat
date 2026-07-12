@@ -8,19 +8,11 @@
 
 ---
 
-**Hecho:** #479 — Selector de modo global del motor (BLOQUEAR/SOLO_ADVERTIR/
-INACTIVO) en el hub del supervisor (ADR-028 bloque Gestión), sobre
-`configuracion_sistema` ya sembrada en #323. De paso, unificado
-`_aplicar_modo_global` (antes copiado en `mutaciones_arbol.py`,
-`tipos_creables.py` y el `api_bc.py` muerto) en un único
-`app/services/motor_modo_global.py`. Cada cambio de modo queda en bitácora
-(quién, cuándo, de qué modo a qué modo) — pieza mínima para el futuro #614.
-Semáforo permanente del modo en la topbar, visible a los 4 roles, con polling
-cada 60s (sin infraestructura de push todavía). Verificado en navegador con
-una regla real del motor (AAC no resuelta) en los tres modos. Suite completa:
-824 passed, 24 skipped. PR #615. Del análisis surgió #614 (certificado fin de
-instrucción / justificación retroactiva de desviaciones del motor, bloqueado
-por un futuro ADR de bitácora ampliada a log completo de transacciones).
+**Hecho:** #616/#617/#618 — Bugs del árbol evidenciados al verificar #479: vía
+de escape del motor (bypass/justificación) alcanzable desde la despensa real,
+con la misma auditoría en bitácora para advertencias; toast de advertencia y
+caché de tipos creables corregidos. Suite completa: 837 passed, 24 skipped.
+PR #619.
 
 **Próximos:** #612 (N034 — asignación masiva de expedientes a técnico, abierto
 en la sesión de reposición de #171).
