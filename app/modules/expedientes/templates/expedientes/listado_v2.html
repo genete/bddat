@@ -34,7 +34,7 @@
             <i class="fas fa-check me-1"></i> Asignar
         </button>
         <button type="button" class="btn btn-sm btn-outline-secondary ms-auto" id="btn-cancelar-masivo">
-            <i class="fas fa-times me-1"></i> Cancelar
+            <i class="fas fa-times me-1"></i> Deseleccionar
         </button>
         <div id="masivo-error" class="text-danger small w-100 d-none"></div>
     </div>
@@ -210,7 +210,9 @@
         }
 
         toggle.addEventListener('change', () => activar(toggle.checked));
-        btnCancelar.addEventListener('click', () => activar(false));
+        // Deseleccionar: vacía la selección sin salir del modo masivo (a diferencia
+        // del toggle, que además retira el filtro y recarga todo el listado).
+        btnCancelar.addEventListener('click', () => scrollInfinito.clearBulkSelection());
         selectResp.addEventListener('change', actualizarBoton);
 
         document.addEventListener('bulk:selection-changed', e => {
