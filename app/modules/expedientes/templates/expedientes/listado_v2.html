@@ -5,10 +5,41 @@
 {% block search_placeholder %}Buscar por N° AT o titular...{% endblock %}
 
 {% block btn_nuevo %}
+{% if puede_cambiar_resp %}
+<div class="form-check form-switch me-3 d-flex align-items-center">
+    <input class="form-check-input" type="checkbox" role="switch" id="toggle-asignacion-masiva">
+    <label class="form-check-label small ms-1" for="toggle-asignacion-masiva">Asignación masiva</label>
+</div>
+{% endif %}
 <button class="btn btn-primary btn-sm"
         onclick="window.location.href='{{ url_for('wizard_expediente.paso1') }}'">
     <i class="fas fa-plus"></i> Nuevo
 </button>
+{% endblock %}
+
+{% block panel_masivo %}
+{% if puede_cambiar_resp %}
+<div id="panel-masivo" class="card card-body bg-light border mb-2 d-none">
+    <div class="d-flex flex-wrap align-items-center gap-2">
+        <span class="fw-semibold small">
+            Asignar a (<span id="masivo-count">0</span> expediente(s) sin asignar seleccionado(s)):
+        </span>
+        <select class="form-select form-select-sm" id="masivo-responsable" style="width:auto;min-width:220px">
+            <option value="">— Selecciona un técnico —</option>
+            {% for u in usuarios %}
+            <option value="{{ u.id }}">{{ u.apellido1 or '' }} {{ u.apellido2 or '' }}, {{ u.nombre or '' }}</option>
+            {% endfor %}
+        </select>
+        <button type="button" class="btn btn-sm btn-primary" id="btn-aplicar-masivo" disabled>
+            <i class="fas fa-check me-1"></i> Asignar
+        </button>
+        <button type="button" class="btn btn-sm btn-outline-secondary ms-auto" id="btn-cancelar-masivo">
+            <i class="fas fa-times me-1"></i> Deseleccionar
+        </button>
+        <div id="masivo-error" class="text-danger small w-100 d-none"></div>
+    </div>
+</div>
+{% endif %}
 {% endblock %}
 
 {% block filtros_extra %}
@@ -120,6 +151,9 @@
             fragmentUrl: id => `/expedientes/${id}/fragmento`,
             title:       item => `AT-${item.numero_at}` || ''
         }
+        {% if puede_cambiar_resp %},
+        bulkCheckbox: true
+        {% endif %}
         {% if request.args.get('responsable') %},
         fixedParams: { responsable: '{{ request.args.get("responsable") }}' }
         {% endif %}
@@ -147,6 +181,82 @@
             fragmentUrl: `/expedientes/${_selParam}/fragmento`
         });
     }
+
+    {% if puede_cambiar_resp %}
+    // ── Asignación masiva (#612 / N034) ────────────────────────────────────────
+    (function () {
+        const toggle      = document.getElementById('toggle-asignacion-masiva');
+        const panel       = document.getElementById('panel-masivo');
+        const filtersRow  = document.querySelector('.filters-row');
+        const selectResp  = document.getElementById('masivo-responsable');
+        const btnAplicar  = document.getElementById('btn-aplicar-masivo');
+        const btnCancelar = document.getElementById('btn-cancelar-masivo');
+        const countSpan   = document.getElementById('masivo-count');
+        const errorDiv    = document.getElementById('masivo-error');
+        if (!toggle) return;
+
+        function actualizarBoton() {
+            btnAplicar.disabled = !(selectResp.value && scrollInfinito._bulkSelected.size > 0);
+        }
+
+        function activar(active) {
+            toggle.checked = active;
+            panel.classList.toggle('d-none', !active);
+            if (filtersRow) filtersRow.classList.toggle('d-none', active);
+            errorDiv.classList.add('d-none');
+            if (!active) selectResp.value = '';
+            scrollInfinito.setBulkMode(active);
+            actualizarBoton();
+        }
+
+        toggle.addEventListener('change', () => activar(toggle.checked));
+        // Deseleccionar: vacía la selección sin salir del modo masivo (a diferencia
+        // del toggle, que además retira el filtro y recarga todo el listado).
+        btnCancelar.addEventListener('click', () => scrollInfinito.clearBulkSelection());
+        selectResp.addEventListener('change', actualizarBoton);
+
+        document.addEventListener('bulk:selection-changed', e => {
+            countSpan.textContent = e.detail.size;
+            actualizarBoton();
+        });
+
+        btnAplicar.addEventListener('click', async () => {
+            const ids = Array.from(scrollInfinito._bulkSelected);
+            const responsable_id = selectResp.value;
+            if (!ids.length || !responsable_id) return;
+            btnAplicar.disabled = true;
+            errorDiv.classList.add('d-none');
+            try {
+                const resp = await fetch('{{ url_for("expedientes.asignacion_masiva") }}', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                    body: JSON.stringify({ expediente_ids: ids, responsable_id })
+                });
+                const data = await resp.json();
+                if (!data.ok) {
+                    errorDiv.textContent = (data.errors || ['Error al asignar']).join(' ');
+                    errorDiv.classList.remove('d-none');
+                    actualizarBoton();
+                    return;
+                }
+                window.mostrar_toast('success', `${data.actualizados} expediente(s) asignado(s) correctamente.`);
+                // El modo masivo permanece activo — reload() trae los huérfanos
+                // restantes, permitiendo encadenar varias tandas sin reactivar el toggle.
+                selectResp.value = '';
+                scrollInfinito.reload();
+            } catch (err) {
+                errorDiv.textContent = 'Error de red al asignar.';
+                errorDiv.classList.remove('d-none');
+                actualizarBoton();
+            }
+        });
+
+        // Auto-activación desde la tarjeta del hub del supervisor
+        if (new URLSearchParams(location.search).get('bulk_asignacion')) {
+            activar(true);
+        }
+    }());
+    {% endif %}
 
     console.log('Listado de expedientes v2 inicializado (inspector #543)');
 </script>

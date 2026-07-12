@@ -175,6 +175,8 @@ def listar_expedientes():
 
     if responsable_filter == 'yo':
         query = query.filter(Expediente.responsable_id == current_user.id)
+    elif responsable_filter == 'sin_asignar':
+        query = query.filter(Expediente.responsable_id.is_(None))
 
     if tipo_exp_filter:
         try:

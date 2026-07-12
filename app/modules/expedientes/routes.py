@@ -24,7 +24,7 @@ from flask_login import login_required
 from app import db
 from app.models.expedientes import Expediente
 from app.models.proyectos import Proyecto
-from app.models.usuarios import Usuario
+from app.models.usuarios import Usuario, Rol
 from app.models.tipos_expedientes import TipoExpediente
 from app.models.tipos_ia import TipoIA
 from app.models.municipios_proyecto import MunicipioProyecto
@@ -95,6 +95,16 @@ def seguimiento_fragmento(solicitud_id):
     )
 
 
+def _usuarios_tramitadores():
+    """Usuarios activos con rol TRAMITADOR — candidatos válidos a responsable
+    de expediente (#612). Evita ofrecer ADMIN/SUPERVISOR/ADMINISTRATIVO en el
+    desplegable de asignación, individual o masiva.
+    """
+    return Usuario.query.filter_by(activo=True).join(Usuario.roles).filter(
+        Rol.nombre == 'TRAMITADOR'
+    ).order_by(Usuario.apellido1, Usuario.apellido2).all()
+
+
 @bp.route('/')
 @login_required
 def listado_v2():
@@ -116,7 +126,14 @@ def listado_v2():
     """
     meta = cargar_metadata('expedientes')
     columns = meta.get('listado_v2', {}).get('columns', [])
-    return render_template('expedientes/listado_v2.html', columns=columns)
+    puede_cambiar_resp = puede_cambiar_responsable()
+    usuarios = _usuarios_tramitadores() if puede_cambiar_resp else []
+    return render_template(
+        'expedientes/listado_v2.html',
+        columns=columns,
+        puede_cambiar_resp=puede_cambiar_resp,
+        usuarios=usuarios,
+    )
 
 
 @bp.route('/<int:id>')
@@ -170,9 +187,7 @@ def editar_fragmento(id):
 
     tipos_expedientes = TipoExpediente.query.order_by(TipoExpediente.tipo).all()
     tipos_ia = TipoIA.query.order_by(TipoIA.siglas).all()
-    usuarios = Usuario.query.filter_by(activo=True).order_by(
-        Usuario.apellido1, Usuario.apellido2
-    ).all()
+    usuarios = _usuarios_tramitadores()
 
     return render_template(
         'expedientes/_editar_fragmento_expediente.html',
@@ -331,6 +346,57 @@ def editar(id):
     flash(f'Expediente AT-{expediente.numero_at} actualizado correctamente.', 'success')
     return redirect(url_for('expedientes.listado_v2', sel=id))
 
+
+@bp.route('/asignacion-masiva', methods=['POST'])
+@login_required
+def asignacion_masiva():
+    """Asigna un técnico a varios expedientes huérfanos a la vez (#612 / N034).
+
+    Solo actúa sobre expedientes SIN responsable — nunca reasigna uno que ya
+    tiene técnico (eso sigue siendo exclusivamente individual, vía /editar).
+    El filtro server-side por responsable_id IS NULL es defensa en profundidad:
+    aunque el listado ya solo muestra huérfanos, evita pisar una asignación
+    hecha por otra persona entre la carga de la lista y el envío del formulario.
+    """
+    if not puede_cambiar_responsable():
+        return jsonify({'ok': False, 'errors': ['Sin permiso para asignar expedientes']}), 403
+
+    data = request.get_json(silent=True) or {}
+    ids_raw = data.get('expediente_ids') or []
+    responsable_id_raw = data.get('responsable_id')
+
+    try:
+        ids = [int(i) for i in ids_raw]
+    except (TypeError, ValueError):
+        return jsonify({'ok': False, 'errors': ['Identificadores de expediente inválidos']}), 400
+
+    if not ids or not responsable_id_raw:
+        return jsonify({'ok': False, 'errors': ['Selecciona expedientes y un técnico']}), 400
+
+    try:
+        responsable_id = int(responsable_id_raw)
+    except (TypeError, ValueError):
+        return jsonify({'ok': False, 'errors': ['Técnico inválido']}), 400
+
+    tecnico = Usuario.query.get(responsable_id)
+    if not tecnico or not tecnico.tiene_rol('TRAMITADOR'):
+        return jsonify({'ok': False, 'errors': ['Técnico no válido']}), 400
+
+    expedientes = Expediente.query.filter(
+        Expediente.id.in_(ids), Expediente.responsable_id.is_(None)
+    ).all()
+    omitidos = sorted(set(ids) - {e.id for e in expedientes})
+
+    for e in expedientes:
+        e.responsable_id = responsable_id
+
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'ok': False, 'errors': [f'Error al guardar: {e}']}), 500
+
+    return jsonify({'ok': True, 'actualizados': len(expedientes), 'omitidos': omitidos})
 
 
 @bp.route('/tarea/<int:tarea_id>/generar_cert', methods=['POST'])

@@ -130,3 +130,16 @@ def primer_usuario_id(app):
         if u is None:
             pytest.skip('No hay usuarios en la BD de desarrollo')
         return u.id
+
+
+@pytest.fixture
+def tramitador_usuario_id(app):
+    """ID del primer usuario activo con rol TRAMITADOR. Skip si no existe ninguno."""
+    with app.app_context():
+        from app.models.usuarios import Usuario, Rol
+        u = Usuario.query.filter_by(activo=True).join(Usuario.roles).filter(
+            Rol.nombre == 'TRAMITADOR'
+        ).first()
+        if u is None:
+            pytest.skip('No hay usuarios con rol TRAMITADOR en la BD de desarrollo')
+        return u.id
