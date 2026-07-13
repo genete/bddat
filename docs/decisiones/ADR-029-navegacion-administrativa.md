@@ -24,6 +24,29 @@
 >    tocar: no es un blueprint propio que renombrar, es una vista prestada de otro
 >    dominio — ver ADR-017 para el detalle completo.
 
+> **Nota de implementación (2026-07-13, #589).** Tres ajustes sobre lo escrito abajo,
+> acordados con Carlos al implementar:
+> 1. **El criterio de clasificación de §1 se revisa** — ver §1bis, nueva sección. La
+>    "consulta diaria" resultó subjetiva e inconsistente con cómo ya se habían clasificado
+>    Ítems técnicos (#594) y Tipos de documento (#621). Plantillas, Requisitos documentales
+>    y Catálogo de requerimientos pierden su `metadata.json`/entrada de sidebar y pasan a
+>    ser solo tarjeta del hub (Requisitos ya tenía tarjeta desde #588; Plantillas y
+>    Catálogo de requerimientos la ganan ahora).
+> 2. **El bug de "rol-en-crudo" no vivía solo en `index_v1.html`** como describe el
+>    Contexto — la fuente real es el context processor compartido `inject_module_nav`
+>    (`app/__init__.py`), que además alimenta el sidebar y (vía `palette_nav()`,
+>    `app/utils/react_islas.py`) el Command Palette. Los tres consumían
+>    `current_user.roles` (todos los roles asignados) en vez de
+>    `session.get('rol_activo_nombre')` — se corrige en la fuente única, no en cada
+>    consumidor.
+> 3. **"Mi Perfil" no se incorpora a `module_nav`**, al contrario de lo que preveía §3: con
+>    el criterio revisado (punto 1) no encaja como página-destino de rol ni objeto de
+>    dominio, y unirse a `module_nav` lo habría hecho aparecer también en el sidebar (mismo
+>    mecanismo para ambas superficies) — indeseado, hoy solo vive en el topbar. Se migra el
+>    código a `app/modules/perfil/` (consistencia de autodescubrimiento) pero **sin**
+>    `metadata.json` — sigue como segunda excepción hardcodeada en el dashboard, junto a
+>    "Inicio".
+
 ---
 
 ## Contexto
@@ -88,6 +111,10 @@ aclarado por escrito que un recuento agregado (expedientes por técnico, por est
 
 ### 1. Principio de clasificación para pantallas nuevas
 
+> **`[SUPERSEDIDO parcialmente, #589]`** El criterio original ("¿la consultan a diario
+> roles no-supervisores?") se sustituye por el de §1bis — ver nota de implementación
+> al inicio del documento. Se conserva aquí como registro de la primera decisión.
+
 Para decidir dónde vive una pantalla administrativa nueva, una sola pregunta:
 
 > **¿La consultan a diario roles no-supervisores como parte de su trabajo (aunque no la
@@ -105,6 +132,44 @@ excepciones que ya declara ADR-013 (DNI; una futura vista de rendimiento individ
 que ni siquiera existe). El hub en sí mismo tampoco lo es: se pensó como "página propia por
 rol" (simétrica a la cola del ADMINISTRATIVO o el seguimiento del TRAMITADOR), pero a
 diferencia de esas, no aloja contenido personal de nadie — es agregado del dominio.
+
+### 1bis. Revisión del criterio: "consulta diaria" era frágil  `[#589]`
+
+Al aplicar §1 retroactivamente a Plantillas y Requisitos documentales (ambos anteriores a
+esta ADR, con entrada propia heredada) saltó la grieta: los dos módulos más recientes
+construidos ya bajo esta ADR — Ítems técnicos (#594) y Tipos de documento (#621) — se
+diseñaron **a propósito sin entrada propia** citando este mismo §1, pese a que Tipos de
+documento se usa en cada subida de documento — probablemente más "a diario" que Plantillas.
+Nadie había verificado si Plantillas/Requisitos seguían mereciendo su entrada o solo la
+conservaban por herencia de un patrón anterior a esta ADR (#545, #583). "Consulta diaria" no
+es falsable de forma consistente — cualquier catálogo puede argumentarse como "consultado a
+diario" por alguien.
+
+**Criterio revisado**, estructural en vez de subjetivo — entrada propia de sidebar
+**solo** para:
+
+1. Las páginas-destino de rol a las que redirige "Mi trabajo": `Tareas y Subidas`
+   (ADMINISTRATIVO), `Control y Gestión` (SUPERVISOR/ADMIN), y el futuro hub del
+   TRAMITADOR (deuda abierta de ADR-017, sin construir).
+2. Los objetos de dominio reales sobre los que gira la aplicación: `Expedientes`,
+   `Proyectos`, `Entidades`, `Usuarios`.
+
+Todo lo demás —Plantillas, Requisitos documentales, Catálogo de requerimientos, Tablas
+maestras, Configuración del motor, Ítems técnicos, Tipos de documento, Plazos legales— son
+catálogos o configuración: visibles y alcanzables (ADR-013 sigue vigente, nada se oculta),
+pero **solo como tarjeta del hub**, nunca como entrada de sidebar ni de dashboard. Sidebar pasa
+de 11 entradas a 8; cualquier catálogo futuro cae en el patrón sin debate — no hay zona gris
+que discutir caso a caso.
+
+**Consecuencia en el Command Palette (Ctrl+K).** Los atajos "IR A" (`palette_nav()`) se
+derivan de la misma fuente (`ModuleRegistry.get_navigation()`) — Plantillas, Requisitos
+documentales y Catálogo de requerimientos pierden su atajo genérico. Para Plantillas no hay
+pérdida real: la búsqueda por nombre (`/api/search`, `_buscar_plantillas()`) es un mecanismo
+completamente aparte que no lee `metadata.json` — sigue intacta. Requisitos documentales y
+Catálogo de requerimientos nunca tuvieron búsqueda por nombre (no están en `BUSCADORES`) — tras
+el cambio quedan sin ningún atajo rápido, solo alcanzables por el hub o URL directa. Extender
+`api_search.py` a más catálogos (búsqueda global de verdad, no solo 4 tipos) se identifica
+como necesidad real pero **queda fuera de #589** — es otro issue, sin filear todavía.
 
 ### 2. Universalizar el acceso al hub del supervisor + entrada "Control y Gestión"
 
@@ -159,8 +224,15 @@ misma no aporta nada. Ninguna otra tarjeta se hardcodea fuera de `module_nav`.
 sidebar, dashboard, tarjeta de un hub...), todas deben apuntar al mismo mecanismo canónico
 (módulo + `metadata.json`) — no vale que una superficie lo trate como módulo de primera clase
 y otra lo enlace por libre. Por esto, "Mi Perfil" (hoy en `app/routes/perfil.py`, patrón
-antiguo sin `metadata.json`) se migra a `app/modules/perfil/` en vez de hardcodearse como una
-segunda excepción junto a "Inicio".
+antiguo sin `metadata.json`) se migra a `app/modules/perfil/`.
+
+> **`[REVISADO, #589]`** El resto de esta frase ("en vez de hardcodearse como una segunda
+> excepción junto a 'Inicio'") queda sin efecto — ver nota de implementación al inicio del
+> documento, punto 3, y §1bis. El código se migra por consistencia de autodescubrimiento,
+> pero Perfil no entra en `module_nav`: bajo el criterio revisado no es página-destino de rol
+> ni objeto de dominio, y haría que apareciera también en el sidebar (mismo mecanismo para
+> ambas superficies). Sigue siendo, a propósito, la segunda excepción hardcodeada del
+> dashboard junto a "Inicio".
 
 Tarjetas que se retiran del dashboard actual, con la función ya cubierta en otro sitio
 (verificado, no solo asumido):

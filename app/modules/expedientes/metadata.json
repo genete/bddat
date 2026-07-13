@@ -11,7 +11,8 @@
   },
   "navigation": {
     "label": "Expedientes",
-    "route": "expedientes.listado_v2"
+    "route": "expedientes.listado_v2",
+    "description": "Consulta y gestión de expedientes"
   },
   "listado_v2": {
     "columns": [

@@ -32,64 +32,13 @@
 
 <!-- Dashboard Grid (fondo --bg-page #f8f9fa de app-main, cards blancos destacan sobre él) -->
 <div class="dashboard-grid content-constrained">
-    
-    <!-- Card: Expedientes (V2 scroll infinito) -->
-    {% set user_roles = current_user.roles | map(attribute='nombre') | list %}
-    {% if 'TRAMITADOR' in user_roles or 'ADMINISTRATIVO' in user_roles or 'SUPERVISOR' in user_roles or 'ADMIN' in user_roles %}
-    <a href="{{ url_for('expedientes.listado_v2') }}" class="dashboard-card">
-        <div class="card-icon">
-            <i class="fas fa-folder-open"></i>
-        </div>
-        <h2 class="card-title">Expedientes</h2>
-        <p class="card-description">Consulta y gestión de expedientes</p>
-    </a>
-    {% endif %}
-    
-    <!-- Card: Usuarios -->
-    {% if 'SUPERVISOR' in user_roles or 'ADMIN' in user_roles %}
-    <a href="{{ url_for('usuarios.index') }}" class="dashboard-card">
-        <div class="card-icon">
-            <i class="fas fa-users"></i>
-        </div>
-        <h2 class="card-title">Usuarios</h2>
-        <p class="card-description">Gestión de usuarios del sistema</p>
-    </a>
-    {% endif %}
-    
-    <!-- Card: Proyectos -->
-    {% if 'TRAMITADOR' in user_roles or 'ADMINISTRATIVO' in user_roles or 'SUPERVISOR' in user_roles or 'ADMIN' in user_roles %}
-    <a href="{{ url_for('proyectos.index') }}" class="dashboard-card">
-        <div class="card-icon">
-            <i class="fas fa-project-diagram"></i>
-        </div>
-        <h2 class="card-title">Proyectos</h2>
-        <p class="card-description">Instalaciones de alta tensión</p>
-    </a>
-    {% endif %}
-    
-    <!-- Card: Mis Expedientes -->
-    {% if 'TRAMITADOR' in user_roles or 'ADMINISTRATIVO' in user_roles or 'SUPERVISOR' in user_roles or 'ADMIN' in user_roles %}
-    <a href="{{ url_for('dashboard.mis_expedientes') }}" class="dashboard-card">
-        <div class="card-icon">
-            <i class="fas fa-user-check"></i>
-        </div>
-        <h2 class="card-title">Mis Expedientes</h2>
-        <p class="card-description">Expedientes asignados a mí</p>
-    </a>
-    {% endif %}
-    
-    <!-- Card: Nuevo Expediente — apunta al wizard (Issue #67) -->
-    {% if 'TRAMITADOR' in user_roles or 'ADMINISTRATIVO' in user_roles or 'SUPERVISOR' in user_roles or 'ADMIN' in user_roles %}
-    <a href="{{ url_for('wizard_expediente.paso1') }}" class="dashboard-card">
-        <div class="card-icon">
-            <i class="fas fa-plus-circle"></i>
-        </div>
-        <h2 class="card-title">Nuevo Expediente</h2>
-        <p class="card-description">Crear expediente de tramitación</p>
-    </a>
-    {% endif %}
-    
-    <!-- Card: Mi Perfil -->
+
+    {# Proyección 1:1 del sidebar (ADR-029 §3): una tarjeta por módulo de
+       module_nav, mismo orden, ya filtrado por rol activo (inject_module_nav,
+       #589). Únicas excepciones hardcodeadas: "Inicio" (enlace a sí misma) y
+       "Mi Perfil" (no es página-destino de rol ni objeto de dominio — ADR-029
+       §1 revisado, se alcanza por el topbar). #}
+
     <a href="{{ url_for('perfil.index') }}" class="dashboard-card">
         <div class="card-icon">
             <i class="fas fa-user-circle"></i>
@@ -97,38 +46,16 @@
         <h2 class="card-title">Mi Perfil</h2>
         <p class="card-description">Configuración personal</p>
     </a>
-    
-    <!-- Cards futuras (deshabilitadas) -->
-    {% if 'TRAMITADOR' in user_roles or 'ADMINISTRATIVO' in user_roles or 'SUPERVISOR' in user_roles or 'ADMIN' in user_roles %}
-    <a href="{{ url_for('expedientes.seguimiento') }}" class="dashboard-card">
-        <div class="card-icon">
-            <i class="fas fa-tasks"></i>
-        </div>
-        <h2 class="card-title">Tareas</h2>
-        <p class="card-description">Cola de trabajo — solicitudes en tramitación</p>
-    </a>
-    
-    {# <div class="dashboard-card disabled"><div class="card-icon"><i class="fas fa-file-alt"></i></div><h2 class="card-title">Documentos</h2><p class="card-description">Búsqueda documental global — pendiente</p></div> #}
-    {% endif %}
-    
-    {% if 'SUPERVISOR' in user_roles or 'ADMIN' in user_roles %}
-    <!-- Estadísticas y Configuración → bloques CONTROL / GESTIÓN del supervisor (#579, ADR-028) -->
-    <a href="{{ url_for('supervisor.estadisticas') }}" class="dashboard-card">
-        <div class="card-icon">
-            <i class="fas fa-chart-bar"></i>
-        </div>
-        <h2 class="card-title">Estadísticas</h2>
-        <p class="card-description">Panel de control — expedientes, plazos y técnicos</p>
-    </a>
 
-    <a href="{{ url_for('supervisor.index') }}" class="dashboard-card">
+    {% for item in module_nav %}
+    <a href="{{ url_for(item.route) }}" class="dashboard-card">
         <div class="card-icon">
-            <i class="fas fa-cog"></i>
+            <i class="fas {{ item.icon }}"></i>
         </div>
-        <h2 class="card-title">Configuración</h2>
-        <p class="card-description">Gestión del sistema — motor, plazos y usuarios</p>
+        <h2 class="card-title">{{ item.label }}</h2>
+        <p class="card-description">{{ item.description }}</p>
     </a>
-    {% endif %}
-    
+    {% endfor %}
+
 </div>
 {% endblock %}
