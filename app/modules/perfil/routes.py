@@ -1,9 +1,16 @@
+"""Blueprint "Mi Perfil" (migrado desde app/routes/perfil.py en #589, ADR-029).
+
+Sin metadata.json a propósito: no encaja en el criterio revisado de ADR-029 §1
+(página-destino de rol u objeto de dominio) — se alcanza por el menú de usuario
+del topbar (_topbar.html), no por sidebar ni Command Palette. La tarjeta del
+dashboard sigue hardcodeada, misma excepción que "Inicio".
+"""
 from flask import Blueprint, render_template, request, flash, redirect, url_for
 from flask_login import login_required, current_user
 from app import db
 from app.models.usuarios import Usuario
 
-bp = Blueprint('perfil', __name__, url_prefix='/perfil')
+bp = Blueprint('perfil', __name__, url_prefix='/perfil', template_folder='templates')
 
 @bp.route('/', methods=['GET'])
 @login_required
