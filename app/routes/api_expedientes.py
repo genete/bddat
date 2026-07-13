@@ -33,7 +33,7 @@ from app.models.catalogo_requerimientos import CatalogoRequerimiento
 from app.models.requerimientos_tarea import RequerimientoTarea
 from app.services.arbol_expediente import construir_arbol
 from app.services.tipos_creables import tipos_creables_de_nodo
-from app.services.detalle_nodo import detalle_de_nodo
+from app.services.detalle_nodo import detalle_de_nodo, info_apertura_documento
 from app.services.esquema_editable import esquema_de_nodo
 from app.services import mutaciones_arbol as svc
 from app.routes.api_bc import _leer_bypass
@@ -736,7 +736,10 @@ def pool_documentos(expediente_id):
     """
     GET /api/expedientes/<id>/pool — pool estructurado para la despensa de tareas (S3b-3).
 
-    Devuelve: {documentos: [{id, nombre, tipo_doc, fecha}]}, orden id DESC.
+    Devuelve: {documentos: [{id, nombre, tipo_doc, fecha, enlace, externo,
+    puede_abrir_carpeta}]}, orden id DESC. enlace/puede_abrir_carpeta permiten
+    previsualizar cualquier documento del pool antes de decidir enlazarlo,
+    no solo los ya consumidos/producidos de la tarea (#609).
     """
     expediente = Expediente.query.get_or_404(expediente_id)
     denegado = verificar_acceso_expediente(expediente)
@@ -752,6 +755,7 @@ def pool_documentos(expediente_id):
         'nombre': _nombre_documento(doc),
         'tipo_doc': doc.tipo_doc.nombre if doc.tipo_doc else None,
         'fecha': doc.fecha_administrativa.strftime('%d/%m/%Y') if doc.fecha_administrativa else None,
+        **info_apertura_documento(expediente_id, doc),
     } for doc in docs]
     return jsonify({'documentos': result}), 200
 
