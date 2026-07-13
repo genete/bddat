@@ -64,11 +64,11 @@ def create_app(config_name='development'):
         return Usuario.query.get(int(user_id))
 
     # Registrar blueprints - Rutas principales
-    from app.routes import auth, dashboard, perfil, demo
+    # (perfil migrado a app/modules/perfil/ en #589 — lo registra ModuleRegistry)
+    from app.routes import auth, dashboard, demo
 
     app.register_blueprint(auth.bp)
     app.register_blueprint(dashboard.bp)
-    app.register_blueprint(perfil.bp)
     app.register_blueprint(demo.bp)  # POC React #291
 
     # Registrar blueprints - Wizards
@@ -145,12 +145,15 @@ def create_app(config_name='development'):
     @app.context_processor
     def inject_module_nav():
         from datetime import date as _date
+        from flask import session
         from sqlalchemy.exc import OperationalError, ProgrammingError
 
-        user_roles = (
-            [r.nombre for r in current_user.roles]
-            if current_user.is_authenticated else []
-        )
+        # Rol ACTIVO de sesión, no todos los roles asignados (#589, ADR-029): un
+        # usuario multi-rol solo debe ver lo que su rol activo puede usar, igual
+        # que tiene_permiso() (permisos.py). Bug de raíz — antes filtraba por
+        # current_user.roles y afectaba sidebar, dashboard y Command Palette.
+        rol_activo = session.get('rol_activo_nombre') if current_user.is_authenticated else None
+        user_roles = [rol_activo] if rol_activo else []
         nav = ModuleRegistry.get_navigation(user_roles)
 
         # Alerta de calendario inhábil para admins: avisa si falta el año N+1

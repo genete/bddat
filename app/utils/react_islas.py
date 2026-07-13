@@ -106,7 +106,10 @@ def palette_nav():
     if not current_user.is_authenticated:
         return []
 
-    roles = [r.nombre for r in current_user.roles]
+    # Rol ACTIVO de sesión, no todos los roles asignados — mismo criterio que
+    # inject_module_nav (app/__init__.py) y tiene_permiso() (#589, ADR-029).
+    rol_activo = session.get('rol_activo_nombre')
+    roles = [rol_activo] if rol_activo else []
     items = [{'label': 'Inicio', 'url': url_for('dashboard.index'), 'icon': 'fa-home'}]
 
     for it in ModuleRegistry.get_navigation(roles):
