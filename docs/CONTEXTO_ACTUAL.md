@@ -8,9 +8,9 @@
 
 ---
 
-**Hecho:** #379 (selector de tipo de documento al incorporar — ya resuelto en develop sin PR, cerrado con comentario explicativo).
+**Hecho:** #588, #589, #590 (ADR-029 completa — hub Control y Gestión universal + Tareas y Subidas extraído de mi_trabajo, dashboard 1:1 de module_nav + criterio de sidebar revisado (§1bis) + Mi Perfil migrado, retirar prefijo /admin de Plantillas/Requisitos documentales).
 
-**Próximo:** #588, #589, #590 (ADR-029 — hub del supervisor universal, dashboard 1:1 del sidebar + Mi Perfil, retirar prefijo /admin).
+**Próximo:** #609, #610 (enlaces bddat:// del inspector — #610 es spinoff de #608, #609 la feature que lo motivó) + #574, #566 (bugs sueltos de M2/sin milestone, deuda a liquidar antes de que se enquisten).
 
 ---
 
