@@ -270,10 +270,14 @@ Considerada como mecánica de liberación de propiedad. Descartada porque introd
 
 ---
 
-## Deuda conocida — heterogeneidad de URLs del concepto «Mi trabajo»  `[ABIERTO]`
+## Deuda conocida — heterogeneidad de URLs del concepto «Mi trabajo»  `[PARCIALMENTE RESUELTO — #588, ADR-029]`
 
 > Anotado 2026-06-23, en contexto de #579 (al completar el hub del supervisor, que
 > cierra el tercer patrón distinto del mismo concepto).
+> **Actualizado 2026-07-13 (#588, ADR-029):** los dos primeros casos se resuelven —
+> ambos eran blueprints reales con contenido propio, así que "renombrar" es solo tocar
+> un `url_prefix` (mecánico, `url_for()` no se entera). El tercer caso sigue abierto,
+> como estaba: no es simétrico con los otros dos.
 
 El concepto «Mi trabajo» **está unificado donde importa**: una sola entrada de sidebar
 role-adaptive (ADR-013) y un único punto de entrada navegable `/mi_trabajo/`, que
@@ -281,25 +285,30 @@ despacha por rol activo (`mi_trabajo.index`):
 
 | Rol activo | Destino tras el dispatcher | Naturaleza del destino |
 |---|---|---|
-| ADMINISTRATIVO | `/mi_trabajo/` (render directo) | Isla cola/subir (este ADR) |
-| SUPERVISOR / ADMIN | `redirect → /supervisor/` | Hub de dos bloques (#579, ADR-028) |
-| TRAMITADOR | `redirect → /expedientes/seguimiento/` | **Vista prestada** de otro dominio |
+| ADMINISTRATIVO | `redirect → /tareas_y_subidas/` | Isla cola/subir (este ADR), ruta propia desde #588 |
+| SUPERVISOR / ADMIN | `redirect → /gestion_y_control/` | Hub de dos bloques (#579 ADR-028; renombrado #588 ADR-029) |
+| TRAMITADOR | `redirect → /expedientes/seguimiento/` | **Vista prestada** de otro dominio — sigue abierto |
 
 La heterogeneidad de las URLs finales **no es un bug**: es reflejo fiel de que los tres
 roles están en fases de madurez distintas. El usuario nunca teclea esas URLs (clica la
 entrada única); la indirección del dispatcher permite cambiar los destinos por debajo
 sin tocar la navegación. Matices, por gravedad:
 
-1. `/supervisor/` — sano: blueprint con identidad propia, será más que «mi trabajo».
-2. `/mi_trabajo/` (administrativo) — colisión semántica leve: la raíz hace de dispatcher
-   genérico **y** de vista concreta del administrativo (único rol sin URL propia distinta
-   del paraguas).
-3. `/expedientes/seguimiento/` (tramitador) — **única deuda real**: su «mi trabajo» es una
-   vista prestada del dominio de expedientes; no tiene espacio propio.
-
-**Decisión: no unificar ahora.** Renombrar rutas y reubicar la cola del administrativo
-rompería bookmarks, enlaces y los «IR A» del command palette a cambio de pulcritud sin
-valor funcional, y obligaría a redirecciones de compatibilidad. El **momento natural** para
-fijar el patrón canónico de los tres es cuando el TRAMITADOR necesite su propio hub (como
-ya lo tiene el supervisor): ahí `/expedientes/seguimiento/` se queda corto y fuerza la
-decisión de forma informada, en vez de inventarla en frío.
+1. `/gestion_y_control/` (antes `/supervisor/`) — sano: blueprint con identidad propia,
+   es más que «mi trabajo». Renombrado en #588 y con `metadata.json` propio (ADR-029 §2):
+   además de alcanzable vía «Mi trabajo», tiene su propia entrada de sidebar «Control y
+   Gestión» — redundancia asumida, mismo patrón que ya tiene Usuarios.
+2. `/tareas_y_subidas/` (antes `/mi_trabajo/`, contenido administrativo) — **resuelto en
+   #588**: la colisión semántica (la raíz hacía de dispatcher genérico **y** de vista
+   concreta del administrativo) se elimina extrayendo el contenido a un blueprint propio,
+   universal (`acceder_tareas_y_subidas`, 4 roles) con su propia entrada de sidebar. La
+   escritura (`gestionar_tareas`) ya era universal desde ADR-017 §6 — solo la navegación
+   la escondía tras el rol ADMINISTRATIVO. `mi_trabajo.index` queda como dispatcher puro
+   y simétrico para los tres roles.
+3. `/expedientes/seguimiento/` (tramitador) — **sigue siendo la única deuda real, sin
+   resolver**: no es un blueprint propio que renombrar, es una vista prestada del dominio
+   de expedientes; no tiene espacio propio. El **momento natural** para fijarla sigue
+   siendo cuando el TRAMITADOR necesite su propio hub (como ya lo tiene Control y
+   Gestión) — ahí `/expedientes/seguimiento/` se queda corto y fuerza la decisión de
+   forma informada, en vez de inventarla en frío. No se aborda en #588: construir un hub
+   nuevo no es un renombrado, es trabajo de alcance distinto.

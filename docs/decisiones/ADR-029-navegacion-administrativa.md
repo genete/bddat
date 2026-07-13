@@ -5,6 +5,25 @@
 **Issues:** #588 (hub universal), #589 (dashboard 1:1), #590 (retirar prefijo `/admin`)
 **Enmienda:** ADR-028 §1
 
+> **Nota de implementación (2026-07-13, #588).** Al implementar se generalizó el
+> principio de esta ADR un paso más: si el acceso deja de depender del rol, el nombre
+> de la ruta tampoco debería llevarlo. Dos ajustes sobre lo escrito abajo:
+> 1. El permiso final se llamó `acceder_gestion_control` (no `acceder_supervision`) y la
+>    URL del hub pasó de `/supervisor/` a `/gestion_y_control/` — coherente con el nuevo
+>    nombre del permiso y con el label "Control y Gestión" ya decidido en §2. El nombre
+>    interno del blueprint Flask (`supervisor`) no cambió — cambiar `url_prefix` no
+>    rompe `url_for()`, renombrar el blueprint sí sería más profundo (mismo criterio que
+>    §4 ya aplicaba a `admin_plantillas`/`admin_requisitos`).
+> 2. Se resolvió de paso el caso 2 de la "Deuda conocida" de ADR-017 (heterogeneidad de
+>    URLs de «Mi trabajo»): el contenido administrativo de `mi_trabajo` (cola + subir
+>    documento) se extrajo a un módulo propio y universal, `tareas_y_subidas`
+>    (`acceder_tareas_y_subidas`, 4 roles) — su escritura, `gestionar_tareas`, ya era
+>    universal desde ADR-017 §6, solo la navegación la escondía tras el rol
+>    ADMINISTRATIVO. `mi_trabajo.index` queda como dispatcher puro y simétrico para los
+>    tres roles. El caso 3 (TRAMITADOR → `/expedientes/seguimiento/`) sigue abierto, sin
+>    tocar: no es un blueprint propio que renombrar, es una vista prestada de otro
+>    dominio — ver ADR-017 para el detalle completo.
+
 ---
 
 ## Contexto
@@ -78,7 +97,7 @@ Para decidir dónde vive una pantalla administrativa nueva, una sola pregunta:
 | Respuesta | Patrón |
 |---|---|
 | Consulta diaria de cualquier rol | Entrada propia de sidebar (`metadata.json`), `acceder_X` universal + `gestionar_X` restringido. Ej.: Expedientes, Entidades, Usuarios, Proyectos, Plantillas, Requisitos documentales |
-| Configuración pura del supervisor | Tarjeta dentro del hub (`/supervisor/`, bloque Control o Gestión), sin `metadata.json` propio. Ej.: reglas del motor (#170), tablas maestras (#171), plazos legales, operaciones masivas (#295) |
+| Configuración pura del supervisor | Tarjeta dentro del hub (`/gestion_y_control/`, bloque Control o Gestión), sin `metadata.json` propio. Ej.: reglas del motor (#170), tablas maestras (#171), plazos legales, operaciones masivas (#295) |
 | El supervisor administra algo que ya tiene entrada propia | No sustituye la entrada — se añade también como tarjeta del hub, a modo de atajo (patrón ya usado por Usuarios) |
 
 No hay vista con contenido genuinamente exclusivo del supervisor más allá de las dos
@@ -95,8 +114,9 @@ del principio más fundacional: si no hay una razón declarada para ocultar algo
 — tampoco indirectamente por no darle puerta de entrada.
 
 ```python
-# app/utils/permisos.py — un solo valor cambia
-'acceder_supervision': {'ADMIN', 'SUPERVISOR', 'TRAMITADOR', 'ADMINISTRATIVO'},
+# app/utils/permisos.py — renombrado a acceder_gestion_control en implementación
+# (ver nota de implementación al inicio de este documento)
+'acceder_gestion_control': {'ADMIN', 'SUPERVISOR', 'TRAMITADOR', 'ADMINISTRATIVO'},
 ```
 
 No hace falta permiso nuevo: ni el hub ni Estadísticas mutan nada — son lectura pura. La
@@ -193,8 +213,10 @@ exclusivo de ADMIN (solo permisos puntuales más restrictivos, como
 
 Repartido en tres issues por unidad de PR:
 
-1. **#588** — Universalizar `acceder_supervision`, `metadata.json` del hub ("Control y
-   Gestión"), tarjeta de Requisitos documentales en GESTIÓN.
+1. **#588** — Universalizar el permiso de entrada (renombrado a `acceder_gestion_control`),
+   `metadata.json` del hub ("Control y Gestión", URL `/gestion_y_control/`), tarjeta de
+   Requisitos documentales en GESTIÓN, y extracción de `tareas_y_subidas` como módulo
+   universal propio (resuelve de paso el caso 2 de la deuda de ADR-017).
 2. **#589** — Dashboard generado desde `module_nav`, campo `navigation.description`,
    migración de `perfil` a `app/modules/`, retirada de tarjetas obsoletas.
 3. **#590** — Retirar el prefijo `/admin` de Plantillas y Requisitos documentales.

@@ -1,0 +1,14 @@
+{
+  "module": "tareas_y_subidas",
+  "name": "Tareas y Subidas",
+  "icon": "fa-tasks",
+  "order": 6,
+  "permissions": {
+    "list": ["ADMIN", "SUPERVISOR", "TRAMITADOR", "ADMINISTRATIVO"]
+  },
+  "navigation": {
+    "label": "Tareas y Subidas",
+    "route": "tareas_y_subidas.index",
+    "description": "Cola de tareas administrativas y subida de documentos al pool"
+  }
+}

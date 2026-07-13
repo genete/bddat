@@ -1,15 +1,15 @@
 // App.jsx — raíz de la isla "estadisticas" del supervisor (#579, ADR-028 §2).
 //
 // Carga SÍNCRONA con skeleton (ADR-028 §2: nada de streaming/contador en vivo en
-// v1). Pide {kpis, por_estado, por_tecnico} a /supervisor/api/estadisticas y pinta
-// tres bloques: fila de KPIs, tarta por estado y barras de carga por técnico.
+// v1). Pide {kpis, por_estado, por_tecnico} a /gestion_y_control/api/estadisticas
+// y pinta tres bloques: fila de KPIs, tarta por estado y barras de carga por técnico.
 import React, { useEffect, useState } from 'react'
 import { api, ApiError } from '../shared/api.js'
 import Kpis from './components/Kpis.jsx'
 import TartaPorEstado from './components/TartaPorEstado.jsx'
 import BarrasPorTecnico from './components/BarrasPorTecnico.jsx'
 
-const ENDPOINT = '/supervisor/api/estadisticas'
+const ENDPOINT = '/gestion_y_control/api/estadisticas'
 
 export default function App() {
   const [estado, setEstado] = useState('cargando') // cargando | listo | error

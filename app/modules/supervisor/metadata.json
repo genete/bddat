@@ -1,0 +1,14 @@
+{
+  "module": "supervisor",
+  "name": "Control y Gestión",
+  "icon": "fa-toolbox",
+  "order": 7,
+  "permissions": {
+    "list": ["ADMIN", "SUPERVISOR", "TRAMITADOR", "ADMINISTRATIVO"]
+  },
+  "navigation": {
+    "label": "Control y Gestión",
+    "route": "supervisor.index",
+    "description": "Estadísticas, auditoría y administración del sistema"
+  }
+}

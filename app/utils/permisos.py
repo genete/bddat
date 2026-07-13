@@ -27,10 +27,18 @@ PERMISOS = {
     'acceder_usuarios':          {'ADMIN', 'SUPERVISOR', 'TRAMITADOR', 'ADMINISTRATIVO'},
     'gestionar_usuarios':        {'ADMIN', 'SUPERVISOR'},
 
-    # Vista del supervisor — hub de dos bloques (ADR-028, #579). Permiso de grano
+    # Hub "Control y Gestión" — antes vista del supervisor, universalizada por
+    # ADR-029 §2 (enmienda ADR-028 §1): no hay razón declarada para ocultarlo,
+    # tampoco indirectamente por no darle puerta de entrada. Permiso de grano
     # grueso de entrada; los permisos finos por bloque (generar_informes,
     # configurar_sistema, operar_masivo) se concretan al construir cada bloque.
-    'acceder_supervision':       {'ADMIN', 'SUPERVISOR'},
+    'acceder_gestion_control':   {'ADMIN', 'SUPERVISOR', 'TRAMITADOR', 'ADMINISTRATIVO'},
+
+    # Hub "Tareas y Subidas" — cola administrativa + subida al pool (ADR-017,
+    # #501). Extraído de mi_trabajo como ruta universal propia (ADR-017 §deuda
+    # conocida, resuelta en #588): la escritura (gestionar_tareas) ya era
+    # universal, solo la navegación lo escondía tras el rol ADMINISTRATIVO.
+    'acceder_tareas_y_subidas':  {'ADMIN', 'SUPERVISOR', 'TRAMITADOR', 'ADMINISTRATIVO'},
 
     # Sin UI aún — reservados para #170/#171
     'acceder_reglas_motor':      {'ADMIN', 'SUPERVISOR', 'TRAMITADOR', 'ADMINISTRATIVO'},
