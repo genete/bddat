@@ -6,7 +6,7 @@
    como "Próximamente" (.is-soon). #}
 {% extends "layout/base_app.html" %}
 
-{% block title %}Mi trabajo · Supervisor{% endblock %}
+{% block title %}Control y Gestión{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/v1-dashboard.css') }}">
@@ -14,15 +14,15 @@
 {% endblock %}
 
 {% block breadcrumb %}
-<a href="{{ url_for('supervisor.index') }}">Mi trabajo</a>
+<a href="{{ url_for('supervisor.index') }}">Control y Gestión</a>
 {% endblock %}
 
 {# Título en la viewbar estándar (mismo patrón que los listados, lista_v2_base).
    El nombre y el rol activo ya los muestra la topbar — no se duplican aquí. #}
 {% block viewbar %}
 <span class="app-viewbar__title">
-  <i class="fas fa-clipboard-check"></i>
-  <span>Mi trabajo · Supervisor</span>
+  <i class="fas fa-toolbox"></i>
+  <span>Control y Gestión</span>
 </span>
 {% endblock %}
 
@@ -111,6 +111,14 @@
         <span class="sup-tool__body">
           <span class="sup-tool__title">Tipos de documento</span>
           <span class="sup-tool__desc">Catálogo de clasificación semántica de documentos</span>
+        </span>
+      </a>
+
+      <a class="sup-tool" href="{{ url_for('admin_requisitos.listado') }}">
+        <span class="sup-tool__icon"><i class="fas fa-clipboard-check"></i></span>
+        <span class="sup-tool__body">
+          <span class="sup-tool__title">Requisitos documentales</span>
+          <span class="sup-tool__desc">Catálogo normativo del checklist documental (#583)</span>
         </span>
       </a>
 
