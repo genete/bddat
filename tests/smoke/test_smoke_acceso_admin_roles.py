@@ -13,8 +13,8 @@ pero NO 'gestionar_plantillas' ni 'gestionar_usuarios'.
 # ---------------------------------------------------------------------------
 
 def test_administrativo_puede_ver_plantillas(usuario_administrativo):
-    r = usuario_administrativo.get('/admin/plantillas/', follow_redirects=True)
-    assert r.status_code == 200, f'ADMINISTRATIVO no puede leer /admin/plantillas/ (status {r.status_code})'
+    r = usuario_administrativo.get('/plantillas/', follow_redirects=True)
+    assert r.status_code == 200, f'ADMINISTRATIVO no puede leer /plantillas/ (status {r.status_code})'
 
 
 def test_administrativo_puede_ver_usuarios(usuario_administrativo):
@@ -27,13 +27,13 @@ def test_administrativo_puede_ver_usuarios(usuario_administrativo):
 # ---------------------------------------------------------------------------
 
 def test_administrativo_no_puede_crear_plantilla(usuario_administrativo):
-    r = usuario_administrativo.get('/admin/plantillas/nueva/', follow_redirects=False)
+    r = usuario_administrativo.get('/plantillas/nueva/', follow_redirects=False)
     assert r.status_code == 302
     assert '/perfil' in r.headers.get('Location', '')
 
 
 def test_administrativo_no_puede_editar_plantilla(usuario_administrativo, plantilla_seed):
-    r = usuario_administrativo.get(f'/admin/plantillas/{plantilla_seed}/editar', follow_redirects=False)
+    r = usuario_administrativo.get(f'/plantillas/{plantilla_seed}/editar', follow_redirects=False)
     assert r.status_code == 302
     assert '/perfil' in r.headers.get('Location', '')
 

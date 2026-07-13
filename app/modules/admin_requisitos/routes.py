@@ -5,15 +5,20 @@ Interfaz de configuración para el Supervisor sobre `requisitos_documentales` +
 `condiciones_requisito` — mismo patrón ADR-023 (listado + inspector overlay)
 que `admin_plantillas` (#545), y mismo patrón de alta vía modal que `usuarios`.
 
+Sin exclusividad de ADMIN (lectura universal, `acceder_requisitos_documentales`)
+— el prefijo `/admin` se retira en #590 (ADR-029 §4). El nombre interno del
+blueprint (`admin_requisitos`) no cambia — mismo criterio que #588/#590 ya
+aplican al resto (cambiar `url_prefix` no rompe `url_for()`).
+
 Rutas de formulario:
-- GET  /admin/requisitos/                    — Listado (scroll infinito + inspector)
-- POST /admin/requisitos/crear                — Alta (modal en el listado)
-- GET  /admin/requisitos/<id>/                — Redirige al listado con el inspector abierto
-- GET  /admin/requisitos/<id>/fragmento       — Fragmento de lectura para el inspector
-- GET  /admin/requisitos/<id>/editar-fragmento — Fragmento de edición (incluye condiciones)
-- POST /admin/requisitos/<id>/editar          — Guardar cambios (campos + condiciones)
-- POST /admin/requisitos/<id>/activar         — Alternar activo/inactivo (baja lógica)
-- POST /admin/requisitos/<id>/eliminar        — Baja física, solo si no tiene usos
+- GET  /requisitos_documentales/                    — Listado (scroll infinito + inspector)
+- POST /requisitos_documentales/crear                — Alta (modal en el listado)
+- GET  /requisitos_documentales/<id>/                — Redirige al listado con el inspector abierto
+- GET  /requisitos_documentales/<id>/fragmento       — Fragmento de lectura para el inspector
+- GET  /requisitos_documentales/<id>/editar-fragmento — Fragmento de edición (incluye condiciones)
+- POST /requisitos_documentales/<id>/editar          — Guardar cambios (campos + condiciones)
+- POST /requisitos_documentales/<id>/activar         — Alternar activo/inactivo (baja lógica)
+- POST /requisitos_documentales/<id>/eliminar        — Baja física, solo si no tiene usos
 """
 from flask import Blueprint, flash, jsonify, redirect, render_template, request, url_for
 from flask_login import login_required
@@ -28,7 +33,7 @@ from app.utils.permisos import tiene_permiso
 bp = Blueprint(
     'admin_requisitos',
     __name__,
-    url_prefix='/admin/requisitos',
+    url_prefix='/requisitos_documentales',
     template_folder='templates',
 )
 

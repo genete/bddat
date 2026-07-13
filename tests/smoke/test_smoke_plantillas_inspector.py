@@ -17,8 +17,8 @@ def primera_plantilla_id(app):
 
 
 def test_plantillas_listado(usuario_supervisor):
-    """GET /admin/plantillas/ → 200 con el shell del layout (ADR-019)."""
-    r = usuario_supervisor.get('/admin/plantillas/')
+    """GET /plantillas/ → 200 con el shell del layout (ADR-019)."""
+    r = usuario_supervisor.get('/plantillas/')
     assert r.status_code == 200
     assert b'class="app-main"' in r.data
 
@@ -43,30 +43,30 @@ def test_api_plantillas_filtro_estado(usuario_supervisor):
 
 
 def test_plantilla_detalle_redirige_a_listado(usuario_supervisor, primera_plantilla_id):
-    """GET /admin/plantillas/<id>/ redirige a /admin/plantillas/?sel=<id> (ADR-023 §9)."""
-    r = usuario_supervisor.get(f'/admin/plantillas/{primera_plantilla_id}/')
+    """GET /plantillas/<id>/ redirige a /plantillas/?sel=<id> (ADR-023 §9)."""
+    r = usuario_supervisor.get(f'/plantillas/{primera_plantilla_id}/')
     assert r.status_code == 302
     assert f'sel={primera_plantilla_id}' in r.location
 
 
 def test_plantilla_fragmento_render(usuario_supervisor, primera_plantilla_id):
-    """GET /admin/plantillas/<id>/fragmento → 200 con el parcial de lectura."""
-    r = usuario_supervisor.get(f'/admin/plantillas/{primera_plantilla_id}/fragmento')
+    """GET /plantillas/<id>/fragmento → 200 con el parcial de lectura."""
+    r = usuario_supervisor.get(f'/plantillas/{primera_plantilla_id}/fragmento')
     assert r.status_code == 200
     assert b'Identificaci' in r.data
 
 
 def test_plantilla_editar_fragmento_render(usuario_supervisor, primera_plantilla_id):
-    """GET /admin/plantillas/<id>/editar-fragmento → 200 con formulario de edición."""
-    r = usuario_supervisor.get(f'/admin/plantillas/{primera_plantilla_id}/editar-fragmento')
+    """GET /plantillas/<id>/editar-fragmento → 200 con formulario de edición."""
+    r = usuario_supervisor.get(f'/plantillas/{primera_plantilla_id}/editar-fragmento')
     assert r.status_code == 200
     assert b'name="codigo"' in r.data
     assert b'name="tipo_documento_id"' in r.data
 
 
 def test_plantilla_tokens_fragmento_render(usuario_supervisor):
-    """GET /admin/plantillas/tokens/fragmento → 200 con el panel de tokens (global)."""
-    r = usuario_supervisor.get('/admin/plantillas/tokens/fragmento')
+    """GET /plantillas/tokens/fragmento → 200 con el panel de tokens (global)."""
+    r = usuario_supervisor.get('/plantillas/tokens/fragmento')
     assert r.status_code == 200
     assert b'Tokens disponibles' in r.data
 
@@ -77,13 +77,13 @@ def test_plantilla_tokens_fragmento_contextual(usuario_supervisor):
     Con contexto_clase aparece la sección Capa 2 y sus tokens; sin él, no.
     """
     r = usuario_supervisor.get(
-        '/admin/plantillas/tokens/fragmento?contexto_clase=ContextoResolucion'
+        '/plantillas/tokens/fragmento?contexto_clase=ContextoResolucion'
     )
     assert r.status_code == 200
     assert b'Contexto avanzado' in r.data
     assert b'sentido_acto_nombre' in r.data
     # Universal: sin contexto_clase no se ofrece ningún token de Capa 2
-    r_global = usuario_supervisor.get('/admin/plantillas/tokens/fragmento')
+    r_global = usuario_supervisor.get('/plantillas/tokens/fragmento')
     assert b'sentido_acto_nombre' not in r_global.data
 
 
@@ -92,7 +92,7 @@ def test_alta_error_conserva_campos(usuario_supervisor):
 
     Antes el alta repintaba con plantilla=None y borraba todos los campos.
     """
-    r = usuario_supervisor.post('/admin/plantillas/nueva/', data={
+    r = usuario_supervisor.post('/plantillas/nueva/', data={
         'nombre': 'Plantilla de prueba XYZ',
         'codigo': 'PRUEBA_XYZ',
         'contexto_clase': 'ContextoResolucion',
@@ -105,8 +105,8 @@ def test_alta_error_conserva_campos(usuario_supervisor):
 
 
 def test_plantilla_editar_get_redirige(usuario_supervisor, primera_plantilla_id):
-    """GET /admin/plantillas/<id>/editar redirige al listado con sel= (ADR-023 §9)."""
-    r = usuario_supervisor.get(f'/admin/plantillas/{primera_plantilla_id}/editar')
+    """GET /plantillas/<id>/editar redirige al listado con sel= (ADR-023 §9)."""
+    r = usuario_supervisor.get(f'/plantillas/{primera_plantilla_id}/editar')
     assert r.status_code == 302
     assert f'sel={primera_plantilla_id}' in r.location
 
@@ -114,7 +114,7 @@ def test_plantilla_editar_get_redirige(usuario_supervisor, primera_plantilla_id)
 def test_plantilla_editar_xhr_error(usuario_supervisor, primera_plantilla_id):
     """POST editar con XHR y form vacío → JSON {ok: false, errors}."""
     r = usuario_supervisor.post(
-        f'/admin/plantillas/{primera_plantilla_id}/editar',
+        f'/plantillas/{primera_plantilla_id}/editar',
         data={},
         headers={'X-Requested-With': 'XMLHttpRequest'},
     )
@@ -150,7 +150,7 @@ def test_plantilla_editar_xhr_success(usuario_supervisor, primera_plantilla_id, 
             form_data['activo'] = 'on'
 
     r = usuario_supervisor.post(
-        f'/admin/plantillas/{primera_plantilla_id}/editar',
+        f'/plantillas/{primera_plantilla_id}/editar',
         data=form_data,
         headers={'X-Requested-With': 'XMLHttpRequest'},
     )
