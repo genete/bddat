@@ -11,7 +11,8 @@
   },
   "navigation": {
     "label": "Entidades",
-    "route": "entidades.index"
+    "route": "entidades.index",
+    "description": "Titulares, promotores y otras entidades relacionadas"
   },
   "listado_v2": {
     "columns": [

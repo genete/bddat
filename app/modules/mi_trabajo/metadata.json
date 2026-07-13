@@ -8,6 +8,7 @@
   },
   "navigation": {
     "label": "Mi trabajo",
-    "route": "mi_trabajo.index"
+    "route": "mi_trabajo.index",
+    "description": "Punto de entrada según tu rol activo"
   }
 }

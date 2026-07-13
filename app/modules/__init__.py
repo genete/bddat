@@ -75,7 +75,7 @@ class ModuleRegistry:
                         Si es None o vacía, no se aplica filtro de permisos.
 
         Returns:
-            Lista de dicts con: label, route, icon, order, module.
+            Lista de dicts con: label, route, description, icon, order, module.
         """
         nav_items = []
 
@@ -92,11 +92,12 @@ class ModuleRegistry:
 
             nav = metadata.get('navigation', {})
             nav_items.append({
-                'label':  nav.get('label', module_name.capitalize()),
-                'route':  nav.get('route', ''),
-                'icon':   metadata.get('icon', 'fa-circle'),
-                'order':  metadata.get('order', 99),
-                'module': module_name,
+                'label':       nav.get('label', module_name.capitalize()),
+                'route':       nav.get('route', ''),
+                'description': nav.get('description', ''),
+                'icon':        metadata.get('icon', 'fa-circle'),
+                'order':       metadata.get('order', 99),
+                'module':      module_name,
             })
 
         return sorted(nav_items, key=lambda x: x['order'])
