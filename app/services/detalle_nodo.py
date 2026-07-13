@@ -108,20 +108,28 @@ def _nombre_doc(doc) -> str:
     return filename or f'Documento {doc.id}'
 
 
-def _serializar_documento(exp_id: int, doc, rol: str) -> dict:
-    """Documento clicable para el inspector (enlace de apertura + flags de acción)."""
+def info_apertura_documento(exp_id: int, doc) -> dict:
+    """Enlace de apertura + flags de acción de un documento — no depende del rol
+    (aplica igual a un documento aún no enlazado a ninguna tarea, #609)."""
     url = doc.url or ''
     externo = url.startswith(('http://', 'https://'))
+    return {
+        'enlace': url_for('expedientes.pool_descargar_documento', id=exp_id, doc_id=doc.id),
+        'externo': externo,
+        # "Abrir carpeta del documento" solo aplica a ficheros locales (§8).
+        'puede_abrir_carpeta': not externo and not url.startswith('bddat://'),
+    }
+
+
+def _serializar_documento(exp_id: int, doc, rol: str) -> dict:
+    """Documento clicable para el inspector (enlace de apertura + flags de acción)."""
     return {
         'id': doc.id,
         'rol': rol,
         'nombre': _nombre_doc(doc),
         'tipo_doc': doc.tipo_doc.nombre if doc.tipo_doc else None,
         'fecha': _fecha(doc.fecha_administrativa),
-        'enlace': url_for('expedientes.pool_descargar_documento', id=exp_id, doc_id=doc.id),
-        'externo': externo,
-        # "Abrir carpeta del documento" solo aplica a ficheros locales (§8).
-        'puede_abrir_carpeta': not externo and not url.startswith('bddat://'),
+        **info_apertura_documento(exp_id, doc),
     }
 
 
