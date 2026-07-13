@@ -254,6 +254,19 @@ exclusivo. Cambiar `url_prefix` no rompe `url_for()` (usa el nombre de endpoint,
 literal); renombrar además blueprint/directorio es un paso más profundo y opcional, a decidir
 en la implementación (#590).
 
+> **Nota de implementación (2026-07-13, #590).** `/admin/plantillas` → `/plantillas/`;
+> `/admin/requisitos` → `/requisitos_documentales/` (nombre completo, no abreviado — mismo
+> criterio que `catalogo_requerimientos`/`tareas_y_subidas`/`gestion_y_control`; evita
+> ambigüedad con el `requerimiento` de #593, concepto distinto). Se optó por **no** renombrar
+> blueprint/directorio (`admin_plantillas`/`admin_requisitos` se mantienen) — mismo criterio
+> ya aplicado a `supervisor` en #588: cambiar solo `url_prefix` es mecánico y no exige tocar
+> `url_for()` en ningún consumidor. Además del propio `url_prefix`, se actualizaron los
+> `fetch`/plantillas-literal JS hardcodeadas en `listado.html` de ambos módulos (el
+> `fragmentUrl` del inspector, ADR-023 §9, no pasa por `url_for()`) y las URLs literales en
+> tests (`test_497_permisos_blandos.py`, `test_498_layout_base_app.py`,
+> `test_smoke_admin_requisitos.py`, `test_smoke_plantillas_*.py`,
+> `test_smoke_acceso_admin_roles.py`).
+
 ---
 
 ## Generalización — si `ADMIN` necesita algo propio en el futuro
