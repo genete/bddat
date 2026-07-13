@@ -5,6 +5,8 @@
 //   · docs del pool (S3b-3):  tarea  → fichas de doc del pool + staging consumido/producido
 import React from 'react'
 import { useArbolStore } from '../store.js'
+import { api } from '../../shared/api.js'
+import { showToast } from '../../shared/ui/toast.js'
 
 // ─── Modo tipos-creables (S3b-2) ────────────────────────────────────────────
 
@@ -264,31 +266,80 @@ function DespensaTipos() {
 
 // ─── Modo docs del pool (S3b-3) ─────────────────────────────────────────────
 
-function FichaDoc({ doc, vinculado, seleccionada, onClick }) {
+async function postAccion(url) {
+  try {
+    await api.post(url)
+  } catch (e) {
+    showToast((e && e.message) || 'No se pudo completar la acción', 'danger')
+  }
+}
+
+// Acciones de apertura (enlace + carpeta) de un documento del pool — mismo
+// mecanismo que Inspector.jsx en modo lectura, disponible aquí también antes
+// de decidir enlazar el documento a la tarea (#609).
+function AccionesApertura({ doc, expedienteId }) {
   return (
-    <button
-      type="button"
-      className={`btn btn-sm w-100 text-start border rounded px-2 py-1 ${
+    <div className="d-flex align-items-center gap-1" onClick={(e) => e.stopPropagation()}>
+      {doc.enlace && (
+        <a
+          href={doc.enlace}
+          target="_blank"
+          rel="noreferrer"
+          className="btn btn-sm btn-link p-0 text-secondary lh-1"
+          style={{ fontSize: '0.85rem' }}
+          title="Abrir documento"
+        >
+          <i className="bi bi-box-arrow-up-right" />
+        </a>
+      )}
+      {doc.puede_abrir_carpeta && (
+        <button
+          type="button"
+          className="btn btn-sm btn-link p-0 text-secondary lh-1"
+          style={{ fontSize: '0.85rem' }}
+          title="Abrir carpeta del documento"
+          onClick={() => postAccion(`/expedientes/${expedienteId}/documentos/${doc.id}/abrir-en-carpeta`)}
+        >
+          <i className="bi bi-folder2-open" />
+        </button>
+      )}
+    </div>
+  )
+}
+
+// Contenedor no-button (para poder anidar enlace/botón de apertura sin HTML
+// inválido) con el mismo aspecto visual que el botón que sustituye.
+function FichaDoc({ doc, vinculado, seleccionada, onClick, expedienteId }) {
+  return (
+    <div
+      className={`btn btn-sm w-100 text-start border rounded px-2 py-1 d-flex align-items-center gap-2 ${
         seleccionada
           ? 'btn-primary'
           : vinculado
             ? 'btn-outline-success'
             : 'btn-outline-secondary'
       }`}
-      style={{ fontSize: '0.78rem' }}
+      style={{ fontSize: '0.78rem', cursor: 'pointer' }}
+      role="button"
+      tabIndex={0}
       onClick={onClick}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick() } }}
       title={doc.nombre}
     >
-      <div className="text-truncate fw-semibold">{doc.nombre}</div>
-      <div className="text-truncate opacity-75">
-        {[doc.tipo_doc, doc.fecha].filter(Boolean).join(' · ')}
+      <div className="flex-grow-1 text-truncate">
+        <div className="text-truncate fw-semibold">{doc.nombre}</div>
+        <div className="text-truncate opacity-75">
+          {[doc.tipo_doc, doc.fecha].filter(Boolean).join(' · ')}
+        </div>
       </div>
-    </button>
+      <AccionesApertura doc={doc} expedienteId={expedienteId} />
+    </div>
   )
 }
 
 function DespensaDocs({ deshabilitarProducido }) {
   const seleccion               = useArbolStore((s) => s.seleccion)
+  const expedienteId            = useArbolStore((s) => s.expedienteId)
   const borrador                = useArbolStore((s) => s.borrador)
   const pool                    = useArbolStore((s) => s.pool)
   const poolCargando            = useArbolStore((s) => s.poolCargando)
@@ -356,6 +407,7 @@ function DespensaDocs({ deshabilitarProducido }) {
                 {rol === 'CONSUMIDO' ? 'Consumido' : 'Producido'}
               </span>
               <span className="text-truncate flex-grow-1 fw-semibold" title={doc.nombre}>{doc.nombre}</span>
+              <AccionesApertura doc={doc} expedienteId={expedienteId} />
               <button
                 type="button"
                 className="btn btn-sm btn-link text-danger p-0 lh-1"
@@ -383,6 +435,7 @@ function DespensaDocs({ deshabilitarProducido }) {
               doc={doc}
               vinculado={consumidosIds.has(doc.id) || producidoId === doc.id}
               seleccionada={docVinculandoPendiente?.id === doc.id}
+              expedienteId={expedienteId}
               onClick={() =>
                 docVinculandoPendiente?.id === doc.id
                   ? cancelarVincular()
