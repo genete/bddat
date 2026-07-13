@@ -86,7 +86,7 @@ export default function Cola({ tiposExpediente }) {
     if (window.AppInspector) {
       window.AppInspector.open({
         selId: `tarea-${fila.tarea_id}`,
-        fragmentUrl: `/mi_trabajo/tarea/${fila.tarea_id}/fragmento`,
+        fragmentUrl: `/tareas_y_subidas/tarea/${fila.tarea_id}/fragmento`,
       })
     }
   }

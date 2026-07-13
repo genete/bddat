@@ -1,4 +1,4 @@
-{# index.html — Vista "Mi trabajo" del administrativo (#501, ADR-017).
+{# index.html — Vista "Tareas y Subidas" (#501 ADR-017, extraído en #588 ADR-029).
 
    Isla React "mi-trabajo" sobre base_app. La viewbar (título + tabs
    [Cola] [Subir documento]) la renderiza la propia isla por portal sobre el slot,
@@ -6,7 +6,7 @@
    shell (AppInspector.open) — no se declara {% block inspector %}. #}
 {% extends "layout/base_app.html" %}
 
-{% block title %}Mi trabajo{% endblock %}
+{% block title %}Tareas y Subidas{% endblock %}
 
 {% block viewbar %}
   <div id="mi-trabajo-viewbar-slot" style="display:contents"></div>
