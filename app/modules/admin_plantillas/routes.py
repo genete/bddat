@@ -1,19 +1,25 @@
 """
 Blueprint para administración de plantillas de escritos administrativos.
 
+Sin exclusividad de ADMIN (lectura universal, `acceder_plantillas`) — el prefijo
+`/admin` se retira en #590 (ADR-029 §4): no hay contenido aquí exclusivo del rol
+ADMIN, solo un patrón heredado de antes de ADR-013/017/028. El nombre interno
+del blueprint (`admin_plantillas`) no cambia — mismo criterio que ya aplicó #588
+a `supervisor` (cambiar `url_prefix` no rompe `url_for()`).
+
 Rutas de formulario:
-- GET  /admin/plantillas/             — Listado de plantillas
-- GET  /admin/plantillas/nueva/       — Formulario alta nueva plantilla
-- POST /admin/plantillas/nueva/       — Guardar nueva plantilla
-- GET  /admin/plantillas/<id>/        — Detalle (solo lectura) + panel tokens
-- GET  /admin/plantillas/<id>/editar  — Formulario edición pre-rellenado
-- POST /admin/plantillas/<id>/editar  — Guardar cambios
-- GET  /admin/plantillas/<id>/descargar — Descarga del .docx registrado
-- POST /admin/plantillas/<id>/activar — Activar/desactivar plantilla
+- GET  /plantillas/             — Listado de plantillas
+- GET  /plantillas/nueva/       — Formulario alta nueva plantilla
+- POST /plantillas/nueva/       — Guardar nueva plantilla
+- GET  /plantillas/<id>/        — Detalle (solo lectura) + panel tokens
+- GET  /plantillas/<id>/editar  — Formulario edición pre-rellenado
+- POST /plantillas/<id>/editar  — Guardar cambios
+- GET  /plantillas/<id>/descargar — Descarga del .docx registrado
+- POST /plantillas/<id>/activar — Activar/desactivar plantilla
 
 Endpoints AJAX:
-- GET  /admin/plantillas/api/tokens           — Tokens Capa 1 (stub — Capa 2 en Fase 5)
-- GET  /admin/plantillas/api/fs               — Explorador de servidor restringido a PLANTILLAS_BASE/plantillas/
+- GET  /plantillas/api/tokens           — Tokens Capa 1 (stub — Capa 2 en Fase 5)
+- GET  /plantillas/api/fs               — Explorador de servidor restringido a PLANTILLAS_BASE/plantillas/
 """
 import os
 
@@ -37,7 +43,7 @@ from app.utils.permisos import tiene_permiso
 bp = Blueprint(
     'admin_plantillas',
     __name__,
-    url_prefix='/admin/plantillas',
+    url_prefix='/plantillas',
     template_folder='templates',
 )
 

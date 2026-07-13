@@ -93,7 +93,7 @@
                 : '<span class="badge bg-secondary">Inactiva</span>' },
         ],
         selection: {
-            fragmentUrl: id   => `/admin/plantillas/${id}/fragmento`,
+            fragmentUrl: id   => `/plantillas/${id}/fragmento`,
             title:       item => item.nombre || ''
         }
     });
@@ -117,7 +117,7 @@
         AppInspector.open({
             selId:       _selParam,
             title:       '',
-            fragmentUrl: `/admin/plantillas/${_selParam}/fragmento`
+            fragmentUrl: `/plantillas/${_selParam}/fragmento`
         });
     }
 

@@ -68,7 +68,7 @@ def supervisor(client):
 # ---------------------------------------------------------------------------
 
 @pytest.mark.parametrize('ruta', [
-    '/admin/plantillas/',
+    '/plantillas/',
     '/usuarios/',
 ])
 def test_tramitador_puede_leer(tramitador, ruta):
@@ -83,7 +83,7 @@ def test_tramitador_puede_ver_detalle_plantilla(tramitador):
     p = Plantilla.query.first()
     if p is None:
         pytest.skip('No hay plantillas en la BD')
-    r = tramitador.get(f'/admin/plantillas/{p.id}/', follow_redirects=True)
+    r = tramitador.get(f'/plantillas/{p.id}/', follow_redirects=True)
     assert r.status_code == 200
 
 
@@ -103,7 +103,7 @@ def test_tramitador_puede_ver_detalle_usuario(tramitador):
 
 def test_tramitador_no_puede_crear_plantilla_get(tramitador):
     """TRAMITADOR no accede al formulario de nueva plantilla."""
-    r = tramitador.get('/admin/plantillas/nueva/', follow_redirects=False)
+    r = tramitador.get('/plantillas/nueva/', follow_redirects=False)
     assert r.status_code == 302
     assert '/perfil' in r.headers.get('Location', '')
 
@@ -114,7 +114,7 @@ def test_tramitador_no_puede_editar_plantilla(tramitador):
     p = Plantilla.query.first()
     if p is None:
         pytest.skip('No hay plantillas en la BD')
-    r = tramitador.get(f'/admin/plantillas/{p.id}/editar', follow_redirects=False)
+    r = tramitador.get(f'/plantillas/{p.id}/editar', follow_redirects=False)
     assert r.status_code == 302
     assert '/perfil' in r.headers.get('Location', '')
 
@@ -125,7 +125,7 @@ def test_tramitador_no_puede_activar_plantilla(tramitador):
     p = Plantilla.query.first()
     if p is None:
         pytest.skip('No hay plantillas en la BD')
-    r = tramitador.post(f'/admin/plantillas/{p.id}/activar', follow_redirects=False)
+    r = tramitador.post(f'/plantillas/{p.id}/activar', follow_redirects=False)
     assert r.status_code == 302
     assert '/perfil' in r.headers.get('Location', '')
 
@@ -162,7 +162,7 @@ def test_tramitador_no_puede_editar_usuario(tramitador):
 # ---------------------------------------------------------------------------
 
 @pytest.mark.parametrize('ruta', [
-    '/admin/plantillas/',
+    '/plantillas/',
     '/usuarios/',
 ])
 def test_supervisor_sigue_accediendo(supervisor, ruta):
@@ -173,7 +173,7 @@ def test_supervisor_sigue_accediendo(supervisor, ruta):
 
 def test_supervisor_puede_crear_plantilla_get(supervisor):
     """SUPERVISOR accede al formulario de nueva plantilla."""
-    r = supervisor.get('/admin/plantillas/nueva/', follow_redirects=True)
+    r = supervisor.get('/plantillas/nueva/', follow_redirects=True)
     assert r.status_code == 200
 
 

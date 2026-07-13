@@ -140,7 +140,7 @@
                 : '<span class="badge bg-secondary">Inactivo</span>' },
         ],
         selection: {
-            fragmentUrl: id   => `/admin/requisitos/${id}/fragmento`,
+            fragmentUrl: id   => `/requisitos_documentales/${id}/fragmento`,
             title:       item => item.tipo_documento || ''
         }
     });
@@ -163,7 +163,7 @@
         AppInspector.open({
             selId:       _selParam,
             title:       '',
-            fragmentUrl: `/admin/requisitos/${_selParam}/fragmento`
+            fragmentUrl: `/requisitos_documentales/${_selParam}/fragmento`
         });
     }
 

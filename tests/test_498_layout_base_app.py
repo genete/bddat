@@ -15,7 +15,7 @@ RUTAS_SMOKE = [
     '/',                       # dashboard.index
     '/expedientes/',           # listado V2
     '/entidades/',             # listado V2
-    '/admin/plantillas/',      # listado admin
+    '/plantillas/',            # listado admin
     '/usuarios/',              # listado admin
     '/perfil/',                # detalle propio
 ]
