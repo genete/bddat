@@ -1,0 +1,128 @@
+{# _detalle_fragmento.html — Parcial de lectura para el inspector (ADR-023 / #632).
+   No extiende base_app.html. Inyectado vía AppInspector.open({ fragmentUrl }).
+   - "Editar" → fragmento de edición (data-inspector-edit).
+   - Activar/desactivar → form data-inspector-form (POST XHR → JSON → refresh).
+   Sin botón "Eliminar" — baja física fuera de alcance del issue (#632); usar
+   activar/desactivar como el resto de catálogos normativos del proyecto.
+#}
+
+{% set NIVEL_LABEL = {'SOLICITUD': 'Solicitud', 'FASE': 'Fase', 'TRAMITE': 'Trámite', 'TAREA': 'Tarea'} %}
+{% set UNIDAD_LABEL = {'DIAS_HABILES': 'días hábiles', 'DIAS_NATURALES': 'días naturales', 'MESES': 'meses', 'ANOS': 'años'} %}
+
+<div class="p-3">
+
+<div class="d-flex justify-content-end gap-2 mb-3">
+    {% if puede_editar %}
+    <button type="button" class="btn btn-primary btn-sm"
+            data-inspector-edit
+            data-edit-url="{{ url_for('catalogo_plazos.editar_fragmento', id=item.id) }}">
+        <i class="fas fa-edit me-1"></i> Editar
+    </button>
+    {% endif %}
+</div>
+
+<!-- CARD 1 — Nivel ESFTT e inicio de cómputo -->
+<div class="card mb-3">
+    <div class="card-header card-header-accent fw-semibold">
+        <i class="fas fa-calendar-alt me-1"></i> Plazo legal
+        {% if item.activo %}
+            <span class="badge bg-success ms-1">Activo</span>
+        {% else %}
+            <span class="badge bg-secondary ms-1">Inactivo</span>
+        {% endif %}
+    </div>
+    <div class="card-body card-body-tinted">
+        <div class="row g-2">
+            <div class="col-4">
+                <label class="form-label fw-semibold small">Nivel</label>
+                <input type="text" class="form-control form-control-sm" value="{{ NIVEL_LABEL.get(item.tipo_elemento, item.tipo_elemento) }}" readonly>
+            </div>
+            <div class="col-8">
+                <label class="form-label fw-semibold small">Tipo</label>
+                <input type="text" class="form-control form-control-sm" value="{{ tipo_elemento_nombre }}" readonly>
+            </div>
+            <div class="col-12">
+                <label class="form-label fw-semibold small">Inicio de cómputo</label>
+                <input type="text" class="form-control form-control-sm" value="{{ campo_fecha_legible }}" readonly>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- CARD 2 — Duración y efecto -->
+<div class="card mb-3">
+    <div class="card-header card-header-accent fw-semibold">
+        <i class="fas fa-hourglass-half me-1"></i> Duración y efecto
+    </div>
+    <div class="card-body card-body-tinted">
+        <div class="row g-2">
+            <div class="col-6">
+                <label class="form-label fw-semibold small">Plazo</label>
+                <input type="text" class="form-control form-control-sm"
+                       value="{{ item.plazo_valor }} {{ UNIDAD_LABEL.get(item.plazo_unidad, item.plazo_unidad) }}" readonly>
+            </div>
+            <div class="col-6">
+                <label class="form-label fw-semibold small">Efecto del vencimiento</label>
+                <input type="text" class="form-control form-control-sm"
+                       value="{% if item.efecto_plazo %}{{ item.efecto_plazo.nombre }}{% else %}—{% endif %}" readonly>
+            </div>
+            <div class="col-12">
+                <label class="form-label fw-semibold small">Norma de origen</label>
+                <input type="text" class="form-control form-control-sm" value="{{ item.norma_origen or '—' }}" readonly>
+            </div>
+            <div class="col-4">
+                <label class="form-label fw-semibold small">Vigencia desde</label>
+                <input type="text" class="form-control form-control-sm" value="{{ item.vigencia_desde or '—' }}" readonly>
+            </div>
+            <div class="col-4">
+                <label class="form-label fw-semibold small">Vigencia hasta</label>
+                <input type="text" class="form-control form-control-sm" value="{{ item.vigencia_hasta or '—' }}" readonly>
+            </div>
+            <div class="col-4">
+                <label class="form-label fw-semibold small">Orden</label>
+                <input type="text" class="form-control form-control-sm" value="{{ item.orden }}" readonly>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- CARD 3 — Condiciones de aplicación -->
+<div class="card mb-3">
+    <div class="card-header card-header-accent fw-semibold">
+        <i class="fas fa-filter me-1"></i> Condiciones de aplicación
+        {% if not item.condiciones %}
+            <span class="badge bg-secondary ms-1" style="font-weight:400">Sin condiciones</span>
+        {% endif %}
+    </div>
+    <div class="card-body card-body-tinted">
+        {% if item.condiciones %}
+        <ul class="list-unstyled mb-0 small">
+            {% for c in item.condiciones %}
+            <li class="mb-1">
+                <code>{{ c.variable.etiqueta if c.variable else ('var_id=' ~ c.variable_id) }}</code>
+                <span class="text-secondary">{{ c.operador }}</span>
+                {% if c.valor is not none %}<strong>{{ c.valor }}</strong>{% endif %}
+            </li>
+            {% endfor %}
+        </ul>
+        <div class="form-text mt-1">Todas las condiciones se evalúan en AND — aplica solo si se cumplen todas.</div>
+        {% else %}
+        <div class="text-secondary small">Sin condiciones — este plazo es el fallback para su nivel/tipo (mayor «orden» = menor prioridad).</div>
+        {% endif %}
+    </div>
+</div>
+
+{% if puede_editar %}
+<div class="d-flex gap-2">
+    <form data-inspector-form
+          data-action="{{ url_for('catalogo_plazos.activar', id=item.id) }}">
+        <button type="submit"
+                class="btn btn-sm {% if item.activo %}btn-outline-danger{% else %}btn-outline-success{% endif %}">
+            <i class="fas {% if item.activo %}fa-toggle-off{% else %}fa-toggle-on{% endif %} me-1"></i>
+            {% if item.activo %}Desactivar{% else %}Activar{% endif %}
+        </button>
+    </form>
+</div>
+{% endif %}
+
+</div>{# /p-3 #}

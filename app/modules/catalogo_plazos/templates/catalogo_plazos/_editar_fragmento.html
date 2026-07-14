@@ -1,0 +1,197 @@
+{# _editar_fragmento.html — Parcial de edición para el inspector (ADR-023 / #632).
+   No extiende base_app.html. Inyectado por inspector-overlay.js vía data-inspector-edit.
+   Submit interceptado: POST XHR → JSON { ok, errors, message }.
+
+   Cascada nivel→tipo→campo_fecha: ver _campo_fecha_macro.html y
+   catalogo-plazos-cascada.js. El bloque inicial visible lo decide el servidor
+   según item.tipo_elemento — el JS solo reacciona a cambios posteriores.
+
+   Editor de condiciones anidado (variable + operador + valor + orden): filas
+   sin indexar (mismo name repetido), reconstruidas con request.form.getlist()
+   en el mismo orden del DOM. La lógica de añadir/quitar fila vive en
+   requisitos-inspector.js (genérica, reutilizada tal cual — ver
+   project_inspector_vs_modal_scripts.md). Operadores BETWEEN/NOT_BETWEEN
+   reutilizan el mismo input CSV que IN/NOT_IN (exigen exactamente 2 valores).
+#}
+{% import 'catalogo_plazos/_campo_fecha_macro.html' as cf %}
+
+{% set TIPO_LABELS = {'boolean': 'verdadero/falso', 'numerico': 'número', 'texto': 'texto', 'fecha': 'AAAA-MM-DD', 'enum': 'valor del catálogo'} %}
+
+<div class="p-3">
+
+<form data-inspector-form class="form-catalogo-plazo-editar"
+      data-action="{{ url_for('catalogo_plazos.editar', id=item.id) }}">
+
+<div id="inspector-form-errors" class="alert alert-danger py-2 mb-3 small" style="display:none;"></div>
+
+<div class="d-flex justify-content-end gap-2 mb-3">
+    <button type="button" class="btn btn-outline-secondary btn-sm" data-inspector-cancel-edit>
+        <i class="fas fa-times me-1"></i> Cancelar
+    </button>
+    <button type="submit" class="btn btn-primary btn-sm">
+        <i class="fas fa-save me-1"></i> Guardar cambios
+    </button>
+</div>
+
+<!-- CARD 1 — Nivel ESFTT e inicio de cómputo -->
+<div class="card mb-3">
+    <div class="card-header card-header-accent fw-semibold">
+        <i class="fas fa-calendar-alt me-1"></i> Plazo legal
+    </div>
+    <div class="card-body card-body-tinted">
+        {{ cf.nivel_y_cascada('cpe', item.tipo_elemento, item.tipo_elemento_codigo,
+                               cf_fk, cf_via_tarea_tipo, cf_rol,
+                               tipos_solicitud, tipos_fase, tipos_tramite, tipos_tarea) }}
+    </div>
+</div>
+
+<!-- CARD 2 — Plazo, efecto y vigencia -->
+<div class="card mb-3">
+    <div class="card-header card-header-accent fw-semibold">
+        <i class="fas fa-hourglass-half me-1"></i> Duración y efecto
+    </div>
+    <div class="card-body card-body-tinted">
+        <div class="row g-2">
+            <div class="col-4">
+                <label class="form-label fw-semibold small" for="cpe_plazo_valor">
+                    Valor del plazo <span class="text-danger">*</span>
+                </label>
+                <input type="number" class="form-control form-control-sm" id="cpe_plazo_valor" name="plazo_valor"
+                       min="1" value="{{ item.plazo_valor }}" required>
+            </div>
+            <div class="col-8">
+                <label class="form-label fw-semibold small" for="cpe_plazo_unidad">
+                    Unidad <span class="text-danger">*</span>
+                </label>
+                <select class="form-select form-select-sm" id="cpe_plazo_unidad" name="plazo_unidad" required>
+                    <option value="DIAS_HABILES"   {% if item.plazo_unidad == 'DIAS_HABILES' %}selected{% endif %}>Días hábiles</option>
+                    <option value="DIAS_NATURALES" {% if item.plazo_unidad == 'DIAS_NATURALES' %}selected{% endif %}>Días naturales</option>
+                    <option value="MESES"          {% if item.plazo_unidad == 'MESES' %}selected{% endif %}>Meses</option>
+                    <option value="ANOS"           {% if item.plazo_unidad == 'ANOS' %}selected{% endif %}>Años</option>
+                </select>
+            </div>
+            <div class="col-12">
+                <label class="form-label fw-semibold small" for="cpe_efecto">
+                    Efecto del vencimiento <span class="text-danger">*</span>
+                </label>
+                <select class="form-select form-select-sm" id="cpe_efecto" name="efecto_vencimiento_id" required>
+                    <option value="">— Seleccionar —</option>
+                    {% for e in efectos %}
+                    <option value="{{ e.id }}" {% if item.efecto_vencimiento_id == e.id %}selected{% endif %}>{{ e.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-12">
+                <label class="form-label fw-semibold small" for="cpe_norma">Norma de origen</label>
+                <input type="text" class="form-control form-control-sm" id="cpe_norma" name="norma_origen"
+                       value="{{ item.norma_origen or '' }}" placeholder="Art. 21.3 LPACAP">
+            </div>
+            <div class="col-4">
+                <label class="form-label fw-semibold small" for="cpe_desde">Vigencia desde</label>
+                <input type="date" class="form-control form-control-sm" id="cpe_desde" name="vigencia_desde"
+                       value="{{ item.vigencia_desde.isoformat() if item.vigencia_desde else '' }}">
+            </div>
+            <div class="col-4">
+                <label class="form-label fw-semibold small" for="cpe_hasta">Vigencia hasta</label>
+                <input type="date" class="form-control form-control-sm" id="cpe_hasta" name="vigencia_hasta"
+                       value="{{ item.vigencia_hasta.isoformat() if item.vigencia_hasta else '' }}">
+            </div>
+            <div class="col-4">
+                <label class="form-label fw-semibold small" for="cpe_orden">Orden</label>
+                <input type="number" class="form-control form-control-sm" id="cpe_orden" name="orden"
+                       value="{{ item.orden }}" min="1">
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- CARD 3 — Condiciones de aplicación -->
+<div class="card mb-3" data-condiciones-editor>
+    <div class="card-header card-header-accent fw-semibold d-flex justify-content-between align-items-center">
+        <span><i class="fas fa-filter me-1"></i> Condiciones de aplicación</span>
+        <button type="button" class="btn btn-sm btn-outline-primary" data-cond-add>
+            <i class="fas fa-plus me-1"></i> Añadir
+        </button>
+    </div>
+    <div class="card-body card-body-tinted">
+        <div class="form-text mb-2">
+            Todas se evalúan en AND. Una fila sin variable seleccionada se descarta al guardar.
+            Para "Está en" / "No está en" / "Entre" / "Fuera de rango", separa los valores con comas
+            (rango: exactamente 2 valores, mínimo y máximo).
+        </div>
+
+        <div data-cond-rows>
+            {% for c in item.condiciones %}
+            <div class="row g-1 align-items-center mb-2" data-cond-row>
+                <div class="col-4">
+                    <select class="form-select form-select-sm" name="cond_variable_id" data-cond-variable>
+                        <option value="">— Variable —</option>
+                        {% for v in variables %}
+                        <option value="{{ v.id }}" data-tipo="{{ v.tipo_dato }}" {% if c.variable_id == v.id %}selected{% endif %}>
+                            {{ v.etiqueta }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <div class="form-text small" data-cond-tipo-hint>{{ TIPO_LABELS.get(c.variable.tipo_dato, '') if c.variable else '' }}</div>
+                </div>
+                <div class="col-3">
+                    <select class="form-select form-select-sm" name="cond_operador" data-cond-operador>
+                        {% for codigo, etiqueta in operadores %}
+                        <option value="{{ codigo }}" {% if c.operador == codigo %}selected{% endif %}>{{ etiqueta }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-3" data-cond-valor-wrap {% if c.operador in ('IS_NULL', 'NOT_NULL') %}style="display:none"{% endif %}>
+                    <input type="text" class="form-control form-control-sm" name="cond_valor" data-cond-valor
+                           value="{{ valor_display.get(c.id, '') }}" placeholder="valor1, valor2…"
+                           {% if c.operador in ('IS_NULL', 'NOT_NULL') %}disabled{% endif %}>
+                </div>
+                <div class="col-1">
+                    <input type="number" class="form-control form-control-sm" name="cond_orden" data-cond-orden
+                           value="{{ c.orden }}" min="1">
+                </div>
+                <div class="col-1 text-end">
+                    <button type="button" class="btn btn-sm btn-outline-danger" data-cond-remove title="Quitar condición">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <template data-cond-template>
+            <div class="row g-1 align-items-center mb-2" data-cond-row>
+                <div class="col-4">
+                    <select class="form-select form-select-sm" name="cond_variable_id" data-cond-variable>
+                        <option value="">— Variable —</option>
+                        {% for v in variables %}
+                        <option value="{{ v.id }}" data-tipo="{{ v.tipo_dato }}">{{ v.etiqueta }}</option>
+                        {% endfor %}
+                    </select>
+                    <div class="form-text small" data-cond-tipo-hint></div>
+                </div>
+                <div class="col-3">
+                    <select class="form-select form-select-sm" name="cond_operador" data-cond-operador>
+                        {% for codigo, etiqueta in operadores %}
+                        <option value="{{ codigo }}">{{ etiqueta }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-3" data-cond-valor-wrap>
+                    <input type="text" class="form-control form-control-sm" name="cond_valor" data-cond-valor placeholder="valor1, valor2…">
+                </div>
+                <div class="col-1">
+                    <input type="number" class="form-control form-control-sm" name="cond_orden" data-cond-orden value="1" min="1">
+                </div>
+                <div class="col-1 text-end">
+                    <button type="button" class="btn btn-sm btn-outline-danger" data-cond-remove title="Quitar condición">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+        </template>
+    </div>
+</div>
+
+</form>
+</div>{# /p-3 #}
