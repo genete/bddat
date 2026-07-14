@@ -312,3 +312,10 @@ sin tocar la navegación. Matices, por gravedad:
    Gestión) — ahí `/expedientes/seguimiento/` se queda corto y fuerza la decisión de
    forma informada, en vez de inventarla en frío. No se aborda en #588: construir un hub
    nuevo no es un renombrado, es trabajo de alcance distinto.
+
+   **Candidato concreto a ese disparador (anotado 2026-07-14).** ADR-027 §2 nombra el
+   "radar de documentos huérfanos" (pool sin vínculo a tarea) como "trabajo aparte" de
+   este §5 — un segundo contenido propio del TRAMITADOR, genuinamente distinto de
+   seguimiento, no una variación suya. Deja de ser hipotético: es la pieza que este
+   apartado dejaba sin nombre ni fecha. Ver **#630** (issue con preguntas abiertas, sin
+   implementación decidida).

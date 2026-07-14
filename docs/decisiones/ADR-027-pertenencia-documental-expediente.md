@@ -40,7 +40,7 @@ El vínculo es necesario pero **no suficiente**: hay un caso vinculado que no es
 ### 2. Huérfano = documento del pool sin vínculo a tarea
 
 - Un **fichero** en el pool sin vínculo a ninguna tarea **no es expediente**. Es un **huérfano**: queda pendiente de la decisión del técnico — **enlazarlo** (entra) o **borrarlo** (no era expediente).
-- El borrado es **decisión del técnico, nunca automático**; la bitácora lo registra. El radar que se lo presenta es trabajo aparte (ADR-017 §5, "Mi trabajo" del técnico).
+- El borrado es **decisión del técnico, nunca automático**; la bitácora lo registra. El radar que se lo presenta es trabajo aparte (ADR-017 §5, "Mi trabajo" del técnico) — candidato concreto al disparador del hub propio del TRAMITADOR que ADR-017 "Deuda conocida" (caso 3) deja condicionado. Ver **#630** (anotado 2026-07-14).
 - Los registros internos `bddat://` (diagnósticos, certificados) **nacen vinculados por construcción** (producidos por una tarea) → **nunca son huérfanos**. El huérfano es siempre un fichero.
 
 ### 3. `integra_expediente` es propiedad del TIPO, no del documento ni de la fecha
