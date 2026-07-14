@@ -12,7 +12,7 @@ Contrato del payload (acordado en implementación de #500, cierra deuda §15
       "nodo": {"tipo": str, "id": int},
       "campos": [{"etiqueta": str, "valor": str}, ...],   # adaptativo por nivel
       "documentos": [{"id","rol","nombre","tipo_doc","fecha","enlace","externo",
-                      "puede_abrir_carpeta"}, ...],
+                      "puede_abrir","puede_abrir_carpeta"}, ...],
       "plazo": {"estado","fecha_limite","dias_restantes"} | null,  # solo ESPERAR_PLAZO
       "referencia": str,                                  # cadena de ancestros (§8)
     }
@@ -110,14 +110,40 @@ def _nombre_doc(doc) -> str:
 
 def info_apertura_documento(exp_id: int, doc) -> dict:
     """Enlace de apertura + flags de acción de un documento — no depende del rol
-    (aplica igual a un documento aún no enlazado a ninguna tarea, #609)."""
+    (aplica igual a un documento aún no enlazado a ninguna tarea, #609).
+
+    bddat:// (ADR-006) no tiene fichero físico: el enlace despacha por recurso (#610).
+    - certificados/<id>: PDF generado on-demand, ya funcional (cert_pdf).
+    - diagnosticos/<id>: sin representación visible todavía — sin enlace de apertura.
+    - recurso bddat:// no contemplado: falla alto (NotImplementedError) en vez de
+      degradar en silencio a 404 — el hueco debe ser visible en cuanto se use.
+    """
     url = doc.url or ''
+    if url.startswith('bddat://'):
+        partes = url[len('bddat://'):].split('/')
+        recurso = partes[0] if partes else ''
+        if recurso == 'certificados':
+            return {
+                'enlace': url_for('expedientes.cert_pdf', cert_id=int(partes[1])),
+                'externo': False,
+                'puede_abrir': True,
+                'puede_abrir_carpeta': False,
+            }
+        if recurso == 'diagnosticos':
+            return {
+                'enlace': None,
+                'externo': False,
+                'puede_abrir': False,
+                'puede_abrir_carpeta': False,
+            }
+        raise NotImplementedError(f'Apertura no definida para recurso bddat://: {recurso!r}')
     externo = url.startswith(('http://', 'https://'))
     return {
         'enlace': url_for('expedientes.pool_descargar_documento', id=exp_id, doc_id=doc.id),
         'externo': externo,
+        'puede_abrir': True,
         # "Abrir carpeta del documento" solo aplica a ficheros locales (§8).
-        'puede_abrir_carpeta': not externo and not url.startswith('bddat://'),
+        'puede_abrir_carpeta': not externo,
     }
 
 
