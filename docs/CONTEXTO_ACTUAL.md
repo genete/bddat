@@ -10,7 +10,7 @@
 
 **Hecho:** #574 (fecha_administrativa en certificados internos: `_validar_url` ya no la fuerza a NULL para el esquema bddat://; CERT_PLAZO_CUMPLIDO y CERT_FIN_IP_CONSULTAS asignan su fecha real; alcance reducido sin tocar #572; CERT_FIN_INSTRUCCION queda fuera, su generador no está conectado al flujo real de creación de fase), #566 (abrev de la tarea ANALIZAR en el árbol — corrección de dato vía CRUD de tablas maestras, sin código).
 
-**Próximo:** (vacío — pendiente de decidir el siguiente foco).
+**Próximo:** #632 (CRUD de `catalogo_plazos` + `condiciones_plazo` — interfaz de configuración de plazos para Supervisor, N023), #633 (CRUD de `efectos_plazo` — catálogo de efectos del vencimiento, N023).
 
 ---
 
