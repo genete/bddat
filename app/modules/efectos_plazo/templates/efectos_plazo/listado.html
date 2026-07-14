@@ -1,0 +1,119 @@
+{% extends 'layout/lista_v2_base.html' %}
+
+{% block page_title %}Efectos de plazo{% endblock %}
+{% block page_icon %}<i class="fas fa-bolt"></i>{% endblock %}
+{% block entity_label_plural %}efectos de plazo{% endblock %}
+{% block search_placeholder %}Buscar por código o nombre...{% endblock %}
+{% block tabla_clase %}efectos-plazo-table{% endblock %}
+
+{% block btn_nuevo %}
+{% if tiene_permiso('gestionar_efectos_plazo') %}
+<button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#crearEfectoPlazoModal">
+    <i class="fas fa-plus me-1"></i> Nuevo efecto
+</button>
+{% endif %}
+{% endblock %}
+
+{% block thead_cols %}
+<th>Código</th>
+<th>Nombre</th>
+{% endblock %}
+
+{% block content %}
+{{ super() }}
+
+<!-- Modal de alta (patrón tipos_documentos) -->
+{% if tiene_permiso('gestionar_efectos_plazo') %}
+<div class="modal fade" id="crearEfectoPlazoModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <form method="POST" action="{{ url_for('efectos_plazo.crear') }}" class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fas fa-bolt me-1"></i> Nuevo efecto de plazo</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row g-2">
+          <div class="col-12">
+            <label class="form-label fw-semibold small" for="ep_codigo">
+              Código <span class="text-danger">*</span>
+            </label>
+            <input type="text" class="form-control form-control-sm" id="ep_codigo" name="codigo"
+                   maxlength="60" required
+                   value="{{ form_data.get('codigo', '') if form_data else '' }}">
+            <div class="form-text">No se podrá cambiar después de crear.</div>
+          </div>
+          <div class="col-12">
+            <label class="form-label fw-semibold small" for="ep_nombre">
+              Nombre <span class="text-danger">*</span>
+            </label>
+            <input type="text" class="form-control form-control-sm" id="ep_nombre" name="nombre"
+                   maxlength="200" required
+                   value="{{ form_data.get('nombre', '') if form_data else '' }}">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+        <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-save me-1"></i> Crear efecto</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+{{ super() }}
+<script>
+    function _esc(s) {
+        if (s === null || s === undefined) return '';
+        return String(s)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+    }
+
+    const scrollInfinito = new ScrollInfinito({
+        apiUrl:      '{{ url_for("api_efectos_plazo.listar_efectos") }}',
+        tableClass:  '.efectos-plazo-table',
+        entityLabel: 'efectos de plazo',
+        columns: [
+            { key: 'codigo', label: 'Código', type: 'custom', renderFn: (v, item) =>
+                (item.en_uso ? '<i class="fas fa-link text-secondary me-1" title="En uso por el catálogo de plazos"></i>' : '') + _esc(v) },
+            { key: 'nombre', label: 'Nombre', type: 'custom', renderFn: v => _esc(v) },
+        ],
+        selection: {
+            fragmentUrl: id   => `/efectos_plazo/${id}/fragmento`,
+            title:       item => item.codigo || ''
+        }
+    });
+
+    const filtros = new FiltrosListado(scrollInfinito);
+
+    // Sync inspector ↔ URL ?sel (ADR-023 §1)
+    function _updateSelParam(selId) {
+        const url = new URL(location.href);
+        if (selId) url.searchParams.set('sel', selId);
+        else url.searchParams.delete('sel');
+        history.replaceState(null, '', url.toString());
+    }
+    document.addEventListener('inspector:opened',  e => _updateSelParam(e.detail.selId));
+    document.addEventListener('inspector:swapped', e => _updateSelParam(e.detail.selId));
+    document.addEventListener('inspector:closed',  () => _updateSelParam(null));
+
+    const _selParam = new URLSearchParams(location.search).get('sel');
+    if (_selParam && window.AppInspector) {
+        AppInspector.open({
+            selId:       _selParam,
+            title:       '',
+            fragmentUrl: `/efectos_plazo/${_selParam}/fragmento`
+        });
+    }
+
+    {% if show_modal %}
+    new bootstrap.Modal(document.getElementById('crearEfectoPlazoModal')).show();
+    {% endif %}
+
+    console.log('Listado de efectos de plazo inicializado (#633)');
+</script>
+{% endblock %}
