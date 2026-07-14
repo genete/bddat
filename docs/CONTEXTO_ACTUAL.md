@@ -8,9 +8,9 @@
 
 ---
 
-**Hecho:** #632 (CRUD de `catalogo_plazos` + `condiciones_plazo` — interfaz de configuración de plazos para Supervisor: selector en cascada nivel ESFTT → tipo → campo_fecha, editor de condiciones con el juego completo de operadores incluidos GT/GTE/LT/LTE/BETWEEN/NOT_BETWEEN, N023; PR #634).
+**Hecho:** #633 (CRUD de `efectos_plazo` — catálogo de efectos del vencimiento para Supervisor: tabla plana código+nombre, gemelo simplificado de tipos_documentos #621, baja física restringida a ADMIN y bloqueada si el efecto está en uso por catalogo_plazos, N023; PR #635).
 
-**Próximo:** #633 (CRUD de `efectos_plazo` — catálogo de efectos del vencimiento, N023).
+**Próximo:** _pendiente de definir._
 
 ---
 
