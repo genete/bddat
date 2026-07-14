@@ -47,6 +47,15 @@ PERMISOS = {
     'acceder_catalogo_plazos':   {'ADMIN', 'SUPERVISOR', 'TRAMITADOR', 'ADMINISTRATIVO'},
     'gestionar_catalogo_plazos': {'ADMIN', 'SUPERVISOR'},
 
+    # CRUD admin de efectos_plazo (#633) — catálogo plano (código + nombre) del
+    # efecto de vencimiento, FK desde catalogo_plazos.efecto_vencimiento_id.
+    # Gemelo simplificado de tipos_documentos (#621).
+    'acceder_efectos_plazo':   {'ADMIN', 'SUPERVISOR', 'TRAMITADOR', 'ADMINISTRATIVO'},
+    'gestionar_efectos_plazo': {'ADMIN', 'SUPERVISOR'},
+    # Baja física (DELETE real) — solo ADMIN, mismo criterio de protección que
+    # items_tecnicos (#594): solo si no está en uso por ninguna fila de catalogo_plazos.
+    'eliminar_efectos_plazo':  {'ADMIN'},
+
     'acceder_tablas_maestras':   {'ADMIN', 'SUPERVISOR', 'TRAMITADOR', 'ADMINISTRATIVO'},
     'gestionar_tablas_maestras': {'ADMIN', 'SUPERVISOR'},
 
