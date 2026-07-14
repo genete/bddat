@@ -80,6 +80,8 @@ export default function MenuContextual() {
 
   const producido  = detalle?.documentos?.find((d) => d.rol === 'PRODUCIDO')
   const consumidos = detalle?.documentos?.filter((d) => d.rol === 'CONSUMIDO') || []
+  // Consumidos con enlace de apertura (bddat:// sin representación, p.ej. diagnósticos, no lo tienen — #610)
+  const consumidosAbribles = consumidos.filter((d) => d.puede_abrir)
   // Carpeta del documento: producido con carpeta > primer consumido con carpeta > expediente
   const docParaCarpeta = producido?.puede_abrir_carpeta
     ? producido
@@ -160,19 +162,19 @@ export default function MenuContextual() {
       {/* ── Nodo tarea ── */}
       {esTarea && (
         <>
-          {producido && (
+          {producido?.puede_abrir && (
             <a href={producido.enlace} target="_blank" rel="noreferrer"
                className="arbol-menu__item" onClick={cerrarMenu}>
               📄 Abrir documento producido
             </a>
           )}
-          {consumidos.length === 1 && (
-            <a href={consumidos[0].enlace} target="_blank" rel="noreferrer"
+          {consumidosAbribles.length === 1 && (
+            <a href={consumidosAbribles[0].enlace} target="_blank" rel="noreferrer"
                className="arbol-menu__item" onClick={cerrarMenu}>
               📄 Abrir consumido
             </a>
           )}
-          {consumidos.length > 1 && (
+          {consumidosAbribles.length > 1 && (
             <div className="arbol-menu__submenu-wrap"
                  onMouseEnter={() => setSubmenuActivo('consumidos')}
                  onMouseLeave={() => setSubmenuActivo(null)}>
@@ -182,7 +184,7 @@ export default function MenuContextual() {
               </div>
               {submenuActivo === 'consumidos' && (
                 <div className="arbol-menu__submenu">
-                  {consumidos.map((d) => (
+                  {consumidosAbribles.map((d) => (
                     <a key={d.id} href={d.enlace} target="_blank" rel="noreferrer"
                        className="arbol-menu__item" onClick={cerrarMenu}>
                       {d.nombre}

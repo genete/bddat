@@ -667,7 +667,15 @@ def pool_registrar_rutas(id):
 @bp.route('/<int:id>/documentos/<int:doc_id>/fichero')
 @login_required
 def pool_descargar_documento(id, doc_id):
-    """Sirve un fichero del servidor de ficheros. Para URLs externas, redirige."""
+    """Sirve un fichero del servidor de ficheros. Para URLs externas, redirige.
+
+    bddat:// (ADR-006, #610): red de seguridad para consumidores que no pasan
+    por info_apertura_documento() (p.ej. pool_documentos.html, que enlaza aquí
+    directamente para cualquier documento no externo). Certificados redirige
+    a su PDF; diagnósticos no tiene descarga posible (400 explícito, no 404
+    silencioso); recurso no contemplado falla alto, igual que en
+    info_apertura_documento().
+    """
     expediente = Expediente.query.get_or_404(id)
     resultado = verificar_acceso_expediente(expediente, 'ver')
     if resultado:
@@ -680,6 +688,15 @@ def pool_descargar_documento(id, doc_id):
     url = doc.url or ''
     if url.startswith(('http://', 'https://')):
         return redirect(url)
+
+    if url.startswith('bddat://'):
+        partes = url[len('bddat://'):].split('/')
+        recurso = partes[0] if partes else ''
+        if recurso == 'certificados':
+            return redirect(url_for('expedientes.cert_pdf', cert_id=int(partes[1])))
+        if recurso == 'diagnosticos':
+            abort(400, description='Este documento no tiene representación descargable.')
+        raise NotImplementedError(f'Apertura no definida para recurso bddat://: {recurso!r}')
 
     ruta_abs = os.path.normpath(os.path.abspath(url))
     if not os.path.isfile(ruta_abs):

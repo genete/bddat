@@ -13,7 +13,8 @@ def test_pool_documentos_200(usuario_supervisor, expediente_seed):
 
 def test_pool_documentos_campos(usuario_supervisor, expediente_seed, app):
     """Cada doc del pool tiene id, nombre, tipo_doc, fecha, enlace, externo,
-    puede_abrir_carpeta (#609 — apertura desde el pool, no solo lo ya vinculado)."""
+    puede_abrir, puede_abrir_carpeta (#609 — apertura desde el pool, no solo lo
+    ya vinculado; #610 — puede_abrir distingue bddat:// sin representación)."""
     r = usuario_supervisor.get(f'/api/expedientes/{expediente_seed}/pool')
     assert r.status_code == 200
     docs = r.get_json()['documentos']
@@ -26,6 +27,7 @@ def test_pool_documentos_campos(usuario_supervisor, expediente_seed, app):
     assert 'fecha' in doc
     assert 'enlace' in doc
     assert 'externo' in doc
+    assert 'puede_abrir' in doc
     assert 'puede_abrir_carpeta' in doc
 
 

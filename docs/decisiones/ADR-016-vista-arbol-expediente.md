@@ -343,7 +343,7 @@ Decidido durante la sesión de implementación de #500 (2026-05-30). Concreta lo
 - El árbol **no** lleva el detalle completo de cada nodo: solo decoradores. El detalle del inspector se pide **bajo demanda** al seleccionar (y, en el futuro, al hacer hover con delay — §2.4).
 - Ventaja: árbol ligero, detalle siempre fresco, payload acotado en expedientes grandes.
 - **Ruta** (implementada en S3a, #500): `GET /api/expedientes/<exp_id>/nodo/<tipo>/<nodo_id>`, `<tipo>` ∈ {expediente, solicitud, fase, tramite, tarea}. Sirve también la raíz (uniforme).
-- **Payload**: `{nodo:{tipo,id}, campos:[{etiqueta,valor}], documentos:[{id,rol,nombre,tipo_doc,fecha,enlace,externo,puede_abrir_carpeta}], plazo:{estado,fecha_limite,dias_restantes}|null, referencia}`. La cabecera (nombre/estado/semáforo) y los `agregados` NO viajan aquí: el front los toma del árbol ya cargado. El servicio es `services/detalle_nodo.py`, defensivo ante catálogo y con `ValueError`→404 si el nodo no pertenece al expediente. Contenido por nivel: §5.
+- **Payload**: `{nodo:{tipo,id}, campos:[{etiqueta,valor}], documentos:[{id,rol,nombre,tipo_doc,fecha,enlace,externo,puede_abrir,puede_abrir_carpeta}], plazo:{estado,fecha_limite,dias_restantes}|null, referencia}`. La cabecera (nombre/estado/semáforo) y los `agregados` NO viajan aquí: el front los toma del árbol ya cargado. El servicio es `services/detalle_nodo.py`, defensivo ante catálogo y con `ValueError`→404 si el nodo no pertenece al expediente. Contenido por nivel: §5. `puede_abrir` (#610): `false` para documentos `bddat://` sin representación visible (p.ej. diagnósticos) — `enlace` viene `null` y el front no pinta el link.
 
 #### `GET /api/expediente/<exp_id>/nodo/<tipo>/<nodo_id>/tipos-creables`
 
