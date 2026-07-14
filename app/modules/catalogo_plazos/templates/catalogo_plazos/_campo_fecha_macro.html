@@ -1,0 +1,138 @@
+{# _campo_fecha_macro.html — Selector en cascada nivel ESFTT → tipo → campo_fecha
+   (DISEÑO_FECHAS_PLAZOS.md §3.2, #632). Compartido por el modal de alta
+   (listado.html) y el fragmento de edición (_editar_fragmento.html) para no
+   duplicar el marcado.
+
+   El bloque visible lo decide el servidor según `nivel_actual` (item.tipo_elemento
+   en edición, 'SOLICITUD' por defecto en alta) — catalogo-plazos-cascada.js solo
+   reacciona a cambios posteriores del select de nivel.
+#}
+{% macro nivel_y_cascada(id_prefix, nivel_actual, codigo_actual, cf_fk, cf_via, cf_rol,
+                          tipos_solicitud, tipos_fase, tipos_tramite, tipos_tarea) %}
+<div class="row g-2">
+    <div class="col-12">
+        <label class="form-label fw-semibold small" for="{{ id_prefix }}_nivel">
+            Nivel ESFTT <span class="text-danger">*</span>
+        </label>
+        <select class="form-select form-select-sm" id="{{ id_prefix }}_nivel" name="tipo_elemento" data-nivel-select required>
+            <option value="SOLICITUD" {% if nivel_actual == 'SOLICITUD' %}selected{% endif %}>Solicitud</option>
+            <option value="FASE"      {% if nivel_actual == 'FASE' %}selected{% endif %}>Fase</option>
+            <option value="TRAMITE"   {% if nivel_actual == 'TRAMITE' %}selected{% endif %}>Trámite</option>
+            <option value="TAREA"     {% if nivel_actual == 'TAREA' %}selected{% endif %}>Tarea</option>
+        </select>
+    </div>
+
+    {# ---- Bloque SOLICITUD — único FK a documentos, sin selección posible ---- #}
+    <div class="col-12" data-nivel-block="SOLICITUD" {% if nivel_actual != 'SOLICITUD' %}style="display:none"{% endif %}>
+        <label class="form-label fw-semibold small" for="{{ id_prefix }}_tipo_solicitud">
+            Tipo de solicitud <span class="text-danger">*</span>
+        </label>
+        <select class="form-select form-select-sm" id="{{ id_prefix }}_tipo_solicitud" name="tipo_elemento_codigo"
+                {% if nivel_actual != 'SOLICITUD' %}disabled{% endif %}>
+            <option value="">— Tipo de solicitud —</option>
+            {% for t in tipos_solicitud %}
+            <option value="{{ t.siglas }}" {% if nivel_actual == 'SOLICITUD' and codigo_actual == t.siglas %}selected{% endif %}>{{ t.siglas }} — {{ t.descripcion }}</option>
+            {% endfor %}
+        </select>
+        <input type="hidden" name="campo_fecha_fk" value="documento_solicitud_id"
+               {% if nivel_actual != 'SOLICITUD' %}disabled{% endif %}>
+        <div class="form-text">Inicio de cómputo: fecha administrativa del documento de solicitud.</div>
+    </div>
+
+    {# ---- Bloque FASE — dos FK posibles: propia o de la solicitud (§3.2) ---- #}
+    <div class="col-12" data-nivel-block="FASE" {% if nivel_actual != 'FASE' %}style="display:none"{% endif %}>
+        <div class="row g-2">
+            <div class="col-7">
+                <label class="form-label fw-semibold small" for="{{ id_prefix }}_tipo_fase">
+                    Tipo de fase <span class="text-danger">*</span>
+                </label>
+                <select class="form-select form-select-sm" id="{{ id_prefix }}_tipo_fase" name="tipo_elemento_codigo"
+                        {% if nivel_actual != 'FASE' %}disabled{% endif %}>
+                    <option value="">— Tipo de fase —</option>
+                    {% for t in tipos_fase %}
+                    <option value="{{ t.codigo }}" {% if nivel_actual == 'FASE' and codigo_actual == t.codigo %}selected{% endif %}>{{ t.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-5">
+                <label class="form-label fw-semibold small" for="{{ id_prefix }}_fase_fk">
+                    Inicio de cómputo <span class="text-danger">*</span>
+                </label>
+                <select class="form-select form-select-sm" id="{{ id_prefix }}_fase_fk" name="campo_fecha_fk"
+                        {% if nivel_actual != 'FASE' %}disabled{% endif %}>
+                    <option value="documento_solicitud_id" {% if cf_fk == 'documento_solicitud_id' %}selected{% endif %}>Doc. de solicitud</option>
+                    <option value="documento_resultado_id" {% if cf_fk == 'documento_resultado_id' %}selected{% endif %}>Doc. de resultado de la fase</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    {# ---- Bloque TRAMITE — requiere tarea hija (via_tarea_tipo) + rol ---- #}
+    <div class="col-12" data-nivel-block="TRAMITE" {% if nivel_actual != 'TRAMITE' %}style="display:none"{% endif %}>
+        <div class="row g-2">
+            <div class="col-12">
+                <label class="form-label fw-semibold small" for="{{ id_prefix }}_tipo_tramite">
+                    Tipo de trámite <span class="text-danger">*</span>
+                </label>
+                <select class="form-select form-select-sm" id="{{ id_prefix }}_tipo_tramite" name="tipo_elemento_codigo"
+                        {% if nivel_actual != 'TRAMITE' %}disabled{% endif %}>
+                    <option value="">— Tipo de trámite —</option>
+                    {% for t in tipos_tramite %}
+                    <option value="{{ t.codigo }}" {% if nivel_actual == 'TRAMITE' and codigo_actual == t.codigo %}selected{% endif %}>{{ t.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-6">
+                <label class="form-label fw-semibold small" for="{{ id_prefix }}_tramite_via">
+                    Tarea de referencia <span class="text-danger">*</span>
+                </label>
+                <select class="form-select form-select-sm" id="{{ id_prefix }}_tramite_via" name="campo_fecha_via_tarea_tipo"
+                        {% if nivel_actual != 'TRAMITE' %}disabled{% endif %}>
+                    <option value="">— Tarea —</option>
+                    {% for t in tipos_tarea %}
+                    <option value="{{ t.codigo }}" {% if cf_via == t.codigo %}selected{% endif %}>{{ t.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-6">
+                <label class="form-label fw-semibold small" for="{{ id_prefix }}_tramite_rol">
+                    Documento de esa tarea <span class="text-danger">*</span>
+                </label>
+                <select class="form-select form-select-sm" id="{{ id_prefix }}_tramite_rol" name="campo_fecha_rol"
+                        {% if nivel_actual != 'TRAMITE' %}disabled{% endif %}>
+                    <option value="CONSUMIDO" {% if cf_rol == 'CONSUMIDO' %}selected{% endif %}>Consumido por la tarea</option>
+                    <option value="PRODUCIDO" {% if cf_rol == 'PRODUCIDO' %}selected{% endif %}>Producido por la tarea</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    {# ---- Bloque TAREA — solo rol, sin via_tarea_tipo (es la propia tarea) ---- #}
+    <div class="col-12" data-nivel-block="TAREA" {% if nivel_actual != 'TAREA' %}style="display:none"{% endif %}>
+        <div class="row g-2">
+            <div class="col-7">
+                <label class="form-label fw-semibold small" for="{{ id_prefix }}_tipo_tarea">
+                    Tipo de tarea <span class="text-danger">*</span>
+                </label>
+                <select class="form-select form-select-sm" id="{{ id_prefix }}_tipo_tarea" name="tipo_elemento_codigo"
+                        {% if nivel_actual != 'TAREA' %}disabled{% endif %}>
+                    <option value="">— Tipo de tarea —</option>
+                    {% for t in tipos_tarea %}
+                    <option value="{{ t.codigo }}" {% if nivel_actual == 'TAREA' and codigo_actual == t.codigo %}selected{% endif %}>{{ t.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-5">
+                <label class="form-label fw-semibold small" for="{{ id_prefix }}_tarea_rol">
+                    Documento <span class="text-danger">*</span>
+                </label>
+                <select class="form-select form-select-sm" id="{{ id_prefix }}_tarea_rol" name="campo_fecha_rol"
+                        {% if nivel_actual != 'TAREA' %}disabled{% endif %}>
+                    <option value="CONSUMIDO" {% if cf_rol == 'CONSUMIDO' %}selected{% endif %}>Consumido por la tarea</option>
+                    <option value="PRODUCIDO" {% if cf_rol == 'PRODUCIDO' %}selected{% endif %}>Producido por la tarea</option>
+                </select>
+            </div>
+        </div>
+    </div>
+</div>
+{% endmacro %}

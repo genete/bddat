@@ -1,0 +1,202 @@
+{% extends 'layout/lista_v2_base.html' %}
+{% import 'catalogo_plazos/_campo_fecha_macro.html' as cf %}
+
+{% block page_title %}Plazos legales{% endblock %}
+{% block page_icon %}<i class="fas fa-calendar-alt"></i>{% endblock %}
+{% block entity_label_plural %}plazos{% endblock %}
+{% block search_placeholder %}Buscar por tipo o norma...{% endblock %}
+{% block tabla_clase %}catalogo-plazos-table{% endblock %}
+
+{% block btn_nuevo %}
+{% if tiene_permiso('gestionar_catalogo_plazos') %}
+<button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#crearPlazoModal">
+    <i class="fas fa-plus me-1"></i> Nuevo plazo
+</button>
+{% endif %}
+{% endblock %}
+
+{% block filtros_extra %}
+<div id="sf-estado"></div>
+<div id="sf-nivel"></div>
+{% endblock %}
+
+{% block thead_cols %}
+<th>Nivel</th>
+<th>Tipo</th>
+<th class="lt-hide-md">Plazo</th>
+<th class="lt-hide-lg">Efecto</th>
+<th class="lt-hide-md">Condiciones</th>
+<th class="lt-truncate">Orden</th>
+<th>Estado</th>
+{% endblock %}
+
+{% block content %}
+{{ super() }}
+
+<!-- Modal de alta (patrón admin_requisitos/items_tecnicos) -->
+{% if tiene_permiso('gestionar_catalogo_plazos') %}
+<div class="modal fade" id="crearPlazoModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <form method="POST" action="{{ url_for('catalogo_plazos.crear') }}" class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fas fa-calendar-alt me-1"></i> Nuevo plazo legal</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+
+        {{ cf.nivel_y_cascada('cpc', form_data.get('tipo_elemento', 'SOLICITUD') if form_data else 'SOLICITUD',
+                               form_data.get('tipo_elemento_codigo', '') if form_data else '',
+                               form_data.get('campo_fecha_fk', '') if form_data else '',
+                               form_data.get('campo_fecha_via_tarea_tipo', '') if form_data else '',
+                               form_data.get('campo_fecha_rol', '') if form_data else '',
+                               tipos_solicitud, tipos_fase, tipos_tramite, tipos_tarea) }}
+
+        <hr class="my-2">
+
+        <div class="row g-2">
+          <div class="col-4">
+            <label class="form-label fw-semibold small" for="cpc_plazo_valor">
+              Valor del plazo <span class="text-danger">*</span>
+            </label>
+            <input type="number" class="form-control form-control-sm" id="cpc_plazo_valor" name="plazo_valor" min="1"
+                   value="{{ form_data.get('plazo_valor', '') if form_data else '' }}" required>
+          </div>
+          <div class="col-8">
+            <label class="form-label fw-semibold small" for="cpc_plazo_unidad">
+              Unidad <span class="text-danger">*</span>
+            </label>
+            <select class="form-select form-select-sm" id="cpc_plazo_unidad" name="plazo_unidad" required>
+              <option value="DIAS_HABILES"  {% if form_data and form_data.get('plazo_unidad') == 'DIAS_HABILES' %}selected{% endif %}>Días hábiles</option>
+              <option value="DIAS_NATURALES" {% if form_data and form_data.get('plazo_unidad') == 'DIAS_NATURALES' %}selected{% endif %}>Días naturales</option>
+              <option value="MESES" {% if form_data and form_data.get('plazo_unidad') == 'MESES' %}selected{% endif %}>Meses</option>
+              <option value="ANOS"  {% if form_data and form_data.get('plazo_unidad') == 'ANOS' %}selected{% endif %}>Años</option>
+            </select>
+          </div>
+          <div class="col-12">
+            <label class="form-label fw-semibold small" for="cpc_efecto">
+              Efecto del vencimiento <span class="text-danger">*</span>
+            </label>
+            <select class="form-select form-select-sm" id="cpc_efecto" name="efecto_vencimiento_id" required>
+              <option value="">— Seleccionar —</option>
+              {% for e in efectos %}
+              <option value="{{ e.id }}" {% if form_data and form_data.get('efecto_vencimiento_id')|string == e.id|string %}selected{% endif %}>{{ e.nombre }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-12">
+            <label class="form-label fw-semibold small" for="cpc_norma">Norma de origen</label>
+            <input type="text" class="form-control form-control-sm" id="cpc_norma" name="norma_origen"
+                   value="{{ form_data.get('norma_origen', '') if form_data else '' }}" placeholder="Art. 21.3 LPACAP">
+          </div>
+          <div class="col-4">
+            <label class="form-label fw-semibold small" for="cpc_desde">Vigencia desde</label>
+            <input type="date" class="form-control form-control-sm" id="cpc_desde" name="vigencia_desde"
+                   value="{{ form_data.get('vigencia_desde', '') if form_data else '' }}">
+          </div>
+          <div class="col-4">
+            <label class="form-label fw-semibold small" for="cpc_hasta">Vigencia hasta</label>
+            <input type="date" class="form-control form-control-sm" id="cpc_hasta" name="vigencia_hasta"
+                   value="{{ form_data.get('vigencia_hasta', '') if form_data else '' }}">
+          </div>
+          <div class="col-4">
+            <label class="form-label fw-semibold small" for="cpc_orden">Orden</label>
+            <input type="number" class="form-control form-control-sm" id="cpc_orden" name="orden" min="1"
+                   value="{{ form_data.get('orden', '100') if form_data else '100' }}">
+          </div>
+        </div>
+        <div class="form-text mt-2">
+          Las condiciones de aplicación (variable + operador + valor) se añaden después, editando el plazo ya creado.
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+        <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-save me-1"></i> Crear plazo</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+{{ super() }}
+<script src="{{ url_for('static', filename='js/requisitos-inspector.js') }}"></script>
+<script src="{{ url_for('static', filename='js/catalogo-plazos-cascada.js') }}"></script>
+<script>
+    function _esc(s) {
+        if (s === null || s === undefined) return '';
+        return String(s)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+    }
+    function _vacio(val) {
+        return val ? _esc(val) : '<span class="text-secondary">—</span>';
+    }
+
+    const NIVEL_LABEL = { SOLICITUD: 'Solicitud', FASE: 'Fase', TRAMITE: 'Trámite', TAREA: 'Tarea' };
+
+    new SelectorFiltro('#sf-estado', [
+        { v: 'true',  t: 'Activos'   },
+        { v: 'false', t: 'Inactivos' }
+    ], { label: 'Estado', name: 'estado' });
+
+    new SelectorFiltro('#sf-nivel', [
+        { v: 'SOLICITUD', t: 'Solicitud' },
+        { v: 'FASE',      t: 'Fase' },
+        { v: 'TRAMITE',   t: 'Trámite' },
+        { v: 'TAREA',     t: 'Tarea' }
+    ], { label: 'Nivel', name: 'nivel' });
+
+    const scrollInfinito = new ScrollInfinito({
+        apiUrl:      '{{ url_for("api_catalogo_plazos.listar_catalogo_plazos") }}',
+        tableClass:  '.catalogo-plazos-table',
+        entityLabel: 'plazos',
+        columns: [
+            { key: 'tipo_elemento', label: 'Nivel', type: 'custom', renderFn: v =>
+                '<span class="badge bg-secondary-subtle text-secondary-emphasis">' + (NIVEL_LABEL[v] || v) + '</span>' },
+            { key: 'tipo_elemento_codigo', label: 'Tipo', type: 'text' },
+            { key: 'plazo', label: 'Plazo', type: 'text', hide: 'md' },
+            { key: 'efecto', label: 'Efecto', type: 'custom', hide: 'lg', renderFn: v => _vacio(v) },
+            { key: 'num_condiciones', label: 'Condiciones', type: 'custom', hide: 'md', renderFn: v =>
+                v > 0 ? '<span class="badge bg-info-subtle text-info-emphasis">' + v + '</span>' : '<span class="text-secondary">Sin condiciones</span>' },
+            { key: 'orden', label: 'Orden', type: 'text', truncate: true },
+            { key: 'activo', label: 'Estado', type: 'custom', renderFn: v => v
+                ? '<span class="badge bg-success">Activo</span>'
+                : '<span class="badge bg-secondary">Inactivo</span>' },
+        ],
+        selection: {
+            fragmentUrl: id   => `/catalogo_plazos/${id}/fragmento`,
+            title:       item => (NIVEL_LABEL[item.tipo_elemento] || item.tipo_elemento) + ' · ' + (item.tipo_elemento_codigo || '')
+        }
+    });
+
+    const filtros = new FiltrosListado(scrollInfinito);
+
+    // Sync inspector ↔ URL ?sel (ADR-023 §1)
+    function _updateSelParam(selId) {
+        const url = new URL(location.href);
+        if (selId) url.searchParams.set('sel', selId);
+        else url.searchParams.delete('sel');
+        history.replaceState(null, '', url.toString());
+    }
+    document.addEventListener('inspector:opened',  e => _updateSelParam(e.detail.selId));
+    document.addEventListener('inspector:swapped', e => _updateSelParam(e.detail.selId));
+    document.addEventListener('inspector:closed',  () => _updateSelParam(null));
+
+    const _selParam = new URLSearchParams(location.search).get('sel');
+    if (_selParam && window.AppInspector) {
+        AppInspector.open({
+            selId:       _selParam,
+            title:       '',
+            fragmentUrl: `/catalogo_plazos/${_selParam}/fragmento`
+        });
+    }
+
+    {% if show_modal %}
+    new bootstrap.Modal(document.getElementById('crearPlazoModal')).show();
+    {% endif %}
+
+    console.log('Listado de plazos legales inicializado (#632)');
+</script>
+{% endblock %}
