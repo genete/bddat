@@ -7,7 +7,7 @@ el Documento como PRODUCIDO en la tarea. La URL final es bddat://certificados/{i
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from datetime import date, datetime
 
 from app import db
 from app.models.tareas import Tarea
@@ -52,6 +52,7 @@ def crear_cert(tarea: Tarea) -> Documento:
         expediente_id=expediente_id,
         tipo_doc_id=tipo_doc.id,
         url='bddat://certificados/0',  # placeholder hasta tener cert.id
+        fecha_administrativa=date.fromisoformat(datos['fecha_vencimiento']),
     )
     db.session.add(doc)
     db.session.flush()

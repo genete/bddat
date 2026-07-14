@@ -49,8 +49,10 @@ class Documento(db.Model):
         - Ruta local (sin '://'): fichero en el servidor de archivos.
         - 'http://' / 'https://': recurso externo.
         - 'bddat://<recurso>/<id>': registro interno de BD sin fichero físico.
-          Tablas activas: diagnosticos. Pending #425: certificados.
-          fecha_administrativa = NULL obligatorio para este esquema.
+          Tablas activas: diagnosticos, certificados.
+          fecha_administrativa es independiente del esquema de url: la fija
+          la naturaleza jurídica del documento, no el mecanismo de
+          almacenamiento (#574).
         El helper resolver_url() despacha al mecanismo correcto según el esquema.
         El nombre a mostrar en interfaz se deduce del último segmento de la URL.
 
@@ -175,8 +177,6 @@ class Documento(db.Model):
         if value is not None and '://' in value:
             if not value.startswith(('http://', 'https://', 'bddat://')):
                 raise ValueError(f'Esquema de URL no admitido: {value!r}')
-        if value and value.startswith('bddat://'):
-            self.fecha_administrativa = None
         return value
 
     def resolver_url(self):

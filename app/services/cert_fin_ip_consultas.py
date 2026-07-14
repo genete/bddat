@@ -8,7 +8,7 @@ solicitud estén finalizadas y deja el Documento en el pool con URI bddat://.
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from datetime import date, datetime
 
 from app import db
 from app.models.certificados import Certificado
@@ -50,10 +50,12 @@ def crear_cert_fin_ip_consultas(expediente, solicitud) -> Certificado | None:
     if tipo_doc is None:
         raise RuntimeError(f'TipoDocumento {_CODIGO!r} no encontrado — ¿migración aplicada?')
 
+    fecha_fin_str = datos.get('fecha_fin_ultima_fase')
     doc = Documento(
         expediente_id=expediente.id,
         tipo_doc_id=tipo_doc.id,
         url='bddat://certificados/0',
+        fecha_administrativa=date.fromisoformat(fecha_fin_str) if fecha_fin_str else None,
     )
     db.session.add(doc)
     db.session.flush()
