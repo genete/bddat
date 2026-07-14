@@ -3,7 +3,7 @@ Tests #365 — URI bddat:// y helper resolver_url() en Documento (ADR-006).
 
 Verifica sin tocar SQLAlchemy ni BD:
 - Validación de esquemas en Documento.url
-- fecha_administrativa forzada a NULL para bddat://
+- fecha_administrativa es independiente del esquema de url (#574)
 - resolver_url(): despacho correcto por esquema
 - _resolver_bddat(): parseo de URI y retorno de dict completo
 
@@ -70,15 +70,15 @@ class TestValidarUrl:
 
 
 # ---------------------------------------------------------------------------
-# fecha_administrativa forzada a NULL para bddat://
+# fecha_administrativa es independiente del esquema de url (#574)
 # ---------------------------------------------------------------------------
 
 class TestFechaAdministrativaBddat:
 
-    def test_bddat_fuerza_fecha_administrativa_none(self):
+    def test_bddat_no_toca_fecha_administrativa(self):
         stub = _StubDoc(fecha_administrativa='2026-01-01')
         _validar_url(stub, 'url', 'bddat://diagnosticos/1')
-        assert stub.fecha_administrativa is None
+        assert stub.fecha_administrativa == '2026-01-01'
 
     def test_ruta_local_no_toca_fecha_administrativa(self):
         stub = _StubDoc(fecha_administrativa='2026-01-01')
