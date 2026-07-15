@@ -8,9 +8,9 @@
 
 ---
 
-**Hecho:** #637 (CRUD de `Norma` y `CatalogoVariable` — módulo `normas_variables`: alta y edición de `Norma` con código bloqueado tras el alta, edición de `CatalogoVariable` sin ruta de alta [`activa` validado contra el Variable Registry], tarjeta en el hub Control y Gestión, N083; incluye corrección de `normas_id_seq` desincronizada y de la etiqueta de `tramite_publicar_existe`; PR #640).
+**Hecho:** Repaso de bugs no documentados detectado en interfaz (2026-07-15): #641 fuga de tests que escribían en la BD real de desarrollo (fixture `app_ctx` no aislaba transacciones — causa de fases fantasma y asignaciones de expediente que se revertían solas; PR #649), #642 filtro de municipio roto en `/expedientes/` (desplegable invisible por `overflow:hidden` + filtro no persistía visualmente; PR #650), #643 scroll interno de `/tablas_maestras/` hacía scroll de toda la página (PR #651). Quedan abiertos sin implementar: #644 (filtros de tipo en tablas_maestras), #645 (filtro Estado en seguimiento), #646 (filtro Estado en expedientes), #647 (tabs de tareas_y_subidas) y #648 (generalizar integración de componentes no-`<select>` con `FiltrosListado`, deuda técnica identificada al resolver #642).
 
-**Próximo:** _pendiente de decidir._
+**Próximo:** _pendiente de decidir — candidatos: #644-#647 (bugs de UI diferidos, cada uno necesita antes una decisión de diseño) o #648 (refactor de sistema de componentes)._
 
 ---
 
