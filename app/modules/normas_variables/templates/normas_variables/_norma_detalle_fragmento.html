@@ -1,0 +1,50 @@
+{# _norma_detalle_fragmento.html — Parcial de lectura para el inspector (ADR-023 / #637).
+   No extiende base_app.html. Inyectado vía AppInspector.open({ fragmentUrl }).
+   - "Editar" → fragmento de edición (data-inspector-edit).
+   - Sin baja: catálogo referenciado por reglas_motor/condiciones_regla/excepciones_motor.
+#}
+
+<div class="p-3">
+
+<div class="d-flex justify-content-end gap-2 mb-3">
+    {% if puede_editar %}
+    <button type="button" class="btn btn-primary btn-sm"
+            data-inspector-edit
+            data-edit-url="{{ url_for('normas_variables.norma_editar_fragmento', id=norma.id) }}">
+        <i class="fas fa-edit me-1"></i> Editar
+    </button>
+    {% endif %}
+</div>
+
+<div class="card mb-3">
+    <div class="card-header card-header-accent fw-semibold">
+        <i class="fas fa-gavel me-1"></i> Norma
+    </div>
+    <div class="card-body card-body-tinted">
+        <div class="row g-2">
+            <div class="col-12">
+                <label class="form-label fw-semibold small">Código</label>
+                <input type="text" class="form-control form-control-sm" value="{{ norma.codigo }}" readonly>
+                <div class="form-text">Fijo desde el alta — no se puede renombrar.</div>
+            </div>
+            <div class="col-12">
+                <label class="form-label fw-semibold small">Título</label>
+                <textarea class="form-control form-control-sm" rows="2" readonly>{{ norma.titulo }}</textarea>
+            </div>
+            <div class="col-12">
+                <label class="form-label fw-semibold small">URL texto consolidado</label>
+                {% if norma.url_eli %}
+                <div><a href="{{ norma.url_eli }}" target="_blank" rel="noopener" class="small">{{ norma.url_eli }}</a></div>
+                {% else %}
+                <input type="text" class="form-control form-control-sm" value="" readonly>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="form-text">
+    <i class="fas fa-ban me-1"></i>Sin baja: es un catálogo referenciado por reglas del motor y condiciones.
+</div>
+
+</div>{# /p-3 #}

@@ -1,0 +1,85 @@
+{# _variable_editar_fragmento.html — Parcial de edición para el inspector (ADR-023 / #637).
+   No extiende base_app.html. Inyectado por inspector-overlay.js vía data-inspector-edit.
+   Submit interceptado: POST XHR → JSON { ok, errors, message }.
+   `nombre` se muestra pero nunca se envía (inmutable, el backend lo ignora).
+   `activa` se valida en el backend contra el Variable Registry — ver routes.py.
+#}
+
+<div class="p-3">
+
+<form data-inspector-form class="form-variable-editar"
+      data-action="{{ url_for('normas_variables.variable_editar', id=variable.id) }}">
+
+<div id="inspector-form-errors" class="alert alert-danger py-2 mb-3 small" style="display:none;"></div>
+
+<div class="d-flex justify-content-end gap-2 mb-3">
+    <button type="button" class="btn btn-outline-secondary btn-sm" data-inspector-cancel-edit>
+        <i class="fas fa-times me-1"></i> Cancelar
+    </button>
+    <button type="submit" class="btn btn-primary btn-sm">
+        <i class="fas fa-save me-1"></i> Guardar cambios
+    </button>
+</div>
+
+<div class="card mb-3">
+    <div class="card-header card-header-accent fw-semibold">
+        <i class="fas fa-code me-1"></i> Variable del motor
+    </div>
+    <div class="card-body card-body-tinted">
+        <div class="row g-2">
+            <div class="col-12">
+                <label class="form-label fw-semibold small">Nombre (token del código)</label>
+                <input type="text" class="form-control form-control-sm" value="{{ variable.nombre }}" disabled>
+                <div class="form-text">No editable — es la clave del Variable Registry.</div>
+            </div>
+            <div class="col-12">
+                <label class="form-label fw-semibold small" for="vf_etiqueta">
+                    Etiqueta <span class="text-danger">*</span>
+                </label>
+                <input type="text" class="form-control form-control-sm" id="vf_etiqueta" name="etiqueta"
+                       required maxlength="150" value="{{ variable.etiqueta }}">
+            </div>
+            <div class="col-6">
+                <label class="form-label fw-semibold small" for="vf_tipo_dato">
+                    Tipo de dato <span class="text-danger">*</span>
+                </label>
+                <select class="form-select form-select-sm" id="vf_tipo_dato" name="tipo_dato" required>
+                    {% for codigo, etiqueta in tipos_dato %}
+                    <option value="{{ codigo }}" {% if variable.tipo_dato == codigo %}selected{% endif %}>
+                        {{ etiqueta }}
+                    </option>
+                    {% endfor %}
+                </select>
+                <div class="form-text">Cambiarlo puede romper condiciones ya guardadas que usen esta variable.</div>
+            </div>
+            <div class="col-6">
+                <label class="form-label fw-semibold small" for="vf_norma_id">Norma de origen</label>
+                <select class="form-select form-select-sm" id="vf_norma_id" name="norma_id">
+                    <option value="">— Ninguna —</option>
+                    {% for n in normas %}
+                    <option value="{{ n.id }}" {% if variable.norma_id == n.id %}selected{% endif %}>
+                        {{ n.codigo }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-12">
+                <div class="form-check">
+                    <input type="checkbox" class="form-check-input" id="vf_activa" name="activa"
+                           {% if variable.activa %}checked{% endif %}>
+                    <label class="form-check-label small" for="vf_activa">Activa</label>
+                </div>
+                {% if not en_registry %}
+                <div class="form-text text-warning-emphasis">
+                    <i class="fas fa-triangle-exclamation me-1"></i>Sin función registrada para
+                    <code>{{ variable.nombre }}</code> en <code>app/services/variables/</code> —
+                    no se podrá guardar como activa hasta que un programador la implemente.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+</form>
+</div>{# /p-3 #}

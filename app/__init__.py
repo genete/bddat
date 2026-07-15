@@ -77,7 +77,7 @@ def create_app(config_name='development'):
     app.register_blueprint(wizard_expediente.bp)  # Issue #67
 
     # Registrar blueprints - APIs
-    from app.routes import api_expedientes, api_municipios, api_entidades, api_proyectos, api_escritos, api_seguimiento, api_bc, api_bitacora, api_search, api_usuarios, api_plantillas, api_administrativo, api_requisitos_documentales, api_catalogo_requerimientos, api_items_tecnicos, api_tablas_maestras, api_tipos_documentos, api_catalogo_plazos, api_efectos_plazo, api_reglas_motor
+    from app.routes import api_expedientes, api_municipios, api_entidades, api_proyectos, api_escritos, api_seguimiento, api_bc, api_bitacora, api_search, api_usuarios, api_plantillas, api_administrativo, api_requisitos_documentales, api_catalogo_requerimientos, api_items_tecnicos, api_tablas_maestras, api_tipos_documentos, api_catalogo_plazos, api_efectos_plazo, api_reglas_motor, api_normas_variables
 
     app.register_blueprint(api_expedientes.api_bp)                  # usa 'api_bp'
     app.register_blueprint(api_municipios.bp)                       # usa 'bp'
@@ -99,6 +99,7 @@ def create_app(config_name='development'):
     app.register_blueprint(api_catalogo_plazos.api_catalogo_plazos_bp)                  # Issue #632
     app.register_blueprint(api_efectos_plazo.api_efectos_plazo_bp)                      # Issue #633
     app.register_blueprint(api_reglas_motor.api_reglas_motor_bp)                        # Issue #170
+    app.register_blueprint(api_normas_variables.api_normas_variables_bp)                # Issue #637
 
     # Registrar módulos (app/modules/) — Fase 4: auto-discovery
     from app.modules import ModuleRegistry

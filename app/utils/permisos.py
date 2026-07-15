@@ -92,6 +92,15 @@ PERMISOS = {
     'acceder_tipos_documentos':   {'ADMIN', 'SUPERVISOR', 'TRAMITADOR', 'ADMINISTRATIVO'},
     'gestionar_tipos_documentos': {'ADMIN', 'SUPERVISOR'},
 
+    # CRUD admin de normas/catalogo_variables (#637, N083) — catálogo de normas
+    # legales y variables del motor. Norma: alta+edición, código inmutable
+    # tras el alta (mismo régimen que N019/tipos_documentos). CatalogoVariable:
+    # solo edición de filas existentes (etiqueta/tipo_dato/norma_id/activa) —
+    # el alta de una variable nueva exige código (función en el Variable
+    # Registry, `app/services/variables/`), no dato; sin ruta de creación.
+    'acceder_normas_variables':   {'ADMIN', 'SUPERVISOR', 'TRAMITADOR', 'ADMINISTRATIVO'},
+    'gestionar_normas_variables': {'ADMIN', 'SUPERVISOR'},
+
     # Árbol del expediente — frontera hoja / estructura (ADR-017 §6, #501).
     # "Puerta abierta": gestionar_tareas habilita COMPLETAR cualquier tarea ya
     # prevista (incluye ADMINISTRATIVO); la bitácora es la rendición de cuentas.
