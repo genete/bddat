@@ -85,15 +85,42 @@ class SelectorBusqueda {
 
   // ── Apertura / cierre ─────────────────────────────────────────────────────
 
+  /**
+   * La lista se reinserta en document.body con position:fixed calculada desde
+   * el wrap (en vez de position:absolute anclada a .sb-wrap). Cualquier ancestro
+   * con overflow:hidden — p. ej. .filters/.filters-row, que lo necesitan para
+   * encoger filtros en horizontal — recortaba por completo el desplegable en
+   * vertical, dejándolo abierto en el DOM pero invisible (#642).
+   */
+  _posicionarLista() {
+    if (this._lista.parentElement !== document.body) {
+      document.body.appendChild(this._lista);
+    }
+    const r = this.el.getBoundingClientRect();
+    this._lista.style.position = 'fixed';
+    this._lista.style.top   = `${r.bottom + 2}px`;
+    this._lista.style.left  = `${r.left}px`;
+    this._lista.style.width = `${r.width}px`;
+  }
+
   _abrir() {
     this._renderizar(this._valor ? '' : this._input.value);
+    this._posicionarLista();
     this._lista.classList.add('show');
     this._abierto = true;
+    this._reposHandler = () => this._posicionarLista();
+    window.addEventListener('scroll', this._reposHandler, true);
+    window.addEventListener('resize', this._reposHandler);
   }
 
   _cerrar() {
     this._lista.classList.remove('show');
     this._abierto = false;
+    if (this._reposHandler) {
+      window.removeEventListener('scroll', this._reposHandler, true);
+      window.removeEventListener('resize', this._reposHandler);
+      this._reposHandler = null;
+    }
   }
 
   // ── Selección y limpieza ──────────────────────────────────────────────────
