@@ -8,6 +8,15 @@
 
 .tm-shell {
   padding-top: 0.5rem;
+  /* Flex column para que .lista-cabecera/.lista-scroll-container (definidos en
+     v2-components.css) hereden la altura de .app-main a través de las 3 capas
+     intermedias (.tm-shell > .tm-tab-content > .tab-pane) — si alguna no es flex,
+     el scroll interno no tiene contra qué medirse y acaba haciendo scroll toda
+     la página en su lugar (#643). */
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
 }
 
 .tm-tabs.nav-tabs {
@@ -46,6 +55,20 @@
   border-bottom-left-radius: 0.375rem;
   border-bottom-right-radius: 0.375rem;
   padding: 0 0.75rem;
+  /* Ver comentario de .tm-shell — propaga flex por la 2ª capa intermedia (#643). */
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+}
+
+.tm-tab-content > .tab-pane.active.show {
+  /* Bootstrap pone display:block por defecto — hace falta flex para que
+     .lista-cabecera/.lista-scroll-container midan contra esta 3ª capa (#643). */
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
 }
 
 .tm-scroll-to-top {
