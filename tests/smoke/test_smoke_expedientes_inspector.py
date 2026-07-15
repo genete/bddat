@@ -59,7 +59,14 @@ def test_expediente_editar_fragmento_render(usuario_supervisor, expediente_seed)
 
 
 def test_expediente_editar_xhr_success(usuario_supervisor, expediente_seed, app):
-    """POST editar con XHR y datos válidos → JSON {ok: true}."""
+    """POST editar con XHR y datos válidos → JSON {ok: true}.
+
+    El formulario real siempre envía responsable_id (aunque sea el mismo que ya
+    tenía) — hay que incluirlo aquí también: la ruta trata un campo AUSENTE como
+    "vaciar el campo" (app/modules/expedientes/routes.py:308-310), así que omitirlo
+    vaciaba en silencio el responsable del expediente que le tocara a expediente_seed
+    (sin ORDER BY, "el primero" es indeterminado) y no había cleanup que lo restaurase (#641).
+    """
     with app.app_context():
         from app.models.expedientes import Expediente
         exp = Expediente.query.get(expediente_seed)
@@ -67,6 +74,7 @@ def test_expediente_editar_xhr_success(usuario_supervisor, expediente_seed, app)
             'titulo':      exp.proyecto.titulo if exp.proyecto else 'Test',
             'finalidad':   exp.proyecto.finalidad if exp.proyecto else 'Test',
             'emplazamiento': exp.proyecto.emplazamiento if exp.proyecto else 'Test',
+            'responsable_id': exp.responsable_id or '',
         }
 
     r = usuario_supervisor.post(
