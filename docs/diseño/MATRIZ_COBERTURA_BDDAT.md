@@ -71,7 +71,7 @@
 
 | Id | Necesidad | % Cobertura | Qué falta |
 |---|---|---|---|
-| N023 | Configurar plazos por tipo de ESFTT | 5% | El catálogo de plazos es rico y está en uso real en el cálculo, pero cero interfaz de configuración — peor situación que N016: ni siquiera tiene un issue de referencia asignado en el propio hub del Supervisor. |
+| N023 | Configurar plazos por tipo de ESFTT | 90% | CRUD completo y verificado en código (#632/#633: `catalogo_plazos`+`condiciones_plazo` con selector en cascada ESFTT→tipo→campo_fecha y los 6 operadores del CHECK constraint; `efectos_plazo` con baja física condicionada por uso). Mismo patrón que N019: sin baja lógica formal en `catalogo_plazos`, usa el toggle `activo` del resto de catálogos normativos. |
 | N024 | Consultar plazos y vencimientos de expedientes propios | 55% | El dato de plazo/vencimiento por tarea es correcto y se agrega hasta expediente (árbol + listado de seguimiento), pero falta una vista dedicada de "mis vencimientos". |
 | N025 | Dashboard de alertas de plazos de toda la unidad | 20% | Solo hay un número agregado suelto dentro del panel de estadísticas. El dashboard de alertas dedicado sigue marcado "próximamente" (#74) en el propio hub del Supervisor. |
 | N026 | Consultar información de plazos | 50% | Comparte la misma infraestructura de lectura que N024 (árbol + listado de seguimiento) — la diferencia es de permisos de rol, no de funcionalidad distinta. |
