@@ -1,4 +1,5 @@
 import pytest
+from sqlalchemy.orm import scoped_session, sessionmaker
 from app import create_app, db as _db
 
 
@@ -11,13 +12,32 @@ def app():
 
 @pytest.fixture(scope='function')
 def app_ctx(app):
-    """Contexto de aplicación con rollback automático al terminar."""
+    """Contexto de aplicación con rollback automático al terminar.
+
+    Aísla los tests en un SAVEPOINT: aunque el código de aplicación llame a
+    db.session.commit() (p. ej. mutaciones_arbol.crear_fase), join_transaction_mode
+    'create_savepoint' reabre el SAVEPOINT tras cada commit/rollback de la sesión,
+    de forma que nada sale de la transacción externa.
+
+    OJO: no basta con _db.session.configure(bind=connection, ...) — la Session
+    custom de Flask-SQLAlchemy (flask_sqlalchemy.session.Session.get_bind) resuelve
+    el bind de CUALQUIER modelo mapeado por su bind_key en _db.engines, ANTES de
+    mirar self.bind, así que ignora silenciosamente el bind que le configuremos y
+    los commits del código de aplicación llegaban a la BD real de desarrollo (#641).
+    Por eso aquí se sustituye _db.session por una scoped_session de SQLAlchemy
+    "vainilla" (sin ese override), la única forma de que el bind=connection se respete.
+    """
     with app.app_context():
         connection = _db.engine.connect()
-        transaction = connection.begin_nested()
-        _db.session.bind = connection
+        transaction = connection.begin()
+        session_original = _db.session
+        _db.session = scoped_session(
+            sessionmaker(bind=connection, join_transaction_mode='create_savepoint')
+        )
         yield app
-        _db.session.rollback()
+        _db.session.remove()
+        _db.session = session_original
+        transaction.rollback()
         connection.close()
 
 
