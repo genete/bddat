@@ -10,7 +10,7 @@
 
 **Hecho:** #170 (CRUD de `reglas_motor` — condiciones y excepciones para Supervisor: selector guiado del patrón `sujeto` en cascada [nivel + hasta 4 selects reales + ANY, nunca texto libre], condiciones variable+operador+valor igual que catalogo_plazos/admin_requisitos, excepciones con sus propias condiciones en modal grande, integrado en /configuracion-motor/ junto al selector de modo global, N016; PR #636).
 
-**Próximo:** _pendiente de definir._
+**Próximo:** #637 (CRUD propio del catálogo de `Norma` y `CatalogoVariable` para Supervisor — hoy solo lectura en selects; necesidad N083, separada de N016 al auditar #170).
 
 ---
 
