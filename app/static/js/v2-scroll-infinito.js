@@ -69,6 +69,9 @@
  * CAMBIOS v1.7: setFiltroExterno(name, value, label) — fija/quita un filtro que no es
  *               un <select> dentro de .filters (p. ej. SelectorBusqueda de municipio,
  *               que llamaba a un método que no existía y el filtro no aplicaba nunca, #642).
+ *               Dispara 'scroll:filtros-externos-changed' para que btn-limpiar/.filtro-indicador
+ *               (FiltrosListado) y el propio selector que originó el filtro se mantengan
+ *               sincronizados con él.
  * CAMBIOS v1.6: reload() ahora invalida con seguridad un loadMore() en vuelo (token
  *               _loadGen) en vez de quedar bloqueado por la guarda `this.loading`.
  *               Sin esto, llamar reload()/setBulkMode() justo tras construir la
@@ -537,19 +540,31 @@ class ScrollInfinito {
     /**
      * Fija (o quita, si value es vacío) un filtro que no viene de un <select>
      * dentro de .filters — p. ej. un SelectorBusqueda (municipio), que no es un
-     * <select> nativo y por tanto no lo recoge el escaneo de loadMore(). Se
-     * añade a fixedParams y se recarga el listado desde cero.
-     * label se acepta por compatibilidad con la firma existente en las
-     * llamadas (p. ej. `Mun: Sevilla`); no hay UI de chip que lo consuma hoy.
+     * <select> nativo y por tanto no lo recoge el escaneo de loadMore(). Se añade
+     * a fixedParams y se recarga el listado desde cero. label identifica el
+     * filtro para quien escuche 'scroll:filtros-externos-changed' (p. ej. para
+     * decidir qué widget resetear al limpiar) — no genera UI propia; el propio
+     * selector que originó el filtro es responsable de mostrar su valor (#642).
      */
     setFiltroExterno(name, value, label) {
+        if (!this._filtrosExternos) this._filtrosExternos = {};
         const nuevo = { ...this.fixedParams };
-        if (value === null || value === undefined || value === '') {
+        const vacio = value === null || value === undefined || value === '';
+        // No-op si no cambia nada: evita recargas redundantes y bucles cuando
+        // limpiar el filtro (Limpiar) dispara clear() en el selector que lo
+        // originó, y ese clear() vuelve a llamar aquí vía su propio onChange.
+        if (vacio ? !(name in nuevo) : nuevo[name] === value) return;
+        if (vacio) {
             delete nuevo[name];
+            delete this._filtrosExternos[name];
         } else {
             nuevo[name] = value;
+            this._filtrosExternos[name] = label || String(value);
         }
         this.fixedParams = nuevo;
+        document.dispatchEvent(new CustomEvent('scroll:filtros-externos-changed', {
+            detail: { ...this._filtrosExternos },
+        }));
         this.reload();
     }
 

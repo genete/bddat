@@ -92,11 +92,16 @@
         container.appendChild(muniDiv);
         wrap.appendChild(container);
 
+        // Provincia y municipio mantienen visible lo elegido (no se autolimpian):
+        // el chip de v2-scroll-infinito.js no es la única pista de qué se filtró,
+        // el propio selector también lo muestra (#642).
         provSel = new SelectorBusqueda('#sb-prov-exp', [], {
             placeholder: '— Provincia —',
             onChange: async (v, t) => {
                 muniSel.setOpciones([]);
-                if (!t) { muniSel.disable(); return; }
+                muniSel.disable();
+                scrollInfinito.setFiltroExterno('municipio_id', null);
+                if (!t) return;
                 const resp = await fetch(`/api/municipios?provincia=${encodeURIComponent(t)}`);
                 const data = await resp.json();
                 muniSel.setOpciones(data.map(m => ({ v: String(m.id), t: m.nombre })));
@@ -107,14 +112,18 @@
         muniSel = new SelectorBusqueda('#sb-muni-exp', [], {
             placeholder: '— Municipio —',
             onChange: (v, t) => {
-                if (!v) return;
-                scrollInfinito.setFiltroExterno('municipio_id', v, `Mun: ${t}`);
-                provSel.clear();
-                muniSel.setOpciones([]);
-                muniSel.disable();
+                scrollInfinito.setFiltroExterno('municipio_id', v || null, v ? `Mun: ${t}` : null);
             }
         });
         muniSel.disable();
+
+        // Si el filtro se quita desde fuera (chip × o botón Limpiar, ver
+        // v2-scroll-infinito.js/v2-filtros.js #642), reflejarlo también aquí.
+        document.addEventListener('scroll:filtros-externos-changed', (e) => {
+            if ('municipio_id' in e.detail) return;
+            if (muniSel.getValue()) muniSel.clear();
+            if (provSel.getValue()) provSel.clear();
+        });
 
         fetch('/api/provincias?solo_andalucia=true')
             .then(r => r.json())

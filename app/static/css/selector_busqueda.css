@@ -35,7 +35,12 @@
 /* ▾ pegado al borde derecho */
 .sb-btn-v { right: 0; width: 2.25rem; }
 
-/* Lista desplegable — usa .dropdown-menu de Bootstrap para colores y sombra */
+/* Lista desplegable — usa .dropdown-menu de Bootstrap para colores y sombra.
+   top/left/width se recalculan por JS (position:fixed, portal a document.body)
+   al abrir — ver selector_busqueda.js _posicionarLista(). Sin portal, cualquier
+   ancestro con overflow:hidden (p. ej. .filters/.filters-row, #642) la recorta
+   por completo. z-index por encima del modal Bootstrap (1055) porque este
+   componente también se usa dentro de modales (_modal_municipios_expediente.html). */
 .sb-lista {
   position: absolute;
   top: calc(100% + 2px);
@@ -43,7 +48,7 @@
   right: 0;
   max-height: 14rem;
   overflow-y: auto;
-  z-index: 200;
+  z-index: 1100;
 }
 
 /* Ítem placeholder siempre visible pero no interactivo visualmente */

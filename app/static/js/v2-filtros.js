@@ -16,7 +16,8 @@
  *   - select / .sf-select   — SelectorFiltro y selects nativos (inmediato)
  *   - .if-input             — InputFiltro (debounce)
  *
- * VERSIÓN: 2.2 — soporte SelectorFiltro e InputFiltro
+ * VERSIÓN: 2.3 — btn-limpiar y .filtro-indicador también reaccionan a los filtros
+ *                 externos de ScrollInfinito.setFiltroExterno (p. ej. municipio, #642)
  */
 
 class FiltrosListado {
@@ -39,6 +40,11 @@ class FiltrosListado {
         this._timer     = null;
         this._limpiando = false;   // suprime recargas durante _limpiar()
         this._init();
+
+        // Filtros externos (ScrollInfinito.setFiltroExterno, p. ej. municipio, #642):
+        // no son <select> dentro de .filters-row, así que el indicador/btn-limpiar
+        // no los veía. Reaccionar al evento que dispara setFiltroExterno.
+        document.addEventListener('scroll:filtros-externos-changed', () => this._actualizarIndicador());
     }
 
     _init() {
@@ -96,9 +102,11 @@ class FiltrosListado {
 
     _actualizarIndicador() {
         if (!this._filtersRow) return;
+        const hayFiltrosExternos = !!Object.keys(this.scroll._filtrosExternos || {}).length;
         const hayFiltros = (this.searchInput && this.searchInput.value.trim())
             || Array.from(this.selects).some(s => s.value)
-            || Array.from(this.inputsFiltro).some(inp => inp.value.trim());
+            || Array.from(this.inputsFiltro).some(inp => inp.value.trim())
+            || hayFiltrosExternos;
         this._filtersRow.classList.toggle('filtros-activos', !!hayFiltros);
         if (this.btnLimpiar) this.btnLimpiar.disabled = !hayFiltros;
     }
@@ -118,6 +126,12 @@ class FiltrosListado {
         this.inputsFiltro.forEach(inp => {
             if (inp._ifInstance) inp._ifInstance.clear();
             else inp.value = '';
+        });
+
+        // Filtros externos (#642) — quitar cada uno; dispara 'scroll:filtros-externos-changed'
+        // para que quien los originó (p. ej. el selector de municipio) resetee su propia UI.
+        Object.keys(this.scroll._filtrosExternos || {}).forEach(name => {
+            this.scroll.setFiltroExterno(name, null);
         });
 
         this._limpiando = false;
