@@ -8,9 +8,9 @@
 
 ---
 
-**Hecho:** #170 (CRUD de `reglas_motor` — condiciones y excepciones para Supervisor: selector guiado del patrón `sujeto` en cascada [nivel + hasta 4 selects reales + ANY, nunca texto libre], condiciones variable+operador+valor igual que catalogo_plazos/admin_requisitos, excepciones con sus propias condiciones en modal grande, integrado en /configuracion-motor/ junto al selector de modo global, N016; PR #636).
+**Hecho:** #637 (CRUD de `Norma` y `CatalogoVariable` — módulo `normas_variables`: alta y edición de `Norma` con código bloqueado tras el alta, edición de `CatalogoVariable` sin ruta de alta [`activa` validado contra el Variable Registry], tarjeta en el hub Control y Gestión, N083; incluye corrección de `normas_id_seq` desincronizada y de la etiqueta de `tramite_publicar_existe`; PR #640).
 
-**Próximo:** #637 (CRUD propio del catálogo de `Norma` y `CatalogoVariable` para Supervisor — hoy solo lectura en selects; necesidad N083, separada de N016 al auditar #170).
+**Próximo:** _pendiente de decidir._
 
 ---
 
