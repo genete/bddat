@@ -1,0 +1,104 @@
+{# _condiciones_editor_macro.html — Editor de condiciones anidado (#170).
+
+   Mismo contrato que catalogo_plazos/_editar_fragmento.html (filas
+   variable + operador + valor + orden, sin indexar, reconstruidas con
+   request.form.getlist() en el mismo orden del DOM). El JS de
+   añadir/quitar fila es requisitos-inspector.js, reutilizado tal cual
+   (delegación de eventos a nivel document, soporta varias instancias
+   simultáneas en la misma página — usado aquí tanto en el inspector de
+   una regla como, repetido una vez por excepción, dentro del modal
+   grande de excepciones).
+
+   Parametrizado para poder usarse con las condiciones de una ReglaMotor
+   o de una ExcepcionMotor sin duplicar el marcado.
+#}
+{% set TIPO_LABELS = {'boolean': 'verdadero/falso', 'numerico': 'número', 'texto': 'texto', 'fecha': 'AAAA-MM-DD', 'enum': 'valor del catálogo'} %}
+
+{% macro condiciones_editor(condiciones, variables, operadores, valor_display, titulo='Condiciones de aplicación') %}
+<div class="card mb-3" data-condiciones-editor>
+    <div class="card-header card-header-accent fw-semibold d-flex justify-content-between align-items-center">
+        <span><i class="fas fa-filter me-1"></i> {{ titulo }}</span>
+        <button type="button" class="btn btn-sm btn-outline-primary" data-cond-add>
+            <i class="fas fa-plus me-1"></i> Añadir
+        </button>
+    </div>
+    <div class="card-body card-body-tinted">
+        <div class="form-text mb-2">
+            Todas se evalúan en AND. Una fila sin variable seleccionada se descarta al guardar.
+            Para "Está en" / "No está en" / "Entre" / "Fuera de rango", separa los valores con comas
+            (rango: exactamente 2 valores, mínimo y máximo).
+        </div>
+
+        <div data-cond-rows>
+            {% for c in condiciones %}
+            <div class="row g-1 align-items-center mb-2" data-cond-row>
+                <div class="col-4">
+                    <select class="form-select form-select-sm" name="cond_variable_id" data-cond-variable>
+                        <option value="">— Variable —</option>
+                        {% for v in variables %}
+                        <option value="{{ v.id }}" data-tipo="{{ v.tipo_dato }}" {% if c.variable_id == v.id %}selected{% endif %}>
+                            {{ v.etiqueta }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <div class="form-text small" data-cond-tipo-hint>{{ TIPO_LABELS.get(c.variable.tipo_dato, '') if c.variable else '' }}</div>
+                </div>
+                <div class="col-3">
+                    <select class="form-select form-select-sm" name="cond_operador" data-cond-operador>
+                        {% for codigo, etiqueta in operadores %}
+                        <option value="{{ codigo }}" {% if c.operador == codigo %}selected{% endif %}>{{ etiqueta }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-3" data-cond-valor-wrap {% if c.operador in ('IS_NULL', 'NOT_NULL') %}style="display:none"{% endif %}>
+                    <input type="text" class="form-control form-control-sm" name="cond_valor" data-cond-valor
+                           value="{{ valor_display.get(c.id, '') }}" placeholder="valor1, valor2…"
+                           {% if c.operador in ('IS_NULL', 'NOT_NULL') %}disabled{% endif %}>
+                </div>
+                <div class="col-1">
+                    <input type="number" class="form-control form-control-sm" name="cond_orden" data-cond-orden
+                           value="{{ c.orden }}" min="1">
+                </div>
+                <div class="col-1 text-end">
+                    <button type="button" class="btn btn-sm btn-outline-danger" data-cond-remove title="Quitar condición">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <template data-cond-template>
+            <div class="row g-1 align-items-center mb-2" data-cond-row>
+                <div class="col-4">
+                    <select class="form-select form-select-sm" name="cond_variable_id" data-cond-variable>
+                        <option value="">— Variable —</option>
+                        {% for v in variables %}
+                        <option value="{{ v.id }}" data-tipo="{{ v.tipo_dato }}">{{ v.etiqueta }}</option>
+                        {% endfor %}
+                    </select>
+                    <div class="form-text small" data-cond-tipo-hint></div>
+                </div>
+                <div class="col-3">
+                    <select class="form-select form-select-sm" name="cond_operador" data-cond-operador>
+                        {% for codigo, etiqueta in operadores %}
+                        <option value="{{ codigo }}">{{ etiqueta }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-3" data-cond-valor-wrap>
+                    <input type="text" class="form-control form-control-sm" name="cond_valor" data-cond-valor placeholder="valor1, valor2…">
+                </div>
+                <div class="col-1">
+                    <input type="number" class="form-control form-control-sm" name="cond_orden" data-cond-orden value="1" min="1">
+                </div>
+                <div class="col-1 text-end">
+                    <button type="button" class="btn btn-sm btn-outline-danger" data-cond-remove title="Quitar condición">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+        </template>
+    </div>
+</div>
+{% endmacro %}

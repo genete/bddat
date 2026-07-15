@@ -1,0 +1,56 @@
+{# _excepcion_form_fragmento.html — Formulario de alta/edición de una excepción (#170).
+   Inyectado dentro de #exc-form-wrap por el <script> de _excepciones_modal.html
+   (fetch manual, no AppModalLarge.open — ese ya está abierto en la capa de arriba).
+   Submit interceptado por modal-large.js (data-modal-form → XHR → JSON → refresh
+   recarga _excepciones_modal.html completo, que vuelve a ocultar este formulario).
+#}
+{% import 'configuracion_motor/_condiciones_editor_macro.html' as ce %}
+
+<div class="card border-primary">
+    <div class="card-header card-header-accent fw-semibold d-flex justify-content-between align-items-center">
+        <span>
+            {% if item %}<i class="fas fa-edit me-1"></i> Editar excepción{% else %}<i class="fas fa-plus me-1"></i> Nueva excepción{% endif %}
+        </span>
+        <button type="button" class="btn-close btn-close-white" data-exc-form-cancelar aria-label="Cancelar"></button>
+    </div>
+    <div class="card-body card-body-tinted">
+        <form data-modal-form method="POST"
+              action="{% if item %}{{ url_for('configuracion_motor.excepcion_editar', regla_id=regla.id, id=item.id) }}{% else %}{{ url_for('configuracion_motor.excepcion_crear', regla_id=regla.id) }}{% endif %}">
+            <div data-modal-errors class="alert alert-danger py-2 mb-3 small" style="display:none;"></div>
+
+            <div class="row g-2 mb-3">
+                <div class="col-12">
+                    <label class="form-label fw-semibold small">Norma</label>
+                    <select class="form-select form-select-sm" name="norma_id">
+                        <option value="">— Sin norma —</option>
+                        {% for n in normas %}
+                        <option value="{{ n.id }}" {% if item and item.norma_id == n.id %}selected{% endif %}>{{ n.codigo }} — {{ n.titulo }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-6">
+                    <label class="form-label fw-semibold small">Artículo</label>
+                    <input type="text" class="form-control form-control-sm" name="articulo"
+                           value="{{ (item.articulo if item else '') or '' }}" placeholder="DA1">
+                </div>
+                <div class="col-6">
+                    <label class="form-label fw-semibold small">Apartado</label>
+                    <input type="text" class="form-control form-control-sm" name="apartado"
+                           value="{{ (item.apartado if item else '') or '' }}" placeholder="DF4">
+                </div>
+            </div>
+
+            {{ ce.condiciones_editor(item.condiciones if item else [], variables, operadores, valor_display,
+                                      titulo='Condiciones de la excepción') }}
+
+            <div class="d-flex justify-content-end gap-2 mt-3">
+                <button type="button" class="btn btn-outline-secondary btn-sm" data-exc-form-cancelar>
+                    <i class="fas fa-times me-1"></i> Cancelar
+                </button>
+                <button type="submit" class="btn btn-primary btn-sm">
+                    <i class="fas fa-save me-1"></i> Guardar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>

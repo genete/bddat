@@ -1,0 +1,150 @@
+{# _regla_detalle_fragmento.html — Parcial de lectura para el inspector (ADR-023 / #170).
+   No extiende base_app.html. Inyectado vía AppInspector.open({ fragmentUrl }).
+   - "Editar" → fragmento de edición (data-inspector-edit).
+   - Activar/desactivar → form data-inspector-form (POST XHR → JSON → refresh).
+   - "Gestionar excepciones" → modal grande (data-modal-large-url, ADR-023 §6).
+   Sin botón "Eliminar" — baja lógica únicamente (preserva trazabilidad).
+#}
+
+{% set ACCION_LABEL = {'CREAR': 'Crear', 'BORRAR': 'Borrar'} %}
+{% set EFECTO_LABEL = {'BLOQUEAR': 'Bloquear', 'ADVERTIR': 'Advertir'} %}
+
+<div class="p-3">
+
+<div class="d-flex justify-content-end gap-2 mb-3">
+    {% if puede_editar %}
+    <button type="button" class="btn btn-primary btn-sm"
+            data-inspector-edit
+            data-edit-url="{{ url_for('configuracion_motor.regla_editar_fragmento', id=item.id) }}">
+        <i class="fas fa-edit me-1"></i> Editar
+    </button>
+    {% endif %}
+</div>
+
+<!-- CARD 1 — Acción y sujeto -->
+<div class="card mb-3">
+    <div class="card-header card-header-accent fw-semibold">
+        <i class="fas fa-gavel me-1"></i> Regla del motor
+        {% if item.activa %}
+            <span class="badge bg-success ms-1">Activa</span>
+        {% else %}
+            <span class="badge bg-secondary ms-1">Inactiva</span>
+        {% endif %}
+    </div>
+    <div class="card-body card-body-tinted">
+        <div class="row g-2">
+            <div class="col-6">
+                <label class="form-label fw-semibold small">Acción</label>
+                <input type="text" class="form-control form-control-sm" value="{{ ACCION_LABEL.get(item.accion, item.accion) }}" readonly>
+            </div>
+            <div class="col-6">
+                <label class="form-label fw-semibold small">Efecto</label>
+                <input type="text" class="form-control form-control-sm" value="{{ EFECTO_LABEL.get(item.efecto, item.efecto) }}" readonly>
+            </div>
+            <div class="col-12">
+                <label class="form-label fw-semibold small">Sujeto</label>
+                <input type="text" class="form-control form-control-sm" value="{{ sujeto_legible }}" readonly>
+                <div class="form-text small"><code>{{ item.sujeto }}</code></div>
+            </div>
+            <div class="col-4">
+                <label class="form-label fw-semibold small">Prioridad</label>
+                <input type="text" class="form-control form-control-sm" value="{{ item.prioridad }}" readonly>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- CARD 2 — Fundamento normativo y descripción -->
+<div class="card mb-3">
+    <div class="card-header card-header-accent fw-semibold">
+        <i class="fas fa-balance-scale me-1"></i> Fundamento
+    </div>
+    <div class="card-body card-body-tinted">
+        <div class="row g-2">
+            <div class="col-12">
+                <label class="form-label fw-semibold small">Norma</label>
+                <input type="text" class="form-control form-control-sm"
+                       value="{% if item.norma %}{{ item.norma.codigo }} — {{ item.norma.titulo }}{% else %}—{% endif %}" readonly>
+            </div>
+            <div class="col-6">
+                <label class="form-label fw-semibold small">Artículo</label>
+                <input type="text" class="form-control form-control-sm" value="{{ item.articulo or '—' }}" readonly>
+            </div>
+            <div class="col-6">
+                <label class="form-label fw-semibold small">Apartado</label>
+                <input type="text" class="form-control form-control-sm" value="{{ item.apartado or '—' }}" readonly>
+            </div>
+            <div class="col-12">
+                <label class="form-label fw-semibold small">Descripción</label>
+                <textarea class="form-control form-control-sm" rows="2" readonly>{{ item.descripcion or '—' }}</textarea>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- CARD 3 — Condiciones de aplicación -->
+<div class="card mb-3">
+    <div class="card-header card-header-accent fw-semibold">
+        <i class="fas fa-filter me-1"></i> Condiciones de aplicación
+        {% if not item.condiciones %}
+            <span class="badge bg-secondary ms-1" style="font-weight:400">Sin condiciones</span>
+        {% endif %}
+    </div>
+    <div class="card-body card-body-tinted">
+        {% if item.condiciones %}
+        <ul class="list-unstyled mb-0 small">
+            {% for c in item.condiciones %}
+            <li class="mb-1">
+                <code>{{ c.variable.etiqueta if c.variable else ('var_id=' ~ c.variable_id) }}</code>
+                <span class="text-secondary">{{ c.operador }}</span>
+                {% if c.valor is not none %}<strong>{{ c.valor }}</strong>{% endif %}
+            </li>
+            {% endfor %}
+        </ul>
+        <div class="form-text mt-1">Todas las condiciones se evalúan en AND — la regla dispara solo si se cumplen todas.</div>
+        {% else %}
+        <div class="text-secondary small">Sin condiciones — la regla dispara siempre que casa el (acción, sujeto).</div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- CARD 4 — Excepciones -->
+<div class="card mb-3">
+    <div class="card-header card-header-accent fw-semibold d-flex justify-content-between align-items-center">
+        <span><i class="fas fa-shield-alt me-1"></i> Excepciones
+            {% if item.excepciones %}
+            <span class="badge bg-info-subtle text-info-emphasis ms-1">{{ item.excepciones | length }}</span>
+            {% else %}
+            <span class="badge bg-secondary ms-1" style="font-weight:400">Ninguna</span>
+            {% endif %}
+        </span>
+        {% if puede_editar %}
+        <button type="button" class="btn btn-outline-primary btn-sm"
+                data-modal-large-url="{{ url_for('configuracion_motor.excepciones_fragmento', regla_id=item.id) }}"
+                data-modal-large-title="Excepciones de la regla">
+            <i class="fas fa-cog me-1"></i> Gestionar
+        </button>
+        {% endif %}
+    </div>
+    <div class="card-body card-body-tinted">
+        <div class="text-secondary small mb-0">
+            Una excepción neutraliza esta prohibición cuando sus propias condiciones casan
+            (evaluadas solo si la regla ha disparado).
+        </div>
+    </div>
+</div>
+
+{% if puede_editar %}
+<div class="d-flex gap-2">
+    <form data-inspector-form
+          data-action="{{ url_for('configuracion_motor.regla_activar', id=item.id) }}">
+        <button type="submit"
+                class="btn btn-sm {% if item.activa %}btn-outline-danger{% else %}btn-outline-success{% endif %}">
+            <i class="fas {% if item.activa %}fa-toggle-off{% else %}fa-toggle-on{% endif %} me-1"></i>
+            {% if item.activa %}Desactivar{% else %}Activar{% endif %}
+        </button>
+    </form>
+</div>
+{% endif %}
+
+</div>{# /p-3 #}

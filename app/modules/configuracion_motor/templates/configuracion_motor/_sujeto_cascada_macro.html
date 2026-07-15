@@ -1,0 +1,92 @@
+{# _sujeto_cascada_macro.html — Selector en cascada del patrón `sujeto` de ReglaMotor (#170).
+
+   `sujeto` es un patrón posicional ESFTT ('ANY/AAP/RESOLUCION') que el motor
+   compara con `==` exacto por segmento (motor_reglas._sujeto_casa) — un typo
+   deja la regla guardada pero inerte, sin ningún error visible. Por eso nunca
+   se teclea: el Supervisor elige un nivel (cuántos segmentos tiene el sujeto,
+   igual de acumulativo que assembler._compilar_sujeto) y un select real por
+   segmento, con "Cualquiera (ANY)" como comodín. El controlador reconstruye
+   el string `sujeto` a partir de esos selects (_construir_sujeto en routes.py).
+
+   El bloque visible lo decide el servidor según `nivel_actual` — igual que
+   catalogo-plazos-cascada.js, reglas-motor-cascada.js solo reacciona a
+   cambios posteriores del select de nivel.
+
+   partes_actuales: lista de 4 strings (una por segmento; '' si no aplica).
+#}
+{% macro sujeto_cascada(id_prefix, nivel_actual, partes_actuales,
+                         tipos_expediente, tipos_solicitud, tipos_fase, tipos_tramite) %}
+<div class="row g-2" data-sujeto-cascada>
+    <div class="col-12">
+        <label class="form-label fw-semibold small" for="{{ id_prefix }}_sujeto_nivel">
+            Nivel de la regla <span class="text-danger">*</span>
+        </label>
+        <select class="form-select form-select-sm" id="{{ id_prefix }}_sujeto_nivel" name="sujeto_nivel"
+                data-sujeto-nivel required>
+            <option value="EXPEDIENTE" {% if nivel_actual == 'EXPEDIENTE' %}selected{% endif %}>Expediente</option>
+            <option value="SOLICITUD"  {% if nivel_actual == 'SOLICITUD' %}selected{% endif %}>Solicitud</option>
+            <option value="FASE"       {% if nivel_actual == 'FASE' %}selected{% endif %}>Fase</option>
+            <option value="TRAMITE"    {% if nivel_actual == 'TRAMITE' %}selected{% endif %}>Trámite</option>
+        </select>
+        <div class="form-text">Determina cuántos segmentos tiene el patrón del sujeto.</div>
+    </div>
+
+    {# ---- Segmento 0 — Tipo de expediente (siempre presente) ---- #}
+    <div class="col-12" data-sujeto-segmento="0">
+        <label class="form-label fw-semibold small" for="{{ id_prefix }}_sujeto_seg0">
+            Tipo de expediente <span class="text-danger">*</span>
+        </label>
+        <select class="form-select form-select-sm" id="{{ id_prefix }}_sujeto_seg0" name="sujeto_seg0">
+            <option value="ANY" {% if partes_actuales[0] == 'ANY' or not partes_actuales[0] %}selected{% endif %}>Cualquiera (ANY)</option>
+            {% for t in tipos_expediente %}
+            <option value="{{ t.tipo }}" {% if partes_actuales[0] == t.tipo %}selected{% endif %}>{{ t.descripcion or t.tipo }}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    {# ---- Segmento 1 — Tipo de solicitud (desde nivel SOLICITUD) ---- #}
+    <div class="col-12" data-sujeto-segmento="1"
+         {% if nivel_actual == 'EXPEDIENTE' %}style="display:none"{% endif %}>
+        <label class="form-label fw-semibold small" for="{{ id_prefix }}_sujeto_seg1">
+            Tipo de solicitud <span class="text-danger">*</span>
+        </label>
+        <select class="form-select form-select-sm" id="{{ id_prefix }}_sujeto_seg1" name="sujeto_seg1"
+                {% if nivel_actual == 'EXPEDIENTE' %}disabled{% endif %}>
+            <option value="ANY" {% if partes_actuales[1] == 'ANY' or not partes_actuales[1] %}selected{% endif %}>Cualquiera (ANY)</option>
+            {% for t in tipos_solicitud %}
+            <option value="{{ t.siglas }}" {% if partes_actuales[1] == t.siglas %}selected{% endif %}>{{ t.siglas }} — {{ t.descripcion }}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    {# ---- Segmento 2 — Tipo de fase (desde nivel FASE) ---- #}
+    <div class="col-12" data-sujeto-segmento="2"
+         {% if nivel_actual in ('EXPEDIENTE', 'SOLICITUD') %}style="display:none"{% endif %}>
+        <label class="form-label fw-semibold small" for="{{ id_prefix }}_sujeto_seg2">
+            Tipo de fase <span class="text-danger">*</span>
+        </label>
+        <select class="form-select form-select-sm" id="{{ id_prefix }}_sujeto_seg2" name="sujeto_seg2"
+                {% if nivel_actual in ('EXPEDIENTE', 'SOLICITUD') %}disabled{% endif %}>
+            <option value="ANY" {% if partes_actuales[2] == 'ANY' or not partes_actuales[2] %}selected{% endif %}>Cualquiera (ANY)</option>
+            {% for t in tipos_fase %}
+            <option value="{{ t.codigo }}" {% if partes_actuales[2] == t.codigo %}selected{% endif %}>{{ t.nombre }}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    {# ---- Segmento 3 — Tipo de trámite (solo nivel TRAMITE) ---- #}
+    <div class="col-12" data-sujeto-segmento="3"
+         {% if nivel_actual != 'TRAMITE' %}style="display:none"{% endif %}>
+        <label class="form-label fw-semibold small" for="{{ id_prefix }}_sujeto_seg3">
+            Tipo de trámite <span class="text-danger">*</span>
+        </label>
+        <select class="form-select form-select-sm" id="{{ id_prefix }}_sujeto_seg3" name="sujeto_seg3"
+                {% if nivel_actual != 'TRAMITE' %}disabled{% endif %}>
+            <option value="ANY" {% if partes_actuales[3] == 'ANY' or not partes_actuales[3] %}selected{% endif %}>Cualquiera (ANY)</option>
+            {% for t in tipos_tramite %}
+            <option value="{{ t.codigo }}" {% if partes_actuales[3] == t.codigo %}selected{% endif %}>{{ t.nombre }}</option>
+            {% endfor %}
+        </select>
+    </div>
+</div>
+{% endmacro %}
