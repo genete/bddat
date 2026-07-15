@@ -1,0 +1,68 @@
+{# _variable_detalle_fragmento.html — Parcial de lectura para el inspector (ADR-023 / #637).
+   No extiende base_app.html. Inyectado vía AppInspector.open({ fragmentUrl }).
+   - "Editar" → fragmento de edición (data-inspector-edit).
+   - Sin alta ni baja física: ver nota del módulo (routes.py) sobre el Variable Registry.
+#}
+
+<div class="p-3">
+
+<div class="d-flex justify-content-end gap-2 mb-3">
+    {% if puede_editar %}
+    <button type="button" class="btn btn-primary btn-sm"
+            data-inspector-edit
+            data-edit-url="{{ url_for('normas_variables.variable_editar_fragmento', id=variable.id) }}">
+        <i class="fas fa-edit me-1"></i> Editar
+    </button>
+    {% endif %}
+</div>
+
+<div class="card mb-3">
+    <div class="card-header card-header-accent fw-semibold">
+        <i class="fas fa-code me-1"></i> Variable del motor
+        {% if not en_registry %}
+        <span class="badge bg-warning-subtle text-warning-emphasis ms-1"
+              title="No existe ninguna función con este nombre en app/services/variables/ — el motor nunca la evalúa.">
+            <i class="fas fa-triangle-exclamation me-1"></i>Sin función en el registry
+        </span>
+        {% endif %}
+    </div>
+    <div class="card-body card-body-tinted">
+        <div class="row g-2">
+            <div class="col-12">
+                <label class="form-label fw-semibold small">Nombre (token del código)</label>
+                <input type="text" class="form-control form-control-sm" value="{{ variable.nombre }}" readonly>
+                <div class="form-text">Fijo — es la clave que usa <code>app/services/variables/</code>, no se puede renombrar aquí.</div>
+            </div>
+            <div class="col-12">
+                <label class="form-label fw-semibold small">Etiqueta</label>
+                <input type="text" class="form-control form-control-sm" value="{{ variable.etiqueta }}" readonly>
+            </div>
+            <div class="col-6">
+                <label class="form-label fw-semibold small">Tipo de dato</label>
+                <input type="text" class="form-control form-control-sm"
+                       value="{{ tipos_dato_labels.get(variable.tipo_dato, variable.tipo_dato) }}" readonly>
+            </div>
+            <div class="col-6">
+                <label class="form-label fw-semibold small">Norma de origen</label>
+                <input type="text" class="form-control form-control-sm"
+                       value="{{ variable.norma.codigo if variable.norma else '' }}" readonly>
+            </div>
+            <div class="col-12">
+                <label class="form-label fw-semibold small">Activa</label>
+                <div>
+                    {% if variable.activa %}
+                    <span class="badge bg-success-subtle text-success-emphasis">Activa</span>
+                    {% else %}
+                    <span class="badge bg-secondary-subtle text-secondary-emphasis">Inactiva</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="form-text">
+    <i class="fas fa-ban me-1"></i>Sin alta ni baja física: el catálogo se limita a las variables que ya tienen función en el código.
+</div>
+
+</div>{# /p-3 #}

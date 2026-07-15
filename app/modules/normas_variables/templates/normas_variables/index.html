@@ -1,0 +1,342 @@
+{# index.html — Shell de 2 pestañas: Normas / Variables del motor (#637, N083).
+   No extiende lista_v2_base.html (asume una sola tabla) — mismo criterio que
+   tablas_maestras/listado.html: construye el patrón de listado dos veces, una
+   por pestaña, con un ScrollInfinito + AppInspector propio por pestaña.
+
+   OJO — `ScrollInfinito`/`FiltrosListado` (v2-scroll-infinito.js/v2-filtros.js)
+   localizan `.lista-scroll-container`, `.pagination-info` y
+   `.filters input[type="search"]` con `document.querySelector` SIN ámbito de
+   contenedor: siempre cogen el primer match del documento entero, no el de la
+   pestaña que se está inicializando. Con 2 tablas en la misma página eso
+   rompería la pestaña que no sea la primera. Solución: la pestaña "Variables"
+   NO lleva esas clases genéricas en el HTML — se le añaden por JS justo antes
+   de construir su ScrollInfinito (ver `initVariables()` abajo), intercambio
+   síncrono sin parpadeo visual. Mismo motivo por el que la pestaña "Normas"
+   se inicializa primero: es la única con las clases genéricas al cargar.
+#}
+{% extends "layout/base_app.html" %}
+
+{% block title %}Normas y variables del motor · Control y Gestión — BDDAT{% endblock %}
+
+{% block extra_css %}{{ super() }}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/selector_filtro.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/input_filtro.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/v1-tablas-maestras.css') }}">
+{% endblock %}
+
+{% block breadcrumb %}
+<a href="{{ url_for('supervisor.index') }}">Control y Gestión</a>
+<a href="{{ url_for('normas_variables.index') }}">Normas y variables del motor</a>
+{% endblock %}
+
+{% block viewbar %}
+<span class="app-viewbar__title">
+  <i class="fas fa-gavel"></i>
+  <span>Normas y variables del motor</span>
+</span>
+{% endblock %}
+
+{% block content %}
+<div class="tm-shell">
+
+  <ul class="nav nav-tabs tm-tabs" id="nvTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+      <button class="nav-link active" id="nv-tab-normas" data-bs-toggle="tab"
+              data-bs-target="#pane-normas" type="button" role="tab"
+              aria-controls="pane-normas" data-tipo="normas">
+        <i class="fas fa-gavel me-1"></i>Normas
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="nv-tab-variables" data-bs-toggle="tab"
+              data-bs-target="#pane-variables" type="button" role="tab"
+              aria-controls="pane-variables" data-tipo="variables">
+        <i class="fas fa-code me-1"></i>Variables del motor
+      </button>
+    </li>
+  </ul>
+
+  <div class="tab-content tm-tab-content">
+
+    {# ===== Pestaña Normas — clases genéricas ya presentes, se inicializa al cargar ===== #}
+    <div class="tab-pane fade show active" id="pane-normas" role="tabpanel" aria-labelledby="nv-tab-normas">
+      <div class="lista-cabecera">
+        <div class="filters-row">
+          <div class="filters">
+            <input type="search" class="nv-search" placeholder="Buscar por código o título..." aria-label="Buscar">
+            <button class="btn btn-outline-primary btn-limpiar" disabled>
+              <i class="fas fa-times"></i> Limpiar
+            </button>
+          </div>
+          <div class="d-flex align-items-center gap-3">
+            <div class="pagination-info">
+              <i class="fas fa-filter filtro-indicador me-1"></i><span>0</span> de <span>0</span>
+            </div>
+            {% if puede_gestionar %}
+            <button type="button" class="btn btn-primary btn-sm"
+                    data-bs-toggle="modal" data-bs-target="#crearNormaModal">
+              <i class="fas fa-plus me-1"></i> Nueva norma
+            </button>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      <div class="lista-scroll-container">
+        <div class="py-3">
+          <div class="card tabla-bloque">
+            <table class="lista-table nv-table-normas">
+              <thead>
+                <tr>
+                  <th>Código</th>
+                  <th>Título</th>
+                  <th class="lt-hide-md">URL ELI</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {# ===== Pestaña Variables — SIN clases genéricas todavía, ver nota de cabecera ===== #}
+    <div class="tab-pane fade" id="pane-variables" role="tabpanel" aria-labelledby="nv-tab-variables">
+      <div class="lista-cabecera">
+        <div class="nv-filters-row-v">
+          <div class="nv-filters-v">
+            <input type="search" class="nv-search" placeholder="Buscar por nombre o etiqueta..." aria-label="Buscar">
+            <button class="btn btn-outline-primary btn-limpiar" disabled>
+              <i class="fas fa-times"></i> Limpiar
+            </button>
+          </div>
+          <div class="nv-pagination-info-v">
+            <i class="fas fa-filter filtro-indicador me-1"></i><span>0</span> de <span>0</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="alert alert-info mx-3 mb-2 py-2 small">
+        <i class="fas fa-circle-info me-1"></i>
+        Aquí no hay «Nueva variable»: cada variable necesita una función de cálculo
+        ya escrita en el código (Variable Registry, <code>app/services/variables/</code>).
+        Esta pantalla permite editar el texto y activar/desactivar las variables que
+        el programador ya ha implementado — no crea capacidad de cálculo nueva.
+      </div>
+
+      <div class="nv-scroll-container-v">
+        <div class="py-3">
+          <div class="card tabla-bloque">
+            <table class="lista-table nv-table-variables">
+              <thead>
+                <tr>
+                  <th>Nombre</th>
+                  <th>Etiqueta</th>
+                  <th class="lt-hide-md">Tipo</th>
+                  <th class="lt-hide-md">Norma</th>
+                  <th>Activa</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+{% if puede_gestionar %}
+<div class="modal fade" id="crearNormaModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <form method="POST" action="{{ url_for('normas_variables.norma_crear') }}" class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fas fa-gavel me-1"></i> Nueva norma</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row g-2">
+          <div class="col-12">
+            <label class="form-label fw-semibold small" for="nm_codigo">
+              Código <span class="text-danger">*</span>
+            </label>
+            <input type="text" class="form-control form-control-sm" id="nm_codigo" name="codigo"
+                   maxlength="30" required
+                   value="{{ form_data.get('codigo', '') if form_data else '' }}">
+            <div class="form-text">Clave interna (ej. DL26_2021). No se podrá cambiar después de crear.</div>
+          </div>
+          <div class="col-12">
+            <label class="form-label fw-semibold small" for="nm_titulo">
+              Título <span class="text-danger">*</span>
+            </label>
+            <input type="text" class="form-control form-control-sm" id="nm_titulo" name="titulo"
+                   maxlength="300" required
+                   value="{{ form_data.get('titulo', '') if form_data else '' }}">
+            <div class="form-text">Texto completo: «Decreto-ley 26/2021, de 14 de diciembre».</div>
+          </div>
+          <div class="col-12">
+            <label class="form-label fw-semibold small" for="nm_url_eli">URL texto consolidado (BOE/BOJA)</label>
+            <input type="url" class="form-control form-control-sm" id="nm_url_eli" name="url_eli"
+                   maxlength="500"
+                   value="{{ form_data.get('url_eli', '') if form_data else '' }}">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+        <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-save me-1"></i> Crear norma</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+{{ super() }}
+<script src="{{ url_for('static', filename='js/v2-scroll-infinito.js') }}"></script>
+<script src="{{ url_for('static', filename='js/v2-filtros.js') }}"></script>
+<script src="{{ url_for('static', filename='js/selector_filtro.js') }}"></script>
+<script src="{{ url_for('static', filename='js/input_filtro.js') }}"></script>
+<script>
+    function _esc(s) {
+        if (s === null || s === undefined) return '';
+        return String(s)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+    }
+    function _vacio(val) {
+        return val ? _esc(val) : '<span class="text-secondary">—</span>';
+    }
+
+    const instances = {};
+
+    function initNormas() {
+        if (instances.normas) return instances.normas;
+        const scroll = new ScrollInfinito({
+            apiUrl:      '{{ url_for("api_normas_variables.listar_normas") }}',
+            tableClass:  '.nv-table-normas',
+            entityLabel: 'normas',
+            columns: [
+                { key: 'codigo',  label: 'Código',  type: 'custom', renderFn: v => _esc(v) },
+                { key: 'titulo',  label: 'Título',  type: 'custom', renderFn: v => _esc(v) },
+                { key: 'url_eli', label: 'URL ELI', type: 'custom', hide: 'md', renderFn: v => _vacio(v) },
+            ],
+            selection: {
+                fragmentUrl: id   => `/normas_variables/normas/${id}/fragmento`,
+                title:       item => item.codigo || ''
+            }
+        });
+        const filtros = new FiltrosListado(scroll);
+        instances.normas = { scroll, filtros };
+        return instances.normas;
+    }
+
+    function initVariables() {
+        if (instances.variables) return instances.variables;
+
+        // Ver nota de cabecera: ScrollInfinito/FiltrosListado cogen el primer
+        // match del documento para estas 3 clases, sin ámbito. Se las
+        // retiramos un instante a "Normas" y se las damos a "Variables" justo
+        // para la construcción (síncrona, sin parpadeo); luego se devuelven.
+        const paneNormas = document.getElementById('pane-normas');
+        const filtersRowN = paneNormas.querySelector('.filters-row');
+        const scrollContN = paneNormas.querySelector('.lista-scroll-container');
+        const paginationN = paneNormas.querySelector('.pagination-info');
+        filtersRowN.classList.remove('filters-row');
+        scrollContN.classList.remove('lista-scroll-container');
+        paginationN.classList.remove('pagination-info');
+
+        const paneVariables = document.getElementById('pane-variables');
+        const filtersRowV = paneVariables.querySelector('.nv-filters-row-v');
+        const filtersV    = paneVariables.querySelector('.nv-filters-v');
+        const scrollContV = paneVariables.querySelector('.nv-scroll-container-v');
+        const paginationV = paneVariables.querySelector('.nv-pagination-info-v');
+        filtersRowV.classList.add('filters-row');
+        filtersV.classList.add('filters');
+        scrollContV.classList.add('lista-scroll-container');
+        paginationV.classList.add('pagination-info');
+
+        const scroll = new ScrollInfinito({
+            apiUrl:      '{{ url_for("api_normas_variables.listar_variables") }}',
+            tableClass:  '.nv-table-variables',
+            entityLabel: 'variables',
+            columns: [
+                { key: 'nombre',       label: 'Nombre',   type: 'custom', renderFn: v => `<code>${_esc(v)}</code>` },
+                { key: 'etiqueta',     label: 'Etiqueta', type: 'custom', renderFn: v => _esc(v) },
+                { key: 'tipo_dato',    label: 'Tipo',      type: 'text',   hide: 'md' },
+                { key: 'norma_codigo', label: 'Norma',     type: 'custom', hide: 'md', renderFn: v => _vacio(v) },
+                { key: 'activa',       label: 'Activa',    type: 'custom', renderFn: (v, item) =>
+                    v ? '<span class="badge bg-success-subtle text-success-emphasis">Activa</span>'
+                      : (item.en_registry
+                          ? '<span class="badge bg-secondary-subtle text-secondary-emphasis">Inactiva</span>'
+                          : '<span class="badge bg-warning-subtle text-warning-emphasis" title="Sin función en el Variable Registry todavía">Sin código</span>') },
+            ],
+            selection: {
+                fragmentUrl: id   => `/normas_variables/variables/${id}/fragmento`,
+                title:       item => item.nombre || ''
+            }
+        });
+        const filtros = new FiltrosListado(scroll);
+        instances.variables = { scroll, filtros };
+
+        // Devolver las clases a "Normas" — su instancia ya guardó las referencias.
+        filtersRowN.classList.add('filters-row');
+        scrollContN.classList.add('lista-scroll-container');
+        paginationN.classList.add('pagination-info');
+
+        return instances.variables;
+    }
+
+    function _tabActiva() {
+        const btn = document.querySelector('#nvTabs .nav-link.active');
+        return btn ? btn.dataset.tipo : 'normas';
+    }
+
+    function _updateUrl(tab, selId) {
+        const url = new URL(location.href);
+        url.searchParams.set('tab', tab);
+        if (selId) url.searchParams.set('sel', selId);
+        else url.searchParams.delete('sel');
+        history.replaceState(null, '', url.toString());
+    }
+
+    document.addEventListener('inspector:opened',  e => _updateUrl(_tabActiva(), e.detail.selId));
+    document.addEventListener('inspector:swapped', e => _updateUrl(_tabActiva(), e.detail.selId));
+    document.addEventListener('inspector:closed',  () => _updateUrl(_tabActiva(), null));
+
+    document.getElementById('nv-tab-normas').addEventListener('shown.bs.tab', () => {
+        initNormas();
+        _updateUrl('normas', null);
+    });
+    document.getElementById('nv-tab-variables').addEventListener('shown.bs.tab', () => {
+        initVariables();
+        _updateUrl('variables', null);
+    });
+
+    // Estado inicial desde ?tab=&sel= (deep link)
+    const _params  = new URLSearchParams(location.search);
+    const _tabIni  = _params.get('tab') === 'variables' ? 'variables' : 'normas';
+    const _selIni  = _params.get('sel');
+
+    if (_tabIni === 'variables') {
+        new bootstrap.Tab(document.getElementById('nv-tab-variables')).show();
+    } else {
+        initNormas();
+    }
+
+    if (_selIni && window.AppInspector) {
+        const fragmentUrl = _tabIni === 'variables'
+            ? `/normas_variables/variables/${_selIni}/fragmento`
+            : `/normas_variables/normas/${_selIni}/fragmento`;
+        AppInspector.open({ selId: _selIni, title: '', fragmentUrl });
+    }
+
+    {% if show_modal_norma %}
+    new bootstrap.Modal(document.getElementById('crearNormaModal')).show();
+    {% endif %}
+
+    console.log('Normas y variables del motor inicializado (#637)');
+</script>
+{% endblock %}
