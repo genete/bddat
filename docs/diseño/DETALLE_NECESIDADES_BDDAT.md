@@ -92,6 +92,7 @@
 | N020 | Gestión de cambios en municipios (fusión/escisión, recarga correcta de la tabla) | Admin BDDAT | 4 — Motor y config. estructural | M2 |
 | N021 | CRUD de rutas del filesystem | Admin BDDAT | 4 — Motor y config. estructural | M2 |
 | N022 | Sobreescritura técnica de emergencia sobre catálogo estructural | Admin BDDAT | 4 — Motor y config. estructural | M2 |
+| N083 | CRUD propio del catálogo de `Norma` y `CatalogoVariable` (hoy solo lectura en selects); `Norma` se usa además como cita normativa fuera del motor (plazos, requisitos documentales, apartados técnicos, generación de certificados) | Supervisor | 4 — Motor y config. estructural | M3/M5 (estudio previo a M1) |
 
 ---
 
