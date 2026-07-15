@@ -8,7 +8,7 @@
 
 ---
 
-**Hecho:** #633 (CRUD de `efectos_plazo` — catálogo de efectos del vencimiento para Supervisor: tabla plana código+nombre, gemelo simplificado de tipos_documentos #621, baja física restringida a ADMIN y bloqueada si el efecto está en uso por catalogo_plazos, N023; PR #635).
+**Hecho:** #170 (CRUD de `reglas_motor` — condiciones y excepciones para Supervisor: selector guiado del patrón `sujeto` en cascada [nivel + hasta 4 selects reales + ANY, nunca texto libre], condiciones variable+operador+valor igual que catalogo_plazos/admin_requisitos, excepciones con sus propias condiciones en modal grande, integrado en /configuracion-motor/ junto al selector de modo global, N016; PR #636).
 
 **Próximo:** _pendiente de definir._
 
