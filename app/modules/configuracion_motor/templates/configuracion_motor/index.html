@@ -1,8 +1,18 @@
-{# index.html — Configuración del motor (#479, ADR-028 bloque Gestión).
+{# index.html — Configuración del motor (#479/#170, ADR-028 bloque Gestión).
 
-   Hoy solo la sección de modo global. La sección de reglas (#170) se añade
-   aquí mismo cuando se construya — no es una pantalla aparte. #}
+   Sección "Modo global" (#479) + sección "Reglas del motor" (#170) — ambas en
+   la misma página, no pantallas aparte (decisión original de #479).
+
+   El listado de reglas reutiliza el patrón ADR-023 completo (ScrollInfinito +
+   API paginada + inspector overlay), igual que catalogo_plazos/admin_requisitos,
+   pero sin heredar layout/lista_v2_base.html: esa plantilla ocupa todo
+   {% raw %}{% block content %}{% endraw %} de base_app.html y esta página ya lo usa
+   para "Modo global" — una plantilla solo puede extender un padre. Se
+   reproduce aquí el marcado de cabecera+tabla de lista_v2_base.html dentro de
+   la card, con los mismos componentes JS/CSS.
+#}
 {% extends "layout/base_app.html" %}
+{% import 'configuracion_motor/_sujeto_cascada_macro.html' as sc %}
 
 {% block title %}Configuración del motor{% endblock %}
 
@@ -13,9 +23,25 @@
 </span>
 {% endblock %}
 
-{% block content %}
-<div class="content-constrained" style="max-width: 720px;">
+{% block extra_css %}{{ super() }}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/selector_filtro.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/input_filtro.css') }}">
+<style>
+  /* .lista-scroll-container usa flex:1 (layout/lista_v2_base.html, dentro de un
+     ancestro flex-column de altura completa) — aquí vive embebido en una card
+     de una página con más contenido, así que se le fija una altura máxima. */
+  .reglas-motor-listado { max-height: 480px; flex: none; }
+</style>
+{% endblock %}
 
+{% block content %}
+{# "Modo global" es un formulario corto — se beneficia de ancho limitado para
+   legibilidad. "Reglas del motor" es una tabla de datos — usa el ancho
+   completo del main, igual que el resto de listados V2 (lista_v2_base.html
+   ya no restringe ancho, ver v2-components.css §C.1 "sustituye al recorte
+   ~95% que antes daba .content-constrained"). Por eso van en contenedores
+   separados en vez de compartir un único max-width. #}
+<div class="content-constrained" style="max-width: 720px;">
   <section class="card mb-4">
     <div class="card-header">
       <i class="fas fa-toggle-on me-1"></i> Modo global del motor
@@ -51,18 +77,235 @@
       </form>
     </div>
   </section>
+</div>
 
+<div class="content-constrained">
   <section class="card">
-    <div class="card-header text-secondary">
-      <i class="fas fa-list-check me-1"></i> Reglas del motor
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <span><i class="fas fa-list-check me-1"></i> Reglas del motor</span>
+      {% if puede_gestionar %}
+      <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#crearReglaModal">
+        <i class="fas fa-plus me-1"></i> Nueva regla
+      </button>
+      {% endif %}
     </div>
-    <div class="card-body text-secondary">
-      <p class="small mb-0">
-        CRUD de <code>reglas_motor</code>, condiciones y excepciones — próximamente
-        (<a href="https://github.com/genete/bddat/issues/170" target="_blank" rel="noopener">#170</a>).
+    <div class="card-body">
+      <p class="text-secondary small">
+        CRUD de <code>reglas_motor</code>, condiciones y excepciones — activar/desactivar
+        reglas, definir condiciones (variable + operador + valor) y excepciones que
+        neutralizan una prohibición cuando casan.
       </p>
+
+      <div class="lista-cabecera px-0">
+        <div class="filters-row">
+          <div class="filters">
+            <input type="search" id="rm-buscar" placeholder="Buscar por sujeto o descripción..." aria-label="Buscar">
+            <div id="rm-sf-accion"></div>
+            <div id="rm-sf-efecto"></div>
+            <div id="rm-sf-estado"></div>
+            <button class="btn btn-outline-primary btn-limpiar" disabled>
+              <i class="fas fa-times"></i> Limpiar
+            </button>
+          </div>
+          <div class="pagination-info">
+            <i class="fas fa-filter filtro-indicador me-1"></i><span>0</span> de <span>0</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="lista-scroll-container reglas-motor-listado">
+        <div class="tabla-bloque">
+          <table class="lista-table reglas-motor-table">
+            <thead>
+              <tr>
+                <th>Acción</th>
+                <th>Sujeto</th>
+                <th>Efecto</th>
+                <th class="lt-hide-md">Condiciones</th>
+                <th class="lt-hide-md">Excepciones</th>
+                <th class="lt-hide-lg">Prioridad</th>
+                <th>Estado</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- Filas cargadas dinámicamente por ScrollInfinito -->
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   </section>
 
+  <!-- Modal de alta de regla -->
+  {% if puede_gestionar %}
+  <div class="modal fade" id="crearReglaModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <form method="POST" action="{{ url_for('configuracion_motor.regla_crear') }}" class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="fas fa-gavel me-1"></i> Nueva regla del motor</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body">
+          <div class="row g-2 mb-2">
+            <div class="col-6">
+              <label class="form-label fw-semibold small" for="rmc_accion">
+                Acción <span class="text-danger">*</span>
+              </label>
+              <select class="form-select form-select-sm" id="rmc_accion" name="accion" required>
+                {% for codigo, etiqueta in acciones %}
+                <option value="{{ codigo }}" {% if form_data and form_data.get('accion') == codigo %}selected{% endif %}>{{ etiqueta }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-semibold small" for="rmc_efecto">
+                Efecto <span class="text-danger">*</span>
+              </label>
+              <select class="form-select form-select-sm" id="rmc_efecto" name="efecto" required>
+                {% for codigo, etiqueta in efectos %}
+                <option value="{{ codigo }}" {% if form_data and form_data.get('efecto') == codigo %}selected{% endif %}>{{ etiqueta }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-4">
+              <label class="form-label fw-semibold small" for="rmc_prioridad">Prioridad</label>
+              <input type="number" class="form-control form-control-sm" id="rmc_prioridad" name="prioridad"
+                     value="{{ form_data.get('prioridad', '0') if form_data else '0' }}" min="0">
+            </div>
+          </div>
+          <hr class="my-2">
+          {{ sc.sujeto_cascada('rmc', sujeto_nivel, sujeto_partes,
+                                tipos_expediente, tipos_solicitud, tipos_fase, tipos_tramite) }}
+          <hr class="my-2">
+          <div class="row g-2">
+            <div class="col-12">
+              <label class="form-label fw-semibold small" for="rmc_norma">Norma</label>
+              <select class="form-select form-select-sm" id="rmc_norma" name="norma_id">
+                <option value="">— Sin norma —</option>
+                {% for n in normas %}
+                <option value="{{ n.id }}" {% if form_data and form_data.get('norma_id')|string == n.id|string %}selected{% endif %}>{{ n.codigo }} — {{ n.titulo }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-semibold small" for="rmc_articulo">Artículo</label>
+              <input type="text" class="form-control form-control-sm" id="rmc_articulo" name="articulo"
+                     value="{{ form_data.get('articulo', '') if form_data else '' }}" placeholder="24.3">
+            </div>
+            <div class="col-6">
+              <label class="form-label fw-semibold small" for="rmc_apartado">Apartado</label>
+              <input type="text" class="form-control form-control-sm" id="rmc_apartado" name="apartado"
+                     value="{{ form_data.get('apartado', '') if form_data else '' }}" placeholder="DA4">
+            </div>
+            <div class="col-12">
+              <label class="form-label fw-semibold small" for="rmc_descripcion">Descripción</label>
+              <textarea class="form-control form-control-sm" id="rmc_descripcion" name="descripcion" rows="2"
+                        placeholder="Explicación en lenguaje natural para el usuario al bloquear">{{ form_data.get('descripcion', '') if form_data else '' }}</textarea>
+            </div>
+          </div>
+          <div class="form-text mt-2">
+            Las condiciones de aplicación y las excepciones se añaden después, editando la regla ya creada.
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-save me-1"></i> Crear regla</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  {% endif %}
+
 </div>
+{% endblock %}
+
+{% block extra_js %}{{ super() }}
+<script src="{{ url_for('static', filename='js/v2-scroll-infinito.js') }}"></script>
+<script src="{{ url_for('static', filename='js/v2-filtros.js') }}"></script>
+<script src="{{ url_for('static', filename='js/selector_filtro.js') }}"></script>
+<script src="{{ url_for('static', filename='js/input_filtro.js') }}"></script>
+<script src="{{ url_for('static', filename='js/requisitos-inspector.js') }}"></script>
+<script src="{{ url_for('static', filename='js/reglas-motor-cascada.js') }}"></script>
+<script>
+    function _esc(s) {
+        if (s === null || s === undefined) return '';
+        return String(s)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+    }
+    function _vacio(val) {
+        return val ? _esc(val) : '<span class="text-secondary">—</span>';
+    }
+
+    const ACCION_LABEL = { CREAR: 'Crear', BORRAR: 'Borrar' };
+    const EFECTO_LABEL = { BLOQUEAR: 'Bloquear', ADVERTIR: 'Advertir' };
+
+    new SelectorFiltro('#rm-sf-accion', [
+        { v: 'CREAR',  t: 'Crear'  },
+        { v: 'BORRAR', t: 'Borrar' }
+    ], { label: 'Acción', name: 'accion' });
+
+    new SelectorFiltro('#rm-sf-efecto', [
+        { v: 'BLOQUEAR', t: 'Bloquear' },
+        { v: 'ADVERTIR', t: 'Advertir' }
+    ], { label: 'Efecto', name: 'efecto' });
+
+    new SelectorFiltro('#rm-sf-estado', [
+        { v: 'true',  t: 'Activas'   },
+        { v: 'false', t: 'Inactivas' }
+    ], { label: 'Estado', name: 'estado' });
+
+    const scrollInfinitoReglas = new ScrollInfinito({
+        apiUrl:      '{{ url_for("api_reglas_motor.listar_reglas_motor") }}',
+        tableClass:  '.reglas-motor-table',
+        entityLabel: 'reglas',
+        columns: [
+            { key: 'accion', label: 'Acción', type: 'custom', renderFn: v =>
+                '<span class="badge bg-secondary-subtle text-secondary-emphasis">' + (ACCION_LABEL[v] || v) + '</span>' },
+            { key: 'sujeto', label: 'Sujeto', type: 'text' },
+            { key: 'efecto', label: 'Efecto', type: 'custom', renderFn: v =>
+                '<span class="badge ' + (v === 'BLOQUEAR' ? 'bg-danger' : 'bg-warning text-dark') + '">' + (EFECTO_LABEL[v] || v) + '</span>' },
+            { key: 'num_condiciones', label: 'Condiciones', type: 'custom', hide: 'md', renderFn: v =>
+                v > 0 ? '<span class="badge bg-info-subtle text-info-emphasis">' + v + '</span>' : '<span class="text-secondary">Sin condiciones</span>' },
+            { key: 'num_excepciones', label: 'Excepciones', type: 'custom', hide: 'md', renderFn: v =>
+                v > 0 ? '<span class="badge bg-info-subtle text-info-emphasis">' + v + '</span>' : '<span class="text-secondary">Ninguna</span>' },
+            { key: 'prioridad', label: 'Prioridad', type: 'text', hide: 'lg' },
+            { key: 'activa', label: 'Estado', type: 'custom', renderFn: v => v
+                ? '<span class="badge bg-success">Activa</span>'
+                : '<span class="badge bg-secondary">Inactiva</span>' },
+        ],
+        selection: {
+            fragmentUrl: id   => `/configuracion-motor/reglas/${id}/fragmento`,
+            title:       item => (ACCION_LABEL[item.accion] || item.accion) + ' · ' + item.sujeto
+        }
+    });
+
+    const filtrosReglas = new FiltrosListado(scrollInfinitoReglas);
+
+    // Sync inspector ↔ URL ?sel (ADR-023 §1)
+    function _updateSelParamReglas(selId) {
+        const url = new URL(location.href);
+        if (selId) url.searchParams.set('sel', selId);
+        else url.searchParams.delete('sel');
+        history.replaceState(null, '', url.toString());
+    }
+    document.addEventListener('inspector:opened',  e => _updateSelParamReglas(e.detail.selId));
+    document.addEventListener('inspector:swapped', e => _updateSelParamReglas(e.detail.selId));
+    document.addEventListener('inspector:closed',  () => _updateSelParamReglas(null));
+
+    const _selParamReglas = new URLSearchParams(location.search).get('sel');
+    if (_selParamReglas && window.AppInspector) {
+        AppInspector.open({
+            selId:       _selParamReglas,
+            title:       '',
+            fragmentUrl: `/configuracion-motor/reglas/${_selParamReglas}/fragmento`
+        });
+    }
+
+    {% if show_modal_regla %}
+    new bootstrap.Modal(document.getElementById('crearReglaModal')).show();
+    {% endif %}
+
+    console.log('Configuración del motor inicializada (#170)');
+</script>
 {% endblock %}

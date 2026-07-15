@@ -1,0 +1,143 @@
+{# _excepciones_modal.html — Modal grande: gestión de excepciones de una regla (#170, ADR-023 §6).
+   Cargado por AppModalLarge vía GET .../reglas/<regla_id>/excepciones/fragmento.
+   Submit del formulario de alta/edición interceptado por modal-large.js
+   (data-modal-form → XHR → JSON → refresh recarga este mismo fragmento).
+   El formulario en sí se trae con un fetch propio (ver <script> al final) desde
+   excepcion_nueva_fragmento / excepcion_editar_fragmento — así puede incluir
+   las condiciones ya existentes al editar, sin duplicar ese marcado aquí.
+   Toggle activar/desactivar vía fetch directo (patrón entidades/_gestionar_direcciones_fragmento.html).
+#}
+
+<div class="p-3">
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <span class="text-secondary small">
+        {{ regla.excepciones | length }}
+        excepci{{ 'ones' if regla.excepciones | length != 1 else 'ón' }} registrada{{ 's' if regla.excepciones | length != 1 else '' }}
+    </span>
+    {% if puede_gestionar %}
+    <button type="button" class="btn btn-sm btn-outline-primary" id="exc-btn-nueva">
+        <i class="fas fa-plus me-1"></i> Nueva excepción
+    </button>
+    {% endif %}
+</div>
+
+{# Formulario inline alta / edición — cargado por fetch, oculto por defecto #}
+<div id="exc-form-wrap" class="mb-3" style="display:none;"></div>
+
+{# Tabla de excepciones #}
+{% if regla.excepciones %}
+<table class="table table-sm table-hover table-embedded">
+    <thead class="table-light">
+        <tr>
+            <th>Norma</th>
+            <th>Artículo</th>
+            <th>Apartado</th>
+            <th>Condiciones</th>
+            <th>Estado</th>
+            {% if puede_gestionar %}<th class="text-end">Acciones</th>{% endif %}
+        </tr>
+    </thead>
+    <tbody>
+        {% for e in regla.excepciones %}
+        <tr class="{% if not e.activa %}text-secondary{% endif %}">
+            <td>{% if e.norma %}{{ e.norma.codigo }}{% else %}—{% endif %}</td>
+            <td>{{ e.articulo or '—' }}</td>
+            <td>{{ e.apartado or '—' }}</td>
+            <td>
+                {% if e.condiciones %}
+                <span class="badge bg-info-subtle text-info-emphasis">{{ e.condiciones | length }}</span>
+                {% else %}
+                <span class="text-secondary small">Sin condiciones</span>
+                {% endif %}
+            </td>
+            <td>
+                {% if e.activa %}
+                    <span class="badge bg-success">Activa</span>
+                {% else %}
+                    <span class="badge bg-secondary">Inactiva</span>
+                {% endif %}
+            </td>
+            {% if puede_gestionar %}
+            <td class="text-end text-nowrap">
+                <button type="button"
+                        class="btn btn-sm btn-outline-secondary exc-edit-btn"
+                        data-edit-url="{{ url_for('configuracion_motor.excepcion_editar_fragmento', regla_id=regla.id, id=e.id) }}"
+                        title="Editar">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button type="button"
+                        class="btn btn-sm {{ 'btn-outline-warning' if e.activa else 'btn-outline-success' }}"
+                        data-toggle-url="{{ url_for('configuracion_motor.excepcion_activar', regla_id=regla.id, id=e.id) }}"
+                        data-toggle-confirm="{{ '¿Desactivar' if e.activa else '¿Activar' }} esta excepción?"
+                        title="{{ 'Desactivar' if e.activa else 'Activar' }}">
+                    <i class="fas fa-{{ 'ban' if e.activa else 'check' }}"></i>
+                </button>
+            </td>
+            {% endif %}
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p class="text-secondary mb-0 p-2">
+    <i class="fas fa-info-circle me-1"></i> Sin excepciones registradas para esta regla.
+</p>
+{% endif %}
+
+</div>{# /p-3 #}
+
+<script>
+(function () {
+    var URL_NUEVA = {{ url_for('configuracion_motor.excepcion_nueva_fragmento', regla_id=regla.id) | tojson }};
+    var wrap      = document.getElementById('exc-form-wrap');
+    var btnNueva  = document.getElementById('exc-btn-nueva');
+
+    function _cargar(url) {
+        wrap.innerHTML = '<div class="p-3 text-center text-secondary small"><i class="fas fa-spinner fa-spin me-2"></i>Cargando...</div>';
+        wrap.style.display = '';
+        wrap.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(function (r) { return r.text(); })
+            .then(function (html) { wrap.innerHTML = html; })
+            .catch(function () {
+                wrap.innerHTML = '<div class="p-3 text-danger small">No se pudo cargar el formulario.</div>';
+            });
+    }
+
+    if (btnNueva) {
+        btnNueva.addEventListener('click', function () { _cargar(URL_NUEVA); });
+    }
+
+    document.querySelectorAll('.exc-edit-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () { _cargar(btn.dataset.editUrl); });
+    });
+
+    // Cancelar (botón dentro del fragmento inyectado en #exc-form-wrap)
+    wrap.addEventListener('click', function (e) {
+        if (e.target.closest('[data-exc-form-cancelar]')) {
+            wrap.style.display = 'none';
+            wrap.innerHTML = '';
+        }
+    });
+
+    // Toggle activar / desactivar
+    document.querySelectorAll('[data-toggle-url]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            if (!confirm(btn.dataset.toggleConfirm || '¿Confirmar?')) return;
+            fetch(btn.dataset.toggleUrl, {
+                method:  'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            })
+            .then(function (r) { return r.json(); })
+            .then(function (json) {
+                if (json.ok && window.mostrar_toast) window.mostrar_toast('success', json.message || 'Actualizado.');
+                if (window.AppModalLarge) window.AppModalLarge.refresh();
+            })
+            .catch(function () {
+                if (window.mostrar_toast) window.mostrar_toast('danger', 'Error al actualizar.');
+            });
+        });
+    });
+})();
+</script>
