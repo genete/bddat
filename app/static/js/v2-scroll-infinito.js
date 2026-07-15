@@ -64,8 +64,11 @@
  *     - bool     : icono check si true, vacío si false
  *     - acciones : botón "Ver" que navega a detailUrl(id); omitido en modo selección
  *
- * VERSIÓN: 1.6
- * FECHA: 2026-07-12
+ * VERSIÓN: 1.7
+ * FECHA: 2026-07-15
+ * CAMBIOS v1.7: setFiltroExterno(name, value, label) — fija/quita un filtro que no es
+ *               un <select> dentro de .filters (p. ej. SelectorBusqueda de municipio,
+ *               que llamaba a un método que no existía y el filtro no aplicaba nunca, #642).
  * CAMBIOS v1.6: reload() ahora invalida con seguridad un loadMore() en vuelo (token
  *               _loadGen) en vez de quedar bloqueado por la guarda `this.loading`.
  *               Sin esto, llamar reload()/setBulkMode() justo tras construir la
@@ -529,6 +532,25 @@ class ScrollInfinito {
         div.innerHTML = `<i class="fas fa-exclamation-triangle" style="margin-right:0.5rem;"></i>${mensaje}`;
         this.container.appendChild(div);
         setTimeout(() => div.remove(), 5000);
+    }
+
+    /**
+     * Fija (o quita, si value es vacío) un filtro que no viene de un <select>
+     * dentro de .filters — p. ej. un SelectorBusqueda (municipio), que no es un
+     * <select> nativo y por tanto no lo recoge el escaneo de loadMore(). Se
+     * añade a fixedParams y se recarga el listado desde cero.
+     * label se acepta por compatibilidad con la firma existente en las
+     * llamadas (p. ej. `Mun: Sevilla`); no hay UI de chip que lo consuma hoy.
+     */
+    setFiltroExterno(name, value, label) {
+        const nuevo = { ...this.fixedParams };
+        if (value === null || value === undefined || value === '') {
+            delete nuevo[name];
+        } else {
+            nuevo[name] = value;
+        }
+        this.fixedParams = nuevo;
+        this.reload();
     }
 
     reload() {
