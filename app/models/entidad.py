@@ -53,12 +53,18 @@ class Entidad(db.Model):
     )
     
     nombre_completo = db.Column(
-        db.String(200), 
-        nullable=False, 
+        db.String(200),
+        nullable=False,
         index=True,
         comment='Razón social, nombre completo o nombre oficial. Personas físicas: nombre completo. Jurídicas/organismos: razón social/nombre oficial'
     )
-    
+
+    abrev = db.Column(
+        db.String(20),
+        nullable=True,
+        comment='Abreviatura corta (organismos: usada en convención de carpetas ESFTT, ADR-032 #665, y en el interfaz de consultas)'
+    )
+
     # === ROLES OPERATIVOS ===
     rol_titular = db.Column(
         db.Boolean, 
@@ -188,6 +194,7 @@ class Entidad(db.Model):
             'id': self.id,
             'nif': self.nif,
             'nombre_completo': self.nombre_completo,
+            'abrev': self.abrev,
             'rol_titular': self.rol_titular,
             'rol_consultado': self.rol_consultado,
             'rol_publicador': self.rol_publicador,
