@@ -161,9 +161,9 @@
   </div>
 
   <div class="content-constrained">
-  <!-- Dos fichas de entrada -->
+  <!-- Tres fichas de entrada -->
   <div class="row g-2 mb-2 mt-2">
-    <div class="col-6">
+    <div class="col-4">
       <div class="card ficha-entrada h-100" onclick="abrir_explorador()">
         <div class="card-body text-center py-3">
           <i class="fas fa-server fa-2x mb-2 text-primary"></i>
@@ -172,7 +172,16 @@
         </div>
       </div>
     </div>
-    <div class="col-6">
+    <div class="col-4">
+      <div class="card ficha-entrada h-100" onclick="abrir_modal_subir()">
+        <div class="card-body text-center py-3">
+          <i class="fas fa-upload fa-2x mb-2 text-primary"></i>
+          <div class="fw-semibold">Subir fichero</div>
+          <div class="small text-secondary">Desde tu PC — descargas sin organizar</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-4">
       <div class="card ficha-entrada h-100" onclick="abrir_modal_url_externa()">
         <div class="card-body text-center py-3">
           <i class="fas fa-link fa-2x mb-2 text-primary"></i>
@@ -532,6 +541,75 @@
         <button type="button" class="btn btn-primary"
                 onclick="guardar_url_externa('{{ url_for('expedientes.pool_registrar_url_externa', id=expediente.id) }}')">
           <i class="fas fa-save me-1"></i> Guardar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ============================================================ -->
+<!-- Modal: Subir fichero (multipart, ADR-032 §1/§4, #666)        -->
+<!-- ============================================================ -->
+<div class="modal fade" id="modal-subir" tabindex="-1" aria-labelledby="modal-subir-label">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modal-subir-label">
+          <i class="fas fa-upload me-1"></i> Subir fichero al pool
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+
+        <!-- Paso 1: elegir ficheros -->
+        <div id="subir-paso-elegir">
+          <p class="text-secondary small">
+            Selecciona uno o varios ficheros de tu equipo. Se copian al pool del
+            expediente — indiferente a si el origen es tu disco local o una carpeta
+            de red ya montada.
+          </p>
+          <input type="file" class="form-control" id="subir-input-ficheros" multiple>
+          <div id="subir-error-elegir" class="alert alert-danger d-none mt-2"></div>
+        </div>
+
+        <!-- Paso 2: Metadatos -->
+        <div id="subir-paso-metadatos" class="d-none">
+          <p class="text-secondary small mb-2" id="subir-meta-contador"></p>
+          <div class="table-responsive">
+            <table class="table table-sm table-bordered align-middle">
+              <thead class="table-light">
+                <tr>
+                  <th>Nombre</th>
+                  <th>Tamaño</th>
+                  <th style="min-width:180px">Tipo de documento</th>
+                  <th style="min-width:155px">Fecha adm.</th>
+                  <th class="text-center">Prioritario</th>
+                </tr>
+              </thead>
+              <tbody id="subir-meta-tbody"></tbody>
+            </table>
+          </div>
+          <div id="subir-meta-error" class="alert alert-danger d-none"></div>
+        </div>
+
+      </div>
+      <div class="modal-footer">
+        {# Paso 1 #}
+        <button type="button" class="btn btn-secondary" id="btn-subir-cancelar"
+                data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-primary" id="btn-subir-siguiente"
+                onclick="ir_a_metadatos_subida()" disabled>
+          Siguiente <i class="fas fa-arrow-right ms-1"></i>
+        </button>
+        {# Paso 2 — ocultos al inicio #}
+        <button type="button" class="btn btn-outline-secondary d-none" id="btn-subir-volver"
+                onclick="volver_a_elegir_subida()">
+          <i class="fas fa-arrow-left me-1"></i> Volver
+        </button>
+        <button type="button" class="btn btn-primary d-none" id="btn-subir-registrar"
+                onclick="subir_ficheros('{{ url_for('expedientes.pool_subir_documento', id=expediente.id) }}')">
+          <i class="fas fa-save me-1"></i> <span id="btn-subir-texto">Subir</span>
         </button>
       </div>
     </div>
@@ -1184,6 +1262,128 @@
       document.getElementById('url-ext-error').classList.remove('d-none');
     });
   };
+
+  // ================================================================
+  // SUBIR FICHERO (multipart, #666)
+  // ================================================================
+  var _modal_subir_bs = null;
+  var _archivos_subir  = [];   // File[] elegidos en el input nativo
+  var _ef_subida        = [];  // EntradaFecha por fila del paso 2
+
+  window.abrir_modal_subir = function () {
+    if (!_modal_subir_bs) {
+      _modal_subir_bs = new bootstrap.Modal(document.getElementById('modal-subir'));
+      document.getElementById('modal-subir').addEventListener('hidden.bs.modal', resetear_modal_subir);
+      document.getElementById('subir-input-ficheros').addEventListener('change', function (e) {
+        _archivos_subir = Array.from(e.target.files || []);
+        document.getElementById('btn-subir-siguiente').disabled = (_archivos_subir.length === 0);
+      });
+    }
+    resetear_modal_subir();
+    _modal_subir_bs.show();
+  };
+
+  window.ir_a_metadatos_subida = function () {
+    if (_archivos_subir.length === 0) return;
+    mostrar_paso_metadatos_subida();
+
+    var tmpl_tipos = document.getElementById('tmpl-tipos-doc').innerHTML;
+    var tbody = document.getElementById('subir-meta-tbody');
+    tbody.innerHTML = '';
+    _ef_subida = [];
+
+    _archivos_subir.forEach(function (f, i) {
+      var tr    = document.createElement('tr');
+      var ef_id = 'ef-subir-fecha-' + i;
+      tr.innerHTML =
+        '<td class="small">' + escapar_html(f.name) + '</td>' +
+        '<td class="small text-secondary text-nowrap">' + formatear_bytes(f.size) + '</td>' +
+        '<td><select class="form-select form-select-sm tipo-doc-select">' + tmpl_tipos + '</select></td>' +
+        '<td><div id="' + ef_id + '"></div></td>' +
+        '<td class="text-center"><input type="checkbox" class="form-check-input prioridad-check"></td>';
+      tbody.appendChild(tr);
+      _ef_subida.push(new EntradaFecha('#' + ef_id, { name: '_ef_subir_' + i }));
+    });
+
+    var n = _archivos_subir.length;
+    document.getElementById('subir-meta-contador').textContent =
+      n + ' fichero(s) listos para subir';
+    document.getElementById('btn-subir-texto').textContent =
+      'Subir ' + n + ' fichero(s)';
+    document.getElementById('subir-meta-error').classList.add('d-none');
+  };
+
+  window.volver_a_elegir_subida = function () {
+    mostrar_paso_elegir_subida();
+  };
+
+  function mostrar_paso_elegir_subida() {
+    document.getElementById('subir-paso-elegir').classList.remove('d-none');
+    document.getElementById('subir-paso-metadatos').classList.add('d-none');
+    document.getElementById('btn-subir-cancelar').classList.remove('d-none');
+    document.getElementById('btn-subir-siguiente').classList.remove('d-none');
+    document.getElementById('btn-subir-volver').classList.add('d-none');
+    document.getElementById('btn-subir-registrar').classList.add('d-none');
+  }
+
+  function mostrar_paso_metadatos_subida() {
+    document.getElementById('subir-paso-elegir').classList.add('d-none');
+    document.getElementById('subir-paso-metadatos').classList.remove('d-none');
+    document.getElementById('btn-subir-cancelar').classList.add('d-none');
+    document.getElementById('btn-subir-siguiente').classList.add('d-none');
+    document.getElementById('btn-subir-volver').classList.remove('d-none');
+    document.getElementById('btn-subir-registrar').classList.remove('d-none');
+  }
+
+  window.subir_ficheros = function (url_subir) {
+    var metadatos = [];
+    document.querySelectorAll('#subir-meta-tbody tr').forEach(function (tr, i) {
+      metadatos.push({
+        tipo_doc_id:          tr.querySelector('.tipo-doc-select').value || '1',
+        fecha_administrativa: _ef_subida[i] ? _ef_subida[i].getValue() : null,
+        prioridad:            tr.querySelector('.prioridad-check').checked,
+      });
+    });
+
+    var formData = new FormData();
+    _archivos_subir.forEach(function (f) { formData.append('ficheros', f); });
+    formData.append('metadatos', JSON.stringify(metadatos));
+
+    var btn = document.getElementById('btn-subir-registrar');
+    btn.disabled = true;
+
+    fetch(url_subir, { method: 'POST', body: formData })
+    .then(function (r) { return r.json(); })
+    .then(function (data) {
+      if (data.ok) {
+        bootstrap.Modal.getInstance(document.getElementById('modal-subir')).hide();
+        setTimeout(function () {
+          mostrar_toast('success', 'Se han subido ' + data.creados + ' documento(s) al pool.');
+          setTimeout(function () { window.location.reload(); }, 1800);
+        }, 350);
+      } else {
+        document.getElementById('subir-meta-error').textContent = data.error || 'Error al subir.';
+        document.getElementById('subir-meta-error').classList.remove('d-none');
+        btn.disabled = false;
+      }
+    })
+    .catch(function () {
+      document.getElementById('subir-meta-error').textContent = 'Error de red.';
+      document.getElementById('subir-meta-error').classList.remove('d-none');
+      btn.disabled = false;
+    });
+  };
+
+  function resetear_modal_subir() {
+    _archivos_subir = [];
+    _ef_subida = [];
+    document.getElementById('subir-input-ficheros').value = '';
+    document.getElementById('subir-meta-tbody').innerHTML = '';
+    document.getElementById('subir-error-elegir').classList.add('d-none');
+    document.getElementById('subir-meta-error').classList.add('d-none');
+    document.getElementById('btn-subir-siguiente').disabled = true;
+    mostrar_paso_elegir_subida();
+  }
 
   // ================================================================
   // EDITAR METADATOS (individual)

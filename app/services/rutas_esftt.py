@@ -3,10 +3,14 @@ Servicio de cálculo de rutas ESFTT (Expediente-Solicitud-Fase-Trámite-Tarea) y
 la carpeta de entrada al pool (ADR-032 §4, #665).
 
 Solo calcula rutas — no crea directorios ESFTT ni mueve ficheros. El movimiento
-físico real al vincularse un documento a una tarea es #667.
+físico real al vincularse un documento a una tarea es #667. También resuelve
+el nombrado único de entrada al pool (#666, ADR-032 §4) — sigue sin mover
+ficheros, la escritura real la hace el endpoint que llama a estas funciones.
 """
+import hashlib
 import os
 import re
+import secrets
 
 from app.models.documentos import Documento
 from app.models.tareas import Tarea
@@ -14,6 +18,17 @@ from app.models.tareas import Tarea
 # Caracteres no válidos en nombres de carpeta Windows (mismo patrón que generador_escritos.py)
 _CARACTERES_INVALIDOS = re.compile(r'[\\/:*?"<>|]')
 _LONGITUD_MAX_FALLBACK_ORGANISMO = 30
+
+# Nombres de dispositivo reservados en Windows (con o sin extensión): CON.txt también es inválido.
+_NOMBRES_RESERVADOS_WINDOWS = {
+    'CON', 'PRN', 'AUX', 'NUL',
+    'COM1', 'COM2', 'COM3', 'COM4', 'COM5', 'COM6', 'COM7', 'COM8', 'COM9',
+    'LPT1', 'LPT2', 'LPT3', 'LPT4', 'LPT5', 'LPT6', 'LPT7', 'LPT8', 'LPT9',
+}
+
+# Longitud inicial del prefijo de hash en el nombre de fichero del pool (ADR-032 §4,
+# git-style: se extiende un carácter más ante colisión real con contenido distinto).
+_LONGITUD_PREFIJO_HASH = 8
 
 
 def _segmento(instancia_id: int, codigo: str) -> str:
@@ -116,3 +131,76 @@ def ruta_pool_documento(expediente) -> str:
     os.makedirs(directorio, exist_ok=True)
 
     return directorio
+
+
+def _saneado_nombre_pool(nombre_original: str) -> str:
+    """
+    Sanea un nombre de fichero recibido del navegador (`FileStorage.filename`,
+    dato controlado por el cliente) para uso seguro como nombre de fichero en
+    disco (ADR-032 §4, #666). Solo correctivo — nunca trunca por longitud
+    (ver ADR-032 §4 para el porqué).
+
+    - Descarta cualquier componente de directorio (previene path traversal:
+      '../../algo' o '..\\..\\algo' se reduce a 'algo').
+    - Sustituye caracteres inválidos en Windows por '_'.
+    - Recorta espacios y puntos finales (Windows los ignora al escribir;
+      normalizarlo aquí evita que BD y disco diverjan).
+    - Evita nombres de dispositivo reservados de Windows (CON, NUL, COM1…).
+    """
+    nombre = (nombre_original or '').replace('\\', '/').rsplit('/', 1)[-1]
+    nombre = _CARACTERES_INVALIDOS.sub('_', nombre)
+    nombre = nombre.rstrip(' .')
+    if not nombre:
+        nombre = 'documento'
+
+    base, _ext = os.path.splitext(nombre)
+    if base.upper() in _NOMBRES_RESERVADOS_WINDOWS:
+        nombre = f'_{nombre}'
+
+    return nombre
+
+
+def _hash_md5_fichero(ruta: str) -> str:
+    """MD5 completo de un fichero ya existente en disco, por bloques."""
+    hasher = hashlib.md5()
+    with open(ruta, 'rb') as f:
+        for bloque in iter(lambda: f.read(65536), b''):
+            hasher.update(bloque)
+    return hasher.hexdigest()
+
+
+def nombre_pool_unico(hash_md5: str, nombre_original: str, directorio: str) -> tuple[str, bool]:
+    """
+    Calcula el nombre de fichero único para la entrada al pool (ADR-032 §4, #666):
+    prefijo abreviado del hash MD5 completo + nombre original saneado (sin
+    truncar por longitud).
+
+    Ante colisión de prefijo con un fichero ya existente en `directorio` de
+    contenido DISTINTO, extiende el prefijo un carácter más (git-style) y
+    reintenta, hasta encontrar hueco o agotar el hash completo (caso extremo:
+    añade un carácter aleatorio al nombre).
+
+    No escribe nada — solo calcula. El caller decide si escribe el fichero
+    usando el segundo valor devuelto.
+
+    Returns:
+        (nombre_fichero, ya_existe_identico) — ya_existe_identico es True
+        cuando el destino ya existe en disco con el mismo contenido
+        (duplicado exacto, p.ej. re-subida del mismo fichero): el caller no
+        debe reescribirlo, pero puede seguir creando su propio `Documento`.
+    """
+    nombre_saneado = _saneado_nombre_pool(nombre_original)
+    n = _LONGITUD_PREFIJO_HASH
+    while n <= len(hash_md5):
+        candidato = f'{hash_md5[:n]}_{nombre_saneado}'
+        ruta_candidata = os.path.join(directorio, candidato)
+        if not os.path.exists(ruta_candidata):
+            return candidato, False
+        if _hash_md5_fichero(ruta_candidata) == hash_md5:
+            return candidato, True
+        n += 1
+
+    # Caso extremo, "altamente improbable" (ADR-032 §4): agotado el hash completo
+    # como prefijo y sigue habiendo colisión con contenido distinto.
+    candidato = f'{hash_md5}_{secrets.token_hex(1)}_{nombre_saneado}'
+    return candidato, False
