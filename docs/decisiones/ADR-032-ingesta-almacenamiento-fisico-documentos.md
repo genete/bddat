@@ -30,7 +30,7 @@ Verificado en BD de desarrollo (2026-07-16): de 88 `documentos.url` con valor, s
 ### 1. Dos mecanismos de entrada al pool, según dónde está el documento
 
 - **Registrar in situ** (existente, sin cambio de mecanismo) — el documento ya está en su ubicación definitiva, en cualquier punto bajo `FILESYSTEM_BASE`. Se localiza y registra su URL vía el explorador ad-hoc (`pool_explorador_fs` + `pool_registrar_rutas`). Nunca copia ni mueve.
-- **Subida al pool** (nuevo) — el documento no está necesariamente en su ubicación definitiva. Diálogo nativo del navegador (`<input type="file">`, multipart estándar), sin explorador ad-hoc — aquí no hace falta conocer la ruta de origen, solo los bytes. Es indiferente si el origen navegado era una carpeta del servidor o el disco local del usuario: **siempre se copia** al punto de entrada fijo `AT-N/pool/<hash-sha256>_<nombre-original>` (ruta relativa).
+- **Subida al pool** (nuevo) — el documento no está necesariamente en su ubicación definitiva. Diálogo nativo del navegador (`<input type="file">`, multipart estándar), sin explorador ad-hoc — aquí no hace falta conocer la ruta de origen, solo los bytes. Es indiferente si el origen navegado era una carpeta del servidor o el disco local del usuario: **siempre se copia** al punto de entrada fijo `AT-N/pool/<prefijo-hash-md5>_<nombre-original>` (ruta relativa).
 
 Tras la entrada por cualquiera de los dos mecanismos, las operaciones posteriores son idénticas e indiferentes al origen: asignar a tarea, abrir, abrir carpeta contenedora (navegador o invocación de shell).
 
@@ -48,7 +48,14 @@ Queda abierto, a fijar durante la implementación del Issue D: si el documento p
 
 ### 4. Naming en el pool: hash de contenido
 
-`AT-N/pool/<sha256-contenido>_<nombre-original>` evita colisiones de nombre y, como beneficio colateral, adelanta la detección de duplicados (N077): mismo contenido, mismo hash, sin necesidad de abrir ficheros. Al salir del pool hacia la carpeta ESFTT legible (punto 3), se recupera el nombre original — el hash solo tiene sentido mientras el documento está sin clasificar.
+`AT-N/pool/<prefijo-hash-md5>_<nombre-original-saneado>` evita colisiones de nombre y, como beneficio colateral, adelanta la detección de duplicados (N077): mismo contenido, mismo hash, sin necesidad de abrir ficheros. Al salir del pool hacia la carpeta ESFTT legible (punto 3), se recupera el nombre original — el hash solo tiene sentido mientras el documento está sin clasificar.
+
+Algoritmo de naming (#666):
+
+- **Hash:** MD5 completo (32 hex) del contenido, almacenado en `Documento.hash_md5`. No SHA-256 — con el volumen real por expediente (decenas de documentos, nunca miles) MD5 es sobrado para evitar colisiones de contenido, y evita rutas más largas de lo necesario.
+- **Prefijo en el nombre:** solo los primeros N caracteres del hash (git-style; N por defecto 8), no el hash completo — el nombre debe seguir siendo reconocible a simple vista en el explorador de Windows. Si el prefijo coincide con el de un fichero ya existente en el pool **con contenido distinto** (colisión real, no duplicado), se extiende un carácter más y se reintenta, recursivamente hasta agotar los 32 caracteres; en ese caso extremo se añade un carácter aleatorio.
+- **Duplicado exacto** (mismo hash completo ya presente): la escritura a disco es un no-op — no se duplica el fichero físico — pero si el usuario ha pedido explícitamente subirlo, se crea igualmente el registro `Documento` correspondiente (sin bloquear ni marcar de forma especial; el filtro de negocio completo de N077 queda para más adelante).
+- **Nombre original: nunca se trunca por longitud.** Windows no acorta nombres al escribir — un `open()` con ruta demasiado larga falla con error explícito, no corrompe el nombre en silencio. Truncar aquí de forma preventiva, sin certeza de que el límite se vaya a alcanzar, destruiría de forma irrecuperable la parte del nombre que el punto 3 promete devolver íntegra al salir del pool — y protegería el segmento equivocado: si la longitud fuera a ser un problema, pegaría más fuerte en la ruta ESFTT (varios segmentos con padding) que en `AT-N/pool/`, la más corta de todo el árbol. Si algún día hace falta una estrategia de truncado, se decide en #667 con la ruta de destino real delante. El saneado del nombre original se limita a lo estrictamente correctivo: quitar componentes de ruta (`basename`, previene path traversal), sustituir caracteres inválidos en Windows (`\ / : * ? " < > |`, mismo patrón que el segmento organismo del punto 3), recortar espacios/puntos finales y evitar nombres reservados (`CON`, `NUL`, `COM1`…). Un fallo de escritura por ruta excesivamente larga se captura y se reporta como error legible al usuario.
 
 ---
 
@@ -67,7 +74,7 @@ Resumen — checklist detallado en cada issue, todos milestone M2:
 
 - **#664 (Issue A)** — Rutas relativas a `FILESYSTEM_BASE` (corrección de la regresión de #180): extender `resolver_url()`, actualizar escritores (`pool_registrar_rutas`, `ruta_destino_documento`, `generador_cert.py`) y lectores, validador, migrar la única fila real afectada.
 - **#665 (Issue B)** — `pool/` por expediente + convención de carpetas por código de catálogo: servicio de cálculo de ruta ESFTT legible a partir de `tipos_fases.codigo`/`tipos_tramites.codigo`/`tipos_tareas.codigo`. Solo cálculo, no mueve nada todavía.
-- **#666 (Issue C)** — Ingesta multipart al pool: endpoint `request.files`, naming con hash SHA-256, UI junto al "elegir del servidor" ya existente.
+- **#666 (Issue C)** — Ingesta multipart al pool: endpoint `request.files`, naming con hash MD5 (prefijo abreviado extensible, §4), UI junto al "elegir del servidor" ya existente.
 - **#667 (Issue D)** — Mover al vincular por primera vez a una tarea: hook en alta de `DocumentoTarea`, patrón seguro copiar→commit→borrar, regla de primera vinculación gana.
 
 Dependencias: #664 → #665 → {#666, #667} (#666 y #667 en paralelo entre sí una vez estén #664 y #665).
