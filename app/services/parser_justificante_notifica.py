@@ -19,18 +19,39 @@ de valores de `MAPA_RESULTADO` viene del catálogo `Estado` de
 `notifica-poc/notifica.py` (scraping DOM) — sin confirmar si el nombre de
 campo de fecha ("Fecha de lectura") es el mismo en un PDF real de esos
 estados.
+
+## ZIP y coherencia con el XML (`coherente_con_xml`)
+
+Notifica-PNT entrega el justificante como ZIP con `Informe.pdf` +
+`InformeENI.xml` (formato ENI, con un bloque de firma CAdES/PKCS#7 real en
+`enids:firma`). El PDF **no** lleva firma embebida — su "VERIFICACIÓN
+QFQG..." es un CSV que exige consulta externa, no una prueba autocontenida.
+
+`enidocmeta:FechaCaptura` del XML coincide al minuto con "Fecha y hora de
+generación" del PDF en las 2 muestras reales — es el único dato en texto
+plano compartido por ambos ficheros (comprobado: ni el código de
+verificación, ni la huella SHA256 impresa, ni el ID de remesa aparecen en el
+XML). `coherente_con_xml` certifica que el PDF y el XML se generaron juntos,
+en el mismo evento — descarta emparejar un XML firmado legítimo de otra
+notificación con un PDF distinto. **No** valida la firma CAdES en sí (eso
+exigiría parsear el ASN.1 del `FirmaBase64` — fuera de alcance de momento).
 """
 from __future__ import annotations
 
+import io
 import re
+import zipfile
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import BinaryIO
 
+from lxml import etree
 from pypdf import PdfReader
 
 CANAL = 'NOTIFICA'
+
+_NS_ENIDOCMETA = 'http://administracionelectronica.gob.es/ENI/XSD/v1.0/documento-e/metadatos'
 
 # Traduce el texto libre de "Estado:" al binario CORRECTA/INCORRECTA que
 # exige el CHECK de `notificaciones.resultado` (ADR-008).
@@ -59,6 +80,10 @@ class JustificanteNotificaPNT:
     fecha_generacion_informe: datetime | None
     verificacion: str | None
     canal: str = CANAL
+    # None = no se aportó XML para comparar (p.ej. parseo de PDF suelto).
+    # True/False = PDF y XML se generaron en el mismo evento (ver docstring
+    # del módulo) — no es validación de la firma CAdES en sí.
+    coherente_con_xml: bool | None = None
 
     @property
     def reconocido(self) -> bool:
@@ -150,3 +175,52 @@ def parsear_justificante_notifica(fuente: str | Path | BinaryIO) -> Justificante
         return _VACIO
 
     return _parsear_texto(texto)
+
+
+def _extraer_fecha_captura_xml(xml_bytes: bytes) -> datetime | None:
+    """Lee `enidocmeta:FechaCaptura` del InformeENI.xml. None si no se
+    encuentra o el XML no es parseable (nunca lanza)."""
+    try:
+        raiz = etree.fromstring(xml_bytes)
+    except etree.XMLSyntaxError:
+        return None
+    nodo = raiz.find(f'.//{{{_NS_ENIDOCMETA}}}FechaCaptura')
+    if nodo is None or not nodo.text:
+        return None
+    try:
+        return datetime.fromisoformat(nodo.text).replace(tzinfo=None)
+    except ValueError:
+        return None
+
+
+def parsear_justificante_notifica_zip(fuente: str | Path | BinaryIO) -> JustificanteNotificaPNT:
+    """
+    Punto de entrada para el ZIP tal como lo entrega Notifica-PNT
+    (`Informe.pdf` + `InformeENI.xml`). Extrae el PDF y lo pasa a
+    `parsear_justificante_notifica`; si además encuentra el XML, calcula
+    `coherente_con_xml` comparando `FechaCaptura` (XML) con "Fecha y hora de
+    generación" (PDF) al minuto — el PDF no imprime segundos.
+
+    Mismo contrato que `parsear_justificante_notifica`: nunca lanza
+    excepción por un ZIP inesperado, devuelve `.reconocido == False`.
+    """
+    try:
+        with zipfile.ZipFile(fuente) as zf:
+            nombre_pdf = next((n for n in zf.namelist() if n.lower().endswith('.pdf')), None)
+            if nombre_pdf is None:
+                return _VACIO
+            # PdfReader exige un stream con .read(), no bytes pelados.
+            resultado = parsear_justificante_notifica(io.BytesIO(zf.read(nombre_pdf)))
+
+            nombre_xml = next((n for n in zf.namelist() if n.lower().endswith('.xml')), None)
+            if nombre_xml is not None and resultado.fecha_generacion_informe is not None:
+                fecha_captura = _extraer_fecha_captura_xml(zf.read(nombre_xml))
+                if fecha_captura is not None:
+                    resultado.coherente_con_xml = (
+                        fecha_captura.replace(second=0, microsecond=0)
+                        == resultado.fecha_generacion_informe.replace(second=0, microsecond=0)
+                    )
+    except (zipfile.BadZipFile, KeyError):
+        return _VACIO
+
+    return resultado

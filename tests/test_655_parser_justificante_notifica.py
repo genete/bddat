@@ -6,11 +6,13 @@ justificantes reales inspeccionados en la sesión de origen) pero con datos
 ficticios — no se comiten PDFs reales con NIF/emails/teléfonos de terceros.
 """
 import io
+import zipfile
 
 from reportlab.pdfgen import canvas
 
 from app.services.parser_justificante_notifica import (
     parsear_justificante_notifica,
+    parsear_justificante_notifica_zip,
     _parsear_texto,
 )
 
@@ -140,4 +142,58 @@ def test_parsear_justificante_notifica_desde_pdf_real_sintetico():
 
 def test_parsear_justificante_notifica_pdf_corrupto_no_lanza_excepcion():
     r = parsear_justificante_notifica(io.BytesIO(b"esto no es un PDF"))
+    assert r.reconocido is False
+
+
+def _generar_xml_sintetico(fecha_captura: str) -> bytes:
+    """XML ENI mínimo — solo el campo que el parser lee (FechaCaptura)."""
+    return f"""<?xml version="1.0" encoding="UTF-8"?>
+<enidoc:documento
+    xmlns:enidocmeta="http://administracionelectronica.gob.es/ENI/XSD/v1.0/documento-e/metadatos"
+    xmlns:enidoc="http://administracionelectronica.gob.es/ENI/XSD/v1.0/documento-e">
+<enidocmeta:metadatos>
+<enidocmeta:FechaCaptura>{fecha_captura}</enidocmeta:FechaCaptura>
+</enidocmeta:metadatos>
+</enidoc:documento>
+""".encode("utf-8")
+
+
+def _generar_zip_sintetico(lineas_pdf: list[str], fecha_captura_xml: str | None) -> io.BytesIO:
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w") as zf:
+        zf.writestr("Informe.pdf", _generar_pdf_sintetico(lineas_pdf).read())
+        if fecha_captura_xml is not None:
+            zf.writestr("InformeENI.xml", _generar_xml_sintetico(fecha_captura_xml))
+    buffer.seek(0)
+    return buffer
+
+
+def test_zip_con_fecha_captura_coincidente_marca_coherente():
+    # TEXTO_CON_CODIGO_EXPEDIENTE trae "Fecha y hora de generación: 02/06/26 07:50"
+    zip_ = _generar_zip_sintetico(
+        TEXTO_CON_CODIGO_EXPEDIENTE.splitlines(), "2026-06-02T07:50:03.847+02:00"
+    )
+    r = parsear_justificante_notifica_zip(zip_)
+    assert r.reconocido is True
+    assert r.coherente_con_xml is True
+
+
+def test_zip_con_fecha_captura_distinta_marca_incoherente():
+    zip_ = _generar_zip_sintetico(
+        TEXTO_CON_CODIGO_EXPEDIENTE.splitlines(), "2020-01-01T00:00:00.000+02:00"
+    )
+    r = parsear_justificante_notifica_zip(zip_)
+    assert r.reconocido is True
+    assert r.coherente_con_xml is False
+
+
+def test_zip_sin_xml_deja_coherente_con_xml_en_none():
+    zip_ = _generar_zip_sintetico(TEXTO_CON_CODIGO_EXPEDIENTE.splitlines(), fecha_captura_xml=None)
+    r = parsear_justificante_notifica_zip(zip_)
+    assert r.reconocido is True
+    assert r.coherente_con_xml is None
+
+
+def test_zip_invalido_no_lanza_excepcion():
+    r = parsear_justificante_notifica_zip(io.BytesIO(b"esto no es un ZIP"))
     assert r.reconocido is False
