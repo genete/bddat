@@ -1,7 +1,7 @@
 // SubirDocumento.jsx — alta de documentos al pool del expediente (#501, ADR-017 §4).
 //
-// No hay subida multipart en BDDAT. La gestión documental completa (ficheros del
-// servidor + URLs externas) ya vive en la página de pool del expediente. Esta
+// La subida multipart (#666) vive en el gestor de documentos del pool
+// (pool_documentos.html), junto a "elegir del servidor" y "URL externa". Esta
 // pestaña solo aporta lo que faltaba: ELEGIR el expediente (reutiliza /api/search,
 // el de Ctrl+K) y entrar a su gestor — un único método, un único sitio (feedback #4).
 import React, { useRef, useState } from 'react'
