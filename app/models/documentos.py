@@ -1,3 +1,5 @@
+import os
+
 from sqlalchemy.orm import validates
 
 from app import db
@@ -46,7 +48,11 @@ class Documento(db.Model):
 
     CAMPO URL:
         Admite tres esquemas:
-        - Ruta local (sin '://'): fichero en el servidor de archivos.
+        - Ruta local (sin '://'): fichero en el servidor de archivos, SIEMPRE
+          relativa a FILESYSTEM_BASE, nunca absoluta (ADR-032, corrección de
+          la regresión de #180). @validates('url') rechaza ruta absoluta o
+          que escape de FILESYSTEM_BASE. ruta_absoluta() resuelve al momento
+          de uso.
         - 'http://' / 'https://': recurso externo.
         - 'bddat://<recurso>/<id>': registro interno de BD sin fichero físico.
           Tablas activas: diagnosticos, certificados.
@@ -174,15 +180,41 @@ class Documento(db.Model):
 
     @validates('url')
     def _validar_url(self, key, value):
-        if value is not None and '://' in value:
+        if value is None:
+            return value
+        if '://' in value:
             if not value.startswith(('http://', 'https://', 'bddat://')):
                 raise ValueError(f'Esquema de URL no admitido: {value!r}')
+            return value
+        # Esquema local (ADR-032): siempre relativa a FILESYSTEM_BASE, nunca absoluta.
+        if value.startswith(('/', '\\')) or os.path.isabs(value):
+            raise ValueError(
+                f'Ruta local debe ser relativa a FILESYSTEM_BASE, no absoluta: {value!r}'
+            )
+        normalizada = os.path.normpath(value)
+        if normalizada == '..' or normalizada.startswith('..' + os.sep):
+            raise ValueError(f'Ruta local no puede salir de FILESYSTEM_BASE: {value!r}')
         return value
+
+    def ruta_absoluta(self) -> str:
+        """Resuelve la ruta local (relativa a FILESYSTEM_BASE) en ruta absoluta (ADR-032).
+
+        Solo válido para el esquema local (sin '://').
+        """
+        from flask import current_app
+        base = current_app.config.get('FILESYSTEM_BASE', '')
+        if not base:
+            raise RuntimeError('FILESYSTEM_BASE no está configurado')
+        base_norm = os.path.normpath(os.path.abspath(base))
+        ruta_abs = os.path.normpath(os.path.join(base_norm, (self.url or '').replace('/', os.sep)))
+        if ruta_abs != base_norm and not ruta_abs.startswith(base_norm + os.sep):
+            raise ValueError(f'Ruta fuera de FILESYSTEM_BASE: {self.url!r}')
+        return ruta_abs
 
     def resolver_url(self):
         """Despacha según el esquema de url (ADR-006).
 
-        - Ruta local  → file object abierto en modo binario
+        - Ruta local  → file object abierto en modo binario (ruta resuelta vía ruta_absoluta(), ADR-032)
         - http(s)://  → requests.Response
         - bddat://    → dict completo del registro ORM destino
         """
@@ -192,7 +224,7 @@ class Documento(db.Model):
         if url.startswith(('http://', 'https://')):
             import urllib.request
             return urllib.request.urlopen(url)
-        return open(url, 'rb')
+        return open(self.ruta_absoluta(), 'rb')
 
     def _resolver_bddat(self, url: str) -> dict:
         partes = url[len('bddat://'):].split('/')

@@ -608,7 +608,7 @@ def pool_registrar_rutas(id):
 
     Recibe JSON: [{ruta, tipo_doc_id, fecha_administrativa, asunto, prioridad}, ...]
     donde ruta es relativa a FILESYSTEM_BASE (con '/' como separador).
-    Almacena la ruta absoluta normalizada en Documento.url.
+    Almacena la ruta relativa a FILESYSTEM_BASE en Documento.url (ADR-032).
 
     Permiso 'subir_documento' (ADR-027 / #501): aportar al pool no edita el
     expediente — el documento nace sin vínculo (huérfano) y es el técnico quien
@@ -636,6 +636,7 @@ def pool_registrar_rutas(id):
             ruta_abs = _path_seguro(ruta_rel, base)
             if not ruta_abs or not os.path.isfile(ruta_abs):
                 continue
+            ruta_rel_norm = os.path.relpath(ruta_abs, base).replace(os.sep, '/')
 
             fecha_admin = None
             fecha_raw = item.get('fecha_administrativa') or None
@@ -647,7 +648,7 @@ def pool_registrar_rutas(id):
 
             doc = Documento(
                 expediente_id=id,
-                url=ruta_abs,
+                url=ruta_rel_norm,
                 tipo_doc_id=int(item.get('tipo_doc_id') or 1),
                 fecha_administrativa=fecha_admin,
                 asunto=(item.get('asunto') or '').strip() or None,
@@ -698,15 +699,12 @@ def pool_descargar_documento(id, doc_id):
             abort(400, description='Este documento no tiene representación descargable.')
         raise NotImplementedError(f'Apertura no definida para recurso bddat://: {recurso!r}')
 
-    ruta_abs = os.path.normpath(os.path.abspath(url))
+    try:
+        ruta_abs = doc.ruta_absoluta()
+    except (RuntimeError, ValueError):
+        abort(404)
     if not os.path.isfile(ruta_abs):
         abort(404)
-
-    base = current_app.config.get('FILESYSTEM_BASE', '')
-    if base:
-        base_norm = os.path.normpath(os.path.abspath(base))
-        if not ruta_abs.startswith(base_norm):
-            abort(403)
 
     return send_file(ruta_abs, as_attachment=False,
                      download_name=os.path.basename(ruta_abs))
@@ -863,7 +861,10 @@ def pool_abrir_en_carpeta(id, doc_id):
     if url.startswith(('http://', 'https://')):
         return jsonify({'ok': False, 'error': 'No aplicable a URLs externas'}), 400
 
-    ruta_abs = os.path.normpath(os.path.abspath(url))
+    try:
+        ruta_abs = doc.ruta_absoluta()
+    except (RuntimeError, ValueError) as e:
+        return jsonify({'ok': False, 'error': str(e)}), 404
     if not os.path.isfile(ruta_abs):
         return jsonify({'ok': False, 'error': 'Fichero no encontrado en disco'}), 404
 

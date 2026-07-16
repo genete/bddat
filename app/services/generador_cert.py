@@ -8,7 +8,7 @@ FLUJO:
     1. Persiste CertificadoFase (snapshot inmutable en BD).
     2. Genera PDF con reportlab.
     3. Guarda en ruta_destino_cert(expediente, tipo_cert).
-    4. Crea Documento (tipo_doc = tipo_cert, url = ruta física).
+    4. Crea Documento (tipo_doc = tipo_cert, url = ruta relativa a FILESYSTEM_BASE, ADR-032).
     5. Actualiza cert.ruta_pdf.
     Devuelve CertificadoFase creado.
 """
@@ -76,11 +76,16 @@ def generar_certificado_fase(expediente, fase, auditoria, tipo_cert: str):
 
     # 4. Crear Documento apuntando al PDF
     try:
+        from flask import current_app
         tipo_doc = TipoDocumento.query.filter_by(codigo=tipo_cert).first()
+        # Documento.url siempre relativa a FILESYSTEM_BASE (ADR-032); cert.ruta_pdf
+        # (más abajo) sigue siendo la ruta absoluta física, campo distinto.
+        base = current_app.config['FILESYSTEM_BASE']
+        ruta_relativa = os.path.relpath(ruta_pdf, base).replace(os.sep, '/')
         doc = Documento(
             expediente_id=expediente.id,
             tipo_doc_id=tipo_doc.id if tipo_doc else 1,
-            url=ruta_pdf,
+            url=ruta_relativa,
             tipo_contenido='application/pdf',
             fecha_administrativa=date.today(),
             asunto=f'Certificado {tipo_cert} — {expediente.numero_at}',
