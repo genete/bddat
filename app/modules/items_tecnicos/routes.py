@@ -33,17 +33,26 @@ bp = Blueprint(
     template_folder='templates',
 )
 
-# Mismos operadores que CondicionRequisito/CondicionRegla (#170)
+# Mismos operadores que CondicionRequisito/CondicionRegla (#170).
+# Paridad completa desde #660 (antes solo exponía 6 de los 12).
 OPERADORES = [
-    ('EQ',       'Igual a (=)'),
-    ('NEQ',      'Distinto de (≠)'),
-    ('IN',       'Está en (lista)'),
-    ('NOT_IN',   'No está en (lista)'),
-    ('IS_NULL',  'No informado'),
-    ('NOT_NULL', 'Informado'),
+    ('EQ',          'Igual a (=)'),
+    ('NEQ',         'Distinto de (≠)'),
+    ('IN',          'Está en (lista)'),
+    ('NOT_IN',      'No está en (lista)'),
+    ('IS_NULL',     'No informado'),
+    ('NOT_NULL',    'Informado'),
+    ('GT',          'Mayor que (>)'),
+    ('GTE',         'Mayor o igual que (≥)'),
+    ('LT',          'Menor que (<)'),
+    ('LTE',         'Menor o igual que (≤)'),
+    ('BETWEEN',     'Entre (rango)'),
+    ('NOT_BETWEEN', 'Fuera de rango'),
 ]
 _OPERADORES_VALIDOS = {codigo for codigo, _ in OPERADORES}
 _OPERADORES_SIN_VALOR = {'IS_NULL', 'NOT_NULL'}
+_OPERADORES_LISTA = {'IN', 'NOT_IN'}
+_OPERADORES_RANGO = {'BETWEEN', 'NOT_BETWEEN'}
 
 
 # ---------------------------------------------------------------------------
@@ -115,7 +124,7 @@ def _coerce_valor(tipo_dato: str, operador: str, valor_raw: str, etiqueta_var: s
     if operador in _OPERADORES_SIN_VALOR:
         return None, None
 
-    if operador in ('IN', 'NOT_IN'):
+    if operador in _OPERADORES_LISTA:
         items = [v.strip() for v in (valor_raw or '').split(',') if v.strip()]
         if not items:
             return None, f'la condición sobre «{etiqueta_var}» necesita al menos un valor (separados por comas).'
@@ -125,6 +134,20 @@ def _coerce_valor(tipo_dato: str, operador: str, valor_raw: str, etiqueta_var: s
             if err:
                 return None, f'valor «{item}» inválido para «{etiqueta_var}»: {err}.'
             valores.append(v)
+        return valores, None
+
+    if operador in _OPERADORES_RANGO:
+        items = [v.strip() for v in (valor_raw or '').split(',') if v.strip()]
+        if len(items) != 2:
+            return None, f'la condición sobre «{etiqueta_var}» necesita exactamente 2 valores (mínimo, máximo separados por coma).'
+        valores = []
+        for item in items:
+            v, err = _coerce_escalar(tipo_dato, item)
+            if err:
+                return None, f'valor «{item}» inválido para «{etiqueta_var}»: {err}.'
+            valores.append(v)
+        if valores[0] > valores[1]:
+            return None, f'la condición sobre «{etiqueta_var}»: el primer valor debe ser menor o igual que el segundo.'
         return valores, None
 
     if not (valor_raw or '').strip():
