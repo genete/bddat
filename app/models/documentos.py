@@ -65,7 +65,11 @@ class Documento(db.Model):
     CAMPO HASH_MD5:
         - Verificación de integridad del archivo
         - Detección de duplicados
-        - NULLABLE: Se calcula tras almacenamiento
+        - Ingesta multipart al pool (#666, ADR-032 §4): se calcula ANTES de
+          almacenar — determina el nombre de fichero en AT-N/pool/
+          (<prefijo-hash>_<nombre-original>).
+        - NULLABLE: documentos que no entraron por subida multipart
+          (registro in situ, URL externa) no lo tienen calculado.
 
     CAMPO PRIORIDAD:
         - 0 = no prioritario (defecto)
