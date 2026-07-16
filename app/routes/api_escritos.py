@@ -7,6 +7,7 @@ ENDPOINTS:
 """
 
 import logging
+import os
 from datetime import date
 
 import jinja2
@@ -203,12 +204,15 @@ def generar():
     guardar_docx(docx_bytes, ruta)
 
     doc_id = None
+    # Documento.url siempre relativa a FILESYSTEM_BASE (ADR-032); ruta (absoluta)
+    # sigue usándose para guardar_docx() y el URI del explorador.
+    ruta_relativa = os.path.relpath(ruta, fs_base).replace(os.sep, '/')
 
     if registrar_pool:
         # B6: Buscar doc existente por URL (regeneración) o crear nuevo
         doc_existente = Documento.query.filter_by(
             expediente_id=expediente.id,
-            url=ruta,
+            url=ruta_relativa,
         ).first()
 
         if doc_existente:
@@ -223,7 +227,7 @@ def generar():
 
             doc = Documento(
                 expediente_id=expediente.id,
-                url=ruta,
+                url=ruta_relativa,
                 tipo_doc_id=plantilla.tipo_documento_id,
                 tipo_contenido='application/docx',
                 fecha_administrativa=None,
@@ -248,7 +252,6 @@ def generar():
     db.session.commit()
 
     # URI para abrir carpeta en explorador (file:/// con barras normalizadas)
-    import os
     carpeta = os.path.dirname(ruta)
     uri_explorador = 'file:///' + carpeta.replace('\\', '/')
 
