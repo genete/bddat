@@ -105,15 +105,18 @@ class CondicionItemTecnico(db.Model):
     Gemela exacta de CondicionRequisito — misma semántica, mismos operadores,
     mismo AND implícito entre condiciones del mismo ítem.
 
-    OPERADORES SOPORTADOS:
-        EQ / NEQ           igual / distinto
-        IN / NOT_IN        en el conjunto / fuera del conjunto
-        IS_NULL / NOT_NULL ausente / presente
+    OPERADORES SOPORTADOS (paridad con CondicionRegla, #660):
+        EQ / NEQ            igual / distinto
+        IN / NOT_IN         en el conjunto / fuera del conjunto
+        IS_NULL / NOT_NULL  ausente / presente
+        GT / GTE / LT / LTE comparaciones numéricas
+        BETWEEN / NOT_BETWEEN  rango [a, b] — valor es lista [min, max]
     """
     __tablename__ = 'condiciones_item_tecnico'
     __table_args__ = (
         db.CheckConstraint(
-            "operador IN ('EQ','NEQ','IN','NOT_IN','IS_NULL','NOT_NULL')",
+            "operador IN ('EQ','NEQ','IN','NOT_IN','IS_NULL','NOT_NULL',"
+            "'GT','GTE','LT','LTE','BETWEEN','NOT_BETWEEN')",
             name='ck_condiciones_item_tecnico_operador'
         ),
         db.Index('idx_condiciones_item_tecnico_item', 'item_tecnico_id'),
@@ -145,13 +148,13 @@ class CondicionItemTecnico(db.Model):
     operador = db.Column(
         db.String(20),
         nullable=False,
-        comment='Operador de comparación: EQ|NEQ|IN|NOT_IN|IS_NULL|NOT_NULL'
+        comment='Operador de comparación (ver catálogo en el docstring de la clase)'
     )
 
     valor = db.Column(
         db.JSON,
         nullable=True,
-        comment='Valor de referencia. Lista para IN/NOT_IN, None para IS_NULL/NOT_NULL'
+        comment='Valor de referencia. Lista para IN/NOT_IN/BETWEEN/NOT_BETWEEN, None para IS_NULL/NOT_NULL'
     )
 
     orden = db.Column(

@@ -418,3 +418,86 @@ class TestErrorBD:
         assert res['todos_cubiertos'] is True
         assert res['error'] is True
         assert res['items'] == []
+
+
+# ---------------------------------------------------------------------------
+# J) evaluar_requisitos — operadores numéricos y de rango (#601)
+# ---------------------------------------------------------------------------
+
+class TestOperadoresNumericos:
+    """Antes de #601, GT/GTE/LT/LTE/BETWEEN/NOT_BETWEEN no estaban soportados
+    y _evaluar_condicion caía al operador desconocido (ver TestOperadorDesconocido)."""
+
+    def _run(self, operador, valor_ref, valor_var):
+        cond = _condicion('tension_nominal_kv', operador, valor_ref)
+        req = _requisito(tipo_doc_id=6, condiciones=[cond], req_id=60)
+
+        from app.services.requisitos import evaluar_requisitos
+        from unittest.mock import MagicMock, patch
+
+        solicitud = _solicitud(1)
+        mock_req_q = MagicMock()
+        mock_req_q.filter_by.return_value.order_by.return_value.all.return_value = [req]
+        mock_dr_q = MagicMock()
+        mock_dr_q.filter_by.return_value.all.return_value = []
+
+        with patch('app.services.requisitos.RequisitoDocumental') as MR, \
+             patch('app.services.requisitos.DocumentoRequisito') as MDR:
+            MR.query = mock_req_q
+            MDR.query = mock_dr_q
+            return evaluar_requisitos(solicitud, {'tension_nominal_kv': valor_var})
+
+    def test_gt_cumplido(self):
+        assert len(self._run('GT', 30, 45)['items']) == 1
+
+    def test_gt_no_cumplido(self):
+        assert self._run('GT', 30, 30)['items'] == []
+
+    def test_gte_cumplido_igual(self):
+        assert len(self._run('GTE', 30, 30)['items']) == 1
+
+    def test_gte_no_cumplido(self):
+        assert self._run('GTE', 30, 29)['items'] == []
+
+    def test_lt_cumplido(self):
+        assert len(self._run('LT', 30, 15)['items']) == 1
+
+    def test_lt_no_cumplido(self):
+        assert self._run('LT', 30, 30)['items'] == []
+
+    def test_lte_cumplido_igual(self):
+        assert len(self._run('LTE', 30, 30)['items']) == 1
+
+    def test_lte_no_cumplido(self):
+        assert self._run('LTE', 30, 31)['items'] == []
+
+    def test_between_cumplido(self):
+        assert len(self._run('BETWEEN', [10, 50], 30)['items']) == 1
+
+    def test_between_no_cumplido(self):
+        assert self._run('BETWEEN', [10, 50], 60)['items'] == []
+
+    def test_not_between_cumplido(self):
+        assert len(self._run('NOT_BETWEEN', [10, 50], 60)['items']) == 1
+
+    def test_not_between_no_cumplido(self):
+        assert self._run('NOT_BETWEEN', [10, 50], 30)['items'] == []
+
+
+# ---------------------------------------------------------------------------
+# K) evaluar_requisitos — operador desconocido (#601, regresión)
+# ---------------------------------------------------------------------------
+
+class TestOperadorDesconocido:
+
+    def test_operador_desconocido_no_aplica(self):
+        """
+        Antes de #601, un operador desconocido hacía que _evaluar_condicion
+        devolviera True (bug: la condición se daba por cumplida). Ahora debe
+        tratarse como no cumplida — el requisito no aparece en el checklist
+        en vez de aparecer siempre.
+        """
+        cond = _condicion('tension_nominal_kv', 'OPERADOR_INVENTADO', 30)
+        req = _requisito(tipo_doc_id=7, condiciones=[cond], req_id=70)
+        resultado = _evaluar([req], [])
+        assert resultado['items'] == []
