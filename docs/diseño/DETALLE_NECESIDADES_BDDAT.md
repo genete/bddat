@@ -61,6 +61,7 @@
 | N077 | Detectar documentos duplicados en el pool del expediente (verificación de integridad) | Tramitador/Administrativo | 2 — Sistema documental | M1 |
 | N078 | Mantener el catálogo de requisitos documentales exigidos por normativa, con condiciones de aplicabilidad según el trámite/instalación | Supervisor | 2 — Sistema documental | M3 |
 | N082 | Mantener el catálogo de tipos de documento (código identificador inmutable tras el alta, usado en el motor de reglas y en el código, mismo régimen que los tipos ESFTT de N019) | Supervisor | 2 — Sistema documental | M3 |
+| N084 | Extraer datos estructurados (fecha, estado de notificación) de un justificante externo para auto-rellenar y verificar su registro, reduciendo trabajo manual y errores de asociación al expediente equivocado | Tramitador/Administrativo | 2 — Sistema documental | M2 |
 
 ---
 
