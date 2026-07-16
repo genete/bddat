@@ -18,8 +18,8 @@ Uso típico (dentro de ContextoAnalisisDocumental — ver #495):
 Semántica de condiciones:
     Cada RequisitoDocumental puede tener cero o más CondicionRequisito.
     Todas se evalúan en AND. Un requisito sin condiciones es universal
-    (aplica siempre). Los operadores soportados son los mismos que
-    CondicionRegla: EQ, NEQ, IN, NOT_IN, IS_NULL, NOT_NULL.
+    (aplica siempre). Los operadores soportados son los mismos 12 que
+    CondicionRegla (ver app/services/operadores.py) — #601.
 
     Solo se evalúan requisitos con activo=True (baja lógica del Supervisor,
     #583). Los DocumentoRequisito de expedientes antiguos no se ven afectados
@@ -33,6 +33,7 @@ from typing import Any
 from sqlalchemy.exc import OperationalError, ProgrammingError
 
 from app.models.requisitos_documentales import RequisitoDocumental, DocumentoRequisito
+from app.services.operadores import _OPERADORES
 
 log = logging.getLogger(__name__)
 
@@ -45,21 +46,24 @@ _RESULTADO_DEGRADADO: dict = {
 
 
 def _evaluar_condicion(operador: str, valor_var: Any, valor_ref: Any) -> bool:
-    """Evalúa una condición individual. Devuelve True si se cumple."""
-    if operador == 'EQ':
-        return valor_var == valor_ref
-    if operador == 'NEQ':
-        return valor_var != valor_ref
-    if operador == 'IN':
-        return valor_var in (valor_ref or [])
-    if operador == 'NOT_IN':
-        return valor_var not in (valor_ref or [])
-    if operador == 'IS_NULL':
-        return valor_var is None
-    if operador == 'NOT_NULL':
-        return valor_var is not None
-    log.warning('requisitos: operador desconocido "%s" — condición ignorada', operador)
-    return True
+    """Evalúa una condición individual. Devuelve True si se cumple.
+
+    Delega en el catálogo compartido de operadores (app.services.operadores,
+    #601) en vez de reimplementarlo — mismo patrón que motor_reglas y plazos.
+    Operador desconocido o error de evaluación → False (la condición no se
+    da por cumplida; el requisito completo no aplica, no al revés).
+    """
+    op_fn = _OPERADORES.get(operador)
+    if op_fn is None:
+        log.warning('requisitos: operador desconocido "%s" — condición no cumplida', operador)
+        return False
+    try:
+        return bool(op_fn(valor_var, valor_ref))
+    except Exception as exc:
+        log.warning(
+            'requisitos: error evaluando %s %r %r: %s', operador, valor_var, valor_ref, exc
+        )
+        return False
 
 
 def _requisito_aplica(requisito: Any, variables: dict) -> bool:
