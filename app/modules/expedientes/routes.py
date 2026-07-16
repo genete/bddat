@@ -16,6 +16,8 @@ VERSIÓN: 2.0
 FECHA: 2026-06-11
 ISSUE: #543
 """
+import hashlib
+import json
 import os
 from datetime import date
 from flask import current_app, send_file, g
@@ -35,6 +37,7 @@ from app.models.tareas import Tarea
 from app.models.documentos import Documento
 from app.models.tipos_documentos import TipoDocumento
 from app.services.plazos import obtener_estado_plazo
+from app.services.rutas_esftt import ruta_pool_documento, nombre_pool_unico
 from app.utils.permisos import (
     puede_cambiar_responsable,
     verificar_acceso_expediente,
@@ -658,6 +661,102 @@ def pool_registrar_rutas(id):
             creados += 1
 
         db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+    return jsonify({'ok': True, 'creados': creados})
+
+
+@bp.route('/<int:id>/documentos/subir', methods=['POST'])
+@login_required
+def pool_subir_documento(id):
+    """
+    Ingesta multipart al pool (#666, ADR-032 §1/§4): sube ficheros reales
+    (diálogo nativo del navegador), indiferente a si el origen navegado por
+    el usuario era una carpeta del servidor o su disco local. Siempre copia
+    al punto de entrada fijo AT-N/pool/<prefijo-hash>_<nombre-original>.
+
+    Recibe multipart: 'ficheros' (N ficheros) + 'metadatos' (JSON, array
+    paralelo por índice a 'ficheros'): [{tipo_doc_id, fecha_administrativa,
+    asunto, prioridad}, ...].
+
+    Duplicado exacto (mismo MD5 completo ya presente en el pool): no se
+    reescribe el fichero físico, pero sí se crea el Documento — el usuario
+    ha pedido explícitamente añadirlo (ADR-032 §4, sin bloquear ni avisar).
+
+    Permiso 'subir_documento' (ADR-027 / #501): igual que pool_registrar_rutas.
+    """
+    expediente = Expediente.query.get_or_404(id)
+    resultado = verificar_acceso_expediente(expediente, 'subir_documento')
+    if resultado:
+        return resultado
+
+    base = current_app.config.get('FILESYSTEM_BASE', '')
+    if not base or not os.path.isdir(base):
+        return jsonify({'ok': False, 'error': 'Servidor de ficheros no accesible'}), 503
+
+    ficheros = request.files.getlist('ficheros')
+    if not ficheros:
+        return jsonify({'ok': False, 'error': 'Ningún fichero recibido'}), 400
+
+    try:
+        metadatos = json.loads(request.form.get('metadatos') or '[]')
+    except ValueError:
+        return jsonify({'ok': False, 'error': 'Metadatos inválidos'}), 400
+    if not isinstance(metadatos, list):
+        return jsonify({'ok': False, 'error': 'Metadatos inválidos'}), 400
+
+    directorio = ruta_pool_documento(expediente)
+
+    creados = 0
+    try:
+        for i, fichero in enumerate(ficheros):
+            if not fichero.filename:
+                continue
+            contenido = fichero.read()
+            if not contenido:
+                continue
+
+            item = metadatos[i] if i < len(metadatos) else {}
+
+            hash_md5 = hashlib.md5(contenido).hexdigest()
+            nombre, ya_existe = nombre_pool_unico(hash_md5, fichero.filename, directorio)
+            destino = os.path.join(directorio, nombre)
+
+            if not ya_existe:
+                with open(destino, 'wb') as f:
+                    f.write(contenido)
+
+            fecha_admin = None
+            fecha_raw = item.get('fecha_administrativa') or None
+            if fecha_raw:
+                try:
+                    fecha_admin = date.fromisoformat(fecha_raw)
+                except ValueError:
+                    pass
+
+            ruta_relativa = os.path.relpath(destino, base).replace(os.sep, '/')
+
+            doc = Documento(
+                expediente_id=id,
+                url=ruta_relativa,
+                hash_md5=hash_md5,
+                tipo_doc_id=int(item.get('tipo_doc_id') or 1),
+                fecha_administrativa=fecha_admin,
+                asunto=(item.get('asunto') or '').strip() or None,
+                prioridad=1 if item.get('prioridad') else 0,
+            )
+            db.session.add(doc)
+            creados += 1
+
+        db.session.commit()
+    except OSError as e:
+        db.session.rollback()
+        return jsonify({
+            'ok': False,
+            'error': f'No se pudo escribir a disco (¿ruta demasiado larga?): {e}',
+        }), 500
     except Exception as e:
         db.session.rollback()
         return jsonify({'ok': False, 'error': str(e)}), 500
