@@ -8,7 +8,7 @@
 
 ---
 
-**Hecho:** #667 (sesión 2026-07-18, cierra el bloque de organización documental ADR-032 — A/B/C/D completos: #664-#667). #672 y #674 (misma sesión, tests que dejaban huérfanos silenciosos en la BD y en el filesystem de desarrollo — nueva herramienta `scripts/verificar_bd_tests.sh` para detectarlo). Detalle en los issues y en PR #671, #673, #675.
+**Hecho:** #629 (sesión 2026-07-19, modal de solo lectura del diagnóstico de ANALIZAR — defectos agrupados por origen, enganchado en inspector/menú contextual/despensa/pool de documentos vía `info_apertura_documento()`; corrige de paso el enlace roto del pool para diagnósticos y el botón "Abrir en Explorador" roto para certificados). PR #680.
 
 **Próximo:** Foco fijo (2026-07-16): dejar la fase `ANÁLISIS_SOLICITUD` completamente tramitable — interfaz, sistema documental, apertura, detección de documentos, notificación y elaboración — porque establece las bases que usarán el resto de fases. Se avanza alternando grupos de issues de este foco entre Próximo y Hecho hasta completarlo. Activo ahora: **#629** (diagnóstico `bddat://` sin representación visible entre ANALIZAR y ELABORAR) — milestone M2. #572 (ADR-027, pertenencia al EXPEDIENTE) sigue ortogonal a este bloque, diferido a propósito por Carlos. En cola, mismo foco: #441 (seed `catalogo_requerimientos`), #407 (`siglas_escritos`), #657/#658 (UI + `id_remesa` de notificación), #444/#555 (plantillas `.docx` definitivas de esta fase), #630 (hub tramitador/radar huérfanos). Hueco de diseño sin issue: `ESPERAR_PLAZO` no admite N documentos simultáneos en respuesta a un requerimiento (`DISEÑO_ANALISIS_SOLICITUD.md` §5). Fuera de foco: automatización externa de firma/notificación (ADR-021) y #644-648, aparcados.
 
