@@ -34,6 +34,7 @@ from app.services import bitacora as bitacora_svc
 from app.services.motor_reglas import EvaluacionResult, PERMITIDO
 from app.services.motor_modo_global import evaluar_con_modo_global as _evaluar
 from app.services.invariantes_esftt import _check_cierre_fase
+from app.services.rutas_esftt import mover_a_esftt, mover_a_pool
 
 log = logging.getLogger(__name__)
 
@@ -304,6 +305,12 @@ def editar_tarea(ta, *, documentos_consumidos_ids: list[int],
     """Actualiza vínculos documentales + notas de la tarea.
 
     `resultado` (NOTIFICAR) es una @property de Notificacion — no editable aquí.
+
+    Vínculos por diff, no clear()+recrear (#667): un guardado que no cambia
+    los documentos no debe tocar sus filas DOCUMENTOS_TAREA — eso es lo que
+    permite detectar de forma fiable "primera vinculación" (documento sin
+    ningún vínculo previo) para disparar el movimiento físico a la carpeta
+    ESFTT (ADR-032 §3), y "última desvinculación" para la vuelta a pool/.
     """
     expediente = ta.tramite.fase.solicitud.expediente
 
@@ -315,16 +322,38 @@ def editar_tarea(ta, *, documentos_consumidos_ids: list[int],
             return ResultadoMutacion(ok=False, error='Documento no válido para este expediente')
 
     try:
-        ta.vinculos_documento.clear()
-        db.session.flush()
-        for doc_id in dict.fromkeys(documentos_consumidos_ids):   # sin duplicados, orden estable
-            ta.vinculos_documento.append(DocumentoTarea(documento_id=doc_id, rol='CONSUMIDO'))
+        deseados = {(doc_id, 'CONSUMIDO') for doc_id in dict.fromkeys(documentos_consumidos_ids)}
         if documento_producido_id:
-            ta.vinculos_documento.append(
-                DocumentoTarea(documento_id=documento_producido_id, rol='PRODUCIDO'))
+            deseados.add((documento_producido_id, 'PRODUCIDO'))
+
+        actuales = {(v.documento_id, v.rol): v for v in ta.vinculos_documento}
+
+        docs_a_liberar = []
+        for clave, vinculo in actuales.items():
+            if clave not in deseados:
+                doc = vinculo.documento
+                ta.vinculos_documento.remove(vinculo)
+                if not doc.vinculos_tarea:
+                    docs_a_liberar.append(doc)
+        db.session.flush()
+
+        docs_a_encajar = []
+        for doc_id, rol in deseados:
+            if (doc_id, rol) not in actuales:
+                doc = Documento.query.get(doc_id)
+                if not doc.vinculos_tarea:
+                    docs_a_encajar.append(doc)
+                ta.vinculos_documento.append(DocumentoTarea(documento_id=doc_id, rol=rol))
 
         ta.notas = notas or None
         _hook_458_analizar_separata(ta, documento_producido_id)
+        db.session.flush()
+
+        for doc in docs_a_encajar:
+            mover_a_esftt(doc, ta)
+        for doc in docs_a_liberar:
+            mover_a_pool(doc, expediente)
+
         db.session.commit()
         return ResultadoMutacion(ok=True)
     except IntegrityError:
