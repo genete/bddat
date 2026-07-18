@@ -153,6 +153,24 @@ def primer_usuario_id(app):
 
 
 @pytest.fixture
+def fs_tmp(app, tmp_path):
+    """Redirige FILESYSTEM_BASE a un directorio temporal (#674).
+
+    app_ctx revierte la BD por SAVEPOINT, pero el filesystem no es
+    transaccional — cualquier test que genere un documento/certificado real
+    dentro de una transacción que luego revierte deja el fichero físico
+    huérfano en el servidor de ficheros de desarrollo real
+    (FILESYSTEM_BASE=D:/BDDAT/docs_prueba en .env). Usar en cualquier test
+    que cree un Expediente/Documento con esquema local y pueda disparar
+    escritura a disco (certificados, escritos, pool).
+    """
+    base_original = app.config.get('FILESYSTEM_BASE')
+    app.config['FILESYSTEM_BASE'] = str(tmp_path)
+    yield tmp_path
+    app.config['FILESYSTEM_BASE'] = base_original
+
+
+@pytest.fixture
 def tramitador_usuario_id(app):
     """ID del primer usuario activo con rol TRAMITADOR. Skip si no existe ninguno."""
     with app.app_context():

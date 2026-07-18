@@ -26,6 +26,13 @@ import pytest
 from app.models.tareas import Tarea
 
 
+@pytest.fixture(autouse=True)
+def _fs_tmp(fs_tmp):
+    """FILESYSTEM_BASE redirigido a tmp_path — este módulo genera certificados
+    internos que pueden tocar el servidor de ficheros de desarrollo (#674)."""
+    pass
+
+
 # ---------------------------------------------------------------------------
 # A) _validar_url ya no fuerza fecha_administrativa=None (sin BD)
 # ---------------------------------------------------------------------------
