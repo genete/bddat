@@ -38,6 +38,8 @@ from app.models.documentos import Documento
 from app.models.tipos_documentos import TipoDocumento
 from app.services.plazos import obtener_estado_plazo
 from app.services.rutas_esftt import ruta_pool_documento, nombre_pool_unico
+from app.services.consolidacion_defectos import agrupar_defectos_por_origen
+from app.services.detalle_nodo import info_apertura_documento
 from app.utils.permisos import (
     puede_cambiar_responsable,
     verificar_acceso_expediente,
@@ -509,6 +511,7 @@ def pool_documentos(id):
             'extension':       extension,
             'es_url_externa':  es_url_externa,
             'es_referenciado': _documento_es_referenciado(doc),
+            'apertura':        info_apertura_documento(id, doc),
         })
 
     tipos_doc = TipoDocumento.query.order_by(TipoDocumento.nombre).all()
@@ -769,12 +772,11 @@ def pool_subir_documento(id):
 def pool_descargar_documento(id, doc_id):
     """Sirve un fichero del servidor de ficheros. Para URLs externas, redirige.
 
-    bddat:// (ADR-006, #610): red de seguridad para consumidores que no pasan
-    por info_apertura_documento() (p.ej. pool_documentos.html, que enlaza aquí
-    directamente para cualquier documento no externo). Certificados redirige
-    a su PDF; diagnósticos no tiene descarga posible (400 explícito, no 404
-    silencioso); recurso no contemplado falla alto, igual que en
-    info_apertura_documento().
+    bddat:// (ADR-006, #610): certificados redirige a su PDF; diagnósticos no
+    tiene descarga posible (400 explícito, no 404 silencioso) — desde #629 la
+    apertura real de un diagnóstico pasa por diagnostico_modal(), esta rama
+    queda como defensa ante un acceso directo a esta URL; recurso no
+    contemplado falla alto, igual que en info_apertura_documento().
     """
     expediente = Expediente.query.get_or_404(id)
     resultado = verificar_acceso_expediente(expediente, 'ver')
@@ -807,6 +809,35 @@ def pool_descargar_documento(id, doc_id):
 
     return send_file(ruta_abs, as_attachment=False,
                      download_name=os.path.basename(ruta_abs))
+
+
+@bp.route('/<int:id>/documentos/<int:doc_id>/diagnostico-modal')
+@login_required
+def diagnostico_modal(id, doc_id):
+    """Fragmento modal grande — representación de solo lectura de un DIAGNOSTICO (#629).
+
+    bddat://diagnosticos/<id> (ADR-006) no tiene fichero descargable — se consulta
+    aquí, en un modal (ADR-023 §6, AppModalLarge) enganchado desde los puntos que
+    resuelven la apertura vía info_apertura_documento(): inspector del árbol, menú
+    contextual, despensa y este mismo pool.
+    """
+    expediente = Expediente.query.get_or_404(id)
+    resultado = verificar_acceso_expediente(expediente, 'ver')
+    if resultado:
+        return '', 403
+
+    doc = Documento.query.get_or_404(doc_id)
+    if doc.expediente_id != id:
+        abort(404)
+    diagnostico = doc.diagnostico
+    if diagnostico is None:
+        abort(404)
+
+    return render_template(
+        'expedientes/_diagnostico_modal_fragmento.html',
+        resultado=diagnostico.resultado,
+        grupos=agrupar_defectos_por_origen(diagnostico.defectos or []),
+    )
 
 
 @bp.route('/<int:id>/documentos/url-externa', methods=['POST'])

@@ -106,3 +106,44 @@ def consolidar_defectos(tarea) -> dict:
         'completo': completo_documental and completo_tecnico,
         'error': False,
     }
+
+
+ETIQUETA_ORIGEN = {
+    'documental': 'Documental',
+    'tecnico': 'Técnico',
+    'requerimiento': 'Requerimientos',
+}
+
+ORDEN_ORIGEN = ('documental', 'tecnico', 'requerimiento')
+
+
+def agrupar_defectos_por_origen(defectos: list) -> list:
+    """
+    Agrupa defectos ya persistidos en `Diagnostico.defectos` por su campo
+    `origen`, para representaciones de solo lectura (#629).
+
+    Omite grupos sin ítems (un origen que no aportó ningún defecto no debe
+    aparecer, ni con un "sin defectos" — simplemente no se pinta). Los
+    defectos sin `origen` (snapshots anteriores a #442, o una tarea ANALIZAR
+    sin las tres capas) van en un grupo sin etiqueta, al final.
+
+    Returns:
+        [{'etiqueta': str|None, 'textos': [str, ...]}, ...]
+
+    Clave `textos`, no `items`: en Jinja2 `grupo.items` resuelve al método
+    `dict.items()` antes que a la clave del diccionario (TypeError al iterar).
+    """
+    if not defectos:
+        return []
+
+    grupos = []
+    for origen in ORDEN_ORIGEN:
+        textos = [d.get('texto', '') for d in defectos if d.get('origen') == origen]
+        if textos:
+            grupos.append({'etiqueta': ETIQUETA_ORIGEN[origen], 'textos': textos})
+
+    sin_origen = [d.get('texto', '') for d in defectos if not d.get('origen')]
+    if sin_origen:
+        grupos.append({'etiqueta': None, 'textos': sin_origen})
+
+    return grupos

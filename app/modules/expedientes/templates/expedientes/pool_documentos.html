@@ -292,13 +292,18 @@
                  onchange="on_check_doc(this, {{ doc.id }})">
         </td>
         <td>
-          {% if item.es_url_externa %}
-          <a href="{{ doc.url }}" target="_blank" rel="noopener" class="fw-semibold">
+          {% if item.apertura.abrir_en == 'modal' %}
+          <button type="button" class="btn btn-link p-0 fw-semibold text-start"
+                  data-modal-large-url="{{ item.apertura.enlace }}"
+                  data-modal-large-title="{{ item.nombre_display }}">
+            <i class="fas fa-file fa-xs me-1 text-secondary"></i>{{ item.nombre_display }}
+          </button>
+          {% elif item.es_url_externa %}
+          <a href="{{ item.apertura.enlace }}" target="_blank" rel="noopener" class="fw-semibold">
             <i class="fas fa-external-link-alt fa-xs me-1 text-secondary"></i>{{ item.nombre_display }}
           </a>
           {% else %}
-          <a href="{{ url_for('expedientes.pool_descargar_documento', id=expediente.id, doc_id=doc.id) }}"
-             target="_blank" class="fw-semibold">
+          <a href="{{ item.apertura.enlace }}" target="_blank" class="fw-semibold">
             <i class="fas fa-file fa-xs me-1 text-secondary"></i>{{ item.nombre_display }}
           </a>
           {% endif %}
@@ -339,7 +344,7 @@
           {% endif %}
         </td>
         <td class="text-end text-nowrap">
-          {% if not item.es_url_externa %}
+          {% if item.apertura.puede_abrir_carpeta %}
           <button type="button" class="btn btn-sm btn-outline-primary"
                   title="Abrir ubicación en el Explorador de Windows"
                   data-bs-toggle="tooltip" data-bs-placement="top"

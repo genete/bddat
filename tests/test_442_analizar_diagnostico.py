@@ -256,3 +256,52 @@ class TestCrearDiagnosticoCircuito:
             bitacora_ids = (entrada.id,)
         finally:
             self._limpiar(tarea.id, doc_id, diag_id, bitacora_ids=locals().get('bitacora_ids', ()))
+
+
+# ---------------------------------------------------------------------------
+# E) agrupar_defectos_por_origen() — presentación de solo lectura (#629)
+# ---------------------------------------------------------------------------
+
+class TestAgruparDefectosPorOrigen:
+
+    def test_vacio(self):
+        from app.services.consolidacion_defectos import agrupar_defectos_por_origen
+        assert agrupar_defectos_por_origen([]) == []
+
+    def test_agrupa_en_orden_fijo_y_omite_vacios(self):
+        """Solo documental y requerimiento tienen ítems — técnico no aparece."""
+        from app.services.consolidacion_defectos import agrupar_defectos_por_origen
+
+        defectos = [
+            {'texto': 'Falta memoria técnica', 'origen': 'documental'},
+            {'texto': 'Defecto libre', 'origen': 'requerimiento'},
+            {'texto': 'Falta CIF', 'origen': 'documental'},
+        ]
+        grupos = agrupar_defectos_por_origen(defectos)
+
+        assert [g['etiqueta'] for g in grupos] == ['Documental', 'Requerimientos']
+        assert grupos[0]['textos'] == ['Falta memoria técnica', 'Falta CIF']
+        assert grupos[1]['textos'] == ['Defecto libre']
+
+    def test_sin_origen_degrada_a_grupo_unico_sin_etiqueta(self):
+        """Diagnósticos anteriores a #442, o una tarea ANALIZAR sin las tres capas."""
+        from app.services.consolidacion_defectos import agrupar_defectos_por_origen
+
+        defectos = [{'texto': 'Defecto plano'}, {'texto': 'Otro defecto plano'}]
+        grupos = agrupar_defectos_por_origen(defectos)
+
+        assert grupos == [{'etiqueta': None, 'textos': ['Defecto plano', 'Otro defecto plano']}]
+
+    def test_mezcla_con_y_sin_origen_no_pierde_ningun_texto(self):
+        from app.services.consolidacion_defectos import agrupar_defectos_por_origen
+
+        defectos = [
+            {'texto': 'Con origen', 'origen': 'tecnico'},
+            {'texto': 'Sin origen'},
+        ]
+        grupos = agrupar_defectos_por_origen(defectos)
+
+        assert grupos == [
+            {'etiqueta': 'Técnico', 'textos': ['Con origen']},
+            {'etiqueta': None, 'textos': ['Sin origen']},
+        ]

@@ -12,7 +12,7 @@ Contrato del payload (acordado en implementación de #500, cierra deuda §15
       "nodo": {"tipo": str, "id": int},
       "campos": [{"etiqueta": str, "valor": str}, ...],   # adaptativo por nivel
       "documentos": [{"id","rol","nombre","tipo_doc","fecha","enlace","externo",
-                      "puede_abrir","puede_abrir_carpeta"}, ...],
+                      "puede_abrir","puede_abrir_carpeta","abrir_en"}, ...],
       "plazo": {"estado","fecha_limite","dias_restantes"} | null,  # solo ESPERAR_PLAZO
       "referencia": str,                                  # cadena de ancestros (§8)
     }
@@ -113,8 +113,11 @@ def info_apertura_documento(exp_id: int, doc) -> dict:
     (aplica igual a un documento aún no enlazado a ninguna tarea, #609).
 
     bddat:// (ADR-006) no tiene fichero físico: el enlace despacha por recurso (#610).
-    - certificados/<id>: PDF generado on-demand, ya funcional (cert_pdf).
-    - diagnosticos/<id>: sin representación visible todavía — sin enlace de apertura.
+    - certificados/<id>: PDF generado on-demand, ya funcional (cert_pdf). `abrir_en`
+      'enlace': el consumidor sigue el href (pestaña nueva).
+    - diagnosticos/<id>: sin representación física — se consulta en un modal
+      (#629, ADR-023 §6, AppModalLarge). `abrir_en` 'modal': el consumidor debe
+      abrir `enlace` con AppModalLarge.open() en vez de seguirlo como href.
     - recurso bddat:// no contemplado: falla alto (NotImplementedError) en vez de
       degradar en silencio a 404 — el hueco debe ser visible en cuanto se use.
     """
@@ -128,13 +131,15 @@ def info_apertura_documento(exp_id: int, doc) -> dict:
                 'externo': False,
                 'puede_abrir': True,
                 'puede_abrir_carpeta': False,
+                'abrir_en': 'enlace',
             }
         if recurso == 'diagnosticos':
             return {
-                'enlace': None,
+                'enlace': url_for('expedientes.diagnostico_modal', id=exp_id, doc_id=doc.id),
                 'externo': False,
-                'puede_abrir': False,
+                'puede_abrir': True,
                 'puede_abrir_carpeta': False,
+                'abrir_en': 'modal',
             }
         raise NotImplementedError(f'Apertura no definida para recurso bddat://: {recurso!r}')
     externo = url.startswith(('http://', 'https://'))
@@ -144,6 +149,7 @@ def info_apertura_documento(exp_id: int, doc) -> dict:
         'puede_abrir': True,
         # "Abrir carpeta del documento" solo aplica a ficheros locales (§8).
         'puede_abrir_carpeta': not externo,
+        'abrir_en': 'enlace',
     }
 
 
