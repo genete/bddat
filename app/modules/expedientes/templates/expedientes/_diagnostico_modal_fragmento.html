@@ -1,0 +1,41 @@
+{# _diagnostico_modal_fragmento.html — Modal grande de solo lectura del DIAGNOSTICO (#629).
+   No extiende base_app.html. Inyectado por AppModalLarge (ADR-023 §6).
+   Único punto de presentación del diagnóstico, reutilizado desde el inspector
+   del árbol, el menú contextual, la despensa y el pool de documentos — los
+   cuatro resuelven la apertura vía info_apertura_documento()
+   (app/services/detalle_nodo.py).
+#}
+{% set etiquetas_resultado = {'favorable': 'Favorable', 'condicionado': 'Condicionado', 'desfavorable': 'Desfavorable'} %}
+
+<div class="p-3">
+
+  <div class="mb-3">
+    <span class="badge text-bg-light border">
+      {{ etiquetas_resultado.get(resultado, resultado) }}
+    </span>
+  </div>
+
+  {% if grupos %}
+    {% for grupo in grupos %}
+    <div class="mb-3">
+      {% if grupo.etiqueta %}
+      <div class="text-muted fw-semibold small mb-1">{{ grupo.etiqueta }}</div>
+      {% endif %}
+      <ul class="list-unstyled small mb-0">
+        {% for texto in grupo.textos %}
+        <li class="mb-1">{{ texto }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endfor %}
+  {% else %}
+  <div class="text-muted small fst-italic">Sin defectos.</div>
+  {% endif %}
+
+  <div class="d-flex justify-content-end border-top pt-3 mt-3">
+    <button type="button" class="btn btn-outline-secondary btn-sm" data-modal-large-close>
+      Cerrar
+    </button>
+  </div>
+
+</div>

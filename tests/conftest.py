@@ -153,6 +153,20 @@ def primer_usuario_id(app):
 
 
 @pytest.fixture
+def diagnostico_seed(app):
+    """(expediente_id, documento_id) del primer Diagnostico en la BD de desarrollo.
+
+    Skip si no existe ninguno (#629 — fragmento modal de diagnóstico).
+    """
+    with app.app_context():
+        from app.models.diagnosticos import Diagnostico
+        diag = Diagnostico.query.first()
+        if diag is None:
+            pytest.skip('No hay diagnósticos en la BD de desarrollo')
+        return diag.documento.expediente_id, diag.documento_id
+
+
+@pytest.fixture
 def fs_tmp(app, tmp_path):
     """Redirige FILESYSTEM_BASE a un directorio temporal (#674).
 
