@@ -14,6 +14,18 @@ import pytest
 from app.utils.permisos import PERMISOS
 
 
+@pytest.fixture(autouse=True)
+def _limpiar_documentos_prueba(app):
+    yield
+    with app.app_context():
+        from app import db
+        from app.models.documentos import Documento
+        Documento.query.filter(
+            Documento.url.like('%test-501%')
+        ).delete(synchronize_session=False)
+        db.session.commit()
+
+
 # ---------------------------------------------------------------------------
 # Definición del dict PERMISOS (sin BD)
 # ---------------------------------------------------------------------------
