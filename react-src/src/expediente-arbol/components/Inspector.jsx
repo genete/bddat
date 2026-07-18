@@ -174,7 +174,15 @@ function Documentos({ documentos, expedienteId }) {
           <li key={`${d.rol}-${d.id}`} className="list-group-item px-0 py-2">
             <div className="d-flex align-items-center gap-2">
               <i className="bi bi-file-earmark" />
-              {d.puede_abrir ? (
+              {d.puede_abrir && d.abrir_en === 'modal' ? (
+                <button type="button"
+                        className="btn btn-link p-0 text-start flex-grow-1 text-truncate"
+                        data-modal-large-url={d.enlace}
+                        data-modal-large-title={d.nombre}
+                        title={d.nombre}>
+                  {d.nombre}
+                </button>
+              ) : d.puede_abrir ? (
                 <a href={d.enlace} target="_blank" rel="noreferrer" className="flex-grow-1 text-truncate" title={d.nombre}>
                   {d.nombre}
                 </a>

@@ -110,6 +110,23 @@ export default function MenuContextual() {
     cerrarMenu()
   }
 
+  // Documento sin representación física (diagnósticos, #629): en vez de href,
+  // dispara AppModalLarge vía atributo declarativo (delegación global en
+  // inspector-overlay.js) — no hace falta JS propio en este componente.
+  const ItemDoc = ({ doc, children }) => (doc.abrir_en === 'modal' ? (
+    <div className="arbol-menu__item"
+         data-modal-large-url={doc.enlace}
+         data-modal-large-title={doc.nombre}
+         onClick={cerrarMenu}>
+      {children}
+    </div>
+  ) : (
+    <a href={doc.enlace} target="_blank" rel="noreferrer"
+       className="arbol-menu__item" onClick={cerrarMenu}>
+      {children}
+    </a>
+  ))
+
   return (
     <div ref={menuRef} className="arbol-menu"
          style={{ position: 'fixed', top: py, left: px, zIndex: 9999 }}>
@@ -163,16 +180,10 @@ export default function MenuContextual() {
       {esTarea && (
         <>
           {producido?.puede_abrir && (
-            <a href={producido.enlace} target="_blank" rel="noreferrer"
-               className="arbol-menu__item" onClick={cerrarMenu}>
-              📄 Abrir documento producido
-            </a>
+            <ItemDoc doc={producido}>📄 Abrir documento producido</ItemDoc>
           )}
           {consumidosAbribles.length === 1 && (
-            <a href={consumidosAbribles[0].enlace} target="_blank" rel="noreferrer"
-               className="arbol-menu__item" onClick={cerrarMenu}>
-              📄 Abrir consumido
-            </a>
+            <ItemDoc doc={consumidosAbribles[0]}>📄 Abrir consumido</ItemDoc>
           )}
           {consumidosAbribles.length > 1 && (
             <div className="arbol-menu__submenu-wrap"
@@ -185,10 +196,7 @@ export default function MenuContextual() {
               {submenuActivo === 'consumidos' && (
                 <div className="arbol-menu__submenu">
                   {consumidosAbribles.map((d) => (
-                    <a key={d.id} href={d.enlace} target="_blank" rel="noreferrer"
-                       className="arbol-menu__item" onClick={cerrarMenu}>
-                      {d.nombre}
-                    </a>
+                    <ItemDoc key={d.id} doc={d}>{d.nombre}</ItemDoc>
                   ))}
                 </div>
               )}

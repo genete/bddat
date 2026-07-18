@@ -280,7 +280,23 @@ async function postAccion(url) {
 function AccionesApertura({ doc, expedienteId }) {
   return (
     <div className="d-flex align-items-center gap-1" onClick={(e) => e.stopPropagation()}>
-      {doc.enlace && (
+      {doc.enlace && doc.abrir_en === 'modal' && (
+        <button
+          type="button"
+          // El div padre corta la propagación (stopPropagation, más abajo) para
+          // que estos botones no disparen el onClick de selección de FichaDoc —
+          // eso impide que el atributo declarativo data-modal-large-url llegue
+          // al listener global de document (inspector-overlay.js). Se llama
+          // AppModalLarge directamente en vez de depender de esa delegación.
+          onClick={() => window.AppModalLarge && window.AppModalLarge.open(doc.enlace, { title: doc.nombre })}
+          className="btn btn-sm btn-link p-0 text-secondary lh-1"
+          style={{ fontSize: '0.85rem' }}
+          title="Ver documento"
+        >
+          <i className="bi bi-box-arrow-up-right" />
+        </button>
+      )}
+      {doc.enlace && doc.abrir_en !== 'modal' && (
         <a
           href={doc.enlace}
           target="_blank"
