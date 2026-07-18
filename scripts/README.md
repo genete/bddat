@@ -253,3 +253,36 @@ T01-T11. Sirve como test de regresión.
 ```bash
 python scripts/verificar_seed.py
 ```
+
+---
+
+## verificar_bd_tests.sh — Detectar mutaciones silenciosas de los tests en la BD real
+
+`pg_dump` de la BD de desarrollo antes y después de correr tests, con diff.
+Detecta huérfanos y filas editadas sin revertir el marcador que las
+identifica como datos de prueba (origen: issue #672).
+
+**No es un test con veredicto propio** — no hay `assert`, no falla el script
+si hay diferencias. El diff se guarda para revisión manual (o asistida por
+IA): hay ruido esperado sin criterio automático fiable de pass/fail
+(reordenamiento físico de filas sin cambio de contenido — Postgres no
+garantiza orden estable de `COPY`/`pg_dump` entre dos volcados —, y avance de
+secuencias — `nextval()` no es transaccional, ni bajo `ROLLBACK TO
+SAVEPOINT`, así que hasta los tests que revierten bien su contenido queman
+ids). Solo se filtra el ruido 100% seguro: el token `\restrict`/`\unrestrict`
+aleatorio que `pg_dump` 18 genera en cada ejecución.
+
+### Uso
+
+```bash
+# Suite completa
+scripts/verificar_bd_tests.sh
+
+# Un fichero de test concreto
+scripts/verificar_bd_tests.sh tests/smoke/test_smoke_reglas_motor.py
+
+# Un test o patrón concreto (argumentos de pytest, se pasan tal cual)
+scripts/verificar_bd_tests.sh -k test_supervisor_puede_anadir_condicion
+```
+
+Salida: `docs_prueba/temp/bd_antes.sql`, `bd_despues.sql`, `bd_diff.txt`.
