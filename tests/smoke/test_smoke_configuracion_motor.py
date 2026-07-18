@@ -34,9 +34,19 @@ def test_guardar_modo_denegado_a_tramitador(usuario_tramitador, app):
 
 
 def test_guardar_modo_supervisor_y_restaura(usuario_supervisor, app):
-    """SUPERVISOR puede cambiar el modo — se restaura el valor previo al terminar."""
+    """SUPERVISOR puede cambiar el modo — se restaura el valor previo al terminar.
+
+    El cambio real vía POST escribe en bitacora (efecto colateral del endpoint,
+    guardar_modo_global). Restaurar solo el valor de ConfiguracionSistema no
+    revierte ese registro — bitacora es append-only, no hay "vuelta atrás" —
+    así que queda como rastro permanente de un cambio transitorio (#672). Se
+    captura el id máximo de bitacora antes del POST y se borra en el finally
+    cualquier entrada nueva de esta misma clave.
+    """
+    from app.models.bitacora import Bitacora
     with app.app_context():
         modo_previo = ConfiguracionSistema.get(CLAVE_MODO, 'BLOQUEAR')
+        id_bitacora_antes = db.session.query(db.func.max(Bitacora.id)).scalar() or 0
     nuevo = 'SOLO_ADVERTIR' if modo_previo != 'SOLO_ADVERTIR' else 'INACTIVO'
     try:
         r = usuario_supervisor.post('/configuracion-motor/modo-global',
@@ -47,4 +57,9 @@ def test_guardar_modo_supervisor_y_restaura(usuario_supervisor, app):
     finally:
         with app.app_context():
             ConfiguracionSistema.set(CLAVE_MODO, modo_previo)
+            Bitacora.query.filter(
+                Bitacora.id > id_bitacora_antes,
+                Bitacora.tabla == 'configuracion_sistema',
+                Bitacora.columna == CLAVE_MODO,
+            ).delete(synchronize_session=False)
             db.session.commit()

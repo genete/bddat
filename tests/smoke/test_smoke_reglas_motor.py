@@ -12,6 +12,13 @@ de la suite, ver conftest._login_as) — las filas de alta/edición se marcan co
 """
 import pytest
 
+# Ids de ReglaMotor creadas por _crear_para_editar() en el test en curso — no
+# basta con filtrar por texto en descripcion: algún test edita ese mismo campo
+# (p.ej. test_supervisor_puede_anadir_condicion no lo envía en el POST, y el
+# endpoint real lo deja a NULL), lo que borraría el marcador que la limpieza
+# necesita para encontrar la fila (#672).
+_ids_creados_para_editar = []
+
 
 @pytest.fixture(autouse=True)
 def _limpiar_datos_prueba(app):
@@ -20,9 +27,13 @@ def _limpiar_datos_prueba(app):
         from app import db
         from app.models.motor_reglas import ReglaMotor
         ReglaMotor.query.filter(
-            ReglaMotor.descripcion.like('%#170 smoke%')
+            db.or_(
+                ReglaMotor.descripcion.like('%#170 smoke%'),
+                ReglaMotor.id.in_(_ids_creados_para_editar),
+            )
         ).delete(synchronize_session=False)
         db.session.commit()
+    _ids_creados_para_editar.clear()
 
 
 # ---------------------------------------------------------------------------
@@ -138,6 +149,7 @@ def _crear_para_editar(app):
         )
         db.session.add(item)
         db.session.commit()
+        _ids_creados_para_editar.append(item.id)
         return item.id, tipo.siglas
 
 
