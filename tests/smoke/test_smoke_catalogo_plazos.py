@@ -15,6 +15,13 @@ no dejar basura en la BD compartida.
 """
 import pytest
 
+# Ids de CatalogoPlazo creadas por _crear_para_editar() en el test en curso —
+# no basta con filtrar por texto en norma_origen: algún test edita ese mismo
+# campo (p.ej. test_supervisor_puede_anadir_condicion_between no lo envía en
+# el POST, y el endpoint real lo deja a NULL), lo que borraría el marcador
+# que la limpieza necesita para encontrar la fila (#672).
+_ids_creados_para_editar = []
+
 
 @pytest.fixture(autouse=True)
 def _limpiar_datos_prueba(app):
@@ -23,9 +30,13 @@ def _limpiar_datos_prueba(app):
         from app import db
         from app.models.catalogo_plazos import CatalogoPlazo
         CatalogoPlazo.query.filter(
-            CatalogoPlazo.norma_origen.like('%#632 smoke%')
+            db.or_(
+                CatalogoPlazo.norma_origen.like('%#632 smoke%'),
+                CatalogoPlazo.id.in_(_ids_creados_para_editar),
+            )
         ).delete(synchronize_session=False)
         db.session.commit()
+    _ids_creados_para_editar.clear()
 
 
 # ---------------------------------------------------------------------------
@@ -225,6 +236,7 @@ def _crear_para_editar(app):
         )
         db.session.add(item)
         db.session.commit()
+        _ids_creados_para_editar.append(item.id)
         return item.id, tipo.siglas, efecto.id
 
 
