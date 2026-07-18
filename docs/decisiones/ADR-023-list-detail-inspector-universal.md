@@ -3,6 +3,7 @@
 **Estado:** Adoptada
 **Fecha:** 2026-06-07
 **Revisado:** 2026-06-10 — (1) el inspector pasa de columna negociada (*push*) a **overlay nativo**, eliminando la negociación de espacio; (2) se define el modelo de **tres capas** (listado · inspector · modal grande) con **navegación por capas, no por rutas**, y el inspector como base de **lectura y edición de campos**. Ver §"Historial de la decisión".
+**Revisado:** 2026-07-18 — marco de edición unificado: **barra superior fija** (cabecera + control de salida), distinción **superficie-de-trabajo / nodo-de-campos** y contrato de salida **"Cerrar / Guardar / Cancelar"**. Ver §5 bis y §Historial. Implementa: #676. Relacionado: ADR-033 (inspector de ANALIZAR).
 **Issue:** #534
 **Depende de:** ADR-022 (#533) — escala densa y tabla unificada.
 **Enmienda:** ADR-016 §14 (el inspector resizable se redefine como mecanismo de shell, ver §3).
@@ -92,6 +93,24 @@ El inspector es la base de **lectura y de edición de los campos directos** del 
   - `beforeunload` si hay cambios sin guardar.
 - **Guardar** persiste (POST de mutación, §9) y refresca el inspector en lectura. El overlay + backdrop *es*, literalmente, un modal lateral: encaja con la decisión de bloqueo ya tomada en ADR-016.
 
+### 5 bis. Marco de edición: barra fija y control de salida (rev. 2026-07-18)
+
+La edición del inspector, en **cualquier nodo**, se enmarca en una **barra superior fija** —inmutable al scroll— que aloja la **cabecera** del elemento (qué se edita) y el **control de salida**. La salida pertenece al marco, no al flujo de contenido: nunca viaja al fondo del scroll ni cambia de sitio según cuánto contenido haya. Junto con la cabecera forma el "marco de la ventana": qué edito y cómo salgo, siempre en el mismo lugar.
+
+**Dos formas de superficie editable:**
+
+- **Nodo-de-campos** (solicitud, fase, trámite, tarea genérica…): los atributos escalares se editan en un **borrador global** que se persiste en bloque. El marco lleva el **par Guardar / Cancelar** (§5) junto al control de salida.
+- **Superficie-de-trabajo** (tarea ANALIZAR —ADR-033—, y análogas): **no hay borrador global**; cada sub-bloque persiste por su cuenta en su propio momento (vincular documento, guardar ítem técnico, guardar shuttle…). El marco lleva **solo el control de salida**; lo que sería campo de tabla (p. ej. `notas` de la tarea) baja a un bloque más con su guardar inline, no cuelga de un par global.
+
+**Contrato del control de salida** (idéntico en ambas formas, para una única regla mental):
+
+- El control de salida está **siempre presente**. Con la superficie limpia se rotula **"Cerrar"** y sale a lectura sin revertir nada.
+- **Guardar y Cancelar solo se habilitan cuando hay un borrador vivo** (cambios sin guardar en el borrador global). Sin borrador, no hay nada que guardar ni que cancelar — por eso una superficie-de-trabajo, que no tiene borrador global, nunca los muestra.
+- **Con cambios sin guardar, cerrar no puede dejarlos en limbo**: el gesto de salida se comporta como **Cancelar** (descarta y sale), previa confirmación de descarte. No existe un "cerrar sin consecuencias" en estado sucio — o se guarda, o se descarta.
+- La **× del shell** y **Escape** siguen el mismo contrato: en limpio cierran; en sucio disparan la guarda de descarte (§5, `beforeunload` incluido).
+
+Esto unifica **entrar / guardar / cancelar / salir** para todo nodo, retira el par Guardar/Cancelar muerto de superficies sin borrador global, y elimina la ambigüedad "¿cancelé solo un campo o toda la tarea?": donde no hay borrador global, no hay Cancelar que malinterpretar.
+
 ### 6. Tercer modo — modal grande para gestión compleja
 
 Lo que **no cabe** en el inspector escala a un **modal grande** (maximizado con margen), no a una página:
@@ -143,6 +162,8 @@ Lo que **no cabe** en el inspector escala a un **modal grande** (maximizado con 
 - **2026-06-10** — Revisión en dos pasos:
   1. **Overlay nativo** sustituye a la negociación. Motivo: la negociación era la parte más frágil y cara (estados acoplados, *reflow* del `main` —lienzo react-flow y `ResizeObserver` del seguimiento—, parpadeo en umbrales). El overlay ya estaba en el plan como último recurso; promoverlo a modelo único elimina negociación, cascada del sidebar, histéresis y maestro reducido obligatorio. Como el issue **no se había implementado**, el coste fue casi solo documental. Pérdida asumida: la visibilidad simultánea total en el árbol, mitigada por pan/zoom y por el *swap in-place* (§3). La validación numérica del PRE-ADR §4 queda como memoria: ya no aplica.
   2. **Modelo de tres capas + edición en el inspector + modal grande.** Al acotar el alcance se vio que "el inspector muestra lectura y para editar/gestionar se navega a la página" **reintroduce la maraña** que el ADR mata: la causa raíz es la *navegación entre rutas*, no dónde se muestra el detalle. Se decide que toda la interacción ocurra como **capas en una misma página** (listado · inspector · modal grande), donde "volver" = cerrar capa. El inspector edita los **campos** del elemento; lo que no cabe (sub-colecciones con CRUD) escala a un **modal grande** que vuelve solo. Las páginas de detalle/edición dejan de ser rutas-destino (su contenido se trocea en fragmentos; la ruta de detalle redirige a `?sel`).
+
+- **2026-07-18** — **Marco de edición unificado (§5 bis).** Al criticar el flujo de la tarea ANALIZAR de principio a fin (ADR-033) se detectó que (a) la salida de la edición viajaba con el scroll, cambiando de sitio según el contenido —una diana inestable, no memorizable—; (b) el inspector de ANALIZAR no es un *nodo-de-campos* sino una *superficie-de-trabajo* con persistencia por-bloque, donde el par Guardar/Cancelar global quedaba muerto (no había nada global que guardar) y su "Cancelar" era ambiguo (¿revierte un campo o toda la tarea?). Se fija: **barra superior fija** con cabecera + control de salida; distinción **superficie-de-trabajo / nodo-de-campos**; y el contrato **"Cerrar siempre; Guardar/Cancelar solo con borrador vivo; cerrar-en-sucio = Cancelar"**. Unifica la salida para todo nodo.
 
 ---
 
