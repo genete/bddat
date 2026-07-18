@@ -17,6 +17,14 @@ from datetime import date
 import pytest
 
 
+@pytest.fixture(autouse=True)
+def _fs_tmp(fs_tmp):
+    """FILESYSTEM_BASE redirigido a tmp_path — este módulo genera certificados
+    PDF reales (generar_certificado_fase) que no deben tocar el servidor de
+    ficheros de desarrollo (#674)."""
+    pass
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

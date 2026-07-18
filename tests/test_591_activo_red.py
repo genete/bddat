@@ -11,6 +11,13 @@ from datetime import date
 import pytest
 
 
+@pytest.fixture(autouse=True)
+def _fs_tmp(fs_tmp):
+    """FILESYSTEM_BASE redirigido a tmp_path (#674) — precaución, mismo patrón
+    que los demás tests que crean Expediente con numero_at de prueba."""
+    pass
+
+
 # ---------------------------------------------------------------------------
 # A) Modelos — repr / properties, sin BD
 # ---------------------------------------------------------------------------
