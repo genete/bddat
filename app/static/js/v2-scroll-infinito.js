@@ -167,6 +167,8 @@ class ScrollInfinito {
         this.container.addEventListener('scroll', () => this.handleScroll());
         if (this.selection) {
             document.addEventListener('inspector:closed', () => this._clearSelected());
+            // Editar desde el inspector guarda por XHR y no repinta la tabla por sí solo (#681).
+            document.addEventListener('inspector:saved', () => this.reload());
         }
         console.log(`ScrollInfinito inicializado — ${this.entityLabel}`);
     }

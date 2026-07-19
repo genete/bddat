@@ -15,6 +15,7 @@
  *   inspector:opened  { detail: { selId } }
  *   inspector:swapped { detail: { selId } }
  *   inspector:closed  { detail: { selId } }  (selId = el que estaba activo)
+ *   inspector:saved   { detail: { selId } }  (guardado de edición con éxito, #681)
  */
 (function () {
   'use strict';
@@ -291,6 +292,9 @@
           _lastCache = null;   // invalida retención para forzar refetch de lectura
           _editCache = null;   // invalida caché de edición (datos cambiaron)
           refresh();
+          // La fila del listado no se repinta sola (#681): solo refresh() la vería
+          // si el listado la re-leyera; ScrollInfinito la escucha para recargarse.
+          document.dispatchEvent(new CustomEvent('inspector:saved', { detail: { selId: _selId } }));
           if (window.mostrar_toast) {
             window.mostrar_toast('success', json.message || 'Guardado correctamente.');
           }
