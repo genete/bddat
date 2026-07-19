@@ -105,7 +105,9 @@ def crear():
         )
 
     flash('Requerimiento creado correctamente.', 'success')
-    return redirect(url_for('catalogo_requerimientos.listado', sel=requerimiento.id))
+    # Sin sel=: vuelve al listado con el botón "Nuevo" visible, para encadenar
+    # varias altas seguidas (patrón habitual al poblar este catálogo, #441).
+    return redirect(url_for('catalogo_requerimientos.listado'))
 
 
 @bp.route('/<int:id>/')
