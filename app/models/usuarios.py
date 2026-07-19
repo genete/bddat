@@ -115,7 +115,13 @@ class Usuario(UserMixin, db.Model):
             - Único en el sistema
             - Usado en referencias y visualizaciones compactas
             - Default "NULO" permite creación rápida
-        
+
+        SIGLAS_ESCRITOS:
+            - Siglas históricas del usuario (p.ej. "CLG"), distintas de SIGLAS
+              (que usará el identificador de login de la Junta, p.ej. "LGC005")
+            - Opcional, sin restricción de unicidad
+            - Token del firmante en plantillas de escritos (#407, DISEÑO_ANALISIS_SOLICITUD.md §8)
+
         EMAIL:
             - Property que convierte cadenas vacías a NULL
             - Evita violación de constraint UNIQUE con múltiples strings vacíos
@@ -199,13 +205,20 @@ class Usuario(UserMixin, db.Model):
     )
     
     siglas = db.Column(
-        db.String(50), 
-        nullable=False, 
-        unique=True, 
+        db.String(50),
+        nullable=False,
+        unique=True,
         default='NULO',
         comment='Código identificativo corto del usuario (único)'
     )
-    
+
+    siglas_escritos = db.Column(
+        db.String(20),
+        nullable=True,
+        comment='Siglas históricas del usuario (p.ej. CLG), distintas de SIGLAS. '
+                'Token para el firmante en plantillas de escritos (#407)'
+    )
+
     nombre = db.Column(
         db.String(100), 
         nullable=False, 
