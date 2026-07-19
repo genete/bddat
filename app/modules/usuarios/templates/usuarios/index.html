@@ -37,7 +37,7 @@
                     <!-- Datos Personales -->
                     <h6 class="border-bottom pb-2 mb-3">Datos Personales</h6>
                     <div class="row mb-3">
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <label for="siglas" class="form-label">Siglas *</label>
                             <input type="text"
                                    class="form-control {% if error_siglas %}is-invalid{% endif %}"
@@ -48,7 +48,15 @@
                             <div class="invalid-feedback">{{ error_siglas }}</div>
                             {% endif %}
                         </div>
-                        <div class="col-md-8">
+                        <div class="col-md-3">
+                            <label for="siglas_escritos" class="form-label">Siglas escritos</label>
+                            <input type="text"
+                                   class="form-control" id="siglas_escritos" name="siglas_escritos"
+                                   maxlength="20"
+                                   placeholder="Ej: CLG"
+                                   value="{{ form_data.siglas_escritos if form_data else '' }}">
+                        </div>
+                        <div class="col-md-6">
                             <label for="nombre" class="form-label">Nombre *</label>
                             <input type="text"
                                    class="form-control" id="nombre" name="nombre"

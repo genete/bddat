@@ -41,6 +41,7 @@ def index():
         # Lógica para crear usuario
         try:
             siglas = request.form['siglas']
+            siglas_escritos = request.form.get('siglas_escritos', '').strip() or None
             nombre = request.form['nombre']
             apellido1 = request.form['apellido1']
             apellido2 = request.form.get('apellido2')
@@ -55,6 +56,7 @@ def index():
             # Preparar datos del formulario para devolver en caso de error
             form_data = {
                 'siglas': siglas,
+                'siglas_escritos': siglas_escritos,
                 'nombre': nombre,
                 'apellido1': apellido1,
                 'apellido2': apellido2,
@@ -104,6 +106,7 @@ def index():
             # Crear instancia del modelo
             nuevo_usuario = Usuario(
                 siglas=siglas,
+                siglas_escritos=siglas_escritos,
                 nombre=nombre,
                 apellido1=apellido1,
                 apellido2=apellido2
@@ -235,6 +238,7 @@ def editar(id):
 
     # --- Recoger datos ---
     nuevas_siglas    = request.form.get('siglas', '').strip()
+    siglas_escritos  = request.form.get('siglas_escritos', '').strip() or None
     nombre           = request.form.get('nombre', '').strip()
     apellido1        = request.form.get('apellido1', '').strip()
     apellido2        = request.form.get('apellido2', '').strip() or None
@@ -297,13 +301,14 @@ def editar(id):
 
     # --- Aplicar cambios ---
     try:
-        usuario.siglas    = nuevas_siglas
-        usuario.nombre    = nombre
-        usuario.apellido1 = apellido1
-        usuario.apellido2 = apellido2
-        usuario.email     = email  # el setter del modelo convierte '' a None
-        usuario.activo    = activo_nuevo
-        usuario.roles     = roles_seleccionados
+        usuario.siglas          = nuevas_siglas
+        usuario.siglas_escritos = siglas_escritos
+        usuario.nombre          = nombre
+        usuario.apellido1       = apellido1
+        usuario.apellido2       = apellido2
+        usuario.email           = email  # el setter del modelo convierte '' a None
+        usuario.activo          = activo_nuevo
+        usuario.roles           = roles_seleccionados
         if nueva_password:
             usuario.set_password(nueva_password)
         db.session.commit()

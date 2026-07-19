@@ -32,7 +32,12 @@
                     {% endif %}
                 </div>
             </div>
-            <div class="col-9">
+            <div class="col-3">
+                <label class="form-label fw-semibold small">Siglas escritos</label>
+                <input type="text" class="form-control form-control-sm"
+                       value="{{ usuario.siglas_escritos or '—' }}" readonly>
+            </div>
+            <div class="col-6">
                 <label class="form-label fw-semibold small">Nombre completo</label>
                 <input type="text" class="form-control form-control-sm"
                        value="{{ usuario.nombre }} {{ usuario.apellido1 }} {{ usuario.apellido2 or '' }}" readonly>

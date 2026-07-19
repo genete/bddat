@@ -54,7 +54,18 @@
                                data-bs-toggle="tooltip"
                                title="Solo el supervisor puede modificar las siglas">
                     </div>
-                    <div class="col-md-9">
+                    <div class="col-md-3">
+                        <label for="siglas_escritos" class="form-label fw-semibold">Siglas escritos</label>
+                        <input type="text"
+                               class="form-control campo-editable"
+                               id="siglas_escritos"
+                               name="siglas_escritos"
+                               value="{{ usuario.siglas_escritos or '' }}"
+                               readonly
+                               maxlength="20"
+                               placeholder="Ej: CLG">
+                    </div>
+                    <div class="col-md-6">
                         <label for="nombre" class="form-label fw-semibold">Nombre *</label>
                         <input type="text"
                                class="form-control campo-editable"
