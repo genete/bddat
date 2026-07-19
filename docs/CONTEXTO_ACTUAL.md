@@ -8,9 +8,9 @@
 
 ---
 
-**Hecho:** #441 (sesión 2026-07-19, seed inicial de `catalogo_requerimientos` — 9 defectos vía CRUD de #593). PR #683. De paso: #681 corrige refresco de fila tras editar (patrón ADR-023). PR #682.
+**Hecho:** #407 (sesión 2026-07-19, campo `siglas_escritos` en `Usuario` + token `responsable_siglas_escritos` en `ContextoBaseExpediente`; UI de edición en el inspector de usuarios y en Mi Perfil). PR #686.
 
-**Próximo:** Foco fijo (2026-07-16): dejar la fase `ANÁLISIS_SOLICITUD` completamente tramitable — interfaz, sistema documental, apertura, detección de documentos, notificación y elaboración — porque establece las bases que usarán el resto de fases. Se avanza alternando grupos de issues de este foco entre Próximo y Hecho hasta completarlo. #572 (ADR-027, pertenencia al EXPEDIENTE) sigue ortogonal a este bloque, diferido a propósito por Carlos. En cola, mismo foco: #407 (`siglas_escritos`), #657/#658 (UI + `id_remesa` de notificación), #444/#555 (plantillas `.docx` definitivas de esta fase), #630 (hub tramitador/radar huérfanos). Hueco de diseño sin issue: `ESPERAR_PLAZO` no admite N documentos simultáneos en respuesta a un requerimiento (`DISEÑO_ANALISIS_SOLICITUD.md` §5). Fuera de foco: automatización externa de firma/notificación (ADR-021) y #644-648, aparcados.
+**Próximo:** Foco fijo (2026-07-16): dejar la fase `ANÁLISIS_SOLICITUD` completamente tramitable — interfaz, sistema documental, apertura, detección de documentos, notificación y elaboración — porque establece las bases que usarán el resto de fases. Se avanza alternando grupos de issues de este foco entre Próximo y Hecho hasta completarlo. #572 (ADR-027, pertenencia al EXPEDIENTE) sigue ortogonal a este bloque, diferido a propósito por Carlos. En cola, mismo foco: #657/#658 (UI + `id_remesa` de notificación), #444/#555 (plantillas `.docx` definitivas de esta fase), #630 (hub tramitador/radar huérfanos). Hueco de diseño sin issue: `ESPERAR_PLAZO` no admite N documentos simultáneos en respuesta a un requerimiento (`DISEÑO_ANALISIS_SOLICITUD.md` §5). Fuera de foco: automatización externa de firma/notificación (ADR-021) y #644-648, aparcados.
 
 ---
 
