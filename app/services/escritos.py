@@ -51,6 +51,7 @@ class ContextoBaseExpediente:
 
         Responsable:
             responsable_nombre  — Nombre completo del tramitador asignado
+            responsable_siglas_escritos — Siglas del redactor para firma (Usuario.siglas_escritos, #407)
 
         Municipios:
             municipios          — Lista de nombres de municipios afectados (list[str])
@@ -85,6 +86,9 @@ class ContextoBaseExpediente:
             # Responsable (Usuario no tiene nombre_completo, se construye aquí)
             'responsable_nombre': (
                 self._nombre_responsable()
+            ),
+            'responsable_siglas_escritos': (
+                exp.responsable.siglas_escritos if exp.responsable else None
             ),
 
             # Municipios (lista de nombres para uso en plantilla simple)

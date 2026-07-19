@@ -27,6 +27,7 @@ def editar():
         current_user.nombre = request.form.get('nombre')
         current_user.apellido1 = request.form.get('apellido1')
         current_user.apellido2 = request.form.get('apellido2')
+        current_user.siglas_escritos = request.form.get('siglas_escritos', '').strip() or None
         
         # Email (validar que no esté en uso por otro usuario)
         nuevo_email = request.form.get('email')

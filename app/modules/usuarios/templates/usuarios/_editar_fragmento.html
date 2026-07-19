@@ -40,7 +40,14 @@
                        title="Solo los administradores pueden cambiar las siglas">
                 {% endif %}
             </div>
-            <div class="col-9">
+            <div class="col-3">
+                <label class="form-label fw-semibold small" for="uf_siglas_escritos">Siglas escritos</label>
+                <input type="text" class="form-control form-control-sm" id="uf_siglas_escritos"
+                       name="siglas_escritos"
+                       value="{{ form_data.siglas_escritos if form_data else (usuario.siglas_escritos or '') }}"
+                       maxlength="20">
+            </div>
+            <div class="col-6">
                 <label class="form-label fw-semibold small" for="uf_nombre">Nombre</label>
                 <input type="text" class="form-control form-control-sm" id="uf_nombre"
                        name="nombre" value="{{ form_data.nombre if form_data else usuario.nombre }}"
