@@ -54,6 +54,9 @@ Consultar cuando se trabaja ese subsistema. No cargar por defecto.
 - [DISEÑO_ECOSISTEMA_MANAGERS.md](referencia/DISEÑO_ECOSISTEMA_MANAGERS.md) — bandeja-manager, ptwanda-manager: arquitectura, integración con BDDAT, campo plataforma_codigo
 - [ESTUDIO_DOM_PTWANDA.md](referencia/ESTUDIO_DOM_PTWANDA.md) — estudio de campo del DOM de PTWANDA (acceso, búsqueda, listado, detalle, descarga por refdoc); insumo para ptwanda-manager
 
+### Despliegue
+- [ANALISIS_DESPLIEGUE.md](referencia/ANALISIS_DESPLIEGUE.md) — balance de carga cliente/servidor, WSGI multiworker, vías W11+WSL2 vs Linux nativo, share corporativo, caché del motor (#330, #151)
+
 ### Visión
 - [PLAN_ESTRATEGIA.md](referencia/PLAN_ESTRATEGIA.md) — 14 bloques funcionales
 
