@@ -29,11 +29,12 @@ from app.models.documentos import Documento
 from app.models.tipos_solicitudes import TipoSolicitud
 from app.models.documentos_tarea import DocumentoTarea
 from app.models.tramites_organismos import TramiteOrganismo
-from app.services.assembler import build_sujeto
+from app.services.assembler import build, build_sujeto
 from app.services import bitacora as bitacora_svc
 from app.services.motor_reglas import EvaluacionResult, PERMITIDO
 from app.services.motor_modo_global import evaluar_con_modo_global as _evaluar
 from app.services.invariantes_esftt import _check_cierre_fase
+from app.services.requisitos import evaluar_requisitos
 from app.services.rutas_esftt import mover_a_esftt, mover_a_pool
 
 log = logging.getLogger(__name__)
@@ -363,6 +364,53 @@ def editar_tarea(ta, *, documentos_consumidos_ids: list[int],
     except Exception as e:
         db.session.rollback()
         return ResultadoMutacion(ok=False, error=str(e))
+
+
+def sincronizar_consumido_documental(tarea: Tarea) -> None:
+    """
+    Deriva los vínculos DocumentoTarea CONSUMIDO de una tarea ANALIZAR a partir
+    de los documentos casados con sus requisitos documentales (ADR-033 §1,
+    #677): casar un requisito ⇒ consumido derivado, sin gesto manual en la
+    Despensa (oculta para ANALIZAR extendido, ver Inspector.jsx).
+
+    Se llama tras vincular/desvincular_requisito_documental. Mismo patrón
+    diff + movimiento físico que editar_tarea (ADR-032 §3): solo toca lo que
+    cambia, nunca clear()+recrear — evita disparar mover_a_esftt/mover_a_pool
+    en documentos que ya estaban en su sitio.
+    """
+    solicitud = tarea.tramite.fase.solicitud
+    _, variables = build(solicitud.expediente, objeto=tarea)
+    resultado = evaluar_requisitos(solicitud, variables)
+    if resultado['error']:
+        return
+
+    deseados_ids = {it['documento'].id for it in resultado['items'] if it['documento'] is not None}
+    actuales = {v.documento_id: v for v in tarea.vinculos_documento if v.rol == 'CONSUMIDO'}
+
+    docs_a_liberar = []
+    for doc_id, vinculo in actuales.items():
+        if doc_id not in deseados_ids:
+            doc = vinculo.documento
+            tarea.vinculos_documento.remove(vinculo)
+            if not doc.vinculos_tarea:
+                docs_a_liberar.append(doc)
+    db.session.flush()
+
+    docs_a_encajar = []
+    for doc_id in deseados_ids:
+        if doc_id not in actuales:
+            doc = Documento.query.get(doc_id)
+            if not doc.vinculos_tarea:
+                docs_a_encajar.append(doc)
+            tarea.vinculos_documento.append(DocumentoTarea(documento_id=doc_id, rol='CONSUMIDO'))
+    db.session.flush()
+
+    for doc in docs_a_encajar:
+        mover_a_esftt(doc, tarea)
+    for doc in docs_a_liberar:
+        mover_a_pool(doc, solicitud.expediente)
+
+    db.session.commit()
 
 
 # ===========================================================================
