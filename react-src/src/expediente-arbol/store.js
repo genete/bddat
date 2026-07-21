@@ -157,13 +157,16 @@ export const useArbolStore = create((set, get) => ({
 
   cancelar: () => {
     const { seleccion } = get()
+    const habiaCambios = selectHayCambios(get())
     set({ modoEdicion: false, editableCampos: [], borrador: {}, borradorInicial: {}, edicionCargando: false,
           tiposCreables: null, tipoCreacionPendiente: null, justificacionForzar: '',
           docVinculandoPendiente: null,
           borrarPendienteConfirm: false,
           detalle: null, detalleCargando: false, detalleError: null })
     get().cargarDetalle(seleccion)
-    showToast('Cambios descartados', 'info')
+    // Solo avisa de descarte si de verdad había algo que perder (ADR-023 §5 bis:
+    // en limpio "sale a lectura sin revertir nada" — sin toast que sugiera lo contrario).
+    if (habiaCambios) showToast('Cambios descartados', 'info')
   },
 
   guardar: async () => {
