@@ -102,7 +102,45 @@ class TestConsolidarDefectos:
         origenes = {it['origen'] for it in resultado['items']}
         assert origenes == {'documental', 'tecnico', 'requerimiento'}
         assert len(resultado['items']) == 3
-        assert resultado['completo'] is False  # documental no cubierto -> False AND True
+        # ADR-033 §4: completo es solo técnico — documental no cubierto no bloquea
+        # la producción (ausencia = defecto directo, no "pendiente de revisar").
+        assert resultado['completo'] is True
+
+    def test_documental_incompleto_no_bloquea_completo(self):
+        """ADR-033 §4: un requisito documental no casado es un defecto legítimo,
+        no un pendiente — no debe exigir justificación para producir."""
+        from unittest.mock import MagicMock, patch
+
+        req = {
+            'cubierto': False,
+            'requisito': MagicMock(descripcion_legal='Falta memoria técnica', norma=None, articulo=None),
+            'documento': None,
+        }
+
+        with patch('app.services.consolidacion_defectos.build', return_value=(None, {})), \
+             patch('app.services.consolidacion_defectos.evaluar_requisitos',
+                   return_value={'items': [req], 'todos_cubiertos': False, 'error': False}), \
+             patch('app.services.consolidacion_defectos.evaluar_items_tecnicos',
+                   return_value={'items': [], 'todos_revisados': True, 'error': False}):
+            from app.services.consolidacion_defectos import consolidar_defectos
+            resultado = consolidar_defectos(self._tarea_stub())
+
+        assert resultado['completo'] is True
+
+    def test_tecnico_incompleto_bloquea_completo(self):
+        """ADR-033 §4: un ítem técnico sin revisar sí bloquea — es un estado real
+        distinto de 'revisado y falta' (gate salvable con justificación)."""
+        from unittest.mock import patch
+
+        with patch('app.services.consolidacion_defectos.build', return_value=(None, {})), \
+             patch('app.services.consolidacion_defectos.evaluar_requisitos',
+                   return_value={'items': [], 'todos_cubiertos': True, 'error': False}), \
+             patch('app.services.consolidacion_defectos.evaluar_items_tecnicos',
+                   return_value={'items': [], 'todos_revisados': False, 'error': False}):
+            from app.services.consolidacion_defectos import consolidar_defectos
+            resultado = consolidar_defectos(self._tarea_stub())
+
+        assert resultado['completo'] is False
 
     def test_requerimiento_no_afecta_a_completo(self):
         """Los requerimientos del shuttle nunca bajan 'completo' — selección voluntaria."""
