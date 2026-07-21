@@ -96,14 +96,19 @@ def consolidar_defectos(tarea) -> dict:
 
     Returns:
         {'items': list, 'completo': bool, 'error': bool}
+
+    'completo' es solo técnico (ADR-033 §4): el documental es directo (ausencia
+    = defecto, no "pendiente de revisar" — no existe estado "sin revisar" real
+    como en técnico), así que no debe bloquear la producción. El libre nunca
+    contó tampoco.
     """
-    items_documental, completo_documental = _items_documental(tarea)
+    items_documental, _completo_documental = _items_documental(tarea)
     items_tecnico, completo_tecnico = _items_tecnico(tarea)
     items_requerimiento = _items_requerimiento(tarea)
 
     return {
         'items': items_documental + items_tecnico + items_requerimiento,
-        'completo': completo_documental and completo_tecnico,
+        'completo': completo_tecnico,
         'error': False,
     }
 
