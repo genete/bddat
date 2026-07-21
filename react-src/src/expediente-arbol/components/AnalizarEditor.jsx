@@ -811,7 +811,7 @@ function BloqueNotas({ expedienteId, tareaId, notasIniciales }) {
         />
         <button
           type="button"
-          className="btn btn-sm btn-outline-secondary"
+          className="btn btn-sm btn-primary"
           disabled={!hayCambios || guardando}
           onClick={guardar}
         >
