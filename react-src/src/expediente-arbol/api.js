@@ -53,11 +53,18 @@ export function getAnalizar(expedienteId, tareaId) {
   return api.get(`/api/expedientes/${expedienteId}/nodo/tarea/${tareaId}/analizar`)
 }
 
-// Produce el documento de diagnóstico (POST, #442). body: {resultado, justificacion?}.
+// Produce el documento de diagnóstico (POST, #442/#677). body: {resultado?, justificacion?}
+// — `resultado` se ignora en ANALIZAR extendido (derivado server-side, ADR-033 §3).
 // Respuesta éxito: {ok:true, documento:{id,nombre,tipo_doc,fecha}} 200.
 // Bloqueo (ya producido / incompleto sin justificación): {error, motivo?, defectos_consolidado?} 422.
 export function postAnalizar(expedienteId, tareaId, body) {
   return api.post(`/api/expedientes/${expedienteId}/nodo/tarea/${tareaId}/analizar`, body)
+}
+
+// Guarda solo `notas` de una tarea (PATCH, #677 ADR-033 §7) — fuera del ciclo
+// borrador/Guardar general (ver AnalizarEditor.jsx, BloqueNotas). Respuesta: {ok:true, notas}.
+export function guardarNotas(expedienteId, tareaId, notas) {
+  return api.patch(`/api/expedientes/${expedienteId}/nodo/tarea/${tareaId}/notas`, { notas })
 }
 
 // Check documental (#495): vincula/desvincula un documento del pool a un requisito.

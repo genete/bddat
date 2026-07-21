@@ -385,6 +385,7 @@ function BarraEdicion({ tipo, nodo, esSuperficieTrabajo }) {
 function InspectorEdicion({ nodo }) {
   const seleccion             = useArbolStore((s) => s.seleccion)
   const borrarPendienteConfirm = useArbolStore((s) => s.borrarPendienteConfirm)
+  const seccionesExtendidas   = useArbolStore((s) => s.analizarSeccionesExtendidas)
   // ANALIZAR (#442): contenedor bespoke en vez del Editor genérico — secciones de
   // checklist + resultado + producir diagnóstico no encajan en el esquema
   // campo-a-campo. InspectorEdicion (cabecera, lock, split con Despensa) se
@@ -396,6 +397,12 @@ function InspectorEdicion({ nodo }) {
   // Superficie-de-trabajo (ADR-023 §5 bis): sin borrador global, persistencia por
   // bloque — el marco no lleva Guardar/Cancelar, solo Cerrar.
   const esSuperficieTrabajo = esAnalizar || esElaborar
+  // ADR-033 §1: en ANALIZAR extendido (ANÁLISIS_DOCUMENTAL/REQUERIMIENTO_SUBSANACIÓN)
+  // casar un requisito documental deriva el consumido — la Despensa queda sin uso
+  // legítimo y se oculta. En ANALIZAR simple (p.ej. CONSULTA_SEPARATA) sigue viva,
+  // sin cambios. `seccionesExtendidas` es null hasta que AnalizarEditor confirma el
+  // valor real (primer getAnalizar) — se muestra por defecto hasta saberlo con certeza.
+  const ocultarDespensa = esAnalizar && seccionesExtendidas === true
   return (
     <div className="d-flex flex-column h-100 arbol-inspector--lock">
       <BarraEdicion tipo={seleccion.tipo} nodo={nodo} esSuperficieTrabajo={esSuperficieTrabajo} />
@@ -409,7 +416,7 @@ function InspectorEdicion({ nodo }) {
               : <Editor />
         }
       </div>
-      {!borrarPendienteConfirm && (
+      {!borrarPendienteConfirm && !ocultarDespensa && (
         <div style={{ flex: '0 0 auto' }} className="border-top">
           <Despensa deshabilitarProducido={esAnalizar} />
         </div>
