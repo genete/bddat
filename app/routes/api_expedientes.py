@@ -773,6 +773,21 @@ def _resolver_tarea_analizar(expediente, tarea_id):
     return tarea
 
 
+def _tiene_secciones_extendidas(tarea) -> bool:
+    """Trámite de la tarea ∈ _TRAMITES_CON_SECCIONES_ANALISIS (#442/#677)."""
+    codigo_tramite = (
+        tarea.tramite.tipo_tramite.codigo
+        if tarea.tramite and tarea.tramite.tipo_tramite else None
+    )
+    return codigo_tramite in _TRAMITES_CON_SECCIONES_ANALISIS
+
+
+def _resultado_derivado(consolidado: dict) -> str:
+    """Resultado derivado del borrador agregado (ADR-033 §3): vacío → favorable,
+    con defectos → desfavorable. No es una elección libre en ANALIZAR extendido."""
+    return 'favorable' if not consolidado['items'] else 'desfavorable'
+
+
 def _checklist_documental_json(tarea) -> list:
     """Checklist documental completo —cubiertos y pendientes— para la sección inline (#495)."""
     solicitud = tarea.tramite.fase.solicitud
@@ -821,11 +836,16 @@ def _checklist_tecnico_json(tarea) -> list:
 @login_required
 def get_analizar(expediente_id, tarea_id):
     """
-    GET .../nodo/tarea/<tarea_id>/analizar — payload del contenedor de #442.
+    GET .../nodo/tarea/<tarea_id>/analizar — payload del contenedor de #442/#677.
 
-    {resultado, documento_producido: {...}|null, secciones_extendidas: bool,
-     defectos_consolidado: [...], completo: bool, checklist_documental: [...],
-     checklist_tecnico: [...]}
+    {resultado, resultado_previsto, documento_producido: {...}|null,
+     secciones_extendidas: bool, defectos_consolidado: [...], completo: bool,
+     checklist_documental: [...], checklist_tecnico: [...], notas}
+
+    `resultado_previsto` (ADR-033 §3): sentido que tendría el diagnóstico si se
+    produjera ahora mismo, derivado del borrador agregado — informativo en
+    ANALIZAR extendido (sin radio editable); no aplica a ANALIZAR simple, que
+    sigue con resultado de elección libre.
     """
     expediente = Expediente.query.get_or_404(expediente_id)
     denegado = verificar_acceso_expediente(expediente)
@@ -837,11 +857,7 @@ def get_analizar(expediente_id, tarea_id):
     except ValueError as e:
         return jsonify({'error': str(e)}), 404
 
-    codigo_tramite = (
-        tarea.tramite.tipo_tramite.codigo
-        if tarea.tramite and tarea.tramite.tipo_tramite else None
-    )
-    secciones_extendidas = codigo_tramite in _TRAMITES_CON_SECCIONES_ANALISIS
+    secciones_extendidas = _tiene_secciones_extendidas(tarea)
     consolidado = consolidar_defectos(tarea)
 
     documento_producido = None
@@ -860,12 +876,14 @@ def get_analizar(expediente_id, tarea_id):
 
     return jsonify({
         'resultado': resultado,
+        'resultado_previsto': _resultado_derivado(consolidado),
         'documento_producido': documento_producido,
         'secciones_extendidas': secciones_extendidas,
         'defectos_consolidado': consolidado['items'],
         'completo': consolidado['completo'],
         'checklist_documental': _checklist_documental_json(tarea) if secciones_extendidas else [],
         'checklist_tecnico': _checklist_tecnico_json(tarea) if secciones_extendidas else [],
+        'notas': tarea.notas,
     }), 200
 
 
@@ -876,11 +894,17 @@ def post_analizar(expediente_id, tarea_id):
     """
     POST .../nodo/tarea/<tarea_id>/analizar — produce el documento de diagnóstico.
 
-    Body JSON: {resultado, justificacion?}. `resultado` ∈ favorable|condicionado|
-    desfavorable. Si el consolidado no está completo y no se aporta
-    `justificacion`, se bloquea (422, mismo shape que un bloqueo de motor) — con
-    `justificacion` se salta el gate y se registra en bitácora (ver
-    crear_diagnostico). Bloqueo también si la tarea ya tiene documento producido.
+    Body JSON: {resultado?, justificacion?}. En ANALIZAR extendido (ADR-033 §3)
+    `resultado` no es una elección libre: se deriva del borrador agregado
+    (favorable si vacío, desfavorable si hay defectos) e ignora lo que mande el
+    cliente — "condicionado" deja de ser representable por construcción. En
+    ANALIZAR simple se mantiene la elección libre de hoy (favorable|condicionado|
+    desfavorable).
+
+    Si el consolidado no está completo y no se aporta `justificacion`, se
+    bloquea (422, mismo shape que un bloqueo de motor) — con `justificacion` se
+    salta el gate y se registra en bitácora (ver crear_diagnostico). Bloqueo
+    también si la tarea ya tiene documento producido.
     """
     expediente = Expediente.query.get_or_404(expediente_id)
     if verificar_acceso_expediente(expediente, 'gestionar_tarea'):
@@ -892,12 +916,17 @@ def post_analizar(expediente_id, tarea_id):
         return jsonify({'error': str(e)}), 404
 
     data = request.get_json(silent=True) or {}
-    resultado = data.get('resultado')
-    if resultado not in ('favorable', 'condicionado', 'desfavorable'):
-        return jsonify({'error': 'resultado debe ser favorable, condicionado o desfavorable'}), 422
     justificacion = (data.get('justificacion') or '').strip() or None
 
     consolidado = consolidar_defectos(tarea)
+
+    if _tiene_secciones_extendidas(tarea):
+        resultado = _resultado_derivado(consolidado)
+    else:
+        resultado = data.get('resultado')
+        if resultado not in ('favorable', 'condicionado', 'desfavorable'):
+            return jsonify({'error': 'resultado debe ser favorable, condicionado o desfavorable'}), 422
+
     if not consolidado['completo'] and not justificacion:
         return jsonify({
             'error': 'Quedan ítems sin revisar',
@@ -920,6 +949,36 @@ def post_analizar(expediente_id, tarea_id):
             'fecha': None,
         },
     }), 200
+
+
+@api_bp.route('/expedientes/<int:expediente_id>/nodo/tarea/<int:tarea_id>/notas', methods=['PATCH'])
+@login_required
+def patch_notas_tarea(expediente_id, tarea_id):
+    """
+    PATCH .../nodo/tarea/<tarea_id>/notas — guarda solo `notas` (#677, ADR-033 §7).
+
+    Bloque aparte del contenedor de ANALIZAR con guardado inline propio, fuera
+    del ciclo borrador/Guardar general de `editar_tarea`: ese ciclo también
+    diffea `documentos_tarea` contra un `documentos_consumidos_ids` que en
+    ANALIZAR extendido queda obsoleto durante la sesión (el check documental
+    deriva vínculos CONSUMIDO en directo, ver sincronizar_consumido_documental) —
+    reutilizarlo aquí podría deshacer esos vínculos recién derivados. Un
+    endpoint que solo toca `ta.notas` evita el problema por construcción.
+
+    Body JSON: {notas}. No requiere que la tarea sea de tipo ANALIZAR — es
+    el mismo campo genérico de `_esquema_tarea`, válido para cualquier tarea.
+    """
+    expediente = Expediente.query.get_or_404(expediente_id)
+    if verificar_acceso_expediente(expediente, 'gestionar_tarea'):
+        return jsonify({'error': 'No tienes permiso para esta acción'}), 403
+
+    tarea = _resolver_nodo(expediente, 'tarea', tarea_id)
+
+    data = request.get_json(silent=True) or {}
+    tarea.notas = (data.get('notas') or '').strip() or None
+    db.session.commit()
+
+    return jsonify({'ok': True, 'notas': tarea.notas}), 200
 
 
 @api_bp.route(
@@ -965,6 +1024,8 @@ def vincular_requisito_documental(expediente_id, tarea_id, requisito_id):
         vinculo.documento_id = documento.id
     db.session.commit()
 
+    svc.sincronizar_consumido_documental(tarea)
+
     return jsonify({'ok': True, 'checklist_documental': _checklist_documental_json(tarea)}), 200
 
 
@@ -990,6 +1051,8 @@ def desvincular_requisito_documental(expediente_id, tarea_id, requisito_id):
     if vinculo is not None:
         db.session.delete(vinculo)
         db.session.commit()
+
+    svc.sincronizar_consumido_documental(tarea)
 
     return jsonify({'ok': True, 'checklist_documental': _checklist_documental_json(tarea)}), 200
 
