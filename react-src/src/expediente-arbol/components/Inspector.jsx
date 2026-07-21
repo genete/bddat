@@ -103,14 +103,14 @@ async function postAccion(url, okMsg) {
 
 // --- Subcomponentes -------------------------------------------------------------
 
-function Cabecera({ tipo, nodo }) {
+function Cabecera({ tipo, nodo, compacta }) {
   const sem = nodo && nodo.semaforo
   return (
-    <div className="d-flex align-items-start gap-2 mb-3">
+    <div className={`d-flex align-items-start gap-2 min-w-0 ${compacta ? '' : 'mb-3'}`}>
       {sem && <span className="mt-1"><Semaforo color={sem.color} relleno /></span>}
       <div className="flex-grow-1 min-w-0">
         <div className="text-uppercase text-muted small fw-semibold">{ETIQUETA_TIPO[tipo] || tipo}</div>
-        <div className="fw-bold">{tituloNodo(tipo, nodo) || '—'}</div>
+        <div className="fw-bold text-truncate">{tituloNodo(tipo, nodo) || '—'}</div>
         {nodo && nodo.estado && <span className="badge text-bg-light mt-1">{nodo.estado}</span>}
       </div>
     </div>
@@ -283,7 +283,8 @@ function ConfirmacionBorrado({ nodo }) {
 // --- Edición (S3b-1): editor genérico + split editor/despensa ------------------
 
 // Editor genérico: pinta un control por campo del esquema editable, autofocus en
-// el primero, botonera Guardar/Cancelar. value/onChange contra borrador/setCampo.
+// el primero. Guardar/Cancelar viven en la barra fija (BarraEdicion, ADR-023 §5 bis);
+// aquí solo queda Borrar, que no es parte del control de salida del marco.
 function Editor() {
   const seleccion  = useArbolStore((s) => s.seleccion)
   const campos     = useArbolStore((s) => s.editableCampos)
@@ -292,7 +293,6 @@ function Editor() {
   const setCampo   = useArbolStore((s) => s.setCampo)
   const guardando  = useArbolStore((s) => s.guardando)
   const guardar    = useArbolStore((s) => s.guardar)
-  const cancelar   = useArbolStore((s) => s.cancelar)
   const hayCambios = useArbolStore(selectHayCambios)
   const solicitarBorrado = useArbolStore((s) => s.solicitarBorrado)
   const firstRef = React.useRef(null)
@@ -304,12 +304,8 @@ function Editor() {
   if (cargando) return <div className="text-muted small">Cargando editor…</div>
   if (!campos.length)
     return (
-      <div>
-        <div className="text-muted small mb-3">
-          Sin campos editables. Usa la despensa inferior para añadir elementos al árbol.
-        </div>
-        <button type="button" className="btn btn-sm btn-outline-secondary"
-                onClick={cancelar}>Cancelar</button>
+      <div className="text-muted small mb-3">
+        Sin campos editables. Usa la despensa inferior para añadir elementos al árbol.
       </div>
     )
 
@@ -338,17 +334,47 @@ function Editor() {
           {ctrl(c, i === 0 ? firstRef : null)}
         </div>
       ))}
-      <div className="d-flex gap-2 mt-3">
-        <button type="button" className="btn btn-sm btn-primary"
-                disabled={guardando || !hayCambios} onClick={guardar}>Guardar</button>
-        <button type="button" className="btn btn-sm btn-outline-secondary"
-                onClick={cancelar}>Cancelar</button>
-        {puedeBorrar && (
-          <button type="button" className="btn btn-sm btn-outline-danger ms-auto"
+      {puedeBorrar && (
+        <div className="d-flex mt-3">
+          <button type="button" className="btn btn-sm btn-outline-danger"
                   onClick={solicitarBorrado}>🗑️ Borrar</button>
-        )}
-      </div>
+        </div>
+      )}
     </form>
+  )
+}
+
+// Barra superior fija del marco de edición (ADR-023 §5 bis, #676): cabecera +
+// control de salida, inmutable al scroll del contenido de abajo.
+//   · nodo-de-campos (esSuperficieTrabajo=false): Guardar (solo con borrador vivo) +
+//     botón adaptativo Cerrar/Cancelar.
+//   · superficie-de-trabajo (ANALIZAR/ELABORAR): solo el botón, rótulo fijo "Cerrar"
+//     — su propio par Guardar/Cancelar (ligado a lo que la Despensa apila) se queda
+//     intacto más abajo, aparte del marco (ver AnalizarEditor.jsx/ElaborarEditor.jsx).
+//   onClick siempre `cancelar` — misma acción del store para ambas formas y estados;
+//   solo cambia el rótulo. La confirmación en sucio ya la impone el bloqueo de
+//   light-dismiss del shell (ADR-023 §5 bis), no un diálogo aparte aquí.
+function BarraEdicion({ tipo, nodo, esSuperficieTrabajo }) {
+  const guardando  = useArbolStore((s) => s.guardando)
+  const guardar    = useArbolStore((s) => s.guardar)
+  const cancelar   = useArbolStore((s) => s.cancelar)
+  const hayCambios = useArbolStore(selectHayCambios)
+
+  return (
+    <div className="flex-shrink-0 border-bottom p-3 d-flex align-items-start justify-content-between gap-2">
+      <Cabecera tipo={tipo} nodo={nodo} compacta />
+      <div className="d-flex gap-2 flex-shrink-0">
+        {!esSuperficieTrabajo && (
+          <button type="button" className="btn btn-sm btn-primary"
+                  disabled={guardando || !hayCambios} onClick={guardar}>
+            {guardando ? 'Guardando…' : 'Guardar'}
+          </button>
+        )}
+        <button type="button" className="btn btn-sm btn-outline-secondary" onClick={cancelar}>
+          {!esSuperficieTrabajo && hayCambios ? 'Cancelar' : 'Cerrar'}
+        </button>
+      </div>
+    </div>
   )
 }
 
@@ -367,10 +393,13 @@ function InspectorEdicion({ nodo }) {
   // ELABORAR (#608): idem, para enganchar "Generar escrito" (backend #167, huérfano
   // de UI desde la eliminación del sistema BC en #500).
   const esElaborar = seleccion.tipo === 'tarea' && nodo && nodo.tipo_codigo === 'ELABORAR'
+  // Superficie-de-trabajo (ADR-023 §5 bis): sin borrador global, persistencia por
+  // bloque — el marco no lleva Guardar/Cancelar, solo Cerrar.
+  const esSuperficieTrabajo = esAnalizar || esElaborar
   return (
     <div className="d-flex flex-column h-100 arbol-inspector--lock">
+      <BarraEdicion tipo={seleccion.tipo} nodo={nodo} esSuperficieTrabajo={esSuperficieTrabajo} />
       <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }} className="p-3">
-        <Cabecera tipo={seleccion.tipo} nodo={nodo} />
         {borrarPendienteConfirm
           ? <ConfirmacionBorrado nodo={nodo} />
           : esAnalizar
