@@ -106,7 +106,7 @@ La edición del inspector, en **cualquier nodo**, se enmarca en una **barra supe
 
 - El control de salida está **siempre presente**. Con la superficie limpia se rotula **"Cerrar"** y sale a lectura sin revertir nada.
 - **Guardar y Cancelar solo se habilitan cuando hay un borrador vivo** (cambios sin guardar en el borrador global). Sin borrador, no hay nada que guardar ni que cancelar — por eso una superficie-de-trabajo, que no tiene borrador global, nunca los muestra.
-- **Con cambios sin guardar, cerrar no puede dejarlos en limbo**: el gesto de salida se comporta como **Cancelar** (descarta y sale), previa confirmación de descarte. No existe un "cerrar sin consecuencias" en estado sucio — o se guarda, o se descarta.
+- **Con cambios sin guardar, cerrar no puede dejarlos en limbo**: el gesto de salida se comporta como **Cancelar** (descarta y sale). La confirmación no es un diálogo nuevo: la impone el propio modo edición — mientras hay borrador vivo, el light-dismiss del shell (clic fuera, Escape, ×) queda bloqueado (§5, backdrop bloqueante), así que la única salida posible es este mismo control, pulsado de forma consciente. No existe un "cerrar sin consecuencias" en estado sucio — o se guarda, o se descarta.
 - La **× del shell** y **Escape** siguen el mismo contrato: en limpio cierran; en sucio disparan la guarda de descarte (§5, `beforeunload` incluido).
 
 Esto unifica **entrar / guardar / cancelar / salir** para todo nodo, retira el par Guardar/Cancelar muerto de superficies sin borrador global, y elimina la ambigüedad "¿cancelé solo un campo o toda la tarea?": donde no hay borrador global, no hay Cancelar que malinterpretar.
