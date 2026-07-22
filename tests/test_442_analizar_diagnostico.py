@@ -55,7 +55,9 @@ class TestConsolidarDefectos:
         from unittest.mock import MagicMock
         tarea = MagicMock()
         tarea.id = 999999
-        tarea.requerimientos = list(requerimientos)
+        # _items_requerimiento (#679, ADR-033 §7) navega tarea.tramite.fase.solicitud
+        # — el eje libre es por solicitud, no por tarea.
+        tarea.tramite.fase.solicitud.requerimientos = list(requerimientos)
         return tarea
 
     def test_degrada_permisivo_sin_datos(self):
@@ -71,7 +73,7 @@ class TestConsolidarDefectos:
             from app.services.consolidacion_defectos import consolidar_defectos
             resultado = consolidar_defectos(self._tarea_stub())
 
-        assert resultado == {'items': [], 'completo': True, 'error': False}
+        assert resultado == {'items': [], 'items_resueltos': [], 'completo': True, 'error': False}
 
     def test_agrega_los_tres_origenes(self):
         """Un defecto de cada proveedor aparece en el consolidado con su origen."""
@@ -90,6 +92,7 @@ class TestConsolidarDefectos:
 
         requerimiento = MagicMock()
         requerimiento.texto = 'Defecto libre añadido por el técnico'
+        requerimiento.resuelto = False
 
         with patch('app.services.consolidacion_defectos.build', return_value=(None, {})), \
              patch('app.services.consolidacion_defectos.evaluar_requisitos',
@@ -148,6 +151,7 @@ class TestConsolidarDefectos:
 
         requerimiento = MagicMock()
         requerimiento.texto = 'Defecto libre'
+        requerimiento.resuelto = False
 
         with patch('app.services.consolidacion_defectos.build', return_value=(None, {})), \
              patch('app.services.consolidacion_defectos.evaluar_requisitos',
@@ -160,6 +164,33 @@ class TestConsolidarDefectos:
         assert resultado['completo'] is True
         assert len(resultado['items']) == 1
         assert resultado['items'][0]['origen'] == 'requerimiento'
+
+    def test_requerimiento_resuelto_no_cuenta_como_defecto(self):
+        """ADR-033 §7: un requerimiento libre marcado resuelto no es defecto
+        activo — va en items_resueltos, no en items, y no bloquea 'completo'."""
+        from unittest.mock import MagicMock, patch
+
+        pendiente = MagicMock()
+        pendiente.texto = 'Defecto libre pendiente'
+        pendiente.resuelto = False
+
+        resuelto = MagicMock()
+        resuelto.texto = 'Defecto libre ya subsanado'
+        resuelto.resuelto = True
+
+        with patch('app.services.consolidacion_defectos.build', return_value=(None, {})), \
+             patch('app.services.consolidacion_defectos.evaluar_requisitos',
+                   return_value={'items': [], 'todos_cubiertos': True, 'error': False}), \
+             patch('app.services.consolidacion_defectos.evaluar_items_tecnicos',
+                   return_value={'items': [], 'todos_revisados': True, 'error': False}):
+            from app.services.consolidacion_defectos import consolidar_defectos
+            resultado = consolidar_defectos(self._tarea_stub(requerimientos=[pendiente, resuelto]))
+
+        assert len(resultado['items']) == 1
+        assert resultado['items'][0]['texto'] == 'Defecto libre pendiente'
+        assert len(resultado['items_resueltos']) == 1
+        assert resultado['items_resueltos'][0]['texto'] == 'Defecto libre ya subsanado'
+        assert resultado['completo'] is True
 
 
 # ---------------------------------------------------------------------------

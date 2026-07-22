@@ -114,19 +114,33 @@ class TestRequerimientoTareaOrigen:
         from app.models.requerimientos_tarea import RequerimientoTarea
         r = RequerimientoTarea()
         r.id = 3
-        r.tarea_id = 10
+        r.solicitud_id = 10
         r.catalogo_requerimientos_id = 5
         r.texto_libre = None
         r.orden = 2
+        r.resuelto = False
         assert 'cat=5' in repr(r)
         assert 'orden=2' in repr(r)
+        assert 'resuelto' not in repr(r)
 
     def test_repr_libre(self):
         from app.models.requerimientos_tarea import RequerimientoTarea
         r = RequerimientoTarea()
         r.id = 4
-        r.tarea_id = 10
+        r.solicitud_id = 10
         r.catalogo_requerimientos_id = None
         r.texto_libre = 'Texto manual'
         r.orden = 1
+        r.resuelto = False
         assert 'libre' in repr(r)
+
+    def test_repr_resuelto(self):
+        from app.models.requerimientos_tarea import RequerimientoTarea
+        r = RequerimientoTarea()
+        r.id = 5
+        r.solicitud_id = 10
+        r.catalogo_requerimientos_id = None
+        r.texto_libre = 'Texto manual'
+        r.orden = 1
+        r.resuelto = True
+        assert 'resuelto' in repr(r)
