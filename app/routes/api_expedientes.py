@@ -859,13 +859,18 @@ def get_analizar(expediente_id, tarea_id):
     GET .../nodo/tarea/<tarea_id>/analizar — payload del contenedor de #442/#677.
 
     {resultado, resultado_previsto, documento_producido: {...}|null,
-     secciones_extendidas: bool, defectos_consolidado: [...], completo: bool,
-     checklist_documental: [...], checklist_tecnico: [...], notas}
+     secciones_extendidas: bool, defectos_consolidado: [...], defectos_resueltos: [...],
+     completo: bool, checklist_documental: [...], checklist_tecnico: [...], notas}
 
     `resultado_previsto` (ADR-033 §3): sentido que tendría el diagnóstico si se
     produjera ahora mismo, derivado del borrador agregado — informativo en
     ANALIZAR extendido (sin radio editable); no aplica a ANALIZAR simple, que
     sigue con resultado de elección libre.
+
+    `defectos_resueltos` (ADR-033 §7): requerimientos libres ya marcados
+    resueltos por el técnico — no cuentan como defecto activo, se exponen
+    aparte solo para que el borrador muestre progreso entre vueltas de
+    subsanación.
     """
     expediente = Expediente.query.get_or_404(expediente_id)
     denegado = verificar_acceso_expediente(expediente)
@@ -900,6 +905,7 @@ def get_analizar(expediente_id, tarea_id):
         'documento_producido': documento_producido,
         'secciones_extendidas': secciones_extendidas,
         'defectos_consolidado': consolidado['items'],
+        'defectos_resueltos': consolidado['items_resueltos'],
         'completo': consolidado['completo'],
         'checklist_documental': _checklist_documental_json(tarea) if secciones_extendidas else [],
         'checklist_tecnico': _checklist_tecnico_json(tarea) if secciones_extendidas else [],
@@ -1174,14 +1180,15 @@ def guardar_cobertura_tecnica(expediente_id, tarea_id, item_tecnico_id):
 _CATEGORIAS_REQUERIMIENTO_VALIDAS = {'documental', 'tecnica', 'administrativa', 'tasas'}
 
 
-def _seleccionados_json(tarea) -> list:
+def _seleccionados_json(solicitud) -> list:
     return [{
         'id': r.id,
         'texto': r.texto,
         'orden': r.orden,
         'desde_catalogo': r.desde_catalogo,
         'catalogo_requerimientos_id': r.catalogo_requerimientos_id,
-    } for r in sorted(tarea.requerimientos, key=lambda r: r.orden)]
+        'resuelto': r.resuelto,
+    } for r in sorted(solicitud.requerimientos, key=lambda r: r.orden)]
 
 
 @api_bp.route('/expedientes/<int:expediente_id>/nodo/tarea/<int:tarea_id>/requerimientos', methods=['GET'])
@@ -1189,7 +1196,8 @@ def _seleccionados_json(tarea) -> list:
 def get_requerimientos(expediente_id, tarea_id):
     """
     GET .../requerimientos — estado inicial del panel shuttle: catálogo activo
-    agrupado y selección actual de la tarea (#440).
+    agrupado y selección actual de la solicitud (#440, elevado a `solicitud_id`
+    en #679, ADR-033 §7 — continuo entre vueltas de subsanación).
     """
     expediente = Expediente.query.get_or_404(expediente_id)
     denegado = verificar_acceso_expediente(expediente)
@@ -1208,9 +1216,10 @@ def get_requerimientos(expediente_id, tarea_id):
         .all()
     )
 
+    solicitud = tarea.tramite.fase.solicitud
     return jsonify({
         'catalogo': [{'id': c.id, 'texto': c.texto, 'categoria': c.categoria} for c in catalogo],
-        'seleccionados': _seleccionados_json(tarea),
+        'seleccionados': _seleccionados_json(solicitud),
     }), 200
 
 
@@ -1219,11 +1228,18 @@ def get_requerimientos(expediente_id, tarea_id):
 def post_requerimientos(expediente_id, tarea_id):
     """
     POST .../requerimientos — sustituye la lista completa de `requerimientos_tarea`
-    en una sola llamada: crear, reordenar y borrar (#440).
+    de la solicitud en una sola llamada: crear, reordenar, borrar y marcar
+    resuelto (#440, elevado a `solicitud_id` en #679, ADR-033 §7).
 
-    Body JSON: {items: [{catalogo_requerimientos_id: int|null, texto_libre: str|null}, ...]}
-    Orden = posición en la lista (1-based). Exactamente uno de los dos campos
-    de cada item debe tener valor (ck_requerimientos_tarea_exactamente_uno).
+    Body JSON: {items: [{catalogo_requerimientos_id: int|null, texto_libre: str|null,
+    resuelto: bool}, ...]}. Orden = posición en la lista (1-based). Exactamente
+    uno de catalogo_requerimientos_id/texto_libre debe tener valor
+    (ck_requerimientos_tarea_exactamente_uno).
+
+    El frontend no debe permitir quitar de la lista un ítem ya persistido
+    (con `id`) de una vuelta anterior — solo marcarlo `resuelto` — para no
+    perder el juicio del técnico sin dejar rastro. El backend no lo impone
+    (upsert por reemplazo total, igual que hoy): confía en esa restricción de UI.
     """
     expediente = Expediente.query.get_or_404(expediente_id)
     if verificar_acceso_expediente(expediente, 'gestionar_tarea'):
@@ -1243,6 +1259,8 @@ def post_requerimientos(expediente_id, tarea_id):
     if not isinstance(items, list):
         return jsonify({'error': 'items debe ser una lista'}), 422
 
+    solicitud = tarea.tramite.fase.solicitud
+
     nuevas = []
     for i, it in enumerate(items, start=1):
         catalogo_id = it.get('catalogo_requerimientos_id')
@@ -1252,15 +1270,15 @@ def post_requerimientos(expediente_id, tarea_id):
                 'error': f'Ítem {i}: exactamente uno de catalogo_requerimientos_id o texto_libre',
             }), 422
         nuevas.append(RequerimientoTarea(
-            tarea_id=tarea.id, catalogo_requerimientos_id=catalogo_id,
-            texto_libre=texto_libre, orden=i,
+            solicitud_id=solicitud.id, catalogo_requerimientos_id=catalogo_id,
+            texto_libre=texto_libre, orden=i, resuelto=bool(it.get('resuelto')),
         ))
 
-    RequerimientoTarea.query.filter_by(tarea_id=tarea.id).delete()
+    RequerimientoTarea.query.filter_by(solicitud_id=solicitud.id).delete()
     db.session.add_all(nuevas)
     db.session.commit()
 
-    return jsonify({'ok': True, 'seleccionados': _seleccionados_json(tarea)}), 200
+    return jsonify({'ok': True, 'seleccionados': _seleccionados_json(solicitud)}), 200
 
 
 @api_bp.route(
