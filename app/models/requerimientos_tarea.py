@@ -3,12 +3,17 @@ from app import db
 
 class RequerimientoTarea(db.Model):
     """
-    Defectos detectados en una tarea ANALIZAR, para el escrito de subsanación.
+    Defectos libres (no catalogados por casación automática) de una solicitud,
+    para el escrito de subsanación.
 
-    Cada fila representa un requerimiento concreto que el técnico añade a la
-    tarea ANALIZAR de ANÁLISIS_DOCUMENTAL o REQUERIMIENTO_SUBSANACIÓN. La
-    lista ordenada alimenta el context builder de ContextoSubsanacion, que la
-    inyecta en la plantilla del escrito.
+    Cada fila representa un requerimiento concreto que el técnico añade desde
+    el shuttle de la tarea ANALIZAR de ANÁLISIS_DOCUMENTAL o
+    REQUERIMIENTO_SUBSANACIÓN. A diferencia de esos dos ejes, este no se
+    resuelve solo: el técnico lo marca manualmente (`resuelto`).
+
+    El `Diagnostico` congelado de cada vuelta (ver ContextoSubsanacion) es
+    evidencia de lo notificado, no insumo operativo — esta tabla es el estado
+    vivo por solicitud, continuo entre vueltas de subsanación (ADR-033 §7).
 
     ORIGEN DEL TEXTO (exactamente uno de los dos campos tiene valor):
         catalogo_requerimientos_id — defecto del catálogo reutilizable (#405)
@@ -21,15 +26,20 @@ class RequerimientoTarea(db.Model):
         Posición 1-based en el listado final. El técnico puede reordenar los
         ítems en el selector shuttle; el backend persiste el orden resultante.
 
+    CAMPO RESUELTO:
+        Marca manual del técnico (ADR-033 §7): un requerimiento libre no tiene
+        contra qué casar automáticamente (a diferencia de documental/técnico),
+        su cierre es un juicio. No cuenta como defecto activo en el borrador
+        que determina el resultado, pero se sigue mostrando (tachado) para dar
+        progreso sin tener que abrir el escrito notificado.
+
     RELACIONES:
-        tarea               → TAREAS.id (FK CASCADE, tarea ANALIZAR contenedora)
+        solicitud               → SOLICITUDES.id (FK CASCADE)
         catalogo_requerimiento → CATALOGO_REQUERIMIENTOS.id (FK, nullable)
 
     REGLAS DE NEGOCIO:
         - Exactamente uno de catalogo_requerimientos_id o texto_libre ≠ NULL
           (garantizado por CHECK constraint en la BD).
-        - Solo tareas de tipo ANALIZAR deberían tener filas asociadas
-          (responsabilidad de la capa de servicio, no de FK).
     """
     __tablename__ = 'requerimientos_tarea'
     __table_args__ = (
@@ -38,7 +48,7 @@ class RequerimientoTarea(db.Model):
             "(catalogo_requerimientos_id IS NULL AND texto_libre IS NOT NULL)",
             name='ck_requerimientos_tarea_exactamente_uno'
         ),
-        db.Index('idx_requerimientos_tarea_tarea', 'tarea_id'),
+        db.Index('idx_requerimientos_tarea_solicitud', 'solicitud_id'),
         db.Index('idx_requerimientos_tarea_catalogo', 'catalogo_requerimientos_id'),
         {'schema': 'public'}
     )
@@ -50,11 +60,11 @@ class RequerimientoTarea(db.Model):
         comment='Identificador único autogenerado'
     )
 
-    tarea_id = db.Column(
+    solicitud_id = db.Column(
         db.Integer,
-        db.ForeignKey('public.tareas.id', ondelete='CASCADE'),
+        db.ForeignKey('public.solicitudes.id', ondelete='CASCADE'),
         nullable=False,
-        comment='FK a TAREAS. Tarea ANALIZAR a la que pertenece este requerimiento'
+        comment='FK a SOLICITUDES. Solicitud a la que pertenece este requerimiento'
     )
 
     catalogo_requerimientos_id = db.Column(
@@ -76,9 +86,17 @@ class RequerimientoTarea(db.Model):
         comment='Posición 1-based en el listado del escrito'
     )
 
+    resuelto = db.Column(
+        db.Boolean,
+        nullable=False,
+        default=False,
+        server_default=db.text('false'),
+        comment='Marca manual del técnico: requerimiento libre cerrado (ADR-033 §7)'
+    )
+
     # Relaciones
-    tarea = db.relationship(
-        'Tarea',
+    solicitud = db.relationship(
+        'Solicitud',
         backref=db.backref(
             'requerimientos',
             order_by='RequerimientoTarea.orden',
@@ -106,4 +124,8 @@ class RequerimientoTarea(db.Model):
 
     def __repr__(self):
         origen = f'cat={self.catalogo_requerimientos_id}' if self.desde_catalogo else 'libre'
-        return f'<RequerimientoTarea id={self.id} tarea={self.tarea_id} orden={self.orden} [{origen}]>'
+        resuelto = ' resuelto' if self.resuelto else ''
+        return (
+            f'<RequerimientoTarea id={self.id} solicitud={self.solicitud_id} '
+            f'orden={self.orden} [{origen}]{resuelto}>'
+        )
