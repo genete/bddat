@@ -15,15 +15,21 @@ class ContextoSubsanacion:
     shuttle. Ver [[project_diseno_tarea_analizar_442]] y ADR-025 §4
     (reclasificado de Auto-trámite a Solicitud/fase-scoped).
 
-    Campos adicionales aportados:
-    - requerimientos    list  Defectos del diagnóstico anterior, ordenados
+    Campos adicionales aportados (#679): los defectos del diagnóstico
+    anterior, separados por origen — el escrito de requerimiento distingue
+    los tres ejes de ADR-033 (documental/técnico/libre) en apartados propios,
+    no un listado único. Los defectos ya vienen filtrados a "activos en el
+    momento de producir" (un requerimiento libre resuelto no llega a entrar
+    en Diagnostico.defectos, ver consolidar_defectos) — nada que filtrar aquí.
+    - defectos_documentales  list[str]  Defectos de origen 'documental'
+    - defectos_tecnicos      list[str]  Defectos de origen 'tecnico'
+    - defectos_libres        list[str]  Defectos de origen 'requerimiento'
     """
 
     TOKENS = [
-        {'campo': 'requerimientos', 'descripcion': 'Defectos del diagnóstico anterior', 'tipo': 'tabla', 'columnas': [
-            {'campo': 'texto', 'descripcion': 'Texto del defecto'},
-            {'campo': 'orden', 'descripcion': 'Posición en el listado'},
-        ]},
+        {'campo': 'defectos_documentales', 'descripcion': 'Defectos documentales del diagnóstico anterior', 'tipo': 'lista'},
+        {'campo': 'defectos_tecnicos', 'descripcion': 'Defectos técnicos del diagnóstico anterior', 'tipo': 'lista'},
+        {'campo': 'defectos_libres', 'descripcion': 'Otros defectos (requerimientos libres) del diagnóstico anterior', 'tipo': 'lista'},
     ]
 
     def __init__(self, expediente, db_session, tarea=None):
@@ -56,9 +62,12 @@ class ContextoSubsanacion:
             return {}
 
         defectos = doc.diagnostico.as_contexto_cb()['diagnostico_defectos']
+
+        def _textos(origen):
+            return [d.get('texto', '') for d in defectos if d.get('origen') == origen]
+
         return {
-            'requerimientos': [
-                {'texto': d.get('texto', ''), 'orden': i}
-                for i, d in enumerate(defectos, start=1)
-            ],
+            'defectos_documentales': _textos('documental'),
+            'defectos_tecnicos': _textos('tecnico'),
+            'defectos_libres': _textos('requerimiento'),
         }
