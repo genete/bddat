@@ -165,16 +165,17 @@ Los defectos que se repiten entre expedientes (falta de justificación técnica,
 | `categoria` | Categoría: `documental`, `tecnica`, `administrativa`, `tasas` |
 | `activo` | Boolean — visible o archivado |
 
-**Tabla `requerimientos_tarea`** (enriquecimiento de la tarea ANALIZAR, sin campos nullables en la tabla base):
+**Tabla `requerimientos_tarea`** (defectos libres de la solicitud, sin campos nullables en la tabla base; #679, ADR-033 §7):
 
 | Campo | Descripción |
 |---|---|
-| `tarea_id` | FK `tareas.id` |
+| `solicitud_id` | FK `solicitudes.id` — estado continuo entre vueltas de subsanación, no se reinicia por tarea |
 | `catalogo_requerimientos_id` | FK `catalogo_requerimientos.id` — nullable si es texto libre |
 | `texto_libre` | Texto manual — nullable si proviene del catálogo |
 | `orden` | Entero — posición en el listado final |
+| `resuelto` | Boolean — marca manual del técnico. Un requerimiento libre no tiene contra qué casar automáticamente (a diferencia de documental/técnico), su cierre es un juicio |
 
-Exactamente uno de los dos campos de contenido (`catalogo_requerimientos_id` o `texto_libre`) tiene valor; el otro es NULL.
+Exactamente uno de los dos campos de contenido (`catalogo_requerimientos_id` o `texto_libre`) tiene valor; el otro es NULL. La clave es por `solicitud_id` (mismo criterio que `documentos_requisito` y `coberturas_item_tecnico`), no por tarea: el segundo ANALIZAR de una vuelta de subsanación arranca con el estado acumulado.
 
 ### Dónde se usa
 
@@ -182,7 +183,7 @@ En la tarea **ANALIZAR** de los trámites `ANÁLISIS_DOCUMENTAL` y `REQUERIMIENT
 
 ### Context builder y plantilla
 
-El context builder de este tipo de escrito consulta `requerimientos_tarea` para la tarea ANALIZAR y construye la lista Python `requerimientos` que entrega al renderizador de plantillas. La plantilla itera esa lista con un bloque Jinja2:
+El context builder de este tipo de escrito (`ContextoSubsanacion`) no lee `requerimientos_tarea` directamente — esa tabla es el borrador de trabajo vivo del shuttle, no el documento de salida (#406). Lee los defectos ya consolidados y congelados en el `Diagnostico` producido por el ANALIZAR anterior, y construye la lista Python `requerimientos` que entrega al renderizador de plantillas. La plantilla itera esa lista con un bloque Jinja2:
 
 ```
 {% for r in requerimientos %}

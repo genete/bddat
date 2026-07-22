@@ -39,7 +39,7 @@ tarea/trámite. Hay dos clases, y solo la segunda es segura de reutilizar fuera 
 
 | Anclaje | Navega | ¿Seguro bajo la tarea de otro escrito? |
 |---|---|---|
-| **Auto-trámite** | `tarea.tramite_id` / `tarea.requerimientos` → datos de *este* trámite | **No** — devuelve vacío en silencio |
+| **Auto-trámite** | `tarea.tramite.tareas` → datos de *este* trámite (ej. `ContextoAnalisisDocumental`, que busca el ANALIZAR del mismo trámite) | **No** — devuelve vacío en silencio |
 | **Solicitud/fase-scoped** | usa la tarea solo para alcanzar `solicitud`/`fase` y agregar | Sí, dentro de la misma solicitud |
 
 Por eso una plantilla **no** compone varios CBs. Un escrito de síntesis (la resolución) tiene
@@ -51,7 +51,8 @@ Por eso una plantilla **no** compone varios CBs. Un escrito de síntesis (la res
 El Context Builder y el renderizador de plantillas son dos capas distintas que trabajan en secuencia:
 
 1. **Context Builder** (capa de datos): código Python que consulta la BD y construye un diccionario
-   `{variable: valor}`. Por ejemplo, consulta `requerimientos_tarea` y construye la lista Python
+   `{variable: valor}`. Por ejemplo, `ContextoSubsanacion` consulta el `Diagnostico` congelado
+   del ANALIZAR anterior y construye la lista Python
    `requerimientos = [{texto: "..."}, {texto: "..."}, ...]`.
 
 2. **Renderizador** (capa de presentación): recibe ese diccionario y ejecuta la plantilla `.docx`.
