@@ -52,11 +52,11 @@ El Context Builder y el renderizador de plantillas son dos capas distintas que t
 
 1. **Context Builder** (capa de datos): código Python que consulta la BD y construye un diccionario
    `{variable: valor}`. Por ejemplo, `ContextoSubsanacion` consulta el `Diagnostico` congelado
-   del ANALIZAR anterior y construye la lista Python
-   `requerimientos = [{texto: "..."}, {texto: "..."}, ...]`.
+   del ANALIZAR anterior y construye tres listas Python separadas por origen (#679, ADR-033 §7):
+   `defectos_documentales = ["...", "...", ...]`, `defectos_tecnicos = [...]`, `defectos_libres = [...]`.
 
 2. **Renderizador** (capa de presentación): recibe ese diccionario y ejecuta la plantilla `.docx`.
-   Los bloques Jinja2 de la plantilla (`{% for r in requerimientos %}`, `{{ r.texto }}`, etc.)
+   Los bloques Jinja2 de la plantilla (`{%p for d in defectos_documentales %}`, `{{ d }}`, etc.)
    operan sobre los datos que el Context Builder ya preparó.
 
 El bloque `{% for %}` en la plantilla es necesario pero no suficiente — sin el Context Builder

@@ -183,12 +183,12 @@ En la tarea **ANALIZAR** de los trámites `ANÁLISIS_DOCUMENTAL` y `REQUERIMIENT
 
 ### Context builder y plantilla
 
-El context builder de este tipo de escrito (`ContextoSubsanacion`) no lee `requerimientos_tarea` directamente — esa tabla es el borrador de trabajo vivo del shuttle, no el documento de salida (#406). Lee los defectos ya consolidados y congelados en el `Diagnostico` producido por el ANALIZAR anterior, y construye la lista Python `requerimientos` que entrega al renderizador de plantillas. La plantilla itera esa lista con un bloque Jinja2:
+El context builder de este tipo de escrito (`ContextoSubsanacion`) no lee `requerimientos_tarea` directamente — esa tabla es el borrador de trabajo vivo del shuttle, no el documento de salida (#406). Lee los defectos ya consolidados y congelados en el `Diagnostico` producido por el ANALIZAR anterior, y los separa por origen (#679, ADR-033 §7) en tres listas Python que entrega al renderizador de plantillas: `defectos_documentales`, `defectos_tecnicos`, `defectos_libres`. La plantilla itera cada una con un bloque Jinja2:
 
 ```
-{% for r in requerimientos %}
-   ... {{ r.texto }} ...
-{% endfor %}
+{%p for d in defectos_documentales %}
+   ... {{ d }} ...
+{%p endfor %}
 ```
 
 > Ver `docs/GUIA_CONTEXT_BUILDERS.md` para el rol del context builder y su relación con el renderizador.

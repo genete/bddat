@@ -93,11 +93,12 @@ class TestContextoSubsanacion:
 
         ctx = _cb(tarea).get_contexto()
 
-        assert ctx['requerimientos'] == [
-            {'texto': 'Falta la memoria descriptiva del proyecto.', 'orden': 1},
-        ]
+        assert ctx['defectos_documentales'] == ['Falta la memoria descriptiva del proyecto.']
+        assert ctx['defectos_tecnicos'] == []
+        assert ctx['defectos_libres'] == []
 
-    def test_varios_defectos_orden_asignado_por_posicion(self):
+    def test_varios_defectos_separados_por_origen(self):
+        """ADR-033 §7: el escrito distingue los tres ejes en apartados propios."""
         defectos = [
             {'texto': 'Deficiencia técnica en el cálculo de cortocircuito.', 'origen': 'tecnico', 'tarea_id': 1},
             {'texto': 'Falta presupuesto desglosado por partidas.', 'origen': 'documental', 'tarea_id': 1},
@@ -110,10 +111,9 @@ class TestContextoSubsanacion:
 
         ctx = _cb(tarea).get_contexto()
 
-        assert len(ctx['requerimientos']) == 3
-        assert ctx['requerimientos'][0]['orden'] == 1
-        assert ctx['requerimientos'][1]['orden'] == 2
-        assert ctx['requerimientos'][2]['orden'] == 3
+        assert ctx['defectos_documentales'] == ['Falta presupuesto desglosado por partidas.']
+        assert ctx['defectos_tecnicos'] == ['Deficiencia técnica en el cálculo de cortocircuito.']
+        assert ctx['defectos_libres'] == ['Tasas pendientes de justificación.']
 
     def test_toma_el_tramite_previo_mas_reciente(self):
         """Segunda vuelta de subsanación: debe leer el REQUERIMIENTO_SUBSANACION
@@ -135,4 +135,4 @@ class TestContextoSubsanacion:
 
         ctx = _cb(tarea).get_contexto()
 
-        assert ctx['requerimientos'] == [{'texto': 'Defecto de la segunda vuelta.', 'orden': 1}]
+        assert ctx['defectos_documentales'] == ['Defecto de la segunda vuelta.']
