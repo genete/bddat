@@ -24,6 +24,57 @@ from app.services.mutaciones_arbol import _hook_458_analizar_separata
 log = logging.getLogger(__name__)
 
 
+class DiagnosticoConsumidoError(Exception):
+    """El documento de diagnóstico ya está vinculado como CONSUMIDO a otra tarea
+    (un ELABORAR). Puerta cerrada (ADR-033 §5): no es soslayable con
+    justificación, primero hay que deshacer esa vinculación."""
+
+    def __init__(self, tarea_consumidora: Tarea):
+        self.tarea_consumidora = tarea_consumidora
+        nombre_tarea = tarea_consumidora.tipo_tarea.nombre if tarea_consumidora.tipo_tarea else 'una tarea'
+        nombre_tramite = (
+            tarea_consumidora.tramite.tipo_tramite.nombre
+            if tarea_consumidora.tramite and tarea_consumidora.tramite.tipo_tramite
+            else 'otro trámite'
+        )
+        super().__init__(
+            f'El diagnóstico ya ha sido consumido por la tarea "{nombre_tarea}" '
+            f'del trámite "{nombre_tramite}" (tarea {tarea_consumidora.id}). '
+            f'Deshaz esa vinculación antes de revertir el diagnóstico.'
+        )
+
+
+def revertir_diagnostico(tarea: Tarea) -> None:
+    """
+    Elimina el documento de diagnóstico producido por `tarea` (y su vínculo
+    PRODUCIDO), devolviendo la tarea a "Borrador defectos" (ADR-033 §5,
+    enmienda ADR-005: el diagnóstico deja de ser inmutable de por vida).
+
+    Lanza ValueError si la tarea no tiene documento producido.
+    Lanza DiagnosticoConsumidoError si el documento está CONSUMIDO por otra
+    tarea — puerta cerrada, no forzable con justificación (a diferencia de
+    los bloqueos de motor).
+    """
+    doc = tarea.documento_producido
+    if doc is None:
+        raise ValueError(f'La tarea {tarea.id} no tiene documento producido')
+
+    consumidores = [v.tarea for v in doc.vinculos_tarea if v.rol == 'CONSUMIDO']
+    if consumidores:
+        raise DiagnosticoConsumidoError(consumidores[0])
+
+    diagnostico = doc.diagnostico
+    vinculo_producido = next(v for v in doc.vinculos_tarea if v.rol == 'PRODUCIDO')
+
+    if diagnostico is not None:
+        db.session.delete(diagnostico)
+    db.session.delete(vinculo_producido)
+    db.session.flush()
+    db.session.delete(doc)
+    db.session.commit()
+    log.info('Diagnóstico revertido para tarea %s (doc %s)', tarea.id, doc.id)
+
+
 def crear_diagnostico(tarea: Tarea, resultado: str, defectos: list,
                        *, justificacion: Optional[str] = None) -> Documento:
     """
