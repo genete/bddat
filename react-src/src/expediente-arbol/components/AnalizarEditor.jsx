@@ -24,7 +24,7 @@
 import React from 'react'
 import { useArbolStore, selectHayCambios } from '../store.js'
 import {
-  getAnalizar, postAnalizar,
+  getAnalizar, postAnalizar, revertirDiagnostico,
   vincularRequisitoDocumental, desvincularRequisitoDocumental,
   guardarCoberturaTecnica, guardarNotas,
   getRequerimientos, postRequerimientos, crearRequerimientoCatalogo,
@@ -71,11 +71,101 @@ function Acordeon({ titulo, resumen, accionesCabecera, abiertaInicial, children 
   )
 }
 
+// --- Reversión controlada del diagnóstico producido (ADR-033 §5, #678) --------
+// Guarda de los tres puntos de persistencia reales (Vincular/Desvincular
+// documental, Guardar ítem técnico, Guardar cambios del shuttle). Sin
+// diagnóstico producido, `ejecutar` corre la acción directo (escalón 1, sin
+// fricción). Producido y no consumido (escalón 2): confirmación destructiva
+// inline — al confirmar, revierte el diagnóstico (DELETE .../analizar) y solo
+// entonces ejecuta la acción original con los datos que el técnico ya tenía
+// preparados. Consumido por un ELABORAR (escalón 3): la reversión devuelve
+// 422 con `puede_escapar:false` — puerta cerrada, se sustituye la confirmación
+// por el motivo (qué deshacer antes) en vez de un toast transitorio.
+function useReversionDiagnostico({ expedienteId, tareaId, producido, onRevertido }) {
+  const [confirmando, setConfirmando] = React.useState(false)
+  const [revirtiendo, setRevirtiendo] = React.useState(false)
+  const [errorPuerta, setErrorPuerta] = React.useState(null)
+  const accionPendienteRef = React.useRef(null)
+
+  const ejecutar = (accion) => {
+    if (!producido) return accion()
+    accionPendienteRef.current = accion
+    setErrorPuerta(null)
+    setConfirmando(true)
+  }
+
+  const confirmar = async () => {
+    setRevirtiendo(true)
+    try {
+      await revertirDiagnostico(expedienteId, tareaId)
+      showToast('Diagnóstico revertido — vuelto a Borrador defectos', 'warning')
+      setConfirmando(false)
+      await onRevertido()
+      const accion = accionPendienteRef.current
+      accionPendienteRef.current = null
+      if (accion) await accion()
+    } catch (e) {
+      if (e && e.status === 422 && e.payload && e.payload.puede_escapar === false) {
+        setErrorPuerta(e.payload.motivo || 'El diagnóstico ya ha sido consumido; no se puede revertir.')
+      } else {
+        showToast((e && e.message) || 'No se pudo revertir el diagnóstico', 'danger')
+        setConfirmando(false)
+      }
+    } finally {
+      setRevirtiendo(false)
+    }
+  }
+
+  const cancelar = () => {
+    accionPendienteRef.current = null
+    setConfirmando(false)
+    setErrorPuerta(null)
+  }
+
+  return { confirmando, revirtiendo, errorPuerta, ejecutar, confirmar, cancelar }
+}
+
+// Caja inline (patrón ADR-023, no diálogo nativo): confirmación destructiva
+// (escalón 2) o mensaje de puerta cerrada con el motivo (escalón 3).
+function AvisoReversionDiagnostico({ confirmando, revirtiendo, errorPuerta, onConfirmar, onCancelar }) {
+  if (!confirmando) return null
+
+  if (errorPuerta) {
+    return (
+      <div className="alert alert-danger py-2 px-3 mb-2 small">
+        <div className="fw-semibold mb-1">No se puede revertir el diagnóstico</div>
+        <div className="mb-2">{errorPuerta}</div>
+        <button type="button" className="btn btn-sm btn-outline-secondary" onClick={onCancelar}>
+          Entendido
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <div className="border rounded p-2 mb-2 bg-warning-subtle border-warning-subtle small">
+      <div className="mb-2">
+        Al modificar los defectos con el diagnóstico producido, se invalidará el
+        resultado y el diagnóstico se eliminará. ¿Continuar?
+      </div>
+      <div className="d-flex gap-2">
+        <button type="button" className="btn btn-sm btn-warning" disabled={revirtiendo} onClick={onConfirmar}>
+          {revirtiendo ? 'Revirtiendo…' : 'Continuar'}
+        </button>
+        <button type="button" className="btn btn-sm btn-outline-secondary" disabled={revirtiendo} onClick={onCancelar}>
+          Cancelar
+        </button>
+      </div>
+    </div>
+  )
+}
+
 // Fila de un requisito documental (#495): estado + selector de documento del pool.
-function FilaRequisitoDocumental({ item, expedienteId, tareaId, pool, onRecargar }) {
+function FilaRequisitoDocumental({ item, expedienteId, tareaId, pool, producido, onRecargar }) {
   const [seleccionando, setSeleccionando] = React.useState(false)
   const [documentoId, setDocumentoId] = React.useState('')
   const [enviando, setEnviando] = React.useState(false)
+  const reversion = useReversionDiagnostico({ expedienteId, tareaId, producido, onRevertido: onRecargar })
 
   const vincular = async () => {
     if (!documentoId) return
@@ -84,6 +174,7 @@ function FilaRequisitoDocumental({ item, expedienteId, tareaId, pool, onRecargar
       await vincularRequisitoDocumental(expedienteId, tareaId, item.requisito_id, Number(documentoId))
       setSeleccionando(false)
       setDocumentoId('')
+      showToast('Documento vinculado', 'success')
       await onRecargar()
     } catch (e) {
       showToast((e && e.message) || 'No se pudo vincular el documento', 'danger')
@@ -96,6 +187,7 @@ function FilaRequisitoDocumental({ item, expedienteId, tareaId, pool, onRecargar
     setEnviando(true)
     try {
       await desvincularRequisitoDocumental(expedienteId, tareaId, item.requisito_id)
+      showToast('Documento desvinculado', 'success')
       await onRecargar()
     } catch (e) {
       showToast((e && e.message) || 'No se pudo desvincular el documento', 'danger')
@@ -126,12 +218,20 @@ function FilaRequisitoDocumental({ item, expedienteId, tareaId, pool, onRecargar
             type="button"
             className="btn btn-sm btn-link text-danger p-0 lh-1"
             disabled={enviando}
-            onClick={desvincular}
+            onClick={() => reversion.ejecutar(desvincular)}
           >
             Quitar
           </button>
         </div>
       )}
+
+      <AvisoReversionDiagnostico
+        confirmando={reversion.confirmando}
+        revirtiendo={reversion.revirtiendo}
+        errorPuerta={reversion.errorPuerta}
+        onConfirmar={reversion.confirmar}
+        onCancelar={reversion.cancelar}
+      />
 
       {seleccionando ? (
         <div className="d-flex gap-1">
@@ -149,7 +249,7 @@ function FilaRequisitoDocumental({ item, expedienteId, tareaId, pool, onRecargar
             type="button"
             className="btn btn-sm btn-primary"
             disabled={!documentoId || enviando}
-            onClick={vincular}
+            onClick={() => reversion.ejecutar(vincular)}
           >
             Vincular
           </button>
@@ -175,7 +275,7 @@ function FilaRequisitoDocumental({ item, expedienteId, tareaId, pool, onRecargar
   )
 }
 
-function SeccionDocumental({ checklist, expedienteId, tareaId, onRecargar, abiertaInicial }) {
+function SeccionDocumental({ checklist, expedienteId, tareaId, producido, onRecargar, abiertaInicial }) {
   const pool = useArbolStore((s) => s.pool)
   const cargarPool = useArbolStore((s) => s.cargarPool)
 
@@ -196,6 +296,7 @@ function SeccionDocumental({ checklist, expedienteId, tareaId, onRecargar, abier
             expedienteId={expedienteId}
             tareaId={tareaId}
             pool={pool}
+            producido={producido}
             onRecargar={onRecargar}
           />
         ))
@@ -208,10 +309,11 @@ function SeccionDocumental({ checklist, expedienteId, tareaId, onRecargar, abier
 // justificación/ubicación. Máquina de 3 estados de CoberturaItemTecnico
 // (app/models/items_tecnicos.py): sin texto = no revisado; texto+cubierto=false =
 // desfavorable; texto+cubierto=true = favorable.
-function FilaItemTecnico({ item, expedienteId, tareaId, onRecargar }) {
+function FilaItemTecnico({ item, expedienteId, tareaId, producido, onRecargar }) {
   const [texto, setTexto] = React.useState(item.texto || '')
   const [cubierto, setCubierto] = React.useState(item.cubierto)
   const [enviando, setEnviando] = React.useState(false)
+  const reversion = useReversionDiagnostico({ expedienteId, tareaId, producido, onRevertido: onRecargar })
 
   const hayCambios = texto !== (item.texto || '') || cubierto !== item.cubierto
 
@@ -221,6 +323,7 @@ function FilaItemTecnico({ item, expedienteId, tareaId, onRecargar }) {
       await guardarCoberturaTecnica(expedienteId, tareaId, item.item_tecnico_id, {
         texto: texto.trim(), cubierto,
       })
+      showToast('Verificación guardada', 'success')
       await onRecargar()
     } catch (e) {
       showToast((e && e.message) || 'No se pudo guardar la verificación', 'danger')
@@ -270,11 +373,19 @@ function FilaItemTecnico({ item, expedienteId, tareaId, onRecargar }) {
         }}
       />
 
+      <AvisoReversionDiagnostico
+        confirmando={reversion.confirmando}
+        revirtiendo={reversion.revirtiendo}
+        errorPuerta={reversion.errorPuerta}
+        onConfirmar={reversion.confirmar}
+        onCancelar={reversion.cancelar}
+      />
+
       <button
         type="button"
         className="btn btn-sm btn-outline-secondary"
         disabled={!hayCambios || enviando}
-        onClick={guardar}
+        onClick={() => reversion.ejecutar(guardar)}
       >
         {enviando ? 'Guardando…' : 'Guardar'}
       </button>
@@ -282,7 +393,7 @@ function FilaItemTecnico({ item, expedienteId, tareaId, onRecargar }) {
   )
 }
 
-function SeccionTecnica({ checklist, expedienteId, tareaId, onRecargar, abiertaInicial }) {
+function SeccionTecnica({ checklist, expedienteId, tareaId, producido, onRecargar, abiertaInicial }) {
   const revisados = checklist.filter((it) => (it.texto || '').trim()).length
   const resumen = checklist.length > 0 ? `${revisados}/${checklist.length} revisados` : null
 
@@ -297,6 +408,7 @@ function SeccionTecnica({ checklist, expedienteId, tareaId, onRecargar, abiertaI
             item={item}
             expedienteId={expedienteId}
             tareaId={tareaId}
+            producido={producido}
             onRecargar={onRecargar}
           />
         ))
@@ -396,7 +508,7 @@ function FilaSeleccionado({ item, idx, total, onQuitar, onMover, onEditar }) {
   )
 }
 
-function SeccionRequerimientos({ expedienteId, tareaId, onRecargarConsolidado, abiertaInicial }) {
+function SeccionRequerimientos({ expedienteId, tareaId, producido, onRecargarConsolidado, abiertaInicial }) {
   const [catalogo, setCatalogo] = React.useState([])
   const [seleccionados, setSeleccionados] = React.useState([])
   const [cargando, setCargando] = React.useState(true)
@@ -409,6 +521,9 @@ function SeccionRequerimientos({ expedienteId, tareaId, onRecargarConsolidado, a
   const [anadiendoLibre, setAnadiendoLibre] = React.useState(false)
   const nextKeyRef = React.useRef(0)
   const nuevaKey = () => `k${nextKeyRef.current++}`
+  const reversion = useReversionDiagnostico({
+    expedienteId, tareaId, producido, onRevertido: onRecargarConsolidado,
+  })
 
   const cargar = React.useCallback(async () => {
     setCargando(true)
@@ -514,7 +629,7 @@ function SeccionRequerimientos({ expedienteId, tareaId, onRecargarConsolidado, a
       type="button"
       className="btn btn-sm btn-primary"
       disabled={!hayCambiosShuttle || guardando || cargando}
-      onClick={guardarShuttle}
+      onClick={() => reversion.ejecutar(guardarShuttle)}
     >
       {guardando ? 'Guardando…' : 'Guardar cambios'}
     </button>
@@ -530,6 +645,14 @@ function SeccionRequerimientos({ expedienteId, tareaId, onRecargarConsolidado, a
       {cargando ? (
         <div className="text-muted small fst-italic">Cargando…</div>
       ) : (
+        <>
+        <AvisoReversionDiagnostico
+          confirmando={reversion.confirmando}
+          revirtiendo={reversion.revirtiendo}
+          errorPuerta={reversion.errorPuerta}
+          onConfirmar={reversion.confirmar}
+          onCancelar={reversion.cancelar}
+        />
         <div className="row g-2">
           {/* Columna izquierda: catálogo */}
           <div className="col-6">
@@ -629,6 +752,7 @@ function SeccionRequerimientos({ expedienteId, tareaId, onRecargarConsolidado, a
             )}
           </div>
         </div>
+        </>
       )}
     </Acordeon>
   )
@@ -881,6 +1005,7 @@ export default function AnalizarEditor({ tareaId }) {
             checklist={payload.checklist_documental || []}
             expedienteId={expedienteId}
             tareaId={tareaId}
+            producido={producido}
             onRecargar={cargar}
             abiertaInicial={!producido}
           />
@@ -889,6 +1014,7 @@ export default function AnalizarEditor({ tareaId }) {
             checklist={payload.checklist_tecnico || []}
             expedienteId={expedienteId}
             tareaId={tareaId}
+            producido={producido}
             onRecargar={cargar}
             abiertaInicial={!producido}
           />
@@ -896,6 +1022,7 @@ export default function AnalizarEditor({ tareaId }) {
             key={`req-${claveColapso}`}
             expedienteId={expedienteId}
             tareaId={tareaId}
+            producido={producido}
             onRecargarConsolidado={cargar}
             abiertaInicial={!producido}
           />

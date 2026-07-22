@@ -41,7 +41,7 @@ from app.services.assembler import build
 from app.services.requisitos import evaluar_requisitos
 from app.services.items_tecnicos import evaluar_items_tecnicos
 from app.services.consolidacion_defectos import consolidar_defectos
-from app.services.diagnosticos import crear_diagnostico
+from app.services.diagnosticos import crear_diagnostico, revertir_diagnostico, DiagnosticoConsumidoError
 from app.utils.permisos import verificar_acceso_expediente
 
 # Trámites cuya tarea ANALIZAR lleva las secciones extendidas del contenedor
@@ -773,6 +773,26 @@ def _resolver_tarea_analizar(expediente, tarea_id):
     return tarea
 
 
+def _candado_diagnostico_producido(tarea):
+    """422 si la tarea ya tiene diagnóstico producido, o None si puede mutar.
+
+    ADR-033 §5: los tres puntos de persistencia de bloque (Vincular/Desvincular
+    documental, Guardar ítem técnico, Guardar cambios del shuttle) deben pasar
+    por el flujo controlado de reversión — nunca mutar directamente con el
+    diagnóstico ya producido. El cliente revierte primero (DELETE .../analizar,
+    con su propia confirmación destructiva o puerta cerrada) y solo entonces
+    repite la mutación.
+    """
+    if tarea.documento_producido is None:
+        return None
+    return jsonify({
+        'error': 'Diagnóstico ya producido',
+        'motivo': 'El diagnóstico de esta tarea ya se ha producido. Revierte el '
+                  'diagnóstico antes de modificar este bloque.',
+        'puede_escapar': False,
+    }), 422
+
+
 def _tiene_secciones_extendidas(tarea) -> bool:
     """Trámite de la tarea ∈ _TRAMITES_CON_SECCIONES_ANALISIS (#442/#677)."""
     codigo_tramite = (
@@ -951,6 +971,41 @@ def post_analizar(expediente_id, tarea_id):
     }), 200
 
 
+@api_bp.route('/expedientes/<int:expediente_id>/nodo/tarea/<int:tarea_id>/analizar',
+              methods=['DELETE'])
+@login_required
+def delete_analizar(expediente_id, tarea_id):
+    """
+    DELETE .../nodo/tarea/<tarea_id>/analizar — revierte el diagnóstico producido
+    (ADR-033 §5, enmienda ADR-005). Vuelve la tarea a "Borrador defectos".
+
+    Bloqueo (422): tarea sin documento producido, o documento consumido por
+    otra tarea (puerta cerrada — mismo shape que un bloqueo de motor, pero
+    `puede_escapar: false`: no es soslayable con justificación).
+    """
+    expediente = Expediente.query.get_or_404(expediente_id)
+    if verificar_acceso_expediente(expediente, 'gestionar_tarea'):
+        return jsonify({'error': 'No tienes permiso para esta acción'}), 403
+
+    try:
+        tarea = _resolver_tarea_analizar(expediente, tarea_id)
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 404
+
+    try:
+        revertir_diagnostico(tarea)
+    except DiagnosticoConsumidoError as e:
+        return jsonify({
+            'error': 'Diagnóstico consumido',
+            'motivo': str(e),
+            'puede_escapar': False,
+        }), 422
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 422
+
+    return jsonify({'ok': True}), 200
+
+
 @api_bp.route('/expedientes/<int:expediente_id>/nodo/tarea/<int:tarea_id>/notas', methods=['PATCH'])
 @login_required
 def patch_notas_tarea(expediente_id, tarea_id):
@@ -1002,6 +1057,10 @@ def vincular_requisito_documental(expediente_id, tarea_id, requisito_id):
     except ValueError as e:
         return jsonify({'error': str(e)}), 404
 
+    candado = _candado_diagnostico_producido(tarea)
+    if candado:
+        return candado
+
     requisito = RequisitoDocumental.query.get_or_404(requisito_id)
 
     data = request.get_json(silent=True) or {}
@@ -1044,6 +1103,10 @@ def desvincular_requisito_documental(expediente_id, tarea_id, requisito_id):
     except ValueError as e:
         return jsonify({'error': str(e)}), 404
 
+    candado = _candado_diagnostico_producido(tarea)
+    if candado:
+        return candado
+
     solicitud = tarea.tramite.fase.solicitud
     vinculo = DocumentoRequisito.query.filter_by(
         requisito_id=requisito_id, solicitud_id=solicitud.id
@@ -1078,6 +1141,10 @@ def guardar_cobertura_tecnica(expediente_id, tarea_id, item_tecnico_id):
         tarea = _resolver_tarea_analizar(expediente, tarea_id)
     except ValueError as e:
         return jsonify({'error': str(e)}), 404
+
+    candado = _candado_diagnostico_producido(tarea)
+    if candado:
+        return candado
 
     ItemTecnico.query.get_or_404(item_tecnico_id)
 
@@ -1166,6 +1233,10 @@ def post_requerimientos(expediente_id, tarea_id):
         tarea = _resolver_tarea_analizar(expediente, tarea_id)
     except ValueError as e:
         return jsonify({'error': str(e)}), 404
+
+    candado = _candado_diagnostico_producido(tarea)
+    if candado:
+        return candado
 
     data = request.get_json(silent=True) or {}
     items = data.get('items')

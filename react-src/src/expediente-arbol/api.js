@@ -61,6 +61,14 @@ export function postAnalizar(expedienteId, tareaId, body) {
   return api.post(`/api/expedientes/${expedienteId}/nodo/tarea/${tareaId}/analizar`, body)
 }
 
+// Revierte el diagnóstico producido (DELETE, #678, ADR-033 §5): vuelve a
+// "Borrador defectos". Respuesta éxito: {ok:true} 200.
+// Bloqueo (422): {error, motivo, puede_escapar:false} — sin producido, o
+// consumido por otra tarea (puerta cerrada, no forzable).
+export function revertirDiagnostico(expedienteId, tareaId) {
+  return api.delete(`/api/expedientes/${expedienteId}/nodo/tarea/${tareaId}/analizar`)
+}
+
 // Guarda solo `notas` de una tarea (PATCH, #677 ADR-033 §7) — fuera del ciclo
 // borrador/Guardar general (ver AnalizarEditor.jsx, BloqueNotas). Respuesta: {ok:true, notas}.
 export function guardarNotas(expedienteId, tareaId, notas) {
