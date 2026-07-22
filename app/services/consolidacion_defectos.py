@@ -77,17 +77,25 @@ def _items_tecnico(tarea) -> tuple[list, bool]:
     return items, resultado['todos_revisados']
 
 
-def _items_requerimiento(tarea) -> list:
-    """Requerimientos seleccionados por el técnico en el shuttle (#440).
+def _items_requerimiento(tarea) -> tuple[list, list]:
+    """Requerimientos libres de la solicitud (#440, elevado a `solicitud_id`
+    en #679, ADR-033 §7) — pendientes y resueltos por separado.
 
-    A diferencia de documental/técnico, no contribuyen a 'completo' — la
-    selección del técnico es siempre "revisada" por definición, al ser
-    voluntaria. Tampoco componen cita normativa (el modelo no tiene norma_id).
+    A diferencia de documental/técnico, los pendientes no contribuyen a
+    'completo' — la selección del técnico es siempre "revisada" por
+    definición, al ser voluntaria. Tampoco componen cita normativa (el modelo
+    no tiene norma_id).
+
+    Los resueltos (`resuelto=True`, marca manual del técnico) no son defecto
+    activo — se devuelven aparte, solo para que el borrador muestre progreso
+    (ADR-033 §7), sin contar en el borrador que determina el resultado.
     """
-    return [
-        {'texto': r.texto, 'origen': 'requerimiento', 'tarea_id': tarea.id}
-        for r in tarea.requerimientos
-    ]
+    solicitud = tarea.tramite.fase.solicitud
+    pendientes, resueltos = [], []
+    for r in solicitud.requerimientos:
+        item = {'texto': r.texto, 'origen': 'requerimiento', 'tarea_id': tarea.id}
+        (resueltos if r.resuelto else pendientes).append(item)
+    return pendientes, resueltos
 
 
 def consolidar_defectos(tarea) -> dict:
@@ -95,7 +103,13 @@ def consolidar_defectos(tarea) -> dict:
     Consolida los defectos aplicables a la tarea ANALIZAR dada.
 
     Returns:
-        {'items': list, 'completo': bool, 'error': bool}
+        {'items': list, 'items_resueltos': list, 'completo': bool, 'error': bool}
+
+    'items' son los defectos activos: determinan 'completo', el resultado
+    derivado (ADR-033 §3) y lo que se congela en el próximo Diagnostico.
+    'items_resueltos' (ADR-033 §7) son requerimientos libres ya marcados
+    resueltos por el técnico — no cuentan como defecto, solo se exponen para
+    que el borrador muestre progreso sin abrir el escrito notificado.
 
     'completo' es solo técnico (ADR-033 §4): el documental es directo (ausencia
     = defecto, no "pendiente de revisar" — no existe estado "sin revisar" real
@@ -104,10 +118,11 @@ def consolidar_defectos(tarea) -> dict:
     """
     items_documental, _completo_documental = _items_documental(tarea)
     items_tecnico, completo_tecnico = _items_tecnico(tarea)
-    items_requerimiento = _items_requerimiento(tarea)
+    items_requerimiento, items_requerimiento_resueltos = _items_requerimiento(tarea)
 
     return {
         'items': items_documental + items_tecnico + items_requerimiento,
+        'items_resueltos': items_requerimiento_resueltos,
         'completo': completo_tecnico,
         'error': False,
     }
