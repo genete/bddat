@@ -428,9 +428,14 @@ const CATEGORIAS_REQUERIMIENTO = [
 ]
 const ETIQUETA_CATEGORIA = Object.fromEntries(CATEGORIAS_REQUERIMIENTO)
 
-function FilaSeleccionado({ item, idx, total, onQuitar, onMover, onEditar }) {
+// Fila ya persistida (viene de una vuelta anterior o de un guardado previo):
+// la cruz "Quitar" se deshabilita — un requerimiento libre no tiene contra
+// qué casar automáticamente, borrarlo sin más pierde el juicio del técnico
+// sin dejar rastro (ADR-033 §7). Solo se puede marcar "Resuelto".
+function FilaSeleccionado({ item, idx, total, onQuitar, onMover, onEditar, onToggleResuelto }) {
   const [editando, setEditando] = React.useState(false)
   const [texto, setTexto] = React.useState(item.texto)
+  const persistido = Boolean(item.id)
 
   const empezarEdicion = () => { setTexto(item.texto); setEditando(true) }
 
@@ -443,7 +448,15 @@ function FilaSeleccionado({ item, idx, total, onQuitar, onMover, onEditar }) {
   return (
     <div className="d-flex align-items-start gap-1 border-bottom pb-1 mb-1">
       <span className="text-muted" style={{ cursor: 'grab' }} title="Arrastrar para reordenar">⠿</span>
-      <div className="flex-grow-1 small">
+      <div className="form-check mt-1" title="Marcar como resuelto">
+        <input
+          type="checkbox"
+          className="form-check-input"
+          checked={Boolean(item.resuelto)}
+          onChange={() => onToggleResuelto(idx)}
+        />
+      </div>
+      <div className={`flex-grow-1 small ${item.resuelto ? 'text-muted text-decoration-line-through' : ''}`}>
         {editando ? (
           <div className="d-flex gap-1">
             <textarea
@@ -499,7 +512,8 @@ function FilaSeleccionado({ item, idx, total, onQuitar, onMover, onEditar }) {
       <button
         type="button"
         className="btn btn-sm btn-link text-danger p-0 lh-1"
-        title="Quitar"
+        title={persistido ? 'No se puede quitar un requerimiento ya guardado — márcalo resuelto' : 'Quitar'}
+        disabled={persistido}
         onClick={() => onQuitar(idx)}
       >
         ✕
@@ -556,7 +570,8 @@ function SeccionRequerimientos({ expedienteId, tareaId, producido, onRecargarCon
 
   const anadirDelCatalogo = marcarCambio((item) => {
     setSeleccionados((prev) => [...prev, {
-      catalogo_requerimientos_id: item.id, texto_libre: null, texto: item.texto, _key: nuevaKey(),
+      catalogo_requerimientos_id: item.id, texto_libre: null, texto: item.texto,
+      resuelto: false, _key: nuevaKey(),
     }])
   })
 
@@ -580,6 +595,12 @@ function SeccionRequerimientos({ expedienteId, tareaId, producido, onRecargarCon
     ))
   })
 
+  const toggleResuelto = marcarCambio((idx) => {
+    setSeleccionados((prev) => prev.map(
+      (s, i) => (i === idx ? { ...s, resuelto: !s.resuelto } : s)
+    ))
+  })
+
   const anadirTextoLibre = async () => {
     const texto = textoLibre.trim()
     if (!texto) return
@@ -590,11 +611,11 @@ function SeccionRequerimientos({ expedienteId, tareaId, producido, onRecargarCon
         setCatalogo((prev) => [...prev, data.requerimiento])
         setSeleccionados((prev) => [...prev, {
           catalogo_requerimientos_id: data.requerimiento.id, texto_libre: null, texto: data.requerimiento.texto,
-          _key: nuevaKey(),
+          resuelto: false, _key: nuevaKey(),
         }])
       } else {
         setSeleccionados((prev) => [...prev, {
-          catalogo_requerimientos_id: null, texto_libre: texto, texto, _key: nuevaKey(),
+          catalogo_requerimientos_id: null, texto_libre: texto, texto, resuelto: false, _key: nuevaKey(),
         }])
       }
       setHayCambiosShuttle(true)
@@ -612,6 +633,7 @@ function SeccionRequerimientos({ expedienteId, tareaId, producido, onRecargarCon
       await postRequerimientos(expedienteId, tareaId, seleccionados.map((s) => ({
         catalogo_requerimientos_id: s.catalogo_requerimientos_id,
         texto_libre: s.texto_libre,
+        resuelto: Boolean(s.resuelto),
       })))
       showToast('Requerimientos guardados', 'success')
       await cargar()
@@ -747,6 +769,7 @@ function SeccionRequerimientos({ expedienteId, tareaId, producido, onRecargarCon
                   onQuitar={quitar}
                   onMover={mover}
                   onEditar={editarInline}
+                  onToggleResuelto={toggleResuelto}
                 />
               ))
             )}
@@ -762,7 +785,7 @@ function SeccionRequerimientos({ expedienteId, tareaId, producido, onRecargarCon
 // de producir es "Borrador defectos" — agregado vivo, sin avisos, cambia libre
 // al editar cualquier sección. Tras producir es "Resultado diagnóstico" — foto
 // congelada de Diagnostico.defectos, con el resultado ya fijado.
-function BloqueDefectos({ producido, items, resultado }) {
+function BloqueDefectos({ producido, items, resueltos, resultado }) {
   const titulo = producido ? 'Resultado diagnóstico' : 'Borrador defectos'
 
   return (
@@ -776,13 +799,18 @@ function BloqueDefectos({ producido, items, resultado }) {
             </span>
           </div>
         )}
-        {items.length === 0 ? (
+        {items.length === 0 && (!resueltos || resueltos.length === 0) ? (
           <div className="text-muted small fst-italic">
             {producido ? 'Sin defectos.' : 'Sin defectos detectados todavía.'}
           </div>
         ) : (
           <ul className="list-unstyled small mb-0">
-            {items.map((it, i) => <li key={i} className="mb-1">{it.texto}</li>)}
+            {items.map((it, i) => <li key={`p${i}`} className="mb-1">{it.texto}</li>)}
+            {/* Resueltos (ADR-033 §7): requerimientos libres ya cerrados por el
+                técnico — progreso visible en subsanación, no cuentan como defecto. */}
+            {(resueltos || []).map((it, i) => (
+              <li key={`r${i}`} className="mb-1 text-muted text-decoration-line-through">{it.texto}</li>
+            ))}
           </ul>
         )}
         {producido && (
@@ -1037,6 +1065,7 @@ export default function AnalizarEditor({ tareaId }) {
         <BloqueDefectos
           producido={producido}
           items={producido ? payload.documento_producido.defectos : payload.defectos_consolidado}
+          resueltos={producido ? [] : (payload.defectos_resueltos || [])}
           resultado={producido ? payload.documento_producido.resultado : payload.resultado_previsto}
         />
       )}

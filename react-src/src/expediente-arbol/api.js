@@ -99,13 +99,15 @@ export function guardarCoberturaTecnica(expedienteId, tareaId, itemTecnicoId, bo
   )
 }
 
-// Selector de requerimientos (#440): estado inicial del panel shuttle (catálogo + selección).
+// Selector de requerimientos (#440): estado inicial del panel shuttle (catálogo +
+// selección). La selección es por solicitud (#679, ADR-033 §7) — continua entre
+// vueltas de subsanación, aunque la URL cuelgue de una tarea concreta.
 export function getRequerimientos(expedienteId, tareaId) {
   return api.get(`/api/expedientes/${expedienteId}/nodo/tarea/${tareaId}/requerimientos`)
 }
 
-// Sustituye la lista completa de requerimientos_tarea en una sola llamada.
-// body: {items: [{catalogo_requerimientos_id, texto_libre}, ...]}.
+// Sustituye la lista completa de requerimientos_tarea de la solicitud en una sola llamada.
+// body: {items: [{catalogo_requerimientos_id, texto_libre, resuelto}, ...]}.
 export function postRequerimientos(expedienteId, tareaId, items) {
   return api.post(`/api/expedientes/${expedienteId}/nodo/tarea/${tareaId}/requerimientos`, { items })
 }
