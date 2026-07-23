@@ -29,6 +29,7 @@ from app.models.documentos import Documento
 from app.models.tipos_solicitudes import TipoSolicitud
 from app.models.documentos_tarea import DocumentoTarea
 from app.models.tramites_organismos import TramiteOrganismo
+from app.models.notificaciones import Notificacion
 from app.services.assembler import build, build_sujeto
 from app.services import bitacora as bitacora_svc
 from app.services.motor_reglas import EvaluacionResult, PERMITIDO
@@ -36,6 +37,9 @@ from app.services.motor_modo_global import evaluar_con_modo_global as _evaluar
 from app.services.invariantes_esftt import _check_cierre_fase
 from app.services.requisitos import evaluar_requisitos
 from app.services.rutas_esftt import mover_a_esftt, mover_a_pool
+from app.services.parser_justificante_notifica import (
+    parsear_justificante_notifica, parsear_justificante_notifica_zip,
+)
 
 log = logging.getLogger(__name__)
 
@@ -98,6 +102,103 @@ def _hook_458_analizar_separata(tarea, id_producido):
         vinculo = TramiteOrganismo.query.filter_by(tramite_id=tarea.tramite_id).first()
         if vinculo:
             vinculo.organismo_expediente.estado = 'en_tramitacion'
+
+
+# ---------------------------------------------------------------------------
+# Hook #657/#658 (ADR-034 §6): camino B — justificante definitivo
+# ---------------------------------------------------------------------------
+
+# Tipo de documento → canal (TIPOS_DOCUMENTOS_CATALOGO.md). Solo NOTIFICA tiene
+# parser hoy (#655); el resto queda a la espera del "Registrar envío"/"Completar
+# resultado" manual de NotificarEditor (#657).
+_MAPA_CANAL_POR_TIPO_DOC = {
+    'JUSTIFICANTE_NOTIFICA': 'NOTIFICA',
+    'JUSTIFICANTE_BANDEJA':  'BANDEJA',
+    'JUSTIFICANTE_SIR':      'SIR',
+    'JUSTIFICANTE_POSTAL':   'POSTAL',
+}
+
+
+def _parsear_documento_notifica(doc: Documento):
+    """Parsea en disco el justificante NOTIFICA ya vinculado como producido.
+
+    None si el documento no tiene fichero local (URL externa), la extensión
+    no es .pdf/.zip, o el parser no reconoce el contenido — nunca lanza
+    (mismo contrato que parsear_justificante_notifica*, #655).
+    """
+    if '://' in (doc.url or ''):
+        return None
+    try:
+        ruta = doc.ruta_absoluta()
+    except ValueError:
+        return None
+
+    ruta_lower = ruta.lower()
+    if ruta_lower.endswith('.zip'):
+        resultado = parsear_justificante_notifica_zip(ruta)
+    elif ruta_lower.endswith('.pdf'):
+        resultado = parsear_justificante_notifica(ruta)
+    else:
+        return None
+
+    return resultado if resultado.reconocido else None
+
+
+def _hook_657_notificar_resultado(tarea, id_producido) -> Optional[dict]:
+    """Hook #657/#658: al fijar/cambiar documento_producido_id en una tarea NOTIFICAR,
+    upsert de Notificacion buscando por tarea_id (nunca por identificador_envio,
+    ADR-034 §6) + cotejo no bloqueante contra la remesa ya registrada (#658).
+
+    Devuelve un dict de advertencia (cotejo fallido) para que el caller lo
+    propague al cliente, o None. Sin parser para el canal del documento (todo
+    salvo NOTIFICA hoy) solo actualiza documento_id si ya existe fila — sin
+    fila previa y sin datos parseados no puede crearla (fecha_puesta_disposicion
+    es NOT NULL): el usuario debe usar "Registrar envío"/"Completar resultado"
+    a mano en NotificarEditor.
+    """
+    if id_producido is None or tarea.tipo_tarea.codigo != 'NOTIFICAR':
+        return None
+
+    doc = Documento.query.get(id_producido)
+    tipo_codigo = doc.tipo_doc.codigo if doc.tipo_doc else None
+    canal = _MAPA_CANAL_POR_TIPO_DOC.get(tipo_codigo)
+    if canal is None:
+        return None  # tipo de documento no es un justificante de notificación reconocido
+
+    parseo = _parsear_documento_notifica(doc) if canal == 'NOTIFICA' else None
+
+    notif = Notificacion.query.filter_by(tarea_id=tarea.id).first()
+
+    if notif is None:
+        if parseo is None or parseo.fecha_puesta_disposicion is None:
+            return None
+        db.session.add(Notificacion(
+            tarea_id=tarea.id, documento_id=doc.id, canal=canal,
+            identificador_envio=parseo.id_remesa,
+            fecha_puesta_disposicion=parseo.fecha_puesta_disposicion.date(),
+            resultado=parseo.resultado,
+            fecha_resultado=parseo.fecha_lectura.date() if parseo.fecha_lectura else None,
+        ))
+        return None
+
+    advertencia = None
+    if (parseo is not None and notif.identificador_envio and parseo.id_remesa
+            and notif.identificador_envio != parseo.id_remesa):
+        advertencia = {
+            'motivo': (
+                f'El justificante vinculado trae la remesa «{parseo.id_remesa}», '
+                f'distinta de la registrada al notificar («{notif.identificador_envio}»). '
+                'Puede haberse vinculado el justificante de otro expediente.'
+            ),
+        }
+
+    notif.documento_id = doc.id
+    if parseo is not None:
+        notif.identificador_envio = notif.identificador_envio or parseo.id_remesa
+        notif.resultado = parseo.resultado
+        notif.fecha_resultado = parseo.fecha_lectura.date() if parseo.fecha_lectura else None
+
+    return advertencia
 
 
 # ===========================================================================
@@ -355,8 +456,14 @@ def editar_tarea(ta, *, documentos_consumidos_ids: list[int],
         for doc in docs_a_liberar:
             mover_a_pool(doc, expediente)
 
+        # Tras mover_a_esftt (documento ya en su ubicación final) — el hook solo
+        # lee el fichero, no depende de dónde esté, pero mantiene el orden lógico
+        # "vínculos resueltos → efectos derivados" del resto de la función.
+        advertencia = _hook_657_notificar_resultado(ta, documento_producido_id)
+        db.session.flush()
+
         db.session.commit()
-        return ResultadoMutacion(ok=True)
+        return ResultadoMutacion(ok=True, advertencia=advertencia)
     except IntegrityError:
         db.session.rollback()
         return ResultadoMutacion(

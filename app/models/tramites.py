@@ -96,7 +96,7 @@ class Tramite(db.Model):
         y toda tarea NOTIFICAR tiene resultado CORRECTA registrado en notificaciones.
 
         ESPERAR_PLAZO produce CERT_PLAZO_CUMPLIDO (Caso B) o un doc externo (Caso A).
-        NOTIFICAR ejecutada sin fila en notificaciones → INDIFERENTE → no finalizado (#418).
+        NOTIFICAR ejecutada sin resultado registrado (None, ADR-034) → no finalizado (#418).
         Deuda #357 eliminada: ESPERAR_PLAZO ya participa en finalizado (#362).
         """
         _requieren = {'ANALIZAR', 'ELABORAR', 'NOTIFICAR', 'ESPERAR_PLAZO'}

@@ -145,15 +145,16 @@ class Tarea(db.Model):
 
     @property
     def resultado(self):
-        """Resultado de la notificación: CORRECTA | INCORRECTA | INDIFERENTE.
+        """Resultado de la notificación: CORRECTA | INCORRECTA | None.
 
-        Solo aplica a tareas NOTIFICAR. Lee de notificaciones (ADR-008, #418).
-        Sin fila en notificaciones → INDIFERENTE (resultado no registrado aún).
+        Solo aplica a tareas NOTIFICAR. Lee de notificaciones por tarea_id, no
+        por documento (ADR-034, #657/#658 — corrige ADR-008): la fila puede
+        existir sin documento producido (camino A, "Registrar envío") o con
+        documento pero sin resultado aún. None = sin fila, o fila sin
+        resultado registrado (pendiente del justificante definitivo).
         """
-        doc = self.documento_producido
-        if doc and doc.notificacion:
-            return doc.notificacion.resultado
-        return 'INDIFERENTE'
+        notif = self.notificacion
+        return notif.resultado if notif else None
 
     @property
     def estado(self):

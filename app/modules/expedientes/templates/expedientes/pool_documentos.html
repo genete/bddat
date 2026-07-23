@@ -122,7 +122,7 @@
 <template id="tmpl-tipos-doc">
   <option value="">— Tipo —</option>
   {% for t in tipos_doc %}
-  <option value="{{ t.id }}">{{ t.nombre }}</option>
+  <option value="{{ t.id }}" data-codigo="{{ t.codigo }}">{{ t.nombre }}</option>
   {% endfor %}
 </template>
 
@@ -690,6 +690,7 @@
 
   var URL_BASE_DOCS  = '{{ url_for('expedientes.pool_documentos', id=expediente.id) }}';
   var URL_EXPLORADOR = '{{ url_for('expedientes.pool_explorador_fs', id=expediente.id) }}';
+  var URL_PARSEAR_JUSTIFICANTE = '{{ url_for('expedientes.pool_parsear_justificante', id=expediente.id) }}';
 
   // ----------------------------------------------------------------
   // Modales Bootstrap
@@ -1308,6 +1309,16 @@
         '<td class="text-center"><input type="checkbox" class="form-check-input prioridad-check"></td>';
       tbody.appendChild(tr);
       _ef_subida.push(new EntradaFecha('#' + ef_id, { name: '_ef_subir_' + i }));
+
+      // Enganche 1 (ADR-034 §6, #657): autorrelleno de fecha_administrativa al elegir
+      // JUSTIFICANTE_NOTIFICA — parseo transitorio, nunca escribe en notificaciones
+      // (eso ocurre al vincular el documento a la tarea NOTIFICAR, ver hook de editar_tarea).
+      var select = tr.querySelector('.tipo-doc-select');
+      select.addEventListener('change', function () {
+        var opt = select.selectedOptions[0];
+        if (!opt || opt.dataset.codigo !== 'JUSTIFICANTE_NOTIFICA') return;
+        parsear_justificante_especulativo(f, _ef_subida[i]);
+      });
     });
 
     var n = _archivos_subir.length;
@@ -1317,6 +1328,23 @@
       'Subir ' + n + ' fichero(s)';
     document.getElementById('subir-meta-error').classList.add('d-none');
   };
+
+  // Parseo transitorio (sin persistir nada, #657): sube el fichero suelto al
+  // endpoint de preview y, si es un justificante NOTIFICA reconocido,
+  // autorrellena la fecha de puesta a disposición en la EntradaFecha de la fila.
+  function parsear_justificante_especulativo(fichero, entradaFecha) {
+    var formData = new FormData();
+    formData.append('fichero', fichero);
+
+    fetch(URL_PARSEAR_JUSTIFICANTE, { method: 'POST', body: formData })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (data.reconocido && data.fecha_puesta_disposicion) {
+          entradaFecha.setValue(data.fecha_puesta_disposicion.slice(0, 10));
+        }
+      })
+      .catch(function () { /* autorrelleno best-effort — sin bloquear la subida */ });
+  }
 
   window.volver_a_elegir_subida = function () {
     mostrar_paso_elegir_subida();

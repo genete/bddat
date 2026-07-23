@@ -38,8 +38,12 @@ async function request(url, { method = 'GET', body, headers = {}, ...rest } = {}
   }
 
   if (body !== undefined && body !== null) {
-    opts.headers['Content-Type'] = 'application/json'
-    opts.body = typeof body === 'string' ? body : JSON.stringify(body)
+    if (typeof FormData !== 'undefined' && body instanceof FormData) {
+      opts.body = body // sin Content-Type explícito: el navegador fija el boundary multipart
+    } else {
+      opts.headers['Content-Type'] = 'application/json'
+      opts.body = typeof body === 'string' ? body : JSON.stringify(body)
+    }
   }
 
   if (!METODOS_SIN_CSRF.has(m)) {

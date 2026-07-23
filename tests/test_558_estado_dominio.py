@@ -16,21 +16,22 @@ import app.services.estado_dominio as ed
 # Dobles ligeros
 # ---------------------------------------------------------------------------
 
-def _doc(tipo_codigo=None, notif=None):
+def _doc(tipo_codigo=None):
     tipo_doc = SimpleNamespace(codigo=tipo_codigo) if tipo_codigo else None
-    return SimpleNamespace(tipo_doc=tipo_doc, notificacion=notif)
+    return SimpleNamespace(tipo_doc=tipo_doc)
 
 
 def _notif(resultado, numero_intento=1):
     return SimpleNamespace(resultado=resultado, numero_intento=numero_intento)
 
 
-def _tarea(codigo, *, consumidos=(), producido=None):
+def _tarea(codigo, *, consumidos=(), producido=None, notificacion=None):
     cons = list(consumidos)
     return SimpleNamespace(
         tipo_tarea=SimpleNamespace(codigo=codigo),
         documentos_consumidos=cons,
         documento_producido=producido,
+        notificacion=notificacion,
         ejecutada=producido is not None,
         planificada=(not cons and producido is None),
     )
@@ -79,7 +80,7 @@ def test_elaborar_producido_fin():
 
 
 # ---------------------------------------------------------------------------
-# Hoja — NOTIFICAR (escalada 🔵 → 🟠 → 🔴 vía Notificacion)
+# Hoja — NOTIFICAR (escalada 🔵 → 🟠 → 🔴 vía Notificacion, anclada a tarea_id — ADR-034)
 # ---------------------------------------------------------------------------
 
 def test_notificar_sin_consumido_tramitar():
@@ -88,16 +89,21 @@ def test_notificar_sin_consumido_tramitar():
 def test_notificar_sin_resultado_notificar():
     assert ed.estado_tarea(_tarea('NOTIFICAR', consumidos=[_doc()])) == 'PENDIENTE_NOTIFICAR'
 
+def test_notificar_envio_registrado_sin_resultado():
+    # Camino A ("Registrar envío"): fila creada, resultado aún None.
+    t = _tarea('NOTIFICAR', consumidos=[_doc()], notificacion=_notif(None))
+    assert ed.estado_tarea(t) == 'PENDIENTE_RESULTADO_NOTIFICACION'
+
 def test_notificar_correcta_fin():
-    t = _tarea('NOTIFICAR', consumidos=[_doc()], producido=_doc(notif=_notif('CORRECTA')))
+    t = _tarea('NOTIFICAR', consumidos=[_doc()], producido=_doc(), notificacion=_notif('CORRECTA'))
     assert ed.estado_tarea(t) == 'FIN'
 
 def test_notificar_incorrecta_1_fallida():
-    t = _tarea('NOTIFICAR', consumidos=[_doc()], producido=_doc(notif=_notif('INCORRECTA', 1)))
+    t = _tarea('NOTIFICAR', consumidos=[_doc()], producido=_doc(), notificacion=_notif('INCORRECTA', 1))
     assert ed.estado_tarea(t) == 'NOTIFICACION_FALLIDA'
 
 def test_notificar_incorrecta_2_agotada():
-    t = _tarea('NOTIFICAR', consumidos=[_doc()], producido=_doc(notif=_notif('INCORRECTA', 2)))
+    t = _tarea('NOTIFICAR', consumidos=[_doc()], producido=_doc(), notificacion=_notif('INCORRECTA', 2))
     assert ed.estado_tarea(t) == 'NOTIFICACION_AGOTADA'
 
 

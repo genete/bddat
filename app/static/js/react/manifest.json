@@ -3,8 +3,8 @@
     "file": "asset.index.BZV40eAE.css",
     "src": "_asset.index.BZV40eAE.css"
   },
-  "_chunk.api.CX0gFXCE.js": {
-    "file": "chunk.api.CX0gFXCE.js",
+  "_chunk.api.DtbDZOzf.js": {
+    "file": "chunk.api.DtbDZOzf.js",
     "name": "api",
     "imports": [
       "_chunk.toast.mBx_XGmh.js"
@@ -38,14 +38,14 @@
     "name": "value"
   },
   "src/command-palette/index.jsx": {
-    "file": "bundle.command-palette.DpP3vF6s.js",
+    "file": "bundle.command-palette.Cnpvnt_H.js",
     "name": "command-palette",
     "src": "src/command-palette/index.jsx",
     "isEntry": true,
     "imports": [
       "_chunk.toast.mBx_XGmh.js",
       "_chunk.index.DJHfLAKz.js",
-      "_chunk.api.CX0gFXCE.js"
+      "_chunk.api.DtbDZOzf.js"
     ],
     "css": [
       "asset.command-palette.Ce9U0oTV.css"
@@ -67,25 +67,25 @@
     ]
   },
   "src/estadisticas/index.jsx": {
-    "file": "bundle.estadisticas.CMESvYFi.js",
+    "file": "bundle.estadisticas.Lmsr9gl_.js",
     "name": "estadisticas",
     "src": "src/estadisticas/index.jsx",
     "isEntry": true,
     "imports": [
       "_chunk.toast.mBx_XGmh.js",
-      "_chunk.api.CX0gFXCE.js",
+      "_chunk.api.DtbDZOzf.js",
       "_chunk.value.BGBiTkF3.js"
     ]
   },
   "src/expediente-arbol/index.jsx": {
-    "file": "bundle.expediente-arbol.Dfs7L1fY.js",
+    "file": "bundle.expediente-arbol.0f7-6bx5.js",
     "name": "expediente-arbol",
     "src": "src/expediente-arbol/index.jsx",
     "isEntry": true,
     "imports": [
       "_chunk.toast.mBx_XGmh.js",
       "_chunk.index.DJHfLAKz.js",
-      "_chunk.api.CX0gFXCE.js",
+      "_chunk.api.DtbDZOzf.js",
       "_chunk.index.Blwhwh0b.js",
       "_chunk.value.BGBiTkF3.js"
     ],
@@ -94,14 +94,14 @@
     ]
   },
   "src/mi-trabajo/index.jsx": {
-    "file": "bundle.mi-trabajo.xRpDBkPS.js",
+    "file": "bundle.mi-trabajo.D2hApKsm.js",
     "name": "mi-trabajo",
     "src": "src/mi-trabajo/index.jsx",
     "isEntry": true,
     "imports": [
       "_chunk.toast.mBx_XGmh.js",
       "_chunk.index.DJHfLAKz.js",
-      "_chunk.api.CX0gFXCE.js"
+      "_chunk.api.DtbDZOzf.js"
     ]
   }
 }

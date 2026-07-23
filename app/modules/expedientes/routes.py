@@ -40,6 +40,9 @@ from app.services.plazos import obtener_estado_plazo
 from app.services.rutas_esftt import ruta_pool_documento, nombre_pool_unico
 from app.services.consolidacion_defectos import agrupar_defectos_por_origen
 from app.services.detalle_nodo import info_apertura_documento
+from app.services.parser_justificante_notifica import (
+    parsear_justificante_notifica, parsear_justificante_notifica_zip,
+)
 from app.utils.permisos import (
     puede_cambiar_responsable,
     verificar_acceso_expediente,
@@ -765,6 +768,39 @@ def pool_subir_documento(id):
         return jsonify({'ok': False, 'error': str(e)}), 500
 
     return jsonify({'ok': True, 'creados': creados})
+
+
+@bp.route('/<int:id>/documentos/parsear_justificante', methods=['POST'])
+@login_required
+def pool_parsear_justificante(id):
+    """
+    POST .../documentos/parsear_justificante — enganche 1 de subida al pool
+    (ADR-034 §6, #657): parseo especulativo y transitorio del justificante
+    NOTIFICA elegido en el paso de metadatos (`.tipo-doc-select` código
+    JUSTIFICANTE_NOTIFICA), disparado desde `pool_documentos.html` antes de
+    confirmar la subida. Solo autorrelleno de UX (fecha_administrativa del
+    propio Documento) — no escribe nada en `notificaciones` (eso ocurre en el
+    hook de `editar_tarea` al vincular el documento a la tarea NOTIFICAR).
+
+    Multipart: 'fichero'. Nunca 404/422 por contenido no reconocido — mismo
+    contrato que el parser (#655): devuelve `{reconocido: false}`.
+    """
+    expediente = Expediente.query.get_or_404(id)
+    resultado = verificar_acceso_expediente(expediente, 'subir_documento')
+    if resultado:
+        return resultado
+
+    fichero = request.files.get('fichero')
+    if not fichero or not fichero.filename:
+        return jsonify({'error': 'Ningún fichero recibido'}), 400
+
+    nombre = fichero.filename.lower()
+    if nombre.endswith('.zip'):
+        parseo = parsear_justificante_notifica_zip(fichero.stream)
+    else:
+        parseo = parsear_justificante_notifica(fichero.stream)
+
+    return jsonify(parseo.to_dict())
 
 
 @bp.route('/<int:id>/documentos/<int:doc_id>/fichero')

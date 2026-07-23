@@ -82,13 +82,12 @@ def _opciones_solicitud() -> list:
         .selectinload(Tarea.vinculos_documento)
         .joinedload(DocumentoTarea.documento)
         .joinedload(Documento.tipo_doc),
-        # Documento + notificacion (resultado/intento de NOTIFICAR, §3).
+        # Notificacion de la tarea (resultado/intento de NOTIFICAR, §3) — anclada a
+        # tarea_id (ADR-034), no al documento producido: puede existir sin documento.
         selectinload(Solicitud.fases)
         .selectinload(Fase.tramites)
         .selectinload(Tramite.tareas)
-        .selectinload(Tarea.vinculos_documento)
-        .joinedload(DocumentoTarea.documento)
-        .joinedload(Documento.notificacion),
+        .joinedload(Tarea.notificacion),
     ]
 
 

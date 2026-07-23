@@ -28,13 +28,6 @@ def _notificacion_stub(resultado):
     return n
 
 
-def _doc_producido(resultado=None):
-    """Stub de Documento con notificacion opcional (ADR-008, #418)."""
-    doc = MagicMock()
-    doc.notificacion = _notificacion_stub(resultado) if resultado else None
-    return doc
-
-
 class _Vinculo:
     """Stub de DocumentoTarea (vínculo documento↔tarea con rol)."""
     def __init__(self, rol, documento=None):
@@ -49,10 +42,11 @@ class _StubTarea:
     de forma que `Tarea.estado.fget(stub)` funciona sin instanciar SQLAlchemy.
     Los vínculos documentales viven en `vinculos_documento` (ADR-010, #420).
     """
-    def __init__(self, codigo, doc_producido=None, vinculos=None):
+    def __init__(self, codigo, doc_producido=None, vinculos=None, notificacion=None):
         self.tipo_tarea = _tipo_tarea(codigo)
         self.documento_producido = doc_producido
         self.vinculos_documento = vinculos or []
+        self.notificacion = notificacion
 
     @property
     def planificada(self):
@@ -117,7 +111,7 @@ class _StubTareaConResultado(_StubTarea):
     Tramite.finalizado llama t.resultado; en stubs lo exponemos como atributo
     directo para controlar el valor sin necesidad de ResultadoDocumento en BD.
     """
-    def __init__(self, codigo, doc_producido_id=None, resultado='INDIFERENTE'):
+    def __init__(self, codigo, doc_producido_id=None, resultado=None):
         vinculos = [_Vinculo('PRODUCIDO')] if doc_producido_id is not None else []
         super().__init__(codigo, vinculos=vinculos)
         self._resultado_override = resultado
@@ -143,27 +137,27 @@ def _tarea_estado(stub):
 
 class TestTareaResultado:
 
-    def test_sin_doc_producido_es_indiferente(self):
-        t = _StubTarea('NOTIFICAR', doc_producido=None)
-        assert _tarea_resultado(t) == 'INDIFERENTE'
+    def test_sin_fila_notificacion_es_none(self):
+        t = _StubTarea('NOTIFICAR', notificacion=None)
+        assert _tarea_resultado(t) is None
 
-    def test_doc_sin_notificacion_es_indiferente(self):
-        # Justificante cargado pero sin fila en notificaciones → INDIFERENTE
-        t = _StubTarea('NOTIFICAR', doc_producido=_doc_producido(resultado=None))
-        assert _tarea_resultado(t) == 'INDIFERENTE'
+    def test_fila_sin_resultado_es_none(self):
+        # Envío registrado (camino A) pero sin resultado aún (ADR-034) → None
+        t = _StubTarea('NOTIFICAR', notificacion=_notificacion_stub(None))
+        assert _tarea_resultado(t) is None
 
-    def test_doc_con_resultado_incorrecta(self):
-        t = _StubTarea('NOTIFICAR', doc_producido=_doc_producido('INCORRECTA'))
+    def test_fila_con_resultado_incorrecta(self):
+        t = _StubTarea('NOTIFICAR', notificacion=_notificacion_stub('INCORRECTA'))
         assert _tarea_resultado(t) == 'INCORRECTA'
 
-    def test_doc_con_resultado_correcta(self):
-        t = _StubTarea('NOTIFICAR', doc_producido=_doc_producido('CORRECTA'))
+    def test_fila_con_resultado_correcta(self):
+        t = _StubTarea('NOTIFICAR', notificacion=_notificacion_stub('CORRECTA'))
         assert _tarea_resultado(t) == 'CORRECTA'
 
-    def test_analisis_siempre_indiferente(self):
-        # ANALIZAR no tiene notificacion — siempre INDIFERENTE
-        t = _StubTarea('ANALIZAR', doc_producido=_doc_producido(resultado=None))
-        assert _tarea_resultado(t) == 'INDIFERENTE'
+    def test_analisis_siempre_none(self):
+        # ANALIZAR no tiene notificacion — siempre None
+        t = _StubTarea('ANALIZAR', notificacion=None)
+        assert _tarea_resultado(t) is None
 
 
 class TestTareaEstado:
@@ -202,8 +196,8 @@ class TestTramiteFinalizadoConResultado:
         assert _tramite_finalizado(tr) is True
 
     def test_notificar_doc_producido_sin_resultado_no_finalizado(self):
-        # NOTIFICAR ejecutada sin resultado registrado (INDIFERENTE) no finaliza (#418)
-        t = _StubTareaConResultado('NOTIFICAR', doc_producido_id=10, resultado='INDIFERENTE')
+        # NOTIFICAR ejecutada sin resultado registrado (None, ADR-034) no finaliza (#418)
+        t = _StubTareaConResultado('NOTIFICAR', doc_producido_id=10, resultado=None)
         tr = _StubTramite(tareas=[t])
         assert _tramite_finalizado(tr) is False
 
