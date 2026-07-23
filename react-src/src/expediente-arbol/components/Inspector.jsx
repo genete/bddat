@@ -175,8 +175,13 @@ function Documentos({ documentos, expedienteId }) {
             <div className="d-flex align-items-center gap-2">
               <i className="bi bi-file-earmark" />
               {d.puede_abrir && d.abrir_en === 'modal' ? (
+                // .btn global (v2-components.css) es inline-flex + justify-content:center
+                // (pensado para botones icono+texto de ancho ajustado); este botón además
+                // crece con flex-grow-1 dentro de la fila, así que sin justify-content-start
+                // el nombre queda centrado en el hueco sobrante — text-start no basta, ese
+                // solo afecta text-align, no la alineación del flex item (#696).
                 <button type="button"
-                        className="btn btn-link p-0 text-start flex-grow-1 text-truncate"
+                        className="btn btn-link p-0 text-start justify-content-start flex-grow-1 text-truncate"
                         data-modal-large-url={d.enlace}
                         data-modal-large-title={d.nombre}
                         title={d.nombre}>
