@@ -479,7 +479,7 @@ function FilaSeleccionado({ item, idx, total, onQuitar, onMover, onEditar, onTog
           <span>{item.texto}</span>
         )}
       </div>
-      {!editando && !item.catalogo_requerimientos_id && (
+      {!editando && !item.catalogo_requerimientos_id && !persistido && (
         <button
           type="button"
           className="btn btn-sm btn-link p-0 lh-1"
