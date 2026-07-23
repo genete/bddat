@@ -793,13 +793,27 @@ def _candado_diagnostico_producido(tarea):
     }), 422
 
 
-def _tiene_secciones_extendidas(tarea) -> bool:
-    """Trámite de la tarea ∈ _TRAMITES_CON_SECCIONES_ANALISIS (#442/#677)."""
-    codigo_tramite = (
+def _codigo_tramite(tarea) -> str | None:
+    return (
         tarea.tramite.tipo_tramite.codigo
         if tarea.tramite and tarea.tramite.tipo_tramite else None
     )
-    return codigo_tramite in _TRAMITES_CON_SECCIONES_ANALISIS
+
+
+def _tiene_secciones_extendidas(tarea) -> bool:
+    """Trámite de la tarea ∈ _TRAMITES_CON_SECCIONES_ANALISIS (#442/#677)."""
+    return _codigo_tramite(tarea) in _TRAMITES_CON_SECCIONES_ANALISIS
+
+
+def _es_ronda_subsanacion(tarea) -> bool:
+    """
+    True si la tarea es de REQUERIMIENTO_SUBSANACIÓN (#695): en ese trámite se
+    coteja lo heredado de una vuelta ya producida (ADR-033 §7) — el shuttle de
+    requerimientos ofrece "Marcar como resuelto" y bloquea editar/quitar.
+    En ANALISIS_DOCUMENTAL se está redactando el defecto por primera vez, así
+    que ahí solo caben editar/quitar, nunca "resuelto".
+    """
+    return _codigo_tramite(tarea) == 'REQUERIMIENTO_SUBSANACION'
 
 
 def _resultado_derivado(consolidado: dict) -> str:
@@ -859,8 +873,9 @@ def get_analizar(expediente_id, tarea_id):
     GET .../nodo/tarea/<tarea_id>/analizar — payload del contenedor de #442/#677.
 
     {resultado, resultado_previsto, documento_producido: {...}|null,
-     secciones_extendidas: bool, defectos_consolidado: [...], defectos_resueltos: [...],
-     completo: bool, checklist_documental: [...], checklist_tecnico: [...], notas}
+     secciones_extendidas: bool, es_ronda_subsanacion: bool, defectos_consolidado: [...],
+     defectos_resueltos: [...], completo: bool, checklist_documental: [...],
+     checklist_tecnico: [...], notas}
 
     `resultado_previsto` (ADR-033 §3): sentido que tendría el diagnóstico si se
     produjera ahora mismo, derivado del borrador agregado — informativo en
@@ -904,6 +919,7 @@ def get_analizar(expediente_id, tarea_id):
         'resultado_previsto': _resultado_derivado(consolidado),
         'documento_producido': documento_producido,
         'secciones_extendidas': secciones_extendidas,
+        'es_ronda_subsanacion': _es_ronda_subsanacion(tarea),
         'defectos_consolidado': consolidado['items'],
         'defectos_resueltos': consolidado['items_resueltos'],
         'completo': consolidado['completo'],

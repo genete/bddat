@@ -423,14 +423,18 @@ const CATEGORIAS_REQUERIMIENTO = [
 ]
 const ETIQUETA_CATEGORIA = Object.fromEntries(CATEGORIAS_REQUERIMIENTO)
 
-// Fila ya persistida (viene de una vuelta anterior o de un guardado previo):
-// la cruz "Quitar" se deshabilita — un requerimiento libre no tiene contra
-// qué casar automáticamente, borrarlo sin más pierde el juicio del técnico
-// sin dejar rastro (ADR-033 §7). Solo se puede marcar "Resuelto".
-function FilaSeleccionado({ item, idx, total, onQuitar, onMover, onEditar, onToggleResuelto }) {
+// El modo de la fila depende del tipo de trámite de la tarea actual, no de si
+// el ítem ya está guardado (#695): en ANÁLISIS_DOCUMENTAL se está redactando
+// el defecto por primera vez — no puede estar "resuelto" algo que aún no se ha
+// notificado, así que ahí solo caben editar/quitar (igual que Documental y
+// Técnico, con el mismo mecanismo de reversión si hay diagnóstico producido).
+// En REQUERIMIENTO_SUBSANACIÓN se coteja lo heredado de una vuelta ya
+// producida — ahí el juicio es "resuelto o no", editar/quitar quedan
+// deshabilitados (ADR-033 §7: un requerimiento libre no tiene contra qué casar
+// automáticamente, borrarlo sin más pierde el juicio del técnico sin rastro).
+function FilaSeleccionado({ item, idx, total, esRondaSubsanacion, onQuitar, onMover, onEditar, onToggleResuelto }) {
   const [editando, setEditando] = React.useState(false)
   const [texto, setTexto] = React.useState(item.texto)
-  const persistido = Boolean(item.id)
 
   const empezarEdicion = () => { setTexto(item.texto); setEditando(true) }
 
@@ -443,14 +447,16 @@ function FilaSeleccionado({ item, idx, total, onQuitar, onMover, onEditar, onTog
   return (
     <div className="d-flex align-items-start gap-1 border-bottom pb-1 mb-1">
       <span className="text-muted" style={{ cursor: 'grab' }} title="Arrastrar para reordenar">⠿</span>
-      <div className="form-check mt-1" title="Marcar como resuelto">
-        <input
-          type="checkbox"
-          className="form-check-input"
-          checked={Boolean(item.resuelto)}
-          onChange={() => onToggleResuelto(idx)}
-        />
-      </div>
+      {esRondaSubsanacion && (
+        <div className="form-check mt-1" title="Marcar como resuelto">
+          <input
+            type="checkbox"
+            className="form-check-input"
+            checked={Boolean(item.resuelto)}
+            onChange={() => onToggleResuelto(idx)}
+          />
+        </div>
+      )}
       <div className={`flex-grow-1 small ${item.resuelto ? 'text-muted text-decoration-line-through' : ''}`}>
         {editando ? (
           <div className="d-flex gap-1">
@@ -474,7 +480,7 @@ function FilaSeleccionado({ item, idx, total, onQuitar, onMover, onEditar, onTog
           <span>{item.texto}</span>
         )}
       </div>
-      {!editando && !item.catalogo_requerimientos_id && !persistido && (
+      {!editando && !item.catalogo_requerimientos_id && !esRondaSubsanacion && (
         <button
           type="button"
           className="btn btn-sm btn-link p-0 lh-1"
@@ -507,8 +513,8 @@ function FilaSeleccionado({ item, idx, total, onQuitar, onMover, onEditar, onTog
       <button
         type="button"
         className="btn btn-sm btn-link text-danger p-0 lh-1"
-        title={persistido ? 'No se puede quitar un requerimiento ya guardado — márcalo resuelto' : 'Quitar'}
-        disabled={persistido}
+        title={esRondaSubsanacion ? 'No se puede quitar en una ronda de subsanación — márcalo resuelto' : 'Quitar'}
+        disabled={esRondaSubsanacion}
         onClick={() => onQuitar(idx)}
       >
         ✕
@@ -517,7 +523,7 @@ function FilaSeleccionado({ item, idx, total, onQuitar, onMover, onEditar, onTog
   )
 }
 
-function SeccionRequerimientos({ expedienteId, tareaId, producido, onRecargarConsolidado, abiertaInicial }) {
+function SeccionRequerimientos({ expedienteId, tareaId, producido, esRondaSubsanacion, onRecargarConsolidado, abiertaInicial }) {
   const [catalogo, setCatalogo] = React.useState([])
   const [seleccionados, setSeleccionados] = React.useState([])
   const [cargando, setCargando] = React.useState(true)
@@ -760,6 +766,7 @@ function SeccionRequerimientos({ expedienteId, tareaId, producido, onRecargarCon
                   item={item}
                   idx={idx}
                   total={seleccionados.length}
+                  esRondaSubsanacion={esRondaSubsanacion}
                   onQuitar={quitar}
                   onMover={mover}
                   onEditar={editarInline}
@@ -1056,6 +1063,7 @@ export default function AnalizarEditor({ tareaId }) {
             expedienteId={expedienteId}
             tareaId={tareaId}
             producido={producido}
+            esRondaSubsanacion={payload.es_ronda_subsanacion}
             onRecargarConsolidado={cargar}
             abiertaInicial={!producido}
           />
