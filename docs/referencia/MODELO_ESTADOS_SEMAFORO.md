@@ -1,8 +1,8 @@
 # Modelo de estados-semáforo y decoradores del nodo ESFTT
 
 **Estado:** Vigente
-**Fecha:** 2026-05-30
-**Relacionado:** #500 (vista de árbol), #558 (núcleo unificado), ADR-016,
+**Fecha:** 2026-05-30 (actualizado 2026-07-23 — nuevo estado `PENDIENTE_RESULTADO_NOTIFICACION`, ADR-034/#657/#658)
+**Relacionado:** #500 (vista de árbol), #558 (núcleo unificado), ADR-016, ADR-034,
 `app/services/estado_dominio.py` (núcleo), `app/services/seguimiento.py`,
 mockup `docs/mockups/Mockup_Nodo_Arbol.html`.
 **Supera:** §4.1–§4.4 de `docs/historial/ANALISIS_LISTADO_INTELIGENTE.md` (histórico; allí
@@ -74,11 +74,15 @@ el **único producido**. Requiere el tipo de documento `BORRADOR_FIRMA` (§11). 
 firma lo hace el usuario; se automatizará con scheduler + Playwright (futuro).
 
 ### NOTIFICAR  *(absorbe el azul de la antigua PUBLICAR)*
-Usa el modelo `Notificacion` (`resultado` CORRECTA|INCORRECTA, `numero_intento` 1|2 — LPACAP).
+Usa el modelo `Notificacion` (`resultado` CORRECTA|INCORRECTA|NULL, `numero_intento` 1|2 —
+LPACAP), anclado a `tarea_id` (ADR-034, #657/#658 — corrige ADR-008): la fila puede existir
+sin documento producido (camino A, "Registrar envío") y sin resultado mientras se espera el
+justificante definitivo.
 | Situación | Estado | Color |
 |---|---|---|
 | sin documento firmado que notificar | PENDIENTE_TRAMITAR | 🔴 |
-| documento presente, sin notificación registrada | PENDIENTE_NOTIFICAR | 🔵 |
+| documento presente, sin fila `Notificacion` | PENDIENTE_NOTIFICAR | 🔵 |
+| fila `Notificacion` con `resultado IS NULL` (envío registrado, falta el definitivo) | PENDIENTE_RESULTADO_NOTIFICACION | 🔵 |
 | `Notificacion` CORRECTA | FIN | 🟢 |
 | INCORRECTA, `numero_intento = 1` (queda 2º intento) | NOTIFICACION_FALLIDA | 🟠 |
 | INCORRECTA, `numero_intento = 2` (agotada → procede edicto) | NOTIFICACION_AGOTADA | 🔴 |
@@ -128,8 +132,9 @@ prioridad**; cada proyección acumula su propio contador.
 | 6 | NOTIFICACION_FALLIDA | 🟠 |
 | 7 | PENDIENTE_FIRMA | 🟡 |
 | 8 | PENDIENTE_NOTIFICAR | 🔵 |
-| 9 | PENDIENTE_PLAZOS | ⚪ |
-| 10 | FIN | 🟢 |
+| 9 | PENDIENTE_RESULTADO_NOTIFICACION | 🔵 |
+| 10 | PENDIENTE_PLAZOS | ⚪ |
+| 11 | FIN | 🟢 |
 
 `PENDIENTE_SUBSANAR` no es del núcleo: es el relabel de `PENDIENTE_PLAZOS` en la pista SOL
 del seguimiento (mismo gris).
