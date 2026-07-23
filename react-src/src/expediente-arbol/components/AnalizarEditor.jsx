@@ -38,12 +38,10 @@ const ETIQUETA_RESULTADO = {
 }
 
 // Acordeón genérico (ADR-033 §1/§6): cabecera clicable con resumen de estado +
-// cuerpo colapsable. `accionesCabecera` (opcional) va en la cabecera pero no
-// dispara el toggle (stopPropagation) — lo usa Requerimientos para su propio
-// "Guardar cambios". `abiertaInicial` solo se lee al montar: el padre fuerza
+// cuerpo colapsable. `abiertaInicial` solo se lee al montar: el padre fuerza
 // un remount (key) cuando cambia el estado producido/no-producido para que la
 // regla "colapsado al entrar en edición" se aplique en el momento correcto.
-function Acordeon({ titulo, resumen, accionesCabecera, abiertaInicial, children }) {
+function Acordeon({ titulo, resumen, abiertaInicial, children }) {
   const [abierta, setAbierta] = React.useState(abiertaInicial)
   const toggle = () => setAbierta((a) => !a)
 
@@ -60,9 +58,6 @@ function Acordeon({ titulo, resumen, accionesCabecera, abiertaInicial, children 
         <span>{titulo}</span>
         <span className="d-flex align-items-center gap-2">
           {resumen && <span className="text-muted fw-normal">{resumen}</span>}
-          {accionesCabecera && (
-            <span onClick={(e) => e.stopPropagation()}>{accionesCabecera}</span>
-          )}
           <i className={`bi ${abierta ? 'bi-chevron-up' : 'bi-chevron-down'}`} />
         </span>
       </div>
@@ -661,7 +656,6 @@ function SeccionRequerimientos({ expedienteId, tareaId, producido, onRecargarCon
     <Acordeon
       titulo="Requerimientos"
       resumen={resumen}
-      accionesCabecera={botonGuardar}
       abiertaInicial={abiertaInicial}
     >
       {cargando ? (
@@ -775,6 +769,7 @@ function SeccionRequerimientos({ expedienteId, tareaId, producido, onRecargarCon
             )}
           </div>
         </div>
+        <div className="mt-2">{botonGuardar}</div>
         </>
       )}
     </Acordeon>
