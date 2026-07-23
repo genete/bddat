@@ -133,6 +133,34 @@ export function getEscritosPreview(plantillaId, tareaId) {
   return api.get(`/api/escritos/preview?plantilla_id=${plantillaId}&tarea_id=${tareaId}`)
 }
 
+// Contenedor de la tarea NOTIFICAR (#657/#658, ADR-034). Respuesta: {notificacion:
+// {canal, identificador_envio, fecha_puesta_disposicion, resultado, fecha_resultado,
+// numero_intento, observaciones, documento_id}|null, documento_producido:{id,nombre}|null}.
+export function getNotificar(expedienteId, tareaId) {
+  return api.get(`/api/expedientes/${expedienteId}/nodo/tarea/${tareaId}/notificar`)
+}
+
+// "Registrar envío" (camino A, opcional): body {canal, identificador_envio?,
+// fecha_puesta_disposicion}. Upsert por tarea_id — no toca resultado/fecha_resultado.
+export function postNotificar(expedienteId, tareaId, body) {
+  return api.post(`/api/expedientes/${expedienteId}/nodo/tarea/${tareaId}/notificar`, body)
+}
+
+// "Completar resultado" (camino B manual): body {resultado, fecha_resultado,
+// numero_intento, observaciones?}. 422 si no hay envío registrado todavía.
+export function patchNotificar(expedienteId, tareaId, body) {
+  return api.patch(`/api/expedientes/${expedienteId}/nodo/tarea/${tareaId}/notificar`, body)
+}
+
+// Parseo transitorio del justificante (multipart, sin persistir nada) para
+// autorrellenar "Registrar envío" — el usuario verifica/corrige antes de confirmar.
+// Respuesta: el .to_dict() del parser (incluye `reconocido`, fechas ISO).
+export function postNotificarParsear(expedienteId, tareaId, fichero) {
+  const formData = new FormData()
+  formData.append('fichero', fichero)
+  return api.post(`/api/expedientes/${expedienteId}/nodo/tarea/${tareaId}/notificar/parsear`, formData)
+}
+
 // Genera el .docx y lo guarda en disco + pool (#608: asignar_doc_producido siempre
 // false — el .docx es un auxiliar de trabajo, no dispara cambio de estado de la
 // tarea; el ciclo BORRADOR_FIRMA/firmado se gestiona aparte vía Despensa).

@@ -13,6 +13,7 @@ import Semaforo from './nodos/Semaforo.jsx'
 import Despensa from './Despensa.jsx'
 import AnalizarEditor from './AnalizarEditor.jsx'
 import ElaborarEditor from './ElaborarEditor.jsx'
+import NotificarEditor from './NotificarEditor.jsx'
 
 const ETIQUETA_TIPO = {
   expediente: 'Expediente',
@@ -399,9 +400,13 @@ function InspectorEdicion({ nodo }) {
   // ELABORAR (#608): idem, para enganchar "Generar escrito" (backend #167, huérfano
   // de UI desde la eliminación del sistema BC en #500).
   const esElaborar = seleccion.tipo === 'tarea' && nodo && nodo.tipo_codigo === 'ELABORAR'
+  // NOTIFICAR (#657/#658, ADR-034): idem, "Registrar envío"/"Completar resultado".
+  // Igual que ELABORAR, la Despensa NO se deshabilita — sigue siendo el mecanismo
+  // genérico que vincula el documento producido (desacoplado de estos formularios).
+  const esNotificar = seleccion.tipo === 'tarea' && nodo && nodo.tipo_codigo === 'NOTIFICAR'
   // Superficie-de-trabajo (ADR-023 §5 bis): sin borrador global, persistencia por
   // bloque — el marco no lleva Guardar/Cancelar, solo Cerrar.
-  const esSuperficieTrabajo = esAnalizar || esElaborar
+  const esSuperficieTrabajo = esAnalizar || esElaborar || esNotificar
   // ADR-033 §1: en ANALIZAR extendido (ANÁLISIS_DOCUMENTAL/REQUERIMIENTO_SUBSANACIÓN)
   // casar un requisito documental deriva el consumido — la Despensa queda sin uso
   // legítimo y se oculta. En ANALIZAR simple (p.ej. CONSULTA_SEPARATA) sigue viva,
@@ -418,7 +423,9 @@ function InspectorEdicion({ nodo }) {
             ? <AnalizarEditor tareaId={seleccion.id} />
             : esElaborar
               ? <ElaborarEditor tareaId={seleccion.id} nodo={nodo} />
-              : <Editor />
+              : esNotificar
+                ? <NotificarEditor tareaId={seleccion.id} />
+                : <Editor />
         }
       </div>
       {!borrarPendienteConfirm && !ocultarDespensa && (
