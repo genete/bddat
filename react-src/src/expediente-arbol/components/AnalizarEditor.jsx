@@ -1002,9 +1002,19 @@ export default function AnalizarEditor({ tareaId }) {
     }
   }, [expedienteId, tareaId, setAnalizarSeccionesExtendidas])
 
-  React.useEffect(() => { cargar() }, [cargar])
+  // Al cambiar de tarea (no al recargar la misma por una mutación puntual),
+  // se limpia el payload para que el gate de abajo muestre "Cargando…" — evita
+  // el flash de datos de la tarea anterior mientras llega la nueva (#693/#697).
+  React.useEffect(() => {
+    setPayload(null)
+    cargar()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [expedienteId, tareaId])
 
-  if (cargando) return <div className="text-muted small">Cargando…</div>
+  // Con payload ya cargado, una recarga por mutación (onRecargar/onRecargarConsolidado
+  // de las secciones) no debe reemplazar el árbol entero — solo refresca los datos
+  // ya montados (#693, #697: remount completo en cada vinculación/guardado puntual).
+  if (cargando && !payload) return <div className="text-muted small">Cargando…</div>
   if (error) {
     return <div className="text-danger small">No se pudo cargar: {String((error && error.message) || error)}</div>
   }
