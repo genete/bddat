@@ -34,32 +34,34 @@ from typing import Optional
 # --- Color por estado (MODELO §2; el front mapea nombre → paleta JdA) ---
 # El orden refleja la prioridad: el color es coherente con la urgencia (#558).
 COLOR: dict[str, str] = {
-    'PENDIENTE_TRAMITAR':   'rojo',
-    'PENDIENTE_ESTUDIO':    'rojo',
-    'PENDIENTE_REDACTAR':   'rojo',
-    'NOTIFICACION_AGOTADA': 'rojo',
-    'PENDIENTE_CERRAR':     'naranja',
-    'NOTIFICACION_FALLIDA': 'naranja',
-    'PENDIENTE_FIRMA':      'amarillo',
-    'PENDIENTE_NOTIFICAR':  'azul',
-    'PENDIENTE_PLAZOS':     'gris',
-    'FIN':                  'verde',
+    'PENDIENTE_TRAMITAR':              'rojo',
+    'PENDIENTE_ESTUDIO':               'rojo',
+    'PENDIENTE_REDACTAR':              'rojo',
+    'NOTIFICACION_AGOTADA':            'rojo',
+    'PENDIENTE_CERRAR':                'naranja',
+    'NOTIFICACION_FALLIDA':            'naranja',
+    'PENDIENTE_FIRMA':                 'amarillo',
+    'PENDIENTE_NOTIFICAR':             'azul',
+    'PENDIENTE_RESULTADO_NOTIFICACION': 'azul',
+    'PENDIENTE_PLAZOS':                'gris',
+    'FIN':                             'verde',
 }
 
 # --- Prioridad canónica (1 = más urgente; al agregar se queda el de menor número) ---
 # Orden ratificado #558: gradiente de "trabajo del tramitador". Monótono con el color,
 # sin empates entre bandas distintas (el ganador de cada celda es determinista).
 PRIORIDAD: dict[str, int] = {
-    'PENDIENTE_TRAMITAR':   1,   # 🔴 trabajo del tramitador
-    'PENDIENTE_ESTUDIO':    2,   # 🔴 (analizar · decidir resultado de fase finalizadora)
-    'PENDIENTE_REDACTAR':   3,   # 🔴
-    'NOTIFICACION_AGOTADA': 4,   # 🔴 procede publicación en boletín
-    'PENDIENTE_CERRAR':     5,   # 🟠 nuestra gestión (formalizar cierre de fase)
-    'NOTIFICACION_FALLIDA': 6,   # 🟠 2º intento de notificación pendiente
-    'PENDIENTE_FIRMA':      7,   # 🟡 no depende del tramitador, pero paraliza si falta
-    'PENDIENTE_NOTIFICAR':  8,   # 🔵 a la espera de un externo
-    'PENDIENTE_PLAZOS':     9,   # ⚪ espera pasiva
-    'FIN':                  10,  # 🟢
+    'PENDIENTE_TRAMITAR':               1,   # 🔴 trabajo del tramitador
+    'PENDIENTE_ESTUDIO':                2,   # 🔴 (analizar · decidir resultado de fase finalizadora)
+    'PENDIENTE_REDACTAR':               3,   # 🔴
+    'NOTIFICACION_AGOTADA':             4,   # 🔴 procede publicación en boletín
+    'PENDIENTE_CERRAR':                 5,   # 🟠 nuestra gestión (formalizar cierre de fase)
+    'NOTIFICACION_FALLIDA':             6,   # 🟠 2º intento de notificación pendiente
+    'PENDIENTE_FIRMA':                  7,   # 🟡 no depende del tramitador, pero paraliza si falta
+    'PENDIENTE_NOTIFICAR':              8,   # 🔵 a la espera de que el destinatario reciba el envío
+    'PENDIENTE_RESULTADO_NOTIFICACION': 9,   # 🔵 envío ya registrado, a la espera del justificante definitivo
+    'PENDIENTE_PLAZOS':                 10,  # ⚪ espera pasiva
+    'FIN':                              11,  # 🟢
 }
 
 # Tipo de documento cuyo consumo distingue PENDIENTE_FIRMA de PENDIENTE_REDACTAR (§3 ELABORAR).
@@ -124,13 +126,18 @@ def estado_tarea(tarea, plazo: Optional[dict] = None) -> str:
 
 
 def _estado_notificar(tarea) -> str:
-    """NOTIFICAR (§3): usa el modelo Notificacion (resultado + numero_intento)."""
+    """NOTIFICAR (§3): usa el modelo Notificacion (resultado + numero_intento), anclado
+    a la tarea (ADR-034) — se lee vía `tarea.notificacion`, no por el documento
+    producido: la fila puede existir (camino A, "Registrar envío") antes de que
+    haya ningún documento vinculado.
+    """
     if not tarea.documentos_consumidos:
         return 'PENDIENTE_TRAMITAR'        # falta el documento firmado que notificar
-    doc = tarea.documento_producido
-    notif = getattr(doc, 'notificacion', None) if doc else None
+    notif = getattr(tarea, 'notificacion', None)
     if notif is None:
-        return 'PENDIENTE_NOTIFICAR'       # 🔵 a la espera del destinatario
+        return 'PENDIENTE_NOTIFICAR'       # 🔵 a la espera de que se registre el envío
+    if notif.resultado is None:
+        return 'PENDIENTE_RESULTADO_NOTIFICACION'  # 🔵 envío registrado, falta el definitivo
     if notif.resultado == 'CORRECTA':
         return 'FIN'
     # INCORRECTA: 1 → queda 2º intento (🟠); 2 → agotada, procede edicto (🔴)

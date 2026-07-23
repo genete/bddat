@@ -141,14 +141,13 @@ def _check_finalizar_fase(fase_id: int) -> Optional[EvaluacionResult]:
     if tarea_incompleta:
         return _bloquear('Hay tareas sin documento producido en esta fase. Finalice todas las tareas antes de cerrar la fase.')
 
-    # Tarea NOTIFICAR con resultado INCORRECTA bloquea el cierre de la fase (#418)
+    # Tarea NOTIFICAR con resultado INCORRECTA bloquea el cierre de la fase (#418).
+    # Join directo por tarea_id (ADR-034) — Notificacion ya no cuelga del documento.
     notificar_incorrecta = (
         db.session.query(Tarea)
         .join(Tramite, Tarea.tramite_id == Tramite.id)
         .join(TipoTarea, Tarea.tipo_tarea_id == TipoTarea.id)
-        .join(DocumentoTarea, db.and_(DocumentoTarea.tarea_id == Tarea.id,
-                                      DocumentoTarea.rol == 'PRODUCIDO'))
-        .join(Notificacion, Notificacion.documento_id == DocumentoTarea.documento_id)
+        .join(Notificacion, Notificacion.tarea_id == Tarea.id)
         .filter(
             Tramite.fase_id == fase_id,
             TipoTarea.codigo == 'NOTIFICAR',
@@ -186,13 +185,12 @@ def _check_finalizar_tramite(tramite_id: int) -> Optional[EvaluacionResult]:
     if tarea_incompleta:
         return _bloquear('Hay tareas sin ejecutar. Finalice todas las tareas antes de cerrar el trámite.')
 
-    # Tarea NOTIFICAR con resultado INCORRECTA bloquea el cierre del trámite (#418)
+    # Tarea NOTIFICAR con resultado INCORRECTA bloquea el cierre del trámite (#418).
+    # Join directo por tarea_id (ADR-034) — Notificacion ya no cuelga del documento.
     notificar_incorrecta = (
         db.session.query(Tarea)
         .join(TipoTarea, Tarea.tipo_tarea_id == TipoTarea.id)
-        .join(DocumentoTarea, db.and_(DocumentoTarea.tarea_id == Tarea.id,
-                                      DocumentoTarea.rol == 'PRODUCIDO'))
-        .join(Notificacion, Notificacion.documento_id == DocumentoTarea.documento_id)
+        .join(Notificacion, Notificacion.tarea_id == Tarea.id)
         .filter(
             Tarea.tramite_id == tramite_id,
             TipoTarea.codigo == 'NOTIFICAR',

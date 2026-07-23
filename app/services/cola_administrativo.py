@@ -100,8 +100,8 @@ def _query_base(cursor: int, filtros: dict):
             joinedload(Tarea.tipo_tarea),
             joinedload(Tarea.vinculos_documento)
                 .joinedload(DocumentoTarea.documento).joinedload(Documento.tipo_doc),
-            joinedload(Tarea.vinculos_documento)
-                .joinedload(DocumentoTarea.documento).joinedload(Documento.notificacion),
+            # Notificacion anclada a tarea_id (ADR-034), no al documento producido.
+            joinedload(Tarea.notificacion),
             joinedload(Tarea.tramite).joinedload(Tramite.tipo_tramite),
             joinedload(Tarea.tramite).joinedload(Tramite.fase).joinedload(Fase.tipo_fase),
             joinedload(Tarea.tramite).joinedload(Tramite.fase)
