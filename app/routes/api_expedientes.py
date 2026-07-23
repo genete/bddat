@@ -1187,6 +1187,7 @@ def _seleccionados_json(solicitud) -> list:
         'orden': r.orden,
         'desde_catalogo': r.desde_catalogo,
         'catalogo_requerimientos_id': r.catalogo_requerimientos_id,
+        'texto_libre': r.texto_libre,
         'resuelto': r.resuelto,
     } for r in sorted(solicitud.requerimientos, key=lambda r: r.orden)]
 
