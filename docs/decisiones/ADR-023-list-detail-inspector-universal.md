@@ -4,6 +4,7 @@
 **Fecha:** 2026-06-07
 **Revisado:** 2026-06-10 — (1) el inspector pasa de columna negociada (*push*) a **overlay nativo**, eliminando la negociación de espacio; (2) se define el modelo de **tres capas** (listado · inspector · modal grande) con **navegación por capas, no por rutas**, y el inspector como base de **lectura y edición de campos**. Ver §"Historial de la decisión".
 **Revisado:** 2026-07-18 — marco de edición unificado: **barra superior fija** (cabecera + control de salida), distinción **superficie-de-trabajo / nodo-de-campos** y contrato de salida **"Cerrar / Guardar / Cancelar"**. Ver §5 bis y §Historial. Implementa: #676. Relacionado: ADR-033 (inspector de ANALIZAR).
+**Revisado:** 2026-07-29 — el par Guardar/Cancelar de los **campos directos** se unifica en la barra fija para **todo** tipo de nodo, incluida la superficie-de-trabajo; se retira la excepción de §5 bis. Implementa: #688.
 **Issue:** #534
 **Depende de:** ADR-022 (#533) — escala densa y tabla unificada.
 **Enmienda:** ADR-016 §14 (el inspector resizable se redefine como mecanismo de shell, ver §3).
@@ -100,16 +101,20 @@ La edición del inspector, en **cualquier nodo**, se enmarca en una **barra supe
 **Dos formas de superficie editable:**
 
 - **Nodo-de-campos** (solicitud, fase, trámite, tarea genérica…): los atributos escalares se editan en un **borrador global** que se persiste en bloque. El marco lleva el **par Guardar / Cancelar** (§5) junto al control de salida.
-- **Superficie-de-trabajo** (tarea ANALIZAR —ADR-033—, y análogas): **no hay borrador global**; cada sub-bloque persiste por su cuenta en su propio momento (vincular documento, guardar ítem técnico, guardar shuttle…). El marco lleva **solo el control de salida**; lo que sería campo de tabla (p. ej. `notas` de la tarea) baja a un bloque más con su guardar inline, no cuelga de un par global.
+- **Superficie-de-trabajo** (tarea ANALIZAR —ADR-033—, y análogas): además de los campos directos, la superficie aloja sub-bloques que **persisten por su cuenta en su propio momento** (vincular documento, guardar ítem técnico, guardar shuttle, registrar envío…), fuera del borrador global.
+
+**Los campos directos siempre cuelgan del borrador global y de la barra** (rev. 2026-07-29, #688). La distinción anterior —que en superficie-de-trabajo no hubiera borrador global y que `notas` bajara a un bloque con guardar inline propio— se retira: era una excepción por el emplazamiento del control, y salía cara. Un bloque con ciclo propio no participa del `hayCambios` del marco, así que la barra no pasaba a "Cancelar", cerrar descartaba en silencio y el `beforeunload` no se armaba; además el Guardar global seguía enviando el valor viejo del campo y revertía lo guardado inline. La regla es: **campo directo del registro ⇒ borrador global ⇒ Guardar/Cancelar de la barra**, sea cual sea la forma de la superficie. Lo que un sub-bloque persiste por su cuenta es otra cosa y no entra en este ciclo.
+
+Cuando el borrador global toca datos que un sub-bloque puede haber cambiado por detrás (caso real: los vínculos CONSUMIDO que el check documental de ANALIZAR deriva en el backend), el guardado debe usar una **vía estrecha por campo** que no arrastre lo que no cambió — no volver a partir el control de salida.
 
 **Contrato del control de salida** (idéntico en ambas formas, para una única regla mental):
 
 - El control de salida está **siempre presente**. Con la superficie limpia se rotula **"Cerrar"** y sale a lectura sin revertir nada.
-- **Guardar y Cancelar solo se habilitan cuando hay un borrador vivo** (cambios sin guardar en el borrador global). Sin borrador, no hay nada que guardar ni que cancelar — por eso una superficie-de-trabajo, que no tiene borrador global, nunca los muestra.
+- **Guardar y Cancelar solo se habilitan cuando hay un borrador vivo** (cambios sin guardar en el borrador global). Sin borrador, no hay nada que guardar ni que cancelar.
 - **Con cambios sin guardar, cerrar no puede dejarlos en limbo**: el gesto de salida se comporta como **Cancelar** (descarta y sale). La confirmación no es un diálogo nuevo: la impone el propio modo edición — mientras hay borrador vivo, el light-dismiss del shell (clic fuera, Escape, ×) queda bloqueado (§5, backdrop bloqueante), así que la única salida posible es este mismo control, pulsado de forma consciente. No existe un "cerrar sin consecuencias" en estado sucio — o se guarda, o se descarta.
 - La **× del shell** y **Escape** siguen el mismo contrato: en limpio cierran; en sucio disparan la guarda de descarte (§5, `beforeunload` incluido).
 
-Esto unifica **entrar / guardar / cancelar / salir** para todo nodo, retira el par Guardar/Cancelar muerto de superficies sin borrador global, y elimina la ambigüedad "¿cancelé solo un campo o toda la tarea?": donde no hay borrador global, no hay Cancelar que malinterpretar.
+Esto unifica **entrar / guardar / cancelar / salir** para todo nodo: un único sitio donde se guarda y se sale, con independencia de qué pinte el contenedor de abajo. La ambigüedad "¿cancelé solo un campo o toda la tarea?" se resuelve por el alcance del borrador, no por la ausencia del control: Cancelar descarta el borrador de campos directos, nunca lo que un sub-bloque ya persistió por su cuenta.
 
 ### 6. Tercer modo — modal grande para gestión compleja
 
@@ -164,6 +169,8 @@ Lo que **no cabe** en el inspector escala a un **modal grande** (maximizado con 
   2. **Modelo de tres capas + edición en el inspector + modal grande.** Al acotar el alcance se vio que "el inspector muestra lectura y para editar/gestionar se navega a la página" **reintroduce la maraña** que el ADR mata: la causa raíz es la *navegación entre rutas*, no dónde se muestra el detalle. Se decide que toda la interacción ocurra como **capas en una misma página** (listado · inspector · modal grande), donde "volver" = cerrar capa. El inspector edita los **campos** del elemento; lo que no cabe (sub-colecciones con CRUD) escala a un **modal grande** que vuelve solo. Las páginas de detalle/edición dejan de ser rutas-destino (su contenido se trocea en fragmentos; la ruta de detalle redirige a `?sel`).
 
 - **2026-07-18** — **Marco de edición unificado (§5 bis).** Al criticar el flujo de la tarea ANALIZAR de principio a fin (ADR-033) se detectó que (a) la salida de la edición viajaba con el scroll, cambiando de sitio según el contenido —una diana inestable, no memorizable—; (b) el inspector de ANALIZAR no es un *nodo-de-campos* sino una *superficie-de-trabajo* con persistencia por-bloque, donde el par Guardar/Cancelar global quedaba muerto (no había nada global que guardar) y su "Cancelar" era ambiguo (¿revierte un campo o toda la tarea?). Se fija: **barra superior fija** con cabecera + control de salida; distinción **superficie-de-trabajo / nodo-de-campos**; y el contrato **"Cerrar siempre; Guardar/Cancelar solo con borrador vivo; cerrar-en-sucio = Cancelar"**. Unifica la salida para todo nodo.
+
+- **2026-07-29** — **Los campos directos vuelven al borrador global y a la barra (#688).** La revisión anterior dio por bueno que una superficie-de-trabajo *no tuviera* borrador global y que `notas` bajara a un bloque con guardar inline. La premisa era falsa: `notas` es un campo directo del registro como cualquier otro, y sacarlo del borrador rompió el contrato de salida justo donde más se nota — sin participar de `hayCambios`, la barra nunca pasaba a "Cancelar", cerrar descartaba en silencio y el `beforeunload` no se armaba; encima el Guardar global seguía mandando el valor sembrado al entrar, revirtiendo lo guardado inline. Lo que había motivado la excepción era un problema distinto y de otra capa (el PATCH global arrastraba `documentos_consumidos_ids` obsoleto frente a los vínculos que el check documental deriva por detrás), y se resuelve donde toca: guardando por **vía estrecha por campo**. Queda: el emplazamiento del control no depende de la forma de la superficie; lo que varía es solo qué hay dentro del borrador.
 
 ---
 
