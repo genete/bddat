@@ -23,6 +23,13 @@ from app.services.motor_reglas import EvaluacionResult
 _TIPOS_REQUIEREN_DOC_PRODUCIDO = {'ANALIZAR', 'ELABORAR', 'NOTIFICAR'}
 _TIPOS_REQUIEREN_DOC_USADO     = {'ANALIZAR', 'NOTIFICAR'}
 
+# Trámites cuyos ANALIZAR encadenan diagnósticos: cada vuelta de subsanación revisa lo
+# mismo que la anterior y la supera (#711). Fuera de esta lista los diagnósticos de una
+# fase son paralelos —un CONSULTA_SEPARATA por organismo— y ninguno supera a otro.
+# Capa "casos especiales (código)" del catálogo; si algún día aparecen más cadenas,
+# el sitio natural sería un flag en `tipos_tramites`, no alargar esta lista.
+_TRAMITES_CADENA_SUBSANACION = frozenset({'ANALISIS_DOCUMENTAL', 'REQUERIMIENTO_SUBSANACION'})
+
 # Códigos de resultado de fase finalizadora que se consideran resolución favorable.
 # Usado por tiene_solicitud_aap_favorable (art. 131.1 párr. 2 RD 1955/2000).
 RESULTADO_FASE_FAVORABLE_CODIGOS = frozenset({'FAVORABLE', 'FAVORABLE_CONDICIONADO'})
@@ -204,18 +211,57 @@ def _check_finalizar_tramite(tramite_id: int) -> Optional[EvaluacionResult]:
     return None
 
 
-def _check_cierre_fase(fase_id: int, codigo_resultado: str) -> Optional[EvaluacionResult]:
-    """Bloquea el cierre de la fase si hay diagnóstico desfavorable sin consumir y el resultado no es DESFAVORABLE (#419).
+def _ultima_tarea_cadena_subsanacion(fase_id: int) -> Optional[int]:
+    """`Tarea.id` del último ANALIZAR con diagnóstico de la cadena de subsanación, o None.
 
-    El único resultado de cierre permitido cuando hay diagnósticos desfavorables
-    sin consumir es DESFAVORABLE. Cualquier otro resultado queda bloqueado.
-    Un diagnóstico se considera consumido cuando su documento aparece como
-    CONSUMIDO en cualquier otra tarea de la fase.
+    "Último" por `id`: no hay ninguna columna de fecha en `diagnosticos`, `tramites`
+    ni `tareas`. Mismo criterio de orden que ya usa `ContextoSubsanacion` para
+    localizar el trámite anterior.
+    """
+    from app.models.tipos_tareas import TipoTarea
+    from app.models.tipos_tramites import TipoTramite
+    from app.models.documentos_tarea import DocumentoTarea
+    from app.models.diagnosticos import Diagnostico
+
+    return (
+        db.session.query(db.func.max(Tarea.id))
+        .join(Tramite, Tarea.tramite_id == Tramite.id)
+        .join(TipoTarea, Tarea.tipo_tarea_id == TipoTarea.id)
+        .join(TipoTramite, Tramite.tipo_tramite_id == TipoTramite.id)
+        .join(DocumentoTarea, db.and_(
+            DocumentoTarea.tarea_id == Tarea.id,
+            DocumentoTarea.rol == 'PRODUCIDO',
+        ))
+        .join(Diagnostico, Diagnostico.documento_id == DocumentoTarea.documento_id)
+        .filter(
+            Tramite.fase_id == fase_id,
+            TipoTarea.codigo == 'ANALIZAR',
+            TipoTramite.codigo.in_(_TRAMITES_CADENA_SUBSANACION),
+        )
+        .scalar()
+    )
+
+
+def _check_cierre_fase(fase_id: int, codigo_resultado: str) -> Optional[EvaluacionResult]:
+    """Bloquea el cierre de la fase si hay diagnóstico desfavorable vigente sin consumir
+    y el resultado no es DESFAVORABLE (#419, corregido en #711).
+
+    Un diagnóstico se considera consumido cuando su documento aparece como CONSUMIDO
+    en cualquier otra tarea de la fase.
+
+    **Vigencia (#711).** Dentro de la cadena de subsanación solo cuenta el ÚLTIMO
+    diagnóstico: cada vuelta revisa lo mismo que la anterior y la supera, así que un
+    desfavorable corregido en la vuelta siguiente ya no debe bloquear (nada crea un
+    vínculo CONSUMIDO sobre él, ver #717). Fuera de la cadena la regla original queda
+    intacta: los diagnósticos de una fase CONSULTAS son paralelos —uno por organismo,
+    `CONSULTA_SEPARATA` es 1:1 con `organismos_expediente`— y ninguno supera a otro,
+    de modo que cualquier desfavorable sin consumir sigue bloqueando.
     """
     if codigo_resultado == 'DESFAVORABLE':
         return None
 
     from app.models.tipos_tareas import TipoTarea
+    from app.models.tipos_tramites import TipoTramite
     from app.models.documentos_tarea import DocumentoTarea
     from app.models.diagnosticos import Diagnostico
 
@@ -236,10 +282,13 @@ def _check_cierre_fase(fase_id: int, codigo_resultado: str) -> Optional[Evaluaci
         .exists()
     )
 
-    diagnostico_sin_consumir = (
+    ultima_cadena_id = _ultima_tarea_cadena_subsanacion(fase_id)
+
+    diagnostico_bloqueante = (
         db.session.query(Tarea)
         .join(Tramite, Tarea.tramite_id == Tramite.id)
         .join(TipoTarea, Tarea.tipo_tarea_id == TipoTarea.id)
+        .join(TipoTramite, Tramite.tipo_tramite_id == TipoTramite.id)
         .join(DocumentoTarea, db.and_(
             DocumentoTarea.tarea_id == Tarea.id,
             DocumentoTarea.rol == 'PRODUCIDO',
@@ -250,11 +299,18 @@ def _check_cierre_fase(fase_id: int, codigo_resultado: str) -> Optional[Evaluaci
             TipoTarea.codigo == 'ANALIZAR',
             Diagnostico.resultado == 'desfavorable',
             ~_consumido,
+            # Fuera de la cadena bloquea siempre; dentro, solo el último de la cadena.
+            # Con la cadena vacía, `Tarea.id == None` compila a IS NULL: no casa ninguna
+            # fila y queda solo la rama de "fuera de la cadena", que es lo correcto.
+            db.or_(
+                TipoTramite.codigo.notin_(_TRAMITES_CADENA_SUBSANACION),
+                Tarea.id == ultima_cadena_id,
+            ),
         )
         .first()
     )
 
-    if diagnostico_sin_consumir:
+    if diagnostico_bloqueante:
         return _bloquear(
             'Hay un diagnóstico desfavorable sin consumir en esta fase. '
             'No es posible cerrarla con un resultado no desfavorable.'
