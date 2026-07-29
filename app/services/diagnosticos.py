@@ -116,6 +116,12 @@ def _hay_notificacion_posterior_en_cadena(tarea: Tarea) -> bool:
     `REQUERIMIENTO_SUBSANACION` el NOTIFICAR es anterior al ANALIZAR —notifica el
     requerimiento de esa vuelta y se apoya en el diagnóstico de la vuelta ANTERIOR—,
     de modo que comparar por `id` de tarea distingue los dos casos sin más reglas.
+
+    Supuesto conocido: el `id` refleja el orden del patrón FTT (`tramites_tareas.orden`)
+    porque las tareas se crean siguiéndolo, no porque nada lo garantice — hoy la creación
+    no consulta ese orden (#719). Si se creara el ANALIZAR antes que su NOTIFICAR, este
+    check bloquearía de más. Cuando #719 aterrice, el criterio podrá apoyarse en el orden
+    canónico en lugar del `id`.
     """
     from app.models.tramites import Tramite
     from app.models.tipos_tareas import TipoTarea
