@@ -7,7 +7,7 @@
 // S3b-1: modoEdicion + lock + editor genérico (entrar/guardar/cancelar + refresco).
 // S3b añadirá: despensa, colapsos manuales por nivel.
 import { create } from 'zustand'
-import { getArbol, getNodo, getEditable, patchNodo, getTiposCreables, postHijo, getPool, deleteNodo } from './api.js'
+import { getArbol, getNodo, getEditable, patchNodo, getTiposCreables, postHijo, getPool, deleteNodo, guardarNotas } from './api.js'
 import { showToast } from '../shared/ui/toast.js'
 
 // AbortController de la petición de detalle en curso (fuera del estado: no re-render).
@@ -177,12 +177,31 @@ export const useArbolStore = create((set, get) => ({
     if (habiaCambios) showToast('Cambios descartados', 'info')
   },
 
+  // Persiste el borrador completo y sale a lectura (ADR-023 §5 bis: Guardar es
+  // control de salida, no un checkpoint intermedio).
+  //
+  // Enrutado del PATCH (#688): `editar_tarea` diffea los vínculos documentales
+  // contra `documentos_consumidos_ids` y libera a pool/ lo que sobre. En una
+  // tarea ANALIZAR extendida ese campo del borrador queda OBSOLETO durante la
+  // sesión — el check documental deriva vínculos CONSUMIDO en el backend
+  // (sincronizar_consumido_documental, #677) sin pasar por aquí. Por eso, si lo
+  // único que difiere del snapshot inicial es `notas`, se guarda por la vía
+  // estrecha (PATCH .../notas), que no toca vínculos: el Guardar de la cabecera
+  // deja de poder deshacer lo que el propio contenedor acaba de derivar.
+  // Si cambiaron los vínculos (Despensa viva: ANALIZAR simple, ELABORAR,
+  // NOTIFICAR), el borrador SÍ es la verdad y va el PATCH completo de siempre.
   guardar: async () => {
-    const { expedienteId, seleccion, borrador } = get()
+    const { expedienteId, seleccion, borrador, borradorInicial } = get()
     if (!seleccion) return
+    const camposSucios = Object.keys(borrador).filter(
+      (k) => JSON.stringify(borrador[k]) !== JSON.stringify(borradorInicial[k]))
+    const soloNotas = seleccion.tipo === 'tarea' &&
+                      camposSucios.length > 0 && camposSucios.every((k) => k === 'notas')
     set({ guardando: true })
     try {
-      const data = await patchNodo(expedienteId, seleccion.tipo, seleccion.id, borrador)
+      const data = soloNotas
+        ? await guardarNotas(expedienteId, seleccion.id, borrador.notas)
+        : await patchNodo(expedienteId, seleccion.tipo, seleccion.id, borrador)
       showToast('Cambios guardados', 'success')
       if (data && data.advertencia) {                 // defensivo (PATCH editar no lo emite hoy)
         const a = data.advertencia

@@ -352,15 +352,20 @@ function Editor() {
 
 // Barra superior fija del marco de edición (ADR-023 §5 bis, #676): cabecera +
 // control de salida, inmutable al scroll del contenido de abajo.
-//   · nodo-de-campos (esSuperficieTrabajo=false): Guardar (solo con borrador vivo) +
-//     botón adaptativo Cerrar/Cancelar.
-//   · superficie-de-trabajo (ANALIZAR/ELABORAR): solo el botón, rótulo fijo "Cerrar"
-//     — su propio par Guardar/Cancelar (ligado a lo que la Despensa apila) se queda
-//     intacto más abajo, aparte del marco (ver AnalizarEditor.jsx/ElaborarEditor.jsx).
-//   onClick siempre `cancelar` — misma acción del store para ambas formas y estados;
-//   solo cambia el rótulo. La confirmación en sucio ya la impone el bloqueo de
-//   light-dismiss del shell (ADR-023 §5 bis), no un diálogo aparte aquí.
-function BarraEdicion({ tipo, nodo, esSuperficieTrabajo }) {
+//
+// El par Guardar/Cancelar de los CAMPOS DIRECTOS del nodo (el esquema editable
+// genérico — hoy `notas` en tarea, `observaciones` en el resto) vive siempre
+// aquí, para cualquier tipo de nodo incluida la superficie-de-trabajo (#688,
+// enmienda de ADR-023 §5 bis): el emplazamiento del control no depende de qué
+// pinte el contenedor de abajo. Lo que cada contenedor bespoke persiste por su
+// cuenta y de inmediato (check documental, check técnico, shuttle, registrar
+// envío…) es ortogonal y no pasa por este ciclo.
+//
+//   onClick del botón de salida siempre `cancelar` — misma acción del store para
+//   ambos rótulos; solo cambia el texto según haya borrador vivo. La confirmación
+//   en sucio ya la impone el bloqueo de light-dismiss del shell (ADR-023 §5 bis),
+//   no un diálogo aparte aquí.
+function BarraEdicion({ tipo, nodo }) {
   const guardando  = useArbolStore((s) => s.guardando)
   const guardar    = useArbolStore((s) => s.guardar)
   const cancelar   = useArbolStore((s) => s.cancelar)
@@ -370,14 +375,12 @@ function BarraEdicion({ tipo, nodo, esSuperficieTrabajo }) {
     <div className="flex-shrink-0 border-bottom p-3 d-flex align-items-start justify-content-between gap-2">
       <Cabecera tipo={tipo} nodo={nodo} compacta />
       <div className="d-flex gap-2 flex-shrink-0">
-        {!esSuperficieTrabajo && (
-          <button type="button" className="btn btn-sm btn-primary"
-                  disabled={guardando || !hayCambios} onClick={guardar}>
-            {guardando ? 'Guardando…' : 'Guardar'}
-          </button>
-        )}
+        <button type="button" className="btn btn-sm btn-primary"
+                disabled={guardando || !hayCambios} onClick={guardar}>
+          {guardando ? 'Guardando…' : 'Guardar'}
+        </button>
         <button type="button" className="btn btn-sm btn-outline-secondary" onClick={cancelar}>
-          {!esSuperficieTrabajo && hayCambios ? 'Cancelar' : 'Cerrar'}
+          {hayCambios ? 'Cancelar' : 'Cerrar'}
         </button>
       </div>
     </div>
@@ -404,9 +407,6 @@ function InspectorEdicion({ nodo }) {
   // Igual que ELABORAR, la Despensa NO se deshabilita — sigue siendo el mecanismo
   // genérico que vincula el documento producido (desacoplado de estos formularios).
   const esNotificar = seleccion.tipo === 'tarea' && nodo && nodo.tipo_codigo === 'NOTIFICAR'
-  // Superficie-de-trabajo (ADR-023 §5 bis): sin borrador global, persistencia por
-  // bloque — el marco no lleva Guardar/Cancelar, solo Cerrar.
-  const esSuperficieTrabajo = esAnalizar || esElaborar || esNotificar
   // ADR-033 §1: en ANALIZAR extendido (ANÁLISIS_DOCUMENTAL/REQUERIMIENTO_SUBSANACIÓN)
   // casar un requisito documental deriva el consumido — la Despensa queda sin uso
   // legítimo y se oculta. En ANALIZAR simple (p.ej. CONSULTA_SEPARATA) sigue viva,
@@ -415,7 +415,7 @@ function InspectorEdicion({ nodo }) {
   const ocultarDespensa = esAnalizar && seccionesExtendidas === true
   return (
     <div className="d-flex flex-column h-100 arbol-inspector--lock">
-      <BarraEdicion tipo={seleccion.tipo} nodo={nodo} esSuperficieTrabajo={esSuperficieTrabajo} />
+      <BarraEdicion tipo={seleccion.tipo} nodo={nodo} />
       <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }} className="p-3">
         {borrarPendienteConfirm
           ? <ConfirmacionBorrado nodo={nodo} />
