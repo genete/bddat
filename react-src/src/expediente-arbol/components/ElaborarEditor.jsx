@@ -21,11 +21,15 @@
 // Despensa NO se deshabilita para ELABORAR (a diferencia de ANALIZAR): sigue
 // siendo el único punto donde se vinculan el borrador de firma y el documento
 // firmado.
+//
+// El par Guardar/Cancelar que persiste lo que la Despensa apila vive en la
+// cabecera fija (BarraEdicion, #688), no en el pie de este contenedor.
 import React from 'react'
-import { useArbolStore, selectHayCambios } from '../store.js'
+import { useArbolStore } from '../store.js'
 import { getEscritosPlantillas, getEscritosPreview, postEscritosGenerar } from '../api.js'
 import { api } from '../../shared/api.js'
 import { showToast } from '../../shared/ui/toast.js'
+import BloqueNotas from './BloqueNotas.jsx'
 
 // Abre el Explorador de Windows enfocando el fichero, ejecutado en el SERVIDOR
 // (subprocess.Popen, requiere Flask en el mismo PC — despliegue local). Mismo
@@ -200,10 +204,6 @@ function GenerarEscrito({ tareaId, expedienteId, onGenerado }) {
 
 export default function ElaborarEditor({ tareaId, nodo }) {
   const expedienteId = useArbolStore((s) => s.expedienteId)
-  const guardar = useArbolStore((s) => s.guardar)
-  const cancelar = useArbolStore((s) => s.cancelar)
-  const guardando = useArbolStore((s) => s.guardando)
-  const hayCambios = useArbolStore(selectHayCambios)
 
   const ejecutada = !!(nodo && nodo.doc_producido && nodo.doc_producido.presente)
 
@@ -237,24 +237,7 @@ export default function ElaborarEditor({ tareaId, nodo }) {
         <GenerarEscrito tareaId={tareaId} expedienteId={expedienteId} onGenerado={onGenerado} />
       )}
 
-      {/* Mismo par Guardar/Cancelar que el Editor genérico — persiste lo que la
-          Despensa apile en el borrador (documentos_consumidos_ids/documento_
-          producido_id). A diferencia de ANALIZAR, aquí la Despensa NO se
-          deshabilita: es el mecanismo que vincula el borrador de firma y el
-          documento firmado (ver Inspector.jsx, deshabilitarProducido). */}
-      <div className="d-flex gap-2 border-top pt-3 mt-3">
-        <button
-          type="button"
-          className="btn btn-sm btn-primary"
-          disabled={guardando || !hayCambios}
-          onClick={guardar}
-        >
-          {guardando ? 'Guardando…' : 'Guardar'}
-        </button>
-        <button type="button" className="btn btn-sm btn-outline-secondary" disabled={guardando} onClick={cancelar}>
-          Cancelar
-        </button>
-      </div>
+      <BloqueNotas />
     </div>
   )
 }

@@ -30,6 +30,7 @@ import {
   getRequerimientos, postRequerimientos, crearRequerimientoCatalogo,
 } from '../api.js'
 import { showToast } from '../../shared/ui/toast.js'
+import BloqueNotas from './BloqueNotas.jsx'
 
 const ETIQUETA_RESULTADO = {
   favorable: 'Favorable',
@@ -924,35 +925,6 @@ function NucleoResultado({ expedienteId, tareaId, completo, derivado, resultadoP
             </div>
           </div>
         )}
-      </div>
-    </div>
-  )
-}
-
-// Notas: campo directo de la tarea, no bloque con vida propia (#688). Escribe en
-// `borrador.notas` del store, igual que el Editor genérico hace con el resto de
-// campos del esquema editable — su Guardar/Cancelar es el de la cabecera. Antes
-// (#677) llevaba guardado inline propio, y eso dejaba dos agujeros: el botón de
-// la barra nunca pasaba a "Cancelar" (los cambios se perdían en silencio al
-// cerrar) y el Guardar del pie de ANALIZAR simple pisaba las notas recién
-// guardadas con el valor sembrado al entrar en edición. El motivo original de
-// aquel guardado aparte (no arrastrar un documentos_consumidos_ids obsoleto en
-// el PATCH) se resuelve ahora en `guardar()` del store, que enruta por la vía
-// estrecha cuando solo cambian las notas.
-function BloqueNotas() {
-  const borrador = useArbolStore((s) => s.borrador)
-  const setCampo = useArbolStore((s) => s.setCampo)
-
-  return (
-    <div className="card mb-3">
-      <div className="card-header card-header-accent fw-semibold small">Notas</div>
-      <div className="card-body card-body-tinted">
-        <textarea
-          className="form-control form-control-sm"
-          rows={3}
-          value={borrador.notas ?? ''}
-          onChange={(e) => setCampo('notas', e.target.value)}
-        />
       </div>
     </div>
   )

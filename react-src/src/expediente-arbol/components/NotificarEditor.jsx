@@ -15,12 +15,15 @@
 // La vinculación del documento producido sigue el mecanismo genérico ya
 // existente (Despensa/editar_tarea, ver Inspector.jsx) — desacoplada de estos
 // dos formularios, igual que ELABORAR: por eso la Despensa NO se deshabilita
-// aquí (a diferencia de ANALIZAR) y el par Guardar/Cancelar del pie persiste
-// lo que la Despensa apile.
+// aquí (a diferencia de ANALIZAR). Lo que la Despensa apila lo persiste el par
+// Guardar/Cancelar de la cabecera fija (BarraEdicion, #688), que es también el
+// que guarda el bloque Notas del pie — punto abierto al cerrar #657/#658 sobre
+// dónde debía vivir ese Guardar.
 import React from 'react'
-import { useArbolStore, selectHayCambios } from '../store.js'
+import { useArbolStore } from '../store.js'
 import { getNotificar, postNotificar, patchNotificar, postNotificarParsear } from '../api.js'
 import { showToast } from '../../shared/ui/toast.js'
+import BloqueNotas from './BloqueNotas.jsx'
 
 const CANALES = [
   ['NOTIFICA', 'Notifica-PNT'],
@@ -205,10 +208,6 @@ function BloqueCompletarResultado({ expedienteId, tareaId, notificacion, onGuard
 
 export default function NotificarEditor({ tareaId }) {
   const expedienteId = useArbolStore((s) => s.expedienteId)
-  const cancelar = useArbolStore((s) => s.cancelar)
-  const guardar = useArbolStore((s) => s.guardar)
-  const guardando = useArbolStore((s) => s.guardando)
-  const hayCambios = useArbolStore(selectHayCambios)
 
   const [payload, setPayload] = React.useState(null)
   const [cargando, setCargando] = React.useState(true)
@@ -253,18 +252,7 @@ export default function NotificarEditor({ tareaId }) {
         notificacion={payload.notificacion} onGuardado={onGuardado}
       />
 
-      {/* Par Guardar/Cancelar del pie (patrón ElaborarEditor): persiste lo que la
-          Despensa apile — es el mecanismo genérico que vincula el documento
-          producido, desacoplado de los dos bloques de arriba. */}
-      <div className="d-flex gap-2 border-top pt-3 mt-3">
-        <button type="button" className="btn btn-sm btn-primary"
-                disabled={guardando || !hayCambios} onClick={guardar}>
-          {guardando ? 'Guardando…' : 'Guardar'}
-        </button>
-        <button type="button" className="btn btn-sm btn-outline-secondary" disabled={guardando} onClick={cancelar}>
-          Cancelar
-        </button>
-      </div>
+      <BloqueNotas />
     </div>
   )
 }
