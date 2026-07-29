@@ -20,6 +20,10 @@ from app.models.documentos_tarea import DocumentoTarea
 from app.models.diagnosticos import Diagnostico
 from app.services import bitacora as bitacora_svc
 from app.services.mutaciones_arbol import _hook_458_analizar_separata
+from app.services.invariantes_esftt import (
+    TRAMITES_CADENA_SUBSANACION,
+    ultima_tarea_cadena_subsanacion,
+)
 
 log = logging.getLogger(__name__)
 
@@ -44,6 +48,96 @@ class DiagnosticoConsumidoError(Exception):
         )
 
 
+class DiagnosticoSuperadoError(Exception):
+    """El diagnóstico ya ha surtido efecto aguas abajo dentro de la cadena de
+    subsanación: una vuelta posterior lo superó, o su contenido ya se comunicó al
+    titular en un requerimiento notificado.
+
+    Misma puerta cerrada que `DiagnosticoConsumidoError` (ADR-033 §5, peldaño 3) por
+    otra causa: aquí no hay vínculo `CONSUMIDO` que deshacer —nada lo crea todavía,
+    ver #717— pero la evidencia está igual de comprometida (#714).
+    """
+
+
+def _motivo_diagnostico_superado(tarea: Tarea) -> Optional[str]:
+    """Motivo por el que el diagnóstico de `tarea` ya no es reversible, o None (#714).
+
+    Dos causas, ambas acotadas a la **cadena de subsanación**: fuera de ella los
+    diagnósticos de una fase son paralelos —un `CONSULTA_SEPARATA` por organismo— y
+    ninguno se apoya en otro, así que ni se superan ni se vuelcan en un requerimiento
+    (mismo acotamiento que el invariante de cierre de #711, en espejo).
+
+    1. **Superado por una vuelta posterior.** Si no es el último ANALIZAR con
+       diagnóstico de la cadena, la vuelta siguiente ya revisó lo mismo apoyándose en
+       él. Se lee del mismo helper que usa `_check_cierre_fase`, para que lo que una
+       regla da por superado la otra lo dé por irreversible.
+    2. **Ya comunicado al titular.** Existe una tarea NOTIFICAR posterior (por `id`, el
+       único orden disponible) en la cadena con fila en `notificaciones`: el
+       requerimiento salió, y el diagnóstico es la evidencia congelada de lo que se le
+       comunicó. Cubre la ventana entre notificar y producir el diagnóstico de la vuelta
+       siguiente, donde el criterio 1 todavía no ha disparado.
+
+    Nota: la fila de `notificaciones` cuenta aunque `resultado` sea NULL — existe desde
+    que se registra el envío (camino A de ADR-034), y `fecha_puesta_disposicion` es NOT
+    NULL, de modo que su sola presencia ya significa que el escrito se puso a
+    disposición.
+    """
+    tramite = tarea.tramite
+    if tramite is None or tramite.tipo_tramite is None:
+        return None
+    if tramite.tipo_tramite.codigo not in TRAMITES_CADENA_SUBSANACION:
+        return None
+
+    ultima_id = ultima_tarea_cadena_subsanacion(tramite.fase_id)
+    if ultima_id is not None and ultima_id != tarea.id:
+        return (
+            'Este diagnóstico ha quedado superado por una vuelta de subsanación '
+            'posterior, que ya revisó los mismos defectos apoyándose en él. '
+            'Revierte antes el diagnóstico de la última vuelta.'
+        )
+
+    if _hay_notificacion_posterior_en_cadena(tarea):
+        return (
+            'El contenido de este diagnóstico ya se ha comunicado al titular en un '
+            'requerimiento de subsanación notificado: es la evidencia congelada de lo '
+            'que se le requirió y no puede deshacerse. Si el requerimiento era '
+            'incorrecto, la vía es una nueva vuelta de subsanación, no borrar la '
+            'evidencia.'
+        )
+
+    return None
+
+
+def _hay_notificacion_posterior_en_cadena(tarea: Tarea) -> bool:
+    """True si en la cadena de subsanación de la fase hay una tarea NOTIFICAR posterior
+    a `tarea` con notificación registrada.
+
+    "Posterior" por `Tarea.id`, no por trámite: dentro de un mismo
+    `REQUERIMIENTO_SUBSANACION` el NOTIFICAR es anterior al ANALIZAR —notifica el
+    requerimiento de esa vuelta y se apoya en el diagnóstico de la vuelta ANTERIOR—,
+    de modo que comparar por `id` de tarea distingue los dos casos sin más reglas.
+    """
+    from app.models.tramites import Tramite
+    from app.models.tipos_tareas import TipoTarea
+    from app.models.tipos_tramites import TipoTramite
+    from app.models.notificaciones import Notificacion
+
+    return db.session.query(
+        db.session.query(Notificacion.id)
+        .join(Tarea, Notificacion.tarea_id == Tarea.id)
+        .join(Tramite, Tarea.tramite_id == Tramite.id)
+        .join(TipoTarea, Tarea.tipo_tarea_id == TipoTarea.id)
+        .join(TipoTramite, Tramite.tipo_tramite_id == TipoTramite.id)
+        .filter(
+            Tramite.fase_id == tarea.tramite.fase_id,
+            Tarea.id > tarea.id,
+            TipoTarea.codigo == 'NOTIFICAR',
+            TipoTramite.codigo.in_(TRAMITES_CADENA_SUBSANACION),
+        )
+        .exists()
+    ).scalar()
+
+
 def revertir_diagnostico(tarea: Tarea) -> None:
     """
     Elimina el documento de diagnóstico producido por `tarea` (y su vínculo
@@ -54,6 +148,9 @@ def revertir_diagnostico(tarea: Tarea) -> None:
     Lanza DiagnosticoConsumidoError si el documento está CONSUMIDO por otra
     tarea — puerta cerrada, no forzable con justificación (a diferencia de
     los bloqueos de motor).
+    Lanza DiagnosticoSuperadoError si el diagnóstico ya surtió efecto dentro de
+    la cadena de subsanación (#714): el check de CONSUMIDO por sí solo no
+    protege nada mientras nada cree ese vínculo (#717).
     """
     doc = tarea.documento_producido
     if doc is None:
@@ -62,6 +159,10 @@ def revertir_diagnostico(tarea: Tarea) -> None:
     consumidores = [v.tarea for v in doc.vinculos_tarea if v.rol == 'CONSUMIDO']
     if consumidores:
         raise DiagnosticoConsumidoError(consumidores[0])
+
+    motivo_superado = _motivo_diagnostico_superado(tarea)
+    if motivo_superado:
+        raise DiagnosticoSuperadoError(motivo_superado)
 
     diagnostico = doc.diagnostico
     vinculo_producido = next(v for v in doc.vinculos_tarea if v.rol == 'PRODUCIDO')

@@ -218,16 +218,16 @@ class TestResultadoDesfavorable:
 class TestUltimaTareaCadena:
 
     def test_ignora_los_diagnosticos_fuera_de_la_cadena(self, app_ctx):
-        from app.services.invariantes_esftt import _ultima_tarea_cadena_subsanacion
+        from app.services.invariantes_esftt import ultima_tarea_cadena_subsanacion
 
         fase, tareas = _montar_fase('CONSULTAS', [
             ('CONSULTA_SEPARATA', 'favorable', False),
         ])
 
-        assert _ultima_tarea_cadena_subsanacion(fase.id) is None
+        assert ultima_tarea_cadena_subsanacion(fase.id) is None
 
     def test_devuelve_la_ultima_vuelta(self, app_ctx):
-        from app.services.invariantes_esftt import _ultima_tarea_cadena_subsanacion
+        from app.services.invariantes_esftt import ultima_tarea_cadena_subsanacion
 
         fase, tareas = _montar_fase('ANALISIS_SOLICITUD', [
             ('ANALISIS_DOCUMENTAL', 'desfavorable', False),
@@ -235,4 +235,4 @@ class TestUltimaTareaCadena:
             ('REQUERIMIENTO_SUBSANACION', 'favorable', False),
         ])
 
-        assert _ultima_tarea_cadena_subsanacion(fase.id) == tareas[-1].id
+        assert ultima_tarea_cadena_subsanacion(fase.id) == tareas[-1].id
