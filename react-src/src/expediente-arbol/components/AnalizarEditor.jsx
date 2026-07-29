@@ -13,20 +13,20 @@
 //   - Núcleo de resultado (siempre presente): en secciones extendidas el
 //     resultado es derivado del borrador, sin elección libre ni "Condicionado"
 //     (§3); en ANALIZAR simple se mantiene el radio libre de siempre.
-//   - Notas: bloque con guardado inline propio (PATCH .../notas), fuera del
-//     ciclo borrador/Guardar general (§7) — necesario porque en secciones
-//     extendidas el check documental deriva vínculos CONSUMIDO en directo
-//     (sincronizar_consumido_documental) y reutilizar el Guardar general
-//     podría deshacerlos con un borrador de documentos ya obsoleto.
-//   - Par Guardar/Cancelar del pie: solo en ANALIZAR simple, donde la Despensa
-//     sigue viva (oculta en secciones extendidas, ver Inspector.jsx) y sigue
-//     siendo la única vía para persistir documentos_consumidos_ids.
+//   - Notas: campo directo de la tarea, enganchado a `borrador.notas` del store
+//     (#688). No lleva botón propio — lo guarda el par Guardar/Cancelar de la
+//     cabecera fija, igual que en cualquier otro nodo.
+//
+// Este contenedor NO monta Guardar/Cancelar: el de los campos directos vive en
+// la cabecera (BarraEdicion, #688) y todo lo demás que se ve aquí (vincular
+// documento, guardar ítem técnico, guardar shuttle) persiste por su cuenta y de
+// inmediato, sin pasar por el borrador.
 import React from 'react'
-import { useArbolStore, selectHayCambios } from '../store.js'
+import { useArbolStore } from '../store.js'
 import {
   getAnalizar, postAnalizar, revertirDiagnostico,
   vincularRequisitoDocumental, desvincularRequisitoDocumental,
-  guardarCoberturaTecnica, guardarNotas,
+  guardarCoberturaTecnica,
   getRequerimientos, postRequerimientos, crearRequerimientoCatalogo,
 } from '../api.js'
 import { showToast } from '../../shared/ui/toast.js'
@@ -929,48 +929,30 @@ function NucleoResultado({ expedienteId, tareaId, completo, derivado, resultadoP
   )
 }
 
-// Notas (#677, ADR-033 §7): guardado inline propio, fuera del ciclo borrador/
-// Guardar general — ver cabecera del fichero. `notasIniciales` solo se lee al
-// montar; el propio guardado exitoso mueve la línea base local.
-function BloqueNotas({ expedienteId, tareaId, notasIniciales }) {
-  const [texto, setTexto] = React.useState(notasIniciales || '')
-  const [ultimoGuardado, setUltimoGuardado] = React.useState(notasIniciales || '')
-  const [guardando, setGuardando] = React.useState(false)
-  const hayCambios = texto !== ultimoGuardado
-
-  const guardar = async () => {
-    setGuardando(true)
-    try {
-      const limpio = texto.trim()
-      await guardarNotas(expedienteId, tareaId, limpio)
-      setTexto(limpio)
-      setUltimoGuardado(limpio)
-      showToast('Notas guardadas', 'success')
-    } catch (e) {
-      showToast((e && e.message) || 'No se pudieron guardar las notas', 'danger')
-    } finally {
-      setGuardando(false)
-    }
-  }
+// Notas: campo directo de la tarea, no bloque con vida propia (#688). Escribe en
+// `borrador.notas` del store, igual que el Editor genérico hace con el resto de
+// campos del esquema editable — su Guardar/Cancelar es el de la cabecera. Antes
+// (#677) llevaba guardado inline propio, y eso dejaba dos agujeros: el botón de
+// la barra nunca pasaba a "Cancelar" (los cambios se perdían en silencio al
+// cerrar) y el Guardar del pie de ANALIZAR simple pisaba las notas recién
+// guardadas con el valor sembrado al entrar en edición. El motivo original de
+// aquel guardado aparte (no arrastrar un documentos_consumidos_ids obsoleto en
+// el PATCH) se resuelve ahora en `guardar()` del store, que enruta por la vía
+// estrecha cuando solo cambian las notas.
+function BloqueNotas() {
+  const borrador = useArbolStore((s) => s.borrador)
+  const setCampo = useArbolStore((s) => s.setCampo)
 
   return (
     <div className="card mb-3">
       <div className="card-header card-header-accent fw-semibold small">Notas</div>
       <div className="card-body card-body-tinted">
         <textarea
-          className="form-control form-control-sm mb-2"
+          className="form-control form-control-sm"
           rows={3}
-          value={texto}
-          onChange={(e) => setTexto(e.target.value)}
+          value={borrador.notas ?? ''}
+          onChange={(e) => setCampo('notas', e.target.value)}
         />
-        <button
-          type="button"
-          className="btn btn-sm btn-primary"
-          disabled={!hayCambios || guardando}
-          onClick={guardar}
-        >
-          {guardando ? 'Guardando…' : 'Guardar'}
-        </button>
       </div>
     </div>
   )
@@ -980,10 +962,6 @@ export default function AnalizarEditor({ tareaId }) {
   const expedienteId = useArbolStore((s) => s.expedienteId)
   const seleccion = useArbolStore((s) => s.seleccion)
   const cargarDetalle = useArbolStore((s) => s.cargarDetalle)
-  const cancelar = useArbolStore((s) => s.cancelar)
-  const guardar = useArbolStore((s) => s.guardar)
-  const guardando = useArbolStore((s) => s.guardando)
-  const hayCambios = useArbolStore(selectHayCambios)
   const setAnalizarSeccionesExtendidas = useArbolStore((s) => s.setAnalizarSeccionesExtendidas)
 
   const [payload, setPayload] = React.useState(null)
@@ -1094,26 +1072,7 @@ export default function AnalizarEditor({ tareaId }) {
         />
       )}
 
-      <BloqueNotas expedienteId={expedienteId} tareaId={tareaId} notasIniciales={payload.notas} />
-
-      {/* Par Guardar/Cancelar del pie: solo ANALIZAR simple. En secciones
-          extendidas la Despensa está oculta (Inspector.jsx) y ya no queda
-          nada que este ciclo deba persistir — Notas guarda por su cuenta. */}
-      {!payload.secciones_extendidas && (
-        <div className="d-flex gap-2 border-top pt-3 mt-3">
-          <button
-            type="button"
-            className="btn btn-sm btn-primary"
-            disabled={guardando || !hayCambios}
-            onClick={guardar}
-          >
-            {guardando ? 'Guardando…' : 'Guardar'}
-          </button>
-          <button type="button" className="btn btn-sm btn-outline-secondary" disabled={guardando} onClick={cancelar}>
-            Cancelar
-          </button>
-        </div>
-      )}
+      <BloqueNotas />
     </div>
   )
 }
