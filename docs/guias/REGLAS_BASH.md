@@ -18,6 +18,7 @@ ni el modo "accept edits". Evitarlos cambiando el patrón.
 | `sed command contains operations that require explicit approval` | `sed -i` u otras operaciones de escritura con sed | Usar tool `Edit` en su lugar |
 | `command contains consecutive quote characters at word start (potential obfuscation)` | `""` o `''` como primer carácter de un argumento, p. ej. `echo ""texto` o `cmd ''arg` | Nunca empezar un argumento con comilla doble vacía; si el valor puede quedar vacío, usar variable o fichero temporal |
 | `allow reading from <ruta>\` / `allow access to <ruta>\` | Ruta con **backslash** Windows en comando Bash (p. ej. `app\models\`) | En Bash (MSYS2) las rutas van con `/`. Usar siempre `app/models/`, nunca `app\models\` |
+| `changes directory before running git, which can execute untrusted hooks from the target directory` | Un `cd` y un `git` conviviendo en el mismo comando — **en cualquier orden y con cualquier separador**, no solo `cd X && git` | `git -C /ruta`; si además hace falta un `cd`, emitirlo en una llamada Bash aparte |
 | `cd with two or more directory arguments` | `cd ruta1 ruta2` — ocurre al partir una ruta por espacios o pasar dos argumentos accidentalmente | Un solo argumento; entrecomillar si hay espacios: `cd "/d/ruta con espacios"` |
 | `contains shell syntax that cannot be statically analyzed` | Bucle `while/for/until` en una sola línea con `;` como separador, **o** variable expandida dentro de patrón con comillas mixtas (`"...'$var'..."`) | `Write` el script completo a `docs_prueba/temp/script.sh` → `bash /d/BDDAT/docs_prueba/temp/script.sh` |
 | `Contains shell syntax (string) that cannot be statically analyzed` | `$()` dentro del valor de un flag de `gh` u otro comando: `gh ... --comment "$(cat fichero)"` | Separar: `gh issue comment N --body-file fichero` (añade el comentario) + `gh issue close N` (cierra sin comentario) |
@@ -47,7 +48,10 @@ Esta ruta está en la allowlist del proyecto (`always allow access`).
 ## Patrones concretos obligatorios
 
 - **Activar venv:** NUNCA `source venv/Scripts/activate` (el evaluador lo rechaza). Usar directamente el Python del venv: `venv/Scripts/python.exe script.py`
-- **cd + git:** usar SIEMPRE `git -C /ruta` — NUNCA `cd /ruta && git`
+- **cd + git:** usar SIEMPRE `git -C /ruta`. No basta con evitar `cd /ruta && git`: el
+  evaluador marca la **mera convivencia** de un `cd` y un `git` en el mismo comando, en
+  cualquier orden y con cualquier separador — `git -C ... ; cd ...` también salta. Si hace
+  falta un `cd` para otra cosa, emitirlo en una llamada Bash aparte
 - **`$()` y backticks:** NUNCA — separar en llamadas Bash secuenciales o usar fichero temporal
 - **cd + redirección / escritura:** separar en dos llamadas Bash distintas
 - **`gh issue create` / `gh pr create`:** `Write` body → `--body-file`

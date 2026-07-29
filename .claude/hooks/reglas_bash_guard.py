@@ -47,9 +47,7 @@ REGLAS = [
     (r'source\s+\S*venv/Scripts/activate',
      'source venv/Scripts/activate',
      'Usar directamente venv/Scripts/python.exe (no hace falta activar).'),
-    (r'\bcd\s+\S+\s*&&\s*git\b',
-     'cd + git',
-     'Usar git -C /ruta.'),
+    # (cd + git: ver REGLAS_COMPUESTAS — no basta un patrón lineal)
     (r'\b(rm|mv)\b[^;|]*docs_prueba/temp',
      'rm/mv sobre docs_prueba/temp',
      'No hacer nada: los temporales se dejan, Carlos los borra a mano. Si el nombre destino ya existe, crear otro con sufijo distinto.'),
@@ -59,6 +57,30 @@ REGLAS = [
     (r'[A-Za-z0-9_]{2,}\\[A-Za-z0-9_]{3,}',
      'ruta con backslash de Windows',
      'En Bash (MSYS2) las rutas van con /: app/models/, nunca app\\models\\.'),
+]
+
+
+def _es_palabra_de_comando(comando: str, palabra: str) -> bool:
+    """`palabra` aparece como comando, no como argumento ni dentro de otra palabra."""
+    return re.search(r'(?:\A|[;&|]\s*)' + palabra + r'\s', comando) is not None
+
+
+def _cd_junto_a_git(comando: str) -> bool:
+    """`cd` y `git` en el mismo comando, en cualquier orden y con cualquier separador.
+
+    La tabla de REGLAS_BASH.md solo documentaba `cd /ruta && git`, pero el evaluador
+    marca la mera convivencia de ambos ("changes directory before running git, which
+    can execute untrusted hooks from the target directory") — da igual que el git vaya
+    delante y que el separador sea `;`.
+    """
+    return _es_palabra_de_comando(comando, 'cd') and _es_palabra_de_comando(comando, 'git')
+
+
+# Reglas que no caben en un patrón lineal: (predicado, etiqueta, arreglo).
+REGLAS_COMPUESTAS = [
+    (_cd_junto_a_git,
+     'cd conviviendo con git en el mismo comando',
+     'Usar git -C /ruta y, si hace falta otro comando, emitirlo en una llamada Bash aparte.'),
 ]
 
 
@@ -72,23 +94,33 @@ def main():
     if not comando:
         return 0
 
-    for patron, etiqueta, arreglo in REGLAS:
-        if re.search(patron, comando):
-            razon = (
-                f'REGLAS_BASH.md — anti-patrón detectado: {etiqueta}. '
-                f'{arreglo} '
-                f'(tabla completa en docs/guias/REGLAS_BASH.md; este bloqueo lo emite '
-                f'.claude/hooks/reglas_bash_guard.py, no el usuario)'
-            )
-            json.dump({
-                'hookSpecificOutput': {
-                    'hookEventName': 'PreToolUse',
-                    'permissionDecision': 'deny',
-                    'permissionDecisionReason': razon,
-                }
-            }, sys.stdout)
-            return 0
+    detectadas = [
+        (etiqueta, arreglo)
+        for patron, etiqueta, arreglo in REGLAS
+        if re.search(patron, comando)
+    ] + [
+        (etiqueta, arreglo)
+        for predicado, etiqueta, arreglo in REGLAS_COMPUESTAS
+        if predicado(comando)
+    ]
 
+    if not detectadas:
+        return 0
+
+    etiqueta, arreglo = detectadas[0]
+    razon = (
+        f'REGLAS_BASH.md — anti-patrón detectado: {etiqueta}. '
+        f'{arreglo} '
+        f'(tabla completa en docs/guias/REGLAS_BASH.md; este bloqueo lo emite '
+        f'.claude/hooks/reglas_bash_guard.py, no el usuario)'
+    )
+    json.dump({
+        'hookSpecificOutput': {
+            'hookEventName': 'PreToolUse',
+            'permissionDecision': 'deny',
+            'permissionDecisionReason': razon,
+        }
+    }, sys.stdout)
     return 0
 
 
