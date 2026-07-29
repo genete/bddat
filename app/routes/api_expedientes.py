@@ -1012,11 +1012,14 @@ def delete_analizar(expediente_id, tarea_id):
     DELETE .../nodo/tarea/<tarea_id>/analizar — revierte el diagnóstico producido
     (ADR-033 §5, enmienda ADR-005). Vuelve la tarea a "Borrador defectos".
 
+    Body opcional: {justificacion} — fuerza los bloqueos que lo admiten (#714).
+
     Bloqueo (422): tarea sin documento producido, documento consumido por otra
-    tarea, o diagnóstico ya superado dentro de la cadena de subsanación —vuelta
-    posterior o requerimiento ya notificado, #714—. Los tres con el mismo shape
-    que un bloqueo de motor, pero `puede_escapar: false`: puerta cerrada, no
-    soslayable con justificación.
+    tarea, o diagnóstico ya superado dentro de la cadena de subsanación (#714).
+    Mismo shape que un bloqueo de motor; `puede_escapar` distingue la puerta
+    cerrada (consumido, o requerimiento ya notificado al titular: el acto salió
+    fuera y no se deshace) del bloqueo forzable con justificación (superado por
+    una vuelta posterior, con todo aún en casa).
     """
     expediente = Expediente.query.get_or_404(expediente_id)
     if verificar_acceso_expediente(expediente, 'gestionar_tarea'):
@@ -1027,8 +1030,11 @@ def delete_analizar(expediente_id, tarea_id):
     except ValueError as e:
         return jsonify({'error': str(e)}), 404
 
+    data = request.get_json(silent=True) or {}
+    justificacion = (data.get('justificacion') or '').strip() or None
+
     try:
-        revertir_diagnostico(tarea)
+        revertir_diagnostico(tarea, justificacion=justificacion)
     except DiagnosticoConsumidoError as e:
         return jsonify({
             'error': 'Diagnóstico consumido',
@@ -1039,7 +1045,7 @@ def delete_analizar(expediente_id, tarea_id):
         return jsonify({
             'error': 'Diagnóstico superado',
             'motivo': str(e),
-            'puede_escapar': False,
+            'puede_escapar': e.puede_escapar,
         }), 422
     except ValueError as e:
         return jsonify({'error': str(e)}), 422

@@ -63,12 +63,13 @@ export function postAnalizar(expedienteId, tareaId, body) {
 
 // Revierte el diagnóstico producido (DELETE, #678, ADR-033 §5): vuelve a
 // "Borrador defectos". Respuesta éxito: {ok:true} 200.
-// Bloqueo (422): {error, motivo, puede_escapar:false} — sin producido, consumido
-// por otra tarea, o superado dentro de la cadena de subsanación (vuelta posterior
-// o requerimiento ya notificado, #714). Puerta cerrada, no forzable: el motivo se
-// pinta tal cual, sea cual sea la causa.
-export function revertirDiagnostico(expedienteId, tareaId) {
-  return api.delete(`/api/expedientes/${expedienteId}/nodo/tarea/${tareaId}/analizar`)
+// Bloqueo (422): {error, motivo, puede_escapar} — sin producido, consumido por otra
+// tarea, o superado dentro de la cadena de subsanación (#714). `puede_escapar:false`
+// es puerta cerrada (consumido, o requerimiento ya notificado al titular);
+// `true` admite reintento con `justificacion`, que queda en bitácora.
+export function revertirDiagnostico(expedienteId, tareaId, justificacion) {
+  const url = `/api/expedientes/${expedienteId}/nodo/tarea/${tareaId}/analizar`
+  return justificacion ? api.delete(url, { body: { justificacion } }) : api.delete(url)
 }
 
 // Guarda solo `notas` de una tarea (PATCH, #677) — vía estrecha que NO toca los

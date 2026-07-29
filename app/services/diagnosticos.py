@@ -9,7 +9,7 @@ contenedor de la tarea ANALIZAR, no se calcula aquí.
 from __future__ import annotations
 
 import logging
-from typing import Optional
+from typing import NamedTuple, Optional
 
 from flask_login import current_user
 
@@ -50,16 +50,27 @@ class DiagnosticoConsumidoError(Exception):
 
 class DiagnosticoSuperadoError(Exception):
     """El diagnóstico ya ha surtido efecto aguas abajo dentro de la cadena de
-    subsanación: una vuelta posterior lo superó, o su contenido ya se comunicó al
-    titular en un requerimiento notificado.
+    subsanación: su contenido ya se comunicó al titular, o una vuelta posterior lo
+    superó (#714).
 
-    Misma puerta cerrada que `DiagnosticoConsumidoError` (ADR-033 §5, peldaño 3) por
-    otra causa: aquí no hay vínculo `CONSUMIDO` que deshacer —nada lo crea todavía,
-    ver #717— pero la evidencia está igual de comprometida (#714).
+    `puede_escapar` distingue las dos: cerrada cuando el acto ya salió fuera y no se
+    puede deshacer (notificado — LPACAP); forzable con justificación mientras todo
+    queda en casa. El default del proyecto es dejar salida: obligar a justificar ya
+    hace que el técnico se pare, y la justificación queda en bitácora.
     """
 
+    def __init__(self, motivo: str, *, puede_escapar: bool):
+        self.puede_escapar = puede_escapar
+        super().__init__(motivo)
 
-def _motivo_diagnostico_superado(tarea: Tarea) -> Optional[str]:
+
+class MotivoIrreversible(NamedTuple):
+    """Por qué no se revierte, y si el técnico puede forzarlo con justificación."""
+    motivo: str
+    puede_escapar: bool
+
+
+def _motivo_diagnostico_superado(tarea: Tarea) -> Optional[MotivoIrreversible]:
     """Motivo por el que el diagnóstico de `tarea` ya no es reversible, o None (#714).
 
     Dos causas, ambas acotadas a la **cadena de subsanación**: fuera de ella los
@@ -67,15 +78,19 @@ def _motivo_diagnostico_superado(tarea: Tarea) -> Optional[str]:
     ninguno se apoya en otro, así que ni se superan ni se vuelcan en un requerimiento
     (mismo acotamiento que el invariante de cierre de #711, en espejo).
 
-    1. **Superado por una vuelta posterior.** Si no es el último ANALIZAR con
-       diagnóstico de la cadena, la vuelta siguiente ya revisó lo mismo apoyándose en
-       él. Se lee del mismo helper que usa `_check_cierre_fase`, para que lo que una
-       regla da por superado la otra lo dé por irreversible.
-    2. **Ya comunicado al titular.** Existe una tarea NOTIFICAR posterior (por `id`, el
-       único orden disponible) en la cadena con fila en `notificaciones`: el
-       requerimiento salió, y el diagnóstico es la evidencia congelada de lo que se le
-       comunicó. Cubre la ventana entre notificar y producir el diagnóstico de la vuelta
-       siguiente, donde el criterio 1 todavía no ha disparado.
+    1. **Ya comunicado al titular** (puerta cerrada). Existe una tarea NOTIFICAR
+       posterior (por `id`, el único orden disponible) en la cadena con fila en
+       `notificaciones`: el requerimiento salió y el diagnóstico es la evidencia
+       congelada de lo que se le requirió. Se comprueba **primero** porque es la más
+       restrictiva y lo normal es que ambas casen a la vez —hubo vuelta *porque* se
+       notificó—: evaluar antes la forzable dejaría escapable un caso ya notificado.
+    2. **Superado por una vuelta posterior** (forzable con justificación). No es el
+       último ANALIZAR con diagnóstico de la cadena: la vuelta siguiente ya revisó lo
+       mismo apoyándose en él. Se lee del mismo helper que usa `_check_cierre_fase`,
+       para que lo que una regla da por superado la otra lo dé por irreversible. Aquí
+       nada ha salido fuera: el camino limpio es revertir en orden inverso (la última
+       vuelta primero), y el escape solo evita rehacer todo lo planificado después,
+       dejando rastro en bitácora.
 
     Nota: la fila de `notificaciones` cuenta aunque `resultado` sea NULL — existe desde
     que se registra el envío (camino A de ADR-034), y `fecha_puesta_disposicion` es NOT
@@ -88,21 +103,24 @@ def _motivo_diagnostico_superado(tarea: Tarea) -> Optional[str]:
     if tramite.tipo_tramite.codigo not in TRAMITES_CADENA_SUBSANACION:
         return None
 
-    ultima_id = ultima_tarea_cadena_subsanacion(tramite.fase_id)
-    if ultima_id is not None and ultima_id != tarea.id:
-        return (
-            'Este diagnóstico ha quedado superado por una vuelta de subsanación '
-            'posterior, que ya revisó los mismos defectos apoyándose en él. '
-            'Revierte antes el diagnóstico de la última vuelta.'
-        )
-
     if _hay_notificacion_posterior_en_cadena(tarea):
-        return (
+        return MotivoIrreversible(
             'El contenido de este diagnóstico ya se ha comunicado al titular en un '
             'requerimiento de subsanación notificado: es la evidencia congelada de lo '
             'que se le requirió y no puede deshacerse. Si el requerimiento era '
             'incorrecto, la vía es una nueva vuelta de subsanación, no borrar la '
-            'evidencia.'
+            'evidencia.',
+            puede_escapar=False,
+        )
+
+    ultima_id = ultima_tarea_cadena_subsanacion(tramite.fase_id)
+    if ultima_id is not None and ultima_id != tarea.id:
+        return MotivoIrreversible(
+            'Este diagnóstico ha quedado superado por una vuelta de subsanación '
+            'posterior, que ya revisó los mismos defectos apoyándose en él. El camino '
+            'limpio es revertir antes el diagnóstico de la última vuelta; si aun así '
+            'quieres revertir este, justifícalo.',
+            puede_escapar=True,
         )
 
     return None
@@ -144,7 +162,7 @@ def _hay_notificacion_posterior_en_cadena(tarea: Tarea) -> bool:
     ).scalar()
 
 
-def revertir_diagnostico(tarea: Tarea) -> None:
+def revertir_diagnostico(tarea: Tarea, *, justificacion: Optional[str] = None) -> None:
     """
     Elimina el documento de diagnóstico producido por `tarea` (y su vínculo
     PRODUCIDO), devolviendo la tarea a "Borrador defectos" (ADR-033 §5,
@@ -153,10 +171,16 @@ def revertir_diagnostico(tarea: Tarea) -> None:
     Lanza ValueError si la tarea no tiene documento producido.
     Lanza DiagnosticoConsumidoError si el documento está CONSUMIDO por otra
     tarea — puerta cerrada, no forzable con justificación (a diferencia de
-    los bloqueos de motor).
+    los bloqueos de motor). ADR-033 §5 lo fija así porque hay una acción
+    concreta a mano: deshacer esa vinculación.
     Lanza DiagnosticoSuperadoError si el diagnóstico ya surtió efecto dentro de
     la cadena de subsanación (#714): el check de CONSUMIDO por sí solo no
     protege nada mientras nada cree ese vínculo (#717).
+
+    `justificacion`: vía de escape de los bloqueos forzables de
+    `_motivo_diagnostico_superado` (mismo shape que los bloqueos de motor y que
+    el gate de completitud de `crear_diagnostico`) — se registra en bitácora. No
+    abre las puertas cerradas: lo ya notificado sigue sin poder revertirse.
     """
     doc = tarea.documento_producido
     if doc is None:
@@ -166,9 +190,9 @@ def revertir_diagnostico(tarea: Tarea) -> None:
     if consumidores:
         raise DiagnosticoConsumidoError(consumidores[0])
 
-    motivo_superado = _motivo_diagnostico_superado(tarea)
-    if motivo_superado:
-        raise DiagnosticoSuperadoError(motivo_superado)
+    bloqueo = _motivo_diagnostico_superado(tarea)
+    if bloqueo is not None and not (bloqueo.puede_escapar and justificacion):
+        raise DiagnosticoSuperadoError(bloqueo.motivo, puede_escapar=bloqueo.puede_escapar)
 
     diagnostico = doc.diagnostico
     vinculo_producido = next(v for v in doc.vinculos_tarea if v.rol == 'PRODUCIDO')
@@ -178,8 +202,21 @@ def revertir_diagnostico(tarea: Tarea) -> None:
     db.session.delete(vinculo_producido)
     db.session.flush()
     db.session.delete(doc)
+
+    if bloqueo is not None:
+        # Solo se llega aquí con bloqueo forzado: la reversión pasa por encima de una
+        # salvaguarda y eso se audita. 'ALTERAR' por el mismo motivo que en
+        # crear_diagnostico — ck_bitacora_operacion no admite otra cosa y lo que cambia
+        # es el estado de la tarea, no una creación.
+        bitacora_svc.registrar(
+            current_user.id, 'ALTERAR', 'tareas', tarea.id,
+            detalle={'escape': True, 'justificacion': justificacion,
+                     'motivo': bloqueo.motivo},
+        )
+
     db.session.commit()
-    log.info('Diagnóstico revertido para tarea %s (doc %s)', tarea.id, doc.id)
+    log.info('Diagnóstico revertido para tarea %s (doc %s)%s',
+             tarea.id, doc.id, ' [forzado con justificación]' if bloqueo else '')
 
 
 def crear_diagnostico(tarea: Tarea, resultado: str, defectos: list,
