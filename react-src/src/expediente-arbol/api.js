@@ -69,8 +69,9 @@ export function revertirDiagnostico(expedienteId, tareaId) {
   return api.delete(`/api/expedientes/${expedienteId}/nodo/tarea/${tareaId}/analizar`)
 }
 
-// Guarda solo `notas` de una tarea (PATCH, #677 ADR-033 §7) — fuera del ciclo
-// borrador/Guardar general (ver AnalizarEditor.jsx, BloqueNotas). Respuesta: {ok:true, notas}.
+// Guarda solo `notas` de una tarea (PATCH, #677) — vía estrecha que NO toca los
+// vínculos documentales. Desde #688 la usa el propio `guardar()` del store cuando
+// el borrador solo difiere en `notas` (ver store.js). Respuesta: {ok:true, notas}.
 export function guardarNotas(expedienteId, tareaId, notas) {
   return api.patch(`/api/expedientes/${expedienteId}/nodo/tarea/${tareaId}/notas`, { notas })
 }
