@@ -12,7 +12,13 @@ Desarrollado para la Consejería de Industria, Energía y Minas (Junta de Andalu
 
 - Antes de escribir código, templates, modelos, migraciones o commits: leer `docs/guias/REGLAS_DESARROLLO.md`
 - Ante refactorizaciones o cambios de diseño: seguir §"Análisis de impacto previo" de `REGLAS_DESARROLLO.md` — presentar tabla de consumidores al usuario antes de escribir código
-- Antes de cualquier comando Bash: leer `docs/guias/REGLAS_BASH.md`
+- Comandos Bash: las reglas de `docs/guias/REGLAS_BASH.md` **las aplica un hook**, no la
+  buena memoria. `.claude/hooks/reglas_bash_guard.py` (PreToolUse sobre Bash) deniega los
+  anti-patrones conocidos antes de que lleguen al usuario. Si un comando sale denegado con
+  «REGLAS_BASH.md — anti-patrón detectado», **reescribirlo con el arreglo que indica el
+  mensaje; nunca reintentarlo igual**. El hook cubre lo mecánico; leer la guía completa
+  sigue mereciendo la pena antes de una tanda larga de comandos, y es obligatorio si hay
+  que tocar el propio guard.
 - Para entender la estructura de docs: leer `docs/README.md`
 - Para entrar en contexto de lo que está vivo: leer **siempre** `docs/CONTEXTO_ACTUAL.md`
 - Al actualizar `docs/CONTEXTO_ACTUAL.md` (cierre de issue): proponer qué pasa a **Próximo** y pedir confirmación — no elegir unilateralmente.

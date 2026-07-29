@@ -49,5 +49,21 @@
       "mcp__visualize__read_me",
       "Bash(venv/Scripts/python.exe -m flask db current)"
     ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "shell": "bash",
+            "command": "python \"${CLAUDE_PROJECT_DIR:-/d/BDDAT}/.claude/hooks/reglas_bash_guard.py\"",
+            "timeout": 10,
+            "statusMessage": "Verificando REGLAS_BASH"
+          }
+        ]
+      }
+    ]
   }
 }

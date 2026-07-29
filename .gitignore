@@ -13,6 +13,9 @@ app/static/uploads/*
 !.claude/skills
 !.claude/launch.json
 !.claude/settings.json
+# hooks/ va versionado porque settings.json (versionado) lo referencia:
+# sin él, un worktree o clon nuevo rompe el hook en cada comando Bash
+!.claude/hooks
 # Documentos de prueba locales (no versionar binarios ni datos reales)
 docs_prueba/
 contexto_completo_gemini.txt
