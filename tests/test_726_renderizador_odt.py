@@ -263,6 +263,57 @@ class TestBuclesDeFila:
 
         assert partes['content.xml'].count('<table:table-row>') == 1
 
+    def test_tabla_anidada_en_una_celda_no_desbarata_el_bucle(self, tmp_path):
+        """Una tabla dentro de una celda rompía la versión por expresión regular."""
+        ruta = _odt(tmp_path, 'p.odt', cuerpo=(
+            '<table:table><table:table-row><table:table-cell>'
+            '<table:table><table:table-row><table:table-cell>'
+            '<text:p>interior</text:p>'
+            '</table:table-cell></table:table-row></table:table>'
+            '<text:p>{%tr for m in municipios %}{{ m }}</text:p>'
+            '</table:table-cell></table:table-row>'
+            '<table:table-row><table:table-cell><text:p>{%tr endfor %}</text:p>'
+            '</table:table-cell></table:table-row></table:table>'
+        ))
+
+        partes = _partes(generar_escrito_odt(
+            ruta, {'municipios': ['Cádiz', 'Jerez']}, fragmentos_dir=str(tmp_path)))
+
+        content = partes['content.xml']
+        assert content.count('interior') == 2       # la fila exterior se repitió entera
+        assert 'Cádiz' in content and 'Jerez' in content
+
+
+class TestBuclesDeParrafo:
+    """`{%p ... %}` — el bucle de párrafo que el panel de tokens ofrece para
+    listas simples (municipios afectados)."""
+
+    CUERPO = (
+        '<text:p>{%p for m in municipios %}</text:p>'
+        '<text:p>{{ m }}</text:p>'
+        '<text:p>{%p endfor %}</text:p>'
+    )
+
+    def test_repite_los_parrafos_del_bucle(self, tmp_path):
+        ruta = _odt(tmp_path, 'p.odt', cuerpo=self.CUERPO)
+
+        partes = _partes(generar_escrito_odt(
+            ruta, {'municipios': ['Cádiz', 'Jerez', 'Rota']},
+            fragmentos_dir=str(tmp_path)))
+
+        content = partes['content.xml']
+        for municipio in ('Cádiz', 'Jerez', 'Rota'):
+            assert municipio in content
+        assert '{%p' not in content
+
+    def test_la_etiqueta_no_deja_texto_suelto_en_el_documento(self, tmp_path):
+        ruta = _odt(tmp_path, 'p.odt', cuerpo=self.CUERPO)
+
+        partes = _partes(generar_escrito_odt(
+            ruta, {'municipios': []}, fragmentos_dir=str(tmp_path)))
+
+        assert 'for m in municipios' not in partes['content.xml']
+
 
 # ----------------------------------------------------------------------
 # Código de seguimiento — gancho de #182

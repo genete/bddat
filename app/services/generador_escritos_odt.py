@@ -115,10 +115,9 @@ def generar_escrito_odt(plantilla_path: str, contexto: dict,
                 logger.debug('Fragmentos insertados: %s', ', '.join(insertados))
 
         _recomponer_tokens(root)
+        _elevar_etiquetas_de_bloque(root)
 
-        xml = etree.tostring(root, encoding='unicode')
-        xml = _elevar_bucles_de_fila(xml)
-        xml = env.from_string(xml).render(**contexto)
+        xml = env.from_string(etree.tostring(root, encoding='unicode')).render(**contexto)
 
         if nombre == 'styles.xml' and codigo_seguimiento:
             # Después de Jinja2 y sobre el árbol ya renderizado: el código es
@@ -160,9 +159,10 @@ def validar_plantilla_odt(ruta_abs: str) -> str | None:
                 if nombre not in nombres:
                     continue
                 root = etree.fromstring(z.read(nombre))
-                xml = _elevar_bucles_de_fila(etree.tostring(root, encoding='unicode'))
+                _elevar_etiquetas_de_bloque(root)
                 # Los marcadores de fragmento no son sintaxis Jinja2: los
                 # resuelve el motor antes, así que aquí solo estorban.
+                xml = etree.tostring(root, encoding='unicode')
                 env.parse(RE_FRAGMENTO.sub('', xml))
     except zipfile.BadZipFile:
         return 'El fichero no es un .odt: no es un archivo comprimido válido.'
@@ -365,29 +365,52 @@ def _slots_de_texto(parrafo) -> list:
 # Bucles de fila
 # ======================================================================
 
-def _elevar_bucles_de_fila(xml: str) -> str:
+def _elevar_etiquetas_de_bloque(root) -> None:
     """
-    Saca las etiquetas {%tr ... %} de su <table:table-row> y las deja delante.
+    Saca las etiquetas {%tr ... %} y {%p ... %} del bloque que las contiene y
+    las deja justo delante de él.
 
-    La etiqueta se teclea dentro de una celda porque es donde el supervisor
-    puede escribirla, pero Jinja2 necesita verla fuera para repetir la fila.
+    La etiqueta se teclea dentro de una celda o de un párrafo porque es donde
+    el supervisor puede escribirla, pero Jinja2 necesita verla fuera para
+    repetir el bloque entero en vez de su contenido.
 
     El comportamiento replica al de docxtpl a propósito: la etiqueta va
-    *delante* de su fila, de modo que `{%tr for … %}` repite la fila que la
+    *delante* de su bloque, de modo que `{%tr for … %}` repite la fila que la
     contiene y `{%tr endfor %}` cierra antes de la suya. Es la convención que
     el panel de tokens le enseña al supervisor, y tiene que valer igual con
     plantillas .docx y .odt.
-    """
-    def procesar(match):
-        fila = match.group(0)
-        etiquetas = re.findall(r'\{%tr\s+(.+?)\s*%\}', fila)
-        if not etiquetas:
-            return fila
-        limpia = re.sub(r'\{%tr\s+.+?\s*%\}', '', fila)
-        return ''.join(f'{{% {e} %}}' for e in etiquetas) + limpia
 
-    return re.sub(r'<table:table-row\b.*?</table:table-row>', procesar,
-                  xml, flags=re.S)
+    La etiqueta queda como texto suelto entre elementos, que no es ODF válido
+    pero sí lo que Jinja2 necesita ver; al renderizar no deja salida y el XML
+    vuelve a ser válido. Por eso las expresiones no deben llevar `<`, `>` ni
+    `&`: al serializar se escapan y Jinja2 ya no los reconoce — misma
+    limitación que en docxtpl.
+    """
+    for marca, tag in (('p', f'{Q["text"]}p'),
+                       ('tr', f'{Q["table"]}table-row')):
+        patron = re.compile(r'\{%' + marca + r'\s+(.+?)\s*%\}')
+
+        for bloque in list(root.iter(tag)):
+            etiquetas = patron.findall(''.join(bloque.itertext()))
+            if not etiquetas:
+                continue
+
+            # Borrar las etiquetas de donde estuvieran dentro del bloque. La
+            # cola del propio bloque queda fuera de él y no se toca.
+            for nodo in bloque.iter():
+                if nodo.text:
+                    nodo.text = patron.sub('', nodo.text)
+                if nodo is not bloque and nodo.tail:
+                    nodo.tail = patron.sub('', nodo.tail)
+
+            prefijo = ''.join(f'{{% {e} %}}' for e in etiquetas)
+            padre = bloque.getparent()
+            posicion = list(padre).index(bloque)
+            if posicion == 0:
+                padre.text = (padre.text or '') + prefijo
+            else:
+                anterior = padre[posicion - 1]
+                anterior.tail = (anterior.tail or '') + prefijo
 
 
 # ======================================================================
