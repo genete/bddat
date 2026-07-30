@@ -103,8 +103,8 @@ def _tokens_context_builder(contexto_clase) -> list:
     if not contexto_clase:
         return []
     try:
-        from app.services.generador_escritos import _cargar_context_builder
-        cls = _cargar_context_builder(contexto_clase)
+        from app.services.escritos import cargar_context_builder
+        cls = cargar_context_builder(contexto_clase)
     except Exception:
         return []
     return list(getattr(cls, 'TOKENS', []) or [])

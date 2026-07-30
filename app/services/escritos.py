@@ -11,16 +11,27 @@ ARQUITECTURA DE CAPAS:
         o cruzados. Se crean cuando el primer tipo de escrito complejo los
         requiera.
 
-USO:
-    from app.services.escritos import ContextoBaseExpediente
+    Capa 3 — Consultas nombradas: SQL de catálogo que entra al contexto con
+        su nombre como clave (listas de dicts para bucles de tabla).
 
-    ctx = ContextoBaseExpediente(expediente).get_contexto()
-    # ctx es un dict plano listo para python-docx-template
+El contexto resultante es un diccionario y NO conoce el formato de la
+plantilla (ADR-035 §6): lo consumen igual el motor .docx y el .odt.
+
+USO:
+    from app.services.escritos import ContextoBaseExpediente, construir_contexto
+
+    ctx = ContextoBaseExpediente(expediente).get_contexto()   # solo capa 1
+    ctx = construir_contexto(plantilla, expediente, db.session, tarea)  # las tres
 """
 
+import importlib
+import logging
+import re
 from datetime import date
 
 from app.models.direccion_notificacion import DireccionNotificacion
+
+logger = logging.getLogger(__name__)
 
 
 class ContextoBaseExpediente:
@@ -148,3 +159,97 @@ class ContextoBaseExpediente:
         if not proyecto:
             return []
         return [mp.municipio.nombre for mp in proyecto.municipios_afectados]
+
+
+# ======================================================================
+# Contexto completo — agnóstico del formato de plantilla (ADR-035 §6)
+# ======================================================================
+
+def construir_contexto(plantilla, expediente, db_session, tarea=None) -> dict:
+    """
+    Compone el contexto completo de una plantilla: capa 1 + capa 2 + consultas.
+
+    Lo usan los dos motores de render (.docx y .odt) sin modificarlo: aquí no
+    entra nada que dependa del formato del fichero (imágenes, subdocumentos).
+
+    Args:
+        plantilla:   Instancia de Plantilla (define contexto_clase y consultas).
+        expediente:  Instancia de Expediente con relaciones cargadas.
+        db_session:  Sesión SQLAlchemy activa (para las consultas nombradas).
+        tarea:       Tarea opcional. Si tiene documentos consumidos, el primero
+                     entra al contexto como 'doc_entrada' (ADR-010).
+
+    Returns:
+        dict — Contexto listo para Jinja2.
+
+    Raises:
+        RuntimeError — Si el Context Builder especificado no se puede cargar.
+    """
+    ctx = ContextoBaseExpediente(expediente).get_contexto()
+
+    # Documento de entrada: el primer documento consumido por la tarea (ADR-010)
+    if tarea:
+        _consumidos = tarea.documentos_consumidos
+        if _consumidos:
+            ctx['doc_entrada'] = _consumidos[0]
+
+    # Capa 2: Context Builder opcional
+    if plantilla.contexto_clase:
+        builder = cargar_context_builder(plantilla.contexto_clase)
+        ctx.update(builder(expediente, db_session, tarea=tarea).get_contexto())
+
+    # Consultas nombradas: se añaden al contexto con su nombre como clave
+    ctx.update(ejecutar_consultas(expediente, db_session))
+
+    return ctx
+
+
+def cargar_context_builder(nombre_clase: str):
+    """
+    Importa y devuelve la clase Context Builder por nombre.
+
+    Convenio de módulo: app.services.context_builders.<nombre_clase_en_snake>
+    Ejemplo: 'RequerimientoSubsanacion' → app.services.context_builders.requerimiento_subsanacion
+    """
+    snake = re.sub(r'(?<!^)(?=[A-Z])', '_', nombre_clase).lower()
+    modulo_path = f'app.services.context_builders.{snake}'
+    try:
+        modulo = importlib.import_module(modulo_path)
+        return getattr(modulo, nombre_clase)
+    except (ModuleNotFoundError, AttributeError) as e:
+        raise RuntimeError(
+            f'No se pudo cargar el Context Builder "{nombre_clase}" '
+            f'desde {modulo_path}: {e}'
+        )
+
+
+def ejecutar_consultas(expediente, db_session) -> dict:
+    """
+    Ejecuta TODAS las ConsultaNombrada activas con :expediente_id y las pasa
+    al contexto. Las no referenciadas en la plantilla se ignoran por Jinja2.
+
+    Estrategia simple: ejecutar todas es más barato que parsear la plantilla
+    buscando etiquetas {%tr for row in X %}. Si una consulta falla, se
+    registra un warning y se pasa como lista vacía (no rompe la generación).
+    """
+    from sqlalchemy import text
+
+    from app.models.consultas_nombradas import ConsultaNombrada
+
+    resultado = {}
+
+    for cn in ConsultaNombrada.query.filter_by(activo=True).all():
+        try:
+            rows = db_session.execute(
+                text(cn.sql),
+                {'expediente_id': expediente.id}
+            ).mappings().all()
+            resultado[cn.nombre] = [dict(r) for r in rows]
+        except Exception as e:
+            logger.warning(
+                'Consulta nombrada "%s" (id=%s) falló para expediente %s: %s',
+                cn.nombre, cn.id, expediente.id, e
+            )
+            resultado[cn.nombre] = []
+
+    return resultado

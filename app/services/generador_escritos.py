@@ -1,50 +1,70 @@
 """
-Servicio de generación de escritos administrativos (.docx).
+Servicio de generación de escritos administrativos.
 
 RESPONSABILIDAD:
-    Orquesta las capas de contexto + python-docx-template para producir
-    un fichero .docx relleno a partir de una Plantilla registrada.
+    Orquesta las capas de contexto y despacha al motor de render que
+    corresponda para producir un escrito relleno a partir de una Plantilla
+    registrada.
+
+DOS MOTORES HERMANOS (ADR-035 §2):
+    .docx → python-docx-template, en este módulo (_generar_docx)
+    .odt  → renderizador propio, en generador_escritos_odt
+
+    La elección se hace por la extensión de plantilla.ruta_plantilla: sin
+    columna nueva ni migración. No hay abstracción común entre ambos — los
+    modelos de docxtpl y de ODF no se parecen (ADR-035, alternativa B).
 
 FLUJO:
-    1. Carga la plantilla .docx desde PLANTILLAS_BASE
-    2. Construye el contexto: Capa 1 (ContextoBaseExpediente) + Capa 2 opcional
-    3. Ejecuta las consultas nombradas referenciadas en la plantilla
-    4. Renderiza con DocxTemplate (python-docx-template / Jinja2)
-    5. Devuelve bytes del .docx resultante
+    1. Resuelve la ruta de la plantilla en PLANTILLAS_BASE
+    2. Construye el contexto (escritos.construir_contexto) — agnóstico del formato
+    3. Renderiza con el motor que toque
+    4. Devuelve los bytes del documento resultante
 
 FUNCIONES PÚBLICAS ADICIONALES (Fase 5 #167):
-    componer_nombre_documento  — Nombre sistematizado para el .docx generado
+    componer_nombre_documento  — Nombre sistematizado para el documento generado
     ruta_destino_documento     — Ruta en FILESYSTEM_BASE/AT-XXXX/
-    guardar_docx               — Escribe bytes a disco (sobrescribe si existe)
+    guardar_documento          — Escribe bytes a disco (sobrescribe si existe)
+    tipo_contenido_documento   — MIME del documento según su extensión
 
 USO:
-    from app.services.generador_escritos import generar_escrito
-    from app.services.generador_escritos import componer_nombre_documento, ruta_destino_documento, guardar_docx
+    from app.services.generador_escritos import (
+        generar_escrito, componer_nombre_documento,
+        ruta_destino_documento, guardar_documento,
+    )
 
-    docx_bytes = generar_escrito(plantilla, expediente, db_session)
+    doc_bytes = generar_escrito(plantilla, expediente, db_session)
     nombre = componer_nombre_documento(tarea, plantilla)
     ruta = ruta_destino_documento(expediente, nombre)
-    guardar_docx(docx_bytes, ruta)
+    guardar_documento(doc_bytes, ruta)
 
 DEPENDENCIA:
-    pip install python-docx-template
+    pip install python-docx-template   (solo la rama .docx; la .odt no añade nada)
 """
 
-import importlib
 import logging
 import os
 import re
 
 from docxtpl import DocxTemplate
 
-from app.services.escritos import ContextoBaseExpediente
+from app.services.escritos import construir_contexto
 
 logger = logging.getLogger(__name__)
 
+# MIME por extensión de plantilla. Lo consume la API al registrar el documento
+# generado en el pool.
+TIPOS_CONTENIDO = {
+    '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    '.odt':  'application/vnd.oasis.opendocument.text',
+}
 
-def generar_escrito(plantilla, expediente, db_session, tarea=None) -> bytes:
+
+def generar_escrito(plantilla, expediente, db_session, tarea=None,
+                    codigo_seguimiento=None) -> bytes:
     """
-    Genera el .docx relleno para la plantilla y expediente dados.
+    Genera el escrito relleno para la plantilla y expediente dados.
+
+    Despacha al motor .docx o al .odt según la extensión de la plantilla.
 
     Args:
         plantilla:   Instancia de Plantilla (plantilla + contexto registrado).
@@ -53,33 +73,51 @@ def generar_escrito(plantilla, expediente, db_session, tarea=None) -> bytes:
         tarea:       Instancia de Tarea opcional. Si se proporciona y tiene
                      documentos consumidos, el primero se añade al contexto
                      como 'doc_entrada'.
+        codigo_seguimiento: Código de trazabilidad a embeber en el documento
+                     (#182). Solo lo soporta el motor .odt; en .docx se ignora
+                     con un warning, porque ningún canal de metadatos OOXML
+                     sobrevive al pipeline (ADR-035, contexto).
 
     Returns:
-        bytes — Contenido del .docx generado, listo para guardar en disco.
+        bytes — Contenido del documento generado, listo para guardar en disco.
 
     Raises:
-        FileNotFoundError — Si la plantilla .docx no existe en PLANTILLAS_BASE.
+        FileNotFoundError — Si la plantilla no existe en PLANTILLAS_BASE.
         RuntimeError      — Si el Context Builder especificado no se puede cargar.
+        ValueError        — Si la extensión de la plantilla no tiene motor.
     """
     plantilla_path = _ruta_plantilla(plantilla.ruta_plantilla)
+    extension = os.path.splitext(plantilla_path)[1].lower()
 
-    # Capa 1: contexto base del expediente
-    ctx = ContextoBaseExpediente(expediente).get_contexto()
+    ctx = construir_contexto(plantilla, expediente, db_session, tarea=tarea)
 
-    # Documento de entrada: el primer documento consumido por la tarea (ADR-010)
-    if tarea:
-        _consumidos = tarea.documentos_consumidos
-        if _consumidos:
-            ctx['doc_entrada'] = _consumidos[0]
+    if extension == '.odt':
+        from app.services.generador_escritos_odt import generar_escrito_odt
+        return generar_escrito_odt(plantilla_path, ctx,
+                                   codigo_seguimiento=codigo_seguimiento)
 
-    # Capa 2: Context Builder opcional
-    if plantilla.contexto_clase:
-        builder = _cargar_context_builder(plantilla.contexto_clase)
-        ctx.update(builder(expediente, db_session, tarea=tarea).get_contexto())
+    if extension == '.docx':
+        if codigo_seguimiento:
+            logger.warning(
+                'Código de seguimiento ignorado: la plantilla %s es .docx y el '
+                'motor OOXML no lo soporta (ADR-035)', plantilla.ruta_plantilla
+            )
+        return _generar_docx(plantilla_path, ctx)
 
-    # Consultas nombradas: se añaden al contexto con su nombre como clave
-    ctx.update(_ejecutar_consultas(plantilla, expediente, db_session))
+    raise ValueError(
+        f'No hay motor de generación para la extensión "{extension}" '
+        f'(plantilla: {plantilla.ruta_plantilla}). Formatos soportados: '
+        f'{", ".join(sorted(TIPOS_CONTENIDO))}.'
+    )
 
+
+def _generar_docx(plantilla_path: str, ctx: dict) -> bytes:
+    """
+    Motor .docx — python-docx-template sobre el contexto ya construido.
+
+    Añade al contexto lo que solo existe en este formato: la función img()
+    (InlineImage) y los fragmentos como Subdoc.
+    """
     # Renderizado
     tpl = DocxTemplate(plantilla_path)
 
@@ -119,14 +157,16 @@ _CARACTERES_INVALIDOS = re.compile(r'[\\/:*?"<>|]')
 
 def componer_nombre_documento(tarea, plantilla) -> str:
     """
-    Genera un nombre sistematizado para el .docx a partir de la cadena ESFTT.
+    Genera un nombre sistematizado para el documento a partir de la cadena ESFTT.
 
     Recorre tarea → tipo_tarea → tramite → tipo_tramite → fase → tipo_fase
     → solicitud → tipo_solicitud → expediente, tomando nombre_en_plantilla
     de cada nivel. NULL al final se omite; NULL en medio se reemplaza por "ANY".
 
     Si plantilla.variante existe, se añade " V {variante}" al final.
-    Sufijo siempre .docx. Caracteres inválidos para fichero → '_'.
+    La extensión es la de la plantilla (.docx o .odt), no una fija: el escrito
+    generado conserva el formato de su plantilla (ADR-035 §2).
+    Caracteres inválidos para fichero → '_'.
     """
     tramite = tarea.tramite
     fase = tramite.fase if tramite else None
@@ -153,7 +193,7 @@ def componer_nombre_documento(tarea, plantilla) -> str:
     if plantilla.variante:
         nombre += f' V {plantilla.variante}'
 
-    nombre += '.docx'
+    nombre += os.path.splitext(plantilla.ruta_plantilla or '')[1].lower() or '.docx'
 
     # Sanitizar caracteres inválidos para nombre de fichero
     nombre = _CARACTERES_INVALIDOS.sub('_', nombre)
@@ -184,16 +224,27 @@ def ruta_destino_documento(expediente, nombre_fichero) -> str:
     return os.path.join(directorio, nombre_fichero)
 
 
-def guardar_docx(docx_bytes, ruta_destino) -> str:
+def guardar_documento(doc_bytes, ruta_destino) -> str:
     """
-    Escribe bytes del .docx a disco. Sobrescribe si existe (regeneración B6).
+    Escribe los bytes del documento a disco. Sobrescribe si existe (regeneración B6).
 
     Returns:
         str — Ruta absoluta del fichero escrito.
     """
     with open(ruta_destino, 'wb') as f:
-        f.write(docx_bytes)
+        f.write(doc_bytes)
     return ruta_destino
+
+
+def tipo_contenido_documento(nombre_o_ruta: str) -> str:
+    """
+    MIME del documento generado, deducido de su extensión.
+
+    Desconocida → 'application/octet-stream', que es lo honesto: mejor que el
+    navegador no sepa abrirlo a que lo abra con el programa equivocado.
+    """
+    extension = os.path.splitext(nombre_o_ruta or '')[1].lower()
+    return TIPOS_CONTENIDO.get(extension, 'application/octet-stream')
 
 
 # ------------------------------------------------------------------
@@ -239,26 +290,6 @@ def _ruta_plantilla(ruta_relativa: str) -> str:
             f'Comprueba PLANTILLAS_BASE y la ruta registrada en la plantilla.'
         )
     return ruta
-
-
-def _cargar_context_builder(nombre_clase: str):
-    """
-    Importa y devuelve la clase Context Builder por nombre.
-
-    Convenio de módulo: app.services.context_builders.<nombre_clase_en_snake>
-    Ejemplo: 'RequerimientoSubsanacion' → app.services.context_builders.requerimiento_subsanacion
-    """
-    import re
-    snake = re.sub(r'(?<!^)(?=[A-Z])', '_', nombre_clase).lower()
-    modulo_path = f'app.services.context_builders.{snake}'
-    try:
-        modulo = importlib.import_module(modulo_path)
-        return getattr(modulo, nombre_clase)
-    except (ModuleNotFoundError, AttributeError) as e:
-        raise RuntimeError(
-            f'No se pudo cargar el Context Builder "{nombre_clase}" '
-            f'desde {modulo_path}: {e}'
-        )
 
 
 def _corregir_anidados_en_zip(docx_bytes: bytes) -> bytes:
@@ -399,36 +430,5 @@ def _cargar_fragmentos(tpl, plantilla_path) -> dict:
                 'Fragmento "%s.docx" referenciado en plantilla pero no encontrado en %s',
                 nombre, fragmentos_dir
             )
-
-    return resultado
-
-
-def _ejecutar_consultas(plantilla, expediente, db_session) -> dict:
-    """
-    Ejecuta TODAS las ConsultaNombrada activas con :expediente_id y las pasa
-    al contexto. Las no referenciadas en la plantilla se ignoran por Jinja2.
-
-    Estrategia simple: ejecutar todas es más barato que parsear el .docx
-    buscando etiquetas {%tr for row in X %}. Si una consulta falla, se
-    registra un warning y se pasa como lista vacía (no rompe la generación).
-    """
-    from app.models.consultas_nombradas import ConsultaNombrada
-    from sqlalchemy import text
-
-    resultado = {}
-
-    for cn in ConsultaNombrada.query.filter_by(activo=True).all():
-        try:
-            rows = db_session.execute(
-                text(cn.sql),
-                {'expediente_id': expediente.id}
-            ).mappings().all()
-            resultado[cn.nombre] = [dict(r) for r in rows]
-        except Exception as e:
-            logger.warning(
-                'Consulta nombrada "%s" (id=%s) falló para expediente %s: %s',
-                cn.nombre, cn.id, expediente.id, e
-            )
-            resultado[cn.nombre] = []
 
     return resultado
