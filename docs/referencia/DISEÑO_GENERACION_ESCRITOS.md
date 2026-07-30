@@ -3,6 +3,7 @@
 > **Issue principal:** #167
 > **Fecha análisis:** 2026-03-15 (3 sesiones)
 > **Estado:** Análisis completo. Cabos 1-5 cerrados. Implementación pendiente → #277 (M2).
+> **Actualizado:** 2026-07-30 (#726) — motor ODT implementado y elección por extensión; ver §"Formato de plantilla".
 > **Actualizado:** 2026-07-30 (#182) — **R10 resuelto**: los metadatos no sobreviven al pipeline; sólo el texto renderizado. Las plantillas pasan a `.odt` por **ADR-035**. Ver §"Trazabilidad — códigos embebidos" y §"Formato de plantilla".
 > **Actualizado:** 2026-06-16 (#553) — modelo de Context Builder y de tokens reencuadrado por **ADR-025**; ver §"Modelo de tokens del modal".
 > **Issues relacionados:** #189 (cerrado), #181 y #182 (vinculados via C3)
@@ -17,8 +18,9 @@
 | Modelo `ConsultaNombrada` | HECHO | `app/models/consultas_nombradas.py` |
 | Migración BD (ambas tablas) | HECHO | `migrations/versions/20c5d1e9d782*.py` |
 | `ContextoBaseExpediente` (Capa 1) | HECHO | `app/services/escritos.py` |
-| `generar_escrito()` (orquestador) | HECHO (parcial) | `app/services/generador_escritos.py` |
-| Dependencia `docxtpl` | HECHO | `requirements.txt` (commit 6b85fcf) |
+| `generar_escrito()` (orquestador + elección de motor por extensión) | HECHO | `app/services/generador_escritos.py` |
+| Motor de render ODT (#726) | HECHO | `app/services/generador_escritos_odt.py` |
+| Dependencia `docxtpl` (solo la rama `.docx`) | HECHO | `requirements.txt` (commit 6b85fcf) |
 | Admin plantillas — CRUD 4 pantallas | HECHO | `app/modules/admin_plantillas/` |
 | Panel de tokens copiables | HECHO | `_panel_tokens.html` |
 | Protocolo URI `bddat-explorador://` | HECHO | Issue #231 |
@@ -76,8 +78,13 @@ Los niveles que eran NULL/ANY en la plantilla se rellenan con datos reales del e
 **TODO:** Secuencial automático (sufijo ` (2)`, ` (3)`...) cuando ya existe un documento
 con el mismo nombre para el mismo expediente.
 
-**Almacenamiento:** Directorio plano en `PLANTILLAS_BASE/`. El contexto ESFTT vive en BD,
-no en el filesystem. La convención de nombres evita colisiones sin subdirectorios.
+**Extensión:** la de su plantilla — `.odt` o `.docx` (#726). El escrito generado conserva
+el formato del que se generó.
+
+**Almacenamiento:** El contexto ESFTT vive en BD, no en el filesystem, y la convención de
+nombres evita colisiones sin necesidad de subdirectorios. Aun así el explorador del alta
+permite navegar carpetas bajo `PLANTILLAS_BASE/plantillas/` y `ruta_plantilla` guarda la
+subruta completa: las plantillas de desarrollo viven en `escritos/`.
 
 **Implementación:** Issue #167 Fase 3 (`nombre_en_plantilla` × 5 tablas).
 
@@ -201,26 +208,43 @@ requisitos que impone (LibreOffice como requisito de instalación, fin del flujo
 legado de Access, plantilla base canónica) están en
 `docs/decisiones/ADR-035-plantillas-escritos-odt.md` — **no duplicar aquí**.
 
-Lo que corresponde a este documento son los cabos de implementación del motor:
+Implementado en #726: `app/services/generador_escritos_odt.py`, con
+`generador_escritos.generar_escrito` despachando por la extensión de
+`plantilla.ruta_plantilla`. El contexto lo construye
+`escritos.construir_contexto` y es el mismo para los dos motores.
+
+Cabos de implementación del motor, y cómo quedaron:
 
 - **Fragmentos.** Se insertan sustituyendo el párrafo del marcador por los
   bloques del fragmento, no dentro de él: así no hay párrafos anidados que
   reparar. Probado con negrita, cursiva y listas. Si plantillas y fragmentos
   derivan de la misma plantilla base comparten estilos y no hace falta
-  fusionarlos; en otro caso hay que renombrar los estilos automáticos del
-  fragmento (LibreOffice los llama `P1`, `T1`, `L1` en todos los documentos) y
-  reescribir sus referencias.
+  fusionarlos; en otro caso se renombran los estilos automáticos del fragmento
+  (LibreOffice los llama `P1`, `T1`, `L1` en todos los documentos) con prefijo
+  `frg<Nombre>_` y se reescriben sus referencias.
 - **Orden de las operaciones.** Los fragmentos se insertan **antes** de pasar
   Jinja2, de modo que un fragmento puede llevar tokens propios y se rellenan.
   docxtpl no lo permite.
 - **Cabeceras y pies** viven en `styles.xml`. Los tokens llegan a todos porque
   Jinja2 procesa la parte completa; lo que el sistema **inserta** (el código de
-  seguimiento) debe recorrer **todas las master pages**, o no aparecerá en las
+  seguimiento) recorre **todas las master pages**, o no aparecería en las
   páginas que usen una distinta —caso típico: primera página diferente.
-- **Imágenes.** Pendiente el equivalente ODF de `InlineImage`, y puede no hacer
+- **Tokens partidos.** El motor los recompone antes de Jinja2. En ODT llegan
+  enteros mientras nadie los edite, pero cambiar el formato a media palabra en
+  Writer parte el token entre varios `<text:span>`.
+- **Bucles.** `{%tr %}` (fila de tabla) y `{%p %}` (párrafo) se elevan fuera de
+  su bloque con la misma convención que docxtpl —la etiqueta va *delante* del
+  bloque, así que `{%tr for … %}` repite la fila que la contiene—, porque es la
+  que el panel de tokens enseña al supervisor y tiene que valer en los dos
+  motores. Las expresiones no pueden llevar `<`, `>` ni `&`: se escapan al
+  serializar y Jinja2 deja de reconocerlas (misma limitación que en docxtpl).
+- **Imágenes.** Sin equivalente ODF de `InlineImage`, y de momento no hace
   falta: el logo y los rótulos fijos viven en la master page (ADR-035 §4).
-- **Validación del alta** sustituye `DocxTemplate(ruta)` por compilar la
-  plantilla con Jinja2, más la comprobación de canonicidad de ADR-035 §5.
+- **Validación del alta** (`generador_escritos.validar_plantilla`) comprueba el
+  formato y **compila la plantilla con Jinja2**, que es lo que el mensaje de
+  error decía y no hacía. Los marcadores `{{r Fragmento }}` se excluyen de esa
+  compilación: no son Jinja2, los resuelve el motor antes. Falta la
+  comprobación de canonicidad de ADR-035 §5, que es de #727.
 
 ---
 
@@ -231,7 +255,7 @@ Lo que corresponde a este documento son los cabos de implementación del motor:
 | ID | Necesidad | Decisión |
 |----|-----------|----------|
 | A0 | Filtrado dinámico de tokens | Por `contexto_clase` (CB), no por ESFT. Sin whitelist (ADR-007) ni toggle (#552). Ver ADR-025 y §"Modelo de tokens del modal" |
-| A1 | Validación de sintaxis del .docx subido | `DocxTemplate(ruta)` antes de registrar (Fase 4) |
+| A1 | Validación de sintaxis de la plantilla registrada | `generador_escritos.validar_plantilla`: formato + compilación Jinja2, por extensión (#726). Canonicidad ADR-035 §5 → #727 |
 | A2 | Probar plantilla con datos reales | DIFERIBLE |
 | A3 | Parseo automático del .docx (detectar campos/consultas/fragmentos) | Necesario parcial (Fase 6) |
 | A4 | CRUD de consultas nombradas | Necesario (Fase 5) |
