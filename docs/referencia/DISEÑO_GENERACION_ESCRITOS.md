@@ -241,6 +241,15 @@ Cabos de implementación del motor, y cómo quedaron:
   serializar y Jinja2 deja de reconocerlas (misma limitación que en docxtpl).
 - **Imágenes.** Sin equivalente ODF de `InlineImage`, y de momento no hace
   falta: el logo y los rótulos fijos viven en la master page (ADR-035 §4).
+  Es la única etiqueta que **no** se comporta igual en los dos formatos:
+  `{{ img('logo.png', '3.5') }}` funciona en `.docx` y en `.odt` falla con
+  «'img' is undefined». No la ofrece el panel de tokens, así que solo aparece
+  en plantillas escritas a mano. Todo lo demás —tokens, `{{r Fragmento }}`,
+  `{%tr %}`, `{%p %}`— se escribe igual en ambos; lo que cambia es quién los
+  resuelve: en `.docx` el `{{r }}` acaba siendo una variable Jinja2 con un
+  `Subdoc` detrás (por eso el fragmento entra *dentro* del párrafo y hay que
+  reparar anidados), y en `.odt` no llega a Jinja2 porque el motor sustituye el
+  párrafo antes.
 - **Validación del alta** (`generador_escritos.validar_plantilla`) comprueba el
   formato y **compila la plantilla con Jinja2**, que es lo que el mensaje de
   error decía y no hacía. Los marcadores `{{r Fragmento }}` se excluyen de esa
