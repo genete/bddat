@@ -3,7 +3,7 @@
 > **Issue principal:** #167
 > **Fecha análisis:** 2026-03-15 (3 sesiones)
 > **Estado:** Análisis completo. Cabos 1-5 cerrados. Implementación pendiente → #277 (M2).
-> **Actualizado:** 2026-07-30 (#182) — **R10 resuelto**: los metadatos no sobreviven al pipeline; sólo el texto renderizado. Ver §"Trazabilidad — códigos embebidos" y §"Formato de plantilla".
+> **Actualizado:** 2026-07-30 (#182) — **R10 resuelto**: los metadatos no sobreviven al pipeline; sólo el texto renderizado. Las plantillas pasan a `.odt` por **ADR-035**. Ver §"Trazabilidad — códigos embebidos" y §"Formato de plantilla".
 > **Actualizado:** 2026-06-16 (#553) — modelo de Context Builder y de tokens reencuadrado por **ADR-025**; ver §"Modelo de tokens del modal".
 > **Issues relacionados:** #189 (cerrado), #181 y #182 (vinculados via C3)
 
@@ -188,41 +188,39 @@ inserción no es la misma en OOXML que en ODF. La defensa frente al borrado es
 débil en cualquiera de los dos, pero suficiente para el uso normal: hay que
 buscar el elemento en el navegador del documento para seleccionarlo y editarlo.
 
-**Implementación:** Issue #167 Fase 6, condicionada a la decisión sobre el
-formato de plantilla (ver apartado siguiente).
+**Implementación:** Issue #167 Fase 6, sobre el renderizador ODT de **ADR-035**
+— la inyección depende del formato, así que se hace después del motor.
 
 ---
 
-## Formato de plantilla — exploración de ODT (2026-07-30)
+## Formato de plantilla — ODT (ADR-035)
 
-Hechos medidos en la misma sesión, al hilo de que ninguna protección sobrevive
-al `.docx`. **Sin decisión tomada**: queda como material para el issue del
-renderizador ODT.
+Las plantillas y los fragmentos pasan a `.odt`, con renderizador propio y
+conservando el motor `.docx` en paralelo. La decisión, sus motivos y los
+requisitos que impone (LibreOffice como requisito de instalación, fin del flujo
+legado de Access, plantilla base canónica) están en
+`docs/decisiones/ADR-035-plantillas-escritos-odt.md` — **no duplicar aquí**.
 
-| | `.docx` (docxtpl) | `.odt` |
-|---|---|---|
-| Tokens en el XML | troceados en runs — docxtpl los recompone | **enteros**, texto plano |
-| Cabeceras y pies | `word/header*.xml`, `word/footer*.xml` | `styles.xml` |
-| Protección de objetos | no sobrevive nada | `style:protect` conserva `position size` |
-| Párrafos anidados | hay que parchear el ZIP (`_corregir_anidados_en_zip`) | no ocurre |
+Lo que corresponde a este documento son los cabos de implementación del motor:
 
-Prueba de concepto ejecutada (`docs_prueba/temp/odt_0*.py`, fuera de git):
-sustitución de tokens en cuerpo y pie, bucle de filas de tabla equivalente a
-`{%tr %}` de docxtpl, e inyección del código de seguimiento girado en el margen
-—íntegro en el PDF resultante—, todo con `zipfile` + Jinja2, sin dependencias
-nuevas.
-
-Frontera natural para convivir con el motor actual: el contexto es un
-diccionario y no conoce el formato, así que `ContextoBaseExpediente`, los
-Context Builders y las consultas nombradas no se tocan. La elección de motor
-puede hacerse por la extensión de `plantilla.ruta_plantilla`, sin migración.
-
-No hay plantillas ni fragmentos en producción, y los de desarrollo son
-prescindibles: si se adopta ODT se rehacen en ese formato, fragmentos incluidos.
-Eso deja fuera el problema de mezclar formatos —un fragmento `.docx` no entraría
-en un `.odt`— pero sigue habiendo que implementar la inserción de fragmentos y,
-si las plantillas las usan en el render y no en el estilo de página, el
-equivalente ODF de las imágenes (`InlineImage`).
+- **Fragmentos.** Se insertan sustituyendo el párrafo del marcador por los
+  bloques del fragmento, no dentro de él: así no hay párrafos anidados que
+  reparar. Probado con negrita, cursiva y listas. Si plantillas y fragmentos
+  derivan de la misma plantilla base comparten estilos y no hace falta
+  fusionarlos; en otro caso hay que renombrar los estilos automáticos del
+  fragmento (LibreOffice los llama `P1`, `T1`, `L1` en todos los documentos) y
+  reescribir sus referencias.
+- **Orden de las operaciones.** Los fragmentos se insertan **antes** de pasar
+  Jinja2, de modo que un fragmento puede llevar tokens propios y se rellenan.
+  docxtpl no lo permite.
+- **Cabeceras y pies** viven en `styles.xml`. Los tokens llegan a todos porque
+  Jinja2 procesa la parte completa; lo que el sistema **inserta** (el código de
+  seguimiento) debe recorrer **todas las master pages**, o no aparecerá en las
+  páginas que usen una distinta —caso típico: primera página diferente.
+- **Imágenes.** Pendiente el equivalente ODF de `InlineImage`, y puede no hacer
+  falta: el logo y los rótulos fijos viven en la master page (ADR-035 §4).
+- **Validación del alta** sustituye `DocxTemplate(ruta)` por compilar la
+  plantilla con Jinja2, más la comprobación de canonicidad de ADR-035 §5.
 
 ---
 
