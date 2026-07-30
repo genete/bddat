@@ -3,9 +3,9 @@ Motor de render de escritos en formato ODT (ADR-035).
 
 RESPONSABILIDAD:
     Rellenar una plantilla .odt con el contexto ya construido y devolver los
-    bytes del documento resultante. Hermano de la rama .docx de
-    `generador_escritos`, del que recibe el contexto: aquí no se consulta la
-    base de datos ni se sabe qué es un expediente.
+    bytes del documento resultante. Hermano de `generador_escritos_docx`;
+    `generador_escritos` despacha entre los dos y les pasa el contexto hecho:
+    aquí no se consulta la base de datos ni se sabe qué es un expediente.
 
 POR QUÉ UN MOTOR PROPIO (ADR-035):
     Un .odt es un ZIP con XML dentro y los tokens llegan enteros al XML, así

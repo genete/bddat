@@ -18,8 +18,9 @@
 | Modelo `ConsultaNombrada` | HECHO | `app/models/consultas_nombradas.py` |
 | Migración BD (ambas tablas) | HECHO | `migrations/versions/20c5d1e9d782*.py` |
 | `ContextoBaseExpediente` (Capa 1) | HECHO | `app/services/escritos.py` |
-| `generar_escrito()` (orquestador + elección de motor por extensión) | HECHO | `app/services/generador_escritos.py` |
+| `generar_escrito()` (despacho por extensión + nombre, ruta, guardado, MIME y validación) | HECHO | `app/services/generador_escritos.py` |
 | Motor de render ODT (#726) | HECHO | `app/services/generador_escritos_odt.py` |
+| Motor de render DOCX (heredado, en retirada) | HECHO | `app/services/generador_escritos_docx.py` |
 | Dependencia `docxtpl` (solo la rama `.docx`) | HECHO | `requirements.txt` (commit 6b85fcf) |
 | Admin plantillas — CRUD 4 pantallas | HECHO | `app/modules/admin_plantillas/` |
 | Panel de tokens copiables | HECHO | `_panel_tokens.html` |
