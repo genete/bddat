@@ -149,6 +149,19 @@ def _build_tokens(contexto_clase=None) -> dict:
 
 
 
+def _ruta_registrable(ruta_relativa: str) -> str:
+    """
+    Ruta que se guarda en `plantilla.ruta_plantilla`, relativa a
+    PLANTILLAS_BASE/plantillas/ y con '/' como separador.
+
+    Conserva el subdirectorio. Guardar solo el nombre de fichero daba de alta
+    plantillas que luego no se encontraban al generar: el explorador permite
+    navegar carpetas, y `escritos/resolucion.odt` se registraba como
+    `resolucion.odt`, que no existe en la raíz.
+    """
+    return ruta_relativa.replace('\\', '/').strip('/')
+
+
 def _path_seguro_plantillas(ruta_relativa: str) -> str | None:
     """
     Valida que ruta_relativa (con '/' como separador) no escape de PLANTILLAS_BASE/plantillas/.
@@ -383,8 +396,7 @@ def nueva():
                 **_selects_context(),
             )
 
-        # Almacenar solo el nombre de fichero (relativo a PLANTILLAS_BASE/plantillas/)
-        p.ruta_plantilla = os.path.basename(ruta_rel)
+        p.ruta_plantilla = _ruta_registrable(ruta_rel)
 
         db.session.add(p)
         try:
@@ -530,7 +542,7 @@ def editar(id):
         return _responder_errores(errores)
 
     if ruta_rel:
-        plantilla.ruta_plantilla = os.path.basename(ruta_rel)
+        plantilla.ruta_plantilla = _ruta_registrable(ruta_rel)
 
     try:
         db.session.commit()
