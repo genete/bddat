@@ -113,14 +113,35 @@ reales (logo, datos de sede, rótulo de consejería, párrafos estandarizados):
 ### 5. Plantilla base canónica, con validación en el alta y marca de versión
 
 Ninguna plantilla nace de un `.odt` en blanco: **todas derivan de una plantilla base** que
-define la hoja de estilos y, en particular, **declara las fuentes explícitamente**.
+define la hoja de estilos y, en particular, **fija qué fuentes se usan**.
 
-El motivo se midió: si el estilo no declara fuente y LibreOffice la resuelve del tema
-(Calibri → Carlito), el PDF **se ve bien** pero su texto extraíble sale con los acentos
-descompuestos — `'Cá \x03diz, Consejerí\x03á'` en vez de `'Cádiz, Consejería'`. Con la
-fuente declarada, limpio. El paso por ODT no influye; se comprobó por separado. Afecta a
-#181, a la búsqueda de texto del usuario sobre el PDF y a lo que se lleva quien copie y
-pegue del documento.
+El motivo se midió, y **la primera medición atribuyó mal la causa**. El defecto observado
+es real: el texto extraíble del PDF salía con los acentos descompuestos —
+`'Cá \x03diz, Consejerí\x03á'` en vez de `'Cádiz, Consejería'`—, afecta a #181, a la
+búsqueda de texto del usuario sobre el PDF y a lo que se lleva quien copie y pegue. Lo que
+no era cierto es que la variable fuese declarar la fuente o no declararla: **es qué fuente
+se declara**.
+
+Medido en #727 sobre el mismo texto y el mismo camino `.odt` → `soffice` → PDF, cambiando
+solo la fuente:
+
+| Fuente | Texto extraíble |
+|---|---|
+| **Cambria** | **`'Cá \x03diz, Consejerí\x03á de Industriá…'`** |
+| Calibri, Source Sans Pro, Liberation Sans, Times New Roman, Carlito, Caladea | limpio |
+
+Salen limpios además el `.odt` que no declara fuente ninguna, el que declara una fuente
+inexistente que fuerza sustitución, y el texto de origen en NFD. **Solo rompe Cambria**,
+que está instalada como TrueType Collection (`cambria.ttc`): al exportar a PDF, sus
+acentos se pintan en una operación de texto aparte, sin mapeo `ToUnicode` válido.
+
+Cambria es la fuente por defecto de los documentos heredados de Word, que es de donde
+venía la plantilla en que se midió: allí «no declarar fuente» significaba, en la práctica,
+caer en Cambria por el `default-style`.
+
+La decisión no cambia —la plantilla base sigue siendo necesaria—, pero **la regla de
+canonicidad sí**: no es «que se declaren las fuentes», sino **que las fuentes usadas estén
+en la lista permitida**, con Cambria vetada por nombre.
 
 La base resuelve además el único cabo serio de los fragmentos: si plantillas y fragmentos
 comparten hoja de estilos, no hay que fusionar estilos al insertar. Los dos problemas
@@ -131,8 +152,11 @@ Dos piezas, con funciones distintas:
 - **Marca de versión** en `meta.xml` (`meta:user-defined`), que dice de qué base deriva la
   plantilla. Medido: sobrevive a que Writer abra y guarde.
 - **Validación en el alta**, que decide si la plantilla entra. Comprueba lo que importa —
-  que se declaren las fuentes, que existan los estilos que los fragmentos esperan— y se
-  engancha donde ya se valida la sintaxis (`admin_plantillas/routes.py`).
+  que las fuentes usadas estén permitidas, que existan los estilos que los fragmentos
+  esperan— y se engancha donde ya se valida la sintaxis (`admin_plantillas/routes.py`).
+  La lista de estilos exigidos solo puede apoyarse en los **personalizados**: medido en
+  #727, LibreOffice traduce al guardar los nombres internos de los estilos estándar según
+  el idioma de su interfaz (`Título 1` → `Heading 1`, `Subtítulo` → `Subtitle`).
 
 La marca **no es la puerta**: se hereda al copiar y sobrevive aunque el supervisor cambie
 la fuente a mano después. Dice de dónde viene, no si cumple. Y frena descuidos, no a
@@ -196,8 +220,9 @@ del modal de generación.
   cosas que no se parecen. Dos funciones hermanas con la misma firma y una elección
   explícita por extensión.
 - **La plantilla base no es burocracia.** Sin ella, cada plantilla trae su hoja de
-  estilos, y de ahí salían dos defectos distintos: los acentos descompuestos en el texto
-  extraíble y la fusión de estilos al insertar fragmentos.
+  estilos, y de ahí salían dos defectos distintos: la fusión de estilos al insertar
+  fragmentos y las fuentes heredadas de Word, entre ellas la que descompone los acentos
+  del texto extraíble.
 
 ---
 
@@ -210,7 +235,7 @@ del modal de generación.
   tiraría si se hiciera ahora sobre `.docx`. Sus otras dos piezas —composición del código
   y extracción del PDF— son agnósticas, pero no sirven sin la primera.
 - #181 mejora por partida doble: el código embebido le da certeza donde hoy tendría
-  heurísticas, y las plantillas con fuente declarada le dan un texto extraíble limpio.
+  heurísticas, y las plantillas con fuente permitida le dan un texto extraíble limpio.
 - El alta de plantillas (`admin_plantillas`) cambia en varios puntos: navegador de
   ficheros del servidor, validación de sintaxis, panel de tokens y textos.
 - Las plantillas y fragmentos de desarrollo se rehacen. No hay migración de datos.
