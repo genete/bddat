@@ -303,6 +303,30 @@ def sanear(ruta_entrada, ruta_salida):
     print(f'   firmante: {quitados} cuadro(s) flotante(s) → párrafo en el flujo '
           f'(«{texto_firma}»)')
 
+    # 3 bis. El logo decorativo «Image1» (Hércules/columnas/leones, anclado a la
+    # página cerca del borde inferior) no llevaba margen de ajuste de texto: el
+    # cuerpo podía llegar a tocarlo. En la carta no se nota —el pie de sede alto
+    # reservaba ese hueco de rebote—, pero al quitar el pie en la resolución
+    # (#727) el cuerpo queda libre para acercarse. El margen va en el propio
+    # marco, no en la página: así protege en cualquier plantilla derivada,
+    # tenga pie o no.
+    for frame in content.iter(f'{Q["draw"]}frame'):
+        if frame.get(f'{Q["draw"]}name') != 'Image1':
+            continue
+        nombre_estilo = frame.get(f'{Q["draw"]}style-name')
+        estilo_grafico = content.find(
+            f'{Q["office"]}automatic-styles/'
+            f'{Q["style"]}style[@{Q["style"]}name="{nombre_estilo}"]')
+        if estilo_grafico is None:
+            print(f'   AVISO: no se encuentra el estilo gráfico "{nombre_estilo}" de Image1')
+            break
+        gp = estilo_grafico.find(f'{Q["style"]}graphic-properties')
+        gp.set(f'{Q["style"]}wrap', 'parallel')
+        for lado in ('left', 'right', 'top', 'bottom'):
+            gp.set(f'{Q["fo"]}margin-{lado}', '0.4cm')
+        print(f'   margen de 0,4cm alrededor de Image1 (estilo "{nombre_estilo}")')
+        break
+
     # 4 bis. Espaciado del cuerpo, con los valores medidos del manual.
     # «Normal» manda en todo el cuerpo: margen inferior para separar párrafos e
     # interlineado natural (se retira cualquier fo:line-height heredado).
