@@ -3,6 +3,7 @@
 > **Issue principal:** #167
 > **Fecha análisis:** 2026-03-15 (3 sesiones)
 > **Estado:** Análisis completo. Cabos 1-5 cerrados. Implementación pendiente → #277 (M2).
+> **Actualizado:** 2026-07-30 (#182) — **R10 resuelto**: los metadatos no sobreviven al pipeline; sólo el texto renderizado. Ver §"Trazabilidad — códigos embebidos" y §"Formato de plantilla".
 > **Actualizado:** 2026-06-16 (#553) — modelo de Context Builder y de tokens reencuadrado por **ADR-025**; ver §"Modelo de tokens del modal".
 > **Issues relacionados:** #189 (cerrado), #181 y #182 (vinculados via C3)
 
@@ -110,33 +111,118 @@ contexto de la plantilla:
 
 ## Trazabilidad — códigos embebidos (C3, vincula #182 y #181)
 
-Al generar el .docx, el sistema inyecta automáticamente metadatos de clasificación:
+> **R10 resuelto el 2026-07-30** (sesión de #182), midiendo el pipeline completo
+> con una probeta que llevaba el mismo código por 22 vías a la vez. La conclusión
+> invalida el diseño anterior de este apartado, que daba las custom properties
+> por vía principal: **no llegan al PDF**. Instrumental de la prueba en
+> `docs_prueba/temp/r10_*.py` (fuera de git).
 
-**Ciclo de vida del documento generado:**
+**Ciclo de vida real del documento generado:**
 ```
-GENERAR (#167)       → .docx con código embebido (#182)
+GENERAR (#167)          → .docx / .odt con código embebido (#182)
    ↓
-Usuario edita en Writer → el código sobrevive
+Usuario edita en Writer → sobrevive todo, incluidos los metadatos
    ↓
-Portafirmas          → PDF firmado, código intacto
+Exportar a PDF (Writer) → mueren custom properties, Comentarios, Categoría,
+                          marcadores, docVars y el texto oculto (w:vanish);
+                          sobreviven Título/Asunto/Palabras clave y todo el
+                          texto renderizado
    ↓
-INCORPORAR al pool   → inspección automática (#181) lee el código
+BandeJA → Portafirmas   → reescribe el PDF con iText: BORRA Título, Palabras
+                          clave, Autor y Creador, y SOBRESCRIBE Asunto con su
+                          propio código (HCV=…). El texto renderizado queda
+                          intacto, con las coordenadas sin mover
    ↓
-Clasificación sin intervención manual
+INCORPORAR al pool      → inspección automática (#181) lee el código
 ```
 
-**Doble vía de trazabilidad:**
-1. **Custom properties del .docx** — invisible, lectura programática directa
-2. **QR en pie de página** — resistente a impresión, escaneo, conversión PDF.
-   El supervisor puede ubicarlo con `{{qr_clasificacion}}`; si no lo pone, el sistema lo añade al final.
+**Qué sobrevive al circuito completo:** únicamente el **texto renderizado en la
+página**. Cabecera, pie, cuerpo, cuadros de texto flotantes y ambos márgenes en
+vertical llegan enteros y en una sola pieza; el código debe ser ASCII sin
+acentos (los acentos se trocean al extraer texto del PDF, los tokens no).
 
-**Código estructurado:**
-`BDDAT|AT-12345|AAP_AAC|RESOLUCION|ELABORACION|RES_FAVORABLE|2026-03-15`
+**Vía de metadatos: descartada.** No es sólo que las custom properties no
+lleguen al PDF — es que ninguno de los siete canales de metadatos probados
+sobrevive al portafirmas.
 
-**Prerequisito R10:** Antes de implementar custom properties, probar manualmente
-si sobreviven el pipeline .docx → portafirmas → PDF.
+**Dónde NO colocarlo:** el portafirmas ocupa el **margen derecho** con su banda
+vertical («Es copia auténtica de documento electrónico») y la **banda inferior**
+con la tabla FIRMADO POR / VERIFICACIÓN y su propio QR. El margen izquierdo
+queda libre. Esto afecta también al QR que este documento proponía: la Junta ya
+estampa uno, y competirían por el mismo sitio y significado.
 
-**Implementación:** Issue #167 Fase 6.
+**El «PDF firmado» no lleva firma criptográfica.** Los tres PDFs devueltos por
+el circuito no tienen `/ByteRange`, ni campo de firma, ni actualización
+incremental: son copias auténticas selladas con CSV, generadas por iText. La
+firma vive en el sistema de la Junta, no en el fichero. Consecuencia para
+cualquier diseño futuro: no se puede validar la firma leyendo el PDF.
+
+**Protección contra edición: no disponible en .docx.** Se probaron tres
+mecanismos y LibreOffice no exporta ninguno a OOXML — protección de campos
+(`w:documentProtection`), bloqueo de forma (`a:spLocks`) y anclaje bloqueado
+(`locked="1"`) desaparecen al guardar. En ODF sobrevive parcialmente
+(`style:protect` conserva `position size`, pierde `content`).
+
+**Requisito: dígito de control.** Un código ausente es inocuo — se detecta que
+no está y el documento pasa por las heurísticas de #181. El peligro es un código
+**alterado** que siga pareciendo válido: produce una asociación falsa que el
+usuario confirma de buena fe. El código debe llevar verificación propia para que
+una alteración no pueda producir el código válido de otra tarea.
+
+**Código estructurado** — pendiente de fijar. Debe llevar id de instancia
+(`tarea_id`), por el requisito que #711 añadió a #182, y dígito de control. El
+encuadramiento ESFTT completo del diseño original es redundante: desde el id de
+la tarea se deduce entero.
+
+**Colocación: sin decidir** (2026-07-30). Dos candidatos, ambos supervivientes
+del circuito completo:
+
+- **Margen izquierdo, vertical.** Único sitio que el portafirmas no reclama para
+  sí. Exige cuadro de texto girado.
+- **Pie de página, sin giro.** Más legible y previsiblemente más simple de
+  insertar. Conviven con la banda de firma, que se estampa por debajo, en el
+  margen inferior.
+
+La elección depende del formato de plantilla que se adopte, porque la mecánica de
+inserción no es la misma en OOXML que en ODF. La defensa frente al borrado es
+débil en cualquiera de los dos, pero suficiente para el uso normal: hay que
+buscar el elemento en el navegador del documento para seleccionarlo y editarlo.
+
+**Implementación:** Issue #167 Fase 6, condicionada a la decisión sobre el
+formato de plantilla (ver apartado siguiente).
+
+---
+
+## Formato de plantilla — exploración de ODT (2026-07-30)
+
+Hechos medidos en la misma sesión, al hilo de que ninguna protección sobrevive
+al `.docx`. **Sin decisión tomada**: queda como material para el issue del
+renderizador ODT.
+
+| | `.docx` (docxtpl) | `.odt` |
+|---|---|---|
+| Tokens en el XML | troceados en runs — docxtpl los recompone | **enteros**, texto plano |
+| Cabeceras y pies | `word/header*.xml`, `word/footer*.xml` | `styles.xml` |
+| Protección de objetos | no sobrevive nada | `style:protect` conserva `position size` |
+| Párrafos anidados | hay que parchear el ZIP (`_corregir_anidados_en_zip`) | no ocurre |
+
+Prueba de concepto ejecutada (`docs_prueba/temp/odt_0*.py`, fuera de git):
+sustitución de tokens en cuerpo y pie, bucle de filas de tabla equivalente a
+`{%tr %}` de docxtpl, e inyección del código de seguimiento girado en el margen
+—íntegro en el PDF resultante—, todo con `zipfile` + Jinja2, sin dependencias
+nuevas.
+
+Frontera natural para convivir con el motor actual: el contexto es un
+diccionario y no conoce el formato, así que `ContextoBaseExpediente`, los
+Context Builders y las consultas nombradas no se tocan. La elección de motor
+puede hacerse por la extensión de `plantilla.ruta_plantilla`, sin migración.
+
+No hay plantillas ni fragmentos en producción, y los de desarrollo son
+prescindibles: si se adopta ODT se rehacen en ese formato, fragmentos incluidos.
+Eso deja fuera el problema de mezclar formatos —un fragmento `.docx` no entraría
+en un `.odt`— pero sigue habiendo que implementar la inserción de fragmentos y,
+si las plantillas las usan en el render y no en el estilo de página, el
+equivalente ODF de las imágenes (`InlineImage`).
 
 ---
 
