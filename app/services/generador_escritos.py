@@ -28,6 +28,7 @@ FUNCIONES PÚBLICAS ADICIONALES (Fase 5 #167):
     ruta_destino_documento     — Ruta en FILESYSTEM_BASE/AT-XXXX/
     guardar_documento          — Escribe bytes a disco (sobrescribe si existe)
     tipo_contenido_documento   — MIME del documento según su extensión
+    advertencias_plantilla     — Avisos de canonicidad (#727); solo .odt, no bloquean
 
 USO:
     from app.services.generador_escritos import (
@@ -227,6 +228,27 @@ def validar_plantilla(ruta_abs: str) -> str | None:
 
     return (f'Formato de plantilla no soportado: "{extension}". '
             f'Se admiten {", ".join(sorted(TIPOS_CONTENIDO))}.')
+
+
+def advertencias_plantilla(ruta_abs: str) -> list[str]:
+    """
+    Avisos de canonicidad (ADR-035 §5, #727). Solo el motor .odt los tiene: el
+    concepto de plantilla base no existe para .docx.
+
+    No decide si la plantilla entra —eso es `validar_plantilla`—: son avisos,
+    no errores. El criterio del proyecto es admitir con justificación, y una
+    plantilla que se aparta de la base no es un acto administrativo inválido,
+    solo una hoja de estilos distinta de la común.
+
+    Returns:
+        list[str] — avisos listos para enseñar al supervisor. Vacía si no hay
+        nada que decir (no implica que la plantilla sea válida).
+    """
+    extension = os.path.splitext(ruta_abs or '')[1].lower()
+    if extension != '.odt':
+        return []
+    from app.services.plantilla_canonica_odt import comprobar_canonicidad
+    return comprobar_canonicidad(ruta_abs)
 
 
 def tipo_contenido_documento(nombre_o_ruta: str) -> str:

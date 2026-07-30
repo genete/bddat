@@ -120,6 +120,14 @@
         </div>
         {% endif %}
         {% endif %}
+        {% if marca and marca.get('plantilla-base') %}
+        <div class="mt-2 small text-muted"
+             title="De qué plantilla base deriva (ADR-035 §5). No es un control de acceso: solo dice de dónde viene.">
+            <i class="fas fa-code-branch me-1"></i>
+            Deriva de la base «{{ marca['plantilla-base'] }}»
+            {%- if marca.get('version-hoja-estilos') %}, versión {{ marca['version-hoja-estilos'] }}{% endif %}
+        </div>
+        {% endif %}
     </div>
 </div>
 

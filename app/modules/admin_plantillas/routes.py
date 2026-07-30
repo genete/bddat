@@ -36,7 +36,10 @@ from app.models.tipos_expedientes import TipoExpediente
 from app.models.tipos_fases import TipoFase
 from app.models.tipos_solicitudes import TipoSolicitud
 from app.models.tipos_tramites import TipoTramite
-from app.services.generador_escritos import TIPOS_CONTENIDO, validar_plantilla
+from app.services.generador_escritos import (TIPOS_CONTENIDO,
+                                             advertencias_plantilla,
+                                             validar_plantilla)
+from app.services.plantilla_canonica_odt import leer_marca
 from app.utils.permisos import tiene_permiso
 
 # Formatos de plantilla admitidos, los mismos que tienen motor de render
@@ -412,6 +415,8 @@ def nueva():
             )
 
         flash(f'Plantilla «{p.nombre}» registrada correctamente.', 'success')
+        for aviso in advertencias_plantilla(ruta_abs):
+            flash(aviso, 'warning')
         return redirect(url_for('admin_plantillas.detalle', id=p.id))
 
     return render_template(
@@ -452,9 +457,10 @@ def fragmento(id):
     """Fragmento HTML de lectura para el inspector (ADR-023 §9 / #545)."""
     plantilla = Plantilla.query.get_or_404(id)
     ruta_absoluta, uri_explorador = _rutas_fichero(plantilla)
+    marca = leer_marca(ruta_absoluta) if ruta_absoluta and os.path.isfile(ruta_absoluta) else None
     return render_template(
         'admin_plantillas/_detalle_fragmento.html',
-        plantilla=plantilla,
+        plantilla=plantilla, marca=marca,
         ruta_absoluta=ruta_absoluta, uri_explorador=uri_explorador,
         puede_editar=tiene_permiso('gestionar_plantillas'),
     )
@@ -528,6 +534,7 @@ def editar(id):
         return redirect(url_for('admin_plantillas.listado', sel=id))
 
     ruta_rel = request.form.get('ruta_plantilla', '').strip()
+    avisos = []
     if ruta_rel:
         # El supervisor ha seleccionado un nuevo fichero en el servidor
         ruta_abs = _path_seguro_plantillas(ruta_rel)
@@ -536,6 +543,7 @@ def editar(id):
         error_plantilla = validar_plantilla(ruta_abs)
         if error_plantilla:
             return _responder_errores([f'La plantilla no es válida: {error_plantilla}'])
+        avisos = advertencias_plantilla(ruta_abs)
 
     errores = _rellenar_plantilla(plantilla)
     if errores:
@@ -552,8 +560,10 @@ def editar(id):
 
     msg = f'Plantilla «{plantilla.nombre}» actualizada correctamente.'
     if is_xhr:
-        return jsonify({'ok': True, 'message': msg})
+        return jsonify({'ok': True, 'message': msg, 'warnings': avisos})
     flash(msg, 'success')
+    for aviso in avisos:
+        flash(aviso, 'warning')
     return redirect(url_for('admin_plantillas.listado', sel=id))
 
 

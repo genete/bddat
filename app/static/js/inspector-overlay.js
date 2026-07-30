@@ -297,6 +297,10 @@
           document.dispatchEvent(new CustomEvent('inspector:saved', { detail: { selId: _selId } }));
           if (window.mostrar_toast) {
             window.mostrar_toast('success', json.message || 'Guardado correctamente.');
+            // Avisos de canonicidad (#727): no bloquean el guardado, se enseñan aparte.
+            (json.warnings || []).forEach(function (aviso) {
+              window.mostrar_toast('warning', aviso);
+            });
           }
         } else {
           _showFormErrors(form, json.errors || []);
