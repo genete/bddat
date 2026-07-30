@@ -18,6 +18,7 @@ from app.services.generador_escritos import (
     TIPOS_CONTENIDO,
     componer_nombre_documento,
     tipo_contenido_documento,
+    validar_plantilla,
 )
 from app.services.generador_escritos_odt import generar_escrito_odt
 
@@ -383,6 +384,39 @@ class TestEleccionDeMotor:
         assert tipo_contenido_documento('escrito.odt') == TIPOS_CONTENIDO['.odt']
         assert tipo_contenido_documento('escrito.docx') == TIPOS_CONTENIDO['.docx']
         assert tipo_contenido_documento('escrito.xyz') == 'application/octet-stream'
+
+    def test_validacion_acepta_un_odt_correcto(self, tmp_path):
+        ruta = _odt(tmp_path, 'p.odt',
+                    cuerpo='<text:p>{{ numero_at }}</text:p>')
+
+        assert validar_plantilla(ruta) is None
+
+    def test_validacion_admite_los_marcadores_de_fragmento(self, tmp_path):
+        """{{r Nombre }} no es Jinja2: lo resuelve el motor antes de compilar."""
+        ruta = _odt(tmp_path, 'p.odt', cuerpo='<text:p>{{r Fundamentos }}</text:p>')
+
+        assert validar_plantilla(ruta) is None
+
+    def test_validacion_detecta_un_bucle_sin_cerrar(self, tmp_path):
+        """Es lo que se le escapa al supervisor y no se ve hasta generar."""
+        ruta = _odt(tmp_path, 'p.odt',
+                    cuerpo='<text:p>{% for m in municipios %}{{ m }}</text:p>')
+
+        error = validar_plantilla(ruta)
+
+        assert error and 'endfor' in error.lower()
+
+    def test_validacion_rechaza_lo_que_no_es_un_odt(self, tmp_path):
+        ruta = tmp_path / 'falso.odt'
+        ruta.write_text('esto no es un ZIP')
+
+        assert 'no es un .odt' in validar_plantilla(str(ruta))
+
+    def test_validacion_rechaza_una_extension_sin_motor(self, tmp_path):
+        ruta = tmp_path / 'plantilla.rtf'
+        ruta.write_text('x')
+
+        assert 'no soportado' in validar_plantilla(str(ruta))
 
     def test_extension_sin_motor_da_error_explicito(self, tmp_path, monkeypatch):
         from app.services import generador_escritos

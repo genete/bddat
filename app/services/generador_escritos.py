@@ -236,6 +236,51 @@ def guardar_documento(doc_bytes, ruta_destino) -> str:
     return ruta_destino
 
 
+def validar_plantilla(ruta_abs: str) -> str | None:
+    """
+    Comprueba que el fichero sea una plantilla utilizable por su motor.
+
+    Dos cosas distintas, y ambas importan en el alta: que el fichero esté bien
+    formado para su formato, y que su sintaxis Jinja2 compile — un `{% for %}`
+    sin cerrar no se ve hasta que alguien genera el escrito.
+
+    Returns:
+        str  — Mensaje de error, listo para enseñar al supervisor.
+        None — La plantilla es válida.
+    """
+    extension = os.path.splitext(ruta_abs or '')[1].lower()
+
+    if extension == '.odt':
+        from app.services.generador_escritos_odt import validar_plantilla_odt
+        return validar_plantilla_odt(ruta_abs)
+
+    if extension == '.docx':
+        return _validar_plantilla_docx(ruta_abs)
+
+    return (f'Formato de plantilla no soportado: "{extension}". '
+            f'Se admiten {", ".join(sorted(TIPOS_CONTENIDO))}.')
+
+
+def _validar_plantilla_docx(ruta_abs: str) -> str | None:
+    """Formato OOXML bien formado + sintaxis Jinja2 del XML ya parcheado."""
+    from docx import Document as DocxDocument
+    from jinja2 import Environment
+
+    try:
+        DocxDocument(ruta_abs)
+    except Exception as e:
+        return f'No es un .docx válido: {e}'
+
+    try:
+        tpl = DocxTemplate(ruta_abs)
+        tpl.init_docx()
+        Environment().parse(tpl.patch_xml(tpl.get_xml()))
+    except Exception as e:
+        return str(e)
+
+    return None
+
+
 def tipo_contenido_documento(nombre_o_ruta: str) -> str:
     """
     MIME del documento generado, deducido de su extensión.

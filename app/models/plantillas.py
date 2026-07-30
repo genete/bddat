@@ -3,10 +3,15 @@ from app import db
 
 class Plantilla(db.Model):
     """
-    Catálogo de plantillas .docx para generación de escritos administrativos.
+    Catálogo de plantillas para generación de escritos administrativos.
+
+    FORMATO:
+        El de `ruta_plantilla`: .odt (formato de referencia, ADR-035) o .docx
+        (motor heredado, en retirada). No hay columna que lo declare — la
+        extensión del fichero elige el motor de render.
 
     PROPÓSITO:
-        Cada registro vincula una plantilla .docx con su contexto ESFTT
+        Cada registro vincula una plantilla con su contexto ESFTT
         (tipo de expediente, solicitud, fase, trámite) y con el tipo de documento
         que se creará en el pool del expediente al generar el escrito.
 

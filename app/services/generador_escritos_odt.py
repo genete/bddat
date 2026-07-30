@@ -136,6 +136,44 @@ def generar_escrito_odt(plantilla_path: str, contexto: dict,
 # Fragmentos
 # ======================================================================
 
+def validar_plantilla_odt(ruta_abs: str) -> str | None:
+    """
+    Comprueba que el fichero sea un .odt utilizable como plantilla.
+
+    Mira las dos cosas que pueden fallar sin que se note hasta el momento de
+    generar: que el ZIP traiga sus partes y estén bien formadas, y que la
+    sintaxis Jinja2 compile. No se rellena nada — sin contexto no se puede—,
+    así que un token con un nombre inventado pasa la validación; lo que no
+    pasa es un `{% for %}` sin cerrar.
+
+    Returns:
+        str  — Mensaje de error, listo para enseñar al supervisor.
+        None — La plantilla es válida.
+    """
+    env = Environment(autoescape=True)
+    try:
+        with zipfile.ZipFile(ruta_abs) as z:
+            nombres = z.namelist()
+            if 'content.xml' not in nombres:
+                return 'El fichero no es un .odt: le falta content.xml.'
+            for nombre in ('content.xml', 'styles.xml'):
+                if nombre not in nombres:
+                    continue
+                root = etree.fromstring(z.read(nombre))
+                xml = _elevar_bucles_de_fila(etree.tostring(root, encoding='unicode'))
+                # Los marcadores de fragmento no son sintaxis Jinja2: los
+                # resuelve el motor antes, así que aquí solo estorban.
+                env.parse(RE_FRAGMENTO.sub('', xml))
+    except zipfile.BadZipFile:
+        return 'El fichero no es un .odt: no es un archivo comprimido válido.'
+    except etree.XMLSyntaxError as e:
+        return f'XML mal formado dentro del .odt: {e}'
+    except Exception as e:
+        return str(e)
+
+    return None
+
+
 def _insertar_fragmentos(root, directorio: str) -> list[str]:
     """
     Sustituye cada párrafo que contenga {{r Nombre }} por los bloques del
