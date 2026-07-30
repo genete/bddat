@@ -177,7 +177,7 @@
                     </div>
                 </div>
 
-                {# Bloque: Plantilla .docx #}
+                {# Bloque: fichero de plantilla (.odt o .docx) #}
                 <div class="card mb-4">
                     <div class="card-header fw-semibold">
                         <i class="fas fa-server me-1"></i> Fichero de plantilla
@@ -199,7 +199,7 @@
                         </div>
                         {% else %}
                         <div class="form-label fw-semibold">
-                            Fichero .docx <span class="text-danger">*</span>
+                            Fichero .odt o .docx <span class="text-danger">*</span>
                         </div>
                         {% endif %}
 
@@ -217,7 +217,7 @@
                             </span>
                         </div>
                         <div class="form-text mt-2">
-                            Navega el servidor corporativo para seleccionar el fichero .docx de la plantilla.
+                            Navega el servidor corporativo para seleccionar el fichero de la plantilla.
                             {% if modo == 'editar' %}Si no seleccionas ninguno, se conserva el fichero actual.{% endif %}
                         </div>
                     </div>

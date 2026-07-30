@@ -234,7 +234,7 @@
         {% endif %}
     </div>
 
-    {# ── Sección: Fragmentos .docx ── #}
+    {# ── Sección: Fragmentos insertables (.docx / .odt) ── #}
     <div class="card-body pb-3 border-top pt-3">
         <h6 class="mb-2 text-primary">
             <i class="fas fa-file-import me-1"></i> Fragmentos insertables
@@ -245,7 +245,8 @@
         {% if tokens.fragmentos %}
         <div class="list-group list-group-flush">
             {% for frag in tokens.fragmentos %}
-            {% set nombre_sin_ext = frag[:-5] if frag.endswith('.docx') else frag %}
+            {# Por extensión, no por longitud fija: .odt tiene una letra menos que .docx #}
+            {% set nombre_sin_ext = frag.rsplit('.', 1)[0] %}
             <div class="list-group-item list-group-item-action py-2 px-2">
                 <div class="d-flex align-items-center gap-2">
                     <div class="flex-grow-1 min-w-0">
@@ -266,7 +267,7 @@
         <p class="text-secondary small mb-0">
             No se encontraron fragmentos en <code>PLANTILLAS_BASE/fragmentos/</code>.
             {% if not solo_lectura %}
-            Coloca ficheros .docx en esa carpeta para verlos aquí.
+            Coloca ficheros .odt (o .docx) en esa carpeta para verlos aquí.
             {% endif %}
         </p>
         {% endif %}

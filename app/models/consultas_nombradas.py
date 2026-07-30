@@ -3,18 +3,18 @@ from app import db
 
 class ConsultaNombrada(db.Model):
     """
-    Catálogo de consultas SQL predefinidas para uso en plantillas .docx.
+    Catálogo de consultas SQL predefinidas para uso en plantillas de escritos.
 
     PROPÓSITO:
         Permite que el supervisor inserte tablas dinámicas en plantillas sin
         necesidad de escribir SQL. Referencia la consulta por nombre en el
         marcador de plantilla: {%tr for row in municipios_afectados %}.
 
-        BDDAT ejecuta el SQL parametrizado y pasa el resultado como contexto
-        a python-docx-template.
+        BDDAT ejecuta el SQL parametrizado y pasa el resultado al contexto,
+        que es el mismo para los dos motores de render (ADR-035 §6).
 
     CAMPOS:
-        nombre      — Slug estable usado en la plantilla (.docx) y en código.
+        nombre      — Slug estable usado en la plantilla y en código.
                       Debe ser snake_case: municipios_afectados, organismos_consultados.
         descripcion — Texto legible mostrado al supervisor en el contextualizador.
         sql         — SQL parametrizado. Parámetro esperado: :expediente_id

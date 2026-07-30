@@ -14,7 +14,7 @@ Rutas de formulario:
 - GET  /plantillas/<id>/        — Detalle (solo lectura) + panel tokens
 - GET  /plantillas/<id>/editar  — Formulario edición pre-rellenado
 - POST /plantillas/<id>/editar  — Guardar cambios
-- GET  /plantillas/<id>/descargar — Descarga del .docx registrado
+- GET  /plantillas/<id>/descargar — Descarga del fichero de plantilla registrado
 - POST /plantillas/<id>/activar — Activar/desactivar plantilla
 
 Endpoints AJAX:
@@ -23,8 +23,6 @@ Endpoints AJAX:
 """
 import os
 
-from docx import Document as DocxDocument
-from docxtpl import DocxTemplate
 from flask import (Blueprint, abort, current_app, flash, jsonify, redirect,
                    render_template, request, send_file, url_for)
 from flask_login import login_required
@@ -38,7 +36,13 @@ from app.models.tipos_expedientes import TipoExpediente
 from app.models.tipos_fases import TipoFase
 from app.models.tipos_solicitudes import TipoSolicitud
 from app.models.tipos_tramites import TipoTramite
+from app.services.generador_escritos import TIPOS_CONTENIDO, validar_plantilla
 from app.utils.permisos import tiene_permiso
+
+# Formatos de plantilla admitidos, los mismos que tienen motor de render
+# (ADR-035 §2). Una sola fuente: si mañana se retira el .docx, desaparece de
+# aquí solo.
+EXTENSIONES = tuple(sorted(TIPOS_CONTENIDO))
 
 bp = Blueprint(
     'admin_plantillas',
@@ -75,23 +79,28 @@ CAMPOS_BASE = [
 # ---------------------------------------------------------------------------
 
 def _plantillas_dir():
-    """Directorio absoluto de plantillas .docx."""
+    """Directorio absoluto de plantillas."""
     base = current_app.config.get('PLANTILLAS_BASE', '')
     return os.path.join(base, 'plantillas') if base else ''
 
 
 def _fragmentos_dir():
-    """Directorio absoluto de fragmentos .docx."""
+    """Directorio absoluto de fragmentos."""
     base = current_app.config.get('PLANTILLAS_BASE', '')
     return os.path.join(base, 'fragmentos') if base else ''
 
 
 def _listar_fragmentos() -> list[str]:
-    """Devuelve nombres de fichero .docx en PLANTILLAS_BASE/fragmentos/."""
+    """Devuelve los ficheros de fragmento en PLANTILLAS_BASE/fragmentos/.
+
+    Lista los dos formatos: un fragmento solo sirve para plantillas de su mismo
+    formato, pero el panel no sabe cuál es la plantilla en curso y ocultarlos
+    confundiría más que mostrarlos.
+    """
     d = _fragmentos_dir()
     if not d or not os.path.isdir(d):
         return []
-    return sorted(f for f in os.listdir(d) if f.lower().endswith('.docx'))
+    return sorted(f for f in os.listdir(d) if f.lower().endswith(EXTENSIONES))
 
 
 def _tokens_context_builder(contexto_clase) -> list:
@@ -103,8 +112,8 @@ def _tokens_context_builder(contexto_clase) -> list:
     if not contexto_clase:
         return []
     try:
-        from app.services.generador_escritos import _cargar_context_builder
-        cls = _cargar_context_builder(contexto_clase)
+        from app.services.escritos import cargar_context_builder
+        cls = cargar_context_builder(contexto_clase)
     except Exception:
         return []
     return list(getattr(cls, 'TOKENS', []) or [])
@@ -116,7 +125,7 @@ def _build_tokens(contexto_clase=None) -> dict:
 
     campos:     CAMPOS_BASE (Capa 1 fija, universal)
     consultas:  ConsultaNombrada activas (universal, nivel expediente)
-    fragmentos: ficheros .docx en PLANTILLAS_BASE/fragmentos/ (universal)
+    fragmentos: ficheros de fragmento en PLANTILLAS_BASE/fragmentos/ (universal)
     cb_tokens:  manifiesto TOKENS del Context Builder en contexto_clase (Capa 2).
                 Vacío si la plantilla no usa CB. Es lo único que varía por
                 plantilla — se ancla a contexto_clase, no al ESFT (ADR-025).
@@ -138,17 +147,19 @@ def _build_tokens(contexto_clase=None) -> dict:
     }
 
 
-def _validar_plantilla_docx(ruta_abs: str) -> str | None:
+
+
+def _ruta_registrable(ruta_relativa: str) -> str:
     """
-    Valida que el fichero sea un .docx bien formado (ZIP con estructura OOXML).
-    DocxTemplate.__init__ no abre el fichero — se usa python-docx Document() que sí lo hace.
-    Devuelve mensaje de error o None si ok.
+    Ruta que se guarda en `plantilla.ruta_plantilla`, relativa a
+    PLANTILLAS_BASE/plantillas/ y con '/' como separador.
+
+    Conserva el subdirectorio. Guardar solo el nombre de fichero daba de alta
+    plantillas que luego no se encontraban al generar: el explorador permite
+    navegar carpetas, y `escritos/resolucion.odt` se registraba como
+    `resolucion.odt`, que no existe en la raíz.
     """
-    try:
-        DocxDocument(ruta_abs)
-        return None
-    except Exception as e:
-        return str(e)
+    return ruta_relativa.replace('\\', '/').strip('/')
 
 
 def _path_seguro_plantillas(ruta_relativa: str) -> str | None:
@@ -266,7 +277,7 @@ def api_explorador_fs():
     """
     Explorador de ficheros del servidor restringido a PLANTILLAS_BASE/plantillas/.
     GET ?ruta=<subruta>  →  JSON {ok, partes, directorios, ficheros}
-    Solo expone ficheros .docx y subdirectorios.
+    Solo expone ficheros de plantilla (.docx, .odt) y subdirectorios.
     """
     base = _plantillas_dir()
     if not base or not os.path.isdir(base):
@@ -283,7 +294,7 @@ def api_explorador_fs():
             rel = os.path.relpath(e.path, base).replace(os.sep, '/')
             if e.is_dir(follow_symlinks=False):
                 dirs.append({'nombre': e.name, 'ruta': rel})
-            elif e.is_file(follow_symlinks=False) and e.name.lower().endswith('.docx'):
+            elif e.is_file(follow_symlinks=False) and e.name.lower().endswith(EXTENSIONES):
                 files.append({'nombre': e.name, 'ruta': rel, 'tamano': e.stat().st_size})
     except PermissionError:
         return jsonify({'ok': False, 'error': 'Sin permisos en esta carpeta'}), 403
@@ -345,7 +356,7 @@ def nueva():
     if request.method == 'POST':
         ruta_rel = request.form.get('ruta_plantilla', '').strip()
         if not ruta_rel:
-            flash('Debes seleccionar el fichero .docx de la plantilla desde el servidor.', 'danger')
+            flash('Debes seleccionar el fichero de la plantilla desde el servidor.', 'danger')
             return render_template(
                 'admin_plantillas/form.html',
                 modo='nueva', plantilla=_plantilla_form_provisional(),
@@ -363,9 +374,9 @@ def nueva():
                 **_selects_context(),
             )
 
-        error_docx = _validar_plantilla_docx(ruta_abs)
-        if error_docx:
-            flash(f'El fichero .docx tiene errores de sintaxis: {error_docx}', 'danger')
+        error_plantilla = validar_plantilla(ruta_abs)
+        if error_plantilla:
+            flash(f'La plantilla no es válida: {error_plantilla}', 'danger')
             return render_template(
                 'admin_plantillas/form.html',
                 modo='nueva', plantilla=_plantilla_form_provisional(),
@@ -385,8 +396,7 @@ def nueva():
                 **_selects_context(),
             )
 
-        # Almacenar solo el nombre de fichero (relativo a PLANTILLAS_BASE/plantillas/)
-        p.ruta_plantilla = os.path.basename(ruta_rel)
+        p.ruta_plantilla = _ruta_registrable(ruta_rel)
 
         db.session.add(p)
         try:
@@ -413,7 +423,7 @@ def nueva():
 
 
 def _rutas_fichero(plantilla):
-    """Calcula la ruta absoluta y el URI bddat-explorador:// del .docx de la plantilla."""
+    """Calcula la ruta absoluta y el URI bddat-explorador:// del fichero de la plantilla."""
     d = _plantillas_dir()
     ruta_absoluta = os.path.join(d, plantilla.ruta_plantilla).replace('/', '\\') if d else None
     uri_explorador = (
@@ -457,7 +467,7 @@ def editar_fragmento(id):
     """Fragmento HTML de edición para el inspector (ADR-023 §5 / #545).
 
     Solo metadatos escalares con selects planos (sin cascada ESFTT: los endpoints
-    api_tipos_* no filtran hoy). El cambio del .docx se delega al modal grande
+    api_tipos_* no filtran hoy). El cambio del fichero se delega al modal grande
     del explorador (ADR-023 §6).
     """
     plantilla = Plantilla.query.get_or_404(id)
@@ -523,16 +533,16 @@ def editar(id):
         ruta_abs = _path_seguro_plantillas(ruta_rel)
         if not ruta_abs or not os.path.isfile(ruta_abs):
             return _responder_errores(['La ruta del fichero seleccionado no es válida.'])
-        error_docx = _validar_plantilla_docx(ruta_abs)
-        if error_docx:
-            return _responder_errores([f'El fichero .docx tiene errores de sintaxis: {error_docx}'])
+        error_plantilla = validar_plantilla(ruta_abs)
+        if error_plantilla:
+            return _responder_errores([f'La plantilla no es válida: {error_plantilla}'])
 
     errores = _rellenar_plantilla(plantilla)
     if errores:
         return _responder_errores(errores)
 
     if ruta_rel:
-        plantilla.ruta_plantilla = os.path.basename(ruta_rel)
+        plantilla.ruta_plantilla = _ruta_registrable(ruta_rel)
 
     try:
         db.session.commit()

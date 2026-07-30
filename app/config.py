@@ -30,7 +30,7 @@ class Config:
     # Desarrollo: cualquier carpeta local (p.ej. D:/BDDAT/docs_prueba)
     # Producción: W:\ALTA TENSION\Expedientes  o  \\HACACL0102\energia\ALTA TENSION\Expedientes
     FILESYSTEM_BASE = _ruta_base_env('FILESYSTEM_BASE')
-    # Raíz de plantillas .docx para generación de escritos.
+    # Raíz de plantillas (.odt / .docx) para generación de escritos.
     # Estructura: PLANTILLAS_BASE/plantillas/ y PLANTILLAS_BASE/fragmentos/
     # Desarrollo: p.ej. D:/BDDAT/docs_prueba/plantillas_escritos
     PLANTILLAS_BASE = _ruta_base_env('PLANTILLAS_BASE')

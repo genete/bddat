@@ -3,7 +3,7 @@
 ENDPOINTS:
     1. GET  /api/escritos/plantillas?tarea_id=X — Plantillas ESFTT compatibles
     2. GET  /api/escritos/preview?plantilla_id=X&tarea_id=Y — Preview del contexto
-    3. POST /api/escritos/generar — Genera el .docx y lo registra en pool
+    3. POST /api/escritos/generar — Genera el escrito (.docx o .odt) y lo registra en pool
 """
 
 import logging
@@ -23,7 +23,8 @@ from app.services.generador_escritos import (
     generar_escrito,
     componer_nombre_documento,
     ruta_destino_documento,
-    guardar_docx,
+    guardar_documento,
+    tipo_contenido_documento,
 )
 from app.utils.permisos import puede_editar_expediente
 
@@ -155,7 +156,7 @@ def preview():
 @api_escritos_bp.route('/generar', methods=['POST'])
 @login_required
 def generar():
-    """Genera el .docx, lo guarda en disco y opcionalmente lo registra en el pool."""
+    """Genera el escrito, lo guarda en disco y opcionalmente lo registra en el pool."""
     data = request.get_json(silent=True) or {}
     plantilla_id = data.get('plantilla_id')
     tarea_id = data.get('tarea_id')
@@ -188,24 +189,24 @@ def generar():
         nombre_fichero = componer_nombre_documento(tarea, plantilla)
     ruta = ruta_destino_documento(expediente, nombre_fichero)
 
-    # Generar .docx
+    # Generar el documento (motor .docx o .odt según la plantilla)
     try:
-        docx_bytes = generar_escrito(plantilla, expediente, db.session, tarea=tarea)
+        doc_bytes = generar_escrito(plantilla, expediente, db.session, tarea=tarea)
     except FileNotFoundError as e:
-        return jsonify(ok=False, error=f'Plantilla .docx no encontrada: {e}'), 404
+        return jsonify(ok=False, error=f'Plantilla no encontrada: {e}'), 404
     except jinja2.TemplateSyntaxError as e:
         return jsonify(ok=False, error=f'Error de sintaxis en plantilla: {e.message} (línea {e.lineno})'), 422
     except jinja2.UndefinedError as e:
         return jsonify(ok=False, error=f'Variable no definida en plantilla: {e.message}'), 422
-    except RuntimeError as e:
+    except (RuntimeError, ValueError) as e:
         return jsonify(ok=False, error=str(e)), 500
 
     # Guardar a disco
-    guardar_docx(docx_bytes, ruta)
+    guardar_documento(doc_bytes, ruta)
 
     doc_id = None
     # Documento.url siempre relativa a FILESYSTEM_BASE (ADR-032); ruta (absoluta)
-    # sigue usándose para guardar_docx() y el URI del explorador.
+    # sigue usándose para guardar_documento() y el URI del explorador.
     ruta_relativa = os.path.relpath(ruta, fs_base).replace(os.sep, '/')
 
     if registrar_pool:
@@ -229,7 +230,7 @@ def generar():
                 expediente_id=expediente.id,
                 url=ruta_relativa,
                 tipo_doc_id=plantilla.tipo_documento_id,
-                tipo_contenido='application/docx',
+                tipo_contenido=tipo_contenido_documento(nombre_fichero),
                 fecha_administrativa=None,
                 prioridad=0,
                 asunto=asunto,
