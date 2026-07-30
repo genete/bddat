@@ -77,32 +77,45 @@ function Acordeon({ titulo, resumen, abiertaInicial, children }) {
 // preparados. Consumido por un ELABORAR (escalón 3): la reversión devuelve
 // 422 con `puede_escapar:false` — puerta cerrada, se sustituye la confirmación
 // por el motivo (qué deshacer antes) en vez de un toast transitorio.
+//
+// #714 añade un 422 con `puede_escapar:true` (diagnóstico superado por una vuelta
+// posterior, con todo aún en casa): no es puerta cerrada sino freno — se pide
+// justificación y se reintenta el mismo DELETE con ella, que queda en bitácora.
 function useReversionDiagnostico({ expedienteId, tareaId, producido, onRevertido }) {
   const [confirmando, setConfirmando] = React.useState(false)
   const [revirtiendo, setRevirtiendo] = React.useState(false)
-  const [errorPuerta, setErrorPuerta] = React.useState(null)
+  const [bloqueo, setBloqueo] = React.useState(null)   // {motivo, puedeEscapar}
   const accionPendienteRef = React.useRef(null)
 
   const ejecutar = (accion) => {
     if (!producido) return accion()
     accionPendienteRef.current = accion
-    setErrorPuerta(null)
+    setBloqueo(null)
     setConfirmando(true)
   }
 
-  const confirmar = async () => {
+  const confirmar = async (justificacion) => {
     setRevirtiendo(true)
     try {
-      await revertirDiagnostico(expedienteId, tareaId)
-      showToast('Diagnóstico revertido — vuelto a Borrador defectos', 'warning')
+      await revertirDiagnostico(expedienteId, tareaId, justificacion)
+      showToast(
+        justificacion
+          ? 'Diagnóstico revertido con justificación — queda en la bitácora'
+          : 'Diagnóstico revertido — vuelto a Borrador defectos',
+        'warning',
+      )
       setConfirmando(false)
+      setBloqueo(null)
       await onRevertido()
       const accion = accionPendienteRef.current
       accionPendienteRef.current = null
       if (accion) await accion()
     } catch (e) {
-      if (e && e.status === 422 && e.payload && e.payload.puede_escapar === false) {
-        setErrorPuerta(e.payload.motivo || 'El diagnóstico ya ha sido consumido; no se puede revertir.')
+      if (e && e.status === 422 && e.payload && e.payload.puede_escapar !== undefined) {
+        setBloqueo({
+          motivo: e.payload.motivo || 'No se puede revertir el diagnóstico.',
+          puedeEscapar: e.payload.puede_escapar === true,
+        })
       } else {
         showToast((e && e.message) || 'No se pudo revertir el diagnóstico', 'danger')
         setConfirmando(false)
@@ -115,25 +128,59 @@ function useReversionDiagnostico({ expedienteId, tareaId, producido, onRevertido
   const cancelar = () => {
     accionPendienteRef.current = null
     setConfirmando(false)
-    setErrorPuerta(null)
+    setBloqueo(null)
   }
 
-  return { confirmando, revirtiendo, errorPuerta, ejecutar, confirmar, cancelar }
+  return { confirmando, revirtiendo, bloqueo, ejecutar, confirmar, cancelar }
 }
 
 // Caja inline (patrón ADR-023, no diálogo nativo): confirmación destructiva
-// (escalón 2) o mensaje de puerta cerrada con el motivo (escalón 3).
-function AvisoReversionDiagnostico({ confirmando, revirtiendo, errorPuerta, onConfirmar, onCancelar }) {
+// (escalón 2), puerta cerrada con el motivo (escalón 3) o freno con justificación
+// (#714: superado por una vuelta posterior, nada ha salido fuera).
+function AvisoReversionDiagnostico({ confirmando, revirtiendo, bloqueo, onConfirmar, onCancelar }) {
+  const [justificacion, setJustificacion] = React.useState('')
+
   if (!confirmando) return null
 
-  if (errorPuerta) {
+  if (bloqueo && !bloqueo.puedeEscapar) {
     return (
       <div className="alert alert-danger py-2 px-3 mb-2 small">
         <div className="fw-semibold mb-1">No se puede revertir el diagnóstico</div>
-        <div className="mb-2">{errorPuerta}</div>
+        <div className="mb-2">{bloqueo.motivo}</div>
         <button type="button" className="btn btn-sm btn-outline-secondary" onClick={onCancelar}>
           Entendido
         </button>
+      </div>
+    )
+  }
+
+  if (bloqueo) {
+    // Mismo régimen que el bypass del motor y que el gate de completitud al producir:
+    // no se cierra la puerta, se obliga a parar y dejar dicho por qué.
+    return (
+      <div className="alert alert-warning py-2 px-3 mb-2 small">
+        <div className="fw-semibold mb-1">Esta reversión necesita justificación</div>
+        <div className="mb-2">{bloqueo.motivo}</div>
+        <textarea
+          className="form-control form-control-sm mb-2"
+          rows={2}
+          placeholder="Motivo por el que se revierte igualmente"
+          value={justificacion}
+          onChange={(e) => setJustificacion(e.target.value)}
+        />
+        <div className="d-flex gap-2">
+          <button
+            type="button"
+            className="btn btn-sm btn-warning"
+            disabled={revirtiendo || !justificacion.trim()}
+            onClick={() => onConfirmar(justificacion.trim())}
+          >
+            {revirtiendo ? 'Revirtiendo…' : 'Revertir igualmente'}
+          </button>
+          <button type="button" className="btn btn-sm btn-outline-secondary" disabled={revirtiendo} onClick={onCancelar}>
+            Cancelar
+          </button>
+        </div>
       </div>
     )
   }
@@ -145,7 +192,7 @@ function AvisoReversionDiagnostico({ confirmando, revirtiendo, errorPuerta, onCo
         resultado y el diagnóstico se eliminará. ¿Continuar?
       </div>
       <div className="d-flex gap-2">
-        <button type="button" className="btn btn-sm btn-warning" disabled={revirtiendo} onClick={onConfirmar}>
+        <button type="button" className="btn btn-sm btn-warning" disabled={revirtiendo} onClick={() => onConfirmar()}>
           {revirtiendo ? 'Revirtiendo…' : 'Continuar'}
         </button>
         <button type="button" className="btn btn-sm btn-outline-secondary" disabled={revirtiendo} onClick={onCancelar}>
@@ -224,7 +271,7 @@ function FilaRequisitoDocumental({ item, expedienteId, tareaId, pool, producido,
       <AvisoReversionDiagnostico
         confirmando={reversion.confirmando}
         revirtiendo={reversion.revirtiendo}
-        errorPuerta={reversion.errorPuerta}
+        bloqueo={reversion.bloqueo}
         onConfirmar={reversion.confirmar}
         onCancelar={reversion.cancelar}
       />
@@ -372,7 +419,7 @@ function FilaItemTecnico({ item, expedienteId, tareaId, producido, onRecargar })
       <AvisoReversionDiagnostico
         confirmando={reversion.confirmando}
         revirtiendo={reversion.revirtiendo}
-        errorPuerta={reversion.errorPuerta}
+        bloqueo={reversion.bloqueo}
         onConfirmar={reversion.confirmar}
         onCancelar={reversion.cancelar}
       />
@@ -672,7 +719,7 @@ function SeccionRequerimientos({ expedienteId, tareaId, producido, esRondaSubsan
         <AvisoReversionDiagnostico
           confirmando={reversion.confirmando}
           revirtiendo={reversion.revirtiendo}
-          errorPuerta={reversion.errorPuerta}
+          bloqueo={reversion.bloqueo}
           onConfirmar={reversion.confirmar}
           onCancelar={reversion.cancelar}
         />

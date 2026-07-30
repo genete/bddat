@@ -28,7 +28,11 @@ _TIPOS_REQUIEREN_DOC_USADO     = {'ANALIZAR', 'NOTIFICAR'}
 # fase son paralelos —un CONSULTA_SEPARATA por organismo— y ninguno supera a otro.
 # Capa "casos especiales (código)" del catálogo; si algún día aparecen más cadenas,
 # el sitio natural sería un flag en `tipos_tramites`, no alargar esta lista.
-_TRAMITES_CADENA_SUBSANACION = frozenset({'ANALISIS_DOCUMENTAL', 'REQUERIMIENTO_SUBSANACION'})
+#
+# Público desde #714: la vigencia de un diagnóstico dentro de la cadena la consultan dos
+# reglas simétricas —el cierre de fase (aquí) y la reversión (services/diagnosticos.py)—
+# y deben leer el mismo criterio para no divergir.
+TRAMITES_CADENA_SUBSANACION = frozenset({'ANALISIS_DOCUMENTAL', 'REQUERIMIENTO_SUBSANACION'})
 
 # Códigos de resultado de fase finalizadora que se consideran resolución favorable.
 # Usado por tiene_solicitud_aap_favorable (art. 131.1 párr. 2 RD 1955/2000).
@@ -211,12 +215,14 @@ def _check_finalizar_tramite(tramite_id: int) -> Optional[EvaluacionResult]:
     return None
 
 
-def _ultima_tarea_cadena_subsanacion(fase_id: int) -> Optional[int]:
+def ultima_tarea_cadena_subsanacion(fase_id: int) -> Optional[int]:
     """`Tarea.id` del último ANALIZAR con diagnóstico de la cadena de subsanación, o None.
 
     "Último" por `id`: no hay ninguna columna de fecha en `diagnosticos`, `tramites`
     ni `tareas`. Mismo criterio de orden que ya usa `ContextoSubsanacion` para
     localizar el trámite anterior.
+
+    Público desde #714 — ver nota en `TRAMITES_CADENA_SUBSANACION`.
     """
     from app.models.tipos_tareas import TipoTarea
     from app.models.tipos_tramites import TipoTramite
@@ -236,7 +242,7 @@ def _ultima_tarea_cadena_subsanacion(fase_id: int) -> Optional[int]:
         .filter(
             Tramite.fase_id == fase_id,
             TipoTarea.codigo == 'ANALIZAR',
-            TipoTramite.codigo.in_(_TRAMITES_CADENA_SUBSANACION),
+            TipoTramite.codigo.in_(TRAMITES_CADENA_SUBSANACION),
         )
         .scalar()
     )
@@ -282,7 +288,7 @@ def _check_cierre_fase(fase_id: int, codigo_resultado: str) -> Optional[Evaluaci
         .exists()
     )
 
-    ultima_cadena_id = _ultima_tarea_cadena_subsanacion(fase_id)
+    ultima_cadena_id = ultima_tarea_cadena_subsanacion(fase_id)
 
     diagnostico_bloqueante = (
         db.session.query(Tarea)
@@ -303,7 +309,7 @@ def _check_cierre_fase(fase_id: int, codigo_resultado: str) -> Optional[Evaluaci
             # Con la cadena vacía, `Tarea.id == None` compila a IS NULL: no casa ninguna
             # fila y queda solo la rama de "fuera de la cadena", que es lo correcto.
             db.or_(
-                TipoTramite.codigo.notin_(_TRAMITES_CADENA_SUBSANACION),
+                TipoTramite.codigo.notin_(TRAMITES_CADENA_SUBSANACION),
                 Tarea.id == ultima_cadena_id,
             ),
         )

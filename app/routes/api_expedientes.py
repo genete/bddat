@@ -42,7 +42,10 @@ from app.services.assembler import build
 from app.services.requisitos import evaluar_requisitos
 from app.services.items_tecnicos import evaluar_items_tecnicos
 from app.services.consolidacion_defectos import consolidar_defectos
-from app.services.diagnosticos import crear_diagnostico, revertir_diagnostico, DiagnosticoConsumidoError
+from app.services.diagnosticos import (
+    crear_diagnostico, revertir_diagnostico,
+    DiagnosticoConsumidoError, DiagnosticoSuperadoError,
+)
 from app.models.notificaciones import Notificacion
 from app.services.parser_justificante_notifica import (
     parsear_justificante_notifica, parsear_justificante_notifica_zip,
@@ -1009,9 +1012,14 @@ def delete_analizar(expediente_id, tarea_id):
     DELETE .../nodo/tarea/<tarea_id>/analizar — revierte el diagnóstico producido
     (ADR-033 §5, enmienda ADR-005). Vuelve la tarea a "Borrador defectos".
 
-    Bloqueo (422): tarea sin documento producido, o documento consumido por
-    otra tarea (puerta cerrada — mismo shape que un bloqueo de motor, pero
-    `puede_escapar: false`: no es soslayable con justificación).
+    Body opcional: {justificacion} — fuerza los bloqueos que lo admiten (#714).
+
+    Bloqueo (422): tarea sin documento producido, documento consumido por otra
+    tarea, o diagnóstico ya superado dentro de la cadena de subsanación (#714).
+    Mismo shape que un bloqueo de motor; `puede_escapar` distingue la puerta
+    cerrada (consumido, o requerimiento ya notificado al titular: el acto salió
+    fuera y no se deshace) del bloqueo forzable con justificación (superado por
+    una vuelta posterior, con todo aún en casa).
     """
     expediente = Expediente.query.get_or_404(expediente_id)
     if verificar_acceso_expediente(expediente, 'gestionar_tarea'):
@@ -1022,13 +1030,22 @@ def delete_analizar(expediente_id, tarea_id):
     except ValueError as e:
         return jsonify({'error': str(e)}), 404
 
+    data = request.get_json(silent=True) or {}
+    justificacion = (data.get('justificacion') or '').strip() or None
+
     try:
-        revertir_diagnostico(tarea)
+        revertir_diagnostico(tarea, justificacion=justificacion)
     except DiagnosticoConsumidoError as e:
         return jsonify({
             'error': 'Diagnóstico consumido',
             'motivo': str(e),
             'puede_escapar': False,
+        }), 422
+    except DiagnosticoSuperadoError as e:
+        return jsonify({
+            'error': 'Diagnóstico superado',
+            'motivo': str(e),
+            'puede_escapar': e.puede_escapar,
         }), 422
     except ValueError as e:
         return jsonify({'error': str(e)}), 422
