@@ -5,6 +5,7 @@
 > **Estado:** Análisis completo. Cabos 1-5 cerrados. Implementación pendiente → #277 (M2).
 > **Actualizado:** 2026-07-30 (#726) — motor ODT implementado y elección por extensión; ver §"Formato de plantilla".
 > **Actualizado:** 2026-07-30 (#182) — **R10 resuelto**: los metadatos no sobreviven al pipeline; sólo el texto renderizado. Las plantillas pasan a `.odt` por **ADR-035**. Ver §"Trazabilidad — códigos embebidos" y §"Formato de plantilla".
+> **Actualizado:** 2026-07-31 (#182) — **Composición, inyección real y extracción implementadas**. Las tres decisiones que quedaban abiertas (colocación, alcance de páginas, dígito de control) están cerradas. Ver §"Trazabilidad — códigos embebidos".
 > **Actualizado:** 2026-06-16 (#553) — modelo de Context Builder y de tokens reencuadrado por **ADR-025**; ver §"Modelo de tokens del modal".
 > **Issues relacionados:** #189 (cerrado), #181 y #182 (vinculados via C3)
 
@@ -177,27 +178,41 @@ no está y el documento pasa por las heurísticas de #181. El peligro es un cód
 usuario confirma de buena fe. El código debe llevar verificación propia para que
 una alteración no pueda producir el código válido de otra tarea.
 
-**Código estructurado** — pendiente de fijar. Debe llevar id de instancia
-(`tarea_id`), por el requisito que #711 añadió a #182, y dígito de control. El
-encuadramiento ESFTT completo del diseño original es redundante: desde el id de
-la tarea se deduce entero.
+**Código estructurado — cerrado (2026-07-31).** Formato `BDDAT-<tarea_id>-<letra>`.
+El id de instancia es `tarea_id` (#711): el encuadramiento ESFTT completo del
+diseño original es redundante, porque desde el id de la tarea se deduce entero.
+La letra es un dígito de control módulo 23 (misma mecánica que la letra del
+NIF/DNI, tabla `LETRAS_CONTROL` de `app/services/codigo_seguimiento.py`): cubre
+el escenario real del issue —alteración accidental del código en el pipeline o
+al editar en Writer—, no un intento deliberado de fabricar el código de otra
+tarea por alguien con acceso al código fuente. Se descartó un HMAC con clave de
+servidor por desproporcionado para ese riesgo.
 
-**Colocación: sin decidir** (2026-07-30). Dos candidatos, ambos supervivientes
-del circuito completo:
+**Colocación — cerrada (2026-07-31): pie de página, sin giro, en todas las
+páginas.** De los dos candidatos que dejaba abiertos ADR-035 (margen izquierdo
+vertical vs. pie sin giro), se elige el pie: es el que ya construyó el gancho
+de #726 (`FRAME_CODIGO` en `generador_escritos_odt.py`), más legible, y no hubo
+motivo para invertir en el cuadro girado del margen. Recorre todas las master
+pages, así que aparece en todas las páginas del documento (protege también si
+el documento se fotocopia o se separan páginas sueltas).
 
-- **Margen izquierdo, vertical.** Único sitio que el portafirmas no reclama para
-  sí. Exige cuadro de texto girado.
-- **Pie de página, sin giro.** Más legible y previsiblemente más simple de
-  insertar. Conviven con la banda de firma, que se estampa por debajo, en el
-  margen inferior.
+**Implementación (Issue #167 Fase 6):**
+- `app/services/codigo_seguimiento.py` — `componer_codigo(tarea_id)` y
+  `extraer_tarea_id(texto)`. Lógica pura, agnóstica del formato.
+- `app/services/generador_escritos_odt.py` — gancho de inyección de #726, sin
+  cambios: ya colocaba el código donde #182 decidió quedarse.
+- `app/routes/api_escritos.py` (`POST /api/escritos/generar`) — compone el
+  código con `tarea.id` y lo pasa a `generar_escrito()`. El motor `.docx` lo
+  sigue ignorando con un warning (ADR-035: ningún canal de metadatos OOXML
+  sobrevive al pipeline).
+- Tests: `tests/test_182_codigo_seguimiento.py` — roundtrip, detección de
+  alteración, y un ciclo completo con el fixture real de #732 vía soffice
+  (componer → inyectar → PDF real → extraer), que cierra R10 con el algoritmo
+  definitivo en vez de un string de prueba.
 
-La elección depende del formato de plantilla que se adopte, porque la mecánica de
-inserción no es la misma en OOXML que en ODF. La defensa frente al borrado es
-débil en cualquiera de los dos, pero suficiente para el uso normal: hay que
-buscar el elemento en el navegador del documento para seleccionarlo y editarlo.
-
-**Implementación:** Issue #167 Fase 6, sobre el renderizador ODT de **ADR-035**
-— la inyección depende del formato, así que se hace después del motor.
+**Pendiente, fuera de #182:** el consumo de `extraer_tarea_id()` para
+clasificar automáticamente al incorporar un documento (#181) y para el vínculo
+`CONSUMIDO` sobre el diagnóstico (#717). Ninguno de los dos bloqueaba a #182.
 
 ---
 
@@ -319,7 +334,7 @@ la base canónica correspondiente.
 |----|-----------|----------|
 | C1 | Ejecución de consultas nombradas | Implementar stub `_ejecutar_consultas()` (Fase 5) |
 | C2 | Context Builders (Capa 2) | EN CURSO — #289. Implementados: #391, #393, #394. Bloqueado: #392. Modelo reencuadrado en ADR-025 (ensamblador del escrito) |
-| C3 | Trazabilidad y código embebido | Código en custom properties + QR (Fase 6) |
+| C3 | Trazabilidad y código embebido | `BDDAT-<tarea_id>-<letra>` en el pie de página, todas las páginas (#182). Custom properties + QR descartado (R10) |
 | C4 | Metadatos del documento generado | `fecha_administrativa=NULL`, `prioridad=0`, `asunto=` descripción plantilla + ESFTT real |
 | C7 | Gestión de errores de generación | Toast con detalle del error Jinja2 (Fase 5) |
 

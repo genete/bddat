@@ -188,13 +188,11 @@ del modal de generación.
 
 ## Fuera de esta decisión
 
-- **Dónde se coloca el código de seguimiento.** Sin decidir. Dos candidatos, ambos
-  supervivientes del circuito: margen izquierdo en vertical (único sitio que el
-  portafirmas no reclama, exige cuadro girado) y pie de página sin giro (más legible,
-  previsiblemente más simple de insertar). Detalle en el documento de diseño.
-- **Si el código va en todas las páginas o sólo en la primera.**
-- **El formato exacto del código**, que debe llevar id de instancia (#711) y dígito de
-  control (#182).
+- **Dónde se coloca el código de seguimiento — cerrado en #182 (2026-07-31):** pie de
+  página sin giro, en todas las páginas. Detalle y motivo en el documento de diseño,
+  §"Trazabilidad — códigos embebidos".
+- **El formato exacto del código — cerrado en #182:** `BDDAT-<tarea_id>-<letra>`, con
+  dígito de control módulo 23 estilo NIF. Detalle en el documento de diseño.
 - **Los datos institucionales** que los tokens de cabecera y pie necesitan —sede,
   consejería, provincia, firmantes— no existen hoy en BDDAT. Van en #728; los firmantes
   ya estaban identificados en ADR-021 §4. No bloquean al renderizador.
