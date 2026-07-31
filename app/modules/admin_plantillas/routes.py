@@ -16,6 +16,7 @@ Rutas de formulario:
 - POST /plantillas/<id>/editar  — Guardar cambios
 - GET  /plantillas/<id>/descargar — Descarga del fichero de plantilla registrado
 - POST /plantillas/<id>/activar — Activar/desactivar plantilla
+- GET  /plantillas/base/<clave>/descargar — Descarga de una plantilla base canónica (#727)
 
 Endpoints AJAX:
 - GET  /plantillas/api/tokens           — Tokens Capa 1 (stub — Capa 2 en Fase 5)
@@ -36,7 +37,10 @@ from app.models.tipos_expedientes import TipoExpediente
 from app.models.tipos_fases import TipoFase
 from app.models.tipos_solicitudes import TipoSolicitud
 from app.models.tipos_tramites import TipoTramite
-from app.services.generador_escritos import TIPOS_CONTENIDO, validar_plantilla
+from app.services.generador_escritos import (TIPOS_CONTENIDO,
+                                             advertencias_plantilla,
+                                             validar_plantilla)
+from app.services.plantilla_canonica_odt import leer_marca
 from app.utils.permisos import tiene_permiso
 
 # Formatos de plantilla admitidos, los mismos que tienen motor de render
@@ -88,6 +92,21 @@ def _fragmentos_dir():
     """Directorio absoluto de fragmentos."""
     base = current_app.config.get('PLANTILLAS_BASE', '')
     return os.path.join(base, 'fragmentos') if base else ''
+
+
+# Plantillas base canónicas (#727 / ADR-035 §5): viven en el repo, versionadas,
+# NO en PLANTILLAS_BASE — de ahí una ruta de descarga propia en vez de reusar
+# `descargar`, que sirve `plantilla.ruta_plantilla` relativo a PLANTILLAS_BASE/plantillas/.
+BASES_CANONICAS = {
+    'carta':      'carta_base.odt',
+    'resolucion': 'resolucion_base.odt',
+    'fragmento':  'fragmento_base.odt',
+}
+
+
+def _plantillas_base_dir():
+    """Directorio de las plantillas base canónicas, empaquetado en el repo."""
+    return os.path.join(current_app.root_path, 'data', 'plantillas_base')
 
 
 def _listar_fragmentos() -> list[str]:
@@ -412,6 +431,8 @@ def nueva():
             )
 
         flash(f'Plantilla «{p.nombre}» registrada correctamente.', 'success')
+        for aviso in advertencias_plantilla(ruta_abs):
+            flash(aviso, 'warning')
         return redirect(url_for('admin_plantillas.detalle', id=p.id))
 
     return render_template(
@@ -452,9 +473,10 @@ def fragmento(id):
     """Fragmento HTML de lectura para el inspector (ADR-023 §9 / #545)."""
     plantilla = Plantilla.query.get_or_404(id)
     ruta_absoluta, uri_explorador = _rutas_fichero(plantilla)
+    marca = leer_marca(ruta_absoluta) if ruta_absoluta and os.path.isfile(ruta_absoluta) else None
     return render_template(
         'admin_plantillas/_detalle_fragmento.html',
-        plantilla=plantilla,
+        plantilla=plantilla, marca=marca,
         ruta_absoluta=ruta_absoluta, uri_explorador=uri_explorador,
         puede_editar=tiene_permiso('gestionar_plantillas'),
     )
@@ -528,6 +550,7 @@ def editar(id):
         return redirect(url_for('admin_plantillas.listado', sel=id))
 
     ruta_rel = request.form.get('ruta_plantilla', '').strip()
+    avisos = []
     if ruta_rel:
         # El supervisor ha seleccionado un nuevo fichero en el servidor
         ruta_abs = _path_seguro_plantillas(ruta_rel)
@@ -536,6 +559,7 @@ def editar(id):
         error_plantilla = validar_plantilla(ruta_abs)
         if error_plantilla:
             return _responder_errores([f'La plantilla no es válida: {error_plantilla}'])
+        avisos = advertencias_plantilla(ruta_abs)
 
     errores = _rellenar_plantilla(plantilla)
     if errores:
@@ -552,8 +576,10 @@ def editar(id):
 
     msg = f'Plantilla «{plantilla.nombre}» actualizada correctamente.'
     if is_xhr:
-        return jsonify({'ok': True, 'message': msg})
+        return jsonify({'ok': True, 'message': msg, 'warnings': avisos})
     flash(msg, 'success')
+    for aviso in avisos:
+        flash(aviso, 'warning')
     return redirect(url_for('admin_plantillas.listado', sel=id))
 
 
@@ -569,6 +595,21 @@ def descargar(id):
     if not os.path.isfile(ruta_abs):
         abort(404, f'Fichero no encontrado: {plantilla.ruta_plantilla}')
     return send_file(ruta_abs, as_attachment=True, download_name=plantilla.ruta_plantilla)
+
+
+@bp.route('/base/<clave>/descargar')
+@login_required
+@require_permiso('acceder_plantillas')
+def descargar_base(clave):
+    """Descarga de una plantilla base canónica, para que el supervisor parta de
+    ella en vez de un .odt en blanco (#727)."""
+    nombre = BASES_CANONICAS.get(clave)
+    if not nombre:
+        abort(404)
+    ruta_abs = os.path.join(_plantillas_base_dir(), nombre)
+    if not os.path.isfile(ruta_abs):
+        abort(404, f'Plantilla base no encontrada: {nombre}')
+    return send_file(ruta_abs, as_attachment=True, download_name=nombre)
 
 
 @bp.route('/<int:id>/activar', methods=['POST'])
