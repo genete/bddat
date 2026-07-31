@@ -198,6 +198,17 @@
                             Cambiar fichero <span class="text-secondary">(opcional)</span>
                         </div>
                         {% else %}
+                        <div class="alert alert-secondary small d-flex align-items-start gap-2 mb-3">
+                            <i class="fas fa-lightbulb mt-1"></i>
+                            <div>
+                                ¿Empiezas de cero? Parte de la plantilla base canónica
+                                (fuentes y hoja de estilos ya fijadas — ADR-035 §5), no
+                                de un .odt en blanco:
+                                <a href="{{ url_for('admin_plantillas.descargar_base', clave='carta') }}">Carta</a>,
+                                <a href="{{ url_for('admin_plantillas.descargar_base', clave='resolucion') }}">Resolución</a>,
+                                <a href="{{ url_for('admin_plantillas.descargar_base', clave='fragmento') }}">Fragmento</a>.
+                            </div>
+                        </div>
                         <div class="form-label fw-semibold">
                             Fichero .odt o .docx <span class="text-danger">*</span>
                         </div>

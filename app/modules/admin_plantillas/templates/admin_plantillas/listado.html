@@ -7,6 +7,17 @@
 {% block tabla_clase %}plantillas-table{% endblock %}
 
 {% block btn_nuevo %}
+<div class="dropdown d-inline-block me-2">
+    <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button"
+            data-bs-toggle="dropdown" aria-expanded="false">
+        <i class="fas fa-download me-1"></i> Plantillas base
+    </button>
+    <ul class="dropdown-menu">
+        <li><a class="dropdown-item" href="{{ url_for('admin_plantillas.descargar_base', clave='carta') }}">Carta</a></li>
+        <li><a class="dropdown-item" href="{{ url_for('admin_plantillas.descargar_base', clave='resolucion') }}">Resolución</a></li>
+        <li><a class="dropdown-item" href="{{ url_for('admin_plantillas.descargar_base', clave='fragmento') }}">Fragmento</a></li>
+    </ul>
+</div>
 {% if tiene_permiso('gestionar_plantillas') %}
 <a href="{{ url_for('admin_plantillas.nueva') }}" class="btn btn-primary btn-sm">
     <i class="fas fa-plus me-1"></i> Nueva plantilla
