@@ -18,6 +18,7 @@ from app import db
 from app.models.plantillas import Plantilla
 from app.models.tareas import Tarea
 from app.models.documentos import Documento
+from app.services.codigo_seguimiento import componer_codigo
 from app.services.escritos import ContextoBaseExpediente
 from app.services.generador_escritos import (
     generar_escrito,
@@ -189,9 +190,14 @@ def generar():
         nombre_fichero = componer_nombre_documento(tarea, plantilla)
     ruta = ruta_destino_documento(expediente, nombre_fichero)
 
-    # Generar el documento (motor .docx o .odt según la plantilla)
+    # Generar el documento (motor .docx o .odt según la plantilla). El código
+    # de seguimiento (#182) se compone siempre; el motor .docx lo ignora con
+    # un warning porque ningún canal de metadatos OOXML sobrevive al
+    # pipeline (ADR-035).
+    codigo_seguimiento = componer_codigo(tarea.id)
     try:
-        doc_bytes = generar_escrito(plantilla, expediente, db.session, tarea=tarea)
+        doc_bytes = generar_escrito(plantilla, expediente, db.session, tarea=tarea,
+                                    codigo_seguimiento=codigo_seguimiento)
     except FileNotFoundError as e:
         return jsonify(ok=False, error=f'Plantilla no encontrada: {e}'), 404
     except jinja2.TemplateSyntaxError as e:
