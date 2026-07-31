@@ -256,6 +256,36 @@ Cabos de implementación del motor, y cómo quedaron:
   compilación: no son Jinja2, los resuelve el motor antes. Falta la
   comprobación de canonicidad de ADR-035 §5, que es de #727.
 
+### Procedimiento del supervisor: crear una plantilla nueva (#727)
+
+Ninguna plantilla nace de un `.odt` en blanco (ADR-035 §5): siempre se parte de
+la base canónica correspondiente.
+
+1. **Descargar la base.** Desde el listado de plantillas (`/plantillas/` →
+   botón «Plantillas base») o desde el propio formulario de alta: **Carta**
+   (oficios, requerimientos, comunicaciones — cualquier escrito con
+   destinatario), **Resolución** (actos resolutorios), o **Fragmento** (bloque
+   reutilizable insertado con `{{r Nombre }}` — misma hoja de estilos, sin
+   cabecera ni logo, a propósito: el motor no lee el `styles.xml` del
+   fragmento al insertarlo).
+2. **Editarla en LibreOffice Writer.** Sustituir el texto de ejemplo, insertar
+   los tokens (`{{campo}}`, `{{r Fragmento}}`, `{%tr %}`, `{%p %}` — panel de
+   tokens del propio formulario) usando los estilos de párrafo con nombre ya
+   definidos (`Cabecera - *`, `Formulario - *`, `BDDAT - *`) en vez de crear
+   estilos nuevos. La fuente es Source Sans Pro sin margen: cambiarla no
+   bloquea el guardado (se admite con aviso, ADR-035 §5) pero rompe la
+   canonicidad.
+3. **Guardar como `.odt`** (no `.docx`: pierde la marca de versión de
+   `meta.xml` y la hoja de estilos común) y colocarlo en el servidor, dentro
+   de `PLANTILLAS_BASE/plantillas/` (o su subcarpeta correspondiente). No hay
+   subida desde el navegador: es una copia de fichero en el share/disco donde
+   vive `PLANTILLAS_BASE` (ANALISIS_DESPLIEGUE.md §6).
+4. **Registrarla en `/plantillas/nueva/`.** El botón «Seleccionar del
+   servidor» abre el explorador restringido a `PLANTILLAS_BASE/plantillas/`
+   con el fichero ya colocado en el paso 3. El alta valida sintaxis (Jinja2) y
+   avisa de desviaciones de canonicidad (fuente ajena, estilos personalizados
+   que faltan) sin bloquear el guardado.
+
 ---
 
 ## Necesidades por actor (resumen de decisiones)
