@@ -242,6 +242,10 @@ Segunda instancia posible: servidor del edificio (SO desconocido — ver §7).
 - Ya recogidos en #330 y previos al contenedor: `Documento.url` a ruta
   relativa, separador de rutas en `admin_plantillas`, auditoría de scripts de
   poblado
+- Copiar las tres plantillas base canónicas (#727) desde `app/data/plantillas_base/`
+  (repo) a `PLANTILLAS_BASE/plantillas/` en la instalación real. La descarga desde
+  el admin no depende de ello (sirve directo del repo), pero Carlos confirmó que
+  la copia sigue haciendo falta aparte
 
 ---
 
