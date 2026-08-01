@@ -46,6 +46,11 @@ def create_app(config_name='development'):
     migrate.init_app(app, db)
     login_manager.init_app(app)
 
+    # Hook de sesión: red de cierre del sellado de fase cerrada (#720, ADR-036 §6
+    # capa 3). Se registra a nivel de sqlalchemy.orm.Session al importar el
+    # módulo — una sola vez por proceso, para cualquier sesión.
+    from app.services import sellado_fase_sesion  # noqa: F401
+
     # Validar catálogo estructural al arranque (#347)
     with app.app_context():
         from app.checks.catalogo_requerido import validar_catalogo

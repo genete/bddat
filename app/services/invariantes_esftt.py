@@ -155,7 +155,17 @@ def _check_mutar(sujeto: str, entidad_id: int) -> Optional[EvaluacionResult]:
     `editar_fase`/`reabrir_fase` no llaman a este check sobre su propia fase:
     son los dos actos que legítimamente tocan `resultado_fase_id`/
     `documento_resultado_id` (cerrar la primera vez, o reabrir).
+
+    Sin contexto de aplicación no se aplica: en producción una mutación real
+    siempre corre dentro de una request Flask con contexto activo; su ausencia
+    solo se da en los tests unitarios puros de `crear_diagnostico`/
+    `revertir_diagnostico` (#442/#678) que usan stubs con id inventado a
+    propósito para aislar validaciones de negocio de la BD — no es a este
+    check al que le corresponde forzar esa dependencia.
     """
+    from flask import has_app_context
+    if not has_app_context():
+        return None
     fase = _fase_de(sujeto, entidad_id)
     if fase is None or not fase.finalizada:
         return None
