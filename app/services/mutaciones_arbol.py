@@ -34,7 +34,7 @@ from app.services.assembler import build, build_sujeto
 from app.services import bitacora as bitacora_svc
 from app.services.motor_reglas import EvaluacionResult, PERMITIDO
 from app.services.motor_modo_global import evaluar_con_modo_global as _evaluar
-from app.services.invariantes_esftt import _check_cierre_fase, diagnostico_tramite_anterior
+from app.services.invariantes_esftt import _check_cierre_fase, check_invariante, diagnostico_tramite_anterior
 from app.services.requisitos import evaluar_requisitos
 from app.services.rutas_esftt import mover_a_esftt, mover_a_pool
 from app.services.parser_justificante_notifica import (
@@ -601,11 +601,17 @@ def sincronizar_consumido_documental(tarea: Tarea) -> None:
 
 
 # ===========================================================================
-# BORRAR (cascada manual — idéntica a api_bc)
+# BORRAR (hoja a hoja — sin cascada manual desde #722, guardia en check_invariante)
 # ===========================================================================
 
 def borrar_solicitud(sol, *, justificacion: Optional[str] = None) -> ResultadoMutacion:
     expediente = sol.expediente
+
+    # Invariante (#722): nunca bypasseable con justificación, ver docstring de _check_borrar.
+    res_inv = check_invariante('BORRAR', 'SOLICITUD', sol.id)
+    if res_inv:
+        return ResultadoMutacion(ok=False, bloqueo=res_inv)
+
     if justificacion is None:
         res_eval = _evaluar('BORRAR', expediente, objeto=sol)
         if not res_eval.permitido:
@@ -618,13 +624,6 @@ def borrar_solicitud(sol, *, justificacion: Optional[str] = None) -> ResultadoMu
             detalle={'escape': True, 'justificacion': justificacion, 'sujeto': sujeto},
         )
 
-    fase_ids = [f.id for f in Fase.query.filter_by(solicitud_id=sol.id).all()]
-    if fase_ids:
-        tram_ids = [t.id for t in Tramite.query.filter(Tramite.fase_id.in_(fase_ids)).all()]
-        if tram_ids:
-            Tarea.query.filter(Tarea.tramite_id.in_(tram_ids)).delete()
-        Tramite.query.filter(Tramite.fase_id.in_(fase_ids)).delete()
-    Fase.query.filter_by(solicitud_id=sol.id).delete()
     db.session.delete(sol)
     db.session.commit()
     return ResultadoMutacion(ok=True)
@@ -632,6 +631,11 @@ def borrar_solicitud(sol, *, justificacion: Optional[str] = None) -> ResultadoMu
 
 def borrar_fase(fase, *, justificacion: Optional[str] = None) -> ResultadoMutacion:
     expediente = fase.solicitud.expediente
+
+    res_inv = check_invariante('BORRAR', 'FASE', fase.id)
+    if res_inv:
+        return ResultadoMutacion(ok=False, bloqueo=res_inv)
+
     if justificacion is None:
         res_eval = _evaluar('BORRAR', expediente, objeto=fase)
         if not res_eval.permitido:
@@ -644,10 +648,6 @@ def borrar_fase(fase, *, justificacion: Optional[str] = None) -> ResultadoMutaci
             detalle={'escape': True, 'justificacion': justificacion, 'sujeto': sujeto},
         )
 
-    tram_ids = [t.id for t in Tramite.query.filter_by(fase_id=fase.id).all()]
-    if tram_ids:
-        Tarea.query.filter(Tarea.tramite_id.in_(tram_ids)).delete()
-    Tramite.query.filter_by(fase_id=fase.id).delete()
     db.session.delete(fase)
     db.session.commit()
     return ResultadoMutacion(ok=True)
@@ -655,6 +655,11 @@ def borrar_fase(fase, *, justificacion: Optional[str] = None) -> ResultadoMutaci
 
 def borrar_tramite(tr, *, justificacion: Optional[str] = None) -> ResultadoMutacion:
     expediente = tr.fase.solicitud.expediente
+
+    res_inv = check_invariante('BORRAR', 'TRAMITE', tr.id)
+    if res_inv:
+        return ResultadoMutacion(ok=False, bloqueo=res_inv)
+
     if justificacion is None:
         res_eval = _evaluar('BORRAR', expediente, objeto=tr)
         if not res_eval.permitido:
@@ -667,7 +672,6 @@ def borrar_tramite(tr, *, justificacion: Optional[str] = None) -> ResultadoMutac
             detalle={'escape': True, 'justificacion': justificacion, 'sujeto': sujeto},
         )
 
-    Tarea.query.filter_by(tramite_id=tr.id).delete()
     db.session.delete(tr)
     db.session.commit()
     return ResultadoMutacion(ok=True)
@@ -675,6 +679,11 @@ def borrar_tramite(tr, *, justificacion: Optional[str] = None) -> ResultadoMutac
 
 def borrar_tarea(ta, *, justificacion: Optional[str] = None) -> ResultadoMutacion:
     expediente = ta.tramite.fase.solicitud.expediente
+
+    res_inv = check_invariante('BORRAR', 'TAREA', ta.id)
+    if res_inv:
+        return ResultadoMutacion(ok=False, bloqueo=res_inv)
+
     if justificacion is None:
         res_eval = _evaluar('BORRAR', expediente, objeto=ta)
         if not res_eval.permitido:

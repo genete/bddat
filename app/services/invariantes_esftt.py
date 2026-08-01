@@ -71,8 +71,29 @@ def check_invariante(accion: str, sujeto: str, entidad_id: int) -> Optional[Eval
 # ---------------------------------------------------------------------------
 
 def _check_borrar(sujeto: str, entidad_id: int) -> Optional[EvaluacionResult]:
+    """Guardia viva del borrado del árbol (#722).
+
+    Política hoja a hoja: cada nivel exige estar vacío para poder borrarse —
+    `mutaciones_arbol.borrar_*` ya no hace cascada manual, así que la única
+    forma de vaciar un trámite/fase/solicitud es borrar sus hijos uno a uno,
+    y cada borrado individual pasa por su propio check. Consecuencia: una fila
+    `Notificacion` (siempre colgada de una `Tarea` viva, FK NOT NULL) nunca
+    puede perderse de rebote — solo se puede llegar a ella borrando
+    exactamente esa tarea, que es donde se comprueba.
+
+    Ninguna rama de este check es bypasseable con `justificacion` (a
+    diferencia de las reglas del motor): "tiene hijos" es una precondición de
+    orden de borrado, no una regla de negocio forzable, y la evidencia
+    notificada es puerta cerrada — mismo criterio LPACAP que la reversión de
+    diagnóstico (#714, `services/diagnosticos.py`).
+    """
     if sujeto == 'TAREA':
         tarea = Tarea.query.get(entidad_id)
+        if tarea and tarea.notificacion:
+            return _bloquear(
+                'No se puede eliminar una tarea con una notificación ya registrada: es la '
+                'evidencia de un acto comunicado y no puede perderse.'
+            )
         if tarea and tarea.vinculos_documento:
             return _bloquear('No se puede eliminar una tarea que ya tiene documentos asignados.')
 
@@ -81,21 +102,21 @@ def _check_borrar(sujeto: str, entidad_id: int) -> Optional[EvaluacionResult]:
             Tarea.tramite_id == entidad_id
         ).first()
         if tiene_tareas:
-            return _bloquear('No se puede eliminar un trámite que ya tiene tareas.')
+            return _bloquear('No se puede eliminar un trámite que ya tiene tareas. Bórrelas primero.')
 
     elif sujeto == 'FASE':
         tiene_tramites = db.session.query(Tramite).filter(
             Tramite.fase_id == entidad_id
         ).first()
         if tiene_tramites:
-            return _bloquear('No se puede eliminar una fase que ya tiene trámites.')
+            return _bloquear('No se puede eliminar una fase que ya tiene trámites. Bórrelos primero.')
 
     elif sujeto == 'SOLICITUD':
         tiene_fases = db.session.query(Fase).filter(
             Fase.solicitud_id == entidad_id
         ).first()
         if tiene_fases:
-            return _bloquear('No se puede eliminar una solicitud con fases creadas.')
+            return _bloquear('No se puede eliminar una solicitud con fases creadas. Bórrelas primero.')
 
     return None
 
