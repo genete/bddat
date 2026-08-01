@@ -44,7 +44,7 @@ from app.services.items_tecnicos import evaluar_items_tecnicos
 from app.services.consolidacion_defectos import consolidar_defectos
 from app.services.diagnosticos import (
     crear_diagnostico, revertir_diagnostico,
-    DiagnosticoConsumidoError, DiagnosticoSuperadoError,
+    DiagnosticoConsumidoError, DiagnosticoSuperadoError, FaseCerradaError,
 )
 from app.models.notificaciones import Notificacion
 from app.services.parser_justificante_notifica import (
@@ -990,6 +990,8 @@ def post_analizar(expediente_id, tarea_id):
 
     try:
         doc = crear_diagnostico(tarea, resultado, consolidado['items'], justificacion=justificacion)
+    except FaseCerradaError as e:
+        return jsonify({'error': 'Fase cerrada', 'motivo': str(e), 'puede_escapar': False}), 422
     except ValueError as e:
         return jsonify({'error': str(e)}), 422
 
@@ -1035,6 +1037,8 @@ def delete_analizar(expediente_id, tarea_id):
 
     try:
         revertir_diagnostico(tarea, justificacion=justificacion)
+    except FaseCerradaError as e:
+        return jsonify({'error': 'Fase cerrada', 'motivo': str(e), 'puede_escapar': False}), 422
     except DiagnosticoConsumidoError as e:
         return jsonify({
             'error': 'Diagnóstico consumido',

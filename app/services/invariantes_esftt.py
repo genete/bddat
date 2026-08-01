@@ -63,6 +63,10 @@ def check_invariante(accion: str, sujeto: str, entidad_id: int) -> Optional[Eval
         return _check_borrar(sujeto, entidad_id)
     if accion == 'FINALIZAR':
         return _check_finalizar(sujeto, entidad_id)
+    if accion == 'MUTAR':
+        return _check_mutar(sujeto, entidad_id)
+    if accion == 'REABRIR':
+        return _check_reabrir(sujeto, entidad_id)
     return None
 
 
@@ -118,6 +122,96 @@ def _check_borrar(sujeto: str, entidad_id: int) -> Optional[EvaluacionResult]:
         if tiene_fases:
             return _bloquear('No se puede eliminar una solicitud con fases creadas. Bórrelas primero.')
 
+    return None
+
+
+# ---------------------------------------------------------------------------
+# Mutar — sellado de fase cerrada (#720, ADR-036)
+# ---------------------------------------------------------------------------
+
+def _fase_de(sujeto: str, entidad_id: int) -> Optional[Fase]:
+    """Fase ancestro de un sujeto del árbol, o None si no aplica/no existe."""
+    if sujeto == 'FASE':
+        return Fase.query.get(entidad_id)
+    if sujeto == 'TRAMITE':
+        tramite = Tramite.query.get(entidad_id)
+        return tramite.fase if tramite else None
+    if sujeto == 'TAREA':
+        tarea = Tarea.query.get(entidad_id)
+        return tarea.tramite.fase if tarea and tarea.tramite else None
+    return None
+
+
+def _check_mutar(sujeto: str, entidad_id: int) -> Optional[EvaluacionResult]:
+    """Guardia del sellado de fase cerrada (#720, ADR-036 §6/§7).
+
+    Bloquea cualquier mutación bajo una fase FINALIZADA (`documento_resultado_id`
+    NOT NULL): crear/editar/borrar trámites y tareas, producir/revertir
+    diagnósticos. El único camino de escape es `reabrir_fase` — este check
+    **no admite justificación propia**, mismo criterio que `_check_borrar`
+    (#722): "la fase está cerrada" no es una regla de negocio forzable caso a
+    caso, es una precondición estructural.
+
+    `editar_fase`/`reabrir_fase` no llaman a este check sobre su propia fase:
+    son los dos actos que legítimamente tocan `resultado_fase_id`/
+    `documento_resultado_id` (cerrar la primera vez, o reabrir).
+    """
+    fase = _fase_de(sujeto, entidad_id)
+    if fase is None or not fase.finalizada:
+        return None
+    return _bloquear(
+        'Esta fase está cerrada. Para modificar su interior, reábrala primero '
+        'desde el inspector de la fase.'
+    )
+
+
+def _solicitud_notificada_en_fase_finalizadora(solicitud) -> bool:
+    """True si existe una tarea NOTIFICAR con notificación registrada en alguna
+    fase finalizadora de `solicitud` (#720, ADR-036 §4): el resultado de la
+    solicitud ya se comunicó al exterior. Mismo patrón de consulta que
+    `diagnosticos._hay_notificacion_posterior_en_cadena`.
+    """
+    from app.models.tipos_fases import TipoFase
+    from app.models.tipos_tareas import TipoTarea
+    from app.models.notificaciones import Notificacion
+
+    return db.session.query(
+        db.session.query(Notificacion.id)
+        .join(Tarea, Notificacion.tarea_id == Tarea.id)
+        .join(TipoTarea, Tarea.tipo_tarea_id == TipoTarea.id)
+        .join(Tramite, Tarea.tramite_id == Tramite.id)
+        .join(Fase, Tramite.fase_id == Fase.id)
+        .join(TipoFase, Fase.tipo_fase_id == TipoFase.id)
+        .filter(
+            Fase.solicitud_id == solicitud.id,
+            TipoTarea.codigo == 'NOTIFICAR',
+            TipoFase.es_finalizadora.is_(True),
+        )
+        .exists()
+    ).scalar()
+
+
+def _check_reabrir(sujeto: str, entidad_id: int) -> Optional[EvaluacionResult]:
+    """Puerta cerrada de `reabrir_fase` (#720, ADR-036 §4): si la solicitud ya
+    está resuelta (todas sus fases finalizadas) y notificada, la resolución es
+    firme — no reabribible, ni con justificación. Mismo criterio LPACAP que la
+    reversión de diagnóstico ya notificado (#714) y el borrado de evidencia
+    notificada (#722).
+    """
+    if sujeto != 'FASE':
+        return None
+    fase = Fase.query.get(entidad_id)
+    if fase is None:
+        return None
+    solicitud = fase.solicitud
+    if not solicitud.estado.startswith('RESUELTA'):
+        return None
+    if _solicitud_notificada_en_fase_finalizadora(solicitud):
+        return _bloquear(
+            'La solicitud ya está resuelta y notificada: la resolución es firme. '
+            'Ninguna de sus fases puede reabrirse; corríjalo mediante un acto '
+            'administrativo expreso (revocación/anulación), fuera de este flujo.'
+        )
     return None
 
 

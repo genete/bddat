@@ -364,6 +364,10 @@ def crear_tramite(fase, tipo_tramite, *, justificacion: Optional[str] = None) ->
             error='Los trámites de traslado se crean desde la acción específica de organismo',
         )
 
+    res_inv = check_invariante('MUTAR', 'FASE', fase.id)
+    if res_inv:
+        return ResultadoMutacion(ok=False, bloqueo=res_inv)
+
     expediente = fase.solicitud.expediente
     if justificacion is None:
         res_eval = _evaluar('CREAR', expediente,
@@ -392,6 +396,10 @@ def crear_tramite(fase, tipo_tramite, *, justificacion: Optional[str] = None) ->
 
 
 def crear_tarea(tramite, tipo_tarea, *, justificacion: Optional[str] = None) -> ResultadoMutacion:
+    res_inv = check_invariante('MUTAR', 'TRAMITE', tramite.id)
+    if res_inv:
+        return ResultadoMutacion(ok=False, bloqueo=res_inv)
+
     expediente = tramite.fase.solicitud.expediente
     if justificacion is None:
         res_eval = _evaluar('CREAR', expediente,
@@ -436,6 +444,12 @@ def editar_solicitud(sol, *, observaciones: Optional[str]) -> ResultadoMutacion:
 def editar_fase(fase, *, resultado_fase_id: Optional[int],
                 documento_resultado_id: Optional[int],
                 observaciones: Optional[str]) -> ResultadoMutacion:
+    # Sellado (#720, ADR-036 §6/§7): solo bloquea si la fase YA estaba cerrada al
+    # entrar — el propio cierre (finalizada aún False → True) no se autobloquea.
+    res_inv = check_invariante('MUTAR', 'FASE', fase.id)
+    if res_inv:
+        return ResultadoMutacion(ok=False, bloqueo=res_inv)
+
     if documento_resultado_id and fase.documento_resultado_id is None:
         doc = Documento.query.get(documento_resultado_id)
         if not doc or doc.expediente_id != fase.solicitud.expediente_id:
@@ -460,7 +474,49 @@ def editar_fase(fase, *, resultado_fase_id: Optional[int],
         return ResultadoMutacion(ok=False, error=str(e))
 
 
+def reabrir_fase(fase, *, justificacion: str) -> ResultadoMutacion:
+    """Reabre una fase cerrada (#720, ADR-036): retira el sellado para poder
+    corregir su interior. Acto consciente y auditado — `justificacion` siempre
+    obligatoria, no existe reapertura silenciosa.
+
+    Puerta cerrada sin bypass (ADR-036 §4, `_check_reabrir`): si la solicitud ya
+    está resuelta y notificada, el acto ya salió fuera — la corrección exige un
+    acto administrativo expreso, fuera de este servicio.
+    """
+    if not fase.finalizada:
+        return ResultadoMutacion(ok=False, error='La fase no está cerrada.')
+    if not justificacion:
+        return ResultadoMutacion(ok=False, error='La reapertura de una fase requiere justificación.')
+
+    res_inv = check_invariante('REABRIR', 'FASE', fase.id)
+    if res_inv:
+        return ResultadoMutacion(ok=False, bloqueo=res_inv)
+
+    expediente = fase.solicitud.expediente
+    sujeto = build_sujeto(expediente, fase)
+
+    try:
+        fase.resultado_fase_id = None
+        fase.documento_resultado_id = None
+        db.session.flush()
+
+        bitacora_svc.registrar(
+            current_user.id, 'ALTERAR', 'fases', fase.id,
+            detalle={'escape': True, 'justificacion': justificacion, 'sujeto': sujeto,
+                     'accion': 'REABRIR'},
+        )
+        db.session.commit()
+        return ResultadoMutacion(ok=True, ids=[fase.id])
+    except Exception as e:
+        db.session.rollback()
+        return ResultadoMutacion(ok=False, error=str(e))
+
+
 def editar_tramite(tr, *, observaciones: Optional[str]) -> ResultadoMutacion:
+    res_inv = check_invariante('MUTAR', 'TRAMITE', tr.id)
+    if res_inv:
+        return ResultadoMutacion(ok=False, bloqueo=res_inv)
+
     try:
         tr.observaciones = observaciones or None
         db.session.commit()
@@ -483,6 +539,10 @@ def editar_tarea(ta, *, documentos_consumidos_ids: list[int],
     ningún vínculo previo) para disparar el movimiento físico a la carpeta
     ESFTT (ADR-032 §3), y "última desvinculación" para la vuelta a pool/.
     """
+    res_inv = check_invariante('MUTAR', 'TAREA', ta.id)
+    if res_inv:
+        return ResultadoMutacion(ok=False, bloqueo=res_inv)
+
     expediente = ta.tramite.fase.solicitud.expediente
 
     # Capturado ANTES del diff (#717): distingue "se acaba de fijar el producido"
@@ -656,6 +716,10 @@ def borrar_fase(fase, *, justificacion: Optional[str] = None) -> ResultadoMutaci
 def borrar_tramite(tr, *, justificacion: Optional[str] = None) -> ResultadoMutacion:
     expediente = tr.fase.solicitud.expediente
 
+    res_inv = check_invariante('MUTAR', 'TRAMITE', tr.id)
+    if res_inv:
+        return ResultadoMutacion(ok=False, bloqueo=res_inv)
+
     res_inv = check_invariante('BORRAR', 'TRAMITE', tr.id)
     if res_inv:
         return ResultadoMutacion(ok=False, bloqueo=res_inv)
@@ -679,6 +743,10 @@ def borrar_tramite(tr, *, justificacion: Optional[str] = None) -> ResultadoMutac
 
 def borrar_tarea(ta, *, justificacion: Optional[str] = None) -> ResultadoMutacion:
     expediente = ta.tramite.fase.solicitud.expediente
+
+    res_inv = check_invariante('MUTAR', 'TAREA', ta.id)
+    if res_inv:
+        return ResultadoMutacion(ok=False, bloqueo=res_inv)
 
     res_inv = check_invariante('BORRAR', 'TAREA', ta.id)
     if res_inv:

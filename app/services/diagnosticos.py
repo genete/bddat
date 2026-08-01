@@ -23,6 +23,7 @@ from app.services.mutaciones_arbol import _hook_458_analizar_separata
 from app.services.invariantes_esftt import (
     TRAMITES_CADENA_SUBSANACION,
     ultima_tarea_cadena_subsanacion,
+    check_invariante,
 )
 
 log = logging.getLogger(__name__)
@@ -61,6 +62,15 @@ class DiagnosticoSuperadoError(Exception):
 
     def __init__(self, motivo: str, *, puede_escapar: bool):
         self.puede_escapar = puede_escapar
+        super().__init__(motivo)
+
+
+class FaseCerradaError(Exception):
+    """La fase de la tarea está cerrada (#720, ADR-036): producir o revertir un
+    diagnóstico bajo una fase sellada no es una regla de negocio forzable — la
+    única vía es reabrir la fase antes (`mutaciones_arbol.reabrir_fase`)."""
+
+    def __init__(self, motivo: str):
         super().__init__(motivo)
 
 
@@ -181,7 +191,14 @@ def revertir_diagnostico(tarea: Tarea, *, justificacion: Optional[str] = None) -
     `_motivo_diagnostico_superado` (mismo shape que los bloqueos de motor y que
     el gate de completitud de `crear_diagnostico`) — se registra en bitácora. No
     abre las puertas cerradas: lo ya notificado sigue sin poder revertirse.
+
+    Lanza FaseCerradaError si la fase de la tarea está cerrada (#720): no
+    bypasseable con `justificacion`, la única vía es reabrir la fase antes.
     """
+    res_inv = check_invariante('MUTAR', 'TAREA', tarea.id)
+    if res_inv is not None:
+        raise FaseCerradaError(res_inv.motivo or res_inv.norma_compilada)
+
     doc = tarea.documento_producido
     if doc is None:
         raise ValueError(f'La tarea {tarea.id} no tiene documento producido')
@@ -234,7 +251,14 @@ def crear_diagnostico(tarea: Tarea, resultado: str, defectos: list,
     los bloqueos de motor en mutaciones_arbol.py) — si se informa, se
     registra en bitácora con detalle {'escape': True, 'justificacion': ...}.
     La decisión de exigirla (completo=False) la toma el llamador (ruta).
+
+    Lanza FaseCerradaError si la fase de la tarea está cerrada (#720): no
+    bypasseable con `justificacion`, la única vía es reabrir la fase antes.
     """
+    res_inv = check_invariante('MUTAR', 'TAREA', tarea.id)
+    if res_inv is not None:
+        raise FaseCerradaError(res_inv.motivo or res_inv.norma_compilada)
+
     if tarea.documento_producido is not None:
         raise ValueError(f'La tarea {tarea.id} ya tiene documento producido')
 
