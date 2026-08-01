@@ -47,6 +47,13 @@ export function deleteNodo(expedienteId, tipo, nodoId) {
   return api.delete(`/api/expedientes/${expedienteId}/nodo/${tipo}/${nodoId}`)
 }
 
+// Reabre una fase cerrada (POST, #720, ADR-036). body: {justificacion} — obligatoria
+// siempre. Respuesta éxito: {ok:true} 200. Bloqueo (422, puede_escapar:false): solicitud
+// ya resuelta y notificada — puerta cerrada.
+export function postReabrirFase(expedienteId, faseId, justificacion) {
+  return api.post(`/api/expedientes/${expedienteId}/nodo/fase/${faseId}/reabrir`, { justificacion })
+}
+
 // Contenedor de la tarea ANALIZAR (#442). Respuesta: {resultado, documento_producido,
 // secciones_extendidas, defectos_consolidado, completo}.
 export function getAnalizar(expedienteId, tareaId) {

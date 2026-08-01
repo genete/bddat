@@ -40,7 +40,16 @@ export default function NodoBase({ data }) {
 
       <div className="arbol-nodo__cuerpo">
         <div className="arbol-nodo__cuerpo-c">
-          {estado && <span className="arbol-nodo__estado">{estado}</span>}
+          {estado && (
+            <span className="arbol-nodo__estado">
+              {/* Candado (#720, ADR-036): solo la fase lleva el indicador — único
+                  nivel con acto de cierre formal, ver mismo criterio en Inspector.jsx */}
+              {tipo === 'fase' && estado === 'FINALIZADA' && (
+                <i className="bi bi-lock-fill me-1" title="Fase cerrada" />
+              )}
+              {estado}
+            </span>
+          )}
           {colapsado && agregados && (
             <span className="arbol-nodo__badges">
               ⊕ venc {agregados.plazos_vencidos} · próx {agregados.plazos_proximos} · notif{' '}

@@ -6,6 +6,7 @@ import { useArbolStore } from '../store.js'
 import { api } from '../../shared/api.js'
 import { showToast } from '../../shared/ui/toast.js'
 import { puedeEditarNodo, puedeCrearHijoDe } from '../../shared/auth.js'
+import { estaSellado } from '../sellado.js'
 
 async function copiarReferencia(ref) {
   try {
@@ -30,6 +31,7 @@ export default function MenuContextual() {
   const tiposCreables         = useArbolStore((s) => s.tiposCreables)
   const tiposCreablesCargando = useArbolStore((s) => s.tiposCreablesCargando)
   const detalle               = useArbolStore((s) => s.detalle)
+  const arbol                 = useArbolStore((s) => s.arbol)
   const expedienteId          = useArbolStore((s) => s.expedienteId)
   const entrarEdicion         = useArbolStore((s) => s.entrarEdicion)
   const seleccionarTipoCrear  = useArbolStore((s) => s.seleccionarTipoCrear)
@@ -71,8 +73,14 @@ export default function MenuContextual() {
   const py = Math.min(y, window.innerHeight - MENU_H - 8)
 
   const esTarea    = sel.tipo === 'tarea'
-  const puedeEditar    = puedeEditarNodo(sel.tipo) && sel.tipo !== 'expediente'
-  const puedeCrearHijo = puedeCrearHijoDe(sel.tipo)
+  // Sellado (#720, ADR-036): crear hijo nunca se ofrece bajo un nodo sellado (incluida
+  // la propia fase cerrada). Editar SÍ se permite sobre una fase sellada — es el único
+  // camino hasta el botón "Reabrir fase" del editor — pero no sobre un trámite/tarea
+  // cuya fase está cerrada, donde el backend rechazaría cualquier guardado.
+  const sellado         = estaSellado(arbol, sel)
+  const puedeEditar     = puedeEditarNodo(sel.tipo) && sel.tipo !== 'expediente' &&
+                          (sel.tipo === 'fase' || !sellado)
+  const puedeCrearHijo  = puedeCrearHijoDe(sel.tipo) && !sellado
 
   const tipos        = tiposCreables?.tipos || []
   const permitidos   = tipos.filter((t) => t.permitido)
