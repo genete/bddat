@@ -156,7 +156,10 @@ class TestHook717Derivacion:
 
         advertencia = _hook_717_elaborar_consumido_diagnostico(tarea_elaborar, doc.id)
 
-        assert advertencia is None
+        # Éxito también avisa (feedback de Carlos): el técnico debe enterarse
+        # de la vinculación automática, no solo de los fallos.
+        assert advertencia is not None
+        assert 'automátic' in advertencia['motivo']
         vinculos_consumido = [v for v in tarea_elaborar.vinculos_documento if v.rol == 'CONSUMIDO']
         assert len(vinculos_consumido) == 1
         assert vinculos_consumido[0].documento_id == diagnostico.documento_id
@@ -258,9 +261,11 @@ class TestHook717Derivacion:
         _, tarea_elaborar, diagnostico = _montar_cadena('desfavorable')
         doc = _doc_producido_elaborar(tarea_elaborar, fs_tmp, componer_codigo(tarea_elaborar.id))
 
-        _hook_717_elaborar_consumido_diagnostico(tarea_elaborar, doc.id)
-        _hook_717_elaborar_consumido_diagnostico(tarea_elaborar, doc.id)  # no debe lanzar IntegrityError
+        primera = _hook_717_elaborar_consumido_diagnostico(tarea_elaborar, doc.id)
+        segunda = _hook_717_elaborar_consumido_diagnostico(tarea_elaborar, doc.id)  # no debe lanzar IntegrityError
 
+        assert primera is not None  # la primera vez sí avisa: acaba de crear el vínculo
+        assert segunda is None      # ya estaba — nada nuevo que contar
         vinculos = [v for v in tarea_elaborar.vinculos_documento if v.rol == 'CONSUMIDO']
         assert len(vinculos) == 1
 
@@ -300,6 +305,11 @@ class TestIntegracionEditarTarea:
                                      documento_producido_id=doc.id, notas=None)
 
         assert resultado.ok
+        # Llega hasta el técnico vía el mismo canal que las advertencias del
+        # motor (store.js las muestra como toast) — no es un fallo, pero es
+        # una mutación en la trastienda que debe conocer.
+        assert resultado.advertencia is not None
+        assert 'automátic' in resultado.advertencia['motivo']
         vinculos = [v for v in tarea_elaborar.vinculos_documento if v.rol == 'CONSUMIDO']
         assert len(vinculos) == 1
         assert vinculos[0].documento_id == diagnostico.documento_id

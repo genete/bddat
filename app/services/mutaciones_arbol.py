@@ -224,6 +224,12 @@ def _hook_717_elaborar_consumido_diagnostico(tarea, id_producido) -> Optional[di
     nada y se devuelve una advertencia no bloqueante para que el técnico lo
     sepa. Un diagnóstico favorable tampoco es consumible (ADR-033 §5): se
     ignora en silencio, no es nada que el técnico pueda corregir.
+
+    Cuando SÍ deriva el vínculo también devuelve aviso (mismo canal, aunque no
+    sea un problema): es una mutación en la trastienda —un documento nuevo
+    aparece como CONSUMIDO de la tarea sin que el técnico lo haya arrastrado
+    desde la Despensa— y debe enterarse de qué se hizo y por qué, no solo
+    cuando algo falla.
     """
     if id_producido is None or tarea.tipo_tarea.codigo != 'ELABORAR':
         return None
@@ -250,10 +256,18 @@ def _hook_717_elaborar_consumido_diagnostico(tarea, id_producido) -> Optional[di
         v.documento_id == diagnostico.documento_id and v.rol == 'CONSUMIDO'
         for v in tarea.vinculos_documento
     )
-    if not ya_vinculado:
-        tarea.vinculos_documento.append(
-            DocumentoTarea(documento_id=diagnostico.documento_id, rol='CONSUMIDO'))
-    return None
+    if ya_vinculado:
+        return None
+
+    tarea.vinculos_documento.append(
+        DocumentoTarea(documento_id=diagnostico.documento_id, rol='CONSUMIDO'))
+    return {
+        'motivo': (
+            'Vinculación automática: el código de seguimiento acredita que este '
+            'escrito subsana el diagnóstico desfavorable del trámite anterior, así '
+            'que se ha añadido como documento consumido de esta tarea.'
+        ),
+    }
 
 
 # ===========================================================================
