@@ -206,7 +206,7 @@ export const useArbolStore = create((set, get) => ({
         ? await guardarNotas(expedienteId, seleccion.id, borrador.notas)
         : await patchNodo(expedienteId, seleccion.tipo, seleccion.id, borrador)
       showToast('Cambios guardados', 'success')
-      if (data && data.advertencia) {                 // defensivo (PATCH editar no lo emite hoy)
+      if (data && data.advertencia) {                 // fase: justificantes huérfanos en el pool (#738)
         const a = data.advertencia
         showToast(typeof a === 'string' ? a : (a.motivo || 'Revisa la advertencia'), 'warning')
       }

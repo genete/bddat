@@ -39,6 +39,63 @@ TRAMITES_CADENA_SUBSANACION = frozenset({'ANALISIS_DOCUMENTAL', 'REQUERIMIENTO_S
 RESULTADO_FASE_FAVORABLE_CODIGOS = frozenset({'FAVORABLE', 'FAVORABLE_CONDICIONADO'})
 
 
+def es_documento_critico(doc) -> bool:
+    """True si `doc` es evidencia de un acto ya comunicado hacia fuera (#738):
+    los 9 tipos `JUSTIFICANTE_*` del catálogo (4 de notificación + 5 de
+    publicación BOE/BOP/BOJA/PRENSA/PORTAL, `TIPOS_DOCUMENTOS_CATALOGO.md`),
+    detectados por prefijo — no hace falta mantener una lista, cualquier
+    justificante nuevo del catálogo ya sigue esa convención de nombre.
+
+    Perder el vínculo estructural que hoy los protege (`DocumentoTarea`,
+    `Notificacion`) no debe pasar en silencio, aunque no se bloquee.
+    """
+    return bool(doc.tipo_doc and doc.tipo_doc.codigo.startswith('JUSTIFICANTE_'))
+
+
+def _documentos_criticos_huerfanos(expediente_id: int) -> list:
+    """Documentos `JUSTIFICANTE_*` del pool del expediente sin ningún vínculo
+    `DocumentoTarea` (ni PRODUCIDO ni CONSUMIDO) — #738 punto 4: la señal de
+    que un justificante pudo subirse y no llegar nunca a vincularse a la tarea
+    que lo produjo (o haber perdido ese vínculo, ver punto 1).
+    """
+    from app.models.documentos import Documento
+    from app.models.tipos_documentos import TipoDocumento
+
+    return (
+        db.session.query(Documento)
+        .join(TipoDocumento, Documento.tipo_doc_id == TipoDocumento.id)
+        .filter(
+            Documento.expediente_id == expediente_id,
+            TipoDocumento.codigo.like('JUSTIFICANTE_%'),
+            ~Documento.vinculos_tarea.any(),
+        )
+        .all()
+    )
+
+
+def advertir_documentos_criticos_huerfanos(expediente_id: int) -> Optional[dict]:
+    """Advertencia no bloqueante (#738 punto 4, ADVERTIR) para el cierre de
+    fase: hay documentos `JUSTIFICANTE_*` en el pool del expediente sin
+    vincular a ninguna tarea.
+
+    No bloquea: el pool es del expediente completo, no de la fase que se
+    cierra, así que el documento suelto puede pertenecer legítimamente a otro
+    trámite o fase — bloquear el cierre por él sería una señal ambigua sobre
+    qué corregir. Mismo canal de advertencia no bloqueante que los hooks
+    #657/#717 de `editar_tarea`.
+    """
+    huerfanos = _documentos_criticos_huerfanos(expediente_id)
+    if not huerfanos:
+        return None
+    nombres = ', '.join(str(d) for d in huerfanos)
+    return {
+        'motivo': (
+            f'Hay documento(s) justificante en el pool sin vincular a ninguna tarea: '
+            f'{nombres}. Revise si deben asociarse antes de continuar.'
+        ),
+    }
+
+
 def _bloquear(mensaje: str) -> EvaluacionResult:
     # CONVENIO de mensajería de bloqueos (invariantes vs motor):
     # el mensaje humano del invariante va en `norma_compilada` (no hay norma
