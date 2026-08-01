@@ -34,7 +34,10 @@ from app.services.assembler import build, build_sujeto
 from app.services import bitacora as bitacora_svc
 from app.services.motor_reglas import EvaluacionResult, PERMITIDO
 from app.services.motor_modo_global import evaluar_con_modo_global as _evaluar
-from app.services.invariantes_esftt import _check_cierre_fase, check_invariante, diagnostico_tramite_anterior
+from app.services.invariantes_esftt import (
+    _check_cierre_fase, check_invariante, diagnostico_tramite_anterior,
+    es_documento_critico, advertir_documentos_criticos_huerfanos,
+)
 from app.services.requisitos import evaluar_requisitos
 from app.services.rutas_esftt import mover_a_esftt, mover_a_pool
 from app.services.parser_justificante_notifica import (
@@ -450,6 +453,7 @@ def editar_fase(fase, *, resultado_fase_id: Optional[int],
     if res_inv:
         return ResultadoMutacion(ok=False, bloqueo=res_inv)
 
+    advertencia = None
     if documento_resultado_id and fase.documento_resultado_id is None:
         doc = Documento.query.get(documento_resultado_id)
         if not doc or doc.expediente_id != fase.solicitud.expediente_id:
@@ -463,12 +467,18 @@ def editar_fase(fase, *, resultado_fase_id: Optional[int],
                 if res_inv:
                     return ResultadoMutacion(ok=False, bloqueo=res_inv)
 
+        # #738 punto 4: guarda temprana no bloqueante — documento(s) justificante en
+        # el pool del expediente sin vincular a ninguna tarea. ADVERTIR, no BLOQUEAR:
+        # el pool es del expediente completo, no de esta fase, así que el documento
+        # suelto puede pertenecer legítimamente a otro trámite/fase.
+        advertencia = advertir_documentos_criticos_huerfanos(fase.solicitud.expediente_id)
+
     try:
         fase.resultado_fase_id = resultado_fase_id
         fase.documento_resultado_id = documento_resultado_id
         fase.observaciones = observaciones or None
         db.session.commit()
-        return ResultadoMutacion(ok=True)
+        return ResultadoMutacion(ok=True, advertencia=advertencia)
     except Exception as e:
         db.session.rollback()
         return ResultadoMutacion(ok=False, error=str(e))
@@ -568,7 +578,24 @@ def editar_tarea(ta, *, documentos_consumidos_ids: list[int],
         for clave, vinculo in actuales.items():
             if clave not in deseados:
                 doc = vinculo.documento
+                rol_liberado = vinculo.rol
                 ta.vinculos_documento.remove(vinculo)
+                # #738 punto 1: desvincular un justificante es hoy silencioso — el
+                # vínculo estructural (DocumentoTarea) desaparece pero la fila
+                # Notificacion puede seguir viva apuntando al mismo documento
+                # (ADR-034). No se bloquea (el issue no cierra esta puerta: la
+                # vinculación pudo hacerse por error), solo queda rastro.
+                if es_documento_critico(doc):
+                    bitacora_svc.registrar(
+                        current_user.id, 'ALTERAR', 'tareas', ta.id,
+                        detalle={
+                            'accion': 'DESVINCULAR_DOCUMENTO_CRITICO',
+                            'documento_id': doc.id,
+                            'tipo_documento': doc.tipo_doc.codigo,
+                            'rol': rol_liberado,
+                            'sujeto': build_sujeto(expediente, ta.tramite),
+                        },
+                    )
                 if not doc.vinculos_tarea:
                     docs_a_liberar.append(doc)
         db.session.flush()
