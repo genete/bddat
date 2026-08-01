@@ -215,6 +215,42 @@ def _check_finalizar_tramite(tramite_id: int) -> Optional[EvaluacionResult]:
     return None
 
 
+def diagnostico_tramite_anterior(tramite: Tramite):
+    """Diagnóstico producido por el ANALIZAR del trámite inmediatamente anterior
+    (por `id`) dentro de la misma fase que `tramite`, o None.
+
+    Único criterio de "de qué vuelta viene esto" en la cadena de subsanación:
+    lo usan `ContextoSubsanacion` (qué defectos volcar en el escrito) y #717
+    (qué diagnóstico marcar CONSUMIDO al vincular el producido del ELABORAR)
+    — deben leer el mismo trámite anterior o divergirían en qué diagnóstico es
+    "el que este escrito volcó" (mismo motivo que `ultima_tarea_cadena_subsanacion`
+    es público desde #714).
+
+    Devuelve `Diagnostico` (no `Documento`): quien pregunta por el diagnóstico
+    quiere su contenido o su documento indistintamente (`Diagnostico.documento`).
+    """
+    fase = tramite.fase
+    tramites_previos = sorted(
+        (t for t in fase.tramites if t.id < tramite.id),
+        key=lambda t: t.id,
+    )
+    if not tramites_previos:
+        return None
+    tramite_anterior = tramites_previos[-1]
+
+    tarea_analizar = next(
+        (t for t in tramite_anterior.tareas if t.tipo_tarea and t.tipo_tarea.codigo == 'ANALIZAR'),
+        None,
+    )
+    if tarea_analizar is None:
+        return None
+
+    doc = tarea_analizar.documento_producido
+    if doc is None:
+        return None
+    return doc.diagnostico
+
+
 def ultima_tarea_cadena_subsanacion(fase_id: int) -> Optional[int]:
     """`Tarea.id` del último ANALIZAR con diagnóstico de la cadena de subsanación, o None.
 

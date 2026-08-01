@@ -15,6 +15,12 @@ class ContextoSubsanacion:
     shuttle. Ver [[project_diseno_tarea_analizar_442]] y ADR-025 §4
     (reclasificado de Auto-trámite a Solicitud/fase-scoped).
 
+    Localización del trámite anterior delegada en
+    `invariantes_esftt.diagnostico_tramite_anterior` (#717): mismo criterio
+    que usa la derivación del vínculo CONSUMIDO — no se puede duplicar sin
+    arriesgar divergencia entre "qué defectos se muestran" y "qué diagnóstico
+    se marca consumido".
+
     Campos adicionales aportados (#679): los defectos del diagnóstico
     anterior, separados por origen — el escrito de requerimiento distingue
     los tres ejes de ADR-033 (documental/técnico/libre) en apartados propios,
@@ -41,27 +47,13 @@ class ContextoSubsanacion:
         if not self._tarea or not self._tarea.tramite:
             return {}
 
-        fase = self._tarea.tramite.fase
-        tramites_previos = sorted(
-            (t for t in fase.tramites if t.id < self._tarea.tramite.id),
-            key=lambda t: t.id,
-        )
-        if not tramites_previos:
-            return {}
-        tramite_anterior = tramites_previos[-1]
+        from app.services.invariantes_esftt import diagnostico_tramite_anterior
 
-        tarea_analizar = next(
-            (t for t in tramite_anterior.tareas if t.tipo_tarea and t.tipo_tarea.codigo == 'ANALIZAR'),
-            None,
-        )
-        if tarea_analizar is None:
+        diagnostico = diagnostico_tramite_anterior(self._tarea.tramite)
+        if diagnostico is None:
             return {}
 
-        doc = tarea_analizar.documento_producido
-        if doc is None or doc.diagnostico is None:
-            return {}
-
-        defectos = doc.diagnostico.as_contexto_cb()['diagnostico_defectos']
+        defectos = diagnostico.as_contexto_cb()['diagnostico_defectos']
 
         def _textos(origen):
             return [d.get('texto', '') for d in defectos if d.get('origen') == origen]
