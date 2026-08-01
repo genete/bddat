@@ -34,12 +34,14 @@ from app.services.assembler import build, build_sujeto
 from app.services import bitacora as bitacora_svc
 from app.services.motor_reglas import EvaluacionResult, PERMITIDO
 from app.services.motor_modo_global import evaluar_con_modo_global as _evaluar
-from app.services.invariantes_esftt import _check_cierre_fase
+from app.services.invariantes_esftt import _check_cierre_fase, diagnostico_tramite_anterior
 from app.services.requisitos import evaluar_requisitos
 from app.services.rutas_esftt import mover_a_esftt, mover_a_pool
 from app.services.parser_justificante_notifica import (
     parsear_justificante_notifica, parsear_justificante_notifica_zip,
 )
+from app.services.codigo_seguimiento import extraer_tarea_id
+from app.services.extraccion_texto_documento import extraer_texto
 
 log = logging.getLogger(__name__)
 
@@ -199,6 +201,73 @@ def _hook_657_notificar_resultado(tarea, id_producido) -> Optional[dict]:
         notif.fecha_resultado = parseo.fecha_lectura.date() if parseo.fecha_lectura else None
 
     return advertencia
+
+
+# ---------------------------------------------------------------------------
+# Hook #717: consumo real del diagnóstico por el ELABORAR de REQUERIMIENTO_SUBSANACION
+# ---------------------------------------------------------------------------
+
+def _hook_717_elaborar_consumido_diagnostico(tarea, id_producido) -> Optional[dict]:
+    """Hook #717: al fijar por primera vez el documento producido de un ELABORAR
+    de REQUERIMIENTO_SUBSANACION, deriva el vínculo CONSUMIDO sobre el
+    diagnóstico que ese escrito volcó — mismo trámite anterior que usa
+    ContextoSubsanacion (`diagnostico_tramite_anterior`) — acreditado con el
+    código de seguimiento embebido (#182).
+
+    Solo se llama cuando `id_producido` es NUEVO respecto al que tenía la tarea
+    (ver editar_tarea): si el técnico ya deshizo el vínculo a mano (botón ✕ de
+    la Despensa, la vía de "deshacer esa vinculación" que exige ADR-033 §5) y
+    vuelve a guardar sin cambiar el producido, este hook no debe reponerlo.
+
+    Sin token propio en el documento —o con el de otra tarea— un documento
+    vinculado a mano no acredita el consumo (diseño del issue): no se deriva
+    nada y se devuelve una advertencia no bloqueante para que el técnico lo
+    sepa. Un diagnóstico favorable tampoco es consumible (ADR-033 §5): se
+    ignora en silencio, no es nada que el técnico pueda corregir.
+
+    Cuando SÍ deriva el vínculo también devuelve aviso (mismo canal, aunque no
+    sea un problema): es una mutación en la trastienda —un documento nuevo
+    aparece como CONSUMIDO de la tarea sin que el técnico lo haya arrastrado
+    desde la Despensa— y debe enterarse de qué se hizo y por qué, no solo
+    cuando algo falla.
+    """
+    if id_producido is None or tarea.tipo_tarea.codigo != 'ELABORAR':
+        return None
+    tramite = tarea.tramite
+    if not tramite or not tramite.tipo_tramite or tramite.tipo_tramite.codigo != 'REQUERIMIENTO_SUBSANACION':
+        return None
+
+    doc = Documento.query.get(id_producido)
+    if extraer_tarea_id(extraer_texto(doc)) != tarea.id:
+        return {
+            'motivo': (
+                'El documento producido no lleva el código de seguimiento de esta '
+                'tarea: el vínculo con el diagnóstico que este requerimiento '
+                'subsana no se ha derivado automáticamente. Si corresponde, '
+                'vincúlelo a mano desde la Despensa.'
+            ),
+        }
+
+    diagnostico = diagnostico_tramite_anterior(tramite)
+    if diagnostico is None or diagnostico.resultado != 'desfavorable':
+        return None
+
+    ya_vinculado = any(
+        v.documento_id == diagnostico.documento_id and v.rol == 'CONSUMIDO'
+        for v in tarea.vinculos_documento
+    )
+    if ya_vinculado:
+        return None
+
+    tarea.vinculos_documento.append(
+        DocumentoTarea(documento_id=diagnostico.documento_id, rol='CONSUMIDO'))
+    return {
+        'motivo': (
+            'Vinculación automática: el código de seguimiento acredita que este '
+            'escrito subsana el diagnóstico desfavorable del trámite anterior, así '
+            'que se ha añadido como documento consumido de esta tarea.'
+        ),
+    }
 
 
 # ===========================================================================
@@ -416,6 +485,11 @@ def editar_tarea(ta, *, documentos_consumidos_ids: list[int],
     """
     expediente = ta.tramite.fase.solicitud.expediente
 
+    # Capturado ANTES del diff (#717): distingue "se acaba de fijar el producido"
+    # de "ya lo tenía y se guarda por otro motivo" — ver _hook_717 más abajo.
+    doc_producido_previo = ta.documento_producido
+    id_producido_previo = doc_producido_previo.id if doc_producido_previo else None
+
     ids_todos = list(documentos_consumidos_ids) + (
         [documento_producido_id] if documento_producido_id else [])
     for doc_id in ids_todos:
@@ -460,6 +534,12 @@ def editar_tarea(ta, *, documentos_consumidos_ids: list[int],
         # lee el fichero, no depende de dónde esté, pero mantiene el orden lógico
         # "vínculos resueltos → efectos derivados" del resto de la función.
         advertencia = _hook_657_notificar_resultado(ta, documento_producido_id)
+
+        # #717: solo en la transición a un producido NUEVO — mover_a_esftt ya
+        # dejó el fichero en su ubicación final, necesaria para leer su texto.
+        if documento_producido_id and documento_producido_id != id_producido_previo:
+            advertencia = _hook_717_elaborar_consumido_diagnostico(ta, documento_producido_id) or advertencia
+
         db.session.flush()
 
         db.session.commit()
