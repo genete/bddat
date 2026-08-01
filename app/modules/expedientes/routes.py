@@ -22,7 +22,7 @@ import os
 from datetime import date
 from flask import current_app, send_file, g
 from flask import Blueprint, render_template, request, flash, redirect, url_for, abort, jsonify
-from flask_login import login_required
+from flask_login import login_required, current_user
 from app import db
 from app.models.expedientes import Expediente
 from app.models.proyectos import Proyecto
@@ -43,6 +43,9 @@ from app.services.detalle_nodo import info_apertura_documento
 from app.services.parser_justificante_notifica import (
     parsear_justificante_notifica, parsear_justificante_notifica_zip,
 )
+from app.services.assembler import build_sujeto
+from app.services import bitacora as bitacora_svc
+from app.services.invariantes_esftt import es_documento_critico
 from app.utils.permisos import (
     puede_cambiar_responsable,
     verificar_acceso_expediente,
@@ -478,10 +481,19 @@ def _documento_es_referenciado(doc):
     Backrefs consultados:
       doc.proyecto_vinculado  → DocumentoProyecto.documento_id  (uselist=False)
       doc.vinculos_tarea      → DocumentoTarea.documento_id     (lista, vínculos con rol)
+      doc.notificacion        → Notificacion.documento_id       (uselist=False, ADR-034)
+
+    `doc.notificacion` (#738 punto 2): sin este check, un justificante que ya
+    perdió su vínculo `DocumentoTarea` (desvinculado, ver punto 1) parece libre
+    aunque la fila `Notificacion` siga viva apuntando a él — y esa fila tiene
+    `ondelete='CASCADE'`, así que borrar el documento se lleva por delante toda
+    la evidencia de la notificación (canal, resultado, fecha).
     """
     if doc.proyecto_vinculado:
         return True
     if doc.vinculos_tarea:
+        return True
+    if doc.notificacion:
         return True
     return False
 
@@ -993,7 +1005,18 @@ def pool_borrar_documento(id, doc_id):
             'error': 'El documento está referenciado en tramitación y no puede eliminarse'
         }), 422
 
+    es_critico = es_documento_critico(doc)
+    tipo_documento = doc.tipo_doc.codigo if doc.tipo_doc else None
+    documento_id = doc.id
+
     try:
+        if es_critico:
+            # #738 punto 3: borrar un justificante sin referencias activas se permite
+            # (no cerramos la puerta), pero debe quedar rastro en bitácora.
+            bitacora_svc.registrar(
+                current_user.id, 'BORRAR', 'documentos', documento_id,
+                detalle={'tipo_documento': tipo_documento, 'sujeto': build_sujeto(expediente)},
+            )
         db.session.delete(doc)
         db.session.commit()
     except Exception as e:
