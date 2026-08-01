@@ -46,6 +46,7 @@ from app.services.diagnosticos import (
     crear_diagnostico, revertir_diagnostico,
     DiagnosticoConsumidoError, DiagnosticoSuperadoError, FaseCerradaError,
 )
+from app.services.invariantes_esftt import check_invariante
 from app.models.notificaciones import Notificacion
 from app.services.parser_justificante_notifica import (
     parsear_justificante_notifica, parsear_justificante_notifica_zip,
@@ -453,8 +454,43 @@ def get_detalle_nodo(expediente_id, tipo, nodo_id):
 # Helper privado de resolución de nodo
 # =============================================================================
 
-def _resolver_nodo(expediente, tipo: str, nodo_id: int):
-    """(tipo, nodo_id) → objeto del modelo validando pertenencia. ValueError si no."""
+class FaseSelladaError(Exception):
+    """Nodo bajo una fase cerrada, resuelto en un verbo de escritura (#720,
+    ADR-036 §6, capa 1 — resolver de nodo).
+
+    Red temprana, redundante a propósito con `check_invariante('MUTAR', ...)`
+    del servicio de dominio (capa 2): corta antes de invocar el servicio, con
+    el mismo mensaje. No se captura ruta a ruta — el `errorhandler` del
+    blueprint más abajo la traduce a 422 para cualquier vista que la deje
+    propagar, así que una ruta nueva que use `_resolver_nodo` queda cubierta
+    sin tener que acordarse de nada.
+    """
+    def __init__(self, motivo: str):
+        self.motivo = motivo
+        super().__init__(motivo)
+
+
+_VERBOS_MUTACION = {'POST', 'PUT', 'PATCH', 'DELETE'}
+
+
+def _verificar_no_sellado(sujeto: str, entidad_id: int, permitir_fase_cerrada: bool) -> None:
+    """Lanza FaseSelladaError si `sujeto`/`entidad_id` cuelga de una fase
+    cerrada y la request actual es de escritura. No hace nada en GET, ni
+    cuando `permitir_fase_cerrada=True` (la usa el propio endpoint de
+    reapertura, que necesita resolver una fase cerrada para reabrirla)."""
+    if permitir_fase_cerrada or request.method not in _VERBOS_MUTACION:
+        return
+    res = check_invariante('MUTAR', sujeto, entidad_id)
+    if res is not None:
+        raise FaseSelladaError(res.motivo or res.norma_compilada)
+
+
+def _resolver_nodo(expediente, tipo: str, nodo_id: int, *, permitir_fase_cerrada: bool = False):
+    """(tipo, nodo_id) → objeto del modelo validando pertenencia. ValueError si no.
+
+    `permitir_fase_cerrada`: ver `_verificar_no_sellado` — excepción explícita
+    para el endpoint de reapertura de fase.
+    """
     if tipo == 'expediente':
         if nodo_id != expediente.id:
             raise ValueError(
@@ -469,18 +505,29 @@ def _resolver_nodo(expediente, tipo: str, nodo_id: int):
         obj = Fase.query.get(nodo_id)
         if obj is None or obj.solicitud.expediente_id != expediente.id:
             raise ValueError(f'Fase {nodo_id} no encontrada en expediente {expediente.id}')
+        _verificar_no_sellado('FASE', obj.id, permitir_fase_cerrada)
         return obj
     if tipo == 'tramite':
         obj = Tramite.query.get(nodo_id)
         if obj is None or obj.fase.solicitud.expediente_id != expediente.id:
             raise ValueError(f'Trámite {nodo_id} no encontrado en expediente {expediente.id}')
+        _verificar_no_sellado('TRAMITE', obj.id, permitir_fase_cerrada)
         return obj
     if tipo == 'tarea':
         obj = Tarea.query.get(nodo_id)
         if obj is None or obj.tramite.fase.solicitud.expediente_id != expediente.id:
             raise ValueError(f'Tarea {nodo_id} no encontrada en expediente {expediente.id}')
+        _verificar_no_sellado('TAREA', obj.id, permitir_fase_cerrada)
         return obj
     raise ValueError(f'Tipo de nodo desconocido: {tipo!r}')
+
+
+@api_bp.errorhandler(FaseSelladaError)
+def _manejar_fase_sellada(e: FaseSelladaError):
+    """#720 — traduce el corte temprano de `_resolver_nodo` al mismo shape que
+    un bloqueo de invariante. `puede_escapar=False`: no bypasseable, la única
+    vía es reabrir la fase antes (`POST .../nodo/fase/<id>/reabrir`)."""
+    return jsonify({'error': 'Fase cerrada', 'motivo': e.motivo, 'puede_escapar': False}), 422
 
 
 def _bloqueo_422(res):
@@ -691,6 +738,45 @@ def borrar_nodo(expediente_id, tipo, nodo_id):
     else:
         return jsonify({'error': f'Tipo de nodo no borrable: {tipo!r}'}), 422
 
+    if res.bloqueo:
+        return _bloqueo_422(res)
+    if not res.ok:
+        return jsonify({'error': res.error}), 422
+    return jsonify({'ok': True}), 200
+
+
+# =============================================================================
+# ENDPOINT 8bis: Reabrir una fase cerrada (#720, ADR-036)
+# =============================================================================
+
+@api_bp.route('/expedientes/<int:expediente_id>/nodo/fase/<int:nodo_id>/reabrir',
+              methods=['POST'])
+@login_required
+def reabrir_fase_nodo(expediente_id, nodo_id):
+    """
+    POST .../nodo/fase/<fase_id>/reabrir — reabre una fase cerrada (#720, ADR-036).
+
+    Único camino para tocar el interior de una fase FINALIZADA: retira su
+    resultado/documento de cierre y queda en bitácora. Body JSON:
+    {justificacion} — obligatoria siempre, no hay reapertura silenciosa.
+
+    Bloqueo (422, `puede_escapar: false`): la solicitud ya está resuelta y
+    notificada — puerta cerrada, ADR-036 §4.
+    """
+    expediente = Expediente.query.get_or_404(expediente_id)
+    # Mismo permiso que cerrar la fase (editar_nodo) y crear/borrar estructura.
+    if verificar_acceso_expediente(expediente, 'gestionar_estructura'):
+        return jsonify({'error': 'No tienes permiso para esta acción'}), 403
+
+    try:
+        fase = _resolver_nodo(expediente, 'fase', nodo_id, permitir_fase_cerrada=True)
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 404
+
+    data = request.get_json(silent=True) or {}
+    justificacion = (data.get('justificacion') or '').strip()
+
+    res = svc.reabrir_fase(fase, justificacion=justificacion)
     if res.bloqueo:
         return _bloqueo_422(res)
     if not res.ok:
