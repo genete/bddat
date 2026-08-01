@@ -248,13 +248,23 @@ def generar():
 
         if asignar_doc_producido:
             from app.models.documentos_tarea import DocumentoTarea
+            from app.services.mutaciones_arbol import _hook_717_elaborar_consumido_diagnostico
             existente = next(
                 (v for v in tarea.vinculos_documento if v.rol == 'PRODUCIDO'), None)
+            id_producido_previo = existente.documento_id if existente else None
             if existente:
                 existente.documento_id = doc_id
             else:
                 tarea.vinculos_documento.append(
                     DocumentoTarea(documento_id=doc_id, rol='PRODUCIDO'))
+
+            # #717: mismo hook que editar_tarea() — este path es el otro sitio
+            # donde una tarea puede quedar con PRODUCIDO fijado (hoy sin caller
+            # real con asignar_doc_producido=True para ELABORAR, ver
+            # ElaborarEditor.jsx, pero es el mismo evento de dominio).
+            if doc_id != id_producido_previo:
+                db.session.flush()
+                _hook_717_elaborar_consumido_diagnostico(tarea, doc_id)
 
     db.session.commit()
 
