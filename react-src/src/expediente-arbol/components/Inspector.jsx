@@ -9,6 +9,7 @@ import { useArbolStore, selectHayCambios } from '../store.js'
 import { api } from '../../shared/api.js'
 import { showToast } from '../../shared/ui/toast.js'
 import { puedeEditarNodo } from '../../shared/auth.js'
+import { estaSellado } from '../sellado.js'
 import Semaforo from './nodos/Semaforo.jsx'
 import Despensa from './Despensa.jsx'
 import AnalizarEditor from './AnalizarEditor.jsx'
@@ -106,13 +107,22 @@ async function postAccion(url, okMsg) {
 
 function Cabecera({ tipo, nodo, compacta }) {
   const sem = nodo && nodo.semaforo
+  // Candado (#720, ADR-036): solo la propia fase lleva el indicador — es el único
+  // nivel con un acto de cierre formal (documento_resultado_id); trámite/tarea
+  // quedan cubiertos transitivamente, sin badge propio.
+  const cerrada = tipo === 'fase' && nodo && nodo.estado === 'FINALIZADA'
   return (
     <div className={`d-flex align-items-start gap-2 min-w-0 ${compacta ? '' : 'mb-3'}`}>
       {sem && <span className="mt-1"><Semaforo color={sem.color} relleno /></span>}
       <div className="flex-grow-1 min-w-0">
         <div className="text-uppercase text-muted small fw-semibold">{ETIQUETA_TIPO[tipo] || tipo}</div>
         <div className="fw-bold text-truncate">{tituloNodo(tipo, nodo) || '—'}</div>
-        {nodo && nodo.estado && <span className="badge text-bg-light mt-1">{nodo.estado}</span>}
+        {nodo && nodo.estado && (
+          <span className="badge text-bg-light mt-1">
+            {cerrada && <i className="bi bi-lock-fill me-1" title="Fase cerrada" />}
+            {nodo.estado}
+          </span>
+        )}
       </div>
     </div>
   )
@@ -288,10 +298,51 @@ function ConfirmacionBorrado({ nodo }) {
 
 // --- Edición (S3b-1): editor genérico + split editor/despensa ------------------
 
+// Bloque de reapertura (#720, ADR-036 §6 capa 4): única vía para tocar el interior
+// de una fase cerrada. Justificación siempre obligatoria (validada también
+// server-side) — mismo patrón visual que el forzado de creación (Despensa.jsx).
+function ReabrirFase() {
+  const [justificacion, setJustificacion] = React.useState('')
+  const reabriendo  = useArbolStore((s) => s.reabriendoFase)
+  const reabrirFase = useArbolStore((s) => s.reabrirFase)
+
+  return (
+    <div className="d-flex flex-column gap-2 px-2 py-2 rounded border bg-warning-subtle border-warning-subtle mb-3">
+      <span className="small">
+        <i className="bi bi-lock-fill me-1" /><strong>Fase cerrada.</strong> Su interior está congelado.
+      </span>
+      <span className="small text-muted">
+        Para modificarla, reábrala primero. La reapertura queda registrada en bitácora.
+      </span>
+      <textarea
+        className="form-control form-control-sm"
+        rows={2}
+        placeholder="Justificación obligatoria para reabrir la fase"
+        value={justificacion}
+        onChange={(e) => setJustificacion(e.target.value)}
+        disabled={reabriendo}
+      />
+      <button
+        type="button"
+        className="btn btn-sm btn-warning"
+        disabled={reabriendo || !justificacion.trim()}
+        onClick={() => reabrirFase(justificacion.trim())}
+      >
+        {reabriendo ? 'Reabriendo…' : '🔓 Reabrir fase'}
+      </button>
+    </div>
+  )
+}
+
 // Editor genérico: pinta un control por campo del esquema editable, autofocus en
 // el primero. Guardar/Cancelar viven en la barra fija (BarraEdicion, ADR-023 §5 bis);
 // aquí solo queda Borrar, que no es parte del control de salida del marco.
-function Editor() {
+//
+// Fase cerrada (#720): los campos se deshabilitan (el backend rechazaría el guardado
+// de todos modos, capas 1-3 del ADR) y se antepone ReabrirFase — único camino para
+// volver a poder editarlos. Borrar tampoco se ofrece: nunca tiene sentido borrar el
+// nodo de una fase cerrada sin reabrirla antes.
+function Editor({ nodo }) {
   const seleccion  = useArbolStore((s) => s.seleccion)
   const campos     = useArbolStore((s) => s.editableCampos)
   const cargando   = useArbolStore((s) => s.edicionCargando)
@@ -304,8 +355,9 @@ function Editor() {
   const firstRef = React.useRef(null)
   React.useEffect(() => { if (firstRef.current) firstRef.current.focus() }, [campos])
 
+  const faseCerrada = seleccion && seleccion.tipo === 'fase' && nodo && nodo.estado === 'FINALIZADA'
   const puedeBorrar = seleccion && seleccion.tipo !== 'expediente' &&
-                      puedeEditarNodo(seleccion.tipo)
+                      puedeEditarNodo(seleccion.tipo) && !faseCerrada
 
   if (cargando) return <div className="text-muted small">Cargando editor…</div>
   if (!campos.length)
@@ -319,21 +371,22 @@ function Editor() {
     const val = borrador[c.campo] ?? ''
     if (c.control === 'textarea')
       return <textarea ref={ref} className="form-control form-control-sm" rows={3}
-               value={val} onChange={(e) => setCampo(c.campo, e.target.value)} />
+               value={val} onChange={(e) => setCampo(c.campo, e.target.value)} disabled={faseCerrada} />
     if (c.control === 'select')
       return (
-        <select ref={ref} className="form-select form-select-sm" value={val}
+        <select ref={ref} className="form-select form-select-sm" value={val} disabled={faseCerrada}
           onChange={(e) => setCampo(c.campo, e.target.value === '' ? null : Number(e.target.value))}>
           <option value="">—</option>
           {(c.opciones || []).map((o) => <option key={o.valor} value={o.valor}>{o.texto}</option>)}
         </select>
       )
     return <input ref={ref} type="text" className="form-control form-control-sm"
-             value={val} onChange={(e) => setCampo(c.campo, e.target.value)} />
+             value={val} onChange={(e) => setCampo(c.campo, e.target.value)} disabled={faseCerrada} />
   }
 
   return (
-    <form onSubmit={(e) => { e.preventDefault(); if (hayCambios && !guardando) guardar() }}>
+    <form onSubmit={(e) => { e.preventDefault(); if (hayCambios && !guardando && !faseCerrada) guardar() }}>
+      {faseCerrada && <ReabrirFase />}
       {campos.map((c, i) => (
         <div className="mb-2" key={c.campo}>
           <label className="form-label small text-muted mb-1">{c.etiqueta}</label>
@@ -425,7 +478,7 @@ function InspectorEdicion({ nodo }) {
               ? <ElaborarEditor tareaId={seleccion.id} nodo={nodo} />
               : esNotificar
                 ? <NotificarEditor tareaId={seleccion.id} />
-                : <Editor />
+                : <Editor nodo={nodo} />
         }
       </div>
       {!borrarPendienteConfirm && !ocultarDespensa && (
@@ -460,7 +513,11 @@ export default function Inspector() {
   const nodo = buscarNodo(arbol, seleccion)
   if (modoEdicion) return <InspectorEdicion nodo={nodo} />
   const esHoja = seleccion.tipo === 'tarea'
-  const puedeEditar = puedeEditarNodo(seleccion.tipo)
+  // Sellado (#720, ADR-036): Editar sigue disponible sobre la propia fase cerrada —
+  // es el único camino hasta el botón "Reabrir fase" del editor — pero no sobre un
+  // trámite/tarea cuya fase está cerrada, donde el backend rechazaría el guardado.
+  const sellado = estaSellado(arbol, seleccion)
+  const puedeEditar = puedeEditarNodo(seleccion.tipo) && (seleccion.tipo === 'fase' || !sellado)
 
   return (
     <div className="p-3 d-flex flex-column h-100">
@@ -473,6 +530,14 @@ export default function Inspector() {
                   onClick={() => entrarEdicion(seleccion)}>
             ✏️ Editar
           </button>
+        </div>
+      )}
+
+      {sellado && seleccion.tipo !== 'fase' && (
+        <div className="alert alert-secondary py-2 px-3 small mb-3">
+          <i className="bi bi-lock-fill me-1" />
+          Su fase está cerrada. Ábrala desde el inspector de la fase para reabrirla y
+          poder modificar este elemento.
         </div>
       )}
 

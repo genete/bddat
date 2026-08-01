@@ -7,6 +7,7 @@ import React from 'react'
 import { useArbolStore } from '../store.js'
 import { api } from '../../shared/api.js'
 import { showToast } from '../../shared/ui/toast.js'
+import { estaSellado } from '../sellado.js'
 
 // ─── Modo tipos-creables (S3b-2) ────────────────────────────────────────────
 
@@ -520,8 +521,22 @@ function DespensaDocs({ deshabilitarProducido }) {
 export default function Despensa({ deshabilitarProducido }) {
   const seleccion   = useArbolStore((s) => s.seleccion)
   const modoEdicion = useArbolStore((s) => s.modoEdicion)
+  const arbol       = useArbolStore((s) => s.arbol)
 
   if (!modoEdicion || !seleccion) return null
+
+  // Sellado (#720, ADR-036): ni crear hijos ni vincular documentos tiene sentido con
+  // la fase cerrada — el backend lo rechazaría de todos modos (capas 1-3). Incluye la
+  // propia fase en edición (mientras esté cerrada no se crean trámites dentro); tras
+  // reabrirla el modo edición se cierra y el árbol se refresca, así que al reeditar ya
+  // no está sellada y la Despensa vuelve a su comportamiento normal.
+  if (estaSellado(arbol, seleccion)) {
+    return (
+      <div className="p-2 text-muted small fst-italic">
+        Fase cerrada: reábrala para poder crear elementos o vincular documentos.
+      </div>
+    )
+  }
 
   if (seleccion.tipo === 'tarea') return <DespensaDocs deshabilitarProducido={deshabilitarProducido} />
   return <DespensaTipos />

@@ -7,7 +7,7 @@
 // S3b-1: modoEdicion + lock + editor genérico (entrar/guardar/cancelar + refresco).
 // S3b añadirá: despensa, colapsos manuales por nivel.
 import { create } from 'zustand'
-import { getArbol, getNodo, getEditable, patchNodo, getTiposCreables, postHijo, getPool, deleteNodo, guardarNotas } from './api.js'
+import { getArbol, getNodo, getEditable, patchNodo, getTiposCreables, postHijo, getPool, deleteNodo, guardarNotas, postReabrirFase } from './api.js'
 import { showToast } from '../shared/ui/toast.js'
 
 // AbortController de la petición de detalle en curso (fuera del estado: no re-render).
@@ -57,6 +57,9 @@ export const useArbolStore = create((set, get) => ({
   // --- borrar (S3b-4) ---
   borrarPendienteConfirm: false, // true = inspector muestra bloque de consecuencias + "Borrar definitivamente"
   borrando: false,
+
+  // --- reabrir fase (#720, ADR-036 §6 capa 4) ---
+  reabriendoFase: false,
 
   // --- menú contextual (S3b-4) ---
   menuCtx: null,           // { x, y, sel } | null
@@ -251,6 +254,36 @@ export const useArbolStore = create((set, get) => ({
         showToast(e.payload.motivo, 'danger')
       } else {
         showToast(e.message || 'No se pudo borrar el elemento', 'danger')
+      }
+    }
+  },
+
+  // --- reabrir fase (#720, ADR-036 §6 capa 4) ---
+
+  // Único camino para tocar el interior de una fase FINALIZADA. justificacion
+  // siempre obligatoria (validado también server-side) — no hay reapertura
+  // silenciosa. Bloqueo (422): la solicitud ya está resuelta y notificada,
+  // puerta cerrada sin bypass (ADR-036 §4) — mismo canal de toast que el resto.
+  reabrirFase: async (justificacion) => {
+    const { expedienteId, seleccion } = get()
+    if (!seleccion || seleccion.tipo !== 'fase' || !expedienteId) return
+    set({ reabriendoFase: true })
+    try {
+      await postReabrirFase(expedienteId, seleccion.id, justificacion)
+      showToast('Fase reabierta', 'success')
+      set({
+        reabriendoFase: false, modoEdicion: false,
+        editableCampos: [], borrador: {}, borradorInicial: {},
+        detalle: null, detalleCargando: false, detalleError: null, _detalleCache: {},
+      })
+      await get().refrescarArbol()
+    } catch (e) {
+      set({ reabriendoFase: false })
+      if (e.status === 401 || e.status === 403) return
+      if (e.status === 422 && e.payload && (e.payload.motivo || e.payload.error)) {
+        showToast(e.payload.motivo || e.payload.error, 'danger')
+      } else {
+        showToast(e.message || 'No se pudo reabrir la fase', 'danger')
       }
     }
   },
