@@ -210,9 +210,23 @@ el documento se fotocopia o se separan páginas sueltas).
   (componer → inyectar → PDF real → extraer), que cierra R10 con el algoritmo
   definitivo en vez de un string de prueba.
 
-**Pendiente, fuera de #182:** el consumo de `extraer_tarea_id()` para
-clasificar automáticamente al incorporar un documento (#181) y para el vínculo
-`CONSUMIDO` sobre el diagnóstico (#717). Ninguno de los dos bloqueaba a #182.
+**#717 implementado (2026-08-01):** consumo de `extraer_tarea_id()` para el
+vínculo `CONSUMIDO` sobre el diagnóstico. Al vincular el documento producido
+de un ELABORAR de REQUERIMIENTO_SUBSANACION (`editar_tarea` o
+`POST /api/escritos/generar` con `asignar_doc_producido=true`), se extrae el
+texto del fichero local (`app/services/extraccion_texto_documento.py` — pypdf
+para `.pdf`, zipfile+lxml para `.odt`) y, si el código embebido acredita que
+salió de *esta* tarea, se deriva el `CONSUMIDO` sobre el diagnóstico del
+trámite anterior en la fase (mismo criterio que `ContextoSubsanacion`, ahora
+compartido en `invariantes_esftt.diagnostico_tramite_anterior`). Sin token
+propio no se deriva nada (advertencia no bloqueante). Sin backfill a
+propósito (decisión de Carlos, 2026-08-01): los documentos anteriores a #182
+—AT-2004 incluido, fixture de #732— se quedan sin vínculo, protegidos por el
+criterio de #711. Ver `app/services/mutaciones_arbol.py::_hook_717_elaborar_
+consumido_diagnostico` y `tests/test_717_consumido_diagnostico.py`.
+
+**Pendiente, fuera de #182 y #717:** el consumo de `extraer_tarea_id()` para
+clasificar automáticamente al incorporar un documento (#181).
 
 ---
 
