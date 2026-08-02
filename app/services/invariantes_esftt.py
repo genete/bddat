@@ -96,16 +96,21 @@ def advertir_documentos_criticos_huerfanos(expediente_id: int) -> Optional[dict]
     }
 
 
-def _bloquear(mensaje: str) -> EvaluacionResult:
+def _bloquear(mensaje: str, *, puede_escapar: bool = False) -> EvaluacionResult:
     # CONVENIO de mensajería de bloqueos (invariantes vs motor):
     # el mensaje humano del invariante va en `norma_compilada` (no hay norma
     # compilada que mostrar) y `motivo` queda ''. El motor, en cambio, rellena
     # `motivo`. Por eso TODO consumidor que muestre un bloqueo debe leer
     # `motivo or norma_compilada` (ver api_expedientes._bloqueo_422 y
     # api_bc._res_error). No basta con leer solo `motivo`.
+    #
+    # `puede_escapar` (#723): la mayoría de invariantes son puerta cerrada
+    # (default False — precondición estructural o evidencia irreversible, ver
+    # docstrings de cada check). Los pocos forzables lo pasan explícito.
     return EvaluacionResult(
         permitido=False, nivel='BLOQUEAR',
-        variables_trigger={}, norma_compilada=mensaje, url_norma=''
+        variables_trigger={}, norma_compilada=mensaje, url_norma='',
+        puede_escapar=puede_escapar,
     )
 
 
@@ -115,6 +120,16 @@ def check_invariante(accion: str, sujeto: str, entidad_id: int) -> Optional[Eval
 
     Devuelve EvaluacionResult(BLOQUEAR) si se viola un invariante, None si todo OK.
     Solo cubre los casos hardcoded — si no hay regla para la combinación devuelve None.
+
+    Relación con el modo global del motor (#723, checklist punto 3, decisión
+    explícita): los invariantes —forzables o puerta cerrada— quedan siempre
+    ajenos a `motor_modo_global.aplicar_modo_global`. Ningún caller pasa el
+    resultado de esta función por ahí, y así se queda: el modo global (N018)
+    es una palanca sobre el motor de reglas (modelo legal configurable), no
+    sobre la estructura del árbol. Un invariante forzable sigue exigiendo su
+    propia `justificacion` explícita por acto, tenga el motor el modo que
+    tenga; las puertas cerradas (LPACAP) no se abren nunca, ni siquiera con
+    el motor en INACTIVO.
     """
     if accion == 'BORRAR':
         return _check_borrar(sujeto, entidad_id)
@@ -480,6 +495,12 @@ def _check_cierre_fase(fase_id: int, codigo_resultado: str) -> Optional[Evaluaci
     intacta: los diagnósticos de una fase CONSULTAS son paralelos —uno por organismo,
     `CONSULTA_SEPARATA` es 1:1 con `organismos_expediente`— y ninguno supera a otro,
     de modo que cualquier desfavorable sin consumir sigue bloqueando.
+
+    Forzable con justificación (#723, caso 1): a diferencia de `_check_mutar`/
+    `_check_reabrir`, cerrar la fase con este bloqueo no es un acto irreversible
+    —la fase puede reabrirse después si hace falta corregirlo (y si la solicitud
+    ya está resuelta y notificada, `_check_reabrir` cierra esa puerta por su
+    cuenta)—, así que no hace falta distinguir causas: siempre `puede_escapar=True`.
     """
     if codigo_resultado == 'DESFAVORABLE':
         return None
@@ -537,7 +558,66 @@ def _check_cierre_fase(fase_id: int, codigo_resultado: str) -> Optional[Evaluaci
     if diagnostico_bloqueante:
         return _bloquear(
             'Hay un diagnóstico desfavorable sin consumir en esta fase. '
-            'No es posible cerrarla con un resultado no desfavorable.'
+            'No es posible cerrarla con un resultado no desfavorable.',
+            puede_escapar=True,
+        )
+    return None
+
+
+# ---------------------------------------------------------------------------
+# Completitud del cierre de fase (#723, hallazgo de sesión)
+# ---------------------------------------------------------------------------
+
+def _check_completitud_cierre(fase: Fase) -> Optional[EvaluacionResult]:
+    """Guardia de completitud del cierre de fase (#723): `editar_fase` no
+    comprobaba nada antes de fijar `documento_resultado_id`, así que se podía
+    cerrar una fase vacía o con trámites a medias sin ningún aviso.
+
+    Reutiliza `Fase.pdte_cierre`/`Tramite.planificado` (las properties que ya
+    gobiernan árbol y seguimiento) en vez de reescribir el criterio en SQL —
+    evita la divergencia que arrastran `_check_finalizar_fase`/
+    `_check_finalizar_tramite`, huérfanos (inventario #723, puntos 5/6, sin
+    tocar aquí).
+
+    Dos categorías, con fuerza distinta:
+    - Vacío estructural (fase sin trámites, o algún trámite sin ninguna
+      tarea): no hay juicio de negocio que justifique cerrar algo que nunca
+      llegó a ser una fase/trámite real. Puerta cerrada — la corrección es
+      borrar, no forzar (mismo criterio que la rama "tiene hijos" de
+      `_check_borrar`, en espejo: aquí lo que falta son hijos, no que sobren).
+    - Incompleto con contenido (trámites con tareas, pero alguna sin
+      terminar): forzable con justificación, igual que `_check_cierre_fase`.
+      El motivo se redacta con el mismo vocabulario que ya ve el técnico en
+      árbol/seguimiento (`estado_dominio`), sin recalcular plazos reales — un
+      ESPERAR_PLAZO en curso o vencido se explica igual ("falta iniciar o
+      completar una tarea"); no hace falta más precisión para un bloqueo que
+      además siempre admite forzarse.
+    """
+    if fase.pdte_cierre:
+        return None
+
+    if fase.planificada:
+        return _bloquear(
+            'Esta fase no tiene trámites: no hay nada que cerrar. '
+            'Si no la necesita, bórrela en vez de cerrarla.'
+        )
+
+    from app.services import estado_dominio as ed
+
+    for tramite in fase.tramites:
+        if tramite.finalizado:
+            continue
+        nombre = tramite.tipo_tramite.nombre if tramite.tipo_tramite else f'#{tramite.id}'
+        if tramite.planificado:
+            return _bloquear(
+                f'El trámite "{nombre}" no tiene tareas: no puede darse por completo. '
+                'Si no lo necesita, bórrelo en vez de cerrar la fase.'
+            )
+        estados_tareas = [ed.estado_tarea(t) for t in tramite.tareas]
+        estado_tr, _ = ed.estado_tramite(tramite, estados_tareas)
+        return _bloquear(
+            f'El trámite "{nombre}" no está completo: {ed.motivo(estado_tr)}.',
+            puede_escapar=True,
         )
     return None
 
