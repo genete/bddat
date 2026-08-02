@@ -35,8 +35,9 @@ from app.services import bitacora as bitacora_svc
 from app.services.motor_reglas import EvaluacionResult, PERMITIDO
 from app.services.motor_modo_global import evaluar_con_modo_global as _evaluar
 from app.services.invariantes_esftt import (
-    _check_cierre_fase, check_invariante, diagnostico_tramite_anterior,
-    es_documento_critico, advertir_documentos_criticos_huerfanos,
+    _check_cierre_fase, _check_completitud_cierre, check_invariante,
+    diagnostico_tramite_anterior, es_documento_critico,
+    advertir_documentos_criticos_huerfanos,
 )
 from app.services.requisitos import evaluar_requisitos
 from app.services.rutas_esftt import mover_a_esftt, mover_a_pool
@@ -75,6 +76,12 @@ def _advertencia_dict(res_eval: EvaluacionResult) -> Optional[dict]:
             'url_norma': res_eval.url_norma,
         }
     return None
+
+
+def _bloquea(res: Optional[EvaluacionResult], justificacion: Optional[str]) -> bool:
+    """True si `res` debe cortar la operación (#723): sin bloqueo no hay nada que
+    frenar; con bloqueo, solo se deja pasar cuando es forzable Y hay justificación."""
+    return res is not None and not (res.puede_escapar and justificacion)
 
 
 def _registrar_advertencia(operacion, tabla, registro_id, sujeto, res_eval: EvaluacionResult) -> None:
@@ -446,7 +453,15 @@ def editar_solicitud(sol, *, observaciones: Optional[str]) -> ResultadoMutacion:
 
 def editar_fase(fase, *, resultado_fase_id: Optional[int],
                 documento_resultado_id: Optional[int],
-                observaciones: Optional[str]) -> ResultadoMutacion:
+                observaciones: Optional[str],
+                justificacion: Optional[str] = None) -> ResultadoMutacion:
+    """
+    `justificacion` (#723): vía de escape de los bloqueos forzables del cierre
+    —completitud "incompleto con contenido" y diagnóstico desfavorable vigente—,
+    registrada en bitácora (una entrada por invariante saltado). No abre las
+    puertas cerradas: fase/trámite vacíos siguen sin poder cerrarse (la vía es
+    borrar), y el sellado de una fase ya cerrada tampoco se salta con esto.
+    """
     # Sellado (#720, ADR-036 §6/§7): solo bloquea si la fase YA estaba cerrada al
     # entrar — el propio cierre (finalizada aún False → True) no se autobloquea.
     res_inv = check_invariante('MUTAR', 'FASE', fase.id)
@@ -454,18 +469,28 @@ def editar_fase(fase, *, resultado_fase_id: Optional[int],
         return ResultadoMutacion(ok=False, bloqueo=res_inv)
 
     advertencia = None
+    bloqueos_forzados = []
     if documento_resultado_id and fase.documento_resultado_id is None:
         doc = Documento.query.get(documento_resultado_id)
         if not doc or doc.expediente_id != fase.solicitud.expediente_id:
             return ResultadoMutacion(ok=False, error='Documento no válido para este expediente')
 
+        # Completitud (#723): sin estructura no se pregunta ni por el resultado.
+        res_completitud = _check_completitud_cierre(fase)
+        if _bloquea(res_completitud, justificacion):
+            return ResultadoMutacion(ok=False, bloqueo=res_completitud)
+        if res_completitud:
+            bloqueos_forzados.append(res_completitud)
+
         if resultado_fase_id:
             from app.models.tipos_resultados_fases import TipoResultadoFase
             tipo_res = TipoResultadoFase.query.get(resultado_fase_id)
             if tipo_res:
-                res_inv = _check_cierre_fase(fase.id, tipo_res.codigo)
-                if res_inv:
-                    return ResultadoMutacion(ok=False, bloqueo=res_inv)
+                res_cierre = _check_cierre_fase(fase.id, tipo_res.codigo)
+                if _bloquea(res_cierre, justificacion):
+                    return ResultadoMutacion(ok=False, bloqueo=res_cierre)
+                if res_cierre:
+                    bloqueos_forzados.append(res_cierre)
 
         # #738 punto 4: guarda temprana no bloqueante — documento(s) justificante en
         # el pool del expediente sin vincular a ninguna tarea. ADVERTIR, no BLOQUEAR:
@@ -477,6 +502,17 @@ def editar_fase(fase, *, resultado_fase_id: Optional[int],
         fase.resultado_fase_id = resultado_fase_id
         fase.documento_resultado_id = documento_resultado_id
         fase.observaciones = observaciones or None
+        db.session.flush()
+
+        if bloqueos_forzados:
+            sujeto = build_sujeto(fase.solicitud.expediente, fase)
+            for b in bloqueos_forzados:
+                bitacora_svc.registrar(
+                    current_user.id, 'ALTERAR', 'fases', fase.id,
+                    detalle={'escape': True, 'justificacion': justificacion,
+                             'motivo': b.motivo or b.norma_compilada, 'sujeto': sujeto},
+                )
+
         db.session.commit()
         return ResultadoMutacion(ok=True, advertencia=advertencia)
     except Exception as e:
