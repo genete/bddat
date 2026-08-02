@@ -195,3 +195,121 @@ def tramitador_usuario_id(app):
         if u is None:
             pytest.skip('No hay usuarios con rol TRAMITADOR en la BD de desarrollo')
         return u.id
+
+
+# ---------------------------------------------------------------------------
+# Árbol ESFTT mínimo reutilizable (#715)
+# ---------------------------------------------------------------------------
+
+class ArbolESFTT:
+    """Builder de árbol ESFTT mínimo para tests de invariantes contra SQL real.
+
+    Monta solo los niveles que cada test necesita (fase/trámite/tarea/
+    documento/vínculo/notificación), siempre bajo `app_ctx`: la sesión con
+    SAVEPOINT revierte todo al terminar el test, igual que ya hacía
+    `_montar_fase` en test_711_cierre_fase_cadena.py (de donde se extrae este
+    builder para no duplicarlo en cada fichero de test — #715 checklist punto 1).
+
+    Sin mocks: cada método hace un INSERT real y `flush()` para que las
+    consultas de los checks (`app/services/invariantes_esftt.py`) vean las
+    filas dentro de la misma transacción.
+    """
+
+    def __init__(self, db):
+        self.db = db
+
+    def _tipo(self, modelo, codigo):
+        fila = modelo.query.filter_by(codigo=codigo).first()
+        if fila is None:
+            pytest.skip(f'{modelo.__name__} {codigo!r} no está en el catálogo de esta BD')
+        return fila
+
+    def solicitud_existente(self):
+        """Primera solicitud de la BD de desarrollo. Puede tener hijos previos —
+        usar `solicitud_nueva()` cuando el test necesite un árbol garantizado vacío."""
+        from app.models.solicitudes import Solicitud
+        s = Solicitud.query.first()
+        if s is None:
+            pytest.skip('No hay solicitudes en la BD de desarrollo')
+        return s
+
+    def solicitud_nueva(self):
+        """Solicitud aislada, sin fases: para el caso 'sin hijos' de _check_borrar,
+        donde reutilizar `solicitud_existente()` arriesga hijos previos ajenos al test."""
+        from app.models.solicitudes import Solicitud
+        from app.models.expedientes import Expediente
+        from app.models.entidad import Entidad
+        from app.models.tipos_solicitudes import TipoSolicitud
+        exp = Expediente.query.first()
+        ent = Entidad.query.first()
+        tipo = TipoSolicitud.query.first()
+        if exp is None or ent is None or tipo is None:
+            pytest.skip('Faltan expediente/entidad/tipo_solicitud base en la BD de desarrollo')
+        s = Solicitud(expediente_id=exp.id, entidad_id=ent.id, tipo_solicitud_id=tipo.id)
+        self.db.session.add(s)
+        self.db.session.flush()
+        return s
+
+    def fase(self, codigo_fase, solicitud=None):
+        from app.models.fases import Fase
+        from app.models.tipos_fases import TipoFase
+        solicitud = solicitud or self.solicitud_existente()
+        f = Fase(solicitud_id=solicitud.id, tipo_fase_id=self._tipo(TipoFase, codigo_fase).id)
+        self.db.session.add(f)
+        self.db.session.flush()
+        return f
+
+    def tramite(self, fase, codigo_tramite):
+        from app.models.tramites import Tramite
+        from app.models.tipos_tramites import TipoTramite
+        t = Tramite(fase_id=fase.id, tipo_tramite_id=self._tipo(TipoTramite, codigo_tramite).id)
+        self.db.session.add(t)
+        self.db.session.flush()
+        return t
+
+    def tarea(self, tramite, codigo_tarea):
+        from app.models.tareas import Tarea
+        from app.models.tipos_tareas import TipoTarea
+        ta = Tarea(tramite_id=tramite.id, tipo_tarea_id=self._tipo(TipoTarea, codigo_tarea).id)
+        self.db.session.add(ta)
+        self.db.session.flush()
+        return ta
+
+    def documento(self, expediente_id, codigo_tipo_doc, sufijo):
+        from app.models.documentos import Documento
+        from app.models.tipos_documentos import TipoDocumento
+        doc = Documento(
+            expediente_id=expediente_id,
+            tipo_doc_id=self._tipo(TipoDocumento, codigo_tipo_doc).id,
+            url=f'bddat://test-715/{sufijo}',
+        )
+        self.db.session.add(doc)
+        self.db.session.flush()
+        return doc
+
+    def vincular(self, tarea, documento, rol):
+        from app.models.documentos_tarea import DocumentoTarea
+        v = DocumentoTarea(tarea_id=tarea.id, documento_id=documento.id, rol=rol)
+        self.db.session.add(v)
+        self.db.session.flush()
+        return v
+
+    def notificacion(self, tarea, resultado, canal='NOTIFICA'):
+        from app.models.notificaciones import Notificacion
+        import datetime
+        n = Notificacion(
+            tarea_id=tarea.id,
+            resultado=resultado,
+            canal=canal,
+            fecha_puesta_disposicion=datetime.date.today(),
+        )
+        self.db.session.add(n)
+        self.db.session.flush()
+        return n
+
+
+@pytest.fixture
+def arbol_esftt(app_ctx):
+    """Builder `ArbolESFTT` listo para usar, sobre la transacción de `app_ctx`."""
+    from app import db
+    return ArbolESFTT(db)
