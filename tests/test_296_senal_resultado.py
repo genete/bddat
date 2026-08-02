@@ -5,11 +5,14 @@ Bloques:
   A) Tarea.resultado / Tarea.estado        — stubs, sin BD ni app context.
   B) Tramite.finalizado / Tramite.estado   — stubs, sin BD ni app context.
   C) Fase.estado / Solicitud.estado        — stubs, sin BD ni app context.
-  D) Invariantes _check_finalizar_tramite y _check_finalizar_fase
-     con NOTIFICAR INCORRECTA             — app context + mock de db.session.
+
+El bloque D original (invariantes `_check_finalizar_tramite`/`_check_finalizar_fase`
+con NOTIFICAR INCORRECTA) mockeaba `db.session` entero — el SQL nunca se ejecutaba,
+solo el `if` posterior a `.first()` (#715). Sustituido por
+`tests/test_715_check_finalizar_fase_tramite.py`, con SQL real.
 """
 import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 
 # ───────────────────────────────────────────────────────────────────────────────
@@ -355,78 +358,3 @@ class TestSolicitudEstado:
             self._fase_stub(finalizada=False),
         ]
         assert _solicitud_estado(s) == 'EN_TRAMITE'
-
-
-# ───────────────────────────────────────────────────────────────────────────────
-# D) Invariantes — app context + mock de db.session
-# ───────────────────────────────────────────────────────────────────────────────
-
-def _make_query_chain(first_returns):
-    """Devuelve un mock de db.session.query() cuyo .first() responde
-    secuencialmente con los valores de `first_returns`."""
-    q = MagicMock()
-    q.join.return_value = q
-    q.outerjoin.return_value = q
-    q.filter.return_value = q
-    q.first.side_effect = list(first_returns)
-    return q
-
-
-class TestCheckFinalizarTramiteNotificar:
-
-    def test_notificar_incorrecta_bloquea(self, app):
-        """La segunda query encuentra una NOTIFICAR INCORRECTA → bloquea."""
-        from app.services.invariantes_esftt import _check_finalizar_tramite as fn
-        with app.app_context():
-            with patch('app.services.invariantes_esftt.db') as mock_db:
-                q = _make_query_chain([None, MagicMock()])
-                mock_db.session.query.return_value = q
-                resultado = fn(tramite_id=99)
-        assert resultado is not None
-        assert resultado.permitido is False
-        assert 'notificaci' in resultado.norma_compilada.lower()
-
-    def test_sin_notificar_incorrecta_no_bloquea(self, app):
-        """Las dos queries devuelven None → sin bloqueo."""
-        from app.services.invariantes_esftt import _check_finalizar_tramite as fn
-        with app.app_context():
-            with patch('app.services.invariantes_esftt.db') as mock_db:
-                q = _make_query_chain([None, None])
-                mock_db.session.query.return_value = q
-                resultado = fn(tramite_id=99)
-        assert resultado is None
-
-    def test_tarea_sin_doc_producido_bloquea_antes(self, app):
-        """La primera query encuentra tarea sin doc_producido → bloquea sin llegar a NOTIFICAR."""
-        from app.services.invariantes_esftt import _check_finalizar_tramite as fn
-        with app.app_context():
-            with patch('app.services.invariantes_esftt.db') as mock_db:
-                q = _make_query_chain([MagicMock()])
-                mock_db.session.query.return_value = q
-                resultado = fn(tramite_id=99)
-        assert resultado is not None
-        assert resultado.permitido is False
-
-
-class TestCheckFinalizarFaseNotificar:
-
-    def test_notificar_incorrecta_en_fase_bloquea(self, app):
-        """La segunda query de _check_finalizar_fase detecta NOTIFICAR INCORRECTA."""
-        from app.services.invariantes_esftt import _check_finalizar_fase as fn
-        with app.app_context():
-            with patch('app.services.invariantes_esftt.db') as mock_db:
-                q = _make_query_chain([None, MagicMock()])
-                mock_db.session.query.return_value = q
-                resultado = fn(fase_id=99)
-        assert resultado is not None
-        assert resultado.permitido is False
-        assert 'notificaci' in resultado.norma_compilada.lower()
-
-    def test_sin_problemas_no_bloquea(self, app):
-        from app.services.invariantes_esftt import _check_finalizar_fase as fn
-        with app.app_context():
-            with patch('app.services.invariantes_esftt.db') as mock_db:
-                q = _make_query_chain([None, None])
-                mock_db.session.query.return_value = q
-                resultado = fn(fase_id=99)
-        assert resultado is None
