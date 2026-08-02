@@ -246,6 +246,21 @@ Segunda instancia posible: servidor del edificio (SO desconocido — ver §7).
   (repo) a `PLANTILLAS_BASE/plantillas/` en la instalación real. La descarga desde
   el admin no depende de ello (sirve directo del repo), pero Carlos confirmó que
   la copia sigue haciendo falta aparte
+- **Salvaguarda para que la suite de tests nunca corra contra la BD de
+  producción** (discusión 2026-08-02, a raíz de #715): hoy `DevelopmentConfig`
+  y `ProductionConfig` (`app/config.py`) leen la misma variable `DATABASE_URL`
+  sin ninguna comprobación adicional — la separación es hoy 100% disciplina
+  operativa (qué `.env` hay a mano al lanzar `pytest`), no una garantía del
+  código. Los smoke tests y los tests de invariantes escriben transaccionalmente
+  contra la BD real conectada (rollback por SAVEPOINT, ver `tests/conftest.py`
+  `app_ctx`) — el rollback deshace filas e índices, pero **no** los contadores
+  `SERIAL` (`nextval()` no es transaccional en PostgreSQL, a propósito): tras
+  cada ejecución quedan huecos en los ids, inocuo en cualquier entorno (rango
+  `INTEGER`, ~2.100 millones) pero indeseable en la BD real si ocurriera por
+  error. Antes de desplegar, añadir una barrera explícita — p. ej. fixture
+  `autouse` en `tests/conftest.py` que aborte la sesión si el nombre de la BD
+  conectada no coincide con un patrón esperado de desarrollo/test, o
+  `ProductionConfig` rechazando arrancar en modo `TESTING`.
 
 ---
 
