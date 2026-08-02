@@ -95,10 +95,12 @@ class TestTramiteFinalizadoEsperarPlazo:
         ])
         assert tramite.finalizado is False
 
-    def test_tramite_sin_tareas_finalizado(self):
-        """Trámite sin tareas → finalizado (no hay nada que bloquee)."""
+    def test_tramite_sin_tareas_no_finalizado(self):
+        """Trámite sin tareas → NO finalizado (#723): vacío no es lo mismo que
+        hecho — antes daba True por vacuidad del bucle, y eso dejaba cerrar
+        fases con trámites fantasma sin ningún aviso."""
         tramite = _StubTramite([])
-        assert tramite.finalizado is True
+        assert tramite.finalizado is False
 
     def test_tarea_sin_tipo_ignorada(self):
         """Tarea sin tipo_tarea se ignora en el cómputo de finalizado."""

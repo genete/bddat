@@ -194,9 +194,10 @@ def _tramite_estado(stub):
 
 class TestTramiteFinalizadoConResultado:
 
-    def test_sin_tareas_finalizado(self):
+    def test_sin_tareas_no_finalizado(self):
+        # #723: vacío no es lo mismo que hecho — antes True por vacuidad del bucle.
         tr = _StubTramite(tareas=[])
-        assert _tramite_finalizado(tr) is True
+        assert _tramite_finalizado(tr) is False
 
     def test_notificar_doc_producido_sin_resultado_no_finalizado(self):
         # NOTIFICAR ejecutada sin resultado registrado (None, ADR-034) no finaliza (#418)

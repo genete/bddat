@@ -43,7 +43,7 @@ from app.services.requisitos import evaluar_requisitos
 from app.services.items_tecnicos import evaluar_items_tecnicos
 from app.services.consolidacion_defectos import consolidar_defectos
 from app.services.diagnosticos import (
-    crear_diagnostico, revertir_diagnostico,
+    crear_diagnostico, revertir_diagnostico, motivo_bloqueo_reversion,
     DiagnosticoConsumidoError, DiagnosticoSuperadoError, FaseCerradaError,
 )
 from app.services.invariantes_esftt import check_invariante
@@ -675,11 +675,15 @@ def editar_nodo(expediente_id, tipo, nodo_id):
     if tipo == 'solicitud':
         res = svc.editar_solicitud(nodo, observaciones=data.get('observaciones'))
     elif tipo == 'fase':
+        justificacion, err = _leer_bypass(data)
+        if err:
+            return err
         res = svc.editar_fase(
             nodo,
             resultado_fase_id=data.get('resultado_fase_id'),
             documento_resultado_id=data.get('documento_resultado_id'),
             observaciones=data.get('observaciones'),
+            justificacion=justificacion,
         )
     elif tipo == 'tramite':
         res = svc.editar_tramite(nodo, observaciones=data.get('observaciones'))
@@ -879,13 +883,25 @@ def _candado_diagnostico_producido(tarea):
     diagnóstico ya producido. El cliente revierte primero (DELETE .../analizar,
     con su propia confirmación destructiva o puerta cerrada) y solo entonces
     repite la mutación.
+
+    Motivo veraz (#723, caso 3): consulta la misma vigencia que
+    `revertir_diagnostico` antes de redactar el mensaje — si la reversión
+    también está bloqueada (consumido, superado o ya notificado), lo dice, en
+    vez de prometer siempre "revierte antes" cuando esa salida no existe. El
+    candado en sí sigue sin ser forzable (`puede_escapar` propio, fijo en
+    False): la vía de escape, si la hay, es revertir con justificación, no
+    saltarse este candado.
     """
     if tarea.documento_producido is None:
         return None
+    bloqueo = motivo_bloqueo_reversion(tarea)
+    motivo = bloqueo.motivo if bloqueo else (
+        'El diagnóstico de esta tarea ya se ha producido. Revierte el '
+        'diagnóstico antes de modificar este bloque.'
+    )
     return jsonify({
         'error': 'Diagnóstico ya producido',
-        'motivo': 'El diagnóstico de esta tarea ya se ha producido. Revierte el '
-                  'diagnóstico antes de modificar este bloque.',
+        'motivo': motivo,
         'puede_escapar': False,
     }), 422
 

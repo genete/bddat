@@ -67,10 +67,31 @@ PRIORIDAD: dict[str, int] = {
 # Tipo de documento cuyo consumo distingue PENDIENTE_FIRMA de PENDIENTE_REDACTAR (§3 ELABORAR).
 _TIPO_BORRADOR_FIRMA = 'BORRADOR_FIRMA'
 
+# Frase humana de por qué un estado sigue pendiente (#723): fuente única para no
+# inventar redacciones nuevas en cada consumidor que necesite explicar un bloqueo
+# (hoy: invariantes_esftt._check_completitud_cierre; candidato futuro: el tooltip
+# de seguimiento.py, #743).
+MOTIVO: dict[str, str] = {
+    'PENDIENTE_TRAMITAR':               'falta iniciar o completar una tarea',
+    'PENDIENTE_ESTUDIO':                'falta analizar o decidir el resultado',
+    'PENDIENTE_REDACTAR':               'falta redactar el documento',
+    'PENDIENTE_FIRMA':                  'el documento está pendiente de firma',
+    'PENDIENTE_NOTIFICAR':              'falta registrar el envío de la notificación',
+    'PENDIENTE_RESULTADO_NOTIFICACION': 'falta el justificante definitivo de la notificación',
+    'NOTIFICACION_FALLIDA':             'la notificación falló y queda un intento pendiente',
+    'NOTIFICACION_AGOTADA':             'la notificación se agotó sin éxito',
+    'PENDIENTE_PLAZOS':                 'está a la espera de que venza un plazo',
+}
+
 
 def color(estado: str) -> str:
     """Nombre de color (MODELO §2) de un estado; 'gris' si desconocido."""
     return COLOR.get(estado, 'gris')
+
+
+def motivo(estado: str) -> str:
+    """Frase humana de por qué `estado` sigue pendiente; genérica si es desconocido."""
+    return MOTIVO.get(estado, 'hay trabajo pendiente')
 
 
 def mayor_prioridad(estados: list[str]) -> str:

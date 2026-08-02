@@ -65,6 +65,10 @@ class _TareaStub:
     def __init__(self, vinculos=None):
         self.id = 999999
         self.vinculos_documento = vinculos or []
+        # motivo_bloqueo_reversion (#723) consulta tarea.tramite antes de mirar
+        # la cadena de subsanación; None hace que _motivo_diagnostico_superado
+        # corte limpio (tramite is None → no superado), igual que antes de #723.
+        self.tramite = None
 
     @property
     def documento_producido(self):

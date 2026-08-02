@@ -98,7 +98,15 @@ class Tramite(db.Model):
         ESPERAR_PLAZO produce CERT_PLAZO_CUMPLIDO (Caso B) o un doc externo (Caso A).
         NOTIFICAR ejecutada sin resultado registrado (None, ADR-034) → no finalizado (#418).
         Deuda #357 eliminada: ESPERAR_PLAZO ya participa en finalizado (#362).
+
+        Un trámite sin ninguna tarea nunca se considera finalizado (#723): antes
+        devolvía True por vacuidad del bucle de abajo — "vacío" no es lo mismo
+        que "hecho", y ese hueco dejaba cerrar fases con trámites fantasma sin
+        ningún aviso (ver también estado_dominio.estado_tramite, que ya evitaba
+        el mismo vacío por otra vía).
         """
+        if not self.tareas:
+            return False
         _requieren = {'ANALIZAR', 'ELABORAR', 'NOTIFICAR', 'ESPERAR_PLAZO'}
         for t in self.tareas:
             if not t.tipo_tarea:

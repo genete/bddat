@@ -246,9 +246,14 @@ def editar_fase(fase_id):
     resultado_id = request.form.get('resultado_fase_id')
     resultado_fase_id = int(resultado_id) if resultado_id else None
 
+    justificacion, err = _leer_bypass(request.form)
+    if err:
+        return err
+
     res = svc.editar_fase(fase, resultado_fase_id=resultado_fase_id,
                           documento_resultado_id=nuevo_doc_resultado_id,
-                          observaciones=request.form.get('observaciones'))
+                          observaciones=request.form.get('observaciones'),
+                          justificacion=justificacion)
     if res.bloqueo:
         return _bloqueo(res.bloqueo)
     if not res.ok:

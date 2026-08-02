@@ -136,6 +136,31 @@ def _motivo_diagnostico_superado(tarea: Tarea) -> Optional[MotivoIrreversible]:
     return None
 
 
+def motivo_bloqueo_reversion(tarea: Tarea) -> Optional[MotivoIrreversible]:
+    """Por qué el diagnóstico producido de `tarea` no podría revertirse ahora
+    mismo (o sería forzable), o None si es reversible sin más (#723, caso 3).
+
+    Consultada por `api_expedientes._candado_diagnostico_producido` para
+    redactar un motivo veraz cuando bloquea la mutación de un bloque con
+    diagnóstico ya producido — hoy ese candado prometía "revierte el
+    diagnóstico antes" incluso cuando la propia reversión estaba tan cerrada
+    como la mutación. No se llama desde `revertir_diagnostico`: esa función
+    sigue lanzando `DiagnosticoConsumidoError`/`DiagnosticoSuperadoError` tal
+    cual estaba, sin tocar su contrato ya probado (#714).
+
+    Mismo orden de prioridad que `revertir_diagnostico`: consumido antes que
+    superado, porque es la causa más restrictiva y ambas pueden coincidir.
+    Reutiliza el texto de `DiagnosticoConsumidoError` sin duplicarlo.
+    """
+    doc = tarea.documento_producido
+    if doc is None:
+        return None
+    consumidores = [v.tarea for v in doc.vinculos_tarea if v.rol == 'CONSUMIDO']
+    if consumidores:
+        return MotivoIrreversible(str(DiagnosticoConsumidoError(consumidores[0])), puede_escapar=False)
+    return _motivo_diagnostico_superado(tarea)
+
+
 def _hay_notificacion_posterior_en_cadena(tarea: Tarea) -> bool:
     """True si en la cadena de subsanación de la fase hay una tarea NOTIFICAR posterior
     a `tarea` con notificación registrada.

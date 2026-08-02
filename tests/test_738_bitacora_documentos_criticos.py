@@ -332,9 +332,23 @@ class TestAdvertenciaDocumentosCriticosHuerfanos:
     def test_editar_fase_propaga_advertencia_al_cerrar(self, app_ctx):
         """Integración: cerrar una fase con un justificante huérfano en el pool
         del expediente devuelve advertencia no bloqueante (ADVERTIR, no BLOQUEAR
-        — el pool es del expediente, no de esta fase)."""
+        — el pool es del expediente, no de esta fase).
+
+        La tarea NOTIFICAR de `_fase_con_tramite_y_tarea` queda sin documento
+        producido a propósito (no es el foco de este test) — desde #723 eso
+        activa la guardia de completitud del cierre, forzable con justificación;
+        aquí se fuerza solo para poder llegar a comprobar la advertencia. Forzar
+        registra en bitácora, que necesita `current_user` real (test_request_context
+        + login_user, mismo patrón que el resto del fichero).
+        """
+        from flask_login import login_user
         from app import db
+        from app.models.usuarios import Usuario
         from app.services import mutaciones_arbol as svc
+
+        usuario = Usuario.query.first()
+        if usuario is None:
+            pytest.skip('No hay usuarios en la BD de desarrollo')
 
         _, fase, _, tarea = _fase_con_tramite_y_tarea(_primer_tipo_tramite_codigo(), 'NOTIFICAR')
         expediente_id = tarea.tramite.fase.solicitud.expediente_id
@@ -344,8 +358,11 @@ class TestAdvertenciaDocumentosCriticosHuerfanos:
                    url='bddat://test-738/huerfano-cierre')
         db.session.flush()
 
-        res = svc.editar_fase(fase, resultado_fase_id=None,
-                               documento_resultado_id=doc_cierre.id, observaciones=None)
+        with app_ctx.test_request_context():
+            login_user(usuario)
+            res = svc.editar_fase(fase, resultado_fase_id=None,
+                                   documento_resultado_id=doc_cierre.id, observaciones=None,
+                                   justificacion='Forzado para test de advertencia (#723)')
 
         assert res.ok is True
         assert res.advertencia is not None
