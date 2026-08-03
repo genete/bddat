@@ -144,10 +144,16 @@ definición de qué tipos son conceptos reales en cada nivel.
 
 - `fases_tramites` se recrea, con guardas explícitas para que ningún consumidor la use como
   gate de permiso — solo `tipos_creables.py` (listado) y la categoría C (creación real).
-- `TRAMITES_CADENA_SUBSANACION` (`invariantes_esftt.py`) se deriva de patrón de tareas (¿el
-  trámite tiene `ANALIZAR` en su secuencia, dentro de esta fase?), no de cardinalidad — la
-  cardinalidad no distingue `ANALISIS_DOCUMENTAL` (cardinalidad 1, sí pertenece a la cadena) de
-  lo que no pertenece.
+- `TRAMITES_CADENA_SUBSANACION` (`invariantes_esftt.py`) **se queda como está** — probado en la
+  práctica que no es derivable ni de cardinalidad ni de "¿tiene `ANALIZAR` en su patrón?":
+  `CONSULTA_SEPARATA` también tiene `ANALIZAR` y también cardinalidad ilimitada, y no encadena
+  (paralelo, uno por organismo, ninguno supera a otro). Lo que distingue a
+  `ANALISIS_DOCUMENTAL`/`REQUERIMIENTO_SUBSANACION` no vive en ninguna tabla hoy — es
+  genuinamente "caso especial (código)", capa 3 del catálogo, no capa 1 (vocabulario). Confirma
+  además que la razón original para descartar un flag `encadena_diagnosticos` en `tipos_tramites`
+  (#725: "con la cardinalidad en el dato, la cadena se deriva") no se sostenía — la decisión de
+  no crear el flag se mantiene, pero por otra razón: sigue siendo un caso especial de código,
+  no una propiedad que la tabla ya capture.
 - `_CODIGOS_TRASLADO` (triplicado en `api_bc.py`, `mutaciones_arbol.py`, `tipos_creables.py`) se
   centraliza en una columna de catálogo — deuda de mantenimiento ortogonal a esta decisión.
 - #719 se cierra al implementar la categoría C para trámite→tarea.
