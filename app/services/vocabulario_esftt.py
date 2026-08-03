@@ -16,7 +16,9 @@ from __future__ import annotations
 
 from typing import Optional
 
+from app.models.tramites import Tramite
 from app.models.tramites_tareas import TramiteTarea
+from app.models.fases_tramites import FaseTramite
 from app.services.motor_reglas import EvaluacionResult
 
 
@@ -67,3 +69,38 @@ def check_orden_tarea(tramite, tipo_tarea) -> Optional[EvaluacionResult]:
         f'{paso_esperado.tipo_tarea.codigo}. Puede forzar esta otra si tiene '
         f'una razón para saltarse el orden canónico.'
     )
+
+
+def check_vocabulario_tramite(fase, tipo_tramite) -> Optional[EvaluacionResult]:
+    """Pertenencia y cardinalidad de fase→trámite (ADR-037 §B/§C) — generaliza
+    check_orden_tarea a existencia/cardinalidad en vez de secuencia.
+
+    Fase sin vocabulario definido (fases_tramites vacío para su tipo_fase) →
+    sin fricción: o es un tipo de fase nuevo aún sin poblar (CRUD, #725 tarea 9)
+    o de verdad no hay restricción que aplicar. Con vocabulario definido, un
+    tipo_tramite fuera de él bloquea (escapable); dentro, la cardinalidad_maxima
+    (si la hay) acota cuántos ya pueden existir bajo esta fase concreta.
+    """
+    vocabulario = FaseTramite.query.filter_by(tipo_fase_id=fase.tipo_fase_id).all()
+    if not vocabulario:
+        return None
+
+    entrada = next((v for v in vocabulario if v.tipo_tramite_id == tipo_tramite.id), None)
+    if entrada is None:
+        return _bloquear(
+            f'{tipo_tramite.codigo} no está en el vocabulario habitual de esta fase. '
+            'Puede forzarlo si tiene una razón para crearlo de todos modos.'
+        )
+
+    if entrada.cardinalidad_maxima is not None:
+        ya_creados = Tramite.query.filter_by(
+            fase_id=fase.id, tipo_tramite_id=tipo_tramite.id
+        ).count()
+        if ya_creados >= entrada.cardinalidad_maxima:
+            return _bloquear(
+                f'Esta fase ya tiene {ya_creados} trámite(s) de tipo {tipo_tramite.codigo} '
+                f'(máximo {entrada.cardinalidad_maxima}). Puede forzarlo si tiene una razón '
+                'para superar ese límite.'
+            )
+
+    return None

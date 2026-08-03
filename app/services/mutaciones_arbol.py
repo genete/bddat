@@ -39,7 +39,7 @@ from app.services.invariantes_esftt import (
     diagnostico_tramite_anterior, es_documento_critico,
     advertir_documentos_criticos_huerfanos,
 )
-from app.services.vocabulario_esftt import check_orden_tarea
+from app.services.vocabulario_esftt import check_orden_tarea, check_vocabulario_tramite
 from app.services.requisitos import evaluar_requisitos
 from app.services.rutas_esftt import mover_a_esftt, mover_a_pool
 from app.services.parser_justificante_notifica import (
@@ -376,6 +376,10 @@ def crear_tramite(fase, tipo_tramite, *, justificacion: Optional[str] = None) ->
     res_inv = check_invariante('MUTAR', 'FASE', fase.id)
     if res_inv:
         return ResultadoMutacion(ok=False, bloqueo=res_inv)
+
+    res_vocab = check_vocabulario_tramite(fase, tipo_tramite)
+    if _bloquea(res_vocab, justificacion):
+        return ResultadoMutacion(ok=False, bloqueo=res_vocab)
 
     expediente = fase.solicitud.expediente
     if justificacion is None:
