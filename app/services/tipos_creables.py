@@ -38,11 +38,6 @@ from app.models.fases_tramites import FaseTramite
 
 log = logging.getLogger(__name__)
 
-# Trámites que NO se crean por la vía genérica (se crean desde la acción de organismo,
-# api_bc.crear_traslado) — nunca aparecen en esta despensa, ni en "resto".
-# Espejo de api_bc._CODIGOS_TRASLADO — centralización pendiente (#725 tarea 5).
-_CODIGOS_TRASLADO = frozenset({'CONSULTA_TRASLADO_ORGANISMO', 'CONSULTA_TRASLADO_TITULAR'})
-
 
 def _item(tipo_id, codigo, nombre) -> dict:
     return {'tipo_id': tipo_id, 'codigo': codigo, 'nombre': nombre}
@@ -121,7 +116,7 @@ def _creables_tramite(expediente, fase_id: int) -> dict:
 
     canonicos, resto = [], []
     for tt in TipoTramite.query.order_by(TipoTramite.codigo).all():
-        if tt.codigo in _CODIGOS_TRASLADO:
+        if not tt.creacion_generica:
             continue
         item = _item(tt.id, tt.codigo, tt.nombre)
         (canonicos if tt.id in canonicos_ids else resto).append(item)

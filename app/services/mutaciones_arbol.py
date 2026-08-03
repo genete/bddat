@@ -50,8 +50,6 @@ from app.services.extraccion_texto_documento import extraer_texto
 
 log = logging.getLogger(__name__)
 
-# Espejo de api_bc — mantener sincronizados hasta unificar (deuda conocida)
-_CODIGOS_TRASLADO = frozenset({'CONSULTA_TRASLADO_ORGANISMO', 'CONSULTA_TRASLADO_TITULAR'})
 _FASES_QUE_REQUIEREN_CERT_IP_CONSULTAS = frozenset({'RESOLUCION', 'AAU_AAUS_INTEGRADA'})
 
 
@@ -369,7 +367,7 @@ def crear_fase(solicitud, tipo_fase, *, justificacion: Optional[str] = None) -> 
 
 
 def crear_tramite(fase, tipo_tramite, *, justificacion: Optional[str] = None) -> ResultadoMutacion:
-    if tipo_tramite.codigo in _CODIGOS_TRASLADO:
+    if not tipo_tramite.creacion_generica:
         return ResultadoMutacion(
             ok=False,
             error='Los trámites de traslado se crean desde la acción específica de organismo',

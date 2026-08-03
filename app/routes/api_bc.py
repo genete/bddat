@@ -156,7 +156,6 @@ def crear_fase(sol_id):
     return jsonify({'ok': True, 'id': res.ids[0], 'advertencia': res.advertencia})
 
 
-_CODIGOS_TRASLADO = frozenset({'CONSULTA_TRASLADO_ORGANISMO', 'CONSULTA_TRASLADO_TITULAR'})
 _FASES_QUE_REQUIEREN_CERT_IP_CONSULTAS = frozenset({'RESOLUCION', 'AAU_AAUS_INTEGRADA'})
 
 

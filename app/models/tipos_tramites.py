@@ -77,6 +77,13 @@ class TipoTramite(db.Model):
         comment='Nombre legible usado en nombres de documentos generados'
     )
 
+    creacion_generica = db.Column(
+        db.Boolean,
+        nullable=False,
+        server_default='true',
+        comment='False si este trámite se crea desde una acción dedicada, no por la despensa genérica (ADR-037, #725)'
+    )
+
     @property
     def label_bc(self):
         """Etiqueta corta para breadcrumb: abreviatura si existe, nombre completo si no."""
