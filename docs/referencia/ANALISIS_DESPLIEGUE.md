@@ -313,11 +313,15 @@ con debounce ya es barato).
 ## 11. Motor de reglas y plazos en rutas de lectura: estrategia de caché
 
 **Diagnóstico (verificado en código):** el motor ha pasado de portero de
-mutaciones a decorador de lecturas — `tipos_creables` se llama desde
-`api_expedientes` para pintar opciones por nodo, y el assembler usa
-`auditar`/`evaluar_multi` para los estados ESFTT que se muestran. Cada
-evaluación recarga las reglas de BD con `joinedload`
-(`motor_reglas.py:196` y `:266`).
+mutaciones a decorador de lecturas — el assembler usa `auditar`/`evaluar_multi`
+para los estados ESFTT que se muestran. Cada evaluación recarga las reglas de
+BD con `joinedload` (`motor_reglas.py:196` y `:266`).
+
+**Actualización (ADR-037, #725):** `tipos_creables` ya no es una causa de esto
+— el listado de la despensa dejó de invocar al motor (solo consulta tablas de
+vocabulario); el motor se evalúa una única vez, en el intento real de crear.
+La causa que queda —el assembler para los estados ESFTT mostrados— sigue
+vigente y sigue necesitando la estrategia de caché de abajo.
 
 **Descomposición del coste por evaluación** — tres componentes muy distintos:
 

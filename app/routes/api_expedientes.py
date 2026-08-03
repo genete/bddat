@@ -404,9 +404,10 @@ def get_tipos_creables(expediente_id, tipo, nodo_id):
     GET .../nodo/<tipo>/<nodo_id>/tipos-creables — tipos de hijo creables (ADR-016 §16, §8).
 
     <tipo> ∈ {expediente, solicitud, fase, tramite}. Fuente única para la despensa
-    de tipos del inspector y el submenú 'Crear hijo' del menú contextual. Cada tipo
-    llega marcado permitido/no-permitido (motor + modo global); los no-permitidos
-    incluyen norma + motivo para el 'Mostrar todos…' atenuado.
+    de tipos del inspector y el submenú 'Crear hijo' del menú contextual. Listado
+    puramente didáctico (ADR-037 §D): 'canonicos' (vocabulario) y 'resto' (el resto
+    del catálogo, tras un 'ver todos'). No evalúa el motor — el veredicto de permiso
+    llega como respuesta al POST real de creación, no en este GET.
     """
     expediente = Expediente.query.get_or_404(expediente_id)
 

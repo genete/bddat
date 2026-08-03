@@ -58,7 +58,8 @@ limpio arquitectónicamente en ese sentido.
 | `requisitos_documentales` | `tipos_documentos`, `normas` | ✅ Sí — `admin_requisitos` (#583) |
 | `condiciones_requisito` | `requisitos_documentales`, `catalogo_variables` | ✅ Sí — mismo módulo |
 | `plantillas` | `tipos_documentos/expedientes/solicitudes/fases/tramites` | ✅ Sí — `admin_plantillas` |
-| `tramites_tareas` | `tipos_tramites`, `tipos_tareas` | ❌ No — seed 1:1 desde `ESTRUCTURA_FTT.json` (migración 345), es diseño del motor, no dato administrable |
+| `tramites_tareas` | `tipos_tramites`, `tipos_tareas` | ✅ Sí — `tablas_maestras` (#171 fase 2), editor de pasos anidado; seed inicial 1:1 desde `ESTRUCTURA_FTT.json` (migración 345) |
+| `fases_tramites` | `tipos_fases`, `tipos_tramites` | ❌ No — pendiente, ver ADR-037; seed 1:1 desde `ESTRUCTURA_FTT.json` (migración 725) |
 | `tramites_tareas_documentos` | `tipos_tramites`, `tipos_documentos` | ❌ No — mismo caso |
 
 ## Casos límite
