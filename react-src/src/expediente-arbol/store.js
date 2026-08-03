@@ -42,9 +42,17 @@ export const useArbolStore = create((set, get) => ({
   _tiposCreablesCache: {},    // { 'tipo-id': payload } — compartida con menú contextual S3b-4
   tiposCreables: null,        // payload de GET tipos-creables del nodo seleccionado
   tiposCreablesCargando: false,
-  tipoCreacionPendiente: null, // tipo staged para crear (item completo de tipos-creables:
-                                // {tipo_id, codigo, nombre, permitido, motivo?, puede_escapar?})
-  justificacionForzar: '',    // texto del bypass cuando tipoCreacionPendiente no está permitido (#616)
+  tipoCreacionPendiente: null, // tipo staged para crear ({tipo_id, codigo, nombre, es_siguiente?}
+                                // — item de canonicos/resto, ADR-037 §D: sin permitido/motivo,
+                                // el motor no se evalúa aquí)
+  creacionPadre: null,         // {tipo, id} bajo el que se crea — fijado al stagear
+                                // (seleccionarTipoCrear), NO se lee de `seleccion`: el menú
+                                // contextual crea sin seleccionar el nodo (abrirMenu no toca
+                                // `seleccion`, ver más abajo), así que necesita su propio padre
+  bloqueoActual: null,         // {motivo, url_norma, puede_escapar} revelado tras un intento de
+                                // creación bloqueado — el veredicto ya no se conoce al listar
+                                // (ADR-037 §D), solo al intentar (ver crearHijo)
+  justificacionForzar: '',    // texto del bypass cuando bloqueoActual.puede_escapar (#616)
   creando: false,
 
   // --- pool de documentos (S3b-3) ---
@@ -63,6 +71,9 @@ export const useArbolStore = create((set, get) => ({
 
   // --- menú contextual (S3b-4) ---
   menuCtx: null,           // { x, y, sel } | null
+  menuDetalle: null,       // detalle del nodo del menú (documentos/referencia) — independiente
+                           // de `detalle`/`seleccion`: abrir el menú NO selecciona el nodo ni
+                           // monta el inspector, son dos acciones distintas (clic izq. vs. clic dcho.)
 
   // --- detalle del inspector (S3a) ---
   detalle: null,              // payload del endpoint lazy del nodo seleccionado
@@ -139,9 +150,9 @@ export const useArbolStore = create((set, get) => ({
     if (!sel) return
     set({ seleccion: sel, modoEdicion: true, edicionCargando: true,
           editableCampos: [], borrador: {}, borradorInicial: {},
-          tiposCreables: null, tipoCreacionPendiente: null, justificacionForzar: '',
+          tiposCreables: null, tipoCreacionPendiente: null, creacionPadre: null, bloqueoActual: null, justificacionForzar: '',
           docVinculandoPendiente: null, analizarSeccionesExtendidas: null,
-          menuCtx: null, borrarPendienteConfirm: false })
+          menuCtx: null, menuDetalle: null, borrarPendienteConfirm: false })
     const expedienteId = get().expedienteId
     if (!expedienteId) { set({ edicionCargando: false }); return }  // mock standalone: editor vacío
     try {
@@ -170,7 +181,7 @@ export const useArbolStore = create((set, get) => ({
     const { seleccion } = get()
     const habiaCambios = selectHayCambios(get())
     set({ modoEdicion: false, editableCampos: [], borrador: {}, borradorInicial: {}, edicionCargando: false,
-          tiposCreables: null, tipoCreacionPendiente: null, justificacionForzar: '',
+          tiposCreables: null, tipoCreacionPendiente: null, creacionPadre: null, bloqueoActual: null, justificacionForzar: '',
           docVinculandoPendiente: null,
           borrarPendienteConfirm: false,
           detalle: null, detalleCargando: false, detalleError: null })
@@ -242,7 +253,7 @@ export const useArbolStore = create((set, get) => ({
         borrando: false, borrarPendienteConfirm: false,
         seleccion: null,
         modoEdicion: false, editableCampos: [], borrador: {}, borradorInicial: {},
-        edicionCargando: false, tiposCreables: null, tipoCreacionPendiente: null, justificacionForzar: '',
+        edicionCargando: false, tiposCreables: null, tipoCreacionPendiente: null, creacionPadre: null, bloqueoActual: null, justificacionForzar: '',
         docVinculandoPendiente: null,
         detalle: null, detalleCargando: false, detalleError: null, _detalleCache: {},
       })
@@ -290,14 +301,30 @@ export const useArbolStore = create((set, get) => ({
 
   // --- menú contextual (S3b-4) ---
 
-  // Selecciona el nodo, carga su detalle y tipos-creables, abre el menú.
-  abrirMenu: (x, y, sel) => {
-    get().seleccionar(sel)
+  // Abre el menú del nodo `sel` SIN seleccionarlo (eso es cosa del clic
+  // izquierdo — seleccionar() — que monta el inspector vía App.jsx). Clic
+  // derecho es una acción puntual sobre el nodo, no un cambio de foco: no debe
+  // tocar `seleccion` ni el `detalle` del inspector abierto para otro nodo.
+  // Carga tipos-creables (submenú) y, en menuDetalle, lo que necesitan
+  // "Copiar referencia"/"Abrir documento"/"Abrir carpeta" del propio menú.
+  abrirMenu: async (x, y, sel) => {
+    set({ menuCtx: { x, y, sel }, menuDetalle: null })
     if (sel.tipo !== 'tarea') get().cargarTiposCreables(sel)
-    set({ menuCtx: { x, y, sel } })
+
+    const key = `${sel.tipo}-${sel.id}`
+    const cacheado = get()._detalleCache[key]
+    if (cacheado) { set({ menuDetalle: cacheado }); return }
+    const expedienteId = get().expedienteId
+    if (!expedienteId) return
+    try {
+      const data = await getNodo(expedienteId, sel.tipo, sel.id)
+      // El menú pudo cerrarse o reabrirse en otro nodo mientras se esperaba.
+      if (get().menuCtx?.sel !== sel) return
+      set((s) => ({ menuDetalle: data, _detalleCache: { ...s._detalleCache, [key]: data } }))
+    } catch { /* el menú sigue siendo útil sin documentos/referencia */ }
   },
 
-  cerrarMenu: () => set({ menuCtx: null }),
+  cerrarMenu: () => set({ menuCtx: null, menuDetalle: null }),
 
   // --- acciones de creación (S3b-2) ---
 
@@ -328,21 +355,31 @@ export const useArbolStore = create((set, get) => ({
     }
   },
 
-  // Selecciona un tipo (permitido o bloqueado forzable) para stagearlo en la despensa.
-  // Recibe el item completo de tipos-creables (permitido, motivo, puede_escapar…).
-  seleccionarTipoCrear: (tipo) => set({ tipoCreacionPendiente: tipo, justificacionForzar: '' }),
+  // Selecciona un tipo (canónico o resto, sin distinción a priori — ADR-037 §D)
+  // para stagearlo. Recibe el item de canonicos/resto: {tipo_id, codigo, nombre, es_siguiente?}.
+  // `padre` es opcional: la Despensa lo omite (crea siempre bajo la selección actual, que
+  // coincide con el nodo en edición); el menú contextual lo pasa explícito porque abrirMenu
+  // ya no selecciona el nodo (clic derecho no debe montar el inspector, ver abrirMenu).
+  seleccionarTipoCrear: (tipo, padre) => set({
+    tipoCreacionPendiente: tipo,
+    creacionPadre: padre ?? get().seleccion,
+    bloqueoActual: null,
+    justificacionForzar: '',
+  }),
 
-  cancelarCrear: () => set({ tipoCreacionPendiente: null, justificacionForzar: '' }),
+  cancelarCrear: () => set({
+    tipoCreacionPendiente: null, creacionPadre: null, bloqueoActual: null, justificacionForzar: '',
+  }),
 
   setJustificacionForzar: (texto) => set({ justificacionForzar: texto }),
 
   crearHijo: async () => {
-    const { expedienteId, seleccion, tipoCreacionPendiente, tiposCreables, justificacionForzar } = get()
-    if (!seleccion || !tipoCreacionPendiente || !expedienteId) return
+    const { expedienteId, creacionPadre, tipoCreacionPendiente, tiposCreables, bloqueoActual, justificacionForzar } = get()
+    if (!creacionPadre || !tipoCreacionPendiente || !expedienteId) return
 
-    // Forzado (#616): el tipo llegó marcado no-permitido — exige justificación no vacía,
-    // mismo criterio que valida el backend (_leer_bypass).
-    const forzando = tipoCreacionPendiente.permitido === false
+    // Reintento tras bloqueo (ADR-037 §D): bloqueoActual solo existe si un intento
+    // previo de este mismo tipo staged ya lo reveló — no se conoce de antemano.
+    const forzando = !!bloqueoActual
     if (forzando && !justificacionForzar.trim()) {
       showToast('La justificación es obligatoria para forzar la creación', 'danger')
       return
@@ -350,7 +387,7 @@ export const useArbolStore = create((set, get) => ({
 
     set({ creando: true })
     try {
-      const esMulti = seleccion.tipo === 'expediente'
+      const esMulti = creacionPadre.tipo === 'expediente'
       const body = esMulti
         ? { tipo_ids: [tipoCreacionPendiente.tipo_id] }
         : { tipo_id: tipoCreacionPendiente.tipo_id }
@@ -358,11 +395,11 @@ export const useArbolStore = create((set, get) => ({
         body.bypass = true
         body.justificacion = justificacionForzar.trim()
       }
-      const data = await postHijo(expedienteId, seleccion.tipo, seleccion.id, body)
+      const data = await postHijo(expedienteId, creacionPadre.tipo, creacionPadre.id, body)
       const nuevoTipo = tiposCreables?.tipo_hijo   // 'solicitud', 'fase', 'tramite', 'tarea'
       const nuevoId = (data.ids || [])[0]
 
-      set({ creando: false, tipoCreacionPendiente: null, justificacionForzar: '' })
+      set({ creando: false, tipoCreacionPendiente: null, creacionPadre: null, bloqueoActual: null, justificacionForzar: '' })
       showToast(forzando ? 'Elemento creado (forzado, registrado en bitácora)' : 'Elemento creado', 'success')
       if (data.advertencia) {
         const a = data.advertencia
@@ -371,7 +408,7 @@ export const useArbolStore = create((set, get) => ({
       // Invalidar caché de tipos del padre (el nuevo hijo puede cambiar lo creable).
       set((s) => {
         const cache = { ...s._tiposCreablesCache }
-        delete cache[`${seleccion.tipo}-${seleccion.id}`]
+        delete cache[`${creacionPadre.tipo}-${creacionPadre.id}`]
         return { _tiposCreablesCache: cache }
       })
       await get().refrescarArbol()
@@ -382,7 +419,16 @@ export const useArbolStore = create((set, get) => ({
       set({ creando: false })
       if (e.status === 401 || e.status === 403) return
       if (e.status === 422 && e.payload) {
-        showToast(e.payload.motivo || e.payload.error || 'Operación bloqueada', 'danger')
+        // Bloqueo del motor o de vocabulario (ADR-037 §C/§D): se revela aquí, no
+        // antes — tipos-creables ya no lo sabe de antemano. Se queda en pantalla
+        // (no toast) para poder ofrecer forzar si puede_escapar.
+        set({
+          bloqueoActual: {
+            motivo: e.payload.motivo || e.payload.error || 'Operación bloqueada',
+            url_norma: e.payload.url_norma || '',
+            puede_escapar: !!e.payload.puede_escapar,
+          },
+        })
       } else {
         showToast(e.message || 'No se pudo crear el elemento', 'danger')
       }

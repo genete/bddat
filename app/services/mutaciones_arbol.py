@@ -39,6 +39,7 @@ from app.services.invariantes_esftt import (
     diagnostico_tramite_anterior, es_documento_critico,
     advertir_documentos_criticos_huerfanos,
 )
+from app.services.vocabulario_esftt import check_orden_tarea, check_vocabulario_tramite
 from app.services.requisitos import evaluar_requisitos
 from app.services.rutas_esftt import mover_a_esftt, mover_a_pool
 from app.services.parser_justificante_notifica import (
@@ -49,8 +50,6 @@ from app.services.extraccion_texto_documento import extraer_texto
 
 log = logging.getLogger(__name__)
 
-# Espejo de api_bc — mantener sincronizados hasta unificar (deuda conocida)
-_CODIGOS_TRASLADO = frozenset({'CONSULTA_TRASLADO_ORGANISMO', 'CONSULTA_TRASLADO_TITULAR'})
 _FASES_QUE_REQUIEREN_CERT_IP_CONSULTAS = frozenset({'RESOLUCION', 'AAU_AAUS_INTEGRADA'})
 
 
@@ -368,7 +367,7 @@ def crear_fase(solicitud, tipo_fase, *, justificacion: Optional[str] = None) -> 
 
 
 def crear_tramite(fase, tipo_tramite, *, justificacion: Optional[str] = None) -> ResultadoMutacion:
-    if tipo_tramite.codigo in _CODIGOS_TRASLADO:
+    if not tipo_tramite.creacion_generica:
         return ResultadoMutacion(
             ok=False,
             error='Los trámites de traslado se crean desde la acción específica de organismo',
@@ -377,6 +376,10 @@ def crear_tramite(fase, tipo_tramite, *, justificacion: Optional[str] = None) ->
     res_inv = check_invariante('MUTAR', 'FASE', fase.id)
     if res_inv:
         return ResultadoMutacion(ok=False, bloqueo=res_inv)
+
+    res_vocab = check_vocabulario_tramite(fase, tipo_tramite)
+    if _bloquea(res_vocab, justificacion):
+        return ResultadoMutacion(ok=False, bloqueo=res_vocab)
 
     expediente = fase.solicitud.expediente
     if justificacion is None:
@@ -409,6 +412,10 @@ def crear_tarea(tramite, tipo_tarea, *, justificacion: Optional[str] = None) -> 
     res_inv = check_invariante('MUTAR', 'TRAMITE', tramite.id)
     if res_inv:
         return ResultadoMutacion(ok=False, bloqueo=res_inv)
+
+    res_orden = check_orden_tarea(tramite, tipo_tarea)
+    if _bloquea(res_orden, justificacion):
+        return ResultadoMutacion(ok=False, bloqueo=res_orden)
 
     expediente = tramite.fase.solicitud.expediente
     if justificacion is None:

@@ -55,22 +55,27 @@ _MOD = 'app.routes.api_bc'
 
 
 # ---------------------------------------------------------------------------
-# A) Constante _CODIGOS_TRASLADO — guard en crear_tramite (sin app context)
+# A) tipos_tramites.creacion_generica — guard en crear_tramite (#725, ADR-037)
 # ---------------------------------------------------------------------------
 
 class TestGuardCrearTramite:
 
-    def test_traslado_organismo_rechazado(self):
-        from app.routes.api_bc import _CODIGOS_TRASLADO
-        assert 'CONSULTA_TRASLADO_ORGANISMO' in _CODIGOS_TRASLADO
+    def _creacion_generica(self, codigo, app_ctx):
+        from app.models.tipos_tramites import TipoTramite
+        tipo = TipoTramite.query.filter_by(codigo=codigo).first()
+        if tipo is None:
+            import pytest
+            pytest.skip(f'TipoTramite {codigo!r} no está en el catálogo de esta BD')
+        return tipo.creacion_generica
 
-    def test_traslado_titular_rechazado(self):
-        from app.routes.api_bc import _CODIGOS_TRASLADO
-        assert 'CONSULTA_TRASLADO_TITULAR' in _CODIGOS_TRASLADO
+    def test_traslado_organismo_rechazado(self, app_ctx):
+        assert self._creacion_generica('CONSULTA_TRASLADO_ORGANISMO', app_ctx) is False
 
-    def test_separata_no_rechazada(self):
-        from app.routes.api_bc import _CODIGOS_TRASLADO
-        assert 'CONSULTA_SEPARATA' not in _CODIGOS_TRASLADO
+    def test_traslado_titular_rechazado(self, app_ctx):
+        assert self._creacion_generica('CONSULTA_TRASLADO_TITULAR', app_ctx) is False
+
+    def test_separata_no_rechazada(self, app_ctx):
+        assert self._creacion_generica('CONSULTA_SEPARATA', app_ctx) is True
 
 
 # ---------------------------------------------------------------------------

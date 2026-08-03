@@ -440,8 +440,12 @@ function BarraEdicion({ tipo, nodo }) {
   )
 }
 
-// Split vertical en edición: editor arriba (flex:1, scroll) + despensa abajo (120px
-// fija). En lectura NO hay split (igual que S3a). El inspector lleva siempre el
+// En edición: cabecera+control de salida fijos (BarraEdicion) + un ÚNICO contenedor
+// con scroll para editor y despensa juntos (#725 tarea 6). Antes la despensa vivía en
+// un split fijo aparte (120px al fondo del panel) que competía por la misma franja del
+// viewport con el toast-container (bottom-0, custom.css) — dos elementos fijos al fondo
+// siempre se pisan. Al meterla en el flujo normal del scroll deja de ser un elemento
+// fijo propio. En lectura NO hay split (igual que S3a). El inspector lleva siempre el
 // borde+sombra de edición (arbol-inspector--lock, CSS) porque editar bloquea el resto
 // de la UI desde que se entra; el inspector NUNCA se atenúa (es la zona interactiva).
 function InspectorEdicion({ nodo }) {
@@ -480,12 +484,12 @@ function InspectorEdicion({ nodo }) {
                 ? <NotificarEditor tareaId={seleccion.id} />
                 : <Editor nodo={nodo} />
         }
+        {!borrarPendienteConfirm && !ocultarDespensa && (
+          <div className="border-top mt-3 pt-3">
+            <Despensa deshabilitarProducido={esAnalizar} />
+          </div>
+        )}
       </div>
-      {!borrarPendienteConfirm && !ocultarDespensa && (
-        <div style={{ flex: '0 0 auto' }} className="border-top">
-          <Despensa deshabilitarProducido={esAnalizar} />
-        </div>
-      )}
     </div>
   )
 }

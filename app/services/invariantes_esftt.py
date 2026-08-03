@@ -5,9 +5,12 @@ Checks de negocio hardcoded que el motor agnóstico no puede evaluar porque
 requieren consultas al dominio BDDAT. Se invocan desde las rutas Flask ANTES
 de llamar a motor_reglas.evaluar().
 
-En el futuro estas variables pasarán como variables del dict al ContextAssembler
-(tiene_hijos_abiertos, doc_producido_presente, etc.) y estos checks desaparecerán.
-Por ahora viven aquí para mantener el motor agnóstico sin romper el comportamiento.
+No son candidatos a pasar a reglas_motor (ADR-037): no hay norma que citar —son
+integridad estructural del árbol (hoja-a-hoja, #722) o decisiones de workflow ya
+fijadas (sellado, ADR-036; completitud de cierre, #723)— y varias ramas son a
+propósito no forzables, semántica que una fila de reglas_motor (pensada para
+contenido citable, editable por el supervisor) no expresa bien. Viven aquí de
+forma permanente, no como paso intermedio hacia el motor.
 """
 from __future__ import annotations
 

@@ -7,7 +7,6 @@ bypass/justificacion del body y nunca los propagaba a mutaciones_arbol.py.
 Bloques:
   A) crear_hijo_nodo lee bypass+justificacion del JSON y los propaga a svc.crear_*.
   B) _bloqueo_422 incluye puede_escapar (antes ausente, #616).
-  C) tipos_creables._item propaga puede_escapar solo en bloqueos del motor.
   D) api_bitacora._descripcion surfacea justificación en entradas de escape.
   E) Creación permitida con advertencia: bitácora + advertencia en la respuesta
      (feedback manual — el único caso probado en el árbol real, crear_solicitud,
@@ -76,31 +75,6 @@ def test_bloqueo_422_incluye_puede_escapar(app):
 
     assert status == 422
     assert data['puede_escapar'] is True
-
-
-# ---------------------------------------------------------------------------
-# C) tipos_creables._item — puede_escapar solo en bloqueos del motor
-# ---------------------------------------------------------------------------
-
-def test_tipos_creables_item_propaga_puede_escapar_true():
-    from app.services.tipos_creables import _item
-    from app.services.motor_reglas import EvaluacionResult
-
-    res = EvaluacionResult(
-        permitido=False, nivel='BLOQUEAR', variables_trigger={},
-        norma_compilada='norma X', url_norma='', motivo='bloqueado por regla',
-        puede_escapar=True,
-    )
-    item = _item(1, 'COD', 'Nombre', res)
-    assert item['puede_escapar'] is True
-
-
-def test_tipos_creables_item_no_incluye_puede_escapar_si_permitido():
-    from app.services.tipos_creables import _item
-    from app.services.motor_reglas import PERMITIDO
-
-    item = _item(1, 'COD', 'Nombre', PERMITIDO)
-    assert 'puede_escapar' not in item
 
 
 # ---------------------------------------------------------------------------

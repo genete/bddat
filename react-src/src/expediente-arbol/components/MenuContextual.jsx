@@ -7,6 +7,7 @@ import { api } from '../../shared/api.js'
 import { showToast } from '../../shared/ui/toast.js'
 import { puedeEditarNodo, puedeCrearHijoDe } from '../../shared/auth.js'
 import { estaSellado } from '../sellado.js'
+import { FilaTipoCreable, BloqueoForzar } from './TiposCreablesCompartido.jsx'
 
 async function copiarReferencia(ref) {
   try {
@@ -30,18 +31,25 @@ export default function MenuContextual() {
   const cerrarMenu            = useArbolStore((s) => s.cerrarMenu)
   const tiposCreables         = useArbolStore((s) => s.tiposCreables)
   const tiposCreablesCargando = useArbolStore((s) => s.tiposCreablesCargando)
-  const detalle               = useArbolStore((s) => s.detalle)
+  const menuDetalle           = useArbolStore((s) => s.menuDetalle)
   const arbol                 = useArbolStore((s) => s.arbol)
   const expedienteId          = useArbolStore((s) => s.expedienteId)
   const entrarEdicion         = useArbolStore((s) => s.entrarEdicion)
+  const tipoCreacionPendiente = useArbolStore((s) => s.tipoCreacionPendiente)
+  const bloqueoActual         = useArbolStore((s) => s.bloqueoActual)
+  const justificacionForzar   = useArbolStore((s) => s.justificacionForzar)
+  const creando               = useArbolStore((s) => s.creando)
   const seleccionarTipoCrear  = useArbolStore((s) => s.seleccionarTipoCrear)
+  const cancelarCrear         = useArbolStore((s) => s.cancelarCrear)
+  const setJustificacionForzar = useArbolStore((s) => s.setJustificacionForzar)
   const crearHijo             = useArbolStore((s) => s.crearHijo)
 
   const menuRef = useRef(null)
   const [submenuActivo, setSubmenuActivo] = useState(null) // 'crear-hijo' | 'consumidos' | null
+  const [mostrarResto, setMostrarResto] = useState(false)
 
   // Cerrar menú al cambiar sel (reset submenu)
-  useEffect(() => { setSubmenuActivo(null) }, [menuCtx?.sel])
+  useEffect(() => { setSubmenuActivo(null); setMostrarResto(false) }, [menuCtx?.sel])
 
   // Click fuera → cerrar
   useEffect(() => {
@@ -82,12 +90,14 @@ export default function MenuContextual() {
                           (sel.tipo === 'fase' || !sellado)
   const puedeCrearHijo  = puedeCrearHijoDe(sel.tipo) && !sellado
 
-  const tipos        = tiposCreables?.tipos || []
-  const permitidos   = tipos.filter((t) => t.permitido)
-  const noPermitidos = tipos.filter((t) => !t.permitido)
+  // canonicos/resto (ADR-037 §D): vocabulario, no permiso — el motor no se ha
+  // evaluado todavía para ninguno de los dos; el bloqueo (si lo hay) se revela
+  // tras el intento real (bloqueoActual, más abajo), no en este listado.
+  const canonicos = tiposCreables?.canonicos || []
+  const resto     = tiposCreables?.resto || []
 
-  const producido  = detalle?.documentos?.find((d) => d.rol === 'PRODUCIDO')
-  const consumidos = detalle?.documentos?.filter((d) => d.rol === 'CONSUMIDO') || []
+  const producido  = menuDetalle?.documentos?.find((d) => d.rol === 'PRODUCIDO')
+  const consumidos = menuDetalle?.documentos?.filter((d) => d.rol === 'CONSUMIDO') || []
   // Consumidos con enlace de apertura (bddat:// sin representación, p.ej. diagnósticos, no lo tienen — #610)
   const consumidosAbribles = consumidos.filter((d) => d.puede_abrir)
   // Carpeta del documento: producido con carpeta > primer consumido con carpeta > expediente
@@ -97,10 +107,14 @@ export default function MenuContextual() {
 
   const handleEditar = () => { entrarEdicion(sel); cerrarMenu() }
 
-  const handleCrearTipo = (tipo) => {
-    seleccionarTipoCrear({ tipo_id: tipo.tipo_id, codigo: tipo.codigo, nombre: tipo.nombre })
-    crearHijo()
-    cerrarMenu()
+  // Crea de inmediato (sin staging visible, a diferencia de la Despensa). Si el
+  // intento queda bloqueado, bloqueoActual se rellena (store.js) y el menú
+  // permanece abierto mostrando BloqueoForzar en vez de cerrarse a ciegas —
+  // por eso se espera la respuesta antes de decidir si cierra (ADR-037 §D).
+  const handleCrearTipo = async (tipo) => {
+    seleccionarTipoCrear({ tipo_id: tipo.tipo_id, codigo: tipo.codigo, nombre: tipo.nombre }, sel)
+    await crearHijo()
+    if (!useArbolStore.getState().bloqueoActual) cerrarMenu()
   }
 
   const handleCarpetaDoc = (doc) => {
@@ -114,7 +128,7 @@ export default function MenuContextual() {
   }
 
   const handleCopiarRef = () => {
-    if (detalle?.referencia) copiarReferencia(detalle.referencia)
+    if (menuDetalle?.referencia) copiarReferencia(menuDetalle.referencia)
     cerrarMenu()
   }
 
@@ -152,28 +166,48 @@ export default function MenuContextual() {
             </div>
             {submenuActivo === 'crear-hijo' && (
               <div className="arbol-menu__submenu">
-                {tiposCreablesCargando && (
-                  <div className="arbol-menu__item" style={{ opacity: .6 }}>Cargando…</div>
-                )}
-                {!tiposCreablesCargando && tipos.length === 0 && (
-                  <div className="arbol-menu__item" style={{ opacity: .6 }}>Sin tipos disponibles</div>
-                )}
-                {permitidos.map((t) => (
-                  <div key={t.tipo_id} className="arbol-menu__item"
-                       onClick={() => handleCrearTipo(t)}>
-                    {t.nombre || t.codigo}
+                {tipoCreacionPendiente && bloqueoActual ? (
+                  <div style={{ width: 240 }}>
+                    <BloqueoForzar
+                      bloqueo={bloqueoActual}
+                      tipoNombre={tipoCreacionPendiente.nombre}
+                      justificacion={justificacionForzar}
+                      setJustificacion={setJustificacionForzar}
+                      creando={creando}
+                      onForzar={crearHijo}
+                      onCancelar={cancelarCrear}
+                    />
                   </div>
-                ))}
-                {noPermitidos.length > 0 && permitidos.length > 0 && (
-                  <div className="arbol-menu__sep" />
+                ) : (
+                  <>
+                    {tiposCreablesCargando && (
+                      <div className="arbol-menu__item" style={{ opacity: .6 }}>Cargando…</div>
+                    )}
+                    {!tiposCreablesCargando && canonicos.length === 0 && resto.length === 0 && (
+                      <div className="arbol-menu__item" style={{ opacity: .6 }}>Sin tipos disponibles</div>
+                    )}
+                    {canonicos.map((t) => (
+                      <FilaTipoCreable key={t.tipo_id} tipo={t} variante="menu"
+                                       onClick={() => handleCrearTipo(t)} />
+                    ))}
+                    {resto.length > 0 && (
+                      <>
+                        {canonicos.length > 0 && <div className="arbol-menu__sep" />}
+                        {mostrarResto
+                          ? resto.map((t) => (
+                              <FilaTipoCreable key={t.tipo_id} tipo={t} variante="menu"
+                                               onClick={() => handleCrearTipo(t)} />
+                            ))
+                          : (
+                            <div className="arbol-menu__item" style={{ opacity: .7 }}
+                                 onClick={() => setMostrarResto(true)}>
+                              Mostrar todos…
+                            </div>
+                          )}
+                      </>
+                    )}
+                  </>
                 )}
-                {noPermitidos.map((t) => (
-                  <div key={t.tipo_id}
-                       className="arbol-menu__item arbol-menu__item--disabled"
-                       title={[t.motivo, t.norma].filter(Boolean).join(' — ')}>
-                    {t.nombre || t.codigo}
-                  </div>
-                ))}
               </div>
             )}
           </div>
