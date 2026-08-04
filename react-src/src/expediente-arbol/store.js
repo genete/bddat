@@ -61,6 +61,8 @@ export const useArbolStore = create((set, get) => ({
   poolCargando: false,
   docVinculandoPendiente: null,   // {id, nombre, tipo_doc, fecha} staged para vincular
   vinculando: false,
+  docPendienteIdDesdeUrl: null,   // id leído de ?doc_pendiente=<id> (#630, ADR-038 §5) — se
+                                   // consume una sola vez en cargarPool() y se limpia ahí
 
   // --- borrar (S3b-4) ---
   borrarPendienteConfirm: false, // true = inspector muestra bloque de consecuencias + "Borrar definitivamente"
@@ -446,11 +448,26 @@ export const useArbolStore = create((set, get) => ({
     set({ poolCargando: true })
     try {
       const data = await getPool(expedienteId)
-      set({ pool: data.documentos || [], poolCargado: true, poolCargando: false })
+      const pool = data.documentos || []
+      set({ pool, poolCargado: true, poolCargando: false })
+
+      // Radar de huérfanos (#630, ADR-038 §5, vía A "Ir a la tarea"): si se llegó
+      // con ?doc_pendiente=<id>, pre-carga ese documento en la zona de staging de
+      // la Despensa — sin guardar nada, el técnico decide el rol y pulsa Guardar.
+      // Consumo único: se limpia aquí para no re-stagear en cargas posteriores del
+      // pool (p. ej. si el técnico navega a otra tarea sin recargar la página).
+      const pendienteId = get().docPendienteIdDesdeUrl
+      if (pendienteId) {
+        set({ docPendienteIdDesdeUrl: null })
+        const doc = pool.find((d) => d.id === pendienteId)
+        if (doc) get().seleccionarDocVincular(doc)
+      }
     } catch {
       set({ poolCargando: false })
     }
   },
+
+  setDocPendienteIdDesdeUrl: (id) => set({ docPendienteIdDesdeUrl: id }),
 
   seleccionarDocVincular: (doc) => set({ docVinculandoPendiente: doc }),
 

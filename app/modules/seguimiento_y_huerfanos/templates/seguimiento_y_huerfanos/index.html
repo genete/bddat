@@ -99,13 +99,55 @@
       </div>
     </div>
 
-    {# ── Pestaña Huérfanos — placeholder, se construye en tarea aparte de #630 ── #}
+    {# ── Pestaña Huérfanos — radar del pool sin vínculo a tarea (ADR-027 §2 / #630) ── #}
     <div class="tab-pane fade" id="pane-huerfanos" role="tabpanel"
          aria-labelledby="syh-tab-huerfanos"
          style="flex:1; min-height:0; display:flex; flex-direction:column">
-      <div class="p-4 text-secondary text-center">
-        <i class="fas fa-tools fa-2x mb-2 d-block"></i>
-        Radar de huérfanos — en construcción (#630).
+
+      <div class="lista-cabecera">
+        <div class="filters-row">
+          <div class="filters">
+            <input type="search" id="hue-search" placeholder="Buscar por Nº AT o titular..." aria-label="Buscar">
+            {% if session.get('rol_activo_nombre') == 'TRAMITADOR' %}
+            <div id="hf-ver"></div>
+            {% else %}
+            <div id="hf-responsable"></div>
+            {% endif %}
+            <button class="btn btn-outline-primary btn-limpiar" disabled>
+              <i class="fas fa-times"></i> Limpiar
+            </button>
+          </div>
+          <div class="pagination-info">
+            <i class="fas fa-filter filtro-indicador me-1"></i><span>0</span> de <span>0</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="lista-scroll-container huerfanos-scroll-container">
+        <div class="py-3">
+          <div class="card tabla-bloque">
+            <table class="lista-table huerfanos-table">
+              <thead>
+                <tr>
+                  <th>Expediente</th>
+                  <th style="width:3rem" class="text-center">
+                    <i class="bi bi-lightbulb-fill" title="Asignación"></i>
+                  </th>
+                  <th>Tipo</th>
+                  <th class="lt-truncate">Descripción</th>
+                  <th class="lt-truncate">Fichero</th>
+                  <th class="text-end">Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                <!-- Filas cargadas dinámicamente por ScrollInfinito -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <button id="tabla-scroll-to-top-huerfanos" aria-label="Volver arriba de la tabla">
+          <i class="fas fa-chevron-up"></i>
+        </button>
       </div>
     </div>
 
@@ -415,5 +457,241 @@ new ResizeObserver(ajustarFlexiblesSeguimiento)
 [1100, 1000].forEach(bp => {
     window.matchMedia(`(max-width: ${bp}px)`).addEventListener('change', ajustarFlexiblesSeguimiento);
 });
+
+
+// ============================================================================
+// ===== PESTAÑA HUÉRFANOS (#630, ADR-038) ===================================
+// ============================================================================
+
+const ROL_ACTIVO      = {{ session.get('rol_activo_nombre') | tojson }};
+const CURRENT_USER_ID = {{ current_user.id | tojson }};
+
+function escapeHtml(str) {
+    const d = document.createElement('div');
+    d.textContent = str == null ? '' : String(str);
+    return d.innerHTML;
+}
+
+// Construcción perezosa (mismo criterio que tablas_maestras/listado.html): el
+// constructor de ScrollInfinito dispara su propia carga inicial (loadMore())
+// de forma síncrona — construirlo ya-mismo cargaría Huérfanos aunque el
+// técnico no haya abierto nunca esa pestaña. Todo lo que tiene efecto (crear
+// selectores, instanciar ScrollInfinito, cablear listeners) vive dentro de
+// initHuerfanos(), invocada una sola vez al mostrar la pestaña por primera vez.
+let hfVer, hfResponsable, huerfanosScroll;
+
+function initHuerfanos() {
+// Filtro condicional por rol (ADR-038 §3): TRAMITADOR mis/todos; el resto,
+// filtro por técnico concreto (solo TRAMITADOR puede ser responsable de
+// expediente — _usuarios_tramitadores ya fija ese invariante).
+//
+// NOTA: no se usa FiltrosListado aquí a propósito — su constructor selecciona
+// '.filters-row'/'.filters input[type=search]' a nivel de documento (primer
+// match), incompatible con dos pestañas que tienen cada una su propia
+// .filters-row (la de Seguimiento ya usa FiltrosListado más arriba). Se
+// conecta todo a mano, scopeado a #pane-huerfanos.
+// onChange guarda con `if (huerfanosScroll)`: setValue('mis') más abajo dispara
+// onChange de inmediato, antes de que huerfanosScroll exista todavía (se
+// construye después, leyendo ya el valor del selector en su loadMore() inicial).
+if (ROL_ACTIVO === 'TRAMITADOR') {
+    hfVer = new SelectorFiltro('#hf-ver', [
+        { v: 'mis', t: 'Mis expedientes' }
+    ], { label: 'Ver', onChange: () => { if (huerfanosScroll) { huerfanosScroll.reload(); _actualizarIndicadorHuerfanos(); } } });
+    hfVer.setValue('mis');
+} else {
+    hfResponsable = new SelectorFiltro('#hf-responsable', [
+        {% for u in usuarios %}
+        { v: '{{ u.id }}', t: {{ (u.apellido1 ~ ', ' ~ u.nombre) | tojson }} }{% if not loop.last %},{% endif %}
+
+        {% endfor %}
+    ], { label: 'Técnico', onChange: () => { if (huerfanosScroll) { huerfanosScroll.reload(); _actualizarIndicadorHuerfanos(); } } });
+}
+
+function renderAsignacion(val) {
+    if (ROL_ACTIVO === 'TRAMITADOR') {
+        const esMio = !!(val && val.id === CURRENT_USER_ID);
+        const color = esMio ? 'text-success' : 'text-danger';
+        const title = esMio
+            ? 'Tu expediente'
+            : (val ? 'Expediente no asignado a ti — actuación registrada en bitácora' : 'Expediente sin responsable asignado');
+        return `<div class="text-center"><i class="bi bi-lightbulb-fill ${color}" title="${title}"></i></div>`;
+    }
+    return val ? escapeHtml(val.siglas) : '<span class="text-secondary">Sin asignar</span>';
+}
+
+function renderVerAccion(item) {
+    if (!item.enlace) return '';
+    if (item.abrir_en === 'modal') {
+        return `<button type="button" class="btn btn-sm btn-link p-0 lh-1" title="Ver documento"
+                        onclick="event.stopPropagation(); window.AppModalLarge && window.AppModalLarge.open('${item.enlace}', {title: ${JSON.stringify(item.nombre)}})">
+                    <i class="fas fa-eye"></i>
+                </button>`;
+    }
+    return `<a href="${item.enlace}" target="_blank" rel="noopener" class="btn btn-sm btn-link p-0 lh-1"
+               title="Ver documento" onclick="event.stopPropagation()">
+                <i class="fas fa-eye"></i>
+            </a>`;
+}
+
+function borrarHuerfano(btn, expedienteId, docId) {
+    if (!window.confirm('¿Borrar este documento del pool? No se puede deshacer.')) return;
+    btn.disabled = true;
+    fetch(`/expedientes/${expedienteId}/documentos/${docId}/borrar`, {
+        method: 'POST',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+    })
+        .then(r => r.json())
+        .then(data => {
+            if (!data.ok) {
+                window.mostrar_toast('danger', data.error || 'No se pudo borrar el documento.');
+                btn.disabled = false;
+                return;
+            }
+            window.mostrar_toast('success', 'Documento borrado del pool.');
+            huerfanosScroll.reload();
+        })
+        .catch(() => {
+            window.mostrar_toast('danger', 'Error de red al borrar.');
+            btn.disabled = false;
+        });
+}
+window.borrarHuerfano = borrarHuerfano;
+
+const huerfanosColumns = [
+    { key: 'num_at',      label: 'Expediente',  type: 'custom' },
+    { key: 'responsable', label: 'Asignación',   type: 'custom' },
+    { key: 'tipo_doc',    label: 'Tipo',         type: 'custom' },
+    { key: 'asunto',      label: 'Descripción',  type: 'custom', truncate: true },
+    { key: 'nombre',      label: 'Fichero',      type: 'custom', truncate: true },
+    { key: '_acciones',   label: '',             type: 'custom' },
+].map(col => ({ ...col, renderFn: {
+    num_at:      (val) => `<span class="num-at-pill"><strong>AT-${val}</strong></span>`,
+    responsable: (val) => renderAsignacion(val),
+    tipo_doc:    (val) => escapeHtml(val || '—'),
+    asunto:      (val) => `<span class="celda-ellipsis" title="${escapeHtml(val || '')}">${escapeHtml(val || '—')}</span>`,
+    nombre:      (val, item) => `<span class="celda-ellipsis" title="${escapeHtml(val)}">${escapeHtml(val)}</span> ${renderVerAccion(item)}`,
+    _acciones:   (val, item) => `<button type="button" class="btn btn-sm btn-outline-danger" title="Borrar del pool"
+                                         onclick="event.stopPropagation(); borrarHuerfano(this, ${item.expediente_id}, ${item.id})">
+                                     <i class="fas fa-trash"></i>
+                                 </button>`,
+}[col.key] }));
+
+class HuerfanosScroll extends ScrollInfinito {
+    async loadMore() {
+        if (this.loading || !this.hasMore) return;
+        this.loading = true;
+        this.showLoader();
+
+        try {
+            const params = new URLSearchParams({ cursor: this.cursor, limit: this.limit });
+
+            const search = this.searchInput?.value.trim();
+            if (search) params.append('search', search);
+
+            if (ROL_ACTIVO === 'TRAMITADOR') {
+                params.append('ver', hfVer.getValue() || 'todos');
+            } else {
+                const responsableId = hfResponsable.getValue();
+                if (responsableId) params.append('responsable_id', responsableId);
+            }
+
+            const response = await fetch(`${this.apiUrl}?${params}`);
+            if (!response.ok) throw new Error(`Error ${response.status}: ${response.statusText}`);
+
+            const data = await response.json();
+            this.cursor  = data.next_cursor;
+            this.hasMore = data.has_more;
+
+            this.renderItems(data.data);
+            this.totalLoaded += data.data.length;
+            this.updatePaginationInfo();
+        } catch (error) {
+            console.error('Error cargando huérfanos:', error);
+            this.showError('Error al cargar el radar de huérfanos. Inténtalo de nuevo.');
+        } finally {
+            this.loading = false;
+            this.hideLoader();
+        }
+    }
+}
+
+huerfanosScroll = new HuerfanosScroll({
+    apiUrl:      '{{ url_for("api_huerfanos.listar_huerfanos") }}',
+    tableClass:  '.huerfanos-table',
+    entityLabel: 'documentos',
+    columns:     huerfanosColumns,
+    selection: {
+        fragmentUrl: id   => `/seguimiento_y_huerfanos/huerfanos/${id}/fragmento`,
+        title:       item => `AT-${item.num_at} · ${item.tipo_doc || ''}`,
+    },
+});
+
+// Cableado manual del buscador + botón Limpiar, scopeado a #pane-huerfanos
+// (ver nota más arriba sobre por qué no se reutiliza FiltrosListado aquí).
+const hueSearchInput = document.getElementById('hue-search');
+const hueFiltersRow  = document.querySelector('#pane-huerfanos .filters-row');
+const hueBtnLimpiar  = document.querySelector('#pane-huerfanos .btn-limpiar');
+let _hueSearchTimer  = null;
+let _hueLimpiando    = false;
+
+function _actualizarIndicadorHuerfanos() {
+    if (!hueFiltersRow) return;
+    const hayExtra =
+        (hueSearchInput && hueSearchInput.value.trim()) ||
+        (ROL_ACTIVO === 'TRAMITADOR' ? hfVer.getValue() !== 'mis' : !!hfResponsable.getValue());
+    hueFiltersRow.classList.toggle('filtros-activos', !!hayExtra);
+    if (hueBtnLimpiar) hueBtnLimpiar.disabled = !hayExtra;
+}
+
+if (hueSearchInput) {
+    hueSearchInput.addEventListener('input', () => {
+        if (_hueLimpiando) return;
+        clearTimeout(_hueSearchTimer);
+        _hueSearchTimer = setTimeout(() => {
+            huerfanosScroll.reload();
+            _actualizarIndicadorHuerfanos();
+        }, 400);
+    });
+}
+
+if (hueBtnLimpiar) {
+    hueBtnLimpiar.addEventListener('click', (e) => {
+        e.preventDefault();
+        clearTimeout(_hueSearchTimer);
+        const habiaBusqueda = hueSearchInput && hueSearchInput.value.trim();
+        if (hueSearchInput) hueSearchInput.value = '';
+        // setValue()/clear() ya disparan onChange (reload + indicador) — si además
+        // había texto en el buscador, forzamos un reload extra para que se aplique.
+        if (ROL_ACTIVO === 'TRAMITADOR') hfVer.setValue('mis');
+        else hfResponsable.clear();
+        if (habiaBusqueda) huerfanosScroll.reload();
+        _actualizarIndicadorHuerfanos();
+    });
+}
+
+// Recargar la lista tras vincular desde el panel de candidatas (_inspector_huerfano.html)
+document.addEventListener('huerfano:vinculado', () => huerfanosScroll.reload());
+} // fin initHuerfanos()
+
+// Invocar initHuerfanos() una sola vez, al activar la pestaña por primera vez.
+// El propio constructor de ScrollInfinito ya dispara su carga inicial — no
+// hace falta llamar loadMore() aparte (ver nota junto a la declaración de
+// huerfanosScroll más arriba).
+document.getElementById('syh-tab-huerfanos').addEventListener('shown.bs.tab', function onShown() {
+    document.getElementById('syh-tab-huerfanos').removeEventListener('shown.bs.tab', onShown);
+    initHuerfanos();
+});
+
+// Scroll-to-top propio (v2-tabla-scroll-to-top.js es de instancia única —
+// solo se engancharía a la primera .lista-scroll-container del documento).
+(function () {
+    const container = document.querySelector('.huerfanos-scroll-container');
+    const btn = document.getElementById('tabla-scroll-to-top-huerfanos');
+    if (!container || !btn) return;
+    container.addEventListener('scroll', () => {
+        btn.classList.toggle('visible', container.scrollTop > 200);
+    });
+    btn.addEventListener('click', () => container.scrollTo({ top: 0, behavior: 'smooth' }));
+})();
 </script>
 {% endblock %}

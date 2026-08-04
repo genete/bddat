@@ -40,9 +40,21 @@ function escribirSeleccionURL(sel) {
   window.history.replaceState(null, '', url)
 }
 
+// Radar de huérfanos (#630, ADR-038 §5): ?doc_pendiente=<id> junto a ?nodo=tarea-<id>
+// — el documento se pre-carga en la Despensa (ver cargarPool en store.js) una vez
+// entrada la edición. Se lee una sola vez al montar, como leerSeleccionURL().
+function leerDocPendienteURL() {
+  const p = new URLSearchParams(window.location.search).get('doc_pendiente')
+  if (!p) return null
+  const id = Number(p)
+  return Number.isNaN(id) ? null : id
+}
+
 export default function App() {
   const cargar = useArbolStore((s) => s.cargar)
   const seleccionar = useArbolStore((s) => s.seleccionar)
+  const entrarEdicion = useArbolStore((s) => s.entrarEdicion)
+  const setDocPendienteIdDesdeUrl = useArbolStore((s) => s.setDocPendienteIdDesdeUrl)
   const seleccion = useArbolStore((s) => s.seleccion)
   const cargando = useArbolStore((s) => s.cargando)
   const error = useArbolStore((s) => s.error)
@@ -56,8 +68,18 @@ export default function App() {
     const id = expedienteIdDesdeDOM()
     if (id) cargar(id)
     const sel = leerSeleccionURL()
-    if (sel) seleccionar(sel)
-  }, [cargar, seleccionar])
+    if (!sel) return
+    const docPendienteId = leerDocPendienteURL()
+    if (docPendienteId && sel.tipo === 'tarea') {
+      // Radar de huérfanos (#630): entra directo en edición — la Despensa (única
+      // superficie donde se puede vincular) solo vive en modoEdicion. cargarPool()
+      // recoge docPendienteIdDesdeUrl y pre-carga el documento (ver store.js).
+      setDocPendienteIdDesdeUrl(docPendienteId)
+      entrarEdicion(sel)
+    } else {
+      seleccionar(sel)
+    }
+  }, [cargar, seleccionar, entrarEdicion, setDocPendienteIdDesdeUrl])
 
   // Reflejar la selección en la URL sin recargar.
   useEffect(() => {
