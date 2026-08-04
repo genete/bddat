@@ -4,15 +4,17 @@
    nav-tabs, cada una con su propia cabecera de filtros + tabla + scroll,
    patrón ya usado por tablas_maestras/listado.html. Seguimiento: contenido
    movido sin cambios desde expedientes/seguimiento.html (#559 ADR-023 §9).
-   Huérfanos: radar del pool sin vínculo a tarea (ADR-027 §2) — pendiente
-   de implementar en tarea aparte del mismo issue.
+   Huérfanos: radar del pool sin vínculo a tarea (ADR-027 §2).
 
-   NOTA (para cuando se construya Huérfanos): v2-tabla-scroll-to-top.js es
-   de instancia única (querySelector/getElementById sin scope) — con dos
-   tablas reales en la página, la pestaña Huérfanos necesita su propio botón
-   con id distinto y su propio manejador, no reutilizar #tabla-scroll-to-top
-   tal cual (mismo motivo por el que tablas_maestras no usa este script
-   compartido y resuelve el scroll-to-top con sus propios botones por pestaña).
+   NOTA — botón "volver arriba" duplicado (#755): v2-tabla-scroll-to-top.js
+   es de instancia única (querySelector/getElementById sin scope), así que
+   Seguimiento se queda con el `#tabla-scroll-to-top` + script compartido de
+   siempre, y Huérfanos tiene su propio botón (`#tabla-scroll-to-top-huerfanos`)
+   con un manejador propio, más abajo en este fichero — mismo motivo por el
+   que tablas_maestras tampoco reutiliza el script compartido. #755 arreglará
+   este botón "subir" generalizándolo a multi-instancia; cuando se resuelva,
+   sustituir el manejador propio de Huérfanos por el componente reutilizable
+   resultante en vez de mantener este workaround.
 #}
 {% extends "layout/base_app.html" %}
 
@@ -684,6 +686,8 @@ document.getElementById('syh-tab-huerfanos').addEventListener('shown.bs.tab', fu
 
 // Scroll-to-top propio (v2-tabla-scroll-to-top.js es de instancia única —
 // solo se engancharía a la primera .lista-scroll-container del documento).
+// Workaround temporal — #755 arreglará este botón "subir" generalizándolo a
+// multi-instancia; sustituir este bloque por el componente resultante.
 (function () {
     const container = document.querySelector('.huerfanos-scroll-container');
     const btn = document.getElementById('tabla-scroll-to-top-huerfanos');
