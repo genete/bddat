@@ -156,12 +156,20 @@ Cada candidata en el panel muestra ambos botones: "Ir a la tarea" (primario) y "
 qué ocurre — riesgo que señaló Carlos explícitamente. Se ofrece como atajo opt-in, no como
 único camino.
 
-### 6. Borrado de huérfano
+### 6. Borrado de huérfano — endpoint ya existente, no se crea uno nuevo
 
-Nuevo endpoint `DELETE /api/documentos/<id>`, solo si el documento **sigue** siendo huérfano en
-el momento de borrar (defensa en profundidad, aunque la UI solo lo ofrezca ahí). Permiso
-`gestionar_estructura_expediente` (TRAMITADOR/SUPERVISOR/ADMIN, no ADMINISTRATIVO) — "decisión
-del técnico" (ADR-027 §2), no tarea administrativa de hoja.
+**Corrección sobre lo previsto**: al implementar se encontró que `POST
+/expedientes/<id>/documentos/<doc_id>/borrar` (`expedientes.pool_borrar_documento`) ya cubre
+exactamente este caso — no hace falta el `DELETE /api/documentos/<id>` que preveía la versión
+anterior de este apartado. El guardián `_documento_es_referenciado()` ya comprueba
+`vinculos_tarea` (vacío por definición en un huérfano) **y además** `proyecto_vinculado` y
+`notificacion` (caso #738 punto 2: una fila `Notificacion` puede sobrevivir a la desvinculación
+de su `DocumentoTarea`) — más completo que la comprobación "sigue huérfano" que se había
+previsto. Ya registra en bitácora si el documento es crítico, y usa
+`verificar_acceso_expediente(expediente, 'editar')` → permiso `editar_expediente`
+(TRAMITADOR/SUPERVISOR/ADMIN, no ADMINISTRATIVO) — mismo reparto de roles que se buscaba, con el
+permiso que ya existía en vez de inventar uno nuevo. La acción "Borrar" del radar solo
+**enlaza** a esta ruta ya construida.
 
 ### 7. Bitácora
 
@@ -206,9 +214,10 @@ Repartido en el propio #630:
 1. **Backend — módulo nuevo**: `app/modules/seguimiento_y_huerfanos/` (blueprint, `metadata.json`,
    permiso `acceder_seguimiento_y_huerfanos`). Mover rutas/templates de `expedientes.seguimiento`
    y `expedientes.seguimiento_fragmento`. Actualizar `mi_trabajo.routes`.
-2. **Backend — Huérfanos**: `GET /api/documentos/huerfanos` (cursor, filtro `ver`/expediente),
-   `DELETE /api/documentos/<id>`, `POST /api/expedientes/<id>/nodo/tarea/<tarea_id>/vincular_huerfano`.
-   Servicio de candidatas sobre `tramites_tareas_documentos` (reglas §4).
+2. **Backend — Huérfanos**: `GET /api/documentos/huerfanos` (cursor, filtro `ver`/`responsable_id`),
+   `GET /api/documentos/<id>/candidatas`, `POST /api/expedientes/<id>/nodo/tarea/<tarea_id>/vincular_huerfano`.
+   Servicio de candidatas sobre `tramites_tareas_documentos` (reglas §4). Borrado reutiliza
+   `expedientes.pool_borrar_documento`, ya existente (§6) — nada que construir ahí.
 3. **Frontend — pestañas** `nav-tabs` (patrón `tablas_maestras`), tabla `ScrollInfinito` para
    Huérfanos, fragmento-inspector de candidatas (patrón ADR-023 / `AppInspector`).
 4. **Frontend — árbol**: leer `?doc_pendiente=<id>` en `useArbolStore`, llamar
