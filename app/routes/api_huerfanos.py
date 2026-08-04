@@ -39,6 +39,7 @@ from app.models.documentos_tarea import DocumentoTarea
 from app.models.expedientes import Expediente
 from app.models.entidad import Entidad
 from app.services.detalle_nodo import info_apertura_documento
+from app.services.huerfanos import tareas_candidatas
 
 api_huerfanos_bp = Blueprint('api_huerfanos', __name__, url_prefix='/api')
 
@@ -121,3 +122,20 @@ def listar_huerfanos():
         'next_cursor': next_cursor,
         'has_more':    has_more,
     })
+
+
+@api_huerfanos_bp.route('/documentos/<int:documento_id>/candidatas', methods=['GET'])
+@login_required
+def candidatas_huerfano(documento_id):
+    """GET /api/documentos/<id>/candidatas — tareas candidatas a recibir el huérfano.
+
+    Ver app/services/huerfanos.py — reglas de inferencia y exclusión (ADR-038 §4).
+    """
+    doc = Documento.query.get_or_404(documento_id)
+    es_huerfano = (
+        not (doc.url or '').startswith('bddat://')
+        and DocumentoTarea.query.filter_by(documento_id=doc.id).first() is None
+    )
+    if not es_huerfano:
+        return jsonify({'error': 'El documento ya no es huérfano'}), 409
+    return jsonify({'data': tareas_candidatas(doc)}), 200
