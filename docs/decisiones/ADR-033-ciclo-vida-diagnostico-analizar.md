@@ -68,6 +68,15 @@ ADR-005 se enmienda: el diagnóstico deja de ser inmutable de por vida y pasa a 
 
 **Trazabilidad:** la eliminación de un diagnóstico no consumido es una corrección legítima, no una falta. Podrá registrarse en bitácora, pero qué registra la bitácora y qué no se decide en su propia sesión, ítem a ítem — fuera del alcance de este ADR.
 
+**Enmienda #714 (peldaño 2 bis, forzable):** dentro de la cadena de subsanación (`ANALISIS_DOCUMENTAL` + `REQUERIMIENTO_SUBSANACIÓN`), un diagnóstico ya comunicado al titular en un requerimiento notificado es **puerta cerrada** (extiende el peldaño 3 a un consumo que hoy nada crea automáticamente, #717/#182), y uno superado por una vuelta de subsanación posterior es **forzable con justificación**. Ver `app/services/diagnosticos.py::_motivo_diagnostico_superado`.
+
+**Enmienda #724 (peldaño 2 ter, forzable — fricción simétrica):** la escalera no era monótona en dos sitios, detectados al revisar #714:
+
+- **Progreso aguas abajo sin notificar.** Si el `ELABORAR` de la vuelta que este diagnóstico desencadenó ya produjo el escrito (redactado o incluso firmado) pero aún no se ha notificado, revertir dejaba de ser el peldaño 1 libre para pasar a **forzable con justificación** — se pierde trabajo real (un escrito que cita defectos que dejan de existir) y debe dejar rastro. Antes de este cambio esa reversión no costaba nada, pese a no ser "sin progreso" como sí lo es un `REQUERIMIENTO_SUBSANACIÓN` creado y no notificado (que sigue borrándose libre, sin fricción).
+- **Modificar un check ya exigido y comunicado.** Los ejes documental, técnico y de requerimientos libres son continuos por solicitud entre vueltas (§7). Editar uno de ellos de forma que vuelva a quedar como defecto (transición no-defecto → defecto: algo dado por corregido o por bueno que se vuelve a marcar pendiente) es libre mientras la tarea actual no tenga diagnóstico propio producido — pero si ese ítem concreto ya figuraba en un diagnóstico **notificado** de una vuelta anterior de la cadena, el técnico se está desdiciendo de algo ya exigido al titular. Ahora es **forzable con justificación** (no puerta cerrada: el sitio natural para explicarlo es el propio requerimiento de la vuelta en curso, en sus notas). Corregir un ítem que sigue pendiente sin cambiar de sentido, o resolverlo, sigue sin fricción — no hay nada de lo que desdecirse.
+
+Criterio de "ya exigido": la fuente es el `Diagnostico.defectos` congelado de la vuelta notificada más reciente que lo mencione, recorriendo toda la cadena hacia atrás (no solo un salto — hay expedientes con varias vueltas de subsanación). Ver `invariantes_esftt.diagnosticos_notificados_cadena` y `diagnosticos.diagnostico_donde_se_exigio_item`/`diagnostico_donde_se_exigio_requerimiento`.
+
 ### 6. Colapso post-producción
 
 Al producir el diagnóstico (vínculo PRODUCIDO automático), los acordeones de los tres bloques **se colapsan a su resumen** (siguen siendo abribles). Cede espacio visible al "Resultado diagnóstico". Es una segunda señal de que la tarea está agotada. Regla: *diagnóstico producido → colapsados al entrar en edición*.
