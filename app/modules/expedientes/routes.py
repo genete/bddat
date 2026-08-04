@@ -27,7 +27,8 @@ from flask_login import login_required, current_user
 from app import db
 from app.models.expedientes import Expediente
 from app.models.proyectos import Proyecto
-from app.models.usuarios import Usuario, Rol
+from app.models.usuarios import Usuario
+from app.services.usuarios import usuarios_tramitadores
 from app.models.tipos_expedientes import TipoExpediente
 from app.models.tipos_ia import TipoIA
 from app.models.municipios_proyecto import MunicipioProyecto
@@ -59,16 +60,6 @@ bp = Blueprint('expedientes', __name__,
                template_folder='templates')
 
 
-def _usuarios_tramitadores():
-    """Usuarios activos con rol TRAMITADOR — candidatos válidos a responsable
-    de expediente (#612). Evita ofrecer ADMIN/SUPERVISOR/ADMINISTRATIVO en el
-    desplegable de asignación, individual o masiva.
-    """
-    return Usuario.query.filter_by(activo=True).join(Usuario.roles).filter(
-        Rol.nombre == 'TRAMITADOR'
-    ).order_by(Usuario.apellido1, Usuario.apellido2).all()
-
-
 @bp.route('/')
 @login_required
 def listado_v2():
@@ -91,7 +82,7 @@ def listado_v2():
     meta = cargar_metadata('expedientes')
     columns = meta.get('listado_v2', {}).get('columns', [])
     puede_cambiar_resp = puede_cambiar_responsable()
-    usuarios = _usuarios_tramitadores() if puede_cambiar_resp else []
+    usuarios = usuarios_tramitadores() if puede_cambiar_resp else []
     return render_template(
         'expedientes/listado_v2.html',
         columns=columns,
@@ -151,7 +142,7 @@ def editar_fragmento(id):
 
     tipos_expedientes = TipoExpediente.query.order_by(TipoExpediente.tipo).all()
     tipos_ia = TipoIA.query.order_by(TipoIA.siglas).all()
-    usuarios = _usuarios_tramitadores()
+    usuarios = usuarios_tramitadores()
 
     return render_template(
         'expedientes/_editar_fragmento_expediente.html',
