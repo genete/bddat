@@ -224,3 +224,83 @@ class TestHookNotificarCaminoBAutomatico:
         db.session.refresh(notif)
         assert notif.identificador_envio == 'REMESA-DISTINTA'  # no se sobrescribe
         assert notif.resultado == 'CORRECTA'  # el resultado sí se actualiza
+
+    def test_cotejo_canal_no_coincide_con_parser_actualiza_canal_y_avisa(self, app_ctx, fs_tmp):
+        """#712 — bug real: notif.canal nunca se reasignaba. Registrado a mano como
+        SIR y luego se vincula un justificante NOTIFICA — el documento manda."""
+        tarea = _tarea_notificar_real(app_ctx)
+        expediente = tarea.tramite.fase.solicitud.expediente
+        tipo_doc = _tipo_doc('JUSTIFICANTE_NOTIFICA')
+
+        notif = Notificacion(
+            tarea_id=tarea.id, canal='SIR', identificador_envio=None,
+            fecha_puesta_disposicion=date(2026, 5, 1),
+        )
+        db.session.add(notif)
+        db.session.flush()
+
+        doc = _documento_con_fichero(
+            expediente.id, tipo_doc.id, fs_tmp, _pdf_sintetico(TEXTO_JUSTIFICANTE))
+
+        resultado = svc.editar_tarea(
+            tarea, documentos_consumidos_ids=[], documento_producido_id=doc.id, notas=None)
+
+        assert resultado.ok is True
+        assert resultado.advertencia is not None
+        assert 'NOTIFICA' in resultado.advertencia['motivo']
+        assert 'SIR' in resultado.advertencia['motivo']
+        db.session.refresh(notif)
+        assert notif.canal == 'NOTIFICA'  # el documento manda, ya no se queda en SIR para siempre
+        assert notif.resultado == 'CORRECTA'
+
+    def test_cotejo_canal_no_coincide_sin_parser_tambien_avisa(self, app_ctx, fs_tmp):
+        """El cotejo de canal no depende de que haya parser (a diferencia del cotejo
+        de remesa) — el canal se deriva del tipo de documento, siempre disponible."""
+        tarea = _tarea_notificar_real(app_ctx)
+        expediente = tarea.tramite.fase.solicitud.expediente
+        tipo_doc = _tipo_doc('JUSTIFICANTE_SIR')
+
+        notif = Notificacion(
+            tarea_id=tarea.id, canal='BANDEJA', identificador_envio='X-1',
+            fecha_puesta_disposicion=date(2026, 5, 1),
+        )
+        db.session.add(notif)
+        db.session.flush()
+
+        doc = _documento_con_fichero(expediente.id, tipo_doc.id, fs_tmp, b'captura de pantalla')
+
+        resultado = svc.editar_tarea(
+            tarea, documentos_consumidos_ids=[], documento_producido_id=doc.id, notas=None)
+
+        assert resultado.ok is True
+        assert resultado.advertencia is not None
+        assert 'SIR' in resultado.advertencia['motivo']
+        assert 'BANDEJA' in resultado.advertencia['motivo']
+        db.session.refresh(notif)
+        assert notif.canal == 'SIR'
+        assert notif.resultado is None  # SIR no tiene parser — no se inventa un resultado
+
+    def test_cotejo_canal_coincide_no_avisa(self, app_ctx, fs_tmp):
+        """Caso base: canal ya registrado coincide con el del documento vinculado
+        — sin aviso de canal (sigue sin aviso de remesa tampoco, #658)."""
+        tarea = _tarea_notificar_real(app_ctx)
+        expediente = tarea.tramite.fase.solicitud.expediente
+        tipo_doc = _tipo_doc('JUSTIFICANTE_NOTIFICA')
+
+        notif = Notificacion(
+            tarea_id=tarea.id, canal='NOTIFICA', identificador_envio='82541676',
+            fecha_puesta_disposicion=date(2026, 5, 28),
+        )
+        db.session.add(notif)
+        db.session.flush()
+
+        doc = _documento_con_fichero(
+            expediente.id, tipo_doc.id, fs_tmp, _pdf_sintetico(TEXTO_JUSTIFICANTE))
+
+        resultado = svc.editar_tarea(
+            tarea, documentos_consumidos_ids=[], documento_producido_id=doc.id, notas=None)
+
+        assert resultado.ok is True
+        assert resultado.advertencia is None
+        db.session.refresh(notif)
+        assert notif.canal == 'NOTIFICA'

@@ -120,9 +120,10 @@ def _hook_458_analizar_separata(tarea, id_producido):
 # ---------------------------------------------------------------------------
 
 # Tipo de documento → canal (TIPOS_DOCUMENTOS_CATALOGO.md). Solo NOTIFICA tiene
-# parser hoy (#655); el resto queda a la espera del "Registrar envío"/"Completar
-# resultado" manual de NotificarEditor (#657).
-_MAPA_CANAL_POR_TIPO_DOC = {
+# parser hoy (#655); el resto queda a la espera del "Registrar puesta a
+# disposición"/"Registrar notificación" manual de NotificarEditor (#657/#712).
+# Público: lo reutiliza api_expedientes.py (validación del desplegable/preview, #712).
+MAPA_CANAL_POR_TIPO_DOC = {
     'JUSTIFICANTE_NOTIFICA': 'NOTIFICA',
     'JUSTIFICANTE_BANDEJA':  'BANDEJA',
     'JUSTIFICANTE_SIR':      'SIR',
@@ -130,7 +131,7 @@ _MAPA_CANAL_POR_TIPO_DOC = {
 }
 
 
-def _parsear_documento_notifica(doc: Documento):
+def parsear_documento_notifica(doc: Documento):
     """Parsea en disco el justificante NOTIFICA ya vinculado como producido.
 
     None si el documento no tiene fichero local (URL externa), la extensión
@@ -156,27 +157,28 @@ def _parsear_documento_notifica(doc: Documento):
 
 
 def _hook_657_notificar_resultado(tarea, id_producido) -> Optional[dict]:
-    """Hook #657/#658: al fijar/cambiar documento_producido_id en una tarea NOTIFICAR,
-    upsert de Notificacion buscando por tarea_id (nunca por identificador_envio,
-    ADR-034 §6) + cotejo no bloqueante contra la remesa ya registrada (#658).
+    """Hook #657/#658/#712: al fijar/cambiar documento_producido_id en una tarea
+    NOTIFICAR, upsert de Notificacion buscando por tarea_id (nunca por
+    identificador_envio, ADR-034 §6) + cotejo no bloqueante contra la remesa
+    (#658) y el canal (#712) ya registrados.
 
     Devuelve un dict de advertencia (cotejo fallido) para que el caller lo
     propague al cliente, o None. Sin parser para el canal del documento (todo
-    salvo NOTIFICA hoy) solo actualiza documento_id si ya existe fila — sin
-    fila previa y sin datos parseados no puede crearla (fecha_puesta_disposicion
-    es NOT NULL): el usuario debe usar "Registrar envío"/"Completar resultado"
-    a mano en NotificarEditor.
+    salvo NOTIFICA hoy) solo actualiza documento_id/canal si ya existe fila —
+    sin fila previa y sin datos parseados no puede crearla (fecha_puesta_disposicion
+    es NOT NULL): el usuario debe usar "Registrar puesta a disposición"/
+    "Registrar notificación" a mano en NotificarEditor.
     """
     if id_producido is None or tarea.tipo_tarea.codigo != 'NOTIFICAR':
         return None
 
     doc = Documento.query.get(id_producido)
     tipo_codigo = doc.tipo_doc.codigo if doc.tipo_doc else None
-    canal = _MAPA_CANAL_POR_TIPO_DOC.get(tipo_codigo)
+    canal = MAPA_CANAL_POR_TIPO_DOC.get(tipo_codigo)
     if canal is None:
         return None  # tipo de documento no es un justificante de notificación reconocido
 
-    parseo = _parsear_documento_notifica(doc) if canal == 'NOTIFICA' else None
+    parseo = parsear_documento_notifica(doc) if canal == 'NOTIFICA' else None
 
     notif = Notificacion.query.filter_by(tarea_id=tarea.id).first()
 
@@ -192,16 +194,26 @@ def _hook_657_notificar_resultado(tarea, id_producido) -> Optional[dict]:
         ))
         return None
 
-    advertencia = None
+    avisos = []
+
+    # #712: el documento vinculado manda sobre el canal anotado a mano —
+    # mismo criterio que el cotejo de remesa, y no depende de que haya parser
+    # (el canal se deriva del tipo de documento, siempre disponible).
+    if canal != notif.canal:
+        avisos.append(
+            f'El documento vinculado corresponde al canal «{canal}», distinto '
+            f'del registrado al notificar («{notif.canal}»). Se ha actualizado '
+            'el canal.'
+        )
+        notif.canal = canal
+
     if (parseo is not None and notif.identificador_envio and parseo.id_remesa
             and notif.identificador_envio != parseo.id_remesa):
-        advertencia = {
-            'motivo': (
-                f'El justificante vinculado trae la remesa «{parseo.id_remesa}», '
-                f'distinta de la registrada al notificar («{notif.identificador_envio}»). '
-                'Puede haberse vinculado el justificante de otro expediente.'
-            ),
-        }
+        avisos.append(
+            f'El justificante vinculado trae la remesa «{parseo.id_remesa}», '
+            f'distinta de la registrada al notificar («{notif.identificador_envio}»). '
+            'Puede haberse vinculado el justificante de otro expediente.'
+        )
 
     notif.documento_id = doc.id
     if parseo is not None:
@@ -209,7 +221,7 @@ def _hook_657_notificar_resultado(tarea, id_producido) -> Optional[dict]:
         notif.resultado = parseo.resultado
         notif.fecha_resultado = parseo.fecha_lectura.date() if parseo.fecha_lectura else None
 
-    return advertencia
+    return {'motivo': ' '.join(avisos)} if avisos else None
 
 
 # ---------------------------------------------------------------------------
