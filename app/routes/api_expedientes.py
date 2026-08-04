@@ -45,8 +45,11 @@ from app.services.consolidacion_defectos import consolidar_defectos
 from app.services.diagnosticos import (
     crear_diagnostico, revertir_diagnostico, motivo_bloqueo_reversion,
     DiagnosticoConsumidoError, DiagnosticoSuperadoError, FaseCerradaError,
+    motivo_check_ya_exigido, motivo_check_ya_exigido_lote,
+    diagnostico_donde_se_exigio_item, diagnostico_donde_se_exigio_requerimiento,
 )
 from app.services.invariantes_esftt import check_invariante
+from app.services import bitacora as bitacora_svc
 from app.models.notificaciones import Notificacion
 from app.services.parser_justificante_notifica import (
     parsear_justificante_notifica, parsear_justificante_notifica_zip,
@@ -1247,7 +1250,15 @@ def vincular_requisito_documental(expediente_id, tarea_id, requisito_id):
     methods=['DELETE'])
 @login_required
 def desvincular_requisito_documental(expediente_id, tarea_id, requisito_id):
-    """DELETE .../requisitos-documentales/<requisito_id> — quita el vínculo documento↔requisito (#495)."""
+    """DELETE .../requisitos-documentales/<requisito_id> — quita el vínculo documento↔requisito (#495).
+
+    Body JSON opcional: {justificacion}. Desvincular es la única mutación
+    documental que puede crear un defecto nuevo (vincular siempre resuelve, nunca
+    lo contrario) — si el requisito ya figuraba en un diagnóstico notificado de una
+    vuelta anterior, el técnico se está desdiciendo de algo ya exigido y necesita
+    justificarlo (#724, 422 forzable, auditado en bitácora). Sin vínculo previo no
+    hay transición hacia el defecto: no aplica.
+    """
     expediente = Expediente.query.get_or_404(expediente_id)
     if verificar_acceso_expediente(expediente, 'gestionar_tarea'):
         return jsonify({'error': 'No tienes permiso para esta acción'}), 403
@@ -1265,9 +1276,31 @@ def desvincular_requisito_documental(expediente_id, tarea_id, requisito_id):
     vinculo = DocumentoRequisito.query.filter_by(
         requisito_id=requisito_id, solicitud_id=solicitud.id
     ).first()
+
+    data = request.get_json(silent=True) or {}
+    justificacion = (data.get('justificacion') or '').strip() or None
+
+    defecto_exigido = None
     if vinculo is not None:
+        defecto_exigido = diagnostico_donde_se_exigio_item(tarea, 'documental', requisito_id)
+        if defecto_exigido is not None and not justificacion:
+            return jsonify({
+                'error': 'Requisito ya exigido en una vuelta anterior notificada',
+                'motivo': motivo_check_ya_exigido('documental', defecto_exigido.get('texto', '')),
+                'puede_escapar': True,
+            }), 422
+
         db.session.delete(vinculo)
         db.session.commit()
+
+        if defecto_exigido is not None:
+            bitacora_svc.registrar(
+                current_user.id, 'ALTERAR', 'tareas', tarea.id,
+                detalle={
+                    'escape': True, 'justificacion': justificacion,
+                    'origen': 'documental', 'requisito_id': requisito_id,
+                },
+            )
 
     svc.sincronizar_consumido_documental(tarea)
 
@@ -1283,9 +1316,16 @@ def guardar_cobertura_tecnica(expediente_id, tarea_id, item_tecnico_id):
     POST .../coberturas-tecnicas/<item_tecnico_id> — registra el veredicto del
     tramitador sobre un ítem técnico para la solicitud de la tarea (#581).
 
-    Body JSON: {texto, cubierto}. Upsert por (item_tecnico_id, solicitud_id).
-    `cubierto` se fuerza a False si `texto` está vacío — evita el estado
-    inválido de CoberturaItemTecnico (ver su docstring).
+    Body JSON: {texto, cubierto, justificacion?}. Upsert por (item_tecnico_id,
+    solicitud_id). `cubierto` se fuerza a False si `texto` está vacío — evita el
+    estado inválido de CoberturaItemTecnico (ver su docstring).
+
+    Si el guardado hace que el ítem pase a "no cumple" (transición hacia el
+    defecto: antes no lo era —no revisado o favorable—, ahora sí) y ese ítem ya
+    figuraba en un diagnóstico notificado de una vuelta anterior, el técnico se
+    está desdiciendo de algo ya exigido y necesita justificarlo (#724, 422
+    forzable, auditado en bitácora). Guardar sin cambiar el sentido de "no
+    cumple" (o resolverlo) no pasa por aquí.
     """
     expediente = Expediente.query.get_or_404(expediente_id)
     if verificar_acceso_expediente(expediente, 'gestionar_tarea'):
@@ -1305,11 +1345,26 @@ def guardar_cobertura_tecnica(expediente_id, tarea_id, item_tecnico_id):
     data = request.get_json(silent=True) or {}
     texto = (data.get('texto') or '').strip()
     cubierto = bool(data.get('cubierto')) and bool(texto)
+    justificacion = (data.get('justificacion') or '').strip() or None
 
     solicitud = tarea.tramite.fase.solicitud
     cobertura = CoberturaItemTecnico.query.filter_by(
         item_tecnico_id=item_tecnico_id, solicitud_id=solicitud.id
     ).first()
+
+    era_defecto_antes = cobertura is not None and bool((cobertura.texto or '').strip()) and not cobertura.cubierto
+    es_defecto_despues = bool(texto) and not cubierto
+
+    defecto_exigido = None
+    if es_defecto_despues and not era_defecto_antes:
+        defecto_exigido = diagnostico_donde_se_exigio_item(tarea, 'tecnico', item_tecnico_id)
+        if defecto_exigido is not None and not justificacion:
+            return jsonify({
+                'error': 'Ítem técnico ya exigido en una vuelta anterior notificada',
+                'motivo': motivo_check_ya_exigido('tecnico', defecto_exigido.get('texto', '')),
+                'puede_escapar': True,
+            }), 422
+
     if cobertura is None:
         cobertura = CoberturaItemTecnico(
             item_tecnico_id=item_tecnico_id, solicitud_id=solicitud.id,
@@ -1320,6 +1375,15 @@ def guardar_cobertura_tecnica(expediente_id, tarea_id, item_tecnico_id):
         cobertura.texto = texto
         cobertura.cubierto = cubierto
     db.session.commit()
+
+    if defecto_exigido is not None:
+        bitacora_svc.registrar(
+            current_user.id, 'ALTERAR', 'tareas', tarea.id,
+            detalle={
+                'escape': True, 'justificacion': justificacion,
+                'origen': 'tecnico', 'item_tecnico_id': item_tecnico_id,
+            },
+        )
 
     return jsonify({'ok': True, 'checklist_tecnico': _checklist_tecnico_json(tarea)}), 200
 
@@ -1381,14 +1445,22 @@ def post_requerimientos(expediente_id, tarea_id):
     resuelto (#440, elevado a `solicitud_id` en #679, ADR-033 §7).
 
     Body JSON: {items: [{catalogo_requerimientos_id: int|null, texto_libre: str|null,
-    resuelto: bool}, ...]}. Orden = posición en la lista (1-based). Exactamente
-    uno de catalogo_requerimientos_id/texto_libre debe tener valor
+    resuelto: bool}, ...], justificacion?}. Orden = posición en la lista (1-based).
+    Exactamente uno de catalogo_requerimientos_id/texto_libre debe tener valor
     (ck_requerimientos_tarea_exactamente_uno).
 
     El frontend no debe permitir quitar de la lista un ítem ya persistido
     (con `id`) de una vuelta anterior — solo marcarlo `resuelto` — para no
     perder el juicio del técnico sin dejar rastro. El backend no lo impone
     (upsert por reemplazo total, igual que hoy): confía en esa restricción de UI.
+
+    Único endpoint que puede mutar varios ítems a la vez (reemplaza la lista
+    completa) — si alguno de los que YA estaban resueltos deja de estarlo (o
+    desaparece del payload) y ya figuraba en un diagnóstico notificado de una
+    vuelta anterior, es una transición hacia el defecto: el técnico se desdice
+    de algo ya exigido y cerrado, y necesita justificarlo en lote (#724, 422
+    forzable con la lista completa de textos afectados, auditado en bitácora).
+    Un ítem que sigue pendiente sin cambiar de sentido no pasa por aquí.
     """
     expediente = Expediente.query.get_or_404(expediente_id)
     if verificar_acceso_expediente(expediente, 'gestionar_tarea'):
@@ -1407,10 +1479,12 @@ def post_requerimientos(expediente_id, tarea_id):
     items = data.get('items')
     if not isinstance(items, list):
         return jsonify({'error': 'items debe ser una lista'}), 422
+    justificacion = (data.get('justificacion') or '').strip() or None
 
     solicitud = tarea.tramite.fase.solicitud
 
     nuevas = []
+    claves_despues = {}
     for i, it in enumerate(items, start=1):
         catalogo_id = it.get('catalogo_requerimientos_id')
         texto_libre = (it.get('texto_libre') or '').strip() or None
@@ -1418,14 +1492,52 @@ def post_requerimientos(expediente_id, tarea_id):
             return jsonify({
                 'error': f'Ítem {i}: exactamente uno de catalogo_requerimientos_id o texto_libre',
             }), 422
+        resuelto = bool(it.get('resuelto'))
         nuevas.append(RequerimientoTarea(
             solicitud_id=solicitud.id, catalogo_requerimientos_id=catalogo_id,
-            texto_libre=texto_libre, orden=i, resuelto=bool(it.get('resuelto')),
+            texto_libre=texto_libre, orden=i, resuelto=resuelto,
         ))
+        clave = ('cat', catalogo_id) if catalogo_id else ('libre', texto_libre)
+        claves_despues[clave] = resuelto
+
+    # #724: la fila se borra y recrea entera (`id` no estable entre guardados),
+    # así que el emparejamiento antes/después va por (catalogo_id) o (texto_libre)
+    # — no por `id`. Solo mira lo YA resuelto (antes) que deja de estarlo o
+    # desaparece: un ítem que sigue pendiente sin cambiar de sentido no es una
+    # transición, aunque también estuviera en un diagnóstico notificado.
+    textos_ya_exigidos = []
+    for previo in solicitud.requerimientos:
+        if not previo.resuelto:
+            continue
+        clave = ('cat', previo.catalogo_requerimientos_id) if previo.catalogo_requerimientos_id \
+            else ('libre', previo.texto_libre)
+        if claves_despues.get(clave) is True:
+            continue  # sigue resuelto, sin cambio de sentido
+        defecto = diagnostico_donde_se_exigio_requerimiento(
+            tarea, catalogo_requerimientos_id=previo.catalogo_requerimientos_id, texto=previo.texto,
+        )
+        if defecto is not None:
+            textos_ya_exigidos.append(defecto.get('texto', previo.texto))
+
+    if textos_ya_exigidos and not justificacion:
+        return jsonify({
+            'error': 'Hay requerimientos ya exigidos en una vuelta anterior notificada',
+            'motivo': motivo_check_ya_exigido_lote(textos_ya_exigidos),
+            'puede_escapar': True,
+        }), 422
 
     RequerimientoTarea.query.filter_by(solicitud_id=solicitud.id).delete()
     db.session.add_all(nuevas)
     db.session.commit()
+
+    if textos_ya_exigidos:
+        bitacora_svc.registrar(
+            current_user.id, 'ALTERAR', 'tareas', tarea.id,
+            detalle={
+                'escape': True, 'justificacion': justificacion,
+                'origen': 'requerimiento', 'items': textos_ya_exigidos,
+            },
+        )
 
     return jsonify({'ok': True, 'seleccionados': _seleccionados_json(solicitud)}), 200
 

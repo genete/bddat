@@ -451,6 +451,67 @@ def diagnostico_tramite_anterior(tramite: Tramite):
     return doc.diagnostico
 
 
+def diagnosticos_notificados_cadena(tramite: Tramite) -> list:
+    """Diagnósticos ya comunicados al titular en la cadena de subsanación hasta
+    `tramite` (incluido, vía su propio NOTIFICAR), de más reciente a más antiguo (#724).
+
+    Generaliza `diagnostico_tramite_anterior` a toda la cadena: Carlos, con
+    experiencia real de tramitación, señala que dos vueltas es el caso simple —hay
+    expedientes con varias (el peor recordado, cinco; a partir de ahí ya es reunión
+    presencial, no un caso de sistema). Cada hueco (T_i, T_i+1) se resuelve con el
+    mismo criterio que ya usa ContextoSubsanacion —T_i produce el diagnóstico, el
+    NOTIFICAR de T_i+1 dice si ya se comunicó—, encadenado trámite a trámite en vez
+    de limitarse a un solo salto.
+
+    Un hueco sin notificar no corta el recorrido (seguimos mirando vueltas más
+    antiguas): es best-effort, no asume que la cadena esté siempre bien formada.
+
+    Quien consuma esto para buscar "¿ya se exigió este ítem?" debe recorrer la
+    lista en orden y quedarse con la primera coincidencia — la vuelta notificada
+    más reciente que lo mencione (#724, criterio acordado con Carlos).
+    """
+    from app.models.notificaciones import Notificacion
+
+    fase = tramite.fase
+    tramites_cadena = sorted(
+        (t for t in fase.tramites
+         if t.tipo_tramite and t.tipo_tramite.codigo in TRAMITES_CADENA_SUBSANACION
+         and t.id <= tramite.id),
+        key=lambda t: t.id,
+    )
+
+    resultado = []
+    for i in range(len(tramites_cadena) - 1, 0, -1):
+        t_productor = tramites_cadena[i - 1]
+        t_notificador = tramites_cadena[i]
+
+        tarea_analizar = next(
+            (t for t in t_productor.tareas if t.tipo_tarea and t.tipo_tarea.codigo == 'ANALIZAR'),
+            None,
+        )
+        if tarea_analizar is None:
+            continue
+        doc = tarea_analizar.documento_producido
+        if doc is None or doc.diagnostico is None:
+            continue
+
+        ids_notificar = [
+            t.id for t in t_notificador.tareas
+            if t.tipo_tarea and t.tipo_tarea.codigo == 'NOTIFICAR'
+        ]
+        if not ids_notificar:
+            continue
+        notificado = db.session.query(
+            db.session.query(Notificacion.id)
+            .filter(Notificacion.tarea_id.in_(ids_notificar))
+            .exists()
+        ).scalar()
+        if notificado:
+            resultado.append(doc.diagnostico)
+
+    return resultado
+
+
 def ultima_tarea_cadena_subsanacion(fase_id: int) -> Optional[int]:
     """`Tarea.id` del último ANALIZAR con diagnóstico de la cadena de subsanación, o None.
 

@@ -51,13 +51,16 @@ class DiagnosticoConsumidoError(Exception):
 
 class DiagnosticoSuperadoError(Exception):
     """El diagnóstico ya ha surtido efecto aguas abajo dentro de la cadena de
-    subsanación: su contenido ya se comunicó al titular, o una vuelta posterior lo
-    superó (#714).
+    subsanación: su contenido ya se comunicó al titular, una vuelta posterior lo
+    superó (#714), o ya generó un escrito de requerimiento sin notificar todavía
+    (#724).
 
-    `puede_escapar` distingue las dos: cerrada cuando el acto ya salió fuera y no se
-    puede deshacer (notificado — LPACAP); forzable con justificación mientras todo
-    queda en casa. El default del proyecto es dejar salida: obligar a justificar ya
-    hace que el técnico se pare, y la justificación queda en bitácora.
+    `puede_escapar` distingue cerrado de forzable: cerrada cuando el acto ya salió
+    fuera y no se puede deshacer (notificado — LPACAP); forzable con justificación
+    mientras todo queda en casa (superado por vuelta posterior, o escrito elaborado/
+    firmado pendiente de notificar — #724: se pierde trabajo real sin dejar rastro
+    si no se para al técnico). El default del proyecto es dejar salida: obligar a
+    justificar ya hace que el técnico se pare, y la justificación queda en bitácora.
     """
 
     def __init__(self, motivo: str, *, puede_escapar: bool):
@@ -80,10 +83,45 @@ class MotivoIrreversible(NamedTuple):
     puede_escapar: bool
 
 
+def _hay_elaborar_producido_sin_notificar_en_cadena(tarea: Tarea) -> bool:
+    """True si hay un ELABORAR posterior en la cadena de subsanación con documento
+    ya producido (#724): el escrito de requerimiento que se apoya en este
+    diagnóstico existe —redactado, quizá firmado— aunque todavía no se haya
+    notificado.
+
+    Simétrico a `_hay_notificacion_posterior_en_cadena`: mismo criterio de orden
+    (`Tarea.id`, cadena de subsanación), pero mirando ELABORAR + `DocumentoTarea`
+    PRODUCIDO en vez de NOTIFICAR + `Notificacion`. No comprueba si ya se notificó
+    — eso lo resuelve `_hay_notificacion_posterior_en_cadena`, que se evalúa antes
+    en `_motivo_diagnostico_superado` y manda si coincide (puerta cerrada gana).
+    """
+    from app.models.tramites import Tramite
+    from app.models.tipos_tareas import TipoTarea
+    from app.models.tipos_tramites import TipoTramite
+
+    return db.session.query(
+        db.session.query(Tarea.id)
+        .join(Tramite, Tarea.tramite_id == Tramite.id)
+        .join(TipoTarea, Tarea.tipo_tarea_id == TipoTarea.id)
+        .join(TipoTramite, Tramite.tipo_tramite_id == TipoTramite.id)
+        .join(DocumentoTarea, db.and_(
+            DocumentoTarea.tarea_id == Tarea.id,
+            DocumentoTarea.rol == 'PRODUCIDO',
+        ))
+        .filter(
+            Tramite.fase_id == tarea.tramite.fase_id,
+            Tarea.id > tarea.id,
+            TipoTarea.codigo == 'ELABORAR',
+            TipoTramite.codigo.in_(TRAMITES_CADENA_SUBSANACION),
+        )
+        .exists()
+    ).scalar()
+
+
 def _motivo_diagnostico_superado(tarea: Tarea) -> Optional[MotivoIrreversible]:
     """Motivo por el que el diagnóstico de `tarea` ya no es reversible, o None (#714).
 
-    Dos causas, ambas acotadas a la **cadena de subsanación**: fuera de ella los
+    Tres causas, todas acotadas a la **cadena de subsanación**: fuera de ella los
     diagnósticos de una fase son paralelos —un `CONSULTA_SEPARATA` por organismo— y
     ninguno se apoya en otro, así que ni se superan ni se vuelcan en un requerimiento
     (mismo acotamiento que el invariante de cierre de #711, en espejo).
@@ -93,7 +131,7 @@ def _motivo_diagnostico_superado(tarea: Tarea) -> Optional[MotivoIrreversible]:
        `notificaciones`: el requerimiento salió y el diagnóstico es la evidencia
        congelada de lo que se le requirió. Se comprueba **primero** porque es la más
        restrictiva y lo normal es que ambas casen a la vez —hubo vuelta *porque* se
-       notificó—: evaluar antes la forzable dejaría escapable un caso ya notificado.
+       notificó—: evaluar antes las forzables dejaría escapable un caso ya notificado.
     2. **Superado por una vuelta posterior** (forzable con justificación). No es el
        último ANALIZAR con diagnóstico de la cadena: la vuelta siguiente ya revisó lo
        mismo apoyándose en él. Se lee del mismo helper que usa `_check_cierre_fase`,
@@ -101,6 +139,14 @@ def _motivo_diagnostico_superado(tarea: Tarea) -> Optional[MotivoIrreversible]:
        nada ha salido fuera: el camino limpio es revertir en orden inverso (la última
        vuelta primero), y el escape solo evita rehacer todo lo planificado después,
        dejando rastro en bitácora.
+    3. **Progreso aguas abajo sin notificar** (forzable con justificación, #724).
+       El ELABORAR de la vuelta que este diagnóstico desencadenó ya produjo el
+       escrito —redactado, quizá firmado— pero aún no se ha notificado: hoy la
+       reversión era libre ahí (solo confirmación destructiva) y se perdía ese
+       trabajo sin rastro ni justificación. Se comprueba **después** de 1 y 2: si ya
+       se notificó, manda la puerta cerrada; si hay vuelta posterior con su propio
+       diagnóstico, ese es el motivo más informativo aunque este también sea cierto
+       (el ELABORAR de esa vuelta posterior normalmente ya existe).
 
     Nota: la fila de `notificaciones` cuenta aunque `resultado` sea NULL — existe desde
     que se registra el envío (camino A de ADR-034), y `fecha_puesta_disposicion` es NOT
@@ -133,6 +179,15 @@ def _motivo_diagnostico_superado(tarea: Tarea) -> Optional[MotivoIrreversible]:
             puede_escapar=True,
         )
 
+    if _hay_elaborar_producido_sin_notificar_en_cadena(tarea):
+        return MotivoIrreversible(
+            'El escrito de requerimiento que se apoya en este diagnóstico ya se ha '
+            'redactado (o incluso firmado), aunque todavía no se ha notificado. '
+            'Revertir el diagnóstico ahora destruye ese trabajo sin dejar rastro; si '
+            'aun así quieres revertirlo, justifícalo.',
+            puede_escapar=True,
+        )
+
     return None
 
 
@@ -159,6 +214,112 @@ def motivo_bloqueo_reversion(tarea: Tarea) -> Optional[MotivoIrreversible]:
     if consumidores:
         return MotivoIrreversible(str(DiagnosticoConsumidoError(consumidores[0])), puede_escapar=False)
     return _motivo_diagnostico_superado(tarea)
+
+
+# =============================================================================
+# Punto 2 (#724): modificar un check ya exigido en una vuelta notificada
+# =============================================================================
+
+_ETIQUETA_ORIGEN_CHECK = {
+    'documental': 'este requisito documental',
+    'tecnico': 'este ítem técnico',
+    'requerimiento': 'este requerimiento',
+}
+
+
+def motivo_check_ya_exigido(origen: str, texto: str) -> str:
+    """Mensaje del 422 forzable cuando se toca un check que ya figuraba en un
+    diagnóstico notificado de una vuelta anterior (#724, criterio acordado con
+    Carlos: "no son solo dos vueltas" — ver
+    `invariantes_esftt.diagnosticos_notificados_cadena`, que recorre toda la
+    cadena y se queda con la primera coincidencia, la vuelta notificada más
+    reciente).
+
+    Cubre la transición hacia el defecto (no-defecto → defecto): algo que se dio
+    por corregido o por bueno y ahora se vuelve a marcar como pendiente. Tocar un
+    ítem que sigue pendiente sin cambiar de sentido, o resolver uno pendiente, no
+    pasa por aquí — no hay nada de lo que desdecirse.
+    """
+    etiqueta = _ETIQUETA_ORIGEN_CHECK.get(origen, 'este ítem')
+    return (
+        f'Se está volviendo a exigir {etiqueta} ya exigido y dado por corregido: '
+        f'«{texto}». Debes justificar por qué se exige de nuevo.'
+    )
+
+
+def motivo_check_ya_exigido_lote(items: list) -> str:
+    """Como `motivo_check_ya_exigido` pero para varios ítems tocados en una sola
+    llamada (#724): solo `post_requerimientos` puede mutar varios a la vez —
+    reemplaza la lista completa del shuttle en un único POST. `items` es una
+    lista de textos ya afectados.
+    """
+    if len(items) == 1:
+        return motivo_check_ya_exigido('requerimiento', items[0])
+    listado = ', '.join(f'«{t}»' for t in items)
+    return (
+        f'Se están volviendo a exigir {len(items)} requerimientos ya exigidos y '
+        f'dados por corregidos: {listado}. Debes justificar por qué se exigen de nuevo.'
+    )
+
+
+_CLAVE_ID_POR_ORIGEN = {'documental': 'requisito_id', 'tecnico': 'item_tecnico_id'}
+
+
+def diagnostico_donde_se_exigio_item(tarea: Tarea, origen: str, item_id: int) -> Optional[dict]:
+    """Defecto congelado (dict de `Diagnostico.defectos`) de la vuelta notificada
+    más reciente de la cadena que ya exigía este ítem documental/técnico, o None
+    (#724). `origen` ∈ {'documental', 'tecnico'} — el libre usa
+    `diagnostico_donde_se_exigio_requerimiento` (su id no es estable, ver
+    consolidacion_defectos._items_requerimiento).
+
+    Fuera de la cadena de subsanación (paralelos, #711) no hay "vuelta anterior"
+    de la que desdecirse: no aplica.
+    """
+    from app.services.invariantes_esftt import diagnosticos_notificados_cadena
+
+    tramite = tarea.tramite
+    if tramite is None or tramite.tipo_tramite is None:
+        return None
+    if tramite.tipo_tramite.codigo not in TRAMITES_CADENA_SUBSANACION:
+        return None
+
+    clave = _CLAVE_ID_POR_ORIGEN[origen]
+    for diagnostico in diagnosticos_notificados_cadena(tramite):
+        for defecto in (diagnostico.defectos or []):
+            if defecto.get('origen') == origen and defecto.get(clave) == item_id:
+                return defecto
+    return None
+
+
+def diagnostico_donde_se_exigio_requerimiento(
+    tarea: Tarea, *, catalogo_requerimientos_id: Optional[int], texto: str,
+) -> Optional[dict]:
+    """Como `diagnostico_donde_se_exigio_item` pero para el eje de requerimientos
+    libres (#724): la fila de `RequerimientoTarea` se borra y recrea entera en
+    cada guardado del shuttle, así que su id no sirve de emparejamiento estable
+    (ver nota en `consolidacion_defectos._items_requerimiento`). Empareja por
+    `catalogo_requerimientos_id` cuando lo hay; si es texto libre (sin id de
+    catálogo), por coincidencia exacta de texto — misma degradación ya aceptada
+    para diagnósticos anteriores a #724 sin estos ids.
+    """
+    from app.services.invariantes_esftt import diagnosticos_notificados_cadena
+
+    tramite = tarea.tramite
+    if tramite is None or tramite.tipo_tramite is None:
+        return None
+    if tramite.tipo_tramite.codigo not in TRAMITES_CADENA_SUBSANACION:
+        return None
+
+    for diagnostico in diagnosticos_notificados_cadena(tramite):
+        for defecto in (diagnostico.defectos or []):
+            if defecto.get('origen') != 'requerimiento':
+                continue
+            if catalogo_requerimientos_id is not None:
+                if defecto.get('catalogo_requerimientos_id') == catalogo_requerimientos_id:
+                    return defecto
+            elif defecto.get('catalogo_requerimientos_id') is None and defecto.get('texto') == texto:
+                return defecto
+    return None
 
 
 def _hay_notificacion_posterior_en_cadena(tarea: Tarea) -> bool:

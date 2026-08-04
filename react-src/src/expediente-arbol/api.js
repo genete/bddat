@@ -95,13 +95,19 @@ export function vincularRequisitoDocumental(expedienteId, tareaId, requisitoId, 
   )
 }
 
-export function desvincularRequisitoDocumental(expedienteId, tareaId, requisitoId) {
-  return api.delete(
-    `/api/expedientes/${expedienteId}/nodo/tarea/${tareaId}/requisitos-documentales/${requisitoId}`,
-  )
+// `justificacion` (#724): solo hace falta cuando el requisito ya se exigió al
+// titular en una vuelta notificada anterior y desvincular lo devuelve a
+// pendiente — sin eso, la mutación es libre (vincular nunca la necesita, nunca
+// crea un defecto nuevo). Sin `justificacion`, 422 {motivo, puede_escapar:true}.
+export function desvincularRequisitoDocumental(expedienteId, tareaId, requisitoId, justificacion) {
+  const url = `/api/expedientes/${expedienteId}/nodo/tarea/${tareaId}/requisitos-documentales/${requisitoId}`
+  return justificacion ? api.delete(url, { body: { justificacion } }) : api.delete(url)
 }
 
 // Check técnico (#581): registra el veredicto (texto + cubierto) de un ítem técnico.
+// `body` puede incluir `justificacion` (#724) si un guardado previo devolvió 422
+// {puede_escapar:true} — el ítem ya se exigió al titular en una vuelta notificada
+// y este guardado lo vuelve a marcar "no cumple".
 // Respuesta: {ok:true, checklist_tecnico:[...]}.
 export function guardarCoberturaTecnica(expedienteId, tareaId, itemTecnicoId, body) {
   return api.post(
@@ -118,9 +124,14 @@ export function getRequerimientos(expedienteId, tareaId) {
 }
 
 // Sustituye la lista completa de requerimientos_tarea de la solicitud en una sola llamada.
-// body: {items: [{catalogo_requerimientos_id, texto_libre, resuelto}, ...]}.
-export function postRequerimientos(expedienteId, tareaId, items) {
-  return api.post(`/api/expedientes/${expedienteId}/nodo/tarea/${tareaId}/requerimientos`, { items })
+// body: {items: [{catalogo_requerimientos_id, texto_libre, resuelto}, ...], justificacion?}.
+// `justificacion` (#724): solo hace falta si el guardado devolvió 422
+// {puede_escapar:true} — alguno de los ítems ya resueltos vuelve a quedar
+// pendiente (o desaparece) y ya se había exigido al titular en una vuelta
+// notificada anterior. El motivo del 422 ya trae listados todos los afectados.
+export function postRequerimientos(expedienteId, tareaId, items, justificacion) {
+  const body = justificacion ? { items, justificacion } : { items }
+  return api.post(`/api/expedientes/${expedienteId}/nodo/tarea/${tareaId}/requerimientos`, body)
 }
 
 // Crea una entrada nueva en catalogo_requerimientos desde el shuttle ("Guardar en catálogo").

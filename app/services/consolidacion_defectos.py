@@ -6,7 +6,16 @@ contenedor: check documental (#495), check de ítems técnicos (#581) y
 selector de requerimientos (#440).
 
 FORMA DEL ITEM:
-    {'texto': str, 'origen': 'documental'|'tecnico'|'requerimiento', 'tarea_id': int}
+    {'texto': str, 'origen': 'documental'|'tecnico'|'requerimiento', 'tarea_id': int, ...}
+
+    Cada origen añade su propio id estable (#724 — detectar si un ítem ya se exigió
+    en una vuelta anterior notificada, ver diagnosticos.diagnostico_donde_se_exigio_*):
+    documental → 'requisito_id', tecnico → 'item_tecnico_id', requerimiento →
+    'catalogo_requerimientos_id' (None si es texto libre — sin id de catálogo, el
+    emparejamiento cae al texto exacto, único identificador disponible para ese caso).
+    Los diagnósticos ya congelados antes de #724 no llevan estos ids: el
+    emparejamiento simplemente no encuentra coincidencia (degradación aceptada, no
+    bloquea de más).
 
 CAMPO 'completo':
     AND de "¿queda algo sin revisar?" de los proveedores con estado de
@@ -47,7 +56,7 @@ def _items_documental(tarea) -> tuple[list, bool]:
             continue
         req = it['requisito']
         texto = (req.descripcion_legal or '') + _cita_normativa(req.norma, req.articulo)
-        items.append({'texto': texto, 'origen': 'documental', 'tarea_id': tarea.id})
+        items.append({'texto': texto, 'origen': 'documental', 'tarea_id': tarea.id, 'requisito_id': req.id})
     return items, resultado['todos_cubiertos']
 
 
@@ -73,7 +82,10 @@ def _items_tecnico(tarea) -> tuple[list, bool]:
             continue  # favorable — no es defecto
         item_tecnico = it['item']
         texto = (item_tecnico.descripcion or '') + _cita_normativa(item_tecnico.norma, item_tecnico.articulo)
-        items.append({'texto': texto, 'origen': 'tecnico', 'tarea_id': tarea.id})
+        items.append({
+            'texto': texto, 'origen': 'tecnico', 'tarea_id': tarea.id,
+            'item_tecnico_id': item_tecnico.id,
+        })
     return items, resultado['todos_revisados']
 
 
@@ -93,7 +105,14 @@ def _items_requerimiento(tarea) -> tuple[list, list]:
     solicitud = tarea.tramite.fase.solicitud
     pendientes, resueltos = [], []
     for r in solicitud.requerimientos:
-        item = {'texto': r.texto, 'origen': 'requerimiento', 'tarea_id': tarea.id}
+        item = {
+            'texto': r.texto, 'origen': 'requerimiento', 'tarea_id': tarea.id,
+            # No 'requerimiento_tarea_id': la fila se borra y recrea entera en cada
+            # guardado del shuttle (post_requerimientos), así que su id no es estable
+            # entre vueltas. El id de catálogo sí lo es; el texto libre no tiene
+            # ninguno — el emparejamiento cae al texto exacto (#724).
+            'catalogo_requerimientos_id': r.catalogo_requerimientos_id,
+        }
         (resueltos if r.resuelto else pendientes).append(item)
     return pendientes, resueltos
 
