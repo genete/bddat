@@ -23,6 +23,19 @@
 {% block extra_css %}{{ super() }}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/selector_filtro.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/input_filtro.css') }}">
+<style>
+  /* Layout interno (filtros + scroll) en flex-column, pero SOLO cuando Bootstrap
+     marca la pestaña activa — display:flex puesto inline en el .tab-pane pisaría
+     por especificidad el display:none de Bootstrap sobre la pestaña inactiva y
+     dejaría las dos pestañas visibles y apiladas a la vez (clics cruzados). */
+  #pane-seguimiento.tab-pane.active,
+  #pane-huerfanos.tab-pane.active {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    flex: 1;
+  }
+</style>
 {% endblock %}
 
 {% block viewbar %}
@@ -56,8 +69,7 @@
 
     {# ── Pestaña Seguimiento — contenido movido de expedientes/seguimiento.html ── #}
     <div class="tab-pane fade show active" id="pane-seguimiento" role="tabpanel"
-         aria-labelledby="syh-tab-seguimiento"
-         style="flex:1; min-height:0; display:flex; flex-direction:column">
+         aria-labelledby="syh-tab-seguimiento">
 
       <div class="lista-cabecera">
         <div class="filters-row">
@@ -103,8 +115,7 @@
 
     {# ── Pestaña Huérfanos — radar del pool sin vínculo a tarea (ADR-027 §2 / #630) ── #}
     <div class="tab-pane fade" id="pane-huerfanos" role="tabpanel"
-         aria-labelledby="syh-tab-huerfanos"
-         style="flex:1; min-height:0; display:flex; flex-direction:column">
+         aria-labelledby="syh-tab-huerfanos">
 
       <div class="lista-cabecera">
         <div class="filters-row">
