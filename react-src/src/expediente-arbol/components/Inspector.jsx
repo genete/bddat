@@ -451,6 +451,7 @@ function BarraEdicion({ tipo, nodo }) {
 function InspectorEdicion({ nodo }) {
   const seleccion             = useArbolStore((s) => s.seleccion)
   const borrarPendienteConfirm = useArbolStore((s) => s.borrarPendienteConfirm)
+  const solicitarBorrado      = useArbolStore((s) => s.solicitarBorrado)
   const seccionesExtendidas   = useArbolStore((s) => s.analizarSeccionesExtendidas)
   // ANALIZAR (#442): contenedor bespoke en vez del Editor genérico — secciones de
   // checklist + resultado + producir diagnóstico no encajan en el esquema
@@ -470,6 +471,12 @@ function InspectorEdicion({ nodo }) {
   // sin cambios. `seccionesExtendidas` es null hasta que AnalizarEditor confirma el
   // valor real (primer getAnalizar) — se muestra por defecto hasta saberlo con certeza.
   const ocultarDespensa = esAnalizar && seccionesExtendidas === true
+  // Los tres editores bespoke no traen su propio control de borrado (a diferencia
+  // del Editor genérico, que lo integra en su form) — #742. Fase cerrada no aplica
+  // aquí: seleccion.tipo es siempre 'tarea', nunca 'fase' (mismo supuesto que ya
+  // asume el Editor genérico para tareas).
+  const esBespoke = esAnalizar || esElaborar || esNotificar
+  const puedeBorrarTarea = esBespoke && puedeEditarNodo('tarea')
   return (
     <div className="d-flex flex-column h-100 arbol-inspector--lock">
       <BarraEdicion tipo={seleccion.tipo} nodo={nodo} />
@@ -484,6 +491,12 @@ function InspectorEdicion({ nodo }) {
                 ? <NotificarEditor tareaId={seleccion.id} />
                 : <Editor nodo={nodo} />
         }
+        {!borrarPendienteConfirm && puedeBorrarTarea && (
+          <div className="d-flex mt-3">
+            <button type="button" className="btn btn-sm btn-outline-danger"
+                    onClick={solicitarBorrado}>🗑️ Borrar</button>
+          </div>
+        )}
         {!borrarPendienteConfirm && !ocultarDespensa && (
           <div className="border-top mt-3 pt-3">
             <Despensa deshabilitarProducido={esAnalizar} />
