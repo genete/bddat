@@ -68,17 +68,29 @@ implante, podrá afinar qué se lista como huérfano, pero no es requisito previ
 | Columna | Contenido |
 |---|---|
 | Expediente | AT, filtrable |
-| Asignación | Bombilla 🔴/🟢 — mismo lenguaje visual que el indicador del header (`bi-lightbulb-fill`, `text-danger`/`text-success`), misma condición que `es_expediente_ajeno()` (`app/utils/permisos.py`), calculada **por fila** sobre `Expediente.responsable_id` ya cargado por el join — no reutiliza el mecanismo de página única (`g.expediente_actual` / context processor), que es de forma incompatible con una tabla de N expedientes |
+| Asignación | Dato crudo `responsable: {id, siglas}` (o `null` → "Sin asignar", mismo cubo que `_SIN_ASIGNAR` de `estadisticas_supervisor.py`) — el render lo decide el cliente por rol, ver más abajo |
 | Tipo documento | `TipoDocumento.nombre` |
 | Descripción | `Documento.asunto` |
 | Fichero | Nombre + acción "Ver" — reutiliza `info_apertura_documento()` (`app/services/detalle_nodo.py`), el mismo helper que ya usa la Despensa del árbol para documentos aún no enlazados (#609). Cero backend nuevo. |
 | Acciones | Enlazar (abre panel de candidatas) · Borrar |
 
-Filtro `ver=mis` (por defecto) / `todos` — mismo patrón que `seguimiento`
-(`Expediente.responsable_id == current_user.id`), mismo parámetro y mismo comportamiento en
-`GET /api/documentos/huerfanos`. Con `ver=mis` todas las filas son del propio técnico (la
-bombilla sale siempre verde); `ver=todos` es lo que permite al supervisor ver cuántos huérfanos
-quedan en todo el sistema y a quién pertenece cada uno.
+**Asignación y filtro, adaptados por rol** (refinado 2026-08-04 tras discusión con Carlos, para
+dejar la vía abierta a un futuro agregado por técnico en Control y Gestión → Estadísticas, y a
+una vista de detalle de ese agregado — sin tener que tocar el contrato de datos cuando llegue):
+`GET /api/documentos/huerfanos` devuelve siempre el dato **crudo** (`responsable.siglas`), nunca
+un booleano pre-renderizado — mismo patrón que ya usa `pista_*` en `seguimiento.html` (JSON
+crudo, `renderFns` client-side decide el HTML por columna). Solo TRAMITADOR puede ser responsable
+de expediente (invariante ya fijado por `_usuarios_tramitadores()`,
+`app/modules/expedientes/routes.py`) — ese hecho decide la forma:
+
+| Rol activo | Render de "Asignación" | Filtro |
+|---|---|---|
+| TRAMITADOR | Bombilla 🔴/🟢 — mismo lenguaje visual que el indicador del header (`bi-lightbulb-fill`, `text-danger`/`text-success`), misma condición que `es_expediente_ajeno()` (`app/utils/permisos.py`), calculada **por fila** sobre `responsable.id` — no reutiliza el mecanismo de página única (`g.expediente_actual`/context processor), incompatible en forma con una tabla de N expedientes | `ver=mis` (por defecto) / `todos`, mismo patrón que `seguimiento` |
+| SUPERVISOR / ADMIN / ADMINISTRATIVO | Texto plano con las siglas (o "Sin asignar") | `todos` fijo + selector `responsable_id=<id>`, poblado reutilizando `_usuarios_tramitadores()` |
+
+Con `ver=mis` todas las filas son del propio técnico (la bombilla sale siempre verde); el modo
+`todos` con filtro por usuario es lo que permite al supervisor ver cuántos huérfanos quedan en
+todo el sistema y de quién.
 
 ### 4. Inferencia de tareas candidatas — usa el catálogo hoy muerto
 
