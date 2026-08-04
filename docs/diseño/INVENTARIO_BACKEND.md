@@ -302,7 +302,7 @@ Selección: primera entrada activa cuyas `CondicionPlazo` (AND) se cumplen. Orde
 | `api_expedientes` | `/api/expedientes/` (listado paginado), filtros, búsqueda | `lista_v2_base.html` |
 | `api_entidades` | `/api/entidades/` listado, `/api/entidades/candidatos_autorizacion` | `entidades/index.html`, `entidades/detalle.html` |
 | `api_proyectos` | `/api/proyectos/` listado | `proyectos/index.html` |
-| `api_seguimiento` | `/api/seguimiento/` agregación por solicitud con `estado_solicitud` | `expedientes/seguimiento.html` |
+| `api_seguimiento` | `/api/seguimiento/` agregación por solicitud con `estado_solicitud` | `seguimiento_y_huerfanos/index.html` (pestaña Seguimiento, #630 ADR-038) |
 | `api_bc` | CRUDs para breadcrumbs: crear/editar/finalizar Fase/Tramite/Tarea con evaluación del motor en cada operación | `tramitacion_bc_*.html` + `v3-breadcrumbs-*.js` |
 | `api_municipios` | Búsqueda y selector | `municipios_selector.js` |
 | `api_escritos` | Generación de escritos: lista plantillas aplicables, genera .docx, guarda en pool | `generar_escrito.js` (huérfano en templates actuales) |

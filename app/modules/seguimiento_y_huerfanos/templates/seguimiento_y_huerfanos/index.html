@@ -1,21 +1,124 @@
-{% extends 'layout/lista_v2_base.html' %}
+{# index.html — Hub "Seguimiento y Huérfanos" (#630, ADR-038).
 
-{% block page_title %}Seguimiento{% endblock %}
-{% block page_icon %}<i class="fas fa-tasks"></i>{% endblock %}
-{% block search_placeholder %}Buscar por Nº AT o titular...{% endblock %}
+   No extiende lista_v2_base.html (asume una sola tabla) — dos pestañas
+   nav-tabs, cada una con su propia cabecera de filtros + tabla + scroll,
+   patrón ya usado por tablas_maestras/listado.html. Seguimiento: contenido
+   movido sin cambios desde expedientes/seguimiento.html (#559 ADR-023 §9).
+   Huérfanos: radar del pool sin vínculo a tarea (ADR-027 §2) — pendiente
+   de implementar en tarea aparte del mismo issue.
 
-{% block filtros_extra %}
-<div id="sf-ver"></div>
-<div id="sf-estado"></div>
-<div id="sf-tipo-titular"></div>
-<div id="sf-tipo-expediente"></div>
+   NOTA (para cuando se construya Huérfanos): v2-tabla-scroll-to-top.js es
+   de instancia única (querySelector/getElementById sin scope) — con dos
+   tablas reales en la página, la pestaña Huérfanos necesita su propio botón
+   con id distinto y su propio manejador, no reutilizar #tabla-scroll-to-top
+   tal cual (mismo motivo por el que tablas_maestras no usa este script
+   compartido y resuelve el scroll-to-top con sus propios botones por pestaña).
+#}
+{% extends "layout/base_app.html" %}
+
+{% block title %}Seguimiento y Huérfanos{% endblock %}
+
+{% block extra_css %}{{ super() }}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/selector_filtro.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/input_filtro.css') }}">
 {% endblock %}
 
-{% block tabla_clase %}seguimiento-table{% endblock %}
+{% block viewbar %}
+<span class="app-viewbar__title">
+  <i class="fas fa-tasks"></i>
+  <span>Seguimiento y Huérfanos</span>
+</span>
+{% endblock %}
 
+{% block content %}
+<div class="syh-shell" style="flex:1; min-height:0; display:flex; flex-direction:column">
 
-{% block extra_js %}
-{{ super() }}
+  <ul class="nav nav-tabs" id="syhTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+      <button class="nav-link active" id="syh-tab-seguimiento" data-bs-toggle="tab"
+              data-bs-target="#pane-seguimiento" type="button" role="tab"
+              aria-controls="pane-seguimiento" aria-selected="true">
+        <i class="fas fa-list-check me-1"></i>Seguimiento
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="syh-tab-huerfanos" data-bs-toggle="tab"
+              data-bs-target="#pane-huerfanos" type="button" role="tab"
+              aria-controls="pane-huerfanos" aria-selected="false">
+        <i class="fas fa-file-circle-question me-1"></i>Huérfanos
+      </button>
+    </li>
+  </ul>
+
+  <div class="tab-content flex-grow-1" style="min-height:0; display:flex; flex-direction:column">
+
+    {# ── Pestaña Seguimiento — contenido movido de expedientes/seguimiento.html ── #}
+    <div class="tab-pane fade show active" id="pane-seguimiento" role="tabpanel"
+         aria-labelledby="syh-tab-seguimiento"
+         style="flex:1; min-height:0; display:flex; flex-direction:column">
+
+      <div class="lista-cabecera">
+        <div class="filters-row">
+          <div class="filters">
+            <input type="search" id="seg-search" placeholder="Buscar por Nº AT o titular..." aria-label="Buscar">
+            <div id="sf-ver"></div>
+            <div id="sf-estado"></div>
+            <div id="sf-tipo-titular"></div>
+            <div id="sf-tipo-expediente"></div>
+            <button class="btn btn-outline-primary btn-limpiar" disabled>
+              <i class="fas fa-times"></i> Limpiar
+            </button>
+          </div>
+          <div class="pagination-info">
+            <i class="fas fa-filter filtro-indicador me-1"></i><span>0</span> de <span>0</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="lista-scroll-container">
+        <div class="py-3">
+          <div class="card tabla-bloque">
+            <table class="lista-table seguimiento-table">
+              <thead>
+                <tr>
+                  {% for col in columns %}
+                  {% set th_cls %}{% if col.hide %}lt-hide-{{ col.hide }} {% endif %}{% if col.truncate %}lt-truncate{% endif %}{% endset %}
+                  <th{% if th_cls|trim %} class="{{ th_cls|trim }}"{% endif %}>{{ col.label }}</th>
+                  {% endfor %}
+                </tr>
+              </thead>
+              <tbody>
+                <!-- Filas cargadas dinámicamente por ScrollInfinito -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <button id="tabla-scroll-to-top" aria-label="Volver arriba de la tabla">
+          <i class="fas fa-chevron-up"></i>
+        </button>
+      </div>
+    </div>
+
+    {# ── Pestaña Huérfanos — placeholder, se construye en tarea aparte de #630 ── #}
+    <div class="tab-pane fade" id="pane-huerfanos" role="tabpanel"
+         aria-labelledby="syh-tab-huerfanos"
+         style="flex:1; min-height:0; display:flex; flex-direction:column">
+      <div class="p-4 text-secondary text-center">
+        <i class="fas fa-tools fa-2x mb-2 d-block"></i>
+        Radar de huérfanos — en construcción (#630).
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}{{ super() }}
+<script src="{{ url_for('static', filename='js/v2-scroll-infinito.js') }}"></script>
+<script src="{{ url_for('static', filename='js/v2-filtros.js') }}"></script>
+<script src="{{ url_for('static', filename='js/v2-tabla-scroll-to-top.js') }}"></script>
+<script src="{{ url_for('static', filename='js/selector_filtro.js') }}"></script>
+<script src="{{ url_for('static', filename='js/input_filtro.js') }}"></script>
 <script>
 // ===== SELECTORES DE FILTRO =====
 // Instanciados antes de las clases para que sus valores sean accesibles
@@ -209,7 +312,7 @@ const scrollInfinito = new SeguimientoScroll({
     // Modo selección (ADR-023 / #559): click en fila → inspector de lectura del
     // agregado; la edición se delega al árbol vía "Ir a tramitar".
     selection: {
-        fragmentUrl: id   => `/expedientes/seguimiento/${id}/fragmento`,
+        fragmentUrl: id   => `/seguimiento_y_huerfanos/seguimiento/${id}/fragmento`,
         title:       item => `AT-${item.num_at} · ${item.tipo_solicitud || ''}`,
     },
 });
@@ -267,7 +370,7 @@ const _selParam = new URLSearchParams(location.search).get('sel');
 if (_selParam && window.AppInspector) {
     AppInspector.open({
         selId:       _selParam,
-        fragmentUrl: `/expedientes/seguimiento/${_selParam}/fragmento`,
+        fragmentUrl: `/seguimiento_y_huerfanos/seguimiento/${_selParam}/fragmento`,
     });
 }
 

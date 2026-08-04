@@ -9,8 +9,9 @@ RUTAS:
     POST /expedientes/<id>/editar               → guardar cambios; JSON si XHR, redirect si no (#543)
     GET  /expedientes/<id>/gestionar-municipios → parcial modal grande municipios (ADR-023 §6 #543)
     POST /expedientes/<id>/municipios           → guardar municipios; JSON si XHR (#543)
-    GET  /expedientes/<id>/seguimiento/         → listado de seguimiento (ruta auxiliar)
     (otros: arbol, pool_documentos, cert_pdf…)
+
+    Seguimiento se movió a seguimiento_y_huerfanos (#630, ADR-038) — ya no vive aquí.
 
 VERSIÓN: 2.0
 FECHA: 2026-06-11
@@ -30,7 +31,6 @@ from app.models.usuarios import Usuario, Rol
 from app.models.tipos_expedientes import TipoExpediente
 from app.models.tipos_ia import TipoIA
 from app.models.municipios_proyecto import MunicipioProyecto
-from app.models.solicitudes import Solicitud
 from app.models.fases import Fase
 from app.models.tramites import Tramite
 from app.models.tareas import Tarea
@@ -57,53 +57,6 @@ from app.utils.metadata import cargar_metadata
 bp = Blueprint('expedientes', __name__,
                url_prefix='/expedientes',
                template_folder='templates')
-
-
-@bp.route('/seguimiento/')
-@login_required
-def seguimiento():
-    """
-    Listado inteligente de seguimiento: cola de trabajo multi-pista.
-
-    Cada fila es una solicitud EN_TRAMITE (o con el estado seleccionado).
-    El estado de cada pista se deduce dinámicamente vía API /api/expedientes/seguimiento.
-    """
-    meta = cargar_metadata('expedientes')
-    columns = meta.get('seguimiento', {}).get('columns', [])
-    tipos_expedientes = TipoExpediente.query.order_by(TipoExpediente.tipo).all()
-    return render_template(
-        'expedientes/seguimiento.html',
-        columns=columns,
-        tipos_expedientes=tipos_expedientes,
-    )
-
-
-@bp.route('/seguimiento/<int:solicitud_id>/fragmento')
-@login_required
-def seguimiento_fragmento(solicitud_id):
-    """Fragmento de lectura del inspector de seguimiento (ADR-023 §9 / #559).
-
-    Detalle del agregado de una solicitud en el lenguaje del árbol (semáforo por
-    nodo). Solo lectura: la edición se delega al árbol vía "Ir a tramitar". El color
-    de cada nodo sale de estado_dominio (#558) → misma verdad que verás al saltar.
-    """
-    from app.services.arbol_expediente import construir_arbol_solicitud
-
-    sol = Solicitud.query.get_or_404(solicitud_id)
-    resultado = verificar_acceso_expediente(sol.expediente, 'ver')
-    if resultado:
-        return '', 403
-
-    arbol = construir_arbol_solicitud(solicitud_id)
-    if arbol is None:
-        return '', 404
-
-    return render_template(
-        'expedientes/_inspector_seguimiento.html',
-        solicitud=arbol['solicitud'],
-        expediente=arbol['expediente'],
-        cuello_botella=arbol['cuello_botella'],
-    )
 
 
 def _usuarios_tramitadores():

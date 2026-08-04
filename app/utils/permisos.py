@@ -40,6 +40,12 @@ PERMISOS = {
     # universal, solo la navegación lo escondía tras el rol ADMINISTRATIVO.
     'acceder_tareas_y_subidas':  {'ADMIN', 'SUPERVISOR', 'TRAMITADOR', 'ADMINISTRATIVO'},
 
+    # Hub "Seguimiento y Huérfanos" — cola del TRAMITADOR + radar de huérfanos
+    # (#630, ADR-038). Resuelve el tercer caso de la "Deuda conocida" de
+    # ADR-017: hub propio universal en lectura, mismo patrón que los dos
+    # anteriores.
+    'acceder_seguimiento_y_huerfanos': {'ADMIN', 'SUPERVISOR', 'TRAMITADOR', 'ADMINISTRATIVO'},
+
     # Sin UI aún — reservados para #170/#171
     'acceder_reglas_motor':      {'ADMIN', 'SUPERVISOR', 'TRAMITADOR', 'ADMINISTRATIVO'},
     'gestionar_reglas_motor':    {'ADMIN', 'SUPERVISOR'},

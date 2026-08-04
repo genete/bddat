@@ -1,0 +1,28 @@
+{
+  "module": "seguimiento_y_huerfanos",
+  "name": "Seguimiento y Huérfanos",
+  "icon": "fa-tasks",
+  "order": 8,
+  "permissions": {
+    "list": ["ADMIN", "SUPERVISOR", "TRAMITADOR", "ADMINISTRATIVO"]
+  },
+  "navigation": {
+    "label": "Seguimiento y Huérfanos",
+    "route": "seguimiento_y_huerfanos.index",
+    "description": "Cola de seguimiento del tramitador y radar de documentos huérfanos del pool"
+  },
+  "seguimiento": {
+    "columns": [
+      { "key": "num_at",               "label": "Nº AT",      "type": "custom" },
+      { "key": "tipo_solicitud",       "label": "SOLICITUD",        "type": "custom" },
+      { "key": "fecha_solicitud",      "label": "FECHA",            "type": "custom", "hide": "xl" },
+      { "key": "titular_nombre",       "label": "TITULAR",          "type": "custom" },
+      { "key": "proyecto_descripcion", "label": "PROYECTO",         "type": "custom", "hide": "lg" },
+      { "key": "pista_SOL",            "label": "ANÁLISIS",   "type": "custom" },
+      { "key": "pista_CONSULTAS",      "label": "CONSULTAS",        "type": "custom" },
+      { "key": "pista_MA",             "label": "MA",               "type": "custom" },
+      { "key": "pista_IP",             "label": "IP",               "type": "custom" },
+      { "key": "pista_RES",            "label": "RESOLUCIÓN",  "type": "custom" }
+    ]
+  }
+}
