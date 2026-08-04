@@ -2,8 +2,13 @@
 
 **Estado:** Adoptada
 **Fecha:** 2026-07-05
-**Issues:** #588 (hub universal), #589 (dashboard 1:1), #590 (retirar prefijo `/admin`)
+**Issues:** #588 (hub universal), #589 (dashboard 1:1), #590 (retirar prefijo `/admin`), #630 (hub del TRAMITADOR)
 **Enmienda:** ADR-028 §1
+
+> **Nota de implementación (2026-08-04, #630, ADR-038).** El tercer caso de la "Deuda
+> conocida" de ADR-017 (TRAMITADOR → `/expedientes/seguimiento/`) se resuelve: hub propio
+> `/seguimiento_y_huerfanos/`, `metadata.json` y entrada de sidebar propia, siguiendo el
+> criterio de §1bis (página-destino de rol). Ver ADR-038 para el detalle completo.
 
 > **Nota de implementación (2026-07-13, #588).** Al implementar se generalizó el
 > principio de esta ADR un paso más: si el acceso deja de depender del rol, el nombre
@@ -149,8 +154,8 @@ diario" por alguien.
 **solo** para:
 
 1. Las páginas-destino de rol a las que redirige "Mi trabajo": `Tareas y Subidas`
-   (ADMINISTRATIVO), `Control y Gestión` (SUPERVISOR/ADMIN), y el futuro hub del
-   TRAMITADOR (deuda abierta de ADR-017, sin construir).
+   (ADMINISTRATIVO), `Control y Gestión` (SUPERVISOR/ADMIN), y `Seguimiento y Huérfanos`
+   (TRAMITADOR — construido en #630, ADR-038; deuda de ADR-017 ya resuelta).
 2. Los objetos de dominio reales sobre los que gira la aplicación: `Expedientes`,
    `Proyectos`, `Entidades`, `Usuarios`.
 

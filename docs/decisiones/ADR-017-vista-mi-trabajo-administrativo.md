@@ -270,7 +270,7 @@ Considerada como mecánica de liberación de propiedad. Descartada porque introd
 
 ---
 
-## Deuda conocida — heterogeneidad de URLs del concepto «Mi trabajo»  `[PARCIALMENTE RESUELTO — #588, ADR-029]`
+## Deuda conocida — heterogeneidad de URLs del concepto «Mi trabajo»  `[RESUELTO — #630, ADR-038]`
 
 > Anotado 2026-06-23, en contexto de #579 (al completar el hub del supervisor, que
 > cierra el tercer patrón distinto del mismo concepto).
@@ -287,7 +287,7 @@ despacha por rol activo (`mi_trabajo.index`):
 |---|---|---|
 | ADMINISTRATIVO | `redirect → /tareas_y_subidas/` | Isla cola/subir (este ADR), ruta propia desde #588 |
 | SUPERVISOR / ADMIN | `redirect → /gestion_y_control/` | Hub de dos bloques (#579 ADR-028; renombrado #588 ADR-029) |
-| TRAMITADOR | `redirect → /expedientes/seguimiento/` | **Vista prestada** de otro dominio — sigue abierto |
+| TRAMITADOR | `redirect → /seguimiento_y_huerfanos/` | Hub propio (#630, ADR-038) — resuelto |
 
 La heterogeneidad de las URLs finales **no es un bug**: es reflejo fiel de que los tres
 roles están en fases de madurez distintas. El usuario nunca teclea esas URLs (clica la
@@ -305,13 +305,12 @@ sin tocar la navegación. Matices, por gravedad:
    escritura (`gestionar_tareas`) ya era universal desde ADR-017 §6 — solo la navegación
    la escondía tras el rol ADMINISTRATIVO. `mi_trabajo.index` queda como dispatcher puro
    y simétrico para los tres roles.
-3. `/expedientes/seguimiento/` (tramitador) — **sigue siendo la única deuda real, sin
-   resolver**: no es un blueprint propio que renombrar, es una vista prestada del dominio
-   de expedientes; no tiene espacio propio. El **momento natural** para fijarla sigue
-   siendo cuando el TRAMITADOR necesite su propio hub (como ya lo tiene Control y
-   Gestión) — ahí `/expedientes/seguimiento/` se queda corto y fuerza la decisión de
-   forma informada, en vez de inventarla en frío. No se aborda en #588: construir un hub
-   nuevo no es un renombrado, es trabajo de alcance distinto.
+3. `/expedientes/seguimiento/` (tramitador) — **resuelto en #630 (ADR-038)**: dejó de ser
+   una vista prestada del dominio de expedientes al construirse el hub propio
+   `/seguimiento_y_huerfanos/`, con Seguimiento (contenido movido tal cual) y Huérfanos
+   (radar nuevo, ADR-027 §2) como pestañas separadas. No se abordó en #588 porque
+   construir un hub nuevo no era un renombrado, sino trabajo de alcance distinto — el
+   disparador llegó con el radar de huérfanos, como preveía esta misma nota.
 
    **Candidato concreto a ese disparador (anotado 2026-07-14).** ADR-027 §2 nombra el
    "radar de documentos huérfanos" (pool sin vínculo a tarea) como "trabajo aparte" de
@@ -319,3 +318,10 @@ sin tocar la navegación. Matices, por gravedad:
    seguimiento, no una variación suya. Deja de ser hipotético: es la pieza que este
    apartado dejaba sin nombre ni fecha. Ver **#630** (issue con preguntas abiertas, sin
    implementación decidida).
+
+   **Resuelto 2026-08-04 (#630, ADR-038).** El TRAMITADOR gana su hub propio:
+   `/seguimiento_y_huerfanos/`, con `metadata.json` y entrada de sidebar propia (test de
+   ADR-029 §1bis). `mi_trabajo.index` pasa a redirigir aquí en vez de a
+   `/expedientes/seguimiento/` — los tres roles quedan simétricos. Sin alias de
+   compatibilidad en la URL vieja (corte limpio, mismo criterio que #588). Detalle
+   completo en ADR-038.
