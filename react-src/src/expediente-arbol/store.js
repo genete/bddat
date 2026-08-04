@@ -502,6 +502,18 @@ export const useArbolStore = create((set, get) => ({
     }
   },
 
+  // Resincroniza el borrador tras vincular el Producido por una vía ajena al ciclo
+  // Guardar/Cancelar general (#712: PATCH .../notificar con documento_id persiste
+  // directamente, sin pasar por `guardar()`). Sin esto, la Despensa —que lee
+  // `borrador.documento_producido_id`— se quedaría mostrando el vínculo anterior
+  // hasta que el usuario reseleccione el nodo. `borradorInicial` se actualiza igual
+  // que `borrador` (mismo patrón que entrarEdicion) para que hayCambios no marque
+  // como "pendiente de guardar" un campo que ya se persistió por su cuenta.
+  sincronizarProducidoNotificar: (documentoId) => set((s) => ({
+    borrador: { ...s.borrador, documento_producido_id: documentoId },
+    borradorInicial: { ...s.borradorInicial, documento_producido_id: documentoId },
+  })),
+
   // Re-pide /arbol e invalida TODA la caché de detalle (una mutación puede recomputar
   // agregados/plazos de los ancestros → decisión F). Tras refrescar, re-dispara el
   // detalle de lectura del nodo seleccionado.
