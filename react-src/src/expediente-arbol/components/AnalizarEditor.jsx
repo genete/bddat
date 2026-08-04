@@ -203,12 +203,95 @@ function AvisoReversionDiagnostico({ confirmando, revirtiendo, bloqueo, onConfir
   )
 }
 
+// --- Modificar un check ya exigido en una vuelta notificada (#724) ------------
+// A diferencia de useReversionDiagnostico, aquí la tarea actual NO tiene
+// diagnóstico propio que revertir — el 422 viene de tocar (desvincular
+// documental, guardar técnico, guardar shuttle) un ítem que ya figuraba en un
+// diagnóstico de una vuelta ANTERIOR ya notificada al titular. Mismo look&feel
+// que AvisoReversionDiagnostico (textarea + "continuar igualmente"), pero
+// reintenta la MISMA llamada con `justificacion` en vez de revertir nada.
+// `accion` (por llamada a `ejecutar`) recibe `justificacion` (null la primera
+// vez) y debe relanzar cualquier error que no maneje ella misma — este hook es
+// quien decide si el 422 pide justificación o es un fallo genérico (toast).
+function useConfirmacionJustificada() {
+  const [pidiendo, setPidiendo] = React.useState(false)
+  const [enviando, setEnviando] = React.useState(false)
+  const [motivo, setMotivo] = React.useState(null)
+  const accionRef = React.useRef(null)
+
+  const intentar = async (justificacion) => {
+    setEnviando(true)
+    try {
+      await accionRef.current(justificacion)
+      setPidiendo(false)
+      setMotivo(null)
+      accionRef.current = null
+    } catch (e) {
+      if (e && e.status === 422 && e.payload && e.payload.puede_escapar === true) {
+        setMotivo(e.payload.motivo || 'Este ítem ya se exigió al titular en una vuelta anterior.')
+        setPidiendo(true)
+      } else {
+        showToast((e && e.message) || 'No se pudo guardar', 'danger')
+        setPidiendo(false)
+        accionRef.current = null
+      }
+    } finally {
+      setEnviando(false)
+    }
+  }
+
+  const ejecutar = (accion) => {
+    accionRef.current = accion
+    intentar(null)
+  }
+
+  return { pidiendo, enviando, motivo, ejecutar, confirmar: intentar, cancelar: () => {
+    accionRef.current = null
+    setPidiendo(false)
+    setMotivo(null)
+  } }
+}
+
+function AvisoJustificacion({ pidiendo, enviando, motivo, onConfirmar, onCancelar }) {
+  const [justificacion, setJustificacion] = React.useState('')
+
+  if (!pidiendo) return null
+
+  return (
+    <div className="alert alert-warning py-2 px-3 mb-2 small">
+      <div className="fw-semibold mb-1">Esto necesita justificación</div>
+      <div className="mb-2">{motivo}</div>
+      <textarea
+        className="form-control form-control-sm mb-2"
+        rows={2}
+        placeholder="Motivo por el que se exige de nuevo"
+        value={justificacion}
+        onChange={(e) => setJustificacion(e.target.value)}
+      />
+      <div className="d-flex gap-2">
+        <button
+          type="button"
+          className="btn btn-sm btn-warning"
+          disabled={enviando || !justificacion.trim()}
+          onClick={() => onConfirmar(justificacion.trim())}
+        >
+          {enviando ? 'Guardando…' : 'Confirmar igualmente'}
+        </button>
+        <button type="button" className="btn btn-sm btn-outline-secondary" disabled={enviando} onClick={onCancelar}>
+          Cancelar
+        </button>
+      </div>
+    </div>
+  )
+}
+
 // Fila de un requisito documental (#495): estado + selector de documento del pool.
 function FilaRequisitoDocumental({ item, expedienteId, tareaId, pool, producido, onRecargar }) {
   const [seleccionando, setSeleccionando] = React.useState(false)
   const [documentoId, setDocumentoId] = React.useState('')
   const [enviando, setEnviando] = React.useState(false)
   const reversion = useReversionDiagnostico({ expedienteId, tareaId, producido, onRevertido: onRecargar })
+  const justificacion = useConfirmacionJustificada()
 
   const vincular = async () => {
     if (!documentoId) return
@@ -226,14 +309,16 @@ function FilaRequisitoDocumental({ item, expedienteId, tareaId, pool, producido,
     }
   }
 
-  const desvincular = async () => {
+  // Desvincular es la única mutación documental que puede crear un defecto
+  // nuevo (vincular siempre resuelve) — puede necesitar justificación si el
+  // requisito ya se exigió al titular en una vuelta notificada anterior (#724).
+  // Sin `just` (null en el primer intento) el hook decide si reintentar.
+  const desvincular = async (just) => {
     setEnviando(true)
     try {
-      await desvincularRequisitoDocumental(expedienteId, tareaId, item.requisito_id)
+      await desvincularRequisitoDocumental(expedienteId, tareaId, item.requisito_id, just)
       showToast('Documento desvinculado', 'success')
       await onRecargar()
-    } catch (e) {
-      showToast((e && e.message) || 'No se pudo desvincular el documento', 'danger')
     } finally {
       setEnviando(false)
     }
@@ -261,7 +346,7 @@ function FilaRequisitoDocumental({ item, expedienteId, tareaId, pool, producido,
             type="button"
             className="btn btn-sm btn-link text-danger p-0 lh-1"
             disabled={enviando}
-            onClick={() => reversion.ejecutar(desvincular)}
+            onClick={() => reversion.ejecutar(() => justificacion.ejecutar(desvincular))}
           >
             Quitar
           </button>
@@ -274,6 +359,13 @@ function FilaRequisitoDocumental({ item, expedienteId, tareaId, pool, producido,
         bloqueo={reversion.bloqueo}
         onConfirmar={reversion.confirmar}
         onCancelar={reversion.cancelar}
+      />
+      <AvisoJustificacion
+        pidiendo={justificacion.pidiendo}
+        enviando={justificacion.enviando}
+        motivo={justificacion.motivo}
+        onConfirmar={justificacion.confirmar}
+        onCancelar={justificacion.cancelar}
       />
 
       {seleccionando ? (
@@ -357,19 +449,20 @@ function FilaItemTecnico({ item, expedienteId, tareaId, producido, onRecargar })
   const [cubierto, setCubierto] = React.useState(item.cubierto)
   const [enviando, setEnviando] = React.useState(false)
   const reversion = useReversionDiagnostico({ expedienteId, tareaId, producido, onRevertido: onRecargar })
+  const justificacion = useConfirmacionJustificada()
 
   const hayCambios = texto !== (item.texto || '') || cubierto !== item.cubierto
 
-  const guardar = async () => {
+  // Puede necesitar justificación (#724) si este guardado marca el ítem "no
+  // cumple" y ya se exigió al titular en una vuelta notificada anterior.
+  const guardar = async (just) => {
     setEnviando(true)
     try {
       await guardarCoberturaTecnica(expedienteId, tareaId, item.item_tecnico_id, {
-        texto: texto.trim(), cubierto,
+        texto: texto.trim(), cubierto, justificacion: just || undefined,
       })
       showToast('Verificación guardada', 'success')
       await onRecargar()
-    } catch (e) {
-      showToast((e && e.message) || 'No se pudo guardar la verificación', 'danger')
     } finally {
       setEnviando(false)
     }
@@ -423,12 +516,19 @@ function FilaItemTecnico({ item, expedienteId, tareaId, producido, onRecargar })
         onConfirmar={reversion.confirmar}
         onCancelar={reversion.cancelar}
       />
+      <AvisoJustificacion
+        pidiendo={justificacion.pidiendo}
+        enviando={justificacion.enviando}
+        motivo={justificacion.motivo}
+        onConfirmar={justificacion.confirmar}
+        onCancelar={justificacion.cancelar}
+      />
 
       <button
         type="button"
         className="btn btn-sm btn-outline-secondary"
         disabled={!hayCambios || enviando}
-        onClick={() => reversion.ejecutar(guardar)}
+        onClick={() => reversion.ejecutar(() => justificacion.ejecutar(guardar))}
       >
         {enviando ? 'Guardando…' : 'Guardar'}
       </button>
@@ -587,6 +687,7 @@ function SeccionRequerimientos({ expedienteId, tareaId, producido, esRondaSubsan
   const reversion = useReversionDiagnostico({
     expedienteId, tareaId, producido, onRevertido: onRecargarConsolidado,
   })
+  const justificacion = useConfirmacionJustificada()
 
   const cargar = React.useCallback(async () => {
     setCargando(true)
@@ -676,19 +777,21 @@ function SeccionRequerimientos({ expedienteId, tareaId, producido, esRondaSubsan
     }
   }
 
-  const guardarShuttle = async () => {
+  // Puede necesitar justificación en lote (#724): si alguno de los ítems ya
+  // resueltos deja de estarlo (o desaparece de `seleccionados`) y ya se exigió
+  // al titular en una vuelta notificada anterior, el 422 trae el motivo con
+  // todos los afectados listados.
+  const guardarShuttle = async (just) => {
     setGuardando(true)
     try {
       await postRequerimientos(expedienteId, tareaId, seleccionados.map((s) => ({
         catalogo_requerimientos_id: s.catalogo_requerimientos_id,
         texto_libre: s.texto_libre,
         resuelto: Boolean(s.resuelto),
-      })))
+      })), just)
       showToast('Requerimientos guardados', 'success')
       await cargar()
       await onRecargarConsolidado()
-    } catch (e) {
-      showToast((e && e.message) || 'No se pudieron guardar los requerimientos', 'danger')
     } finally {
       setGuardando(false)
     }
@@ -700,7 +803,7 @@ function SeccionRequerimientos({ expedienteId, tareaId, producido, esRondaSubsan
       type="button"
       className="btn btn-sm btn-primary"
       disabled={!hayCambiosShuttle || guardando || cargando}
-      onClick={() => reversion.ejecutar(guardarShuttle)}
+      onClick={() => reversion.ejecutar(() => justificacion.ejecutar(guardarShuttle))}
     >
       {guardando ? 'Guardando…' : 'Guardar cambios'}
     </button>
@@ -722,6 +825,13 @@ function SeccionRequerimientos({ expedienteId, tareaId, producido, esRondaSubsan
           bloqueo={reversion.bloqueo}
           onConfirmar={reversion.confirmar}
           onCancelar={reversion.cancelar}
+        />
+        <AvisoJustificacion
+          pidiendo={justificacion.pidiendo}
+          enviando={justificacion.enviando}
+          motivo={justificacion.motivo}
+          onConfirmar={justificacion.confirmar}
+          onCancelar={justificacion.cancelar}
         />
         <div className="row g-2">
           {/* Columna izquierda: catálogo */}
