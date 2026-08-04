@@ -712,6 +712,73 @@ def editar_nodo(expediente_id, tipo, nodo_id):
 
 
 # =============================================================================
+# ENDPOINT 7bis: Vincular un huérfano a una tarea — vía rápida del radar (#630)
+# =============================================================================
+
+@api_bp.route('/expedientes/<int:expediente_id>/nodo/tarea/<int:tarea_id>/vincular_huerfano',
+              methods=['POST'])
+@login_required
+def vincular_huerfano(expediente_id, tarea_id):
+    """
+    POST .../nodo/tarea/<tarea_id>/vincular_huerfano — vía rápida del radar de
+    huérfanos (#630, ADR-038 §5), alternativa a "Ir a la tarea" para candidatas
+    de alta confianza. Body JSON: {documento_id, rol}, rol ∈ {CONSUMIDO, PRODUCIDO}.
+
+    Llama a svc.editar_tarea — el mismo mutador que usa el guardado del árbol,
+    sin lógica de vinculación duplicada. Repite server-side las reglas de
+    exclusión de la lista de candidatas (app/services/huerfanos.py, ADR-038
+    §4): defensa en profundidad ante una lista desactualizada en cliente.
+    """
+    expediente = Expediente.query.get_or_404(expediente_id)
+    if verificar_acceso_expediente(expediente, 'gestionar_tarea'):
+        return jsonify({'error': 'No tienes permiso para esta acción'}), 403
+
+    try:
+        tarea = _resolver_nodo(expediente, 'tarea', tarea_id)
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 404
+
+    data = request.get_json(silent=True) or {}
+    rol = data.get('rol')
+    documento_id = data.get('documento_id')
+    if rol not in ('CONSUMIDO', 'PRODUCIDO') or not documento_id:
+        return jsonify({'error': 'rol (CONSUMIDO|PRODUCIDO) y documento_id son obligatorios'}), 400
+
+    doc = Documento.query.get(documento_id)
+    if not doc or doc.expediente_id != expediente_id:
+        return jsonify({'error': 'Documento no válido para este expediente'}), 422
+    if (doc.url or '').startswith('bddat://') or doc.vinculos_tarea:
+        return jsonify({'error': 'El documento ya no es huérfano'}), 409
+
+    if rol == 'PRODUCIDO' and tarea.documento_producido is not None:
+        return jsonify({'error': 'La tarea ya tiene un documento producido — sustituirlo requiere revertirlo primero desde el árbol'}), 422
+    if rol == 'CONSUMIDO' and tarea.ejecutada:
+        return jsonify({'error': 'La tarea ya está ejecutada — no se añaden consumidos sin revertir primero'}), 422
+
+    consumidos_ids = [v.documento_id for v in tarea.vinculos_documento if v.rol == 'CONSUMIDO']
+    producido_id = tarea.documento_producido.id if tarea.documento_producido else None
+    if rol == 'CONSUMIDO':
+        consumidos_ids.append(documento_id)
+    else:
+        producido_id = documento_id
+
+    res = svc.editar_tarea(
+        tarea,
+        documentos_consumidos_ids=consumidos_ids,
+        documento_producido_id=producido_id,
+        notas=tarea.notas,
+    )
+    if res.bloqueo:
+        return _bloqueo_422(res)
+    if not res.ok:
+        return jsonify({'error': res.error}), 422
+    payload = {'ok': True}
+    if res.advertencia:
+        payload['advertencia'] = res.advertencia
+    return jsonify(payload), 200
+
+
+# =============================================================================
 # ENDPOINT 8: Borrar un nodo (ADR-016 S3b)
 # =============================================================================
 

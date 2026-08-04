@@ -1,12 +1,21 @@
 /**
  * v2-tabla-scroll-to-top.js
  * Botón flotante "volver arriba" para scroll interno de C.2 (tabla)
- * 
+ *
  * Issue: #94 (Fase 1.5)
  * Epic: #93
- * 
+ *
  * Nota: El botón solo aparece en el scroll interno de la tabla (.lista-scroll-container),
  * no en el scroll de la página (B.2), ya que ese scroll es muy corto.
+ *
+ * LIMITACIÓN CONOCIDA (#755): instancia única — usa `document.querySelector('.lista-scroll-container')`
+ * y `document.getElementById('tabla-scroll-to-top')`, ambos sin scope. En una página con
+ * varias tablas/pestañas (varios `.lista-scroll-container`) solo se engancha al primero;
+ * el resto necesita reimplementar el botón a mano (tablas_maestras, seguimiento_y_huerfanos
+ * con su pestaña Huérfanos, etc. — ver #755 para el listado completo de casos afectados).
+ * #755 arreglará este botón "subir" generalizándolo a multi-instancia (por contenedor, no
+ * por id global) — cuando se resuelva, sustituir los workarounds locales por el componente
+ * reutilizable resultante.
  */
 
 (function() {

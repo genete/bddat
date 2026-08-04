@@ -1,0 +1,110 @@
+{# _inspector_huerfano.html — Panel de candidatas de un documento huérfano (#630, ADR-038 §4/§5).
+
+   Inyectado vía AppInspector.open({ fragmentUrl }). Dos acciones por candidata:
+   "Ir a la tarea" (segura, por defecto — navega al árbol con el huérfano
+   pre-cargado en staging, sin guardar nada) y "Vincular aquí" (rápida, opt-in
+   — POST directo a vincular_huerfano). Ninguna duplica la mutación del árbol:
+   ambas acaban en svc.editar_tarea.
+
+   Contexto:
+     documento   — Documento huérfano
+     expediente  — Expediente contenedor
+     candidatas  — lista de {tarea_id, tramite_nombre, tarea_nombre, rol, coincidencia}
+#}
+{% set arbol_url = url_for('expedientes.arbol', id=expediente.id) %}
+{% set nombre_doc = (documento.url or '').replace('\\', '/').rsplit('/', 1)[-1].split('?')[0].split('#')[0] or ('Documento ' ~ documento.id) %}
+
+<div class="p-3 huerfano-inspector">
+
+  <div class="mb-3">
+    <div class="d-flex align-items-center gap-2">
+      <span class="fw-semibold">AT-{{ expediente.numero_at }}</span>
+      <span class="badge bg-secondary">{{ documento.tipo_doc.nombre if documento.tipo_doc else '—' }}</span>
+    </div>
+    <div class="text-secondary small mt-1 text-truncate" title="{{ nombre_doc }}">
+      <i class="fas fa-file me-1"></i>{{ nombre_doc }}
+    </div>
+    {% if documento.asunto %}
+    <div class="text-secondary small">{{ documento.asunto }}</div>
+    {% endif %}
+  </div>
+
+  <hr>
+
+  {% if candidatas %}
+  <p class="text-secondary small mb-2">Tareas candidatas a recibir este documento:</p>
+  <div class="d-flex flex-column gap-2">
+    {% for c in candidatas %}
+    <div class="border rounded p-2">
+      <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+        <div>
+          <span class="badge {{ 'text-bg-success' if c.rol == 'CONSUMIDO' else 'text-bg-primary' }} me-1">
+            {{ 'Consumido' if c.rol == 'CONSUMIDO' else 'Producido' }}
+          </span>
+          {% if c.coincidencia == 'polimorfica' %}
+          <span class="badge text-bg-light border text-secondary" title="El trámite admite cualquier tipo de documento en este punto">
+            aproximada
+          </span>
+          {% endif %}
+          <div class="small fw-semibold mt-1">{{ c.tarea_nombre }}</div>
+          <div class="small text-secondary">{{ c.tramite_nombre }}</div>
+        </div>
+      </div>
+      <div class="d-flex gap-1">
+        <a class="btn btn-primary btn-sm flex-grow-1"
+           href="{{ arbol_url }}?nodo=tarea-{{ c.tarea_id }}&doc_pendiente={{ documento.id }}">
+          <i class="fas fa-arrow-right me-1"></i> Ir a la tarea
+        </a>
+        <button type="button" class="btn btn-outline-primary btn-sm"
+                data-vincular-directo
+                data-url="{{ url_for('api.vincular_huerfano', expediente_id=expediente.id, tarea_id=c.tarea_id) }}"
+                data-documento-id="{{ documento.id }}"
+                data-rol="{{ c.rol }}">
+          Vincular aquí
+        </button>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="text-secondary small mb-2">
+    <i class="fas fa-info-circle me-1"></i>
+    Ninguna tarea planificada admite hoy este tipo de documento. Enlázalo manualmente desde el árbol.
+  </p>
+  <a class="btn btn-outline-primary btn-sm" href="{{ arbol_url }}">
+    <i class="fas fa-sitemap me-1"></i> Ir al árbol del expediente
+  </a>
+  {% endif %}
+
+</div>
+
+<script>
+(function () {
+  var panel = document.currentScript.closest('.huerfano-inspector') || document;
+  panel.querySelectorAll('[data-vincular-directo]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      btn.disabled = true;
+      fetch(btn.dataset.url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ documento_id: parseInt(btn.dataset.documentoId, 10), rol: btn.dataset.rol }),
+      })
+        .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, body: j }; }); })
+        .then(function (res) {
+          if (!res.ok) {
+            window.mostrar_toast('danger', res.body.error || 'No se pudo vincular el documento.');
+            btn.disabled = false;
+            return;
+          }
+          window.mostrar_toast('success', 'Documento vinculado.');
+          if (window.AppInspector) AppInspector.close();
+          document.dispatchEvent(new CustomEvent('huerfano:vinculado', { detail: { documentoId: parseInt(btn.dataset.documentoId, 10) } }));
+        })
+        .catch(function () {
+          window.mostrar_toast('danger', 'Error de red al vincular.');
+          btn.disabled = false;
+        });
+    });
+  });
+})();
+</script>

@@ -1,0 +1,701 @@
+{# index.html — Hub "Seguimiento y Huérfanos" (#630, ADR-038).
+
+   No extiende lista_v2_base.html (asume una sola tabla) — dos pestañas
+   nav-tabs, cada una con su propia cabecera de filtros + tabla + scroll,
+   patrón ya usado por tablas_maestras/listado.html. Seguimiento: contenido
+   movido sin cambios desde expedientes/seguimiento.html (#559 ADR-023 §9).
+   Huérfanos: radar del pool sin vínculo a tarea (ADR-027 §2).
+
+   NOTA — botón "volver arriba" duplicado (#755): v2-tabla-scroll-to-top.js
+   es de instancia única (querySelector/getElementById sin scope), así que
+   Seguimiento se queda con el `#tabla-scroll-to-top` + script compartido de
+   siempre, y Huérfanos tiene su propio botón (`#tabla-scroll-to-top-huerfanos`)
+   con un manejador propio, más abajo en este fichero — mismo motivo por el
+   que tablas_maestras tampoco reutiliza el script compartido. #755 arreglará
+   este botón "subir" generalizándolo a multi-instancia; cuando se resuelva,
+   sustituir el manejador propio de Huérfanos por el componente reutilizable
+   resultante en vez de mantener este workaround.
+#}
+{% extends "layout/base_app.html" %}
+
+{% block title %}Seguimiento y Huérfanos{% endblock %}
+
+{% block extra_css %}{{ super() }}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/selector_filtro.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/input_filtro.css') }}">
+{% endblock %}
+
+{% block viewbar %}
+<span class="app-viewbar__title">
+  <i class="fas fa-tasks"></i>
+  <span>Seguimiento y Huérfanos</span>
+</span>
+{% endblock %}
+
+{% block content %}
+<div class="syh-shell" style="flex:1; min-height:0; display:flex; flex-direction:column">
+
+  <ul class="nav nav-tabs" id="syhTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+      <button class="nav-link active" id="syh-tab-seguimiento" data-bs-toggle="tab"
+              data-bs-target="#pane-seguimiento" type="button" role="tab"
+              aria-controls="pane-seguimiento" aria-selected="true">
+        <i class="fas fa-list-check me-1"></i>Seguimiento
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="syh-tab-huerfanos" data-bs-toggle="tab"
+              data-bs-target="#pane-huerfanos" type="button" role="tab"
+              aria-controls="pane-huerfanos" aria-selected="false">
+        <i class="fas fa-file-circle-question me-1"></i>Huérfanos
+      </button>
+    </li>
+  </ul>
+
+  <div class="tab-content flex-grow-1" style="min-height:0; display:flex; flex-direction:column">
+
+    {# ── Pestaña Seguimiento — contenido movido de expedientes/seguimiento.html ── #}
+    <div class="tab-pane fade show active" id="pane-seguimiento" role="tabpanel"
+         aria-labelledby="syh-tab-seguimiento"
+         style="flex:1; min-height:0; display:flex; flex-direction:column">
+
+      <div class="lista-cabecera">
+        <div class="filters-row">
+          <div class="filters">
+            <input type="search" id="seg-search" placeholder="Buscar por Nº AT o titular..." aria-label="Buscar">
+            <div id="sf-ver"></div>
+            <div id="sf-estado"></div>
+            <div id="sf-tipo-titular"></div>
+            <div id="sf-tipo-expediente"></div>
+            <button class="btn btn-outline-primary btn-limpiar" disabled>
+              <i class="fas fa-times"></i> Limpiar
+            </button>
+          </div>
+          <div class="pagination-info">
+            <i class="fas fa-filter filtro-indicador me-1"></i><span>0</span> de <span>0</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="lista-scroll-container">
+        <div class="py-3">
+          <div class="card tabla-bloque">
+            <table class="lista-table seguimiento-table">
+              <thead>
+                <tr>
+                  {% for col in columns %}
+                  {% set th_cls %}{% if col.hide %}lt-hide-{{ col.hide }} {% endif %}{% if col.truncate %}lt-truncate{% endif %}{% endset %}
+                  <th{% if th_cls|trim %} class="{{ th_cls|trim }}"{% endif %}>{{ col.label }}</th>
+                  {% endfor %}
+                </tr>
+              </thead>
+              <tbody>
+                <!-- Filas cargadas dinámicamente por ScrollInfinito -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <button id="tabla-scroll-to-top" aria-label="Volver arriba de la tabla">
+          <i class="fas fa-chevron-up"></i>
+        </button>
+      </div>
+    </div>
+
+    {# ── Pestaña Huérfanos — radar del pool sin vínculo a tarea (ADR-027 §2 / #630) ── #}
+    <div class="tab-pane fade" id="pane-huerfanos" role="tabpanel"
+         aria-labelledby="syh-tab-huerfanos"
+         style="flex:1; min-height:0; display:flex; flex-direction:column">
+
+      <div class="lista-cabecera">
+        <div class="filters-row">
+          <div class="filters">
+            <input type="search" id="hue-search" placeholder="Buscar por Nº AT o titular..." aria-label="Buscar">
+            {% if session.get('rol_activo_nombre') == 'TRAMITADOR' %}
+            <div id="hf-ver"></div>
+            {% else %}
+            <div id="hf-responsable"></div>
+            {% endif %}
+            <button class="btn btn-outline-primary btn-limpiar" disabled>
+              <i class="fas fa-times"></i> Limpiar
+            </button>
+          </div>
+          <div class="pagination-info">
+            <i class="fas fa-filter filtro-indicador me-1"></i><span>0</span> de <span>0</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="lista-scroll-container huerfanos-scroll-container">
+        <div class="py-3">
+          <div class="card tabla-bloque">
+            <table class="lista-table huerfanos-table">
+              <thead>
+                <tr>
+                  <th>Expediente</th>
+                  <th style="width:3rem" class="text-center">
+                    <i class="bi bi-lightbulb-fill" title="Asignación"></i>
+                  </th>
+                  <th>Tipo</th>
+                  <th class="lt-truncate">Descripción</th>
+                  <th class="lt-truncate">Fichero</th>
+                  <th class="text-end">Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                <!-- Filas cargadas dinámicamente por ScrollInfinito -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <button id="tabla-scroll-to-top-huerfanos" aria-label="Volver arriba de la tabla">
+          <i class="fas fa-chevron-up"></i>
+        </button>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}{{ super() }}
+<script src="{{ url_for('static', filename='js/v2-scroll-infinito.js') }}"></script>
+<script src="{{ url_for('static', filename='js/v2-filtros.js') }}"></script>
+<script src="{{ url_for('static', filename='js/v2-tabla-scroll-to-top.js') }}"></script>
+<script src="{{ url_for('static', filename='js/selector_filtro.js') }}"></script>
+<script src="{{ url_for('static', filename='js/input_filtro.js') }}"></script>
+<script>
+// ===== SELECTORES DE FILTRO =====
+// Instanciados antes de las clases para que sus valores sean accesibles
+// en el closure de SeguimientoScroll.loadMore() y FiltrosSeguimiento.
+
+const sfVer = new SelectorFiltro('#sf-ver', [
+    { v: 'mis', t: 'Mis expedientes' }
+], { label: 'Ver' });
+// Ver (todos) = placeholder vacío → muestra todos; Mis expedientes = filtro activo
+sfVer.setValue('mis');  // la ruta empieza mostrando solo mis expedientes
+
+const sfEstado = new SelectorFiltro('#sf-estado', [
+    { v: 'EN_TRAMITE', t: 'En trámite' },
+    { v: 'RESUELTA',   t: 'Resuelta' },
+    { v: 'DESISTIDA',  t: 'Desistida' },
+    { v: 'ARCHIVADA',  t: 'Archivada' }
+], { label: 'Estado' });
+sfEstado.setValue('EN_TRAMITE');  // la ruta empieza filtrada por en trámite
+
+const sfTipoTitular = new SelectorFiltro('#sf-tipo-titular', [
+    { v: 'PROMOTOR',           t: 'Promotor' },
+    { v: 'ORGANISMO_PUBLICO',  t: 'Organismo público' },
+    { v: 'DISTRIBUIDOR_MENOR', t: 'Distribuidora menor' },
+    { v: 'GRAN_DISTRIBUIDORA', t: 'Gran distribuidora' },
+    { v: 'OTRO',               t: 'Otro' }
+], { label: 'Tipo titular' });
+
+const sfTipoExpediente = new SelectorFiltro('#sf-tipo-expediente', [
+    {% for te in tipos_expedientes %}
+    { v: '{{ te.id }}', t: {{ te.tipo | tojson }} }{% if not loop.last %},{% endif %}
+
+    {% endfor %}
+], { label: 'Tipo expediente' });
+
+const colsMeta = {{ columns | tojson }};
+
+// Mapas de texto y color por estado del núcleo (estado_dominio, #558).
+// La familia de notificar (NOTIFICAR/FALLIDA/AGOTADA) comparte la etiqueta
+// "NOTIFICAR"; lo que escala es el color (azul → naranja → rojo).
+const TEXTO_ESTADO = {
+    'PENDIENTE_TRAMITAR':   'TRAMITAR',
+    'PENDIENTE_ESTUDIO':    'ESTUDIO',
+    'PENDIENTE_REDACTAR':   'REDACTAR',
+    'PENDIENTE_FIRMA':      'FIRMA',
+    'PENDIENTE_NOTIFICAR':  'NOTIFICAR',
+    'NOTIFICACION_FALLIDA': 'NOTIFICAR',
+    'NOTIFICACION_AGOTADA': 'NOTIFICAR',
+    'PENDIENTE_CERRAR':     'CERRAR',
+    'PENDIENTE_SUBSANAR':   'SUBSANAR',
+    'PENDIENTE_PLAZOS':     'PLAZOS',
+    'FIN':                  'FIN',
+};
+const COLOR_CLASE = {
+    'rojo':     'pista-rojo',
+    'amarillo': 'pista-amarillo',
+    'azul':     'pista-azul',
+    'gris':     'pista-gris',
+    'naranja':  'pista-naranja',
+    'verde':    'pista-verde',
+};
+
+function renderPista(ep) {
+    if (!ep) return '';
+    const texto   = TEXTO_ESTADO[ep.codigo] || ep.codigo;
+    const clase   = COLOR_CLASE[ep.color]   || '';
+    const counter = ep.count > 1 ? ` (${ep.count})` : '';
+    const tooltip = ep.nota ? ` data-bs-toggle="tooltip" title="${ep.nota.replace(/"/g, '&quot;')}"` : '';
+    return `<span class="pista-celda ${clase}"${tooltip}>${texto}${counter}</span>`;
+}
+
+function renderFecha(val) {
+    if (!val) return '—';
+    // +T12:00:00 para evitar desfase de zona horaria
+    const d = new Date(val + 'T12:00:00');
+    return d.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+
+const renderFns = {
+    'num_at': (val, item) => {
+        const atStr = `AT-${val}`;
+        if (item.at_count > 1) {
+            return `<span class="num-at-pill num-at-multiples"
+                         title="Este AT tiene ${item.at_count} solicitudes activas simultáneas">
+                        <strong>${atStr}</strong>
+                    </span>`;
+        }
+        return `<span class="num-at-pill"><strong>${atStr}</strong></span>`;
+    },
+
+    'tipo_solicitud': (val, item) => {
+        const clase   = item.color_solicitud ? `solicitud-${item.color_solicitud}` : '';
+        const tooltip = item.estado_solicitud || '';
+        return `<span class="tipo-solicitud-celda ${clase}" title="${tooltip}">${val || '—'}</span>`;
+    },
+
+    'fecha_solicitud': (val) => renderFecha(val),
+
+    'titular_nombre': (val, item) => {
+        let clase = '';
+        if      (item.tipo_titular === 'PROMOTOR')         clase = 'titular-promotor';
+        else if (item.tipo_titular === 'ORGANISMO_PUBLICO') clase = 'titular-organismo';
+        else if (item.tipo_titular === 'GRAN_DISTRIBUIDORA') clase = 'titular-gran-dist';
+        const texto = val || '—';
+        return `<span class="celda-ellipsis ${clase}" title="${texto}">${texto}</span>`;
+    },
+
+    'proyecto_descripcion': (val) => {
+        const texto = val || '—';
+        return `<span class="celda-ellipsis" title="${texto}">${texto}</span>`;
+    },
+
+    'pista_SOL':       (val) => renderPista(val),
+    'pista_CONSULTAS': (val) => renderPista(val),
+    'pista_MA':        (val) => renderPista(val),
+    'pista_IP':        (val) => renderPista(val),
+    'pista_RES':       (val) => renderPista(val),
+    // La columna _acciones (type:'acciones') la omite el modo selección de
+    // ScrollInfinito: la fila entera abre el inspector (ADR-023 / #559).
+};
+
+const columns = colsMeta.map(col =>
+    renderFns[col.key] ? { ...col, renderFn: renderFns[col.key] } : col
+);
+
+// Subclase que inyecta los filtros del seguimiento en cada petición
+class SeguimientoScroll extends ScrollInfinito {
+    async loadMore() {
+        if (this.loading || !this.hasMore) return;
+        this.loading = true;
+        this.showLoader();
+
+        try {
+            const params = new URLSearchParams({ cursor: this.cursor, limit: this.limit });
+
+            const search = this.searchInput?.value.trim();
+            if (search) params.append('search', search);
+
+            const ver = sfVer.getValue() || 'todos';
+            params.append('ver', ver);
+
+            const estado = sfEstado.getValue();
+            if (estado) params.append('estado', estado);
+
+            const tipoTitular = sfTipoTitular.getValue();
+            if (tipoTitular) params.append('tipo_titular', tipoTitular);
+
+            const tipoExp = sfTipoExpediente.getValue();
+            if (tipoExp) params.append('tipo_expediente_id', tipoExp);
+
+            const response = await fetch(`${this.apiUrl}?${params}`);
+            if (!response.ok) throw new Error(`Error ${response.status}: ${response.statusText}`);
+
+            const data = await response.json();
+            this.cursor         = data.next_cursor;
+            this.hasMore        = data.has_more;
+            this.totalAvailable = data.total || null;
+
+            this.renderItems(data.data);
+            this.totalLoaded += data.data.length;
+            this.updatePaginationInfo();
+
+            // Inicializar tooltips Bootstrap en los elementos recién renderizados
+            document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
+                if (!bootstrap.Tooltip.getInstance(el)) new bootstrap.Tooltip(el);
+            });
+
+            if (this.totalLoaded === 0 && ver === 'mis') {
+                this._mostrarToastSinExpedientes();
+            }
+
+        } catch (error) {
+            console.error('Error cargando seguimiento:', error);
+            this.showError('Error al cargar el seguimiento. Inténtalo de nuevo.');
+        } finally {
+            this.loading = false;
+            this.hideLoader();
+        }
+    }
+
+    _mostrarToastSinExpedientes() {
+        if (this.cursor !== 0) return;
+        window.mostrar_toast('info', 'No tienes expedientes asignados. Usa «Todos» para ver el listado completo.');
+    }
+}
+
+const scrollInfinito = new SeguimientoScroll({
+    apiUrl:      '{{ url_for("api_seguimiento.listar_seguimiento") }}',
+    tableClass:  '.seguimiento-table',
+    entityLabel: 'solicitudes',
+    columns,
+    // Modo selección (ADR-023 / #559): click en fila → inspector de lectura del
+    // agregado; la edición se delega al árbol vía "Ir a tramitar".
+    selection: {
+        fragmentUrl: id   => `/seguimiento_y_huerfanos/seguimiento/${id}/fragmento`,
+        title:       item => `AT-${item.num_at} · ${item.tipo_solicitud || ''}`,
+    },
+});
+
+// FiltrosSeguimiento extiende FiltrosListado para gestionar los dos filtros
+// que tienen valor por defecto (ver=mis, estado=EN_TRAMITE):
+//   - El indicador solo se activa cuando hay desviación de los defaults
+//   - El botón Limpiar restaura a los defaults en vez de dejar en blanco
+class FiltrosSeguimiento extends FiltrosListado {
+    // Los defaults de esta vista (no cuentan como "filtro extra" aplicado por el usuario)
+    static DEFAULTS = { ver: 'mis', estado: 'EN_TRAMITE' };
+
+    _actualizarIndicador() {
+        if (!this._filtersRow) return;
+        const hayExtra =
+            (this.searchInput && this.searchInput.value.trim()) ||
+            sfTipoTitular.getValue() ||
+            sfTipoExpediente.getValue() ||
+            sfVer.getValue()    !== FiltrosSeguimiento.DEFAULTS.ver ||
+            sfEstado.getValue() !== FiltrosSeguimiento.DEFAULTS.estado;
+        this._filtersRow.classList.toggle('filtros-activos', !!hayExtra);
+        if (this.btnLimpiar) this.btnLimpiar.disabled = !hayExtra;
+    }
+
+    _limpiar() {
+        this._limpiando = true;
+        if (this.searchInput) this.searchInput.value = '';
+        sfTipoTitular.clear();       // dispara 'change' → suprimido por _limpiando
+        sfTipoExpediente.clear();    // idem
+        // setValue no dispara evento DOM → no necesita supresión
+        sfVer.setValue(FiltrosSeguimiento.DEFAULTS.ver);
+        sfEstado.setValue(FiltrosSeguimiento.DEFAULTS.estado);
+        this._limpiando = false;
+        clearTimeout(this._timer);
+        this._actualizarIndicador();
+        this.scroll.reload();
+    }
+}
+
+const filtros = new FiltrosSeguimiento(scrollInfinito);
+
+// ===== SYNC INSPECTOR ↔ URL ?sel (ADR-023 §1, igual que entidades) =====
+function _updateSelParam(selId) {
+    const url = new URL(location.href);
+    if (selId) url.searchParams.set('sel', selId);
+    else url.searchParams.delete('sel');
+    history.replaceState(null, '', url.toString());
+}
+document.addEventListener('inspector:opened',  e => _updateSelParam(e.detail.selId));
+document.addEventListener('inspector:swapped', e => _updateSelParam(e.detail.selId));
+document.addEventListener('inspector:closed',  () => _updateSelParam(null));
+
+// Abrir el inspector si la URL trae ?sel=<solicitud_id> al cargar.
+const _selParam = new URLSearchParams(location.search).get('sel');
+if (_selParam && window.AppInspector) {
+    AppInspector.open({
+        selId:       _selParam,
+        fragmentUrl: `/seguimiento_y_huerfanos/seguimiento/${_selParam}/fragmento`,
+    });
+}
+
+// Reparte el espacio sobrante: TITULAR 40% / PROYECTO 60% (mínimo 100px cada uno)
+// CSS calc() no funciona con rem en table-layout:fixed → medimos el DOM.
+// Bug #265.5: saltar si ninguna columna flexible está visible; excluir cols ocultas de anchoFijo.
+function ajustarFlexiblesSeguimiento() {
+    const tabla = document.querySelector('.seguimiento-table');
+    if (!tabla) return;
+    const ths = Array.from(tabla.querySelectorAll('thead th'));
+    if (ths.length < 5) return;
+    const thTitular  = ths[3];
+    const thProyecto = ths[4];
+    thTitular.style.width  = '';
+    thProyecto.style.width = '';
+
+    const titularVisible  = getComputedStyle(thTitular).display  !== 'none';
+    const proyectoVisible = getComputedStyle(thProyecto).display !== 'none';
+    // Si ninguna columna flexible está visible, no hay nada que distribuir
+    if (!titularVisible && !proyectoVisible) return;
+
+    const totalWidth = tabla.offsetWidth;
+    let anchoFijo = 0;
+    ths.forEach((th, i) => {
+        if (i !== 3 && i !== 4 && getComputedStyle(th).display !== 'none') {
+            anchoFijo += th.offsetWidth;
+        }
+    });
+    const sobrante = Math.max(0, totalWidth - anchoFijo);
+    const MIN_PX = 100;
+    if (proyectoVisible) {
+        thTitular.style.width  = Math.max(MIN_PX, sobrante * 0.4) + 'px';
+        thProyecto.style.width = Math.max(MIN_PX, sobrante * 0.6) + 'px';
+    } else {
+        thTitular.style.width  = Math.max(MIN_PX, sobrante) + 'px';
+    }
+}
+requestAnimationFrame(ajustarFlexiblesSeguimiento);
+new ResizeObserver(ajustarFlexiblesSeguimiento)
+    .observe(document.querySelector('.lista-scroll-container'));
+// Recalcular cuando los media queries ocultan/muestran las columnas flexibles (#265.5)
+[1100, 1000].forEach(bp => {
+    window.matchMedia(`(max-width: ${bp}px)`).addEventListener('change', ajustarFlexiblesSeguimiento);
+});
+
+
+// ============================================================================
+// ===== PESTAÑA HUÉRFANOS (#630, ADR-038) ===================================
+// ============================================================================
+
+const ROL_ACTIVO      = {{ session.get('rol_activo_nombre') | tojson }};
+const CURRENT_USER_ID = {{ current_user.id | tojson }};
+
+function escapeHtml(str) {
+    const d = document.createElement('div');
+    d.textContent = str == null ? '' : String(str);
+    return d.innerHTML;
+}
+
+// Construcción perezosa (mismo criterio que tablas_maestras/listado.html): el
+// constructor de ScrollInfinito dispara su propia carga inicial (loadMore())
+// de forma síncrona — construirlo ya-mismo cargaría Huérfanos aunque el
+// técnico no haya abierto nunca esa pestaña. Todo lo que tiene efecto (crear
+// selectores, instanciar ScrollInfinito, cablear listeners) vive dentro de
+// initHuerfanos(), invocada una sola vez al mostrar la pestaña por primera vez.
+let hfVer, hfResponsable, huerfanosScroll;
+
+function initHuerfanos() {
+// Filtro condicional por rol (ADR-038 §3): TRAMITADOR mis/todos; el resto,
+// filtro por técnico concreto (solo TRAMITADOR puede ser responsable de
+// expediente — _usuarios_tramitadores ya fija ese invariante).
+//
+// NOTA: no se usa FiltrosListado aquí a propósito — su constructor selecciona
+// '.filters-row'/'.filters input[type=search]' a nivel de documento (primer
+// match), incompatible con dos pestañas que tienen cada una su propia
+// .filters-row (la de Seguimiento ya usa FiltrosListado más arriba). Se
+// conecta todo a mano, scopeado a #pane-huerfanos.
+// onChange guarda con `if (huerfanosScroll)`: setValue('mis') más abajo dispara
+// onChange de inmediato, antes de que huerfanosScroll exista todavía (se
+// construye después, leyendo ya el valor del selector en su loadMore() inicial).
+if (ROL_ACTIVO === 'TRAMITADOR') {
+    hfVer = new SelectorFiltro('#hf-ver', [
+        { v: 'mis', t: 'Mis expedientes' }
+    ], { label: 'Ver', onChange: () => { if (huerfanosScroll) { huerfanosScroll.reload(); _actualizarIndicadorHuerfanos(); } } });
+    hfVer.setValue('mis');
+} else {
+    hfResponsable = new SelectorFiltro('#hf-responsable', [
+        {% for u in usuarios %}
+        { v: '{{ u.id }}', t: {{ (u.apellido1 ~ ', ' ~ u.nombre) | tojson }} }{% if not loop.last %},{% endif %}
+
+        {% endfor %}
+    ], { label: 'Técnico', onChange: () => { if (huerfanosScroll) { huerfanosScroll.reload(); _actualizarIndicadorHuerfanos(); } } });
+}
+
+function renderAsignacion(val) {
+    if (ROL_ACTIVO === 'TRAMITADOR') {
+        const esMio = !!(val && val.id === CURRENT_USER_ID);
+        const color = esMio ? 'text-success' : 'text-danger';
+        const title = esMio
+            ? 'Tu expediente'
+            : (val ? 'Expediente no asignado a ti — actuación registrada en bitácora' : 'Expediente sin responsable asignado');
+        return `<div class="text-center"><i class="bi bi-lightbulb-fill ${color}" title="${title}"></i></div>`;
+    }
+    return val ? escapeHtml(val.siglas) : '<span class="text-secondary">Sin asignar</span>';
+}
+
+function renderVerAccion(item) {
+    if (!item.enlace) return '';
+    if (item.abrir_en === 'modal') {
+        return `<button type="button" class="btn btn-sm btn-link p-0 lh-1" title="Ver documento"
+                        onclick="event.stopPropagation(); window.AppModalLarge && window.AppModalLarge.open('${item.enlace}', {title: ${JSON.stringify(item.nombre)}})">
+                    <i class="fas fa-eye"></i>
+                </button>`;
+    }
+    return `<a href="${item.enlace}" target="_blank" rel="noopener" class="btn btn-sm btn-link p-0 lh-1"
+               title="Ver documento" onclick="event.stopPropagation()">
+                <i class="fas fa-eye"></i>
+            </a>`;
+}
+
+function borrarHuerfano(btn, expedienteId, docId) {
+    if (!window.confirm('¿Borrar este documento del pool? No se puede deshacer.')) return;
+    btn.disabled = true;
+    fetch(`/expedientes/${expedienteId}/documentos/${docId}/borrar`, {
+        method: 'POST',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+    })
+        .then(r => r.json())
+        .then(data => {
+            if (!data.ok) {
+                window.mostrar_toast('danger', data.error || 'No se pudo borrar el documento.');
+                btn.disabled = false;
+                return;
+            }
+            window.mostrar_toast('success', 'Documento borrado del pool.');
+            huerfanosScroll.reload();
+        })
+        .catch(() => {
+            window.mostrar_toast('danger', 'Error de red al borrar.');
+            btn.disabled = false;
+        });
+}
+window.borrarHuerfano = borrarHuerfano;
+
+const huerfanosColumns = [
+    { key: 'num_at',      label: 'Expediente',  type: 'custom' },
+    { key: 'responsable', label: 'Asignación',   type: 'custom' },
+    { key: 'tipo_doc',    label: 'Tipo',         type: 'custom' },
+    { key: 'asunto',      label: 'Descripción',  type: 'custom', truncate: true },
+    { key: 'nombre',      label: 'Fichero',      type: 'custom', truncate: true },
+    { key: '_acciones',   label: '',             type: 'custom' },
+].map(col => ({ ...col, renderFn: {
+    num_at:      (val) => `<span class="num-at-pill"><strong>AT-${val}</strong></span>`,
+    responsable: (val) => renderAsignacion(val),
+    tipo_doc:    (val) => escapeHtml(val || '—'),
+    asunto:      (val) => `<span class="celda-ellipsis" title="${escapeHtml(val || '')}">${escapeHtml(val || '—')}</span>`,
+    nombre:      (val, item) => `<span class="celda-ellipsis" title="${escapeHtml(val)}">${escapeHtml(val)}</span> ${renderVerAccion(item)}`,
+    _acciones:   (val, item) => `<button type="button" class="btn btn-sm btn-outline-danger" title="Borrar del pool"
+                                         onclick="event.stopPropagation(); borrarHuerfano(this, ${item.expediente_id}, ${item.id})">
+                                     <i class="fas fa-trash"></i>
+                                 </button>`,
+}[col.key] }));
+
+class HuerfanosScroll extends ScrollInfinito {
+    async loadMore() {
+        if (this.loading || !this.hasMore) return;
+        this.loading = true;
+        this.showLoader();
+
+        try {
+            const params = new URLSearchParams({ cursor: this.cursor, limit: this.limit });
+
+            const search = this.searchInput?.value.trim();
+            if (search) params.append('search', search);
+
+            if (ROL_ACTIVO === 'TRAMITADOR') {
+                params.append('ver', hfVer.getValue() || 'todos');
+            } else {
+                const responsableId = hfResponsable.getValue();
+                if (responsableId) params.append('responsable_id', responsableId);
+            }
+
+            const response = await fetch(`${this.apiUrl}?${params}`);
+            if (!response.ok) throw new Error(`Error ${response.status}: ${response.statusText}`);
+
+            const data = await response.json();
+            this.cursor  = data.next_cursor;
+            this.hasMore = data.has_more;
+
+            this.renderItems(data.data);
+            this.totalLoaded += data.data.length;
+            this.updatePaginationInfo();
+        } catch (error) {
+            console.error('Error cargando huérfanos:', error);
+            this.showError('Error al cargar el radar de huérfanos. Inténtalo de nuevo.');
+        } finally {
+            this.loading = false;
+            this.hideLoader();
+        }
+    }
+}
+
+huerfanosScroll = new HuerfanosScroll({
+    apiUrl:      '{{ url_for("api_huerfanos.listar_huerfanos") }}',
+    tableClass:  '.huerfanos-table',
+    entityLabel: 'documentos',
+    columns:     huerfanosColumns,
+    selection: {
+        fragmentUrl: id   => `/seguimiento_y_huerfanos/huerfanos/${id}/fragmento`,
+        title:       item => `AT-${item.num_at} · ${item.tipo_doc || ''}`,
+    },
+});
+
+// Cableado manual del buscador + botón Limpiar, scopeado a #pane-huerfanos
+// (ver nota más arriba sobre por qué no se reutiliza FiltrosListado aquí).
+const hueSearchInput = document.getElementById('hue-search');
+const hueFiltersRow  = document.querySelector('#pane-huerfanos .filters-row');
+const hueBtnLimpiar  = document.querySelector('#pane-huerfanos .btn-limpiar');
+let _hueSearchTimer  = null;
+let _hueLimpiando    = false;
+
+function _actualizarIndicadorHuerfanos() {
+    if (!hueFiltersRow) return;
+    const hayExtra =
+        (hueSearchInput && hueSearchInput.value.trim()) ||
+        (ROL_ACTIVO === 'TRAMITADOR' ? hfVer.getValue() !== 'mis' : !!hfResponsable.getValue());
+    hueFiltersRow.classList.toggle('filtros-activos', !!hayExtra);
+    if (hueBtnLimpiar) hueBtnLimpiar.disabled = !hayExtra;
+}
+
+if (hueSearchInput) {
+    hueSearchInput.addEventListener('input', () => {
+        if (_hueLimpiando) return;
+        clearTimeout(_hueSearchTimer);
+        _hueSearchTimer = setTimeout(() => {
+            huerfanosScroll.reload();
+            _actualizarIndicadorHuerfanos();
+        }, 400);
+    });
+}
+
+if (hueBtnLimpiar) {
+    hueBtnLimpiar.addEventListener('click', (e) => {
+        e.preventDefault();
+        clearTimeout(_hueSearchTimer);
+        const habiaBusqueda = hueSearchInput && hueSearchInput.value.trim();
+        if (hueSearchInput) hueSearchInput.value = '';
+        // setValue()/clear() ya disparan onChange (reload + indicador) — si además
+        // había texto en el buscador, forzamos un reload extra para que se aplique.
+        if (ROL_ACTIVO === 'TRAMITADOR') hfVer.setValue('mis');
+        else hfResponsable.clear();
+        if (habiaBusqueda) huerfanosScroll.reload();
+        _actualizarIndicadorHuerfanos();
+    });
+}
+
+// Recargar la lista tras vincular desde el panel de candidatas (_inspector_huerfano.html)
+document.addEventListener('huerfano:vinculado', () => huerfanosScroll.reload());
+} // fin initHuerfanos()
+
+// Invocar initHuerfanos() una sola vez, al activar la pestaña por primera vez.
+// El propio constructor de ScrollInfinito ya dispara su carga inicial — no
+// hace falta llamar loadMore() aparte (ver nota junto a la declaración de
+// huerfanosScroll más arriba).
+document.getElementById('syh-tab-huerfanos').addEventListener('shown.bs.tab', function onShown() {
+    document.getElementById('syh-tab-huerfanos').removeEventListener('shown.bs.tab', onShown);
+    initHuerfanos();
+});
+
+// Scroll-to-top propio (v2-tabla-scroll-to-top.js es de instancia única —
+// solo se engancharía a la primera .lista-scroll-container del documento).
+// Workaround temporal — #755 arreglará este botón "subir" generalizándolo a
+// multi-instancia; sustituir este bloque por el componente resultante.
+(function () {
+    const container = document.querySelector('.huerfanos-scroll-container');
+    const btn = document.getElementById('tabla-scroll-to-top-huerfanos');
+    if (!container || !btn) return;
+    container.addEventListener('scroll', () => {
+        btn.classList.toggle('visible', container.scrollTop > 200);
+    });
+    btn.addEventListener('click', () => container.scrollTo({ top: 0, behavior: 'smooth' }));
+})();
+</script>
+{% endblock %}
