@@ -841,10 +841,13 @@ def pool_documentos(expediente_id):
     """
     GET /api/expedientes/<id>/pool — pool estructurado para la despensa de tareas (S3b-3).
 
-    Devuelve: {documentos: [{id, nombre, tipo_doc, fecha, enlace, externo,
-    puede_abrir_carpeta}]}, orden id DESC. enlace/puede_abrir_carpeta permiten
-    previsualizar cualquier documento del pool antes de decidir enlazarlo,
-    no solo los ya consumidos/producidos de la tarea (#609).
+    Devuelve: {documentos: [{id, nombre, tipo_doc, tipo_doc_codigo, fecha, enlace,
+    externo, puede_abrir_carpeta}]}, orden id DESC. enlace/puede_abrir_carpeta
+    permiten previsualizar cualquier documento del pool antes de decidir
+    enlazarlo, no solo los ya consumidos/producidos de la tarea (#609).
+    `tipo_doc_codigo` (#712): permite filtrar client-side (p.ej. los 4
+    JUSTIFICANTE_* en el desplegable de NotificarEditor) sin endpoint aparte,
+    reutilizando el pool que la Despensa ya carga una vez por sesión de la isla.
     """
     expediente = Expediente.query.get_or_404(expediente_id)
     denegado = verificar_acceso_expediente(expediente)
@@ -859,6 +862,7 @@ def pool_documentos(expediente_id):
         'id': doc.id,
         'nombre': _nombre_documento(doc),
         'tipo_doc': doc.tipo_doc.nombre if doc.tipo_doc else None,
+        'tipo_doc_codigo': doc.tipo_doc.codigo if doc.tipo_doc else None,
         'fecha': doc.fecha_administrativa.strftime('%d/%m/%Y') if doc.fecha_administrativa else None,
         **info_apertura_documento(expediente_id, doc),
     } for doc in docs]
@@ -1582,7 +1586,7 @@ def crear_requerimiento_catalogo(expediente_id, tarea_id):
 
 
 # =============================================================================
-# ENDPOINT 12: Contenedor de la tarea NOTIFICAR (#657/#658, ADR-034)
+# ENDPOINT 12: Contenedor de la tarea NOTIFICAR (#657/#658/#712, ADR-034)
 # =============================================================================
 
 _CANALES_VALIDOS = {'NOTIFICA', 'BANDEJA', 'SIR', 'POSTAL'}
@@ -1655,12 +1659,13 @@ def get_notificar(expediente_id, tarea_id):
 @login_required
 def post_notificar(expediente_id, tarea_id):
     """
-    POST .../nodo/tarea/<tarea_id>/notificar — "Registrar envío" (camino A, ADR-034 §6).
+    POST .../nodo/tarea/<tarea_id>/notificar — "Registrar puesta a disposición"
+    (camino A, ADR-034 §6).
 
     Body JSON: {canal, identificador_envio?, fecha_puesta_disposicion}. Upsert
     por tarea_id: si ya existe fila (p.ej. creada por el hook de editar_tarea,
     #657/#658), actualiza estos tres campos sin tocar resultado/fecha_resultado/
-    numero_intento/observaciones — "Completar resultado" (PATCH) es la acción
+    numero_intento/observaciones — "Registrar notificación" (PATCH) es la acción
     que los gestiona.
     """
     expediente = Expediente.query.get_or_404(expediente_id)
@@ -1700,13 +1705,23 @@ def post_notificar(expediente_id, tarea_id):
 @login_required
 def patch_notificar(expediente_id, tarea_id):
     """
-    PATCH .../nodo/tarea/<tarea_id>/notificar — "Completar resultado" (camino B
+    PATCH .../nodo/tarea/<tarea_id>/notificar — "Registrar notificación" (camino B
     manual, ADR-034 §6/SIR). Body JSON: {resultado, fecha_resultado, numero_intento,
-    observaciones?}.
+    observaciones?, documento_id?}.
 
-    Requiere fila previa (creada por "Registrar envío" o por el hook automático
-    al vincular un justificante parseable) — 422 si no existe: fecha_puesta_disposicion
-    es NOT NULL y este endpoint no la conoce, así que no puede crear la fila desde cero.
+    `documento_id` (#712, acto 3 del flujo de dos actos, opcional): vincula ese
+    documento del pool como Producido de la tarea ANTES de persistir los campos
+    de resultado — reutiliza `svc.editar_tarea` (mismo mecanismo de movimiento
+    físico y del hook de cotejo que usa la Despensa, sin duplicarlo), sustituyendo
+    el producido anterior si lo había. El hook puede auto-rellenar resultado/
+    fecha_resultado al vincular (si el documento es parseable) pero los valores
+    del body de esta misma llamada se persisten justo después y ganan siempre —
+    son los que el usuario ya revisó/corrigió en el formulario, no un re-parseo.
+
+    Sin `documento_id`, requiere fila previa (creada por "Registrar puesta a
+    disposición" o por el hook automático al vincular un justificante parseable)
+    — 422 si no existe: fecha_puesta_disposicion es NOT NULL y este endpoint no
+    la conoce, así que no puede crear la fila desde cero.
     """
     expediente = Expediente.query.get_or_404(expediente_id)
     if verificar_acceso_expediente(expediente, 'gestionar_tarea'):
@@ -1717,14 +1732,36 @@ def patch_notificar(expediente_id, tarea_id):
     except ValueError as e:
         return jsonify({'error': str(e)}), 404
 
+    data = request.get_json(silent=True) or {}
+
+    advertencia_vinculo = None
+    documento_id = data.get('documento_id')
+    if documento_id is not None:
+        doc = Documento.query.get(documento_id)
+        if not doc or doc.expediente_id != expediente.id:
+            return jsonify({'error': 'Documento no válido para este expediente'}), 422
+        tipo_codigo = doc.tipo_doc.codigo if doc.tipo_doc else None
+        if tipo_codigo not in svc.MAPA_CANAL_POR_TIPO_DOC:
+            return jsonify({'error': 'El documento no es un justificante de notificación (JUSTIFICANTE_*)'}), 422
+
+        consumidos_ids = [v.documento_id for v in tarea.vinculos_documento if v.rol == 'CONSUMIDO']
+        res_vinculo = svc.editar_tarea(
+            tarea, documentos_consumidos_ids=consumidos_ids,
+            documento_producido_id=documento_id, notas=tarea.notas,
+        )
+        if res_vinculo.bloqueo:
+            return _bloqueo_422(res_vinculo)
+        if not res_vinculo.ok:
+            return jsonify({'error': res_vinculo.error}), 422
+        advertencia_vinculo = res_vinculo.advertencia
+
     notif = Notificacion.query.filter_by(tarea_id=tarea.id).first()
     if notif is None:
         return jsonify({
             'error': 'Sin envío registrado',
-            'motivo': 'Registra el envío antes de completar el resultado.',
+            'motivo': 'Registra la puesta a disposición antes de registrar la notificación.',
         }), 422
 
-    data = request.get_json(silent=True) or {}
     resultado = data.get('resultado')
     if resultado not in _RESULTADOS_VALIDOS:
         return jsonify({'error': 'resultado debe ser CORRECTA o INCORRECTA'}), 422
@@ -1743,7 +1780,10 @@ def patch_notificar(expediente_id, tarea_id):
     notif.observaciones = (data.get('observaciones') or '').strip() or None
     db.session.commit()
 
-    return jsonify({'ok': True, 'notificacion': _notificacion_json(notif)}), 200
+    payload = {'ok': True, 'notificacion': _notificacion_json(notif)}
+    if advertencia_vinculo:
+        payload['advertencia'] = advertencia_vinculo
+    return jsonify(payload), 200
 
 
 @api_bp.route('/expedientes/<int:expediente_id>/nodo/tarea/<int:tarea_id>/notificar/parsear',
@@ -1781,3 +1821,52 @@ def post_notificar_parsear(expediente_id, tarea_id):
         resultado = parsear_justificante_notifica(fichero.stream)
 
     return jsonify(resultado.to_dict()), 200
+
+
+@api_bp.route('/expedientes/<int:expediente_id>/nodo/tarea/<int:tarea_id>/notificar/parsear_documento',
+              methods=['POST'])
+@login_required
+def post_notificar_parsear_documento(expediente_id, tarea_id):
+    """
+    POST .../notificar/parsear_documento — preview del justificante DEFINITIVO
+    (#712, acto 1 del flujo de dos actos): a diferencia de .../notificar/parsear
+    (fichero transitorio sin subir), aquí el documento YA está en el pool del
+    expediente — se lee de disco por `documento_id`, se parsea con la misma
+    lógica que usa el hook de vinculación (`parsear_documento_notifica`), y NO
+    se persiste nada ni se vincula como Producido — eso lo hace el PATCH
+    .../notificar (acto 3) cuando el usuario confirma.
+
+    Body JSON: {documento_id}. Solo NOTIFICA tiene parser (#655): para el
+    resto de canales responde `{reconocido: false, canal}` sin intentar nada
+    — el usuario rellena a mano (mismo criterio que ADR-034 §"SIR").
+    """
+    expediente = Expediente.query.get_or_404(expediente_id)
+    if verificar_acceso_expediente(expediente, 'gestionar_tarea'):
+        return jsonify({'error': 'No tienes permiso para esta acción'}), 403
+
+    try:
+        _resolver_tarea_notificar(expediente, tarea_id)
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 404
+
+    data = request.get_json(silent=True) or {}
+    documento_id = data.get('documento_id')
+    doc = Documento.query.get(documento_id) if documento_id else None
+    if not doc or doc.expediente_id != expediente.id:
+        return jsonify({'error': 'Documento no válido para este expediente'}), 422
+
+    tipo_codigo = doc.tipo_doc.codigo if doc.tipo_doc else None
+    canal = svc.MAPA_CANAL_POR_TIPO_DOC.get(tipo_codigo)
+    if canal is None:
+        return jsonify({'error': 'El documento no es un justificante de notificación (JUSTIFICANTE_*)'}), 422
+
+    if canal != 'NOTIFICA':
+        return jsonify({'reconocido': False, 'canal': canal}), 200
+
+    resultado = svc.parsear_documento_notifica(doc)
+    if resultado is None:
+        return jsonify({'reconocido': False, 'canal': canal}), 200
+
+    payload = resultado.to_dict()
+    payload['canal'] = canal
+    return jsonify(payload), 200

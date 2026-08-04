@@ -37,7 +37,9 @@ export function postHijo(expedienteId, padreTipo, padreId, body) {
   return api.post(`/api/expedientes/${expedienteId}/nodo/${padreTipo}/${padreId}/hijos`, body)
 }
 
-// Pool de documentos del expediente (GET, S3b-3). Respuesta: {documentos:[{id,nombre,tipo_doc,fecha}]}.
+// Pool de documentos del expediente (GET, S3b-3). Respuesta: {documentos:[{id,nombre,
+// tipo_doc,tipo_doc_codigo,fecha}]}. tipo_doc_codigo (#712) permite filtrar client-side
+// (p.ej. JUSTIFICANTE_* en el desplegable de NotificarEditor).
 export function getPool(expedienteId) {
   return api.get(`/api/expedientes/${expedienteId}/pool`)
 }
@@ -168,19 +170,35 @@ export function postNotificar(expedienteId, tareaId, body) {
   return api.post(`/api/expedientes/${expedienteId}/nodo/tarea/${tareaId}/notificar`, body)
 }
 
-// "Completar resultado" (camino B manual): body {resultado, fecha_resultado,
-// numero_intento, observaciones?}. 422 si no hay envío registrado todavía.
+// "Registrar notificación" (camino B manual): body {resultado, fecha_resultado,
+// numero_intento, observaciones?, documento_id?}. 422 si no hay puesta a disposición
+// registrada todavía. `documento_id` (#712, acto 3): vincula ese documento del pool
+// como Producido en el mismo acto — ver docstring del endpoint (sustituye al anterior
+// si lo había). Respuesta: {ok, notificacion, advertencia?} — advertencia si el cotejo
+// de remesa o canal no coincide con lo ya registrado (no bloqueante).
 export function patchNotificar(expedienteId, tareaId, body) {
   return api.patch(`/api/expedientes/${expedienteId}/nodo/tarea/${tareaId}/notificar`, body)
 }
 
 // Parseo transitorio del justificante (multipart, sin persistir nada) para
-// autorrellenar "Registrar envío" — el usuario verifica/corrige antes de confirmar.
-// Respuesta: el .to_dict() del parser (incluye `reconocido`, fechas ISO).
+// autorrellenar "Registrar puesta a disposición" — el usuario verifica/corrige
+// antes de confirmar. Respuesta: el .to_dict() del parser (incluye `reconocido`, fechas ISO).
 export function postNotificarParsear(expedienteId, tareaId, fichero) {
   const formData = new FormData()
   formData.append('fichero', fichero)
   return api.post(`/api/expedientes/${expedienteId}/nodo/tarea/${tareaId}/notificar/parsear`, formData)
+}
+
+// Preview del justificante DEFINITIVO ya en el pool (#712, acto 1 — desplegable de
+// "Registrar notificación"): a diferencia de postNotificarParsear, aquí el documento
+// ya existe (se pasa documento_id, no fichero) y se lee de disco en el servidor. Sin
+// persistir nada. Respuesta: {reconocido:false, canal} si el canal no tiene parser
+// (BANDEJA/SIR/POSTAL) o el PDF no se reconoce; si no, el .to_dict() del parser + canal.
+export function postNotificarParsearDocumento(expedienteId, tareaId, documentoId) {
+  return api.post(
+    `/api/expedientes/${expedienteId}/nodo/tarea/${tareaId}/notificar/parsear_documento`,
+    { documento_id: documentoId },
+  )
 }
 
 // Genera el .docx y lo guarda en disco + pool (#608: asignar_doc_producido siempre
