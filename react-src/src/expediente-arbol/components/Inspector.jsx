@@ -403,6 +403,21 @@ function Editor({ nodo }) {
   )
 }
 
+// Control de borrado compartido por los tres editores bespoke de tarea (ANALIZAR/
+// ELABORAR/NOTIFICAR, #742): el Editor genérico lo integra en su propio form (arriba),
+// pero ninguno de los tres bespoke lo trae de fábrica — se hoistea aquí, al nivel de
+// InspectorEdicion, en vez de triplicarlo en cada uno (mismo criterio ya aplicado a
+// Despensa: es el contenedor común quien pone el "chrome" alrededor del editor bespoke).
+function BotonBorrarTarea() {
+  const solicitarBorrado = useArbolStore((s) => s.solicitarBorrado)
+  return (
+    <div className="d-flex mt-3">
+      <button type="button" className="btn btn-sm btn-outline-danger"
+              onClick={solicitarBorrado}>🗑️ Borrar</button>
+    </div>
+  )
+}
+
 // Barra superior fija del marco de edición (ADR-023 §5 bis, #676): cabecera +
 // control de salida, inmutable al scroll del contenido de abajo.
 //
@@ -451,7 +466,6 @@ function BarraEdicion({ tipo, nodo }) {
 function InspectorEdicion({ nodo }) {
   const seleccion             = useArbolStore((s) => s.seleccion)
   const borrarPendienteConfirm = useArbolStore((s) => s.borrarPendienteConfirm)
-  const solicitarBorrado      = useArbolStore((s) => s.solicitarBorrado)
   const seccionesExtendidas   = useArbolStore((s) => s.analizarSeccionesExtendidas)
   // ANALIZAR (#442): contenedor bespoke en vez del Editor genérico — secciones de
   // checklist + resultado + producir diagnóstico no encajan en el esquema
@@ -491,12 +505,7 @@ function InspectorEdicion({ nodo }) {
                 ? <NotificarEditor tareaId={seleccion.id} />
                 : <Editor nodo={nodo} />
         }
-        {!borrarPendienteConfirm && puedeBorrarTarea && (
-          <div className="d-flex mt-3">
-            <button type="button" className="btn btn-sm btn-outline-danger"
-                    onClick={solicitarBorrado}>🗑️ Borrar</button>
-          </div>
-        )}
+        {!borrarPendienteConfirm && puedeBorrarTarea && <BotonBorrarTarea />}
         {!borrarPendienteConfirm && !ocultarDespensa && (
           <div className="border-top mt-3 pt-3">
             <Despensa deshabilitarProducido={esAnalizar} />
