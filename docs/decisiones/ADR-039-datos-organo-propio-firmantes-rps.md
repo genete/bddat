@@ -29,7 +29,7 @@ Hallazgos que condicionan el modelo:
 
 Tabla catálogo nueva, curada a mano por el Supervisor: nombre, provincia (nullable, para servicios centrales), sede_direccion, sede_telefono, sede_correo, consejeria_nombre, codigo_bandeja_texto (el rótulo tal cual aparece en BandeJA, para localizarlo por texto en la automatización — **no** su `id`, que en el árbol de BandeJA viene vacío en 7 de 73 nodos y no es fiable como clave).
 
-Se puebla solo con las filas que hagan falta en la práctica (los servicios periféricos de energía por provincia + los centrales relevantes), no con las 73 filas completas del árbol de BandeJA.
+Se puebla con **las 8 delegaciones territoriales (servicio de energía por provincia) + los centrales relevantes desde el principio** — no las 73 filas completas del árbol de BandeJA, pero tampoco solo la delegación del despliegue actual. El coste es marginal: el dato ya está extraído en `app/data/bandeja_destinos/`. Motivo: aunque BDDAT es hoy mono-provincial, `Usuario.unidad_organo_id` ya resuelve la unidad **por usuario**, no por instancia global — así que el día que haya un usuario de otra provincia, solo hace falta asignarle la fila que le corresponde, sin migración de repoblado.
 
 `Usuario.unidad_organo_id` (FK, nullable hasta que se rellene). No se deriva de `Expediente`/`Proyecto` porque el destino real usado en BandeJA es el puesto del usuario que envía, no la ubicación de la instalación — confirmado en el estudio de campo.
 
@@ -68,10 +68,11 @@ Dos consumidores distintos del mismo catálogo:
 
 Movido al checklist de #728 para que quede visible sin depender de leer este ADR:
 
-- Multi-consejería en cabecera (#728 menciona "puede ser más de una") — edge case institucional sin resolver.
+- Multi-consejería en cabecera: el texto original de #728 es *"Consejería (nombre completo,
+  **y puede ser más de una**)"* — sobre la propia consejería (probablemente resoluciones
+  conjuntas con otra consejería, p.ej. AAI/AAU integrada con Medio Ambiente), no sobre
+  provincia. Sigue sin resolver.
 - Histórico de quién ocupó cada cargo/firmante cuándo — no necesario para el alcance actual.
-- Cuántos niveles del árbol de destinos de BandeJA hacen falta en `unidades_organo_propio` más allá de los servicios periféricos de energía.
-- Confirmar si el RPS que aparece por defecto en el modal de detalle de una comunicación (visto en una prueba real de #728) es indicio de algún comportamiento de BandeJA o fue simplemente el valor introducido a mano en esa prueba — condiciona el punto de partida de #757.
 
 ---
 
