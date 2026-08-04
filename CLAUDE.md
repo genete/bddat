@@ -28,25 +28,20 @@ Desarrollado para la Consejería de Industria, Energía y Minas (Junta de Andalu
 ## Herramientas MCP Disponibles
 
 - **PostgreSQL MCP** — consultar esquema real de BD en desarrollo
-- **Playwright MCP** — reservado para otros usos (no verificación rutinaria en navegador, ver abajo)
+- **Playwright MCP** — verificación rutinaria en navegador, ver abajo
 - **Windows MCP** — redimensionado de ventanas
 
 ## Verificación de cambios en navegador
 
-Herramienta por defecto: el **navegador integrado de Claude Code Desktop**
-(`mcp__Claude_Browser__*` — `preview_start`, `computer`, `read_page`, `javascript_tool`, etc.).
-No requiere preguntar antes de usarlo. Arrancar el server con `preview_start {name: "bddat"}`
-(ver `.claude/launch.json`) y autenticar con el flujo de dos pasos (`docs/...` /
-memoria `project_login_dos_pasos`).
+Herramienta por defecto: **Playwright MCP**, sin preguntar al usuario.
 
-**Playwright MCP** queda reservado para otros usos — no es la herramienta por defecto para
-verificar features en navegador. Si en el futuro se detecta que el navegador integrado se
-cuelga o no sirve para algún caso concreto (p. ej. islas React con rAF/observers vivos como
-react-flow o Recharts), documentarlo como excepción puntual antes de recurrir a Playwright,
-y en ese caso sí **preguntar siempre** antes de usarlo (consume mucho contexto, especialmente
-al capturar pantalla).
+Uso: navegación e interacción para comprobar el funcionamiento y las respuestas de la
+interfaz. Para artefactos de render, capturas de pantalla preferentemente contenidas en
+HD o Full HD. Para casos especiales, fijar la dimensión con `browser_resize` al arrancar
+el navegador (cambia el viewport real, verificado). Login de dos pasos: memoria
+`project_login_dos_pasos`. Al terminar la verificación, cerrar el navegador con
+`browser_close`.
 
-### Si se usa Playwright MCP (excepción)
-- Sin nombre de fichero → auto-genera `page-TIMESTAMP.png` en `.playwright-mcp/` (correcto)
-- Con nombre personalizado → guarda relativo al CWD (repo root). **SIEMPRE** prefijar:
-    `.playwright-mcp/nombre.png` para mantenerlos fuera del árbol git.
+Ficheros: sin nombre → auto-genera `page-TIMESTAMP.png` en `.playwright-mcp/` (correcto).
+Con nombre propio → **SIEMPRE** prefijar `.playwright-mcp/nombre.png`, si no guarda suelto
+en la raíz del repo.
