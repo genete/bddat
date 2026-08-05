@@ -59,6 +59,7 @@ FUENTES_PERMITIDAS = {
 ESTILOS_COMUNES = (
     'Cabecera - Consejería', 'Cabecera - Centro directivo',
     'Cabecera - Nombre Consejería Centrado', 'Cabecera - Delegación del gobierno',
+    'Cabecera - Delegación Territorial',
     'Pie de página - Datos', 'Pie de página - Centrado',
     'H6 - Anotaciones',
     'Tabla - Título', 'Tabla - Título de campo', 'Tabla - Contenido desarrollo',
