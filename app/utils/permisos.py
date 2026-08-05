@@ -107,6 +107,12 @@ PERMISOS = {
     'acceder_normas_variables':   {'ADMIN', 'SUPERVISOR', 'TRAMITADOR', 'ADMINISTRATIVO'},
     'gestionar_normas_variables': {'ADMIN', 'SUPERVISOR'},
 
+    # CRUD admin de organo_propio (#728, ADR-039 §1) — composición de la
+    # Delegación Territorial propia + unidades por provincia. Solo edición
+    # (sin alta/baja: filas estructuralmente fijas).
+    'acceder_organo_propio':   {'ADMIN', 'SUPERVISOR', 'TRAMITADOR', 'ADMINISTRATIVO'},
+    'gestionar_organo_propio': {'ADMIN', 'SUPERVISOR'},
+
     # Árbol del expediente — frontera hoja / estructura (ADR-017 §6, #501).
     # "Puerta abierta": gestionar_tareas habilita COMPLETAR cualquier tarea ya
     # prevista (incluye ADMINISTRATIVO); la bitácora es la rendición de cuentas.

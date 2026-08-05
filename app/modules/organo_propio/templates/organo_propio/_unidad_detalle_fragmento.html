@@ -1,0 +1,60 @@
+{# _unidad_detalle_fragmento.html — Parcial de lectura para el inspector (ADR-023 / #728).
+   No extiende base_app.html. Inyectado vía AppInspector.open({ fragmentUrl }).
+   Provincia y consejería son de solo lectura en todo momento: fijas (#728).
+#}
+
+<div class="p-3">
+
+{% if puede_editar %}
+<div class="d-flex justify-content-end mb-3">
+    <button type="button" class="btn btn-primary btn-sm"
+            data-inspector-edit
+            data-edit-url="{{ url_for('organo_propio.unidad_editar_fragmento', id=unidad.id) }}">
+        <i class="fas fa-edit me-1"></i> Editar
+    </button>
+</div>
+{% endif %}
+
+<div class="card mb-3">
+    <div class="card-header card-header-accent fw-semibold">
+        <i class="fas fa-map-marker-alt me-1"></i> {{ unidad.provincia or 'Servicios centrales' }}
+    </div>
+    <div class="card-body card-body-tinted">
+        <div class="row g-2">
+            <div class="col-12">
+                <label class="form-label fw-semibold small">Delegación Territorial (token de cabecera)</label>
+                <input type="text" class="form-control form-control-sm" value="{{ unidad.delegacion_territorial_nombre }}" readonly>
+                <div class="form-text">Computado a partir de la composición de Consejerías + provincia. No se guarda como texto.</div>
+            </div>
+            <div class="col-12">
+                <label class="form-label fw-semibold small">Rótulo en BandeJA</label>
+                <input type="text" class="form-control form-control-sm" value="{{ unidad.codigo_bandeja_texto or '—' }}" readonly>
+                <div class="form-text">Para localizar el nodo en la automatización de envío a Port@firmas (#758).</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-header card-header-accent fw-semibold">
+        <i class="fas fa-building me-1"></i> Sede
+    </div>
+    <div class="card-body card-body-tinted">
+        <div class="row g-2">
+            <div class="col-12">
+                <label class="form-label fw-semibold small">Dirección</label>
+                <input type="text" class="form-control form-control-sm" value="{{ unidad.sede_direccion or '—' }}" readonly>
+            </div>
+            <div class="col-6">
+                <label class="form-label fw-semibold small">Teléfono</label>
+                <input type="text" class="form-control form-control-sm" value="{{ unidad.sede_telefono or '—' }}" readonly>
+            </div>
+            <div class="col-6">
+                <label class="form-label fw-semibold small">Correo</label>
+                <input type="text" class="form-control form-control-sm" value="{{ unidad.sede_correo or '—' }}" readonly>
+            </div>
+        </div>
+    </div>
+</div>
+
+</div>{# /p-3 #}
