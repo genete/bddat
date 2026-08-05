@@ -113,6 +113,13 @@ PERMISOS = {
     'acceder_organo_propio':   {'ADMIN', 'SUPERVISOR', 'TRAMITADOR', 'ADMINISTRATIVO'},
     'gestionar_organo_propio': {'ADMIN', 'SUPERVISOR'},
 
+    # CRUD admin de firmantes_portafirmas (#728, ADR-039 §2) — catálogo de
+    # firmantes de escritos, desacoplado de usuarios. Baja lógica
+    # (vigente/fecha_baja) vía gestionar_firmantes_portafirmas, sin permiso
+    # de eliminación física aparte.
+    'acceder_firmantes_portafirmas':   {'ADMIN', 'SUPERVISOR', 'TRAMITADOR', 'ADMINISTRATIVO'},
+    'gestionar_firmantes_portafirmas': {'ADMIN', 'SUPERVISOR'},
+
     # Árbol del expediente — frontera hoja / estructura (ADR-017 §6, #501).
     # "Puerta abierta": gestionar_tareas habilita COMPLETAR cualquier tarea ya
     # prevista (incluye ADMINISTRATIVO); la bitácora es la rendición de cuentas.

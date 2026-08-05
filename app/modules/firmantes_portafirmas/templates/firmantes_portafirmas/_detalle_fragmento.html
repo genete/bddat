@@ -1,0 +1,60 @@
+{# _detalle_fragmento.html — Parcial de lectura para el inspector (ADR-023 / #728).
+   No extiende base_app.html. Inyectado vía AppInspector.open({ fragmentUrl }).
+   Baja lógica: botón vigente/no vigente en vez de eliminar (ADR-039 §2).
+#}
+
+<div class="p-3">
+
+<div class="d-flex justify-content-end gap-2 mb-3">
+    {% if puede_editar %}
+    <form method="POST" action="{{ url_for('firmantes_portafirmas.activar', id=item.id) }}" class="d-inline">
+        <button type="submit" class="btn btn-outline-{{ 'secondary' if item.vigente else 'success' }} btn-sm">
+            {% if item.vigente %}
+            <i class="fas fa-user-slash me-1"></i> Dar de baja
+            {% else %}
+            <i class="fas fa-user-check me-1"></i> Reactivar
+            {% endif %}
+        </button>
+    </form>
+    <button type="button" class="btn btn-primary btn-sm"
+            data-inspector-edit
+            data-edit-url="{{ url_for('firmantes_portafirmas.editar_fragmento', id=item.id) }}">
+        <i class="fas fa-edit me-1"></i> Editar
+    </button>
+    {% endif %}
+</div>
+
+<div class="card mb-3">
+    <div class="card-header card-header-accent fw-semibold">
+        <i class="fas fa-signature me-1"></i> {{ item.nombre }}
+        {% if item.vigente %}
+        <span class="badge bg-success-subtle text-success-emphasis ms-1">Vigente</span>
+        {% else %}
+        <span class="badge bg-secondary-subtle text-secondary-emphasis ms-1">De baja{% if item.fecha_baja %} desde {{ item.fecha_baja.strftime('%d/%m/%Y') }}{% endif %}</span>
+        {% endif %}
+    </div>
+    <div class="card-body card-body-tinted">
+        <div class="row g-2">
+            <div class="col-8">
+                <label class="form-label fw-semibold small">Cargo</label>
+                <input type="text" class="form-control form-control-sm" value="{{ item.cargo }}" readonly>
+            </div>
+            <div class="col-4">
+                <label class="form-label fw-semibold small">DNI</label>
+                <input type="text" class="form-control form-control-sm" value="{{ item.dni }}" readonly>
+            </div>
+            <div class="col-12">
+                <label class="form-label fw-semibold small">Unidad territorial</label>
+                <input type="text" class="form-control form-control-sm"
+                       value="{{ item.unidad_organo.provincia or 'Servicios centrales' if item.unidad_organo else '—' }}" readonly>
+            </div>
+            <div class="col-12">
+                <label class="form-label fw-semibold small">Usuario BDDAT</label>
+                <input type="text" class="form-control form-control-sm"
+                       value="{{ (item.usuario.siglas + ' — ' + item.usuario.nombre + ' ' + item.usuario.apellido1) if item.usuario else 'Sin cuenta BDDAT' }}" readonly>
+            </div>
+        </div>
+    </div>
+</div>
+
+</div>{# /p-3 #}

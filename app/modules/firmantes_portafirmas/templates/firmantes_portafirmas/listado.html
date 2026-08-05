@@ -1,0 +1,161 @@
+{% extends 'layout/lista_v2_base.html' %}
+
+{% block page_title %}Firmantes de Port@firmas{% endblock %}
+{% block page_icon %}<i class="fas fa-signature"></i>{% endblock %}
+{% block entity_label_plural %}firmantes{% endblock %}
+{% block search_placeholder %}Buscar por nombre, DNI o cargo...{% endblock %}
+{% block tabla_clase %}firmantes-portafirmas-table{% endblock %}
+
+{% block btn_nuevo %}
+{% if tiene_permiso('gestionar_firmantes_portafirmas') %}
+<button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#crearFirmanteModal">
+    <i class="fas fa-plus me-1"></i> Nuevo firmante
+</button>
+{% endif %}
+{% endblock %}
+
+{% block thead_cols %}
+<th>Nombre</th>
+<th>Cargo</th>
+<th class="lt-hide-md">DNI</th>
+<th class="lt-hide-md">Unidad</th>
+<th>Vigente</th>
+{% endblock %}
+
+{% block content %}
+{{ super() }}
+
+<!-- Modal de alta (patrón tipos_documentos) -->
+{% if tiene_permiso('gestionar_firmantes_portafirmas') %}
+<div class="modal fade" id="crearFirmanteModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <form method="POST" action="{{ url_for('firmantes_portafirmas.crear') }}" class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fas fa-signature me-1"></i> Nuevo firmante</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row g-2">
+          <div class="col-8">
+            <label class="form-label fw-semibold small" for="fp_nombre">
+              Nombre <span class="text-danger">*</span>
+            </label>
+            <input type="text" class="form-control form-control-sm" id="fp_nombre" name="nombre"
+                   maxlength="200" required
+                   value="{{ form_data.get('nombre', '') if form_data else '' }}">
+          </div>
+          <div class="col-4">
+            <label class="form-label fw-semibold small" for="fp_dni">
+              DNI <span class="text-danger">*</span>
+            </label>
+            <input type="text" class="form-control form-control-sm" id="fp_dni" name="dni"
+                   maxlength="15" required
+                   value="{{ form_data.get('dni', '') if form_data else '' }}">
+          </div>
+          <div class="col-12">
+            <label class="form-label fw-semibold small" for="fp_cargo">
+              Cargo <span class="text-danger">*</span>
+            </label>
+            <input type="text" class="form-control form-control-sm" id="fp_cargo" name="cargo"
+                   maxlength="200" required placeholder="Delegado/a Territorial, Consejero/a..."
+                   value="{{ form_data.get('cargo', '') if form_data else '' }}">
+          </div>
+          <div class="col-12">
+            <label class="form-label fw-semibold small" for="fp_unidad">
+              Unidad territorial <span class="text-danger">*</span>
+            </label>
+            <select class="form-select form-select-sm" id="fp_unidad" name="unidad_organo_id" required>
+              <option value="">— Seleccionar —</option>
+              {% for u in unidades %}
+              <option value="{{ u.id }}" {% if form_data and form_data.get('unidad_organo_id')|string == u.id|string %}selected{% endif %}>
+                  {{ u.provincia or 'Servicios centrales' }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-12">
+            <label class="form-label fw-semibold small" for="fp_usuario">Usuario BDDAT (opcional)</label>
+            <select class="form-select form-select-sm" id="fp_usuario" name="usuario_id">
+              <option value="">— Sin cuenta BDDAT —</option>
+              {% for u in usuarios %}
+              <option value="{{ u.id }}" {% if form_data and form_data.get('usuario_id')|string == u.id|string %}selected{% endif %}>
+                  {{ u.siglas }} — {{ u.nombre }} {{ u.apellido1 }}
+              </option>
+              {% endfor %}
+            </select>
+            <div class="form-text">Solo si el firmante también tiene cuenta BDDAT; no es requisito (ADR-039 §2).</div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+        <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-save me-1"></i> Crear firmante</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+{{ super() }}
+<script>
+    function _esc(s) {
+        if (s === null || s === undefined) return '';
+        return String(s)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+    }
+    function _vacio(val) {
+        return val ? _esc(val) : '<span class="text-secondary">—</span>';
+    }
+
+    const scrollInfinito = new ScrollInfinito({
+        apiUrl:      '{{ url_for("api_firmantes_portafirmas.listar_firmantes") }}',
+        tableClass:  '.firmantes-portafirmas-table',
+        entityLabel: 'firmantes',
+        columns: [
+            { key: 'nombre', label: 'Nombre', type: 'custom', renderFn: v => _esc(v) },
+            { key: 'cargo',  label: 'Cargo',  type: 'custom', renderFn: v => _esc(v) },
+            { key: 'dni',    label: 'DNI',    type: 'custom', hide: 'md', renderFn: v => _esc(v) },
+            { key: 'unidad_provincia', label: 'Unidad', type: 'custom', hide: 'md', renderFn: v => _vacio(v) },
+            { key: 'vigente', label: 'Vigente', type: 'custom', renderFn: v =>
+                v ? '<span class="badge bg-success-subtle text-success-emphasis">Vigente</span>'
+                  : '<span class="badge bg-secondary-subtle text-secondary-emphasis">De baja</span>' },
+        ],
+        selection: {
+            fragmentUrl: id   => `/firmantes_portafirmas/${id}/fragmento`,
+            title:       item => item.nombre || ''
+        }
+    });
+
+    const filtros = new FiltrosListado(scrollInfinito);
+
+    // Sync inspector ↔ URL ?sel (ADR-023 §1)
+    function _updateSelParam(selId) {
+        const url = new URL(location.href);
+        if (selId) url.searchParams.set('sel', selId);
+        else url.searchParams.delete('sel');
+        history.replaceState(null, '', url.toString());
+    }
+    document.addEventListener('inspector:opened',  e => _updateSelParam(e.detail.selId));
+    document.addEventListener('inspector:swapped', e => _updateSelParam(e.detail.selId));
+    document.addEventListener('inspector:closed',  () => _updateSelParam(null));
+
+    const _selParam = new URLSearchParams(location.search).get('sel');
+    if (_selParam && window.AppInspector) {
+        AppInspector.open({
+            selId:       _selParam,
+            title:       '',
+            fragmentUrl: `/firmantes_portafirmas/${_selParam}/fragmento`
+        });
+    }
+
+    {% if show_modal %}
+    new bootstrap.Modal(document.getElementById('crearFirmanteModal')).show();
+    {% endif %}
+
+    console.log('Listado de firmantes de Port@firmas inicializado (#728)');
+</script>
+{% endblock %}

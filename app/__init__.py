@@ -82,7 +82,7 @@ def create_app(config_name='development'):
     app.register_blueprint(wizard_expediente.bp)  # Issue #67
 
     # Registrar blueprints - APIs
-    from app.routes import api_expedientes, api_municipios, api_entidades, api_proyectos, api_escritos, api_seguimiento, api_bc, api_bitacora, api_search, api_usuarios, api_plantillas, api_administrativo, api_requisitos_documentales, api_catalogo_requerimientos, api_items_tecnicos, api_tablas_maestras, api_tipos_documentos, api_catalogo_plazos, api_efectos_plazo, api_reglas_motor, api_normas_variables, api_huerfanos
+    from app.routes import api_expedientes, api_municipios, api_entidades, api_proyectos, api_escritos, api_seguimiento, api_bc, api_bitacora, api_search, api_usuarios, api_plantillas, api_administrativo, api_requisitos_documentales, api_catalogo_requerimientos, api_items_tecnicos, api_tablas_maestras, api_tipos_documentos, api_catalogo_plazos, api_efectos_plazo, api_reglas_motor, api_normas_variables, api_huerfanos, api_firmantes_portafirmas
 
     app.register_blueprint(api_expedientes.api_bp)                  # usa 'api_bp'
     app.register_blueprint(api_municipios.bp)                       # usa 'bp'
@@ -106,6 +106,7 @@ def create_app(config_name='development'):
     app.register_blueprint(api_reglas_motor.api_reglas_motor_bp)                        # Issue #170
     app.register_blueprint(api_normas_variables.api_normas_variables_bp)                # Issue #637
     app.register_blueprint(api_huerfanos.api_huerfanos_bp)                              # Issue #630
+    app.register_blueprint(api_firmantes_portafirmas.api_firmantes_portafirmas_bp)      # Issue #728
 
     # Registrar módulos (app/modules/) — Fase 4: auto-discovery
     from app.modules import ModuleRegistry
