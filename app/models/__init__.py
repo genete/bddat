@@ -29,6 +29,15 @@ from app.models.plantillas import Plantilla
 # Catálogo de requerimientos de subsanación (#405 — sin FK operacionales)
 from app.models.catalogo_requerimientos import CatalogoRequerimiento
 
+# Composición de Consejerías de la Delegación Territorial propia (#728 — sin FK, ADR-039 §1)
+from app.models.organo_propio import ConsejeriaDelegacionTerritorial
+
+# Unidad territorial propia por provincia (#728 — FK a ConsejeriaDelegacionTerritorial, ADR-039 §1)
+from app.models.organo_propio import UnidadOrganoPropio
+
+# Catálogo de firmantes de escritos (#728 — FK a UnidadOrganoPropio y Usuario, ADR-039 §2)
+from app.models.organo_propio import FirmantePortafirmas
+
 # Activos de red — corte mínimo de integración con bddat-instalaciones
 # (#591 — activo_red autorreferenciada, sin FK operacionales de BDDAT)
 from app.models.activo_red import ActivoRed, Envolvente
@@ -151,6 +160,12 @@ __all__ = [
     'Plantilla',
     # Catálogo de requerimientos
     'CatalogoRequerimiento',
+    # Composición de Consejerías de la Delegación Territorial propia (#728)
+    'ConsejeriaDelegacionTerritorial',
+    # Unidad territorial propia por provincia (#728)
+    'UnidadOrganoPropio',
+    # Catálogo de firmantes de escritos (#728)
+    'FirmantePortafirmas',
     # Activos de red (integración bddat-instalaciones)
     'ActivoRed',
     'Envolvente',
