@@ -20,6 +20,8 @@ Hallazgos que condicionan el modelo:
 - **El RPS no es obligatorio en el formulario de BandeJA**, pero Carlos señala un antecedente real: una auditoría pasada detectó el mismo código de RPS reutilizado indiscriminadamente para todo. No es un campo que se pueda dejar sistemáticamente vacío o con un valor cualquiera sin riesgo de repetir ese hallazgo.
 - `docs/referencia/DISEÑO_ANALISIS_SOLICITUD.md` §8 ya decidió **"no crear tabla de firmantes"** — pero es un concepto distinto (cómo queda el bloque de cierre en el *texto* del escrito, resuelto con fragmentos `.docx`). El firmante de este ADR es "qué persona con DNI se busca en el cuadro de Port@firmas" — un problema de automatización/integración, no de redacción. No es un precedente que bloquee esta decisión, solo comparte nombre.
 - No existe tabla de catálogo DIR3 propia en BDDAT: el patrón más cercano (N081, organismos externos) vive en la tabla genérica `entidades`, poblada operativamente por el tramitador según aparecen interesados — no es un catálogo curado por el Supervisor, y modela organismos *externos*, no la propia casa. No es reutilizable tal cual para el órgano emisor propio.
+- **El "puede ser más de una" consejería del issue original tiene explicación estructural**, verificada contra el Decreto 190/2026, de 30 de julio (BOJA extraordinario núm. 15), que reorganiza la administración territorial provincial de la Junta: cada Delegación Territorial agrupa 1 ó 2 Consejerías, y cuando son 2 se nombra *"Delegación Territorial de \<materia 1\> y de \<materia 2\>"* (p.ej. *"...de Economía, Hacienda y Fondos Europeos y de Universidad, Industria, Energía e Innovación"*) — el patrón de concatenación es literalmente `" y de "`, verificado sobre el texto completo del decreto (Disposición adicional tercera y siguientes). "Delegación Provincial" es un término en desuso: el propio decreto (disposición transitoria quinta) lo trata como sinónimo histórico de "Delegación Territorial", a normalizar.
+- Ese mismo decreto es de hace unos días — reorganiza justo nuestro dominio (industria/energía pasa a agruparse con Economía/Hacienda/Universidad). Confirma la volatilidad ya señalada en el issue original ("no es raro a mitad legislatura") y avisa de que **BandeJA puede ir a rebufo** de la reorganización real: no hay que dar por buenos sus rótulos de consejería como si fueran la fuente de verdad actual.
 
 ---
 
@@ -27,7 +29,21 @@ Hallazgos que condicionan el modelo:
 
 ### 1. `unidades_organo_propio`, atada a `Usuario` — no a `Expediente`
 
-Tabla catálogo nueva, curada a mano por el Supervisor: nombre, provincia (nullable, para servicios centrales), sede_direccion, sede_telefono, sede_correo, consejeria_nombre, codigo_bandeja_texto (el rótulo tal cual aparece en BandeJA, para localizarlo por texto en la automatización — **no** su `id`, que en el árbol de BandeJA viene vacío en 7 de 73 nodos y no es fiable como clave).
+Tabla catálogo nueva, curada a mano por el Supervisor. Campos:
+
+| Campo | Nota |
+|---|---|
+| `provincia` | nullable, para servicios centrales |
+| `consejeria_1_nombre` | tal cual figura en el decreto de organización territorial vigente |
+| `consejeria_2_nombre` | **nullable** — `NULL` cuando la delegación agrupa una sola consejería |
+| `sede_direccion` / `sede_telefono` / `sede_correo` | |
+| `codigo_bandeja_texto` | rótulo tal cual aparece en BandeJA, para localizar el nodo por texto en la automatización de #758 |
+
+`consejeria_1`/`consejeria_2` son **posicionales** (el orden que trae el decreto), no roles con nombre semántico — ver alternativa C descartada. Esto es deliberado: si mañana la delegación deja de ser dual (p.ej. pasa a llamarse solo *"Delegación Territorial de Universidad, Industria, Energía e Innovación"*), el cambio es trivial — se actualiza `consejeria_1_nombre` y se pone `consejeria_2_nombre` a `NULL` — sin tener que decidir de nuevo "cuál de las dos es cuál".
+
+**`delegacion_territorial_nombre` es una propiedad computada, no columna**: `"Delegación Territorial de {materia(consejeria_1)}[ y de {materia(consejeria_2)}] en {provincia}"`, donde `materia(x)` quita el prefijo `"Consejería de "` si lo lleva. Patrón `" y de "` verificado contra el Decreto 190/2026 (ver Contexto). Es el token de nivel 1 para el membrete/escritos — nunca se guarda como texto suelto, para no poder quedar desincronizado de `consejeria_1`/`consejeria_2`.
+
+`codigo_bandeja_texto` **no se deriva de `consejeria_1`/`consejeria_2`, se mantiene aparte y a mano**: BandeJA va a rebufo de la reorganización real (ver Contexto), así que forzar que ese campo coincida con los nombres "correctos" del momento rompería la automatización el día que BandeJA todavía no se haya actualizado. Es dato explícito del dominio de #758, no derivado de la fuente de verdad institucional.
 
 Se puebla con **las 8 delegaciones territoriales (servicio de energía por provincia) + los centrales relevantes desde el principio** — no las 73 filas completas del árbol de BandeJA, pero tampoco solo la delegación del despliegue actual. El coste es marginal: el dato ya está extraído en `app/data/bandeja_destinos/`. Motivo: aunque BDDAT es hoy mono-provincial, `Usuario.unidad_organo_id` ya resuelve la unidad **por usuario**, no por instancia global — así que el día que haya un usuario de otra provincia, solo hace falta asignarle la fila que le corresponde, sin migración de repoblado.
 
@@ -56,6 +72,10 @@ Dos consumidores distintos del mismo catálogo:
 - **Escritos** (nombre/cargo visibles en el pie, consejería/sede en cabecera): tokens de **Capa 1** (`ContextoBaseExpediente`), no Context Builder. Son datos globales/estáticos, no calculados por expediente ni dependientes de `contexto_clase` — exactamente la frontera que separa Capa 1 de Context Builder en `DISEÑO_GENERACION_ESCRITOS.md`.
 - **Automatización de envío a Port@firmas** (#758, gemelo de #659): lookup directo sobre `firmantes_portafirmas` para obtener DNI + tipo de firma + orden — no pasa por tokens de escrito en absoluto, es un consumo distinto del mismo dato.
 
+### 5. Mayúsculas del encabezamiento: estilo, no dato duplicado
+
+`delegacion_territorial_nombre` (y el resto de tokens de este ADR) se guardan siempre en formato normal. En las resoluciones, el rótulo de la Delegación Territorial va en mayúsculas en el encabezamiento — se resuelve con un estilo de párrafo nuevo, `Cabecera - Delegación Territorial`, con `fo:text-transform="uppercase"` en sus propiedades de texto (efecto de ODF/LibreOffice no destructivo: Formato → Carácter → Efectos → Mayúsculas, distinto de Formato → Texto → MAYÚSCULAS, que sí reescribe los caracteres). El mismo token en cualquier otro punto del documento usa estilo normal. No existe hoy: la hoja canónica (`plantilla_canonica_odt.py`) tiene `Cabecera - Consejería`, `Cabecera - Centro directivo`, `Cabecera - Nombre Consejería Centrado` y `Cabecera - Delegación del gobierno` (esta última es la Delegación del Gobierno, órgano distinto), pero ningún estilo para Delegación Territorial — hueco a cubrir en la implementación de #728, no en la plantilla origen JDA (`app/data/plantillas_base/origen_jda/Carta_DelegacionesTerritoriales_JuntaAndalucia.odt`), que es un formulario en blanco sin ejemplo real que replicar.
+
 ---
 
 ## Issues de implementación
@@ -68,10 +88,6 @@ Dos consumidores distintos del mismo catálogo:
 
 Movido al checklist de #728 para que quede visible sin depender de leer este ADR:
 
-- Multi-consejería en cabecera: el texto original de #728 es *"Consejería (nombre completo,
-  **y puede ser más de una**)"* — sobre la propia consejería (probablemente resoluciones
-  conjuntas con otra consejería, p.ej. AAI/AAU integrada con Medio Ambiente), no sobre
-  provincia. Sigue sin resolver.
 - Histórico de quién ocupó cada cargo/firmante cuándo — no necesario para el alcance actual.
 
 ---
@@ -83,6 +99,9 @@ Simple y coherente con "el firmante suele ser alguien que tramita". Descartada c
 
 ### B. Unidad propia derivada de `Expediente`/`Proyecto` (provincia de la instalación)
 Ya existe `Proyecto.provincias_afectadas`, así que parecía aprovechable. Descartada: el destino real que usa BandeJA para Port@firmas es el puesto del usuario que envía, no la ubicación de la instalación — confirmado explícitamente en el estudio de campo. Derivarlo del expediente habría sido plausible pero incorrecto en cuanto un expediente lo tramitara alguien fuera de la provincia de la instalación.
+
+### C. `consejeria_organica_nombre` / `consejeria_competencial_nombre` (roles con nombre semántico)
+Considerada al verificar que, en la Delegación Territorial que nos toca, la organización territorial distingue dos roles reales: la consejería de la que se depende **orgánicamente** (sede, gestión económica/informática — hoy Economía, Hacienda y Fondos Europeos) y la que tiene la autoridad **competencial** sobre industria/energía (hoy Universidad, Industria, Energía e Innovación) — es justo la que BandeJA etiqueta internamente, porque el sistema enruta por competencia, no por organigrama compartido. Descartada como nombre de campo: ata el modelo a que esa distinción se mantenga siempre en dos consejerías y en ese orden. Si mañana la delegación pasa a ser de una sola consejería, o la relación orgánica/competencial se invierte, hay que decidir de nuevo "cuál es cuál" en vez de solo actualizar un valor. `consejeria_1`/`consejeria_2` posicionales (§1) resuelven el mismo caso sin ese acoplamiento — la distinción orgánica/competencial queda como explicación en este ADR, no como estructura de datos.
 
 ### C. RPS con motor de reglas de 3 capas (mismo patrón que `tipos_fases`/`tramites`)
 Reutilizar el patrón ya existente en el motor. Descartada: ese patrón se justifica por la capa de reglas evaluables condicionalmente; aquí la elección de RPS es una asociación editorial fija sin lógica condicional real que la motive. Aplicar las 3 capas sería sobre-ingeniería para el problema actual.
