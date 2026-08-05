@@ -8,8 +8,9 @@
 > retirados"). Ampliado 2026-07-08 con 5 necesidades descubiertas al auditar el
 > código real para construir `MATRIZ_COBERTURA_BDDAT.md` (N073-N077). Ampliado
 > 2026-07-09 con 4 necesidades descubiertas durante el etiquetado retroactivo
-> `necesidad:N0XX` de issues abiertos (ADR-031) — N078-N081.
-> **Fecha:** 2026-07-09
+> `necesidad:N0XX` de issues abiertos (ADR-031) — N078-N081. Ampliado
+> 2026-08-05 con N085 (#728, ADR-039 — datos del órgano propio).
+> **Fecha:** 2026-08-05
 
 ---
 
@@ -75,6 +76,7 @@
 | N013 | Generar escritos estándar y avanzar tramitación | Administrativo | 3 — Generación de escritos | M2 |
 | N079 | Mantener el catálogo de requerimientos administrativos exigibles al interesado, con su contenido normativo | Supervisor | 3 — Generación de escritos | M3 |
 | N080 | Exponer las variables del motor de reglas y catálogos estructurales en las plantillas de escritos, como documento adaptativo al contexto del expediente | Supervisor (define plantilla) / Tramitador (recibe escrito resultante) | 3 — Generación de escritos | M4 |
+| N085 | Mantener los datos institucionales del órgano propio (Consejería, Delegación Territorial por provincia, sede, firmantes por cargo) para la cabecera/pie de los escritos generados y la automatización de envío a Port@firmas | Supervisor | 3 — Generación de escritos | M3 |
 
 ---
 
@@ -302,4 +304,8 @@ descubiertas el 2026-07-09 al mapear los 96 issues abiertos contra este
 documento para el etiquetado retroactivo `necesidad:N0XX` (ADR-031 §"Próximos
 pasos") — bloque asignado por Carlos, sin motivación explícita por ser
 deducible del patrón de necesidades hermanas del mismo bloque. Pendiente de
-auditar su % real en `MATRIZ_COBERTURA_BDDAT.md`.
+auditar su % real en `MATRIZ_COBERTURA_BDDAT.md`. N085 añadida el 2026-08-05
+al cerrar #728 (ADR-039): el issue detectó que los escritos generados
+necesitan datos del órgano emisor (consejería, sede, firmantes) que no
+encajaban en ninguna necesidad existente — N081 es el catálogo DIR3 de
+organismos *externos*, no los datos de la propia casa.
