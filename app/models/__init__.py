@@ -29,6 +29,9 @@ from app.models.plantillas import Plantilla
 # Catálogo de requerimientos de subsanación (#405 — sin FK operacionales)
 from app.models.catalogo_requerimientos import CatalogoRequerimiento
 
+# Composición de Consejerías de la Delegación Territorial propia (#728 — sin FK, ADR-039 §1)
+from app.models.organo_propio import ConsejeriaDelegacionTerritorial
+
 # Activos de red — corte mínimo de integración con bddat-instalaciones
 # (#591 — activo_red autorreferenciada, sin FK operacionales de BDDAT)
 from app.models.activo_red import ActivoRed, Envolvente
@@ -151,6 +154,8 @@ __all__ = [
     'Plantilla',
     # Catálogo de requerimientos
     'CatalogoRequerimiento',
+    # Composición de Consejerías de la Delegación Territorial propia (#728)
+    'ConsejeriaDelegacionTerritorial',
     # Activos de red (integración bddat-instalaciones)
     'ActivoRed',
     'Envolvente',
