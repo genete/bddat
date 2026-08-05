@@ -145,6 +145,8 @@ class Usuario(UserMixin, db.Model):
     RELACIONES:
         - roles (N:M) → tabla usuarios_roles → ROLES
         - expedientes_responsable (1:N) ← EXPEDIENTES.responsable_id
+        - unidad_organo (N:1) → UNIDADES_ORGANO_PROPIO.unidad_organo_id (#728, nullable
+          hasta que se asigne manualmente)
     
     MÉTODOS DE AUTENTICACIÓN:
         set_password(password):
@@ -266,15 +268,28 @@ class Usuario(UserMixin, db.Model):
     )
     
     reset_token_expiry = db.Column(
-        db.DateTime, 
+        db.DateTime,
         nullable=True,
         comment='Fecha de expiración del token de recuperación'
     )
-    
+
+    unidad_organo_id = db.Column(
+        db.Integer,
+        db.ForeignKey('public.unidades_organo_propio.id'),
+        nullable=True,
+        comment='FK a UNIDADES_ORGANO_PROPIO. Unidad territorial (provincia) desde la que tramita este usuario (#728, ADR-039 §1)'
+    )
+
     # Relación M:N con Roles
     roles = db.relationship(
-        'Rol', 
-        secondary=usuarios_roles, 
+        'Rol',
+        secondary=usuarios_roles,
+        backref=db.backref('usuarios', lazy='dynamic')
+    )
+
+    # Relación N:1 con UnidadOrganoPropio (#728)
+    unidad_organo = db.relationship(
+        'UnidadOrganoPropio',
         backref=db.backref('usuarios', lazy='dynamic')
     )
 
