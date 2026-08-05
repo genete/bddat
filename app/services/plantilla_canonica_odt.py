@@ -68,7 +68,8 @@ ESTILOS_COMUNES = (
 ESTILOS_CARTA = ('Formulario - Datos', 'Formulario - Destinatario', 'Formulario - Títulos')
 # Solo en plantillas derivadas de la resolución
 ESTILOS_RESOLUCION = (
-    'BDDAT - Título resolución', 'BDDAT - Referencia expediente',
+    'BDDAT - Título resolución', 'Cabecera - Delegación Territorial',
+    'BDDAT - Referencia expediente',
     'BDDAT - Sección resolución', 'BDDAT - Firmante resolución',
 )
 
