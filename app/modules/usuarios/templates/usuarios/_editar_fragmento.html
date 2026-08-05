@@ -74,6 +74,19 @@
                 {% if error_email %}<div class="invalid-feedback">{{ error_email }}</div>{% endif %}
             </div>
             <div class="col-4">
+                <label class="form-label fw-semibold small" for="uf_unidad_organo">Unidad territorial</label>
+                <select class="form-select form-select-sm" id="uf_unidad_organo" name="unidad_organo_id">
+                    <option value="">— Sin asignar —</option>
+                    {% for u in unidades %}
+                    <option value="{{ u.id }}"
+                            {% if (form_data and form_data.get('unidad_organo_id')|string == u.id|string) or (not form_data and usuario.unidad_organo_id == u.id) %}selected{% endif %}>
+                        {{ u.provincia or 'Servicios centrales' }}
+                    </option>
+                    {% endfor %}
+                </select>
+                <div class="form-text">Puesto desde el que tramita (#728) — destino real en Port@firmas.</div>
+            </div>
+            <div class="col-4">
                 <label class="form-label fw-semibold small">Estado</label>
                 <div class="form-control form-control-sm d-flex align-items-center"
                      style="background:#fff; min-height:31px;">
