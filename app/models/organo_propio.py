@@ -202,3 +202,122 @@ class UnidadOrganoPropio(db.Model):
     def __str__(self):
         """Representación legible para interfaz."""
         return self.delegacion_territorial_nombre or f'Unidad {self.id}'
+
+
+class FirmantePortafirmas(db.Model):
+    """
+    Catálogo de firmantes de escritos, para el cuadro de firma de Port@firmas.
+
+    PROPÓSITO:
+        Quién puede figurar como firmante de un oficio/resolución: cargo,
+        DNI (campo de búsqueda en Port@firmas) y unidad territorial. Consumido
+        por la automatización de envío a Port@firmas (#758) y por el pie de
+        firma de los escritos generados (ADR-039 §2).
+
+    FILOSOFÍA:
+        - Desacoplado de USUARIOS a propósito: el firmante real de un
+          oficio/resolución (Delegado/a Territorial, Consejero/a) con
+          frecuencia no tiene cuenta BDDAT — BDDAT lo usan tramitadores y
+          técnicos, no necesariamente la autoridad firmante. Un checkbox en
+          USUARIOS no tiene dónde colgar ese caso, que es el habitual para
+          la firma final (ADR-039 §2, alternativa A descartada).
+        - USUARIO_ID es nullable y se rellena solo si el firmante también es
+          usuario BDDAT; no es requisito.
+        - DNI es el campo de búsqueda a exponer en cualquier automatización:
+          verificado en vivo en BandeJA que buscar por nombre da homónimos,
+          por DNI es unívoco (ADR-039, Contexto).
+        - Sin histórico de quién ocupó cada cargo cuándo (bajado de alcance,
+          ver ADR-039 §Pendiente): VIGENTE/FECHA_BAJA son un estado simple,
+          no una serie temporal.
+
+    CAMPO DNI:
+        - Documento de identidad del firmante. Campo de búsqueda principal.
+
+    CAMPO VIGENTE / FECHA_BAJA:
+        - VIGENTE=True mientras ejerce el cargo. FECHA_BAJA se rellena al
+          desactivar, se mantiene el histórico de la fila (no se elimina).
+
+    RELACIONES:
+        - unidad_organo (N:1) → UNIDADES_ORGANO_PROPIO
+        - usuario (N:1, opcional) → USUARIOS.usuario_id
+
+    REGLAS DE NEGOCIO:
+        La automatización de #758 hace lookup directo sobre esta tabla
+        (DNI + cargo + unidad), no pasa por tokens de escrito — es un
+        consumo distinto del mismo dato que el de Capa 1 (ADR-039 §4).
+    """
+    __tablename__ = 'firmantes_portafirmas'
+    __table_args__ = (
+        db.Index('idx_firmante_portafirmas_dni', 'dni'),
+        {'schema': 'public'},
+    )
+
+    id = db.Column(
+        db.Integer,
+        primary_key=True,
+        autoincrement=True,
+        comment='Identificador único autogenerado'
+    )
+
+    cargo = db.Column(
+        db.String(200),
+        nullable=False,
+        comment='Cargo del firmante (p.ej. Delegado/a Territorial, Consejero/a)'
+    )
+
+    dni = db.Column(
+        db.String(15),
+        nullable=False,
+        comment='Documento de identidad del firmante. Campo de búsqueda principal en Port@firmas'
+    )
+
+    nombre = db.Column(
+        db.String(200),
+        nullable=False,
+        comment='Nombre completo del firmante'
+    )
+
+    unidad_organo_id = db.Column(
+        db.Integer,
+        db.ForeignKey('public.unidades_organo_propio.id'),
+        nullable=False,
+        comment='FK a UNIDADES_ORGANO_PROPIO. Unidad territorial del firmante'
+    )
+
+    vigente = db.Column(
+        db.Boolean,
+        nullable=False,
+        default=True,
+        comment='TRUE mientras ejerce el cargo. FALSE tras causar baja (histórico, no se elimina la fila)'
+    )
+
+    fecha_baja = db.Column(
+        db.Date,
+        nullable=True,
+        comment='Fecha en la que dejó de ejercer el cargo. NULL mientras VIGENTE=True'
+    )
+
+    usuario_id = db.Column(
+        db.Integer,
+        db.ForeignKey('public.usuarios.id'),
+        nullable=True,
+        comment='FK a USUARIOS. Solo si el firmante también tiene cuenta BDDAT; no es requisito'
+    )
+
+    unidad_organo = db.relationship(
+        'UnidadOrganoPropio',
+        backref=db.backref('firmantes_portafirmas', lazy='dynamic')
+    )
+
+    usuario = db.relationship(
+        'Usuario',
+        backref=db.backref('firmante_portafirmas', lazy='dynamic')
+    )
+
+    def __repr__(self):
+        """Representación técnica para debugging."""
+        return f'<FirmantePortafirmas {self.id}: {self.nombre!r} ({self.cargo!r})>'
+
+    def __str__(self):
+        """Representación legible para interfaz."""
+        return f'{self.nombre} — {self.cargo}'
