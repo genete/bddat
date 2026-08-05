@@ -18,6 +18,14 @@ QUÉ CAMBIA RESPECTO A LA CARTA (decisiones de Carlos, 2026-07-30)
       la derecha, y tres secciones —Antecedentes de Hecho, Fundamentos de
       Derecho, Resuelve— con el mismo esquema: cabecera centrada en negrita y
       cuerpo en Normal. Firma centrada en página, dos líneas (cargo + nombre).
+    - Título en mayúsculas por ESTILO, no por caracteres tecleados en mayúsculas
+      (#728, ADR-039 §5): `BDDAT - Título resolución` lleva
+      `fo:text-transform="uppercase"` (mayúsculas de ODF/LibreOffice, no
+      destructivas — Formato → Carácter → Efectos, distinto de reescribir el
+      texto). El rótulo de la Delegación Territorial que compondrá ese título
+      (`organo_nombre`, #728) se guarda siempre en formato normal; solo en este
+      encabezamiento se ve en mayúsculas, por estilo. Afecta únicamente a la
+      resolución: la carta y su membrete (`carta_base.odt`) no se tocan.
 
 QUÉ SE CONSERVA TAL CUAL (ADR-035 §4: el logo y el membrete no son cosa de esta
 plantilla, y no hay razón para tocarlos)
@@ -75,7 +83,8 @@ ESTILOS_NUEVOS = f'''
              style:display-name="BDDAT - Título resolución"
              style:family="paragraph" style:parent-style-name="Normal">
   <style:paragraph-properties fo:margin-top="0cm" fo:margin-bottom="0cm"/>
-  <style:text-properties fo:font-weight="bold" fo:font-size="12pt"/>
+  <style:text-properties fo:font-weight="bold" fo:font-size="12pt"
+      fo:text-transform="uppercase"/>
 </style:style>
 <style:style style:name="BDDAT_20_-_20_Referencia_20_expediente"
              style:display-name="BDDAT - Referencia expediente"
@@ -100,7 +109,7 @@ ESTILOS_NUEVOS = f'''
 '''
 
 CUERPO_RESOLUCION = '''
-<text:p text:style-name="BDDAT_20_-_20_Título_20_resolución">RESOLUCIÓN DE LA DELEGACIÓN TERRITORIAL...</text:p>
+<text:p text:style-name="BDDAT_20_-_20_Título_20_resolución">Resolución de la Delegación Territorial...</text:p>
 <text:p text:style-name="BDDAT_20_-_20_Referencia_20_expediente">Ref: referencia de expediente</text:p>
 <text:p text:style-name="BDDAT_20_-_20_Sección_20_resolución">ANTECEDENTES DE HECHO</text:p>
 <text:p text:style-name="Normal">Texto de los antecedentes de hecho.</text:p>

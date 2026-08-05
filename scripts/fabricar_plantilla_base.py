@@ -48,14 +48,9 @@ QUÉ SE LE CORRIGE AL DOCUMENTO OFICIAL, Y POR QUÉ
        y el firmante aparecía en y=207,3, con casi diez centímetros de vacío.
     6. Espaciado del cuerpo: ver INTERPARRAFO y ARRANQUE_CUERPO más abajo.
     7. `meta.xml` trae el nombre de la persona que hizo el documento en la Junta.
-    8. La segunda línea del membrete (el hueco para «Nombre completo de la
-       Delegación Territorial») llevaba el estilo genérico `Cabecera - Centro
-       directivo`, sin nombre propio ni mayúsculas — #728, ADR-039 §5: en las
-       resoluciones ese rótulo va en mayúsculas de estilo (no destructivas).
 
-    Y se añade lo que la hoja oficial no tiene: la marca de versión de ADR-035 §5,
-    el estilo `BDDAT - Firmante` y el estilo `Cabecera - Delegación Territorial`
-    (#728, ADR-039 §5).
+    Y se añade lo que la hoja oficial no tiene: la marca de versión de ADR-035 §5
+    y el estilo `BDDAT - Firmante`.
 
 NOTA SOBRE CAMBRIA
     Medido en esta misma investigación: de siete fuentes probadas, Cambria es la
@@ -133,24 +128,6 @@ FIRMANTE = f'''
              style:family="paragraph" style:parent-style-name="Normal">
   <style:paragraph-properties fo:margin-left="10.22cm" fo:margin-top="1.5cm"
       fo:text-align="start" fo:text-indent="0cm"/>
-</style:style>
-'''
-
-# #728, ADR-039 §5 — la papelería oficial trae la segunda línea del membrete
-# (el hueco de "Nombre completo de la Delegación Territorial") con el estilo
-# genérico "Cabecera - Centro directivo": no existe un estilo con nombre
-# propio para la Delegación Territorial, y en las resoluciones ese rótulo va
-# en mayúsculas. Hereda de "Cabecera - Centro directivo" (mismo tipo/tamaño/
-# espaciado) y solo añade fo:text-transform="uppercase" — mayúsculas de
-# ODF/LibreOffice (Formato → Carácter → Efectos), no destructivo: el dato
-# subyacente se guarda siempre en formato normal.
-DELEGACION_TERRITORIAL = '''
-<style:style style:name="Cabecera_20_-_20_Delegación_20_Territorial"
-             style:display-name="Cabecera - Delegación Territorial"
-             style:family="paragraph"
-             style:parent-style-name="Cabecera_20_-_20_Centro_20_directivo"
-             style:auto-update="true">
-  <style:text-properties fo:text-transform="uppercase"/>
 </style:style>
 '''
 
@@ -301,35 +278,6 @@ def sanear(ruta_entrada, ruta_salida):
     # 4. Estilos propios de BDDAT
     for e in elementos(FIRMANTE):
         office_styles.append(e)
-    for e in elementos(DELEGACION_TERRITORIAL):
-        office_styles.append(e)
-
-    # 4 ter. La segunda línea del membrete ("Nombre completo de la Delegación
-    # Territorial") pasa del estilo genérico "Cabecera - Centro directivo" al
-    # nuevo "Cabecera - Delegación Territorial" (#728, ADR-039 §5). El
-    # automático que la porta NO tiene nombre estable entre pasadas de
-    # LibreOffice (medido: "P3" cae en un estilo distinto según la ejecución),
-    # así que se localiza por el TEXTO del párrafo, no por el nombre del
-    # automático, y solo se retoca si su padre es el esperado (salvaguarda).
-    parrafo_membrete = None
-    for p in content.iter(f'{Q["text"]}p'):
-        if ''.join(p.itertext()).strip() == 'Nombre completo de la Delegación Territorial':
-            parrafo_membrete = p
-            break
-    if parrafo_membrete is None:
-        print('   AVISO: no se encuentra el párrafo del membrete de la Delegación Territorial — revisar a mano')
-    else:
-        nombre_auto = parrafo_membrete.get(f'{Q["text"]}style-name')
-        automatico = content.find(
-            f'{Q["office"]}automatic-styles/'
-            f'{Q["style"]}style[@{Q["style"]}name="{nombre_auto}"]')
-        if automatico is not None and automatico.get(f'{Q["style"]}parent-style-name') == 'Cabecera_20_-_20_Centro_20_directivo':
-            automatico.set(f'{Q["style"]}parent-style-name', 'Cabecera_20_-_20_Delegación_20_Territorial')
-            print(f'   membrete: {nombre_auto} (segunda línea) → "Cabecera - Delegación Territorial"')
-        else:
-            padre_actual = automatico.get(f'{Q["style"]}parent-style-name') if automatico is not None else '(automático no encontrado)'
-            print(f'   AVISO: el automático "{nombre_auto}" del membrete no tiene el padre esperado '
-                  f'(tiene: {padre_actual}) — revisar a mano')
     # El cuadro flotante del firmante desaparece; su texto pasa a ser un párrafo
     # normal, colocado detrás del párrafo al que el marco estaba anclado.
     quitados, texto_firma = 0, 'Nombre del firmante,'
