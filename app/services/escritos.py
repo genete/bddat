@@ -64,6 +64,12 @@ class ContextoBaseExpediente:
             responsable_nombre  — Nombre completo del tramitador asignado
             responsable_siglas_escritos — Siglas del redactor para firma (Usuario.siglas_escritos, #407)
 
+        Órgano propio — unidad territorial del responsable, no del expediente (#728, ADR-039 §1/§4):
+            organo_nombre           — "Delegación Territorial de X [y de Y] en <provincia>" (computado)
+            organo_sede_direccion   — Dirección postal de la sede. None si no está asignada la unidad o sin rellenar
+            organo_sede_telefono    — Teléfono de la sede. None en las mismas condiciones
+            organo_sede_correo      — Correo de la sede. None en las mismas condiciones
+
         Municipios:
             municipios          — Lista de nombres de municipios afectados (list[str])
 
@@ -77,6 +83,7 @@ class ContextoBaseExpediente:
     def get_contexto(self) -> dict:
         exp = self._exp
         proyecto = exp.proyecto
+        unidad_organo = self._organo_unidad()
 
         ctx = {
             # Expediente
@@ -101,6 +108,12 @@ class ContextoBaseExpediente:
             'responsable_siglas_escritos': (
                 exp.responsable.siglas_escritos if exp.responsable else None
             ),
+
+            # Órgano propio — unidad territorial del responsable, no del expediente (#728, ADR-039 §1/§4)
+            'organo_nombre':         unidad_organo.delegacion_territorial_nombre if unidad_organo else None,
+            'organo_sede_direccion': unidad_organo.sede_direccion if unidad_organo else None,
+            'organo_sede_telefono':  unidad_organo.sede_telefono  if unidad_organo else None,
+            'organo_sede_correo':    unidad_organo.sede_correo    if unidad_organo else None,
 
             # Municipios (lista de nombres para uso en plantilla simple)
             'municipios': self._municipios(),
@@ -142,6 +155,17 @@ class ContextoBaseExpediente:
         postal['nif']   = src.nif   or ''
         postal['email'] = src.email or ''
         return postal
+
+    def _organo_unidad(self):
+        """Unidad territorial del responsable del expediente (#728, ADR-039 §1).
+
+        Deliberadamente del RESPONSABLE, no del expediente/proyecto: el
+        destino real usado en BandeJA es el puesto del usuario que tramita,
+        no la provincia de la instalación (ADR-039 §1, alternativa B
+        descartada). None si no hay responsable o no tiene unidad asignada.
+        """
+        r = self._exp.responsable
+        return r.unidad_organo if r else None
 
     def _nombre_responsable(self) -> str | None:
         """Construye nombre completo del responsable (Usuario no tiene nombre_completo)."""

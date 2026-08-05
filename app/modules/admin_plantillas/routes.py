@@ -73,6 +73,10 @@ CAMPOS_BASE = [
     {'campo': 'instrumento_ambiental',  'descripcion': 'Siglas del instrumento ambiental (AAI, AAU, EXENTO...)'},
     {'campo': 'responsable_nombre',     'descripcion': 'Nombre completo del tramitador asignado'},
     {'campo': 'responsable_siglas_escritos', 'descripcion': 'Siglas del redactor para firma (Usuario.siglas_escritos)'},
+    {'campo': 'organo_nombre',          'descripcion': 'Delegación Territorial del responsable, p.ej. "Delegación Territorial de X y de Y en <provincia>" (#728)'},
+    {'campo': 'organo_sede_direccion',  'descripcion': 'Dirección postal de la sede del órgano (#728)'},
+    {'campo': 'organo_sede_telefono',   'descripcion': 'Teléfono de la sede del órgano (#728)'},
+    {'campo': 'organo_sede_correo',     'descripcion': 'Correo de la sede del órgano (#728)'},
     {'campo': 'municipios',             'descripcion': 'Lista de municipios afectados', 'tipo': 'lista'},
     {'campo': 'fecha_hoy',              'descripcion': 'Fecha actual en formato DD/MM/YYYY'},
 ]

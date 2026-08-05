@@ -3,6 +3,7 @@ from flask_login import login_required, current_user
 from sqlalchemy.exc import IntegrityError
 from app import db
 from app.models.usuarios import Usuario, Rol
+from app.models.organo_propio import UnidadOrganoPropio
 from app.decorators import require_permiso
 from app.utils.metadata import cargar_metadata
 from app.utils.permisos import tiene_permiso
@@ -198,8 +199,9 @@ def editar_fragmento(id):
         return ('<div class="p-3"><div class="alert alert-danger mb-0">'
                 'No tienes permisos para editar usuarios ADMIN.</div></div>'), 403
     todos_los_roles = Rol.query.all()
+    unidades = UnidadOrganoPropio.query.order_by(UnidadOrganoPropio.provincia).all()
     return render_template('usuarios/_editar_fragmento.html',
-                           usuario=usuario, roles=todos_los_roles,
+                           usuario=usuario, roles=todos_los_roles, unidades=unidades,
                            puede_editar_siglas=current_user.es_admin,
                            puede_editar_admin=current_user.es_admin)
 
@@ -244,6 +246,7 @@ def editar(id):
     apellido2        = request.form.get('apellido2', '').strip() or None
     email            = request.form.get('email', '').strip()
     activo_nuevo     = 'activo' in request.form
+    unidad_organo_id_raw = (request.form.get('unidad_organo_id') or '').strip()
     roles_ids        = request.form.getlist('roles')
     nueva_password   = request.form.get('nueva_password', '')
     confirm_password = request.form.get('confirm_password', '')
@@ -264,6 +267,12 @@ def editar(id):
         errores.append('El nombre es obligatorio.')
     if not apellido1:
         errores.append('El primer apellido es obligatorio.')
+
+    unidad_organo = None
+    if unidad_organo_id_raw:
+        unidad_organo = UnidadOrganoPropio.query.get(int(unidad_organo_id_raw)) if unidad_organo_id_raw.isdigit() else None
+        if not unidad_organo:
+            errores.append('La unidad territorial seleccionada no existe.')
 
     # SUPERVISOR no puede asignar/quitar el rol ADMIN
     if not current_user_es_admin():
@@ -308,6 +317,7 @@ def editar(id):
         usuario.apellido2       = apellido2
         usuario.email           = email  # el setter del modelo convierte '' a None
         usuario.activo          = activo_nuevo
+        usuario.unidad_organo_id = unidad_organo.id if unidad_organo else None
         usuario.roles           = roles_seleccionados
         if nueva_password:
             usuario.set_password(nueva_password)

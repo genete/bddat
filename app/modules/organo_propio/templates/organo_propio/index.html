@@ -1,0 +1,114 @@
+{# index.html — Delegación Territorial propia (#728, ADR-039 §1).
+   No usa ScrollInfinito: tablas de tamaño fijo (1 fila de delegación, 8 de
+   unidades). El inspector (AppInspector) se abre directamente por fila —
+   no depende de ScrollInfinito, solo de una fragmentUrl.
+#}
+{% extends "layout/base_app.html" %}
+
+{% block title %}Delegación Territorial · Control y Gestión — BDDAT{% endblock %}
+
+{% block breadcrumb %}
+<a href="{{ url_for('supervisor.index') }}">Control y Gestión</a>
+<a href="{{ url_for('organo_propio.index') }}">Delegación Territorial</a>
+{% endblock %}
+
+{% block viewbar %}
+<span class="app-viewbar__title">
+  <i class="fas fa-landmark"></i>
+  <span>Delegación Territorial propia</span>
+</span>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3">
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+      <div class="alert alert-{{ category }} alert-dismissible fade show py-2" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+      </div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+
+  <!-- Delegación — fila única, formulario siempre visible (patrón configuracion_motor) -->
+  <div class="card mb-3">
+    <div class="card-header card-header-accent fw-semibold">
+      <i class="fas fa-landmark me-1"></i> Composición de la Delegación Territorial
+    </div>
+    <div class="card-body card-body-tinted">
+      {% if delegacion %}
+      <form method="POST" action="{{ url_for('organo_propio.editar_delegacion') }}">
+        <div class="row g-2">
+          <div class="col-md-6">
+            <label class="form-label fw-semibold small" for="dt_consejeria_1">
+              Primera Consejería <span class="text-danger">*</span>
+            </label>
+            <input type="text" class="form-control form-control-sm" id="dt_consejeria_1"
+                   name="consejeria_1_nombre" maxlength="200" required
+                   value="{{ delegacion.consejeria_1_nombre }}"
+                   {{ '' if puede_gestionar else 'readonly' }}>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold small" for="dt_consejeria_2">Segunda Consejería</label>
+            <input type="text" class="form-control form-control-sm" id="dt_consejeria_2"
+                   name="consejeria_2_nombre" maxlength="200"
+                   value="{{ delegacion.consejeria_2_nombre or '' }}"
+                   placeholder="Vacío si la delegación agrupa una sola Consejería"
+                   {{ '' if puede_gestionar else 'readonly' }}>
+          </div>
+        </div>
+        <div class="form-text mt-2">
+          Token de cabecera para escritos (<code>organo_nombre</code>):
+          «{{ delegacion.unidades_organo_propio.first().delegacion_territorial_nombre if delegacion.unidades_organo_propio.first() else '—' }}»
+          (el ejemplo usa la primera unidad; cada provincia compone su propio nombre).
+        </div>
+        {% if puede_gestionar %}
+        <div class="d-flex justify-content-end mt-2">
+          <button type="submit" class="btn btn-primary btn-sm">
+            <i class="fas fa-save me-1"></i> Guardar cambios
+          </button>
+        </div>
+        {% endif %}
+      </form>
+      {% else %}
+      <div class="alert alert-warning mb-0">No hay ninguna fila de delegación — revisa la migración 728.</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Unidades por provincia — tabla estática, edición vía inspector -->
+  <div class="card mb-3">
+    <div class="card-header card-header-accent fw-semibold">
+      <i class="fas fa-map-marker-alt me-1"></i> Unidades por provincia
+    </div>
+    <div class="card-body p-0">
+      <table class="table table-sm table-hover mb-0">
+        <thead>
+          <tr>
+            <th>Provincia</th>
+            <th>Rótulo BandeJA</th>
+            <th class="lt-hide-md">Sede</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for u in unidades %}
+          <tr style="cursor:pointer" data-inspector-sel
+              onclick="AppInspector.open({selId: {{ u.id }}, title: '{{ u.provincia|e }}', fragmentUrl: '{{ url_for('organo_propio.unidad_fragmento', id=u.id) }}'})">
+            <td>{{ u.provincia or 'Servicios centrales' }}</td>
+            <td>{{ u.codigo_bandeja_texto or '—' }}</td>
+            <td class="lt-hide-md">{{ u.sede_direccion or '—' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="card-footer text-secondary small">
+      <i class="fas fa-ban me-1"></i>Sin alta ni baja: filas fijas (1 por provincia). Una unidad nueva se añade por migración.
+    </div>
+  </div>
+
+</div>
+{% endblock %}

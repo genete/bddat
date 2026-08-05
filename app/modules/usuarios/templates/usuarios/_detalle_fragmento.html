@@ -53,6 +53,11 @@
                 {% endif %}
             </div>
             <div class="col-4">
+                <label class="form-label fw-semibold small">Unidad territorial</label>
+                <input type="text" class="form-control form-control-sm"
+                       value="{{ (usuario.unidad_organo.provincia or 'Servicios centrales') if usuario.unidad_organo else '—' }}" readonly>
+            </div>
+            <div class="col-4">
                 <label class="form-label fw-semibold small">Estado</label>
                 <div class="form-control form-control-sm d-flex align-items-center gap-2"
                      style="background:#fff; pointer-events:none;">
