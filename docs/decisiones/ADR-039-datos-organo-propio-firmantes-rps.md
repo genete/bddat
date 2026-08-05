@@ -27,31 +27,39 @@ Hallazgos que condicionan el modelo:
 
 ## Decisión
 
-### 1. `unidades_organo_propio`, atada a `Usuario` — no a `Expediente`
+### 1. Dos tablas: `consejerias_delegaciones_territoriales` (constante) + `unidades_organo_propio` (por provincia), atada a `Usuario` — no a `Expediente`
 
-Tabla catálogo nueva, curada a mano por el Supervisor. Campos:
+`consejeria_1_nombre`/`consejeria_2_nombre` son un dato **del tipo de delegación**, no de la provincia: según el Decreto 190/2026, la composición de consejerías de una Delegación Territorial es la misma en las 8 provincias — solo cambian la sede y el rótulo de BandeJA. Guardarlas repetidas en cada fila de provincia habría sido el mismo problema de dato duplicado y desincronizable que se evitó al hacer `delegacion_territorial_nombre` una propiedad computada en vez de columna (detectado por Carlos tras el primer borrador de este ADR). Se separa en dos tablas:
+
+**`consejerias_delegaciones_territoriales`** (fundacional, sin FK) — hoy con una sola fila (la nuestra), preparada para más si algún día hiciera falta:
 
 | Campo | Nota |
 |---|---|
-| `provincia` | nullable, para servicios centrales |
 | `consejeria_1_nombre` | tal cual figura en el decreto de organización territorial vigente |
 | `consejeria_2_nombre` | **nullable** — `NULL` cuando la delegación agrupa una sola consejería |
+
+Posicionales (el orden que trae el decreto), no roles con nombre semántico — ver alternativa C descartada. Esto es deliberado: si mañana la delegación deja de ser dual (p.ej. pasa a llamarse solo *"Delegación Territorial de Universidad, Industria, Energía e Innovación"*), el cambio es trivial — se actualiza `consejeria_1_nombre` y se pone `consejeria_2_nombre` a `NULL` — sin tener que decidir de nuevo "cuál de las dos es cuál".
+
+**`unidades_organo_propio`** (derivada, FK a `consejerias_delegaciones_territoriales`) — una fila por provincia, lo que sí varía:
+
+| Campo | Nota |
+|---|---|
+| `consejerias_delegacion_id` | FK a `consejerias_delegaciones_territoriales` |
+| `provincia` | nullable, para servicios centrales |
 | `sede_direccion` / `sede_telefono` / `sede_correo` | |
 | `codigo_bandeja_texto` | rótulo tal cual aparece en BandeJA, para localizar el nodo por texto en la automatización de #758 |
 
-`consejeria_1`/`consejeria_2` son **posicionales** (el orden que trae el decreto), no roles con nombre semántico — ver alternativa C descartada. Esto es deliberado: si mañana la delegación deja de ser dual (p.ej. pasa a llamarse solo *"Delegación Territorial de Universidad, Industria, Energía e Innovación"*), el cambio es trivial — se actualiza `consejeria_1_nombre` y se pone `consejeria_2_nombre` a `NULL` — sin tener que decidir de nuevo "cuál de las dos es cuál".
-
-**`delegacion_territorial_nombre` es una propiedad computada, no columna**: `"Delegación Territorial de {materia(consejeria_1)}[ y de {materia(consejeria_2)}] en {provincia}"`, donde `materia(x)` quita el prefijo `"Consejería de "` si lo lleva. Patrón `" y de "` verificado contra el Decreto 190/2026 (ver Contexto). Es el token de nivel 1 para el membrete/escritos — nunca se guarda como texto suelto, para no poder quedar desincronizado de `consejeria_1`/`consejeria_2`.
+**`delegacion_territorial_nombre` es una propiedad computada sobre `UnidadOrganoPropio`, no columna**: `"Delegación Territorial de {materia(consejerias_delegacion.consejeria_1)}[ y de {materia(consejerias_delegacion.consejeria_2)}] en {provincia}"`, donde `materia(x)` quita el prefijo `"Consejería de "` si lo lleva. Patrón `" y de "` verificado contra el Decreto 190/2026 (ver Contexto). Es el token de nivel 1 para el membrete/escritos — nunca se guarda como texto suelto.
 
 `codigo_bandeja_texto` **no se deriva de `consejeria_1`/`consejeria_2`, se mantiene aparte y a mano**: BandeJA va a rebufo de la reorganización real (ver Contexto), así que forzar que ese campo coincida con los nombres "correctos" del momento rompería la automatización el día que BandeJA todavía no se haya actualizado. Es dato explícito del dominio de #758, no derivado de la fuente de verdad institucional.
 
-Se puebla con **las 8 delegaciones territoriales (servicio de energía por provincia) + los centrales relevantes desde el principio** — no las 73 filas completas del árbol de BandeJA, pero tampoco solo la delegación del despliegue actual. El coste es marginal: el dato ya está extraído en `app/data/bandeja_destinos/`. Motivo: aunque BDDAT es hoy mono-provincial, `Usuario.unidad_organo_id` ya resuelve la unidad **por usuario**, no por instancia global — así que el día que haya un usuario de otra provincia, solo hace falta asignarle la fila que le corresponde, sin migración de repoblado.
+`unidades_organo_propio` se puebla con **las 8 provincias + los centrales relevantes desde el principio** — no las 73 filas completas del árbol de BandeJA, pero tampoco solo la provincia del despliegue actual. El coste es marginal: el dato ya está extraído en `app/data/bandeja_destinos/`. Motivo: aunque BDDAT es hoy mono-provincial, `Usuario.unidad_organo_id` ya resuelve la unidad **por usuario**, no por instancia global — así que el día que haya un usuario de otra provincia, solo hace falta asignarle la fila que le corresponde, sin migración de repoblado.
 
-`Usuario.unidad_organo_id` (FK, nullable hasta que se rellene). No se deriva de `Expediente`/`Proyecto` porque el destino real usado en BandeJA es el puesto del usuario que envía, no la ubicación de la instalación — confirmado en el estudio de campo.
+`Usuario.unidad_organo_id` (FK a `unidades_organo_propio`, nullable hasta que se rellene). No se deriva de `Expediente`/`Proyecto` porque el destino real usado en BandeJA es el puesto del usuario que envía, no la ubicación de la instalación — confirmado en el estudio de campo.
 
 ### 2. `firmantes_portafirmas`, tabla separada y desacoplada de `usuarios`
 
-Campos: cargo, dni, nombre, unidad_organo_id (FK a §1), vigente/fecha_baja, `usuario_id` **nullable** (se rellena solo si el firmante también es usuario BDDAT; no es requisito).
+Campos: cargo, dni, nombre, unidad_organo_id (FK a `unidades_organo_propio`, §1), vigente/fecha_baja, `usuario_id` **nullable** (se rellena solo si el firmante también es usuario BDDAT; no es requisito).
 
 Se descarta modelarlo como un simple checkbox en `Usuario` (alternativa considerada, ver §Alternativas) porque el firmante real de un oficio/resolución con frecuencia no tiene cuenta BDDAT — atarlo al login habría exigido re-modelar en cuanto apareciera el primer firmante sin cuenta, que es el caso típico, no la excepción.
 
@@ -103,8 +111,11 @@ Ya existe `Proyecto.provincias_afectadas`, así que parecía aprovechable. Desca
 ### C. `consejeria_organica_nombre` / `consejeria_competencial_nombre` (roles con nombre semántico)
 Considerada al verificar que, en la Delegación Territorial que nos toca, la organización territorial distingue dos roles reales: la consejería de la que se depende **orgánicamente** (sede, gestión económica/informática — hoy Economía, Hacienda y Fondos Europeos) y la que tiene la autoridad **competencial** sobre industria/energía (hoy Universidad, Industria, Energía e Innovación) — es justo la que BandeJA etiqueta internamente, porque el sistema enruta por competencia, no por organigrama compartido. Descartada como nombre de campo: ata el modelo a que esa distinción se mantenga siempre en dos consejerías y en ese orden. Si mañana la delegación pasa a ser de una sola consejería, o la relación orgánica/competencial se invierte, hay que decidir de nuevo "cuál es cuál" en vez de solo actualizar un valor. `consejeria_1`/`consejeria_2` posicionales (§1) resuelven el mismo caso sin ese acoplamiento — la distinción orgánica/competencial queda como explicación en este ADR, no como estructura de datos.
 
-### C. RPS con motor de reglas de 3 capas (mismo patrón que `tipos_fases`/`tramites`)
+### D. RPS con motor de reglas de 3 capas (mismo patrón que `tipos_fases`/`tramites`)
 Reutilizar el patrón ya existente en el motor. Descartada: ese patrón se justifica por la capa de reglas evaluables condicionalmente; aquí la elección de RPS es una asociación editorial fija sin lógica condicional real que la motive. Aplicar las 3 capas sería sobre-ingeniería para el problema actual.
 
-### D. Datos del órgano vía Context Builder en vez de Capa 1
+### E. Datos del órgano vía Context Builder en vez de Capa 1
 Descartada: Context Builder está pensado para datos calculados/cruzados dependientes del expediente concreto (`contexto_clase`); los datos de órgano/sede/firmante son globales y estáticos, no varían por expediente — encajan en la definición de Capa 1, no en la de Context Builder.
+
+### F. `consejeria_1_nombre`/`consejeria_2_nombre` como columnas de `unidades_organo_propio` (una fila por provincia)
+Primer borrador de este ADR. Descartada tras señalarlo Carlos: la composición de consejerías de una Delegación Territorial es constante en las 8 provincias (mismo decreto), así que guardarla en cada fila de provincia la duplica 8 veces sin necesidad, con riesgo de que una actualización toque unas filas y no otras — la misma razón, aplicada de forma inconsistente, que ya había llevado a hacer `delegacion_territorial_nombre` una propiedad computada. Se separa en `consejerias_delegaciones_territoriales` (§1).
