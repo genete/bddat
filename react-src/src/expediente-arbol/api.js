@@ -204,7 +204,11 @@ export function postNotificarParsearDocumento(expedienteId, tareaId, documentoId
 // Genera el .docx y lo guarda en disco + pool (#608: asignar_doc_producido siempre
 // false — el .docx es un auxiliar de trabajo, no dispara cambio de estado de la
 // tarea; el ciclo BORRADOR_FIRMA/firmado se gestiona aparte vía Despensa).
-// Respuesta: {ok, nombre_fichero, ruta, doc_id, uri_explorador}.
+// El draft de la tarea es único (#730): si ya existe y hace falta decisión del
+// usuario (colisión de nombre o sustitución de contenido) no escribe nada y
+// devuelve {ok, requiere_confirmacion:true, caso, colision_nombre,
+// documento_existente_id} — ver postEscritosGenerarConfirmar. Si no hace
+// falta decisión: {ok, caso, nombre_fichero, ruta, doc_id, uri_explorador}.
 export function postEscritosGenerar(plantillaId, tareaId, nombreFichero) {
   return api.post('/api/escritos/generar', {
     plantilla_id: plantillaId,
@@ -212,5 +216,19 @@ export function postEscritosGenerar(plantillaId, tareaId, nombreFichero) {
     nombre_fichero: nombreFichero,
     registrar_pool: true,
     asignar_doc_producido: false,
+  })
+}
+
+// Segundo paso de la regeneración (#730): ejecuta la decisión tomada en el
+// popup correspondiente al `caso` devuelto por postEscritosGenerar.
+// decision: 'continuar' | 'cancelar' | 'renombrar_nuevo' | 'renombrar_existente'.
+// Respuesta: {ok, cancelado:true} si decision='cancelar', si no la misma
+// forma que postEscritosGenerar cuando no requiere confirmación.
+export function postEscritosGenerarConfirmar(plantillaId, tareaId, nombreFichero, decision) {
+  return api.post('/api/escritos/generar/confirmar', {
+    plantilla_id: plantillaId,
+    tarea_id: tareaId,
+    nombre_fichero: nombreFichero,
+    decision,
   })
 }
