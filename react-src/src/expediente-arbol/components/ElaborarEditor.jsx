@@ -57,9 +57,11 @@ function ConfirmarRegeneracion({ caso, colisionNombre, confirmando, onDecidir })
   const conSustitucion = caso === 6 || caso === 7 || caso === 8
   return (
     <div className="d-flex flex-column gap-1 px-2 py-2 rounded border bg-warning-subtle border-warning-subtle mb-2">
-      {conSustitucion && <span className="small text-muted">{AVISO_SUSTITUCION}</span>}
+      {/* text-warning-emphasis, no text-muted (#730): mismo motivo que el panel de
+          éxito — el gris genérico no da contraste suficiente sobre el fondo coloreado. */}
+      {conSustitucion && <span className="small text-warning-emphasis">{AVISO_SUSTITUCION}</span>}
       {conColision && (
-        <span className="small text-muted">
+        <span className="small text-warning-emphasis">
           Ya existe un fichero llamado <strong>{colisionNombre}</strong> en la carpeta destino que no
           pertenece a bddat.
         </span>
@@ -293,7 +295,10 @@ function GenerarEscrito({ tareaId, expedienteId, onGenerado }) {
               <div className="alert alert-success py-2 px-3 small mt-3 mb-0">
                 <div className="fw-semibold">Generado y vinculado como consumido</div>
                 <div className="text-truncate">{resultado.ruta}</div>
-                <div className="text-muted mt-1">
+                {/* text-success-emphasis, no text-muted (#730): el gris genérico de
+                    Bootstrap pisa el verde oscuro que ya trae alert-success y queda
+                    ilegible sobre el fondo verde claro. */}
+                <div className="text-success-emphasis mt-1">
                   No cambia el estado de la tarea (sigue pendiente de redactar).
                   Revísalo, corrígelo y, cuando esté listo para firma, sube el PDF con
                   tipo «Borrador para firma» y vincúlalo también desde la despensa.
