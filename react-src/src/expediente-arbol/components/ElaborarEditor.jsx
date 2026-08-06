@@ -109,8 +109,11 @@ function GenerarEscrito({ tareaId, expedienteId, onGenerado }) {
       const data = await postEscritosGenerar(plantillaId, tareaId, nombreFichero.trim())
       setResultado(data)
       showToast(`Escrito generado: ${data.nombre_fichero}`, 'success')
-      if (abrirCarpeta && data.doc_id) abrirEnCarpeta(expedienteId, data.doc_id)
       await onGenerado(data.doc_id)
+      // Abrir después de onGenerado (#729): mover_a_esftt ya ha reubicado el
+      // fichero para cuando el Explorador resuelve la ruta — antes había una
+      // carrera con el fichero todavía en AT-N/.
+      if (abrirCarpeta && data.doc_id) abrirEnCarpeta(expedienteId, data.doc_id)
     } catch (e) {
       showToast((e && e.message) || 'No se pudo generar el escrito', 'danger')
     } finally {
