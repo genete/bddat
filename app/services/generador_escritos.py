@@ -25,20 +25,24 @@ FLUJO:
 
 FUNCIONES PÚBLICAS ADICIONALES (Fase 5 #167):
     componer_nombre_documento  — Nombre sistematizado para el documento generado
-    ruta_destino_documento     — Ruta en FILESYSTEM_BASE/AT-XXXX/
     guardar_documento          — Escribe bytes a disco (sobrescribe si existe)
     tipo_contenido_documento   — MIME del documento según su extensión
     advertencias_plantilla     — Avisos de canonicidad (#727); solo .odt, no bloquean
 
+    La ruta de destino ya no se calcula aquí (ver `ruta_destino_documento`,
+    retirada en #730): el documento se genera directamente en su carpeta ESFTT
+    definitiva (`rutas_esftt.ruta_destino_esftt_fichero`), no en un intermedio
+    en `AT-N/` raíz que había que mover después.
+
 USO:
     from app.services.generador_escritos import (
-        generar_escrito, componer_nombre_documento,
-        ruta_destino_documento, guardar_documento,
+        generar_escrito, componer_nombre_documento, guardar_documento,
     )
+    from app.services.rutas_esftt import ruta_destino_esftt_fichero
 
     doc_bytes = generar_escrito(plantilla, expediente, db_session)
     nombre = componer_nombre_documento(tarea, plantilla)
-    ruta = ruta_destino_documento(expediente, nombre)
+    ruta = ruta_destino_esftt_fichero(tarea, nombre)
     guardar_documento(doc_bytes, ruta)
 
 DEPENDENCIA:
@@ -167,29 +171,6 @@ def componer_nombre_documento(tarea, plantilla) -> str:
     nombre = _CARACTERES_INVALIDOS.sub('_', nombre)
 
     return nombre
-
-
-def ruta_destino_documento(expediente, nombre_fichero) -> str:
-    """
-    Calcula la ruta absoluta donde guardar el documento generado.
-
-    Estructura: FILESYSTEM_BASE / AT-{numero_at} / {nombre_fichero}
-    Crea el subdirectorio si no existe.
-
-    NOTA: Ruta hardcoded provisional. Se reemplazará por rutas configurables
-    en tablas maestras cuando se implemente esa decisión de arquitectura
-    (Bloque 2/8 del roadmap).
-    """
-    from flask import current_app
-    base = current_app.config.get('FILESYSTEM_BASE', '')
-    if not base:
-        raise RuntimeError('FILESYSTEM_BASE no está configurado')
-
-    carpeta_exp = f'AT-{expediente.numero_at}'
-    directorio = os.path.join(base, carpeta_exp)
-    os.makedirs(directorio, exist_ok=True)
-
-    return os.path.join(directorio, nombre_fichero)
 
 
 def guardar_documento(doc_bytes, ruta_destino) -> str:

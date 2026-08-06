@@ -26,10 +26,72 @@
 // cabecera fija (BarraEdicion, #688), no en el pie de este contenedor.
 import React from 'react'
 import { useArbolStore } from '../store.js'
-import { getEscritosPlantillas, getEscritosPreview, postEscritosGenerar } from '../api.js'
+import { getEscritosPlantillas, getEscritosPreview, postEscritosGenerar, postEscritosGenerarConfirmar } from '../api.js'
 import { api } from '../../shared/api.js'
 import { showToast } from '../../shared/ui/toast.js'
 import BloqueNotas from './BloqueNotas.jsx'
+
+// Casos de la matriz de regeneración (#730) que dejan un documento realmente
+// nuevo o sustituido — se muestran en el panel persistente. 3 (no-op) y 4
+// (renombrado puro) solo merecen un toast, no hay nada sustancial que revisar.
+const CASOS_CON_PANEL = new Set([1, 6, 7, 8])
+
+function _mensajeCaso(data) {
+  if (data.caso === 3) return 'Sin cambios respecto al documento actual: no se ha generado nada nuevo.'
+  if (data.caso === 4 || data.caso === 5) return `Sin cambios en el contenido — renombrado a "${data.nombre_fichero}".`
+  return `Escrito generado: ${data.nombre_fichero}`
+}
+
+// Aviso de sustitución (casos 6/7/8, #730): el borrador anterior se desconecta
+// de bddat, no pasa por pool/ (nunca perteneció al expediente, #608) — queda
+// recuperable por su código de seguimiento embebido en el pie de página.
+const AVISO_SUSTITUCION = 'Ya existe un borrador generado antes para esta tarea. Si continúas, el ' +
+  'fichero anterior se desconectará de bddat: quedará en la misma carpeta con la fecha del propio ' +
+  'fichero añadida al nombre — recuperable por su código de seguimiento si hace falta revisarlo.'
+
+// Card de decisión revelada cuando /generar devuelve requiere_confirmacion
+// (#730) — mismo patrón visual que BloqueoForzar (TiposCreablesCompartido.jsx):
+// aviso en línea dentro del panel, no un modal aparte.
+function ConfirmarRegeneracion({ caso, colisionNombre, confirmando, onDecidir }) {
+  const conColision = colisionNombre != null
+  const conSustitucion = caso === 6 || caso === 7 || caso === 8
+  return (
+    <div className="d-flex flex-column gap-1 px-2 py-2 rounded border bg-warning-subtle border-warning-subtle mb-2">
+      {/* text-warning-emphasis, no text-muted (#730): mismo motivo que el panel de
+          éxito — el gris genérico no da contraste suficiente sobre el fondo coloreado. */}
+      {conSustitucion && <span className="small text-warning-emphasis">{AVISO_SUSTITUCION}</span>}
+      {conColision && (
+        <span className="small text-warning-emphasis">
+          Ya existe un fichero llamado <strong>{colisionNombre}</strong> en la carpeta destino que no
+          pertenece a bddat.
+        </span>
+      )}
+      <div className="d-flex gap-2 flex-wrap">
+        {conColision ? (
+          <>
+            <button type="button" className="btn btn-sm btn-warning" disabled={confirmando}
+                    onClick={() => onDecidir('renombrar_nuevo')}>
+              Renombrar el nuevo
+            </button>
+            <button type="button" className="btn btn-sm btn-warning" disabled={confirmando}
+                    onClick={() => onDecidir('renombrar_existente')}>
+              Renombrar el existente
+            </button>
+          </>
+        ) : (
+          <button type="button" className="btn btn-sm btn-warning" disabled={confirmando}
+                  onClick={() => onDecidir('continuar')}>
+            {confirmando ? '…' : 'Continuar'}
+          </button>
+        )}
+        <button type="button" className="btn btn-sm btn-outline-secondary" disabled={confirmando}
+                onClick={() => onDecidir('cancelar')}>
+          Cancelar
+        </button>
+      </div>
+    </div>
+  )
+}
 
 // Abre el Explorador de Windows enfocando el fichero, ejecutado en el SERVIDOR
 // (subprocess.Popen, requiere Flask en el mismo PC — despliegue local). Mismo
@@ -76,6 +138,10 @@ function GenerarEscrito({ tareaId, expedienteId, onGenerado }) {
   const [abrirCarpeta, setAbrirCarpeta] = React.useState(false)
   const [generando, setGenerando] = React.useState(false)
   const [resultado, setResultado] = React.useState(null)
+  // Caso de la matriz #730 que requiere decisión del usuario antes de escribir
+  // nada — null cuando no hay ninguna decisión pendiente.
+  const [confirmacionPendiente, setConfirmacionPendiente] = React.useState(null)
+  const [confirmando, setConfirmando] = React.useState(false)
 
   React.useEffect(() => {
     let cancelado = false
@@ -91,6 +157,7 @@ function GenerarEscrito({ tareaId, expedienteId, onGenerado }) {
     setPlantillaId(id)
     setPreview(null)
     setResultado(null)
+    setConfirmacionPendiente(null)
     if (!id) return
     setCargandoPreview(true)
     getEscritosPreview(id, tareaId)
@@ -102,22 +169,50 @@ function GenerarEscrito({ tareaId, expedienteId, onGenerado }) {
       .finally(() => setCargandoPreview(false))
   }
 
+  // Común a la ejecución directa (casos 1/3/4, sin decisión que pedir) y a la
+  // confirmación (tras resolver el popup, #730).
+  const _aplicarResultado = async (data) => {
+    if (CASOS_CON_PANEL.has(data.caso)) setResultado(data)
+    showToast(_mensajeCaso(data), data.caso === 3 ? 'info' : 'success')
+    await onGenerado(data.doc_id)
+    // Abrir después de onGenerado (#729): mover_a_esftt ya ha reubicado el
+    // fichero para cuando el Explorador resuelve la ruta — antes había una
+    // carrera con el fichero todavía en AT-N/.
+    if (abrirCarpeta && data.doc_id) abrirEnCarpeta(expedienteId, data.doc_id)
+  }
+
   const generar = async () => {
     if (!plantillaId) return
     setGenerando(true)
+    setConfirmacionPendiente(null)
     try {
       const data = await postEscritosGenerar(plantillaId, tareaId, nombreFichero.trim())
-      setResultado(data)
-      showToast(`Escrito generado: ${data.nombre_fichero}`, 'success')
-      await onGenerado(data.doc_id)
-      // Abrir después de onGenerado (#729): mover_a_esftt ya ha reubicado el
-      // fichero para cuando el Explorador resuelve la ruta — antes había una
-      // carrera con el fichero todavía en AT-N/.
-      if (abrirCarpeta && data.doc_id) abrirEnCarpeta(expedienteId, data.doc_id)
+      if (data.requiere_confirmacion) {
+        setConfirmacionPendiente({ caso: data.caso, colisionNombre: data.colision_nombre })
+        return
+      }
+      await _aplicarResultado(data)
     } catch (e) {
       showToast((e && e.message) || 'No se pudo generar el escrito', 'danger')
     } finally {
       setGenerando(false)
+    }
+  }
+
+  const confirmar = async (decision) => {
+    setConfirmando(true)
+    try {
+      const data = await postEscritosGenerarConfirmar(plantillaId, tareaId, nombreFichero.trim(), decision)
+      setConfirmacionPendiente(null)
+      if (data.cancelado) {
+        showToast('Regeneración cancelada', 'info')
+        return
+      }
+      await _aplicarResultado(data)
+    } catch (e) {
+      showToast((e && e.message) || 'No se pudo confirmar la regeneración', 'danger')
+    } finally {
+      setConfirmando(false)
     }
   }
 
@@ -176,14 +271,23 @@ function GenerarEscrito({ tareaId, expedienteId, onGenerado }) {
                     Abrir carpeta al generar
                   </label>
                 </div>
-                <button
-                  type="button"
-                  className="btn btn-sm btn-primary"
-                  disabled={generando || !nombreFichero.trim()}
-                  onClick={generar}
-                >
-                  {generando ? 'Generando…' : 'Generar'}
-                </button>
+                {confirmacionPendiente ? (
+                  <ConfirmarRegeneracion
+                    caso={confirmacionPendiente.caso}
+                    colisionNombre={confirmacionPendiente.colisionNombre}
+                    confirmando={confirmando}
+                    onDecidir={confirmar}
+                  />
+                ) : (
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-primary"
+                    disabled={generando || !nombreFichero.trim()}
+                    onClick={generar}
+                  >
+                    {generando ? 'Generando…' : 'Generar'}
+                  </button>
+                )}
               </>
             )}
 
@@ -191,7 +295,10 @@ function GenerarEscrito({ tareaId, expedienteId, onGenerado }) {
               <div className="alert alert-success py-2 px-3 small mt-3 mb-0">
                 <div className="fw-semibold">Generado y vinculado como consumido</div>
                 <div className="text-truncate">{resultado.ruta}</div>
-                <div className="text-muted mt-1">
+                {/* text-success-emphasis, no text-muted (#730): el gris genérico de
+                    Bootstrap pisa el verde oscuro que ya trae alert-success y queda
+                    ilegible sobre el fondo verde claro. */}
+                <div className="text-success-emphasis mt-1">
                   No cambia el estado de la tarea (sigue pendiente de redactar).
                   Revísalo, corrígelo y, cuando esté listo para firma, sube el PDF con
                   tipo «Borrador para firma» y vincúlalo también desde la despensa.

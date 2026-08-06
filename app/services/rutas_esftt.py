@@ -116,6 +116,29 @@ def ruta_esftt_documento(documento_o_tarea) -> str:
     return '/'.join(segmentos)
 
 
+def ruta_destino_esftt_fichero(tarea, nombre_fichero: str) -> str:
+    """
+    Ruta absoluta donde debe escribirse un documento generado directamente para
+    esta tarea (#730) — sustituye al intermedio en `AT-N/` raíz
+    (`ruta_destino_documento`, #167) que dejó de tener sentido en cuanto existió
+    la carpeta ESFTT propia de la tarea (ADR-032 §3): escribir ahí y mover
+    después era el paso que rompía la regeneración, porque el documento nunca
+    volvía a estar en la ruta donde se le buscaba.
+
+    Crea el subdirectorio si no existe (mismo patrón que ruta_pool_documento).
+    """
+    from flask import current_app
+    base = current_app.config.get('FILESYSTEM_BASE', '')
+    if not base:
+        raise RuntimeError('FILESYSTEM_BASE no está configurado')
+
+    directorio_rel = ruta_esftt_documento(tarea)
+    directorio_abs = os.path.normpath(os.path.join(base, directorio_rel.replace('/', os.sep)))
+    os.makedirs(directorio_abs, exist_ok=True)
+
+    return os.path.join(directorio_abs, nombre_fichero)
+
+
 def ruta_pool_documento(expediente) -> str:
     """
     Ruta absoluta de la carpeta pool/ del expediente (AT-N/pool, landing zone física
