@@ -12,6 +12,7 @@ import { puedeEditarNodo } from '../../shared/auth.js'
 import { estaSellado } from '../sellado.js'
 import Semaforo from './nodos/Semaforo.jsx'
 import Despensa from './Despensa.jsx'
+import { BloqueoForzar } from './TiposCreablesCompartido.jsx'
 import AnalizarEditor from './AnalizarEditor.jsx'
 import ElaborarEditor from './ElaborarEditor.jsx'
 import NotificarEditor from './NotificarEditor.jsx'
@@ -403,6 +404,43 @@ function Editor({ nodo }) {
   )
 }
 
+// Vía de escape del Guardar cuando el backend devuelve un bloqueo FORZABLE
+// (#765). Hasta ahora `puede_escapar:true` solo se ofrecía al CREAR: los tres
+// bloqueos forzables del cierre de fase —completitud (#723), diagnóstico
+// desfavorable sin consumir (#419/#711) y resultado desfavorable sin respaldo
+// (#765)— llegaban aquí y morían en un toast, dejando al técnico sin más salida
+// que guardar el resultado sin documento (la ventana que esquiva el check).
+//
+// Se pinta arriba del editor, dentro del scroll: el borrador sigue vivo debajo,
+// así que "Cancelar" devuelve al formulario para corregir el resultado en vez de
+// forzarlo. Reutiliza BloqueoForzar (mismo patrón intento→422→justificación→
+// reintento) en vez de un aviso propio.
+function BloqueoGuardarForzable() {
+  const bloqueoGuardar = useArbolStore((s) => s.bloqueoGuardar)
+  const guardando      = useArbolStore((s) => s.guardando)
+  const guardar        = useArbolStore((s) => s.guardar)
+  const cancelar       = useArbolStore((s) => s.cancelarBloqueoGuardar)
+  const [justificacion, setJustificacion] = React.useState('')
+
+  if (!bloqueoGuardar) return null
+
+  return (
+    <div className="mb-3">
+      <BloqueoForzar
+        bloqueo={{ ...bloqueoGuardar, puede_escapar: true }}
+        titulo="Este guardado necesita justificación"
+        textoAccion="Guardar igualmente"
+        placeholder="Motivo por el que se guarda igualmente (queda en bitácora)"
+        justificacion={justificacion}
+        setJustificacion={setJustificacion}
+        creando={guardando}
+        onForzar={() => guardar(justificacion.trim())}
+        onCancelar={cancelar}
+      />
+    </div>
+  )
+}
+
 // Control de borrado compartido por los tres editores bespoke de tarea (ANALIZAR/
 // ELABORAR/NOTIFICAR, #742): el Editor genérico lo integra en su propio form (arriba),
 // pero ninguno de los tres bespoke lo trae de fábrica — se hoistea aquí, al nivel de
@@ -443,8 +481,11 @@ function BarraEdicion({ tipo, nodo }) {
     <div className="flex-shrink-0 border-bottom p-3 d-flex align-items-start justify-content-between gap-2">
       <Cabecera tipo={tipo} nodo={nodo} compacta />
       <div className="d-flex gap-2 flex-shrink-0">
+        {/* `() => guardar()` y no `onClick={guardar}`: desde #765 el primer argumento
+            de `guardar` es la justificación del escape, y pasarle el evento del click
+            lo convertiría en un bypass involuntario. */}
         <button type="button" className="btn btn-sm btn-primary"
-                disabled={guardando || !hayCambios} onClick={guardar}>
+                disabled={guardando || !hayCambios} onClick={() => guardar()}>
           {guardando ? 'Guardando…' : 'Guardar'}
         </button>
         <button type="button" className="btn btn-sm btn-outline-secondary" onClick={cancelar}>
@@ -495,6 +536,7 @@ function InspectorEdicion({ nodo }) {
     <div className="d-flex flex-column h-100 arbol-inspector--lock">
       <BarraEdicion tipo={seleccion.tipo} nodo={nodo} />
       <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }} className="p-3">
+        {!borrarPendienteConfirm && <BloqueoGuardarForzable />}
         {borrarPendienteConfirm
           ? <ConfirmacionBorrado nodo={nodo} />
           : esAnalizar

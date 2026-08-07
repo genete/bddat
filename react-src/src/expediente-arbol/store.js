@@ -53,6 +53,12 @@ export const useArbolStore = create((set, get) => ({
                                 // creación bloqueado — el veredicto ya no se conoce al listar
                                 // (ADR-037 §D), solo al intentar (ver crearHijo)
   justificacionForzar: '',    // texto del bypass cuando bloqueoActual.puede_escapar (#616)
+  bloqueoGuardar: null,        // {motivo, url_norma} del 422 FORZABLE del Guardar del inspector
+                                // (#765): el equivalente de bloqueoActual para el PATCH del nodo.
+                                // Hasta ahora el escape solo existía al CREAR — los tres bloqueos
+                                // forzables del cierre de fase (completitud #723, desfavorable sin
+                                // consumir #419/#711, desfavorable sin respaldo #765) llegaban con
+                                // puede_escapar:true y morían en un toast, sin vía de forzado.
   creando: false,
 
   // --- pool de documentos (S3b-3) ---
@@ -153,6 +159,7 @@ export const useArbolStore = create((set, get) => ({
     set({ seleccion: sel, modoEdicion: true, edicionCargando: true,
           editableCampos: [], borrador: {}, borradorInicial: {},
           tiposCreables: null, tipoCreacionPendiente: null, creacionPadre: null, bloqueoActual: null, justificacionForzar: '',
+          bloqueoGuardar: null,
           docVinculandoPendiente: null, analizarSeccionesExtendidas: null,
           menuCtx: null, menuDetalle: null, borrarPendienteConfirm: false })
     const expedienteId = get().expedienteId
@@ -184,6 +191,7 @@ export const useArbolStore = create((set, get) => ({
     const habiaCambios = selectHayCambios(get())
     set({ modoEdicion: false, editableCampos: [], borrador: {}, borradorInicial: {}, edicionCargando: false,
           tiposCreables: null, tipoCreacionPendiente: null, creacionPadre: null, bloqueoActual: null, justificacionForzar: '',
+          bloqueoGuardar: null,
           docVinculandoPendiente: null,
           borrarPendienteConfirm: false,
           detalle: null, detalleCargando: false, detalleError: null })
@@ -206,35 +214,58 @@ export const useArbolStore = create((set, get) => ({
   // deja de poder deshacer lo que el propio contenedor acaba de derivar.
   // Si cambiaron los vínculos (Despensa viva: ANALIZAR simple, ELABORAR,
   // NOTIFICAR), el borrador SÍ es la verdad y va el PATCH completo de siempre.
-  guardar: async () => {
+  //
+  // `justificacion` (#765): reintento del propio Guardar cuando el 422 anterior
+  // traía `puede_escapar:true` (ver el catch). Viaja como `bypass`+`justificacion`
+  // en el mismo PATCH — es lo que `api_expedientes.editar_nodo` lee con
+  // `_leer_bypass` para la rama `fase`, y `editar_fase` deja en bitácora. No se
+  // ofrece en la vía estrecha de notas: ningún invariante forzable cuelga de ella.
+  guardar: async (justificacion) => {
     const { expedienteId, seleccion, borrador, borradorInicial } = get()
     if (!seleccion) return
     const camposSucios = Object.keys(borrador).filter(
       (k) => JSON.stringify(borrador[k]) !== JSON.stringify(borradorInicial[k]))
     const soloNotas = seleccion.tipo === 'tarea' &&
                       camposSucios.length > 0 && camposSucios.every((k) => k === 'notas')
+    const cuerpo = justificacion ? { ...borrador, bypass: true, justificacion } : borrador
     set({ guardando: true })
     try {
       const data = soloNotas
         ? await guardarNotas(expedienteId, seleccion.id, borrador.notas)
-        : await patchNodo(expedienteId, seleccion.tipo, seleccion.id, borrador)
-      showToast('Cambios guardados', 'success')
+        : await patchNodo(expedienteId, seleccion.tipo, seleccion.id, cuerpo)
+      showToast(justificacion
+        ? 'Cambios guardados con justificación — queda en la bitácora'
+        : 'Cambios guardados', justificacion ? 'warning' : 'success')
       if (data && data.advertencia) {                 // fase: justificantes huérfanos en el pool (#738)
         const a = data.advertencia
         showToast(typeof a === 'string' ? a : (a.motivo || 'Revisa la advertencia'), 'warning')
       }
-      set({ guardando: false, modoEdicion: false, editableCampos: [], borrador: {}, borradorInicial: {} })
+      set({ guardando: false, modoEdicion: false, editableCampos: [], borrador: {}, borradorInicial: {},
+            bloqueoGuardar: null })
       await get().refrescarArbol()
     } catch (e) {
       set({ guardando: false })
       if (e.status === 401 || e.status === 403) return // shared/api.js ya mostró su toast
-      if (e.status === 422 && e.payload && e.payload.motivo) {
-        showToast(e.payload.motivo, 'danger')          // bloqueo motor: PERMANECE en edición
+      if (e.status === 422 && e.payload && e.payload.puede_escapar === true) {
+        // Bloqueo FORZABLE (#765): en vez de un toast que se va solo, se queda en
+        // pantalla para poder ofrecer la vía de escape con justificación — mismo
+        // criterio que `crearHijo` con `bloqueoActual`. PERMANECE en edición, con el
+        // borrador intacto: confirmar reintenta este mismo Guardar.
+        set({ bloqueoGuardar: {
+          motivo: e.payload.motivo || e.payload.error || 'Operación bloqueada',
+          url_norma: e.payload.url_norma || '',
+        } })
+      } else if (e.status === 422 && e.payload && e.payload.motivo) {
+        showToast(e.payload.motivo, 'danger')          // puerta cerrada: PERMANECE en edición
       } else {
         showToast(e.message || 'No se pudo guardar', 'danger')
       }
     }
   },
+
+  // Descarta el bloqueo forzable sin guardar (#765): vuelve al editor tal cual, con
+  // el borrador vivo — el técnico corrige el resultado en vez de forzarlo.
+  cancelarBloqueoGuardar: () => set({ bloqueoGuardar: null }),
 
   // --- acciones de borrado (S3b-4) ---
 

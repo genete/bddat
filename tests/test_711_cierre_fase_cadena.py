@@ -190,17 +190,19 @@ class TestDiagnosticosParalelos:
 
 
 # ---------------------------------------------------------------------------
-# Cortocircuito por resultado
+# Otro sentido del cierre (esta rama no aplica)
 # ---------------------------------------------------------------------------
 
 class TestResultadoDesfavorable:
 
-    def test_desfavorable_nunca_bloquea(self, app_ctx):
-        """Cerrar DESFAVORABLE no pasa por el check, haya lo que haya en la fase.
+    def test_desfavorable_no_bloquea_por_esta_rama(self, app_ctx):
+        """Un desfavorable vigente nunca impide cerrar la fase DESFAVORABLE.
 
-        Nota: esta asimetría (nunca se comprueba el caso simétrico — cerrar
-        DESFAVORABLE con un diagnóstico favorable vigente) está registrada como hueco
-        de diseño en docs/CONTEXTO_ACTUAL.md, pendiente de la revisión de RESOLUCIÓN.
+        Desde #765 el resultado DESFAVORABLE ya no cortocircuita el check: se
+        desvía a `_check_cierre_desfavorable`, que vigila el caso simétrico
+        (cerrar desfavorable sin ningún diagnóstico vigente que lo respalde) y
+        aquí no salta porque el vigente sí lo es. Sus tests, en
+        tests/test_765_cierre_desfavorable.py.
         """
         from app.services.invariantes_esftt import _check_cierre_fase
 
