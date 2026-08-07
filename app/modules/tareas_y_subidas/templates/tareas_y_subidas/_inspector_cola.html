@@ -6,9 +6,10 @@
    árbol vía "Ir a tramitar" (deep link al nodo en modo edición).
 
    Contexto:
-     detalle      — payload de services.detalle_nodo.detalle_de_nodo (tarea)
-     expediente   — Expediente de la tarea
-     tarea_id     — id de la tarea (para el deep link)
+     detalle         — payload de services.detalle_nodo.detalle_de_nodo (tarea)
+     expediente      — Expediente de la tarea
+     tarea_id        — id de la tarea (para el deep link)
+     ayuda_producido — regla de recepción de #764 (solo ESPERAR_PLAZO), o None
 #}
 <div class="p-3 cola-inspector">
 
@@ -60,6 +61,16 @@
   </div>
   {% else %}
   <p class="text-secondary small">Sin documentos vinculados todavía.</p>
+  {% endif %}
+
+  {# ── Ayuda de recepción (#766, solo ESPERAR_PLAZO) ──────────────────────────
+     Regla de #764: el producido de ESPERAR_PLAZO es uno solo — el que acredita
+     el hecho y porta su fecha. Aquí es informativa (el fragmento es de lectura):
+     prepara la decisión que se toma al otro lado de "Ir a tramitar". #}
+  {% if ayuda_producido %}
+  <div class="alert alert-light border py-2 px-3 mb-3 small text-secondary">
+    <i class="fas fa-info-circle me-1"></i>{{ ayuda_producido }}
+  </div>
   {% endif %}
 
   {# ── CTA: la edición vive en el árbol (deep link a la tarea) ────────────── #}

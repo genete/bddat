@@ -25,6 +25,24 @@ bp = Blueprint('tareas_y_subidas', __name__,
                url_prefix='/tareas_y_subidas',
                template_folder='templates')
 
+# Regla de recepción de #764 (ADR-004 y ADR-010, notas 2026-08-07;
+# `docs/referencia/DISEÑO_ANALISIS_SOLICITUD.md` §5): el vínculo PRODUCIDO de
+# ESPERAR_PLAZO es de cardinalidad 1 y se reserva al documento que acredita el
+# hecho y porta su fecha administrativa; los anexos que lleguen con él entran al
+# pool y los consume el ANALIZAR siguiente. La regla no estaba en ninguna parte
+# de la interfaz y quien tramita no sabía cuál de los documentos recién llegados
+# elegir (#766).
+#
+# GEMELO EN REACT: `AYUDA_PRODUCIDO_ESPERAR_PLAZO` en
+# `react-src/src/expediente-arbol/components/Despensa.jsx` — misma redacción para
+# los dos sitios donde aparece la decisión (aquí, la cola; allí, el árbol, que es
+# donde se vincula de verdad). Si cambia una, cambiar la otra.
+AYUDA_PRODUCIDO_ESPERAR_PLAZO = (
+    'Vincula el documento que acredita la recepción y su fecha: registro de entrada, '
+    'solicitud, justificante de BandeJA o acuse de publicación. Los anexos que lo '
+    'acompañen se consumen después, en la tarea de análisis.'
+)
+
 
 @bp.route('/')
 @require_permiso('acceder_tareas_y_subidas')
@@ -52,9 +70,14 @@ def tarea_fragmento(tarea_id):
         return '', 403
 
     detalle = detalle_de_nodo(expediente, 'tarea', tarea_id)
+    codigo_tarea = tarea.tipo_tarea.codigo if tarea.tipo_tarea else None
     return render_template(
         'tareas_y_subidas/_inspector_cola.html',
         detalle=detalle,
         expediente=expediente,
         tarea_id=tarea_id,
+        # #766: la ayuda solo tiene sentido en ESPERAR_PLAZO, que es la única
+        # tarea cuyo producido es un documento recibido de fuera.
+        ayuda_producido=(AYUDA_PRODUCIDO_ESPERAR_PLAZO
+                         if codigo_tarea == 'ESPERAR_PLAZO' else None),
     )

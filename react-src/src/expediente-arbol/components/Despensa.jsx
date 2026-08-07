@@ -171,6 +171,23 @@ function DespensaTipos() {
 
 // ─── Modo docs del pool (S3b-3) ─────────────────────────────────────────────
 
+// Regla de recepción de #764 (ADR-004 y ADR-010, notas 2026-08-07;
+// `docs/referencia/DISEÑO_ANALISIS_SOLICITUD.md` §5): el vínculo PRODUCIDO de
+// ESPERAR_PLAZO es de cardinalidad 1 y se reserva al documento que acredita el
+// hecho y porta su fecha administrativa; los anexos que lleguen con él entran al
+// pool y los consume el ANALIZAR siguiente. La regla no estaba en ninguna parte
+// de la interfaz y quien tramita no sabía cuál de los documentos recién llegados
+// elegir (#766).
+//
+// GEMELO EN PYTHON: `AYUDA_PRODUCIDO_ESPERAR_PLAZO` en
+// `app/modules/tareas_y_subidas/routes.py` — misma redacción para los dos sitios
+// donde aparece la decisión (allí, la cola; aquí, el árbol, que es donde se
+// vincula de verdad). Si cambia una, cambiar la otra.
+export const AYUDA_PRODUCIDO_ESPERAR_PLAZO =
+  'Vincula el documento que acredita la recepción y su fecha: registro de entrada, '
+  + 'solicitud, justificante de BandeJA o acuse de publicación. Los anexos que lo '
+  + 'acompañen se consumen después, en la tarea de análisis.'
+
 async function postAccion(url) {
   try {
     await api.post(url)
@@ -258,7 +275,7 @@ function FichaDoc({ doc, vinculado, seleccionada, onClick, expedienteId }) {
   )
 }
 
-function DespensaDocs({ deshabilitarProducido }) {
+function DespensaDocs({ deshabilitarProducido, esEsperarPlazo }) {
   const seleccion               = useArbolStore((s) => s.seleccion)
   const expedienteId            = useArbolStore((s) => s.expedienteId)
   const borrador                = useArbolStore((s) => s.borrador)
@@ -367,6 +384,17 @@ function DespensaDocs({ deshabilitarProducido }) {
         </div>
       )}
 
+      {/* ── Ayuda de recepción (#766): qué documento es el producido cuando
+             llegan varios. Va sobre la zona de staging, para que se lea tanto
+             antes de elegir del pool como con el documento ya seleccionado. ── */}
+      {esEsperarPlazo && (
+        <div className="d-flex gap-2 rounded border border-info-subtle bg-info-subtle px-2 py-1"
+             style={{ fontSize: '0.72rem' }}>
+          <i className="bi bi-info-circle flex-shrink-0 mt-1" />
+          <span>{AYUDA_PRODUCIDO_ESPERAR_PLAZO}</span>
+        </div>
+      )}
+
       {/* ── Zona de staging ── */}
       {docVinculandoPendiente ? (
         <div className="d-flex flex-column gap-1 px-2 py-1 rounded border bg-primary-subtle border-primary-subtle">
@@ -422,7 +450,7 @@ function DespensaDocs({ deshabilitarProducido }) {
 
 // ─── Componente principal (adaptativo) ──────────────────────────────────────
 
-export default function Despensa({ deshabilitarProducido }) {
+export default function Despensa({ deshabilitarProducido, esEsperarPlazo }) {
   const seleccion   = useArbolStore((s) => s.seleccion)
   const modoEdicion = useArbolStore((s) => s.modoEdicion)
   const arbol       = useArbolStore((s) => s.arbol)
@@ -442,6 +470,8 @@ export default function Despensa({ deshabilitarProducido }) {
     )
   }
 
-  if (seleccion.tipo === 'tarea') return <DespensaDocs deshabilitarProducido={deshabilitarProducido} />
+  if (seleccion.tipo === 'tarea') {
+    return <DespensaDocs deshabilitarProducido={deshabilitarProducido} esEsperarPlazo={esEsperarPlazo} />
+  }
   return <DespensaTipos />
 }
