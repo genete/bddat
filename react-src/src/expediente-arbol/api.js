@@ -137,6 +137,9 @@ export function postRequerimientos(expedienteId, tareaId, items, justificacion) 
 }
 
 // Crea una entrada nueva en catalogo_requerimientos desde el shuttle ("Guardar en catálogo").
+// Exige `gestionar_catalogo_requerimientos` además de `gestionar_tarea` (#684): es alta en el
+// catálogo maestro, mismo permiso que el CRUD de #593. Devuelve 403 a TRAMITADOR/ADMINISTRATIVO,
+// a quienes la UI ya no les ofrece la casilla operativa.
 export function crearRequerimientoCatalogo(expedienteId, tareaId, texto, categoria) {
   return api.post(
     `/api/expedientes/${expedienteId}/nodo/tarea/${tareaId}/requerimientos/catalogo`,
