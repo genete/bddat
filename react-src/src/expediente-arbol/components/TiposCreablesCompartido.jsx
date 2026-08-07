@@ -43,11 +43,21 @@ export function FilaTipoCreable({ tipo, variante, seleccionado, onClick, draggab
 // Bloque de bloqueo revelado tras un intento real de creación (ADR-037 §D).
 // Con puede_escapar ofrece forzar con justificación (#616/#723, misma bitácora
 // que un escape de motor); sin él, solo informa — no hay vía de escape.
-export function BloqueoForzar({ bloqueo, tipoNombre, justificacion, setJustificacion, creando, onForzar, onCancelar }) {
+//
+// Desde #765 lo reutiliza también el Guardar del inspector (segundo caso del
+// mismo patrón: intento real → 422 forzable → justificación → reintento), de ahí
+// los tres textos parametrizados. Los defaults dejan intactos los dos callers de
+// creación (Despensa, MenuContextual).
+export function BloqueoForzar({
+  bloqueo, tipoNombre, justificacion, setJustificacion, creando, onForzar, onCancelar,
+  titulo = null,
+  textoAccion = 'Forzar creación',
+  placeholder = 'Justificación obligatoria para forzar la creación (queda en bitácora)',
+}) {
   return (
     <div className="d-flex flex-column gap-1 px-2 py-2 rounded border bg-warning-subtle border-warning-subtle">
       <span className="small">
-        <strong>{tipoNombre}</strong> — bloqueado
+        {titulo ? <strong>{titulo}</strong> : <><strong>{tipoNombre}</strong> — bloqueado</>}
       </span>
       <span className="small text-muted">
         {bloqueo.motivo}
@@ -63,7 +73,7 @@ export function BloqueoForzar({ bloqueo, tipoNombre, justificacion, setJustifica
           <textarea
             className="form-control form-control-sm"
             rows={2}
-            placeholder="Justificación obligatoria para forzar la creación (queda en bitácora)"
+            placeholder={placeholder}
             value={justificacion}
             onChange={(e) => setJustificacion(e.target.value)}
             disabled={creando}
@@ -75,7 +85,7 @@ export function BloqueoForzar({ bloqueo, tipoNombre, justificacion, setJustifica
               disabled={creando || !justificacion.trim()}
               onClick={onForzar}
             >
-              {creando ? '…' : 'Forzar creación'}
+              {creando ? '…' : textoAccion}
             </button>
             <button type="button" className="btn btn-sm btn-outline-secondary" disabled={creando} onClick={onCancelar}>
               ✕

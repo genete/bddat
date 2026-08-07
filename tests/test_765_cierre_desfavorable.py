@@ -281,3 +281,70 @@ class TestCierreForzable:
         assert entrada is not None
         assert entrada.detalle['escape'] is True
         assert entrada.detalle['justificacion'] == 'El informe posterior desmiente el diagnóstico'
+
+
+# ---------------------------------------------------------------------------
+# F) Contrato del PATCH que consume el escape del inspector (#765)
+# ---------------------------------------------------------------------------
+
+class TestBypassEnPatchDeFase:
+    """El Guardar del árbol reintenta con `bypass`+`justificacion` en el mismo
+    PATCH del nodo (store.js, `guardar`). Ese contrato existía desde #723 pero
+    solo estaba probado a nivel de servicio: aquí se fija la ruta, que es de lo
+    que depende la vía de escape de la interfaz.
+
+    Mismo patrón que test_616 para la creación: se mockea el servicio — lo que
+    se prueba es el enrutado del body, no la mutación (cubierta arriba).
+    """
+
+    def _fase_id(self, app, expediente_seed):
+        from app.models.fases import Fase
+        from app.models.solicitudes import Solicitud
+        with app.app_context():
+            fase = (Fase.query.join(Solicitud, Fase.solicitud_id == Solicitud.id)
+                    .filter(Solicitud.expediente_id == expediente_seed).first())
+            if fase is None:
+                pytest.skip('El expediente de la BD de desarrollo no tiene fases')
+            return fase.id
+
+    def test_patch_fase_propaga_justificacion(self, app, usuario_supervisor, expediente_seed):
+        from unittest.mock import patch
+        from app.services.mutaciones_arbol import ResultadoMutacion
+
+        fase_id = self._fase_id(app, expediente_seed)
+        with patch('app.routes.api_expedientes.svc.editar_fase') as mock_editar:
+            mock_editar.return_value = ResultadoMutacion(ok=True)
+            r = usuario_supervisor.patch(
+                f'/api/expedientes/{expediente_seed}/nodo/fase/{fase_id}',
+                json={'observaciones': 'x', 'bypass': True,
+                      'justificacion': 'El diagnóstico ha quedado desfasado'})
+
+        assert r.status_code == 200
+        assert mock_editar.call_args.kwargs['justificacion'] == 'El diagnóstico ha quedado desfasado'
+
+    def test_patch_fase_sin_bypass_no_justifica(self, app, usuario_supervisor, expediente_seed):
+        from unittest.mock import patch
+        from app.services.mutaciones_arbol import ResultadoMutacion
+
+        fase_id = self._fase_id(app, expediente_seed)
+        with patch('app.routes.api_expedientes.svc.editar_fase') as mock_editar:
+            mock_editar.return_value = ResultadoMutacion(ok=True)
+            r = usuario_supervisor.patch(
+                f'/api/expedientes/{expediente_seed}/nodo/fase/{fase_id}',
+                json={'observaciones': 'x'})
+
+        assert r.status_code == 200
+        assert mock_editar.call_args.kwargs['justificacion'] is None
+
+    def test_patch_fase_bypass_sin_justificacion_400(self, app, usuario_supervisor, expediente_seed):
+        """Guardarraíl de `_leer_bypass`: forzar sin motivo no llega al servicio."""
+        from unittest.mock import patch
+
+        fase_id = self._fase_id(app, expediente_seed)
+        with patch('app.routes.api_expedientes.svc.editar_fase') as mock_editar:
+            r = usuario_supervisor.patch(
+                f'/api/expedientes/{expediente_seed}/nodo/fase/{fase_id}',
+                json={'observaciones': 'x', 'bypass': True})
+
+        assert r.status_code == 400
+        assert mock_editar.called is False
