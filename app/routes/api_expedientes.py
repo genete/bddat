@@ -54,7 +54,7 @@ from app.models.notificaciones import Notificacion
 from app.services.parser_justificante_notifica import (
     parsear_justificante_notifica, parsear_justificante_notifica_zip,
 )
-from app.utils.permisos import verificar_acceso_expediente
+from app.utils.permisos import verificar_acceso_expediente, tiene_permiso
 
 # Trámites cuya tarea ANALIZAR lleva las secciones extendidas del contenedor
 # (#442: check documental #495, check técnico #581, requerimientos #440).
@@ -1620,14 +1620,31 @@ def post_requerimientos(expediente_id, tarea_id):
 def crear_requerimiento_catalogo(expediente_id, tarea_id):
     """
     POST .../requerimientos/catalogo — crea una entrada nueva en `catalogo_requerimientos`
-    desde el shuttle ("Guardar en catálogo", #440). Gate por `gestionar_tarea` —
-    distinto del CRUD de administración del catálogo (#593, solo Supervisor):
-    aquí el técnico da de alta un texto reutilizable como subproducto de su
-    trabajo en ANALIZAR, no está gestionando el catálogo.
+    desde el shuttle ("Guardar en catálogo", #440).
+
+    Doble gate (#684): `gestionar_tarea` sobre el expediente —es una acción hecha
+    mientras se trabaja una tarea ANALIZAR concreta— **y además**
+    `gestionar_catalogo_requerimientos`, el mismo permiso que exige el CRUD de
+    administración del catálogo (#593, `{ADMIN, SUPERVISOR}`). Antes solo pedía el
+    primero, así que cualquier TRAMITADOR/ADMINISTRATIVO insertaba filas en el
+    catálogo maestro desde el shuttle, eludiendo el control de #593: el catálogo se
+    diseñó curado (imagen homogénea de la administración) y esto era una puerta
+    trasera a texto basura, duplicados o categorización errónea.
+
+    Para quien NO tiene el permiso, la UI no ofrece guardado directo sino un
+    "Solicitar guardado en catálogo" inerte hasta que exista la mensajería
+    interna de #28 (ver AnalizarEditor.jsx); ese futuro camino manda un mensaje
+    al SUPERVISOR y NO pasa por aquí — este endpoint sigue siendo escritura
+    directa y por tanto exclusivo de quien puede curar el catálogo.
     """
     expediente = Expediente.query.get_or_404(expediente_id)
     if verificar_acceso_expediente(expediente, 'gestionar_tarea'):
         return jsonify({'error': 'No tienes permiso para esta acción'}), 403
+    if not tiene_permiso('gestionar_catalogo_requerimientos'):
+        return jsonify({
+            'error': 'Solo Supervisor o Administrador pueden dar de alta requerimientos '
+                     'en el catálogo',
+        }), 403
 
     try:
         _resolver_tarea_analizar(expediente, tarea_id)
