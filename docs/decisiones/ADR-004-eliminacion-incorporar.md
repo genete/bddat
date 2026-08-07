@@ -26,6 +26,22 @@ efecto era enlazar lo que ya tenía enlace.
 - Seed `tramites_tareas`: eliminar todas las filas con `tipo_tarea = INCORPORAR`
 - Ver issue #370 para lista completa de artefactos
 
+## Nota 2026-08-07 (#764) — qué documento es el producido
+
+Revisado el caso de N documentos simultáneos en un mismo acto de recepción: **no exige
+cambio de modelo**. Lo que llega de fuera trae siempre un documento que acredita el hecho
+y porta su fecha administrativa —registro de entrada o solicitud (presentación electrónica
+de la Junta o red estatal), justificante de BandeJA si el remitente es interno, o acuse o
+certificado acreditativo si lo esperado es una publicación—, y ése es el `PRODUCIDO`, uno.
+Los anexos que acompañan al registro entran al pool y los consume (0..N) el `ANALIZAR`
+siguiente, que es donde se incorporan al expediente.
+
+Corolario estructural: todo `ESPERAR_PLAZO` que pueda recibir documentación de terceros
+exige un `ANALIZAR` posterior —propio, del trámite receptor hermano, o añadido tras él si
+es el último trámite de la fase—. Esta exigencia se comprueba durante el desarrollo
+mediante repaso de fase a fase, sin crear issues a futuro, sino sobre la marcha.
+Ver `ESTRUCTURA_FTT.json` v6.3 y ADR-010.
+
 ## Alternativa descartada
 Mantener `INCORPORAR` como tarea opcional ejecutada automáticamente por el sistema
 al detectar un documento en el pool. Descartada: la automatización requeriría lógica de

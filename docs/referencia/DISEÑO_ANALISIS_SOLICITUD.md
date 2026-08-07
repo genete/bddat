@@ -142,9 +142,13 @@ Con la eliminación de INCORPORAR (ADR-004, #361), la recepción de un documento
 
 En `REQUERIMIENTO_SUBSANACIÓN`, el documento de subsanación del titular se vincula con rol PRODUCIDO al `ESPERAR_PLAZO` correspondiente.
 
-### Problema pendiente: N documentos simultáneos
+### N documentos simultáneos: regla de recepción (#764, 2026-08-07)
 
-ADR-004 modela un único documento por acto de recepción (FK simple en `ESPERAR_PLAZO`). El caso en que el titular aporta N documentos simultáneamente como respuesta a un requerimiento queda sin resolver. La tabla `documentos_tarea` (N:M, diseñada originalmente para INCORPORAR) está pendiente de decisión de diseño: reproponer para ESPERAR_PLAZO o eliminar. Ver issue específico derivado de #361.
+El vínculo `PRODUCIDO` de `ESPERAR_PLAZO` es de cardinalidad 1 (`uq_tarea_un_producido`, ADR-010) y se reserva al documento que **acredita el hecho y porta su fecha administrativa**: el registro de entrada o la solicitud si viene de fuera de la Junta (presentación electrónica de la Junta o red estatal), el justificante de BandeJA si el remitente es una unidad interna, o el acuse/certificado acreditativo cuando lo esperado es una publicación.
+
+Cuando el titular aporta N documentos como respuesta a un requerimiento, esos anexos **no se vinculan al `ESPERAR_PLAZO`**: entran al pool y los consume (0..N) el `ANALIZAR` siguiente del trámite, que es donde se incorporan al expediente. Con un solo documento vinculado queda reflejado administrativamente el acto de recepción completo, y ningún consumidor del producido (cómputo de plazos, cierre de suspensión del art. 22 LPACAP, context builders) necesita más de uno.
+
+No hay, por tanto, cambio de modelo pendiente. La condición que sí debe verificarse en cada fase es estructural: **todo `ESPERAR_PLAZO` que pueda recibir documentación de terceros exige un `ANALIZAR` posterior** —propio, del trámite receptor hermano, o añadido tras él si es el último trámite de la fase—. Esta exigencia se comprueba durante el desarrollo mediante repaso de fase a fase, sin crear issues a futuro, sino sobre la marcha.
 
 ---
 

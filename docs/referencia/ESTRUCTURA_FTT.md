@@ -1,9 +1,9 @@
 # Estructura de Fases, Trámites y Tareas (ESFTT)
 
 > Fuente de verdad: `docs/referencia/ESTRUCTURA_FTT.json`
-> Última sincronización: 2026-05-17
+> Última sincronización: 2026-08-07
 
-**Versión:** 6.2 | **Fecha:** 2026-05-20
+**Versión:** 6.3 | **Fecha:** 2026-08-07
 
 Este documento es la versión legible por humanos del JSON estructural. El JSON es la fuente de verdad para código e IA; este MD es la referencia de consulta rápida.
 
@@ -19,6 +19,11 @@ Para decisiones de diseño, motivaciones y reglas del motor: ver documentos refe
 | `ELABORAR` | Elaborar | consumidos (opt. — DIAGNOSTICO de ANALIZAR si existe) | documento producido (oblig.) | NOTIFICAR |
 | `NOTIFICAR` | Notificar | 1..N consumidos (incluye doc de ELABORAR) | documento producido (oblig. — justificante) | ESPERAR_PLAZO |
 | `ESPERAR_PLAZO` | Esperar Plazo | consumido (oblig. si plazo>0 — justificante de NOTIFICAR; ninguno si plazo=0) | — | FIN (si vence) |
+
+**Cambios v6.3 (#764) — regla de recepción en `ESPERAR_PLAZO`:**
+- El producido es **uno**: el documento que acredita el hecho y porta su fecha administrativa (registro de entrada o solicitud, justificante de BandeJA si el remitente es interno, acuse o certificado acreditativo si lo esperado es una publicación).
+- Los anexos de ese registro no se vinculan a `ESPERAR_PLAZO`: entran al pool y los consume (0..N) el `ANALIZAR` siguiente, que es donde se incorporan al expediente.
+- Corolario estructural: todo `ESPERAR_PLAZO` que pueda recibir documentación de terceros exige un `ANALIZAR` posterior — propio, del trámite receptor hermano, o añadido tras él si es el último trámite de la fase. Esta exigencia se comprueba durante el desarrollo mediante repaso de fase a fase, sin crear issues a futuro, sino sobre la marcha.
 
 **Cambios v6.1 (ADR-010, #420):**
 - Los vínculos documentales de la tarea viven en `documentos_tarea` (N:M con campo `rol`), no en FK propias. Una tarea consume 0..N documentos y produce 0..1.

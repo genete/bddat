@@ -1,9 +1,9 @@
 {
   "metadata": {
-    "version": "6.2",
+    "version": "6.3",
     "descripcion": "Estructura jerárquica de fases, trámites y tareas para expedientes de AT",
     "principio": "Minimalismo estructural — la semántica vive en los TIPOS",
-    "fecha_actualizacion": "2026-05-20",
+    "fecha_actualizacion": "2026-08-07",
     "ref_diseño": [
       "docs/referencia/DISEÑO_ANALISIS_SOLICITUD.md",
       "docs/referencia/DISEÑO_CONSULTAS_ORGANISMOS.md",
@@ -46,7 +46,8 @@
       "entrada": "documento consumido (obligatorio si plazo > 0 — justificante de NOTIFICAR que inicia el cómputo del plazo; ninguno si plazo = 0, espera pasiva indefinida; vínculo CONSUMIDO en documentos_tarea)",
       "salida": "Ninguno",
       "habilita_tareas": ["FIN (si vence sin respuesta)"],
-      "nota": "Campo NOTAS: PLAZO_DIAS y TIPO_DIAS. PLAZO_DIAS=0 = indefinido. Recepción de documentación externa queda en documento_producido de esta tarea (ADR-004, elimina INCORPORAR)."
+      "nota": "Campo NOTAS: PLAZO_DIAS y TIPO_DIAS. PLAZO_DIAS=0 = indefinido. Recepción de documentación externa queda en documento_producido de esta tarea (ADR-004, elimina INCORPORAR).",
+      "regla_recepcion": "v6.3 (#764) — El producido es UNO y es el documento que acredita el hecho y porta su fecha administrativa: registro de entrada o solicitud (presentación electrónica de la Junta o red estatal), justificante de BandeJA si el remitente es interno, o acuse/certificado acreditativo cuando lo esperado es una publicación. Los anexos de ese registro NO se vinculan aquí: entran al pool y los consume (0..N) el ANALIZAR siguiente, que es donde se incorporan al expediente. Corolario estructural: todo ESPERAR_PLAZO que pueda recibir documentación de terceros exige un ANALIZAR posterior — propio, del trámite receptor hermano, o añadido tras él si es el último trámite de la fase. Esta exigencia se comprueba durante el desarrollo mediante repaso de fase a fase, sin crear issues a futuro, sino sobre la marcha."
     }
   ],
   "PATRONES_FLUJO": [
