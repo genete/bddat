@@ -545,6 +545,102 @@ def ultima_tarea_cadena_subsanacion(fase_id: int) -> Optional[int]:
     )
 
 
+def _diagnosticos_vigentes_query(fase_id: int):
+    """Query de las tareas ANALIZAR de la fase cuyo diagnóstico está **vigente**,
+    con el `Diagnostico` en la misma fila: `[(Tarea, Diagnostico), ...]`.
+
+    Vigente (#711): fuera de la cadena de subsanación cuentan todos —los
+    diagnósticos de una fase CONSULTAS son paralelos, uno por organismo, y
+    ninguno supera a otro—; dentro de la cadena, solo el último, porque cada
+    vuelta revisa lo mismo que la anterior y la supera.
+
+    Base común de las dos ramas de `_check_cierre_fase` (#765): ambas dependen
+    de qué diagnóstico "manda" y deben leerlo del mismo sitio, por el mismo
+    motivo que `ultima_tarea_cadena_subsanacion` se hizo pública en #714 —lo que
+    una rama dé por superado, la otra no puede darlo por vigente—. Cada rama
+    añade después su propio filtro.
+    """
+    from app.models.tipos_tareas import TipoTarea
+    from app.models.tipos_tramites import TipoTramite
+    from app.models.documentos_tarea import DocumentoTarea
+    from app.models.diagnosticos import Diagnostico
+
+    ultima_cadena_id = ultima_tarea_cadena_subsanacion(fase_id)
+
+    return (
+        db.session.query(Tarea, Diagnostico)
+        .join(Tramite, Tarea.tramite_id == Tramite.id)
+        .join(TipoTarea, Tarea.tipo_tarea_id == TipoTarea.id)
+        .join(TipoTramite, Tramite.tipo_tramite_id == TipoTramite.id)
+        .join(DocumentoTarea, db.and_(
+            DocumentoTarea.tarea_id == Tarea.id,
+            DocumentoTarea.rol == 'PRODUCIDO',
+        ))
+        .join(Diagnostico, Diagnostico.documento_id == DocumentoTarea.documento_id)
+        .filter(
+            Tramite.fase_id == fase_id,
+            TipoTarea.codigo == 'ANALIZAR',
+            # Fuera de la cadena vale siempre; dentro, solo el último de la cadena.
+            # Con la cadena vacía, `Tarea.id == None` compila a IS NULL: no casa ninguna
+            # fila y queda solo la rama de "fuera de la cadena", que es lo correcto.
+            db.or_(
+                TipoTramite.codigo.notin_(TRAMITES_CADENA_SUBSANACION),
+                Tarea.id == ultima_cadena_id,
+            ),
+        )
+    )
+
+
+def _check_cierre_desfavorable(fase_id: int) -> Optional[EvaluacionResult]:
+    """Bloquea cerrar la fase con resultado DESFAVORABLE cuando ningún diagnóstico
+    vigente lo respalda (#765): el caso simétrico e inverso al de #419/#711, que
+    solo vigilaba el sentido "no cerrar en falso favorable".
+
+    Criterios acordados (las tres preguntas de alcance del issue):
+
+    - **Vigencia**: la misma noción de #711 (`_diagnosticos_vigentes_query`). Dentro
+      de la cadena de subsanación manda el último diagnóstico: si la última vuelta
+      salió favorable, el desfavorable de la vuelta anterior ya no respalda nada.
+    - **Qué respalda**: solo un `desfavorable`. Un `condicionado` vigente es un
+      "favorable con condiciones" y no sostiene por sí solo un cierre desfavorable
+      —si el técnico entiende que las condiciones son incumplibles, ese es
+      exactamente el juicio que debe quedar justificado y no darse por supuesto—.
+    - **Consumido**: no se mira. El filtro `~consumido` de la otra rama significa
+      "sin atender" y ahí sirve para no bloquear lo ya resuelto; aquí solo importa
+      qué dice el veredicto documental. Caso que lo exige: se requirió subsanación
+      —el desfavorable queda CONSUMIDO por el ELABORAR del requerimiento— y el
+      titular no subsanó; ese desfavorable sigue siendo el último de la cadena y
+      debe respaldar el cierre sin fricción.
+
+    Sin diagnósticos vigentes no bloquea: la mayoría de fases no tienen ninguna
+    tarea ANALIZAR (RESOLUCION, entre ellas — comprobado en `fases_tramites` y
+    `tramites_tareas`), y no hay nada que contradecir. Esto acota el check a la
+    asimetría existente de `_check_cierre_fase` y lo mantiene fuera del guardián
+    general "el resultado de fase debe reflejar el diagnóstico" que la revisión de
+    la fase RESOLUCION deja pendiente a propósito (ver #711 y `CONTEXTO_ACTUAL.md`).
+
+    Forzable con justificación, por el mismo motivo que la rama de #723: cerrar la
+    fase no es irreversible, y quien discrepe del diagnóstico debe poder hacerlo
+    dejando escrito por qué (la justificación va a bitácora desde `editar_fase`).
+    """
+    resultados = [d.resultado for _, d in _diagnosticos_vigentes_query(fase_id).all()]
+
+    if not resultados or 'desfavorable' in resultados:
+        return None
+
+    if len(resultados) == 1:
+        detalle = f'el único diagnóstico vigente de esta fase es {resultados[0]}'
+    else:
+        detalle = (f'ninguno de los {len(resultados)} diagnósticos vigentes de esta '
+                   f'fase es desfavorable')
+    return _bloquear(
+        f'El resultado desfavorable no está respaldado por el análisis: {detalle}. '
+        'Revise el resultado de la fase, o el diagnóstico si es él el que ha quedado '
+        'desfasado.',
+        puede_escapar=True,
+    )
+
+
 def _check_cierre_fase(fase_id: int, codigo_resultado: str) -> Optional[EvaluacionResult]:
     """Bloquea el cierre de la fase si hay diagnóstico desfavorable vigente sin consumir
     y el resultado no es DESFAVORABLE (#419, corregido en #711).
@@ -565,12 +661,15 @@ def _check_cierre_fase(fase_id: int, codigo_resultado: str) -> Optional[Evaluaci
     —la fase puede reabrirse después si hace falta corregirlo (y si la solicitud
     ya está resuelta y notificada, `_check_reabrir` cierra esa puerta por su
     cuenta)—, así que no hace falta distinguir causas: siempre `puede_escapar=True`.
+
+    **Sentido inverso (#765).** Cerrar con DESFAVORABLE ya no sale sin comprobar
+    nada: lo evalúa `_check_cierre_desfavorable`, que vigila el caso simétrico
+    —resultado desfavorable sin ningún diagnóstico vigente que lo respalde—
+    compartiendo con esta rama la noción de vigencia (`_diagnosticos_vigentes_query`).
     """
     if codigo_resultado == 'DESFAVORABLE':
-        return None
+        return _check_cierre_desfavorable(fase_id)
 
-    from app.models.tipos_tareas import TipoTarea
-    from app.models.tipos_tramites import TipoTramite
     from app.models.documentos_tarea import DocumentoTarea
     from app.models.diagnosticos import Diagnostico
 
@@ -591,30 +690,13 @@ def _check_cierre_fase(fase_id: int, codigo_resultado: str) -> Optional[Evaluaci
         .exists()
     )
 
-    ultima_cadena_id = ultima_tarea_cadena_subsanacion(fase_id)
-
+    # Vigencia (#711) en la query base compartida (#765); aquí solo lo propio de
+    # esta rama: desfavorable y sin consumir.
     diagnostico_bloqueante = (
-        db.session.query(Tarea)
-        .join(Tramite, Tarea.tramite_id == Tramite.id)
-        .join(TipoTarea, Tarea.tipo_tarea_id == TipoTarea.id)
-        .join(TipoTramite, Tramite.tipo_tramite_id == TipoTramite.id)
-        .join(DocumentoTarea, db.and_(
-            DocumentoTarea.tarea_id == Tarea.id,
-            DocumentoTarea.rol == 'PRODUCIDO',
-        ))
-        .join(Diagnostico, Diagnostico.documento_id == DocumentoTarea.documento_id)
+        _diagnosticos_vigentes_query(fase_id)
         .filter(
-            Tramite.fase_id == fase_id,
-            TipoTarea.codigo == 'ANALIZAR',
             Diagnostico.resultado == 'desfavorable',
             ~_consumido,
-            # Fuera de la cadena bloquea siempre; dentro, solo el último de la cadena.
-            # Con la cadena vacía, `Tarea.id == None` compila a IS NULL: no casa ninguna
-            # fila y queda solo la rama de "fuera de la cadena", que es lo correcto.
-            db.or_(
-                TipoTramite.codigo.notin_(TRAMITES_CADENA_SUBSANACION),
-                Tarea.id == ultima_cadena_id,
-            ),
         )
         .first()
     )
