@@ -142,6 +142,15 @@ con jerarquía principal/adjunto. Como la producción es siempre de un único
 documento, el campo sería estructura muerta. Si en el futuro apareciera un caso
 real de producción múltiple jerárquica, se reabriría esta decisión.
 
+> **Nota 2026-08-07 (#764) — cláusula de reapertura examinada y cerrada.** El caso
+> candidato era `ESPERAR_PLAZO` recibiendo N documentos en un mismo acto (respuesta a
+> un requerimiento de subsanación). No exige producción múltiple: lo que llega de fuera
+> trae siempre un documento que acredita el hecho y porta su fecha administrativa
+> (registro de entrada, justificante de BandeJA, acuse de publicación), y ése es el
+> `PRODUCIDO`; los anexos los consume (0..N) el `ANALIZAR` siguiente. La cardinalidad
+> `PRODUCIDO` 0..1 y el índice `uq_tarea_un_producido` se mantienen. Ver ADR-004
+> (nota del mismo issue) y `ESTRUCTURA_FTT.json` v6.3.
+
 **Por qué reutilizar `documentos_tarea` y no crear tabla nueva.**
 La tabla ya existe, está vacía, su nombre es semánticamente correcto y ya tiene
 las dos FK con `ON DELETE CASCADE`. La migración solo añade una columna y
