@@ -520,6 +520,10 @@ function InspectorEdicion({ nodo }) {
   // Igual que ELABORAR, la Despensa NO se deshabilita — sigue siendo el mecanismo
   // genérico que vincula el documento producido (desacoplado de estos formularios).
   const esNotificar = seleccion.tipo === 'tarea' && nodo && nodo.tipo_codigo === 'NOTIFICAR'
+  // ESPERAR_PLAZO (#766): sin editor bespoke — solo la ayuda de la Despensa sobre
+  // qué documento es el producido cuando en la recepción llegan varios (regla de
+  // #764). Es la única tarea cuyo producido es un documento recibido de fuera.
+  const esEsperarPlazo = seleccion.tipo === 'tarea' && nodo && nodo.tipo_codigo === 'ESPERAR_PLAZO'
   // ADR-033 §1: en ANALIZAR extendido (ANÁLISIS_DOCUMENTAL/REQUERIMIENTO_SUBSANACIÓN)
   // casar un requisito documental deriva el consumido — la Despensa queda sin uso
   // legítimo y se oculta. En ANALIZAR simple (p.ej. CONSULTA_SEPARATA) sigue viva,
@@ -550,7 +554,7 @@ function InspectorEdicion({ nodo }) {
         {!borrarPendienteConfirm && puedeBorrarTarea && <BotonBorrarTarea />}
         {!borrarPendienteConfirm && !ocultarDespensa && (
           <div className="border-top mt-3 pt-3">
-            <Despensa deshabilitarProducido={esAnalizar} />
+            <Despensa deshabilitarProducido={esAnalizar} esEsperarPlazo={esEsperarPlazo} />
           </div>
         )}
       </div>
