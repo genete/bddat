@@ -224,3 +224,21 @@ def test_badge_ignora_ajenas_sin_permiso(usuario_tramitador, app):
     _crear_mensaje(app, propio=False)
     r_despues = usuario_tramitador.get('/api/mensajes-internos/badge').get_json()['total']
     assert r_despues == r_antes
+
+
+# ---------------------------------------------------------------------------
+# Sobre del topbar — ADR-014 §5 enmendada, ADR-020 intacta
+# ---------------------------------------------------------------------------
+
+def test_topbar_lleva_el_sobre(usuario_tramitador):
+    r = usuario_tramitador.get('/perfil/', follow_redirects=True)
+    assert r.status_code == 200
+    assert b'js-mensajes-topbar-badge' in r.data
+    assert b'/mensajes_internos/' in r.data
+
+
+def test_topbar_conserva_la_campana(usuario_tramitador):
+    """El sobre se añade JUNTO a la campana, no en su lugar (ADR-020 no cambia)."""
+    r = usuario_tramitador.get('/perfil/', follow_redirects=True)
+    assert b'js-dock-topbar-badge' in r.data
+    assert b'data-app-shell-toggle="dock"' in r.data
