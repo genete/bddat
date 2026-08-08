@@ -4,9 +4,10 @@ mutaciones_arbol.py — Servicio de mutaciones ESFTT para el árbol (ADR-016, S3
 Funciones puras de dominio (sin request/jsonify) para Crear / Editar / Borrar
 los cuatro niveles del árbol (solicitud, fase, trámite, tarea).
 
-Extraídas literalmente de app/routes/api_bc.py (camino B, #500):
-- api_bc delega aquí y mantiene su contrato HTTP intacto.
-- Los endpoints JSON del árbol también llaman a estas funciones.
+Extraídas literalmente de app/routes/api_bc.py (camino B, #500). Aquel blueprint
+delegaba aquí manteniendo su contrato HTTP; se retiró en #577 al quedarse sin
+consumidores, y los endpoints JSON del árbol (api_expedientes.py) son desde
+entonces el único caller.
 
 Nota: `resultado` en tareas NOTIFICAR es una @property computada desde Notificacion
 y no es editable por este servicio — ver hallazgos S3b-0.

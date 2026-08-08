@@ -337,7 +337,7 @@ class TestBypassEnPatchDeFase:
         assert mock_editar.call_args.kwargs['justificacion'] is None
 
     def test_patch_fase_bypass_sin_justificacion_400(self, app, usuario_supervisor, expediente_seed):
-        """Guardarraíl de `_leer_bypass`: forzar sin motivo no llega al servicio."""
+        """Guardarraíl de `leer_bypass`: forzar sin motivo no llega al servicio."""
         from unittest.mock import patch
 
         fase_id = self._fase_id(app, expediente_seed)

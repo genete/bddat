@@ -42,9 +42,6 @@ from app.models.organo_propio import FirmantePortafirmas
 # (#591 — activo_red autorreferenciada, sin FK operacionales de BDDAT)
 from app.models.activo_red import ActivoRed, Envolvente
 
-# Modelo de metadata del sistema (issue #85)
-from app.models.tabla_metadata import TablaMetadata
-
 # Configuración global del sistema (#323 — sin FKs)
 from app.models.configuracion_sistema import ConfiguracionSistema
 
@@ -172,8 +169,6 @@ __all__ = [
     # Activos de red (integración bddat-instalaciones)
     'ActivoRed',
     'Envolvente',
-    # Metadata del sistema
-    'TablaMetadata',
     # Configuración global del sistema
     'ConfiguracionSistema',
     # Cuaderno de bitácora

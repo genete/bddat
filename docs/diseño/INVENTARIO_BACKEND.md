@@ -107,7 +107,7 @@
 | ConfiguracionSistema | `configuracion_sistema` | Valores de configuración runtime |
 | CatalogoRequerimiento | `catalogo_requerimientos` | Catálogo de defectos tipificados para requerimientos |
 | RequerimientoTarea | `requerimientos_tarea` | Defectos seleccionados por tarea ANALIZAR (#440 pendiente UI) |
-| TablaMetadata | `tabla_metadata` | Metadatos de tablas para UI genérica |
+| ~~TablaMetadata~~ | ~~`tabla_metadata`~~ | **Dada de baja en #585** — permisos de lectura/escritura por tabla y rol (#85). Nunca tuvo consumidores y su premisa contradice ADR-013 (la visibilidad no se restringe por rol). El control de acceso vivo es el dict `PERMISOS` de `app/utils/permisos.py` |
 
 ---
 
@@ -303,7 +303,7 @@ Selección: primera entrada activa cuyas `CondicionPlazo` (AND) se cumplen. Orde
 | `api_entidades` | `/api/entidades/` listado, `/api/entidades/candidatos_autorizacion` | `entidades/index.html`, `entidades/detalle.html` |
 | `api_proyectos` | `/api/proyectos/` listado | `proyectos/index.html` |
 | `api_seguimiento` | `/api/seguimiento/` agregación por solicitud con `estado_solicitud` | `seguimiento_y_huerfanos/index.html` (pestaña Seguimiento, #630 ADR-038) |
-| `api_bc` | CRUDs para breadcrumbs: crear/editar/finalizar Fase/Tramite/Tarea con evaluación del motor en cada operación | `tramitacion_bc_*.html` + `v3-breadcrumbs-*.js` |
+| ~~`api_bc`~~ | CRUDs para breadcrumbs: crear/editar/finalizar Fase/Tramite/Tarea con evaluación del motor en cada operación | **Retirado en #577** — sus consumidores (`tramitacion_bc_*.html` + `v3-breadcrumbs-*.js`) murieron en #519; el CRUD vivo del árbol es `api_expedientes` (`/nodo/…`) |
 | `api_municipios` | Búsqueda y selector | `municipios_selector.js` |
 | `api_escritos` | Generación de escritos: lista plantillas aplicables, genera .docx, guarda en pool | `generar_escrito.js` (huérfano en templates actuales) |
 
@@ -753,4 +753,4 @@ Lecturas relevantes a llevar al cruce con la auditoría UI + estudio de usuario:
 5. **Bitácora subutilizada.** Si la "memoria externa" debe ser fiable, conviene instrumentar más puntos de escritura — la tabla y el servicio ya están.
 6. **El `tipo_elemento_codigo` del catálogo de plazos**, la migración legacy y el manejo de `heredado` son zonas donde el backend va por delante de la UI o donde la UI tendrá que tratar estados especiales.
 7. **Issues UI clave (#170, #171, #322, #281, #213, #256, #74, #75, #76, #320, #322, #396, #440, #442, #479, #495)** son candidatos directos a "rescatar o repensar durante la auditoría" — varios cubren cosas que el revamping ya iba a tocar.
-8. **El árbol BC de 5 niveles está bien soportado** por el modelo, pero la API `api_bc` y los JS `v3-breadcrumbs-*` son la capa más pesada de la UI actual. Es el punto donde rediseño y backend tendrán que conversar más.
+8. **El árbol BC de 5 niveles está bien soportado** por el modelo, pero la API `api_bc` y los JS `v3-breadcrumbs-*` son la capa más pesada de la UI actual. Es el punto donde rediseño y backend tendrán que conversar más. *(Resuelto por la vía del rediseño: ambas capas se retiraron —#519 la UI, #577 la API— y el árbol vive hoy en `api_expedientes` + isla React.)*

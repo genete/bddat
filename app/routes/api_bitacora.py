@@ -26,7 +26,7 @@ def _descripcion(entrada):
     detalle = entrada.detalle or {}
     op      = entrada.operacion
 
-    # Vía de escape del motor (#324/#616): mutaciones_arbol.py y api_bc.py graban
+    # Vía de escape del motor (#324/#616): mutaciones_arbol.py y consultas_organismos.py graban
     # {escape, justificacion, sujeto} en detalle para CREAR/BORRAR en cualquier
     # tabla — priorizar sobre el genérico para que la justificación sea visible.
     if detalle.get('escape'):

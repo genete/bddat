@@ -1,8 +1,8 @@
 """
 Modo global de operación del motor (#323, unificado en #479).
 
-Overlay de política sobre evaluar_multi(): antes cada caller (api_bc.py,
-mutaciones_arbol.py, tipos_creables.py) tenía su propia copia de
+Overlay de política sobre evaluar_multi(): antes cada caller (api_bc.py —retirado
+en #577—, mutaciones_arbol.py, tipos_creables.py) tenía su propia copia de
 _aplicar_modo_global — este módulo es la única fuente.
 
 BLOQUEAR (default)  — comportamiento normal: BLOQUEAR bloquea, ADVERTIR advierte.

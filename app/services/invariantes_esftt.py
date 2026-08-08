@@ -104,8 +104,8 @@ def _bloquear(mensaje: str, *, puede_escapar: bool = False) -> EvaluacionResult:
     # el mensaje humano del invariante va en `norma_compilada` (no hay norma
     # compilada que mostrar) y `motivo` queda ''. El motor, en cambio, rellena
     # `motivo`. Por eso TODO consumidor que muestre un bloqueo debe leer
-    # `motivo or norma_compilada` (ver api_expedientes._bloqueo_422 y
-    # api_bc._res_error). No basta con leer solo `motivo`.
+    # `motivo or norma_compilada` (ver api_expedientes._bloqueo_422).
+    # No basta con leer solo `motivo`.
     #
     # `puede_escapar` (#723): la mayoría de invariantes son puerta cerrada
     # (default False — precondición estructural o evidencia irreversible, ver

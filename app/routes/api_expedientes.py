@@ -37,7 +37,7 @@ from app.services.tipos_creables import tipos_creables_de_nodo
 from app.services.detalle_nodo import detalle_de_nodo, info_apertura_documento
 from app.services.esquema_editable import esquema_de_nodo
 from app.services import mutaciones_arbol as svc
-from app.routes.api_bc import _leer_bypass
+from app.utils.api_respuestas import leer_bypass
 from app.services.assembler import build
 from app.services.requisitos import evaluar_requisitos
 from app.services.items_tecnicos import evaluar_items_tecnicos
@@ -541,8 +541,8 @@ def _bloqueo_422(res):
     El mensaje legible del bloqueo puede venir de DOS fuentes (ver EvaluacionResult):
       · motor de reglas    → `motivo` (descripción editorial de la regla)
       · invariantes ESFTT  → `norma_compilada` (su `_bloquear` deja `motivo=''`)
-    Por eso se surfacea `motivo or norma_compilada` (mismo criterio que
-    api_bc._res_error). Omitir el fallback dejaba los bloqueos de invariante con
+    Por eso se surfacea `motivo or norma_compilada`. Omitir el fallback dejaba
+    los bloqueos de invariante con
     `motivo` vacío y el front solo mostraba el genérico "Bloqueado por el motor".
     """
     b = res.bloqueo
@@ -586,7 +586,7 @@ def crear_hijo_nodo(expediente_id, padre_tipo, padre_id):
 
     data = request.get_json(silent=True) or {}
 
-    justificacion, err = _leer_bypass(data)
+    justificacion, err = leer_bypass(data)
     if err:
         return err
 
@@ -680,7 +680,7 @@ def editar_nodo(expediente_id, tipo, nodo_id):
     if tipo == 'solicitud':
         res = svc.editar_solicitud(nodo, observaciones=data.get('observaciones'))
     elif tipo == 'fase':
-        justificacion, err = _leer_bypass(data)
+        justificacion, err = leer_bypass(data)
         if err:
             return err
         res = svc.editar_fase(

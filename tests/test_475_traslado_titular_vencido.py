@@ -124,8 +124,8 @@ class TestVariableMotor:
 class TestHelperSerializacion:
 
     def _fn(self):
-        from app.routes.api_bc import _traslado_titular_vencido
-        return _traslado_titular_vencido
+        from app.services.consultas_organismos import traslado_titular_vencido
+        return traslado_titular_vencido
 
     def test_sin_vinculo_false(self):
         """Organismo sin CONSULTA_TRASLADO_TITULAR → False."""

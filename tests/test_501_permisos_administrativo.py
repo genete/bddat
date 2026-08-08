@@ -6,8 +6,8 @@ Frontera hoja / estructura:
   - subir al pool           → sin limitación de rol (ADR-027).
 
 Control de acceso: verificar_acceso_expediente devuelve redirect (truthy) si falla
-el permiso; api_bc lo traduce a 403 JSON. Las rutas del pool devuelven ese redirect
-directamente (302). Por eso las aserciones distinguen 302/403 (bloqueo) del resto.
+el permiso; api_expedientes lo traduce a 403 JSON. Las rutas del pool devuelven ese
+redirect directamente (302). Por eso las aserciones distinguen 302/403 del resto.
 """
 import pytest
 
@@ -43,43 +43,6 @@ def test_gestionar_estructura_excluye_administrativo():
 # ---------------------------------------------------------------------------
 # Efecto real en los endpoints
 # ---------------------------------------------------------------------------
-
-@pytest.fixture
-def solicitud_id(app):
-    with app.app_context():
-        from app.models.solicitudes import Solicitud
-        s = Solicitud.query.first()
-        if s is None:
-            pytest.skip('No hay solicitudes en la BD de desarrollo')
-        return s.id
-
-
-@pytest.fixture
-def tramite_id(app):
-    with app.app_context():
-        from app.models.tramites import Tramite
-        t = Tramite.query.first()
-        if t is None:
-            pytest.skip('No hay trámites en la BD de desarrollo')
-        return t.id
-
-
-def test_administrativo_no_puede_crear_fase(usuario_administrativo, solicitud_id):
-    """Estructura: crear fase está vedado al ADMINISTRATIVO → 403."""
-    r = usuario_administrativo.post(f'/api/bc/solicitud/{solicitud_id}/fases/nueva',
-                                    data={'tipo_fase_id': '1'})
-    assert r.status_code == 403, f'ADMINISTRATIVO no debería crear fases (status {r.status_code})'
-
-
-def test_administrativo_puede_actuar_sobre_tarea(usuario_administrativo, tramite_id):
-    """Hoja: el permiso de tarea pasa para ADMINISTRATIVO.
-
-    Sin tipo_tarea_id el endpoint responde 400 (validación), pero NUNCA 403: eso
-    confirma que el guard de permiso (gestionar_tareas) dejó pasar al admin.
-    """
-    r = usuario_administrativo.post(f'/api/bc/tramite/{tramite_id}/tareas/nueva', data={})
-    assert r.status_code != 403, 'El permiso gestionar_tareas debería incluir al ADMINISTRATIVO'
-
 
 def test_administrativo_puede_subir_al_pool(usuario_administrativo, expediente_seed):
     """Pool: registrar una URL externa no edita el expediente → sin bloqueo de rol.
@@ -133,10 +96,14 @@ def test_admin_no_puede_crear_fase_en_arbol(usuario_administrativo, expediente_s
     assert r.status_code == 403
 
 
-def test_tramitador_sigue_pudiendo_crear_fase(usuario_tramitador, solicitud_id):
+def test_tramitador_sigue_pudiendo_crear_fase(usuario_tramitador, expediente_seed):
     """Control de no-regresión: el TRAMITADOR conserva la gestión de estructura.
 
-    Sin tipo_fase_id válido puede dar 400/404/422, pero nunca 403 de permiso.
+    Contra el endpoint del árbol (api_expedientes) desde #577, al retirarse api_bc.
+    Nodo inexistente: si el permiso pasa, llega a resolverlo y da 404, nunca 403.
     """
-    r = usuario_tramitador.post(f'/api/bc/solicitud/{solicitud_id}/fases/nueva', data={})
+    r = usuario_tramitador.post(
+        f'/api/expedientes/{expediente_seed}/nodo/solicitud/{_NODO_INEXISTENTE}/hijos',
+        json={'tipo_id': 1},
+    )
     assert r.status_code != 403, 'El TRAMITADOR debe conservar gestionar_estructura_expediente'

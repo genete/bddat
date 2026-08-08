@@ -41,7 +41,7 @@ limpio arquitectónicamente en ese sentido.
 | `consultas_nombradas` | SQL predefinido para plantillas .docx | ❌ No |
 | `normas` | Catálogo de normas legales de referencia | ❌ No |
 | `roles` | RBAC: ADMIN/SUPERVISOR/TRAMITADOR/ADMINISTRATIVO | ❌ No — por diseño, ancladas en el dict `PERMISOS` (`app/utils/permisos.py`) |
-| `tabla_metadata` | Permisos por tabla (issue #85) | ❌ No — **DEPRECATED**, ver #585 |
+| ~~`tabla_metadata`~~ | Permisos por tabla (issue #85) | — **Eliminada en #585** (modelo, tabla y migración de baja) |
 
 ## Tablas derivadas (FK solo a otras estructurales)
 
@@ -130,9 +130,6 @@ excepción, solo loguea si falta un registro. Cubierto por
 
 ## Hallazgos abiertos (ver GitHub para estado actualizado)
 
-- **#585** — `tabla_metadata` huérfana desde #85, contradice ADR-013 (roles_lectura
-  restringe visibilidad por rol; ADR-013 dice lo contrario). Marcada `DEPRECATED` en
-  docstrings, pendiente de retirada.
 - **#586** — `CERT_FIN_INSTRUCCION` (#373, cerrado) nunca dispara: `generador_cert.py`
   existe pero `mutaciones_arbol.crear_fase()` solo genera `CERT_FIN_IP_CONSULTAS` al
   crear la fase RESOLUCION.

@@ -262,13 +262,18 @@
    es previsible que converjan en la misma pantalla de "historial del
    expediente" — decisión de diseño para cuando toque implementar, no de este
    documento.
-4. **`api_bc.py` — discrepancia con memoria de proyecto** — dos auditorías de
-   código independientes (Bloques 1 y 4) encontraron que `app/routes/api_bc.py`
-   sigue registrado como blueprint activo en `app/__init__.py` y sigue
-   conteniendo lógica viva (incluido el paso de `justificacion` al motor, que la
-   ruta actualmente en uso —`api_expedientes.py`— no expone). Esto contradice la
-   memoria de que está "muerto desde #519". Ninguna auditoría confirmó si recibe
-   tráfico real hoy — queda como pregunta abierta, no resuelta aquí.
+4. **`api_bc.py` — discrepancia con memoria de proyecto** — *resuelto en #577*.
+   Dos auditorías de código independientes (Bloques 1 y 4) encontraron que
+   `app/routes/api_bc.py` seguía registrado como blueprint activo en
+   `app/__init__.py` y seguía conteniendo lógica viva (incluido el paso de
+   `justificacion` al motor, que la ruta actualmente en uso —`api_expedientes.py`—
+   no expone). Ambas cosas eran ciertas y no se contradecían con "muerto desde
+   #519": el blueprint estaba montado pero ninguna superficie lo llamaba, y la
+   lógica viva de dentro no era la de sus rutas sino la del trámite de consultas
+   (organismos, traslados, envío de separatas) más los helpers de bypass, que
+   `api_expedientes.py` sí importaba. #577 retira las rutas y el registro, y
+   rescata lo vivo a `app/services/consultas_organismos.py` y
+   `app/utils/api_respuestas.py`.
 5. **N017 y N022 — ¿la misma necesidad aplicada a dos objetivos?** — Carlos
    señala (2026-07-08) que ambas son, en esencia, "tocar algo de emergencia que
    se salte cualquier regla, motor o de cualquier otro tipo" — una operación SQL
