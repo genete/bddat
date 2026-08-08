@@ -37,46 +37,13 @@ from app.services.invariantes_esftt import (
     check_invariante, _check_cierre_fase, RESULTADO_FASE_FAVORABLE_CODIGOS,
 )
 from app.services import mutaciones_arbol as svc
+from app.utils.api_respuestas import (
+    bloqueo as _bloqueo, leer_bypass as _leer_bypass, advertencia as _advertencia,
+)
 
 bp = Blueprint('api_bc', __name__, url_prefix='/api/bc')
 
 log = logging.getLogger(__name__)
-
-
-def _bloqueo(res_eval):
-    """Respuesta de error cuando el motor bloquea la acción."""
-    return jsonify({
-        'ok': False,
-        'motivo': res_eval.motivo,
-        'error': res_eval.norma_compilada or 'Acción no permitida',
-        'url_norma': res_eval.url_norma,
-        'puede_escapar': res_eval.puede_escapar,
-    }), 422
-
-
-def _leer_bypass(form):
-    """
-    Lee bypass + justificacion de la petición (form-urlencoded o dict JSON — #616:
-    api_expedientes.py reutiliza esta función con el body JSON, donde bypass llega
-    como bool nativo en vez de string).
-
-    Devuelve (justificacion, None) si bypass=true con texto válido,
-    (None, None) si bypass está ausente o es false,
-    (None, respuesta_400) si bypass=true pero justificacion está vacía.
-    """
-    if form.get('bypass') not in ('true', '1', 'True', True):
-        return None, None
-    justificacion = (form.get('justificacion') or '').strip()
-    if not justificacion:
-        return None, (jsonify({'ok': False, 'error': 'justificacion es obligatoria para el bypass'}), 400)
-    return justificacion, None
-
-
-def _advertencia(res_eval):
-    """Dict de advertencia para incluir en la respuesta ok (o None si no hay)."""
-    if res_eval and res_eval.nivel == 'ADVERTIR':
-        return {'motivo': res_eval.motivo, 'norma_compilada': res_eval.norma_compilada, 'url_norma': res_eval.url_norma}
-    return None
 
 
 def _res_error(res):
