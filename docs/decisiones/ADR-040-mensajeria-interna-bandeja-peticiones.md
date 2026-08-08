@@ -1,8 +1,8 @@
 # ADR-040 — Mensajería interna: bandeja de peticiones al supervisor
 
 **Estado:** Adoptada
-**Fecha:** 2026-08-07
-**Issues:** #28 (N053 parcial, N054)
+**Fecha:** 2026-08-07 (§9 diferido a #773 el 2026-08-08)
+**Issues:** #28 (N053 parcial, N054 mitad de cambio de rol), #773 (§9, modal de alta)
 **Enmienda:** ADR-014 §5 (topbar de cuatro elementos)
 **Relacionado:** ADR-020 (dock global — *no* se enmienda, ver §3), ADR-023 (list-detail
 inspector), ADR-029 §1bis (emplazamiento de pantallas nuevas), ADR-034 (tabla
@@ -216,9 +216,16 @@ exacta de datos mínimos. Los campos candidatos derivados del modelo `Usuario` s
 la Junta (p. ej. `LGC005`), nombre y apellidos, email, unidad territorial/provincia
 (`unidad_organo`) y rol pretendido.
 
+**El modal no entra en #28 — se difiere a #773** (decisión de Carlos al implementar #28,
+2026-08-08). El diseño de este apartado no cambia; lo que cambia es cuándo. El modelo
+`Usuario` va a ampliarse con los campos que exigen la automatización de bandeja y Notific@,
+y la lista de "datos mínimos" debe salir del modelo **ya ampliado**: escribirla contra el
+actual dejaría en producción un modal pidiendo datos incompletos para dar de alta a
+alguien. La dependencia es de contenido, no de código — el modal es HTML estático.
+
 N054 ("Solicitar alta o cambio de rol") queda por tanto cubierta **solo en su mitad de
-cambio de rol** dentro de #28. La mitad de alta se cubre con el modal informativo, que es
-un cauce real aunque no sea un mecanismo de BDDAT.
+cambio de rol** dentro de #28. La mitad de alta se cubre con el modal informativo de #773,
+que es un cauce real aunque no sea un mecanismo de BDDAT.
 
 ### 10. El broadcast del modo del motor (#479) queda fuera, motivadamente
 
@@ -270,10 +277,11 @@ El comentario de #479 queda así resuelto por decisión, no por olvido.
   requerimiento se añade igualmente como texto libre en la tarea.
 - **ADR-014 §5** pasa de cuatro a cinco elementos de topbar.
 - **ADR-020 no cambia.** La campana, el dock y sus dos tabs quedan como están.
+- **El enlace muerto del login sigue muerto de momento** — el modal informativo se difiere
+  a #773 (ver §9), a la espera de la ampliación del modelo `Usuario`.
 - **N053 no llega al 100%**: este diseño cubre "petición dirigida al Supervisor", no
   "empujar una tarea concreta a una persona concreta" (eso es UI de la cola de tareas) ni
   un aviso genérico con destinatario libre.
-- **Un enlace muerto menos** en el login.
 
 ---
 
