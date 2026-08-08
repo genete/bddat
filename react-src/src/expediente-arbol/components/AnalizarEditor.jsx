@@ -27,7 +27,7 @@ import {
   getAnalizar, postAnalizar, revertirDiagnostico,
   vincularRequisitoDocumental, desvincularRequisitoDocumental,
   guardarCoberturaTecnica,
-  getRequerimientos, postRequerimientos, crearRequerimientoCatalogo,
+  getRequerimientos, postRequerimientos, crearRequerimientoCatalogo, solicitarAltaCatalogo,
 } from '../api.js'
 import { showToast } from '../../shared/ui/toast.js'
 import { tienePermiso } from '../../shared/auth.js'
@@ -770,6 +770,15 @@ function SeccionRequerimientos({ expedienteId, tareaId, producido, esRondaSubsan
           resuelto: false, _key: nuevaKey(),
         }])
       } else {
+        // #28: quien no cura el catálogo puede PROPONER el alta. El mensaje va al
+        // Supervisor y no toca el catálogo, así que el requerimiento se añade
+        // igualmente como texto libre — con o sin propuesta, el diagnóstico no
+        // depende de que el Supervisor conteste.
+        if (!puedeCurarCatalogo && guardarEnCatalogo) {
+          await solicitarAltaCatalogo(expedienteId, tareaId, texto, categoriaNueva)
+          showToast('Propuesta enviada al Supervisor', 'success')
+          setGuardarEnCatalogo(false)
+        }
         setSeleccionados((prev) => [...prev, {
           catalogo_requerimientos_id: null, texto_libre: texto, texto, resuelto: false, _key: nuevaKey(),
         }])
@@ -882,62 +891,47 @@ function SeccionRequerimientos({ expedienteId, tareaId, producido, esRondaSubsan
                 value={textoLibre}
                 onChange={(e) => setTextoLibre(e.target.value)}
               />
-              {/* #684: mismo sitio, dos casillas según permiso. Supervisor/Admin
-                  guardan de verdad en el catálogo (es el CRUD real que pueden
-                  hacer); el resto ve la casilla que describe el flujo previsto
-                  —solicitar el alta al Supervisor— deshabilitada hasta que exista
-                  la mensajería interna de #28, para no prometer lo que hoy no
-                  ocurre. Mientras tanto el requerimiento se añade como texto
-                  libre, que es plenamente funcional en el diagnóstico. */}
-              {puedeCurarCatalogo ? (
-                <div className="d-flex align-items-center gap-2 mb-1">
-                  <div className="form-check mb-0">
-                    <input
-                      type="checkbox"
-                      className="form-check-input"
-                      id="req-guardar-catalogo"
-                      checked={guardarEnCatalogo}
-                      onChange={(e) => setGuardarEnCatalogo(e.target.checked)}
-                    />
-                    <label className="form-check-label small" htmlFor="req-guardar-catalogo">
-                      Guardar en catálogo
-                    </label>
-                  </div>
-                  {guardarEnCatalogo && (
-                    <select
-                      className="form-select form-select-sm w-auto"
-                      value={categoriaNueva}
-                      onChange={(e) => setCategoriaNueva(e.target.value)}
-                    >
-                      {CATEGORIAS_REQUERIMIENTO.map(([cod, etiqueta]) => (
-                        <option key={cod} value={cod}>{etiqueta}</option>
-                      ))}
-                    </select>
-                  )}
+              {/* #684 + #28: mismo sitio, misma intención, efecto distinto según
+                  permiso. Supervisor/Admin guardan de verdad en el catálogo (es el
+                  CRUD real que pueden hacer); el resto PROPONE el alta, y esa
+                  propuesta viaja como mensaje al Supervisor (#28) sin tocar el
+                  catálogo. En ambos casos el requerimiento se añade a la tarea, así
+                  que el diagnóstico nunca queda esperando una respuesta.
+                  La casilla estuvo deshabilitada desde #684 hasta que existió la
+                  bandeja; ya no lo está. */}
+              <div className="d-flex align-items-center gap-2 mb-1">
+                <div className="form-check mb-0">
+                  <input
+                    type="checkbox"
+                    className="form-check-input"
+                    id={puedeCurarCatalogo ? 'req-guardar-catalogo' : 'req-solicitar-catalogo'}
+                    checked={guardarEnCatalogo}
+                    onChange={(e) => setGuardarEnCatalogo(e.target.checked)}
+                  />
+                  <label
+                    className="form-check-label small"
+                    htmlFor={puedeCurarCatalogo ? 'req-guardar-catalogo' : 'req-solicitar-catalogo'}
+                  >
+                    {puedeCurarCatalogo ? 'Guardar en catálogo' : 'Solicitar guardado en catálogo'}
+                  </label>
                 </div>
-              ) : (
-                <div
-                  className="d-flex align-items-center gap-2 mb-1"
-                  title={'El alta en el catálogo la decide el Supervisor. Cuando exista la '
-                    + 'mensajería interna esta casilla le enviará tu propuesta; hasta entonces, '
-                    + 'añade el requerimiento como texto libre.'}
-                >
-                  <div className="form-check mb-0">
-                    <input
-                      type="checkbox"
-                      className="form-check-input"
-                      id="req-solicitar-catalogo"
-                      checked={false}
-                      disabled
-                      readOnly
-                    />
-                    <label className="form-check-label small text-muted" htmlFor="req-solicitar-catalogo">
-                      Solicitar guardado en catálogo
-                    </label>
-                  </div>
-                  <span className="text-muted small fst-italic">no disponible todavía</span>
-                </div>
-              )}
+                {guardarEnCatalogo && (
+                  <select
+                    className="form-select form-select-sm w-auto"
+                    value={categoriaNueva}
+                    onChange={(e) => setCategoriaNueva(e.target.value)}
+                  >
+                    {CATEGORIAS_REQUERIMIENTO.map(([cod, etiqueta]) => (
+                      <option key={cod} value={cod}>{etiqueta}</option>
+                    ))}
+                  </select>
+                )}
+                {!puedeCurarCatalogo && guardarEnCatalogo && (
+                  <span className="text-muted small fst-italic">
+                    lo decide el Supervisor
+                  </span>
+                )}
+              </div>
               <button
                 type="button"
                 className="btn btn-sm btn-outline-secondary"

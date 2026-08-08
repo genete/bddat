@@ -50,6 +50,7 @@ from app.services.diagnosticos import (
 )
 from app.services.invariantes_esftt import check_invariante
 from app.services import bitacora as bitacora_svc
+from app.services import mensajes_internos as servicio_mensajes
 from app.models.notificaciones import Notificacion
 from app.services.parser_justificante_notifica import (
     parsear_justificante_notifica, parsear_justificante_notifica_zip,
@@ -1631,11 +1632,11 @@ def crear_requerimiento_catalogo(expediente_id, tarea_id):
     diseñó curado (imagen homogénea de la administración) y esto era una puerta
     trasera a texto basura, duplicados o categorización errónea.
 
-    Para quien NO tiene el permiso, la UI no ofrece guardado directo sino un
-    "Solicitar guardado en catálogo" inerte hasta que exista la mensajería
-    interna de #28 (ver AnalizarEditor.jsx); ese futuro camino manda un mensaje
-    al SUPERVISOR y NO pasa por aquí — este endpoint sigue siendo escritura
-    directa y por tanto exclusivo de quien puede curar el catálogo.
+    Para quien NO tiene el permiso, la UI ofrece "Solicitar guardado en
+    catálogo", que desde #28 manda un mensaje al SUPERVISOR por
+    `solicitar_alta_catalogo` (abajo) y NO pasa por aquí — este endpoint sigue
+    siendo escritura directa y por tanto exclusivo de quien puede curar el
+    catálogo.
     """
     expediente = Expediente.query.get_or_404(expediente_id)
     if verificar_acceso_expediente(expediente, 'gestionar_tarea'):
@@ -1666,6 +1667,61 @@ def crear_requerimiento_catalogo(expediente_id, tarea_id):
     return jsonify({
         'ok': True,
         'requerimiento': {'id': requerimiento.id, 'texto': requerimiento.texto, 'categoria': requerimiento.categoria},
+    }), 200
+
+
+@api_bp.route(
+    '/expedientes/<int:expediente_id>/nodo/tarea/<int:tarea_id>/requerimientos/catalogo/solicitar',
+    methods=['POST'])
+@login_required
+def solicitar_alta_catalogo(expediente_id, tarea_id):
+    """
+    POST .../requerimientos/catalogo/solicitar — propone al Supervisor un alta en
+    `catalogo_requerimientos` (#28, contrato heredado de #684).
+
+    El envés de `crear_requerimiento_catalogo`: mismo sitio de la interfaz, misma
+    intención del usuario, efecto distinto. Aquí NO se escribe en el catálogo —
+    se crea un mensaje ALTA_CATALOGO_REQUERIMIENTO en la bandeja del Supervisor,
+    que decidirá y, si procede, dará el alta desde el CRUD de #593.
+
+    Por eso no se reutiliza el endpoint de #440 con un flag: aquel es escritura
+    directa en el catálogo maestro y debe seguir siendo exclusivo de quien puede
+    curarlo. El aviso es un mensaje, no un alta.
+
+    Gate: `gestionar_tarea` sobre el expediente, el mismo que ya hace falta para
+    trabajar la tarea ANALIZAR desde la que se propone. NO se exige
+    `gestionar_catalogo_requerimientos` — precisamente quien no lo tiene es el
+    destinatario de esta vía.
+
+    El requerimiento se añade igualmente como texto libre en la tarea; eso lo
+    hace el front por su cuenta, y es plenamente funcional en el diagnóstico.
+    """
+    expediente = Expediente.query.get_or_404(expediente_id)
+    if verificar_acceso_expediente(expediente, 'gestionar_tarea'):
+        return jsonify({'error': 'No tienes permiso para esta acción'}), 403
+
+    try:
+        _resolver_tarea_analizar(expediente, tarea_id)
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 404
+
+    data = request.get_json(silent=True) or {}
+    try:
+        servicio_mensajes.crear(
+            'ALTA_CATALOGO_REQUERIMIENTO',
+            current_user.id,
+            texto=data.get('texto'),
+            categoria=data.get('categoria'),
+        )
+        db.session.commit()
+    except servicio_mensajes.PayloadInvalido as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 422
+
+    return jsonify({
+        'ok': True,
+        'mensaje': 'Propuesta enviada al Supervisor. El requerimiento se añade '
+                   'como texto libre mientras la decide.',
     }), 200
 
 
