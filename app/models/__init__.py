@@ -141,6 +141,9 @@ from app.models.tramites_tareas_documentos import TramiteTareaDocumento
 # Tabla puente activo_red × expediente (#591 — depende de ActivoRed y Expediente)
 from app.models.activos_expediente import ActivoExpediente
 
+# Bandeja de peticiones al Supervisor (#28 — depende de Usuario, ADR-040)
+from app.models.mensajes_internos import MensajeInterno
+
 __all__ = [
     # Maestros
     'EfectoPlazo',
@@ -235,4 +238,6 @@ __all__ = [
     'ItemTecnico',
     'CondicionItemTecnico',
     'CoberturaItemTecnico',
+    # Bandeja de peticiones al Supervisor (#28)
+    'MensajeInterno',
 ]
