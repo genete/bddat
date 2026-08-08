@@ -1,8 +1,11 @@
 """
-Tests #471 — endpoint crear_traslado y guard en crear_tramite.
+Tests #471 — servicio crear_traslado y guard en crear_tramite.
 
-Patrón: MagicMock + patch sobre _ejecutar_crear_traslado con app.app_context().
+Patrón: MagicMock + patch sobre crear_traslado con app.app_context().
 Sin BD real. El fixture `app` viene de conftest.py.
+
+La función vive en `app/services/consultas_organismos.py` desde #577 (antes era
+`api_bc._ejecutar_crear_traslado`).
 """
 import pytest
 from unittest.mock import MagicMock, patch
@@ -51,7 +54,7 @@ def _form(**kwargs):
     return _FakeForm(kwargs)
 
 
-_MOD = 'app.routes.api_bc'
+_MOD = 'app.services.consultas_organismos'
 
 
 # ---------------------------------------------------------------------------
@@ -86,47 +89,47 @@ class TestEjecutarCrearTrasladoValidaciones:
 
     def test_tipo_invalido_devuelve_400(self, app):
         with app.app_context():
-            from app.routes.api_bc import _ejecutar_crear_traslado
+            from app.services.consultas_organismos import crear_traslado
             fase = _fase_stub()
-            resp, status = _ejecutar_crear_traslado(
+            resp, status = crear_traslado(
                 fase, _form(tipo='INVALIDO', organismo_expediente_id='3'))
             assert status == 400
             assert 'tipo' in resp.get_json()['error']
 
     def test_tipo_vacio_devuelve_400(self, app):
         with app.app_context():
-            from app.routes.api_bc import _ejecutar_crear_traslado
+            from app.services.consultas_organismos import crear_traslado
             fase = _fase_stub()
-            resp, status = _ejecutar_crear_traslado(
+            resp, status = crear_traslado(
                 fase, _form(organismo_expediente_id='3'))
             assert status == 400
 
     def test_sin_organismo_expediente_id_devuelve_400(self, app):
         with app.app_context():
-            from app.routes.api_bc import _ejecutar_crear_traslado
+            from app.services.consultas_organismos import crear_traslado
             fase = _fase_stub()
-            resp, status = _ejecutar_crear_traslado(fase, _form(tipo='ORGANISMO'))
+            resp, status = crear_traslado(fase, _form(tipo='ORGANISMO'))
             assert status == 400
             assert 'organismo_expediente_id' in resp.get_json()['error']
 
     def test_organismo_no_existe_devuelve_404(self, app):
         with app.app_context():
-            from app.routes.api_bc import _ejecutar_crear_traslado
+            from app.services.consultas_organismos import crear_traslado
             fase = _fase_stub(expediente_id=5)
             with patch(f'{_MOD}.OrganismoExpediente') as mock_oe:
                 mock_oe.query.get.return_value = None
-                resp, status = _ejecutar_crear_traslado(
+                resp, status = crear_traslado(
                     fase, _form(tipo='ORGANISMO', organismo_expediente_id='99'))
             assert status == 404
 
     def test_organismo_de_otro_expediente_devuelve_404(self, app):
         with app.app_context():
-            from app.routes.api_bc import _ejecutar_crear_traslado
+            from app.services.consultas_organismos import crear_traslado
             fase = _fase_stub(expediente_id=5)
             oe = _oe_stub(oe_id=99, expediente_id=7)
             with patch(f'{_MOD}.OrganismoExpediente') as mock_oe:
                 mock_oe.query.get.return_value = oe
-                resp, status = _ejecutar_crear_traslado(
+                resp, status = crear_traslado(
                     fase, _form(tipo='ORGANISMO', organismo_expediente_id='99'))
             assert status == 404
 
@@ -138,7 +141,7 @@ class TestEjecutarCrearTrasladoValidaciones:
 class TestEjecutarCrearTrasladoCaminoFeliz:
 
     def _run(self, app, tipo_param, codigo_esperado):
-        from app.routes.api_bc import _ejecutar_crear_traslado
+        from app.services.consultas_organismos import crear_traslado
 
         fase = _fase_stub(fase_id=1, expediente_id=5)
         oe = _oe_stub(oe_id=3, expediente_id=5)
@@ -151,7 +154,7 @@ class TestEjecutarCrearTrasladoCaminoFeliz:
              patch(f'{_MOD}.TipoTramite') as mock_tt, \
              patch(f'{_MOD}.Tramite') as mock_tramite_cls, \
              patch(f'{_MOD}.TramiteOrganismo') as mock_to_cls, \
-             patch(f'{_MOD}._leer_bypass', return_value=(None, None)), \
+             patch(f'{_MOD}.leer_bypass', return_value=(None, None)), \
              patch(f'{_MOD}._evaluar') as mock_eval, \
              patch(f'{_MOD}.db'):
 
@@ -163,7 +166,7 @@ class TestEjecutarCrearTrasladoCaminoFeliz:
             eval_result.motivo = None
             mock_eval.return_value = eval_result
 
-            resp, status = _ejecutar_crear_traslado(
+            resp, status = crear_traslado(
                 fase, _form(tipo=tipo_param, organismo_expediente_id='3'))
 
         assert status == 200
@@ -186,7 +189,7 @@ class TestEjecutarCrearTrasladoCaminoFeliz:
 
     def test_motor_pasa_organismo_expediente_en_objeto(self, app):
         """El evaluador recibe organismo_expediente en el objeto de contexto."""
-        from app.routes.api_bc import _ejecutar_crear_traslado
+        from app.services.consultas_organismos import crear_traslado
 
         fase = _fase_stub(fase_id=1, expediente_id=5)
         oe = _oe_stub(oe_id=3, expediente_id=5)
@@ -199,7 +202,7 @@ class TestEjecutarCrearTrasladoCaminoFeliz:
              patch(f'{_MOD}.TipoTramite') as mock_tt, \
              patch(f'{_MOD}.Tramite') as mock_tramite_cls, \
              patch(f'{_MOD}.TramiteOrganismo'), \
-             patch(f'{_MOD}._leer_bypass', return_value=(None, None)), \
+             patch(f'{_MOD}.leer_bypass', return_value=(None, None)), \
              patch(f'{_MOD}._evaluar') as mock_eval, \
              patch(f'{_MOD}.db'):
 
@@ -210,7 +213,7 @@ class TestEjecutarCrearTrasladoCaminoFeliz:
             eval_result.permitido = True
             mock_eval.return_value = eval_result
 
-            _ejecutar_crear_traslado(
+            crear_traslado(
                 fase, _form(tipo='ORGANISMO', organismo_expediente_id='3'))
 
         mock_eval.assert_called_once()
@@ -223,7 +226,7 @@ class TestEjecutarCrearTrasladoCaminoFeliz:
 # ---------------------------------------------------------------------------
 
 def test_motor_bloquea_no_crea_tramite(app):
-    from app.routes.api_bc import _ejecutar_crear_traslado
+    from app.services.consultas_organismos import crear_traslado
 
     fase = _fase_stub(fase_id=1, expediente_id=5)
     oe = _oe_stub(oe_id=3, expediente_id=5)
@@ -234,9 +237,9 @@ def test_motor_bloquea_no_crea_tramite(app):
          patch(f'{_MOD}.TipoTramite') as mock_tt, \
          patch(f'{_MOD}.Tramite') as mock_tramite_cls, \
          patch(f'{_MOD}.TramiteOrganismo') as mock_to_cls, \
-         patch(f'{_MOD}._leer_bypass', return_value=(None, None)), \
+         patch(f'{_MOD}.leer_bypass', return_value=(None, None)), \
          patch(f'{_MOD}._evaluar') as mock_eval, \
-         patch(f'{_MOD}._bloqueo', return_value=({'ok': False}, 403)):
+         patch(f'{_MOD}.bloqueo', return_value=({'ok': False}, 403)):
 
         mock_oe_cls.query.get.return_value = oe
         mock_tt.query.filter_by.return_value.first.return_value = tipo_tramite
@@ -244,7 +247,7 @@ def test_motor_bloquea_no_crea_tramite(app):
         eval_result.permitido = False
         mock_eval.return_value = eval_result
 
-        _ejecutar_crear_traslado(
+        crear_traslado(
             fase, _form(tipo='ORGANISMO', organismo_expediente_id='3'))
 
     mock_tramite_cls.assert_not_called()

@@ -1,5 +1,5 @@
 """
-Tests #247 — helper _serializar_org_exp y validaciones de CRUD organismos_expediente.
+Tests #247 — helper serializar_org_exp y validaciones de CRUD organismos_expediente.
 
 Patrón: objetos Python puros (MagicMock), sin BD real ni cliente Flask.
 """
@@ -22,10 +22,10 @@ def _oe_stub(id=1, organismo_id=5, via='consulta', estado='pendiente',
 class TestSerializarOrgExp:
 
     def test_get_organismos_ok(self, app):
-        from app.routes.api_bc import _serializar_org_exp
+        from app.services.consultas_organismos import serializar_org_exp
         oe = _oe_stub()
         with app.app_context():
-            result = _serializar_org_exp(oe)
+            result = serializar_org_exp(oe)
         assert result['id'] == 1
         assert result['organismo_id'] == 5
         assert result['nombre_completo'] == 'Red Eléctrica de España, S.A.'
@@ -37,21 +37,21 @@ class TestSerializarOrgExp:
 
     def test_get_expediente_no_existe(self, app):
         # get_or_404 gestiona la respuesta 404; sin organismo los campos vienen None
-        from app.routes.api_bc import _serializar_org_exp
+        from app.services.consultas_organismos import serializar_org_exp
         oe = _oe_stub()
         oe.organismo = None
         with app.app_context():
-            result = _serializar_org_exp(oe)
+            result = serializar_org_exp(oe)
         assert result['nombre_completo'] is None
         assert result['nif'] is None
 
     def test_post_organismo_ok(self, app):
         # Verifica que los campos del POST se serializan correctamente al crearse el registro
-        from app.routes.api_bc import _serializar_org_exp
+        from app.services.consultas_organismos import serializar_org_exp
         oe = _oe_stub(id=7, organismo_id=5, via='consulta', plazo_legal_dias=None)
         oe.organismo = MagicMock(nombre_completo='Endesa, S.A.', nif='A81947556')
         with app.app_context():
-            result = _serializar_org_exp(oe)
+            result = serializar_org_exp(oe)
         assert result['id'] == 7
         assert result['organismo_id'] == 5
         assert result['via'] == 'consulta'
@@ -88,9 +88,9 @@ class TestSerializarOrgExp:
         assert 'tramitado' not in ESTADOS_ORGANISMO
 
     def test_delete_organismo_ok(self, app):
-        from app.routes.api_bc import _serializar_org_exp
+        from app.services.consultas_organismos import serializar_org_exp
         oe = _oe_stub()
         with app.app_context():
-            result = _serializar_org_exp(oe)
+            result = serializar_org_exp(oe)
         assert result is not None
         assert result['id'] == 1

@@ -1,5 +1,5 @@
 """
-Tests #462 — helper _calcular_plazo_consulta y lógica de acción en bloque.
+Tests #462 — helper calcular_plazo_consulta y lógica de acción en bloque.
 
 Patrón: objetos Python puros (MagicMock), sin BD real ni cliente Flask.
 """
@@ -27,54 +27,54 @@ def _expediente_stub(solicitud_actual, otras_solicitudes=()):
 class TestCalcularPlazoConsulta:
 
     def test_plazo_general_aap(self):
-        from app.routes.api_bc import _calcular_plazo_consulta
+        from app.services.consultas_organismos import calcular_plazo_consulta
         sol = _sol_stub(tipos=('AAP',))
         exp = _expediente_stub(sol)
-        assert _calcular_plazo_consulta(exp, sol) == 30
+        assert calcular_plazo_consulta(exp, sol) == 30
 
     def test_plazo_general_aap_aac_combinado(self):
-        from app.routes.api_bc import _calcular_plazo_consulta
+        from app.services.consultas_organismos import calcular_plazo_consulta
         sol = _sol_stub(tipos=('AAP', 'AAC'))
         exp = _expediente_stub(sol)
-        assert _calcular_plazo_consulta(exp, sol) == 30
+        assert calcular_plazo_consulta(exp, sol) == 30
 
     def test_plazo_general_aac_sin_aap_previa(self):
         """AAC pura pero sin ninguna AAP previa favorable → 30 días."""
-        from app.routes.api_bc import _calcular_plazo_consulta
+        from app.services.consultas_organismos import calcular_plazo_consulta
         sol = _sol_stub(tipos=('AAC',))
         exp = _expediente_stub(sol)
-        assert _calcular_plazo_consulta(exp, sol) == 30
+        assert calcular_plazo_consulta(exp, sol) == 30
 
     def test_plazo_reducido_aac_pura_con_aap_favorable(self):
         """AAC pura + AAP previa con fase finalizadora FAVORABLE → 15 días."""
-        from app.routes.api_bc import _calcular_plazo_consulta
+        from app.services.consultas_organismos import calcular_plazo_consulta
         sol_actual = _sol_stub(tipos=('AAC',))
         sol_aap = _sol_stub(tipos=('AAP',), aap_favorable=True)
         exp = _expediente_stub(sol_actual, otras_solicitudes=[sol_aap])
-        assert _calcular_plazo_consulta(exp, sol_actual) == 15
+        assert calcular_plazo_consulta(exp, sol_actual) == 15
 
     def test_dup_excluye_reduccion(self):
         """AAC+DUP no es AAC pura → 30 días aunque haya AAP previa favorable."""
-        from app.routes.api_bc import _calcular_plazo_consulta
+        from app.services.consultas_organismos import calcular_plazo_consulta
         sol_actual = _sol_stub(tipos=('AAC', 'DUP'))
         sol_aap = _sol_stub(tipos=('AAP',), aap_favorable=True)
         exp = _expediente_stub(sol_actual, otras_solicitudes=[sol_aap])
-        assert _calcular_plazo_consulta(exp, sol_actual) == 30
+        assert calcular_plazo_consulta(exp, sol_actual) == 30
 
     def test_aap_previa_no_favorable_no_reduce(self):
         """AAP previa existe pero su fase finalizadora no está cerrada como favorable."""
-        from app.routes.api_bc import _calcular_plazo_consulta
+        from app.services.consultas_organismos import calcular_plazo_consulta
         sol_actual = _sol_stub(tipos=('AAC',))
         sol_aap = _sol_stub(tipos=('AAP',), aap_favorable=False)
         exp = _expediente_stub(sol_actual, otras_solicitudes=[sol_aap])
-        assert _calcular_plazo_consulta(exp, sol_actual) == 30
+        assert calcular_plazo_consulta(exp, sol_actual) == 30
 
     def test_solicitud_actual_no_se_evalua_como_aap_previa(self):
         """La propia solicitud AAC+AAP no cuenta como 'AAP previa' de sí misma."""
-        from app.routes.api_bc import _calcular_plazo_consulta
+        from app.services.consultas_organismos import calcular_plazo_consulta
         sol = _sol_stub(tipos=('AAC', 'AAP'))
         exp = _expediente_stub(sol)
-        assert _calcular_plazo_consulta(exp, sol) == 30
+        assert calcular_plazo_consulta(exp, sol) == 30
 
 
 class TestEnviarConsultasLogica:
@@ -105,11 +105,11 @@ class TestEnviarConsultasLogica:
 
     def test_plazo_calculado_una_vez_aplicado_a_todos(self):
         """El mismo plazo (calculado antes del bucle) se asigna a cada organismo."""
-        from app.routes.api_bc import _calcular_plazo_consulta
+        from app.services.consultas_organismos import calcular_plazo_consulta
         sol_actual = _sol_stub(tipos=('AAC',))
         sol_aap = _sol_stub(tipos=('AAP',), aap_favorable=True)
         exp = _expediente_stub(sol_actual, otras_solicitudes=[sol_aap])
-        plazo = _calcular_plazo_consulta(exp, sol_actual)
+        plazo = calcular_plazo_consulta(exp, sol_actual)
         assert plazo == 15
         # Simular asignación a 3 organismos
         oes = [self._oe_stub(id=i) for i in range(3)]
