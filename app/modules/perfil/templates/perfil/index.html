@@ -141,17 +141,85 @@
             <p class="text-secondary mb-3">No tienes roles asignados.</p>
             {% endif %}
 
-            <form method="POST" action="{{ url_for('perfil.solicitar_cambio_rol') }}">
-                <button type="submit" class="btn btn-outline-secondary btn-sm">
-                    <i class="fas fa-paper-plane me-2"></i>Solicitar Cambio de Rol
-                </button>
-            </form>
+            {# Peticiones de rol propias aún sin resolver — se avisa, no se
+               bloquea: pedir dos veces puede ser legítimo y quien decide es el
+               Supervisor (#28). #}
+            {% if pendientes_rol %}
+            <div class="alert alert-info py-2 small mb-3">
+                <i class="fas fa-hourglass-half me-1"></i>
+                Tienes {{ pendientes_rol|length }} solicitud(es) de rol sin resolver:
+                {% for m in pendientes_rol %}
+                <strong>{{ m.datos.get('rol_solicitado', '?') }}</strong>
+                (del {{ m.created_at.strftime('%d/%m/%Y') }}){{ ', ' if not loop.last }}
+                {% endfor %}.
+                <a href="{{ url_for('mensajes_internos.listado') }}">Ver en mensajes</a>.
+            </div>
+            {% endif %}
+
+            {% if roles_solicitables %}
+            <button type="button" class="btn btn-outline-secondary btn-sm"
+                    data-bs-toggle="modal" data-bs-target="#solicitarRolModal">
+                <i class="fas fa-paper-plane me-2"></i>Solicitar Cambio de Rol
+            </button>
+            {% else %}
+            <button type="button" class="btn btn-outline-secondary btn-sm" disabled>
+                <i class="fas fa-paper-plane me-2"></i>Solicitar Cambio de Rol
+            </button>
+            <small class="text-secondary d-block mt-2">Ya tienes todos los roles del sistema.</small>
+            {% endif %}
             <small class="text-secondary d-block mt-2">
-                Solo los supervisores pueden modificar roles. Usa este botón para solicitar cambios.
+                Solo los supervisores pueden modificar roles. Tu solicitud llega a su bandeja
+                de mensajes y la respuesta aparecerá en la tuya.
             </small>
 
         </div>
     </div>
+
+    <!-- Modal: solicitud de cambio de rol (#28, N054).
+         Hasta #28 el botón enviaba un POST vacío que solo hacía flash: no
+         preguntaba qué rol ni por qué, y no persistía nada. -->
+    {% if roles_solicitables %}
+    <div class="modal fade" id="solicitarRolModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog">
+        <form method="POST" action="{{ url_for('perfil.solicitar_cambio_rol') }}" class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title"><i class="fas fa-user-tag me-1"></i> Solicitar cambio de rol</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+          </div>
+          <div class="modal-body">
+            <div class="row g-2">
+              <div class="col-12">
+                <label class="form-label fw-semibold small" for="rol_solicitado">
+                  Rol solicitado <span class="text-danger">*</span>
+                </label>
+                <select class="form-select form-select-sm" id="rol_solicitado" name="rol_solicitado" required>
+                  <option value="">— Seleccionar —</option>
+                  {% for rol in roles_solicitables %}
+                  <option value="{{ rol.nombre }}">{{ rol.nombre }}{% if rol.descripcion %} — {{ rol.descripcion }}{% endif %}</option>
+                  {% endfor %}
+                </select>
+                <div class="form-text">Solo aparecen los roles que aún no tienes.</div>
+              </div>
+              <div class="col-12">
+                <label class="form-label fw-semibold small" for="justificacion">
+                  Justificación <span class="text-danger">*</span>
+                </label>
+                <textarea class="form-control form-control-sm" id="justificacion" name="justificacion"
+                          rows="4" required
+                          placeholder="Por qué necesitas ese rol (sustitución, cambio de puesto, tarea concreta…)"></textarea>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-primary btn-sm">
+              <i class="fas fa-paper-plane me-1"></i> Enviar solicitud
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+    {% endif %}
 
     <!-- =========================================================
          FICHA 3: Seguridad — Cambiar Contraseña (acordeón)

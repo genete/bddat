@@ -242,3 +242,52 @@ def test_topbar_conserva_la_campana(usuario_tramitador):
     r = usuario_tramitador.get('/perfil/', follow_redirects=True)
     assert b'js-dock-topbar-badge' in r.data
     assert b'data-app-shell-toggle="dock"' in r.data
+
+
+# ---------------------------------------------------------------------------
+# Productor N054 — solicitud de cambio de rol desde Mi Perfil
+# ---------------------------------------------------------------------------
+
+def test_solicitud_de_rol_persiste(usuario_tramitador, app):
+    """Antes de #28 este POST solo hacía flash y no guardaba nada."""
+    r = usuario_tramitador.post('/perfil/solicitar-cambio-rol', data={
+        'rol_solicitado': 'SUPERVISOR',
+        'justificacion': f'Sustitución de agosto ({MARCA})',
+    }, follow_redirects=False)
+    assert r.status_code == 302
+
+    with app.app_context():
+        clg = _usuario(app)
+        m = MensajeInterno.query.filter(
+            MensajeInterno.remitente_usuario_id == clg.id,
+            MensajeInterno.tipo == 'CAMBIO_ROL',
+            db.cast(MensajeInterno.datos, db.Text).like(f'%{MARCA}%'),
+        ).first()
+        assert m is not None
+        assert m.datos['rol_solicitado'] == 'SUPERVISOR'
+        assert MARCA in m.datos['justificacion']
+        assert m.estado == 'pendiente'
+
+
+def test_solicitud_de_rol_sin_justificacion_no_persiste(usuario_tramitador, app):
+    usuario_tramitador.post('/perfil/solicitar-cambio-rol', data={
+        'rol_solicitado': 'SUPERVISOR',
+        'justificacion': '   ',
+    }, follow_redirects=False)
+
+    with app.app_context():
+        clg = _usuario(app)
+        assert MensajeInterno.query.filter(
+            MensajeInterno.remitente_usuario_id == clg.id,
+            MensajeInterno.tipo == 'CAMBIO_ROL',
+            MensajeInterno.hecho.is_(False),
+            MensajeInterno.datos['justificacion'].astext == '',
+        ).count() == 0
+
+
+def test_perfil_ofrece_el_modal_con_selector_de_rol(usuario_tramitador):
+    r = usuario_tramitador.get('/perfil/', follow_redirects=True)
+    assert r.status_code == 200
+    assert b'solicitarRolModal' in r.data
+    assert b'name="rol_solicitado"' in r.data
+    assert b'name="justificacion"' in r.data
