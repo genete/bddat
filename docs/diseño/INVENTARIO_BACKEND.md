@@ -107,7 +107,7 @@
 | ConfiguracionSistema | `configuracion_sistema` | Valores de configuración runtime |
 | CatalogoRequerimiento | `catalogo_requerimientos` | Catálogo de defectos tipificados para requerimientos |
 | RequerimientoTarea | `requerimientos_tarea` | Defectos seleccionados por tarea ANALIZAR (#440 pendiente UI) |
-| TablaMetadata | `tabla_metadata` | Metadatos de tablas para UI genérica |
+| ~~TablaMetadata~~ | ~~`tabla_metadata`~~ | **Dada de baja en #585** — permisos de lectura/escritura por tabla y rol (#85). Nunca tuvo consumidores y su premisa contradice ADR-013 (la visibilidad no se restringe por rol). El control de acceso vivo es el dict `PERMISOS` de `app/utils/permisos.py` |
 
 ---
 
