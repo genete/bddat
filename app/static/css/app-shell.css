@@ -750,12 +750,15 @@
   font-style: italic;
 }
 
-/* Badge sobre la campana del topbar */
-.app-topbar__dock-toggle {
+/* Badge sobre la campana y sobre el sobre del topbar (#28 comparte la regla
+   del dock, sin renombrar su clase: la campana no se toca — ADR-040 §6) */
+.app-topbar__dock-toggle,
+.app-topbar__mensajes-toggle {
   position: relative;
 }
 
-.dock-topbar-badge {
+.dock-topbar-badge,
+.mensajes-topbar-badge {
   position: absolute;
   top: 4px;
   right: 4px;

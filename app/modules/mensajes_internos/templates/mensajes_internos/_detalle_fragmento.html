@@ -1,0 +1,118 @@
+{# _detalle_fragmento.html — Parcial de lectura para el inspector (ADR-023 / #28).
+   No extiende base_app.html. Inyectado vía AppInspector.open({ fragmentUrl }).
+   - "Resolver" → fragmento de resolución (data-inspector-edit). Solo gestionar_.
+   - "Acusar recibo" → form data-inspector-form (POST XHR → JSON → refresh).
+     Solo el remitente, y solo tras la resolución.
+
+   El contenido de la petición NO se maqueta aquí campo a campo: llega ya
+   descrito por el registro de tipos del servicio (ADR-040 §5) como pares
+   (etiqueta, valor). Añadir un tipo nuevo no toca este fichero.
+#}
+
+<div class="p-3">
+
+<div class="d-flex justify-content-end gap-2 mb-3">
+    {% if puede_resolver %}
+    <button type="button" class="btn btn-primary btn-sm"
+            data-inspector-edit
+            data-edit-url="{{ url_for('mensajes_internos.editar_fragmento', id=mensaje.id) }}">
+        <i class="fas fa-gavel me-1"></i> Resolver
+    </button>
+    {% endif %}
+</div>
+
+<!-- CARD 1 — La petición -->
+<div class="card mb-3">
+    <div class="card-header card-header-accent fw-semibold">
+        <i class="fas fa-envelope me-1"></i> {{ etiqueta_tipo }}
+        {% if mensaje.estado == 'pendiente' %}
+            <span class="badge bg-warning-subtle text-warning-emphasis ms-1">Pendiente</span>
+        {% elif mensaje.estado == 'resuelto' %}
+            <span class="badge bg-info-subtle text-info-emphasis ms-1">Resuelta</span>
+        {% else %}
+            <span class="badge bg-secondary-subtle text-secondary-emphasis ms-1">Acusada</span>
+        {% endif %}
+    </div>
+    <div class="card-body card-body-tinted">
+        <div class="row g-2">
+            <div class="col-md-6">
+                <label class="form-label fw-semibold small">Remitente</label>
+                <input type="text" class="form-control form-control-sm"
+                       value="{{ mensaje.remitente }}" readonly>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-semibold small">Enviada</label>
+                <input type="text" class="form-control form-control-sm"
+                       value="{{ mensaje.created_at.strftime('%d/%m/%Y %H:%M') if mensaje.created_at else '—' }}" readonly>
+            </div>
+            {% for etiqueta, valor in campos %}
+            <div class="col-12">
+                <label class="form-label fw-semibold small">{{ etiqueta }}</label>
+                {% if valor|length > 80 %}
+                <textarea class="form-control form-control-sm" rows="3" readonly>{{ valor }}</textarea>
+                {% else %}
+                <input type="text" class="form-control form-control-sm" value="{{ valor }}" readonly>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- CARD 2 — La respuesta del supervisor -->
+<div class="card mb-3">
+    <div class="card-header card-header-accent fw-semibold">
+        <i class="fas fa-reply me-1"></i> Respuesta
+    </div>
+    <div class="card-body card-body-tinted">
+        {% if not mensaje.hecho %}
+        <span class="text-secondary small">Sin resolver todavía.</span>
+        {% else %}
+        <div class="row g-2">
+            <div class="col-md-6">
+                <label class="form-label fw-semibold small">Resultado</label>
+                <div>
+                    <span class="badge {% if mensaje.resultado == 'ATENDIDA' %}bg-success{% else %}bg-danger{% endif %}">
+                        {{ etiquetas_resultado.get(mensaje.resultado, mensaje.resultado) }}
+                    </span>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-semibold small">Resuelta por</label>
+                <input type="text" class="form-control form-control-sm"
+                       value="{{ mensaje.hecho_por }}{% if mensaje.hecho_at %} — {{ mensaje.hecho_at.strftime('%d/%m/%Y %H:%M') }}{% endif %}" readonly>
+            </div>
+            {% if mensaje.notas %}
+            <div class="col-12">
+                <label class="form-label fw-semibold small">Notas</label>
+                <textarea class="form-control form-control-sm" rows="3" readonly>{{ mensaje.notas }}</textarea>
+            </div>
+            {% endif %}
+            {% if mensaje.acusado_at %}
+            <div class="col-12">
+                <div class="form-text">
+                    <i class="fas fa-check me-1"></i>
+                    Acuse del remitente el {{ mensaje.acusado_at.strftime('%d/%m/%Y %H:%M') }}.
+                </div>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+{% if puede_acusar %}
+<div class="d-flex gap-2">
+    <form data-inspector-form
+          data-action="{{ url_for('mensajes_internos.acusar', id=mensaje.id) }}">
+        <button type="submit" class="btn btn-outline-success btn-sm">
+            <i class="fas fa-check me-1"></i> Acusar recibo
+        </button>
+    </form>
+</div>
+<div class="form-text mt-1">
+    Al acusar, esta respuesta deja de contar en el sobre del topbar.
+</div>
+{% endif %}
+
+</div>{# /p-3 #}

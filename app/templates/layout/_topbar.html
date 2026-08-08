@@ -1,7 +1,12 @@
-{# _topbar.html — Barra superior global (ADR-014 §5).
-   Cuatro elementos: marca · búsqueda Ctrl+K · notificaciones · menú usuario.
-   Sin module-nav (movido al sidebar). Sin breadcrumb. Sin hamburguesa fija
-   (solo aparece <768px). #}
+{# _topbar.html — Barra superior global (ADR-014 §5, enmendada por ADR-040 §6).
+   Cinco elementos: marca · búsqueda Ctrl+K · mensajes · notificaciones ·
+   menú usuario. Sin module-nav (movido al sidebar). Sin breadcrumb. Sin
+   hamburguesa fija (solo aparece <768px).
+
+   SOBRE ≠ CAMPANA: el sobre (mensajes internos, #28) y la campana (dock de
+   avisos y bitácora, ADR-020) son cosas distintas y se ven distintas. El
+   contenido del sobre es persistente y accionable; el del dock, efímero y de
+   sesión. ADR-020 no se enmienda: la campana no se toca. #}
 <header class="app-topbar" role="banner">
 
   {# Hamburguesa: solo visible en mobile (<768px) — abre el sidebar en overlay #}
@@ -43,6 +48,20 @@
           title="Modo global del motor: {{ modo_motor.etiqueta }}">
       <i class="bi bi-shield-check"></i> {{ modo_motor.etiqueta }}
     </span>
+    {% endif %}
+
+    {# Sobre — bandeja de mensajes internos (#28, ADR-040 §6).
+       Enlace a una pantalla, no un toggle de panel: el CRUD es un list-detail
+       con scroll infinito e inspector, que no cabe en el dock.
+       El badge lo rellena mensajes-badge.js; nace oculto para no dejar un "0"
+       parpadeando mientras llega la primera respuesta. #}
+    {% if current_user.is_authenticated and tiene_permiso('acceder_mensajes_internos') %}
+    <a href="{{ url_for('mensajes_internos.listado') }}"
+       class="app-topbar__icon-btn app-topbar__mensajes-toggle"
+       aria-label="Bandeja de mensajes" title="Mensajes">
+      <i class="bi bi-envelope"></i>
+      <span class="mensajes-topbar-badge" id="js-mensajes-topbar-badge" style="display:none"></span>
+    </a>
     {% endif %}
 
     {# Campana — toggle del dock global (ADR-020 / #506) #}

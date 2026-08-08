@@ -8,7 +8,9 @@ dashboard sigue hardcodeada, misma excepción que "Inicio".
 from flask import Blueprint, render_template, request, flash, redirect, url_for
 from flask_login import login_required, current_user
 from app import db
-from app.models.usuarios import Usuario
+from app.models.mensajes_internos import MensajeInterno
+from app.models.usuarios import Rol, Usuario
+from app.services import mensajes_internos as servicio_mensajes
 
 bp = Blueprint('perfil', __name__, url_prefix='/perfil', template_folder='templates')
 
@@ -16,7 +18,26 @@ bp = Blueprint('perfil', __name__, url_prefix='/perfil', template_folder='templa
 @login_required
 def index():
     """Mostrar perfil del usuario actual"""
-    return render_template('perfil/index.html', usuario=current_user)
+    # Roles que aún no tiene — los únicos que tiene sentido pedir.
+    propios = {r.nombre for r in current_user.roles}
+    roles_solicitables = [r for r in Rol.query.order_by(Rol.nombre).all()
+                          if r.nombre not in propios]
+
+    # Peticiones de rol suyas aún sin resolver: se AVISA, no se bloquea. Pedir
+    # dos veces no rompe nada y puede ser legítimo (cambió el motivo, se olvidó
+    # la anterior); quien decide es el Supervisor, que las verá las dos.
+    pendientes_rol = MensajeInterno.query.filter(
+        MensajeInterno.remitente_usuario_id == current_user.id,
+        MensajeInterno.tipo == 'CAMBIO_ROL',
+        MensajeInterno.hecho.is_(False),
+    ).order_by(MensajeInterno.created_at.desc()).all()
+
+    return render_template(
+        'perfil/index.html',
+        usuario=current_user,
+        roles_solicitables=roles_solicitables,
+        pendientes_rol=pendientes_rol,
+    )
 
 @bp.route('/editar', methods=['POST'])
 @login_required
@@ -81,7 +102,28 @@ def cambiar_contrasena():
 @bp.route('/solicitar-cambio-rol', methods=['POST'])
 @login_required
 def solicitar_cambio_rol():
-    """Solicitar cambio de rol (por ahora solo mensaje, futuro: notificación)"""
-    # TODO: Implementar sistema de notificaciones o tickets
-    flash('Tu solicitud de cambio de rol ha sido enviada. Un supervisor la revisará pronto.', 'info')
+    """Crea una petición CAMBIO_ROL en la bandeja del Supervisor (#28, N054).
+
+    Hasta #28 esto era un `flash` que no persistía nada: el usuario creía haber
+    pedido algo que no llegaba a ninguna parte. Ahora el rol pretendido y la
+    justificación son datos, no una intención.
+    """
+    try:
+        servicio_mensajes.crear(
+            'CAMBIO_ROL',
+            current_user.id,
+            rol_solicitado=request.form.get('rol_solicitado', ''),
+            justificacion=request.form.get('justificacion', ''),
+        )
+        db.session.commit()
+    except servicio_mensajes.PayloadInvalido as e:
+        db.session.rollback()
+        flash(str(e), 'danger')
+        return redirect(url_for('perfil.index'))
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error al enviar la solicitud: {e}', 'danger')
+        return redirect(url_for('perfil.index'))
+
+    flash('Solicitud enviada. La verás resuelta en tu bandeja de mensajes.', 'success')
     return redirect(url_for('perfil.index'))

@@ -147,6 +147,18 @@ export function crearRequerimientoCatalogo(expedienteId, tareaId, texto, categor
   )
 }
 
+// Propone al Supervisor un alta en el catálogo ("Solicitar guardado en catálogo", #28).
+// Endpoint distinto del anterior a propósito: aquel es escritura directa en el catálogo
+// maestro y sigue siendo exclusivo de quien puede curarlo; este crea un mensaje interno y
+// no toca el catálogo. Solo exige `gestionar_tarea` — quien no puede curar es justo su
+// destinatario.
+export function solicitarAltaCatalogo(expedienteId, tareaId, texto, categoria) {
+  return api.post(
+    `/api/expedientes/${expedienteId}/nodo/tarea/${tareaId}/requerimientos/catalogo/solicitar`,
+    { texto, categoria },
+  )
+}
+
 // Generación de escritos (#167/#608) — Blueprint aparte (/api/escritos), no bajo
 // /api/expedientes. Plantillas ESFTT compatibles con la tarea. Respuesta:
 // {ok, plantillas:[{id, nombre, variante, descripcion, especificidad}]}.

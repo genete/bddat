@@ -120,6 +120,14 @@ PERMISOS = {
     'acceder_firmantes_portafirmas':   {'ADMIN', 'SUPERVISOR', 'TRAMITADOR', 'ADMINISTRATIVO'},
     'gestionar_firmantes_portafirmas': {'ADMIN', 'SUPERVISOR'},
 
+    # Bandeja de peticiones al Supervisor (#28, ADR-040 §8) — patrón
+    # acceder/gestionar de ADR-013 con un matiz: `acceder` no da acceso a todas
+    # las filas, solo a las propias. Quien gestiona ve las de todos y es el
+    # único que puede marcar `hecho`/`resultado`/`notas`. Ese filtrado se
+    # aplica en el endpoint según permiso, nunca por parámetro del front.
+    'acceder_mensajes_internos':   {'ADMIN', 'SUPERVISOR', 'TRAMITADOR', 'ADMINISTRATIVO'},
+    'gestionar_mensajes_internos': {'ADMIN', 'SUPERVISOR'},
+
     # Árbol del expediente — frontera hoja / estructura (ADR-017 §6, #501).
     # "Puerta abierta": gestionar_tareas habilita COMPLETAR cualquier tarea ya
     # prevista (incluye ADMINISTRATIVO); la bitácora es la rendición de cuentas.
