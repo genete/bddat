@@ -1,0 +1,88 @@
+{# _editar_fragmento.html — Parcial de resolución para el inspector (ADR-023 / #28).
+   No extiende base_app.html. Inyectado por inspector-overlay.js vía data-inspector-edit.
+   Submit interceptado: POST XHR → JSON { ok, errors, message }.
+
+   "Editar" aquí significa RESOLVER: se cierra la misma fila con veredicto y
+   notas (ADR-040 §3). No se edita la petición del remitente — eso es su texto,
+   no del supervisor.
+#}
+
+<div class="p-3">
+
+<form data-inspector-form class="form-mensaje-resolver"
+      data-action="{{ url_for('mensajes_internos.resolver', id=mensaje.id) }}">
+
+<div id="inspector-form-errors" class="alert alert-danger py-2 mb-3 small" style="display:none;"></div>
+
+<div class="d-flex justify-content-end gap-2 mb-3">
+    <button type="button" class="btn btn-outline-secondary btn-sm" data-inspector-cancel-edit>
+        <i class="fas fa-times me-1"></i> Cancelar
+    </button>
+    <button type="submit" class="btn btn-primary btn-sm">
+        <i class="fas fa-gavel me-1"></i> Resolver petición
+    </button>
+</div>
+
+<!-- CARD 1 — Qué se pide (solo lectura: es el texto del remitente) -->
+<div class="card mb-3">
+    <div class="card-header card-header-accent fw-semibold">
+        <i class="fas fa-envelope me-1"></i> {{ etiqueta_tipo }}
+    </div>
+    <div class="card-body card-body-tinted">
+        <div class="row g-2">
+            <div class="col-12">
+                <label class="form-label fw-semibold small">Remitente</label>
+                <input type="text" class="form-control form-control-sm"
+                       value="{{ mensaje.remitente }}" readonly>
+            </div>
+            {% for etiqueta, valor in campos %}
+            <div class="col-12">
+                <label class="form-label fw-semibold small">{{ etiqueta }}</label>
+                {% if valor|length > 80 %}
+                <textarea class="form-control form-control-sm" rows="3" readonly>{{ valor }}</textarea>
+                {% else %}
+                <input type="text" class="form-control form-control-sm" value="{{ valor }}" readonly>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- CARD 2 — Resolución -->
+<div class="card mb-3">
+    <div class="card-header card-header-accent fw-semibold">
+        <i class="fas fa-gavel me-1"></i> Resolución
+    </div>
+    <div class="card-body card-body-tinted">
+        <div class="row g-2">
+            <div class="col-12">
+                <label class="form-label fw-semibold small" for="mi_resultado">
+                    Resultado <span class="text-danger">*</span>
+                </label>
+                <select class="form-select form-select-sm" id="mi_resultado" name="resultado" required>
+                    <option value="">— Seleccionar —</option>
+                    {% for codigo, etiqueta in resultados %}
+                    <option value="{{ codigo }}">{{ etiqueta }}</option>
+                    {% endfor %}
+                </select>
+                <div class="form-text">
+                    El veredicto se guarda aparte de las notas para que sea filtrable y contable.
+                </div>
+            </div>
+            <div class="col-12">
+                <label class="form-label fw-semibold small" for="mi_notas">Notas</label>
+                <textarea class="form-control form-control-sm" id="mi_notas" name="notas"
+                          rows="4" placeholder="Explicación para el remitente (opcional)"></textarea>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="form-text">
+    Al guardar, la petición queda cerrada y el remitente la verá resuelta en su bandeja.
+    Para ti no queda pendiente de nada más.
+</div>
+
+</form>
+</div>{# /p-3 #}

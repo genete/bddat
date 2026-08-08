@@ -1,0 +1,112 @@
+{% extends 'layout/lista_v2_base.html' %}
+
+{# Listado de la bandeja de mensajes internos (#28, ADR-040).
+   Sin botón "Nuevo": las peticiones no se redactan aquí, las crean sus
+   productores desde el punto donde surge la necesidad (Mi Perfil, shuttle de
+   ANALIZAR). Esta pantalla es la bandeja, no un formulario de envío. #}
+
+{% block page_title %}Mensajes{% endblock %}
+{% block page_icon %}<i class="fas fa-envelope"></i>{% endblock %}
+{% block entity_label_plural %}mensajes{% endblock %}
+{% block search_placeholder %}Buscar en el contenido...{% endblock %}
+{% block tabla_clase %}mensajes-internos-table{% endblock %}
+
+{% block filtros_extra %}
+<div id="sf-estado"></div>
+<div id="sf-tipo"></div>
+{% endblock %}
+
+{% block thead_cols %}
+<th>Petición</th>
+<th class="lt-hide-md">Tipo</th>
+<th class="lt-hide-lg">Remitente</th>
+<th class="lt-hide-md">Fecha</th>
+<th>Estado</th>
+{% endblock %}
+
+{% block content %}
+{{ super() }}
+
+{% if not tiene_permiso('gestionar_mensajes_internos') %}
+<div class="form-text px-3 pb-2">
+    Aquí ves las peticiones que has enviado y la respuesta del supervisor.
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+{{ super() }}
+<script>
+    function _esc(s) {
+        if (s === null || s === undefined) return '';
+        return String(s)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+    }
+
+    new SelectorFiltro('#sf-estado', [
+        {% for codigo, etiqueta in estados %}{ v: '{{ codigo }}', t: '{{ etiqueta|e }}' }{{ ',' if not loop.last }}{% endfor %}
+    ], { label: 'Estado', name: 'estado' });
+
+    new SelectorFiltro('#sf-tipo', [
+        {% for codigo, etiqueta in tipos %}{ v: '{{ codigo }}', t: '{{ etiqueta|e }}' }{{ ',' if not loop.last }}{% endfor %}
+    ], { label: 'Tipo', name: 'tipo' });
+
+    // Estado con color: pendiente pide acción, acusada está cerrada del todo.
+    const _BADGE_ESTADO = {
+        pendiente: 'bg-warning-subtle text-warning-emphasis',
+        resuelto:  'bg-info-subtle text-info-emphasis',
+        acusado:   'bg-secondary-subtle text-secondary-emphasis'
+    };
+
+    const scrollInfinito = new ScrollInfinito({
+        apiUrl:      '{{ url_for("api_mensajes_internos.listar_mensajes") }}',
+        tableClass:  '.mensajes-internos-table',
+        entityLabel: 'mensajes',
+        columns: [
+            { key: 'resumen',    label: 'Petición', type: 'custom', renderFn: v => _esc(v) },
+            { key: 'tipo_label', label: 'Tipo',      type: 'text', hide: 'md' },
+            { key: 'remitente',  label: 'Remitente', type: 'text', hide: 'lg' },
+            { key: 'fecha',      label: 'Fecha',     type: 'text', hide: 'md' },
+            { key: 'estado',     label: 'Estado',    type: 'custom', renderFn: (v, item) => {
+                const cls = _BADGE_ESTADO[v] || 'bg-secondary';
+                let html = '<span class="badge ' + cls + '">' + _esc(item.estado_label) + '</span>';
+                if (item.resultado) {
+                    html += ' <span class="badge ' +
+                        (item.resultado === 'ATENDIDA' ? 'bg-success' : 'bg-danger') +
+                        '">' + _esc(item.resultado === 'ATENDIDA' ? 'Atendida' : 'Denegada') + '</span>';
+                }
+                return html;
+            } },
+        ],
+        selection: {
+            fragmentUrl: id   => `/mensajes_internos/${id}/fragmento`,
+            title:       item => item.tipo_label || 'Mensaje'
+        }
+    });
+
+    const filtros = new FiltrosListado(scrollInfinito);
+
+    // Sync inspector ↔ URL ?sel (ADR-023 §1)
+    function _updateSelParam(selId) {
+        const url = new URL(location.href);
+        if (selId) url.searchParams.set('sel', selId);
+        else url.searchParams.delete('sel');
+        history.replaceState(null, '', url.toString());
+    }
+    document.addEventListener('inspector:opened',  e => _updateSelParam(e.detail.selId));
+    document.addEventListener('inspector:swapped', e => _updateSelParam(e.detail.selId));
+    document.addEventListener('inspector:closed',  () => _updateSelParam(null));
+
+    const _selParam = new URLSearchParams(location.search).get('sel');
+    if (_selParam && window.AppInspector) {
+        AppInspector.open({
+            selId:       _selParam,
+            title:       '',
+            fragmentUrl: `/mensajes_internos/${_selParam}/fragmento`
+        });
+    }
+
+    console.log('Bandeja de mensajes internos inicializada (#28)');
+</script>
+{% endblock %}
