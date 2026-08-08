@@ -541,8 +541,8 @@ def _bloqueo_422(res):
     El mensaje legible del bloqueo puede venir de DOS fuentes (ver EvaluacionResult):
       · motor de reglas    → `motivo` (descripción editorial de la regla)
       · invariantes ESFTT  → `norma_compilada` (su `_bloquear` deja `motivo=''`)
-    Por eso se surfacea `motivo or norma_compilada` (mismo criterio que
-    api_bc._res_error). Omitir el fallback dejaba los bloqueos de invariante con
+    Por eso se surfacea `motivo or norma_compilada`. Omitir el fallback dejaba
+    los bloqueos de invariante con
     `motivo` vacío y el front solo mostraba el genérico "Bloqueado por el motor".
     """
     b = res.bloqueo

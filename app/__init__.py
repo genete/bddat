@@ -82,7 +82,7 @@ def create_app(config_name='development'):
     app.register_blueprint(wizard_expediente.bp)  # Issue #67
 
     # Registrar blueprints - APIs
-    from app.routes import api_expedientes, api_municipios, api_entidades, api_proyectos, api_escritos, api_seguimiento, api_bc, api_bitacora, api_search, api_usuarios, api_plantillas, api_administrativo, api_requisitos_documentales, api_catalogo_requerimientos, api_items_tecnicos, api_tablas_maestras, api_tipos_documentos, api_catalogo_plazos, api_efectos_plazo, api_reglas_motor, api_normas_variables, api_huerfanos, api_firmantes_portafirmas, api_mensajes_internos
+    from app.routes import api_expedientes, api_municipios, api_entidades, api_proyectos, api_escritos, api_seguimiento, api_bitacora, api_search, api_usuarios, api_plantillas, api_administrativo, api_requisitos_documentales, api_catalogo_requerimientos, api_items_tecnicos, api_tablas_maestras, api_tipos_documentos, api_catalogo_plazos, api_efectos_plazo, api_reglas_motor, api_normas_variables, api_huerfanos, api_firmantes_portafirmas, api_mensajes_internos
 
     app.register_blueprint(api_expedientes.api_bp)                  # usa 'api_bp'
     app.register_blueprint(api_municipios.bp)                       # usa 'bp'
@@ -90,7 +90,6 @@ def create_app(config_name='development'):
     app.register_blueprint(api_proyectos.api_proyectos_bp)          # usa 'api_proyectos_bp' — Issue #123
     app.register_blueprint(api_escritos.api_escritos_bp)            # usa 'api_escritos_bp' — Issue #167
     app.register_blueprint(api_seguimiento.api_seguimiento_bp)      # usa 'api_seguimiento_bp' — Issue #262
-    app.register_blueprint(api_bc.bp)                               # usa 'bp' — fix #314
     app.register_blueprint(api_bitacora.bp)                         # usa 'bp' — Issue #506
     app.register_blueprint(api_search.api_search_bp)                # usa 'api_search_bp' — Issue #531
     app.register_blueprint(api_usuarios.api_usuarios_bp)            # usa 'api_usuarios_bp' — Issue #544
