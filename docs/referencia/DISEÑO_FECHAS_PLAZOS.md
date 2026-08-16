@@ -618,29 +618,31 @@ Ninguna regla del motor disparará por plazo hasta que #172 implemente la lógic
 
 ### 4.1 Estado de tareas ESPERAR_PLAZO — derivación temporal
 
-> **Estado:** Cerrado — sesión 2026-04-23; rev. 2026-05-25 (#416).
+> **Estado:** Cerrado — sesión 2026-04-23; rev. 2026-05-25 (#416). **Corregida 2026-08-16** — el diseño descrito aquí quedó superado por ADR-004 (2026-05-11) sin sincronizar esta sección; ver nota de corrección al final.
 
-`ESPERAR_PLAZO` es el único tipo de tarea cuyo estado **no es derivable del estado de la BD en un momento fijo**. Todas las demás tareas codifican su completación en la BD: completada si existe un documento producido (vínculo PRODUCIDO en `documentos_tarea`), pendiente si no existe. `ESPERAR_PLAZO` no produce documento — su completación es un umbral temporal:
+`ESPERAR_PLAZO` completa su tarea con la **misma regla que cualquier otra tarea**: existe vínculo `PRODUCIDO` en `documentos_tarea` → completada; no existe → pendiente. No es una excepción al modelo general de completitud (ADR-004).
 
-```
-completada ↔ hoy() > fecha_administrativa(documento_referencia) + plazo_del_trámite_padre
-```
+El documento producido llega por una de dos vías:
 
-`documento_referencia` es el documento cuyo rol está configurado en `campo_fecha.rol` del `catalogo_plazos`:
+- **Caso A — respuesta real:** el documento externo esperado (notificación, publicación, informe, justificante...) llega y se vincula directamente como `PRODUCIDO`.
+- **Caso B — plazo agotado sin respuesta:** el tramitador dispara la generación de un certificado interno (`CERT_PLAZO_CUMPLIDO`), que se vincula como `PRODUCIDO`. La generación está controlada: solo se permite si `plazos.py` confirma que el plazo del elemento está `VENCIDO`; en caso contrario se rechaza. La `fecha_administrativa` del certificado generado es la fecha de vencimiento calculada.
+
+`documento_referencia` (el documento cuyo rol está configurado en `campo_fecha.rol` del `catalogo_plazos`) sigue determinando **desde cuándo se cuenta el plazo**, no si la tarea está completa:
 - **`rol: CONSUMIDO`** (caso habitual): el documento que inicia el período de espera llega antes de que el plazo empiece (p. ej. `ANUNCIO_PUBLICADO` para los trámites `ANUNCIO_BOP/BOJA`).
 - **`rol: PRODUCIDO`** (caso retroactivo): el documento llega cuando el período ya ha concluido y porta como `fecha_administrativa` la fecha de inicio del período (p. ej. `CERT_PLAZO_TABLON` para `TABLON_AYUNTAMIENTOS` — el ayuntamiento certifica cuándo empezó la exposición). Ver #416.
 
-**Consecuencia para el ContextAssembler:** el Assembler no puede derivar el estado de una tarea `ESPERAR_PLAZO` consultando únicamente la BD. Debe llamar a `plazos.py` pasándole el trámite padre para obtener `estado_plazo`. La tarea se considera completada si y solo si `estado_plazo == VENCIDO`.
+**Papel real de `estado_plazo` para esta tarea:** no decide la completitud (eso lo decide, como siempre, la existencia del documento producido). Decide (1) si la acción de generar el certificado del Caso B está permitida, y (2) qué fecha administrativa lleva ese certificado. El Assembler consulta `plazos.py` para las variables `estado_plazo`/`efecto_plazo` del trámite igual que para cualquier otro elemento ESFTT — no hay una rama de cálculo separada para `ESPERAR_PLAZO`.
 
 | Condición | Estado de la tarea |
 |---|---|
-| sin documento_referencia | `PENDIENTE` — tarea no iniciada; el tramitador aún no ha asociado el documento |
-| con documento_referencia y `estado_plazo != VENCIDO` | `PENDIENTE` — plazo en curso |
-| con documento_referencia y `estado_plazo == VENCIDO` | `COMPLETADA` — plazo transcurrido |
+| sin documento producido | `PENDIENTE` — ni ha llegado respuesta (Caso A) ni se ha generado el certificado (Caso B) |
+| con documento producido (cualquiera de los dos casos) | `COMPLETADA` |
 
-**Simetría con el cómputo de plazo del trámite:** el `campo_fecha` de `catalogo_plazos` para un trámite con `ESPERAR_PLAZO` es `{"via_tarea_tipo": "ESPERAR_PLAZO", "rol": "CONSUMIDO"}` en el caso habitual, o `{"via_tarea_tipo": "ESPERAR_PLAZO", "rol": "PRODUCIDO"}` en el caso retroactivo (ver §3.2). La llamada que el Assembler ya necesita hacer a `plazos.py` para calcular las variables de plazo del trámite es la misma que resuelve el estado de la tarea. No se requiere una interfaz separada.
+**Simetría con el cómputo de plazo del trámite:** el `campo_fecha` de `catalogo_plazos` para un trámite con `ESPERAR_PLAZO` es `{"via_tarea_tipo": "ESPERAR_PLAZO", "rol": "CONSUMIDO"}` en el caso habitual, o `{"via_tarea_tipo": "ESPERAR_PLAZO", "rol": "PRODUCIDO"}` en el caso retroactivo (ver §3.2).
 
-**Ausencia de plazo configurado:** si `catalogo_plazos` no tiene entrada para el trámite padre, `plazos.py` devuelve `SIN_PLAZO` → la tarea queda `PENDIENTE` indefinidamente. El Supervisor debe configurar el plazo; sin esa configuración el motor no puede avanzar por ese trámite.
+**Ausencia de plazo configurado:** si `catalogo_plazos` no tiene entrada para el trámite padre, `plazos.py` devuelve `SIN_PLAZO`. En el Caso A la tarea puede completarse igualmente si llega el documento externo — no depende del catálogo. En el Caso B, sin plazo configurado no hay `VENCIDO` posible, así que la generación del certificado queda bloqueada: el Supervisor debe configurar el plazo para que ese camino de cierre esté disponible.
+
+> **Nota de corrección (2026-08-16):** la versión anterior de esta sección describía `ESPERAR_PLAZO` como la única tarea cuya completitud no era derivable de la BD (`completada ↔ hoy() > fecha_límite`, sin documento propio). Ese diseño quedó superado por **ADR-004** ("Eliminación de la tarea INCORPORAR", 2026-05-11): `ESPERAR_PLAZO` absorbió el rol de `INCORPORAR` y su `documento_producido` pasó a ser el documento recibido (Caso A) o el certificado de cierre (Caso B). Esta sección no se sincronizó en su momento. Ver también la nota #764 de ADR-004 sobre qué documento concreto es el `PRODUCIDO` cuando llegan varios documentos a la vez en un mismo acto de recepción.
 
 ---
 
