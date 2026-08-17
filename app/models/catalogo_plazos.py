@@ -16,8 +16,21 @@ class CatalogoPlazo(db.Model):
     catálogo de tipos ESFTT.
 
     CAMPO tipo_elemento: nivel ESFTT ('SOLICITUD' | 'FASE' | 'TRAMITE' | 'TAREA').
-    CAMPO tipo_elemento_id: ID en la tabla tipos_* correspondiente.
-        FK polimórfica sin constraint BD (como motor_reglas).
+        Redundante con la longitud de `camino`, pero se conserva como prefiltro
+        SQL barato — filtrar por número de segmentos de un string no es viable.
+    CAMPO camino: patrón calificado ESFTT con comodín posicional 'ANY' (#785).
+        Mismo formato y mismo matcher (motor_reglas._sujeto_casa) que
+        ReglaMotor.sujeto, con un nivel más de profundidad. La longitud codifica
+        el nivel, y el último segmento NUNCA es 'ANY' (es el tipo del elemento
+        evaluado, siempre conocido):
+            SOLICITUD  2 segmentos   <expediente>/<siglas>
+            FASE       3             <expediente>/<siglas>/<fase>
+            TRAMITE    4             …/<tramite>
+            TAREA      5             …/<tramite>/<tarea>
+        Sustituye a tipo_elemento_codigo, que no distinguía dos puntos distintos
+        del árbol con el mismo literal (ESPERAR_PLAZO, RESOLUCION). Antes de #785
+        esa distinción la hacían condiciones_plazo sobre variables que reexponían
+        posición en el árbol — FK disfrazada, retirada en la misma migración.
     CAMPO campo_fecha: JSONB que indica qué Documento.fecha_administrativa
         es el inicio del cómputo. Formato:
             {'fk': 'documento_solicitud_id'}           -- caso directo (FK del elemento)
@@ -30,10 +43,8 @@ class CatalogoPlazo(db.Model):
     """
     __tablename__ = 'catalogo_plazos'
     __table_args__ = (
-        db.Index('idx_catalogo_plazos_tipo_elem',        'tipo_elemento', 'tipo_elemento_id'),
-        db.Index('idx_catalogo_plazos_tipo_orden',       'tipo_elemento', 'tipo_elemento_id', 'orden'),
-        db.Index('idx_catalogo_plazos_tipo_codigo',      'tipo_elemento', 'tipo_elemento_codigo'),
-        db.Index('idx_catalogo_plazos_tipo_codigo_orden','tipo_elemento', 'tipo_elemento_codigo', 'orden'),
+        db.Index('idx_catalogo_plazos_tipo_orden', 'tipo_elemento', 'orden'),
+        db.Index('idx_catalogo_plazos_camino',     'camino'),
         {'schema': 'public'},
     )
 
@@ -42,13 +53,11 @@ class CatalogoPlazo(db.Model):
         db.String(20), nullable=False,
         comment='Nivel ESFTT: SOLICITUD | FASE | TRAMITE | TAREA',
     )
-    tipo_elemento_id = db.Column(
-        db.Integer, nullable=False,
-        comment='DEPRECATED — usar tipo_elemento_codigo. Se eliminará en issue posterior.',
-    )
-    tipo_elemento_codigo = db.Column(
-        db.String(60), nullable=False,
-        comment='Código estable del tipo (reemplaza tipo_elemento_id — polimorfismo seguro)',
+    camino = db.Column(
+        db.String(250), nullable=False,
+        comment='Patrón calificado ESFTT con comodín ANY: '
+                'ANY/ANY/ANY/REQUERIMIENTO_SUBSANACION/ESPERAR_PLAZO. '
+                'La hoja (último segmento) nunca es ANY.',
     )
     campo_fecha = db.Column(
         JSONB, nullable=True,
@@ -102,5 +111,15 @@ class CatalogoPlazo(db.Model):
         order_by='CondicionPlazo.orden',
     )
 
+    @property
+    def tipo_elemento_codigo(self) -> str:
+        """Hoja del camino — el tipo del elemento evaluado.
+
+        Compatibilidad de lectura para plantillas y serializadores que mostraban
+        la antigua columna homónima (#785). No es filtrable en SQL: para eso está
+        `camino`.
+        """
+        return (self.camino or '').rsplit('/', 1)[-1]
+
     def __repr__(self):
-        return f'<CatalogoPlazo {self.tipo_elemento}:{self.tipo_elemento_id} {self.plazo_valor}{self.plazo_unidad}>'
+        return f'<CatalogoPlazo {self.camino} {self.plazo_valor}{self.plazo_unidad}>'
