@@ -44,6 +44,16 @@
       </div>
       <div class="modal-body">
 
+        {% if errores %}
+        <div class="alert alert-danger small py-2 mb-3">
+          <ul class="mb-0 ps-3">
+            {% for err in errores %}
+            <li>{{ err }}</li>
+            {% endfor %}
+          </ul>
+        </div>
+        {% endif %}
+
         {% set _nivel_alta = form_data.get('tipo_elemento', 'SOLICITUD') if form_data else 'SOLICITUD' %}
         {{ cf.camino_sftt('cpc', _nivel_alta,
                           form_data.get('camino', '') if form_data else '',
