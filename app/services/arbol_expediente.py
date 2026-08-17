@@ -307,7 +307,7 @@ def _serializar_tramite(tr) -> dict:
     agg = _agregados_vacios()
     tareas_data = []
     for ta in sorted(tr.tareas, key=lambda t: t.id):
-        nodo, nodo_agg = _serializar_tarea(ta, tr)
+        nodo, nodo_agg = _serializar_tarea(ta)
         tareas_data.append(nodo)
         _sumar_agregados(agg, nodo_agg)
 
@@ -327,7 +327,7 @@ def _serializar_tramite(tr) -> dict:
     }
 
 
-def _serializar_tarea(tarea, tramite) -> tuple[dict, dict]:
+def _serializar_tarea(tarea) -> tuple[dict, dict]:
     """
     Devuelve (nodo, agregados_de_esta_tarea).
 
@@ -357,7 +357,7 @@ def _serializar_tarea(tarea, tramite) -> tuple[dict, dict]:
     agg = _agregados_vacios()
 
     if codigo == 'ESPERAR_PLAZO':
-        plazo = plazo_tarea(tarea, tramite)
+        plazo = plazo_tarea(tarea)
         nodo['plazo'] = plazo
         # El agregado solo cuenta plazos accionables (tarea aún no ejecutada).
         if plazo and not tarea.ejecutada:
@@ -382,20 +382,21 @@ def _serializar_tarea(tarea, tramite) -> tuple[dict, dict]:
     return nodo, agg
 
 
-def plazo_tarea(tarea, tramite) -> Optional[dict]:
+def plazo_tarea(tarea) -> Optional[dict]:
     """
     Resuelve el estado de plazo de una tarea ESPERAR_PLAZO (server-only).
     Defensivo: cualquier fallo degrada a None sin romper el árbol completo.
 
     Público: lo reutiliza también services/detalle_nodo.py (inspector lazy, S3a).
+
+    Sin dict de variables desde #785: el catálogo se identifica por camino SFTT,
+    que plazos.py deriva del propio elemento. Antes había que inyectar a mano
+    `tipo_tramite` (y este fichero lo duplicaba en vez de reutilizar el helper de
+    seguimiento.py) porque el catálogo lo usaba como discriminador de posición.
     """
     try:
         from app.services.plazos import obtener_estado_plazo
-        variables = {}
-        tt = tramite.tipo_tramite if tramite else None
-        if tt:
-            variables['tipo_tramite'] = tt.codigo
-        ep = obtener_estado_plazo(tarea, 'TAREA', variables=variables)
+        ep = obtener_estado_plazo(tarea, 'TAREA')
         return {
             'estado': ep.estado,
             'fecha_limite': ep.fecha_limite.isoformat() if ep.fecha_limite else None,

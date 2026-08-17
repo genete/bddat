@@ -1,16 +1,22 @@
 """Tests issue #448 — seed catalogo_plazos para fase RESOLUCION.
 
-Verifica el resultado de la migración `448_seed_plazos_resolucion`:
-  A) Variable tipo_solicitud activa en catalogo_variables.
-  B) 7 entradas en catalogo_plazos con tipo_elemento_codigo='RESOLUCION',
-     cada una con su norma_origen y la condición IN sobre tipo_solicitud.
-  C) Para cada combinación de tipo_solicitud cubierta por el seed,
-     _seleccionar_catalogo devuelve exactamente la entrada correcta.
-  D) Para combinaciones fuera de scope (RAIPEE_*, RADNE, DESISTIMIENTO, …),
-     _seleccionar_catalogo devuelve None.
+Reescrito en #785: la identificación de la fila dejó de hacerse con la condición
+`tipo_solicitud IN [...]` y pasó a ser estructural, por el segmento de siglas del
+camino SFTT (`ANY/<siglas>/RESOLUCION`). Las 7 entradas originales con IN
+multivalor se desdoblaron en 11, una por combinación, sin IN en el segmento.
 
-Requieren BD con migración 448 aplicada y fixture app_ctx (conftest.py).
+Verifica:
+  A) Variable tipo_solicitud sigue activa (la usan condiciones_requisito, #192);
+     lo que ya no existe es su uso como discriminador de posición en plazos.
+  B) 11 entradas RESOLUCION, cada una con su camino, norma y efecto.
+  C) Para cada combinación cubierta, _seleccionar_catalogo devuelve la correcta
+     partiendo del elemento (sin dict de variables).
+  D) Combinaciones fuera de scope → None (deuda de #247).
+
+Requieren BD con migración 785 aplicada y fixture app_ctx (conftest.py).
 """
+from unittest.mock import MagicMock
+
 import pytest
 
 
@@ -39,11 +45,38 @@ _FUERA_DE_SCOPE = [
 ]
 
 
+def _fase_resolucion(siglas):
+    """Fase RESOLUCION de una solicitud con las siglas dadas.
+
+    Mock en vez de fila real: _seleccionar_catalogo solo necesita compilar el
+    camino del elemento (ascendencia con strings) y consultar el catálogo, que sí
+    es la tabla real de BD. Así el test no escribe nada.
+    """
+    fase = MagicMock()
+    fase.tipo_fase = MagicMock(codigo='RESOLUCION')
+    fase.solicitud.tipo_solicitud = MagicMock(siglas=siglas)
+    fase.solicitud.expediente.tipo_expediente = MagicMock(tipo='Distribucion')
+    return fase
+
+
+def _entradas_resolucion():
+    from app.models.catalogo_plazos import CatalogoPlazo
+    return (
+        CatalogoPlazo.query
+        .filter(CatalogoPlazo.tipo_elemento == 'FASE',
+                CatalogoPlazo.camino.like('%/RESOLUCION'),
+                CatalogoPlazo.activo.is_(True))
+        .all()
+    )
+
+
 # ---------------------------------------------------------------------------
 # A) Variable tipo_solicitud
 # ---------------------------------------------------------------------------
 
 def test_variable_tipo_solicitud_existe_y_esta_activa(app_ctx):
+    """Sigue viva: la usan condiciones_requisito (#192). Lo retirado en #785 es
+    su uso como discriminador de posición en catalogo_plazos, no la variable."""
     from app.models.motor_reglas import CatalogoVariable
     var = CatalogoVariable.query.filter_by(nombre='tipo_solicitud').first()
     assert var is not None, 'Variable tipo_solicitud no existe en catalogo_variables'
@@ -51,31 +84,55 @@ def test_variable_tipo_solicitud_existe_y_esta_activa(app_ctx):
     assert var.tipo_dato == 'texto'
 
 
-# ---------------------------------------------------------------------------
-# B) Las 7 entradas del seed están presentes con sus normas
-# ---------------------------------------------------------------------------
+def test_ninguna_condicion_de_plazo_usa_tipo_solicitud(app_ctx):
+    """#785: el tipo de solicitud es posición en el árbol, va en el camino.
 
-def test_hay_exactamente_7_entradas_resolucion(app_ctx):
-    from app.models.catalogo_plazos import CatalogoPlazo
-    entradas = (
-        CatalogoPlazo.query
-        .filter_by(tipo_elemento='FASE', tipo_elemento_codigo='RESOLUCION', activo=True)
+    Salvaguarda de regresión — si alguien vuelve a meterlo como condición, el
+    catálogo recupera el problema de identificación que #785 vino a resolver.
+    """
+    from app.models.condiciones_plazo import CondicionPlazo
+    from app.models.motor_reglas import CatalogoVariable
+    conds = (
+        CondicionPlazo.query
+        .join(CatalogoVariable, CondicionPlazo.variable_id == CatalogoVariable.id)
+        .filter(CatalogoVariable.nombre == 'tipo_solicitud')
         .all()
     )
-    assert len(entradas) == 7, (
-        f'Esperadas 7 entradas RESOLUCION, hay {len(entradas)}: '
-        f'{[e.norma_origen for e in entradas]}'
+    assert conds == [], (
+        f'{len(conds)} condiciones_plazo siguen discriminando por tipo_solicitud '
+        f'en vez de por camino: {[c.catalogo_plazo_id for c in conds]}'
     )
+
+
+# ---------------------------------------------------------------------------
+# B) Las 11 entradas están presentes con sus caminos y normas
+# ---------------------------------------------------------------------------
+
+def test_hay_exactamente_11_entradas_resolucion(app_ctx):
+    """7 originales, desdobladas en 11 al pasar el IN multivalor a camino."""
+    entradas = _entradas_resolucion()
+    assert len(entradas) == 11, (
+        f'Esperadas 11 entradas RESOLUCION, hay {len(entradas)}: '
+        f'{[e.camino for e in entradas]}'
+    )
+
+
+def test_hay_una_entrada_por_combinacion_cubierta(app_ctx):
+    caminos = {e.camino for e in _entradas_resolucion()}
+    esperados = {f'ANY/{s}/RESOLUCION' for s in _COMBINACIONES_CUBIERTAS}
+    assert caminos == esperados
+
+
+def test_ningun_camino_de_resolucion_tiene_hoja_any(app_ctx):
+    """Invariante de #785: la hoja es el tipo del elemento evaluado, nunca ANY."""
+    for e in _entradas_resolucion():
+        assert e.camino.rsplit('/', 1)[-1] == 'RESOLUCION', (
+            f'Entrada {e.id} con hoja inesperada: {e.camino}'
+        )
 
 
 def test_cada_entrada_tiene_efecto_silencio_desestimatorio(app_ctx):
-    from app.models.catalogo_plazos import CatalogoPlazo
-    entradas = (
-        CatalogoPlazo.query
-        .filter_by(tipo_elemento='FASE', tipo_elemento_codigo='RESOLUCION', activo=True)
-        .all()
-    )
-    for e in entradas:
+    for e in _entradas_resolucion():
         assert e.efecto_plazo.codigo == 'SILENCIO_DESESTIMATORIO', (
             f'Entrada {e.id} ({e.norma_origen}) tiene efecto inesperado '
             f'{e.efecto_plazo.codigo}'
@@ -83,13 +140,7 @@ def test_cada_entrada_tiene_efecto_silencio_desestimatorio(app_ctx):
 
 
 def test_normas_origen_esperadas_presentes(app_ctx):
-    from app.models.catalogo_plazos import CatalogoPlazo
-    normas_bd = {
-        e.norma_origen
-        for e in CatalogoPlazo.query
-        .filter_by(tipo_elemento='FASE', tipo_elemento_codigo='RESOLUCION', activo=True)
-        .all()
-    }
+    normas_bd = {e.norma_origen for e in _entradas_resolucion()}
     normas_esperadas = {
         'Art. 132 bis RD 1955/2000 + DA 3ª LSE',
         'Art. 132 ter RD 1955/2000 + DA 3ª LSE',
@@ -104,11 +155,11 @@ def test_normas_origen_esperadas_presentes(app_ctx):
 
 def test_cierre_cita_art_138_mod_rd88_2026(app_ctx):
     """Salvaguarda regresión: la cita de CIERRE debe ser 138 (mod), NO 137."""
-    from app.models.catalogo_plazos import CatalogoPlazo
-    entradas = CatalogoPlazo.query.filter_by(
-        tipo_elemento='FASE', tipo_elemento_codigo='RESOLUCION', activo=True
-    ).all()
-    citas_cierre = [e.norma_origen for e in entradas if 'CIERRE' in str(e.condiciones[0].valor) if e.condiciones]
+    citas_cierre = [
+        e.norma_origen for e in _entradas_resolucion()
+        if e.camino == 'ANY/CIERRE/RESOLUCION'
+    ]
+    assert citas_cierre, 'No hay entrada de RESOLUCION para CIERRE'
     assert any('138' in c for c in citas_cierre), (
         f'No hay entrada que cite art. 138 para CIERRE: {citas_cierre}'
     )
@@ -118,21 +169,13 @@ def test_cierre_cita_art_138_mod_rd88_2026(app_ctx):
 
 
 def test_no_existe_resolucion_ae_sin_sufijo_codigo_muerto_del_172(app_ctx):
-    """Salvaguarda: el seed 172 incluía 'RESOLUCION_AE' (sin sufijo); no debe
-    haber ninguna condición IN que contenga el literal 'AE' sin sufijo."""
-    from app.models.condiciones_plazo import CondicionPlazo
-    from app.models.catalogo_plazos import CatalogoPlazo
-    conds = (
-        CondicionPlazo.query
-        .join(CatalogoPlazo, CondicionPlazo.catalogo_plazo_id == CatalogoPlazo.id)
-        .filter(CatalogoPlazo.tipo_elemento_codigo == 'RESOLUCION')
-        .all()
-    )
-    for c in conds:
-        valor = c.valor if isinstance(c.valor, list) else [c.valor]
-        assert 'AE' not in valor, (
-            f"Condición {c.id} incluye literal 'AE' sin sufijo "
-            f"(código muerto del seed 172): {valor}"
+    """Salvaguarda: el seed 172 incluía 'RESOLUCION_AE' (sin sufijo); ninguna
+    entrada debe tener 'AE' pelado en el segmento de siglas."""
+    for e in _entradas_resolucion():
+        siglas = e.camino.split('/')[1]
+        assert siglas != 'AE', (
+            f"Entrada {e.id} usa el literal 'AE' sin sufijo "
+            f'(código muerto del seed 172): {e.camino}'
         )
 
 
@@ -142,11 +185,10 @@ def test_no_existe_resolucion_ae_sin_sufijo_codigo_muerto_del_172(app_ctx):
 
 @pytest.mark.parametrize('siglas,esperado', list(_COMBINACIONES_CUBIERTAS.items()))
 def test_seleccionar_catalogo_resolucion_para_combinacion_cubierta(app_ctx, siglas, esperado):
+    """Sin dict de variables (#785): la combinación sale del camino del elemento."""
     from app.services.plazos import _seleccionar_catalogo
     valor_esp, unidad_esp, norma_esp = esperado
-    entrada = _seleccionar_catalogo(
-        'FASE', 'RESOLUCION', {'tipo_solicitud': siglas}
-    )
+    entrada = _seleccionar_catalogo(_fase_resolucion(siglas), 'FASE', {})
     assert entrada is not None, (
         f'Sin plazo para tipo_solicitud={siglas} — el seed no cubre la combinación'
     )
@@ -163,9 +205,7 @@ def test_seleccionar_catalogo_resolucion_para_combinacion_cubierta(app_ctx, sigl
 def test_seleccionar_catalogo_resolucion_fuera_de_scope(app_ctx, siglas):
     """Plazos no cubiertos por el hotfix 448 (deuda controlada de #247)."""
     from app.services.plazos import _seleccionar_catalogo
-    entrada = _seleccionar_catalogo(
-        'FASE', 'RESOLUCION', {'tipo_solicitud': siglas}
-    )
+    entrada = _seleccionar_catalogo(_fase_resolucion(siglas), 'FASE', {})
     assert entrada is None, (
         f'tipo_solicitud={siglas} no debería tener plazo de RESOLUCION '
         f'todavía (deuda de #247); recibido entrada id={getattr(entrada, "id", "?")}'

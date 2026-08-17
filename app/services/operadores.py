@@ -2,6 +2,12 @@
 Operadores de comparación reutilizables para evaluadores de condiciones.
 
 Usados por motor_reglas._evaluar_condiciones y (sesión 4) por plazos._seleccionar_catalogo.
+
+Aquí vive también `camino_casa`, el matcher posicional de caminos calificados
+ESFTT: lo comparten el sujeto del motor (`reglas_motor.sujeto`, 2-4 segmentos) y
+el camino del catálogo de plazos (`catalogo_plazos.camino`, 2-5 segmentos, #785).
+Mismo criterio de extracción que _OPERADORES (IMPLEMENTACION_341.md decisión C):
+cuando motor_reglas y plazos necesitan el mismo mecanismo, vive en este módulo.
 """
 
 _OPERADORES = {
@@ -18,3 +24,19 @@ _OPERADORES = {
     'BETWEEN':     lambda v, ref: v is not None and ref[0] <= v <= ref[1],
     'NOT_BETWEEN': lambda v, ref: v is not None and not (ref[0] <= v <= ref[1]),
 }
+
+
+def camino_casa(patron: str, real: str) -> bool:
+    """
+    Compara segmento a segmento separando por '/'.
+    'ANY' en el patrón casa con cualquier valor real en esa posición.
+    Distinto número de segmentos → no casa (la longitud codifica el nivel ESFTT).
+    """
+    partes_patron = patron.split('/')
+    partes_real   = real.split('/')
+    if len(partes_patron) != len(partes_real):
+        return False
+    return all(
+        p == 'ANY' or p == r
+        for p, r in zip(partes_patron, partes_real)
+    )

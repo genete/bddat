@@ -82,16 +82,13 @@ def _datos_plazo_vencido(tarea: Tarea) -> dict:
 
     Lanza ValueError si el plazo no ha vencido o no se puede calcular.
     """
-    from app.services.seguimiento import _variables_esperar_plazo
     from app.services.plazos import (
         obtener_estado_plazo,
         _seleccionar_catalogo,
-        _get_tipo_elemento_codigo,
         _primer_consumido,
     )
 
-    variables = _variables_esperar_plazo(tarea)
-    ep = obtener_estado_plazo(tarea, 'TAREA', variables=variables)
+    ep = obtener_estado_plazo(tarea, 'TAREA')
 
     if ep.fecha_limite is None:
         raise ValueError(
@@ -104,8 +101,12 @@ def _datos_plazo_vencido(tarea: Tarea) -> dict:
             f'El plazo de la tarea {tarea.id} aún no ha vencido ({msg})'
         )
 
-    tipo_codigo = _get_tipo_elemento_codigo(tarea, 'TAREA')
-    catalogo = _seleccionar_catalogo('TAREA', tipo_codigo, variables)
+    catalogo = _seleccionar_catalogo(tarea, 'TAREA', {})
+
+    # Dato de registro del certificado, no discriminador: qué trámite disparó la
+    # espera. Se lee directo del ORM desde #785 — ya no hay dict de variables del
+    # que sacarlo, porque el catálogo resuelve la posición por sí mismo.
+    tipo_tramite = getattr(getattr(tarea.tramite, 'tipo_tramite', None), 'codigo', None)
 
     doc_inicio = _primer_consumido(tarea)
     fecha_inicio = (
@@ -118,7 +119,7 @@ def _datos_plazo_vencido(tarea: Tarea) -> dict:
         'tarea_id': tarea.id,
         'fecha_vencimiento': ep.fecha_limite.isoformat(),
         'documento_inicio_id': doc_inicio.id if doc_inicio else None,
-        'tipo_tramite': variables.get('tipo_tramite'),
+        'tipo_tramite': tipo_tramite,
         'normativa': catalogo.norma_origen if catalogo else None,
         'plazo_valor': catalogo.plazo_valor if catalogo else None,
         'plazo_unidad': catalogo.plazo_unidad if catalogo else None,

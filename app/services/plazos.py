@@ -9,11 +9,19 @@ Arquitectura (DISEÑO_FECHAS_PLAZOS.md §4):
     'estado_plazo' y 'efecto_plazo' que el motor agnóstico evalúa con operadores
     estándar (EQ/IN/etc.). El motor no conoce este servicio.
 
-Lógica real (#172):
-    1. Busca en catalogo_plazos el plazo aplicable al tipo de elemento.
+Lógica real (#172, identificación reescrita en #785):
+    1. Compila el camino SFTT del elemento y busca en catalogo_plazos la entrada
+       cuyo patrón `camino` casa con él (comodín ANY, matcher de operadores.py).
     2. Resuelve campo_fecha JSONB → Documento.fecha_administrativa.
     3. Calcula fecha_limite con calcular_fecha_fin() (art. 30 LPACAP).
     4. Deriva estado según condiciones de §2.4 (umbral 5 días hábiles).
+
+Identificación estructural (#785):
+    El catálogo se identifica por camino, no por el literal del tipo hoja: los
+    consumidores no tienen que inyectar variables que reexpongan la posición del
+    elemento en el árbol. Por eso obtener_estado_plazo() da un resultado correcto
+    sin `ctx` ni `variables` siempre que las entradas candidatas no tengan
+    condiciones de supuesto legal — el caso de todas las de ESPERAR_PLAZO.
 
 Suspensiones (#173):
     _obtener_suspensiones() infiere intervalos de art. 22 LPACAP desde el árbol
@@ -56,6 +64,10 @@ _TIPO_CODIGO_ATTR = {
     'TRAMITE':   'codigo',
     'TAREA':     'codigo',
 }
+
+# Nº de segmentos del camino ESFTT por nivel (#785). El matching exige longitud
+# idéntica, igual que en motor_reglas, así que la longitud codifica el nivel.
+_SEGMENTOS_CAMINO = {'SOLICITUD': 2, 'FASE': 3, 'TRAMITE': 4, 'TAREA': 5}
 
 # ---------------------------------------------------------------------------
 # Suspensiones — constantes de inferencia (art. 22 LPACAP, #173)
@@ -104,11 +116,6 @@ _SIN_PLAZO = EstadoPlazo(
 # API pública
 # ---------------------------------------------------------------------------
 
-def tiene_plazo_configurado(tipo_elemento: str, tipo_codigo: str, variables: dict) -> bool:
-    """True si existe al menos una entrada activa en catalogo_plazos que supera sus condiciones."""
-    return _seleccionar_catalogo(tipo_elemento, tipo_codigo, variables) is not None
-
-
 def obtener_estado_plazo(
     elemento,
     tipo_elemento: str,
@@ -130,8 +137,7 @@ def obtener_estado_plazo(
     if elemento is None or isinstance(elemento, dict):
         return _SIN_PLAZO
 
-    tipo_codigo = _get_tipo_elemento_codigo(elemento, tipo_elemento)
-    if tipo_codigo is None:
+    if _get_tipo_elemento_codigo(elemento, tipo_elemento) is None:
         return _SIN_PLAZO
 
     if variables is not None:
@@ -144,7 +150,7 @@ def obtener_estado_plazo(
     else:
         variables_dict = {}
 
-    catalogo = _seleccionar_catalogo(tipo_elemento, tipo_codigo, variables_dict)
+    catalogo = _seleccionar_catalogo(elemento, tipo_elemento, variables_dict)
 
     if catalogo is None:
         return _SIN_PLAZO
@@ -293,23 +299,96 @@ def _evaluar_condiciones_plazo(condiciones, variables: dict) -> bool:
     return True
 
 
-def _seleccionar_catalogo(tipo_elemento: str, tipo_codigo: str, variables_dict: dict):
+def compilar_camino(elemento, tipo_elemento: str) -> Optional[str]:
     """
-    Devuelve la primera entrada activa de catalogo_plazos que supera sus condiciones.
+    Compila el camino SFTT concreto del elemento, de exterior a interior (#785).
 
-    Filtra por tipo_elemento_codigo (código estable) en lugar del ID autoincremental
-    frágil ante borrado+reinserción (#347).
+    Recorre la ascendencia por el ORM —ya cargada en memoria por los eager-loads
+    de los consumidores, así que no añade queries— y produce el camino real que
+    se casa contra `catalogo_plazos.camino`:
 
-    Algoritmo (IMPLEMENTACION_341.md §Sesión 4):
-      1. Carga entradas activas con joinedload de condiciones+variable.
+        TAREA  → 'Distribucion/AAP/ANALISIS_SOLICITUD/REQUERIMIENTO_SUBSANACION/ESPERAR_PLAZO'
+        FASE   → 'Distribucion/AAP/RESOLUCION'
+
+    Nunca produce 'ANY': eso es comodín del patrón, no de la realidad (mismo
+    principio que assembler._compilar_sujeto). Un eslabón que no se puede
+    resolver produce '?', que solo casa contra 'ANY' en esa posición.
+
+    Se compila aquí y no en assembler._compilar_sujeto a propósito: aquel para
+    en TRAMITE y le pasan Tareas en cuatro sitios; alargarlo rompería el matching
+    de todas las reglas de 4 segmentos del motor.
+    """
+    n = _SEGMENTOS_CAMINO.get(tipo_elemento)
+    if n is None:
+        return None
+
+    # Ascendencia: del elemento hacia fuera, luego se invierte.
+    tarea = elemento if tipo_elemento == 'TAREA' else None
+    tramite = elemento if tipo_elemento == 'TRAMITE' else getattr(tarea, 'tramite', None)
+    fase = elemento if tipo_elemento == 'FASE' else getattr(tramite, 'fase', None)
+    solicitud = elemento if tipo_elemento == 'SOLICITUD' else getattr(fase, 'solicitud', None)
+    expediente = getattr(solicitud, 'expediente', None)
+
+    tipo_exp = getattr(expediente, 'tipo_expediente', None)
+    segmentos = [getattr(tipo_exp, 'tipo', None)]
+
+    if n >= 2:
+        segmentos.append(_codigo_de_tipo(solicitud, 'SOLICITUD'))
+    if n >= 3:
+        segmentos.append(_codigo_de_tipo(fase, 'FASE'))
+    if n >= 4:
+        segmentos.append(_codigo_de_tipo(tramite, 'TRAMITE'))
+    if n >= 5:
+        segmentos.append(_codigo_de_tipo(tarea, 'TAREA'))
+
+    return '/'.join(_segmento(s) for s in segmentos)
+
+
+def _segmento(valor) -> str:
+    """Normaliza un segmento del camino.
+
+    Cualquier cosa que no sea un string no vacío es un eslabón irresoluble y se
+    marca '?', que solo casa contra 'ANY' en esa posición. Un tipo mal poblado no
+    debe tumbar el cálculo del plazo (REGLAS_DESARROLLO §Servicios con catálogo).
+    """
+    return valor if isinstance(valor, str) and valor else '?'
+
+
+def _codigo_de_tipo(elemento, tipo_elemento: str) -> Optional[str]:
+    """Identificador estable del tipo de un elemento ESFTT ('siglas' o 'codigo')."""
+    if elemento is None:
+        return None
+    return _get_tipo_elemento_codigo(elemento, tipo_elemento)
+
+
+def _seleccionar_catalogo(elemento, tipo_elemento: str, variables_dict: dict):
+    """
+    Devuelve la primera entrada activa de catalogo_plazos aplicable al elemento.
+
+    Desde #785 la identificación es estructural: se casa el camino SFTT real del
+    elemento contra el patrón `camino` de cada entrada (comodín 'ANY', mismo
+    matcher que el motor). Antes se filtraba por `tipo_elemento_codigo`, que no
+    distinguía dos puntos distintos del árbol con el mismo literal, y la
+    ascendencia se reconstruía con condiciones sobre variables — FK disfrazada.
+
+    Las condiciones que quedan expresan supuesto legal real (tensión, tipo de
+    procedimiento previo), no posición, y se siguen evaluando con AND implícito.
+
+    Algoritmo:
+      1. Prefiltro SQL por tipo_elemento + activo (el nivel acota el juego).
       2. Ordena por orden ASC, id ASC (menor orden = mayor prioridad).
-      3. Itera: entrada sin condiciones → candidata válida inmediata.
-              entrada con condiciones → evalúa con AND implícito.
-      4. Devuelve la primera que pasa; si ninguna → None con warning.
+      3. Descarta las entradas cuyo camino no casa con el del elemento.
+      4. De las que casan: sin condiciones → válida inmediata; con condiciones →
+         AND implícito. Devuelve la primera que pasa.
     """
     from app.models.catalogo_plazos import CatalogoPlazo
     from app.models.condiciones_plazo import CondicionPlazo
+    from app.services.operadores import camino_casa
     from sqlalchemy.exc import OperationalError, ProgrammingError
+
+    camino_real = compilar_camino(elemento, tipo_elemento)
+    if camino_real is None:
+        return None
 
     try:
         entradas = (
@@ -317,7 +396,7 @@ def _seleccionar_catalogo(tipo_elemento: str, tipo_codigo: str, variables_dict: 
             .options(
                 joinedload(CatalogoPlazo.condiciones).joinedload(CondicionPlazo.variable)
             )
-            .filter_by(tipo_elemento=tipo_elemento, tipo_elemento_codigo=tipo_codigo, activo=True)
+            .filter_by(tipo_elemento=tipo_elemento, activo=True)
             .order_by(CatalogoPlazo.orden.asc(), CatalogoPlazo.id.asc())
             .all()
         )
@@ -325,17 +404,19 @@ def _seleccionar_catalogo(tipo_elemento: str, tipo_codigo: str, variables_dict: 
         log.warning('plazos: tabla catalogo_plazos no disponible (%s) — devolviendo SIN_PLAZO', exc)
         return None
 
-    for entrada in entradas:
+    candidatas = [e for e in entradas if camino_casa(e.camino or '', camino_real)]
+
+    for entrada in candidatas:
         if not entrada.condiciones:
             return entrada
         if _evaluar_condiciones_plazo(entrada.condiciones, variables_dict):
             return entrada
 
-    if entradas:
+    if candidatas:
         log.warning(
             'plazos: ninguna entrada de catalogo_plazos satisface condiciones '
-            'para %s/%s — se devuelve SIN_PLAZO',
-            tipo_elemento, tipo_codigo,
+            'para %s — se devuelve SIN_PLAZO',
+            camino_real,
         )
     return None
 

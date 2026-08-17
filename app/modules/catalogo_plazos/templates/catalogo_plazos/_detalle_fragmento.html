@@ -38,9 +38,38 @@
                 <input type="text" class="form-control form-control-sm" value="{{ NIVEL_LABEL.get(item.tipo_elemento, item.tipo_elemento) }}" readonly>
             </div>
             <div class="col-8">
-                <label class="form-label fw-semibold small">Tipo</label>
+                <label class="form-label fw-semibold small">Se aplica a</label>
                 <input type="text" class="form-control form-control-sm" value="{{ tipo_elemento_nombre }}" readonly>
             </div>
+
+            {# Camino SFTT (#785): dónde está el plazo en el árbol. Los niveles
+               sin concretar se atenúan; la hoja es lo que identifica la fila. #}
+            <div class="col-12">
+                <label class="form-label fw-semibold small">Camino en el árbol</label>
+                <div class="form-control form-control-sm h-auto bg-body-tertiary">
+                    <div class="font-monospace small mb-1">
+                        {%- for s in camino_legible -%}
+                            {%- if not loop.first %}<span class="text-secondary opacity-50">/</span>{% endif -%}
+                            {%- if s.any -%}
+                                <span class="text-secondary opacity-50">ANY</span>
+                            {%- elif s.hoja -%}
+                                <strong>{{ s.valor }}</strong>
+                            {%- else -%}
+                                {{ s.valor }}
+                            {%- endif -%}
+                        {%- endfor -%}
+                    </div>
+                    <div class="small text-secondary">
+                        {% for s in camino_legible %}
+                        <div>
+                            <span class="fw-semibold">{{ s.nivel }}:</span>
+                            {% if s.any %}<em>cualquiera</em>{% else %}{{ s.nombre }}{% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
             <div class="col-12">
                 <label class="form-label fw-semibold small">Inicio de cómputo</label>
                 <input type="text" class="form-control form-control-sm" value="{{ campo_fecha_legible }}" readonly>
@@ -107,7 +136,10 @@
         </ul>
         <div class="form-text mt-1">Todas las condiciones se evalúan en AND — aplica solo si se cumplen todas.</div>
         {% else %}
-        <div class="text-secondary small">Sin condiciones — este plazo es el fallback para su nivel/tipo (mayor «orden» = menor prioridad).</div>
+        <div class="text-secondary small">
+            Sin condiciones — este plazo se aplica siempre que el camino case
+            (mayor «orden» = menor prioridad frente a otros que también casen).
+        </div>
         {% endif %}
     </div>
 </div>

@@ -37,7 +37,6 @@ from app.models.tramites import Tramite
 from app.models.tareas import Tarea
 from app.models.documentos import Documento
 from app.models.tipos_documentos import TipoDocumento
-from app.services.plazos import obtener_estado_plazo
 from app.services.rutas_esftt import ruta_pool_documento, nombre_pool_unico
 from app.services.consolidacion_defectos import agrupar_defectos_por_origen
 from app.services.detalle_nodo import info_apertura_documento

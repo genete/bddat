@@ -41,11 +41,11 @@ def plazo_base(app_ctx):
     efecto = EfectoPlazo.query.filter_by(codigo='NINGUNO').first()
     assert efecto is not None, 'Seed de efectos_plazo no encontrado — ¿migración aplicada?'
 
-    # tipo_elemento_id=9999 no existe en tipos_fases pero la FK es polimórfica (sin constraint)
+    # Camino con hoja inventada: no existe esa fase, pero el camino es texto
+    # libre validado por convención, no por FK (#785).
     plazo = CatalogoPlazo(
         tipo_elemento='FASE',
-        tipo_elemento_id=9999,
-        tipo_elemento_codigo='TEST_FIXTURE',
+        camino='ANY/ANY/TEST_FIXTURE',
         plazo_valor=30,
         plazo_unidad='DIAS_NATURALES',
         efecto_vencimiento_id=efecto.id,
@@ -132,8 +132,7 @@ def test_catalogo_plazo_orden_default(app_ctx):
     efecto = EfectoPlazo.query.filter_by(codigo='NINGUNO').first()
     plazo = CatalogoPlazo(
         tipo_elemento='FASE',
-        tipo_elemento_id=9998,
-        tipo_elemento_codigo='TEST_ORDEN',
+        camino='ANY/ANY/TEST_ORDEN',
         plazo_valor=10,
         plazo_unidad='DIAS_HABILES',
         efecto_vencimiento_id=efecto.id,

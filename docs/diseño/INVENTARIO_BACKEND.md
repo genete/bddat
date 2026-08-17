@@ -66,8 +66,8 @@
 
 | Modelo | Tabla | Propósito |
 |---|---|---|
-| CatalogoPlazo | `catalogo_plazos` | Plazo legal por tipo de elemento ESFTT (admin por supervisor). campo_fecha JSONB, plazo_valor + plazo_unidad |
-| CondicionPlazo | `condiciones_plazo` | Condiciones AND para seleccionar la entrada aplicable |
+| CatalogoPlazo | `catalogo_plazos` | Plazo legal por camino SFTT (admin por supervisor). `camino` con comodín ANY (#785), campo_fecha JSONB, plazo_valor + plazo_unidad |
+| CondicionPlazo | `condiciones_plazo` | Condiciones AND de supuesto legal (no de posición en el árbol — eso va en `camino`) |
 | EfectoPlazo | `efectos_plazo` | Efecto del vencimiento: SILENCIO_ESTIMATORIO, SILENCIO_DESESTIMATORIO, CADUCIDAD_PROCEDIMIENTO… |
 | DiaInhabil | `dias_inhabiles` | Calendario de festivos por ámbito |
 | AmbitoInhabilidad | `ambitos_inhabilidad` | Nacional, regional, local |
@@ -281,9 +281,9 @@ Efectos posibles: `NINGUNO`, `SILENCIO_ESTIMATORIO`, `SILENCIO_DESESTIMATORIO`, 
 
 ### 5.3 Configuración (`models/catalogo_plazos.py`)
 
-`CatalogoPlazo(tipo_elemento, tipo_elemento_codigo, campo_fecha JSONB, plazo_valor, plazo_unidad, efecto_vencimiento_id, norma_origen, vigencia_desde, vigencia_hasta, activo, orden)`.
+`CatalogoPlazo(tipo_elemento, camino, campo_fecha JSONB, plazo_valor, plazo_unidad, efecto_vencimiento_id, norma_origen, vigencia_desde, vigencia_hasta, activo, orden)`.
 
-Selección: primera entrada activa cuyas `CondicionPlazo` (AND) se cumplen. Ordenadas por `orden ASC, id ASC`.
+Selección (#785): de las entradas activas del nivel, se descartan las cuyo `camino` no casa con el del elemento (`plazos.compilar_camino` + `operadores.camino_casa`, comodín `ANY`); de las que casan, la primera cuyas `CondicionPlazo` (AND) se cumplen. Ordenadas por `orden ASC, id ASC`.
 
 ### 5.4 Calendario
 
@@ -361,7 +361,7 @@ TRAMITADOR puede editar cualquier expediente, no solo el asignado. La traza qued
 | Refactor entidades (#103) | `3f7071afb12d` |
 | Numero AT correlativo | `606202414595_contador_gapless_numero_at` |
 | Motor de reglas (paso a paso) | `5c4f7a4bf22d`, `a9cd38df8797_paso3`, `557859de1417_paso4a`, `f58e0e31f0b2_paso4b`, `e40ce8475305_paso6_5`, `d715b074b58c`, `1800b039663e`, `20e383031811`, `319_descripcion_regla`, `455_variables_motor_analisis`, `460_variables_motor_consultas`, `f0d0988bb956`, `f77b09ef7c1e`, `cae8e6d884af`, `bc4a9f1d8e02_190_variables_plazo` |
-| Catálogo plazos (#341) | `c9379e09ae01_172_plazos_tablas_catalogo`, `6a9c2d5e0232_341_condiciones_plazo`, `2da48740db54_341_variables_art131`, `347_tipo_elemento_codigo`, `350_seed_catalogo_plazos`, `416_seed_plazos_tablon`, `448_seed_plazos_resolucion`, `463_seed_plazos_consultas` |
+| Catálogo plazos (#341) | `c9379e09ae01_172_plazos_tablas_catalogo`, `6a9c2d5e0232_341_condiciones_plazo`, `2da48740db54_341_variables_art131`, `347_tipo_elemento_codigo`, `350_seed_catalogo_plazos`, `416_seed_plazos_tablon`, `448_seed_plazos_resolucion`, `463_seed_plazos_consultas`, `785_catalogo_plazos_camino_sftt` |
 | Tipos documentos (#188) | `09855a1393f6`, `337_seed_tipos_documentos`, `377_seed_descripciones` |
 | Plantillas (#167) | `b2c3d4e5f6a7_fase2_rename_plantillas`, `c3d4e5f6a7b8_fase3_nombre_en_plantilla`, `a1b2c3d4e5f6_fase1_tipo_solicitud_directo` |
 | Eliminar whitelists (ADR-007) | `387_eliminar_whitelists_esft`, `e292f71a07a5_merge_heads_366_normas` |
