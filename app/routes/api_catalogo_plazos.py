@@ -35,7 +35,7 @@ def listar_catalogo_plazos():
     Query Parameters:
         cursor (int, default 0)      : ID del último registro recibido.
         limit  (int, default 50)     : Registros por página. Máx: 100.
-        search (str, mín 2 chars)    : Búsqueda parcial en tipo_elemento_codigo o norma_origen.
+        search (str, mín 2 chars)    : Búsqueda parcial en camino o norma_origen.
         estado (str: true/false/'')  : Filtro por activo. Default: todos.
         nivel  (str: SOLICITUD/FASE/TRAMITE/TAREA/'') : Filtro por tipo_elemento.
 
@@ -71,8 +71,10 @@ def listar_catalogo_plazos():
             q = q.filter(CatalogoPlazo.id > cursor)
         if search_query:
             patron = func.lower(search_query)
+            # Búsqueda sobre el camino completo (#785): encuentra por cualquier
+            # nivel —trámite padre, fase, siglas— no solo por el tipo hoja.
             q = q.filter(
-                func.lower(CatalogoPlazo.tipo_elemento_codigo).contains(patron)
+                func.lower(CatalogoPlazo.camino).contains(patron)
                 | func.lower(CatalogoPlazo.norma_origen).contains(patron)
             )
         if activo_raw == 'true':
@@ -109,7 +111,8 @@ def listar_catalogo_plazos():
         data.append({
             'id':               cp.id,
             'tipo_elemento':    cp.tipo_elemento,
-            'tipo_elemento_codigo': cp.tipo_elemento_codigo,
+            'camino':           cp.camino,
+            'hoja':             cp.hoja,
             'plazo':            f'{cp.plazo_valor} {cp.plazo_unidad}',
             'efecto':           cp.efecto_plazo.nombre if cp.efecto_plazo else None,
             'norma_origen':     cp.norma_origen,

@@ -83,7 +83,7 @@ def test_supervisor_puede_crear_nivel_solicitud(usuario_supervisor, app):
     siglas, efecto_id = _datos_maestros_solicitud(app)
     r = usuario_supervisor.post('/catalogo_plazos/crear', data={
         'tipo_elemento': 'SOLICITUD',
-        'tipo_elemento_codigo': siglas,
+        'camino_solicitud': siglas,
         'plazo_valor': '3',
         'plazo_unidad': 'MESES',
         'efecto_vencimiento_id': str(efecto_id),
@@ -114,7 +114,7 @@ def test_supervisor_puede_crear_nivel_fase(usuario_supervisor, app):
 
     r = usuario_supervisor.post('/catalogo_plazos/crear', data={
         'tipo_elemento': 'FASE',
-        'tipo_elemento_codigo': codigo_fase,
+        'camino_fase': codigo_fase,   # ancestros omitidos → ANY (#785)
         'campo_fecha_fk': 'documento_resultado_id',
         'plazo_valor': '1',
         'plazo_unidad': 'MESES',
@@ -146,7 +146,7 @@ def test_supervisor_puede_crear_nivel_tramite(usuario_supervisor, app):
 
     r = usuario_supervisor.post('/catalogo_plazos/crear', data={
         'tipo_elemento': 'TRAMITE',
-        'tipo_elemento_codigo': codigo_tramite,
+        'camino_tramite': codigo_tramite,   # ancestros omitidos → ANY (#785)
         'campo_fecha_via_tarea_tipo': codigo_tarea,
         'campo_fecha_rol': 'PRODUCIDO',
         'plazo_valor': '15',
@@ -177,7 +177,7 @@ def test_supervisor_puede_crear_nivel_tarea(usuario_supervisor, app):
 
     r = usuario_supervisor.post('/catalogo_plazos/crear', data={
         'tipo_elemento': 'TAREA',
-        'tipo_elemento_codigo': codigo_tarea,
+        'camino_tarea': codigo_tarea,   # ancestros omitidos → ANY (#785)
         'campo_fecha_rol': 'CONSUMIDO',
         'plazo_valor': '10',
         'plazo_unidad': 'DIAS_HABILES',
@@ -195,11 +195,99 @@ def test_supervisor_puede_crear_nivel_tarea(usuario_supervisor, app):
         assert creado.campo_fecha == {'rol': 'CONSUMIDO'}
 
 
+def test_crear_con_ancestros_concretos_compone_el_camino(usuario_supervisor, app):
+    """#785: los ancestros concretados viajan al camino; los omitidos van a ANY."""
+    with app.app_context():
+        from app.models.tipos_solicitudes import TipoSolicitud
+        from app.models.tipos_fases import TipoFase
+        from app.models.tipos_tramites import TipoTramite
+        from app.models.efectos_plazo import EfectoPlazo
+        tipo_sol = TipoSolicitud.query.first()
+        tipo_fase = TipoFase.query.first()
+        tipo_tramite = TipoTramite.query.first()
+        efecto = EfectoPlazo.query.first()
+        if not all([tipo_sol, tipo_fase, tipo_tramite, efecto]):
+            pytest.skip('Faltan datos maestros en esta BD')
+        siglas, cod_fase = tipo_sol.siglas, tipo_fase.codigo
+        cod_tramite, efecto_id = tipo_tramite.codigo, efecto.id
+
+    r = usuario_supervisor.post('/catalogo_plazos/crear', data={
+        'tipo_elemento': 'TRAMITE',
+        'camino_solicitud': siglas,
+        'camino_fase': cod_fase,
+        'camino_tramite': cod_tramite,
+        'campo_fecha_via_tarea_tipo': 'NOTIFICAR',
+        'campo_fecha_rol': 'PRODUCIDO',
+        'plazo_valor': '15',
+        'plazo_unidad': 'DIAS_HABILES',
+        'efecto_vencimiento_id': str(efecto_id),
+        'norma_origen': 'Camino concreto (#632 smoke)',
+    }, follow_redirects=False)
+    assert r.status_code == 302
+
+    with app.app_context():
+        from app.models.catalogo_plazos import CatalogoPlazo
+        creado = CatalogoPlazo.query.filter_by(norma_origen='Camino concreto (#632 smoke)').first()
+        assert creado is not None
+        assert creado.camino == f'ANY/{siglas}/{cod_fase}/{cod_tramite}'
+        assert creado.hoja == cod_tramite
+
+
+def test_crear_sin_hoja_es_rechazado(usuario_supervisor, app):
+    """#785: la hoja identifica el elemento evaluado — no puede quedar en ANY."""
+    with app.app_context():
+        from app.models.efectos_plazo import EfectoPlazo
+        efecto = EfectoPlazo.query.first()
+        if efecto is None:
+            pytest.skip('Faltan datos maestros (efectos_plazo) en esta BD')
+        efecto_id = efecto.id
+
+    r = usuario_supervisor.post('/catalogo_plazos/crear', data={
+        'tipo_elemento': 'FASE',
+        'camino_fase': 'ANY',          # hoja sin concretar
+        'campo_fecha_fk': 'documento_resultado_id',
+        'plazo_valor': '1',
+        'plazo_unidad': 'MESES',
+        'efecto_vencimiento_id': str(efecto_id),
+        'norma_origen': 'Hoja ANY (#632 smoke)',
+    }, follow_redirects=False)
+    assert r.status_code == 200, 'Debe re-renderizar el formulario con el error, no redirigir'
+
+    with app.app_context():
+        from app.models.catalogo_plazos import CatalogoPlazo
+        assert CatalogoPlazo.query.filter_by(norma_origen='Hoja ANY (#632 smoke)').first() is None
+
+
+def test_crear_con_tipo_inexistente_es_rechazado(usuario_supervisor, app):
+    """#785: los segmentos concretos se validan contra su catálogo de tipos."""
+    with app.app_context():
+        from app.models.efectos_plazo import EfectoPlazo
+        efecto = EfectoPlazo.query.first()
+        if efecto is None:
+            pytest.skip('Faltan datos maestros (efectos_plazo) en esta BD')
+        efecto_id = efecto.id
+
+    r = usuario_supervisor.post('/catalogo_plazos/crear', data={
+        'tipo_elemento': 'FASE',
+        'camino_fase': 'FASE_QUE_NO_EXISTE',
+        'campo_fecha_fk': 'documento_resultado_id',
+        'plazo_valor': '1',
+        'plazo_unidad': 'MESES',
+        'efecto_vencimiento_id': str(efecto_id),
+        'norma_origen': 'Tipo inexistente (#632 smoke)',
+    }, follow_redirects=False)
+    assert r.status_code == 200
+
+    with app.app_context():
+        from app.models.catalogo_plazos import CatalogoPlazo
+        assert CatalogoPlazo.query.filter_by(norma_origen='Tipo inexistente (#632 smoke)').first() is None
+
+
 def test_tramitador_no_puede_crear(usuario_tramitador, app):
     siglas, efecto_id = _datos_maestros_solicitud(app)
     r = usuario_tramitador.post('/catalogo_plazos/crear', data={
         'tipo_elemento': 'SOLICITUD',
-        'tipo_elemento_codigo': siglas,
+        'camino_solicitud': siglas,
         'plazo_valor': '1',
         'plazo_unidad': 'MESES',
         'efecto_vencimiento_id': str(efecto_id),
@@ -225,8 +313,7 @@ def _crear_para_editar(app):
             pytest.skip('Faltan datos maestros (tipos_solicitudes / efectos_plazo) en esta BD')
         item = CatalogoPlazo(
             tipo_elemento='SOLICITUD',
-            tipo_elemento_id=tipo.id,
-            tipo_elemento_codigo=tipo.siglas,
+            camino=f'ANY/{tipo.siglas}',
             campo_fecha={'fk': 'documento_solicitud_id'},
             plazo_valor=3,
             plazo_unidad='MESES',
@@ -244,7 +331,7 @@ def test_supervisor_puede_editar_sin_condiciones(usuario_supervisor, app):
     item_id, siglas, efecto_id = _crear_para_editar(app)
     r = usuario_supervisor.post(f'/catalogo_plazos/{item_id}/editar', data={
         'tipo_elemento': 'SOLICITUD',
-        'tipo_elemento_codigo': siglas,
+        'camino_solicitud': siglas,
         'plazo_valor': '2',
         'plazo_unidad': 'DIAS_HABILES',
         'efecto_vencimiento_id': str(efecto_id),
@@ -273,7 +360,7 @@ def test_supervisor_puede_anadir_condicion_between(usuario_supervisor, app):
 
     r = usuario_supervisor.post(f'/catalogo_plazos/{item_id}/editar', data={
         'tipo_elemento': 'SOLICITUD',
-        'tipo_elemento_codigo': siglas,
+        'camino_solicitud': siglas,
         'plazo_valor': '3',
         'plazo_unidad': 'MESES',
         'efecto_vencimiento_id': str(efecto_id),
@@ -304,7 +391,7 @@ def test_editar_rango_con_un_solo_valor_falla(usuario_supervisor, app):
 
     r = usuario_supervisor.post(f'/catalogo_plazos/{item_id}/editar', data={
         'tipo_elemento': 'SOLICITUD',
-        'tipo_elemento_codigo': siglas,
+        'camino_solicitud': siglas,
         'plazo_valor': '3',
         'plazo_unidad': 'MESES',
         'efecto_vencimiento_id': str(efecto_id),
@@ -325,7 +412,7 @@ def test_tramitador_no_puede_editar(usuario_tramitador, app):
     item_id, siglas, efecto_id = _crear_para_editar(app)
     r = usuario_tramitador.post(f'/catalogo_plazos/{item_id}/editar', data={
         'tipo_elemento': 'SOLICITUD',
-        'tipo_elemento_codigo': siglas,
+        'camino_solicitud': siglas,
         'plazo_valor': '1',
         'plazo_unidad': 'MESES',
         'efecto_vencimiento_id': str(efecto_id),

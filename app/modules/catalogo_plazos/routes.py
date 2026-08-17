@@ -7,15 +7,26 @@ Interfaz de configuración para el Supervisor sobre `catalogo_plazos` +
 como tarjeta del hub del supervisor (ADR-029 §1), no como entrada propia de
 sidebar.
 
-Selector en cascada de `campo_fecha` (DISEÑO_FECHAS_PLAZOS.md §3.2): el nivel
-ESFTT (`tipo_elemento`) determina qué referencia de documento es válida —
-FASE admite dos (documento propio de la fase o el de la solicitud, ver datos
-reales en BD: #172/#341/#416/#448/#463), TRAMITE necesita la tarea hija
-(`via_tarea_tipo`) + rol, TAREA solo el rol, SOLICITUD es fija (su único FK a
-documentos). El bloque visible en el formulario lo decide el servidor según
-el nivel actual (edición) o el valor por defecto del select (alta); el JS de
-`catalogo-plazos-cascada.js` solo reacciona a cambios posteriores del select
-de nivel — no hay que enganchar ningún evento de "fragmento cargado".
+Dos cascadas independientes, ambas gobernadas por el nivel ESFTT y ambas
+renderizadas por `_campo_fecha_macro.html`:
+
+1. Camino SFTT (#785) — DÓNDE está el plazo en el árbol. Un select por nivel; el
+   nivel elegido decide cuántos segmentos se piden (SOLICITUD 2 … TAREA 5). Los
+   ancestros admiten `ANY`; la hoja es obligatoria y nunca `ANY`, porque es el
+   tipo del elemento evaluado y siempre se conoce. Sustituye al antiguo select
+   único de `tipo_elemento_codigo`, que no distinguía dos puntos distintos del
+   árbol con el mismo literal.
+
+2. `campo_fecha` (DISEÑO_FECHAS_PLAZOS.md §3.2) — DESDE QUÉ documento se computa.
+   FASE admite dos referencias (documento propio o el de la solicitud, ver datos
+   reales en BD: #172/#341/#416/#448/#463), TRAMITE necesita la tarea hija
+   (`via_tarea_tipo`) + rol, TAREA solo el rol, SOLICITUD es fija (su único FK a
+   documentos).
+
+El bloque visible lo decide el servidor según el nivel actual (edición) o el
+valor por defecto del select (alta); el JS de `catalogo-plazos-cascada.js` solo
+reacciona a cambios posteriores del select de nivel — no hay que enganchar
+ningún evento de "fragmento cargado".
 
 Sin ruta `eliminar` — fuera de alcance del issue (baja física); usar
 `activar` (baja lógica) como el resto de catálogos normativos del proyecto.
@@ -40,6 +51,7 @@ from app.models.catalogo_plazos import CatalogoPlazo
 from app.models.condiciones_plazo import CondicionPlazo
 from app.models.efectos_plazo import EfectoPlazo
 from app.models.motor_reglas import CatalogoVariable
+from app.models.tipos_expedientes import TipoExpediente
 from app.models.tipos_fases import TipoFase
 from app.models.tipos_solicitudes import TipoSolicitud
 from app.models.tipos_tareas import TipoTarea
@@ -62,6 +74,19 @@ _TIPO_MODELO = {
     'TAREA':     (TipoTarea, 'codigo'),
 }
 _NIVELES_VALIDOS = set(_TIPO_MODELO)
+
+# Camino SFTT (#785): un segmento por nivel del árbol, de fuera a dentro. La
+# longitud del camino codifica el nivel del elemento evaluado, así que el nivel
+# elegido decide cuántos segmentos se piden.
+#   (campo del formulario, nivel de tipo para validar, etiqueta para el error)
+_SEGMENTOS_CAMINO = [
+    ('camino_expediente', None,        'tipo de expediente'),
+    ('camino_solicitud',  'SOLICITUD', 'tipo de solicitud'),
+    ('camino_fase',       'FASE',      'tipo de fase'),
+    ('camino_tramite',    'TRAMITE',   'tipo de trámite'),
+    ('camino_tarea',      'TAREA',     'tipo de tarea'),
+]
+_SEGMENTOS_POR_NIVEL = {'SOLICITUD': 2, 'FASE': 3, 'TRAMITE': 4, 'TAREA': 5}
 _UNIDADES_VALIDAS = {'DIAS_HABILES', 'DIAS_NATURALES', 'MESES', 'ANOS'}
 _ROLES_VALIDOS = {'CONSUMIDO', 'PRODUCIDO'}
 _FK_FASE_VALIDOS = {'documento_solicitud_id', 'documento_resultado_id'}
@@ -103,6 +128,10 @@ _OPERADORES_RANGO = {'BETWEEN', 'NOT_BETWEEN'}
 def _selects_context():
     """Querysets para los selects del formulario (alta y edición)."""
     return {
+        'tipos_expediente': [
+            t for (t,) in db.session.query(TipoExpediente.tipo)
+            .distinct().order_by(TipoExpediente.tipo).all()
+        ],
         'tipos_solicitud': TipoSolicitud.query.order_by(TipoSolicitud.siglas).all(),
         'tipos_fase':       TipoFase.query.order_by(TipoFase.codigo).all(),
         'tipos_tramite':    TipoTramite.query.order_by(TipoTramite.codigo).all(),
@@ -114,7 +143,7 @@ def _selects_context():
 
 
 def _tipo_elemento_nombre(tipo_elemento: str, codigo: str) -> str:
-    """Nombre legible del tipo referenciado por tipo_elemento_codigo."""
+    """Nombre legible del tipo de la hoja del camino."""
     modelo_attr = _TIPO_MODELO.get(tipo_elemento)
     if not modelo_attr or not codigo:
         return codigo or '—'
@@ -125,6 +154,65 @@ def _tipo_elemento_nombre(tipo_elemento: str, codigo: str) -> str:
     if tipo_elemento == 'SOLICITUD':
         return f'{row.siglas} — {row.descripcion}'
     return row.nombre
+
+
+def _camino_legible(camino: str) -> list[dict]:
+    """Descompone el camino en segmentos anotados para la vista de detalle.
+
+    Devuelve [{'nivel': 'Fase', 'valor': 'RESOLUCION', 'nombre': 'Resolución',
+               'any': False, 'hoja': True}, …] — 'any' marca los niveles sin
+    concretar, 'hoja' el tipo del elemento evaluado.
+    """
+    partes = (camino or '').split('/')
+    etiquetas = ['Expediente', 'Solicitud', 'Fase', 'Trámite', 'Tarea']
+    salida = []
+    for i, valor in enumerate(partes):
+        es_any = valor == 'ANY'
+        nivel_tipo = _SEGMENTOS_CAMINO[i][1] if i < len(_SEGMENTOS_CAMINO) else None
+        salida.append({
+            'nivel': etiquetas[i] if i < len(etiquetas) else f'Nivel {i + 1}',
+            'valor': valor,
+            'nombre': ('Cualquiera' if es_any
+                       else (_tipo_elemento_nombre(nivel_tipo, valor) if nivel_tipo else valor)),
+            'any': es_any,
+            'hoja': i == len(partes) - 1,
+        })
+    return salida
+
+
+def _construir_camino(tipo_elemento: str):
+    """Compone el camino SFTT desde los selects del formulario (#785).
+
+    Devuelve (camino, error_msg_o_None). Los ancestros admiten 'ANY'; la hoja
+    —el tipo del elemento evaluado— es obligatoria y debe existir en su catálogo:
+    un camino con hoja 'ANY' no identificaría nada.
+    """
+    n = _SEGMENTOS_POR_NIVEL.get(tipo_elemento)
+    if n is None:
+        return None, 'Nivel ESFTT no reconocido.'
+
+    segmentos = []
+    for i in range(n):
+        campo, nivel_tipo, etiqueta = _SEGMENTOS_CAMINO[i]
+        valor = (request.form.get(campo) or '').strip()
+        es_hoja = (i == n - 1)
+
+        if not valor or (valor == 'ANY' and es_hoja):
+            if es_hoja:
+                return None, f'El {etiqueta} es obligatorio: es el elemento al que se aplica el plazo.'
+            valor = 'ANY'
+
+        if valor != 'ANY' and nivel_tipo:
+            modelo, attr = _TIPO_MODELO[nivel_tipo]
+            if not modelo.query.filter_by(**{attr: valor}).first():
+                return None, f'El {etiqueta} «{valor}» no existe en el catálogo.'
+
+        if '/' in valor:
+            return None, f'El {etiqueta} no puede contener «/».'
+
+        segmentos.append(valor)
+
+    return '/'.join(segmentos), None
 
 
 def _campo_fecha_legible(tipo_elemento: str, campo_fecha: dict) -> str:
@@ -202,11 +290,9 @@ def _rellenar_catalogo_plazo(item) -> list[str]:
     if tipo_elemento not in _NIVELES_VALIDOS:
         return ['El nivel ESFTT es obligatorio.']  # sin nivel no se puede validar el resto
 
-    modelo, attr_codigo = _TIPO_MODELO[tipo_elemento]
-    tipo_elemento_codigo = (request.form.get('tipo_elemento_codigo') or '').strip()
-    tipo_row = modelo.query.filter_by(**{attr_codigo: tipo_elemento_codigo}).first() if tipo_elemento_codigo else None
-    if not tipo_row:
-        errores.append(f'El tipo de {tipo_elemento.lower()} seleccionado no existe.')
+    camino, err_camino = _construir_camino(tipo_elemento)
+    if err_camino:
+        errores.append(err_camino)
 
     campo_fecha, err_cf = _construir_campo_fecha(tipo_elemento)
     if err_cf:
@@ -242,8 +328,7 @@ def _rellenar_catalogo_plazo(item) -> list[str]:
         return errores
 
     item.tipo_elemento = tipo_elemento
-    item.tipo_elemento_id = tipo_row.id  # DEPRECATED — se conserva por compatibilidad (#347)
-    item.tipo_elemento_codigo = tipo_elemento_codigo
+    item.camino = camino
     item.campo_fecha = campo_fecha
     item.plazo_valor = plazo_valor
     item.plazo_unidad = plazo_unidad
@@ -452,7 +537,8 @@ def fragmento(id):
     return render_template(
         'catalogo_plazos/_detalle_fragmento.html',
         item=item,
-        tipo_elemento_nombre=_tipo_elemento_nombre(item.tipo_elemento, item.tipo_elemento_codigo),
+        tipo_elemento_nombre=_tipo_elemento_nombre(item.tipo_elemento, item.hoja),
+        camino_legible=_camino_legible(item.camino),
         campo_fecha_legible=_campo_fecha_legible(item.tipo_elemento, item.campo_fecha),
         puede_editar=tiene_permiso('gestionar_catalogo_plazos'),
     )

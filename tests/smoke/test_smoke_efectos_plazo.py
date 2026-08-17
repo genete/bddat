@@ -20,8 +20,9 @@ def _limpiar_datos_prueba(app):
         from app import db
         from app.models.catalogo_plazos import CatalogoPlazo
         from app.models.efectos_plazo import EfectoPlazo
+        # El marcador vive en el camino desde #785 (la hoja es el último segmento).
         CatalogoPlazo.query.filter(
-            CatalogoPlazo.tipo_elemento_codigo.like('ZZ_SMOKE_633%')
+            CatalogoPlazo.camino.like('%ZZ_SMOKE_633%')
         ).delete(synchronize_session=False)
         EfectoPlazo.query.filter(
             EfectoPlazo.codigo.like('ZZ_SMOKE_633%')
@@ -160,8 +161,7 @@ def test_admin_no_puede_eliminar_en_uso(usuario_admin, app):
     with app.app_context():
         plazo = CatalogoPlazo(
             tipo_elemento='TAREA',
-            tipo_elemento_id=0,
-            tipo_elemento_codigo='ZZ_SMOKE_633_TAREA',
+            camino='ANY/ANY/ANY/ANY/ZZ_SMOKE_633_TAREA',
             plazo_valor=10,
             plazo_unidad='DIAS_HABILES',
             efecto_vencimiento_id=efecto_id,

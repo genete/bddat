@@ -2,9 +2,11 @@
    No extiende base_app.html. Inyectado por inspector-overlay.js vía data-inspector-edit.
    Submit interceptado: POST XHR → JSON { ok, errors, message }.
 
-   Cascada nivel→tipo→campo_fecha: ver _campo_fecha_macro.html y
+   Cascada nivel→camino→campo_fecha: ver _campo_fecha_macro.html y
    catalogo-plazos-cascada.js. El bloque inicial visible lo decide el servidor
    según item.tipo_elemento — el JS solo reacciona a cambios posteriores.
+   Desde #785 el camino SFTT (dónde está el plazo) va aparte de campo_fecha
+   (desde qué documento se computa): son decisiones independientes.
 
    Editor de condiciones anidado (variable + operador + valor + orden): filas
    sin indexar (mismo name repetido), reconstruidas con request.form.getlist()
@@ -39,9 +41,9 @@
         <i class="fas fa-calendar-alt me-1"></i> Plazo legal
     </div>
     <div class="card-body card-body-tinted">
-        {{ cf.nivel_y_cascada('cpe', item.tipo_elemento, item.tipo_elemento_codigo,
-                               cf_fk, cf_via_tarea_tipo, cf_rol,
-                               tipos_solicitud, tipos_fase, tipos_tramite, tipos_tarea) }}
+        {{ cf.camino_sftt('cpe', item.tipo_elemento, item.camino,
+                          tipos_expediente, tipos_solicitud, tipos_fase, tipos_tramite, tipos_tarea) }}
+        {{ cf.campo_fecha('cpe', item.tipo_elemento, cf_fk, cf_via_tarea_tipo, cf_rol, tipos_tarea) }}
     </div>
 </div>
 
