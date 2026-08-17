@@ -46,6 +46,9 @@ from app.models.motor_reglas import (
     ExcepcionMotor, CondicionExcepcion,
 )
 from app.services.operadores import _OPERADORES
+# El matcher posicional vive en operadores.py desde #785: lo comparten el sujeto
+# del motor y el camino de catalogo_plazos (misma semántica, distinta profundidad).
+from app.services.operadores import camino_casa as _sujeto_casa
 
 log = logging.getLogger(__name__)
 
@@ -100,26 +103,6 @@ class AuditoriaResult:
     sujeto:           str
     reglas_evaluadas: list  # list[ResultadoRegla] — todas las que casaron con (accion, sujeto)
     variables_ctx:    dict  # snapshot completo del dict de variables
-
-
-# ---------------------------------------------------------------------------
-# Matching posicional del sujeto
-# ---------------------------------------------------------------------------
-
-def _sujeto_casa(patron: str, sujeto_real: str) -> bool:
-    """
-    Compara segmento a segmento separando por '/'.
-    'ANY' en el patrón casa con cualquier valor real en esa posición.
-    Distinto número de segmentos → no casa.
-    """
-    partes_patron = patron.split('/')
-    partes_real   = sujeto_real.split('/')
-    if len(partes_patron) != len(partes_real):
-        return False
-    return all(
-        p == 'ANY' or p == r
-        for p, r in zip(partes_patron, partes_real)
-    )
 
 
 # ---------------------------------------------------------------------------
