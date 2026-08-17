@@ -170,20 +170,31 @@ class TestCalcularFechaFinAnos:
 HOY = date(2025, 6, 2)   # lunes fijo para todos los tests de estado
 
 
-def _mock_catalogo(plazo_valor, plazo_unidad, campo_fecha, efecto_codigo):
+def _mock_catalogo(plazo_valor, plazo_unidad, campo_fecha, efecto_codigo,
+                   camino='ANY/ANY/ANY'):
     m = MagicMock()
     m.plazo_valor = plazo_valor
     m.plazo_unidad = plazo_unidad
     m.campo_fecha = campo_fecha
     m.efecto_plazo.codigo = efecto_codigo
     m.condiciones = []
+    # #785: el camino se casa contra el del elemento. Todo ANY = aplica a
+    # cualquier fase, que es lo que estos tests de cómputo necesitan.
+    m.camino = camino
     return m
 
 
 def _mock_fase(tipo_fase_id, fecha_administrativa):
-    """Fase mínima con tipo_fase_id y documento_resultado.fecha_administrativa."""
+    """Fase mínima con tipo_fase_id y documento_resultado.fecha_administrativa.
+
+    Desde #785 lleva también la ascendencia (con strings reales, no MagicMock)
+    para que compilar_camino pueda formar el camino de 3 segmentos de una fase.
+    """
     fase = MagicMock()
     fase.tipo_fase_id = tipo_fase_id
+    fase.tipo_fase = MagicMock(codigo='RESOLUCION')
+    fase.solicitud.tipo_solicitud = MagicMock(siglas='AAP')
+    fase.solicitud.expediente.tipo_expediente = MagicMock(tipo='Distribucion')
     doc = MagicMock()
     doc.fecha_administrativa = fecha_administrativa
     fase.documento_resultado = doc

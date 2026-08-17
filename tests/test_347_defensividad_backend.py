@@ -84,6 +84,19 @@ def test_validar_catalogo_bd_no_disponible_no_lanza():
 # B) plazos.py — defensividad en _seleccionar_catalogo
 # ---------------------------------------------------------------------------
 
+def _fase_mock():
+    """Fase con la ascendencia que compilar_camino necesita (#785).
+
+    Sin ella el camino no se puede formar y _seleccionar_catalogo sale antes de
+    tocar la BD — que es justo lo que estos tests quieren ejercitar.
+    """
+    fase = MagicMock()
+    fase.tipo_fase = MagicMock(codigo='CONSULTAS')
+    fase.solicitud.tipo_solicitud = MagicMock(siglas='AAP')
+    fase.solicitud.expediente.tipo_expediente = MagicMock(tipo='Distribucion')
+    return fase
+
+
 def test_seleccionar_catalogo_operational_error_retorna_none(caplog):
     """OperationalError en query → devuelve None sin propagar excepción."""
     from app.services.plazos import _seleccionar_catalogo
@@ -96,7 +109,7 @@ def test_seleccionar_catalogo_operational_error_retorna_none(caplog):
                   'connection refused', None, None
               )
         with caplog.at_level(logging.WARNING, logger='app.services.plazos'):
-            result = _seleccionar_catalogo('FASE', 'CONSULTAS', {})
+            result = _seleccionar_catalogo(_fase_mock(), 'FASE', {})
 
     assert result is None
     assert any('catalogo_plazos no disponible' in m for m in caplog.messages)
@@ -113,7 +126,7 @@ def test_seleccionar_catalogo_programming_error_retorna_none():
               .order_by.return_value.all.side_effect = ProgrammingError(
                   'relation does not exist', None, None
               )
-        result = _seleccionar_catalogo('FASE', 'CONSULTAS', {})
+        result = _seleccionar_catalogo(_fase_mock(), 'FASE', {})
 
     assert result is None
 

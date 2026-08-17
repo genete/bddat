@@ -112,12 +112,13 @@ class CatalogoPlazo(db.Model):
     )
 
     @property
-    def tipo_elemento_codigo(self) -> str:
-        """Hoja del camino — el tipo del elemento evaluado.
+    def hoja(self) -> str:
+        """Último segmento del camino — el tipo del elemento evaluado.
 
-        Compatibilidad de lectura para plantillas y serializadores que mostraban
-        la antigua columna homónima (#785). No es filtrable en SQL: para eso está
-        `camino`.
+        Solo para presentación (plantillas, JSON del listado). No es filtrable en
+        SQL: para eso está `camino`. Deliberadamente NO se llama
+        `tipo_elemento_codigo`: ese nombre invitaba a usarlo en queries como si
+        siguiera siendo columna, y falla en runtime al no serlo.
         """
         return (self.camino or '').rsplit('/', 1)[-1]
 

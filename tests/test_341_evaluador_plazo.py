@@ -28,8 +28,13 @@ def _mock_condicion(nombre_var, operador, valor, orden=1):
 
 def _mock_entrada(orden=100, entrada_id=1, condiciones=None,
                   plazo_valor=30, plazo_unidad='DIAS_NATURALES',
-                  campo_fecha=None, efecto_codigo='NINGUNO'):
-    """CatalogoPlazo mínimo para tests de _seleccionar_catalogo."""
+                  campo_fecha=None, efecto_codigo='NINGUNO',
+                  camino='ANY/ANY/CONSULTAS'):
+    """CatalogoPlazo mínimo para tests de _seleccionar_catalogo.
+
+    `camino` (#785) por defecto casa con cualquier fase CONSULTAS, que es el
+    nivel que usan estos tests.
+    """
     e = MagicMock()
     e.id = entrada_id
     e.orden = orden
@@ -38,14 +43,33 @@ def _mock_entrada(orden=100, entrada_id=1, condiciones=None,
     e.plazo_unidad = plazo_unidad
     e.campo_fecha = campo_fecha or {'fk': 'documento_resultado_id'}
     e.efecto_plazo.codigo = efecto_codigo
+    e.camino = camino
     return e
+
+
+def _ascendencia_fase(fase, tipo_fase_codigo='CONSULTAS', siglas='AAP',
+                      tipo_expediente='Distribucion'):
+    """Cuelga de la fase la ascendencia que compilar_camino necesita (#785).
+
+    Con MagicMock puro los segmentos salen MagicMock y el join del camino falla:
+    hay que fijar strings reales en cada eslabón.
+    """
+    fase.tipo_fase = MagicMock(codigo=tipo_fase_codigo)
+    fase.solicitud.tipo_solicitud = MagicMock(siglas=siglas)
+    fase.solicitud.expediente.tipo_expediente = MagicMock(tipo=tipo_expediente)
+    return fase
+
+
+def _mock_fase_camino(**kwargs):
+    """Fase mínima solo para _seleccionar_catalogo (sin documento)."""
+    return _ascendencia_fase(MagicMock(), **kwargs)
 
 
 def _mock_fase(tipo_fase_id, fecha_administrativa, tipo_fase_codigo='CONSULTAS'):
     """Fase mínima para obtener_estado_plazo."""
     fase = MagicMock()
     fase.tipo_fase_id = tipo_fase_id
-    fase.tipo_fase = MagicMock(codigo=tipo_fase_codigo)
+    _ascendencia_fase(fase, tipo_fase_codigo=tipo_fase_codigo)
     doc = MagicMock()
     doc.fecha_administrativa = fecha_administrativa
     fase.documento_resultado = doc
@@ -123,7 +147,7 @@ def test_seleccionar_sin_condiciones_retorna_fallback():
          patch('app.services.plazos.joinedload', return_value=MagicMock()):
         MockCP.query.options.return_value.filter_by.return_value\
               .order_by.return_value.all.return_value = [entrada]
-        result = _seleccionar_catalogo('FASE', 1, {})
+        result = _seleccionar_catalogo(_mock_fase_camino(), 'FASE',{})
     assert result is entrada
 
 
@@ -140,7 +164,7 @@ def test_seleccionar_condicion_dispara_gana_condicionada():
          patch('app.services.plazos.joinedload', return_value=MagicMock()):
         MockCP.query.options.return_value.filter_by.return_value\
               .order_by.return_value.all.return_value = [entrada_condicionada, entrada_fallback]
-        result = _seleccionar_catalogo('FASE', 1, variables)
+        result = _seleccionar_catalogo(_mock_fase_camino(), 'FASE',variables)
     assert result is entrada_condicionada
 
 
@@ -157,7 +181,7 @@ def test_seleccionar_condicion_no_dispara_gana_fallback():
          patch('app.services.plazos.joinedload', return_value=MagicMock()):
         MockCP.query.options.return_value.filter_by.return_value\
               .order_by.return_value.all.return_value = [entrada_condicionada, entrada_fallback]
-        result = _seleccionar_catalogo('FASE', 1, variables)
+        result = _seleccionar_catalogo(_mock_fase_camino(), 'FASE',variables)
     assert result is entrada_fallback
 
 
@@ -175,7 +199,7 @@ def test_seleccionar_dos_condicionadas_primera_falla_segunda_pasa():
          patch('app.services.plazos.joinedload', return_value=MagicMock()):
         MockCP.query.options.return_value.filter_by.return_value\
               .order_by.return_value.all.return_value = [entrada1, entrada2]
-        result = _seleccionar_catalogo('FASE', 1, variables)
+        result = _seleccionar_catalogo(_mock_fase_camino(), 'FASE',variables)
     assert result is entrada2
 
 
@@ -192,7 +216,7 @@ def test_seleccionar_variable_ausente_no_dispara():
          patch('app.services.plazos.joinedload', return_value=MagicMock()):
         MockCP.query.options.return_value.filter_by.return_value\
               .order_by.return_value.all.return_value = [entrada_condicionada, entrada_fallback]
-        result = _seleccionar_catalogo('FASE', 1, variables)
+        result = _seleccionar_catalogo(_mock_fase_camino(), 'FASE',variables)
     assert result is entrada_fallback
 
 
@@ -203,7 +227,7 @@ def test_seleccionar_sin_entradas_retorna_none():
          patch('app.services.plazos.joinedload', return_value=MagicMock()):
         MockCP.query.options.return_value.filter_by.return_value\
               .order_by.return_value.all.return_value = []
-        result = _seleccionar_catalogo('FASE', 1, {'x': 1})
+        result = _seleccionar_catalogo(_mock_fase_camino(), 'FASE',{'x': 1})
     assert result is None
 
 
@@ -219,7 +243,7 @@ def test_seleccionar_todas_condicionadas_fallan_retorna_none():
          patch('app.services.plazos.joinedload', return_value=MagicMock()):
         MockCP.query.options.return_value.filter_by.return_value\
               .order_by.return_value.all.return_value = [entrada]
-        result = _seleccionar_catalogo('FASE', 1, variables)
+        result = _seleccionar_catalogo(_mock_fase_camino(), 'FASE',variables)
     assert result is None
 
 
@@ -287,7 +311,8 @@ def test_ctx_llama_compilar_variables_con_excluir():
         obtener_estado_plazo(fase, 'FASE', ctx=ctx)
 
     mock_cv.assert_called_once_with(ctx, excluir={'estado_plazo', 'efecto_plazo'})
-    mock_sel.assert_called_once_with('FASE', 'CONSULTAS', {})
+    # #785: recibe el elemento, no su código de tipo — el camino lo deriva dentro.
+    mock_sel.assert_called_once_with(fase, 'FASE', {})
 
 
 def test_variables_directo_no_llama_compilar_variables():

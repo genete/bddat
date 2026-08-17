@@ -323,7 +323,7 @@ def _detalle_tarea(exp, tarea_id: int) -> dict:
     if producido is not None:
         documentos.append(_serializar_documento(exp.id, producido, 'PRODUCIDO'))
 
-    plazo = plazo_tarea(ta, ta.tramite) if codigo == 'ESPERAR_PLAZO' else None
+    plazo = plazo_tarea(ta) if codigo == 'ESPERAR_PLAZO' else None
 
     return {
         'nodo': {'tipo': 'tarea', 'id': ta.id},

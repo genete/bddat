@@ -175,24 +175,11 @@ def _plazo_tarea(tarea) -> Optional[dict]:
     """
     from app.services.plazos import obtener_estado_plazo
     try:
-        ep = obtener_estado_plazo(tarea, 'TAREA', variables=_variables_esperar_plazo(tarea))
+        ep = obtener_estado_plazo(tarea, 'TAREA')
         return {'estado': ep.estado}
     except Exception as exc:  # noqa: BLE001 — un plazo no debe tumbar la fila entera
         log.warning('seguimiento: plazo no disponible para tarea %s — %s', getattr(tarea, 'id', '?'), exc)
         return None
-
-
-def _variables_esperar_plazo(tarea) -> dict:
-    """Variables del motor para resolver el plazo (tipo_tramite).
-
-    Público: lo reutiliza también services/certificados.py.
-    """
-    try:
-        tt = tarea.tramite.tipo_tramite
-        return {'tipo_tramite': tt.codigo} if tt else {}
-    except Exception:
-        log.warning('seguimiento: no se pudo acceder a tipo_tramite de tarea %s', getattr(tarea, 'id', '?'))
-        return {}
 
 
 # ---------------------------------------------------------------------------
