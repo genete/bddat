@@ -7,33 +7,40 @@ anidadas), baja lógica (activar/desactivar) y el CRUD anidado de excepciones
 permiso `gestionar_reglas_motor` que ya usaba el selector de modo global.
 
 Estos tests corren contra la BD real de desarrollo (mismo patrón que el resto
-de la suite, ver conftest._login_as) — las filas de alta/edición se marcan con
-'#170 smoke' en descripcion y se borran en el fixture autouse de abajo.
+de la suite, ver conftest._login_as) — el fixture autouse de abajo borra al
+terminar toda fila que no existiera al empezar. Las marcas '#170 smoke' en
+descripcion se conservan porque los asserts las usan para localizar lo creado,
+pero la limpieza ya no depende de ellas.
 """
 import pytest
-
-# Ids de ReglaMotor creadas por _crear_para_editar() en el test en curso — no
-# basta con filtrar por texto en descripcion: algún test edita ese mismo campo
-# (p.ej. test_supervisor_puede_anadir_condicion no lo envía en el POST, y el
-# endpoint real lo deja a NULL), lo que borraría el marcador que la limpieza
-# necesita para encontrar la fila (#672).
-_ids_creados_para_editar = []
 
 
 @pytest.fixture(autouse=True)
 def _limpiar_datos_prueba(app):
+    """Snapshot de ids: se borra lo que aparezca durante el test.
+
+    Las dos estrategias anteriores dependían de que el test colaborase, y por
+    eso fallaron: filtrar por texto en descripcion se rompe cuando el propio
+    test edita ese campo (test_supervisor_puede_anadir_condicion no lo envía en
+    el POST y el endpoint lo deja a NULL, #672), y registrar el id en
+    _crear_para_editar exige que cada test nuevo se acuerde de hacerlo. El
+    snapshot no depende de nada que el test haga — sin él, 14 reglas huérfanas
+    sobrevivieron en la BD de desarrollo hasta #787.
+    """
+    with app.app_context():
+        from app.models.motor_reglas import ReglaMotor
+        previos = {
+            fila.id for fila in ReglaMotor.query.with_entities(ReglaMotor.id).all()
+        }
     yield
     with app.app_context():
         from app import db
         from app.models.motor_reglas import ReglaMotor
+        # condiciones_regla y excepciones_motor cuelgan con ON DELETE CASCADE.
         ReglaMotor.query.filter(
-            db.or_(
-                ReglaMotor.descripcion.like('%#170 smoke%'),
-                ReglaMotor.id.in_(_ids_creados_para_editar),
-            )
+            ReglaMotor.id.notin_(previos)
         ).delete(synchronize_session=False)
         db.session.commit()
-    _ids_creados_para_editar.clear()
 
 
 # ---------------------------------------------------------------------------
@@ -149,7 +156,6 @@ def _crear_para_editar(app):
         )
         db.session.add(item)
         db.session.commit()
-        _ids_creados_para_editar.append(item.id)
         return item.id, tipo.siglas
 
 

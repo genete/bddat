@@ -9,34 +9,41 @@ restringidas a SUPERVISOR/ADMIN — mismo patrón que items_tecnicos (#594).
 Sin tests de "eliminar": la baja física está fuera de alcance del issue.
 
 Estos tests corren contra la BD real de desarrollo (mismo patrón que el resto
-de la suite, ver conftest._login_as) — las filas de alta/edición se marcan con
-'#632 smoke' en norma_origen y se borran en el fixture autouse de abajo para
-no dejar basura en la BD compartida.
+de la suite, ver conftest._login_as) — el fixture autouse de abajo borra al
+terminar toda fila que no existiera al empezar, para no dejar basura en la BD
+compartida. Las marcas '#632 smoke' en norma_origen se conservan porque los
+asserts las usan para localizar lo creado, pero la limpieza ya no depende de
+ellas.
 """
 import pytest
-
-# Ids de CatalogoPlazo creadas por _crear_para_editar() en el test en curso —
-# no basta con filtrar por texto en norma_origen: algún test edita ese mismo
-# campo (p.ej. test_supervisor_puede_anadir_condicion_between no lo envía en
-# el POST, y el endpoint real lo deja a NULL), lo que borraría el marcador
-# que la limpieza necesita para encontrar la fila (#672).
-_ids_creados_para_editar = []
 
 
 @pytest.fixture(autouse=True)
 def _limpiar_datos_prueba(app):
+    """Snapshot de ids: se borra lo que aparezca durante el test.
+
+    Las dos estrategias anteriores dependían de que el test colaborase, y por
+    eso fallaron: filtrar por texto en norma_origen se rompe cuando el propio
+    test edita ese campo (test_supervisor_puede_anadir_condicion_between no lo
+    envía en el POST y el endpoint lo deja a NULL, #672), y registrar el id en
+    _crear_para_editar exige que cada test nuevo se acuerde de hacerlo. El
+    snapshot no depende de nada que el test haga — sin él, 14 filas huérfanas
+    sobrevivieron en la BD de desarrollo hasta #787.
+    """
+    with app.app_context():
+        from app.models.catalogo_plazos import CatalogoPlazo
+        previos = {
+            fila.id for fila in CatalogoPlazo.query.with_entities(CatalogoPlazo.id).all()
+        }
     yield
     with app.app_context():
         from app import db
         from app.models.catalogo_plazos import CatalogoPlazo
+        # Las condiciones_plazo cuelgan con ON DELETE CASCADE.
         CatalogoPlazo.query.filter(
-            db.or_(
-                CatalogoPlazo.norma_origen.like('%#632 smoke%'),
-                CatalogoPlazo.id.in_(_ids_creados_para_editar),
-            )
+            CatalogoPlazo.id.notin_(previos)
         ).delete(synchronize_session=False)
         db.session.commit()
-    _ids_creados_para_editar.clear()
 
 
 # ---------------------------------------------------------------------------
@@ -323,7 +330,6 @@ def _crear_para_editar(app):
         )
         db.session.add(item)
         db.session.commit()
-        _ids_creados_para_editar.append(item.id)
         return item.id, tipo.siglas, efecto.id
 
 
