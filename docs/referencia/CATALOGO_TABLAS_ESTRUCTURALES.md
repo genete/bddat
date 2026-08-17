@@ -48,8 +48,8 @@ limpio arquitectónicamente en ese sentido.
 | Tabla | Depende de | ¿CRUD hoy? |
 |---|---|---|
 | `dias_inhabiles` | `ambitos_inhabilidad` | ❌ No — solo CLI |
-| `catalogo_plazos` | `efectos_plazo` | ❌ No — pendiente #170/#171/#479 |
-| `condiciones_plazo` | `catalogo_plazos`, `catalogo_variables` | ❌ No |
+| `catalogo_plazos` | `efectos_plazo` | ✅ Sí — `catalogo_plazos` (#632); identificación por camino SFTT desde #785 |
+| `condiciones_plazo` | `catalogo_plazos`, `catalogo_variables` | ✅ Sí — anidado en el inspector de `catalogo_plazos` (#632) |
 | `catalogo_variables` | `normas` | ❌ No — acoplada al Variable Registry (`app/services/variables/`), ver #587 |
 | `reglas_motor` | `normas` | ❌ No |
 | `condiciones_regla` | `reglas_motor`, `catalogo_variables` | ❌ No |

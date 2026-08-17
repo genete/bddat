@@ -353,7 +353,7 @@ Estos controles son de integridad administrativa, no de plazo. Deben decidirse e
 
 ---
 
-### 3.2 Catálogo de plazos — CERRADO (campo_fecha 2026-04-19, condiciones_plazo #341 2026-04-30)
+### 3.2 Catálogo de plazos — CERRADO (campo_fecha 2026-04-19, condiciones_plazo #341 2026-04-30, camino SFTT #785 2026-08-17)
 
 > **Decisión:** Tabla separada `catalogo_plazos`, administrable por el Supervisor.
 
@@ -364,8 +364,8 @@ Motivación: un tipo de Fase o Trámite no tiene el plazo como atributo propio �
 ```
 catalogo_plazos
 ├── id
-├── tipo_elemento       ENUM(SOLICITUD, FASE, TRAMITE, TAREA)
-├── tipo_elemento_id    FK → tipos_solicitudes / tipos_fases / tipos_tramites / tipos_tareas
+├── tipo_elemento       ENUM(SOLICITUD, FASE, TRAMITE, TAREA)  -- prefiltro SQL
+├── camino              VARCHAR(250)  -- patrón ESFTT con comodín ANY (#785)
 ├── campo_fecha         JSONB  -- referencia de inicio de cómputo (ver formato abajo)
 ├── plazo_valor         INTEGER
 ├── plazo_unidad        ENUM(DIAS_HABILES, DIAS_NATURALES, MESES, ANOS)
@@ -375,6 +375,47 @@ catalogo_plazos
 ├── vigencia_hasta      DATE nullable
 └── activo              BOOLEAN
 ```
+
+#### Identificación por camino SFTT (#785)
+
+Hasta #785 la fila se identificaba por `tipo_elemento` + `tipo_elemento_codigo`
+(el literal del tipo hoja). **No basta:** literales como `ESPERAR_PLAZO` o
+`RESOLUCION` se repiten en puntos distintos del árbol, y la distinción se hacía
+con filas de `condiciones_plazo` sobre variables que solo reexponían un dato de
+posición que el grafo de FKs ya contiene — una FK disfrazada. El caso extremo:
+la variable `tipo_tramite` nunca tuvo función en `app/services/variables/`, así
+que por el camino general del motor resolvía siempre a `None`; solo funcionaba
+porque tres consumidores la reconstruían a mano saltándose el ensamblador.
+
+`camino` es un patrón calificado con comodín posicional `ANY`, **mismo formato y
+mismo matcher** (`operadores.camino_casa`) que `reglas_motor.sujeto`, con un
+nivel más de profundidad. La longitud codifica el nivel:
+
+| Nivel | Segmentos | Forma |
+|---|---|---|
+| SOLICITUD | 2 | `<expediente>/<siglas>` |
+| FASE | 3 | `<expediente>/<siglas>/<fase>` |
+| TRAMITE | 4 | `…/<tramite>` |
+| TAREA | 5 | `…/<tramite>/<tarea>` |
+
+**Invariante:** el último segmento nunca es `ANY` — es el tipo del elemento
+evaluado, siempre conocido. Una fila con hoja `ANY` no identificaría nada.
+
+```
+ANY/ANY/ANY/REQUERIMIENTO_SUBSANACION/ESPERAR_PLAZO   -- el plazo de subsanación
+ANY/ANY/ANY/ANUNCIO_BOE/ESPERAR_PLAZO                 -- el de exposición en BOE
+ANY/AAP/RESOLUCION                                    -- resolución de una AAP
+```
+
+`tipo_elemento` se conserva pese a ser derivable de la longitud: es el prefiltro
+SQL de la query (filtrar por número de segmentos de un string no es viable).
+
+**Reparto de responsabilidades con `condiciones_plazo`:** el camino dice DÓNDE
+está el plazo; las condiciones, BAJO QUÉ SUPUESTO LEGAL aplica. Las que expresan
+supuesto real siguen vivas (`max_tension_nominal_kv` en SOLICITUD/AAP,
+`es_solicitud_aac_pura` + `tiene_solicitud_aap_favorable` en el plazo reducido de
+consultas del art. 131.1 párr. 2). Meter posición en una condición vuelve a
+crear el problema que #785 resolvió.
 
 #### Formato de `campo_fecha` (JSONB)
 
@@ -415,14 +456,18 @@ El campo `campo` es siempre `fecha_administrativa` (el resolver lo asume). Refer
 
 #### §3.2.1 Condiciones de aplicabilidad — `_seleccionar_catalogo` (#341)
 
-Cuando `obtener_estado_plazo` recibe `ctx` o `variables`, delega la selección de
-la entrada aplicable en `_seleccionar_catalogo(tipo_elemento, tipo_id, variables_dict)`.
+`obtener_estado_plazo` delega la selección de la entrada aplicable en
+`_seleccionar_catalogo(elemento, tipo_elemento, variables_dict)`.
 
-**Algoritmo:**
+**Algoritmo** (paso 1.bis añadido en #785):
 
 1. **Carga** todas las entradas activas de `catalogo_plazos` para
-   `(tipo_elemento, tipo_elemento_id)` con `joinedload` de `condiciones` y la
-   `variable` de cada condición (una sola query).
+   `tipo_elemento` con `joinedload` de `condiciones` y la `variable` de cada
+   condición (una sola query).
+1. **bis. Filtra por camino:** compila el camino real del `elemento` subiendo por
+   el ORM (`plazos.compilar_camino`) y descarta las entradas cuyo patrón `camino`
+   no casa. Los datos de ascendencia ya están en memoria por los eager-loads de
+   los consumidores, así que no añade queries.
 2. **Ordena** por `orden ASC, id ASC` (menor `orden` = mayor prioridad;
    `id` como desempate estable ante empate de `orden`).
 3. **Itera** en orden:
@@ -724,16 +769,19 @@ Estos valores son el seed del `catalogo_plazos` para las fases y trámites del p
 
 > **Nota 2026-05-22 (hotfix #448):** Los identificadores `RESOLUCION_AAP`, `RESOLUCION_AAC`, `RESOLUCION_AE_*`, `RESOLUCION_TRANSMISION`, `RESOLUCION_CIERRE`, `RESOLUCION_DUP` de la tabla siguiente son **etiquetas conceptuales** de cada plazo — **no códigos de `tipos_fases`**. En BD existe un único `tipos_fases.codigo = 'RESOLUCION'` (id=8). Los 7 plazos se modelan como 7 filas en `catalogo_plazos` con `tipo_elemento_codigo = 'RESOLUCION'`, diferenciadas por una condición en `condiciones_plazo` que usa la variable `tipo_solicitud` (texto, siglas literal) con operador `IN` enumerando las combinaciones cubiertas por la misma cita normativa. El seed real está en la migración `448_seed_plazos_resolucion`.
 
-| Etiqueta conceptual | `tipo_solicitud IN` (condición) | Valor | Unidad | Efecto vencimiento | Norma origen |
-|---|---|---|---|---|---|
-| RESOLUCION_AE_PROVISIONAL | `['AE_PROVISIONAL']` | 1 | MESES | SILENCIO_DESESTIMATORIO | Art. 132 bis RD 1955/2000 + DA 3ª LSE |
-| RESOLUCION_AE_DEFINITIVA | `['AE_DEFINITIVA','AE_DEFINITIVA+AAT']` | 1 | MESES | SILENCIO_DESESTIMATORIO | Art. 132 ter RD 1955/2000 + DA 3ª LSE |
-| RESOLUCION_AAP | `['AAP']` | 3 | MESES | SILENCIO_DESESTIMATORIO | Art. 128 RD 1955/2000 |
-| RESOLUCION_AAC | `['AAC','AAP+AAC','AAP+AAC+DUP','AAC+DUP']` | 3 | MESES | SILENCIO_DESESTIMATORIO | Art. 131.7 RD 1955/2000 |
-| RESOLUCION_TRANSMISION | `['AAT']` | 3 | MESES | SILENCIO_DESESTIMATORIO | Art. 133 RD 1955/2000 |
-| RESOLUCION_CIERRE | `['CIERRE']` | 3 | MESES | SILENCIO_DESESTIMATORIO | Art. 138 RD 1955/2000 |
-| RESOLUCION_DUP | `['DUP']` | 3 | MESES | SILENCIO_DESESTIMATORIO | Art. 145.4 RD 1955/2000 |
-| INFORMACION_PUBLICA | **[PENDIENTE REDISEÑO campo_fecha]** | 30 | DIAS_NATURALES | SIN_EFECTO_AUTOMATICO | Art. 125 RD 1955/2000 |
+Desde #785 la combinación va en el **camino**, una fila por sigla (sin `IN` en el
+segmento), no en una condición sobre `tipo_solicitud`:
+
+| Camino | Valor | Unidad | Efecto vencimiento | Norma origen |
+|---|---|---|---|---|
+| `ANY/AE_PROVISIONAL/RESOLUCION` | 1 | MESES | SILENCIO_DESESTIMATORIO | Art. 132 bis RD 1955/2000 + DA 3ª LSE |
+| `ANY/AE_DEFINITIVA/RESOLUCION` · `ANY/AE_DEFINITIVA+AAT/RESOLUCION` | 1 | MESES | SILENCIO_DESESTIMATORIO | Art. 132 ter RD 1955/2000 + DA 3ª LSE |
+| `ANY/AAP/RESOLUCION` | 3 | MESES | SILENCIO_DESESTIMATORIO | Art. 128 RD 1955/2000 |
+| `ANY/AAC/RESOLUCION` · `ANY/AAP+AAC/RESOLUCION` · `ANY/AAP+AAC+DUP/RESOLUCION` · `ANY/AAC+DUP/RESOLUCION` | 3 | MESES | SILENCIO_DESESTIMATORIO | Art. 131.7 RD 1955/2000 |
+| `ANY/AAT/RESOLUCION` | 3 | MESES | SILENCIO_DESESTIMATORIO | Art. 133 RD 1955/2000 |
+| `ANY/CIERRE/RESOLUCION` | 3 | MESES | SILENCIO_DESESTIMATORIO | Art. 138 RD 1955/2000 |
+| `ANY/DUP/RESOLUCION` | 3 | MESES | SILENCIO_DESESTIMATORIO | Art. 145.4 RD 1955/2000 |
+| INFORMACION_PUBLICA — **[PENDIENTE REDISEÑO campo_fecha]** | 30 | DIAS_NATURALES | SIN_EFECTO_AUTOMATICO | Art. 125 RD 1955/2000 |
 
 `campo_fecha` para todas las filas RESOLUCION_*: `{"fk": "documento_solicitud_id"}`.
 
