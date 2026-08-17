@@ -144,7 +144,20 @@ def test_supervisor_puede_crear_nivel_tramite(usuario_supervisor, app):
         from app.models.tipos_tramites import TipoTramite
         from app.models.tipos_tareas import TipoTarea
         from app.models.efectos_plazo import EfectoPlazo
-        tipo_tramite = TipoTramite.query.first()
+        from app.models.catalogo_plazos import CatalogoPlazo
+        # .first() sin order_by picaría con cualquier tipo, incluido uno que ya
+        # tenga entrada activa sin condiciones para ANY/ANY/ANY/<código> — el
+        # propio duplicado ciego que #786 bloquea. Se elige uno libre.
+        caminos_ocupados = {
+            camino for (camino,) in CatalogoPlazo.query
+            .filter_by(tipo_elemento='TRAMITE', activo=True)
+            .with_entities(CatalogoPlazo.camino).all()
+        }
+        tipo_tramite = next(
+            (t for t in TipoTramite.query.order_by(TipoTramite.id).all()
+             if f'ANY/ANY/ANY/{t.codigo}' not in caminos_ocupados),
+            None,
+        )
         tipo_tarea = TipoTarea.query.first()
         efecto = EfectoPlazo.query.first()
         if tipo_tramite is None or tipo_tarea is None or efecto is None:
