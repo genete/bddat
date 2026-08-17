@@ -180,6 +180,18 @@ def _camino_legible(camino: str) -> list[dict]:
     return salida
 
 
+def _descripcion_camino(camino: str) -> str:
+    """Lectura humana en breadcrumb del camino, para mensajes de colisión (#786).
+
+    Omite los segmentos 'ANY' (sin concretar); la hoja siempre aparece, porque
+    nunca es ANY (ver CatalogoPlazo.camino). Mismo orden y mismas etiquetas que
+    la cascada de selects del formulario (Expediente › Solicitud › Fase ›
+    Trámite › Tarea) — el usuario no conoce el concepto interno "camino", solo
+    a qué solicitud/fase/trámite/tarea concreta le ha puesto el plazo.
+    """
+    return ' › '.join(s['nombre'] for s in _camino_legible(camino) if not s['any'])
+
+
 def _construir_camino(tipo_elemento: str):
     """Compone el camino SFTT desde los selects del formulario (#785).
 
@@ -415,6 +427,51 @@ def _valor_display(valor) -> str:
     return str(valor)
 
 
+def _validar_colision_camino(item, camino: str, tiene_condiciones: bool):
+    """Detecta colisiones activas de `camino` con otras filas de catalogo_plazos (#786).
+
+    Con identificación por camino (#785), dos filas solo son ambiguas si comparten
+    el mismo `camino`: si además ninguna tiene condiciones, la de mayor `orden`/`id`
+    queda siempre inerte (duplicado ciego) — se bloquea. Si alguna de las filas en
+    colisión tiene condiciones, puede ser el patrón legítimo condición+reserva
+    (`CONSULTA_SEPARATA`, `CONSULTAS`) o un solape legal real no discriminable en
+    general (operadores arbitrarios) — se avisa, no se bloquea, y decide el Supervisor.
+
+    Los mensajes citan `_descripcion_camino`, no el `camino` en crudo: al usuario le
+    consta que ha puesto un plazo a una solicitud/fase/trámite/tarea concreta, no que
+    existe un "camino" — concepto interno del catálogo.
+
+    Devuelve (error_o_None, aviso_o_None).
+    """
+    from app.models.catalogo_plazos import CatalogoPlazo
+
+    query = CatalogoPlazo.query.filter_by(camino=camino, activo=True)
+    if item.id is not None:
+        query = query.filter(CatalogoPlazo.id != item.id)
+    colisiones = query.all()
+    if not colisiones:
+        return None, None
+
+    descripcion = _descripcion_camino(camino)
+
+    sin_condicion = [c for c in colisiones if not c.condiciones]
+    if not tiene_condiciones and sin_condicion:
+        return (
+            f'Este plazo, aplicado a «{descripcion}», ya tiene una entrada activa '
+            f'(#{sin_condicion[0].id}) sin condición que la distinga: dos filas sin '
+            'condiciones para el mismo elemento son indistinguibles, y una de ellas '
+            'queda siempre inerte.'
+        ), None
+
+    ids = ', '.join(f'#{c.id}' for c in colisiones)
+    return None, (
+        f'Este plazo, aplicado a «{descripcion}», ya tiene entrada(s) activa(s) con '
+        f'la(s) que puede colisionar ({ids}). Revisa que las condiciones sean '
+        'mutuamente excluyentes o que exista una entrada de reserva sin condiciones '
+        'con orden más alto.'
+    )
+
+
 def _construir_condiciones(variables_por_id: dict) -> tuple[list, list[str]]:
     """Reconstruye la lista completa de CondicionPlazo desde las filas del formulario.
 
@@ -483,6 +540,24 @@ def listado():
     return render_template('catalogo_plazos/listado.html', **_selects_context())
 
 
+def _reabrir_modal_con_errores(errores):
+    """Reabre el modal de alta con los errores visibles dentro (#786).
+
+    Antes solo quedaban en el toast, que desaparece a los 8s (#44) — el
+    Supervisor podía perderlo si el modal tapaba el toast o si tardaba en
+    leerlo. Se sigue lanzando el flash (alimenta también la campana de avisos,
+    por si el toast se pierde) y además se pasan a la plantilla para pintarlos
+    dentro del `modal-body`, junto al resto de campos.
+    """
+    for msg in errores:
+        flash(msg, 'danger')
+    return render_template(
+        'catalogo_plazos/listado.html',
+        show_modal=True, form_data=request.form, errores=errores,
+        **_selects_context(),
+    )
+
+
 @bp.route('/crear', methods=['POST'])
 @login_required
 @require_permiso('gestionar_catalogo_plazos')
@@ -495,27 +570,25 @@ def crear():
     item = CatalogoPlazo()
     errores = _rellenar_catalogo_plazo(item)
     if errores:
-        for msg in errores:
-            flash(msg, 'danger')
-        return render_template(
-            'catalogo_plazos/listado.html',
-            show_modal=True, form_data=request.form,
-            **_selects_context(),
-        )
+        return _reabrir_modal_con_errores(errores)
+
+    # Alta no admite condiciones propias (se añaden después, editando desde el
+    # inspector — ver docstring de la ruta), así que la fila nueva siempre entra
+    # sin condiciones (#786).
+    error_colision, aviso_colision = _validar_colision_camino(item, item.camino, tiene_condiciones=False)
+    if error_colision:
+        return _reabrir_modal_con_errores([error_colision])
 
     db.session.add(item)
     try:
         db.session.commit()
     except Exception as e:
         db.session.rollback()
-        flash(f'Error al guardar: {e}', 'danger')
-        return render_template(
-            'catalogo_plazos/listado.html',
-            show_modal=True, form_data=request.form,
-            **_selects_context(),
-        )
+        return _reabrir_modal_con_errores([f'Error al guardar: {e}'])
 
     flash('Plazo creado correctamente.', 'success')
+    if aviso_colision:
+        flash(aviso_colision, 'warning')
     return redirect(url_for('catalogo_plazos.listado', sel=item.id))
 
 
@@ -590,6 +663,12 @@ def editar(id):
     if errores_cond:
         return _responder_errores(errores_cond)
 
+    error_colision, aviso_colision = _validar_colision_camino(
+        item, item.camino, tiene_condiciones=bool(nuevas_condiciones)
+    )
+    if error_colision:
+        return _responder_errores([error_colision])
+
     item.condiciones = nuevas_condiciones
 
     try:
@@ -600,8 +679,13 @@ def editar(id):
 
     msg = 'Plazo actualizado correctamente.'
     if is_xhr:
-        return jsonify({'ok': True, 'message': msg})
+        return jsonify({
+            'ok': True, 'message': msg,
+            'warnings': [aviso_colision] if aviso_colision else [],
+        })
     flash(msg, 'success')
+    if aviso_colision:
+        flash(aviso_colision, 'warning')
     return redirect(url_for('catalogo_plazos.listado', sel=id))
 
 
