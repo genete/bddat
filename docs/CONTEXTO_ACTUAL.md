@@ -10,8 +10,6 @@
 
 **Hecho:** **#787** (PR #792) — purgadas las 14+14 filas residuales de `catalogo_plazos`/`reglas_motor` (smoke tests del CRUD sin limpieza efectiva entre #632 y #672) y cerrada la vía: la fixture de limpieza pasa a snapshot de ids, ya no depende de que el test conserve un marcador de texto. Detalle en el issue y en el docstring de la migración `787_purga_residuo_smoke`.
 
-**#785** (PR #791) — `catalogo_plazos` identificado por camino SFTT, con la reconstrucción manual de `tipo_tramite` retirada de sus tres consumidores. El detalle está en el PR y los commits. Lo único que no vive ahí: al medir el coste que justificaba ese bypass salió **#790** (el ensamblador recompila cada variable 3 veces por recursión de `estado_plazo`/`efecto_plazo`, y `GET /analizar` hace 4 builds idénticos), abierto aparte porque toca el motor entero, no plazos.
-
 **Próximo: #786**, siguiente de la cola tras cerrar #787 (2026-08-17). Sigue el foco de `ANÁLISIS_SOLICITUD`. La auditoría de la fase (2026-08-08) cerró la duda de cuánto quedaba: **toda la cadena de diseño está cerrada** (#248, #192/#408/#583, #594/#581, #440/#441/#593, #442/#392, #406/#495, #455, #582, #679/#711/#714/#724/#765, #764) y el armazón está entero. Lo que falta no es armazón: son dos bugs con consecuencia jurídica, un trámite hueco, contenido de catálogo y cola barata. La fase es casi universal en `ESTRUCTURA_ESF.md` —es la puerta de entrada de casi todo tipo de solicitud—, así que lo que falle aquí falla en todas partes.
 
 Cola por criticidad, no por tamaño:
