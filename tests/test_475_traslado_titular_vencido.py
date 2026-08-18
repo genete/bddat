@@ -5,7 +5,13 @@ Cubre:
   B) Helper `_traslado_titular_vencido` de la serialización de organismos (api_bc.py)
 
 Patrón sin BD real: stubs SimpleNamespace + patch de db.session.query y
-plazos.obtener_estado_plazo. Igual que #460.
+plazos.obtener_estado_plazo_espera. Igual que #460.
+
+#788: los dos consumidores dejaron de evaluar el plazo sobre el TRÁMITE —nivel
+que no porta fecha administrativa y ya no existe en catalogo_plazos— y lo evalúan
+sobre su tarea ESPERAR_PLAZO, vía `obtener_estado_plazo_espera`. Es esa función la
+que se sustituye aquí; que baje bien del trámite a la tarea lo cubre
+tests/test_788_niveles_plazos.py.
 """
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
@@ -81,7 +87,7 @@ class TestVariableMotor:
         tramite_stub = SimpleNamespace()
         vinculo = SimpleNamespace(tramite=tramite_stub)
         with patch('app.db') as mock_db, \
-             patch('app.services.plazos.obtener_estado_plazo', return_value=_ep('EN_PLAZO')):
+             patch('app.services.plazos.obtener_estado_plazo_espera', return_value=_ep('EN_PLAZO')):
             mock_db.session.query = _mock_query(vinculo)
             assert fn(ctx) is False
 
@@ -92,7 +98,7 @@ class TestVariableMotor:
         tramite_stub = SimpleNamespace()
         vinculo = SimpleNamespace(tramite=tramite_stub)
         with patch('app.db') as mock_db, \
-             patch('app.services.plazos.obtener_estado_plazo', return_value=_ep('VENCIDO')):
+             patch('app.services.plazos.obtener_estado_plazo_espera', return_value=_ep('VENCIDO')):
             mock_db.session.query = _mock_query(vinculo)
             assert fn(ctx) is True
 
@@ -106,13 +112,13 @@ class TestVariableMotor:
         efectos = {'1': _ep('VENCIDO'), '2': _ep('EN_PLAZO')}
         call_count = 0
 
-        def fake_plazo(tramite, tipo, variables=None):
+        def fake_plazo(tramite):
             nonlocal call_count
             call_count += 1
             return efectos[str(call_count)]
 
         with patch('app.db') as mock_db, \
-             patch('app.services.plazos.obtener_estado_plazo', side_effect=fake_plazo):
+             patch('app.services.plazos.obtener_estado_plazo_espera', side_effect=fake_plazo):
             mock_db.session.query = _mock_query(vinculo)
             assert fn(ctx) is True
 
@@ -141,7 +147,7 @@ class TestHelperSerializacion:
         tramite_stub = SimpleNamespace()
         vinculo = SimpleNamespace(tramite=tramite_stub)
         with patch('app.models.tramites_organismos.TramiteOrganismo') as mock_model, \
-             patch('app.services.plazos.obtener_estado_plazo', return_value=_ep('VENCIDO')):
+             patch('app.services.plazos.obtener_estado_plazo_espera', return_value=_ep('VENCIDO')):
             mock_model.query.join.return_value.join.return_value \
                 .filter.return_value.order_by.return_value.first.return_value = vinculo
             assert self._fn()(oe) is True
@@ -152,7 +158,7 @@ class TestHelperSerializacion:
         tramite_stub = SimpleNamespace()
         vinculo = SimpleNamespace(tramite=tramite_stub)
         with patch('app.models.tramites_organismos.TramiteOrganismo') as mock_model, \
-             patch('app.services.plazos.obtener_estado_plazo', return_value=_ep('EN_PLAZO')):
+             patch('app.services.plazos.obtener_estado_plazo_espera', return_value=_ep('EN_PLAZO')):
             mock_model.query.join.return_value.join.return_value \
                 .filter.return_value.order_by.return_value.first.return_value = vinculo
             assert self._fn()(oe) is False

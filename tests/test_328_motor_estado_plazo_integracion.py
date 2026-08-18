@@ -1,13 +1,23 @@
 """Tests issue #328 — integración e2e: evaluar_multi entrega estado_plazo al motor.
 
 Verifica la cadena completa:
-  evaluar_multi(accion, exp, fase)
+  evaluar_multi(accion, exp, tarea)
     → _compilar_variables(ctx)            # calcula estado_plazo real vía plazos.py
     → evaluar(accion, sujeto, variables)  # motor evalúa ReglaMotor condicionada en estado_plazo
     → EvaluacionResult bloqueado/permitido
 
+El elemento con plazo es la tarea ESPERAR_PLAZO de la separata desde #788: la
+fase no porta fecha administrativa y por tanto no puede tener plazo. Lo que se
+prueba aquí no cambia — que el estado calculado llega al motor y condiciona el
+efecto—, solo el nivel al que se calcula.
+
+Nota sobre el sujeto: `_compilar_sujeto` para en el trámite (4 segmentos), así
+que la regla de una tarea se escribe contra `.../<fase>/<tramite>`. Es
+deliberado: alargarlo rompería el matching de todas las reglas del motor (ver
+`plazos.compilar_camino`).
+
 Requiere:
-  - BD con migraciones y seed de catalogo_plazos para CONSULTAS/AAC (30 días naturales).
+  - BD con migraciones y seed de catalogo_plazos para CONSULTA_SEPARATA (30 días hábiles).
   - catalogo_variables con estado_plazo activa (id=2).
   - Fixture app_ctx (rollback automático por test).
 """
@@ -45,22 +55,40 @@ def _crear_solicitud(db, expediente, tipo_solicitud):
     return sol
 
 
-def _crear_fase_consultas(db, solicitud, tipo_fase_consultas, fecha_admin):
-    """Crea fase CONSULTAS con documento_solicitud (campo_fecha para cómputo de plazo)."""
-    from app.models import Fase, Documento
-    doc_sol = Documento(
-        expediente=solicitud.expediente,
-        url='https://docs.test/doc-328',
-        fecha_administrativa=fecha_admin,
-    )
-    db.session.add(doc_sol)
-    db.session.flush()
-    solicitud.documento_solicitud = doc_sol
-    db.session.flush()
-    fase = Fase(solicitud=solicitud, tipo_fase=tipo_fase_consultas)
+def _crear_espera_separata(db, solicitud, tipos, fecha_notificacion):
+    """Fase CONSULTAS → trámite CONSULTA_SEPARATA → tarea ESPERAR_PLAZO.
+
+    El justificante que consume la tarea porta la fecha de inicio del cómputo
+    (campo_fecha={'rol':'CONSUMIDO'}).
+    """
+    from app.models import Fase, Tramite, Tarea, Documento
+    from app.models.documentos_tarea import DocumentoTarea
+
+    fase = Fase(solicitud=solicitud, tipo_fase=tipos['tf_consultas'])
     db.session.add(fase)
     db.session.flush()
-    return fase
+
+    tramite = Tramite(fase=fase, tipo_tramite=tipos['tt_separata'])
+    db.session.add(tramite)
+    db.session.flush()
+
+    tarea = Tarea(tramite=tramite, tipo_tarea=tipos['tta_esperar'])
+    db.session.add(tarea)
+    db.session.flush()
+
+    justificante = Documento(
+        expediente=solicitud.expediente,
+        url='https://docs.test/justificante-328',
+        fecha_administrativa=fecha_notificacion,
+    )
+    db.session.add(justificante)
+    db.session.flush()
+
+    db.session.add(DocumentoTarea(
+        tarea_id=tarea.id, documento_id=justificante.id, rol='CONSUMIDO',
+    ))
+    db.session.flush()
+    return tarea
 
 
 def _insertar_regla_estado_plazo(db, sujeto_patron, valor_bloqueo):
@@ -96,9 +124,12 @@ def _insertar_regla_estado_plazo(db, sujeto_patron, valor_bloqueo):
 
 @pytest.fixture()
 def tipos_328(app_ctx):
-    from app.models import TipoFase, TipoSolicitud, TipoExpediente
+    from app.models import (TipoFase, TipoSolicitud, TipoExpediente,
+                            TipoTramite, TipoTarea)
     return {
         'tf_consultas': _get_tipo(TipoFase, codigo='CONSULTAS'),
+        'tt_separata':  _get_tipo(TipoTramite, codigo='CONSULTA_SEPARATA'),
+        'tta_esperar':  _get_tipo(TipoTarea, codigo='ESPERAR_PLAZO'),
         'ts_aac':       _get_tipo(TipoSolicitud, siglas='AAC'),
         'tipo_exp':     TipoExpediente.query.first(),
     }
@@ -134,22 +165,22 @@ def expediente_328(app_ctx, tipos_328):
 
 def test_evaluar_multi_bloquea_cuando_estado_plazo_vencido(app_ctx, tipos_328, expediente_328):
     """
-    evaluar_multi('BORRAR', exp, fase) devuelve BLOQUEAR cuando:
+    evaluar_multi('BORRAR', exp, tarea) devuelve BLOQUEAR cuando:
       - Existe ReglaMotor: BORRAR/estado_plazo==VENCIDO → BLOQUEAR
-      - fecha_admin=2024-01-01 + _hoy=2025-05-01 → VENCIDO (>30 días naturales)
+      - notificación=2024-01-01 + _hoy=2025-05-01 → VENCIDO (>30 días hábiles)
     """
     from app import db
     from app.services.assembler import evaluar_multi
 
     sol = _crear_solicitud(db, expediente_328, tipos_328['ts_aac'])
-    fase = _crear_fase_consultas(db, sol, tipos_328['tf_consultas'], date(2024, 1, 1))
+    espera = _crear_espera_separata(db, sol, tipos_328, date(2024, 1, 1))
 
-    sujeto_patron = f'ANY/{tipos_328["ts_aac"].siglas}/CONSULTAS'
+    sujeto_patron = f'ANY/{tipos_328["ts_aac"].siglas}/CONSULTAS/CONSULTA_SEPARATA'
     _insertar_regla_estado_plazo(db, sujeto_patron, 'VENCIDO')
 
     with patch('app.services.plazos._hoy', return_value=date(2025, 5, 1)), \
          patch('app.services.plazos._obtener_inhabiles_bd', return_value=frozenset()):
-        resultado = evaluar_multi('BORRAR', expediente_328, fase)
+        resultado = evaluar_multi('BORRAR', expediente_328, espera)
 
     assert not resultado.permitido, (
         'Se esperaba BLOQUEAR (estado_plazo=VENCIDO); obtenido permitido=True'
@@ -163,21 +194,21 @@ def test_evaluar_multi_bloquea_cuando_estado_plazo_vencido(app_ctx, tipos_328, e
 def test_evaluar_multi_permite_cuando_estado_plazo_en_plazo(app_ctx, tipos_328, expediente_328):
     """
     Con la misma regla activa, si el plazo no ha vencido el motor no bloquea:
-      - fecha_admin=2025-04-28 + _hoy=2025-05-01 → EN_PLAZO (3 de 30 días transcurridos)
+      - notificación=2025-04-28 + _hoy=2025-05-01 → EN_PLAZO (3 de 30 días hábiles)
       - La condición estado_plazo==VENCIDO no se cumple → PERMITIR
     """
     from app import db
     from app.services.assembler import evaluar_multi
 
     sol = _crear_solicitud(db, expediente_328, tipos_328['ts_aac'])
-    fase = _crear_fase_consultas(db, sol, tipos_328['tf_consultas'], date(2025, 4, 28))
+    espera = _crear_espera_separata(db, sol, tipos_328, date(2025, 4, 28))
 
-    sujeto_patron = f'ANY/{tipos_328["ts_aac"].siglas}/CONSULTAS'
+    sujeto_patron = f'ANY/{tipos_328["ts_aac"].siglas}/CONSULTAS/CONSULTA_SEPARATA'
     _insertar_regla_estado_plazo(db, sujeto_patron, 'VENCIDO')
 
     with patch('app.services.plazos._hoy', return_value=date(2025, 5, 1)), \
          patch('app.services.plazos._obtener_inhabiles_bd', return_value=frozenset()):
-        resultado = evaluar_multi('BORRAR', expediente_328, fase)
+        resultado = evaluar_multi('BORRAR', expediente_328, espera)
 
     assert resultado.permitido, (
         'Se esperaba PERMITIR (estado_plazo=EN_PLAZO); obtenido permitido=False'

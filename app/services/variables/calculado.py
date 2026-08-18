@@ -366,10 +366,12 @@ def _(ctx) -> bool:
     inferir la acción correcta sin leer el resultado del trámite de organismo
     precedente (ADR-011 §5).
 
-    Implementación — variables={} para evitar recursión: el seed #463 no define
-    condiciones en la entrada de CONSULTA_TRASLADO_TITULAR, por lo que pasar un
-    dict vacío produce el mismo resultado que el contexto completo. Si en el futuro
-    se añaden condiciones a ese plazo, revisar esta llamada (#475).
+    Implementación — el plazo se evalúa sobre la tarea ESPERAR_PLAZO del trámite,
+    no sobre el trámite (#788): el nivel TRAMITE no porta fecha administrativa y
+    dejó de existir en catalogo_plazos. La llamada sigue pasando variables={} para
+    evitar recursión (#475); el seed #463 no define condiciones en la entrada de
+    CONSULTA_TRASLADO_TITULAR, así que da el mismo resultado que el contexto
+    completo. Si en el futuro se añaden condiciones a ese plazo, revisarlo.
     """
     from app.models.tramites_organismos import TramiteOrganismo
     from app.models.tramites import Tramite as _Tramite
@@ -393,8 +395,7 @@ def _(ctx) -> bool:
         )
         if vinculo is None:
             continue
-        ep = plazos.obtener_estado_plazo(vinculo.tramite, 'TRAMITE', variables={})
-        if ep.estado == 'VENCIDO':
+        if plazos.obtener_estado_plazo_espera(vinculo.tramite).estado == 'VENCIDO':
             return True
     return False
 

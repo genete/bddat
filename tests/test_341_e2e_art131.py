@@ -1,13 +1,26 @@
 """Tests E2E issue #341 sesión 5 — art. 131.1 párr. 2 RD 1955/2000.
 
+Reanclados a nivel TAREA en #788. Los 15/30 días no son de la fase CONSULTAS
+sino de cada organismo consultado, y corren desde la notificación de SU separata:
+el plazo vive en la tarea ESPERAR_PLAZO del trámite CONSULTA_SEPARATA, cuyo
+documento consumido es el justificante de esa notificación. Las dos filas de
+nivel fase que lo contaban en días naturales desde la fecha de solicitud eran un
+duplicado mal anclado del seed #341, anterior al #463 que puso el mismo plazo en
+el nivel del acto; se retiraron en la migración 788b.
+
+Lo que estos tests siguen verificando es lo mismo: que las DOS CONDICIONES del
+art. 131.1 párr. 2 (`es_solicitud_aac_pura` + `tiene_solicitud_aap_favorable`)
+seleccionan la entrada de 15 en vez de la de 30, sobre grafo ORM real y contexto
+completo.
+
 Requieren:
-  - BD con migraciones S1-S5 aplicadas.
+  - BD con migraciones S1-S5 y 788 aplicadas.
   - Fixture app_ctx (rollback automático por test).
 
 Escenarios:
-  A) AAC con AAP previa favorable → 15 días naturales
-  B) AAC sin AAP previa → 30 días naturales
-  C) AAC con DUP (no es_solicitud_aac_pura) → 30 días naturales
+  A) AAC con AAP previa favorable → 15 días hábiles
+  B) AAC sin AAP previa → 30 días hábiles
+  C) AAC con DUP (no es_solicitud_aac_pura) → 30 días hábiles
 """
 import pytest
 from datetime import date
@@ -69,30 +82,42 @@ def _crear_fase_finalizadora_favorable(db, solicitud, tipo_fase_resolucion, resu
     return fase
 
 
-def _crear_fase_consultas(db, solicitud, tipo_fase_consultas, fecha_admin):
-    """
-    Crea la fase CONSULTAS vinculando documento_solicitud en la solicitud.
-    campo_fecha={'fk':'documento_solicitud_id'} → navega fase.solicitud.documento_solicitud.
-    """
-    from app.models import Fase, Documento
-    doc_sol = Documento(
-        expediente=solicitud.expediente,
-        url='https://test.local/doc-solicitud-aac',
-        fecha_administrativa=fecha_admin,
-    )
-    db.session.add(doc_sol)
-    db.session.flush()
+def _crear_espera_separata(db, solicitud, tipos, fecha_notificacion):
+    """Fase CONSULTAS → trámite CONSULTA_SEPARATA → tarea ESPERAR_PLAZO.
 
-    solicitud.documento_solicitud = doc_sol
-    db.session.flush()
+    La tarea consume el justificante de la notificación de la separata: es ese
+    documento el que porta la fecha de inicio del cómputo
+    (campo_fecha={'rol':'CONSUMIDO'}). Devuelve la tarea, que es el elemento con
+    plazo desde #788.
+    """
+    from app.models import Fase, Tramite, Tarea, Documento
+    from app.models.documentos_tarea import DocumentoTarea
 
-    fase = Fase(
-        solicitud=solicitud,
-        tipo_fase=tipo_fase_consultas,
-    )
+    fase = Fase(solicitud=solicitud, tipo_fase=tipos['tf_consultas'])
     db.session.add(fase)
     db.session.flush()
-    return fase
+
+    tramite = Tramite(fase=fase, tipo_tramite=tipos['tt_separata'])
+    db.session.add(tramite)
+    db.session.flush()
+
+    tarea = Tarea(tramite=tramite, tipo_tarea=tipos['tta_esperar'])
+    db.session.add(tarea)
+    db.session.flush()
+
+    justificante = Documento(
+        expediente=solicitud.expediente,
+        url='https://test.local/justificante-separata',
+        fecha_administrativa=fecha_notificacion,
+    )
+    db.session.add(justificante)
+    db.session.flush()
+
+    db.session.add(DocumentoTarea(
+        tarea_id=tarea.id, documento_id=justificante.id, rol='CONSUMIDO',
+    ))
+    db.session.flush()
+    return tarea
 
 
 # ---------------------------------------------------------------------------
@@ -101,12 +126,15 @@ def _crear_fase_consultas(db, solicitud, tipo_fase_consultas, fecha_admin):
 
 @pytest.fixture()
 def tipos(app_ctx):
-    from app.models import TipoFase, TipoSolicitud, TipoResultadoFase, TipoExpediente
+    from app.models import (TipoFase, TipoSolicitud, TipoResultadoFase, TipoExpediente,
+                            TipoTramite, TipoTarea)
 
     return {
         # RESOLUCION es la fase finalizadora genérica (es_finalizadora=True)
         'tf_resolucion':  _get_tipo(TipoFase, codigo='RESOLUCION'),
         'tf_consultas':   _get_tipo(TipoFase, codigo='CONSULTAS'),
+        'tt_separata':    _get_tipo(TipoTramite, codigo='CONSULTA_SEPARATA'),
+        'tta_esperar':    _get_tipo(TipoTarea, codigo='ESPERAR_PLAZO'),
         'ts_aap':         _get_tipo(TipoSolicitud, siglas='AAP'),
         'ts_aac':         _get_tipo(TipoSolicitud, siglas='AAC'),
         'resultado_fav':  _get_tipo(TipoResultadoFase, codigo='FAVORABLE'),
@@ -148,7 +176,7 @@ def expediente_base(app_ctx, tipos):
 def test_e2e_aac_con_aap_previa_usa_plazo_15_dias(app_ctx, tipos, expediente_base):
     """
     Expediente con S1 AAP resuelta favorablemente + S2 AAC pura.
-    CONSULTAS de S2 → selecciona entrada orden=10 → 15 días naturales.
+    Espera de la separata de S2 → selecciona entrada orden=10 → 15 días hábiles.
     """
     from app import db
     from app.services.assembler import ExpedienteContext
@@ -164,20 +192,17 @@ def test_e2e_aac_con_aap_previa_usa_plazo_15_dias(app_ctx, tipos, expediente_bas
 
     # S2: AAC pura
     sol_aac = _crear_solicitud(db, exp, tipos['ts_aac'])
-    fecha_admin = date(2025, 5, 5)
-    fase_consultas = _crear_fase_consultas(
-        db, sol_aac, tipos['tf_consultas'], fecha_admin
-    )
+    espera = _crear_espera_separata(db, sol_aac, tipos, date(2025, 5, 5))
 
-    ctx = ExpedienteContext(expediente=exp, objeto=fase_consultas)
+    ctx = ExpedienteContext(expediente=exp, objeto=espera)
 
     with patch('app.services.plazos._hoy', return_value=date(2025, 5, 6)), \
          patch('app.services.plazos._obtener_inhabiles_bd', return_value=frozenset()):
-        estado = obtener_estado_plazo(fase_consultas, 'FASE', ctx=ctx)
+        estado = obtener_estado_plazo(espera, 'TAREA', ctx=ctx)
 
-    # 5 may + 15 días naturales = 20 may (martes, hábil)
-    assert estado.fecha_limite == date(2025, 5, 20), (
-        f'Se esperaba 2025-05-20 (15 días); obtenido {estado.fecha_limite}'
+    # lun 5 may + 15 días hábiles = lun 26 may
+    assert estado.fecha_limite == date(2025, 5, 26), (
+        f'Se esperaba 2025-05-26 (15 días hábiles); obtenido {estado.fecha_limite}'
     )
     assert estado.estado != 'SIN_PLAZO'
 
@@ -189,7 +214,7 @@ def test_e2e_aac_con_aap_previa_usa_plazo_15_dias(app_ctx, tipos, expediente_bas
 def test_e2e_aac_sin_aap_previa_usa_plazo_30_dias(app_ctx, tipos, expediente_base):
     """
     Expediente solo con S2 AAC (sin ninguna AAP previa).
-    CONSULTAS de S2 → condición falla → fallback orden=100 → 30 días.
+    Espera de la separata → condición falla → fallback orden=20 → 30 días.
     """
     from app import db
     from app.services.assembler import ExpedienteContext
@@ -198,20 +223,17 @@ def test_e2e_aac_sin_aap_previa_usa_plazo_30_dias(app_ctx, tipos, expediente_bas
     exp = expediente_base
 
     sol_aac = _crear_solicitud(db, exp, tipos['ts_aac'])
-    fecha_admin = date(2025, 5, 5)
-    fase_consultas = _crear_fase_consultas(
-        db, sol_aac, tipos['tf_consultas'], fecha_admin
-    )
+    espera = _crear_espera_separata(db, sol_aac, tipos, date(2025, 5, 5))
 
-    ctx = ExpedienteContext(expediente=exp, objeto=fase_consultas)
+    ctx = ExpedienteContext(expediente=exp, objeto=espera)
 
     with patch('app.services.plazos._hoy', return_value=date(2025, 5, 6)), \
          patch('app.services.plazos._obtener_inhabiles_bd', return_value=frozenset()):
-        estado = obtener_estado_plazo(fase_consultas, 'FASE', ctx=ctx)
+        estado = obtener_estado_plazo(espera, 'TAREA', ctx=ctx)
 
-    # 5 may + 30 días naturales = 4 jun (miércoles, hábil)
-    assert estado.fecha_limite == date(2025, 6, 4), (
-        f'Se esperaba 2025-06-04 (30 días); obtenido {estado.fecha_limite}'
+    # lun 5 may + 30 días hábiles = lun 16 jun
+    assert estado.fecha_limite == date(2025, 6, 16), (
+        f'Se esperaba 2025-06-16 (30 días hábiles); obtenido {estado.fecha_limite}'
     )
     assert estado.estado != 'SIN_PLAZO'
 
@@ -245,18 +267,15 @@ def test_e2e_aac_con_dup_no_es_pura_usa_plazo_30_dias(app_ctx, tipos, expediente
 
     # S2: AAC+DUP → es_solicitud_aac_pura = False
     sol_aac_dup = _crear_solicitud(db, exp, ts_aac_dup)
-    fecha_admin = date(2025, 5, 5)
-    fase_consultas = _crear_fase_consultas(
-        db, sol_aac_dup, tipos['tf_consultas'], fecha_admin
-    )
+    espera = _crear_espera_separata(db, sol_aac_dup, tipos, date(2025, 5, 5))
 
-    ctx = ExpedienteContext(expediente=exp, objeto=fase_consultas)
+    ctx = ExpedienteContext(expediente=exp, objeto=espera)
 
     with patch('app.services.plazos._hoy', return_value=date(2025, 5, 6)), \
          patch('app.services.plazos._obtener_inhabiles_bd', return_value=frozenset()):
-        estado = obtener_estado_plazo(fase_consultas, 'FASE', ctx=ctx)
+        estado = obtener_estado_plazo(espera, 'TAREA', ctx=ctx)
 
-    assert estado.fecha_limite == date(2025, 6, 4), (
-        f'Se esperaba 2025-06-04 (30 días); obtenido {estado.fecha_limite}'
+    assert estado.fecha_limite == date(2025, 6, 16), (
+        f'Se esperaba 2025-06-16 (30 días hábiles); obtenido {estado.fecha_limite}'
     )
     assert estado.estado != 'SIN_PLAZO'

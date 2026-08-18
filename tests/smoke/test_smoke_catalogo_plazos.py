@@ -1,12 +1,18 @@
 """Smoke test — catálogo de plazos legales (/catalogo_plazos/, #632).
 
-Cubre listado (acceso universal, 4 roles), alta en los 4 niveles ESFTT
-(SOLICITUD/FASE/TRAMITE/TAREA — cascada de campo_fecha), edición (incluye
+Cubre listado (acceso universal, 4 roles), alta en los dos niveles ESFTT con
+plazo posible (SOLICITUD/TAREA — cascada de campo_fecha), edición (incluye
 condiciones anidadas con el operador BETWEEN, exclusivo de este catálogo
 frente a items_tecnicos/admin_requisitos) y baja lógica (activar/desactivar),
 restringidas a SUPERVISOR/ADMIN — mismo patrón que items_tecnicos (#594).
 
 Sin tests de "eliminar": la baja física está fuera de alcance del issue.
+
+#788 retiró las altas de nivel FASE y TRAMITE: la tabla ya no los admite —hay
+CheckConstraint— porque no portan fecha administrativa y por tanto no pueden
+tener plazo. El formulario todavía ofrece los cuatro niveles; retirarlos de la
+UI es el punto 5 del alcance de #788, y su smoke correspondiente (que el alta en
+esos niveles se rechaza con error legible) entra con él.
 
 Estos tests corren contra la BD real de desarrollo (mismo patrón que el resto
 de la suite, ver conftest._login_as) — el fixture autouse de abajo borra al
@@ -76,10 +82,27 @@ def test_listado_accesible_administrativo(usuario_administrativo):
 # ---------------------------------------------------------------------------
 
 def _datos_maestros_solicitud(app):
+    """Siglas de un tipo de solicitud SIN entrada activa, más un efecto.
+
+    `.first()` a secas picaría con cualquier tipo, incluido uno de los 11 que
+    llevan el plazo para resolver y notificar desde #788 — y el alta chocaría
+    contra la validación de duplicado ciego de #786. Se elige uno libre, igual
+    que ya hacía el caso de nivel trámite.
+    """
     with app.app_context():
+        from app.models.catalogo_plazos import CatalogoPlazo
         from app.models.tipos_solicitudes import TipoSolicitud
         from app.models.efectos_plazo import EfectoPlazo
-        tipo = TipoSolicitud.query.first()
+        caminos_ocupados = {
+            camino for (camino,) in CatalogoPlazo.query
+            .filter_by(tipo_elemento='SOLICITUD', activo=True)
+            .with_entities(CatalogoPlazo.camino).all()
+        }
+        tipo = next(
+            (t for t in TipoSolicitud.query.order_by(TipoSolicitud.id).all()
+             if f'ANY/{t.siglas}' not in caminos_ocupados),
+            None,
+        )
         efecto = EfectoPlazo.query.first()
         if tipo is None or efecto is None:
             pytest.skip('Faltan datos maestros (tipos_solicitudes / efectos_plazo) en esta BD')
@@ -107,82 +130,6 @@ def test_supervisor_puede_crear_nivel_solicitud(usuario_supervisor, app):
         assert creado.activo is True
         assert creado.campo_fecha == {'fk': 'documento_solicitud_id'}
         assert creado.condiciones == []
-
-
-def test_supervisor_puede_crear_nivel_fase(usuario_supervisor, app):
-    with app.app_context():
-        from app.models.tipos_fases import TipoFase
-        from app.models.efectos_plazo import EfectoPlazo
-        tipo_fase = TipoFase.query.first()
-        efecto = EfectoPlazo.query.first()
-        if tipo_fase is None or efecto is None:
-            pytest.skip('Faltan datos maestros (tipos_fases / efectos_plazo) en esta BD')
-        codigo_fase, efecto_id = tipo_fase.codigo, efecto.id
-
-    r = usuario_supervisor.post('/catalogo_plazos/crear', data={
-        'tipo_elemento': 'FASE',
-        'camino_fase': codigo_fase,   # ancestros omitidos → ANY (#785)
-        'campo_fecha_fk': 'documento_resultado_id',
-        'plazo_valor': '1',
-        'plazo_unidad': 'MESES',
-        'efecto_vencimiento_id': str(efecto_id),
-        'norma_origen': 'Nivel fase (#632 smoke)',
-        'orden': '999',
-    }, follow_redirects=False)
-    assert r.status_code == 302
-
-    with app.app_context():
-        from app.models.catalogo_plazos import CatalogoPlazo
-        creado = CatalogoPlazo.query.filter_by(norma_origen='Nivel fase (#632 smoke)').first()
-        assert creado is not None
-        assert creado.tipo_elemento == 'FASE'
-        assert creado.campo_fecha == {'fk': 'documento_resultado_id'}
-
-
-def test_supervisor_puede_crear_nivel_tramite(usuario_supervisor, app):
-    with app.app_context():
-        from app.models.tipos_tramites import TipoTramite
-        from app.models.tipos_tareas import TipoTarea
-        from app.models.efectos_plazo import EfectoPlazo
-        from app.models.catalogo_plazos import CatalogoPlazo
-        # .first() sin order_by picaría con cualquier tipo, incluido uno que ya
-        # tenga entrada activa sin condiciones para ANY/ANY/ANY/<código> — el
-        # propio duplicado ciego que #786 bloquea. Se elige uno libre.
-        caminos_ocupados = {
-            camino for (camino,) in CatalogoPlazo.query
-            .filter_by(tipo_elemento='TRAMITE', activo=True)
-            .with_entities(CatalogoPlazo.camino).all()
-        }
-        tipo_tramite = next(
-            (t for t in TipoTramite.query.order_by(TipoTramite.id).all()
-             if f'ANY/ANY/ANY/{t.codigo}' not in caminos_ocupados),
-            None,
-        )
-        tipo_tarea = TipoTarea.query.first()
-        efecto = EfectoPlazo.query.first()
-        if tipo_tramite is None or tipo_tarea is None or efecto is None:
-            pytest.skip('Faltan datos maestros (tipos_tramites/tipos_tareas/efectos_plazo) en esta BD')
-        codigo_tramite, codigo_tarea, efecto_id = tipo_tramite.codigo, tipo_tarea.codigo, efecto.id
-
-    r = usuario_supervisor.post('/catalogo_plazos/crear', data={
-        'tipo_elemento': 'TRAMITE',
-        'camino_tramite': codigo_tramite,   # ancestros omitidos → ANY (#785)
-        'campo_fecha_via_tarea_tipo': codigo_tarea,
-        'campo_fecha_rol': 'PRODUCIDO',
-        'plazo_valor': '15',
-        'plazo_unidad': 'DIAS_NATURALES',
-        'efecto_vencimiento_id': str(efecto_id),
-        'norma_origen': 'Nivel tramite (#632 smoke)',
-        'orden': '999',
-    }, follow_redirects=False)
-    assert r.status_code == 302
-
-    with app.app_context():
-        from app.models.catalogo_plazos import CatalogoPlazo
-        creado = CatalogoPlazo.query.filter_by(norma_origen='Nivel tramite (#632 smoke)').first()
-        assert creado is not None
-        assert creado.tipo_elemento == 'TRAMITE'
-        assert creado.campo_fecha == {'via_tarea_tipo': codigo_tarea, 'rol': 'PRODUCIDO'}
 
 
 def test_supervisor_puede_crear_nivel_tarea(usuario_supervisor, app):
@@ -221,23 +168,25 @@ def test_crear_con_ancestros_concretos_compone_el_camino(usuario_supervisor, app
         from app.models.tipos_solicitudes import TipoSolicitud
         from app.models.tipos_fases import TipoFase
         from app.models.tipos_tramites import TipoTramite
+        from app.models.tipos_tareas import TipoTarea
         from app.models.efectos_plazo import EfectoPlazo
         tipo_sol = TipoSolicitud.query.first()
         tipo_fase = TipoFase.query.first()
         tipo_tramite = TipoTramite.query.first()
+        tipo_tarea = TipoTarea.query.first()
         efecto = EfectoPlazo.query.first()
-        if not all([tipo_sol, tipo_fase, tipo_tramite, efecto]):
+        if not all([tipo_sol, tipo_fase, tipo_tramite, tipo_tarea, efecto]):
             pytest.skip('Faltan datos maestros en esta BD')
         siglas, cod_fase = tipo_sol.siglas, tipo_fase.codigo
-        cod_tramite, efecto_id = tipo_tramite.codigo, efecto.id
+        cod_tramite, cod_tarea, efecto_id = tipo_tramite.codigo, tipo_tarea.codigo, efecto.id
 
     r = usuario_supervisor.post('/catalogo_plazos/crear', data={
-        'tipo_elemento': 'TRAMITE',
+        'tipo_elemento': 'TAREA',
         'camino_solicitud': siglas,
         'camino_fase': cod_fase,
         'camino_tramite': cod_tramite,
-        'campo_fecha_via_tarea_tipo': 'NOTIFICAR',
-        'campo_fecha_rol': 'PRODUCIDO',
+        'camino_tarea': cod_tarea,
+        'campo_fecha_rol': 'CONSUMIDO',
         'plazo_valor': '15',
         'plazo_unidad': 'DIAS_HABILES',
         'efecto_vencimiento_id': str(efecto_id),
@@ -249,8 +198,8 @@ def test_crear_con_ancestros_concretos_compone_el_camino(usuario_supervisor, app
         from app.models.catalogo_plazos import CatalogoPlazo
         creado = CatalogoPlazo.query.filter_by(norma_origen='Camino concreto (#632 smoke)').first()
         assert creado is not None
-        assert creado.camino == f'ANY/{siglas}/{cod_fase}/{cod_tramite}'
-        assert creado.hoja == cod_tramite
+        assert creado.camino == f'ANY/{siglas}/{cod_fase}/{cod_tramite}/{cod_tarea}'
+        assert creado.hoja == cod_tarea
 
 
 def test_crear_sin_hoja_es_rechazado(usuario_supervisor, app):
@@ -263,9 +212,9 @@ def test_crear_sin_hoja_es_rechazado(usuario_supervisor, app):
         efecto_id = efecto.id
 
     r = usuario_supervisor.post('/catalogo_plazos/crear', data={
-        'tipo_elemento': 'FASE',
-        'camino_fase': 'ANY',          # hoja sin concretar
-        'campo_fecha_fk': 'documento_resultado_id',
+        'tipo_elemento': 'TAREA',
+        'camino_tarea': 'ANY',          # hoja sin concretar
+        'campo_fecha_rol': 'CONSUMIDO',
         'plazo_valor': '1',
         'plazo_unidad': 'MESES',
         'efecto_vencimiento_id': str(efecto_id),
@@ -288,9 +237,9 @@ def test_crear_con_tipo_inexistente_es_rechazado(usuario_supervisor, app):
         efecto_id = efecto.id
 
     r = usuario_supervisor.post('/catalogo_plazos/crear', data={
-        'tipo_elemento': 'FASE',
-        'camino_fase': 'FASE_QUE_NO_EXISTE',
-        'campo_fecha_fk': 'documento_resultado_id',
+        'tipo_elemento': 'TAREA',
+        'camino_tarea': 'TAREA_QUE_NO_EXISTE',
+        'campo_fecha_rol': 'CONSUMIDO',
         'plazo_valor': '1',
         'plazo_unidad': 'MESES',
         'efecto_vencimiento_id': str(efecto_id),
@@ -322,28 +271,30 @@ def test_tramitador_no_puede_crear(usuario_tramitador, app):
 # ---------------------------------------------------------------------------
 
 def _crear_para_editar(app):
+    """Fila SOLICITUD de partida, en un camino libre.
+
+    Las siglas salen de `_datos_maestros_solicitud` y no de un `.first()` ciego:
+    la ruta de edición revalida la colisión de camino (#786), así que reeditar
+    una fila plantada sobre un camino ya ocupado se bloquearía sin que el test
+    llegue a probar lo suyo.
+    """
     from app import db
     from app.models.catalogo_plazos import CatalogoPlazo
-    from app.models.tipos_solicitudes import TipoSolicitud
-    from app.models.efectos_plazo import EfectoPlazo
+    siglas, efecto_id = _datos_maestros_solicitud(app)
     with app.app_context():
-        tipo = TipoSolicitud.query.first()
-        efecto = EfectoPlazo.query.first()
-        if tipo is None or efecto is None:
-            pytest.skip('Faltan datos maestros (tipos_solicitudes / efectos_plazo) en esta BD')
         item = CatalogoPlazo(
             tipo_elemento='SOLICITUD',
-            camino=f'ANY/{tipo.siglas}',
+            camino=f'ANY/{siglas}',
             campo_fecha={'fk': 'documento_solicitud_id'},
             plazo_valor=3,
             plazo_unidad='MESES',
-            efecto_vencimiento_id=efecto.id,
+            efecto_vencimiento_id=efecto_id,
             norma_origen='Base para edición (#632 smoke)',
             orden=999,
         )
         db.session.add(item)
         db.session.commit()
-        return item.id, tipo.siglas, efecto.id
+        return item.id, siglas, efecto_id
 
 
 def test_supervisor_puede_editar_sin_condiciones(usuario_supervisor, app):
