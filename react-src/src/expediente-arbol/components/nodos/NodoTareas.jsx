@@ -20,6 +20,17 @@ const ICONO = {
 
 // Barra de plazo SEMÁNTICA (v1, §9): el relleno refleja el estado del plazo, no el
 // progreso real. Verde congelado cuando la tarea está ejecutada (FIN).
+//
+// 'INDEFINIDO' (#789): reservado sin productor actual, no borrar. `plazos.py` /
+// `catalogo_plazos` no admiten `plazo_valor=0` a propósito — un ESPERAR_PLAZO sin
+// plazo legal (dictamen ambiental, informe vinculante, primera espera de un
+// ANUNCIO_*...) se deja SIN fila de catálogo, no con una fila "indefinida": la
+// ausencia ya produce SIN_PLAZO → PENDIENTE_TRAMITAR (rojo permanente hasta que
+// llega el documento), que es el comportamiento deseado — sin plazo cierto no hay
+// fecha en la que el sistema pueda escalar solo, así que la única garantía de que
+// el tramitador no lo pierda de vista es el rojo persistente, no un gris pasivo.
+// Si en el futuro aparece un caso genuino de "indefinido pero sin necesidad de
+// seguimiento activo", este case ya está listo para usarse.
 function barraPlazo(tarea) {
   const ejecutada = tarea.semaforo && tarea.semaforo.estado === 'FIN'
   if (ejecutada) return { color: 'verde', width: '100%' }
