@@ -11,7 +11,7 @@ Ejecuta la sincronización de documentos derivados para el proyecto BDDAT.
 
 - Ficheros modificados en el último commit: !`git -C /d/BDDAT diff --name-only HEAD~1 HEAD`
 - Ficheros modificados sin commitear: !`git -C /d/BDDAT diff --name-only HEAD`
-- Tabla de derivados conocidos: !`grep -A 50 "Derivados conocidos" /d/BDDAT/docs/REGLAS_ARQUITECTURA.md`
+- Tabla de derivados conocidos: !`grep -A 50 "Derivados conocidos" /d/BDDAT/docs/historial/REGLAS_ARQUITECTURA.md`
 
 ## Pasos a seguir
 

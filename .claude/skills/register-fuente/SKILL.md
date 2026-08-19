@@ -10,7 +10,7 @@ Registra documentos derivados nuevos en la tabla de dependencias documentales de
 ## Contexto actual
 
 - Ficheros nuevos (untracked o staged): !`git -C /d/BDDAT status --short`
-- Tabla de derivados actual: !`grep -A 50 "Derivados conocidos" /d/BDDAT/docs/REGLAS_ARQUITECTURA.md`
+- Tabla de derivados actual: !`grep -A 50 "Derivados conocidos" /d/BDDAT/docs/historial/REGLAS_ARQUITECTURA.md`
 
 ## Pasos a seguir
 
@@ -54,7 +54,7 @@ Pregunta al usuario: "¿Es `<nombre-fichero>` un derivado de otra fuente de verd
 Si se modificó `REGLAS_ARQUITECTURA.md`, crea un commit con:
 
 - Escribe el mensaje en `D:\BDDAT\docs_prueba\temp\commit_register.txt` con la tool `Write`
-- Ejecuta: `git -C /d/BDDAT add docs/REGLAS_ARQUITECTURA.md`
+- Ejecuta: `git -C /d/BDDAT add docs/historial/REGLAS_ARQUITECTURA.md`
 - Ejecuta: `git -C /d/BDDAT commit -F docs_prueba/temp/commit_register.txt`
 
 Formato del mensaje:
