@@ -10,9 +10,12 @@ Sin tests de "eliminar": la baja física está fuera de alcance del issue.
 
 #788 retiró las altas de nivel FASE y TRAMITE: la tabla ya no los admite —hay
 CheckConstraint— porque no portan fecha administrativa y por tanto no pueden
-tener plazo. El formulario todavía ofrece los cuatro niveles; retirarlos de la
-UI es el punto 5 del alcance de #788, y su smoke correspondiente (que el alta en
-esos niveles se rechaza con error legible) entra con él.
+tener plazo. El formulario ya no los ofrece (punto 5 del alcance de #788): el
+select de nivel del listado solo pinta Solicitud y Tarea. Los dos smoke tests
+de rechazo cubren la vía que sí sigue abierta — un POST directo al endpoint,
+sin pasar por el formulario — con el mismo criterio que el CheckConstraint de
+BD: el CRUD da el error legible, la constraint cubre lo que le llega sin pasar
+por él.
 
 Estos tests corren contra la BD real de desarrollo (mismo patrón que el resto
 de la suite, ver conftest._login_as) — el fixture autouse de abajo borra al
@@ -75,6 +78,18 @@ def test_listado_accesible_tramitador(usuario_tramitador):
 def test_listado_accesible_administrativo(usuario_administrativo):
     r = usuario_administrativo.get('/catalogo_plazos/', follow_redirects=True)
     assert r.status_code == 200
+
+
+def test_listado_no_ofrece_niveles_sin_plazo(usuario_supervisor):
+    """#788 punto 5: el select de nivel del modal de alta solo ofrece Solicitud
+    y Tarea — Fase y Trámite no portan fecha administrativa y no son niveles
+    seleccionables. `value="FASE"`/`value="TRAMITE"` no aparecen en ningún otro
+    select de la página (los de tipos_fase/tipos_tramite usan sus propios
+    códigos, no el literal del nivel)."""
+    r = usuario_supervisor.get('/catalogo_plazos/', follow_redirects=True)
+    assert r.status_code == 200
+    assert b'value="FASE"' not in r.data
+    assert b'value="TRAMITE"' not in r.data
 
 
 # ---------------------------------------------------------------------------
@@ -250,6 +265,35 @@ def test_crear_con_tipo_inexistente_es_rechazado(usuario_supervisor, app):
     with app.app_context():
         from app.models.catalogo_plazos import CatalogoPlazo
         assert CatalogoPlazo.query.filter_by(norma_origen='Tipo inexistente (#632 smoke)').first() is None
+
+
+@pytest.mark.parametrize('nivel_sin_plazo', ['FASE', 'TRAMITE'])
+def test_crear_nivel_sin_plazo_es_rechazado(usuario_supervisor, app, nivel_sin_plazo):
+    """#788: aunque el formulario ya no ofrece FASE/TRAMITE, el endpoint debe
+    rechazarlos con un error legible si llegan igual (POST directo, no por la
+    UI) — no un 500 del CheckConstraint. Mismo criterio que la BD: el CRUD da
+    el error legible, la constraint cubre lo que le llega sin pasar por él."""
+    with app.app_context():
+        from app.models.efectos_plazo import EfectoPlazo
+        efecto = EfectoPlazo.query.first()
+        if efecto is None:
+            pytest.skip('Faltan datos maestros (efectos_plazo) en esta BD')
+        efecto_id = efecto.id
+
+    r = usuario_supervisor.post('/catalogo_plazos/crear', data={
+        'tipo_elemento': nivel_sin_plazo,
+        'plazo_valor': '1',
+        'plazo_unidad': 'MESES',
+        'efecto_vencimiento_id': str(efecto_id),
+        'norma_origen': f'Nivel {nivel_sin_plazo} rechazado (#788 smoke)',
+    }, follow_redirects=False)
+    assert r.status_code == 200, 'Debe re-renderizar el formulario con el error, no un 500'
+
+    with app.app_context():
+        from app.models.catalogo_plazos import CatalogoPlazo
+        assert CatalogoPlazo.query.filter_by(
+            norma_origen=f'Nivel {nivel_sin_plazo} rechazado (#788 smoke)'
+        ).first() is None
 
 
 def test_tramitador_no_puede_crear(usuario_tramitador, app):

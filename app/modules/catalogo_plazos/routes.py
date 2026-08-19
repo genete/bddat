@@ -11,17 +11,20 @@ Dos cascadas independientes, ambas gobernadas por el nivel ESFTT y ambas
 renderizadas por `_campo_fecha_macro.html`:
 
 1. Camino SFTT (#785) — DÓNDE está el plazo en el árbol. Un select por nivel; el
-   nivel elegido decide cuántos segmentos se piden (SOLICITUD 2 … TAREA 5). Los
-   ancestros admiten `ANY`; la hoja es obligatoria y nunca `ANY`, porque es el
-   tipo del elemento evaluado y siempre se conoce. Sustituye al antiguo select
-   único de `tipo_elemento_codigo`, que no distinguía dos puntos distintos del
-   árbol con el mismo literal.
+   nivel elegido decide cuántos segmentos se piden (SOLICITUD 2, TAREA 5 — FASE y
+   TRAMITE no son niveles seleccionables desde #788, aunque sus ancestros siguen
+   pidiéndose como segmentos intermedios de una TAREA). Los ancestros admiten
+   `ANY`; la hoja es obligatoria y nunca `ANY`, porque es el tipo del elemento
+   evaluado y siempre se conoce. Sustituye al antiguo select único de
+   `tipo_elemento_codigo`, que no distinguía dos puntos distintos del árbol con
+   el mismo literal.
 
 2. `campo_fecha` (DISEÑO_FECHAS_PLAZOS.md §3.2) — DESDE QUÉ documento se computa.
-   FASE admite dos referencias (documento propio o el de la solicitud, ver datos
-   reales en BD: #172/#341/#416/#448/#463), TRAMITE necesita la tarea hija
-   (`via_tarea_tipo`) + rol, TAREA solo el rol, SOLICITUD es fija (su único FK a
-   documentos).
+   Vocabulario cerrado desde #788: SOLICITUD es fija (su único FK a documentos),
+   TAREA pide el rol (consumido/producido) y, opcionalmente, el tipo de
+   documento que desempata cuando dos tareas del mismo tipo conviven en un
+   trámite (las dos esperas de los `ANUNCIO_*`). FASE y TRAMITE ya no portan
+   fecha — no hay filas de esos niveles ni forma de crearlas.
 
 El bloque visible lo decide el servidor según el nivel actual (edición) o el
 valor por defecto del select (alta); el JS de `catalogo-plazos-cascada.js` solo
@@ -44,6 +47,7 @@ from datetime import date
 
 from flask import Blueprint, flash, jsonify, redirect, render_template, request, url_for
 from flask_login import login_required
+from sqlalchemy.orm import joinedload
 
 from app import db
 from app.decorators import require_permiso
@@ -51,11 +55,14 @@ from app.models.catalogo_plazos import CatalogoPlazo
 from app.models.condiciones_plazo import CondicionPlazo
 from app.models.efectos_plazo import EfectoPlazo
 from app.models.motor_reglas import CatalogoVariable
+from app.models.tipos_documentos import TipoDocumento
 from app.models.tipos_expedientes import TipoExpediente
 from app.models.tipos_fases import TipoFase
 from app.models.tipos_solicitudes import TipoSolicitud
 from app.models.tipos_tareas import TipoTarea
 from app.models.tipos_tramites import TipoTramite
+from app.models.tramites_tareas import TramiteTarea
+from app.models.tramites_tareas_documentos import TramiteTareaDocumento
 from app.utils.permisos import tiene_permiso
 
 bp = Blueprint(
@@ -67,17 +74,29 @@ bp = Blueprint(
 
 # Nivel ESFTT → (modelo del catálogo de tipos, atributo que porta el código estable).
 # TipoSolicitud usa 'siglas' — el resto usa 'codigo' (mismo mapeo que plazos.py).
+# Conserva sus 4 entradas a propósito (igual que plazos.py._TIPO_REL_CAMPO):
+# _tipo_elemento_nombre() la usa para nombrar CUALQUIER segmento del camino,
+# incluidos los ancestros Fase/Trámite de una TAREA — no es el mapa de niveles
+# seleccionables, que es _NIVELES_VALIDOS.
 _TIPO_MODELO = {
     'SOLICITUD': (TipoSolicitud, 'siglas'),
     'FASE':      (TipoFase, 'codigo'),
     'TRAMITE':   (TipoTramite, 'codigo'),
     'TAREA':     (TipoTarea, 'codigo'),
 }
-_NIVELES_VALIDOS = set(_TIPO_MODELO)
+
+# Niveles con plazo posible (#788): los únicos dos portadores de fecha
+# administrativa. FASE y TRAMITE son taxonomía ESFTT, no figuras jurídicas, y
+# el CheckConstraint de catalogo_plazos ya los rechaza — esta validación da el
+# error legible antes de llegar ahí.
+_NIVELES_VALIDOS = {'SOLICITUD', 'TAREA'}
 
 # Camino SFTT (#785): un segmento por nivel del árbol, de fuera a dentro. La
 # longitud del camino codifica el nivel del elemento evaluado, así que el nivel
-# elegido decide cuántos segmentos se piden.
+# elegido decide cuántos segmentos se piden. FASE y TRAMITE conservan su entrada
+# aquí aunque ya no sean niveles seleccionables (#788): siguen siendo posiciones
+# de ascendencia dentro del camino de 5 segmentos de una TAREA, y esta lista
+# valida cada posición contra el catálogo de tipos que le toca.
 #   (campo del formulario, nivel de tipo para validar, etiqueta para el error)
 _SEGMENTOS_CAMINO = [
     ('camino_expediente', None,        'tipo de expediente'),
@@ -86,16 +105,23 @@ _SEGMENTOS_CAMINO = [
     ('camino_tramite',    'TRAMITE',   'tipo de trámite'),
     ('camino_tarea',      'TAREA',     'tipo de tarea'),
 ]
-_SEGMENTOS_POR_NIVEL = {'SOLICITUD': 2, 'FASE': 3, 'TRAMITE': 4, 'TAREA': 5}
+# Solo los dos niveles con plazo posible (#788): FASE y TRAMITE no portan fecha
+# administrativa y quedan fuera del CheckConstraint de catalogo_plazos.
+_SEGMENTOS_POR_NIVEL = {'SOLICITUD': 2, 'TAREA': 5}
 _UNIDADES_VALIDAS = {'DIAS_HABILES', 'DIAS_NATURALES', 'MESES', 'ANOS'}
 _ROLES_VALIDOS = {'CONSUMIDO', 'PRODUCIDO'}
-_FK_FASE_VALIDOS = {'documento_solicitud_id', 'documento_resultado_id'}
 
 _FK_LABEL = {
     'documento_solicitud_id': 'Fecha administrativa del documento de solicitud',
-    'documento_resultado_id': 'Fecha administrativa del documento de resultado de la fase',
 }
 _ROL_LABEL = {'CONSUMIDO': 'consumido', 'PRODUCIDO': 'producido'}
+
+# Rol en tramites_tareas_documentos (ENTRADA/SALIDA, #346) → rol de campo_fecha
+# (CONSUMIDO/PRODUCIDO, ADR-010). Distinto vocabulario para el mismo concepto:
+# el primero es el mapa semántico de catálogo, el segundo el vínculo
+# operacional (documentos_tarea) — el formulario y el JS solo conocen el
+# segundo.
+_ROL_TTD_A_CF = {'ENTRADA': 'CONSUMIDO', 'SALIDA': 'PRODUCIDO'}
 
 # Operadores soportados por el CHECK constraint de condiciones_plazo — juego
 # completo (a diferencia de items_tecnicos/admin_requisitos, que solo cubren
@@ -139,7 +165,54 @@ def _selects_context():
         'efectos':          EfectoPlazo.query.order_by(EfectoPlazo.nombre).all(),
         'variables':        CatalogoVariable.query.filter_by(activa=True).order_by(CatalogoVariable.etiqueta).all(),
         'operadores':       OPERADORES,
+        'tipo_documento_map': _tipo_documento_map(),
     }
+
+
+def _tipo_documento_map() -> dict:
+    """Mapa "tramite|tarea|rol" → tipos de documento candidatos para `tipo_documento` (#788 §2.3).
+
+    Fuente: `tramites_tareas_documentos` (#346), que ya declara qué tipo de
+    documento consume/produce cada tarea de cada trámite — no hay que
+    mantenerlo aparte. Las filas con `tipo_documento_id` NULL (polimórficas)
+    se descartan: no hay código que ofrecer en el desplegable para ellas, y es
+    justamente el caso en que `tipo_documento` no hace falta (el justificante
+    de CONSULTA_SEPARATA, por ejemplo).
+
+    `rol` se expresa en el vocabulario de `campo_fecha` (CONSUMIDO/PRODUCIDO,
+    ADR-010), no en el de `tramites_tareas_documentos` (ENTRADA/SALIDA) — el
+    formulario y el JS solo conocen el primero.
+
+    Sirve tanto para pintar las opciones iniciales en Jinja (server-side, mismo
+    criterio que el resto de bloques de `_campo_fecha_macro.html`) como,
+    serializado a JSON, para que el JS repueble el desplegable al cambiar de
+    trámite/tarea/rol en la cascada.
+    """
+    filas = (
+        TramiteTareaDocumento.query
+        .filter(TramiteTareaDocumento.tipo_documento_id.isnot(None))
+        .options(
+            joinedload(TramiteTareaDocumento.tipo_tramite),
+            joinedload(TramiteTareaDocumento.tipo_documento),
+        )
+        .all()
+    )
+    tareas_por_tramite_orden = {
+        (tt.tipo_tramite_id, tt.orden): tt.tipo_tarea
+        for tt in TramiteTarea.query.options(joinedload(TramiteTarea.tipo_tarea)).all()
+    }
+
+    mapa: dict = {}
+    for fila in filas:
+        tipo_tarea = tareas_por_tramite_orden.get((fila.tipo_tramite_id, fila.orden_tarea))
+        rol_cf = _ROL_TTD_A_CF.get(fila.rol)
+        if not tipo_tarea or not rol_cf:
+            continue
+        clave = f'{fila.tipo_tramite.codigo}|{tipo_tarea.codigo}|{rol_cf}'
+        opciones = mapa.setdefault(clave, [])
+        if not any(o['codigo'] == fila.tipo_documento.codigo for o in opciones):
+            opciones.append({'codigo': fila.tipo_documento.codigo, 'nombre': fila.tipo_documento.nombre})
+    return mapa
 
 
 def _tipo_elemento_nombre(tipo_elemento: str, codigo: str) -> str:
@@ -228,7 +301,13 @@ def _construir_camino(tipo_elemento: str):
 
 
 def _campo_fecha_legible(tipo_elemento: str, campo_fecha: dict) -> str:
-    """Traduce el JSON de campo_fecha a texto legible (DISEÑO_FECHAS_PLAZOS.md §3.2)."""
+    """Traduce el JSON de campo_fecha a texto legible.
+
+    Vocabulario cerrado de dos ramas desde #788 (DISEÑO_FECHAS_PLAZOS.md §3.2):
+    `fk` para SOLICITUD, `rol` [+ `tipo_documento` opcional] para TAREA. Ya no
+    existe `via_tarea_tipo` — era la indirección que bajaba de un trámite a su
+    tarea, y con la fila declarada en la tarea sobra.
+    """
     campo_fecha = campo_fecha or {}
     fk = campo_fecha.get('fk')
     if fk:
@@ -238,11 +317,11 @@ def _campo_fecha_legible(tipo_elemento: str, campo_fecha: dict) -> str:
     if not rol:
         return 'Sin configurar'
     rol_txt = _ROL_LABEL.get(rol, rol)
-    via = campo_fecha.get('via_tarea_tipo')
-    if via:
-        tipo_tarea = TipoTarea.query.filter_by(codigo=via).first()
-        nombre_tarea = tipo_tarea.nombre if tipo_tarea else via
-        return f'Fecha administrativa del documento {rol_txt} por la tarea «{nombre_tarea}»'
+    tipo_documento = campo_fecha.get('tipo_documento')
+    if tipo_documento:
+        tipo_doc = TipoDocumento.query.filter_by(codigo=tipo_documento).first()
+        nombre_doc = tipo_doc.nombre if tipo_doc else tipo_documento
+        return f'Fecha administrativa del documento {rol_txt} («{nombre_doc}»)'
     return f'Fecha administrativa del documento {rol_txt} por esta tarea'
 
 
@@ -260,32 +339,31 @@ def _parse_fecha_opcional(valor_raw):
 def _construir_campo_fecha(tipo_elemento: str):
     """Traduce la selección en cascada del formulario al JSON de campo_fecha.
 
+    Vocabulario cerrado de dos ramas desde #788: no hay un tercer portador de
+    fecha al que apuntar, así que no es extensible. `_NIVELES_VALIDOS` ya
+    descarta FASE y TRAMITE antes de llegar aquí — sin rama para ellos.
+
     Devuelve (campo_fecha_dict, error_msg_o_None).
     """
     if tipo_elemento == 'SOLICITUD':
         # Único FK a documentos en Solicitud — sin selección posible (§3.2).
         return {'fk': 'documento_solicitud_id'}, None
 
-    if tipo_elemento == 'FASE':
-        fk = (request.form.get('campo_fecha_fk') or '').strip()
-        if fk not in _FK_FASE_VALIDOS:
-            return None, 'El inicio de cómputo de la fase es obligatorio.'
-        return {'fk': fk}, None
-
-    if tipo_elemento == 'TRAMITE':
-        via = (request.form.get('campo_fecha_via_tarea_tipo') or '').strip()
-        rol = (request.form.get('campo_fecha_rol') or '').strip().upper()
-        if not via or not TipoTarea.query.filter_by(codigo=via).first():
-            return None, 'La tarea de referencia del inicio de cómputo no es válida.'
-        if rol not in _ROLES_VALIDOS:
-            return None, 'El documento de referencia (consumido/producido) es obligatorio.'
-        return {'via_tarea_tipo': via, 'rol': rol}, None
-
     if tipo_elemento == 'TAREA':
         rol = (request.form.get('campo_fecha_rol') or '').strip().upper()
         if rol not in _ROLES_VALIDOS:
             return None, 'El documento de referencia (consumido/producido) es obligatorio.'
-        return {'rol': rol}, None
+        campo_fecha = {'rol': rol}
+
+        # tipo_documento (§2.3): opcional, desempata cuando dos tareas del
+        # mismo tipo conviven en un trámite (las dos esperas de un ANUNCIO_*).
+        tipo_documento = (request.form.get('campo_fecha_tipo_documento') or '').strip()
+        if tipo_documento:
+            if not TipoDocumento.query.filter_by(codigo=tipo_documento).first():
+                return None, f'El tipo de documento «{tipo_documento}» no existe en el catálogo.'
+            campo_fecha['tipo_documento'] = tipo_documento
+
+        return campo_fecha, None
 
     return None, 'Nivel ESFTT no reconocido.'
 
@@ -625,13 +703,21 @@ def editar_fragmento(id):
     item = CatalogoPlazo.query.get_or_404(id)
     valor_display = {c.id: _valor_display(c.valor) for c in item.condiciones}
     cf = item.campo_fecha or {}
+    # Ancestros trámite/tarea del camino (posiciones 4 y 5): el desplegable de
+    # tipo_documento los necesita para pintar sus opciones iniciales server-side
+    # (§2.3) — mismo criterio que el resto de bloques de la macro.
+    segmentos = (item.camino or '').split('/')
+    cf_tramite = segmentos[3] if len(segmentos) > 3 else ''
+    cf_tarea = segmentos[4] if len(segmentos) > 4 else ''
     return render_template(
         'catalogo_plazos/_editar_fragmento.html',
         item=item,
         valor_display=valor_display,
         cf_fk=cf.get('fk', ''),
-        cf_via_tarea_tipo=cf.get('via_tarea_tipo', ''),
         cf_rol=cf.get('rol', ''),
+        cf_tipo_documento=cf.get('tipo_documento', ''),
+        cf_tramite=cf_tramite,
+        cf_tarea=cf_tarea,
         **_selects_context(),
     )
 

@@ -60,9 +60,11 @@
                           tipos_expediente, tipos_solicitud, tipos_fase, tipos_tramite, tipos_tarea) }}
         {{ cf.campo_fecha('cpc', _nivel_alta,
                           form_data.get('campo_fecha_fk', '') if form_data else '',
-                          form_data.get('campo_fecha_via_tarea_tipo', '') if form_data else '',
                           form_data.get('campo_fecha_rol', '') if form_data else '',
-                          tipos_tarea) }}
+                          form_data.get('campo_fecha_tipo_documento', '') if form_data else '',
+                          form_data.get('camino_tramite', '') if form_data else '',
+                          form_data.get('camino_tarea', '') if form_data else '',
+                          tipo_documento_map) }}
 
         <hr class="my-2">
 
@@ -135,6 +137,14 @@
 {% block extra_js %}
 {{ super() }}
 <script src="{{ url_for('static', filename='js/requisitos-inspector.js') }}"></script>
+<script>
+    // Mapa tramite|tarea|rol → tipos de documento candidatos (#788 §2.3).
+    // catalogo-plazos-cascada.js lo lee al reaccionar a cambios posteriores del
+    // formulario — el fragmento de edición no re-ejecuta <script> embebidos
+    // (project_inspector_vs_modal_scripts.md), así que este global se fija aquí,
+    // en el <script> del listado que sí se ejecuta una vez al cargar la página.
+    window.CATALOGO_PLAZOS_TIPODOC_MAP = {{ tipo_documento_map | tojson }};
+</script>
 <script src="{{ url_for('static', filename='js/catalogo-plazos-cascada.js') }}"></script>
 <script>
     function _esc(s) {
@@ -159,7 +169,9 @@
         }).join('<span class="text-secondary opacity-50">/</span>') + '</span>';
     }
 
-    const NIVEL_LABEL = { SOLICITUD: 'Solicitud', FASE: 'Fase', TRAMITE: 'Trámite', TAREA: 'Tarea' };
+    // Solo SOLICITUD y TAREA tienen plazo posible desde #788 — Fase y Trámite
+    // no portan fecha administrativa y la tabla no tiene filas de esos niveles.
+    const NIVEL_LABEL = { SOLICITUD: 'Solicitud', TAREA: 'Tarea' };
 
     new SelectorFiltro('#sf-estado', [
         { v: 'true',  t: 'Activos'   },
@@ -168,8 +180,6 @@
 
     new SelectorFiltro('#sf-nivel', [
         { v: 'SOLICITUD', t: 'Solicitud' },
-        { v: 'FASE',      t: 'Fase' },
-        { v: 'TRAMITE',   t: 'Trámite' },
         { v: 'TAREA',     t: 'Tarea' }
     ], { label: 'Nivel', name: 'nivel' });
 
