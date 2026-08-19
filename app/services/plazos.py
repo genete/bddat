@@ -99,9 +99,9 @@ _SEGMENTOS_CAMINO = {'SOLICITUD': 2, 'TAREA': 5}
 # ordinaria, corren DENTRO del plazo y lo consumen. Son justo los que lo aprietan.
 _TRAMITES_SUSPENSION = frozenset({
     'REQUERIMIENTO_SUBSANACION',   # art. 22.1.a — subsanación al interesado
-    'SOLICITUD_INFORME',           # art. 22.1.b — informe preceptivo a organismo
-    'CONSULTA_SEPARATA',           # art. 22.1.b — separata a organismo en consultas
-    'SOLICITUD_COMPATIBILIDAD',    # art. 22.1.c — EIA preceptiva a Medio Ambiente
+    'SOLICITUD_INFORME',           # art. 22.1.d — informe preceptivo a organismo
+    'CONSULTA_SEPARATA',           # art. 22.1.d — separata a organismo en consultas
+    'SOLICITUD_COMPATIBILIDAD',    # art. 22.1.d — EIA preceptiva a Medio Ambiente
 })
 
 # Para trámites sin ANALIZAR propio, el trámite hermano que cierra la suspensión
