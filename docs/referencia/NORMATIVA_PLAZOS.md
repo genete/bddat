@@ -2,7 +2,7 @@
 
 > **Fuente:** Ley 39/2015, de 1 de octubre (LPACAP) — texto consolidado BOE. Leyes sectoriales pendientes de extracción (ver §2).
 > **Aplica a:** Motor de plazos (`app/services/plazos.py`), ContextAssembler, diseño de BD de plazos.
-> **Estado:** §1 completo (sesión 2026-04-01). §2.1 LSE, §2.2 RD1955, §2.3 RD-ley 23/2020, §2.4 RD-ley 6/2022+20/2022, §2.5 Ley 21/2013 EIA completos (sesión 2026-04-09). Decreto 9/2011, DL 2/2018, RAT y LAT revisados — sin plazos de autorización propios, notas en listado §2 (sesión 2026-04-09). §2.6 Ley 2/2026 y §2.7 Decreto 356/2010 pendientes.
+> **Estado:** §1 completo (sesión 2026-04-01; §1.1 art. 22 corregido 2026-08-19 — #788 separa 22.1 potestativa de 22.2 imperativa, antes fundidas). §2.1 LSE, §2.2 RD1955, §2.3 RD-ley 23/2020, §2.4 RD-ley 6/2022+20/2022, §2.5 Ley 21/2013 EIA completos (sesión 2026-04-09). Decreto 9/2011, DL 2/2018, RAT y LAT revisados — sin plazos de autorización propios, notas en listado §2 (sesión 2026-04-09). §2.6 Ley 2/2026 y §2.7 Decreto 356/2010 pendientes.
 
 ---
 
@@ -52,20 +52,57 @@ Ver constantes derivadas en `DISEÑO_FECHAS_PLAZOS.md §5`.
   - Procedimiento a **solicitud del interesado** → desde la entrada en el registro electrónico.
 
 #### Art. 22 — Suspensión del plazo para resolver
-El cómputo se **suspende** (el reloj se para) en estos casos:
+
+Dos regímenes distintos según el verbo de la norma — **separados en #788**,
+que corrige la versión anterior de esta sección: fundía las dos listas en una
+tabla única de diez causas y perdía la distinción «se podrá suspender» / «se
+suspenderá» (texto verificado contra BOE-A-2015-10565, art. 22, versión
+vigente desde 2016-10-02).
+
+**Art. 22.1 — potestativa** («el transcurso del plazo... **se podrá**
+suspender en los siguientes casos»):
 
 | Causa | Duración máxima de la suspensión |
 |---|---|
-| Requerimiento de subsanación al interesado | Hasta que conteste o expire el plazo concedido |
-| Solicitud de informe preceptivo a otro órgano | Máx. 3 meses; si no llega, se reanuda |
-| Pronunciamiento previo preceptivo de la UE | Hasta recibir el pronunciamiento |
-| Procedimiento UE pendiente que condiciona la resolución | Hasta que se resuelva |
-| Pruebas técnicas o análisis contradictorios | Hasta incorporar resultados al expediente |
-| Negociaciones para pacto o convenio | Hasta conclusión sin efecto o acuerdo |
-| Pronunciamiento judicial previo indispensable | Hasta que la Administración tenga constancia |
-| Requerimiento de ilegalidad entre Administraciones (art. 39.5) | Hasta que se atienda o resuelva recurso contencioso |
-| Actuaciones complementarias (art. 87) | Hasta su terminación |
-| Recusación de funcionario | Hasta resolución por el superior jerárquico |
+| a) Requerimiento de subsanación de deficiencias o aportación de documentos al interesado (sin perjuicio del art. 68) | Por el tiempo que medie entre la notificación del requerimiento y su cumplimiento, o el del plazo concedido |
+| b) Pronunciamiento previo y preceptivo de un órgano de la Unión Europea | Por el tiempo que medie entre la petición y la notificación del pronunciamiento |
+| c) Procedimiento no finalizado en el ámbito de la UE que condicione directamente la resolución | Desde que se tiene constancia hasta que se resuelve |
+| d) Informe preceptivo a un órgano de la misma o distinta Administración | Por el tiempo que medie entre la petición y la recepción del informe; **máx. 3 meses** — si no llega en plazo, prosigue el procedimiento |
+| e) Pruebas técnicas o análisis contradictorios o dirimentes propuestos por los interesados | Durante el tiempo necesario para incorporar los resultados al expediente |
+| f) Negociaciones para la conclusión de un pacto o convenio (art. 86) | Desde la declaración formal hasta la conclusión sin efecto, en su caso |
+| g) Pronunciamiento previo indispensable de un órgano jurisdiccional | Desde que se solicita hasta que la Administración tiene constancia |
+
+**Art. 22.2 — imperativa** («el transcurso del plazo... **se suspenderá** en
+los siguientes casos»):
+
+| Causa | Duración máxima de la suspensión |
+|---|---|
+| a) Requerimiento de ilegalidad entre Administraciones (art. 39.5) | Desde el requerimiento hasta que se atienda o se resuelva el recurso contencioso-administrativo |
+| b) Actuaciones complementarias (art. 87) | Desde que se notifica el acuerdo motivado hasta su terminación |
+| c) Recusación de funcionario | Desde que se plantea hasta que la resuelve el superior jerárquico |
+
+**Causas reales en BDDAT** (`app/services/plazos.py::_TRAMITES_SUSPENSION`,
+lista cerrada): las cuatro son del apartado **22.1** — potestativas en la
+letra de la ley, pero BDDAT las aplica siempre que concurren, sin modelar una
+decisión discrecional del tramitador. Corresponden a las letras **a)**
+(`REQUERIMIENTO_SUBSANACION`) y **d)** — informe preceptivo a otro órgano,
+aplicada tres veces con destinatario distinto: `SOLICITUD_INFORME` (DGPEM /
+operador del sistema), `CONSULTA_SEPARATA` (organismo consultado) y
+`SOLICITUD_COMPATIBILIDAD` (órgano ambiental). Ninguna causa del 22.2 tiene
+reflejo en BDDAT: son supuestos de coordinación entre Administraciones,
+actuaciones complementarias de oficio y recusación — mecánica interna de la
+instrucción, no trámites que BDDAT modele como tales. La información pública
+y los traslados al peticionario (arts. 126 / 127.3 RD 1955/2000) tampoco
+suspenden: no están en el art. 22, son instrucción ordinaria que corre dentro
+del plazo.
+
+> **Pendiente — remitido a #796.** Para el informe preceptivo (letra d), el
+> art. 22.1.d exige comunicar a los interesados tanto la petición como la
+> recepción del informe. Hay jurisprudencia (pendiente de verificar en
+> CENDOJ) según la cual sin ese acto la suspensión no se produce: SAN
+> 19-jun-2024 (rec. 201/2022), STS 11-jul-2023 (ECLI:ES:TS:2023:3219),
+> STS 18-may-2009 (rec. 4193/2007) bajo el art. 42.5.c LRJAP-PAC (precedente
+> del actual 22.1.d).
 
 #### Art. 40 — Obligación de notificar
 - La notificación debe cursarse en el plazo de **10 días hábiles** desde que se dicta el acto.
