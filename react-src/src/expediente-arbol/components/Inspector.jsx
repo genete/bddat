@@ -25,6 +25,10 @@ const ETIQUETA_TIPO = {
   tarea:      'Tarea',
 }
 
+// INDEFINIDO (#789): reservado sin productor actual, no borrar — ver comentario
+// gemelo en NodoTareas.jsx::barraPlazo. `catalogo_plazos` no admite
+// `plazo_valor=0`; un ESPERAR_PLAZO sin plazo legal queda sin fila, y
+// SIN_PLAZO (rojo permanente hasta el documento) es el estado correcto.
 const ETIQUETA_PLAZO = {
   EN_PLAZO:       'En plazo',
   PROXIMO_VENCER: 'Próximo a vencer',

@@ -3,7 +3,7 @@
     "version": "6.3",
     "descripcion": "Estructura jerárquica de fases, trámites y tareas para expedientes de AT",
     "principio": "Minimalismo estructural — la semántica vive en los TIPOS",
-    "fecha_actualizacion": "2026-08-07",
+    "fecha_actualizacion": "2026-08-19",
     "ref_diseño": [
       "docs/referencia/DISEÑO_ANALISIS_SOLICITUD.md",
       "docs/referencia/DISEÑO_CONSULTAS_ORGANISMOS.md",
@@ -42,11 +42,11 @@
     {
       "codigo": "ESPERAR_PLAZO",
       "nombre": "Esperar Plazo",
-      "descripcion": "Suspensión temporal con fecha límite (PLAZO_DIAS=0: paralización indefinida hasta evento externo)",
-      "entrada": "documento consumido (obligatorio si plazo > 0 — justificante de NOTIFICAR que inicia el cómputo del plazo; ninguno si plazo = 0, espera pasiva indefinida; vínculo CONSUMIDO en documentos_tarea)",
+      "descripcion": "Suspensión temporal con fecha límite (sin plazo legal: paralización indefinida hasta evento externo)",
+      "entrada": "documento consumido (obligatorio con plazo legal — justificante de NOTIFICAR que inicia el cómputo del plazo; ninguno sin plazo legal, espera pasiva indefinida; vínculo CONSUMIDO en documentos_tarea)",
       "salida": "Ninguno",
       "habilita_tareas": ["FIN (si vence sin respuesta)"],
-      "nota": "Campo NOTAS: PLAZO_DIAS y TIPO_DIAS. PLAZO_DIAS=0 = indefinido. Recepción de documentación externa queda en documento_producido de esta tarea (ADR-004, elimina INCORPORAR).",
+      "nota": "Campo NOTAS: PLAZO_DIAS y TIPO_DIAS cuando hay plazo legal. Sin plazo legal, la tarea no lleva fila en catalogo_plazos — no se representa con PLAZO_DIAS=0 (decisión #789: la ausencia de fila ya produce el SIN_PLAZO/rojo persistente correcto para una espera sin fecha cierta). Recepción de documentación externa queda en documento_producido de esta tarea (ADR-004, elimina INCORPORAR).",
       "regla_recepcion": "v6.3 (#764) — El producido es UNO y es el documento que acredita el hecho y porta su fecha administrativa: registro de entrada o solicitud (presentación electrónica de la Junta o red estatal), justificante de BandeJA si el remitente es interno, o acuse/certificado acreditativo cuando lo esperado es una publicación. Los anexos de ese registro NO se vinculan aquí: entran al pool y los consume (0..N) el ANALIZAR siguiente, que es donde se incorporan al expediente. Corolario estructural: todo ESPERAR_PLAZO que pueda recibir documentación de terceros exige un ANALIZAR posterior — propio, del trámite receptor hermano, o añadido tras él si es el último trámite de la fase. Esta exigencia se comprueba durante el desarrollo mediante repaso de fase a fase, sin crear issues a futuro, sino sobre la marcha."
     }
   ],
@@ -219,7 +219,7 @@
           "descripcion": "Publicación de anuncio en Boletín Oficial del Estado",
           "tareas_indicativas": ["ESPERAR_PLAZO", "ESPERAR_PLAZO"],
           "patron": "F+F",
-          "nota": "Publicación gestionada íntegramente por el promotor. ESPERAR_PLAZO(1): plazo indefinido alimentado por justificante de ANUNCIO_TITULAR.NOTIFICAR + OFICIO_PUBLICAR_TITULAR; cierra cuando el promotor aporta JUSTIFICANTE_BOE. ESPERAR_PLAZO(2): transcurso del plazo de IP."
+          "nota": "Publicación gestionada íntegramente por el promotor. ESPERAR_PLAZO(1): plazo indefinido (sin fila en catalogo_plazos, #789) alimentado por justificante de ANUNCIO_TITULAR.NOTIFICAR + OFICIO_PUBLICAR_TITULAR; cierra cuando el promotor aporta JUSTIFICANTE_BOE. ESPERAR_PLAZO(2): transcurso del plazo de IP."
         },
         {
           "codigo": "ANUNCIO_BOP",
@@ -235,7 +235,7 @@
           "descripcion": "Publicación de anuncio en diario de mayor difusión",
           "tareas_indicativas": ["ESPERAR_PLAZO", "ESPERAR_PLAZO"],
           "patron": "F+F",
-          "nota": "Publicación gestionada íntegramente por el promotor. ESPERAR_PLAZO(1): plazo indefinido alimentado por ANUNCIO_TITULAR.NOTIFICAR + OFICIO_PUBLICAR_TITULAR; cierra cuando el promotor aporta JUSTIFICANTE_PRENSA (siempre del titular, que conoce cuándo y dónde publicó). ESPERAR_PLAZO(2): transcurso del plazo de IP — puede consumirse de inmediato si el promotor envía la copia del anuncio publicado al vencer el plazo."
+          "nota": "Publicación gestionada íntegramente por el promotor. ESPERAR_PLAZO(1): plazo indefinido (sin fila en catalogo_plazos, #789) alimentado por ANUNCIO_TITULAR.NOTIFICAR + OFICIO_PUBLICAR_TITULAR; cierra cuando el promotor aporta JUSTIFICANTE_PRENSA (siempre del titular, que conoce cuándo y dónde publicó). ESPERAR_PLAZO(2): transcurso del plazo de IP — puede consumirse de inmediato si el promotor envía la copia del anuncio publicado al vencer el plazo."
         },
         {
           "codigo": "ANUNCIO_BOJA",
@@ -298,7 +298,7 @@
           "descripcion": "Solicitud de AAU/AAUS/CA al órgano ambiental competente y espera de resolución",
           "tareas_indicativas": ["ELABORAR", "NOTIFICAR", "ESPERAR_PLAZO"],
           "patron": "C",
-          "nota": "ESPERAR_PLAZO con plazo=0 (indefinido) hasta recepción de resolución ambiental."
+          "nota": "ESPERAR_PLAZO sin plazo legal (indefinido, sin fila en catalogo_plazos — #789) hasta recepción de resolución ambiental."
         },
         {
           "codigo": "RECEPCION_FIGURA",
@@ -321,7 +321,7 @@
           "descripcion": "Traslado a Medio Ambiente del resultado de IP y consultas para dictamen ambiental. ESPERAR_PLAZO indefinido hasta recepción.",
           "tareas_indicativas": ["ELABORAR", "NOTIFICAR", "ESPERAR_PLAZO"],
           "patron": "C",
-          "nota": "ESPERAR_PLAZO con plazo=0. Renombrado desde REMISION_MEDIO_AMBIENTE (#372)."
+          "nota": "ESPERAR_PLAZO sin plazo legal (sin fila en catalogo_plazos — #789). Renombrado desde REMISION_MEDIO_AMBIENTE (#372)."
         },
         {
           "codigo": "RECEPCION_DICTAMEN",
@@ -329,7 +329,7 @@
           "descripcion": "Análisis del dictamen de Medio Ambiente y elaboración de propuesta de resolución sustantiva. Puede ser favorable, desfavorable o condicionado.",
           "tareas_indicativas": ["ANALIZAR", "ELABORAR", "NOTIFICAR", "ESPERAR_PLAZO"],
           "patron": "A+C",
-          "nota": "ESPERAR_PLAZO con plazo=0. Si el dictamen es desfavorable puede condicionar o paralizar la autorización sustantiva (#372)."
+          "nota": "ESPERAR_PLAZO sin plazo legal (sin fila en catalogo_plazos — #789). Si el dictamen es desfavorable puede condicionar o paralizar la autorización sustantiva (#372)."
         },
         {
           "codigo": "RECEPCION_PROPUESTA_INF_VINC",
@@ -337,7 +337,7 @@
           "descripcion": "Análisis de propuesta de informe vinculante emitida por Medio Ambiente y elaboración de respuesta",
           "tareas_indicativas": ["ANALIZAR", "ELABORAR", "NOTIFICAR", "ESPERAR_PLAZO"],
           "patron": "A+C",
-          "nota": "ESPERAR_PLAZO con plazo=0. Trámite nuevo (#372)."
+          "nota": "ESPERAR_PLAZO sin plazo legal (sin fila en catalogo_plazos — #789). Trámite nuevo (#372)."
         },
         {
           "codigo": "RECEPCION_INFORME_VINCULANTE",
@@ -353,7 +353,7 @@
           "descripcion": "Elaboración y remisión de escrito de discrepancia al órgano superior cuando el informe vinculante es contrario a la autorización",
           "tareas_indicativas": ["ELABORAR", "NOTIFICAR", "ESPERAR_PLAZO"],
           "patron": "C",
-          "nota": "Condicional: solo si el informe vinculante es negativo y se decide elevar discrepancia. Trámite nuevo (#372)."
+          "nota": "ESPERAR_PLAZO sin plazo legal (sin fila en catalogo_plazos — #789). Condicional: solo si el informe vinculante es negativo y se decide elevar discrepancia. Trámite nuevo (#372)."
         },
         {
           "codigo": "REGISTRO_INTERESADOS",

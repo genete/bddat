@@ -388,6 +388,9 @@ def _rellenar_catalogo_plazo(item) -> list[str]:
     if err_cf:
         errores.append(err_cf)
 
+    # Entero positivo: 0 se rechaza a propósito (#789). "Plazo indefinido" (EP(0)
+    # en ESTRUCTURA_FTT.md) no se registra como fila de catalogo_plazos — la
+    # ausencia de fila ya produce el SIN_PLAZO/rojo persistente que se quiere ahí.
     plazo_valor_raw = (request.form.get('plazo_valor') or '').strip()
     plazo_valor = int(plazo_valor_raw) if plazo_valor_raw.isdigit() and int(plazo_valor_raw) > 0 else None
     if plazo_valor is None:

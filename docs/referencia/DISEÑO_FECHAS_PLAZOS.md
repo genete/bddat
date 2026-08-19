@@ -135,6 +135,22 @@ estado_plazo = f(fecha_limite_efectiva, hoy())
 
 `umbral_alerta` = **5 días hábiles** (fijo).
 
+> **`SIN_PLAZO` cubre también el "plazo indefinido" de `ESTRUCTURA_FTT.md`
+> (notación `EP(0)`) — decisión #789.** Varios `ESPERAR_PLAZO` no tienen plazo
+> legal (dictamen/propuesta/informe vinculante de `AAU_AAUS_INTEGRADA`,
+> `SOLICITUD_FIGURA`, la primera espera de los `ANUNCIO_*`). Se decidió a
+> propósito **no** darles fila en `catalogo_plazos` con `plazo_valor=0`: la
+> ausencia de fila ya produce `SIN_PLAZO`, que en `estado_dominio.py` escala a
+> `PENDIENTE_TRAMITAR` — rojo permanente en el árbol hasta que llega el
+> documento. Es el comportamiento correcto: sin plazo cierto no hay fecha en
+> la que el sistema pueda escalar la alerta por sí solo (a diferencia de
+> `EN_PLAZO`, que sabe pasar a `PROXIMO_VENCER`/`VENCIDO` solo), así que el
+> rojo persistente — no un gris de "espera pasiva" — es la señal que evita
+> que el tramitador lo pierda de vista. El frontend React tiene un estado
+> `INDEFINIDO` ya construido (barra gris, distinto de `SIN_PLAZO`) que queda
+> sin productor a propósito — no se borra, por si aparece un caso futuro
+> genuino de "indefinido sin necesidad de seguimiento activo".
+
 #### Catálogo de efectos del vencimiento
 
 El efecto del vencimiento determina la gravedad de la alerta y quién resulta perjudicado. Los efectos vienen de la LPACAP y de la norma sectorial. Se distingue si el perjudicado es la Administración o el administrado, porque la alerta en UI debe ser distinta:
@@ -879,7 +895,8 @@ segmento), no en una condición sobre `tipo_solicitud`:
 > 8/9/10 en BD; 30 días naturales; `campo_fecha:
 > {"rol":"CONSUMIDO","tipo_documento":"ANUNCIO_PUBLICADO"}`) — el
 > `tipo_documento` distingue esa espera de la primera, que aguarda
-> indefinidamente a que la publicación exista (**#789**, `plazo_valor=0`).
+> indefinidamente a que la publicación exista — sin fila propia en
+> `catalogo_plazos` (**#789**, cerrado por diseño: ver §2.4).
 > `ANUNCIO_BOJA` no tiene fila propia todavía (hueco de poblado señalado en
 > #788 §10). Las tres filas existentes llevan `norma_origen` en `PLACEHOLDER`
 > pendiente de cita exacta — deuda de **#782**, no de este issue.

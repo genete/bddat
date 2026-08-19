@@ -1,7 +1,7 @@
 # Estructura de Fases, Trámites y Tareas (ESFTT)
 
 > Fuente de verdad: `docs/referencia/ESTRUCTURA_FTT.json`
-> Última sincronización: 2026-08-07
+> Última sincronización: 2026-08-19 (#789 — notación EP(0)/plazo=0 corregida)
 
 **Versión:** 6.3 | **Fecha:** 2026-08-07
 
@@ -121,7 +121,7 @@ Tareas indicativas en los tres trámites: ELABORAR → NOTIFICAR → ESPERAR_PLA
 
 | Trámite | Patrón | Tareas indicativas |
 |---|---|---|
-| `SOLICITUD_FIGURA` | C | ELABORAR → NOTIFICAR → ESPERAR_PLAZO (plazo=0) |
+| `SOLICITUD_FIGURA` | C | ELABORAR → NOTIFICAR → ESPERAR_PLAZO (sin plazo legal) |
 | `RECEPCION_FIGURA` | A | ANALIZAR |
 
 ---
@@ -131,13 +131,20 @@ Tareas indicativas en los tres trámites: ELABORAR → NOTIFICAR → ESPERAR_PLA
 
 | Trámite | Patrón | Tareas indicativas | Nota |
 |---|---|---|---|
-| `REMISION_RESULTADO_IP_CONSULTAS` | C | ELABORAR → NOTIFICAR → EP(0) | Renombrado desde REMISION_MEDIO_AMBIENTE |
-| `RECEPCION_DICTAMEN` | A+C | ANALIZAR → ELABORAR → NOTIFICAR → EP(0) | — |
-| `RECEPCION_PROPUESTA_INF_VINC` | A+C | ANALIZAR → ELABORAR → NOTIFICAR → EP(0) | Nuevo #372 |
+| `REMISION_RESULTADO_IP_CONSULTAS` | C | ELABORAR → NOTIFICAR → EP* | Renombrado desde REMISION_MEDIO_AMBIENTE |
+| `RECEPCION_DICTAMEN` | A+C | ANALIZAR → ELABORAR → NOTIFICAR → EP* | — |
+| `RECEPCION_PROPUESTA_INF_VINC` | A+C | ANALIZAR → ELABORAR → NOTIFICAR → EP* | Nuevo #372 |
 | `RECEPCION_INFORME_VINCULANTE` | A | ANALIZAR | Nuevo #372 |
-| `DISCREPANCIA_INF_VINC` | C | ELABORAR → NOTIFICAR → EP(0) | Condicional; nuevo #372 |
+| `DISCREPANCIA_INF_VINC` | C | ELABORAR → NOTIFICAR → EP* | Condicional; nuevo #372 |
 
-*EP(0)=ESPERAR_PLAZO con plazo indefinido*
+*EP\*=ESPERAR_PLAZO sin plazo legal (dictamen/propuesta/informe vinculante de
+Medio Ambiente no tienen plazo cierto). Decisión #789: no se registra fila en
+`catalogo_plazos` para estas tareas — la ausencia de fila ya produce el estado
+`SIN_PLAZO` (rojo permanente en el árbol hasta que llega el documento), que es
+el comportamiento correcto: sin plazo cierto no hay fecha en la que el sistema
+pueda escalar la alerta por sí solo. Distinto del tope de 3 meses del art.
+22.1.d LPACAP sobre la *suspensión* del plazo de la Solicitud, que es cuestión
+aparte (#778, no fijado todavía).
 
 ---
 

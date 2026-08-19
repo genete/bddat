@@ -83,7 +83,9 @@ class CatalogoPlazo(db.Model):
     )
     plazo_valor = db.Column(
         db.Integer, nullable=False,
-        comment='Valor numérico del plazo (días, meses o años)',
+        comment='Valor numérico del plazo (días, meses o años). Entero positivo: '
+                '0 no es un valor válido (#789, "plazo indefinido" se representa '
+                'con ausencia de fila, no con plazo_valor=0 — ver plazos.py)',
     )
     plazo_unidad = db.Column(
         db.String(20), nullable=False,

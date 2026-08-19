@@ -390,6 +390,8 @@ table a.badge:hover {
 .seg-plazo { padding: 0.05em 0.4em; border-radius: 0.2rem; }
 .seg-plazo--vencido        { background-color: #f8d7da; color: #721c24; }
 .seg-plazo--proximo_vencer { background-color: #ffe5d0; color: #7d3f00; }
+/* --indefinido (#789): reservado sin productor actual, no borrar — catalogo_plazos
+   no admite plazo_valor=0; ver comentario en NodoTareas.jsx::barraPlazo. */
 .seg-plazo--en_plazo,
 .seg-plazo--indefinido     { background-color: #e2e3e5; color: #41464b; }
 

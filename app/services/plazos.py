@@ -40,6 +40,19 @@ Suspensiones (#173, corregidas en #788):
     resolver un procedimiento y notificar la resolución», que es el plazo de la
     solicitud y ninguno más. Por eso obtener_estado_plazo() solo la invoca en ese
     nivel — explícito, no por recorrido que salga vacío.
+
+plazo_valor=0 no es un caso soportado (#789):
+    ESTRUCTURA_FTT.md usa la notación EP(0) para varios ESPERAR_PLAZO sin plazo
+    legal (dictamen/propuesta/informe vinculante de AAU_AAUS_INTEGRADA,
+    SOLICITUD_FIGURA, la primera espera de los ANUNCIO_*). Se decidió a
+    propósito NO traducir esa convención en una fila de catalogo_plazos con
+    plazo_valor=0: la ausencia de fila ya produce SIN_PLAZO, que en
+    estado_dominio.py escala a PENDIENTE_TRAMITAR — rojo permanente hasta que
+    llega el documento. Sin plazo cierto no hay fecha en la que el sistema
+    pueda escalar la alerta por sí solo, así que el rojo persistente (en vez
+    de un gris de "espera pasiva") es la señal correcta para que el
+    tramitador no pierda de vista el seguimiento. `calcular_fecha_fin()` no
+    contempla plazo_valor=0 y no debe empezar a hacerlo por esto.
 """
 from __future__ import annotations
 
