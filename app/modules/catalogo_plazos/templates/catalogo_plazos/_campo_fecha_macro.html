@@ -1,22 +1,36 @@
-{# _campo_fecha_macro.html — Selectores en cascada del CRUD de plazos (#632, #785).
+{# _campo_fecha_macro.html — Selectores en cascada del CRUD de plazos (#632, #785, #788).
 
    Dos macros, dos conceptos independientes:
 
    1. camino_sftt   — DÓNDE está el plazo en el árbol (#785). Un select por nivel
                       ESFTT; los ancestros admiten «cualquiera» (ANY), la hoja no.
-                      El nivel elegido decide cuántos segmentos se piden.
+                      El nivel elegido decide cuántos segmentos se piden. Solo
+                      SOLICITUD (2) y TAREA (5) son niveles seleccionables desde
+                      #788 — Fase y Trámite siguen pidiéndose como ancestros de
+                      una tarea (posiciones 3 y 4 del camino), pero no como nivel
+                      de la fila: ninguno de los dos porta fecha administrativa.
    2. campo_fecha   — DESDE QUÉ documento se computa (DISEÑO_FECHAS_PLAZOS §3.2).
-                      Depende solo del nivel, no del camino.
+                      Vocabulario cerrado: SOLICITUD es fija (su único FK a
+                      documentos); TAREA pide el rol (consumido/producido) y,
+                      opcionalmente, el tipo de documento que desempata cuando
+                      dos tareas del mismo tipo conviven en un trámite — su
+                      desplegable sale de `tramites_tareas_documentos` (#346),
+                      filtrado por el trámite y la tarea ya elegidos en
+                      camino_sftt y por el rol elegido aquí mismo (§2.3).
 
    Compartidos por el modal de alta (listado.html) y el fragmento de edición
    (_editar_fragmento.html) para no duplicar el marcado.
 
-   El bloque visible lo decide el servidor según `nivel_actual` —
-   catalogo-plazos-cascada.js solo reacciona a cambios posteriores del select.
+   El bloque visible y las opciones iniciales de tipo_documento las decide el
+   servidor según `nivel_actual` (y, para tipo_documento, según el trámite/tarea/
+   rol ya elegidos) — catalogo-plazos-cascada.js solo reacciona a cambios
+   posteriores de esos selects, leyendo el mismo mapa (`tipo_documento_map`)
+   que aquí, pero embebido como JSON en listado.html.
 #}
 
-{# Segmentos del camino por nivel: la longitud codifica el nivel ESFTT. #}
-{% set SEGMENTOS_POR_NIVEL = {'SOLICITUD': 2, 'FASE': 3, 'TRAMITE': 4, 'TAREA': 5} %}
+{# Segmentos del camino por nivel: la longitud codifica el nivel ESFTT. Solo los
+   dos niveles con plazo posible (#788) — ver _NIVELES_VALIDOS en routes.py. #}
+{% set SEGMENTOS_POR_NIVEL = {'SOLICITUD': 2, 'TAREA': 5} %}
 
 
 {% macro camino_sftt(id_prefix, nivel_actual, camino_actual,
@@ -32,8 +46,6 @@
         </label>
         <select class="form-select form-select-sm" id="{{ id_prefix }}_nivel" name="tipo_elemento" data-nivel-select required>
             <option value="SOLICITUD" {% if nivel_actual == 'SOLICITUD' %}selected{% endif %}>Solicitud</option>
-            <option value="FASE"      {% if nivel_actual == 'FASE' %}selected{% endif %}>Fase</option>
-            <option value="TRAMITE"   {% if nivel_actual == 'TRAMITE' %}selected{% endif %}>Trámite</option>
             <option value="TAREA"     {% if nivel_actual == 'TAREA' %}selected{% endif %}>Tarea</option>
         </select>
         <div class="form-text">
@@ -98,6 +110,7 @@
                         <span class="text-danger" data-camino-req="4" {% if n_actual != 4 %}style="display:none"{% endif %}>*</span>
                     </label>
                     <select class="form-select form-select-sm" id="{{ id_prefix }}_cam_tram" name="camino_tramite"
+                            data-tipodoc-source="tramite"
                             {% if n_actual < 4 %}disabled{% endif %}>
                         <option value="ANY">— Cualquiera —</option>
                         {% for t in tipos_tramite %}
@@ -113,6 +126,7 @@
                         <span class="text-danger" data-camino-req="5" {% if n_actual != 5 %}style="display:none"{% endif %}>*</span>
                     </label>
                     <select class="form-select form-select-sm" id="{{ id_prefix }}_cam_tarea" name="camino_tarea"
+                            data-tipodoc-source="tarea"
                             {% if n_actual < 5 %}disabled{% endif %}>
                         <option value="ANY">— Cualquiera —</option>
                         {% for t in tipos_tarea %}
@@ -128,7 +142,7 @@
 {% endmacro %}
 
 
-{% macro campo_fecha(id_prefix, nivel_actual, cf_fk, cf_via, cf_rol, tipos_tarea) %}
+{% macro campo_fecha(id_prefix, nivel_actual, cf_fk, cf_rol, cf_tipo_documento, cf_tramite, cf_tarea, tipo_documento_map) %}
 <div class="row g-2 mt-1">
     <div class="col-12">
         <label class="form-label fw-semibold small">Inicio del cómputo</label>
@@ -141,50 +155,40 @@
         <div class="form-text">Fecha administrativa del documento de solicitud.</div>
     </div>
 
-    {# ---- FASE — dos FK posibles: propia o de la solicitud (§3.2) ---- #}
-    <div class="col-12" data-nivel-block="FASE" {% if nivel_actual != 'FASE' %}style="display:none"{% endif %}>
-        <select class="form-select form-select-sm" id="{{ id_prefix }}_fase_fk" name="campo_fecha_fk"
-                {% if nivel_actual != 'FASE' %}disabled{% endif %}>
-            <option value="documento_solicitud_id" {% if cf_fk == 'documento_solicitud_id' %}selected{% endif %}>Doc. de solicitud</option>
-            <option value="documento_resultado_id" {% if cf_fk == 'documento_resultado_id' %}selected{% endif %}>Doc. de resultado de la fase</option>
-        </select>
-    </div>
-
-    {# ---- TRAMITE — requiere tarea hija (via_tarea_tipo) + rol ---- #}
-    <div class="col-12" data-nivel-block="TRAMITE" {% if nivel_actual != 'TRAMITE' %}style="display:none"{% endif %}>
+    {# ---- TAREA — rol + tipo de documento opcional (desempate, §2.3) ---- #}
+    <div class="col-12" data-nivel-block="TAREA" {% if nivel_actual != 'TAREA' %}style="display:none"{% endif %}>
         <div class="row g-2">
             <div class="col-6">
-                <label class="form-label small mb-1" for="{{ id_prefix }}_tramite_via">
-                    Tarea de referencia <span class="text-danger">*</span>
+                <label class="form-label small mb-1" for="{{ id_prefix }}_tarea_rol">
+                    Documento de la tarea <span class="text-danger">*</span>
                 </label>
-                <select class="form-select form-select-sm" id="{{ id_prefix }}_tramite_via" name="campo_fecha_via_tarea_tipo"
-                        {% if nivel_actual != 'TRAMITE' %}disabled{% endif %}>
-                    <option value="">— Tarea —</option>
-                    {% for t in tipos_tarea %}
-                    <option value="{{ t.codigo }}" {% if cf_via == t.codigo %}selected{% endif %}>{{ t.nombre }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="col-6">
-                <label class="form-label small mb-1" for="{{ id_prefix }}_tramite_rol">
-                    Documento de esa tarea <span class="text-danger">*</span>
-                </label>
-                <select class="form-select form-select-sm" id="{{ id_prefix }}_tramite_rol" name="campo_fecha_rol"
-                        {% if nivel_actual != 'TRAMITE' %}disabled{% endif %}>
+                <select class="form-select form-select-sm" id="{{ id_prefix }}_tarea_rol" name="campo_fecha_rol"
+                        data-tipodoc-source="rol"
+                        {% if nivel_actual != 'TAREA' %}disabled{% endif %}>
                     <option value="CONSUMIDO" {% if cf_rol == 'CONSUMIDO' %}selected{% endif %}>Consumido por la tarea</option>
                     <option value="PRODUCIDO" {% if cf_rol == 'PRODUCIDO' %}selected{% endif %}>Producido por la tarea</option>
                 </select>
             </div>
+            <div class="col-6">
+                <label class="form-label small mb-1" for="{{ id_prefix }}_tarea_tipodoc">
+                    Tipo de documento
+                    <span class="text-secondary fw-normal">— desempate, opcional</span>
+                </label>
+                {# Opciones iniciales server-side, filtradas por trámite+tarea+rol
+                   ya elegidos (§2.3); catalogo-plazos-cascada.js las repuebla al
+                   cambiar cualquiera de esos tres selects, con el mismo mapa
+                   embebido como JSON en listado.html. Sin trámite concreto (ANY
+                   o sin elegir) no hay con qué filtrar: solo queda «Sin especificar». #}
+                <select class="form-select form-select-sm" id="{{ id_prefix }}_tarea_tipodoc" name="campo_fecha_tipo_documento"
+                        data-tipodoc-target
+                        {% if nivel_actual != 'TAREA' %}disabled{% endif %}>
+                    <option value="">— Sin especificar —</option>
+                    {% for opt in tipo_documento_map.get(cf_tramite ~ '|' ~ cf_tarea ~ '|' ~ (cf_rol or 'CONSUMIDO'), []) %}
+                    <option value="{{ opt.codigo }}" {% if cf_tipo_documento == opt.codigo %}selected{% endif %}>{{ opt.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
         </div>
-    </div>
-
-    {# ---- TAREA — solo rol, sin via_tarea_tipo (es la propia tarea) ---- #}
-    <div class="col-12" data-nivel-block="TAREA" {% if nivel_actual != 'TAREA' %}style="display:none"{% endif %}>
-        <select class="form-select form-select-sm" id="{{ id_prefix }}_tarea_rol" name="campo_fecha_rol"
-                {% if nivel_actual != 'TAREA' %}disabled{% endif %}>
-            <option value="CONSUMIDO" {% if cf_rol == 'CONSUMIDO' %}selected{% endif %}>Consumido por la tarea</option>
-            <option value="PRODUCIDO" {% if cf_rol == 'PRODUCIDO' %}selected{% endif %}>Producido por la tarea</option>
-        </select>
     </div>
 </div>
 {% endmacro %}

@@ -1,6 +1,13 @@
 """Tests issue #341 sesión 4 — _evaluar_condiciones_plazo, _seleccionar_catalogo
 y la integración en obtener_estado_plazo.
 
+Reanclados a nivel TAREA en #788: el plazo del art. 131 no es de la fase
+CONSULTAS sino de cada organismo consultado, y corre desde la notificación de SU
+separata — un acto, y todo acto es una tarea. Las dos entradas del caso canónico
+viven hoy en `ANY/ANY/ANY/CONSULTA_SEPARATA/ESPERAR_PLAZO`, con las mismas dos
+condiciones y con los plazos que fija la norma (15 y 30 días HÁBILES; las filas
+de nivel fase que se retiraron los contaban como naturales desde la solicitud).
+
 Bloques:
   A) _evaluar_condiciones_plazo  — función pura, sin BD, sin mocks de módulo.
   B) _seleccionar_catalogo       — BD mockeada (query chain + joinedload).
@@ -27,13 +34,13 @@ def _mock_condicion(nombre_var, operador, valor, orden=1):
 
 
 def _mock_entrada(orden=100, entrada_id=1, condiciones=None,
-                  plazo_valor=30, plazo_unidad='DIAS_NATURALES',
+                  plazo_valor=30, plazo_unidad='DIAS_HABILES',
                   campo_fecha=None, efecto_codigo='NINGUNO',
-                  camino='ANY/ANY/CONSULTAS'):
+                  camino='ANY/ANY/ANY/CONSULTA_SEPARATA/ESPERAR_PLAZO'):
     """CatalogoPlazo mínimo para tests de _seleccionar_catalogo.
 
-    `camino` (#785) por defecto casa con cualquier fase CONSULTAS, que es el
-    nivel que usan estos tests.
+    `camino` (#785) por defecto casa con la espera de cualquier CONSULTA_SEPARATA,
+    que es el nivel que usan estos tests desde #788.
     """
     e = MagicMock()
     e.id = entrada_id
@@ -41,39 +48,44 @@ def _mock_entrada(orden=100, entrada_id=1, condiciones=None,
     e.condiciones = condiciones if condiciones is not None else []
     e.plazo_valor = plazo_valor
     e.plazo_unidad = plazo_unidad
-    e.campo_fecha = campo_fecha or {'fk': 'documento_resultado_id'}
+    e.campo_fecha = campo_fecha or {'rol': 'CONSUMIDO'}
     e.efecto_plazo.codigo = efecto_codigo
     e.camino = camino
     return e
 
 
-def _ascendencia_fase(fase, tipo_fase_codigo='CONSULTAS', siglas='AAP',
-                      tipo_expediente='Distribucion'):
-    """Cuelga de la fase la ascendencia que compilar_camino necesita (#785).
+def _ascendencia_tarea(tarea, tipo_tarea_codigo='ESPERAR_PLAZO',
+                       tipo_tramite_codigo='CONSULTA_SEPARATA',
+                       tipo_fase_codigo='CONSULTAS', siglas='AAC',
+                       tipo_expediente='Distribucion'):
+    """Cuelga de la tarea la ascendencia que compilar_camino necesita (#785).
 
     Con MagicMock puro los segmentos salen MagicMock y el join del camino falla:
     hay que fijar strings reales en cada eslabón.
     """
-    fase.tipo_fase = MagicMock(codigo=tipo_fase_codigo)
-    fase.solicitud.tipo_solicitud = MagicMock(siglas=siglas)
-    fase.solicitud.expediente.tipo_expediente = MagicMock(tipo=tipo_expediente)
-    return fase
+    tarea.tipo_tarea = MagicMock(codigo=tipo_tarea_codigo)
+    tarea.tramite.tipo_tramite = MagicMock(codigo=tipo_tramite_codigo)
+    tarea.tramite.fase.tipo_fase = MagicMock(codigo=tipo_fase_codigo)
+    tarea.tramite.fase.solicitud.tipo_solicitud = MagicMock(siglas=siglas)
+    tarea.tramite.fase.solicitud.expediente.tipo_expediente = MagicMock(tipo=tipo_expediente)
+    return tarea
 
 
-def _mock_fase_camino(**kwargs):
-    """Fase mínima solo para _seleccionar_catalogo (sin documento)."""
-    return _ascendencia_fase(MagicMock(), **kwargs)
+def _mock_tarea_camino(**kwargs):
+    """Tarea mínima solo para _seleccionar_catalogo (sin documento)."""
+    tarea = _ascendencia_tarea(MagicMock(), **kwargs)
+    tarea.documentos_consumidos = []
+    tarea.documento_producido = None
+    return tarea
 
 
-def _mock_fase(tipo_fase_id, fecha_administrativa, tipo_fase_codigo='CONSULTAS'):
-    """Fase mínima para obtener_estado_plazo."""
-    fase = MagicMock()
-    fase.tipo_fase_id = tipo_fase_id
-    _ascendencia_fase(fase, tipo_fase_codigo=tipo_fase_codigo)
+def _mock_tarea(fecha_administrativa, **kwargs):
+    """Tarea ESPERAR_PLAZO con el justificante que porta la fecha de inicio."""
+    tarea = _mock_tarea_camino(**kwargs)
     doc = MagicMock()
     doc.fecha_administrativa = fecha_administrativa
-    fase.documento_resultado = doc
-    return fase
+    tarea.documentos_consumidos = [doc]
+    return tarea
 
 
 # ---------------------------------------------------------------------------
@@ -147,7 +159,7 @@ def test_seleccionar_sin_condiciones_retorna_fallback():
          patch('app.services.plazos.joinedload', return_value=MagicMock()):
         MockCP.query.options.return_value.filter_by.return_value\
               .order_by.return_value.all.return_value = [entrada]
-        result = _seleccionar_catalogo(_mock_fase_camino(), 'FASE',{})
+        result = _seleccionar_catalogo(_mock_tarea_camino(), 'TAREA',{})
     assert result is entrada
 
 
@@ -164,7 +176,7 @@ def test_seleccionar_condicion_dispara_gana_condicionada():
          patch('app.services.plazos.joinedload', return_value=MagicMock()):
         MockCP.query.options.return_value.filter_by.return_value\
               .order_by.return_value.all.return_value = [entrada_condicionada, entrada_fallback]
-        result = _seleccionar_catalogo(_mock_fase_camino(), 'FASE',variables)
+        result = _seleccionar_catalogo(_mock_tarea_camino(), 'TAREA',variables)
     assert result is entrada_condicionada
 
 
@@ -181,7 +193,7 @@ def test_seleccionar_condicion_no_dispara_gana_fallback():
          patch('app.services.plazos.joinedload', return_value=MagicMock()):
         MockCP.query.options.return_value.filter_by.return_value\
               .order_by.return_value.all.return_value = [entrada_condicionada, entrada_fallback]
-        result = _seleccionar_catalogo(_mock_fase_camino(), 'FASE',variables)
+        result = _seleccionar_catalogo(_mock_tarea_camino(), 'TAREA',variables)
     assert result is entrada_fallback
 
 
@@ -199,7 +211,7 @@ def test_seleccionar_dos_condicionadas_primera_falla_segunda_pasa():
          patch('app.services.plazos.joinedload', return_value=MagicMock()):
         MockCP.query.options.return_value.filter_by.return_value\
               .order_by.return_value.all.return_value = [entrada1, entrada2]
-        result = _seleccionar_catalogo(_mock_fase_camino(), 'FASE',variables)
+        result = _seleccionar_catalogo(_mock_tarea_camino(), 'TAREA',variables)
     assert result is entrada2
 
 
@@ -216,7 +228,7 @@ def test_seleccionar_variable_ausente_no_dispara():
          patch('app.services.plazos.joinedload', return_value=MagicMock()):
         MockCP.query.options.return_value.filter_by.return_value\
               .order_by.return_value.all.return_value = [entrada_condicionada, entrada_fallback]
-        result = _seleccionar_catalogo(_mock_fase_camino(), 'FASE',variables)
+        result = _seleccionar_catalogo(_mock_tarea_camino(), 'TAREA',variables)
     assert result is entrada_fallback
 
 
@@ -227,7 +239,7 @@ def test_seleccionar_sin_entradas_retorna_none():
          patch('app.services.plazos.joinedload', return_value=MagicMock()):
         MockCP.query.options.return_value.filter_by.return_value\
               .order_by.return_value.all.return_value = []
-        result = _seleccionar_catalogo(_mock_fase_camino(), 'FASE',{'x': 1})
+        result = _seleccionar_catalogo(_mock_tarea_camino(), 'TAREA',{'x': 1})
     assert result is None
 
 
@@ -243,7 +255,7 @@ def test_seleccionar_todas_condicionadas_fallan_retorna_none():
          patch('app.services.plazos.joinedload', return_value=MagicMock()):
         MockCP.query.options.return_value.filter_by.return_value\
               .order_by.return_value.all.return_value = [entrada]
-        result = _seleccionar_catalogo(_mock_fase_camino(), 'FASE',variables)
+        result = _seleccionar_catalogo(_mock_tarea_camino(), 'TAREA',variables)
     assert result is None
 
 
@@ -257,28 +269,28 @@ HOY = date(2025, 6, 2)
 def test_ctx_none_variables_none_usa_variables_dict_vacio():
     """Sin ctx ni variables → variables_dict={} → solo entradas sin condiciones aplican."""
     from app.services.plazos import obtener_estado_plazo
-    r = obtener_estado_plazo(object(), 'FASE')
+    r = obtener_estado_plazo(object(), 'TAREA')
     assert r.estado == 'SIN_PLAZO'
 
 
 def test_variables_vacio_usa_ruta_nueva_sin_condiciones():
     """variables={} → ruta nueva; entradas sin condiciones ganan; SIN_PLAZO si no hay entrada."""
     from app.services.plazos import obtener_estado_plazo
-    fase = _mock_fase(tipo_fase_id=1, fecha_administrativa=date(2025, 5, 12))
+    tarea = _mock_tarea(fecha_administrativa=date(2025, 5, 12))
 
     with patch('app.models.catalogo_plazos.CatalogoPlazo') as MockCP, \
          patch('app.models.condiciones_plazo.CondicionPlazo'), \
          patch('app.services.plazos.joinedload', return_value=MagicMock()):
         MockCP.query.options.return_value.filter_by.return_value\
               .order_by.return_value.all.return_value = []
-        r = obtener_estado_plazo(fase, 'FASE', variables={})
+        r = obtener_estado_plazo(tarea, 'TAREA', variables={})
     assert r.estado == 'SIN_PLAZO'
 
 
 def test_variables_dict_selecciona_entrada_y_calcula_estado():
     """Con variables dict, selecciona catálogo y devuelve estado calculado."""
     from app.services.plazos import obtener_estado_plazo
-    fase = _mock_fase(tipo_fase_id=1, fecha_administrativa=date(2025, 5, 12))
+    tarea = _mock_tarea(fecha_administrativa=date(2025, 5, 12))
     entrada = _mock_entrada(orden=100, condiciones=[], plazo_valor=20,
                             plazo_unidad='DIAS_HABILES', efecto_codigo='SILENCIO_DESESTIMATORIO')
 
@@ -289,7 +301,7 @@ def test_variables_dict_selecciona_entrada_y_calcula_estado():
           patch('app.services.plazos.joinedload', return_value=MagicMock())):
         MockCP.query.options.return_value.filter_by.return_value\
               .order_by.return_value.all.return_value = [entrada]
-        r = obtener_estado_plazo(fase, 'FASE', variables={})
+        r = obtener_estado_plazo(tarea, 'TAREA', variables={})
     assert r.estado == 'EN_PLAZO'
     assert r.fecha_limite == date(2025, 6, 9)
 
@@ -303,27 +315,27 @@ def test_ctx_llama_compilar_variables_con_excluir():
     from app.services.plazos import obtener_estado_plazo
     from app.services.assembler import ExpedienteContext
 
-    fase = _mock_fase(tipo_fase_id=1, fecha_administrativa=date(2025, 5, 1))
+    tarea = _mock_tarea(fecha_administrativa=date(2025, 5, 1))
     ctx = MagicMock(spec=ExpedienteContext)
 
     with patch('app.services.plazos._seleccionar_catalogo', return_value=None) as mock_sel, \
          patch('app.services.assembler._compilar_variables', return_value={}) as mock_cv:
-        obtener_estado_plazo(fase, 'FASE', ctx=ctx)
+        obtener_estado_plazo(tarea, 'TAREA', ctx=ctx)
 
     mock_cv.assert_called_once_with(ctx, excluir={'estado_plazo', 'efecto_plazo'})
     # #785: recibe el elemento, no su código de tipo — el camino lo deriva dentro.
-    mock_sel.assert_called_once_with(fase, 'FASE', {})
+    mock_sel.assert_called_once_with(tarea, 'TAREA', {})
 
 
 def test_variables_directo_no_llama_compilar_variables():
     """Cuando se pasa variables dict directamente, no se llama a _compilar_variables."""
     from app.services.plazos import obtener_estado_plazo
 
-    fase = _mock_fase(tipo_fase_id=1, fecha_administrativa=date(2025, 5, 1))
+    tarea = _mock_tarea(fecha_administrativa=date(2025, 5, 1))
 
     with patch('app.services.plazos._seleccionar_catalogo', return_value=None), \
          patch('app.services.assembler._compilar_variables') as mock_cv:
-        obtener_estado_plazo(fase, 'FASE', variables={'x': 1})
+        obtener_estado_plazo(tarea, 'TAREA', variables={'x': 1})
 
     mock_cv.assert_not_called()
 
@@ -332,10 +344,13 @@ def test_variables_directo_no_llama_compilar_variables():
 # E) Caso real art. 131.1 párr. 2 RD 1955/2000
 # ---------------------------------------------------------------------------
 #
-# Dos entradas en catalogo_plazos para la fase CONSULTAS (válida para AAP y AAC):
-#   - orden=10,  plazo=15 días naturales, condiciones: tiene_solicitud_aap_favorable=True
-#                                                     + es_solicitud_aac_pura=True
-#   - orden=100, plazo=30 días naturales, sin condiciones (fallback general)
+# Dos entradas en catalogo_plazos para la espera de CONSULTA_SEPARATA:
+#   - orden=10,  plazo=15 días hábiles, condiciones: tiene_solicitud_aap_favorable=True
+#                                                    + es_solicitud_aac_pura=True
+#   - orden=100, plazo=30 días hábiles, sin condiciones (fallback general)
+#
+# El plazo corre desde la notificación de la separata a SU organismo —el
+# justificante que consume la espera—, no desde la fecha de solicitud (#788).
 
 HOY_131 = date(2025, 5, 20)    # martes
 
@@ -347,43 +362,24 @@ def _entradas_art131():
     entrada_15d = _mock_entrada(
         orden=10, entrada_id=1,
         condiciones=[cond_aap, cond_aac],
-        plazo_valor=15, plazo_unidad='DIAS_NATURALES',
-        campo_fecha={'fk': 'documento_solicitud_id'},
-        efecto_codigo='NINGUNO',
+        plazo_valor=15, plazo_unidad='DIAS_HABILES',
+        efecto_codigo='CONFORMIDAD_PRESUNTA',
     )
     entrada_30d = _mock_entrada(
         orden=100, entrada_id=2,
         condiciones=[],
-        plazo_valor=30, plazo_unidad='DIAS_NATURALES',
-        campo_fecha={'fk': 'documento_solicitud_id'},
-        efecto_codigo='NINGUNO',
+        plazo_valor=30, plazo_unidad='DIAS_HABILES',
+        efecto_codigo='CONFORMIDAD_PRESUNTA',
     )
     return entrada_15d, entrada_30d
 
 
-def _mock_fase_aac(fecha_admin):
-    """Fase CONSULTAS (cubre AAP y AAC) con documento_solicitud."""
-    fase = MagicMock()
-    fase.tipo_fase_id = 42
-    fase.tipo_fase = MagicMock(codigo='CONSULTAS')
-    fase.tareas = []
-    doc_sol = MagicMock()
-    doc_sol.fecha_administrativa = fecha_admin
-    sol = MagicMock()
-    sol.documento_solicitud = doc_sol
-    fase.solicitud = sol
-    # No tiene documento_resultado (campo_fecha apunta a documento_solicitud_id)
-    fase.documento_solicitud = None  # la resolución va vía fase.solicitud
-    return fase
-
-
 def test_art131_con_aap_previa_usa_plazo_15_dias():
-    """AAC con AAP previa favorable → entry condicionada (15 días)."""
+    """AAC con AAP previa favorable → entrada condicionada (15 días hábiles)."""
     from app.services.plazos import obtener_estado_plazo
     from datetime import date as d
 
-    fecha_admin = d(2025, 5, 5)   # lunes
-    fase = _mock_fase_aac(fecha_admin)
+    tarea = _mock_tarea(fecha_administrativa=d(2025, 5, 5))   # lunes
 
     variables = {
         'tiene_solicitud_aap_favorable': True,
@@ -398,20 +394,19 @@ def test_art131_con_aap_previa_usa_plazo_15_dias():
           patch('app.services.plazos.joinedload', return_value=MagicMock())):
         MockCP.query.options.return_value.filter_by.return_value\
               .order_by.return_value.all.return_value = [entrada_15d, entrada_30d]
-        r = obtener_estado_plazo(fase, 'FASE', variables=variables)
+        r = obtener_estado_plazo(tarea, 'TAREA', variables=variables)
 
-    # fecha_admin=5 may + 15 días naturales = 20 may; hoy=20 may → fecha_limite correcta
-    assert r.fecha_limite == d(2025, 5, 20)
-    assert r.estado in ('EN_PLAZO', 'PROXIMO_VENCER', 'VENCIDO')
+    # 5 may + 15 hábiles = lun 26 may
+    assert r.fecha_limite == d(2025, 5, 26)
+    assert r.efecto == 'CONFORMIDAD_PRESUNTA'
 
 
 def test_art131_sin_aap_previa_usa_plazo_30_dias():
-    """AAC sin AAP previa → fallback (30 días)."""
+    """AAC sin AAP previa → fallback (30 días hábiles)."""
     from app.services.plazos import obtener_estado_plazo
     from datetime import date as d
 
-    fecha_admin = d(2025, 5, 5)
-    fase = _mock_fase_aac(fecha_admin)
+    tarea = _mock_tarea(fecha_administrativa=d(2025, 5, 5))
 
     variables = {
         'tiene_solicitud_aap_favorable': False,
@@ -426,12 +421,12 @@ def test_art131_sin_aap_previa_usa_plazo_30_dias():
           patch('app.services.plazos.joinedload', return_value=MagicMock())):
         MockCP.query.options.return_value.filter_by.return_value\
               .order_by.return_value.all.return_value = [entrada_15d, entrada_30d]
-        r = obtener_estado_plazo(fase, 'FASE', variables=variables)
+        r = obtener_estado_plazo(tarea, 'TAREA', variables=variables)
 
-    # fecha_admin=5 may + 30 días naturales = 4 jun (miércoles, hábil)
-    assert r.fecha_limite == d(2025, 6, 4)
+    # 5 may + 30 hábiles = lun 16 jun
+    assert r.fecha_limite == d(2025, 6, 16)
     assert r.estado == 'EN_PLAZO'
-    assert r.dias_restantes == 12   # hábiles entre 20 may y 4 jun (4+5+3)
+    assert r.dias_restantes == 20   # hábiles entre 20 may y 16 jun, ambos inclusive
 
 
 def test_art131_seleccion_correcta_verificada_via_plazo_valor():
@@ -439,8 +434,7 @@ def test_art131_seleccion_correcta_verificada_via_plazo_valor():
     from app.services.plazos import obtener_estado_plazo
     from datetime import date as d
 
-    fecha_admin = d(2025, 5, 1)
-    fase = _mock_fase_aac(fecha_admin)
+    tarea = _mock_tarea(fecha_administrativa=d(2025, 5, 1))   # jueves
     entrada_15d, entrada_30d = _entradas_art131()
 
     # Con condiciones satisfechas → 15 días
@@ -456,10 +450,10 @@ def test_art131_seleccion_correcta_verificada_via_plazo_valor():
         MockCP.query.options.return_value.filter_by.return_value\
               .order_by.return_value.all.return_value = [entrada_15d, entrada_30d]
 
-        r_con = obtener_estado_plazo(fase, 'FASE', variables=variables_con)
-        r_sin = obtener_estado_plazo(fase, 'FASE', variables=variables_sin)
+        r_con = obtener_estado_plazo(tarea, 'TAREA', variables=variables_con)
+        r_sin = obtener_estado_plazo(tarea, 'TAREA', variables=variables_sin)
 
-    # 1 may + 15 nat = 16 may (viernes)
-    assert r_con.fecha_limite == d(2025, 5, 16)
-    # 1 may + 30 nat = 31 may (sábado) → prorroga art. 30.5 → 2 jun (lunes)
-    assert r_sin.fecha_limite == d(2025, 6, 2)
+    # 1 may (jue) + 15 hábiles = jue 22 may
+    assert r_con.fecha_limite == d(2025, 5, 22)
+    # 1 may (jue) + 30 hábiles = jue 12 jun
+    assert r_sin.fecha_limite == d(2025, 6, 12)

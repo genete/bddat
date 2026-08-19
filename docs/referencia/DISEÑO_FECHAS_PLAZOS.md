@@ -4,7 +4,7 @@
 > **Estado:** En construcción — sesión inicial de diseño.
 > **Fuente de verdad:** `docs/NORMATIVA_PLAZOS.md` — todo contenido legal (plazos, artículos, constantes) extrae de ahí. En caso de discrepancia, prevalece `NORMATIVA_PLAZOS.md`.
 > Referencia de arquitectura: `DISEÑO_MOTOR_AGNOSTICO.md`
-> Última sincronización: 2026-04-04
+> Última sincronización: 2026-08-19 (§1.1 NORMATIVA_PLAZOS.md — separación art. 22.1/22.2, #788)
 
 ---
 
@@ -353,7 +353,7 @@ Estos controles son de integridad administrativa, no de plazo. Deben decidirse e
 
 ---
 
-### 3.2 Catálogo de plazos — CERRADO (campo_fecha 2026-04-19, condiciones_plazo #341 2026-04-30, camino SFTT #785 2026-08-17)
+### 3.2 Catálogo de plazos — CERRADO (campo_fecha 2026-04-19, condiciones_plazo #341 2026-04-30, camino SFTT #785 2026-08-17, niveles SOLICITUD/TAREA #788 2026-08-19)
 
 > **Decisión:** Tabla separada `catalogo_plazos`, administrable por el Supervisor.
 
@@ -391,12 +391,18 @@ porque tres consumidores la reconstruían a mano saltándose el ensamblador.
 mismo matcher** (`operadores.camino_casa`) que `reglas_motor.sujeto`, con un
 nivel más de profundidad. La longitud codifica el nivel:
 
-| Nivel | Segmentos | Forma |
+| Nivel de la fila | Segmentos | Forma |
 |---|---|---|
 | SOLICITUD | 2 | `<expediente>/<siglas>` |
-| FASE | 3 | `<expediente>/<siglas>/<fase>` |
-| TRAMITE | 4 | `…/<tramite>` |
-| TAREA | 5 | `…/<tramite>/<tarea>` |
+| TAREA | 5 | `<expediente>/<siglas>/<fase>/<tramite>/<tarea>` |
+
+> **FASE y TRAMITE no son niveles de fila desde #788** — ninguno de los dos
+> porta fecha administrativa (§2.bis), así que un plazo no puede identificarse
+> por Fase o Trámite: `CheckConstraint tipo_elemento IN ('SOLICITUD','TAREA')`
+> lo hace explícito en BD. Sus posiciones (segmentos 3 y 4) siguen existiendo
+> dentro del camino de 5 segmentos de una TAREA, como **ancestros** — la
+> cascada del formulario sigue pidiendo fase y trámite al dar de alta una
+> tarea, lo que desaparece es que sean niveles seleccionables por sí solos.
 
 **Invariante:** el último segmento nunca es `ANY` — es el tipo del elemento
 evaluado, siempre conocido. Una fila con hoja `ANY` no identificaría nada.
@@ -421,38 +427,65 @@ crear el problema que #785 resolvió.
 
 `campo_fecha` no es código — es **configuración de dominio administrable por el Supervisor**. La legislación fija el valor y la unidad del plazo; también fija *desde qué momento* empieza a contar. Ese momento tiene un reflejo en BDDAT (algún `Documento.fecha_administrativa` accesible desde el elemento ESFTT). El Supervisor lo define en el catálogo; puede corregirlo sin tocar código si la norma cambia.
 
-El campo `campo` es siempre `fecha_administrativa` (el resolver lo asume). Referencias navegables por nivel:
+**Vocabulario cerrado desde #788.** Solo hay dos portadores de fecha
+administrativa en BDDAT (§2.bis): la Solicitud, por `documento_solicitud_id`,
+y la Tarea, por sus vínculos `documentos_tarea` (ADR-010). Fase y Trámite son
+taxonomía ESFTT, no figuras jurídicas — ninguna norma les fija plazo propio, y
+las dos indirecciones que existían antes (`fk: documento_resultado_id` en
+Fase; `via_tarea_tipo` en Trámite, para bajar a su tarea hija) eran la huella
+de filas declaradas en el nivel equivocado, no formas legítimas del
+vocabulario: una fila que necesita trepar o bajar para encontrar su ancla
+está mal ubicada. `campo_fecha` no es extensible — no hay un tercer portador
+de fecha al que apuntar.
+
+El campo `campo` es siempre `fecha_administrativa` (el resolver lo asume). Referencias por nivel:
 
 | Nivel | Referencia al documento de inicio |
 |---|---|
-| `SOLICITUD` | `fk: documento_solicitud_id` |
-| `FASE` | `fk: documento_resultado_id` |
-| `TAREA` | `rol: CONSUMIDO` o `rol: PRODUCIDO` (vínculo en `documentos_tarea`, ADR-010) |
-| `TRAMITE` | — directo; requiere `via_tarea_tipo` |
+| `SOLICITUD` | `fk: documento_solicitud_id` — único FK a documentos, sin alternativa |
+| `TAREA` | `rol: CONSUMIDO` o `rol: PRODUCIDO` (vínculo en `documentos_tarea`, ADR-010), con `tipo_documento` opcional |
 
 ```jsonc
-// Caso directo — Solicitud, Fase: "fk" = atributo ORM con FK a documentos
+// Único caso directo — Solicitud: "fk" = atributo ORM con FK a documentos
 { "fk": "documento_solicitud_id" }
 
 // Caso Tarea — el documento se obtiene por rol del vínculo documentos_tarea:
 { "rol": "CONSUMIDO" }
 
-// Caso Trámite (habitual) — navega a la tarea hija ESPERAR_PLAZO y toma su documento consumido:
-{ "via_tarea_tipo": "ESPERAR_PLAZO", "rol": "CONSUMIDO" }
+// Caso Tarea, retroactivo (#416) — el documento llega cuando el período ya
+// concluyó; su fecha_administrativa es la de INICIO del período, no la de
+// llegada. Uso: TABLON_AYUNTAMIENTOS (CERT_PLAZO_TABLON porta la fecha de
+// inicio de la exposición).
+{ "rol": "PRODUCIDO" }
 
-// Caso Trámite (retroactivo, #416) — navega a ESPERAR_PLAZO y toma su documento producido.
-// El documento llega cuando el período ya ha concluido; su fecha_administrativa = inicio del período.
-// Uso: TABLON_AYUNTAMIENTOS (CERT_PLAZO_TABLON porta la fecha de inicio de la exposición).
-{ "via_tarea_tipo": "ESPERAR_PLAZO", "rol": "PRODUCIDO" }
+// tipo_documento (opcional, #788 §2.3) — desempata cuando dos tareas del
+// mismo tipo conviven en un trámite y comparten camino: las dos ESPERAR_PLAZO
+// de un ANUNCIO_* (la que aguarda la publicación y la de los 30 días de
+// exposición). El dato sale de tramites_tareas_documentos (#346); se omite
+// cuando el documento de entrada es polimórfico por diseño (el justificante
+// de CONSULTA_SEPARATA depende del canal — BANDEJA/NOTIFICA/POSTAL/SIR — y
+// esa espera es única en su trámite, sin ambigüedad que desempatar).
+{ "rol": "CONSUMIDO", "tipo_documento": "ANUNCIO_PUBLICADO" }
 ```
 
-**UI de Supervisión:** selector en cascada (nivel ESFTT → tipo de tarea si Trámite → referencia disponible etiquetada en lenguaje administrativo). El POST traduce la selección al JSON. La presentación inversa lo traduce a texto legible:
+**UI de Supervisión:** selector en cascada (nivel ESFTT → si TAREA, rol y tipo de documento). El desplegable de tipo de documento sale de `tramites_tareas_documentos`, filtrado por el trámite/tarea/rol ya elegidos en la cascada del camino. El POST traduce la selección al JSON. La presentación inversa lo traduce a texto legible:
 - `{"fk": "documento_solicitud_id"}` → "Fecha administrativa del documento de solicitud"
-- `{"via_tarea_tipo": "ESPERAR_PLAZO", "rol": "CONSUMIDO"}` → "Fecha administrativa del justificante de notificación (vía tarea Esperar Plazo)"
+- `{"rol": "CONSUMIDO"}` → "Fecha administrativa del documento consumido por esta tarea"
+- `{"rol": "PRODUCIDO", "tipo_documento": "CERT_PLAZO_TABLON"}` → "Fecha administrativa del documento producido («Certificado de plazo tablón»)"
 
-**`plazos.py` — resolver:** recibe el objeto ORM del elemento y el JSON de `campo_fecha`. Cuatro ramas según `tipo_elemento`; si hay `via_tarea_tipo`, busca la tarea hija antes de seguir el FK. Devuelve `Documento.fecha_administrativa` o `None` (con alarma si el plazo tiene valor > 0 y el documento no existe).
+**`plazos.py` — resolver:** recibe el objeto ORM del elemento y el JSON de `campo_fecha`. Dos ramas según si el dict trae `fk` o `rol` — no hace falta mirar `tipo_elemento`, el vocabulario ya identifica unívocamente la rama. Si `rol` trae `tipo_documento`, filtra el vínculo por ese tipo; si no, toma el primero. Devuelve `Documento.fecha_administrativa` o `None`.
 
 > La FK `efecto_vencimiento` referencia una tabla de efectos (no ENUM hardcodeado). Ver decisión §3.3 nota.
+
+> **Corrección de #787 (#788 §8):** #787 purgó correctamente las 14 filas de
+> nivel SOLICITUD entonces existentes, pero atribuyó la purga a que «el nivel
+> queda a cero, que es lo correcto — el plazo de resolución vive a nivel
+> FASE». Esa justificación era falsa: el plazo de resolución (arts.
+> 128/131.7/132 bis/ter/133/138/145.4 RD 1955/2000) es el plazo **de la
+> solicitud** para resolver y notificar (art. 21.3.b LPACAP), y por tanto
+> pertenece al nivel SOLICITUD, no FASE. #788 lo confirma: las 11 filas de
+> RESOLUCION migran de FASE a SOLICITUD (§5.2), y el nivel FASE queda
+> prohibido por el `CheckConstraint`.
 
 #### §3.2.1 Condiciones de aplicabilidad — `_seleccionar_catalogo` (#341)
 
@@ -468,6 +501,14 @@ El campo `campo` es siempre `fecha_administrativa` (el resolver lo asume). Refer
    el ORM (`plazos.compilar_camino`) y descarta las entradas cuyo patrón `camino`
    no casa. Los datos de ascendencia ya están en memoria por los eager-loads de
    los consumidores, así que no añade queries.
+1. **ter. Filtra por `tipo_documento` (#788 §2.3):** una fila que declara
+   `tipo_documento` en `campo_fecha` solo es candidata si el elemento tiene un
+   vínculo de ese tipo y rol. Necesario porque el filtro por camino no basta
+   cuando dos tareas del mismo tipo comparten camino (las dos `ESPERAR_PLAZO`
+   de un `ANUNCIO_*`): sin este predicado, la candidata de menor `orden`
+   ganaría siempre para ambas y la resolución de fecha fallaría en silencio
+   para la otra — `_seleccionar_catalogo` no reintenta con la siguiente
+   candidata si la elegida no resuelve fecha.
 2. **Ordena** por `orden ASC, id ASC` (menor `orden` = mayor prioridad;
    `id` como desempate estable ante empate de `orden`).
 3. **Itera** en orden:
@@ -507,30 +548,59 @@ Si las dos condiciones se cumplen → 15 días; en caso contrario → 30 días.
 
 ---
 
-### 3.3 Suspensiones de plazo (pendiente)
+### 3.3 Suspensiones de plazo — cerrada por inferencia, sin tabla propia (#173, corregida #788)
 
-> **Estado:** Pendiente de estudio previo.
+> **Estado:** Cerrado. La estructura tentativa que este documento proponía en
+> 2026-04-01 (tabla `suspensiones_plazo` con `causa_id` FK a un catálogo de
+> causas) no se construyó: no hace falta un registro explícito de cada
+> suspensión si se puede derivar del árbol documental que ya existe.
 
-Antes de diseñar la tabla hay que estudiar qué **eventos concretos de BDDAT** activan y cierran una suspensión, y cómo cada causa del art. 22 LPACAP tiene reflejo en el sistema. Ver `NORMATIVA_PLAZOS.md §1.1` y `DISEÑO_FECHAS_PLAZOS §2.5`.
+**Mecanismo real** (`app/services/plazos.py::_obtener_suspensiones`, corregida
+en #788): recibe la **Solicitud** —no la Fase ni el Trámite— porque el art. 22
+LPACAP suspende «el plazo máximo legal para resolver un procedimiento y
+notificar la resolución», que es el plazo de la solicitud y ninguno más. La
+función recorre `solicitud → fases → trámites` buscando los tipos de trámite
+que son causa cerrada del art. 22.1: `REQUERIMIENTO_SUBSANACION` (letra a,
+subsanación al interesado) y, los tres por informe preceptivo a otro órgano
+(letra d — ver `NORMATIVA_PLAZOS.md §1.1`): `SOLICITUD_INFORME`,
+`CONSULTA_SEPARATA`, `SOLICITUD_COMPATIBILIDAD`. Los dos extremos de cada intervalo salen
+del mismo `ESPERAR_PLAZO` del trámite disparador: el documento **CONSUMIDO**
+(justificante de la notificación) abre, el **PRODUCIDO** (la respuesta)
+cierra — con rescate por trámite hermano receptor, acotado a la misma fase,
+para los trámites cuyo receptor está formalizado aparte (`SOLICITUD_INFORME` →
+`RECEPCION_INFORME*`, `SOLICITUD_COMPATIBILIDAD` → `RECEPCION_DICTAMEN` /
+`RECEPCION_FIGURA`).
 
-Preguntas abiertas:
-- ¿Qué acción del tramitador en BDDAT desencadena cada causa de suspensión?
-- ¿La suspensión se registra explícitamente (el tramitador la abre/cierra) o se infiere del estado de algún trámite?
-- ¿Las causas van en una tabla de catálogo (preferido — sin enums hardcodeados) o en ENUM?
+Los intervalos resultantes se **funden en una sola unión** — cerrados y
+abiertos juntos: el reloj se para una vez, no una por cada causa concurrente —
+y se cuentan como `(A, B]`: los días hábiles desde el día siguiente al acto
+hasta el de cierre inclusive, que es la diferencia que exige la norma («por el
+tiempo que **medie entre**…», arts. 22.1.a / 22.1.d), no un recuento inclusivo
+de ambos extremos. Ver §3.5 decisión 5.
 
-Estructura tentativa (sujeta al estudio previo):
+`obtener_estado_plazo` invoca `_obtener_suspensiones` **solo** cuando
+`tipo_elemento == 'SOLICITUD'` — explícito, no por recorrido que salga vacío.
+Antes de #788 la función recibía «el elemento evaluado» y buscaba a su
+alrededor por *duck-typing*: la Solicitud salía siempre con lista vacía (no
+tiene `.tramites`) y un Trámite se encontraba a sí mismo entre sus hermanos —
+cada `CONSULTA_SEPARATA` se suspendía a sí misma y su fecha límite retrocedía
+un día hábil por cada día hábil transcurrido, sin vencer nunca. Corregido.
 
-```
-suspensiones_plazo
-├── id
-├── fase_id      FK nullable → fases
-├── tramite_id   FK nullable → tramites
-│   -- CHECK: exactamente uno de los dos NOT NULL
-├── causa_id     FK → causas_suspension  -- tabla, no ENUM
-├── fecha_inicio DATE  (administrativa)
-├── fecha_fin    DATE nullable  -- NULL = suspensión activa
-└── observaciones TEXT
-```
+**No toda espera externa suspende.** La información pública y los traslados al
+peticionario (arts. 126 / 127.3 RD 1955/2000 — trámites `ANUNCIO_*` y
+`CONSULTA_TRASLADO_*`) no están en la lista: son instrucción ordinaria, corren
+*dentro* del plazo y lo consumen, no lo paran.
+
+**Lo que queda fuera — remitido a #796.** El art. 22.1 dice «se **podrá**
+suspender» (potestativo) para las cuatro causas de BDDAT, frente al 22.2 («se
+**suspenderá**», imperativo), que no aplica aquí — ver `NORMATIVA_PLAZOS.md
+§1.1`. Para los informes preceptivos, el art. 22.1.d exige además comunicar a
+los interesados tanto la petición como la recepción del informe; hay
+jurisprudencia (pendiente de verificar en CENDOJ) según la cual sin ese acto la
+suspensión no se produce. #788 arregla la **lógica** del cómputo (nivel,
+fusión, `(A,B]`, ámbito) manteniendo la inferencia actual de qué cuenta como
+suspensión; #796 engancha después la **acreditación** —el acuerdo de
+suspensión y su notificación al interesado— sobre esa lógica ya correcta.
 
 ---
 
@@ -571,7 +641,17 @@ Puntos abiertos:
 
 4. **Días inhábiles y días en suspensión se tratan igual:** el reloj no avanza. Solo cuentan días que sean hábiles *y* estén fuera de cualquier período de suspensión activo.
 
-5. **Suspensiones definidas por `(fecha_inicio, fecha_fin)` en días naturales, ambos extremos inclusive.** El día de inicio no cuenta (el reloj ya está parado); el día de fin tampoco (art. 22.2 LPACAP: el cómputo se reanuda "desde el día siguiente"). La semántica de `fecha_inicio` (día de notificación, de envío de consulta, etc.) depende del tipo de causa y se decide en §3.3.
+5. **Suspensiones definidas por `(fecha_inicio, fecha_fin)`, contadas como intervalo `(A, B]`.** El día de inicio no cuenta (el reloj ya está parado desde que ocurre el acto); el día de cierre **sí** cuenta — es el último día en que el plazo sigue parado, y el cómputo se reanuda al siguiente. Esto da la **diferencia** entre los dos extremos (`B − A`), que es la lectura que exige la norma: «por el tiempo que **medie entre** la notificación… y su efectivo cumplimiento» (art. 22.1.a), «entre la petición… y la recepción del informe» (art. 22.1.d) — ni un recuento inclusivo de ambos extremos ni una exclusión de los dos. La semántica de `fecha_inicio`/`fecha_fin` (qué documento porta cada extremo) depende del tipo de causa y se fija en §3.3.
+
+   > **Corrección (#788).** La versión anterior de este punto excluía también
+   > el día de cierre y citaba «art. 22.2 LPACAP: el cómputo se reanuda desde
+   > el día siguiente» como fundamento. Esa cita está mal atribuida: el
+   > art. 22.2 LPACAP es la lista de causas de suspensión **obligatoria** («se
+   > suspenderá»), no regula el reinicio del cómputo. La lectura correcta,
+   > `(A, B]`, sale de aplicar por analogía el art. 30.3 (el cómputo de un
+   > plazo empieza el día siguiente al acto que lo origina) al cierre de la
+   > suspensión: el día que llega la respuesta el plazo todavía está parado;
+   > al siguiente, corre.
 
 El algoritmo de cálculo (`plazos.py`) se formaliza en §4.
 
@@ -643,7 +723,12 @@ class EstadoPlazo:
 def obtener_estado_plazo(elemento, tipo_elemento: str) -> EstadoPlazo:
     """
     elemento:      objeto ORM (Solicitud, Fase, Tramite, Tarea)
-    tipo_elemento: 'SOLICITUD' | 'FASE' | 'TRAMITE' | 'TAREA'
+    tipo_elemento: 'SOLICITUD' | 'FASE' | 'TRAMITE' | 'TAREA' — la firma acepta
+                   los cuatro (los consumidores despachan por duck-typing),
+                   pero desde #788 solo SOLICITUD y TAREA tienen plazo
+                   posible: FASE y TRAMITE no portan fecha administrativa
+                   (§2.bis) y devuelven siempre SIN_PLAZO, sin consultar
+                   catalogo_plazos.
     """
 ```
 
@@ -781,9 +866,23 @@ segmento), no en una condición sobre `tipo_solicitud`:
 | `ANY/AAT/RESOLUCION` | 3 | MESES | SILENCIO_DESESTIMATORIO | Art. 133 RD 1955/2000 |
 | `ANY/CIERRE/RESOLUCION` | 3 | MESES | SILENCIO_DESESTIMATORIO | Art. 138 RD 1955/2000 |
 | `ANY/DUP/RESOLUCION` | 3 | MESES | SILENCIO_DESESTIMATORIO | Art. 145.4 RD 1955/2000 |
-| INFORMACION_PUBLICA — **[PENDIENTE REDISEÑO campo_fecha]** | 30 | DIAS_NATURALES | SIN_EFECTO_AUTOMATICO | Art. 125 RD 1955/2000 |
 
 `campo_fecha` para todas las filas RESOLUCION_*: `{"fk": "documento_solicitud_id"}`.
+
+> **`INFORMACION_PUBLICA` no es un plazo de RESOLUCION (#788) — nunca lo fue.**
+> La fila anterior vivía aquí marcada `[PENDIENTE REDISEÑO campo_fecha]`
+> heredando el error que #788 corrige: es el período de exposición de **cada
+> publicación** (art. 125 RD 1955/2000), que corre desde la fecha de
+> publicación de ese anuncio concreto, no desde la solicitud ni desde ningún
+> acto de la fase `INFORMACION_PUBLICA`. Modelado hoy en nivel TAREA: la
+> segunda `ESPERAR_PLAZO` de `ANUNCIO_BOE`/`ANUNCIO_BOP`/`ANUNCIO_PRENSA` (ids
+> 8/9/10 en BD; 30 días naturales; `campo_fecha:
+> {"rol":"CONSUMIDO","tipo_documento":"ANUNCIO_PUBLICADO"}`) — el
+> `tipo_documento` distingue esa espera de la primera, que aguarda
+> indefinidamente a que la publicación exista (**#789**, `plazo_valor=0`).
+> `ANUNCIO_BOJA` no tiene fila propia todavía (hueco de poblado señalado en
+> #788 §10). Las tres filas existentes llevan `norma_origen` en `PLACEHOLDER`
+> pendiente de cita exacta — deuda de **#782**, no de este issue.
 
 **Diferencias respecto al seed previo (172, código muerto):** descartado `RESOLUCION_AE` (sin sufijo — no existe ese tipo_solicitud); añadido `RESOLUCION_DUP` (procedimiento DUP autónomo, ausente del 172); CIERRE corregido (art. 137 → art. 138; el 137 corresponde al informe del operador, no a la resolución; RD 88/2026 solo modifica art. 137); combinadas con AAC (`AAP+AAC`, `AAP+AAC+DUP`, `AAC+DUP`) consolidadas en la fila AAC porque art. 131.7 fija el plazo conjunto; `AE_DEFINITIVA+AAT` consume el plazo de AE_DEFINITIVA.
 
@@ -799,19 +898,43 @@ segmento), no en una condición sobre `tipo_solicitud`:
 
 #### Trámites — plazos de consultas y traslados
 
-> **Nota 2026-04-19:** Todas las entradas de trámites usaban `campo_inicio = fecha_inicio` de `Tramite`, campo que desaparece. Para trámites el inicio de cómputo navega vía tarea hija: `{"via_tarea_tipo": "ESPERAR_PLAZO", "fk": "documento_usado_id"}` — el `documento_usado` del ESPERAR_PLAZO es el justificante de la NOTIFICAR previa (cuya `fecha_administrativa` inicia el cómputo). **PENDIENTE DE REDISEÑO `campo_fecha`** hasta confirmar en cada trámite que existe una tarea ESPERAR_PLAZO con documento_usado_id.
+> **Nota 2026-04-19, superada por #788.** Esta nota proponía navegar desde el
+> Trámite a su tarea hija (`via_tarea_tipo`) para alcanzar el documento. Esa
+> indirección llegó a implementarse (`{"via_tarea_tipo": "ESPERAR_PLAZO",
+> "rol": "CONSUMIDO"}`) y #788 la retiró: el nivel TRAMITE no porta fecha
+> administrativa (§2.bis) y no puede tener fila propia. La fila vive
+> directamente en la tarea `ESPERAR_PLAZO`, con `campo_fecha: {"rol":
+> "CONSUMIDO"}` — sin indirección, porque ya es la tarea la que se evalúa.
 
 | Tipo elemento ID | Campo inicio cómputo | Valor | Unidad | Efecto vencimiento | Norma origen |
 |---|---|---|---|---|---|
-| TRASLADO_ALEGACIONES_AAP | **[PENDIENTE — via ESPERAR_PLAZO rol CONSUMIDO]** | 15 | DIAS_NATURALES | SIN_EFECTO_AUTOMATICO | Art. 126 RD 1955/2000 |
-| ~~INFORME_AAPP_AAP~~ | ~~INFORME_AAPP_AAP~~ no existe. El trámite canónico es **`CONSULTA_SEPARATA`** (DISEÑO_CONSULTAS_ORGANISMOS.md §4). El plazo de 30 días (15 condicionado) se asocia a nivel de **fase CONSULTAS**, no de trámite. | — | — | — | — |
-| TRASLADO_CONDICIONADO_AAP | **[PENDIENTE — via ESPERAR_PLAZO rol CONSUMIDO]** | 15 | DIAS_NATURALES | SIN_EFECTO_AUTOMATICO | Art. 127 RD 1955/2000 |
-| REPLICA_AAPP_AAP | **[PENDIENTE — via ESPERAR_PLAZO rol CONSUMIDO]** | 15 | DIAS_NATURALES | CONFORMIDAD_PRESUNTA | Art. 127 RD 1955/2000 |
-| ~~INFORME_AAPP_AAC~~ | ~~INFORME_AAPP_AAC~~ no existe. El plazo del art. 131 se gestiona a nivel de **fase CONSULTAS** (30 días fallback / 15 días condicionado — seed `90655e484fb2`). | — | — | — | — |
-| TRASLADO_CONDICIONADO_AAC | **[PENDIENTE — via ESPERAR_PLAZO rol CONSUMIDO]** | 15 | DIAS_NATURALES | SIN_EFECTO_AUTOMATICO | Art. 131 RD 1955/2000 |
-| REPLICA_AAPP_AAC | **[PENDIENTE — via ESPERAR_PLAZO rol CONSUMIDO]** | 15 | DIAS_NATURALES | CONFORMIDAD_PRESUNTA | Art. 131 RD 1955/2000 |
-| INFORME_REE_CIERRE | **[PENDIENTE — via ESPERAR_PLAZO rol CONSUMIDO]** | 3 | MESES | SIN_EFECTO_AUTOMATICO | Art. 137 RD 1955/2000 (mod. RD 88/2026) — silencio: se continúa sin informe |
-| INFORME_DGPEM | **[PENDIENTE — via ESPERAR_PLAZO rol CONSUMIDO]** | 2 | MESES | SIN_EFECTO_AUTOMATICO | Art. 114 RD 1955/2000 — solo instalaciones de transporte CCAA; se continúa sin informe |
+| TRASLADO_ALEGACIONES_AAP | `{"rol": "CONSUMIDO"}` — formato resuelto por #788 | 15 | DIAS_NATURALES | SIN_EFECTO_AUTOMATICO | Art. 126 RD 1955/2000 |
+| ~~INFORME_AAPP_AAP~~ | ~~INFORME_AAPP_AAP~~ no existe. El trámite canónico es **`CONSULTA_SEPARATA`** (DISEÑO_CONSULTAS_ORGANISMOS.md §4), a nivel de **TAREA** desde #788 (antes decía «fase CONSULTAS»: ninguna fase porta fecha, ver §2.bis). | — | — | — | — |
+| TRASLADO_CONDICIONADO_AAP | `{"rol": "CONSUMIDO"}` — formato resuelto por #788 | 15 | DIAS_NATURALES | SIN_EFECTO_AUTOMATICO | Art. 127 RD 1955/2000 |
+| REPLICA_AAPP_AAP | `{"rol": "CONSUMIDO"}` — formato resuelto por #788 | 15 | DIAS_NATURALES | CONFORMIDAD_PRESUNTA | Art. 127 RD 1955/2000 |
+| ~~INFORME_AAPP_AAC~~ | ~~INFORME_AAPP_AAC~~ no existe. El plazo del art. 131 se gestiona a nivel de **TAREA** desde #788 (antes «fase CONSULTAS» — misma corrección). | — | — | — | — |
+| TRASLADO_CONDICIONADO_AAC | `{"rol": "CONSUMIDO"}` — formato resuelto por #788 | 15 | DIAS_NATURALES | SIN_EFECTO_AUTOMATICO | Art. 131 RD 1955/2000 |
+| REPLICA_AAPP_AAC | `{"rol": "CONSUMIDO"}` — formato resuelto por #788 | 15 | DIAS_NATURALES | CONFORMIDAD_PRESUNTA | Art. 131 RD 1955/2000 |
+| INFORME_REE_CIERRE | `{"rol": "CONSUMIDO"}` — formato resuelto por #788 | 3 | MESES | SIN_EFECTO_AUTOMATICO | Art. 137 RD 1955/2000 (mod. RD 88/2026) — silencio: se continúa sin informe |
+| INFORME_DGPEM | `{"rol": "CONSUMIDO"}` — formato resuelto por #788 | 2 | MESES | SIN_EFECTO_AUTOMATICO | Art. 114 RD 1955/2000 — solo instalaciones de transporte CCAA; se continúa sin informe |
+
+> **Lo que #788 resuelve aquí y lo que no.** El formato de `campo_fecha` para
+> estas filas queda cerrado: es directamente `{"rol": "CONSUMIDO"}` en la
+> tarea `ESPERAR_PLAZO` del trámite, sin indirección. **Que cada fila exista
+> ya en `catalogo_plazos` es otra pregunta, y no todas la superan.** El
+> recuento real de #788 encuentra solo 10 filas de nivel TAREA en toda la
+> tabla: `REQUERIMIENTO_SUBSANACION`, `SOLICITUD_INFORME` (una sola, genérica
+> — 10 días hábiles art. 80.2, no las cifras específicas de abajo),
+> `ANUNCIO_BOE`/`BOP`/`PRENSA` (dos cada uno, vía `CONSULTA_SEPARATA` — dos
+> filas), `CONSULTA_TRASLADO_TITULAR`, `CONSULTA_TRASLADO_ORGANISMO` y
+> `TABLON_AYUNTAMIENTOS`. `INFORME_REE_CIERRE` e `INFORME_DGPEM` son además
+> plazos **del operador del sistema y de la DGPEM** —terceros, no la
+> tramitadora— por lo que #788 §4.2 los excluye de la suspensión del art. 22 y
+> puede que no lleguen a necesitar fila propia salvo para seguimiento
+> informativo. Los nombres de esta tabla son identificadores heredados del
+> seed original (#172); su correspondencia exacta con los trámites reales de
+> `ESTRUCTURA_FTT.md` y con las filas ya pobladas no se ha vuelto a verificar
+> aquí — deuda de catálogo, no de este issue.
 
 > **CONFORMIDAD_PRESUNTA:** efecto del silencio de un organismo consultado — el procedimiento sigue como si hubiera conformidad expresa. Diferente del silencio estimatorio del §2.4 (que recae sobre la Administración resolutora, no sobre un organismo consultado). Añadir `CONFORMIDAD_PRESUNTA` a la tabla `efectos_plazo`.
 

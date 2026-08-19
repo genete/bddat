@@ -41,11 +41,12 @@ def plazo_base(app_ctx):
     efecto = EfectoPlazo.query.filter_by(codigo='NINGUNO').first()
     assert efecto is not None, 'Seed de efectos_plazo no encontrado — ¿migración aplicada?'
 
-    # Camino con hoja inventada: no existe esa fase, pero el camino es texto
-    # libre validado por convención, no por FK (#785).
+    # Camino con hoja inventada: no existe esa tarea, pero el camino es texto
+    # libre validado por convención, no por FK (#785). El nivel sí está acotado
+    # por CheckConstraint desde #788: SOLICITUD o TAREA.
     plazo = CatalogoPlazo(
-        tipo_elemento='FASE',
-        camino='ANY/ANY/TEST_FIXTURE',
+        tipo_elemento='TAREA',
+        camino='ANY/ANY/ANY/ANY/TEST_FIXTURE',
         plazo_valor=30,
         plazo_unidad='DIAS_NATURALES',
         efecto_vencimiento_id=efecto.id,
@@ -131,8 +132,8 @@ def test_catalogo_plazo_orden_default(app_ctx):
     from app.models.efectos_plazo import EfectoPlazo
     efecto = EfectoPlazo.query.filter_by(codigo='NINGUNO').first()
     plazo = CatalogoPlazo(
-        tipo_elemento='FASE',
-        camino='ANY/ANY/TEST_ORDEN',
+        tipo_elemento='TAREA',
+        camino='ANY/ANY/ANY/ANY/TEST_ORDEN',
         plazo_valor=10,
         plazo_unidad='DIAS_HABILES',
         efecto_vencimiento_id=efecto.id,

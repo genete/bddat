@@ -11,31 +11,45 @@ class CatalogoPlazo(db.Model):
     """Plazo legal asociado a un tipo de elemento ESFTT.
 
     PROPÓSITO: tabla maestra administrable por el Supervisor que vincula un
-    tipo de Solicitud/Fase/Trámite/Tarea con su plazo legal y el efecto del
+    tipo de Solicitud o de Tarea con su plazo legal y el efecto del
     vencimiento. Permite histórico de cambios normativos sin alterar el
     catálogo de tipos ESFTT.
 
-    CAMPO tipo_elemento: nivel ESFTT ('SOLICITUD' | 'FASE' | 'TRAMITE' | 'TAREA').
+    CAMPO tipo_elemento: nivel ESFTT ('SOLICITUD' | 'TAREA'), con CheckConstraint.
         Redundante con la longitud de `camino`, pero se conserva como prefiltro
         SQL barato — filtrar por número de segmentos de un string no es viable.
+        FASE y TRAMITE quedaron prohibidos en #788: un plazo necesita fecha de
+        inicio, y solo hay dos portadores de fecha administrativa — la Solicitud
+        (documento_solicitud_id) y la Tarea (documentos_tarea, ADR-010). Fase y
+        Trámite son taxonomía ESFTT, no figuras jurídicas: ninguna norma les fija
+        plazo propio, y los `[PENDIENTE REDISEÑO campo_fecha]` que arrastraban
+        eran el síntoma. El constraint no sustituye a la validación del CRUD —
+        cubre lo que escribe sin pasar por él, que es por donde entraron los dos
+        incidentes reales de esta tabla (una migración de seed y un test).
     CAMPO camino: patrón calificado ESFTT con comodín posicional 'ANY' (#785).
         Mismo formato y mismo matcher (motor_reglas._sujeto_casa) que
         ReglaMotor.sujeto, con un nivel más de profundidad. La longitud codifica
         el nivel, y el último segmento NUNCA es 'ANY' (es el tipo del elemento
         evaluado, siempre conocido):
             SOLICITUD  2 segmentos   <expediente>/<siglas>
-            FASE       3             <expediente>/<siglas>/<fase>
-            TRAMITE    4             …/<tramite>
-            TAREA      5             …/<tramite>/<tarea>
+            TAREA      5             <expediente>/<siglas>/<fase>/<tramite>/<tarea>
         Sustituye a tipo_elemento_codigo, que no distinguía dos puntos distintos
         del árbol con el mismo literal (ESPERAR_PLAZO, RESOLUCION). Antes de #785
         esa distinción la hacían condiciones_plazo sobre variables que reexponían
         posición en el árbol — FK disfrazada, retirada en la misma migración.
     CAMPO campo_fecha: JSONB que indica qué Documento.fecha_administrativa
-        es el inicio del cómputo. Formato:
-            {'fk': 'documento_solicitud_id'}           -- caso directo (FK del elemento)
-            {'via_tarea_tipo': 'ESPERAR_PLAZO',
-             'rol': 'CONSUMIDO'}                       -- vía tarea hija (rol en documentos_tarea)
+        es el inicio del cómputo. Vocabulario cerrado (#788) — no es extensible,
+        porque no hay un tercer portador de fecha al que apuntar:
+            {'fk': 'documento_solicitud_id'}                 -- nivel SOLICITUD, única forma posible
+            {'rol': 'CONSUMIDO'}                             -- nivel TAREA
+            {'rol': 'PRODUCIDO'}                             -- nivel TAREA, caso retroactivo (#416)
+            {'rol': 'CONSUMIDO',
+             'tipo_documento': 'ANUNCIO_PUBLICADO'}          -- ídem, con el tipo declarado
+        `tipo_documento` es opcional y desempata cuando dos tareas del mismo tipo
+        conviven en un trámite (las dos esperas de los ANUNCIO_*): comparten
+        camino, así que sin él ganaría siempre la de menor orden. Se omite cuando
+        el documento de entrada es polimórfico por diseño — el justificante de
+        CONSULTA_SEPARATA depende del canal (BANDEJA / NOTIFICA / POSTAL / SIR).
     CAMPO plazo_unidad: 'DIAS_HABILES' | 'DIAS_NATURALES' | 'MESES' | 'ANOS'
     CAMPO efecto_vencimiento_id: FK a efectos_plazo.
     CAMPO vigencia_desde / vigencia_hasta: rango de vigencia. NULL = sin límite.
@@ -43,6 +57,8 @@ class CatalogoPlazo(db.Model):
     """
     __tablename__ = 'catalogo_plazos'
     __table_args__ = (
+        db.CheckConstraint("tipo_elemento IN ('SOLICITUD', 'TAREA')",
+                           name='ck_catalogo_plazos_tipo_elemento'),
         db.Index('idx_catalogo_plazos_tipo_orden', 'tipo_elemento', 'orden'),
         db.Index('idx_catalogo_plazos_camino',     'camino'),
         {'schema': 'public'},
@@ -51,7 +67,7 @@ class CatalogoPlazo(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     tipo_elemento = db.Column(
         db.String(20), nullable=False,
-        comment='Nivel ESFTT: SOLICITUD | FASE | TRAMITE | TAREA',
+        comment='Nivel ESFTT: SOLICITUD | TAREA (los únicos que portan fecha, #788)',
     )
     camino = db.Column(
         db.String(250), nullable=False,
@@ -61,7 +77,9 @@ class CatalogoPlazo(db.Model):
     )
     campo_fecha = db.Column(
         JSONB, nullable=True,
-        comment='Referencia al Documento.fecha_administrativa de inicio: {"fk":"..."} (FK del elemento) o {"via_tarea_tipo":"...","rol":"CONSUMIDO|PRODUCIDO"} (vía tarea hija)',
+        comment='Referencia al Documento.fecha_administrativa de inicio: '
+                '{"fk":"documento_solicitud_id"} (nivel SOLICITUD) o '
+                '{"rol":"CONSUMIDO|PRODUCIDO"[,"tipo_documento":"..."]} (nivel TAREA)',
     )
     plazo_valor = db.Column(
         db.Integer, nullable=False,

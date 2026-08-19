@@ -59,7 +59,9 @@ def serializar_org_exp(oe):
 def traslado_titular_vencido(oe) -> bool:
     """True si el CONSULTA_TRASLADO_TITULAR más reciente del organismo tiene plazo VENCIDO.
 
-    Llamada con variables={} para evitar recursión en _compilar_variables (#475).
+    El plazo se evalúa sobre la tarea ESPERAR_PLAZO del trámite, no sobre el
+    trámite (#788): el nivel TRAMITE no porta fecha administrativa y dejó de
+    existir en catalogo_plazos.
     """
     from app.models.tramites_organismos import TramiteOrganismo
     from app.models.tramites import Tramite as _Tramite
@@ -79,8 +81,7 @@ def traslado_titular_vencido(oe) -> bool:
     )
     if vinculo is None:
         return False
-    ep = plazos.obtener_estado_plazo(vinculo.tramite, 'TRAMITE', variables={})
-    return ep.estado == 'VENCIDO'
+    return plazos.obtener_estado_plazo_espera(vinculo.tramite).estado == 'VENCIDO'
 
 
 # ============================================

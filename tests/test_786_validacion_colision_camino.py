@@ -34,11 +34,29 @@ def _limpiar_datos_prueba(app):
 
 
 def _datos_maestros(app):
+    """Siglas de un tipo de solicitud SIN entrada activa, más efecto y variable.
+
+    Las siglas no pueden salir de un `.first()` ciego: desde #788 el nivel
+    SOLICITUD tiene las 11 filas del plazo para resolver y notificar, y elegir
+    unas siglas ya ocupadas haría que el alta de partida chocase contra la
+    validación de colisión — el propio duplicado ciego que estos tests provocan a
+    propósito más adelante.
+    """
     with app.app_context():
+        from app.models.catalogo_plazos import CatalogoPlazo
         from app.models.tipos_solicitudes import TipoSolicitud
         from app.models.efectos_plazo import EfectoPlazo
         from app.models.motor_reglas import CatalogoVariable
-        tipo = TipoSolicitud.query.first()
+        caminos_ocupados = {
+            camino for (camino,) in CatalogoPlazo.query
+            .filter_by(tipo_elemento='SOLICITUD', activo=True)
+            .with_entities(CatalogoPlazo.camino).all()
+        }
+        tipo = next(
+            (t for t in TipoSolicitud.query.order_by(TipoSolicitud.id).all()
+             if f'ANY/{t.siglas}' not in caminos_ocupados),
+            None,
+        )
         efecto = EfectoPlazo.query.first()
         variable = CatalogoVariable.query.filter_by(activa=True).first()
         if tipo is None or efecto is None or variable is None:
@@ -76,12 +94,21 @@ def test_crear_bloquea_duplicado_ciego_mismo_camino(usuario_supervisor, app):
 def test_crear_no_bloquea_camino_distinto(usuario_supervisor, app):
     """Control: dos altas SOLICITUD con camino distinto no colisionan."""
     with app.app_context():
+        from app.models.catalogo_plazos import CatalogoPlazo
         from app.models.tipos_solicitudes import TipoSolicitud
         from app.models.efectos_plazo import EfectoPlazo
-        tipos = TipoSolicitud.query.limit(2).all()
+        caminos_ocupados = {
+            camino for (camino,) in CatalogoPlazo.query
+            .filter_by(tipo_elemento='SOLICITUD', activo=True)
+            .with_entities(CatalogoPlazo.camino).all()
+        }
+        tipos = [
+            t for t in TipoSolicitud.query.order_by(TipoSolicitud.id).all()
+            if f'ANY/{t.siglas}' not in caminos_ocupados
+        ][:2]
         efecto = EfectoPlazo.query.first()
         if len(tipos) < 2 or efecto is None:
-            pytest.skip('Se necesitan al menos 2 tipos_solicitudes en esta BD')
+            pytest.skip('Se necesitan al menos 2 tipos_solicitudes libres en esta BD')
         siglas_a, siglas_b, efecto_id = tipos[0].siglas, tipos[1].siglas, efecto.id
 
     r1 = _alta_solicitud(usuario_supervisor, siglas_a, efecto_id, 'Camino A (#786)')
@@ -99,15 +126,15 @@ def test_editar_bloquea_duplicado_ciego_con_otra_fila(usuario_supervisor, app):
     with app.app_context():
         from app import db
         from app.models.catalogo_plazos import CatalogoPlazo
-        from app.models.tipos_fases import TipoFase
-        tipo_fase = TipoFase.query.first()
-        if tipo_fase is None:
-            pytest.skip('Faltan tipos_fases en esta BD')
-        # Fila propia en otro camino (nivel FASE), a editar para que colisione.
+        from app.models.tipos_tareas import TipoTarea
+        tipo_tarea = TipoTarea.query.first()
+        if tipo_tarea is None:
+            pytest.skip('Faltan tipos_tareas en esta BD')
+        # Fila propia en otro camino (nivel TAREA), a editar para que colisione.
         item = CatalogoPlazo(
-            tipo_elemento='FASE',
-            camino=f'ANY/ANY/{tipo_fase.codigo}',
-            campo_fecha={'fk': 'documento_resultado_id'},
+            tipo_elemento='TAREA',
+            camino=f'ANY/ANY/ANY/ANY/{tipo_tarea.codigo}',
+            campo_fecha={'rol': 'CONSUMIDO'},
             plazo_valor=1,
             plazo_unidad='MESES',
             efecto_vencimiento_id=efecto_id,
@@ -131,7 +158,7 @@ def test_editar_bloquea_duplicado_ciego_con_otra_fila(usuario_supervisor, app):
     with app.app_context():
         from app.models.catalogo_plazos import CatalogoPlazo
         sin_cambios = CatalogoPlazo.query.get(item_id)
-        assert sin_cambios.tipo_elemento == 'FASE', 'No debe haberse aplicado el cambio bloqueado'
+        assert sin_cambios.tipo_elemento == 'TAREA', 'No debe haberse aplicado el cambio bloqueado'
 
 
 def test_editar_permite_colision_con_condiciones_y_avisa(usuario_supervisor, app):
@@ -143,14 +170,14 @@ def test_editar_permite_colision_con_condiciones_y_avisa(usuario_supervisor, app
     with app.app_context():
         from app import db
         from app.models.catalogo_plazos import CatalogoPlazo
-        from app.models.tipos_fases import TipoFase
-        tipo_fase = TipoFase.query.first()
-        if tipo_fase is None:
-            pytest.skip('Faltan tipos_fases en esta BD')
+        from app.models.tipos_tareas import TipoTarea
+        tipo_tarea = TipoTarea.query.first()
+        if tipo_tarea is None:
+            pytest.skip('Faltan tipos_tareas en esta BD')
         item = CatalogoPlazo(
-            tipo_elemento='FASE',
-            camino=f'ANY/ANY/{tipo_fase.codigo}',
-            campo_fecha={'fk': 'documento_resultado_id'},
+            tipo_elemento='TAREA',
+            camino=f'ANY/ANY/ANY/ANY/{tipo_tarea.codigo}',
+            campo_fecha={'rol': 'CONSUMIDO'},
             plazo_valor=1,
             plazo_unidad='MESES',
             efecto_vencimiento_id=efecto_id,

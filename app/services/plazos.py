@@ -1,13 +1,23 @@
 """
 Servicio de plazos administrativos — BDDAT.
 
-Calcula el estado del plazo legal asociado a un elemento ESFTT
-(Solicitud, Fase, Trámite, Tarea) y devuelve un EstadoPlazo.
+Calcula el estado del plazo legal asociado a un elemento ESFTT y devuelve un
+EstadoPlazo.
 
 Arquitectura (DISEÑO_FECHAS_PLAZOS.md §4):
     ContextAssembler llama a obtener_estado_plazo() para poblar las variables
     'estado_plazo' y 'efecto_plazo' que el motor agnóstico evalúa con operadores
     estándar (EQ/IN/etc.). El motor no conoce este servicio.
+
+Dos niveles, no cuatro (#788):
+    Solo la Solicitud y la Tarea portan fecha administrativa —la primera por
+    `documento_solicitud_id`, la segunda por `documentos_tarea` (ADR-010)—, así
+    que solo ellas pueden tener plazo. La Fase y el Trámite son taxonomía ESFTT,
+    no figuras jurídicas: los plazos legales se enganchan a actos (presentar,
+    notificar, publicar, esperar) y los actos son solicitudes y tareas. La firma
+    sigue aceptando los cuatro literales —los consumidores llaman por
+    duck-typing— pero FASE y TRAMITE devuelven siempre SIN_PLAZO, sin tocar BD:
+    `_SEGMENTOS_CAMINO` no los conoce y el camino no se puede compilar.
 
 Lógica real (#172, identificación reescrita en #785):
     1. Compila el camino SFTT del elemento y busca en catalogo_plazos la entrada
@@ -23,9 +33,13 @@ Identificación estructural (#785):
     sin `ctx` ni `variables` siempre que las entradas candidatas no tengan
     condiciones de supuesto legal — el caso de todas las de ESPERAR_PLAZO.
 
-Suspensiones (#173):
-    _obtener_suspensiones() infiere intervalos de art. 22 LPACAP desde el árbol
-    documental de los trámites de la Fase/Trámite evaluado. No usa tabla propia.
+Suspensiones (#173, corregidas en #788):
+    _obtener_suspensiones() recibe la SOLICITUD y recorre solicitud → fases →
+    trámites buscando causas del art. 22 LPACAP. No usa tabla propia. El objeto
+    de la suspensión lo fija el propio precepto: «el plazo máximo legal para
+    resolver un procedimiento y notificar la resolución», que es el plazo de la
+    solicitud y ninguno más. Por eso obtener_estado_plazo() solo la invoca en ese
+    nivel — explícito, no por recorrido que salga vacío.
 """
 from __future__ import annotations
 
@@ -67,13 +81,22 @@ _TIPO_CODIGO_ATTR = {
 
 # Nº de segmentos del camino ESFTT por nivel (#785). El matching exige longitud
 # idéntica, igual que en motor_reglas, así que la longitud codifica el nivel.
-_SEGMENTOS_CAMINO = {'SOLICITUD': 2, 'FASE': 3, 'TRAMITE': 4, 'TAREA': 5}
+#
+# Solo los dos niveles que portan fecha (#788). Los tres diccionarios de arriba
+# SÍ conservan sus entradas de FASE y TRAMITE: no son niveles de fila, los usa
+# compilar_camino para construir los segmentos de ascendencia del camino de 5
+# segmentos de una tarea.
+_SEGMENTOS_CAMINO = {'SOLICITUD': 2, 'TAREA': 5}
 
 # ---------------------------------------------------------------------------
 # Suspensiones — constantes de inferencia (art. 22 LPACAP, #173)
 # ---------------------------------------------------------------------------
 
-# Trámites que inician una suspensión del plazo del elemento evaluado
+# Trámites que inician una suspensión del plazo de la solicitud.
+#
+# Lista cerrada, como la del art. 22. No están —y no deben estar— la información
+# pública ni los traslados al peticionario (arts. 126 / 127.3): son instrucción
+# ordinaria, corren DENTRO del plazo y lo consumen. Son justo los que lo aprietan.
 _TRAMITES_SUSPENSION = frozenset({
     'REQUERIMIENTO_SUBSANACION',   # art. 22.1.a — subsanación al interesado
     'SOLICITUD_INFORME',           # art. 22.1.b — informe preceptivo a organismo
@@ -128,7 +151,10 @@ def obtener_estado_plazo(
     Args:
         elemento:      Instancia ORM del elemento evaluado.
                        None o dict → SIN_PLAZO sin consultar BD.
-        tipo_elemento: 'SOLICITUD' | 'FASE' | 'TRAMITE' | 'TAREA'
+        tipo_elemento: 'SOLICITUD' | 'TAREA' son los niveles con plazo posible.
+                       'FASE' y 'TRAMITE' se aceptan y devuelven SIN_PLAZO (#788):
+                       los consumidores despachan por duck-typing y no les toca
+                       saber qué niveles portan fecha.
         ctx:           ExpedienteContext. Construye variables internamente
                        (excluyendo estado_plazo/efecto_plazo para evitar recursión).
         variables:     Dict de variables pre-construido. Tiene precedencia sobre ctx.
@@ -155,7 +181,7 @@ def obtener_estado_plazo(
     if catalogo is None:
         return _SIN_PLAZO
 
-    fecha_acto = _resolver_campo_fecha(elemento, tipo_elemento, catalogo.campo_fecha or {})
+    fecha_acto = _resolver_campo_fecha(elemento, catalogo.campo_fecha or {})
     if fecha_acto is None:
         return _SIN_PLAZO
 
@@ -163,7 +189,12 @@ def obtener_estado_plazo(
     margen_dias = max(catalogo.plazo_valor * 60, 400)
     inhabiles = _obtener_inhabiles_bd(fecha_acto, hoy + timedelta(days=margen_dias))
 
-    suspensiones = _obtener_suspensiones(elemento)
+    # Art. 22 LPACAP suspende «el plazo máximo legal para resolver un
+    # procedimiento y notificar la resolución» — el de la solicitud, y solo ese.
+    # Los plazos de nivel TAREA son de un tercero (organismo, DGPEM), del
+    # interesado (art. 68.1) o períodos que han de transcurrir: nada que
+    # suspender (#788).
+    suspensiones = _obtener_suspensiones(elemento) if tipo_elemento == 'SOLICITUD' else []
     fecha_limite = _aplicar_suspensiones(
         calcular_fecha_fin(fecha_acto, catalogo.plazo_valor, catalogo.plazo_unidad, inhabiles),
         suspensiones,
@@ -184,6 +215,28 @@ def obtener_estado_plazo(
 
     return EstadoPlazo(estado='EN_PLAZO', efecto=efecto,
                        fecha_limite=fecha_limite, dias_restantes=dias)
+
+
+def obtener_estado_plazo_espera(tramite) -> EstadoPlazo:
+    """Estado del plazo de espera de un trámite, evaluado en su tarea ESPERAR_PLAZO.
+
+    El plazo que un consumidor llama «el plazo del trámite» —los 15 días del
+    traslado al titular, los 30 de la separata— es en realidad el de su tarea de
+    espera: es ahí donde está el documento que fija la fecha de inicio, y desde
+    #788 es ahí donde está también la fila del catálogo.
+
+    Vive aquí y no duplicado en cada consumidor para que «bajar del trámite a su
+    tarea» sea una decisión de este servicio, no un detalle repetido fuera.
+    """
+    if tramite is None:
+        return _SIN_PLAZO
+    espera = _tarea_de_tipo(tramite, 'ESPERAR_PLAZO')
+    if espera is None:
+        return _SIN_PLAZO
+    # variables={} evita recursión en _compilar_variables (#475): las entradas de
+    # ESPERAR_PLAZO con condiciones son las de CONSULTA_SEPARATA, y su fallback
+    # sin condiciones da el mismo resultado que el contexto completo.
+    return obtener_estado_plazo(espera, 'TAREA', variables={})
 
 
 # ---------------------------------------------------------------------------
@@ -307,8 +360,11 @@ def compilar_camino(elemento, tipo_elemento: str) -> Optional[str]:
     de los consumidores, así que no añade queries— y produce el camino real que
     se casa contra `catalogo_plazos.camino`:
 
-        TAREA  → 'Distribucion/AAP/ANALISIS_SOLICITUD/REQUERIMIENTO_SUBSANACION/ESPERAR_PLAZO'
-        FASE   → 'Distribucion/AAP/RESOLUCION'
+        TAREA      → 'Distribucion/AAP/ANALISIS_SOLICITUD/REQUERIMIENTO_SUBSANACION/ESPERAR_PLAZO'
+        SOLICITUD  → 'Distribucion/AAP'
+
+    Un tipo_elemento sin plazo posible (FASE, TRAMITE) devuelve None: no hay
+    longitud de camino que le corresponda desde #788.
 
     Nunca produce 'ANY': eso es comodín del patrón, no de la realidad (mismo
     principio que assembler._compilar_sujeto). Un eslabón que no se puede
@@ -377,9 +433,16 @@ def _seleccionar_catalogo(elemento, tipo_elemento: str, variables_dict: dict):
     Algoritmo:
       1. Prefiltro SQL por tipo_elemento + activo (el nivel acota el juego).
       2. Ordena por orden ASC, id ASC (menor orden = mayor prioridad).
-      3. Descarta las entradas cuyo camino no casa con el del elemento.
+      3. Descarta las entradas cuyo camino no casa con el del elemento, y las que
+         declaran un `tipo_documento` que el elemento no tiene vinculado (#788).
       4. De las que casan: sin condiciones → válida inmediata; con condiciones →
          AND implícito. Devuelve la primera que pasa.
+
+    Por qué `tipo_documento` filtra aquí y no solo al resolver la fecha: si una
+    candidata se elige y luego su campo_fecha no resuelve, la función NO prueba la
+    siguiente — devuelve SIN_PLAZO. Las dos esperas de un ANUNCIO_* comparten
+    camino, así que sin este predicado la de menor orden ganaría para ambas y la
+    otra se quedaría muda.
     """
     from app.models.catalogo_plazos import CatalogoPlazo
     from app.models.condiciones_plazo import CondicionPlazo
@@ -404,7 +467,11 @@ def _seleccionar_catalogo(elemento, tipo_elemento: str, variables_dict: dict):
         log.warning('plazos: tabla catalogo_plazos no disponible (%s) — devolviendo SIN_PLAZO', exc)
         return None
 
-    candidatas = [e for e in entradas if camino_casa(e.camino or '', camino_real)]
+    candidatas = [
+        e for e in entradas
+        if camino_casa(e.camino or '', camino_real)
+        and _tipo_documento_presente(elemento, e.campo_fecha or {})
+    ]
 
     for entrada in candidatas:
         if not entrada.condiciones:
@@ -435,47 +502,73 @@ def _get_tipo_elemento_codigo(elemento, tipo_elemento: str) -> Optional[str]:
     return getattr(tipo_rel, attr_nombre, None) if tipo_rel else None
 
 
-def _resolver_campo_fecha(elemento, tipo_elemento: str, campo_fecha: dict) -> Optional[date]:
+def _resolver_campo_fecha(elemento, campo_fecha: dict) -> Optional[date]:
     """Resuelve campo_fecha JSONB → Documento.fecha_administrativa.
 
-    Navega el ORM según el JSON configurado en catalogo_plazos:
-      {'fk': 'documento_resultado_id'}              → elemento.documento_resultado
-      {'via_tarea_tipo': 'T', 'rol': 'CONSUMIDO'}   → tarea hija tipo T → documento por rol
-      {'rol': 'CONSUMIDO'}                          → el propio elemento (Tarea) → documento por rol
-    Para FASE con 'documento_solicitud_id': navega vía fase.solicitud.
+    Vocabulario cerrado desde #788 — dos ramas, una por portador de fecha:
+
+      {'fk': 'documento_solicitud_id'}                       → Solicitud, por FK directa
+      {'rol': 'CONSUMIDO'|'PRODUCIDO'[, 'tipo_documento']}   → Tarea, por vínculo (ADR-010)
+
+    No es extensible: no hay un tercer portador de fecha al que apuntar. Lo que
+    había antes —el parche que trepaba de la fase a su solicitud y la indirección
+    `via_tarea_tipo` que bajaba de un trámite a su tarea— era la huella de filas
+    declaradas en niveles que no llegan a ningún documento; con la fila en su
+    nivel, ambas sobran.
     """
-    fk_col = campo_fecha.get('fk', '')
     rol = campo_fecha.get('rol')
-    via_tarea_tipo = campo_fecha.get('via_tarea_tipo')
-
-    obj = elemento
-
-    if via_tarea_tipo:
-        tareas = getattr(obj, 'tareas', None) or []
-        obj = next(
-            (t for t in tareas
-             if getattr(getattr(t, 'tipo_tarea', None), 'codigo', None) == via_tarea_tipo),
-            None,
-        )
-        if obj is None:
-            return None
 
     if rol:
-        # obj es una Tarea — el documento se obtiene por rol del vínculo (ADR-010)
-        if rol == 'PRODUCIDO':
-            doc = getattr(obj, 'documento_producido', None)
-        else:
-            doc = _primer_consumido(obj)
+        doc = _documento_por_rol(elemento, rol, campo_fecha.get('tipo_documento'))
     else:
+        fk_col = campo_fecha.get('fk', '')
         rel_name = fk_col[:-3] if fk_col.endswith('_id') else fk_col
-        doc = getattr(obj, rel_name, None)
-        if doc is None and tipo_elemento == 'FASE' and not via_tarea_tipo:
-            solicitud = getattr(obj, 'solicitud', None)
-            doc = getattr(solicitud, rel_name, None) if solicitud else None
+        doc = getattr(elemento, rel_name, None) if rel_name else None
 
-    if doc is None:
-        return None
-    return getattr(doc, 'fecha_administrativa', None)
+    return _fecha_doc_admin(doc)
+
+
+def _documento_por_rol(tarea, rol: str, tipo_documento: Optional[str] = None):
+    """Documento vinculado a la tarea por rol, opcionalmente filtrado por tipo.
+
+    `tipo_documento` desempata cuando dos tareas del mismo tipo conviven en un
+    trámite y el camino no las distingue — las dos esperas de un ANUNCIO_*, donde
+    la que cuenta los 30 días de exposición es la que consume el
+    ANUNCIO_PUBLICADO. Es opcional a propósito: la entrada del ESPERAR_PLAZO de
+    CONSULTA_SEPARATA está declarada polimórfica en `tramites_tareas_documentos`
+    porque el justificante depende del canal (BANDEJA / NOTIFICA / POSTAL / SIR),
+    y ahí no se puede nombrar un tipo ni hace falta — esa espera es única en su
+    trámite.
+    """
+    if rol == 'PRODUCIDO':
+        producido = getattr(tarea, 'documento_producido', None)
+        candidatos = [producido] if producido is not None else []
+    else:
+        candidatos = list(getattr(tarea, 'documentos_consumidos', None) or [])
+
+    if tipo_documento:
+        candidatos = [d for d in candidatos if _codigo_tipo_doc(d) == tipo_documento]
+
+    return candidatos[0] if candidatos else None
+
+
+def _codigo_tipo_doc(doc) -> Optional[str]:
+    """Código semántico del documento (tipos_documentos.codigo), o None."""
+    tipo = getattr(doc, 'tipo_doc', None)
+    return getattr(tipo, 'codigo', None) if tipo else None
+
+
+def _tipo_documento_presente(elemento, campo_fecha: dict) -> bool:
+    """Predicado de candidatura: la fila que declara un tipo exige ese vínculo.
+
+    Sin `tipo_documento` declarado la fila es candidata siempre (comportamiento
+    anterior a #788).
+    """
+    tipo_documento = campo_fecha.get('tipo_documento')
+    if not tipo_documento:
+        return True
+    rol = campo_fecha.get('rol') or 'CONSUMIDO'
+    return _documento_por_rol(elemento, rol, tipo_documento) is not None
 
 
 def _hoy() -> date:
@@ -520,22 +613,19 @@ def _primer_consumido(tarea):
     return docs[0] if docs else None
 
 
-def _fecha_cierre_suspension(tramite_trigger, todos_tramites: list) -> Optional[date]:
+def _fecha_cierre_suspension(tramite_trigger, tramites_de_su_fase: list) -> Optional[date]:
     """
-    Fecha de fin de la suspensión iniciada por tramite_trigger.
+    Fecha de fin de la suspensión iniciada por tramite_trigger, o None si sigue abierta.
 
-    Orden de búsqueda:
-    1. Primer documento consumido de ANALIZAR del propio trámite (REQUERIMIENTO_SUBSANACION, CONSULTA_SEPARATA).
-    2. Documento producido de ESPERAR_PLAZO del propio trámite (ADR-004 para SOLICITUD_INFORME).
-    3. Primer documento consumido de ANALIZAR del primer trámite hermano receptor (RECEPCION_INFORME, etc.)
-       con id > tramite_trigger.id.
+    1. Documento producido de su propio ESPERAR_PLAZO — la respuesta que se
+       esperaba. Es el caso normal: la suspensión ES ese ESPERAR_PLAZO, y sus dos
+       extremos viven ahí (el consumido abre, el producido cierra).
+    2. Rescate para los trámites cuyo receptor está formalizado como trámite
+       aparte (SOLICITUD_INFORME → RECEPCION_INFORME, SOLICITUD_COMPATIBILIDAD →
+       RECEPCION_DICTAMEN): primer consumido del ANALIZAR del primer hermano
+       receptor con id mayor. Acotado a la fase del disparador (#788) — un
+       RECEPCION_INFORME de otra fase cerraría una suspensión que no le toca.
     """
-    analizar = _tarea_de_tipo(tramite_trigger, 'ANALIZAR')
-    if analizar:
-        f = _fecha_doc_admin(_primer_consumido(analizar))
-        if f:
-            return f
-
     esperar = _tarea_de_tipo(tramite_trigger, 'ESPERAR_PLAZO')
     if esperar:
         f = _fecha_doc_admin(getattr(esperar, 'documento_producido', None))
@@ -544,7 +634,7 @@ def _fecha_cierre_suspension(tramite_trigger, todos_tramites: list) -> Optional[
 
     cierre_tipos = _TRAMITES_CIERRE.get(_codigo_tramite(tramite_trigger), frozenset())
     if cierre_tipos:
-        for hermano in sorted(todos_tramites, key=lambda x: x.id):
+        for hermano in sorted(tramites_de_su_fase, key=lambda x: x.id):
             if hermano.id <= tramite_trigger.id:
                 continue
             if _codigo_tramite(hermano) not in cierre_tipos:
@@ -558,52 +648,108 @@ def _fecha_cierre_suspension(tramite_trigger, todos_tramites: list) -> Optional[
     return None
 
 
-def _obtener_suspensiones(elemento) -> list:
+def _obtener_suspensiones(solicitud) -> list:
     """
-    Deriva los intervalos de suspensión (art. 22 LPACAP) del elemento ESFTT
-    consultando el árbol documental de sus trámites. No usa tabla propia.
+    Deriva los intervalos de suspensión (art. 22 LPACAP) del plazo de la
+    solicitud, recorriendo solicitud → fases → trámites. No usa tabla propia.
 
-    Retorna list de dict {'fecha_inicio': date, 'fecha_fin': date}.
-    Suspensión sin cierre detectado → fecha_fin = hoy (suspensión activa).
+    Retorna la UNIÓN de los intervalos, como lista ordenada de dicts
+    {'fecha_inicio': date, 'fecha_fin': date, 'abierto': bool}, donde `abierto`
+    marca el bloque que llega hasta hoy porque alguna de sus causas sigue viva.
+
+    Por qué recibe la Solicitud (#788): el art. 22 suspende «el plazo máximo legal
+    para resolver un procedimiento y notificar la resolución». El objeto de la
+    suspensión lo fija el precepto, y es ese plazo — que es el de la solicitud.
+    Antes la función recibía «el elemento evaluado» y buscaba a su alrededor por
+    duck-typing, con dos consecuencias: la Solicitud salía siempre con lista vacía
+    (no tiene `.tramites`) y un Trámite se encontraba a sí mismo entre sus
+    hermanos, de modo que cada CONSULTA_SEPARATA se suspendía a sí misma y su
+    fecha límite retrocedía un día hábil por cada día hábil transcurrido.
+
+    Los dos extremos de cada intervalo salen del mismo ESPERAR_PLAZO del trámite
+    suspensor: el documento CONSUMIDO (el justificante de la notificación) abre y
+    el PRODUCIDO (la respuesta) cierra.
     """
     from sqlalchemy.exc import OperationalError, ProgrammingError
+
+    intervalos = []
     try:
-        tramites_attr = getattr(elemento, 'tramites', None)
-        if tramites_attr is not None:
-            todos_tramites = list(tramites_attr)
-        else:
-            # Elemento es un Trámite → usa tramites de su Fase para búsqueda de hermanos
-            fase = getattr(elemento, 'fase', None)
-            if fase:
-                todos_tramites = list(getattr(fase, 'tramites', []) or [])
-            else:
-                todos_tramites = [elemento] if hasattr(elemento, 'tipo_tramite') else []
+        for fase in getattr(solicitud, 'fases', None) or []:
+            tramites_fase = list(getattr(fase, 'tramites', None) or [])
+            for tramite in tramites_fase:
+                if _codigo_tramite(tramite) not in _TRAMITES_SUSPENSION:
+                    continue
+                esperar = _tarea_de_tipo(tramite, 'ESPERAR_PLAZO')
+                if esperar is None:
+                    continue
+                fecha_inicio = _fecha_doc_admin(_primer_consumido(esperar))
+                if not fecha_inicio:
+                    continue
+                fecha_fin = _fecha_cierre_suspension(tramite, tramites_fase)
+                intervalos.append({
+                    'fecha_inicio': fecha_inicio,
+                    'fecha_fin': fecha_fin or _hoy(),
+                    'abierto': fecha_fin is None,
+                })
     except (OperationalError, ProgrammingError) as exc:
         log.warning('plazos: error cargando trámites para suspensiones (%s)', exc)
         return []
 
-    suspensiones = []
-    for tramite in todos_tramites:
-        if _codigo_tramite(tramite) not in _TRAMITES_SUSPENSION:
-            continue
-        notificar = _tarea_de_tipo(tramite, 'NOTIFICAR')
-        if not notificar:
-            continue
-        fecha_inicio = _fecha_doc_admin(getattr(notificar, 'documento_producido', None))
-        if not fecha_inicio:
-            continue
-        fecha_fin = _fecha_cierre_suspension(tramite, todos_tramites) or _hoy()
-        suspensiones.append({'fecha_inicio': fecha_inicio, 'fecha_fin': fecha_fin})
+    return _fusionar_intervalos(intervalos)
 
-    return suspensiones
+
+def _fusionar_intervalos(intervalos: list) -> list:
+    """Une los intervalos solapados o contiguos en una sola cobertura.
+
+    Jurídicamente el reloj se para una vez: lo que el art. 22 suspende es «el
+    transcurso del plazo máximo legal para resolver», en singular. Sumar por
+    separado los días de un requerimiento abierto y de las separatas que están
+    fuera al mismo tiempo —situación normal— contaría dos veces los días comunes.
+
+    Cerrados y abiertos se funden JUNTOS, en una sola pasada. En dos bolsas
+    separadas el solape entre un cerrado y un abierto se duplicaría: separata
+    notificada el 1-feb y contestada el 1-abr, más requerimiento notificado el
+    1-mar y sin contestar, dan 2 + 2 = 4 meses por bolsas cuando la verdad es la
+    unión, 1-feb → hoy.
+
+    El bloque resultante hereda `abierto` de cualquiera de sus componentes, de
+    modo que su `fecha_inicio` responde a «¿desde cuándo lleva parado el plazo de
+    forma continua?» — que puede ser anterior al disparador vivo más antiguo.
+    """
+    if not intervalos:
+        return []
+
+    fusionados = []
+    for actual in sorted(intervalos, key=lambda i: (i['fecha_inicio'], i['fecha_fin'])):
+        previo = fusionados[-1] if fusionados else None
+        # Contiguo cuenta como solapado: entre el día de cierre de uno y el
+        # siguiente natural no hay plazo que corra.
+        if previo is not None and actual['fecha_inicio'] <= previo['fecha_fin'] + timedelta(days=1):
+            previo['fecha_fin'] = max(previo['fecha_fin'], actual['fecha_fin'])
+            previo['abierto'] = previo['abierto'] or actual['abierto']
+        else:
+            fusionados.append(dict(actual))
+
+    return fusionados
 
 
 def _aplicar_suspensiones(fecha_limite: date, suspensiones: list, inhabiles: frozenset) -> date:
-    """Suma los días de suspensión al plazo (art. 22 LPACAP). Stub hasta #173."""
+    """Empuja la fecha límite tantos días hábiles como duren las suspensiones.
+
+    Cada bloque se cuenta como intervalo (A, B]: los hábiles que van del día
+    SIGUIENTE al acto hasta el de cierre inclusive. La norma habla de una
+    diferencia, no de un recuento inclusivo — «por el tiempo que medie entre la
+    notificación… y su efectivo cumplimiento» (art. 22.1.a), «entre la petición…
+    y la recepción del informe» (art. 22.1.d). Del día 1 al 10 median 9 días, no
+    10. Encaja además con el art. 30.3, que arranca el cómputo el día siguiente.
+
+    Espera la lista ya fusionada por _obtener_suspensiones: aquí se suma, y sumar
+    bloques solapados contaría dos veces los días comunes.
+    """
     if not suspensiones:
         return fecha_limite
     dias_suspension = sum(
-        _dias_habiles_entre(s['fecha_inicio'], s['fecha_fin'], inhabiles)
+        _dias_habiles_entre(s['fecha_inicio'] + timedelta(days=1), s['fecha_fin'], inhabiles)
         for s in suspensiones
     )
     cursor = fecha_limite

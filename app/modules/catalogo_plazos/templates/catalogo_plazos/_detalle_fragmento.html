@@ -6,7 +6,9 @@
    activar/desactivar como el resto de catálogos normativos del proyecto.
 #}
 
-{% set NIVEL_LABEL = {'SOLICITUD': 'Solicitud', 'FASE': 'Fase', 'TRAMITE': 'Trámite', 'TAREA': 'Tarea'} %}
+{# SOLICITUD y TAREA son los únicos niveles con plazo posible desde #788 —
+   Fase y Trámite no portan fecha administrativa. #}
+{% set NIVEL_LABEL = {'SOLICITUD': 'Solicitud', 'TAREA': 'Tarea'} %}
 {% set UNIDAD_LABEL = {'DIAS_HABILES': 'días hábiles', 'DIAS_NATURALES': 'días naturales', 'MESES': 'meses', 'ANOS': 'años'} %}
 
 <div class="p-3">

@@ -1,19 +1,30 @@
-"""Tests issue #448 — seed catalogo_plazos para fase RESOLUCION.
+"""Tests issue #448 — seed catalogo_plazos del plazo para resolver y notificar.
 
-Reescrito en #785: la identificación de la fila dejó de hacerse con la condición
-`tipo_solicitud IN [...]` y pasó a ser estructural, por el segmento de siglas del
-camino SFTT (`ANY/<siglas>/RESOLUCION`). Las 7 entradas originales con IN
-multivalor se desdoblaron en 11, una por combinación, sin IN en el segmento.
+Reescrito dos veces:
+
+  #785 — la identificación de la fila dejó de hacerse con la condición
+  `tipo_solicitud IN [...]` y pasó a ser estructural, por el segmento de siglas
+  del camino SFTT. Las 7 entradas originales con IN multivalor se desdoblaron en
+  11, una por combinación, sin IN en el segmento.
+
+  #788 — las 11 filas bajan de nivel FASE a nivel SOLICITUD y su camino pierde el
+  segmento `/RESOLUCION`. Los 1/3/6 meses de los arts. 128, 131.7, 132 bis/ter,
+  133, 138 y 145.4 son el plazo de la SOLICITUD para resolver *y notificar*
+  (art. 21.3.b LPACAP); que el acto que lo consume viva en la fase finalizadora no
+  lo convierte en plazo de la fase, que además no tiene fecha de inicio a la que
+  agarrarse. Consecuencia práctica: el plazo se resuelve desde que hay documento
+  de solicitud —que es cuando empieza legalmente— y no desde que alguien crea la
+  última fase del procedimiento.
 
 Verifica:
   A) Variable tipo_solicitud sigue activa (la usan condiciones_requisito, #192);
      lo que ya no existe es su uso como discriminador de posición en plazos.
-  B) 11 entradas RESOLUCION, cada una con su camino, norma y efecto.
+  B) 11 entradas de nivel SOLICITUD, cada una con su camino, norma y efecto.
   C) Para cada combinación cubierta, _seleccionar_catalogo devuelve la correcta
      partiendo del elemento (sin dict de variables).
   D) Combinaciones fuera de scope → None (deuda de #247).
 
-Requieren BD con migración 785 aplicada y fixture app_ctx (conftest.py).
+Requieren BD con las migraciones 785 y 788 aplicadas y fixture app_ctx (conftest.py).
 """
 from unittest.mock import MagicMock
 
@@ -45,26 +56,26 @@ _FUERA_DE_SCOPE = [
 ]
 
 
-def _fase_resolucion(siglas):
-    """Fase RESOLUCION de una solicitud con las siglas dadas.
+def _solicitud(siglas):
+    """Solicitud con las siglas dadas.
 
     Mock en vez de fila real: _seleccionar_catalogo solo necesita compilar el
     camino del elemento (ascendencia con strings) y consultar el catálogo, que sí
     es la tabla real de BD. Así el test no escribe nada.
     """
-    fase = MagicMock()
-    fase.tipo_fase = MagicMock(codigo='RESOLUCION')
-    fase.solicitud.tipo_solicitud = MagicMock(siglas=siglas)
-    fase.solicitud.expediente.tipo_expediente = MagicMock(tipo='Distribucion')
-    return fase
+    solicitud = MagicMock()
+    solicitud.tipo_solicitud = MagicMock(siglas=siglas)
+    solicitud.expediente.tipo_expediente = MagicMock(tipo='Distribucion')
+    return solicitud
 
 
 def _entradas_resolucion():
     from app.models.catalogo_plazos import CatalogoPlazo
     return (
         CatalogoPlazo.query
-        .filter(CatalogoPlazo.tipo_elemento == 'FASE',
-                CatalogoPlazo.camino.like('%/RESOLUCION'),
+        .filter(CatalogoPlazo.tipo_elemento == 'SOLICITUD',
+                CatalogoPlazo.campo_fecha['fk'].astext == 'documento_solicitud_id',
+                CatalogoPlazo.norma_origen.isnot(None),
                 CatalogoPlazo.activo.is_(True))
         .all()
     )
@@ -112,23 +123,37 @@ def test_hay_exactamente_11_entradas_resolucion(app_ctx):
     """7 originales, desdobladas en 11 al pasar el IN multivalor a camino."""
     entradas = _entradas_resolucion()
     assert len(entradas) == 11, (
-        f'Esperadas 11 entradas RESOLUCION, hay {len(entradas)}: '
+        f'Esperadas 11 entradas del plazo de resolver y notificar, hay {len(entradas)}: '
         f'{[e.camino for e in entradas]}'
     )
 
 
 def test_hay_una_entrada_por_combinacion_cubierta(app_ctx):
     caminos = {e.camino for e in _entradas_resolucion()}
-    esperados = {f'ANY/{s}/RESOLUCION' for s in _COMBINACIONES_CUBIERTAS}
+    esperados = {f'ANY/{s}' for s in _COMBINACIONES_CUBIERTAS}
     assert caminos == esperados
 
 
 def test_ningun_camino_de_resolucion_tiene_hoja_any(app_ctx):
     """Invariante de #785: la hoja es el tipo del elemento evaluado, nunca ANY."""
     for e in _entradas_resolucion():
-        assert e.camino.rsplit('/', 1)[-1] == 'RESOLUCION', (
-            f'Entrada {e.id} con hoja inesperada: {e.camino}'
+        assert e.camino.rsplit('/', 1)[-1] != 'ANY', (
+            f'Entrada {e.id} con hoja ANY: {e.camino}'
         )
+
+
+def test_ninguna_entrada_vive_ya_en_la_fase_resolucion(app_ctx):
+    """Salvaguarda de #788: la Fase no porta fecha, no puede tener plazo."""
+    from app.models.catalogo_plazos import CatalogoPlazo
+    residuales = (
+        CatalogoPlazo.query
+        .filter(CatalogoPlazo.camino.like('%/RESOLUCION'))
+        .all()
+    )
+    assert residuales == [], (
+        f'Quedan filas ancladas a la fase RESOLUCION: '
+        f'{[(e.id, e.tipo_elemento, e.camino) for e in residuales]}'
+    )
 
 
 def test_cada_entrada_tiene_efecto_silencio_desestimatorio(app_ctx):
@@ -157,7 +182,7 @@ def test_cierre_cita_art_138_mod_rd88_2026(app_ctx):
     """Salvaguarda regresión: la cita de CIERRE debe ser 138 (mod), NO 137."""
     citas_cierre = [
         e.norma_origen for e in _entradas_resolucion()
-        if e.camino == 'ANY/CIERRE/RESOLUCION'
+        if e.camino == 'ANY/CIERRE'
     ]
     assert citas_cierre, 'No hay entrada de RESOLUCION para CIERRE'
     assert any('138' in c for c in citas_cierre), (
@@ -188,7 +213,7 @@ def test_seleccionar_catalogo_resolucion_para_combinacion_cubierta(app_ctx, sigl
     """Sin dict de variables (#785): la combinación sale del camino del elemento."""
     from app.services.plazos import _seleccionar_catalogo
     valor_esp, unidad_esp, norma_esp = esperado
-    entrada = _seleccionar_catalogo(_fase_resolucion(siglas), 'FASE', {})
+    entrada = _seleccionar_catalogo(_solicitud(siglas), 'SOLICITUD', {})
     assert entrada is not None, (
         f'Sin plazo para tipo_solicitud={siglas} — el seed no cubre la combinación'
     )
@@ -205,9 +230,9 @@ def test_seleccionar_catalogo_resolucion_para_combinacion_cubierta(app_ctx, sigl
 def test_seleccionar_catalogo_resolucion_fuera_de_scope(app_ctx, siglas):
     """Plazos no cubiertos por el hotfix 448 (deuda controlada de #247)."""
     from app.services.plazos import _seleccionar_catalogo
-    entrada = _seleccionar_catalogo(_fase_resolucion(siglas), 'FASE', {})
+    entrada = _seleccionar_catalogo(_solicitud(siglas), 'SOLICITUD', {})
     assert entrada is None, (
-        f'tipo_solicitud={siglas} no debería tener plazo de RESOLUCION '
+        f'tipo_solicitud={siglas} no debería tener plazo para resolver '
         f'todavía (deuda de #247); recibido entrada id={getattr(entrada, "id", "?")}'
     )
 

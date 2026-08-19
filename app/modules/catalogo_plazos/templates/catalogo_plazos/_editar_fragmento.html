@@ -43,7 +43,8 @@
     <div class="card-body card-body-tinted">
         {{ cf.camino_sftt('cpe', item.tipo_elemento, item.camino,
                           tipos_expediente, tipos_solicitud, tipos_fase, tipos_tramite, tipos_tarea) }}
-        {{ cf.campo_fecha('cpe', item.tipo_elemento, cf_fk, cf_via_tarea_tipo, cf_rol, tipos_tarea) }}
+        {{ cf.campo_fecha('cpe', item.tipo_elemento, cf_fk, cf_rol, cf_tipo_documento,
+                          cf_tramite, cf_tarea, tipo_documento_map) }}
     </div>
 </div>
 
