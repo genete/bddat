@@ -453,6 +453,58 @@ class TestPlazoDeLaSolicitud:
             assert _causas_suspension(solicitud) == []
 
 
+class TestConsumidoresLlamanBienAlServicio:
+    """El `except Exception` defensivo de los consumidores oculta los errores de
+    firma: el plazo degrada a None y la pantalla enseña «sin plazo» en vez de
+    romperse. Es la protección correcta, pero deja pasar en silencio que un
+    consumidor haya dejado de hablar con el servicio — que es el defecto que este
+    issue vino a arreglar. Estos tests atan la llamada.
+    """
+
+    def test_la_cola_pide_el_plazo_solo_con_la_tarea(self):
+        """`plazo_tarea` perdió su segundo parámetro en #785 (el catálogo se
+        identifica por el camino SFTT, derivado de la propia tarea) y la cola
+        siguió pasándole el trámite. El TypeError caía en el `except`, así que
+        TODA espera se mostraba como «pendiente iniciar plazo» y el filtro por
+        plazo no encontraba ninguna vencida."""
+        from unittest.mock import MagicMock as MM
+        import app.services.cola_administrativo as cola
+
+        tarea = MM()
+        tarea.tipo_tarea = MM(codigo='ESPERAR_PLAZO')
+        tarea.ejecutada = False
+        tarea.planificada = False
+
+        with patch.object(cola, 'plazo_tarea',
+                          return_value={'estado': 'VENCIDO'}) as mock_plazo:
+            estado, plazo = cola._estado_y_plazo(tarea)
+
+        mock_plazo.assert_called_once_with(tarea)
+        assert plazo == {'estado': 'VENCIDO'}
+        assert estado == 'PENDIENTE_ESTUDIO', (
+            'Con el plazo vencido la cola debe ofrecer la tarea como trabajo '
+            'que hacer, no como espera'
+        )
+
+    def test_la_cola_dice_que_el_plazo_vencio(self):
+        from unittest.mock import MagicMock as MM
+        from app.services.cola_administrativo import _mensaje_pendiente
+
+        tarea = MM()
+        tarea.tipo_tarea = MM(codigo='ESPERAR_PLAZO')
+        assert _mensaje_pendiente(tarea, 'PENDIENTE_ESTUDIO') == 'plazo vencido — incorporar'
+        assert _mensaje_pendiente(tarea, 'PENDIENTE_TRAMITAR') == 'pendiente iniciar plazo'
+
+    def test_el_arbol_pide_el_plazo_solo_con_la_tarea(self):
+        """Mismo contrato para el otro consumidor de `plazo_tarea` (el árbol y,
+        a través de él, el inspector lazy de detalle_nodo)."""
+        import inspect
+        from app.services.arbol_expediente import plazo_tarea
+
+        parametros = inspect.signature(plazo_tarea).parameters
+        assert list(parametros) == ['tarea']
+
+
 class TestAvisoTopeSuspension:
     """Art. 22.1.d: la suspensión «no podrá exceder en ningún caso de tres meses».
 
