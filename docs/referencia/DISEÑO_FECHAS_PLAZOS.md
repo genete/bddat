@@ -184,6 +184,7 @@ El efecto del vencimiento determina la gravedad de la alerta y quién resulta pe
 | **Responsabilidad disciplinaria** | Administración — el funcionario responde del incumplimiento | No (requiere expediente) | **Crítica** (rojo) | Art. 21.6 LPACAP |
 | **Silencio desestimatorio** | Administrado — se entiende denegado, puede recurrir | Sí | Normal (naranja) | Arts. 24.1 y 25.1.a LPACAP |
 | **Caducidad del procedimiento** | Administrado — se archivan las actuaciones por inactividad | No (requiere advertencia previa + resolución) | Normal (naranja) | Art. 95.1 LPACAP — **aplica en BDDAT**: inactividad del interesado > 3 meses |
+| **Tener por desistido** | Administrado — se le tiene por desistido de su solicitud; termina el procedimiento sin resolver el fondo | No (requiere resolución expresa, art. 21.1) | **Crítica** (rojo) | Art. 68.1 LPACAP — no confundir con el desistimiento voluntario del art. 94 (#779) |
 | **Pérdida de trámite** | Administrado — pierde un trámite no indispensable, no el procedimiento | Sí | Normal (naranja) | Art. 95.2 LPACAP |
 | **Apertura de recurso** | Ninguno directamente — abre la vía impugnatoria | Sí | Normal (naranja) | Arts. 122, 124 LPACAP |
 | **Prescripción del derecho condicionado** | Administrado — el derecho otorgado por resolución propia caduca | No (requiere declaración) | Normal (naranja) | Ver §2.8 |
@@ -195,7 +196,7 @@ El efecto del vencimiento determina la gravedad de la alerta y quién resulta pe
 
 El estado y el efecto se exponen como variables separadas del ContextAssembler:
 - `estado_plazo`: `SIN_PLAZO` / `EN_PLAZO` / `PROXIMO_VENCER` / `VENCIDO` / `CUMPLIDO`
-- `efecto_plazo`: `NINGUNO` / `SILENCIO_ESTIMATORIO` / `RESPONSABILIDAD_DISCIPLINARIA` / `SILENCIO_DESESTIMATORIO` / `CADUCIDAD_PROCEDIMIENTO` / `PERDIDA_TRAMITE` / `APERTURA_RECURSO` / `PRESCRIPCION_CONDICIONADO` / `SIN_EFECTO_AUTOMATICO`
+- `efecto_plazo`: `NINGUNO` / `SILENCIO_ESTIMATORIO` / `RESPONSABILIDAD_DISCIPLINARIA` / `SILENCIO_DESESTIMATORIO` / `CADUCIDAD_PROCEDIMIENTO` / `TENER_POR_DESISTIDO` / `PERDIDA_TRAMITE` / `APERTURA_RECURSO` / `PRESCRIPCION_CONDICIONADO` / `SIN_EFECTO_AUTOMATICO`
 
 ---
 
@@ -871,7 +872,7 @@ nivel que #788 eliminó.
 | Variable | tipo_dato | Valores posibles |
 |---|---|---|
 | `estado_plazo` | texto | `SIN_PLAZO` · `EN_PLAZO` · `PROXIMO_VENCER` · `VENCIDO` · `CUMPLIDO` |
-| `efecto_plazo` | texto | `NINGUNO` · `SILENCIO_ESTIMATORIO` · `RESPONSABILIDAD_DISCIPLINARIA` · `SILENCIO_DESESTIMATORIO` · `CADUCIDAD_PROCEDIMIENTO` · `PERDIDA_TRAMITE` · `APERTURA_RECURSO` · `PRESCRIPCION_CONDICIONADO` · `CONFORMIDAD_PRESUNTA` · `SIN_EFECTO_AUTOMATICO` |
+| `efecto_plazo` | texto | `NINGUNO` · `SILENCIO_ESTIMATORIO` · `RESPONSABILIDAD_DISCIPLINARIA` · `SILENCIO_DESESTIMATORIO` · `CADUCIDAD_PROCEDIMIENTO` · `TENER_POR_DESISTIDO` · `PERDIDA_TRAMITE` · `APERTURA_RECURSO` · `PRESCRIPCION_CONDICIONADO` · `CONFORMIDAD_PRESUNTA` · `SIN_EFECTO_AUTOMATICO` |
 
 **Stub Fase 2 (#190):** `obtener_estado_plazo` devuelve `SIN_PLAZO`/`NINGUNO` siempre.
 Ninguna regla del motor disparará por plazo hasta que #172 implemente la lógica real.

@@ -134,7 +134,7 @@ class EstadoPlazo:
                                        # | 'VENCIDO' | 'CUMPLIDO'
     efecto: str                        # 'NINGUNO' | 'SILENCIO_ESTIMATORIO' | 'RESPONSABILIDAD_DISCIPLINARIA'
                                        # | 'SILENCIO_DESESTIMATORIO' | 'CADUCIDAD_PROCEDIMIENTO'
-                                       # | 'PERDIDA_TRAMITE' | 'APERTURA_RECURSO'
+                                       # | 'TENER_POR_DESISTIDO' | 'PERDIDA_TRAMITE' | 'APERTURA_RECURSO'
                                        # | 'PRESCRIPCION_CONDICIONADO' | 'CONFORMIDAD_PRESUNTA'
                                        # | 'SIN_EFECTO_AUTOMATICO'
     fecha_limite: Optional[date]       # el VENCIMIENTO (nombre histórico, §3.5 del
