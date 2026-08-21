@@ -267,9 +267,11 @@ Tabla `consultas_nombradas`: SQL parametrizable por `:expediente_id` que se ejec
 
 ### 5.1 Cálculo (`services/plazos.py`)
 
-`obtener_estado_plazo(elemento, tipo_elemento, ctx/variables) → EstadoPlazo(estado, efecto, fecha_limite, dias_restantes)`.
+Dos entradas, una por nivel con plazo (#778):
+`obtener_estado_plazo_tarea(tarea, ctx/variables) → EstadoPlazo(estado, efecto, fecha_limite, dias_restantes, fecha_disparo, fecha_cumplimiento, fecha_parada)` y
+`obtener_estado_plazo_solicitud(sol, ctx/variables) → EstadoPlazoSolicitud(… + suspendido, suspendido_desde, dias_suspendidos, fecha_limite_sin_suspender)`.
 
-Estados: `SIN_PLAZO` | `EN_PLAZO` | `PROXIMO_VENCER` (≤5 días hábiles) | `VENCIDO`.
+Estados: `SIN_PLAZO` | `EN_PLAZO` | `PROXIMO_VENCER` (≤5 días hábiles) | `VENCIDO` | `CUMPLIDO`.
 
 Efectos posibles: `NINGUNO`, `SILENCIO_ESTIMATORIO`, `SILENCIO_DESESTIMATORIO`, `CADUCIDAD_PROCEDIMIENTO`, `PERDIDA_TRAMITE`, `APERTURA_RECURSO`, `PRESCRIPCION_CONDICIONADO`, `CONFORMIDAD_PRESUNTA`, `RESPONSABILIDAD_DISCIPLINARIA`, `SIN_EFECTO_AUTOMATICO`.
 
@@ -277,11 +279,11 @@ Efectos posibles: `NINGUNO`, `SILENCIO_ESTIMATORIO`, `SILENCIO_DESESTIMATORIO`, 
 
 ### 5.2 Suspensiones
 
-`_obtener_suspensiones(elemento)` deriva intervalos del art. 22 LPACAP recorriendo trámites del expediente. Tipos disparadores hardcoded: `REQUERIMIENTO_SUBSANACION`, `SOLICITUD_INFORME`, `CONSULTA_SEPARATA`, `SOLICITUD_COMPATIBILIDAD`.
+No hay motor aparte desde #778 (ADR-041): una suspensión es el plazo de un tercero visto desde la solicitud. `_causas_suspension(solicitud)` recorre `solicitud → fases → trámites → tareas` reteniendo las que tienen entrada con `suspende_plazo_solicitud`; cada una se mide igual que cualquier plazo y aporta el intervalo `[disparo, parada]`, con `parada = min(cumplimiento, vencimiento, hoy)`. Los intervalos se funden (`_fusionar_intervalos`) y sus días hábiles `(A, B]` empujan la fecha límite. Qué suspende es dato del catálogo, no una lista en el código.
 
 ### 5.3 Configuración (`models/catalogo_plazos.py`)
 
-`CatalogoPlazo(tipo_elemento, camino, campo_fecha JSONB, plazo_valor, plazo_unidad, efecto_vencimiento_id, norma_origen, vigencia_desde, vigencia_hasta, activo, orden)`.
+`CatalogoPlazo(tipo_elemento, camino, campo_fecha JSONB, campo_fecha_cumplimiento JSON, suspende_plazo_solicitud, plazo_valor, plazo_unidad, efecto_vencimiento_id, norma_origen, vigencia_desde, vigencia_hasta, activo, orden)`.
 
 Selección (#785): de las entradas activas del nivel, se descartan las cuyo `camino` no casa con el del elemento (`plazos.compilar_camino` + `operadores.camino_casa`, comodín `ANY`); de las que casan, la primera cuyas `CondicionPlazo` (AND) se cumplen. Ordenadas por `orden ASC, id ASC`.
 

@@ -4,7 +4,7 @@
 > **Estado:** En construcción — sesión inicial de diseño.
 > **Fuente de verdad:** `docs/NORMATIVA_PLAZOS.md` — todo contenido legal (plazos, artículos, constantes) extrae de ahí. En caso de discrepancia, prevalece `NORMATIVA_PLAZOS.md`.
 > Referencia de arquitectura: `DISEÑO_MOTOR_AGNOSTICO.md`
-> Última sincronización: 2026-08-19 (§1.1 NORMATIVA_PLAZOS.md — separación art. 22.1/22.2, #788)
+> Última sincronización: 2026-08-21 (§1.1 NORMATIVA_PLAZOS.md — art. 22.1.a, la medida única de #778 / ADR-041)
 
 ---
 
@@ -128,12 +128,35 @@ estado_plazo = f(fecha_limite_efectiva, hoy())
 
 | Estado | Condición | Efecto legal posible | Alerta en UI |
 |---|---|---|---|
-| `SIN_PLAZO` | No existe plazo legal asociado al tipo | Ninguno | Sin indicador |
+| `SIN_PLAZO` | No existe plazo legal asociado, o el documento de disparo aún no existe | Ninguno | Sin indicador |
 | `EN_PLAZO` | `hoy() < fecha_limite - umbral_alerta` | — | Sin indicador |
 | `PROXIMO_VENCER` | `fecha_limite - umbral_alerta ≤ hoy() < fecha_limite` | — | Aviso (amarillo) |
-| `VENCIDO` | `hoy() ≥ fecha_limite` | Ver catálogo de efectos ↓ | Depende del efecto |
+| `VENCIDO` | `hoy() ≥ fecha_limite`, sin cumplimiento | Ver catálogo de efectos ↓ | Depende del efecto |
+| `CUMPLIDO` | Llegó el documento que acredita el cumplimiento (#778) | Ninguno | Verde |
 
 `umbral_alerta` = **5 días hábiles** (fijo).
+
+> **Las cuatro fechas acompañan siempre al estado (#778, ADR-041 §A).** Un plazo
+> es una sola medida y produce **disparo**, **vencimiento**, **cumplimiento** (o
+> nada) y **parada** — la primera de cumplimiento, vencimiento u hoy. Son el
+> dato; el estado es la lectura cómoda de ese dato. `fecha_limite` conserva su
+> nombre histórico y es el **vencimiento** (§3.5), ya con las suspensiones
+> sumadas cuando se pregunta por una solicitud.
+>
+> **«Cumplido fuera de plazo» no es un valor del vocabulario.** Se lee comparando
+> las dos fechas que el servicio ya devuelve (`cumplimiento > vencimiento`). El
+> vocabulario no crece por algo derivable sin ambigüedad.
+>
+> **`suspendido` tampoco es un estado**, sino un dato aparte del plazo de la
+> solicitud: es ortogonal, un plazo puede estar suspendido y a la vez próximo a
+> vencer.
+>
+> **`CUMPLIDO` tiene dos lecturas y el vocabulario aguanta las dos.** En las
+> esperas de un tercero el cierre puede llegar antes del vencimiento: alguien
+> contestó. En las de mero transcurso —los 30 días de exposición— el
+> `CERT_PLAZO_CUMPLIDO` lo emite el propio sistema y exige que el plazo haya
+> vencido (`certificados.py`), así que ahí significa «está acreditado que el
+> plazo transcurrió».
 
 > **`SIN_PLAZO` cubre también el "plazo indefinido" de `ESTRUCTURA_FTT.md`
 > (notación `EP(0)`) — decisión #789.** Varios `ESPERAR_PLAZO` no tienen plazo
@@ -171,7 +194,7 @@ El efecto del vencimiento determina la gravedad de la alerta y quién resulta pe
 > **Art. 95 — Caducidad por inactividad del interesado**: aplica íntegramente en BDDAT. El flujo es: inactividad > 3 meses → la Administración advierte → si persiste → resolución de archivo. Un procedimiento caducado no interrumpe la prescripción del derecho, pero si el derecho no ha prescrito, el interesado puede iniciar un nuevo procedimiento incorporando actos y trámites del anterior (ver §7 — reutilización de trámites entre expedientes).
 
 El estado y el efecto se exponen como variables separadas del ContextAssembler:
-- `estado_plazo`: `SIN_PLAZO` / `EN_PLAZO` / `PROXIMO_VENCER` / `VENCIDO`
+- `estado_plazo`: `SIN_PLAZO` / `EN_PLAZO` / `PROXIMO_VENCER` / `VENCIDO` / `CUMPLIDO`
 - `efecto_plazo`: `NINGUNO` / `SILENCIO_ESTIMATORIO` / `RESPONSABILIDAD_DISCIPLINARIA` / `SILENCIO_DESESTIMATORIO` / `CADUCIDAD_PROCEDIMIENTO` / `PERDIDA_TRAMITE` / `APERTURA_RECURSO` / `PRESCRIPCION_CONDICIONADO` / `SIN_EFECTO_AUTOMATICO`
 
 ---
@@ -179,6 +202,15 @@ El estado y el efecto se exponen como variables separadas del ContextAssembler:
 ### 2.5 Suspensión del plazo
 
 El plazo se **suspende** cuando concurre alguna de las causas del art. 22 LPACAP (ver `NORMATIVA_PLAZOS.md §1.1`). El reloj se para; el tiempo transcurrido antes se conserva; al reanudar se suma el periodo suspendido a la fecha límite.
+
+> **Una suspensión no es un mecanismo aparte (#778, ADR-041).** Es **el plazo de
+> un tercero visto desde la solicitud**, y la propia ley lo dice al fijar cuándo
+> termina —art. 22.1.a: «por el tiempo que medie entre la notificación del
+> requerimiento y su efectivo cumplimiento por el destinatario, **o, en su
+> defecto, por el del plazo concedido**»—, que es el menor de los dos:
+> exactamente la **parada** de §2.4. El intervalo suspendido va del disparo a la
+> parada de esa misma medida, así que el tope de la suspensión existe por
+> construcción y no hay lógica que escribir para él. Ver §3.3.
 
 > El art. 25.2 LPACAP habla de "interrupción" del cómputo por paralización imputable al interesado, pero dicho artículo no aplica en BDDAT (regula procedimientos de oficio, que no existen en el sistema). Se elimina la distinción suspensión/interrupción como irrelevante para BDDAT.
 
@@ -380,17 +412,34 @@ Motivación: un tipo de Fase o Trámite no tiene el plazo como atributo propio �
 ```
 catalogo_plazos
 ├── id
-├── tipo_elemento       ENUM(SOLICITUD, FASE, TRAMITE, TAREA)  -- prefiltro SQL
-├── camino              VARCHAR(250)  -- patrón ESFTT con comodín ANY (#785)
-├── campo_fecha         JSONB  -- referencia de inicio de cómputo (ver formato abajo)
-├── plazo_valor         INTEGER
-├── plazo_unidad        ENUM(DIAS_HABILES, DIAS_NATURALES, MESES, ANOS)
-├── efecto_vencimiento  FK → efectos_plazo  -- (tabla; sin enums hardcodeados)
-├── norma_origen        TEXT  -- "Art. 21.3 LPACAP", "Art. 14 RD 1955/2000"...
-├── vigencia_desde      DATE nullable
-├── vigencia_hasta      DATE nullable
-└── activo              BOOLEAN
+├── tipo_elemento              ENUM(SOLICITUD, TAREA)  -- prefiltro SQL (#788)
+├── camino                     VARCHAR(250)  -- patrón ESFTT con comodín ANY (#785)
+├── campo_fecha                JSONB  -- señalador del DISPARO (ver formato abajo)
+├── campo_fecha_cumplimiento   JSON   -- señalador del CUMPLIMIENTO, opcional (#778)
+├── suspende_plazo_solicitud   BOOLEAN  -- si este plazo suspende el de la solicitud (#778)
+├── plazo_valor                INTEGER
+├── plazo_unidad               ENUM(DIAS_HABILES, DIAS_NATURALES, MESES, ANOS)
+├── efecto_vencimiento         FK → efectos_plazo  -- (tabla; sin enums hardcodeados)
+├── norma_origen               TEXT  -- "Art. 21.3 LPACAP", "Art. 14 RD 1955/2000"...
+├── vigencia_desde             DATE nullable
+├── vigencia_hasta             DATE nullable
+└── activo                     BOOLEAN
 ```
+
+> **Los dos datos de #778.** `campo_fecha_cumplimiento` usa el **mismo
+> vocabulario cerrado** que `campo_fecha` —el problema es el mismo, localizar un
+> documento desde el elemento— y es opcional: sin él el plazo nunca alcanza
+> `CUMPLIDO`, que es lo correcto en `TABLON_AYUNTAMIENTOS` (#416), donde disparo
+> y cierre son el mismo documento. `suspende_plazo_solicitud` sustituye a la
+> lista `_TRAMITES_SUSPENSION` que vivía en `plazos.py`: que la petición de un
+> informe preceptivo suspenda el plazo para resolver cambia cuando cambia la ley
+> y es citable a artículo concreto (art. 22.1.a / 22.1.d), luego es dato normativo
+> (test de ADR-037). `CheckConstraint` al nivel TAREA: el art. 22 suspende el
+> plazo de la solicitud, así que marcarla a ella sería suspenderse a sí misma.
+>
+> `campo_fecha_cumplimiento` se declara `JSON` y no `JSONB` como su gemela: se
+> lee entera y se compara en Python, sin operadores ni índices de `jsonb`, y el
+> resto del proyecto usa `db.JSON` por portabilidad a otros motores.
 
 #### Identificación por camino SFTT (#785)
 
@@ -456,10 +505,33 @@ de fecha al que apuntar.
 
 El campo `campo` es siempre `fecha_administrativa` (el resolver lo asume). Referencias por nivel:
 
-| Nivel | Referencia al documento de inicio |
-|---|---|
-| `SOLICITUD` | `fk: documento_solicitud_id` — único FK a documentos, sin alternativa |
-| `TAREA` | `rol: CONSUMIDO` o `rol: PRODUCIDO` (vínculo en `documentos_tarea`, ADR-010), con `tipo_documento` opcional |
+| Nivel | Referencia al documento de inicio | Referencia al de cumplimiento (#778) |
+|---|---|---|
+| `SOLICITUD` | `fk: documento_solicitud_id` — sin alternativa | `fk: documento_cierre_id` — sin alternativa |
+| `TAREA` | `rol: CONSUMIDO` o `rol: PRODUCIDO` (vínculo en `documentos_tarea`, ADR-010), con `tipo_documento` opcional | ídem, o **nada** — y entonces el plazo no alcanza `CUMPLIDO` |
+
+> **Cada plazo se abre y se cierra en el mismo sitio (ADR-041 §D).** La estructura
+> FTT ya lo cumple en **todos** los trámites con plazo, suspendan o no —
+> verificado en `tramites_tareas_documentos`: el documento PRODUCIDO de cada
+> `ESPERAR_PLAZO` es exactamente el que cierra esa espera (`SUBSANACION`,
+> `INFORME_114_RD1955`, `RESPUESTA_ORGANISMO`, `RESPUESTA_TITULAR`,
+> `INFORME_COMPATIBILIDAD_AMBIENTAL`, `CERT_PLAZO_CUMPLIDO`). Por eso #778 pudo
+> retirar el rescate que buscaba el documento de cierre en un trámite hermano
+> (`SOLICITUD_INFORME` → `RECEPCION_INFORME`, `SOLICITUD_COMPATIBILIDAD` →
+> `RECEPCION_DICTAMEN`): nunca cubrió una necesidad estructural, cubría que el
+> tramitador hubiera archivado el documento en otro sitio, y eso es un dato mal
+> puesto, no algo que el cálculo deba compensar. Si algún día aparece una tarea
+> con plazo cuyo documento de cierre viva necesariamente en otro trámite, es un
+> problema de modelado del ESFTT y se discute como tal.
+>
+> **El cierre del plazo de la solicitud es `documento_cierre_id`, no
+> `Fase(RESOLUCION).documento_resultado_id`** (ADR-041 §D bis): aquella es la
+> resolución y su fecha es la de dictar, anterior a la de notificar, y el art.
+> 21.3.b obliga a «resolver **y** notificar». El art. 40.4 fija con qué basta —la
+> notificación o el intento debidamente acreditado—, y con varios interesados hay
+> varios intentos: ninguno significa por sí solo «la solicitud está cerrada», de
+> ahí un certificado del hecho agregado (`CERT_CIERRE_SOLICITUD`) y no un
+> justificante bruto. Quién lo emite y cuándo quedó fuera de #778.
 
 ```jsonc
 // Único caso directo — Solicitud: "fk" = atributo ORM con FK a documentos
@@ -564,48 +636,76 @@ Si las dos condiciones se cumplen → 15 días; en caso contrario → 30 días.
 
 ---
 
-### 3.3 Suspensiones de plazo — cerrada por inferencia, sin tabla propia (#173, corregida #788)
+### 3.3 Suspensiones de plazo — la misma medida, sin tabla propia (#173, corregida #788, unificada #778)
 
 > **Estado:** Cerrado. La estructura tentativa que este documento proponía en
 > 2026-04-01 (tabla `suspensiones_plazo` con `causa_id` FK a un catálogo de
 > causas) no se construyó: no hace falta un registro explícito de cada
 > suspensión si se puede derivar del árbol documental que ya existe.
 
-**Mecanismo real** (`app/services/plazos.py::_obtener_suspensiones`, corregida
-en #788): recibe la **Solicitud** —no la Fase ni el Trámite— porque el art. 22
-LPACAP suspende «el plazo máximo legal para resolver un procedimiento y
-notificar la resolución», que es el plazo de la solicitud y ninguno más. La
-función recorre `solicitud → fases → trámites` buscando los tipos de trámite
-que son causa cerrada del art. 22.1: `REQUERIMIENTO_SUBSANACION` (letra a,
-subsanación al interesado) y, los tres por informe preceptivo a otro órgano
-(letra d — ver `NORMATIVA_PLAZOS.md §1.1`): `SOLICITUD_INFORME`,
-`CONSULTA_SEPARATA`, `SOLICITUD_COMPATIBILIDAD`. Los dos extremos de cada intervalo salen
-del mismo `ESPERAR_PLAZO` del trámite disparador: el documento **CONSUMIDO**
-(justificante de la notificación) abre, el **PRODUCIDO** (la respuesta)
-cierra — con rescate por trámite hermano receptor, acotado a la misma fase,
-para los trámites cuyo receptor está formalizado aparte (`SOLICITUD_INFORME` →
-`RECEPCION_INFORME*`, `SOLICITUD_COMPATIBILIDAD` → `RECEPCION_DICTAMEN` /
-`RECEPCION_FIGURA`).
+**Mecanismo real** (`app/services/plazos.py::obtener_estado_plazo_solicitud`,
+reescrito en #778 sobre ADR-041): el plazo de la solicitud se mide como
+cualquier otro (§2.4), y después se recorren sus tareas —`solicitud → fases →
+trámites → tareas`— reteniendo las que tienen entrada de catálogo **marcada como
+suspensora**. Cada una se mide **igual, sin nada añadido**, y aporta el intervalo
+`[disparo, parada]`.
 
-Los intervalos resultantes se **funden en una sola unión** — cerrados y
-abiertos juntos: el reloj se para una vez, no una por cada causa concurrente —
-y se cuentan como `(A, B]`: los días hábiles desde el día siguiente al acto
-hasta el de cierre inclusive, que es la diferencia que exige la norma («por el
-tiempo que **medie entre**…», arts. 22.1.a / 22.1.d), no un recuento inclusivo
-de ambos extremos. Ver §3.5 decisión 5.
+Recibe la **Solicitud** —no la Fase ni el Trámite— porque el art. 22 LPACAP
+suspende «el plazo máximo legal para resolver un procedimiento y notificar la
+resolución», que es el plazo de la solicitud y ninguno más.
 
-`obtener_estado_plazo` invoca `_obtener_suspensiones` **solo** cuando
-`tipo_elemento == 'SOLICITUD'` — explícito, no por recorrido que salga vacío.
-Antes de #788 la función recibía «el elemento evaluado» y buscaba a su
-alrededor por *duck-typing*: la Solicitud salía siempre con lista vacía (no
-tiene `.tramites`) y un Trámite se encontraba a sí mismo entre sus hermanos —
-cada `CONSULTA_SEPARATA` se suspendía a sí misma y su fecha límite retrocedía
-un día hábil por cada día hábil transcurrido, sin vencer nunca. Corregido.
+Los intervalos resultantes se **funden en una sola unión** — vivos y cerrados
+juntos: el reloj se para una vez, no una por cada causa concurrente — y se
+cuentan como `(A, B]`: los días hábiles desde el día siguiente al acto hasta el
+de cierre inclusive, que es la diferencia que exige la norma («por el tiempo que
+**medie entre**…», arts. 22.1.a / 22.1.d), no un recuento inclusivo de ambos
+extremos. Ver §3.5 decisión 5.
+
+De ahí salen sin código adicional: si el plazo está **suspendido hoy** (lo está
+si alguna tarea suspensora sigue corriendo), **desde cuándo** lo está de forma
+continua —el inicio del bloque fusionado que alcanza hoy, que puede ser anterior
+a la causa viva más antigua— y **cuánto tiempo** lleva parado.
+
+**Qué suspende es dato del catálogo, no una lista en el código.** La columna
+`suspende_plazo_solicitud` sustituyó a `_TRAMITES_SUSPENSION` (#778). Corolario
+buscado: **un plazo sin entrada en el catálogo no suspende nada**. Hasta ese
+cambio convivían un trámite marcado como suspensor en el código
+(`SOLICITUD_COMPATIBILIDAD`) y sin fila en el catálogo, con lo que el sistema lo
+pintaba como plazo no configurado a la vez que lo usaba para mover la fecha
+límite de la solicitud.
 
 **No toda espera externa suspende.** La información pública y los traslados al
 peticionario (arts. 126 / 127.3 RD 1955/2000 — trámites `ANUNCIO_*` y
-`CONSULTA_TRASLADO_*`) no están en la lista: son instrucción ordinaria, corren
+`CONSULTA_TRASLADO_*`) no llevan la marca: son instrucción ordinaria, corren
 *dentro* del plazo y lo consumen, no lo paran.
+
+#### Lo que se cayó, y por qué no debe volver
+
+Hasta #778 este cálculo era **un segundo motor** que no consultaba
+`catalogo_plazos` en ningún momento: tenía la lista de trámites escrita en el
+código, navegaba el árbol por su cuenta y encadenaba tres tentativas de cierre,
+con un rescate por trámite hermano receptor. Al no preguntar cuánto dura nada,
+una suspensión **no podía vencer**: sin respuesta del interesado el cierre se
+quedaba en «hoy» y se recalculaba cada día, de modo que la fecha límite se
+alejaba un día por cada día que pasaba y el expediente no vencía nunca. El caso
+que más urge detectar —el titular que calla— era justo el que el sistema
+ocultaba.
+
+También desapareció el flag `abierto` guardado como dato. No es un renombre:
+significaba «no encontré documento de cierre», que es exactamente lo que hacía
+crecer la suspensión sin límite. Su sustituto, `vivo`, se deriva del estado de la
+propia espera —sigue corriendo— y una espera vencida sin respuesta no lo está.
+
+**El tope del art. 22.1.d** («este plazo de suspensión no podrá exceder en ningún
+caso de tres meses») **no se implementa en el cómputo**: recae sobre la
+suspensión, no sobre el plazo concedido al informante, y en la práctica no muerde
+—todos los plazos de informe que BDDAT maneja son de tres meses o menos—. Se
+vigila **al dar de alta la entrada**, con un aviso no bloqueante del CRUD. Donde
+la letra y esta decisión pueden diferir (organismo con dos meses para informar
+que no contesta: ¿la suspensión acaba a los dos meses o sigue hasta tres?) se
+adopta la lectura **corta**: la parada es el vencimiento del plazo del catálogo,
+que da una fecha límite más temprana y avisa antes — la dirección conservadora
+fijada en #796.
 
 **Lo que queda fuera — remitido a #796.** El art. 22.1 dice «se **podrá**
 suspender» (potestativo) para las cuatro causas de BDDAT, frente al 22.2 («se
@@ -731,28 +831,46 @@ from typing import Optional
 
 @dataclass
 class EstadoPlazo:
-    estado: str                    # 'SIN_PLAZO' | 'EN_PLAZO' | 'PROXIMO_VENCER' | 'VENCIDO'
-    efecto: str                    # 'NINGUNO' | 'SILENCIO_ESTIMATORIO' | ... (ver §2.4)
-    fecha_limite: Optional[date]   # None si SIN_PLAZO
-    dias_restantes: Optional[int]  # None si SIN_PLAZO; negativo si VENCIDO
+    estado: str                          # 'SIN_PLAZO' | 'EN_PLAZO' | 'PROXIMO_VENCER'
+                                         # | 'VENCIDO' | 'CUMPLIDO'
+    efecto: str                          # 'NINGUNO' | 'SILENCIO_ESTIMATORIO' | … (§2.4)
+    fecha_limite: Optional[date]         # el vencimiento (§3.5). None si SIN_PLAZO
+    dias_restantes: Optional[int]        # None si SIN_PLAZO o CUMPLIDO; negativo si VENCIDO
+    fecha_disparo: Optional[date]
+    fecha_cumplimiento: Optional[date]
+    fecha_parada: Optional[date]         # min(cumplimiento, vencimiento, hoy)
 
-def obtener_estado_plazo(elemento, tipo_elemento: str) -> EstadoPlazo:
-    """
-    elemento:      objeto ORM (Solicitud, Fase, Tramite, Tarea)
-    tipo_elemento: 'SOLICITUD' | 'FASE' | 'TRAMITE' | 'TAREA' — la firma acepta
-                   los cuatro (los consumidores despachan por duck-typing),
-                   pero desde #788 solo SOLICITUD y TAREA tienen plazo
-                   posible: FASE y TRAMITE no portan fecha administrativa
-                   (§2.bis) y devuelven siempre SIN_PLAZO, sin consultar
-                   catalogo_plazos.
-    """
+@dataclass
+class EstadoPlazoSolicitud(EstadoPlazo):
+    suspendido: bool                     # ortogonal al estado, no un valor suyo
+    suspendido_desde: Optional[date]
+    dias_suspendidos: int
+    fecha_limite_sin_suspender: Optional[date]
+
+def obtener_estado_plazo_tarea(tarea, ctx=None, variables=None) -> EstadoPlazo: ...
+def obtener_estado_plazo_solicitud(sol, ctx=None, variables=None) -> EstadoPlazoSolicitud: ...
 ```
+
+**Dos entradas, no un literal de nivel (#778, ADR-041 §G).** El servicio solo
+habla de las dos cosas que pueden tener plazo. Sin literales de nivel y sin
+niveles fantasma que siempre respondan «sin plazo»: cuando no hay entrada en el
+catálogo la respuesta es «no hay plazo», y el consumidor no tiene que saber por
+qué. Los consumidores que despachaban por *duck-typing* eligen ahora la función
+(`variables/plazo.py`), y Fase y Trámite se resuelven ahí mismo sin tocar BD.
+
+**No hay entrada para el trámite.** Los dos consumidores que preguntaban por
+trámite (`consultas_organismos.py`, `variables/calculado.py`) llegaban con un
+trámite en la mano porque el vínculo con el organismo cuelga de ahí, no porque el
+trámite tenga plazo. «Dame la tarea de espera de este trámite» es navegación del
+árbol ESFTT (`Tramite.tarea_espera`), no una entrada de este servicio: una
+función llamada «plazo de un trámite» reintroduciría por la puerta de atrás el
+nivel que #788 eliminó.
 
 **Variables expuestas al motor** (registradas en `catalogo_variables`, ambas `activa=TRUE`):
 
 | Variable | tipo_dato | Valores posibles |
 |---|---|---|
-| `estado_plazo` | texto | `SIN_PLAZO` · `EN_PLAZO` · `PROXIMO_VENCER` · `VENCIDO` |
+| `estado_plazo` | texto | `SIN_PLAZO` · `EN_PLAZO` · `PROXIMO_VENCER` · `VENCIDO` · `CUMPLIDO` |
 | `efecto_plazo` | texto | `NINGUNO` · `SILENCIO_ESTIMATORIO` · `RESPONSABILIDAD_DISCIPLINARIA` · `SILENCIO_DESESTIMATORIO` · `CADUCIDAD_PROCEDIMIENTO` · `PERDIDA_TRAMITE` · `APERTURA_RECURSO` · `PRESCRIPCION_CONDICIONADO` · `CONFORMIDAD_PRESUNTA` · `SIN_EFECTO_AUTOMATICO` |
 
 **Stub Fase 2 (#190):** `obtener_estado_plazo` devuelve `SIN_PLAZO`/`NINGUNO` siempre.
@@ -777,14 +895,23 @@ El documento producido llega por una de dos vías:
 - **`rol: CONSUMIDO`** (caso habitual): el documento que inicia el período de espera llega antes de que el plazo empiece (p. ej. `ANUNCIO_PUBLICADO` para los trámites `ANUNCIO_BOP/BOJA`).
 - **`rol: PRODUCIDO`** (caso retroactivo): el documento llega cuando el período ya ha concluido y porta como `fecha_administrativa` la fecha de inicio del período (p. ej. `CERT_PLAZO_TABLON` para `TABLON_AYUNTAMIENTOS` — el ayuntamiento certifica cuándo empezó la exposición). Ver #416.
 
-**Papel real de `estado_plazo` para esta tarea:** no decide la completitud (eso lo decide, como siempre, la existencia del documento producido). Decide (1) si la acción de generar el certificado del Caso B está permitida, y (2) qué fecha administrativa lleva ese certificado. El Assembler consulta `plazos.py` para las variables `estado_plazo`/`efecto_plazo` del trámite igual que para cualquier otro elemento ESFTT — no hay una rama de cálculo separada para `ESPERAR_PLAZO`.
+**Papel real de `estado_plazo` para esta tarea:** no decide la completitud (eso lo decide, como siempre, la existencia del documento producido). Decide (1) si la acción de generar el certificado del Caso B está permitida, y (2) qué fecha administrativa lleva ese certificado. El Assembler consulta `plazos.py` para las variables `estado_plazo`/`efecto_plazo` de la tarea igual que para cualquier otro elemento con plazo — no hay una rama de cálculo separada para `ESPERAR_PLAZO`.
+
+> **Desde #778 las dos cosas coinciden por construcción**, y conviene no
+> confundirlas. El documento producido que completa la tarea (ADR-004) es el
+> mismo que `campo_fecha_cumplimiento` señala, así que una tarea ejecutada tiene
+> el plazo `CUMPLIDO`. Siguen siendo dos preguntas distintas —completitud de la
+> tarea y estado del plazo— que hoy responden al mismo hecho.
 
 | Condición | Estado de la tarea |
 |---|---|
 | sin documento producido | `PENDIENTE` — ni ha llegado respuesta (Caso A) ni se ha generado el certificado (Caso B) |
 | con documento producido (cualquiera de los dos casos) | `COMPLETADA` |
 
-**Simetría con el cómputo de plazo del trámite:** el `campo_fecha` de `catalogo_plazos` para un trámite con `ESPERAR_PLAZO` es `{"via_tarea_tipo": "ESPERAR_PLAZO", "rol": "CONSUMIDO"}` en el caso habitual, o `{"via_tarea_tipo": "ESPERAR_PLAZO", "rol": "PRODUCIDO"}` en el caso retroactivo (ver §3.2).
+**El plazo se declara en la tarea, no en su trámite** (#788): la fila vive en el
+`ESPERAR_PLAZO`, con `{"rol": "CONSUMIDO"}` en el caso habitual o
+`{"rol": "PRODUCIDO"}` en el retroactivo (§3.2). La indirección
+`via_tarea_tipo` que bajaba del trámite a su tarea desapareció con ella.
 
 **Ausencia de plazo configurado:** si `catalogo_plazos` no tiene entrada para el trámite padre, `plazos.py` devuelve `SIN_PLAZO`. En el Caso A la tarea puede completarse igualmente si llega el documento externo — no depende del catálogo. En el Caso B, sin plazo configurado no hay `VENCIDO` posible, así que la generación del certificado queda bloqueada: el Supervisor debe configurar el plazo para que ese camino de cierre esté disponible.
 

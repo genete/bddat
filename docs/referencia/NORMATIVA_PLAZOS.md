@@ -81,20 +81,42 @@ los siguientes casos»):
 | b) Actuaciones complementarias (art. 87) | Desde que se notifica el acuerdo motivado hasta su terminación |
 | c) Recusación de funcionario | Desde que se plantea hasta que la resuelve el superior jerárquico |
 
-**Causas reales en BDDAT** (`app/services/plazos.py::_TRAMITES_SUSPENSION`,
-lista cerrada): las cuatro son del apartado **22.1** — potestativas en la
-letra de la ley, pero BDDAT las aplica siempre que concurren, sin modelar una
-decisión discrecional del tramitador. Corresponden a las letras **a)**
-(`REQUERIMIENTO_SUBSANACION`) y **d)** — informe preceptivo a otro órgano,
-aplicada tres veces con destinatario distinto: `SOLICITUD_INFORME` (DGPEM /
-operador del sistema), `CONSULTA_SEPARATA` (organismo consultado) y
-`SOLICITUD_COMPATIBILIDAD` (órgano ambiental). Ninguna causa del 22.2 tiene
-reflejo en BDDAT: son supuestos de coordinación entre Administraciones,
-actuaciones complementarias de oficio y recusación — mecánica interna de la
-instrucción, no trámites que BDDAT modele como tales. La información pública
-y los traslados al peticionario (arts. 126 / 127.3 RD 1955/2000) tampoco
-suspenden: no están en el art. 22, son instrucción ordinaria que corre dentro
-del plazo.
+**Causas reales en BDDAT** (columna `catalogo_plazos.suspende_plazo_solicitud`
+desde #778 — antes una lista cerrada en el código): son del apartado **22.1** —
+potestativas en la letra de la ley, pero BDDAT las aplica siempre que concurren,
+sin modelar una decisión discrecional del tramitador. Corresponden a las letras
+**a)** (`REQUERIMIENTO_SUBSANACION`) y **d)** — informe preceptivo a otro órgano,
+con destinatario distinto en cada caso: `SOLICITUD_INFORME` (DGPEM / operador del
+sistema), `CONSULTA_SEPARATA` (organismo consultado) y `SOLICITUD_COMPATIBILIDAD`
+(órgano ambiental). Ninguna causa del 22.2 tiene reflejo en BDDAT: son supuestos
+de coordinación entre Administraciones, actuaciones complementarias de oficio y
+recusación — mecánica interna de la instrucción, no trámites que BDDAT modele
+como tales. La información pública y los traslados al peticionario (arts. 126 /
+127.3 RD 1955/2000) tampoco suspenden: no están en el art. 22, son instrucción
+ordinaria que corre dentro del plazo.
+
+> **Cuál de las cuatro suspende hoy depende del catálogo, no de esta lista**
+> (#778, corolario de ADR-041 §E): un plazo sin fila en `catalogo_plazos` no
+> suspende nada. `SOLICITUD_COMPATIBILIDAD` no tiene fila y por tanto no suspende
+> hasta que se le dé de alta — antes de #778 estaba marcado como suspensor en el
+> código y sin fila, así que el sistema lo pintaba como plazo no configurado a la
+> vez que lo usaba para mover la fecha límite de la solicitud.
+
+> **Cómo se mide la duración: la letra a) escribe el mecanismo.** «Por el tiempo
+> que medie entre la notificación del requerimiento y su efectivo cumplimiento
+> por el destinatario, **o, en su defecto, por el del plazo concedido**» — el
+> **menor de los dos**, que es exactamente lo que hace falta para medir un plazo
+> cualquiera. De ahí que en BDDAT una suspensión no sea un mecanismo aparte sino
+> el plazo de un tercero visto desde la solicitud (ADR-041), y que su duración
+> tenga tope por construcción.
+>
+> El **máximo de tres meses** de la letra d) recae sobre la suspensión, no sobre
+> el plazo concedido al informante. En la práctica no muerde: todos los plazos de
+> informe que BDDAT maneja son de tres meses o menos, así que la parada nunca los
+> excede. Donde la letra y esta lectura pueden diferir —organismo con dos meses
+> para informar que no contesta— BDDAT adopta la lectura **corta**: la suspensión
+> acaba al vencer el plazo concedido, lo que da una fecha límite más temprana y
+> avisa antes.
 
 > **Pendiente — remitido a #796.** Para el informe preceptivo (letra d), el
 > art. 22.1.d exige comunicar a los interesados tanto la petición como la

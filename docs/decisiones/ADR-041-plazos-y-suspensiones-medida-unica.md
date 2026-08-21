@@ -1,6 +1,6 @@
 # ADR-041 — Plazos y suspensiones se miden con el mismo mecanismo
 
-**Estado:** Propuesta
+**Estado:** Aceptada — implementada en #778 (2026-08-21)
 **Fecha:** 2026-08-20
 **Issue:** #778
 **Se apoya en:** ADR-002 (el ESFTT no almacena fechas), ADR-010 (documento vinculado a la tarea con rol)
@@ -225,7 +225,16 @@ Dos consecuencias asumidas:
   la correcta, pero es decisión, no efecto colateral.
 
 **Punto abierto:** dónde nace ese certificado en la estructura FTT. Sus dos hermanos no los
-produce ninguna tarea; si sigue el mismo patrón, tampoco. Se resuelve al implementar.
+produce ninguna tarea; si sigue el mismo patrón, tampoco.
+
+> **Resuelto a medias en #778 (2026-08-21).** El issue implementó el **ancla** —la
+> columna `documento_cierre_id`, el tipo documental `CERT_CIERRE_SOLICITUD` y su
+> lectura por el servicio— y dejó fuera **la emisión**: quién crea ese certificado
+> y en qué momento. Consecuencia asumida mientras tanto: el plazo de la solicitud
+> no puede alcanzar `CUMPLIDO` y acabará marcándose vencido aunque se resolviera a
+> tiempo. Es la misma señal que una fase en `PDTE_CIERRE` —todo hecho, falta
+> formalizar— y no afecta a lo que #778 vino a arreglar, que es el plazo que no
+> vencía nunca.
 
 ### E — Qué plazos suspenden es dato del catálogo, no una lista en el código
 
@@ -339,3 +348,40 @@ tienen plazo y **no** suspenden — corren dentro del plazo de la solicitud y lo
 
 **Mantener una entrada del servicio por trámite, como comodidad.** Descartada en G: la
 interfaz enseña el modelo.
+
+---
+
+## Cómo quedó implementado (#778, 2026-08-21)
+
+Los nombres y decisiones de detalle que el ADR no fijaba, para que el código y este
+documento se lean juntos sin sorpresas:
+
+| Decisión del ADR | Cómo se llama en el código |
+|---|---|
+| Marca de suspensión (§E) | `catalogo_plazos.suspende_plazo_solicitud`, con `CheckConstraint` al nivel TAREA |
+| Segundo señalador de documento (§D) | `catalogo_plazos.campo_fecha_cumplimiento` (`JSON`, no `JSONB`: se lee entera y se compara en Python) |
+| Las cuatro fechas (§A) | `fecha_disparo`, **`fecha_limite`**, `fecha_cumplimiento`, `fecha_parada` |
+| Las dos entradas (§G) | `obtener_estado_plazo_tarea` · `obtener_estado_plazo_solicitud` |
+| Bajar del trámite a su espera (§G) | `Tramite.tarea_espera`, property del modelo |
+
+**El vencimiento conserva el nombre `fecha_limite`.** Es como lo llama todo el sistema
+—árbol, cola, certificados, front— y `DISEÑO_FECHAS_PLAZOS §3.5` ya tenía cerrada su
+semántica: último día hábil dentro del plazo. En el nivel solicitud llega ya con las
+suspensiones sumadas, y `fecha_limite_sin_suspender` conserva el valor base.
+
+**`dias_restantes` es `None` en `CUMPLIDO`.** «Quedan N días» no significa nada una vez
+cumplido, y el Inspector lo pinta literalmente. Si llegó tarde o a tiempo se lee de las
+fechas, como dice §C.
+
+**`estado_dominio._estado_esperar_plazo` mapea `CUMPLIDO` a `PENDIENTE_TRAMITAR`.** La rama
+no se alcanza con las entradas pobladas —el documento de cumplimiento es el PRODUCIDO, y una
+tarea con producido está ejecutada, luego ya devolvió `FIN`—, pero sí sería alcanzable si
+una entrada declarase el cumplimiento con rol `CONSUMIDO`: llegó el documento y la tarea no
+lo ha producido, que es trabajo pendiente, no espera.
+
+**Traslado del dato, no poblado.** La migración `778b` marcó como suspensoras las tres
+entradas que la lista del código ya trataba como tales y tienen fila
+(`REQUERIMIENTO_SUBSANACION`, `SOLICITUD_INFORME`, `CONSULTA_SEPARATA` ×2), y puso
+`{"rol": "PRODUCIDO"}` como cumplimiento en todas las de nivel TAREA salvo el tablón.
+`SOLICITUD_COMPATIBILIDAD` dejó de suspender por no tener fila: es el corolario buscado
+en §E, y es un cambio de comportamiento real, no solo de sitio del dato.
