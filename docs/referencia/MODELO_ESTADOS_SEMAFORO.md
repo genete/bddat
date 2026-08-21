@@ -87,13 +87,20 @@ justificante definitivo.
 | INCORRECTA, `numero_intento = 1` (queda 2º intento) | NOTIFICACION_FALLIDA | 🟠 |
 | INCORRECTA, `numero_intento = 2` (agotada → procede edicto) | NOTIFICACION_AGOTADA | 🔴 |
 
-### ESPERAR_PLAZO  *(estado de plazo vía `services/plazos.obtener_estado_plazo`)*
+### ESPERAR_PLAZO  *(estado de plazo vía `services/plazos.obtener_estado_plazo_tarea`)*
 | Situación | Estado | Color |
 |---|---|---|
 | plazo no configurado (`SIN_PLAZO`) | PENDIENTE_TRAMITAR | 🔴 |
 | plazo activo o indefinido (`EN_PLAZO`) | PENDIENTE_PLAZOS / PENDIENTE_SUBSANAR | ⚪ |
 | plazo vencido (`VENCIDO`) | PENDIENTE_ESTUDIO | 🔴 |
+| plazo cumplido (`CUMPLIDO`, #778) | PENDIENTE_TRAMITAR | 🔴 |
 | tarea ejecutada | FIN | 🟢 |
+
+> **`CUMPLIDO` no se alcanza con el catálogo poblado hoy** (#778): el documento que
+> acredita el cumplimiento es el PRODUCIDO, y una tarea con producido está ejecutada
+> — la fila de arriba gana antes. La rama existe porque sí sería alcanzable si una
+> entrada declarase el cumplimiento con rol `CONSUMIDO`: el documento esperado llegó
+> pero la tarea no lo ha producido, que es trabajo pendiente y no espera.
 
 El detalle temporal del plazo (incl. "próximo a vencer") **no** va en el círculo: se muestra
 con la **barra de progreso** (§9).

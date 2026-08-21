@@ -40,6 +40,21 @@ class Solicitud(db.Model):
         - La fecha administrativa de ese documento es la fecha de inicio del cómputo de plazos
         - Ver §2.bis DISEÑO_FECHAS_PLAZOS.md
 
+    CAMPO DOCUMENTO_CIERRE_ID (#778, ADR-041 §D bis):
+        - NULLABLE: FK al certificado de cierre de la solicitud (CERT_CIERRE_SOLICITUD)
+        - Pareja de DOCUMENTO_SOLICITUD_ID: uno ancla la fecha de inicio del plazo
+          para resolver y notificar, este la de fin
+        - NO es Fase(RESOLUCION).documento_resultado_id: ese es la resolución, y su
+          fecha es la de dictar, anterior a la de notificar. El art. 21.3.b obliga a
+          «resolver Y notificar», y el 40.4 fija que basta la notificación —o el
+          intento debidamente acreditado— respecto de todos los interesados. Con
+          varios interesados hay varios intentos y ninguno significa por sí solo
+          «la solicitud está cerrada»: lo que se ancla aquí es el certificado que
+          constata el hecho agregado, con la fecha del último de esos actos
+        - Mientras no exista el certificado, el plazo de la solicitud no alcanza
+          CUMPLIDO (plazos.py) — es el mismo comportamiento que una fase en
+          PDTE_CIERRE: todo hecho, falta formalizar
+
     CAMPO ESTADO (property derivada, no columna):
         - EN_TRAMITE: alguna fase no está finalizada
         - RESUELTA: todas las fases finalizadas Y motor confirma existencia de resolución exigida
@@ -63,6 +78,7 @@ class Solicitud(db.Model):
         db.Index('idx_solicitudes_expediente', 'expediente_id'),
         db.Index('idx_solicitudes_entidad', 'entidad_id'),
         db.Index('idx_solicitudes_doc_solicitud', 'documento_solicitud_id'),
+        db.Index('idx_solicitudes_doc_cierre', 'documento_cierre_id'),
         {'schema': 'public'}
     )
     
@@ -108,18 +124,27 @@ class Solicitud(db.Model):
         comment='FK a DOCUMENTOS. Ancla de trazabilidad al doc de solicitud (fecha admin en Documento.fecha_administrativa)'
     )
 
+    documento_cierre_id = db.Column(
+        db.Integer,
+        db.ForeignKey('public.documentos.id', name='fk_solicitudes_documento_cierre'),
+        nullable=True,
+        comment='FK a DOCUMENTOS. Certificado de cierre de la solicitud: ancla la fecha '
+                'de fin del plazo para resolver y notificar (#778)'
+    )
+
     observaciones = db.Column(
         db.String(2000),
         nullable=True,
         comment='Notas o comentarios adicionales del técnico'
     )
-    
+
     # Relaciones
     expediente = db.relationship('Expediente', backref='solicitudes')
     entidad = db.relationship('Entidad', backref='solicitudes')
     tipo_solicitud = db.relationship('TipoSolicitud')
     solicitud_afectada = db.relationship('Solicitud', remote_side=[id], backref='solicitudes_dependientes')
     documento_solicitud = db.relationship('Documento', foreign_keys=[documento_solicitud_id])
+    documento_cierre = db.relationship('Documento', foreign_keys=[documento_cierre_id])
     
     # Properties
     @property

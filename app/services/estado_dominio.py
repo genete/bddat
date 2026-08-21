@@ -172,6 +172,14 @@ def _estado_esperar_plazo(plazo: Optional[dict]) -> str:
         return 'PENDIENTE_TRAMITAR'        # plazo no configurado / sin cómputo
     if estado_plazo == 'VENCIDO':
         return 'PENDIENTE_ESTUDIO'         # 🔴 hay que actuar
+    if estado_plazo == 'CUMPLIDO':
+        # En la práctica no se alcanza: el documento de cumplimiento de toda
+        # entrada poblada es el PRODUCIDO, y una tarea con producido está
+        # ejecutada — la función ya devolvió FIN antes de llegar aquí. Explícito
+        # y no en el `else` porque sí es alcanzable si una entrada declarase el
+        # cumplimiento con rol CONSUMIDO: llegó el documento que se esperaba pero
+        # la tarea aún no lo ha producido, que es trabajo pendiente, no espera.
+        return 'PENDIENTE_TRAMITAR'
     return 'PENDIENTE_PLAZOS'              # ⚪ EN_PLAZO / PROXIMO_VENCER / INDEFINIDO
 
 

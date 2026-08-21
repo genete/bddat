@@ -45,6 +45,32 @@
                           tipos_expediente, tipos_solicitud, tipos_fase, tipos_tramite, tipos_tarea) }}
         {{ cf.campo_fecha('cpe', item.tipo_elemento, cf_fk, cf_rol, cf_tipo_documento,
                           cf_tramite, cf_tarea, tipo_documento_map) }}
+        {{ cf.campo_cumplimiento('cpe', item.tipo_elemento, cc_rol, cc_tipo_documento,
+                                 cf_tramite, cf_tarea, tipo_documento_map) }}
+
+        {# Solo las tareas suspenden (#778): lo que el art. 22 suspende es el
+           plazo de la solicitud, así que marcarla a ella significaría que se
+           suspende a sí misma. El bloque se muestra/oculta con el nivel. #}
+        <div class="row g-2 mt-1" data-nivel-block="TAREA"
+             {% if item.tipo_elemento != 'TAREA' %}style="display:none"{% endif %}>
+            <div class="col-12">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" value="1"
+                           id="cpe_suspende" name="suspende_plazo_solicitud"
+                           {% if item.suspende_plazo_solicitud %}checked{% endif %}
+                           {% if item.tipo_elemento != 'TAREA' %}disabled{% endif %}>
+                    <label class="form-check-label fw-semibold small" for="cpe_suspende">
+                        Suspende el plazo de la solicitud
+                    </label>
+                </div>
+                <div class="form-text">
+                    Art. 22.1 LPACAP. Mientras esta espera corre, el plazo para resolver y
+                    notificar se para. La información pública y los traslados al peticionario
+                    (arts. 126 / 127.3 RD 1955/2000) NO suspenden: corren dentro del plazo y lo
+                    consumen.
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 

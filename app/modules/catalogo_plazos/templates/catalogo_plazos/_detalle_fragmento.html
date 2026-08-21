@@ -76,6 +76,32 @@
                 <label class="form-label fw-semibold small">Inicio de cómputo</label>
                 <input type="text" class="form-control form-control-sm" value="{{ campo_fecha_legible }}" readonly>
             </div>
+
+            {# Los dos extremos del plazo, uno debajo del otro (#778): cada plazo
+               se abre y se cierra en el mismo sitio. #}
+            <div class="col-12">
+                <label class="form-label fw-semibold small">Documento que acredita el cumplimiento</label>
+                <input type="text" class="form-control form-control-sm" value="{{ campo_cumplimiento_legible }}" readonly>
+            </div>
+
+            {% if item.tipo_elemento == 'TAREA' %}
+            <div class="col-12">
+                <label class="form-label fw-semibold small">Suspensión</label>
+                <div class="form-control form-control-sm h-auto bg-body-tertiary">
+                    {% if item.suspende_plazo_solicitud %}
+                        <span class="badge bg-warning text-dark">Suspende el plazo de la solicitud</span>
+                        <div class="small text-secondary mt-1">
+                            Art. 22.1 LPACAP — mientras esta espera corre, el plazo para
+                            resolver y notificar se para.
+                        </div>
+                    {% else %}
+                        <span class="text-secondary small">
+                            No suspende — corre dentro del plazo de la solicitud y lo consume.
+                        </span>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
         </div>
     </div>
 </div>

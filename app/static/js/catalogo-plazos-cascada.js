@@ -21,10 +21,13 @@
  *   [data-nivel-block="NIVEL"]  bloque de campo_fecha específico de ese nivel
  *   [data-camino-seg="N"]       segmento N del camino SFTT (#785), 1..5
  *   [data-camino-req="N"]       asterisco de obligatorio del segmento N
+ *   [data-tipodoc-group]        bloque de un señalador de documento (#778): el
+ *                                del disparo y el del cumplimiento, cada uno con
+ *                                su propio rol y su propio desplegable de tipo
  *   [data-tipodoc-source="X"]   selects que alimentan el filtro de tipo_documento
- *                                (X: tramite/tarea/rol — camino_tramite,
- *                                camino_tarea, campo_fecha_rol)
- *   [data-tipodoc-target]       select de campo_fecha_tipo_documento a repoblar
+ *                                (X: tramite/tarea del camino, comunes al form;
+ *                                rol, propio de cada grupo)
+ *   [data-tipodoc-target]       select de tipo de documento a repoblar, uno por grupo
  *
  * Al cambiar de nivel:
  *   - campo_fecha: se muestra el bloque del nivel elegido y se ocultan los demás;
@@ -88,30 +91,39 @@
   }
 
   function _syncTipoDocumento(form) {
-    var target = form.querySelector('[data-tipodoc-target]');
-    if (!target) return;
+    // Un grupo por señalador (#778): el del disparo y el del cumplimiento. Cada
+    // uno tiene su propio select de rol y su propio desplegable de tipo; el
+    // trámite y la tarea son del camino, comunes a los dos.
+    var tramite = _valor(form, 'tramite');
+    var tarea = _valor(form, 'tarea');
 
-    var fuente = function (nombre) {
-      var sel = form.querySelector('[data-tipodoc-source="' + nombre + '"]');
-      return sel ? sel.value : '';
-    };
-    var clave = fuente('tramite') + '|' + fuente('tarea') + '|' + (fuente('rol') || 'CONSUMIDO');
-    var mapa = window.CATALOGO_PLAZOS_TIPODOC_MAP || {};
-    var opciones = mapa[clave] || [];
-    var valorPrevio = target.value;
+    form.querySelectorAll('[data-tipodoc-group]').forEach(function (grupo) {
+      var target = grupo.querySelector('[data-tipodoc-target]');
+      if (!target) return;
 
-    target.innerHTML = '';
-    var optSinEspecificar = document.createElement('option');
-    optSinEspecificar.value = '';
-    optSinEspecificar.textContent = '— Sin especificar —';
-    target.appendChild(optSinEspecificar);
-    opciones.forEach(function (opt) {
-      var el = document.createElement('option');
-      el.value = opt.codigo;
-      el.textContent = opt.nombre;
-      target.appendChild(el);
+      var clave = tramite + '|' + tarea + '|' + (_valor(grupo, 'rol') || 'CONSUMIDO');
+      var mapa = window.CATALOGO_PLAZOS_TIPODOC_MAP || {};
+      var opciones = mapa[clave] || [];
+      var valorPrevio = target.value;
+
+      target.innerHTML = '';
+      var optSinEspecificar = document.createElement('option');
+      optSinEspecificar.value = '';
+      optSinEspecificar.textContent = '— Sin especificar —';
+      target.appendChild(optSinEspecificar);
+      opciones.forEach(function (opt) {
+        var el = document.createElement('option');
+        el.value = opt.codigo;
+        el.textContent = opt.nombre;
+        target.appendChild(el);
+      });
+      target.value = opciones.some(function (o) { return o.codigo === valorPrevio; }) ? valorPrevio : '';
     });
-    target.value = opciones.some(function (o) { return o.codigo === valorPrevio; }) ? valorPrevio : '';
+  }
+
+  function _valor(ambito, nombre) {
+    var sel = ambito.querySelector('[data-tipodoc-source="' + nombre + '"]');
+    return sel ? sel.value : '';
   }
 
   function _sync(nivelSelect) {

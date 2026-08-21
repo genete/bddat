@@ -46,25 +46,46 @@ class _StubSolicitud:
 
 
 # ---------------------------------------------------------------------------
-# A) Stub plazos.py
+# A) Contrato de plazos.py — dos entradas, una por nivel con plazo (#778)
 # ---------------------------------------------------------------------------
 
-def test_stub_devuelve_sin_plazo_para_todos_los_tipos():
-    from app.services.plazos import obtener_estado_plazo, EstadoPlazo
-    for tipo in ('SOLICITUD', 'FASE', 'TRAMITE', 'TAREA'):
-        r = obtener_estado_plazo(object(), tipo)
-        assert isinstance(r, EstadoPlazo)
-        assert r.estado == 'SIN_PLAZO'
-        assert r.efecto == 'NINGUNO'
-        assert r.fecha_limite is None
-        assert r.dias_restantes is None
+def test_elemento_sin_tipo_devuelve_sin_plazo():
+    """Un objeto que no lleva su tipo ESFTT no llega a tocar BD."""
+    from app.services.plazos import (
+        EstadoPlazo, EstadoPlazoSolicitud,
+        obtener_estado_plazo_solicitud, obtener_estado_plazo_tarea,
+    )
+    r = obtener_estado_plazo_solicitud(object())
+    assert isinstance(r, EstadoPlazoSolicitud)
+    assert (r.estado, r.efecto, r.fecha_limite, r.dias_restantes) == \
+           ('SIN_PLAZO', 'NINGUNO', None, None)
+    assert r.suspendido is False
+
+    r = obtener_estado_plazo_tarea(object())
+    assert isinstance(r, EstadoPlazo)
+    assert (r.estado, r.efecto, r.fecha_limite, r.dias_restantes) == \
+           ('SIN_PLAZO', 'NINGUNO', None, None)
 
 
-def test_stub_acepta_none_como_elemento():
-    from app.services.plazos import obtener_estado_plazo
-    r = obtener_estado_plazo(None, 'FASE')
-    assert r.estado == 'SIN_PLAZO'
-    assert r.efecto == 'NINGUNO'
+def test_acepta_none_y_dict_como_elemento():
+    """Los consumidores llaman con lo que tienen en contexto, y para CREAR eso es
+    un dict, no una instancia ORM."""
+    from app.services.plazos import (
+        obtener_estado_plazo_solicitud, obtener_estado_plazo_tarea,
+    )
+    for fn in (obtener_estado_plazo_solicitud, obtener_estado_plazo_tarea):
+        for elemento in (None, {'tipo_fase': MagicMock()}):
+            r = fn(elemento)
+            assert r.estado == 'SIN_PLAZO'
+            assert r.efecto == 'NINGUNO'
+
+
+def test_las_cuatro_fechas_acompanan_al_estado():
+    """Son el dato; el estado es la lectura cómoda de ese dato (ADR-041 §C)."""
+    from app.services.plazos import EstadoPlazo
+    campos = EstadoPlazo.__dataclass_fields__
+    for campo in ('fecha_disparo', 'fecha_limite', 'fecha_cumplimiento', 'fecha_parada'):
+        assert campo in campos
 
 
 # ---------------------------------------------------------------------------

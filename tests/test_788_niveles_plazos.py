@@ -10,11 +10,13 @@ Bloques:
   A) Niveles         — FASE y TRAMITE devuelven SIN_PLAZO sin tocar BD.
   B) tipo_documento  — predicado de candidatura y filtro al resolver la fecha.
   C) Suspensiones    — solo se calculan en el nivel SOLICITUD.
-  D) Trámite → tarea — obtener_estado_plazo_espera baja al ESPERAR_PLAZO.
+  D) Trámite → tarea — `Tramite.tarea_espera` baja al ESPERAR_PLAZO (#778: es
+                       navegación del árbol, no interfaz del servicio de plazos).
   E) Con BD          — la tabla no tiene filas de FASE/TRAMITE y el
                        CheckConstraint impide volver a ponerlas.
 """
 from datetime import date
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -57,6 +59,10 @@ def _entrada(camino, campo_fecha, orden=10, entrada_id=1,
     e.plazo_valor = plazo_valor
     e.plazo_unidad = plazo_unidad
     e.efecto_plazo.codigo = 'NINGUNO'
+    # Explícitos para que no salgan MagicMock (truthy): estos tests miden niveles
+    # y candidatura de fila, no el cumplimiento ni la suspensión (#778).
+    e.campo_fecha_cumplimiento = None
+    e.suspende_plazo_solicitud = False
     return e
 
 
@@ -220,7 +226,7 @@ class TestSuspensionSoloEnSolicitud:
         """Art. 22: se suspende «el plazo máximo legal para resolver un
         procedimiento y notificar la resolución». Los plazos de nivel TAREA son
         de un tercero, del interesado o períodos que han de transcurrir."""
-        from app.services.plazos import obtener_estado_plazo
+        from app.services.plazos import obtener_estado_plazo_tarea
 
         tarea = _tarea(consumidos=[_doc(date(2026, 1, 12))])
         entrada = _entrada('ANY/ANY/ANY/ANUNCIO_BOP/ESPERAR_PLAZO', {'rol': 'CONSUMIDO'},
@@ -229,8 +235,8 @@ class TestSuspensionSoloEnSolicitud:
         with _catalogo_mockeado([entrada]), \
              patch('app.services.plazos._hoy', return_value=date(2026, 1, 20)), \
              patch('app.services.plazos._obtener_inhabiles_bd', return_value=frozenset()), \
-             patch('app.services.plazos._obtener_suspensiones') as mock_susp:
-            resultado = obtener_estado_plazo(tarea, 'TAREA')
+             patch('app.services.plazos._causas_suspension') as mock_susp:
+            resultado = obtener_estado_plazo_tarea(tarea)
 
         mock_susp.assert_not_called()
         assert resultado.fecha_limite == date(2026, 2, 9)   # 20 hábiles, sin extender
@@ -245,7 +251,7 @@ class TestSuspensionSoloEnSolicitud:
         fecha límite retrocedía un día hábil por cada día hábil transcurrido y
         no vencía nunca.
         """
-        from app.services.plazos import obtener_estado_plazo
+        from app.services.plazos import obtener_estado_plazo_tarea
 
         notificacion = date(2026, 1, 12)
         espera = _tarea(tramite_codigo='CONSULTA_SEPARATA', fase_codigo='CONSULTAS',
@@ -259,19 +265,20 @@ class TestSuspensionSoloEnSolicitud:
         with _catalogo_mockeado([entrada]), \
              patch('app.services.plazos._hoy', return_value=date(2026, 6, 1)), \
              patch('app.services.plazos._obtener_inhabiles_bd', return_value=frozenset()):
-            resultado = obtener_estado_plazo(espera, 'TAREA')
+            resultado = obtener_estado_plazo_tarea(espera)
 
         assert resultado.estado == 'VENCIDO'
         assert resultado.fecha_limite == date(2026, 2, 23)   # 12 ene + 30 hábiles
 
     def test_nivel_solicitud_si_calcula_suspensiones(self):
         """Control: en el nivel que sí tiene plazo suspendible, se recorre."""
-        from app.services.plazos import obtener_estado_plazo
+        from app.services.plazos import obtener_estado_plazo_solicitud
 
         solicitud = MagicMock()
         solicitud.tipo_solicitud = MagicMock(siglas='AAP')
         solicitud.expediente.tipo_expediente = MagicMock(tipo='Distribucion')
         solicitud.documento_solicitud = _doc(date(2026, 1, 12))
+        solicitud.documento_cierre = None
         solicitud.fases = []
         entrada = _entrada('ANY/AAP', {'fk': 'documento_solicitud_id'},
                            plazo_valor=20, plazo_unidad='DIAS_HABILES')
@@ -279,8 +286,8 @@ class TestSuspensionSoloEnSolicitud:
         with _catalogo_mockeado([entrada]), \
              patch('app.services.plazos._hoy', return_value=date(2026, 1, 20)), \
              patch('app.services.plazos._obtener_inhabiles_bd', return_value=frozenset()), \
-             patch('app.services.plazos._obtener_suspensiones', return_value=[]) as mock_susp:
-            obtener_estado_plazo(solicitud, 'SOLICITUD')
+             patch('app.services.plazos._causas_suspension', return_value=[]) as mock_susp:
+            obtener_estado_plazo_solicitud(solicitud)
 
         mock_susp.assert_called_once_with(solicitud)
 
@@ -289,31 +296,29 @@ class TestSuspensionSoloEnSolicitud:
 # D) Los consumidores de nivel trámite bajan a la tarea
 # ---------------------------------------------------------------------------
 
-class TestEstadoPlazoEspera:
+class TestBajarDelTramiteASuEspera:
+    """Desde #778 esto NO es una entrada del servicio de plazos, sino navegación
+    del árbol: `Tramite.tarea_espera`. Una función «plazo de un trámite»
+    reintroduciría por la puerta de atrás el nivel que #788 eliminó.
 
-    def test_baja_del_tramite_a_su_espera(self):
-        from app.services.plazos import obtener_estado_plazo_espera
+    La property es pura —solo mira `self.tareas`— así que se invoca sobre un stub
+    en vez de montar instancias ORM con sesión.
+    """
 
+    def _tarea_espera(self, tareas):
+        from app.models.tramites import Tramite
+        return Tramite.tarea_espera.fget(SimpleNamespace(tareas=tareas))
+
+    def test_devuelve_la_espera_del_tramite(self):
         espera = _tarea(tramite_codigo='CONSULTA_TRASLADO_TITULAR',
                         consumidos=[_doc(date(2026, 1, 12))])
-        tramite = MagicMock()
-        tramite.tareas = [_tarea(codigo='NOTIFICAR'), espera]
+        assert self._tarea_espera([_tarea(codigo='NOTIFICAR'), espera]) is espera
 
-        with patch('app.services.plazos.obtener_estado_plazo') as mock_estado:
-            obtener_estado_plazo_espera(tramite)
+    def test_tramite_sin_espera_devuelve_none(self):
+        assert self._tarea_espera([_tarea(codigo='ELABORAR')]) is None
 
-        mock_estado.assert_called_once_with(espera, 'TAREA', variables={})
-
-    def test_tramite_sin_espera_devuelve_sin_plazo(self):
-        from app.services.plazos import obtener_estado_plazo_espera
-
-        tramite = MagicMock()
-        tramite.tareas = [_tarea(codigo='ELABORAR')]
-        assert obtener_estado_plazo_espera(tramite).estado == 'SIN_PLAZO'
-
-    def test_tramite_none_devuelve_sin_plazo(self):
-        from app.services.plazos import obtener_estado_plazo_espera
-        assert obtener_estado_plazo_espera(None).estado == 'SIN_PLAZO'
+    def test_tramite_sin_tareas_devuelve_none(self):
+        assert self._tarea_espera([]) is None
 
 
 # ---------------------------------------------------------------------------

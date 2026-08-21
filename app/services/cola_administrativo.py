@@ -167,7 +167,13 @@ def _estado_y_plazo(tarea) -> tuple[str, dict | None]:
     plazo = None
     if codigo == 'ESPERAR_PLAZO':
         try:
-            plazo = plazo_tarea(tarea, tarea.tramite)
+            # Un solo argumento desde #785: el catálogo se identifica por el
+            # camino SFTT, que se deriva de la propia tarea. La llamada seguía
+            # pasando el trámite —firma de #501— y el TypeError lo tragaba el
+            # `except` de abajo, así que TODA espera caía a plazo=None y la cola
+            # la mostraba como «pendiente iniciar plazo», ocultando el
+            # «plazo vencido — incorporar» y el filtro por plazo (#778).
+            plazo = plazo_tarea(tarea)
         except Exception as exc:  # noqa: BLE001 — un plazo no debe tumbar la cola
             log.warning('cola: plazo no disponible para tarea %s — %s', tarea.id, exc)
     return ed.estado_tarea(tarea, plazo=plazo), plazo

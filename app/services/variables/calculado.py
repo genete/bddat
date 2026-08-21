@@ -368,10 +368,12 @@ def _(ctx) -> bool:
 
     Implementación — el plazo se evalúa sobre la tarea ESPERAR_PLAZO del trámite,
     no sobre el trámite (#788): el nivel TRAMITE no porta fecha administrativa y
-    dejó de existir en catalogo_plazos. La llamada sigue pasando variables={} para
-    evitar recursión (#475); el seed #463 no define condiciones en la entrada de
-    CONSULTA_TRASLADO_TITULAR, así que da el mismo resultado que el contexto
-    completo. Si en el futuro se añaden condiciones a ese plazo, revisarlo.
+    dejó de existir en catalogo_plazos. Bajar hasta ella es navegación del árbol
+    (`Tramite.tarea_espera`), no una entrada del servicio de plazos (#778). La
+    llamada sigue pasando variables={} para evitar recursión (#475); el seed #463
+    no define condiciones en la entrada de CONSULTA_TRASLADO_TITULAR, así que da
+    el mismo resultado que el contexto completo. Si en el futuro se añaden
+    condiciones a ese plazo, revisarlo.
     """
     from app.models.tramites_organismos import TramiteOrganismo
     from app.models.tramites import Tramite as _Tramite
@@ -395,7 +397,10 @@ def _(ctx) -> bool:
         )
         if vinculo is None:
             continue
-        if plazos.obtener_estado_plazo_espera(vinculo.tramite).estado == 'VENCIDO':
+        espera = vinculo.tramite.tarea_espera if vinculo.tramite else None
+        if espera is None:
+            continue
+        if plazos.obtener_estado_plazo_tarea(espera, variables={}).estado == 'VENCIDO':
             return True
     return False
 

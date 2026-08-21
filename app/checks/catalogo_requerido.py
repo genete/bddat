@@ -16,10 +16,15 @@ REGISTROS_REQUERIDOS: dict = {
     'TipoTramite': [
         'PUBLICACION', 'NOTIFICACION',
         'REQUERIMIENTO_SUBSANACION', 'COMUNICACION_AUDIENCIA',
-        # Suspensiones de plazo (#173)
-        'SOLICITUD_INFORME', 'CONSULTA_SEPARATA', 'SOLICITUD_COMPATIBILIDAD',
-        'RECEPCION_INFORME', 'RECEPCION_INFORME_VINCULANTE',
-        'RECEPCION_DICTAMEN', 'RECEPCION_FIGURA',
+        # De los siete trámites que sostenían las suspensiones de plazo (#173)
+        # solo queda CONSULTA_SEPARATA, y no por los plazos: la instancia
+        # consultas_organismos.enviar_consultas por código. Los otros seis
+        # —SOLICITUD_INFORME, SOLICITUD_COMPATIBILIDAD y los cuatro RECEPCION_*—
+        # salieron en #778: qué suspende es dato de catalogo_plazos y el rescate
+        # por trámite hermano desapareció, así que ningún servicio los nombra ya.
+        # Siguen existiendo como tipos de trámite; lo que ya no existe es código
+        # que dependa de su código.
+        'CONSULTA_SEPARATA',
         # Interesados del expediente (#374)
         'REGISTRO_INTERESADOS',
         # Traslados de consulta y análisis documental — auditoría 2026-07-04

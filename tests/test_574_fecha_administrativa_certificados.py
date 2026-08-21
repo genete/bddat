@@ -185,7 +185,7 @@ class TestCrearCertFechaAdministrativa:
         la BD de desarrollo. Mismo criterio de skip que
         test_442_analizar_diagnostico.py: _tarea_analizar_libre()."""
         from app.models.tipos_tareas import TipoTarea
-        from app.services.plazos import obtener_estado_plazo
+        from app.services.plazos import obtener_estado_plazo_tarea
 
         candidatas = (
             Tarea.query.join(TipoTarea, Tarea.tipo_tarea_id == TipoTarea.id)
@@ -198,7 +198,7 @@ class TestCrearCertFechaAdministrativa:
             try:
                 # Sin dict de variables desde #785: el catálogo resuelve el
                 # camino SFTT desde la propia tarea.
-                ep = obtener_estado_plazo(t, 'TAREA')
+                ep = obtener_estado_plazo_tarea(t)
             except Exception:
                 continue
             if ep.estado == 'VENCIDO' and ep.fecha_limite is not None:

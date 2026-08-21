@@ -178,6 +178,11 @@ def _mock_catalogo(plazo_valor, plazo_unidad, campo_fecha, efecto_codigo,
     m.campo_fecha = campo_fecha
     m.efecto_plazo.codigo = efecto_codigo
     m.condiciones = []
+    # Explícitos para que no salgan como MagicMock (truthy): sin señalador de
+    # cumplimiento el plazo solo puede estar corriendo o vencido, que es lo que
+    # estos tests de cómputo miden (#778).
+    m.campo_fecha_cumplimiento = None
+    m.suspende_plazo_solicitud = False
     # #785: el camino se casa contra el del elemento. Todo ANY = aplica a
     # cualquier solicitud, que es lo que estos tests de cómputo necesitan.
     m.camino = camino
@@ -198,8 +203,9 @@ def _mock_solicitud(fecha_administrativa):
     doc = MagicMock()
     doc.fecha_administrativa = fecha_administrativa
     solicitud.documento_solicitud = doc
-    # Sin fases: obtener_estado_plazo consulta suspensiones en este nivel y no
-    # debe encontrar ninguna causa (art. 22) en estos tests de cómputo puro.
+    solicitud.documento_cierre = None
+    # Sin fases: el plazo de la solicitud recorre sus tareas buscando causas de
+    # suspensión (art. 22) y no debe encontrar ninguna en estos tests de cómputo puro.
     solicitud.fases = []
     return solicitud
 
@@ -211,36 +217,36 @@ def _mock_solicitud(fecha_administrativa):
 class TestObtenerEstadoPlazoSinPlazo:
 
     def test_elemento_none(self):
-        from app.services.plazos import obtener_estado_plazo
-        r = obtener_estado_plazo(None, 'SOLICITUD')
+        from app.services.plazos import obtener_estado_plazo_solicitud
+        r = obtener_estado_plazo_solicitud(None)
         assert r.estado == 'SIN_PLAZO'
         assert r.efecto == 'NINGUNO'
         assert r.fecha_limite is None
         assert r.dias_restantes is None
 
     def test_elemento_dict(self):
-        from app.services.plazos import obtener_estado_plazo
-        r = obtener_estado_plazo({'tipo_solicitud': MagicMock()}, 'SOLICITUD')
+        from app.services.plazos import obtener_estado_plazo_solicitud
+        r = obtener_estado_plazo_solicitud({'tipo_solicitud': MagicMock()})
         assert r.estado == 'SIN_PLAZO'
 
     def test_sin_tipo_elemento_id(self):
-        from app.services.plazos import obtener_estado_plazo
-        r = obtener_estado_plazo(object(), 'SOLICITUD')
+        from app.services.plazos import obtener_estado_plazo_solicitud
+        r = obtener_estado_plazo_solicitud(object())
         assert r.estado == 'SIN_PLAZO'
 
     def test_sin_entrada_catalogo(self):
-        from app.services.plazos import obtener_estado_plazo
+        from app.services.plazos import obtener_estado_plazo_solicitud
         solicitud = _mock_solicitud(fecha_administrativa=date(2025, 1, 1))
         with patch('app.models.catalogo_plazos.CatalogoPlazo') as mock_cp, \
              patch('app.models.condiciones_plazo.CondicionPlazo'), \
              patch('app.services.plazos.joinedload', return_value=MagicMock()):
             mock_cp.query.options.return_value.filter_by.return_value\
                   .order_by.return_value.all.return_value = []
-            r = obtener_estado_plazo(solicitud, 'SOLICITUD')
+            r = obtener_estado_plazo_solicitud(solicitud)
         assert r.estado == 'SIN_PLAZO'
 
     def test_sin_fecha_acto(self):
-        from app.services.plazos import obtener_estado_plazo
+        from app.services.plazos import obtener_estado_plazo_solicitud
         solicitud = _mock_solicitud(fecha_administrativa=None)
         solicitud.documento_solicitud = None
         catalogo = _mock_catalogo(20, 'DIAS_HABILES', {'fk': 'documento_solicitud_id'},
@@ -250,7 +256,7 @@ class TestObtenerEstadoPlazoSinPlazo:
              patch('app.services.plazos.joinedload', return_value=MagicMock()):
             mock_cp.query.options.return_value.filter_by.return_value\
                   .order_by.return_value.all.return_value = [catalogo]
-            r = obtener_estado_plazo(solicitud, 'SOLICITUD')
+            r = obtener_estado_plazo_solicitud(solicitud)
         assert r.estado == 'SIN_PLAZO'
 
 
@@ -258,7 +264,7 @@ class TestObtenerEstadoPlazoEnPlazo:
 
     def test_en_plazo(self):
         """fecha_acto=12 may → 20 hábiles → 9 jun; hoy=2 jun; dias=6 > 5 → EN_PLAZO"""
-        from app.services.plazos import obtener_estado_plazo
+        from app.services.plazos import obtener_estado_plazo_solicitud
         solicitud = _mock_solicitud(fecha_administrativa=date(2025, 5, 12))
         catalogo = _mock_catalogo(20, 'DIAS_HABILES', {'fk': 'documento_solicitud_id'}, 'SILENCIO_DESESTIMATORIO')
         with (patch('app.services.plazos._hoy', return_value=HOY),
@@ -268,7 +274,7 @@ class TestObtenerEstadoPlazoEnPlazo:
               patch('app.services.plazos.joinedload', return_value=MagicMock())):
             mock_cp.query.options.return_value.filter_by.return_value\
                   .order_by.return_value.all.return_value = [catalogo]
-            r = obtener_estado_plazo(solicitud, 'SOLICITUD')
+            r = obtener_estado_plazo_solicitud(solicitud)
         assert r.estado == 'EN_PLAZO'
         assert r.efecto == 'SILENCIO_DESESTIMATORIO'
         assert r.fecha_limite == date(2025, 6, 9)
@@ -279,7 +285,7 @@ class TestObtenerEstadoPlazoProximoVencer:
 
     def test_proximo_vencer(self):
         """fecha_acto=9 may → 20 hábiles → 6 jun; hoy=2 jun; dias=5 ≤ 5 → PROXIMO_VENCER"""
-        from app.services.plazos import obtener_estado_plazo
+        from app.services.plazos import obtener_estado_plazo_solicitud
         solicitud = _mock_solicitud(fecha_administrativa=date(2025, 5, 9))
         catalogo = _mock_catalogo(20, 'DIAS_HABILES', {'fk': 'documento_solicitud_id'}, 'RESPONSABILIDAD_DISCIPLINARIA')
         with (patch('app.services.plazos._hoy', return_value=HOY),
@@ -289,7 +295,7 @@ class TestObtenerEstadoPlazoProximoVencer:
               patch('app.services.plazos.joinedload', return_value=MagicMock())):
             mock_cp.query.options.return_value.filter_by.return_value\
                   .order_by.return_value.all.return_value = [catalogo]
-            r = obtener_estado_plazo(solicitud, 'SOLICITUD')
+            r = obtener_estado_plazo_solicitud(solicitud)
         assert r.estado == 'PROXIMO_VENCER'
         assert r.efecto == 'RESPONSABILIDAD_DISCIPLINARIA'
         assert r.fecha_limite == date(2025, 6, 6)
@@ -300,7 +306,7 @@ class TestObtenerEstadoPlazoVencido:
 
     def test_vencido(self):
         """fecha_acto=16 may → 10 hábiles → 30 may; hoy=2 jun > 30 may → VENCIDO"""
-        from app.services.plazos import obtener_estado_plazo
+        from app.services.plazos import obtener_estado_plazo_solicitud
         solicitud = _mock_solicitud(fecha_administrativa=date(2025, 5, 16))
         catalogo = _mock_catalogo(10, 'DIAS_HABILES', {'fk': 'documento_solicitud_id'}, 'SILENCIO_ESTIMATORIO')
         with (patch('app.services.plazos._hoy', return_value=HOY),
@@ -310,7 +316,7 @@ class TestObtenerEstadoPlazoVencido:
               patch('app.services.plazos.joinedload', return_value=MagicMock())):
             mock_cp.query.options.return_value.filter_by.return_value\
                   .order_by.return_value.all.return_value = [catalogo]
-            r = obtener_estado_plazo(solicitud, 'SOLICITUD')
+            r = obtener_estado_plazo_solicitud(solicitud)
         assert r.estado == 'VENCIDO'
         assert r.efecto == 'SILENCIO_ESTIMATORIO'
         assert r.fecha_limite == date(2025, 5, 30)

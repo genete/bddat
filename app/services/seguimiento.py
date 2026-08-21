@@ -173,9 +173,9 @@ def _plazo_tarea(tarea) -> Optional[dict]:
     Defensivo: cualquier fallo degrada a None (el núcleo lo mapea a TRAMITAR) sin
     tumbar la fila completa.
     """
-    from app.services.plazos import obtener_estado_plazo
+    from app.services.plazos import obtener_estado_plazo_tarea
     try:
-        ep = obtener_estado_plazo(tarea, 'TAREA')
+        ep = obtener_estado_plazo_tarea(tarea)
         return {'estado': ep.estado}
     except Exception as exc:  # noqa: BLE001 — un plazo no debe tumbar la fila entera
         log.warning('seguimiento: plazo no disponible para tarea %s — %s', getattr(tarea, 'id', '?'), exc)

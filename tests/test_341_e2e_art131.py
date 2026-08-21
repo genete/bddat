@@ -180,7 +180,7 @@ def test_e2e_aac_con_aap_previa_usa_plazo_15_dias(app_ctx, tipos, expediente_bas
     """
     from app import db
     from app.services.assembler import ExpedienteContext
-    from app.services.plazos import obtener_estado_plazo
+    from app.services.plazos import obtener_estado_plazo_tarea
 
     exp = expediente_base
 
@@ -198,7 +198,7 @@ def test_e2e_aac_con_aap_previa_usa_plazo_15_dias(app_ctx, tipos, expediente_bas
 
     with patch('app.services.plazos._hoy', return_value=date(2025, 5, 6)), \
          patch('app.services.plazos._obtener_inhabiles_bd', return_value=frozenset()):
-        estado = obtener_estado_plazo(espera, 'TAREA', ctx=ctx)
+        estado = obtener_estado_plazo_tarea(espera, ctx=ctx)
 
     # lun 5 may + 15 días hábiles = lun 26 may
     assert estado.fecha_limite == date(2025, 5, 26), (
@@ -218,7 +218,7 @@ def test_e2e_aac_sin_aap_previa_usa_plazo_30_dias(app_ctx, tipos, expediente_bas
     """
     from app import db
     from app.services.assembler import ExpedienteContext
-    from app.services.plazos import obtener_estado_plazo
+    from app.services.plazos import obtener_estado_plazo_tarea
 
     exp = expediente_base
 
@@ -229,7 +229,7 @@ def test_e2e_aac_sin_aap_previa_usa_plazo_30_dias(app_ctx, tipos, expediente_bas
 
     with patch('app.services.plazos._hoy', return_value=date(2025, 5, 6)), \
          patch('app.services.plazos._obtener_inhabiles_bd', return_value=frozenset()):
-        estado = obtener_estado_plazo(espera, 'TAREA', ctx=ctx)
+        estado = obtener_estado_plazo_tarea(espera, ctx=ctx)
 
     # lun 5 may + 30 días hábiles = lun 16 jun
     assert estado.fecha_limite == date(2025, 6, 16), (
@@ -251,7 +251,7 @@ def test_e2e_aac_con_dup_no_es_pura_usa_plazo_30_dias(app_ctx, tipos, expediente
     from app import db
     from app.models import TipoSolicitud
     from app.services.assembler import ExpedienteContext
-    from app.services.plazos import obtener_estado_plazo
+    from app.services.plazos import obtener_estado_plazo_tarea
 
     ts_aac_dup = TipoSolicitud.query.filter_by(siglas='AAC+DUP').first()
     if ts_aac_dup is None:
@@ -273,7 +273,7 @@ def test_e2e_aac_con_dup_no_es_pura_usa_plazo_30_dias(app_ctx, tipos, expediente
 
     with patch('app.services.plazos._hoy', return_value=date(2025, 5, 6)), \
          patch('app.services.plazos._obtener_inhabiles_bd', return_value=frozenset()):
-        estado = obtener_estado_plazo(espera, 'TAREA', ctx=ctx)
+        estado = obtener_estado_plazo_tarea(espera, ctx=ctx)
 
     assert estado.fecha_limite == date(2025, 6, 16), (
         f'Se esperaba 2025-06-16 (30 días hábiles); obtenido {estado.fecha_limite}'

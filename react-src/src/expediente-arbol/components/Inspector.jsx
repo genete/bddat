@@ -33,6 +33,7 @@ const ETIQUETA_PLAZO = {
   EN_PLAZO:       'En plazo',
   PROXIMO_VENCER: 'Próximo a vencer',
   VENCIDO:        'Vencido',
+  CUMPLIDO:       'Cumplido',       // #778 — llegó el documento que lo acredita
   INDEFINIDO:     'Indefinido',
   SIN_PLAZO:      'Sin plazo',
 }

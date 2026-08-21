@@ -121,6 +121,10 @@ def listar_catalogo_plazos():
             'num_condiciones':  len(cp.condiciones),
             'orden':            cp.orden,
             'activo':           cp.activo,
+            # Qué plazos paran el reloj de la solicitud es dato de catálogo desde
+            # #778, y se ve en el listado: es lo que distingue una espera que
+            # aprieta el plazo de una que lo para.
+            'suspende':         cp.suspende_plazo_solicitud,
         })
 
     response = {

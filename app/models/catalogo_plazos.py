@@ -50,6 +50,30 @@ class CatalogoPlazo(db.Model):
         camino, así que sin él ganaría siempre la de menor orden. Se omite cuando
         el documento de entrada es polimórfico por diseño — el justificante de
         CONSULTA_SEPARATA depende del canal (BANDEJA / NOTIFICA / POSTAL / SIR).
+    CAMPO campo_fecha_cumplimiento: JSON con el MISMO vocabulario cerrado que
+        `campo_fecha`, apuntando al documento que acredita el cumplimiento
+        (ADR-041 §D). Cada plazo se abre y se cierra en el mismo sitio, así que
+        para una tarea es casi siempre `{'rol': 'PRODUCIDO'}` y para la solicitud
+        `{'fk': 'documento_cierre_id'}`.
+        `db.JSON` y no `JSONB` como su gemela: la columna se lee entera y se
+        compara en Python, sin operadores ni índices propios de jsonb, y el resto
+        del proyecto usa `db.JSON` por portabilidad a otros motores.
+        NULL es un valor legítimo, no un hueco por rellenar: sin señalador el
+        plazo nunca alcanza CUMPLIDO y sólo puede estar corriendo o vencido. Es
+        el caso de TABLON_AYUNTAMIENTOS, donde el disparo y el único candidato a
+        cierre son el mismo documento (#416) y `VENCIDO` ya se lee como «la
+        exposición se completó».
+    CAMPO suspende_plazo_solicitud: TRUE si este plazo suspende el plazo de la
+        solicitud (art. 22.1.a y 22.1.d LPACAP). Sustituye a la lista
+        `_TRAMITES_SUSPENSION` que vivía en plazos.py: que la petición de un
+        informe preceptivo suspenda el plazo para resolver cambia cuando cambia
+        la ley y es citable a artículo concreto, luego es dato normativo y va
+        donde ya viven el valor del plazo y su efecto (test de ADR-037).
+        CheckConstraint al nivel TAREA: el art. 22 suspende «el plazo máximo
+        legal para resolver un procedimiento y notificar la resolución», que es
+        el de la solicitud — marcarla a ella significaría que se suspende a sí
+        misma. Corolario buscado: un plazo sin fila en el catálogo no suspende
+        nada.
     CAMPO plazo_unidad: 'DIAS_HABILES' | 'DIAS_NATURALES' | 'MESES' | 'ANOS'
     CAMPO efecto_vencimiento_id: FK a efectos_plazo.
     CAMPO vigencia_desde / vigencia_hasta: rango de vigencia. NULL = sin límite.
@@ -59,6 +83,8 @@ class CatalogoPlazo(db.Model):
     __table_args__ = (
         db.CheckConstraint("tipo_elemento IN ('SOLICITUD', 'TAREA')",
                            name='ck_catalogo_plazos_tipo_elemento'),
+        db.CheckConstraint("NOT suspende_plazo_solicitud OR tipo_elemento = 'TAREA'",
+                           name='ck_catalogo_plazos_suspende_solo_tarea'),
         db.Index('idx_catalogo_plazos_tipo_orden', 'tipo_elemento', 'orden'),
         db.Index('idx_catalogo_plazos_camino',     'camino'),
         {'schema': 'public'},
@@ -80,6 +106,17 @@ class CatalogoPlazo(db.Model):
         comment='Referencia al Documento.fecha_administrativa de inicio: '
                 '{"fk":"documento_solicitud_id"} (nivel SOLICITUD) o '
                 '{"rol":"CONSUMIDO|PRODUCIDO"[,"tipo_documento":"..."]} (nivel TAREA)',
+    )
+    campo_fecha_cumplimiento = db.Column(
+        db.JSON, nullable=True,
+        comment='Referencia al Documento.fecha_administrativa que acredita el '
+                'cumplimiento: {"fk":"documento_cierre_id"} (nivel SOLICITUD) o '
+                '{"rol":"CONSUMIDO|PRODUCIDO"[,"tipo_documento":"..."]} (nivel TAREA). '
+                'NULL = el plazo nunca alcanza CUMPLIDO',
+    )
+    suspende_plazo_solicitud = db.Column(
+        db.Boolean, nullable=False, default=False, server_default='FALSE',
+        comment='TRUE si este plazo suspende el plazo de la solicitud (art. 22.1 LPACAP)',
     )
     plazo_valor = db.Column(
         db.Integer, nullable=False,

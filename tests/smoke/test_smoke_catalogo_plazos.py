@@ -177,6 +177,100 @@ def test_supervisor_puede_crear_nivel_tarea(usuario_supervisor, app):
         assert creado.campo_fecha == {'rol': 'CONSUMIDO'}
 
 
+def test_supervisor_puede_crear_tarea_suspensora_con_cumplimiento(usuario_supervisor, app):
+    """#778: los dos datos nuevos del catálogo viajan en el mismo formulario —
+    con qué documento se cierra el plazo y si suspende el de la solicitud."""
+    with app.app_context():
+        from app.models.tipos_tareas import TipoTarea
+        from app.models.efectos_plazo import EfectoPlazo
+        tipo_tarea = TipoTarea.query.first()
+        efecto = EfectoPlazo.query.first()
+        if tipo_tarea is None or efecto is None:
+            pytest.skip('Faltan datos maestros (tipos_tareas / efectos_plazo) en esta BD')
+        codigo_tarea, efecto_id = tipo_tarea.codigo, efecto.id
+
+    r = usuario_supervisor.post('/catalogo_plazos/crear', data={
+        'tipo_elemento': 'TAREA',
+        'camino_tarea': codigo_tarea,
+        'campo_fecha_rol': 'CONSUMIDO',
+        'campo_cumplimiento_rol': 'PRODUCIDO',
+        'suspende_plazo_solicitud': '1',
+        'plazo_valor': '10',
+        'plazo_unidad': 'DIAS_HABILES',
+        'efecto_vencimiento_id': str(efecto_id),
+        'norma_origen': 'Tarea suspensora (#778 smoke)',
+        'orden': '999',
+    }, follow_redirects=False)
+    assert r.status_code == 302
+
+    with app.app_context():
+        from app.models.catalogo_plazos import CatalogoPlazo
+        creado = CatalogoPlazo.query.filter_by(norma_origen='Tarea suspensora (#778 smoke)').first()
+        assert creado is not None
+        assert creado.campo_fecha_cumplimiento == {'rol': 'PRODUCIDO'}
+        assert creado.suspende_plazo_solicitud is True
+
+
+def test_crear_tarea_sin_cumplimiento_lo_deja_vacio(usuario_supervisor, app):
+    """El caso del tablón (#416): sin señalador el plazo no alcanza CUMPLIDO, y
+    eso es una decisión, no un formulario a medio rellenar."""
+    with app.app_context():
+        from app.models.tipos_tareas import TipoTarea
+        from app.models.efectos_plazo import EfectoPlazo
+        tipo_tarea = TipoTarea.query.first()
+        efecto = EfectoPlazo.query.first()
+        if tipo_tarea is None or efecto is None:
+            pytest.skip('Faltan datos maestros (tipos_tareas / efectos_plazo) en esta BD')
+        codigo_tarea, efecto_id = tipo_tarea.codigo, efecto.id
+
+    r = usuario_supervisor.post('/catalogo_plazos/crear', data={
+        'tipo_elemento': 'TAREA',
+        'camino_tarea': codigo_tarea,
+        'campo_fecha_rol': 'PRODUCIDO',
+        'campo_cumplimiento_rol': '',
+        'plazo_valor': '30',
+        'plazo_unidad': 'DIAS_NATURALES',
+        'efecto_vencimiento_id': str(efecto_id),
+        'norma_origen': 'Tarea sin cierre (#778 smoke)',
+        'orden': '998',
+    }, follow_redirects=False)
+    assert r.status_code == 302
+
+    with app.app_context():
+        from app.models.catalogo_plazos import CatalogoPlazo
+        creado = CatalogoPlazo.query.filter_by(norma_origen='Tarea sin cierre (#778 smoke)').first()
+        assert creado is not None
+        assert creado.campo_fecha_cumplimiento is None
+        assert creado.suspende_plazo_solicitud is False
+
+
+def test_crear_solicitud_ancla_su_certificado_de_cierre(usuario_supervisor, app):
+    """En el nivel SOLICITUD los dos extremos son FK fijas: el documento de
+    solicitud abre el plazo y el certificado de cierre lo cierra. Y la casilla de
+    suspensión se ignora aunque llegue: el art. 22 suspende el plazo de la
+    solicitud, así que marcarla a ella sería suspenderse a sí misma."""
+    siglas, efecto_id = _datos_maestros_solicitud(app)
+    r = usuario_supervisor.post('/catalogo_plazos/crear', data={
+        'tipo_elemento': 'SOLICITUD',
+        'camino_solicitud': siglas,
+        'suspende_plazo_solicitud': '1',   # POST directo: la UI no la ofrece aquí
+        'plazo_valor': '3',
+        'plazo_unidad': 'MESES',
+        'efecto_vencimiento_id': str(efecto_id),
+        'norma_origen': 'Solicitud con cierre (#778 smoke)',
+        'orden': '997',
+    }, follow_redirects=False)
+    assert r.status_code == 302
+
+    with app.app_context():
+        from app.models.catalogo_plazos import CatalogoPlazo
+        creado = CatalogoPlazo.query.filter_by(norma_origen='Solicitud con cierre (#778 smoke)').first()
+        assert creado is not None
+        assert creado.campo_fecha == {'fk': 'documento_solicitud_id'}
+        assert creado.campo_fecha_cumplimiento == {'fk': 'documento_cierre_id'}
+        assert creado.suspende_plazo_solicitud is False
+
+
 def test_crear_con_ancestros_concretos_compone_el_camino(usuario_supervisor, app):
     """#785: los ancestros concretados viajan al camino; los omitidos van a ANY."""
     with app.app_context():
