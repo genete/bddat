@@ -65,6 +65,32 @@
                           form_data.get('camino_tramite', '') if form_data else '',
                           form_data.get('camino_tarea', '') if form_data else '',
                           tipo_documento_map) }}
+        {{ cf.campo_cumplimiento('cpc', _nivel_alta,
+                          form_data.get('campo_cumplimiento_rol', '') if form_data else '',
+                          form_data.get('campo_cumplimiento_tipo_documento', '') if form_data else '',
+                          form_data.get('camino_tramite', '') if form_data else '',
+                          form_data.get('camino_tarea', '') if form_data else '',
+                          tipo_documento_map) }}
+
+        {# Solo las tareas suspenden (#778) — ver _editar_fragmento.html #}
+        <div class="row g-2 mt-1" data-nivel-block="TAREA"
+             {% if _nivel_alta != 'TAREA' %}style="display:none"{% endif %}>
+            <div class="col-12">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" value="1"
+                           id="cpc_suspende" name="suspende_plazo_solicitud"
+                           {% if form_data and form_data.get('suspende_plazo_solicitud') %}checked{% endif %}
+                           {% if _nivel_alta != 'TAREA' %}disabled{% endif %}>
+                    <label class="form-check-label fw-semibold small" for="cpc_suspende">
+                        Suspende el plazo de la solicitud
+                    </label>
+                </div>
+                <div class="form-text">
+                    Art. 22.1 LPACAP. Mientras esta espera corre, el plazo para resolver y
+                    notificar se para.
+                </div>
+            </div>
+        </div>
 
         <hr class="my-2">
 
@@ -192,6 +218,12 @@
                 '<span class="badge bg-secondary-subtle text-secondary-emphasis">' + (NIVEL_LABEL[v] || v) + '</span>' },
             { key: 'camino', label: 'Camino', type: 'custom', renderFn: v => _camino(v) },
             { key: 'plazo', label: 'Plazo', type: 'text', hide: 'md' },
+            // Qué plazos paran el reloj de la solicitud es dato de catálogo desde
+            // #778: distingue de un vistazo la espera que suspende de la que
+            // corre dentro del plazo y lo consume.
+            { key: 'suspende', label: 'Suspende', type: 'custom', hide: 'lg', renderFn: v => v
+                ? '<span class="badge bg-warning text-dark">Suspende</span>'
+                : '<span class="text-secondary">—</span>' },
             { key: 'efecto', label: 'Efecto', type: 'custom', hide: 'lg', renderFn: v => _vacio(v) },
             { key: 'num_condiciones', label: 'Condiciones', type: 'custom', hide: 'md', renderFn: v =>
                 v > 0 ? '<span class="badge bg-info-subtle text-info-emphasis">' + v + '</span>' : '<span class="text-secondary">Sin condiciones</span>' },

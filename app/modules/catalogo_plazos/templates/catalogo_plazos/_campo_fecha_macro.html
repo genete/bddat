@@ -17,6 +17,12 @@
                       desplegable sale de `tramites_tareas_documentos` (#346),
                       filtrado por el trámite y la tarea ya elegidos en
                       camino_sftt y por el rol elegido aquí mismo (§2.3).
+   3. campo_cumplimiento — CON QUÉ documento se cierra (#778). Mismo vocabulario
+                      y mismo marcado que el anterior (macro `senalador`
+                      compartida), con dos diferencias: el rol admite «ninguno»
+                      —sin señalador el plazo nunca alcanza CUMPLIDO, que es lo
+                      correcto en TABLON_AYUNTAMIENTOS— y en SOLICITUD el FK es
+                      el de cierre, no el de la solicitud.
 
    Compartidos por el modal de alta (listado.html) y el fragmento de edición
    (_editar_fragmento.html) para no duplicar el marcado.
@@ -142,35 +148,55 @@
 {% endmacro %}
 
 
-{% macro campo_fecha(id_prefix, nivel_actual, cf_fk, cf_rol, cf_tipo_documento, cf_tramite, cf_tarea, tipo_documento_map) %}
+{# senalador() — un bloque «qué documento porta esta fecha», usado dos veces.
+
+   La entrada tiene dos señaladores con el MISMO vocabulario cerrado (#778):
+   `campo_fecha` marca el DISPARO del cómputo y `campo_fecha_cumplimiento` el
+   documento que acredita que la espera se cumplió. El problema que resuelven es
+   el mismo —localizar un documento desde el elemento—, así que comparten marcado
+   y solo cambian el prefijo de los names, el título y si el rol es obligatorio.
+
+   `obligatorio=false` añade la opción vacía: una entrada sin señalador de
+   cumplimiento nunca alcanza CUMPLIDO y solo puede estar corriendo o vencida,
+   que es lo correcto en TABLON_AYUNTAMIENTOS (#416), donde disparo y cierre son
+   el mismo documento.
+#}
+{% macro senalador(id_prefix, name_prefix, titulo, nivel_actual, fk_solicitud, ayuda_solicitud,
+                   cf_rol, cf_tipo_documento, cf_tramite, cf_tarea, tipo_documento_map,
+                   obligatorio=true) %}
 <div class="row g-2 mt-1">
     <div class="col-12">
-        <label class="form-label fw-semibold small">Inicio del cómputo</label>
+        <label class="form-label fw-semibold small">{{ titulo }}</label>
     </div>
 
-    {# ---- SOLICITUD — único FK a documentos, sin selección posible ---- #}
+    {# ---- SOLICITUD — FK único a documentos, sin selección posible ---- #}
     <div class="col-12" data-nivel-block="SOLICITUD" {% if nivel_actual != 'SOLICITUD' %}style="display:none"{% endif %}>
-        <input type="hidden" name="campo_fecha_fk" value="documento_solicitud_id"
+        <input type="hidden" name="{{ name_prefix }}_fk" value="{{ fk_solicitud }}"
                {% if nivel_actual != 'SOLICITUD' %}disabled{% endif %}>
-        <div class="form-text">Fecha administrativa del documento de solicitud.</div>
+        <div class="form-text">{{ ayuda_solicitud }}</div>
     </div>
 
     {# ---- TAREA — rol + tipo de documento opcional (desempate, §2.3) ---- #}
-    <div class="col-12" data-nivel-block="TAREA" {% if nivel_actual != 'TAREA' %}style="display:none"{% endif %}>
+    <div class="col-12" data-nivel-block="TAREA" data-tipodoc-group
+         {% if nivel_actual != 'TAREA' %}style="display:none"{% endif %}>
         <div class="row g-2">
             <div class="col-6">
-                <label class="form-label small mb-1" for="{{ id_prefix }}_tarea_rol">
-                    Documento de la tarea <span class="text-danger">*</span>
+                <label class="form-label small mb-1" for="{{ id_prefix }}_{{ name_prefix }}_rol">
+                    Documento de la tarea
+                    {% if obligatorio %}<span class="text-danger">*</span>{% endif %}
                 </label>
-                <select class="form-select form-select-sm" id="{{ id_prefix }}_tarea_rol" name="campo_fecha_rol"
-                        data-tipodoc-source="rol"
+                <select class="form-select form-select-sm" id="{{ id_prefix }}_{{ name_prefix }}_rol"
+                        name="{{ name_prefix }}_rol" data-tipodoc-source="rol"
                         {% if nivel_actual != 'TAREA' %}disabled{% endif %}>
+                    {% if not obligatorio %}
+                    <option value="" {% if not cf_rol %}selected{% endif %}>— Ninguno —</option>
+                    {% endif %}
                     <option value="CONSUMIDO" {% if cf_rol == 'CONSUMIDO' %}selected{% endif %}>Consumido por la tarea</option>
                     <option value="PRODUCIDO" {% if cf_rol == 'PRODUCIDO' %}selected{% endif %}>Producido por la tarea</option>
                 </select>
             </div>
             <div class="col-6">
-                <label class="form-label small mb-1" for="{{ id_prefix }}_tarea_tipodoc">
+                <label class="form-label small mb-1" for="{{ id_prefix }}_{{ name_prefix }}_tipodoc">
                     Tipo de documento
                     <span class="text-secondary fw-normal">— desempate, opcional</span>
                 </label>
@@ -179,8 +205,8 @@
                    cambiar cualquiera de esos tres selects, con el mismo mapa
                    embebido como JSON en listado.html. Sin trámite concreto (ANY
                    o sin elegir) no hay con qué filtrar: solo queda «Sin especificar». #}
-                <select class="form-select form-select-sm" id="{{ id_prefix }}_tarea_tipodoc" name="campo_fecha_tipo_documento"
-                        data-tipodoc-target
+                <select class="form-select form-select-sm" id="{{ id_prefix }}_{{ name_prefix }}_tipodoc"
+                        name="{{ name_prefix }}_tipo_documento" data-tipodoc-target
                         {% if nivel_actual != 'TAREA' %}disabled{% endif %}>
                     <option value="">— Sin especificar —</option>
                     {% for opt in tipo_documento_map.get(cf_tramite ~ '|' ~ cf_tarea ~ '|' ~ (cf_rol or 'CONSUMIDO'), []) %}
@@ -191,4 +217,20 @@
         </div>
     </div>
 </div>
+{% endmacro %}
+
+
+{% macro campo_fecha(id_prefix, nivel_actual, cf_fk, cf_rol, cf_tipo_documento, cf_tramite, cf_tarea, tipo_documento_map) %}
+{{ senalador(id_prefix, 'campo_fecha', 'Inicio del cómputo', nivel_actual,
+             'documento_solicitud_id', 'Fecha administrativa del documento de solicitud.',
+             cf_rol, cf_tipo_documento, cf_tramite, cf_tarea, tipo_documento_map) }}
+{% endmacro %}
+
+
+{% macro campo_cumplimiento(id_prefix, nivel_actual, cc_rol, cc_tipo_documento, cf_tramite, cf_tarea, tipo_documento_map) %}
+{{ senalador(id_prefix, 'campo_cumplimiento', 'Documento que acredita el cumplimiento', nivel_actual,
+             'documento_cierre_id',
+             'Certificado de cierre de la solicitud: acredita que hubo notificación —o intento acreditado— a todos los interesados (art. 40.4 LPACAP).',
+             cc_rol, cc_tipo_documento, cf_tramite, cf_tarea, tipo_documento_map,
+             obligatorio=false) }}
 {% endmacro %}

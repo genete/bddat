@@ -113,8 +113,25 @@ _ROLES_VALIDOS = {'CONSUMIDO', 'PRODUCIDO'}
 
 _FK_LABEL = {
     'documento_solicitud_id': 'Fecha administrativa del documento de solicitud',
+    'documento_cierre_id': 'Fecha administrativa del certificado de cierre de la solicitud',
 }
 _ROL_LABEL = {'CONSUMIDO': 'consumido', 'PRODUCIDO': 'producido'}
+
+# Tope del art. 22.1.d: «Este plazo de suspensión no podrá exceder en ningún caso
+# de tres meses». Recae sobre la suspensión, no sobre el plazo concedido al
+# informante, y en la práctica no muerde: todos los plazos de informe que BDDAT
+# maneja son de tres meses o menos. Se vigila AL DAR DE ALTA la entrada, con un
+# aviso, y no con lógica de cómputo (ADR-041 §F) — el valor del plazo es el que
+# fija la norma, y el cálculo no debe recortarlo por su cuenta.
+#
+# Equivalencias aproximadas y deliberadamente generosas: el aviso solo tiene que
+# saltar cuando el plazo declarado excede claramente los tres meses.
+_TOPE_SUSPENSION = {
+    'MESES': 3,
+    'ANOS': 0,               # cualquier plazo en años excede tres meses
+    'DIAS_NATURALES': 90,
+    'DIAS_HABILES': 65,      # ~3 meses de calendario laboral
+}
 
 # Rol en tramites_tareas_documentos (ENTRADA/SALIDA, #346) → rol de campo_fecha
 # (CONSUMIDO/PRODUCIDO, ADR-010). Distinto vocabulario para el mismo concepto:
@@ -325,6 +342,19 @@ def _campo_fecha_legible(tipo_elemento: str, campo_fecha: dict) -> str:
     return f'Fecha administrativa del documento {rol_txt} por esta tarea'
 
 
+def _campo_cumplimiento_legible(tipo_elemento: str, campo_cumplimiento: dict) -> str:
+    """Traduce el JSON de campo_fecha_cumplimiento a texto legible (#778).
+
+    Mismo vocabulario que `campo_fecha`, así que reutiliza su traductor. Lo que
+    cambia es la lectura del vacío: ahí no es «sin configurar» sino una decisión
+    —el plazo no alcanza CUMPLIDO y solo puede estar corriendo o vencido—, y la
+    interfaz debe decirlo con esas palabras.
+    """
+    if not campo_cumplimiento:
+        return 'Sin documento de cierre — el plazo solo puede estar en curso o vencido'
+    return _campo_fecha_legible(tipo_elemento, campo_cumplimiento)
+
+
 def _parse_fecha_opcional(valor_raw):
     """Devuelve (date_o_None, hubo_error). Cadena vacía → (None, False)."""
     valor_raw = (valor_raw or '').strip()
@@ -368,6 +398,67 @@ def _construir_campo_fecha(tipo_elemento: str):
     return None, 'Nivel ESFTT no reconocido.'
 
 
+def _construir_campo_cumplimiento(tipo_elemento: str):
+    """Traduce la selección del formulario al JSON de campo_fecha_cumplimiento (#778).
+
+    Mismo vocabulario cerrado que `campo_fecha` —el problema es el mismo,
+    localizar un documento desde el elemento— con dos diferencias:
+
+    - En SOLICITUD el ancla es `documento_cierre_id`, no `documento_solicitud_id`:
+      uno marca el inicio del plazo para resolver y notificar, el otro el fin.
+      Fijo, sin selección posible, igual que su gemelo.
+    - En TAREA el rol puede quedar vacío, y eso no es un formulario a medio
+      rellenar: una entrada sin señalador de cumplimiento nunca alcanza CUMPLIDO,
+      que es justo lo que hace falta en TABLON_AYUNTAMIENTOS (#416), donde el
+      disparo y el único candidato a cierre son el mismo documento.
+
+    Devuelve (campo_cumplimiento_dict_o_None, error_msg_o_None).
+    """
+    if tipo_elemento == 'SOLICITUD':
+        return {'fk': 'documento_cierre_id'}, None
+
+    if tipo_elemento == 'TAREA':
+        rol = (request.form.get('campo_cumplimiento_rol') or '').strip().upper()
+        if not rol:
+            return None, None
+        if rol not in _ROLES_VALIDOS:
+            return None, 'El documento de cumplimiento debe ser consumido o producido.'
+        campo = {'rol': rol}
+
+        tipo_documento = (request.form.get('campo_cumplimiento_tipo_documento') or '').strip()
+        if tipo_documento:
+            if not TipoDocumento.query.filter_by(codigo=tipo_documento).first():
+                return None, f'El tipo de documento «{tipo_documento}» no existe en el catálogo.'
+            campo['tipo_documento'] = tipo_documento
+
+        return campo, None
+
+    return None, 'Nivel ESFTT no reconocido.'
+
+
+def _aviso_tope_suspension(item) -> str | None:
+    """Avisa si una entrada suspensora declara un plazo de más de tres meses.
+
+    Art. 22.1.d: «Este plazo de suspensión no podrá exceder en ningún caso de tres
+    meses». El límite recae sobre la suspensión, no sobre el plazo concedido al
+    informante, así que no se recorta el valor del catálogo ni se mete lógica en
+    el cómputo (ADR-041 §F): se avisa aquí, donde alguien puede decidir.
+
+    No bloquea: puede haber un plazo sectorial mayor que el tramitador quiera
+    registrar tal como lo fija su norma.
+    """
+    if not item.suspende_plazo_solicitud:
+        return None
+    tope = _TOPE_SUSPENSION.get(item.plazo_unidad)
+    if tope is None or (item.plazo_valor or 0) <= tope:
+        return None
+    return (
+        'Este plazo suspende el de la solicitud y dura más de tres meses. El '
+        'art. 22.1.d LPACAP fija que la suspensión «no podrá exceder en ningún '
+        'caso de tres meses»: revisa el valor o el efecto que le has dado.'
+    )
+
+
 def _rellenar_catalogo_plazo(item) -> list[str]:
     """Rellena los campos escalares de un CatalogoPlazo desde request.form.
 
@@ -387,6 +478,19 @@ def _rellenar_catalogo_plazo(item) -> list[str]:
     campo_fecha, err_cf = _construir_campo_fecha(tipo_elemento)
     if err_cf:
         errores.append(err_cf)
+
+    campo_cumplimiento, err_cc = _construir_campo_cumplimiento(tipo_elemento)
+    if err_cc:
+        errores.append(err_cc)
+
+    # Solo las tareas suspenden: lo que el art. 22 suspende es el plazo de la
+    # solicitud, y marcarla a ella significaría que se suspende a sí misma. El
+    # CheckConstraint lo cubre en BD; aquí se ignora la casilla sin error, porque
+    # el formulario no la ofrece en ese nivel.
+    suspende = (
+        tipo_elemento == 'TAREA'
+        and bool(request.form.get('suspende_plazo_solicitud'))
+    )
 
     # Entero positivo: 0 se rechaza a propósito (#789). "Plazo indefinido" (EP(0)
     # en ESTRUCTURA_FTT.md) no se registra como fila de catalogo_plazos — la
@@ -423,6 +527,8 @@ def _rellenar_catalogo_plazo(item) -> list[str]:
     item.tipo_elemento = tipo_elemento
     item.camino = camino
     item.campo_fecha = campo_fecha
+    item.campo_fecha_cumplimiento = campo_cumplimiento
+    item.suspende_plazo_solicitud = suspende
     item.plazo_valor = plazo_valor
     item.plazo_unidad = plazo_unidad
     item.efecto_vencimiento_id = efecto.id
@@ -668,8 +774,9 @@ def crear():
         return _reabrir_modal_con_errores([f'Error al guardar: {e}'])
 
     flash('Plazo creado correctamente.', 'success')
-    if aviso_colision:
-        flash(aviso_colision, 'warning')
+    for aviso in (aviso_colision, _aviso_tope_suspension(item)):
+        if aviso:
+            flash(aviso, 'warning')
     return redirect(url_for('catalogo_plazos.listado', sel=item.id))
 
 
@@ -694,6 +801,8 @@ def fragmento(id):
         tipo_elemento_nombre=_tipo_elemento_nombre(item.tipo_elemento, item.hoja),
         camino_legible=_camino_legible(item.camino),
         campo_fecha_legible=_campo_fecha_legible(item.tipo_elemento, item.campo_fecha),
+        campo_cumplimiento_legible=_campo_cumplimiento_legible(
+            item.tipo_elemento, item.campo_fecha_cumplimiento),
         puede_editar=tiene_permiso('gestionar_catalogo_plazos'),
     )
 
@@ -706,6 +815,7 @@ def editar_fragmento(id):
     item = CatalogoPlazo.query.get_or_404(id)
     valor_display = {c.id: _valor_display(c.valor) for c in item.condiciones}
     cf = item.campo_fecha or {}
+    cc = item.campo_fecha_cumplimiento or {}
     # Ancestros trámite/tarea del camino (posiciones 4 y 5): el desplegable de
     # tipo_documento los necesita para pintar sus opciones iniciales server-side
     # (§2.3) — mismo criterio que el resto de bloques de la macro.
@@ -719,6 +829,8 @@ def editar_fragmento(id):
         cf_fk=cf.get('fk', ''),
         cf_rol=cf.get('rol', ''),
         cf_tipo_documento=cf.get('tipo_documento', ''),
+        cc_rol=cc.get('rol', ''),
+        cc_tipo_documento=cc.get('tipo_documento', ''),
         cf_tramite=cf_tramite,
         cf_tarea=cf_tarea,
         **_selects_context(),
@@ -767,14 +879,12 @@ def editar(id):
         return _responder_errores([f'Error al guardar: {e}'])
 
     msg = 'Plazo actualizado correctamente.'
+    avisos = [a for a in (aviso_colision, _aviso_tope_suspension(item)) if a]
     if is_xhr:
-        return jsonify({
-            'ok': True, 'message': msg,
-            'warnings': [aviso_colision] if aviso_colision else [],
-        })
+        return jsonify({'ok': True, 'message': msg, 'warnings': avisos})
     flash(msg, 'success')
-    if aviso_colision:
-        flash(aviso_colision, 'warning')
+    for aviso in avisos:
+        flash(aviso, 'warning')
     return redirect(url_for('catalogo_plazos.listado', sel=id))
 
 

@@ -453,6 +453,41 @@ class TestPlazoDeLaSolicitud:
             assert _causas_suspension(solicitud) == []
 
 
+class TestAvisoTopeSuspension:
+    """Art. 22.1.d: la suspensión «no podrá exceder en ningún caso de tres meses».
+
+    El límite recae sobre la suspensión, no sobre el plazo concedido al
+    informante, así que no se recorta el valor del catálogo ni se mete lógica en
+    el cómputo: se avisa al dar de alta la entrada (ADR-041 §F).
+    """
+
+    def _aviso(self, unidad, valor, suspende=True):
+        from app.modules.catalogo_plazos.routes import _aviso_tope_suspension
+        from types import SimpleNamespace
+        return _aviso_tope_suspension(SimpleNamespace(
+            suspende_plazo_solicitud=suspende,
+            plazo_unidad=unidad,
+            plazo_valor=valor,
+        ))
+
+    @pytest.mark.parametrize('unidad,valor', [
+        ('MESES', 6), ('ANOS', 1), ('DIAS_NATURALES', 120), ('DIAS_HABILES', 90),
+    ])
+    def test_avisa_si_pasa_de_tres_meses(self, unidad, valor):
+        assert self._aviso(unidad, valor) is not None
+
+    @pytest.mark.parametrize('unidad,valor', [
+        ('MESES', 3), ('DIAS_NATURALES', 90), ('DIAS_HABILES', 10),
+    ])
+    def test_no_avisa_dentro_del_tope(self, unidad, valor):
+        assert self._aviso(unidad, valor) is None
+
+    def test_no_avisa_si_no_suspende(self):
+        """Los 30 días de exposición de un anuncio no suspenden nada: corren
+        dentro del plazo de la solicitud y lo consumen."""
+        assert self._aviso('MESES', 6, suspende=False) is None
+
+
 # ---------------------------------------------------------------------------
 # D) Con BD — invariantes del catálogo tras el rediseño
 # ---------------------------------------------------------------------------
