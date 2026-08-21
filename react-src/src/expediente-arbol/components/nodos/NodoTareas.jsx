@@ -36,6 +36,12 @@ function barraPlazo(tarea) {
   if (ejecutada) return { color: 'verde', width: '100%' }
   const estado = tarea.plazo && tarea.plazo.estado
   switch (estado) {
+    // CUMPLIDO (#778): llegó el documento que acreditaba el cumplimiento. Lo
+    // normal es que ese documento sea el PRODUCIDO y la tarea ya esté ejecutada,
+    // con lo que arriba devolvió verde; el case cubre que el cumplimiento venga
+    // por otro vínculo. Que llegara fuera de plazo se lee de las fechas, no del
+    // estado, y no cambia el color: el plazo está cumplido.
+    case 'CUMPLIDO':       return { color: 'verde',   width: '100%' }
     case 'VENCIDO':        return { color: 'rojo',    width: '100%' }
     case 'PROXIMO_VENCER': return { color: 'naranja', width: '72%' }
     case 'EN_PLAZO':

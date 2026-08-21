@@ -61,7 +61,8 @@ def traslado_titular_vencido(oe) -> bool:
 
     El plazo se evalúa sobre la tarea ESPERAR_PLAZO del trámite, no sobre el
     trámite (#788): el nivel TRAMITE no porta fecha administrativa y dejó de
-    existir en catalogo_plazos.
+    existir en catalogo_plazos. Bajar hasta ella es navegación del árbol
+    (`Tramite.tarea_espera`), no una entrada del servicio de plazos (#778).
     """
     from app.models.tramites_organismos import TramiteOrganismo
     from app.models.tramites import Tramite as _Tramite
@@ -81,7 +82,13 @@ def traslado_titular_vencido(oe) -> bool:
     )
     if vinculo is None:
         return False
-    return plazos.obtener_estado_plazo_espera(vinculo.tramite).estado == 'VENCIDO'
+    espera = vinculo.tramite.tarea_espera if vinculo.tramite else None
+    if espera is None:
+        return False
+    # variables={} evita recursión en _compilar_variables (#475): la entrada de
+    # CONSULTA_TRASLADO_TITULAR no tiene condiciones, así que da el mismo
+    # resultado que el contexto completo.
+    return plazos.obtener_estado_plazo_tarea(espera, variables={}).estado == 'VENCIDO'
 
 
 # ============================================

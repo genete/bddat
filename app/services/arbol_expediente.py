@@ -395,8 +395,8 @@ def plazo_tarea(tarea) -> Optional[dict]:
     seguimiento.py) porque el catálogo lo usaba como discriminador de posición.
     """
     try:
-        from app.services.plazos import obtener_estado_plazo
-        ep = obtener_estado_plazo(tarea, 'TAREA')
+        from app.services.plazos import obtener_estado_plazo_tarea
+        ep = obtener_estado_plazo_tarea(tarea)
         return {
             'estado': ep.estado,
             'fecha_limite': ep.fecha_limite.isoformat() if ep.fecha_limite else None,

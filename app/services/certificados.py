@@ -83,12 +83,12 @@ def _datos_plazo_vencido(tarea: Tarea) -> dict:
     Lanza ValueError si el plazo no ha vencido o no se puede calcular.
     """
     from app.services.plazos import (
-        obtener_estado_plazo,
+        obtener_estado_plazo_tarea,
         _seleccionar_catalogo,
         _primer_consumido,
     )
 
-    ep = obtener_estado_plazo(tarea, 'TAREA')
+    ep = obtener_estado_plazo_tarea(tarea)
 
     if ep.fecha_limite is None:
         raise ValueError(

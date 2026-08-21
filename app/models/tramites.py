@@ -123,6 +123,33 @@ class Tramite(db.Model):
         """True si el trámite no tiene ninguna tarea aún."""
         return len(self.tareas) == 0
 
+    # --- Navegación ---
+
+    @property
+    def tarea_espera(self):
+        """Primera tarea ESPERAR_PLAZO del trámite, o None.
+
+        Lo que un consumidor llama «el plazo del trámite» —los 15 días del
+        traslado al titular, los 30 de la separata— es el de esta tarea: es ahí
+        donde está el documento que fija la fecha de inicio, y desde #788 es ahí
+        donde está también la fila del catálogo.
+
+        Vive aquí y no en plazos.py (#778, ADR-041 §G): bajar de un trámite a su
+        espera es navegación del árbol ESFTT, no una entrada del servicio de
+        plazos — una función llamada «plazo de un trámite» reintroduciría por la
+        puerta de atrás el nivel que #788 eliminó.
+
+        «Primera» por orden de la relación, igual que el resto de accesores del
+        modelo. Los ANUNCIO_* tienen dos esperas —la de la publicación y la de
+        los 30 días de exposición—; ningún consumidor de esta property es un
+        anuncio, y quien necesite la segunda debe pedirla por su tipo de
+        documento, no por posición.
+        """
+        for t in self.tareas:
+            if t.tipo_tarea and t.tipo_tarea.codigo == 'ESPERAR_PLAZO':
+                return t
+        return None
+
     @property
     def en_curso(self):
         """True si el trámite tiene tareas pero no está finalizado."""

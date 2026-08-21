@@ -49,6 +49,10 @@ def _mock_entrada(orden=100, entrada_id=1, condiciones=None,
     e.plazo_valor = plazo_valor
     e.plazo_unidad = plazo_unidad
     e.campo_fecha = campo_fecha or {'rol': 'CONSUMIDO'}
+    # Explícitos para que no salgan MagicMock (truthy): estos tests miden la
+    # selección de entrada, no el cumplimiento ni la suspensión (#778).
+    e.campo_fecha_cumplimiento = None
+    e.suspende_plazo_solicitud = False
     e.efecto_plazo.codigo = efecto_codigo
     e.camino = camino
     return e
@@ -268,14 +272,14 @@ HOY = date(2025, 6, 2)
 
 def test_ctx_none_variables_none_usa_variables_dict_vacio():
     """Sin ctx ni variables → variables_dict={} → solo entradas sin condiciones aplican."""
-    from app.services.plazos import obtener_estado_plazo
-    r = obtener_estado_plazo(object(), 'TAREA')
+    from app.services.plazos import obtener_estado_plazo_tarea
+    r = obtener_estado_plazo_tarea(object())
     assert r.estado == 'SIN_PLAZO'
 
 
 def test_variables_vacio_usa_ruta_nueva_sin_condiciones():
     """variables={} → ruta nueva; entradas sin condiciones ganan; SIN_PLAZO si no hay entrada."""
-    from app.services.plazos import obtener_estado_plazo
+    from app.services.plazos import obtener_estado_plazo_tarea
     tarea = _mock_tarea(fecha_administrativa=date(2025, 5, 12))
 
     with patch('app.models.catalogo_plazos.CatalogoPlazo') as MockCP, \
@@ -283,13 +287,13 @@ def test_variables_vacio_usa_ruta_nueva_sin_condiciones():
          patch('app.services.plazos.joinedload', return_value=MagicMock()):
         MockCP.query.options.return_value.filter_by.return_value\
               .order_by.return_value.all.return_value = []
-        r = obtener_estado_plazo(tarea, 'TAREA', variables={})
+        r = obtener_estado_plazo_tarea(tarea, variables={})
     assert r.estado == 'SIN_PLAZO'
 
 
 def test_variables_dict_selecciona_entrada_y_calcula_estado():
     """Con variables dict, selecciona catálogo y devuelve estado calculado."""
-    from app.services.plazos import obtener_estado_plazo
+    from app.services.plazos import obtener_estado_plazo_tarea
     tarea = _mock_tarea(fecha_administrativa=date(2025, 5, 12))
     entrada = _mock_entrada(orden=100, condiciones=[], plazo_valor=20,
                             plazo_unidad='DIAS_HABILES', efecto_codigo='SILENCIO_DESESTIMATORIO')
@@ -301,7 +305,7 @@ def test_variables_dict_selecciona_entrada_y_calcula_estado():
           patch('app.services.plazos.joinedload', return_value=MagicMock())):
         MockCP.query.options.return_value.filter_by.return_value\
               .order_by.return_value.all.return_value = [entrada]
-        r = obtener_estado_plazo(tarea, 'TAREA', variables={})
+        r = obtener_estado_plazo_tarea(tarea, variables={})
     assert r.estado == 'EN_PLAZO'
     assert r.fecha_limite == date(2025, 6, 9)
 
@@ -312,7 +316,7 @@ def test_variables_dict_selecciona_entrada_y_calcula_estado():
 
 def test_ctx_llama_compilar_variables_con_excluir():
     """Cuando se pasa ctx, _compilar_variables recibe excluir={'estado_plazo','efecto_plazo'}."""
-    from app.services.plazos import obtener_estado_plazo
+    from app.services.plazos import obtener_estado_plazo_tarea
     from app.services.assembler import ExpedienteContext
 
     tarea = _mock_tarea(fecha_administrativa=date(2025, 5, 1))
@@ -320,7 +324,7 @@ def test_ctx_llama_compilar_variables_con_excluir():
 
     with patch('app.services.plazos._seleccionar_catalogo', return_value=None) as mock_sel, \
          patch('app.services.assembler._compilar_variables', return_value={}) as mock_cv:
-        obtener_estado_plazo(tarea, 'TAREA', ctx=ctx)
+        obtener_estado_plazo_tarea(tarea, ctx=ctx)
 
     mock_cv.assert_called_once_with(ctx, excluir={'estado_plazo', 'efecto_plazo'})
     # #785: recibe el elemento, no su código de tipo — el camino lo deriva dentro.
@@ -329,13 +333,13 @@ def test_ctx_llama_compilar_variables_con_excluir():
 
 def test_variables_directo_no_llama_compilar_variables():
     """Cuando se pasa variables dict directamente, no se llama a _compilar_variables."""
-    from app.services.plazos import obtener_estado_plazo
+    from app.services.plazos import obtener_estado_plazo_tarea
 
     tarea = _mock_tarea(fecha_administrativa=date(2025, 5, 1))
 
     with patch('app.services.plazos._seleccionar_catalogo', return_value=None), \
          patch('app.services.assembler._compilar_variables') as mock_cv:
-        obtener_estado_plazo(tarea, 'TAREA', variables={'x': 1})
+        obtener_estado_plazo_tarea(tarea, variables={'x': 1})
 
     mock_cv.assert_not_called()
 
@@ -376,7 +380,7 @@ def _entradas_art131():
 
 def test_art131_con_aap_previa_usa_plazo_15_dias():
     """AAC con AAP previa favorable → entrada condicionada (15 días hábiles)."""
-    from app.services.plazos import obtener_estado_plazo
+    from app.services.plazos import obtener_estado_plazo_tarea
     from datetime import date as d
 
     tarea = _mock_tarea(fecha_administrativa=d(2025, 5, 5))   # lunes
@@ -394,7 +398,7 @@ def test_art131_con_aap_previa_usa_plazo_15_dias():
           patch('app.services.plazos.joinedload', return_value=MagicMock())):
         MockCP.query.options.return_value.filter_by.return_value\
               .order_by.return_value.all.return_value = [entrada_15d, entrada_30d]
-        r = obtener_estado_plazo(tarea, 'TAREA', variables=variables)
+        r = obtener_estado_plazo_tarea(tarea, variables=variables)
 
     # 5 may + 15 hábiles = lun 26 may
     assert r.fecha_limite == d(2025, 5, 26)
@@ -403,7 +407,7 @@ def test_art131_con_aap_previa_usa_plazo_15_dias():
 
 def test_art131_sin_aap_previa_usa_plazo_30_dias():
     """AAC sin AAP previa → fallback (30 días hábiles)."""
-    from app.services.plazos import obtener_estado_plazo
+    from app.services.plazos import obtener_estado_plazo_tarea
     from datetime import date as d
 
     tarea = _mock_tarea(fecha_administrativa=d(2025, 5, 5))
@@ -421,7 +425,7 @@ def test_art131_sin_aap_previa_usa_plazo_30_dias():
           patch('app.services.plazos.joinedload', return_value=MagicMock())):
         MockCP.query.options.return_value.filter_by.return_value\
               .order_by.return_value.all.return_value = [entrada_15d, entrada_30d]
-        r = obtener_estado_plazo(tarea, 'TAREA', variables=variables)
+        r = obtener_estado_plazo_tarea(tarea, variables=variables)
 
     # 5 may + 30 hábiles = lun 16 jun
     assert r.fecha_limite == d(2025, 6, 16)
@@ -431,7 +435,7 @@ def test_art131_sin_aap_previa_usa_plazo_30_dias():
 
 def test_art131_seleccion_correcta_verificada_via_plazo_valor():
     """Confirma que la entrada correcta (15 vs 30) queda registrada en fecha_limite."""
-    from app.services.plazos import obtener_estado_plazo
+    from app.services.plazos import obtener_estado_plazo_tarea
     from datetime import date as d
 
     tarea = _mock_tarea(fecha_administrativa=d(2025, 5, 1))   # jueves
@@ -450,8 +454,8 @@ def test_art131_seleccion_correcta_verificada_via_plazo_valor():
         MockCP.query.options.return_value.filter_by.return_value\
               .order_by.return_value.all.return_value = [entrada_15d, entrada_30d]
 
-        r_con = obtener_estado_plazo(tarea, 'TAREA', variables=variables_con)
-        r_sin = obtener_estado_plazo(tarea, 'TAREA', variables=variables_sin)
+        r_con = obtener_estado_plazo_tarea(tarea, variables=variables_con)
+        r_sin = obtener_estado_plazo_tarea(tarea, variables=variables_sin)
 
     # 1 may (jue) + 15 hábiles = jue 22 may
     assert r_con.fecha_limite == d(2025, 5, 22)

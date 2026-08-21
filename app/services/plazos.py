@@ -1,45 +1,73 @@
 """
 Servicio de plazos administrativos — BDDAT.
 
-Calcula el estado del plazo legal asociado a un elemento ESFTT y devuelve un
-EstadoPlazo.
+Un plazo es UNA SOLA MEDIDA (ADR-041, #778). Dada la entrada de catalogo_plazos
+y el elemento donde se aplica, produce cuatro fechas:
 
-Arquitectura (DISEÑO_FECHAS_PLAZOS.md §4):
-    ContextAssembler llama a obtener_estado_plazo() para poblar las variables
-    'estado_plazo' y 'efecto_plazo' que el motor agnóstico evalúa con operadores
-    estándar (EQ/IN/etc.). El motor no conoce este servicio.
+    disparo       fecha administrativa del documento que la entrada señala como
+                  origen del cómputo (campo_fecha)
+    vencimiento   disparo + valor del plazo, computado según el art. 30 LPACAP
+    cumplimiento  fecha administrativa del documento que acredita el
+                  cumplimiento (campo_fecha_cumplimiento), si existe
+    parada        la primera de tres: cumplimiento, vencimiento u hoy
 
-Dos niveles, no cuatro (#788):
-    Solo la Solicitud y la Tarea portan fecha administrativa —la primera por
-    `documento_solicitud_id`, la segunda por `documentos_tarea` (ADR-010)—, así
-    que solo ellas pueden tener plazo. La Fase y el Trámite son taxonomía ESFTT,
-    no figuras jurídicas: los plazos legales se enganchan a actos (presentar,
-    notificar, publicar, esperar) y los actos son solicitudes y tareas. La firma
-    sigue aceptando los cuatro literales —los consumidores llaman por
-    duck-typing— pero FASE y TRAMITE devuelven siempre SIN_PLAZO, sin tocar BD:
-    `_SEGMENTOS_CAMINO` no los conoce y el camino no se puede compilar.
+La cuarta es la que resuelve todo, y sus tres candidatas significan cosas
+distintas: gana el cumplimiento → llegó lo que se esperaba; gana el vencimiento →
+se agotó el plazo concedido y el procedimiento prosigue (art. 22.1.d in fine);
+gana hoy → el plazo sigue corriendo.
 
-Lógica real (#172, identificación reescrita en #785):
-    1. Compila el camino SFTT del elemento y busca en catalogo_plazos la entrada
-       cuyo patrón `camino` casa con él (comodín ANY, matcher de operadores.py).
-    2. Resuelve campo_fecha JSONB → Documento.fecha_administrativa.
-    3. Calcula fecha_limite con calcular_fecha_fin() (art. 30 LPACAP).
-    4. Deriva estado según condiciones de §2.4 (umbral 5 días hábiles).
+Dos entradas, no cuatro literales de nivel (#788, ADR-041 §G):
+
+    obtener_estado_plazo_tarea(tarea)          el plazo de una tarea
+    obtener_estado_plazo_solicitud(solicitud)  el plazo de la solicitud, que ya
+                                               incluye la suspensión
+
+Solo la Solicitud y la Tarea portan fecha administrativa —la primera por
+`documento_solicitud_id`, la segunda por `documentos_tarea` (ADR-010)—, así que
+solo ellas pueden tener plazo. La Fase y el Trámite son taxonomía ESFTT, no
+figuras jurídicas: los plazos legales se enganchan a actos, y los actos son
+solicitudes y tareas. Una función llamada «plazo de un trámite» reintroduciría
+por la puerta de atrás el nivel que #788 eliminó, así que no existe: bajar de un
+trámite a su tarea de espera es navegación del árbol (`Tramite.tarea_espera`).
+
+La suspensión no es un mecanismo aparte (#778):
+    Es el plazo de un tercero visto desde la solicitud, y la propia ley lo dice
+    al fijar cuándo termina —art. 22.1.a: «por el tiempo que medie entre la
+    notificación del requerimiento y su efectivo cumplimiento por el
+    destinatario, o, en su defecto, por el del plazo concedido»—, que es el menor
+    de los dos: exactamente la parada. El plazo de la solicitud se mide como
+    cualquier otro; luego se recorren sus tareas, se retienen las que tienen
+    entrada marcada como suspensora, cada una aporta el intervalo
+    [disparo, parada], los solapados se funden (el art. 22 suspende «el
+    transcurso del plazo máximo legal para resolver», en singular: un reloj no se
+    para dos veces) y los días hábiles de la unión empujan el vencimiento.
+
+    Consecuencia directa: el tope existe por construcción. Ninguna suspensión
+    puede crecer sin límite, porque su parada nunca pasa del vencimiento. Antes
+    de #778 el cálculo de suspensiones no consultaba el catálogo en ningún
+    momento —tenía la lista de trámites escrita en el código— y por eso, sin
+    respuesta del interesado, el cierre se quedaba en «hoy» y se recalculaba cada
+    día: la fecha límite se alejaba un día por cada día que pasaba y el
+    expediente no vencía nunca.
+
+Qué suspende es dato del catálogo, no una lista en el código:
+    Que la petición de un informe preceptivo suspenda el plazo para resolver
+    cambia cuando cambia la ley y es citable a artículo concreto (art. 22.1.a y
+    22.1.d) — dato normativo, y va donde ya viven el valor del plazo y su efecto
+    (test de ADR-037). Corolario buscado: un plazo sin entrada en el catálogo no
+    suspende nada.
+
+    Tampoco hay topes escritos aquí. El art. 22.1.d añade que la suspensión «no
+    podrá exceder en ningún caso de tres meses», límite que en la práctica no
+    muerde —todos los plazos de informe que BDDAT maneja son de tres meses o
+    menos— y que se vigila al dar de alta la entrada, no en el cómputo.
 
 Identificación estructural (#785):
-    El catálogo se identifica por camino, no por el literal del tipo hoja: los
-    consumidores no tienen que inyectar variables que reexpongan la posición del
-    elemento en el árbol. Por eso obtener_estado_plazo() da un resultado correcto
-    sin `ctx` ni `variables` siempre que las entradas candidatas no tengan
-    condiciones de supuesto legal — el caso de todas las de ESPERAR_PLAZO.
-
-Suspensiones (#173, corregidas en #788):
-    _obtener_suspensiones() recibe la SOLICITUD y recorre solicitud → fases →
-    trámites buscando causas del art. 22 LPACAP. No usa tabla propia. El objeto
-    de la suspensión lo fija el propio precepto: «el plazo máximo legal para
-    resolver un procedimiento y notificar la resolución», que es el plazo de la
-    solicitud y ninguno más. Por eso obtener_estado_plazo() solo la invoca en ese
-    nivel — explícito, no por recorrido que salga vacío.
+    El catálogo se identifica por camino SFTT, no por el literal del tipo hoja:
+    los consumidores no tienen que inyectar variables que reexpongan la posición
+    del elemento en el árbol. Por eso el resultado es correcto sin `ctx` ni
+    `variables` siempre que las entradas candidatas no tengan condiciones de
+    supuesto legal — el caso de todas las de ESPERAR_PLAZO.
 
 plazo_valor=0 no es un caso soportado (#789):
     ESTRUCTURA_FTT.md usa la notación EP(0) para varios ESPERAR_PLAZO sin plazo
@@ -58,7 +86,7 @@ from __future__ import annotations
 
 import calendar
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date, timedelta
 from typing import Optional
 
@@ -68,12 +96,10 @@ log = logging.getLogger(__name__)
 
 UMBRAL_ALERTA = 5  # días hábiles (DISEÑO_FECHAS_PLAZOS.md §2.4)
 
-_TIPO_ID_CAMPO = {
-    'SOLICITUD': 'tipo_solicitud_id',
-    'FASE':      'tipo_fase_id',
-    'TRAMITE':   'tipo_tramite_id',
-    'TAREA':     'tipo_tarea_id',
-}
+# Estados corriendo: el plazo aún no se ha cumplido ni agotado. Sirve también
+# para decidir si una suspensión sigue viva — no hace falta guardar ningún flag
+# «abierto», la propia medida lo dice (ADR-041 §Consecuencias).
+_CORRIENDO = ('EN_PLAZO', 'PROXIMO_VENCER')
 
 # Relación ORM que expone el identificador estable del tipo (sin FK BD)
 _TIPO_REL_CAMPO = {
@@ -95,52 +121,74 @@ _TIPO_CODIGO_ATTR = {
 # Nº de segmentos del camino ESFTT por nivel (#785). El matching exige longitud
 # idéntica, igual que en motor_reglas, así que la longitud codifica el nivel.
 #
-# Solo los dos niveles que portan fecha (#788). Los tres diccionarios de arriba
+# Solo los dos niveles que portan fecha (#788). Los dos diccionarios de arriba
 # SÍ conservan sus entradas de FASE y TRAMITE: no son niveles de fila, los usa
 # compilar_camino para construir los segmentos de ascendencia del camino de 5
 # segmentos de una tarea.
 _SEGMENTOS_CAMINO = {'SOLICITUD': 2, 'TAREA': 5}
 
-# ---------------------------------------------------------------------------
-# Suspensiones — constantes de inferencia (art. 22 LPACAP, #173)
-# ---------------------------------------------------------------------------
-
-# Trámites que inician una suspensión del plazo de la solicitud.
-#
-# Lista cerrada, como la del art. 22. No están —y no deben estar— la información
-# pública ni los traslados al peticionario (arts. 126 / 127.3): son instrucción
-# ordinaria, corren DENTRO del plazo y lo consumen. Son justo los que lo aprietan.
-_TRAMITES_SUSPENSION = frozenset({
-    'REQUERIMIENTO_SUBSANACION',   # art. 22.1.a — subsanación al interesado
-    'SOLICITUD_INFORME',           # art. 22.1.d — informe preceptivo a organismo
-    'CONSULTA_SEPARATA',           # art. 22.1.d — separata a organismo en consultas
-    'SOLICITUD_COMPATIBILIDAD',    # art. 22.1.d — EIA preceptiva a Medio Ambiente
-})
-
-# Para trámites sin ANALIZAR propio, el trámite hermano que cierra la suspensión
-_TRAMITES_CIERRE = {
-    'SOLICITUD_INFORME': frozenset({
-        'RECEPCION_INFORME', 'RECEPCION_INFORME_VINCULANTE',
-    }),
-    'SOLICITUD_COMPATIBILIDAD': frozenset({
-        'RECEPCION_DICTAMEN', 'RECEPCION_FIGURA',
-    }),
-}
-
 
 @dataclass
 class EstadoPlazo:
-    estado: str                    # 'SIN_PLAZO' | 'EN_PLAZO' | 'PROXIMO_VENCER' | 'VENCIDO'
-    efecto: str                    # 'NINGUNO' | 'SILENCIO_ESTIMATORIO' | 'RESPONSABILIDAD_DISCIPLINARIA'
-                                   # | 'SILENCIO_DESESTIMATORIO' | 'CADUCIDAD_PROCEDIMIENTO'
-                                   # | 'PERDIDA_TRAMITE' | 'APERTURA_RECURSO'
-                                   # | 'PRESCRIPCION_CONDICIONADO' | 'CONFORMIDAD_PRESUNTA'
-                                   # | 'SIN_EFECTO_AUTOMATICO'
-    fecha_limite: Optional[date]   # None si SIN_PLAZO
-    dias_restantes: Optional[int]  # None si SIN_PLAZO; negativo si VENCIDO
+    estado: str                        # 'SIN_PLAZO' | 'EN_PLAZO' | 'PROXIMO_VENCER'
+                                       # | 'VENCIDO' | 'CUMPLIDO'
+    efecto: str                        # 'NINGUNO' | 'SILENCIO_ESTIMATORIO' | 'RESPONSABILIDAD_DISCIPLINARIA'
+                                       # | 'SILENCIO_DESESTIMATORIO' | 'CADUCIDAD_PROCEDIMIENTO'
+                                       # | 'PERDIDA_TRAMITE' | 'APERTURA_RECURSO'
+                                       # | 'PRESCRIPCION_CONDICIONADO' | 'CONFORMIDAD_PRESUNTA'
+                                       # | 'SIN_EFECTO_AUTOMATICO'
+    fecha_limite: Optional[date]       # el VENCIMIENTO (nombre histórico, §3.5 del
+                                       # diseño): último día hábil dentro del plazo.
+                                       # En la solicitud, ya con las suspensiones
+                                       # sumadas. None si SIN_PLAZO
+    dias_restantes: Optional[int]      # None si SIN_PLAZO o CUMPLIDO; negativo si VENCIDO
+    fecha_disparo: Optional[date] = None
+    fecha_cumplimiento: Optional[date] = None
+    fecha_parada: Optional[date] = None
+
+    @property
+    def cumplido_fuera_de_plazo(self) -> bool:
+        """«Cumplido fuera de plazo» no es un valor del vocabulario: se lee de las
+        dos fechas que el servicio ya devuelve. El vocabulario no crece por algo
+        derivable sin ambigüedad (ADR-041 §C)."""
+        return bool(
+            self.fecha_cumplimiento and self.fecha_limite
+            and self.fecha_cumplimiento > self.fecha_limite
+        )
+
+
+@dataclass
+class EstadoPlazoSolicitud(EstadoPlazo):
+    """El plazo de la solicitud, único suspendible (art. 22, #788).
+
+    `suspendido` es dato aparte y NO un valor del estado, porque es ortogonal: un
+    plazo puede estar suspendido y a la vez próximo a vencer.
+    """
+    suspendido: bool = False
+    suspendido_desde: Optional[date] = None   # inicio del bloque fusionado que llega
+                                              # a hoy; puede ser anterior a la causa
+                                              # viva más antigua
+    dias_suspendidos: int = 0                 # días hábiles de la unión de intervalos
+    fecha_limite_sin_suspender: Optional[date] = None
+
+
+@dataclass(frozen=True)
+class _Medida:
+    """Las cuatro fechas de un plazo. Interno: fuera se ve como EstadoPlazo."""
+    disparo: date
+    vencimiento: date
+    cumplimiento: Optional[date]
+    parada: date
 
 
 _SIN_PLAZO = EstadoPlazo(
+    estado='SIN_PLAZO',
+    efecto='NINGUNO',
+    fecha_limite=None,
+    dias_restantes=None,
+)
+
+_SIN_PLAZO_SOLICITUD = EstadoPlazoSolicitud(
     estado='SIN_PLAZO',
     efecto='NINGUNO',
     fecha_limite=None,
@@ -152,109 +200,145 @@ _SIN_PLAZO = EstadoPlazo(
 # API pública
 # ---------------------------------------------------------------------------
 
-def obtener_estado_plazo(
-    elemento,
-    tipo_elemento: str,
-    ctx=None,
-    variables=None,
-) -> EstadoPlazo:
+def obtener_estado_plazo_tarea(tarea, ctx=None, variables=None) -> EstadoPlazo:
     """
-    Devuelve el estado del plazo legal asociado a un elemento ESFTT.
+    Estado del plazo legal de una tarea.
 
     Args:
-        elemento:      Instancia ORM del elemento evaluado.
-                       None o dict → SIN_PLAZO sin consultar BD.
-        tipo_elemento: 'SOLICITUD' | 'TAREA' son los niveles con plazo posible.
-                       'FASE' y 'TRAMITE' se aceptan y devuelven SIN_PLAZO (#788):
-                       los consumidores despachan por duck-typing y no les toca
-                       saber qué niveles portan fecha.
-        ctx:           ExpedienteContext. Construye variables internamente
-                       (excluyendo estado_plazo/efecto_plazo para evitar recursión).
-        variables:     Dict de variables pre-construido. Tiene precedencia sobre ctx.
-                       Sin ctx ni variables → dict vacío (solo entradas sin condiciones).
+        tarea:     Instancia ORM de Tarea. None o dict → SIN_PLAZO sin tocar BD.
+        ctx:       ExpedienteContext. Construye variables internamente
+                   (excluyendo estado_plazo/efecto_plazo para evitar recursión).
+        variables: Dict de variables pre-construido. Tiene precedencia sobre ctx.
+                   Sin ctx ni variables → dict vacío (solo entradas sin condiciones).
     """
-    if elemento is None or isinstance(elemento, dict):
+    if tarea is None or isinstance(tarea, dict):
+        return _SIN_PLAZO
+    if _get_tipo_elemento_codigo(tarea, 'TAREA') is None:
         return _SIN_PLAZO
 
-    if _get_tipo_elemento_codigo(elemento, tipo_elemento) is None:
+    entrada = _seleccionar_catalogo(tarea, 'TAREA', _variables_de(ctx, variables))
+    if entrada is None:
         return _SIN_PLAZO
 
-    if variables is not None:
-        variables_dict = variables
-    elif ctx is not None:
-        from app.services.assembler import _compilar_variables
-        variables_dict = _compilar_variables(
-            ctx, excluir={'estado_plazo', 'efecto_plazo'}
-        )
-    else:
-        variables_dict = {}
-
-    catalogo = _seleccionar_catalogo(elemento, tipo_elemento, variables_dict)
-
-    if catalogo is None:
-        return _SIN_PLAZO
-
-    fecha_acto = _resolver_campo_fecha(elemento, catalogo.campo_fecha or {})
-    if fecha_acto is None:
+    disparo = _resolver_campo_fecha(tarea, entrada.campo_fecha or {})
+    if disparo is None:
         return _SIN_PLAZO
 
     hoy = _hoy()
-    margen_dias = max(catalogo.plazo_valor * 60, 400)
-    inhabiles = _obtener_inhabiles_bd(fecha_acto, hoy + timedelta(days=margen_dias))
+    inhabiles = _obtener_inhabiles_bd(disparo, hoy + timedelta(days=_margen_dias([entrada])))
+    medida = _medir(tarea, entrada, disparo, inhabiles, hoy)
 
-    # Art. 22 LPACAP suspende «el plazo máximo legal para resolver un
-    # procedimiento y notificar la resolución» — el de la solicitud, y solo ese.
-    # Los plazos de nivel TAREA son de un tercero (organismo, DGPEM), del
-    # interesado (art. 68.1) o períodos que han de transcurrir: nada que
-    # suspender (#788).
-    suspensiones = _obtener_suspensiones(elemento) if tipo_elemento == 'SOLICITUD' else []
-    fecha_limite = _aplicar_suspensiones(
-        calcular_fecha_fin(fecha_acto, catalogo.plazo_valor, catalogo.plazo_unidad, inhabiles),
-        suspensiones,
-        inhabiles,
+    estado, dias = _leer_estado(medida, hoy, inhabiles)
+    return EstadoPlazo(
+        estado=estado,
+        efecto=_efecto(entrada),
+        fecha_limite=medida.vencimiento,
+        dias_restantes=dias,
+        fecha_disparo=medida.disparo,
+        fecha_cumplimiento=medida.cumplimiento,
+        fecha_parada=medida.parada,
     )
 
-    efecto = catalogo.efecto_plazo.codigo if catalogo.efecto_plazo else 'SIN_EFECTO_AUTOMATICO'
 
-    if hoy > fecha_limite:
-        dias = -_dias_habiles_entre(fecha_limite + timedelta(days=1), hoy, inhabiles)
-        return EstadoPlazo(estado='VENCIDO', efecto=efecto,
-                           fecha_limite=fecha_limite, dias_restantes=dias)
-
-    dias = _dias_habiles_entre(hoy, fecha_limite, inhabiles)
-    if dias <= UMBRAL_ALERTA:
-        return EstadoPlazo(estado='PROXIMO_VENCER', efecto=efecto,
-                           fecha_limite=fecha_limite, dias_restantes=dias)
-
-    return EstadoPlazo(estado='EN_PLAZO', efecto=efecto,
-                       fecha_limite=fecha_limite, dias_restantes=dias)
-
-
-def obtener_estado_plazo_espera(tramite) -> EstadoPlazo:
-    """Estado del plazo de espera de un trámite, evaluado en su tarea ESPERAR_PLAZO.
-
-    El plazo que un consumidor llama «el plazo del trámite» —los 15 días del
-    traslado al titular, los 30 de la separata— es en realidad el de su tarea de
-    espera: es ahí donde está el documento que fija la fecha de inicio, y desde
-    #788 es ahí donde está también la fila del catálogo.
-
-    Vive aquí y no duplicado en cada consumidor para que «bajar del trámite a su
-    tarea» sea una decisión de este servicio, no un detalle repetido fuera.
+def obtener_estado_plazo_solicitud(solicitud, ctx=None, variables=None) -> EstadoPlazoSolicitud:
     """
-    if tramite is None:
-        return _SIN_PLAZO
-    espera = _tarea_de_tipo(tramite, 'ESPERAR_PLAZO')
-    if espera is None:
-        return _SIN_PLAZO
-    # variables={} evita recursión en _compilar_variables (#475): las entradas de
-    # ESPERAR_PLAZO con condiciones son las de CONSULTA_SEPARATA, y su fallback
-    # sin condiciones da el mismo resultado que el contexto completo.
-    return obtener_estado_plazo(espera, 'TAREA', variables={})
+    Estado del plazo máximo para resolver y notificar (art. 21.3 LPACAP), ya con
+    las suspensiones del art. 22 aplicadas.
+
+    Es el único plazo suspendible: los de nivel TAREA son de un tercero
+    (organismo, DGPEM), del interesado (art. 68.1) o períodos que han de
+    transcurrir — nada que suspender (#788).
+    """
+    if solicitud is None or isinstance(solicitud, dict):
+        return _SIN_PLAZO_SOLICITUD
+    if _get_tipo_elemento_codigo(solicitud, 'SOLICITUD') is None:
+        return _SIN_PLAZO_SOLICITUD
+
+    entrada = _seleccionar_catalogo(solicitud, 'SOLICITUD', _variables_de(ctx, variables))
+    if entrada is None:
+        return _SIN_PLAZO_SOLICITUD
+
+    disparo = _resolver_campo_fecha(solicitud, entrada.campo_fecha or {})
+    if disparo is None:
+        return _SIN_PLAZO_SOLICITUD
+
+    hoy = _hoy()
+    # Las causas de suspensión se identifican ANTES de cargar el calendario para
+    # que el rango cubra también sus disparos: no se presupone que ninguno sea
+    # anterior al de la solicitud, aunque en un expediente sano no lo sea.
+    causas = _causas_suspension(solicitud)
+    fecha_ini = min([disparo] + [d for _, _, d in causas])
+    inhabiles = _obtener_inhabiles_bd(
+        fecha_ini,
+        hoy + timedelta(days=_margen_dias([entrada] + [e for _, e, _ in causas])),
+    )
+
+    bloques = _fusionar_intervalos([
+        _intervalo_de(tarea, entrada_tarea, disparo_tarea, inhabiles, hoy)
+        for tarea, entrada_tarea, disparo_tarea in causas
+    ])
+    dias_suspendidos = _dias_suspendidos(bloques, inhabiles)
+    vivo = next((b for b in bloques if b['vivo']), None)
+
+    medida = _medir(solicitud, entrada, disparo, inhabiles, hoy)
+    limite = _aplicar_suspensiones(medida.vencimiento, bloques, inhabiles)
+    medida_efectiva = replace(
+        medida,
+        vencimiento=limite,
+        parada=min(d for d in (medida.cumplimiento, limite, hoy) if d is not None),
+    )
+
+    estado, dias = _leer_estado(medida_efectiva, hoy, inhabiles)
+    return EstadoPlazoSolicitud(
+        estado=estado,
+        efecto=_efecto(entrada),
+        fecha_limite=limite,
+        dias_restantes=dias,
+        fecha_disparo=medida_efectiva.disparo,
+        fecha_cumplimiento=medida_efectiva.cumplimiento,
+        fecha_parada=medida_efectiva.parada,
+        suspendido=vivo is not None,
+        suspendido_desde=vivo['inicio'] if vivo else None,
+        dias_suspendidos=dias_suspendidos,
+        fecha_limite_sin_suspender=medida.vencimiento,
+    )
 
 
 # ---------------------------------------------------------------------------
-# Cómputo de plazos — funciones puras (testables sin BD)
+# La medida — funciones puras (testables sin BD)
 # ---------------------------------------------------------------------------
+
+def _medir(elemento, entrada, disparo: date, inhabiles: frozenset, hoy: date) -> _Medida:
+    """Las cuatro fechas del plazo de `elemento` según `entrada`.
+
+    `disparo` llega ya resuelto porque el llamador lo necesita antes, para acotar
+    el rango del calendario de inhábiles.
+    """
+    vencimiento = calcular_fecha_fin(
+        disparo, entrada.plazo_valor, entrada.plazo_unidad, inhabiles
+    )
+    cumplimiento = _resolver_cumplimiento(elemento, entrada)
+    parada = min(d for d in (cumplimiento, vencimiento, hoy) if d is not None)
+    return _Medida(disparo=disparo, vencimiento=vencimiento,
+                   cumplimiento=cumplimiento, parada=parada)
+
+
+def _leer_estado(medida: _Medida, hoy: date, inhabiles: frozenset) -> tuple[str, Optional[int]]:
+    """Estado y días restantes a partir de la medida. Cinco valores (ADR-041 §C).
+
+    `dias_restantes` es None en CUMPLIDO: «quedan N días» ya no significa nada, y
+    si llegó tarde o a tiempo se lee comparando cumplimiento con vencimiento
+    (EstadoPlazo.cumplido_fuera_de_plazo).
+    """
+    if medida.cumplimiento is not None:
+        return 'CUMPLIDO', None
+    if hoy > medida.vencimiento:
+        return 'VENCIDO', -_dias_habiles_entre(
+            medida.vencimiento + timedelta(days=1), hoy, inhabiles
+        )
+    dias = _dias_habiles_entre(hoy, medida.vencimiento, inhabiles)
+    return ('PROXIMO_VENCER' if dias <= UMBRAL_ALERTA else 'EN_PLAZO'), dias
+
 
 def calcular_fecha_fin(
     fecha_acto: date,
@@ -309,7 +393,129 @@ def calcular_fecha_fin(
 
 
 # ---------------------------------------------------------------------------
-# Utilidades internas
+# Suspensiones — la misma medida, vista desde la solicitud (art. 22 LPACAP)
+# ---------------------------------------------------------------------------
+
+def _causas_suspension(solicitud) -> list[tuple]:
+    """Tareas de la solicitud cuya entrada de catálogo suspende, ya con su disparo.
+
+    Devuelve [(tarea, entrada, disparo)]. Recorre solicitud → fases → trámites →
+    tareas: el art. 22 suspende «el plazo máximo legal para resolver un
+    procedimiento y notificar la resolución», que es el plazo de esta solicitud y
+    ninguno más.
+
+    Las entradas de nivel TAREA se cargan UNA vez y se pasan al matcher: si no,
+    cada tarea del expediente repetiría la misma query.
+
+    Las condiciones se evalúan con dict vacío, igual que hacía el atajo por
+    trámite: las únicas entradas con condiciones son las dos de CONSULTA_SEPARATA
+    y su reserva sin condiciones da el mismo resultado que el contexto completo.
+    """
+    from sqlalchemy.exc import OperationalError, ProgrammingError
+
+    try:
+        entradas = _cargar_entradas('TAREA')
+        if not any(e.suspende_plazo_solicitud for e in entradas):
+            return []   # ninguna fila suspende: no hay nada que recorrer
+
+        causas = []
+        for fase in getattr(solicitud, 'fases', None) or []:
+            for tramite in getattr(fase, 'tramites', None) or []:
+                for tarea in getattr(tramite, 'tareas', None) or []:
+                    entrada = _seleccionar_catalogo(tarea, 'TAREA', {}, entradas=entradas)
+                    if entrada is None or not entrada.suspende_plazo_solicitud:
+                        continue
+                    disparo = _resolver_campo_fecha(tarea, entrada.campo_fecha or {})
+                    if disparo is None:
+                        continue    # preparado pero aún no notificado: nada que suspender
+                    causas.append((tarea, entrada, disparo))
+        return causas
+    except (OperationalError, ProgrammingError) as exc:
+        log.warning('plazos: error recorriendo causas de suspensión (%s)', exc)
+        return []
+
+
+def _intervalo_de(tarea, entrada, disparo: date, inhabiles: frozenset, hoy: date) -> dict:
+    """Intervalo suspendido que aporta una tarea suspensora: [disparo, parada].
+
+    `vivo` sale del estado de la propia espera —sigue corriendo— y no de «no tiene
+    fecha de cierre», que era lo que antes dejaba crecer la suspensión sin límite.
+    """
+    medida = _medir(tarea, entrada, disparo, inhabiles, hoy)
+    estado, _ = _leer_estado(medida, hoy, inhabiles)
+    return {'inicio': medida.disparo, 'fin': medida.parada, 'vivo': estado in _CORRIENDO}
+
+
+def _fusionar_intervalos(intervalos: list) -> list:
+    """Une los intervalos solapados o contiguos en una sola cobertura.
+
+    Jurídicamente el reloj se para una vez: lo que el art. 22 suspende es «el
+    transcurso del plazo máximo legal para resolver», en singular. Sumar por
+    separado los días de un requerimiento vivo y de las separatas que están
+    fuera al mismo tiempo —situación normal— contaría dos veces los días comunes.
+
+    Vivos y cerrados se funden JUNTOS, en una sola pasada. En dos bolsas
+    separadas el solape entre un cerrado y un vivo se duplicaría: separata
+    notificada el 1-feb y contestada el 1-abr, más requerimiento notificado el
+    1-mar y sin contestar, dan 2 + 2 = 4 meses por bolsas cuando la verdad es la
+    unión, 1-feb → hoy.
+
+    El bloque resultante hereda `vivo` de cualquiera de sus componentes, de modo
+    que su `inicio` responde a «¿desde cuándo lleva parado el plazo de forma
+    continua?» — que puede ser anterior al disparador vivo más antiguo.
+    """
+    if not intervalos:
+        return []
+
+    fusionados = []
+    for actual in sorted(intervalos, key=lambda i: (i['inicio'], i['fin'])):
+        previo = fusionados[-1] if fusionados else None
+        # Contiguo cuenta como solapado: entre el día de cierre de uno y el
+        # siguiente natural no hay plazo que corra.
+        if previo is not None and actual['inicio'] <= previo['fin'] + timedelta(days=1):
+            previo['fin'] = max(previo['fin'], actual['fin'])
+            previo['vivo'] = previo['vivo'] or actual['vivo']
+        else:
+            fusionados.append(dict(actual))
+
+    return fusionados
+
+
+def _dias_suspendidos(bloques: list, inhabiles: frozenset) -> int:
+    """Días hábiles de la unión de bloques, contados como (A, B].
+
+    La norma habla de una diferencia, no de un recuento inclusivo — «por el
+    tiempo que medie entre la notificación… y su efectivo cumplimiento»
+    (art. 22.1.a), «entre la petición… y la recepción del informe» (art. 22.1.d).
+    Del día 1 al 10 median 9 días, no 10. Encaja además con el art. 30.3, que
+    arranca el cómputo el día siguiente.
+    """
+    return sum(
+        _dias_habiles_entre(b['inicio'] + timedelta(days=1), b['fin'], inhabiles)
+        for b in bloques
+    )
+
+
+def _aplicar_suspensiones(fecha_limite: date, bloques: list, inhabiles: frozenset) -> date:
+    """Empuja la fecha límite tantos días hábiles como duren las suspensiones.
+
+    Espera la lista ya fusionada: aquí se suma, y sumar bloques solapados
+    contaría dos veces los días comunes.
+    """
+    dias_suspension = _dias_suspendidos(bloques, inhabiles)
+    if dias_suspension <= 0:
+        return fecha_limite
+    cursor = fecha_limite
+    dias = 0
+    while dias < dias_suspension:
+        cursor += timedelta(days=1)
+        if _es_habil(cursor, inhabiles):
+            dias += 1
+    return cursor
+
+
+# ---------------------------------------------------------------------------
+# Utilidades internas — cómputo
 # ---------------------------------------------------------------------------
 
 def _es_habil(fecha: date, inhabiles: frozenset) -> bool:
@@ -336,20 +542,54 @@ def _dias_habiles_entre(fecha_ini: date, fecha_fin: date, inhabiles: frozenset) 
     return cuenta
 
 
+def _margen_dias(entradas: list) -> int:
+    """Días naturales a cargar del calendario más allá de hoy.
+
+    Generoso a propósito: un plazo largo con suspensiones puede aterrizar muy
+    lejos, y un festivo no cargado desplazaría la fecha límite.
+    """
+    valores = [getattr(e, 'plazo_valor', 0) or 0 for e in entradas]
+    return max(max(valores, default=0) * 60, 400)
+
+
+# ---------------------------------------------------------------------------
+# Utilidades internas — catálogo
+# ---------------------------------------------------------------------------
+
+def _variables_de(ctx, variables) -> dict:
+    """Dict de variables para evaluar condiciones de catálogo.
+
+    `variables` tiene precedencia sobre `ctx`; sin ninguno, dict vacío — solo
+    aplican entonces las entradas sin condiciones.
+    """
+    if variables is not None:
+        return variables
+    if ctx is None:
+        return {}
+    from app.services.assembler import _compilar_variables
+    return _compilar_variables(ctx, excluir={'estado_plazo', 'efecto_plazo'})
+
+
+def _efecto(entrada) -> str:
+    return entrada.efecto_plazo.codigo if entrada.efecto_plazo else 'SIN_EFECTO_AUTOMATICO'
+
+
 def _evaluar_condiciones_plazo(condiciones, variables: dict) -> bool:
     """
     Evalúa lista de condiciones con AND implícito.
 
     Sin condiciones → siempre True.
-    Variable ausente en dict → False con warning (decisión F de IMPLEMENTACION_341.md).
-    Usa _OPERADORES de operadores.py (S1) — no depende de motor_reglas.
+    Variable ausente en dict → False (decisión F de IMPLEMENTACION_341.md). Se
+    registra a nivel debug: es el camino normal cuando se pregunta sin contexto
+    (el recorrido de causas de suspensión pasa por aquí una vez por tarea), y la
+    entrada de reserva sin condiciones recoge el caso.
     """
     from app.services.operadores import _OPERADORES
 
     for cond in sorted(condiciones, key=lambda c: c.orden):
         nombre = cond.variable.nombre
         if nombre not in variables:
-            log.warning('plazos: variable ausente en dict de condiciones: %s', nombre)
+            log.debug('plazos: variable ausente en dict de condiciones: %s', nombre)
             return False
         op_fn = _OPERADORES.get(cond.operador)
         if op_fn is None:
@@ -430,7 +670,32 @@ def _codigo_de_tipo(elemento, tipo_elemento: str) -> Optional[str]:
     return _get_tipo_elemento_codigo(elemento, tipo_elemento)
 
 
-def _seleccionar_catalogo(elemento, tipo_elemento: str, variables_dict: dict):
+def _cargar_entradas(tipo_elemento: str) -> list:
+    """Entradas activas del catálogo para un nivel, con condiciones eager-cargadas.
+
+    Query única. La devuelve ordenada por prioridad (orden ASC, id ASC) para que
+    el matcher solo tenga que quedarse con la primera que case.
+    """
+    from app.models.catalogo_plazos import CatalogoPlazo
+    from app.models.condiciones_plazo import CondicionPlazo
+    from sqlalchemy.exc import OperationalError, ProgrammingError
+
+    try:
+        return (
+            CatalogoPlazo.query
+            .options(
+                joinedload(CatalogoPlazo.condiciones).joinedload(CondicionPlazo.variable)
+            )
+            .filter_by(tipo_elemento=tipo_elemento, activo=True)
+            .order_by(CatalogoPlazo.orden.asc(), CatalogoPlazo.id.asc())
+            .all()
+        )
+    except (OperationalError, ProgrammingError) as exc:
+        log.warning('plazos: tabla catalogo_plazos no disponible (%s) — devolviendo SIN_PLAZO', exc)
+        return []
+
+
+def _seleccionar_catalogo(elemento, tipo_elemento: str, variables_dict: dict, entradas=None):
     """
     Devuelve la primera entrada activa de catalogo_plazos aplicable al elemento.
 
@@ -444,41 +709,27 @@ def _seleccionar_catalogo(elemento, tipo_elemento: str, variables_dict: dict):
     procedimiento previo), no posición, y se siguen evaluando con AND implícito.
 
     Algoritmo:
-      1. Prefiltro SQL por tipo_elemento + activo (el nivel acota el juego).
-      2. Ordena por orden ASC, id ASC (menor orden = mayor prioridad).
-      3. Descarta las entradas cuyo camino no casa con el del elemento, y las que
+      1. Carga las entradas del nivel (o reutiliza las que le pasen: el recorrido
+         de causas de suspensión mide muchas tareas y no debe repetir la query).
+      2. Descarta las entradas cuyo camino no casa con el del elemento, y las que
          declaran un `tipo_documento` que el elemento no tiene vinculado (#788).
-      4. De las que casan: sin condiciones → válida inmediata; con condiciones →
+      3. De las que casan: sin condiciones → válida inmediata; con condiciones →
          AND implícito. Devuelve la primera que pasa.
 
     Por qué `tipo_documento` filtra aquí y no solo al resolver la fecha: si una
     candidata se elige y luego su campo_fecha no resuelve, la función NO prueba la
-    siguiente — devuelve SIN_PLAZO. Las dos esperas de un ANUNCIO_* comparten
-    camino, así que sin este predicado la de menor orden ganaría para ambas y la
-    otra se quedaría muda.
+    siguiente — el llamador devuelve SIN_PLAZO. Las dos esperas de un ANUNCIO_*
+    comparten camino, así que sin este predicado la de menor orden ganaría para
+    ambas y la otra se quedaría muda.
     """
-    from app.models.catalogo_plazos import CatalogoPlazo
-    from app.models.condiciones_plazo import CondicionPlazo
     from app.services.operadores import camino_casa
-    from sqlalchemy.exc import OperationalError, ProgrammingError
 
     camino_real = compilar_camino(elemento, tipo_elemento)
     if camino_real is None:
         return None
 
-    try:
-        entradas = (
-            CatalogoPlazo.query
-            .options(
-                joinedload(CatalogoPlazo.condiciones).joinedload(CondicionPlazo.variable)
-            )
-            .filter_by(tipo_elemento=tipo_elemento, activo=True)
-            .order_by(CatalogoPlazo.orden.asc(), CatalogoPlazo.id.asc())
-            .all()
-        )
-    except (OperationalError, ProgrammingError) as exc:
-        log.warning('plazos: tabla catalogo_plazos no disponible (%s) — devolviendo SIN_PLAZO', exc)
-        return None
+    if entradas is None:
+        entradas = _cargar_entradas(tipo_elemento)
 
     candidatas = [
         e for e in entradas
@@ -493,17 +744,12 @@ def _seleccionar_catalogo(elemento, tipo_elemento: str, variables_dict: dict):
             return entrada
 
     if candidatas:
-        log.warning(
+        log.debug(
             'plazos: ninguna entrada de catalogo_plazos satisface condiciones '
             'para %s — se devuelve SIN_PLAZO',
             camino_real,
         )
     return None
-
-
-def _get_tipo_elemento_id(elemento, tipo_elemento: str) -> Optional[int]:
-    campo = _TIPO_ID_CAMPO.get(tipo_elemento)
-    return getattr(elemento, campo, None) if campo else None
 
 
 def _get_tipo_elemento_codigo(elemento, tipo_elemento: str) -> Optional[str]:
@@ -515,12 +761,17 @@ def _get_tipo_elemento_codigo(elemento, tipo_elemento: str) -> Optional[str]:
     return getattr(tipo_rel, attr_nombre, None) if tipo_rel else None
 
 
+# ---------------------------------------------------------------------------
+# Utilidades internas — documentos que portan las fechas
+# ---------------------------------------------------------------------------
+
 def _resolver_campo_fecha(elemento, campo_fecha: dict) -> Optional[date]:
-    """Resuelve campo_fecha JSONB → Documento.fecha_administrativa.
+    """Resuelve un señalador JSON → Documento.fecha_administrativa.
 
     Vocabulario cerrado desde #788 — dos ramas, una por portador de fecha:
 
       {'fk': 'documento_solicitud_id'}                       → Solicitud, por FK directa
+      {'fk': 'documento_cierre_id'}                          → ídem, ancla de cierre (#778)
       {'rol': 'CONSUMIDO'|'PRODUCIDO'[, 'tipo_documento']}   → Tarea, por vínculo (ADR-010)
 
     No es extensible: no hay un tercer portador de fecha al que apuntar. Lo que
@@ -528,7 +779,14 @@ def _resolver_campo_fecha(elemento, campo_fecha: dict) -> Optional[date]:
     `via_tarea_tipo` que bajaba de un trámite a su tarea— era la huella de filas
     declaradas en niveles que no llegan a ningún documento; con la fila en su
     nivel, ambas sobran.
+
+    Lo usan los dos señaladores de la entrada, el del disparo (`campo_fecha`) y el
+    del cumplimiento (`campo_fecha_cumplimiento`): el vocabulario es el mismo
+    porque el problema es el mismo — localizar un documento desde el elemento.
     """
+    if not campo_fecha:
+        return None
+
     rol = campo_fecha.get('rol')
 
     if rol:
@@ -541,6 +799,18 @@ def _resolver_campo_fecha(elemento, campo_fecha: dict) -> Optional[date]:
     return _fecha_doc_admin(doc)
 
 
+def _resolver_cumplimiento(elemento, entrada) -> Optional[date]:
+    """Fecha del documento que acredita el cumplimiento, o None.
+
+    Sin `campo_fecha_cumplimiento` declarado el plazo nunca alcanza CUMPLIDO y se
+    comporta como antes de #778: solo puede estar corriendo o vencido. Es opcional
+    por un caso real, no por prudencia — en TABLON_AYUNTAMIENTOS el disparo y el
+    único candidato a cierre son el mismo documento (#416), y ahí VENCIDO se lee
+    como «la exposición se completó», que es lo que el tramitador necesita ver.
+    """
+    return _resolver_campo_fecha(elemento, entrada.campo_fecha_cumplimiento or {})
+
+
 def _documento_por_rol(tarea, rol: str, tipo_documento: Optional[str] = None):
     """Documento vinculado a la tarea por rol, opcionalmente filtrado por tipo.
 
@@ -551,7 +821,8 @@ def _documento_por_rol(tarea, rol: str, tipo_documento: Optional[str] = None):
     CONSULTA_SEPARATA está declarada polimórfica en `tramites_tareas_documentos`
     porque el justificante depende del canal (BANDEJA / NOTIFICA / POSTAL / SIR),
     y ahí no se puede nombrar un tipo ni hace falta — esa espera es única en su
-    trámite.
+    trámite. Para el rol PRODUCIDO tampoco hace falta nunca: el vínculo de salida
+    es único por tarea.
     """
     if rol == 'PRODUCIDO':
         producido = getattr(tarea, 'documento_producido', None)
@@ -584,33 +855,6 @@ def _tipo_documento_presente(elemento, campo_fecha: dict) -> bool:
     return _documento_por_rol(elemento, rol, tipo_documento) is not None
 
 
-def _hoy() -> date:
-    return date.today()
-
-
-def _obtener_inhabiles_bd(fecha_ini: date, fecha_fin: date) -> frozenset:
-    """Carga fechas inhábiles del calendario BD en el rango dado."""
-    from app.models.dias_inhabiles import DiaInhabil
-    registros = DiaInhabil.query.filter(
-        DiaInhabil.fecha >= fecha_ini,
-        DiaInhabil.fecha <= fecha_fin,
-    ).all()
-    return frozenset(r.fecha for r in registros)
-
-
-def _codigo_tramite(tramite) -> str:
-    tipo = getattr(tramite, 'tipo_tramite', None)
-    return getattr(tipo, 'codigo', '') if tipo else ''
-
-
-def _tarea_de_tipo(tramite, codigo_tarea: str):
-    """Primera tarea del tipo indicado en el trámite, o None."""
-    for t in getattr(tramite, 'tareas', []):
-        if getattr(getattr(t, 'tipo_tarea', None), 'codigo', None) == codigo_tarea:
-            return t
-    return None
-
-
 def _fecha_doc_admin(doc) -> Optional[date]:
     return getattr(doc, 'fecha_administrativa', None) if doc else None
 
@@ -626,149 +870,19 @@ def _primer_consumido(tarea):
     return docs[0] if docs else None
 
 
-def _fecha_cierre_suspension(tramite_trigger, tramites_de_su_fase: list) -> Optional[date]:
-    """
-    Fecha de fin de la suspensión iniciada por tramite_trigger, o None si sigue abierta.
+# ---------------------------------------------------------------------------
+# Utilidades internas — BD
+# ---------------------------------------------------------------------------
 
-    1. Documento producido de su propio ESPERAR_PLAZO — la respuesta que se
-       esperaba. Es el caso normal: la suspensión ES ese ESPERAR_PLAZO, y sus dos
-       extremos viven ahí (el consumido abre, el producido cierra).
-    2. Rescate para los trámites cuyo receptor está formalizado como trámite
-       aparte (SOLICITUD_INFORME → RECEPCION_INFORME, SOLICITUD_COMPATIBILIDAD →
-       RECEPCION_DICTAMEN): primer consumido del ANALIZAR del primer hermano
-       receptor con id mayor. Acotado a la fase del disparador (#788) — un
-       RECEPCION_INFORME de otra fase cerraría una suspensión que no le toca.
-    """
-    esperar = _tarea_de_tipo(tramite_trigger, 'ESPERAR_PLAZO')
-    if esperar:
-        f = _fecha_doc_admin(getattr(esperar, 'documento_producido', None))
-        if f:
-            return f
-
-    cierre_tipos = _TRAMITES_CIERRE.get(_codigo_tramite(tramite_trigger), frozenset())
-    if cierre_tipos:
-        for hermano in sorted(tramites_de_su_fase, key=lambda x: x.id):
-            if hermano.id <= tramite_trigger.id:
-                continue
-            if _codigo_tramite(hermano) not in cierre_tipos:
-                continue
-            a = _tarea_de_tipo(hermano, 'ANALIZAR')
-            if a:
-                f = _fecha_doc_admin(_primer_consumido(a))
-                if f:
-                    return f
-
-    return None
+def _hoy() -> date:
+    return date.today()
 
 
-def _obtener_suspensiones(solicitud) -> list:
-    """
-    Deriva los intervalos de suspensión (art. 22 LPACAP) del plazo de la
-    solicitud, recorriendo solicitud → fases → trámites. No usa tabla propia.
-
-    Retorna la UNIÓN de los intervalos, como lista ordenada de dicts
-    {'fecha_inicio': date, 'fecha_fin': date, 'abierto': bool}, donde `abierto`
-    marca el bloque que llega hasta hoy porque alguna de sus causas sigue viva.
-
-    Por qué recibe la Solicitud (#788): el art. 22 suspende «el plazo máximo legal
-    para resolver un procedimiento y notificar la resolución». El objeto de la
-    suspensión lo fija el precepto, y es ese plazo — que es el de la solicitud.
-    Antes la función recibía «el elemento evaluado» y buscaba a su alrededor por
-    duck-typing, con dos consecuencias: la Solicitud salía siempre con lista vacía
-    (no tiene `.tramites`) y un Trámite se encontraba a sí mismo entre sus
-    hermanos, de modo que cada CONSULTA_SEPARATA se suspendía a sí misma y su
-    fecha límite retrocedía un día hábil por cada día hábil transcurrido.
-
-    Los dos extremos de cada intervalo salen del mismo ESPERAR_PLAZO del trámite
-    suspensor: el documento CONSUMIDO (el justificante de la notificación) abre y
-    el PRODUCIDO (la respuesta) cierra.
-    """
-    from sqlalchemy.exc import OperationalError, ProgrammingError
-
-    intervalos = []
-    try:
-        for fase in getattr(solicitud, 'fases', None) or []:
-            tramites_fase = list(getattr(fase, 'tramites', None) or [])
-            for tramite in tramites_fase:
-                if _codigo_tramite(tramite) not in _TRAMITES_SUSPENSION:
-                    continue
-                esperar = _tarea_de_tipo(tramite, 'ESPERAR_PLAZO')
-                if esperar is None:
-                    continue
-                fecha_inicio = _fecha_doc_admin(_primer_consumido(esperar))
-                if not fecha_inicio:
-                    continue
-                fecha_fin = _fecha_cierre_suspension(tramite, tramites_fase)
-                intervalos.append({
-                    'fecha_inicio': fecha_inicio,
-                    'fecha_fin': fecha_fin or _hoy(),
-                    'abierto': fecha_fin is None,
-                })
-    except (OperationalError, ProgrammingError) as exc:
-        log.warning('plazos: error cargando trámites para suspensiones (%s)', exc)
-        return []
-
-    return _fusionar_intervalos(intervalos)
-
-
-def _fusionar_intervalos(intervalos: list) -> list:
-    """Une los intervalos solapados o contiguos en una sola cobertura.
-
-    Jurídicamente el reloj se para una vez: lo que el art. 22 suspende es «el
-    transcurso del plazo máximo legal para resolver», en singular. Sumar por
-    separado los días de un requerimiento abierto y de las separatas que están
-    fuera al mismo tiempo —situación normal— contaría dos veces los días comunes.
-
-    Cerrados y abiertos se funden JUNTOS, en una sola pasada. En dos bolsas
-    separadas el solape entre un cerrado y un abierto se duplicaría: separata
-    notificada el 1-feb y contestada el 1-abr, más requerimiento notificado el
-    1-mar y sin contestar, dan 2 + 2 = 4 meses por bolsas cuando la verdad es la
-    unión, 1-feb → hoy.
-
-    El bloque resultante hereda `abierto` de cualquiera de sus componentes, de
-    modo que su `fecha_inicio` responde a «¿desde cuándo lleva parado el plazo de
-    forma continua?» — que puede ser anterior al disparador vivo más antiguo.
-    """
-    if not intervalos:
-        return []
-
-    fusionados = []
-    for actual in sorted(intervalos, key=lambda i: (i['fecha_inicio'], i['fecha_fin'])):
-        previo = fusionados[-1] if fusionados else None
-        # Contiguo cuenta como solapado: entre el día de cierre de uno y el
-        # siguiente natural no hay plazo que corra.
-        if previo is not None and actual['fecha_inicio'] <= previo['fecha_fin'] + timedelta(days=1):
-            previo['fecha_fin'] = max(previo['fecha_fin'], actual['fecha_fin'])
-            previo['abierto'] = previo['abierto'] or actual['abierto']
-        else:
-            fusionados.append(dict(actual))
-
-    return fusionados
-
-
-def _aplicar_suspensiones(fecha_limite: date, suspensiones: list, inhabiles: frozenset) -> date:
-    """Empuja la fecha límite tantos días hábiles como duren las suspensiones.
-
-    Cada bloque se cuenta como intervalo (A, B]: los hábiles que van del día
-    SIGUIENTE al acto hasta el de cierre inclusive. La norma habla de una
-    diferencia, no de un recuento inclusivo — «por el tiempo que medie entre la
-    notificación… y su efectivo cumplimiento» (art. 22.1.a), «entre la petición…
-    y la recepción del informe» (art. 22.1.d). Del día 1 al 10 median 9 días, no
-    10. Encaja además con el art. 30.3, que arranca el cómputo el día siguiente.
-
-    Espera la lista ya fusionada por _obtener_suspensiones: aquí se suma, y sumar
-    bloques solapados contaría dos veces los días comunes.
-    """
-    if not suspensiones:
-        return fecha_limite
-    dias_suspension = sum(
-        _dias_habiles_entre(s['fecha_inicio'] + timedelta(days=1), s['fecha_fin'], inhabiles)
-        for s in suspensiones
-    )
-    cursor = fecha_limite
-    dias = 0
-    while dias < dias_suspension:
-        cursor += timedelta(days=1)
-        if _es_habil(cursor, inhabiles):
-            dias += 1
-    return cursor
+def _obtener_inhabiles_bd(fecha_ini: date, fecha_fin: date) -> frozenset:
+    """Carga fechas inhábiles del calendario BD en el rango dado."""
+    from app.models.dias_inhabiles import DiaInhabil
+    registros = DiaInhabil.query.filter(
+        DiaInhabil.fecha >= fecha_ini,
+        DiaInhabil.fecha <= fecha_fin,
+    ).all()
+    return frozenset(r.fecha for r in registros)

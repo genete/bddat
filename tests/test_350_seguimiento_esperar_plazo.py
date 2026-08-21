@@ -45,6 +45,10 @@ def _mock_tarea(tipo_tramite_codigo, doc_fecha=None):
     tarea.ejecutada = False
     tarea.planificada = False
     tarea.tipo_tarea = MagicMock(codigo='ESPERAR_PLAZO')
+    # Sin documento producido, coherente con ejecutada=False (ADR-004). Explícito
+    # desde #778: la entrada del catálogo declara con qué documento se cumple el
+    # plazo, y un MagicMock ahí se leería como un cumplimiento con fecha falsa.
+    tarea.documento_producido = None
     tarea.tramite = MagicMock()
     tarea.tramite.tipo_tramite = MagicMock(codigo=tipo_tramite_codigo)
     if doc_fecha is not None:
