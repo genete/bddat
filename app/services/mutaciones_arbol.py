@@ -37,8 +37,8 @@ from app.services.motor_reglas import EvaluacionResult, PERMITIDO
 from app.services.motor_modo_global import evaluar_con_modo_global as _evaluar
 from app.services.invariantes_esftt import (
     _check_cierre_fase, _check_completitud_cierre, check_invariante,
-    diagnostico_tramite_anterior, es_documento_critico,
-    advertir_documentos_criticos_huerfanos,
+    diagnostico_tramite_anterior, documento_disparo_comunicacion_admision,
+    es_documento_critico, advertir_documentos_criticos_huerfanos,
 )
 from app.services.vocabulario_esftt import check_orden_tarea, check_vocabulario_tramite
 from app.services.requisitos import evaluar_requisitos
@@ -292,6 +292,48 @@ def _hook_717_elaborar_consumido_diagnostico(tarea, id_producido) -> Optional[di
     }
 
 
+# ---------------------------------------------------------------------------
+# Hook #776: disparo del plazo de ELABORAR de COMUNICACION_INICIO_ADMISION
+# ---------------------------------------------------------------------------
+
+def _hook_776_elaborar_consume_disparo_admision(tarea) -> Optional[dict]:
+    """Hook #776: al crear la tarea ELABORAR de COMUNICACION_INICIO_ADMISION,
+    vincula automáticamente como CONSUMIDO el documento cuya fecha_administrativa
+    dispara el plazo del art. 21.4 LPACAP — la solicitud si no hubo
+    requerimiento de subsanación previo en la fase, o la última subsanación
+    si lo hubo (`documento_disparo_comunicacion_admision`, mismo criterio de
+    "trámite anterior" que #717).
+
+    A diferencia del DIAGNOSTICO de #717 —que es una elección de qué escrito
+    redactar—, qué documento vincular aquí no exige juicio del técnico: está
+    determinado por la historia de la fase, así que se deriva al crear la
+    tarea sin esperar a que alguien lo arrastre desde la Despensa.
+
+    Sin documento que vincular (degradación, p.ej. la solicitud aún sin
+    documento registrado) no bloquea la creación de la tarea: el plazo
+    quedará SIN_PLAZO hasta que exista el documento.
+    """
+    if not tarea.tipo_tarea or tarea.tipo_tarea.codigo != 'ELABORAR':
+        return None
+    tramite = tarea.tramite
+    if not tramite or not tramite.tipo_tramite or tramite.tipo_tramite.codigo != 'COMUNICACION_INICIO_ADMISION':
+        return None
+
+    doc = documento_disparo_comunicacion_admision(tramite)
+    if doc is None:
+        return None
+
+    tarea.vinculos_documento.append(
+        DocumentoTarea(documento_id=doc.id, rol='CONSUMIDO'))
+    return {
+        'motivo': (
+            'Vinculación automática: se ha marcado como consumido el documento '
+            'que dispara el plazo del art. 21.4 LPACAP (la solicitud, o la '
+            'última subsanación si hubo requerimiento).'
+        ),
+    }
+
+
 # ===========================================================================
 # CREAR
 # ===========================================================================
@@ -443,6 +485,7 @@ def crear_tarea(tramite, tipo_tarea, *, justificacion: Optional[str] = None) -> 
     db.session.add(tarea)
     db.session.flush()
 
+    advertencia = _advertencia_dict(res_eval)
     if justificacion:
         sujeto = build_sujeto(expediente, tramite)
         bitacora_svc.registrar(
@@ -453,8 +496,10 @@ def crear_tarea(tramite, tipo_tarea, *, justificacion: Optional[str] = None) -> 
         sujeto = build_sujeto(expediente, tramite)
         _registrar_advertencia('CREAR', 'tareas', tarea.id, sujeto, res_eval)
 
+    advertencia = _hook_776_elaborar_consume_disparo_admision(tarea) or advertencia
+
     db.session.commit()
-    return ResultadoMutacion(ok=True, ids=[tarea.id], advertencia=_advertencia_dict(res_eval))
+    return ResultadoMutacion(ok=True, ids=[tarea.id], advertencia=advertencia)
 
 
 # ===========================================================================

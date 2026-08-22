@@ -415,6 +415,24 @@ def _check_finalizar_tramite(tramite_id: int) -> Optional[EvaluacionResult]:
     return None
 
 
+def tramite_anterior_en_fase(tramite: Tramite):
+    """Trámite inmediatamente anterior (por `id`) dentro de la misma fase que
+    `tramite`, o None si es el primero.
+
+    Único criterio de "qué vino antes" en la fase — extraído de
+    `diagnostico_tramite_anterior` (#717) para que #776 (qué documento dispara
+    el plazo de ELABORAR de COMUNICACION_INICIO_ADMISION: la solicitud si no
+    hubo requerimiento, la última subsanación si lo hubo) lea el mismo
+    trámite anterior sin duplicar el criterio.
+    """
+    fase = tramite.fase
+    tramites_previos = sorted(
+        (t for t in fase.tramites if t.id < tramite.id),
+        key=lambda t: t.id,
+    )
+    return tramites_previos[-1] if tramites_previos else None
+
+
 def diagnostico_tramite_anterior(tramite: Tramite):
     """Diagnóstico producido por el ANALIZAR del trámite inmediatamente anterior
     (por `id`) dentro de la misma fase que `tramite`, o None.
@@ -429,14 +447,9 @@ def diagnostico_tramite_anterior(tramite: Tramite):
     Devuelve `Diagnostico` (no `Documento`): quien pregunta por el diagnóstico
     quiere su contenido o su documento indistintamente (`Diagnostico.documento`).
     """
-    fase = tramite.fase
-    tramites_previos = sorted(
-        (t for t in fase.tramites if t.id < tramite.id),
-        key=lambda t: t.id,
-    )
-    if not tramites_previos:
+    tramite_anterior = tramite_anterior_en_fase(tramite)
+    if tramite_anterior is None:
         return None
-    tramite_anterior = tramites_previos[-1]
 
     tarea_analizar = next(
         (t for t in tramite_anterior.tareas if t.tipo_tarea and t.tipo_tarea.codigo == 'ANALIZAR'),
@@ -449,6 +462,41 @@ def diagnostico_tramite_anterior(tramite: Tramite):
     if doc is None:
         return None
     return doc.diagnostico
+
+
+def documento_disparo_comunicacion_admision(tramite: Tramite):
+    """Documento cuya `fecha_administrativa` dispara el plazo de ELABORAR de
+    COMUNICACION_INICIO_ADMISION (art. 21.4 LPACAP), o None si aún no existe.
+
+    Dos casos, según haya o no requerimiento de subsanación previo en la
+    fase (mismo trámite anterior que `diagnostico_tramite_anterior`):
+    - Sin requerimiento (trámite anterior = ANALISIS_DOCUMENTAL): el
+      documento de la solicitud (`solicitud.documento_solicitud`).
+    - Con requerimiento (trámite anterior = REQUERIMIENTO_SUBSANACION): el
+      documento SUBSANACION que su ANALIZAR consumió — la fecha de entrada
+      de la última subsanación, no la de la solicitud original.
+
+    No es la fecha del Diagnostico (ADR-005/ADR-027: `fecha_administrativa
+    = NULL` por diseño, no es un acto administrativo) — es la del documento
+    que el diagnóstico analizó, que sí tiene efectos administrativos propios.
+    """
+    tramite_anterior = tramite_anterior_en_fase(tramite)
+    if tramite_anterior is None:
+        return tramite.fase.solicitud.documento_solicitud
+
+    if not (tramite_anterior.tipo_tramite
+            and tramite_anterior.tipo_tramite.codigo == 'REQUERIMIENTO_SUBSANACION'):
+        return tramite.fase.solicitud.documento_solicitud
+
+    tarea_analizar = next(
+        (t for t in tramite_anterior.tareas if t.tipo_tarea and t.tipo_tarea.codigo == 'ANALIZAR'),
+        None,
+    )
+    if tarea_analizar is None:
+        return None
+
+    consumidos = tarea_analizar.documentos_consumidos
+    return consumidos[0] if consumidos else None
 
 
 def diagnosticos_notificados_cadena(tramite: Tramite) -> list:
