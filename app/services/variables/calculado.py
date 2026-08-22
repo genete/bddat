@@ -139,30 +139,52 @@ def _(ctx) -> bool:
 @variable('tramite_analisis_con_deficiencias')
 def _(ctx) -> bool:
     """
-    True si algún trámite ANALISIS_DOCUMENTAL de la solicitud en contexto
-    tiene un Diagnostico con resultado = 'desfavorable'.
+    True si el ÚLTIMO ANALIZAR de la cadena de subsanación de alguna fase
+    (ANALISIS_DOCUMENTAL o REQUERIMIENTO_SUBSANACION, el de mayor `Tarea.id`
+    con Diagnostico dentro de esa fase) tiene resultado 'desfavorable'.
 
-    Bloquea CREAR ANALISIS_SOLICITUD/COMUNICACION_INICIO: si hay defectos
-    pendientes el técnico debe emitir un requerimiento, no comunicar el inicio.
+    Bloquea CREAR ANALISIS_SOLICITUD/COMUNICACION_INICIO_ADMISION: si el
+    último análisis sigue desfavorable el técnico debe emitir un nuevo
+    requerimiento, no comunicar el inicio/admisión.
+
+    Corrección #776: la versión original (#455) solo miraba
+    ANALISIS_DOCUMENTAL, así que un ANALISIS_DOCUMENTAL desfavorable
+    bloqueaba para siempre aunque la subsanación posterior fuera favorable
+    — precisamente el caso normal (con requerimiento) que
+    COMUNICACION_INICIO_ADMISION necesita alcanzar.
+
+    Mismo criterio de "último de la cadena" que
+    invariantes_esftt.ultima_tarea_cadena_subsanacion / diagnostico_tramite_anterior
+    (orden por Tarea.id, TRAMITES_CADENA_SUBSANACION). Replicado aquí en
+    navegación pura sobre el árbol ya cargado —sin consulta a BD— porque esta
+    variable se computa desde ExpedienteContext, no desde una fase suelta; si
+    ese criterio cambia, actualizar los tres sitios.
 
     Fuente: tabla diagnosticos (implementada en #392).
     ANALISIS_DOCUMENTAL nunca emite resultado 'condicionado'.
     """
+    from app.services.invariantes_esftt import TRAMITES_CADENA_SUBSANACION
+
     solicitud = ctx.solicitud
     if solicitud is None:
         return False
     for fase in solicitud.fases:
+        candidatas = []
         for tramite in fase.tramites:
-            if (tramite.tipo_tramite
-                    and tramite.tipo_tramite.codigo == 'ANALISIS_DOCUMENTAL'):
-                for tarea in tramite.tareas:
-                    if (tarea.tipo_tarea
-                            and tarea.tipo_tarea.codigo == 'ANALIZAR'):
-                        doc = tarea.documento_producido
-                        if (doc
-                                and doc.diagnostico
-                                and doc.diagnostico.resultado == 'desfavorable'):
-                            return True
+            if not (tramite.tipo_tramite
+                    and tramite.tipo_tramite.codigo in TRAMITES_CADENA_SUBSANACION):
+                continue
+            for tarea in tramite.tareas:
+                if not (tarea.tipo_tarea and tarea.tipo_tarea.codigo == 'ANALIZAR'):
+                    continue
+                doc = tarea.documento_producido
+                if doc and doc.diagnostico:
+                    candidatas.append(tarea)
+        if not candidatas:
+            continue
+        ultima = max(candidatas, key=lambda t: t.id)
+        if ultima.documento_producido.diagnostico.resultado == 'desfavorable':
+            return True
     return False
 
 

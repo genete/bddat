@@ -18,10 +18,11 @@ class _StubTipoTarea:
 
 
 class _StubTarea:
-    def __init__(self, codigo_tipo, ejecutada=False, doc=None):
+    def __init__(self, codigo_tipo, ejecutada=False, doc=None, id=0):
         self.tipo_tarea = _StubTipoTarea(codigo_tipo)
         self._ejecutada = ejecutada
         self._doc = doc
+        self.id = id
 
     @property
     def ejecutada(self): return self._ejecutada
@@ -140,6 +141,61 @@ def test_analisis_con_deficiencias_otro_tipo_tramite():
     tramite = _StubTramite('OTRO_TRAMITE', [tarea])
     ctx = _StubCtx(_StubSolicitud([_StubFase([tramite])]))
     assert fn(ctx) is False
+
+
+def test_analisis_con_deficiencias_subsanada_favorable():
+    """Regresión #776: ANALISIS_DOCUMENTAL desfavorable seguido de un
+    REQUERIMIENTO_SUBSANACION cuyo ANALIZAR es favorable → False. Antes de
+    #776 esta variable quedaba True para siempre en cuanto había habido un
+    ANALISIS_DOCUMENTAL desfavorable, aunque la subsanación lo resolviera."""
+    fn = _get_variable('tramite_analisis_con_deficiencias')
+    doc_analisis = _StubDoc(_StubDiagnostico('desfavorable'))
+    tarea_analisis = _StubTarea('ANALIZAR', ejecutada=True, doc=doc_analisis, id=1)
+    tramite_analisis = _StubTramite('ANALISIS_DOCUMENTAL', [tarea_analisis])
+
+    doc_subsanacion = _StubDoc(_StubDiagnostico('favorable'))
+    tarea_subsanacion = _StubTarea('ANALIZAR', ejecutada=True, doc=doc_subsanacion, id=2)
+    tramite_subsanacion = _StubTramite('REQUERIMIENTO_SUBSANACION', [tarea_subsanacion])
+
+    ctx = _StubCtx(_StubSolicitud([_StubFase([tramite_analisis, tramite_subsanacion])]))
+    assert fn(ctx) is False
+
+
+def test_analisis_con_deficiencias_subsanada_de_nuevo_desfavorable():
+    """ANALISIS_DOCUMENTAL desfavorable y la subsanación también desfavorable
+    (segunda vuelta) → True: el último de la cadena sigue mandando."""
+    fn = _get_variable('tramite_analisis_con_deficiencias')
+    doc_analisis = _StubDoc(_StubDiagnostico('desfavorable'))
+    tarea_analisis = _StubTarea('ANALIZAR', ejecutada=True, doc=doc_analisis, id=1)
+    tramite_analisis = _StubTramite('ANALISIS_DOCUMENTAL', [tarea_analisis])
+
+    doc_subsanacion = _StubDoc(_StubDiagnostico('desfavorable'))
+    tarea_subsanacion = _StubTarea('ANALIZAR', ejecutada=True, doc=doc_subsanacion, id=2)
+    tramite_subsanacion = _StubTramite('REQUERIMIENTO_SUBSANACION', [tarea_subsanacion])
+
+    ctx = _StubCtx(_StubSolicitud([_StubFase([tramite_analisis, tramite_subsanacion])]))
+    assert fn(ctx) is True
+
+
+def test_analisis_con_deficiencias_dos_fases_independientes():
+    """Una fase con ANALISIS_DOCUMENTAL desfavorable y otra (de otro tipo de
+    solicitud en la misma cadena) ya subsanada favorable: cada fase se evalúa
+    por su propio último análisis, no se contaminan entre sí."""
+    fn = _get_variable('tramite_analisis_con_deficiencias')
+
+    doc_desfavorable = _StubDoc(_StubDiagnostico('desfavorable'))
+    tarea_desfavorable = _StubTarea('ANALIZAR', ejecutada=True, doc=doc_desfavorable, id=1)
+    fase_pendiente = _StubFase([_StubTramite('ANALISIS_DOCUMENTAL', [tarea_desfavorable])])
+
+    doc_favorable = _StubDoc(_StubDiagnostico('favorable'))
+    tarea_favorable = _StubTarea('ANALIZAR', ejecutada=True, doc=doc_favorable, id=1)
+    fase_resuelta = _StubFase([_StubTramite('ANALISIS_DOCUMENTAL', [tarea_favorable])])
+
+    ctx = _StubCtx(_StubSolicitud([fase_resuelta]))
+    assert fn(ctx) is False
+
+    ctx = _StubCtx(_StubSolicitud([fase_pendiente]))
+    assert fn(ctx) is True
 
 
 # ---------------------------------------------------------------------------
