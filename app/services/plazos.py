@@ -145,6 +145,10 @@ class EstadoPlazo:
     fecha_disparo: Optional[date] = None
     fecha_cumplimiento: Optional[date] = None
     fecha_parada: Optional[date] = None
+    plazo_valor: Optional[int] = None      # valor de la entrada de catálogo aplicada
+    plazo_unidad: Optional[str] = None     # 'DIAS_HABILES' | 'DIAS_NATURALES' | 'MESES' | 'ANOS'
+    norma_origen: Optional[str] = None     # cita de la entrada de catálogo aplicada
+    efecto_nombre: Optional[str] = None    # nombre legible de `efecto` (EfectoPlazo.nombre)
 
     @property
     def cumplido_fuera_de_plazo(self) -> bool:
@@ -237,6 +241,7 @@ def obtener_estado_plazo_tarea(tarea, ctx=None, variables=None) -> EstadoPlazo:
         fecha_disparo=medida.disparo,
         fecha_cumplimiento=medida.cumplimiento,
         fecha_parada=medida.parada,
+        **_metadatos_entrada(entrada),
     )
 
 
@@ -301,6 +306,7 @@ def obtener_estado_plazo_solicitud(solicitud, ctx=None, variables=None) -> Estad
         suspendido_desde=vivo['inicio'] if vivo else None,
         dias_suspendidos=dias_suspendidos,
         fecha_limite_sin_suspender=medida.vencimiento,
+        **_metadatos_entrada(entrada),
     )
 
 
@@ -572,6 +578,19 @@ def _variables_de(ctx, variables) -> dict:
 
 def _efecto(entrada) -> str:
     return entrada.efecto_plazo.codigo if entrada.efecto_plazo else 'SIN_EFECTO_AUTOMATICO'
+
+
+def _metadatos_entrada(entrada) -> dict:
+    """Campos de la entrada de catálogo aplicada, para consumidores (Context
+    Builders) que necesitan citarla en un escrito sin repetir la selección
+    (#776: art. 21.4 LPACAP exige informar del plazo máximo, su norma y el
+    efecto del silencio)."""
+    return {
+        'plazo_valor': entrada.plazo_valor,
+        'plazo_unidad': entrada.plazo_unidad,
+        'norma_origen': entrada.norma_origen,
+        'efecto_nombre': entrada.efecto_plazo.nombre if entrada.efecto_plazo else None,
+    }
 
 
 def _evaluar_condiciones_plazo(condiciones, variables: dict) -> bool:
