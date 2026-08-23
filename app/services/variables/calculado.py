@@ -133,6 +133,75 @@ def _(ctx) -> bool:
 
 
 # ---------------------------------------------------------------------------
+# Variables condiciones_requisito (#777)
+# ---------------------------------------------------------------------------
+
+_NIF_LETRAS_PERSONA_JURIDICA = 'ABCDEFGHJPQRSUVN'
+
+
+def _es_persona_juridica(nif: str | None) -> bool | None:
+    """
+    Carácter inicial del NIF (Orden EHA/451/2008, arts. 3-4): letra de forma
+    jurídica española (A,B,C,D,E,F,G,H,J,P,Q,R,S,U,V) o N (entidad extranjera)
+    → persona jurídica. Dígito, o X/Y/Z/M (NIE) → persona física.
+
+    Devuelve None si no hay NIF — heurística sin dato, no False.
+    """
+    if not nif:
+        return None
+    return nif[0].upper() in _NIF_LETRAS_PERSONA_JURIDICA
+
+
+@variable('solicitud_incluye_dup')
+def _(ctx) -> bool:
+    """True si la solicitud en contexto incluye el tipo DUP entre sus tipos simples."""
+    solicitud = ctx.solicitud
+    if solicitud is None:
+        return False
+    return solicitud.contiene_tipo('DUP')
+
+
+@variable('solicitante_es_persona_juridica')
+def _(ctx) -> bool | None:
+    """
+    True si el titular del expediente es persona jurídica, según el carácter
+    inicial de su NIF (Orden EHA/451/2008, arts. 3-4): letra de forma jurídica
+    española (A,B,C,D,E,F,G,H,J,P,Q,R,S,U,V) o N (entidad extranjera).
+
+    Devuelve None si no hay titular o el NIF no está informado — heurística
+    sin dato, no False (que afirmaría persona física).
+    """
+    expediente = ctx.expediente
+    if expediente is None or expediente.titular is None:
+        return None
+    return _es_persona_juridica(expediente.titular.nif)
+
+
+@variable('solicitud_por_representante')
+def _(ctx) -> bool:
+    """
+    True si quien presenta la solicitud es el propio titular actuando a través
+    de persona con poder (PODER_REPRESENTACION), es decir: el solicitante de la
+    solicitud es el titular actual del expediente y éste es persona jurídica.
+
+    Compara siempre contra el titular ACTUAL (Expediente.titular_id), nunca
+    contra el histórico: HistoricoTitularExpediente sirve para reconstrucción
+    retrospectiva de fases/trámites/tareas ya cerradas antes de un cambio de
+    titularidad, no para la evaluación viva del motor de reglas.
+
+    No cubre el caso de un tercero autorizado actuando por el titular
+    (AUTORIZACION_TRAMITAR, #408 — tipo documental distinto, sin catalogar).
+    """
+    solicitud = ctx.solicitud
+    expediente = ctx.expediente
+    if solicitud is None or expediente is None or expediente.titular is None:
+        return False
+    if solicitud.entidad_id != expediente.titular_id:
+        return False
+    return bool(_es_persona_juridica(expediente.titular.nif))
+
+
+# ---------------------------------------------------------------------------
 # Variables ANALISIS_SOLICITUD (#455)
 # ---------------------------------------------------------------------------
 
