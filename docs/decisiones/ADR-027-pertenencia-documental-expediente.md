@@ -52,7 +52,8 @@ El vínculo es necesario pero **no suficiente**: hay un caso vinculado que no es
 ### 3. `integra_expediente` es propiedad del TIPO, no del documento ni de la fecha
 
 - Flag nuevo: `integra_expediente BOOLEAN NOT NULL DEFAULT true` en `tipos_documentos`.
-- **Único `false` hoy: `DIAGNOSTICO`** — juicio de valor del instructor (favorable/condicionado/desfavorable, ADR-005), excluido por el 70.4. Está **vinculado** (producido de ANALIZAR) y permanece en el pool porque ELABORAR lo consume, pero **no viaja** al expediente de remisión.
+- **`false` hoy: `DIAGNOSTICO`** — juicio de valor del instructor (favorable/condicionado/desfavorable, ADR-005), excluido por el 70.4. Está **vinculado** (producido de ANALIZAR) y permanece en el pool porque ELABORAR lo consume, pero **no viaja** al expediente de remisión.
+- **Candidato a `false`: `CONDICIONADO_OFICIO`** (#777) — documento de trabajo interno del tramitador cuando el titular no responde a un condicionado en AAC (ADR-011 §2-3). A diferencia de `DIAGNOSTICO`, ni siquiera cumple el requisito 1: no está vinculado a ninguna tarea vía `DocumentoTarea`, solo referenciado por FK directo desde `organismos_expediente.condicionados_doc_id`. Su contenido se traslada como texto a `resoluciones.condicionado` ([contexto_resolucion.py](app/services/context_builders/contexto_resolucion.py)) — el CB nunca lo consume como documento. Ya quedaría fuera por el requisito 1 sin tocar el flag; se anota aquí para que la exclusión conste explícita y no dependa de la ausencia de vínculo como efecto colateral.
 - La **excepción del 70.4** (informes preceptivos y facultativos solicitados) **entra**: `INFORME_114_RD1955`, `INFORME_COMPATIBILIDAD_AMBIENTAL`, `DOC_DICTAMEN_AMBIENTAL`, `DOC_INFORME_VINCULANTE`, etc., son `integra_expediente = true`. La ley misma separa el juicio de valor interno (fuera) del informe solicitado a otro órgano (dentro).
 
 ### 4. `fecha_administrativa` no decide pertenencia
@@ -79,9 +80,9 @@ De 1–4 se deduce una operación: `documentos_del_expediente(expediente_id)` = 
 Resumen; detalle y checklist en **#572**.
 
 1. **Migración**: `integra_expediente BOOLEAN NOT NULL DEFAULT true` en `tipos_documentos`.
-2. **Seed**: `DIAGNOSTICO = false`; resto `true`.
+2. **Seed**: `DIAGNOSTICO = false`, `CONDICIONADO_OFICIO = false` (#777); resto `true`.
 3. **Consulta** `documentos_del_expediente(expediente_id)`: join `DocumentoTarea` (existencia de vínculo) + `TipoDocumento.integra_expediente`.
-4. **Tests**: incluye/excluye DIAGNOSTICO; huérfano = sin vínculo; certificado interno = dentro.
+4. **Tests**: incluye/excluye DIAGNOSTICO y CONDICIONADO_OFICIO; huérfano = sin vínculo; certificado interno = dentro.
 
 ---
 
