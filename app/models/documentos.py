@@ -142,9 +142,9 @@ class Documento(db.Model):
     )
     
     tipo_contenido = db.Column(
-        db.String(50),
+        db.Text,
         nullable=True,
-        comment='Tipo MIME del archivo (ej: application/pdf)'
+        comment='Tipo MIME del archivo (ej: application/pdf; algunos MIME modernos como .docx superan 50 caracteres, #804)'
     )
 
     fecha_administrativa = db.Column(
