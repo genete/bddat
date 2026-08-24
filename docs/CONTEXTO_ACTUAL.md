@@ -8,9 +8,9 @@
 
 ---
 
-**Hecho:** **#698** (PR #811) — `componer_nombre_documento` producía nombres con `ANY` en todo documento generado desde `ELABORAR` (`nombre_en_plantilla` NULL en 0/30 trámites, 8/9 fases). Nuevo servicio `nombres_documentos.py::texto_tramite()` como helper de combinación sobre el dato de catálogo (ajuste de numeración de vuelta / sustitución por acto administrativo / fallback a código crudo, nunca `ANY`). Poblado solo `REQUERIMIENTO_SUBSANACION` y `ELABORACION`; el resto queda para el issue de seguimiento #809. Ninguna columna se elimina.
+**Hecho:** **#367** (PR #812) — la Despensa (editor de tarea) solo permitía vincular documentos ya presentes en el pool, sin forma de subir uno nuevo sin salir de la tarea. Nuevo subcomponente `SubidaInline` reutiliza el endpoint de subida existente (ADR-032/#666) y dejar el documento en staging (nunca vincula directamente); servicio `sugerencia_documento.py` (gemelo inverso de `tareas_candidatas`, ADR-038 §4) pre-rellena tipo/asunto solo ante coincidencia exacta y no ambigua. Todo lo demás que #367 pedía (presión sin bloqueo, vinculación rápida) ya lo resolvió ADR-038.
 
-**Próximo: #367** — asociar documento a tarea en el momento de la subida; el pool es la entrada del `ANALISIS_DOCUMENTAL`. Diseño ya cerrado (sesión 2026-08-24: formulario de subida inline en la Despensa, reutiliza el endpoint de subida existente y el staging de ADR-038). Implementación en curso en la misma sesión que #780 y #698 (excepción puntual acordada con Carlos a la regla de una conversación por issue).
+**Próximo:** sin confirmar — los tres issues acordados con Carlos para esta sesión (#780, #698, #367) están cerrados. Pendiente de que Carlos indique si se retoma la cola por criticidad (siguiente candidato: #781) u otro foco.
 
 Cola por criticidad, no por tamaño:
 
