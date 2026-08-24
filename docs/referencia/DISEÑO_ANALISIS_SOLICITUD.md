@@ -1,7 +1,7 @@
 # Diseño: Fase ANÁLISIS_SOLICITUD y utilidades de redacción
 
 **Fecha:** 21/03/2026
-**Estado:** Decisiones tomadas — pendiente implementación
+**Estado:** Implementado — decisiones originales llevadas a código; ver anotaciones "Implementado en #XXX" por sección (última revisión de vigencia: 24/08/2026)
 
 ---
 
@@ -62,7 +62,7 @@ El documento producido por ANALIZAR es el resultado formal del análisis. Su con
 
 Los dos trámites son mutuamente excluyentes: no tiene sentido comunicar el inicio de un procedimiento con defectos pendientes, ni emitir un requerimiento cuando no hay nada que subsanar.
 
-> **A ESTUDIAR — tabla `documentos_analizar`:** para que el motor pueda leer el resultado del ANALIZAR (con/sin defectos) se necesita un mecanismo estructurado, análogo a `documentos_proyecto`. Una tabla `documentos_analizar` extendería el documento producido con al menos un campo `tiene_defectos` (boolean), que sería el semáforo que el motor consulta. Pendiente de diseño propio.
+> **Resuelto en #442** (nota original de marzo/2026, ya no "a estudiar"): el mecanismo estructurado es el modelo `Diagnostico` (`app/models/diagnosticos.py`) — un registro por documento de tipo `DIAGNOSTICO` con `resultado` (favorable/condicionado/desfavorable) y `diagnostico_tiene_defectos` derivado, el semáforo que consulta el motor. No hizo falta la tabla `documentos_analizar` que aquí se anticipaba.
 
 ### Trámite: `REQUERIMIENTO_SUBSANACIÓN`
 
@@ -76,13 +76,17 @@ Tras ESPERAR_PLAZO, el titular aporta la documentación subsanada. El documento 
 
 > El técnico dispone en la tarea ANALIZAR del selector de requerimientos tipo (ver sección 6) para redactar los defectos detectados. El documento producido por ANALIZAR es el que alimenta el ELABORAR posterior.
 
-### Trámite: `COMUNICACIÓN_INICIO`
+### Trámite: `COMUNICACIÓN_INICIO_ADMISION` (renombrado en #776)
 
-Si no hay defectos, se comunica al titular el número de expediente e inicio del procedimiento.
+Si no hay defectos, se comunica al titular el inicio y la admisión a trámite de la solicitud.
 
 **Tareas:** `ELABORAR → NOTIFICAR`
 
-Opcional según política organizativa.
+**No es opcional** (esta sección lo anotaba así por error, corregido en #776): el art. 21.4 LPACAP exige informar al interesado, dentro de los 10 días siguientes a la recepción de la solicitud, del plazo máximo de resolución y del sentido del silencio administrativo. Lo opcional es el soporte (puede integrarse en otro acto dirigido al interesado), no la información en sí — y en un procedimiento iniciado a solicitud del interesado no hay acuerdo de iniciación de oficio en el que incorporarla, así que esta comunicación es la vía natural.
+
+Para instalaciones renovables con permiso de acceso posterior al 27/12/2013, este escrito cumple además un segundo propósito: acredita el **Hito 1** del RD-ley 23/2020 (art. 1.2 in fine) ante el gestor de la red — su ausencia conlleva caducidad automática del permiso de acceso y ejecución de garantías del promotor (§7 bis).
+
+**Implementado en #776** (Context Builder, plantilla, tipo de documento `OFICIO_INICIO_ADMISION`).
 
 ### Resumen
 
@@ -90,7 +94,7 @@ Opcional según política organizativa.
 |---|---|---|
 | `ANÁLISIS_DOCUMENTAL` | A | ANALIZAR |
 | `REQUERIMIENTO_SUBSANACIÓN` | C+A | ELABORAR → NOTIFICAR → ESPERAR_PLAZO → ANALIZAR |
-| `COMUNICACIÓN_INICIO` | B | ELABORAR → NOTIFICAR |
+| `COMUNICACIÓN_INICIO_ADMISION` | B | ELABORAR → NOTIFICAR |
 
 ---
 
@@ -257,7 +261,7 @@ Se añade el campo `siglas_escritos` en el modelo `Usuario`. Su valor es las sig
 ## 9. Impacto en ESTRUCTURA_FTT.json
 
 - Eliminar fases: `REGISTRO_SOLICITUD`, `ADMISIBILIDAD`, `ANÁLISIS_TÉCNICO`
-- Añadir fase: `ANÁLISIS_SOLICITUD` con trámites `ANÁLISIS_DOCUMENTAL`, `REQUERIMIENTO_SUBSANACIÓN`, `COMUNICACIÓN_INICIO`
+- Añadir fase: `ANÁLISIS_SOLICITUD` con trámites `ANÁLISIS_DOCUMENTAL`, `REQUERIMIENTO_SUBSANACIÓN`, `COMUNICACIÓN_INICIO_ADMISION` (renombrado en #776, ver §3)
 - Eliminar `INCORPORAR` del catálogo de tareas; recepción externa pasa a `ESPERAR_PLAZO` como documento producido (ADR-004)
 - Reemplazar `REDACTAR`+`FIRMAR` por `ELABORAR` en todos los trámites (ADR-003)
 - Versión actual: 6.0
