@@ -8,17 +8,16 @@
 
 ---
 
-**Hecho:** **#777** (PR #808) — `condiciones_requisito` poblada para `ESCRITURAS_SOCIEDAD`, `PODER_REPRESENTACION` y `DR_NO_DUP`; ya no se evaluaban aunque su propia prosa las exigía.
+**Hecho:** **#780** (PR #810) — el permiso de acceso y conexión era condición de admisión a trámite de la AAP renovable pero no se comprobaba en ningún punto. Vía (a) requisito documental condicionado (`tipo_expediente EQ Renovable`) + vía (b) regla de motor `BLOQUEAR CREAR Renovable/AAP/ANY` con variable calculada `tiene_punto_acceso_conexion`. `es_renovable_rdl23`/`fecha_permiso_acceso` quedan pendientes a propósito.
 
-**Próximo: #780** — el permiso de acceso y conexión no se comprueba, aunque es **condición de admisión a trámite** de la AAP renovable: se puede tramitar entera una solicitud inadmisible. Pide decisión de diseño (requisito / regla de motor / inadmisión) antes de código.
+**Próximo: #698** — el `ANY` del nombre sugerido. Verificado más amplio de lo que dice el issue: `nombre_en_plantilla` es NULL en la fase *y en los tres trámites*. Sesión de análisis 2026-08-24 ya cerró el diseño (servicio `nombres_documentos.py` como helper de combinación sobre el dato de catálogo); implementación en curso en la misma sesión que #780 y #367 (excepción puntual acordada con Carlos a la regla de una conversación por issue).
 
 Cola por criticidad, no por tamaño:
 
-1. **#698** — el `ANY` del nombre sugerido. Verificado más amplio de lo que dice el issue: `nombre_en_plantilla` es NULL en la fase *y en los tres trámites*. Carlos tiene ideas que cambian algo el concepto.
-2. **#367** — asociar documento a tarea en el momento de la subida; el pool es la entrada del `ANALISIS_DOCUMENTAL`.
-3. **#781** — la ampliación de 5 días del art. 68.1 no se puede reflejar. Ya **no es latente**: con #778 hecho, el vencimiento de la espera se alcanza de verdad, así que la ampliación que no se puede registrar es un error de cómputo real.
-4. **#782** — cinco filas de `catalogo_plazos` con `norma_origen` en `PLACEHOLDER` pese a que el peinado ya está hecho; incluye resolver si el anuncio cita el art. 125 o el 131. Absorbió de #785 la cita de `SOLICITUD_INFORME` (art. 80.2 vs. tope de suspensión). La discrepancia 2/3 meses que también arrastraba **queda zanjada por #778**: el tope del art. 22.1.d no vive en el cómputo, la parada es el vencimiento del catálogo.
-5. **#783** — `TipoResultadoFase.DESISTIDA` se llama "por el Solicitante" y también cubre el art. 68.1, que no es voluntario. Si desdobla el resultado de fase, alinear el código con `TENER_POR_DESISTIDO` (#779, ya hecho).
+1. **#367** — asociar documento a tarea en el momento de la subida; el pool es la entrada del `ANALISIS_DOCUMENTAL`. Diseño ya cerrado (sesión 2026-08-24), implementación en curso en la misma sesión que #780 y #698.
+2. **#781** — la ampliación de 5 días del art. 68.1 no se puede reflejar. Ya **no es latente**: con #778 hecho, el vencimiento de la espera se alcanza de verdad, así que la ampliación que no se puede registrar es un error de cómputo real.
+3. **#782** — cinco filas de `catalogo_plazos` con `norma_origen` en `PLACEHOLDER` pese a que el peinado ya está hecho; incluye resolver si el anuncio cita el art. 125 o el 131. Absorbió de #785 la cita de `SOLICITUD_INFORME` (art. 80.2 vs. tope de suspensión). La discrepancia 2/3 meses que también arrastraba **queda zanjada por #778**: el tope del art. 22.1.d no vive en el cómputo, la parada es el vencimiento del catálogo.
+4. **#783** — `TipoResultadoFase.DESISTIDA` se llama "por el Solicitante" y también cubre el art. 68.1, que no es voluntario. Si desdobla el resultado de fase, alinear el código con `TENER_POR_DESISTIDO` (#779, ya hecho).
 
 **Nota de sesión (2026-08-15/16):** #784 acotó los problemas de fondo de `catalogo_plazos` y se desglosó en #785 (hecho), #787 (hecho, alcance ampliado a `reglas_motor`), #786 (hecho), #788 (hecho) y #789 (hecho). #778 cerró la serie el 2026-08-21: la razón para diferirlo —no escribir datos de catálogo antes de fijar el tope— desapareció al descubrirse que el tope no era un dato que añadir sino uno que el catálogo ya tenía y que el cálculo no leía.
 
