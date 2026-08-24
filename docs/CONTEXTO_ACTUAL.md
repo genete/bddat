@@ -8,9 +8,11 @@
 
 ---
 
-**Hecho:** **#367** (PR #812) — la Despensa (editor de tarea) solo permitía vincular documentos ya presentes en el pool, sin forma de subir uno nuevo sin salir de la tarea. Nuevo subcomponente `SubidaInline` reutiliza el endpoint de subida existente (ADR-032/#666) y dejar el documento en staging (nunca vincula directamente); servicio `sugerencia_documento.py` (gemelo inverso de `tareas_candidatas`, ADR-038 §4) pre-rellena tipo/asunto solo ante coincidencia exacta y no ambigua. Todo lo demás que #367 pedía (presión sin bloqueo, vinculación rápida) ya lo resolvió ADR-038.
+**Hecho:** dos cierres de mantenimiento sin issue propio, detectados al repasar #780:
+- `DISEÑO_ANALISIS_SOLICITUD.md` sincronizado con la implementación real (commit `adcb457`): trámite `COMUNICACIÓN_INICIO_ADMISION` (renombrado en #776, la sección seguía con el nombre y la calificación de "opcional" anteriores), nota "A ESTUDIAR — tabla `documentos_analizar`" marcada resuelta por #442 (modelo `Diagnostico`), cabecera actualizada de "pendiente implementación" a reflejar el estado real.
+- 4 tests con fallo persistente corregidos (PR #813, Refs #776): `test_725_tipos_creables_sin_motor.py` esperaba el código de trámite anterior al renombrado de #776; los 3 smoke de `catalogo_plazos` (alta a nivel TAREA) usaban `TipoTarea.query.first()` como comodín y colisionaban con el plazo real de NOTIFICAR (art. 40 LPACAP) que #776 sembró — mismo fix que ya tenía el nivel SOLICITUD (`_datos_maestros_tarea`, análogo a `_datos_maestros_solicitud`). Suite completa: 1447 passed, 0 failed, 36 skipped.
 
-**Próximo:** sin confirmar — los tres issues acordados con Carlos para esta sesión (#780, #698, #367) están cerrados. Pendiente de que Carlos indique si se retoma la cola por criticidad (siguiente candidato: #781) u otro foco.
+**Próximo:** (vacío — a decidir)
 
 Cola por criticidad, no por tamaño:
 
