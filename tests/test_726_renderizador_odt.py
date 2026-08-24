@@ -422,8 +422,11 @@ class TestEleccionDeMotor:
 
     def test_nombre_hereda_la_extension_de_la_plantilla(self):
         tarea = MagicMock()
-        tarea.tipo_tarea.nombre_en_plantilla = 'RESOLUCION'
-        tarea.tramite = None
+        tarea.tramite.tipo_tramite.codigo = 'ANUNCIO_BOP'
+        tarea.tramite.tipo_tramite.nombre_en_plantilla = None  # sin poblar: cae al fallback
+        tarea.tramite.fase.tipo_fase.codigo = 'INFORMACION_PUBLICA'
+        tarea.tramite.fase.solicitud.tipo_solicitud.nombre_en_plantilla = 'AAP'
+        tarea.tramite.fase.solicitud.expediente.numero_at = '99999-24'
 
         nombre_odt = componer_nombre_documento(tarea, self._plantilla('escritos/r.odt'))
         nombre_docx = componer_nombre_documento(tarea, self._plantilla('escritos/r.docx'))
