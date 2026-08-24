@@ -247,3 +247,28 @@ export function postEscritosGenerarConfirmar(plantillaId, tareaId, nombreFichero
     decision,
   })
 }
+
+// Subida inline desde la Despensa (#367): reutiliza el mismo endpoint multipart
+// del pool (ADR-032/#666, app/modules/expedientes/routes.py:pool_subir_documento).
+// Un solo fichero — la Despensa solo hace staging de un doc pendiente a la vez.
+// Nota de URL: apunta a /expedientes/... (blueprint `expedientes`, no /api) —
+// misma ruta que ya usa pool_documentos.html; no se corrige aquí (fuera de
+// alcance de #367 tocar la URL de un endpoint con otro consumidor).
+export function subirDocumentoPool(expedienteId, fichero, metadatos) {
+  const formData = new FormData()
+  formData.append('ficheros', fichero)
+  formData.append('metadatos', JSON.stringify([metadatos]))
+  return api.post(`/expedientes/${expedienteId}/documentos/subir`, formData)
+}
+
+// Sugerencia de tipo_doc_id/asunto para el formulario de subida inline (#367).
+// Respuesta: {tipo_doc_id, asunto} | {tipo_doc_id:null, asunto:null} si no hay
+// coincidencia exacta y no ambigua en el catálogo.
+export function getSugerenciaDocumento(expedienteId, tareaId) {
+  return api.get(`/api/expedientes/${expedienteId}/nodo/tarea/${tareaId}/sugerencia_documento`)
+}
+
+// Catálogo de tipos de documento para el <select> del formulario de subida (#367).
+export function getTiposDocumento() {
+  return api.get('/api/tipos-documento?limit=100')
+}

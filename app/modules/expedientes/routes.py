@@ -671,6 +671,7 @@ def pool_subir_documento(id):
     directorio = ruta_pool_documento(expediente)
 
     creados = 0
+    creados_docs = []
     try:
         for i, fichero in enumerate(ficheros):
             if not fichero.filename:
@@ -710,6 +711,7 @@ def pool_subir_documento(id):
             )
             db.session.add(doc)
             creados += 1
+            creados_docs.append(doc)
 
         db.session.commit()
     except OSError as e:
@@ -722,7 +724,20 @@ def pool_subir_documento(id):
         db.session.rollback()
         return jsonify({'ok': False, 'error': str(e)}), 500
 
-    return jsonify({'ok': True, 'creados': creados})
+    return jsonify({
+        'ok': True,
+        'creados': creados,
+        'documentos': [
+            {
+                'id':              d.id,
+                'nombre':          (d.url or '').replace('\\', '/').rsplit('/', 1)[-1],
+                'tipo_doc':        d.tipo_doc.nombre if d.tipo_doc else None,
+                'tipo_doc_codigo': d.tipo_doc.codigo if d.tipo_doc else None,
+                'fecha':           d.fecha_administrativa.isoformat() if d.fecha_administrativa else None,
+            }
+            for d in creados_docs
+        ],
+    })
 
 
 @bp.route('/<int:id>/documentos/parsear_justificante', methods=['POST'])
