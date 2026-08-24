@@ -55,6 +55,7 @@ import os
 import re
 
 from app.services.escritos import construir_contexto
+from app.services.nombres_documentos import texto_tramite
 
 logger = logging.getLogger(__name__)
 
@@ -131,9 +132,15 @@ def componer_nombre_documento(tarea, plantilla) -> str:
     """
     Genera un nombre sistematizado para el documento a partir de la cadena ESFTT.
 
-    Recorre tarea → tipo_tarea → tramite → tipo_tramite → fase → tipo_fase
-    → solicitud → tipo_solicitud → expediente, tomando nombre_en_plantilla
-    de cada nivel. NULL al final se omite; NULL en medio se reemplaza por "ANY".
+    Cadena: {texto del trámite} {siglas de la solicitud} AT-{numero_at}
+    [V {variante}].{extensión}
+
+    El texto del trámite lo calcula nombres_documentos.texto_tramite() —
+    lógica condicional por trámite (numeración de vueltas repetidas, ramas
+    por tipo de expediente), no un dato de catálogo estático (#698). No hay
+    token de tarea (siempre ELABORAR, único punto de entrada a la
+    generación de escritos — no aporta nada) ni de tipo de expediente (dato
+    inmutable ya implícito en AT-N).
 
     Si plantilla.variante existe, se añade " V {variante}" al final.
     La extensión es la de la plantilla (.docx o .odt), no una fija: el escrito
@@ -145,20 +152,17 @@ def componer_nombre_documento(tarea, plantilla) -> str:
     solicitud = fase.solicitud if fase else None
     expediente = solicitud.expediente if solicitud else None
 
-    # Recoger nombre_en_plantilla de cada nivel (de más genérico a más específico)
-    partes_raw = [
-        getattr(tarea.tipo_tarea, 'nombre_en_plantilla', None) if tarea.tipo_tarea else None,
-        getattr(tramite.tipo_tramite, 'nombre_en_plantilla', None) if tramite and tramite.tipo_tramite else None,
-        getattr(fase.tipo_fase, 'nombre_en_plantilla', None) if fase and fase.tipo_fase else None,
-        getattr(solicitud.tipo_solicitud, 'nombre_en_plantilla', None) if solicitud and solicitud.tipo_solicitud else None,
-        f'AT-{expediente.numero_at}' if expediente and expediente.numero_at else None,
-    ]
+    partes = []
 
-    # Recortar NULLs del final; reemplazar NULLs internos por "ANY"
-    while partes_raw and partes_raw[-1] is None:
-        partes_raw.pop()
+    if tramite:
+        partes.append(texto_tramite(tramite))
 
-    partes = [p if p is not None else 'ANY' for p in partes_raw]
+    if solicitud and solicitud.tipo_solicitud:
+        ts = solicitud.tipo_solicitud
+        partes.append(ts.nombre_en_plantilla or ts.siglas)
+
+    if expediente and expediente.numero_at:
+        partes.append(f'AT-{expediente.numero_at}')
 
     nombre = ' '.join(partes)
 
