@@ -124,6 +124,35 @@ def _datos_maestros_solicitud(app):
         return tipo.siglas, efecto.id
 
 
+def _datos_maestros_tarea(app):
+    """Código de tipo de tarea SIN entrada activa a nivel TAREA, más un efecto.
+
+    Mismo motivo que `_datos_maestros_solicitud`: `.first()` a secas picaba con
+    NOTIFICAR en cuanto #776 (2026-08-22) sembró su plazo genérico del art. 40
+    LPACAP (`ANY/ANY/ANY/ANY/NOTIFICAR`) — el alta chocaba contra la validación
+    de duplicado ciego de #786. Se elige un código libre, igual que ya hacía el
+    caso de nivel solicitud.
+    """
+    with app.app_context():
+        from app.models.catalogo_plazos import CatalogoPlazo
+        from app.models.tipos_tareas import TipoTarea
+        from app.models.efectos_plazo import EfectoPlazo
+        caminos_ocupados = {
+            camino for (camino,) in CatalogoPlazo.query
+            .filter_by(tipo_elemento='TAREA', activo=True)
+            .with_entities(CatalogoPlazo.camino).all()
+        }
+        tipo_tarea = next(
+            (t for t in TipoTarea.query.order_by(TipoTarea.id).all()
+             if f'ANY/ANY/ANY/ANY/{t.codigo}' not in caminos_ocupados),
+            None,
+        )
+        efecto = EfectoPlazo.query.first()
+        if tipo_tarea is None or efecto is None:
+            pytest.skip('Faltan datos maestros (tipos_tareas / efectos_plazo) en esta BD')
+        return tipo_tarea.codigo, efecto.id
+
+
 def test_supervisor_puede_crear_nivel_solicitud(usuario_supervisor, app):
     siglas, efecto_id = _datos_maestros_solicitud(app)
     r = usuario_supervisor.post('/catalogo_plazos/crear', data={
@@ -148,14 +177,7 @@ def test_supervisor_puede_crear_nivel_solicitud(usuario_supervisor, app):
 
 
 def test_supervisor_puede_crear_nivel_tarea(usuario_supervisor, app):
-    with app.app_context():
-        from app.models.tipos_tareas import TipoTarea
-        from app.models.efectos_plazo import EfectoPlazo
-        tipo_tarea = TipoTarea.query.first()
-        efecto = EfectoPlazo.query.first()
-        if tipo_tarea is None or efecto is None:
-            pytest.skip('Faltan datos maestros (tipos_tareas / efectos_plazo) en esta BD')
-        codigo_tarea, efecto_id = tipo_tarea.codigo, efecto.id
+    codigo_tarea, efecto_id = _datos_maestros_tarea(app)
 
     r = usuario_supervisor.post('/catalogo_plazos/crear', data={
         'tipo_elemento': 'TAREA',
@@ -180,14 +202,7 @@ def test_supervisor_puede_crear_nivel_tarea(usuario_supervisor, app):
 def test_supervisor_puede_crear_tarea_suspensora_con_cumplimiento(usuario_supervisor, app):
     """#778: los dos datos nuevos del catálogo viajan en el mismo formulario —
     con qué documento se cierra el plazo y si suspende el de la solicitud."""
-    with app.app_context():
-        from app.models.tipos_tareas import TipoTarea
-        from app.models.efectos_plazo import EfectoPlazo
-        tipo_tarea = TipoTarea.query.first()
-        efecto = EfectoPlazo.query.first()
-        if tipo_tarea is None or efecto is None:
-            pytest.skip('Faltan datos maestros (tipos_tareas / efectos_plazo) en esta BD')
-        codigo_tarea, efecto_id = tipo_tarea.codigo, efecto.id
+    codigo_tarea, efecto_id = _datos_maestros_tarea(app)
 
     r = usuario_supervisor.post('/catalogo_plazos/crear', data={
         'tipo_elemento': 'TAREA',
@@ -214,14 +229,7 @@ def test_supervisor_puede_crear_tarea_suspensora_con_cumplimiento(usuario_superv
 def test_crear_tarea_sin_cumplimiento_lo_deja_vacio(usuario_supervisor, app):
     """El caso del tablón (#416): sin señalador el plazo no alcanza CUMPLIDO, y
     eso es una decisión, no un formulario a medio rellenar."""
-    with app.app_context():
-        from app.models.tipos_tareas import TipoTarea
-        from app.models.efectos_plazo import EfectoPlazo
-        tipo_tarea = TipoTarea.query.first()
-        efecto = EfectoPlazo.query.first()
-        if tipo_tarea is None or efecto is None:
-            pytest.skip('Faltan datos maestros (tipos_tareas / efectos_plazo) en esta BD')
-        codigo_tarea, efecto_id = tipo_tarea.codigo, efecto.id
+    codigo_tarea, efecto_id = _datos_maestros_tarea(app)
 
     r = usuario_supervisor.post('/catalogo_plazos/crear', data={
         'tipo_elemento': 'TAREA',
