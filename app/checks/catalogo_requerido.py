@@ -52,7 +52,9 @@ REGISTROS_REQUERIDOS: dict = {
     'TipoResultadoFase': ['DESFAVORABLE', 'FAVORABLE', 'FAVORABLE_CONDICIONADO'],
     'TipoDocumento': ['CERT_FIN_INSTRUCCION', 'CERT_PLAZO_CUMPLIDO', 'BORRADOR_FIRMA', 'CERT_FIN_IP_CONSULTAS',
                       # #582 — consumido por la variable de motor tasa_impagada; lo puebla #408
-                      'JUSTIFICANTE_PAGO_TASA'],
+                      'JUSTIFICANTE_PAGO_TASA',
+                      # #780 — consumido por la variable de motor tiene_punto_acceso_conexion
+                      'PERMISO_ACCESO_CONEXION'],
     # Rol usa 'nombre' como identificador estable — anclado en PERMISOS (app/utils/permisos.py)
     'Rol': ['ADMIN', 'SUPERVISOR', 'TRAMITADOR', 'ADMINISTRATIVO'],
 }

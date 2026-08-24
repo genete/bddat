@@ -326,6 +326,65 @@ def _(ctx) -> bool:
     return len(cubiertos) < len(ids_requisito)
 
 
+@variable('tiene_punto_acceso_conexion')
+def _(ctx) -> bool:
+    """
+    True si el requisito documental del permiso de acceso y conexión
+    (RequisitoDocumental cuyo TipoDocumento tiene
+    codigo='PERMISO_ACCESO_CONEXION') está cubierto en documentos_requisito
+    para la solicitud en contexto (#780, RD-ley 23/2020 art. 1 — condición
+    de admisión a trámite de la AAP para instalaciones renovables).
+
+    Mismo patrón que tasa_impagada (#582), con dos diferencias:
+
+    - Polaridad positiva: True = cubierto (coincide con el nombre de la
+      variable tal y como consta en DISEÑO_CONTEXT_ASSEMBLER.md, publicado
+      antes de esta implementación).
+    - Degradación segura: sin RequisitoDocumental activo con ese código
+      (catálogo aún no poblado) devuelve True, no False — lo contrario
+      bloquearía todo expediente renovable en cuanto la regla de motor de
+      #780 esté activa, antes de que exista el requisito que la resuelve.
+      Mismo criterio de app/services/requisitos.py::evaluar_requisitos
+      (#347): degradar siempre hacia "no bloquear".
+
+    No evalúa condiciones_requisito de la fila (a diferencia del checklist
+    completo de app/services/requisitos.py) — igual que tasa_impagada,
+    cuenta como obligatorio cualquier RequisitoDocumental activo de este
+    tipo. La condición tipo_expediente='Renovable' sembrada en #780 ya
+    limita en qué expedientes existe la fila a evaluar aquí; combinarla de
+    nuevo en esta función sería redundante.
+    """
+    from app.models.requisitos_documentales import RequisitoDocumental, DocumentoRequisito
+    from app.models.tipos_documentos import TipoDocumento
+
+    solicitud = ctx.solicitud
+    if solicitud is None:
+        return True
+
+    requisitos_permiso = (
+        RequisitoDocumental.query
+        .join(TipoDocumento)
+        .filter(TipoDocumento.codigo == 'PERMISO_ACCESO_CONEXION',
+                RequisitoDocumental.activo.is_(True))
+        .all()
+    )
+    if not requisitos_permiso:
+        log.warning(
+            'tiene_punto_acceso_conexion: no existe RequisitoDocumental activo '
+            "con tipo_documento.codigo='PERMISO_ACCESO_CONEXION' — catálogo aún "
+            'no poblado (#780)'
+        )
+        return True
+
+    ids_requisito = {r.id for r in requisitos_permiso}
+    cubiertos = {
+        dr.requisito_id
+        for dr in DocumentoRequisito.query.filter_by(solicitud_id=solicitud.id).all()
+        if dr.requisito_id in ids_requisito
+    }
+    return len(cubiertos) == len(ids_requisito)
+
+
 # ---------------------------------------------------------------------------
 # Variables CONSULTAS (#460)
 # ---------------------------------------------------------------------------
