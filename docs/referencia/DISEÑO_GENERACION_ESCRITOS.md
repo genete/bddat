@@ -50,45 +50,79 @@
 
 ---
 
-## Nomenclatura de ficheros (Cabo 3 cerrado)
-
-### Nombre de plantilla (sistema lo construye, supervisor lo acepta o ajusta)
+## Nomenclatura de ficheros (Cabo 3 — rediseñado en #698, 2026-08-24)
 
 ```
-{tarea} {tramite} {fase} {solicitud} {expediente} [V {variante}].docx
+{texto_tramite} {siglas_solicitud} AT-{numero_at} [V {variante}].{ext}
 ```
 
-Requiere campo `nombre_en_plantilla` en las 5 tablas tipo_ (tipos_tareas, tipos_tramites,
-tipos_fases, tipos_solicitudes, tipos_expedientes).
+`texto_tramite` sale de `tipos_tramites.nombre_en_plantilla` — dato de
+catálogo, editable por el supervisor en tablas_maestras (#171), igual que
+siempre. `app/services/nombres_documentos.py::texto_tramite()` es el helper
+que lo combina con lo que un campo de texto no puede expresar por sí solo:
 
-**Reglas para NULLs (comodines):**
-- NULL al final de la cadena → se omite
-- NULL en medio de dos valores reales → se sustituye por `ANY`
+- **Ajuste** (combina con el dato base): trámites repetibles en la misma
+  fase añaden numeración de vuelta sobre el texto de catálogo —
+  `REQUERIMIENTO_SUBSANACION`: "Requerimiento", "Requerimiento 2"...
+- **Sustitución** (el dato de catálogo no basta): cuando hay más de un
+  resultado posible y la diferencia no es de wording sino de qué acto
+  administrativo es el documento, el texto sale por código a propósito —
+  `COMUNICACION_INICIO_ADMISION`: "Admisión a Trámite" si el expediente es
+  Renovable (Hito 1, RD-ley 23/2020 art. 1.2 in fine), "Oficio Inicio" en
+  cualquier otro caso.
+- **Fallback**: trámite sin `nombre_en_plantilla` poblado y sin ajuste ni
+  sustitución registrados → código crudo del trámite tal cual. Nunca
+  bloquea la generación — el nombre del fichero no implica nada
+  administrativamente ni presupone su contenido, es solo ayuda semántica
+  para cuando el documento circula fuera de BDDAT (la trazabilidad real va
+  por el código embebido `BDDAT-<tarea_id>-<letra>`, #182 — ver
+  §"Trazabilidad — códigos embebidos" más abajo).
 
-### Nombre de documento generado
+Registro de ajustes/sustituciones por el par **(fase, trámite)**, nunca solo
+por código de trámite: hay códigos reutilizados como vocabulario en más de
+una fase (`fases_tramites`, ADR-037/#725) — p.ej. `ELABORACION` en
+`RESOLUCION` y en `RECONOCIMIENTO_INTERESADO`. `tipos_tramites` tiene una
+fila por código, no por (fase, código): el dato de catálogo de un trámite
+compartido es el mismo en las dos fases. Para `RESOLUCION.ELABORACION`
+(única implementada en #698) no hay colisión real porque
+`RECONOCIMIENTO_INTERESADO.ELABORACION` no está implementado — cuando se
+aborde (issue de seguimiento #809), hay que decidir ahí cómo desambiguar.
 
-Los niveles que eran NULL/ANY en la plantilla se rellenan con datos reales del expediente.
+**Sin token de tarea:** la generación de escritos solo ocurre desde tareas
+`ELABORAR` (único punto de entrada, #608) — un token constante no distingue
+nada. **Sin token de tipo de expediente:** es un dato inmutable del
+expediente, ya implícito en `AT-N`. **Sin token de fase independiente:** la
+fase interviene como parte de la clave de registro de ajustes/sustituciones,
+no como token propio del nombre. Las columnas `nombre_en_plantilla` de
+`tipos_tareas`, `tipos_expedientes` y `tipos_fases` quedan sin consumidor de
+código con este diseño, pero **no se eliminan** — se dejan tal cual por si
+en el futuro hacen falta (p.ej. desambiguar por fase un trámite compartido
+entre dos fases, u otro uso no previsto).
 
-**Ejemplos:**
+**Casuísticas pobladas (#698):** `REQUERIMIENTO_SUBSANACION`,
+`COMUNICACION_INICIO_ADMISION`, `RESOLUCION.ELABORACION`. El resto de
+trámites cae al fallback de código crudo mientras
+`tipos_tramites.nombre_en_plantilla` siga sin poblar — se van completando
+incrementalmente (issue de seguimiento #809, "poblado en código del
+servicio del nombre del fichero": añadir el dato en catálogo y, solo si el
+trámite concreto lo necesita, un ajuste o sustitución).
 
-| Plantilla | Documento generado |
-|---|---|
-| `Redactar Elaboracion Resolucion V Favorable.docx` | `Redactar Elaboracion Resolucion AAP+AAC AT-13465-24 V Favorable.docx` |
-| `Redactar Requerimiento subsanacion.docx` | `Redactar Requerimiento subsanacion AAP+AAC AT-13465-24.docx` |
-| `Notificar Traslado condicionados Consultas ANY Transporte.docx` | `Notificar Traslado condicionados Consultas AAP+AAC+DUP AT-13465-24.docx` |
+**Extensión:** la de su plantilla — `.odt` o `.docx` (#726). El escrito
+generado conserva el formato del que se generó.
 
-**TODO:** Secuencial automático (sufijo ` (2)`, ` (3)`...) cuando ya existe un documento
-con el mismo nombre para el mismo expediente.
+**Almacenamiento:** El contexto ESFTT vive en BD, no en el filesystem, y la
+convención de nombres evita colisiones sin necesidad de subdirectorios. Aun
+así el explorador del alta permite navegar carpetas bajo
+`PLANTILLAS_BASE/plantillas/` y `ruta_plantilla` guarda la subruta completa:
+las plantillas de desarrollo viven en `escritos/`.
 
-**Extensión:** la de su plantilla — `.odt` o `.docx` (#726). El escrito generado conserva
-el formato del que se generó.
+**TODO:** Secuencial automático (sufijo ` (2)`, ` (3)`...) cuando ya existe
+un documento con el mismo nombre para el mismo expediente.
 
-**Almacenamiento:** El contexto ESFTT vive en BD, no en el filesystem, y la convención de
-nombres evita colisiones sin necesidad de subdirectorios. Aun así el explorador del alta
-permite navegar carpetas bajo `PLANTILLAS_BASE/plantillas/` y `ruta_plantilla` guarda la
-subruta completa: las plantillas de desarrollo viven en `escritos/`.
-
-**Implementación:** Issue #167 Fase 3 (`nombre_en_plantilla` × 5 tablas).
+**Implementación:** Issue #698 (`app/services/nombres_documentos.py`).
+Reemplaza el diseño original de Issue #167 Fase 3 (comodines `ANY` sobre
+5 tablas), descartado por no soportar lógica condicional cuando el dato de
+catálogo no basta.
 
 ---
 
