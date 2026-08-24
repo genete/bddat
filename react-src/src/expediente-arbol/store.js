@@ -7,7 +7,7 @@
 // S3b-1: modoEdicion + lock + editor genérico (entrar/guardar/cancelar + refresco).
 // S3b añadirá: despensa, colapsos manuales por nivel.
 import { create } from 'zustand'
-import { getArbol, getNodo, getEditable, patchNodo, getTiposCreables, postHijo, getPool, deleteNodo, guardarNotas, postReabrirFase } from './api.js'
+import { getArbol, getNodo, getEditable, patchNodo, getTiposCreables, postHijo, getPool, deleteNodo, guardarNotas, postReabrirFase, subirDocumentoPool, getSugerenciaDocumento } from './api.js'
 import { showToast } from '../shared/ui/toast.js'
 
 // AbortController de la petición de detalle en curso (fuera del estado: no re-render).
@@ -69,6 +69,8 @@ export const useArbolStore = create((set, get) => ({
   vinculando: false,
   docPendienteIdDesdeUrl: null,   // id leído de ?doc_pendiente=<id> (#630, ADR-038 §5) — se
                                    // consume una sola vez en cargarPool() y se limpia ahí
+  sugerenciaSubida: null,         // {tipo_doc_id, asunto} | null — cargada al entrar en modo tarea (#367)
+  subiendoDocumento: false,       // subida inline desde la Despensa (#367)
 
   // --- borrar (S3b-4) ---
   borrarPendienteConfirm: false, // true = inspector muestra bloque de consecuencias + "Borrar definitivamente"
@@ -499,6 +501,43 @@ export const useArbolStore = create((set, get) => ({
   },
 
   setDocPendienteIdDesdeUrl: (id) => set({ docPendienteIdDesdeUrl: id }),
+
+  // Sugerencia de tipo_doc_id/asunto para el formulario de subida inline (#367).
+  // Se dispara desde el mismo useEffect que cargarPool() con [seleccion?.id] como
+  // dependencia, para no arrastrar la sugerencia de la tarea anterior al cambiar
+  // de tarea sin recargar la página.
+  cargarSugerenciaSubida: async (tareaId) => {
+    if (!tareaId) return
+    try {
+      const data = await getSugerenciaDocumento(get().expedienteId, tareaId)
+      set({ sugerenciaSubida: data })
+    } catch {
+      set({ sugerenciaSubida: null })   // fallo silencioso: el formulario sigue usable en blanco
+    }
+  },
+
+  // Sube un fichero nuevo desde la Despensa y lo deja en staging (#367, decisión
+  // de diseño: mismo patrón que la Vía A del radar de huérfanos — nunca vincula
+  // directamente, el técnico confirma rol y pulsa Guardar).
+  subirDocumentoDespensa: async (fichero, metadatos) => {
+    set({ subiendoDocumento: true })
+    try {
+      const data = await subirDocumentoPool(get().expedienteId, fichero, metadatos)
+      const nuevo = (data.documentos || [])[0]
+      if (nuevo) {
+        set((s) => ({
+          pool: [...s.pool, { id: nuevo.id, nombre: nuevo.nombre, tipo_doc: nuevo.tipo_doc, fecha: nuevo.fecha }],
+        }))
+        get().seleccionarDocVincular({ id: nuevo.id, nombre: nuevo.nombre, tipo_doc: nuevo.tipo_doc, fecha: nuevo.fecha })
+      }
+      return true
+    } catch (e) {
+      showToast((e && e.message) || 'No se pudo subir el fichero', 'danger')
+      return false
+    } finally {
+      set({ subiendoDocumento: false })
+    }
+  },
 
   seleccionarDocVincular: (doc) => set({ docVinculandoPendiente: doc }),
 

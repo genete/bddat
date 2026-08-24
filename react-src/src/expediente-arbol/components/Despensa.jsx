@@ -6,6 +6,7 @@
 import React from 'react'
 import { useArbolStore } from '../store.js'
 import { api } from '../../shared/api.js'
+import { getTiposDocumento } from '../api.js'
 import { showToast } from '../../shared/ui/toast.js'
 import { estaSellado } from '../sellado.js'
 import { FilaTipoCreable, BloqueoForzar } from './TiposCreablesCompartido.jsx'
@@ -275,6 +276,120 @@ function FichaDoc({ doc, vinculado, seleccionada, onClick, expedienteId }) {
   )
 }
 
+// Formulario de subida inline de la Despensa (#367): sube un fichero nuevo
+// directamente desde la tarea, sin salir al pool del expediente. Nunca
+// vincula directamente — deja el documento en la misma zona de staging que
+// ya usa la vía A del radar de huérfanos (ADR-038 §5); el técnico confirma
+// el rol y pulsa Guardar.
+function SubidaInline({ tareaId }) {
+  const subiendoDocumento      = useArbolStore((s) => s.subiendoDocumento)
+  const sugerenciaSubida       = useArbolStore((s) => s.sugerenciaSubida)
+  const subirDocumentoDespensa = useArbolStore((s) => s.subirDocumentoDespensa)
+
+  const [abierto, setAbierto]     = React.useState(false)
+  const [fichero, setFichero]     = React.useState(null)
+  const [tipoDocId, setTipoDocId] = React.useState('')
+  const [asunto, setAsunto]       = React.useState('')
+  const [fecha, setFecha]         = React.useState('')
+  const [prioridad, setPrioridad] = React.useState(false)
+  const [tiposDoc, setTiposDoc]   = React.useState([])
+
+  // Pre-rellena con la sugerencia ya cargada por cargarSugerenciaSubida() al
+  // abrir el formulario — nunca bloqueante, siempre editable.
+  React.useEffect(() => {
+    if (!abierto) return
+    if (sugerenciaSubida?.tipo_doc_id) setTipoDocId(String(sugerenciaSubida.tipo_doc_id))
+    if (sugerenciaSubida?.asunto) setAsunto(sugerenciaSubida.asunto)
+  }, [abierto])  // eslint-disable-line
+
+  React.useEffect(() => {
+    if (!abierto || tiposDoc.length > 0) return
+    getTiposDocumento().then((d) => setTiposDoc(d.data || [])).catch(() => {})
+  }, [abierto])  // eslint-disable-line
+
+  if (!abierto) {
+    return (
+      <button
+        type="button"
+        className="btn btn-sm btn-outline-primary w-100"
+        onClick={() => setAbierto(true)}
+      >
+        <i className="bi bi-upload me-1" /> Subir documento nuevo
+      </button>
+    )
+  }
+
+  const enviar = async () => {
+    if (!fichero) return
+    const ok = await subirDocumentoDespensa(fichero, {
+      tipo_doc_id: tipoDocId || 1,
+      asunto: asunto.trim() || null,
+      fecha_administrativa: fecha || null,
+      prioridad,
+    })
+    if (ok) {
+      setAbierto(false); setFichero(null); setTipoDocId(''); setAsunto(''); setFecha(''); setPrioridad(false)
+    }
+  }
+
+  return (
+    <div className="d-flex flex-column gap-1 px-2 py-1 rounded border">
+      <input
+        type="file"
+        className="form-control form-control-sm"
+        onChange={(e) => setFichero(e.target.files?.[0] || null)}
+      />
+      <select
+        className="form-select form-select-sm"
+        value={tipoDocId}
+        onChange={(e) => setTipoDocId(e.target.value)}
+      >
+        <option value="">— Tipo —</option>
+        {tiposDoc.map((t) => <option key={t.id} value={t.id}>{t.nombre}</option>)}
+      </select>
+      <input
+        type="text"
+        className="form-control form-control-sm"
+        placeholder="Asunto"
+        value={asunto}
+        onChange={(e) => setAsunto(e.target.value)}
+        maxLength={500}
+      />
+      <input
+        type="date"
+        className="form-control form-control-sm"
+        value={fecha}
+        onChange={(e) => setFecha(e.target.value)}
+      />
+      <div className="form-check">
+        <input
+          type="checkbox"
+          className="form-check-input"
+          id="despensa-subida-inline-prioridad"
+          checked={prioridad}
+          onChange={(e) => setPrioridad(e.target.checked)}
+        />
+        <label className="form-check-label small" htmlFor="despensa-subida-inline-prioridad">
+          Prioritario
+        </label>
+      </div>
+      <div className="d-flex gap-1">
+        <button
+          type="button"
+          className="btn btn-sm btn-primary flex-grow-1"
+          disabled={!fichero || subiendoDocumento}
+          onClick={enviar}
+        >
+          {subiendoDocumento ? 'Subiendo…' : 'Subir y vincular'}
+        </button>
+        <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => setAbierto(false)}>
+          ✕
+        </button>
+      </div>
+    </div>
+  )
+}
+
 function DespensaDocs({ deshabilitarProducido, esEsperarPlazo }) {
   const seleccion               = useArbolStore((s) => s.seleccion)
   const expedienteId            = useArbolStore((s) => s.expedienteId)
@@ -283,6 +398,7 @@ function DespensaDocs({ deshabilitarProducido, esEsperarPlazo }) {
   const poolCargando            = useArbolStore((s) => s.poolCargando)
   const docVinculandoPendiente  = useArbolStore((s) => s.docVinculandoPendiente)
   const cargarPool              = useArbolStore((s) => s.cargarPool)
+  const cargarSugerenciaSubida  = useArbolStore((s) => s.cargarSugerenciaSubida)
   const seleccionarDocVincular  = useArbolStore((s) => s.seleccionarDocVincular)
   const cancelarVincular        = useArbolStore((s) => s.cancelarVincular)
   const vincularDoc             = useArbolStore((s) => s.vincularDoc)
@@ -290,6 +406,7 @@ function DespensaDocs({ deshabilitarProducido, esEsperarPlazo }) {
 
   React.useEffect(() => {
     cargarPool()
+    cargarSugerenciaSubida(seleccion?.id)
   }, [seleccion?.id])  // eslint-disable-line
 
   // Separar roles para poder distinguirlos (#517: validaciones y lista activos)
@@ -394,6 +511,9 @@ function DespensaDocs({ deshabilitarProducido, esEsperarPlazo }) {
           <span>{AYUDA_PRODUCIDO_ESPERAR_PLAZO}</span>
         </div>
       )}
+
+      {/* ── Subida inline (#367): sube un fichero nuevo sin salir de la tarea ── */}
+      <SubidaInline tareaId={seleccion?.id} />
 
       {/* ── Zona de staging ── */}
       {docVinculandoPendiente ? (
