@@ -303,9 +303,9 @@ Ver `DISEÑO_CONTEXT_ASSEMBLER.md`. Variables relevantes:
 
 | Variable | Uso |
 |---|---|
-| `tiene_punto_acceso_conexion` | Condición de admisión a trámite de AAP (renovables) |
-| `es_renovable_rdl23` | Determina si aplica este régimen |
-| `fecha_permiso_acceso` | Determina grupo A / grupo B y computa plazos de hitos |
+| `tiene_punto_acceso_conexion` | Condición de admisión a trámite de AAP (renovables) — **implementada, #780** |
+| `es_renovable_rdl23` | Determina si aplica este régimen — pendiente a propósito (#780 §2.3: la regla de motor ya acota por `tipo_expediente='Renovable'` sin necesitar esta variable) |
+| `fecha_permiso_acceso` | Determina grupo A / grupo B y computa plazos de hitos — pendiente; cuando se implemente, sale de `Documento.fecha_administrativa` del documento `PERMISO_ACCESO_CONEXION` ya sembrado en #780, sin campo nuevo (hallazgo de #780 §2.4, pensado para la 3ª vía de avisos de plazo de Seguimiento) |
 | `rdl23_grupo_permiso_acceso` | `'a'` (2013-2017) / `'b'` (2018+) |
 | `hito_dia_favorable` | Para semáforo de prioridad (Hito 2 acreditado) |
 | `hito_aap_obtenida` | Para semáforo de prioridad (Hito 3 — implícito en BDDAT) |
@@ -351,7 +351,7 @@ Esta definición determina el umbral de competencia (AGE >50 MW / CCAA ≤50 MW)
 
 | Variable | Uso |
 |---|---|
-| `tiene_punto_acceso_conexion` | Condición de admisión a trámite de AAP (renovables) — ver §2.7 |
+| `tiene_punto_acceso_conexion` | Condición de admisión a trámite de AAP (renovables) — ver §2.7 — **implementada, #780** |
 | `potencia_instalada_mw` | Umbral de competencia AGE/CCAA; para FV: `min(DC, AC)` conforme DF 3ª |
 
 ---
