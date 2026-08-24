@@ -334,11 +334,28 @@ function SubidaInline({ tareaId }) {
 
   return (
     <div className="d-flex flex-column gap-1 px-2 py-1 rounded border">
-      <input
-        type="file"
-        className="form-control form-control-sm"
-        onChange={(e) => setFichero(e.target.files?.[0] || null)}
-      />
+      {/* Input nativo oculto tras un <label>-botón (#367): el botón nativo
+          "Seleccionar archivo" hereda en algunos entornos (Windows con acento
+          oscuro) un estilo de hover que ni siquiera CSS !important sobrescribe
+          — es un widget del SO, no un pseudo-elemento estilable. El <label>
+          normal sí queda bajo control total de Bootstrap/nuestro CSS. */}
+      <div className="d-flex align-items-center gap-2">
+        <label
+          htmlFor={`despensa-subida-file-${tareaId}`}
+          className="btn btn-sm btn-outline-secondary mb-0 flex-shrink-0"
+        >
+          Seleccionar archivo
+        </label>
+        <input
+          type="file"
+          id={`despensa-subida-file-${tareaId}`}
+          className="visually-hidden"
+          onChange={(e) => setFichero(e.target.files?.[0] || null)}
+        />
+        <span className="small text-truncate text-muted">
+          {fichero ? fichero.name : 'Ningún archivo seleccionado'}
+        </span>
+      </div>
       <select
         className="form-select form-select-sm"
         value={tipoDocId}
