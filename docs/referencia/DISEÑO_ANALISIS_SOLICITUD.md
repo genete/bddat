@@ -230,6 +230,18 @@ Esta regla no bloquea el análisis de otros defectos ni la emisión del requerim
 
 ---
 
+## 7 bis. Motor de reglas: permiso de acceso y conexión (AAP renovables)
+
+El RD-ley 23/2020 (art. 1) establece que, para instalaciones de generación renovable, el permiso de acceso y conexión a la red no es un requisito documental subsanable más: es **condición de admisión a trámite** de la AAP (`NORMATIVA_MAPA_PROCEDIMENTAL.md §2.7`, punto 1). A diferencia de la tasa (§7), este permiso lo otorga un tercero (el gestor de la red), no depende de una gestión interna del promotor.
+
+**Regla del motor:** cualquier fase posterior a `ANALISIS_SOLICITUD` de una AAP de instalación renovable tiene como pre-condición que el requisito del checklist correspondiente al permiso de acceso y conexión (`TipoDocumento.codigo='PERMISO_ACCESO_CONEXION'`) esté cubierto en `documentos_requisito` para la solicitud.
+
+**Implementado en #780** (migraciones `93b1032b3b08_780_seed_permiso_acceso_conexion` y `0fa314d1c76e_780_regla_motor_permiso_acceso`): una única regla `BLOQUEAR CREAR Renovable/AAP/ANY` — a diferencia de la regla de la tasa (sujeto `ANY/ANY/ANY` con condición de encuadre añadida), aquí el propio sujeto ya acota por tipo de expediente (`Renovable`) y tipo de solicitud (`AAP`, siglas), sin necesitar una variable de encuadre nueva como `es_renovable_rdl23` (pendiente de implementar a propósito — ver `DISEÑO_CONTEXT_ASSEMBLER.md`). Dos condiciones en AND: `tipo_sujeto_solicitado NEQ 'ANALISIS_SOLICITUD'` (mismo uso que #582) y `tiene_punto_acceso_conexion EQ false` (variable nueva en `calculado.py`, polaridad positiva — a diferencia de `tasa_impagada`, degrada a `True`/no-bloquea si el catálogo aún no está poblado, porque lo contrario bloquearía todo expediente renovable antes de sembrar el requisito).
+
+**Alcance deliberadamente acotado:** no se condiciona por fecha de obtención del permiso (`>27/12/2013`, ámbito literal del RD-ley 23/2020) — implicaría capturar `fecha_permiso_acceso`, dato sin captura hoy en BDDAT. El caso residual de permisos anteriores a esa fecha queda cubierto por el bypass genérico con justificación de toda regla `BLOQUEAR` del motor, sin diseño adicional.
+
+---
+
 ## 8. Utilidades de redacción: firmantes y siglas
 
 ### Firmantes
