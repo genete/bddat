@@ -780,6 +780,34 @@ def vincular_huerfano(expediente_id, tarea_id):
 
 
 # =============================================================================
+# ENDPOINT 7ter: Sugerencia de tipo de documento y asunto para subida inline
+# desde la Despensa (#367)
+# =============================================================================
+
+@api_bp.route('/expedientes/<int:expediente_id>/nodo/tarea/<int:tarea_id>/sugerencia_documento',
+              methods=['GET'])
+@login_required
+def sugerencia_documento_tarea(expediente_id, tarea_id):
+    """
+    GET .../nodo/tarea/<tarea_id>/sugerencia_documento — sugerencia de
+    tipo_doc_id + asunto para subir un documento nuevo desde la Despensa de
+    esta tarea (#367). Solo lectura: no crea ni vincula nada.
+    """
+    expediente = Expediente.query.get_or_404(expediente_id)
+    resultado = verificar_acceso_expediente(expediente, 'ver')
+    if resultado:
+        return resultado
+
+    try:
+        tarea = _resolver_nodo(expediente, 'tarea', tarea_id)
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 404
+
+    from app.services.sugerencia_documento import sugerencia_subida
+    return jsonify(sugerencia_subida(tarea)), 200
+
+
+# =============================================================================
 # ENDPOINT 8: Borrar un nodo (ADR-016 S3b)
 # =============================================================================
 
