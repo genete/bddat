@@ -45,7 +45,7 @@ class TestCreablesTramite:
         data = _creables_tramite(fase.solicitud.expediente, fase.id)
 
         assert _codigos(data['canonicos']) == {
-            'ANALISIS_DOCUMENTAL', 'REQUERIMIENTO_SUBSANACION', 'COMUNICACION_INICIO',
+            'ANALISIS_DOCUMENTAL', 'REQUERIMIENTO_SUBSANACION', 'COMUNICACION_INICIO_ADMISION',
         }
 
     def test_traslados_no_aparecen_ni_en_canonicos_ni_en_resto(self, arbol_esftt, app_ctx):
