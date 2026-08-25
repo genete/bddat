@@ -8,17 +8,14 @@
 
 ---
 
-**Hecho:** dos cierres de mantenimiento sin issue propio, detectados al repasar #780:
-- `DISEÑO_ANALISIS_SOLICITUD.md` sincronizado con la implementación real (commit `adcb457`): trámite `COMUNICACIÓN_INICIO_ADMISION` (renombrado en #776, la sección seguía con el nombre y la calificación de "opcional" anteriores), nota "A ESTUDIAR — tabla `documentos_analizar`" marcada resuelta por #442 (modelo `Diagnostico`), cabecera actualizada de "pendiente implementación" a reflejar el estado real.
-- 4 tests con fallo persistente corregidos (PR #813, Refs #776): `test_725_tipos_creables_sin_motor.py` esperaba el código de trámite anterior al renombrado de #776; los 3 smoke de `catalogo_plazos` (alta a nivel TAREA) usaban `TipoTarea.query.first()` como comodín y colisionaban con el plazo real de NOTIFICAR (art. 40 LPACAP) que #776 sembró — mismo fix que ya tenía el nivel SOLICITUD (`_datos_maestros_tarea`, análogo a `_datos_maestros_solicitud`). Suite completa: 1447 passed, 0 failed, 36 skipped.
+**Hecho:** **#781 — cierre no planeado.** La ampliación de 5 días del art. 68.1 no se modela: decisión y argumentación en el [comentario de cierre](https://github.com/genete/bddat/issues/781#issuecomment-5406092603); nota en `NORMATIVA_PLAZOS.md` §1.3 (commit `2fe656c`).
 
-**Próximo:** (vacío — a decidir)
+**Próximo:** **#782** — cinco filas de `catalogo_plazos` con `norma_origen` en `PLACEHOLDER` pese a que el peinado ya está hecho.
 
 Cola por criticidad, no por tamaño:
 
-1. **#781** — la ampliación de 5 días del art. 68.1 no se puede reflejar. Ya **no es latente**: con #778 hecho, el vencimiento de la espera se alcanza de verdad, así que la ampliación que no se puede registrar es un error de cómputo real.
-2. **#782** — cinco filas de `catalogo_plazos` con `norma_origen` en `PLACEHOLDER` pese a que el peinado ya está hecho; incluye resolver si el anuncio cita el art. 125 o el 131. Absorbió de #785 la cita de `SOLICITUD_INFORME` (art. 80.2 vs. tope de suspensión). La discrepancia 2/3 meses que también arrastraba **queda zanjada por #778**: el tope del art. 22.1.d no vive en el cómputo, la parada es el vencimiento del catálogo.
-3. **#783** — `TipoResultadoFase.DESISTIDA` se llama "por el Solicitante" y también cubre el art. 68.1, que no es voluntario. Si desdobla el resultado de fase, alinear el código con `TENER_POR_DESISTIDO` (#779, ya hecho).
+1. **#782** — cinco filas de `catalogo_plazos` con `norma_origen` en `PLACEHOLDER` pese a que el peinado ya está hecho; incluye resolver si el anuncio cita el art. 125 o el 131. Absorbió de #785 la cita de `SOLICITUD_INFORME` (art. 80.2 vs. tope de suspensión). La discrepancia 2/3 meses que también arrastraba **queda zanjada por #778**: el tope del art. 22.1.d no vive en el cómputo, la parada es el vencimiento del catálogo.
+2. **#783** — `TipoResultadoFase.DESISTIDA` se llama "por el Solicitante" y también cubre el art. 68.1, que no es voluntario. Si desdobla el resultado de fase, alinear el código con `TENER_POR_DESISTIDO` (#779, ya hecho).
 
 **Nota de sesión (2026-08-15/16):** #784 acotó los problemas de fondo de `catalogo_plazos` y se desglosó en #785 (hecho), #787 (hecho, alcance ampliado a `reglas_motor`), #786 (hecho), #788 (hecho) y #789 (hecho). #778 cerró la serie el 2026-08-21: la razón para diferirlo —no escribir datos de catálogo antes de fijar el tope— desapareció al descubrirse que el tope no era un dato que añadir sino uno que el catálogo ya tenía y que el cálculo no leía.
 
