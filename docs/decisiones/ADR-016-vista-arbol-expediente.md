@@ -6,6 +6,7 @@
 **Enmendada:** 2026-05-30 (#500, sesión de implementación) — añadidos §16 (contrato de endpoints), agregadores en colapso (§11), tooltip-peek de hover (§2.4/§15); iteración de trámite fuera de v1 (§2).
 **Enmendada:** 2026-06-03 (#500, sesión S3b-4) — §7 y §8: Borrar eliminado del menú contextual; vive exclusivamente en inspector modo edición con flujo de dos pasos. §9: doble clic funcional (`zoomOnDoubleClick=false`, commit 71d9b5e); atajos F2 y Supr eliminados.
 **Enmendada:** 2026-06-07 (ADR-023, #534) — §14: el redimensionado del inspector pasa a ser **mecanismo de shell** (CSS Grid + JS + `localStorage`), no `react-resizable-panels`; esta librería queda solo para splitters internos de la isla (split despensa/detalle). El inspector entra en la negociación de espacio global de ADR-023.
+**Enmendada:** 2026-08-25 (ADR-042, #396/#652) — §1: nuevo nodo sintético `organismo` entre Fase y Trámite (agrupación de trámites de CONSULTAS por `TramiteOrganismo`, colapsable como cualquier nivel no-hoja); §2: recoge el decorador de iteración/vuelta dejado pendiente aquí a la espera de #471, ya resuelto; §16: el detalle lazy de fase deja de ser uniforme entre tipos — gana una clave `organismos` condicional a `tipo_fase.codigo == 'CONSULTAS'`.
 
 ---
 
