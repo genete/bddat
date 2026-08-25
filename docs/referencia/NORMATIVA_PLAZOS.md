@@ -181,6 +181,7 @@ En BDDAT aparece además en una segunda acepción: la resolución propia **presc
 #### Art. 68 — Subsanación de la solicitud
 - Plazo para subsanar deficiencias: **10 días hábiles** desde el requerimiento.
 - Ampliable hasta **5 días hábiles** más a petición del interesado o de oficio, cuando la aportación presente dificultades especiales (salvo procedimientos selectivos o de concurrencia competitiva).
+  > **No modelada en BDDAT** — decisión y argumentación completas en el [comentario de cierre de #781](https://github.com/genete/bddat/issues/781#issuecomment-5406092603). Resumen: ni la ampliación (art. 68.2) ni el desistimiento por no subsanar (art. 68.1, línea siguiente) son automáticos, ambos exigen resolución expresa; en la práctica de la Delegación la ampliación casi nunca se concede. El cómputo de la suspensión del art. 22 (criterio "menor entre `efectivo cumplimiento` y `plazo concedido`", #796) no depende de rastrear la ampliación salvo en el supuesto doble — ampliación concedida y además nunca se subsana. Cuando se dé el caso, el escrito se clasifica como `OTROS` y se asocia a la tarea `NOTIFICAR` del trámite `REQUERIMIENTO_SUBSANACION`, sin plantilla ni cadena de tareas propia.
 - Si no subsana en plazo → se le tiene por desistido (requiere resolución expresa).
 
 #### Art. 73 — Cumplimiento de trámites
