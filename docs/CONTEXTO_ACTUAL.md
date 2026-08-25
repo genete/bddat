@@ -8,14 +8,13 @@
 
 ---
 
-**Hecho:** **#781 — cierre no planeado.** La ampliación de 5 días del art. 68.1 no se modela: decisión y argumentación en el [comentario de cierre](https://github.com/genete/bddat/issues/781#issuecomment-5406092603); nota en `NORMATIVA_PLAZOS.md` §1.3 (commit `2fe656c`).
+**Hecho:** **#782 — norma_origen de catalogo_plazos verificada contra el BOE.** Las 5 filas TAREA con `PLACEHOLDER` ya citan su norma exacta, leída del texto consolidado vigente (no solo del resumen NBLM): `SOLICITUD_INFORME` resultó ser en exclusiva el informe DGPEM de transporte (art. 114 RD 1955/2000 — plazo corregido de 10 días a **2 meses**, no el art. 80.2 LPACAP que sugería el placeholder; camino explicitado a la fase `CONSULTA_MINISTERIO`); `ANUNCIO_BOE`/`ANUNCIO_BOP` citan el art. 125.1 RD 1955/2000 (no el 131, que regula condicionados AAC); `ANUNCIO_PRENSA` cita el art. 144 (información pública de la DUP, único que exige prensa). De paso, `plazo_unidad` de los tres anuncios se corrigió de `DIAS_NATURALES` a `DIAS_HABILES` (LPACAP art. 30.2, sin declaración expresa de naturales en el RD). La discrepancia 2/3 meses del tope de suspensión que el issue pedía zanjar ya estaba resuelta por #778/ADR-041, sin acción. [PR #815](https://github.com/genete/bddat/pull/815).
 
-**Próximo:** **#782** — cinco filas de `catalogo_plazos` con `norma_origen` en `PLACEHOLDER` pese a que el peinado ya está hecho.
+**Próximo:** **#783** — `TipoResultadoFase.DESISTIDA` se llama "por el Solicitante" y también cubre el art. 68.1, que no es voluntario. Si desdobla el resultado de fase, alinear el código con `TENER_POR_DESISTIDO` (#779, ya hecho).
 
 Cola por criticidad, no por tamaño:
 
-1. **#782** — cinco filas de `catalogo_plazos` con `norma_origen` en `PLACEHOLDER` pese a que el peinado ya está hecho; incluye resolver si el anuncio cita el art. 125 o el 131. Absorbió de #785 la cita de `SOLICITUD_INFORME` (art. 80.2 vs. tope de suspensión). La discrepancia 2/3 meses que también arrastraba **queda zanjada por #778**: el tope del art. 22.1.d no vive en el cómputo, la parada es el vencimiento del catálogo.
-2. **#783** — `TipoResultadoFase.DESISTIDA` se llama "por el Solicitante" y también cubre el art. 68.1, que no es voluntario. Si desdobla el resultado de fase, alinear el código con `TENER_POR_DESISTIDO` (#779, ya hecho).
+1. **#783** — `TipoResultadoFase.DESISTIDA` se llama "por el Solicitante" y también cubre el art. 68.1, que no es voluntario. Si desdobla el resultado de fase, alinear el código con `TENER_POR_DESISTIDO` (#779, ya hecho).
 
 **Nota de sesión (2026-08-15/16):** #784 acotó los problemas de fondo de `catalogo_plazos` y se desglosó en #785 (hecho), #787 (hecho, alcance ampliado a `reglas_motor`), #786 (hecho), #788 (hecho) y #789 (hecho). #778 cerró la serie el 2026-08-21: la razón para diferirlo —no escribir datos de catálogo antes de fijar el tope— desapareció al descubrirse que el tope no era un dato que añadir sino uno que el catálogo ya tenía y que el cálculo no leía.
 
