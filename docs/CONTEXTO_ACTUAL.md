@@ -8,7 +8,7 @@
 
 ---
 
-**Hecho:** **#783 — `TipoResultadoFase.DESISTIDA` desdoblada.** Se dio de alta `TENIDA_POR_DESISTIDA` (art. 68.1 LPACAP — la Administración tiene por desistido al solicitante tras no atender el requerimiento de subsanación), coherente con el efecto_plazo `TENER_POR_DESISTIDO` de #779. `DESISTIDA` queda en exclusiva para el desistimiento voluntario del art. 94, sin cambios. Análisis de impacto sin cambios de código: el context builder de la resolución ya toma código/nombre directos del catálogo, y `_check_cierre_fase` no distingue el código concreto salvo `DESFAVORABLE`. [PR #816](https://github.com/genete/bddat/pull/816).
+**Hecho:** **#817 — Filtro `estado` de seguimiento reimplementado.** Detectado inerte durante el análisis de #783: el backend dejó de procesar el parámetro tras el refactor de fechas ESFTT, y `Solicitud.estado` pasó a property calculada. Traducido a subconsultas SQL; `DESISTIDA` agrupa `DESISTIDA`+`TENIDA_POR_DESISTIDA` (#783). Repuesto también `estado_solicitud` en la respuesta JSON. [PR #818](https://github.com/genete/bddat/pull/818).
 
 **Próximo:** (vacío)
 
