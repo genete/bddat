@@ -399,7 +399,7 @@ Una fase es un conjunto de trámites para obtener un requisito para alcanzar el 
 
 - `ID` de fase, `ID` de solicitud, tipo de fase, fecha de inicio, fecha de fin, observaciones.
 - **Fecha de fin:** se define como la última fecha de finalización de todos los trámites asociados.
-- **RESULTADO_FASE_ID:** FK a `tipos_resultados_fases`. Registra el resultado al cerrar la fase. Valores del catálogo: `FAVORABLE`, `FAVORABLE_CONDICIONADO`, `DESFAVORABLE`, `NO_PROCEDE`, `DESISTIDA`, `ARCHIVADA`. Una fase "exitosa" ≡ `resultado_fase.codigo IN ('FAVORABLE', 'FAVORABLE_CONDICIONADO')`. NULL = fase en curso o pendiente de cierre.
+- **RESULTADO_FASE_ID:** FK a `tipos_resultados_fases`. Registra el resultado al cerrar la fase. Valores del catálogo: `FAVORABLE`, `FAVORABLE_CONDICIONADO`, `DESFAVORABLE`, `NO_PROCEDE`, `DESISTIDA` (desistimiento voluntario, art. 94 LPACAP), `TENIDA_POR_DESISTIDA` (la Administración tiene por desistido al solicitante tras no atender el requerimiento de subsanación, art. 68.1 LPACAP — #783), `ARCHIVADA`. Una fase "exitosa" ≡ `resultado_fase.codigo IN ('FAVORABLE', 'FAVORABLE_CONDICIONADO')`. NULL = fase en curso o pendiente de cierre.
 - **DOCUMENTO_RESULTADO_ID:** posible vínculo al documento oficial generado. Posiblemente desaparezca.
 
 **Rellenado y flujo:**
