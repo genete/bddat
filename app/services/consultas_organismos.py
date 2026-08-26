@@ -41,8 +41,17 @@ log = logging.getLogger(__name__)
 # Serialización de organismos_expediente (#247)
 # ============================================
 
-def serializar_org_exp(oe):
-    """Serializa OrganismoExpediente a dict para la API."""
+# Sentinel: distingue "no me han pasado el trámite precomputado, resuélvelo tú"
+# de "ya sé que no hay ninguno" (None es un valor legítimo). Ver serializar_organismos_fase.
+_SIN_PRECOMPUTAR = object()
+
+
+def serializar_org_exp(oe, tramite_traslado_titular=_SIN_PRECOMPUTAR):
+    """Serializa OrganismoExpediente a dict para la API.
+
+    `tramite_traslado_titular`: ver traslado_titular_vencido() — permite evitar
+    el N+1 al serializar varios organismos de una fase (serializar_organismos_fase).
+    """
     return {
         'id': oe.id,
         'organismo_id': oe.organismo_id,
@@ -52,37 +61,93 @@ def serializar_org_exp(oe):
         'resultado': oe.resultado,
         'plazo_legal_dias': oe.plazo_legal_dias,
         'condicionados_doc_id': oe.condicionados_doc_id,
-        'traslado_titular_vencido': traslado_titular_vencido(oe),
+        'traslado_titular_vencido': traslado_titular_vencido(oe, tramite_traslado_titular),
     }
 
 
-def traslado_titular_vencido(oe) -> bool:
+def _tramites_traslado_titular_recientes(organismo_expediente_ids: list) -> dict:
+    """Para cada id de OrganismoExpediente, su trámite CONSULTA_TRASLADO_TITULAR
+    vinculado más reciente (o ausente si no tiene). Una sola query batch — evita
+    el N+1 de resolver el vínculo organismo por organismo (#396 bloque 4, ADR-042 §B).
+    """
+    from app.models.tramites_organismos import TramiteOrganismo
+    from app.models.tramites import Tramite as _Tramite
+    from app.models.tipos_tramites import TipoTramite
+
+    if not organismo_expediente_ids:
+        return {}
+
+    filas = (
+        TramiteOrganismo.query
+        .join(_Tramite, TramiteOrganismo.tramite_id == _Tramite.id)
+        .join(TipoTramite, _Tramite.tipo_tramite_id == TipoTramite.id)
+        .filter(
+            TramiteOrganismo.organismo_expediente_id.in_(organismo_expediente_ids),
+            TipoTramite.codigo == 'CONSULTA_TRASLADO_TITULAR',
+        )
+        .order_by(TramiteOrganismo.tramite_id.desc())
+        .all()
+    )
+    resultado = {}
+    for vinculo in filas:
+        # Recorrido desc: la primera fila vista por organismo es la más reciente.
+        resultado.setdefault(vinculo.organismo_expediente_id, vinculo.tramite)
+    return resultado
+
+
+def serializar_organismos_fase(fase) -> list:
+    """Serializa todos los organismos de una fase, en bloque (#396 bloque 4, ADR-042 §B).
+
+    Resuelve `traslado_titular_vencido` con una sola query batch en vez de una
+    por organismo — es la optimización que el propio serializar_org_exp() no
+    puede hacer por sí sola al servir un organismo individual.
+    """
+    organismos = sorted(fase.organismos, key=lambda o: o.id)
+    if not organismos:
+        return []
+    por_organismo = _tramites_traslado_titular_recientes([oe.id for oe in organismos])
+    return [
+        serializar_org_exp(oe, por_organismo.get(oe.id))
+        for oe in organismos
+    ]
+
+
+def traslado_titular_vencido(oe, tramite_traslado_titular=_SIN_PRECOMPUTAR) -> bool:
     """True si el CONSULTA_TRASLADO_TITULAR más reciente del organismo tiene plazo VENCIDO.
 
     El plazo se evalúa sobre la tarea ESPERAR_PLAZO del trámite, no sobre el
     trámite (#788): el nivel TRAMITE no porta fecha administrativa y dejó de
     existir en catalogo_plazos. Bajar hasta ella es navegación del árbol
     (`Tramite.tarea_espera`), no una entrada del servicio de plazos (#778).
+
+    `tramite_traslado_titular`: si se pasa (incluido None explícito = "ya sé que
+    no hay vínculo"), se usa directamente y se ahorra la query de búsqueda —
+    permite a serializar_organismos_fase resolverlo en bloque para N organismos.
+    Sin pasarlo, se comporta igual que siempre (una query propia).
     """
-    from app.models.tramites_organismos import TramiteOrganismo
-    from app.models.tramites import Tramite as _Tramite
-    from app.models.tipos_tramites import TipoTramite
     from app.services import plazos
 
-    vinculo = (
-        TramiteOrganismo.query
-        .join(_Tramite, TramiteOrganismo.tramite_id == _Tramite.id)
-        .join(TipoTramite, _Tramite.tipo_tramite_id == TipoTramite.id)
-        .filter(
-            TramiteOrganismo.organismo_expediente_id == oe.id,
-            TipoTramite.codigo == 'CONSULTA_TRASLADO_TITULAR',
+    if tramite_traslado_titular is _SIN_PRECOMPUTAR:
+        from app.models.tramites_organismos import TramiteOrganismo
+        from app.models.tramites import Tramite as _Tramite
+        from app.models.tipos_tramites import TipoTramite
+
+        vinculo = (
+            TramiteOrganismo.query
+            .join(_Tramite, TramiteOrganismo.tramite_id == _Tramite.id)
+            .join(TipoTramite, _Tramite.tipo_tramite_id == TipoTramite.id)
+            .filter(
+                TramiteOrganismo.organismo_expediente_id == oe.id,
+                TipoTramite.codigo == 'CONSULTA_TRASLADO_TITULAR',
+            )
+            .order_by(TramiteOrganismo.tramite_id.desc())
+            .first()
         )
-        .order_by(TramiteOrganismo.tramite_id.desc())
-        .first()
-    )
-    if vinculo is None:
+        tramite_traslado_titular = vinculo.tramite if vinculo else None
+
+    if tramite_traslado_titular is None:
         return False
-    espera = vinculo.tramite.tarea_espera if vinculo.tramite else None
+    espera = tramite_traslado_titular.tarea_espera
     if espera is None:
         return False
     # variables={} evita recursión en _compilar_variables (#475): la entrada de

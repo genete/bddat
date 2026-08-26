@@ -188,6 +188,42 @@ function Agregados({ agregados }) {
   )
 }
 
+// Bloque Organismos (ADR-042 §B): read-only, solo presente en fase CONSULTAS.
+// Pulsar una fila navega al nodo organismo en el árbol — ninguna mutación desde
+// aquí, la regla del árbol como único sitio de edición se mantiene sin excepción.
+function Organismos({ organismos, seleccionar }) {
+  if (!organismos || organismos.length === 0) return null
+  return (
+    <div className="mb-3">
+      <div className="text-muted fw-semibold small mb-1">Organismos</div>
+      <ul className="list-group list-group-flush">
+        {organismos.map((o) => (
+          <li key={o.id} className="list-group-item px-0 py-2" style={{ cursor: 'pointer' }}
+              role="button"
+              onClick={() => seleccionar({ tipo: 'organismo', id: o.id })}>
+            <div className="d-flex align-items-center gap-2">
+              <span className="flex-grow-1 text-truncate fw-semibold">{o.nombre_completo || '—'}</span>
+              {o.traslado_titular_vencido && (
+                <span className="badge text-bg-danger" title="Traslado al titular vencido">
+                  <i className="bi bi-exclamation-triangle-fill" />
+                </span>
+              )}
+            </div>
+            <div className="small text-muted">
+              {o.via}
+              {o.resultado ? ` · ${o.resultado}` : ''}
+              {/* "Plazo legal del oficio", nunca "Plazo" a secas (#558): el estado
+                  real del plazo lo da la tarea ESPERAR_PLAZO, este es el valor
+                  congelado del oficio en el momento de enviarlo. */}
+              {o.plazo_legal_dias != null ? ` · Plazo legal del oficio: ${o.plazo_legal_dias} días` : ''}
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
 function Documentos({ documentos, expedienteId }) {
   if (!documentos || documentos.length === 0) return null
   return (
@@ -578,6 +614,7 @@ function InspectorEdicion({ nodo }) {
 
 export default function Inspector() {
   const seleccion = useArbolStore((s) => s.seleccion)
+  const seleccionar = useArbolStore((s) => s.seleccionar)
   const arbol = useArbolStore((s) => s.arbol)
   const detalle = useArbolStore((s) => s.detalle)
   const cargando = useArbolStore((s) => s.detalleCargando)
@@ -637,6 +674,7 @@ export default function Inspector() {
           <Campos campos={detalle.campos} />
           {!esHoja && nodo && <Agregados agregados={nodo.agregados} />}
           <Plazo plazo={detalle.plazo} />
+          <Organismos organismos={detalle.organismos} seleccionar={seleccionar} />
           <Documentos documentos={detalle.documentos} expedienteId={expedienteId} />
         </>
       )}
