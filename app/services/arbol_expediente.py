@@ -31,6 +31,8 @@ from app.models.tramites import Tramite
 from app.models.tareas import Tarea
 from app.models.documentos_tarea import DocumentoTarea
 from app.models.documentos import Documento
+from app.models.organismos_expediente import OrganismoExpediente
+from app.models.tramites_organismos import TramiteOrganismo
 from app.services import estado_dominio as sem
 
 log = logging.getLogger(__name__)
@@ -70,6 +72,9 @@ def _opciones_solicitud() -> list:
         joinedload(Solicitud.documento_solicitud),
         selectinload(Solicitud.fases).joinedload(Fase.tipo_fase),
         selectinload(Solicitud.fases).joinedload(Fase.resultado_fase),
+        # Organismos consultados de la fase (ADR-042 §A) — grupo sintético en el árbol.
+        selectinload(Solicitud.fases)
+        .selectinload(Fase.organismos).joinedload(OrganismoExpediente.organismo),
         selectinload(Solicitud.fases)
         .selectinload(Fase.tramites).joinedload(Tramite.tipo_tramite),
         selectinload(Solicitud.fases)
@@ -300,7 +305,70 @@ def _serializar_fase(fase) -> dict:
         'semaforo': _semaforo(est, propio),
         'agregados': agg,
         'tramites': tramites_data,
+        'organismos': _serializar_organismos_fase(fase, tramites_data),
     }
+
+
+def _serializar_organismos_fase(fase, tramites_data: list[dict]) -> list[dict]:
+    """
+    Nodo sintético 'organismo' (ADR-042 §A): agrupa, dentro de `fase.tramites` (que
+    se queda intacta), los trámites vinculados a cada OrganismoExpediente vía
+    TramiteOrganismo. Payload ADITIVO — el front decide con `tramite_ids` qué
+    trámites de `fase.tramites` recoger bajo cada grupo; los que no aparezcan en
+    ningún grupo cuelgan directos de la fase, como hoy.
+
+    Solo consulta TramiteOrganismo si la fase tiene organismos: las fases que no
+    son CONSULTAS (la inmensa mayoría del árbol) no pagan esta query — fase.organismos
+    ya viene precargado (_opciones_solicitud) sin coste adicional por fase.
+    """
+    organismos = fase.organismos
+    if not organismos:
+        return []
+
+    vinculos = (
+        TramiteOrganismo.query
+        .filter(TramiteOrganismo.organismo_expediente_id.in_([oe.id for oe in organismos]))
+        .order_by(TramiteOrganismo.tramite_id)
+        .all()
+    )
+    por_organismo: dict[int, list[int]] = {}
+    for v in vinculos:
+        por_organismo.setdefault(v.organismo_expediente_id, []).append(v.tramite_id)
+
+    tramites_por_id = {td['id']: td for td in tramites_data}
+
+    resultado = []
+    for oe in sorted(organismos, key=lambda o: o.id):
+        grupo = [tramites_por_id[tid] for tid in por_organismo.get(oe.id, []) if tid in tramites_por_id]
+
+        # Decorador de vuelta (ADR-016 §2, pendiente desde #500; ADR-042 §A lo cierra):
+        # numera solo los CONSULTA_TRASLADO_ORGANISMO del grupo, por orden de creación
+        # (id de trámite). El resto de tipos del grupo no lleva vuelta (no se repiten).
+        vueltas: dict[int, int] = {}
+        n = 0
+        for td in grupo:
+            if td['tipo_codigo'] == 'CONSULTA_TRASLADO_ORGANISMO':
+                n += 1
+                vueltas[td['id']] = n
+
+        agg = _agregados_vacios()
+        for td in grupo:
+            _sumar_agregados(agg, td['agregados'])
+
+        est, propio = sem.estado_organismo(oe, [td['semaforo']['estado'] for td in grupo])
+
+        resultado.append({
+            'tipo': 'organismo',
+            'id': oe.id,
+            'nombre': oe.organismo.nombre_completo if oe.organismo else None,
+            'estado': None,              # sin equivalente estructural: nodo sintético, no columna BD
+            'resultado': oe.resultado,   # resultado legal crudo (ADR-011 §6); None = ciclo en curso
+            'semaforo': _semaforo(est, propio),
+            'agregados': agg,
+            'tramite_ids': [td['id'] for td in grupo],
+            'vueltas': vueltas,
+        })
+    return resultado
 
 
 def _serializar_tramite(tr) -> dict:

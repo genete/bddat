@@ -23,6 +23,7 @@ const TAM = {
   solicitud:  [232, 76],
   fase:       [190, 60],
   tramite:    [182, 56],
+  organismo:  [210, 56],
 }
 const HGAP = 36                  // separación horizontal mínima entre hermanos
 const VGAP = 58                  // separación vertical entre niveles
@@ -40,6 +41,11 @@ function esFinalizado(dom) {
     case 'solicitud': return dom.estado !== 'EN_TRAMITE'
     case 'fase':      return dom.estado === 'FINALIZADA'
     case 'tramite':   return dom.estado === 'FINALIZADO'
+    // organismo (ADR-042): nodo sintético sin columna de estado propia — a
+    // diferencia del resto de niveles, se deriva enteramente de sus trámites
+    // (estado_organismo, estado_dominio.py), nunca del campo `resultado`
+    // (semántico/legal, no estructural). FIN del semáforo ya agrega ese cómputo.
+    case 'organismo': return !!(dom.semaforo && dom.semaforo.estado === 'FIN')
     default:          return false
   }
 }
@@ -49,9 +55,15 @@ function derivarTitulo(dom) {
   switch (dom.tipo) {
     case 'expediente': return dom.codigo || ''
     case 'solicitud':  return (dom.siglas || '').replace(/_/g, ' ')   // AE_DEFINITIVA → AE DEFINITIVA
-    case 'fase':
-    case 'tramite':    return dom.abrev || dom.nombre || dom.tipo_codigo || ''
-    default:           return ''
+    case 'organismo':  return dom.nombre || ''
+    case 'tramite': {
+      const base = dom.abrev || dom.nombre || dom.tipo_codigo || ''
+      // Decorador de vuelta (ADR-016 §2, ADR-042 §A): solo los trámites dentro de
+      // un grupo organismo llevan _vuelta (inyectado en construirJerarquia).
+      return dom._vuelta ? `${dom._vuelta}ª ${base}` : base
+    }
+    case 'fase':        return dom.abrev || dom.nombre || dom.tipo_codigo || ''
+    default:             return ''
   }
 }
 
@@ -68,6 +80,21 @@ function construirJerarquia(arbol, colapsarFinalizados) {
   const colapso = (dom, tieneHijos) =>
     colapsarFinalizados && esFinalizado(dom) && tieneHijos
 
+  // Nodo trámite + su bloque de tareas (hijo único). Factorizado: lo usan tanto
+  // los trámites agrupados bajo un organismo como los que cuelgan directos de la fase.
+  const nodoTramite = (tram) => {
+    const cTram = colapso(tram, (tram.tareas || []).length > 0)
+    const nTram = { ref: tram, children: [], colapsado: cTram }
+    if (!cTram && (tram.tareas || []).length > 0) {
+      nTram.children.push({
+        ref: { tipo: 'tareas', id: tram.id, tareas: tram.tareas },
+        children: [],
+        colapsado: false,
+      })
+    }
+    return nTram
+  }
+
   const exp = { ref: arbol.expediente, children: [], colapsado: false }
 
   for (const sol of arbol.solicitudes || []) {
@@ -78,18 +105,36 @@ function construirJerarquia(arbol, colapsarFinalizados) {
         const cFase = colapso(fase, (fase.tramites || []).length > 0)
         const nFase = { ref: fase, children: [], colapsado: cFase }
         if (!cFase) {
-          for (const tram of fase.tramites || []) {
-            const cTram = colapso(tram, (tram.tareas || []).length > 0)
-            const nTram = { ref: tram, children: [], colapsado: cTram }
-            if (!cTram && (tram.tareas || []).length > 0) {
-              // Bloque de tareas: hijo ÚNICO del trámite (nodo sintético).
-              nTram.children.push({
-                ref: { tipo: 'tareas', id: tram.id, tareas: tram.tareas },
-                children: [],
-                colapsado: false,
-              })
+          const tramitesPorId = new Map((fase.tramites || []).map((t) => [t.id, t]))
+          const idsAgrupados = new Set()
+
+          // Grupo organismo (ADR-042 §A): nodo sintético entre fase y trámite,
+          // derivado de TramiteOrganismo (fase.organismos[].tramite_ids). fase.tramites
+          // se queda intacta — el grupo solo decide qué recoger bajo cada organismo
+          // en vez de dejarlo colgar directo de la fase.
+          for (const org of fase.organismos || []) {
+            const idsGrupo = org.tramite_ids || []
+            const vueltas = org.vueltas || {}
+            const cOrg = colapso(org, idsGrupo.length > 0)
+            const nOrg = { ref: org, children: [], colapsado: cOrg }
+            for (const tid of idsGrupo) {
+              idsAgrupados.add(tid)
+              if (cOrg) continue
+              const tram = tramitesPorId.get(tid)
+              if (!tram) continue
+              // Decorador de vuelta (ADR-016 §2, ADR-042 §A): solo decora el título,
+              // no muta el trámite del store (spread → objeto nuevo).
+              const vuelta = vueltas[tid]
+              nOrg.children.push(nodoTramite(vuelta ? { ...tram, _vuelta: vuelta } : tram))
             }
-            nFase.children.push(nTram)
+            nFase.children.push(nOrg)
+          }
+
+          // Trámites sin organismo vinculado (p. ej. CERT_FIN_IP_CONSULTAS): cuelgan
+          // directos de la fase, como antes de ADR-042.
+          for (const tram of fase.tramites || []) {
+            if (idsAgrupados.has(tram.id)) continue
+            nFase.children.push(nodoTramite(tram))
           }
         }
         nSol.children.push(nFase)

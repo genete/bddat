@@ -137,6 +137,7 @@
 .arbol-nodo--solicitud  { width: 232px; min-height: 76px; }
 .arbol-nodo--fase       { width: 190px; min-height: 60px; }
 .arbol-nodo--tramite    { width: 182px; min-height: 56px; }
+.arbol-nodo--organismo  { width: 210px; min-height: 56px; }
 
 /* ── Bloque de tareas (nodo independiente, hijo único del trámite) ──────────── */
 .arbol-tareas {

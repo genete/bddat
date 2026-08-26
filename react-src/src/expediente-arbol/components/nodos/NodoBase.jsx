@@ -14,6 +14,7 @@ const ICONO_TIPO = {
   solicitud:  'bi-file-earmark',
   fase:       'bi-diagram-3',
   tramite:    'bi-clipboard',
+  organismo:  'bi-bank',
 }
 
 export default function NodoBase({ data }) {

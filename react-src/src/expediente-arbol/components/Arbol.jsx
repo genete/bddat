@@ -15,6 +15,7 @@ import NodoExpediente from './nodos/NodoExpediente.jsx'
 import NodoSolicitud from './nodos/NodoSolicitud.jsx'
 import NodoFase from './nodos/NodoFase.jsx'
 import NodoTramite from './nodos/NodoTramite.jsx'
+import NodoOrganismo from './nodos/NodoOrganismo.jsx'
 import NodoTareas from './nodos/NodoTareas.jsx'
 import MenuContextual from './MenuContextual.jsx'
 
@@ -23,6 +24,7 @@ const nodeTypes = {
   solicitud:  NodoSolicitud,
   fase:       NodoFase,
   tramite:    NodoTramite,
+  organismo:  NodoOrganismo,
   tareas:     NodoTareas,
 }
 

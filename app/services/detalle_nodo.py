@@ -36,6 +36,7 @@ from app.models.solicitudes import Solicitud
 from app.models.fases import Fase
 from app.models.tramites import Tramite
 from app.models.tareas import Tarea
+from app.models.organismos_expediente import OrganismoExpediente
 from app.services.arbol_expediente import plazo_tarea
 
 log = logging.getLogger(__name__)
@@ -63,6 +64,8 @@ def detalle_de_nodo(expediente, tipo_nodo: str, nodo_id: int) -> dict:
             return _detalle_tramite(expediente, nodo_id)
         if tipo_nodo == 'tarea':
             return _detalle_tarea(expediente, nodo_id)
+        if tipo_nodo == 'organismo':
+            return _detalle_organismo(expediente, nodo_id)
     except (OperationalError, ProgrammingError) as exc:
         log.warning('detalle_nodo: catálogo no disponible — %s', exc)
         return {'nodo': {'tipo': tipo_nodo, 'id': nodo_id},
@@ -194,6 +197,11 @@ def _ref_tarea(exp, ta) -> str:
     tt = ta.tipo_tarea
     nombre = (tt.nombre if tt else None) or 'Tarea'
     return f'{_ref_tramite(exp, ta.tramite)} · {nombre}'
+
+
+def _ref_organismo(exp, oe) -> str:
+    nombre = (oe.organismo.nombre_completo if oe.organismo else None) or 'Organismo'
+    return f'{_ref_fase(exp, oe.fase)} · {nombre}'
 
 
 # ---------------------------------------------------------------------------
@@ -331,6 +339,22 @@ def _detalle_tarea(exp, tarea_id: int) -> dict:
         'documentos': documentos,
         'plazo': plazo,
         'referencia': _ref_tarea(exp, ta),
+    }
+
+
+def _detalle_organismo(exp, oe_id: int) -> dict:
+    """Placeholder del bloque 3 (ADR-042 §A): solo nodo + referencia, sin campos
+    todavía. El detalle rico (vía/resultado/plazo/dirección) es el bloque 4
+    (ADR-042 §B, #396 punto 4), que reutiliza serializar_org_exp()."""
+    oe = OrganismoExpediente.query.get(oe_id)
+    if oe is None or oe.expediente_id != exp.id:
+        raise ValueError(f'Organismo {oe_id} no encontrado en el expediente {exp.id}')
+    return {
+        'nodo': {'tipo': 'organismo', 'id': oe.id},
+        'campos': [],
+        'documentos': [],
+        'plazo': None,
+        'referencia': _ref_organismo(exp, oe),
     }
 
 

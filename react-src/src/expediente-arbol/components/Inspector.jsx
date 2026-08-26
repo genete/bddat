@@ -22,6 +22,7 @@ const ETIQUETA_TIPO = {
   solicitud:  'Solicitud',
   fase:       'Fase',
   tramite:    'Trámite',
+  organismo:  'Organismo',
   tarea:      'Tarea',
 }
 
@@ -55,6 +56,9 @@ function buscarNodo(arbol, sel) {
           if (sel.tipo === 'tarea' && ta.id === sel.id) return ta
         }
       }
+      for (const org of fase.organismos || []) {
+        if (sel.tipo === 'organismo' && org.id === sel.id) return org
+      }
     }
   }
   return null
@@ -78,6 +82,9 @@ function contarSubarbol(arbol, sel) {
   }
   if (sel.tipo === 'tramite') {
     return { tareas: (nodo.tareas || []).length }
+  }
+  if (sel.tipo === 'organismo') {
+    return { tramites: (nodo.tramite_ids || []).length }
   }
   return {}
 }
