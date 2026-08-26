@@ -41,6 +41,7 @@ Inicialmente se contempló separar `organismos_afectados` y `organismos_consulta
 | Campo | Descripción |
 |---|---|
 | `expediente_id` | FK `expedientes.id` |
+| `fase_id` | FK `fases.id` — la fase CONSULTAS (= la **ronda**) en la que se consulta a este organismo. **Implementar en #396**, ver más abajo |
 | `organismo_id` | FK `entidades.id` (donde `rol_consultado = True`) |
 | `via` | enum: `consulta` / `declaracion_responsable` |
 | `documento_id` | FK `documentos.id` (solo si `via = declaracion_responsable`) |
@@ -54,7 +55,20 @@ Inicialmente se contempló separar `organismos_afectados` y `organismos_consulta
 
 **Sobre `condicionados_doc_id`:** ver ADR-011 §2. Solo aplica al cruce `condicionado` de organismo + `sin_respuesta` de titular en AAC.
 
-**Sobre `plazo_legal_dias`:** se captura al crear la separata porque el plazo depende del tipo y combinación de autorizaciones del expediente en ese momento. Almacenarlo evita tener que recalcularlo en cada renderizado de plantilla.
+**Sobre `plazo_legal_dias`:** se captura al crear la separata porque el plazo depende del tipo y combinación de autorizaciones del expediente en ese momento. Almacenarlo evita tener que recalcularlo en cada renderizado de plantilla. **El plazo de un escrito es el que era el día en que se mandó**: si las circunstancias cambian después, el plazo nuevo no se aplica retroactivamente a ese oficio. El valor **no se recalcula en código** (#396): se lee de `catalogo_plazos` para el camino SFTT de la separata, que es la fuente única de la regla del art. 131.1 párr. 2.
+
+**Sobre `fase_id` (#396):** el registro nace ligado a la fase CONSULTAS en la que se acuerda consultar
+a ese organismo, no al expediente en abstracto. Dos motivos:
+
+1. **Un organismo puede no tener ningún trámite** —recién dado de alta, o exonerado por declaración
+   responsable— y aun así debe poder pintarse en el árbol bajo su fase (ADR-042 §A). Sin `fase_id` su
+   pertenencia solo sería deducible a través de `tramites_organismos`, que en esos casos está vacío.
+2. **Un modificado de proyecto puede obligar a una segunda ronda** de consultas (ver §6): misma fase
+   repetida, con los mismos organismos, un subconjunto, o un subconjunto más organismos nuevos.
+
+El UNIQUE pasa por tanto de `(expediente_id, organismo_id)` a **`(fase_id, organismo_id)`**: dentro de
+una ronda se consulta a cada organismo una sola vez; entre rondas es libre, porque lo consultado es
+otro conjunto documental.
 
 ### Tabla `tramites_organismos` (ADR-011)
 
@@ -271,7 +285,7 @@ Esto tiene las siguientes consecuencias prácticas según la combinación del ex
 
 **Combinaciones posibles verificadas:**
 
-La AAP es presupuesto legal de la AAC (no puede existir AAC sin AAP previa o simultánea). La DUP requiere proyecto constructivo concreto y medible —no puede solicitarse para algo que puede cambiar—, por lo que siempre va sincronizada con la autorización principal. No hay nunca dos ciclos de consultas independientes.
+La AAP es presupuesto legal de la AAC (no puede existir AAC sin AAP previa o simultánea). La DUP requiere proyecto constructivo concreto y medible —no puede solicitarse para algo que puede cambiar—, por lo que siempre va sincronizada con la autorización principal. **Por combinación de autorizaciones** no hay nunca dos ciclos de consultas independientes (por modificado de proyecto sí — §6 bis).
 
 | Combinación | Consultas |
 |---|---|
@@ -281,7 +295,39 @@ La AAP es presupuesto legal de la AAC (no puede existir AAC sin AAP previa o sim
 
 **Implicación de diseño:**
 
-Siempre es una única ronda de consultas por organismo independientemente de cuántas autorizaciones ampare. Los tres tipos de trámite existentes son suficientes para todos los casos.
+Una única ronda de consultas por organismo **por cada conjunto documental sometido a consulta**,
+independientemente de cuántas autorizaciones ampare. Los tres tipos de trámite existentes son
+suficientes para todos los casos.
+
+> **Corrección (2026-08-26, análisis previo a #396).** Hasta esta fecha la frase decía *«siempre es
+> una única ronda de consultas por organismo»*, sin la salvedad del conjunto documental. Esa
+> conclusión se dedujo del cruce de combinaciones AAP/AAC/DUP —donde es correcta— pero **el eje
+> "modificado de proyecto" no estaba en el análisis**, y ahí es falsa: ver §6 bis.
+
+### 6 bis. Modificados de proyecto: más de una ronda de consultas
+
+Tanto por exigencia ambiental como de los propios organismos se producen **modificados de proyecto**
+(ya contemplados en BDDAT en el modelo de Proyecto), y a veces obligan a retomar las consultas —con
+los mismos organismos, un subconjunto, o un subconjunto más organismos nuevos—. Lo mismo ocurre con
+la Información Pública. No es un caso raro.
+
+Consecuencias asumidas:
+
+- **Más de una fase CONSULTAS por solicitud.** Ya está permitido: `crear_fase` no comprueba
+  duplicidad de tipo, `tipos_creables` lista todos los tipos y ninguna regla lo impide. Se añade una
+  regla de motor con efecto **ADVERTIR** (#396) para que la segunda ronda sea consciente y quede en
+  bitácora, no para bloquearla.
+- **La ronda es la fase.** `organismos_expediente.fase_id` (§2) es lo que hace que cada ronda tenga
+  sus propios registros de organismo.
+- **Certificado.** `cert_fin_ip_consultas._buscar_existente()` busca por expediente + tipo de
+  documento y **reutiliza el certificado ya emitido**: tras un modificado con segunda ronda no se
+  re-emite, y acreditaría la ronda 1. Pendiente de revisar (§8). `_recoger_fases()` en cambio sí
+  recorre ambas fases y toma la fecha de la última.
+- **Resolución.** Tendrá que expresar sobre qué versión del proyecto resuelve. Fuera del alcance de
+  este documento.
+
+Lo que falta por decidir —a qué conjunto documental corresponde cada ronda (Proyecto; Proyecto +
+Anexo 1; …)— es un concepto propio que excede las consultas, porque afecta igual a la IP. Ver §8.
 
 ---
 
@@ -332,6 +378,15 @@ El motor comprueba sobre los trámites de la fase:
 
 ## 8. Pendientes
 
+- **Asociar consultas e IP al conjunto documental del proyecto** — concepto propio, issue #819
+  (2026-08-26). Cada ronda de consultas (y cada IP) se somete sobre un conjunto documental concreto:
+  1ª iteración Proyecto; 2ª Proyecto + Anexo 1; y así sucesivamente. Hoy no hay forma de saber qué se
+  consultó en cada ronda. Encaja como vínculo **fase↔documentos** —toda la ronda comparte objeto
+  consultado—, no como atributo de cada organismo; con `fase_id` (§2) el organismo lo hereda por su
+  fase sin volver a tocarse. Arrastra: re-emisión del `CERT_FIN_IP_CONSULTAS` tras un modificado
+  (§6 bis) y sobre qué versión del proyecto resuelve la resolución.
+- **Revisión de `cert_fin_ip_consultas`** ante segunda ronda: `_buscar_existente()` reutiliza el
+  certificado ya emitido y no lo re-emite (§6 bis).
 - **Diagrama de flujo DUP:** La casuística está analizada y documentada en la sección 6. Pendiente crear diagrama visual equivalente a los de AAP/AAC.
 - **Renombrar tarea ANALISIS → ANALIZAR:** El JSON `ESTRUCTURA_FTT.json` ya usa ANALIZAR (v5.4). Pendiente migrar en base de datos: `UPDATE public.tipos_tareas SET codigo = 'ANALIZAR' WHERE codigo = 'ANALISIS'` (migración manual) y actualizar todas las referencias al código en el motor de reglas y en el código de la aplicación.
 - ~~**Implementación de `organismos_expediente`:** Tabla nueva, migración manual.~~ **HECHO** — #391: modelo + migración + `ContextoConsultaSeparata`.
