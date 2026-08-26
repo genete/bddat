@@ -44,16 +44,12 @@ def _get_variable(nombre):
     return fn
 
 
-def _mock_query(vinculo_o_none):
-    """Devuelve un mock de db.session.query(...).join(...).join(...).filter(...).order_by(...).first()"""
-    m = MagicMock()
-    m.return_value.join.return_value.join.return_value.filter.return_value \
-        .order_by.return_value.first.return_value = vinculo_o_none
-    return m
-
-
 # ---------------------------------------------------------------------------
 # A) Variable traslado_organismo_titular_vencido
+#
+# #396 bloque 7: la variable delega en consultas_organismos.traslado_titular_vencido
+# (parte B más abajo) en vez de reimplementar la query — el mock ya no es sobre
+# db.session.query, sino sobre TramiteOrganismo.query, igual que en la parte B.
 # ---------------------------------------------------------------------------
 
 class TestVariableMotor:
@@ -70,16 +66,17 @@ class TestVariableMotor:
         """Organismo con resultado (cerrado_favorable) → no se evalúa su plazo → False."""
         fn = _get_variable('traslado_organismo_titular_vencido')
         ctx = _ctx([_org('cerrado_favorable')])
-        with patch('app.db') as mock_db:
-            mock_db.session.query.side_effect = AssertionError('no debería consultarse BD')
+        with patch('app.models.tramites_organismos.TramiteOrganismo') as mock_model:
+            mock_model.query.join.side_effect = AssertionError('no debería consultarse BD')
             assert fn(ctx) is False
 
     def test_organismo_abierto_sin_vinculo_false(self):
         """Organismo abierto (sin resultado) pero sin CONSULTA_TRASLADO_TITULAR vinculado → False."""
         fn = _get_variable('traslado_organismo_titular_vencido')
         ctx = _ctx([_org(None)])
-        with patch('app.db') as mock_db:
-            mock_db.session.query = _mock_query(None)
+        with patch('app.models.tramites_organismos.TramiteOrganismo') as mock_model:
+            mock_model.query.join.return_value.join.return_value \
+                .filter.return_value.order_by.return_value.first.return_value = None
             assert fn(ctx) is False
 
     def test_organismo_abierto_plazo_en_plazo_false(self):
@@ -88,9 +85,10 @@ class TestVariableMotor:
         ctx = _ctx([_org(None)])
         tramite_stub = SimpleNamespace(tarea_espera=SimpleNamespace())
         vinculo = SimpleNamespace(tramite=tramite_stub)
-        with patch('app.db') as mock_db, \
+        with patch('app.models.tramites_organismos.TramiteOrganismo') as mock_model, \
              patch('app.services.plazos.obtener_estado_plazo_tarea', return_value=_ep('EN_PLAZO')):
-            mock_db.session.query = _mock_query(vinculo)
+            mock_model.query.join.return_value.join.return_value \
+                .filter.return_value.order_by.return_value.first.return_value = vinculo
             assert fn(ctx) is False
 
     def test_organismo_abierto_plazo_vencido_true(self):
@@ -99,9 +97,10 @@ class TestVariableMotor:
         ctx = _ctx([_org(None)])
         tramite_stub = SimpleNamespace(tarea_espera=SimpleNamespace())
         vinculo = SimpleNamespace(tramite=tramite_stub)
-        with patch('app.db') as mock_db, \
+        with patch('app.models.tramites_organismos.TramiteOrganismo') as mock_model, \
              patch('app.services.plazos.obtener_estado_plazo_tarea', return_value=_ep('VENCIDO')):
-            mock_db.session.query = _mock_query(vinculo)
+            mock_model.query.join.return_value.join.return_value \
+                .filter.return_value.order_by.return_value.first.return_value = vinculo
             assert fn(ctx) is True
 
     def test_tramite_sin_espera_false(self):
@@ -109,9 +108,10 @@ class TestVariableMotor:
         fn = _get_variable('traslado_organismo_titular_vencido')
         ctx = _ctx([_org(None)])
         vinculo = SimpleNamespace(tramite=SimpleNamespace(tarea_espera=None))
-        with patch('app.db') as mock_db, \
+        with patch('app.models.tramites_organismos.TramiteOrganismo') as mock_model, \
              patch('app.services.plazos.obtener_estado_plazo_tarea') as mock_plazo:
-            mock_db.session.query = _mock_query(vinculo)
+            mock_model.query.join.return_value.join.return_value \
+                .filter.return_value.order_by.return_value.first.return_value = vinculo
             assert fn(ctx) is False
         mock_plazo.assert_not_called()
 
@@ -130,9 +130,10 @@ class TestVariableMotor:
             call_count += 1
             return efectos[str(call_count)]
 
-        with patch('app.db') as mock_db, \
+        with patch('app.models.tramites_organismos.TramiteOrganismo') as mock_model, \
              patch('app.services.plazos.obtener_estado_plazo_tarea', side_effect=fake_plazo):
-            mock_db.session.query = _mock_query(vinculo)
+            mock_model.query.join.return_value.join.return_value \
+                .filter.return_value.order_by.return_value.first.return_value = vinculo
             assert fn(ctx) is True
 
 

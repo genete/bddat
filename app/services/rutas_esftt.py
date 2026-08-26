@@ -56,13 +56,18 @@ def _segmento_organismo(tramite) -> str | None:
     estos trámites pueden coexistir en paralelo en la misma fase, uno por organismo
     consultado; el código de trámite por sí solo no los distingue.
 
+    Numerado por `organismo_expediente_id`, no por el id de la fila TramiteOrganismo
+    (#396 bloque 7): varios trámites del mismo organismo comparten organismo_expediente_id,
+    así que caen en la misma carpeta — antes cada uno abría una carpeta distinta.
+
     None si el trámite no tiene TramiteOrganismo asociado (caso general).
     """
     from app.models.tramites_organismos import TramiteOrganismo
     vinculo = TramiteOrganismo.query.filter_by(tramite_id=tramite.id).first()
     if vinculo is None:
         return None
-    return _segmento(vinculo.id, _texto_organismo(vinculo.organismo_expediente.organismo))
+    return _segmento(vinculo.organismo_expediente_id,
+                      _texto_organismo(vinculo.organismo_expediente.organismo))
 
 
 def ruta_esftt_documento(documento_o_tarea) -> str:

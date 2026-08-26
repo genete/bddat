@@ -537,41 +537,18 @@ def _(ctx) -> bool:
     inferir la acción correcta sin leer el resultado del trámite de organismo
     precedente (ADR-011 §5).
 
-    Implementación — el plazo se evalúa sobre la tarea ESPERAR_PLAZO del trámite,
-    no sobre el trámite (#788): el nivel TRAMITE no porta fecha administrativa y
-    dejó de existir en catalogo_plazos. Bajar hasta ella es navegación del árbol
-    (`Tramite.tarea_espera`), no una entrada del servicio de plazos (#778). La
-    llamada sigue pasando variables={} para evitar recursión (#475); el seed #463
-    no define condiciones en la entrada de CONSULTA_TRASLADO_TITULAR, así que da
-    el mismo resultado que el contexto completo. Si en el futuro se añaden
-    condiciones a ese plazo, revisarlo.
+    Reutiliza consultas_organismos.traslado_titular_vencido (#396 bloque 7): antes
+    esta función reimplementaba aquí la misma query + cálculo de plazo VENCIDO que
+    ya vive en ese servicio. Se evalúa organismo a organismo, sin el precómputo en
+    bloque que sí usa serializar_organismos_fase — el motor no batchea entre
+    organismos como hace esa serialización.
     """
-    from app.models.tramites_organismos import TramiteOrganismo
-    from app.models.tramites import Tramite as _Tramite
-    from app.models.tipos_tramites import TipoTramite
-    from app.services import plazos
-    from app import db
+    from app.services.consultas_organismos import traslado_titular_vencido
 
     for org in ctx.expediente.organismos:
         if org.resultado is not None:  # ya cerrado — descarta antes de la query pesada
             continue
-        vinculo = (
-            db.session.query(TramiteOrganismo)
-            .join(_Tramite, TramiteOrganismo.tramite_id == _Tramite.id)
-            .join(TipoTramite, _Tramite.tipo_tramite_id == TipoTramite.id)
-            .filter(
-                TramiteOrganismo.organismo_expediente_id == org.id,
-                TipoTramite.codigo == 'CONSULTA_TRASLADO_TITULAR',
-            )
-            .order_by(TramiteOrganismo.tramite_id.desc())
-            .first()
-        )
-        if vinculo is None:
-            continue
-        espera = vinculo.tramite.tarea_espera if vinculo.tramite else None
-        if espera is None:
-            continue
-        if plazos.obtener_estado_plazo_tarea(espera, variables={}).estado == 'VENCIDO':
+        if traslado_titular_vencido(org):
             return True
     return False
 
