@@ -383,6 +383,41 @@ function ReabrirFase() {
   )
 }
 
+// Organismos vía consulta de la fase sin ninguna CONSULTA_SEPARATA vinculada
+// (ADR-042 §C, #396 bloque 5) — mismo criterio estructural que el backend
+// (consultas_organismos.organismos_pendientes_separata), derivado aquí del
+// payload del árbol ya cargado (fase.organismos[].tramite_ids + fase.tramites)
+// en vez de pedir un recuento aparte al backend.
+function organismosPendientesSeparata(fase) {
+  const tramitesPorId = new Map((fase.tramites || []).map((t) => [t.id, t]))
+  return (fase.organismos || []).filter((org) => {
+    if (org.via !== 'consulta') return false
+    return !(org.tramite_ids || []).some((tid) => {
+      const t = tramitesPorId.get(tid)
+      return t && t.tipo_codigo === 'CONSULTA_SEPARATA'
+    })
+  })
+}
+
+// Acción de fase CONSULTAS en modo edición (ADR-042 §C, #396 bloque 5): vive
+// junto al Editor genérico, no lo sustituye — resultado_fase_id/documento_
+// resultado_id de esta fase siguen editándose igual que en cualquier otra.
+// Oculto sin organismos pendientes: el botón no tiene nada útil que decir.
+function AccionesFaseConsultas({ nodo }) {
+  const enviarConsultas = useArbolStore((s) => s.enviarConsultas)
+  const enviando = useArbolStore((s) => s.enviandoConsultas)
+  const pendientes = organismosPendientesSeparata(nodo)
+  if (pendientes.length === 0) return null
+  return (
+    <div className="mb-3">
+      <button type="button" className="btn btn-sm btn-primary"
+              disabled={enviando} onClick={enviarConsultas}>
+        {enviando ? 'Enviando…' : `📤 Enviar consultas pendientes (${pendientes.length})`}
+      </button>
+    </div>
+  )
+}
+
 // Editor genérico: pinta un control por campo del esquema editable, autofocus en
 // el primero. Guardar/Cancelar viven en la barra fija (BarraEdicion, ADR-023 §5 bis);
 // aquí solo queda Borrar, que no es parte del control de salida del marco.
@@ -584,11 +619,16 @@ function InspectorEdicion({ nodo }) {
   // asume el Editor genérico para tareas).
   const esBespoke = esAnalizar || esElaborar || esNotificar
   const puedeBorrarTarea = esBespoke && puedeEditarNodo('tarea')
+  // Fase CONSULTAS (ADR-042 §C, #396 bloque 5): a diferencia de los bespoke de
+  // tarea, esto NO sustituye al Editor genérico — vive junto a él, como un
+  // bloque de acciones más (mismo criterio que ReabrirFase).
+  const esFaseConsultas = seleccion.tipo === 'fase' && nodo && nodo.tipo_codigo === 'CONSULTAS'
   return (
     <div className="d-flex flex-column h-100 arbol-inspector--lock">
       <BarraEdicion tipo={seleccion.tipo} nodo={nodo} />
       <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }} className="p-3">
         {!borrarPendienteConfirm && <BloqueoGuardarForzable />}
+        {!borrarPendienteConfirm && esFaseConsultas && <AccionesFaseConsultas nodo={nodo} />}
         {borrarPendienteConfirm
           ? <ConfirmacionBorrado nodo={nodo} />
           : esAnalizar

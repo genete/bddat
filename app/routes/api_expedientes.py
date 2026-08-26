@@ -38,6 +38,7 @@ from app.services.tipos_creables import tipos_creables_de_nodo
 from app.services.detalle_nodo import detalle_de_nodo, info_apertura_documento
 from app.services.esquema_editable import esquema_de_nodo
 from app.services import mutaciones_arbol as svc
+from app.services import consultas_organismos as svc_consultas
 from app.utils.api_respuestas import leer_bypass
 from app.services.assembler import build
 from app.services.requisitos import evaluar_requisitos
@@ -954,6 +955,91 @@ def crear_organismo_nodo(expediente_id, nodo_id):
         fase, entidad, via=via, documento_id=data.get('documento_id'),
         justificacion=justificacion,
     )
+
+    if res.bloqueo:
+        return _bloqueo_422(res)
+    if not res.ok:
+        return jsonify({'error': res.error}), 422
+
+    payload = {'ok': True, 'ids': res.ids}
+    if res.advertencia:
+        payload['advertencia'] = res.advertencia
+    return jsonify(payload), 201
+
+
+# =============================================================================
+# ENDPOINT 8quater: Enviar consultas en bloque (ADR-042 §C, #396 bloque 5)
+# =============================================================================
+
+@api_bp.route('/expedientes/<int:expediente_id>/nodo/fase/<int:nodo_id>/organismos/enviar-consultas',
+              methods=['POST'])
+@login_required
+def enviar_consultas_nodo(expediente_id, nodo_id):
+    """
+    POST .../nodo/fase/<fase_id>/organismos/enviar-consultas — crea una
+    CONSULTA_SEPARATA por cada organismo vía consulta que aún no tenga una
+    (ADR-042 §C). Acción de fase, incremental e idempotente por construcción:
+    repetir la llamada no duplica separatas ya creadas, solo recoge organismos
+    dados de alta después (segunda ronda incluida).
+
+    Sin body obligatorio. Bypass (#324/#616): {bypass:true, justificacion:'...'}.
+    Respuesta éxito: {ok:true, ids:[...]} 201 (`ids` puede venir vacío si no
+    había ningún organismo pendiente). Bloqueo motor: {error, motivo, url_norma,
+    puede_escapar} 422.
+    """
+    expediente = Expediente.query.get_or_404(expediente_id)
+    if verificar_acceso_expediente(expediente, 'gestionar_estructura'):
+        return jsonify({'error': 'No tienes permiso para esta acción'}), 403
+
+    try:
+        fase = _resolver_nodo(expediente, 'fase', nodo_id)
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 404
+
+    data = request.get_json(silent=True) or {}
+    res = svc_consultas.enviar_consultas(fase, data)
+
+    if res.bloqueo:
+        return _bloqueo_422(res)
+    if not res.ok:
+        return jsonify({'error': res.error}), 422
+
+    payload = {'ok': True, 'ids': res.ids}
+    if res.advertencia:
+        payload['advertencia'] = res.advertencia
+    return jsonify(payload), 201
+
+
+# =============================================================================
+# ENDPOINT 8quinquies: Crear traslado a organismo/titular (ADR-042 §D, la mitad
+# de titular es obra de #396 bloque 5 — el traslado a organismo vía despensa
+# del nodo queda para #652, ver ADR-042 §D)
+# =============================================================================
+
+@api_bp.route('/expedientes/<int:expediente_id>/nodo/organismo/<int:nodo_id>/traslados',
+              methods=['POST'])
+@login_required
+def crear_traslado_nodo(expediente_id, nodo_id):
+    """
+    POST .../nodo/organismo/<oe_id>/traslados — crea un trámite
+    CONSULTA_TRASLADO_ORGANISMO o CONSULTA_TRASLADO_TITULAR vinculado a este
+    organismo.
+
+    Body JSON: {tipo: 'ORGANISMO'|'TITULAR'}. Bypass (#324/#616).
+    Respuesta éxito: {ok:true, ids:[...]} 201. Bloqueo motor: 422.
+    """
+    expediente = Expediente.query.get_or_404(expediente_id)
+    if verificar_acceso_expediente(expediente, 'gestionar_estructura'):
+        return jsonify({'error': 'No tienes permiso para esta acción'}), 403
+
+    oe = OrganismoExpediente.query.get(nodo_id)
+    if oe is None or oe.expediente_id != expediente.id:
+        return jsonify({'error': f'Organismo {nodo_id} no encontrado en el expediente'}), 404
+
+    data = request.get_json(silent=True) or {}
+    data = dict(data)
+    data['organismo_expediente_id'] = oe.id
+    res = svc_consultas.crear_traslado(oe.fase, data)
 
     if res.bloqueo:
         return _bloqueo_422(res)

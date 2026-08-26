@@ -77,8 +77,11 @@ class TestGuardCrearTramite:
     def test_traslado_titular_rechazado(self, app_ctx):
         assert self._creacion_generica('CONSULTA_TRASLADO_TITULAR', app_ctx) is False
 
-    def test_separata_no_rechazada(self, app_ctx):
-        assert self._creacion_generica('CONSULTA_SEPARATA', app_ctx) is True
+    def test_separata_rechazada_desde_396_bloque5(self, app_ctx):
+        """CONSULTA_SEPARATA pasa a creacion_generica=false en #396 bloque 5
+        (migración 396_consulta_separata_no_generica): toda separata nace desde
+        enviar_consultas(), nunca de la despensa genérica del árbol."""
+        assert self._creacion_generica('CONSULTA_SEPARATA', app_ctx) is False
 
 
 # ---------------------------------------------------------------------------
@@ -86,52 +89,54 @@ class TestGuardCrearTramite:
 # ---------------------------------------------------------------------------
 
 class TestEjecutarCrearTrasladoValidaciones:
+    """Desde #396 bloque 5, crear_traslado devuelve ResultadoMutacion (ok/error)
+    en vez de (jsonify(...), status) — mismo contrato que mutaciones_arbol.py."""
 
-    def test_tipo_invalido_devuelve_400(self, app):
+    def test_tipo_invalido_falla(self, app):
         with app.app_context():
             from app.services.consultas_organismos import crear_traslado
             fase = _fase_stub()
-            resp, status = crear_traslado(
+            res = crear_traslado(
                 fase, _form(tipo='INVALIDO', organismo_expediente_id='3'))
-            assert status == 400
-            assert 'tipo' in resp.get_json()['error']
+            assert not res.ok
+            assert 'tipo' in res.error
 
-    def test_tipo_vacio_devuelve_400(self, app):
+    def test_tipo_vacio_falla(self, app):
         with app.app_context():
             from app.services.consultas_organismos import crear_traslado
             fase = _fase_stub()
-            resp, status = crear_traslado(
+            res = crear_traslado(
                 fase, _form(organismo_expediente_id='3'))
-            assert status == 400
+            assert not res.ok
 
-    def test_sin_organismo_expediente_id_devuelve_400(self, app):
+    def test_sin_organismo_expediente_id_falla(self, app):
         with app.app_context():
             from app.services.consultas_organismos import crear_traslado
             fase = _fase_stub()
-            resp, status = crear_traslado(fase, _form(tipo='ORGANISMO'))
-            assert status == 400
-            assert 'organismo_expediente_id' in resp.get_json()['error']
+            res = crear_traslado(fase, _form(tipo='ORGANISMO'))
+            assert not res.ok
+            assert 'organismo_expediente_id' in res.error
 
-    def test_organismo_no_existe_devuelve_404(self, app):
+    def test_organismo_no_existe_falla(self, app):
         with app.app_context():
             from app.services.consultas_organismos import crear_traslado
             fase = _fase_stub(expediente_id=5)
             with patch(f'{_MOD}.OrganismoExpediente') as mock_oe:
                 mock_oe.query.get.return_value = None
-                resp, status = crear_traslado(
+                res = crear_traslado(
                     fase, _form(tipo='ORGANISMO', organismo_expediente_id='99'))
-            assert status == 404
+            assert not res.ok
 
-    def test_organismo_de_otro_expediente_devuelve_404(self, app):
+    def test_organismo_de_otro_expediente_falla(self, app):
         with app.app_context():
             from app.services.consultas_organismos import crear_traslado
             fase = _fase_stub(expediente_id=5)
             oe = _oe_stub(oe_id=99, expediente_id=7)
             with patch(f'{_MOD}.OrganismoExpediente') as mock_oe:
                 mock_oe.query.get.return_value = oe
-                resp, status = crear_traslado(
+                res = crear_traslado(
                     fase, _form(tipo='ORGANISMO', organismo_expediente_id='99'))
-            assert status == 404
+            assert not res.ok
 
 
 # ---------------------------------------------------------------------------
@@ -139,6 +144,10 @@ class TestEjecutarCrearTrasladoValidaciones:
 # ---------------------------------------------------------------------------
 
 class TestEjecutarCrearTrasladoCaminoFeliz:
+    """Desde #396 bloque 5 el camino feliz también pasa por check_invariante y
+    check_vocabulario_tramite (comprobaciones que mutaciones_arbol.crear_tramite
+    ya hacía y esta función no) — parcheadas a "sin bloqueo" para no depender
+    de datos reales de BD en un fichero pensado para MagicMock puro."""
 
     def _run(self, app, tipo_param, codigo_esperado):
         from app.services.consultas_organismos import crear_traslado
@@ -154,7 +163,8 @@ class TestEjecutarCrearTrasladoCaminoFeliz:
              patch(f'{_MOD}.TipoTramite') as mock_tt, \
              patch(f'{_MOD}.Tramite') as mock_tramite_cls, \
              patch(f'{_MOD}.TramiteOrganismo') as mock_to_cls, \
-             patch(f'{_MOD}.leer_bypass', return_value=(None, None)), \
+             patch(f'{_MOD}.check_invariante', return_value=None), \
+             patch(f'{_MOD}.check_vocabulario_tramite', return_value=None), \
              patch(f'{_MOD}._evaluar') as mock_eval, \
              patch(f'{_MOD}.db'):
 
@@ -163,15 +173,15 @@ class TestEjecutarCrearTrasladoCaminoFeliz:
             mock_tramite_cls.return_value = tramite_nuevo
             eval_result = MagicMock()
             eval_result.permitido = True
+            eval_result.nivel = None
             eval_result.motivo = None
             mock_eval.return_value = eval_result
 
-            resp, status = crear_traslado(
+            res = crear_traslado(
                 fase, _form(tipo=tipo_param, organismo_expediente_id='3'))
 
-        assert status == 200
-        assert resp.get_json()['ok'] is True
-        assert resp.get_json()['id'] == 42
+        assert res.ok, res.error
+        assert res.ids == [42]
 
         mock_to_cls.assert_called_once_with(tramite_id=42, organismo_expediente_id=3)
         mock_tt.query.filter_by.assert_called_with(codigo=codigo_esperado)
@@ -202,7 +212,8 @@ class TestEjecutarCrearTrasladoCaminoFeliz:
              patch(f'{_MOD}.TipoTramite') as mock_tt, \
              patch(f'{_MOD}.Tramite') as mock_tramite_cls, \
              patch(f'{_MOD}.TramiteOrganismo'), \
-             patch(f'{_MOD}.leer_bypass', return_value=(None, None)), \
+             patch(f'{_MOD}.check_invariante', return_value=None), \
+             patch(f'{_MOD}.check_vocabulario_tramite', return_value=None), \
              patch(f'{_MOD}._evaluar') as mock_eval, \
              patch(f'{_MOD}.db'):
 
@@ -211,6 +222,7 @@ class TestEjecutarCrearTrasladoCaminoFeliz:
             mock_tramite_cls.return_value = tramite_nuevo
             eval_result = MagicMock()
             eval_result.permitido = True
+            eval_result.nivel = None
             mock_eval.return_value = eval_result
 
             crear_traslado(
@@ -237,9 +249,9 @@ def test_motor_bloquea_no_crea_tramite(app):
          patch(f'{_MOD}.TipoTramite') as mock_tt, \
          patch(f'{_MOD}.Tramite') as mock_tramite_cls, \
          patch(f'{_MOD}.TramiteOrganismo') as mock_to_cls, \
-         patch(f'{_MOD}.leer_bypass', return_value=(None, None)), \
-         patch(f'{_MOD}._evaluar') as mock_eval, \
-         patch(f'{_MOD}.bloqueo', return_value=({'ok': False}, 403)):
+         patch(f'{_MOD}.check_invariante', return_value=None), \
+         patch(f'{_MOD}.check_vocabulario_tramite', return_value=None), \
+         patch(f'{_MOD}._evaluar') as mock_eval:
 
         mock_oe_cls.query.get.return_value = oe
         mock_tt.query.filter_by.return_value.first.return_value = tipo_tramite
@@ -247,8 +259,10 @@ def test_motor_bloquea_no_crea_tramite(app):
         eval_result.permitido = False
         mock_eval.return_value = eval_result
 
-        crear_traslado(
+        res = crear_traslado(
             fase, _form(tipo='ORGANISMO', organismo_expediente_id='3'))
 
+    assert not res.ok
+    assert res.bloqueo is eval_result
     mock_tramite_cls.assert_not_called()
     mock_to_cls.assert_not_called()

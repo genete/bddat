@@ -48,7 +48,11 @@ class TestCreablesTramite:
             'ANALISIS_DOCUMENTAL', 'REQUERIMIENTO_SUBSANACION', 'COMUNICACION_INICIO_ADMISION',
         }
 
-    def test_traslados_no_aparecen_ni_en_canonicos_ni_en_resto(self, arbol_esftt, app_ctx):
+    def test_traslados_y_separata_no_aparecen_ni_en_canonicos_ni_en_resto(self, arbol_esftt, app_ctx):
+        """Los tres trámites de CONSULTAS son creacion_generica=false: los
+        traslados desde #725 (se crean vía crear_traslado), CONSULTA_SEPARATA
+        desde #396 bloque 5 (migración 396_consulta_separata_no_generica — se
+        crea vía enviar_consultas(), nunca por la despensa genérica del árbol)."""
         from app.services.tipos_creables import _creables_tramite
 
         fase = arbol_esftt.fase('CONSULTAS')
@@ -57,7 +61,7 @@ class TestCreablesTramite:
         todos = _codigos(data['canonicos']) | _codigos(data['resto'])
         assert 'CONSULTA_TRASLADO_TITULAR' not in todos
         assert 'CONSULTA_TRASLADO_ORGANISMO' not in todos
-        assert 'CONSULTA_SEPARATA' in _codigos(data['canonicos'])
+        assert 'CONSULTA_SEPARATA' not in todos
 
     def test_tramite_fuera_de_vocabulario_cae_en_resto(self, arbol_esftt, app_ctx):
         from app.services.tipos_creables import _creables_tramite

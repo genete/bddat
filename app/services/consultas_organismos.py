@@ -7,18 +7,15 @@ pero la lógica de dominio no lo está — el plazo del art. 131.1 RD 1955/2000,
 traslado a organismo/titular y el envío en bloque de separatas son reglas del
 trámite de consultas, no de aquella pantalla.
 
-Sin consumidor HTTP hoy: quedan aquí, con sus tests, a la espera de la UI de
-consultas que las reconecte.
-
-Nota de contrato: estas funciones devuelven tuplas `(jsonify(...), status)`,
-heredadas literalmente del blueprint. Es el mismo camino B de #500 que produjo
-`mutaciones_arbol.py`, pero sin su paso de conversión a `ResultadoMutacion`: sin
-caller vivo, rediseñar el retorno sería diseñar en abstracto. Al reconectarlas a
-una UI, esa conversión es lo primero que toca.
+Reconectadas a UI real en #396 bloque 5 (ADR-042 §C): `crear_traslado` y
+`enviar_consultas` devuelven `ResultadoMutacion` (mismo contrato que
+`mutaciones_arbol.py`) en vez de las tuplas `(jsonify(...), status)` heredadas
+literalmente del blueprint — la conversión que el docstring histórico de este
+módulo dejaba pendiente "a la espera de caller vivo".
 """
 import logging
+from typing import Optional
 
-from flask import jsonify
 from flask_login import current_user
 from sqlalchemy.exc import OperationalError, ProgrammingError
 
@@ -31,8 +28,14 @@ from app.services.assembler import build_sujeto
 from app.services import bitacora as bitacora_svc
 from app.services.motor_reglas import PERMITIDO
 from app.services.motor_modo_global import evaluar_con_modo_global as _evaluar
-from app.services.invariantes_esftt import RESULTADO_FASE_FAVORABLE_CODIGOS
-from app.utils.api_respuestas import bloqueo, leer_bypass, advertencia
+from app.services.invariantes_esftt import check_invariante
+from app.services.vocabulario_esftt import check_vocabulario_tramite
+# ResultadoMutacion y sus helpers viven en mutaciones_arbol.py (ADR-016 S3b-0);
+# reutilizados aquí en vez de duplicar la dataclass (#396 bloque 5: este módulo
+# se alinea con el mismo contrato de retorno que el resto de mutaciones ESFTT).
+from app.services.mutaciones_arbol import (
+    ResultadoMutacion, _advertencia_dict, _bloquea, _registrar_advertencia,
+)
 
 log = logging.getLogger(__name__)
 
@@ -160,7 +163,22 @@ def traslado_titular_vencido(oe, tramite_traslado_titular=_SIN_PRECOMPUTAR) -> b
 # Trámite de traslado a organismo / titular (#471)
 # ============================================
 
-def crear_traslado(fase, form):
+def _leer_justificacion_bypass(form) -> tuple[Optional[str], Optional[ResultadoMutacion]]:
+    """Bypass del motor (#324/#616), forma ResultadoMutacion en vez de HTTP directo
+    (`app.utils.api_respuestas.leer_bypass` devuelve una Response — no vale aquí,
+    este módulo ya no jsonifica sus propios errores, #396 bloque 5).
+
+    Devuelve (justificacion, None) o (None, ResultadoMutacion de error).
+    """
+    if form.get('bypass') not in ('true', '1', 'True', True):
+        return None, None
+    justificacion = (form.get('justificacion') or '').strip()
+    if not justificacion:
+        return None, ResultadoMutacion(ok=False, error='justificacion es obligatoria para el bypass')
+    return justificacion, None
+
+
+def crear_traslado(fase, form) -> ResultadoMutacion:
     """Crea un trámite CONSULTA_TRASLADO_* y lo vincula al OrganismoExpediente.
 
     form:
@@ -171,114 +189,146 @@ def crear_traslado(fase, form):
 
     tipo = form.get('tipo', '').upper()
     if tipo not in ('ORGANISMO', 'TITULAR'):
-        return jsonify({'ok': False, 'error': "tipo debe ser 'ORGANISMO' o 'TITULAR'"}), 400
+        return ResultadoMutacion(ok=False, error="tipo debe ser 'ORGANISMO' o 'TITULAR'")
 
-    oe_id = form.get('organismo_expediente_id', type=int)
+    # form.get(..., type=int) es API de MultiDict (request.form clásico); esta
+    # función también recibe dicts planos desde la ruta JSON moderna (#396
+    # bloque 5) — conversión tolerante a ambos en vez de asumir MultiDict.
+    oe_id_raw = form.get('organismo_expediente_id')
+    try:
+        oe_id = int(oe_id_raw) if oe_id_raw is not None else None
+    except (TypeError, ValueError):
+        oe_id = None
     if not oe_id:
-        return jsonify({'ok': False, 'error': 'organismo_expediente_id es obligatorio'}), 400
+        return ResultadoMutacion(ok=False, error='organismo_expediente_id es obligatorio')
 
     oe = OrganismoExpediente.query.get(oe_id)
     if not oe or oe.expediente_id != expediente.id:
-        return jsonify({'ok': False, 'error': 'Organismo no encontrado en el expediente'}), 404
+        return ResultadoMutacion(ok=False, error='Organismo no encontrado en el expediente')
 
     codigo = f'CONSULTA_TRASLADO_{tipo}'
     try:
         tipo_tramite = TipoTramite.query.filter_by(codigo=codigo).first()
         if tipo_tramite is None:
             log.warning('crear_traslado: TipoTramite %s no encontrado en catálogo', codigo)
-            return jsonify({'ok': False, 'error': f'Tipo de trámite {codigo} no configurado'}), 500
+            return ResultadoMutacion(ok=False, error=f'Tipo de trámite {codigo} no configurado')
     except (OperationalError, ProgrammingError):
         log.warning('crear_traslado: tabla tipos_tramites no disponible')
-        return jsonify({'ok': False, 'error': 'Error de configuración del catálogo'}), 500
+        return ResultadoMutacion(ok=False, error='Error de configuración del catálogo')
 
-    justificacion, err = leer_bypass(form)
+    justificacion, err = _leer_justificacion_bypass(form)
     if err:
         return err
 
+    # Comprobaciones que mutaciones_arbol.crear_tramite ya hace y esta función,
+    # heredada literal de api_bc.py, no hacía (#396 bloque 5): sellado de fase y
+    # vocabulario ESFTT (ADR-037 §B) — fases_tramites no limita hoy la cardinalidad
+    # de CONSULTA_TRASLADO_* (repetible por diseño, ver DISEÑO_CONSULTAS_ORGANISMOS.md
+    # §6 bis), así que en la práctica actual solo el sellado puede bloquear aquí.
+    res_inv = check_invariante('MUTAR', 'FASE', fase.id)
+    if res_inv:
+        return ResultadoMutacion(ok=False, bloqueo=res_inv)
+
+    res_vocab = check_vocabulario_tramite(fase, tipo_tramite)
+    if _bloquea(res_vocab, justificacion):
+        return ResultadoMutacion(ok=False, bloqueo=res_vocab)
+
+    objeto_sujeto = {'fase': fase, 'tipo_tramite': tipo_tramite, 'organismo_expediente': oe}
     if justificacion is None:
-        res_eval = _evaluar('CREAR', expediente,
-                            objeto={'fase': fase, 'tipo_tramite': tipo_tramite,
-                                    'organismo_expediente': oe})
+        res_eval = _evaluar('CREAR', expediente, objeto=objeto_sujeto)
         if not res_eval.permitido:
-            return bloqueo(res_eval)
+            return ResultadoMutacion(ok=False, bloqueo=res_eval)
     else:
         res_eval = PERMITIDO
 
-    try:
-        tramite = Tramite(fase_id=fase.id, tipo_tramite_id=tipo_tramite.id)
-        db.session.add(tramite)
-        db.session.flush()
-        db.session.add(TramiteOrganismo(tramite_id=tramite.id, organismo_expediente_id=oe.id))
+    tramite = Tramite(fase_id=fase.id, tipo_tramite_id=tipo_tramite.id)
+    db.session.add(tramite)
+    db.session.flush()
+    db.session.add(TramiteOrganismo(tramite_id=tramite.id, organismo_expediente_id=oe.id))
 
-        if justificacion:
-            sujeto = build_sujeto(expediente, {'fase': fase, 'tipo_tramite': tipo_tramite})
-            bitacora_svc.registrar(
-                current_user.id, 'CREAR', 'tramites', tramite.id,
-                detalle={'escape': True, 'justificacion': justificacion, 'sujeto': sujeto},
-            )
+    if justificacion:
+        sujeto = build_sujeto(expediente, objeto_sujeto)
+        bitacora_svc.registrar(
+            current_user.id, 'CREAR', 'tramites', tramite.id,
+            detalle={'escape': True, 'justificacion': justificacion, 'sujeto': sujeto},
+        )
+    elif res_eval.nivel == 'ADVERTIR':
+        sujeto = build_sujeto(expediente, objeto_sujeto)
+        _registrar_advertencia('CREAR', 'tramites', tramite.id, sujeto, res_eval)
 
-        db.session.commit()
-        return jsonify({'ok': True, 'id': tramite.id, 'advertencia': advertencia(res_eval)}), 200
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'ok': False, 'error': str(e)}), 500
+    db.session.commit()
+    return ResultadoMutacion(ok=True, ids=[tramite.id], advertencia=_advertencia_dict(res_eval))
 
 
 # ============================================
 # Acción en bloque «Enviar consultas» (#462)
 # ============================================
 
-def calcular_plazo_consulta(expediente, solicitud) -> int:
-    """30 días general; 15 si AAC pura + AAP previa favorable (art. 131.1 párr. 2 RD 1955/2000)."""
-    if not (solicitud.contiene_tipo('AAC')
-            and not solicitud.contiene_tipo('AAP')
-            and not solicitud.contiene_tipo('DUP')):
-        return 30
-    for sol in expediente.solicitudes:
-        if sol is solicitud:
-            continue
-        if not sol.contiene_tipo('AAP'):
-            continue
-        for fase_sol in sol.fases:
-            if (fase_sol.tipo_fase
-                    and fase_sol.tipo_fase.es_finalizadora
-                    and fase_sol.finalizada
-                    and fase_sol.resultado_fase
-                    and fase_sol.resultado_fase.codigo in RESULTADO_FASE_FAVORABLE_CODIGOS):
-                return 15
-    return 30
+def calcular_plazo_consulta(fase) -> int:
+    """Plazo legal de la separata a organismos (art. 131.1 párr. 2 RD 1955/2000):
+    30 días general, 15 si la solicitud es AAC pura con una AAP previa favorable.
 
+    Lee directamente `catalogo_plazos` (entradas 143/144, ESPERAR_PLAZO de
+    CONSULTA_SEPARATA) en vez de reimplementar la norma en Python (#396 bloque 5):
+    antes esta función duplicaba, a mano, exactamente las mismas dos condiciones
+    (`es_solicitud_aac_pura`, `tiene_solicitud_aap_favorable`) que ya son
+    variables reales del motor (`app/services/variables/calculado.py`) y ya
+    condicionan esas dos filas del catálogo — la norma solo debe vivir una vez.
 
-def enviar_consultas(fase, form):
-    """Crea una CONSULTA_SEPARATA por cada organismo vía consulta aún pendiente."""
-    expediente = fase.solicitud.expediente
-    solicitud = fase.solicitud
+    No hay tarea real todavía (se llama antes de crear la separata, para
+    congelar el plazo en `oe.plazo_legal_dias`): se construye un elemento TAREA
+    sintético con `SimpleNamespace` — nunca tocado por la sesión de BD, mismo
+    espíritu que el stub transiente de `mutaciones_arbol.crear_fase` — con el
+    camino que tendría la tarea real, y se reutiliza el selector interno de
+    plazos.py en vez de duplicar también la lógica de selección de entrada.
+    """
+    from types import SimpleNamespace
+
+    from sqlalchemy.exc import OperationalError, ProgrammingError
+
+    from app.models.tipos_tareas import TipoTarea
+    from app.services import plazos
+    from app.services.assembler import ExpedienteContext
+    from app.services.variables import get_registry
 
     try:
-        tipo_tramite = TipoTramite.query.filter_by(codigo='CONSULTA_SEPARATA').first()
-        if tipo_tramite is None:
-            log.warning('enviar_consultas: TipoTramite CONSULTA_SEPARATA no encontrado en catálogo')
-            return jsonify({'ok': False, 'error': 'Tipo de trámite CONSULTA_SEPARATA no configurado'}), 500
-    except (OperationalError, ProgrammingError):
-        log.warning('enviar_consultas: tabla tipos_tramites no disponible')
-        return jsonify({'ok': False, 'error': 'Error de configuración del catálogo'}), 500
+        tipo_tarea = TipoTarea.query.filter_by(codigo='ESPERAR_PLAZO').first()
+        tipo_tramite_separata = TipoTramite.query.filter_by(codigo='CONSULTA_SEPARATA').first()
+    except (OperationalError, ProgrammingError) as exc:
+        log.warning('calcular_plazo_consulta: catálogo no disponible — %s', exc)
+        return 30
+    if tipo_tarea is None or tipo_tramite_separata is None:
+        log.warning(
+            'calcular_plazo_consulta: TipoTarea ESPERAR_PLAZO o TipoTramite '
+            'CONSULTA_SEPARATA no encontrado en catálogo — 30 días por defecto')
+        return 30
 
-    justificacion, err = leer_bypass(form)
-    if err:
-        return err
+    solicitud = fase.solicitud
+    tramite_stub = SimpleNamespace(fase=fase, tipo_tramite=tipo_tramite_separata)
+    tarea_stub = SimpleNamespace(tramite=tramite_stub, tipo_tarea=tipo_tarea)
 
-    if justificacion is None:
-        res_eval = _evaluar('CREAR', expediente, objeto={'fase': fase, 'tipo_tramite': tipo_tramite})
-        if not res_eval.permitido:
-            return bloqueo(res_eval)
-    else:
-        res_eval = PERMITIDO
+    registry = get_registry()
+    ctx = ExpedienteContext(solicitud.expediente, objeto=solicitud)
+    variables = {
+        'es_solicitud_aac_pura': registry['es_solicitud_aac_pura'](ctx),
+        'tiene_solicitud_aap_favorable': registry['tiene_solicitud_aap_favorable'](ctx),
+    }
 
-    # "Pendiente" ya no es un resultado almacenado (#396): un organismo está
-    # pendiente de separata si vía consulta y aún no tiene ningún trámite
-    # CONSULTA_SEPARATA vinculado — criterio estructural, no de estado. Filtra
-    # por fase (no por expediente): cada ronda de consultas es una fase distinta
-    # (DISEÑO_CONSULTAS_ORGANISMOS.md §6 bis).
+    entrada = plazos._seleccionar_catalogo(tarea_stub, 'TAREA', variables)
+    return entrada.plazo_valor if entrada else 30
+
+
+def organismos_pendientes_separata(fase) -> list:
+    """Organismos vía consulta de la fase que aún no tienen ninguna
+    CONSULTA_SEPARATA vinculada — "pendiente" ya no es un resultado almacenado
+    (#396 bloque 1): es estructural, no de estado. `organismo_expediente_id` es
+    PK única de toda la tabla (no solo de esta fase), así que no hace falta
+    cruzar también por fase_id para no mezclar rondas — cada fila pertenece a
+    una sola fase por construcción.
+
+    Pública: la usan tanto enviar_consultas() como el inspector (recuento en el
+    rótulo del botón «Enviar consultas pendientes (N)», #396 bloque 5).
+    """
     ids_con_separata = {
         row[0] for row in (
             db.session.query(TramiteOrganismo.organismo_expediente_id)
@@ -287,33 +337,86 @@ def enviar_consultas(fase, form):
             .filter(TipoTramite.codigo == 'CONSULTA_SEPARATA')
         )
     }
-    pendientes = [
+    return [
         oe for oe in fase.organismos
         if oe.via == 'consulta' and oe.id not in ids_con_separata
     ]
 
-    plazo = calcular_plazo_consulta(expediente, solicitud)
-    objeto_sujeto = {'fase': fase, 'tipo_tramite': tipo_tramite}
+
+def enviar_consultas(fase, form) -> ResultadoMutacion:
+    """Crea una CONSULTA_SEPARATA por cada organismo vía consulta aún pendiente.
+
+    Idempotente por construcción: una segunda pulsación no repite las separatas
+    ya creadas (organismos_pendientes_separata las excluye), así que sirve tanto
+    para el primer envío como para recoger organismos nuevos de una ronda
+    posterior — sin distinguir ambos casos en el front (ADR-042 §C).
+    """
+    expediente = fase.solicitud.expediente
 
     try:
-        ids = []
-        for oe in pendientes:
-            tramite = Tramite(fase_id=fase.id, tipo_tramite_id=tipo_tramite.id)
-            db.session.add(tramite)
-            db.session.flush()
-            db.session.add(TramiteOrganismo(tramite_id=tramite.id, organismo_expediente_id=oe.id))
-            oe.plazo_legal_dias = plazo
-            ids.append(tramite.id)
+        tipo_tramite = TipoTramite.query.filter_by(codigo='CONSULTA_SEPARATA').first()
+        if tipo_tramite is None:
+            log.warning('enviar_consultas: TipoTramite CONSULTA_SEPARATA no encontrado en catálogo')
+            return ResultadoMutacion(ok=False, error='Tipo de trámite CONSULTA_SEPARATA no configurado')
+    except (OperationalError, ProgrammingError):
+        log.warning('enviar_consultas: tabla tipos_tramites no disponible')
+        return ResultadoMutacion(ok=False, error='Error de configuración del catálogo')
 
-            if justificacion:
-                sujeto = build_sujeto(expediente, objeto_sujeto)
-                bitacora_svc.registrar(
-                    current_user.id, 'CREAR', 'tramites', tramite.id,
-                    detalle={'escape': True, 'justificacion': justificacion, 'sujeto': sujeto},
-                )
+    justificacion, err = _leer_justificacion_bypass(form)
+    if err:
+        return err
 
-        db.session.commit()
-        return jsonify({'ok': True, 'ids': ids, 'advertencia': advertencia(res_eval)})
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'ok': False, 'error': str(e)}), 500
+    pendientes = organismos_pendientes_separata(fase)
+    if not pendientes:
+        return ResultadoMutacion(ok=True, ids=[])
+
+    # Mismas comprobaciones que mutaciones_arbol.crear_tramite (#396 bloque 5):
+    # sellado de fase y vocabulario ESFTT. Una sola vez para el lote — todos los
+    # trámites que se van a crear son del mismo tipo bajo la misma fase.
+    res_inv = check_invariante('MUTAR', 'FASE', fase.id)
+    if res_inv:
+        return ResultadoMutacion(ok=False, bloqueo=res_inv)
+
+    res_vocab = check_vocabulario_tramite(fase, tipo_tramite)
+    if _bloquea(res_vocab, justificacion):
+        return ResultadoMutacion(ok=False, bloqueo=res_vocab)
+
+    objeto_sujeto = {'fase': fase, 'tipo_tramite': tipo_tramite}
+    if justificacion is None:
+        res_eval = _evaluar('CREAR', expediente, objeto=objeto_sujeto)
+        if not res_eval.permitido:
+            return ResultadoMutacion(ok=False, bloqueo=res_eval)
+    else:
+        res_eval = PERMITIDO
+
+    # El plazo legal se calcula una vez para todo el lote (mismo art. 131.1,
+    # misma solicitud) y se congela en cada organismo — es el valor del oficio
+    # en el momento de enviarlo, no se recalcula después (DISEÑO_CONSULTAS_
+    # ORGANISMOS.md §7).
+    plazo = calcular_plazo_consulta(fase)
+
+    ids = []
+    for oe in pendientes:
+        tramite = Tramite(fase_id=fase.id, tipo_tramite_id=tipo_tramite.id)
+        db.session.add(tramite)
+        db.session.flush()
+        db.session.add(TramiteOrganismo(tramite_id=tramite.id, organismo_expediente_id=oe.id))
+        oe.plazo_legal_dias = plazo
+        ids.append(tramite.id)
+
+        if justificacion:
+            sujeto = build_sujeto(expediente, objeto_sujeto)
+            bitacora_svc.registrar(
+                current_user.id, 'CREAR', 'tramites', tramite.id,
+                detalle={'escape': True, 'justificacion': justificacion, 'sujeto': sujeto},
+            )
+
+    if not justificacion and res_eval.nivel == 'ADVERTIR':
+        sujeto = build_sujeto(expediente, objeto_sujeto)
+        # Una advertencia por lote, no por organismo — el motivo es el mismo
+        # (crear CONSULTA_SEPARATA bajo esta fase), no algo específico de cada oe.
+        for tramite_id in ids:
+            _registrar_advertencia('CREAR', 'tramites', tramite_id, sujeto, res_eval)
+
+    db.session.commit()
+    return ResultadoMutacion(ok=True, ids=ids, advertencia=_advertencia_dict(res_eval))

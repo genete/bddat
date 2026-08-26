@@ -361,6 +361,7 @@ def _serializar_organismos_fase(fase, tramites_data: list[dict]) -> list[dict]:
             'tipo': 'organismo',
             'id': oe.id,
             'nombre': oe.organismo.nombre_completo if oe.organismo else None,
+            'via': oe.via,                # bloque 5: el front lo necesita para el recuento de "pendientes de separata"
             'estado': None,              # sin equivalente estructural: nodo sintético, no columna BD
             'resultado': oe.resultado,   # resultado legal crudo (ADR-011 §6); None = ciclo en curso
             'semaforo': _semaforo(est, propio),
