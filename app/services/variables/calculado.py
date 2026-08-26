@@ -440,6 +440,25 @@ def _(ctx) -> bool:
     return False
 
 
+@variable('existe_fase_consultas_previa')
+def _(ctx) -> bool:
+    """
+    True si la solicitud en contexto ya tiene al menos una fase CONSULTAS
+    (segunda ronda por modificado de proyecto, DISEÑO_CONSULTAS_ORGANISMOS.md
+    §6 bis — duplicar la fase ya está permitido, esta variable solo dispara
+    el aviso).
+
+    Evaluar al CREAR fase CONSULTAS (motor: ADVERTIR, #396 bloque 6).
+    """
+    solicitud = ctx.solicitud
+    if solicitud is None:
+        return False
+    for fase in solicitud.fases:
+        if fase.tipo_fase and fase.tipo_fase.codigo == 'CONSULTAS':
+            return True
+    return False
+
+
 # ---------------------------------------------------------------------------
 # Variables compatibilidad de tipos de solicitud (#410)
 # ---------------------------------------------------------------------------
