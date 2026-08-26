@@ -27,6 +27,7 @@ from app.models import (
     Solicitud, Fase, TipoSolicitud, TipoFase,
     Proyecto, TipoIA, Usuario,
     Tramite, Tarea, TipoTramite, TipoTarea, Documento,
+    OrganismoExpediente,
 )
 from app.models.requisitos_documentales import RequisitoDocumental, DocumentoRequisito
 from app.models.items_tecnicos import ItemTecnico, CoberturaItemTecnico
@@ -524,6 +525,12 @@ def _resolver_nodo(expediente, tipo: str, nodo_id: int, *, permitir_fase_cerrada
             raise ValueError(f'Tarea {nodo_id} no encontrada en expediente {expediente.id}')
         _verificar_no_sellado('TAREA', obj.id, permitir_fase_cerrada)
         return obj
+    if tipo == 'organismo':
+        obj = OrganismoExpediente.query.get(nodo_id)
+        if obj is None or obj.expediente_id != expediente.id:
+            raise ValueError(f'Organismo {nodo_id} no encontrado en expediente {expediente.id}')
+        _verificar_no_sellado('ORGANISMO', obj.id, permitir_fase_cerrada)
+        return obj
     raise ValueError(f'Tipo de nodo desconocido: {tipo!r}')
 
 
@@ -657,10 +664,11 @@ def editar_nodo(expediente_id, tipo, nodo_id):
     PATCH .../nodo/<tipo>/<nodo_id> — editar campos de un nodo (ADR-016 §S3b).
 
     Body JSON varía por nivel:
-      solicitud: {observaciones}
-      fase:      {resultado_fase_id, documento_resultado_id, observaciones}
-      tramite:   {observaciones}
-      tarea:     {documentos_consumidos_ids, documento_producido_id, notas}
+      solicitud:  {observaciones}
+      fase:       {resultado_fase_id, documento_resultado_id, observaciones}
+      tramite:    {observaciones}
+      tarea:      {documentos_consumidos_ids, documento_producido_id, notas}
+      organismo:  {via, resultado, direccion_notificacion_id, documento_id} (ADR-042 §C)
     Respuesta éxito: {ok:true} 200. Bloqueo motor: {error, motivo, url_norma} 422.
     """
     expediente = Expediente.query.get_or_404(expediente_id)
@@ -698,6 +706,14 @@ def editar_nodo(expediente_id, tipo, nodo_id):
             documentos_consumidos_ids=data.get('documentos_consumidos_ids') or [],
             documento_producido_id=data.get('documento_producido_id'),
             notas=data.get('notas'),
+        )
+    elif tipo == 'organismo':
+        res = svc.editar_organismo(
+            nodo,
+            via=data.get('via'),
+            resultado=data.get('resultado') or None,
+            direccion_notificacion_id=data.get('direccion_notificacion_id'),
+            documento_id=data.get('documento_id'),
         )
     else:
         return jsonify({'error': f'Tipo de nodo no editable: {tipo!r}'}), 422
@@ -839,6 +855,8 @@ def borrar_nodo(expediente_id, tipo, nodo_id):
         res = svc.borrar_tramite(nodo)
     elif tipo == 'tarea':
         res = svc.borrar_tarea(nodo)
+    elif tipo == 'organismo':
+        res = svc.borrar_organismo(nodo)
     else:
         return jsonify({'error': f'Tipo de nodo no borrable: {tipo!r}'}), 422
 
@@ -886,6 +904,66 @@ def reabrir_fase_nodo(expediente_id, nodo_id):
     if not res.ok:
         return jsonify({'error': res.error}), 422
     return jsonify({'ok': True}), 200
+
+
+# =============================================================================
+# ENDPOINT 8ter: Alta de organismo consultado en una fase CONSULTAS (ADR-042 §C)
+# =============================================================================
+
+@api_bp.route('/expedientes/<int:expediente_id>/nodo/fase/<int:nodo_id>/organismos',
+              methods=['POST'])
+@login_required
+def crear_organismo_nodo(expediente_id, nodo_id):
+    """
+    POST .../nodo/fase/<fase_id>/organismos — alta de un organismo consultado
+    (ADR-042 §C). No es "crear hijo" por despensa: `OrganismoExpediente` no es
+    un tipo de catálogo (ver docstring de `mutaciones_arbol.crear_organismo`),
+    así que tiene endpoint propio en vez de reutilizar ENDPOINT 6.
+
+    Body JSON: {organismo_id, via, documento_id?}. `organismo_id` es el id de
+    la Entidad consultada (rol_consultado=True). `documento_id` obligatorio si
+    via='declaracion_responsable', ausente si via='consulta'.
+    Bypass (#324/#616): {..., bypass:true, justificacion:'...'}.
+    Respuesta éxito: {ok:true, ids:[...]} 201. Bloqueo motor: {error, motivo,
+    url_norma, puede_escapar} 422.
+    """
+    expediente = Expediente.query.get_or_404(expediente_id)
+    if verificar_acceso_expediente(expediente, 'gestionar_estructura'):
+        return jsonify({'error': 'No tienes permiso para esta acción'}), 403
+
+    try:
+        fase = _resolver_nodo(expediente, 'fase', nodo_id)
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 404
+
+    data = request.get_json(silent=True) or {}
+
+    justificacion, err = leer_bypass(data)
+    if err:
+        return err
+
+    organismo_id = data.get('organismo_id')
+    if not organismo_id:
+        return jsonify({'error': 'Se requiere organismo_id'}), 422
+    entidad = Entidad.query.get(organismo_id)
+    if not entidad:
+        return jsonify({'error': f'Entidad {organismo_id} no encontrada'}), 404
+
+    via = data.get('via', '')
+    res = svc.crear_organismo(
+        fase, entidad, via=via, documento_id=data.get('documento_id'),
+        justificacion=justificacion,
+    )
+
+    if res.bloqueo:
+        return _bloqueo_422(res)
+    if not res.ok:
+        return jsonify({'error': res.error}), 422
+
+    payload = {'ok': True, 'ids': res.ids}
+    if res.advertencia:
+        payload['advertencia'] = res.advertencia
+    return jsonify(payload), 201
 
 
 # =============================================================================

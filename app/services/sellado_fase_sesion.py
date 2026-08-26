@@ -2,8 +2,8 @@
 Hook de sesión SQLAlchemy — red de cierre del sellado de fase cerrada
 (#720, ADR-036 §6, capa 3).
 
-Intercepta cualquier escritura en Tramite/Tarea/DocumentoTarea/Notificacion en
-el momento del flush, venga de donde venga: ruta HTTP, servicio de dominio,
+Intercepta cualquier escritura en Tramite/Tarea/DocumentoTarea/Notificacion/
+OrganismoExpediente en el momento del flush, venga de donde venga: ruta HTTP, servicio de dominio,
 script de consola o un futuro job de integración externa (p. ej. un
 auto-vinculador de justificantes de notificación) que no pase por ninguna de
 las otras dos capas (`_resolver_nodo`, `check_invariante('MUTAR', ...)`). Es
@@ -11,10 +11,10 @@ la única capa que no depende de que el código que muta conozca el invariante.
 
 No hay ninguna excepción registrada para el propio ciclo cierre/reapertura:
 `mutaciones_arbol.editar_fase`/`reabrir_fase` solo escriben la fila `fases`,
-nunca las cuatro tablas vigiladas aquí — con el diseño actual no hay riesgo de
+nunca las cinco tablas vigiladas aquí — con el diseño actual no hay riesgo de
 autobloqueo. Si en el futuro alguna de esas dos funciones empieza a tocar
-Tramite/Tarea/DocumentoTarea/Notificacion en la misma transacción, revisar
-este hook antes de tocar nada más.
+Tramite/Tarea/DocumentoTarea/Notificacion/OrganismoExpediente en la misma
+transacción, revisar este hook antes de tocar nada más.
 """
 from __future__ import annotations
 
@@ -28,10 +28,11 @@ from app.models.tramites import Tramite
 from app.models.tareas import Tarea
 from app.models.documentos_tarea import DocumentoTarea
 from app.models.notificaciones import Notificacion
+from app.models.organismos_expediente import OrganismoExpediente
 
 log = logging.getLogger(__name__)
 
-_MODELOS_VIGILADOS = (Tramite, Tarea, DocumentoTarea, Notificacion)
+_MODELOS_VIGILADOS = (Tramite, Tarea, DocumentoTarea, Notificacion, OrganismoExpediente)
 
 
 class SelladoFaseVioladoError(Exception):
@@ -54,7 +55,7 @@ def _fase_de_instancia(obj):
     flush — mientras que una query por PK funciona en cualquier estado.
     """
     try:
-        if isinstance(obj, Tramite):
+        if isinstance(obj, (Tramite, OrganismoExpediente)):
             return Fase.query.get(obj.fase_id) if obj.fase_id else None
         if isinstance(obj, Tarea):
             tramite = Tramite.query.get(obj.tramite_id) if obj.tramite_id else None

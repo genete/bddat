@@ -21,6 +21,8 @@ from app.models.fases import Fase
 from app.models.tramites import Tramite
 from app.models.tareas import Tarea
 from app.models.solicitudes import Solicitud
+from app.models.organismos_expediente import OrganismoExpediente
+from app.models.tramites_organismos import TramiteOrganismo
 from app.services.motor_reglas import EvaluacionResult
 
 _TIPOS_REQUIEREN_DOC_PRODUCIDO = {'ANALIZAR', 'ELABORAR', 'NOTIFICAR'}
@@ -197,6 +199,14 @@ def _check_borrar(sujeto: str, entidad_id: int) -> Optional[EvaluacionResult]:
         if tiene_fases:
             return _bloquear('No se puede eliminar una solicitud con fases creadas. Bórrelas primero.')
 
+    elif sujeto == 'ORGANISMO':
+        tiene_tramites = db.session.query(TramiteOrganismo).filter(
+            TramiteOrganismo.organismo_expediente_id == entidad_id
+        ).first()
+        if tiene_tramites:
+            return _bloquear(
+                'No se puede eliminar un organismo que ya tiene trámites vinculados. Bórrelos primero.')
+
     return None
 
 
@@ -214,6 +224,9 @@ def _fase_de(sujeto: str, entidad_id: int) -> Optional[Fase]:
     if sujeto == 'TAREA':
         tarea = Tarea.query.get(entidad_id)
         return tarea.tramite.fase if tarea and tarea.tramite else None
+    if sujeto == 'ORGANISMO':
+        oe = OrganismoExpediente.query.get(entidad_id)
+        return oe.fase if oe else None
     return None
 
 

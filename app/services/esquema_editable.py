@@ -26,6 +26,8 @@ from app.models.tramites import Tramite
 from app.models.tareas import Tarea
 from app.models.documentos import Documento
 from app.models.tipos_resultados_fases import TipoResultadoFase
+from app.models.organismos_expediente import OrganismoExpediente, VIAS_ORGANISMO, RESULTADOS_ORGANISMO
+from app.models.direccion_notificacion import DireccionNotificacion
 
 log = logging.getLogger(__name__)
 
@@ -52,6 +54,8 @@ def esquema_de_nodo(expediente, tipo_nodo: str, nodo_id: int) -> dict:
             return _esquema_tramite(expediente, nodo_id)
         if tipo_nodo == 'tarea':
             return _esquema_tarea(expediente, nodo_id)
+        if tipo_nodo == 'organismo':
+            return _esquema_organismo(expediente, nodo_id)
     except (OperationalError, ProgrammingError) as exc:
         log.warning('esquema_editable: catálogo no disponible — %s', exc)
         return {'nodo': {'tipo': tipo_nodo, 'id': nodo_id}, 'campos': []}
@@ -157,5 +161,39 @@ def _esquema_tarea(exp, tarea_id: int) -> dict:
         'nodo': {'tipo': 'tarea', 'id': ta.id},
         'campos': [
             _campo_textarea('notas', 'Notas', ta.notas),
+        ],
+    }
+
+
+def _esquema_organismo(exp, organismo_id: int) -> dict:
+    oe = OrganismoExpediente.query.get(organismo_id)
+    if oe is None or oe.expediente_id != exp.id:
+        raise ValueError(f'Organismo {organismo_id} no encontrado en el expediente {exp.id}')
+
+    opciones_via = [{'valor': v, 'texto': v} for v in VIAS_ORGANISMO]
+    # 'exonerado' no se ofrece: lo deriva la vía (mutaciones_arbol.editar_organismo),
+    # no se elige campo a campo (DISEÑO_CONSULTAS_ORGANISMOS.md §2).
+    opciones_resultado = [
+        {'valor': r, 'texto': r} for r in RESULTADOS_ORGANISMO if r != 'exonerado'
+    ]
+    direcciones = DireccionNotificacion.query.filter(
+        DireccionNotificacion.entidad_id == oe.organismo_id,
+        DireccionNotificacion.tipo_rol.op('&')(2) > 0,  # bit CONSULTADO
+    ).all()
+    opciones_direccion = [
+        {'valor': d.id, 'texto': d.descripcion or d.email or f'Dirección {d.id}'}
+        for d in direcciones
+    ]
+    opciones_doc = _pool_docs(exp)
+
+    return {
+        'nodo': {'tipo': 'organismo', 'id': oe.id},
+        'campos': [
+            _campo_select('via', 'Vía', oe.via, opciones_via),
+            _campo_select('resultado', 'Resultado', oe.resultado, opciones_resultado),
+            _campo_select('direccion_notificacion_id', 'Dirección de notificación',
+                          oe.direccion_notificacion_id, opciones_direccion),
+            _campo_select('documento_id', 'Documento (declaración responsable)',
+                          oe.documento_id, opciones_doc),
         ],
     }
