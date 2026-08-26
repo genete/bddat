@@ -7,7 +7,7 @@
 // S3b-1: modoEdicion + lock + editor genérico (entrar/guardar/cancelar + refresco).
 // S3b añadirá: despensa, colapsos manuales por nivel.
 import { create } from 'zustand'
-import { getArbol, getNodo, getEditable, patchNodo, getTiposCreables, postHijo, getPool, deleteNodo, guardarNotas, postReabrirFase, subirDocumentoPool, getSugerenciaDocumento } from './api.js'
+import { getArbol, getNodo, getEditable, patchNodo, getTiposCreables, postHijo, getPool, deleteNodo, guardarNotas, postReabrirFase, postEnviarConsultas, subirDocumentoPool, getSugerenciaDocumento } from './api.js'
 import { showToast } from '../shared/ui/toast.js'
 
 // AbortController de la petición de detalle en curso (fuera del estado: no re-render).
@@ -78,6 +78,9 @@ export const useArbolStore = create((set, get) => ({
 
   // --- reabrir fase (#720, ADR-036 §6 capa 4) ---
   reabriendoFase: false,
+
+  // --- enviar consultas (ADR-042 §C, #396 bloque 5) ---
+  enviandoConsultas: false,
 
   // --- menú contextual (S3b-4) ---
   menuCtx: null,           // { x, y, sel } | null
@@ -330,6 +333,37 @@ export const useArbolStore = create((set, get) => ({
         showToast(e.payload.motivo || e.payload.error, 'danger')
       } else {
         showToast(e.message || 'No se pudo reabrir la fase', 'danger')
+      }
+    }
+  },
+
+  // --- enviar consultas en bloque (ADR-042 §C, #396 bloque 5) ---
+
+  // Acción de fase en modo edición: crea una CONSULTA_SEPARATA por cada
+  // organismo vía consulta aún sin separata. Idempotente por construcción
+  // (el propio backend la excluye si ya la tiene) — no hace falta staging ni
+  // confirmación previa, a diferencia de crearHijo/borrarNodo.
+  enviarConsultas: async () => {
+    const { expedienteId, seleccion } = get()
+    if (!seleccion || seleccion.tipo !== 'fase' || !expedienteId) return
+    set({ enviandoConsultas: true })
+    try {
+      const data = await postEnviarConsultas(expedienteId, seleccion.id)
+      const n = (data.ids || []).length
+      showToast(n > 0 ? `${n} consulta(s) enviada(s)` : 'No había organismos pendientes', 'success')
+      if (data.advertencia) {
+        const a = data.advertencia
+        showToast(typeof a === 'string' ? a : (a.motivo || 'Revisa la advertencia'), 'warning')
+      }
+      set({ enviandoConsultas: false })
+      await get().refrescarArbol()
+    } catch (e) {
+      set({ enviandoConsultas: false })
+      if (e.status === 401 || e.status === 403) return
+      if (e.status === 422 && e.payload && (e.payload.motivo || e.payload.error)) {
+        showToast(e.payload.motivo || e.payload.error, 'danger')
+      } else {
+        showToast(e.message || 'No se pudieron enviar las consultas', 'danger')
       }
     }
   },

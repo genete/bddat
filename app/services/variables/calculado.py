@@ -389,7 +389,7 @@ def _(ctx) -> bool:
 # Variables CONSULTAS (#460)
 # ---------------------------------------------------------------------------
 
-_ESTADOS_TERMINALES_CONSULTAS = frozenset({
+_RESULTADOS_TERMINALES_CONSULTAS = frozenset({
     'cerrado_favorable', 'cerrado_con_condicionados', 'audiencia_previa', 'exonerado'
 })
 
@@ -397,13 +397,15 @@ _ESTADOS_TERMINALES_CONSULTAS = frozenset({
 @variable('organismos_todos_terminados')
 def _(ctx) -> bool:
     """
-    True si todos los organismos del expediente han alcanzado un estado terminal.
-    Precondición del cierre de fase CONSULTAS (ver #470).
+    True si todos los organismos del expediente tienen resultado (#396: la fase
+    CONSULTAS puede repetirse por modificado de proyecto — se agregan TODAS las
+    rondas del expediente, no solo la última, porque antes de resolver deben
+    estar cerradas todas). Precondición del cierre de fase CONSULTAS (ver #470).
     """
     organismos = ctx.expediente.organismos
     if not organismos:
         return True
-    return all(org.estado in _ESTADOS_TERMINALES_CONSULTAS for org in organismos)
+    return all(org.resultado in _RESULTADOS_TERMINALES_CONSULTAS for org in organismos)
 
 
 @variable('organismo_supera_iteraciones')
@@ -434,6 +436,25 @@ def _(ctx) -> bool:
             .count()
         )
         if count >= 1:
+            return True
+    return False
+
+
+@variable('existe_fase_consultas_previa')
+def _(ctx) -> bool:
+    """
+    True si la solicitud en contexto ya tiene al menos una fase CONSULTAS
+    (segunda ronda por modificado de proyecto, DISEÑO_CONSULTAS_ORGANISMOS.md
+    §6 bis — duplicar la fase ya está permitido, esta variable solo dispara
+    el aviso).
+
+    Evaluar al CREAR fase CONSULTAS (motor: ADVERTIR, #396 bloque 6).
+    """
+    solicitud = ctx.solicitud
+    if solicitud is None:
+        return False
+    for fase in solicitud.fases:
+        if fase.tipo_fase and fase.tipo_fase.codigo == 'CONSULTAS':
             return True
     return False
 
@@ -507,8 +528,8 @@ def _(ctx) -> bool:
 @variable('traslado_organismo_titular_vencido')
 def _(ctx) -> bool:
     """
-    True si algún organismo en en_tramitacion tiene su CONSULTA_TRASLADO_TITULAR
-    más reciente con plazo VENCIDO.
+    True si algún organismo aún abierto (sin resultado) tiene su
+    CONSULTA_TRASLADO_TITULAR más reciente con plazo VENCIDO.
 
     Permite al motor emitir una alerta diferenciada cuando el titular no ha
     respondido al traslado dentro del plazo legal (15 días hábiles, art. 127.3 /
@@ -516,41 +537,18 @@ def _(ctx) -> bool:
     inferir la acción correcta sin leer el resultado del trámite de organismo
     precedente (ADR-011 §5).
 
-    Implementación — el plazo se evalúa sobre la tarea ESPERAR_PLAZO del trámite,
-    no sobre el trámite (#788): el nivel TRAMITE no porta fecha administrativa y
-    dejó de existir en catalogo_plazos. Bajar hasta ella es navegación del árbol
-    (`Tramite.tarea_espera`), no una entrada del servicio de plazos (#778). La
-    llamada sigue pasando variables={} para evitar recursión (#475); el seed #463
-    no define condiciones en la entrada de CONSULTA_TRASLADO_TITULAR, así que da
-    el mismo resultado que el contexto completo. Si en el futuro se añaden
-    condiciones a ese plazo, revisarlo.
+    Reutiliza consultas_organismos.traslado_titular_vencido (#396 bloque 7): antes
+    esta función reimplementaba aquí la misma query + cálculo de plazo VENCIDO que
+    ya vive en ese servicio. Se evalúa organismo a organismo, sin el precómputo en
+    bloque que sí usa serializar_organismos_fase — el motor no batchea entre
+    organismos como hace esa serialización.
     """
-    from app.models.tramites_organismos import TramiteOrganismo
-    from app.models.tramites import Tramite as _Tramite
-    from app.models.tipos_tramites import TipoTramite
-    from app.services import plazos
-    from app import db
+    from app.services.consultas_organismos import traslado_titular_vencido
 
     for org in ctx.expediente.organismos:
-        if org.estado != 'en_tramitacion':
+        if org.resultado is not None:  # ya cerrado — descarta antes de la query pesada
             continue
-        vinculo = (
-            db.session.query(TramiteOrganismo)
-            .join(_Tramite, TramiteOrganismo.tramite_id == _Tramite.id)
-            .join(TipoTramite, _Tramite.tipo_tramite_id == TipoTramite.id)
-            .filter(
-                TramiteOrganismo.organismo_expediente_id == org.id,
-                TipoTramite.codigo == 'CONSULTA_TRASLADO_TITULAR',
-            )
-            .order_by(TramiteOrganismo.tramite_id.desc())
-            .first()
-        )
-        if vinculo is None:
-            continue
-        espera = vinculo.tramite.tarea_espera if vinculo.tramite else None
-        if espera is None:
-            continue
-        if plazos.obtener_estado_plazo_tarea(espera, variables={}).estado == 'VENCIDO':
+        if traslado_titular_vencido(org):
             return True
     return False
 

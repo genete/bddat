@@ -22,6 +22,7 @@ const ETIQUETA_TIPO = {
   solicitud:  'Solicitud',
   fase:       'Fase',
   tramite:    'Trámite',
+  organismo:  'Organismo',
   tarea:      'Tarea',
 }
 
@@ -55,6 +56,9 @@ function buscarNodo(arbol, sel) {
           if (sel.tipo === 'tarea' && ta.id === sel.id) return ta
         }
       }
+      for (const org of fase.organismos || []) {
+        if (sel.tipo === 'organismo' && org.id === sel.id) return org
+      }
     }
   }
   return null
@@ -78,6 +82,9 @@ function contarSubarbol(arbol, sel) {
   }
   if (sel.tipo === 'tramite') {
     return { tareas: (nodo.tareas || []).length }
+  }
+  if (sel.tipo === 'organismo') {
+    return { tramites: (nodo.tramite_ids || []).length }
   }
   return {}
 }
@@ -176,6 +183,42 @@ function Agregados({ agregados }) {
         {plazos_proximos > 0 && <li>· {plazos_proximos} próximo(s) a vencer</li>}
         {plazos_en_plazo > 0 && <li>· {plazos_en_plazo} en plazo</li>}
         {pendientes_notificar > 0 && <li>· {pendientes_notificar} pendiente(s) de notificar</li>}
+      </ul>
+    </div>
+  )
+}
+
+// Bloque Organismos (ADR-042 §B): read-only, solo presente en fase CONSULTAS.
+// Pulsar una fila navega al nodo organismo en el árbol — ninguna mutación desde
+// aquí, la regla del árbol como único sitio de edición se mantiene sin excepción.
+function Organismos({ organismos, seleccionar }) {
+  if (!organismos || organismos.length === 0) return null
+  return (
+    <div className="mb-3">
+      <div className="text-muted fw-semibold small mb-1">Organismos</div>
+      <ul className="list-group list-group-flush">
+        {organismos.map((o) => (
+          <li key={o.id} className="list-group-item px-0 py-2" style={{ cursor: 'pointer' }}
+              role="button"
+              onClick={() => seleccionar({ tipo: 'organismo', id: o.id })}>
+            <div className="d-flex align-items-center gap-2">
+              <span className="flex-grow-1 text-truncate fw-semibold">{o.nombre_completo || '—'}</span>
+              {o.traslado_titular_vencido && (
+                <span className="badge text-bg-danger" title="Traslado al titular vencido">
+                  <i className="bi bi-exclamation-triangle-fill" />
+                </span>
+              )}
+            </div>
+            <div className="small text-muted">
+              {o.via}
+              {o.resultado ? ` · ${o.resultado}` : ''}
+              {/* "Plazo legal del oficio", nunca "Plazo" a secas (#558): el estado
+                  real del plazo lo da la tarea ESPERAR_PLAZO, este es el valor
+                  congelado del oficio en el momento de enviarlo. */}
+              {o.plazo_legal_dias != null ? ` · Plazo legal del oficio: ${o.plazo_legal_dias} días` : ''}
+            </div>
+          </li>
+        ))}
       </ul>
     </div>
   )
@@ -335,6 +378,41 @@ function ReabrirFase() {
         onClick={() => reabrirFase(justificacion.trim())}
       >
         {reabriendo ? 'Reabriendo…' : '🔓 Reabrir fase'}
+      </button>
+    </div>
+  )
+}
+
+// Organismos vía consulta de la fase sin ninguna CONSULTA_SEPARATA vinculada
+// (ADR-042 §C, #396 bloque 5) — mismo criterio estructural que el backend
+// (consultas_organismos.organismos_pendientes_separata), derivado aquí del
+// payload del árbol ya cargado (fase.organismos[].tramite_ids + fase.tramites)
+// en vez de pedir un recuento aparte al backend.
+function organismosPendientesSeparata(fase) {
+  const tramitesPorId = new Map((fase.tramites || []).map((t) => [t.id, t]))
+  return (fase.organismos || []).filter((org) => {
+    if (org.via !== 'consulta') return false
+    return !(org.tramite_ids || []).some((tid) => {
+      const t = tramitesPorId.get(tid)
+      return t && t.tipo_codigo === 'CONSULTA_SEPARATA'
+    })
+  })
+}
+
+// Acción de fase CONSULTAS en modo edición (ADR-042 §C, #396 bloque 5): vive
+// junto al Editor genérico, no lo sustituye — resultado_fase_id/documento_
+// resultado_id de esta fase siguen editándose igual que en cualquier otra.
+// Oculto sin organismos pendientes: el botón no tiene nada útil que decir.
+function AccionesFaseConsultas({ nodo }) {
+  const enviarConsultas = useArbolStore((s) => s.enviarConsultas)
+  const enviando = useArbolStore((s) => s.enviandoConsultas)
+  const pendientes = organismosPendientesSeparata(nodo)
+  if (pendientes.length === 0) return null
+  return (
+    <div className="mb-3">
+      <button type="button" className="btn btn-sm btn-primary"
+              disabled={enviando} onClick={enviarConsultas}>
+        {enviando ? 'Enviando…' : `📤 Enviar consultas pendientes (${pendientes.length})`}
       </button>
     </div>
   )
@@ -541,11 +619,16 @@ function InspectorEdicion({ nodo }) {
   // asume el Editor genérico para tareas).
   const esBespoke = esAnalizar || esElaborar || esNotificar
   const puedeBorrarTarea = esBespoke && puedeEditarNodo('tarea')
+  // Fase CONSULTAS (ADR-042 §C, #396 bloque 5): a diferencia de los bespoke de
+  // tarea, esto NO sustituye al Editor genérico — vive junto a él, como un
+  // bloque de acciones más (mismo criterio que ReabrirFase).
+  const esFaseConsultas = seleccion.tipo === 'fase' && nodo && nodo.tipo_codigo === 'CONSULTAS'
   return (
     <div className="d-flex flex-column h-100 arbol-inspector--lock">
       <BarraEdicion tipo={seleccion.tipo} nodo={nodo} />
       <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }} className="p-3">
         {!borrarPendienteConfirm && <BloqueoGuardarForzable />}
+        {!borrarPendienteConfirm && esFaseConsultas && <AccionesFaseConsultas nodo={nodo} />}
         {borrarPendienteConfirm
           ? <ConfirmacionBorrado nodo={nodo} />
           : esAnalizar
@@ -571,6 +654,7 @@ function InspectorEdicion({ nodo }) {
 
 export default function Inspector() {
   const seleccion = useArbolStore((s) => s.seleccion)
+  const seleccionar = useArbolStore((s) => s.seleccionar)
   const arbol = useArbolStore((s) => s.arbol)
   const detalle = useArbolStore((s) => s.detalle)
   const cargando = useArbolStore((s) => s.detalleCargando)
@@ -630,6 +714,7 @@ export default function Inspector() {
           <Campos campos={detalle.campos} />
           {!esHoja && nodo && <Agregados agregados={nodo.agregados} />}
           <Plazo plazo={detalle.plazo} />
+          <Organismos organismos={detalle.organismos} seleccionar={seleccionar} />
           <Documentos documentos={detalle.documentos} expedienteId={expedienteId} />
         </>
       )}

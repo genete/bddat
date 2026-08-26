@@ -51,6 +51,9 @@ export function tienePermiso(nombre) {
 export function puedeEditarNodo(tipo) {
   if (tipo === 'tarea') return tienePermiso('gestionar_tareas')
   if (tipo === 'expediente') return tienePermiso('editar_expediente')
+  // organismo (ADR-042, #396): mismo criterio que solicitud/fase/trámite — el
+  // editor genérico ya sabe pintar sus campos (esquema_editable._esquema_organismo).
+  if (tipo === 'organismo') return tienePermiso('gestionar_estructura_expediente')
   return tienePermiso('gestionar_estructura_expediente')  // solicitud / fase / tramite
 }
 
@@ -58,5 +61,10 @@ export function puedeCrearHijoDe(tipoPadre) {
   // El permiso depende del tipo de HIJO: bajo trámite se crean tareas (hoja →
   // gestionar_tareas); bajo expediente/solicitud/fase se crea estructura.
   if (tipoPadre === 'tramite') return tienePermiso('gestionar_tareas')
+  // organismo (ADR-042 §D, #652): "crear traslado" vía despensa del nodo organismo
+  // no está construido todavía — tipos_creables.py no reconoce este ámbito y
+  // devolvería 404. Explícito en false para no ofrecer un "Crear hijo" que no
+  // lleva a nada hasta que #652 lo cierre.
+  if (tipoPadre === 'organismo') return false
   return tienePermiso('gestionar_estructura_expediente')
 }

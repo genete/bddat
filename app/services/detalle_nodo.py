@@ -36,6 +36,7 @@ from app.models.solicitudes import Solicitud
 from app.models.fases import Fase
 from app.models.tramites import Tramite
 from app.models.tareas import Tarea
+from app.models.organismos_expediente import OrganismoExpediente
 from app.services.arbol_expediente import plazo_tarea
 
 log = logging.getLogger(__name__)
@@ -63,6 +64,8 @@ def detalle_de_nodo(expediente, tipo_nodo: str, nodo_id: int) -> dict:
             return _detalle_tramite(expediente, nodo_id)
         if tipo_nodo == 'tarea':
             return _detalle_tarea(expediente, nodo_id)
+        if tipo_nodo == 'organismo':
+            return _detalle_organismo(expediente, nodo_id)
     except (OperationalError, ProgrammingError) as exc:
         log.warning('detalle_nodo: catálogo no disponible — %s', exc)
         return {'nodo': {'tipo': tipo_nodo, 'id': nodo_id},
@@ -196,6 +199,11 @@ def _ref_tarea(exp, ta) -> str:
     return f'{_ref_tramite(exp, ta.tramite)} · {nombre}'
 
 
+def _ref_organismo(exp, oe) -> str:
+    nombre = (oe.organismo.nombre_completo if oe.organismo else None) or 'Organismo'
+    return f'{_ref_fase(exp, oe.fase)} · {nombre}'
+
+
 # ---------------------------------------------------------------------------
 # Serializadores por nivel
 # ---------------------------------------------------------------------------
@@ -273,13 +281,57 @@ def _detalle_fase(exp, fase_id: int) -> dict:
     )
     doc_res = fase.documento_resultado
     documentos = [_serializar_documento(exp.id, doc_res, 'PRODUCIDO')] if doc_res else []
-    return {
+    payload = {
         'nodo': {'tipo': 'fase', 'id': fase.id},
         'campos': campos,
         'documentos': documentos,
         'plazo': None,
         'referencia': _ref_fase(exp, fase),
     }
+    # Detalle adaptativo por tipo de fase (ADR-042 §B): primera vez que un tipo
+    # de fase concreto añade contenido propio — clave opcional, solo CONSULTAS.
+    tf = fase.tipo_fase
+    if tf and tf.codigo == 'CONSULTAS':
+        payload['organismos'] = _organismos_de_fase(fase)
+    return payload
+
+
+def _direccion_organismo(oe) -> Optional[str]:
+    """Resumen legible de la dirección de notificación del organismo, para el
+    bloque Organismos del inspector (ADR-042 §B). Mismo patrón de resolución que
+    OrganismoExpediente.as_contexto_cb(): dirección explícita del alta, o si no
+    hay, la más reciente activa con rol CONSULTADO."""
+    from app.models.direccion_notificacion import DireccionNotificacion
+
+    dir_notif = oe.direccion_notificacion or (
+        DireccionNotificacion.obtener_direccion_notificacion(oe.organismo_id, es_consultado=True)
+        if oe.organismo_id else None
+    )
+    if not dir_notif:
+        return None
+    df = dir_notif.direccion_formateada()
+    partes = [p for p in (df.get('linea1'), df.get('linea2')) if p]
+    return ' · '.join(partes) if partes else None
+
+
+def _organismos_de_fase(fase) -> list:
+    """Ficha compacta de cada organismo de la fase, para el bloque Organismos del
+    inspector (ADR-042 §B): nombre, NIF, vía, resultado, plazo legal del oficio,
+    traslado al titular vencido, dirección. Pulsar una fila navega al nodo
+    (?nodo=organismo-<id>, ADR-016 §12) — sin mutación desde el listado.
+
+    Reutiliza serializar_organismos_fase() (ya resuelve traslado_titular_vencido
+    en bloque, sin N+1) y añade la dirección como enriquecimiento propio del
+    inspector — no pertenece a la serialización histórica de consultas_organismos.py.
+    """
+    from app.services.consultas_organismos import serializar_organismos_fase
+
+    por_id = {oe.id: oe for oe in fase.organismos}
+    filas = []
+    for base in serializar_organismos_fase(fase):
+        oe = por_id.get(base['id'])
+        filas.append({**base, 'direccion': _direccion_organismo(oe) if oe else None})
+    return filas
 
 
 def _detalle_tramite(exp, tramite_id: int) -> dict:
@@ -331,6 +383,38 @@ def _detalle_tarea(exp, tarea_id: int) -> dict:
         'documentos': documentos,
         'plazo': plazo,
         'referencia': _ref_tarea(exp, ta),
+    }
+
+
+def _detalle_organismo(exp, oe_id: int) -> dict:
+    """Ficha completa del organismo (ADR-042 §B, #396 punto 4): NIF, vía,
+    resultado, dirección, plazo legal del oficio. Reutiliza serializar_org_exp()
+    — un organismo individual, sin el N+1 que sí importa al listar varios
+    (ver _organismos_de_fase / serializar_organismos_fase)."""
+    from app.services.consultas_organismos import serializar_org_exp
+
+    oe = OrganismoExpediente.query.get(oe_id)
+    if oe is None or oe.expediente_id != exp.id:
+        raise ValueError(f'Organismo {oe_id} no encontrado en el expediente {exp.id}')
+
+    ser = serializar_org_exp(oe)
+    plazo_txt = f'{ser["plazo_legal_dias"]} días' if ser['plazo_legal_dias'] is not None else None
+    campos = _campos(
+        _campo('NIF', ser['nif']),
+        _campo('Vía', oe.via),
+        _campo('Resultado', oe.resultado),
+        _campo('Dirección de notificación', _direccion_organismo(oe)),
+        _campo('Plazo legal del oficio', plazo_txt),
+    )
+    documentos = []
+    if oe.documento:  # declaración responsable (via='declaracion_responsable')
+        documentos.append(_serializar_documento(exp.id, oe.documento, 'CONSUMIDO'))
+    return {
+        'nodo': {'tipo': 'organismo', 'id': oe.id},
+        'campos': campos,
+        'documentos': documentos,
+        'plazo': None,
+        'referencia': _ref_organismo(exp, oe),
     }
 
 

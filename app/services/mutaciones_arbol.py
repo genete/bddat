@@ -29,8 +29,9 @@ from app.models.tareas import Tarea
 from app.models.documentos import Documento
 from app.models.tipos_solicitudes import TipoSolicitud
 from app.models.documentos_tarea import DocumentoTarea
-from app.models.tramites_organismos import TramiteOrganismo
 from app.models.notificaciones import Notificacion
+from app.models.organismos_expediente import OrganismoExpediente, VIAS_ORGANISMO, RESULTADOS_ORGANISMO
+from app.models.direccion_notificacion import DireccionNotificacion
 from app.services.assembler import build, build_sujeto
 from app.services import bitacora as bitacora_svc
 from app.services.motor_reglas import EvaluacionResult, PERMITIDO
@@ -100,20 +101,6 @@ def _registrar_advertencia(operacion, tabla, registro_id, sujeto, res_eval: Eval
             'sujeto': sujeto,
         },
     )
-
-
-# ---------------------------------------------------------------------------
-# Hook #458 (movido desde api_bc; test_458 actualizado para importar de aquí)
-# ---------------------------------------------------------------------------
-
-def _hook_458_analizar_separata(tarea, id_producido):
-    """Hook #458: al producir diagnóstico en CONSULTA_SEPARATA pasa el organismo a en_tramitacion."""
-    if (id_producido is not None
-            and tarea.tipo_tarea.codigo == 'ANALIZAR'
-            and tarea.tramite.tipo_tramite.codigo == 'CONSULTA_SEPARATA'):
-        vinculo = TramiteOrganismo.query.filter_by(tramite_id=tarea.tramite_id).first()
-        if vinculo:
-            vinculo.organismo_expediente.estado = 'en_tramitacion'
 
 
 # ---------------------------------------------------------------------------
@@ -502,6 +489,81 @@ def crear_tarea(tramite, tipo_tarea, *, justificacion: Optional[str] = None) -> 
     return ResultadoMutacion(ok=True, ids=[tarea.id], advertencia=advertencia)
 
 
+def crear_organismo(fase, entidad, *, via: str, documento_id: Optional[int] = None,
+                     justificacion: Optional[str] = None) -> ResultadoMutacion:
+    """Alta de un organismo consultado en una fase CONSULTAS (ADR-042 §C).
+
+    No es "crear hijo" por despensa: `OrganismoExpediente` no es un nodo ESFTT
+    tipado (ADR-042) — `entidad` llega ya resuelta por el caller, no un tipo de
+    catálogo. `resultado` no es parámetro: se deriva de `via` (DISEÑO_CONSULTAS_
+    ORGANISMOS.md §2 — `exonerado` es terminal desde el inicio para declaración
+    responsable; NULL, ciclo en curso, para consulta ordinaria).
+    """
+    expediente = fase.solicitud.expediente
+
+    res_inv = check_invariante('MUTAR', 'FASE', fase.id)
+    if res_inv:
+        return ResultadoMutacion(ok=False, bloqueo=res_inv)
+
+    if not entidad.rol_consultado:
+        return ResultadoMutacion(ok=False, error='La entidad no tiene rol de organismo consultado')
+
+    if via not in VIAS_ORGANISMO:
+        return ResultadoMutacion(ok=False, error=f'via debe ser uno de {VIAS_ORGANISMO}')
+
+    if via == 'declaracion_responsable' and not documento_id:
+        return ResultadoMutacion(
+            ok=False, error='documento_id es obligatorio para la vía declaracion_responsable')
+    if via == 'consulta' and documento_id:
+        return ResultadoMutacion(
+            ok=False, error='documento_id solo aplica a la vía declaracion_responsable')
+
+    if documento_id:
+        doc = Documento.query.get(documento_id)
+        if not doc or doc.expediente_id != expediente.id:
+            return ResultadoMutacion(ok=False, error='Documento no válido para este expediente')
+
+    if OrganismoExpediente.query.filter_by(fase_id=fase.id, organismo_id=entidad.id).first():
+        return ResultadoMutacion(
+            ok=False, error='Este organismo ya está registrado en esta ronda de consultas')
+
+    # Dict, no la fase en sí: el motor solo necesita el sujeto de la fase — pasar
+    # una instancia real de OrganismoExpediente confundiría a ExpedienteContext
+    # (duck-typing por atributos, ver assembler.py: tiene `.fase` y no `.tramites`,
+    # la misma forma que un Tramite).
+    objeto_sujeto = {'fase': fase}
+    if justificacion is None:
+        res_eval = _evaluar('CREAR', expediente, objeto=objeto_sujeto)
+        if not res_eval.permitido:
+            return ResultadoMutacion(ok=False, bloqueo=res_eval)
+    else:
+        res_eval = PERMITIDO
+
+    oe = OrganismoExpediente(
+        expediente_id=expediente.id,
+        fase_id=fase.id,
+        organismo_id=entidad.id,
+        via=via,
+        documento_id=documento_id,
+        resultado='exonerado' if via == 'declaracion_responsable' else None,
+    )
+    db.session.add(oe)
+    db.session.flush()
+
+    if justificacion:
+        sujeto = build_sujeto(expediente, objeto_sujeto)
+        bitacora_svc.registrar(
+            current_user.id, 'CREAR', 'organismos_expediente', oe.id,
+            detalle={'escape': True, 'justificacion': justificacion, 'sujeto': sujeto},
+        )
+    elif res_eval.nivel == 'ADVERTIR':
+        sujeto = build_sujeto(expediente, objeto_sujeto)
+        _registrar_advertencia('CREAR', 'organismos_expediente', oe.id, sujeto, res_eval)
+
+    db.session.commit()
+    return ResultadoMutacion(ok=True, ids=[oe.id], advertencia=_advertencia_dict(res_eval))
+
+
 # ===========================================================================
 # EDITAR
 # ===========================================================================
@@ -623,6 +685,60 @@ def reabrir_fase(fase, *, justificacion: str) -> ResultadoMutacion:
         return ResultadoMutacion(ok=False, error=str(e))
 
 
+def editar_organismo(oe, *, via: str, resultado: Optional[str],
+                      direccion_notificacion_id: Optional[int],
+                      documento_id: Optional[int]) -> ResultadoMutacion:
+    """Edita un organismo consultado: vía, resultado y datos de contacto.
+
+    `organismo_id` (a qué entidad se consulta) no es editable — cambiarlo es
+    dar de baja y dar de alta otro, no una edición. Sin `justificacion`: el
+    único invariante que protege esta mutación (sellado de fase) no es
+    forzable (`_check_mutar`, puerta cerrada — reabrir la fase es el único
+    camino, igual que `editar_tramite`).
+    """
+    res_inv = check_invariante('MUTAR', 'ORGANISMO', oe.id)
+    if res_inv:
+        return ResultadoMutacion(ok=False, bloqueo=res_inv)
+
+    if via not in VIAS_ORGANISMO:
+        return ResultadoMutacion(ok=False, error=f'via debe ser uno de {VIAS_ORGANISMO}')
+
+    if via == 'declaracion_responsable':
+        if not documento_id:
+            return ResultadoMutacion(
+                ok=False, error='documento_id es obligatorio para la vía declaracion_responsable')
+        # Terminal desde el inicio (DISEÑO_CONSULTAS_ORGANISMOS.md §2) — el
+        # resultado no lo decide el tramitador campo a campo, lo fija la vía.
+        resultado = 'exonerado'
+    else:
+        if resultado == 'exonerado':
+            return ResultadoMutacion(
+                ok=False, error="resultado 'exonerado' solo aplica a la vía declaracion_responsable")
+        if resultado is not None and resultado not in RESULTADOS_ORGANISMO:
+            return ResultadoMutacion(ok=False, error=f'resultado debe ser uno de {RESULTADOS_ORGANISMO} o vacío')
+
+    expediente = oe.expediente
+    if documento_id:
+        doc = Documento.query.get(documento_id)
+        if not doc or doc.expediente_id != expediente.id:
+            return ResultadoMutacion(ok=False, error='Documento no válido para este expediente')
+    if direccion_notificacion_id:
+        dn = DireccionNotificacion.query.get(direccion_notificacion_id)
+        if not dn:
+            return ResultadoMutacion(ok=False, error='Dirección de notificación no válida')
+
+    try:
+        oe.via = via
+        oe.resultado = resultado
+        oe.direccion_notificacion_id = direccion_notificacion_id
+        oe.documento_id = documento_id
+        db.session.commit()
+        return ResultadoMutacion(ok=True)
+    except Exception as e:
+        db.session.rollback()
+        return ResultadoMutacion(ok=False, error=str(e))
+
+
 def editar_tramite(tr, *, observaciones: Optional[str]) -> ResultadoMutacion:
     res_inv = check_invariante('MUTAR', 'TRAMITE', tr.id)
     if res_inv:
@@ -710,7 +826,6 @@ def editar_tarea(ta, *, documentos_consumidos_ids: list[int],
                 ta.vinculos_documento.append(DocumentoTarea(documento_id=doc_id, rol=rol))
 
         ta.notas = notas or None
-        _hook_458_analizar_separata(ta, documento_producido_id)
         db.session.flush()
 
         for doc in docs_a_encajar:
@@ -865,6 +980,35 @@ def borrar_tramite(tr, *, justificacion: Optional[str] = None) -> ResultadoMutac
         )
 
     db.session.delete(tr)
+    db.session.commit()
+    return ResultadoMutacion(ok=True)
+
+
+def borrar_organismo(oe, *, justificacion: Optional[str] = None) -> ResultadoMutacion:
+    expediente = oe.expediente
+
+    res_inv = check_invariante('MUTAR', 'ORGANISMO', oe.id)
+    if res_inv:
+        return ResultadoMutacion(ok=False, bloqueo=res_inv)
+
+    res_inv = check_invariante('BORRAR', 'ORGANISMO', oe.id)
+    if res_inv:
+        return ResultadoMutacion(ok=False, bloqueo=res_inv)
+
+    objeto_sujeto = {'fase': oe.fase}  # dict, no oe (duck-typing, ver crear_organismo)
+    if justificacion is None:
+        res_eval = _evaluar('BORRAR', expediente, objeto=objeto_sujeto)
+        if not res_eval.permitido:
+            return ResultadoMutacion(ok=False, bloqueo=res_eval)
+
+    if justificacion:
+        sujeto = build_sujeto(expediente, objeto_sujeto)
+        bitacora_svc.registrar(
+            current_user.id, 'BORRAR', 'organismos_expediente', oe.id,
+            detalle={'escape': True, 'justificacion': justificacion, 'sujeto': sujeto},
+        )
+
+    db.session.delete(oe)
     db.session.commit()
     return ResultadoMutacion(ok=True)
 

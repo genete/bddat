@@ -64,9 +64,19 @@ def _sin_organismo():
     return patch('app.models.tramites_organismos.TramiteOrganismo', mock_cls)
 
 
-def _con_organismo(vinculo_id, entidad):
-    """Patchea TramiteOrganismo para devolver un vínculo con el organismo dado."""
-    vinculo = SimpleNamespace(id=vinculo_id, organismo_expediente=SimpleNamespace(organismo=entidad))
+def _con_organismo(organismo_expediente_id, entidad, vinculo_id=None):
+    """Patchea TramiteOrganismo para devolver un vínculo con el organismo_expediente_id dado.
+
+    vinculo_id (id de la fila TramiteOrganismo) es distinto por defecto del
+    organismo_expediente_id — deja claro en los tests que el segmento se numera por
+    organismo_expediente_id, no por el id del vínculo (#396 bloque 7)."""
+    if vinculo_id is None:
+        vinculo_id = organismo_expediente_id + 1000
+    vinculo = SimpleNamespace(
+        id=vinculo_id,
+        organismo_expediente_id=organismo_expediente_id,
+        organismo_expediente=SimpleNamespace(organismo=entidad),
+    )
     mock_cls = MagicMock()
     mock_cls.query.filter_by.return_value.first.return_value = vinculo
     return patch('app.models.tramites_organismos.TramiteOrganismo', mock_cls)
@@ -138,6 +148,22 @@ class TestSegmentoOrganismo:
         with _sin_organismo():
             resultado = ruta_esftt_documento(tarea)
         assert len(resultado.split('/')) == 5  # AT-N/solicitud/fase/tramite/tarea
+
+    def test_mismo_organismo_distintos_vinculos_misma_carpeta(self):
+        """#396 bloque 7 — dos trámites del mismo organismo (mismo organismo_expediente_id,
+        distinto id de fila TramiteOrganismo) deben compartir carpeta de organismo."""
+        entidad = SimpleNamespace(abrev='CHMS', nombre_completo='Confederación Hidrográfica')
+        tarea_traslado = _tarea_stub(tramite_id=78, codigo_tramite='CONSULTA_TRASLADO_ORGANISMO')
+        tarea_separata = _tarea_stub(tramite_id=79, codigo_tramite='CONSULTA_SEPARATA')
+
+        with _con_organismo(9, entidad, vinculo_id=101):
+            ruta_traslado = ruta_esftt_documento(tarea_traslado)
+        with _con_organismo(9, entidad, vinculo_id=205):
+            ruta_separata = ruta_esftt_documento(tarea_separata)
+
+        segmento_organismo_traslado = ruta_traslado.split('/')[3]
+        segmento_organismo_separata = ruta_separata.split('/')[3]
+        assert segmento_organismo_traslado == segmento_organismo_separata == '000009_CHMS'
 
 
 # ---------------------------------------------------------------------------

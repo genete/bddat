@@ -88,9 +88,9 @@ def organismos_data(app_ctx):
 
         oe1 = conn.execute(text(
             "INSERT INTO public.organismos_expediente "
-            "(expediente_id, organismo_id, via, estado, plazo_legal_dias) "
-            "VALUES (:e,:o,'consulta','cerrado_favorable',30) RETURNING id"
-        ), {"e": _EXP_ID, "o": _ORG1_ID}).scalar()
+            "(expediente_id, fase_id, organismo_id, via, resultado, plazo_legal_dias) "
+            "VALUES (:e,:f,:o,'consulta','cerrado_favorable',30) RETURNING id"
+        ), {"e": _EXP_ID, "f": _FASE_ID, "o": _ORG1_ID}).scalar()
         conn.execute(text(
             "INSERT INTO public.tramites_organismos (tramite_id, organismo_expediente_id) "
             "VALUES (:tr,:oe)"
@@ -117,11 +117,12 @@ def organismos_data(app_ctx):
             "VALUES (:t,:d,'PRODUCIDO')"
         ), {"t": t_notif2, "d": doc_notif2})
 
+        # Sin resultado (NULL): ciclo en curso — separata enviada, aún sin respuesta.
         oe2 = conn.execute(text(
             "INSERT INTO public.organismos_expediente "
-            "(expediente_id, organismo_id, via, estado, plazo_legal_dias) "
-            "VALUES (:e,:o,'consulta','separata_enviada',30) RETURNING id"
-        ), {"e": _EXP_ID, "o": _ORG2_ID}).scalar()
+            "(expediente_id, fase_id, organismo_id, via, plazo_legal_dias) "
+            "VALUES (:e,:f,:o,'consulta',30) RETURNING id"
+        ), {"e": _EXP_ID, "f": _FASE_ID, "o": _ORG2_ID}).scalar()
         conn.execute(text(
             "INSERT INTO public.tramites_organismos (tramite_id, organismo_expediente_id) "
             "VALUES (:tr,:oe)"
@@ -232,6 +233,6 @@ class TestSQLOrganismosConsulta:
         assert endesa['organismo_fecha_respuesta'] == '20/03/2026'
 
         sevillana = by_nif['A41000111']
-        assert sevillana['organismo_resultado'] == 'separata_enviada'
+        assert sevillana['organismo_resultado'] is None
         assert sevillana['organismo_fecha_envio'] == '01/03/2026'
         assert sevillana['organismo_fecha_respuesta'] is None

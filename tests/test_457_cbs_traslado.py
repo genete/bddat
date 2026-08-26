@@ -23,12 +23,12 @@ def _organismo(nombre='Red Eléctrica de España', nif='A78003662'):
     return org
 
 
-def _org_exp(organismo=None, plazo_legal_dias=30, estado='en_tramitacion'):
+def _org_exp(organismo=None, plazo_legal_dias=30, resultado=None):
     from app.models.organismos_expediente import OrganismoExpediente
     oe = MagicMock()
     oe.organismo = organismo or _organismo()
     oe.plazo_legal_dias = plazo_legal_dias
-    oe.estado = estado
+    oe.resultado = resultado
     oe.as_contexto_cb = lambda: OrganismoExpediente.as_contexto_cb(oe)
     return oe
 
@@ -100,7 +100,7 @@ class TestContextoConsultaTrasladoTitular:
         tarea_elab = _tarea_stub('ELABORAR', tramite_id=1)
         tarea_elab.tramite = _tramite_con_tareas([tarea_elab])
 
-        oe = _org_exp(estado='en_tramitacion')
+        oe = _org_exp(resultado=None)
         cb = ContextoConsultaTrasladoTitular(MagicMock(), MagicMock(), tarea=tarea_elab)
         with patch(self._MODULE) as mock_cls:
             mock_cls.query.filter_by.return_value.first.return_value = _vinculo(oe)
@@ -118,7 +118,7 @@ class TestContextoConsultaTrasladoTitular:
         tarea_elab = _tarea_stub('ELABORAR', consumidos=[doc_respuesta], tramite_id=1)
         tarea_elab.tramite = _tramite_con_tareas([tarea_elab])
 
-        oe = _org_exp(estado='en_tramitacion')
+        oe = _org_exp(resultado=None)
         cb = ContextoConsultaTrasladoTitular(MagicMock(), MagicMock(), tarea=tarea_elab)
         with patch(self._MODULE) as mock_cls:
             mock_cls.query.filter_by.return_value.first.return_value = _vinculo(oe)
@@ -138,7 +138,7 @@ class TestContextoConsultaTrasladoTitular:
         tarea_esp = _tarea_stub('ESPERAR_PLAZO', doc_producido=doc_tit, tramite_id=1)
         tarea_elab.tramite = _tramite_con_tareas([tarea_elab, tarea_notif, tarea_esp])
 
-        oe = _org_exp(estado='en_tramitacion', plazo_legal_dias=15)
+        oe = _org_exp(resultado=None, plazo_legal_dias=15)
         cb = ContextoConsultaTrasladoTitular(MagicMock(), MagicMock(), tarea=tarea_elab)
         with patch(self._MODULE) as mock_cls:
             mock_cls.query.filter_by.return_value.first.return_value = _vinculo(oe)
@@ -146,7 +146,7 @@ class TestContextoConsultaTrasladoTitular:
 
         assert ctx['organismo_fecha_respuesta'] == '10/04/2026'
         assert ctx['titular_fecha_respuesta'] == '02/05/2026'
-        assert ctx['organismo_resultado'] == 'en_tramitacion'
+        assert ctx['organismo_resultado'] is None
         assert ctx['organismo_plazo_legal'] == 15
 
 
@@ -198,7 +198,7 @@ class TestContextoConsultaTrasladoOrganismo:
         tarea_elab = _tarea_stub('ELABORAR', tramite_id=10)
         tarea_elab.tramite = _tramite_con_tareas([tarea_elab])
 
-        oe = _org_exp(estado='en_tramitacion')
+        oe = _org_exp(resultado=None)
         cb = ContextoConsultaTrasladoOrganismo(MagicMock(), MagicMock(), tarea=tarea_elab)
         with patch(self._MODULE) as mock_cls:
             self._mock_queries(mock_cls, _vinculo(oe),
@@ -222,7 +222,7 @@ class TestContextoConsultaTrasladoOrganismo:
         tarea_elab = _tarea_stub('ELABORAR', tramite_id=10)
         tarea_elab.tramite = _tramite_con_tareas([tarea_elab])
 
-        oe = _org_exp(estado='en_tramitacion')
+        oe = _org_exp(resultado=None)
         cb = ContextoConsultaTrasladoOrganismo(MagicMock(), MagicMock(), tarea=tarea_elab)
         with patch(self._MODULE) as mock_cls:
             self._mock_queries(mock_cls, _vinculo(oe),
@@ -244,7 +244,7 @@ class TestContextoConsultaTrasladoOrganismo:
         tarea_elab = _tarea_stub('ELABORAR', tramite_id=10)
         tarea_elab.tramite = _tramite_con_tareas([tarea_elab])
 
-        oe = _org_exp(estado='en_tramitacion', plazo_legal_dias=15)
+        oe = _org_exp(resultado=None, plazo_legal_dias=15)
         cb = ContextoConsultaTrasladoOrganismo(MagicMock(), MagicMock(), tarea=tarea_elab)
         with patch(self._MODULE) as mock_cls:
             self._mock_queries(mock_cls, _vinculo(oe),
@@ -254,7 +254,7 @@ class TestContextoConsultaTrasladoOrganismo:
         assert ctx['organismo_fecha_respuesta'] == '15/03/2026'
         assert ctx['titular_fecha_respuesta'] == '20/04/2026'
         assert ctx['organismo_num_iteraciones'] == 2
-        assert ctx['organismo_resultado'] == 'en_tramitacion'
+        assert ctx['organismo_resultado'] is None
         assert ctx['organismo_plazo_legal'] == 15
 
     def test_esperar_plazo_sin_doc_producido_fecha_none(self):

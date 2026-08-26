@@ -47,11 +47,11 @@ class TestModeloTramiteOrganismo:
 # B) OrganismoExpediente.consulta_completa
 # ─────────────────────────────────────────────────────────────────────────────
 
-def _oe_stub(via='consulta', estado='pendiente'):
+def _oe_stub(via='consulta', resultado=None):
     from app.models.organismos_expediente import OrganismoExpediente
     oe = MagicMock()
     oe.via = via
-    oe.estado = estado
+    oe.resultado = resultado
     oe.consulta_completa = property(lambda s: OrganismoExpediente.consulta_completa.fget(s))
     # Instanciar delegando al método real
     oe.consulta_completa = OrganismoExpediente.consulta_completa.fget(oe)
@@ -60,21 +60,18 @@ def _oe_stub(via='consulta', estado='pendiente'):
 
 class TestConsultaCompleta:
 
-    def _eval(self, via, estado):
+    def _eval(self, via, resultado):
         from app.models.organismos_expediente import OrganismoExpediente
         oe = MagicMock()
         oe.via = via
-        oe.estado = estado
+        oe.resultado = resultado
         return OrganismoExpediente.consulta_completa.fget(oe)
 
-    def test_pendiente_incompleta(self):
-        assert not self._eval('consulta', 'pendiente')
-
-    def test_separata_enviada_incompleta(self):
-        assert not self._eval('consulta', 'separata_enviada')
-
-    def test_en_tramitacion_incompleta(self):
-        assert not self._eval('consulta', 'en_tramitacion')
+    def test_resultado_none_incompleta(self):
+        """Ciclo en curso (#396: 'pendiente'/'separata_enviada'/'en_tramitacion'
+        ya no son valores de resultado — el único representante de "aún no
+        cerrado" es NULL)."""
+        assert not self._eval('consulta', None)
 
     def test_cerrado_favorable_completa(self):
         assert self._eval('consulta', 'cerrado_favorable')
@@ -88,8 +85,8 @@ class TestConsultaCompleta:
     def test_declaracion_responsable_exonerado_completa(self):
         assert self._eval('declaracion_responsable', 'exonerado')
 
-    def test_declaracion_responsable_pendiente_incompleta(self):
-        assert not self._eval('declaracion_responsable', 'pendiente')
+    def test_declaracion_responsable_none_incompleta(self):
+        assert not self._eval('declaracion_responsable', None)
 
 
 # ─────────────────────────────────────────────────────────────────────────────

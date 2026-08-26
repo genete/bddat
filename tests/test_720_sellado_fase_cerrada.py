@@ -17,8 +17,8 @@ Ejes que cubren:
   - reabrir_fase: caso normal (éxito + bitácora), sin justificación, fase no
     cerrada, puerta cerrada (solicitud ya resuelta y notificada, ADR-036 §4).
   - Hook de sesión (capa 3, sellado_fase_sesion.py): escritura directa en
-    DocumentoTarea/Tarea sin pasar por el servicio, bajo fase cerrada, queda
-    bloqueada; bajo fase abierta no interfiere (control).
+    DocumentoTarea/Tarea/OrganismoExpediente (#396) sin pasar por el servicio,
+    bajo fase cerrada, queda bloqueada; bajo fase abierta no interfiere (control).
   - Endpoint HTTP POST .../nodo/fase/<id>/reabrir: camino feliz + rechazo sin
     justificación (BD real, limpieza manual — mismo patrón que
     TestRevertirDiagnosticoCircuito de test_678).
@@ -328,6 +328,36 @@ class TestHookSesion:
 
         nueva = Tarea(tramite_id=tramite.id, tipo_tarea_id=_tipo(TipoTarea, 'ELABORAR').id)
         db.session.add(nueva)
+        with pytest.raises(SelladoFaseVioladoError):
+            db.session.flush()
+
+    def test_organismo_directo_bajo_fase_cerrada_bloquea(self, app_ctx):
+        """#396: OrganismoExpediente cuelga de fase_id igual que Tramite — la
+        capa 3 debe vigilarlo igual, no solo las capas 1/2 de mutaciones_arbol."""
+        from app import db
+        from app.models.fases import Fase
+        from app.models.tipos_fases import TipoFase
+        from app.models.entidad import Entidad
+        from app.models.organismos_expediente import OrganismoExpediente
+        from app.services.sellado_fase_sesion import SelladoFaseVioladoError
+
+        solicitud, _, _, _ = _fase_con_tramite_y_tarea('ANALISIS_DOCUMENTAL', 'ANALIZAR')
+        fase = Fase(solicitud_id=solicitud.id, tipo_fase_id=_tipo(TipoFase, 'CONSULTAS').id)
+        db.session.add(fase)
+        db.session.flush()
+
+        entidad = Entidad.query.filter_by(rol_consultado=True).first()
+        if entidad is None:
+            pytest.skip('No hay entidades rol_consultado=True en la BD de desarrollo')
+
+        oe = OrganismoExpediente(expediente_id=solicitud.expediente_id, fase_id=fase.id,
+                                  organismo_id=entidad.id, via='consulta')
+        db.session.add(oe)
+        db.session.flush()
+
+        _cerrar_fase(fase)
+
+        oe.resultado = 'cerrado_favorable'
         with pytest.raises(SelladoFaseVioladoError):
             db.session.flush()
 

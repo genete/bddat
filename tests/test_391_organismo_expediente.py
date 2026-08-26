@@ -22,14 +22,14 @@ def _organismo(nombre='Red Eléctrica de España', nif='A78003662'):
     return org
 
 
-def _org_exp(organismo=None, plazo_legal_dias=30, estado='pendiente',
+def _org_exp(organismo=None, plazo_legal_dias=30, resultado=None,
              organismo_id=None, direccion_notificacion=None):
     """Stub de OrganismoExpediente con as_contexto_cb() delegando al método real."""
     from app.models.organismos_expediente import OrganismoExpediente
     oe = MagicMock()
     oe.organismo = organismo or _organismo()
     oe.plazo_legal_dias = plazo_legal_dias
-    oe.estado = estado
+    oe.resultado = resultado
     oe.organismo_id = organismo_id
     oe.direccion_notificacion = direccion_notificacion
     oe.as_contexto_cb = lambda: OrganismoExpediente.as_contexto_cb(oe)
@@ -72,12 +72,12 @@ def _doc(fecha=None):
 class TestAsContextoCb:
 
     def test_campos_basicos(self):
-        oe = _org_exp(plazo_legal_dias=30, estado='separata_enviada')
+        oe = _org_exp(plazo_legal_dias=30, resultado=None)
         ctx = oe.as_contexto_cb()
         assert ctx['organismo_nombre'] == 'Red Eléctrica de España'
         assert ctx['organismo_nif'] == 'A78003662'
         assert ctx['organismo_plazo_legal'] == 30
-        assert ctx['organismo_resultado'] == 'separata_enviada'
+        assert ctx['organismo_resultado'] is None
 
     def test_organismo_sin_nif(self):
         org = _organismo(nif=None)
@@ -97,8 +97,8 @@ class TestAsContextoCb:
         assert ctx['organismo_nombre'] is None
         assert ctx['organismo_nif'] is None
 
-    def test_estado_refleja_resultado(self):
-        oe = _org_exp(estado='cerrado_favorable')
+    def test_resultado_pasa_directo(self):
+        oe = _org_exp(resultado='cerrado_favorable')
         ctx = oe.as_contexto_cb()
         assert ctx['organismo_resultado'] == 'cerrado_favorable'
 
@@ -134,7 +134,7 @@ class TestContextoConsultaSeparata:
         tarea_elab = _tarea_stub('ELABORAR', tramite_id=1)
         tarea_elab.tramite = _tramite_con_tareas([tarea_elab])
 
-        oe = _org_exp(estado='pendiente')
+        oe = _org_exp(resultado=None)
         cb = ContextoConsultaSeparata(MagicMock(), MagicMock(), tarea=tarea_elab)
         with patch('app.services.context_builders.contexto_consulta_separata.TramiteOrganismo') as mock_cls:
             mock_cls.query.filter_by.return_value.first.return_value = _vinculo_stub(oe)
@@ -151,7 +151,7 @@ class TestContextoConsultaSeparata:
         tarea_elab = _tarea_stub('ELABORAR', tramite_id=1)
         tarea_elab.tramite = _tramite_con_tareas([tarea_elab, tarea_notif])
 
-        oe = _org_exp(estado='separata_enviada')
+        oe = _org_exp(resultado=None)
         cb = ContextoConsultaSeparata(MagicMock(), MagicMock(), tarea=tarea_elab)
         with patch('app.services.context_builders.contexto_consulta_separata.TramiteOrganismo') as mock_cls:
             mock_cls.query.filter_by.return_value.first.return_value = _vinculo_stub(oe)
@@ -169,7 +169,7 @@ class TestContextoConsultaSeparata:
         tarea_elab = _tarea_stub('ELABORAR', tramite_id=1)
         tarea_elab.tramite = _tramite_con_tareas([tarea_elab, tarea_notif, tarea_anal])
 
-        oe = _org_exp(estado='cerrado_con_condicionados', plazo_legal_dias=30)
+        oe = _org_exp(resultado='cerrado_con_condicionados', plazo_legal_dias=30)
         cb = ContextoConsultaSeparata(MagicMock(), MagicMock(), tarea=tarea_elab)
         with patch('app.services.context_builders.contexto_consulta_separata.TramiteOrganismo') as mock_cls:
             mock_cls.query.filter_by.return_value.first.return_value = _vinculo_stub(oe)
@@ -258,7 +258,7 @@ class TestAsContextoCbDireccion:
 
     def test_campos_basicos_no_se_ven_afectados(self):
         """Los campos existentes (nombre, nif, plazo, resultado) siguen funcionando."""
-        oe = _org_exp(plazo_legal_dias=15, estado='cerrado_favorable',
+        oe = _org_exp(plazo_legal_dias=15, resultado='cerrado_favorable',
                       organismo_id=None, direccion_notificacion=None)
         ctx = oe.as_contexto_cb()
         assert ctx['organismo_nombre'] == 'Red Eléctrica de España'

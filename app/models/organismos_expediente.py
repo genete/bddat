@@ -2,10 +2,10 @@ from app import db
 from app.models.direccion_notificacion import DireccionNotificacion
 
 
-ESTADOS_ORGANISMO = (
-    'pendiente',
-    'separata_enviada',
-    'en_tramitacion',
+# Resultado legal de la consulta (ADR-011 §6). NULL mientras el ciclo está en
+# curso — "en curso" ya no es un valor almacenado: lo deriva estado_dominio.
+# estado_organismo() a partir de los trámites vinculados (ADR-042, #396).
+RESULTADOS_ORGANISMO = (
     'cerrado_favorable',
     'cerrado_con_condicionados',
     'audiencia_previa',
@@ -17,25 +17,28 @@ VIAS_ORGANISMO = ('consulta', 'declaracion_responsable')
 
 class OrganismoExpediente(db.Model):
     """
-    Relación entre un organismo consultado y un expediente concreto.
+    Relación entre un organismo consultado y una fase CONSULTAS concreta.
 
-    Un registro por organismo por expediente. Cubre tanto la vía de consulta
-    ordinaria (separata + trámites de traslado) como la vía de declaración
-    responsable (el titular acredita disponer ya de la autorización del organismo).
+    Un registro por organismo por fase (#396): la fase es la ronda de consultas
+    (DISEÑO_CONSULTAS_ORGANISMOS.md §6 bis) — un modificado de proyecto puede
+    obligar a repetirla, con los mismos organismos, un subconjunto, o un
+    subconjunto más organismos nuevos. Cubre tanto la vía de consulta ordinaria
+    (separata + trámites de traslado) como la vía de declaración responsable (el
+    titular acredita disponer ya de la autorización del organismo).
 
     Los trámites del ciclo de consulta se vinculan a este registro mediante
     la tabla `tramites_organismos` (ADR-011 §1).
 
-    Diseño de referencia: DISEÑO_CONSULTAS_ORGANISMOS.md §2, ADR-011
+    Diseño de referencia: DISEÑO_CONSULTAS_ORGANISMOS.md §2/§6 bis, ADR-011, ADR-042
     """
     __tablename__ = 'organismos_expediente'
     __table_args__ = (
-        db.UniqueConstraint('expediente_id', 'organismo_id', name='uq_org_exp_expediente_organismo'),
+        db.UniqueConstraint('fase_id', 'organismo_id', name='uq_org_exp_fase_organismo'),
         db.CheckConstraint("via IN ('consulta', 'declaracion_responsable')", name='ck_org_exp_via'),
         db.CheckConstraint(
-            "estado IN ('pendiente','separata_enviada','en_tramitacion',"
-            "'cerrado_favorable','cerrado_con_condicionados','audiencia_previa','exonerado')",
-            name='ck_org_exp_estado',
+            "resultado IS NULL OR resultado IN ('cerrado_favorable',"
+            "'cerrado_con_condicionados','audiencia_previa','exonerado')",
+            name='ck_org_exp_resultado',
         ),
         {'schema': 'public'},
     )
@@ -48,6 +51,14 @@ class OrganismoExpediente(db.Model):
         nullable=False,
         index=True,
         comment='FK expedientes. Expediente al que pertenece la consulta',
+    )
+
+    fase_id = db.Column(
+        db.Integer,
+        db.ForeignKey('public.fases.id', ondelete='CASCADE'),
+        nullable=False,
+        index=True,
+        comment='FK fases. Fase CONSULTAS (= la ronda) en la que se consulta a este organismo',
     )
 
     organismo_id = db.Column(
@@ -72,11 +83,10 @@ class OrganismoExpediente(db.Model):
         comment='Documento de declaración responsable (solo si via=declaracion_responsable)',
     )
 
-    estado = db.Column(
+    resultado = db.Column(
         db.String(40),
-        nullable=False,
-        default='pendiente',
-        comment='Estado del ciclo de vida del organismo en el expediente',
+        nullable=True,
+        comment='Resultado legal de la consulta (ADR-011 §6). NULL mientras el ciclo está en curso',
     )
 
     condicionados_doc_id = db.Column(
@@ -102,26 +112,27 @@ class OrganismoExpediente(db.Model):
 
     # Relaciones
     expediente = db.relationship('Expediente', backref='organismos')
+    fase = db.relationship('Fase', foreign_keys=[fase_id], backref='organismos')
     organismo = db.relationship('Entidad', foreign_keys=[organismo_id])
     documento = db.relationship('Documento', foreign_keys=[documento_id])
     condicionados_doc = db.relationship('Documento', foreign_keys=[condicionados_doc_id])
     direccion_notificacion = db.relationship('DireccionNotificacion', foreign_keys=[direccion_notificacion_id])
 
     def __repr__(self):
-        return f'<OrganismoExpediente exp={self.expediente_id} org={self.organismo_id} estado={self.estado}>'
+        return f'<OrganismoExpediente fase={self.fase_id} org={self.organismo_id} resultado={self.resultado}>'
 
     @property
     def consulta_completa(self) -> bool:
         """True cuando la consulta está completamente resuelta (ADR-011 §6).
 
-        Para declaracion_responsable: completa cuando estado es exonerado.
-        Para consulta ordinaria: completa cuando el ciclo alcanzó un estado de cierre.
+        Para declaracion_responsable: completa cuando resultado es exonerado.
+        Para consulta ordinaria: completa cuando el ciclo alcanzó un resultado de cierre.
         La evaluación detallada por resultado de cada trámite (casos A-D del ADR)
         se implementará cuando TramiteOrganismo.resultado esté disponible (#460).
         """
         if self.via == 'declaracion_responsable':
-            return self.estado == 'exonerado'
-        return self.estado in ('cerrado_favorable', 'cerrado_con_condicionados')
+            return self.resultado == 'exonerado'
+        return self.resultado in ('cerrado_favorable', 'cerrado_con_condicionados')
 
     def as_contexto_cb(self) -> dict:
         """Fragmento de contexto para plantillas de CONSULTA_SEPARATA."""
@@ -129,7 +140,7 @@ class OrganismoExpediente(db.Model):
             'organismo_nombre': self.organismo.nombre_completo if self.organismo else None,
             'organismo_nif': self.organismo.nif if self.organismo else None,
             'organismo_plazo_legal': self.plazo_legal_dias,
-            'organismo_resultado': self.estado,  # estado interno del motor; no usar en plantillas de escritos
+            'organismo_resultado': self.resultado,  # resultado legal; None mientras el ciclo está en curso
         }
         dir_notif = (
             self.direccion_notificacion

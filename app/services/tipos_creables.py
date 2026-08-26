@@ -69,6 +69,12 @@ def tipos_creables_de_nodo(expediente, tipo_nodo: str, nodo_id: int) -> dict:
             return _creables_tramite(expediente, nodo_id)
         if tipo_nodo == 'tramite':
             return _creables_tarea(expediente, nodo_id)
+        if tipo_nodo == 'organismo':
+            # ADR-042 §D (#652, no construido todavía): "crear traslado" vía
+            # despensa del nodo organismo. Hasta entonces, vacío en vez de 404 —
+            # Despensa.jsx lo pide siempre al entrar en edición de cualquier nodo.
+            return {'nodo': {'tipo': 'organismo', 'id': nodo_id}, 'tipo_hijo': None,
+                    'canonicos': [], 'resto': []}
     except (OperationalError, ProgrammingError) as exc:
         log.warning('tipos_creables: catálogo no disponible — %s', exc)
         return {'nodo': {'tipo': tipo_nodo, 'id': nodo_id}, 'tipo_hijo': None,

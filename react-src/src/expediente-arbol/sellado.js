@@ -20,6 +20,11 @@ export function faseDeSeleccion(arbol, seleccion) {
           if (seleccion.tipo === 'tarea' && ta.id === seleccion.id) return fase
         }
       }
+      // organismo (ADR-042): mismo criterio que trámite/tarea — cuelga de fase_id
+      // (bloque 1, #396), un solo salto (mismo patrón que invariantes_esftt._fase_de).
+      for (const org of fase.organismos || []) {
+        if (seleccion.tipo === 'organismo' && org.id === seleccion.id) return fase
+      }
     }
   }
   return null

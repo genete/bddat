@@ -56,6 +56,15 @@ export function postReabrirFase(expedienteId, faseId, justificacion) {
   return api.post(`/api/expedientes/${expedienteId}/nodo/fase/${faseId}/reabrir`, { justificacion })
 }
 
+// "Enviar consultas pendientes" (POST, ADR-042 §C, #396 bloque 5): crea una
+// CONSULTA_SEPARATA por cada organismo vía consulta que aún no tenga una.
+// Acción de fase en modo edición — incremental e idempotente por construcción,
+// pensada para pulsarse N veces (segunda ronda incluida). Respuesta éxito:
+// {ok:true, ids:[...]} 201 (`ids` vacío si no había pendientes). Bloqueo: 422.
+export function postEnviarConsultas(expedienteId, faseId) {
+  return api.post(`/api/expedientes/${expedienteId}/nodo/fase/${faseId}/organismos/enviar-consultas`, {})
+}
+
 // Contenedor de la tarea ANALIZAR (#442). Respuesta: {resultado, documento_producido,
 // secciones_extendidas, defectos_consolidado, completo}.
 export function getAnalizar(expedienteId, tareaId) {
