@@ -27,8 +27,8 @@ def _ep(estado):
     return SimpleNamespace(estado=estado)
 
 
-def _org(estado, id=1):
-    return SimpleNamespace(estado=estado, id=id)
+def _org(resultado, id=1):
+    return SimpleNamespace(resultado=resultado, id=id)
 
 
 def _ctx(organismos):
@@ -66,26 +66,26 @@ class TestVariableMotor:
         fn = _get_variable('traslado_organismo_titular_vencido')
         assert fn(_ctx([])) is False
 
-    def test_organismo_no_en_tramitacion_se_ignora(self):
-        """Organismo en estado cerrado_favorable → no se evalúa su plazo → False."""
+    def test_organismo_cerrado_se_ignora(self):
+        """Organismo con resultado (cerrado_favorable) → no se evalúa su plazo → False."""
         fn = _get_variable('traslado_organismo_titular_vencido')
         ctx = _ctx([_org('cerrado_favorable')])
         with patch('app.db') as mock_db:
             mock_db.session.query.side_effect = AssertionError('no debería consultarse BD')
             assert fn(ctx) is False
 
-    def test_organismo_en_tramitacion_sin_vinculo_false(self):
-        """Organismo en_tramitacion pero sin CONSULTA_TRASLADO_TITULAR vinculado → False."""
+    def test_organismo_abierto_sin_vinculo_false(self):
+        """Organismo abierto (sin resultado) pero sin CONSULTA_TRASLADO_TITULAR vinculado → False."""
         fn = _get_variable('traslado_organismo_titular_vencido')
-        ctx = _ctx([_org('en_tramitacion')])
+        ctx = _ctx([_org(None)])
         with patch('app.db') as mock_db:
             mock_db.session.query = _mock_query(None)
             assert fn(ctx) is False
 
-    def test_organismo_en_tramitacion_plazo_en_plazo_false(self):
-        """Organismo en_tramitacion con traslado EN_PLAZO → False."""
+    def test_organismo_abierto_plazo_en_plazo_false(self):
+        """Organismo abierto con traslado EN_PLAZO → False."""
         fn = _get_variable('traslado_organismo_titular_vencido')
-        ctx = _ctx([_org('en_tramitacion')])
+        ctx = _ctx([_org(None)])
         tramite_stub = SimpleNamespace(tarea_espera=SimpleNamespace())
         vinculo = SimpleNamespace(tramite=tramite_stub)
         with patch('app.db') as mock_db, \
@@ -93,10 +93,10 @@ class TestVariableMotor:
             mock_db.session.query = _mock_query(vinculo)
             assert fn(ctx) is False
 
-    def test_organismo_en_tramitacion_plazo_vencido_true(self):
-        """Organismo en_tramitacion con traslado VENCIDO → True."""
+    def test_organismo_abierto_plazo_vencido_true(self):
+        """Organismo abierto con traslado VENCIDO → True."""
         fn = _get_variable('traslado_organismo_titular_vencido')
-        ctx = _ctx([_org('en_tramitacion')])
+        ctx = _ctx([_org(None)])
         tramite_stub = SimpleNamespace(tarea_espera=SimpleNamespace())
         vinculo = SimpleNamespace(tramite=tramite_stub)
         with patch('app.db') as mock_db, \
@@ -107,7 +107,7 @@ class TestVariableMotor:
     def test_tramite_sin_espera_false(self):
         """Trámite creado pero sin su ESPERAR_PLAZO todavía: no hay plazo que medir."""
         fn = _get_variable('traslado_organismo_titular_vencido')
-        ctx = _ctx([_org('en_tramitacion')])
+        ctx = _ctx([_org(None)])
         vinculo = SimpleNamespace(tramite=SimpleNamespace(tarea_espera=None))
         with patch('app.db') as mock_db, \
              patch('app.services.plazos.obtener_estado_plazo_tarea') as mock_plazo:
@@ -118,7 +118,7 @@ class TestVariableMotor:
     def test_or_global_un_vencido_entre_varios_true(self):
         """Un organismo vencido y otro en plazo → True (OR global)."""
         fn = _get_variable('traslado_organismo_titular_vencido')
-        ctx = _ctx([_org('en_tramitacion', id=1), _org('en_tramitacion', id=2)])
+        ctx = _ctx([_org(None, id=1), _org(None, id=2)])
         tramite_stub = SimpleNamespace(tarea_espera=SimpleNamespace())
         vinculo = SimpleNamespace(tramite=tramite_stub)
 

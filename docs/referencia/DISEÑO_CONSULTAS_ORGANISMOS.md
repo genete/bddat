@@ -41,23 +41,23 @@ Inicialmente se contempló separar `organismos_afectados` y `organismos_consulta
 | Campo | Descripción |
 |---|---|
 | `expediente_id` | FK `expedientes.id` |
-| `fase_id` | FK `fases.id` — la fase CONSULTAS (= la **ronda**) en la que se consulta a este organismo. **Implementar en #396**, ver más abajo |
+| `fase_id` | FK `fases.id` — la fase CONSULTAS (= la **ronda**) en la que se consulta a este organismo |
 | `organismo_id` | FK `entidades.id` (donde `rol_consultado = True`) |
 | `via` | enum: `consulta` / `declaracion_responsable` |
 | `documento_id` | FK `documentos.id` (solo si `via = declaracion_responsable`) |
-| `estado` | Estado del ciclo de vida. Actualización manual por tramitador, con puerta abierta al motor de reglas |
+| `resultado` | Resultado legal de la consulta, NULL mientras está en curso (ver más abajo). Actualización manual por tramitador, con puerta abierta al motor de reglas |
 | `condicionados_doc_id` | FK `documentos.id` (nullable). Solo no nulo cuando el organismo respondió con `condicionado` y el titular no respondió al TRASLADO_TITULAR en un expediente AAC. Contiene el documento `CONDICIONADO_OFICIO` producido por el tramitador; consumido por el CB de resolución |
 | `plazo_legal_dias` | INTEGER (nullable). Plazo legal aplicable capturado en el momento de crear la separata. 30 días con carácter general; 15 si existe AAP previa y la tramitación es solo AAC sin DUP |
 
 **Sobre `organismo_id`:** la tabla `entidades` centraliza todas las entidades del sistema con roles booleanos. Los organismos consultables tienen `rol_consultado = True`. No existe tabla de organismos separada.
 
-**Sobre `estado`:** se actualiza manualmente por el tramitador al registrar el resultado de la tarea ANALIZAR de cada trámite. El campo está diseñado para que el motor de reglas pueda actualizarlo automáticamente en el futuro sin cambios de modelo.
+**Sobre `resultado`:** se actualiza manualmente por el tramitador al registrar el resultado de la tarea ANALIZAR de cada trámite. El campo está diseñado para que el motor de reglas pueda actualizarlo automáticamente en el futuro sin cambios de modelo (cierre automático por casos A–D de ADR-011 §6, fuera de alcance de #396).
 
 **Sobre `condicionados_doc_id`:** ver ADR-011 §2. Solo aplica al cruce `condicionado` de organismo + `sin_respuesta` de titular en AAC.
 
 **Sobre `plazo_legal_dias`:** se captura al crear la separata porque el plazo depende del tipo y combinación de autorizaciones del expediente en ese momento. Almacenarlo evita tener que recalcularlo en cada renderizado de plantilla. **El plazo de un escrito es el que era el día en que se mandó**: si las circunstancias cambian después, el plazo nuevo no se aplica retroactivamente a ese oficio. El valor **no se recalcula en código** (#396): se lee de `catalogo_plazos` para el camino SFTT de la separata, que es la fuente única de la regla del art. 131.1 párr. 2.
 
-**Sobre `fase_id` (#396):** el registro nace ligado a la fase CONSULTAS en la que se acuerda consultar
+**Sobre `fase_id`:** el registro nace ligado a la fase CONSULTAS en la que se acuerda consultar
 a ese organismo, no al expediente en abstracto. Dos motivos:
 
 1. **Un organismo puede no tener ningún trámite** —recién dado de alta, o exonerado por declaración
@@ -88,11 +88,20 @@ El número de iteraciones de TRASLADO_ORGANISMO —antes en `num_iteraciones_org
 
 Navegación desde un CB: `TramiteOrganismo.query.filter_by(tramite_id=tramite.id).first().organismo_expediente`.
 
-### Estados de `organismos_expediente`
+### `resultado` de `organismos_expediente`
 
-`pendiente` → `separata_enviada` → `en_tramitacion` → `cerrado_favorable` / `cerrado_con_condicionados` / `audiencia_previa` / `exonerado`
-
-El estado `exonerado` corresponde a `via = declaracion_responsable` y es terminal desde el inicio.
+> **Implementado en #396.** Antes de #396 la columna se llamaba `estado` y modelaba
+> también el ciclo de vida (`pendiente` → `separata_enviada` → `en_tramitacion`).
+> Ese ciclo ya no se almacena: lo deriva `estado_dominio.estado_organismo()` a
+> partir de los trámites vinculados en `tramites_organismos` (mismo patrón que
+> el resto de niveles ESFTT — un trámite sin tareas es `PENDIENTE_TRAMITAR` sin
+> que exista un valor de BD para ello). La columna `resultado` guarda solo el
+> desenlace legal, y vale NULL mientras el ciclo sigue abierto:
+>
+> `NULL` (en curso) → `cerrado_favorable` / `cerrado_con_condicionados` /
+> `audiencia_previa` / `exonerado`
+>
+> `exonerado` corresponde a `via = declaracion_responsable` y es terminal desde el inicio.
 
 ### Gaps de implementación en `tipos_tramites`
 

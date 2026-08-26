@@ -6,14 +6,14 @@ Patrón: objetos Python puros (MagicMock), sin BD real ni cliente Flask.
 from unittest.mock import MagicMock
 
 
-def _oe_stub(id=1, organismo_id=5, via='consulta', estado='pendiente',
+def _oe_stub(id=1, organismo_id=5, via='consulta', resultado=None,
              plazo_legal_dias=30, condicionados_doc_id=None):
     oe = MagicMock()
     oe.id = id
     oe.organismo_id = organismo_id
     oe.organismo = MagicMock(nombre_completo='Red Eléctrica de España, S.A.', nif='A78003662')
     oe.via = via
-    oe.estado = estado
+    oe.resultado = resultado
     oe.plazo_legal_dias = plazo_legal_dias
     oe.condicionados_doc_id = condicionados_doc_id
     return oe
@@ -31,7 +31,7 @@ class TestSerializarOrgExp:
         assert result['nombre_completo'] == 'Red Eléctrica de España, S.A.'
         assert result['nif'] == 'A78003662'
         assert result['via'] == 'consulta'
-        assert result['estado'] == 'pendiente'
+        assert result['resultado'] is None
         assert result['plazo_legal_dias'] == 30
         assert result['condicionados_doc_id'] is None
 
@@ -69,23 +69,28 @@ class TestSerializarOrgExp:
         assert 'declaracion_responsable' in VIAS_ORGANISMO
 
     def test_post_organismo_duplicado(self):
-        # La BD lanza IntegrityError por uq_org_exp_expediente_organismo;
-        # aquí verificamos que la constraint está declarada en el modelo.
+        # La BD lanza IntegrityError por uq_org_exp_fase_organismo (#396: por fase
+        # —la ronda de consultas—, no por expediente, para admitir más de una
+        # ronda tras un modificado de proyecto); aquí verificamos que la
+        # constraint está declarada en el modelo.
         from app.models.organismos_expediente import OrganismoExpediente
         nombres = [c.name for c in OrganismoExpediente.__table_args__[:-1]]
-        assert 'uq_org_exp_expediente_organismo' in nombres
+        assert 'uq_org_exp_fase_organismo' in nombres
 
-    def test_patch_estado_ok(self):
-        from app.models.organismos_expediente import ESTADOS_ORGANISMO
+    def test_patch_resultado_ok(self):
+        from app.models.organismos_expediente import RESULTADOS_ORGANISMO
         oe = MagicMock()
-        nuevo = 'separata_enviada'
-        assert nuevo in ESTADOS_ORGANISMO
-        oe.estado = nuevo
-        assert oe.estado == 'separata_enviada'
+        nuevo = 'cerrado_favorable'
+        assert nuevo in RESULTADOS_ORGANISMO
+        oe.resultado = nuevo
+        assert oe.resultado == 'cerrado_favorable'
 
-    def test_patch_estado_invalido(self):
-        from app.models.organismos_expediente import ESTADOS_ORGANISMO
-        assert 'tramitado' not in ESTADOS_ORGANISMO
+    def test_patch_resultado_invalido(self):
+        from app.models.organismos_expediente import RESULTADOS_ORGANISMO
+        assert 'tramitado' not in RESULTADOS_ORGANISMO
+        # #396: el ciclo de vida (pendiente/separata_enviada/en_tramitacion) ya
+        # no son valores de resultado — se derivan, no se almacenan.
+        assert 'pendiente' not in RESULTADOS_ORGANISMO
 
     def test_delete_organismo_ok(self, app):
         from app.services.consultas_organismos import serializar_org_exp

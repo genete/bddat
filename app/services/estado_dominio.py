@@ -202,6 +202,22 @@ def estado_tramite(tramite, estados_tareas: list[str]) -> tuple[str, bool]:
     return (mayor_prioridad(estados_tareas), False)
 
 
+# ---------------------------------------------------------------------------
+# Nivel sintético: organismo (ADR-042) — no es un nivel ESFTT, es un nodo de
+# agrupación entre Fase y Trámite derivado de TramiteOrganismo. Mismo patrón de
+# hoja/contenedor que el resto: estructura derivada de sus trámites, nunca de
+# un campo `resultado` almacenado (ese campo es semántico, no estructural —
+# ver docstring de OrganismoExpediente.resultado, DISEÑO_CONSULTAS_ORGANISMOS.md §7).
+# ---------------------------------------------------------------------------
+
+def estado_organismo(oe, estados_tramites: list[str]) -> tuple[str, bool]:
+    if oe.via == 'declaracion_responsable':  # sin trámites por naturaleza: resuelto de origen
+        return ('FIN', True)
+    if not estados_tramites:                 # vía consulta, aún sin separata
+        return ('PENDIENTE_TRAMITAR', True)
+    return (mayor_prioridad(estados_tramites), False)
+
+
 def estado_fase(fase, estados_tramites: list[str]) -> tuple[str, bool]:
     if fase.planificada:                   # sin trámites aún
         return ('PENDIENTE_TRAMITAR', True)

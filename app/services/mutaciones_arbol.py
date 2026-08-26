@@ -29,7 +29,6 @@ from app.models.tareas import Tarea
 from app.models.documentos import Documento
 from app.models.tipos_solicitudes import TipoSolicitud
 from app.models.documentos_tarea import DocumentoTarea
-from app.models.tramites_organismos import TramiteOrganismo
 from app.models.notificaciones import Notificacion
 from app.services.assembler import build, build_sujeto
 from app.services import bitacora as bitacora_svc
@@ -100,20 +99,6 @@ def _registrar_advertencia(operacion, tabla, registro_id, sujeto, res_eval: Eval
             'sujeto': sujeto,
         },
     )
-
-
-# ---------------------------------------------------------------------------
-# Hook #458 (movido desde api_bc; test_458 actualizado para importar de aquí)
-# ---------------------------------------------------------------------------
-
-def _hook_458_analizar_separata(tarea, id_producido):
-    """Hook #458: al producir diagnóstico en CONSULTA_SEPARATA pasa el organismo a en_tramitacion."""
-    if (id_producido is not None
-            and tarea.tipo_tarea.codigo == 'ANALIZAR'
-            and tarea.tramite.tipo_tramite.codigo == 'CONSULTA_SEPARATA'):
-        vinculo = TramiteOrganismo.query.filter_by(tramite_id=tarea.tramite_id).first()
-        if vinculo:
-            vinculo.organismo_expediente.estado = 'en_tramitacion'
 
 
 # ---------------------------------------------------------------------------
@@ -710,7 +695,6 @@ def editar_tarea(ta, *, documentos_consumidos_ids: list[int],
                 ta.vinculos_documento.append(DocumentoTarea(documento_id=doc_id, rol=rol))
 
         ta.notas = notas or None
-        _hook_458_analizar_separata(ta, documento_producido_id)
         db.session.flush()
 
         for doc in docs_a_encajar:

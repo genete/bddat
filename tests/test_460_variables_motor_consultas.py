@@ -7,7 +7,7 @@ from unittest.mock import patch
 # ---------------------------------------------------------------------------
 
 class _StubOrganismo:
-    def __init__(self, estado, id=1): self.estado = estado; self.id = id
+    def __init__(self, resultado, id=1): self.resultado = resultado; self.id = id
 
 
 class _StubExpediente:
@@ -61,15 +61,15 @@ def test_organismos_todos_terminados_estados_mixtos_terminales():
     assert _get_variable('organismos_todos_terminados')(ctx) is True
 
 
-def test_organismos_todos_terminados_alguno_pendiente():
-    """Un organismo pendiente → False."""
-    ctx = _StubCtx([_StubOrganismo('cerrado_favorable'), _StubOrganismo('pendiente')])
+def test_organismos_todos_terminados_alguno_en_curso():
+    """Un organismo sin resultado (en curso) → False."""
+    ctx = _StubCtx([_StubOrganismo('cerrado_favorable'), _StubOrganismo(None)])
     assert _get_variable('organismos_todos_terminados')(ctx) is False
 
 
-def test_organismos_todos_terminados_en_tramitacion():
-    """Organismo en_tramitacion → False."""
-    ctx = _StubCtx([_StubOrganismo('en_tramitacion')])
+def test_organismos_todos_terminados_todos_en_curso():
+    """Ningún organismo con resultado → False."""
+    ctx = _StubCtx([_StubOrganismo(None)])
     assert _get_variable('organismos_todos_terminados')(ctx) is False
 
 
@@ -90,7 +90,7 @@ def test_organismo_supera_iteraciones_sin_traslados():
             .filter.return_value \
             .count.return_value = 0
         fn = _get_variable('organismo_supera_iteraciones')
-        ctx = _StubCtx([_StubOrganismo('pendiente')])
+        ctx = _StubCtx([_StubOrganismo(None)])
         assert fn(ctx) is False
 
 
@@ -103,7 +103,7 @@ def test_organismo_supera_iteraciones_con_traslado():
             .filter.return_value \
             .count.return_value = 1
         fn = _get_variable('organismo_supera_iteraciones')
-        ctx = _StubCtx([_StubOrganismo('en_tramitacion')])
+        ctx = _StubCtx([_StubOrganismo(None)])
         assert fn(ctx) is True
 
 

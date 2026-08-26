@@ -49,7 +49,7 @@ def serializar_org_exp(oe):
         'nombre_completo': oe.organismo.nombre_completo if oe.organismo else None,
         'nif': oe.organismo.nif if oe.organismo else None,
         'via': oe.via,
-        'estado': oe.estado,
+        'resultado': oe.resultado,
         'plazo_legal_dias': oe.plazo_legal_dias,
         'condicionados_doc_id': oe.condicionados_doc_id,
         'traslado_titular_vencido': traslado_titular_vencido(oe),
@@ -209,9 +209,22 @@ def enviar_consultas(fase, form):
     else:
         res_eval = PERMITIDO
 
+    # "Pendiente" ya no es un resultado almacenado (#396): un organismo está
+    # pendiente de separata si vía consulta y aún no tiene ningún trámite
+    # CONSULTA_SEPARATA vinculado — criterio estructural, no de estado. Filtra
+    # por fase (no por expediente): cada ronda de consultas es una fase distinta
+    # (DISEÑO_CONSULTAS_ORGANISMOS.md §6 bis).
+    ids_con_separata = {
+        row[0] for row in (
+            db.session.query(TramiteOrganismo.organismo_expediente_id)
+            .join(Tramite, TramiteOrganismo.tramite_id == Tramite.id)
+            .join(TipoTramite, Tramite.tipo_tramite_id == TipoTramite.id)
+            .filter(TipoTramite.codigo == 'CONSULTA_SEPARATA')
+        )
+    }
     pendientes = [
-        oe for oe in expediente.organismos
-        if oe.via == 'consulta' and oe.estado == 'pendiente'
+        oe for oe in fase.organismos
+        if oe.via == 'consulta' and oe.id not in ids_con_separata
     ]
 
     plazo = calcular_plazo_consulta(expediente, solicitud)
@@ -224,7 +237,6 @@ def enviar_consultas(fase, form):
             db.session.add(tramite)
             db.session.flush()
             db.session.add(TramiteOrganismo(tramite_id=tramite.id, organismo_expediente_id=oe.id))
-            oe.estado = 'separata_enviada'
             oe.plazo_legal_dias = plazo
             ids.append(tramite.id)
 

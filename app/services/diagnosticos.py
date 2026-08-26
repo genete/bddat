@@ -19,7 +19,6 @@ from app.models.documentos import Documento
 from app.models.documentos_tarea import DocumentoTarea
 from app.models.diagnosticos import Diagnostico
 from app.services import bitacora as bitacora_svc
-from app.services.mutaciones_arbol import _hook_458_analizar_separata
 from app.services.invariantes_esftt import (
     TRAMITES_CADENA_SUBSANACION,
     ultima_tarea_cadena_subsanacion,
@@ -467,8 +466,6 @@ def crear_diagnostico(tarea: Tarea, resultado: str, defectos: list,
 
     vinculo = DocumentoTarea(tarea_id=tarea.id, documento_id=doc.id, rol='PRODUCIDO')
     db.session.add(vinculo)
-
-    _hook_458_analizar_separata(tarea, doc.id)
 
     if justificacion:
         # ck_bitacora_operacion solo admite CREAR/BORRAR/ALTERAR (001_bitacora.py).

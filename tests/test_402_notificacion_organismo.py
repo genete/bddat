@@ -18,13 +18,13 @@ def _organismo(nombre='Confederación Hidrográfica del Guadalquivir', nif='Q415
     return org
 
 
-def _org_exp(organismo=None, plazo_legal_dias=30, estado='en_tramitacion'):
+def _org_exp(organismo=None, plazo_legal_dias=30, resultado=None):
     """Stub de OrganismoExpediente con as_contexto_cb() delegando al método real."""
     from app.models.organismos_expediente import OrganismoExpediente
     oe = MagicMock()
     oe.organismo = organismo or _organismo()
     oe.plazo_legal_dias = plazo_legal_dias
-    oe.estado = estado
+    oe.resultado = resultado
     oe.as_contexto_cb = lambda: OrganismoExpediente.as_contexto_cb(oe)
     return oe
 
@@ -84,7 +84,7 @@ class TestContextoNotificacionOrganismo:
         tarea_elab = _tarea_stub('ELABORAR', tramite_id=1)
         tarea_elab.tramite = _tramite_con_tareas([tarea_elab])
 
-        oe = _org_exp(estado='en_tramitacion', plazo_legal_dias=30)
+        oe = _org_exp(resultado=None, plazo_legal_dias=30)
         cb = _cb(tarea_elab)
         with patch('app.services.context_builders.contexto_notificacion_organismo.TramiteOrganismo') as mock_cls:
             mock_cls.query.filter_by.return_value.first.return_value = _vinculo_stub(oe)
@@ -100,7 +100,7 @@ class TestContextoNotificacionOrganismo:
         tarea_elab = _tarea_stub('ELABORAR', tramite_id=1)
         tarea_elab.tramite = _tramite_con_tareas([tarea_elab, tarea_anal])
 
-        oe = _org_exp(estado='cerrado_con_condicionados', plazo_legal_dias=30)
+        oe = _org_exp(resultado='cerrado_con_condicionados', plazo_legal_dias=30)
         cb = _cb(tarea_elab)
         with patch('app.services.context_builders.contexto_notificacion_organismo.TramiteOrganismo') as mock_cls:
             mock_cls.query.filter_by.return_value.first.return_value = _vinculo_stub(oe)

@@ -389,7 +389,7 @@ def _(ctx) -> bool:
 # Variables CONSULTAS (#460)
 # ---------------------------------------------------------------------------
 
-_ESTADOS_TERMINALES_CONSULTAS = frozenset({
+_RESULTADOS_TERMINALES_CONSULTAS = frozenset({
     'cerrado_favorable', 'cerrado_con_condicionados', 'audiencia_previa', 'exonerado'
 })
 
@@ -397,13 +397,15 @@ _ESTADOS_TERMINALES_CONSULTAS = frozenset({
 @variable('organismos_todos_terminados')
 def _(ctx) -> bool:
     """
-    True si todos los organismos del expediente han alcanzado un estado terminal.
-    Precondición del cierre de fase CONSULTAS (ver #470).
+    True si todos los organismos del expediente tienen resultado (#396: la fase
+    CONSULTAS puede repetirse por modificado de proyecto — se agregan TODAS las
+    rondas del expediente, no solo la última, porque antes de resolver deben
+    estar cerradas todas). Precondición del cierre de fase CONSULTAS (ver #470).
     """
     organismos = ctx.expediente.organismos
     if not organismos:
         return True
-    return all(org.estado in _ESTADOS_TERMINALES_CONSULTAS for org in organismos)
+    return all(org.resultado in _RESULTADOS_TERMINALES_CONSULTAS for org in organismos)
 
 
 @variable('organismo_supera_iteraciones')
@@ -507,8 +509,8 @@ def _(ctx) -> bool:
 @variable('traslado_organismo_titular_vencido')
 def _(ctx) -> bool:
     """
-    True si algún organismo en en_tramitacion tiene su CONSULTA_TRASLADO_TITULAR
-    más reciente con plazo VENCIDO.
+    True si algún organismo aún abierto (sin resultado) tiene su
+    CONSULTA_TRASLADO_TITULAR más reciente con plazo VENCIDO.
 
     Permite al motor emitir una alerta diferenciada cuando el titular no ha
     respondido al traslado dentro del plazo legal (15 días hábiles, art. 127.3 /
@@ -532,7 +534,7 @@ def _(ctx) -> bool:
     from app import db
 
     for org in ctx.expediente.organismos:
-        if org.estado != 'en_tramitacion':
+        if org.resultado is not None:  # ya cerrado — descarta antes de la query pesada
             continue
         vinculo = (
             db.session.query(TramiteOrganismo)
