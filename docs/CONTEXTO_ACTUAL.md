@@ -8,9 +8,9 @@
 
 ---
 
-**Hecho:** **#817 — Filtro `estado` de seguimiento reimplementado.** Detectado inerte durante el análisis de #783: el backend dejó de procesar el parámetro tras el refactor de fechas ESFTT, y `Solicitud.estado` pasó a property calculada. Traducido a subconsultas SQL; `DESISTIDA` agrupa `DESISTIDA`+`TENIDA_POR_DESISTIDA` (#783). Repuesto también `estado_solicitud` en la respuesta JSON. [PR #818](https://github.com/genete/bddat/pull/818).
+**Hecho:** **#396 — Fase CONSULTAS: organismos con `fase_id`, árbol, inspector, envío en bloque y segunda ronda.** Implementado en 7 bloques full-stack sobre el diseño de [ADR-042](decisiones/ADR-042-sub-procesos-cardinalidad-variable-organismos.md): modelo (`organismos_expediente.fase_id` + rename `estado`→`resultado`), alta/edición/borrado de organismo consultado, nodo sintético `organismo` en el árbol, bloque Organismos en el inspector de fase, envío de consultas en bloque (`enviar_consultas`/`crear_traslado` con `ResultadoMutacion`), regla de motor `ADVERTIR` para la segunda ronda de consultas, e higiene (carpetas ESFTT agrupadas por organismo, `traslado_titular_vencido` desduplicado). [PR #821](https://github.com/genete/bddat/pull/821).
 
-**Próximo:** Foco en fase CONSULTAS (reenfoque desde ANÁLISIS_DOCUMENTAL, ya casi completa). Diseño de UI cerrado en [ADR-042](decisiones/ADR-042-sub-procesos-cardinalidad-variable-organismos.md) — nodo sintético `organismo` en el árbol + inspector de fase adaptativo, sin panel aparte. Cola, en orden de dependencia: **#396** (nodo `organismo` + bloque Organismos en inspector + alta — pieza fundacional, full-stack) → **#652** (crear traslado vía despensa del nodo organismo, depende de #396) → **#464** (seed real de `organismos_expediente`; no bloquea a los anteriores, pero hace falta para verificar con datos representativos en vez de ad-hoc) → **#106** (listado DIR3, sin dependencia, cola general).
+**Próximo:**
 
 **Fuera del foco:** #607 aplazado · #572 va con el compilador de expediente para recurso/contencioso · #568 diferido (sin casos en años) · #306/#428/#304 son helpers · #743, #570 (emparejable con #755) en la cola general · #773 espera la ampliación de `Usuario` · ADR-021 y #644-648 aparcados.
 
