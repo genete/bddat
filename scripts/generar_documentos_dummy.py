@@ -2,19 +2,25 @@
 
 Produce dos salidas en tests/fixtures/documentos_dummy/:
 
-    <codigo_minuscula>.pdf   Uno por cada tipos_documentos.origen = 'EXTERNO'
-        (BDDAT no los genera, solo los recibe; los INTERNO se generan de
-        verdad al tramitar, vía ELABORAR/NOTIFICAR + generador_escritos —
-        no llevan dummy).
+    <codigo_minuscula>.pdf   Uno por cada tipo de tipos_documentos, sin
+        excepción. Los EXTERNO simulan aportación de terceros (BDDAT no los
+        genera, solo los recibe). Los INTERNO simulan lo que en tramitación
+        real produce el motor de escritos (ELABORAR/NOTIFICAR +
+        generador_escritos) — sirven para avanzar expedientes de prueba sin
+        pasar por el generador real, pero NO sustituyen probarlo de verdad;
+        el propio PDF lo deja dicho en su aviso.
 
-    catalogo_uso.csv         Catálogo COMPLETO (los 78 tipos, no solo los
-        EXTERNO con PDF): dónde se usa cada tipo de documento, cruzando dos
-        fuentes de catálogo — tramites_tareas_documentos (tipo de documento
-        como ENTRADA/SALIDA de una tarea de un trámite) y
-        requisitos_documentales (requisito legal de aportación). Formato
-        "long": una fila por combinación tipo×uso; un tipo sin ningún uso
-        registrado en ninguna de las dos fuentes deja una fila con
-        fuente_uso vacío, visible como hueco de catálogo.
+    catalogo_uso.csv         Catálogo completo: dónde se usa cada tipo de
+        documento, cruzando dos fuentes de catálogo —
+        tramites_tareas_documentos (tipo de documento como ENTRADA/SALIDA de
+        una tarea de un trámite) y requisitos_documentales (requisito legal
+        de aportación). Formato "long": una fila por combinación tipo×uso;
+        un tipo sin ningún uso registrado en ninguna de las dos fuentes deja
+        una fila con fuente_uso vacío, visible como hueco de catálogo.
+
+Reejecutable sin dejar vestigios: borra el directorio destino entero antes
+de regenerar, así un tipo renombrado o dado de baja en el catálogo no deja
+PDF huérfano ni fila fantasma en el CSV.
 
 Standalone: conecta a BD con psycopg2 directo (mismo patrón que
 scripts/reloj_dev.py, #820), sin bootstrap de Flask. No hardcodea la lista
@@ -25,6 +31,7 @@ Uso:
 """
 import csv
 import os
+import shutil
 import sys
 
 BDDAT_DIR = r"D:\BDDAT"
@@ -128,7 +135,30 @@ def _escribir_csv(tipos, usos_tt, usos_rl, ruta_csv):
     print(f"CSV generado: {ruta_csv} ({total_filas} filas, {len(tipos)} tipos)")
 
 
-def _generar_pdfs(tipos_externos, destino_dir):
+_AVISOS_ORIGEN = {
+    'EXTERNO': (
+        'Documento dummy generado para el banco de fixtures de BDDAT (#814). '
+        'Tipo EXTERNO — BDDAT no lo genera, solo lo recibe del interesado u '
+        'organismo. Contenido ficticio con fines de prueba: reutilizable en '
+        'cualquier expediente, sin fecha administrativa ni destino concreto.'
+    ),
+    'INTERNO': (
+        'Documento dummy generado para el banco de fixtures de BDDAT (#814). '
+        'Tipo INTERNO — en tramitación real este documento lo produce el '
+        'motor de escritos (ELABORAR/NOTIFICAR + generador_escritos), no '
+        'BDDAT en frío. Esta versión es una simulación para avanzar '
+        'expedientes de prueba sin pasar por el generador real: NO sirve '
+        'para probar el motor de escritos en sí.'
+    ),
+    'AMBOS': (
+        'Documento dummy generado para el banco de fixtures de BDDAT (#814). '
+        'Origen sin clasificar en el catálogo (AMBOS). Contenido ficticio '
+        'con fines de prueba, sin fecha administrativa ni destino concreto.'
+    ),
+}
+
+
+def _generar_pdfs(tipos, destino_dir):
     from reportlab.lib import colors
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -142,7 +172,7 @@ def _generar_pdfs(tipos_externos, destino_dir):
     estilo_pie = ParagraphStyle('Pie', parent=estilos['Normal'], fontSize=7, textColor=colors.grey)
 
     os.makedirs(destino_dir, exist_ok=True)
-    for _tipo_id, codigo, nombre, _origen in tipos_externos:
+    for _tipo_id, codigo, nombre, origen in tipos:
         ruta = os.path.join(destino_dir, f'{codigo.lower()}.pdf')
         doc = SimpleDocTemplate(
             ruta, pagesize=A4,
@@ -155,14 +185,9 @@ def _generar_pdfs(tipos_externos, destino_dir):
             Spacer(1, 0.5 * cm),
             Paragraph(nombre.upper(), estilo_titulo),
             Spacer(1, 0.2 * cm),
-            Paragraph(f'Código de tipo: {codigo}', estilo_normal),
+            Paragraph(f'Código de tipo: {codigo} ({origen})', estilo_normal),
             Spacer(1, 1 * cm),
-            Paragraph(
-                'Documento dummy generado para el banco de fixtures de BDDAT (#814). '
-                'Contenido ficticio con fines de prueba: reutilizable en cualquier '
-                'expediente, sin fecha administrativa ni destino concreto.',
-                estilo_normal,
-            ),
+            Paragraph(_AVISOS_ORIGEN.get(origen, _AVISOS_ORIGEN['AMBOS']), estilo_normal),
             Spacer(1, 2 * cm),
             Paragraph(
                 'Este documento no tiene validez alguna fuera del entorno de pruebas de BDDAT.',
@@ -170,7 +195,7 @@ def _generar_pdfs(tipos_externos, destino_dir):
             ),
         ]
         doc.build(contenido)
-    print(f"{len(tipos_externos)} PDFs generados en {destino_dir}")
+    print(f"{len(tipos)} PDFs generados en {destino_dir}")
 
 
 def main():
@@ -183,8 +208,10 @@ def main():
     finally:
         conn.close()
 
-    tipos_externos = [t for t in tipos if t[3] == 'EXTERNO']
-    _generar_pdfs(tipos_externos, DESTINO_DIR)
+    shutil.rmtree(DESTINO_DIR, ignore_errors=True)
+    os.makedirs(DESTINO_DIR, exist_ok=True)
+
+    _generar_pdfs(tipos, DESTINO_DIR)
 
     ruta_csv = os.path.join(DESTINO_DIR, 'catalogo_uso.csv')
     _escribir_csv(tipos, usos_tt, usos_rl, ruta_csv)
