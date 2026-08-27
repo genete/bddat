@@ -529,7 +529,8 @@ Cobertura amplia del backend de motor, plazos, ESFTT, documentos y CBs. La UI pr
 
 | Familia | Ficheros | Propósito |
 |---|---|---|
-| Seeds | `seed_demo.py`, `seed_listado.py`, `seed_motor_variables.py`, `verificar_seed.py` | Datos de prueba (incluye los 11 escenarios T01-T11 del listado inteligente) |
+| Seeds | `seed_listado.py`, `seed_motor_variables.py`, `verificar_seed.py` | Datos de prueba (incluye los 11 escenarios T01-T11 del listado inteligente). `seed_demo.py` retirado en #814 — sus 10 expedientes narrativos no pasaban por el circuito real |
+| Fixtures dummy | `generar_documentos_dummy.py` | #814 — banco de PDFs dummy por tipo de documento `EXTERNO` + catálogo de uso, en `tests/fixtures/documentos_dummy/` |
 | SQL bootstrap | `crear_usuario_admin.sql`, `datos_roles.sql`, `data/municipios.sql` | Carga inicial fuera de Alembic |
 | Normativa BOJA | `sedeboja_buscar.py`, `sedeboja_extract.py` | Scraping de BOJA sin navegador (2 peticiones HTTP). Genera `docs/referencia/normas/sedeboja_*.md` |
 | Normativa BOE / cruce | `legalize_xref.py`, `legalize_compile.py`, `compile_hallazgos.py` | Integración con repo externo `legalize-es`; compilación para NotebookLM |
