@@ -116,6 +116,9 @@ def create_app(config_name='development'):
     from app.cli.inhabiles import inhabiles
     app.cli.add_command(inhabiles)
 
+    from app.cli.reloj import reloj
+    app.cli.add_command(reloj)
+
     # Context processor — indicador de asignación de expediente (#174)
     @app.context_processor
     def inject_indicador_asignacion():
