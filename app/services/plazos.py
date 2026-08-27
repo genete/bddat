@@ -894,6 +894,18 @@ def _primer_consumido(tarea):
 # ---------------------------------------------------------------------------
 
 def _hoy() -> date:
+    """Fecha "hoy" para el motor de plazos.
+
+    En DEBUG respeta el reloj simulado (#820) si hay uno fijado — doble
+    candado: hace falta DEBUG=True (estructural, ProductionConfig.DEBUG =
+    False) y el fichero de reloj_simulado presente a la vez.
+    """
+    from flask import current_app
+    if current_app.config.get('DEBUG'):
+        from app.services.reloj_simulado import obtener
+        simulada = obtener()
+        if simulada is not None:
+            return simulada
     return date.today()
 
 
