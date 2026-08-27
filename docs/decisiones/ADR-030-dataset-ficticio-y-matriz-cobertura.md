@@ -14,10 +14,13 @@ resuelve de raíz haciendo `hoy()` controlable, sin necesidad de esa fórmula
 inversa. §1-§2 (sandbox aditivo + consolidación de `seed_demo.py`/
 `seed_listado.py` en `seed_lib.py`) asumían INSERT directo bypass del motor
 como mecanismo de siembra; #814 lo sustituye por circuito real (wizard/API/
-servicios) con documentos físicos reales. §4-§9 (matrices de cobertura de
-motor/plazos/Variable Registry/invariantes/generación) no se ven afectados —
-siguen siendo el mapa de referencia si se retoma esa cobertura, y siguen sin
-desglosar en issues.
+servicios) con documentos físicos reales. §4-§10 (matrices de cobertura de
+motor/plazos/Variable Registry/invariantes/generación, y el patrón de tests
+de mecanismo contra seed persistente compartido) no se ven afectados por
+este cambio — siguen siendo diseño válido y pendiente, nunca desglosado en
+issues ni implementado: verificado en #814 que los ~31 tests que hoy tocan
+motor_reglas/plazos/assembler/requisitos/generador_escritos usan mocks o
+fabrican su propio dato por test, no el patrón declarativo de §10.
 
 ## Contexto
 
