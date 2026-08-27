@@ -7,6 +7,18 @@ issue: pendiente de crear
 relacionado con: ADR-001 (motor agnóstico) · ADR-002 (ESFTT sin fechas) · ADR-010 (documentos_tarea N:M) · ADR-019 (estrategia tests UI por fases) · ADR-025 (Context Builder) · ADR-026 (vigencia normativa es de la regla, no de la variable)
 ---
 
+**Nota (#814, 2026-08-27):** §1-§3 de este ADR quedan sobreseídos. §3 (fechas
+relativas calculadas "al revés") resolvía el envejecimiento de fechas fijas
+cuando `hoy()` era siempre la fecha real; el reloj de desarrollo (#820) lo
+resuelve de raíz haciendo `hoy()` controlable, sin necesidad de esa fórmula
+inversa. §1-§2 (sandbox aditivo + consolidación de `seed_demo.py`/
+`seed_listado.py` en `seed_lib.py`) asumían INSERT directo bypass del motor
+como mecanismo de siembra; #814 lo sustituye por circuito real (wizard/API/
+servicios) con documentos físicos reales. §4-§9 (matrices de cobertura de
+motor/plazos/Variable Registry/invariantes/generación) no se ven afectados —
+siguen siendo el mapa de referencia si se retoma esa cobertura, y siguen sin
+desglosar en issues.
+
 ## Contexto
 
 El desarrollo de BDDAT necesita datos en base de datos para dos usos distintos:
