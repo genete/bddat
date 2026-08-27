@@ -70,11 +70,12 @@ def create_app(config_name='development'):
 
     # Registrar blueprints - Rutas principales
     # (perfil migrado a app/modules/perfil/ en #589 — lo registra ModuleRegistry)
-    from app.routes import auth, dashboard, demo
+    from app.routes import auth, dashboard, demo, reloj_dev
 
     app.register_blueprint(auth.bp)
     app.register_blueprint(dashboard.bp)
     app.register_blueprint(demo.bp)  # POC React #291
+    app.register_blueprint(reloj_dev.bp)  # Reloj de desarrollo — Issue #820
 
     # Registrar blueprints - Wizards
     from app.routes import wizard_expediente
@@ -144,6 +145,16 @@ def create_app(config_name='development'):
             return {}
         from app.modules.configuracion_motor.routes import estado_semaforo
         return {'modo_motor': estado_semaforo()}
+
+    # Context processor — badge del reloj de desarrollo en la topbar (#820).
+    # Solo expone el valor si DEBUG=True; el template usa además config.DEBUG
+    # como cinturón y tirantes (doble candado, igual que _hoy()).
+    @app.context_processor
+    def inject_reloj_simulado():
+        if not current_user.is_authenticated or not app.config.get('DEBUG'):
+            return {}
+        from app.services.reloj_simulado import obtener
+        return {'reloj_simulado': obtener()}
 
     # Global Jinja2 — tiene_permiso disponible en todos los templates (#174)
     from app.utils.permisos import tiene_permiso

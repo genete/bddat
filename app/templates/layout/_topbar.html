@@ -50,6 +50,38 @@
     </span>
     {% endif %}
 
+    {# Reloj de desarrollo (#820) — fecha "hoy" simulada para el motor de
+       plazos. config.DEBUG aquí es cinturón y tirantes: el context processor
+       ya no expone reloj_simulado si DEBUG=False, y el blueprint que atienden
+       los formularios de abajo también responde 404 en ese caso. #}
+    {% if config.DEBUG %}
+    <div class="dropdown app-topbar__reloj-dev">
+      <button type="button"
+              class="{{ 'badge rounded-pill text-bg-warning' if reloj_simulado else 'app-topbar__icon-btn' }} dropdown-toggle"
+              style="box-shadow: none; border: 0;"
+              data-bs-toggle="dropdown" aria-expanded="false"
+              title="Reloj de desarrollo — fecha «hoy» simulada para el motor de plazos">
+        <i class="bi bi-clock-history"></i>
+        {% if reloj_simulado %}{{ reloj_simulado.strftime('%d/%m/%Y') }}{% endif %}
+      </button>
+      <div class="dropdown-menu dropdown-menu-end p-3" style="min-width: 260px;">
+        <p class="small text-muted mb-2">
+          Fecha "hoy" para el motor de plazos — solo en este entorno (DEBUG)
+        </p>
+        <form method="post" action="{{ url_for('reloj_dev.fijar') }}" class="d-flex gap-2 mb-2">
+          <input type="date" name="fecha" class="form-control form-control-sm"
+                 value="{{ reloj_simulado.isoformat() if reloj_simulado else '' }}" required>
+          <button type="submit" class="btn btn-sm btn-warning">Fijar</button>
+        </form>
+        {% if reloj_simulado %}
+        <form method="post" action="{{ url_for('reloj_dev.borrar') }}">
+          <button type="submit" class="btn btn-sm btn-outline-secondary w-100">Usar fecha real</button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+
     {# Sobre — bandeja de mensajes internos (#28, ADR-040 §6).
        Enlace a una pantalla, no un toggle de panel: el CRUD es un list-detail
        con scroll infinito e inspector, que no cabe en el dock.
