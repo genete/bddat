@@ -8,9 +8,9 @@
 
 ---
 
-**Hecho:** **#396 — Fase CONSULTAS: organismos con `fase_id`, árbol, inspector, envío en bloque y segunda ronda.** Implementado en 7 bloques full-stack sobre el diseño de [ADR-042](decisiones/ADR-042-sub-procesos-cardinalidad-variable-organismos.md): modelo (`organismos_expediente.fase_id` + rename `estado`→`resultado`), alta/edición/borrado de organismo consultado, nodo sintético `organismo` en el árbol, bloque Organismos en el inspector de fase, envío de consultas en bloque (`enviar_consultas`/`crear_traslado` con `ResultadoMutacion`), regla de motor `ADVERTIR` para la segunda ronda de consultas, e higiene (carpetas ESFTT agrupadas por organismo, `traslado_titular_vencido` desduplicado). [PR #821](https://github.com/genete/bddat/pull/821).
+**Hecho:** **#820 — Reloj de desarrollo: fecha "hoy" simulable para testear guardas de plazos.** `_hoy()` (`plazos.py`) respeta `instance/reloj_simulado.txt` solo con `DEBUG=True` (doble candado, inerte en producción); tres formas de tocarlo: CLI `flask reloj set/show/clear`, badge en la topbar, y script standalone `scripts/reloj_dev.py` (avanzar/retroceder días naturales o hábiles, sin bootstrap de Flask). [PR #822](https://github.com/genete/bddat/pull/822).
 
-**Próximo:**
+**Próximo:** #814 — Catálogo de expedientes-tipo + banco de documentos dummy reutilizables (complemento de #820 para el eje de contenido: tramitar un expediente-tipo real de principio a fin con el reloj de desarrollo, para poder tensionar guardas de plazo con datos representativos).
 
 **Fuera del foco:** #607 aplazado · #572 va con el compilador de expediente para recurso/contencioso · #568 diferido (sin casos en años) · #306/#428/#304 son helpers · #743, #570 (emparejable con #755) en la cola general · #773 espera la ampliación de `Usuario` · ADR-021 y #644-648 aparcados.
 
