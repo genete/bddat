@@ -11,6 +11,7 @@
 | Decisión de diseño | Decisiones arquitectónicas |
 | Nueva ruta o template con expediente / rol | Control de acceso |
 | Isla React (nueva o cambio) | React (islas) · `docs/guias/GUIA_REACT_ISLAS.md` |
+| Probar una guarda de plazo sin editar fechas a mano | Reloj de desarrollo |
 
 ---
 
@@ -119,6 +120,27 @@ op.execute("GRANT SELECT ON public.<tabla> TO claude_desktop")
 ```
 
 En producción este usuario no existe y el GRANT se omite o revoca, pero en desarrollo es necesario para que el MCP PostgreSQL pueda leerla.
+
+---
+
+## Reloj de desarrollo (fecha "hoy" simulada) — #820
+
+Para probar guardas de plazo sin editar a mano las fechas de los documentos de un
+expediente: `_hoy()` en `app/services/plazos.py` puede leer una fecha simulada en
+vez de `date.today()`. Solo tiene efecto con `DEBUG=True` (en producción,
+`ProductionConfig.DEBUG = False`, se ignora siempre).
+
+```bash
+flask reloj set 2026-09-15   # fija la fecha simulada
+flask reloj show             # consulta la fecha activa
+flask reloj clear            # vuelve a la fecha real
+```
+
+También hay un badge (icono de reloj) en la topbar, visible solo con `DEBUG=True`,
+con el mismo efecto que el CLI. Cambia sin reiniciar Flask: el valor vive en
+`instance/reloj_simulado.txt` (fuera de git), que `_hoy()` relee en cada llamada —
+no es una variable de entorno, que no se propagaría a un `python run.py` ya en
+marcha.
 
 ---
 
