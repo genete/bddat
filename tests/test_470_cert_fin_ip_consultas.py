@@ -170,4 +170,8 @@ def test_regla_ip_tiene_dos_condiciones(app_ctx):
     assert regla is not None
     nombres = [c.variable.nombre for c in regla.condiciones]
     assert 'fase_ip_finalizada' in nombres
-    assert 'tipo_solicitud' in nombres
+    # #814: la condición de tipo (antes tipo_solicitud IN [2 combinaciones a
+    # mano]) pasó a solicitud_incluye_dup — cubre cualquier combinación con
+    # DUP, no solo las listadas. La exención de IP (DL 26/2021 DF 4ª) exige
+    # además "sin AAU", cubierto por la regla hermana con instrumento_ambiental.
+    assert 'solicitud_incluye_dup' in nombres
