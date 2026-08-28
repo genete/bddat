@@ -105,6 +105,7 @@ def _cargar_catalogo():
         'doc_subsanacion': _doc('SUBSANACION'),
         'doc_oficio_inicio_admision': _doc('OFICIO_INICIO_ADMISION'),
         'doc_justificante_pago_tasa': _doc('JUSTIFICANTE_PAGO_TASA'),
+        'doc_justificante_notifica': _doc('JUSTIFICANTE_NOTIFICA'),
     }
     faltantes = [k for k, v in cat.items() if v is None]
     if faltantes:
@@ -311,6 +312,34 @@ def main():
     from app.models.fases import Fase
     from app.models.tramites import Tramite
     from app.models.tareas import Tarea
+    from app.models.notificaciones import Notificacion
+
+    def _notificar(tarea_notif, doc_consumido_id, doc_justificante_id, fecha, etiqueta):
+        """Cierra NOTIFICAR de verdad — vincula el justificante como PRODUCIDO
+        y registra la Notificacion (ADR-034) con resultado CORRECTA.
+
+        El hook automático (_hook_657_notificar_resultado, mutaciones_arbol.py)
+        no basta aquí: solo actúa sobre justificantes NOTIFICA parseables de
+        verdad (parsear_documento_notifica). Un PDF dummy nunca lo es, así que
+        replica a mano el "Registrar puesta a disposición" + "Registrar
+        notificación" manuales (api_expedientes.py POST+PATCH
+        /nodo/tarea/<id>/notificar) — sin esto la tarea queda en
+        PENDIENTE_NOTIFICAR (#814, hallazgo de revisión) y nada en el motor
+        actual lo impide (ver nota HUECO_NOTIFICAR_SIN_RESOLVER más abajo)."""
+        _check(svc.editar_tarea(tarea_notif, documentos_consumidos_ids=[doc_consumido_id],
+                                 documento_producido_id=doc_justificante_id, notas=None),
+               f'vincular producido NOTIFICAR {etiqueta}')
+        notif = Notificacion.query.filter_by(tarea_id=tarea_notif.id).first()
+        if notif is None:
+            notif = Notificacion(tarea_id=tarea_notif.id)
+            db.session.add(notif)
+        notif.documento_id = doc_justificante_id
+        notif.canal = 'NOTIFICA'
+        notif.fecha_puesta_disposicion = fecha
+        notif.resultado = 'CORRECTA'
+        notif.fecha_resultado = fecha
+        notif.numero_intento = 1
+        db.session.commit()
 
     with app.test_request_context():
         cat = _cargar_catalogo()
@@ -358,7 +387,7 @@ def main():
                                  documentos_consumidos_ids=[doc_solicitud_id, doc_proyecto_id],
                                  documento_producido_id=None, notas=None),
                'vincular consumidos ANALIZAR inicial')
-        diag_svc.crear_diagnostico(
+        doc_diagnostico = diag_svc.crear_diagnostico(
             tarea_analizar0, 'desfavorable',
             [{'descripcion': 'Falta memoria técnica ampliada de la línea subterránea'}],
         )
@@ -383,16 +412,18 @@ def main():
             doc_oficio_id = _subir(client, exp_id, 'OFICIO_REQUERIMIENTO',
                                     cat['doc_oficio_requerimiento'].id, fecha_actual,
                                     f'Requerimiento de subsanación #{vuelta}')
-            _check(svc.editar_tarea(tarea_elab, documentos_consumidos_ids=[],
+            # ELABORAR consume el diagnóstico que motiva este requerimiento.
+            _check(svc.editar_tarea(tarea_elab, documentos_consumidos_ids=[doc_diagnostico.id],
                                      documento_producido_id=doc_oficio_id, notas=None),
                    f'vincular producido ELABORAR #{vuelta}')
 
             tarea_notif_id = _check(svc.crear_tarea(tramite_req, cat['tarea_notificar']),
                                      f'crear_tarea NOTIFICAR #{vuelta}')
             tarea_notif = Tarea.query.get(tarea_notif_id)
-            _check(svc.editar_tarea(tarea_notif, documentos_consumidos_ids=[doc_oficio_id],
-                                     documento_producido_id=None, notas=None),
-                   f'vincular consumido NOTIFICAR #{vuelta}')
+            doc_justif_id = _subir(client, exp_id, 'JUSTIFICANTE_NOTIFICA',
+                                    cat['doc_justificante_notifica'].id, fecha_actual,
+                                    f'Justificante de notificación del requerimiento #{vuelta}')
+            _notificar(tarea_notif, doc_oficio_id, doc_justif_id, fecha_actual, f'req.#{vuelta}')
 
             tarea_esp_id = _check(svc.crear_tarea(tramite_req, cat['tarea_esperar_plazo']),
                                    f'crear_tarea ESPERAR_PLAZO #{vuelta}')
@@ -419,8 +450,8 @@ def main():
             _check(svc.editar_tarea(tarea_analizar, documentos_consumidos_ids=[doc_subsanacion_id],
                                      documento_producido_id=None, notas=None),
                    f'vincular consumido ANALIZAR #{vuelta}')
-            diag_svc.crear_diagnostico(tarea_analizar, resultado_por_vuelta[vuelta - 1],
-                                        defectos_por_vuelta[vuelta - 1])
+            doc_diagnostico = diag_svc.crear_diagnostico(
+                tarea_analizar, resultado_por_vuelta[vuelta - 1], defectos_por_vuelta[vuelta - 1])
             print(f"REQUERIMIENTO_SUBSANACION #{vuelta}: respuesta dentro de plazo, "
                   f"diagnóstico {resultado_por_vuelta[vuelta - 1]}.")
 
@@ -435,17 +466,19 @@ def main():
         doc_admision_id = _subir(client, exp_id, 'OFICIO_INICIO_ADMISION',
                                   cat['doc_oficio_inicio_admision'].id, fecha_actual,
                                   'Comunicación de inicio y admisión a trámite')
-        _check(svc.editar_tarea(tarea_com_elab, documentos_consumidos_ids=[],
+        # ELABORAR consume el diagnóstico favorable que habilita la admisión.
+        _check(svc.editar_tarea(tarea_com_elab, documentos_consumidos_ids=[doc_diagnostico.id],
                                  documento_producido_id=doc_admision_id, notas=None),
                'vincular producido ELABORAR admision')
 
         tarea_com_notif_id = _check(svc.crear_tarea(tramite_com, cat['tarea_notificar']),
                                      'crear_tarea NOTIFICAR admision')
         tarea_com_notif = Tarea.query.get(tarea_com_notif_id)
-        _check(svc.editar_tarea(tarea_com_notif, documentos_consumidos_ids=[doc_admision_id],
-                                 documento_producido_id=None, notas=None),
-               'vincular consumido NOTIFICAR admision')
-        print("COMUNICACION_INICIO_ADMISION: elaborada y notificada.")
+        doc_justif_admision_id = _subir(client, exp_id, 'JUSTIFICANTE_NOTIFICA',
+                                         cat['doc_justificante_notifica'].id, fecha_actual,
+                                         'Justificante de notificación de la comunicación de inicio')
+        _notificar(tarea_com_notif, doc_admision_id, doc_justif_admision_id, fecha_actual, 'admision')
+        print("COMUNICACION_INICIO_ADMISION: elaborada y notificada (Notificacion CORRECTA).")
 
         # --- Fase RESOLUCION (limpia, sin IP/AAU) ----------------------------
         fase_res_id = _check(svc.crear_fase(solicitud, cat['fase_resolucion']),
@@ -456,6 +489,48 @@ def main():
 
         print(f"\nExpediente AT-{expediente.numero_at} (id={exp_id}) completado.")
         return expediente.numero_at, exp_id
+
+
+# ---------------------------------------------------------------------------
+# HUECO_NOTIFICAR_SIN_RESOLVER (#814, hallazgo de revisión — no implementado
+# aquí, pendiente de decisión de diseño normativo):
+#
+# Verificado por consulta directa: cero variables de motor y cero reglas
+# mencionan NOTIFICAR o "notif" hoy. Esto significa que el motor deja crear
+# el siguiente trámite/tarea/fase aunque un NOTIFICAR anterior se haya
+# quedado sin resolver (documento producido vinculado, pero sin fila
+# Notificacion.resultado — estado visual PENDIENTE_NOTIFICAR, azul). Se
+# comprobó en vivo: se pudo crear el 2º REQUERIMIENTO_SUBSANACION, la
+# COMUNICACION_INICIO_ADMISION y la fase RESOLUCION con el NOTIFICAR
+# correspondiente sin resolver en cada punto — sin usar `justificacion`
+# (escape), el motor simplemente no lo comprueba.
+#
+# La única regla que mira REQUERIMIENTO_SUBSANACION desde RESOLUCION
+# (tramite_requerimiento_sin_respuesta, calculado.py:260-284) solo exige
+# ESPERAR_PLAZO.ejecutada (documento PRODUCIDO) — no toca NOTIFICAR.
+#
+# Riesgo real (Carlos, revisión #814): si no está vinculado no es
+# documento del expediente — un tramitador puede saltarse "Registrar
+# notificación" y seguir avanzando el expediente sin que nada le pare,
+# dejando el acto de notificar sin acreditar formalmente.
+#
+# Diseño candidato (pendiente de decidir, no implementado):
+#   - Variable nueva `existe_notificar_sin_resolver` (calculado, alcance
+#     solicitud completa, mismo patrón que tramite_requerimiento_sin_
+#     respuesta): True si existe una tarea NOTIFICAR con documento
+#     producido vinculado pero sin Notificacion.resultado.
+#   - Aplicarla como condición BLOQUEAR en más de un sujeto — el hallazgo
+#     de hoy es que el problema no es solo "antes de RESOLUCION": ya se
+#     pudo crear el trámite hermano siguiente (2º REQUERIMIENTO_SUBSANACION)
+#     dentro de la MISMA fase. Sujetos candidatos a revisar: CREAR tramite
+#     (ANY/ANY/ANY/ANY) y CREAR fase (ANY/ANY/RESOLUCION), no solo el
+#     segundo como hoy con la tasa/IP/AAU.
+#   - Decidir el alcance exacto (¿toda la solicitud, o solo la fase en
+#     curso?) y si aplica igual a los otros 3 canales (BANDEJA/SIR/POSTAL,
+#     que tampoco tienen parser automático) requiere revisión de diseño —
+#     no se implementa en esta sesión por gestión de contexto, ver issue
+#     #814 para continuar.
+# ---------------------------------------------------------------------------
 
 
 if __name__ == '__main__':
