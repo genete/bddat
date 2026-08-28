@@ -591,3 +591,23 @@ def _(ctx) -> bool:
         if envolvente and envolvente.es_fisica:
             return True
     return False
+
+
+# ---------------------------------------------------------------------------
+# Variables IP/AAU (#814)
+# ---------------------------------------------------------------------------
+
+@variable('instrumento_ambiental')
+def _(ctx) -> str | None:
+    """
+    Siglas del instrumento ambiental aplicable (Proyecto.ia), tal como están
+    en tipos_ia.siglas: 'AAI', 'AAU', 'AAUS', 'CA', 'EXENTO'. None si el
+    proyecto no tiene instrumento determinado todavía.
+
+    Mismo patrón que 'tipo_solicitud' — variable de texto que las reglas
+    comparan con EQ/IN, en vez de un booleano dedicado por instrumento.
+    """
+    proyecto = ctx.expediente.proyecto if ctx.expediente else None
+    if proyecto is None or proyecto.ia is None:
+        return None
+    return proyecto.ia.siglas
