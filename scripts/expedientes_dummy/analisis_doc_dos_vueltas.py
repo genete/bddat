@@ -5,6 +5,11 @@ subsanación, respuesta del titular siempre dentro de plazo, sin fase de
 Información Pública / Consultas / figura ambiental (AAP+AAC, proyecto
 EXENTO de instrumento ambiental).
 
+Alcance: termina con ANALISIS_SOLICITUD completa y pendiente de cierre. No
+abre la fase RESOLUCION —cerrar la fase y resolver es tramitación posterior,
+y con el invariante de precedencia de #823 abrirla con la fase anterior sin
+cerrar pasa a estar prohibido—.
+
 Circuito real — nunca INSERT SQL directo:
     - Alta expediente/proyecto/solicitud: replica el bloque ORM de
       wizard_expediente.py paso3 (mismo contador atómico numero_at).
@@ -88,7 +93,6 @@ def _cargar_catalogo():
         'municipio': Municipio.query.filter_by(nombre='Mairena del Aljarafe').first(),
 
         'fase_analisis_solicitud': _fase('ANALISIS_SOLICITUD'),
-        'fase_resolucion': _fase('RESOLUCION'),
 
         'tramite_analisis_documental': _tramite('ANALISIS_DOCUMENTAL'),
         'tramite_requerimiento': _tramite('REQUERIMIENTO_SUBSANACION'),
@@ -480,10 +484,15 @@ def main():
         _notificar(tarea_com_notif, doc_admision_id, doc_justif_admision_id, fecha_actual, 'admision')
         print("COMUNICACION_INICIO_ADMISION: elaborada y notificada (Notificacion CORRECTA).")
 
-        # --- Fase RESOLUCION (limpia, sin IP/AAU) ----------------------------
-        fase_res_id = _check(svc.crear_fase(solicitud, cat['fase_resolucion']),
-                              'crear_fase RESOLUCION')
-        print(f"Fase RESOLUCION creada (id={fase_res_id}) — sin bloqueo IP/AAU, como se esperaba.")
+        # --- Fin del alcance -------------------------------------------------
+        # El expediente-tipo acaba aquí: ANALISIS_SOLICITUD queda completa y
+        # pendiente de cierre (todos sus trámites finalizados, sin
+        # documento_resultado_id). Cerrar la fase y abrir RESOLUCION es
+        # tramitación posterior — y abrirla con la fase anterior sin cerrar
+        # pasa a estar prohibido con el invariante de precedencia de #823.
+        db.session.expire(fase)
+        estado_fase = 'pendiente de cierre' if fase.pdte_cierre else 'en curso'
+        print(f"Fase ANALISIS_SOLICITUD {estado_fase} — fin del alcance del script.")
 
         _actualizar_catalogo(expediente.numero_at)
 
@@ -492,44 +501,25 @@ def main():
 
 
 # ---------------------------------------------------------------------------
-# HUECO_NOTIFICAR_SIN_RESOLVER (#814, hallazgo de revisión — no implementado
-# aquí, pendiente de decisión de diseño normativo):
+# HUECO_PRECEDENCIA_AL_CREAR (#814 → implementación en #823, no implementado):
 #
-# Verificado por consulta directa: cero variables de motor y cero reglas
-# mencionan NOTIFICAR o "notif" hoy. Esto significa que el motor deja crear
-# el siguiente trámite/tarea/fase aunque un NOTIFICAR anterior se haya
-# quedado sin resolver (documento producido vinculado, pero sin fila
-# Notificacion.resultado — estado visual PENDIENTE_NOTIFICAR, azul). Se
-# comprobó en vivo: se pudo crear el 2º REQUERIMIENTO_SUBSANACION, la
-# COMUNICACION_INICIO_ADMISION y la fase RESOLUCION con el NOTIFICAR
-# correspondiente sin resolver en cada punto — sin usar `justificacion`
-# (escape), el motor simplemente no lo comprueba.
+# Recorrer este circuito con todos los documentos disponibles de golpe —cosa
+# que en la vida real no ocurre: el justificante no existe hasta que llega del
+# sistema de notificaciones— destapó que nada comprueba la precedencia al
+# crear un nodo del árbol. check_invariante no tiene rama CREAR (solo BORRAR/
+# FINALIZAR/MUTAR/REABRIR) y crear_fase/crear_tramite/crear_tarea solo miran
+# el sellado de fase cerrada (#720) antes de consultar el motor.
 #
-# La única regla que mira REQUERIMIENTO_SUBSANACION desde RESOLUCION
-# (tramite_requerimiento_sin_respuesta, calculado.py:260-284) solo exige
-# ESPERAR_PLAZO.ejecutada (documento PRODUCIDO) — no toca NOTIFICAR.
+# Verificado sobre AT-15 (conservado a propósito en BD de desarrollo): se creó
+# ESPERAR_PLAZO con su NOTIFICAR en curso, un 2º REQUERIMIENTO_SUBSANACION con
+# el 1º en curso, y la fase RESOLUCION con ANALISIS_SOLICITUD sin finalizar —
+# sin usar `justificacion` en ningún punto.
 #
-# Riesgo real (Carlos, revisión #814): si no está vinculado no es
-# documento del expediente — un tramitador puede saltarse "Registrar
-# notificación" y seguir avanzando el expediente sin que nada le pare,
-# dejando el acto de notificar sin acreditar formalmente.
-#
-# Diseño candidato (pendiente de decidir, no implementado):
-#   - Variable nueva `existe_notificar_sin_resolver` (calculado, alcance
-#     solicitud completa, mismo patrón que tramite_requerimiento_sin_
-#     respuesta): True si existe una tarea NOTIFICAR con documento
-#     producido vinculado pero sin Notificacion.resultado.
-#   - Aplicarla como condición BLOQUEAR en más de un sujeto — el hallazgo
-#     de hoy es que el problema no es solo "antes de RESOLUCION": ya se
-#     pudo crear el trámite hermano siguiente (2º REQUERIMIENTO_SUBSANACION)
-#     dentro de la MISMA fase. Sujetos candidatos a revisar: CREAR tramite
-#     (ANY/ANY/ANY/ANY) y CREAR fase (ANY/ANY/RESOLUCION), no solo el
-#     segundo como hoy con la tasa/IP/AAU.
-#   - Decidir el alcance exacto (¿toda la solicitud, o solo la fase en
-#     curso?) y si aplica igual a los otros 3 canales (BANDEJA/SIR/POSTAL,
-#     que tampoco tienen parser automático) requiere revisión de diseño —
-#     no se implementa en esta sesión por gestión de contexto, ver issue
-#     #814 para continuar.
+# No hace falta ninguna variable de motor nueva: Tramite.finalizado ya devuelve
+# False tanto si falta el documento producido como si un NOTIFICAR está
+# ejecutado sin resultado CORRECTA, y Fase.finalizada/pdte_cierre hacen lo
+# propio un nivel arriba. Análisis y decisiones de diseño: #814, apartado
+# HUECO_PRECEDENCIA_AL_CREAR.
 # ---------------------------------------------------------------------------
 
 
