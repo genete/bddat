@@ -15,7 +15,12 @@ Circuito real — nunca INSERT SQL directo:
       wizard_expediente.py paso3 (mismo contador atómico numero_at).
     - Fase/trámite/tarea: app.services.mutaciones_arbol (pasa por el motor
       de reglas real, motor_reglas.evaluar).
-    - Diagnóstico: app.services.diagnosticos.crear_diagnostico.
+    - Checklist documental y diagnóstico: endpoints del contenedor de ANALIZAR
+      (POST .../requisitos-documentales/<id> y POST .../analizar, ADR-033). El
+      sentido del diagnóstico NO se declara: se deriva de lo que quede sin casar
+      en el checklist, y los ítems no cubiertos se congelan como defectos. Por
+      eso las tareas ANALIZAR no vinculan consumidos a mano — los deriva el
+      propio casado de requisitos (ADR-033 §1, #677).
     - Documentos: subida multipart real a /expedientes/<id>/documentos/subir
       (banco dummy de tests/fixtures/documentos_dummy/, #814 parte 1),
       incluidos los INTERNO simulados — el pool no distingue cómo entró
@@ -115,6 +120,14 @@ def _cargar_catalogo():
 
         'doc_modelo_solicitud': _doc('MODELO_SOLICITUD'),
         'doc_proyecto': _doc('DOC_PROYECTO'),
+        # Anexos que el titular aporta en las vueltas de subsanación: cada uno
+        # cubre un requisito del checklist documental (#495). La clave sigue el
+        # patrón doc_<codigo en minúsculas> — `aportes_por_vuelta` la compone así.
+        'doc_nif_titular': _doc('NIF_TITULAR'),
+        'doc_escrituras_sociedad': _doc('ESCRITURAS_SOCIEDAD'),
+        'doc_poder_representacion': _doc('PODER_REPRESENTACION'),
+        'doc_modelo_046': _doc('MODELO_046'),
+        'doc_modelo_909': _doc('MODELO_909'),
         'doc_oficio_requerimiento': _doc('OFICIO_REQUERIMIENTO'),
         'doc_subsanacion': _doc('SUBSANACION'),
         'doc_oficio_inicio_admision': _doc('OFICIO_INICIO_ADMISION'),
@@ -291,6 +304,78 @@ def _actualizar_catalogo(numero_at):
     print(f"Catálogo de expedientes-tipo actualizado: {CATALOGO_CSV}")
 
 
+def _requisito_id(codigo_tipo_doc: int) -> int:
+    """`RequisitoDocumental.id` activo para un código de tipo de documento."""
+    from app.models.requisitos_documentales import RequisitoDocumental
+    from app.models.tipos_documentos import TipoDocumento
+
+    req = (
+        RequisitoDocumental.query
+        .join(TipoDocumento)
+        .filter(TipoDocumento.codigo == codigo_tipo_doc,
+                RequisitoDocumental.activo.is_(True))
+        .first()
+    )
+    if req is None:
+        print(f"ABORTADO: no hay RequisitoDocumental activo para {codigo_tipo_doc}")
+        sys.exit(1)
+    return req.id
+
+
+def _casar_requisitos(client, exp_id, tarea_analizar_id, pares, etiqueta):
+    """Casa documentos del pool con sus requisitos documentales por el circuito
+    real (`POST .../requisitos-documentales/<id>`, #495).
+
+    `pares`: [(codigo_tipo_doc, documento_id), ...].
+
+    Esto es lo que alimenta el checklist del contenedor de ANALIZAR: lo que
+    quede sin casar se convierte en defecto documental del diagnóstico
+    (`consolidar_defectos`), y el resultado se deriva de ahí. Casar también
+    deriva los vínculos CONSUMIDO de la tarea (ADR-033 §1, #677) — por eso el
+    script NO los vincula a mano en las tareas ANALIZAR extendidas: la
+    sincronización liberaría cualquier consumido que no venga de un requisito.
+    """
+    for codigo, doc_id in pares:
+        r = client.post(
+            f'/api/expedientes/{exp_id}/nodo/tarea/{tarea_analizar_id}'
+            f'/requisitos-documentales/{_requisito_id(codigo)}',
+            json={'documento_id': doc_id},
+        )
+        body = r.get_json() or {}
+        if not body.get('ok'):
+            print(f"ABORTADO al casar {codigo} en {etiqueta}: {body}")
+            sys.exit(1)
+    print(f"  checklist {etiqueta}: casados {', '.join(c for c, _ in pares)}.")
+
+
+def _producir_diagnostico(client, exp_id, tarea_analizar_id, etiqueta):
+    """Produce el diagnóstico por el circuito real (`POST .../analizar`, ADR-033).
+
+    No manda `resultado`: en ANALIZAR extendido (ANALISIS_DOCUMENTAL y
+    REQUERIMIENTO_SUBSANACION) el sentido no se elige, se deriva del borrador
+    consolidado —favorable si no queda ningún defecto, desfavorable si queda
+    alguno— y el endpoint ignora lo que mande el cliente. Los ítems no cubiertos
+    del checklist quedan congelados en `Diagnostico.defectos` con su cita
+    normativa y su `requisito_id` (#724).
+
+    Devuelve el `documento_id` del diagnóstico, que el ELABORAR del requerimiento
+    siguiente consume.
+    """
+    r = client.post(f'/api/expedientes/{exp_id}/nodo/tarea/{tarea_analizar_id}/analizar',
+                    json={})
+    body = r.get_json() or {}
+    if not body.get('ok'):
+        print(f"ABORTADO al producir el diagnóstico de {etiqueta}: {body}")
+        sys.exit(1)
+
+    doc_id = body['documento']['id']
+    from app.models.documentos import Documento
+    diag = Documento.query.get(doc_id).diagnostico
+    print(f"  diagnóstico {etiqueta}: {diag.resultado} "
+          f"({len(diag.defectos or [])} defecto(s) congelado(s)).")
+    return doc_id
+
+
 def _check(res, etiqueta):
     if not res.ok:
         motivo = res.bloqueo.motivo or res.bloqueo.norma_compilada if res.bloqueo else res.error
@@ -372,7 +457,6 @@ def _fecha_respuesta_en_plazo(tarea_espera, etiqueta: str) -> date:
 def main():
     from flask_login import login_user
     from app.services import mutaciones_arbol as svc
-    from app.services import diagnosticos as diag_svc
     from app.services import reloj_simulado
     from app.models.fases import Fase
     from app.models.tramites import Tramite
@@ -447,23 +531,30 @@ def main():
 
         tarea_analizar0_id = _check(svc.crear_tarea(tramite_ad, cat['tarea_analizar']),
                                      'crear_tarea ANALIZAR inicial')
-        tarea_analizar0 = Tarea.query.get(tarea_analizar0_id)
-        _check(svc.editar_tarea(tarea_analizar0,
-                                 documentos_consumidos_ids=[doc_solicitud_id, doc_proyecto_id],
-                                 documento_producido_id=None, notas=None),
-               'vincular consumidos ANALIZAR inicial')
-        doc_diagnostico = diag_svc.crear_diagnostico(
-            tarea_analizar0, 'desfavorable',
-            [{'descripcion': 'Falta memoria técnica ampliada de la línea subterránea'}],
-        )
-        print("ANALISIS_DOCUMENTAL: diagnóstico inicial desfavorable.")
+        # Lo presentado con la solicitud. El resto de requisitos aplicables queda
+        # sin casar → son los defectos del primer diagnóstico. La tasa se vuelve a
+        # casar aquí aunque ya lo estuviera (`_cubrir_requisito_tasa`, upsert
+        # idempotente): es esta llamada la que deriva su vínculo CONSUMIDO.
+        _casar_requisitos(client, exp_id, tarea_analizar0_id, [
+            ('MODELO_SOLICITUD', doc_solicitud_id),
+            ('DOC_PROYECTO', doc_proyecto_id),
+            ('JUSTIFICANTE_PAGO_TASA', doc_tasa_id),
+        ], 'presentación')
+        doc_diagnostico_id = _producir_diagnostico(client, exp_id, tarea_analizar0_id,
+                                                    'ANALISIS_DOCUMENTAL')
 
         # --- Dos vueltas de REQUERIMIENTO_SUBSANACION -----------------------
-        defectos_por_vuelta = [
-            [{'descripcion': 'Documentación de subsanación incompleta: falta plano actualizado'}],
-            [],  # 2ª vuelta: favorable
+        # Qué aporta el titular en cada vuelta: la 1ª deja el checklist aún
+        # incompleto (segundo requerimiento), la 2ª lo completa (favorable).
+        # El sentido del diagnóstico NO se declara aquí — lo deriva el motor de
+        # lo que quede sin casar.
+        aportes_por_vuelta = [
+            [('NIF_TITULAR', 'NIF del titular'),
+             ('ESCRITURAS_SOCIEDAD', 'Escritura de constitución de la sociedad'),
+             ('PODER_REPRESENTACION', 'Poder de representación')],
+            [('MODELO_046', 'Modelo 046 de autoliquidación de tasa'),
+             ('MODELO_909', 'Modelo 909 carta de pago')],
         ]
-        resultado_por_vuelta = ['desfavorable', 'favorable']
         fecha_actual = FECHA_BASE
 
         for vuelta in (1, 2):
@@ -478,7 +569,7 @@ def main():
                                     cat['doc_oficio_requerimiento'].id, fecha_actual,
                                     f'Requerimiento de subsanación #{vuelta}')
             # ELABORAR consume el diagnóstico que motiva este requerimiento.
-            _check(svc.editar_tarea(tarea_elab, documentos_consumidos_ids=[doc_diagnostico.id],
+            _check(svc.editar_tarea(tarea_elab, documentos_consumidos_ids=[doc_diagnostico_id],
                                      documento_producido_id=doc_oficio_id, notas=None),
                    f'vincular producido ELABORAR #{vuelta}')
 
@@ -510,16 +601,22 @@ def main():
                                      documento_producido_id=doc_subsanacion_id, notas=None),
                    f'cerrar plazo ESPERAR_PLAZO #{vuelta}')
 
+            # Anexos que acompañan al escrito de subsanación: son los que casan
+            # con los requisitos que faltaban.
+            aportados = []
+            for codigo, asunto in aportes_por_vuelta[vuelta - 1]:
+                doc_anexo_id = _subir(client, exp_id, codigo, cat[f'doc_{codigo.lower()}'].id,
+                                       fecha_actual, f'{asunto} (subsanación #{vuelta})')
+                aportados.append((codigo, doc_anexo_id))
+
             tarea_analizar_id = _check(svc.crear_tarea(tramite_req, cat['tarea_analizar']),
                                         f'crear_tarea ANALIZAR #{vuelta}')
-            tarea_analizar = Tarea.query.get(tarea_analizar_id)
-            _check(svc.editar_tarea(tarea_analizar, documentos_consumidos_ids=[doc_subsanacion_id],
-                                     documento_producido_id=None, notas=None),
-                   f'vincular consumido ANALIZAR #{vuelta}')
-            doc_diagnostico = diag_svc.crear_diagnostico(
-                tarea_analizar, resultado_por_vuelta[vuelta - 1], defectos_por_vuelta[vuelta - 1])
-            print(f"REQUERIMIENTO_SUBSANACION #{vuelta}: respuesta dentro de plazo, "
-                  f"diagnóstico {resultado_por_vuelta[vuelta - 1]}.")
+            # Sin vincular consumidos a mano: los deriva el casado de requisitos.
+            _casar_requisitos(client, exp_id, tarea_analizar_id, aportados,
+                              f'subsanación #{vuelta}')
+            doc_diagnostico_id = _producir_diagnostico(client, exp_id, tarea_analizar_id,
+                                                        f'REQUERIMIENTO_SUBSANACION #{vuelta}')
+            print(f"REQUERIMIENTO_SUBSANACION #{vuelta}: respuesta dentro de plazo.")
 
         # --- COMUNICACION_INICIO_ADMISION -----------------------------------
         tramite_com_id = _check(svc.crear_tramite(fase, cat['tramite_comunicacion_admision']),
@@ -533,7 +630,7 @@ def main():
                                   cat['doc_oficio_inicio_admision'].id, fecha_actual,
                                   'Comunicación de inicio y admisión a trámite')
         # ELABORAR consume el diagnóstico favorable que habilita la admisión.
-        _check(svc.editar_tarea(tarea_com_elab, documentos_consumidos_ids=[doc_diagnostico.id],
+        _check(svc.editar_tarea(tarea_com_elab, documentos_consumidos_ids=[doc_diagnostico_id],
                                  documento_producido_id=doc_admision_id, notas=None),
                'vincular producido ELABORAR admision')
 
