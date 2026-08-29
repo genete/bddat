@@ -25,22 +25,19 @@ CAMPOS_ESPERADOS = {
     'organismo_fecha_respuesta',
 }
 
-# IDs fijos de la BD de desarrollo (ver 348_seed_catalogo_base)
-_EXP_ID            = 1   # expediente numero_at=2001
-_ORG1_ID           = 1   # Endesa Distribución Eléctrica S.L.U.
-_ORG2_ID           = 2   # Sevillana-Endesa Redes Eléctricas S.A.
-_TIPO_TRAMITE_ID   = 8   # CONSULTA_SEPARATA
-_FASE_ID           = 1
-_TIPO_NOTIFICAR_ID = 4   # NOTIFICAR
-_TIPO_ANALIZAR_ID  = 1   # ANALIZAR
-
 
 @pytest.fixture()
 def organismos_data(app_ctx):
     """
-    Inserta en SAVEPOINT dos organismos de prueba para el expediente 1:
+    Inserta en SAVEPOINT dos organismos de prueba sobre el primer expediente
+    con fases que encuentre en la BD de desarrollo:
       - ORG1 (Endesa): ciclo completo — separata enviada + respuesta recibida
       - ORG2 (Sevillana): solo separata enviada, sin respuesta
+
+    Todos los IDs (expediente/fase, organismos, catálogo de trámite/tarea)
+    se resuelven por consulta, no por PK fija (#814 — el AT-2001 fijo que
+    usaba esta fixture ya no existe, y hardcodear otro PK volvería a ser
+    igual de frágil).
 
     Hace ROLLBACK al salir — no deja rastro en la BD.
     Devuelve el expediente_id usado.
@@ -50,6 +47,40 @@ def organismos_data(app_ctx):
     conn = db.engine.connect()
     sp = conn.begin_nested()
     try:
+        exp_id, fase_id = conn.execute(text(
+            "SELECT e.id, f.id FROM expedientes e "
+            "JOIN solicitudes s ON s.expediente_id = e.id "
+            "JOIN fases f ON f.solicitud_id = s.id "
+            "ORDER BY e.id, f.id LIMIT 1"
+        )).first() or (None, None)
+        if exp_id is None:
+            pytest.skip('No hay expedientes con fases en la BD de desarrollo')
+
+        org1_id = conn.execute(text(
+            "SELECT id FROM entidades WHERE nif = 'A28023430'"
+        )).scalar()
+        org2_id = conn.execute(text(
+            "SELECT id FROM entidades WHERE nif = 'A41000111'"
+        )).scalar()
+        if org1_id is None or org2_id is None:
+            pytest.skip('Entidades semilla (Endesa/Sevillana) no disponibles en esta BD')
+
+        tipo_tramite_id = conn.execute(text(
+            "SELECT id FROM tipos_tramites WHERE codigo = 'CONSULTA_SEPARATA'"
+        )).scalar()
+        tipo_notificar_id = conn.execute(text(
+            "SELECT id FROM tipos_tareas WHERE codigo = 'NOTIFICAR'"
+        )).scalar()
+        tipo_analizar_id = conn.execute(text(
+            "SELECT id FROM tipos_tareas WHERE codigo = 'ANALIZAR'"
+        )).scalar()
+
+        _EXP_ID, _FASE_ID = exp_id, fase_id
+        _ORG1_ID, _ORG2_ID = org1_id, org2_id
+        _TIPO_TRAMITE_ID, _TIPO_NOTIFICAR_ID, _TIPO_ANALIZAR_ID = (
+            tipo_tramite_id, tipo_notificar_id, tipo_analizar_id
+        )
+
         # ── Organismo 1: ciclo completo ──────────────────────────────────
         tr1 = conn.execute(text(
             "INSERT INTO public.tramites (fase_id, tipo_tramite_id) "
