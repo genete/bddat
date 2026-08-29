@@ -10,7 +10,7 @@ function DocItem({ rol, info }) {
   const count = info ? info.count : 0
   const presente = !!(info && info.presente)
   const estado = na ? 'na' : presente ? 'has' : ''
-  const icono = rol === 'consumido' ? 'bi-file-earmark-arrow-down' : 'bi-file-earmark-arrow-up'
+  const icono = rol === 'consumido' ? 'bi-box-arrow-in-down' : 'bi-box-arrow-up'
   const texto = na ? '(-)' : `(${count})`
   const titulo = na
     ? `${rol}: no aplica`
