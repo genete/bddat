@@ -104,12 +104,12 @@
             {% endif %}
             {% if tarea.doc_consumido.presente %}
               <span class="seg-dec text-secondary" title="Documentos consumidos">
-                <i class="fas fa-arrow-down"></i>{{ tarea.doc_consumido.count }}
+                <i class="bi bi-box-arrow-in-down"></i>{{ tarea.doc_consumido.count }}
               </span>
             {% endif %}
             {% if tarea.doc_producido.presente %}
               <span class="seg-dec text-secondary" title="Documento producido">
-                <i class="fas fa-arrow-up"></i>{{ tarea.doc_producido.count }}
+                <i class="bi bi-box-arrow-up"></i>{{ tarea.doc_producido.count }}
               </span>
             {% endif %}
           </a>
