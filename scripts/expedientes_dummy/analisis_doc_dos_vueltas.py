@@ -20,7 +20,11 @@ Circuito real — nunca INSERT SQL directo:
       (banco dummy de tests/fixtures/documentos_dummy/, #814 parte 1),
       incluidos los INTERNO simulados — el pool no distingue cómo entró
       el fichero, solo tipos_documentos.origen clasifica externo/interno.
-    - Plazos: reloj de desarrollo (#820), instance/reloj_simulado.txt.
+    - Plazos: reloj de desarrollo (#820), instance/reloj_simulado.txt. Las
+      fechas de respuesta del titular se derivan del vencimiento real que
+      calcula plazos.obtener_estado_plazo_tarea, nunca de un número de días
+      escrito a mano — ver `_fecha_respuesta_en_plazo`, patrón a copiar en los
+      siguientes expedientes-tipo.
 
 Reejecutable sin implementar borrado aquí: si ya existe un expediente
 marcado con este código, sus observaciones pasan a '[RECICLAR] ...' (solo
@@ -51,7 +55,13 @@ CATALOGO_CSV = r"D:\BDDAT\tests\fixtures\expedientes_dummy\catalogo_expedientes.
 
 FECHA_BASE = date(2026, 9, 1)
 
+# Días hábiles ANTES del vencimiento real en que responde el titular. El margen
+# es lo único fijo del escenario: la fecha sale del plazo que diga el catálogo
+# (ver `_fecha_respuesta_en_plazo`), no de un número de días escrito a mano.
+MARGEN_RESPUESTA_HABILES = 3
+
 from app import create_app, db  # noqa: E402
+from app.services.plazos import obtener_estado_plazo_tarea  # noqa: E402
 
 app = create_app()
 
@@ -289,15 +299,19 @@ def _check(res, etiqueta):
     return res.ids[0] if res.ids else None
 
 
+def _inhabiles_entre(desde: date, hasta: date) -> frozenset:
+    """Días inhábiles de BD en el intervalo, para el cómputo local del script."""
+    filas = db.session.execute(db.text(
+        "SELECT fecha FROM dias_inhabiles WHERE fecha >= :ini AND fecha <= :fin"
+    ), {'ini': desde, 'fin': hasta}).fetchall()
+    return frozenset(r[0] for r in filas)
+
+
 def _avanzar_habiles(fecha_ini: date, n: int) -> date:
     """Replica _sumar_dias_habiles de scripts/reloj_dev.py usando db.session
     (ya en contexto Flask aquí, evita duplicar la conexión psycopg2 aparte)."""
     from datetime import timedelta
-    margen = n * 3 + 15
-    filas = db.session.execute(db.text(
-        "SELECT fecha FROM dias_inhabiles WHERE fecha >= :ini AND fecha <= :fin"
-    ), {'ini': fecha_ini, 'fin': fecha_ini + timedelta(days=margen)}).fetchall()
-    inhabiles = frozenset(r[0] for r in filas)
+    inhabiles = _inhabiles_entre(fecha_ini, fecha_ini + timedelta(days=n * 3 + 15))
 
     cursor = fecha_ini
     dias = 0
@@ -306,6 +320,53 @@ def _avanzar_habiles(fecha_ini: date, n: int) -> date:
         if cursor.weekday() < 5 and cursor not in inhabiles:
             dias += 1
     return cursor
+
+
+def _retroceder_habiles(fecha_fin: date, n: int) -> date:
+    """Inverso de `_avanzar_habiles`: n días hábiles hacia atrás desde `fecha_fin`."""
+    from datetime import timedelta
+    inhabiles = _inhabiles_entre(fecha_fin - timedelta(days=n * 3 + 15), fecha_fin)
+
+    cursor = fecha_fin
+    dias = 0
+    while dias < n:
+        cursor -= timedelta(days=1)
+        if cursor.weekday() < 5 and cursor not in inhabiles:
+            dias += 1
+    return cursor
+
+
+def _fecha_respuesta_en_plazo(tarea_espera, etiqueta: str) -> date:
+    """Fecha en la que responde el titular, derivada del plazo REAL de la tarea.
+
+    PATRÓN para los expedientes-tipo (copiar esto, no un número de días): la
+    fecha se calcula desde el vencimiento que devuelve el propio servicio de
+    plazos para esta ESPERAR_PLAZO —la entrada de `catalogo_plazos` que le
+    corresponde por camino y condiciones, con su valor y su unidad— retrocediendo
+    `MARGEN_RESPUESTA_HABILES`. Un "+7 días hábiles" fijo diría "dentro de plazo"
+    solo por casualidad: si mañana esa entrada pasa de 10 días hábiles a 5, o a
+    meses, el escenario dejaría de ser el que dice ser sin que nada avise.
+
+    Llamar DESPUÉS de vincular el documento CONSUMIDO que dispara el plazo; sin
+    disparo el servicio devuelve SIN_PLAZO y aquí se aborta en vez de inventar
+    una fecha. Para el escenario inverso (responde fuera de plazo) basta avanzar
+    desde `fecha_limite` en lugar de retroceder.
+    """
+    estado = obtener_estado_plazo_tarea(tarea_espera)
+    if estado.fecha_limite is None:
+        print(f"ABORTADO: la ESPERAR_PLAZO de {etiqueta} no tiene plazo aplicable en "
+              f"catálogo (estado {estado.estado}); no se puede situar la respuesta.")
+        sys.exit(1)
+
+    fecha = _retroceder_habiles(estado.fecha_limite, MARGEN_RESPUESTA_HABILES)
+    if estado.fecha_disparo and fecha <= estado.fecha_disparo:
+        # Plazo más corto que el margen: la respuesta va al día hábil siguiente
+        # al disparo, que sigue estando dentro de plazo.
+        fecha = _avanzar_habiles(estado.fecha_disparo, 1)
+    print(f"  plazo {etiqueta}: {estado.plazo_valor} {estado.plazo_unidad} "
+          f"({estado.norma_origen}) — disparo {estado.fecha_disparo}, "
+          f"vence {estado.fecha_limite}, responde {fecha}.")
+    return fecha
 
 
 def main():
@@ -437,7 +498,8 @@ def main():
                                      documento_producido_id=None, notas=None),
                    f'disparar plazo ESPERAR_PLAZO #{vuelta}')
 
-            fecha_actual = _avanzar_habiles(fecha_actual, 7)
+            # Fecha derivada del plazo real de la tarea, no de un número fijo.
+            fecha_actual = _fecha_respuesta_en_plazo(tarea_esp, f'req.#{vuelta}')
             reloj_simulado.fijar(fecha_actual)
 
             doc_subsanacion_id = _subir(client, exp_id, 'SUBSANACION',
