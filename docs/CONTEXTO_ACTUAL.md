@@ -8,14 +8,13 @@
 
 ---
 
-**Hecho:** **#814 — Banco de documentos dummy y expediente-tipo reproducible.** [PR #828](https://github.com/genete/bddat/pull/828). Lo que no está en el issue ni en los ADRs: el método demostró rendir más de lo previsto. Recorrer un expediente completo **por el circuito real** —no simulado— destapó cinco huecos que ninguna pieza aislada revela, porque todos están en la costura entre piezas que funcionan bien por separado; dos de ellos ni siquiera aparecieron con el expediente realista, sino al sustituir las llamadas directas al servicio por los endpoints reales de ANALIZAR. Contrapartida asumida: cada hueco que se cierra invalida el expediente que lo destapó, y hay que regenerarlo. En BD de desarrollo quedan **AT-19** (vigente) y **AT-15**, conservado con su marca `[RECICLAR]` como caso real contra el que contrastar #823.
+**Hecho:** **#825 + #826 — Disparo del plazo de admisión y acumulado de consumidos en cadena de subsanación.** [PR #833](https://github.com/genete/bddat/pull/833) y [PR #831](https://github.com/genete/bddat/pull/831). Al verificar con el expediente-tipo de #814 se detectó un bug adicional de corrupción de datos, ajeno a estos dos — issue [#832](https://github.com/genete/bddat/issues/832) abierto, pendiente.
 
-**Próximo: cerrar los cinco huecos antes de ampliar el catálogo** — volverían a aparecer en cualquier otro tipo de expediente, así que se pagan una vez. Orden propuesto:
+**Próximo: cerrar los huecos restantes antes de ampliar el catálogo** — volverían a aparecer en cualquier otro tipo de expediente, así que se pagan una vez. Orden propuesto:
 
-1. **#826 + #825** (hermanos, juntos). Son los únicos que ya corrompen datos: los consumidos se acumulan en cada ANALIZAR y el plazo de admisión del art. 21.4 arranca con el documento equivocado (11 días de desfase, reproducido en AT-19). Todo expediente que se cree hoy nace con ellos.
-2. **#823 — invariantes de precedencia al crear nodos.** Diseño ya decidido (los tres checks como invariante); solo falta confirmar si son puerta cerrada. Es lo que impide seguir construyendo expedientes en mal orden, así que va antes de fabricar más.
-3. **#827 — conectar el generador de certificados de fase al cierre.** Lo que falta para *terminar* bien una fase, no solo para construirla. Lleva más decisiones abiertas (mapa fase → tipo de certificado), y es el ancla del guardián de reapertura que #823 deja fuera de alcance.
-4. **#824 — fecha administrativa a futuro.** Borrador, sin alcance decidido. Afecta a producción pero no bloquea la construcción de expedientes; entra cuando se acote.
+1. **#823 — invariantes de precedencia al crear nodos.** Diseño ya decidido (los tres checks como invariante); solo falta confirmar si son puerta cerrada. Es lo que impide seguir construyendo expedientes en mal orden, así que va antes de fabricar más.
+2. **#827 — conectar el generador de certificados de fase al cierre.** Lo que falta para *terminar* bien una fase, no solo para construirla. Lleva más decisiones abiertas (mapa fase → tipo de certificado), y es el ancla del guardián de reapertura que #823 deja fuera de alcance.
+3. **#824 — fecha administrativa a futuro.** Borrador, sin alcance decidido. Afecta a producción pero no bloquea la construcción de expedientes; entra cuando se acote.
 
 Después, **ampliar el catálogo de expedientes-tipo** (issue por abrir: falta decidir qué expediente y qué situación). La confianza que da un expediente-tipo alcanza solo a lo que ejercita — hoy, AAP+AAC exento sin IP ni consultas con dos vueltas dentro de plazo—, así que esa elección decide qué zona se ilumina después.
 
