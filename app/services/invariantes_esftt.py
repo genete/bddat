@@ -606,6 +606,39 @@ def ultima_tarea_cadena_subsanacion(fase_id: int) -> Optional[int]:
     )
 
 
+def documentos_consumidos_otras_tareas_cadena(tarea: Tarea) -> set:
+    """Ids de documentos ya vinculados CONSUMIDO a **otra** tarea ANALIZAR de la
+    misma cadena de subsanación, en la fase de `tarea` (#826).
+
+    `sincronizar_consumido_documental` casa por solicitud (`evaluar_requisitos`),
+    no por vuelta: sin este filtro, cada ANALIZAR de la cadena (ANALISIS_DOCUMENTAL,
+    REQUERIMIENTO_SUBSANACION) reclamaría también lo que ya consumió una vuelta
+    anterior. Acotado a la cadena a propósito — fuera de ella (CONSULTAS) los
+    ANALIZAR son paralelos por organismo y varios pueden consumir legítimamente
+    el mismo documento del proyecto.
+    """
+    from app.models.tipos_tareas import TipoTarea
+    from app.models.tipos_tramites import TipoTramite
+    from app.models.documentos_tarea import DocumentoTarea
+
+    filas = (
+        db.session.query(DocumentoTarea.documento_id)
+        .join(Tarea, DocumentoTarea.tarea_id == Tarea.id)
+        .join(Tramite, Tarea.tramite_id == Tramite.id)
+        .join(TipoTarea, Tarea.tipo_tarea_id == TipoTarea.id)
+        .join(TipoTramite, Tramite.tipo_tramite_id == TipoTramite.id)
+        .filter(
+            Tramite.fase_id == tarea.tramite.fase_id,
+            Tarea.id != tarea.id,
+            TipoTarea.codigo == 'ANALIZAR',
+            TipoTramite.codigo.in_(TRAMITES_CADENA_SUBSANACION),
+            DocumentoTarea.rol == 'CONSUMIDO',
+        )
+        .all()
+    )
+    return {fila[0] for fila in filas}
+
+
 def _diagnosticos_vigentes_query(fase_id: int):
     """Query de las tareas ANALIZAR de la fase cuyo diagnóstico está **vigente**,
     con el `Diagnostico` en la misma fila: `[(Tarea, Diagnostico), ...]`.
