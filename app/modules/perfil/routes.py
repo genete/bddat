@@ -11,6 +11,7 @@ from app import db
 from app.models.mensajes_internos import MensajeInterno
 from app.models.usuarios import Rol, Usuario
 from app.services import mensajes_internos as servicio_mensajes
+from app.utils.formularios import AUSENTE, aplicar_texto, aplicar_texto_obligatorio, leer
 
 bp = Blueprint('perfil', __name__, url_prefix='/perfil', template_folder='templates')
 
@@ -42,30 +43,46 @@ def index():
 @bp.route('/editar', methods=['POST'])
 @login_required
 def editar():
-    """Editar datos personales del usuario actual"""
-    try:
-        # Actualizar datos editables
-        current_user.nombre = request.form.get('nombre')
-        current_user.apellido1 = request.form.get('apellido1')
-        current_user.apellido2 = request.form.get('apellido2')
-        current_user.siglas_escritos = request.form.get('siglas_escritos', '').strip() or None
-        
-        # Email (validar que no esté en uso por otro usuario)
-        nuevo_email = request.form.get('email')
+    """Editar datos personales del usuario actual.
+
+    Contrato del cuerpo (#832): edición PARCIAL — solo se escriben los campos que
+    viajan. Antes, un POST al que le faltara un campo lo borraba: `nombre` y
+    `apellido1` son NOT NULL y reventaban con IntegrityError, pero `apellido2`,
+    `siglas_escritos` y sobre todo `email` son nullable y se perdían en silencio.
+    """
+    errores = []
+    aplicar_texto_obligatorio(request.form, 'nombre', current_user,
+                              'El nombre es obligatorio.', errores)
+    aplicar_texto_obligatorio(request.form, 'apellido1', current_user,
+                              'El primer apellido es obligatorio.', errores)
+    aplicar_texto(request.form, 'apellido2', current_user)
+    aplicar_texto(request.form, 'siglas_escritos', current_user)
+
+    # Email: opcional (columna nullable), pero único entre usuarios.
+    nuevo_email = leer(request.form, 'email')
+    if nuevo_email is not AUSENTE:
+        nuevo_email = (nuevo_email or '').strip() or None
         if nuevo_email != current_user.email:
-            email_existente = Usuario.query.filter_by(email=nuevo_email).first()
-            if email_existente and email_existente.id != current_user.id:
-                flash('El email ya está en uso por otro usuario', 'danger')
-                return redirect(url_for('perfil.index'))
-            current_user.email = nuevo_email
-        
+            en_uso = Usuario.query.filter_by(email=nuevo_email).first() if nuevo_email else None
+            if en_uso and en_uso.id != current_user.id:
+                errores.append('El email ya está en uso por otro usuario')
+            else:
+                current_user.email = nuevo_email
+
+    if errores:
+        db.session.rollback()
+        for msg in errores:
+            flash(msg, 'danger')
+        return redirect(url_for('perfil.index'))
+
+    try:
         db.session.commit()
         flash('Datos actualizados correctamente', 'success')
-        
+
     except Exception as e:
         db.session.rollback()
         flash(f'Error al actualizar datos: {str(e)}', 'danger')
-    
+
     return redirect(url_for('perfil.index'))
 
 @bp.route('/cambiar-contrasena', methods=['POST'])

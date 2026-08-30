@@ -21,21 +21,95 @@ def test_crear_hijo_tipo_inexistente_404(usuario_supervisor, expediente_seed):
 
 
 def test_editar_solicitud_idempotente_200(usuario_supervisor, app):
-    """PATCH /nodo/solicitud/<id> con observaciones=None → 200, ok==True."""
+    """PATCH /nodo/solicitud/<id> reenviando su valor actual → 200, ok==True.
+
+    Idempotente de verdad: el test corre contra la BD de desarrollo y la solicitud
+    sale de `Solicitud.query.first()` (sin ORDER BY, cuál toca es indeterminado),
+    así que nunca debe cambiar su estado. Enviar `observaciones: None` sí la vacía
+    —es la forma de decir "vaciar"— y así vació las de tres solicitudes reales (#832).
+    """
     with app.app_context():
         from app.models.solicitudes import Solicitud
         sol = Solicitud.query.first()
         if sol is None:
             pytest.skip('No hay solicitudes en la BD de desarrollo')
-        exp_id = sol.expediente_id
-        sol_id = sol.id
+        exp_id, sol_id, observaciones = sol.expediente_id, sol.id, sol.observaciones
 
     r = usuario_supervisor.patch(
         f'/api/expedientes/{exp_id}/nodo/solicitud/{sol_id}',
-        json={'observaciones': None})
+        json={'observaciones': observaciones})
     assert r.status_code == 200
     data = r.get_json()
     assert data.get('ok') is True
+
+
+def test_editar_solicitud_sin_la_clave_no_vacia_observaciones(usuario_supervisor, app):
+    """PATCH sin la clave `observaciones` conserva su valor (#832).
+
+    Clave ausente ≠ clave con null: antes ambas llegaban al servicio como None y
+    lo que el cliente no nombraba desaparecía.
+    """
+    from app import db
+    from app.models.solicitudes import Solicitud
+
+    with app.app_context():
+        sol = Solicitud.query.first()
+        if sol is None:
+            pytest.skip('No hay solicitudes en la BD de desarrollo')
+        exp_id, sol_id, previo = sol.expediente_id, sol.id, sol.observaciones
+        sol.observaciones = 'Marcador de #832 — no debe desaparecer'
+        db.session.commit()
+
+    try:
+        r = usuario_supervisor.patch(
+            f'/api/expedientes/{exp_id}/nodo/solicitud/{sol_id}', json={})
+        assert r.status_code == 200
+        with app.app_context():
+            assert Solicitud.query.get(sol_id).observaciones == \
+                'Marcador de #832 — no debe desaparecer'
+    finally:
+        with app.app_context():
+            Solicitud.query.get(sol_id).observaciones = previo
+            db.session.commit()
+
+
+def test_editar_tarea_sin_la_clave_conserva_los_consumidos(usuario_supervisor, app, monkeypatch):
+    """PATCH sin `documentos_consumidos_ids` conserva los vínculos CONSUMIDO (#832).
+
+    El más grave de la familia: `editar_tarea` diffea contra la lista recibida y
+    libera a pool/ lo que sobre (ADR-032 §3), así que un cuerpo parcial no borraba
+    un texto — desvinculaba documentos y con ellos el disparo del plazo. Es lo que
+    obligó al script de #814 a releer y reponer los consumidos previos (#825).
+
+    No escribe en BD: intercepta la llamada al servicio para inspeccionar con qué
+    argumentos la habría hecho la ruta.
+    """
+    from app.models.tareas import Tarea
+    from app.models.documentos_tarea import DocumentoTarea
+    from app.services import mutaciones_arbol
+    from app.services.mutaciones_arbol import ResultadoMutacion
+
+    with app.app_context():
+        vinculo = DocumentoTarea.query.filter_by(rol='CONSUMIDO').first()
+        if vinculo is None:
+            pytest.skip('No hay ninguna tarea con documentos CONSUMIDO en esta BD')
+        tarea = Tarea.query.get(vinculo.tarea_id)
+        exp_id = tarea.tramite.fase.solicitud.expediente_id
+        tarea_id = tarea.id
+        esperados = [d.id for d in tarea.documentos_consumidos]
+
+    recibido = {}
+
+    def _falso_editar_tarea(ta, **kwargs):
+        recibido.update(kwargs)
+        return ResultadoMutacion(ok=True)
+
+    monkeypatch.setattr(mutaciones_arbol, 'editar_tarea', _falso_editar_tarea)
+
+    r = usuario_supervisor.patch(
+        f'/api/expedientes/{exp_id}/nodo/tarea/{tarea_id}', json={})
+    assert r.status_code == 200
+    assert recibido['documentos_consumidos_ids'] == esperados
 
 
 def test_borrar_solicitud_inexistente_404(usuario_supervisor, expediente_seed):

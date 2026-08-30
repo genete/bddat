@@ -8,6 +8,11 @@
 <form data-inspector-form
       data-action="{{ url_for('expedientes.editar', id=expediente.id) }}">
 
+{# Centinela de formulario completo (#832): la ruta solo interpreta la ausencia de
+   una casilla como "desmarcada" cuando este campo viaja. Sin él, un cuerpo parcial
+   ponía a False heredado / es_modificacion / sin_linea_aerea / solo_suelo_urbano. #}
+<input type="hidden" name="_form_completo" value="1">
+
 <div id="inspector-form-errors" class="alert alert-danger py-2 mb-3 small"
      style="display:none;"></div>
 
@@ -78,7 +83,9 @@
     <div class="card-body card-body-tinted">
         <div class="row g-2">
             <div class="col-12">
-                <label class="form-label fw-semibold small" for="ef_titulo">Título</label>
+                <label class="form-label fw-semibold small" for="ef_titulo">
+                    Título <span class="text-danger">*</span>
+                </label>
                 <input type="text" class="form-control form-control-sm" id="ef_titulo"
                        name="titulo" value="{{ proy.titulo if proy else '' }}"
                        maxlength="500">
@@ -96,25 +103,33 @@
                 </select>
             </div>
             <div class="col-6">
-                <label class="form-label fw-semibold small" for="ef_fecha">Fecha técnica</label>
+                <label class="form-label fw-semibold small" for="ef_fecha">
+                    Fecha técnica <span class="text-danger">*</span>
+                </label>
                 <input type="date" class="form-control form-control-sm" id="ef_fecha"
                        name="fecha"
                        value="{{ proy.fecha.strftime('%Y-%m-%d') if proy and proy.fecha else '' }}">
             </div>
             <div class="col-12">
-                <label class="form-label fw-semibold small" for="ef_finalidad">Finalidad</label>
+                <label class="form-label fw-semibold small" for="ef_finalidad">
+                    Finalidad <span class="text-danger">*</span>
+                </label>
                 <input type="text" class="form-control form-control-sm" id="ef_finalidad"
                        name="finalidad" value="{{ proy.finalidad if proy else '' }}"
                        maxlength="500">
             </div>
             <div class="col-12">
-                <label class="form-label fw-semibold small" for="ef_emplazamiento">Emplazamiento</label>
+                <label class="form-label fw-semibold small" for="ef_emplazamiento">
+                    Emplazamiento <span class="text-danger">*</span>
+                </label>
                 <input type="text" class="form-control form-control-sm" id="ef_emplazamiento"
                        name="emplazamiento" value="{{ proy.emplazamiento if proy else '' }}"
                        maxlength="200">
             </div>
             <div class="col-12">
-                <label class="form-label fw-semibold small" for="ef_desc">Descripción</label>
+                <label class="form-label fw-semibold small" for="ef_desc">
+                    Descripción <span class="text-danger">*</span>
+                </label>
                 <textarea class="form-control form-control-sm" id="ef_desc"
                           name="descripcion" rows="4"
                           maxlength="10000">{{ proy.descripcion if proy else '' }}</textarea>
