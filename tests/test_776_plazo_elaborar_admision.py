@@ -56,8 +56,12 @@ def _tramite_comunicacion_con_elaborar(fase):
 
 
 def _añadir_requerimiento_con_subsanacion(fase):
-    """Añade a la fase un REQUERIMIENTO_SUBSANACION con su ANALIZAR consumiendo
-    un documento SUBSANACION. Devuelve el documento SUBSANACION."""
+    """Añade a la fase un REQUERIMIENTO_SUBSANACION con su ESPERAR_PLAZO
+    produciendo el documento SUBSANACION —el que cumple el plazo del art.
+    68.1 LPACAP, catalogo_plazos, `ANY/ANY/ANY/REQUERIMIENTO_SUBSANACION/
+    ESPERAR_PLAZO`— y su ANALIZAR (#825: la SUBSANACION no cubre ningún
+    requisito documental, así que el ANALIZAR no la consume). Devuelve el
+    documento SUBSANACION."""
     from app import db
     from app.models.tramites import Tramite
     from app.models.tareas import Tarea
@@ -72,10 +76,6 @@ def _añadir_requerimiento_con_subsanacion(fase):
     db.session.add(tramite_req)
     db.session.flush()
 
-    tarea_analizar = Tarea(tramite_id=tramite_req.id, tipo_tarea_id=_tipo(TipoTarea, 'ANALIZAR').id)
-    db.session.add(tarea_analizar)
-    db.session.flush()
-
     doc_subsanacion = Documento(
         expediente_id=fase.solicitud.expediente_id,
         tipo_doc_id=_tipo(TipoDocumento, 'SUBSANACION').id,
@@ -83,8 +83,16 @@ def _añadir_requerimiento_con_subsanacion(fase):
     )
     db.session.add(doc_subsanacion)
     db.session.flush()
-    db.session.add(DocumentoTarea(tarea_id=tarea_analizar.id, documento_id=doc_subsanacion.id, rol='CONSUMIDO'))
+
+    tarea_esperar_plazo = Tarea(tramite_id=tramite_req.id, tipo_tarea_id=_tipo(TipoTarea, 'ESPERAR_PLAZO').id)
+    db.session.add(tarea_esperar_plazo)
     db.session.flush()
+    db.session.add(DocumentoTarea(tarea_id=tarea_esperar_plazo.id, documento_id=doc_subsanacion.id, rol='PRODUCIDO'))
+
+    tarea_analizar = Tarea(tramite_id=tramite_req.id, tipo_tarea_id=_tipo(TipoTarea, 'ANALIZAR').id)
+    db.session.add(tarea_analizar)
+    db.session.flush()
+
     return doc_subsanacion
 
 
@@ -135,6 +143,43 @@ class TestDocumentoDisparoComunicacionAdmision:
         solicitud = _solicitud_con_documento(app_ctx)
         fase, _ = _fase_con_analisis_documental(solicitud)
         doc_subsanacion = _añadir_requerimiento_con_subsanacion(fase)
+        tramite, _ = _tramite_comunicacion_con_elaborar(fase)
+
+        doc = documento_disparo_comunicacion_admision(tramite)
+
+        assert doc is not None
+        assert doc.id == doc_subsanacion.id
+
+    def test_con_requerimiento_ignora_los_consumidos_del_analizar(self, app_ctx):
+        """Regresión #825: antes se leía `consumidos[0]` del ANALIZAR, que ni
+        siquiera incluye el escrito de subsanación (no cubre ningún requisito
+        documental) y puede acumular anexos de vueltas anteriores (#826). El
+        criterio correcto —el PRODUCIDO de la ESPERAR_PLAZO— no depende en
+        absoluto de esos vínculos."""
+        from app import db
+        from app.services.invariantes_esftt import documento_disparo_comunicacion_admision
+        from app.models.documentos import Documento
+        from app.models.documentos_tarea import DocumentoTarea
+        from app.models.tipos_documentos import TipoDocumento
+
+        solicitud = _solicitud_con_documento(app_ctx)
+        fase, _ = _fase_con_analisis_documental(solicitud)
+        doc_subsanacion = _añadir_requerimiento_con_subsanacion(fase)
+
+        # El ANALIZAR de esa misma vuelta consume un anexo ajeno (p.ej. NIF_TITULAR),
+        # nunca la propia SUBSANACION — simula el escenario real de AT-19.
+        tramite_req = next(t for t in fase.tramites if t.tipo_tramite.codigo == 'REQUERIMIENTO_SUBSANACION')
+        tarea_analizar = next(t for t in tramite_req.tareas if t.tipo_tarea.codigo == 'ANALIZAR')
+        doc_anexo = Documento(
+            expediente_id=solicitud.expediente_id,
+            tipo_doc_id=_tipo(TipoDocumento, 'NIF_TITULAR').id,
+            url='bddat://test-776/anexo',
+        )
+        db.session.add(doc_anexo)
+        db.session.flush()
+        db.session.add(DocumentoTarea(tarea_id=tarea_analizar.id, documento_id=doc_anexo.id, rol='CONSUMIDO'))
+        db.session.flush()
+
         tramite, _ = _tramite_comunicacion_con_elaborar(fase)
 
         doc = documento_disparo_comunicacion_admision(tramite)
