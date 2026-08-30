@@ -10,6 +10,7 @@
 | Cierre de milestone | Releases |
 | Decisión de diseño | Decisiones arquitectónicas |
 | Nueva ruta o template con expediente / rol | Control de acceso |
+| Ruta que edita un registro existente (POST/PATCH) | Rutas que editan un registro existente |
 | Isla React (nueva o cambio) | React (islas) · `docs/guias/GUIA_REACT_ISLAS.md` |
 | Probar una guarda de plazo sin editar fechas a mano | Reloj de desarrollo |
 
@@ -60,6 +61,60 @@ Acción para cada consumidor encontrado:
 
 Presentar ese mapa como tabla al usuario y esperar confirmación **antes de implementar**.
 No hay excepciones por "es pequeño" o "es evidente".
+
+---
+
+## Rutas que editan un registro existente
+
+Una petición HTTP tiene **tres** estados posibles para cada campo, y hay que
+distinguir los tres:
+
+| Estado | Qué significa | Qué hacer |
+|---|---|---|
+| **Ausente** | el cliente no habla de ese campo | **no tocarlo** |
+| **Presente y vacío** | el usuario lo ha vaciado a propósito | vaciarlo (NULL), o error de validación si la columna es NOT NULL |
+| **Presente con valor** | edición normal | escribirlo |
+
+`request.form.get('x') or None` colapsa los dos primeros, así que cualquier cuerpo
+parcial —un `fetch` que manda solo lo que cambió, un test, un template cacheado
+antiguo— **borra en silencio todo lo que no menciona**. En #832 eso vació dos FK,
+tres flags técnicos y la tensión de tres expedientes, y las observaciones de tres
+solicitudes; en #825, los vínculos CONSUMIDO que disparan un plazo.
+
+No escribir esto a mano: usar `app/utils/formularios.py`.
+
+```python
+from app.utils.formularios import aplicar_fk, aplicar_texto_obligatorio, form_completo
+
+completo = form_completo(request.form)   # centinela _form_completo
+errores = []
+
+aplicar_fk(request.form, 'tipo_expediente_id', expediente)
+aplicar_texto_obligatorio(request.form, 'titulo', proyecto,
+                          'El título del proyecto es obligatorio.', errores)
+aplicar_checkbox(request.form, 'sin_linea_aerea', proyecto, completo)
+```
+
+Tres cosas que no son obvias:
+
+1. **Las casillas necesitan centinela.** En HTML un checkbox desmarcado **no se
+   envía**, así que su ausencia no se distingue de un cuerpo parcial. El formulario
+   completo declara `<input type="hidden" name="_form_completo" value="1">` y sin él
+   `aplicar_checkbox` no escribe nada.
+2. **`or objeto.campo` no es el arreglo.** Conserva el valor por omisión, sí, pero a
+   cambio hace imposible vaciar el campo a propósito: el usuario lo borra, guarda, y
+   reaparece. Si la columna es NOT NULL, lo correcto es validar y devolver error —
+   con el mismo mensaje que exige el alta, para que ambas puertas digan lo mismo.
+3. **En las rutas de API (JSON) el criterio es el mismo**, pero el matiz cambia:
+   clave **ausente** conserva; clave presente con `null` (o `[]`) sí vacía. Usar
+   `leer_json(data, clave, valor_actual)` — importa especialmente cuando el cuerpo
+   se reenvía a un servicio cuyo contrato es "esto es el estado completo deseado"
+   (`mutaciones_arbol.editar_*`, que diffea y libera lo que sobre).
+
+Lo comprueba `tests/test_832_contrato_edicion_parcial.py` sobre las rutas de
+formulario, con un manifiesto explícito de la deuda pendiente (#834). El detector
+que usa (`scripts/auditar_escrituras_parciales.py`) **no ve el caso de API JSON**:
+ahí el criterio se sostiene con la revisión y esta regla.
 
 ---
 
