@@ -286,3 +286,48 @@ scripts/verificar_bd_tests.sh -k test_supervisor_puede_anadir_condicion
 ```
 
 Salida: `docs_prueba/temp/bd_antes.sql`, `bd_despues.sql`, `bd_diff.txt`.
+
+---
+
+## auditar_escrituras_parciales.py — Detectar rutas que vacían lo que el cuerpo no envía
+
+Análisis estático (AST) de `app/`: busca cada asignación
+`objeto.campo = <algo leído de request.form / request.json>` y clasifica qué le
+pasa al campo **si el cliente no lo envía**. Origen: issue #832, donde ese
+descuido vació `tipo_expediente_id`, `ia_id`, tres flags técnicos y la tensión de
+tres expedientes.
+
+Recorre todas las funciones, no solo los handlers de ruta: en este repo la
+escritura suele vivir en helpers `_rellenar_*`, que un grep por decoradores
+`@bp.route` se salta.
+
+| Clase | Qué pasa si el campo no viaja |
+|---|---|
+| `BORRA` | queda NULL / `''` — vaciado silencioso |
+| `FALSEA` | queda `False` — checkbox: legítimo en formulario completo, destructivo en cuerpo parcial |
+| `CONSERVA` | mantiene el valor previo, a costa de impedir el vaciado deliberado |
+| `RUIDOSO` | `request.form['x']` sin `get` → `KeyError`: falla, no corrompe |
+
+Separa además las funciones que **crean** un modelo de las que **editan** uno
+existente: el vaciado silencioso solo es un bug en las segundas.
+
+### Uso
+
+```bash
+venv/Scripts/python.exe scripts/auditar_escrituras_parciales.py
+venv/Scripts/python.exe scripts/auditar_escrituras_parciales.py --salida docs_prueba/temp/informe.txt
+```
+
+Sin `--salida` escribe a stdout (forzando UTF-8: la consola de Windows es cp1252
+y el informe lleva rutas con acentos).
+
+### Cómo leer el resultado
+
+Aparecer en el bloque A **no** significa haber causado daño: si el único cliente
+de esa función es un formulario completo, el patrón está pero no lo dispara nadie.
+Para saber si ha sangrado de verdad, mirar `xmin` de las filas sospechosas
+(columna de sistema de PostgreSQL con la transacción de la última escritura) y
+comprobar si fueron reescritas después de crearse — método del diagnóstico de #832.
+
+El arreglo es `app/utils/formularios.py`. Este script sirve de marcador de
+progreso: cada ruta migrada desaparece del bloque A (issue #834).
