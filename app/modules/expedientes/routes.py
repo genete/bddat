@@ -52,6 +52,14 @@ from app.utils.permisos import (
     tiene_permiso,
 )
 from app.utils.metadata import cargar_metadata
+from app.utils.formularios import (
+    aplicar_checkbox,
+    aplicar_fecha_obligatoria,
+    aplicar_fk,
+    aplicar_numero,
+    aplicar_texto_obligatorio,
+    form_completo,
+)
 
 # template_folder apunta a app/modules/expedientes/templates/
 bp = Blueprint('expedientes', __name__,
@@ -240,6 +248,12 @@ def editar(id):
     GET  → redirect al listado con inspector abierto (ya no es página).
     POST → JSON si X-Requested-With:XMLHttpRequest; redirect si no (fallback).
     Municipios se gestionan en endpoint separado /municipios (modal grande).
+
+    Contrato del cuerpo (#832): edición PARCIAL — solo se escriben los campos que
+    viajan en el formulario. Enviarlos vacíos sí los vacía, salvo los NOT NULL del
+    proyecto (título, descripción, finalidad, emplazamiento, fecha), que devuelven
+    error de validación con los mismos mensajes del alta. Las casillas solo se
+    escriben si el formulario declara el centinela `_form_completo`.
     """
     expediente = Expediente.query.get_or_404(id)
 
@@ -254,35 +268,53 @@ def editar(id):
             return jsonify({'ok': False, 'errors': ['Sin permiso para editar este expediente']}), 403
         return resultado
 
+    # Campo AUSENTE ≠ campo VACÍO (#832): antes, cualquier cuerpo parcial vaciaba
+    # en silencio todo lo que no mencionaba —así se perdieron tipo_expediente_id,
+    # ia_id, los tres flags técnicos y la tensión de varios expedientes—. Ahora un
+    # campo que no viaja no se toca; uno que viaja vacío se vacía (o da error si su
+    # columna es NOT NULL). Las casillas necesitan además el centinela de
+    # formulario completo: desmarcada y no enviada son indistinguibles en HTML.
+    completo = form_completo(request.form)
+    errores = []
+
+    proyecto = expediente.proyecto
+
+    aplicar_fk(request.form, 'tipo_expediente_id', expediente)
+    aplicar_checkbox(request.form, 'heredado', expediente, completo)
+
+    if puede_cambiar_responsable():
+        aplicar_fk(request.form, 'responsable_id', expediente)
+
+    # Los cinco NOT NULL del proyecto — mismas exigencias y mismos mensajes que el
+    # alta (wizard_expediente.paso2), que es de donde salen estas filas.
+    aplicar_texto_obligatorio(request.form, 'titulo', proyecto,
+                              'El título del proyecto es obligatorio.', errores)
+    aplicar_texto_obligatorio(request.form, 'descripcion', proyecto,
+                              'La descripción del proyecto es obligatoria.', errores)
+    aplicar_texto_obligatorio(request.form, 'finalidad', proyecto,
+                              'La finalidad del proyecto es obligatoria.', errores)
+    aplicar_texto_obligatorio(request.form, 'emplazamiento', proyecto,
+                              'El emplazamiento es obligatorio.', errores)
+    aplicar_fecha_obligatoria(request.form, 'fecha', proyecto,
+                              'Fecha de proyecto inválida (formato esperado: YYYY-MM-DD).',
+                              errores)
+
+    aplicar_fk(request.form, 'ia_id', proyecto)
+    aplicar_numero(request.form, 'max_tension_nominal_kv', proyecto,
+                   'Tensión máxima inválida.', errores)
+    aplicar_checkbox(request.form, 'es_modificacion', proyecto, completo)
+    aplicar_checkbox(request.form, 'sin_linea_aerea', proyecto, completo)
+    aplicar_checkbox(request.form, 'solo_suelo_urbano_urbanizable', proyecto, completo)
+
+    if errores:
+        db.session.rollback()
+        if is_xhr:
+            return jsonify({'ok': False, 'errors': errores}), 400
+        for msg in errores:
+            flash(msg, 'danger')
+        return redirect(url_for('expedientes.listado_v2', sel=id))
+
     try:
-        # Actualizar expediente
-        expediente.tipo_expediente_id = request.form.get('tipo_expediente_id') or None
-        expediente.heredado = request.form.get('heredado') == 'on'
-
-        if puede_cambiar_responsable():
-            nuevo_resp_id = request.form.get('responsable_id')
-            expediente.responsable_id = int(nuevo_resp_id) if nuevo_resp_id else None
-
-        # Actualizar proyecto
-        proyecto = expediente.proyecto
-        fecha_raw = request.form.get('fecha') or None
-        if fecha_raw:
-            try:
-                from datetime import date as _date
-                proyecto.fecha = _date.fromisoformat(fecha_raw)
-            except ValueError:
-                pass
-        proyecto.titulo = request.form.get('titulo') or proyecto.titulo
-        proyecto.finalidad = request.form.get('finalidad') or proyecto.finalidad
-        proyecto.emplazamiento = request.form.get('emplazamiento') or proyecto.emplazamiento
-        proyecto.descripcion = request.form.get('descripcion') or proyecto.descripcion
-        proyecto.ia_id = request.form.get('ia_id') or None
-        proyecto.es_modificacion = request.form.get('es_modificacion') == 'on'
-        proyecto.sin_linea_aerea = request.form.get('sin_linea_aerea') == 'on'
-        max_kv_raw = request.form.get('max_tension_nominal_kv', '').strip()
-        proyecto.max_tension_nominal_kv = float(max_kv_raw) if max_kv_raw else None
-        proyecto.solo_suelo_urbano_urbanizable = request.form.get('solo_suelo_urbano_urbanizable') == 'on'
-
         db.session.commit()
 
     except Exception as e:
