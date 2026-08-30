@@ -39,6 +39,7 @@ from app.services.motor_modo_global import evaluar_con_modo_global as _evaluar
 from app.services.invariantes_esftt import (
     _check_cierre_fase, _check_completitud_cierre, check_invariante,
     diagnostico_tramite_anterior, documento_disparo_comunicacion_admision,
+    documentos_consumidos_otras_tareas_cadena,
     es_documento_critico, advertir_documentos_criticos_huerfanos,
 )
 from app.services.vocabulario_esftt import check_orden_tarea, check_vocabulario_tramite
@@ -867,6 +868,11 @@ def sincronizar_consumido_documental(tarea: Tarea) -> None:
     diff + movimiento físico que editar_tarea (ADR-032 §3): solo toca lo que
     cambia, nunca clear()+recrear — evita disparar mover_a_esftt/mover_a_pool
     en documentos que ya estaban en su sitio.
+
+    `evaluar_requisitos` casa por solicitud, no por vuelta: en la cadena de
+    subsanación se descarta lo que ya conste CONSUMIDO en otra tarea ANALIZAR
+    de la misma cadena (#826) — un ANALIZAR analiza lo que llega nuevo, no
+    re-analiza lo que ya analizó una vuelta anterior.
     """
     solicitud = tarea.tramite.fase.solicitud
     _, variables = build(solicitud.expediente, objeto=tarea)
@@ -875,6 +881,7 @@ def sincronizar_consumido_documental(tarea: Tarea) -> None:
         return
 
     deseados_ids = {it['documento'].id for it in resultado['items'] if it['documento'] is not None}
+    deseados_ids -= documentos_consumidos_otras_tareas_cadena(tarea)
     actuales = {v.documento_id: v for v in tarea.vinculos_documento if v.rol == 'CONSUMIDO'}
 
     docs_a_liberar = []
