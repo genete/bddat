@@ -626,12 +626,21 @@ def main():
         tarea_com_elab_id = _check(svc.crear_tarea(tramite_com, cat['tarea_elaborar']),
                                     'crear_tarea ELABORAR admision')
         tarea_com_elab = Tarea.query.get(tarea_com_elab_id)
+        # El hook automático de #776 ya vinculó aquí, al crear la tarea, el documento
+        # que dispara el plazo del art. 21.4 (documento_disparo_comunicacion_admision,
+        # #825). Hay que conservarlo: editar_tarea trata documentos_consumidos_ids como
+        # el conjunto CONSUMIDO deseado completo (no aditivo) — si no se repite aquí,
+        # se libera y el plazo de esta tarea queda SIN_PLAZO (hallazgo #825).
+        ids_consumidos_previos = [d.id for d in tarea_com_elab.documentos_consumidos]
         doc_admision_id = _subir(client, exp_id, 'OFICIO_INICIO_ADMISION',
                                   cat['doc_oficio_inicio_admision'].id, fecha_actual,
                                   'Comunicación de inicio y admisión a trámite')
-        # ELABORAR consume el diagnóstico favorable que habilita la admisión.
-        _check(svc.editar_tarea(tarea_com_elab, documentos_consumidos_ids=[doc_diagnostico_id],
-                                 documento_producido_id=doc_admision_id, notas=None),
+        # ELABORAR consume el diagnóstico favorable que habilita la admisión, además
+        # del documento de disparo del plazo que ya trae de la línea anterior.
+        _check(svc.editar_tarea(
+            tarea_com_elab,
+            documentos_consumidos_ids=list(dict.fromkeys(ids_consumidos_previos + [doc_diagnostico_id])),
+            documento_producido_id=doc_admision_id, notas=None),
                'vincular producido ELABORAR admision')
 
         tarea_com_notif_id = _check(svc.crear_tarea(tramite_com, cat['tarea_notificar']),
