@@ -40,6 +40,7 @@ from app.services.esquema_editable import esquema_de_nodo
 from app.services import mutaciones_arbol as svc
 from app.services import consultas_organismos as svc_consultas
 from app.utils.api_respuestas import leer_bypass
+from app.utils.formularios import leer_json
 from app.services.assembler import build
 from app.services.requisitos import evaluar_requisitos
 from app.services.items_tecnicos import evaluar_items_tecnicos
@@ -671,6 +672,9 @@ def editar_nodo(expediente_id, tipo, nodo_id):
       tarea:      {documentos_consumidos_ids, documento_producido_id, notas}
       organismo:  {via, resultado, direccion_notificacion_id, documento_id} (ADR-042 §C)
     Respuesta éxito: {ok:true} 200. Bloqueo motor: {error, motivo, url_norma} 422.
+
+    Contrato del cuerpo (#832): edición PARCIAL — una clave ausente conserva el
+    valor que ya tiene el nodo; enviarla con `null` (o `[]`) sí lo vacía.
     """
     expediente = Expediente.query.get_or_404(expediente_id)
     # Hoja (tarea → gestionar_tareas, incluye ADMINISTRATIVO) vs estructura
@@ -686,35 +690,51 @@ def editar_nodo(expediente_id, tipo, nodo_id):
 
     data = request.get_json(silent=True) or {}
 
+    # Clave AUSENTE ≠ clave con null (#832). El contrato de `mutaciones_arbol.editar_*`
+    # es "esto es el estado completo deseado" —`editar_tarea` diffea los vínculos y
+    # libera lo que sobre—, así que un cuerpo parcial borraba lo que no nombraba:
+    # las observaciones de varias solicitudes, y en #825 los CONSUMIDO que disparan
+    # el plazo (el script tuvo que releerlos y reponerlos a mano para no perderlos).
+    # `leer_json` rellena con el valor actual del nodo lo que el cliente no envía,
+    # convirtiendo la petición parcial en su equivalente completa sin tocar el
+    # servicio. Enviar la clave con null sigue significando vaciar.
     if tipo == 'solicitud':
-        res = svc.editar_solicitud(nodo, observaciones=data.get('observaciones'))
+        res = svc.editar_solicitud(
+            nodo, observaciones=leer_json(data, 'observaciones', nodo.observaciones))
     elif tipo == 'fase':
         justificacion, err = leer_bypass(data)
         if err:
             return err
         res = svc.editar_fase(
             nodo,
-            resultado_fase_id=data.get('resultado_fase_id'),
-            documento_resultado_id=data.get('documento_resultado_id'),
-            observaciones=data.get('observaciones'),
+            resultado_fase_id=leer_json(data, 'resultado_fase_id', nodo.resultado_fase_id),
+            documento_resultado_id=leer_json(data, 'documento_resultado_id',
+                                             nodo.documento_resultado_id),
+            observaciones=leer_json(data, 'observaciones', nodo.observaciones),
             justificacion=justificacion,
         )
     elif tipo == 'tramite':
-        res = svc.editar_tramite(nodo, observaciones=data.get('observaciones'))
+        res = svc.editar_tramite(
+            nodo, observaciones=leer_json(data, 'observaciones', nodo.observaciones))
     elif tipo == 'tarea':
+        producido = nodo.documento_producido
         res = svc.editar_tarea(
             nodo,
-            documentos_consumidos_ids=data.get('documentos_consumidos_ids') or [],
-            documento_producido_id=data.get('documento_producido_id'),
-            notas=data.get('notas'),
+            documentos_consumidos_ids=leer_json(
+                data, 'documentos_consumidos_ids',
+                [d.id for d in nodo.documentos_consumidos]) or [],
+            documento_producido_id=leer_json(data, 'documento_producido_id',
+                                             producido.id if producido else None),
+            notas=leer_json(data, 'notas', nodo.notas),
         )
     elif tipo == 'organismo':
         res = svc.editar_organismo(
             nodo,
-            via=data.get('via'),
-            resultado=data.get('resultado') or None,
-            direccion_notificacion_id=data.get('direccion_notificacion_id'),
-            documento_id=data.get('documento_id'),
+            via=leer_json(data, 'via', nodo.via),
+            resultado=leer_json(data, 'resultado', nodo.resultado) or None,
+            direccion_notificacion_id=leer_json(data, 'direccion_notificacion_id',
+                                                nodo.direccion_notificacion_id),
+            documento_id=leer_json(data, 'documento_id', nodo.documento_id),
         )
     else:
         return jsonify({'error': f'Tipo de nodo no editable: {tipo!r}'}), 422
