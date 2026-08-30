@@ -486,8 +486,14 @@ def documento_disparo_comunicacion_admision(tramite: Tramite):
     - Sin requerimiento (trámite anterior = ANALISIS_DOCUMENTAL): el
       documento de la solicitud (`solicitud.documento_solicitud`).
     - Con requerimiento (trámite anterior = REQUERIMIENTO_SUBSANACION): el
-      documento SUBSANACION que su ANALIZAR consumió — la fecha de entrada
-      de la última subsanación, no la de la solicitud original.
+      documento PRODUCIDO de su propia tarea ESPERAR_PLAZO — el escrito de
+      subsanación que cumple el plazo del art. 68.1 LPACAP (catalogo_plazos,
+      camino `ANY/ANY/ANY/REQUERIMIENTO_SUBSANACION/ESPERAR_PLAZO`), la
+      fecha de entrada de la última subsanación, no la de la solicitud
+      original. No se lee de los CONSUMIDO de su ANALIZAR (#825): esos los
+      deriva el checklist documental (ADR-033 §1, #677) y no incluyen el
+      propio escrito de subsanación —no cubre ningún requisito—, ni están
+      acotados a la vuelta si #826 aún no está corregido.
 
     No es la fecha del Diagnostico (ADR-005/ADR-027: `fecha_administrativa
     = NULL` por diseño, no es un acto administrativo) — es la del documento
@@ -501,15 +507,14 @@ def documento_disparo_comunicacion_admision(tramite: Tramite):
             and tramite_anterior.tipo_tramite.codigo == 'REQUERIMIENTO_SUBSANACION'):
         return tramite.fase.solicitud.documento_solicitud
 
-    tarea_analizar = next(
-        (t for t in tramite_anterior.tareas if t.tipo_tarea and t.tipo_tarea.codigo == 'ANALIZAR'),
+    tarea_esperar_plazo = next(
+        (t for t in tramite_anterior.tareas if t.tipo_tarea and t.tipo_tarea.codigo == 'ESPERAR_PLAZO'),
         None,
     )
-    if tarea_analizar is None:
+    if tarea_esperar_plazo is None:
         return None
 
-    consumidos = tarea_analizar.documentos_consumidos
-    return consumidos[0] if consumidos else None
+    return tarea_esperar_plazo.documento_producido
 
 
 def diagnosticos_notificados_cadena(tramite: Tramite) -> list:
