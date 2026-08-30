@@ -8,7 +8,7 @@
 
 ---
 
-**Hecho:** **#825 + #826 — Disparo del plazo de admisión y acumulado de consumidos en cadena de subsanación.** [PR #833](https://github.com/genete/bddat/pull/833) y [PR #831](https://github.com/genete/bddat/pull/831). Al verificar con el expediente-tipo de #814 se detectó un bug adicional de corrupción de datos, ajeno a estos dos — issue [#832](https://github.com/genete/bddat/issues/832) abierto, pendiente.
+**Hecho:** **#832 — "Campo ausente" significaba "vaciar campo" en las rutas de edición.** [PR #835](https://github.com/genete/bddat/pull/835). La corrupción detectada al verificar #825/#826 no la causaba el script: la causaba la propia suite de tests, que escribe en la BD de desarrollo sin rollback sobre filas reales elegidas con `.query.first()` sin `ORDER BY`. Diagnóstico forense (`xmin`/`ctid` de PostgreSQL) en el issue. Arreglado el contrato de las rutas con daño real o alcanzable; el resto del barrido queda repartido en [#834](https://github.com/genete/bddat/issues/834) (11 rutas más), [#836](https://github.com/genete/bddat/issues/836) (aislamiento de los tests) y un apunte en [#530](https://github.com/genete/bddat/issues/530) (cobertura de bitácora, pendiente de decidir qué se registra en desarrollo y qué en producción).
 
 **Próximo: cerrar los huecos restantes antes de ampliar el catálogo** — volverían a aparecer en cualquier otro tipo de expediente, así que se pagan una vez. Orden propuesto:
 
