@@ -1,6 +1,7 @@
 # ADR-043 — El certificado de fin de instrucción como bisagra entre instrucción y resolución
 
-**Estado:** Adoptada — pendiente de implementación (ver §Issues de implementación)
+**Estado:** Adoptada — §A-§E implementados en #827 (2026-09-03), con dos precisiones anotadas
+en §E; §F pendiente (#838, #839)
 **Fecha:** 2026-09-02
 **Depende de:** ADR-001 (motor agnóstico), ADR-037 (vocabulario ESFTT vs permiso de motor), ADR-041 §D bis (anclas documentales de la solicitud), ADR-036 (sellado de fase cerrada)
 **Precisa:** ADR-037 §Test operativo — qué separa de verdad a los dos árbitros, ver §B
@@ -201,6 +202,27 @@ desfavorable o un desistimiento cierran la instrucción igual que un favorable. 
 el sentido del resultado no vive aquí: vive en el contenido del certificado y en la resolución
 que lo consume.
 
+> **Precisión de #827 al implementarlo (2026-09-03): son las fases de instrucción**
+> (`es_finalizadora = False`), no todas las de la solicitud. La letra de arriba se muerde la
+> cola: §A admite abrir la fase finalizadora por la vía de escape, y entonces esa fase queda sin
+> finalizar, con lo que el certificado sería inemitible para siempre salvo borrándola —
+> justamente el estado en que #814 encontró AT-15—. Además, «instruidos los procedimientos» no
+> abarca la fase que resuelve. Lo demás queda intacto: cuentan las planificadas y basta con que
+> estén finalizadas, sea cual sea el resultado.
+>
+> Se añade también el caso de vacuidad que esta sección no nombraba: una solicitud **sin ninguna
+> fase** pasaría el `all()` por lista vacía y certificaría una instrucción inexistente — mismo
+> agujero que #723 tapó en `Tramite.finalizado`.
+
+**El orden de la emisión importa, y no es libre (#827).** Este párrafo dice qué se congela, no
+cuándo. La auditoría natural es la de `CREAR` la fase finalizadora, y las dos reglas de §C casan
+justamente con ese sujeto: auditar antes de anclar el documento produciría un certificado cuyo
+snapshot declara bloqueada la resolución por falta del certificado que se está emitiendo, con el
+`permitido=False` correspondiente. Por eso el emisor crea el `Documento`, fija la FK de §D y solo
+entonces audita — el snapshot refleja el estado en que la resolución queda efectivamente
+habilitada. Lo que el emisor **no** hace es bloquear porque otra regla siga disparando (tasa,
+organismos): esas son contenido normativo escapable y bloquean donde les toca, al crear la fase.
+
 La emisión reutiliza `generador_cert.generar_certificado_fase(expediente, fase, auditoria,
 'CERT_FIN_INSTRUCCION')`, que ya existe, está probado (`tests/test_373_cert_fase.py`) y **no lo
 llama nadie en producción**. Recibe un `AuditoriaResult` y lo congela —reglas evaluadas,
@@ -297,8 +319,12 @@ a medias. Declarado aquí para que no ocurra por omisión.
 
 ## Lo que este ADR no decide
 
-- **El momento de emisión** del certificado: al cerrar la última fase de instrucción, o como
-  acto expreso del técnico. Va en #827.
+- ~~**El momento de emisión** del certificado~~ — **decidido en #827 (2026-09-03): acto expreso
+  del técnico**, desde el inspector del nodo solicitud. «Instruidos los procedimientos» es un
+  hecho que alguien declara (§B): automatizarlo al cerrar la última fase lo volvería efecto
+  colateral de otro acto, «la última fase» no es determinable —nada impide que aparezca otra
+  después— y sería opaco justo cuando el invariante de §E impida la emisión. El certificado se
+  ancla solo como parte del gesto: no hay vinculación manual desde el pool.
 - **Qué ocurre con el certificado al reabrir** una fase: si se revoca, se desvincula o se borra,
   y con qué acto. Va con el issue de §F.
 - **El diseño del trámite del art. 87** (código, tareas, cardinalidad, entradas del catálogo de
