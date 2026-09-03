@@ -64,6 +64,39 @@ def _(ctx) -> bool:
     return False
 
 
+@variable('solicitud_tiene_cert_fin_instruccion')
+def _(ctx) -> bool:
+    """
+    True si consta emitido el certificado de fin de instrucción **de la solicitud
+    en contexto** (`solicitudes.documento_fin_instruccion_id` NOT NULL) — #827,
+    ADR-043 §C.
+
+    Es la bisagra del art. 82.1 LPACAP: la fase finalizadora no se abre porque el
+    sistema recuente fases, sino porque consta declarada terminada la instrucción.
+    La consumen dos reglas de motor con sujeto explícito (`ANY/ANY/RESOLUCION` y
+    `ANY/INTERESADO/RECONOCIMIENTO_INTERESADO`).
+
+    **Ámbito: la solicitud, no el expediente.** Se lee por la FK propia de la
+    solicitud, nunca buscando el tipo documental en el pool: el pool es del
+    expediente y no distingue solicitudes por sí solo, de modo que con dos
+    solicitudes en el mismo expediente la segunda daría por bueno el certificado
+    de la primera. Es el defecto real de `cert_fin_ip_consultas._buscar_existente`
+    (recibe `solicitud_id` y no lo usa) y el motivo de que ADR-043 §D exigiera el
+    ancla por FK. El nombre lo declara a propósito —`solicitud_tiene_…`, no
+    `existe_cert_…`— porque el motor solo recibe el dict ya calculado y no puede
+    saber de qué solicitud se habla; quien fija el ámbito es el assembler, vía
+    `ctx.solicitud`.
+
+    Sin solicitud en contexto devuelve False (no consta el certificado), que es la
+    degradación que bloquea: a diferencia de `tasa_impagada`, aquí degradar hacia
+    "no bloquear" dejaría la regla decorativa (ADR-043 §Dependencia asumida).
+    """
+    solicitud = ctx.solicitud
+    if solicitud is None:
+        return False
+    return solicitud.documento_fin_instruccion_id is not None
+
+
 @variable('tiene_solicitud_aap_favorable')
 def _(ctx) -> bool:
     """
