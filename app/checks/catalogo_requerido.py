@@ -2,6 +2,13 @@
 
 validar_catalogo() es la única fuente de verdad de qué códigos deben existir
 para que el sistema funcione. Llamar desde create_app() tras db.init_app().
+
+Desde #827 comprueba además una relación, no solo presencias: que toda fase
+finalizadora esté nombrada por las reglas de precedencia del art. 82.1 LPACAP.
+Es el precio de haber escrito esas reglas con sujeto explícito en vez de un
+`ANY/ANY/ANY` con una condición "es finalizadora" (ADR-043 §C) — el sujeto
+explícito documenta a quién aplica la regla, y este aviso es lo que evita que una
+finalizadora nueva se quede fuera en silencio.
 """
 from __future__ import annotations
 
@@ -123,6 +130,8 @@ def validar_catalogo() -> List[str]:
             if codigo not in existentes:
                 faltantes.append(f"{nombre_modelo}.{attr}='{codigo}' → no encontrado")
 
+    faltantes.extend(_validar_finalizadoras_con_regla())
+
     if faltantes:
         log.error(
             'catalogo: faltan registros estructurales requeridos:\n%s',
@@ -130,6 +139,66 @@ def validar_catalogo() -> List[str]:
         )
 
     return faltantes
+
+
+def _validar_finalizadoras_con_regla() -> List[str]:
+    """Toda `TipoFase.es_finalizadora` debe estar nombrada por una regla de
+    precedencia del art. 82.1 (#827, ADR-043 §C) y por el mapa del emisor.
+
+    Las reglas se escribieron con sujeto explícito —una fila por finalizadora— en
+    vez de un sujeto genérico con una condición Python, para que el supervisor lea
+    en la fila a quién aplica. El precio es acordarse de añadir la fila si aparece
+    una tercera fase finalizadora, y este check es quien lo cobra: sin él, la
+    finalizadora nueva quedaría abierta sin comprobar el fin de instrucción y nada
+    lo diría.
+
+    Se compara contra el ÚLTIMO segmento del sujeto (`ANY/ANY/RESOLUCION` →
+    `RESOLUCION`), que es donde el sujeto calificado nombra la fase.
+    """
+    from sqlalchemy.exc import OperationalError, ProgrammingError
+
+    try:
+        from app.models.tipos_fases import TipoFase
+        from app.models.motor_reglas import ReglaMotor
+        from app.services.cert_fin_instruccion import (
+            _FASE_FINALIZADORA_POR_SIGLAS, _FASE_FINALIZADORA_DEFECTO,
+        )
+
+        finalizadoras = {
+            tf.codigo for tf in TipoFase.query.filter_by(es_finalizadora=True).all()
+        }
+        if not finalizadoras:
+            return []
+
+        nombradas = {
+            r.sujeto.rsplit('/', 1)[-1]
+            for r in ReglaMotor.query.filter_by(
+                accion='CREAR', activa=True, articulo='82', apartado='1').all()
+        }
+    except (OperationalError, ProgrammingError) as exc:
+        log.warning('catalogo: no se pudo validar reglas de fase finalizadora — %s', exc)
+        try:
+            from app import db as _db
+            _db.session.rollback()
+        except Exception:
+            pass
+        return []
+
+    conocidas_por_emisor = set(_FASE_FINALIZADORA_POR_SIGLAS.values()) | {
+        _FASE_FINALIZADORA_DEFECTO}
+
+    avisos: List[str] = []
+    for codigo in sorted(finalizadoras - nombradas):
+        avisos.append(
+            f"TipoFase.codigo='{codigo}' es finalizadora y ninguna regla activa del "
+            f'art. 82.1 la nombra → se abriría sin comprobar el fin de instrucción (#827)'
+        )
+    for codigo in sorted(finalizadoras - conocidas_por_emisor):
+        avisos.append(
+            f"TipoFase.codigo='{codigo}' es finalizadora y no está en el mapa de "
+            f'cert_fin_instruccion → el certificado se auditaría contra otra fase (#827)'
+        )
+    return avisos
 
 
 def _importar(modulo: str, clase: str):

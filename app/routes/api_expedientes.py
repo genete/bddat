@@ -928,6 +928,49 @@ def reabrir_fase_nodo(expediente_id, nodo_id):
 
 
 # =============================================================================
+# ENDPOINT 8quater: Emitir el certificado de fin de instrucción (#827, ADR-043)
+# =============================================================================
+
+@api_bp.route('/expedientes/<int:expediente_id>/nodo/solicitud/<int:nodo_id>'
+              '/certificado-fin-instruccion', methods=['POST'])
+@login_required
+def emitir_cert_fin_instruccion_nodo(expediente_id, nodo_id):
+    """
+    POST .../nodo/solicitud/<solicitud_id>/certificado-fin-instruccion — emite el
+    CERT_FIN_INSTRUCCION de la solicitud y lo ancla a ella (#827, ADR-043).
+
+    Gesto explícito del técnico: declara terminada la instrucción, que es lo que
+    habilita la fase finalizadora (art. 82.1 LPACAP). Sin body — no hay nada que
+    elegir, el certificado lo produce y lo ancla el propio acto.
+
+    Bloqueo (422, `puede_escapar: false`): quedan fases de instrucción sin cerrar,
+    o la solicitud no tiene ninguna — puerta cerrada de ADR-043 §E, no hay
+    justificación que la abra.
+
+    422 con `error` (sin `motivo`): ya estaba emitido, o falló la generación del PDF.
+    """
+    expediente = Expediente.query.get_or_404(expediente_id)
+    # Mismo permiso que cerrar una fase o reabrirla: es un acto sobre la estructura
+    # de la tramitación, no sobre el contenido de una tarea.
+    if verificar_acceso_expediente(expediente, 'gestionar_estructura'):
+        return jsonify({'error': 'No tienes permiso para esta acción'}), 403
+
+    try:
+        solicitud = _resolver_nodo(expediente, 'solicitud', nodo_id)
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 404
+
+    from app.services.cert_fin_instruccion import emitir_cert_fin_instruccion
+
+    res = emitir_cert_fin_instruccion(solicitud)
+    if res.bloqueo:
+        return _bloqueo_422(res)
+    if not res.ok:
+        return jsonify({'error': res.error}), 422
+    return jsonify({'ok': True, 'ids': res.ids}), 200
+
+
+# =============================================================================
 # ENDPOINT 8ter: Alta de organismo consultado en una fase CONSULTAS (ADR-042 §C)
 # =============================================================================
 

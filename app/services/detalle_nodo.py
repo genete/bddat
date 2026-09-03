@@ -256,12 +256,39 @@ def _detalle_solicitud(exp, sol_id: int) -> dict:
         _campo('Observaciones', sol.observaciones),
     )
     documentos = [_serializar_documento(exp.id, doc_sol, 'CONSUMIDO')] if doc_sol else []
+    doc_fin = sol.documento_fin_instruccion
+    if doc_fin:
+        documentos.append(_serializar_documento(exp.id, doc_fin, 'PRODUCIDO'))
     return {
         'nodo': {'tipo': 'solicitud', 'id': sol.id},
         'campos': campos,
         'documentos': documentos,
         'plazo': None,
         'referencia': _ref_solicitud(exp, sol),
+        'cert_fin_instruccion': _cert_fin_instruccion(sol),
+    }
+
+
+def _cert_fin_instruccion(sol) -> dict:
+    """Estado de la bisagra instrucción/resolución para el inspector (#827,
+    ADR-043): si consta emitido el certificado y, si no, si puede emitirse ya o
+    qué falta.
+
+    El motivo del "todavía no" se sirve desde aquí y no se recalcula en el front:
+    es el mismo texto que devolvería el intento de emitir, y duplicar el criterio
+    en JS los haría divergir (mismo argumento que ADR-042 §C para los organismos
+    pendientes de separata, resuelto allí al revés porque el dato ya viajaba en el
+    payload del árbol; aquí no viaja nada equivalente).
+    """
+    from app.services.cert_fin_instruccion import puede_emitirse
+
+    emitido = sol.documento_fin_instruccion_id is not None
+    emisible, motivo = (False, '') if emitido else puede_emitirse(sol)
+    return {
+        'emitido': emitido,
+        'documento_id': sol.documento_fin_instruccion_id,
+        'puede_emitirse': emisible,
+        'motivo': motivo,
     }
 
 
