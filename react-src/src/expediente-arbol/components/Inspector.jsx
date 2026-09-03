@@ -418,6 +418,59 @@ function AccionesFaseConsultas({ nodo }) {
   )
 }
 
+// Bisagra instrucción → resolución (#827, ADR-043): el gesto con el que el técnico
+// declara terminada la instrucción emitiendo el CERT_FIN_INSTRUCCION. Hasta que
+// consta emitido, el motor bloquea la apertura de la fase finalizadora citando el
+// art. 82.1 LPACAP.
+//
+// Vive junto al Editor genérico, como AccionesFaseConsultas y ReabrirFase, no en
+// lugar de él. Siempre visible en la solicitud, también cuando aún no puede
+// emitirse: el "todavía no" con su motivo es justamente lo que el técnico necesita
+// leer para saber qué le falta — a diferencia de AccionesFaseConsultas, que se
+// oculta porque un botón sin pendientes no dice nada útil.
+//
+// El motivo lo sirve el backend (detalle_nodo._cert_fin_instruccion), no se
+// recalcula aquí: es el mismo texto que devolvería el intento de emitir.
+function CertFinInstruccion() {
+  const detalle  = useArbolStore((s) => s.detalle)
+  const emitiendo = useArbolStore((s) => s.emitiendoCertFinInstruccion)
+  const emitir   = useArbolStore((s) => s.emitirCertFinInstruccion)
+
+  const cert = detalle && detalle.cert_fin_instruccion
+  if (!cert) return null
+
+  if (cert.emitido) {
+    return (
+      <div className="alert alert-success py-2 px-3 small mb-3">
+        <i className="bi bi-patch-check-fill me-1" />
+        <strong>Instrucción terminada.</strong> El certificado de fin de instrucción
+        está emitido y la fase de resolución puede abrirse.
+      </div>
+    )
+  }
+
+  return (
+    <div className="d-flex flex-column gap-2 px-2 py-2 rounded border bg-light mb-3">
+      <span className="small">
+        <i className="bi bi-hourglass-split me-1" />
+        <strong>Instrucción en curso.</strong> La fase de resolución no puede abrirse
+        hasta que conste terminada (art. 82.1 LPACAP).
+      </span>
+      {!cert.puede_emitirse && cert.motivo && (
+        <span className="small text-muted">{cert.motivo}</span>
+      )}
+      <button
+        type="button"
+        className="btn btn-sm btn-primary"
+        disabled={emitiendo || !cert.puede_emitirse}
+        onClick={emitir}
+      >
+        {emitiendo ? 'Emitiendo…' : '📜 Certificar fin de instrucción'}
+      </button>
+    </div>
+  )
+}
+
 // Editor genérico: pinta un control por campo del esquema editable, autofocus en
 // el primero. Guardar/Cancelar viven en la barra fija (BarraEdicion, ADR-023 §5 bis);
 // aquí solo queda Borrar, que no es parte del control de salida del marco.
@@ -623,12 +676,16 @@ function InspectorEdicion({ nodo }) {
   // tarea, esto NO sustituye al Editor genérico — vive junto a él, como un
   // bloque de acciones más (mismo criterio que ReabrirFase).
   const esFaseConsultas = seleccion.tipo === 'fase' && nodo && nodo.tipo_codigo === 'CONSULTAS'
+  // Bisagra instrucción → resolución (#827): acción de la solicitud, mismo criterio
+  // de emplazamiento que la de CONSULTAS — junto al Editor, no en su lugar.
+  const esSolicitud = seleccion.tipo === 'solicitud'
   return (
     <div className="d-flex flex-column h-100 arbol-inspector--lock">
       <BarraEdicion tipo={seleccion.tipo} nodo={nodo} />
       <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }} className="p-3">
         {!borrarPendienteConfirm && <BloqueoGuardarForzable />}
         {!borrarPendienteConfirm && esFaseConsultas && <AccionesFaseConsultas nodo={nodo} />}
+        {!borrarPendienteConfirm && esSolicitud && <CertFinInstruccion />}
         {borrarPendienteConfirm
           ? <ConfirmacionBorrado nodo={nodo} />
           : esAnalizar

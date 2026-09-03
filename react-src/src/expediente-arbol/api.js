@@ -65,6 +65,17 @@ export function postEnviarConsultas(expedienteId, faseId) {
   return api.post(`/api/expedientes/${expedienteId}/nodo/fase/${faseId}/organismos/enviar-consultas`, {})
 }
 
+// Emite el CERT_FIN_INSTRUCCION de la solicitud y lo ancla a ella (POST, #827,
+// ADR-043). Sin body: no hay nada que elegir, el certificado lo produce y lo ancla
+// el propio acto. Respuesta éxito: {ok:true, ids:[documento_id]} 200. Bloqueo
+// (422, puede_escapar:false): quedan fases de instrucción sin cerrar — puerta cerrada.
+export function postEmitirCertFinInstruccion(expedienteId, solicitudId) {
+  return api.post(
+    `/api/expedientes/${expedienteId}/nodo/solicitud/${solicitudId}/certificado-fin-instruccion`,
+    {},
+  )
+}
+
 // Contenedor de la tarea ANALIZAR (#442). Respuesta: {resultado, documento_producido,
 // secciones_extendidas, defectos_consolidado, completo}.
 export function getAnalizar(expedienteId, tareaId) {

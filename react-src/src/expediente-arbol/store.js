@@ -7,7 +7,7 @@
 // S3b-1: modoEdicion + lock + editor genérico (entrar/guardar/cancelar + refresco).
 // S3b añadirá: despensa, colapsos manuales por nivel.
 import { create } from 'zustand'
-import { getArbol, getNodo, getEditable, patchNodo, getTiposCreables, postHijo, getPool, deleteNodo, guardarNotas, postReabrirFase, postEnviarConsultas, subirDocumentoPool, getSugerenciaDocumento } from './api.js'
+import { getArbol, getNodo, getEditable, patchNodo, getTiposCreables, postHijo, getPool, deleteNodo, guardarNotas, postReabrirFase, postEnviarConsultas, postEmitirCertFinInstruccion, subirDocumentoPool, getSugerenciaDocumento } from './api.js'
 import { showToast } from '../shared/ui/toast.js'
 
 // AbortController de la petición de detalle en curso (fuera del estado: no re-render).
@@ -81,6 +81,9 @@ export const useArbolStore = create((set, get) => ({
 
   // --- enviar consultas (ADR-042 §C, #396 bloque 5) ---
   enviandoConsultas: false,
+
+  // --- emitir certificado de fin de instrucción (#827, ADR-043) ---
+  emitiendoCertFinInstruccion: false,
 
   // --- menú contextual (S3b-4) ---
   menuCtx: null,           // { x, y, sel } | null
@@ -364,6 +367,32 @@ export const useArbolStore = create((set, get) => ({
         showToast(e.payload.motivo || e.payload.error, 'danger')
       } else {
         showToast(e.message || 'No se pudieron enviar las consultas', 'danger')
+      }
+    }
+  },
+
+  // Acción de solicitud en modo edición (#827, ADR-043): emite el certificado de
+  // fin de instrucción y lo ancla a la solicitud. NO es idempotente como
+  // `enviarConsultas` —emitir dos veces no tiene sentido— pero tampoco necesita
+  // confirmación previa: el backend rechaza el segundo intento y el botón
+  // desaparece en cuanto el refresco trae `emitido: true`.
+  emitirCertFinInstruccion: async () => {
+    const { expedienteId, seleccion } = get()
+    if (!seleccion || seleccion.tipo !== 'solicitud' || !expedienteId) return
+    set({ emitiendoCertFinInstruccion: true })
+    try {
+      await postEmitirCertFinInstruccion(expedienteId, seleccion.id)
+      showToast('Certificado de fin de instrucción emitido', 'success')
+      set({ emitiendoCertFinInstruccion: false })
+      await get().refrescarArbol()
+    } catch (e) {
+      set({ emitiendoCertFinInstruccion: false })
+      if (e.status === 401 || e.status === 403) return
+      if (e.status === 422 && e.payload && (e.payload.motivo || e.payload.error)) {
+        // Siempre puerta cerrada: no hay vía de escape que ofrecer, solo el motivo.
+        showToast(e.payload.motivo || e.payload.error, 'danger')
+      } else {
+        showToast(e.message || 'No se pudo emitir el certificado', 'danger')
       }
     }
   },
