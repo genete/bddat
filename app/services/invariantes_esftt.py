@@ -5,12 +5,20 @@ Checks de negocio hardcoded que el motor agnóstico no puede evaluar porque
 requieren consultas al dominio BDDAT. Se invocan desde las rutas Flask ANTES
 de llamar a motor_reglas.evaluar().
 
-No son candidatos a pasar a reglas_motor (ADR-037): no hay norma que citar —son
-integridad estructural del árbol (hoja-a-hoja, #722) o decisiones de workflow ya
-fijadas (sellado, ADR-036; completitud de cierre, #723)— y varias ramas son a
-propósito no forzables, semántica que una fila de reglas_motor (pensada para
-contenido citable, editable por el supervisor) no expresa bien. Viven aquí de
-forma permanente, no como paso intermedio hacia el motor.
+Cubren cuatro familias: precondiciones de creación (precedencia, #823),
+integridad estructural del árbol (borrado hoja-a-hoja, #722), decisiones de
+workflow ya fijadas (sellado, ADR-036; completitud de cierre, #723) y puertas
+cerradas de irreversibilidad (evidencia notificada, #714/#720).
+
+No son candidatos a pasar a reglas_motor. El criterio que los separa lo precisa
+ADR-043 §B —no es "¿hay norma que citar?", lectura simplificada de ADR-037 que
+llevó a clasificar mal algún check—: a `reglas_motor` va el contenido normativo,
+citable y mostrable al usuario, que puede cambiar con la ley o variar por tipo de
+expediente; al invariante va la afirmación sobre la realidad del propio sistema,
+aquella cuya negación no sería una excepción sino una falsedad. Además varias
+ramas son a propósito no forzables, semántica que una fila de reglas_motor
+(pensada para contenido editable por el supervisor) no expresa bien. Viven aquí
+de forma permanente, no como paso intermedio hacia el motor.
 """
 from __future__ import annotations
 
@@ -119,12 +127,23 @@ def _bloquear(mensaje: str, *, puede_escapar: bool = False) -> EvaluacionResult:
     )
 
 
-def check_invariante(accion: str, sujeto: str, entidad_id: int) -> Optional[EvaluacionResult]:
+def check_invariante(accion: str, sujeto: str, entidad_id: int,
+                     *, tipo_codigo: Optional[str] = None) -> Optional[EvaluacionResult]:
     """
     Verifica los invariantes estructurales para (accion, sujeto, entidad_id).
 
     Devuelve EvaluacionResult(BLOQUEAR) si se viola un invariante, None si todo OK.
     Solo cubre los casos hardcoded — si no hay regla para la combinación devuelve None.
+
+    **Contrato de `CREAR` (#823), distinto del resto de acciones.** En BORRAR/
+    MUTAR/FINALIZAR/REABRIR, `(sujeto, entidad_id)` identifican la entidad
+    afectada. Al crear, esa entidad todavía no existe, así que el par significa
+    otra cosa: `sujeto` es el nivel del nodo que se va a crear y `entidad_id` el
+    id de su **padre** (TAREA → trámite, TRAMITE → fase, FASE → solicitud), con
+    `tipo_codigo` como código de catálogo del tipo que se instancia. Es la misma
+    pareja padre + tipo que ya recibe el motor (`objeto={'tramite': …,
+    'tipo_tarea': …}`), traducida a esta firma. Sin `tipo_codigo` la rama CREAR
+    no evalúa nada: todos sus checks son específicos de un tipo.
 
     Relación con el modo global del motor (#723, checklist punto 3, decisión
     explícita): los invariantes —forzables o puerta cerrada— quedan siempre
@@ -136,6 +155,8 @@ def check_invariante(accion: str, sujeto: str, entidad_id: int) -> Optional[Eval
     tenga; las puertas cerradas (LPACAP) no se abren nunca, ni siquiera con
     el motor en INACTIVO.
     """
+    if accion == 'CREAR':
+        return _check_crear(sujeto, entidad_id, tipo_codigo)
     if accion == 'BORRAR':
         return _check_borrar(sujeto, entidad_id)
     if accion == 'FINALIZAR':
@@ -145,6 +166,147 @@ def check_invariante(accion: str, sujeto: str, entidad_id: int) -> Optional[Eval
     if accion == 'REABRIR':
         return _check_reabrir(sujeto, entidad_id)
     return None
+
+
+# ---------------------------------------------------------------------------
+# Crear — precedencia al crear nodos del árbol (#823)
+# ---------------------------------------------------------------------------
+
+def _check_crear(sujeto: str, padre_id: int,
+                 tipo_codigo: Optional[str]) -> Optional[EvaluacionResult]:
+    """Precondiciones de precedencia al crear un nodo (#823, hueco
+    `HUECO_PRECEDENCIA_AL_CREAR` de #814).
+
+    Hasta aquí nadie miraba la precedencia al crear: `crear_tramite`/`crear_tarea`
+    solo consultaban el sellado de fase cerrada sobre el padre (`MUTAR`, #720) y
+    después el motor, y en AT-15 eso dejó nacer un `ESPERAR_PLAZO` con su
+    `NOTIFICAR` en curso y un 2º `REQUERIMIENTO_SUBSANACION` con el 1º vivo, sin
+    usar ninguna vía de escape — el sistema simplemente no lo miraba.
+
+    **Por qué invariante y no `reglas_motor`** (ADR-043 §B): ninguno de los dos
+    checks tiene norma que citar ni contenido que mostrar al supervisor. Son
+    afirmaciones sobre la realidad del sistema —un plazo que se cuenta desde una
+    notificación que no consta, una vuelta de subsanación abierta sobre otra que
+    sigue viva— cuya negación no sería una excepción legal sino una falsedad. Por
+    eso siguen aplicando con el motor en modo global `INACTIVO` (#723).
+
+    **Puerta cerrada, sin `justificacion` propia** (decisión de Carlos, 2026-09-03).
+    No es que el estado sea inalcanzable: el escape existe y es el rebobinado del
+    expediente —desvincular documentos hasta deshacer lo que este check da por
+    hecho—. Costoso a propósito, y esa es justamente la diferencia con un bloqueo
+    forzable: aquí no hay un juicio de negocio que un técnico deba poder tomar
+    bajo su responsabilidad en un clic, hay una secuencia que se deshace paso a
+    paso o no se deshace.
+
+    **No es "respetar `tramites_tareas.orden`"** (ADR-037 §C): ese patrón es una
+    sugerencia de la despensa (`tipos_creables.es_siguiente`), no una precondición.
+    Lo que se comprueba son dos dependencias semánticas concretas, nombradas.
+    """
+    if not tipo_codigo:
+        return None
+
+    if sujeto == 'TAREA' and tipo_codigo == 'ESPERAR_PLAZO':
+        return _check_crear_esperar_plazo(padre_id)
+
+    if sujeto == 'TRAMITE' and tipo_codigo in TRAMITES_CADENA_SUBSANACION:
+        return _check_crear_vuelta_cadena(padre_id)
+
+    return None
+
+
+def _check_crear_esperar_plazo(tramite_id: int) -> Optional[EvaluacionResult]:
+    """No se empieza a contar un plazo de algo que aún no se ha notificado
+    (#823 punto 1): un `ESPERAR_PLAZO` exige que **todas** las tareas `NOTIFICAR`
+    de su propio trámite estén completas.
+
+    Universal, sin lista de casos: los 19 tipos de trámite del catálogo que
+    tienen `ESPERAR_PLAZO` tienen `NOTIFICAR` antes (verificado en
+    `tramites_tareas`), así que no hace falta acotarlo por tipo.
+
+    "Completa" con el mismo criterio que `Tramite.finalizado`: documento
+    producido **y** `Notificacion.resultado = CORRECTA`. Un resultado INCORRECTA
+    —caducada, rechazada, no entregada (`parser_justificante_notifica.MAPA_
+    RESULTADO`)— no es un acto de comunicación consumado en este modelo: queda 2º
+    intento o procede edicto (`estado_dominio._estado_notificar`), y no hay
+    todavía notificación desde la que contar.
+
+    **Todas**, no "alguna": los cuatro `ANUNCIO_*` tienen dos `ESPERAR_PLAZO`, y
+    un trámite puede llegar a tener más de una `NOTIFICAR` instanciada. Sin
+    ninguna instanciada también bloquea —la lista vacía no se da por buena por
+    vacuidad, mismo agujero que #723 tapó en `Tramite.finalizado`—: si aún no
+    existe la tarea de notificar, con más razón no hay nada notificado.
+    """
+    from app.services import estado_dominio as ed
+
+    tramite = Tramite.query.get(tramite_id)
+    if tramite is None:
+        return None
+
+    notificar = sorted(
+        (t for t in tramite.tareas if t.tipo_tarea and t.tipo_tarea.codigo == 'NOTIFICAR'),
+        key=lambda t: t.id,
+    )
+    if not notificar:
+        return _bloquear(
+            'No se puede abrir la espera de plazo: este trámite todavía no tiene la '
+            'tarea de notificación. El plazo se cuenta desde que el acto se notifica, '
+            'así que créela y complétela antes.'
+        )
+
+    pendiente = next(
+        (t for t in notificar if not t.ejecutada or t.resultado != 'CORRECTA'),
+        None,
+    )
+    if pendiente is None:
+        return None
+
+    # Vocabulario del árbol/seguimiento, el mismo que el técnico ya lee en la
+    # tarea que tiene que arreglar (mismo criterio que `_check_completitud_cierre`).
+    return _bloquear(
+        f'No se puede abrir la espera de plazo: la notificación de este trámite no '
+        f'está completa — {ed.motivo(ed.estado_tarea(pendiente))}. El plazo no '
+        f'empieza a contar hasta que la notificación consta practicada.'
+    )
+
+
+def _check_crear_vuelta_cadena(fase_id: int) -> Optional[EvaluacionResult]:
+    """Una vuelta de subsanación cada vez (#823 punto 2): no se abre otro trámite
+    de la cadena si el anterior **de esa cadena** sigue sin finalizar.
+
+    No vale un genérico "el trámite anterior de la fase": en `CONSULTAS` los
+    trámites son paralelos por organismo (`fases_tramites.cardinalidad_maxima`
+    NULL) y ninguno precede a otro. Tampoco sirve `tramite_anterior_en_fase()`,
+    que devuelve el inmediatamente anterior **por id** — con un
+    `COMUNICACION_INICIO_ADMISION` intercalado entre dos vueltas devolvería ese y
+    el requerimiento vivo quedaría sin ver. Se filtra por
+    `TRAMITES_CADENA_SUBSANACION`, como ya hace `diagnosticos_notificados_cadena`
+    al construir su `tramites_cadena`.
+
+    Un trámite de la cadena recién creado y aún vacío tampoco deja abrir el
+    siguiente: `Tramite.finalizado` es False sin tareas desde #723 ("vacío" no es
+    "hecho"), que es exactamente lo que aquí interesa.
+    """
+    fase = Fase.query.get(fase_id)
+    if fase is None:
+        return None
+
+    cadena = sorted(
+        (t for t in fase.tramites
+         if t.tipo_tramite and t.tipo_tramite.codigo in TRAMITES_CADENA_SUBSANACION),
+        key=lambda t: t.id,
+    )
+    if not cadena:
+        return None
+
+    ultimo = cadena[-1]
+    if ultimo.finalizado:
+        return None
+
+    nombre = ultimo.tipo_tramite.nombre if ultimo.tipo_tramite else f'#{ultimo.id}'
+    return _bloquear(
+        f'No se puede abrir otra vuelta de subsanación: "{nombre}" sigue sin '
+        f'completarse. Cada vuelta se cierra antes de empezar la siguiente.'
+    )
 
 
 # ---------------------------------------------------------------------------

@@ -229,6 +229,15 @@ def crear_traslado(fase, form) -> ResultadoMutacion:
     if res_inv:
         return ResultadoMutacion(ok=False, bloqueo=res_inv)
 
+    # Precedencia al crear (#823), por el mismo motivo: esta función es otra puerta
+    # de alta de trámites y no debe divergir de crear_tramite. Hoy no puede bloquear
+    # —ningún CONSULTA_TRASLADO_* está en TRAMITES_CADENA_SUBSANACION—, pero el día
+    # que un tipo entre en la cadena el hueco sería silencioso.
+    res_inv_crear = check_invariante('CREAR', 'TRAMITE', fase.id,
+                                     tipo_codigo=tipo_tramite.codigo)
+    if res_inv_crear:
+        return ResultadoMutacion(ok=False, bloqueo=res_inv_crear)
+
     res_vocab = check_vocabulario_tramite(fase, tipo_tramite)
     if _bloquea(res_vocab, justificacion):
         return ResultadoMutacion(ok=False, bloqueo=res_vocab)
@@ -371,11 +380,19 @@ def enviar_consultas(fase, form) -> ResultadoMutacion:
         return ResultadoMutacion(ok=True, ids=[])
 
     # Mismas comprobaciones que mutaciones_arbol.crear_tramite (#396 bloque 5):
-    # sellado de fase y vocabulario ESFTT. Una sola vez para el lote — todos los
-    # trámites que se van a crear son del mismo tipo bajo la misma fase.
+    # sellado de fase, precedencia al crear (#823) y vocabulario ESFTT. Una sola vez
+    # para el lote — todos los trámites que se van a crear son del mismo tipo bajo la
+    # misma fase. La de precedencia no puede bloquear hoy (CONSULTA_SEPARATA no está
+    # en TRAMITES_CADENA_SUBSANACION); va aquí para que las tres puertas de alta de
+    # trámites no divergan.
     res_inv = check_invariante('MUTAR', 'FASE', fase.id)
     if res_inv:
         return ResultadoMutacion(ok=False, bloqueo=res_inv)
+
+    res_inv_crear = check_invariante('CREAR', 'TRAMITE', fase.id,
+                                     tipo_codigo=tipo_tramite.codigo)
+    if res_inv_crear:
+        return ResultadoMutacion(ok=False, bloqueo=res_inv_crear)
 
     res_vocab = check_vocabulario_tramite(fase, tipo_tramite)
     if _bloquea(res_vocab, justificacion):
