@@ -473,8 +473,10 @@ def main():
         replica a mano el "Registrar puesta a disposición" + "Registrar
         notificación" manuales (api_expedientes.py POST+PATCH
         /nodo/tarea/<id>/notificar) — sin esto la tarea queda en
-        PENDIENTE_NOTIFICAR (#814, hallazgo de revisión) y nada en el motor
-        actual lo impide (ver nota HUECO_NOTIFICAR_SIN_RESOLVER más abajo)."""
+        PENDIENTE_NOTIFICAR (#814, hallazgo de revisión) y, desde #823, el
+        ESPERAR_PLAZO siguiente ni siquiera podría crearse: el invariante de
+        precedencia exige la NOTIFICAR del trámite completa (producido y
+        `Notificacion.resultado = CORRECTA`)."""
         _check(svc.editar_tarea(tarea_notif, documentos_consumidos_ids=[doc_consumido_id],
                                  documento_producido_id=doc_justificante_id, notas=None),
                f'vincular producido NOTIFICAR {etiqueta}')
@@ -656,8 +658,9 @@ def main():
         # El expediente-tipo acaba aquí: ANALISIS_SOLICITUD queda completa y
         # pendiente de cierre (todos sus trámites finalizados, sin
         # documento_resultado_id). Cerrar la fase y abrir RESOLUCION es
-        # tramitación posterior — y abrirla con la fase anterior sin cerrar
-        # pasa a estar prohibido con el invariante de precedencia de #823.
+        # tramitación posterior — y abrirla dejará de ser libre cuando se
+        # implemente ADR-043 (#827): no por recuento de fases sin cerrar, sino
+        # porque falte el CERT_FIN_INSTRUCCION de la solicitud (art. 82.1 LPACAP).
         db.session.expire(fase)
         estado_fase = 'pendiente de cierre' if fase.pdte_cierre else 'en curso'
         print(f"Fase ANALISIS_SOLICITUD {estado_fase} — fin del alcance del script.")
@@ -669,25 +672,26 @@ def main():
 
 
 # ---------------------------------------------------------------------------
-# HUECO_PRECEDENCIA_AL_CREAR (#814 → implementación en #823, no implementado):
+# HUECO_PRECEDENCIA_AL_CREAR (#814 → cerrado en #823, salvo la fase finalizadora):
 #
 # Recorrer este circuito con todos los documentos disponibles de golpe —cosa
 # que en la vida real no ocurre: el justificante no existe hasta que llega del
-# sistema de notificaciones— destapó que nada comprueba la precedencia al
-# crear un nodo del árbol. check_invariante no tiene rama CREAR (solo BORRAR/
-# FINALIZAR/MUTAR/REABRIR) y crear_fase/crear_tramite/crear_tarea solo miran
-# el sellado de fase cerrada (#720) antes de consultar el motor.
+# sistema de notificaciones— destapó que nada comprobaba la precedencia al
+# crear un nodo del árbol. Verificado sobre AT-15 (conservado a propósito en BD
+# de desarrollo): se creó ESPERAR_PLAZO con su NOTIFICAR en curso, un 2º
+# REQUERIMIENTO_SUBSANACION con el 1º en curso, y la fase RESOLUCION con
+# ANALISIS_SOLICITUD sin finalizar — sin usar `justificacion` en ningún punto.
 #
-# Verificado sobre AT-15 (conservado a propósito en BD de desarrollo): se creó
-# ESPERAR_PLAZO con su NOTIFICAR en curso, un 2º REQUERIMIENTO_SUBSANACION con
-# el 1º en curso, y la fase RESOLUCION con ANALISIS_SOLICITUD sin finalizar —
-# sin usar `justificacion` en ningún punto.
+# Los dos primeros ya no son posibles: check_invariante tiene rama CREAR (#823)
+# y ambos checks son puerta cerrada. El orden en que este script construye la
+# fase los respeta por construcción —cada ESPERAR_PLAZO se crea después de
+# `_notificar()`, y cada vuelta después de cerrar la anterior—, así que sigue
+# corriendo sin tocar nada.
 #
-# No hace falta ninguna variable de motor nueva: Tramite.finalizado ya devuelve
-# False tanto si falta el documento producido como si un NOTIFICAR está
-# ejecutado sin resultado CORRECTA, y Fase.finalizada/pdte_cierre hacen lo
-# propio un nivel arriba. Análisis y decisiones de diseño: #814, apartado
-# HUECO_PRECEDENCIA_AL_CREAR.
+# El tercero (fase finalizadora) salió de #823: ADR-043 lo reformula como la
+# existencia del CERT_FIN_INSTRUCCION de la solicitud, regla de motor con norma
+# citable (art. 82.1 LPACAP) más invariante en el emisor del certificado, y se
+# implementa en #827. Análisis original: #814, apartado del mismo nombre.
 # ---------------------------------------------------------------------------
 
 

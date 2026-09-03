@@ -420,6 +420,14 @@ def crear_tramite(fase, tipo_tramite, *, justificacion: Optional[str] = None) ->
     if res_inv:
         return ResultadoMutacion(ok=False, bloqueo=res_inv)
 
+    # Precedencia al crear (#823): puerta cerrada, antes del vocabulario y del
+    # motor —ninguno de los dos se salta con `justificacion`, así que se
+    # comprueban primero.
+    res_inv_crear = check_invariante('CREAR', 'TRAMITE', fase.id,
+                                     tipo_codigo=tipo_tramite.codigo)
+    if res_inv_crear:
+        return ResultadoMutacion(ok=False, bloqueo=res_inv_crear)
+
     res_vocab = check_vocabulario_tramite(fase, tipo_tramite)
     if _bloquea(res_vocab, justificacion):
         return ResultadoMutacion(ok=False, bloqueo=res_vocab)
@@ -455,6 +463,15 @@ def crear_tarea(tramite, tipo_tarea, *, justificacion: Optional[str] = None) -> 
     res_inv = check_invariante('MUTAR', 'TRAMITE', tramite.id)
     if res_inv:
         return ResultadoMutacion(ok=False, bloqueo=res_inv)
+
+    # Precedencia al crear (#823): el ESPERAR_PLAZO exige el NOTIFICAR del propio
+    # trámite completo. Va antes de `check_orden_tarea` a propósito — aquel es el
+    # vocabulario ESFTT (forzable con justificación, ADR-037 §B) y este es puerta
+    # cerrada; el bloqueo que no se salta se evalúa primero.
+    res_inv_crear = check_invariante('CREAR', 'TAREA', tramite.id,
+                                     tipo_codigo=tipo_tarea.codigo)
+    if res_inv_crear:
+        return ResultadoMutacion(ok=False, bloqueo=res_inv_crear)
 
     res_orden = check_orden_tarea(tramite, tipo_tarea)
     if _bloquea(res_orden, justificacion):
