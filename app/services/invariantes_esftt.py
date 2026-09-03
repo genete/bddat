@@ -5,7 +5,8 @@ Checks de negocio hardcoded que el motor agnóstico no puede evaluar porque
 requieren consultas al dominio BDDAT. Se invocan desde las rutas Flask ANTES
 de llamar a motor_reglas.evaluar().
 
-Cubren cuatro familias: precondiciones de creación (precedencia, #823),
+Cubren cinco familias: precondiciones de creación (precedencia, #823),
+precondiciones de emisión documental (fin de instrucción, ADR-043 §E / #827),
 integridad estructural del árbol (borrado hoja-a-hoja, #722), decisiones de
 workflow ya fijadas (sellado, ADR-036; completitud de cierre, #723) y puertas
 cerradas de irreversibilidad (evidencia notificada, #714/#720).
@@ -145,6 +146,15 @@ def check_invariante(accion: str, sujeto: str, entidad_id: int,
     'tipo_tarea': …}`), traducida a esta firma. Sin `tipo_codigo` la rama CREAR
     no evalúa nada: todos sus checks son específicos de un tipo.
 
+    **Contrato de `EMITIR` (#827, ADR-043 §E).** Tampoco actúa sobre un nodo del
+    árbol: `sujeto` es el nivel al que se ancla el documento que se emite y
+    `entidad_id` su id (hoy solo SOLICITUD), con `tipo_codigo` como código del
+    `TipoDocumento` emitido. No es un acto del árbol sino de producción documental
+    —por eso no aparece en `mutaciones_arbol`—, pero comparte con el resto la
+    naturaleza de invariante: certificar que la instrucción terminó cuando no ha
+    terminado no es un juicio de negocio discutible, es un documento que miente
+    (ADR-043 §B). Sin `tipo_codigo` no evalúa nada, como CREAR.
+
     Relación con el modo global del motor (#723, checklist punto 3, decisión
     explícita): los invariantes —forzables o puerta cerrada— quedan siempre
     ajenos a `motor_modo_global.aplicar_modo_global`. Ningún caller pasa el
@@ -157,6 +167,8 @@ def check_invariante(accion: str, sujeto: str, entidad_id: int,
     """
     if accion == 'CREAR':
         return _check_crear(sujeto, entidad_id, tipo_codigo)
+    if accion == 'EMITIR':
+        return _check_emitir(sujeto, entidad_id, tipo_codigo)
     if accion == 'BORRAR':
         return _check_borrar(sujeto, entidad_id)
     if accion == 'FINALIZAR':
@@ -306,6 +318,98 @@ def _check_crear_vuelta_cadena(fase_id: int) -> Optional[EvaluacionResult]:
     return _bloquear(
         f'No se puede abrir otra vuelta de subsanación: "{nombre}" sigue sin '
         f'completarse. Cada vuelta se cierra antes de empezar la siguiente.'
+    )
+
+
+# ---------------------------------------------------------------------------
+# Emitir — precondiciones de emisión documental (#827, ADR-043 §E)
+# ---------------------------------------------------------------------------
+
+def _check_emitir(sujeto: str, entidad_id: int,
+                  tipo_codigo: Optional[str]) -> Optional[EvaluacionResult]:
+    """Precondiciones de la emisión de un certificado interno (#827, ADR-043 §E).
+
+    Discrimina por tipo documental, no por sujeto: el sujeto solo dice a qué se
+    ancla. Hoy hay un único caso; el hueco natural para el siguiente es
+    `CERT_CIERRE_SOLICITUD` (ancla implementada en #778, emisión sin dueño), que
+    se ancla al mismo sujeto y exigirá otra cosa muy distinta.
+    """
+    if not tipo_codigo:
+        return None
+
+    if sujeto == 'SOLICITUD' and tipo_codigo == 'CERT_FIN_INSTRUCCION':
+        return _check_emitir_cert_fin_instruccion(entidad_id)
+
+    return None
+
+
+def _check_emitir_cert_fin_instruccion(solicitud_id: int) -> Optional[EvaluacionResult]:
+    """No se emite el certificado de fin de instrucción con fases de instrucción
+    sin cerrar (#827, ADR-043 §E — aquí entra el punto 3 de #823, mudado del acto
+    de crear la fase finalizadora al acto de emitir el certificado).
+
+    **Por qué aquí y no en `reglas_motor`**, al revés que las dos reglas del art.
+    82.1 que este certificado desbloquea (ADR-043 §B): allí hay contenido
+    normativo citable y mostrable, que puede cambiar con la ley; aquí hay una
+    afirmación sobre la realidad del propio sistema, cuya negación no sería una
+    excepción sino una falsedad. Por eso es **puerta cerrada** y sigue aplicando
+    con el motor en modo global `INACTIVO`: el escape de la regla permite avanzar
+    la tramitación bajo responsabilidad, nunca falsear el fundamento.
+
+    **No es redundante con las reglas 37/38**: esas vigilan que una fase necesaria
+    se cree y se complete (organismos terminados, IP finalizada); esta, que la
+    instrucción se declare terminada expresamente y sin flecos, sea cual sea el
+    conjunto de fases que este expediente concreto haya necesitado.
+
+    Tres precisiones sobre el alcance del recuento:
+
+    - **Cuentan las planificadas.** Una fase creada es una fase que alguien
+      decidió necesaria, por vía canónica o por escape; si sobra se borra, si hace
+      falta se termina. `Fase.finalizada` es False mientras no tenga documento de
+      resultado, en cualquiera de los tres estados abiertos.
+    - **Solo las de instrucción** (`es_finalizadora = False`), precisión de #827
+      sobre la letra de §E. Contar también la finalizadora dejaría el certificado
+      inemitible para siempre en cuanto alguien abriera la fase de resolución con
+      la vía de escape que §A admite — y «instruidos los procedimientos» no abarca
+      la fase que resuelve.
+    - **Sin fases no se emite.** `all([])` es True y certificaría una instrucción
+      que no existe: mismo agujero de vacuidad que #723 tapó en `Tramite.finalizado`.
+
+    Lo que se exige es que estén **finalizadas**, sea cual sea su resultado: por
+    §B del ADR un desfavorable o un desistimiento cierran la instrucción igual que
+    un favorable. El juicio sobre el sentido del resultado vive en el contenido
+    del certificado y en la resolución que lo consume, no aquí.
+    """
+    solicitud = Solicitud.query.get(solicitud_id)
+    if solicitud is None:
+        return None
+
+    instruccion = [
+        f for f in solicitud.fases
+        if f.tipo_fase and not f.tipo_fase.es_finalizadora
+    ]
+    if not instruccion:
+        return _bloquear(
+            'No se puede certificar el fin de la instrucción de una solicitud que '
+            'no tiene ninguna fase de instrucción: no hay nada instruido que '
+            'certificar. Cree y complete las fases que el procedimiento requiera.'
+        )
+
+    abiertas = [f for f in instruccion if not f.finalizada]
+    if not abiertas:
+        return None
+
+    nombres = ', '.join(
+        f'"{f.tipo_fase.nombre}"' if f.tipo_fase else f'#{f.id}'
+        for f in sorted(abiertas, key=lambda f: f.id)
+    )
+    plural = len(abiertas) > 1
+    return _bloquear(
+        f'No se puede certificar el fin de la instrucción: '
+        f'{"las fases" if plural else "la fase"} {nombres} '
+        f'{"siguen" if plural else "sigue"} sin cerrarse. Ciérre'
+        f'{"las" if plural else "la"} formalizando su resultado, o bórre'
+        f'{"las" if plural else "la"} si no {"eran necesarias" if plural else "era necesaria"}.'
     )
 
 

@@ -8,9 +8,19 @@ FLUJO:
     1. Persiste CertificadoFase (snapshot inmutable en BD).
     2. Genera PDF con reportlab.
     3. Guarda en ruta_destino_cert(expediente, tipo_cert).
-    4. Crea Documento (tipo_doc = tipo_cert, url = ruta relativa a FILESYSTEM_BASE, ADR-032).
+    4. Crea Documento (tipo_doc = tipo_cert, url = ruta relativa a FILESYSTEM_BASE, ADR-032),
+       o completa el que el llamador ya creó (parámetro `documento`).
     5. Actualiza cert.ruta_pdf.
     Devuelve CertificadoFase creado.
+
+DOS MODOS DE LLAMADA (#827):
+    - Sin `documento`: el generador lo crea al final. Es el modo original (#373).
+    - Con `documento`: el llamador lo creó antes y el generador solo lo completa.
+      Lo necesita el emisor del CERT_FIN_INSTRUCCION, que tiene que anclar el
+      Documento a la solicitud ANTES de auditar — si audita antes, la regla del
+      art. 82.1 dispara (el certificado aún no consta) y el snapshot que este
+      módulo congela saldría bloqueado por la propia regla que el certificado
+      levanta. Ver app/services/cert_fin_instruccion.py.
 """
 from __future__ import annotations
 
@@ -22,16 +32,26 @@ from datetime import UTC, date, datetime
 log = logging.getLogger(__name__)
 
 
-def generar_certificado_fase(expediente, fase, auditoria, tipo_cert: str):
+def generar_certificado_fase(expediente, fase, auditoria, tipo_cert: str, *,
+                             documento=None, solicitud=None):
     """
     Genera y persiste el certificado de fase.
 
     Args:
         expediente:  Instancia de Expediente.
-        fase:        Instancia de Fase (ya con id — tras flush).
+        fase:        Instancia de Fase (ya con id — tras flush), o None cuando el
+                     certificado no es de una fase concreta: el CERT_FIN_INSTRUCCION
+                     certifica la instrucción completa y se ancla a la solicitud
+                     (ADR-043 §D), así que deja `CertificadoFase.fase_id` NULL.
         auditoria:   AuditoriaResult del motor.
         tipo_cert:   Código de TipoDocumento con origen='INTERNO'
                      (ej: 'CERT_FIN_INSTRUCCION').
+        documento:   Documento ya creado por el llamador, que este servicio
+                     completa (url, tipo de contenido, asunto) en vez de crear uno
+                     nuevo. Ver el encabezado del módulo.
+        solicitud:   Solicitud a la que pertenece el certificado, para identificarla
+                     en el PDF. Sin ella el PDF solo nombra el expediente, que no
+                     basta cuando tiene más de una solicitud.
 
     Returns:
         CertificadoFase creado y con ruta_pdf rellena.
@@ -68,13 +88,13 @@ def generar_certificado_fase(expediente, fase, auditoria, tipo_cert: str):
     # 3. Generar PDF
     try:
         ruta_pdf = _ruta_destino_cert(expediente, tipo_cert, cert.id)
-        _generar_pdf(cert, expediente, auditoria, ruta_pdf)
+        _generar_pdf(cert, expediente, auditoria, ruta_pdf, solicitud=solicitud)
     except Exception as exc:
         log.error('generador_cert: error generando PDF para %s (cert.id=%s): %s',
                   tipo_cert, cert.id, exc)
         return cert  # el cert existe aunque el PDF haya fallado
 
-    # 4. Crear Documento apuntando al PDF
+    # 4. Crear (o completar) el Documento que apunta al PDF
     try:
         from flask import current_app
         tipo_doc = TipoDocumento.query.filter_by(codigo=tipo_cert).first()
@@ -82,15 +102,28 @@ def generar_certificado_fase(expediente, fase, auditoria, tipo_cert: str):
         # (más abajo) sigue siendo la ruta absoluta física, campo distinto.
         base = current_app.config['FILESYSTEM_BASE']
         ruta_relativa = os.path.relpath(ruta_pdf, base).replace(os.sep, '/')
-        doc = Documento(
-            expediente_id=expediente.id,
-            tipo_doc_id=tipo_doc.id if tipo_doc else 1,
-            url=ruta_relativa,
-            tipo_contenido='application/pdf',
-            fecha_administrativa=date.today(),
-            asunto=f'Certificado {tipo_cert} — {expediente.numero_at}',
-        )
-        db.session.add(doc)
+        asunto = f'Certificado {tipo_cert} — {expediente.numero_at}'
+        if documento is None:
+            doc = Documento(
+                expediente_id=expediente.id,
+                tipo_doc_id=tipo_doc.id if tipo_doc else 1,
+                url=ruta_relativa,
+                tipo_contenido='application/pdf',
+                fecha_administrativa=date.today(),
+                asunto=asunto,
+            )
+            db.session.add(doc)
+        else:
+            # El llamador lo creó con url placeholder para poder anclarlo antes de
+            # auditar; aquí recibe su destino real y los campos que solo se conocen
+            # una vez generado el PDF.
+            doc = documento
+            doc.url = ruta_relativa
+            doc.tipo_contenido = 'application/pdf'
+            if doc.fecha_administrativa is None:
+                doc.fecha_administrativa = date.today()
+            if not doc.asunto:
+                doc.asunto = asunto
         db.session.flush()
     except (OperationalError, ProgrammingError) as exc:
         log.warning('generador_cert: no se pudo crear Documento para cert %s: %s', cert.id, exc)
@@ -117,7 +150,7 @@ def _ruta_destino_cert(expediente, tipo_cert: str, cert_id: int) -> str:
     return os.path.join(directorio, f'{tipo_cert}_{cert_id}.pdf')
 
 
-def _generar_pdf(cert, expediente, auditoria, ruta_destino: str) -> None:
+def _generar_pdf(cert, expediente, auditoria, ruta_destino: str, *, solicitud=None) -> None:
     """Genera el PDF del certificado con reportlab y lo escribe en ruta_destino."""
     from reportlab.lib import colors
     from reportlab.lib.pagesizes import A4
@@ -151,22 +184,48 @@ def _generar_pdf(cert, expediente, auditoria, ruta_destino: str) -> None:
     referencia_exp = getattr(expediente, 'numero_at', '') or ''
     fecha_str = cert.fecha_generacion.strftime('%d/%m/%Y %H:%M') if cert.fecha_generacion else ''
 
+    # Encabezado del certificado: el nombre real del tipo documental, no un
+    # literal fijo — el generador tiene ya dos tipos de certificado que emitir y
+    # heredará más, y ninguno debe salir con el título de otro.
+    titulo = _titulo_cert(cert.tipo_cert)
+
+    # El certificado es de una solicitud concreta (ADR-043 §D): sin nombrarla, dos
+    # solicitudes del mismo expediente producirían PDFs indistinguibles.
+    identificacion = [Paragraph(f'Expediente: AT-{referencia_exp}', estilo_normal)]
+    if solicitud is not None:
+        tipo_sol = getattr(solicitud, 'tipo_solicitud', None)
+        siglas = getattr(tipo_sol, 'siglas', None) or 'sin tipo'
+        identificacion.append(
+            Paragraph(f'Solicitud: #{solicitud.id} — {siglas}', estilo_normal)
+        )
+
+    # Afirmación acorde con lo que la auditoría dice de verdad: si alguna regla
+    # bloqueante quedó sin neutralizar, el certificado lo hace constar en vez de
+    # declarar satisfecho lo que no lo está.
+    if getattr(auditoria, 'permitido', True):
+        declaracion = (
+            'El sistema BDDAT certifica que el motor de reglas evaluó todas las condiciones '
+            'reglamentarias aplicables y las encontró satisfechas. Las reglas evaluadas se '
+            'detallan a continuación.'
+        )
+    else:
+        declaracion = (
+            'El sistema BDDAT deja constancia de las condiciones reglamentarias evaluadas por '
+            'el motor de reglas en el momento de emitir este certificado. Alguna de ellas '
+            'quedó sin satisfacer y se detalla como BLOQUEANTE en el cuadro siguiente.'
+        )
+
     contenido = [
         Paragraph('Consejería de Industria, Energía y Minas', estilo_subtitulo),
         Paragraph('Junta de Andalucía', estilo_subtitulo),
         Spacer(1, 0.3 * cm),
-        Paragraph(f'CERTIFICADO DE FIN DE INSTRUCCIÓN — {cert.tipo_cert}', estilo_titulo),
+        Paragraph(titulo, estilo_titulo),
         Spacer(1, 0.2 * cm),
-        Paragraph(f'Expediente: AT-{referencia_exp}', estilo_normal),
+        *identificacion,
         Paragraph(f'Fecha de generación: {fecha_str}', estilo_normal),
         Paragraph(f'Acción auditada: {cert.accion} / Sujeto: {cert.sujeto}', estilo_normal),
         Spacer(1, 0.5 * cm),
-        Paragraph(
-            'El sistema BDDAT certifica que el motor de reglas evaluó todas las condiciones '
-            'reglamentarias aplicables y las encontró satisfechas, autorizando la creación '
-            'de la fase indicada. Las reglas evaluadas se detallan a continuación.',
-            estilo_normal,
-        ),
+        Paragraph(declaracion, estilo_normal),
         Spacer(1, 0.5 * cm),
         Paragraph('Reglas evaluadas', estilo_subtitulo),
     ]
@@ -218,6 +277,19 @@ def _generar_pdf(cert, expediente, auditoria, ruta_destino: str) -> None:
     ]
 
     doc.build(contenido)
+
+
+def _titulo_cert(tipo_cert: str) -> str:
+    """Título del PDF: el nombre del TipoDocumento en mayúsculas, o el código si
+    el catálogo no lo tiene (o la BD no está disponible al generarlo)."""
+    from app.models.tipos_documentos import TipoDocumento
+    from sqlalchemy.exc import OperationalError, ProgrammingError
+    try:
+        tipo_doc = TipoDocumento.query.filter_by(codigo=tipo_cert).first()
+    except (OperationalError, ProgrammingError):
+        tipo_doc = None
+    nombre = (tipo_doc.nombre if tipo_doc else None) or tipo_cert
+    return nombre.upper()
 
 
 def _serializar_variables(variables: dict) -> dict:
