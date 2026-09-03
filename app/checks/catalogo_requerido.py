@@ -154,8 +154,18 @@ def _validar_finalizadoras_con_regla() -> List[str]:
 
     Se compara contra el ÚLTIMO segmento del sujeto (`ANY/ANY/RESOLUCION` →
     `RESOLUCION`), que es donde el sujeto calificado nombra la fase.
+
+    Mismo grado de defensividad que el resto del módulo (#347): sin contexto de
+    aplicación o sin BD no puede comprobarse nada y no se avisa de nada — un
+    manifiesto de catálogo nunca debe ser el motivo de que el arranque falle.
+    A diferencia de las comprobaciones de presencia, esta consulta modelos
+    directamente y no pasa por `_importar`, así que necesita ese guardián propio.
     """
+    from flask import has_app_context
     from sqlalchemy.exc import OperationalError, ProgrammingError
+
+    if not has_app_context():
+        return []
 
     try:
         from app.models.tipos_fases import TipoFase
