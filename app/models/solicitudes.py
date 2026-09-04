@@ -170,10 +170,21 @@ class Solicitud(db.Model):
     entidad = db.relationship('Entidad', backref='solicitudes')
     tipo_solicitud = db.relationship('TipoSolicitud')
     solicitud_afectada = db.relationship('Solicitud', remote_side=[id], backref='solicitudes_dependientes')
-    documento_solicitud = db.relationship('Documento', foreign_keys=[documento_solicitud_id])
-    documento_cierre = db.relationship('Documento', foreign_keys=[documento_cierre_id])
+    # Las tres anclas documentales de la solicitud (ADR-041 §D bis): entrada →
+    # fin de instrucción → cierre. Cada una con su `backref` porque el pool
+    # necesita saber, desde el documento, si alguna solicitud lo usa como ancla:
+    # `_documento_es_referenciado` se construye solo con backrefs a propósito, para
+    # que una FK nueva a `documentos` se vea desde el modelo y no haya que
+    # acordarse de escribir SQL en la ruta (#838).
+    documento_solicitud = db.relationship(
+        'Documento', foreign_keys=[documento_solicitud_id],
+        backref='anclado_en_solicitud')
+    documento_cierre = db.relationship(
+        'Documento', foreign_keys=[documento_cierre_id],
+        backref='anclado_en_cierre')
     documento_fin_instruccion = db.relationship(
-        'Documento', foreign_keys=[documento_fin_instruccion_id])
+        'Documento', foreign_keys=[documento_fin_instruccion_id],
+        backref='anclado_en_fin_instruccion')
     
     # Properties
     @property
