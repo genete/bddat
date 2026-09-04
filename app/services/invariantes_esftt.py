@@ -1313,7 +1313,7 @@ def _check_completitud_cierre(fase: Fase) -> Optional[EvaluacionResult]:
     gobiernan árbol y seguimiento) en vez de reescribir el criterio en SQL —
     evita la divergencia que arrastran `_check_finalizar_fase`/
     `_check_finalizar_tramite`, huérfanos (inventario #723, puntos 5/6, sin
-    tocar aquí).
+    tocar aquí; reconciliarlos o borrarlos es **#844**).
 
     Dos categorías, con fuerza distinta:
     - Vacío estructural (fase sin trámites, o algún trámite sin ninguna
