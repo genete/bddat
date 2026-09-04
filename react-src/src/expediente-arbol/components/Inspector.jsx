@@ -5,6 +5,7 @@
 // + acciones rápidas no destructivas (abrir doc, abrir carpeta, copiar referencia).
 // Edición / despensa → S3b.
 import React from 'react'
+import { createPortal } from 'react-dom'
 import { useArbolStore, selectHayCambios } from '../store.js'
 import { api } from '../../shared/api.js'
 import { showToast } from '../../shared/ui/toast.js'
@@ -418,23 +419,21 @@ function AccionesFaseConsultas({ nodo }) {
   )
 }
 
-// Bisagra instrucción → resolución (#827, ADR-043): el gesto con el que el técnico
-// declara terminada la instrucción emitiendo el CERT_FIN_INSTRUCCION. Hasta que
-// consta emitido, el motor bloquea la apertura de la fase finalizadora citando el
-// art. 82.1 LPACAP.
+// Bisagra instrucción → resolución (#827, ADR-043 §E): el gesto con el que el
+// técnico pregunta cómo va la instrucción y, si no queda nada pendiente, la declara
+// terminada. Hasta que el certificado consta, el motor bloquea la apertura de la
+// fase finalizadora citando el art. 82.1 LPACAP.
 //
 // Vive junto al Editor genérico, como AccionesFaseConsultas y ReabrirFase, no en
-// lugar de él. Siempre visible en la solicitud, también cuando aún no puede
-// emitirse: el "todavía no" con su motivo es justamente lo que el técnico necesita
-// leer para saber qué le falta — a diferencia de AccionesFaseConsultas, que se
-// oculta porque un botón sin pendientes no dice nada útil.
-//
-// El motivo lo sirve el backend (detalle_nodo._cert_fin_instruccion), no se
-// recalcula aquí: es el mismo texto que devolvería el intento de emitir.
+// lugar de él. Siempre visible en la solicitud, y con el botón SIEMPRE activo: el
+// gesto dejó de ser una puerta que se concede o se deniega. Preguntar «¿cómo va
+// esto?» no tiene precondiciones —se puede desde el primer día— y la respuesta es
+// un informe, no un error. Por eso el inspector ya no trae el motivo del «todavía
+// no»: lo dice el informe al pulsar, con mucho más detalle del que cabía aquí.
 function CertFinInstruccion() {
-  const detalle  = useArbolStore((s) => s.detalle)
-  const emitiendo = useArbolStore((s) => s.emitiendoCertFinInstruccion)
-  const emitir   = useArbolStore((s) => s.emitirCertFinInstruccion)
+  const detalle      = useArbolStore((s) => s.detalle)
+  const certificando = useArbolStore((s) => s.certificandoFinInstruccion)
+  const certificar   = useArbolStore((s) => s.certificarFinInstruccion)
 
   const cert = detalle && detalle.cert_fin_instruccion
   if (!cert) return null
@@ -456,18 +455,145 @@ function CertFinInstruccion() {
         <strong>Instrucción en curso.</strong> La fase de resolución no puede abrirse
         hasta que conste terminada (art. 82.1 LPACAP).
       </span>
-      {!cert.puede_emitirse && cert.motivo && (
-        <span className="small text-muted">{cert.motivo}</span>
-      )}
+      <span className="small text-muted">
+        Revise el estado cuando quiera: si no falta nada, el certificado se emite en
+        el acto; si falta algo, verá qué es y no se creará ningún documento.
+      </span>
       <button
         type="button"
         className="btn btn-sm btn-primary"
-        disabled={emitiendo || !cert.puede_emitirse}
-        onClick={emitir}
+        disabled={certificando}
+        onClick={certificar}
       >
-        {emitiendo ? 'Emitiendo…' : '📜 Certificar fin de instrucción'}
+        {certificando ? 'Revisando…' : '📜 Certificar fin de instrucción'}
       </button>
     </div>
+  )
+}
+
+// El informe de la revisión cuando NO se consolidó (#827, ADR-043 §E). Modal propio
+// con clases de Bootstrap y sin su JS: el bundle de la isla no carga bootstrap.js y
+// el contenido viene de la respuesta del POST, no de una URL — así que ni
+// AppModalLarge (capa 3, que abre una url) ni un data-attribute declarativo sirven.
+//
+// Va por `createPortal` a <body>: montado en su sitio del árbol de componentes, el
+// `position: fixed` del modal se resolvía respecto al panel del inspector y no
+// respecto a la ventana —basta un ancestro con `transform` para que eso ocurra—, de
+// modo que el diálogo salía encajado en la mitad derecha y el backdrop no cubría el
+// árbol. Verificado en navegador antes y después.
+//
+// Tres bloques, en el orden en que se leen: lo que falta (con el porqué), lo salvado
+// bajo criterio propio, y el relato de lo instruido hasta ahora. Los tres llegan ya
+// redactados por el backend — cada nodo del árbol escribe lo suyo (§E bis) — y aquí
+// no se compone ninguna frase.
+function ModalInformeFinInstruccion() {
+  const informe = useArbolStore((s) => s.informeFinInstruccion)
+  const cerrar  = useArbolStore((s) => s.cerrarInformeFinInstruccion)
+  const seleccionar = useArbolStore((s) => s.seleccionar)
+
+  React.useEffect(() => {
+    if (!informe) return undefined
+    const alEscape = (e) => { if (e.key === 'Escape') cerrar() }
+    document.addEventListener('keydown', alEscape)
+    return () => document.removeEventListener('keydown', alEscape)
+  }, [informe, cerrar])
+
+  if (!informe) return null
+
+  const pendientes = informe.pendientes || []
+  const salvados   = informe.salvados || []
+  const relato     = (informe.bloques || []).flatMap((b) => b.relato || [])
+
+  // "Ir al nodo" cierra el modal y selecciona: el técnico venía a arreglar algo.
+  const irAlNodo = (nodo) => {
+    if (!nodo) return
+    cerrar()
+    seleccionar({ tipo: nodo.tipo, id: nodo.id })
+  }
+
+  return createPortal(
+    <>
+      <div className="modal-backdrop fade show" onClick={cerrar} />
+      <div className="modal fade show d-block" role="dialog" aria-modal="true"
+           aria-label="Informe de fin de instrucción">
+        <div className="modal-dialog modal-lg modal-dialog-scrollable">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h5 className="modal-title h6 mb-0">
+                <i className="bi bi-clipboard-check me-2" />
+                La instrucción todavía no puede certificarse
+              </h5>
+              <button type="button" className="btn-close" aria-label="Cerrar"
+                      onClick={cerrar} />
+            </div>
+            <div className="modal-body">
+              <p className="small text-muted">
+                No se ha creado ningún documento. Resuelva lo que falta y vuelva a
+                pedir el certificado cuando quiera.
+              </p>
+
+              <h6 className="small text-uppercase text-muted mt-3">Qué falta</h6>
+              <ul className="list-group list-group-flush mb-3">
+                {pendientes.map((b, i) => (
+                  <li className="list-group-item px-0 py-2" key={`p-${i}`}>
+                    <div className="small fw-semibold">{b.titulo}</div>
+                    {(b.pendiente || []).map((linea, j) => (
+                      <div className="small" key={j}>{linea}</div>
+                    ))}
+                    {b.nodo && (
+                      <button type="button"
+                              className="btn btn-link btn-sm p-0 mt-1 small"
+                              onClick={() => irAlNodo(b.nodo)}>
+                        Ir al nodo →
+                      </button>
+                    )}
+                  </li>
+                ))}
+              </ul>
+
+              {salvados.length > 0 && (
+                <>
+                  <h6 className="small text-uppercase text-muted">
+                    Actos salvados con criterio del tramitador
+                  </h6>
+                  <p className="small text-muted mb-2">
+                    No impiden certificar. Constarán en el certificado, porque la
+                    resolución que se dicte debe motivarlos.
+                  </p>
+                  <ul className="list-group list-group-flush mb-3">
+                    {salvados.map((b, i) => (
+                      <li className="list-group-item px-0 py-2" key={`s-${i}`}>
+                        <div className="small fw-semibold">{b.titulo}</div>
+                        {(b.salvado || []).map((linea, j) => (
+                          <div className="small text-muted" key={j}>{linea}</div>
+                        ))}
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
+
+              {relato.length > 0 && (
+                <>
+                  <h6 className="small text-uppercase text-muted">
+                    Lo instruido hasta ahora
+                  </h6>
+                  {relato.map((linea, i) => (
+                    <div className="small text-muted" key={`r-${i}`}>{linea}</div>
+                  ))}
+                </>
+              )}
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="btn btn-sm btn-secondary" onClick={cerrar}>
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </>,
+    document.body,
   )
 }
 
@@ -686,6 +812,7 @@ function InspectorEdicion({ nodo }) {
         {!borrarPendienteConfirm && <BloqueoGuardarForzable />}
         {!borrarPendienteConfirm && esFaseConsultas && <AccionesFaseConsultas nodo={nodo} />}
         {!borrarPendienteConfirm && esSolicitud && <CertFinInstruccion />}
+        {esSolicitud && <ModalInformeFinInstruccion />}
         {borrarPendienteConfirm
           ? <ConfirmacionBorrado nodo={nodo} />
           : esAnalizar

@@ -7,7 +7,7 @@
 // S3b-1: modoEdicion + lock + editor genérico (entrar/guardar/cancelar + refresco).
 // S3b añadirá: despensa, colapsos manuales por nivel.
 import { create } from 'zustand'
-import { getArbol, getNodo, getEditable, patchNodo, getTiposCreables, postHijo, getPool, deleteNodo, guardarNotas, postReabrirFase, postEnviarConsultas, postEmitirCertFinInstruccion, subirDocumentoPool, getSugerenciaDocumento } from './api.js'
+import { getArbol, getNodo, getEditable, patchNodo, getTiposCreables, postHijo, getPool, deleteNodo, guardarNotas, postReabrirFase, postEnviarConsultas, postCertificarFinInstruccion, subirDocumentoPool, getSugerenciaDocumento } from './api.js'
 import { showToast } from '../shared/ui/toast.js'
 
 // AbortController de la petición de detalle en curso (fuera del estado: no re-render).
@@ -82,8 +82,11 @@ export const useArbolStore = create((set, get) => ({
   // --- enviar consultas (ADR-042 §C, #396 bloque 5) ---
   enviandoConsultas: false,
 
-  // --- emitir certificado de fin de instrucción (#827, ADR-043) ---
-  emitiendoCertFinInstruccion: false,
+  // --- certificar el fin de instrucción (#827, ADR-043 §E) ---
+  certificandoFinInstruccion: false,
+  // Informe devuelto por la revisión cuando NO se consolidó. Su presencia es lo que
+  // abre el modal: no hay flag aparte porque no hay modal sin informe que enseñar.
+  informeFinInstruccion: null,
 
   // --- menú contextual (S3b-4) ---
   menuCtx: null,           // { x, y, sel } | null
@@ -371,31 +374,39 @@ export const useArbolStore = create((set, get) => ({
     }
   },
 
-  // Acción de solicitud en modo edición (#827, ADR-043): emite el certificado de
-  // fin de instrucción y lo ancla a la solicitud. NO es idempotente como
-  // `enviarConsultas` —emitir dos veces no tiene sentido— pero tampoco necesita
-  // confirmación previa: el backend rechaza el segundo intento y el botón
-  // desaparece en cuanto el refresco trae `emitido: true`.
-  emitirCertFinInstruccion: async () => {
+  // Acción de solicitud en modo edición (#827, ADR-043 §E): pregunta «¿cómo va
+  // esto?» y, si la revisión sale sin pendientes, consolida el certificado.
+  //
+  // Dos desenlaces y ningún error: con pendientes se abre el modal con el informe
+  // —qué falta, por qué, y lo instruido hasta ahora— y no se ha creado nada, así
+  // que se puede volver a preguntar mañana. Sin pendientes, toast y refresco: el
+  // bloque pasa a «emitido» y el certificado aparece entre los documentos del nodo.
+  certificarFinInstruccion: async () => {
     const { expedienteId, seleccion } = get()
     if (!seleccion || seleccion.tipo !== 'solicitud' || !expedienteId) return
-    set({ emitiendoCertFinInstruccion: true })
+    set({ certificandoFinInstruccion: true })
     try {
-      await postEmitirCertFinInstruccion(expedienteId, seleccion.id)
-      showToast('Certificado de fin de instrucción emitido', 'success')
-      set({ emitiendoCertFinInstruccion: false })
-      await get().refrescarArbol()
-    } catch (e) {
-      set({ emitiendoCertFinInstruccion: false })
-      if (e.status === 401 || e.status === 403) return
-      if (e.status === 422 && e.payload && (e.payload.motivo || e.payload.error)) {
-        // Siempre puerta cerrada: no hay vía de escape que ofrecer, solo el motivo.
-        showToast(e.payload.motivo || e.payload.error, 'danger')
+      const informe = await postCertificarFinInstruccion(expedienteId, seleccion.id)
+      if (informe.consolidado) {
+        showToast('Certificado de fin de instrucción emitido', 'success')
+        set({ certificandoFinInstruccion: false, informeFinInstruccion: null })
+        await get().refrescarArbol()
       } else {
-        showToast(e.message || 'No se pudo emitir el certificado', 'danger')
+        set({ certificandoFinInstruccion: false, informeFinInstruccion: informe })
+      }
+    } catch (e) {
+      set({ certificandoFinInstruccion: false })
+      if (e.status === 401 || e.status === 403) return
+      if (e.status === 422 && e.payload && (e.payload.error || e.payload.motivo)) {
+        // 422 aquí es error de verdad (ya emitido, PDF fallido), no «falta algo».
+        showToast(e.payload.error || e.payload.motivo, 'danger')
+      } else {
+        showToast(e.message || 'No se pudo revisar el fin de instrucción', 'danger')
       }
     }
   },
+
+  cerrarInformeFinInstruccion: () => set({ informeFinInstruccion: null }),
 
   // --- menú contextual (S3b-4) ---
 
