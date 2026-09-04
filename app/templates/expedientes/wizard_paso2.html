@@ -194,7 +194,9 @@
     const errorDiv  = document.getElementById('municipios-error');
 
     // ── EntradaFecha ──
-    const efFecha = new EntradaFecha('#ef-fecha', { name: 'fecha' });
+    // maxHoy (#824): la fecha de firma/visado de un proyecto es administrativa,
+    // luego nunca futura.
+    const efFecha = new EntradaFecha('#ef-fecha', { name: 'fecha', maxHoy: '{{ hoy_sistema.isoformat() }}' });
     {% if paso2.get('fecha') %}efFecha.setValue('{{ paso2.get("fecha") }}');{% endif %}
     const efFechaError = document.getElementById('ef-fecha-error');
 

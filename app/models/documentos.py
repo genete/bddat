@@ -45,6 +45,12 @@ class Documento(db.Model):
              jurídico lo tiene el documento producido por ELABORAR.
         - La API de asignación a tareas debe rechazar documentos con NULL
           cuando el tipo de tarea lo requiera (validación de negocio, no de BD).
+        - NUNCA FUTURA (#824): @validates la rechaza contra la fecha de trabajo
+          del sistema (`reloj_simulado.hoy()`, que respeta el reloj de
+          desarrollo). Invariante, no regla de motor: no hay flag que lo
+          desactive, porque un documento no puede acreditar lo que aún no ha
+          pasado. La eficacia diferida de un acto no es una excepción — esa
+          fecha la porta el justificante de notificación, que es otro documento.
 
     CAMPO URL:
         Admite tres esquemas:
@@ -198,6 +204,25 @@ class Documento(db.Model):
         normalizada = os.path.normpath(value)
         if normalizada == '..' or normalizada.startswith('..' + os.sep):
             raise ValueError(f'Ruta local no puede salir de FILESYSTEM_BASE: {value!r}')
+        return value
+
+    @validates('fecha_administrativa')
+    def _validar_fecha_administrativa(self, key, value):
+        """Rechaza la fecha administrativa futura (#824).
+
+        Vive en el modelo, como `_validar_url`, y por la misma razón: es la única
+        puerta por la que pasan las cuatro rutas del pool, los scripts de
+        expedientes-tipo y el shell. Repartido por las rutas, lo que no pasa por
+        ellas escribe sin control — que es exactamente cómo entraron los dos
+        incidentes de datos que documenta esta tabla.
+        """
+        from app.services.fechas import fecha_administrativa_valida
+        if not fecha_administrativa_valida(value):
+            from app.services.reloj_simulado import hoy
+            raise ValueError(
+                f'La fecha administrativa no puede ser futura: {value} '
+                f'(la fecha de trabajo del sistema es {hoy()})'
+            )
         return value
 
     def ruta_absoluta(self) -> str:

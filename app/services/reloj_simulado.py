@@ -7,9 +7,17 @@ marcha, sin reiniciar: una variable de entorno no serviría, cada proceso tiene
 su propia copia y un `flask reloj set` en un proceso aparte no la propagaría
 al proceso del servidor ya arrancado.
 
-Punto único de lectura/escritura para los tres consumidores (`_hoy()` en
-plazos.py, el comando CLI y el blueprint web) — el candado por `DEBUG` lo
-aplica cada consumidor, no este módulo, que no distingue entorno.
+Punto único de lectura/escritura, en dos niveles:
+
+  - `obtener()` / `fijar()` / `borrar()` — acceso crudo al almacén, sin
+    distinguir entorno. Los usan el comando CLI y el blueprint web, que ya
+    solo existen con `DEBUG=True`.
+  - `hoy()` — la fecha de trabajo del sistema, con el candado por `DEBUG`
+    aplicado aquí. Desde #824 hay dos consumidores (el motor de plazos y la
+    validación de `Documento.fecha_administrativa`) y el candado vive en un
+    solo sitio: escrito en cada consumidor es cuestión de tiempo que uno de
+    ellos se despiste y la fecha simulada deje de valer para la mitad del
+    sistema.
 """
 import os
 from datetime import date
@@ -43,7 +51,27 @@ def fijar(fecha: date) -> None:
 
 
 def borrar() -> None:
-    """Quita la fecha simulada; a partir de aquí `_hoy()` vuelve a la real."""
+    """Quita la fecha simulada; a partir de aquí `hoy()` vuelve a la real."""
     ruta = _ruta_fichero()
     if os.path.isfile(ruta):
         os.remove(ruta)
+
+
+def hoy() -> date:
+    """Fecha de trabajo del sistema: la simulada si el reloj está activo, la real si no.
+
+    Doble candado para que el reloj simulado se aplique: `DEBUG=True`
+    (estructural — `ProductionConfig.DEBUG = False`) y el fichero presente a la
+    vez. En producción devuelve siempre `date.today()`.
+
+    Sin contexto de aplicación no hay reloj que leer y manda el de pared: un test
+    unitario que instancia un modelo sin `app` (p. ej.
+    `test_574_fecha_administrativa_certificados.py`) o un script que aún no ha
+    creado la app entran por aquí, y quedarse sin fecha no es una opción.
+    """
+    from flask import has_app_context
+    if has_app_context() and current_app.config.get('DEBUG'):
+        simulada = obtener()
+        if simulada is not None:
+            return simulada
+    return date.today()

@@ -896,17 +896,12 @@ def _primer_consumido(tarea):
 def _hoy() -> date:
     """Fecha "hoy" para el motor de plazos.
 
-    En DEBUG respeta el reloj simulado (#820) si hay uno fijado — doble
-    candado: hace falta DEBUG=True (estructural, ProductionConfig.DEBUG =
-    False) y el fichero de reloj_simulado presente a la vez.
+    Delega en `reloj_simulado.hoy()`, que es donde vive el candado por DEBUG
+    desde #824 — el motor de plazos ya no es su único consumidor. Se conserva
+    el nombre porque lo importan `generador_cert` y los tests.
     """
-    from flask import current_app
-    if current_app.config.get('DEBUG'):
-        from app.services.reloj_simulado import obtener
-        simulada = obtener()
-        if simulada is not None:
-            return simulada
-    return date.today()
+    from app.services.reloj_simulado import hoy
+    return hoy()
 
 
 def _obtener_inhabiles_bd(fecha_ini: date, fecha_fin: date) -> frozenset:
