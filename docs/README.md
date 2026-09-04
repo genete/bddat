@@ -57,6 +57,7 @@ Consultar cuando se trabaja ese subsistema. No cargar por defecto.
 
 ### Despliegue
 - [ANALISIS_DESPLIEGUE.md](referencia/ANALISIS_DESPLIEGUE.md) — balance de carga cliente/servidor, WSGI multiworker, vías W11+WSL2 vs Linux nativo, share corporativo, caché del motor (#330, #151)
+- [ANALISIS_ESCALABILIDAD.md](referencia/ANALISIS_ESCALABILIDAD.md) — dónde cede la arquitectura al crecer: suite de tests atada a la BD de desarrollo, panel del supervisor, workers y cola de latencia del share, ejercicio de 1.000 usuarios
 
 ### Visión
 - [PLAN_ESTRATEGIA.md](referencia/PLAN_ESTRATEGIA.md) — 14 bloques funcionales
