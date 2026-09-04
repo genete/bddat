@@ -30,6 +30,10 @@ Circuito real — nunca INSERT SQL directo:
       calcula plazos.obtener_estado_plazo_tarea, nunca de un número de días
       escrito a mano — ver `_fecha_respuesta_en_plazo`, patrón a copiar en los
       siguientes expedientes-tipo.
+    - Calendario: ninguna fecha absoluta. El escenario se ancla en hoy menos lo
+      que dura (`_fecha_base`) y termina en el pasado reciente, así que ninguno
+      de sus documentos nace con fecha futura —que desde #824 es un invariante
+      del modelo, no una convención— y el expediente-tipo no envejece.
 
 Reejecutable sin implementar borrado aquí: si ya existe un expediente
 marcado con este código, sus observaciones pasan a '[RECICLAR] ...' (solo
@@ -43,7 +47,7 @@ Uso:
 import io
 import json
 import sys
-from datetime import date
+from datetime import date, timedelta
 
 sys.path.insert(0, r"D:\BDDAT")
 
@@ -58,7 +62,27 @@ OBSERVACIONES = f'{MARCA} {PROPOSITO}'
 FIXTURES_DIR = r"D:\BDDAT\tests\fixtures\documentos_dummy"
 CATALOGO_CSV = r"D:\BDDAT\tests\fixtures\expedientes_dummy\catalogo_expedientes.csv"
 
-FECHA_BASE = date(2026, 9, 1)
+# Días naturales que dura el escenario completo: dos vueltas de requerimiento
+# (10 días hábiles de plazo, respondidas 3 hábiles antes de vencer) son unos 20,
+# y el resto es holgura para tramos con muchos festivos. Solo tiene que ser
+# suficiente: sobrar unos días acerca o aleja el expediente en el calendario,
+# quedarse corto lo empujaría más allá de hoy.
+DIAS_ESCENARIO = 45
+
+
+def _fecha_base() -> date:
+    """Ancla del escenario: hoy menos lo que dura, para que el expediente termine
+    en el pasado reciente y ninguna de sus fechas nazca futura (#824).
+
+    De `date.today()` y no de `reloj_simulado.hoy()` a propósito: el reloj casi
+    siempre viene de la ejecución anterior de este mismo script —lo deja fijado
+    en la última fecha del expediente—, así que anclarse a él congelaría el
+    expediente-tipo en el calendario del día en que se generó por primera vez.
+    """
+    return date.today() - timedelta(days=DIAS_ESCENARIO)
+
+
+FECHA_BASE = _fecha_base()
 
 # Días hábiles ANTES del vencimiento real en que responde el titular. El margen
 # es lo único fijo del escenario: la fecha sale del plazo que diga el catálogo
@@ -448,6 +472,15 @@ def _fecha_respuesta_en_plazo(tarea_espera, etiqueta: str) -> date:
         # Plazo más corto que el margen: la respuesta va al día hábil siguiente
         # al disparo, que sigue estando dentro de plazo.
         fecha = _avanzar_habiles(estado.fecha_disparo, 1)
+    if fecha > date.today():
+        # El escenario se ha desbordado del hueco que le reserva DIAS_ESCENARIO
+        # (tramo con muchos festivos, o un plazo del catálogo que ha crecido).
+        # Abortar aquí y decir por qué: seguir solo lleva a que el invariante de
+        # #824 rechace el siguiente documento, a media generación y sin pista.
+        print(f"ABORTADO: la respuesta de {etiqueta} caería en {fecha}, posterior a hoy. "
+              f"El escenario no cabe en los {DIAS_ESCENARIO} días de DIAS_ESCENARIO — "
+              f"ampliarlo.")
+        sys.exit(1)
     print(f"  plazo {etiqueta}: {estado.plazo_valor} {estado.plazo_unidad} "
           f"({estado.norma_origen}) — disparo {estado.fecha_disparo}, "
           f"vence {estado.fecha_limite}, responde {fecha}.")
