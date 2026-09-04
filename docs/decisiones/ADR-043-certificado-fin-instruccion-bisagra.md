@@ -1,7 +1,7 @@
 # ADR-043 — El certificado de fin de instrucción como bisagra entre instrucción y resolución
 
-**Estado:** Adoptada — §A-§D implementados en #827; **§E reescrita el 2026-09-04** (el gesto pasa
-de puerta a revisión que se consolida) y en implementación; §F pendiente (#838, #839)
+**Estado:** Adoptada — §A-§E implementados en #827 (**§E reescrita el 2026-09-04**: el gesto pasa
+de puerta a revisión que se consolida); §F pendiente (#838, #839)
 **Fecha:** 2026-09-02
 **Depende de:** ADR-001 (motor agnóstico), ADR-037 (vocabulario ESFTT vs permiso de motor), ADR-041 §D bis (anclas documentales de la solicitud), ADR-036 (sellado de fase cerrada)
 **Precisa:** ADR-037 §Test operativo — qué separa de verdad a los dos árbitros, ver §B
@@ -242,6 +242,15 @@ justificación— y deja la correlación al lector. Automatizarla es de #614.
 - **El invariante estructural** de esta sección, que sigue siendo el mismo y ahora se expresa como
   un pendiente más de la lista, no como un 422 que corta la conversación.
 
+**Quién produce ese pendiente, en realidad (precisión de #827 al implementarlo).** No hace falta
+preguntarle al invariante para redactarlo: sus dos supuestos ya los dice el árbol por sí mismo —una
+fase de instrucción sin cerrar levanta su propio pendiente, y la solicitud sin ninguna fase habla
+de sí misma con el vocabulario del árbol, que es como se cubre el agujero de vacuidad donde no hay
+nodos que hablen—. El invariante sigue existiendo y **se comprueba igualmente antes de crear nada**:
+es la puerta cerrada, la que seguiría aplicando con el motor en modo global `INACTIVO`, y la que
+tiene la última palabra si alguna vez discrepara del informe. Que ambos digan lo mismo por caminos
+distintos es deliberado; que puedan divergir en silencio, no.
+
 **El invariante** (el punto 3 de #823, mudado del acto de crear la fase al de certificar): **no se
 consolida si alguna fase de instrucción de la solicitud no está finalizada**, contando las
 planificadas —una fase creada es una fase que alguien decidió necesaria; si sobra se borra, si
@@ -269,17 +278,46 @@ Sigue aplicando con el motor en modo global `INACTIVO`.
 
 #### E bis — La forma del informe: definido en las hojas, compuesto hacia arriba
 
+> **Precisada el 2026-09-04, al implementarla (#827).** La redacción anterior tomaba de
+> `estado_dominio` más de lo que debía: daba por hecho que hacia arriba viajaría **dato**, y que
+> el tronco lo redactaría. Lo que sube es prosa ya escrita por cada nodo, y el porqué está más
+> abajo.
+
 El informe **no lo produce un script que barre el árbol conociendo las particularidades de cada
-tipo**. Cada nodo aporta lo que sabe de sí mismo y el resultado se compone hacia arriba con una
-función agnóstica:
+tipo**. Cada nodo aporta lo que sabe de sí mismo y el resultado se compone hacia arriba:
 
 ```
-informe(solicitud) = agregación de informe(fase_i)
-informe(fase)      = lo propio de la fase   + agregación de informe(tramite_j)
-informe(tramite)   = lo propio del trámite  + agregación de informe(tarea_k)
+informe(solicitud) = lo propio de la solicitud + agregación de informe(fase_i)
+informe(fase)      = lo propio de la fase      + agregación de informe(tramite_j)
+informe(tramite)   = lo propio del trámite     + agregación de informe(tarea_k)
 ```
 
 Un nodo sin particularidades no dice nada por sí mismo y se limita a lo que digan sus hijos.
+
+**Lo que sube es prosa, no dato en bruto.** Cada nodo entrega un bloque **ya redactado por él**, y
+su padre recibe bloques —no datos— y decide si los cita, los resume en una línea o los descarta.
+No es una preferencia de estilo. Si subiera dato, el tronco tendría que **entenderlo** para poder
+redactarlo —saber que esta ronda de consultas se hizo sobre el Anexo 1 y aquella sobre el proyecto
+original—, y eso devuelve la especialización al tronco por la puerta de atrás, que es exactamente
+lo que este apartado prohíbe. Y produce además un documento ilegible para una persona: impecable
+como estructura de datos, inservible como certificado. La alternativa —un compilador en el tronco
+que sepa presentar cada caso— es la misma especialización, escrita en otro sitio.
+
+**Lo único que el tronco interpreta es la categoría** (pendiente / salvado / pasa), que es
+agnóstica: cualquier fase sabe decir «esto impide cerrar» sin que el tronco sepa por qué. De
+`estado_dominio` se toma exactamente ese reparto —un dato mínimo para decidir, y todo lo demás
+como decoración de quien lo muestra—, no la forma concreta de su contrato.
+
+**Tres textos por nodo, no uno**, porque los destinos no comparten registro: el certificado
+**narra** lo instruido, el modal del inspector **enumera** lo que falta y lleva al nodo, y los
+actos salvados con criterio van en su propia sección (§E: dos listas separadas, sin correlacionar).
+El nodo escribe los tres, y así ningún destino tiene que reescribir el que no le sirve.
+
+**Redactado, no maquetado.** Los párrafos suben en texto llano, sin marcado, porque sus
+consumidores usan motores distintos: reportlab en el PDF, HTML en el modal del inspector y
+—previsto desde ahora— el contexto del escrito de resolución, que convertirá estos mismos párrafos
+en tokens de plantilla en vez de recomponer el relato por su cuenta. Si el nodo maquetara, se
+ataría al primero de los tres.
 
 **No es un patrón nuevo en este proyecto**: es el de `estado_dominio.py`, con su contrato
 `(estado, propio)` —donde `propio` significa «el nodo tiene algo que decir POR SÍ MISMO»—, un
@@ -302,6 +340,11 @@ de extensión sin conocer la forma del dato sería adivinar. El contrato debe ad
 que un hallazgo se refiera a un **ámbito documental**, aunque hoy ese ámbito sea siempre «el
 proyecto del expediente»: no impedirlo es barato ahora y caro después.
 
+Implementado así en `app/services/informe_instruccion.py`: el punto de extensión de #819 es la
+función que redacta el bloque de una fase, hoy única y genérica, y el `ámbito` es un campo del
+bloque que hoy va siempre vacío. Cuando el registry sustituya a esa función, el resto del módulo
+no se entera — sigue recibiendo un bloque redactado, igual que ahora.
+
 #### E ter — Lo que se congela, y el orden que lo hace posible
 
 La consolidación reutiliza `generador_cert.generar_certificado_fase(…, 'CERT_FIN_INSTRUCCION')`,
@@ -315,6 +358,15 @@ snapshot que declara bloqueada la resolución por falta del certificado que lo l
 por tanto: **evaluar primero, sin crear nada; consolidar después**, y la regla del art. 82.1 se
 excluye del criterio de «¿limpio?» **por definición** — es la única que este acto satisface, y
 esperar a que deje de disparar sola sería esperar a nunca.
+
+**Qué deja ese orden en el snapshot congelado (precisión de #827 al implementarlo).** La regla del
+art. 82.1 **consta disparada**, y debe constar: la auditoría es de un momento anterior a que el
+certificado existiera, y era cierto que entonces disparaba. Lo que impide que el documento parezca
+desmentirse a sí mismo no es maquillar el snapshot —eso sería falsear el fundamento, justo lo que
+§B prohíbe—, sino que el PDF la presente como **satisfecha por este certificado** en vez de como
+bloqueo. El dato en BD dice la verdad del momento; el PDF la interpreta. La garantía real del
+orden es la otra: en el snapshot de un certificado emitido no puede quedar **ninguna otra** regla
+bloqueante viva, porque con ella no se habría consolidado.
 
 El contenido del PDF es el que el catálogo describe —*«tipo de expediente, fases completadas,
 resultados y fundamento jurídico»*—: el resumen de lo instruido con sus fechas, los actos salvados
