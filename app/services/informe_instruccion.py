@@ -105,6 +105,18 @@ PASA      = 'PASA'
 _FASE_FINALIZADORA_POR_SIGLAS = {'INTERESADO': 'RECONOCIMIENTO_INTERESADO'}
 _FASE_FINALIZADORA_DEFECTO = 'RESOLUCION'
 
+# Cómo se llama cada tipo de tarea dentro de una frase. `TipoTarea.nombre` es una
+# descripción, no un nombre —«Revisión técnica o jurídica de documentación con
+# generación de informe»— y `abrev` es el código en mayúsculas, que en prosa grita.
+# Son los cuatro tipos que el modelo declara cerrados (ver Tarea.__doc__); cualquier
+# otro cae al `abrev`, así que un tipo nuevo saldría feo pero nunca roto.
+_TAREA_EN_PROSA = {
+    'ANALIZAR':      'Análisis técnico o jurídico',
+    'ELABORAR':      'Elaboración del documento',
+    'NOTIFICAR':     'Notificación',
+    'ESPERAR_PLAZO': 'Espera de plazo',
+}
+
 
 # ---------------------------------------------------------------------------
 # Contrato
@@ -114,11 +126,15 @@ _FASE_FINALIZADORA_DEFECTO = 'RESOLUCION'
 class Bloque:
     """Lo que un nodo tiene que decir, ya redactado por quien sabe decirlo.
 
-    `categoria` es lo único que el tronco interpreta. `relato` va al certificado
-    (y al contexto de la resolución); `pendiente` va al modal del inspector: son
-    dos registros distintos —el certificado narra lo instruido, el modal enumera
-    lo que falta— y por eso el nodo escribe los dos, en vez de que el destino
-    reescriba el que no le sirve.
+    `categoria` es lo único que el tronco interpreta. Los tres textos son tres
+    registros distintos, y el nodo escribe los tres porque es el único que sabe
+    decirlos; ningún destino reescribe el que no le sirve:
+
+    - `relato`    — lo instruido. Va al certificado y al contexto de la resolución.
+    - `pendiente` — lo que falta. Va al modal del inspector, que además lleva al nodo.
+    - `salvado`   — lo hecho por la vía de escape. Va a su propia sección del
+                    certificado, separada del relato (§E: dos listas, sin
+                    correlacionar), y por eso no se repite dentro de `relato`.
 
     `ambito` es el hueco de #819: sobre qué conjunto documental se hizo esto
     (Proyecto, Proyecto + Anexo 1…). Hoy siempre None, que significa «el proyecto
@@ -128,6 +144,7 @@ class Bloque:
     titulo:    str
     relato:    tuple[str, ...] = ()
     pendiente: tuple[str, ...] = ()
+    salvado:   tuple[str, ...] = ()
     nodo:      Optional[tuple[str, int]] = None
     ambito:    Optional[str] = None
 
@@ -137,6 +154,7 @@ class Bloque:
             'titulo': self.titulo,
             'relato': list(self.relato),
             'pendiente': list(self.pendiente),
+            'salvado': list(self.salvado),
             'nodo': {'tipo': self.nodo[0], 'id': self.nodo[1]} if self.nodo else None,
             'ambito': self.ambito,
         }
@@ -169,7 +187,10 @@ class Informe:
 
     @property
     def salvados(self) -> list:
-        return [b for b in self.bloques if b.categoria == SALVADO]
+        """Bloques con algún acto salvado, tengan la categoría que tengan: un nodo
+        pendiente puede arrastrar además un escape previo, y esa desviación se
+        relata igual — la categoría dice si impide, no si hubo desviación."""
+        return [b for b in self.bloques if b.salvado]
 
     def a_dict(self) -> dict:
         return {
@@ -295,7 +316,10 @@ def bloque_tarea(tarea, escapes: Optional[dict] = None) -> Optional[Bloque]:
 
 def _tarea(tarea, escapes: dict) -> tuple[str, Optional[Bloque]]:
     codigo = tarea.tipo_tarea.codigo if tarea.tipo_tarea else None
-    nombre = tarea.tipo_tarea.nombre if tarea.tipo_tarea else f'Tarea #{tarea.id}'
+    nombre = _TAREA_EN_PROSA.get(
+        codigo,
+        (tarea.tipo_tarea.abrev if tarea.tipo_tarea else None) or f'Tarea #{tarea.id}',
+    )
 
     # El plazo sí se resuelve aquí, al revés que en `_check_completitud_cierre`
     # (#723), que lo omite a propósito: allí basta con «falta completar una tarea»
@@ -306,19 +330,19 @@ def _tarea(tarea, escapes: dict) -> tuple[str, Optional[Bloque]]:
     plazo = _plazo(tarea) if codigo == 'ESPERAR_PLAZO' else None
     estado = sem.estado_tarea(tarea, plazo=plazo)
 
-    relato = _relato_escapes(escapes, 'tareas', tarea.id)
+    salvado = _relato_escapes(escapes, 'tareas', tarea.id, f'la tarea «{nombre}»')
 
     if estado == 'FIN':
-        if not relato:
+        if not salvado:
             return estado, None            # nada que decir: su trámite ya la cuenta
-        return estado, Bloque(SALVADO, nombre, relato=relato, nodo=('tarea', tarea.id))
+        return estado, Bloque(SALVADO, nombre, salvado=salvado, nodo=('tarea', tarea.id))
 
     pendiente = (f'{nombre}: {sem.motivo(estado)}.',)
     if plazo and plazo.get('fecha_limite'):
         pendiente = (f'{nombre}: {sem.motivo(estado)} '
                      f'(vence el {_fecha(_iso_a_fecha(plazo["fecha_limite"]))}).',)
-    return estado, Bloque(PENDIENTE, nombre, relato=relato,
-                          pendiente=pendiente, nodo=('tarea', tarea.id))
+    return estado, Bloque(PENDIENTE, nombre, pendiente=pendiente, salvado=salvado,
+                          nodo=('tarea', tarea.id))
 
 
 def _tramite(tramite, escapes: dict) -> tuple[str, Optional[Bloque]]:
@@ -333,14 +357,15 @@ def _tramite(tramite, escapes: dict) -> tuple[str, Optional[Bloque]]:
             hijos.append(bloque_ta)
 
     estado, _propio = sem.estado_tramite(tramite, estados_tareas)
-    mios = _relato_escapes(escapes, 'tramites', tramite.id)
+    salvado = (_relato_escapes(escapes, 'tramites', tramite.id, f'el trámite «{nombre}»')
+               + _de_hijos(hijos, 'salvado'))
 
     if tramite.finalizado:
         fecha = _fecha_tramite(tramite)
         cuando = f' el {_fecha(fecha)}' if fecha else ''
-        relato = (f'{nombre} — completado{cuando}.',) + mios + _de_hijos(hijos, 'relato')
-        categoria = SALVADO if (mios or any(h.categoria == SALVADO for h in hijos)) else PASA
-        return estado, Bloque(categoria, nombre, relato=relato, nodo=('tramite', tramite.id))
+        relato = (f'{nombre} — completado{cuando}.',) + _de_hijos(hijos, 'relato')
+        return estado, Bloque(SALVADO if salvado else PASA, nombre, relato=relato,
+                              salvado=salvado, nodo=('tramite', tramite.id))
 
     if tramite.planificado:
         # Vacío no es hecho (#723): un trámite sin tareas no puede darse por completo.
@@ -349,8 +374,9 @@ def _tramite(tramite, escapes: dict) -> tuple[str, Optional[Bloque]]:
     else:
         pendiente = (f'{nombre}: {sem.motivo(estado)}.',) + _de_hijos(hijos, 'pendiente')
 
-    return estado, Bloque(PENDIENTE, nombre, relato=mios + _de_hijos(hijos, 'relato'),
-                          pendiente=pendiente, nodo=('tramite', tramite.id))
+    return estado, Bloque(PENDIENTE, nombre, relato=_de_hijos(hijos, 'relato'),
+                          pendiente=pendiente, salvado=salvado,
+                          nodo=('tramite', tramite.id))
 
 
 def _fase(fase, escapes: dict) -> tuple[str, Optional[Bloque]]:
@@ -365,7 +391,8 @@ def _fase(fase, escapes: dict) -> tuple[str, Optional[Bloque]]:
             hijos.append(bloque_tr)
 
     estado, _propio = sem.estado_fase(fase, estados_tramites)
-    mios = _relato_escapes(escapes, 'fases', fase.id)
+    salvado = _relato_escapes(escapes, 'fases', fase.id, f'la fase «{nombre}»') + \
+        _de_hijos(hijos, 'salvado')
 
     if fase.finalizada:
         fecha = _fecha_cierre(fase)
@@ -374,9 +401,9 @@ def _fase(fase, escapes: dict) -> tuple[str, Optional[Bloque]]:
         if fase.resultado_fase is not None:
             resultado = f' con resultado {fase.resultado_fase.nombre or fase.resultado_fase.codigo}'
         relato = ((f'Fase «{nombre}» — cerrada{cuando}{resultado}.',)
-                  + mios + _de_hijos(hijos, 'relato'))
-        categoria = SALVADO if (mios or any(h.categoria == SALVADO for h in hijos)) else PASA
-        return estado, Bloque(categoria, nombre, relato=relato, nodo=('fase', fase.id))
+                  + _de_hijos(hijos, 'relato'))
+        return estado, Bloque(SALVADO if salvado else PASA, nombre, relato=relato,
+                              salvado=salvado, nodo=('fase', fase.id))
 
     if fase.planificada:
         pendiente = (f'Fase «{nombre}»: no tiene ningún trámite. Tramítela o bórrela '
@@ -385,8 +412,8 @@ def _fase(fase, escapes: dict) -> tuple[str, Optional[Bloque]]:
         pendiente = ((f'Fase «{nombre}»: {sem.motivo(estado)}.',)
                      + _de_hijos(hijos, 'pendiente'))
 
-    return estado, Bloque(PENDIENTE, nombre, relato=mios + _de_hijos(hijos, 'relato'),
-                          pendiente=pendiente, nodo=('fase', fase.id))
+    return estado, Bloque(PENDIENTE, nombre, relato=_de_hijos(hijos, 'relato'),
+                          pendiente=pendiente, salvado=salvado, nodo=('fase', fase.id))
 
 
 def _solicitud(solicitud, instruccion: list, estados_fases: list,
@@ -407,24 +434,25 @@ def _solicitud(solicitud, instruccion: list, estados_fases: list,
         presentada = f', presentada el {_fecha(doc.fecha_administrativa)}'
     encabezado = f'Solicitud #{solicitud.id} ({siglas}){presentada}.'
 
-    mios = _relato_escapes(escapes, 'solicitudes', solicitud.id)
+    salvado = _relato_escapes(escapes, 'solicitudes', solicitud.id,
+                              f'la solicitud #{solicitud.id}')
 
     if not instruccion:
         return Bloque(
             PENDIENTE, f'Solicitud #{solicitud.id}',
-            relato=(encabezado,) + mios,
+            relato=(encabezado,),
             pendiente=('Esta solicitud no tiene ninguna fase de instrucción: no hay '
                        'nada instruido que certificar. Cree y complete las fases que '
                        'el procedimiento requiera.',),
+            salvado=salvado,
             nodo=('solicitud', solicitud.id),
         )
 
     _estado, _propio = sem.estado_solicitud(solicitud, estados_fases)
     cuantas = (f'Se instruyó en {len(instruccion)} fase' +
                ('s' if len(instruccion) > 1 else '') + '.')
-    categoria = SALVADO if mios else PASA
-    return Bloque(categoria, f'Solicitud #{solicitud.id}',
-                  relato=(encabezado, cuantas) + mios,
+    return Bloque(SALVADO if salvado else PASA, f'Solicitud #{solicitud.id}',
+                  relato=(encabezado, cuantas), salvado=salvado,
                   nodo=('solicitud', solicitud.id))
 
 
@@ -516,10 +544,10 @@ def _ids_reglas_del_acto() -> tuple:
 # forzó… para cerrar») y sin él («se forzó… para cerrar»), que es lo que hay
 # cuando el usuario ya no consta.
 _FIN_DEL_ESCAPE = {
-    ('CREAR', None):        'crear este elemento',
-    ('BORRAR', None):       'borrar un elemento',
-    ('ALTERAR', None):      'modificar este elemento',
-    ('ALTERAR', 'REABRIR'): 'reabrir esta fase, que estaba cerrada',
+    ('CREAR', None):        'crear {sobre}',
+    ('BORRAR', None):       'borrar {sobre}',
+    ('ALTERAR', None):      'modificar {sobre}',
+    ('ALTERAR', 'REABRIR'): 'reabrir {sobre}, que estaba cerrada',
 }
 
 
@@ -575,8 +603,13 @@ def _escapes_del_arbol(solicitud) -> dict:
     return indice
 
 
-def _relato_escapes(escapes: dict, tabla: str, registro_id: int) -> tuple:
-    """Los escapes de un nodo, ya redactados. Tupla vacía si no hubo ninguno."""
+def _relato_escapes(escapes: dict, tabla: str, registro_id: int, sobre: str) -> tuple:
+    """Los escapes de un nodo, ya redactados. Tupla vacía si no hubo ninguno.
+
+    `sobre` nombra el elemento en la frase («la fase «Consultas»»): el certificado
+    lo lee alguien que no tiene el árbol delante, así que «se forzó el bloqueo para
+    modificar este elemento» no le dice nada.
+    """
     filas = escapes.get((tabla, registro_id))
     if not filas:
         return ()
@@ -584,10 +617,11 @@ def _relato_escapes(escapes: dict, tabla: str, registro_id: int) -> tuple:
     frases = []
     for fila in filas:
         detalle = fila.detalle or {}
-        para = _FIN_DEL_ESCAPE.get(
+        plantilla = _FIN_DEL_ESCAPE.get(
             (fila.operacion, detalle.get('accion')),
-            _FIN_DEL_ESCAPE.get((fila.operacion, None), 'actuar sobre este elemento'),
+            _FIN_DEL_ESCAPE.get((fila.operacion, None), 'actuar sobre {sobre}'),
         )
+        para = plantilla.format(sobre=sobre)
         cuando = f'El {_fecha(fila.created_at)}, ' if fila.created_at else ''
         quien = _quien(fila.usuario_id)
         # Con usuario, activa («CLG forzó…»); sin él, impersonal («se forzó…»).

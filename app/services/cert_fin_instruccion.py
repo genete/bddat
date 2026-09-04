@@ -1,42 +1,52 @@
 """
-Emisión del CERT_FIN_INSTRUCCION — la bisagra entre instrucción y resolución.
+Consolidación del CERT_FIN_INSTRUCCION — la bisagra entre instrucción y resolución.
 
 ADR-043. La fase finalizadora no se abre porque el sistema recuente fases: se
 abre porque consta emitido el certificado de fin de instrucción de esa solicitud
 (art. 82.1 LPACAP, «Instruidos los procedimientos, e inmediatamente antes de
-redactar la propuesta de resolución…»). Este módulo es quien lo emite, y con él
+redactar la propuesta de resolución…»). Este módulo es quien lo produce, y con él
 deja de estar sin dueño el tipo documental que el catálogo declara ENTRADA
 obligatoria del ELABORAR de ELABORACION.
+
+NO ES UNA PUERTA, ES UNA REVISIÓN QUE A VECES SE CONSOLIDA (§E, reescrita)
+=========================================================================
+
+El técnico pregunta «¿cómo va esto?» en cualquier momento, desde el primer día de
+la solicitud, y siempre obtiene un informe (`informe_instruccion.revisar`). Solo
+cuando ese informe sale sin pendientes, ese mismo informe **se consolida** en el
+certificado. Dos desenlaces y ningún error: con pendientes no se crea nada y se
+puede volver a preguntar mañana.
+
+La redacción anterior de §E hacía de esto una puerta que concedía o denegaba, y
+dejaba que la emisión siguiera adelante aunque el motor bloqueara. El efecto se vio
+al implementarlo: un certificado que declara bloqueada la resolución **ocupa el
+ancla de §D** y, como deshacerlo es #838, impide emitir el bueno cuando se resuelve
+lo que faltaba. Un certificado que dice «esto no está listo» no acredita nada: no
+sirve como ENTRADA del ELABORAR que el catálogo le exige ser, ni de ancla para el
+sello de #838.
+
+EVALUAR PRIMERO, SIN CREAR NADA; CONSOLIDAR DESPUÉS (§E ter)
+============================================================
+
+El orden no es libre. Las dos reglas del art. 82.1 casan con el sujeto de la fase
+finalizadora, así que mientras el certificado no conste, disparan. Antes se
+resolvía anclando un `Documento` con url provisional para poder auditar con el
+certificado ya puesto; ahora no hace falta ningún rodeo: se evalúa, y solo si el
+informe sale limpio se crea algo. La regla del art. 82.1 se excluye del criterio de
+«¿limpio?» **por definición** —es la única que este acto satisface, y esperar a que
+deje de disparar sola sería esperar a nunca—, y el PDF la presenta como satisfecha
+por el propio certificado en vez de como bloqueo.
 
 GESTO EXPLÍCITO, NO AUTOMATISMO (decisión de #827)
 ==================================================
 
-La emisión la pide el técnico desde el inspector de la solicitud; no se dispara
-sola al cerrar la última fase. «Instruidos los procedimientos» es un hecho que
-alguien declara (ADR-043 §B): automatizarlo lo convertiría en efecto colateral de
-cerrar una fase, «la última fase de instrucción» no es determinable —nada impide
-que aparezca otra después— y sería opaco justo donde importa, cuando el invariante
-impida la emisión. Mismo criterio que `certificados.crear_cert` (CERT_PLAZO_CUMPLIDO);
-el contraejemplo automático es `cert_fin_ip_consultas`, la deuda que ADR-043 §D
-pone a la vista.
-
-POR QUÉ SE ANCLA ANTES DE AUDITAR
-=================================
-
-El orden de los pasos no es casual. El certificado congela un `AuditoriaResult`
-—«el fundamento jurídico que habilita la resolución»— y la auditoría natural es la
-de abrir la fase finalizadora. Pero las dos reglas del art. 82.1 casan justamente
-con ese sujeto: mientras el certificado no conste, disparan. Auditar antes de
-anclar produciría un certificado que declara bloqueada la resolución por falta del
-certificado que se está emitiendo. Por eso se crea el `Documento`, se fija la FK y
-solo entonces se audita: el snapshot refleja el estado en que la resolución queda
-efectivamente habilitada.
-
-Lo que este servicio NO hace: bloquear porque otra regla del motor siga disparando
-(tasa impagada, organismos sin cerrar…). Esas son contenido normativo escapable
-con justificación y bloquean donde les toca —al crear la fase—; aquí solo se
-constata su estado, y el PDF lo hace constar tal cual. La única puerta cerrada es
-el invariante de ADR-043 §E (`check_invariante('EMITIR', …)`).
+Lo pide el técnico desde el inspector de la solicitud; no se dispara solo al cerrar
+la última fase. «Instruidos los procedimientos» es un hecho que alguien declara
+(§B): automatizarlo lo convertiría en efecto colateral de cerrar una fase, «la
+última fase de instrucción» no es determinable —nada impide que aparezca otra
+después— y sería opaco justo donde importa. Mismo criterio que
+`certificados.crear_cert` (CERT_PLAZO_CUMPLIDO); el contraejemplo automático es
+`cert_fin_ip_consultas`, la deuda que ADR-043 §D pone a la vista.
 
 Deshacer un certificado ya emitido es acto expreso y caro a propósito: va con el
 sello de la instrucción (#838, ADR-043 §F), no aquí.
@@ -44,150 +54,145 @@ sello de la instrucción (#838, ADR-043 §F), no aquí.
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass
+from typing import Optional
 
 from flask_login import current_user
 
 from app import db
-from app.models.documentos import Documento
 from app.models.tipos_documentos import TipoDocumento
-from app.models.tipos_fases import TipoFase
 from app.services import bitacora as bitacora_svc
-from app.services.assembler import auditar_multi
+from app.services import informe_instruccion as informe_svc
 from app.services.generador_cert import generar_certificado_fase
 from app.services.invariantes_esftt import check_invariante
-from app.services.mutaciones_arbol import ResultadoMutacion
-from app.services.plazos import _hoy
 
 log = logging.getLogger(__name__)
 
 CODIGO_CERT = 'CERT_FIN_INSTRUCCION'
 
-# Qué fase finalizadora habilita el certificado en cada solicitud — es el sujeto
-# contra el que se audita. Las dos finalizadoras nunca conviven en la misma
-# solicitud (ADR-043 §C): RECONOCIMIENTO_INTERESADO es la de la solicitud
-# INTERESADO, una solicitud paralela con vida propia; el resto resuelve por
-# RESOLUCION. Este mapa y las dos filas de `reglas_motor` dicen lo mismo por
-# duplicado a propósito —allí el sujeto documenta la regla para el supervisor,
-# aquí se elige contra qué auditar—, y el aviso de arranque de
-# `app/checks/catalogo_requerido.py` vigila que no diverjan si aparece una tercera.
-_FASE_FINALIZADORA_POR_SIGLAS = {'INTERESADO': 'RECONOCIMIENTO_INTERESADO'}
-_FASE_FINALIZADORA_DEFECTO = 'RESOLUCION'
+# El mapa de fase finalizadora vive en `informe_instruccion`, que es quien
+# pregunta al motor. Se reexporta aquí porque el nombre sigue leyéndose mejor
+# desde el certificado, y para no romper a quien ya lo importaba de este módulo.
+codigo_fase_finalizadora = informe_svc.codigo_fase_finalizadora
 
 
-def codigo_fase_finalizadora(solicitud) -> str:
-    """Código del `TipoFase` finalizador que esta solicitud abrirá."""
-    tipo_sol = solicitud.tipo_solicitud
-    siglas = tipo_sol.siglas if tipo_sol else None
-    return _FASE_FINALIZADORA_POR_SIGLAS.get(siglas, _FASE_FINALIZADORA_DEFECTO)
+@dataclass
+class Consolidacion:
+    """Resultado del gesto: siempre hay informe; a veces, además, certificado.
 
-
-def puede_emitirse(solicitud) -> tuple[bool, str]:
-    """(emisible, motivo) sin efectos secundarios — para que la UI sepa si ofrecer
-    el gesto y, si no, por qué. Misma respuesta que daría `emitir_…`, obtenida de
-    las mismas dos comprobaciones para que no puedan divergir."""
-    if solicitud.documento_fin_instruccion_id is not None:
-        return False, 'El certificado de fin de instrucción de esta solicitud ya está emitido.'
-    res_inv = check_invariante('EMITIR', 'SOLICITUD', solicitud.id,
-                               tipo_codigo=CODIGO_CERT)
-    if res_inv is not None:
-        return False, res_inv.motivo or res_inv.norma_compilada
-    return True, ''
-
-
-def emitir_cert_fin_instruccion(solicitud) -> ResultadoMutacion:
+    `error` y `bloqueo` son para fallos reales —ya estaba emitido, el PDF no se
+    generó, la puerta cerrada dijo que no—, no para «faltan cosas»: eso no es un
+    error, es el informe con pendientes, y viaja en `informe`.
     """
-    Emite el certificado de fin de instrucción de `solicitud` y lo ancla a ella.
+    informe: object
+    consolidado: bool = False
+    documento_id: Optional[int] = None
+    certificado_id: Optional[int] = None
+    error: Optional[str] = None
+    bloqueo: object = None
 
-    Devuelve `ResultadoMutacion` con `ids=[documento_id]`, o con `bloqueo` si el
-    invariante de ADR-043 §E lo impide (puerta cerrada, sin justificación posible).
+    def a_dict(self) -> dict:
+        datos = self.informe.a_dict()
+        datos.update({
+            'consolidado': self.consolidado,
+            'documento_id': self.documento_id,
+            'certificado_id': self.certificado_id,
+        })
+        return datos
+
+
+def revisar(solicitud):
+    """Informe de la instrucción, sin efectos. Atajo del servicio del informe."""
+    return informe_svc.revisar(solicitud)
+
+
+def consolidar(solicitud) -> Consolidacion:
+    """
+    Revisa la instrucción de `solicitud` y, si no queda nada pendiente, consolida
+    el informe en el CERT_FIN_INSTRUCCION anclado a ella (ADR-043 §D).
+
+    Devuelve siempre `Consolidacion` con el informe dentro: con pendientes,
+    `consolidado=False` y nada creado; sin pendientes, el certificado emitido.
     """
     if solicitud.documento_fin_instruccion_id is not None:
-        return ResultadoMutacion(
-            ok=False,
+        return Consolidacion(
+            informe=revisar(solicitud),
+            documento_id=solicitud.documento_fin_instruccion_id,
             error='El certificado de fin de instrucción de esta solicitud ya está emitido.',
         )
 
-    # Puerta cerrada (ADR-043 §E): fases de instrucción sin cerrar, o ninguna fase.
-    # Antes que nada — no se crea ni un Documento si la instrucción no ha terminado.
+    informe = revisar(solicitud)
+    if not informe.limpio:
+        return Consolidacion(informe=informe)
+
+    # Puerta cerrada (ADR-043 §E). Sus dos supuestos —fases de instrucción sin
+    # cerrar, o ninguna fase— ya los cubre el informe, que los recoge del árbol; se
+    # comprueba igualmente porque es el invariante quien tiene la última palabra y
+    # quien seguiría aplicando con el motor en modo global INACTIVO. Si alguna vez
+    # discrepara del informe, manda él: certificar que la instrucción terminó cuando
+    # no ha terminado no es un juicio de negocio discutible, es un documento que
+    # miente (§B).
     res_inv = check_invariante('EMITIR', 'SOLICITUD', solicitud.id,
                                tipo_codigo=CODIGO_CERT)
     if res_inv is not None:
-        return ResultadoMutacion(ok=False, bloqueo=res_inv)
+        log.warning('cert_fin_instruccion: el informe de la solicitud %s salió limpio '
+                    'pero el invariante bloquea — %s', solicitud.id,
+                    res_inv.motivo or res_inv.norma_compilada)
+        return Consolidacion(informe=informe, bloqueo=res_inv)
 
     tipo_doc = TipoDocumento.query.filter_by(codigo=CODIGO_CERT).first()
     if tipo_doc is None:
-        return ResultadoMutacion(
-            ok=False,
+        return Consolidacion(
+            informe=informe,
             error=f'TipoDocumento {CODIGO_CERT!r} no encontrado en el catálogo.',
         )
 
-    expediente = solicitud.expediente
-    tipo_fase_fin = TipoFase.query.filter_by(
-        codigo=codigo_fase_finalizadora(solicitud)).first()
-
     try:
-        # 1. Documento con url provisional y ancla a la solicitud. El destino real
-        #    depende del id del certificado, que aún no existe; lo completa
-        #    `generar_certificado_fase` (mismo patrón de url provisional que
-        #    `certificados.crear_cert` y `cert_fin_ip_consultas`).
-        doc = Documento(
-            expediente_id=expediente.id,
-            tipo_doc_id=tipo_doc.id,
-            url=f'bddat://certificados/pendiente-{CODIGO_CERT}',
-            tipo_contenido='application/pdf',
-            fecha_administrativa=_hoy(),
-            asunto=f'Certificado de fin de instrucción — solicitud #{solicitud.id}',
-        )
-        db.session.add(doc)
-        db.session.flush()
-
-        solicitud.documento_fin_instruccion_id = doc.id
-        db.session.flush()
-
-        # 2. Auditoría CON el certificado ya anclado (ver encabezado del módulo).
-        auditoria = auditar_multi(
-            'CREAR', expediente,
-            objeto={'solicitud': solicitud, 'tipo_fase': tipo_fase_fin},
-        )
-
-        # 3. Snapshot inmutable + PDF. `fase=None`: este certificado no es de una
-        #    fase, certifica la instrucción completa (ADR-043 §D).
+        # `fase=None`: este certificado no es de una fase, certifica la instrucción
+        # completa y se ancla a la solicitud (ADR-043 §D). El generador crea el
+        # Documento con su url definitiva y cierra el vínculo por los dos lados.
         cert = generar_certificado_fase(
-            expediente, None, auditoria, CODIGO_CERT,
-            documento=doc, solicitud=solicitud,
+            solicitud.expediente, None, informe.auditoria, CODIGO_CERT,
+            solicitud=solicitud, informe=informe,
         )
-        if cert.ruta_pdf is None:
-            # El PDF no se generó: el ancla apuntaría a un documento sin fichero,
-            # que es peor que no tener certificado. `generar_certificado_fase`
+        if cert.ruta_pdf is None or cert.documento_id is None:
+            # Sin PDF o sin documento, el ancla apuntaría a un certificado que no
+            # existe como papel — peor que no tener certificado. `generar_certificado_fase`
             # ya dejó el error en el log.
             db.session.rollback()
-            return ResultadoMutacion(
-                ok=False,
+            return Consolidacion(
+                informe=informe,
                 error='No se pudo generar el PDF del certificado. Revise el log del servidor.',
             )
 
+        solicitud.documento_fin_instruccion_id = cert.documento_id
+        db.session.flush()
+
         bitacora_svc.registrar(
-            current_user.id, 'CREAR', 'documentos', doc.id,
+            current_user.id, 'CREAR', 'documentos', cert.documento_id,
             detalle={
                 'tipo_documento': CODIGO_CERT,
                 'solicitud_id': solicitud.id,
-                'sujeto_auditado': auditoria.sujeto,
-                'auditoria_permitida': auditoria.permitido,
+                'sujeto_auditado': informe.sujeto,
                 'certificado_fase_id': cert.id,
+                'actos_salvados': sum(len(b.salvado) for b in informe.salvados),
             },
         )
 
         db.session.commit()
     except Exception as exc:  # noqa: BLE001 — se devuelve al llamador, no se traga
         db.session.rollback()
-        log.error('emitir_cert_fin_instruccion: fallo en solicitud %s: %s',
+        log.error('cert_fin_instruccion: fallo consolidando la solicitud %s: %s',
                   solicitud.id, exc)
-        return ResultadoMutacion(ok=False, error=str(exc))
+        return Consolidacion(informe=informe, error=str(exc))
 
     log.info(
-        'CERT_FIN_INSTRUCCION emitido: doc=%s cert=%s solicitud=%s expediente=%s '
-        '(auditoría %s sobre %s)',
-        doc.id, cert.id, solicitud.id, expediente.id,
-        'permitida' if auditoria.permitido else 'con bloqueos', auditoria.sujeto,
+        'CERT_FIN_INSTRUCCION consolidado: doc=%s cert=%s solicitud=%s expediente=%s '
+        '(sujeto %s, %s acto(s) salvado(s))',
+        cert.documento_id, cert.id, solicitud.id, solicitud.expediente_id,
+        informe.sujeto, sum(len(b.salvado) for b in informe.salvados),
     )
-    return ResultadoMutacion(ok=True, ids=[doc.id])
+    return Consolidacion(
+        informe=informe, consolidado=True,
+        documento_id=cert.documento_id, certificado_id=cert.id,
+    )
