@@ -8,16 +8,17 @@
 
 ---
 
-**Hecho:** **#827 — el certificado de fin de instrucción, la bisagra hacia la resolución.** [PR #841](https://github.com/genete/bddat/pull/841). El generador de #373 deja de estar desconectado —sus únicos invocadores eran los tests— y el `CERT_FIN_INSTRUCCION` se emite de verdad, como acto expreso del técnico y solo cuando la revisión sale sin pendientes. El diseño está en ADR-043 (§E reescrita, y §E bis/§E ter precisadas con lo que salió al implementarlo). Lo que no está allí y conviene tener a mano: los 3 fallos de `test_765::TestBypassEnPatchDeFase` que este merge dejó vivos —cogían la primera fase del expediente seed y la asumían abierta, y el certificado la selló— **ya están resueltos** ([#842](https://github.com/genete/bddat/issues/842)), que de paso barrió otras tres selecciones de nodo con la misma trampa.
+**Hecho:** **#838 — el sello de la instrucción y el acto que lo retira** (ADR-043 §F, primera pieza). [PR #845](https://github.com/genete/bddat/pull/845). El diseño está en el ADR (§F bis y §F ter, escritas al implementarlo). Lo que no está allí ni en los issues y conviene tener a mano:
+
+- **La suite deja 5 fallos vivos, todos por datos de la BD de desarrollo, ninguno de código.** Tres (`test_smoke_pool_documentos` ×2, `test_smoke_expedientes_pool`) por un documento con url `bddat://ui-827` —residuo de las pruebas de #827— que revienta el render del pool con `NotImplementedError`; dos de `test_738` por justificantes huérfanos. Verificado con `git stash` que fallan igual sin la rama. El primer grupo se arregla borrando ese documento, no tocando código.
+- **Los datos de prueba de AT-15 cambiaron al verificar:** la solicitud 3570 se quedó **sin** certificado (deshecho a propósito) y la 3572 se recertificó, así que su certificado es el 1006 y no el 978. La 3102 sigue certificada con el 901, que es el caso útil de «certificado anterior a 827b, con `documento_id` a NULL».
 
 **Próximo:**
 
-1. **#838 — el sello de la instrucción** (ADR-043 §F, primera pieza). Ya tiene su ancla: emitido el certificado, reabrir una fase de instrucción y crear una nueva son el mismo acto por sus dos extremos, y el mismo check los cubre. **Entra solo**: el trámite de actuaciones complementarias del art. 87 ([#839](https://github.com/genete/bddat/issues/839)) no va con él, ver abajo. Al abordarlo hay que decidir qué hacer mientras ese trámite no exista — §F lo plantea como puerta cerrada estructural, y sin el art. 87 la única salida ante un expediente gris es la que el sello prohíbe.
-2. **#824 — fecha administrativa a futuro.** Deuda reciente. Afecta a producción pero no bloquea la construcción de expedientes.
+1. **#824 — fecha administrativa a futuro.** Deuda reciente. Afecta a producción pero no bloquea la construcción de expedientes.
+2. Después, **ampliar el catálogo de expedientes-tipo**, con un objetivo concreto: poder trabajar en **consultas** con comodidad. Es la continuación natural del foco, que ha ido fase a fase —análisis de solicitud primero, consultas ahora—, y lo que se construye para eso son los scripts de `scripts/expedientes_dummy/`. La confianza que da un expediente-tipo alcanza solo a lo que ejercita: hoy, AAP+AAC exento sin IP ni consultas, con dos vueltas dentro de plazo.
 
-Después, **ampliar el catálogo de expedientes-tipo**, con un objetivo concreto: poder trabajar en **consultas** con comodidad. Es la continuación natural del foco, que ha ido fase a fase —análisis de solicitud primero, consultas ahora—, y lo que se construye para eso son los scripts de `scripts/expedientes_dummy/`. La confianza que da un expediente-tipo alcanza solo a lo que ejercita: hoy, AAP+AAC exento sin IP ni consultas, con dos vueltas dentro de plazo.
-
-**Por qué #839 no va con #838.** El art. 87 es una particularidad de la **fase de resolución**, y esa fase tiene esa y muchas más. Se aborda cuando el foco llegue ahí, no como apéndice del sello. Mismo criterio con el que se han ido abriendo las fases anteriores.
+**Por qué #839 sigue sin foco.** El art. 87 es una particularidad de la **fase de resolución**, y esa fase tiene esa y muchas más; se aborda cuando el foco llegue ahí. Lo que #838 aclaró es que **ya no bloquea a nadie**: sin ese trámite la salida existe igual —dentro de la fase que resuelve, forzando el vocabulario, con constancia en bitácora—, y esa constancia es precisamente la señal de cuándo hace falta construirlo (ADR-043 §F bis).
 
 **Fuera del foco:** #607 aplazado · #572 va con el compilador de expediente para recurso/contencioso · #568 diferido (sin casos en años) · #306/#428/#304 son helpers · #743, #570 (emparejable con #755) en la cola general · #773 espera la ampliación de `Usuario` · ADR-021 y #644-648 aparcados.
 
