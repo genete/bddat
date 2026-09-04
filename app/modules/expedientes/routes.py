@@ -998,12 +998,18 @@ def pool_editar_documento(id, doc_id):
 
         if 'fecha_administrativa' in datos:
             fecha_raw = datos['fecha_administrativa']
-            doc.fecha_administrativa = None
+            # El except cubre SOLO el parseo del formato: asignar dentro de él
+            # se tragaba también el ValueError del invariante de fecha futura
+            # (#824), que quedaba en un borrado silencioso de la fecha. Las
+            # otras tres rutas del pool ya asignan en el constructor, fuera de
+            # su try de parseo, y por eso no tenían este agujero.
+            fecha_parseada = None
             if fecha_raw:
                 try:
-                    doc.fecha_administrativa = date.fromisoformat(fecha_raw)
+                    fecha_parseada = date.fromisoformat(fecha_raw)
                 except ValueError:
                     pass
+            doc.fecha_administrativa = fecha_parseada
 
         if 'asunto' in datos:
             doc.asunto = (datos['asunto'] or '').strip() or None
