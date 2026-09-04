@@ -160,6 +160,12 @@ def check_invariante(accion: str, sujeto: str, entidad_id: int,
     terminado no es un juicio de negocio discutible, es un documento que miente
     (ADR-043 §B). Sin `tipo_codigo` no evalúa nada, como CREAR.
 
+    **Contrato de `DESHACER` (#838, ADR-043 §F).** El simétrico del anterior, con la
+    misma firma: retirar el documento que se emitió. Verbo propio y no `BORRAR`
+    porque el sujeto no es el documento sino aquello a lo que anclaba, y porque lo
+    que se comprueba no es la integridad del pool —eso lo hace la guarda de
+    `_documento_es_referenciado`— sino que el estado al que se vuelve sea coherente.
+
     Relación con el modo global del motor (#723, checklist punto 3, decisión
     explícita): los invariantes —forzables o puerta cerrada— quedan siempre
     ajenos a `motor_modo_global.aplicar_modo_global`. Ningún caller pasa el
@@ -174,6 +180,8 @@ def check_invariante(accion: str, sujeto: str, entidad_id: int,
         return _check_crear(sujeto, entidad_id, tipo_codigo)
     if accion == 'EMITIR':
         return _check_emitir(sujeto, entidad_id, tipo_codigo)
+    if accion == 'DESHACER':
+        return _check_deshacer(sujeto, entidad_id, tipo_codigo)
     if accion == 'BORRAR':
         return _check_borrar(sujeto, entidad_id)
     if accion == 'FINALIZAR':
@@ -422,6 +430,69 @@ def _check_emitir_cert_fin_instruccion(solicitud_id: int) -> Optional[Evaluacion
         f'{"siguen" if plural else "sigue"} sin cerrarse. Ciérre'
         f'{"las" if plural else "la"} formalizando su resultado, o bórre'
         f'{"las" if plural else "la"} si no {"eran necesarias" if plural else "era necesaria"}.'
+    )
+
+
+def _check_deshacer(sujeto: str, entidad_id: int,
+                    tipo_codigo: Optional[str]) -> Optional[EvaluacionResult]:
+    """Precondiciones para retirar un certificado ya emitido (#838, ADR-043 §F).
+
+    Simétrico de `_check_emitir` y discrimina igual, por tipo documental.
+    """
+    if not tipo_codigo:
+        return None
+
+    if sujeto == 'SOLICITUD' and tipo_codigo == 'CERT_FIN_INSTRUCCION':
+        return _check_deshacer_cert_fin_instruccion(entidad_id)
+
+    return None
+
+
+def _check_deshacer_cert_fin_instruccion(solicitud_id: int) -> Optional[EvaluacionResult]:
+    """No se deshace el certificado de fin de instrucción mientras la solicitud
+    tenga fase finalizadora (#838, ADR-043 §F).
+
+    Es el **espejo exacto** de la puerta de emisión: aquella exige que no quede
+    abierta ninguna fase de instrucción, esta que no exista ninguna fase de las que
+    el certificado habilitó. Entre las dos, el estado al que se vuelve deshaciendo es
+    el mismo del que se salió al emitir, y no un híbrido —una resolución a medias
+    apoyada en un certificado que ya no existe—.
+
+    **No cascadea nada**, y esa es la parte cara del acto (§F: «deshacer los pasos
+    dados en la fase finalizadora y borrarla; solo entonces vuelve a haber instrucción
+    abierta. Acto expreso y caro a propósito»). El rebobinado lo hace el técnico con
+    las herramientas que ya tiene —reabrir la fase que resuelve, que el sello no
+    toca, y borrarla hoja a hoja (#722)—, de modo que cada paso pasa por su propio
+    check en vez de por un borrado en cadena que nadie mira. Un servicio que arrasara
+    con la resolución entera para levantar el sello sería justamente lo contrario de
+    caro.
+
+    Puerta cerrada, como sus dos hermanas: deshacer el certificado con la resolución
+    en marcha no es un juicio de negocio discutible, es dejar el expediente en un
+    estado que no significa nada.
+    """
+    solicitud = Solicitud.query.get(solicitud_id)
+    if solicitud is None:
+        return None
+
+    finalizadoras = [
+        f for f in solicitud.fases
+        if f.tipo_fase and f.tipo_fase.es_finalizadora
+    ]
+    if not finalizadoras:
+        return None
+
+    nombres = ', '.join(
+        f'"{f.tipo_fase.nombre}"' if f.tipo_fase else f'#{f.id}'
+        for f in sorted(finalizadoras, key=lambda f: f.id)
+    )
+    plural = len(finalizadoras) > 1
+    return _bloquear(
+        f'No se puede deshacer el certificado mientras exist{"an" if plural else "a"} '
+        f'{"las fases" if plural else "la fase"} {nombres}: '
+        f'{"son" if plural else "es"} justamente lo que el certificado habilitó. '
+        f'Deshaga antes lo hecho allí y bórre{"las" if plural else "la"} — reabrirla '
+        f'sí está permitido, el sello no alcanza a la fase que resuelve.'
     )
 
 
