@@ -8,7 +8,7 @@
 
 ---
 
-**Hecho:** **#827 — el certificado de fin de instrucción, la bisagra hacia la resolución.** [PR #841](https://github.com/genete/bddat/pull/841). El generador de #373 deja de estar desconectado —sus únicos invocadores eran los tests— y el `CERT_FIN_INSTRUCCION` se emite de verdad, como acto expreso del técnico y solo cuando la revisión sale sin pendientes. El diseño está en ADR-043 (§E reescrita, y §E bis/§E ter precisadas con lo que salió al implementarlo). Lo que no está allí y conviene tener a mano: **los 3 fallos de `test_765::TestBypassEnPatchDeFase` siguen vivos y son de datos** —cogen la primera fase del expediente seed y la asumen abierta—, y la tarea de fondo para desacoplarlos esperaba justamente este merge.
+**Hecho:** **#827 — el certificado de fin de instrucción, la bisagra hacia la resolución.** [PR #841](https://github.com/genete/bddat/pull/841). El generador de #373 deja de estar desconectado —sus únicos invocadores eran los tests— y el `CERT_FIN_INSTRUCCION` se emite de verdad, como acto expreso del técnico y solo cuando la revisión sale sin pendientes. El diseño está en ADR-043 (§E reescrita, y §E bis/§E ter precisadas con lo que salió al implementarlo). Lo que no está allí y conviene tener a mano: los 3 fallos de `test_765::TestBypassEnPatchDeFase` que este merge dejó vivos —cogían la primera fase del expediente seed y la asumían abierta, y el certificado la selló— **ya están resueltos** ([#842](https://github.com/genete/bddat/issues/842)), que de paso barrió otras tres selecciones de nodo con la misma trampa.
 
 **Próximo:**
 
