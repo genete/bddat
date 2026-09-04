@@ -156,6 +156,15 @@ def create_app(config_name='development'):
         from app.services.reloj_simulado import obtener
         return {'reloj_simulado': obtener()}
 
+    # Context processor — fecha de trabajo del sistema para los templates (#824).
+    # A diferencia de `reloj_simulado`, que solo existe en DEBUG porque es el badge
+    # de la topbar, esta siempre tiene valor: es contra la que la interfaz rechaza
+    # una fecha administrativa futura, y en producción es la fecha real.
+    @app.context_processor
+    def inject_hoy_sistema():
+        from app.services.reloj_simulado import hoy
+        return {'hoy_sistema': hoy()}
+
     # Global Jinja2 — tiene_permiso disponible en todos los templates (#174)
     from app.utils.permisos import tiene_permiso
     app.jinja_env.globals['tiene_permiso'] = tiene_permiso

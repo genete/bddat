@@ -703,6 +703,10 @@
   // ----------------------------------------------------------------
   // EntradaFecha — instancias
   // ----------------------------------------------------------------
+  // Todas recogen fecha administrativa, así que todas llevan el tope de hoy
+  // (#824): la fecha de trabajo del sistema, que en desarrollo es la del reloj
+  // simulado y en producción la real.
+  var EF_MAX_HOY  = '{{ hoy_sistema.isoformat() }}';
   var _ef_editar  = null;
   var _ef_url_ext = null;
   var _ef_masivo  = null;
@@ -779,14 +783,14 @@
 
     // EntradaFecha — al abrir modales que los contienen
     document.getElementById('modal-url-externa').addEventListener('show.bs.modal', function () {
-      if (!_ef_url_ext) _ef_url_ext = new EntradaFecha('#ef-url-ext-fecha', { name: '_f_url_ext' });
+      if (!_ef_url_ext) _ef_url_ext = new EntradaFecha('#ef-url-ext-fecha', { name: '_f_url_ext', maxHoy: EF_MAX_HOY });
     });
     _modal_editar_el.addEventListener('show.bs.modal', function () {
-      if (!_ef_editar) _ef_editar = new EntradaFecha('#ef-editar-fecha', { name: '_f_editar' });
+      if (!_ef_editar) _ef_editar = new EntradaFecha('#ef-editar-fecha', { name: '_f_editar', maxHoy: EF_MAX_HOY });
     });
 
     // EntradaFecha del panel masivo (en el DOM principal, inicializar ya)
-    _ef_masivo = new EntradaFecha('#ef-masivo-fecha', { name: '_f_masivo' });
+    _ef_masivo = new EntradaFecha('#ef-masivo-fecha', { name: '_f_masivo', maxHoy: EF_MAX_HOY });
 
     // Igualar alturas de panel-masivo y barra-filtros (sin salto al intercambiar)
     sincronizar_altura_c1();
@@ -979,7 +983,7 @@
         '<td><div id="' + ef_id + '"></div></td>' +
         '<td class="text-center"><input type="checkbox" class="form-check-input prioridad-check"></td>';
       tbody.appendChild(tr);
-      _ef_metas.push(new EntradaFecha('#' + ef_id, { name: '_ef_meta_' + i }));
+      _ef_metas.push(new EntradaFecha('#' + ef_id, { name: '_ef_meta_' + i, maxHoy: EF_MAX_HOY }));
     });
 
     var n = _seleccionados.length;
@@ -1308,7 +1312,7 @@
         '<td><div id="' + ef_id + '"></div></td>' +
         '<td class="text-center"><input type="checkbox" class="form-check-input prioridad-check"></td>';
       tbody.appendChild(tr);
-      _ef_subida.push(new EntradaFecha('#' + ef_id, { name: '_ef_subir_' + i }));
+      _ef_subida.push(new EntradaFecha('#' + ef_id, { name: '_ef_subir_' + i, maxHoy: EF_MAX_HOY }));
 
       // Enganche 1 (ADR-034 §6, #657): autorrelleno de fecha_administrativa al elegir
       // JUSTIFICANTE_NOTIFICA — parseo transitorio, nunca escribe en notificaciones
