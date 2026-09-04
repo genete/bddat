@@ -143,7 +143,8 @@ def validar_catalogo() -> List[str]:
 
 def _validar_finalizadoras_con_regla() -> List[str]:
     """Toda `TipoFase.es_finalizadora` debe estar nombrada por una regla de
-    precedencia del art. 82.1 (#827, ADR-043 §C) y por el mapa del emisor.
+    precedencia del art. 82.1 (#827, ADR-043 §C) y por el mapa del informe de fin
+    de instrucción, que es quien elige contra qué fase se audita.
 
     Las reglas se escribieron con sujeto explícito —una fila por finalizadora— en
     vez de un sujeto genérico con una condición Python, para que el supervisor lea
@@ -170,7 +171,7 @@ def _validar_finalizadoras_con_regla() -> List[str]:
     try:
         from app.models.tipos_fases import TipoFase
         from app.models.motor_reglas import ReglaMotor
-        from app.services.cert_fin_instruccion import (
+        from app.services.informe_instruccion import (
             _FASE_FINALIZADORA_POR_SIGLAS, _FASE_FINALIZADORA_DEFECTO,
         )
 
@@ -206,7 +207,7 @@ def _validar_finalizadoras_con_regla() -> List[str]:
     for codigo in sorted(finalizadoras - conocidas_por_emisor):
         avisos.append(
             f"TipoFase.codigo='{codigo}' es finalizadora y no está en el mapa de "
-            f'cert_fin_instruccion → el certificado se auditaría contra otra fase (#827)'
+            f'informe_instruccion → el certificado se auditaría contra otra fase (#827)'
         )
     return avisos
 

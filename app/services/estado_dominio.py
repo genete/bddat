@@ -74,6 +74,12 @@ _TIPO_BORRADOR_FIRMA = 'BORRADOR_FIRMA'
 MOTIVO: dict[str, str] = {
     'PENDIENTE_TRAMITAR':               'falta iniciar o completar una tarea',
     'PENDIENTE_ESTUDIO':                'falta analizar o decidir el resultado',
+    # Faltaba hasta #827: su primer consumidor (_check_completitud_cierre) solo
+    # explica trámites, y una fase PDTE_CIERRE es precisamente la que sí puede
+    # cerrarse. El informe de fin de instrucción sí necesita nombrarla —ahí una
+    # fase sin formalizar es lo que impide certificar—, y la redacción vive aquí
+    # para que no se invente otra distinta en cada consumidor.
+    'PENDIENTE_CERRAR':                 'falta formalizar su cierre con el documento de resultado',
     'PENDIENTE_REDACTAR':               'falta redactar el documento',
     'PENDIENTE_FIRMA':                  'el documento está pendiente de firma',
     'PENDIENTE_NOTIFICAR':              'falta registrar el envío de la notificación',
