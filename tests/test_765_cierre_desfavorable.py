@@ -298,13 +298,23 @@ class TestBypassEnPatchDeFase:
     """
 
     def _fase_id(self, app, expediente_seed):
+        """Id de una fase ABIERTA del expediente seed.
+
+        El filtro de `documento_resultado_id` no es cosmético: bajo una fase
+        sellada `_resolver_nodo` corta con 422 antes de llegar al servicio
+        (#720, ADR-036 §6, capa 1), así que sin él estos tres tests dependen de
+        que la PRIMERA fase del expediente de desarrollo siga abierta. Dejó de
+        estarlo al emitirse el certificado de fin de instrucción de #827 y los
+        tres se pusieron rojos sin que cambiara una línea de código (#842).
+        """
         from app.models.fases import Fase
         from app.models.solicitudes import Solicitud
         with app.app_context():
             fase = (Fase.query.join(Solicitud, Fase.solicitud_id == Solicitud.id)
-                    .filter(Solicitud.expediente_id == expediente_seed).first())
+                    .filter(Solicitud.expediente_id == expediente_seed,
+                            Fase.documento_resultado_id.is_(None)).first())
             if fase is None:
-                pytest.skip('El expediente de la BD de desarrollo no tiene fases')
+                pytest.skip('El expediente de la BD de desarrollo no tiene fases abiertas')
             return fase.id
 
     def test_patch_fase_propaga_justificacion(self, app, usuario_supervisor, expediente_seed):
