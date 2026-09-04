@@ -40,6 +40,23 @@ class Solicitud(db.Model):
         - La fecha administrativa de ese documento es la fecha de inicio del cómputo de plazos
         - Ver §2.bis DISEÑO_FECHAS_PLAZOS.md
 
+    CAMPO DOCUMENTO_FIN_INSTRUCCION_ID (#827, ADR-043 §D):
+        - NULLABLE: FK al certificado de fin de instrucción (CERT_FIN_INSTRUCCION)
+        - Tercera columna de la serie de ADR-041 §D bis, entre las otras dos:
+          entrada (art. 21.3.b) → fin de instrucción (art. 82.1) → cierre (art. 40.4)
+        - Es la bisagra entre instrucción y resolución: la fase finalizadora no se
+          abre porque el sistema recuente fases, sino porque consta emitido este
+          certificado («Instruidos los procedimientos, e inmediatamente antes de
+          redactar la propuesta de resolución…»). Lo comprueban dos reglas de
+          `reglas_motor` con sujeto explícito, vía la variable
+          `solicitud_tiene_cert_fin_instruccion`
+        - Por qué FK y no búsqueda por tipo en el pool: `Documento` solo tiene FK a
+          expediente, de modo que buscar CERT_FIN_INSTRUCCION en el pool confunde
+          dos solicitudes del mismo expediente — el defecto real de
+          `cert_fin_ip_consultas._buscar_existente`, que este ancla no hereda
+        - Tampoco cuelga de una fase: ninguna representa el conjunto de la
+          instrucción (`CertificadoFase.fase_id` queda NULL para este certificado)
+
     CAMPO DOCUMENTO_CIERRE_ID (#778, ADR-041 §D bis):
         - NULLABLE: FK al certificado de cierre de la solicitud (CERT_CIERRE_SOLICITUD)
         - Pareja de DOCUMENTO_SOLICITUD_ID: uno ancla la fecha de inicio del plazo
@@ -79,6 +96,7 @@ class Solicitud(db.Model):
         db.Index('idx_solicitudes_entidad', 'entidad_id'),
         db.Index('idx_solicitudes_doc_solicitud', 'documento_solicitud_id'),
         db.Index('idx_solicitudes_doc_cierre', 'documento_cierre_id'),
+        db.Index('idx_solicitudes_doc_fin_instruccion', 'documento_fin_instruccion_id'),
         {'schema': 'public'}
     )
     
@@ -124,6 +142,15 @@ class Solicitud(db.Model):
         comment='FK a DOCUMENTOS. Ancla de trazabilidad al doc de solicitud (fecha admin en Documento.fecha_administrativa)'
     )
 
+    documento_fin_instruccion_id = db.Column(
+        db.Integer,
+        db.ForeignKey('public.documentos.id', name='fk_solicitudes_documento_fin_instruccion'),
+        nullable=True,
+        comment='FK a DOCUMENTOS. Certificado de fin de instrucción de la solicitud '
+                '(CERT_FIN_INSTRUCCION): consta que la instrucción terminó y habilita '
+                'la fase finalizadora (art. 82.1 LPACAP, #827)'
+    )
+
     documento_cierre_id = db.Column(
         db.Integer,
         db.ForeignKey('public.documentos.id', name='fk_solicitudes_documento_cierre'),
@@ -145,6 +172,8 @@ class Solicitud(db.Model):
     solicitud_afectada = db.relationship('Solicitud', remote_side=[id], backref='solicitudes_dependientes')
     documento_solicitud = db.relationship('Documento', foreign_keys=[documento_solicitud_id])
     documento_cierre = db.relationship('Documento', foreign_keys=[documento_cierre_id])
+    documento_fin_instruccion = db.relationship(
+        'Documento', foreign_keys=[documento_fin_instruccion_id])
     
     # Properties
     @property

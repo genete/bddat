@@ -60,12 +60,16 @@ def _sumar_agregados(acc: dict, otro: dict) -> None:
 # Opciones de carga ansiosa (compartidas por el árbol completo y la solicitud única)
 # ---------------------------------------------------------------------------
 
-def _opciones_solicitud() -> list:
+def opciones_solicitud() -> list:
     """Eager-loading de la jerarquía Solicitud→Fase→Trámite→Tarea→Documento.
 
     selectinload para colecciones (evita el producto cartesiano de joinedload
     anidado) + joinedload para escalares → sin N+1. Lo comparten construir_arbol
     (todas las solicitudes del expediente) y construir_arbol_solicitud (una sola).
+
+    Público desde #827: `informe_instruccion` recorre exactamente el mismo grafo
+    —el árbol entero de una solicitud, con los documentos de cada tarea— y escribir
+    allí otra lista de options sería mantener dos copias del mismo mapa.
     """
     return [
         joinedload(Solicitud.tipo_solicitud),
@@ -128,7 +132,7 @@ def construir_arbol(expediente_id: int) -> Optional[dict]:
         solicitudes = (
             Solicitud.query
             .filter_by(expediente_id=expediente_id)
-            .options(*_opciones_solicitud())
+            .options(*opciones_solicitud())
             .order_by(Solicitud.id)
             .all()
         )
@@ -170,7 +174,7 @@ def construir_arbol_solicitud(solicitud_id: int) -> Optional[dict]:
             Solicitud.query
             .options(
                 joinedload(Solicitud.expediente).joinedload(Expediente.titular),
-                *_opciones_solicitud(),
+                *opciones_solicitud(),
             )
             .get(solicitud_id)
         )
@@ -319,7 +323,7 @@ def _serializar_organismos_fase(fase, tramites_data: list[dict]) -> list[dict]:
 
     Solo consulta TramiteOrganismo si la fase tiene organismos: las fases que no
     son CONSULTAS (la inmensa mayoría del árbol) no pagan esta query — fase.organismos
-    ya viene precargado (_opciones_solicitud) sin coste adicional por fase.
+    ya viene precargado (opciones_solicitud) sin coste adicional por fase.
     """
     organismos = fase.organismos
     if not organismos:

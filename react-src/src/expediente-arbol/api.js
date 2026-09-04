@@ -65,6 +65,21 @@ export function postEnviarConsultas(expedienteId, faseId) {
   return api.post(`/api/expedientes/${expedienteId}/nodo/fase/${faseId}/organismos/enviar-consultas`, {})
 }
 
+// Revisa la instrucción de la solicitud y, si no queda nada pendiente, consolida el
+// CERT_FIN_INSTRUCCION (POST, #827, ADR-043 §E). Sin body: no hay nada que elegir.
+// Repetible desde el primer día de la solicitud — preguntar «¿cómo va esto?» no
+// tiene precondiciones, y que falte algo NO es un error.
+// Respuesta 200 siempre que la revisión se pueda hacer:
+//   {limpio, consolidado, documento_id, certificado_id, bloques[], pendientes[], salvados[]}
+//   con consolidado:false cuando quedan pendientes — y en ese caso no se ha creado nada.
+// 422 solo por errores reales: ya emitido, catálogo incompleto o PDF no generado.
+export function postCertificarFinInstruccion(expedienteId, solicitudId) {
+  return api.post(
+    `/api/expedientes/${expedienteId}/nodo/solicitud/${solicitudId}/certificado-fin-instruccion`,
+    {},
+  )
+}
+
 // Contenedor de la tarea ANALIZAR (#442). Respuesta: {resultado, documento_producido,
 // secciones_extendidas, defectos_consolidado, completo}.
 export function getAnalizar(expedienteId, tareaId) {

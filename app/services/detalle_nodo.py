@@ -256,12 +256,33 @@ def _detalle_solicitud(exp, sol_id: int) -> dict:
         _campo('Observaciones', sol.observaciones),
     )
     documentos = [_serializar_documento(exp.id, doc_sol, 'CONSUMIDO')] if doc_sol else []
+    doc_fin = sol.documento_fin_instruccion
+    if doc_fin:
+        documentos.append(_serializar_documento(exp.id, doc_fin, 'PRODUCIDO'))
     return {
         'nodo': {'tipo': 'solicitud', 'id': sol.id},
         'campos': campos,
         'documentos': documentos,
         'plazo': None,
         'referencia': _ref_solicitud(exp, sol),
+        'cert_fin_instruccion': _cert_fin_instruccion(sol),
+    }
+
+
+def _cert_fin_instruccion(sol) -> dict:
+    """Estado de la bisagra instrucción/resolución para el inspector (#827,
+    ADR-043 §E): solo si el certificado consta emitido, y cuál es.
+
+    Nada más, y eso es el cambio: mientras el gesto era una puerta, el inspector
+    traía además `puede_emitirse` y el motivo del «todavía no» para deshabilitar el
+    botón. Con el gesto convertido en revisión, el botón está siempre activo —
+    preguntar «¿cómo va esto?» nunca es ilegítimo— y el porqué lo da el informe al
+    pulsarlo, con mucho más detalle del que cabía en una frase. De paso, cargar el
+    inspector de una solicitud deja de evaluar el invariante cada vez.
+    """
+    return {
+        'emitido': sol.documento_fin_instruccion_id is not None,
+        'documento_id': sol.documento_fin_instruccion_id,
     }
 
 
