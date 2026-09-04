@@ -438,15 +438,7 @@ function CertFinInstruccion() {
   const cert = detalle && detalle.cert_fin_instruccion
   if (!cert) return null
 
-  if (cert.emitido) {
-    return (
-      <div className="alert alert-success py-2 px-3 small mb-3">
-        <i className="bi bi-patch-check-fill me-1" />
-        <strong>Instrucción terminada.</strong> El certificado de fin de instrucción
-        está emitido y la fase de resolución puede abrirse.
-      </div>
-    )
-  }
+  if (cert.emitido) return <SelloInstruccion />
 
   return (
     <div className="d-flex flex-column gap-2 px-2 py-2 rounded border bg-light mb-3">
@@ -467,6 +459,79 @@ function CertFinInstruccion() {
       >
         {certificando ? 'Revisando…' : '📜 Certificar fin de instrucción'}
       </button>
+    </div>
+  )
+}
+
+// El sello, con su vía de salida (#838, ADR-043 §F). Emitido el certificado, la
+// instrucción queda declarada terminada y ninguna fase de instrucción se abre ni se
+// reabre. Lo que este bloque tiene que decir es doble: que está sellada, y qué hacer
+// si aun así falta algo.
+//
+// Las dos vías van escritas, no solo la que tiene botón: la primera —recabar algo
+// más dentro de la fase que resuelve, art. 87— no necesita nada de aquí, y quien la
+// necesite debe encontrarla antes que el botón de deshacer, que es la cara. Mismo
+// motivo por el que el bloqueo del backend las nombra en vez de prohibir a secas.
+//
+// El formulario está plegado por defecto, al revés que ReabrirFase, que lo muestra
+// siempre: allí la fase cerrada está pidiendo abrirse para poder trabajar, y aquí el
+// estado normal es que el sello se quede puesto. Desplegarlo es ya parte del acto.
+function SelloInstruccion() {
+  const [abierto, setAbierto] = React.useState(false)
+  const [justificacion, setJustificacion] = React.useState('')
+  const deshaciendo = useArbolStore((s) => s.deshaciendoFinInstruccion)
+  const deshacer    = useArbolStore((s) => s.deshacerFinInstruccion)
+
+  return (
+    <div className="d-flex flex-column gap-2 px-2 py-2 rounded border border-success-subtle bg-success-subtle mb-3">
+      <span className="small">
+        <i className="bi bi-patch-check-fill me-1" />
+        <strong>Instrucción terminada.</strong> El certificado de fin de instrucción
+        está emitido y la fase de resolución puede abrirse.
+      </span>
+      <span className="small text-muted">
+        Mientras conste, no se abre ninguna fase de instrucción nueva ni se reabre una
+        cerrada. Si falta recabar algo antes de resolver, acuérdelo dentro de la fase
+        que resuelve, sin volver a la instrucción (art. 87 LPACAP).
+      </span>
+
+      {!abierto ? (
+        <button type="button" className="btn btn-sm btn-link text-danger p-0 text-start"
+                onClick={() => setAbierto(true)}>
+          La instrucción no estaba terminada: deshacer el certificado
+        </button>
+      ) : (
+        <>
+          <span className="small text-muted">
+            Se borrará el certificado y volverá a haber instrucción abierta. Antes hay
+            que haber deshecho y borrado la fase que resuelve, si ya se creó. Queda
+            registrado en bitácora y el próximo certificado lo hará constar.
+          </span>
+          <textarea
+            className="form-control form-control-sm"
+            rows={2}
+            placeholder="Justificación obligatoria para deshacer el certificado"
+            value={justificacion}
+            onChange={(e) => setJustificacion(e.target.value)}
+            disabled={deshaciendo}
+          />
+          <div className="d-flex gap-2">
+            <button
+              type="button"
+              className="btn btn-sm btn-danger"
+              disabled={deshaciendo || !justificacion.trim()}
+              onClick={() => deshacer(justificacion.trim())}
+            >
+              {deshaciendo ? 'Deshaciendo…' : '↩️ Deshacer el certificado'}
+            </button>
+            <button type="button" className="btn btn-sm btn-outline-secondary"
+                    disabled={deshaciendo}
+                    onClick={() => { setAbierto(false); setJustificacion('') }}>
+              Cancelar
+            </button>
+          </div>
+        </>
+      )}
     </div>
   )
 }

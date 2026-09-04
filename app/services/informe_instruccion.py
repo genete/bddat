@@ -436,11 +436,12 @@ def _solicitud(solicitud, instruccion: list, estados_fases: list,
 
     salvado = _relato_escapes(escapes, 'solicitudes', solicitud.id,
                               f'la solicitud #{solicitud.id}')
+    reversiones = _relato_reversiones(solicitud)
 
     if not instruccion:
         return Bloque(
             PENDIENTE, f'Solicitud #{solicitud.id}',
-            relato=(encabezado,),
+            relato=(encabezado,) + reversiones,
             pendiente=('Esta solicitud no tiene ninguna fase de instrucción: no hay '
                        'nada instruido que certificar. Cree y complete las fases que '
                        'el procedimiento requiera.',),
@@ -452,8 +453,54 @@ def _solicitud(solicitud, instruccion: list, estados_fases: list,
     cuantas = (f'Se instruyó en {len(instruccion)} fase' +
                ('s' if len(instruccion) > 1 else '') + '.')
     return Bloque(SALVADO if salvado else PASA, f'Solicitud #{solicitud.id}',
-                  relato=(encabezado, cuantas), salvado=salvado,
+                  relato=(encabezado, cuantas) + reversiones, salvado=salvado,
                   nodo=('solicitud', solicitud.id))
+
+
+def _relato_reversiones(solicitud) -> tuple:
+    """Certificados de fin de instrucción anteriores que se dejaron sin efecto (#838).
+
+    Va en `relato` y no en `salvado`: no es una desviación salvada bajo criterio —no
+    se forzó ningún bloqueo, la puerta se abrió porque sus condiciones se cumplían—,
+    es un hecho de la historia de esta instrucción. Y es un hecho que quien redacte la
+    resolución necesita conocer: que se certificara el fin de la instrucción, se
+    retirara y se volviera a instruir explica por qué el expediente tiene la forma que
+    tiene. Sin esto, el certificado nuevo se presentaría como si fuera el primero.
+
+    Consulta propia, no el índice de escapes: aquel filtra por `escape` a propósito y
+    esto no lo es. Una consulta más en un gesto puntual, mismo criterio que el plazo
+    de las esperas.
+    """
+    from app.models.bitacora import Bitacora
+    from app.services.cert_fin_instruccion import ACCION_DESHACER
+
+    try:
+        filas = (Bitacora.query
+                 .filter(Bitacora.tabla == 'solicitudes',
+                         Bitacora.registro_id == solicitud.id,
+                         Bitacora.operacion == 'ALTERAR')
+                 .order_by(Bitacora.id)
+                 .all())
+    except (OperationalError, ProgrammingError) as exc:
+        log.warning('informe_instruccion: bitácora no disponible para las reversiones '
+                    'de la solicitud %s — %s', solicitud.id, exc)
+        return ()
+
+    frases = []
+    for fila in filas:
+        detalle = fila.detalle or {}
+        if detalle.get('accion') != ACCION_DESHACER:
+            continue
+        cuando = f'El {_fecha(fila.created_at)}, ' if fila.created_at else ''
+        quien = _quien(fila.usuario_id)
+        sujeto = f'{quien} dejó' if quien else 'se dejó'
+        frase = (f'{cuando}{sujeto} sin efecto un certificado de fin de instrucción '
+                 f'anterior de esta solicitud')
+        justificacion = _citable(detalle.get('justificacion'))
+        if justificacion:
+            frase += f', con esta justificación: «{justificacion}»'
+        frases.append(frase + '.')
+    return tuple(frases)
 
 
 # ---------------------------------------------------------------------------

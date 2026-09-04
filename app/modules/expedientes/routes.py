@@ -454,15 +454,27 @@ def _documento_es_referenciado(doc):
       2. Añadir un check aquí.
 
     Backrefs consultados:
-      doc.proyecto_vinculado  → DocumentoProyecto.documento_id  (uselist=False)
-      doc.vinculos_tarea      → DocumentoTarea.documento_id     (lista, vínculos con rol)
-      doc.notificacion        → Notificacion.documento_id       (uselist=False, ADR-034)
+      doc.proyecto_vinculado           → DocumentoProyecto.documento_id  (uselist=False)
+      doc.vinculos_tarea               → DocumentoTarea.documento_id     (lista, con rol)
+      doc.notificacion                 → Notificacion.documento_id       (uselist=False, ADR-034)
+      doc.anclado_en_solicitud         → Solicitud.documento_solicitud_id
+      doc.anclado_en_fin_instruccion   → Solicitud.documento_fin_instruccion_id
+      doc.anclado_en_cierre            → Solicitud.documento_cierre_id
 
     `doc.notificacion` (#738 punto 2): sin este check, un justificante que ya
     perdió su vínculo `DocumentoTarea` (desvinculado, ver punto 1) parece libre
     aunque la fila `Notificacion` siga viva apuntando a él — y esa fila tiene
     `ondelete='CASCADE'`, así que borrar el documento se lleva por delante toda
     la evidencia de la notificación (canal, resultado, fecha).
+
+    Las tres anclas de solicitud (#838): la guarda del pool es «si algo lo usa, no
+    se borra», y a estos tres los usa la solicitud —no una tarea— a través de una FK
+    propia (ADR-041 §D bis, ADR-043 §D). Faltaban desde que se creó cada una, así
+    que el pool los daba por libres: la FK es `NO ACTION` y el borrado moría en un
+    IntegrityError con traza, en vez de decir quién lo estaba usando. El caso que lo
+    destapa es el CERT_FIN_INSTRUCCION, que además no lo consume ninguna tarea
+    mientras la fase que resuelve no exista — con lo que ninguna de las tres
+    referencias anteriores lo veía.
     """
     if doc.proyecto_vinculado:
         return True
@@ -470,7 +482,41 @@ def _documento_es_referenciado(doc):
         return True
     if doc.notificacion:
         return True
+    if doc.anclado_en_solicitud or doc.anclado_en_fin_instruccion or doc.anclado_en_cierre:
+        return True
     return False
+
+
+# Qué decirle a quien intenta borrar del pool un documento que ancla una solicitud.
+# El mensaje genérico —«está referenciado en tramitación»— es cierto pero deja al
+# usuario sin saber qué lo referencia ni qué hacer, y en el caso del certificado de
+# fin de instrucción hay un gesto propio que sí lo deshace (#838, ADR-043 §F).
+_MOTIVO_ANCLA = {
+    'anclado_en_fin_instruccion': (
+        'Este documento es el certificado de fin de instrucción de la solicitud '
+        '#{sol}: mientras conste, su instrucción está sellada. Para retirarlo, '
+        'deshaga el certificado desde la solicitud — no se borra desde el pool.'
+    ),
+    'anclado_en_solicitud': (
+        'Este documento es el escrito de solicitud de la solicitud #{sol}, del que '
+        'cuelga la fecha de inicio del plazo para resolver. No puede eliminarse '
+        'mientras la solicitud lo tenga por ancla.'
+    ),
+    'anclado_en_cierre': (
+        'Este documento es el certificado de cierre de la solicitud #{sol}, del que '
+        'cuelga la fecha de fin del plazo para resolver. No puede eliminarse '
+        'mientras la solicitud lo tenga por ancla.'
+    ),
+}
+
+
+def _motivo_ancla(doc):
+    """Explicación de por qué no se borra, si el documento ancla alguna solicitud."""
+    for atributo, plantilla in _MOTIVO_ANCLA.items():
+        solicitudes = getattr(doc, atributo, None) or []
+        if solicitudes:
+            return plantilla.format(sol=solicitudes[0].id)
+    return None
 
 
 @bp.route('/<int:id>/documentos')
@@ -992,7 +1038,8 @@ def pool_borrar_documento(id, doc_id):
     if _documento_es_referenciado(doc):
         return jsonify({
             'ok': False,
-            'error': 'El documento está referenciado en tramitación y no puede eliminarse'
+            'error': _motivo_ancla(doc) or
+                     'El documento está referenciado en tramitación y no puede eliminarse'
         }), 422
 
     es_critico = es_documento_critico(doc)

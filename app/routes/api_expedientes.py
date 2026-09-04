@@ -976,6 +976,48 @@ def emitir_cert_fin_instruccion_nodo(expediente_id, nodo_id):
     return jsonify(res.a_dict()), 200
 
 
+@api_bp.route('/expedientes/<int:expediente_id>/nodo/solicitud/<int:nodo_id>'
+              '/certificado-fin-instruccion', methods=['DELETE'])
+@login_required
+def deshacer_cert_fin_instruccion_nodo(expediente_id, nodo_id):
+    """
+    DELETE .../nodo/solicitud/<solicitud_id>/certificado-fin-instruccion — retira el
+    certificado y con él el sello de la instrucción (#838, ADR-043 §F, vía 2).
+
+    Mismo path que la emisión con otro verbo: es literalmente el acto inverso sobre
+    el mismo recurso, y darle un path propio («…/deshacer») sugeriría que son dos
+    cosas distintas.
+
+    Body JSON: {justificacion}. Obligatoria — no hay reversión silenciosa, mismo
+    criterio que `reabrir_fase`. A diferencia de la emisión, aquí no hay dos
+    desenlaces buenos: o se retira o se explica por qué no.
+
+    422 con `puede_escapar: false` si la puerta cerrada bloquea (queda fase
+    finalizadora, que es lo que el certificado habilitó); 422 con `error` si no hay
+    certificado que deshacer o falta la justificación.
+    """
+    expediente = Expediente.query.get_or_404(expediente_id)
+    if verificar_acceso_expediente(expediente, 'gestionar_estructura'):
+        return jsonify({'error': 'No tienes permiso para esta acción'}), 403
+
+    try:
+        solicitud = _resolver_nodo(expediente, 'solicitud', nodo_id)
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 404
+
+    from app.services.cert_fin_instruccion import deshacer
+
+    datos = request.get_json(silent=True) or {}
+    res = deshacer(solicitud, justificacion=(datos.get('justificacion') or ''))
+    if res.bloqueo:
+        return _bloqueo_422(res)
+    if res.error:
+        payload = res.a_dict()
+        payload['error'] = res.error
+        return jsonify(payload), 422
+    return jsonify(res.a_dict()), 200
+
+
 # =============================================================================
 # ENDPOINT 8ter: Alta de organismo consultado en una fase CONSULTAS (ADR-042 §C)
 # =============================================================================

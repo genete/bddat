@@ -7,7 +7,7 @@
 // S3b-1: modoEdicion + lock + editor genérico (entrar/guardar/cancelar + refresco).
 // S3b añadirá: despensa, colapsos manuales por nivel.
 import { create } from 'zustand'
-import { getArbol, getNodo, getEditable, patchNodo, getTiposCreables, postHijo, getPool, deleteNodo, guardarNotas, postReabrirFase, postEnviarConsultas, postCertificarFinInstruccion, subirDocumentoPool, getSugerenciaDocumento } from './api.js'
+import { getArbol, getNodo, getEditable, patchNodo, getTiposCreables, postHijo, getPool, deleteNodo, guardarNotas, postReabrirFase, postEnviarConsultas, postCertificarFinInstruccion, deleteCertFinInstruccion, subirDocumentoPool, getSugerenciaDocumento } from './api.js'
 import { showToast } from '../shared/ui/toast.js'
 
 // AbortController de la petición de detalle en curso (fuera del estado: no re-render).
@@ -84,6 +84,8 @@ export const useArbolStore = create((set, get) => ({
 
   // --- certificar el fin de instrucción (#827, ADR-043 §E) ---
   certificandoFinInstruccion: false,
+  // --- deshacer ese certificado y con él el sello (#838, ADR-043 §F) ---
+  deshaciendoFinInstruccion: false,
   // Informe devuelto por la revisión cuando NO se consolidó. Su presencia es lo que
   // abre el modal: no hay flag aparte porque no hay modal sin informe que enseñar.
   informeFinInstruccion: null,
@@ -407,6 +409,32 @@ export const useArbolStore = create((set, get) => ({
   },
 
   cerrarInformeFinInstruccion: () => set({ informeFinInstruccion: null }),
+
+  // Retira el certificado y con él el sello de la instrucción (#838, ADR-043 §F).
+  // Al revés que certificar, aquí no hay dos desenlaces buenos: o se retira o se
+  // explica por qué no. El 422 se muestra en toast como cualquier otro bloqueo —no
+  // abre modal— porque su mensaje ya dice qué hacer (rebobinar y borrar la fase que
+  // resuelve), y no hay informe que enseñar.
+  deshacerFinInstruccion: async (justificacion) => {
+    const { expedienteId, seleccion } = get()
+    if (!seleccion || seleccion.tipo !== 'solicitud' || !expedienteId) return
+    if (!justificacion || !justificacion.trim()) return
+    set({ deshaciendoFinInstruccion: true })
+    try {
+      await deleteCertFinInstruccion(expedienteId, seleccion.id, justificacion.trim())
+      showToast('Certificado de fin de instrucción deshecho: la instrucción vuelve a estar abierta', 'success')
+      set({ deshaciendoFinInstruccion: false })
+      await get().refrescarArbol()
+    } catch (e) {
+      set({ deshaciendoFinInstruccion: false })
+      if (e.status === 401 || e.status === 403) return
+      if (e.status === 422 && e.payload && (e.payload.motivo || e.payload.error)) {
+        showToast(e.payload.motivo || e.payload.error, 'danger')
+      } else {
+        showToast(e.message || 'No se pudo deshacer el certificado', 'danger')
+      }
+    }
+  },
 
   // --- menú contextual (S3b-4) ---
 

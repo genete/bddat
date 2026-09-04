@@ -37,9 +37,15 @@ def _tipo(modelo, codigo):
 
 def _fase_con_tramite_y_tarea(codigo_tipo_tramite, codigo_tipo_tarea,
                                *, tipo_fase_codigo='ANALISIS_SOLICITUD'):
-    """Monta Fase → Trámite → Tarea sobre la primera solicitud de la BD de desarrollo.
+    """Monta Fase → Trámite → Tarea sobre una solicitud real de la BD de desarrollo.
 
     Devuelve (solicitud, fase, tramite, tarea). Mismo patrón que test_722.
+
+    La solicitud tiene que estar **sin certificar**: con el CERT_FIN_INSTRUCCION
+    emitido, su instrucción queda sellada y ni se abren fases nuevas ni se reabren
+    las cerradas (#838, ADR-043 §F). Mismo criterio de selección que #842 —filtrar
+    por la precondición en vez de confiar en el primer registro—, aquí sobre la
+    solicitud en lugar de sobre la fase.
     """
     from app import db
     from app.models.solicitudes import Solicitud
@@ -50,9 +56,10 @@ def _fase_con_tramite_y_tarea(codigo_tipo_tramite, codigo_tipo_tarea,
     from app.models.tipos_tramites import TipoTramite
     from app.models.tipos_tareas import TipoTarea
 
-    solicitud = Solicitud.query.first()
+    solicitud = Solicitud.query.filter(
+        Solicitud.documento_fin_instruccion_id.is_(None)).first()
     if solicitud is None:
-        pytest.skip('No hay solicitudes en la BD de desarrollo')
+        pytest.skip('No hay solicitudes sin certificar en la BD de desarrollo')
 
     fase = Fase(solicitud_id=solicitud.id, tipo_fase_id=_tipo(TipoFase, tipo_fase_codigo).id)
     db.session.add(fase)
@@ -392,9 +399,11 @@ class TestEndpointReabrirFase:
         from app.models.tipos_documentos import TipoDocumento
 
         with app.app_context():
-            base = Solicitud.query.first()
+            # Sin certificar: el sello de #838 impide reabrir sus fases de instrucción.
+            base = Solicitud.query.filter(
+                Solicitud.documento_fin_instruccion_id.is_(None)).first()
             if base is None:
-                pytest.skip('No hay solicitudes en la BD de desarrollo')
+                pytest.skip('No hay solicitudes sin certificar en la BD de desarrollo')
             tipo_fase = TipoFase.query.filter_by(codigo='ANALISIS_SOLICITUD').first()
             if tipo_fase is None:
                 pytest.skip("TipoFase 'ANALISIS_SOLICITUD' no está en el catálogo")

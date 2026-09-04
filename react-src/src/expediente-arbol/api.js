@@ -80,6 +80,19 @@ export function postCertificarFinInstruccion(expedienteId, solicitudId) {
   )
 }
 
+// Retira el CERT_FIN_INSTRUCCION y con él el sello de la instrucción (DELETE, #838,
+// ADR-043 §F). Mismo path que la emisión con otro verbo: es el acto inverso sobre el
+// mismo recurso. body: {justificacion} — obligatoria, como en la reapertura de fase.
+// Respuesta éxito: {ok:true, documento_id, certificado_id} 200.
+// 422: queda fase finalizadora (puerta cerrada, `puede_escapar:false`), no hay
+// certificado que deshacer, o falta la justificación.
+export function deleteCertFinInstruccion(expedienteId, solicitudId, justificacion) {
+  return api.delete(
+    `/api/expedientes/${expedienteId}/nodo/solicitud/${solicitudId}/certificado-fin-instruccion`,
+    { body: { justificacion } },
+  )
+}
+
 // Contenedor de la tarea ANALIZAR (#442). Respuesta: {resultado, documento_producido,
 // secciones_extendidas, defectos_consolidado, completo}.
 export function getAnalizar(expedienteId, tareaId) {
