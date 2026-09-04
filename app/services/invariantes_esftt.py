@@ -23,7 +23,10 @@ de forma permanente, no como paso intermedio hacia el motor.
 """
 from __future__ import annotations
 
+import logging
 from typing import Optional
+
+from sqlalchemy.exc import OperationalError, ProgrammingError
 
 from app import db
 from app.models.fases import Fase
@@ -33,6 +36,8 @@ from app.models.solicitudes import Solicitud
 from app.models.organismos_expediente import OrganismoExpediente
 from app.models.tramites_organismos import TramiteOrganismo
 from app.services.motor_reglas import EvaluacionResult
+
+log = logging.getLogger(__name__)
 
 _TIPOS_REQUIEREN_DOC_PRODUCIDO = {'ANALIZAR', 'ELABORAR', 'NOTIFICAR'}
 _TIPOS_REQUIEREN_DOC_USADO     = {'ANALIZAR', 'NOTIFICAR'}
@@ -212,7 +217,11 @@ def _check_crear(sujeto: str, padre_id: int,
 
     **No es "respetar `tramites_tareas.orden`"** (ADR-037 §C): ese patrón es una
     sugerencia de la despensa (`tipos_creables.es_siguiente`), no una precondición.
-    Lo que se comprueba son dos dependencias semánticas concretas, nombradas.
+    Lo que se comprueba son dependencias semánticas concretas, nombradas.
+
+    La rama `FASE` no es de #823 sino del sello de la instrucción (#838, ADR-043
+    §F): abrir una fase de instrucción nueva y reabrir una ya cerrada son el mismo
+    acto por sus dos extremos, y por eso comparten check con `_check_reabrir`.
     """
     if not tipo_codigo:
         return None
@@ -222,6 +231,9 @@ def _check_crear(sujeto: str, padre_id: int,
 
     if sujeto == 'TRAMITE' and tipo_codigo in TRAMITES_CADENA_SUBSANACION:
         return _check_crear_vuelta_cadena(padre_id)
+
+    if sujeto == 'FASE':
+        return _check_crear_fase_instruccion(padre_id, tipo_codigo)
 
     return None
 
@@ -414,6 +426,119 @@ def _check_emitir_cert_fin_instruccion(solicitud_id: int) -> Optional[Evaluacion
 
 
 # ---------------------------------------------------------------------------
+# El sello de la instrucción (#838, ADR-043 §F)
+# ---------------------------------------------------------------------------
+# Emitido el CERT_FIN_INSTRUCCION, la instrucción de esa solicitud queda declarada
+# terminada. Hay dos formas de contradecir esa declaración —crear una fase de
+# instrucción nueva y reabrir una ya cerrada—, y no son dos problemas: son el mismo
+# acto, volver a instruir lo ya certificado, por sus dos extremos. De ahí que las dos
+# ramas (`_check_crear_fase_instruccion` y `_check_reabrir`) compartan la consulta y
+# el mensaje, y que ninguna de las dos mire la fase finalizadora: lo que ocurra
+# dentro de la resolución no desmiente el certificado, lo continúa.
+
+# Las dos vías legítimas cuando falta algo, que el bloqueo tiene que NOMBRAR en vez
+# de prohibir a secas (ADR-043 §F): un check que señala la salida es ayuda, uno que
+# solo prohíbe es obstáculo. La primera es el art. 87 LPACAP, que no autoriza a
+# volver a la instrucción sino a completar DENTRO de la resolución —está en el
+# Capítulo V, lo acuerda el órgano que resuelve y presupone la instrucción cerrada—;
+# su trámite propio no existe todavía en el catálogo y es #839. La segunda es admitir
+# que la instrucción no estaba terminada y deshacer el certificado, que es acto
+# expreso y caro a propósito (`cert_fin_instruccion.deshacer`).
+_VIAS_DE_SALIDA_DEL_SELLO = (
+    'Si falta recabar algo antes de resolver, acuérdelo dentro de la fase que '
+    'resuelve, sin volver a la instrucción (art. 87 LPACAP). Si la instrucción no '
+    'estaba terminada de verdad, deshaga el certificado desde la solicitud: se '
+    'borrará y volverá a haber instrucción abierta.'
+)
+
+
+def instruccion_sellada(solicitud):
+    """El documento del certificado de fin de instrucción de `solicitud`, o None.
+
+    Su **presencia** es la declaración de que la instrucción terminó (ADR-043 §D):
+    se lee de la FK propia de la solicitud y nunca buscando el tipo documental en el
+    pool, que es del expediente y no distingue solicitudes —con dos en el mismo
+    expediente, la segunda daría por sellada la instrucción de la primera—. Mismo
+    criterio, y por el mismo motivo, que la variable del motor
+    `solicitud_tiene_cert_fin_instruccion`.
+
+    Pública porque la consultan las dos ramas del sello y el servicio que lo deshace,
+    y ninguna debe reescribir de dónde se lee.
+    """
+    if solicitud is None:
+        return None
+    return solicitud.documento_fin_instruccion
+
+
+def _bloquear_sello(documento, gesto: str) -> EvaluacionResult:
+    """Bloqueo del sello, con la fecha del certificado y las dos vías de salida.
+
+    `gesto` es lo que se estaba intentando, redactado para encajar tras los dos
+    puntos: «no puede abrirse otra fase de instrucción», «la fase X no puede
+    reabrirse». La fecha se omite si el documento no la tiene: es informativa —lo
+    que sella es que el certificado exista— y una frase sin ella sigue siendo cierta.
+    """
+    fecha = getattr(documento, 'fecha_administrativa', None)
+    cuando = f' el {fecha.strftime("%d/%m/%Y")}' if fecha else ''
+    return _bloquear(
+        f'La instrucción de esta solicitud está certificada como terminada{cuando}: '
+        f'{gesto}. {_VIAS_DE_SALIDA_DEL_SELLO}'
+    )
+
+
+def _check_crear_fase_instruccion(solicitud_id: int,
+                                  tipo_codigo: Optional[str]) -> Optional[EvaluacionResult]:
+    """No se abre una fase de instrucción nueva con la instrucción ya certificada
+    (#838, ADR-043 §F — el hueco gemelo del que se ocupa `_check_reabrir`).
+
+    Hasta aquí nadie miraba nada al crear una fase: `crear_fase` iba directa al
+    motor, sin pasar por `check_invariante` (ni siquiera por el sellado de ADR-036,
+    que no le aplica — una fase no cuelga de otra fase).
+
+    **Solo las de instrucción.** La fase finalizadora la gobiernan las dos reglas del
+    art. 82.1 (ADR-043 §C), que piden justo lo contrario —que el certificado conste—;
+    mirarla aquí sería contradecirlas. Y abrir la segunda finalizadora de una
+    solicitud no es volver a instruir: es un problema distinto, que ni este check ni
+    §F abordan.
+
+    **Puerta cerrada, no regla de motor** (§F): no hay excepción que citar, porque la
+    ley no abre una excepción sino que señala otra vía. Por eso sigue aplicando con
+    el motor en modo global `INACTIVO`, y por eso el mensaje nombra las dos salidas.
+
+    Que sea puerta cerrada no encierra a nadie mientras #839 no exista: quien
+    necesite recabar algo más lo hace dentro de la fase que resuelve, y quien
+    certificó de más deshace el certificado. Un escape con justificación aquí sería
+    además **más barato** que deshacerlo, de modo que se convertiría en la vía
+    normal y dejaría certificados emitidos y contradichos — exactamente el estado
+    que §E declaró inaceptable y que el orden evaluar→consolidar evita.
+    """
+    if not tipo_codigo:
+        return None
+
+    from app.models.tipos_fases import TipoFase
+
+    try:
+        tipo_fase = TipoFase.query.filter_by(codigo=tipo_codigo).first()
+    except (OperationalError, ProgrammingError):
+        log.warning('sello de instrucción: catálogo de tipos de fase no disponible; '
+                    'no se comprueba al crear %s', tipo_codigo)
+        return None
+    if tipo_fase is None or tipo_fase.es_finalizadora:
+        return None
+
+    solicitud = Solicitud.query.get(solicitud_id)
+    documento = instruccion_sellada(solicitud)
+    if documento is None:
+        return None
+
+    nombre = tipo_fase.nombre or tipo_codigo
+    return _bloquear_sello(
+        documento,
+        f'no puede abrirse la fase de instrucción «{nombre}»',
+    )
+
+
+# ---------------------------------------------------------------------------
 # Borrar
 # ---------------------------------------------------------------------------
 
@@ -556,11 +681,25 @@ def _solicitud_notificada_en_fase_finalizadora(solicitud) -> bool:
 
 
 def _check_reabrir(sujeto: str, entidad_id: int) -> Optional[EvaluacionResult]:
-    """Puerta cerrada de `reabrir_fase` (#720, ADR-036 §4): si la solicitud ya
-    está resuelta (todas sus fases finalizadas) y notificada, la resolución es
-    firme — no reabribible, ni con justificación. Mismo criterio LPACAP que la
-    reversión de diagnóstico ya notificado (#714) y el borrado de evidencia
-    notificada (#722).
+    """Dos puertas cerradas sobre `reabrir_fase`, de más fuerte a menos:
+
+    1. **Resolución firme** (#720, ADR-036 §4): si la solicitud ya está resuelta
+       (todas sus fases finalizadas) y notificada, el acto salió fuera — ninguna de
+       sus fases se reabre, ni con justificación. Mismo criterio LPACAP que la
+       reversión de diagnóstico ya notificado (#714) y el borrado de evidencia
+       notificada (#722).
+    2. **El sello de la instrucción** (#838, ADR-043 §F): con el certificado de fin
+       de instrucción emitido, una fase de instrucción cerrada no vuelve a abrirse.
+
+    El orden entre las dos importa cuando ambas aplican —una solicitud resuelta y
+    notificada tiene además su certificado—, porque lo que cambia es el consejo: con
+    la resolución firme no hay nada que hacer dentro de este flujo, mientras que el
+    sello sí tiene salida. Decir «deshaga el certificado» a quien ya notificó la
+    resolución sería mandarle por un camino que no le corresponde.
+
+    La fase finalizadora queda fuera del sello a propósito: reabrirla no desmiente el
+    certificado —lo que ocurre dentro de la resolución es posterior a él— y además es
+    el primer paso del rebobinado que permite deshacerlo.
     """
     if sujeto != 'FASE':
         return None
@@ -568,14 +707,22 @@ def _check_reabrir(sujeto: str, entidad_id: int) -> Optional[EvaluacionResult]:
     if fase is None:
         return None
     solicitud = fase.solicitud
-    if not solicitud.estado.startswith('RESUELTA'):
-        return None
-    if _solicitud_notificada_en_fase_finalizadora(solicitud):
+
+    if solicitud.estado.startswith('RESUELTA') and \
+            _solicitud_notificada_en_fase_finalizadora(solicitud):
         return _bloquear(
             'La solicitud ya está resuelta y notificada: la resolución es firme. '
             'Ninguna de sus fases puede reabrirse; corríjalo mediante un acto '
             'administrativo expreso (revocación/anulación), fuera de este flujo.'
         )
+
+    if fase.tipo_fase is not None and not fase.tipo_fase.es_finalizadora:
+        documento = instruccion_sellada(solicitud)
+        if documento is not None:
+            nombre = fase.tipo_fase.nombre or fase.tipo_fase.codigo
+            return _bloquear_sello(
+                documento, f'la fase «{nombre}» no puede reabrirse')
+
     return None
 
 

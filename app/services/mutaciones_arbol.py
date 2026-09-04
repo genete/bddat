@@ -378,6 +378,21 @@ def crear_solicitud(expediente, tipos: list[TipoSolicitud], entidad_id: int,
 
 
 def crear_fase(solicitud, tipo_fase, *, justificacion: Optional[str] = None) -> ResultadoMutacion:
+    """Crea una fase de la solicitud.
+
+    El sello de la instrucción (#838, ADR-043 §F) es lo único que se comprueba antes
+    del motor, y va primero por lo mismo que en `crear_tramite`/`crear_tarea`: es
+    puerta cerrada y no se salta con `justificacion`, así que el bloqueo que no se
+    fuerza se evalúa antes que el que sí. Hasta aquí esta función no llamaba a
+    `check_invariante` en absoluto —el sellado de ADR-036 no le aplica, porque una
+    fase no cuelga de otra fase— y era el único `crear_*` sin ninguna precondición
+    estructural.
+    """
+    res_inv_crear = check_invariante('CREAR', 'FASE', solicitud.id,
+                                     tipo_codigo=tipo_fase.codigo)
+    if res_inv_crear:
+        return ResultadoMutacion(ok=False, bloqueo=res_inv_crear)
+
     expediente = solicitud.expediente
     if justificacion is None:
         res_eval = _evaluar('CREAR', expediente,

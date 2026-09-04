@@ -151,11 +151,14 @@ def test_crear_fase_con_advertencia_registra_bitacora_y_devuelve_advertencia(app
     from app.services.motor_reglas import EvaluacionResult
     import app.services.mutaciones_arbol as svc
 
-    sol = Solicitud.query.first()
+    # Sin certificar: con el CERT_FIN_INSTRUCCION emitido la instrucción queda
+    # sellada y no se abren fases nuevas (#838, ADR-043 §F). Mismo criterio de
+    # selección que #842: filtrar por la precondición, no fiarse del primer registro.
+    sol = Solicitud.query.filter(Solicitud.documento_fin_instruccion_id.is_(None)).first()
     tipo_fase = TipoFase.query.first()
     usuario = Usuario.query.first()
     if sol is None or tipo_fase is None or usuario is None:
-        pytest.skip('No hay Solicitud/TipoFase/Usuario en la BD de desarrollo')
+        pytest.skip('No hay Solicitud sin certificar/TipoFase/Usuario en la BD de desarrollo')
 
     advertencia = EvaluacionResult(
         permitido=True, nivel='ADVERTIR', variables_trigger={},
@@ -192,11 +195,12 @@ def test_crear_fase_permitido_sin_advertencia_no_registra_bitacora(app_ctx):
     from app.services.motor_reglas import PERMITIDO
     import app.services.mutaciones_arbol as svc
 
-    sol = Solicitud.query.first()
+    # Sin certificar, por lo mismo que el test anterior (#838, ADR-043 §F).
+    sol = Solicitud.query.filter(Solicitud.documento_fin_instruccion_id.is_(None)).first()
     tipo_fase = TipoFase.query.first()
     usuario = Usuario.query.first()
     if sol is None or tipo_fase is None or usuario is None:
-        pytest.skip('No hay Solicitud/TipoFase/Usuario en la BD de desarrollo')
+        pytest.skip('No hay Solicitud sin certificar/TipoFase/Usuario en la BD de desarrollo')
 
     with app_ctx.test_request_context():
         login_user(usuario)
