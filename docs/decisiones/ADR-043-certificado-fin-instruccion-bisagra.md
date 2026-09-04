@@ -1,7 +1,7 @@
 # ADR-043 — El certificado de fin de instrucción como bisagra entre instrucción y resolución
 
 **Estado:** Adoptada — §A-§E implementados en #827 (**§E reescrita el 2026-09-04**: el gesto pasa
-de puerta a revisión que se consolida); §F pendiente (#838, #839)
+de puerta a revisión que se consolida); §F implementado en #838 salvo el trámite del art. 87 (#839)
 **Fecha:** 2026-09-02
 **Depende de:** ADR-001 (motor agnóstico), ADR-037 (vocabulario ESFTT vs permiso de motor), ADR-041 §D bis (anclas documentales de la solicitud), ADR-036 (sellado de fase cerrada)
 **Precisa:** ADR-037 §Test operativo — qué separa de verdad a los dos árbitros, ver §B
@@ -406,12 +406,79 @@ en obstáculo.
 **Hueco de catálogo que esto destapa:** no existe tipo de trámite para las actuaciones
 complementarias, y `fases_tramites` no tiene ningún trámite previo en `RESOLUCION` —solo
 `ELABORACION`, `NOTIFICACION` y `PUBLICACION`—. `COMUNICACION_AUDIENCIA` existe, pero cuelga de
-`COMPATIBILIDAD_AMBIENTAL`. Sin ese trámite, la única salida practicable ante un expediente gris
-es la que este ADR prohíbe.
+`COMPATIBILIDAD_AMBIENTAL`.
 
-**Estado de la puerta hoy:** `_check_reabrir` solo bloquea si `Solicitud.estado` empieza por
-`RESUELTA` **y** hay notificación en fase finalizadora, de modo que entre "resolución notificada"
-y "solicitud marcada RESUELTA" cualquier fase se reabre.
+#### F bis — Puerta cerrada también sin el art. 87 (decisión de #838, 2026-09-04)
+
+> El borrador de §F terminaba diciendo que «sin ese trámite, la única salida practicable ante un
+> expediente gris es la que este ADR prohíbe», y de ahí que #838 heredara abierta la pregunta de
+> qué hacer mientras #839 no exista. Al implementarlo se comprobó que **esa premisa no se
+> sostiene**, y la sección se cierra en firme: puerta cerrada, sin escape transitorio.
+
+Son dos escenarios distintos y ninguno queda encerrado:
+
+- **La instrucción no estaba terminada de verdad** → deshacer el certificado, que es la vía 2 de
+  esta misma sección y la construye #838. Cara a propósito, pero existe.
+- **La instrucción sí terminó y hace falta recabar algo más** → eso se practica **dentro** de la
+  fase finalizadora, y el sello no lo toca: lo que prohíbe es abrir o reabrir fases de
+  **instrucción**. Lo que falta es el tipo de trámite en el catálogo, no permiso. Y mientras
+  falte, `check_vocabulario_tramite` es forzable con justificación (ADR-037 §B), así que crear un
+  trámite atípico en `RESOLUCION` es practicable de forma tosca y **con constancia en bitácora**
+  — que es exactamente la señal de que #839 hace falta, el mismo razonamiento que §B aplica al
+  escape de la regla del art. 82.1.
+
+El argumento decisivo contra un escape transitorio es su precio relativo: **sería más barato que
+deshacer el certificado**. Un clic con justificación frente a un rebobinado. El técnico elegiría
+siempre el escape, y el resultado sería un certificado emitido y contradicho — el estado que §E
+declaró inaceptable y que el orden evaluar→consolidar se construyó para evitar. No sería una
+válvula: sería la vía principal, y desactivaría la bisagra entera.
+
+#### F ter — Qué se hace con el certificado al deshacer (decisión de #838, 2026-09-04)
+
+**Se borra todo el rastro documental**: la FK de §D, el `CertificadoFase`, el `Documento` y el
+PDF. Las alternativas eran desvincular —que deja en el pool un certificado huérfano afirmando que
+la instrucción terminó, el «documento que miente» que §E declaró inaceptable— y revocar, que
+exigiría un concepto de anulación inexistente para un documento interno autogenerado que nadie ha
+notificado a nadie. La traza del acto vive donde vive la de todos los actos excepcionales: en
+bitácora, y desde ahí la relata el informe del certificado siguiente.
+
+**La precondición es el espejo exacto de la emisión.** Emitir exige que no quede abierta ninguna
+fase de instrucción (§E); deshacer, que no exista ninguna de las fases que el certificado
+habilitó. Entre las dos, el estado al que se vuelve deshaciendo es el mismo del que se salió al
+emitir, y no un híbrido —una resolución a medias apoyada en un certificado que ya no existe—.
+
+**No cascadea nada, y ahí está lo caro.** El rebobinado de la fase que resuelve lo hace el técnico
+con lo que ya tiene —reabrirla, que el sello no toca a propósito, y borrarla hoja a hoja (#722)—,
+de modo que cada paso pasa por su propio check. Un servicio que arrasara con la resolución entera
+para levantar el sello sería justamente lo contrario de un acto caro.
+
+**Y no se registra como escape.** `escape: True` significa una cosa concreta en todo el sistema
+—se forzó un bloqueo del motor— y `informe_instruccion._relato_escapes` la da por supuesta al
+redactar. Deshacer no fuerza nada: la puerta se abre porque sus condiciones se cumplen. Por eso el
+hecho va al **relato** de la solicitud y no a la lista de actos salvados con criterio: es historia
+de la instrucción, no desviación.
+
+**Estado de la puerta antes de #838:** `_check_reabrir` solo bloqueaba si `Solicitud.estado`
+empezaba por `RESUELTA` **y** había notificación en fase finalizadora, de modo que entre
+"resolución notificada" y "solicitud marcada RESUELTA" cualquier fase se reabría. Y `crear_fase`
+no llamaba a `check_invariante` en absoluto — era el único `crear_*` sin ninguna precondición
+estructural, porque el sellado de ADR-036 no le aplica (una fase no cuelga de otra fase).
+
+**Cuando las dos puertas de `_check_reabrir` aplican, manda la resolución firme (#720).** Una
+solicitud resuelta y notificada tiene además su certificado, y lo que cambia es el consejo: con la
+resolución firme no hay nada que hacer dentro de este flujo, mientras que el sello sí tiene
+salida. Decir «deshaga el certificado» a quien ya notificó la resolución sería mandarle por un
+camino que no le corresponde.
+
+**Una guarda que faltaba, y que el sello habría dejado a la vista** (#838). La regla del pool es
+«si algo lo usa, no se borra», pero `_documento_es_referenciado` solo miraba proyecto, vínculos de
+tarea y notificación: las tres anclas documentales de la solicitud (ADR-041 §D bis y §D de este
+ADR) son FK a `documentos` y no estaban en esa lista. Faltaba desde que se creó cada una; lo
+destapa el `CERT_FIN_INSTRUCCION` porque es el primero al que **ninguna** de las tres referencias
+vigiladas alcanza —no lo consume ninguna tarea mientras la fase que resuelve no exista—. Las FK
+son `NO ACTION`, así que el borrado no llegaba a hacer daño, pero moría en un `IntegrityError` en
+vez de decir quién estaba usando el documento; y con el sello encima, borrarlo del pool habría
+sido la forma barata de levantarlo por la puerta de atrás.
 
 ---
 
@@ -426,7 +493,10 @@ catalogado desde el principio deja de estar sin dueño; y el guardián de reaper
 invariante, y la nota de cabecera de `invariantes_esftt.py`, que hoy enumera las familias de
 invariantes sin contemplar precondiciones de creación. Con §E reescrita, además: el informe
 recursivo con su contrato, el consumo de `estado_dominio`, la lectura de escapes de bitácora y el
-contenido del PDF.
+contenido del PDF. Con §F: la rama `CREAR/FASE` del invariante y la llamada que le faltaba a
+`crear_fase`, la segunda puerta de `_check_reabrir`, el verbo `DESHACER` con su check, el servicio
+que retira el certificado y su endpoint (DELETE sobre el mismo path), el bloque del inspector, y
+las tres anclas en la guarda del pool.
 
 **Lo que este ADR cierra sin haberlo abierto:** el diseño de #373 —emitir el certificado *al
 crear* la fase `RESOLUCION`, como efecto de esa creación— queda **invertido**, no matizado. Su
@@ -475,8 +545,8 @@ mira esta tabla**.
 | **#614** | la contradicción del motor apagado (§E, motor global) y la correlación automática escape↔regla | activo, esperando su ADR de bitácora |
 | **#819** | el vínculo fase↔conjunto documental de cada ronda; primer consumidor del registry de §E bis | activo |
 | **#430** | proyectar `organismos_expediente` → `interesados_expediente` al consolidar | activo, con la premisa corregida |
-| **#838** | §F, primera pieza: el sello de la instrucción anclado al certificado — cubre a la vez reabrir una fase cerrada y crear una de instrucción nueva | borrador |
-| **#839** | §F, segunda pieza: el trámite de actuaciones complementarias del art. 87, sin el cual el sello de #838 no deja salida practicable | borrador |
+| **#838** | §F, primera pieza: el sello de la instrucción anclado al certificado —cubre a la vez reabrir una fase cerrada y crear una de instrucción nueva— y el acto que lo retira | **implementado** (§F bis/§F ter) |
+| **#839** | §F, segunda pieza: el trámite de actuaciones complementarias del art. 87 | activo — **ya no bloquea a #838** (§F bis): sin él la vía existe, solo que tosca y forzando el vocabulario |
 
 Fuera de la tabla pero emparentados: **#823** se queda con sus puntos 1 y 2 (invariantes
 estructurales sin norma que citar, independientes de este ADR), y **#801** es el hermano
@@ -501,8 +571,10 @@ resuelve en #614 por otro camino.
   colateral de otro acto, «la última fase» no es determinable —nada impide que aparezca otra
   después— y sería opaco justo cuando el invariante de §E impida la emisión. El certificado se
   ancla solo como parte del gesto: no hay vinculación manual desde el pool.
-- **Qué ocurre con el certificado al reabrir** una fase: si se revoca, se desvincula o se borra,
-  y con qué acto. Va con el issue de §F.
+- ~~**Qué ocurre con el certificado al reabrir** una fase: si se revoca, se desvincula o se borra,
+  y con qué acto~~ — **decidido en #838 (2026-09-04)**: no se reabre nada con el certificado
+  puesto; el acto es retirarlo, y retirarlo **borra** la FK, el `CertificadoFase`, el `Documento`
+  y el PDF (§F ter).
 - **El diseño del trámite del art. 87** (código, tareas, cardinalidad, entradas del catálogo de
   plazos, y si la audiencia del art. 82 merece trámite propio en la misma frontera): §F fija
   dónde vive —dentro de la fase finalizadora— y por qué, no cómo se escribe en el catálogo.
@@ -566,6 +638,22 @@ no de un nodo: la única pregunta posible sobre lo ya creado es «¿se permitir�
 que es arqueología y no estado — las reglas cambian, y un nodo antiguo dispararía reglas que no
 existían al crearlo. Además es innecesario: las reglas de precedencia hacia la fase finalizadora
 ya son el veredicto sobre si la instrucción está lista, en una sola pregunta.
+
+**Un sello escapable con justificación mientras el trámite del art. 87 no exista** (la pregunta
+que #838 heredaba abierta). Parte de una premisa que el código desmiente: sí hay salida sin ese
+trámite (§F bis). Y sería contraproducente aunque no la hubiera, porque el escape resultaría **más
+barato que deshacer el certificado** —un clic frente a un rebobinado—, de modo que dejaría de ser
+una válvula excepcional para convertirse en la vía normal, con el certificado emitido y
+contradicho que §E declaró inaceptable.
+
+**Desvincular el certificado en vez de borrarlo, o revocarlo** (§F ter). Desvincular deja en el
+pool un documento que sigue afirmando que la instrucción terminó; revocar exige un concepto de
+anulación que no existe, para un documento interno autogenerado que nadie ha notificado a nadie.
+
+**Que el servicio de deshacer borre en cascada la fase finalizadora.** Convertiría en un clic lo
+que §F describe como «acto expreso y caro a propósito», y saltaría los checks que cada paso del
+rebobinado tiene por su cuenta (#722 hoja a hoja, #720 sellado). Lo caro no es fricción
+decorativa: es que cada borrado se mire.
 
 **Amparar en el art. 87 la apertura de una fase de instrucción con la finalizadora ya abierta**
 (borrador anterior de este ADR, que lo llamaba "reverso" y lo mandaba a `reglas_motor` como

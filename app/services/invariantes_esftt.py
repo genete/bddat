@@ -5,11 +5,18 @@ Checks de negocio hardcoded que el motor agnóstico no puede evaluar porque
 requieren consultas al dominio BDDAT. Se invocan desde las rutas Flask ANTES
 de llamar a motor_reglas.evaluar().
 
-Cubren cinco familias: precondiciones de creación (precedencia, #823),
+Cubren seis familias: precondiciones de creación (precedencia, #823),
 precondiciones de emisión documental (fin de instrucción, ADR-043 §E / #827),
 integridad estructural del árbol (borrado hoja-a-hoja, #722), decisiones de
-workflow ya fijadas (sellado, ADR-036; completitud de cierre, #723) y puertas
-cerradas de irreversibilidad (evidencia notificada, #714/#720).
+workflow ya fijadas (sellado, ADR-036; completitud de cierre, #723), puertas
+cerradas de irreversibilidad (evidencia notificada, #714/#720) y coherencia con
+un acto ya declarado (el sello de la instrucción, ADR-043 §F / #838).
+
+Esa última es la primera que **atraviesa varias acciones**: un mismo hecho —consta
+emitido el certificado de fin de instrucción— gobierna `CREAR` una fase de
+instrucción, `REABRIR` una cerrada y `DESHACER` el propio certificado. Por eso sus
+tres ramas comparten la consulta (`instruccion_sellada`) y el mensaje, en vez de
+repetir cada una su criterio.
 
 No son candidatos a pasar a reglas_motor. El criterio que los separa lo precisa
 ADR-043 §B —no es "¿hay norma que citar?", lectura simplificada de ADR-037 que
