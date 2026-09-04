@@ -928,7 +928,7 @@ def reabrir_fase_nodo(expediente_id, nodo_id):
 
 
 # =============================================================================
-# ENDPOINT 8quater: Emitir el certificado de fin de instrucción (#827, ADR-043)
+# ENDPOINT 8quater: Certificar el fin de instrucción (#827, ADR-043 §E)
 # =============================================================================
 
 @api_bp.route('/expedientes/<int:expediente_id>/nodo/solicitud/<int:nodo_id>'
@@ -936,18 +936,22 @@ def reabrir_fase_nodo(expediente_id, nodo_id):
 @login_required
 def emitir_cert_fin_instruccion_nodo(expediente_id, nodo_id):
     """
-    POST .../nodo/solicitud/<solicitud_id>/certificado-fin-instruccion — emite el
-    CERT_FIN_INSTRUCCION de la solicitud y lo ancla a ella (#827, ADR-043).
+    POST .../nodo/solicitud/<solicitud_id>/certificado-fin-instruccion — revisa la
+    instrucción y, si no queda nada pendiente, consolida el certificado (#827,
+    ADR-043 §E).
 
-    Gesto explícito del técnico: declara terminada la instrucción, que es lo que
-    habilita la fase finalizadora (art. 82.1 LPACAP). Sin body — no hay nada que
-    elegir, el certificado lo produce y lo ancla el propio acto.
+    Gesto explícito del técnico, repetible desde el primer día de la solicitud. Sin
+    body: no hay nada que elegir. **Falta algo no es un error** — se responde 200
+    con el informe y `consolidado: false`, y no se ha creado nada; el técnico ve qué
+    falta y puede volver a preguntar mañana.
 
-    Bloqueo (422, `puede_escapar: false`): quedan fases de instrucción sin cerrar,
-    o la solicitud no tiene ninguna — puerta cerrada de ADR-043 §E, no hay
-    justificación que la abra.
+    Respuesta 200: el informe (`informe_instruccion.Informe.a_dict` + `consolidado`,
+    `documento_id`, `certificado_id`).
 
-    422 con `error` (sin `motivo`): ya estaba emitido, o falló la generación del PDF.
+    422 se reserva para errores de verdad: ya estaba emitido, el catálogo no tiene
+    el tipo documental, o el PDF no se pudo generar. El 422 de bloqueo
+    (`puede_escapar: false`) solo aparecería si la puerta cerrada del invariante
+    discrepara del informe, que sería una divergencia a investigar.
     """
     expediente = Expediente.query.get_or_404(expediente_id)
     # Mismo permiso que cerrar una fase o reabrirla: es un acto sobre la estructura
@@ -960,14 +964,16 @@ def emitir_cert_fin_instruccion_nodo(expediente_id, nodo_id):
     except ValueError as e:
         return jsonify({'error': str(e)}), 404
 
-    from app.services.cert_fin_instruccion import emitir_cert_fin_instruccion
+    from app.services.cert_fin_instruccion import consolidar
 
-    res = emitir_cert_fin_instruccion(solicitud)
+    res = consolidar(solicitud)
     if res.bloqueo:
         return _bloqueo_422(res)
-    if not res.ok:
-        return jsonify({'error': res.error}), 422
-    return jsonify({'ok': True, 'ids': res.ids}), 200
+    if res.error:
+        payload = res.a_dict()
+        payload['error'] = res.error
+        return jsonify(payload), 422
+    return jsonify(res.a_dict()), 200
 
 
 # =============================================================================

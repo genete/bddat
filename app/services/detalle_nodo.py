@@ -271,24 +271,18 @@ def _detalle_solicitud(exp, sol_id: int) -> dict:
 
 def _cert_fin_instruccion(sol) -> dict:
     """Estado de la bisagra instrucción/resolución para el inspector (#827,
-    ADR-043): si consta emitido el certificado y, si no, si puede emitirse ya o
-    qué falta.
+    ADR-043 §E): solo si el certificado consta emitido, y cuál es.
 
-    El motivo del "todavía no" se sirve desde aquí y no se recalcula en el front:
-    es el mismo texto que devolvería el intento de emitir, y duplicar el criterio
-    en JS los haría divergir (mismo argumento que ADR-042 §C para los organismos
-    pendientes de separata, resuelto allí al revés porque el dato ya viajaba en el
-    payload del árbol; aquí no viaja nada equivalente).
+    Nada más, y eso es el cambio: mientras el gesto era una puerta, el inspector
+    traía además `puede_emitirse` y el motivo del «todavía no» para deshabilitar el
+    botón. Con el gesto convertido en revisión, el botón está siempre activo —
+    preguntar «¿cómo va esto?» nunca es ilegítimo— y el porqué lo da el informe al
+    pulsarlo, con mucho más detalle del que cabía en una frase. De paso, cargar el
+    inspector de una solicitud deja de evaluar el invariante cada vez.
     """
-    from app.services.cert_fin_instruccion import puede_emitirse
-
-    emitido = sol.documento_fin_instruccion_id is not None
-    emisible, motivo = (False, '') if emitido else puede_emitirse(sol)
     return {
-        'emitido': emitido,
+        'emitido': sol.documento_fin_instruccion_id is not None,
         'documento_id': sol.documento_fin_instruccion_id,
-        'puede_emitirse': emisible,
-        'motivo': motivo,
     }
 
 
