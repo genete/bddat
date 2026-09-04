@@ -33,7 +33,9 @@ def tarea_analizar_seed(app):
 
     El endpoint resuelve la tarea DESPUÉS del gate de permiso, así que para el
     403 valdría cualquier id; hace falta una de verdad para que el caso
-    permitido llegue a crear la fila.
+    permitido llegue a crear la fila. Y bajo fase ABIERTA: sellada, el POST
+    muere en 422 dentro de `_resolver_nodo` y el caso permitido no llegaría a
+    ejercitar nada (#720, ADR-036 §6 — mismo criterio que #842).
     """
     with app.app_context():
         from app.models import Tarea, TipoTarea, Tramite, Fase, Solicitud
@@ -43,12 +45,13 @@ def tarea_analizar_seed(app):
             .join(Tramite, Tramite.id == Tarea.tramite_id)
             .join(Fase, Fase.id == Tramite.fase_id)
             .join(Solicitud, Solicitud.id == Fase.solicitud_id)
-            .filter(TipoTarea.codigo == 'ANALIZAR')
+            .filter(TipoTarea.codigo == 'ANALIZAR',
+                    Fase.documento_resultado_id.is_(None))
             .with_entities(Solicitud.expediente_id, Tarea.id)
             .first()
         )
         if fila is None:
-            pytest.skip('No hay tareas ANALIZAR en la BD de desarrollo')
+            pytest.skip('No hay tareas ANALIZAR bajo fase abierta en la BD de desarrollo')
         return fila[0], fila[1]
 
 

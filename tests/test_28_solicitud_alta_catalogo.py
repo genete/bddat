@@ -37,7 +37,10 @@ def _limpiar_datos_prueba(app):
 
 @pytest.fixture
 def tarea_analizar_seed(app):
-    """(expediente_id, tarea_id) de una tarea ANALIZAR real de la BD de desarrollo."""
+    """(expediente_id, tarea_id) de una tarea ANALIZAR real de la BD de desarrollo,
+    bajo fase ABIERTA: si la fase está sellada el POST muere en 422 dentro de
+    `_resolver_nodo` sin llegar al endpoint (#720, ADR-036 §6 — misma trampa
+    que dejó rojos los tests de #765, ver #842)."""
     with app.app_context():
         from app.models import Tarea, TipoTarea, Tramite, Fase, Solicitud
         fila = (
@@ -46,12 +49,13 @@ def tarea_analizar_seed(app):
             .join(Tramite, Tramite.id == Tarea.tramite_id)
             .join(Fase, Fase.id == Tramite.fase_id)
             .join(Solicitud, Solicitud.id == Fase.solicitud_id)
-            .filter(TipoTarea.codigo == 'ANALIZAR')
+            .filter(TipoTarea.codigo == 'ANALIZAR',
+                    Fase.documento_resultado_id.is_(None))
             .with_entities(Solicitud.expediente_id, Tarea.id)
             .first()
         )
         if fila is None:
-            pytest.skip('No hay tareas ANALIZAR en la BD de desarrollo')
+            pytest.skip('No hay tareas ANALIZAR bajo fase abierta en la BD de desarrollo')
         return fila[0], fila[1]
 
 

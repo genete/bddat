@@ -85,14 +85,25 @@ def test_editar_tarea_sin_la_clave_conserva_los_consumidos(usuario_supervisor, a
     argumentos la habría hecho la ruta.
     """
     from app.models.tareas import Tarea
+    from app.models.tramites import Tramite
+    from app.models.fases import Fase
     from app.models.documentos_tarea import DocumentoTarea
     from app.services import mutaciones_arbol
     from app.services.mutaciones_arbol import ResultadoMutacion
 
     with app.app_context():
-        vinculo = DocumentoTarea.query.filter_by(rol='CONSUMIDO').first()
+        # La tarea tiene que colgar de fase ABIERTA: bajo fase sellada el PATCH
+        # muere en 422 dentro de `_resolver_nodo` y no llega a la ruta que se
+        # está probando (#720, ADR-036 §6 — mismo criterio que #842).
+        vinculo = (DocumentoTarea.query
+                   .join(Tarea, DocumentoTarea.tarea_id == Tarea.id)
+                   .join(Tramite, Tarea.tramite_id == Tramite.id)
+                   .join(Fase, Tramite.fase_id == Fase.id)
+                   .filter(DocumentoTarea.rol == 'CONSUMIDO',
+                           Fase.documento_resultado_id.is_(None))
+                   .first())
         if vinculo is None:
-            pytest.skip('No hay ninguna tarea con documentos CONSUMIDO en esta BD')
+            pytest.skip('No hay ninguna tarea con documentos CONSUMIDO bajo fase abierta')
         tarea = Tarea.query.get(vinculo.tarea_id)
         exp_id = tarea.tramite.fase.solicitud.expediente_id
         tarea_id = tarea.id
