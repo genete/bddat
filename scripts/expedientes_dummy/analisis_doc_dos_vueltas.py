@@ -298,25 +298,38 @@ def _cubrir_requisito_tasa(solicitud, doc_tasa_id):
     print("Requisito de pago de tasa cubierto.")
 
 
-def _actualizar_catalogo(numero_at):
+def _actualizar_catalogo(numero_at, fecha_fin):
     """Reescribe (o añade) la fila de este expediente-tipo en el catálogo
     compartido. El CSV describe para qué sirve el expediente, no lo que
     generó — el expediente siempre se recrea, así que el numero_at es el
-    único dato que cambia entre ejecuciones."""
+    único dato que cambia entre ejecuciones.
+
+    `fecha_inicio`/`fecha_fin` acotan la ventana en la que viven las fechas
+    administrativas del expediente. Sustituyen a `fecha_ultima_generacion`, que
+    era `date.today()`: con la base derivada de hoy, lo que interesa saber de un
+    expediente-tipo es en qué tramo del calendario cae —para elegir dónde poner
+    el reloj de desarrollo al trabajar con él— y cuánto se ha alejado del
+    presente desde que se generó. El día de la ejecución no dice ni una cosa ni
+    la otra sin restar DIAS_ESCENARIO a mano.
+    """
     import csv
     import os
 
-    columnas = ['codigo', 'proposito', 'numero_at_actual', 'fecha_ultima_generacion']
+    columnas = ['codigo', 'proposito', 'numero_at_actual', 'fecha_inicio', 'fecha_fin']
     filas = []
     if os.path.isfile(CATALOGO_CSV):
         with open(CATALOGO_CSV, encoding='utf-8') as f:
-            filas = [f for f in csv.DictReader(f) if f['codigo'] != CODIGO]
+            # `get` y no indexación: las filas de otros expedientes-tipo escritas
+            # con el juego de columnas anterior no tienen las nuevas.
+            filas = [{c: fila.get(c, '') for c in columnas}
+                     for fila in csv.DictReader(f) if fila['codigo'] != CODIGO]
 
     filas.append({
         'codigo': CODIGO,
         'proposito': PROPOSITO,
         'numero_at_actual': str(numero_at),
-        'fecha_ultima_generacion': date.today().isoformat(),
+        'fecha_inicio': FECHA_BASE.isoformat(),
+        'fecha_fin': fecha_fin.isoformat(),
     })
     filas.sort(key=lambda f: f['codigo'])
 
@@ -698,7 +711,9 @@ def main():
         estado_fase = 'pendiente de cierre' if fase.pdte_cierre else 'en curso'
         print(f"Fase ANALISIS_SOLICITUD {estado_fase} — fin del alcance del script.")
 
-        _actualizar_catalogo(expediente.numero_at)
+        # `fecha_actual` es la última fecha usada por el escenario: cierra la
+        # ventana que el catálogo publica.
+        _actualizar_catalogo(expediente.numero_at, fecha_actual)
 
         print(f"\nExpediente AT-{expediente.numero_at} (id={exp_id}) completado.")
         return expediente.numero_at, exp_id
