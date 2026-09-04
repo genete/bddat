@@ -1,7 +1,7 @@
 # ADR-043 — El certificado de fin de instrucción como bisagra entre instrucción y resolución
 
-**Estado:** Adoptada — §A-§E implementados en #827 (2026-09-03), con dos precisiones anotadas
-en §E; §F pendiente (#838, #839)
+**Estado:** Adoptada — §A-§D implementados en #827; **§E reescrita el 2026-09-04** (el gesto pasa
+de puerta a revisión que se consolida) y en implementación; §F pendiente (#838, #839)
 **Fecha:** 2026-09-02
 **Depende de:** ADR-001 (motor agnóstico), ADR-037 (vocabulario ESFTT vs permiso de motor), ADR-041 §D bis (anclas documentales de la solicitud), ADR-036 (sellado de fase cerrada)
 **Precisa:** ADR-037 §Test operativo — qué separa de verdad a los dos árbitros, ver §B
@@ -187,48 +187,139 @@ Tampoco cuelga de una tarea ni de una fase: cada tarea produce lo que su trámit
 hay ninguna a la que este certificado corresponda, y una fase no representa el conjunto de la
 instrucción (`CertificadoFase.fase_id` quedaría NULL, sin vínculo con la solicitud).
 
-### E — El emisor es donde vive la puerta cerrada
+### E — El gesto es una revisión que a veces se consolida
 
-El invariante del punto 3 de #823 no desaparece: se muda del acto de crear la fase al acto de
-emitir el certificado. **No se emite `CERT_FIN_INSTRUCCION` si alguna fase de la solicitud no
-está finalizada**, contando las planificadas —una fase creada es una fase que alguien decidió
-necesaria, por vía canónica o por escape; si sobra se borra, si hace falta se termina—. Ahí
-entra intacto el análisis del punto 3, incluido el motivo por el que no es redundante con las
-reglas #37/#38: esas vigilan que una fase necesaria se cree y se complete; ésta, que la
-instrucción se declare terminada expresamente y sin flecos.
+> **Reescrita el 2026-09-04 (#827).** La redacción anterior hacía del emisor una puerta que
+> concede o deniega, y de la emisión un acto que sigue adelante aunque el motor siga bloqueando
+> —«esas son contenido normativo escapable y bloquean donde les toca»—. Al implementarlo se vio
+> el efecto: un certificado que declara bloqueada la resolución **ocupa el ancla de §D** y, como
+> deshacerlo es #838, impide emitir el bueno cuando se resuelva lo que faltaba. El texto que
+> sigue lo sustituye. Lo que no cambia: §A, §B, §C, §D y §F.
 
-Lo que se exige es que las fases estén **finalizadas**, sea cual sea su resultado — por §B, un
-desfavorable o un desistimiento cierran la instrucción igual que un favorable. El juicio sobre
-el sentido del resultado no vive aquí: vive en el contenido del certificado y en la resolución
-que lo consume.
+El técnico puede preguntar **en cualquier momento** «¿cómo va esto?», desde el primer día de la
+solicitud. La respuesta es siempre un **informe**, y solo cuando el informe sale sin pendientes
+ese mismo informe **se consolida** como el certificado. El certificado deja de ser un permiso que
+se concede y pasa a ser el acta de una revisión que salió limpia.
 
-> **Precisión de #827 al implementarlo (2026-09-03): son las fases de instrucción**
-> (`es_finalizadora = False`), no todas las de la solicitud. La letra de arriba se muerde la
-> cola: §A admite abrir la fase finalizadora por la vía de escape, y entonces esa fase queda sin
-> finalizar, con lo que el certificado sería inemitible para siempre salvo borrándola —
-> justamente el estado en que #814 encontró AT-15—. Además, «instruidos los procedimientos» no
-> abarca la fase que resuelve. Lo demás queda intacto: cuentan las planificadas y basta con que
-> estén finalizadas, sea cual sea el resultado.
->
-> Se añade también el caso de vacuidad que esta sección no nombraba: una solicitud **sin ninguna
-> fase** pasaría el `all()` por lista vacía y certificaría una instrucción inexistente — mismo
-> agujero que #723 tapó en `Tramite.finalizado`.
+Dos desenlaces, ningún error:
 
-**El orden de la emisión importa, y no es libre (#827).** Este párrafo dice qué se congela, no
-cuándo. La auditoría natural es la de `CREAR` la fase finalizadora, y las dos reglas de §C casan
-justamente con ese sujeto: auditar antes de anclar el documento produciría un certificado cuyo
-snapshot declara bloqueada la resolución por falta del certificado que se está emitiendo, con el
-`permitido=False` correspondiente. Por eso el emisor crea el `Documento`, fija la FK de §D y solo
-entonces audita — el snapshot refleja el estado en que la resolución queda efectivamente
-habilitada. Lo que el emisor **no** hace es bloquear porque otra regla siga disparando (tasa,
-organismos): esas son contenido normativo escapable y bloquean donde les toca, al crear la fase.
+| Informe | Qué ve el técnico | Qué queda |
+|---|---|---|
+| con pendientes | modal: qué falta, por qué, y el resumen de lo instruido | nada — se puede volver a preguntar mañana |
+| sin pendientes | el PDF | `CertificadoFase` + `Documento` + la FK de §D |
 
-La emisión reutiliza `generador_cert.generar_certificado_fase(expediente, fase, auditoria,
-'CERT_FIN_INSTRUCCION')`, que ya existe, está probado (`tests/test_373_cert_fase.py`) y **no lo
-llama nadie en producción**. Recibe un `AuditoriaResult` y lo congela —reglas evaluadas,
-variables, sujeto—: eso es, literalmente, el «fundamento jurídico que habilita la resolución»
-que el catálogo le atribuye. `motor_reglas.auditar()` se escribió con este destino declarado en
-su docstring.
+**Por qué no se consolida con pendientes.** Un certificado que dice «esto no está listo» no
+acredita nada: no sirve como ENTRADA del `ELABORAR` que el catálogo le exige ser, no sirve de
+ancla para el sello de #838, y ocupa el sitio del certificado válido. La emisión con constancia
+del bloqueo era peor que no emitir.
+
+**Las tres categorías del informe.** No basta con «pasa / no pasa», porque el técnico necesita
+distinguir lo que le queda por hacer de lo que ya resolvió bajo su responsabilidad:
+
+1. **Pendiente** — una comprobación no pasa y nada la explica. Impide consolidar.
+2. **Salvado con criterio** — el acto se realizó por la vía de escape, con justificación en
+   bitácora. **Se relata en el certificado y no impide consolidar**: el criterio motivado del
+   tramitador es superior a la regla —para eso existe el escape— y por eso queda escrito, no
+   escondido. Como el certificado es ENTRADA del `ELABORAR` de la resolución, quien la redacta
+   tiene delante las desviaciones que debe motivar; hoy esa información muere en la bitácora.
+3. **Pasa** — nada que decir.
+
+El sistema **no correlaciona** hoy el escape con la regla que se saltó: el registro de bitácora
+guarda `{escape, justificacion, sujeto}` y no qué regla se esquivó, y `evaluar()` cortocircuita
+en la primera, de modo que en el momento del escape ni siquiera se conocen todas. El informe
+presenta por tanto **dos listas separadas** —lo que hoy no pasa, y los actos realizados bajo
+justificación— y deja la correlación al lector. Automatizarla es de #614.
+
+**Qué comprueba el informe.** Tres fuentes, y ninguna reemplaza a las otras:
+
+- **El motor**, una sola vez, sobre el acto que importa: crear la fase finalizadora. Las reglas
+  de precedencia hacia ella *son* el veredicto normativo sobre si la instrucción está lista
+  (requerimientos sin respuesta, organismos, IP, tasa). No se pregunta al motor nodo a nodo: sus
+  reglas son de un acto, no de un nodo, y re-evaluar sobre lo ya creado es arqueología —las
+  reglas cambian, y un nodo de junio dispararía hoy una regla que no existía.
+- **El estado del árbol**, consumiendo `estado_dominio` en vez de reimplementarlo: es el núcleo
+  único de las reglas de estado, y duplicarlo repetiría la divergencia que #558 tuvo que unificar.
+- **El invariante estructural** de esta sección, que sigue siendo el mismo y ahora se expresa como
+  un pendiente más de la lista, no como un 422 que corta la conversación.
+
+**El invariante** (el punto 3 de #823, mudado del acto de crear la fase al de certificar): **no se
+consolida si alguna fase de instrucción de la solicitud no está finalizada**, contando las
+planificadas —una fase creada es una fase que alguien decidió necesaria; si sobra se borra, si
+hace falta se termina—. Y tampoco si no hay ninguna fase: `all([])` es `True` y certificaría una
+instrucción inexistente, mismo agujero de vacuidad que #723 tapó en `Tramite.finalizado`.
+
+Dos precisiones sobre esa frase, ambas de #827:
+
+- **Son las fases de instrucción** (`es_finalizadora = False`), no todas las de la solicitud.
+  Contar la finalizadora se muerde la cola: §A admite abrirla por la vía de escape, y entonces
+  esa fase queda sin finalizar y el certificado sería inemitible para siempre salvo borrándola —
+  justamente el estado en que #814 encontró AT-15. Y «instruidos los procedimientos» no abarca la
+  fase que resuelve.
+- **Se exige finalizadas, sea cual sea el resultado**: por §B un desfavorable o un desistimiento
+  cierran la instrucción igual que un favorable. El juicio sobre el sentido del resultado vive en
+  el contenido del certificado y en la resolución que lo consume.
+
+Sigue sin ser redundante con las reglas #37/#38: esas vigilan que una fase **necesaria** se cree y
+se complete; ésta, que no queden flecos abiertos de lo que sí se abrió. El motor mira lo que
+debería haber; el invariante, lo que hay.
+
+**Puerta cerrada, y por eso vive aquí y no en `reglas_motor`** (§B): certificar que la instrucción
+terminó cuando no ha terminado no es un juicio de negocio discutible, es un documento que miente.
+Sigue aplicando con el motor en modo global `INACTIVO`.
+
+#### E bis — La forma del informe: definido en las hojas, compuesto hacia arriba
+
+El informe **no lo produce un script que barre el árbol conociendo las particularidades de cada
+tipo**. Cada nodo aporta lo que sabe de sí mismo y el resultado se compone hacia arriba con una
+función agnóstica:
+
+```
+informe(solicitud) = agregación de informe(fase_i)
+informe(fase)      = lo propio de la fase   + agregación de informe(tramite_j)
+informe(tramite)   = lo propio del trámite  + agregación de informe(tarea_k)
+```
+
+Un nodo sin particularidades no dice nada por sí mismo y se limita a lo que digan sus hijos.
+
+**No es un patrón nuevo en este proyecto**: es el de `estado_dominio.py`, con su contrato
+`(estado, propio)` —donde `propio` significa «el nodo tiene algo que decir POR SÍ MISMO»—, un
+núcleo único y dos consumidores que ponen encima su propia decoración. El punto de extensión
+natural para las particularidades es un registry por código de tipo, como el `@variable` del
+motor, con «sin particularidades» de comportamiento por defecto.
+
+**Por qué no basta con el genérico, con nombre y apellidos.** Un modificado de proyecto puede
+obligar a repetir consultas, trámite ambiental e información pública, y **cada ronda se somete
+sobre un conjunto documental distinto** (Proyecto; Proyecto + Anexo 1; …). El certificado tiene
+que reflejarlo, porque es la base sobre la que se redacta la resolución: quien resuelve necesita
+saber sobre qué versión del proyecto lo hace. Eso solo lo sabe la fase que consultó, y ninguna
+función genérica puede deducirlo. Es el contenido de **#819**, que además es hoy el primer
+consumidor real del punto de extensión.
+
+**Orden de construcción (decisión de #827, 2026-09-04):** primero el **contrato** y el esqueleto
+recursivo, probados por su primer consumidor —este certificado—; el **registry** de
+particularidades cuando #819 defina el vínculo fase↔conjunto documental, porque diseñar el punto
+de extensión sin conocer la forma del dato sería adivinar. El contrato debe admitir desde ahora
+que un hallazgo se refiera a un **ámbito documental**, aunque hoy ese ámbito sea siempre «el
+proyecto del expediente»: no impedirlo es barato ahora y caro después.
+
+#### E ter — Lo que se congela, y el orden que lo hace posible
+
+La consolidación reutiliza `generador_cert.generar_certificado_fase(…, 'CERT_FIN_INSTRUCCION')`,
+que ya existe, está probado (`tests/test_373_cert_fase.py`) y **no lo llamaba nadie en
+producción**. Congela el `AuditoriaResult` —reglas evaluadas, variables, sujeto—;
+`motor_reglas.auditar()` se escribió con este destino declarado en su docstring.
+
+**El orden no es libre.** Las dos reglas de §C casan con el sujeto de la fase finalizadora, así
+que mientras el certificado no conste, disparan: auditar y consolidar sin cuidado produce un
+snapshot que declara bloqueada la resolución por falta del certificado que lo lleva. El orden es
+por tanto: **evaluar primero, sin crear nada; consolidar después**, y la regla del art. 82.1 se
+excluye del criterio de «¿limpio?» **por definición** — es la única que este acto satisface, y
+esperar a que deje de disparar sola sería esperar a nunca.
+
+El contenido del PDF es el que el catálogo describe —*«tipo de expediente, fases completadas,
+resultados y fundamento jurídico»*—: el resumen de lo instruido con sus fechas, los actos salvados
+con criterio, y la auditoría del motor como respaldo. No solo la tabla de reglas, que es lo que
+#373 producía.
 
 ### F — El certificado sella la instrucción: reabrir y abrir de nuevo son la misma cara
 
@@ -281,7 +372,24 @@ catalogado desde el principio deja de estar sin dueño; y el guardián de reaper
 **Hay que tocar:** migración (columna en `solicitudes`), una variable nueva + su fila en
 `catalogo_variables`, dos filas de `reglas_motor` con su norma, el emisor del certificado y su
 invariante, y la nota de cabecera de `invariantes_esftt.py`, que hoy enumera las familias de
-invariantes sin contemplar precondiciones de creación.
+invariantes sin contemplar precondiciones de creación. Con §E reescrita, además: el informe
+recursivo con su contrato, el consumo de `estado_dominio`, la lectura de escapes de bitácora y el
+contenido del PDF.
+
+**Lo que este ADR cierra sin haberlo abierto:** el diseño de #373 —emitir el certificado *al
+crear* la fase `RESOLUCION`, como efecto de esa creación— queda **invertido**, no matizado. Su
+ejecución pendiente vivía en #586, que se cierra por eso: si se hubiera implementado después, la
+regla del art. 82.1 habría quedado insatisfacible por construcción. El generador de #373 arrastra
+ese ADN y hay que corregirlo donde asome (acepta una `fase` y guarda `fase_id`; su PDF hablaba de
+«autorizar la creación de la fase indicada» y llevaba el título fijo de un tipo documental
+concreto). Los issues que colgaban de aquel diseño heredaron su premisa y hay que revisarla
+—#430 la nombra literalmente—.
+
+**Una carencia del registro de escapes, para que no se dé por hecha:** la bitácora guarda
+`(tabla, registro_id)` y un detalle con `{escape, justificacion, sujeto}`. No guarda la solicitud,
+así que reunir los escapes de una hay que hacerlo desde los ids vivos de su árbol — y un escape
+sobre algo que después se borró **es irrecuperable**. Añadir `solicitud_id` a ese detalle lo
+resuelve donde ya se compone, y no depende del log completo de transacciones que #614 espera.
 
 **Frente que esto deja a la vista:** los mecanismos de cierre de la terminación anormal (§B).
 El del desistimiento tácito existe y funciona (`certificados.crear_cert` sobre la `ESPERAR_PLAZO`
@@ -301,19 +409,35 @@ a medias. Declarado aquí para que no ocurra por omisión.
 
 ---
 
-## Issues de implementación
+## Mapa de issues del `CERT_FIN_INSTRUCCION`
 
-- **#827** — absorbe el punto 3 de #823: §A-§E completos (columna, variable, las dos reglas,
-  emisor, invariante del emisor). Su alcance original —conectar el generador de certificados de
-  fase al cierre— es la misma pieza vista desde el otro extremo.
-- **#823** — se queda con los puntos 1 (`ESPERAR_PLAZO` exige su `NOTIFICAR` completo) y 2
-  (cadena de subsanación, una vuelta cada vez), que sí son invariantes estructurales sin norma
-  que citar y no dependen de nada de este ADR.
-- **#838** — §F, primera pieza: el sello de la instrucción anclado al certificado, que cubre a la
-  vez la reapertura de una fase cerrada y la creación de una fase de instrucción nueva. Borrador.
-- **#839** — §F, segunda pieza: el trámite de actuaciones complementarias del art. 87 en el
-  catálogo de la fase finalizadora, sin el cual el sello de #838 no deja salida practicable.
-  Borrador.
+Ocho issues tocan esta pieza, y hasta 2026-09-04 dos de ellos proponían diseños opuestos. El
+mapa vive aquí para que no vuelva a ocurrir: **antes de abrir uno nuevo sobre el certificado, se
+mira esta tabla**.
+
+| Issue | Qué le corresponde | Estado tras este ADR |
+|---|---|---|
+| **#373** | diseño original: emitir el certificado al crear la fase `RESOLUCION` | cerrado en mayo — **superado**: §A lo invierte |
+| **#586** | ejecutar el diseño de #373 (la llamada en `crear_fase`) | **cerrado** por incompatible con §A |
+| **#827** | §A-§E: columna, variable, las dos reglas, el gesto, el informe recursivo con su contrato, el resumen de lo instruido, los escapes relatados y la consolidación condicionada | activo |
+| **#614** | la contradicción del motor apagado (§E, motor global) y la correlación automática escape↔regla | activo, esperando su ADR de bitácora |
+| **#819** | el vínculo fase↔conjunto documental de cada ronda; primer consumidor del registry de §E bis | activo |
+| **#430** | proyectar `organismos_expediente` → `interesados_expediente` al consolidar | activo, con la premisa corregida |
+| **#838** | §F, primera pieza: el sello de la instrucción anclado al certificado — cubre a la vez reabrir una fase cerrada y crear una de instrucción nueva | borrador |
+| **#839** | §F, segunda pieza: el trámite de actuaciones complementarias del art. 87, sin el cual el sello de #838 no deja salida practicable | borrador |
+
+Fuera de la tabla pero emparentados: **#823** se queda con sus puntos 1 y 2 (invariantes
+estructurales sin norma que citar, independientes de este ADR), y **#801** es el hermano
+`CERT_CIERRE_SOLICITUD` — mismo patrón de ancla sin emisor, otro momento del procedimiento.
+
+**La contradicción que #614 hereda, para que no se «arregle» al revés.** `auditar()` no pasa por
+`motor_modo_global` — está escrito a propósito en la cabecera de ese módulo. Con el motor en
+`INACTIVO` eso produce un callejón: la auditoría del informe ve reglas disparadas, pero al crear
+los nodos el motor no bloqueó, así que no hubo escape ninguno que relatar y el certificado no
+puede consolidarse por una vía que nunca estuvo abierta. **La salida no es hacer que `auditar`
+respete el modo global**: eso produciría certificados que afirman «todo satisfecho» porque el
+comprobador estaba apagado. La contradicción es el precio de que el certificado sea honesto, y se
+resuelve en #614 por otro camino.
 
 ---
 
@@ -331,10 +455,16 @@ a medias. Declarado aquí para que no ocurra por omisión.
   plazos, y si la audiencia del art. 82 merece trámite propio en la misma frontera): §F fija
   dónde vive —dentro de la fase finalizadora— y por qué, no cómo se escribe en el catálogo.
 - Si `CERT_CIERRE_SOLICITUD` (ancla sin emisor desde #778) se resuelve en el mismo movimiento —
-  mismo patrón, distinto momento del procedimiento.
-- El contenido y formato del PDF del certificado.
+  mismo patrón, distinto momento del procedimiento (#801).
+- ~~El contenido y formato del PDF~~ — **§E ter fija el contenido** (el que el catálogo describe:
+  fases, resultados, fechas, actos salvados con criterio, auditoría como respaldo). El formato
+  sigue abierto.
+- **La forma del punto de extensión** del informe recursivo: §E bis decide que lo habrá y por qué,
+  y aplaza su diseño a que #819 defina el vínculo fase↔conjunto documental.
 - Qué se hace con las reglas 36/37/38 y su `norma_id` NULL: documentarlas con su norma o aceptar
-  explícitamente que `reglas_motor` contiene reglas de workflow.
+  explícitamente que `reglas_motor` contiene reglas de workflow. **Sube de prioridad con §E**: el
+  informe promete decir «qué falta y **por qué**», y esas tres son las que vigilan la instrucción
+  — dos de cada tres respuestas se quedarían sin el porqué delante del usuario.
 
 ---
 
@@ -360,6 +490,30 @@ que su trámite le dice— y la fase no representa el conjunto de la instrucció
 ADR). Parte de una lectura incorrecta: en los tres casos la instrucción concluye y la fase se
 cierra con su resultado; lo que hace falta no es una excepción, son los mecanismos de cierre
 de §B.
+
+**Emitir el certificado aunque queden reglas bloqueantes, dejando constancia** (redacción
+original de §E). Produce un documento que no acredita nada —no sirve como ENTRADA del `ELABORAR`
+ni de ancla para #838— y que además **ocupa el ancla de §D**, de modo que impide emitir el válido
+cuando se resuelva lo que faltaba, porque deshacerlo es #838. Sustituida por la consolidación
+condicionada.
+
+**Un certificado volátil, que no persista.** Tentador desde el momento en que se ve que el
+contenido es una auditoría del motor: bastaría un modal informativo. Pero el catálogo lo declara
+**ENTRADA obligatoria** del `ELABORAR` de `ELABORACION` —una foto no se vincula como entrada de
+una tarea— y #838 se quedaría sin nada que sellar. Lo que sí es volátil es **la consulta**: por eso
+§E separa el informe (repetible, sin efectos) de su consolidación (única, con efectos).
+
+**Escapar de la auditoría con justificación** (#614, punto 2, segunda mitad). La auditoría no
+prohíbe nada, así que ese escape no sería una excepción a una regla: sería una excepción sobre el
+acto de certificar — el certificado eximiéndose a sí mismo. Lo que el informe hace es señalar la
+desviación no salvada; la salida es tramitar. Los escapes **previos**, en cambio, sí se relatan
+(§E, categoría 2): esos ampararon un acto real y llevan justificación del tramitador.
+
+**Preguntar al motor nodo a nodo en el barrido recursivo.** Las reglas del motor son de un acto,
+no de un nodo: la única pregunta posible sobre lo ya creado es «¿se permitiría crear esto hoy?»,
+que es arqueología y no estado — las reglas cambian, y un nodo antiguo dispararía reglas que no
+existían al crearlo. Además es innecesario: las reglas de precedencia hacia la fase finalizadora
+ya son el veredicto sobre si la instrucción está lista, en una sola pregunta.
 
 **Amparar en el art. 87 la apertura de una fase de instrucción con la finalizadora ya abierta**
 (borrador anterior de este ADR, que lo llamaba "reverso" y lo mandaba a `reglas_motor` como
