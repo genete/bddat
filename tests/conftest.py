@@ -5,6 +5,24 @@ from app import create_app, db as _db
 
 @pytest.fixture(scope='session')
 def app():
+    """OJO: la suite todavía corre contra la BD de DESARROLLO (#849, fase A).
+
+    El mundo aislado ya existe y funciona —`TestingConfig`, base construida
+    desde las migraciones, semilla de catálogo y usuarios, raíz de ficheros
+    propia—, pero le falta la semilla de datos de negocio, que llega con
+    `alta_expediente()` en #428 (fase B).
+
+    Medido el 2026-09-05 cambiando esta línea a `create_app('testing')`:
+
+        contra desarrollo:  3 failed, 1586 passed,   50 skipped
+        contra la de tests: 16 failed, 1180 passed, 441 skipped, 2 errors
+
+    Los 16 fallos y los 441 skips tienen todos la misma causa —no hay
+    expedientes, solicitudes ni entidades—, ninguno es achacable al
+    aislamiento. Activar el interruptor hoy cambiaría 50 skips por 441, así
+    que espera a que la semilla de negocio exista. Entonces esta línea pasa a
+    `create_app('testing')` y no se vuelve atrás.
+    """
     application = create_app()
     application.config['TESTING'] = True
     return application
