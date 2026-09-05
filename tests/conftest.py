@@ -3,8 +3,60 @@ from sqlalchemy.orm import scoped_session, sessionmaker
 from app import create_app, db as _db
 
 
+# Tope de tests que pueden autodesactivarse en una pasada completa (#849).
+#
+# Un skip no se distingue de un test que pasa cuando solo se mira el resultado
+# global: por eso 174 `pytest.skip` repartidos por 52 ficheros podían saltar sin
+# que nadie lo supiera. Este tope hace visible la deuda — si sube, la suite
+# falla y hay que mirar por qué.
+#
+# El número SOLO BAJA. Subirlo es aceptar que algo dejó de probarse, y eso se
+# decide a propósito, no de pasada. Bajarlo al cerrar cada tanda es lo que
+# convierte esto en un trinquete.
+#
+#   2026-09-05  50  línea base medida antes de tocar nada
+#   2026-09-05  19  tras desclavar _login_as de CLG (-21) y revivir test_348 (-10)
+UMBRAL_SKIPS = 19
+
+
+def pytest_sessionfinish(session, exitstatus):
+    """Falla la sesión si los skips superan el tope acordado (#849)."""
+    reporter = session.config.pluginmanager.get_plugin('terminalreporter')
+    if reporter is None:
+        return
+    n_skips = len(reporter.stats.get('skipped', []))
+    if n_skips <= UMBRAL_SKIPS:
+        return
+    reporter.write_line('')
+    reporter.write_line(
+        f'#849 — {n_skips} tests saltados, por encima del tope de {UMBRAL_SKIPS}.',
+        red=True, bold=True)
+    reporter.write_line(
+        '        Un skip por falta de datos es un hueco de cobertura, no un aprobado: '
+        'mira el detalle con `pytest -rs`.')
+    session.exitstatus = 1
+
+
 @pytest.fixture(scope='session')
 def app():
+    """OJO: la suite todavía corre contra la BD de DESARROLLO (#849, fase A).
+
+    El mundo aislado ya existe y funciona —`TestingConfig`, base construida
+    desde las migraciones, semilla de catálogo y usuarios, raíz de ficheros
+    propia—, pero le falta la semilla de datos de negocio, que llega con
+    `alta_expediente()` en #428 (fase B).
+
+    Medido el 2026-09-05 cambiando esta línea a `create_app('testing')`:
+
+        contra desarrollo:  3 failed, 1586 passed,   50 skipped
+        contra la de tests: 16 failed, 1180 passed, 441 skipped, 2 errors
+
+    Los 16 fallos y los 441 skips tienen todos la misma causa —no hay
+    expedientes, solicitudes ni entidades—, ninguno es achacable al
+    aislamiento. Activar el interruptor hoy cambiaría 50 skips por 441, así
+    que espera a que la semilla de negocio exista. Entonces esta línea pasa a
+    `create_app('testing')` y no se vuelve atrás.
+    """
     application = create_app()
     application.config['TESTING'] = True
     return application
@@ -56,16 +108,25 @@ def _login_as(client, app, rol_nombre):
     """
     Autentica el cliente de test usando session_transaction: fija _user_id
     y rol_activo_nombre directamente en la sesión sin simular el formulario.
-    Devuelve True si el rol existe en la BD para el usuario CLG, False si no.
+    Devuelve True si algún usuario de la BD tiene ese rol, False si no.
+
+    Busca el primer usuario ACTIVO con el rol pedido, en vez de exigir unas
+    siglas concretas (#849). Clavarlo a 'CLG' hacía que TODO test con
+    `usuario_admin` se autodesactivara en silencio —CLG tiene SUPERVISOR,
+    TRAMITADOR y ADMINISTRATIVO, pero no ADMIN—, dejando sin cobertura efectiva
+    las pantallas de administración. El orden por id es lo que mantiene a CLG
+    como usuario de los otros tres roles: es quien los tiene con id más bajo.
     """
     with app.app_context():
-        from app.models.usuarios import Usuario
-        u = Usuario.query.filter_by(siglas='CLG').first()
+        from app.models.usuarios import Rol, Usuario
+        u = (Usuario.query
+             .join(Usuario.roles)
+             .filter(Rol.nombre == rol_nombre, Usuario.activo.is_(True))
+             .order_by(Usuario.id)
+             .first())
         if u is None:
             return False
-        rol = next((r for r in u.roles if r.nombre == rol_nombre), None)
-        if rol is None:
-            return False
+        rol = next(r for r in u.roles if r.nombre == rol_nombre)
         uid, rol_id, rol_nombre_db = str(u.id), rol.id, rol.nombre
 
     with client.session_transaction() as sess:
@@ -78,33 +139,33 @@ def _login_as(client, app, rol_nombre):
 
 @pytest.fixture
 def usuario_admin(client, app):
-    """Cliente autenticado como CLG con rol ADMIN."""
+    """Cliente autenticado con rol ADMIN."""
     if not _login_as(client, app, 'ADMIN'):
-        pytest.skip('CLG con rol ADMIN no disponible en esta BD')
+        pytest.skip('Ningún usuario activo con rol ADMIN en esta BD')
     return client
 
 
 @pytest.fixture
 def usuario_supervisor(client, app):
-    """Cliente autenticado como CLG con rol SUPERVISOR."""
+    """Cliente autenticado con rol SUPERVISOR."""
     if not _login_as(client, app, 'SUPERVISOR'):
-        pytest.skip('CLG con rol SUPERVISOR no disponible en esta BD')
+        pytest.skip('Ningún usuario activo con rol SUPERVISOR en esta BD')
     return client
 
 
 @pytest.fixture
 def usuario_tramitador(client, app):
-    """Cliente autenticado como CLG con rol TRAMITADOR."""
+    """Cliente autenticado con rol TRAMITADOR."""
     if not _login_as(client, app, 'TRAMITADOR'):
-        pytest.skip('CLG con rol TRAMITADOR no disponible en esta BD')
+        pytest.skip('Ningún usuario activo con rol TRAMITADOR en esta BD')
     return client
 
 
 @pytest.fixture
 def usuario_administrativo(client, app):
-    """Cliente autenticado como CLG con rol ADMINISTRATIVO."""
+    """Cliente autenticado con rol ADMINISTRATIVO."""
     if not _login_as(client, app, 'ADMINISTRATIVO'):
-        pytest.skip('CLG con rol ADMINISTRATIVO no disponible en esta BD')
+        pytest.skip('Ningún usuario activo con rol ADMINISTRATIVO en esta BD')
     return client
 
 
@@ -143,10 +204,16 @@ def plantilla_seed(app):
 
 @pytest.fixture
 def primer_usuario_id(app):
-    """ID del primer usuario en la BD de desarrollo. Skip si no existe ninguno."""
+    """ID del primer usuario en la BD de desarrollo. Skip si no existe ninguno.
+
+    Con ORDER BY explícito (#849): un `first()` a secas devuelve la primera
+    tupla FÍSICA, que se mueve con cada UPDATE de la tabla —el mecanismo que
+    hizo indiagnosticable #832 y que #836 documenta—. Sin orden, esta fixture
+    apunta a un usuario distinto según la pasada.
+    """
     with app.app_context():
         from app.models.usuarios import Usuario
-        u = Usuario.query.first()
+        u = Usuario.query.order_by(Usuario.id).first()
         if u is None:
             pytest.skip('No hay usuarios en la BD de desarrollo')
         return u.id

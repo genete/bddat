@@ -41,6 +41,11 @@ def create_app(config_name='development'):
     else:
         app.config.from_object(config_name)
 
+    # Antes de tocar la BD: que este proceso no esté apuntando al mundo
+    # equivocado (#849). Falla al arrancar, que es cuando aún no ha escrito nada.
+    from app.config import comprobar_aislamiento
+    comprobar_aislamiento(app)
+
     # Inicializar extensiones con la app
     db.init_app(app)
     migrate.init_app(app, db)

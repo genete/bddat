@@ -54,6 +54,12 @@ def upgrade():
         ON CONFLICT (codigo) DO NOTHING
     """))
 
+    # Ver 348_seed_normas_base: insertar con id explícito no mueve la secuencia (#849).
+    conn.execute(sa.text(
+        "SELECT setval(pg_get_serial_sequence('public.normas', 'id'), "
+        "(SELECT COALESCE(MAX(id), 1) FROM public.normas))"
+    ))
+
     # 2. catalogo_variables
     conn.execute(sa.text("""
         INSERT INTO public.catalogo_variables (nombre, etiqueta, tipo_dato, norma_id, activa)

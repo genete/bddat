@@ -18,6 +18,9 @@ app/static/uploads/*
 !.claude/hooks
 # Documentos de prueba locales (no versionar binarios ni datos reales)
 docs_prueba/
+# Árbol de ficheros de la suite de tests (#849): lo que escriban los tests
+# nunca debe caer en docs_prueba/, que es el servidor de ficheros de desarrollo
+docs_prueba_test/
 contexto_completo_gemini.txt
 
 # Contexto de issues generado por scripts/gen_issues.py (no versionar)

@@ -176,6 +176,32 @@ op.execute("GRANT SELECT ON public.<tabla> TO claude_desktop")
 
 En producción este usuario no existe y el GRANT se omite o revoca, pero en desarrollo es necesario para que el MCP PostgreSQL pueda leerla.
 
+### Dos reglas que solo se notan instalando desde cero (#849)
+
+La BD de desarrollo lleva años acumulando ajustes hechos a mano que nunca se
+formalizaron, así que una migración puede estar rota y funcionar aquí. Estas
+dos rompían el `upgrade` sobre una base vacía:
+
+**Identificador de revisión: 32 caracteres como máximo.** Alembic crea
+`alembic_version.version_num` como `VARCHAR(32)` y no ofrece forma de
+configurar ese ancho. Siete revisiones del repo lo superan (la mayor, 45), y
+el upgrade limpio moría al registrar la primera de ellas. Las existentes se
+quedan como están —renombrarlas dejaría huérfana cualquier copia de la BD
+registrada en una de ellas—; `scripts/preparar_bd_test.py` crea la tabla con
+128 antes de que la cree Alembic, igual que la de desarrollo. De las nuevas,
+ninguna debe pasar de 32.
+
+**Sembrar con `id` explícito obliga a ajustar la secuencia.** Un
+`INSERT ... (id, ...)` no la mueve, así que el siguiente INSERT sin id recibe
+el valor 1 y choca con la fila ya sembrada:
+
+```python
+op.execute(
+    "SELECT setval(pg_get_serial_sequence('public.<tabla>', 'id'), "
+    "(SELECT COALESCE(MAX(id), 1) FROM public.<tabla>))"
+)
+```
+
 ---
 
 ## Reloj de desarrollo (fecha "hoy" simulada) — #820

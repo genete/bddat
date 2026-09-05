@@ -26,6 +26,13 @@ def upgrade():
         ON CONFLICT (codigo) DO NOTHING
     """)
 
+    # La secuencia no se mueve al insertar con id explícito (#849, mismo
+    # defecto que #637): sin esto, un INSERT posterior sin id recibiría 1.
+    op.execute(
+        "SELECT setval(pg_get_serial_sequence('public.normas', 'id'), "
+        "(SELECT COALESCE(MAX(id), 1) FROM public.normas))"
+    )
+
 
 def downgrade():
     op.execute("DELETE FROM public.normas WHERE id IN (3, 4)")
