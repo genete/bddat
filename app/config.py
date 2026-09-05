@@ -46,8 +46,34 @@ class ProductionConfig(Config):
     DEBUG = False
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL')
 
+
+class TestingConfig(Config):
+    """Tests (#849).
+
+    Base de datos PROPIA, nunca la de desarrollo: hasta este issue la suite
+    corría contra `DATABASE_URL` y dependía del estado de una máquina
+    concreta —174 `pytest.skip` repartidos por 52 ficheros podían
+    autodesactivarse en silencio y el conjunto salía verde igual—.
+
+    `DEBUG = False` no es un detalle: `reloj_simulado.hoy()` solo respeta el
+    fichero `instance/reloj_simulado.txt` con DEBUG activo, así que los tests
+    trabajan sobre la fecha real y dejan de depender de en qué día quedó el
+    reloj de desarrollo. `SQLALCHEMY_ECHO` apagado por lo mismo que dice
+    ANALISIS_ESCALABILIDAD §6.1: con el eco puesto se mide la consola.
+
+    Sin fallback a DATABASE_URL a propósito: si TEST_DATABASE_URL no está
+    configurada, es preferible que la suite falle al arrancar a que escriba
+    en la BD de desarrollo creyendo que está aislada.
+    """
+    DEBUG = False
+    TESTING = True
+    SQLALCHEMY_DATABASE_URI = os.environ.get('TEST_DATABASE_URL')
+    SQLALCHEMY_ECHO = False
+
+
 config = {
     'development': DevelopmentConfig,
     'production': ProductionConfig,
+    'testing': TestingConfig,
     'default': DevelopmentConfig
 }
