@@ -3,6 +3,40 @@ from sqlalchemy.orm import scoped_session, sessionmaker
 from app import create_app, db as _db
 
 
+# Tope de tests que pueden autodesactivarse en una pasada completa (#849).
+#
+# Un skip no se distingue de un test que pasa cuando solo se mira el resultado
+# global: por eso 174 `pytest.skip` repartidos por 52 ficheros podían saltar sin
+# que nadie lo supiera. Este tope hace visible la deuda — si sube, la suite
+# falla y hay que mirar por qué.
+#
+# El número SOLO BAJA. Subirlo es aceptar que algo dejó de probarse, y eso se
+# decide a propósito, no de pasada. Bajarlo al cerrar cada tanda es lo que
+# convierte esto en un trinquete.
+#
+#   2026-09-05  50  línea base medida antes de tocar nada
+#   2026-09-05  19  tras desclavar _login_as de CLG (-21) y revivir test_348 (-10)
+UMBRAL_SKIPS = 19
+
+
+def pytest_sessionfinish(session, exitstatus):
+    """Falla la sesión si los skips superan el tope acordado (#849)."""
+    reporter = session.config.pluginmanager.get_plugin('terminalreporter')
+    if reporter is None:
+        return
+    n_skips = len(reporter.stats.get('skipped', []))
+    if n_skips <= UMBRAL_SKIPS:
+        return
+    reporter.write_line('')
+    reporter.write_line(
+        f'#849 — {n_skips} tests saltados, por encima del tope de {UMBRAL_SKIPS}.',
+        red=True, bold=True)
+    reporter.write_line(
+        '        Un skip por falta de datos es un hueco de cobertura, no un aprobado: '
+        'mira el detalle con `pytest -rs`.')
+    session.exitstatus = 1
+
+
 @pytest.fixture(scope='session')
 def app():
     """OJO: la suite todavía corre contra la BD de DESARROLLO (#849, fase A).
