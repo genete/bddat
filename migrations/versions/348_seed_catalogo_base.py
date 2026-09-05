@@ -144,6 +144,20 @@ def upgrade():
         ON CONFLICT (id) DO NOTHING
     """)
 
+    # Poner cada secuencia por delante del último id insertado a mano (#849).
+    # Insertar con `id` explícito no la mueve, así que la siguiente migración
+    # que inserte SIN id recibe el valor 1 y choca con la fila ya sembrada.
+    # En la BD de desarrollo nunca se vio porque estos datos entraron por otra
+    # vía; en una instalación desde cero rompe el upgrade. Mismo defecto que
+    # #637 corrigió solo para `normas`.
+    for tabla in ('roles', 'tipos_expedientes', 'tipos_ia',
+                  'tipos_resultados_fases', 'tipos_tramites', 'tipos_fases',
+                  'tipos_tareas', 'tipos_solicitudes'):
+        op.execute(
+            f"SELECT setval(pg_get_serial_sequence('public.{tabla}', 'id'), "
+            f"(SELECT COALESCE(MAX(id), 1) FROM public.{tabla}))"
+        )
+
 
 def downgrade():
     # Borrar solo las filas insertadas por esta migración.
