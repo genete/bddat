@@ -26,6 +26,7 @@ from sqlalchemy.exc import OperationalError
 
 RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, RAIZ)
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # para semilla_test
 load_dotenv(os.path.join(RAIZ, '.env'))
 
 
@@ -216,6 +217,10 @@ def main():
 
     _preparar_tabla_version(url_test)
     app = _aplicar_migraciones()
+
+    from semilla_test import sembrar
+    sembrar(app)
+
     _informe(app)
 
 

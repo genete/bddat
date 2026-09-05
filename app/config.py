@@ -64,11 +64,20 @@ class TestingConfig(Config):
     Sin fallback a DATABASE_URL a propósito: si TEST_DATABASE_URL no está
     configurada, es preferible que la suite falle al arrancar a que escriba
     en la BD de desarrollo creyendo que está aislada.
+
+    Lo mismo vale para el disco. El aislamiento por SAVEPOINT revierte la BD,
+    pero el sistema de ficheros no es transaccional: un test que genere un
+    escrito o suba al pool deja el fichero puesto aunque la transacción se
+    deshaga. Existe el fixture `fs_tmp` (#674) para redirigirlo, pero es
+    opt-in — depende de que el autor del test se acuerde. Con una raíz propia,
+    un olvido ensucia el árbol de tests y nunca el de desarrollo.
     """
     DEBUG = False
     TESTING = True
     SQLALCHEMY_DATABASE_URI = os.environ.get('TEST_DATABASE_URL')
     SQLALCHEMY_ECHO = False
+    FILESYSTEM_BASE = _ruta_base_env('TEST_FILESYSTEM_BASE')
+    PLANTILLAS_BASE = _ruta_base_env('TEST_PLANTILLAS_BASE')
 
 
 config = {
@@ -77,3 +86,49 @@ config = {
     'testing': TestingConfig,
     'default': DevelopmentConfig
 }
+
+
+def _nombre_bd(uri):
+    """Nombre de la base dentro de una URL de conexión, o None si no se puede leer."""
+    if not uri:
+        return None
+    from sqlalchemy.engine import make_url
+    try:
+        return make_url(uri).database
+    except Exception:
+        return None
+
+
+def comprobar_aislamiento(app):
+    """No dejar que un mundo trabaje con los datos del otro (#849).
+
+    Los tests corren contra la base de tests; el servidor de desarrollo y la
+    verificación en navegador, contra la de desarrollo. Cruzarlos no es un
+    matiz: un servidor sirviendo la base de tests enseñaría pantallas que no
+    reflejan nada real, y una suite apuntando a desarrollo es justo lo que este
+    issue vino a arreglar. Se comprueba al arrancar en vez de confiarlo a la
+    disciplina, porque un cruce no da síntomas hasta que ya ha hecho daño.
+    """
+    dev = _nombre_bd(os.environ.get('DATABASE_URL'))
+    test = _nombre_bd(os.environ.get('TEST_DATABASE_URL'))
+    actual = _nombre_bd(app.config.get('SQLALCHEMY_DATABASE_URI'))
+
+    if actual is None:
+        destino = 'TEST_DATABASE_URL' if app.config.get('TESTING') else 'DATABASE_URL'
+        raise RuntimeError(
+            f'Sin base de datos configurada: revisa {destino} en .env')
+
+    if dev and test and dev == test:
+        raise RuntimeError(
+            f'DATABASE_URL y TEST_DATABASE_URL apuntan a la misma base ({dev}). '
+            'La suite borraría los datos de desarrollo.')
+
+    if app.config.get('TESTING') and dev and actual == dev:
+        raise RuntimeError(
+            f'Configuración de tests apuntando a la base de desarrollo ({actual}). '
+            'Revisa TEST_DATABASE_URL.')
+
+    if not app.config.get('TESTING') and test and actual == test:
+        raise RuntimeError(
+            f'Configuración de {"producción" if not app.config.get("DEBUG") else "desarrollo"} '
+            f'apuntando a la base de tests ({actual}). Revisa DATABASE_URL.')
