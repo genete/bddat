@@ -8,12 +8,15 @@
 
 ---
 
-**Hecho:** **#824 — la fecha administrativa nunca es futura** ([PR #846](https://github.com/genete/bddat/pull/846)). De su verificación salieron tres issues: **#847** (un `bddat://` no contemplado tumba el listado del pool, con los 3 fallos vivos de la suite dentro), **#848** (`Solicitud.estado` llama resuelta a la que solo está entre fases) y la ampliación de **#428**, que pasa a Próximo. Aviso operativo: el reloj de desarrollo quedó en **2026-08-10** —lo deja ahí el script del expediente-tipo—, y con el bloqueo activo un reloj atrasado impide fechar en el presente (`flask reloj show` / `clear`).
+**Hecho:** **#849.A — la suite ya tiene base de datos propia** ([PR #857](https://github.com/genete/bddat/pull/857)). De 50 skips a 19, y la instalación desde cero —rota sin que nadie lo supiera— vuelve a funcionar. El interruptor que apunta la suite a esa base espera a #849.B. La reconstrucción limpia de las migraciones y el curado del catálogo son **#856** (M4).
 
 **Próximo:**
 
-1. **#428 — el wizard debe exigir el documento de la solicitud.** Sube a prioritario: hoy **nadie** asigna `documento_solicitud_id` (el wizard lo fija a `None`), así que toda solicitud nace sin la fecha que ancla el procedimiento entero — el plazo de resolución consta `SIN_PLAZO` y las suspensiones se restan contra nada. Mientras siga así, cualquier expediente-tipo que construyamos nace cojo, sea del tipo que sea. Su dependencia (#374) está cerrada desde mayo.
-2. **Ampliar el catálogo de expedientes-tipo**, con un objetivo concreto: poder trabajar en **consultas** con comodidad. Es la continuación natural del foco, que ha ido fase a fase —análisis de solicitud primero, consultas ahora—, y lo que se construye para eso son los scripts de `scripts/expedientes_dummy/`. La confianza que da un expediente-tipo alcanza solo a lo que ejercita: hoy, AAP+AAC exento sin IP ni consultas, con dos vueltas dentro de plazo. El de #824 deja el patrón a copiar para las fechas: base derivada de `hoy()`, ventana publicada en `catalogo_expedientes.csv`, y ninguna fecha absoluta dentro del script.
+1. **#428 — el wizard debe exigir el documento de la solicitud.** Hoy **nadie** asigna `documento_solicitud_id`, así que ninguna solicitud tiene la fecha que ancla el procedimiento: el plazo del art. 128 consta `SIN_PLAZO` en todos los expedientes. Su dependencia (#374) está cerrada desde mayo.
+2. **#849.B — semilla de datos de negocio.** Detrás de #428 porque la semilla se crea con `alta_expediente()`. Al cerrar, el interruptor pasa a la base de tests y se comprueban los seis criterios del issue.
+3. **Ampliar el catálogo de expedientes-tipo**, para poder trabajar en **consultas** con comodidad. En espera hasta que el 2 esté cerrado: los expedientes-tipo *son* la semilla, y construirlos antes obligaría a rehacerlos. El de #824 deja el patrón para las fechas: base derivada de `hoy()`, ventana en `catalogo_expedientes.csv`, ninguna fecha absoluta en el script.
+
+**Aviso operativo:** el reloj de desarrollo sigue en **2026-08-10** —lo deja ahí el script del expediente-tipo— y con el bloqueo activo un reloj atrasado impide fechar en el presente (`flask reloj show` / `clear`).
 
 **Por qué #839 sigue sin foco.** El art. 87 es una particularidad de la **fase de resolución**, y esa fase tiene esa y muchas más; se aborda cuando el foco llegue ahí. Lo que #838 aclaró es que **ya no bloquea a nadie**: sin ese trámite la salida existe igual —dentro de la fase que resuelve, forzando el vocabulario, con constancia en bitácora—, y esa constancia es precisamente la señal de cuándo hace falta construirlo (ADR-043 §F bis).
 
