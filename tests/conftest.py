@@ -56,16 +56,25 @@ def _login_as(client, app, rol_nombre):
     """
     Autentica el cliente de test usando session_transaction: fija _user_id
     y rol_activo_nombre directamente en la sesión sin simular el formulario.
-    Devuelve True si el rol existe en la BD para el usuario CLG, False si no.
+    Devuelve True si algún usuario de la BD tiene ese rol, False si no.
+
+    Busca el primer usuario ACTIVO con el rol pedido, en vez de exigir unas
+    siglas concretas (#849). Clavarlo a 'CLG' hacía que TODO test con
+    `usuario_admin` se autodesactivara en silencio —CLG tiene SUPERVISOR,
+    TRAMITADOR y ADMINISTRATIVO, pero no ADMIN—, dejando sin cobertura efectiva
+    las pantallas de administración. El orden por id es lo que mantiene a CLG
+    como usuario de los otros tres roles: es quien los tiene con id más bajo.
     """
     with app.app_context():
-        from app.models.usuarios import Usuario
-        u = Usuario.query.filter_by(siglas='CLG').first()
+        from app.models.usuarios import Rol, Usuario
+        u = (Usuario.query
+             .join(Usuario.roles)
+             .filter(Rol.nombre == rol_nombre, Usuario.activo.is_(True))
+             .order_by(Usuario.id)
+             .first())
         if u is None:
             return False
-        rol = next((r for r in u.roles if r.nombre == rol_nombre), None)
-        if rol is None:
-            return False
+        rol = next(r for r in u.roles if r.nombre == rol_nombre)
         uid, rol_id, rol_nombre_db = str(u.id), rol.id, rol.nombre
 
     with client.session_transaction() as sess:
@@ -78,33 +87,33 @@ def _login_as(client, app, rol_nombre):
 
 @pytest.fixture
 def usuario_admin(client, app):
-    """Cliente autenticado como CLG con rol ADMIN."""
+    """Cliente autenticado con rol ADMIN."""
     if not _login_as(client, app, 'ADMIN'):
-        pytest.skip('CLG con rol ADMIN no disponible en esta BD')
+        pytest.skip('Ningún usuario activo con rol ADMIN en esta BD')
     return client
 
 
 @pytest.fixture
 def usuario_supervisor(client, app):
-    """Cliente autenticado como CLG con rol SUPERVISOR."""
+    """Cliente autenticado con rol SUPERVISOR."""
     if not _login_as(client, app, 'SUPERVISOR'):
-        pytest.skip('CLG con rol SUPERVISOR no disponible en esta BD')
+        pytest.skip('Ningún usuario activo con rol SUPERVISOR en esta BD')
     return client
 
 
 @pytest.fixture
 def usuario_tramitador(client, app):
-    """Cliente autenticado como CLG con rol TRAMITADOR."""
+    """Cliente autenticado con rol TRAMITADOR."""
     if not _login_as(client, app, 'TRAMITADOR'):
-        pytest.skip('CLG con rol TRAMITADOR no disponible en esta BD')
+        pytest.skip('Ningún usuario activo con rol TRAMITADOR en esta BD')
     return client
 
 
 @pytest.fixture
 def usuario_administrativo(client, app):
-    """Cliente autenticado como CLG con rol ADMINISTRATIVO."""
+    """Cliente autenticado con rol ADMINISTRATIVO."""
     if not _login_as(client, app, 'ADMINISTRATIVO'):
-        pytest.skip('CLG con rol ADMINISTRATIVO no disponible en esta BD')
+        pytest.skip('Ningún usuario activo con rol ADMINISTRATIVO en esta BD')
     return client
 
 
