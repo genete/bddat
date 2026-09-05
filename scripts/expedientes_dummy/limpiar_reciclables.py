@@ -77,6 +77,11 @@ FK_TRATADAS_A_MANO = frozenset({
     'certificados.documento_id',
     'diagnosticos.documento_id',
     'documentos_requisito.documento_id',
+    # Referencias a documentos que resuelve el ORDEN de borrado, no un UPDATE:
+    # sus filas desaparecen antes que los documentos a los que apuntan. Las dos
+    # nacieron después que este script y lo dejaron abortando (#428).
+    'certificados_fase.documento_id',
+    'solicitudes.documento_fin_instruccion_id',
     # Colgados de fase/expediente sin cascada
     'certificados_fase.expediente_id',
     'certificados_fase.fase_id',
@@ -117,7 +122,10 @@ def _verificar_cobertura_esquema():
             continue
         clave = f"{f['hija']}.{f['col']}"
         if clave not in FK_TRATADAS_A_MANO:
-            huerfanas.append(f"{clave} → {f['padre']}")
+            # '->' y no '→': con la salida redirigida a un fichero o a una
+            # tubería, Python la codifica en cp1252 y U+2192 revienta el print,
+            # sustituyendo el aviso por una traza justo cuando hace falta leerlo.
+            huerfanas.append(f"{clave} -> {f['padre']}")
 
     if huerfanas:
         print('ABORTADO: el esquema tiene FKs sin borrado automático que este script no trata:')
