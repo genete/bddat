@@ -24,7 +24,6 @@ import pytest
 from app import db
 from app.models.documentos import Documento
 from app.models.expedientes import Expediente
-from app.models.tareas import Tarea
 from app.services import mutaciones_arbol as svc
 from app.services.rutas_esftt import mover_a_esftt, mover_a_pool
 from tests.test_665_ruta_esftt import _tarea_stub, _sin_organismo
@@ -216,14 +215,23 @@ class TestMoverAPool:
 # correcto (contra la BD real de desarrollo, con rollback por SAVEPOINT).
 # ---------------------------------------------------------------------------
 
-def _tarea_real(app_ctx):
-    """Tarea real de la BD de desarrollo SIN vínculos documentales previos —
-    evita que el diff de editar_tarea() pise/libere documentos reales ajenos
-    al test. Skip si no hay ninguna."""
-    tarea = Tarea.query.filter(~Tarea.vinculos_documento.any()).first()
-    if tarea is None:
-        pytest.skip('No hay tareas sin vínculos documentales en la BD de desarrollo')
-    return tarea
+def _tarea_real():
+    """Tarea sin vínculos documentales previos, fabricada por el test (#428).
+
+    Antes pescaba la primera tarea libre de la base y saltaba si no había ninguna
+    —que es lo que pasó en cuanto la base dejó de tener expedientes a medias—.
+    Fabricarla, además de no saltar nunca, garantiza lo que el test necesita de
+    verdad: que el diff de `editar_tarea()` no pise ni libere documentos ajenos,
+    cosa que la tarea encontrada solo cumplía mientras nadie tramitara por ahí.
+
+    El test que la llame debe traer `app_ctx` y `fs_tmp`: el expediente nace por
+    la vía real, que escribe el documento de solicitud a disco. La usa también
+    `test_677_consumido_derivado`, que la importa de aquí.
+    """
+    from app import db as _db
+    from tests.conftest import ArbolESFTT
+
+    return ArbolESFTT(_db).tarea_propia('ANALIZAR')
 
 
 def _documento_prueba(expediente_id, asunto):
@@ -239,8 +247,8 @@ def _documento_prueba(expediente_id, asunto):
 
 class TestEditarTareaEngancheMovimiento:
 
-    def test_primera_vinculacion_llama_mover_a_esftt(self, app_ctx, monkeypatch):
-        tarea = _tarea_real(app_ctx)
+    def test_primera_vinculacion_llama_mover_a_esftt(self, app_ctx, fs_tmp, monkeypatch):
+        tarea = _tarea_real()
         expediente = tarea.tramite.fase.solicitud.expediente
         doc = _documento_prueba(expediente.id, '#667 test — primera vinculación')
 
@@ -256,8 +264,8 @@ class TestEditarTareaEngancheMovimiento:
         assert resultado.ok is True
         assert llamadas == [(doc.id, tarea.id)]
 
-    def test_reguardado_sin_cambios_no_repite_movimiento(self, app_ctx, monkeypatch):
-        tarea = _tarea_real(app_ctx)
+    def test_reguardado_sin_cambios_no_repite_movimiento(self, app_ctx, fs_tmp, monkeypatch):
+        tarea = _tarea_real()
         expediente = tarea.tramite.fase.solicitud.expediente
         doc = _documento_prueba(expediente.id, '#667 test — re-guardado')
 
@@ -280,8 +288,8 @@ class TestEditarTareaEngancheMovimiento:
         assert llamadas == [doc.id]  # sin segunda entrada
         assert tarea.notas == 'notas actualizadas'
 
-    def test_desvinculacion_total_llama_mover_a_pool(self, app_ctx, monkeypatch):
-        tarea = _tarea_real(app_ctx)
+    def test_desvinculacion_total_llama_mover_a_pool(self, app_ctx, fs_tmp, monkeypatch):
+        tarea = _tarea_real()
         expediente = tarea.tramite.fase.solicitud.expediente
         doc = _documento_prueba(expediente.id, '#667 test — desvinculación')
 
@@ -299,10 +307,10 @@ class TestEditarTareaEngancheMovimiento:
         assert resultado.ok is True
         assert llamadas_pool == [doc.id]
 
-    def test_documento_bddat_nunca_dispara_movimiento_fisico(self, app_ctx):
+    def test_documento_bddat_nunca_dispara_movimiento_fisico(self, app_ctx, fs_tmp):
         """mover_a_esftt real (sin monkeypatch) es no-op para esquema bddat:// —
         verifica el filtro de esquema de extremo a extremo vía editar_tarea()."""
-        tarea = _tarea_real(app_ctx)
+        tarea = _tarea_real()
         expediente = tarea.tramite.fase.solicitud.expediente
         doc = Documento(
             expediente_id=expediente.id,

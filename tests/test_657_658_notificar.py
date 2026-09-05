@@ -22,9 +22,7 @@ from reportlab.pdfgen import canvas
 from app import db
 from app.models.documentos import Documento
 from app.models.notificaciones import Notificacion
-from app.models.tareas import Tarea
 from app.models.tipos_documentos import TipoDocumento
-from app.models.tipos_tareas import TipoTarea
 from app.services import mutaciones_arbol as svc
 
 # Mismo texto de muestra que test_655 (datos ficticios, remesa 82541676, Leída).
@@ -56,22 +54,20 @@ def _pdf_sintetico(texto: str) -> bytes:
 
 
 def _tarea_notificar_real(app_ctx):
-    """Tarea NOTIFICAR real sin vínculos documentales ni fila en notificaciones
-    previos — evita pisar datos reales ajenos al test. Skip si no hay ninguna."""
-    tarea = (
-        Tarea.query
-        .join(TipoTarea, Tarea.tipo_tarea_id == TipoTarea.id)
-        .outerjoin(Notificacion, Notificacion.tarea_id == Tarea.id)
-        .filter(
-            TipoTarea.codigo == 'NOTIFICAR',
-            ~Tarea.vinculos_documento.any(),
-            Notificacion.id.is_(None),
-        )
-        .first()
-    )
-    if tarea is None:
-        pytest.skip('No hay tareas NOTIFICAR sin vínculos/notificación en la BD de desarrollo')
-    return tarea
+    """Tarea NOTIFICAR sin vínculos ni fila en `notificaciones`, fabricada (#428).
+
+    Antes buscaba la primera de la base que cumpliera las dos condiciones y
+    saltaba si no había ninguna — nueve tests de golpe en cuanto la base dejó de
+    tener expedientes a medio tramitar. Fabricada cumple las dos por construcción
+    y no depende de que nadie haya tocado ese expediente antes.
+
+    Los tests que la usan traen ya `fs_tmp`, que es lo que el alta necesita para
+    escribir el documento de solicitud fuera del servidor de ficheros real.
+    """
+    from app import db as _db
+    from tests.conftest import ArbolESFTT
+
+    return ArbolESFTT(_db).tarea_propia('NOTIFICAR', codigo_tramite='NOTIFICACION')
 
 
 def _tipo_doc(codigo):

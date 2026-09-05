@@ -1,3 +1,5 @@
+import itertools
+
 import pytest
 from sqlalchemy.orm import scoped_session, sessionmaker
 from app import create_app, db as _db
@@ -16,7 +18,15 @@ from app import create_app, db as _db
 #
 #   2026-09-05  50  línea base medida antes de tocar nada
 #   2026-09-05  19  tras desclavar _login_as de CLG (-21) y revivir test_348 (-10)
-UMBRAL_SKIPS = 19
+#   2026-09-05   4  #428: los tests que buscaban «una tarea sin X» se la fabrican
+#
+# Los 4 que quedan, y por qué siguen ahí:
+#   · smoke/entidades_detalle — bifurcación del propio test, no falta de datos
+#   · smoke/asignacion_masiva — pide un expediente sin asignar, y usa cliente HTTP
+#     sin rollback: fabricarlo dejaría rastro real. Va con la semilla de #849.B
+#   · test_574 ESPERAR_PLAZO vencida — hay que fabricar el plazo, no solo la tarea
+#   · test_725 COMUNICACION_INICIO — hueco de catálogo, no de datos
+UMBRAL_SKIPS = 4
 
 
 def pytest_sessionfinish(session, exitstatus):
@@ -251,6 +261,111 @@ def fs_tmp(app, tmp_path):
     app.config['FILESYSTEM_BASE'] = base_original
 
 
+# ---------------------------------------------------------------------------
+# Fábrica de expedientes propios (#428) — la alternativa a buscar en la base
+# ---------------------------------------------------------------------------
+
+_SECUENCIA_PRUEBA = itertools.count(1)
+
+CONTENIDO_SOLICITUD_PRUEBA = b'%PDF-1.4 escrito de solicitud fabricado por la suite'
+
+
+def _catalogo_para_alta():
+    """Las filas de catálogo que necesita un alta, por clave natural.
+
+    Con `assert` y no con `pytest.skip`: el catálogo lo siembran las migraciones,
+    en desarrollo y en la base de tests por igual, así que su ausencia es un
+    defecto de la semilla y el test debe decirlo fallando (#849, criterio 6).
+    """
+    from app.models.municipios import Municipio
+    from app.models.tipos_expedientes import TipoExpediente
+    from app.models.tipos_solicitudes import TipoSolicitud
+
+    tipo_exp = TipoExpediente.query.order_by(TipoExpediente.id).first()
+    assert tipo_exp is not None, 'la semilla debe traer algún TipoExpediente'
+
+    tipo_sol = TipoSolicitud.query.filter_by(siglas='AAP').first()
+    assert tipo_sol is not None, "la semilla debe traer el TipoSolicitud 'AAP'"
+
+    municipio = Municipio.query.order_by(Municipio.id).first()
+    assert municipio is not None, 'la semilla debe traer municipios'
+
+    return tipo_exp, tipo_sol, municipio
+
+
+def crear_expediente_de_prueba(*, documento='normal', fecha_registro=None):
+    """Expediente completo fabricado por el test, por la vía real (#428).
+
+    Pasa por `alta_expediente()` y no por INSERT sueltos, que es lo que garantiza
+    que lo fabricado se parezca a lo que produce la aplicación: solicitud anclada a
+    su documento, fila TITULAR con acreditativo y plazo que arranca. Un test que
+    monte el árbol a mano se queda probando contra un estado que el sistema ya no
+    sabe producir.
+
+    Requiere `app_ctx` (la transacción que lo revierte) y `fs_tmp` (el alta escribe
+    un fichero real; el disco no revierte solo).
+
+    `documento=None` o un `DocumentoSolicitud` propio permiten ejercitar el rechazo
+    y los casos de fecha. Las fechas salen de `reloj_simulado.hoy()` y nunca de
+    `date.today()`: bajo `app_ctx` el validador de #824 compara contra el reloj de
+    desarrollo, y una fecha de hoy real le resulta futura si el reloj quedó
+    atrasado.
+    """
+    from datetime import timedelta
+
+    from app import db as _db_app
+    from app.models.entidad import Entidad
+    from app.services.alta_expediente import (
+        DatosAlta, DocumentoSolicitud, alta_expediente,
+    )
+    from app.services.reloj_simulado import hoy
+
+    n = next(_SECUENCIA_PRUEBA)
+    tipo_exp, tipo_sol, municipio = _catalogo_para_alta()
+
+    entidad = Entidad(
+        nombre_completo=f'Titular de prueba {n}, S.L.',
+        nif=f'B{n:08d}',
+        rol_titular=True,
+        rol_consultado=False,
+        rol_publicador=False,
+        activo=True,
+    )
+    _db_app.session.add(entidad)
+    _db_app.session.flush()
+
+    if documento == 'normal':
+        documento = DocumentoSolicitud(
+            contenido=CONTENIDO_SOLICITUD_PRUEBA,
+            nombre_original=f'solicitud_prueba_{n}.pdf',
+            fecha_registro=fecha_registro or hoy(),
+        )
+
+    return alta_expediente(DatosAlta(
+        tipo_expediente_id=tipo_exp.id,
+        responsable_id=None,
+        heredado=False,
+        titulo=f'Proyecto de prueba {n}',
+        descripcion='Expediente fabricado por la suite.',
+        finalidad='Distribución de energía eléctrica',
+        emplazamiento='T.M. de prueba',
+        fecha_proyecto=hoy() - timedelta(days=30),
+        ia_id=None,
+        municipios_ids=[municipio.id],
+        titular_id=entidad.id,
+        tipo_solicitud_id=tipo_sol.id,
+        solicitante_id=entidad.id,
+        observaciones=f'[TEST] expediente de prueba {n}',
+        documento=documento,
+    ))
+
+
+@pytest.fixture
+def alta_propia(app_ctx, fs_tmp):
+    """Un expediente recién fabricado, con su solicitud anclada. Se revierte al salir."""
+    return crear_expediente_de_prueba()
+
+
 @pytest.fixture
 def tramitador_usuario_id(app):
     """ID del primer usuario activo con rol TRAMITADOR. Skip si no existe ninguno."""
@@ -317,6 +432,34 @@ class ArbolESFTT:
         self.db.session.flush()
         return s
 
+    def solicitud_propia(self):
+        """Solicitud de un expediente que fabrica este mismo builder (#428).
+
+        La alternativa sin skips a `solicitud_existente()`: en vez de pescar la
+        primera solicitud de la base —que puede venir con fases, trámites y
+        documentos de cualquier otro sitio— crea un expediente entero por la vía
+        real y devuelve la suya, garantizada sin hijos.
+
+        Necesita `fs_tmp` en el test, porque el alta escribe el documento de
+        solicitud a disco. Usar la fixture `arbol_aislado`, que ya lo trae.
+        """
+        return crear_expediente_de_prueba().solicitud
+
+    def tarea_propia(self, codigo_tarea, *, codigo_fase='ANALISIS_SOLICITUD',
+                     codigo_tramite='ANALISIS_DOCUMENTAL'):
+        """Tarea del tipo pedido, recién nacida y sin nada colgando.
+
+        Atajo para el patrón que más `pytest.skip` provocaba en la suite: buscar
+        «una tarea NOTIFICAR sin vínculos» o «una ANALIZAR sin documento
+        producido». Fabricada no hay que buscarla, y además está garantizada
+        limpia — la encontrada solo lo estaba mientras nadie tramitara ese
+        expediente.
+        """
+        solicitud = self.solicitud_propia()
+        fase = self.fase(codigo_fase, solicitud=solicitud)
+        tramite = self.tramite(fase, codigo_tramite)
+        return self.tarea(tramite, codigo_tarea)
+
     def fase(self, codigo_fase, solicitud=None):
         from app.models.fases import Fase
         from app.models.tipos_fases import TipoFase
@@ -378,5 +521,17 @@ class ArbolESFTT:
 @pytest.fixture
 def arbol_esftt(app_ctx):
     """Builder `ArbolESFTT` listo para usar, sobre la transacción de `app_ctx`."""
+    from app import db
+    return ArbolESFTT(db)
+
+
+@pytest.fixture
+def arbol_aislado(app_ctx, fs_tmp):
+    """`ArbolESFTT` con raíz de ficheros propia, para `solicitud_propia`/`tarea_propia`.
+
+    Mismo builder que `arbol_esftt`; lo que añade es `fs_tmp`, que hace falta en
+    cuanto el árbol nace de un alta real — el documento de solicitud se escribe a
+    disco y el SAVEPOINT no lo revierte.
+    """
     from app import db
     return ArbolESFTT(db)

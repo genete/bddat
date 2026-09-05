@@ -65,8 +65,8 @@ def _dos_tareas_analizar_cadena(app_ctx):
 
 class TestSincronizarConsumidoDocumental:
 
-    def test_casar_requisito_llama_mover_a_esftt(self, app_ctx, monkeypatch):
-        tarea = _tarea_real(app_ctx)
+    def test_casar_requisito_llama_mover_a_esftt(self, app_ctx, fs_tmp, monkeypatch):
+        tarea = _tarea_real()
         expediente = tarea.tramite.fase.solicitud.expediente
         doc = _documento_prueba(expediente.id, '#677 test — casar requisito')
 
@@ -83,8 +83,8 @@ class TestSincronizarConsumidoDocumental:
         consumidos = {v.documento_id for v in tarea.vinculos_documento if v.rol == 'CONSUMIDO'}
         assert consumidos == {doc.id}
 
-    def test_descasar_ultimo_llama_mover_a_pool(self, app_ctx, monkeypatch):
-        tarea = _tarea_real(app_ctx)
+    def test_descasar_ultimo_llama_mover_a_pool(self, app_ctx, fs_tmp, monkeypatch):
+        tarea = _tarea_real()
         expediente = tarea.tramite.fase.solicitud.expediente
         doc = _documento_prueba(expediente.id, '#677 test — descasar')
 
@@ -106,8 +106,8 @@ class TestSincronizarConsumidoDocumental:
         assert llamadas_pool == [doc.id]
         assert not [v for v in tarea.vinculos_documento if v.rol == 'CONSUMIDO']
 
-    def test_reguardado_sin_cambios_no_repite_movimiento(self, app_ctx, monkeypatch):
-        tarea = _tarea_real(app_ctx)
+    def test_reguardado_sin_cambios_no_repite_movimiento(self, app_ctx, fs_tmp, monkeypatch):
+        tarea = _tarea_real()
         expediente = tarea.tramite.fase.solicitud.expediente
         doc = _documento_prueba(expediente.id, '#677 test — reguardado')
 
@@ -123,8 +123,8 @@ class TestSincronizarConsumidoDocumental:
 
         assert llamadas == [doc.id]  # el segundo pase no repite el movimiento
 
-    def test_sin_requisitos_casados_es_no_op(self, app_ctx, monkeypatch):
-        tarea = _tarea_real(app_ctx)
+    def test_sin_requisitos_casados_es_no_op(self, app_ctx, fs_tmp, monkeypatch):
+        tarea = _tarea_real()
         monkeypatch.setattr(svc, 'mover_a_esftt', lambda d, t: pytest.fail('no debería llamarse'))
         monkeypatch.setattr(svc, 'mover_a_pool', lambda d, e: pytest.fail('no debería llamarse'))
 
@@ -133,8 +133,8 @@ class TestSincronizarConsumidoDocumental:
                    return_value=_stub_evaluar_requisitos([])):
             svc.sincronizar_consumido_documental(tarea)
 
-    def test_error_evaluar_requisitos_es_no_op(self, app_ctx, monkeypatch):
-        tarea = _tarea_real(app_ctx)
+    def test_error_evaluar_requisitos_es_no_op(self, app_ctx, fs_tmp, monkeypatch):
+        tarea = _tarea_real()
         monkeypatch.setattr(svc, 'mover_a_esftt', lambda d, t: pytest.fail('no debería llamarse'))
 
         with patch('app.services.mutaciones_arbol.build', return_value=(None, {})), \
