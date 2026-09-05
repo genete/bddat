@@ -61,7 +61,11 @@ REGISTROS_REQUERIDOS: dict = {
                       # #582 — consumido por la variable de motor tasa_impagada; lo puebla #408
                       'JUSTIFICANTE_PAGO_TASA',
                       # #780 — consumido por la variable de motor tiene_punto_acceso_conexion
-                      'PERMISO_ACCESO_CONEXION'],
+                      'PERMISO_ACCESO_CONEXION',
+                      # #428 — el alta de expediente lo resuelve por código para clasificar
+                      # el documento de solicitud. Sin él no hay alta posible: su id no es
+                      # estable entre instalaciones (146 en desarrollo, 56 en una limpia)
+                      'MODELO_SOLICITUD'],
     # Rol usa 'nombre' como identificador estable — anclado en PERMISOS (app/utils/permisos.py)
     'Rol': ['ADMIN', 'SUPERVISOR', 'TRAMITADOR', 'ADMINISTRATIVO'],
 }

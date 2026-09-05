@@ -68,10 +68,10 @@ def ingestar_en_pool(
     explícitamente (ADR-032 §4, sin bloquear ni avisar).
 
     La fecha administrativa la valida el propio modelo (#824): si es futura,
-    construir el `Documento` lanza `ValueError`. Se deja subir hasta el llamador
-    en vez de traducirla aquí, porque cada puerta la cuenta a su manera —la ruta
-    del pool devuelve un 500 con el mensaje, el formulario de alta lo repinta
-    junto al campo—.
+    construir el `Documento` lanza `ValueError` y no se llega a escribir nada. Se
+    deja subir hasta el llamador en vez de traducirla aquí, porque cada puerta la
+    cuenta a su manera —la ruta del pool devuelve un 500 con el mensaje, el
+    formulario de alta lo repinta junto al campo—.
     """
     base = current_app.config.get('FILESYSTEM_BASE', '')
     if not base:
@@ -82,13 +82,13 @@ def ingestar_en_pool(
     hash_md5 = hashlib.md5(contenido).hexdigest()
     nombre, ya_existe = nombre_pool_unico(hash_md5, nombre_original, directorio)
     destino = os.path.join(directorio, nombre)
-
-    if not ya_existe:
-        with open(destino, 'wb') as f:
-            f.write(contenido)
-
     ruta_relativa = os.path.relpath(destino, base).replace(os.sep, '/')
 
+    # El Documento se construye ANTES de escribir el fichero, porque construirlo es
+    # lo que dispara los validadores del modelo —la fecha futura de #824, el
+    # esquema de la url— y un metadato inválido no debe dejar un fichero huérfano
+    # en el pool. `nombre_pool_unico` solo lee el directorio, así que hasta aquí no
+    # se ha tocado el disco.
     documento = Documento(
         expediente_id=expediente.id,
         url=ruta_relativa,
@@ -98,6 +98,11 @@ def ingestar_en_pool(
         asunto=asunto,
         prioridad=1 if prioridad else 0,
     )
+
+    if not ya_existe:
+        with open(destino, 'wb') as f:
+            f.write(contenido)
+
     db.session.add(documento)
 
     return ResultadoIngesta(

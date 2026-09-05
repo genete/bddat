@@ -715,8 +715,8 @@ Para implementar: nuevo servicio + decisión sobre formato (PDF único con índi
   `documento_acreditativo_id` a NULL (llamado `fuente_doc_id` hasta #428). Ya no es
   un pendiente del signal —no puede rellenarlo: corre en el flush del expediente,
   antes de que exista el documento de solicitud—, sino del servicio de alta, que lo
-  pone en la misma transacción. Retirar de esta lista cuando exista
-  `alta_expediente()` (#428).
+  pone en la misma transacción. `app/services/alta_expediente.py` ya lo hace;
+  retirar de esta lista cuando el alta real pase por él (#428, paso 5).
 
 ### 13.2 Servicios/modelos en estado parcial
 
