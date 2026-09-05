@@ -338,3 +338,79 @@ anotan que no hay infraestructura de push.
 
 **Veredicto:** de las seis piezas portantes, **cinco son configuración y solo una
 es código** (el dashboard), que además ya está diagnosticada con remedio escrito.
+
+---
+
+## 6. Instrumentación: prerrequisito de toda medición
+
+**Hoy no hay ninguna.** Verificado: 0 hooks `before_request`/`after_request`,
+0 `SQLALCHEMY_RECORD_QUERIES`, ningún script de medida en `scripts/`. Es decir,
+las dos mediciones que reclama este documento —§3.1 (panel del supervisor) y
+§3.4 (duración de las operaciones de share)— **no se pueden tomar hoy**: falta
+con qué leerlas.
+
+**Pendiente de abrir issue.** Alcance mínimo: un `before_request`/`after_request`
+activo solo con `DEBUG` que registre, por petición, tiempo de pared y **número de
+consultas**. El número de consultas es mejor métrica que el tiempo: es
+independiente del hardware y proyecta linealmente, que es exactamente lo que hace
+falta para saber a cuántos expedientes deja de ser usable el panel.
+
+### 6.1 Trampa antes de cronometrar nada
+
+`DevelopmentConfig` fija `SQLALCHEMY_ECHO = True` (`app/config.py`) y `run.py`
+arranca con `debug=True`. Lo primero imprime **cada consulta** por stdout: con
+las ~15.000 estimadas del panel del supervisor se estaría midiendo la consola, no
+la aplicación. Apagar ambos para cualquier medición seria.
+
+### 6.2 Qué se puede medir en el PC de trabajo (W11, 32 GB) y qué no
+
+**No se puede:** gunicorn es POSIX y no corre en Windows. El modelo de workers,
+el agotamiento de los 4-6 y el comportamiento de un montaje CIFS colgado —§3.2 y
+§3.3— **no son testeables ahí**; necesitan WSL2/Docker o el despliegue Linux. (El
+equivalente Windows sería Waitress, no gunicorn.)
+
+**Sí se puede, por orden de valor:**
+
+1. **Instrumentar** (arriba). Prerrequisito de todo lo demás.
+2. **El panel del supervisor, que no necesita concurrencia ninguna**: una
+   petición cronometrada contra el número real de expedientes. Es la medida que
+   reclama el ADR-028 §2.
+3. **La latencia de escritura en el share.** Es la única medida que *solo* puede
+   tomarse desde una máquina de la red corporativa con la `W:` montada: escribir
+   ~200 ficheros del tamaño real de un escrito y registrar la distribución, con
+   el **p99** como cifra relevante, no la media. Es el número que hoy no tiene
+   nadie y sobre el que se apoya todo §3.2-§3.5.
+4. Si se quiere la foto de concurrencia: **Locust** (Python, corre en Windows, y
+   el login de dos pasos se escribe en el mismo lenguaje que el proyecto). Dicho
+   esto, con 5-10 usuarios la concurrencia real es de 1-2 peticiones simultáneas:
+   a esa escala manda el coste por petición, no la contención, así que este paso
+   aporta menos que los tres anteriores.
+
+**Aviso:** los endpoints de lectura son seguros de martillear; los de generación
+escriben ficheros en el share y filas en la BD de desarrollo. Con el historial de
+#672 y #836, limitar la carga a `GET` salvo que se acepte limpiar después.
+
+---
+
+## 7. Issues abiertos desde este análisis
+
+| Issue | Qué | Sección |
+|---|---|---|
+| #849 | Suite contra la BD de desarrollo: sin `TestingConfig`, 174 skips silenciosos | §2.1 |
+| #850 | Medir el panel del supervisor y denormalizar el estado agregado | §3.1 |
+| #851 | Workers `gthread` y pool de conexiones | §4 (niveles 1-2) |
+| #852 | Resiliencia del share: montaje `soft`, semáforo, medición | §3.2-§3.5 |
+| #853 | `explorer /select` en el servidor | §3.6 |
+| #854 | Cachear los context processors | §5 |
+| *(pendiente)* | Instrumentación de tiempos y consultas | §6 |
+
+Sin issue a propósito, por ser puntos a vigilar y no tareas con acción clara:
+la duplicación `routes/api_*` ↔ `modules/*` (§2.2) y las migraciones a mano
+(§2.3).
+
+**Único crítico antes de seguir programando: #849.** Los demás se difieren a la
+ventana previa a producción y cuelgan de #330. El motivo es que #849 es el único
+cuyo coste crece con todo lo que se escriba a partir de ahora —cada feature añade
+tests a una suite cuyo verde no es de fiar— y es además la red de seguridad de
+los otros: #850 toca la derivación de estado del núcleo y #852 todos los caminos
+de escritura a fichero.
