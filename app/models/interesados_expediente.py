@@ -1,9 +1,15 @@
 """Modelo InteresadoExpediente — tabla de interesados por expediente (#374).
 
-fuente_doc_id es nullable de forma transitoria. La fecha administrativa del
-interesado se deduce de fuente_doc.fecha_administrativa. Será NOT NULL tras el
-rediseño del wizard (issue pendiente). Para TITULAR el documento fuente es el
-documento de solicitud (Solicitud.documento_solicitud_id).
+`documento_acreditativo_id` es el documento que acredita la condición de
+interesado, y del que sale su fecha administrativa
+(`documento_acreditativo.fecha_administrativa`). Vale igual para los cinco
+`tipo_origen`: la solicitud acredita al TITULAR, el oficio de consulta al
+ORGANISMO_CONSULTADO, el escrito de personación al INTERESADO_RECONOCIDO.
+
+Sigue siendo nullable, y ya no «de forma transitoria» (#428): para el TITULAR lo
+rellena el servicio de alta con `Solicitud.documento_solicitud_id`, pero los otros
+cuatro `tipo_origen` no están implementados y no habría quién rellenase su fila.
+El NOT NULL espera a que existan.
 """
 from app import db
 
@@ -55,7 +61,7 @@ class InteresadoExpediente(db.Model):
 
     tipo_origen = db.Column(db.String(30), nullable=False)
 
-    fuente_doc_id = db.Column(
+    documento_acreditativo_id = db.Column(
         db.Integer,
         db.ForeignKey('public.documentos.id'),
         nullable=True,
@@ -66,7 +72,8 @@ class InteresadoExpediente(db.Model):
     # Relaciones
     expediente = db.relationship('Expediente', backref='interesados')
     entidad = db.relationship('Entidad', foreign_keys=[entidad_id], backref='interesados_expediente')
-    fuente_doc = db.relationship('Documento', foreign_keys=[fuente_doc_id])
+    documento_acreditativo = db.relationship(
+        'Documento', foreign_keys=[documento_acreditativo_id])
 
     def __repr__(self):
         return f'<InteresadoExpediente exp={self.expediente_id} tipo={self.tipo_origen} entidad={self.entidad_id}>'

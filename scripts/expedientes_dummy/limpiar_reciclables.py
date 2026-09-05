@@ -72,7 +72,7 @@ FK_TRATADAS_A_MANO = frozenset({
     'solicitudes.documento_cierre_id',
     'organismos_expediente.documento_id',
     'organismos_expediente.condicionados_doc_id',
-    'interesados_expediente.fuente_doc_id',
+    'interesados_expediente.documento_acreditativo_id',
     # Hijos de documentos que se borran explícitamente
     'certificados.documento_id',
     'diagnosticos.documento_id',
@@ -252,7 +252,8 @@ def _borrar_expediente(exp, con_ficheros):
                    "documento_solicitud_id = NULL WHERE expediente_id = :eid"), p)
         ex(db.text("UPDATE public.organismos_expediente SET documento_id = NULL, "
                    "condicionados_doc_id = NULL WHERE expediente_id = :eid"), p)
-        ex(db.text("UPDATE public.interesados_expediente SET fuente_doc_id = NULL "
+        ex(db.text("UPDATE public.interesados_expediente "
+                   "SET documento_acreditativo_id = NULL "
                    "WHERE expediente_id = :eid"), p)
 
         # 2. Hijos de documentos sin cascada
