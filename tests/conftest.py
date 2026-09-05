@@ -152,10 +152,16 @@ def plantilla_seed(app):
 
 @pytest.fixture
 def primer_usuario_id(app):
-    """ID del primer usuario en la BD de desarrollo. Skip si no existe ninguno."""
+    """ID del primer usuario en la BD de desarrollo. Skip si no existe ninguno.
+
+    Con ORDER BY explícito (#849): un `first()` a secas devuelve la primera
+    tupla FÍSICA, que se mueve con cada UPDATE de la tabla —el mecanismo que
+    hizo indiagnosticable #832 y que #836 documenta—. Sin orden, esta fixture
+    apunta a un usuario distinto según la pasada.
+    """
     with app.app_context():
         from app.models.usuarios import Usuario
-        u = Usuario.query.first()
+        u = Usuario.query.order_by(Usuario.id).first()
         if u is None:
             pytest.skip('No hay usuarios en la BD de desarrollo')
         return u.id
