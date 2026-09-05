@@ -285,7 +285,7 @@ def editar(id):
         aplicar_fk(request.form, 'responsable_id', expediente)
 
     # Los cinco NOT NULL del proyecto — mismas exigencias y mismos mensajes que el
-    # alta (wizard_expediente.paso2), que es de donde salen estas filas.
+    # alta (alta_expediente.nuevo), que es de donde salen estas filas.
     aplicar_texto_obligatorio(request.form, 'titulo', proyecto,
                               'El título del proyecto es obligatorio.', errores)
     aplicar_texto_obligatorio(request.form, 'descripcion', proyecto,

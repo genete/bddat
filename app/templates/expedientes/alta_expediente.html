@@ -1,0 +1,608 @@
+{% extends 'layout/base_app.html' %}
+
+{% block title %}Nuevo Expediente{% endblock %}
+
+{% block breadcrumb %}
+<a href="{{ url_for('dashboard.index') }}">Inicio</a>
+<span>›</span>
+<a href="{{ url_for('expedientes.listado_v2') }}">Expedientes</a>
+<span>›</span>
+<span>Nuevo</span>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+
+    <div class="d-flex align-items-center mb-4 gap-3">
+        <h1 class="h3 mb-0">
+            <i class="fas fa-folder-plus me-2 text-primary"></i>Nuevo Expediente
+        </h1>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-9 col-md-11">
+
+            {# Rebote de validación: lo único que no se puede repoblar es el fichero. #}
+            {% if errores %}
+            <div class="alert alert-warning d-flex align-items-start gap-2 mb-4">
+                <i class="fas fa-exclamation-triangle mt-1"></i>
+                <div>
+                    <strong>Revise los datos marcados.</strong>
+                    Se ha conservado todo lo escrito, pero
+                    <strong>debe volver a seleccionar el escrito de solicitud</strong>:
+                    por seguridad, el navegador no permite conservar un fichero elegido.
+                </div>
+            </div>
+            {% endif %}
+
+            <form method="post" action="{{ url_for('alta_expediente.nuevo') }}"
+                  enctype="multipart/form-data" novalidate id="form-alta">
+
+                {# ============================================================ #}
+                {# 1 — EXPEDIENTE                                               #}
+                {# ============================================================ #}
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-white">
+                        <h5 class="mb-0">
+                            <i class="fas fa-cog me-2 text-secondary"></i>Expediente
+                        </h5>
+                    </div>
+                    <div class="card-body">
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="tipo_expediente_id" class="form-label fw-semibold">
+                                    Tipo de expediente <span class="text-danger">*</span>
+                                </label>
+                                <select id="tipo_expediente_id" name="tipo_expediente_id"
+                                        class="form-select" required>
+                                    <option value="" {% if not form.get('tipo_expediente_id') %}selected{% endif %}>
+                                        &mdash; Seleccione un tipo &mdash;
+                                    </option>
+                                    {% for te in tipos_expedientes %}
+                                    <option value="{{ te.id }}"
+                                        {% if form.get('tipo_expediente_id')|string == te.id|string %}selected{% endif %}>
+                                        {{ te.tipo }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                                <div class="form-text">Define el procedimiento normativo aplicable.</div>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label for="responsable_id" class="form-label fw-semibold">
+                                    Tramitador responsable
+                                </label>
+                                <select id="responsable_id" name="responsable_id" class="form-select">
+                                    <option value="" {% if not form.get('responsable_id') %}selected{% endif %}>
+                                        Sin asignar (huérfano)
+                                    </option>
+                                    {% for u in usuarios %}
+                                    <option value="{{ u.id }}"
+                                        {% if form.get('responsable_id')|string == u.id|string %}selected{% endif %}>
+                                        {{ u.apellido1 }}{% if u.apellido2 %} {{ u.apellido2 }}{% endif %}, {{ u.nombre }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                                <div class="form-text">Opcional. Puede asignarse después.</div>
+                            </div>
+                        </div>
+
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox"
+                                   id="heredado" name="heredado"
+                                   {% if form.get('heredado') %}checked{% endif %}>
+                            <label class="form-check-label" for="heredado">
+                                Expediente heredado del sistema anterior
+                            </label>
+                        </div>
+                        <div class="form-text ms-4">Marcar solo si proviene del sistema legacy.</div>
+
+                    </div>
+                </div>
+
+                {# ============================================================ #}
+                {# 2 — PROYECTO                                                 #}
+                {# ============================================================ #}
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-white">
+                        <h5 class="mb-0">
+                            <i class="fas fa-drafting-compass me-2 text-secondary"></i>Proyecto técnico
+                        </h5>
+                    </div>
+                    <div class="card-body">
+
+                        <div class="mb-3">
+                            <label for="titulo" class="form-label fw-semibold">
+                                Título del proyecto <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" id="titulo" name="titulo" class="form-control"
+                                   value="{{ form.get('titulo', '') }}" maxlength="500" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="descripcion" class="form-label fw-semibold">
+                                Descripción <span class="text-danger">*</span>
+                            </label>
+                            <textarea id="descripcion" name="descripcion" class="form-control"
+                                      rows="3" maxlength="10000" required>{{ form.get('descripcion', '') }}</textarea>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="finalidad" class="form-label fw-semibold">
+                                    Finalidad <span class="text-danger">*</span>
+                                </label>
+                                <input type="text" id="finalidad" name="finalidad" class="form-control"
+                                       value="{{ form.get('finalidad', '') }}" maxlength="500" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="emplazamiento" class="form-label fw-semibold">
+                                    Emplazamiento <span class="text-danger">*</span>
+                                </label>
+                                <input type="text" id="emplazamiento" name="emplazamiento" class="form-control"
+                                       value="{{ form.get('emplazamiento', '') }}" maxlength="200" required>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label fw-semibold">
+                                    Fecha del proyecto <span class="text-danger">*</span>
+                                </label>
+                                {# EntradaFecha construye su propio HTML; el form va novalidate. #}
+                                <div id="ef-fecha"></div>
+                                <div id="ef-fecha-error" class="text-danger small mt-1" style="display:none">
+                                    Campo obligatorio.
+                                </div>
+                                <div class="form-text">Fecha de firma/visado.</div>
+                            </div>
+                            <div class="col-md-8 mb-3">
+                                <label for="ia_id" class="form-label fw-semibold">Instrumento ambiental</label>
+                                <select id="ia_id" name="ia_id" class="form-select">
+                                    <option value="" {% if not form.get('ia_id') %}selected{% endif %}>
+                                        Sin determinar
+                                    </option>
+                                    {% for ia in tipos_ia %}
+                                    <option value="{{ ia.id }}"
+                                        {% if form.get('ia_id')|string == ia.id|string %}selected{% endif %}>
+                                        {{ ia.siglas }}{% if ia.descripcion %} &mdash; {{ ia.descripcion }}{% endif %}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="mb-2">
+                            <label class="form-label fw-semibold">
+                                Municipios afectados <span class="text-danger">*</span>
+                            </label>
+
+                            <div class="card bg-light border-0 p-3">
+                                <div class="mb-3">
+                                    <label class="form-label small fw-semibold mb-1">
+                                        <span class="badge bg-secondary me-1">A</span> Provincia
+                                    </label>
+                                    <div id="wp2-provincia"></div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label small fw-semibold mb-1">
+                                        <span class="badge bg-secondary me-1">B</span>
+                                        Municipio
+                                        <span id="wp2-label-provincia" class="text-primary fst-italic"></span>
+                                    </label>
+                                    <div id="wp2-municipio"></div>
+                                </div>
+
+                                <div>
+                                    <p class="small mb-2">Municipios seleccionados:</p>
+                                    <div id="municipios-seleccionados" class="d-flex flex-wrap gap-2">
+                                        <span class="text-secondary small">Ninguno añadido todavía.</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div id="municipios-error" class="text-danger small mt-1" style="display:none;">
+                                <i class="fas fa-exclamation-circle me-1"></i>Debe añadir al menos un municipio.
+                            </div>
+                            <div id="municipios-hidden-inputs"></div>
+                        </div>
+
+                    </div>
+                </div>
+
+                {# ============================================================ #}
+                {# 3 — SOLICITUD                                                #}
+                {# ============================================================ #}
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-white">
+                        <h5 class="mb-0">
+                            <i class="fas fa-file-alt me-2 text-secondary"></i>Solicitud
+                        </h5>
+                    </div>
+                    <div class="card-body">
+
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">
+                                Titular <span class="text-danger">*</span>
+                            </label>
+                            <div id="sb-titular"></div>
+                            <div class="form-text">Solo entidades activas con rol Titular.</div>
+                            <div id="entidad-error" class="text-danger small mt-1" style="display:none;">
+                                <i class="fas fa-exclamation-circle me-1"></i>Debe seleccionar un titular.
+                            </div>
+                        </div>
+
+                        <div id="toggle-solicitante-section" class="mb-3" style="display:none;">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="chk-solicitante-distinto">
+                                <label class="form-check-label" for="chk-solicitante-distinto">
+                                    El solicitante es distinto del titular
+                                </label>
+                            </div>
+                        </div>
+
+                        <div id="solicitante-section" class="mb-3" style="display:none;">
+                            <label class="form-label fw-semibold">
+                                Solicitante <span class="text-danger">*</span>
+                            </label>
+                            <div id="sb-solicitante"></div>
+                            <div class="form-text">Solo entidades con autorización vigente para este titular.</div>
+                            <div id="aviso-sin-autorizados" class="alert alert-warning py-2 mt-2" style="display:none;">
+                                <i class="fas fa-exclamation-triangle me-1"></i>
+                                Este titular no tiene autorizados vigentes. Cree la autorización antes de continuar.
+                            </div>
+                            <div id="solicitante-error" class="text-danger small mt-1" style="display:none;">
+                                <i class="fas fa-exclamation-circle me-1"></i>Debe seleccionar un solicitante.
+                            </div>
+                        </div>
+
+                        <input type="hidden" name="solicitante_id" id="solicitante-id-hidden"
+                               value="{{ form.get('solicitante_id', '') }}">
+
+                        <div class="mb-3">
+                            <label for="tipo-solicitud-select" class="form-label fw-semibold">
+                                Tipo de solicitud <span class="text-danger">*</span>
+                            </label>
+                            <select id="tipo-solicitud-select" name="tipo_solicitud_id"
+                                    class="form-select" required>
+                                <option value="">&mdash; Seleccione tipo de solicitud &mdash;</option>
+                                {% for ts in tipos_solicitudes %}
+                                <option value="{{ ts.id }}"
+                                    {% if form.get('tipo_solicitud_id')|string == ts.id|string %}selected{% endif %}>
+                                    {{ ts.siglas }} &mdash; {{ ts.descripcion }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <div id="tipos-error" class="text-danger small mt-1" style="display:none;">
+                                <i class="fas fa-exclamation-circle me-1"></i>Debe seleccionar un tipo.
+                            </div>
+                        </div>
+
+                        {# --- El ancla documental (#428) --- #}
+                        <div class="border rounded p-3 mb-3 bg-light">
+                            <p class="fw-semibold mb-1">
+                                <i class="fas fa-paperclip me-1 text-secondary"></i>
+                                Escrito de solicitud <span class="text-danger">*</span>
+                            </p>
+                            <p class="small text-secondary mb-3">
+                                De la fecha de registro de entrada de este documento arranca el plazo
+                                máximo para resolver y notificar. Sin él, el expediente no puede crearse.
+                            </p>
+
+                            <div class="row">
+                                <div class="col-md-7 mb-3 mb-md-0">
+                                    <label for="documento_solicitud" class="form-label small fw-semibold">
+                                        Fichero <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="file" id="documento_solicitud" name="documento_solicitud"
+                                           class="form-control" required>
+                                    <div id="fichero-error" class="text-danger small mt-1" style="display:none;">
+                                        <i class="fas fa-exclamation-circle me-1"></i>Debe adjuntar el escrito de solicitud.
+                                    </div>
+                                </div>
+                                <div class="col-md-5">
+                                    <label class="form-label small fw-semibold">
+                                        Fecha de registro de entrada <span class="text-danger">*</span>
+                                    </label>
+                                    <div id="ef-registro"></div>
+                                    <div id="ef-registro-error" class="text-danger small mt-1" style="display:none">
+                                        Campo obligatorio.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-1">
+                            <label for="observaciones" class="form-label fw-semibold">Observaciones</label>
+                            <textarea id="observaciones" name="observaciones" class="form-control"
+                                      rows="2" maxlength="2000"
+                                      placeholder="Notas adicionales (opcional)">{{ form.get('observaciones', '') }}</textarea>
+                        </div>
+
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-between pb-4">
+                    <a href="{{ url_for('expedientes.listado_v2') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-times me-1"></i>Cancelar
+                    </a>
+                    <button type="submit" class="btn btn-success" id="btn-crear">
+                        <i class="fas fa-check me-1"></i>Crear expediente
+                    </button>
+                </div>
+
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{# `selector_busqueda` (css y js) lo carga ya `layout/base_app.html`; volver a
+   incluirlo aquí redeclara la clase y el navegador tumba el script entero. Era un
+   defecto de los tres pasos del wizard que no se hereda. #}
+{% block extra_css %}{{ super() }}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/entrada_fecha.css') }}">
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/entrada_fecha.js') }}"></script>
+<script>
+(function () {
+    'use strict';
+
+    // ------------------------------------------------------------------
+    // A) Fechas. maxHoy (#824): las dos son administrativas — la de firma
+    //    del proyecto y la de registro de entrada— y ninguna puede ser futura.
+    // ------------------------------------------------------------------
+    const HOY = '{{ hoy_sistema.isoformat() }}';
+
+    const efFecha = new EntradaFecha('#ef-fecha', { name: 'fecha', maxHoy: HOY });
+    {% if form.get('fecha') %}efFecha.setValue('{{ form.get("fecha") }}');{% endif %}
+    const efFechaError = document.getElementById('ef-fecha-error');
+
+    const efRegistro = new EntradaFecha('#ef-registro', { name: 'fecha_registro', maxHoy: HOY });
+    {% if form.get('fecha_registro') %}efRegistro.setValue('{{ form.get("fecha_registro") }}');{% endif %}
+    const efRegistroError = document.getElementById('ef-registro-error');
+
+    // ------------------------------------------------------------------
+    // B) Municipios
+    // ------------------------------------------------------------------
+    const municipiosSeleccionados = {};
+    const badgesDiv = document.getElementById('municipios-seleccionados');
+    const hiddenDiv = document.getElementById('municipios-hidden-inputs');
+    const muniError = document.getElementById('municipios-error');
+
+    const muniSelector = new SelectorBusqueda('#wp2-municipio', [], {
+        placeholder: '— Seleccione primero una provincia —',
+        onChange: (v, t) => {
+            if (!v) return;
+            agregarMunicipio(v, t);
+            muniSelector.clear();
+        }
+    });
+    muniSelector.disable();
+
+    const provSelector = new SelectorBusqueda('#wp2-provincia', [], {
+        placeholder: '— Seleccione una provincia —',
+        onChange: async (v, t) => {
+            document.getElementById('wp2-label-provincia').textContent = t ? ' — ' + t : '';
+            muniSelector.setOpciones([]);
+            if (!t) { muniSelector.disable(); return; }
+            try {
+                const resp = await fetch(`/api/municipios?provincia=${encodeURIComponent(t)}`);
+                const data = await resp.json();
+                muniSelector.setOpciones(data.map(m => ({ v: String(m.id), t: m.nombre })));
+                muniSelector.enable();
+            } catch (e) { console.error('Error cargando municipios:', e); }
+        }
+    });
+
+    fetch('/api/provincias?solo_andalucia=true')
+        .then(r => r.json())
+        .then(lista => provSelector.setOpciones(lista.map(n => ({ v: n, t: n }))))
+        .catch(e => console.error('Error cargando provincias:', e));
+
+    function agregarMunicipio(id, etiqueta) {
+        if (municipiosSeleccionados[id]) return;
+        municipiosSeleccionados[id] = etiqueta;
+        renderBadges();
+        muniError.style.display = 'none';
+    }
+
+    function eliminarMunicipio(id) {
+        delete municipiosSeleccionados[id];
+        renderBadges();
+    }
+
+    function renderBadges() {
+        badgesDiv.innerHTML = '';
+        hiddenDiv.innerHTML = '';
+        const ids = Object.keys(municipiosSeleccionados);
+        if (!ids.length) {
+            badgesDiv.innerHTML = '<span class="text-secondary small">Ninguno añadido todavía.</span>';
+            return;
+        }
+        ids.forEach(id => {
+            const span = document.createElement('span');
+            span.className = 'badge bg-primary d-inline-flex align-items-center gap-1';
+            span.innerHTML = escapeHtml(municipiosSeleccionados[id]) +
+                `<button type="button" class="btn-close btn-close-white ms-1"
+                         aria-label="Eliminar" style="font-size:0.5rem;"></button>`;
+            span.querySelector('button').addEventListener('click', () => eliminarMunicipio(id));
+            badgesDiv.appendChild(span);
+            const inp = document.createElement('input');
+            inp.type = 'hidden'; inp.name = 'municipios_ids[]'; inp.value = id;
+            hiddenDiv.appendChild(inp);
+        });
+    }
+
+    // Repintado tras un rebote de validación: los ids vienen del formulario y el
+    // nombre lo resuelve la ruta, porque el hidden solo lleva el id.
+    {% for m in municipios_previos %}
+    agregarMunicipio('{{ m.id }}', {{ m.nombre | tojson }});
+    {% endfor %}
+
+    // ------------------------------------------------------------------
+    // C) Titular y solicitante
+    // ------------------------------------------------------------------
+    const entidadError       = document.getElementById('entidad-error');
+    const toggleSection      = document.getElementById('toggle-solicitante-section');
+    const chkDistinto        = document.getElementById('chk-solicitante-distinto');
+    const solicitanteSection = document.getElementById('solicitante-section');
+    const avisoSinAut        = document.getElementById('aviso-sin-autorizados');
+    const solicitanteError   = document.getElementById('solicitante-error');
+    const solicitanteHidden  = document.getElementById('solicitante-id-hidden');
+
+    const ENTIDADES_OPTS = {{ entidades_opts | tojson }};
+
+    const entidadSel = new SelectorBusqueda('#sb-titular', ENTIDADES_OPTS, {
+        placeholder: '— Seleccione titular —',
+        name: 'entidad_id',
+        onChange: (v) => {
+            if (v) {
+                entidadError.style.display = 'none';
+                toggleSection.style.display = '';
+                solicitanteHidden.value = v;
+            } else {
+                toggleSection.style.display = 'none';
+                solicitanteHidden.value = '';
+            }
+            chkDistinto.checked = false;
+            solicitanteSection.style.display = 'none';
+            solicitanteSel.clear();
+            avisoSinAut.style.display = 'none';
+        }
+    });
+
+    const solicitanteSel = new SelectorBusqueda('#sb-solicitante', [], {
+        placeholder: '— Seleccione solicitante —',
+        name: '_solicitante_display',   // no se envía; el valor va en el hidden
+        onChange: (v) => {
+            solicitanteHidden.value = v || '';
+            if (v) solicitanteError.style.display = 'none';
+        }
+    });
+
+    function cargarAutorizados(titular_id, preseleccion) {
+        fetch(`/api/entidades/${titular_id}/autorizados`)
+            .then(r => r.json())
+            .then(json => {
+                const opciones = (json.data || [])
+                    .filter(o => o.id !== parseInt(titular_id, 10))
+                    .map(o => ({ v: String(o.id), t: o.text }));
+                if (!opciones.length) {
+                    avisoSinAut.style.display = '';
+                    chkDistinto.checked = false;
+                    solicitanteSection.style.display = 'none';
+                    solicitanteHidden.value = titular_id;
+                } else {
+                    avisoSinAut.style.display = 'none';
+                    solicitanteSel.setOpciones(opciones);
+                    // Tras un rebote: `setOpciones` limpia el valor, así que la
+                    // preselección solo puede ir después de cargarlas.
+                    if (preseleccion) {
+                        const previo = opciones.find(o => o.v === String(preseleccion));
+                        if (previo) solicitanteSel.setValue(previo.v, previo.t);
+                    }
+                }
+            })
+            .catch(() => {
+                chkDistinto.checked = false;
+                solicitanteSection.style.display = 'none';
+                solicitanteHidden.value = entidadSel.getValue() || '';
+            });
+    }
+
+    chkDistinto.addEventListener('change', function () {
+        if (this.checked) {
+            const tid = entidadSel.getValue();
+            if (!tid) { this.checked = false; return; }
+            solicitanteSection.style.display = '';
+            solicitanteSel.clear();
+            solicitanteHidden.value = '';
+            cargarAutorizados(tid);
+        } else {
+            solicitanteSection.style.display = 'none';
+            solicitanteSel.clear();
+            avisoSinAut.style.display = 'none';
+            solicitanteHidden.value = entidadSel.getValue() || '';
+        }
+    });
+
+    // Repoblado del titular tras un rebote de validación. `setValue` necesita
+    // también la etiqueta —con solo el valor pinta «undefined»—, y la etiqueta la
+    // tiene el array de opciones, no el formulario, que solo devuelve el id.
+    {% if form.get('entidad_id') %}
+    (function repoblarTitular() {
+        const idTitular = {{ form.get('entidad_id') | tojson }};
+        const opt = ENTIDADES_OPTS.find(o => o.v === idTitular);
+        if (!opt) return;
+
+        entidadSel.setValue(opt.v, opt.t);   // su onChange deja el hidden en el titular
+
+        // Si el solicitante era un autorizado distinto, hay que reabrir la sección
+        // y volver a pedir la lista: sus opciones se cargan por API, no vienen en
+        // el HTML. La preselección viaja hasta después del fetch.
+        const idSolicitante = {{ (form.get('solicitante_id') or '') | tojson }};
+        if (idSolicitante && idSolicitante !== idTitular) {
+            chkDistinto.checked = true;
+            solicitanteSection.style.display = '';
+            solicitanteHidden.value = idSolicitante;
+            cargarAutorizados(idTitular, idSolicitante);
+        }
+    }());
+    {% endif %}
+
+    // ------------------------------------------------------------------
+    // D) Validación en submit — el servidor la repite entera; esto solo
+    //    ahorra el viaje.
+    // ------------------------------------------------------------------
+    const fichero      = document.getElementById('documento_solicitud');
+    const ficheroError = document.getElementById('fichero-error');
+    const tiposSelect  = document.getElementById('tipo-solicitud-select');
+    const tiposError   = document.getElementById('tipos-error');
+
+    document.getElementById('form-alta').addEventListener('submit', function (e) {
+        let ok = true;
+
+        ok = marcar(efFecha.getValue(), efFechaError) && ok;
+        ok = marcar(efRegistro.getValue(), efRegistroError) && ok;
+        ok = marcar(entidadSel.getValue(), entidadError) && ok;
+        ok = marcar(tiposSelect.value, tiposError) && ok;
+        ok = marcar(fichero.files && fichero.files.length, ficheroError) && ok;
+
+        if (chkDistinto.checked) {
+            ok = marcar(solicitanteSel.getValue(), solicitanteError) && ok;
+        }
+
+        if (!Object.keys(municipiosSeleccionados).length) {
+            muniError.style.display = 'block';
+            ok = false;
+        } else {
+            muniError.style.display = 'none';
+        }
+
+        if (!ok) {
+            e.preventDefault();
+            return;
+        }
+        const btn = document.getElementById('btn-crear');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Creando...';
+    });
+
+    function marcar(valor, divError) {
+        const ok = Boolean(valor);
+        divError.style.display = ok ? 'none' : 'block';
+        return ok;
+    }
+
+    function escapeHtml(s) {
+        return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+}());
+</script>
+{% endblock %}

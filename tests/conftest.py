@@ -19,14 +19,13 @@ from app import create_app, db as _db
 #   2026-09-05  50  línea base medida antes de tocar nada
 #   2026-09-05  19  tras desclavar _login_as de CLG (-21) y revivir test_348 (-10)
 #   2026-09-05   4  #428: los tests que buscaban «una tarea sin X» se la fabrican
+#   2026-09-05   3  #428: el alta de verificación deja un expediente sin asignar
 #
-# Los 4 que quedan, y por qué siguen ahí:
+# Los 3 que quedan, y por qué siguen ahí:
 #   · smoke/entidades_detalle — bifurcación del propio test, no falta de datos
-#   · smoke/asignacion_masiva — pide un expediente sin asignar, y usa cliente HTTP
-#     sin rollback: fabricarlo dejaría rastro real. Va con la semilla de #849.B
 #   · test_574 ESPERAR_PLAZO vencida — hay que fabricar el plazo, no solo la tarea
 #   · test_725 COMUNICACION_INICIO — hueco de catálogo, no de datos
-UMBRAL_SKIPS = 4
+UMBRAL_SKIPS = 3
 
 
 def pytest_sessionfinish(session, exitstatus):
@@ -179,12 +178,21 @@ def usuario_administrativo(client, app):
     return client
 
 
+# Las fixtures `*_seed` van todas con ORDER BY explícito, por lo mismo que
+# `primer_usuario_id` (#849, #836): un `first()` a secas devuelve la primera tupla
+# FÍSICA, y esa se mueve con cada UPDATE de la tabla. Basta con que un test asigne
+# un responsable y lo revierta para que la pasada siguiente vea otro expediente —
+# la intermitencia que hizo indiagnosticable #832. Detectado de nuevo en #428, al
+# aparecer un expediente sin responsable que sí encuentra el test de asignación
+# masiva: dos pasadas seguidas daban 7 y 3 skips.
+
+
 @pytest.fixture
 def expediente_seed(app):
     """ID del primer expediente en la BD de desarrollo. Skip si no existe ninguno."""
     with app.app_context():
         from app.models.expedientes import Expediente
-        exp = Expediente.query.first()
+        exp = Expediente.query.order_by(Expediente.id).first()
         if exp is None:
             pytest.skip('No hay expedientes en la BD de desarrollo')
         return exp.id
@@ -195,7 +203,7 @@ def entidad_seed(app):
     """ID de la primera entidad en la BD de desarrollo. Skip si no existe ninguna."""
     with app.app_context():
         from app.models.entidad import Entidad
-        e = Entidad.query.first()
+        e = Entidad.query.order_by(Entidad.id).first()
         if e is None:
             pytest.skip('No hay entidades en la BD de desarrollo')
         return e.id
@@ -206,7 +214,7 @@ def plantilla_seed(app):
     """ID de la primera plantilla en la BD de desarrollo. Skip si no existe ninguna."""
     with app.app_context():
         from app.models.plantillas import Plantilla
-        p = Plantilla.query.first()
+        p = Plantilla.query.order_by(Plantilla.id).first()
         if p is None:
             pytest.skip('No hay plantillas en la BD de desarrollo')
         return p.id
@@ -237,7 +245,7 @@ def diagnostico_seed(app):
     """
     with app.app_context():
         from app.models.diagnosticos import Diagnostico
-        diag = Diagnostico.query.first()
+        diag = Diagnostico.query.order_by(Diagnostico.id).first()
         if diag is None:
             pytest.skip('No hay diagnósticos en la BD de desarrollo')
         return diag.documento.expediente_id, diag.documento_id
@@ -373,7 +381,7 @@ def tramitador_usuario_id(app):
         from app.models.usuarios import Usuario, Rol
         u = Usuario.query.filter_by(activo=True).join(Usuario.roles).filter(
             Rol.nombre == 'TRAMITADOR'
-        ).first()
+        ).order_by(Usuario.id).first()
         if u is None:
             pytest.skip('No hay usuarios con rol TRAMITADOR en la BD de desarrollo')
         return u.id
