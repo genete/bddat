@@ -72,3 +72,4 @@ ADRs — registro append-only de decisiones arquitectónicas no obvias desde el 
 Documentos congelados. Contexto histórico, no referencia activa.
 
 - ANALISIS_*, DISEÑO_MOTOR_*, DISEÑO_NUMERACION_AT, PROCEDIMIENTO_*, REGLAS_ARQUITECTURA
+- [genealogia_tests_2026-09-06.html](historial/genealogia_tests_2026-09-06.html) — fuente del Claude Artifact "Genealogía de los tests" (barras acumuladas smoke vs. feature); datos recalculables con `scripts/medir_evolucion_tests.py`

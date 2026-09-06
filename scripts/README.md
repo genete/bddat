@@ -331,3 +331,24 @@ comprobar si fueron reescritas después de crearse — método del diagnóstico 
 
 El arreglo es `app/utils/formularios.py`. Este script sirve de marcador de
 progreso: cada ruta migrada desaparece del bloque A (issue #834).
+
+---
+
+## medir_evolucion_tests.py — Evolución semanal de smoke tests vs. tests de feature
+
+Recorre el historial git de `tests/` (fecha de alta real de cada fichero,
+`git log --diff-filter=A`) y agrupa por semana ISO, con acumulado por tipo.
+Es la fuente de datos del artefacto "Genealogía de los tests" (Claude
+Artifact, gráfico de barras acumuladas) — no lo republica, solo recalcula
+los números.
+
+### Uso
+
+```bash
+venv/Scripts/python.exe scripts/medir_evolucion_tests.py
+venv/Scripts/python.exe scripts/medir_evolucion_tests.py --salida docs_prueba/temp/evolucion_tests.json
+```
+
+Imprime la tabla semana a semana y, al final, el bloque `var weekStart = [...]`
+listo para pegar tal cual en el `<script>` del HTML del artefacto antes de
+republicarlo con la herramienta Artifact.

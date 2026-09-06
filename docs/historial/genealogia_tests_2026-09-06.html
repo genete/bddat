@@ -1,0 +1,462 @@
+<title>Genealogía de los Tests</title>
+<style>
+  :root {
+    color-scheme: light;
+    --page:            #f9f9f7;
+    --surface:         #fcfcfb;
+    --text-primary:    #0b0b0b;
+    --text-secondary:  #52514e;
+    --text-muted:      #898781;
+    --grid:            #e1e0d9;
+    --baseline:        #c3c2b7;
+    --border:          rgba(11,11,11,0.10);
+    --series-feature:  #2a78d6;
+    --series-smoke:    #eb6834;
+    --wash-feature:    rgba(42,120,214,0.08);
+    --wash-smoke:      rgba(235,104,52,0.10);
+    --hover-wash:      rgba(11,11,11,0.05);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --page:            #0d0d0d;
+      --surface:         #1a1a19;
+      --text-primary:    #ffffff;
+      --text-secondary:  #c3c2b7;
+      --text-muted:      #898781;
+      --grid:            #2c2c2a;
+      --baseline:        #383835;
+      --border:          rgba(255,255,255,0.10);
+      --series-feature:  #3987e5;
+      --series-smoke:    #d95926;
+      --wash-feature:    rgba(57,135,229,0.12);
+      --wash-smoke:      rgba(217,89,38,0.14);
+      --hover-wash:      rgba(255,255,255,0.06);
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --page:            #0d0d0d;
+    --surface:         #1a1a19;
+    --text-primary:    #ffffff;
+    --text-secondary:  #c3c2b7;
+    --text-muted:      #898781;
+    --grid:            #2c2c2a;
+    --baseline:        #383835;
+    --border:          rgba(255,255,255,0.10);
+    --series-feature:  #3987e5;
+    --series-smoke:    #d95926;
+    --wash-feature:    rgba(57,135,229,0.12);
+    --wash-smoke:      rgba(217,89,38,0.14);
+    --hover-wash:      rgba(255,255,255,0.06);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; animation: none !important; }
+  }
+
+  * { box-sizing: border-box; }
+  body { background: var(--page); color: var(--text-primary); }
+
+  .page {
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 40px 24px 56px;
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+
+  header { margin-bottom: 28px; }
+  .eyebrow {
+    font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin: 0 0 10px;
+  }
+  h1 {
+    font-size: 30px;
+    font-weight: 650;
+    letter-spacing: -0.01em;
+    margin: 0 0 10px;
+    text-wrap: balance;
+  }
+  .dek {
+    font-size: 15px;
+    line-height: 1.55;
+    color: var(--text-secondary);
+    max-width: 62ch;
+    margin: 0;
+  }
+  .dek code {
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: 0.9em;
+    background: var(--wash-feature);
+    padding: 0.1em 0.35em;
+    border-radius: 4px;
+  }
+
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0,1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .stat {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .stat-label {
+    font-size: 12.5px;
+    color: var(--text-secondary);
+  }
+  .stat-value {
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: 28px;
+    font-weight: 600;
+    line-height: 1.1;
+  }
+  .stat:nth-child(1) .stat-value { color: var(--series-feature); }
+  .stat:nth-child(2) .stat-value { color: var(--series-smoke); }
+  .stat-sub {
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: 11.5px;
+    color: var(--text-muted);
+  }
+
+  .chart-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px 18px 8px;
+  }
+  .chart-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 6px;
+  }
+  .legend { display: flex; gap: 18px; flex-wrap: wrap; }
+  .legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 13px;
+    color: var(--text-secondary);
+  }
+  .legend-item i {
+    width: 10px; height: 10px;
+    border-radius: 2px;
+    background: var(--c);
+    display: inline-block;
+  }
+  .ghost-btn {
+    font-family: inherit;
+    font-size: 12.5px;
+    color: var(--text-secondary);
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    padding: 6px 12px;
+    cursor: pointer;
+  }
+  .ghost-btn:hover { background: var(--hover-wash); color: var(--text-primary); }
+  .ghost-btn:focus-visible { outline: 2px solid var(--series-feature); outline-offset: 2px; }
+
+  .chart-wrap { position: relative; overflow-x: auto; }
+  #chart { display: block; width: 100%; height: auto; min-width: 640px; }
+
+  .tooltip {
+    position: absolute;
+    pointer-events: none;
+    background: var(--page);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 9px 11px;
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--text-primary);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.14);
+    white-space: nowrap;
+    z-index: 5;
+  }
+  .tooltip .tt-title {
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    color: var(--text-muted);
+    font-size: 11px;
+    margin-bottom: 4px;
+  }
+  .tooltip .tt-row { display: flex; align-items: center; gap: 6px; font-variant-numeric: tabular-nums; font-family: "JetBrains Mono", ui-monospace, monospace; }
+  .tooltip .tt-row i { width: 8px; height: 8px; border-radius: 2px; background: var(--c); display: inline-block; }
+
+  .axis-label {
+    fill: var(--text-muted);
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: 10.5px;
+  }
+  .milestone-label {
+    fill: var(--text-secondary);
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: 11px;
+  }
+
+  .table-wrap { overflow-x: auto; padding: 4px 0 14px; }
+  table { border-collapse: collapse; width: 100%; font-size: 12.5px; }
+  th, td {
+    text-align: right;
+    padding: 7px 10px;
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-variant-numeric: tabular-nums;
+    border-bottom: 1px solid var(--grid);
+    white-space: nowrap;
+  }
+  th:first-child, td:first-child { text-align: left; font-family: system-ui, sans-serif; }
+  th {
+    color: var(--text-muted);
+    font-family: system-ui, sans-serif;
+    font-weight: 600;
+    font-size: 11.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+  td.c-feature { color: var(--series-feature); }
+  td.c-smoke { color: var(--series-smoke); }
+
+  .footnote {
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--text-muted);
+    max-width: 68ch;
+    margin: 20px auto 0;
+  }
+  .footnote code {
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: 0.95em;
+  }
+</style>
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap">
+
+<div class="page">
+  <header>
+    <p class="eyebrow">BDDAT · tests/ · git log --diff-filter=A</p>
+    <h1>Genealogía de los tests</h1>
+    <p class="dek">
+      Cuándo empezó cada tipo de test y cómo ha crecido la suite desde entonces,
+      semana a semana. Cada barra es la fecha de alta real del fichero en
+      <code>tests/</code>, no una estimación.
+    </p>
+  </header>
+
+  <section class="stats">
+    <div class="stat">
+      <span class="stat-label">Tests de feature</span>
+      <span class="stat-value">113</span>
+      <span class="stat-sub">primero: 20 abr 2026 (sin decisión escrita)</span>
+    </div>
+    <div class="stat">
+      <span class="stat-label">Smoke tests (UI)</span>
+      <span class="stat-value">42</span>
+      <span class="stat-sub">primero: 25 may 2026 · ADR-019 / #503</span>
+    </div>
+  </section>
+
+  <section class="chart-card">
+    <div class="chart-head">
+      <div class="legend">
+        <span class="legend-item"><i style="--c:var(--series-feature)"></i>Tests de feature</span>
+        <span class="legend-item"><i style="--c:var(--series-smoke)"></i>Smoke tests (UI)</span>
+      </div>
+      <button id="toggleView" class="ghost-btn" type="button">Ver como tabla</button>
+    </div>
+    <div class="chart-wrap" id="chartWrap">
+      <svg id="chart" viewBox="0 0 1180 480" role="img"
+           aria-label="Barras acumuladas de tests de feature y smoke tests por semana, de abril a agosto de 2026"></svg>
+      <div id="tooltip" class="tooltip" hidden></div>
+    </div>
+    <div class="table-wrap" id="tableWrap" hidden></div>
+  </section>
+
+  <p class="footnote">
+    Fuente: fecha de alta de cada fichero de <code>tests/</code> según el historial git
+    (commit más antiguo que lo introduce). El total histórico de altas (155) supera
+    ligeramente a los ficheros vivos hoy (153): un puñado de tests fue renombrado por
+    el camino y cada renombre cuenta como una alta nueva para el fichero resultante.
+    Datos al 6 sep 2026.
+  </p>
+</div>
+
+<script>
+(function () {
+  var weekStart = ["2026-04-20","2026-04-27","2026-05-04","2026-05-11","2026-05-18","2026-05-25","2026-06-01","2026-06-08","2026-06-15","2026-06-22","2026-06-29","2026-07-06","2026-07-13","2026-07-20","2026-07-27","2026-08-03","2026-08-10","2026-08-17","2026-08-24","2026-08-31"];
+  var newFeature  = [1,9,3,14,16,11,0,0,1,1,0,4,7,4,13,8,0,8,7,6];
+  var newSmoke    = [0,0,0,0,0,17,4,2,1,3,1,6,7,0,0,1,0,0,0,0];
+  var cumFeature  = [1,10,13,27,43,54,54,54,55,56,56,60,67,71,84,92,92,100,107,113];
+  var cumSmoke    = [0,0,0,0,0,17,21,23,24,27,28,34,41,41,41,42,42,42,42,42];
+  var MILESTONE_IDX = 5; // 2026-05-25, semana de adopción de ADR-019
+
+  var MESES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
+  function fmt(iso) {
+    var p = iso.split("-").map(Number);
+    return p[2] + " " + MESES[p[1]-1];
+  }
+  function addDays(iso, n) {
+    var p = iso.split("-").map(Number);
+    var d = new Date(Date.UTC(p[0], p[1]-1, p[2]));
+    d.setUTCDate(d.getUTCDate() + n);
+    return d.getUTCDate() + " " + MESES[d.getUTCMonth()];
+  }
+
+  var svgNS = "http://www.w3.org/2000/svg";
+  function el(tag, attrs) {
+    var e = document.createElementNS(svgNS, tag);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    return e;
+  }
+  function topRoundedRectPath(x, y, w, h, r) {
+    r = Math.max(0, Math.min(r, h, w / 2));
+    if (h <= 0.15) return "";
+    if (r <= 0.3) {
+      return "M" + x + "," + (y + h) + " L" + x + "," + y + " L" + (x + w) + "," + y + " L" + (x + w) + "," + (y + h) + " Z";
+    }
+    return "M" + x + "," + (y + h) +
+      " L" + x + "," + (y + r) +
+      " Q" + x + "," + y + " " + (x + r) + "," + y +
+      " L" + (x + w - r) + "," + y +
+      " Q" + (x + w) + "," + y + " " + (x + w) + "," + (y + r) +
+      " L" + (x + w) + "," + (y + h) + " Z";
+  }
+
+  var W = 1180, H = 480;
+  var M = { left: 46, right: 16, top: 54, bottom: 66 };
+  var plotW = W - M.left - M.right;
+  var plotH = H - M.top - M.bottom;
+  var n = weekStart.length;
+  var groupW = plotW / n;
+  var barW = 22, barGap = 2;
+  var yMax = 120, yStep = 20;
+
+  var svg = document.getElementById("chart");
+
+  function scaleY(v) { return plotH - (v / yMax) * plotH; }
+  function groupCenterX(i) { return M.left + i * groupW + groupW / 2; }
+
+  // 1) columnas de resalte (debajo de todo)
+  var highlightRects = [];
+  for (var i = 0; i < n; i++) {
+    var hx = M.left + i * groupW;
+    var hr = el("rect", { x: hx, y: M.top, width: groupW, height: plotH, fill: "var(--hover-wash)", opacity: 0 });
+    svg.appendChild(hr);
+    highlightRects.push(hr);
+  }
+
+  // 2) gridlines + etiquetas eje Y
+  for (var v = 0; v <= yMax; v += yStep) {
+    var gy = M.top + scaleY(v);
+    svg.appendChild(el("line", { x1: M.left, x2: M.left + plotW, y1: gy, y2: gy, stroke: "var(--grid)", "stroke-width": 1 }));
+    var t = el("text", { x: M.left - 8, y: gy + 3, "text-anchor": "end", class: "axis-label" });
+    t.textContent = v;
+    svg.appendChild(t);
+  }
+
+  // 3) barras
+  for (var i = 0; i < n; i++) {
+    var gx = M.left + i * groupW;
+    var pairW = barW * 2 + barGap;
+    var startX = gx + (groupW - pairW) / 2;
+
+    var fH = (cumFeature[i] / yMax) * plotH;
+    var fY = M.top + plotH - fH;
+    var pf = topRoundedRectPath(startX, fY, barW, fH, 4);
+    if (pf) svg.appendChild(el("path", { d: pf, fill: "var(--series-feature)" }));
+
+    var sH = (cumSmoke[i] / yMax) * plotH;
+    var sY = M.top + plotH - sH;
+    var ps = topRoundedRectPath(startX + barW + barGap, sY, barW, sH, 4);
+    if (ps) svg.appendChild(el("path", { d: ps, fill: "var(--series-smoke)" }));
+  }
+
+  // 4) línea base
+  svg.appendChild(el("line", { x1: M.left, x2: M.left + plotW, y1: M.top + plotH, y2: M.top + plotH, stroke: "var(--baseline)", "stroke-width": 1 }));
+
+  // 5) hito ADR-019
+  var mx = groupCenterX(MILESTONE_IDX);
+  svg.appendChild(el("line", { x1: mx, x2: mx, y1: M.top - 2, y2: M.top + plotH, stroke: "var(--text-muted)", "stroke-width": 1, "stroke-dasharray": "3 3" }));
+  var mLabel = el("text", { x: mx + 8, y: M.top - 34, class: "milestone-label" });
+  mLabel.textContent = "ADR-019 · arrancan los smoke tests";
+  svg.appendChild(mLabel);
+  var mLabel2 = el("text", { x: mx + 8, y: M.top - 20, class: "milestone-label" });
+  mLabel2.textContent = "(el resto ya llevaba un mes)";
+  mLabel2.setAttribute("fill", "var(--text-muted)");
+  svg.appendChild(mLabel2);
+
+  // 6) etiquetas eje X (rotadas)
+  for (var i = 0; i < n; i++) {
+    var cx = groupCenterX(i);
+    var ty = M.top + plotH + 14;
+    var t = el("text", { x: 0, y: 0, class: "axis-label", "text-anchor": "end", transform: "translate(" + cx + "," + ty + ") rotate(-40)" });
+    t.textContent = fmt(weekStart[i]);
+    svg.appendChild(t);
+  }
+
+  // 7) hit areas + tooltip
+  var tooltip = document.getElementById("tooltip");
+  var wrap = document.getElementById("chartWrap");
+  for (var i = 0; i < n; i++) {
+    (function (idx) {
+      var hx = M.left + idx * groupW;
+      var hit = el("rect", { x: hx, y: M.top, width: groupW, height: plotH, fill: "transparent", style: "cursor:pointer" });
+      hit.addEventListener("pointerenter", function () { highlightRects[idx].setAttribute("opacity", 1); showTooltip(idx); });
+      hit.addEventListener("pointermove", function (ev) { positionTooltip(ev); });
+      hit.addEventListener("pointerleave", function () { highlightRects[idx].setAttribute("opacity", 0); tooltip.hidden = true; });
+      svg.appendChild(hit);
+    })(i);
+  }
+
+  function showTooltip(idx) {
+    tooltip.innerHTML =
+      '<div class="tt-title">semana ' + fmt(weekStart[idx]) + ' – ' + addDays(weekStart[idx], 6) + '</div>' +
+      '<div class="tt-row"><i style="--c:var(--series-feature)"></i>feature&nbsp; nuevos ' + newFeature[idx] + ' &middot; acum. ' + cumFeature[idx] + '</div>' +
+      '<div class="tt-row"><i style="--c:var(--series-smoke)"></i>smoke&nbsp;&nbsp; nuevos ' + newSmoke[idx] + ' &middot; acum. ' + cumSmoke[idx] + '</div>';
+    tooltip.hidden = false;
+  }
+  function positionTooltip(ev) {
+    var r = wrap.getBoundingClientRect();
+    var x = ev.clientX - r.left + 14;
+    var y = ev.clientY - r.top - 10;
+    if (x + 190 > r.width) x = ev.clientX - r.left - 190;
+    tooltip.style.left = x + "px";
+    tooltip.style.top = y + "px";
+  }
+
+  // 8) tabla alternativa
+  var tableWrap = document.getElementById("tableWrap");
+  var rows = "<table><thead><tr><th>Semana</th><th>Nuevos feature</th><th>Nuevos smoke</th><th>Acum. feature</th><th>Acum. smoke</th></tr></thead><tbody>";
+  for (var i = 0; i < n; i++) {
+    rows += "<tr><td>" + fmt(weekStart[i]) + "</td>" +
+      "<td class=\"c-feature\">" + (newFeature[i] || "—") + "</td>" +
+      "<td class=\"c-smoke\">" + (newSmoke[i] || "—") + "</td>" +
+      "<td class=\"c-feature\">" + cumFeature[i] + "</td>" +
+      "<td class=\"c-smoke\">" + cumSmoke[i] + "</td></tr>";
+  }
+  rows += "</tbody></table>";
+  tableWrap.innerHTML = rows;
+
+  var chartWrap = document.getElementById("chartWrap");
+  var toggleBtn = document.getElementById("toggleView");
+  var asTable = false;
+  toggleBtn.addEventListener("click", function () {
+    asTable = !asTable;
+    chartWrap.hidden = asTable;
+    tableWrap.hidden = !asTable;
+    toggleBtn.textContent = asTable ? "Ver como gráfico" : "Ver como tabla";
+  });
+})();
+</script>
