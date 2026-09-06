@@ -53,6 +53,8 @@ export const useArbolStore = create((set, get) => ({
                                 // creación bloqueado — el veredicto ya no se conoce al listar
                                 // (ADR-037 §D), solo al intentar (ver crearHijo)
   justificacionForzar: '',    // texto del bypass cuando bloqueoActual.puede_escapar (#616)
+  anclaSolicitudId: '',       // documento del pool elegido como escrito de la solicitud que se
+                              // crea bajo expediente (#428). Vacío en cualquier otro nivel
   bloqueoGuardar: null,        // {motivo, url_norma} del 422 FORZABLE del Guardar del inspector
                                 // (#765): el equivalente de bloqueoActual para el PATCH del nodo.
                                 // Hasta ahora el escape solo existía al CREAR — los tres bloqueos
@@ -171,7 +173,7 @@ export const useArbolStore = create((set, get) => ({
     if (!sel) return
     set({ seleccion: sel, modoEdicion: true, edicionCargando: true,
           editableCampos: [], borrador: {}, borradorInicial: {},
-          tiposCreables: null, tipoCreacionPendiente: null, creacionPadre: null, bloqueoActual: null, justificacionForzar: '',
+          tiposCreables: null, tipoCreacionPendiente: null, creacionPadre: null, bloqueoActual: null, justificacionForzar: '', anclaSolicitudId: '',
           bloqueoGuardar: null,
           docVinculandoPendiente: null, analizarSeccionesExtendidas: null,
           menuCtx: null, menuDetalle: null, borrarPendienteConfirm: false })
@@ -203,7 +205,7 @@ export const useArbolStore = create((set, get) => ({
     const { seleccion } = get()
     const habiaCambios = selectHayCambios(get())
     set({ modoEdicion: false, editableCampos: [], borrador: {}, borradorInicial: {}, edicionCargando: false,
-          tiposCreables: null, tipoCreacionPendiente: null, creacionPadre: null, bloqueoActual: null, justificacionForzar: '',
+          tiposCreables: null, tipoCreacionPendiente: null, creacionPadre: null, bloqueoActual: null, justificacionForzar: '', anclaSolicitudId: '',
           bloqueoGuardar: null,
           docVinculandoPendiente: null,
           borrarPendienteConfirm: false,
@@ -299,7 +301,7 @@ export const useArbolStore = create((set, get) => ({
         borrando: false, borrarPendienteConfirm: false,
         seleccion: null,
         modoEdicion: false, editableCampos: [], borrador: {}, borradorInicial: {},
-        edicionCargando: false, tiposCreables: null, tipoCreacionPendiente: null, creacionPadre: null, bloqueoActual: null, justificacionForzar: '',
+        edicionCargando: false, tiposCreables: null, tipoCreacionPendiente: null, creacionPadre: null, bloqueoActual: null, justificacionForzar: '', anclaSolicitudId: '',
         docVinculandoPendiente: null,
         detalle: null, detalleCargando: false, detalleError: null, _detalleCache: {},
       })
@@ -502,16 +504,22 @@ export const useArbolStore = create((set, get) => ({
     creacionPadre: padre ?? get().seleccion,
     bloqueoActual: null,
     justificacionForzar: '',
+    anclaSolicitudId: '',
   }),
 
   cancelarCrear: () => set({
-    tipoCreacionPendiente: null, creacionPadre: null, bloqueoActual: null, justificacionForzar: '',
+    tipoCreacionPendiente: null, creacionPadre: null, bloqueoActual: null,
+    justificacionForzar: '', anclaSolicitudId: '',
   }),
+
+  // Escrito de solicitud elegido del pool para la solicitud que se está creando
+  // (#428). Solo aplica bajo expediente; el resto de niveles no lo usa.
+  setAnclaSolicitudId: (id) => set({ anclaSolicitudId: id }),
 
   setJustificacionForzar: (texto) => set({ justificacionForzar: texto }),
 
   crearHijo: async () => {
-    const { expedienteId, creacionPadre, tipoCreacionPendiente, tiposCreables, bloqueoActual, justificacionForzar } = get()
+    const { expedienteId, creacionPadre, tipoCreacionPendiente, tiposCreables, bloqueoActual, justificacionForzar, anclaSolicitudId } = get()
     if (!creacionPadre || !tipoCreacionPendiente || !expedienteId) return
 
     // Reintento tras bloqueo (ADR-037 §D): bloqueoActual solo existe si un intento
@@ -528,6 +536,10 @@ export const useArbolStore = create((set, get) => ({
       const body = esMulti
         ? { tipo_ids: [tipoCreacionPendiente.tipo_id] }
         : { tipo_id: tipoCreacionPendiente.tipo_id }
+      // Bajo expediente se crea una solicitud, y toda solicitud nace anclada a su
+      // escrito (#428). Se manda tal cual: quien decide si vale es el servicio, no
+      // esta isla — y el bypass del motor no lo exime, porque es integridad.
+      if (esMulti) body.documento_solicitud_id = anclaSolicitudId || null
       if (forzando) {
         body.bypass = true
         body.justificacion = justificacionForzar.trim()
@@ -536,7 +548,7 @@ export const useArbolStore = create((set, get) => ({
       const nuevoTipo = tiposCreables?.tipo_hijo   // 'solicitud', 'fase', 'tramite', 'tarea'
       const nuevoId = (data.ids || [])[0]
 
-      set({ creando: false, tipoCreacionPendiente: null, creacionPadre: null, bloqueoActual: null, justificacionForzar: '' })
+      set({ creando: false, tipoCreacionPendiente: null, creacionPadre: null, bloqueoActual: null, justificacionForzar: '', anclaSolicitudId: '' })
       showToast(forzando ? 'Elemento creado (forzado, registrado en bitácora)' : 'Elemento creado', 'success')
       if (data.advertencia) {
         const a = data.advertencia
@@ -635,6 +647,34 @@ export const useArbolStore = create((set, get) => ({
       return true
     } catch (e) {
       showToast((e && e.message) || 'No se pudo subir el fichero', 'danger')
+      return false
+    } finally {
+      set({ subiendoDocumento: false })
+    }
+  },
+
+  // Sube el escrito de solicitud desde la Despensa y lo deja elegido como ancla
+  // (#428). Hermana de `subirDocumentoDespensa`, y separada a propósito: aquella
+  // stagea el documento para vincularlo a una tarea, y aquí no hay tarea ninguna
+  // —lo que se está creando es la solicitud—, así que lo que procede es
+  // seleccionarlo como ancla y nada más.
+  subirAnclaSolicitud: async (fichero, metadatos) => {
+    set({ subiendoDocumento: true })
+    try {
+      const data = await subirDocumentoPool(get().expedienteId, fichero, metadatos)
+      const nuevo = (data.documentos || [])[0]
+      if (nuevo) {
+        set((s) => ({
+          pool: [...s.pool, {
+            id: nuevo.id, nombre: nuevo.nombre, tipo_doc: nuevo.tipo_doc,
+            tipo_doc_codigo: nuevo.tipo_doc_codigo, fecha: nuevo.fecha,
+          }],
+          anclaSolicitudId: String(nuevo.id),
+        }))
+      }
+      return true
+    } catch (e) {
+      showToast((e && e.message) || 'No se pudo subir el escrito de solicitud', 'danger')
       return false
     } finally {
       set({ subiendoDocumento: false })

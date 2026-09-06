@@ -139,3 +139,172 @@ class TestFechaFutura:
         # Ni el fichero ni la carpeta del expediente que no llegó a existir.
         restos = [d for d in os.listdir(str(fs_tmp)) if d.startswith('AT-')]
         assert restos == [], f'el alta fallida dejó {restos} en el disco'
+
+
+# ---------------------------------------------------------------------------
+# 2ª vía: solicitud adicional sobre un expediente que ya existe
+# ---------------------------------------------------------------------------
+
+def _documento_en_pool(expediente, *, fecha, nombre='escrito.pdf'):
+    """Deja un documento en el pool del expediente por la vía real."""
+    from app.services.ingesta_pool import ingestar_en_pool
+    from app.models.tipos_documentos import TipoDocumento
+
+    tipo = TipoDocumento.query.filter_by(codigo='MODELO_SOLICITUD').first()
+    assert tipo is not None, "la semilla debe traer el TipoDocumento 'MODELO_SOLICITUD'"
+
+    resultado = ingestar_en_pool(
+        expediente, b'%PDF-1.4 escrito adicional', nombre,
+        tipo_doc_id=tipo.id, fecha_administrativa=fecha, asunto='Escrito de prueba')
+    db.session.flush()
+    return resultado.documento
+
+
+class TestSolicitudAdicional:
+    """`mutaciones_arbol.crear_solicitud` exige el mismo ancla que el alta (#428).
+
+    Aquí el expediente ya existe, así que el escrito no se sube con el alta: se
+    elige del pool. Lo que no cambia es el invariante — sin él la solicitud nace
+    SIN_PLAZO, que es justo el estado que este issue vino a hacer imposible.
+    """
+
+    def _tipo_aap(self):
+        from app.models.tipos_solicitudes import TipoSolicitud
+        tipo = TipoSolicitud.query.filter_by(siglas='AAP').first()
+        assert tipo is not None, "la semilla debe traer el TipoSolicitud 'AAP'"
+        return tipo
+
+    def test_sin_ancla_no_crea_la_solicitud(self, alta_propia):
+        import app.services.mutaciones_arbol as svc
+
+        res = svc.crear_solicitud(
+            alta_propia.expediente, [self._tipo_aap()],
+            alta_propia.expediente.titular_id, documento_solicitud_id=None)
+
+        assert res.ok is False
+        assert res.error == svc.MENSAJE_SIN_ANCLA_SOLICITUD
+
+    def test_con_ancla_la_solicitud_nace_anclada(self, alta_propia):
+        import app.services.mutaciones_arbol as svc
+        from app.models.solicitudes import Solicitud
+        from app.services.reloj_simulado import hoy
+
+        doc = _documento_en_pool(alta_propia.expediente, fecha=hoy())
+
+        res = svc.crear_solicitud(
+            alta_propia.expediente, [self._tipo_aap()],
+            alta_propia.expediente.titular_id, documento_solicitud_id=doc.id)
+
+        assert res.ok is True, res.error
+        nueva = Solicitud.query.get(res.ids[0])
+        assert nueva.documento_solicitud_id == doc.id
+
+    def test_el_plazo_de_la_solicitud_adicional_arranca(self, alta_propia):
+        import app.services.mutaciones_arbol as svc
+        from app.models.solicitudes import Solicitud
+        from app.services.plazos import obtener_estado_plazo_solicitud
+        from app.services.reloj_simulado import hoy
+
+        doc = _documento_en_pool(alta_propia.expediente, fecha=hoy())
+        res = svc.crear_solicitud(
+            alta_propia.expediente, [self._tipo_aap()],
+            alta_propia.expediente.titular_id, documento_solicitud_id=doc.id)
+        assert res.ok is True, res.error
+
+        estado = obtener_estado_plazo_solicitud(Solicitud.query.get(res.ids[0]))
+        assert estado.estado != 'SIN_PLAZO'
+
+    def test_documento_de_otro_expediente_rechazado(self, app_ctx, fs_tmp):
+        """La FK sola no lo impediría: `Documento` solo conoce su expediente, y
+        nada ata ese expediente al de la solicitud."""
+        import app.services.mutaciones_arbol as svc
+        from app.services.reloj_simulado import hoy
+        from tests.conftest import crear_expediente_de_prueba
+
+        propio = crear_expediente_de_prueba()
+        ajeno = crear_expediente_de_prueba()
+
+        res = svc.crear_solicitud(
+            propio.expediente, [self._tipo_aap()], propio.expediente.titular_id,
+            documento_solicitud_id=_documento_en_pool(ajeno.expediente, fecha=hoy()).id)
+
+        assert res.ok is False
+        assert 'no pertenece a este expediente' in res.error
+
+    def test_documento_sin_fecha_rechazado(self, alta_propia):
+        """Un ancla sin fecha no ancla nada: el plazo seguiría SIN_PLAZO con la FK
+        puesta, que es peor que sin ella — parece resuelto y no lo está."""
+        import app.services.mutaciones_arbol as svc
+
+        doc = _documento_en_pool(alta_propia.expediente, fecha=None, nombre='sin_fecha.pdf')
+
+        res = svc.crear_solicitud(
+            alta_propia.expediente, [self._tipo_aap()],
+            alta_propia.expediente.titular_id, documento_solicitud_id=doc.id)
+
+        assert res.ok is False
+        assert 'fecha de registro de entrada' in res.error
+
+    def test_el_bypass_del_motor_no_exime_del_ancla(self, alta_propia):
+        """El escape de #324 es para las reglas de catálogo, no para la integridad
+        documental: con justificación y todo, sin ancla no hay solicitud."""
+        import app.services.mutaciones_arbol as svc
+
+        res = svc.crear_solicitud(
+            alta_propia.expediente, [self._tipo_aap()],
+            alta_propia.expediente.titular_id, documento_solicitud_id=None,
+            justificacion='Me la juego')
+
+        assert res.ok is False
+        assert res.error == svc.MENSAJE_SIN_ANCLA_SOLICITUD
+
+    def test_varios_tipos_comparten_el_mismo_escrito(self, alta_propia):
+        """Un mismo escrito puede pedir varios actos administrativos."""
+        import app.services.mutaciones_arbol as svc
+        from app.models.solicitudes import Solicitud
+        from app.models.tipos_solicitudes import TipoSolicitud
+        from app.services.reloj_simulado import hoy
+
+        aac = TipoSolicitud.query.filter_by(siglas='AAC').first()
+        assert aac is not None, "la semilla debe traer el TipoSolicitud 'AAC'"
+
+        doc = _documento_en_pool(alta_propia.expediente, fecha=hoy())
+        res = svc.crear_solicitud(
+            alta_propia.expediente, [self._tipo_aap(), aac],
+            alta_propia.expediente.titular_id, documento_solicitud_id=doc.id)
+
+        assert res.ok is True, res.error
+        assert len(res.ids) == 2
+        for sol_id in res.ids:
+            assert Solicitud.query.get(sol_id).documento_solicitud_id == doc.id
+
+
+class TestRutaSolicitudAdicional:
+    """La ruta del árbol pasa el ancla al servicio (#428)."""
+
+    def test_la_ruta_propaga_el_documento(self, usuario_supervisor, expediente_seed):
+        from unittest.mock import patch
+        from app.services.mutaciones_arbol import ResultadoMutacion
+
+        with patch('app.routes.api_expedientes.svc.crear_solicitud') as mock_crear:
+            mock_crear.return_value = ResultadoMutacion(ok=True, ids=[1])
+            r = usuario_supervisor.post(
+                f'/api/expedientes/{expediente_seed}/nodo/expediente/{expediente_seed}/hijos',
+                json={'tipo_id': 1, 'documento_solicitud_id': 4242})
+
+        assert r.status_code == 201
+        assert mock_crear.call_args.kwargs['documento_solicitud_id'] == 4242
+
+    def test_sin_documento_en_el_body_llega_none(self, usuario_supervisor, expediente_seed):
+        """Y el servicio lo rechaza — la ruta no adivina ni inventa un ancla."""
+        from unittest.mock import patch
+        from app.services.mutaciones_arbol import ResultadoMutacion
+
+        with patch('app.routes.api_expedientes.svc.crear_solicitud') as mock_crear:
+            mock_crear.return_value = ResultadoMutacion(ok=True, ids=[1])
+            r = usuario_supervisor.post(
+                f'/api/expedientes/{expediente_seed}/nodo/expediente/{expediente_seed}/hijos',
+                json={'tipo_id': 1})
+
+        assert r.status_code == 201
+        assert mock_crear.call_args.kwargs['documento_solicitud_id'] is None

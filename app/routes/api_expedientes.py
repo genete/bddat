@@ -575,9 +575,12 @@ def crear_hijo_nodo(expediente_id, padre_tipo, padre_id):
     POST .../nodo/<padre_tipo>/<padre_id>/hijos — crear hijo bajo un nodo (ADR-016 §S3b).
 
     Body JSON: {tipo_id} o {tipo_ids:[...]} cuando padre_tipo=='expediente'.
+    Bajo expediente se exige además {documento_solicitud_id} — el escrito del pool
+    que abre la solicitud y de cuya fecha arranca el plazo para resolver (#428).
     Bypass del motor (#324/#616): {..., bypass:true, justificacion:'...'} salta la
     evaluación y registra la creación en bitácora con detalle {escape:true, justificacion}.
-    bypass=true sin justificacion → 400.
+    bypass=true sin justificacion → 400. El bypass NO alcanza al ancla documental:
+    es integridad, no una regla de catálogo que el técnico pueda forzar.
     Respuesta éxito: {ok:true, ids:[...]} 201.
     Bloqueo motor: {error, motivo, url_norma, puede_escapar} 422.
     """
@@ -610,8 +613,13 @@ def crear_hijo_nodo(expediente_id, padre_tipo, padre_id):
             if not t:
                 return jsonify({'error': f'TipoSolicitud {tid} no encontrado'}), 404
             tipos.append(t)
-        res = svc.crear_solicitud(expediente, tipos, expediente.titular_id,
-                                   justificacion=justificacion)
+        # `documento_solicitud_id` es el escrito que abre la solicitud (#428): sin
+        # él no arranca el plazo del art. 128 y la solicitud nace SIN_PLAZO. Lo
+        # valida el servicio, que es quien conoce el invariante.
+        res = svc.crear_solicitud(
+            expediente, tipos, expediente.titular_id,
+            documento_solicitud_id=data.get('documento_solicitud_id'),
+            justificacion=justificacion)
 
     elif padre_tipo == 'solicitud':
         tipo_id = data.get('tipo_id')
