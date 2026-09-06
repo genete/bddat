@@ -42,13 +42,16 @@ def test_search_unificado_expediente_formato(usuario_supervisor, expediente_seed
     with app.app_context():
         from app.models.expedientes import Expediente
         exp = Expediente.query.get(expediente_seed)
-        q = str(exp.numero_at)
+        # Con el prefijo, que es como se escribe un número de expediente y como
+        # lo acepta `_parse_numero_at`. Sin él, un AT de un solo dígito no llega
+        # ni a buscarse —el endpoint descarta las q de menos de 2 caracteres— y
+        # el test se saltaba en cualquier base recién sembrada (#849).
+        q = f'AT-{exp.numero_at}'
 
     r = usuario_supervisor.get(f'/api/search?q={q}&tipos=expedientes')
     assert r.status_code == 200
     items = _grupo(r.get_json()['grupos'], 'expedientes')
-    if not items:
-        pytest.skip('La búsqueda no devolvió el expediente seed')
+    assert items, f'la búsqueda no devolvió el expediente {q}'
     item = items[0]
     assert item['tipo'] == 'expediente'
     assert {'id', 'label', 'breadcrumb', 'url'} <= item.keys()
