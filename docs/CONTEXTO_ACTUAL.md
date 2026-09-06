@@ -14,7 +14,7 @@ Antes: **#428 — el wizard debe exigir el documento de la solicitud** ([PR #858
 
 **Próximo:**
 
-1. **Ampliar el catálogo de expedientes-tipo**, para poder trabajar en **consultas** con comodidad. Ya no está bloqueado: los expedientes-tipo *son* la semilla, y la semilla ya existe. El de #824 deja el patrón para las fechas —base derivada de `hoy()`, ventana en `catalogo_expedientes.csv`, ninguna fecha absoluta en el script— y desde #849.B también el de la doble vida: `main(app, efectos_desarrollo=False)`, para que cada expediente-tipo nuevo sirva a la vez de escenario en desarrollo y de semilla de la base de tests.
+1. **Ampliar el catálogo de expedientes-tipo**, para poder trabajar en **consultas** con comodidad (#862 — `CONSULTAS_VARIOS_ESTADOS`). Ya no está bloqueado: los expedientes-tipo *son* la semilla, y la semilla ya existe. El de #824 deja el patrón para las fechas —base derivada de `hoy()`, ninguna fecha absoluta en el script— y desde #849.B también el de la doble vida: `main(app, efectos_desarrollo=False)`, para que cada expediente-tipo nuevo sirva a la vez de escenario en desarrollo y de semilla de la base de tests.
 
 **Ciclo de trabajo nuevo (#849):** tras cualquier migración que toque catálogo,
 `scripts/preparar_bd_test.py --recrear` reconstruye la base de tests y

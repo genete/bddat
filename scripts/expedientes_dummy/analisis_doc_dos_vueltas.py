@@ -66,8 +66,6 @@ MARCA = f'[DUMMY:{CODIGO}]'
 OBSERVACIONES = f'{MARCA} {PROPOSITO}'
 
 FIXTURES_DIR = os.path.join(RAIZ, 'tests', 'fixtures', 'documentos_dummy')
-CATALOGO_CSV = os.path.join(RAIZ, 'tests', 'fixtures', 'expedientes_dummy',
-                            'catalogo_expedientes.csv')
 
 # Días naturales que dura el escenario completo: dos vueltas de requerimiento
 # (10 días hábiles de plazo, respondidas 3 hábiles antes de vencer) son unos 20,
@@ -320,49 +318,6 @@ def _cubrir_requisito_tasa(solicitud, doc_tasa_id):
     print("Requisito de pago de tasa cubierto.")
 
 
-def _actualizar_catalogo(numero_at, fecha_fin):
-    """Reescribe (o añade) la fila de este expediente-tipo en el catálogo
-    compartido. El CSV describe para qué sirve el expediente, no lo que
-    generó — el expediente siempre se recrea, así que el numero_at es el
-    único dato que cambia entre ejecuciones.
-
-    `fecha_inicio`/`fecha_fin` acotan la ventana en la que viven las fechas
-    administrativas del expediente. Sustituyen a `fecha_ultima_generacion`, que
-    era `date.today()`: con la base derivada de hoy, lo que interesa saber de un
-    expediente-tipo es en qué tramo del calendario cae —para elegir dónde poner
-    el reloj de desarrollo al trabajar con él— y cuánto se ha alejado del
-    presente desde que se generó. El día de la ejecución no dice ni una cosa ni
-    la otra sin restar DIAS_ESCENARIO a mano.
-    """
-    import csv
-    import os
-
-    columnas = ['codigo', 'proposito', 'numero_at_actual', 'fecha_inicio', 'fecha_fin']
-    filas = []
-    if os.path.isfile(CATALOGO_CSV):
-        with open(CATALOGO_CSV, encoding='utf-8') as f:
-            # `get` y no indexación: las filas de otros expedientes-tipo escritas
-            # con el juego de columnas anterior no tienen las nuevas.
-            filas = [{c: fila.get(c, '') for c in columnas}
-                     for fila in csv.DictReader(f) if fila['codigo'] != CODIGO]
-
-    filas.append({
-        'codigo': CODIGO,
-        'proposito': PROPOSITO,
-        'numero_at_actual': str(numero_at),
-        'fecha_inicio': FECHA_BASE.isoformat(),
-        'fecha_fin': fecha_fin.isoformat(),
-    })
-    filas.sort(key=lambda f: f['codigo'])
-
-    os.makedirs(os.path.dirname(CATALOGO_CSV), exist_ok=True)
-    with open(CATALOGO_CSV, 'w', newline='', encoding='utf-8') as f:
-        writer = csv.DictWriter(f, fieldnames=columnas)
-        writer.writeheader()
-        writer.writerows(filas)
-    print(f"Catálogo de expedientes-tipo actualizado: {CATALOGO_CSV}")
-
-
 def _requisito_id(codigo_tipo_doc: int) -> int:
     """`RequisitoDocumental.id` activo para un código de tipo de documento."""
     from app.models.requisitos_documentales import RequisitoDocumental
@@ -528,9 +483,8 @@ def main(app=None, *, efectos_desarrollo=True):
     `efectos_desarrollo=False` es como lo invoca la semilla de la base de tests
     (#849): deja fuera lo que solo tiene sentido en la máquina de desarrollo —
     fijar el reloj simulado, que escribe en `instance/` y que bajo
-    `TestingConfig` (DEBUG=False) el sistema ignora de todas formas, y reescribir
-    el catálogo CSV, que es un fichero versionado y no debe cambiar cada vez que
-    se prepara la base de tests—. El escenario que se construye es el mismo.
+    `TestingConfig` (DEBUG=False) el sistema ignora de todas formas—. El
+    escenario que se construye es el mismo.
     """
     from flask_login import login_user
     from app.services import mutaciones_arbol as svc
@@ -751,11 +705,6 @@ def main(app=None, *, efectos_desarrollo=True):
         db.session.expire(fase)
         estado_fase = 'pendiente de cierre' if fase.pdte_cierre else 'en curso'
         print(f"Fase ANALISIS_SOLICITUD {estado_fase} — fin del alcance del script.")
-
-        # `fecha_actual` es la última fecha usada por el escenario: cierra la
-        # ventana que el catálogo publica.
-        if efectos_desarrollo:
-            _actualizar_catalogo(expediente.numero_at, fecha_actual)
 
         print(f"\nExpediente AT-{expediente.numero_at} (id={exp_id}) completado.")
         return expediente.numero_at, exp_id
