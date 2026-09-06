@@ -408,10 +408,9 @@ def main(app=None, *, efectos_desarrollo=True):
         _comun.cubrir_requisito_tasa(solicitud, docs['JUSTIFICANTE_PAGO_TASA'])
 
         # Declaración responsable de no necesidad de DUP: el titular la presenta
-        # porque no pide utilidad pública. Entra al pool y ahí se queda — hoy el
-        # requisito DR_NO_DUP del catálogo está condicionado a
-        # `solicitud_incluye_dup = true`, así que no aparece en el checklist de
-        # una solicitud sin DUP y no hay a qué casarla.
+        # porque no pide utilidad pública, y desde #863 el requisito DR_NO_DUP
+        # aparece en el checklist de una solicitud sin DUP —su condición estaba
+        # invertida—, así que se casa como uno más.
         docs['DR_NO_DUP'] = _comun.subir(
             client, exp_id, 'DR_NO_DUP', cat['doc_dr_no_dup'].id, fecha_base,
             'Declaración responsable de no necesidad de DUP')

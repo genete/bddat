@@ -81,9 +81,9 @@ venv/Scripts/python.exe scripts/expedientes_dummy/consultas_varios_estados.py
 
 Dos cosas que este escenario dejó a la vista y no son suyas:
 
-- **La declaración responsable de no DUP no se casa con nada.** El requisito `DR_NO_DUP` del
-  catálogo está condicionado a `solicitud_incluye_dup = true`, así que no aparece en el
-  checklist de una solicitud sin DUP. El documento entra al pool y ahí se queda.
+- **La condición del requisito `DR_NO_DUP` estaba invertida** — se exigía cuando la solicitud
+  incluía DUP, y es al revés. Corregido en #863; desde entonces la declaración que presenta el
+  titular se casa como un requisito más del checklist.
 - **Dos documentos de igual contenido comparten fichero en el pool** (misma `url`, misma
   entrada física: la ingesta no reescribe un duplicado exacto), y al llevarse el primero a su
   carpeta ESFTT el segundo se queda apuntando a un fichero que ya no existe. Por eso el script
