@@ -17,8 +17,10 @@ def test_perfil_editar_parcial_no_borra_el_email(usuario_supervisor, app):
     from app import db
     from app.models.usuarios import Usuario
 
+    from tests.conftest import id_usuario_autenticado
+
     with app.app_context():
-        u = Usuario.query.filter_by(siglas='CLG').first()
+        u = Usuario.query.get(id_usuario_autenticado(usuario_supervisor))
         uid, email_previo, apellido2_previo = u.id, u.email, u.apellido2
         nombre_actual = u.nombre
 

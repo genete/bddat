@@ -22,34 +22,15 @@ RUTAS_SMOKE = [
 
 
 @pytest.fixture
-def logged_in(client):
-    """Hace login como CLG con rol SUPERVISOR.
+def logged_in(usuario_supervisor):
+    """Cliente autenticado con rol SUPERVISOR.
 
-    Asume que el usuario CLG existe en la BD de desarrollo (seed
-    estándar del proyecto). Si no, todos los smoke tests se saltan.
+    Por rol y no como CLG con la contraseña de desarrollo (#849): así los
+    dieciocho smoke de este fichero se ejecutan en cualquier base sembrada, en
+    vez de saltarse. El formulario de login tiene su propio test en
+    tests/smoke/test_smoke_login.py.
     """
-    # Primera pasada: validar credenciales
-    r1 = client.post('/auth/login',
-                     data={'siglas': 'CLG', 'password': '31416'},
-                     follow_redirects=False)
-    if r1.status_code not in (200, 302):
-        pytest.skip(f'Login de smoke no disponible (status {r1.status_code})')
-
-    if r1.status_code == 200:
-        # Segunda pasada: el usuario tiene varios roles → elegir SUPERVISOR
-        from app.models.usuarios import Usuario, Rol
-        u = Usuario.query.filter_by(siglas='CLG').first()
-        if u is None:
-            pytest.skip('Usuario CLG no presente en la BD')
-        rol_super = next((r for r in u.roles if r.nombre == 'SUPERVISOR'), None)
-        if rol_super is None:
-            pytest.skip('CLG no tiene rol SUPERVISOR en la BD')
-        r2 = client.post('/auth/login',
-                         data={'rol_id': str(rol_super.id)},
-                         follow_redirects=False)
-        assert r2.status_code in (200, 302), f'Segunda pasada de login devolvió {r2.status_code}'
-
-    return client
+    return usuario_supervisor
 
 
 @pytest.mark.parametrize('ruta', RUTAS_SMOKE)

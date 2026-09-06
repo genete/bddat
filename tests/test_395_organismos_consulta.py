@@ -11,6 +11,8 @@ por la migración seed.
 El fixture `organismos_data` inserta datos de prueba en un SAVEPOINT y
 los descarta al salir, sin dejar rastro en la BD.
 """
+from types import SimpleNamespace
+
 import pytest
 from sqlalchemy import text
 
@@ -56,14 +58,16 @@ def organismos_data(app_ctx):
         if exp_id is None:
             pytest.skip('No hay expedientes con fases en la BD de desarrollo')
 
-        org1_id = conn.execute(text(
-            "SELECT id FROM entidades WHERE nif = 'A28023430'"
-        )).scalar()
-        org2_id = conn.execute(text(
-            "SELECT id FROM entidades WHERE nif = 'A41000111'"
-        )).scalar()
-        if org1_id is None or org2_id is None:
-            pytest.skip('Entidades semilla (Endesa/Sevillana) no disponibles en esta BD')
+        # Dos organismos cualesquiera de los que se consultan, por rol y no por
+        # NIF concreto (#849): los de la base de desarrollo no están en la de
+        # tests, y clavarlos aquí saltaba los cuatro tests que usan el fixture.
+        organismos = conn.execute(text(
+            "SELECT id, nif FROM entidades WHERE rol_consultado IS TRUE "
+            "AND activo IS TRUE ORDER BY id LIMIT 2"
+        )).all()
+        assert len(organismos) == 2, (
+            'la semilla debe traer al menos dos entidades con rol_consultado')
+        (org1_id, nif1), (org2_id, nif2) = organismos
 
         tipo_tramite_id = conn.execute(text(
             "SELECT id FROM tipos_tramites WHERE codigo = 'CONSULTA_SEPARATA'"
@@ -159,7 +163,8 @@ def organismos_data(app_ctx):
             "VALUES (:tr,:oe)"
         ), {"tr": tr2, "oe": oe2})
 
-        yield _EXP_ID, conn
+        yield SimpleNamespace(exp_id=_EXP_ID, conn=conn,
+                              nif_ciclo_completo=nif1, nif_sin_respuesta=nif2)
 
     finally:
         sp.rollback()
@@ -232,15 +237,13 @@ class TestSQLOrganismosConsulta:
 
     def test_columnas_resultado_coinciden_con_declaradas(self, organismos_data):
         """Las claves del resultado coinciden exactamente con los campos declarados."""
-        exp_id, conn = organismos_data
-        rows = self._ejecutar(conn, exp_id)
+        rows = self._ejecutar(organismos_data.conn, organismos_data.exp_id)
         assert rows, "El fixture no devolvió filas"
         assert set(rows[0].keys()) == CAMPOS_ESPERADOS
 
     def test_resultado_es_lista_unica_por_organismo(self, organismos_data):
         """Cada organismo aparece exactamente una vez (no hay duplicados por tarea)."""
-        exp_id, conn = organismos_data
-        rows = self._ejecutar(conn, exp_id)
+        rows = self._ejecutar(organismos_data.conn, organismos_data.exp_id)
         nombres = [r['organismo_nombre'] for r in rows]
         assert len(nombres) == len(set(nombres)), (
             f"Duplicados detectados: {nombres} — posible producto cartesiano"
@@ -248,22 +251,20 @@ class TestSQLOrganismosConsulta:
 
     def test_dos_organismos_devueltos(self, organismos_data):
         """El fixture inserta 2 organismos; la consulta devuelve exactamente 2 filas."""
-        exp_id, conn = organismos_data
-        rows = self._ejecutar(conn, exp_id)
+        rows = self._ejecutar(organismos_data.conn, organismos_data.exp_id)
         assert len(rows) == 2
 
     def test_campos_ciclo_completo(self, organismos_data):
         """El organismo con ciclo completo tiene ambas fechas; el otro solo fecha_envio."""
-        exp_id, conn = organismos_data
-        rows = self._ejecutar(conn, exp_id)
+        rows = self._ejecutar(organismos_data.conn, organismos_data.exp_id)
         by_nif = {r['organismo_nif']: r for r in rows}
 
-        endesa = by_nif['A28023430']
-        assert endesa['organismo_resultado'] == 'cerrado_favorable'
-        assert endesa['organismo_fecha_envio'] == '01/03/2026'
-        assert endesa['organismo_fecha_respuesta'] == '20/03/2026'
+        completo = by_nif[organismos_data.nif_ciclo_completo]
+        assert completo['organismo_resultado'] == 'cerrado_favorable'
+        assert completo['organismo_fecha_envio'] == '01/03/2026'
+        assert completo['organismo_fecha_respuesta'] == '20/03/2026'
 
-        sevillana = by_nif['A41000111']
-        assert sevillana['organismo_resultado'] is None
-        assert sevillana['organismo_fecha_envio'] == '01/03/2026'
-        assert sevillana['organismo_fecha_respuesta'] is None
+        sin_respuesta = by_nif[organismos_data.nif_sin_respuesta]
+        assert sin_respuesta['organismo_resultado'] is None
+        assert sin_respuesta['organismo_fecha_envio'] == '01/03/2026'
+        assert sin_respuesta['organismo_fecha_respuesta'] is None

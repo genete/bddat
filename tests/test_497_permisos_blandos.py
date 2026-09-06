@@ -9,58 +9,48 @@ import pytest
 
 
 # ---------------------------------------------------------------------------
-# Helpers de login
+# Autenticación
+#
+# Por rol y no por siglas (#849): estas fixtures hacían login como CLG con la
+# contraseña de la base de desarrollo, así que los trece tests del fichero se
+# saltaban enteros en cualquier otra base. Lo que aquí se prueba son los
+# permisos, no el formulario de login — que tiene su propio test en
+# tests/smoke/test_smoke_login.py.
 # ---------------------------------------------------------------------------
 
-def _login(client, siglas, password, rol_nombre):
-    """
-    Hace login con siglas/password y selecciona el rol indicado.
-    Devuelve True si el login fue exitoso, False si el rol no existe.
-    """
-    r1 = client.post(
-        '/auth/login',
-        data={'siglas': siglas, 'password': password},
-        follow_redirects=False,
-    )
-    if r1.status_code not in (200, 302):
-        return False
-
-    if r1.status_code == 200:
-        # El servidor pide selección de rol
-        from app.models.usuarios import Usuario
-        u = Usuario.query.filter_by(siglas=siglas).first()
-        if u is None:
-            return False
-        rol = next((r for r in u.roles if r.nombre == rol_nombre), None)
-        if rol is None:
-            return False
-        r2 = client.post(
-            '/auth/login',
-            data={'rol_id': str(rol.id)},
-            follow_redirects=False,
-        )
-        if r2.status_code not in (200, 302):
-            return False
-
-    return True
+@pytest.fixture
+def tramitador(usuario_tramitador):
+    """Cliente autenticado con rol TRAMITADOR."""
+    return usuario_tramitador
 
 
 @pytest.fixture
-def tramitador(client):
-    """Cliente autenticado como CLG con rol TRAMITADOR."""
-    ok = _login(client, 'CLG', '31416', 'TRAMITADOR')
-    if not ok:
-        pytest.skip('Usuario CLG con rol TRAMITADOR no disponible en esta BD')
-    return client
+def supervisor(usuario_supervisor):
+    """Cliente autenticado con rol SUPERVISOR."""
+    return usuario_supervisor
 
 
-@pytest.fixture
-def supervisor(client):
-    """Cliente autenticado como CLG con rol SUPERVISOR."""
-    ok = _login(client, 'CLG', '31416', 'SUPERVISOR')
-    if not ok:
-        pytest.skip('Usuario CLG con rol SUPERVISOR no disponible en esta BD')
-    return client
+# Con `app.app_context()` y con `assert`, no con `pytest.skip` (#849): estas
+# consultas se hacían fuera de contexto —nunca llegaron a ejecutarse, porque el
+# fichero entero se saltaba— y en una base sembrada por nosotros la ausencia de
+# una plantilla o de un usuario es un defecto de la semilla, no un motivo para
+# no probar. ORDER BY explícito: un `first()` a secas devuelve la primera tupla
+# física, que se mueve con cada UPDATE (#836).
+
+def _id_plantilla(app):
+    from app.models.plantillas import Plantilla
+    with app.app_context():
+        p = Plantilla.query.order_by(Plantilla.id).first()
+        assert p is not None, 'la semilla debe traer alguna plantilla'
+        return p.id
+
+
+def _id_usuario(app):
+    from app.models.usuarios import Usuario
+    with app.app_context():
+        u = Usuario.query.order_by(Usuario.id).first()
+        assert u is not None, 'la semilla debe traer algún usuario'
+        return u.id
 
 
 # ---------------------------------------------------------------------------
@@ -77,23 +67,15 @@ def test_tramitador_puede_leer(tramitador, ruta):
     assert r.status_code == 200, f'TRAMITADOR no puede leer {ruta} (status {r.status_code})'
 
 
-def test_tramitador_puede_ver_detalle_plantilla(tramitador):
-    """TRAMITADOR puede ver el detalle de una plantilla si existe alguna."""
-    from app.models.plantillas import Plantilla
-    p = Plantilla.query.first()
-    if p is None:
-        pytest.skip('No hay plantillas en la BD')
-    r = tramitador.get(f'/plantillas/{p.id}/', follow_redirects=True)
+def test_tramitador_puede_ver_detalle_plantilla(tramitador, app):
+    """TRAMITADOR puede ver el detalle de una plantilla."""
+    r = tramitador.get(f'/plantillas/{_id_plantilla(app)}/', follow_redirects=True)
     assert r.status_code == 200
 
 
-def test_tramitador_puede_ver_detalle_usuario(tramitador):
+def test_tramitador_puede_ver_detalle_usuario(tramitador, app):
     """TRAMITADOR puede ver el detalle de un usuario."""
-    from app.models.usuarios import Usuario
-    u = Usuario.query.first()
-    if u is None:
-        pytest.skip('No hay usuarios en la BD')
-    r = tramitador.get(f'/usuarios/{u.id}', follow_redirects=True)
+    r = tramitador.get(f'/usuarios/{_id_usuario(app)}', follow_redirects=True)
     assert r.status_code == 200
 
 
@@ -108,24 +90,16 @@ def test_tramitador_no_puede_crear_plantilla_get(tramitador):
     assert '/perfil' in r.headers.get('Location', '')
 
 
-def test_tramitador_no_puede_editar_plantilla(tramitador):
+def test_tramitador_no_puede_editar_plantilla(tramitador, app):
     """TRAMITADOR no accede al formulario de edición de plantilla."""
-    from app.models.plantillas import Plantilla
-    p = Plantilla.query.first()
-    if p is None:
-        pytest.skip('No hay plantillas en la BD')
-    r = tramitador.get(f'/plantillas/{p.id}/editar', follow_redirects=False)
+    r = tramitador.get(f'/plantillas/{_id_plantilla(app)}/editar', follow_redirects=False)
     assert r.status_code == 302
     assert '/perfil' in r.headers.get('Location', '')
 
 
-def test_tramitador_no_puede_activar_plantilla(tramitador):
+def test_tramitador_no_puede_activar_plantilla(tramitador, app):
     """TRAMITADOR no puede activar/desactivar una plantilla."""
-    from app.models.plantillas import Plantilla
-    p = Plantilla.query.first()
-    if p is None:
-        pytest.skip('No hay plantillas en la BD')
-    r = tramitador.post(f'/plantillas/{p.id}/activar', follow_redirects=False)
+    r = tramitador.post(f'/plantillas/{_id_plantilla(app)}/activar', follow_redirects=False)
     assert r.status_code == 302
     assert '/perfil' in r.headers.get('Location', '')
 
@@ -145,13 +119,9 @@ def test_tramitador_no_puede_crear_usuario(tramitador):
     assert r.status_code == 403
 
 
-def test_tramitador_no_puede_editar_usuario(tramitador):
+def test_tramitador_no_puede_editar_usuario(tramitador, app):
     """TRAMITADOR no accede al formulario de edición de un usuario."""
-    from app.models.usuarios import Usuario
-    u = Usuario.query.first()
-    if u is None:
-        pytest.skip('No hay usuarios en la BD')
-    r = tramitador.get(f'/usuarios/{u.id}/editar', follow_redirects=False)
+    r = tramitador.get(f'/usuarios/{_id_usuario(app)}/editar', follow_redirects=False)
     assert r.status_code == 302
     assert '/perfil' in r.headers.get('Location', '')
 
@@ -177,11 +147,7 @@ def test_supervisor_puede_crear_plantilla_get(supervisor):
     assert r.status_code == 200
 
 
-def test_supervisor_puede_editar_usuario(supervisor):
+def test_supervisor_puede_editar_usuario(supervisor, app):
     """SUPERVISOR accede al formulario de edición de un usuario."""
-    from app.models.usuarios import Usuario
-    u = Usuario.query.first()
-    if u is None:
-        pytest.skip('No hay usuarios en la BD')
-    r = supervisor.get(f'/usuarios/{u.id}/editar', follow_redirects=True)
+    r = supervisor.get(f'/usuarios/{_id_usuario(app)}/editar', follow_redirects=True)
     assert r.status_code == 200

@@ -48,14 +48,20 @@ def test_entidad_gestionar_direcciones_render(usuario_supervisor, entidad_seed):
     assert b'gdir-form' in r.data
 
 
-def test_entidad_gestionar_autorizaciones_no_titular(usuario_supervisor, entidad_seed, app):
-    """GET /entidades/<id>/gestionar-autorizaciones → 403 si la entidad no es titular."""
+def test_entidad_gestionar_autorizaciones_no_titular(usuario_supervisor, app):
+    """GET /entidades/<id>/gestionar-autorizaciones → 403 si la entidad no es titular.
+
+    Busca una entidad no titular en vez de mirar si `entidad_seed` lo es (#849):
+    la primera entidad de la base es titular, así que el test se saltaba siempre
+    y el 403 no lo comprobaba nadie.
+    """
     with app.app_context():
         from app.models.entidad import Entidad
-        e = Entidad.query.filter_by(id=entidad_seed).first()
-        if e and e.rol_titular:
-            pytest.skip('La entidad seed es titular; usar test de titular')
-    r = usuario_supervisor.get(f'/entidades/{entidad_seed}/gestionar-autorizaciones')
+        e = (Entidad.query.filter(Entidad.rol_titular.is_(False))
+             .order_by(Entidad.id).first())
+        assert e is not None, 'la semilla debe traer alguna entidad no titular (un organismo)'
+        eid = e.id
+    r = usuario_supervisor.get(f'/entidades/{eid}/gestionar-autorizaciones')
     assert r.status_code == 403
 
 

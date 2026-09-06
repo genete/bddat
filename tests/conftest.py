@@ -20,12 +20,13 @@ from app import create_app, db as _db
 #   2026-09-05  19  tras desclavar _login_as de CLG (-21) y revivir test_348 (-10)
 #   2026-09-05   4  #428: los tests que buscaban «una tarea sin X» se la fabrican
 #   2026-09-05   3  #428: el alta de verificación deja un expediente sin asignar
+#   2026-09-06   0  #849.B: la suite corre contra su propia base, sembrada
 #
-# Los 3 que quedan, y por qué siguen ahí:
-#   · smoke/entidades_detalle — bifurcación del propio test, no falta de datos
-#   · test_574 ESPERAR_PLAZO vencida — hay que fabricar el plazo, no solo la tarea
-#   · test_725 COMUNICACION_INICIO — hueco de catálogo, no de datos
-UMBRAL_SKIPS = 3
+# Cero, y esa es la cifra que hay que defender. Con la base de tests la sembramos
+# nosotros: si falta un dato, es un defecto de la semilla y el test tiene que
+# decirlo fallando. El único skip legítimo que queda por delante es el de una
+# dependencia opcional del entorno (`importorskip`), no el de un dato ausente.
+UMBRAL_SKIPS = 0
 
 
 def pytest_sessionfinish(session, exitstatus):
@@ -48,27 +49,23 @@ def pytest_sessionfinish(session, exitstatus):
 
 @pytest.fixture(scope='session')
 def app():
-    """OJO: la suite todavía corre contra la BD de DESARROLLO (#849, fase A).
+    """La suite corre contra su propia base de datos (#849).
 
-    El mundo aislado ya existe y funciona —`TestingConfig`, base construida
-    desde las migraciones, semilla de catálogo y usuarios, raíz de ficheros
-    propia—, pero le falta la semilla de datos de negocio, que llega con
-    `alta_expediente()` en #428 (fase B).
+    `TestingConfig`: base construida desde las migraciones y sembrada por
+    `scripts/preparar_bd_test.py`, raíz de ficheros propia, reloj real. Nada de
+    esto depende del estado de una máquina concreta, que es lo que este issue
+    vino a arreglar.
 
-    Medido el 2026-09-05 cambiando esta línea a `create_app('testing')`:
+    Si al arrancar la suite falta la base o le falta la semilla, la salida lo
+    dice enseguida —los tests fallan por dato ausente, no se saltan—. Se
+    reconstruye con:
 
-        contra desarrollo:  3 failed, 1586 passed,   50 skipped
-        contra la de tests: 16 failed, 1180 passed, 441 skipped, 2 errors
+        venv/Scripts/python.exe scripts/preparar_bd_test.py --recrear
 
-    Los 16 fallos y los 441 skips tienen todos la misma causa —no hay
-    expedientes, solicitudes ni entidades—, ninguno es achacable al
-    aislamiento. Activar el interruptor hoy cambiaría 50 skips por 441, así
-    que espera a que la semilla de negocio exista. Entonces esta línea pasa a
-    `create_app('testing')` y no se vuelve atrás.
+    `comprobar_aislamiento()` (app/config.py) impide que esto acabe apuntando a
+    la base de desarrollo por un despiste en el `.env`.
     """
-    application = create_app()
-    application.config['TESTING'] = True
-    return application
+    return create_app('testing')
 
 
 @pytest.fixture(scope='function')
@@ -144,6 +141,20 @@ def _login_as(client, app, rol_nombre):
         sess['rol_activo_id'] = rol_id
         sess['rol_activo_nombre'] = rol_nombre_db
     return True
+
+
+def id_usuario_autenticado(client):
+    """El usuario que autenticó una fixture `usuario_*`, leído de su sesión.
+
+    La alternativa a `Usuario.query.filter_by(siglas='CLG')` en un test que solo
+    necesita saber quién es el usuario del cliente (#849): las siglas dependen
+    de la base —desarrollo tiene CLG, la de tests tiene los siete de
+    `scripts/semilla_test.py`— y clavarlas convierte el test en un skip.
+    """
+    with client.session_transaction() as sess:
+        uid = sess.get('_user_id')
+    assert uid is not None, 'el cliente no está autenticado: usa una fixture usuario_*'
+    return int(uid)
 
 
 @pytest.fixture

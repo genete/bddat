@@ -183,75 +183,58 @@ class TestCertFinIpConsultasFechaAdministrativa:
 class TestCrearCertFechaAdministrativa:
 
     def _tarea_esperar_plazo_vencida_libre(self):
-        """Primera tarea ESPERAR_PLAZO vencida y sin documento producido en
-        la BD de desarrollo. Mismo criterio de skip que
-        test_442_analizar_diagnostico.py: _tarea_analizar_libre()."""
-        from app.models.tipos_tareas import TipoTarea
+        """Tarea ESPERAR_PLAZO vencida y sin producido, fabricada por el test (#849).
+
+        Antes se pescaba de la base la primera que cumpliera las condiciones, y
+        si no había ninguna el test se saltaba — que es justo lo que pasa en una
+        base recién sembrada, donde los plazos del expediente-tipo están todos
+        cerrados en fecha. Fabricarla además la garantiza limpia: la encontrada
+        solo lo estaba mientras nadie tramitara ese expediente.
+
+        El disparo es el documento CONSUMIDO (así lo resuelve `catalogo_plazos`
+        para REQUERIMIENTO_SUBSANACION/ESPERAR_PLAZO, art. 68.1 LPACAP), con
+        fecha muy anterior al plazo de 10 días hábiles: vencido con holgura.
+
+        Requiere `fs_tmp`: el expediente nace por la vía real, que escribe a disco.
+        """
+        from datetime import timedelta
+
+        from app import db as _db
         from app.services.plazos import obtener_estado_plazo_tarea
+        from app.services.reloj_simulado import hoy
+        from tests.conftest import ArbolESFTT
 
-        candidatas = (
-            Tarea.query.join(TipoTarea, Tarea.tipo_tarea_id == TipoTarea.id)
-            .filter(TipoTarea.codigo == 'ESPERAR_PLAZO')
-            .all()
-        )
-        for t in candidatas:
-            if t.documento_producido is not None:
-                continue
-            try:
-                # Sin dict de variables desde #785: el catálogo resuelve el
-                # camino SFTT desde la propia tarea.
-                ep = obtener_estado_plazo_tarea(t)
-            except Exception:
-                continue
-            if ep.estado == 'VENCIDO' and ep.fecha_limite is not None:
-                return t, ep
-        pytest.skip(
-            'No hay ninguna tarea ESPERAR_PLAZO vencida sin certificado '
-            'en la BD de desarrollo'
-        )
+        arbol = ArbolESFTT(_db)
+        tarea = arbol.tarea_propia('ESPERAR_PLAZO',
+                                   codigo_tramite='REQUERIMIENTO_SUBSANACION')
+        expediente_id = tarea.tramite.fase.solicitud.expediente_id
+        disparo = arbol.documento(expediente_id, 'OFICIO_REQUERIMIENTO', 'disparo-574')
+        disparo.fecha_administrativa = hoy() - timedelta(days=60)
+        arbol.vincular(tarea, disparo, 'CONSUMIDO')
+        _db.session.flush()
 
-    def _limpiar(self, tarea_id, doc_id, cert_id):
-        from app import db
-        from app.models.certificados import Certificado
-        from app.models.documentos import Documento
-        from app.models.documentos_tarea import DocumentoTarea
+        ep = obtener_estado_plazo_tarea(tarea)
+        assert ep.estado == 'VENCIDO', (
+            f'la tarea fabricada debería estar vencida, y está en {ep.estado}')
+        assert ep.fecha_limite is not None
+        return tarea, ep
 
-        db.session.rollback()
-        if doc_id is not None:
-            DocumentoTarea.query.filter_by(
-                tarea_id=tarea_id, documento_id=doc_id, rol='PRODUCIDO'
-            ).delete()
-        if cert_id is not None:
-            Certificado.query.filter_by(id=cert_id).delete()
-        if doc_id is not None:
-            Documento.query.filter_by(id=doc_id).delete()
-        db.session.commit()
-
-    def test_crea_documento_con_fecha_administrativa_no_nula(self, app_ctx):
+    def test_crea_documento_con_fecha_administrativa_no_nula(self, app_ctx, fs_tmp):
         from app.services.certificados import crear_cert
-        from app.models.certificados import Certificado
         from app.models.documentos import Documento
 
         tarea, ep_esperado = self._tarea_esperar_plazo_vencida_libre()
 
-        doc_id = cert_id = None
-        try:
-            doc = crear_cert(tarea)
-            doc_id = doc.id
-            cert = Certificado.query.filter_by(documento_id=doc.id).first()
-            cert_id = cert.id if cert else None
+        doc = crear_cert(tarea)
+        assert doc.fecha_administrativa == ep_esperado.fecha_limite
 
-            assert doc.fecha_administrativa == ep_esperado.fecha_limite
-
-            visibles = (
-                Documento.query
-                .filter(Documento.fecha_administrativa.isnot(None))
-                .filter_by(id=doc.id)
-                .all()
-            )
-            assert len(visibles) == 1
-        finally:
-            self._limpiar(tarea.id, doc_id, cert_id)
+        visibles = (
+            Documento.query
+            .filter(Documento.fecha_administrativa.isnot(None))
+            .filter_by(id=doc.id)
+            .all()
+        )
+        assert len(visibles) == 1
 
 
 # ---------------------------------------------------------------------------

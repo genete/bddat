@@ -11,9 +11,11 @@ nada lo diga. Si la BD de test se creara desde los modelos, la deriva quedaría
 tapada justo donde debería saltar. Aquí se aplica `upgrade heads`, que es lo
 mismo que correrá una instalación nueva.
 
-Lo que este script NO hace: sembrar datos de negocio (expedientes, solicitudes,
-documentos). Esa es la semilla, y va aparte — los expedientes-tipo de
-`scripts/expedientes_dummy/` son su sitio natural.
+Después de migrar, `semilla_test.sembrar()` pone lo que las migraciones no
+traen: usuarios con sus roles, entidades, y los datos de negocio —un
+expediente-tipo completo construido por el circuito real de la aplicación, más
+un segundo expediente sin responsable—. La suite se apoya en ellos, así que un
+dato que falte sale como fallo y no como test saltado.
 """
 import argparse
 import os

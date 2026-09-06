@@ -176,11 +176,13 @@ op.execute("GRANT SELECT ON public.<tabla> TO claude_desktop")
 
 En producción este usuario no existe y el GRANT se omite o revoca, pero en desarrollo es necesario para que el MCP PostgreSQL pueda leerla.
 
-### Dos reglas que solo se notan instalando desde cero (#849)
+### Cuatro reglas que solo se notan instalando desde cero (#849)
 
 La BD de desarrollo lleva años acumulando ajustes hechos a mano que nunca se
-formalizaron, así que una migración puede estar rota y funcionar aquí. Estas
-dos rompían el `upgrade` sobre una base vacía:
+formalizaron, así que una migración puede estar rota y funcionar aquí. Las dos
+primeras rompían el `upgrade` sobre una base vacía; las dos últimas son peores,
+porque no rompen nada: dejan una instalación que arranca y trabaja con el
+catálogo equivocado.
 
 **Identificador de revisión: 32 caracteres como máximo.** Alembic crea
 `alembic_version.version_num` como `VARCHAR(32)` y no ofrece forma de
@@ -200,6 +202,37 @@ op.execute(
     "SELECT setval(pg_get_serial_sequence('public.<tabla>', 'id'), "
     "(SELECT COALESCE(MAX(id), 1) FROM public.<tabla>))"
 )
+```
+
+**Una migración de datos nunca localiza la fila por `id`.** Los ids no son
+estables entre instalaciones: `MODELO_SOLICITUD` es 146 en desarrollo y 56 en
+una base limpia. Un `WHERE id = 111` sobre una base construida desde cero
+afecta a 0 filas **y no da ningún error**; o peor, acierta de fila y falla de
+significado — `c3d4e5f6a7b8` puebla `nombre_en_plantilla` con un `CASE id`
+escrito para el catálogo de tres meses antes, y en la base limpia cada fase
+recibe el nombre de otra. Se resuelve siempre por clave natural (`codigo`,
+`camino`, `nombre`…) y, si la tabla no tiene ninguna —`reglas_motor` no la
+tiene—, por la combinación que la identifica de hecho: `(sujeto, descripcion)`.
+
+La misma trampa con otra cara: `ON CONFLICT (…) DO NOTHING` cuando lo que se
+quería era actualizar. Dos migraciones que siembran la misma variable con
+etiquetas distintas dejan la de la primera y descartan la de la segunda sin
+decir nada.
+
+**El curado de datos estructurales va por migración, nunca a mano.** Los datos
+operacionales se maltratan; los estructurales se miman. Si algo del catálogo
+está mal en desarrollo, se corrige con una migración, no editándolo por la
+interfaz de tablas maestras ni con SQL suelto: lo que solo vive en esa base no
+existe para ninguna otra instalación, y #856 va a recrearla. Seis de las once
+divergencias que arregló `849_catalogo_replicado` eran exactamente esto.
+
+Se comprueba con `scripts/comparar_catalogo.py`, que enfrenta la base de
+desarrollo con una construida desde las migraciones, por contenido y por clave
+natural. Conviene pasarlo tras cualquier migración que toque catálogo:
+
+```bash
+venv/Scripts/python.exe scripts/preparar_bd_test.py --recrear
+venv/Scripts/python.exe scripts/comparar_catalogo.py
 ```
 
 ---
