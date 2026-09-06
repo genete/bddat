@@ -17,6 +17,7 @@ Cada uno tiene doble vida (#849):
 | Código | Propósito | Alcance |
 |---|---|---|
 | `ANALISIS_DOC_DOS_VUELTAS` | Análisis documental con respuesta del titular dentro de plazo y dos vueltas de subsanación | Termina con `ANALISIS_SOLICITUD` completa y pendiente de cierre |
+| `CONSULTAS_VARIOS_ESTADOS` | Fase de consultas con las tres separatas enviadas y cada organismo en un estado distinto | Termina con `CONSULTAS` abierta — expediente incompleto a propósito |
 
 ### ANALISIS_DOC_DOS_VUELTAS
 
@@ -37,6 +38,56 @@ invariante de precedencia de #823 abrirla con la fase anterior sin cerrar está 
 ```bash
 venv/Scripts/python.exe scripts/expedientes_dummy/analisis_doc_dos_vueltas.py
 ```
+
+### CONSULTAS_VARIOS_ESTADOS
+
+`consultas_varios_estados.py` — #862
+
+Línea aérea de 66 kV entre dos subestaciones en suelo rústico de Jerez de la Frontera
+(AAP+AAC, un solo municipio), **exenta** de instrumento ambiental por longitud, tensión y
+suelos que recorre: sin figura ambiental y sin información pública. El titular presenta la
+declaración responsable de no necesidad de DUP. El trazado cruza una carretera provincial y
+una línea de ferrocarril, así que se consulta a tres organismos.
+
+La fase `ANALISIS_SOLICITUD` se recorre **sin defectos** —todos los requisitos aplicables
+cubiertos en el primer ANALIZAR, ninguna vuelta de subsanación— y se comunica el inicio. La
+fase `CONSULTAS` queda **abierta**: es un expediente incompleto a propósito, porque lo que
+hace falta para trabajar en consultas es esa foto, no un expediente terminado.
+
+Estado a día de hoy, que son 40 días hábiles desde que se notificaron las separatas (el plazo
+del art. 131.1 son 30 días hábiles, así que ya venció para quien no contestó):
+
+| Organismo | Estado | Qué ejercita |
+|---|---|---|
+| Ayuntamiento de Jerez | Silencio: `ESPERAR_PLAZO` **vencido**, sin ANALIZAR | Conformidad tácita pendiente de reconocer (caso A de ADR-011 §6) |
+| ADIF | Ciclo cerrado: respuesta con condicionados → traslado al titular → aceptación en plazo. Organismo en `cerrado_con_condicionados` | Caso B completo, separata + traslado |
+| Diputación de Cádiz | Informe desfavorable trasladado al titular; su `ESPERAR_PLAZO` **sigue corriendo**. Organismo sin `resultado` (en curso) | Traslado vivo, con el plazo de 15 días del art. 131.3 a punto de vencer |
+
+| Parámetro | Valor | Por qué |
+|---|---|---|
+| `HABILES_DESDE_NOTIFICACION_SEPARATAS` | 40 | El ancla. El escenario se construye hacia atrás desde aquí, no hacia delante desde el alta: es este número el que decide qué plazos han vencido en la foto |
+| `MARGEN_ADIF_HABILES` | 15 | ADIF contesta pronto para que quepan su traslado y la respuesta del titular dentro de la misma ventana |
+| `MARGEN_DIPUTACION_HABILES` | 3 | Apura el plazo, y por eso su traslado sigue vivo hoy |
+| `MARGEN_TITULAR_HABILES` | 5 | Respuesta del titular al traslado de ADIF |
+| `HABILES_HASTA_TRASLADO` | 2 | De recibir la respuesta del organismo a notificar el traslado |
+
+Al terminar **borra el reloj de desarrollo**: este expediente se lee «a fecha de hoy», y
+dejarlo congelado en la última fecha del escenario haría que el traslado de la Diputación no
+se viera correr.
+
+```bash
+venv/Scripts/python.exe scripts/expedientes_dummy/consultas_varios_estados.py
+```
+
+Dos cosas que este escenario dejó a la vista y no son suyas:
+
+- **La declaración responsable de no DUP no se casa con nada.** El requisito `DR_NO_DUP` del
+  catálogo está condicionado a `solicitud_incluye_dup = true`, así que no aparece en el
+  checklist de una solicitud sin DUP. El documento entra al pool y ahí se queda.
+- **Dos documentos de igual contenido comparten fichero en el pool** (misma `url`, misma
+  entrada física: la ingesta no reescribe un duplicado exacto), y al llevarse el primero a su
+  carpeta ESFTT el segundo se queda apuntando a un fichero que ya no existe. Por eso el script
+  sube y vincula cada separata organismo a organismo en vez de subir las tres de golpe.
 
 ---
 
