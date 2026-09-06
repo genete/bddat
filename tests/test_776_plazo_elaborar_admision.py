@@ -289,24 +289,31 @@ class TestHook776Derivacion:
         assert not [v for v in tarea_notificar.vinculos_documento if v.rol == 'CONSUMIDO']
 
     def test_sin_documento_solicitud_no_bloquea(self, app_ctx):
-        """Degradación: si la solicitud aún no tiene documento_solicitud, el
-        hook no vincula nada y no lanza excepción — el plazo simplemente
-        quedará SIN_PLAZO hasta que exista el documento."""
+        """Degradación: sin `documento_solicitud` el hook no vincula nada ni lanza.
+
+        Desde #428 la columna es NOT NULL, así que este estado ya no llega de la
+        base — la guarda del hook sobrevive como defensa en profundidad y se
+        ejercita dentro de `no_autoflush`, poniendo el atributo en memoria sin
+        pedirle a PostgreSQL que acepte lo que ya no acepta. Antes el test lo
+        escribía de verdad, y es justo la clase de estado que este issue eliminó.
+        """
+        from app import db
         from app.models.solicitudes import Solicitud
         from app.services.mutaciones_arbol import _hook_776_elaborar_consume_disparo_admision
 
         solicitud = Solicitud.query.first()
         if solicitud is None:
             pytest.skip('No hay solicitudes en la BD de desarrollo')
-        solicitud.documento_solicitud_id = None
 
         fase, _ = _fase_con_analisis_documental(solicitud)
         _, tarea_elaborar = _tramite_comunicacion_con_elaborar(fase)
 
-        advertencia = _hook_776_elaborar_consume_disparo_admision(tarea_elaborar)
+        with db.session.no_autoflush:
+            solicitud.documento_solicitud_id = None
+            advertencia = _hook_776_elaborar_consume_disparo_admision(tarea_elaborar)
 
-        assert advertencia is None
-        assert not [v for v in tarea_elaborar.vinculos_documento if v.rol == 'CONSUMIDO']
+            assert advertencia is None
+            assert not [v for v in tarea_elaborar.vinculos_documento if v.rol == 'CONSUMIDO']
 
 
 # ---------------------------------------------------------------------------

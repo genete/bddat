@@ -24,7 +24,6 @@ import pytest
 from app import db
 from app.models.documentos import Documento
 from app.models.documentos_tarea import DocumentoTarea
-from app.models.tareas import Tarea
 from app.services.regeneracion_escritos import (
     Evaluacion,
     _apartar_fichero_anterior,
@@ -310,10 +309,15 @@ class TestHelpersFisicos:
 # ---------------------------------------------------------------------------
 
 def _tarea_real_sin_vinculos(app_ctx):
-    tarea = Tarea.query.filter(~Tarea.vinculos_documento.any()).first()
-    if tarea is None:
-        pytest.skip('No hay tareas sin vínculos documentales en la BD de desarrollo')
-    return tarea
+    """Tarea sin vínculos documentales, fabricada por el test (#428).
+
+    Los tests que la usan ya traen `fs_tmp`, que el alta necesita para escribir
+    el documento de solicitud fuera del servidor de ficheros real.
+    """
+    from app import db as _db
+    from tests.conftest import ArbolESFTT
+
+    return ArbolESFTT(_db).tarea_propia('ELABORAR')
 
 
 def _plantilla_stub(tipo_documento_id):
@@ -389,8 +393,12 @@ class TestEjecutarRegeneracionExtremoAExtremo:
         vinculos_consumido = [v for v in tarea.vinculos_documento if v.rol == 'CONSUMIDO']
         assert len(vinculos_consumido) == 1
 
-        # El fichero anterior quedó apartado con timestamp, el nuevo ocupa el nombre canónico
-        ficheros = os.listdir(os.path.dirname(ruta))
+        # El fichero anterior quedó apartado con timestamp, el nuevo ocupa el nombre canónico.
+        # Solo ficheros: desde #428 el expediente nace con su carpeta `pool/` dentro
+        # de AT-N/, y contarla como apartado haría fallar el recuento.
+        directorio = os.path.dirname(ruta)
+        ficheros = [f for f in os.listdir(directorio)
+                    if os.path.isfile(os.path.join(directorio, f))]
         assert nombre in ficheros
         apartados = [f for f in ficheros if f != nombre]
         assert len(apartados) == 1

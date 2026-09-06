@@ -87,7 +87,9 @@ def _crear_solicitud(db, expediente):
     tipo_sol = TipoSolicitud.query.first()
     assert tipo_sol is not None, 'Catálogo TipoSolicitud vacío — seed necesario'
 
-    sol = Solicitud(expediente=expediente, tipo_solicitud=tipo_sol, entidad=entidad)
+    from tests.conftest import documento_ancla_de_prueba
+    sol = Solicitud(expediente=expediente, tipo_solicitud=tipo_sol, entidad=entidad,
+                    documento_solicitud_id=documento_ancla_de_prueba(expediente.id).id)
     db.session.add(sol)
     db.session.flush()
     return sol
@@ -259,19 +261,17 @@ class TestCrearCertFechaAdministrativa:
 class TestDiagnosticoSigueNulo:
 
     def _tarea_analizar_libre(self):
-        from app.models.tipos_tareas import TipoTarea
+        """Tarea ANALIZAR sin documento producido, fabricada por el test (#428).
 
-        candidatas = (
-            Tarea.query.join(TipoTarea, Tarea.tipo_tarea_id == TipoTarea.id)
-            .filter(TipoTarea.codigo == 'ANALIZAR')
-            .all()
-        )
-        for t in candidatas:
-            if t.documento_producido is None:
-                return t
-        pytest.skip('No hay ninguna tarea ANALIZAR sin documento producido en la BD de desarrollo')
+        Requiere `fs_tmp`: el expediente nace por la vía real, que escribe el
+        documento de solicitud a disco.
+        """
+        from app import db as _db
+        from tests.conftest import ArbolESFTT
 
-    def test_diagnostico_fecha_administrativa_sigue_nula(self, app_ctx):
+        return ArbolESFTT(_db).tarea_propia('ANALIZAR')
+
+    def test_diagnostico_fecha_administrativa_sigue_nula(self, app_ctx, fs_tmp):
         from app import db
         from app.services.diagnosticos import crear_diagnostico
         from app.models.diagnosticos import Diagnostico

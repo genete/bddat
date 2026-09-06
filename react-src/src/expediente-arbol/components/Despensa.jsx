@@ -33,6 +33,11 @@ function DespensaTipos() {
   const cancelarCrear          = useArbolStore((s) => s.cancelarCrear)
   const setJustificacionForzar = useArbolStore((s) => s.setJustificacionForzar)
   const crearHijo              = useArbolStore((s) => s.crearHijo)
+  const anclaSolicitudId       = useArbolStore((s) => s.anclaSolicitudId)
+
+  // Lo que se crea bajo un expediente es siempre una solicitud, y esa necesita
+  // ancla documental (#428).
+  const creaSolicitud = tiposCreables?.tipo_hijo === 'solicitud'
 
   const [mostrarResto, setMostrarResto] = React.useState(false)
   const [draggingOver, setDraggingOver] = React.useState(false)
@@ -132,26 +137,32 @@ function DespensaTipos() {
           onCancelar={cancelarCrear}
         />
       ) : tipoCreacionPendiente ? (
-        <div className="d-flex align-items-center gap-2 px-2 py-1 rounded border bg-primary-subtle border-primary-subtle">
-          <span className="small flex-grow-1 text-truncate">
-            <strong>{tipoCreacionPendiente.nombre}</strong>
-          </span>
-          <button
-            type="button"
-            className="btn btn-sm btn-primary"
-            disabled={creando}
-            onClick={crearHijo}
-          >
-            {creando ? '…' : 'Crear'}
-          </button>
-          <button
-            type="button"
-            className="btn btn-sm btn-outline-secondary"
-            disabled={creando}
-            onClick={cancelarCrear}
-          >
-            ✕
-          </button>
+        <div className="d-flex flex-column gap-2 px-2 py-2 rounded border bg-primary-subtle border-primary-subtle">
+          {/* Bajo expediente lo que se crea es una solicitud, y ninguna nace sin su
+              escrito (#428): el selector va aquí, antes del botón, para que no se
+              pueda pulsar Crear sin haberlo elegido. */}
+          {creaSolicitud && <AnclaSolicitud />}
+          <div className="d-flex align-items-center gap-2">
+            <span className="small flex-grow-1 text-truncate">
+              <strong>{tipoCreacionPendiente.nombre}</strong>
+            </span>
+            <button
+              type="button"
+              className="btn btn-sm btn-primary"
+              disabled={creando || (creaSolicitud && !anclaSolicitudId)}
+              onClick={crearHijo}
+            >
+              {creando ? '…' : 'Crear'}
+            </button>
+            <button
+              type="button"
+              className="btn btn-sm btn-outline-secondary"
+              disabled={creando}
+              onClick={cancelarCrear}
+            >
+              ✕
+            </button>
+          </div>
         </div>
       ) : (
         <div
@@ -275,6 +286,167 @@ function FichaDoc({ doc, vinculado, seleccionada, onClick, expedienteId }) {
     </div>
   )
 }
+
+// Ancla documental de la solicitud que se está creando (#428).
+//
+// Toda solicitud nace con el escrito que la abre, porque de su fecha de registro
+// cuelga el inicio del plazo para resolver. En esta vía el expediente ya existe, así
+// que el escrito se elige de su pool; si todavía no está, se sube aquí mismo con el
+// tipo ya fijado, sin salir del árbol.
+//
+// Solo se ofrecen documentos CON fecha administrativa: uno sin fecha no ancla nada
+// —el backend lo rechaza por lo mismo— y ofrecerlo sería invitar a un error que se
+// descubre tarde, cuando el plazo consta SIN_PLAZO.
+function AnclaSolicitud() {
+  const pool               = useArbolStore((s) => s.pool)
+  const poolCargando       = useArbolStore((s) => s.poolCargando)
+  const cargarPool         = useArbolStore((s) => s.cargarPool)
+  const anclaSolicitudId   = useArbolStore((s) => s.anclaSolicitudId)
+  const setAnclaSolicitudId = useArbolStore((s) => s.setAnclaSolicitudId)
+
+  const [subiendo, setSubiendo] = React.useState(false)
+
+  React.useEffect(() => { cargarPool() }, [])  // eslint-disable-line
+
+  // Los del tipo canónico primero: es lo que se busca el 99% de las veces, pero no
+  // se filtra el resto porque un escrito puede haber entrado clasificado de otra
+  // manera y obligar a salir del árbol para arreglarlo sería peor.
+  const candidatos = React.useMemo(() => {
+    const conFecha = (pool || []).filter((d) => d.fecha)
+    const canonicos = conFecha.filter((d) => d.tipo_doc_codigo === 'MODELO_SOLICITUD')
+    const resto = conFecha.filter((d) => d.tipo_doc_codigo !== 'MODELO_SOLICITUD')
+    return [...canonicos, ...resto]
+  }, [pool])
+
+  return (
+    <div className="d-flex flex-column gap-1">
+      <label className="small fw-semibold mb-0">
+        Escrito de solicitud <span className="text-danger">*</span>
+      </label>
+
+      {poolCargando ? (
+        <div className="small text-muted fst-italic">Cargando el pool…</div>
+      ) : (
+        <select
+          className="form-select form-select-sm"
+          value={anclaSolicitudId}
+          onChange={(e) => setAnclaSolicitudId(e.target.value)}
+        >
+          <option value="">— Elija el documento —</option>
+          {candidatos.map((d) => (
+            <option key={d.id} value={d.id}>
+              {d.fecha} · {d.nombre}
+            </option>
+          ))}
+        </select>
+      )}
+
+      {!poolCargando && candidatos.length === 0 && (
+        <div className="small text-muted">
+          No hay documentos con fecha de registro en el pool. Suba el escrito aquí.
+        </div>
+      )}
+
+      {subiendo ? (
+        <SubidaAncla onHecho={() => setSubiendo(false)} />
+      ) : (
+        <button
+          type="button"
+          className="btn btn-sm btn-outline-secondary"
+          onClick={() => setSubiendo(true)}
+        >
+          <i className="bi bi-upload me-1" /> Subir el escrito
+        </button>
+      )}
+
+      <div className="small text-muted">
+        De su fecha de registro arranca el plazo para resolver.
+      </div>
+    </div>
+  )
+}
+
+
+// Subida del escrito de solicitud, con el tipo documental ya resuelto (#428).
+//
+// El tipo se busca por código y nunca por id: MODELO_SOLICITUD es 146 en desarrollo
+// y 56 en una instalación limpia, así que un id escrito aquí funcionaría hasta el
+// día del despliegue. La fecha es obligatoria porque es el dato que se está
+// aportando — el fichero solo lo acredita.
+function SubidaAncla({ onHecho }) {
+  const subiendoDocumento   = useArbolStore((s) => s.subiendoDocumento)
+  const subirAnclaSolicitud = useArbolStore((s) => s.subirAnclaSolicitud)
+
+  const [fichero, setFichero]   = React.useState(null)
+  const [fecha, setFecha]       = React.useState('')
+  const [tipoDocId, setTipoDocId] = React.useState(null)
+
+  React.useEffect(() => {
+    getTiposDocumento()
+      .then((d) => {
+        const t = (d.data || []).find((x) => x.codigo === 'MODELO_SOLICITUD')
+        setTipoDocId(t ? t.id : null)
+      })
+      .catch(() => setTipoDocId(null))
+  }, [])
+
+  const enviar = async () => {
+    if (!fichero || !fecha) return
+    const ok = await subirAnclaSolicitud(fichero, {
+      tipo_doc_id: tipoDocId,
+      asunto: 'Escrito de solicitud',
+      fecha_administrativa: fecha,
+      prioridad: false,
+    })
+    if (ok) onHecho()
+  }
+
+  return (
+    <div className="d-flex flex-column gap-1 p-2 rounded border bg-body">
+      <div className="d-flex align-items-center gap-2">
+        <label htmlFor="ancla-solicitud-file"
+               className="btn btn-sm btn-outline-secondary mb-0 flex-shrink-0">
+          Seleccionar archivo
+        </label>
+        <input
+          type="file"
+          id="ancla-solicitud-file"
+          className="visually-hidden"
+          onChange={(e) => setFichero(e.target.files?.[0] || null)}
+        />
+        <span className="small text-truncate text-muted">
+          {fichero ? fichero.name : 'Ningún archivo seleccionado'}
+        </span>
+      </div>
+      <input
+        type="date"
+        className="form-control form-control-sm"
+        value={fecha}
+        onChange={(e) => setFecha(e.target.value)}
+        title="Fecha de registro de entrada"
+      />
+      <div className="d-flex gap-1">
+        <button
+          type="button"
+          className="btn btn-sm btn-primary flex-grow-1"
+          disabled={!fichero || !fecha || subiendoDocumento}
+          onClick={enviar}
+        >
+          {subiendoDocumento ? '…' : 'Subir'}
+        </button>
+        <button
+          type="button"
+          className="btn btn-sm btn-outline-secondary"
+          disabled={subiendoDocumento}
+          onClick={onHecho}
+        >
+          ✕
+        </button>
+      </div>
+    </div>
+  )
+}
+
 
 // Formulario de subida inline de la Despensa (#367): sube un fichero nuevo
 // directamente desde la tarea, sin salir al pool del expediente. Nunca

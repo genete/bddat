@@ -326,13 +326,66 @@ def _hook_776_elaborar_consume_disparo_admision(tarea) -> Optional[dict]:
 # CREAR
 # ===========================================================================
 
+# El mismo texto para la ruta, la isla del árbol y el test.
+MENSAJE_SIN_ANCLA_SOLICITUD = (
+    'Toda solicitud necesita el escrito que la abre: elija del pool del expediente '
+    'el documento de solicitud, del que cuelga el inicio del plazo para resolver.'
+)
+
+
+def _validar_ancla_solicitud(documento_id: Optional[int], expediente_id: int) -> Optional[str]:
+    """Comprueba el ancla documental de una solicitud nueva, o dice qué falla.
+
+    Las tres condiciones son independientes y cada una tiene su mensaje, porque el
+    arreglo es distinto en cada caso: elegir un documento, elegir otro del
+    expediente correcto, o ponerle fecha al que se eligió.
+    """
+    from app.models.documentos import Documento
+
+    if not documento_id:
+        return MENSAJE_SIN_ANCLA_SOLICITUD
+
+    doc = Documento.query.get(documento_id)
+    if doc is None or doc.expediente_id != expediente_id:
+        return ('El documento elegido como escrito de solicitud no pertenece a este '
+                'expediente.')
+
+    if doc.fecha_administrativa is None:
+        return ('El documento elegido no tiene fecha de registro de entrada, y es esa '
+                'fecha la que inicia el plazo para resolver. Complétela en el pool '
+                'antes de usarlo como escrito de solicitud.')
+
+    return None
+
+
 def crear_solicitud(expediente, tipos: list[TipoSolicitud], entidad_id: int,
-                    *, justificacion: Optional[str] = None) -> ResultadoMutacion:
-    """Crea una o varias solicitudes (multi-tipo). Valida motor para todos antes de persistir."""
+                    *, documento_solicitud_id: Optional[int] = None,
+                    justificacion: Optional[str] = None) -> ResultadoMutacion:
+    """Crea una o varias solicitudes (multi-tipo). Valida motor para todos antes de persistir.
+
+    Toda solicitud nace anclada a su escrito (#428). Es la segunda vía de alta —la
+    primera es `app/services/alta_expediente.py`, para el expediente entero— y el
+    invariante es el mismo: de la fecha administrativa de ese documento cuelga el
+    inicio del plazo para resolver, así que sin él la solicitud nace `SIN_PLAZO` y
+    nadie se entera. No se salta con `justificacion`: el bypass del motor (#324) es
+    para las reglas de catálogo, no para la integridad documental.
+
+    Aquí el expediente ya existe, así que el ancla se elige de su pool en vez de
+    subirse con el alta. Se exige además que el documento **lleve fecha
+    administrativa**: un ancla sin fecha no ancla nada, y dejarla pasar
+    reproduciría el mismo agujero con la FK puesta.
+
+    Con varios tipos, las solicitudes creadas comparten documento: un mismo escrito
+    puede pedir varios actos administrativos.
+    """
     exp_id = expediente.id
 
     if not entidad_id:
         return ResultadoMutacion(ok=False, error='El expediente no tiene titular asignado.')
+
+    error_ancla = _validar_ancla_solicitud(documento_solicitud_id, exp_id)
+    if error_ancla:
+        return ResultadoMutacion(ok=False, error=error_ancla)
 
     # Fase 1: evaluar motor para todos los tipos; si alguno bloquea, rechazar todo.
     # Se conserva la evaluación de cada tipo (evaluaciones) para poder auditar y
@@ -354,7 +407,8 @@ def crear_solicitud(expediente, tipos: list[TipoSolicitud], entidad_id: int,
     try:
         for tipo in tipos:
             sol = Solicitud(expediente_id=exp_id, entidad_id=entidad_id,
-                            tipo_solicitud_id=tipo.id)
+                            tipo_solicitud_id=tipo.id,
+                            documento_solicitud_id=documento_solicitud_id)
             db.session.add(sol)
             db.session.flush()
             res_eval = evaluaciones.get(tipo.id)

@@ -72,11 +72,20 @@ FK_TRATADAS_A_MANO = frozenset({
     'solicitudes.documento_cierre_id',
     'organismos_expediente.documento_id',
     'organismos_expediente.condicionados_doc_id',
-    'interesados_expediente.fuente_doc_id',
+    'interesados_expediente.documento_acreditativo_id',
     # Hijos de documentos que se borran explícitamente
     'certificados.documento_id',
     'diagnosticos.documento_id',
     'documentos_requisito.documento_id',
+    # Referencias a documentos que resuelve el ORDEN de borrado, no un UPDATE:
+    # sus filas desaparecen antes que los documentos a los que apuntan. Las dos
+    # primeras nacieron después que este script y lo dejaron abortando (#428).
+    'certificados_fase.documento_id',
+    'solicitudes.documento_fin_instruccion_id',
+    # Esta además NO PUEDE neutralizarse: es NOT NULL desde #428, así que
+    # ponerla a NULL antes de borrar fallaría. Lo que la resuelve es que las
+    # solicitudes se borran antes que los documentos, unas líneas más abajo.
+    'solicitudes.documento_solicitud_id',
     # Colgados de fase/expediente sin cascada
     'certificados_fase.expediente_id',
     'certificados_fase.fase_id',
@@ -117,7 +126,10 @@ def _verificar_cobertura_esquema():
             continue
         clave = f"{f['hija']}.{f['col']}"
         if clave not in FK_TRATADAS_A_MANO:
-            huerfanas.append(f"{clave} → {f['padre']}")
+            # '->' y no '→': con la salida redirigida a un fichero o a una
+            # tubería, Python la codifica en cp1252 y U+2192 revienta el print,
+            # sustituyendo el aviso por una traza justo cuando hace falta leerlo.
+            huerfanas.append(f"{clave} -> {f['padre']}")
 
     if huerfanas:
         print('ABORTADO: el esquema tiene FKs sin borrado automático que este script no trata:')
@@ -240,11 +252,15 @@ def _borrar_expediente(exp, con_ficheros):
         #    de la cadena (todas NO ACTION: sin esto, el DELETE de documentos falla).
         ex(db.text("UPDATE public.fases SET documento_resultado_id = NULL "
                    "WHERE solicitud_id = ANY(:v)"), {'v': ids['solicitudes'] or [0]})
-        ex(db.text("UPDATE public.solicitudes SET documento_cierre_id = NULL, "
-                   "documento_solicitud_id = NULL WHERE expediente_id = :eid"), p)
+        # `documento_solicitud_id` NO se toca: es NOT NULL desde #428 y ponerlo a
+        # NULL fallaría. No hace falta — el DELETE de solicitudes va antes que el
+        # de documentos, así que cuando estos se borran ya no queda quien apunte.
+        ex(db.text("UPDATE public.solicitudes SET documento_cierre_id = NULL "
+                   "WHERE expediente_id = :eid"), p)
         ex(db.text("UPDATE public.organismos_expediente SET documento_id = NULL, "
                    "condicionados_doc_id = NULL WHERE expediente_id = :eid"), p)
-        ex(db.text("UPDATE public.interesados_expediente SET fuente_doc_id = NULL "
+        ex(db.text("UPDATE public.interesados_expediente "
+                   "SET documento_acreditativo_id = NULL "
                    "WHERE expediente_id = :eid"), p)
 
         # 2. Hijos de documentos sin cascada

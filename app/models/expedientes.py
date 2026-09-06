@@ -296,7 +296,7 @@ def crear_registro_historico_inicial(mapper, connection, target):
         column('expediente_id'),
         column('entidad_id'),
         column('tipo_origen'),
-        column('fuente_doc_id'),
+        column('documento_acreditativo_id'),
         column('activo'),
         schema='public'
     )
@@ -305,7 +305,15 @@ def crear_registro_historico_inicial(mapper, connection, target):
             expediente_id=target.id,
             entidad_id=target.titular_id,
             tipo_origen='TITULAR',
-            fuente_doc_id=None,  # transitorio — rellenar tras rediseño wizard
+            # Sin acreditativo, y no por descuido (#428): este signal corre en el
+            # flush del expediente, y el documento de solicitud que acredita al
+            # titular no puede existir todavía —`Documento.expediente_id` es NOT
+            # NULL y su ruta física sale del `numero_at` que se acaba de asignar—.
+            # Lo rellena `alta_expediente()` unas líneas después, dentro de la
+            # misma transacción. Este INSERT garantiza que la fila TITULAR existe
+            # venga el expediente por donde venga; el acreditativo lo pone quien
+            # sí tiene el documento delante.
+            documento_acreditativo_id=None,
             activo=True,
         )
     )

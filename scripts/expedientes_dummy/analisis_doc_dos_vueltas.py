@@ -11,8 +11,12 @@ y con el invariante de precedencia de #823 abrirla con la fase anterior sin
 cerrar pasa a estar prohibido—.
 
 Circuito real — nunca INSERT SQL directo:
-    - Alta expediente/proyecto/solicitud: replica el bloque ORM de
-      wizard_expediente.py paso3 (mismo contador atómico numero_at).
+    - Alta expediente/proyecto/solicitud: `app.services.alta_expediente`, el mismo
+      servicio que usa el formulario de alta (#428). Antes replicaba a mano el
+      bloque ORM del wizard, y la copia se quedó atrás: ninguna de las dos escribía
+      el ancla documental de la solicitud, así que el expediente-tipo nacía con el
+      plazo del art. 128 en SIN_PLAZO. El escrito de solicitud entra ahora con el
+      alta, y es el mismo documento que después cubre su requisito en el checklist.
     - Fase/trámite/tarea: app.services.mutaciones_arbol (pasa por el motor
       de reglas real, motor_reglas.evaluar).
     - Checklist documental y diagnóstico: endpoints del contenedor de ANALIZAR
@@ -142,6 +146,9 @@ def _cargar_catalogo():
         'tarea_notificar': _tarea('NOTIFICAR'),
         'tarea_esperar_plazo': _tarea('ESPERAR_PLAZO'),
 
+        # Ya no se usa para subir nada —lo resuelve `alta_expediente` por código—,
+        # pero se conserva en la comprobación: si falta del catálogo, es preferible
+        # abortar aquí, con la lista de faltantes, que a mitad del alta.
         'doc_modelo_solicitud': _doc('MODELO_SOLICITUD'),
         'doc_proyecto': _doc('DOC_PROYECTO'),
         # Anexos que el titular aporta en las vueltas de subsanación: cada uno
@@ -182,61 +189,61 @@ def _reciclar_si_existe():
 
 
 # ---------------------------------------------------------------------------
-# Alta expediente/proyecto/solicitud — replica wizard_expediente.py paso3
+# Alta expediente/proyecto/solicitud — por el servicio real (#428)
 # ---------------------------------------------------------------------------
 
 def _crear_expediente(cat):
-    from app.models.proyectos import Proyecto
-    from app.models.municipios_proyecto import MunicipioProyecto
-    from app.models.expedientes import Expediente
-    from app.models.solicitudes import Solicitud
+    """Alta completa por `alta_expediente()`, la misma vía que el formulario.
 
-    proyecto = Proyecto(
+    Devuelve el `ResultadoAlta`, que trae ya el escrito de solicitud creado: no hay
+    que subirlo después, y es ese documento el que luego cubre el requisito
+    MODELO_SOLICITUD del checklist documental.
+    """
+    from app.services.alta_expediente import (
+        DatosAlta, DocumentoSolicitud, alta_expediente,
+    )
+
+    with open(f"{FIXTURES_DIR}\\modelo_solicitud.pdf", 'rb') as f:
+        contenido = f.read()
+
+    resultado = alta_expediente(DatosAlta(
+        tipo_expediente_id=cat['tipo_expediente'].id,
+        responsable_id=cat['usuario'].id,
+        heredado=False,
         titulo='Línea subterránea 20 kV Ronda Sur — CT asociado',
         descripcion=(
             'Nueva línea subterránea de distribución 20 kV y centro de '
             'transformación asociado, íntegramente en suelo urbano.'
         ),
-        fecha=FECHA_BASE,
         finalidad='Distribución de energía eléctrica en baja/media tensión',
         emplazamiento='T.M. de Mairena del Aljarafe (Sevilla)',
+        fecha_proyecto=FECHA_BASE,
         ia_id=cat['ia_exento'].id,
-        es_modificacion=False,
-        sin_linea_aerea=True,
-        max_tension_nominal_kv=20,
-        solo_suelo_urbano_urbanizable=True,
-    )
-    db.session.add(proyecto)
-    db.session.flush()
-
-    db.session.add(MunicipioProyecto(municipio_id=cat['municipio'].id, proyecto_id=proyecto.id))
-
-    numero_at = db.session.execute(
-        db.text("UPDATE public.contador_numero_at SET valor = valor + 1 RETURNING valor")
-    ).scalar()
-
-    expediente = Expediente(
-        numero_at=numero_at,
-        responsable_id=cat['usuario'].id,
-        tipo_expediente_id=cat['tipo_expediente'].id,
-        heredado=False,
-        proyecto_id=proyecto.id,
+        municipios_ids=[cat['municipio'].id],
         titular_id=cat['entidad'].id,
-    )
-    db.session.add(expediente)
-    db.session.flush()
-
-    solicitud = Solicitud(
-        expediente_id=expediente.id,
-        entidad_id=cat['entidad'].id,
         tipo_solicitud_id=cat['tipo_solicitud'].id,
+        solicitante_id=cat['entidad'].id,
         observaciones=OBSERVACIONES,
-    )
-    db.session.add(solicitud)
-    db.session.commit()
+        # Campos técnicos del proyecto que el formulario no pide pero este
+        # escenario sí fija: sin línea aérea y en suelo urbano es lo que lo deja
+        # EXENTO de instrumento ambiental.
+        proyecto_extra={
+            'es_modificacion': False,
+            'sin_linea_aerea': True,
+            'max_tension_nominal_kv': 20,
+            'solo_suelo_urbano_urbanizable': True,
+        },
+        documento=DocumentoSolicitud(
+            contenido=contenido,
+            nombre_original='modelo_solicitud.pdf',
+            fecha_registro=FECHA_BASE,
+        ),
+    ))
 
-    print(f"Expediente AT-{numero_at} creado (id={expediente.id}, solicitud={solicitud.id}).")
-    return expediente, solicitud
+    print(f"Expediente AT-{resultado.numero_at} creado "
+          f"(id={resultado.expediente.id}, solicitud={resultado.solicitud.id}, "
+          f"escrito de solicitud={resultado.documento.id}).")
+    return resultado
 
 
 # ---------------------------------------------------------------------------
@@ -554,12 +561,15 @@ def main():
                 sess['rol_activo_id'] = rol.id
                 sess['rol_activo_nombre'] = rol.nombre
 
-        expediente, solicitud = _crear_expediente(cat)
+        alta = _crear_expediente(cat)
+        expediente, solicitud = alta.expediente, alta.solicitud
         exp_id = expediente.id
 
-        doc_solicitud_id = _subir(client, exp_id, 'MODELO_SOLICITUD',
-                                   cat['doc_modelo_solicitud'].id, FECHA_BASE,
-                                   'Solicitud de AAP+AAC')
+        # El escrito de solicitud no se sube aparte: entró con el alta y es el que
+        # ancla la solicitud (#428). El mismo documento cubre luego su requisito en
+        # el checklist documental, unas líneas más abajo.
+        doc_solicitud_id = alta.documento.id
+
         doc_proyecto_id = _subir(client, exp_id, 'DOC_PROYECTO',
                                   cat['doc_proyecto'].id, FECHA_BASE,
                                   'Proyecto técnico')

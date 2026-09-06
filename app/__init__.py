@@ -82,10 +82,10 @@ def create_app(config_name='development'):
     app.register_blueprint(demo.bp)  # POC React #291
     app.register_blueprint(reloj_dev.bp)  # Reloj de desarrollo — Issue #820
 
-    # Registrar blueprints - Wizards
-    from app.routes import wizard_expediente
+    # Registrar blueprints - Alta de expediente
+    from app.routes import alta_expediente
 
-    app.register_blueprint(wizard_expediente.bp)  # Issue #67
+    app.register_blueprint(alta_expediente.bp)  # Issue #67, formulario único desde #428
 
     # Registrar blueprints - APIs
     from app.routes import api_expedientes, api_municipios, api_entidades, api_proyectos, api_escritos, api_seguimiento, api_bitacora, api_search, api_usuarios, api_plantillas, api_administrativo, api_requisitos_documentales, api_catalogo_requerimientos, api_items_tecnicos, api_tablas_maestras, api_tipos_documentos, api_catalogo_plazos, api_efectos_plazo, api_reglas_motor, api_normas_variables, api_huerfanos, api_firmantes_portafirmas, api_mensajes_internos

@@ -248,8 +248,11 @@ class TestReabrirFase:
         if tipo_fase_fin is None:
             pytest.skip('No hay TipoFase con es_finalizadora=True en el catálogo')
 
-        solicitud = Solicitud(expediente_id=base.expediente_id, entidad_id=base.entidad_id,
-                               tipo_solicitud_id=base.tipo_solicitud_id)
+        from tests.conftest import documento_ancla_de_prueba
+        solicitud = Solicitud(
+            expediente_id=base.expediente_id, entidad_id=base.entidad_id,
+            tipo_solicitud_id=base.tipo_solicitud_id,
+            documento_solicitud_id=documento_ancla_de_prueba(base.expediente_id).id)
         db.session.add(solicitud)
         db.session.flush()
 

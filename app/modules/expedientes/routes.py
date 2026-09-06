@@ -17,7 +17,6 @@ VERSIÓN: 2.0
 FECHA: 2026-06-11
 ISSUE: #543
 """
-import hashlib
 import json
 import os
 from datetime import date
@@ -37,7 +36,7 @@ from app.models.tramites import Tramite
 from app.models.tareas import Tarea
 from app.models.documentos import Documento
 from app.models.tipos_documentos import TipoDocumento
-from app.services.rutas_esftt import ruta_pool_documento, nombre_pool_unico
+from app.services.ingesta_pool import ingestar_en_pool
 from app.services.consolidacion_defectos import agrupar_defectos_por_origen
 from app.services.detalle_nodo import info_apertura_documento
 from app.services.parser_justificante_notifica import (
@@ -286,7 +285,7 @@ def editar(id):
         aplicar_fk(request.form, 'responsable_id', expediente)
 
     # Los cinco NOT NULL del proyecto — mismas exigencias y mismos mensajes que el
-    # alta (wizard_expediente.paso2), que es de donde salen estas filas.
+    # alta (alta_expediente.nuevo), que es de donde salen estas filas.
     aplicar_texto_obligatorio(request.form, 'titulo', proyecto,
                               'El título del proyecto es obligatorio.', errores)
     aplicar_texto_obligatorio(request.form, 'descripcion', proyecto,
@@ -724,6 +723,12 @@ def pool_subir_documento(id):
     reescribe el fichero físico, pero sí se crea el Documento — el usuario
     ha pedido explícitamente añadirlo (ADR-032 §4, sin bloquear ni avisar).
 
+    La copia y el alta del Documento viven en `app/services/ingesta_pool.py`
+    desde #428, porque el alta de expediente hace lo mismo y no puede llamarse a
+    sí misma por HTTP. Aquí queda lo que solo tiene sentido hablando HTTP: el
+    permiso, el 503, el parseo del JSON de metadatos, el commit del lote y la
+    traducción del error a código de estado.
+
     Permiso 'subir_documento' (ADR-027 / #501): igual que pool_registrar_rutas.
     """
     expediente = Expediente.query.get_or_404(id)
@@ -746,8 +751,6 @@ def pool_subir_documento(id):
     if not isinstance(metadatos, list):
         return jsonify({'ok': False, 'error': 'Metadatos inválidos'}), 400
 
-    directorio = ruta_pool_documento(expediente)
-
     creados = 0
     creados_docs = []
     try:
@@ -760,14 +763,6 @@ def pool_subir_documento(id):
 
             item = metadatos[i] if i < len(metadatos) else {}
 
-            hash_md5 = hashlib.md5(contenido).hexdigest()
-            nombre, ya_existe = nombre_pool_unico(hash_md5, fichero.filename, directorio)
-            destino = os.path.join(directorio, nombre)
-
-            if not ya_existe:
-                with open(destino, 'wb') as f:
-                    f.write(contenido)
-
             fecha_admin = None
             fecha_raw = item.get('fecha_administrativa') or None
             if fecha_raw:
@@ -776,20 +771,15 @@ def pool_subir_documento(id):
                 except ValueError:
                     pass
 
-            ruta_relativa = os.path.relpath(destino, base).replace(os.sep, '/')
-
-            doc = Documento(
-                expediente_id=id,
-                url=ruta_relativa,
-                hash_md5=hash_md5,
+            ingestado = ingestar_en_pool(
+                expediente, contenido, fichero.filename,
                 tipo_doc_id=int(item.get('tipo_doc_id') or 1),
                 fecha_administrativa=fecha_admin,
                 asunto=(item.get('asunto') or '').strip() or None,
-                prioridad=1 if item.get('prioridad') else 0,
+                prioridad=bool(item.get('prioridad')),
             )
-            db.session.add(doc)
             creados += 1
-            creados_docs.append(doc)
+            creados_docs.append(ingestado.documento)
 
         db.session.commit()
     except OSError as e:

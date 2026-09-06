@@ -711,7 +711,10 @@ Para implementar: nuevo servicio + decisión sobre formato (PDF único con índi
 - `motor_reglas.py` línea 30: `# TODO paso 5: variables = build(expediente_id)` (docstring ejemplo, no estructural).
 - `plazos.py`: comentario "Stub hasta #173" en `_aplicar_suspensiones` — pero parece ya implementado (suma días hábiles).
 - `services/escritos.py` ContextoBaseExpediente: contexto base con campos básicos solo. CBs Capa 2 cubren el resto.
-- `expedientes.py` signal `after_insert`: `'fuente_doc_id': None  # transitorio — rellenar tras rediseño wizard`.
+*(Retirada en #428 la entrada del signal `after_insert` de `expedientes.py`: dejaba
+la fila TITULAR de `interesados_expediente` sin documento acreditativo. No era deuda
+del signal —no puede rellenarlo, corre en el flush del expediente y el documento de
+solicitud aún no existe— sino del alta, que ahora lo pone en la misma transacción.)*
 
 ### 13.2 Servicios/modelos en estado parcial
 

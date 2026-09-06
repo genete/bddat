@@ -36,8 +36,16 @@ class Solicitud(db.Model):
         - Permite rastrear dependencias entre solicitudes
 
     CAMPO DOCUMENTO_SOLICITUD_ID:
-        - NULLABLE: FK al documento de solicitud en el pool
+        - NOT NULL desde #428: FK al escrito de solicitud en el pool
         - La fecha administrativa de ese documento es la fecha de inicio del cómputo de plazos
+        - Obligatorio porque sin él no hay fecha desde la que computar: el plazo del
+          art. 128 RD 1955/2000 consta SIN_PLAZO y las suspensiones del art. 22 LPACAP
+          se restan contra nada. No es un dato pendiente de rellenar, es un
+          procedimiento cuyo plazo principal no ha empezado y nadie se entera
+        - Lo escriben las dos únicas vías por las que nace una solicitud:
+          `app/services/alta_expediente.py` (expediente nuevo, el escrito se sube con
+          el alta) y `mutaciones_arbol.crear_solicitud` (solicitud adicional, el
+          escrito se elige del pool)
         - Ver §2.bis DISEÑO_FECHAS_PLAZOS.md
 
     CAMPO DOCUMENTO_FIN_INSTRUCCION_ID (#827, ADR-043 §D):
@@ -138,8 +146,9 @@ class Solicitud(db.Model):
     documento_solicitud_id = db.Column(
         db.Integer,
         db.ForeignKey('public.documentos.id', name='fk_solicitudes_documento_solicitud'),
-        nullable=True,
-        comment='FK a DOCUMENTOS. Ancla de trazabilidad al doc de solicitud (fecha admin en Documento.fecha_administrativa)'
+        nullable=False,
+        comment='FK a DOCUMENTOS. Escrito que abre la solicitud; su fecha_administrativa '
+                'es la de registro de entrada y arranca el plazo para resolver (#428)'
     )
 
     documento_fin_instruccion_id = db.Column(

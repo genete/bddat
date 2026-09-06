@@ -39,8 +39,10 @@ def _solicitud(db, expediente, siglas):
     from app.models.solicitudes import Solicitud
     from app.models.tipos_solicitudes import TipoSolicitud
     tipo = _tipo(TipoSolicitud, siglas, campo='siglas')
+    from tests.conftest import documento_ancla_de_prueba
     sol = Solicitud(expediente_id=expediente.id, entidad_id=_entidad().id,
-                     tipo_solicitud_id=tipo.id)
+                     tipo_solicitud_id=tipo.id,
+                     documento_solicitud_id=documento_ancla_de_prueba(expediente.id).id)
     db.session.add(sol)
     db.session.flush()
     return sol
