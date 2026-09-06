@@ -50,10 +50,12 @@ Uso:
 """
 import io
 import json
+import os
 import sys
 from datetime import date, timedelta
 
-sys.path.insert(0, r"D:\BDDAT")
+RAIZ = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, RAIZ)
 
 CODIGO = 'ANALISIS_DOC_DOS_VUELTAS'
 PROPOSITO = (
@@ -63,8 +65,9 @@ PROPOSITO = (
 MARCA = f'[DUMMY:{CODIGO}]'
 OBSERVACIONES = f'{MARCA} {PROPOSITO}'
 
-FIXTURES_DIR = r"D:\BDDAT\tests\fixtures\documentos_dummy"
-CATALOGO_CSV = r"D:\BDDAT\tests\fixtures\expedientes_dummy\catalogo_expedientes.csv"
+FIXTURES_DIR = os.path.join(RAIZ, 'tests', 'fixtures', 'documentos_dummy')
+CATALOGO_CSV = os.path.join(RAIZ, 'tests', 'fixtures', 'expedientes_dummy',
+                            'catalogo_expedientes.csv')
 
 # Días naturales que dura el escenario completo: dos vueltas de requerimiento
 # (10 días hábiles de plazo, respondidas 3 hábiles antes de vencer) son unos 20,
@@ -96,8 +99,6 @@ MARGEN_RESPUESTA_HABILES = 3
 from app import create_app, db  # noqa: E402
 from app.services.plazos import obtener_estado_plazo_tarea  # noqa: E402
 
-app = create_app()
-
 
 # ---------------------------------------------------------------------------
 # Catálogo — resuelto por clave natural, nunca PK hardcodeado
@@ -127,12 +128,26 @@ def _cargar_catalogo():
     def _doc(codigo):
         return TipoDocumento.query.filter_by(codigo=codigo).first()
 
+    # Titular y responsable por rol y no por NIF/siglas concretos (#849): así el
+    # mismo escenario se construye en desarrollo y en la base de tests, cuyas
+    # entidades y usuarios son otros a propósito. Orden explícito para que dos
+    # ejecuciones elijan la misma fila (#836).
+    from app.models.usuarios import Rol
+
+    entidad = (Entidad.query
+               .filter(Entidad.rol_titular.is_(True), Entidad.activo.is_(True))
+               .order_by(Entidad.id).first())
+    usuario = (Usuario.query
+               .join(Usuario.roles)
+               .filter(Rol.nombre == 'TRAMITADOR', Usuario.activo.is_(True))
+               .order_by(Usuario.id).first())
+
     cat = {
         'tipo_expediente': TipoExpediente.query.filter_by(tipo='Distribución').first(),
         'tipo_solicitud': TipoSolicitud.query.filter_by(siglas='AAP+AAC').first(),
         'ia_exento': TipoIA.query.filter_by(siglas='EXENTO').first(),
-        'entidad': Entidad.query.filter_by(nif='A28023430').first(),
-        'usuario': Usuario.query.filter_by(siglas='CLG').first(),
+        'entidad': entidad,
+        'usuario': usuario,
         'municipio': Municipio.query.filter_by(nombre='Mairena del Aljarafe').first(),
 
         'fase_analisis_solicitud': _fase('ANALISIS_SOLICITUD'),
@@ -507,7 +522,16 @@ def _fecha_respuesta_en_plazo(tarea_espera, etiqueta: str) -> date:
     return fecha
 
 
-def main():
+def main(app=None, *, efectos_desarrollo=True):
+    """Construye el expediente-tipo sobre la app que se le pase.
+
+    `efectos_desarrollo=False` es como lo invoca la semilla de la base de tests
+    (#849): deja fuera lo que solo tiene sentido en la máquina de desarrollo —
+    fijar el reloj simulado, que escribe en `instance/` y que bajo
+    `TestingConfig` (DEBUG=False) el sistema ignora de todas formas, y reescribir
+    el catálogo CSV, que es un fichero versionado y no debe cambiar cada vez que
+    se prepara la base de tests—. El escenario que se construye es el mismo.
+    """
     from flask_login import login_user
     from app.services import mutaciones_arbol as svc
     from app.services import reloj_simulado
@@ -515,6 +539,13 @@ def main():
     from app.models.tramites import Tramite
     from app.models.tareas import Tarea
     from app.models.notificaciones import Notificacion
+
+    if app is None:
+        app = create_app()
+
+    def _fijar_reloj(fecha):
+        if efectos_desarrollo:
+            reloj_simulado.fijar(fecha)
 
     def _notificar(tarea_notif, doc_consumido_id, doc_justificante_id, fecha, etiqueta):
         """Cierra NOTIFICAR de verdad — vincula el justificante como PRODUCIDO
@@ -548,7 +579,7 @@ def main():
     with app.test_request_context():
         cat = _cargar_catalogo()
         _reciclar_si_existe()
-        reloj_simulado.fijar(FECHA_BASE)
+        _fijar_reloj(FECHA_BASE)
 
         login_user(cat['usuario'])
 
@@ -649,7 +680,7 @@ def main():
 
             # Fecha derivada del plazo real de la tarea, no de un número fijo.
             fecha_actual = _fecha_respuesta_en_plazo(tarea_esp, f'req.#{vuelta}')
-            reloj_simulado.fijar(fecha_actual)
+            _fijar_reloj(fecha_actual)
 
             doc_subsanacion_id = _subir(client, exp_id, 'SUBSANACION',
                                          cat['doc_subsanacion'].id, fecha_actual,
@@ -723,7 +754,8 @@ def main():
 
         # `fecha_actual` es la última fecha usada por el escenario: cierra la
         # ventana que el catálogo publica.
-        _actualizar_catalogo(expediente.numero_at, fecha_actual)
+        if efectos_desarrollo:
+            _actualizar_catalogo(expediente.numero_at, fecha_actual)
 
         print(f"\nExpediente AT-{expediente.numero_at} (id={exp_id}) completado.")
         return expediente.numero_at, exp_id

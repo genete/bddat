@@ -1,8 +1,8 @@
 """Semilla de la base de tests (#849).
 
-Lo que las migraciones no traen y la suite necesita: usuarios con sus roles, y
-el árbol de ficheros donde los tests pueden escribir sin ensuciar el de
-desarrollo.
+Lo que las migraciones no traen y la suite necesita: usuarios con sus roles,
+las entidades con las que se tramita, y el árbol de ficheros donde los tests
+pueden escribir sin ensuciar el de desarrollo.
 
 **Usuarios ad-hoc, no copia de desarrollo.** Están diseñados para escribir
 tests, no para parecerse a nadie: por eso hay un segundo TRAMITADOR y un
@@ -10,8 +10,11 @@ usuario desactivado. Con los usuarios de desarrollo hay comprobaciones que no
 se pueden escribir —`es_expediente_ajeno()` (`app/utils/permisos.py:175`) exige
 un tramitador que NO sea responsable del expediente, y no existía ninguno—.
 
-No siembra datos de negocio: expedientes, solicitudes y documentos vienen
-después, por `alta_expediente()` y los expedientes-tipo, cuando #428 cierre.
+**Datos de negocio.** Desde #849.B también los siembra, y por la vía real —
+`alta_expediente()` y el expediente-tipo, nunca INSERT sueltos—: un expediente
+tramitado hasta el final de ANALISIS_SOLICITUD y otro recién dado de alta sin
+responsable. Con ellos la suite pasó de 368 tests saltados por falta de datos a
+ninguno.
 """
 import os
 
@@ -65,6 +68,53 @@ def _usuarios(db):
     return creados
 
 
+# nif, nombre, abrev, (titular, consultado, publicador), tipo_titular
+ENTIDADES = [
+    ('B00000001', 'Promotora de Prueba S.L.', None, (True, False, False), 'PROMOTOR'),
+    ('B00000002', 'Distribuidora de Prueba S.A.', None, (True, False, False),
+     'GRAN_DISTRIBUIDORA'),
+    ('Q0000001A', 'Confederación Hidrográfica de Prueba', 'CHP', (False, True, False), None),
+    ('P0000002B', 'Ayuntamiento de Villaprueba', 'AYTO-VP', (False, True, True),
+     None),
+    ('Q0000003C', 'Delegación Territorial de Prueba', 'DT-P', (False, True, False), None),
+]
+
+# Para qué existe cada una, que es lo que se olvida en seis meses:
+#   B00000001  titular por defecto de los expedientes de semilla
+#   B00000002  segundo titular: expediente ajeno, filtros de listado
+#   Q0000001A  organismo consultado con abreviatura (carpetas ESFTT, ADR-032 #665)
+#   P0000002B  consultado Y publicador: tablón de ayuntamiento
+#   Q0000003C  segundo consultado, para consultas con más de un destinatario
+
+
+def _entidades(db):
+    """Entidades ad-hoc, no copia de desarrollo — mismo criterio que los usuarios.
+
+    Sin ellas 23 tests fallan y otros tantos se saltan: el titular es
+    obligatorio para dar de alta un expediente, y las consultas a organismos
+    necesitan alguien a quien consultar. Que la tabla esté vacía es un defecto
+    de la semilla, no un motivo para saltarse el test (#849, criterio 6).
+    """
+    from app.models.entidad import Entidad
+
+    creadas = 0
+    for nif, nombre, abrev, (titular, consultado, publicador), tipo in ENTIDADES:
+        if Entidad.query.filter_by(nif=nif).first():
+            continue
+        db.session.add(Entidad(
+            nif=nif,
+            nombre_completo=nombre,
+            abrev=abrev,
+            rol_titular=titular,
+            rol_consultado=consultado,
+            rol_publicador=publicador,
+            tipo_titular=tipo,
+            activo=True,
+        ))
+        creadas += 1
+    return creadas
+
+
 def _plantillas_inactivas(db):
     """Las plantillas sembradas por migración apuntan a .docx que aquí no están.
 
@@ -80,6 +130,101 @@ def _plantillas_inactivas(db):
     for p in afectadas:
         p.activo = False
     return len(afectadas)
+
+
+def _expedientes(app):
+    """Los datos de negocio: un expediente-tipo completo, por el circuito real.
+
+    Es el mismo escenario que se construye en desarrollo
+    (`scripts/expedientes_dummy/analisis_doc_dos_vueltas.py`), invocado con la
+    app de tests y sin sus efectos de máquina —no toca el reloj simulado ni el
+    catálogo CSV versionado—. Se reutiliza en vez de escribir una semilla
+    paralela a propósito: dos caminos que construyen lo mismo terminan
+    divergiendo, que es justo lo que #428 tuvo que arreglar entre el wizard y el
+    script.
+
+    Idempotente: si el expediente ya está, no se construye otro. Recrear la base
+    (`preparar_bd_test.py --recrear`) es la vía para partir de cero.
+    """
+    from app.models.solicitudes import Solicitud
+    from scripts.expedientes_dummy import analisis_doc_dos_vueltas as tipo
+
+    with app.app_context():
+        existente = Solicitud.query.filter(
+            Solicitud.observaciones.like(f'{tipo.MARCA}%')).first()
+        if existente is not None:
+            return None
+
+    _numero_at, expediente_id = tipo.main(app, efectos_desarrollo=False)
+    return expediente_id
+
+
+def _expediente_sin_asignar(app):
+    """Un segundo expediente, del otro titular y sin responsable.
+
+    No es un escenario de tramitación: es la variedad mínima que la suite
+    necesita y que un solo expediente no puede dar —«otro expediente» para los
+    tests de aislamiento entre expedientes, y uno «sin asignar» para la
+    asignación masiva—. Por `alta_expediente()`, como todo lo demás.
+    """
+    import os
+    from datetime import timedelta
+
+    from app.models.entidad import Entidad
+    from app.models.municipios import Municipio
+    from app.models.solicitudes import Solicitud
+    from app.models.tipos_expedientes import TipoExpediente
+    from app.models.tipos_solicitudes import TipoSolicitud
+    from app.services.alta_expediente import (
+        DatosAlta, DocumentoSolicitud, alta_expediente,
+    )
+    from app.services.reloj_simulado import hoy
+
+    marca = '[SEMILLA] expediente sin responsable'
+    with app.app_context():
+        if Solicitud.query.filter_by(observaciones=marca).first() is not None:
+            return None
+
+        titular = (Entidad.query
+                   .filter(Entidad.rol_titular.is_(True), Entidad.activo.is_(True))
+                   .order_by(Entidad.id.desc()).first())
+        municipio = Municipio.query.order_by(Municipio.id).first()
+        tipo_exp = TipoExpediente.query.order_by(TipoExpediente.id).first()
+        tipo_sol = TipoSolicitud.query.filter_by(siglas='AAP').first()
+        for nombre, valor in (('entidad titular', titular), ('municipio', municipio),
+                              ('tipo de expediente', tipo_exp),
+                              ("tipo de solicitud 'AAP'", tipo_sol)):
+            if valor is None:
+                raise RuntimeError(f'Falta {nombre} para el expediente de semilla')
+
+        ruta_pdf = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            'tests', 'fixtures', 'documentos_dummy', 'modelo_solicitud.pdf')
+        with open(ruta_pdf, 'rb') as f:
+            contenido = f.read()
+
+        resultado = alta_expediente(DatosAlta(
+            tipo_expediente_id=tipo_exp.id,
+            responsable_id=None,
+            heredado=False,
+            titulo='Centro de transformación Camino de la Vega',
+            descripcion='Segundo expediente de semilla, sin tramitar.',
+            finalidad='Distribución de energía eléctrica',
+            emplazamiento='T.M. de prueba',
+            fecha_proyecto=hoy() - timedelta(days=20),
+            ia_id=None,
+            municipios_ids=[municipio.id],
+            titular_id=titular.id,
+            tipo_solicitud_id=tipo_sol.id,
+            solicitante_id=titular.id,
+            observaciones=marca,
+            documento=DocumentoSolicitud(
+                contenido=contenido,
+                nombre_original='modelo_solicitud.pdf',
+                fecha_registro=hoy() - timedelta(days=10),
+            ),
+        ))
+        return resultado.expediente.id
 
 
 def _arbol_ficheros(app):
@@ -101,11 +246,27 @@ def sembrar(app):
 
     with app.app_context():
         n_usuarios = _usuarios(db)
+        n_entidades = _entidades(db)
         n_plantillas = _plantillas_inactivas(db)
         db.session.commit()
         rutas = _arbol_ficheros(app)
 
     print(f'[semilla] usuarios creados: {n_usuarios} (de {len(USUARIOS)} previstos)')
+    print(f'[semilla] entidades creadas: {n_entidades} (de {len(ENTIDADES)} previstas)')
     print(f'[semilla] plantillas desactivadas: {n_plantillas}')
     for r in rutas:
         print(f'[semilla] creado directorio {r}')
+
+    # Fuera del app_context de arriba: el expediente-tipo abre el suyo propio,
+    # y necesita el árbol de ficheros ya creado para subir documentos al pool.
+    expediente_id = _expedientes(app)
+    if expediente_id is None:
+        print('[semilla] expediente-tipo: ya estaba, no se construye otro')
+    else:
+        print(f'[semilla] expediente-tipo construido (expediente id={expediente_id})')
+
+    segundo_id = _expediente_sin_asignar(app)
+    if segundo_id is None:
+        print('[semilla] expediente sin responsable: ya estaba')
+    else:
+        print(f'[semilla] expediente sin responsable creado (id={segundo_id})')
