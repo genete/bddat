@@ -8,16 +8,21 @@
 
 ---
 
-**Hecho:** **#428 — el wizard debe exigir el documento de la solicitud** ([PR #858](https://github.com/genete/bddat/pull/858)). El problema, tal como estaba enunciado aquí: «Hoy **nadie** asigna `documento_solicitud_id`, así que ninguna solicitud tiene la fecha que ancla el procedimiento: el plazo del art. 128 consta `SIN_PLAZO` en todos los expedientes. Su dependencia (#374) está cerrada desde mayo.» Ya no: la columna es NOT NULL, las dos vías de alta escriben el ancla y los tres expedientes de desarrollo tienen su plazo corriendo. El wizard de 3 pasos se retira en favor de un formulario único. De paso, la suite bajó de 19 skips a 3 y dejó de ser no determinista —dos de los seis criterios de #849 quedan cumplidos por el camino—.
+**Hecho:** **#849.B — la suite corre contra su propia base** ([PR #860](https://github.com/genete/bddat/pull/860)). **1680 pasan, 0 saltados, 0 fallos**, y el tope de skips baja a 0. Los seis criterios del issue, comprobados —incluidos determinismo (tres pasadas, una tras `--recrear`) y estanqueidad (huella de la BD de desarrollo y del árbol de ficheros, idéntica antes y después)—. Por el camino apareció algo que la fase A daba por bueno: **el catálogo que producen las migraciones no era el de desarrollo**, y no fallaba —once divergencias, entre ellas una regla del motor que dejaba abrir RESOLUCION sin IP concluida en un `AAC+DUP`, seis plazos con la cita en PLACEHOLDER y `nombre_en_plantilla` cruzado en 30 filas—. Las corrige `849_catalogo_replicado` por clave natural, y `scripts/comparar_catalogo.py` es la comprobación reutilizable. Queda dicho en `REGLAS_DESARROLLO.md`: una migración de datos nunca localiza la fila por `id`, y el curado de estructurales va por migración, nunca a mano.
 
-Antes: **#849.A — la suite ya tiene base de datos propia** ([PR #857](https://github.com/genete/bddat/pull/857)). De 50 skips a 19, y la instalación desde cero —rota sin que nadie lo supiera— vuelve a funcionar. La reconstrucción limpia de las migraciones y el curado del catálogo son **#856** (M4).
+Antes: **#428 — el wizard debe exigir el documento de la solicitud** ([PR #858](https://github.com/genete/bddat/pull/858)). La columna `documento_solicitud_id` es NOT NULL, las dos vías de alta escriben el ancla y el plazo del art. 128 corre. El wizard de 3 pasos se retira en favor de un formulario único. · **#849.A — la suite ya tiene base de datos propia** ([PR #857](https://github.com/genete/bddat/pull/857)): la instalación desde cero, rota sin que nadie lo supiera, vuelve a funcionar. La reconstrucción limpia de las migraciones y el curado del catálogo siguen siendo **#856** (M4).
 
 **Próximo:**
 
-1. **#849.B — semilla de datos de negocio.** Estaba detrás de #428 porque la semilla se crea con `alta_expediente()`, que ya existe. Al cerrar, el interruptor pasa a la base de tests y se comprueban los seis criterios del issue.
-2. **Ampliar el catálogo de expedientes-tipo**, para poder trabajar en **consultas** con comodidad. En espera hasta que el 1 esté cerrado: los expedientes-tipo *son* la semilla, y construirlos antes obligaría a rehacerlos. El de #824 deja el patrón para las fechas: base derivada de `hoy()`, ventana en `catalogo_expedientes.csv`, ninguna fecha absoluta en el script.
+1. **Ampliar el catálogo de expedientes-tipo**, para poder trabajar en **consultas** con comodidad. Ya no está bloqueado: los expedientes-tipo *son* la semilla, y la semilla ya existe. El de #824 deja el patrón para las fechas —base derivada de `hoy()`, ventana en `catalogo_expedientes.csv`, ninguna fecha absoluta en el script— y desde #849.B también el de la doble vida: `main(app, efectos_desarrollo=False)`, para que cada expediente-tipo nuevo sirva a la vez de escenario en desarrollo y de semilla de la base de tests.
 
-**Aviso operativo:** el reloj de desarrollo sigue en **2026-08-12** —lo deja ahí el script del expediente-tipo— y con el bloqueo activo un reloj atrasado impide fechar en el presente (`flask reloj show` / `clear`).
+**Ciclo de trabajo nuevo (#849):** tras cualquier migración que toque catálogo,
+`scripts/preparar_bd_test.py --recrear` reconstruye la base de tests y
+`scripts/comparar_catalogo.py` comprueba que sigue coincidiendo con desarrollo
+—por contenido, no por conteos—. Si el comparador señala una divergencia, es la
+migración la que hay que arreglar, no la base.
+
+**Aviso operativo:** el reloj de desarrollo sigue en **2026-08-12** —lo deja ahí el script del expediente-tipo, que hoy generó **AT-29** y dejó AT-28 en `[RECICLAR]`— y con el bloqueo activo un reloj atrasado impide fechar en el presente (`flask reloj show` / `clear`).
 
 **Por qué #839 sigue sin foco.** El art. 87 es una particularidad de la **fase de resolución**, y esa fase tiene esa y muchas más; se aborda cuando el foco llegue ahí. Lo que #838 aclaró es que **ya no bloquea a nadie**: sin ese trámite la salida existe igual —dentro de la fase que resuelve, forzando el vocabulario, con constancia en bitácora—, y esa constancia es precisamente la señal de cuándo hace falta construirlo (ADR-043 §F bis).
 

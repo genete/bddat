@@ -128,7 +128,13 @@ ahí el criterio se sostiene con la revisión y esta regla.
 - Un fichero por vista (o dominio relacionado).
 - Contenido mínimo: `GET <ruta>` → `assert status_code == 200` + `assert b'class="app-main"' in r.data`.
 - Login via fixture de rol: `usuario_admin`, `usuario_supervisor`, `usuario_tramitador`, `usuario_administrativo` (definidos en `tests/conftest.py`).
-- Si la vista necesita datos (expediente, entidad…): usar `expediente_seed` o consultar `Model.query.first()` + `pytest.skip` si no hay datos.
+- Si la vista necesita datos (expediente, entidad…): fabricarlos con
+  `crear_expediente_de_prueba()` o el builder `ArbolESFTT` de `tests/conftest.py`,
+  o apoyarse en las fixtures de semilla (`expediente_seed`, `entidad_seed`).
+  **Nunca `pytest.skip` por falta de datos** (#849): la base de tests la
+  sembramos nosotros, así que un dato ausente es un defecto de la semilla y el
+  test debe decirlo fallando — `assert x is not None, 'la semilla debe traer…'`.
+  El tope de skips de la suite es **0**, y solo baja.
 - Vistas sin login: usar `client` directamente.
 - Los smoke tests se ejecutan con el resto de la suite pytest (`pytest tests/`). No hay configuración separada.
 
