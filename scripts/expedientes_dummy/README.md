@@ -181,6 +181,7 @@ real.
 | **Nunca borrar**: marcar `[RECICLAR]` y dejar el borrado a `limpiar_reciclables.py` | El vestigio AT-15 permitió reconstruir qué había pasado en una ejecución defectuosa, en vez de tener que recordarlo |
 | **Catálogo por clave natural**, nunca PK hardcodeada | Las PK cambian entre bases; los códigos no |
 | **Doble vida**: `main(app=None, *, efectos_desarrollo=True)` | `efectos_desarrollo=False` deja fuera lo que solo tiene sentido en la máquina de desarrollo (fijar el reloj simulado, que escribe en `instance/`). El escenario construido es el mismo |
+| **Engancharlo a la semilla**: añadir el módulo a `_modulos_expediente_tipo()` en `scripts/semilla_test.py` | Es lo que impide que el escenario se pudra en silencio: si un cambio de la aplicación lo rompe, `preparar_bd_test.py --recrear` falla, en vez de esperar a que alguien lo ejecute a mano. De paso queda disponible para los tests que lo necesiten |
 
 ---
 

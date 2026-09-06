@@ -132,31 +132,48 @@ def _plantillas_inactivas(db):
     return len(afectadas)
 
 
+def _modulos_expediente_tipo():
+    """Los expedientes-tipo que alimentan la base de tests.
+
+    Añadir aquí el módulo es todo lo que hace falta para que un escenario de
+    desarrollo sirva también de semilla — y para que deje de poder pudrirse en
+    silencio: si un cambio de la aplicación lo rompe, `preparar_bd_test.py
+    --recrear` falla en vez de esperar a que alguien lo ejecute a mano.
+    """
+    from scripts.expedientes_dummy import (
+        analisis_doc_dos_vueltas, consultas_varios_estados,
+    )
+    return (analisis_doc_dos_vueltas, consultas_varios_estados)
+
+
 def _expedientes(app):
-    """Los datos de negocio: un expediente-tipo completo, por el circuito real.
+    """Los datos de negocio: los expedientes-tipo completos, por el circuito real.
 
-    Es el mismo escenario que se construye en desarrollo
-    (`scripts/expedientes_dummy/analisis_doc_dos_vueltas.py`), invocado con la
-    app de tests y sin sus efectos de máquina —no toca el reloj simulado ni el
-    catálogo CSV versionado—. Se reutiliza en vez de escribir una semilla
-    paralela a propósito: dos caminos que construyen lo mismo terminan
-    divergiendo, que es justo lo que #428 tuvo que arreglar entre el wizard y el
-    script.
+    Son los mismos escenarios que se construyen en desarrollo
+    (`scripts/expedientes_dummy/`), invocados con la app de tests y sin sus
+    efectos de máquina —`efectos_desarrollo=False` deja fuera el reloj
+    simulado—. Se reutilizan en vez de escribir una semilla paralela a
+    propósito: dos caminos que construyen lo mismo terminan divergiendo, que es
+    justo lo que #428 tuvo que arreglar entre el wizard y el script.
 
-    Idempotente: si el expediente ya está, no se construye otro. Recrear la base
-    (`preparar_bd_test.py --recrear`) es la vía para partir de cero.
+    Idempotente uno a uno: el que ya esté no se vuelve a construir. Recrear la
+    base (`preparar_bd_test.py --recrear`) es la vía para partir de cero.
+
+    Devuelve [(codigo, expediente_id | None), ...] — `None` en los que ya estaban.
     """
     from app.models.solicitudes import Solicitud
-    from scripts.expedientes_dummy import analisis_doc_dos_vueltas as tipo
 
-    with app.app_context():
-        existente = Solicitud.query.filter(
-            Solicitud.observaciones.like(f'{tipo.MARCA}%')).first()
+    construidos = []
+    for tipo in _modulos_expediente_tipo():
+        with app.app_context():
+            existente = Solicitud.query.filter(
+                Solicitud.observaciones.like(f'{tipo.MARCA}%')).first()
         if existente is not None:
-            return None
-
-    _numero_at, expediente_id = tipo.main(app, efectos_desarrollo=False)
-    return expediente_id
+            construidos.append((tipo.CODIGO, None))
+            continue
+        _numero_at, expediente_id = tipo.main(app, efectos_desarrollo=False)
+        construidos.append((tipo.CODIGO, expediente_id))
+    return construidos
 
 
 def _expediente_sin_asignar(app):
@@ -257,13 +274,14 @@ def sembrar(app):
     for r in rutas:
         print(f'[semilla] creado directorio {r}')
 
-    # Fuera del app_context de arriba: el expediente-tipo abre el suyo propio,
-    # y necesita el árbol de ficheros ya creado para subir documentos al pool.
-    expediente_id = _expedientes(app)
-    if expediente_id is None:
-        print('[semilla] expediente-tipo: ya estaba, no se construye otro')
-    else:
-        print(f'[semilla] expediente-tipo construido (expediente id={expediente_id})')
+    # Fuera del app_context de arriba: cada expediente-tipo abre el suyo propio,
+    # y necesitan el árbol de ficheros ya creado para subir documentos al pool.
+    for codigo, expediente_id in _expedientes(app):
+        if expediente_id is None:
+            print(f'[semilla] expediente-tipo {codigo}: ya estaba, no se construye otro')
+        else:
+            print(f'[semilla] expediente-tipo {codigo} construido '
+                  f'(expediente id={expediente_id})')
 
     segundo_id = _expediente_sin_asignar(app)
     if segundo_id is None:
