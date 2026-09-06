@@ -281,7 +281,9 @@ Esta sección establece el principio rector sobre fechas en ESFTT que supersede 
 
 Los documentos son agnósticos: no saben quién los usa. La trazabilidad (quién los produce, a qué elemento pertenecen) vive en FKs en las tablas relacionadas. El FK señala dónde está la fuente de verdad, no duplica el dato.
 
-**Implicación para `Solicitud`:** debe existir un FK `documento_solicitud_id` → `documentos.id` (nullable). Este FK permite localizar la fuente de verdad de los datos capitales de la solicitud: *cuándo* (`Documento.fecha_administrativa`) y *qué* (tipo deducible del PDF — issue #304). `documento_solicitud_id` no existe actualmente — debe añadirse.
+**Implicación para `Solicitud`:** existe un FK `documento_solicitud_id` → `documentos.id`, **NOT NULL desde #428**. Este FK permite localizar la fuente de verdad de los datos capitales de la solicitud: *cuándo* (`Documento.fecha_administrativa`) y *qué* (tipo deducible del PDF — issue #304).
+
+Nació nullable (`b7f95d61a7a9`) y así estuvo hasta #428, con una consecuencia que conviene recordar porque no se veía en ninguna pantalla: **ninguna vía de la aplicación lo escribía**, así que todas las solicitudes tenían el FK a NULL y el plazo del art. 128 constaba `SIN_PLAZO` en todos los expedientes — y con él, las suspensiones del art. 22 se restaban contra nada. Un ancla ausente no es un dato pendiente de rellenar: es un procedimiento cuyo plazo principal no ha empezado a correr sin que nadie se entere. De ahí que la columna sea obligatoria y que el invariante esté hardcodeado en el alta, no en `reglas_motor`: sin fecha desde la que computar no hay nada que configurar.
 
 ### Cómo se capturan las fechas administrativas
 
@@ -291,7 +293,9 @@ Los documentos son agnósticos: no saben quién los usa. La trazabilidad (quién
 4. El usuario valida. La fecha queda en `Documento.fecha_administrativa`.
 5. Solo en caso extremo el usuario introduce la fecha manualmente. La bitácora lo registra.
 
-Este flujo aplica también al wizard de creación de expediente: el documento de solicitud debe estar en el pool antes de crear el expediente. La fecha de solicitud se extrae del documento, no de un campo `Solicitud.fecha_solicitud`.
+Este flujo aplica también al alta de expediente, con un matiz de orden que solo se ve al implementarlo (#428): el escrito de solicitud **no puede** estar en el pool antes que el expediente, porque `Documento.expediente_id` es NOT NULL y su ruta física sale del `numero_at` que se asigna al crearlo. Lo que hace `alta_expediente()` es meter ambas cosas en la misma transacción —expediente, luego documento al pool, luego solicitud ya anclada—, de modo que o existen las tres o no existe ninguna. La fecha de solicitud se extrae del documento, no de un campo `Solicitud.fecha_solicitud`.
+
+En la segunda vía —una solicitud adicional sobre un expediente que ya existe— sí se cumple el orden original: el escrito se elige del pool, donde ya está.
 
 ### Mapa de fechas administrativas por fase
 

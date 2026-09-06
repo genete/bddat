@@ -20,7 +20,7 @@
 | `proyectos` | index + detalle (redirige a `expedientes.detalle`) + editar_proyecto (redirige a `expedientes.editar#proyecto`) | módulo casi vacío — vive bajo expedientes |
 | `expedientes` | listado_v2, seguimiento, detalle(ver/editar), pool_documentos (+ 8 endpoints JSON de pool), tramitación BC (5 niveles), generar_cert, cert_pdf | núcleo |
 | `admin_plantillas` | listado, nueva, detalle, editar (form modo nueva/editar), descargar, activar + 5 endpoints JSON | `require_permiso('gestionar_plantillas')` |
-| `wizard_expediente` | paso1, paso2, paso3 | flujo lineal |
+| `alta_expediente` | nuevo (GET/POST) | formulario único desde #428 — sustituye al wizard de 3 pasos |
 
 ### 1.2 Blueprints API (7 — solo JSON)
 

@@ -82,7 +82,7 @@ Los tres riesgos clásicos del multiproceso están **ya resueltos** en BDDAT:
 |---|---|
 | Estado compartido en memoria de proceso | ✅ No existe. Modo global del motor en BD (`ConfiguracionSistema`); sin cachés de módulo ni `lru_cache` |
 | Sesiones ligadas a un proceso | ✅ Cookies firmadas (la sesión viaja en el navegador); cualquier worker atiende cualquier petición |
-| Carrera en numeración de expedientes | ✅ Tabla contador con `UPDATE … RETURNING` atómico (`wizard_expediente.py`) — Postgres serializa |
+| Carrera en numeración de expedientes | ✅ Tabla contador con `UPDATE … RETURNING` atómico (`app/services/alta_expediente.py`) — Postgres serializa |
 
 Lo que falta (casi todo artefacto de despliegue, no código de aplicación):
 
