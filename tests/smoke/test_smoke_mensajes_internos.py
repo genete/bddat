@@ -28,14 +28,20 @@ def _limpiar_datos_prueba(app):
         db.session.commit()
 
 
-def _usuario(app, siglas='CLG'):
-    u = Usuario.query.filter_by(siglas=siglas).first()
-    if u is None:
-        pytest.skip(f'Usuario {siglas} no disponible en esta BD')
+def _actor(cliente):
+    """El usuario autenticado en el cliente del test.
+
+    Antes era `Usuario.query.filter_by(siglas='CLG')`, que en cualquier base sin
+    ese usuario saltaba los quince tests del fichero (#849). Quién actúa lo dice
+    la fixture que autenticó el cliente, no unas siglas escritas aquí.
+    """
+    from tests.conftest import id_usuario_autenticado
+    u = Usuario.query.get(id_usuario_autenticado(cliente))
+    assert u is not None, 'el usuario autenticado no está en la base'
     return u
 
 
-def _crear_mensaje(app, *, propio=True, hecho=False):
+def _crear_mensaje(app, cliente, *, propio=True, hecho=False):
     """Crea una petición de prueba y devuelve su id.
 
     propio=False la firma OTRO usuario, para probar el filtrado por remitente.
@@ -43,13 +49,13 @@ def _crear_mensaje(app, *, propio=True, hecho=False):
     from datetime import datetime, timezone
 
     with app.app_context():
-        clg = _usuario(app)
+        actor = _actor(cliente)
         if propio:
-            remitente = clg
+            remitente = actor
         else:
-            remitente = Usuario.query.filter(Usuario.id != clg.id).first()
-            if remitente is None:
-                pytest.skip('No hay un segundo usuario en la BD de desarrollo')
+            remitente = (Usuario.query.filter(Usuario.id != actor.id)
+                         .order_by(Usuario.id).first())
+            assert remitente is not None, 'la semilla debe traer más de un usuario'
 
         m = MensajeInterno(
             remitente_usuario_id=remitente.id,
@@ -60,7 +66,7 @@ def _crear_mensaje(app, *, propio=True, hecho=False):
             m.hecho = True
             m.resultado = 'ATENDIDA'
             m.hecho_at = datetime.now(timezone.utc)
-            m.hecho_por_id = clg.id
+            m.hecho_por_id = actor.id
         db.session.add(m)
         db.session.commit()
         return m.id
@@ -93,8 +99,8 @@ def test_listado_accesible_administrativo(usuario_administrativo):
 # ---------------------------------------------------------------------------
 
 def test_api_tramitador_solo_ve_las_suyas(usuario_tramitador, app):
-    ajeno_id = _crear_mensaje(app, propio=False)
-    propio_id = _crear_mensaje(app, propio=True)
+    ajeno_id = _crear_mensaje(app, usuario_tramitador, propio=False)
+    propio_id = _crear_mensaje(app, usuario_tramitador, propio=True)
 
     r = usuario_tramitador.get('/api/mensajes-internos?limit=100')
     assert r.status_code == 200
@@ -105,20 +111,20 @@ def test_api_tramitador_solo_ve_las_suyas(usuario_tramitador, app):
 
 
 def test_api_supervisor_ve_las_ajenas(usuario_supervisor, app):
-    ajeno_id = _crear_mensaje(app, propio=False)
+    ajeno_id = _crear_mensaje(app, usuario_supervisor, propio=False)
     r = usuario_supervisor.get('/api/mensajes-internos?limit=100')
     assert r.status_code == 200
     assert ajeno_id in [m['id'] for m in r.get_json()['data']]
 
 
 def test_fragmento_ajeno_da_403_sin_permiso(usuario_tramitador, app):
-    ajeno_id = _crear_mensaje(app, propio=False)
+    ajeno_id = _crear_mensaje(app, usuario_tramitador, propio=False)
     r = usuario_tramitador.get(f'/mensajes_internos/{ajeno_id}/fragmento')
     assert r.status_code == 403
 
 
 def test_fragmento_propio_ok_sin_permiso_de_gestion(usuario_tramitador, app):
-    propio_id = _crear_mensaje(app, propio=True)
+    propio_id = _crear_mensaje(app, usuario_tramitador, propio=True)
     r = usuario_tramitador.get(f'/mensajes_internos/{propio_id}/fragmento')
     assert r.status_code == 200
 
@@ -128,7 +134,7 @@ def test_fragmento_propio_ok_sin_permiso_de_gestion(usuario_tramitador, app):
 # ---------------------------------------------------------------------------
 
 def test_tramitador_no_puede_resolver(usuario_tramitador, app):
-    propio_id = _crear_mensaje(app, propio=True)
+    propio_id = _crear_mensaje(app, usuario_tramitador, propio=True)
     r = usuario_tramitador.post(f'/mensajes_internos/{propio_id}/resolver',
                                 data={'resultado': 'ATENDIDA', 'notas': 'x'},
                                 follow_redirects=False)
@@ -140,7 +146,7 @@ def test_tramitador_no_puede_resolver(usuario_tramitador, app):
 
 
 def test_administrativo_no_puede_resolver(usuario_administrativo, app):
-    propio_id = _crear_mensaje(app, propio=True)
+    propio_id = _crear_mensaje(app, usuario_administrativo, propio=True)
     r = usuario_administrativo.post(f'/mensajes_internos/{propio_id}/resolver',
                                     data={'resultado': 'ATENDIDA'},
                                     follow_redirects=False)
@@ -149,7 +155,7 @@ def test_administrativo_no_puede_resolver(usuario_administrativo, app):
 
 
 def test_supervisor_resuelve_la_misma_fila(usuario_supervisor, app):
-    mensaje_id = _crear_mensaje(app, propio=False)
+    mensaje_id = _crear_mensaje(app, usuario_supervisor, propio=False)
     r = usuario_supervisor.post(f'/mensajes_internos/{mensaje_id}/resolver',
                                 data={'resultado': 'DENEGADA', 'notas': f'No procede ({MARCA})'},
                                 follow_redirects=False)
@@ -168,7 +174,7 @@ def test_supervisor_resuelve_la_misma_fila(usuario_supervisor, app):
 
 
 def test_resultado_invalido_rechazado(usuario_supervisor, app):
-    mensaje_id = _crear_mensaje(app, propio=False)
+    mensaje_id = _crear_mensaje(app, usuario_supervisor, propio=False)
     usuario_supervisor.post(f'/mensajes_internos/{mensaje_id}/resolver',
                             data={'resultado': 'QUIZAS'}, follow_redirects=False)
     with app.app_context():
@@ -180,7 +186,7 @@ def test_resultado_invalido_rechazado(usuario_supervisor, app):
 # ---------------------------------------------------------------------------
 
 def test_remitente_acusa(usuario_tramitador, app):
-    mensaje_id = _crear_mensaje(app, propio=True, hecho=True)
+    mensaje_id = _crear_mensaje(app, usuario_tramitador, propio=True, hecho=True)
     r = usuario_tramitador.post(f'/mensajes_internos/{mensaje_id}/acusar',
                                 follow_redirects=False)
     assert r.status_code == 302
@@ -191,7 +197,7 @@ def test_remitente_acusa(usuario_tramitador, app):
 
 def test_supervisor_no_acusa_por_otro(usuario_supervisor, app):
     """Ver una petición ajena sí; acusarla por su remitente, no."""
-    mensaje_id = _crear_mensaje(app, propio=False, hecho=True)
+    mensaje_id = _crear_mensaje(app, usuario_supervisor, propio=False, hecho=True)
     r = usuario_supervisor.post(f'/mensajes_internos/{mensaje_id}/acusar',
                                 follow_redirects=False)
     assert r.status_code == 403
@@ -201,7 +207,7 @@ def test_supervisor_no_acusa_por_otro(usuario_supervisor, app):
 
 
 def test_acuse_prematuro_no_marca_nada(usuario_tramitador, app):
-    mensaje_id = _crear_mensaje(app, propio=True, hecho=False)
+    mensaje_id = _crear_mensaje(app, usuario_tramitador, propio=True, hecho=False)
     usuario_tramitador.post(f'/mensajes_internos/{mensaje_id}/acusar', follow_redirects=False)
     with app.app_context():
         assert MensajeInterno.query.get(mensaje_id).acusado_at is None
@@ -212,7 +218,7 @@ def test_acuse_prematuro_no_marca_nada(usuario_tramitador, app):
 # ---------------------------------------------------------------------------
 
 def test_badge_cuenta_pendientes_solo_para_quien_gestiona(usuario_supervisor, app):
-    _crear_mensaje(app, propio=False)
+    _crear_mensaje(app, usuario_supervisor, propio=False)
     r = usuario_supervisor.get('/api/mensajes-internos/badge')
     assert r.status_code == 200
     assert r.get_json()['total'] >= 1
@@ -221,7 +227,7 @@ def test_badge_cuenta_pendientes_solo_para_quien_gestiona(usuario_supervisor, ap
 def test_badge_ignora_ajenas_sin_permiso(usuario_tramitador, app):
     """Una pendiente ajena no suma en el badge de quien no gestiona."""
     r_antes = usuario_tramitador.get('/api/mensajes-internos/badge').get_json()['total']
-    _crear_mensaje(app, propio=False)
+    _crear_mensaje(app, usuario_tramitador, propio=False)
     r_despues = usuario_tramitador.get('/api/mensajes-internos/badge').get_json()['total']
     assert r_despues == r_antes
 
@@ -257,7 +263,7 @@ def test_solicitud_de_rol_persiste(usuario_tramitador, app):
     assert r.status_code == 302
 
     with app.app_context():
-        clg = _usuario(app)
+        clg = _actor(usuario_tramitador)
         m = MensajeInterno.query.filter(
             MensajeInterno.remitente_usuario_id == clg.id,
             MensajeInterno.tipo == 'CAMBIO_ROL',
@@ -276,7 +282,7 @@ def test_solicitud_de_rol_sin_justificacion_no_persiste(usuario_tramitador, app)
     }, follow_redirects=False)
 
     with app.app_context():
-        clg = _usuario(app)
+        clg = _actor(usuario_tramitador)
         assert MensajeInterno.query.filter(
             MensajeInterno.remitente_usuario_id == clg.id,
             MensajeInterno.tipo == 'CAMBIO_ROL',

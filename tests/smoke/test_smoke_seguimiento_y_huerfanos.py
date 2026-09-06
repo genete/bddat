@@ -133,14 +133,14 @@ class TestListadoHuerfanos:
             _borrar_documento(app, doc_id)
 
     def test_filtro_ver_mis_solo_devuelve_expedientes_del_usuario(self, usuario_tramitador, app):
-        with app.app_context():
-            from app.models.usuarios import Usuario
-            clg_id = Usuario.query.filter_by(siglas='CLG').first().id
+        from tests.conftest import id_usuario_autenticado
+
+        propio_id = id_usuario_autenticado(usuario_tramitador)
         r = usuario_tramitador.get('/api/documentos/huerfanos?ver=mis&limit=200')
         assert r.status_code == 200
         for item in r.get_json()['data']:
             assert item['responsable'] is not None
-            assert item['responsable']['id'] == clg_id
+            assert item['responsable']['id'] == propio_id
 
     def test_responsable_id_lo_ignora_tramitador_pero_no_supervisor(self, usuario_supervisor, app):
         """SUPERVISOR filtra por responsable_id (no tiene 'mis'); TRAMITADOR usa ver=mis/todos."""

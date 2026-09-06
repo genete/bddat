@@ -118,7 +118,10 @@ class TestCrearTramiteConVocabulario:
         from app.services import mutaciones_arbol as svc
 
         fase = arbol_esftt.fase('ANALISIS_SOLICITUD')
-        comunicacion_inicio = _tipo(TipoTramite, 'COMUNICACION_INICIO')
+        # El código es COMUNICACION_INICIO_ADMISION desde #776
+        # (776_rename_comunicacion_inicio_admision). El test se quedó con el
+        # anterior y llevaba desde entonces saltándose en silencio (#849).
+        comunicacion_inicio = _tipo(TipoTramite, 'COMUNICACION_INICIO_ADMISION')
 
         res = svc.crear_tramite(fase, comunicacion_inicio, justificacion=None)
 
