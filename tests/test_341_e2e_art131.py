@@ -51,10 +51,12 @@ def _crear_solicitud(db, expediente, tipo_solicitud):
     from app.models import Solicitud, Entidad
     entidad = Entidad.query.first()
     assert entidad is not None, 'Tabla entidades vacía — seed necesario'
+    from tests.conftest import documento_ancla_de_prueba
     sol = Solicitud(
         expediente=expediente,
         tipo_solicitud=tipo_solicitud,
         entidad=entidad,
+        documento_solicitud_id=documento_ancla_de_prueba(expediente.id).id,
     )
     db.session.add(sol)
     db.session.flush()

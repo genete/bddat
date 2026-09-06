@@ -279,6 +279,84 @@ class TestSolicitudAdicional:
             assert Solicitud.query.get(sol_id).documento_solicitud_id == doc.id
 
 
+class TestConstraintYBorrado:
+    """El NOT NULL y la regla de borrado que hubo que cambiar con él (#428).
+
+    La FK nació `ON DELETE SET NULL`, y esa combinación con NOT NULL es
+    incoherente: borrar el documento intentaría escribir NULL en una columna que no
+    lo admite. La migración la recreó como NO ACTION, igual que sus dos hermanas.
+    """
+
+    def test_no_se_puede_crear_una_solicitud_sin_ancla(self, alta_propia):
+        """La última red: aunque alguien esquive los dos servicios, la base dice no."""
+        from sqlalchemy.exc import IntegrityError
+        from app.models.solicitudes import Solicitud
+
+        db.session.add(Solicitud(
+            expediente_id=alta_propia.expediente.id,
+            entidad_id=alta_propia.expediente.titular_id,
+            tipo_solicitud_id=alta_propia.solicitud.tipo_solicitud_id,
+        ))
+        with pytest.raises(IntegrityError):
+            db.session.flush()
+        db.session.rollback()
+
+    def _soltar_acreditativo(self, expediente_id):
+        """Lo que hace `limpiar_reciclables.py` antes de borrar documentos.
+
+        El escrito de solicitud lo referencian DOS tablas desde #428: la solicitud
+        que ancla y el interesado TITULAR al que acredita. Esta segunda sí se
+        neutraliza con un UPDATE, porque su columna sigue siendo nullable.
+        """
+        db.session.execute(
+            db.text('UPDATE public.interesados_expediente '
+                    'SET documento_acreditativo_id = NULL WHERE expediente_id = :exp'),
+            {'exp': expediente_id})
+
+    def test_borrar_el_documento_anclado_falla_en_vez_de_desanclar(self, alta_propia):
+        """Con la regla vieja el DELETE habría puesto NULL en una columna NOT NULL.
+
+        Ahora la base se niega y nombra la FK de la solicitud, que es lo que
+        corresponde. El pool además lo explica antes de llegar aquí, diciendo qué
+        solicitud lo usa (`_motivo_ancla`, #838).
+        """
+        from sqlalchemy.exc import IntegrityError
+        from app.models.documentos import Documento
+
+        self._soltar_acreditativo(alta_propia.expediente.id)
+        doc_id = alta_propia.documento.id
+
+        with pytest.raises(IntegrityError) as exc:
+            db.session.execute(
+                db.text('DELETE FROM public.documentos WHERE id = :doc'), {'doc': doc_id})
+        assert 'fk_solicitudes_documento_solicitud' in str(exc.value)
+        db.session.rollback()
+
+        assert Documento.query.get(doc_id) is not None
+
+    def test_borrando_antes_la_solicitud_el_documento_sale(self, alta_propia):
+        """El orden que usa `limpiar_reciclables.py`: solicitudes y luego documentos.
+
+        Es lo que sustituye al `UPDATE ... = NULL` sobre `documento_solicitud_id`
+        que el script hacía antes y que con la columna NOT NULL habría reventado.
+        """
+        doc_id = alta_propia.documento.id
+
+        self._soltar_acreditativo(alta_propia.expediente.id)
+        db.session.execute(
+            db.text('DELETE FROM public.solicitudes WHERE id = :sol'),
+            {'sol': alta_propia.solicitud.id})
+        db.session.execute(
+            db.text('DELETE FROM public.documentos WHERE id = :doc'), {'doc': doc_id})
+
+        # Con SELECT y no con `Documento.query.get`: el ORM devolvería el objeto
+        # que sigue en su identity map, sin volver a preguntar a la base.
+        sigue = db.session.execute(
+            db.text('SELECT count(*) FROM public.documentos WHERE id = :doc'),
+            {'doc': doc_id}).scalar()
+        assert sigue == 0
+
+
 class TestRutaSolicitudAdicional:
     """La ruta del árbol pasa el ancla al servicio (#428)."""
 

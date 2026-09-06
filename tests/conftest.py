@@ -368,6 +368,38 @@ def crear_expediente_de_prueba(*, documento='normal', fecha_registro=None):
     ))
 
 
+def documento_ancla_de_prueba(expediente_id, *, fecha=None):
+    """Documento mínimo que sirve de ancla a una `Solicitud` de test (#428).
+
+    Desde que `solicitudes.documento_solicitud_id` es NOT NULL, ningún test puede
+    construir una `Solicitud` a mano sin darle su escrito. Este es el atajo para
+    los que solo necesitan que la fila exista y les da igual el documento —los que
+    prueban el alta de verdad usan `crear_expediente_de_prueba()`—.
+
+    Con esquema `bddat://` a propósito: no toca el disco, así que quien lo use no
+    necesita `fs_tmp`. La fecha sale del reloj del sistema porque el modelo rechaza
+    las futuras (#824), y sin fecha el ancla no serviría para computar plazos.
+    """
+    from app import db as _db_app
+    from app.models.documentos import Documento
+    from app.models.tipos_documentos import TipoDocumento
+    from app.services.reloj_simulado import hoy
+
+    tipo = TipoDocumento.query.filter_by(codigo='MODELO_SOLICITUD').first()
+    assert tipo is not None, "la semilla debe traer el TipoDocumento 'MODELO_SOLICITUD'"
+
+    doc = Documento(
+        expediente_id=expediente_id,
+        url=f'bddat://test-ancla/{next(_SECUENCIA_PRUEBA)}',
+        tipo_doc_id=tipo.id,
+        fecha_administrativa=fecha or hoy(),
+        asunto='Escrito de solicitud (test)',
+    )
+    _db_app.session.add(doc)
+    _db_app.session.flush()
+    return doc
+
+
 @pytest.fixture
 def alta_propia(app_ctx, fs_tmp):
     """Un expediente recién fabricado, con su solicitud anclada. Se revierte al salir."""
@@ -435,7 +467,8 @@ class ArbolESFTT:
         tipo = TipoSolicitud.query.first()
         if exp is None or ent is None or tipo is None:
             pytest.skip('Faltan expediente/entidad/tipo_solicitud base en la BD de desarrollo')
-        s = Solicitud(expediente_id=exp.id, entidad_id=ent.id, tipo_solicitud_id=tipo.id)
+        s = Solicitud(expediente_id=exp.id, entidad_id=ent.id, tipo_solicitud_id=tipo.id,
+                      documento_solicitud_id=documento_ancla_de_prueba(exp.id).id)
         self.db.session.add(s)
         self.db.session.flush()
         return s

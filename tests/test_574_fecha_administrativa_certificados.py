@@ -87,7 +87,9 @@ def _crear_solicitud(db, expediente):
     tipo_sol = TipoSolicitud.query.first()
     assert tipo_sol is not None, 'Catálogo TipoSolicitud vacío — seed necesario'
 
-    sol = Solicitud(expediente=expediente, tipo_solicitud=tipo_sol, entidad=entidad)
+    from tests.conftest import documento_ancla_de_prueba
+    sol = Solicitud(expediente=expediente, tipo_solicitud=tipo_sol, entidad=entidad,
+                    documento_solicitud_id=documento_ancla_de_prueba(expediente.id).id)
     db.session.add(sol)
     db.session.flush()
     return sol
