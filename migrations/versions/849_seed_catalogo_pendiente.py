@@ -13,7 +13,9 @@ borraron de desarrollo en el mismo issue):
 
 - Nueve requerimientos reales del catálogo de la tarea ANALIZAR.
 - El requisito documental DR_NO_DUP con su condición: la declaración
-  responsable de no necesidad de DUP (DF 4ª del DL 26/2021).
+  responsable de no necesidad de DUP (DF 4ª del DL 26/2021). **La condición que
+  siembra el paso 3 está invertida** —se exige cuando la solicitud incluye DUP,
+  y es al revés—; lo corrige `863_condicion_dr_no_dup`.
 - El texto del requisito del MODELO_909, corregido en desarrollo y no en la
   migración que lo creó.
 - La fila de `tramites_tareas_documentos` que dice que REGISTRO_INTERESADOS
@@ -92,7 +94,10 @@ def upgrade():
           )
     """), {'texto': TEXTO_DR_NO_DUP})
 
-    # 3 — Su condición: solo se exige si la solicitud incluye DUP
+    # 3 — Su condición. INVERTIDA: se sembró como "solo se exige si la solicitud
+    #     incluye DUP" y es al revés — la declaración de NO necesidad de DUP se
+    #     presenta cuando no se pide DUP. Corregido en `863_condicion_dr_no_dup`;
+    #     aquí se deja como estaba porque la migración ya está aplicada.
     conn.execute(sa.text("""
         INSERT INTO public.condiciones_requisito
             (requisito_id, variable_id, operador, valor, orden)
