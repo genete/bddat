@@ -28,13 +28,6 @@ import datetime
 import pytest
 
 
-def _tipo(modelo, codigo):
-    fila = modelo.query.filter_by(codigo=codigo).first()
-    if fila is None:
-        pytest.skip(f'{modelo.__name__} {codigo!r} no está en el catálogo de esta BD')
-    return fila
-
-
 def _montar_fase(codigo_fase, specs):
     """Monta una fase con trámites de la cadena de subsanación (u otra, para los
     casos "fuera de la cadena").
@@ -50,84 +43,36 @@ def _montar_fase(codigo_fase, specs):
         PRODUCIDO (antes del NOTIFICAR, si lo hay — mismo orden real)
 
     Devuelve (fase, tareas_analizar) — tareas_analizar en el mismo orden que specs.
+
+    Construye sobre el builder compartido `ArbolESFTT` (#752): antes duplicaba a mano
+    los mismos inserts de Fase/Tramite/Tarea/Documento/Notificacion que test_714 y
+    test_717 tenían cada uno por su lado.
     """
     from app import db
-    from app.models.solicitudes import Solicitud
-    from app.models.fases import Fase
-    from app.models.tramites import Tramite
-    from app.models.tareas import Tarea
-    from app.models.documentos import Documento
-    from app.models.documentos_tarea import DocumentoTarea
-    from app.models.diagnosticos import Diagnostico
-    from app.models.notificaciones import Notificacion
-    from app.models.tipos_fases import TipoFase
-    from app.models.tipos_tramites import TipoTramite
-    from app.models.tipos_tareas import TipoTarea
-    from app.models.tipos_documentos import TipoDocumento
+    from tests.conftest import ArbolESFTT
+    arbol = ArbolESFTT(db)
 
-    solicitud = Solicitud.query.first()
-    if solicitud is None:
-        pytest.skip('No hay solicitudes en la BD de desarrollo')
-
-    tipo_analizar = _tipo(TipoTarea, 'ANALIZAR')
-    tipo_notificar = _tipo(TipoTarea, 'NOTIFICAR')
-    tipo_elaborar = _tipo(TipoTarea, 'ELABORAR')
-    tipo_diagnostico = _tipo(TipoDocumento, 'DIAGNOSTICO')
-    tipo_doc_generico = TipoDocumento.query.first()
-    if tipo_doc_generico is None:
-        pytest.skip('No hay tipos de documento en el catálogo de esta BD')
-
-    fase = Fase(solicitud_id=solicitud.id, tipo_fase_id=_tipo(TipoFase, codigo_fase).id)
-    db.session.add(fase)
-    db.session.flush()
+    fase = arbol.fase(codigo_fase)
 
     tareas_analizar = []
     for spec in specs:
-        tramite = Tramite(fase_id=fase.id,
-                          tipo_tramite_id=_tipo(TipoTramite, spec['tramite']).id)
-        db.session.add(tramite)
-        db.session.flush()
+        tramite = arbol.tramite(fase, spec['tramite'])
 
         if spec.get('elaborar_producido'):
-            elaborar = Tarea(tramite_id=tramite.id, tipo_tarea_id=tipo_elaborar.id)
-            db.session.add(elaborar)
-            db.session.flush()
-            doc_escrito = Documento(expediente_id=solicitud.expediente_id,
-                                    tipo_doc_id=tipo_doc_generico.id,
-                                    url=f'test-724-escrito-{elaborar.id}.odt')
-            db.session.add(doc_escrito)
-            db.session.flush()
-            db.session.add(DocumentoTarea(tarea_id=elaborar.id, documento_id=doc_escrito.id, rol='PRODUCIDO'))
-            db.session.flush()
+            arbol.elaborar_producido(tramite)
 
         if spec.get('notificado'):
-            notificar = Tarea(tramite_id=tramite.id, tipo_tarea_id=tipo_notificar.id)
-            db.session.add(notificar)
-            db.session.flush()
-            db.session.add(Notificacion(
-                tarea_id=notificar.id, canal='NOTIFICA',
-                fecha_puesta_disposicion=datetime.date(2026, 7, 20), numero_intento=1,
-            ))
-            db.session.flush()
+            notificar = arbol.tarea(tramite, 'NOTIFICAR')
+            arbol.notificacion(notificar, fecha=datetime.date(2026, 7, 20))
 
-        tarea = Tarea(tramite_id=tramite.id, tipo_tarea_id=tipo_analizar.id)
-        db.session.add(tarea)
-        db.session.flush()
+        tarea = arbol.tarea(tramite, 'ANALIZAR')
         tareas_analizar.append(tarea)
 
         resultado = spec.get('resultado')
         if resultado is None:
             continue
 
-        doc = Documento(expediente_id=solicitud.expediente_id,
-                        tipo_doc_id=tipo_diagnostico.id,
-                        url=f'bddat://diagnosticos/test-724-{tarea.id}')
-        db.session.add(doc)
-        db.session.flush()
-        db.session.add(Diagnostico(documento_id=doc.id, resultado=resultado,
-                                   defectos=spec.get('defectos', [])))
-        db.session.add(DocumentoTarea(tarea_id=tarea.id, documento_id=doc.id, rol='PRODUCIDO'))
-        db.session.flush()
+        arbol.diagnostico(tarea, resultado, defectos=spec.get('defectos', []))
 
     return fase, tareas_analizar
 

@@ -556,18 +556,70 @@ class ArbolESFTT:
         self.db.session.flush()
         return v
 
-    def notificacion(self, tarea, resultado, canal='NOTIFICA'):
+    def notificacion(self, tarea, resultado=None, canal='NOTIFICA', fecha=None, numero_intento=None):
         from app.models.notificaciones import Notificacion
         import datetime
-        n = Notificacion(
+        kwargs = dict(
             tarea_id=tarea.id,
             resultado=resultado,
             canal=canal,
-            fecha_puesta_disposicion=datetime.date.today(),
+            fecha_puesta_disposicion=fecha or datetime.date.today(),
         )
+        if numero_intento is not None:
+            kwargs['numero_intento'] = numero_intento
+        n = Notificacion(**kwargs)
         self.db.session.add(n)
         self.db.session.flush()
         return n
+
+    def diagnostico(self, tarea, resultado, defectos=None):
+        """Diagnóstico PRODUCIDO por `tarea` (ANALIZAR): Documento + Diagnostico + vínculo.
+
+        Formaliza el patrón que test_714/test_717/test_724 duplicaban cada uno a mano
+        con su propio `_montar_fase`/`_montar_cadena` (#752).
+        """
+        from app.models.documentos import Documento
+        from app.models.documentos_tarea import DocumentoTarea
+        from app.models.diagnosticos import Diagnostico
+        from app.models.tipos_documentos import TipoDocumento
+        expediente_id = tarea.tramite.fase.solicitud.expediente_id
+        doc = Documento(
+            expediente_id=expediente_id,
+            tipo_doc_id=self._tipo(TipoDocumento, 'DIAGNOSTICO').id,
+            url=f'bddat://diagnosticos/test/{tarea.id}',
+        )
+        self.db.session.add(doc)
+        self.db.session.flush()
+        diag = Diagnostico(documento_id=doc.id, resultado=resultado, defectos=defectos or [])
+        self.db.session.add(diag)
+        self.db.session.add(DocumentoTarea(tarea_id=tarea.id, documento_id=doc.id, rol='PRODUCIDO'))
+        self.db.session.flush()
+        return diag
+
+    def elaborar_producido(self, tramite):
+        """Tarea ELABORAR de `tramite` con su Documento PRODUCIDO genérico, sin
+        diagnóstico: el escrito redactado/firmado de una vuelta de subsanación (#724)."""
+        from app.models.tareas import Tarea
+        from app.models.tipos_tareas import TipoTarea
+        from app.models.documentos import Documento
+        from app.models.documentos_tarea import DocumentoTarea
+        from app.models.tipos_documentos import TipoDocumento
+        elaborar = Tarea(tramite_id=tramite.id, tipo_tarea_id=self._tipo(TipoTarea, 'ELABORAR').id)
+        self.db.session.add(elaborar)
+        self.db.session.flush()
+        tipo_doc = TipoDocumento.query.first()
+        if tipo_doc is None:
+            pytest.skip('No hay tipos de documento en el catálogo de esta BD')
+        doc = Documento(
+            expediente_id=tramite.fase.solicitud.expediente_id,
+            tipo_doc_id=tipo_doc.id,
+            url=f'bddat://escritos/test/{elaborar.id}.odt',
+        )
+        self.db.session.add(doc)
+        self.db.session.flush()
+        self.db.session.add(DocumentoTarea(tarea_id=elaborar.id, documento_id=doc.id, rol='PRODUCIDO'))
+        self.db.session.flush()
+        return elaborar
 
 
 @pytest.fixture
