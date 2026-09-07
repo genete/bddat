@@ -25,6 +25,17 @@ Para decisiones de diseño, motivaciones y reglas del motor: ver documentos refe
 - Los anexos de ese registro no se vinculan a `ESPERAR_PLAZO`: entran al pool y los consume (0..N) el `ANALIZAR` siguiente, que es donde se incorporan al expediente.
 - Corolario estructural: todo `ESPERAR_PLAZO` que pueda recibir documentación de terceros exige un `ANALIZAR` posterior — propio, del trámite receptor hermano, o añadido tras él si es el último trámite de la fase. Esta exigencia se comprueba durante el desarrollo mediante repaso de fase a fase, sin crear issues a futuro, sino sobre la marcha.
 
+**Trámites con el receptor pendiente de formalizar** (detectados en el repaso de fase del 2026-08-07, deliberadamente sin issue: se corrigen en la fase en que toquen).
+
+| Fase | Trámite | Situación |
+|---|---|---|
+| `AAU_AAUS_INTEGRADA` | `DISCREPANCIA_INF_VINC` | sin trámite receptor definido en el catálogo |
+| `AAU_AAUS_INTEGRADA` | `RECEPCION_DICTAMEN` | receptor plausible, no formalizado |
+| `AAU_AAUS_INTEGRADA` | `RECEPCION_PROPUESTA_INF_VINC` | receptor plausible, no formalizado |
+| `AAU_AAUS_INTEGRADA` | `REMISION_RESULTADO_IP_CONSULTAS` | receptor plausible, no formalizado |
+| `FIGURA_AMBIENTAL_EXTERNA` | `SOLICITUD_FIGURA` | receptor plausible, no formalizado |
+| `CONSULTA_OPERADOR_SISTEMA` | `SOLICITUD_INFORME_OPERADOR` | está en el JSON pero sin poblar en BD (#450): al poblarlo, darle receptor con `ANALIZAR` |
+
 **Cambios v6.1 (ADR-010, #420):**
 - Los vínculos documentales de la tarea viven en `documentos_tarea` (N:M con campo `rol`), no en FK propias. Una tarea consume 0..N documentos y produce 0..1.
 
