@@ -17,6 +17,11 @@ class CertificadoFase(db.Model):
     REGLAS_EVALUADAS y VARIABLES_CTX:
         JSON inmutable — snapshot de AuditoriaResult en el momento de creación.
         No deben modificarse tras el commit inicial.
+        `db.JSON` a propósito, no `jsonb` (#802): son el acta de una auditoría
+        ya cerrada, no datos que se vayan a consultar por dentro — aquí el tipo
+        correcto es el que preserva el texto exacto de lo auditado (`jsonb`
+        reordena claves y elimina duplicados, y en un expediente administrativo
+        un acta que no reproduce literalmente lo auditado es un acta peor).
 
     RUTA_PDF:
         Se rellena tras la generación del PDF. NULL hasta entonces.

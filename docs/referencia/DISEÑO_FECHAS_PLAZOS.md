@@ -420,7 +420,7 @@ catalogo_plazos
 ├── tipo_elemento              ENUM(SOLICITUD, TAREA)  -- prefiltro SQL (#788)
 ├── camino                     VARCHAR(250)  -- patrón ESFTT con comodín ANY (#785)
 ├── campo_fecha                JSONB  -- señalador del DISPARO (ver formato abajo)
-├── campo_fecha_cumplimiento   JSON   -- señalador del CUMPLIMIENTO, opcional (#778)
+├── campo_fecha_cumplimiento   JSONB  -- señalador del CUMPLIMIENTO, opcional (#778)
 ├── suspende_plazo_solicitud   BOOLEAN  -- si este plazo suspende el de la solicitud (#778)
 ├── plazo_valor                INTEGER
 ├── plazo_unidad               ENUM(DIAS_HABILES, DIAS_NATURALES, MESES, ANOS)
@@ -442,9 +442,12 @@ catalogo_plazos
 > (test de ADR-037). `CheckConstraint` al nivel TAREA: el art. 22 suspende el
 > plazo de la solicitud, así que marcarla a ella sería suspenderse a sí misma.
 >
-> `campo_fecha_cumplimiento` se declara `JSON` y no `JSONB` como su gemela: se
-> lee entera y se compara en Python, sin operadores ni índices de `jsonb`, y el
-> resto del proyecto usa `db.JSON` por portabilidad a otros motores.
+> `campo_fecha_cumplimiento` se declara `JSONB`, igual que su gemela
+> `campo_fecha` (#802): nació como `db.JSON` por una portabilidad a otros
+> motores que no sostiene la decisión —ni `json` ni `jsonb` existen fuera de
+> PostgreSQL entre los motores considerados— y la asimetría entre dos columnas
+> con idéntica semántica tenía además una consecuencia práctica: `json` no
+> soporta el operador `=` en PostgreSQL, y `campo_fecha` ya se filtra así.
 
 #### Identificación por camino SFTT (#785)
 

@@ -50,14 +50,20 @@ class CatalogoPlazo(db.Model):
         camino, así que sin él ganaría siempre la de menor orden. Se omite cuando
         el documento de entrada es polimórfico por diseño — el justificante de
         CONSULTA_SEPARATA depende del canal (BANDEJA / NOTIFICA / POSTAL / SIR).
-    CAMPO campo_fecha_cumplimiento: JSON con el MISMO vocabulario cerrado que
+    CAMPO campo_fecha_cumplimiento: JSONB con el MISMO vocabulario cerrado que
         `campo_fecha`, apuntando al documento que acredita el cumplimiento
         (ADR-041 §D). Cada plazo se abre y se cierra en el mismo sitio, así que
         para una tarea es casi siempre `{'rol': 'PRODUCIDO'}` y para la solicitud
         `{'fk': 'documento_cierre_id'}`.
-        `db.JSON` y no `JSONB` como su gemela: la columna se lee entera y se
-        compara en Python, sin operadores ni índices propios de jsonb, y el resto
-        del proyecto usa `db.JSON` por portabilidad a otros motores.
+        `JSONB` igual que su gemela `campo_fecha` (#802): nació como `db.JSON`
+        en `778a_plazos_medida_unica.py` por una portabilidad que no sostiene la
+        decisión —ni `json` ni `jsonb` existen fuera de PostgreSQL entre los
+        motores considerados, y de sobrevenir esa migración el obstáculo real
+        serían las 29 columnas `boolean` y las decenas de migraciones con SQL
+        crudo de Postgres, no esta columna—. Dos columnas hermanas con idéntica
+        semántica y el mismo algoritmo no deben divergir de tipo por un
+        argumento que no aplica; `json` tampoco soporta el operador `=` en
+        PostgreSQL, y `campo_fecha` ya se filtra así en `788a`.
         NULL es un valor legítimo, no un hueco por rellenar: sin señalador el
         plazo nunca alcanza CUMPLIDO y sólo puede estar corriendo o vencido. Es
         el caso de TABLON_AYUNTAMIENTOS, donde el disparo y el único candidato a
@@ -108,7 +114,7 @@ class CatalogoPlazo(db.Model):
                 '{"rol":"CONSUMIDO|PRODUCIDO"[,"tipo_documento":"..."]} (nivel TAREA)',
     )
     campo_fecha_cumplimiento = db.Column(
-        db.JSON, nullable=True,
+        JSONB, nullable=True,
         comment='Referencia al Documento.fecha_administrativa que acredita el '
                 'cumplimiento: {"fk":"documento_cierre_id"} (nivel SOLICITUD) o '
                 '{"rol":"CONSUMIDO|PRODUCIDO"[,"tipo_documento":"..."]} (nivel TAREA). '

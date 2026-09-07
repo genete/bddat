@@ -283,7 +283,7 @@ No hay motor aparte desde #778 (ADR-041): una suspensión es el plazo de un terc
 
 ### 5.3 Configuración (`models/catalogo_plazos.py`)
 
-`CatalogoPlazo(tipo_elemento, camino, campo_fecha JSONB, campo_fecha_cumplimiento JSON, suspende_plazo_solicitud, plazo_valor, plazo_unidad, efecto_vencimiento_id, norma_origen, vigencia_desde, vigencia_hasta, activo, orden)`.
+`CatalogoPlazo(tipo_elemento, camino, campo_fecha JSONB, campo_fecha_cumplimiento JSONB, suspende_plazo_solicitud, plazo_valor, plazo_unidad, efecto_vencimiento_id, norma_origen, vigencia_desde, vigencia_hasta, activo, orden)`.
 
 Selección (#785): de las entradas activas del nivel, se descartan las cuyo `camino` no casa con el del elemento (`plazos.compilar_camino` + `operadores.camino_casa`, comodín `ANY`); de las que casan, la primera cuyas `CondicionPlazo` (AND) se cumplen. Ordenadas por `orden ASC, id ASC`.
 
