@@ -1570,7 +1570,9 @@ def patch_notas_tarea(expediente_id, tarea_id):
     tarea = _resolver_nodo(expediente, 'tarea', tarea_id)
 
     data = request.get_json(silent=True) or {}
-    tarea.notas = (data.get('notas') or '').strip() or None
+    # Ausente vs vacío (#834, #832): clave ausente conserva; presente (incluida
+    # cadena vacía o null) vacía a propósito.
+    tarea.notas = (leer_json(data, 'notas', tarea.notas) or '').strip() or None
     db.session.commit()
 
     return jsonify({'ok': True, 'notas': tarea.notas}), 200
@@ -2228,7 +2230,8 @@ def patch_notificar(expediente_id, tarea_id):
     notif.resultado = resultado
     notif.fecha_resultado = fecha_resultado
     notif.numero_intento = numero_intento
-    notif.observaciones = (data.get('observaciones') or '').strip() or None
+    # Ausente vs vacío (#834, #832): clave ausente conserva; presente vacía a propósito.
+    notif.observaciones = (leer_json(data, 'observaciones', notif.observaciones) or '').strip() or None
     db.session.commit()
 
     payload = {'ok': True, 'notificacion': _notificacion_json(notif)}

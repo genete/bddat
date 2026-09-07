@@ -28,6 +28,7 @@ from app.decorators import require_permiso
 from app.models.motor_reglas import CatalogoVariable, Norma
 from app.models.requisitos_documentales import CondicionRequisito, RequisitoDocumental
 from app.models.tipos_documentos import TipoDocumento
+from app.utils.formularios import AUSENTE, aplicar_fk, aplicar_texto, leer
 from app.utils.permisos import tiene_permiso
 
 bp = Blueprint(
@@ -86,25 +87,33 @@ def _rellenar_requisito(requisito) -> list[str]:
 
     Devuelve la lista de errores de validación (vacía si todo OK). No incluye
     las condiciones anidadas — ver _construir_condiciones.
+
+    Ausente vs vacío (#834, mismo criterio que #832): un campo ausente no se
+    toca. Alta (`crear`) y edición (`editar`) envían siempre el formulario
+    completo hoy, así que no cambia nada observable; lo que deja de poder
+    pasar es que una edición parcial futura vacíe u obligue a re-declarar
+    `tipo_documento_id`/`orden` en silencio.
     """
     errores = []
-    tipo_documento_id = request.form.get('tipo_documento_id') or None
-    if not tipo_documento_id:
+
+    tipo_documento_in = leer(request.form, 'tipo_documento_id')
+    if tipo_documento_in is not AUSENTE and not tipo_documento_in:
         errores.append('El tipo de documento es obligatorio.')
-
-    orden_raw = request.form.get('orden', '').strip()
-    orden = int(orden_raw) if orden_raw.isdigit() else 1
-
-    norma_id_raw = request.form.get('norma_id') or None
 
     if errores:
         return errores
 
-    requisito.tipo_documento_id = int(tipo_documento_id)
-    requisito.descripcion_legal = request.form.get('descripcion_legal', '').strip() or None
-    requisito.norma_id          = int(norma_id_raw) if norma_id_raw else None
-    requisito.articulo          = request.form.get('articulo', '').strip() or None
-    requisito.orden             = orden
+    if tipo_documento_in is not AUSENTE:
+        requisito.tipo_documento_id = int(tipo_documento_in)
+
+    aplicar_texto(request.form, 'descripcion_legal', requisito)
+    aplicar_fk(request.form, 'norma_id', requisito)
+    aplicar_texto(request.form, 'articulo', requisito)
+
+    orden_in = leer(request.form, 'orden')
+    if orden_in is not AUSENTE:
+        crudo = (orden_in or '').strip()
+        requisito.orden = int(crudo) if crudo.isdigit() else 1
     return []
 
 

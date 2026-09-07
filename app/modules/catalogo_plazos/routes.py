@@ -63,6 +63,7 @@ from app.models.tipos_tareas import TipoTarea
 from app.models.tipos_tramites import TipoTramite
 from app.models.tramites_tareas import TramiteTarea
 from app.models.tramites_tareas_documentos import TramiteTareaDocumento
+from app.utils.formularios import aplicar_texto
 from app.utils.permisos import tiene_permiso
 
 bp = Blueprint(
@@ -532,7 +533,9 @@ def _rellenar_catalogo_plazo(item) -> list[str]:
     item.plazo_valor = plazo_valor
     item.plazo_unidad = plazo_unidad
     item.efecto_vencimiento_id = efecto.id
-    item.norma_origen = request.form.get('norma_origen', '').strip() or None
+    # Ausente vs vacío (#834, #832): único campo opcional de verdad de esta
+    # función — el resto ya se reconstruye completo desde tipo_elemento arriba.
+    aplicar_texto(request.form, 'norma_origen', item)
     item.vigencia_desde = vigencia_desde
     item.vigencia_hasta = vigencia_hasta
     item.orden = orden

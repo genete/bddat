@@ -24,6 +24,7 @@ from app import db
 from app.decorators import require_permiso
 from app.models.items_tecnicos import CondicionItemTecnico, ItemTecnico
 from app.models.motor_reglas import CatalogoVariable, Norma
+from app.utils.formularios import AUSENTE, aplicar_fk, aplicar_texto, leer
 from app.utils.permisos import tiene_permiso
 
 bp = Blueprint(
@@ -74,24 +75,30 @@ def _rellenar_item(item) -> list[str]:
 
     Devuelve la lista de errores de validación (vacía si todo OK). No incluye
     las condiciones anidadas — ver _construir_condiciones.
+
+    Ausente vs vacío (#834, mismo criterio que #832): un campo ausente no se
+    toca. Alta y edición envían siempre el formulario completo hoy, así que no
+    cambia nada observable.
     """
     errores = []
-    descripcion = request.form.get('descripcion', '').strip()
-    if not descripcion:
+
+    descripcion_in = leer(request.form, 'descripcion')
+    if descripcion_in is not AUSENTE and not (descripcion_in or '').strip():
         errores.append('La descripción del ítem es obligatoria.')
-
-    orden_raw = request.form.get('orden', '').strip()
-    orden = int(orden_raw) if orden_raw.isdigit() else 1
-
-    norma_id_raw = request.form.get('norma_id') or None
 
     if errores:
         return errores
 
-    item.descripcion = descripcion
-    item.norma_id    = int(norma_id_raw) if norma_id_raw else None
-    item.articulo    = request.form.get('articulo', '').strip() or None
-    item.orden       = orden
+    if descripcion_in is not AUSENTE:
+        item.descripcion = descripcion_in.strip()
+
+    aplicar_fk(request.form, 'norma_id', item)
+    aplicar_texto(request.form, 'articulo', item)
+
+    orden_in = leer(request.form, 'orden')
+    if orden_in is not AUSENTE:
+        crudo = (orden_in or '').strip()
+        item.orden = int(crudo) if crudo.isdigit() else 1
     return []
 
 

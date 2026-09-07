@@ -41,6 +41,9 @@ from app.services.generador_escritos import (TIPOS_CONTENIDO,
                                              advertencias_plantilla,
                                              validar_plantilla)
 from app.services.plantilla_canonica_odt import leer_marca
+from app.utils.formularios import (
+    AUSENTE, aplicar_checkbox, aplicar_fk, aplicar_texto, form_completo, leer,
+)
 from app.utils.permisos import tiene_permiso
 
 # Formatos de plantilla admitidos, los mismos que tienen motor de render
@@ -208,43 +211,57 @@ def _rellenar_plantilla(plantilla: Plantilla) -> list[str]:
     Rellena los campos de una Plantilla desde request.form.
     Devuelve la lista de errores de validación (vacía si todo OK).
 
+    Ausente vs vacío (#834, mismo criterio que #832): un campo que no viaja en
+    la petición no se toca —una edición parcial legítima—; presente y vacío sí
+    valida/vacía. En el alta (`nueva()`) el formulario siempre viaja completo
+    (con `_form_completo`), así que el comportamiento no cambia ahí; lo que
+    cambia es que una edición parcial ya no puede vaciar en silencio lo que no
+    menciona.
+
     No flashea: el llamador decide cómo mostrarlos (flash en la página de alta,
     JSON en el inspector XHR — ADR-023 §5).
     """
     errores = []
-    codigo = request.form.get('codigo', '').strip().upper()
-    nombre = request.form.get('nombre', '').strip()
-    tipo_documento_id = request.form.get('tipo_documento_id') or None
 
-    if not codigo:
-        errores.append('El código es obligatorio.')
-    if not nombre:
+    codigo_in = leer(request.form, 'codigo')
+    if codigo_in is not AUSENTE:
+        codigo = (codigo_in or '').strip().upper()
+        if not codigo:
+            errores.append('El código es obligatorio.')
+        else:
+            # Unicidad del código (uq_plantillas_codigo), excluyendo la propia plantilla
+            q = Plantilla.query.filter(Plantilla.codigo == codigo)
+            if plantilla.id:
+                q = q.filter(Plantilla.id != plantilla.id)
+            if q.first():
+                errores.append(f'El código «{codigo}» ya está en uso por otra plantilla.')
+
+    nombre_in = leer(request.form, 'nombre')
+    if nombre_in is not AUSENTE and not (nombre_in or '').strip():
         errores.append('El nombre es obligatorio.')
-    if not tipo_documento_id:
-        errores.append('El tipo de documento es obligatorio.')
 
-    # Unicidad del código (uq_plantillas_codigo), excluyendo la propia plantilla en edición
-    if codigo:
-        q = Plantilla.query.filter(Plantilla.codigo == codigo)
-        if plantilla.id:
-            q = q.filter(Plantilla.id != plantilla.id)
-        if q.first():
-            errores.append(f'El código «{codigo}» ya está en uso por otra plantilla.')
+    tipo_documento_in = leer(request.form, 'tipo_documento_id')
+    if tipo_documento_in is not AUSENTE and not tipo_documento_in:
+        errores.append('El tipo de documento es obligatorio.')
 
     if errores:
         return errores
 
-    plantilla.codigo           = codigo
-    plantilla.nombre           = nombre
-    plantilla.descripcion      = request.form.get('descripcion', '').strip() or None
-    plantilla.variante         = request.form.get('variante', '').strip() or None
-    plantilla.tipo_documento_id   = int(tipo_documento_id)
-    plantilla.tipo_expediente_id  = int(request.form['tipo_expediente_id']) if request.form.get('tipo_expediente_id') else None
-    plantilla.tipo_solicitud_id   = int(request.form['tipo_solicitud_id'])  if request.form.get('tipo_solicitud_id')  else None
-    plantilla.tipo_fase_id        = int(request.form['tipo_fase_id'])       if request.form.get('tipo_fase_id')       else None
-    plantilla.tipo_tramite_id     = int(request.form['tipo_tramite_id'])    if request.form.get('tipo_tramite_id')    else None
-    plantilla.contexto_clase      = request.form.get('contexto_clase', '').strip() or None
-    plantilla.activo              = 'activo' in request.form
+    if codigo_in is not AUSENTE:
+        plantilla.codigo = codigo
+    if nombre_in is not AUSENTE:
+        plantilla.nombre = nombre_in.strip()
+    if tipo_documento_in is not AUSENTE:
+        plantilla.tipo_documento_id = int(tipo_documento_in)
+
+    aplicar_texto(request.form, 'descripcion', plantilla)
+    aplicar_texto(request.form, 'variante', plantilla)
+    aplicar_fk(request.form, 'tipo_expediente_id', plantilla)
+    aplicar_fk(request.form, 'tipo_solicitud_id', plantilla)
+    aplicar_fk(request.form, 'tipo_fase_id', plantilla)
+    aplicar_fk(request.form, 'tipo_tramite_id', plantilla)
+    aplicar_texto(request.form, 'contexto_clase', plantilla)
+    aplicar_checkbox(request.form, 'activo', plantilla, form_completo(request.form))
     return []
 
 

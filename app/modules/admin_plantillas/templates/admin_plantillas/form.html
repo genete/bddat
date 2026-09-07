@@ -40,6 +40,7 @@
 <div class="content-constrained py-4">
     <form id="form-plantilla" method="POST"
           action="{% if modo == 'editar' %}{{ url_for('admin_plantillas.editar', id=plantilla.id) }}{% else %}{{ url_for('admin_plantillas.nueva') }}{% endif %}">
+        <input type="hidden" name="_form_completo" value="1">
 
         <div class="row g-4">
 
