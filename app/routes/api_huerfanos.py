@@ -114,7 +114,7 @@ def listar_huerfanos():
             'tipo_doc':             doc.tipo_doc.nombre if doc.tipo_doc else None,
             'asunto':               doc.asunto,
             'nombre':               (doc.url or '').replace('\\', '/').rsplit('/', 1)[-1].split('?')[0].split('#')[0] or f'Documento {doc.id}',
-            **info_apertura_documento(expediente.id, doc),
+            **info_apertura_documento(expediente.id, doc, estricto=False),
         })
 
     return jsonify({

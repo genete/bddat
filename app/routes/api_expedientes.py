@@ -1243,7 +1243,7 @@ def pool_documentos(expediente_id):
         'tipo_doc': doc.tipo_doc.nombre if doc.tipo_doc else None,
         'tipo_doc_codigo': doc.tipo_doc.codigo if doc.tipo_doc else None,
         'fecha': doc.fecha_administrativa.strftime('%d/%m/%Y') if doc.fecha_administrativa else None,
-        **info_apertura_documento(expediente_id, doc),
+        **info_apertura_documento(expediente_id, doc, estricto=False),
     } for doc in docs]
     return jsonify({'documentos': result}), 200
 

@@ -111,7 +111,7 @@ def _nombre_doc(doc) -> str:
     return filename or f'Documento {doc.id}'
 
 
-def info_apertura_documento(exp_id: int, doc) -> dict:
+def info_apertura_documento(exp_id: int, doc, *, estricto: bool = True) -> dict:
     """Enlace de apertura + flags de acción de un documento — no depende del rol
     (aplica igual a un documento aún no enlazado a ninguna tarea, #609).
 
@@ -121,8 +121,13 @@ def info_apertura_documento(exp_id: int, doc) -> dict:
     - diagnosticos/<id>: sin representación física — se consulta en un modal
       (#629, ADR-023 §6, AppModalLarge). `abrir_en` 'modal': el consumidor debe
       abrir `enlace` con AppModalLarge.open() en vez de seguirlo como href.
-    - recurso bddat:// no contemplado: falla alto (NotImplementedError) en vez de
-      degradar en silencio a 404 — el hueco debe ser visible en cuanto se use.
+    - recurso bddat:// no contemplado: con `estricto=True` (por defecto) falla
+      alto (NotImplementedError) en vez de degradar en silencio a 404 — pedir la
+      apertura de un documento concreto que no se sabe abrir es un error real.
+      Con `estricto=False` la fila se degrada — sin acción de apertura, en vez
+      de tumbar el listado entero (#847): un único dato malo no puede llevarse
+      por delante las demás filas cuando se está pintando una tabla, no
+      resolviendo una petición de apertura.
     """
     url = doc.url or ''
     if url.startswith('bddat://'):
@@ -144,7 +149,15 @@ def info_apertura_documento(exp_id: int, doc) -> dict:
                 'puede_abrir_carpeta': False,
                 'abrir_en': 'modal',
             }
-        raise NotImplementedError(f'Apertura no definida para recurso bddat://: {recurso!r}')
+        if estricto:
+            raise NotImplementedError(f'Apertura no definida para recurso bddat://: {recurso!r}')
+        return {
+            'enlace': None,
+            'externo': False,
+            'puede_abrir': False,
+            'puede_abrir_carpeta': False,
+            'abrir_en': None,
+        }
     externo = url.startswith(('http://', 'https://'))
     return {
         'enlace': url_for('expedientes.pool_descargar_documento', id=exp_id, doc_id=doc.id),
