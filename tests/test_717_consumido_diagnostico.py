@@ -33,13 +33,6 @@ import io
 import pytest
 
 
-def _tipo(modelo, codigo):
-    fila = modelo.query.filter_by(codigo=codigo).first()
-    if fila is None:
-        pytest.skip(f'{modelo.__name__} {codigo!r} no está en el catálogo de esta BD')
-    return fila
-
-
 def _odt_bytes(texto: str) -> bytes:
     """.odt mínimo (zip con content.xml) cuyo texto es exactamente `texto`.
 
@@ -84,58 +77,23 @@ def _montar_cadena(resultado_anterior='desfavorable', codigo_tramite_anterior='A
     REQUERIMIENTO_SUBSANACION con ELABORAR (sin producido aún).
 
     Devuelve (tarea_analizar, tarea_elaborar, diagnostico).
+
+    Construye sobre el builder compartido `ArbolESFTT` (#752): antes duplicaba a mano
+    los mismos inserts de Fase/Tramite/Tarea/Documento que test_714 y test_724 tenían
+    cada uno por su lado.
     """
     from app import db
-    from app.models.solicitudes import Solicitud
-    from app.models.fases import Fase
-    from app.models.tramites import Tramite
-    from app.models.tareas import Tarea
-    from app.models.documentos import Documento
-    from app.models.documentos_tarea import DocumentoTarea
-    from app.models.diagnosticos import Diagnostico
-    from app.models.tipos_fases import TipoFase
-    from app.models.tipos_tramites import TipoTramite
-    from app.models.tipos_tareas import TipoTarea
-    from app.models.tipos_documentos import TipoDocumento
+    from tests.conftest import ArbolESFTT
+    arbol = ArbolESFTT(db)
 
-    solicitud = Solicitud.query.first()
-    if solicitud is None:
-        pytest.skip('No hay solicitudes en la BD de desarrollo')
+    fase = arbol.fase('ANALISIS_SOLICITUD')
 
-    tipo_analizar = _tipo(TipoTarea, 'ANALIZAR')
-    tipo_elaborar = _tipo(TipoTarea, 'ELABORAR')
-    tipo_diagnostico = _tipo(TipoDocumento, 'DIAGNOSTICO')
+    tramite_anterior = arbol.tramite(fase, codigo_tramite_anterior)
+    tarea_analizar = arbol.tarea(tramite_anterior, 'ANALIZAR')
+    diagnostico = arbol.diagnostico(tarea_analizar, resultado_anterior)
 
-    fase = Fase(solicitud_id=solicitud.id, tipo_fase_id=_tipo(TipoFase, 'ANALISIS_SOLICITUD').id)
-    db.session.add(fase)
-    db.session.flush()
-
-    tramite_anterior = Tramite(fase_id=fase.id,
-                               tipo_tramite_id=_tipo(TipoTramite, codigo_tramite_anterior).id)
-    db.session.add(tramite_anterior)
-    db.session.flush()
-
-    tarea_analizar = Tarea(tramite_id=tramite_anterior.id, tipo_tarea_id=tipo_analizar.id)
-    db.session.add(tarea_analizar)
-    db.session.flush()
-
-    doc_diag = Documento(expediente_id=solicitud.expediente_id, tipo_doc_id=tipo_diagnostico.id,
-                         url=f'bddat://diagnosticos/test-717-{tarea_analizar.id}')
-    db.session.add(doc_diag)
-    db.session.flush()
-    diagnostico = Diagnostico(documento_id=doc_diag.id, resultado=resultado_anterior, defectos=[])
-    db.session.add(diagnostico)
-    db.session.add(DocumentoTarea(tarea_id=tarea_analizar.id, documento_id=doc_diag.id, rol='PRODUCIDO'))
-    db.session.flush()
-
-    tramite_subsanacion = Tramite(fase_id=fase.id,
-                                  tipo_tramite_id=_tipo(TipoTramite, 'REQUERIMIENTO_SUBSANACION').id)
-    db.session.add(tramite_subsanacion)
-    db.session.flush()
-
-    tarea_elaborar = Tarea(tramite_id=tramite_subsanacion.id, tipo_tarea_id=tipo_elaborar.id)
-    db.session.add(tarea_elaborar)
-    db.session.flush()
+    tramite_subsanacion = arbol.tramite(fase, 'REQUERIMIENTO_SUBSANACION')
+    tarea_elaborar = arbol.tarea(tramite_subsanacion, 'ELABORAR')
 
     return tarea_analizar, tarea_elaborar, diagnostico
 
@@ -209,12 +167,10 @@ class TestHook717Derivacion:
         de la vuelta 1 (REQUERIMIENTO_SUBSANACION anterior), no el de
         ANÁLISIS_DOCUMENTAL — mismo criterio que ContextoSubsanacion."""
         from app import db
+        from tests.conftest import ArbolESFTT
         from app.services.mutaciones_arbol import _hook_717_elaborar_consumido_diagnostico
         from app.services.codigo_seguimiento import componer_codigo
-        from app.models.tramites import Tramite
-        from app.models.tareas import Tarea
-        from app.models.tipos_tramites import TipoTramite
-        from app.models.tipos_tareas import TipoTarea
+        arbol = ArbolESFTT(db)
 
         tarea_analizar_1, tarea_elaborar_1, _ = _montar_cadena('desfavorable')
         fase = tarea_elaborar_1.tramite.fase
@@ -222,30 +178,13 @@ class TestHook717Derivacion:
         # Vuelta 1 completa: el ELABORAR de la primera vuelta produce un
         # ANALIZAR posterior con diagnóstico desfavorable otra vez.
         tramite_1 = tarea_elaborar_1.tramite
-        tarea_analizar_2 = Tarea(tramite_id=tramite_1.id, tipo_tarea_id=_tipo(TipoTarea, 'ANALIZAR').id)
-        db.session.add(tarea_analizar_2)
-        db.session.flush()
-        from app.models.documentos import Documento
-        from app.models.documentos_tarea import DocumentoTarea
-        from app.models.diagnosticos import Diagnostico
-        from app.models.tipos_documentos import TipoDocumento
-        doc_diag_2 = Documento(expediente_id=fase.solicitud.expediente_id,
-                               tipo_doc_id=_tipo(TipoDocumento, 'DIAGNOSTICO').id,
-                               url=f'bddat://diagnosticos/test-717b-{tarea_analizar_2.id}')
-        db.session.add(doc_diag_2)
-        db.session.flush()
-        diagnostico_2 = Diagnostico(documento_id=doc_diag_2.id, resultado='desfavorable', defectos=[])
-        db.session.add(diagnostico_2)
-        db.session.add(DocumentoTarea(tarea_id=tarea_analizar_2.id, documento_id=doc_diag_2.id, rol='PRODUCIDO'))
-        db.session.flush()
+        tarea_analizar_2 = arbol.tarea(tramite_1, 'ANALIZAR')
+        diagnostico_2 = arbol.diagnostico(tarea_analizar_2, 'desfavorable')
+        doc_diag_2 = diagnostico_2.documento
 
         # Vuelta 2: nuevo REQUERIMIENTO_SUBSANACION con su propio ELABORAR.
-        tramite_2 = Tramite(fase_id=fase.id, tipo_tramite_id=_tipo(TipoTramite, 'REQUERIMIENTO_SUBSANACION').id)
-        db.session.add(tramite_2)
-        db.session.flush()
-        tarea_elaborar_2 = Tarea(tramite_id=tramite_2.id, tipo_tarea_id=_tipo(TipoTarea, 'ELABORAR').id)
-        db.session.add(tarea_elaborar_2)
-        db.session.flush()
+        tramite_2 = arbol.tramite(fase, 'REQUERIMIENTO_SUBSANACION')
+        tarea_elaborar_2 = arbol.tarea(tramite_2, 'ELABORAR')
 
         doc = _doc_producido_elaborar(tarea_elaborar_2, fs_tmp, componer_codigo(tarea_elaborar_2.id))
         _hook_717_elaborar_consumido_diagnostico(tarea_elaborar_2, doc.id)
