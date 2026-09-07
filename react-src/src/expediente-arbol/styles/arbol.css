@@ -7,16 +7,12 @@
  */
 
 /* ── Paleta semáforo (v0; iterar a JdA) ─────────────────────────────────────── */
-/* En `.react-flow` (no en el wrapper de isla) para que las variables cascadeen a los
- * nodos tanto sobre el shell de Flask como en el dev standalone (sin data-react-island). */
+/* Los 6 --sem-* son hogar canónico en app/static/css/v2-theme.css (:root, #559);
+ * este bundle los consume por cascada, no los redefine (#571). Sobre el shell de
+ * Flask siempre resuelven; en dev standalone (`npm run dev`, sin shell) los
+ * inyecta react-src/index.html como fallback — mismos valores, un solo sitio
+ * de verdad en el bundle final. */
 .react-flow {
-  --sem-rojo:     #cc3b3b;
-  --sem-naranja:  #e0892b;
-  --sem-amarillo: #e9c43d;
-  --sem-azul:     #3b78cc;
-  --sem-gris:     #9a9a9a;
-  --sem-verde:    #3a9b4e;
-
   --nodo-borde:   #b0b0b0;
   --nodo-bg:      #f4f4f4;
   --nodo-raya:    #cfcfcf;

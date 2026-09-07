@@ -11,6 +11,19 @@
   <style>
     html, body { margin: 0; height: 100%; }
     #root { width: 100vw; height: 100vh; }
+
+    /* Fallback SOLO dev standalone: sobre el shell de Flask estos tokens los
+     * define app/static/css/v2-theme.css (:root); aquí no hay shell, así que
+     * el árbol (arbol.css) los inyecta a mano para que var(--sem-…) resuelva.
+     * Mismos valores que v2-theme.css — mantener sincronizados (#571). */
+    :root {
+      --sem-rojo:     #cc3b3b;
+      --sem-naranja:  #e0892b;
+      --sem-amarillo: #e9c43d;
+      --sem-azul:     #3b78cc;
+      --sem-gris:     #9a9a9a;
+      --sem-verde:    #3a9b4e;
+    }
   </style>
 </head>
 <body>
