@@ -89,11 +89,21 @@ def listado_v2():
     columns = meta.get('listado_v2', {}).get('columns', [])
     puede_cambiar_resp = puede_cambiar_responsable()
     usuarios = usuarios_tramitadores() if puede_cambiar_resp else []
+    tipos_exp = [
+        {'v': str(t.id), 't': t.tipo}
+        for t in TipoExpediente.query.order_by(TipoExpediente.tipo).all()
+    ]
+    tipos_ia = [
+        {'v': str(t.id), 't': t.siglas}
+        for t in TipoIA.query.order_by(TipoIA.siglas).all()
+    ]
     return render_template(
         'expedientes/listado_v2.html',
         columns=columns,
         puede_cambiar_resp=puede_cambiar_resp,
         usuarios=usuarios,
+        tipos_exp=tipos_exp,
+        tipos_ia=tipos_ia,
     )
 
 
