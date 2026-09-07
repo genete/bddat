@@ -7,7 +7,7 @@ import { createRoot } from 'react-dom/client'
 //   <div data-react-island="<nombre>" {{ user_ctx_attrs() }}>...</div>
 // y la isla, al cargar su bundle, se auto-monta dentro de ese contenedor.
 // No expone globals ni requiere <script> inline en el template.
-export function mountIsland(nombre, Component) {
+export function mountIsland(nombre, Component, props = {}) {
   const el = document.querySelector(`[data-react-island="${nombre}"]`)
   if (!el) {
     // Isla cargada en una página sin su contenedor: no es un error fatal,
@@ -16,6 +16,6 @@ export function mountIsland(nombre, Component) {
     return
   }
   createRoot(el).render(
-    React.createElement(React.StrictMode, null, React.createElement(Component)),
+    React.createElement(React.StrictMode, null, React.createElement(Component, props)),
   )
 }

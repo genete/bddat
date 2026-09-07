@@ -37,6 +37,12 @@ export default defineConfig(({ command }) => {
     define: {
       'process.env.NODE_ENV': JSON.stringify('production'),
     },
+    // Sin esto, el import() dinámico (#563, primer uso en el proyecto) y el CSS
+    // que arrastra resuelven contra la raíz del dominio ('/chunk...js') en vez de
+    // '/static/js/react/chunk...js' — 404 en cuanto una isla carga un chunk async.
+    // Los <script>/<link> del entry no lo necesitan: react_bundle() (Jinja) ya
+    // construye esas URLs a mano con url_for('static', ...).
+    base: '/static/js/react/',
     build: {
       outDir:      resolve(__dirname, '../app/static/js/react'),
       emptyOutDir: true,
