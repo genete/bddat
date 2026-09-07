@@ -64,7 +64,9 @@ mountIsland('mi-isla', MiIsla)   // busca [data-react-island="mi-isla"] y monta 
 ```
 
 `mountIsland` no hace nada si no encuentra el contenedor: la misma isla puede coexistir
-con páginas que no la usan sin romperlas.
+con páginas que no la usan sin romperlas. Acepta un tercer parámetro opcional
+(`mountIsland('mi-isla', MiIsla, { propInicial: valor })`) para pasar props al montar —
+lo usa la carga diferida del palette (#563, ver más abajo) para arrancar ya abierto.
 
 ### 2. Registrar la entry en Vite
 
@@ -126,16 +128,45 @@ Diferencias frente a una isla por vista:
        data-nav='{{ palette_nav() | tojson }}'></div>
   {{ react_bundle('command-palette') }}
   ```
-- **Se carga en todas las páginas → mantener el bundle ligero.** Cada dependencia pesa en
-  cada carga; no es el sitio para librerías grandes.
+- **Se carga en todas las páginas → mantener el bundle ligero, o diferirlo.** Cada dependencia
+  pesa en cada carga; no es el sitio para librerías grandes sin más. El palette resuelve esto
+  con carga diferida (#563, ver abajo): lo que se carga en todas las páginas es un stub de
+  unas pocas líneas, no React ni sus dependencias.
 - **Datos del shell por data-attribute.** Además de `user_ctx_attrs()`, una isla global puede
   recibir datos calculados en servidor. El palette recibe `data-nav` con los atajos "IR A",
   derivados de `palette_nav()` (`app/utils/react_islas.py`) — **misma fuente que el sidebar**
   (`ModuleRegistry`), no una lista hardcodeada: un módulo nuevo aparece solo y una ruta
   inexistente nunca se enlaza.
-- **Atajos de teclado globales.** El listener (`keydown` en `document`) vive en la propia isla
-  (`useEffect`), no en un `<script>` del template. Si el atajo coincide con uno del shell
-  (`app-shell.js`), el shell cede: Ctrl+K lo gobierna la isla.
+- **Atajos de teclado globales.** Antes de la primera activación los captura el stub en JS
+  plano (ver abajo); montado el componente real, sus propios `useEffect` toman el relevo. Si
+  el atajo coincide con uno del shell (`app-shell.js`), el shell cede: Ctrl+K lo gobierna la isla.
+
+### Carga diferida de una isla global pesada (#563)
+
+Si la isla global arrastra una librería grande (el palette: `cmdk` + Radix, ~46 KB gzip) pero
+solo se activa bajo demanda (Ctrl+K), no hace falta pagar ese peso en cada carga de página.
+Patrón — ver `react-src/src/command-palette/` como referencia:
+
+1. **El entry (`index.jsx`) es un stub sin React ni la librería pesada**: solo engancha los
+   listeners planos que detectan la activación (`keydown` global, clic en el disparador del
+   topbar).
+2. **A la primera activación, `import()` dinámico** del componente real (y de `mountIsland.js`,
+   que también arrastra React) y se monta ya con el estado que corresponda al gesto que lo
+   disparó (p. ej. `abrirInicial: true`) — el usuario no pierde el gesto que activó la carga.
+   Vite separa ese `import()` en su propio chunk: no se descarga hasta que se llama.
+3. **El stub retira sus propios listeners al activar**, antes de que se resuelva el import: a
+   partir de ahí el componente montado gobierna con los suyos (mismo `useEffect` que ya tenía).
+4. **El CSS de la isla se importa dentro del componente pesado, no en el stub** (`import
+   './styles/palette.css'` en `CommandPalette.jsx`), para que Vite lo asocie al chunk diferido
+   y no al entry.
+5. **`vite.config.js` necesita `base: '/static/js/react/'`** en el build. Sin ella, el código
+   que Vite genera para resolver el `import()` dinámico (y el CSS que arrastra) construye URLs
+   contra la raíz del dominio en vez de `/static/js/react/`, y el chunk da 404 — un límite que
+   solo se nota en cuanto una isla usa `import()` dinámico por primera vez; los `<script>`/
+   `<link>` estáticos no lo necesitan porque `react_bundle()` (Jinja) ya construye esas URLs
+   a mano con `url_for('static', ...)`.
+6. **`mountIsland(nombre, Component, props)` acepta props** para pasarle al componente montado
+   el estado inicial derivado del gesto de activación (tercer parámetro opcional).
 
 ---
 

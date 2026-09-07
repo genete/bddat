@@ -14,6 +14,7 @@
 import { useState, useEffect } from 'react'
 import { Command } from 'cmdk'
 import { api } from '../shared/api.js'
+import './styles/palette.css'
 
 const RECENTS_KEY = 'bddat.palette.recientes'
 
@@ -74,8 +75,11 @@ function focoEsEditable() {
   return tag === 'INPUT' || tag === 'TEXTAREA' || el.isContentEditable
 }
 
-export default function CommandPalette() {
-  const [open, setOpen] = useState(false)
+export default function CommandPalette({ abrirInicial = false }) {
+  // abrirInicial (#563): el stub del entry (index.jsx) ya consumió el gesto
+  // (Ctrl+K/"/"/clic en el buscador) que disparó la carga diferida de este
+  // componente — se monta directamente abierto para no perder ese primer gesto.
+  const [open, setOpen] = useState(abrirInicial)
   const [query, setQuery] = useState('')
   // resultados: mapa clave→array (p. ej. {expedientes: [...], plantillas: [...]}).
   const [resultados, setResultados] = useState({})

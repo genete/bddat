@@ -3,90 +3,115 @@
     "file": "asset.index.BZV40eAE.css",
     "src": "_asset.index.BZV40eAE.css"
   },
-  "_chunk.api.DtbDZOzf.js": {
-    "file": "chunk.api.DtbDZOzf.js",
+  "_chunk.api.CSMBFs-3.js": {
+    "file": "chunk.api.CSMBFs-3.js",
     "name": "api",
     "imports": [
-      "_chunk.toast.mBx_XGmh.js"
+      "_chunk.toast.DQdoD88n.js"
     ]
   },
-  "_chunk.index.Blwhwh0b.js": {
-    "file": "chunk.index.Blwhwh0b.js",
+  "_chunk.index.DV1b5sxP.js": {
+    "file": "chunk.index.DV1b5sxP.js",
     "name": "index",
     "imports": [
-      "_chunk.toast.mBx_XGmh.js",
+      "_chunk.index.gLCVCLcX.js"
+    ]
+  },
+  "_chunk.index.gLCVCLcX.js": {
+    "file": "chunk.index.gLCVCLcX.js",
+    "name": "index"
+  },
+  "_chunk.index.kUOqR8Pq.js": {
+    "file": "chunk.index.kUOqR8Pq.js",
+    "name": "index",
+    "imports": [
+      "_chunk.toast.DQdoD88n.js",
+      "_chunk.index.gLCVCLcX.js",
       "_chunk.value.BGBiTkF3.js",
-      "_chunk.index.DJHfLAKz.js"
+      "_chunk.index.DV1b5sxP.js"
     ],
     "css": [
       "asset.index.BZV40eAE.css"
     ]
   },
-  "_chunk.index.DJHfLAKz.js": {
-    "file": "chunk.index.DJHfLAKz.js",
-    "name": "index",
+  "_chunk.toast.DQdoD88n.js": {
+    "file": "chunk.toast.DQdoD88n.js",
+    "name": "toast",
     "imports": [
-      "_chunk.toast.mBx_XGmh.js"
+      "_chunk.index.gLCVCLcX.js"
     ]
-  },
-  "_chunk.toast.mBx_XGmh.js": {
-    "file": "chunk.toast.mBx_XGmh.js",
-    "name": "toast"
   },
   "_chunk.value.BGBiTkF3.js": {
     "file": "chunk.value.BGBiTkF3.js",
     "name": "value"
   },
+  "src/command-palette/CommandPalette.jsx": {
+    "file": "chunk.CommandPalette.BtJRLG4p.js",
+    "name": "CommandPalette",
+    "src": "src/command-palette/CommandPalette.jsx",
+    "isDynamicEntry": true,
+    "imports": [
+      "_chunk.toast.DQdoD88n.js",
+      "_chunk.index.gLCVCLcX.js",
+      "_chunk.index.DV1b5sxP.js",
+      "_chunk.api.CSMBFs-3.js"
+    ],
+    "css": [
+      "asset.CommandPalette.Ce9U0oTV.css"
+    ]
+  },
   "src/command-palette/index.jsx": {
-    "file": "bundle.command-palette.Cnpvnt_H.js",
+    "file": "bundle.command-palette.BW4en-UH.js",
     "name": "command-palette",
     "src": "src/command-palette/index.jsx",
     "isEntry": true,
-    "imports": [
-      "_chunk.toast.mBx_XGmh.js",
-      "_chunk.index.DJHfLAKz.js",
-      "_chunk.api.DtbDZOzf.js"
-    ],
-    "css": [
-      "asset.command-palette.Ce9U0oTV.css"
+    "dynamicImports": [
+      "src/shared/mountIsland.js",
+      "src/command-palette/CommandPalette.jsx"
     ]
   },
   "src/diagrama-esftt/index.jsx": {
-    "file": "bundle.diagrama-esftt.CK7BEMRE.js",
+    "file": "bundle.diagrama-esftt.dRq-a2-W.js",
     "name": "diagrama-esftt",
     "src": "src/diagrama-esftt/index.jsx",
     "isEntry": true,
     "imports": [
-      "_chunk.toast.mBx_XGmh.js",
-      "_chunk.index.Blwhwh0b.js",
+      "src/shared/mountIsland.js",
+      "_chunk.toast.DQdoD88n.js",
+      "_chunk.index.kUOqR8Pq.js",
+      "_chunk.index.gLCVCLcX.js",
       "_chunk.value.BGBiTkF3.js",
-      "_chunk.index.DJHfLAKz.js"
+      "_chunk.index.DV1b5sxP.js"
     ],
     "css": [
       "asset.diagrama-esftt.REmY7xCc.css"
     ]
   },
   "src/estadisticas/index.jsx": {
-    "file": "bundle.estadisticas.Lmsr9gl_.js",
+    "file": "bundle.estadisticas.Dk_T5Ms1.js",
     "name": "estadisticas",
     "src": "src/estadisticas/index.jsx",
     "isEntry": true,
     "imports": [
-      "_chunk.toast.mBx_XGmh.js",
-      "_chunk.api.DtbDZOzf.js",
+      "src/shared/mountIsland.js",
+      "_chunk.toast.DQdoD88n.js",
+      "_chunk.index.gLCVCLcX.js",
+      "_chunk.api.CSMBFs-3.js",
       "_chunk.value.BGBiTkF3.js"
     ]
   },
   "src/expediente-arbol/index.jsx": {
-    "file": "bundle.expediente-arbol.dwIV9GtP.js",
+    "file": "bundle.expediente-arbol.CVMeRw5b.js",
     "name": "expediente-arbol",
     "src": "src/expediente-arbol/index.jsx",
     "isEntry": true,
     "imports": [
-      "_chunk.toast.mBx_XGmh.js",
-      "_chunk.index.DJHfLAKz.js",
-      "_chunk.api.DtbDZOzf.js",
-      "_chunk.index.Blwhwh0b.js",
+      "src/shared/mountIsland.js",
+      "_chunk.toast.DQdoD88n.js",
+      "_chunk.index.gLCVCLcX.js",
+      "_chunk.index.DV1b5sxP.js",
+      "_chunk.api.CSMBFs-3.js",
+      "_chunk.index.kUOqR8Pq.js",
       "_chunk.value.BGBiTkF3.js"
     ],
     "css": [
@@ -94,14 +119,25 @@
     ]
   },
   "src/mi-trabajo/index.jsx": {
-    "file": "bundle.mi-trabajo.D2hApKsm.js",
+    "file": "bundle.mi-trabajo.CcZzcuXD.js",
     "name": "mi-trabajo",
     "src": "src/mi-trabajo/index.jsx",
     "isEntry": true,
     "imports": [
-      "_chunk.toast.mBx_XGmh.js",
-      "_chunk.index.DJHfLAKz.js",
-      "_chunk.api.DtbDZOzf.js"
+      "src/shared/mountIsland.js",
+      "_chunk.toast.DQdoD88n.js",
+      "_chunk.index.gLCVCLcX.js",
+      "_chunk.index.DV1b5sxP.js",
+      "_chunk.api.CSMBFs-3.js"
+    ]
+  },
+  "src/shared/mountIsland.js": {
+    "file": "chunk.mountIsland.oXgCjSSi.js",
+    "name": "mountIsland",
+    "src": "src/shared/mountIsland.js",
+    "isDynamicEntry": true,
+    "imports": [
+      "_chunk.index.gLCVCLcX.js"
     ]
   }
 }
