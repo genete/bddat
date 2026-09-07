@@ -200,10 +200,7 @@
         field.type = field.type === 'password' ? 'text' : 'password';
     }
 
-    // Tooltips del modal
-    document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function (el) {
-        new bootstrap.Tooltip(el);
-    });
+    // Tooltips del modal: inicialización centralizada en base_app.html (#240).
 
     {% if show_modal %}
     document.addEventListener('DOMContentLoaded', function() {

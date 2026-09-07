@@ -738,9 +738,7 @@
   // INIT
   // ================================================================
   document.addEventListener('DOMContentLoaded', function () {
-    document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function (el) {
-      new bootstrap.Tooltip(el);
-    });
+    // Tooltips: inicialización centralizada en base_app.html (#240).
 
     // Filtro client-side (texto + extensión + tipo + prioridad)
     function aplicar_filtro() {
