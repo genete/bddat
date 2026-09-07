@@ -146,7 +146,39 @@
   <script src="{{ url_for('static', filename='js/mensajes-badge.js') }}"></script>
 
   <script>
+    // Tooltips Bootstrap — inicialización centralizada (#240).
+    //
+    // El guard getInstance() la hace idempotente: entrada_fecha.js sigue creando
+    // su propio bootstrap.Tooltip({ trigger: 'hover' }) sobre `.ef-input` porque
+    // necesita guardar la referencia para destruirla al limpiar el campo — esta
+    // función, al pasar después, ve la instancia ya creada y no la toca.
+    function initTooltips(root) {
+      var scope = root || document;
+      var elementos = Array.prototype.slice.call(scope.querySelectorAll('[data-bs-toggle="tooltip"]'));
+      // querySelectorAll solo busca DESCENDIENTES: si el nodo insertado es él
+      // mismo el disparador (no un contenedor que lo envuelve), añadirlo aparte.
+      if (scope.nodeType === 1 && scope.matches && scope.matches('[data-bs-toggle="tooltip"]')) {
+        elementos.push(scope);
+      }
+      elementos.forEach(function (el) {
+        if (!bootstrap.Tooltip.getInstance(el)) new bootstrap.Tooltip(el);
+      });
+    }
+    window.initTooltips = initTooltips;
+
     document.addEventListener('DOMContentLoaded', function () {
+      initTooltips();
+      // Contenido inyectado después de la carga (fragmentos del inspector, tabs,
+      // filas de scroll infinito, modales…) ya no necesita reinicializar tooltips
+      // a mano: este observer los cubre en cuanto entran en el DOM.
+      new MutationObserver(function (mutations) {
+        mutations.forEach(function (m) {
+          m.addedNodes.forEach(function (node) {
+            if (node.nodeType === 1) initTooltips(node);
+          });
+        });
+      }).observe(document.body, { childList: true, subtree: true });
+
       // Auto-inicializar toasts (#44) y capturar al DockBuffer los flash messages de Jinja
       [].slice.call(document.querySelectorAll('.toast')).forEach(function (toastEl) {
         // Capturar al DockBuffer antes de mostrar (flash messages de Jinja)
@@ -167,10 +199,6 @@
           if (!e.target.closest('.btn-close')) { t.hide(); }
         });
       });
-      // Tooltips Bootstrap
-      [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
-        .forEach(function (el) { new bootstrap.Tooltip(el); });
-
       // Capturar cierre del banner al DockBuffer (#506 / #512)
       var banner = document.getElementById('js-alert-banner');
       if (banner && window.DockBuffer) {

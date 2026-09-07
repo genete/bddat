@@ -309,10 +309,7 @@
 {{ super() }}
 <script>
 (function () {
-    // Inicializar tooltips (siglas bloqueadas)
-    document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
-        new bootstrap.Tooltip(el);
-    });
+    // Tooltips (siglas bloqueadas): inicialización centralizada en base_app.html (#240).
 
     const btnEditar    = document.getElementById('btn-editar-perfil');
     const barraVer     = document.getElementById('barra-acciones-ver');
