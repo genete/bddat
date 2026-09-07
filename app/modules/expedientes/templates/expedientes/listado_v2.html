@@ -61,18 +61,15 @@
         { v: 'borrador',    t: 'Sin solicitudes' }
     ], { label: 'Estado', name: 'estado' });
 
-    // Filtros de tipo expediente e IA se rellenan dinámicamente tras cargar la API
-    fetch('/api/tipos-expedientes-opts').catch(() => {});  // noop; opts se pasan como data
+    new SelectorFiltro('#sf-tipo-exp', {{ tipos_exp | tojson }}, {
+        label: 'Tipo expediente',
+        name: 'tipo_expediente_id'
+    });
 
-    // Opciones IA — cargadas desde API
-    fetch('/api/tipos-ia-opts')
-        .then(r => r.ok ? r.json() : null)
-        .catch(() => null)
-        .then(opts => {
-            if (opts && opts.length) {
-                new SelectorFiltro('#sf-ia', opts, { label: 'IA', name: 'ia_id' });
-            }
-        });
+    new SelectorFiltro('#sf-ia', {{ tipos_ia | tojson }}, {
+        label: 'IA',
+        name: 'ia_id'
+    });
 
     // Selector de municipio (búsqueda por provincia → municipio → añade chip al filtro)
     (function () {
