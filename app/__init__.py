@@ -60,6 +60,10 @@ def create_app(config_name='development'):
     with app.app_context():
         from app.checks.catalogo_requerido import validar_catalogo
         validar_catalogo()
+        # Consistencia catalogo_variables ↔ Variable Registry, dirección
+        # inversa de #347 (#587)
+        from app.checks.registro_variables import validar_registro_variables
+        validar_registro_variables()
 
     # Configuración de Flask-Login
     login_manager.login_view = 'auth.login'
