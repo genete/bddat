@@ -1,6 +1,6 @@
 # ADR-021 — Operaciones externas: firma en BandeJA y notificación en Notifica-PNT
 
-**Estado:** Adoptada — sujeta a refinamiento durante implementación
+**Estado:** Adoptada — sujeta a refinamiento durante implementación · **implementación aparcada** (nota de foco trasladada desde `CONTEXTO_ACTUAL.md`, 2026-09-07)
 **Fecha:** 2026-06-04
 **Issue:** pendiente
 

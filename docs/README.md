@@ -16,6 +16,16 @@ Documentos operativos estables. Leer cuando se trabaja en ese área.
 - [GUIA_GENERAL.md](guias/GUIA_GENERAL.md) — arquitectura general y lógica de negocio
 - [GUIA_ROLES.md](guias/GUIA_ROLES.md) — roles y permisos
 
+## diseño/
+Documentos vivos: se actualizan a medida que avanza el trabajo, no se congelan.
+
+- [MATRIZ_COBERTURA_BDDAT.md](diseño/MATRIZ_COBERTURA_BDDAT.md) — panorama de cobertura por necesidad; fuente de qué falta y dónde mirar para elegir el próximo foco (ADR-031)
+- [DETALLE_NECESIDADES_BDDAT.md](diseño/DETALLE_NECESIDADES_BDDAT.md) — catálogo de necesidades: qué es cada una y quién la necesita
+- [DECISIONES_UI.md](diseño/DECISIONES_UI.md) — estado del revamping de interfaz
+- [INVENTARIO_BACKEND.md](diseño/INVENTARIO_BACKEND.md) — inventario de modelos, servicios y rutas
+- `PRE-ADR-*.md` — decisiones en borrador, todavía sin ADR (supervisor, workbench de listados, navegación administrativa, matriz de cobertura rol/motor)
+- `ANALISIS_CRITICO.md`, `AUDITORIA_UI.md`, `ESTUDIO_USUARIO.md` — análisis de partida del revamping de interfaz
+
 ## referencia/
 Consultar cuando se trabaja ese subsistema. No cargar por defecto.
 
