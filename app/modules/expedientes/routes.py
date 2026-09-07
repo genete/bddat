@@ -556,7 +556,7 @@ def pool_documentos(id):
             'extension':       extension,
             'es_url_externa':  es_url_externa,
             'es_referenciado': _documento_es_referenciado(doc),
-            'apertura':        info_apertura_documento(id, doc),
+            'apertura':        info_apertura_documento(id, doc, estricto=False),
         })
 
     tipos_doc = TipoDocumento.query.order_by(TipoDocumento.nombre).all()

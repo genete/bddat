@@ -292,7 +292,13 @@
                  onchange="on_check_doc(this, {{ doc.id }})">
         </td>
         <td>
-          {% if item.apertura.abrir_en == 'modal' %}
+          {% if not item.apertura.puede_abrir %}
+          <span class="fw-semibold text-secondary"
+                title="Recurso no reconocido: {{ doc.url }}"
+                data-bs-toggle="tooltip" data-bs-placement="top">
+            <i class="fas fa-triangle-exclamation fa-xs me-1"></i>{{ item.nombre_display }}
+          </span>
+          {% elif item.apertura.abrir_en == 'modal' %}
           <button type="button" class="btn btn-link p-0 fw-semibold text-start"
                   data-modal-large-url="{{ item.apertura.enlace }}"
                   data-modal-large-title="{{ item.nombre_display }}">
