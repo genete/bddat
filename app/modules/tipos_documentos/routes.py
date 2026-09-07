@@ -30,6 +30,7 @@ from app import db
 from app.checks.catalogo_requerido import REGISTROS_REQUERIDOS
 from app.decorators import require_permiso
 from app.models.tipos_documentos import TipoDocumento
+from app.utils.formularios import aplicar_texto
 from app.utils.permisos import tiene_permiso
 
 bp = Blueprint(
@@ -85,7 +86,8 @@ def _rellenar_tipo(tipo, es_alta):
         return errores
 
     tipo.nombre = nombre
-    tipo.descripcion = request.form.get('descripcion', '').strip() or None
+    # Ausente vs vacío (#834, #832): único campo opcional de verdad.
+    aplicar_texto(request.form, 'descripcion', tipo)
     tipo.origen = origen
     return []
 

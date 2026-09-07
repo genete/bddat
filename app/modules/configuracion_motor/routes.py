@@ -63,6 +63,7 @@ from app.models.tipos_solicitudes import TipoSolicitud
 from app.models.tipos_tramites import TipoTramite
 from app.services import bitacora as bitacora_svc
 from app.services.motor_modo_global import CLAVE_MODO
+from app.utils.formularios import aplicar_texto
 from app.utils.permisos import tiene_permiso
 
 bp = Blueprint(
@@ -387,10 +388,11 @@ def _rellenar_regla(item: ReglaMotor) -> list[str]:
     item.efecto = efecto
     item.sujeto = sujeto
     item.norma_id = norma.id if norma else None
-    item.articulo = (request.form.get('articulo') or '').strip() or None
-    item.apartado = (request.form.get('apartado') or '').strip() or None
+    # Ausente vs vacío (#834, #832): campos opcionales de verdad.
+    aplicar_texto(request.form, 'articulo', item)
+    aplicar_texto(request.form, 'apartado', item)
     item.prioridad = prioridad
-    item.descripcion = (request.form.get('descripcion') or '').strip() or None
+    aplicar_texto(request.form, 'descripcion', item)
     return []
 
 
@@ -407,8 +409,9 @@ def _rellenar_excepcion(item: ExcepcionMotor) -> list[str]:
         return errores
 
     item.norma_id = norma.id if norma else None
-    item.articulo = (request.form.get('articulo') or '').strip() or None
-    item.apartado = (request.form.get('apartado') or '').strip() or None
+    # Ausente vs vacío (#834, #832): campos opcionales de verdad.
+    aplicar_texto(request.form, 'articulo', item)
+    aplicar_texto(request.form, 'apartado', item)
     return []
 
 

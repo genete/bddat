@@ -14,6 +14,7 @@
 
 <form data-inspector-form class="form-plantilla-editar"
       data-action="{{ url_for('admin_plantillas.editar', id=plantilla.id) }}">
+<input type="hidden" name="_form_completo" value="1">
 
 <div id="inspector-form-errors" class="alert alert-danger py-2 mb-3 small" style="display:none;"></div>
 

@@ -111,11 +111,41 @@ def test_plantilla_editar_get_redirige(usuario_supervisor, primera_plantilla_id)
     assert f'sel={primera_plantilla_id}' in r.location
 
 
-def test_plantilla_editar_xhr_error(usuario_supervisor, primera_plantilla_id):
-    """POST editar con XHR y form vacío → JSON {ok: false, errors}."""
+def test_plantilla_editar_xhr_vacio_no_toca_nada(usuario_supervisor, primera_plantilla_id, app):
+    """POST editar con XHR y cuerpo vacío → ok:true, sin tocar nada (#834).
+
+    Ausente vs vacío: un cuerpo que no menciona ningún campo no es "vaciar todo",
+    es una edición parcial que no pide ningún cambio. Antes de #834 esto vaciaba
+    código/nombre/tipo_documento_id y fallaba con "obligatorio" — justo el
+    defecto que #832 ya había corregido en otras rutas.
+    """
+    with app.app_context():
+        from app.models.plantillas import Plantilla
+        antes = Plantilla.query.get(primera_plantilla_id)
+        codigo_antes, nombre_antes = antes.codigo, antes.nombre
+
     r = usuario_supervisor.post(
         f'/plantillas/{primera_plantilla_id}/editar',
         data={},
+        headers={'X-Requested-With': 'XMLHttpRequest'},
+    )
+    assert r.status_code == 200
+    assert r.content_type == 'application/json'
+    body = json.loads(r.data)
+    assert body['ok'] is True
+
+    with app.app_context():
+        from app.models.plantillas import Plantilla
+        despues = Plantilla.query.get(primera_plantilla_id)
+        assert despues.codigo == codigo_antes
+        assert despues.nombre == nombre_antes
+
+
+def test_plantilla_editar_xhr_codigo_presente_vacio_error(usuario_supervisor, primera_plantilla_id):
+    """POST editar con XHR y `codigo` presente pero vacío → error (obligatorio, no NULL)."""
+    r = usuario_supervisor.post(
+        f'/plantillas/{primera_plantilla_id}/editar',
+        data={'codigo': ''},
         headers={'X-Requested-With': 'XMLHttpRequest'},
     )
     assert r.status_code == 200

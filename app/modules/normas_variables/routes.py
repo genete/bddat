@@ -43,6 +43,7 @@ from app import db
 from app.decorators import require_permiso
 from app.models.motor_reglas import CatalogoVariable, Norma
 from app.services.variables import get_registry
+from app.utils.formularios import aplicar_texto
 from app.utils.permisos import tiene_permiso
 
 bp = Blueprint(
@@ -93,7 +94,8 @@ def _rellenar_norma(norma, es_alta):
         return errores
 
     norma.titulo = titulo
-    norma.url_eli = request.form.get('url_eli', '').strip() or None
+    # Ausente vs vacío (#834, #832): único campo opcional de verdad.
+    aplicar_texto(request.form, 'url_eli', norma)
     return []
 
 

@@ -44,18 +44,13 @@ from scripts.auditar_escrituras_parciales import recopilar
 #
 # NO añadir entradas aquí para hacer pasar el test. Si una ruta nueva aparece en
 # rojo, el arreglo es `app/utils/formularios.py`, no el manifiesto.
+#
+# `_plantilla_form_provisional` se queda a propósito (#834): no escribe en una
+# fila persistida, construye una `Plantilla()` en memoria solo para repintar el
+# formulario de alta tras un error de validación — no hay estado previo que un
+# campo ausente pueda corromper.
 DEUDA_CONOCIDA_834 = {
-    ('app/modules/admin_plantillas/routes.py', '_rellenar_plantilla'),
     ('app/modules/admin_plantillas/routes.py', '_plantilla_form_provisional'),
-    ('app/modules/admin_requisitos/routes.py', '_rellenar_requisito'),
-    ('app/modules/catalogo_plazos/routes.py', '_rellenar_catalogo_plazo'),
-    ('app/modules/configuracion_motor/routes.py', '_rellenar_regla'),
-    ('app/modules/configuracion_motor/routes.py', '_rellenar_excepcion'),
-    ('app/modules/items_tecnicos/routes.py', '_rellenar_item'),
-    ('app/modules/normas_variables/routes.py', '_rellenar_norma'),
-    ('app/modules/tipos_documentos/routes.py', '_rellenar_tipo'),
-    ('app/routes/api_expedientes.py', 'patch_notas_tarea'),
-    ('app/routes/api_expedientes.py', 'patch_notificar'),
 }
 
 _AYUDA = (
