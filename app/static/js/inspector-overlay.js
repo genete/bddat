@@ -176,8 +176,15 @@
       })
       .catch(function () {
         if (_selId !== selId) return;
-        var b = getBody();
-        if (b) b.innerHTML = '<div class="p-3 text-danger small">No se pudo cargar el formulario.</div>';
+        // El fragmento de edición no llegó (403/404/500, #550): no dejar el
+        // inspector bloqueado en modo edición sin salida — volver a lectura,
+        // igual que "Cancelar".
+        setLocked(false);
+        _formDirty = false;
+        _restoreReadFragment();
+        if (window.mostrar_toast) {
+          window.mostrar_toast('danger', 'No se pudo abrir el formulario de edición.');
+        }
       });
   }
 
