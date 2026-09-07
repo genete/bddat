@@ -35,6 +35,11 @@ invariante de precedencia de #823 abrirla con la fase anterior sin cerrar está 
 | `DIAS_ESCENARIO` | 45 | Días naturales que dura el escenario completo. Dos vueltas de requerimiento son unos 20; el resto es holgura para tramos con muchos festivos |
 | `MARGEN_RESPUESTA_HABILES` | 3 | Días hábiles antes del vencimiento **real** en que responde el titular. El margen es lo único fijo: la fecha sale del plazo que diga el catálogo, no de un número escrito a mano |
 
+Al terminar **deja fijado el reloj de desarrollo** en la última fecha de su escenario — al
+revés que `CONSULTAS_VARIOS_ESTADOS`, que lo borra. Es deliberado: el escenario se lee desde
+su propio presente. El síntoma de haberlo olvidado es que la aplicación no deja fechar en el
+presente; se comprueba y se deshace con `flask reloj show` / `flask reloj clear`.
+
 ```bash
 venv/Scripts/python.exe scripts/expedientes_dummy/analisis_doc_dos_vueltas.py
 ```
