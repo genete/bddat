@@ -13,6 +13,23 @@
 
 1. **El expediente-tipo del modificado de proyecto**, que es el que falta para trabajar la segunda ronda —de consultas y de información pública— y el que obliga a decidir cómo se modela: una sola fase `ANALISIS_SOLICITUD` con varios `ANALISIS_DOCUMENTAL`, o varias fases. Esa decisión es **#819** (asociar consultas e IP al conjunto documental del proyecto y sus modificados) y es **requisito previo**, no una consecuencia: sin ella no se puede escribir el escenario ni la variable que necesita **#864** — la advertencia al abrir una fase con `ANALISIS_SOLICITUD` sin cerrar, diferida por lo mismo (una variable ingenua cogería la fase cerrada del proyecto original y callaría justo en la ronda del modificado).
 
+2. **Lote de pulido heterogéneo.** Diez issues aislados, elegidos en la revisión del 2026-09-07 para cerrar sin abrir nuevos: se llevan poco código y cada uno se agota en sí mismo. En este orden.
+
+   | # | Qué |
+   |---|---|
+   | **#859** | El listado de expedientes pide dos endpoints que no existen, y el filtro «IA» no llega a construirse |
+   | **#571** | Que `arbol.css` consuma los tokens de semáforo del shell en vez de redefinirlos |
+   | **#752** | `ArbolESFTT.diagnostico()`, y migrar a él los helpers duplicados de tres ficheros de test |
+   | **#550** | El inspector se queda bloqueado cuando el fragmento de edición falla |
+   | **#587** | Checker de consistencia entre `catalogo_variables` y el Variable Registry |
+   | **#802** | Pasar a `jsonb` `bitacora.detalle` y `catalogo_plazos.campo_fecha_cumplimiento` |
+   | **#847** | Un `bddat://` no contemplado tumba el listado del pool entero: degradar la fila, no la pantalla |
+   | **#240** | Centralizar la inicialización de tooltips en vez de reinicializarlos a mano |
+   | **#563** | Cargar el bundle del Command Palette al primer Ctrl+K, no en todas las páginas |
+   | **#834** | Aplicar el criterio ausente/vacío de #832 a las once rutas de edición restantes |
+
+   De la misma revisión salieron **#797**, **#489** y **#836**, cerrados en el acto por estar ya resueltos. Fuera del lote a propósito: **#829** (Font Awesome) es una decisión antes que una tarea, y **#644-#648** arrastran diseño previo.
+
 ---
 
 **Poda del 2026-09-07.** Todo lo que este documento arrastraba fuera de **Hecho**
