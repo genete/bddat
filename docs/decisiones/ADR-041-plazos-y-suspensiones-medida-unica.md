@@ -359,7 +359,7 @@ documento se lean juntos sin sorpresas:
 | Decisión del ADR | Cómo se llama en el código |
 |---|---|
 | Marca de suspensión (§E) | `catalogo_plazos.suspende_plazo_solicitud`, con `CheckConstraint` al nivel TAREA |
-| Segundo señalador de documento (§D) | `catalogo_plazos.campo_fecha_cumplimiento` (`JSON`, no `JSONB`: se lee entera y se compara en Python) |
+| Segundo señalador de documento (§D) | `catalogo_plazos.campo_fecha_cumplimiento` (`JSONB`, igual que su gemela `campo_fecha` — #802) |
 | Las cuatro fechas (§A) | `fecha_disparo`, **`fecha_limite`**, `fecha_cumplimiento`, `fecha_parada` |
 | Las dos entradas (§G) | `obtener_estado_plazo_tarea` · `obtener_estado_plazo_solicitud` |
 | Bajar del trámite a su espera (§G) | `Tramite.tarea_espera`, property del modelo |
