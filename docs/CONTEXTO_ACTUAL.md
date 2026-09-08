@@ -11,7 +11,7 @@
 
 **Próximo:**
 
-1. **El expediente-tipo del modificado de proyecto**, que es el que falta para trabajar la segunda ronda —de consultas y de información pública— y el que obliga a decidir cómo se modela: una sola fase `ANALISIS_SOLICITUD` con varios `ANALISIS_DOCUMENTAL`, o varias fases. Esa decisión es **#819** (asociar consultas e IP al conjunto documental del proyecto y sus modificados) y es **requisito previo**, no una consecuencia: sin ella no se puede escribir el escenario ni la variable que necesita **#864** — la advertencia al abrir una fase con `ANALISIS_SOLICITUD` sin cerrar, diferida por lo mismo (una variable ingenua cogería la fase cerrada del proyecto original y callaría justo en la ronda del modificado).
+1. **R1 — `reformados_proyecto` y la retirada de `documentos_proyecto`**, el primero de los seis issues que [ADR-044](decisiones/ADR-044-reformados-proyecto-version-como-eje.md) §Issues describe sin crear. Tras él siguen **R2** (ancla del proyecto principal y su regla de motor), **R3** (`fases.reformado_id`, nodo del árbol y la regla genérica — desbloquea **#864**), **R4** (coberturas por versión, que necesita antes **#884**), **R5** (arrastres del motor y los certificados) y **R6** (el expediente-tipo del reformado, el que faltaba para trabajar la segunda ronda). El orden y las dependencias, en el propio ADR.
 
 ---
 
