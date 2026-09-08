@@ -7,7 +7,7 @@
 `DISEÑO_SUBSISTEMA_DOCUMENTAL.md` §2 · ADR-011, ADR-016, ADR-032, ADR-038, ADR-041, ADR-042, ADR-043
 
 > Este documento recoge el análisis en curso, no una decisión cerrada. Lo decidido va marcado
-> como tal con la sesión en que se acordó; lo abierto, en §14. Cuando el barrido de fases
+> como tal con la sesión en que se acordó; lo abierto, en §15. Cuando el barrido de fases
 > termine, la decisión se lleva a un ADR y este documento se congela en `historial/`.
 
 ---
@@ -26,7 +26,7 @@ Tres palabras, y ninguna intercambiable:
 con la AAU —art. 115 RD 1955/2000, y el campo `proyectos.es_modificacion` que ya lo expresa—. No se
 usa para este caso.
 
-Nombres descartados para la tabla, con su motivo, en §15.
+Nombres descartados para la tabla, con su motivo, en §16.
 
 ---
 
@@ -156,7 +156,7 @@ migraciones desde cero antes de producción.
 **Cabos:**
 
 - **`REFUNDIDO`** es el único apellido con semántica propia más allá de abrir versión: anula los
-  anteriores, o sea determina qué documento hay que leer. **Abierto** (§14).
+  anteriores, o sea determina qué documento hay que leer. **Abierto** (§15).
 - **`ANEXO`** se puede perder sin dolor: lo que importa de un anexo es qué requisito cierra, y eso
   vive en `documentos_requisito` y en el `ANALIZAR` que lo consume.
 - **La guarda del pool** pierde su primera rama (`doc.proyecto_vinculado`) y se sustituye por
@@ -262,7 +262,7 @@ distintos; el ancla no puede divergir.
 
 **Criterio:** el ancla es la fuente; el checklist se valida contra ella y avisa si el técnico cubre
 el requisito con un documento distinto del anclado. Preguntar dos veces lo mismo y dejar que las
-respuestas discrepen es el defecto que ya se rechazó al descartar el booleano por fila (§15).
+respuestas discrepen es el defecto que ya se rechazó al descartar el booleano por fila (§16).
 
 ---
 
@@ -275,7 +275,7 @@ respuestas discrepen es el defecto que ya se rechazó al descartar el booleano p
 | Trámite `ANALISIS_DOCUMENTAL` | **Por versión** — el reformado es documentación que entra, se analiza y produce su propio `DIAGNOSTICO` con su fecha | Decidido |
 | Requisitos **documentales** | **Global por solicitud**, salvo los marcados como afectados por reformado | Decidido |
 | Requisitos **técnicos** (`coberturas_item_tecnico`) | **Solicitud + reformado**: la verificación se predica del contenido del proyecto | Decidido |
-| Requerimientos **particulares** (`requerimientos_tarea`) | — | **Abierto** (§14) |
+| Requerimientos **particulares** (`requerimientos_tarea`) | — | **Abierto** (§15) |
 
 `reformado_id` **NULL significa versión inicial**, coherente con que el proyecto original vive en
 `proyectos` y no en la tabla de reformados. No hay que crear filas retroactivas para los expedientes
@@ -406,7 +406,97 @@ para decidir qué crear ahora, no para reconstruir el pasado.
 
 ---
 
-## 11. Regla de motor sobre las fases
+## 11. Las fases ambientales
+
+Tres fases con particularidades propias y un enganche común.
+
+**Decidido (2026-09-08).**
+
+- **Enganche: `fases.reformado_id` en las tres, y nada por debajo.** Ninguna tiene cardinalidad
+  variable dentro: es una interlocución con un solo órgano, no N destinatarios.
+- **Control: la regla genérica de §12, y ninguna regla propia.** «Impedir una segunda
+  `COMPATIBILIDAD_AMBIENTAL` si no hay reformado» y «no crear una fase que cubra una versión ya
+  cubierta» son la misma frase leída del derecho y del revés: sin reformado, la versión vigente es
+  la que ya cubrió la primera fase → bloqueo; con reformado, es otra → permitido, justificado y
+  auditado.
+- **Sin trabas añadidas.** Lo que hará el órgano ambiental ante un reformado a mitad de tramitación
+  es previsión de comportamiento, no consecuencia normativa: la Ley 2/2026 regula la modificación de
+  actuaciones «ya autorizadas, ejecutadas o en proceso de ejecución» (arts. 63 AAI, 74 y 75 AAU, 85
+  AAUS) y su art. 71 —el procedimiento completo de la AAU— **no contempla que el proyecto cambie por
+  el camino**. BDDAT documenta lo que llegue y no pone condiciones.
+
+### Cierre conjunto: dos fases, un resultado
+
+El patrón que se repite en las tres: se remite el reformado, y el órgano ambiental —en vez de
+resolver por separado— incorpora el modificado a lo que ya tenía y emite **un solo pronunciamiento
+que vale para las dos peticiones**. Entonces se cierran las dos fases, a la vez o consecutivamente.
+
+**Ya está soportado, sin tocar el modelo:** `fases.documento_resultado_id` no tiene UNIQUE (solo la
+FK), y `editar_fase` solo valida que el documento pertenezca al mismo expediente
+(`app/services/mutaciones_arbol.py:689`). Dos fases pueden por tanto cerrarse con el **mismo**
+documento; y «cerrar la primera con los datos del segundo» es eso más `Fase.observaciones`.
+
+El cierre forzado que a veces hará falta también existe: `editar_fase(…, justificacion=…)` salta los
+bloqueos forzables y registra uno por invariante en bitácora (#723). La única puerta que no se
+fuerza es la fase **vacía** —sin trámites—, donde la vía es borrarla, no cerrarla.
+
+> **Hueco detectado aquí, corregido aparte (#883):** la guarda del pool no comprueba
+> `fases_resultado`, así que el documento que cierra una fase se puede borrar. Es defecto de hoy,
+> pero el cierre conjunto lo agrava: un solo borrado se llevaría varios cierres por delante.
+
+> **Esto retira una propuesta intermedia de esta sesión.** Se llegó a plantear un flag
+> acumulativa/sustitutiva en el tipo de fase, bajo la idea de que en las ambientales «prevalece la
+> última». No es así: las dos fases **siguen contando y las dos se cierran**, con el mismo documento
+> o con el segundo documentando la primera. §4 se cumple sin excepción y no hace falta flag alguno.
+
+### `COMPATIBILIDAD_AMBIENTAL`
+
+Se remite el proyecto y el estudio de impacto ambiental; vuelve un informe de compatibilidad. Si es
+desfavorable llega en su lugar la notificación de audiencia previa al peticionario, que es lo que
+recoge `COMUNICACION_AUDIENCIA` (IC 1/2022, IV.3.3). Si es favorable, además informa de los ámbitos
+de la información pública y de las consultas, a efectos de los dos órganos.
+
+Un reformado obliga a remitir de nuevo y a recibir otro informe: se repite tantas veces como haga
+falta, una fase por versión. **Pueden solaparse**: lo previsible es que, sin haberse resuelto la
+primera, incorporen el modificado y saquen una sola compatibilidad para ambas.
+
+### `AAU_AAUS_INTEGRADA`
+
+Sus trámites son consecutivos, así que lo que pase con el reformado depende de en qué punto esté el
+órgano ambiental —dictamen, propuesta— y de si retrocede o no **en su propio procedimiento**, cosa
+que no controlamos. Por nuestra parte, las dos fases se cierran cuando llegue el informe vinculante
+definitivo conjunto.
+
+**No clonar la fase anterior.** Si el informe vinculante ya se recibió, Medio Ambiente no reevalúa:
+abre modificación no sustancial, y por el art. 74.6 eso **no produce otro informe vinculante** sino
+una comunicación que el titular puede ejecutar si el órgano «no manifieste lo contrario en el plazo
+de un mes mediante resolución motivada». La fase de la versión nueva llevará por tanto trámites
+distintos de los cinco de la primera. A falta de la nueva instrucción conjunta **no se inventa ese
+trámite en el FTT**: la fase se abre igual, sus trámites se crean según lo que Medio Ambiente
+conteste, y cuando la instrucción salga se cataloga.
+
+### `FIGURA_AMBIENTAL_EXTERNA`
+
+Es la única con enganche pasivo: no se instruye nada, se espera —la fase existe como guarda para no
+resolver sin haber recibido la figura—.
+
+Ante un reformado: **se cierra la fase de la versión previa y se abre la de la nueva**, con cierre
+forzado si hace falta. El oficio de la fase (`OFICIO_SOLICITUD_FIGURA`) se reemite para el
+reformado.
+
+Lo que llegue manda, y no se le ponen condiciones:
+
+- Si se emiten **dos** figuras, cada una se coloca donde proceda y se cierran las dos fases.
+- Si solo se emite la **segunda**, se cierra la primera con los datos de esa segunda y las
+  observaciones que expliquen por qué.
+
+El motivo de no reglar aquí no es comodidad: el comportamiento del órgano ambiental —y sobre todo el
+de los ayuntamientos con la licencia ambiental— **no está claro cuando el cambio se coge en fases
+intermedias**, y la Ley 2/2026 no lo aclara. Documentar es todo lo que cabe hacer con rigor.
+
+---
+
+## 12. Regla de motor sobre las fases
 
 **Decidido (2026-09-08).** Se prohíbe crear una fase que cubra una versión ya cubierta por otra fase
 del mismo tipo.
@@ -420,7 +510,7 @@ es una pregunta formulable, sin caer en el existencial que hoy mentiría en la r
 
 ---
 
-## 12. Árbol
+## 13. Árbol
 
 La lista de reformados dibuja una **metafase virtual**: un nodo intermedio que aparece solo cuando
 hay algún reformado. Es el patrón de ADR-042 un nivel más arriba y hereda su mecánica **aditiva**:
@@ -433,7 +523,7 @@ versión inicial.
 
 ---
 
-## 13. El conjunto documental a resolver
+## 14. El conjunto documental a resolver
 
 El principal produce la versión inicial; los demás `DOC_PROYECTO` producen reformado o no, y todos
 juntos —por consulta— forman el conjunto documental del proyecto sobre el que se resuelve. Con una
@@ -444,15 +534,16 @@ condición: que estén **consumidos o producidos por alguna tarea**, no huérfan
 que entre la ingesta preparatoria en lote y el `ANALIZAR` que los consuma, el principal y los
 reformados **aparecen en el radar como huérfanos** aunque tengan destino declarado. No invalida el
 criterio —el conjunto se conforma después del análisis— pero un documento anclado como principal o
-que abre reformado no debería listarse igual que uno sin destino ninguno. **Abierto** (§14).
+que abre reformado no debería listarse igual que uno sin destino ninguno. **Abierto** (§15).
 
 ---
 
-## 14. Abierto
+## 15. Abierto
 
 | Punto | Qué falta decidir |
 |---|---|
-| **Ambientales** | Siguiente paso del barrido: `CONSULTA_MINISTERIO`, `COMPATIBILIDAD_AMBIENTAL`, `AAU_AAUS_INTEGRADA`, `FIGURA_AMBIENTAL_EXTERNA` |
+| **`CONSULTA_MINISTERIO`** | Única fase del barrido sin repasar: sale el proyecto entero al Ministerio (art. 114), previsiblemente igual que las ambientales |
+| **Trámites de la AAU modificada** | La fase AAU de la versión nueva llevará trámites que hoy no están en el FTT (§11): se catalogan cuando salga la instrucción conjunta |
 | **`publicadores_expediente`** | Sale de este análisis con vida propia: **#882**. Aquí solo queda que herede la versión por la fase |
 | **Aislamiento de alegaciones** | Cómo lleva la alegación su ronda (§10 deuda 2) |
 | **`RESOLUCION`** | No se repite: cómo identifica la versión sobre la que resuelve |
@@ -464,7 +555,7 @@ que abre reformado no debería listarse igual que uno sin destino ninguno. **Abi
 
 ---
 
-## 15. Alternativas descartadas
+## 16. Alternativas descartadas
 
 ### De modelo
 
@@ -491,7 +582,7 @@ organismos leen en el oficio de consulta, y no colisiona con nada.
 
 ---
 
-## 16. Trazabilidad documental
+## 17. Trazabilidad documental
 
 Ningún ADR menciona `documentos_proyecto` (verificado con grep sobre `docs/decisiones/`): retirarla
 no enmienda ninguna decisión adoptada. Quedan tocados por otras vías:
