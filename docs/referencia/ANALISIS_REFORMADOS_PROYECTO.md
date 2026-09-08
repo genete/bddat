@@ -369,7 +369,7 @@ tienen dónde vivir.
 
 Esta refactorización **habría hecho falta igual sin reformados**; lo que el reformado añade es que
 se pueda repetir entre versiones, y eso sale gratis heredando la versión por la fase, igual que en
-consultas.
+consultas. Por eso va por su cuenta: **issue #882**.
 
 **Propuesta (a confirmar): `publicadores_expediente`**, calcada de `organismos_expediente`:
 
@@ -453,7 +453,7 @@ que abre reformado no debería listarse igual que uno sin destino ninguno. **Abi
 | Punto | Qué falta decidir |
 |---|---|
 | **Ambientales** | Siguiente paso del barrido: `CONSULTA_MINISTERIO`, `COMPATIBILIDAD_AMBIENTAL`, `AAU_AAUS_INTEGRADA`, `FIGURA_AMBIENTAL_EXTERNA` |
-| **`publicadores_expediente`** | Confirmar la propuesta de §10, y si los publicadores únicos (BOE, BOJA) entran por uniformidad o se quedan fuera. La refactorización es exigible por sí sola, sin reformados: merece issue propio |
+| **`publicadores_expediente`** | Sale de este análisis con vida propia: **#882**. Aquí solo queda que herede la versión por la fase |
 | **Aislamiento de alegaciones** | Cómo lleva la alegación su ronda (§10 deuda 2) |
 | **`RESOLUCION`** | No se repite: cómo identifica la versión sobre la que resuelve |
 | **Requerimientos particulares** | Nacen en una versión y pueden morir en otra, así que el reformado les sirve como atributo de nacimiento, no como clave. Y `orden` es hoy un único 1..N por solicitud, pensado para un escrito: con dos fases vivas hay dos escritos que quieren su numeración |
