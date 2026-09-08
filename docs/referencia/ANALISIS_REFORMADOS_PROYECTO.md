@@ -7,7 +7,7 @@
 `DISEÑO_SUBSISTEMA_DOCUMENTAL.md` §2 · ADR-011, ADR-016, ADR-032, ADR-038, ADR-041, ADR-042, ADR-043
 
 > Este documento recoge el análisis en curso, no una decisión cerrada. Lo decidido va marcado
-> como tal con la sesión en que se acordó; lo abierto, en §16. Cuando el barrido de fases
+> como tal con la sesión en que se acordó; lo abierto, en §17. Cuando el barrido de fases
 > termine, la decisión se lleva a un ADR y este documento se congela en `historial/`.
 
 ---
@@ -26,7 +26,7 @@ Tres palabras, y ninguna intercambiable:
 con la AAU —art. 115 RD 1955/2000, y el campo `proyectos.es_modificacion` que ya lo expresa—. No se
 usa para este caso.
 
-Nombres descartados para la tabla, con su motivo, en §17.
+Nombres descartados para la tabla, con su motivo, en §18.
 
 ---
 
@@ -156,7 +156,7 @@ migraciones desde cero antes de producción.
 **Cabos:**
 
 - **`REFUNDIDO`** es el único apellido con semántica propia más allá de abrir versión: anula los
-  anteriores, o sea determina qué documento hay que leer. **Abierto** (§16).
+  anteriores, o sea determina qué documento hay que leer. **Abierto** (§17).
 - **`ANEXO`** se puede perder sin dolor: lo que importa de un anexo es qué requisito cierra, y eso
   vive en `documentos_requisito` y en el `ANALIZAR` que lo consume.
 - **La guarda del pool** pierde su primera rama (`doc.proyecto_vinculado`) y se sustituye por
@@ -262,7 +262,7 @@ distintos; el ancla no puede divergir.
 
 **Criterio:** el ancla es la fuente; el checklist se valida contra ella y avisa si el técnico cubre
 el requisito con un documento distinto del anclado. Preguntar dos veces lo mismo y dejar que las
-respuestas discrepen es el defecto que ya se rechazó al descartar el booleano por fila (§17).
+respuestas discrepen es el defecto que ya se rechazó al descartar el booleano por fila (§18).
 
 ---
 
@@ -275,7 +275,7 @@ respuestas discrepen es el defecto que ya se rechazó al descartar el booleano p
 | Trámite `ANALISIS_DOCUMENTAL` | **Por versión** — el reformado es documentación que entra, se analiza y produce su propio `DIAGNOSTICO` con su fecha | Decidido |
 | Requisitos **documentales** | **Global por solicitud**, salvo los marcados como afectados por reformado | Decidido |
 | Requisitos **técnicos** (`coberturas_item_tecnico`) | **Solicitud + reformado**: la verificación se predica del contenido del proyecto | Decidido |
-| Requerimientos **particulares** (`requerimientos_tarea`) | — | **Abierto** (§16) |
+| Requerimientos **particulares** (`requerimientos_tarea`) | — | **Abierto** (§17) |
 
 `reformado_id` **NULL significa versión inicial**, coherente con que el proyecto original vive en
 `proyectos` y no en la tabla de reformados. No hay que crear filas retroactivas para los expedientes
@@ -414,7 +414,7 @@ Tres fases con particularidades propias y un enganche común.
 
 - **Enganche: `fases.reformado_id` en las tres, y nada por debajo.** Ninguna tiene cardinalidad
   variable dentro: es una interlocución con un solo órgano, no N destinatarios.
-- **Control: la regla genérica de §13, y ninguna regla propia.** «Impedir una segunda
+- **Control: la regla genérica de §14, y ninguna regla propia.** «Impedir una segunda
   `COMPATIBILIDAD_AMBIENTAL` si no hay reformado» y «no crear una fase que cubra una versión ya
   cubierta» son la misma frase leída del derecho y del revés: sin reformado, la versión vigente es
   la que ya cubrió la primera fase → bloqueo; con reformado, es otra → permitido, justificado y
@@ -502,7 +502,7 @@ intermedias**, y la Ley 2/2026 no lo aclara. Documentar es todo lo que cabe hace
 que las del art. 127**. Un solo destinatario fijo —la Dirección General de Política Energética y
 Minas—, sin cardinalidad variable, así que ni siquiera necesita el equivalente de
 `organismos_expediente`: **`fases.reformado_id` y nada por debajo**. Una fase por versión, la regla
-genérica de §13 evita duplicar sobre la misma, y el cierre conjunto de §11 vale igual si el
+genérica de §14 evita duplicar sobre la misma, y el cierre conjunto de §11 vale igual si el
 Ministerio incorpora el reformado y emite un solo informe.
 
 Del art. 114 RD 1955/2000, para no volver a leerlo: aplica a instalaciones de **transporte**
@@ -549,7 +549,75 @@ Comprobar al barrer esa fase si `NOTIFICACION`/`PUBLICACION` lo contemplan o es 
 
 ---
 
-## 13. Regla de motor sobre las fases
+## 13. `RESOLUCION` y el certificado de fin de instrucción
+
+**Decidido (2026-09-08). La resolución no identifica la versión: la identifica el sello.**
+
+No hace falta campo nuevo ni en la fase ni en la solicitud. La versión sobre la que se resuelve es
+**la vigente en el instante en que se selló la instrucción**, y ese instante ya está materializado en
+`solicitudes.documento_fin_instruccion_id`, con la auditoría congelada y el informe redactado
+dentro. Encaja con el art. 82.1 —«instruidos los procedimientos, e inmediatamente antes de redactar
+la propuesta»— y con lo que ya existe: un reformado posterior al sello obliga a **deshacerlo**
+(#838) y a re-emitirlo. Como la solicitud tiene **una sola** FK al certificado, no caben dos
+vigentes ni ambigüedad.
+
+`RESOLUCION` tampoco se repite por versión: es fase finalizadora única, la regla genérica de §14 no
+le aplica y ya la guardan las reglas 1787/1788 (sin certificado no se abre).
+
+### Qué gana el certificado
+
+**1. La cabecera dice sobre qué versión se resuelve, y se redacta distinto según haya reformados o
+no.** El bloque de `_solicitud` (`app/services/informe_instruccion.py:419`) es su sitio: es lo que
+la solicitud dice de sí misma, y lo que después reutiliza el contexto de la resolución.
+
+- **Sin reformados** —el caso normal— el texto sigue siendo llano, sin estructura de versiones ni
+  menciones a algo que no ha pasado.
+- **Con reformados**, la versión vigente con su fecha y la relación de las anteriores.
+
+**2. `Bloque.ambito` deja de ser `None`, y eso simplifica ADR-043.** El ADR previó un **registry de
+particularidades por código de tipo de fase** con este argumento: el ámbito «solo lo sabe la fase que
+consultó, y ninguna función genérica puede deducirlo». Con `fases.reformado_id` deja de ser cierto —
+**el ámbito es un campo de la fase**, lo rellena el tronco leyendo un dato—. El registry seguirá
+valiendo para otras particularidades, pero **no hace falta para esto**, que era su primer consumidor
+declarado.
+
+Para las fases de la versión inicial, `reformado_id` es NULL y el texto se redacta explícitamente
+—«sobre el proyecto en su redacción original»—, no se deja vacío: un hueco parecería un dato que
+falta.
+
+**3. El relato se agrupa por versión** cuando las hay: *sobre el proyecto en su redacción original
+se instruyó esto; sobre el reformado 1, esto otro*. Es presentación —los bloques y el ámbito ya
+están—, y es el «cada uno con sus tiempos» de §4.
+
+**4. Las observaciones del cierre de cada fase suben al relato**, y siempre: si no las hay, la línea
+se escribe igual —«Observaciones al cierre: -»—.
+
+Es lo que resuelve el **cierre conjunto** de §11 sin que el sistema infiera nada. Cuando dos fases
+ambientales se cierran con el mismo documento, lo que explica por qué ese documento se consumió dos
+veces es **el comentario que el técnico escribió al cerrar**. Si no escribió nada, el certificado no
+dice nada, la resolución saldrá pobre y se corrige a mano o en el sitio adecuado. El sistema no
+adivina el motivo de un cierre conjunto ni lo deduce de que dos fases compartan documento.
+
+### Lo que ya funciona y no hay que tocar
+
+`revisar()` recorre **todas** las fases de instrucción ordenadas por id, no solo las de la última
+versión, y cualquiera con hueco sale como `PENDIENTE`, lo que deja `Informe.limpio` en falso e
+impide consolidar. **El principio de §4 ya está implementado**: la fase de la versión inicial con su
+cálculo pendiente bloquea el certificado aunque la del reformado esté impecable.
+
+Y `_relato_reversiones` ya narra los certificados anteriores dejados sin efecto (#838). Con
+reformados ese relato gana sentido —«se dejó sin efecto el de fecha X por la entrada del reformado
+2»—; hoy el motivo es texto libre de la justificación y puede quedarse así.
+
+### Apunte pendiente
+
+El art. 114 in fine obliga a notificar la resolución **a la DGPEM y a la CNE** (hoy CNMC).
+Comprobar si `NOTIFICACION`/`PUBLICACION` lo contemplan o es un hueco — no es cuestión de
+reformados, pero se detectó barriéndolos.
+
+---
+
+## 14. Regla de motor sobre las fases
 
 **Decidido (2026-09-08).** Se prohíbe crear una fase que cubra una versión ya cubierta por otra fase
 del mismo tipo.
@@ -563,7 +631,7 @@ es una pregunta formulable, sin caer en el existencial que hoy mentiría en la r
 
 ---
 
-## 14. Árbol
+## 15. Árbol
 
 La lista de reformados dibuja una **metafase virtual**: un nodo intermedio que aparece solo cuando
 hay algún reformado. Es el patrón de ADR-042 un nivel más arriba y hereda su mecánica **aditiva**:
@@ -576,7 +644,7 @@ versión inicial.
 
 ---
 
-## 15. El conjunto documental a resolver
+## 16. El conjunto documental a resolver
 
 El principal produce la versión inicial; los demás `DOC_PROYECTO` producen reformado o no, y todos
 juntos —por consulta— forman el conjunto documental del proyecto sobre el que se resuelve. Con una
@@ -587,11 +655,15 @@ condición: que estén **consumidos o producidos por alguna tarea**, no huérfan
 que entre la ingesta preparatoria en lote y el `ANALIZAR` que los consuma, el principal y los
 reformados **aparecen en el radar como huérfanos** aunque tengan destino declarado. No invalida el
 criterio —el conjunto se conforma después del análisis— pero un documento anclado como principal o
-que abre reformado no debería listarse igual que uno sin destino ninguno. **Abierto** (§16).
+que abre reformado no debería listarse igual que uno sin destino ninguno. **Abierto** (§17).
 
 ---
 
-## 16. Abierto
+## 17. Abierto
+
+**El barrido de fases está cerrado** (§8 a §13): las nueve fases del ESFTT repasadas, con su
+enganche decidido. Lo que queda no es ninguna fase, sino los cabos de abajo. Con ellos resueltos,
+la decisión se lleva a ADR y este documento se congela en `historial/`.
 
 | Punto | Qué falta decidir |
 |---|---|
@@ -599,7 +671,6 @@ que abre reformado no debería listarse igual que uno sin destino ninguno. **Abi
 | **Trámites de la AAU modificada** | La fase AAU de la versión nueva llevará trámites que hoy no están en el FTT (§11): se catalogan cuando salga la instrucción conjunta |
 | **`publicadores_expediente`** | Sale de este análisis con vida propia: **#882**. Aquí solo queda que herede la versión por la fase |
 | **Aislamiento de alegaciones** | Cómo lleva la alegación su ronda (§10 deuda 2) |
-| **`RESOLUCION`** | No se repite: cómo identifica la versión sobre la que resuelve |
 | **Requerimientos particulares** | Nacen en una versión y pueden morir en otra, así que el reformado les sirve como atributo de nacimiento, no como clave. Y `orden` es hoy un único 1..N por solicitud, pensado para un escrito: con dos fases vivas hay dos escritos que quieren su numeración |
 | **`REFUNDIDO`** | Si entra en `reformados_proyecto` con un tipo que diga «consolida, no abre versión», o se pierde el apellido |
 | **Radar de huérfanos** | Cómo se presenta un `DOC_PROYECTO` con destino declarado pero sin tarea que lo consuma todavía (§12) |
@@ -608,7 +679,7 @@ que abre reformado no debería listarse igual que uno sin destino ninguno. **Abi
 
 ---
 
-## 17. Alternativas descartadas
+## 18. Alternativas descartadas
 
 ### De modelo
 
@@ -635,7 +706,7 @@ organismos leen en el oficio de consulta, y no colisiona con nada.
 
 ---
 
-## 18. Trazabilidad documental
+## 19. Trazabilidad documental
 
 Ningún ADR menciona `documentos_proyecto` (verificado con grep sobre `docs/decisiones/`): retirarla
 no enmienda ninguna decisión adoptada. Quedan tocados por otras vías:
@@ -646,7 +717,7 @@ no enmienda ninguna decisión adoptada. Quedan tocados por otras vías:
 | ADR-032 | La ingesta gana un paso: la bifurcación de §6 y la fecha obligatoria para `DOC_PROYECTO` |
 | ADR-038 | El criterio del radar de huérfanos, ante documentos con destino declarado sin tarea (§12) |
 | ADR-041 §D bis | Dos anclas documentales nuevas: el principal del proyecto y cada reformado, esta con reversión automática y solo sobre la última |
-| ADR-043 §E | El `ámbito` que quedó vacío a propósito, y el registry por fase, se rellenan aquí |
+| ADR-043 §E | El `ámbito` que quedó vacío a propósito se rellena aquí — y **sin el registry por tipo de fase** que el ADR preveía para ello: con `fases.reformado_id` el ámbito es un campo, no conocimiento específico de cada fase (§13) |
 | ADR-002 | La fecha derivada del documento es este ADR aplicado |
 | ADR-011 | Su patrón de tabla puente trámite↔destinatario es el que replica `publicadores_expediente` (§10) |
 | ADR-033 §7 | Se cita; cambiaría solo si se toca `requerimientos_tarea` |
