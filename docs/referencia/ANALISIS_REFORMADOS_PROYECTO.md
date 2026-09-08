@@ -1,0 +1,514 @@
+# Análisis: reformados de proyecto — el proyecto que cambia dentro de la solicitud sin resolver
+
+**Estado:** Documento de trabajo — vivo mientras dure el estudio (`REGLAS_ARQUITECTURA.md` §2, §8)
+**Fecha de apertura:** 2026-09-07 · **Última sesión:** 2026-09-08
+**Issues:** #819 (decisión de fondo) · #864 (bloqueado por esta) · #848 (arrastre)
+**Relacionado:** `DISEÑO_CONSULTAS_ORGANISMOS.md` §6 bis y §8 · `DISEÑO_ANALISIS_SOLICITUD.md` §4 y §6 ·
+`DISEÑO_SUBSISTEMA_DOCUMENTAL.md` §2 · ADR-011, ADR-016, ADR-032, ADR-038, ADR-041, ADR-042, ADR-043
+
+> Este documento recoge el análisis en curso, no una decisión cerrada. Lo decidido va marcado
+> como tal con la sesión en que se acordó; lo abierto, en §14. Cuando el barrido de fases
+> termine, la decisión se lleva a un ADR y este documento se congela en `historial/`.
+
+---
+
+## 0. Vocabulario
+
+Tres palabras, y ninguna intercambiable:
+
+| Término | Qué es |
+|---|---|
+| **Proyecto principal** | El documento que materializa el proyecto técnico presentado. Uno por expediente, anclado en `proyectos.documento_principal_id` (§7) |
+| **Reformado de proyecto** | El documento que cambia el proyecto **con entidad suficiente para obligar a rehacer fases preceptivas**. Es una fila de `reformados_proyecto` (§6) |
+| **Versión del proyecto** | El estado del proyecto en un momento dado: la **versión inicial** (el principal y lo que lo acompaña) o la resultante de cada reformado. No es una entidad: es el tramo documental entre dos reformados (§6) |
+
+**Modificado / modificación** queda reservado para las **instalaciones existentes** y su relación
+con la AAU —art. 115 RD 1955/2000, y el campo `proyectos.es_modificacion` que ya lo expresa—. No se
+usa para este caso.
+
+Nombres descartados para la tabla, con su motivo, en §15.
+
+---
+
+## 1. El caso
+
+Un **reformado de proyecto que entra durante la instrucción de una solicitud que todavía no se ha
+resuelto**. No es el supuesto del art. 115 RD 1955/2000 —modificación de una instalación ya
+autorizada, que abre solicitud nueva de AAC o AAP+AAC, o se resuelve en la autorización de
+explotación si encaja en el 115.3—: eso está mapeado en `NORMATIVA_MAPA_PROCEDIMENTAL.md` §2.6 y no
+es objeto de este análisis.
+
+Encaje en la LPACAP (texto consolidado verificado):
+
+| Artículo | Qué aporta |
+|---|---|
+| **68.3** | El órgano *«podrá recabar del solicitante la modificación o mejora voluntarias de los términos de aquélla. De ello se levantará acta sucinta, que se incorporará al procedimiento»* — el reformado pedido por la Administración o por los organismos |
+| **76.1** | El interesado puede aportar documentos *«en cualquier momento del procedimiento anterior al trámite de audiencia»* — el reformado espontáneo, con su límite temporal |
+| **88.2** | La resolución será congruente con las peticiones formuladas → hay que poder decir **sobre qué versión** se resuelve |
+| **22.1.a** | La suspensión del plazo es **potestativa** y solo si media requerimiento: el reformado espontáneo no suspende, y repetir consultas (30 días, arts. 127/131) e IP (30 días, art. 125.1 RD 1955/2000 en la redacción del RD-ley 23/2020) consume plazo vivo |
+
+---
+
+## 2. Punto de partida (estado verificado el 2026-09-07)
+
+### Lo que había: nada operable
+
+- `documentos_proyecto` (tipo PRINCIPAL/MODIFICADO/REFUNDIDO/ANEXO): tabla y modelo existen,
+  **0 filas** en la BD de desarrollo y **ninguna escritura en el código**. Su único consumidor es
+  `_documento_es_referenciado` (`app/modules/expedientes/routes.py:488`), que la lee para no borrar
+  del pool. No hay ruta, servicio, template ni componente que dé de alta una fila.
+- `tipo` es `varchar(20)` **sin CHECK ni FK**: los cuatro valores solo viven en un comentario.
+- `Proyecto` es 1:1 con expediente y **no tiene versiones**; su docstring manda actualizar los
+  metadatos cuando cambie algo esencial → sobrescritura destructiva.
+
+### Lo que sí estaba preparado
+
+- Varias fases del mismo tipo por solicitud: `crear_fase` (`app/services/mutaciones_arbol.py:434`)
+  no comprueba duplicidad; solo miran el sello de instrucción y el motor.
+- `organismos_expediente.fase_id` (#391/#396) y la regla de motor 1683 (`ADVERTIR`,
+  `ANY/ANY/CONSULTAS`, «Nueva ronda de consultas…»).
+- El árbol admite nodos sintéticos de agrupación **de forma aditiva**: `_serializar_organismos_fase`
+  (`app/services/arbol_expediente.py:316`) no reparenta nada —`fase.tramites` queda intacta— y solo
+  paga la query si la fase tiene organismos (ADR-042).
+- ADR-043 §E dejó en `informe_instruccion.py` un campo **`ámbito` vacío a propósito** y un punto de
+  extensión por fase, declarando a #819 como su primer consumidor real.
+- El gesto de **deshacer** el `CERT_FIN_INSTRUCCION` existe (#838): es la marcha atrás para el
+  reformado que llega con la instrucción ya sellada.
+
+### La deuda que el caso despierta
+
+| Pieza | Qué asume |
+|---|---|
+| `Solicitud.estado` | Coge la **primera** finalizadora, sobre un backref sin `order_by` (#848) |
+| `fase_ip_finalizada`, `existe_fase_finalizadora_cerrada` | Existenciales («alguna cerrada») |
+| `cert_fin_ip_consultas._buscar_existente` | Busca por expediente + tipo → **nunca re-emite** |
+| Árbol | Dos fases del mismo tipo se pintan idénticas |
+| `documentos_requisito`, `coberturas_item_tecnico` | Clave por **solicitud**: un reformado pisa la verificación anterior sin dejar rastro |
+
+Y lo que ya está bien: `tramite_analisis_con_deficiencias`
+(`app/services/variables/calculado.py:241`) recorre **todas** las fases y devuelve `True` si en
+alguna el último `ANALIZAR` quedó desfavorable. Está escrita en universal y acierta con varias
+versiones. El patrón que falla es «existe alguna».
+
+---
+
+## 3. Barrido: qué fases dependen del reformado
+
+Criterio: qué sale de la fase portando el proyecto, y qué entra quedando referido a él.
+
+| Fase | ¿Depende? | Qué sale / qué se somete |
+|---|---|---|
+| `ANALISIS_SOLICITUD` | **Sí** | Nada sale; el proyecto **entra** y se juzga |
+| `CONSULTAS` | **Sí** | Separatas — **extracto** del proyecto y su reformado, y solo a los organismos a los que el reformado afecta |
+| `INFORMACION_PUBLICA` | **Sí** | Se someten **el proyecto y sus reformados**; el anuncio es el vehículo, no el objeto |
+| `CONSULTA_MINISTERIO` | **Sí** | Sale el **proyecto entero**, sin extracto (art. 114) |
+| `COMPATIBILIDAD_AMBIENTAL` | **Sí** | Sale el **proyecto entero** |
+| `AAU_AAUS_INTEGRADA` | **Sí** | Sale el proyecto y, además, el resultado de IP y consultas (fases que a su vez dependen de él) |
+| `FIGURA_AMBIENTAL_EXTERNA` | **Sí**, indirecta | Sale el proyecto, pero la figura la tramitan promotor y órgano ambiental; si el reformado la invalida, lo decide aquél. Para BDDAT es un dato que entra, no un acto que repetir |
+| `RESOLUCION` | **De otra forma** | No se repite: **decide**. Necesita identificar sobre qué versión resuelve (art. 88.2) |
+| `RECONOCIMIENTO_INTERESADO` | **No** | Su objeto es la condición de un **sujeto** (art. 4 LPACAP). Un reformado no invalida un reconocimiento dictado. Asimetría: puede *generar* interesados nuevos, pero eso son solicitudes nuevas |
+| `CONSULTA_OPERADOR_SISTEMA` | **Fuera** | Exclusiva del procedimiento CIERRE (art. 137); no poblada en BD (#450) |
+
+### Hallazgo: la unidad de sometimiento no es la misma en todas
+
+En `CONSULTAS` cada trámite es un destinatario distinto, así que un reformado que solo toca la
+carretera afecta a Fomento y deja intactos a los demás: **la afección es parcial dentro de la
+fase**. En `INFORMACION_PUBLICA` no: el `ANUNCIO_IP` es único para BOJA, BOP, prensa, tablón y
+titular. No hay un solo nivel al que colgar la relación con la versión que valga para todas.
+
+---
+
+## 4. Principio rector: ninguna fase se salda por la existencia de una posterior
+
+**Decidido (2026-09-08).** Una fase enganchada a una versión conserva sus pendientes aunque exista
+una versión posterior. No hay completitud por invariante: hay huecos que el reformado no cubre.
+
+- Falta un apartado de cálculo de la línea subterránea y el reformado solo afecta a la aérea: el
+  análisis del reformado puede ser perfecto y el otro sigue pendiente.
+- Puede haber alegaciones sin contestar de la primera IP, y una segunda IP sin alegaciones con
+  todos los plazos vencidos.
+- Un organismo afectado por el proyecto original puede tener sus trámites enquistados mientras la
+  ronda del reformado está impecable.
+
+**Corolario:** el certificado de fin de instrucción debe cubrirlo todo, cada uno con sus tiempos.
+
+---
+
+## 5. Decisión A — retirar `documentos_proyecto`
+
+**Decidido (2026-09-08).** La tabla se aparca; lo que aportaba se obtiene por consulta.
+
+| Columna | Por qué no hace falta |
+|---|---|
+| `proyecto_id` | `expedientes.proyecto_id` es `NOT NULL` **y** `UNIQUE` con FK a `proyectos`: la 1:1 está garantizada por constraint. Un documento que sabe su expediente sabe su proyecto |
+| `documento_id` + `UNIQUE` | Deja de tener sentido sin la tabla |
+| `tipo` | Es el único valor añadido real —el apellido del documento— y está construido frágil: `varchar` libre sin CHECK |
+| `observaciones` | `documentos.observaciones` ya existe |
+
+Con la tabla fuera, «todos los documentos del proyecto» es una consulta por `tipo_doc = DOC_PROYECTO`
+sobre el pool del expediente. Lo que no da gratis la consulta es el **orden entre versiones**:
+`documentos.fecha_administrativa` es *nullable* y dos documentos pueden compartir fecha, así que el
+orden pasa a ser dato de la tabla nueva.
+
+**Coste de la retirada:** ninguno en datos (0 filas, 0 escrituras). #856 ya prevé recrear las
+migraciones desde cero antes de producción.
+
+**Cabos:**
+
+- **`REFUNDIDO`** es el único apellido con semántica propia más allá de abrir versión: anula los
+  anteriores, o sea determina qué documento hay que leer. **Abierto** (§14).
+- **`ANEXO`** se puede perder sin dolor: lo que importa de un anexo es qué requisito cierra, y eso
+  vive en `documentos_requisito` y en el `ANALIZAR` que lo consume.
+- **La guarda del pool** pierde su primera rama (`doc.proyecto_vinculado`) y se sustituye por
+  `reformados_proyecto` y por el ancla de §7. Consecuencia aceptada: un `DOC_PROYECTO` que no abre
+  reformado ni es el principal pasa a ser borrable como cualquier otro documento, porque no es
+  consumido ni producido.
+- **`DISEÑO_SUBSISTEMA_DOCUMENTAL.md` §2** usa `DocumentoProyecto` como el precedente canónico del
+  patrón de particularización N:M. El principio sigue vivo (`documentos_tarea`,
+  `documentos_requisito`, `organismos_expediente`); hay que sustituir el ejemplo.
+
+---
+
+## 6. Decisión B — `reformados_proyecto`
+
+**Decidido (2026-09-08).** Tabla nueva con el mismo concepto que `organismos_expediente`: una lista
+de entidades del expediente que estructura el árbol y a la que referencian los demás.
+
+Contiene **los documentos que dividen el proyecto en versiones**. El reformado no es una entidad
+abstracta: es la fila del documento que lo introduce —el mismo patrón de anclas documentales que ya
+usan la solicitud (su escrito), la instrucción (su certificado) y el cierre (ADR-041 §D bis,
+ADR-043 §D)—. Con eso, «este documento obliga a rehacer fases» no necesita ni booleano que el
+técnico pueda contradecir ni literal hardcodeado: **la fila existe o no existe**.
+
+### Cortes, no contenedores
+
+Cada fila es un **corte** en la línea temporal de los `DOC_PROYECTO` del expediente. El conjunto
+documental de una versión es el **tramo entre cortes**: la versión inicial es todo lo anterior al
+primer reformado; la versión N, lo que va del reformado N al siguiente.
+
+Esto resuelve que **un proyecto son N documentos** (tomo I, tomo II, planos) sin necesidad de
+clasificar cada uno: caen en el tramo que les corresponde por su fecha. Un reformado que llega en
+varios ficheros funciona igual: uno es el corte y los demás lo acompañan en su tramo.
+
+### Puerta única de alta: la ingesta en el pool
+
+Al ingestar un documento y detectarse que es `DOC_PROYECTO` (lo que todos tienen en común), el
+sistema mira el estado del proyecto y pregunta una cosa u otra:
+
+| Estado | Pregunta |
+|---|---|
+| El proyecto **no tiene principal** anclado | «¿Es este el proyecto?» → si sí, se ancla en `proyectos.documento_principal_id` (§7) |
+| Ya **hay principal** | «¿Produce un reformado de proyecto?», **por defecto no**, y con advertencia de lo que significa una respuesta equivocada — obliga a rehacer las fases preceptivas que correspondan |
+
+El sistema distingue los dos casos por si existe ya el ancla, no por cronología. Así toda
+posibilidad de versión nueva pasa por un solo sitio.
+
+- **Fecha administrativa obligatoria** para `DOC_PROYECTO` — a nivel de interfaz o de restricción
+  SQL si es posible. Sin ella no hay cronología, y sin cronología no hay tramos.
+- **Reversión automática**, no manual: al ser el alta automática, la reversión también lo es. **No
+  se permite revertir un reformado que no sea el último.**
+- **Corolario general:** toda referencia a un `documento_id` desde cualquier sitio debe impedir su
+  borrado del pool, o dejar escape borrando la referencia con las consecuencias que tenga. Donde el
+  CRUD es manual, revierte el usuario; donde es automático, revierte el sistema.
+
+---
+
+## 7. La entrada del proyecto principal
+
+**Decidido (2026-09-08).** El proyecto original **no tiene fila** en `reformados_proyecto` —sería
+una contradicción— porque ya está representado en `proyectos`: título, fecha técnica de firma o
+visado, descripción, finalidad y emplazamiento se capturan en el alta
+(`app/services/alta_expediente.py:169`). La tabla de reformados no parte en dos algo simétrico:
+rellena el hueco que faltaba.
+
+Lo que falta es su **ancla documental**: `proyectos.documento_principal_id`, *nullable*, mismo
+patrón que las otras anclas del sistema. No se exige al crear el expediente —en ese momento el
+único documento que entra es el escrito de solicitud— sino que se rellena cuando el documento llega
+al pool, por la puerta de §6.
+
+### La guarda: regla de motor, no invariante
+
+Sin ancla, el sistema no sabe si un `DOC_PROYECTO` posterior abre reformado, y nada obliga hoy a
+rellenarla. Hace falta una guarda que **impida seguir la solicitud mientras el proyecto no tenga
+principal definido**.
+
+Es **regla de motor**, no invariante, y la distinción importa: los invariantes de
+`invariantes_esftt` son los que **no** admiten justificación (el sellado de fase cerrada, el
+borrado). Aquí se quiere bloquear pero con escape para casos extremos, que es exactamente el
+comportamiento de `BLOQUEAR` del motor — bloquea, admite bypass justificado y lo deja en bitácora.
+
+Forma canónica, con dos precedentes exactos (`tasa_impagada` #582, `tiene_punto_acceso_conexion`
+#780): variable calculada + una sola regla `BLOQUEAR CREAR ANY/ANY/ANY` con la condición
+`tipo_sujeto_solicitado NEQ 'ANALISIS_SOLICITUD'`. «Seguir la solicitud» es crear cualquier fase
+posterior al análisis; el análisis documental sigue siendo el sitio donde la falta se detecta y se
+requiere.
+
+**Escapes:**
+
+- **Expediente heredado**: `expedientes.heredado` ya existe como campo
+  (`app/models/expedientes.py:131`), así que la excepción se expresa como **condición de la propia
+  regla**, no como bypass manual repetido fase tras fase en un expediente que nunca va a tener el
+  dato. Cuesta una variable nueva en el catálogo y ahorra fricción permanente.
+- **Motor apagado**: estado del sistema, sin tratamiento propio.
+- Cualquier otro caso extremo: el bypass genérico con justificación de toda regla `BLOQUEAR`.
+
+### Relación con el requisito documental del proyecto
+
+Si el catálogo tiene un `RequisitoDocumental` de tipo `DOC_PROYECTO`, su cobertura en
+`documentos_requisito` apunta también a un documento concreto: **la misma información que el ancla,
+por otra vía, en otro momento y con otro ámbito** — el requisito es por solicitud, el ancla por
+expediente. Con AAP y AAC en el mismo expediente puede haber dos coberturas apuntando a documentos
+distintos; el ancla no puede divergir.
+
+**Criterio:** el ancla es la fuente; el checklist se valida contra ella y avisa si el técnico cubre
+el requisito con un documento distinto del anclado. Preguntar dos veces lo mismo y dejar que las
+respuestas discrepen es el defecto que ya se rechazó al descartar el booleano por fila (§15).
+
+---
+
+## 8. `ANALISIS_SOLICITUD`
+
+**Una fase por versión de proyecto, y todas igual de importantes.**
+
+| Eje | Ámbito | Estado |
+|---|---|---|
+| Trámite `ANALISIS_DOCUMENTAL` | **Por versión** — el reformado es documentación que entra, se analiza y produce su propio `DIAGNOSTICO` con su fecha | Decidido |
+| Requisitos **documentales** | **Global por solicitud**, salvo los marcados como afectados por reformado | Decidido |
+| Requisitos **técnicos** (`coberturas_item_tecnico`) | **Solicitud + reformado**: la verificación se predica del contenido del proyecto | Decidido |
+| Requerimientos **particulares** (`requerimientos_tarea`) | — | **Abierto** (§14) |
+
+`reformado_id` **NULL significa versión inicial**, coherente con que el proyecto original vive en
+`proyectos` y no en la tabla de reformados. No hay que crear filas retroactivas para los expedientes
+existentes.
+
+### El flag de afección por reformado, y el caso de la tasa
+
+Un requisito documental puede estar **afectado por reformado** (columna en el catálogo
+`requisitos_documentales`). El caso que lo motiva es la tasa: si el reformado cambia el presupuesto
+lo bastante, procede tasa complementaria.
+
+En el análisis documental de la versión nueva se revisa: si no cambia, se alimenta con la tasa
+antigua y resuelto; si cambia, se pide el complemento y resuelto. Si algún día aparece otro
+documento que dependa de la versión, se marca igual.
+
+**Traducción física propuesta** (pendiente de confirmar): `reformado_id` *nullable* en
+`documentos_requisito`, con dos índices únicos parciales — `(requisito, solicitud) WHERE
+reformado_id IS NULL` para los no afectados y `(requisito, solicitud, reformado)` para los
+afectados. En `coberturas_item_tecnico` el `reformado_id` también sería nullable, con NULL =
+versión inicial.
+
+Así la tasa complementaria **no es un requisito nuevo**, sino el mismo requisito cubierto en otra
+versión con otro documento — lo que evita tocar la cardinalidad «un documento por requisito». Es
+además la única vía viable: `RequisitoDocumental` es catálogo **global** con condiciones sobre
+variables del motor, y no admite requisitos *ad hoc* para una solicitud concreta.
+
+**Arrastre:** `tasa_impagada` (`calculado.py:320`) cuenta requisitos cubiertos **por solicitud**;
+habrá que reescribirla para que mire la versión vigente.
+
+---
+
+## 9. `CONSULTAS`
+
+**La ronda no *es* la versión: cuelga de ella.** Antes, una segunda fase CONSULTAS se creaba porque
+estaba permitido y porque el usuario tenía en la mano un reformado que no sabía dónde meter y unas
+separatas nuevas. Ahora: *hay un reformado, luego se puede hacer una nueva ronda, y queda
+justificada*. Lo totalmente permitido pasa a estar registrado y auditado.
+
+Consecuencias verificadas:
+
+- Con una fase `CONSULTAS` por versión, **el organismo hereda la versión por su fase** y no necesita
+  dato propio. El «solo los afectados» se expresa en qué filas de `organismos_expediente` nacen en
+  la fase nueva.
+- `UNIQUE (fase_id, organismo_id)` deja de estorbar: cada ronda es una fase distinta y el mismo
+  organismo puede repetirse entre fases. `organismos_expediente` se queda como está.
+- Las separatas nuevas no piden nada: son `DOC_SEPARATA` que consume el `ELABORAR` de la fase de la
+  versión nueva.
+
+---
+
+## 10. `INFORMACION_PUBLICA`
+
+**Decidido (2026-09-08). La IP se repite entera; no cabe parcial.**
+
+- **Enganche: `fases.reformado_id`, y nada por debajo.** Es el más simple de los tres, y por razón
+  distinta a la de consultas: allí el organismo hereda la versión de su fase porque solo se
+  reconsulta a los afectados; aquí porque la exposición es indivisible.
+- **El alcance lo redacta el anuncio, y queda fuera del modelo.** BDDAT registra que hubo una IP
+  sobre el reformado N, no sobre qué versaba. La alegación presentada en la segunda IP contra la
+  parte **no** modificada no se acepta, pero eso es juicio del técnico y va a la resolución: el
+  sistema no lo evalúa.
+- **Los canales dependen del tipo de solicitud** —solo BOP; BOP y BOJA; BOP, BOJA, BOE, diario y
+  tablón…—. No son siempre los mismos ni siempre cinco.
+
+### Deudas que el reformado destapa (ninguna la crea)
+
+**1. Dos reglas de bloqueo se vuelven permisivas.** Las reglas **38** (`ANY/ANY/RESOLUCION`, con
+`solicitud_incluye_dup`) y **1718** (ídem, con `instrumento_ambiental EQ AAU`) impiden abrir la
+resolución mientras la IP no haya concluido, y ambas se apoyan en `fase_ip_finalizada EQ false` —
+variable existencial. Con la IP de la versión inicial cerrada y la del reformado abierta, la
+variable afirma que la IP terminó y las dos reglas **dejan pasar la resolución**, justo en el
+escenario en que más importan. Hay que reescribir la variable en universal.
+
+**2. Las alegaciones tienen que aislarse por ronda.** `ALEGACION_IP` y
+`RESPUESTA_TITULAR_ALEGACION` los consume `ANALISIS_ALEGACIONES.ANALIZAR` **«todas las del
+expediente»** (`TIPOS_DOCUMENTOS_CATALOGO.md`), lo que con dos IP mezcla rondas y choca con §4: si
+las alegaciones de la primera siguen sin contestar, tienen que seguir contando **en su fase**. Las
+alegaciones llevan además la ronda/versión que las aísla.
+
+**3. Los destinatarios múltiples necesitan tabla.** `Tramite` no tiene destinatario —solo `fase_id`,
+`tipo_tramite_id` y `observaciones`—: a los organismos se les adosa con la puente
+`tramites_organismos` (ADR-011), y para las publicaciones no hay equivalente. Hoy N trámites
+`TABLON_AYUNTAMIENTOS` son hermanos indistinguibles salvo por el oficio que cuelga de cada uno.
+
+Y no es solo el tablón. El art. 144 RD 1955/2000 multiplica **tres** destinatarios en la misma
+frase: el «Boletín Oficial de **las provincias afectadas**», «uno de los diarios de mayor
+circulación de **cada una de las provincias** afectadas» y «**los Ayuntamientos** en cuyo término
+municipal radiquen los bienes». Solo BOE, BOJA, portal y titular son únicos. Los vectores fijos ya
+tienen su trámite; los indeterminados en nombre y número —diputación, diario, ayuntamiento— no
+tienen dónde vivir.
+
+Esta refactorización **habría hecho falta igual sin reformados**; lo que el reformado añade es que
+se pueda repetir entre versiones, y eso sale gratis heredando la versión por la fase, igual que en
+consultas.
+
+**Propuesta (a confirmar): `publicadores_expediente`**, calcada de `organismos_expediente`:
+
+| Pieza | Cómo |
+|---|---|
+| Columnas | `expediente_id` + **`fase_id`** + `entidad_id`, con puente `tramites_publicadores` al estilo de `tramites_organismos` |
+| Por qué puente y no FK en `Tramite` | Ese modelo es deliberadamente agnóstico; ADR-011 eligió el puente por eso, y el nodo sintético de ADR-042 ya sabe agrupar trámites por un id vía puente — el nodo del árbol sale gratis |
+| Versión | **Heredada por la fase**, sin columna propia. Entre rondas se repite libremente |
+| Canal | Sin columna: lo dice el tipo del trámite vinculado |
+
+Dos piezas ya en el modelo hacen esto barato: `Entidad.rol_publicador` —«Puede publicar
+anuncios/notificaciones. Ej: diputaciones, ayuntamientos» (`app/models/entidad.py:83`)— es el gemelo
+exacto de `rol_consultado`, está en el CHECK de roles y **hoy no lo usa nadie** (0 entidades); y
+`entidades.nif` es *nullable*, así que un diario cabe como entidad sin inventar texto libre ni tabla
+aparte.
+
+**Abierto:** si los publicadores únicos (BOE, BOJA) entran también por uniformidad o se quedan fuera
+por no aportar nada.
+
+**4. Interprovincialidad y órgano tramitador — para estudiar más adelante.** Cuando la instalación
+afecta a más de una provincia el expediente se rescata y lo tramitan los servicios centrales.
+Modelarlo bien exige que el expediente tenga pertenencia a un órgano tramitador y que ese traslado
+sea posible: refactor grande, objetivo de **exportación al resto de Andalucía**, no de producción.
+
+**Qué se le dice a BDDAT mientras tanto:** que el expediente **se archiva y se da traslado a los
+servicios centrales**. Si para entonces no hay BDDAT en servicios centrales, se usa el mecanismo de
+remisión de expediente que se usaría para cualquier tercero. Un reformado que convierta un
+expediente en interprovincial no ocurre todos los años, así que no condiciona el diseño de ahora.
+
+Tampoco bloquea la IP, porque **el registro de qué se publicó en cada ronda lo dan los trámites de
+cada fase**, no la property. `Proyecto.es_interprovincial` y `provincias_afectadas`
+(`app/models/proyectos.py:201`) se calculan sobre `municipios_proyecto`, que se sobrescribe: sirven
+para decidir qué crear ahora, no para reconstruir el pasado.
+
+---
+
+## 11. Regla de motor sobre las fases
+
+**Decidido (2026-09-08).** Se prohíbe crear una fase que cubra una versión ya cubierta por otra fase
+del mismo tipo.
+
+El criterio no es de consultas: vale igual para `ANALISIS_SOLICITUD` y para las ambientales, así que
+admite **una sola regla con sujeto genérico y condición de encuadre** —el patrón de #582, que evita
+enumerar las fases una a una— en vez de una regla por fase.
+
+Con la versión como sujeto, **#864 queda desbloqueado**: «el análisis de esta versión está cerrado»
+es una pregunta formulable, sin caer en el existencial que hoy mentiría en la ronda del reformado.
+
+---
+
+## 12. Árbol
+
+La lista de reformados dibuja una **metafase virtual**: un nodo intermedio que aparece solo cuando
+hay algún reformado. Es el patrón de ADR-042 un nivel más arriba y hereda su mecánica **aditiva**:
+el backend añade el payload y el front decide la agrupación, sin reparentar nada y sin coste para
+los expedientes sin reformado.
+
+En la interfaz —nodo del árbol, inspector, oficios de consulta— el texto es el que ya entienden los
+organismos: «REFORMADO DE PROYECTO de fecha \_\_\_\_», junto al «PROYECTO de fecha \_\_\_\_» de la
+versión inicial.
+
+---
+
+## 13. El conjunto documental a resolver
+
+El principal produce la versión inicial; los demás `DOC_PROYECTO` producen reformado o no, y todos
+juntos —por consulta— forman el conjunto documental del proyecto sobre el que se resuelve. Con una
+condición: que estén **consumidos o producidos por alguna tarea**, no huérfanos.
+
+**Matiz de cuándo se evalúa** (verificado): el radar define huérfano **solo por ausencia de
+`DocumentoTarea`** (`app/routes/api_huerfanos.py:135`); no mira ningún vínculo con el proyecto. Así
+que entre la ingesta preparatoria en lote y el `ANALIZAR` que los consuma, el principal y los
+reformados **aparecen en el radar como huérfanos** aunque tengan destino declarado. No invalida el
+criterio —el conjunto se conforma después del análisis— pero un documento anclado como principal o
+que abre reformado no debería listarse igual que uno sin destino ninguno. **Abierto** (§14).
+
+---
+
+## 14. Abierto
+
+| Punto | Qué falta decidir |
+|---|---|
+| **Ambientales** | Siguiente paso del barrido: `CONSULTA_MINISTERIO`, `COMPATIBILIDAD_AMBIENTAL`, `AAU_AAUS_INTEGRADA`, `FIGURA_AMBIENTAL_EXTERNA` |
+| **`publicadores_expediente`** | Confirmar la propuesta de §10, y si los publicadores únicos (BOE, BOJA) entran por uniformidad o se quedan fuera. La refactorización es exigible por sí sola, sin reformados: merece issue propio |
+| **Aislamiento de alegaciones** | Cómo lleva la alegación su ronda (§10 deuda 2) |
+| **`RESOLUCION`** | No se repite: cómo identifica la versión sobre la que resuelve |
+| **Requerimientos particulares** | Nacen en una versión y pueden morir en otra, así que el reformado les sirve como atributo de nacimiento, no como clave. Y `orden` es hoy un único 1..N por solicitud, pensado para un escrito: con dos fases vivas hay dos escritos que quieren su numeración |
+| **`REFUNDIDO`** | Si entra en `reformados_proyecto` con un tipo que diga «consolida, no abre versión», o se pierde el apellido |
+| **Radar de huérfanos** | Cómo se presenta un `DOC_PROYECTO` con destino declarado pero sin tarea que lo consuma todavía (§12) |
+| **Ingesta en lote** | En el lote inicial preparatorio, si entran tres `DOC_PROYECTO` seguidos, el primero se lleva la pregunta de anclaje y los otros dos la de reformado, que en ese momento es ruido. Se mitiga con el «por defecto no», pero condiciona la pantalla |
+| **Columnas de `reformados_proyecto`** | Más allá del documento que lo introduce y su orden |
+
+---
+
+## 15. Alternativas descartadas
+
+### De modelo
+
+| Alternativa | Por qué no |
+|---|---|
+| Vínculo directo fase↔documentos (#819 original) | Quien tiene la relación con la versión no siempre es la fase: en consultas es el organismo, en el análisis el requisito técnico |
+| Entidad de versión separada de los documentos | Innecesaria: el reformado **es** el documento que lo introduce, con el patrón de anclas ya establecido |
+| Columna `produce_edicion_proyecto` por fila, rellenada por el técnico | Pregunta dos veces lo mismo con oportunidad de contradecirse, y el error se propaga en silencio a qué fases se consideran afectadas |
+| Hardcodear el literal `'MODIFICADO'` | Se apoyaría en un `varchar` libre sin CHECK |
+| Subir `tipo` a catálogo con flag | Resuelto por §6: la existencia de la fila ya es la declaración |
+| Mantener `documentos_proyecto` añadiéndole columnas | Todo lo que contiene es deducible; lo único con valor es frágil y se rehace mejor |
+| Meter el proyecto original como primera fila de la tabla | Chirría con el nombre, y es innecesario: el original ya está en `proyectos` (§7) |
+
+### De nombre
+
+| Nombre | Por qué no |
+|---|---|
+| `ediciones_proyecto` | «Edición» tiene los dos sentidos —versión y acto de editar— y en este repo *editar* está establecido como verbo de modificación (34 ocurrencias en 20 ficheros, `editar_fase`, `editar_expediente`, el permiso `'editar'`). Se leería como bitácora de modificaciones |
+| `versiones_proyecto` | Correcto y ya usado en la docstring de `Proyecto`, pero permitía meter el original en la tabla y no dice nada a quien lea el oficio |
+| `modificados_proyecto` | Colisiona con `proyectos.es_modificacion`, que significa modificación de instalación existente (art. 115): dos «modificado» distintos en el mismo modelo |
+
+`reformados_proyecto` gana porque es lo que los técnicos escriben en los títulos, lo que los
+organismos leen en el oficio de consulta, y no colisiona con nada.
+
+---
+
+## 16. Trazabilidad documental
+
+Ningún ADR menciona `documentos_proyecto` (verificado con grep sobre `docs/decisiones/`): retirarla
+no enmienda ninguna decisión adoptada. Quedan tocados por otras vías:
+
+| Documento | Qué le pasa |
+|---|---|
+| ADR-016 + ADR-042 | El nodo de reformado es un nodo sintético más, entre solicitud y fase; ADR-042 enmendó ADR-016 §1 por lo mismo un nivel más abajo |
+| ADR-032 | La ingesta gana un paso: la bifurcación de §6 y la fecha obligatoria para `DOC_PROYECTO` |
+| ADR-038 | El criterio del radar de huérfanos, ante documentos con destino declarado sin tarea (§12) |
+| ADR-041 §D bis | Dos anclas documentales nuevas: el principal del proyecto y cada reformado, esta con reversión automática y solo sobre la última |
+| ADR-043 §E | El `ámbito` que quedó vacío a propósito, y el registry por fase, se rellenan aquí |
+| ADR-002 | La fecha derivada del documento es este ADR aplicado |
+| ADR-011 | Su patrón de tabla puente trámite↔destinatario es el que replica `publicadores_expediente` (§10) |
+| ADR-033 §7 | Se cita; cambiaría solo si se toca `requerimientos_tarea` |
+| `TIPOS_DOCUMENTOS_CATALOGO.md` | `ALEGACION_IP` y `RESPUESTA_TITULAR_ALEGACION` dicen «todas las del expediente»: hay que acotarlo por ronda (§10) |
+| `DISEÑO_CONSULTAS_ORGANISMOS.md` §6 bis, §8 | Se queda con su parte y apunta aquí |
+| `DISEÑO_ANALISIS_SOLICITUD.md` §4, §6 | Le entra el eje de versión |
+| `DISEÑO_SUBSISTEMA_DOCUMENTAL.md` §2 | Sustituir el ejemplo del patrón N:M |
+| `INVENTARIO_BACKEND.md` | Retirar `DocumentoProyecto`, dar de alta `ReformadoProyecto` |
+| #819 | Su cuerpo propone lo descartado; hay que corregirlo |
