@@ -7,7 +7,7 @@
 `DISEÑO_SUBSISTEMA_DOCUMENTAL.md` §2 · ADR-011, ADR-016, ADR-032, ADR-038, ADR-041, ADR-042, ADR-043
 
 > Este documento recoge el análisis en curso, no una decisión cerrada. Lo decidido va marcado
-> como tal con la sesión en que se acordó; lo abierto, en §15. Cuando el barrido de fases
+> como tal con la sesión en que se acordó; lo abierto, en §16. Cuando el barrido de fases
 > termine, la decisión se lleva a un ADR y este documento se congela en `historial/`.
 
 ---
@@ -26,7 +26,7 @@ Tres palabras, y ninguna intercambiable:
 con la AAU —art. 115 RD 1955/2000, y el campo `proyectos.es_modificacion` que ya lo expresa—. No se
 usa para este caso.
 
-Nombres descartados para la tabla, con su motivo, en §16.
+Nombres descartados para la tabla, con su motivo, en §17.
 
 ---
 
@@ -156,7 +156,7 @@ migraciones desde cero antes de producción.
 **Cabos:**
 
 - **`REFUNDIDO`** es el único apellido con semántica propia más allá de abrir versión: anula los
-  anteriores, o sea determina qué documento hay que leer. **Abierto** (§15).
+  anteriores, o sea determina qué documento hay que leer. **Abierto** (§16).
 - **`ANEXO`** se puede perder sin dolor: lo que importa de un anexo es qué requisito cierra, y eso
   vive en `documentos_requisito` y en el `ANALIZAR` que lo consume.
 - **La guarda del pool** pierde su primera rama (`doc.proyecto_vinculado`) y se sustituye por
@@ -262,7 +262,7 @@ distintos; el ancla no puede divergir.
 
 **Criterio:** el ancla es la fuente; el checklist se valida contra ella y avisa si el técnico cubre
 el requisito con un documento distinto del anclado. Preguntar dos veces lo mismo y dejar que las
-respuestas discrepen es el defecto que ya se rechazó al descartar el booleano por fila (§16).
+respuestas discrepen es el defecto que ya se rechazó al descartar el booleano por fila (§17).
 
 ---
 
@@ -275,7 +275,7 @@ respuestas discrepen es el defecto que ya se rechazó al descartar el booleano p
 | Trámite `ANALISIS_DOCUMENTAL` | **Por versión** — el reformado es documentación que entra, se analiza y produce su propio `DIAGNOSTICO` con su fecha | Decidido |
 | Requisitos **documentales** | **Global por solicitud**, salvo los marcados como afectados por reformado | Decidido |
 | Requisitos **técnicos** (`coberturas_item_tecnico`) | **Solicitud + reformado**: la verificación se predica del contenido del proyecto | Decidido |
-| Requerimientos **particulares** (`requerimientos_tarea`) | — | **Abierto** (§15) |
+| Requerimientos **particulares** (`requerimientos_tarea`) | — | **Abierto** (§16) |
 
 `reformado_id` **NULL significa versión inicial**, coherente con que el proyecto original vive en
 `proyectos` y no en la tabla de reformados. No hay que crear filas retroactivas para los expedientes
@@ -414,7 +414,7 @@ Tres fases con particularidades propias y un enganche común.
 
 - **Enganche: `fases.reformado_id` en las tres, y nada por debajo.** Ninguna tiene cardinalidad
   variable dentro: es una interlocución con un solo órgano, no N destinatarios.
-- **Control: la regla genérica de §12, y ninguna regla propia.** «Impedir una segunda
+- **Control: la regla genérica de §13, y ninguna regla propia.** «Impedir una segunda
   `COMPATIBILIDAD_AMBIENTAL` si no hay reformado» y «no crear una fase que cubra una versión ya
   cubierta» son la misma frase leída del derecho y del revés: sin reformado, la versión vigente es
   la que ya cubrió la primera fase → bloqueo; con reformado, es otra → permitido, justificado y
@@ -496,7 +496,60 @@ intermedias**, y la Ley 2/2026 no lo aclara. Documentar es todo lo que cabe hace
 
 ---
 
-## 12. Regla de motor sobre las fases
+## 12. `CONSULTA_MINISTERIO`
+
+**Decidido (2026-09-08).** No hay nada que rascar aquí: es una consulta más, y de hecho **más simple
+que las del art. 127**. Un solo destinatario fijo —la Dirección General de Política Energética y
+Minas—, sin cardinalidad variable, así que ni siquiera necesita el equivalente de
+`organismos_expediente`: **`fases.reformado_id` y nada por debajo**. Una fase por versión, la regla
+genérica de §13 evita duplicar sobre la misma, y el cierre conjunto de §11 vale igual si el
+Ministerio incorpora el reformado y emite un solo informe.
+
+Del art. 114 RD 1955/2000, para no volver a leerlo: aplica a instalaciones de **transporte**
+competencia de las CCAA; se remite «la solicitud y **la documentación que la acompañe**» —el
+proyecto entero, sin extracto—; el informe se emite en **dos meses** y, si no llega, «se proseguirán
+las actuaciones».
+
+### Deuda transversal que esta fase destapa: la suspensión acumulada
+
+`catalogo_plazos` marca esta entrada con `suspende_plazo_solicitud = true` (art. 22.1.d LPACAP),
+igual que `CONSULTA_SEPARATA` (30 días) y `REQUERIMIENTO_SUBSANACION` (10 días). Y `plazos.py` funde
+los intervalos **solapados**, porque «un reloj no se para dos veces» — pero **dos rondas no se
+solapan: son sucesivas**, así que suman.
+
+La premisa que hoy sostiene que no hace falta controlar el tope está escrita en el propio docstring
+de `plazos.py`, y con reformados deja de ser cierta:
+
+> «El art. 22.1.d añade que la suspensión "no podrá exceder en ningún caso de tres meses", límite
+> que en la práctica no muerde —todos los plazos de informe que BDDAT maneja son de tres meses o
+> menos— y que se vigila al dar de alta la entrada, no en el cómputo.»
+
+Cierto **por entrada**, falso **por acumulación**: dos consultas al Ministerio son 2 + 2 = cuatro
+meses de suspensión. El tope se vigila al dar de alta la fila del catálogo, y ahí nadie ve que la
+misma fila se va a disparar dos veces. Enlaza con lo que #778 dejó anotado como no fijado.
+
+**Pero el fondo no es un defecto de modelo, es una laguna de la ley.** El art. 22.1.d no aclara si
+su tope es por cada informe pedido o acumulado, y **la norma no dice nada de reformado tras
+reformado**: ni para las consultas, ni para la IP, ni para las ambientales, ni para esta. Con un
+promotor que presenta un proyecto inmaduro y lo reforma varias veces, la Administración consume su
+propio plazo por un defecto que no es suyo, y no hay regla que lo resuelva. Es de las lagunas que
+crujen al modelarlas con un sistema determinista, y conviene no tapar el crujido con una decisión
+inventada.
+
+**Cuándo importa de verdad**, que es el criterio que sí está claro: consumir plazo no preocupa por
+sí solo. Preocupa cuando hay **derechos de terceros** en juego y el vencimiento produce resolución
+desfavorable — el silencio es **desestimatorio** en AAP (art. 128) y en AAC (art. 131.7)
+(`NORMATIVA_MAPA_PROCEDIMENTAL.md`), y en DUP eso arrastra la expropiación. Ahí el cómputo tiene que
+ser exacto; en el resto, informativo.
+
+### Apunte para `RESOLUCION`
+
+El art. 114 in fine obliga a notificar la resolución **a la DGPEM y a la CNE** (hoy CNMC).
+Comprobar al barrer esa fase si `NOTIFICACION`/`PUBLICACION` lo contemplan o es un hueco.
+
+---
+
+## 13. Regla de motor sobre las fases
 
 **Decidido (2026-09-08).** Se prohíbe crear una fase que cubra una versión ya cubierta por otra fase
 del mismo tipo.
@@ -510,7 +563,7 @@ es una pregunta formulable, sin caer en el existencial que hoy mentiría en la r
 
 ---
 
-## 13. Árbol
+## 14. Árbol
 
 La lista de reformados dibuja una **metafase virtual**: un nodo intermedio que aparece solo cuando
 hay algún reformado. Es el patrón de ADR-042 un nivel más arriba y hereda su mecánica **aditiva**:
@@ -523,7 +576,7 @@ versión inicial.
 
 ---
 
-## 14. El conjunto documental a resolver
+## 15. El conjunto documental a resolver
 
 El principal produce la versión inicial; los demás `DOC_PROYECTO` producen reformado o no, y todos
 juntos —por consulta— forman el conjunto documental del proyecto sobre el que se resuelve. Con una
@@ -534,15 +587,15 @@ condición: que estén **consumidos o producidos por alguna tarea**, no huérfan
 que entre la ingesta preparatoria en lote y el `ANALIZAR` que los consuma, el principal y los
 reformados **aparecen en el radar como huérfanos** aunque tengan destino declarado. No invalida el
 criterio —el conjunto se conforma después del análisis— pero un documento anclado como principal o
-que abre reformado no debería listarse igual que uno sin destino ninguno. **Abierto** (§15).
+que abre reformado no debería listarse igual que uno sin destino ninguno. **Abierto** (§16).
 
 ---
 
-## 15. Abierto
+## 16. Abierto
 
 | Punto | Qué falta decidir |
 |---|---|
-| **`CONSULTA_MINISTERIO`** | Única fase del barrido sin repasar: sale el proyecto entero al Ministerio (art. 114), previsiblemente igual que las ambientales |
+| **Suspensión acumulada** | El tope del art. 22.1.d con rondas sucesivas (§12): si es por informe o acumulado, y si BDDAT debe vigilarlo o solo informar. Laguna de la ley, no del modelo |
 | **Trámites de la AAU modificada** | La fase AAU de la versión nueva llevará trámites que hoy no están en el FTT (§11): se catalogan cuando salga la instrucción conjunta |
 | **`publicadores_expediente`** | Sale de este análisis con vida propia: **#882**. Aquí solo queda que herede la versión por la fase |
 | **Aislamiento de alegaciones** | Cómo lleva la alegación su ronda (§10 deuda 2) |
@@ -555,7 +608,7 @@ que abre reformado no debería listarse igual que uno sin destino ninguno. **Abi
 
 ---
 
-## 16. Alternativas descartadas
+## 17. Alternativas descartadas
 
 ### De modelo
 
@@ -582,7 +635,7 @@ organismos leen en el oficio de consulta, y no colisiona con nada.
 
 ---
 
-## 17. Trazabilidad documental
+## 18. Trazabilidad documental
 
 Ningún ADR menciona `documentos_proyecto` (verificado con grep sobre `docs/decisiones/`): retirarla
 no enmienda ninguna decisión adoptada. Quedan tocados por otras vías:
