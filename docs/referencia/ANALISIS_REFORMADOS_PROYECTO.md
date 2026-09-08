@@ -1,14 +1,16 @@
 # Análisis: reformados de proyecto — el proyecto que cambia dentro de la solicitud sin resolver
 
-**Estado:** Documento de trabajo — vivo mientras dure el estudio (`REGLAS_ARQUITECTURA.md` §2, §8)
+**Estado:** Análisis cerrado — la decisión vive en **ADR-044**. Este documento se congela en
+`historial/` al arrancar la implementación (`REGLAS_ARQUITECTURA.md` §2, §3)
 **Fecha de apertura:** 2026-09-07 · **Última sesión:** 2026-09-08
 **Issues:** #819 (decisión de fondo) · #864 (bloqueado por esta) · #848 (arrastre)
 **Relacionado:** `DISEÑO_CONSULTAS_ORGANISMOS.md` §6 bis y §8 · `DISEÑO_ANALISIS_SOLICITUD.md` §4 y §6 ·
 `DISEÑO_SUBSISTEMA_DOCUMENTAL.md` §2 · ADR-011, ADR-016, ADR-032, ADR-038, ADR-041, ADR-042, ADR-043
 
-> Este documento recoge el análisis en curso, no una decisión cerrada. Lo decidido va marcado
-> como tal con la sesión en que se acordó; lo abierto, en §17. Cuando el barrido de fases
-> termine, la decisión se lleva a un ADR y este documento se congela en `historial/`.
+> **La decisión está en [ADR-044](../decisiones/ADR-044-reformados-proyecto-version-como-eje.md)** —
+> ahí van el qué y el porqué, y los issues de implementación. Este documento conserva **el camino**:
+> el barrido fase a fase, lo verificado en código y BD, las alternativas que se cayeron y los cabos,
+> cada decisión fechada con la sesión en que se acordó. Lo que sigue abierto, en §17.
 
 ---
 
