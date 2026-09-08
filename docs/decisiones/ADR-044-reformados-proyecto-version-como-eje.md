@@ -263,6 +263,21 @@ acierta; `organismos_expediente` se queda como está; el árbol no cambia de top
   se resuelve por comunicación y silencio de un mes, no por otro informe vinculante. La fase de la
   versión nueva llevará trámites distintos de los cinco de la primera; **no se inventan en el FTT**
   hasta que salga la nueva instrucción conjunta. Al implementar, no clonar la fase anterior.
+- **Edición concurrente.** Con dos fases de análisis vivas, dos `ANALIZAR` conviven, y el conflicto
+  —entre pestañas del mismo usuario y entre personas distintas— deja de ser de laboratorio. #884
+  cubre lo primero por la vía optimista (merge en la lista de requerimientos, sin bloquear a nadie);
+  lo segundo —un **candado por expediente en modo edición**, con la lectura siempre libre— queda
+  para su propia sesión.
+
+  Precedente de qué **no** hacer, en el mismo dominio y con los mismos usuarios:
+  `ESTUDIO_DOM_PTWANDA.md` **§11 «Bloqueo y liberación — REGLA DE ORO»**. En PTWANDA
+  `tramitarExpediente()` bloquea el expediente para el usuario actual, **no hay botón de liberar**,
+  y **cerrar el navegador en seco lo deja bloqueado indefinidamente** — con un caso real anotado de
+  un expediente tomado por un usuario de otra provincia. El repo `genete/ptwanda-tecnico` (§2.bis de
+  `EXPLORACION_ASIGNACION_Y_FINALIZACION.md`) añade el detalle que lo explica todo: solo libera el
+  **click** en «Ir a inicio», no un `GET` a esa misma URL. Es decir, **la liberación es puramente de
+  cliente**: no hay expiración ni barrido en servidor. De ahí la exigencia mínima para el nuestro —
+  que el candado lleve **quién y desde cuándo**, y expire solo.
 
 ---
 
