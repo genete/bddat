@@ -155,8 +155,11 @@ migraciones desde cero antes de producción.
 
 **Cabos:**
 
-- **`REFUNDIDO`** es el único apellido con semántica propia más allá de abrir versión: anula los
-  anteriores, o sea determina qué documento hay que leer. **Abierto** (§17).
+- **`REFUNDIDO` no necesita modelarse** (decidido 2026-09-08). La pregunta no es si el documento es
+  refundido, es **si produce corte**: reformado y refundido a la vez, corte; refundido a secas, no.
+  En ese caso es un documento de ayuda a la lectura, de valor aclaratorio, que ni siquiera forma
+  parte del proyecto hasta que alguna tarea lo consuma. Era el único apellido que hacía dudar de
+  retirar la tabla entera, y se cierra sin nada que construir.
 - **`ANEXO`** se puede perder sin dolor: lo que importa de un anexo es qué requisito cierra, y eso
   vive en `documentos_requisito` y en el `ANALIZAR` que lo consume.
 - **La guarda del pool** pierde su primera rama (`doc.proyecto_vinculado`) y se sustituye por
@@ -210,6 +213,24 @@ posibilidad de versión nueva pasa por un solo sitio.
 - **Corolario general:** toda referencia a un `documento_id` desde cualquier sitio debe impedir su
   borrado del pool, o dejar escape borrando la referencia con las consecuencias que tenga. Donde el
   CRUD es manual, revierte el usuario; donde es automático, revierte el sistema.
+
+### Columnas (decidido 2026-09-08)
+
+**El mínimo, porque casi todo lo demás ya está en otro sitio:** `documento_id` —el ancla— y
+**`origen`**, que distingue si el reformado es **voluntario** del promotor (art. 76.1 LPACAP) o
+**requerido** por la Administración (art. 68.3, el que obliga a levantar «acta sucinta que se
+incorporará al procedimiento»). Son dos supuestos legales distintos, con documentación distinta, y
+es lo único que no se deriva de nada. Si algún día se modela esa acta, su ancla natural es esta
+misma fila.
+
+Lo que **no** lleva, y por qué:
+
+| Candidato | Dónde está ya |
+|---|---|
+| `orden` / número de reformado | Se deriva: `ORDER BY documentos.fecha_administrativa, id` — la fecha es obligatoria para `DOC_PROYECTO` y el `id` desempata. «Reformado 2» es una posición, no un dato |
+| Etiqueta o nombre | Se compone: «REFORMADO DE PROYECTO de fecha 12/03/2026» |
+| Observaciones | `documentos.observaciones` |
+| Quién lo declaró y cuándo | **Bitácora**: es una decisión con consecuencias —obliga a rehacer fases—, igual que el resto de actos del árbol |
 
 ---
 
@@ -655,27 +676,35 @@ condición: que estén **consumidos o producidos por alguna tarea**, no huérfan
 que entre la ingesta preparatoria en lote y el `ANALIZAR` que los consuma, el principal y los
 reformados **aparecen en el radar como huérfanos** aunque tengan destino declarado. No invalida el
 criterio —el conjunto se conforma después del análisis— pero un documento anclado como principal o
-que abre reformado no debería listarse igual que uno sin destino ninguno. **Abierto** (§17).
+que abre reformado no debería listarse igual que uno sin destino ninguno. Se resuelve en la reforma
+del listado del pool: **#881**.
 
 ---
 
 ## 17. Abierto
 
 **El barrido de fases está cerrado** (§8 a §13): las nueve fases del ESFTT repasadas, con su
-enganche decidido. Lo que queda no es ninguna fase, sino los cabos de abajo. Con ellos resueltos,
-la decisión se lleva a ADR y este documento se congela en `historial/`.
+enganche decidido. **Los cabos también** (ver abajo). Lo que queda abierto no bloquea el diseño:
+son decisiones de detalle, una espera normativa y una idea aparcada. Procede llevar la decisión a
+ADR y congelar este documento en `historial/`.
 
 | Punto | Qué falta decidir |
 |---|---|
-| **Suspensión acumulada** | El tope del art. 22.1.d con rondas sucesivas (§12): si es por informe o acumulado, y si BDDAT debe vigilarlo o solo informar. Laguna de la ley, no del modelo |
 | **Trámites de la AAU modificada** | La fase AAU de la versión nueva llevará trámites que hoy no están en el FTT (§11): se catalogan cuando salga la instrucción conjunta |
-| **`publicadores_expediente`** | Sale de este análisis con vida propia: **#882**. Aquí solo queda que herede la versión por la fase |
 | **Aislamiento de alegaciones** | Cómo lleva la alegación su ronda (§10 deuda 2) |
-| **Requerimientos particulares** | Nacen en una versión y pueden morir en otra, así que el reformado les sirve como atributo de nacimiento, no como clave. Y `orden` es hoy un único 1..N por solicitud, pensado para un escrito: con dos fases vivas hay dos escritos que quieren su numeración |
-| **`REFUNDIDO`** | Si entra en `reformados_proyecto` con un tipo que diga «consolida, no abre versión», o se pierde el apellido |
-| **Radar de huérfanos** | Cómo se presenta un `DOC_PROYECTO` con destino declarado pero sin tarea que lo consuma todavía (§12) |
 | **Ingesta en lote** | En el lote inicial preparatorio, si entran tres `DOC_PROYECTO` seguidos, el primero se lleva la pregunta de anclaje y los otros dos la de reformado, que en ese momento es ruido. Se mitiga con el «por defecto no», pero condiciona la pantalla |
-| **Columnas de `reformados_proyecto`** | Más allá del documento que lo introduce y su orden |
+| **Edición concurrente** | Un candado por expediente, idea aparcada para su propia sesión. No lo necesita este diseño: #884 basta para que dos shuttles no se pisen |
+
+### Cerrados en la sesión del 2026-09-08
+
+| Cabo | Cómo quedó |
+|---|---|
+| **`REFUNDIDO`** | Sin nada que modelar: lo que importa es si el documento produce corte, no su apellido (§5) |
+| **Requerimientos particulares** | `reformado_id` como atributo de nacimiento, nunca clave. Depende de que el guardado deje de ser destructivo: **#884**, precedente |
+| **Radar de huérfanos** | A la reforma del listado del pool: **#881** |
+| **Suspensión acumulada** | Anotada como laguna de la ley (§12), sin tarea: no preocupa |
+| **Columnas de `reformados_proyecto`** | `documento_id` y `origen` (voluntario / requerido). El resto se deriva o vive en la bitácora (§6) |
+| **`publicadores_expediente`** | Con vida propia: **#882**. Aquí solo queda que herede la versión por la fase |
 
 ---
 
