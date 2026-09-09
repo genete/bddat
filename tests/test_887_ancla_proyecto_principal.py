@@ -238,10 +238,22 @@ def test_la_variable_del_heredado_trata_null_como_no_heredado(app_ctx, arbol_esf
     assert fn(ExpedienteContext(expediente)) is True
 
 
-@pytest.mark.parametrize('siglas', ['AAP', 'AAC'])
-def test_sin_ancla_la_regla_bloquea_una_fase_posterior(app_ctx, arbol_esftt, siglas):
-    """Una regla por tipo, cada una con su artículo: 123.1 para la AAP (anteproyecto)
-    y 130.1 para la AAC (proyecto de ejecución)."""
+@pytest.mark.parametrize('siglas, cita', [
+    ('AAP', 'Art. 123.1'),       # la AAP sola: anteproyecto
+    ('AAC', 'Art. 130.1'),       # la AAC sola: proyecto de ejecución
+    ('AAP+AAC', 'Art. 130.1'),   # las dos juntas: manda el trámite más avanzado
+])
+def test_sin_ancla_bloquea_citando_la_norma_del_tramite_mas_avanzado(
+        app_ctx, arbol_esftt, siglas, cita):
+    """El caso combinado es el que obliga al reparto simple/multi.
+
+    `evaluar_multi` recorre `tipos_simples` en orden y devuelve el **primer**
+    BLOQUEAR, y ese orden pone 'AAP' antes que 'AAC'. Con una regla por sujeto sin
+    condición, una AAP+AAC se bloquearía citando el anteproyecto del 123.1 cuando lo
+    exigible ahí es el proyecto de ejecución del 130.1. Por eso la regla de la AAP
+    lleva `solicitud_contiene_aac EQ false` y la de la AAC no lleva ninguna: cubre
+    también las combinadas.
+    """
     from app.models.tipos_fases import TipoFase
     from app import db
 
@@ -252,8 +264,10 @@ def test_sin_ancla_la_regla_bloquea_una_fase_posterior(app_ctx, arbol_esftt, sig
 
     disparadas = _reglas_del_ancla(sol, consultas)
 
-    assert disparadas, 'la regla del ancla debe dispararse sin proyecto anclado'
-    assert all(r.efecto == 'BLOQUEAR' for r in disparadas)
+    assert len(disparadas) == 1, \
+        f'una sola regla debe bloquear, con una sola cita: {[r.norma_compilada for r in disparadas]}'
+    assert disparadas[0].efecto == 'BLOQUEAR'
+    assert cita in disparadas[0].norma_compilada
 
 
 def test_la_regla_deja_pasar_el_propio_analisis(app_ctx, arbol_esftt):
