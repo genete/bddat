@@ -43,6 +43,12 @@ from app.services.parser_justificante_notifica import (
     parsear_justificante_notifica, parsear_justificante_notifica_zip,
 )
 from app.services.assembler import build_sujeto
+from app.services.reformados import (
+    declarar_desde_metadatos,
+    es_doc_proyecto,
+    revertir_reformado,
+    sincronizar_reformado,
+)
 from app.services import bitacora as bitacora_svc
 from app.services.invariantes_esftt import es_documento_critico
 from app.utils.permisos import (
@@ -520,7 +526,20 @@ _MOTIVO_ANCLA = {
 
 
 def _motivo_ancla(doc):
-    """Explicación de por qué no se borra, si el documento ancla alguna solicitud."""
+    """Explicación de por qué no se borra, si el documento ancla alguna solicitud.
+
+    El corte del proyecto va aparte del diccionario: las tres anclas de solicitud
+    comparten forma —una lista de solicitudes de la que sale el número— y esta no,
+    porque el backref es escalar y lo que hay que explicar no es de quién es el
+    documento, sino qué gesto lo suelta.
+    """
+    if doc.reformado_proyecto is not None:
+        return (
+            'Este documento abre un reformado de proyecto: mientras conste, el '
+            'proyecto tiene una versión más. Para retirarlo, desmarque «Produce un '
+            'reformado de proyecto» al editar sus metadatos — y solo si es el último '
+            'reformado del expediente.'
+        )
     for atributo, plantilla in _MOTIVO_ANCLA.items():
         solicitudes = getattr(doc, atributo, None) or []
         if solicitudes:
@@ -706,6 +725,8 @@ def pool_registrar_rutas(id):
                 prioridad=1 if item.get('prioridad') else 0,
             )
             db.session.add(doc)
+            db.session.flush()   # el corte necesita el id del documento
+            declarar_desde_metadatos(doc, item, usuario_id=current_user.id)
             creados += 1
 
         db.session.commit()
@@ -788,6 +809,8 @@ def pool_subir_documento(id):
                 asunto=(item.get('asunto') or '').strip() or None,
                 prioridad=bool(item.get('prioridad')),
             )
+            db.session.flush()   # el corte necesita el id del documento
+            declarar_desde_metadatos(ingestado.documento, item, usuario_id=current_user.id)
             creados += 1
             creados_docs.append(ingestado.documento)
 
@@ -962,6 +985,8 @@ def pool_registrar_url_externa(id):
             prioridad=1 if datos.get('prioridad') else 0,
         )
         db.session.add(doc)
+        db.session.flush()   # el corte necesita el id del documento
+        declarar_desde_metadatos(doc, datos, usuario_id=current_user.id)
         db.session.commit()
     except Exception as e:
         db.session.rollback()
@@ -1019,6 +1044,25 @@ def pool_editar_documento(id, doc_id):
 
         if 'observaciones' in datos:
             doc.observaciones = (datos['observaciones'] or '').strip() or None
+
+        # El corte del proyecto (ADR-044 §C). La marca solo se interpreta si viene
+        # en el payload —clave ausente conserva, REGLAS_DESARROLLO §rutas que editan—
+        # porque el control de la interfaz solo existe mientras el tipo elegido es
+        # DOC_PROYECTO. El cambio de tipo, en cambio, sí actúa solo: un corte de un
+        # documento que ha dejado de ser proyecto no significa nada, y retirarlo pasa
+        # por las mismas reglas que el desmarcado.
+        db.session.flush()
+        db.session.expire(doc, ['tipo_doc'])   # el tipo puede acabar de cambiar
+        if 'abre_reformado' in datos:
+            sincronizar_reformado(
+                doc,
+                abre_reformado=bool(datos.get('abre_reformado')),
+                origen=datos.get('origen_reformado'),
+                usuario_id=current_user.id,
+            )
+        elif ('tipo_doc_id' in datos and doc.reformado_proyecto is not None
+                and not es_doc_proyecto(doc)):
+            revertir_reformado(doc, usuario_id=current_user.id)
 
         db.session.commit()
     except Exception as e:

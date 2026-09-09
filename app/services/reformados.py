@@ -98,6 +98,104 @@ def declarar_reformado(documento, origen: str, *, usuario_id: int) -> ReformadoP
     return reformado
 
 
+def declarar_desde_metadatos(documento, metadatos: dict, *, usuario_id: int):
+    """Aplica a un documento recién ingestado la respuesta del paso de metadatos.
+
+    Las tres puertas de alta del pool —multipart, rutas del servidor y URL externa—
+    reciben los mismos dos campos y los tratan igual. La marca solo cuenta si el
+    documento es de verdad un `DOC_PROYECTO`: el control de la interfaz solo existe
+    mientras ese es el tipo elegido, así que una marca sobre otro tipo no es la
+    declaración de nadie.
+    """
+    if not metadatos.get('abre_reformado'):
+        return None
+    if not es_doc_proyecto(documento):
+        return None
+    origen = (metadatos.get('origen_reformado') or '').strip().upper() or ORIGENES_REFORMADO[0]
+    return declarar_reformado(documento, origen, usuario_id=usuario_id)
+
+
+def revertir_reformado(documento, *, usuario_id: int) -> None:
+    """Retira el corte que abre `documento`, si es el último (sin commit).
+
+    La reversión no es un CRUD: el corte nace de una respuesta consciente en la
+    ingesta y muere por el mismo control, desmarcándolo. Solo alcanza al último
+    porque quitar uno intermedio fundiría dos tramos y dejaría a las fases de la
+    versión desaparecida apuntando a nada (ADR-044 §C).
+    """
+    reformado = documento.reformado_proyecto
+    if reformado is None:
+        raise ValueError('Este documento no abre ningún reformado de proyecto.')
+
+    ultimo = ultimo_reformado(documento.expediente_id)
+    if ultimo is not None and ultimo.id != reformado.id:
+        raise ValueError(
+            'Solo se puede deshacer el último reformado del expediente. Este tiene '
+            'versiones posteriores: deshágalas primero, en orden inverso.'
+        )
+
+    # Antes del delete: después no hay id que anotar.
+    bitacora_svc.registrar(
+        usuario_id, 'BORRAR', 'reformados_proyecto', reformado.id,
+        detalle={
+            'documento_id': documento.id,
+            'expediente_id': documento.expediente_id,
+            'origen': reformado.origen,
+        },
+    )
+    db.session.delete(reformado)
+    db.session.flush()
+
+    log.info('Reformado revertido: doc=%s expediente=%s',
+             documento.id, documento.expediente_id)
+
+
+def sincronizar_reformado(documento, *, abre_reformado: bool, origen: Optional[str],
+                          usuario_id: int) -> None:
+    """Deja el corte del documento como dice la respuesta del usuario (sin commit).
+
+    Es la traducción del control de la interfaz: una casilla que solo existe
+    mientras el tipo elegido es `DOC_PROYECTO`, con el origen pegado a ella. De ahí
+    salen los cuatro casos:
+
+    - marcada y sin corte     → se declara
+    - marcada y con corte     → solo puede cambiar el origen
+    - desmarcada y con corte  → se revierte (si es el último)
+    - desmarcada y sin corte  → nada que hacer
+
+    **Si el documento no es un DOC_PROYECTO se ignora la marca y, si arrastraba un
+    corte, se retira**: cambiar el tipo es desmarcar por la puerta de atrás, y el
+    corte de un documento que ya no es proyecto no significa nada. El control estaba
+    oculto, así que lo que llegue en el payload no es una declaración de nadie.
+    """
+    corte = documento.reformado_proyecto
+
+    if not es_doc_proyecto(documento):
+        if corte is not None:
+            revertir_reformado(documento, usuario_id=usuario_id)
+        return
+
+    if not abre_reformado:
+        if corte is not None:
+            revertir_reformado(documento, usuario_id=usuario_id)
+        return
+
+    if corte is None:
+        declarar_reformado(documento, origen or ORIGENES_REFORMADO[0], usuario_id=usuario_id)
+        return
+
+    nuevo_origen = origen or corte.origen
+    if nuevo_origen != corte.origen:
+        if nuevo_origen not in ORIGENES_REFORMADO:
+            raise ValueError(f'Origen de reformado desconocido: {nuevo_origen!r}')
+        anterior, corte.origen = corte.origen, nuevo_origen
+        db.session.flush()
+        bitacora_svc.registrar(
+            usuario_id, 'ALTERAR', 'reformados_proyecto', corte.id,
+            columna='origen', detalle={'de': anterior, 'a': nuevo_origen},
+        )
+
+
 def reformados_de(expediente_id: int) -> list:
     """Los cortes del expediente en el orden que define las versiones.
 

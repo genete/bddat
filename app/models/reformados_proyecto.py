@@ -77,9 +77,14 @@ class ReformadoProyecto(db.Model):
         comment='VOLUNTARIO (art. 76.1 LPACAP) o REQUERIDO por la Administración (art. 68.3)',
     )
 
+    # `delete-orphan` + `passive_deletes`: el corte es del documento y muere con él
+    # —es la reversión por la vía del borrado—, y quien lo borra es el ON DELETE
+    # CASCADE de la FK. Sin esto el ORM intentaría antes poner `documento_id` a NULL,
+    # que es NOT NULL, y el borrado del pool moriría en un IntegrityError.
     documento = db.relationship(
         'Documento',
-        backref=db.backref('reformado_proyecto', uselist=False),
+        backref=db.backref('reformado_proyecto', uselist=False,
+                           cascade='all, delete-orphan', passive_deletes=True),
     )
 
     def __repr__(self):

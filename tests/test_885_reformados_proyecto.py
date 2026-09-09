@@ -119,24 +119,37 @@ def test_un_documento_no_abre_dos_cortes(app_ctx, arbol_esftt, usuario_id):
 # B) El orden de los cortes
 # ---------------------------------------------------------------------------
 
+def _orden_de(expediente_id, *documentos):
+    """El orden de los cortes del test dentro del expediente.
+
+    Filtrado a propósito: `solicitud_nueva()` reutiliza el primer expediente de la
+    base, que puede traer cortes de la semilla o de otro test. Lo que se comprueba
+    es la posición relativa, que es lo que define las versiones.
+    """
+    from app.services.reformados import reformados_de
+    mios = {doc.id for doc in documentos}
+    return [r.documento_id for r in reformados_de(expediente_id) if r.documento_id in mios]
+
+
 def test_los_cortes_se_ordenan_por_fecha_no_por_alta(app_ctx, arbol_esftt, usuario_id):
     """El técnico puede subir el reformado antiguo después: manda la fecha."""
-    from app.services.reformados import declarar_reformado, reformados_de, ultimo_reformado
+    from app.services.reformados import declarar_reformado, ultimo_reformado
 
     sol = arbol_esftt.solicitud_nueva()
-    reciente = _proyecto(arbol_esftt, sol.expediente_id, 'reciente', dias_atras=5)
+    reciente = _proyecto(arbol_esftt, sol.expediente_id, 'reciente', dias_atras=0)
     antiguo = _proyecto(arbol_esftt, sol.expediente_id, 'antiguo', dias_atras=60)
 
     declarar_reformado(reciente, 'VOLUNTARIO', usuario_id=usuario_id)
     declarar_reformado(antiguo, 'VOLUNTARIO', usuario_id=usuario_id)
 
-    orden = [r.documento_id for r in reformados_de(sol.expediente_id)]
-    assert orden == [antiguo.id, reciente.id]
+    assert _orden_de(sol.expediente_id, antiguo, reciente) == [antiguo.id, reciente.id]
+    # Con fecha de hoy y el id más alto del expediente, el reciente es el último
+    # aunque el expediente arrastre cortes previos.
     assert ultimo_reformado(sol.expediente_id).documento_id == reciente.id
 
 
 def test_misma_fecha_desempata_el_id(app_ctx, arbol_esftt, usuario_id):
-    from app.services.reformados import declarar_reformado, reformados_de
+    from app.services.reformados import declarar_reformado
 
     sol = arbol_esftt.solicitud_nueva()
     primero = _proyecto(arbol_esftt, sol.expediente_id, 'mismo-dia-1', dias_atras=10)
@@ -145,8 +158,7 @@ def test_misma_fecha_desempata_el_id(app_ctx, arbol_esftt, usuario_id):
     declarar_reformado(segundo, 'VOLUNTARIO', usuario_id=usuario_id)
     declarar_reformado(primero, 'VOLUNTARIO', usuario_id=usuario_id)
 
-    orden = [r.documento_id for r in reformados_de(sol.expediente_id)]
-    assert orden == [primero.id, segundo.id]
+    assert _orden_de(sol.expediente_id, primero, segundo) == [primero.id, segundo.id]
 
 
 def test_los_cortes_no_se_mezclan_entre_expedientes(app_ctx, arbol_aislado, usuario_id):
@@ -162,8 +174,9 @@ def test_los_cortes_no_se_mezclan_entre_expedientes(app_ctx, arbol_aislado, usua
     declarar_reformado(doc_uno, 'VOLUNTARIO', usuario_id=usuario_id)
     declarar_reformado(doc_otro, 'VOLUNTARIO', usuario_id=usuario_id)
 
-    assert [r.documento_id for r in reformados_de(uno.expediente_id)] == [doc_uno.id]
+    # El expediente recién fabricado sí está limpio: ahí la lista es exacta.
     assert [r.documento_id for r in reformados_de(otro.expediente_id)] == [doc_otro.id]
+    assert doc_otro.id not in _orden_de(uno.expediente_id, doc_uno, doc_otro)
 
 
 # ---------------------------------------------------------------------------
@@ -234,3 +247,130 @@ def test_los_demas_tipos_siguen_admitiendo_fecha_vacia(app_ctx, arbol_esftt):
 
     assert doc.fecha_administrativa is None
     assert doc.id is not None
+
+
+# ---------------------------------------------------------------------------
+# E) Las puertas del pool: alta por ruta y sincronización al editar
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def puerta(app, usuario_admin, expediente_seed):
+    """Cliente autenticado + helpers contra la puerta de URL externa del pool.
+
+    Se usa esa puerta y no la multipart porque no toca el disco: lo que se prueba
+    aquí es el contrato del payload —la marca y su origen—, que es el mismo en las
+    tres puertas de alta.
+    """
+    from app import db
+    from app.models.documentos import Documento
+    from app.models.tipos_documentos import TipoDocumento
+    from app.services.reloj_simulado import hoy
+
+    creados = []
+
+    class Puerta:
+        client = usuario_admin
+        expediente_id = expediente_seed
+
+        def tipo_id(self, codigo):
+            with app.app_context():
+                tipo = TipoDocumento.query.filter_by(codigo=codigo).first()
+                assert tipo is not None, f'la semilla debe traer el TipoDocumento {codigo}'
+                return tipo.id
+
+        def alta(self, **payload):
+            datos = {
+                'url': f'https://example.org/885/{len(creados)}',
+                'fecha_administrativa': (hoy() - timedelta(days=20)).isoformat(),
+            }
+            datos.update(payload)
+            respuesta = self.client.post(
+                f'/expedientes/{self.expediente_id}/documentos/url-externa', json=datos)
+            assert respuesta.status_code == 200, respuesta.get_data(as_text=True)
+            with app.app_context():
+                doc = (Documento.query.filter_by(url=datos['url'])
+                       .order_by(Documento.id.desc()).first())
+            assert doc is not None, 'el alta debe haber creado el documento'
+            creados.append(doc.id)
+            return doc.id
+
+        def editar(self, doc_id, **payload):
+            return self.client.post(
+                f'/expedientes/{self.expediente_id}/documentos/{doc_id}/editar',
+                json=payload)
+
+        def corte(self, doc_id):
+            from app.models.reformados_proyecto import ReformadoProyecto
+            with app.app_context():
+                return ReformadoProyecto.query.filter_by(documento_id=doc_id).first()
+
+    yield Puerta()
+
+    # Estos tests no corren bajo `app_ctx`: escriben de verdad y hay que recoger.
+    with app.app_context():
+        for doc_id in creados:
+            doc = db.session.get(Documento, doc_id)
+            if doc is not None:
+                db.session.delete(doc)
+        db.session.commit()
+
+
+def test_la_puerta_declara_el_corte_si_viene_marcado(puerta):
+    doc_id = puerta.alta(tipo_doc_id=puerta.tipo_id(CODIGO_PROYECTO),
+                         abre_reformado=True, origen_reformado='REQUERIDO')
+
+    corte = puerta.corte(doc_id)
+    assert corte is not None
+    assert corte.origen == 'REQUERIDO'
+
+
+def test_la_puerta_ignora_la_marca_si_el_tipo_no_es_proyecto(puerta):
+    """El control solo existe mientras el tipo elegido es DOC_PROYECTO: una marca
+    sobre otro tipo no es la declaración de nadie."""
+    doc_id = puerta.alta(tipo_doc_id=puerta.tipo_id('MODELO_SOLICITUD'),
+                         abre_reformado=True)
+
+    assert puerta.corte(doc_id) is None
+
+
+def test_desmarcar_al_editar_retira_el_corte(puerta):
+    doc_id = puerta.alta(tipo_doc_id=puerta.tipo_id(CODIGO_PROYECTO), abre_reformado=True)
+    assert puerta.corte(doc_id) is not None
+
+    respuesta = puerta.editar(doc_id, abre_reformado=False)
+
+    assert respuesta.status_code == 200, respuesta.get_data(as_text=True)
+    assert puerta.corte(doc_id) is None
+
+
+def test_editar_sin_hablar_del_corte_no_lo_toca(puerta):
+    """Clave ausente conserva: guardar el asunto no borra el reformado."""
+    doc_id = puerta.alta(tipo_doc_id=puerta.tipo_id(CODIGO_PROYECTO), abre_reformado=True)
+
+    respuesta = puerta.editar(doc_id, asunto='Reformado de la línea aérea')
+
+    assert respuesta.status_code == 200, respuesta.get_data(as_text=True)
+    assert puerta.corte(doc_id) is not None
+
+
+def test_cambiar_el_tipo_retira_el_corte(puerta):
+    """Dejar de ser proyecto es desmarcar por la puerta de atrás."""
+    doc_id = puerta.alta(tipo_doc_id=puerta.tipo_id(CODIGO_PROYECTO), abre_reformado=True)
+
+    respuesta = puerta.editar(doc_id, tipo_doc_id=puerta.tipo_id('MODELO_SOLICITUD'))
+
+    assert respuesta.status_code == 200, respuesta.get_data(as_text=True)
+    assert puerta.corte(doc_id) is None
+
+
+def test_solo_se_revierte_el_ultimo_corte(puerta):
+    """Quitar uno intermedio fundiría dos tramos: la puerta lo rechaza."""
+    primero = puerta.alta(tipo_doc_id=puerta.tipo_id(CODIGO_PROYECTO), abre_reformado=True)
+    segundo = puerta.alta(tipo_doc_id=puerta.tipo_id(CODIGO_PROYECTO), abre_reformado=True)
+
+    respuesta = puerta.editar(primero, abre_reformado=False)
+
+    assert respuesta.status_code == 500
+    assert 'último reformado' in respuesta.get_json()['error']
+    assert puerta.corte(primero) is not None
+    assert puerta.corte(segundo) is not None
