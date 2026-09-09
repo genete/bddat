@@ -128,15 +128,25 @@ def exigir_fecha_administrativa(tipo_doc_id, fecha) -> None:
 def declarar_desde_metadatos(documento, metadatos: dict, *, usuario_id: int):
     """Aplica a un documento recién ingestado la respuesta del paso de metadatos.
 
-    Las tres puertas de alta del pool —multipart, rutas del servidor y URL externa—
-    reciben los mismos dos campos y los tratan igual. La marca solo cuenta si el
-    documento es de verdad un `DOC_PROYECTO`: el control de la interfaz solo existe
-    mientras ese es el tipo elegido, así que una marca sobre otro tipo no es la
-    declaración de nadie.
+    Punto único de las tres puertas de alta del pool —multipart, rutas del servidor
+    y URL externa—, y donde vive la bifurcación de §C: **la rama la decide el estado
+    del ancla, no el cliente**. Así, en un lote de varios DOC_PROYECTO el primero
+    puede anclar el proyecto y el siguiente ya se encuentra la otra pregunta, sin que
+    quepan dos principales.
+
+    La marca solo cuenta si el documento es de verdad un `DOC_PROYECTO`: el control
+    de la interfaz solo existe mientras ese es el tipo elegido, así que una marca
+    sobre otro tipo no es la declaración de nadie.
     """
-    if not metadatos.get('abre_reformado'):
-        return None
     if not es_doc_proyecto(documento):
+        return None
+
+    if rama_de_la_ingesta(documento.expediente) == RAMA_PRINCIPAL:
+        if metadatos.get('es_principal'):
+            return anclar_principal(documento, usuario_id=usuario_id)
+        return None
+
+    if not metadatos.get('abre_reformado'):
         return None
     origen = (metadatos.get('origen_reformado') or '').strip().upper() or ORIGENES_REFORMADO[0]
     return declarar_reformado(documento, origen, usuario_id=usuario_id)
@@ -221,6 +231,109 @@ def sincronizar_reformado(documento, *, abre_reformado: bool, origen: Optional[s
             usuario_id, 'ALTERAR', 'reformados_proyecto', corte.id,
             columna='origen', detalle={'de': anterior, 'a': nuevo_origen},
         )
+
+
+# ---------------------------------------------------------------------------
+# El ancla del proyecto principal (ADR-044 §D)
+# ---------------------------------------------------------------------------
+# Vive en este módulo y no en uno propio porque la puerta es la misma: al entrar un
+# DOC_PROYECTO el sistema pregunta una cosa u otra según si el proyecto ya tiene
+# principal (§C). Son las dos ramas de una bifurcación, no dos funcionalidades.
+
+RAMA_PRINCIPAL = 'PRINCIPAL'    # «¿Es este el proyecto?»
+RAMA_REFORMADO = 'REFORMADO'    # «¿Produce un reformado de proyecto?»
+
+
+def rama_de_la_ingesta(expediente) -> str:
+    """Qué se le pregunta a un DOC_PROYECTO que entra en este expediente.
+
+    El discriminante es el **estado del ancla**, no la cronología: mientras el
+    proyecto no tenga principal, cualquier DOC_PROYECTO es candidato a serlo; en
+    cuanto lo tiene, la pregunta pasa a ser si abre una versión nueva.
+    """
+    proyecto = getattr(expediente, 'proyecto', None)
+    if proyecto is None or proyecto.documento_principal_id is None:
+        return RAMA_PRINCIPAL
+    return RAMA_REFORMADO
+
+
+def anclar_principal(documento, *, usuario_id: int):
+    """Ancla `documento` como el proyecto del expediente (sin commit).
+
+    Si ya había otro anclado, **mueve el ancla** y lo deja anotado: es el gesto que
+    resuelve la divergencia detectada en el checklist (§D) y el que corrige un
+    anclaje equivocado. El documento que suelta el ancla no se toca — sigue en el
+    pool, y desde ese momento vuelve a ser borrable.
+    """
+    if not es_doc_proyecto(documento):
+        raise ValueError('Solo un documento clasificado como proyecto puede ser el proyecto principal.')
+
+    proyecto = documento.expediente.proyecto if documento.expediente else None
+    if proyecto is None:
+        raise ValueError('El expediente de este documento no tiene proyecto.')
+
+    anterior = proyecto.documento_principal_id
+    if anterior == documento.id:
+        return proyecto
+
+    # Por la relación, no por el id: así el backref
+    # `documento.anclado_como_proyecto_principal` queda poblado en la misma sesión,
+    # que es lo que consulta la guarda del pool (mismo motivo que en el corte, #885).
+    proyecto.documento_principal = documento
+    db.session.flush()
+
+    bitacora_svc.registrar(
+        usuario_id, 'ALTERAR' if anterior else 'CREAR', 'proyectos', proyecto.id,
+        columna='documento_principal_id',
+        detalle={'de': anterior, 'a': documento.id,
+                 'expediente_id': documento.expediente_id},
+    )
+    log.info('Proyecto principal anclado: doc=%s proyecto=%s expediente=%s (antes %s)',
+             documento.id, proyecto.id, documento.expediente_id, anterior)
+    return proyecto
+
+
+def desanclar_principal(proyecto, *, usuario_id: int) -> None:
+    """Retira el ancla del proyecto principal (sin commit).
+
+    No hay condición de «solo el último», como en los reformados: aquí no se corta
+    una línea temporal, se deja de decir cuál es el proyecto. Lo que impide que el
+    expediente siga así es la regla de motor de §D, no esta función.
+    """
+    anterior = proyecto.documento_principal_id
+    if anterior is None:
+        raise ValueError('Este proyecto no tiene documento principal anclado.')
+
+    proyecto.documento_principal = None   # por la relación, para que el backref caiga
+    db.session.flush()
+
+    bitacora_svc.registrar(
+        usuario_id, 'BORRAR', 'proyectos', proyecto.id,
+        columna='documento_principal_id',
+        detalle={'de': anterior, 'a': None},
+    )
+    log.info('Proyecto principal desanclado: proyecto=%s (era doc=%s)', proyecto.id, anterior)
+
+
+def sincronizar_principal(documento, *, es_principal: bool, usuario_id: int) -> None:
+    """Deja el ancla como dice la respuesta del usuario (sin commit).
+
+    Mismo criterio que `sincronizar_reformado`: si el documento ha dejado de ser un
+    DOC_PROYECTO, la marca no se interpreta y el ancla se retira — un proyecto no
+    puede materializarse en un documento que ya no es el proyecto.
+    """
+    proyecto = documento.expediente.proyecto if documento.expediente else None
+    era_principal = proyecto is not None and proyecto.documento_principal_id == documento.id
+
+    if not es_doc_proyecto(documento):
+        if era_principal:
+            desanclar_principal(proyecto, usuario_id=usuario_id)
+        return
+
+    if es_principal and not era_principal:
+        anclar_principal(documento, usuario_id=usuario_id)
+    elif not es_principal and era_principal:
+        desanclar_principal(proyecto, usuario_id=usuario_id)
 
 
 def reformados_de(expediente_id: int) -> list:
