@@ -65,7 +65,10 @@ REGISTROS_REQUERIDOS: dict = {
                       # #428 — el alta de expediente lo resuelve por código para clasificar
                       # el documento de solicitud. Sin él no hay alta posible: su id no es
                       # estable entre instalaciones (146 en desarrollo, 56 en una limpia)
-                      'MODELO_SOLICITUD'],
+                      'MODELO_SOLICITUD',
+                      # #885 — la ingesta lo resuelve por código para saber si el documento
+                      # que entra puede abrir un reformado de proyecto (ADR-044 §C)
+                      'DOC_PROYECTO'],
     # Rol usa 'nombre' como identificador estable — anclado en PERMISOS (app/utils/permisos.py)
     'Rol': ['ADMIN', 'SUPERVISOR', 'TRAMITADOR', 'ADMINISTRATIVO'],
 }
