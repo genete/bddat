@@ -101,7 +101,7 @@
 
 | Modelo | Tabla | Propósito |
 |---|---|---|
-| Proyecto | `proyectos` | Proyecto técnico de la instalación (1:1 con expediente) |
+| Proyecto | `proyectos` | Proyecto técnico de la instalación (1:1 con expediente). `documento_principal_id`: el DOC_PROYECTO en que se materializa (ADR-044 §D, #887); sin él, el motor bloquea seguir la solicitud |
 | Plantilla | `plantillas` | Catálogo de plantillas .docx con contexto ESFTT y `contexto_clase` (CB) |
 | ConsultaNombrada | `consultas_nombradas` | SQL nombrado parametrizable por `:expediente_id` para alimentar plantillas |
 | ConfiguracionSistema | `configuracion_sistema` | Valores de configuración runtime |
