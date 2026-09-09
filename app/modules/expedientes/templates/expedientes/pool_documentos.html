@@ -338,6 +338,14 @@
                 data-bs-toggle="tooltip">
             {{ doc.tipo_doc.codigo if doc.tipo_doc else '—' }}
           </span>
+          {% if item.reformado %}
+          {# El corte que abre una versión del proyecto (ADR-044 §C) #}
+          <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle"
+                data-bs-toggle="tooltip"
+                title="Abre un reformado de proyecto ({{ item.reformado.origen|lower }}): el proyecto tiene una versión más desde este documento">
+            REFORMADO
+          </span>
+          {% endif %}
         </td>
         <td class="text-nowrap">
           {{ doc.fecha_administrativa.strftime('%d/%m/%Y') if doc.fecha_administrativa else '—' }}
@@ -368,6 +376,9 @@
                   data-doc-prioridad="{{ doc.prioridad or 0 }}"
                   data-doc-observaciones="{{ doc.observaciones | e if doc.observaciones else '' }}"
                   data-doc-es-url-externa="{{ 'true' if item.es_url_externa else 'false' }}"
+                  data-doc-abre-reformado="{{ 'true' if item.reformado else 'false' }}"
+                  data-doc-origen-reformado="{{ item.reformado.origen if item.reformado else '' }}"
+                  data-doc-reformado-ultimo="{{ 'true' if item.reformado_ultimo else 'false' }}"
                   data-doc-url="{{ doc.url | e }}">
             <i class="fas fa-pencil-alt"></i>
           </button>
@@ -469,6 +480,7 @@
                   <th style="min-width:180px">Tipo de documento</th>
                   <th style="min-width:155px">Fecha adm.</th>
                   <th class="text-center">Prioritario</th>
+                  <th style="min-width:190px">Reformado de proyecto</th>
                 </tr>
               </thead>
               <tbody id="meta-tbody"></tbody>
@@ -596,6 +608,7 @@
                   <th style="min-width:180px">Tipo de documento</th>
                   <th style="min-width:155px">Fecha adm.</th>
                   <th class="text-center">Prioritario</th>
+                  <th style="min-width:190px">Reformado de proyecto</th>
                 </tr>
               </thead>
               <tbody id="subir-meta-tbody"></tbody>
@@ -650,10 +663,11 @@
         </div>
         <div class="mb-3">
           <label class="form-label fw-semibold">Tipo de documento</label>
-          <select class="form-select" id="editar-tipo-doc-id">
+          <select class="form-select" id="editar-tipo-doc-id"
+                  onchange="sincronizar_reformado_editar()">
             <option value="">— Tipo —</option>
             {% for t in tipos_doc %}
-            <option value="{{ t.id }}">{{ t.nombre }}</option>
+            <option value="{{ t.id }}" data-codigo="{{ t.codigo }}">{{ t.nombre }}</option>
             {% endfor %}
           </select>
         </div>
@@ -668,6 +682,37 @@
         <div class="form-check mb-3">
           <input type="checkbox" class="form-check-input" id="editar-prioridad">
           <label class="form-check-label fw-semibold" for="editar-prioridad">Prioritario</label>
+        </div>
+        {# El corte que abre una versión del proyecto (ADR-044 §C). Solo existe
+           mientras el tipo elegido es DOC_PROYECTO, y concentra aquí el marcar,
+           el desmarcar y el porqué de no poder hacerlo. #}
+        <div class="mb-3 d-none" id="editar-reformado-bloque">
+          <div class="form-check">
+            <input type="checkbox" class="form-check-input" id="editar-reformado-check"
+                   onchange="alternar_reformado_editar()">
+            <label class="form-check-label fw-semibold" for="editar-reformado-check">
+              Produce un reformado de proyecto
+            </label>
+          </div>
+          <div class="ms-4 mt-2 d-none" id="editar-reformado-detalle">
+            <label class="form-label small text-secondary mb-1" for="editar-reformado-origen">
+              Origen del reformado
+            </label>
+            <select class="form-select form-select-sm" id="editar-reformado-origen">
+              <option value="VOLUNTARIO">Voluntario del promotor (art. 76.1 LPACAP)</option>
+              <option value="REQUERIDO">Requerido por la Administración (art. 68.3 LPACAP)</option>
+            </select>
+          </div>
+          <div class="ms-4 mt-2 small text-warning-emphasis d-none" id="editar-reformado-aviso">
+            <i class="fas fa-triangle-exclamation me-1"></i>
+            El proyecto pasa a tener una versión más desde este documento: obliga a
+            rehacer las fases preceptivas que correspondan.
+          </div>
+          <div class="ms-4 mt-2 small text-secondary d-none" id="editar-reformado-bloqueo">
+            <i class="fas fa-lock me-1"></i>
+            Este reformado tiene versiones posteriores. Solo se puede deshacer el
+            último del expediente, y en orden inverso.
+          </div>
         </div>
         <div class="mb-3">
           <label class="form-label fw-semibold">Observaciones</label>
@@ -967,6 +1012,67 @@
   // ================================================================
   // PASO 2 — metadatos
   // ================================================================
+  // ----------------------------------------------------------------
+  // El corte del proyecto en el paso de metadatos (ADR-044 §C)
+  // ----------------------------------------------------------------
+  // Una casilla por fila que solo existe mientras el tipo elegido en esa fila es
+  // DOC_PROYECTO, con el origen y la advertencia colgando de ella. Al cambiar de
+  // tipo se resetea: el acto de declarar un reformado debe ser consciente, no
+  // heredado de lo que hubiera marcado antes para otro tipo de documento.
+  function celda_reformado(prefijo, i) {
+    var id = 'reformado-' + prefijo + '-' + i;
+    return '<td class="reformado-celda">' +
+             '<div class="form-check d-none reformado-control">' +
+               '<input type="checkbox" class="form-check-input reformado-check" id="' + id + '">' +
+               '<label class="form-check-label small" for="' + id + '">Produce reformado</label>' +
+               '<select class="form-select form-select-sm mt-1 d-none reformado-origen">' +
+                 '<option value="VOLUNTARIO">Voluntario (art. 76.1)</option>' +
+                 '<option value="REQUERIDO">Requerido (art. 68.3)</option>' +
+               '</select>' +
+               '<div class="small text-warning-emphasis mt-1 d-none reformado-aviso">' +
+                 'Obliga a rehacer las fases preceptivas que correspondan.' +
+               '</div>' +
+             '</div>' +
+             '<span class="text-secondary reformado-vacio">—</span>' +
+           '</td>';
+  }
+
+  function enganchar_reformado(tr) {
+    var select  = tr.querySelector('.tipo-doc-select');
+    var control = tr.querySelector('.reformado-control');
+    var vacio   = tr.querySelector('.reformado-vacio');
+    var check   = tr.querySelector('.reformado-check');
+    var origen  = tr.querySelector('.reformado-origen');
+    var aviso   = tr.querySelector('.reformado-aviso');
+
+    function al_cambiar_tipo() {
+      var opt = select.selectedOptions[0];
+      var es_proyecto = !!(opt && opt.dataset.codigo === 'DOC_PROYECTO');
+      check.checked = false;
+      origen.value  = 'VOLUNTARIO';
+      origen.classList.add('d-none');
+      aviso.classList.add('d-none');
+      control.classList.toggle('d-none', !es_proyecto);
+      vacio.classList.toggle('d-none', es_proyecto);
+    }
+
+    select.addEventListener('change', al_cambiar_tipo);
+    check.addEventListener('change', function () {
+      origen.classList.toggle('d-none', !check.checked);
+      aviso.classList.toggle('d-none', !check.checked);
+    });
+    al_cambiar_tipo();
+  }
+
+  function datos_reformado(tr) {
+    var control = tr.querySelector('.reformado-control');
+    var check   = tr.querySelector('.reformado-check');
+    return {
+      abre_reformado:   !control.classList.contains('d-none') && check.checked,
+      origen_reformado: tr.querySelector('.reformado-origen').value,
+    };
+  }
+
   window.ir_a_metadatos = function () {
     if (_seleccionados.length === 0) return;
     mostrar_paso_metadatos();
@@ -985,9 +1091,11 @@
         '<td class="small text-secondary text-nowrap">' + formatear_bytes(f.tamano) + '</td>' +
         '<td><select class="form-select form-select-sm tipo-doc-select">' + tmpl_tipos + '</select></td>' +
         '<td><div id="' + ef_id + '"></div></td>' +
-        '<td class="text-center"><input type="checkbox" class="form-check-input prioridad-check"></td>';
+        '<td class="text-center"><input type="checkbox" class="form-check-input prioridad-check"></td>' +
+        celda_reformado('meta', i);
       tbody.appendChild(tr);
       _ef_metas.push(new EntradaFecha('#' + ef_id, { name: '_ef_meta_' + i, maxHoy: EF_MAX_HOY }));
+      enganchar_reformado(tr);
     });
 
     var n = _seleccionados.length;
@@ -1023,12 +1131,12 @@
   window.registrar_rutas = function (url_registrar) {
     var payload = [];
     document.querySelectorAll('#meta-tbody tr').forEach(function (tr, i) {
-      payload.push({
+      payload.push(Object.assign({
         ruta:                 tr._ruta,
         tipo_doc_id:          tr.querySelector('.tipo-doc-select').value || '1',
         fecha_administrativa: _ef_metas[i] ? _ef_metas[i].getValue() : null,
         prioridad:            tr.querySelector('.prioridad-check').checked,
-      });
+      }, datos_reformado(tr)));
     });
     if (payload.length === 0) return;
 
@@ -1314,9 +1422,11 @@
         '<td class="small text-secondary text-nowrap">' + formatear_bytes(f.size) + '</td>' +
         '<td><select class="form-select form-select-sm tipo-doc-select">' + tmpl_tipos + '</select></td>' +
         '<td><div id="' + ef_id + '"></div></td>' +
-        '<td class="text-center"><input type="checkbox" class="form-check-input prioridad-check"></td>';
+        '<td class="text-center"><input type="checkbox" class="form-check-input prioridad-check"></td>' +
+        celda_reformado('subir', i);
       tbody.appendChild(tr);
       _ef_subida.push(new EntradaFecha('#' + ef_id, { name: '_ef_subir_' + i, maxHoy: EF_MAX_HOY }));
+      enganchar_reformado(tr);
 
       // Enganche 1 (ADR-034 §6, #657): autorrelleno de fecha_administrativa al elegir
       // JUSTIFICANTE_NOTIFICA — parseo transitorio, nunca escribe en notificaciones
@@ -1379,11 +1489,11 @@
   window.subir_ficheros = function (url_subir) {
     var metadatos = [];
     document.querySelectorAll('#subir-meta-tbody tr').forEach(function (tr, i) {
-      metadatos.push({
+      metadatos.push(Object.assign({
         tipo_doc_id:          tr.querySelector('.tipo-doc-select').value || '1',
         fecha_administrativa: _ef_subida[i] ? _ef_subida[i].getValue() : null,
         prioridad:            tr.querySelector('.prioridad-check').checked,
-      });
+      }, datos_reformado(tr)));
     });
 
     var formData = new FormData();
@@ -1429,6 +1539,53 @@
   // ================================================================
   // EDITAR METADATOS (individual)
   // ================================================================
+  // El corte del proyecto en el modal de edición (ADR-044 §C). El control solo
+  // existe mientras el tipo elegido es DOC_PROYECTO y concentra los dos sentidos:
+  // marcar declara, desmarcar retira. Sobre un documento que ya abre corte nace
+  // marcado —ahí no expresa un acto por hacer, sino un hecho—, pero al cambiar de
+  // tipo se resetea: el acto debe ser consciente, no heredado.
+  var _reformado_original = { abre: false, origen: 'VOLUNTARIO', ultimo: false };
+
+  function editar_es_proyecto() {
+    var opt = document.getElementById('editar-tipo-doc-id').selectedOptions[0];
+    return !!(opt && opt.dataset.codigo === 'DOC_PROYECTO');
+  }
+
+  function pintar_reformado_editar() {
+    var check    = document.getElementById('editar-reformado-check');
+    var bloqueado = _reformado_original.abre && !_reformado_original.ultimo;
+
+    document.getElementById('editar-reformado-bloque')
+      .classList.toggle('d-none', !editar_es_proyecto());
+    document.getElementById('editar-reformado-detalle')
+      .classList.toggle('d-none', !check.checked);
+    document.getElementById('editar-reformado-aviso')
+      .classList.toggle('d-none', !(check.checked && !_reformado_original.abre));
+    document.getElementById('editar-reformado-bloqueo')
+      .classList.toggle('d-none', !bloqueado);
+    check.disabled = bloqueado;
+  }
+
+  // Al cambiar el tipo: si deja de ser el que era, la marca no se hereda.
+  window.sincronizar_reformado_editar = function () {
+    var check = document.getElementById('editar-reformado-check');
+    check.checked = editar_es_proyecto() && _reformado_original.abre;
+    pintar_reformado_editar();
+  };
+
+  window.alternar_reformado_editar = function () {
+    var check = document.getElementById('editar-reformado-check');
+    // Desmarcar un corte que existe destruye un dato: se pregunta una vez.
+    if (!check.checked && _reformado_original.abre) {
+      if (!confirm('Este documento abre un reformado de proyecto.\n\n' +
+                   'Al desmarcarlo, el proyecto vuelve a tener una versión menos y ' +
+                   'las fases dejan de poder colgar de ella. ¿Continuar?')) {
+        check.checked = true;
+      }
+    }
+    pintar_reformado_editar();
+  };
+
   window.abrir_modal_editar = function (btn) {
     document.getElementById('editar-doc-id').value        = btn.dataset.docId;
     document.getElementById('editar-url').value           = btn.dataset.docUrl;
@@ -1441,6 +1598,15 @@
 
     var campo_url = document.getElementById('editar-url-campo');
     campo_url.classList.toggle('d-none', btn.dataset.docEsUrlExterna !== 'true');
+
+    _reformado_original = {
+      abre:   btn.dataset.docAbreReformado === 'true',
+      origen: btn.dataset.docOrigenReformado || 'VOLUNTARIO',
+      ultimo: btn.dataset.docReformadoUltimo === 'true',
+    };
+    document.getElementById('editar-reformado-check').checked = _reformado_original.abre;
+    document.getElementById('editar-reformado-origen').value  = _reformado_original.origen;
+    pintar_reformado_editar();
 
     if (!_modal_editar_bs) _modal_editar_bs = new bootstrap.Modal(_modal_editar_el);
     _modal_editar_bs.show();
@@ -1466,6 +1632,14 @@
       prioridad:            document.getElementById('editar-prioridad').checked,
       observaciones:        document.getElementById('editar-observaciones').value.trim(),
     };
+
+    // Solo se habla del corte si el control está visible. Si el tipo ha dejado de
+    // ser DOC_PROYECTO no se manda la clave: el backend retira el corte por el
+    // cambio de tipo, que es lo mismo que desmarcarlo.
+    if (editar_es_proyecto()) {
+      payload.abre_reformado   = document.getElementById('editar-reformado-check').checked;
+      payload.origen_reformado = document.getElementById('editar-reformado-origen').value;
+    }
 
     fetch(url_editar, {
       method: 'POST',

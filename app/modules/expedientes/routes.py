@@ -48,6 +48,7 @@ from app.services.reformados import (
     es_doc_proyecto,
     revertir_reformado,
     sincronizar_reformado,
+    ultimo_reformado,
 )
 from app.services import bitacora as bitacora_svc
 from app.services.invariantes_esftt import es_documento_critico
@@ -560,6 +561,10 @@ def pool_documentos(id):
         expediente_id=id
     ).order_by(Documento.id.desc()).all()
 
+    # El único corte reversible es el último (ADR-044 §C), y se calcula aquí una
+    # vez: la interfaz necesita saberlo para dejar desmarcar o explicar por qué no.
+    corte_reversible = ultimo_reformado(id)
+
     docs_lista = []
     for doc in documentos_raw:
         filename = doc.url.replace('\\', '/').rsplit('/', 1)[-1] if doc.url else ''
@@ -569,6 +574,7 @@ def pool_documentos(id):
         partes = filename_limpio.rsplit('.', 1)
         extension = partes[1].lower() if len(partes) == 2 and partes[1] else ''
         es_url_externa = (doc.url or '').startswith(('http://', 'https://'))
+        corte = doc.reformado_proyecto
         docs_lista.append({
             'doc':             doc,
             'nombre_display':  nombre,
@@ -576,6 +582,9 @@ def pool_documentos(id):
             'es_url_externa':  es_url_externa,
             'es_referenciado': _documento_es_referenciado(doc),
             'apertura':        info_apertura_documento(id, doc, estricto=False),
+            'reformado':       corte,
+            'reformado_ultimo': (corte is not None and corte_reversible is not None
+                                 and corte.id == corte_reversible.id),
         })
 
     tipos_doc = TipoDocumento.query.order_by(TipoDocumento.nombre).all()
