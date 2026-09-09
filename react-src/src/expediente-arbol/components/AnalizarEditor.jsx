@@ -26,6 +26,7 @@ import { useArbolStore } from '../store.js'
 import {
   getAnalizar, postAnalizar, revertirDiagnostico,
   vincularRequisitoDocumental, desvincularRequisitoDocumental,
+  anclarProyectoPrincipal,
   guardarCoberturaTecnica,
   getRequerimientos, postRequerimientos, crearRequerimientoCatalogo, solicitarAltaCatalogo,
 } from '../api.js'
@@ -325,6 +326,23 @@ function FilaRequisitoDocumental({ item, expedienteId, tareaId, pool, producido,
     }
   }
 
+  // El ancla del proyecto es la fuente y el checklist se valida contra ella
+  // (ADR-044 §D): el requisito es por solicitud y el ancla por expediente, así que
+  // pueden discrepar. Cuando lo hacen, el aviso trae el gesto que lo resuelve donde
+  // se ha detectado, sin obligar a ir al pool.
+  const anclarProyecto = async () => {
+    setEnviando(true)
+    try {
+      await anclarProyectoPrincipal(expedienteId, item.documento.id)
+      showToast('Documento anclado como proyecto de la instalación', 'success')
+      await onRecargar()
+    } catch (e) {
+      showToast((e && e.message) || 'No se pudo anclar el proyecto', 'danger')
+    } finally {
+      setEnviando(false)
+    }
+  }
+
   const cita = [item.articulo, item.norma].filter(Boolean).join(', ')
 
   return (
@@ -351,6 +369,27 @@ function FilaRequisitoDocumental({ item, expedienteId, tareaId, pool, producido,
           >
             Quitar
           </button>
+        </div>
+      )}
+
+      {item.divergencia_ancla && (
+        <div className="alert alert-warning d-flex align-items-center gap-2 small py-1 px-2 mb-1">
+          <i className="fas fa-triangle-exclamation" />
+          <span className="flex-grow-1">
+            {item.divergencia_ancla.documento_anclado
+              ? `El proyecto de la instalación es «${item.divergencia_ancla.documento_anclado.nombre}»: el checklist apunta a otro documento.`
+              : 'El expediente no tiene todavía ningún documento anclado como proyecto de la instalación.'}
+          </span>
+          {tienePermiso('editar_expediente') && (
+            <button
+              type="button"
+              className="btn btn-sm btn-outline-primary py-0 text-nowrap"
+              disabled={enviando}
+              onClick={anclarProyecto}
+            >
+              Anclar este
+            </button>
+          )}
         </div>
       )}
 

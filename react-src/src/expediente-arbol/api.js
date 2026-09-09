@@ -134,6 +134,14 @@ export function vincularRequisitoDocumental(expedienteId, tareaId, requisitoId, 
   )
 }
 
+// Ancla del proyecto (#887, ADR-044 §D): mueve `proyectos.documento_principal_id`
+// al documento indicado. Es una ruta del pool y no del checklist a propósito: el
+// ancla es del expediente, no de la solicitud, y el mismo gesto se ofrece en los dos
+// sitios. Respuesta: {ok:true, documento_id}.
+export function anclarProyectoPrincipal(expedienteId, documentoId) {
+  return api.post(`/expedientes/${expedienteId}/documentos/${documentoId}/anclar-principal`, {})
+}
+
 // `justificacion` (#724): solo hace falta cuando el requisito ya se exigió al
 // titular en una vuelta notificada anterior y desvincular lo devuelve a
 // pendiente — sin eso, la mutación es libre (vincular nunca la necesita, nunca
