@@ -7,11 +7,11 @@
 
 ---
 
-**Hecho:** **La decisión de los reformados de proyecto, cerrada en [ADR-044](decisiones/ADR-044-reformados-proyecto-version-como-eje.md) (2026-09-08).** **#819** se descarta a sí mismo: quien se relaciona con la versión no siempre es la fase —en consultas es el organismo, en el análisis el requisito técnico—, así que el eje pasa a `reformados_proyecto`, cuyas filas son **cortes** en la línea temporal de los `DOC_PROYECTO`, con alta por una sola puerta (la ingesta en el pool) y `documentos_proyecto` retirada por deducible. El camino, con el barrido de las nueve fases, en [`ANALISIS_REFORMADOS_PROYECTO.md`](referencia/ANALISIS_REFORMADOS_PROYECTO.md); los seis issues de implementación quedan **descritos en el ADR, sin crear**. Desbloquea **#864** y enmienda ADR-016 §1 y ADR-043 §E. Con vida propia salieron **#881**, **#882**, **#883** y **#884** (precedente de la implementación).
+**Hecho:** **La cadena de [ADR-044](decisiones/ADR-044-reformados-proyecto-version-como-eje.md) arranca: R1 (#885) y R2 (#887) mergeados (2026-09-09).** `reformados_proyecto` existe y `documentos_proyecto` se retiró; la ingesta pregunta una cosa u otra según el estado del ancla, y `proyectos.documento_principal_id` la sostiene con dos reglas de motor (RD 1955/2000 arts. 123.1 y 130.1). Lo que no consta en el ADR ni en los issues: con esas reglas, **tener proyecto identificado pasa a formar parte del estado mínimo para avanzar** —como ya lo era cubrir la tasa—, y eso rompió 15 tests de #827 y #838 que fabricaban expedientes sin él; el builder de tests gana `anclar_proyecto()` y los `_cumplir_requisitos` lo llaman. Cada regla nueva del motor moverá ese mínimo otra vez.
 
 **Próximo:**
 
-1. **R1 — `reformados_proyecto` y la retirada de `documentos_proyecto`**, el primero de los seis issues que [ADR-044](decisiones/ADR-044-reformados-proyecto-version-como-eje.md) §Issues describe sin crear. Tras él siguen **R2** (ancla del proyecto principal y su regla de motor), **R3** (`fases.reformado_id`, nodo del árbol y la regla genérica — desbloquea **#864**), **R4** (coberturas por versión, que necesita antes **#884**), **R5** (arrastres del motor y los certificados) y **R6** (el expediente-tipo del reformado, el que faltaba para trabajar la segunda ronda). El orden y las dependencias, en el propio ADR.
+1. **R3 — `fases.reformado_id`, el nodo del árbol y la regla genérica de §F**, que desbloquea **#864** y del que cuelgan los tres últimos: **R4** (coberturas por versión, que necesita antes **#884**), **R5** (arrastres del motor y los certificados) y **R6** (el expediente-tipo del reformado). Descritos en el ADR §Issues, sin crear. Bajo R1 y R2 quedó anotado allí lo que la implementación corrigió del diseño.
 
 ---
 

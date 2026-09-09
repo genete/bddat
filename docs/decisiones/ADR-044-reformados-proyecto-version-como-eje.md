@@ -1,11 +1,11 @@
 # ADR-044 — Reformados de proyecto: la versión como eje de la instrucción
 
-**Estado:** Adoptada — pendiente de implementación (ver §Issues)
+**Estado:** Adoptada — R1 y R2 implementados (#885, #887); R3-R6 pendientes (ver §Issues)
 **Fecha:** 2026-09-08
 **Depende de:** ADR-011 (vinculación trámites↔organismos) · ADR-016 (vista de árbol) · ADR-032 (ingesta y almacenamiento) · ADR-036 (sellado de fase cerrada) · ADR-041 §D bis (anclas documentales) · ADR-042 (sub-procesos de cardinalidad variable) · ADR-043 (certificado de fin de instrucción)
 **Enmienda:** ADR-016 §1 (modelo de niveles del árbol) · ADR-043 §E (el registry por tipo de fase deja de ser necesario para el ámbito)
 **Origen:** sesiones de análisis del 2026-09-07 y 2026-09-08. Análisis completo, con el barrido fase a fase y las alternativas descartadas, en `docs/referencia/ANALISIS_REFORMADOS_PROYECTO.md`.
-**Issues:** #819 (la decisión que este ADR cierra) · #864 (desbloqueado por §F)
+**Issues:** #819 (la decisión que este ADR cierra) · #864 (desbloqueado por §F) · #885 (R1) · #887 (R2)
 
 ---
 
@@ -298,7 +298,8 @@ acierta; `organismos_expediente` se queda como está; el árbol no cambia de top
 
 ## Issues de implementación
 
-Cuatro issues nuevos, encadenados, más tres que ya viven fuera. **Ninguno creado todavía.**
+Cuatro issues nuevos, encadenados, más tres que ya viven fuera. **R1 y R2 hechos; R3-R6
+pendientes de crear.** Bajo cada uno, lo que la implementación corrigió de lo escrito aquí.
 
 ### R1 — `reformados_proyecto` y la retirada de `documentos_proyecto`
 
@@ -313,6 +314,19 @@ acto.
 el principio de particularización N:M sigue vivo, pero pierde su ejemplo canónico— y actualizar
 `INVENTARIO_BACKEND.md`.
 
+**Hecho — #885.** Tres cosas que la implementación corrigió de lo escrito arriba:
+
+- La «puerta única» son en el código **cuatro rutas de alta más la reclasificación al editar
+  metadatos**. La pregunta vive en el paso de metadatos, en una casilla que solo existe mientras
+  el tipo elegido es `DOC_PROYECTO` y que se resetea al cambiarlo; el alta, en un servicio único
+  al que llaman las cuatro.
+- La fecha obligatoria **no cabe en `@validates`** —el validador de un campo no puede leer con
+  fiabilidad otro—, así que es un listener de mapper. Y hace falta además una comprobación
+  temprana en la ingesta multipart: el flush llega después de escribir el fichero y el rollback
+  no lo borra.
+- El corte **muere con su documento** (FK `CASCADE` + `delete-orphan` en el backref). Esa es la
+  reversión por la vía del borrado; la otra es desmarcar la casilla, y solo sobre el último.
+
 ### R2 — El ancla del proyecto principal y su regla de motor
 
 **Alcance:** `proyectos.documento_principal_id`; su rama en la guarda del pool y su mensaje en
@@ -320,6 +334,22 @@ el principio de particularización N:M sigue vivo, pero pierde su ejemplo canón
 de expediente heredado (variable nueva en catálogo); validación del checklist contra el ancla.
 
 **Depende de:** R1 (la pregunta de la ingesta es la misma puerta).
+
+**Hecho — #887.** Dos correcciones de fondo y un efecto que alcanza a toda la suite:
+
+- **Son dos reglas, y en AAP+AAC manda la del trámite más avanzado.** El fundamento no es uno:
+  RD 1955/2000 **art. 123.1** (a la solicitud de AAP se acompaña el anteproyecto) y **art. 130.1**
+  (la AAC se presenta junto con el proyecto de ejecución). Como `evaluar_multi` recorre
+  `tipos_simples` en orden y devuelve el primer BLOQUEAR, una regla por sujeto sin más haría que
+  una AAP+AAC citara el 123.1 cuando lo exigible es el 130.1: la regla de la AAP lleva la
+  condición `solicitud_contiene_aac EQ false` y la de la AAC cubre también las combinadas.
+- **Las variables son de dato, no calculadas**: `proyecto_sin_principal` y `expediente_heredado`
+  leen un campo, sin consulta ni agregación, así que no necesitan la degradación por catálogo
+  ausente de sus primas del checklist. `heredado` es nullable y NULL significa «no heredado».
+- Con esta regla, **tener proyecto identificado pasa a formar parte del estado mínimo para
+  avanzar**, igual que ya lo era cubrir la tasa (#582). Todo test que pase del análisis lo declara
+  con `arbol.anclar_proyecto()`; el alta real sigue sin traerlo, a propósito. Cuenta para R3-R6:
+  cada regla nueva del motor mueve ese mínimo y alcanza a los tests que lo dan por supuesto.
 
 ### R3 — `fases.reformado_id`, el nodo del árbol y la regla genérica
 
