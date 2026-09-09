@@ -1,5 +1,6 @@
 import os
 
+from sqlalchemy import event
 from sqlalchemy.orm import validates
 
 from app import db
@@ -297,3 +298,37 @@ class Documento(db.Model):
     def __str__(self):
         """Representación legible para interfaz."""
         return (self.url or '').rsplit('/', 1)[-1] or f'Documento {self.id}'
+
+
+@event.listens_for(Documento, 'before_insert')
+@event.listens_for(Documento, 'before_update')
+def _exigir_fecha_a_los_proyectos(mapper, connection, target):
+    """La fecha administrativa es obligatoria para DOC_PROYECTO (ADR-044 §C).
+
+    Los DOC_PROYECTO del expediente forman la línea temporal del proyecto y las
+    versiones son los tramos entre reformados: sin fecha no hay tramo al que
+    pertenecer.
+
+    No cabe NOT NULL —la columna es nullable por decisión (#191) y aquí la
+    obligatoriedad es condicional al tipo— ni CHECK, porque el discriminante es el
+    `codigo`, que vive en `tipos_documentos`. Y tampoco cabe `@validates`, que es
+    donde vive el resto de la validación de esta tabla: el validador de un campo no
+    puede leer con fiabilidad otro que quizá aún no se ha asignado. Queda el evento
+    de mapper, que corre con el objeto ya completo.
+
+    Solo consulta el catálogo cuando falta la fecha, que es cuando puede fallar: un
+    documento con fecha no paga nada.
+    """
+    if target.fecha_administrativa is not None or target.tipo_doc_id is None:
+        return
+
+    from app.models.tipos_documentos import TipoDocumento
+    codigo = connection.execute(
+        db.select(TipoDocumento.codigo).where(TipoDocumento.id == target.tipo_doc_id)
+    ).scalar()
+    if codigo == 'DOC_PROYECTO':
+        raise ValueError(
+            'Un documento de proyecto necesita fecha administrativa: es la que '
+            'ordena las versiones del proyecto y decide a cuál pertenece cada '
+            'documento.'
+        )

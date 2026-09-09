@@ -29,14 +29,11 @@ def usuario_id():
 
 
 def _proyecto(arbol, expediente_id, sufijo, *, dias_atras=30):
-    """Un DOC_PROYECTO del pool con fecha administrativa."""
-    from app import db
+    """Un DOC_PROYECTO del pool con su fecha administrativa."""
     from app.services.reloj_simulado import hoy
 
-    doc = arbol.documento(expediente_id, CODIGO_PROYECTO, f'885-{sufijo}')
-    doc.fecha_administrativa = hoy() - timedelta(days=dias_atras)
-    db.session.flush()
-    return doc
+    return arbol.documento(expediente_id, CODIGO_PROYECTO, f'885-{sufijo}',
+                           fecha=hoy() - timedelta(days=dias_atras))
 
 
 def _entradas_bitacora(reformado_id):
@@ -78,15 +75,23 @@ def test_declarar_rechaza_lo_que_no_es_proyecto(app_ctx, arbol_esftt, usuario_id
 
 
 def test_declarar_exige_fecha_administrativa(app_ctx, arbol_esftt, usuario_id):
-    """Sin cronología no hay tramos, y sin tramos no hay versiones."""
+    """Sin cronología no hay tramos, y sin tramos no hay versiones.
+
+    Defensa en profundidad: el listener del modelo (bloque D) ya impide que un
+    DOC_PROYECTO sin fecha llegue a la BD, pero el servicio no da por hecho que le
+    llegue uno ya escrito — en memoria la fecha se puede haber vaciado.
+    """
     from app.services.reformados import declarar_reformado
 
     sol = arbol_esftt.solicitud_nueva()
-    doc = arbol_esftt.documento(sol.expediente_id, CODIGO_PROYECTO, '885-sin-fecha')
-    assert doc.fecha_administrativa is None
+    doc = _proyecto(arbol_esftt, sol.expediente_id, 'sin-fecha')
+    fecha = doc.fecha_administrativa
+    doc.fecha_administrativa = None
 
     with pytest.raises(ValueError, match='fecha administrativa'):
         declarar_reformado(doc, 'VOLUNTARIO', usuario_id=usuario_id)
+
+    doc.fecha_administrativa = fecha   # el teardown aún tiene que poder escribir
 
 
 def test_declarar_rechaza_origen_desconocido(app_ctx, arbol_esftt, usuario_id):
@@ -187,3 +192,45 @@ def test_un_doc_proyecto_sin_corte_sigue_siendo_borrable(app_ctx, arbol_esftt):
     doc = _proyecto(arbol_esftt, sol.expediente_id, 'sin-corte')
 
     assert _documento_es_referenciado(doc) is False
+
+
+# ---------------------------------------------------------------------------
+# D) La fecha administrativa, obligatoria para DOC_PROYECTO
+# ---------------------------------------------------------------------------
+
+def test_un_doc_proyecto_sin_fecha_no_llega_a_la_bd(app_ctx, arbol_esftt):
+    """El listener corre en el flush, así que cubre las cuatro puertas del pool,
+    los scripts y el shell — igual que el validador de fecha futura (#824)."""
+    from app import db
+
+    sol = arbol_esftt.solicitud_nueva()
+    with pytest.raises(ValueError, match='fecha administrativa'):
+        arbol_esftt.documento(sol.expediente_id, CODIGO_PROYECTO, '885-listener')
+    db.session.rollback()
+
+
+def test_reclasificar_a_proyecto_exige_la_fecha(app_ctx, arbol_esftt):
+    """La puerta lateral: un documento ya en el pool que cambia de tipo."""
+    from app import db
+    from app.models.tipos_documentos import TipoDocumento
+
+    sol = arbol_esftt.solicitud_nueva()
+    doc = arbol_esftt.documento(sol.expediente_id, 'MODELO_SOLICITUD', '885-reclasifica')
+    assert doc.fecha_administrativa is None
+
+    tipo_proyecto = TipoDocumento.query.filter_by(codigo=CODIGO_PROYECTO).first()
+    assert tipo_proyecto is not None, 'la semilla debe traer el TipoDocumento DOC_PROYECTO'
+    doc.tipo_doc_id = tipo_proyecto.id
+
+    with pytest.raises(ValueError, match='fecha administrativa'):
+        db.session.flush()
+    db.session.rollback()
+
+
+def test_los_demas_tipos_siguen_admitiendo_fecha_vacia(app_ctx, arbol_esftt):
+    """La columna sigue siendo nullable (#191): la exigencia es del tipo, no de todos."""
+    sol = arbol_esftt.solicitud_nueva()
+    doc = arbol_esftt.documento(sol.expediente_id, 'MODELO_SOLICITUD', '885-sin-fecha-ok')
+
+    assert doc.fecha_administrativa is None
+    assert doc.id is not None
