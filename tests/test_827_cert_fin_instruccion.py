@@ -79,13 +79,16 @@ def _escape(tabla, registro_id, *, operacion='ALTERAR', justificacion='porque s�
 
 
 def _cumplir_requisitos(arbol, solicitud):
-    """Cubre los requisitos documentales activos de la solicitud.
+    """Cubre los requisitos documentales activos de la solicitud y ancla su proyecto.
 
     Sin esto, `tasa_impagada` (art. 45.1) deja al motor bloqueando la creación de la
     fase finalizadora y ningún informe sale limpio — que es correcto, pero impide
-    probar el camino de la consolidación."""
+    probar el camino de la consolidación. Desde #887 pasa lo mismo con el proyecto
+    sin identificar (RD 1955/2000 arts. 123.1 y 130.1), así que el ancla entra aquí
+    por la misma razón."""
     from app import db
     from app.models.requisitos_documentales import RequisitoDocumental, DocumentoRequisito
+    arbol.anclar_proyecto(solicitud.expediente_id, sufijo='req827')
     requisitos = RequisitoDocumental.query.filter(
         RequisitoDocumental.activo.is_(True)).all()
     for req in requisitos:

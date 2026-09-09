@@ -553,6 +553,24 @@ class ArbolESFTT:
         self.db.session.flush()
         return doc
 
+    def anclar_proyecto(self, expediente_id, *, sufijo='ancla'):
+        """Deja el expediente con su proyecto identificado (#887, ADR-044 §D).
+
+        Desde #887 hay una regla de motor que bloquea seguir la solicitud mientras
+        `proyectos.documento_principal_id` esté vacío, así que todo test que pase del
+        análisis necesita esto — igual que ya necesita cubrir la tasa (#582). El alta
+        real no lo trae: en ese momento el único documento que entra es el escrito de
+        solicitud, y el proyecto se ancla cuando llega al pool.
+        """
+        from app.models.expedientes import Expediente
+        from app.services.reloj_simulado import hoy
+        expediente = Expediente.query.get(expediente_id)
+        doc = self.documento(expediente_id, 'DOC_PROYECTO', f'{sufijo}-{expediente_id}',
+                             fecha=hoy())
+        expediente.proyecto.documento_principal = doc
+        self.db.session.flush()
+        return doc
+
     def vincular(self, tarea, documento, rol):
         from app.models.documentos_tarea import DocumentoTarea
         v = DocumentoTarea(tarea_id=tarea.id, documento_id=documento.id, rol=rol)
