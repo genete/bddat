@@ -136,6 +136,14 @@ La implementación de #192 (2026-05-27, posterior tanto a esta sección como a l
 
 UI pendiente: #495. Población de contenido: #408. Checklist gemelo de contenido técnico del proyecto (RD 223/2008, RD 337/2014 — ítems dentro del proyecto, no presencia de documento): #581.
 
+### El requisito del proyecto se valida contra el ancla (#887, ADR-044 §D)
+
+El requisito documental de `DOC_PROYECTO` y el ancla `proyectos.documento_principal_id` son la misma información por dos vías, y con **ámbitos distintos**: el requisito es por **solicitud** y el ancla por **expediente**. Con AAP y AAC en el mismo expediente pueden aparecer dos coberturas apuntando a documentos distintos, y el ancla no puede divergir de ellas sin que nadie lo note.
+
+**Criterio: el ancla es la fuente.** El checklist se valida contra ella y **avisa si divergen — avisa, no bloquea**: la decisión jurídica sigue siendo del técnico, igual que en el aviso de tipo de documento de arriba. El aviso viaja en el JSON del checklist (`divergencia_ancla`) y la sección inline del `ANALIZAR` lo pinta con el gesto que lo resuelve: anclar el documento que el técnico acaba de vincular.
+
+Preguntar dos veces lo mismo y dejar que las respuestas discrepen es el defecto que ADR-044 rechaza al descartar el booleano por fila; aquí no se puede evitar la doble vía —las dos existen por razones propias—, así que se declara cuál manda.
+
 ---
 
 ## 5. Recepción externa vía ESPERAR_PLAZO (ADR-004)

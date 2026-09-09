@@ -291,10 +291,31 @@ def puerta(app, usuario_admin, expediente_seed):
     """
     from app import db
     from app.models.documentos import Documento
+    from app.models.expedientes import Expediente
     from app.models.tipos_documentos import TipoDocumento
     from app.services.reloj_simulado import hoy
 
     creados = []
+
+    # Desde #887 la ingesta pregunta una cosa u otra según el estado del ancla del
+    # proyecto (ADR-044 §C). Lo que se prueba aquí es la rama del reformado, así que
+    # el expediente entra con su proyecto ya identificado — el estado normal de uno
+    # en tramitación. El ancla previa se restaura al terminar: estos tests escriben
+    # de verdad, sin savepoint.
+    with app.app_context():
+        tipo_proyecto = TipoDocumento.query.filter_by(codigo=CODIGO_PROYECTO).first()
+        assert tipo_proyecto is not None, 'la semilla debe traer el TipoDocumento DOC_PROYECTO'
+        expediente = db.session.get(Expediente, expediente_seed)
+        ancla_previa = expediente.proyecto.documento_principal_id
+        doc_ancla = Documento(expediente_id=expediente_seed,
+                              url='bddat://test-885/ancla-de-la-fixture',
+                              tipo_doc_id=tipo_proyecto.id,
+                              fecha_administrativa=hoy() - timedelta(days=90))
+        db.session.add(doc_ancla)
+        db.session.flush()
+        expediente.proyecto.documento_principal_id = doc_ancla.id
+        db.session.commit()
+        ancla_id = doc_ancla.id
 
     class Puerta:
         client = usuario_admin
@@ -336,7 +357,10 @@ def puerta(app, usuario_admin, expediente_seed):
 
     # Estos tests no corren bajo `app_ctx`: escriben de verdad y hay que recoger.
     with app.app_context():
-        for doc_id in creados:
+        expediente = db.session.get(Expediente, expediente_seed)
+        expediente.proyecto.documento_principal_id = ancla_previa
+        db.session.flush()
+        for doc_id in creados + [ancla_id]:
             doc = db.session.get(Documento, doc_id)
             if doc is not None:
                 db.session.delete(doc)

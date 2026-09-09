@@ -78,6 +78,7 @@ class Proyecto(db.Model):
     __table_args__ = (
         db.Index('idx_proyectos_fecha', 'fecha'),
         db.Index('idx_proyectos_ia', 'ia_id'),
+        db.Index('idx_proyectos_documento_principal', 'documento_principal_id'),
         {'schema': 'public'}
     )
     
@@ -155,11 +156,33 @@ class Proyecto(db.Model):
         comment='True si el recorrido íntegro de las instalaciones es en suelo urbano o urbanizable'
     )
 
+    documento_principal_id = db.Column(
+        db.Integer,
+        db.ForeignKey('public.documentos.id', name='fk_proyectos_documento_principal'),
+        nullable=True,
+        comment='FK a DOCUMENTOS. El DOC_PROYECTO que materializa el proyecto (ADR-044 §D). '
+                'NULL hasta que llega al pool: en el alta el único documento que entra es el '
+                'escrito de solicitud. Sin él, el sistema no sabe si un DOC_PROYECTO posterior '
+                'abre reformado'
+    )
+
     # Relación con TipoIA
     ia = db.relationship(
-        'TipoIA', 
-        foreign_keys=[ia_id], 
+        'TipoIA',
+        foreign_keys=[ia_id],
         backref='proyectos'
+    )
+
+    # El ancla documental del proyecto (ADR-041 §D bis, ADR-044 §D). Con `backref`
+    # porque el pool necesita saber, desde el documento, si algún proyecto lo tiene
+    # por principal: `_documento_es_referenciado` se construye solo con backrefs a
+    # propósito (#838). Sin cascade: retirar el ancla es poner la FK a NULL, y el
+    # documento sigue en el pool — al contrario que el corte de un reformado, que
+    # muere con su documento.
+    documento_principal = db.relationship(
+        'Documento',
+        foreign_keys=[documento_principal_id],
+        backref='anclado_como_proyecto_principal',
     )
     
     # IMPORTANTE: NO usar db.relationship('Municipio', secondary='public.municipios_proyecto')

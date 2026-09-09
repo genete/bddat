@@ -47,9 +47,11 @@ def _cerrar(arbol, fase):
 
 def _cumplir_requisitos(arbol, solicitud):
     """Sin esto la tasa del art. 45.1 deja al motor bloqueando y ningún informe sale
-    limpio — correcto, pero impide llegar a la consolidación (igual que en #827)."""
+    limpio — correcto, pero impide llegar a la consolidación (igual que en #827).
+    Desde #887, lo mismo con el proyecto sin identificar: el ancla entra aquí."""
     from app import db
     from app.models.requisitos_documentales import RequisitoDocumental, DocumentoRequisito
+    arbol.anclar_proyecto(solicitud.expediente_id, sufijo='req838')
     for req in RequisitoDocumental.query.filter(RequisitoDocumental.activo.is_(True)).all():
         doc = arbol.documento(solicitud.expediente_id, 'MODELO_SOLICITUD',
                               f'req838-{req.id}-sol-{solicitud.id}')

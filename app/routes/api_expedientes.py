@@ -1323,16 +1323,27 @@ def _resultado_derivado(consolidado: dict) -> str:
 
 
 def _checklist_documental_json(tarea) -> list:
-    """Checklist documental completo —cubiertos y pendientes— para la sección inline (#495)."""
+    """Checklist documental completo —cubiertos y pendientes— para la sección inline (#495).
+
+    El requisito del proyecto lleva además el estado del ancla (ADR-044 §D): el
+    ancla es la fuente y el checklist se valida contra ella, porque son la misma
+    información por dos vías —el requisito es por solicitud, el ancla por
+    expediente— y no pueden discrepar sin que nadie lo note. Avisa, no bloquea.
+    """
+    from app.services.reformados import CODIGO_DOC_PROYECTO
+
     solicitud = tarea.tramite.fase.solicitud
     _, variables = build(solicitud.expediente, objeto=tarea)
     resultado = evaluar_requisitos(solicitud, variables)
+
+    proyecto = solicitud.expediente.proyecto if solicitud.expediente else None
+    anclado = proyecto.documento_principal if proyecto else None
 
     items = []
     for it in resultado['items']:
         req = it['requisito']
         doc = it['documento']
-        items.append({
+        item = {
             'requisito_id': req.id,
             'tipo_documento': req.tipo_documento.nombre if req.tipo_documento else None,
             'descripcion_legal': req.descripcion_legal,
@@ -1340,7 +1351,18 @@ def _checklist_documental_json(tarea) -> list:
             'articulo': req.articulo,
             'cubierto': it['cubierto'],
             'documento': {'id': doc.id, 'nombre': _nombre_documento(doc)} if doc else None,
-        })
+        }
+        es_requisito_proyecto = (req.tipo_documento
+                                 and req.tipo_documento.codigo == CODIGO_DOC_PROYECTO)
+        if es_requisito_proyecto and doc is not None and (
+                anclado is None or anclado.id != doc.id):
+            item['divergencia_ancla'] = {
+                'documento_anclado': (
+                    {'id': anclado.id, 'nombre': _nombre_documento(anclado)}
+                    if anclado is not None else None
+                ),
+            }
+        items.append(item)
     return items
 
 

@@ -146,6 +146,23 @@ def _(ctx) -> str | None:
     return solicitud.tipo_solicitud.siglas
 
 
+@variable('solicitud_contiene_aac')
+def _(ctx) -> bool:
+    """
+    True si la solicitud pide la AAC, sola o combinada (#887).
+
+    Sirve para expresar «la norma aplicable es la del trámite más avanzado»: cuando
+    se piden AAP y AAC juntas, la documentación exigible es la del art. 130.1 (el
+    proyecto de ejecución), no la del 123.1 (el anteproyecto de la AAP). Sin esta
+    variable habría que enumerar las siglas combinadas del catálogo, y cualquier
+    combinación nueva dejaría un hueco silencioso.
+    """
+    solicitud = ctx.solicitud
+    if solicitud is None:
+        return False
+    return solicitud.contiene_tipo('AAC')
+
+
 @variable('es_solicitud_aac_pura')
 def _(ctx) -> bool:
     """
