@@ -240,6 +240,34 @@ def test_reclasificar_a_proyecto_exige_la_fecha(app_ctx, arbol_esftt):
     db.session.rollback()
 
 
+def test_la_ingesta_rechaza_el_proyecto_sin_fecha_antes_de_escribir(app_ctx, arbol_aislado):
+    """La puerta que escribe pregunta antes de tocar el disco.
+
+    El listener es la red final, pero salta en el flush —cuando el fichero ya está
+    en el pool— y el rollback devuelve la fila sin borrar el fichero (es lo que
+    documenta `ResultadoIngesta`). Sin la comprobación temprana, un proyecto sin
+    fecha dejaba un huérfano en el pool.
+    """
+    import os
+
+    from app.models.tipos_documentos import TipoDocumento
+    from app.services.ingesta_pool import ingestar_en_pool
+    from app.services.rutas_esftt import ruta_pool_documento
+
+    expediente = arbol_aislado.solicitud_propia().expediente
+    tipo = TipoDocumento.query.filter_by(codigo=CODIGO_PROYECTO).first()
+    assert tipo is not None, 'la semilla debe traer el TipoDocumento DOC_PROYECTO'
+
+    with pytest.raises(ValueError, match='fecha administrativa'):
+        ingestar_en_pool(expediente, b'contenido', 'proyecto-885.pdf',
+                         tipo_doc_id=tipo.id, fecha_administrativa=None)
+
+    directorio = ruta_pool_documento(expediente)
+    presentes = os.listdir(directorio) if os.path.isdir(directorio) else []
+    assert not any('proyecto-885' in nombre for nombre in presentes), \
+        'no debe quedar fichero huérfano en el pool'
+
+
 def test_los_demas_tipos_siguen_admitiendo_fecha_vacia(app_ctx, arbol_esftt):
     """La columna sigue siendo nullable (#191): la exigencia es del tipo, no de todos."""
     sol = arbol_esftt.solicitud_nueva()

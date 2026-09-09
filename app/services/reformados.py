@@ -98,6 +98,33 @@ def declarar_reformado(documento, origen: str, *, usuario_id: int) -> ReformadoP
     return reformado
 
 
+MENSAJE_FECHA_OBLIGATORIA = (
+    'Un documento de proyecto necesita fecha administrativa: es la que ordena las '
+    'versiones del proyecto y decide a cuál pertenece cada documento.'
+)
+
+
+def exigir_fecha_administrativa(tipo_doc_id, fecha) -> None:
+    """Comprobación temprana de la fecha obligatoria, antes de tocar el disco.
+
+    El listener de `Documento` es la red final —cubre las cuatro puertas, los
+    scripts y el shell—, pero salta en el flush, y en la ingesta multipart el flush
+    llega **después** de escribir el fichero en el pool: el rollback devuelve la
+    fila y deja el fichero (es el problema que documenta `ResultadoIngesta`). Por eso
+    la puerta que escribe pregunta antes, con el mismo mensaje.
+    """
+    if fecha is not None or tipo_doc_id is None:
+        return
+    from app.models.tipos_documentos import TipoDocumento
+    try:
+        tipo = TipoDocumento.query.get(tipo_doc_id)
+    except (OperationalError, ProgrammingError):
+        log.warning('reformados: catálogo de tipos no disponible — sin comprobar la fecha')
+        return
+    if tipo is not None and tipo.codigo == CODIGO_DOC_PROYECTO:
+        raise ValueError(MENSAJE_FECHA_OBLIGATORIA)
+
+
 def declarar_desde_metadatos(documento, metadatos: dict, *, usuario_id: int):
     """Aplica a un documento recién ingestado la respuesta del paso de metadatos.
 

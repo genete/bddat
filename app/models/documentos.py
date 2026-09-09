@@ -327,8 +327,5 @@ def _exigir_fecha_a_los_proyectos(mapper, connection, target):
         db.select(TipoDocumento.codigo).where(TipoDocumento.id == target.tipo_doc_id)
     ).scalar()
     if codigo == 'DOC_PROYECTO':
-        raise ValueError(
-            'Un documento de proyecto necesita fecha administrativa: es la que '
-            'ordena las versiones del proyecto y decide a cuál pertenece cada '
-            'documento.'
-        )
+        from app.services.reformados import MENSAJE_FECHA_OBLIGATORIA
+        raise ValueError(MENSAJE_FECHA_OBLIGATORIA)

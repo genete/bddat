@@ -29,6 +29,7 @@ from flask import current_app
 
 from app import db
 from app.models.documentos import Documento
+from app.services.reformados import exigir_fecha_administrativa
 from app.services.rutas_esftt import ruta_pool_documento, nombre_pool_unico
 
 
@@ -76,6 +77,12 @@ def ingestar_en_pool(
     base = current_app.config.get('FILESYSTEM_BASE', '')
     if not base:
         raise RuntimeError('FILESYSTEM_BASE no está configurado')
+
+    # Antes de escribir nada: un DOC_PROYECTO sin fecha administrativa no es
+    # ingestable (#885, ADR-044 §C). Su guarda de verdad es un listener del modelo,
+    # que salta en el flush —cuando el fichero ya está en el pool y el rollback no
+    # lo borra—, así que aquí se pregunta antes de tocar el disco.
+    exigir_fecha_administrativa(tipo_doc_id, fecha_administrativa)
 
     directorio = ruta_pool_documento(expediente)
 
