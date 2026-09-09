@@ -162,7 +162,8 @@ qué ocurre — riesgo que señaló Carlos explícitamente. Se ofrece como atajo
 /expedientes/<id>/documentos/<doc_id>/borrar` (`expedientes.pool_borrar_documento`) ya cubre
 exactamente este caso — no hace falta el `DELETE /api/documentos/<id>` que preveía la versión
 anterior de este apartado. El guardián `_documento_es_referenciado()` ya comprueba
-`vinculos_tarea` (vacío por definición en un huérfano) **y además** `proyecto_vinculado` y
+`vinculos_tarea` (vacío por definición en un huérfano) **y además** `proyecto_vinculado` —hoy
+`reformado_proyecto`, tras retirarse `documentos_proyecto` en ADR-044 §B— y
 `notificacion` (caso #738 punto 2: una fila `Notificacion` puede sobrevivir a la desvinculación
 de su `DocumentoTarea`) — más completo que la comprobación "sigue huérfano" que se había
 previsto. Ya registra en bitácora si el documento es crítico, y usa
