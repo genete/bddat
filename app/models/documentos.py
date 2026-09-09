@@ -20,7 +20,7 @@ class Documento(db.Model):
         - Es completamente agnóstico respecto a:
           * Qué tarea lo produjo (se define en DOCUMENTOS_TAREA, rol PRODUCIDO)
           * Qué tareas lo consumen (se define en DOCUMENTOS_TAREA, rol CONSUMIDO)
-          * Si es parte de un proyecto (se define en DOCUMENTOS_PROYECTO)
+          * Si abre una versión del proyecto (se define en REFORMADOS_PROYECTO)
         - Pool único de documentos por expediente, relaciones viven fuera
     
     CAMPO EXPEDIENTE_ID:

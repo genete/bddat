@@ -45,7 +45,8 @@ class Expediente(db.Model):
         PROYECTO_ID:
             - UNIQUE constraint garantiza relación 1:1
             - Un expediente tiene exactamente un proyecto técnico
-            - El proyecto evoluciona mediante documentos en DOCUMENTOS_PROYECTO
+            - El proyecto evoluciona por sus DOC_PROYECTO del pool: cada reformado
+              (fila en REFORMADOS_PROYECTO) abre una versión nueva (ADR-044 §C)
         
         TITULAR_ID:
             - FK a ENTIDADES (nullable)

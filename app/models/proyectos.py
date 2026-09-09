@@ -13,8 +13,8 @@ class Proyecto(db.Model):
     FILOSOFÍA:
         - Proyecto = entidad técnica PURA y ÚNICA por expediente
         - NO tiene múltiples versiones en esta tabla
-        - Las versiones documentales (inicial, modificado, refundido) se gestionan
-          mediante documentos vinculados en DOCUMENTOS_PROYECTO
+        - Las versiones documentales son los tramos entre reformados: los
+          DOC_PROYECTO del pool ordenados por fecha, cortados por REFORMADOS_PROYECTO
         - Esta tabla solo almacena los metadatos técnicos actuales
     
     CARACTERÍSTICAS:
@@ -28,7 +28,8 @@ class Proyecto(db.Model):
             - Es la fecha técnica del documento de proyecto (firma/visado)
             - NO es la fecha de presentación administrativa
             - Ayuda a identificar y ordenar versiones cronológicamente
-            - Los documentos en DOCUMENTOS_PROYECTO tienen sus propias fechas
+            - Los DOC_PROYECTO del pool tienen su propia fecha administrativa, que
+              es la que ordena las versiones (obligatoria para ese tipo, #885)
         
         IA_ID:
             - Define instrumento ambiental aplicable según normativa vigente
@@ -67,7 +68,8 @@ class Proyecto(db.Model):
     
     NOTAS DE VERSIÓN:
         v3.0: ELIMINADO EXPEDIENTE_ID (relación inversa desde expediente)
-        v3.0: ELIMINADO TIPO_PROYECTO_ID (tipos viven en DOCUMENTOS_PROYECTO.TIPO)
+        v3.0: ELIMINADO TIPO_PROYECTO_ID (tipos viven en DOCUMENTOS_PROYECTO.TIPO —
+              tabla retirada después en ADR-044 §B, ver GESTIÓN DE VERSIONES)
         v3.0: ACLARADO FECHA (fecha técnica, no administrativa)
         v3.1: AÑADIDAS propiedades es_interprovincial y provincias_afectadas (calculadas)
         v3.2: AÑADIDA property municipios para acceso directo vía backref municipios_afectados
