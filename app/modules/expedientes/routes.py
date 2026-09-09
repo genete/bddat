@@ -463,7 +463,7 @@ def _documento_es_referenciado(doc):
       2. Añadir un check aquí.
 
     Backrefs consultados:
-      doc.proyecto_vinculado           → DocumentoProyecto.documento_id  (uselist=False)
+      doc.reformado_proyecto           → ReformadoProyecto.documento_id  (uselist=False)
       doc.vinculos_tarea               → DocumentoTarea.documento_id     (lista, con rol)
       doc.notificacion                 → Notificacion.documento_id       (uselist=False, ADR-034)
       doc.anclado_en_solicitud         → Solicitud.documento_solicitud_id
@@ -485,7 +485,7 @@ def _documento_es_referenciado(doc):
     mientras la fase que resuelve no exista — con lo que ninguna de las tres
     referencias anteriores lo veía.
     """
-    if doc.proyecto_vinculado:
+    if doc.reformado_proyecto:
         return True
     if doc.vinculos_tarea:
         return True

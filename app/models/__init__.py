@@ -70,7 +70,7 @@ from app.models.historico_titular_expediente import HistoricoTitularExpediente  
 from app.models.tramites_tareas import TramiteTarea
 
 # Modelos operacionales con dependencias múltiples
-from app.models.documentos_proyecto import DocumentoProyecto  # Depende de Documento, Proyecto
+from app.models.reformados_proyecto import ReformadoProyecto  # Depende de Documento
 from app.models.fases import Fase  # Depende de Solicitud, TipoFase, TipoResultadoFase, Documento
 from app.models.municipios_proyecto import MunicipioProyecto  # Depende de Municipio, Proyecto
 
@@ -187,7 +187,7 @@ __all__ = [
     'HistoricoTitularExpediente',
     'TramiteTarea',
     # Operacionales (continuación)
-    'DocumentoProyecto',
+    'ReformadoProyecto',
     'Fase',
     'MunicipioProyecto',
     'Tramite',

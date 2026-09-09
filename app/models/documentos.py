@@ -88,18 +88,21 @@ class Documento(db.Model):
     RELACIONES:
         - expediente → EXPEDIENTES.id (FK, expediente contenedor)
         - tipo_doc → TIPOS_DOCUMENTOS.id (FK, clasificación semántica)
-        - documentos_proyecto ← DOCUMENTOS_PROYECTO.documento_id (tabla puente con proyectos)
+        - reformado_proyecto ← REFORMADOS_PROYECTO.documento_id (el corte que abre
+          una versión del proyecto, ADR-044 §C; solo lo tienen los que producen corte)
         - vinculos_tarea ← DOCUMENTOS_TAREA (vínculos con tareas, con rol)
 
     PROCEDENCIA DEL EMISOR:
         No existe campo origen en esta tabla (eliminado en #191).
         La identificación del emisor concreto (organismo, BOE, Notifica, portafirmas…)
         se registra en las columnas propias de cada tabla cualificadora
-        (ej: documentos_proyecto puede añadir entidad_emisora_id si lo necesita).
+        (ej: una tabla cualificadora puede añadir entidad_emisora_id si lo necesita).
 
     REGLAS DE NEGOCIO:
         - Un documento pertenece a UN expediente
-        - Un documento puede estar en N proyectos (vía DOCUMENTOS_PROYECTO)
+        - Los DOC_PROYECTO de un expediente forman la línea temporal del proyecto:
+          cada uno cae en la versión que le toca por fecha, y solo el que abre corte
+          tiene fila en REFORMADOS_PROYECTO
         - Un documento puede ser producido por UNA tarea (índice parcial único en documentos_tarea)
         - Un documento puede ser usado por N tareas
 

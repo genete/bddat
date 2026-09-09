@@ -18,7 +18,9 @@ Las relaciones viven fuera, en tablas de particularización. **No modificar esta
 En lugar de herencia SQLAlchemy (STI/JTI), el proyecto usa **tablas puente con metadatos**
 para añadir semántica específica a documentos genéricos.
 
-**Precedente existente:** `DocumentoProyecto` — tabla puente con campo `tipo` (PRINCIPAL/MODIFICADO/REFUNDIDO/ANEXO).
+**Precedente existente:** `DocumentoTarea` — tabla puente con campo `rol` (USADO/PRODUCIDO). En la misma línea, `documentos_requisito` (cobertura del checklist) y `reformados_proyecto` (ADR-044 §C).
+
+> El ejemplo canónico de este apartado era `DocumentoProyecto` (`tipo` PRINCIPAL/MODIFICADO/REFUNDIDO/ANEXO), retirada por ADR-044 §B: nunca tuvo filas ni escrituras, y su `tipo` era un `varchar` libre sin CHECK. El principio sigue vivo; lo que se cayó fue el ejemplo.
 
 **Regla:** NO usar `class DocumentoOrganismo(Documento)` — herencia SQLAlchemy prohibida para documentos.
 

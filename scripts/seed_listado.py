@@ -68,7 +68,7 @@ def limpiar():
     db.session.execute(db.text(
         'TRUNCATE TABLE tareas, tramites, fases, documentos,'
         ' historico_titulares_expediente, solicitudes, expedientes,'
-        ' municipios_proyecto, documentos_proyecto, proyectos,'
+        ' municipios_proyecto, reformados_proyecto, proyectos,'
         ' autorizados_titular, direcciones_notificacion, entidades'
         ' RESTART IDENTITY CASCADE'
     ))
