@@ -40,7 +40,7 @@
 | Modelo | Tabla | Propósito |
 |---|---|---|
 | Documento | `documentos` | Pool puro de archivos del expediente. URL puede ser ruta local, http(s) o `bddat://` (ADR-006). Único FK = `expediente_id`. `tipo_doc_id`, `fecha_administrativa` (nullable), `prioridad` |
-| DocumentoProyecto | `documentos_proyecto` | Vinculación documento↔proyecto (cualificador) |
+| ReformadoProyecto | `reformados_proyecto` | El corte que parte el proyecto en versiones: `documento_id` (UNIQUE, el ancla) + `origen` VOLUNTARIO/REQUERIDO. Una versión es el tramo entre cortes (ADR-044 §C) |
 | DocumentoTarea | `documentos_tarea` | Vínculo N:M con rol (ver §1.1) |
 | Notificacion | `notificaciones` | "Documento vitaminado" para tarea NOTIFICAR (ADR-008): `resultado` (CORRECTA/INCORRECTA/INDIFERENTE), `numero_intento`, `fecha_intento` |
 | Diagnostico | `diagnosticos` | "Documento vitaminado" para tarea ANALIZAR (ADR-005): `resultado` (favorable/condicionado/desfavorable), `defectos` (JSONB) |

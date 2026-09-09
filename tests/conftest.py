@@ -537,13 +537,17 @@ class ArbolESFTT:
         self.db.session.flush()
         return ta
 
-    def documento(self, expediente_id, codigo_tipo_doc, sufijo):
+    def documento(self, expediente_id, codigo_tipo_doc, sufijo, *, fecha=None):
+        """Documento del pool. `fecha` es la administrativa: opcional para casi
+        todos los tipos, obligatoria para DOC_PROYECTO desde #885 —es la que
+        ordena las versiones del proyecto, y el modelo la exige al escribir."""
         from app.models.documentos import Documento
         from app.models.tipos_documentos import TipoDocumento
         doc = Documento(
             expediente_id=expediente_id,
             tipo_doc_id=self._tipo(TipoDocumento, codigo_tipo_doc).id,
             url=f'bddat://test-715/{sufijo}',
+            fecha_administrativa=fecha,
         )
         self.db.session.add(doc)
         self.db.session.flush()

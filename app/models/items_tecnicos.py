@@ -180,9 +180,9 @@ class CoberturaItemTecnico(db.Model):
 
     El técnico, durante la tarea ANALIZAR, contrasta el proyecto con cada ítem
     técnico aplicable y registra el resultado. A diferencia de DocumentoRequisito
-    (vincula un documento_id concreto), aquí no se indexa contra un documento —
-    DocumentoProyecto.tipo='ANEXO' es plano (no distingue Anexo I de Anexo II), así
-    que una FK no aportaría precisión real frente a una referencia en texto libre.
+    (vincula un documento_id concreto), aquí no se indexa contra un documento: el
+    proyecto son N ficheros del pool sin clasificación propia (ADR-044 §C), así que
+    una FK no aportaría precisión real frente a una referencia en texto libre.
 
     MÁQUINA DE ESTADOS (2 campos, 3 estados reales — #594):
         Sin fila            → NO REVISADO (pendiente; estado por defecto, sin fila)
@@ -197,9 +197,10 @@ class CoberturaItemTecnico(db.Model):
     UNICIDAD:
         (item_tecnico_id, solicitud_id) — un ítem queda verificado exactamente una
         vez por solicitud (mismo criterio que DocumentoRequisito: el contenido del
-        proyecto puede evolucionar entre solicitudes vía DocumentoProyecto
-        MODIFICADO/REFUNDIDO, así que la verificación no se comparte a nivel de
-        proyecto/expediente).
+        proyecto puede evolucionar entre solicitudes, así que la verificación no se
+        comparte a nivel de proyecto/expediente). ADR-044 §E bis le añade el eje de
+        la versión —la verificación se predica del contenido del proyecto—, todavía
+        sin implementar.
     """
     __tablename__ = 'coberturas_item_tecnico'
     __table_args__ = (

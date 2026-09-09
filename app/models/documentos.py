@@ -1,5 +1,6 @@
 import os
 
+from sqlalchemy import event
 from sqlalchemy.orm import validates
 
 from app import db
@@ -88,18 +89,21 @@ class Documento(db.Model):
     RELACIONES:
         - expediente → EXPEDIENTES.id (FK, expediente contenedor)
         - tipo_doc → TIPOS_DOCUMENTOS.id (FK, clasificación semántica)
-        - documentos_proyecto ← DOCUMENTOS_PROYECTO.documento_id (tabla puente con proyectos)
+        - reformado_proyecto ← REFORMADOS_PROYECTO.documento_id (el corte que abre
+          una versión del proyecto, ADR-044 §C; solo lo tienen los que producen corte)
         - vinculos_tarea ← DOCUMENTOS_TAREA (vínculos con tareas, con rol)
 
     PROCEDENCIA DEL EMISOR:
         No existe campo origen en esta tabla (eliminado en #191).
         La identificación del emisor concreto (organismo, BOE, Notifica, portafirmas…)
         se registra en las columnas propias de cada tabla cualificadora
-        (ej: documentos_proyecto puede añadir entidad_emisora_id si lo necesita).
+        (ej: una tabla cualificadora puede añadir entidad_emisora_id si lo necesita).
 
     REGLAS DE NEGOCIO:
         - Un documento pertenece a UN expediente
-        - Un documento puede estar en N proyectos (vía DOCUMENTOS_PROYECTO)
+        - Los DOC_PROYECTO de un expediente forman la línea temporal del proyecto:
+          cada uno cae en la versión que le toca por fecha, y solo el que abre corte
+          tiene fila en REFORMADOS_PROYECTO
         - Un documento puede ser producido por UNA tarea (índice parcial único en documentos_tarea)
         - Un documento puede ser usado por N tareas
 
@@ -294,3 +298,34 @@ class Documento(db.Model):
     def __str__(self):
         """Representación legible para interfaz."""
         return (self.url or '').rsplit('/', 1)[-1] or f'Documento {self.id}'
+
+
+@event.listens_for(Documento, 'before_insert')
+@event.listens_for(Documento, 'before_update')
+def _exigir_fecha_a_los_proyectos(mapper, connection, target):
+    """La fecha administrativa es obligatoria para DOC_PROYECTO (ADR-044 §C).
+
+    Los DOC_PROYECTO del expediente forman la línea temporal del proyecto y las
+    versiones son los tramos entre reformados: sin fecha no hay tramo al que
+    pertenecer.
+
+    No cabe NOT NULL —la columna es nullable por decisión (#191) y aquí la
+    obligatoriedad es condicional al tipo— ni CHECK, porque el discriminante es el
+    `codigo`, que vive en `tipos_documentos`. Y tampoco cabe `@validates`, que es
+    donde vive el resto de la validación de esta tabla: el validador de un campo no
+    puede leer con fiabilidad otro que quizá aún no se ha asignado. Queda el evento
+    de mapper, que corre con el objeto ya completo.
+
+    Solo consulta el catálogo cuando falta la fecha, que es cuando puede fallar: un
+    documento con fecha no paga nada.
+    """
+    if target.fecha_administrativa is not None or target.tipo_doc_id is None:
+        return
+
+    from app.models.tipos_documentos import TipoDocumento
+    codigo = connection.execute(
+        db.select(TipoDocumento.codigo).where(TipoDocumento.id == target.tipo_doc_id)
+    ).scalar()
+    if codigo == 'DOC_PROYECTO':
+        from app.services.reformados import MENSAJE_FECHA_OBLIGATORIA
+        raise ValueError(MENSAJE_FECHA_OBLIGATORIA)

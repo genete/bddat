@@ -2,6 +2,7 @@
 
 **Estado:** Adoptada
 **Fecha:** 2026-07-16
+**Ampliada por:** ADR-044 §C (#885) — la ingesta gana un paso para un tipo de documento: al entrar un `DOC_PROYECTO` se pregunta si produce un **reformado de proyecto** (por defecto no), y su **fecha administrativa pasa a ser obligatoria**, porque es la que ordena las versiones del proyecto. No cambia ninguno de los dos mecanismos de entrada de §1: los dos preguntan lo mismo.
 **Issues:** #664 (A, rutas relativas) · #665 (B, pool + convención de carpetas) · #666 (C, ingesta multipart) · #667 (D, mover al vincular)
 **Relacionado con:** ADR-006 (URIs `bddat://`, `resolver_url()`) · ADR-010 (N:M documento-tarea) · ADR-027 (pertenencia documental al EXPEDIENTE) · #180 (creación histórica del pool, origen de la regresión corregida aquí) · #572 (bloqueado hasta esta sesión, ahora ortogonal y desbloqueable en paralelo)
 

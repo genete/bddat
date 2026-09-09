@@ -44,29 +44,23 @@ class Proyecto(db.Model):
     RELACIONES:
         - expediente ← EXPEDIENTES (1:1 inversa, backref desde expediente)
         - ia → TIPOS_IA (instrumento ambiental aplicable)
-        - documentos_proyecto → DOCUMENTOS_PROYECTO (N documentos versionados)
         - municipios_afectados ← MUNICIPIOS_PROYECTO (backref desde MunicipioProyecto)
         - municipios → Property calculada que accede a lista directa de Municipios
     
-    GESTIÓN DE VERSIONES:
-        NO se crean múltiples registros de proyecto. La evolución se gestiona así:
-        
-        1. Proyecto Inicial:
-           - Registro en PROYECTOS con metadatos base
-           - Documento PDF en DOCUMENTOS_PROYECTO con TIPO='PRINCIPAL'
-        
-        2. Proyecto Modificado:
-           - Se actualiza PROYECTOS (metadatos) si cambió algo esencial
-           - Nuevo documento en DOCUMENTOS_PROYECTO con TIPO='MODIFICADO'
-           - El PRINCIPAL sigue existiendo (historial)
-        
-        3. Proyecto Refundido:
-           - Se actualiza PROYECTOS con datos consolidados
-           - Nuevo documento en DOCUMENTOS_PROYECTO con TIPO='REFUNDIDO'
-           - El REFUNDIDO anula PRINCIPAL y MODIFICADOS previos
-    
+    GESTIÓN DE VERSIONES (ADR-044):
+        NO se crean múltiples registros de proyecto: este registro **es** el proyecto
+        original —título, fecha técnica, descripción, finalidad, emplazamiento— y se
+        actualiza si cambia algo esencial.
+
+        La evolución documental vive en el pool. Los DOC_PROYECTO del expediente
+        forman una línea temporal ordenada por fecha_administrativa, y cada reformado
+        (fila en REFORMADOS_PROYECTO) es un **corte** que abre una versión nueva. Una
+        versión es el tramo entre dos cortes, no una entidad: la inicial es todo lo
+        anterior al primer reformado.
+
     REGLAS DE NEGOCIO:
-        1. Un proyecto debe tener al menos un documento PRINCIPAL en DOCUMENTOS_PROYECTO
+        1. El proyecto se materializa en uno o varios DOC_PROYECTO del pool del
+           expediente (tomo I, tomo II, planos): no hay un documento por proyecto
         2. FECHA ayuda a ordenar cronológicamente versiones documentales
         3. IA_ID determina trámites ambientales obligatorios
         4. Los defaults con ⚠️ no deben permanecer en producción

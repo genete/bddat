@@ -60,7 +60,7 @@ TABLAS_VIGILADAS = (
     'alegantes', 'interesados_expediente', 'activos_expediente',
     'historico_titulares_expediente', 'documentos_tarea', 'tramites_organismos',
     'requerimientos_tarea', 'coberturas_item_tecnico', 'documentos_requisito',
-    'municipios_proyecto', 'documentos_proyecto',
+    'municipios_proyecto', 'reformados_proyecto',
 )
 
 # FKs sin borrado automático que este script resuelve a mano, como
