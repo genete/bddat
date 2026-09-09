@@ -44,9 +44,13 @@ from app.services.parser_justificante_notifica import (
 )
 from app.services.assembler import build_sujeto
 from app.services.reformados import (
+    RAMA_PRINCIPAL,
+    anclar_principal,
     declarar_desde_metadatos,
     es_doc_proyecto,
+    rama_de_la_ingesta,
     revertir_reformado,
+    sincronizar_principal,
     sincronizar_reformado,
     ultimo_reformado,
 )
@@ -471,6 +475,7 @@ def _documento_es_referenciado(doc):
 
     Backrefs consultados:
       doc.reformado_proyecto           → ReformadoProyecto.documento_id  (uselist=False)
+      doc.anclado_como_proyecto_principal → Proyecto.documento_principal_id
       doc.vinculos_tarea               → DocumentoTarea.documento_id     (lista, con rol)
       doc.notificacion                 → Notificacion.documento_id       (uselist=False, ADR-034)
       doc.anclado_en_solicitud         → Solicitud.documento_solicitud_id
@@ -493,6 +498,8 @@ def _documento_es_referenciado(doc):
     referencias anteriores lo veía.
     """
     if doc.reformado_proyecto:
+        return True
+    if doc.anclado_como_proyecto_principal:
         return True
     if doc.vinculos_tarea:
         return True
@@ -541,6 +548,12 @@ def _motivo_ancla(doc):
             'reformado de proyecto» al editar sus metadatos — y solo si es el último '
             'reformado del expediente.'
         )
+    if doc.anclado_como_proyecto_principal:
+        return (
+            'Este documento es el proyecto de la instalación: de él cuelga saber '
+            'sobre qué versión se instruye. Para retirarlo, desmarque «Es el proyecto '
+            'principal» al editar sus metadatos, o ancle otro documento en su lugar.'
+        )
     for atributo, plantilla in _MOTIVO_ANCLA.items():
         solicitudes = getattr(doc, atributo, None) or []
         if solicitudes:
@@ -564,6 +577,9 @@ def pool_documentos(id):
     # El único corte reversible es el último (ADR-044 §C), y se calcula aquí una
     # vez: la interfaz necesita saberlo para dejar desmarcar o explicar por qué no.
     corte_reversible = ultimo_reformado(id)
+    # Y qué se le pregunta a un DOC_PROYECTO que entre ahora (§C): mientras el
+    # proyecto no tenga principal anclado, la pregunta es si lo es.
+    rama_ingesta = rama_de_la_ingesta(expediente)
 
     docs_lista = []
     for doc in documentos_raw:
@@ -585,6 +601,7 @@ def pool_documentos(id):
             'reformado':       corte,
             'reformado_ultimo': (corte is not None and corte_reversible is not None
                                  and corte.id == corte_reversible.id),
+            'es_principal':    bool(doc.anclado_como_proyecto_principal),
         })
 
     tipos_doc = TipoDocumento.query.order_by(TipoDocumento.nombre).all()
@@ -594,6 +611,8 @@ def pool_documentos(id):
         expediente=expediente,
         docs_lista=docs_lista,
         tipos_doc=tipos_doc,
+        rama_ingesta=rama_ingesta,
+        rama_principal=RAMA_PRINCIPAL,
     )
 
 
@@ -1062,6 +1081,12 @@ def pool_editar_documento(id, doc_id):
         # por las mismas reglas que el desmarcado.
         db.session.flush()
         db.session.expire(doc, ['tipo_doc'])   # el tipo puede acabar de cambiar
+        if 'es_principal' in datos:
+            sincronizar_principal(
+                doc,
+                es_principal=bool(datos.get('es_principal')),
+                usuario_id=current_user.id,
+            )
         if 'abre_reformado' in datos:
             sincronizar_reformado(
                 doc,
@@ -1069,9 +1094,13 @@ def pool_editar_documento(id, doc_id):
                 origen=datos.get('origen_reformado'),
                 usuario_id=current_user.id,
             )
-        elif ('tipo_doc_id' in datos and doc.reformado_proyecto is not None
-                and not es_doc_proyecto(doc)):
-            revertir_reformado(doc, usuario_id=current_user.id)
+        elif 'tipo_doc_id' in datos and not es_doc_proyecto(doc):
+            # Dejar de ser proyecto suelta lo que el documento sostenía, con las
+            # mismas reglas que desmarcarlo a mano.
+            if doc.reformado_proyecto is not None:
+                revertir_reformado(doc, usuario_id=current_user.id)
+            if doc.anclado_como_proyecto_principal:
+                sincronizar_principal(doc, es_principal=False, usuario_id=current_user.id)
 
         db.session.commit()
     except Exception as e:
@@ -1079,6 +1108,35 @@ def pool_editar_documento(id, doc_id):
         return jsonify({'ok': False, 'error': str(e)}), 500
 
     return jsonify({'ok': True})
+
+
+@bp.route('/<int:id>/documentos/<int:doc_id>/anclar-principal', methods=['POST'])
+@login_required
+def pool_anclar_principal(id, doc_id):
+    """Ancla un documento del pool como proyecto principal (ADR-044 §D).
+
+    Gesto propio porque hay dos sitios que lo necesitan: el aviso de divergencia del
+    checklist documental —donde el técnico acaba de cubrir el requisito del proyecto
+    con un documento distinto del anclado— y el propio pool. Si ya había otro
+    anclado, mueve el ancla y la bitácora guarda de dónde a dónde.
+    """
+    expediente = Expediente.query.get_or_404(id)
+    resultado = verificar_acceso_expediente(expediente, 'editar')
+    if resultado:
+        return resultado
+
+    doc = Documento.query.get_or_404(doc_id)
+    if doc.expediente_id != id:
+        abort(404)
+
+    try:
+        anclar_principal(doc, usuario_id=current_user.id)
+        db.session.commit()
+    except ValueError as e:
+        db.session.rollback()
+        return jsonify({'ok': False, 'error': str(e)}), 422
+
+    return jsonify({'ok': True, 'documento_id': doc.id})
 
 
 @bp.route('/<int:id>/documentos/<int:doc_id>/borrar', methods=['POST'])
