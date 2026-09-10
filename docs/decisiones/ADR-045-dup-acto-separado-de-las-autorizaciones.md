@@ -194,11 +194,14 @@ un catálogo de recursos técnicos de la ADA, no administrativos.
 ## Lo que este ADR no decide
 
 **Cómo se representa el doble acto en el modelo.** Hoy `Solicitud` tiene un único
-`documento_cierre_id` (ADR-041 §D bis) y `Solicitud.estado` toma la **primera** fase
-finalizadora que encuentra (`next(...)`), de modo que dos resoluciones con resultados propios
-no se pueden expresar. Lo que sí está preparado, y hace que el problema sea de representación y
-no de estructura: varias fases del mismo tipo por solicitud ya son posibles —`crear_fase` no
-comprueba duplicidad (ADR-044 §Contexto)—.
+`documento_cierre_id` (ADR-041 §D bis). Desde ADR-044 R5 (#901), `Solicitud.estado` ya no toma
+"la primera" ni "la última" fase finalizadora que encuentra: exige que **todas** las que tenga la
+solicitud estén cerradas, y si sus resultados no coinciden dice `RESUELTA_DISCREPANTE` en vez de
+mentir con un `RESUELTA` mudo — pero sigue sin poder expresar **cuáles** son los dos resultados, ni
+sus dos fechas de cierre; ese arreglo evitó que el sistema mintiera mientras tanto, no resolvió la
+representación. Lo que sí está preparado, y hace que el problema siga siendo de representación y no
+de estructura: varias fases del mismo tipo por solicitud ya son posibles —`crear_fase` no comprueba
+duplicidad (ADR-044 §Contexto)—.
 
 Las dos vías evaluadas, sin elegir:
 
