@@ -8,10 +8,16 @@ Regla genérica de §F (ADR-044, R3 #895): «se prohíbe crear una fase que cubr
 una versión ya cubierta por otra fase del mismo tipo».
 
 **Sujeto `ANY/ANY/ANY` sin condición de encuadre por fase, y no por descuido**:
-son tres segmentos y `camino_casa` exige misma longitud, así que solo casa con
-la creación de una fase (crear trámite compila cuatro segmentos, crear
-solicitud dos). Cubre las nueve fases del catálogo, incluidas `RESOLUCION` y
-`RECONOCIMIENTO_INTERESADO`, que no se repiten ni con reformado.
+cubre las nueve fases del catálogo, incluidas `RESOLUCION` y
+`RECONOCIMIENTO_INTERESADO`, que no se repiten ni con reformado. Corrección
+verificada sobre el diseño original del issue: `camino_casa` NO basta aquí para
+distinguir crear fase de crear trámite —el dict de `crear_tramite`
+(`{'fase', 'tipo_tramite'}`, sin clave `'solicitud'`) también compila 3
+segmentos, así que la regla SÍ casa por sujeto en ambos casos (test
+`TestRegla.test_no_dispara_al_crear_tramite`, #895). Quien protege la creación
+de trámites es la propia variable `version_ya_cubierta` (`ctx.fase is None`),
+no la longitud del camino — sí es cierto que `crear_solicitud` compila 2
+segmentos y por ahí no casa nunca.
 
 Sin `norma_id`: no es una cita de LPACAP/RD 1955-2000, sino un invariante de
 consistencia entre `fases.reformado_id` y el catálogo — la misma versión no
