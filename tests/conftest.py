@@ -571,6 +571,23 @@ class ArbolESFTT:
         self.db.session.flush()
         return doc
 
+    def reformado(self, expediente_id, *, origen='VOLUNTARIO', sufijo='reformado'):
+        """Declara un reformado de proyecto en el expediente (R3, ADR-044 §F, #895).
+
+        Atajo de fábrica como `anclar_proyecto()` de #887: construye la fila
+        directamente, sin pasar por `declarar_reformado()` (que exige
+        `usuario_id` para la bitácora) — el corte en sí no es lo que estos
+        tests necesitan probar, solo que el expediente tenga una versión más
+        a la que enganchar la siguiente fase.
+        """
+        from app.models.reformados_proyecto import ReformadoProyecto
+        from app.services.reloj_simulado import hoy
+        doc = self.documento(expediente_id, 'DOC_PROYECTO', f'{sufijo}-{expediente_id}', fecha=hoy())
+        reformado = ReformadoProyecto(documento_id=doc.id, origen=origen)
+        self.db.session.add(reformado)
+        self.db.session.flush()
+        return reformado
+
     def vincular(self, tarea, documento, rol):
         from app.models.documentos_tarea import DocumentoTarea
         v = DocumentoTarea(tarea_id=tarea.id, documento_id=documento.id, rol=rol)
