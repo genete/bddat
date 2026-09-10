@@ -1,11 +1,11 @@
 # ADR-044 — Reformados de proyecto: la versión como eje de la instrucción
 
-**Estado:** Adoptada — R1 y R2 implementados (#885, #887); R3-R6 pendientes (ver §Issues)
+**Estado:** Adoptada — R1 y R2 implementados (#885, #887); R3 abierto (#895); R4-R6 pendientes (ver §Issues)
 **Fecha:** 2026-09-08
 **Depende de:** ADR-011 (vinculación trámites↔organismos) · ADR-016 (vista de árbol) · ADR-032 (ingesta y almacenamiento) · ADR-036 (sellado de fase cerrada) · ADR-041 §D bis (anclas documentales) · ADR-042 (sub-procesos de cardinalidad variable) · ADR-043 (certificado de fin de instrucción)
 **Enmienda:** ADR-016 §1 (modelo de niveles del árbol) · ADR-043 §E (el registry por tipo de fase deja de ser necesario para el ámbito)
 **Origen:** sesiones de análisis del 2026-09-07 y 2026-09-08. Análisis completo, con el barrido fase a fase y las alternativas descartadas, en `docs/referencia/ANALISIS_REFORMADOS_PROYECTO.md`.
-**Issues:** #819 (la decisión que este ADR cierra) · #864 (desbloqueado por §F) · #885 (R1) · #887 (R2)
+**Issues:** #819 (la decisión que este ADR cierra) · #864 (desbloqueado por §F) · #885 (R1) · #887 (R2) · #895 (R3)
 
 ---
 
@@ -298,8 +298,9 @@ acierta; `organismos_expediente` se queda como está; el árbol no cambia de top
 
 ## Issues de implementación
 
-Cuatro issues nuevos, encadenados, más tres que ya viven fuera. **R1 y R2 hechos; R3-R6
-pendientes de crear.** Bajo cada uno, lo que la implementación corrigió de lo escrito aquí.
+Cuatro issues nuevos, encadenados, más tres que ya viven fuera. **R1 y R2 hechos; R3 abierto
+(#895); R4-R6 pendientes de crear.** Bajo cada uno, lo que la implementación corrigió de lo
+escrito aquí.
 
 ### R1 — `reformados_proyecto` y la retirada de `documentos_proyecto`
 
@@ -358,6 +359,17 @@ motor de §F con su variable; verificación sobre el expediente-tipo.
 
 **Depende de:** R1.
 **Desbloquea:** #864, que puede implementarse en este issue o inmediatamente después.
+
+**Abierto — #895.** Cuatro cosas que el issue fija y que aquí quedaban abiertas:
+
+- **`reformado_id` lo rellena `crear_fase` con la versión vigente**, no el técnico: preguntarlo
+  sería la columna `produce_edicion` que este ADR descartó, con su oportunidad de contradecirse.
+- **La regla de §F no lleva condición de encuadre por fase.** `ANY/ANY/ANY` son tres segmentos y
+  `camino_casa` exige misma longitud, así que solo casa con la creación de una fase.
+- **`ON DELETE RESTRICT` en la FK**, con la guarda del pool explicando el motivo: con `SET NULL`
+  la cascada del corte (#885) devolvería sus fases a la versión inicial en silencio. Ahí entra
+  además la condición de reversión que R1 dejó a deber.
+- #864 se implementa **en su propio issue**, después: R3 solo le entrega la variable formulable.
 
 ### R4 — Las coberturas del análisis por versión
 
