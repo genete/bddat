@@ -142,8 +142,10 @@ def _modulos_expediente_tipo():
     """
     from scripts.expedientes_dummy import (
         analisis_doc_dos_vueltas, consultas_varios_estados,
+        reformado_analisis_y_consultas,
     )
-    return (analisis_doc_dos_vueltas, consultas_varios_estados)
+    return (analisis_doc_dos_vueltas, consultas_varios_estados,
+            reformado_analisis_y_consultas)
 
 
 def _expedientes(app):
