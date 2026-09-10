@@ -1,11 +1,11 @@
 # ADR-044 — Reformados de proyecto: la versión como eje de la instrucción
 
-**Estado:** Adoptada — R1-R4 implementados (#885, #887, #895, #899); R5-R6 pendientes (ver §Issues)
+**Estado:** Adoptada — R1-R5 implementados (#885, #887, #895, #899, #901); R6 pendiente (ver §Issues)
 **Fecha:** 2026-09-08
 **Depende de:** ADR-011 (vinculación trámites↔organismos) · ADR-016 (vista de árbol) · ADR-032 (ingesta y almacenamiento) · ADR-036 (sellado de fase cerrada) · ADR-041 §D bis (anclas documentales) · ADR-042 (sub-procesos de cardinalidad variable) · ADR-043 (certificado de fin de instrucción)
 **Enmienda:** ADR-016 §1 (modelo de niveles del árbol) · ADR-043 §E (el registry por tipo de fase deja de ser necesario para el ámbito)
 **Origen:** sesiones de análisis del 2026-09-07 y 2026-09-08. Análisis completo, con el barrido fase a fase y las alternativas descartadas, en `docs/referencia/ANALISIS_REFORMADOS_PROYECTO.md`.
-**Issues:** #819 (la decisión que este ADR cierra) · #864 (desbloqueado por §F) · #885 (R1) · #887 (R2) · #895 (R3) · #899 (R4)
+**Issues:** #819 (la decisión que este ADR cierra) · #864 (desbloqueado por §F) · #885 (R1) · #887 (R2) · #895 (R3) · #899 (R4) · #901 (R5, absorbe #848)
 
 ---
 
@@ -449,6 +449,29 @@ de §H —ámbito, dos redacciones, agrupación por versión y observaciones de 
 
 **Depende de:** R3.
 **Nota:** #848 ya existe y puede absorberse aquí o quedarse suelto.
+
+**Hecho — #901.** Absorbe #848, tal como decidió Carlos al revisar el issue. Tres correcciones sobre
+lo escrito arriba:
+
+- **`Solicitud.estado` no coge "la última finalizadora": es universal.** ADR-045 (2026-09-09,
+  posterior a este ADR) descubrió durante el diseño del issue que una solicitud `AAP+AAC+DUP` puede
+  resolver en **dos actos independientes**, sin relación de supersesión entre ellos — no son la misma
+  resolución rehecha. "Coger la más reciente" daría por resuelto un acto que sigue abierto. El estado
+  pasa a exigir que **todas** las fases finalizadoras que tenga la solicitud estén cerradas, y
+  `RESUELTA_DISCREPANTE` cuando cierran con resultados distintos — sin inventar cuál de los dos
+  "vale": representar de verdad el doble acto de ADR-045 queda para su propio issue.
+- **`cert_fin_ip_consultas` tenía un defecto anterior a los reformados, no solo el previsto.**
+  `_buscar_existente` buscaba por `expediente_id + tipo_doc_id` — ni siquiera filtraba por solicitud,
+  así que dos solicitudes del mismo expediente ya compartían certificado por error. `Certificado` gana
+  `solicitud_id` además de `reformado_id` (los dos nullable, `ON DELETE RESTRICT`, dos índices únicos
+  parciales — mismo patrón que R4) para que el scoping sea por `(solicitud, ronda)` y no solo por
+  expediente.
+- **Un defecto de fondo destapado al implementar el fix de #848**: `Fase.solicitud` no tenía
+  `order_by`, y `crear_fase`/`ArbolESFTT.fase()` (test) creaban la fila por `solicitud_id` a pelo, no
+  por la relación — sin sincronía de backref en memoria. Comprobar `Solicitud.estado` justo después de
+  crear o cerrar una fase, en la misma sesión, veía la colección `fases` vieja. Se arregla construyendo
+  siempre por la relación (`Fase(solicitud=solicitud, ...)`), no tocando la property (que sigue siendo
+  computación pura sobre `self.fases`, testable con stubs sin BD).
 
 ### R6 — Expediente-tipo del reformado
 
