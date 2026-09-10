@@ -66,6 +66,25 @@ class FlaskControlGUI:
         )
         self.chk_network.pack()
 
+        # --- Opción de eco SQL (#909) ---
+        # Con el eco activo, esta misma consola satura el pipe con el proceso
+        # Flask y lo bloquea por backpressure (ver ANALISIS_ESCALABILIDAD.md
+        # §6.1): una petición con muchas consultas puede tardar ~9x más solo
+        # por imprimir el SQL aquí. Desactivado por defecto; actívalo solo
+        # para depurar consultas concretas.
+        echo_frame = tk.Frame(root)
+        echo_frame.pack(pady=2)
+
+        self.echo_sql = tk.BooleanVar(value=False)
+        self.chk_echo = tk.Checkbutton(
+            echo_frame,
+            text="Mostrar SQL en consola  (ralentiza mucho — activar solo para depurar, #909)",
+            variable=self.echo_sql,
+            font=("Arial", 9),
+            fg="#444444",
+        )
+        self.chk_echo.pack()
+
         # --- Botones de logs ---
         log_buttons_frame = tk.Frame(root)
         log_buttons_frame.pack(pady=5)
@@ -173,8 +192,9 @@ class FlaskControlGUI:
     def start_server(self):
         self.btn_start.config(state=tk.DISABLED)
         self.btn_stop.config(state=tk.NORMAL)
-        # Bloquear el checkbox mientras el servidor está en marcha
+        # Bloquear los checkboxes mientras el servidor está en marcha
         self.chk_network.config(state=tk.DISABLED)
+        self.chk_echo.config(state=tk.DISABLED)
 
         host = "0.0.0.0" if self.serve_network.get() else "127.0.0.1"
         host_label = "red local (0.0.0.0)" if host == "0.0.0.0" else "localhost"
@@ -202,6 +222,7 @@ class FlaskControlGUI:
             env["PYTHONUNBUFFERED"] = "1"
             env["FORCE_COLOR"] = "1"
             env["FLASK_HOST"] = host
+            env["SQLALCHEMY_ECHO"] = "true" if self.echo_sql.get() else "false"
 
             self.process = subprocess.Popen(
                 [python_cmd, "run.py"],
@@ -225,6 +246,7 @@ class FlaskControlGUI:
             self.btn_start.config(state=tk.NORMAL)
             self.btn_stop.config(state=tk.DISABLED)
             self.chk_network.config(state=tk.NORMAL)
+            self.chk_echo.config(state=tk.NORMAL)
 
     def read_logs(self):
         try:
@@ -254,8 +276,9 @@ class FlaskControlGUI:
         self.status_label.config(text="Estado: Servidor detenido", fg="gray")
         self.btn_start.config(state=tk.NORMAL)
         self.btn_stop.config(state=tk.DISABLED)
-        # Volver a habilitar el checkbox al detener
+        # Volver a habilitar los checkboxes al detener
         self.chk_network.config(state=tk.NORMAL)
+        self.chk_echo.config(state=tk.NORMAL)
 
     def build_react(self):
         """Compila los bundles React (#499): npm install + npm run build en react-src."""
