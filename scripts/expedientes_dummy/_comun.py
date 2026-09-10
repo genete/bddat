@@ -119,25 +119,37 @@ def abrir_cliente(app, usuario):
 # ---------------------------------------------------------------------------
 
 def subir(client, expediente_id, codigo_tipo_doc, tipo_doc_id, fecha_admin, asunto,
-          fichero=None):
+          fichero=None, *, es_principal=False, abre_reformado=False, origen_reformado=None):
     """Sube un documento del banco dummy por la ruta real de ingesta.
 
     `fichero`: nombre dentro de FIXTURES_DIR; por defecto `<codigo en minúsculas>.pdf`,
     que es como está nombrado el banco.
+
+    `es_principal`/`abre_reformado`/`origen_reformado` (ADR-044 §C/§D, #903): mismas claves
+    que lee `declarar_desde_metadatos` del dict de metadatos de un `DOC_PROYECTO` — la rama
+    la decide el estado del ancla, no el caller, así que pasar `es_principal=True` cuando el
+    proyecto ya tiene ancla, o `abre_reformado=True` cuando todavía no la tiene, simplemente
+    no hace nada (ver `rama_de_la_ingesta`).
     """
     nombre = fichero or f'{codigo_tipo_doc.lower()}.pdf'
     with open(os.path.join(FIXTURES_DIR, nombre), 'rb') as f:
         contenido = f.read()
+    metadato = {
+        'tipo_doc_id': tipo_doc_id,
+        'fecha_administrativa': fecha_admin.isoformat(),
+        'asunto': asunto,
+        'prioridad': False,
+    }
+    if es_principal:
+        metadato['es_principal'] = True
+    if abre_reformado:
+        metadato['abre_reformado'] = True
+        metadato['origen_reformado'] = origen_reformado or 'VOLUNTARIO'
     r = client.post(
         f'/expedientes/{expediente_id}/documentos/subir',
         data={
             'ficheros': (io.BytesIO(contenido), nombre),
-            'metadatos': json.dumps([{
-                'tipo_doc_id': tipo_doc_id,
-                'fecha_administrativa': fecha_admin.isoformat(),
-                'asunto': asunto,
-                'prioridad': False,
-            }]),
+            'metadatos': json.dumps([metadato]),
         },
         content_type='multipart/form-data',
     )
