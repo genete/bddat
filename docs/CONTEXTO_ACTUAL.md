@@ -7,11 +7,11 @@
 
 ---
 
-**Hecho:** **La cadena de [ADR-044](decisiones/ADR-044-reformados-proyecto-version-como-eje.md) arranca: R1 (#885) y R2 (#887) mergeados (2026-09-09).** `reformados_proyecto` existe y `documentos_proyecto` se retiró; la ingesta pregunta una cosa u otra según el estado del ancla, y `proyectos.documento_principal_id` la sostiene con dos reglas de motor (RD 1955/2000 arts. 123.1 y 130.1). Lo que no consta en el ADR ni en los issues: con esas reglas, **tener proyecto identificado pasa a formar parte del estado mínimo para avanzar** —como ya lo era cubrir la tasa—, y eso rompió 15 tests de #827 y #838 que fabricaban expedientes sin él; el builder de tests gana `anclar_proyecto()` y los `_cumplir_requisitos` lo llaman. Cada regla nueva del motor moverá ese mínimo otra vez.
+**Hecho:** **La cadena de [ADR-044](decisiones/ADR-044-reformados-proyecto-version-como-eje.md) sigue: R3 (#895) mergeado (2026-09-10), tras R1 (#885) y R2 (#887).** `fases.reformado_id` engancha cada fase a la versión vigente del proyecto (la rellena `crear_fase`, no el técnico) y la regla de §F bloquea repetir un tipo de fase dentro de la misma versión sin reformado que lo justifique, con su nodo `version` en el árbol y el inspector. Lo que no consta en el ADR ni en el issue: a diferencia de R1/R2, esta regla **no rompió ningún test existente** — solo bloquea repetir un tipo de fase dentro de la misma versión, y ningún fixture lo hacía. Dos hallazgos quedaron como issues aparte, sin relación funcional con R3: #896 (un script de expediente-tipo no anclaba el proyecto, choca con la regla de R2) y #897 (el árbol no reserva bien el ancho entre ramas hermanas muy asimétricas, límite de `d3-flextree` anterior a R3, no introducido por él).
 
 **Próximo:**
 
-1. **R3 — `fases.reformado_id`, el nodo del árbol y la regla genérica de §F**, que desbloquea **#864** y del que cuelgan los tres últimos: **R4** (coberturas por versión, que necesita antes **#884**), **R5** (arrastres del motor y los certificados) y **R6** (el expediente-tipo del reformado). Descritos en el ADR §Issues, sin crear. Bajo R1 y R2 quedó anotado allí lo que la implementación corrigió del diseño.
+1. **R4 — Las coberturas del análisis por versión**, que depende de R3 (ya hecho) y de **#884** para la parte de `requerimientos_tarea` (ese campo no sobrevive a un guardado destructivo). Alcance: flag de afección por reformado en `requisitos_documentales`; `reformado_id` en `documentos_requisito` y `coberturas_item_tecnico`; reescritura de `tasa_impagada` para mirar la versión vigente. Descrito en el ADR §Issues, sin crear. De R3 cuelgan también **R5** (arrastres del motor y los certificados) y **R6** (el expediente-tipo del reformado), que van después de R4.
 
 ---
 
