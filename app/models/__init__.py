@@ -71,7 +71,7 @@ from app.models.tramites_tareas import TramiteTarea
 
 # Modelos operacionales con dependencias múltiples
 from app.models.reformados_proyecto import ReformadoProyecto  # Depende de Documento
-from app.models.fases import Fase  # Depende de Solicitud, TipoFase, TipoResultadoFase, Documento
+from app.models.fases import Fase  # Depende de Solicitud, TipoFase, TipoResultadoFase, Documento, ReformadoProyecto
 from app.models.municipios_proyecto import MunicipioProyecto  # Depende de Municipio, Proyecto
 
 # Modelos operacionales con dependencias complejas (al final)
