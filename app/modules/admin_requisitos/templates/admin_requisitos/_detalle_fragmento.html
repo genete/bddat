@@ -27,6 +27,9 @@
         {% else %}
             <span class="badge bg-secondary ms-1">Inactivo</span>
         {% endif %}
+        {% if requisito.afectado_por_reformado %}
+            <span class="badge bg-warning-subtle text-warning-emphasis ms-1">Afectado por reformado</span>
+        {% endif %}
     </div>
     <div class="card-body card-body-tinted">
         <div class="row g-2">
@@ -105,6 +108,15 @@
                 class="btn btn-sm {% if requisito.activo %}btn-outline-danger{% else %}btn-outline-success{% endif %}">
             <i class="fas {% if requisito.activo %}fa-toggle-off{% else %}fa-toggle-on{% endif %} me-1"></i>
             {% if requisito.activo %}Desactivar{% else %}Activar{% endif %}
+        </button>
+    </form>
+
+    <form data-inspector-form
+          data-action="{{ url_for('admin_requisitos.afectado_reformado', id=requisito.id) }}">
+        <button type="submit" class="btn btn-sm btn-outline-warning"
+                title="ADR-044 §E bis: un reformado puede exigir una vinculación propia para la versión vigente">
+            <i class="fas {% if requisito.afectado_por_reformado %}fa-toggle-off{% else %}fa-toggle-on{% endif %} me-1"></i>
+            {% if requisito.afectado_por_reformado %}Quitar afección a reformado{% else %}Marcar afectado por reformado{% endif %}
         </button>
     </form>
 

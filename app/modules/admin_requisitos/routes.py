@@ -18,6 +18,7 @@ Rutas de formulario:
 - GET  /requisitos_documentales/<id>/editar-fragmento — Fragmento de edición (incluye condiciones)
 - POST /requisitos_documentales/<id>/editar          — Guardar cambios (campos + condiciones)
 - POST /requisitos_documentales/<id>/activar         — Alternar activo/inactivo (baja lógica)
+- POST /requisitos_documentales/<id>/afectado-reformado — Alternar afectado_por_reformado (ADR-044 §E bis, R4 #899)
 - POST /requisitos_documentales/<id>/eliminar        — Baja física, solo si no tiene usos
 """
 from flask import Blueprint, flash, jsonify, redirect, render_template, request, url_for
@@ -394,6 +395,33 @@ def activar(id):
     msg = f'Requisito {estado}.'
     if is_xhr:
         return jsonify({'ok': True, 'message': msg, 'activo': requisito.activo})
+    flash(msg, 'success')
+    return redirect(url_for('admin_requisitos.listado', sel=id))
+
+
+@bp.route('/<int:id>/afectado-reformado', methods=['POST'])
+@login_required
+@require_permiso('gestionar_requisitos_documentales')
+def afectado_reformado(id):
+    """Alterna afectado_por_reformado (ADR-044 §E bis, R4 #899).
+
+    Marcado a mano por el Supervisor, sin inferencia — mismo patrón que
+    `activar()`. False (mayoría): la vinculación de la versión inicial cubre
+    para siempre. True: un reformado puede exigir una vinculación propia
+    para la versión vigente (documentos_requisito.reformado_id), sin perder
+    la de la versión inicial si nada cambió (caso de origen: la tasa).
+    """
+    requisito = RequisitoDocumental.query.get_or_404(id)
+    is_xhr = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+    requisito.afectado_por_reformado = not requisito.afectado_por_reformado
+    db.session.commit()
+    estado = 'afectado por reformado' if requisito.afectado_por_reformado else 'no afectado por reformado'
+    msg = f'Requisito marcado como {estado}.'
+    if is_xhr:
+        return jsonify({
+            'ok': True, 'message': msg,
+            'afectado_por_reformado': requisito.afectado_por_reformado,
+        })
     flash(msg, 'success')
     return redirect(url_for('admin_requisitos.listado', sel=id))
 
