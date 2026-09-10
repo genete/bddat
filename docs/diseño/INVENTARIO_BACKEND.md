@@ -58,9 +58,9 @@
 | CondicionRegla | `condiciones_regla` | Condición AND (variable, operador, valor) |
 | ExcepcionMotor | `excepciones_motor` | Excepción anclada a una regla por FK |
 | CondicionExcepcion | `condiciones_excepcion` | Condición de excepción |
-| RequisitoDocumental | `requisitos_documentales` | Requisito de documento por procedimiento (#192) |
+| RequisitoDocumental | `requisitos_documentales` | Requisito de documento por procedimiento (#192). `afectado_por_reformado`: marcado a mano por el Supervisor (toggle en `admin_requisitos`), un reformado puede exigir vinculación propia para la versión vigente (ADR-044 §E bis, #899) |
 | CondicionRequisito | `condiciones_requisito` | Condición AND aplicada al requisito |
-| DocumentoRequisito | `documentos_requisito` | Asignación documento↔requisito por solicitud |
+| DocumentoRequisito | `documentos_requisito` | Asignación documento↔requisito por solicitud. `reformado_id` (NULL = versión inicial): dos índices únicos parciales sustituyen al UNIQUE simple — `(requisito, solicitud) WHERE reformado_id IS NULL` y `(requisito, solicitud, reformado)` — un requisito afectado puede tener una fila por versión (ADR-044 §E bis, #899) |
 
 ### 1.5 Plazos e inhabilidad
 
@@ -106,7 +106,7 @@
 | ConsultaNombrada | `consultas_nombradas` | SQL nombrado parametrizable por `:expediente_id` para alimentar plantillas |
 | ConfiguracionSistema | `configuracion_sistema` | Valores de configuración runtime |
 | CatalogoRequerimiento | `catalogo_requerimientos` | Catálogo de defectos tipificados para requerimientos |
-| RequerimientoTarea | `requerimientos_tarea` | Defectos seleccionados por tarea ANALIZAR (#440 pendiente UI) |
+| RequerimientoTarea | `requerimientos_tarea` | Defectos seleccionados por tarea ANALIZAR (#440 pendiente UI). `reformado_id` (ADR-044 §E bis, #899): atributo de nacimiento, sin índice único, **sin rellenar todavía** — depende de que #884 cambie el shuttle de reemplazo total a merge por `id` |
 | ~~TablaMetadata~~ | ~~`tabla_metadata`~~ | **Dada de baja en #585** — permisos de lectura/escritura por tabla y rol (#85). Nunca tuvo consumidores y su premisa contradice ADR-013 (la visibilidad no se restringe por rol). El control de acceso vivo es el dict `PERMISOS` de `app/utils/permisos.py` |
 
 ---
@@ -201,6 +201,13 @@ Checks BDDAT-aware que el motor agnóstico no puede evaluar (requieren queries a
 ### 3.6 Requisitos documentales (`services/requisitos.py`, modelo desde #192)
 
 `evaluar_requisitos(solicitud, variables)` devuelve `{items, todos_cubiertos, error}`. Cada `RequisitoDocumental` tiene condiciones AND; sin condiciones = universal. La asignación documento↔requisito vive en `documentos_requisito` con `solicitud_id`. UI consumidora pendiente (#495).
+
+**Cobertura por versión (ADR-044 §E bis, #899):** un requisito puede tener más de una vinculación
+—una por versión, `documentos_requisito.reformado_id`—. `evaluar_requisitos` prefiere la de la
+versión vigente del expediente (`ultimo_reformado`) y cae a la de la versión inicial
+(`reformado_id IS NULL`) si no la hay; mismo criterio en `variables/calculado.py::tasa_impagada`.
+`evaluar_items_tecnicos` (`services/items_tecnicos.py`, #581) es distinto a propósito: **sin**
+ese fallback — cada versión exige su propia verificación técnica, sin arrastre de la anterior.
 
 ---
 

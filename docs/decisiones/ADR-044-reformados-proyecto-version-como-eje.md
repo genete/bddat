@@ -1,11 +1,11 @@
 # ADR-044 — Reformados de proyecto: la versión como eje de la instrucción
 
-**Estado:** Adoptada — R1, R2 y R3 implementados (#885, #887, #895); R4-R6 pendientes (ver §Issues)
+**Estado:** Adoptada — R1-R4 implementados (#885, #887, #895, #899); R5-R6 pendientes (ver §Issues)
 **Fecha:** 2026-09-08
 **Depende de:** ADR-011 (vinculación trámites↔organismos) · ADR-016 (vista de árbol) · ADR-032 (ingesta y almacenamiento) · ADR-036 (sellado de fase cerrada) · ADR-041 §D bis (anclas documentales) · ADR-042 (sub-procesos de cardinalidad variable) · ADR-043 (certificado de fin de instrucción)
 **Enmienda:** ADR-016 §1 (modelo de niveles del árbol) · ADR-043 §E (el registry por tipo de fase deja de ser necesario para el ámbito)
 **Origen:** sesiones de análisis del 2026-09-07 y 2026-09-08. Análisis completo, con el barrido fase a fase y las alternativas descartadas, en `docs/referencia/ANALISIS_REFORMADOS_PROYECTO.md`.
-**Issues:** #819 (la decisión que este ADR cierra) · #864 (desbloqueado por §F) · #885 (R1) · #887 (R2) · #895 (R3)
+**Issues:** #819 (la decisión que este ADR cierra) · #864 (desbloqueado por §F) · #885 (R1) · #887 (R2) · #895 (R3) · #899 (R4)
 
 ---
 
@@ -298,8 +298,8 @@ acierta; `organismos_expediente` se queda como está; el árbol no cambia de top
 
 ## Issues de implementación
 
-Cuatro issues nuevos, encadenados, más tres que ya viven fuera. **R1, R2 y R3 hechos (#885, #887,
-#895); R4-R6 pendientes de crear.** Bajo cada uno, lo que la implementación corrigió de lo
+Cuatro issues nuevos, encadenados, más tres que ya viven fuera. **R1-R4 hechos (#885, #887, #895,
+#899); R5-R6 pendientes de crear.** Bajo cada uno, lo que la implementación corrigió de lo
 escrito aquí.
 
 ### R1 — `reformados_proyecto` y la retirada de `documentos_proyecto`
@@ -401,6 +401,44 @@ NULL` para los no afectados, `(requisito, solicitud, reformado)` para los afecta
 
 **Depende de:** R3, y **#884** para la parte de `requerimientos_tarea` — ese campo no sobrevive a un
 guardado destructivo.
+
+**Hecho — #899.** Lo que la implementación corrigió o añadió sobre lo escrito arriba:
+
+- **`coberturas_item_tecnico` recibe el mismo par de índices parciales que `documentos_requisito`**,
+  aunque el ADR solo los fijaba para la tabla documental. No hay flag de afección para los ítems
+  técnicos —todos son solicitud+versión por definición (§E bis)—, así que el primer índice
+  (`WHERE reformado_id IS NULL`) cubre solo la versión inicial, sin distinguir subconjunto marcado.
+- **Semántica OR, no las dos a la vez.** `tasa_impagada` y `evaluar_requisitos` dan por cubierto un
+  requisito afectado si hay vinculación en la versión inicial (`NULL`) **o** en la vigente — no
+  exigen ambas. Decidir si un reformado obliga a complementaria es criterio del técnico al revisar
+  la versión nueva, no algo que la variable o el checklist deban inferir.
+- **`evaluar_items_tecnicos` no lleva ese mismo fallback.** A diferencia de los documentales, un
+  ítem técnico verificado en la versión inicial no arrastra a la siguiente: el contenido del
+  proyecto cambió, y §E bis dice que la verificación "se predica del contenido del proyecto" — cada
+  versión exige la suya, sin excepción.
+- **El eje "por versión" de `ANALISIS_DOCUMENTAL`/`Diagnostico`** (primera fila de la tabla de §E
+  bis) **no necesitó columna ni issue propio**: ya queda resuelto por R3, por navegación.
+  `Diagnostico` solo tiene `documento_id`, pero ese documento cuelga de una `Tarea`
+  (`documento_producido`), que cuelga de un `Tramite` con `fase_id NOT NULL`, y `Fase.reformado_id`
+  ya existe desde R3. La regla de §F obliga a que una versión nueva del análisis abra una fase
+  `ANALISIS_SOLICITUD` nueva, así que cada `Diagnostico` queda atado a su versión por la cadena
+  `documento → tarea → trámite → fase.reformado_id` — mismo principio que el ADR usa en §B para
+  retirar `documentos_proyecto`: si el dato es deducible por navegación, no se materializa una
+  columna aparte.
+- **`requerimientos_tarea.reformado_id` se quedó solo con la columna, sin rellenar**, tal como fijó
+  el alcance: el shuttle (`post_requerimientos`) sigue guardando por reemplazo total, así que
+  fijar la versión de nacimiento hoy se perdería en el siguiente guardado. Se rellena cuando #884
+  cambie el endpoint a merge por `id`.
+- **Fuera del alcance original: `afectado_por_reformado` ganó control en el admin de requisitos**
+  (`app/modules/admin_requisitos`, toggle igual que `activar`/`desactivar`). Sin él el flag solo era
+  alcanzable por SQL directo, contradiciendo su propio docstring ("marcado a mano por el
+  Supervisor").
+- **Verificado en navegador de punta a punta**, reutilizando el reformado real que dejó la
+  verificación de R3 en AT-29 (expediente 4134, `reformados_proyecto.id=3`): marcar la tasa como
+  afectada, crear una fase `ANALISIS_SOLICITUD` nueva sobre la misma solicitud —enganchada a
+  `reformado_id=3` por `crear_fase`, confirmado en BD—, comprobar que su checklist hereda 8/9
+  requisitos por el fallback a la versión inicial, y vincular un documento nuevo para la tasa: crea
+  una fila adicional (`reformado_id=3`) sin tocar la original (`NULL`), exactamente el diseño.
 
 ### R5 — Arrastres del motor y de los certificados
 
