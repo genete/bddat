@@ -46,11 +46,15 @@ class ContextoAnalisisAlegaciones:
         if not self._tarea:
             return {}
 
-        solicitud = self._tarea.tramite.fase.solicitud
+        # Acotado a la fase propia, no a solicitud.fases completo (ADR-044 R5):
+        # RECEPCION_ALEGACION y ANALISIS_ALEGACIONES viven en la misma fase
+        # INFORMACION_PUBLICA, que ya lleva su propio reformado_id desde R3. Con
+        # más de una ronda de IP, recorrer toda la solicitud mezclaría alegaciones
+        # de rondas distintas — contra versiones del proyecto distintas.
+        fase = self._tarea.tramite.fase
 
         tramites_recepcion = [
             t
-            for fase in solicitud.fases
             for t in fase.tramites
             if t.tipo_tramite
             and t.tipo_tramite.codigo == 'RECEPCION_ALEGACION'
