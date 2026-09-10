@@ -518,3 +518,46 @@ class TestOperadorDesconocido:
         req = _requisito(tipo_doc_id=7, condiciones=[cond], req_id=70)
         resultado = _evaluar([req], [])
         assert resultado['items'] == []
+
+
+# ---------------------------------------------------------------------------
+# L) evaluar_requisitos — cobertura por versión (ADR-044 §E bis, R4 #899)
+# ---------------------------------------------------------------------------
+
+class TestCoberturaPorVersion:
+
+    def test_con_reformado_cae_a_la_vinculacion_inicial(self):
+        """Hay reformado, pero solo existe la vinculación de la versión inicial
+        (reformado_id NULL) — sigue contando como cubierto (fallback)."""
+        req = _requisito(req_id=80)
+        vinculo = _doc_requisito(requisito_id=80, solicitud_id=1, documento_id=901,
+                                 reformado_id=None)
+        resultado = _evaluar([req], [vinculo], version_vigente_id=5)
+        assert len(resultado['items']) == 1
+        item = resultado['items'][0]
+        assert item['cubierto'] is True
+        assert item['documento'].id == 901
+
+    def test_con_reformado_prefiere_la_vinculacion_de_la_version_vigente(self):
+        """Con vinculación en la inicial Y en la vigente, gana la de la vigente
+        (es la que refleja el estado actual del proyecto)."""
+        req = _requisito(req_id=81)
+        vinculo_inicial = _doc_requisito(requisito_id=81, solicitud_id=1, documento_id=910,
+                                         reformado_id=None)
+        vinculo_vigente = _doc_requisito(requisito_id=81, solicitud_id=1, documento_id=920,
+                                         reformado_id=5)
+        resultado = _evaluar([req], [vinculo_inicial, vinculo_vigente], version_vigente_id=5)
+        item = resultado['items'][0]
+        assert item['cubierto'] is True
+        assert item['documento'].id == 920
+
+    def test_con_reformado_vinculacion_de_otra_version_no_cubre(self):
+        """La única vinculación es de un reformado que ya no es el vigente
+        (ni NULL ni el id actual) → no cubierto."""
+        req = _requisito(req_id=82)
+        vinculo = _doc_requisito(requisito_id=82, solicitud_id=1, documento_id=930,
+                                 reformado_id=3)
+        resultado = _evaluar([req], [vinculo], version_vigente_id=5)
+        item = resultado['items'][0]
+        assert item['cubierto'] is False
+        assert item['documento'] is None
