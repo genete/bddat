@@ -33,6 +33,7 @@ from app.models.requisitos_documentales import RequisitoDocumental, DocumentoReq
 from app.models.items_tecnicos import ItemTecnico, CoberturaItemTecnico
 from app.models.catalogo_requerimientos import CatalogoRequerimiento
 from app.models.requerimientos_tarea import RequerimientoTarea
+from app.services.reformados import ultimo_reformado
 from app.services.arbol_expediente import construir_arbol
 from app.services.tipos_creables import tipos_creables_de_nodo
 from app.services.detalle_nodo import detalle_de_nodo, info_apertura_documento
@@ -1609,8 +1610,15 @@ def vincular_requisito_documental(expediente_id, tarea_id, requisito_id):
     POST .../requisitos-documentales/<requisito_id> — vincula un documento del pool
     al requisito documental para la solicitud de la tarea (#495).
 
-    Body JSON: {documento_id}. Upsert por (requisito_id, solicitud_id) — reasigna
-    el documento si ya había un vínculo (ver DocumentoRequisito, #192).
+    Body JSON: {documento_id}. Upsert por (requisito_id, solicitud_id, reformado_id) —
+    reasigna el documento si ya había un vínculo para esa misma versión (ver
+    DocumentoRequisito, #192; el eje de versión es ADR-044 §E bis, R4 #899).
+
+    `reformado_id` del vínculo: NULL si el requisito no está afectado por
+    reformado (`afectado_por_reformado`) — cae siempre en la versión inicial,
+    igual que antes de R4 —; si está afectado, la versión vigente del
+    expediente (`ultimo_reformado`), que puede ser también NULL si aún no hay
+    ningún reformado.
     """
     expediente = Expediente.query.get_or_404(expediente_id)
     if verificar_acceso_expediente(expediente, 'gestionar_tarea'):
@@ -1635,12 +1643,18 @@ def vincular_requisito_documental(expediente_id, tarea_id, requisito_id):
         return jsonify({'error': 'Documento no encontrado en este expediente'}), 422
 
     solicitud = tarea.tramite.fase.solicitud
+    reformado_id_vinculo = None
+    if requisito.afectado_por_reformado:
+        version_vigente = ultimo_reformado(expediente_id)
+        reformado_id_vinculo = version_vigente.id if version_vigente else None
+
     vinculo = DocumentoRequisito.query.filter_by(
-        requisito_id=requisito.id, solicitud_id=solicitud.id
+        requisito_id=requisito.id, solicitud_id=solicitud.id, reformado_id=reformado_id_vinculo
     ).first()
     if vinculo is None:
         vinculo = DocumentoRequisito(
-            requisito_id=requisito.id, solicitud_id=solicitud.id, documento_id=documento.id
+            requisito_id=requisito.id, solicitud_id=solicitud.id, documento_id=documento.id,
+            reformado_id=reformado_id_vinculo,
         )
         db.session.add(vinculo)
     else:
@@ -1665,6 +1679,11 @@ def desvincular_requisito_documental(expediente_id, tarea_id, requisito_id):
     vuelta anterior, el técnico se está desdiciendo de algo ya exigido y necesita
     justificarlo (#724, 422 forzable, auditado en bitácora). Sin vínculo previo no
     hay transición hacia el defecto: no aplica.
+
+    Apunta a la misma fila que crearía `vincular_requisito_documental` para la
+    versión vigente (ADR-044 §E bis, R4 #899) — no borra a ciegas la primera
+    que encuentre cuando el requisito está afectado por reformado y hay más de
+    una vinculación (una por versión).
     """
     expediente = Expediente.query.get_or_404(expediente_id)
     if verificar_acceso_expediente(expediente, 'gestionar_tarea'):
@@ -1679,9 +1698,16 @@ def desvincular_requisito_documental(expediente_id, tarea_id, requisito_id):
     if candado:
         return candado
 
+    requisito = RequisitoDocumental.query.get_or_404(requisito_id)
+
     solicitud = tarea.tramite.fase.solicitud
+    reformado_id_vinculo = None
+    if requisito.afectado_por_reformado:
+        version_vigente = ultimo_reformado(expediente_id)
+        reformado_id_vinculo = version_vigente.id if version_vigente else None
+
     vinculo = DocumentoRequisito.query.filter_by(
-        requisito_id=requisito_id, solicitud_id=solicitud.id
+        requisito_id=requisito_id, solicitud_id=solicitud.id, reformado_id=reformado_id_vinculo
     ).first()
 
     data = request.get_json(silent=True) or {}
@@ -1724,8 +1750,12 @@ def guardar_cobertura_tecnica(expediente_id, tarea_id, item_tecnico_id):
     tramitador sobre un ítem técnico para la solicitud de la tarea (#581).
 
     Body JSON: {texto, cubierto, justificacion?}. Upsert por (item_tecnico_id,
-    solicitud_id). `cubierto` se fuerza a False si `texto` está vacío — evita el
-    estado inválido de CoberturaItemTecnico (ver su docstring).
+    solicitud_id, reformado_id) — la versión vigente del expediente
+    (ADR-044 §E bis, R4 #899): a diferencia de los requisitos documentales,
+    todo ítem técnico exige su propia verificación por versión, sin excepción
+    ni arrastre de la versión anterior. `cubierto` se fuerza a False si
+    `texto` está vacío — evita el estado inválido de CoberturaItemTecnico (ver
+    su docstring).
 
     Si el guardado hace que el ítem pase a "no cumple" (transición hacia el
     defecto: antes no lo era —no revisado o favorable—, ahora sí) y ese ítem ya
@@ -1755,8 +1785,12 @@ def guardar_cobertura_tecnica(expediente_id, tarea_id, item_tecnico_id):
     justificacion = (data.get('justificacion') or '').strip() or None
 
     solicitud = tarea.tramite.fase.solicitud
+    version_vigente = ultimo_reformado(expediente_id)
+    reformado_id_cobertura = version_vigente.id if version_vigente else None
+
     cobertura = CoberturaItemTecnico.query.filter_by(
-        item_tecnico_id=item_tecnico_id, solicitud_id=solicitud.id
+        item_tecnico_id=item_tecnico_id, solicitud_id=solicitud.id,
+        reformado_id=reformado_id_cobertura,
     ).first()
 
     era_defecto_antes = cobertura is not None and bool((cobertura.texto or '').strip()) and not cobertura.cubierto
@@ -1775,7 +1809,7 @@ def guardar_cobertura_tecnica(expediente_id, tarea_id, item_tecnico_id):
     if cobertura is None:
         cobertura = CoberturaItemTecnico(
             item_tecnico_id=item_tecnico_id, solicitud_id=solicitud.id,
-            texto=texto, cubierto=cubierto,
+            texto=texto, cubierto=cubierto, reformado_id=reformado_id_cobertura,
         )
         db.session.add(cobertura)
     else:
