@@ -214,23 +214,47 @@ class Solicitud(db.Model):
     def estado(self):
         """Estado de la solicitud.
 
-        EN_TRAMITE si alguna fase no está finalizada.
-        Si todas las fases están finalizadas, cualifica con el resultado de la fase
-        finalizadora: RESUELTA_FAVORABLE, RESUELTA_DESFAVORABLE, etc.
-        Fallback RESUELTA cuando la finalizadora no tiene resultado_fase registrado.
+        EN_TRAMITE si alguna fase no está finalizada, o si no hay ninguna fase
+        finalizadora cerrada entre las que hay (#848: "todas las fases cerradas"
+        no es "resuelta" cuando ninguna de ellas es la que resuelve — es un
+        momento normal, entre fases, de cualquier tramitación).
+
+        RESUELTA_<código> cuando TODAS las fases finalizadoras que tenga la
+        solicitud están cerradas y coinciden en resultado_fase.codigo. Universal,
+        no "la última creada" (ADR-044 R5): con una sola finalizadora —el caso
+        de hoy— es exactamente el comportamiento anterior. Con más de una
+        —AAP+AAC+DUP puede resolver en dos actos independientes, ADR-045 §B—
+        ninguna de las dos supersede a la otra, así que "coger la más reciente"
+        daría por resuelto un acto que en realidad sigue abierto.
+
+        RESUELTA_DISCREPANTE cuando todas están cerradas pero sus resultados NO
+        coinciden. Sigue empezando por RESUELTA a propósito (no rompe el
+        guardián de invariantes_esftt que impide reabrir fases de una solicitud
+        ya resuelta y notificada), pero no inventa cuál de los dos resultados
+        "vale": representar de verdad el doble acto de ADR-045 (dos resultados,
+        dos anclas de cierre) es su propio issue futuro. Aquí solo se evita
+        camuflar la discrepancia bajo un RESUELTA mudo.
 
         El llamador debe confirmar via motor de reglas (accion=FINALIZAR, rule id=5)
         que existe la resolución exigida por el tipo de solicitud (#311 P4).
+
+        Sobre `self.fases`, no una consulta aparte: sigue siendo una computación
+        pura sobre la relación cargada, testable con stubs sin BD (bloque C de
+        `test_296_senal_resultado.py`). Para que no vea una colección vieja justo
+        después de crear o cerrar una fase en la misma sesión, quien crea fases
+        (`crear_fase`) tiene que asignarlas por la relación, no por el FK a pelo
+        —ver comentario en `mutaciones_arbol.crear_fase`—.
         """
         if not self.fases or not all(f.finalizada for f in self.fases):
             return 'EN_TRAMITE'
-        fase_fin = next(
-            (f for f in self.fases
-             if f.tipo_fase and f.tipo_fase.es_finalizadora and f.finalizada),
-            None
-        )
-        if fase_fin and fase_fin.resultado_fase:
-            return 'RESUELTA_' + fase_fin.resultado_fase.codigo
+        fases_fin = [f for f in self.fases if f.tipo_fase and f.tipo_fase.es_finalizadora]
+        if not fases_fin:
+            return 'EN_TRAMITE'
+        codigos = {f.resultado_fase.codigo for f in fases_fin if f.resultado_fase}
+        if len(codigos) == 1:
+            return 'RESUELTA_' + codigos.pop()
+        if len(codigos) > 1:
+            return 'RESUELTA_DISCREPANTE'
         return 'RESUELTA'
 
     @property

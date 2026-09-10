@@ -325,10 +325,13 @@ class TestSolicitudEstado:
         s.fases = [self._fase_stub(finalizada=False)]
         assert _solicitud_estado(s) == 'EN_TRAMITE'
 
-    def test_todas_finalizadas_sin_finalizadora_resuelta(self):
+    def test_todas_finalizadas_sin_finalizadora_en_tramite(self):
+        """#848, absorbido por ADR-044 R5: todas las fases cerradas no es
+        "resuelta" si ninguna de ellas es la que resuelve — es el hueco normal
+        entre fases (el caso real de AT-15)."""
         s = MagicMock()
         s.fases = [self._fase_stub(finalizada=True, es_finalizadora=False)]
-        assert _solicitud_estado(s) == 'RESUELTA'
+        assert _solicitud_estado(s) == 'EN_TRAMITE'
 
     def test_finalizadora_favorable_resuelta_favorable(self):
         s = MagicMock()
@@ -359,3 +362,35 @@ class TestSolicitudEstado:
             self._fase_stub(finalizada=False),
         ]
         assert _solicitud_estado(s) == 'EN_TRAMITE'
+
+    # -- ADR-044 R5: universal, no "la última" (motivado por ADR-045 §B) -----
+
+    def test_dos_finalizadoras_una_sin_cerrar_en_tramite(self):
+        """AAP+AAC+DUP (ADR-045) puede resolver en dos actos independientes: con
+        uno cerrado y el otro no, la solicitud sigue en trámite — ninguno
+        supersede al otro."""
+        s = MagicMock()
+        s.fases = [
+            self._fase_stub(finalizada=True, es_finalizadora=True, codigo_resultado='FAVORABLE'),
+            self._fase_stub(finalizada=False, es_finalizadora=True),
+        ]
+        assert _solicitud_estado(s) == 'EN_TRAMITE'
+
+    def test_dos_finalizadoras_mismo_resultado_resuelta(self):
+        s = MagicMock()
+        s.fases = [
+            self._fase_stub(finalizada=True, es_finalizadora=True, codigo_resultado='FAVORABLE'),
+            self._fase_stub(finalizada=True, es_finalizadora=True, codigo_resultado='FAVORABLE'),
+        ]
+        assert _solicitud_estado(s) == 'RESUELTA_FAVORABLE'
+
+    def test_dos_finalizadoras_resultados_distintos_discrepante(self):
+        """Doble acto de ADR-045: AAP+AAC favorable y DUP desfavorable (o
+        viceversa). Ninguno de los dos "vale" sobre el otro — se marca
+        explícitamente en vez de camuflarlo bajo un RESUELTA mudo."""
+        s = MagicMock()
+        s.fases = [
+            self._fase_stub(finalizada=True, es_finalizadora=True, codigo_resultado='FAVORABLE'),
+            self._fase_stub(finalizada=True, es_finalizadora=True, codigo_resultado='DESFAVORABLE'),
+        ]
+        assert _solicitud_estado(s) == 'RESUELTA_DISCREPANTE'

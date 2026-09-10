@@ -264,9 +264,19 @@ const renderFns = {
     },
 
     'tipo_solicitud': (val, item) => {
-        const clase   = item.color_solicitud ? `solicitud-${item.color_solicitud}` : '';
-        const tooltip = item.estado_solicitud || '';
-        return `<span class="tipo-solicitud-celda ${clase}" title="${tooltip}">${val || '—'}</span>`;
+        const clase = item.color_solicitud ? `solicitud-${item.color_solicitud}` : '';
+        // RESUELTA_DISCREPANTE (ADR-044 R5): la solicitud tiene más de una fase
+        // finalizadora cerrada con resultados distintos (p.ej. AAP+AAC+DUP,
+        // ADR-045) y el sistema todavía no sabe representar el doble acto.
+        // Se marca visible, no solo en el tooltip, para que no pase inadvertido.
+        const discrepante = item.estado_solicitud === 'RESUELTA_DISCREPANTE';
+        const tooltip = discrepante
+            ? 'Resultados distintos entre las fases finalizadoras de esta solicitud '
+              + '(p.ej. AAP+AAC y DUP) — revisar antes de darla por cerrada. '
+              + 'Representación pendiente (ADR-045).'
+            : (item.estado_solicitud || '');
+        const marca = discrepante ? '⚠ ' : '';
+        return `<span class="tipo-solicitud-celda ${clase}" title="${tooltip}">${marca}${val || '—'}</span>`;
     },
 
     'fecha_solicitud': (val) => renderFecha(val),

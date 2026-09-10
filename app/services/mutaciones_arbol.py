@@ -465,14 +465,20 @@ def crear_fase(solicitud, tipo_fase, *, justificacion: Optional[str] = None) -> 
         res_eval = PERMITIDO
 
     version_vigente = ultimo_reformado(expediente.id)
-    fase = Fase(solicitud_id=solicitud.id, tipo_fase_id=tipo_fase.id,
+    # Por la relación (`solicitud=`), no por el FK a pelo (ADR-044 R5): así
+    # SQLAlchemy sincroniza `solicitud.fases` en memoria al momento, sin
+    # esperar a una consulta nueva. Con el FK a pelo, un `solicitud.fases` ya
+    # cargado antes de este punto en la misma sesión —p. ej. `Solicitud.estado`
+    # comprobado justo después de crear la fase— se queda con la colección
+    # vieja y no ve la fase recién creada.
+    fase = Fase(solicitud=solicitud, tipo_fase=tipo_fase,
                reformado_id=version_vigente.id if version_vigente else None)
     db.session.add(fase)
     db.session.flush()
 
     if tipo_fase.codigo in _FASES_QUE_REQUIEREN_CERT_IP_CONSULTAS:
         from app.services.cert_fin_ip_consultas import crear_cert_fin_ip_consultas
-        crear_cert_fin_ip_consultas(expediente, solicitud)
+        crear_cert_fin_ip_consultas(expediente, solicitud, version_vigente)
 
     if justificacion:
         sujeto = build_sujeto(expediente, {'solicitud': solicitud, 'tipo_fase': tipo_fase})

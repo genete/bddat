@@ -516,7 +516,10 @@ class ArbolESFTT:
         from app.models.fases import Fase
         from app.models.tipos_fases import TipoFase
         solicitud = solicitud or self.solicitud_existente()
-        f = Fase(solicitud_id=solicitud.id, tipo_fase_id=self._tipo(TipoFase, codigo_fase).id)
+        # Por la relación, no por el FK a pelo (ADR-044 R5, mismo criterio que
+        # crear_fase): si el test ya accedió a `solicitud.fases` antes de este
+        # punto, el FK a pelo dejaría esa colección cacheada sin la fase nueva.
+        f = Fase(solicitud=solicitud, tipo_fase=self._tipo(TipoFase, codigo_fase))
         self.db.session.add(f)
         self.db.session.flush()
         return f
