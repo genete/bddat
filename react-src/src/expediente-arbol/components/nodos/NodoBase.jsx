@@ -12,6 +12,7 @@ import Docs from './Docs.jsx'
 const ICONO_TIPO = {
   expediente: 'bi-folder2',
   solicitud:  'bi-file-earmark',
+  version:    'bi-file-earmark-diff',
   fase:       'bi-diagram-3',
   tramite:    'bi-clipboard',
   organismo:  'bi-bank',

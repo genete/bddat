@@ -21,6 +21,7 @@ import { flextree } from 'd3-flextree'
 const TAM = {
   expediente: [210, 60],
   solicitud:  [232, 76],
+  version:    [210, 56],
   fase:       [190, 60],
   tramite:    [182, 56],
   organismo:  [210, 56],
@@ -46,6 +47,9 @@ function esFinalizado(dom) {
     // (estado_organismo, estado_dominio.py), nunca del campo `resultado`
     // (semántico/legal, no estructural). FIN del semáforo ya agrega ese cómputo.
     case 'organismo': return !!(dom.semaforo && dom.semaforo.estado === 'FIN')
+    // version (ADR-044 §G): mismo criterio que organismo — nodo sintético sin
+    // columna de estado propia, derivado enteramente del agregado de sus fases.
+    case 'version':   return !!(dom.semaforo && dom.semaforo.estado === 'FIN')
     default:          return false
   }
 }
@@ -56,6 +60,7 @@ function derivarTitulo(dom) {
     case 'expediente': return dom.codigo || ''
     case 'solicitud':  return (dom.siglas || '').replace(/_/g, ' ')   // AE_DEFINITIVA → AE DEFINITIVA
     case 'organismo':  return dom.nombre || ''
+    case 'version':    return dom.etiqueta || ''
     case 'tramite': {
       const base = dom.abrev || dom.nombre || dom.tipo_codigo || ''
       // Decorador de vuelta (ADR-016 §2, ADR-042 §A): solo los trámites dentro de
@@ -95,49 +100,80 @@ function construirJerarquia(arbol, colapsarFinalizados) {
     return nTram
   }
 
+  // Nodo fase + su descendencia (organismo/trámite/tareas). Factorizado: lo usan
+  // tanto las fases agrupadas bajo una versión como las que cuelgan directas de
+  // la solicitud (expedientes sin reformado, ADR-044 §G — coste cero).
+  const nodoFase = (fase) => {
+    const cFase = colapso(fase, (fase.tramites || []).length > 0)
+    const nFase = { ref: fase, children: [], colapsado: cFase }
+    if (!cFase) {
+      const tramitesPorId = new Map((fase.tramites || []).map((t) => [t.id, t]))
+      const idsAgrupados = new Set()
+
+      // Grupo organismo (ADR-042 §A): nodo sintético entre fase y trámite,
+      // derivado de TramiteOrganismo (fase.organismos[].tramite_ids). fase.tramites
+      // se queda intacta — el grupo solo decide qué recoger bajo cada organismo
+      // en vez de dejarlo colgar directo de la fase.
+      for (const org of fase.organismos || []) {
+        const idsGrupo = org.tramite_ids || []
+        const vueltas = org.vueltas || {}
+        const cOrg = colapso(org, idsGrupo.length > 0)
+        const nOrg = { ref: org, children: [], colapsado: cOrg }
+        for (const tid of idsGrupo) {
+          idsAgrupados.add(tid)
+          if (cOrg) continue
+          const tram = tramitesPorId.get(tid)
+          if (!tram) continue
+          // Decorador de vuelta (ADR-016 §2, ADR-042 §A): solo decora el título,
+          // no muta el trámite del store (spread → objeto nuevo).
+          const vuelta = vueltas[tid]
+          nOrg.children.push(nodoTramite(vuelta ? { ...tram, _vuelta: vuelta } : tram))
+        }
+        nFase.children.push(nOrg)
+      }
+
+      // Trámites sin organismo vinculado (p. ej. CERT_FIN_IP_CONSULTAS): cuelgan
+      // directos de la fase, como antes de ADR-042.
+      for (const tram of fase.tramites || []) {
+        if (idsAgrupados.has(tram.id)) continue
+        nFase.children.push(nodoTramite(tram))
+      }
+    }
+    return nFase
+  }
+
   const exp = { ref: arbol.expediente, children: [], colapsado: false }
 
   for (const sol of arbol.solicitudes || []) {
     const cSol = colapso(sol, (sol.fases || []).length > 0)
     const nSol = { ref: sol, children: [], colapsado: cSol }
     if (!cSol) {
-      for (const fase of sol.fases || []) {
-        const cFase = colapso(fase, (fase.tramites || []).length > 0)
-        const nFase = { ref: fase, children: [], colapsado: cFase }
-        if (!cFase) {
-          const tramitesPorId = new Map((fase.tramites || []).map((t) => [t.id, t]))
-          const idsAgrupados = new Set()
+      const fasesPorId = new Map((sol.fases || []).map((f) => [f.id, f]))
+      const idsAgrupadosVersion = new Set()
 
-          // Grupo organismo (ADR-042 §A): nodo sintético entre fase y trámite,
-          // derivado de TramiteOrganismo (fase.organismos[].tramite_ids). fase.tramites
-          // se queda intacta — el grupo solo decide qué recoger bajo cada organismo
-          // en vez de dejarlo colgar directo de la fase.
-          for (const org of fase.organismos || []) {
-            const idsGrupo = org.tramite_ids || []
-            const vueltas = org.vueltas || {}
-            const cOrg = colapso(org, idsGrupo.length > 0)
-            const nOrg = { ref: org, children: [], colapsado: cOrg }
-            for (const tid of idsGrupo) {
-              idsAgrupados.add(tid)
-              if (cOrg) continue
-              const tram = tramitesPorId.get(tid)
-              if (!tram) continue
-              // Decorador de vuelta (ADR-016 §2, ADR-042 §A): solo decora el título,
-              // no muta el trámite del store (spread → objeto nuevo).
-              const vuelta = vueltas[tid]
-              nOrg.children.push(nodoTramite(vuelta ? { ...tram, _vuelta: vuelta } : tram))
-            }
-            nFase.children.push(nOrg)
-          }
-
-          // Trámites sin organismo vinculado (p. ej. CERT_FIN_IP_CONSULTAS): cuelgan
-          // directos de la fase, como antes de ADR-042.
-          for (const tram of fase.tramites || []) {
-            if (idsAgrupados.has(tram.id)) continue
-            nFase.children.push(nodoTramite(tram))
-          }
+      // Grupo version (ADR-044 §G, #895): nodo sintético entre solicitud y fase,
+      // metafase virtual que agrupa las fases que cubre cada versión del proyecto.
+      // sol.fases se queda intacta; lista vacía si el expediente no tiene reformados
+      // (mismo patrón aditivo y mismo coste cero que el grupo organismo).
+      for (const version of sol.versiones || []) {
+        const idsGrupo = version.fase_ids || []
+        const cVer = colapso(version, idsGrupo.length > 0)
+        const nVer = { ref: version, children: [], colapsado: cVer }
+        for (const fid of idsGrupo) {
+          idsAgrupadosVersion.add(fid)
+          if (cVer) continue
+          const fase = fasesPorId.get(fid)
+          if (!fase) continue
+          nVer.children.push(nodoFase(fase))
         }
-        nSol.children.push(nFase)
+        nSol.children.push(nVer)
+      }
+
+      // Fases sin versión agrupada (expediente sin reformados): cuelgan directas
+      // de la solicitud, como antes de ADR-044.
+      for (const fase of sol.fases || []) {
+        if (idsAgrupadosVersion.has(fase.id)) continue
+        nSol.children.push(nodoFase(fase))
       }
     }
     exp.children.push(nSol)

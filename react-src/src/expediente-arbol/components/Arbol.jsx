@@ -13,6 +13,7 @@ import { construirGrafo } from '../layout.js'
 import { puedeEditarNodo } from '../../shared/auth.js'
 import NodoExpediente from './nodos/NodoExpediente.jsx'
 import NodoSolicitud from './nodos/NodoSolicitud.jsx'
+import NodoVersion from './nodos/NodoVersion.jsx'
 import NodoFase from './nodos/NodoFase.jsx'
 import NodoTramite from './nodos/NodoTramite.jsx'
 import NodoOrganismo from './nodos/NodoOrganismo.jsx'
@@ -22,6 +23,7 @@ import MenuContextual from './MenuContextual.jsx'
 const nodeTypes = {
   expediente: NodoExpediente,
   solicitud:  NodoSolicitud,
+  version:    NodoVersion,
   fase:       NodoFase,
   tramite:    NodoTramite,
   organismo:  NodoOrganismo,
