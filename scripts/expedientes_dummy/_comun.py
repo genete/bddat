@@ -125,11 +125,11 @@ def subir(client, expediente_id, codigo_tipo_doc, tipo_doc_id, fecha_admin, asun
     `fichero`: nombre dentro de FIXTURES_DIR; por defecto `<codigo en minúsculas>.pdf`,
     que es como está nombrado el banco.
 
-    `es_principal`/`abre_reformado`/`origen_reformado` (ADR-044 §C/§D, #903): mismas claves
-    que lee `declarar_desde_metadatos` del dict de metadatos de un `DOC_PROYECTO` — la rama
-    la decide el estado del ancla, no el caller, así que pasar `es_principal=True` cuando el
-    proyecto ya tiene ancla, o `abre_reformado=True` cuando todavía no la tiene, simplemente
-    no hace nada (ver `rama_de_la_ingesta`).
+    `es_principal`/`abre_reformado`/`origen_reformado` (ADR-044 §C/§D, #896/#903): mismas
+    claves que lee `declarar_desde_metadatos` del dict de metadatos de un `DOC_PROYECTO` —
+    la rama la decide el estado del ancla, no el caller, así que pasar `es_principal=True`
+    cuando el proyecto ya tiene ancla, o `abre_reformado=True` cuando todavía no la tiene,
+    simplemente no hace nada (ver `rama_de_la_ingesta`).
     """
     nombre = fichero or f'{codigo_tipo_doc.lower()}.pdf'
     with open(os.path.join(FIXTURES_DIR, nombre), 'rb') as f:
