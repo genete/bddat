@@ -37,10 +37,20 @@ def _item(condiciones=None, orden=1, item_id=1):
     return i
 
 
-def _solicitud(sol_id=1):
+def _solicitud(sol_id=1, expediente_id=1):
     s = MagicMock()
     s.id = sol_id
+    s.expediente_id = expediente_id
     return s
+
+
+def _cobertura(item_tecnico_id, texto='revisado', cubierto=True, reformado_id=None):
+    c = MagicMock()
+    c.item_tecnico_id = item_tecnico_id
+    c.texto = texto
+    c.cubierto = cubierto
+    c.reformado_id = reformado_id
+    return c
 
 
 def _run(operador, valor_ref, valor_var, nombre_var='tension_nominal_kv'):
@@ -57,7 +67,8 @@ def _run(operador, valor_ref, valor_var, nombre_var='tension_nominal_kv'):
     mock_cob_q.filter_by.return_value.all.return_value = []
 
     with patch('app.services.items_tecnicos.ItemTecnico') as MI, \
-         patch('app.services.items_tecnicos.CoberturaItemTecnico') as MC:
+         patch('app.services.items_tecnicos.CoberturaItemTecnico') as MC, \
+         patch('app.services.items_tecnicos.ultimo_reformado', return_value=None):
         MI.query = mock_item_q
         MC.query = mock_cob_q
         return evaluar_items_tecnicos(solicitud, {nombre_var: valor_var})
@@ -121,3 +132,54 @@ class TestOperadorDesconocido:
         """
         resultado = _run('OPERADOR_INVENTADO', 30, 30)
         assert resultado['items'] == []
+
+
+# ---------------------------------------------------------------------------
+# C) evaluar_items_tecnicos — cobertura por versión (ADR-044 §E bis, R4 #899)
+# ---------------------------------------------------------------------------
+
+class TestCoberturaPorVersion:
+    """A diferencia de evaluar_requisitos, aquí NO hay fallback a la versión
+    inicial: cada versión exige su propia verificación."""
+
+    def _evaluar(self, coberturas, version_vigente_id=None):
+        from app.services.items_tecnicos import evaluar_items_tecnicos
+
+        item = _item(item_id=1)
+        solicitud = _solicitud(1)
+
+        mock_item_q = MagicMock()
+        mock_item_q.filter_by.return_value.order_by.return_value.all.return_value = [item]
+        mock_cob_q = MagicMock()
+        mock_cob_q.filter_by.return_value.all.return_value = coberturas
+
+        version_vigente = None
+        if version_vigente_id is not None:
+            version_vigente = MagicMock()
+            version_vigente.id = version_vigente_id
+
+        with patch('app.services.items_tecnicos.ItemTecnico') as MI, \
+             patch('app.services.items_tecnicos.CoberturaItemTecnico') as MC, \
+             patch('app.services.items_tecnicos.ultimo_reformado', return_value=version_vigente):
+            MI.query = mock_item_q
+            MC.query = mock_cob_q
+            return evaluar_items_tecnicos(solicitud, {})
+
+    def test_con_reformado_la_cobertura_inicial_no_arrastra(self):
+        """La única cobertura es de la versión inicial (reformado_id NULL) —
+        con un reformado vigente, NO cuenta: hace falta verificación propia."""
+        cobertura_inicial = _cobertura(item_tecnico_id=1, reformado_id=None)
+        resultado = self._evaluar([cobertura_inicial], version_vigente_id=5)
+        assert resultado['items'][0]['cobertura'] is None
+        assert resultado['todos_revisados'] is False
+
+    def test_con_reformado_usa_la_cobertura_de_la_version_vigente(self):
+        """Con cobertura registrada específicamente para la versión vigente,
+        esa es la que cuenta — la de la inicial se ignora."""
+        cobertura_inicial = _cobertura(item_tecnico_id=1, texto='vieja', reformado_id=None)
+        cobertura_vigente = _cobertura(item_tecnico_id=1, texto='nueva', reformado_id=5)
+        resultado = self._evaluar([cobertura_inicial, cobertura_vigente], version_vigente_id=5)
+        cobertura = resultado['items'][0]['cobertura']
+        assert cobertura is not None
+        assert cobertura.texto == 'nueva'
+        assert resultado['todos_revisados'] is True

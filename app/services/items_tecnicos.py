@@ -10,12 +10,14 @@ CoberturaItemTecnico — máquina de 3 estados, ver su docstring
 from __future__ import annotations
 
 import logging
+from collections import defaultdict
 from typing import Any
 
 from sqlalchemy.exc import OperationalError, ProgrammingError
 
 from app.models.items_tecnicos import ItemTecnico, CoberturaItemTecnico
 from app.services.operadores import _OPERADORES
+from app.services.reformados import ultimo_reformado
 
 log = logging.getLogger(__name__)
 
@@ -87,6 +89,12 @@ def evaluar_items_tecnicos(solicitud: Any, variables: dict) -> dict:
     El resultado es siempre permisivo en caso de error (todos_revisados=True)
     para no bloquear la tramitación por un fallo técnico (mismo criterio que
     evaluar_requisitos, #347).
+
+    ADR-044 §E bis (R4 #899): a diferencia de evaluar_requisitos, aquí NO se
+    cae a la cobertura de la versión inicial cuando hay reformado — el ítem
+    técnico "se predica del contenido del proyecto" (§E bis), y ese contenido
+    cambió. Cada versión exige su propia verificación; la de una versión
+    anterior no arrastra a la siguiente.
     """
     try:
         todos_items = (
@@ -100,19 +108,23 @@ def evaluar_items_tecnicos(solicitud: Any, variables: dict) -> dict:
         return _RESULTADO_DEGRADADO
 
     try:
-        coberturas = {
-            c.item_tecnico_id: c
-            for c in CoberturaItemTecnico.query.filter_by(solicitud_id=solicitud.id).all()
-        }
+        coberturas_por_item: dict[int, list] = defaultdict(list)
+        for c in CoberturaItemTecnico.query.filter_by(solicitud_id=solicitud.id).all():
+            coberturas_por_item[c.item_tecnico_id].append(c)
     except (OperationalError, ProgrammingError):
         log.warning('items_tecnicos: tabla coberturas_item_tecnico no disponible')
         return _RESULTADO_DEGRADADO
+
+    version_vigente = ultimo_reformado(solicitud.expediente_id) if solicitud.expediente_id else None
+    id_version_vigente = version_vigente.id if version_vigente else None
 
     items = []
     for item in todos_items:
         if not _item_aplica(item, variables):
             continue
-        items.append({'item': item, 'cobertura': coberturas.get(item.id)})
+        filas = coberturas_por_item.get(item.id, [])
+        cobertura = next((c for c in filas if c.reformado_id == id_version_vigente), None)
+        items.append({'item': item, 'cobertura': cobertura})
 
     def _revisado(cobertura) -> bool:
         return cobertura is not None and bool((cobertura.texto or '').strip())

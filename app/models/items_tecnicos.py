@@ -194,22 +194,29 @@ class CoberturaItemTecnico(db.Model):
         texto=X  , cubierto=True  → FAVORABLE (revisado, cumple; X indica la ubicación,
                                      ej. "apartado 3.5 del anexo II")
 
-    UNICIDAD:
-        (item_tecnico_id, solicitud_id) — un ítem queda verificado exactamente una
-        vez por solicitud (mismo criterio que DocumentoRequisito: el contenido del
-        proyecto puede evolucionar entre solicitudes, así que la verificación no se
-        comparte a nivel de proyecto/expediente). ADR-044 §E bis le añade el eje de
-        la versión —la verificación se predica del contenido del proyecto—, todavía
-        sin implementar.
+    UNICIDAD (ADR-044 §E bis, R4 #899):
+        Todo ítem técnico es solicitud+versión por definición — a diferencia de
+        DocumentoRequisito no hay flag de afección, la versión importa siempre.
+        Dos índices únicos parciales, mismo patrón que documentos_requisito:
+            uq_coberturas_item_tecnico_no_afectado (item_tecnico_id, solicitud_id)
+                WHERE reformado_id IS NULL — la cobertura de la versión inicial.
+            uq_coberturas_item_tecnico_por_version (item_tecnico_id, solicitud_id,
+                reformado_id) — una fila más por cada reformado verificado.
     """
     __tablename__ = 'coberturas_item_tecnico'
     __table_args__ = (
-        db.UniqueConstraint(
-            'item_tecnico_id', 'solicitud_id',
-            name='uq_coberturas_item_tecnico_item_sol'
+        db.Index(
+            'uq_coberturas_item_tecnico_no_afectado', 'item_tecnico_id', 'solicitud_id',
+            unique=True, postgresql_where=db.text('reformado_id IS NULL'),
+        ),
+        db.Index(
+            'uq_coberturas_item_tecnico_por_version',
+            'item_tecnico_id', 'solicitud_id', 'reformado_id',
+            unique=True,
         ),
         db.Index('idx_coberturas_item_tecnico_item', 'item_tecnico_id'),
         db.Index('idx_coberturas_item_tecnico_solicitud', 'solicitud_id'),
+        db.Index('idx_coberturas_item_tecnico_reformado', 'reformado_id'),
         {'schema': 'public'}
     )
 
@@ -251,8 +258,21 @@ class CoberturaItemTecnico(db.Model):
                 'relleno — ver máquina de estados en el docstring de la clase.'
     )
 
+    reformado_id = db.Column(
+        db.Integer,
+        db.ForeignKey('public.reformados_proyecto.id', ondelete='RESTRICT'),
+        nullable=True,
+        comment='FK a REFORMADOS_PROYECTO (ADR-044 §E bis, R4 #899). NULL = versión '
+                'inicial. ON DELETE RESTRICT: mismo criterio que fases.reformado_id, '
+                'el corte no puede borrarse mientras una cobertura cuelgue de él.'
+    )
+
     # Relaciones
     solicitud = db.relationship('Solicitud')
+    reformado = db.relationship(
+        'ReformadoProyecto',
+        backref=db.backref('coberturas_item_tecnico_cubiertas', passive_deletes=True),
+    )
 
     def __repr__(self):
         return (
