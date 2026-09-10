@@ -381,6 +381,7 @@ def _tramite(tramite, escapes: dict) -> tuple[str, Optional[Bloque]]:
 
 def _fase(fase, escapes: dict) -> tuple[str, Optional[Bloque]]:
     nombre = fase.tipo_fase.nombre if fase.tipo_fase else f'Fase #{fase.id}'
+    ambito = _ambito_fase(fase)
 
     estados_tramites = []
     hijos = []
@@ -400,10 +401,16 @@ def _fase(fase, escapes: dict) -> tuple[str, Optional[Bloque]]:
         resultado = ''
         if fase.resultado_fase is not None:
             resultado = f' con resultado {fase.resultado_fase.nombre or fase.resultado_fase.codigo}'
+        # Observaciones de cierre, siempre (ADR-044 §H): es lo único que explica
+        # un cierre conjunto de dos fases con el mismo documento (§11) — si el
+        # técnico no escribió nada, se dice igual, para que no parezca un dato
+        # que falta por error.
+        obs = (fase.observaciones or '').strip()
         relato = ((f'Fase «{nombre}» — cerrada{cuando}{resultado}.',)
-                  + _de_hijos(hijos, 'relato'))
+                  + _de_hijos(hijos, 'relato')
+                  + (f'Observaciones al cierre: {obs or "-"}.',))
         return estado, Bloque(SALVADO if salvado else PASA, nombre, relato=relato,
-                              salvado=salvado, nodo=('fase', fase.id))
+                              salvado=salvado, nodo=('fase', fase.id), ambito=ambito)
 
     if fase.planificada:
         pendiente = (f'Fase «{nombre}»: no tiene ningún trámite. Tramítela o bórrela '
@@ -413,7 +420,22 @@ def _fase(fase, escapes: dict) -> tuple[str, Optional[Bloque]]:
                      + _de_hijos(hijos, 'pendiente'))
 
     return estado, Bloque(PENDIENTE, nombre, relato=_de_hijos(hijos, 'relato'),
-                          pendiente=pendiente, salvado=salvado, nodo=('fase', fase.id))
+                          pendiente=pendiente, salvado=salvado, nodo=('fase', fase.id),
+                          ambito=ambito)
+
+
+def _ambito_fase(fase) -> str:
+    """Etiqueta corta de qué versión del proyecto cubre `fase` (Bloque.ambito,
+    ADR-044 §H) — hueco que dejó ADR-043 a propósito, resuelto por navegación:
+    `fases.reformado_id` (R3) ya trae el dato, aquí solo se lee y se redacta.
+
+    NULL se redacta explícitamente como «el proyecto en su redacción original»,
+    no se deja vacío: un hueco parecería un dato que falta."""
+    if fase.reformado_id is None:
+        return 'el proyecto en su redacción original'
+    reformado = fase.reformado
+    fecha = reformado.documento.fecha_administrativa if reformado and reformado.documento else None
+    return f'el reformado de fecha {_fecha(fecha)}' if fecha else 'un reformado del proyecto'
 
 
 def _solicitud(solicitud, instruccion: list, estados_fases: list,
@@ -433,6 +455,7 @@ def _solicitud(solicitud, instruccion: list, estados_fases: list,
     if doc is not None and doc.fecha_administrativa:
         presentada = f', presentada el {_fecha(doc.fecha_administrativa)}'
     encabezado = f'Solicitud #{solicitud.id} ({siglas}){presentada}.'
+    version = _cabecera_version(instruccion)
 
     salvado = _relato_escapes(escapes, 'solicitudes', solicitud.id,
                               f'la solicitud #{solicitud.id}')
@@ -441,7 +464,7 @@ def _solicitud(solicitud, instruccion: list, estados_fases: list,
     if not instruccion:
         return Bloque(
             PENDIENTE, f'Solicitud #{solicitud.id}',
-            relato=(encabezado,) + reversiones,
+            relato=(encabezado,) + version + reversiones,
             pendiente=('Esta solicitud no tiene ninguna fase de instrucción: no hay '
                        'nada instruido que certificar. Cree y complete las fases que '
                        'el procedimiento requiera.',),
@@ -453,8 +476,41 @@ def _solicitud(solicitud, instruccion: list, estados_fases: list,
     cuantas = (f'Se instruyó en {len(instruccion)} fase' +
                ('s' if len(instruccion) > 1 else '') + '.')
     return Bloque(SALVADO if salvado else PASA, f'Solicitud #{solicitud.id}',
-                  relato=(encabezado, cuantas) + reversiones, salvado=salvado,
+                  relato=(encabezado,) + version + (cuantas,) + reversiones, salvado=salvado,
                   nodo=('solicitud', solicitud.id))
+
+
+def _cabecera_version(instruccion: list) -> tuple:
+    """Sentencia de cabecera sobre qué versión se resuelve (ADR-044 §H).
+
+    Sin reformados —el caso normal, la inmensa mayoría de expedientes— no añade
+    nada: el texto sigue llano, sin mencionar versiones que no han pasado. Con
+    reformados, cita la vigente y relaciona las anteriores.
+
+    Se deriva de las fases de ESTA instrucción, no de `reformados_de` sobre
+    todo el expediente: una solicitud solo ha vivido las versiones que tocan
+    sus propias fases (otra solicitud del mismo expediente puede no haber
+    llegado a ninguna). La vigente es la de fecha más reciente entre las
+    vistas, mismo criterio de orden que `reformados_de`/`ultimo_reformado`.
+    """
+    vistos = []
+    for fase in instruccion:
+        if fase.reformado_id is not None and fase.reformado not in vistos:
+            vistos.append(fase.reformado)
+    if not vistos:
+        return ()
+
+    vistos.sort(key=lambda r: (
+        r.documento.fecha_administrativa if r.documento else date.min, r.id
+    ))
+    vigente, anteriores = vistos[-1], vistos[:-1]
+
+    frase = f'Se resuelve sobre el reformado de fecha {_fecha(vigente.documento.fecha_administrativa)}.'
+    etiquetas = ['el proyecto en su redacción original'] + [
+        f'el reformado de fecha {_fecha(r.documento.fecha_administrativa)}' for r in anteriores
+    ]
+    frase += f' Versiones anteriores: {", ".join(etiquetas)}.'
+    return (frase,)
 
 
 def _relato_reversiones(solicitud) -> tuple:

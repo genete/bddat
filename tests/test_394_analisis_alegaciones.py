@@ -73,31 +73,35 @@ def _tramite_otro():
     return t
 
 
+def _fase(tramites):
+    """Una fase (mock) con estos trámites — la fase INFORMACION_PUBLICA de una
+    ronda concreta: ahí viven juntos RECEPCION_ALEGACION y ANALISIS_ALEGACIONES."""
+    fase = MagicMock()
+    fase.tramites = tramites
+    return fase
+
+
 def _solicitud(tramites_por_fase):
-    """tramites_por_fase: lista de listas de trámites, uno por fase."""
-    fases = []
-    for tramites in tramites_por_fase:
-        fase = MagicMock()
-        fase.tramites = tramites
-        fases.append(fase)
+    """tramites_por_fase: lista de listas de trámites, uno por fase. Solo hace
+    falta para el test de aislamiento entre rondas — ver TestAislamientoPorRonda."""
     s = MagicMock()
-    s.fases = fases
+    s.fases = [_fase(tramites) for tramites in tramites_por_fase]
     return s
 
 
-def _tarea_cb(solicitud):
-    """Stub de Tarea que permite navegar hasta la solicitud dada."""
+def _tarea_cb(fase):
+    """Stub de Tarea que permite navegar hasta la fase dada (ADR-044 R5: el
+    context builder se queda en la fase propia, no sube a solicitud.fases)."""
     tramite = MagicMock()
-    tramite.fase = MagicMock()
-    tramite.fase.solicitud = solicitud
+    tramite.fase = fase
     tarea = MagicMock()
     tarea.tramite = tramite
     return tarea
 
 
-def _cb(solicitud):
+def _cb(fase):
     from app.services.context_builders.contexto_analisis_alegaciones import ContextoAnalisisAlegaciones
-    return ContextoAnalisisAlegaciones(MagicMock(), MagicMock(), tarea=_tarea_cb(solicitud))
+    return ContextoAnalisisAlegaciones(MagicMock(), MagicMock(), tarea=_tarea_cb(fase))
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -112,16 +116,14 @@ class TestSinDatos:
         assert cb.get_contexto() == {}
 
     def test_sin_alegaciones_estructura_vacia(self):
-        solicitud = _solicitud([[_tramite_otro()]])
-        ctx = _cb(solicitud).get_contexto()
+        ctx = _cb(_fase([_tramite_otro()])).get_contexto()
         assert ctx['num_alegaciones'] == 0
         assert ctx['alegaciones'] == []
         assert ctx['resumen_clasificacion'] == {}
 
     def test_tramite_sin_alegante_se_ignora(self):
         tramite = _tramite_recepcion(alegante=None)
-        solicitud = _solicitud([[tramite]])
-        ctx = _cb(solicitud).get_contexto()
+        ctx = _cb(_fase([tramite])).get_contexto()
         assert ctx['num_alegaciones'] == 0
 
 
@@ -135,7 +137,7 @@ class TestUnaAlegacionSinRespuesta:
         doc_alg = _doc(asunto='Alegación sobre trazado', fecha=date(2026, 3, 10))
         tareas = [_tarea('ANALIZAR', documento_usado=doc_alg)]
         tramite = _tramite_recepcion(_alegante(), tareas=tareas)
-        return _cb(_solicitud([[tramite]])).get_contexto()
+        return _cb(_fase([tramite])).get_contexto()
 
     def test_num_alegaciones(self):
         assert self._ctx()['num_alegaciones'] == 1
@@ -175,7 +177,7 @@ class TestUnaAlegacionConRespuesta:
             _tarea('ESPERAR_PLAZO', documento_producido=doc_resp),
         ]
         tramite = _tramite_recepcion(_alegante(tipo='asociacion'), tareas=tareas)
-        return _cb(_solicitud([[tramite]])).get_contexto()
+        return _cb(_fase([tramite])).get_contexto()
 
     def test_respuesta_titular_recibida(self):
         a = self._ctx()['alegaciones'][0]
@@ -201,8 +203,9 @@ class TestMultiplesAlegaciones:
         t2 = _tramite_recepcion(_alegante(tipo='particular', nombre='Luis'))
         t3 = _tramite_recepcion(_alegante(tipo='empresa', nombre='Iberdrola'))
         t4 = _tramite_recepcion(_alegante(tipo='administracion', nombre='Ayto. Sevilla'))
-        solicitud = _solicitud([[t1, t2], [t3, t4]])
-        return _cb(solicitud).get_contexto()
+        # Las cuatro en la misma fase: RECEPCION_ALEGACION y ANALISIS_ALEGACIONES
+        # viven siempre en la misma INFORMACION_PUBLICA (ADR-044 R5).
+        return _cb(_fase([t1, t2, t3, t4])).get_contexto()
 
     def test_num_alegaciones(self):
         assert self._ctx()['num_alegaciones'] == 4
@@ -219,9 +222,31 @@ class TestMultiplesAlegaciones:
     def test_tramites_de_distinto_tipo_se_ignoran(self):
         t_alg = _tramite_recepcion(_alegante())
         t_otro = _tramite_otro()
-        solicitud = _solicitud([[t_alg, t_otro]])
-        ctx = _cb(solicitud).get_contexto()
+        ctx = _cb(_fase([t_alg, t_otro])).get_contexto()
         assert ctx['num_alegaciones'] == 1
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# F) Aislamiento por ronda (ADR-044 R5, #901) — dos IP del mismo expediente no
+#    mezclan sus alegaciones
+# ──────────────────────────────────────────────────────────────────────────────
+
+class TestAislamientoPorRonda:
+
+    def test_alegaciones_de_otra_fase_se_ignoran(self):
+        """Antes de R5, ContextoAnalisisAlegaciones recorría solicitud.fases
+        completo: con dos rondas de IP (versión inicial + reformado), el
+        análisis de una mezclaba las alegaciones de la otra. Ahora se acota a
+        la fase propia del ANALISIS_ALEGACIONES en curso."""
+        alegacion_ronda_1 = _tramite_recepcion(_alegante(nombre='De la ronda 1'))
+        alegacion_ronda_2 = _tramite_recepcion(_alegante(nombre='De la ronda 2'))
+        solicitud = _solicitud([[alegacion_ronda_1], [alegacion_ronda_2]])
+        fase_ronda_2 = solicitud.fases[1]
+
+        ctx = _cb(fase_ronda_2).get_contexto()
+
+        assert ctx['num_alegaciones'] == 1
+        assert ctx['alegaciones'][0]['alegante_nombre'] == 'De la ronda 2'
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -234,7 +259,7 @@ class TestAleganteConEntidad:
         ent = _entidad(nombre_completo='Endesa S.A.', nif='A28023430')
         alegante = _alegante(tipo='empresa', nombre='nombre_local', nif='nif_local', entidad=ent)
         tramite = _tramite_recepcion(alegante)
-        ctx = _cb(_solicitud([[tramite]])).get_contexto()
+        ctx = _cb(_fase([tramite])).get_contexto()
         a = ctx['alegaciones'][0]
         assert a['alegante_nombre'] == 'Endesa S.A.'
         assert a['alegante_nif'] == 'A28023430'
@@ -242,7 +267,7 @@ class TestAleganteConEntidad:
     def test_campos_locales_cuando_sin_entidad(self):
         alegante = _alegante(tipo='particular', nombre='Pedro Ruiz', nif='11111111H')
         tramite = _tramite_recepcion(alegante)
-        ctx = _cb(_solicitud([[tramite]])).get_contexto()
+        ctx = _cb(_fase([tramite])).get_contexto()
         a = ctx['alegaciones'][0]
         assert a['alegante_nombre'] == 'Pedro Ruiz'
         assert a['alegante_nif'] == '11111111H'

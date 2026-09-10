@@ -21,10 +21,28 @@ class Certificado(db.Model):
             (producido en issue futuro)
 
     URI: bddat://certificados/{id}  →  resolver_url() devuelve dict completo.
+
+    SCOPING POR SOLICITUD/VERSIÓN (ADR-044 R5, #901):
+        solicitud_id y reformado_id son NULL para casi todos los certificados —
+        solo los poblados CERT_FIN_IP_CONSULTAS (y cualquier tipo futuro que
+        necesite re-emitirse por solicitud y por ronda) los usan, para poder
+        buscar y no confundir el certificado de una solicitud o una ronda con
+        el de otra del mismo expediente. reformado_id NULL = versión inicial,
+        mismo criterio que fases.reformado_id (R3).
     """
     __tablename__ = 'certificados'
     __table_args__ = (
         db.UniqueConstraint('documento_id', name='uq_certificado_documento'),
+        db.Index(
+            'uq_certificado_ip_consultas_no_reformado', 'solicitud_id',
+            unique=True,
+            postgresql_where=db.text('solicitud_id IS NOT NULL AND reformado_id IS NULL'),
+        ),
+        db.Index(
+            'uq_certificado_ip_consultas_por_version', 'solicitud_id', 'reformado_id',
+            unique=True,
+            postgresql_where=db.text('solicitud_id IS NOT NULL AND reformado_id IS NOT NULL'),
+        ),
         {'schema': 'public'},
     )
 
@@ -36,6 +54,22 @@ class Certificado(db.Model):
         nullable=False,
         unique=True,
         comment='FK documentos. Tipo deducido de tipo_documento.codigo',
+    )
+
+    solicitud_id = db.Column(
+        db.Integer,
+        db.ForeignKey('public.solicitudes.id', ondelete='RESTRICT'),
+        nullable=True,
+        comment='FK a SOLICITUDES. NULL salvo en certificados que necesitan scoping por '
+                'solicitud (hoy, CERT_FIN_IP_CONSULTAS) — ver docstring de la clase',
+    )
+
+    reformado_id = db.Column(
+        db.Integer,
+        db.ForeignKey('public.reformados_proyecto.id', ondelete='RESTRICT'),
+        nullable=True,
+        comment='FK a REFORMADOS_PROYECTO. NULL = versión inicial (o certificado sin scoping '
+                'por versión) — ver docstring de la clase',
     )
 
     generado_en = db.Column(
@@ -58,6 +92,16 @@ class Certificado(db.Model):
         'Documento',
         foreign_keys=[documento_id],
         backref=db.backref('certificado', uselist=False),
+    )
+    solicitud = db.relationship(
+        'Solicitud',
+        foreign_keys=[solicitud_id],
+        backref=db.backref('certificados', passive_deletes=True),
+    )
+    reformado = db.relationship(
+        'ReformadoProyecto',
+        foreign_keys=[reformado_id],
+        backref=db.backref('certificados', passive_deletes=True),
     )
 
     def __repr__(self):

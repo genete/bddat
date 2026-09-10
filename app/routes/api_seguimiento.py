@@ -63,13 +63,30 @@ def _filtro_estado(estado: str):
     finalizadas (documento_resultado_id NOT NULL) y del resultado_fase de la
     fase finalizadora (tipo_fase.es_finalizadora). Traducido aquí a subconsultas
     correlacionadas para poder filtrar a nivel de query (#817).
+
+    `tiene_finalizadora` es el arreglo de ADR-044 R5 / #848: `not fase_sin_finalizar`
+    ya exige que TODAS las fases —incluidas las finalizadoras— estén cerradas (es
+    universal por construcción, mira todas las filas de `fases`), pero no exigía
+    que existiera ninguna. Sin esta condición, una solicitud con todas sus fases
+    cerradas y ninguna finalizadora entre ellas —un hueco normal entre fases—
+    se colaba como RESUELTA. No reproduce el caso `RESUELTA_DISCREPANTE` de la
+    property con la misma precisión (aquí solo se mira el código de UNA
+    finalizadora, `codigo_finalizadora` abajo): cae igual en el filtro genérico
+    RESUELTA salvo que esa finalizadora arbitraria fuera DESISTIDA o ARCHIVADA,
+    caso residual no cubierto — ver ADR-044 R5, issue #901.
     """
     tiene_fases = db.session.query(Fase).filter(Fase.solicitud_id == Solicitud.id).exists()
     fase_sin_finalizar = db.session.query(Fase).filter(
         Fase.solicitud_id == Solicitud.id,
         Fase.documento_resultado_id.is_(None),
     ).exists()
-    resuelta = and_(tiene_fases, ~fase_sin_finalizar)
+    tiene_finalizadora = (
+        db.session.query(Fase)
+        .join(TipoFase, Fase.tipo_fase_id == TipoFase.id)
+        .filter(Fase.solicitud_id == Solicitud.id, TipoFase.es_finalizadora.is_(True))
+        .exists()
+    )
+    resuelta = and_(tiene_fases, ~fase_sin_finalizar, tiene_finalizadora)
 
     if estado == 'EN_TRAMITE':
         return ~resuelta

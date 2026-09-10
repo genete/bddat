@@ -123,7 +123,7 @@ class Fase(db.Model):
     )
     
     # Relaciones
-    solicitud = db.relationship('Solicitud', backref='fases')
+    solicitud = db.relationship('Solicitud', backref=db.backref('fases', order_by='Fase.id'))
     tipo_fase = db.relationship('TipoFase', backref='fases_instanciadas')
     resultado_fase = db.relationship('TipoResultadoFase', backref='fases_con_resultado')
     documento_resultado = db.relationship('Documento', foreign_keys=[documento_resultado_id], backref='fases_resultado')
