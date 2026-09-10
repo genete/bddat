@@ -88,6 +88,20 @@ class RequisitoDocumental(db.Model):
                 'el requisito se desactive — evita huérfanos al reconstruir histórico.'
     )
 
+    afectado_por_reformado = db.Column(
+        db.Boolean,
+        nullable=False,
+        default=False,
+        server_default=db.text('false'),
+        comment='ADR-044 §E bis (R4 #899). Marcado a mano por el Supervisor — no '
+                'se infiere de ninguna otra propiedad del requisito. False: la '
+                'cobertura es global por solicitud, la misma vinculación vale para '
+                'todas las versiones del proyecto. True: un reformado puede exigir '
+                'una vinculación propia para la versión vigente (documentos_requisito. '
+                'reformado_id), aunque la de la versión inicial siga contando si nada '
+                'cambió (caso de origen: la tasa y su complementaria).'
+    )
+
     # Relaciones
     tipo_documento = db.relationship('TipoDocumento')
     norma          = db.relationship('Norma')
@@ -201,23 +215,37 @@ class DocumentoRequisito(db.Model):
     distintas del expediente (reutilización). Por ejemplo, el CIF aportado en la
     solicitud 1 puede cubrir el mismo requisito en la solicitud 2.
 
-    UNICIDAD:
-        (requisito_id, solicitud_id) — un requisito queda cubierto exactamente
-        una vez por solicitud. El técnico puede reasignar el documento cambiando
-        la fila existente.
+    UNICIDAD (ADR-044 §E bis, R4 #899):
+        Dos índices únicos parciales sustituyen al UniqueConstraint simple de
+        antes de R4 — Postgres no deduplica NULL en un índice multi-columna,
+        así que hace falta uno específico para ese caso:
+            uq_documentos_requisito_no_afectado (requisito_id, solicitud_id)
+                WHERE reformado_id IS NULL — la vinculación de la versión
+                inicial, o la única de un requisito no afectado por reformado.
+            uq_documentos_requisito_por_version (requisito_id, solicitud_id,
+                reformado_id) — una fila más por versión para un requisito
+                afectado (RequisitoDocumental.afectado_por_reformado).
+        Un requisito afectado puede tener así una fila NULL (versión inicial)
+        y una fila por cada reformado en el que se pidió complementaria.
 
     EVALUACIÓN:
         Ver app/services/requisitos.py::evaluar_requisitos.
     """
     __tablename__ = 'documentos_requisito'
     __table_args__ = (
-        db.UniqueConstraint(
-            'requisito_id', 'solicitud_id',
-            name='uq_documentos_requisito_req_sol'
+        db.Index(
+            'uq_documentos_requisito_no_afectado', 'requisito_id', 'solicitud_id',
+            unique=True, postgresql_where=db.text('reformado_id IS NULL'),
+        ),
+        db.Index(
+            'uq_documentos_requisito_por_version',
+            'requisito_id', 'solicitud_id', 'reformado_id',
+            unique=True,
         ),
         db.Index('idx_documentos_requisito_requisito',  'requisito_id'),
         db.Index('idx_documentos_requisito_solicitud',  'solicitud_id'),
         db.Index('idx_documentos_requisito_documento',  'documento_id'),
+        db.Index('idx_documentos_requisito_reformado',  'reformado_id'),
         {'schema': 'public'}
     )
 
@@ -249,9 +277,23 @@ class DocumentoRequisito(db.Model):
         comment='FK a documentos — documento del pool que satisface el requisito'
     )
 
+    reformado_id = db.Column(
+        db.Integer,
+        db.ForeignKey('public.reformados_proyecto.id', ondelete='RESTRICT'),
+        nullable=True,
+        comment='FK a REFORMADOS_PROYECTO (ADR-044 §E bis, R4 #899). NULL = versión '
+                'inicial, o único valor posible si el requisito no está afectado por '
+                'reformado. ON DELETE RESTRICT: mismo criterio que fases.reformado_id, '
+                'el corte no puede borrarse mientras una vinculación cuelgue de él.'
+    )
+
     # Relaciones
     solicitud = db.relationship('Solicitud')
     documento = db.relationship('Documento')
+    reformado = db.relationship(
+        'ReformadoProyecto',
+        backref=db.backref('documentos_requisito_cubiertos', passive_deletes=True),
+    )
 
     def __repr__(self):
         return (
