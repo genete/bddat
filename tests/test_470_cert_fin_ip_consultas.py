@@ -16,11 +16,12 @@ class _StubDoc:
 
 
 class _StubFase:
-    def __init__(self, codigo, finalizada=False, doc_resultado=None, id=1):
+    def __init__(self, codigo, finalizada=False, doc_resultado=None, id=1, reformado_id=None):
         self.id = id
         self.tipo_fase = _StubTipoFase(codigo)
         self.finalizada = finalizada
         self.documento_resultado = doc_resultado
+        self.reformado_id = reformado_id
 
 
 class _StubSolicitud:
@@ -87,6 +88,67 @@ def test_fase_ip_finalizada_solo_mira_solicitud_en_ctx():
     assert _get_variable('fase_ip_finalizada')(ctx) is False
 
 
+def test_fase_ip_finalizada_universal_con_reformado():
+    """ADR-044 R5: con la IP de la versión inicial cerrada y la del reformado
+    todavía abierta, la variable tiene que decir False — antes (existencial)
+    decía True en cuanto encontraba la primera cerrada, y dejaba pasar la
+    resolución mientras la segunda ronda de exposición pública seguía viva."""
+    ctx = _StubCtxConSolicitud([
+        _StubFase('INFORMACION_PUBLICA', finalizada=True, reformado_id=None, id=1),
+        _StubFase('INFORMACION_PUBLICA', finalizada=False, reformado_id=7, id=2),
+    ])
+    assert _get_variable('fase_ip_finalizada')(ctx) is False
+
+
+def test_fase_ip_finalizada_universal_dos_rondas_cerradas():
+    """Con las dos rondas de IP cerradas, universal y existencial coinciden."""
+    ctx = _StubCtxConSolicitud([
+        _StubFase('INFORMACION_PUBLICA', finalizada=True, reformado_id=None, id=1),
+        _StubFase('INFORMACION_PUBLICA', finalizada=True, reformado_id=7, id=2),
+    ])
+    assert _get_variable('fase_ip_finalizada')(ctx) is True
+
+
+# ---------------------------------------------------------------------------
+# A bis) existe_fase_finalizadora_cerrada — mismo patrón, huérfana hoy
+# ---------------------------------------------------------------------------
+
+class _StubTipoFaseFinalizadora(_StubTipoFase):
+    def __init__(self, codigo, es_finalizadora=False):
+        super().__init__(codigo)
+        self.es_finalizadora = es_finalizadora
+
+
+def test_existe_fase_finalizadora_cerrada_sin_solicitud():
+    class _CtxSinSolicitud:
+        solicitud = None
+    assert _get_variable('existe_fase_finalizadora_cerrada')(_CtxSinSolicitud()) is False
+
+
+def test_existe_fase_finalizadora_cerrada_sin_finalizadora():
+    fase = _StubFase('ANALISIS_SOLICITUD', finalizada=True)
+    fase.tipo_fase = _StubTipoFaseFinalizadora('ANALISIS_SOLICITUD', es_finalizadora=False)
+    ctx = _StubCtxConSolicitud([fase])
+    assert _get_variable('existe_fase_finalizadora_cerrada')(ctx) is False
+
+
+def test_existe_fase_finalizadora_cerrada_universal_una_abierta():
+    """Dos finalizadoras (ADR-045: AAP+AAC y DUP), solo una cerrada → False."""
+    fase_cerrada = _StubFase('RESOLUCION', finalizada=True, id=1)
+    fase_cerrada.tipo_fase = _StubTipoFaseFinalizadora('RESOLUCION', es_finalizadora=True)
+    fase_abierta = _StubFase('RESOLUCION', finalizada=False, id=2)
+    fase_abierta.tipo_fase = _StubTipoFaseFinalizadora('RESOLUCION', es_finalizadora=True)
+    ctx = _StubCtxConSolicitud([fase_cerrada, fase_abierta])
+    assert _get_variable('existe_fase_finalizadora_cerrada')(ctx) is False
+
+
+def test_existe_fase_finalizadora_cerrada_todas_cerradas():
+    fase_1 = _StubFase('RESOLUCION', finalizada=True, id=1)
+    fase_1.tipo_fase = _StubTipoFaseFinalizadora('RESOLUCION', es_finalizadora=True)
+    ctx = _StubCtxConSolicitud([fase_1])
+    assert _get_variable('existe_fase_finalizadora_cerrada')(ctx) is True
+
+
 # ---------------------------------------------------------------------------
 # B) Servicio crear_cert_fin_ip_consultas — tests unitarios con stubs
 # ---------------------------------------------------------------------------
@@ -133,6 +195,69 @@ def test_recoger_fases_vacio_si_ninguna_habilitante():
     from app.services.cert_fin_ip_consultas import _recoger_fases
     sol = _StubSolicitud([_StubFase('RESOLUCION', finalizada=True)])
     assert _recoger_fases(sol) == []
+
+
+# ---------------------------------------------------------------------------
+# B bis) Re-emisión por ronda (ADR-044 R5, #901)
+# ---------------------------------------------------------------------------
+
+class _StubReformado:
+    def __init__(self, id): self.id = id
+
+
+def test_recoger_fases_solo_la_ronda_pedida():
+    """Con dos rondas de IP+Consultas, _recoger_fases de la ronda 2 no incluye
+    las de la ronda 1 — cada certificado habla de su propia ronda."""
+    from app.services.cert_fin_ip_consultas import _recoger_fases
+
+    fases = [
+        _StubFase('INFORMACION_PUBLICA', finalizada=True, reformado_id=None, id=1),
+        _StubFase('CONSULTAS', finalizada=True, reformado_id=None, id=2),
+        _StubFase('INFORMACION_PUBLICA', finalizada=True, reformado_id=7, id=3),
+        _StubFase('CONSULTAS', finalizada=True, reformado_id=7, id=4),
+    ]
+    sol = _StubSolicitud(fases)
+
+    ronda_2 = _recoger_fases(sol, _StubReformado(7))
+    assert {f['fase_id'] for f in ronda_2} == {3, 4}
+
+    ronda_1 = _recoger_fases(sol, None)
+    assert {f['fase_id'] for f in ronda_1} == {1, 2}
+
+
+def test_buscar_existente_no_confunde_solicitudes_ni_rondas(app_ctx):
+    """El defecto de fondo (ADR-044 R5): antes de #901 se buscaba solo por
+    expediente_id + tipo_doc_id, así que dos solicitudes del mismo expediente
+    —o dos rondas de la misma solicitud— compartían certificado por error."""
+    from app import db
+    from app.services.cert_fin_ip_consultas import _buscar_existente
+    from app.models.certificados import Certificado
+    from app.models.documentos import Documento
+    from app.models.tipos_documentos import TipoDocumento
+
+    tipo_doc = TipoDocumento.query.filter_by(codigo='CERT_FIN_IP_CONSULTAS').first()
+    assert tipo_doc is not None, 'catálogo sin CERT_FIN_IP_CONSULTAS — ¿migración aplicada?'
+
+    from tests.conftest import ArbolESFTT
+    arbol = ArbolESFTT(db)
+    sol_a = arbol.solicitud_nueva()
+    sol_b = arbol.solicitud_nueva()
+
+    doc = Documento(expediente_id=sol_a.expediente_id, tipo_doc_id=tipo_doc.id,
+                    url='bddat://certificados/0')
+    db.session.add(doc)
+    db.session.flush()
+    cert_a = Certificado(documento_id=doc.id, solicitud_id=sol_a.id, reformado_id=None,
+                         datos={})
+    db.session.add(cert_a)
+    db.session.flush()
+
+    # Otra solicitud del mismo expediente: no ve el certificado de sol_a.
+    assert _buscar_existente(sol_b.id, None) is None
+    # La misma solicitud pero otra ronda: tampoco lo ve.
+    assert _buscar_existente(sol_a.id, _StubReformado(99)) is None
+    # La suya propia, sí.
+    assert _buscar_existente(sol_a.id, None) is not None
 
 
 # ---------------------------------------------------------------------------

@@ -20,26 +20,35 @@ _CODIGO = 'CERT_FIN_IP_CONSULTAS'
 _FASES_HABILITANTES = ('INFORMACION_PUBLICA', 'CONSULTAS')
 
 
-def crear_cert_fin_ip_consultas(expediente, solicitud) -> Certificado | None:
+def crear_cert_fin_ip_consultas(expediente, solicitud, version_vigente=None) -> Certificado | None:
     """
-    Genera el CERT_FIN_IP_CONSULTAS para la solicitud dada si no existe ya.
+    Genera el CERT_FIN_IP_CONSULTAS de `solicitud` para la ronda `version_vigente`,
+    si no existe ya.
 
-    Recoge las fases INFORMACION_PUBLICA y CONSULTAS finalizadas, calcula
-    la fecha_fin_ultima_fase y persiste Certificado + Documento en el pool.
+    Recoge las fases INFORMACION_PUBLICA y CONSULTAS de esa misma ronda que estén
+    finalizadas, calcula la fecha_fin_ultima_fase y persiste Certificado + Documento
+    en el pool.
 
-    Devuelve el Certificado creado, o el existente si ya había uno.
-    Devuelve None si no hay fases habilitantes finalizadas (no debería ocurrir
-    si el motor validó antes).
+    `version_vigente` es el `ReformadoProyecto` que cubre la ronda (`None` = versión
+    inicial) — el mismo que ya calcula `crear_fase` con `ultimo_reformado` (R3, ADR-044
+    §E) en el momento de abrir la fase que dispara este certificado. Con reformados,
+    cada ronda de AAU_AAUS_INTEGRADA necesita el suyo (RESOLUCION no se repite, R5);
+    sin reformados, sigue habiendo como mucho uno por solicitud (ADR-044 R5).
+
+    Devuelve el Certificado creado, o el existente de esta solicitud+ronda si ya
+    había uno. Devuelve None si no hay fases habilitantes finalizadas en esta ronda
+    (no debería ocurrir si el motor validó antes).
     """
-    cert_existente = _buscar_existente(expediente.id, solicitud.id)
+    cert_existente = _buscar_existente(solicitud.id, version_vigente)
     if cert_existente:
         return cert_existente
 
-    fases_info = _recoger_fases(solicitud)
+    fases_info = _recoger_fases(solicitud, version_vigente)
     if not fases_info:
         log.warning(
             'crear_cert_fin_ip_consultas: sin fases habilitantes finalizadas '
-            'para solicitud %s (expediente %s)', solicitud.id, expediente.id
+            'para solicitud %s, ronda %s (expediente %s)',
+            solicitud.id, version_vigente.id if version_vigente else 'inicial', expediente.id
         )
         return None
 
@@ -62,6 +71,8 @@ def crear_cert_fin_ip_consultas(expediente, solicitud) -> Certificado | None:
 
     cert = Certificado(
         documento_id=doc.id,
+        solicitud_id=solicitud.id,
+        reformado_id=version_vigente.id if version_vigente else None,
         datos=datos,
         generado_en=datetime.utcnow(),
     )
@@ -71,32 +82,40 @@ def crear_cert_fin_ip_consultas(expediente, solicitud) -> Certificado | None:
     doc.url = f'bddat://certificados/{cert.id}'
 
     log.info(
-        'CERT_FIN_IP_CONSULTAS creado: cert=%s doc=%s expediente=%s solicitud=%s',
+        'CERT_FIN_IP_CONSULTAS creado: cert=%s doc=%s expediente=%s solicitud=%s ronda=%s',
         cert.id, doc.id, expediente.id, solicitud.id,
+        version_vigente.id if version_vigente else 'inicial',
     )
     return cert
 
 
-def _buscar_existente(expediente_id: int, solicitud_id: int) -> Certificado | None:
-    """Devuelve el cert existente para este expediente si ya fue emitido."""
-    from app.models.tipos_documentos import TipoDocumento
-    tipo_doc = TipoDocumento.query.filter_by(codigo=_CODIGO).first()
-    if tipo_doc is None:
-        return None
+def _buscar_existente(solicitud_id: int, version_vigente=None) -> Certificado | None:
+    """Devuelve el cert existente de esta solicitud y esta ronda, si ya fue emitido.
+
+    Scoped por `(solicitud_id, reformado_id)` (ADR-044 R5) — antes buscaba solo por
+    `expediente_id + tipo_doc_id`, así que un expediente con dos solicitudes ya
+    compartía certificado por error, y una ronda nueva por reformado reutilizaba el
+    de la ronda anterior en vez de re-emitir el suyo.
+    """
     return (
         db.session.query(Certificado)
-        .join(Documento, Certificado.documento_id == Documento.id)
-        .filter(Documento.expediente_id == expediente_id,
-                Documento.tipo_doc_id == tipo_doc.id)
+        .filter(
+            Certificado.solicitud_id == solicitud_id,
+            Certificado.reformado_id == (version_vigente.id if version_vigente else None),
+        )
         .first()
     )
 
 
-def _recoger_fases(solicitud) -> list[dict]:
-    """Devuelve lista de {codigo, fecha_fin} para fases habilitantes finalizadas."""
+def _recoger_fases(solicitud, version_vigente=None) -> list[dict]:
+    """Devuelve lista de {codigo, fecha_fin} para las fases habilitantes finalizadas
+    de la ronda `version_vigente` (`None` = versión inicial)."""
+    reformado_id = version_vigente.id if version_vigente else None
     resultado = []
     for fase in solicitud.fases:
         if not (fase.tipo_fase and fase.tipo_fase.codigo in _FASES_HABILITANTES):
+            continue
+        if fase.reformado_id != reformado_id:
             continue
         if not fase.finalizada:
             continue

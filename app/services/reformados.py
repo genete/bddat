@@ -153,25 +153,35 @@ def declarar_desde_metadatos(documento, metadatos: dict, *, usuario_id: int):
 
 
 def motivo_fases_enganchadas(reformado) -> Optional[str]:
-    """Por qué no se puede deshacer `reformado` si ya tiene fases en su versión
-    (ADR-044 §F/§Issues R3, #895), o None si puede deshacerse por este motivo.
+    """Por qué no se puede deshacer `reformado` si ya tiene fases o certificados en
+    su versión (ADR-044 §F/§Issues R3 #895, R5 #901), o None si puede deshacerse.
 
     Compartido por `revertir_reformado` (el guardián real, antes del ORM) y la
     guarda del pool (`app/modules/expedientes/routes.py`): mismo defecto de
-    mensaje que arregló #838, mismo arreglo — explicar el motivo antes de que
-    el borrado del documento arrastre el corte en CASCADE y choque con el
-    `ON DELETE RESTRICT` de `fases.reformado_id` en forma de `IntegrityError`.
+    mensaje que arregló #838, mismo arreglo — explicar el motivo antes de que el
+    borrado del documento arrastre el corte en CASCADE y choque con el
+    `ON DELETE RESTRICT` de `fases.reformado_id` o `certificados.reformado_id`
+    en forma de `IntegrityError`.
     """
     fases = sorted(reformado.fases_cubiertas, key=lambda f: f.id)
-    if not fases:
-        return None
-    nombres = ', '.join(
-        f'{f.tipo_fase.nombre if f.tipo_fase else "Fase"} (#{f.id})' for f in fases
-    )
-    return (
-        f'No se puede deshacer este reformado: su versión ya tiene fases creadas '
-        f'({nombres}). Elimínelas antes de retirar el corte.'
-    )
+    if fases:
+        nombres = ', '.join(
+            f'{f.tipo_fase.nombre if f.tipo_fase else "Fase"} (#{f.id})' for f in fases
+        )
+        return (
+            f'No se puede deshacer este reformado: su versión ya tiene fases creadas '
+            f'({nombres}). Elimínelas antes de retirar el corte.'
+        )
+
+    certificados = sorted(reformado.certificados, key=lambda c: c.id)
+    if certificados:
+        nombres = ', '.join(f'#{c.id}' for c in certificados)
+        return (
+            f'No se puede deshacer este reformado: su versión ya tiene certificados '
+            f'emitidos ({nombres}). No pueden retirarse desde aquí.'
+        )
+
+    return None
 
 
 def revertir_reformado(documento, *, usuario_id: int) -> None:

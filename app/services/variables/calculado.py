@@ -15,21 +15,29 @@ log = logging.getLogger(__name__)
 @variable('fase_ip_finalizada')
 def _(ctx) -> bool:
     """
-    True si la solicitud en contexto tiene al menos una fase INFORMACION_PUBLICA
-    finalizada (documento_resultado_id IS NOT NULL).
+    True si **todas** las fases INFORMACION_PUBLICA de la solicitud en contexto
+    están finalizadas (documento_resultado_id IS NOT NULL).
 
-    Devuelve False si no hay solicitud en contexto, si la fase no existe o
-    existe pero no está finalizada.
+    Universal, no existencial (ADR-044 R5): antes de los reformados solo podía
+    haber una IP por solicitud, así que "existe alguna cerrada" y "todas están
+    cerradas" coincidían. Con más de una ronda (una IP por versión del
+    proyecto), la existencial mentía — con la IP inicial cerrada y la del
+    reformado todavía abierta, afirmaba que la exposición pública había
+    terminado y dejaba pasar la resolución (reglas 38 y 1718) justo cuando
+    debían bloquearla.
+
+    Devuelve False si no hay solicitud en contexto o si no hay ninguna fase
+    INFORMACION_PUBLICA (vacuidad negativa: sin IP no se puede afirmar que
+    "todas" están finalizadas).
     """
     solicitud = ctx.solicitud
     if solicitud is None:
         return False
-    for fase in solicitud.fases:
-        if (fase.tipo_fase
-                and fase.tipo_fase.codigo == 'INFORMACION_PUBLICA'
-                and fase.finalizada):
-            return True
-    return False
+    fases_ip = [f for f in solicitud.fases
+                if f.tipo_fase and f.tipo_fase.codigo == 'INFORMACION_PUBLICA']
+    if not fases_ip:
+        return False
+    return all(f.finalizada for f in fases_ip)
 
 
 @variable('tramite_publicar_existe')
@@ -54,14 +62,22 @@ def _(ctx) -> bool:
 
 @variable('existe_fase_finalizadora_cerrada')
 def _(ctx) -> bool:
-    """True si la solicitud en contexto tiene al menos una fase finalizadora cerrada."""
+    """
+    True si **todas** las fases finalizadoras de la solicitud en contexto están
+    cerradas. Universal, no existencial — mismo arreglo y mismo motivo que
+    `fase_ip_finalizada` (ADR-044 R5). Sin ninguna fase finalizadora, False.
+
+    Huérfana desde que se creó (#302): ninguna regla, plazo, requisito ni ítem
+    técnico la consume hoy (verificado en BD). Se corrige igual por coherencia
+    con el resto del catálogo, no porque arregle un caso vivo.
+    """
     solicitud = ctx.solicitud
     if solicitud is None:
         return False
-    for fase in solicitud.fases:
-        if fase.tipo_fase and fase.tipo_fase.es_finalizadora and fase.finalizada:
-            return True
-    return False
+    fases_fin = [f for f in solicitud.fases if f.tipo_fase and f.tipo_fase.es_finalizadora]
+    if not fases_fin:
+        return False
+    return all(f.finalizada for f in fases_fin)
 
 
 @variable('solicitud_tiene_cert_fin_instruccion')
