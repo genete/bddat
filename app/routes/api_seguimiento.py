@@ -45,6 +45,7 @@ from app.models.tipos_fases import TipoFase
 from app.models.tipos_resultados_fases import TipoResultadoFase
 from app.models.entidad import Entidad
 from app.services.seguimiento import estado_solicitud, fin_total
+from app.services.arbol_expediente import opciones_solicitud
 
 api_seguimiento_bp = Blueprint('api_seguimiento', __name__, url_prefix='/api')
 
@@ -184,6 +185,10 @@ def listar_seguimiento():
 
     # -------------------------------------------------------------------------
     # 3. Query principal con eager loading para evitar N+1 en serialización
+    #    y en estado_solicitud() (#907): opciones_solicitud() precarga la misma
+    #    cadena fase→trámite→tarea→documento/notificación que _acc_fase /
+    #    _acc_tramite recorren, dejando la instancia en el identity map de la
+    #    sesión ya resuelta cuando estado_solicitud() haga Solicitud.query.get().
     # -------------------------------------------------------------------------
     query = (
         db.session.query(Solicitud)
@@ -192,7 +197,7 @@ def listar_seguimiento():
         .options(
             joinedload(Solicitud.expediente).joinedload(Expediente.titular),
             joinedload(Solicitud.expediente).joinedload(Expediente.proyecto),
-            joinedload(Solicitud.tipo_solicitud),
+            *opciones_solicitud(),
         )
         .filter(*filtros_base)
     )
