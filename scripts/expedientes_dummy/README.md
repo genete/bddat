@@ -18,6 +18,7 @@ Cada uno tiene doble vida (#849):
 |---|---|---|
 | `ANALISIS_DOC_DOS_VUELTAS` | Análisis documental con respuesta del titular dentro de plazo y dos vueltas de subsanación | Termina con `ANALISIS_SOLICITUD` completa y pendiente de cierre |
 | `CONSULTAS_VARIOS_ESTADOS` | Fase de consultas con las tres separatas enviadas y cada organismo en un estado distinto | Termina con `CONSULTAS` abierta — expediente incompleto a propósito |
+| `REFORMADO_ANALISIS_Y_CONSULTAS` | Dos versiones de proyecto (ADR-044): `ANALISIS_SOLICITUD` y `CONSULTAS` cortadas por el mismo reformado | Un organismo enquistado en la `CONSULTAS` de la v1 (hueco vivo, §I) que ninguna fase posterior salda; la v2 (reformado) repite ese organismo y añade uno nuevo, ambas fases limpias (§F) |
 
 ### ANALISIS_DOC_DOS_VUELTAS
 
@@ -93,6 +94,48 @@ Dos cosas que este escenario dejó a la vista y no son suyas:
   entrada física: la ingesta no reescribe un duplicado exacto), y al llevarse el primero a su
   carpeta ESFTT el segundo se queda apuntando a un fichero que ya no existe. Por eso el script
   sube y vincula cada separata organismo a organismo en vez de subir las tres de golpe.
+
+### REFORMADO_ANALISIS_Y_CONSULTAS
+
+`reformado_analisis_y_consultas.py` — #903
+
+Primer expediente-tipo que ejercita `reformados_proyecto` (ADR-044) por el circuito
+real. Línea aérea de 66 kV en Jerez de la Frontera (AAP+AAC, un solo municipio),
+exenta de instrumento ambiental — mismo perfil que `CONSULTAS_VARIOS_ESTADOS`, para
+que el foco quede en la mecánica de reformados y no en variedad administrativa.
+
+Dos versiones de proyecto, con `ANALISIS_SOLICITUD` y `CONSULTAS` cortadas por el
+mismo reformado:
+
+| | v1 (`reformado_id` NULL) | v2 (reformado) |
+|---|---|---|
+| `ANALISIS_SOLICITUD` | Checklist limpio, diagnóstico favorable. No se cierra formalmente (como los otros dos expedientes-tipo) | Segunda fase del mismo tipo, permitida por §F. Checklist limpio por el fallback de R4 a la versión inicial — no hace falta aportar nada nuevo |
+| `CONSULTAS` | Ayuntamiento de Jerez consultado, **nunca contesta** — silencio, plazo vencido, sin `ANALIZAR`. Es el hueco vivo: el organismo enquistado de §I, que nada en el escenario resuelve | Segunda fase del mismo tipo, permitida por §F. El Ayuntamiento **repetido** (nueva separata, nuevo ciclo, esta vez favorable) + ADIF **nuevo**, también favorable — `UNIQUE(fase_id, organismo_id)` sin conflicto entre rondas |
+
+El reformado es voluntario: el titular reencauza el tramo final para evitar una
+servidumbre de vuelo y el nuevo trazado pasa a cruzar la línea de ferrocarril.
+
+| Parámetro | Valor | Por qué |
+|---|---|---|
+| `DIAS_ESCENARIO` | 200 | La `CONSULTAS` de la v1 necesita quedar vencida (30 días hábiles) con margen antes de declarar el reformado, y aún queda sitio para una `ANALISIS_SOLICITUD` y una `CONSULTAS` completas de la v2 con dos organismos |
+| `HABILES_HASTA_VENCIMIENTO_V1` | 40 | Días hábiles desde que se notifica la separata de la v1 hasta declarar el reformado — vencido con margen sobre los 30 del art. 131.1 |
+| `MARGEN_RESPUESTA_ORGANISMO_HABILES` | 15 | Días hábiles antes del vencimiento real en que responde cada organismo de la v2 |
+| `HABILES_HASTA_TRASLADO` | 2 | De recibir la respuesta del organismo a notificar el traslado al titular |
+| `MARGEN_RESPUESTA_TITULAR_HABILES` | 5 | Respuesta del titular al traslado, en las dos rondas de la v2 |
+
+Necesitó un fixture nuevo, `doc_proyecto_reformado.pdf` (además del banco generado por
+`scripts/generar_documentos_dummy.py`): el pool no duplica un fichero cuando el
+contenido ya existe (mismo hash, ver el hallazgo de arriba sobre `DOC_SEPARATA`), y
+para cuando se sube el segundo `DOC_PROYECTO` el primero ya se movió a su carpeta
+ESFTT al casarse como `CONSUMIDO` del `ANALIZAR` de la v1.
+
+Al terminar **borra el reloj de desarrollo**: el organismo enquistado de la v1 sigue
+vencido se mire desde la fecha que se mire, y las fechas ya cerradas de la v2 no
+dependen de qué diga el reloj simulado.
+
+```bash
+venv/Scripts/python.exe scripts/expedientes_dummy/reformado_analisis_y_consultas.py
+```
 
 ---
 
