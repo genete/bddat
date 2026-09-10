@@ -33,9 +33,21 @@ class RequerimientoTarea(db.Model):
         que determina el resultado, pero se sigue mostrando (tachado) para dar
         progreso sin tener que abrir el escrito notificado.
 
+    CAMPO REFORMADO_ID (ADR-044 §E bis, R4 #899):
+        - NULLABLE, sin índice único: es atributo de nacimiento, nunca clave —
+          la versión en la que nació el requerimiento no cambia si nace o
+          muere en otra (ADR §E bis: "un defecto libre nace en una versión y
+          puede morir en otra").
+        - **Todavía sin rellenar.** El shuttle (`post_requerimientos`, ver
+          #884) guarda hoy por reemplazo total —`DELETE` + `INSERT` masivo en
+          cada guardado—, así que fijar aquí la versión de nacimiento se
+          perdería en el siguiente guardado. Se rellena cuando #884 cambie el
+          endpoint a merge por `id` (solo el `INSERT` de los ítems nuevos).
+
     RELACIONES:
         solicitud               → SOLICITUDES.id (FK CASCADE)
         catalogo_requerimiento → CATALOGO_REQUERIMIENTOS.id (FK, nullable)
+        reformado                → REFORMADOS_PROYECTO.id (FK RESTRICT, nullable, sin rellenar)
 
     REGLAS DE NEGOCIO:
         - Exactamente uno de catalogo_requerimientos_id o texto_libre ≠ NULL
@@ -50,6 +62,7 @@ class RequerimientoTarea(db.Model):
         ),
         db.Index('idx_requerimientos_tarea_solicitud', 'solicitud_id'),
         db.Index('idx_requerimientos_tarea_catalogo', 'catalogo_requerimientos_id'),
+        db.Index('idx_requerimientos_tarea_reformado', 'reformado_id'),
         {'schema': 'public'}
     )
 
@@ -94,6 +107,15 @@ class RequerimientoTarea(db.Model):
         comment='Marca manual del técnico: requerimiento libre cerrado (ADR-033 §7)'
     )
 
+    reformado_id = db.Column(
+        db.Integer,
+        db.ForeignKey('public.reformados_proyecto.id', ondelete='RESTRICT'),
+        nullable=True,
+        comment='FK a REFORMADOS_PROYECTO (ADR-044 §E bis, R4 #899). Atributo de '
+                'nacimiento, nunca clave. Todavía sin rellenar: depende de que #884 '
+                'cambie el shuttle a merge por id — ver docstring de la clase.'
+    )
+
     # Relaciones
     solicitud = db.relationship(
         'Solicitud',
@@ -106,6 +128,10 @@ class RequerimientoTarea(db.Model):
     catalogo_requerimiento = db.relationship(
         'CatalogoRequerimiento',
         back_populates='usos',
+    )
+    reformado = db.relationship(
+        'ReformadoProyecto',
+        backref=db.backref('requerimientos_tarea_nacidos', passive_deletes=True),
     )
 
     # --- Accesores ---
