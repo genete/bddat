@@ -398,9 +398,11 @@ def main(app=None, *, efectos_desarrollo=True):
         # Pool documental de la presentación. El escrito de solicitud ya entró con
         # el alta (#428); el resto lo aporta el titular con ella.
         docs = {'MODELO_SOLICITUD': alta.documento.id}
+        # es_principal=True: sin anclar el proyecto, crear_fase(CONSULTAS) se bloquea
+        # por la regla de R2 (#887, proyecto_sin_principal) — #896.
         docs['DOC_PROYECTO'] = _comun.subir(
             client, exp_id, 'DOC_PROYECTO', cat['doc_proyecto'].id, fecha_base,
-            'Proyecto técnico de la línea aérea 66 kV')
+            'Proyecto técnico de la línea aérea 66 kV', es_principal=True)
         docs['JUSTIFICANTE_PAGO_TASA'] = _comun.subir(
             client, exp_id, 'JUSTIFICANTE_PAGO_TASA',
             cat['doc_justificante_pago_tasa'].id, fecha_base,
