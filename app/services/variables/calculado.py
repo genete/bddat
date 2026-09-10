@@ -342,12 +342,21 @@ def _(ctx) -> bool:
     en documentos_requisito para la solicitud en contexto (#582, art. 45.1
     Ley 10/2021).
 
+    ADR-044 §E bis (R4 #899): cubierto si hay vinculación en la versión
+    inicial (reformado_id IS NULL) **o** en la versión vigente del
+    expediente — no exige las dos a la vez. Si el reformado no cambia el
+    presupuesto, la tasa antigua sigue alimentando la cobertura; si cambia,
+    el técnico pide la complementaria en la versión nueva. Decidir cuál de
+    los dos casos aplica es su criterio al revisar la versión, no algo que
+    esta variable deba inferir.
+
     Ese TipoDocumento/RequisitoDocumental lo puebla #408. Mientras el
     catálogo no lo tenga, degrada a False (no bloquea) y loguea warning —
     mismo criterio que app/services/requisitos.py::evaluar_requisitos (#347).
     """
     from app.models.requisitos_documentales import RequisitoDocumental, DocumentoRequisito
     from app.models.tipos_documentos import TipoDocumento
+    from app.services.reformados import ultimo_reformado
 
     solicitud = ctx.solicitud
     if solicitud is None:
@@ -368,10 +377,13 @@ def _(ctx) -> bool:
         return False
 
     ids_requisito = {r.id for r in requisitos_tasa}
+    version_vigente = ultimo_reformado(ctx.expediente.id) if ctx.expediente else None
+    id_version_vigente = version_vigente.id if version_vigente else None
     cubiertos = {
         dr.requisito_id
         for dr in DocumentoRequisito.query.filter_by(solicitud_id=solicitud.id).all()
         if dr.requisito_id in ids_requisito
+        and (dr.reformado_id is None or dr.reformado_id == id_version_vigente)
     }
     return len(cubiertos) < len(ids_requisito)
 
