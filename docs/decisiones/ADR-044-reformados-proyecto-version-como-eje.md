@@ -1,11 +1,11 @@
 # ADR-044 — Reformados de proyecto: la versión como eje de la instrucción
 
-**Estado:** Adoptada — R1-R5 implementados (#885, #887, #895, #899, #901); R6 pendiente (ver §Issues)
+**Estado:** Adoptada — R1-R6 implementados (#885, #887, #895, #899, #901, #903). Cadena cerrada.
 **Fecha:** 2026-09-08
 **Depende de:** ADR-011 (vinculación trámites↔organismos) · ADR-016 (vista de árbol) · ADR-032 (ingesta y almacenamiento) · ADR-036 (sellado de fase cerrada) · ADR-041 §D bis (anclas documentales) · ADR-042 (sub-procesos de cardinalidad variable) · ADR-043 (certificado de fin de instrucción)
 **Enmienda:** ADR-016 §1 (modelo de niveles del árbol) · ADR-043 §E (el registry por tipo de fase deja de ser necesario para el ámbito)
 **Origen:** sesiones de análisis del 2026-09-07 y 2026-09-08. Análisis completo, con el barrido fase a fase y las alternativas descartadas, en `docs/referencia/ANALISIS_REFORMADOS_PROYECTO.md`.
-**Issues:** #819 (la decisión que este ADR cierra) · #864 (desbloqueado por §F) · #885 (R1) · #887 (R2) · #895 (R3) · #899 (R4) · #901 (R5, absorbe #848)
+**Issues:** #819 (la decisión que este ADR cierra) · #864 (desbloqueado por §F, aún diferido) · #885 (R1) · #887 (R2) · #895 (R3) · #899 (R4) · #901 (R5, absorbe #848) · #903 (R6, y de paso #896)
 
 ---
 
@@ -298,9 +298,8 @@ acierta; `organismos_expediente` se queda como está; el árbol no cambia de top
 
 ## Issues de implementación
 
-Cuatro issues nuevos, encadenados, más tres que ya viven fuera. **R1-R4 hechos (#885, #887, #895,
-#899); R5-R6 pendientes de crear.** Bajo cada uno, lo que la implementación corrigió de lo
-escrito aquí.
+Seis issues nuevos, encadenados, más cuatro que ya viven fuera. **R1-R6 hechos (#885, #887, #895,
+#899, #901, #903).** Bajo cada uno, lo que la implementación corrigió de lo escrito aquí.
 
 ### R1 — `reformados_proyecto` y la retirada de `documentos_proyecto`
 
@@ -480,6 +479,30 @@ proyecto, la fase de la versión inicial con un hueco vivo y la del reformado li
 que verifica §I y la regla de §F.
 
 **Depende de:** R3 como mínimo; idealmente R4 y R5.
+
+**Hecho — #903.** Amplía el alcance por decisión de Carlos durante el diseño ("este problema de
+reformados abre muchos frentes... forzamos al máximo también el árbol") y dos correcciones sobre
+lo escrito arriba:
+
+- **El escenario corta dos tipos de fase, no uno**: `ANALISIS_SOLICITUD` **y** `CONSULTAS`, ambas
+  con una segunda ronda enganchada al mismo reformado. Confirma que la regla de §F es de verdad
+  genérica (no una por tipo de fase) y ejercita por primera vez el `UNIQUE(fase_id, organismo_id)`
+  de `OrganismoExpediente` con un organismo repetido entre rondas — la promesa que ya hacía su
+  propio docstring desde R3, nunca antes probada de punta a punta.
+- **El hueco vivo no puede ser un defecto de checklist documental.** `evaluar_requisitos`
+  resuelve la cobertura de un requisito con `ultimo_reformado(expediente_id)` evaluado en el
+  momento de la llamada, con fallback a `reformado_id IS NULL` — no "como estaba cuando se
+  analizó esa fase". Dejar un requisito sin cubrir en la v1 lo dejaría igual de sin cubrir en la
+  v2, y la `ANALISIS_SOLICITUD` del reformado dejaría de estar "limpia". El hueco vivo real es un
+  **organismo enquistado** en la `CONSULTAS` de la v1 (el propio ejemplo textual de §I): al ser
+  `fase_id`-scoped, sin fallback entre versiones, queda aislado de verdad.
+- **Destapó un defecto de R2 sin relación con reformados**: ningún expediente-tipo anclaba el
+  proyecto principal (`es_principal`), y `consultas_varios_estados.py` llevaba desde R2 (#887)
+  bloqueado al crear `CONSULTAS` sin que nadie lo hubiera vuelto a ejecutar —
+  `preparar_bd_test.py --recrear` lo reproducía en el acto—. Arreglado aparte en #896/#904, fuera
+  de este issue, y mezclado antes para que la semilla completa (tres expedientes-tipo) pase.
+- **Verificado de punta a punta** en desarrollo (AT-33, expediente 4138, `reformados_proyecto.id=4`)
+  y con `preparar_bd_test.py --recrear` + suite completa (1761 tests) tras mezclar #904.
 
 ### Ya abiertos, fuera de este ADR
 
