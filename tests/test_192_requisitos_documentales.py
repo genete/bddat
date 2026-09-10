@@ -37,19 +37,21 @@ def _requisito(tipo_doc_id=1, condiciones=None, orden=1, req_id=None):
     return r
 
 
-def _doc_requisito(requisito_id, solicitud_id, documento_id=99):
+def _doc_requisito(requisito_id, solicitud_id, documento_id=99, reformado_id=None):
     dr = MagicMock()
     dr.requisito_id = requisito_id
     dr.solicitud_id = solicitud_id
     dr.documento_id = documento_id
     dr.documento = MagicMock()
     dr.documento.id = documento_id
+    dr.reformado_id = reformado_id
     return dr
 
 
-def _solicitud(sol_id=1):
+def _solicitud(sol_id=1, expediente_id=1):
     s = MagicMock()
     s.id = sol_id
+    s.expediente_id = expediente_id
     return s
 
 
@@ -57,12 +59,14 @@ def _solicitud(sol_id=1):
 # Helper para importar evaluar_requisitos parchando las queries
 # ---------------------------------------------------------------------------
 
-def _evaluar(requisitos, vinculaciones, sol_id=1):
+def _evaluar(requisitos, vinculaciones, sol_id=1, version_vigente_id=None):
     """
     Llama a evaluar_requisitos con las tablas parchadas por mocks.
 
     requisitos:    lista de objetos _requisito()
     vinculaciones: lista de objetos _doc_requisito()
+    version_vigente_id: simula ultimo_reformado() devolviendo un reformado
+        con ese id (o None — sin reformado, comportamiento previo a R4/#899).
     """
     from app.services.requisitos import evaluar_requisitos
 
@@ -74,8 +78,14 @@ def _evaluar(requisitos, vinculaciones, sol_id=1):
     mock_dr_query = MagicMock()
     mock_dr_query.filter_by.return_value.all.return_value = vinculaciones
 
+    version_vigente = None
+    if version_vigente_id is not None:
+        version_vigente = MagicMock()
+        version_vigente.id = version_vigente_id
+
     with patch('app.services.requisitos.RequisitoDocumental') as MockReq, \
-         patch('app.services.requisitos.DocumentoRequisito') as MockDR:
+         patch('app.services.requisitos.DocumentoRequisito') as MockDR, \
+         patch('app.services.requisitos.ultimo_reformado', return_value=version_vigente):
         MockReq.query = mock_req_query
         MockDR.query = mock_dr_query
         return evaluar_requisitos(solicitud, {})
@@ -229,7 +239,8 @@ class TestCondicionEQ:
         mock_dr_q.filter_by.return_value.all.return_value = []
 
         with patch('app.services.requisitos.RequisitoDocumental') as MR, \
-             patch('app.services.requisitos.DocumentoRequisito') as MDR:
+             patch('app.services.requisitos.DocumentoRequisito') as MDR, \
+             patch('app.services.requisitos.ultimo_reformado', return_value=None):
             MR.query = mock_req_q
             MDR.query = mock_dr_q
             res = evaluar_requisitos(solicitud, {'tipo_solicitud': 'AAP'})
@@ -252,7 +263,8 @@ class TestCondicionEQ:
         mock_dr_q.filter_by.return_value.all.return_value = []
 
         with patch('app.services.requisitos.RequisitoDocumental') as MR, \
-             patch('app.services.requisitos.DocumentoRequisito') as MDR:
+             patch('app.services.requisitos.DocumentoRequisito') as MDR, \
+             patch('app.services.requisitos.ultimo_reformado', return_value=None):
             MR.query = mock_req_q
             MDR.query = mock_dr_q
             res = evaluar_requisitos(solicitud, {'tipo_solicitud': 'AAC'})
@@ -281,7 +293,8 @@ class TestCondicionIN:
         mock_dr_q.filter_by.return_value.all.return_value = []
 
         with patch('app.services.requisitos.RequisitoDocumental') as MR, \
-             patch('app.services.requisitos.DocumentoRequisito') as MDR:
+             patch('app.services.requisitos.DocumentoRequisito') as MDR, \
+             patch('app.services.requisitos.ultimo_reformado', return_value=None):
             MR.query = mock_req_q
             MDR.query = mock_dr_q
             return evaluar_requisitos(solicitud, {'tipo_solicitud': valor_var})
@@ -321,7 +334,8 @@ class TestCondicionAND:
         mock_dr_q.filter_by.return_value.all.return_value = []
 
         with patch('app.services.requisitos.RequisitoDocumental') as MR, \
-             patch('app.services.requisitos.DocumentoRequisito') as MDR:
+             patch('app.services.requisitos.DocumentoRequisito') as MDR, \
+             patch('app.services.requisitos.ultimo_reformado', return_value=None):
             MR.query = mock_req_q
             MDR.query = mock_dr_q
             res = evaluar_requisitos(
@@ -346,7 +360,8 @@ class TestCondicionAND:
         mock_dr_q.filter_by.return_value.all.return_value = []
 
         with patch('app.services.requisitos.RequisitoDocumental') as MR, \
-             patch('app.services.requisitos.DocumentoRequisito') as MDR:
+             patch('app.services.requisitos.DocumentoRequisito') as MDR, \
+             patch('app.services.requisitos.ultimo_reformado', return_value=None):
             MR.query = mock_req_q
             MDR.query = mock_dr_q
             res = evaluar_requisitos(
@@ -384,7 +399,8 @@ class TestOR:
         mock_dr_q.filter_by.return_value.all.return_value = []
 
         with patch('app.services.requisitos.RequisitoDocumental') as MR, \
-             patch('app.services.requisitos.DocumentoRequisito') as MDR:
+             patch('app.services.requisitos.DocumentoRequisito') as MDR, \
+             patch('app.services.requisitos.ultimo_reformado', return_value=None):
             MR.query = mock_req_q
             MDR.query = mock_dr_q
             res = evaluar_requisitos(solicitud, {'tipo_solicitud': 'AAC'})
@@ -442,7 +458,8 @@ class TestOperadoresNumericos:
         mock_dr_q.filter_by.return_value.all.return_value = []
 
         with patch('app.services.requisitos.RequisitoDocumental') as MR, \
-             patch('app.services.requisitos.DocumentoRequisito') as MDR:
+             patch('app.services.requisitos.DocumentoRequisito') as MDR, \
+             patch('app.services.requisitos.ultimo_reformado', return_value=None):
             MR.query = mock_req_q
             MDR.query = mock_dr_q
             return evaluar_requisitos(solicitud, {'tension_nominal_kv': valor_var})

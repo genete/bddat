@@ -28,12 +28,14 @@ Semántica de condiciones:
 from __future__ import annotations
 
 import logging
+from collections import defaultdict
 from typing import Any
 
 from sqlalchemy.exc import OperationalError, ProgrammingError
 
 from app.models.requisitos_documentales import RequisitoDocumental, DocumentoRequisito
 from app.services.operadores import _OPERADORES
+from app.services.reformados import ultimo_reformado
 
 log = logging.getLogger(__name__)
 
@@ -108,6 +110,13 @@ def evaluar_requisitos(solicitud: Any, variables: dict) -> dict:
 
     El resultado es siempre permisivo en caso de error (todos_cubiertos=True)
     para no bloquear la tramitación por un fallo técnico (#347).
+
+    ADR-044 §E bis (R4 #899): un requisito puede tener más de una vinculación
+    —una por versión, ver DocumentoRequisito.reformado_id—. Se prefiere la de
+    la versión vigente del expediente; si no la hay, se cae a la de la
+    versión inicial (reformado_id NULL), que sigue contando como cobertura
+    mientras no se pida una complementaria (mismo criterio que
+    variables/calculado.py::tasa_impagada).
     """
     try:
         todos_requisitos = (
@@ -120,21 +129,26 @@ def evaluar_requisitos(solicitud: Any, variables: dict) -> dict:
         log.warning('requisitos: tabla requisitos_documentales no disponible')
         return _RESULTADO_DEGRADADO
 
-    # Índice de vinculaciones ya hechas para esta solicitud: requisito_id → DocumentoRequisito
+    # Índice de vinculaciones ya hechas para esta solicitud: requisito_id → [DocumentoRequisito]
     try:
-        vinculaciones = {
-            dr.requisito_id: dr
-            for dr in DocumentoRequisito.query.filter_by(solicitud_id=solicitud.id).all()
-        }
+        vinculaciones_por_requisito: dict[int, list] = defaultdict(list)
+        for dr in DocumentoRequisito.query.filter_by(solicitud_id=solicitud.id).all():
+            vinculaciones_por_requisito[dr.requisito_id].append(dr)
     except (OperationalError, ProgrammingError):
         log.warning('requisitos: tabla documentos_requisito no disponible')
         return _RESULTADO_DEGRADADO
+
+    version_vigente = ultimo_reformado(solicitud.expediente_id) if solicitud.expediente_id else None
+    id_version_vigente = version_vigente.id if version_vigente else None
 
     items = []
     for req in todos_requisitos:
         if not _requisito_aplica(req, variables):
             continue
-        vinculo = vinculaciones.get(req.id)
+        filas = vinculaciones_por_requisito.get(req.id, [])
+        vinculo = next((dr for dr in filas if dr.reformado_id == id_version_vigente), None)
+        if vinculo is None:
+            vinculo = next((dr for dr in filas if dr.reformado_id is None), None)
         items.append({
             'requisito': req,
             'cubierto':  vinculo is not None,
