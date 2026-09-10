@@ -39,7 +39,11 @@ class DevelopmentConfig(Config):
     """Desarrollo"""
     DEBUG = True
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL')
-    SQLALCHEMY_ECHO = True
+    # #909: con el eco activo, scripts/flask_console.py puede bloquear el propio
+    # proceso Flask por backpressure del pipe (ver ANALISIS_ESCALABILIDAD.md §6.1).
+    # Variable de entorno para poder desactivarlo sin tocar código; default 'true'
+    # para no cambiar el comportamiento de quien arranca run.py fuera de la GUI.
+    SQLALCHEMY_ECHO = os.environ.get('SQLALCHEMY_ECHO', 'true').lower() != 'false'
 
 class ProductionConfig(Config):
     """Producción"""
