@@ -330,21 +330,43 @@ def _secciones_del_informe(informe, Paragraph, Spacer, cm,
     if informe is None:
         return []
 
-    bloque_relato = []
+    # Agrupación por versión (ADR-044 §H): cada bloque de fase ya trae su
+    # ambito (qué versión cubre, ver informe_instruccion._ambito_fase); el
+    # bloque propio de la solicitud y los del motor no tienen ambito (None) y
+    # se relatan sueltos, en su posición. Un ambito agrupa aunque sus fases no
+    # sean contiguas en el árbol: `orden` marca la posición de salida la
+    # primera vez que aparece, y `grupos` recoge todo lo suyo venga de donde
+    # venga. Con una sola versión (sin reformados, el caso normal) no se
+    # agrupa nada — el relato sigue tan llano como siempre.
+    grupos: dict = {}
+    orden: list = []
     for bloque in informe.bloques:
-        bloque_relato.extend(bloque.relato)
+        if bloque.ambito is None:
+            orden.extend(('suelto', p) for p in bloque.relato)
+        else:
+            if bloque.ambito not in grupos:
+                grupos[bloque.ambito] = []
+                orden.append(('grupo', bloque.ambito))
+            grupos[bloque.ambito].extend(bloque.relato)
 
     salvados = []
     for bloque in informe.salvados:
         salvados.extend(bloque.salvado)
 
     secciones = []
-    if bloque_relato:
+    if orden:
         secciones += [
             Spacer(1, 0.5 * cm),
             Paragraph('Instrucción practicada', estilo_subtitulo),
         ]
-        secciones += [Paragraph(p, estilo_normal) for p in bloque_relato]
+        agrupar = len(grupos) > 1
+        for tipo, valor in orden:
+            if tipo == 'suelto':
+                secciones.append(Paragraph(valor, estilo_normal))
+            else:
+                if agrupar:
+                    secciones.append(Paragraph(f'Sobre {valor}:', estilo_normal))
+                secciones += [Paragraph(p, estilo_normal) for p in grupos[valor]]
 
     if salvados:
         secciones += [
