@@ -37,7 +37,7 @@ from app.models.fases import Fase
 from app.models.tramites import Tramite
 from app.models.tareas import Tarea
 from app.models.organismos_expediente import OrganismoExpediente
-from app.services.arbol_expediente import plazo_tarea
+from app.services.arbol_expediente import ID_VERSION_INICIAL_BASE, plazo_tarea
 
 log = logging.getLogger(__name__)
 
@@ -66,6 +66,8 @@ def detalle_de_nodo(expediente, tipo_nodo: str, nodo_id: int) -> dict:
             return _detalle_tarea(expediente, nodo_id)
         if tipo_nodo == 'organismo':
             return _detalle_organismo(expediente, nodo_id)
+        if tipo_nodo == 'version':
+            return _detalle_version(expediente, nodo_id)
     except (OperationalError, ProgrammingError) as exc:
         log.warning('detalle_nodo: catálogo no disponible — %s', exc)
         return {'nodo': {'tipo': tipo_nodo, 'id': nodo_id},
@@ -215,6 +217,10 @@ def _ref_tarea(exp, ta) -> str:
 def _ref_organismo(exp, oe) -> str:
     nombre = (oe.organismo.nombre_completo if oe.organismo else None) or 'Organismo'
     return f'{_ref_fase(exp, oe.fase)} · {nombre}'
+
+
+def _ref_version(exp, sol, etiqueta: str) -> str:
+    return f'{_ref_solicitud(exp, sol)} · {etiqueta}' if sol else etiqueta
 
 
 # ---------------------------------------------------------------------------
@@ -449,6 +455,53 @@ def _detalle_organismo(exp, oe_id: int) -> dict:
         'documentos': documentos,
         'plazo': None,
         'referencia': _ref_organismo(exp, oe),
+    }
+
+
+def _detalle_version(exp, nodo_id: int) -> dict:
+    """Detalle del nodo sintético 'version' (ADR-044 §G, R3 #895): el documento
+    que abre la versión, su origen si es reformado, y las fases que cubre.
+
+    `nodo_id` < `ID_VERSION_INICIAL_BASE` es el id real de un ReformadoProyecto;
+    por encima codifica la versión inicial de la solicitud
+    `nodo_id - ID_VERSION_INICIAL_BASE` (sin fila propia — ver
+    arbol_expediente._serializar_versiones, que fija el mismo esquema).
+    """
+    from app.models.reformados_proyecto import ReformadoProyecto
+
+    if nodo_id >= ID_VERSION_INICIAL_BASE:
+        sol = Solicitud.query.get(nodo_id - ID_VERSION_INICIAL_BASE)
+        if sol is None or sol.expediente_id != exp.id:
+            raise ValueError(f'Versión inicial {nodo_id} no encontrada en el expediente {exp.id}')
+
+        fases = [f for f in sol.fases if f.reformado_id is None]
+        proyecto = exp.proyecto
+        doc_ancla = proyecto.documento_principal if proyecto else None
+        etiqueta = (f'PROYECTO de fecha {_fecha(doc_ancla.fecha_administrativa)}'
+                    if doc_ancla and doc_ancla.fecha_administrativa else 'PROYECTO')
+        campos = _campos(_campo('Nº de fases que cubre', len(fases)))
+        documentos = [_serializar_documento(exp.id, doc_ancla, 'CONSUMIDO')] if doc_ancla else []
+    else:
+        reformado = ReformadoProyecto.query.get(nodo_id)
+        if reformado is None or reformado.documento.expediente_id != exp.id:
+            raise ValueError(f'Versión {nodo_id} no encontrada en el expediente {exp.id}')
+
+        fases = list(reformado.fases_cubiertas)
+        sol = fases[0].solicitud if fases else None
+        etiqueta = str(reformado)
+        campos = _campos(
+            _campo('Origen', 'Voluntario (art. 76.1 LPACAP)' if reformado.origen == 'VOLUNTARIO'
+                   else 'Requerido por la Administración (art. 68.3 LPACAP)'),
+            _campo('Nº de fases que cubre', len(fases)),
+        )
+        documentos = [_serializar_documento(exp.id, reformado.documento, 'CONSUMIDO')]
+
+    return {
+        'nodo': {'tipo': 'version', 'id': nodo_id},
+        'campos': campos,
+        'documentos': documentos,
+        'plazo': None,
+        'referencia': _ref_version(exp, sol, etiqueta),
     }
 
 

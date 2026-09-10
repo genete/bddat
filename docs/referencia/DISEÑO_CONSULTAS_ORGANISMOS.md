@@ -322,10 +322,16 @@ la Información Pública. No es un caso raro.
 
 Consecuencias asumidas:
 
-- **Más de una fase CONSULTAS por solicitud.** Ya está permitido: `crear_fase` no comprueba
-  duplicidad de tipo, `tipos_creables` lista todos los tipos y ninguna regla lo impide. Se añade una
-  regla de motor con efecto **ADVERTIR** (#396) para que la segunda ronda sea consciente y quede en
-  bitácora, no para bloquearla.
+- **Más de una fase CONSULTAS por solicitud, condicionada a un modificado de proyecto.** Hasta R3
+  (ADR-044, #895) esto estaba permitido sin más: `crear_fase` no comprobaba duplicidad de tipo,
+  `tipos_creables` lista todos los tipos y ninguna regla lo impedía. Desde R3, la regla genérica de
+  §F (`BLOQUEAR CREAR ANY/ANY/ANY` sobre `version_ya_cubierta`) bloquea la segunda ronda **mientras
+  no exista un reformado de proyecto que la justifique**: `crear_fase` engancha la fase nueva a la
+  versión vigente del proyecto, y repetir un tipo dentro de la misma versión ya cubierta dispara el
+  bloqueo (con su escape genérico si el caso es de verdad extraordinario). Con reformado declarado,
+  la segunda ronda cae en una versión distinta y la regla no dispara — ahí sigue viva la de efecto
+  **ADVERTIR** (#396) para que quede constancia en bitácora, ya no como sustituto del bloqueo sino
+  como aviso específico de las separatas.
 - **La ronda es la fase.** `organismos_expediente.fase_id` (§2) es lo que hace que cada ronda tenga
   sus propios registros de organismo.
 - **Certificado.** `cert_fin_ip_consultas._buscar_existente()` busca por expediente + tipo de

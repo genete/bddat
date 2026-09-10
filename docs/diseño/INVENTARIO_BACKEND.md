@@ -15,7 +15,7 @@
 |---|---|---|---|
 | Expediente | `expedientes` | Raíz administrativa única por instalación | `responsable_id`→usuarios, `tipo_expediente_id`, `proyecto_id` (1:1), `titular_id`→entidades |
 | Solicitud | `solicitudes` | Acto administrativo individual (AAP, AAC, DUP, AE…) | `expediente_id`, `entidad_id`, `tipo_solicitud_id`, `solicitud_afectada_id`, `documento_solicitud_id` |
-| Fase | `fases` | Contenedor temporal de trámites con resultado | `solicitud_id`, `tipo_fase_id`, `resultado_fase_id`, `documento_resultado_id` |
+| Fase | `fases` | Contenedor temporal de trámites con resultado | `solicitud_id`, `tipo_fase_id`, `resultado_fase_id`, `documento_resultado_id`, `reformado_id` (versión del proyecto que cubre la fase, ADR-044 §E, #895) |
 | Tramite | `tramites` | Contenedor organizativo de tareas | `fase_id`, `tipo_tramite_id` |
 | Tarea | `tareas` | Unidad de trabajo con entrada/salida documental | `tramite_id`, `tipo_tarea_id` |
 | DocumentoTarea | `documentos_tarea` | Vínculo N:M tarea↔documento con `rol`=CONSUMIDO/PRODUCIDO (ADR-010) | `tarea_id`, `documento_id` |
@@ -186,7 +186,7 @@ Decorador `@variable('nombre')` en módulos `dato.py`, `calculado.py`, `plazo.py
 
 Variables registradas actualmente:
 - **dato** (3): `sin_linea_aerea`, `max_tension_nominal_kv`, `solo_suelo_urbano_urbanizable`. Lectura directa de campos del Proyecto.
-- **calculado** (15+): `fase_ip_finalizada`, `tramite_publicar_existe`, `existe_fase_finalizadora_cerrada`, `tiene_solicitud_aap_favorable`, `tipo_sujeto_solicitado`, `tipo_solicitud`, `es_solicitud_aac_pura`, `tramite_analisis_con_deficiencias`, `tramite_requerimiento_sin_respuesta`, `organismos_todos_terminados`, `organismo_supera_iteraciones`, `tipo_expediente`, `es_expediente_produccion`, `tiene_aac_resuelta_favorable`, `traslado_organismo_titular_vencido`.
+- **calculado** (15+): `fase_ip_finalizada`, `tramite_publicar_existe`, `existe_fase_finalizadora_cerrada`, `tiene_solicitud_aap_favorable`, `tipo_sujeto_solicitado`, `tipo_solicitud`, `es_solicitud_aac_pura`, `tramite_analisis_con_deficiencias`, `tramite_requerimiento_sin_respuesta`, `organismos_todos_terminados`, `organismo_supera_iteraciones`, `tipo_expediente`, `es_expediente_produccion`, `tiene_aac_resuelta_favorable`, `traslado_organismo_titular_vencido`, `version_ya_cubierta` (§F, #895).
 - **plazo**: variables `estado_plazo` y `efecto_plazo` consumidas por reglas del motor — calculadas por `obtener_estado_plazo` y enlazadas al ciclo de vida del expediente.
 
 ### 3.5 Invariantes ESFTT (`services/invariantes_esftt.py`)

@@ -152,6 +152,28 @@ def declarar_desde_metadatos(documento, metadatos: dict, *, usuario_id: int):
     return declarar_reformado(documento, origen, usuario_id=usuario_id)
 
 
+def motivo_fases_enganchadas(reformado) -> Optional[str]:
+    """Por qué no se puede deshacer `reformado` si ya tiene fases en su versión
+    (ADR-044 §F/§Issues R3, #895), o None si puede deshacerse por este motivo.
+
+    Compartido por `revertir_reformado` (el guardián real, antes del ORM) y la
+    guarda del pool (`app/modules/expedientes/routes.py`): mismo defecto de
+    mensaje que arregló #838, mismo arreglo — explicar el motivo antes de que
+    el borrado del documento arrastre el corte en CASCADE y choque con el
+    `ON DELETE RESTRICT` de `fases.reformado_id` en forma de `IntegrityError`.
+    """
+    fases = sorted(reformado.fases_cubiertas, key=lambda f: f.id)
+    if not fases:
+        return None
+    nombres = ', '.join(
+        f'{f.tipo_fase.nombre if f.tipo_fase else "Fase"} (#{f.id})' for f in fases
+    )
+    return (
+        f'No se puede deshacer este reformado: su versión ya tiene fases creadas '
+        f'({nombres}). Elimínelas antes de retirar el corte.'
+    )
+
+
 def revertir_reformado(documento, *, usuario_id: int) -> None:
     """Retira el corte que abre `documento`, si es el último (sin commit).
 
@@ -159,6 +181,10 @@ def revertir_reformado(documento, *, usuario_id: int) -> None:
     ingesta y muere por el mismo control, desmarcándolo. Solo alcanza al último
     porque quitar uno intermedio fundiría dos tramos y dejaría a las fases de la
     versión desaparecida apuntando a nada (ADR-044 §C).
+
+    Niega también si el corte tiene fases enganchadas a su versión (R3, #895):
+    sin este check, `db.session.delete(reformado)` chocaría con el
+    `ON DELETE RESTRICT` de `fases.reformado_id` en un `IntegrityError` crudo.
     """
     reformado = documento.reformado_proyecto
     if reformado is None:
@@ -170,6 +196,10 @@ def revertir_reformado(documento, *, usuario_id: int) -> None:
             'Solo se puede deshacer el último reformado del expediente. Este tiene '
             'versiones posteriores: deshágalas primero, en orden inverso.'
         )
+
+    motivo = motivo_fases_enganchadas(reformado)
+    if motivo is not None:
+        raise ValueError(motivo)
 
     # Antes del delete: después no hay id que anotar.
     bitacora_svc.registrar(

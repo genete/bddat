@@ -1,11 +1,11 @@
 # ADR-044 — Reformados de proyecto: la versión como eje de la instrucción
 
-**Estado:** Adoptada — R1 y R2 implementados (#885, #887); R3-R6 pendientes (ver §Issues)
+**Estado:** Adoptada — R1, R2 y R3 implementados (#885, #887, #895); R4-R6 pendientes (ver §Issues)
 **Fecha:** 2026-09-08
 **Depende de:** ADR-011 (vinculación trámites↔organismos) · ADR-016 (vista de árbol) · ADR-032 (ingesta y almacenamiento) · ADR-036 (sellado de fase cerrada) · ADR-041 §D bis (anclas documentales) · ADR-042 (sub-procesos de cardinalidad variable) · ADR-043 (certificado de fin de instrucción)
 **Enmienda:** ADR-016 §1 (modelo de niveles del árbol) · ADR-043 §E (el registry por tipo de fase deja de ser necesario para el ámbito)
 **Origen:** sesiones de análisis del 2026-09-07 y 2026-09-08. Análisis completo, con el barrido fase a fase y las alternativas descartadas, en `docs/referencia/ANALISIS_REFORMADOS_PROYECTO.md`.
-**Issues:** #819 (la decisión que este ADR cierra) · #864 (desbloqueado por §F) · #885 (R1) · #887 (R2)
+**Issues:** #819 (la decisión que este ADR cierra) · #864 (desbloqueado por §F) · #885 (R1) · #887 (R2) · #895 (R3)
 
 ---
 
@@ -298,8 +298,9 @@ acierta; `organismos_expediente` se queda como está; el árbol no cambia de top
 
 ## Issues de implementación
 
-Cuatro issues nuevos, encadenados, más tres que ya viven fuera. **R1 y R2 hechos; R3-R6
-pendientes de crear.** Bajo cada uno, lo que la implementación corrigió de lo escrito aquí.
+Cuatro issues nuevos, encadenados, más tres que ya viven fuera. **R1, R2 y R3 hechos (#885, #887,
+#895); R4-R6 pendientes de crear.** Bajo cada uno, lo que la implementación corrigió de lo
+escrito aquí.
 
 ### R1 — `reformados_proyecto` y la retirada de `documentos_proyecto`
 
@@ -358,6 +359,37 @@ motor de §F con su variable; verificación sobre el expediente-tipo.
 
 **Depende de:** R1.
 **Desbloquea:** #864, que puede implementarse en este issue o inmediatamente después.
+
+**Hecho — #895.** Lo que el issue fijó y aquí quedaba abierto, más lo que la implementación
+corrigió o añadió sobre lo escrito en los dos:
+
+- **`reformado_id` lo rellena `crear_fase` con la versión vigente**, no el técnico: preguntarlo
+  sería la columna `produce_edicion` que este ADR descartó, con su oportunidad de contradecirse.
+- **`ON DELETE RESTRICT` en la FK**, con `passive_deletes=True` en el backref para que sea la BD
+  quien lo aplique de verdad y no el ORM anulando la FK en silencio (con `SET NULL` la cascada del
+  corte, #885, devolvería sus fases a la versión inicial sin que nadie se enterase).
+  `revertir_reformado` niega antes de llegar a la FK si hay fases enganchadas, y la guarda del pool
+  reutiliza el mismo motivo (`motivo_fases_enganchadas`) — mismo defecto de mensaje que arregló #838.
+- **Corrección: `camino_casa` NO distingue crear fase de crear trámite por longitud.** El issue daba
+  por hecho que el dict de `crear_tramite` compila cuatro segmentos («crear trámite compila cuatro,
+  crear solicitud dos») y que por eso la regla de §F no le alcanzaba. En realidad compila **tres**,
+  igual que crear fase: `ExpedienteContext.solicitud` no deriva la solicitud desde la clave `'fase'`
+  de un dict, solo lee `'solicitud'` — ausente en el dict de `crear_tramite`. La regla sí **casa**
+  por sujeto en ambos casos; quien de verdad protege la creación de trámites es la propia variable
+  `version_ya_cubierta` (`ctx.fase is None`), verificado con test dedicado
+  (`test_no_dispara_al_crear_tramite`).
+  #864 se implementa **en su propio issue**, después: R3 solo le entrega la variable formulable.
+- **El id del nodo de la versión inicial no es el `0` fijo que proponía el issue.** Un expediente con
+  varias solicitudes puede tener varias versiones iniciales a la vez en el mismo árbol, y ReactFlow
+  exige ids únicos en todo el lienzo, no solo bajo el mismo padre — se usa
+  `ID_VERSION_INICIAL_BASE + solicitud_id`.
+- **Dos piezas de frontend fuera del alcance que fijó el issue, necesarias igualmente:**
+  `puedeEditarNodo`/`puedeCrearHijoDe` (`shared/auth.js`) ganan rama `version` explícita — sin ella
+  heredan el `true` por defecto que comparten solicitud/fase/trámite, y doble-clic o el menú
+  contextual intentarían editar o crear hijos de un tipo de nodo sin esquema de edición.
+  `Inspector.jsx` mantiene su propio árbol de dominio (`buscarNodo`, independiente del payload de
+  `detalle_nodo.py`) y necesita su propia rama `version` para pintar semáforo y título en la
+  cabecera — sin ella el nodo se selecciona pero la cabecera degrada a «—».
 
 ### R4 — Las coberturas del análisis por versión
 

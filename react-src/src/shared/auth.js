@@ -54,6 +54,10 @@ export function puedeEditarNodo(tipo) {
   // organismo (ADR-042, #396): mismo criterio que solicitud/fase/trámite — el
   // editor genérico ya sabe pintar sus campos (esquema_editable._esquema_organismo).
   if (tipo === 'organismo') return tienePermiso('gestionar_estructura_expediente')
+  // version (ADR-044 §G, #895): nodo sintético puramente informativo — no hay
+  // esquema_editable para él ni nada que editar (el enganche a la versión lo
+  // decide crear_fase, no el técnico).
+  if (tipo === 'version') return false
   return tienePermiso('gestionar_estructura_expediente')  // solicitud / fase / tramite
 }
 
@@ -66,5 +70,8 @@ export function puedeCrearHijoDe(tipoPadre) {
   // devolvería 404. Explícito en false para no ofrecer un "Crear hijo" que no
   // lleva a nada hasta que #652 lo cierre.
   if (tipoPadre === 'organismo') return false
+  // version (ADR-044 §G, #895): las fases se crean bajo la solicitud, nunca bajo
+  // el grupo de versión — el enganche es automático (crear_fase, versión vigente).
+  if (tipoPadre === 'version') return false
   return tienePermiso('gestionar_estructura_expediente')
 }

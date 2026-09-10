@@ -21,6 +21,7 @@ import NotificarEditor from './NotificarEditor.jsx'
 const ETIQUETA_TIPO = {
   expediente: 'Expediente',
   solicitud:  'Solicitud',
+  version:    'Versión',
   fase:       'Fase',
   tramite:    'Trámite',
   organismo:  'Organismo',
@@ -49,6 +50,9 @@ function buscarNodo(arbol, sel) {
   if (sel.tipo === 'expediente') return arbol.expediente
   for (const sol of arbol.solicitudes || []) {
     if (sel.tipo === 'solicitud' && sol.id === sel.id) return sol
+    for (const version of sol.versiones || []) {
+      if (sel.tipo === 'version' && version.id === sel.id) return version
+    }
     for (const fase of sol.fases || []) {
       if (sel.tipo === 'fase' && fase.id === sel.id) return fase
       for (const tr of fase.tramites || []) {
@@ -94,6 +98,7 @@ function tituloNodo(tipo, nodo) {
   if (!nodo) return ''
   if (tipo === 'expediente') return nodo.codigo || ''
   if (tipo === 'solicitud') return [nodo.siglas, nodo.descripcion].filter(Boolean).join(' — ')
+  if (tipo === 'version') return nodo.etiqueta || ''
   return nodo.nombre || nodo.abrev || nodo.tipo_codigo || ''
 }
 

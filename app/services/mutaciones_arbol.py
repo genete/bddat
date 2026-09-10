@@ -50,6 +50,7 @@ from app.services.parser_justificante_notifica import (
 )
 from app.services.codigo_seguimiento import extraer_tarea_id
 from app.services.extraccion_texto_documento import extraer_texto
+from app.services.reformados import ultimo_reformado
 
 log = logging.getLogger(__name__)
 
@@ -441,6 +442,13 @@ def crear_fase(solicitud, tipo_fase, *, justificacion: Optional[str] = None) -> 
     `check_invariante` en absoluto —el sellado de ADR-036 no le aplica, porque una
     fase no cuelga de otra fase— y era el único `crear_*` sin ninguna precondición
     estructural.
+
+    La fase nace enganchada a la versión vigente del proyecto (ADR-044 §E, R3 #895):
+    el último reformado del expediente en este momento, o NULL si no hay ninguno.
+    Lo decide el sistema, no el técnico —preguntarlo sería la columna `produce_edicion`
+    que el ADR descartó—, y es lo que hace funcionar la regla de §F sin preguntar dos
+    veces lo mismo: sin reformado nuevo la fase cae en la versión ya cubierta y se
+    bloquea.
     """
     res_inv_crear = check_invariante('CREAR', 'FASE', solicitud.id,
                                      tipo_codigo=tipo_fase.codigo)
@@ -456,7 +464,9 @@ def crear_fase(solicitud, tipo_fase, *, justificacion: Optional[str] = None) -> 
     else:
         res_eval = PERMITIDO
 
-    fase = Fase(solicitud_id=solicitud.id, tipo_fase_id=tipo_fase.id)
+    version_vigente = ultimo_reformado(expediente.id)
+    fase = Fase(solicitud_id=solicitud.id, tipo_fase_id=tipo_fase.id,
+               reformado_id=version_vigente.id if version_vigente else None)
     db.session.add(fase)
     db.session.flush()
 

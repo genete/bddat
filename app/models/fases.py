@@ -34,6 +34,17 @@ class Fase(db.Model):
         - Su presencia define que la fase está FINALIZADA
         - La transición NULL→NOT NULL está sujeta a validación por motor de reglas
 
+    CAMPO REFORMADO_ID (ADR-044 §E, R3 #895):
+        - NULLABLE: NULL significa versión inicial del proyecto (la anterior al
+          primer reformado). No hay backfill — no hay filas retroactivas que adivinar.
+        - FK a REFORMADOS_PROYECTO, ON DELETE RESTRICT: el corte no puede borrarse
+          mientras una fase cuelgue de él (con SET NULL la fase volvería en silencio
+          a la versión inicial). `passive_deletes=True` en el backref para que sea
+          la BD quien lo impida, no el ORM anulando la FK antes de borrar.
+        - Lo rellena `crear_fase` con la versión vigente del expediente en ese
+          momento (`ultimo_reformado`), nunca el técnico: preguntarlo sería la
+          columna `produce_edicion` que el ADR descartó.
+
     ESTADOS DEDUCIBLES (properties, no columna):
         - PLANIFICADA: len(tramites) == 0
         - EN_CURSO: tramites presentes, no todos finalizados, sin documento de resultado
@@ -45,6 +56,7 @@ class Fase(db.Model):
         - tipo_fase → TIPOS_FASES.id (FK, definición de la fase)
         - resultado_fase → TIPOS_RESULTADOS_FASES.id (FK, resultado)
         - documento_resultado → DOCUMENTOS.id (FK, documento formalizador)
+        - reformado → REFORMADOS_PROYECTO.id (FK RESTRICT, versión que cubre la fase)
         - tramites ← TRAMITES.fase_id (trámites de esta fase)
 
     REGLAS DE NEGOCIO:
@@ -57,6 +69,7 @@ class Fase(db.Model):
         db.Index('idx_fases_solicitud', 'solicitud_id'),
         db.Index('idx_fases_tipo', 'tipo_fase_id'),
         db.Index('idx_fases_resultado', 'resultado_fase_id'),
+        db.Index('idx_fases_reformado', 'reformado_id'),
         {'schema': 'public'}
     )
     
@@ -94,7 +107,15 @@ class Fase(db.Model):
         nullable=True,
         comment='FK a DOCUMENTOS. Documento oficial que formaliza el resultado'
     )
-    
+
+    reformado_id = db.Column(
+        db.Integer,
+        db.ForeignKey('public.reformados_proyecto.id', ondelete='RESTRICT'),
+        nullable=True,
+        comment='FK a REFORMADOS_PROYECTO. Versión del proyecto que cubre la fase '
+                '(ADR-044 §E). NULL = versión inicial. La rellena crear_fase, no el técnico'
+    )
+
     observaciones = db.Column(
         db.String(2000),
         nullable=True,
@@ -106,7 +127,11 @@ class Fase(db.Model):
     tipo_fase = db.relationship('TipoFase', backref='fases_instanciadas')
     resultado_fase = db.relationship('TipoResultadoFase', backref='fases_con_resultado')
     documento_resultado = db.relationship('Documento', foreign_keys=[documento_resultado_id], backref='fases_resultado')
-    
+    reformado = db.relationship(
+        'ReformadoProyecto',
+        backref=db.backref('fases_cubiertas', passive_deletes=True),
+    )
+
     def __repr__(self):
         """Representación técnica para debugging."""
         return f'<Fase id={self.id} tipo={self.tipo_fase_id} solicitud={self.solicitud_id}>'

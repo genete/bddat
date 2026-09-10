@@ -661,3 +661,50 @@ def _(ctx) -> str | None:
     if proyecto is None or proyecto.ia is None:
         return None
     return proyecto.ia.siglas
+
+
+# ---------------------------------------------------------------------------
+# Variables reformados de proyecto (#895, ADR-044 §F)
+# ---------------------------------------------------------------------------
+
+@variable('version_ya_cubierta')
+def _(ctx) -> bool:
+    """
+    True si, en la solicitud en contexto, ya existe una fase del tipo que se
+    pretende crear con la misma versión (mismo `reformado_id`) que le tocaría a
+    la nueva.
+
+    Sostiene la regla genérica de §F: «se prohíbe crear una fase que cubra una
+    versión ya cubierta por otra fase del mismo tipo». Leída del derecho y del
+    revés es la misma frase: sin reformado nuevo, la versión vigente es la que
+    ya cubrió la primera fase de ese tipo → True (bloquea); con reformado, es
+    otra → False (permite).
+
+    Dos cautelas:
+
+    - Solo dispara cuando el contexto es **crear fase**: `ctx.fase is None`
+      (no hay fase ya existente en contexto) y `ctx.tipo_sujeto` presente (hay
+      un tipo de fase candidato). Con una fase existente en contexto (crear
+      trámite, auditar) devuelve False — el assembler calcula **todas** las
+      variables activas en cada evaluación, no solo las que interesan a la
+      regla que la usa.
+    - Compara la versión vigente calculada en el momento (`ultimo_reformado`),
+      no un valor guardado: editar la fecha administrativa de un documento
+      puede cambiar quién es el último reformado (#885).
+    """
+    from app.services.reformados import ultimo_reformado
+
+    solicitud = ctx.solicitud
+    if solicitud is None or ctx.fase is not None:
+        return False
+    tipo_fase = ctx.tipo_sujeto
+    if tipo_fase is None:
+        return False
+
+    version_vigente = ultimo_reformado(solicitud.expediente_id)
+    reformado_id_nueva = version_vigente.id if version_vigente else None
+
+    for fase in solicitud.fases:
+        if fase.tipo_fase_id == tipo_fase.id and fase.reformado_id == reformado_id_nueva:
+            return True
+    return False

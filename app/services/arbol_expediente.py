@@ -19,6 +19,7 @@ captura OperationalError / ProgrammingError y degrada sin propagar.
 from __future__ import annotations
 
 import logging
+from datetime import date
 from typing import Optional
 
 from sqlalchemy.exc import OperationalError, ProgrammingError
@@ -33,6 +34,7 @@ from app.models.documentos_tarea import DocumentoTarea
 from app.models.documentos import Documento
 from app.models.organismos_expediente import OrganismoExpediente
 from app.models.tramites_organismos import TramiteOrganismo
+from app.models.reformados_proyecto import ReformadoProyecto
 from app.services import estado_dominio as sem
 
 log = logging.getLogger(__name__)
@@ -76,6 +78,9 @@ def opciones_solicitud() -> list:
         joinedload(Solicitud.documento_solicitud),
         selectinload(Solicitud.fases).joinedload(Fase.tipo_fase),
         selectinload(Solicitud.fases).joinedload(Fase.resultado_fase),
+        # Versión que cubre la fase (ADR-044 §G, #895) — grupo sintético en el árbol.
+        selectinload(Solicitud.fases)
+        .joinedload(Fase.reformado).joinedload(ReformadoProyecto.documento),
         # Organismos consultados de la fase (ADR-042 §A) — grupo sintético en el árbol.
         selectinload(Solicitud.fases)
         .selectinload(Fase.organismos).joinedload(OrganismoExpediente.organismo),
@@ -284,7 +289,81 @@ def _serializar_solicitud(sol) -> dict:
         'semaforo': _semaforo(est, propio),
         'agregados': agg,
         'fases': fases_data,
+        'versiones': _serializar_versiones(sol, fases_data),
     }
+
+
+# Base del id convenido para el nodo sintético de la versión inicial (ADR-044 §G):
+# no tiene fila propia en reformados_proyecto, así que necesita un id para
+# claveDom (`${tipo}-${id}`) que no choque ni con un reformado real (id de tabla,
+# siempre mucho menor) ni entre solicitudes distintas del mismo expediente
+# (`<int:nodo_id>` en la ruta del inspector exige positivo — ver detalle_nodo.py).
+ID_VERSION_INICIAL_BASE = 900_000_000
+
+
+def _etiqueta_version(sol, reformado_id: Optional[int], fase_ejemplo) -> str:
+    """«PROYECTO de fecha __» / «PROYECTO» para la inicial, «REFORMADO DE
+    PROYECTO de fecha __» (ya la compone ReformadoProyecto.__str__) para el resto."""
+    if reformado_id is None:
+        proyecto = sol.expediente.proyecto if sol.expediente else None
+        doc_ancla = proyecto.documento_principal if proyecto else None
+        fecha = doc_ancla.fecha_administrativa if doc_ancla else None
+        return f'PROYECTO de fecha {fecha.strftime("%d/%m/%Y")}' if fecha else 'PROYECTO'
+    return str(fase_ejemplo.reformado)
+
+
+def _serializar_versiones(sol, fases_data: list[dict]) -> list[dict]:
+    """
+    Nodo sintético 'version' (ADR-044 §G): metafase virtual entre solicitud y
+    fase que agrupa, dentro de `sol.fases` (que se queda intacta), las fases
+    que cubre cada versión del proyecto. Payload ADITIVO — mismo patrón que
+    `_serializar_organismos_fase` (ADR-042 §A) un nivel más arriba.
+
+    Solo aparece cuando alguna fase de la solicitud ya cuelga de un reformado:
+    coste cero para las solicitudes que siguen enteras en la versión inicial,
+    como el grupo organismo lo es para las fases sin consulta.
+    """
+    if not any(fase.reformado_id is not None for fase in sol.fases):
+        return []
+
+    fases_por_id = {fd['id']: fd for fd in fases_data}
+    por_reformado: dict[Optional[int], list] = {}
+    for fase in sol.fases:
+        por_reformado.setdefault(fase.reformado_id, []).append(fase)
+
+    def _clave_orden(reformado_id):
+        if reformado_id is None:
+            return (0, 0)   # la versión inicial siempre primero
+        reformado = por_reformado[reformado_id][0].reformado
+        fecha = reformado.documento.fecha_administrativa if reformado and reformado.documento else None
+        return (1, fecha or date.max, reformado_id)
+
+    resultado = []
+    for reformado_id in sorted(por_reformado, key=_clave_orden):
+        fases_grupo = por_reformado[reformado_id]
+        grupo_data = [fases_por_id[f.id] for f in fases_grupo if f.id in fases_por_id]
+
+        agg = _agregados_vacios()
+        for fd in grupo_data:
+            _sumar_agregados(agg, fd['agregados'])
+
+        est, propio = sem.estado_version([fd['semaforo']['estado'] for fd in grupo_data])
+
+        # Id del nodo: el reformado real es una fila con id propio (único en toda
+        # la BD). La versión inicial no tiene fila, así que usa ID_VERSION_INICIAL_BASE
+        # + sol.id en vez de un `0` fijo: un expediente con varias solicitudes puede
+        # tener varias versiones iniciales a la vez (una por solicitud) en el mismo
+        # árbol, y ReactFlow exige ids únicos en todo el lienzo, no solo bajo el
+        # mismo padre.
+        resultado.append({
+            'tipo': 'version',
+            'id': reformado_id if reformado_id is not None else ID_VERSION_INICIAL_BASE + sol.id,
+            'etiqueta': _etiqueta_version(sol, reformado_id, fases_grupo[0]),
+            'semaforo': _semaforo(est, propio),
+            'agregados': agg,
+            'fase_ids': [fd['id'] for fd in grupo_data],
+        })
+    return resultado
 
 
 def _serializar_fase(fase) -> dict:
