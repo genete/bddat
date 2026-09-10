@@ -48,6 +48,7 @@ from app.services.reformados import (
     anclar_principal,
     declarar_desde_metadatos,
     es_doc_proyecto,
+    motivo_fases_enganchadas,
     rama_de_la_ingesta,
     revertir_reformado,
     sincronizar_principal,
@@ -542,6 +543,11 @@ def _motivo_ancla(doc):
     documento, sino qué gesto lo suelta.
     """
     if doc.reformado_proyecto is not None:
+        # Mismo motivo que niega revertir_reformado (R3, #895): si ya lo tiene, decirlo
+        # aquí evita mandar al usuario a un gesto que va a fallar igual al intentarlo.
+        motivo_fases = motivo_fases_enganchadas(doc.reformado_proyecto)
+        if motivo_fases is not None:
+            return motivo_fases
         return (
             'Este documento abre un reformado de proyecto: mientras conste, el '
             'proyecto tiene una versión más. Para retirarlo, desmarque «Produce un '
