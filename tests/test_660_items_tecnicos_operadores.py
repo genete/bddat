@@ -37,9 +37,10 @@ def _item(condiciones=None, orden=1, item_id=1):
     return i
 
 
-def _solicitud(sol_id=1):
+def _solicitud(sol_id=1, expediente_id=1):
     s = MagicMock()
     s.id = sol_id
+    s.expediente_id = expediente_id
     return s
 
 
@@ -57,7 +58,8 @@ def _run(operador, valor_ref, valor_var, nombre_var='tension_nominal_kv'):
     mock_cob_q.filter_by.return_value.all.return_value = []
 
     with patch('app.services.items_tecnicos.ItemTecnico') as MI, \
-         patch('app.services.items_tecnicos.CoberturaItemTecnico') as MC:
+         patch('app.services.items_tecnicos.CoberturaItemTecnico') as MC, \
+         patch('app.services.items_tecnicos.ultimo_reformado', return_value=None):
         MI.query = mock_item_q
         MC.query = mock_cob_q
         return evaluar_items_tecnicos(solicitud, {nombre_var: valor_var})
