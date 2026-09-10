@@ -224,6 +224,18 @@ def estado_organismo(oe, estados_tramites: list[str]) -> tuple[str, bool]:
     return (mayor_prioridad(estados_tramites), False)
 
 
+# ---------------------------------------------------------------------------
+# Nivel sintético: version (ADR-044 §G, #895) — metafase virtual entre solicitud
+# y fase que agrupa las fases que cubre cada versión del proyecto (§F). Como
+# organismo, no es un nivel ESFTT: agregado puro de sus fases, sin resultado ni
+# estado propio — 'propio' siempre False, a diferencia de organismo (que sí
+# puede tener algo que decir por sí mismo cuando no hay trámites aún).
+# ---------------------------------------------------------------------------
+
+def estado_version(estados_fases: list[str]) -> tuple[str, bool]:
+    return (mayor_prioridad(estados_fases), False)
+
+
 def estado_fase(fase, estados_tramites: list[str]) -> tuple[str, bool]:
     if fase.planificada:                   # sin trámites aún
         return ('PENDIENTE_TRAMITAR', True)
