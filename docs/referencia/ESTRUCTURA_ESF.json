@@ -1,9 +1,9 @@
 {
   "metadata": {
-    "version": "2.2",
+    "version": "2.3",
     "descripcion": "Mapa Expediente-Solicitud-Fase (ESF) — derivado de ESTRUCTURA_ESF.md (fuente de verdad). En caso de discrepancia, prevalece el MD.",
     "principio": "S-dominante — la solicitud define el procedimiento; el tipo de expediente actúa como condición modificadora. Cuando el tipo de expediente altera sustancialmente el flujo se crean entradas separadas.",
-    "fecha_actualizacion": "2026-05-21",
+    "fecha_actualizacion": "2026-09-11",
     "ref_ftt": "docs/referencia/ESTRUCTURA_FTT.json",
     "ref_normativa": [
       "docs/referencia/NORMATIVA_MAPA_PROCEDIMENTAL.md",
@@ -208,6 +208,63 @@
           "fase": "RESOLUCION",
           "obligatoria": true,
           "base_legal": "RD 1955/2000 arts. 128, 131.7, 143"
+        }
+      ]
+    },
+
+    {
+      "_grupo": "Instrucción completa de nueva instalación",
+      "codigo": "AAP+DUP",
+      "nombre": "Tramitación conjunta AAP con declaración de utilidad pública (acto de DUP diferido)",
+      "tipos_solicitud": ["AAP+DUP"],
+      "tipos_expediente": ["Transporte", "Distribución", "Distribución cedida", "Renovable", "Convencional", "LineaDirecta"],
+      "nota": "Caso infrecuente en la práctica: casi siempre se pide AAP+AAC+DUP conjunta, o la DUP se pide sola/con AAC una vez la AAP ya está obtenida (AAC+DUP). Se completa igualmente porque el art. 143.2 RD 1955/2000 la admite como solicitud legítima.",
+      "secuencia_fases": [
+        {
+          "fase": "ANALISIS_SOLICITUD",
+          "obligatoria": true,
+          "base_legal": "LPACAP art. 68; RD 1955/2000 arts. 122-123, 143",
+          "nota_renovable": "Para tipo_expediente == Renovable: el tramite COMUNICACION_INICIO es obligatorio — la notificación de admisión a trámite acredita el Hito 1 del RD-ley 23/2020 (art. 1.2 in fine)."
+        },
+        {
+          "fase": "CONSULTA_MINISTERIO",
+          "obligatoria": false,
+          "condicion": "tipo_expediente == Transporte",
+          "base_legal": "RD 1955/2000 art. 114"
+        },
+        {
+          "fase": "COMPATIBILIDAD_AMBIENTAL",
+          "obligatoria": false,
+          "condicion": "proyecto.ia.siglas en [AAU, AAUS]",
+          "base_legal": "Decreto 356/2010; IC 1/2022 IV.3.3"
+        },
+        {
+          "fase": "CONSULTAS",
+          "obligatoria": false,
+          "base_legal": "RD 1955/2000 art. 127",
+          "nota": "Opcional (🔀); simultáneas a IP. Plazo: 30 días. La DUP no reduce el plazo de consultas."
+        },
+        {
+          "fase": "INFORMACION_PUBLICA",
+          "obligatoria": true,
+          "base_legal": "RD 1955/2000 art. 125; LSE art. 54",
+          "nota": "La DUP suprime la excepción de IP (Decreto 9/2011 DA 1ª). IP siempre obligatoria."
+        },
+        {
+          "fase": "FIGURA_AMBIENTAL_EXTERNA",
+          "obligatoria": false,
+          "condicion": "ia_tipo == externa"
+        },
+        {
+          "fase": "AAU_AAUS_INTEGRADA",
+          "obligatoria": false,
+          "condicion": "ia_tipo == integrada"
+        },
+        {
+          "fase": "RESOLUCION",
+          "obligatoria": true,
+          "base_legal": "RD 1955/2000 arts. 128, 143.2",
+          "nota": "La AAP se resuelve con normalidad. La parte de DUP no puede resolverse hasta que conste aprobado el proyecto de ejecución — AAC otorgada en solicitud posterior del mismo expediente, con fecha igual o anterior a la del acto de DUP (art. 143.2; doctrina Morata de Tajuña, ADR-045 §C). No prohibido, diferido: el acto de DUP queda a la espera de la AAC."
         }
       ]
     },

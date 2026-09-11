@@ -1,6 +1,6 @@
 # Estructura Expediente-Solicitud-Fase (ESF)
 
-**Versión:** 2.2 | **Fecha:** 2026-05-21
+**Versión:** 2.3 | **Fecha:** 2026-09-11
 
 Fuente de verdad de qué fases aplican a cada combinación (tipo_solicitud × tipo_expediente). El JSON `ESTRUCTURA_ESF.json` es derivado de este documento; en caso de discrepancia prevalece este MD.
 
@@ -145,6 +145,35 @@ Las fases referenciadas son las definidas en `ESTRUCTURA_FTT.json`. Las restricc
 ⁴ IP **siempre** obligatoria — la DUP suprime tanto la excepción del DL 26/2021 DF 4ª como la del Decreto 9/2011 DA 1ª.  
 ⁵ Solo si el instrumento ambiental se tramita externamente al procedimiento sustantivo.  
 ⁶ Solo si el instrumento ambiental se tramita integrado en el procedimiento sustantivo.
+
+---
+
+### `AAP+DUP` — Tramitación conjunta AAP con declaración de utilidad pública (acto de DUP diferido)
+
+🚫 **Autoconsumo / Otros:** misma razón que en `DUP` sola.
+
+*Caso infrecuente en la práctica: casi siempre se pide `AAP+AAC+DUP` conjunta, o la DUP se pide sola/con AAC una vez la AAP ya está obtenida (`AAC+DUP`). Se completa igualmente porque el art. 143.2 RD 1955/2000 la admite como solicitud legítima.*
+
+| Fase | Transp. | Distrib. | D.Ced. | Renov. | L.Dir. | Convenc. | Autocons. | Otros |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| `ANALISIS_SOLICITUD` | ✅ | ✅ | ✅ | ✅¹ | ✅ | ✅ | 🚫 | 🚫 |
+| `CONSULTA_MINISTERIO` | ✅ | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 |
+| `COMPATIBILIDAD_AMBIENTAL` | ⚠️² | ⚠️² | ⚠️² | ⚠️² | ⚠️² | ⚠️² | 🚫 | 🚫 |
+| `CONSULTAS` | 🔀³ | 🔀³ | 🔀³ | 🔀³ | 🔀³ | 🔀³ | 🚫 | 🚫 |
+| `INFORMACION_PUBLICA` | ✅⁴ | ✅⁴ | ✅⁴ | ✅⁴ | ✅⁴ | ✅⁴ | 🚫 | 🚫 |
+| `FIGURA_AMBIENTAL_EXTERNA` | ⚠️⁵ | ⚠️⁵ | ⚠️⁵ | ⚠️⁵ | ⚠️⁵ | ⚠️⁵ | 🚫 | 🚫 |
+| `AAU_AAUS_INTEGRADA` | ⚠️⁶ | ⚠️⁶ | ⚠️⁶ | ⚠️⁶ | ⚠️⁶ | ⚠️⁶ | 🚫 | 🚫 |
+| `CONSULTA_OPERADOR_SISTEMA` | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 |
+| `RECONOCIMIENTO_INTERESADO` | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 |
+| `RESOLUCION` | ✅⁷ | ✅⁷ | ✅⁷ | ✅⁷ | ✅⁷ | ✅⁷ | 🚫 | 🚫 |
+
+¹ Trámite `COMUNICACION_INICIO` obligatorio — acredita Hito 1 (RD-ley 23/2020 art. 1.2 in fine).  
+² Solo si `proyecto.ia.siglas ∈ {AAU, AAUS}`.  
+³ Simultáneas a IP; 30 días (art. 127 RD 1955/2000). La DUP no reduce el plazo de consultas.  
+⁴ IP **siempre** obligatoria — la DUP suprime tanto la excepción del DL 26/2021 DF 4ª como la del Decreto 9/2011 DA 1ª.  
+⁵ Solo si el instrumento ambiental se tramita externamente al procedimiento sustantivo.  
+⁶ Solo si el instrumento ambiental se tramita integrado en el procedimiento sustantivo.  
+⁷ **La AAP se resuelve con normalidad (art. 128). La parte de DUP no puede resolverse** hasta que conste aprobado el proyecto de ejecución — AAC otorgada en solicitud posterior del mismo expediente, con fecha igual o anterior a la del acto de DUP (art. 143.2 RD 1955/2000; doctrina Morata de Tajuña, ver ADR-045 §C). No es un caso prohibido, es un caso diferido: el acto de DUP queda a la espera.
 
 ---
 
