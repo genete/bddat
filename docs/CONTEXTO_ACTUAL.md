@@ -11,7 +11,7 @@
 
 **#909 (PR #910, mergeado 2026-09-10) — `flask_console.py` ya no puede bloquear el propio servidor Flask por el eco SQL.** Diagnosticado en la misma sesión: con `SQLALCHEMY_ECHO=True` (desarrollo), la consola Tkinter de `flask_console.py` lee stdout línea a línea e inserta cada una con parseo ANSI + autoscroll — si el volumen de eco supera lo que ese hilo consume, el pipe se llena y Flask se bloquea escribiendo (backpressure del SO). Medido: misma petición, ~400 ms con log a fichero vs. 3.650 ms con la consola real — nada que ver con el modo `debug`/reloader, ya descartado. Nuevo checkbox "Mostrar SQL en consola", desmarcado por defecto, que fija `SQLALCHEMY_ECHO` antes de lanzar `run.py`. El efecto general ya estaba anotado en `ANALISIS_ESCALABILIDAD.md` §6.1 para el panel del supervisor (#850); aquí se confirmó que aplica a cualquier pantalla.
 
-**Próximo:** por decidir en la próxima sesión — la cadena de ADR-044 queda cerrada y no hay nada encolado todavía.
+**Próximo:** el foco pasa a completar la fase DUP (ADR-045) en todos sus aspectos — tramitar una DUP, con o sin combinaciones, de principio a fin. Empezamos por **#911**. Cadena completa por orden de dependencia: #911+#893 → formalizar ADR-046 (doble acto, `RESOLUCION_DUP`) → #891, #892 → #801, #912 → #894; #431 en paralelo. Detalle de dependencias en ADR-045 y en `PRE-ADR-resolucion-doble-acto-dup.md`.
 
 ---
 
