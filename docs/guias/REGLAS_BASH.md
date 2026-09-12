@@ -22,6 +22,7 @@ ni el modo "accept edits". Evitarlos cambiando el patrón.
 | `cd with two or more directory arguments` | `cd ruta1 ruta2` — ocurre al partir una ruta por espacios o pasar dos argumentos accidentalmente | Un solo argumento; entrecomillar si hay espacios: `cd "/d/ruta con espacios"` |
 | `contains shell syntax that cannot be statically analyzed` | Bucle `while/for/until` en una sola línea con `;` como separador, **o** variable expandida dentro de patrón con comillas mixtas (`"...'$var'..."`) | `Write` el script completo a `docs_prueba/temp/script.sh` → `bash /d/BDDAT/docs_prueba/temp/script.sh` |
 | `Contains shell syntax (string) that cannot be statically analyzed` | `$()` dentro del valor de un flag de `gh` u otro comando: `gh ... --comment "$(cat fichero)"` | Separar: `gh issue comment N --body-file fichero` (añade el comentario) + `gh issue close N` (cierra sin comentario) |
+| `Contains shell syntax (simple_expansion) that cannot be statically analyzed` | Bucle `for VAR in ...; do ...; done` en una sola línea que expande `$VAR` dentro — el evaluador no analiza expansiones dentro de control de flujo, aunque no haya saltos de línea. **Cazado por el hook** desde ahora. | `Write` el bucle completo a `docs_prueba/temp/script.sh` → `bash /d/BDDAT/docs_prueba/temp/script.sh`; o, mejor, evitar el bucle y lanzar varias llamadas Bash/tool secuenciales (o en paralelo si son independientes) — para pocos elementos (p. ej. consultar 5-6 issues) es más simple y no dispara nada |
 | `contains ansi_c_string` | Sintaxis `$'\t'`, `$'\n'` u otras secuencias ANSI C en argumentos Bash | Usar Python para procesar JSON/TSV: `Write` script → `python script.py`; o reformular sin `$'...'` |
 | `Glob patterns are not allowed in write operations. Please specify an exact file path.` | Comodín `*` en la ruta de un comando clasificado como escritura — típicamente **`sed -n '10,40p' docs/decisiones/ADR-033*.md`** (`sed` se evalúa como escritura por su `-i` potencial, aunque solo se lea) | Nunca pasar globs a `sed`. Para **leer** un rango de líneas usar la tool `Read` (`offset`/`limit`); si hace falta el nombre exacto, resolverlo antes con la tool `Glob` y pasar la ruta literal |
 
@@ -61,6 +62,7 @@ Esta ruta está en la allowlist del proyecto (`always allow access`).
 - **`grep 'pat1\|pat2'`:** usar `grep -E 'pat1|pat2'` (ERE sin barra) o `-e pat1 -e pat2`
 - **Leer un rango de líneas de un fichero:** usar la tool `Read` con `offset`/`limit`, NUNCA `sed -n 'A,Bp' fichero` (y menos con glob en la ruta)
 - **Comodines `*` en rutas:** solo en comandos de lectura pura (`grep`, `ls`); para el resto, resolver antes con la tool `Glob` y pasar la ruta exacta
+- **Bucle `for`/`while`/`until` en una sola línea (`; do ... ; done`):** bloqueado aunque no haya saltos de línea (`simple_expansion` no analizable). Para pocos elementos, evitar el bucle y lanzar varias llamadas Bash/tool en su lugar; si hace falta de verdad, `Write` a `docs_prueba/temp/script.sh` → `bash script.sh`
 
 ---
 
