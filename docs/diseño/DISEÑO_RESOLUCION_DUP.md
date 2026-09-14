@@ -5,7 +5,7 @@
 > se revisa cuando cambie un detalle de catálogo, sin tocar el ADR ya adoptado. Mismo rol
 > que `DISEÑO_CONSULTAS_ORGANISMOS.md` o `DISEÑO_ANALISIS_SOLICITUD.md` para sus fases.
 
-**Estado:** Diseño cerrado, pendiente de llevar a `ESTRUCTURA_FTT.md`/`.json` y de abrir issues de implementación.
+**Estado:** Llevado a `ESTRUCTURA_ESF.md`/`.json` y `ESTRUCTURA_FTT.md`/`.json` (#914, v2.4/v6.4). Pendiente de abrir issues de implementación (migraciones y código).
 **Fecha:** 2026-09-12
 
 ---
@@ -84,7 +84,7 @@ Los `DIAGNOSTICO` de `SOLICITUD_CATASTRALES.ANALIZAR`, `REQUERIMIENTO_CATASTRALE
 
 ## 4. Pendiente de llevar a catálogo
 
-- `ESTRUCTURA_FTT.md`/`.json`: añadir ambas fases con este contenido.
-- `ESTRUCTURA_ESF.md`/`.json`: `RESOLUCION_DUP` y `DATOS_CATASTRALES` en las tablas de `DUP`, `AAC+DUP`, `AAP+AAC+DUP`, `AAP+DUP`; sustituir `RESOLUCION` por `RESOLUCION_DUP` en `DUP` sola.
+- ~~`ESTRUCTURA_FTT.md`/`.json`: añadir ambas fases con este contenido.~~ Hecho (#914, v6.4).
+- ~~`ESTRUCTURA_ESF.md`/`.json`: `RESOLUCION_DUP` y `DATOS_CATASTRALES` en las tablas de `DUP`, `AAC+DUP`, `AAP+AAC+DUP`, `AAP+DUP`; sustituir `RESOLUCION` por `RESOLUCION_DUP` en `DUP` sola.~~ Hecho (#914, v2.4).
 - `TIPOS_DOCUMENTOS_CATALOGO.md`: las 8 filas nuevas de §3.
-- Issues de implementación: `tipos_fases` (nueva fila), `tipos_tramites`/`tipos_tareas` (nuevas filas), `reglas_motor` (duplicado + CREAR/82.1 + #891), `_FASE_FINALIZADORA_POR_SIGLAS` a listas, `_SUSTITUCIONES` en `nombres_documentos.py`, `_TRAMITES_CON_NOTIFICACION_MULTIPLE` en `api_expedientes.py`, `catalogo_plazos` (converge con #892).
+- Issues de implementación (#914 continúa con esto): `tipos_solicitudes` (fila `AAP+DUP`, ex-#911), `tipos_fases` (nuevas filas), `tipos_tramites`/`tipos_tareas` (nuevas filas), `tipos_documentos` (8 filas), `reglas_motor` (duplicado + CREAR/82.1 + #891), `_FASE_FINALIZADORA_POR_SIGLAS` a listas, `_SUSTITUCIONES` en `nombres_documentos.py`, `_TRAMITES_CON_NOTIFICACION_MULTIPLE` en `api_expedientes.py`, `catalogo_plazos` (converge con #892).
