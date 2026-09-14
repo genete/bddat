@@ -510,10 +510,12 @@ class TestBisagra:
         assert vars_segunda['solicitud_tiene_cert_fin_instruccion'] is False
 
     def test_fase_finalizadora_por_tipo_de_solicitud(self, app_ctx):
-        """El sujeto contra el que se audita sale del tipo de solicitud: la
-        solicitud INTERESADO resuelve por RECONOCIMIENTO_INTERESADO (ADR-043 §C)."""
+        """Los sujetos contra los que se audita salen del tipo de solicitud: la
+        solicitud INTERESADO resuelve por RECONOCIMIENTO_INTERESADO (ADR-043 §C).
+        De función singular a plural en #914 (ADR-046): las combinaciones con
+        DUP llevan dos fases finalizadoras hermanas, RESOLUCION y RESOLUCION_DUP."""
         from app.models.tipos_solicitudes import TipoSolicitud
-        from app.services.informe_instruccion import codigo_fase_finalizadora
+        from app.services.informe_instruccion import codigos_fase_finalizadora
 
         class _SolFake:
             def __init__(self, tipo):
@@ -521,12 +523,16 @@ class TestBisagra:
 
         interesado = TipoSolicitud.query.filter_by(siglas='INTERESADO').first()
         aap = TipoSolicitud.query.filter_by(siglas='AAP').first()
-        if interesado is None or aap is None:
+        aac_dup = TipoSolicitud.query.filter_by(siglas='AAC+DUP').first()
+        dup = TipoSolicitud.query.filter_by(siglas='DUP').first()
+        if interesado is None or aap is None or aac_dup is None or dup is None:
             pytest.skip('Catálogo de tipos_solicitudes incompleto en esta BD')
 
-        assert codigo_fase_finalizadora(_SolFake(interesado)) == 'RECONOCIMIENTO_INTERESADO'
-        assert codigo_fase_finalizadora(_SolFake(aap)) == 'RESOLUCION'
-        assert codigo_fase_finalizadora(_SolFake(None)) == 'RESOLUCION'
+        assert codigos_fase_finalizadora(_SolFake(interesado)) == ['RECONOCIMIENTO_INTERESADO']
+        assert codigos_fase_finalizadora(_SolFake(aap)) == ['RESOLUCION']
+        assert codigos_fase_finalizadora(_SolFake(None)) == ['RESOLUCION']
+        assert codigos_fase_finalizadora(_SolFake(aac_dup)) == ['RESOLUCION', 'RESOLUCION_DUP']
+        assert codigos_fase_finalizadora(_SolFake(dup)) == ['RESOLUCION_DUP']
 
 
 # ---------------------------------------------------------------------------

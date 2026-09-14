@@ -90,10 +90,12 @@ log = logging.getLogger(__name__)
 
 CODIGO_CERT = 'CERT_FIN_INSTRUCCION'
 
-# El mapa de fase finalizadora vive en `informe_instruccion`, que es quien
+# El mapa de fases finalizadoras vive en `informe_instruccion`, que es quien
 # pregunta al motor. Se reexporta aquí porque el nombre sigue leyéndose mejor
 # desde el certificado, y para no romper a quien ya lo importaba de este módulo.
-codigo_fase_finalizadora = informe_svc.codigo_fase_finalizadora
+# De función singular a plural en #914 (ADR-046): una solicitud puede tener
+# más de una fase finalizadora (RESOLUCION + RESOLUCION_DUP hermanas).
+codigos_fase_finalizadora = informe_svc.codigos_fase_finalizadora
 
 
 @dataclass
