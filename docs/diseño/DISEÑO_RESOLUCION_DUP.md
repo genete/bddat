@@ -12,7 +12,7 @@
 
 ## 1. Fase `RESOLUCION_DUP`
 
-Finalizadora. Sustituye a `RESOLUCION` en la solicitud `DUP` sola; convive como hermana en `AAC+DUP` y `AAP+AAC+DUP`; no aplica a `AAP+DUP` (acto diferido, ver ADR-045 §C).
+Finalizadora. Sustituye a `RESOLUCION` en la solicitud `DUP` sola; convive como hermana en `AAC+DUP`, `AAP+AAC+DUP` y también en `AAP+DUP`. En `AAP+DUP` la fase existe desde el principio — lo diferido no es su existencia, es la *emisión* del acto: la tarea `ELABORAR` de su trámite `ELABORACION` queda bloqueada por la regla de orden (#891, ADR-045 §C) hasta que conste AAC otorgada en solicitud posterior del mismo expediente. Sin la fase no habría tarea `ELABORAR` sobre la que anclar ese bloqueo.
 
 | Trámite | Patrón | Tareas | Destinatario / nota |
 |---|---|---|---|
