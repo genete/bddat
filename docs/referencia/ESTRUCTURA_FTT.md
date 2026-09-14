@@ -1,9 +1,9 @@
 # Estructura de Fases, Trámites y Tareas (ESFTT)
 
 > Fuente de verdad: `docs/referencia/ESTRUCTURA_FTT.json`
-> Última sincronización: 2026-09-14 (#914 — alta de RESOLUCION_DUP y DATOS_CATASTRALES, ADR-046)
+> Última sincronización: 2026-09-14 (#914 — añade REQUERIMIENTO_RBDA_DEFINITIVA a RESOLUCION_DUP)
 
-**Versión:** 6.4 | **Fecha:** 2026-09-14
+**Versión:** 6.5 | **Fecha:** 2026-09-14
 
 Este documento es la versión legible por humanos del JSON estructural. El JSON es la fuente de verdad para código e IA; este MD es la referencia de consulta rápida.
 
@@ -210,13 +210,16 @@ aparte (#778, no fijado todavía).
 
 | Trámite | Patrón | Tareas indicativas | Destinatario / nota |
 |---|---|---|---|
-| `ELABORACION` | B (sin NOTIFICAR) | ELABORAR | Mismo código de trámite que `RESOLUCION.ELABORACION` — colisión resuelta vía `nombres_documentos.py:_SUSTITUCIONES` |
+| `REQUERIMIENTO_RBDA_DEFINITIVA` | C | ELABORAR → NOTIFICAR → EP | Obligatorio y exclusivo de esta fase, previo a `ELABORACION`. Plazo 10 días (genérico LPACAP). Requiere RBDA definitiva (solo parcelas a expropiar, propietarios, DNI, direcciones) o confirmación de la ya publicada |
+| `ELABORACION` | B (sin NOTIFICAR) | ELABORAR | Consume `RBDA_DEFINITIVA`. Mismo código de trámite que `RESOLUCION.ELABORACION` — colisión resuelta vía `nombres_documentos.py:_SUSTITUCIONES` |
 | `NOTIFICACION` | B (solo NOTIFICAR) | NOTIFICAR | Solicitante |
 | `NOTIFICACION_ORGANISMOS` | B (solo NOTIFICAR) | NOTIFICAR | `interesados_expediente.tipo_origen IN ('ORGANISMO_CONSULTADO', 'MEDIO_AMBIENTE')` |
 | `NOTIFICACION_INTERESADOS` | B (solo NOTIFICAR) | NOTIFICAR | `interesados_expediente.tipo_origen IN ('DUP', 'INTERESADO_RECONOCIDO')` |
 | `PUBLICACION_BOP` | F+F | NOTIFICAR → EP → EP | Una instancia por provincia afectada |
 | `PUBLICACION_BOJA` | F+F | NOTIFICAR → EP → EP | Instrucción 1/2016 DG Industria, DÉCIMO |
 | `PUBLICACION_BOE` | F+F | NOTIFICAR → EP → EP | Art. 148.2 RD 1955/2000 (rango superior a la Instrucción 1/2016, que no lo cita para la resolución) |
+
+**`REQUERIMIENTO_RBDA_DEFINITIVA`, previo a `ELABORACION`:** su `ESPERAR_PLAZO` recibe directamente `RBDA_DEFINITIVA` (aportada por el promotor, o su confirmación de la ya publicada) sin anexos que incorporar — no exige `ANALIZAR` posterior (mismo caso que `TABLON_AYUNTAMIENTOS` en `INFORMACION_PUBLICA`). Produce el documento que consume `ELABORACION.ELABORAR` para redactar la resolución con los datos de expropiación definitivos.
 
 **Notificaciones y publicaciones, un trámite por grupo/boletín** (no genéricos): art. 148.2 RD 1955/2000 distingue tres grupos de destinatarios además del solicitante; `NOTIFICACION_ORGANISMOS`/`NOTIFICACION_INTERESADOS` activan una vista de sub-lista en el inspector vía `_TRAMITES_CON_NOTIFICACION_MULTIPLE` (mismo mecanismo que `_TRAMITES_CON_SECCIONES_ANALISIS`). Las publicaciones siguen el patrón ya usado por `ANUNCIO_BOE`/`ANUNCIO_BOP`/`ANUNCIO_BOJA` de `INFORMACION_PUBLICA` en vez de un `PUBLICACION` único — aquí sin `ELABORAR` propio, porque el documento ya se elaboró en `ELABORACION`.
 

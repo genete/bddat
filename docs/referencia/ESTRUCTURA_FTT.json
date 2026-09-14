@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "version": "6.4",
+    "version": "6.5",
     "descripcion": "Estructura jerárquica de fases, trámites y tareas para expedientes de AT",
     "principio": "Minimalismo estructural — la semántica vive en los TIPOS",
     "fecha_actualizacion": "2026-09-14",
@@ -495,11 +495,21 @@
       "descripcion": "Resolución finalizadora del acto de declaración de utilidad pública (DUP), separado del acto de autorización (ADR-046). Sustituye a RESOLUCION en la solicitud DUP sola; convive como fase hermana en AAC+DUP, AAP+AAC+DUP y AAP+DUP (en esta última, la fase existe desde el alta pero la emisión queda diferida — ver ESTRUCTURA_ESF.md).",
       "tramites": [
         {
+          "codigo": "REQUERIMIENTO_RBDA_DEFINITIVA",
+          "nombre": "Requerimiento de RBDA Definitiva",
+          "descripcion": "Requerimiento al promotor, previo a la elaboración de la resolución, para que aporte la RBDA definitiva — solo parcelas a expropiar, con nombre de propietarios, DNI y direcciones — o confirme la ya publicada en el anuncio de información pública.",
+          "tareas_indicativas": ["ELABORAR", "NOTIFICAR", "ESPERAR_PLAZO"],
+          "patron": "C",
+          "plazo_legal": "10 días (plazo genérico LPACAP, según procedimiento interno del servicio — pendiente de fijar artículo exacto)",
+          "nota": "Obligatorio y exclusivo de RESOLUCION_DUP, previo a ELABORACION. ELABORAR produce OFICIO_REQUERIMIENTO_RBDA_DEFINITIVA. ESPERAR_PLAZO recibe directamente RBDA_DEFINITIVA aportada por el promotor (o su confirmación de la ya publicada) — sin anexos que incorporar, por lo que no exige ANALIZAR posterior (mismo caso que TABLON_AYUNTAMIENTOS en INFORMACION_PUBLICA). Consumida por ELABORACION.ELABORAR."
+        },
+        {
           "codigo": "ELABORACION",
           "nombre": "Elaboración de Resolución de DUP",
           "descripcion": "Elaboración de la resolución de declaración de utilidad pública.",
           "tareas_indicativas": ["ELABORAR"],
           "patron": "B (sin NOTIFICAR)",
+          "documento_consumido": "RBDA_DEFINITIVA (producido por REQUERIMIENTO_RBDA_DEFINITIVA.ESPERAR_PLAZO)",
           "nota": "Mismo tipo_tramite código ELABORACION que RESOLUCION — colisión de nombre de fichero resuelta vía nombres_documentos.py:_SUSTITUCIONES (PRE-ADR §4.1.1). Bloqueos de motor: duplicado quirúrgico de los 5 de RESOLUCION (sujeto ANY/ANY/RESOLUCION_DUP) — organismos_todos_terminados, fase_ip_finalizada, tramite_requerimiento_sin_respuesta, instrumento_ambiental=AAU, solicitud_tiene_cert_fin_instruccion; más la regla de orden de #891 (no resolver DUP sin AAC previa aprobada en AAP+DUP), que ancla en esta tarea ELABORAR (ADR-046 §E)."
         },
         {
