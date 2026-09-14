@@ -67,6 +67,15 @@ from app.utils.permisos import verificar_acceso_expediente, tiene_permiso
 # AUDIENCIA...) solo necesita el núcleo común (resultado + producir documento).
 _TRAMITES_CON_SECCIONES_ANALISIS = {'ANALISIS_DOCUMENTAL', 'REQUERIMIENTO_SUBSANACION'}
 
+# Trámites cuya tarea NOTIFICAR va a más de un destinatario (art. 148.2 RD
+# 1955/2000: organismos consultados e interesados/titulares de la DUP, además
+# del solicitante) — RESOLUCION_DUP, ADR-046 §C. Whitelist declarada ahora
+# (#914); la vista de sub-lista de destinatarios en el inspector que la
+# consume (mismo mecanismo que _TRAMITES_CON_SECCIONES_ANALISIS aplicado a
+# NOTIFICAR) es trabajo de implementación posterior, cuando el foco de
+# tramitación llegue a esta fase.
+_TRAMITES_CON_NOTIFICACION_MULTIPLE = {'NOTIFICACION_ORGANISMOS', 'NOTIFICACION_INTERESADOS'}
+
 # Blueprint para API
 api_bp = Blueprint('api', __name__, url_prefix='/api')
 
