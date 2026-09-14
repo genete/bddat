@@ -39,6 +39,8 @@ Activa una vista de sub-lista de destinatarios (uno por fila, con su propio just
 
 **Plazo:** propio, 6 meses (art. 148.1 RD 1955/2000) — converge con #892, no se resuelve aquí.
 
+**Hueco detectado en #914 (sesión 2026-09-14):** en `AAC+DUP`/`AAP+AAC+DUP`, la solicitud tiene dos actos resolutorios con plazos distintos, pero `catalogo_plazos` (tipo_elemento `SOLICITUD`) y `Solicitud.documento_cierre_id` asumen un único plazo/cierre por solicitud — diseñados antes de que existiera esta dualidad. La solicitud no queda cerrada hasta que vence el plazo más largo, pero hoy no hay forma de representar dos plazos paralelos de la misma solicitud. Pista de partida, no decidida: columna `documento_cierre_dup_id` en `Solicitud` (mismo patrón que `documento_fin_instruccion_id`, #827) + fila propia en `catalogo_plazos` con un `camino` que distinga la parte DUP de la combinada — falta fijar desde qué fecha dispara ese plazo. Corresponde a #892, no a #914.
+
 ---
 
 ## 2. Fase `DATOS_CATASTRALES`
