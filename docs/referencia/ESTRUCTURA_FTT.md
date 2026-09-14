@@ -1,9 +1,9 @@
 # Estructura de Fases, Trámites y Tareas (ESFTT)
 
 > Fuente de verdad: `docs/referencia/ESTRUCTURA_FTT.json`
-> Última sincronización: 2026-08-19 (#789 — notación EP(0)/plazo=0 corregida)
+> Última sincronización: 2026-09-14 (#914 — alta de RESOLUCION_DUP y DATOS_CATASTRALES, ADR-046)
 
-**Versión:** 6.3 | **Fecha:** 2026-08-07
+**Versión:** 6.4 | **Fecha:** 2026-09-14
 
 Este documento es la versión legible por humanos del JSON estructural. El JSON es la fuente de verdad para código e IA; este MD es la referencia de consulta rápida.
 
@@ -70,6 +70,21 @@ Los patrones son orientativos y combinables (p.ej. `A+C` = ANALIZAR → ELABORAR
 | `ANALISIS_DOCUMENTAL` | A | ANALIZAR |
 | `REQUERIMIENTO_SUBSANACION` | C+A | ELABORAR → NOTIFICAR → ESPERAR_PLAZO → ANALIZAR |
 | `COMUNICACION_INICIO` | B | ELABORAR → NOTIFICAR | Obligatoria para Renovable (Hito 1 RD-ley 23/2020 art. 1.2). Opcional para otros tipos. |
+
+---
+
+### DATOS_CATASTRALES
+*Fase propia de la solicitud DUP (sin tasa) para mediar el acceso a datos catastrales de titularidad necesarios para redactar el RBDA. Obligatoria antes de INFORMACION_PUBLICA/CONSULTAS de esa solicitud (ADR-046 §F). Ver `DISEÑO_RESOLUCION_DUP.md` §2.*
+
+| Trámite | Patrón | Tareas indicativas | Nota |
+|---|---|---|---|
+| `SOLICITUD_CATASTRALES` | A | ANALIZAR | Condicional: solo camino con mediación catastral |
+| `REQUERIMIENTO_CATASTRALES` | C+A | ELABORAR → NOTIFICAR → EP → ANALIZAR | Condicional y repetible: solo si el diagnóstico previo es desfavorable |
+| `REMISION_ACUERDO_DATOS` | C | ELABORAR → NOTIFICAR → EP | Condicional: solo camino con mediación catastral. EP espera la RBDA remitida por el promotor |
+| `ANALISIS_RBDA` | A | ANALIZAR | Siempre (con o sin mediación previa) |
+| `TOMA_RAZON_RBDA` | B | ELABORAR → NOTIFICAR | Siempre. Cierra la fase, anuncia inicio de IP/consultas |
+
+**Dos caminos:** con mediación catastral (el promotor no tiene acceso directo al Catastro) corren los cinco trámites; sin mediación (p. ej. operadoras con acceso directo) se salta `SOLICITUD_CATASTRALES`/`REQUERIMIENTO_CATASTRALES`/`REMISION_ACUERDO_DATOS` y solo corren `ANALISIS_RBDA` → `TOMA_RAZON_RBDA`. Camino elegido libremente por el tramitador, sin regla de motor (candidato de regla futura, no implementado: bloquear `CREAR ANALISIS_RBDA` sin `RBDA`/`RBDA_DIRECCIONES` en el pool).
 
 ---
 
@@ -187,3 +202,24 @@ aparte (#778, no fijado todavía).
 | `ELABORACION` | B (sin NOTIFICAR) | ELABORAR (consume CERT_FIN_INSTRUCCION — #373) |
 | `NOTIFICACION` | B (solo NOTIFICAR) | NOTIFICAR |
 | `PUBLICACION` | C | ELABORAR → NOTIFICAR → ESPERAR_PLAZO |
+
+---
+
+### RESOLUCION_DUP
+*Resolución finalizadora del acto de declaración de utilidad pública (DUP), separado del acto de autorización (ADR-046). Sustituye a `RESOLUCION` en la solicitud DUP sola; convive como fase hermana en `AAC+DUP`, `AAP+AAC+DUP` y `AAP+DUP` (en esta última la fase existe desde el alta, con la emisión diferida — ver `ESTRUCTURA_ESF.md`). Ver `DISEÑO_RESOLUCION_DUP.md` §1.*
+
+| Trámite | Patrón | Tareas indicativas | Destinatario / nota |
+|---|---|---|---|
+| `ELABORACION` | B (sin NOTIFICAR) | ELABORAR | Mismo código de trámite que `RESOLUCION.ELABORACION` — colisión resuelta vía `nombres_documentos.py:_SUSTITUCIONES` |
+| `NOTIFICACION` | B (solo NOTIFICAR) | NOTIFICAR | Solicitante |
+| `NOTIFICACION_ORGANISMOS` | B (solo NOTIFICAR) | NOTIFICAR | `interesados_expediente.tipo_origen IN ('ORGANISMO_CONSULTADO', 'MEDIO_AMBIENTE')` |
+| `NOTIFICACION_INTERESADOS` | B (solo NOTIFICAR) | NOTIFICAR | `interesados_expediente.tipo_origen IN ('DUP', 'INTERESADO_RECONOCIDO')` |
+| `PUBLICACION_BOP` | F+F | NOTIFICAR → EP → EP | Una instancia por provincia afectada |
+| `PUBLICACION_BOJA` | F+F | NOTIFICAR → EP → EP | Instrucción 1/2016 DG Industria, DÉCIMO |
+| `PUBLICACION_BOE` | F+F | NOTIFICAR → EP → EP | Art. 148.2 RD 1955/2000 (rango superior a la Instrucción 1/2016, que no lo cita para la resolución) |
+
+**Notificaciones y publicaciones, un trámite por grupo/boletín** (no genéricos): art. 148.2 RD 1955/2000 distingue tres grupos de destinatarios además del solicitante; `NOTIFICACION_ORGANISMOS`/`NOTIFICACION_INTERESADOS` activan una vista de sub-lista en el inspector vía `_TRAMITES_CON_NOTIFICACION_MULTIPLE` (mismo mecanismo que `_TRAMITES_CON_SECCIONES_ANALISIS`). Las publicaciones siguen el patrón ya usado por `ANUNCIO_BOE`/`ANUNCIO_BOP`/`ANUNCIO_BOJA` de `INFORMACION_PUBLICA` en vez de un `PUBLICACION` único — aquí sin `ELABORAR` propio, porque el documento ya se elaboró en `ELABORACION`.
+
+**Bloqueos de motor:** duplicado quirúrgico de los 5 de `RESOLUCION` (sujeto `ANY/ANY/RESOLUCION_DUP`) — `organismos_todos_terminados`, `fase_ip_finalizada`, `tramite_requerimiento_sin_respuesta`, `instrumento_ambiental=AAU`, `solicitud_tiene_cert_fin_instruccion`. Más la regla de orden de #891 (no resolver DUP sin AAC previa aprobada en `AAP+DUP`), anclada en `ELABORACION.ELABORAR` (ADR-046 §E). No se hereda de `RESOLUCION` — se duplica deliberadamente (decisión ADR-046 §E, alternativa de herencia descartada).
+
+**Plazo:** propio, 6 meses (art. 148.1 RD 1955/2000) — converge con #892, no fijado en esta alta.

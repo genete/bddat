@@ -1,13 +1,14 @@
 {
   "metadata": {
-    "version": "6.3",
+    "version": "6.4",
     "descripcion": "Estructura jerárquica de fases, trámites y tareas para expedientes de AT",
     "principio": "Minimalismo estructural — la semántica vive en los TIPOS",
-    "fecha_actualizacion": "2026-08-19",
+    "fecha_actualizacion": "2026-09-14",
     "ref_diseño": [
       "docs/referencia/DISEÑO_ANALISIS_SOLICITUD.md",
       "docs/referencia/DISEÑO_CONSULTAS_ORGANISMOS.md",
-      "docs/referencia/DISEÑO_SUBSISTEMA_DOCUMENTAL.md"
+      "docs/referencia/DISEÑO_SUBSISTEMA_DOCUMENTAL.md",
+      "docs/diseño/DISEÑO_RESOLUCION_DUP.md"
     ],
     "ref_esf": "docs/referencia/ESTRUCTURA_ESF.json"
   },
@@ -109,6 +110,53 @@
           "tareas_indicativas": ["ELABORAR", "NOTIFICAR"],
           "patron": "B",
           "nota": "Obligatoria para tipo_expediente Renovable: la notificación de admisión a trámite de la AAP es el documento con el que el promotor acredita el Hito 1 ante el gestor de red (RD-ley 23/2020 art. 1.2 in fine). Opcional para los demás tipos según política organizativa."
+        }
+      ]
+    },
+    {
+      "codigo": "DATOS_CATASTRALES",
+      "nombre": "Datos Catastrales",
+      "descripcion": "Fase propia de la solicitud DUP (sin tasa) para mediar el acceso a datos catastrales de titularidad necesarios para redactar el RBDA (protección de datos personales). Obligatoria antes de INFORMACION_PUBLICA/CONSULTAS de esa solicitud (ADR-046 §F). Dos caminos: con mediación catastral (SOLICITUD_CATASTRALES → REQUERIMIENTO_CATASTRALES → REMISION_ACUERDO_DATOS → ANALISIS_RBDA → TOMA_RAZON_RBDA) o sin mediación, cuando el promotor ya dispone de la RBDA (solo ANALISIS_RBDA → TOMA_RAZON_RBDA).",
+      "tramites": [
+        {
+          "codigo": "SOLICITUD_CATASTRALES",
+          "nombre": "Solicitud de Datos Catastrales",
+          "descripcion": "Análisis de la solicitud de mediación catastral y de la documentación aportada por el promotor.",
+          "tareas_indicativas": ["ANALIZAR"],
+          "patron": "A",
+          "nota": "Condicional: solo camino con mediación catastral. Consume SOLICITUD (genérico) + XML_PARA_CATASTRO + DR_DATOS_CATASTRALES (si se aportó en origen). Produce DIAGNOSTICO."
+        },
+        {
+          "codigo": "REQUERIMIENTO_CATASTRALES",
+          "nombre": "Requerimiento de Datos Catastrales",
+          "descripcion": "Requerimiento de subsanación al promotor cuando el diagnóstico de SOLICITUD_CATASTRALES (o de una ronda anterior) resulta desfavorable. Repetible.",
+          "tareas_indicativas": ["ELABORAR", "NOTIFICAR", "ESPERAR_PLAZO", "ANALIZAR"],
+          "patron": "C+A",
+          "nota": "Condicional: solo si SOLICITUD_CATASTRALES o la ronda anterior es desfavorable. Consume el DIAGNOSTICO de la ronda previa. Produce OFICIO_REQUERIMIENTO_CATASTRALES + justificante genérico + DIAGNOSTICO de la ronda."
+        },
+        {
+          "codigo": "REMISION_ACUERDO_DATOS",
+          "nombre": "Remisión de Acuerdo de Cesión de Datos Catastrales",
+          "descripcion": "Elaboración y remisión del acuerdo de cesión de datos catastrales; espera de la RBDA remitida por el promotor.",
+          "tareas_indicativas": ["ELABORAR", "NOTIFICAR", "ESPERAR_PLAZO"],
+          "patron": "C",
+          "nota": "Condicional: solo camino con mediación catastral. Consume XML_DE_CATASTRO + DR_DATOS_CATASTRALES conforme + el DIAGNOSTICO favorable que habilita el trámite (de SOLICITUD_CATASTRALES si no hubo defectos, o de la última ronda de REQUERIMIENTO_CATASTRALES). ELABORAR produce ACUERDO_CESION_CATASTRALES. ESPERAR_PLAZO espera la RBDA remitida por el promotor (regla de recepción v6.3: el producido único es el registro de entrada; RBDA + RBDA_DIRECCIONES entran como anexos al pool)."
+        },
+        {
+          "codigo": "ANALISIS_RBDA",
+          "nombre": "Análisis de la RBDA",
+          "descripcion": "Análisis de la relación de bienes y derechos afectados (RBDA) aportada por el promotor.",
+          "tareas_indicativas": ["ANALIZAR"],
+          "patron": "A",
+          "nota": "Siempre (con o sin mediación previa). Consume el producido único de ESPERAR_PLAZO de REMISION_ACUERDO_DATOS (o, sin mediación, la RBDA aportada con la solicitud) — RBDA + RBDA_DIRECCIONES como anexos. Produce DIAGNOSTICO."
+        },
+        {
+          "codigo": "TOMA_RAZON_RBDA",
+          "nombre": "Toma de Razón de la RBDA",
+          "descripcion": "Toma de razón de la RBDA. Cierra la fase y anuncia el inicio de información pública/consultas de la solicitud.",
+          "tareas_indicativas": ["ELABORAR", "NOTIFICAR"],
+          "patron": "B",
+          "nota": "Siempre (con o sin mediación previa). Produce OFICIO_TOMA_RAZON_RBDA + justificante genérico. Cierra DATOS_CATASTRALES."
         }
       ]
     },
@@ -438,6 +486,68 @@
           "tareas_indicativas": ["ELABORAR", "NOTIFICAR", "ESPERAR_PLAZO"],
           "patron": "C",
           "nota": "PUBLICAR eliminado → patrón C (#371)."
+        }
+      ]
+    },
+    {
+      "codigo": "RESOLUCION_DUP",
+      "nombre": "Resolución de Declaración de Utilidad Pública",
+      "descripcion": "Resolución finalizadora del acto de declaración de utilidad pública (DUP), separado del acto de autorización (ADR-046). Sustituye a RESOLUCION en la solicitud DUP sola; convive como fase hermana en AAC+DUP, AAP+AAC+DUP y AAP+DUP (en esta última, la fase existe desde el alta pero la emisión queda diferida — ver ESTRUCTURA_ESF.md).",
+      "tramites": [
+        {
+          "codigo": "ELABORACION",
+          "nombre": "Elaboración de Resolución de DUP",
+          "descripcion": "Elaboración de la resolución de declaración de utilidad pública.",
+          "tareas_indicativas": ["ELABORAR"],
+          "patron": "B (sin NOTIFICAR)",
+          "nota": "Mismo tipo_tramite código ELABORACION que RESOLUCION — colisión de nombre de fichero resuelta vía nombres_documentos.py:_SUSTITUCIONES (PRE-ADR §4.1.1). Bloqueos de motor: duplicado quirúrgico de los 5 de RESOLUCION (sujeto ANY/ANY/RESOLUCION_DUP) — organismos_todos_terminados, fase_ip_finalizada, tramite_requerimiento_sin_respuesta, instrumento_ambiental=AAU, solicitud_tiene_cert_fin_instruccion; más la regla de orden de #891 (no resolver DUP sin AAC previa aprobada en AAP+DUP), que ancla en esta tarea ELABORAR (ADR-046 §E)."
+        },
+        {
+          "codigo": "NOTIFICACION",
+          "nombre": "Notificación de Resolución de DUP al solicitante",
+          "descripcion": "Notificación al solicitante de la resolución de DUP adoptada.",
+          "tareas_indicativas": ["NOTIFICAR"],
+          "patron": "B (solo NOTIFICAR)"
+        },
+        {
+          "codigo": "NOTIFICACION_ORGANISMOS",
+          "nombre": "Notificación de Resolución de DUP a organismos",
+          "descripcion": "Notificación a las Administraciones/organismos que informaron durante la instrucción.",
+          "tareas_indicativas": ["NOTIFICAR"],
+          "patron": "B (solo NOTIFICAR)",
+          "nota": "Destinatarios: interesados_expediente.tipo_origen IN ('ORGANISMO_CONSULTADO', 'MEDIO_AMBIENTE') (art. 148.2 RD 1955/2000). Vista de sub-lista de destinatarios en el inspector vía _TRAMITES_CON_NOTIFICACION_MULTIPLE, análogo a _TRAMITES_CON_SECCIONES_ANALISIS (ADR-046 §C)."
+        },
+        {
+          "codigo": "NOTIFICACION_INTERESADOS",
+          "nombre": "Notificación de Resolución de DUP a interesados",
+          "descripcion": "Notificación a titulares de bienes y derechos afectados y demás interesados.",
+          "tareas_indicativas": ["NOTIFICAR"],
+          "patron": "B (solo NOTIFICAR)",
+          "nota": "Destinatarios: interesados_expediente.tipo_origen IN ('DUP', 'INTERESADO_RECONOCIDO') (art. 148.2 RD 1955/2000). Cardinalidad alta (parcelas/titulares) — vista de sub-lista vía _TRAMITES_CON_NOTIFICACION_MULTIPLE, no trámites por destinatario (ADR-046 §C)."
+        },
+        {
+          "codigo": "PUBLICACION_BOP",
+          "nombre": "Publicación de Resolución de DUP en BOP",
+          "descripcion": "Publicación en Boletín Oficial Provincial. Una instancia por provincia afectada.",
+          "tareas_indicativas": ["NOTIFICAR", "ESPERAR_PLAZO", "ESPERAR_PLAZO"],
+          "patron": "F+F",
+          "nota": "Art. 148.2 RD 1955/2000. El documento ya fue elaborado en ELABORACION — sin ELABORAR propio, a diferencia de ANUNCIO_BOP de INFORMACION_PUBLICA."
+        },
+        {
+          "codigo": "PUBLICACION_BOJA",
+          "nombre": "Publicación de Resolución de DUP en BOJA",
+          "descripcion": "Publicación en Boletín Oficial de la Junta de Andalucía.",
+          "tareas_indicativas": ["NOTIFICAR", "ESPERAR_PLAZO", "ESPERAR_PLAZO"],
+          "patron": "F+F",
+          "nota": "Instrucción 1/2016 DG Industria, apartado DÉCIMO — no está en el RD 1955/2000 (ADR-046 §D)."
+        },
+        {
+          "codigo": "PUBLICACION_BOE",
+          "nombre": "Publicación de Resolución de DUP en BOE",
+          "descripcion": "Publicación en Boletín Oficial del Estado.",
+          "tareas_indicativas": ["NOTIFICAR", "ESPERAR_PLAZO", "ESPERAR_PLAZO"],
+          "patron": "F+F",
+          "nota": "Art. 148.2 RD 1955/2000, de rango superior a la Instrucción 1/2016 (que no lo cita para la resolución, solo para la IP). Se interpreta el silencio de la Instrucción como omisión, no excepción (ADR-046 §D)."
         }
       ]
     }
