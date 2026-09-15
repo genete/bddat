@@ -179,7 +179,7 @@ def _validar_finalizadoras_con_regla() -> List[str]:
         from app.models.tipos_fases import TipoFase
         from app.models.motor_reglas import ReglaMotor
         from app.services.informe_instruccion import (
-            _FASE_FINALIZADORA_POR_SIGLAS, _FASE_FINALIZADORA_DEFECTO,
+            _FASES_FINALIZADORAS_POR_SIGLAS, _FASE_FINALIZADORA_DEFECTO,
         )
 
         finalizadoras = {
@@ -202,8 +202,9 @@ def _validar_finalizadoras_con_regla() -> List[str]:
             pass
         return []
 
-    conocidas_por_emisor = set(_FASE_FINALIZADORA_POR_SIGLAS.values()) | {
-        _FASE_FINALIZADORA_DEFECTO}
+    conocidas_por_emisor = {
+        codigo for fases in _FASES_FINALIZADORAS_POR_SIGLAS.values() for codigo in fases
+    } | {_FASE_FINALIZADORA_DEFECTO}
 
     avisos: List[str] = []
     for codigo in sorted(finalizadoras - nombradas):

@@ -41,11 +41,13 @@ class TestCatalogoBaseTrasUpgrade:
 
     def test_tipos_fases(self, app_ctx):
         from app.models.tipos_fases import TipoFase
-        assert TipoFase.query.count() == 9
+        # +2 en #914: RESOLUCION_DUP, DATOS_CATASTRALES (ADR-046)
+        assert TipoFase.query.count() == 11
 
     def test_tipos_tramites(self, app_ctx):
         from app.models.tipos_tramites import TipoTramite
-        assert TipoTramite.query.count() == 31
+        # +11 en #914: 6 de RESOLUCION_DUP + 5 de DATOS_CATASTRALES (ADR-046)
+        assert TipoTramite.query.count() == 42
 
     def test_tipos_tareas(self, app_ctx):
         from app.models.tipos_tareas import TipoTarea
@@ -53,7 +55,8 @@ class TestCatalogoBaseTrasUpgrade:
 
     def test_tipos_solicitudes(self, app_ctx):
         from app.models.tipos_solicitudes import TipoSolicitud
-        assert TipoSolicitud.query.count() == 21
+        # +1 en #914: AAP+DUP (ex-#911)
+        assert TipoSolicitud.query.count() == 22
 
     def test_tipos_resultados_fases(self, app_ctx):
         from app.models.tipos_resultados_fases import TipoResultadoFase
@@ -61,7 +64,8 @@ class TestCatalogoBaseTrasUpgrade:
 
     def test_tipos_documentos(self, app_ctx):
         from app.models.tipos_documentos import TipoDocumento
-        assert TipoDocumento.query.count() == 64
+        # +10 en #914: 8 del diseño original + 2 de REQUERIMIENTO_RBDA_DEFINITIVA
+        assert TipoDocumento.query.count() == 74
 
 
 class TestCodigosQueElCodigoEspera:

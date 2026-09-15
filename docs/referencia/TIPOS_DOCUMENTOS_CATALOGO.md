@@ -1,6 +1,6 @@
 # Catálogo de tipos de documentos — ESFTT
 
-> Documento de trabajo para el issue #337.
+> Documento de trabajo para el issue #337. Ampliado en #914 (RESOLUCION_DUP/DATOS_CATASTRALES, ADR-046).
 > Recoge los tipos de documento que producen o incorporan las tareas atómicas del flujo ESFTT,
 > cruzando LPACAP, RD 1955/2000 y normativa sectorial AT.
 
@@ -60,6 +60,16 @@
 | `DOC_INFORME_VINCULANTE` | Informe vinculante del órgano ambiental | EXTERNO | RECEPCION_PROPUESTA_INF_VINC.ESPERAR_PLAZO (producido); consumido por RECEPCION_INFORME_VINCULANTE.ANALIZAR | Instrucción Conjunta 1/2022, IV.5.3; Decreto 356/2010, arts. 32.5 y 33 | Incluye lista de interesados del procedimiento ambiental (ver #374). Sus condiciones se incorporan a la autorización |
 | `OFICIO_DISCREPANCIA_INF_VINC` | Oficio de planteamiento de discrepancia sobre el informe vinculante | INTERNO | DISCREPANCIA_INF_VINC.ELABORAR (producido); consumido por NOTIFICAR del mismo trámite | Decreto 356/2010, art. 33 | Parseable; firmado; stamp ESFTT invisible. fecha_administrativa = fecha de firma. Condicional: solo si RECEPCION_INFORME_VINCULANTE.ANALIZAR diagnostica discrepancia |
 | `RESOLUCION_DISCREPANCIA_INF_VINC` | Resolución del Consejo de Gobierno sobre discrepancia en informe vinculante | EXTERNO | DISCREPANCIA_INF_VINC.ESPERAR_PLAZO (producido) | Decreto 356/2010, art. 33 | Emitida por el Consejo de Gobierno. Vincula al órgano sustantivo. Sin segundo ESPERAR_PLAZO: la resolución cierra el trámite DISCREPANCIA_INF_VINC |
+| `RBDA` | Relación de Bienes y Derechos Afectados | EXTERNO | DATOS_CATASTRALES: producido por el registro de entrada de REMISION_ACUERDO_DATOS.ESPERAR_PLAZO, o aportado con la solicitud si no hay mediación catastral; consumido por ANALISIS_RBDA.ANALIZAR | RD 1955/2000 art. 143.3.e, 144 | Planos + afecciones por titular/propietario (no necesariamente parcela catastral) + valor. NIF/DNI (física) o NIF+nombre (jurídica). Contenido no evaluado por BDDAT. Se publica en información pública. #914, ADR-046 §G |
+| `RBDA_DIRECCIONES` | RBDA — Direcciones de notificación | EXTERNO | Igual que `RBDA` (mismo productor/consumidor) | RD 1955/2000 art. 143.3.e | Mismo listado de afecciones que `RBDA`, sin planos, con la dirección de notificación de cada titular. No se publica. #914, ADR-046 §G |
+| `XML_PARA_CATASTRO` | XML para Catastro | EXTERNO | SOLICITUD_CATASTRALES.ANALIZAR (consumido) | | Aportado por el promotor; la Administración lo introduce en el Catastro para mediar el acceso a datos catastrales de titularidad. #914 |
+| `XML_DE_CATASTRO` | XML de Catastro | INTERNO | REMISION_ACUERDO_DATOS.ELABORAR (consumido) | | Resultado de la consulta al Catastro. Elaboración propia: los datos vienen del Catastro, el fichero es artefacto de la Administración. #914 |
+| `DR_DATOS_CATASTRALES` | Declaración Responsable de Datos Catastrales | EXTERNO | SOLICITUD_CATASTRALES.ANALIZAR (consumido, si se aportó en origen); REMISION_ACUERDO_DATOS.ELABORAR (consumido, conforme) | | Declaración responsable de tratamiento de datos personales (LOPD), aportada por el promotor en origen o subsanación. #914 |
+| `ACUERDO_CESION_CATASTRALES` | Acuerdo de Cesión de Datos Catastrales | INTERNO | REMISION_ACUERDO_DATOS.ELABORAR (producido) | | Firmado por el/la Delegado/a; fija las obligaciones de protección de datos personales (LOPD) de la mediación catastral. #914 |
+| `OFICIO_REQUERIMIENTO_CATASTRALES` | Oficio de Requerimiento de Datos Catastrales | INTERNO | REQUERIMIENTO_CATASTRALES.ELABORAR (producido) | | Requerimiento de subsanación cuando el diagnóstico de la solicitud de mediación catastral (o de una ronda anterior) resulta desfavorable. Repetible. #914 |
+| `OFICIO_TOMA_RAZON_RBDA` | Oficio de Toma de Razón de la RBDA | INTERNO | TOMA_RAZON_RBDA.ELABORAR (producido) | | Cierra la fase `DATOS_CATASTRALES` y anuncia el inicio de información pública/consultas de la solicitud. #914 |
+| `OFICIO_REQUERIMIENTO_RBDA_DEFINITIVA` | Oficio de Requerimiento de RBDA Definitiva | INTERNO | REQUERIMIENTO_RBDA_DEFINITIVA.ELABORAR (producido) | | Requerimiento al promotor, previo a `RESOLUCION_DUP.ELABORACION`, para que aporte la RBDA definitiva o confirme la ya publicada. Advierte que sin respuesta en plazo (10 días) se resuelve con la RBDA publicada. Procedimiento interno del servicio, #914 |
+| `RBDA_DEFINITIVA` | RBDA Definitiva | EXTERNO | REQUERIMIENTO_RBDA_DEFINITIVA.ESPERAR_PLAZO (producido); consumido por `RESOLUCION_DUP.ELABORACION.ELABORAR` | | Solo parcelas a expropiar, con nombre de propietarios, DNI y direcciones — o confirmación de la RBDA ya publicada en información pública. Mismo tipo en ambos casos. #914 |
 
 ---
 

@@ -51,6 +51,9 @@ ALCANCE POBLADO (#698, primera pasada):
     - ANALISIS_SOLICITUD.COMUNICACION_INICIO_ADMISION (sustitución: condicional renovable)
     - RESOLUCION.ELABORACION (dato de catálogo puro, sin ajuste ni sustitución
       — se puebla nombre_en_plantilla='Resolución' vía migración, sin código)
+    - RESOLUCION_DUP.ELABORACION (sustitución, #914: mismo tipo_tramite
+      ELABORACION que RESOLUCION, nombre_en_plantilla compartido — sin
+      sustitución los dos actos generarían el mismo nombre de fichero)
     El resto de fases/trámites cae al fallback de código crudo mientras su
     tipos_tramites.nombre_en_plantilla siga vacío — issue de seguimiento #809
     para ir poblando el dato (y añadir ajuste/sustitución solo si el trámite
@@ -98,6 +101,14 @@ def _sustitucion_comunicacion_inicio_admision(tramite) -> str:
     return 'Admisión a Trámite' if _es_renovable(tramite) else 'Oficio Inicio'
 
 
+def _sustitucion_resolucion_dup(tramite) -> str:
+    """SUSTITUCIÓN: RESOLUCION_DUP.ELABORACION comparte tipo_tramite ELABORACION
+    con RESOLUCION (tipos_tramites.nombre_en_plantilla='Resolución', mismo dato
+    para las dos fases). Sin esto, los dos actos generarían el mismo nombre de
+    fichero (PRE-ADR-resolucion-doble-acto-dup.md §4.1.1)."""
+    return 'Resolución de Utilidad Pública'
+
+
 # AJUSTES: combinan tipos_tramites.nombre_en_plantilla con algo calculado.
 # Firma: (tramite, texto_base) -> str
 _AJUSTES: dict[tuple[str, str], Callable[[object, str], str]] = {
@@ -110,6 +121,7 @@ _AJUSTES: dict[tuple[str, str], Callable[[object, str], str]] = {
 # Firma: (tramite) -> str
 _SUSTITUCIONES: dict[tuple[str, str], Callable[[object], str]] = {
     ('ANALISIS_SOLICITUD', 'COMUNICACION_INICIO_ADMISION'): _sustitucion_comunicacion_inicio_admision,
+    ('RESOLUCION_DUP', 'ELABORACION'): _sustitucion_resolucion_dup,
 }
 
 

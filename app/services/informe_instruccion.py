@@ -64,10 +64,12 @@ LAS TRES FUENTES QUE NO SE REEMPLAZAN (§E)
 1. El árbol, consumiendo `estado_dominio` en vez de reimplementarlo: es el núcleo
    único de las reglas de estado y duplicarlo repetiría la divergencia que #558
    tuvo que unificar.
-2. El motor, **una sola vez** sobre el acto que importa: crear la fase
-   finalizadora. Sus reglas de precedencia ya son el veredicto normativo sobre si
-   la instrucción está lista. No se pregunta nodo a nodo: las reglas son de un
-   acto, no de un nodo, y re-evaluarlas sobre lo ya creado es arqueología.
+2. El motor, sobre el acto que importa: crear la(s) fase(s) finalizadora(s) —
+   casi siempre una, dos cuando la solicitud lleva DUP y resuelve por
+   RESOLUCION y RESOLUCION_DUP a la vez (#914, ADR-046). Sus reglas de
+   precedencia ya son el veredicto normativo sobre si la instrucción está
+   lista. No se pregunta nodo a nodo: las reglas son de un acto, no de un
+   nodo, y re-evaluarlas sobre lo ya creado es arqueología.
 3. El invariante estructural del emisor, que aquí no hace falta invocar porque
    sus dos supuestos ya los dice el árbol por sí mismo —una fase de instrucción
    sin cerrar levanta su propio `PENDIENTE`, y la solicitud sin ninguna fase habla
@@ -94,15 +96,27 @@ PENDIENTE = 'PENDIENTE'
 SALVADO   = 'SALVADO'
 PASA      = 'PASA'
 
-# Qué fase finalizadora habilita el certificado en cada solicitud — es el sujeto
-# contra el que se audita. Las dos finalizadoras nunca conviven en la misma
-# solicitud (ADR-043 §C): RECONOCIMIENTO_INTERESADO es la de la solicitud
-# INTERESADO, una solicitud paralela con vida propia; el resto resuelve por
-# RESOLUCION. Este mapa y las dos filas de `reglas_motor` dicen lo mismo por
-# duplicado a propósito —allí el sujeto documenta la regla para el supervisor,
-# aquí se elige contra qué auditar—, y el aviso de arranque de
-# `app/checks/catalogo_requerido.py` vigila que no diverjan si aparece una tercera.
-_FASE_FINALIZADORA_POR_SIGLAS = {'INTERESADO': 'RECONOCIMIENTO_INTERESADO'}
+# Qué fases finalizadoras habilitan el certificado en cada solicitud — son los
+# sujetos contra los que se audita. De mapa 1:1 a listas (#914, ADR-046): la
+# premisa de ADR-043 §C ("las dos finalizadoras nunca conviven en la misma
+# solicitud") queda superada por ADR-046 — AAC+DUP y AAP+AAC+DUP resuelven por
+# RESOLUCION *y* RESOLUCION_DUP a la vez, hermanas; DUP sola resuelve solo por
+# RESOLUCION_DUP (sustituye a RESOLUCION); AAP+DUP lleva las dos aunque la
+# emisión de RESOLUCION_DUP quede diferida (ADR-045 §C) — la fase existe y se
+# audita igual, el diferimiento lo impone su propio bloqueo de motor (#891),
+# no la ausencia de la fase. RECONOCIMIENTO_INTERESADO sigue siendo la única
+# de la solicitud INTERESADO, paralela con vida propia. Este mapa y las filas
+# de `reglas_motor` de cada finalizadora dicen lo mismo por duplicado a
+# propósito —allí el sujeto documenta la regla para el supervisor, aquí se
+# elige contra qué auditar—, y el aviso de arranque de
+# `app/checks/catalogo_requerido.py` vigila que no diverjan si aparece otra.
+_FASES_FINALIZADORAS_POR_SIGLAS = {
+    'INTERESADO': ['RECONOCIMIENTO_INTERESADO'],
+    'DUP': ['RESOLUCION_DUP'],
+    'AAC+DUP': ['RESOLUCION', 'RESOLUCION_DUP'],
+    'AAP+AAC+DUP': ['RESOLUCION', 'RESOLUCION_DUP'],
+    'AAP+DUP': ['RESOLUCION', 'RESOLUCION_DUP'],
+}
 _FASE_FINALIZADORA_DEFECTO = 'RESOLUCION'
 
 # Cómo se llama cada tipo de tarea dentro de una frase. `TipoTarea.nombre` es una
@@ -207,11 +221,15 @@ class Informe:
 # API pública
 # ---------------------------------------------------------------------------
 
-def codigo_fase_finalizadora(solicitud) -> str:
-    """Código del `TipoFase` finalizador que esta solicitud abrirá."""
+def codigos_fase_finalizadora(solicitud) -> list[str]:
+    """Códigos de los `TipoFase` finalizadores que esta solicitud abrirá.
+
+    Casi siempre una lista de un elemento; dos en las combinaciones con DUP
+    que llevan RESOLUCION y RESOLUCION_DUP como hermanas (#914, ADR-046).
+    """
     tipo_sol = solicitud.tipo_solicitud
     siglas = tipo_sol.siglas if tipo_sol else None
-    return _FASE_FINALIZADORA_POR_SIGLAS.get(siglas, _FASE_FINALIZADORA_DEFECTO)
+    return _FASES_FINALIZADORAS_POR_SIGLAS.get(siglas, [_FASE_FINALIZADORA_DEFECTO])
 
 
 def revisar(solicitud) -> Informe:
@@ -564,14 +582,21 @@ def _relato_reversiones(solicitud) -> tuple:
 # ---------------------------------------------------------------------------
 
 def _veredicto_del_motor(solicitud) -> tuple[object, str, tuple, list]:
-    """Audita CREAR la fase finalizadora y traduce lo que bloquea a bloques.
+    """Audita CREAR cada fase finalizadora esperada y traduce lo que bloquea a bloques.
 
-    Las reglas de precedencia hacia esa fase *son* el veredicto normativo sobre si
+    Las reglas de precedencia hacia esas fases *son* el veredicto normativo sobre si
     la instrucción está lista (requerimientos sin respuesta, organismos, IP, tasa).
-    Se pregunta una vez, no nodo a nodo: las reglas del motor son de un acto, no de
-    un nodo, y la única pregunta posible sobre lo ya creado sería «¿se permitiría
-    crear esto hoy?», que es arqueología —las reglas cambian, y un nodo de junio
-    dispararía hoy reglas que no existían—.
+    Se pregunta una vez por fase finalizadora, no nodo a nodo: las reglas del motor
+    son de un acto, no de un nodo, y la única pregunta posible sobre lo ya creado
+    sería «¿se permitiría crear esto hoy?», que es arqueología —las reglas cambian,
+    y un nodo de junio dispararía hoy reglas que no existían—.
+
+    Casi siempre una sola fase; con dos (#914, ADR-046: RESOLUCION + RESOLUCION_DUP
+    hermanas) se audita cada una por separado y se fusiona igual que `auditar_multi`
+    fusiona los tipos simples de una solicitud combinada: `permitido` es el AND de
+    todas, `reglas_evaluadas` es la unión. El CERT_FIN_INSTRUCCION resultante es uno
+    solo por solicitud (ADR-043 §D) y habilita a todas sus finalizadoras a la vez —
+    cada una lo consume como ENTRADA de su propio ELABORAR, cuando le toque.
 
     Las del art. 82.1 se excluyen del criterio **por definición** (§E ter): son las
     únicas que este acto satisface, y esperar a que dejen de disparar solas sería
@@ -583,13 +608,26 @@ def _veredicto_del_motor(solicitud) -> tuple[object, str, tuple, list]:
     """
     from app.models.tipos_fases import TipoFase
     from app.services.assembler import auditar_multi
+    from app.services.motor_reglas import AuditoriaResult
 
     try:
-        tipo_fase_fin = TipoFase.query.filter_by(
-            codigo=codigo_fase_finalizadora(solicitud)).first()
-        auditoria = auditar_multi(
-            'CREAR', solicitud.expediente,
-            objeto={'solicitud': solicitud, 'tipo_fase': tipo_fase_fin},
+        todas_reglas = []
+        permitido = True
+        ultimo_resultado = None
+        for codigo_fase in codigos_fase_finalizadora(solicitud):
+            tipo_fase_fin = TipoFase.query.filter_by(codigo=codigo_fase).first()
+            resultado = auditar_multi(
+                'CREAR', solicitud.expediente,
+                objeto={'solicitud': solicitud, 'tipo_fase': tipo_fase_fin},
+            )
+            todas_reglas.extend(resultado.reglas_evaluadas)
+            if not resultado.permitido:
+                permitido = False
+            ultimo_resultado = resultado
+
+        auditoria = AuditoriaResult(
+            permitido=permitido, accion='CREAR', sujeto=ultimo_resultado.sujeto,
+            reglas_evaluadas=todas_reglas, variables_ctx=ultimo_resultado.variables_ctx,
         )
         del_acto = _ids_reglas_del_acto()
     except (OperationalError, ProgrammingError) as exc:

@@ -5,7 +5,7 @@
 > se revisa cuando cambie un detalle de catálogo, sin tocar el ADR ya adoptado. Mismo rol
 > que `DISEÑO_CONSULTAS_ORGANISMOS.md` o `DISEÑO_ANALISIS_SOLICITUD.md` para sus fases.
 
-**Estado:** Diseño cerrado, pendiente de llevar a `ESTRUCTURA_FTT.md`/`.json` y de abrir issues de implementación.
+**Estado:** Llevado a `ESTRUCTURA_ESF.md`/`.json` y `ESTRUCTURA_FTT.md`/`.json` (#914, v2.4/v6.4). Pendiente de abrir issues de implementación (migraciones y código).
 **Fecha:** 2026-09-12
 
 ---
@@ -16,7 +16,8 @@ Finalizadora. Sustituye a `RESOLUCION` en la solicitud `DUP` sola; convive como 
 
 | Trámite | Patrón | Tareas | Destinatario / nota |
 |---|---|---|---|
-| `ELABORACION` | B (sin NOTIFICAR) | ELABORAR | Mismo `tipo_tramite` código `ELABORACION` que `RESOLUCION` — colisión de nombre de fichero resuelta vía `_SUSTITUCIONES` (PRE-ADR §4.1.1) |
+| `REQUERIMIENTO_RBDA_DEFINITIVA` | C | ELABORAR→NOTIFICAR→EP | Obligatorio y exclusivo de esta fase, previo a `ELABORACION`. Plazo 10 días (genérico LPACAP, procedimiento interno del servicio). Requiere al promotor la RBDA definitiva — solo parcelas a expropiar, propietarios, DNI, direcciones — o confirmación de la ya publicada en el anuncio de IP |
+| `ELABORACION` | B (sin NOTIFICAR) | ELABORAR | Consume `RBDA_DEFINITIVA`. Mismo `tipo_tramite` código `ELABORACION` que `RESOLUCION` — colisión de nombre de fichero resuelta vía `_SUSTITUCIONES` (PRE-ADR §4.1.1) |
 | `NOTIFICACION` | B (solo NOTIFICAR) | NOTIFICAR | Solicitante |
 | `NOTIFICACION_ORGANISMOS` | B (solo NOTIFICAR) | NOTIFICAR | `interesados_expediente.tipo_origen IN ('ORGANISMO_CONSULTADO', 'MEDIO_AMBIENTE')` |
 | `NOTIFICACION_INTERESADOS` | B (solo NOTIFICAR) | NOTIFICAR | `interesados_expediente.tipo_origen IN ('DUP', 'INTERESADO_RECONOCIDO')` |
@@ -32,9 +33,13 @@ _TRAMITES_CON_NOTIFICACION_MULTIPLE = {'NOTIFICACION_ORGANISMOS', 'NOTIFICACION_
 
 Activa una vista de sub-lista de destinatarios (uno por fila, con su propio justificante) en vez del estado único pendiente/hecha. No afecta a `NOTIFICACION` (titular) ni a ningún otro `NOTIFICAR` del sistema. La pantalla de gestión de interesados (#431) es independiente y a nivel de expediente; el inspector reutiliza solo su consulta filtrada por `tipo_origen`, la representación es propia de cada trámite.
 
+**`REQUERIMIENTO_RBDA_DEFINITIVA`:** su `ESPERAR_PLAZO` recibe directamente `RBDA_DEFINITIVA` (aportada por el promotor, o su confirmación de la ya publicada) sin anexos que incorporar — no exige `ANALIZAR` posterior (mismo caso que `TABLON_AYUNTAMIENTOS` de `INFORMACION_PUBLICA`). El documento producido lo consume `ELABORACION.ELABORAR` para redactar la resolución con los datos de expropiación definitivos.
+
 **Bloqueos de motor (duplicado quirúrgico de los 5 de `RESOLUCION`, sujeto `ANY/ANY/RESOLUCION_DUP`):** `organismos_todos_terminados`, `fase_ip_finalizada`, `tramite_requerimiento_sin_respuesta`, `instrumento_ambiental=AAU`, `solicitud_tiene_cert_fin_instruccion`. Más la regla de orden de #891 (no resolver sin AAC previa aprobada), que ahora tiene dónde enganchar: `ELABORACION.ELABORAR`.
 
 **Plazo:** propio, 6 meses (art. 148.1 RD 1955/2000) — converge con #892, no se resuelve aquí.
+
+**Hueco detectado en #914 (sesión 2026-09-14):** en `AAC+DUP`/`AAP+AAC+DUP`, la solicitud tiene dos actos resolutorios con plazos distintos, pero `catalogo_plazos` (tipo_elemento `SOLICITUD`) y `Solicitud.documento_cierre_id` asumen un único plazo/cierre por solicitud — diseñados antes de que existiera esta dualidad. La solicitud no queda cerrada hasta que vence el plazo más largo, pero hoy no hay forma de representar dos plazos paralelos de la misma solicitud. Pista de partida, no decidida: columna `documento_cierre_dup_id` en `Solicitud` (mismo patrón que `documento_fin_instruccion_id`, #827) + fila propia en `catalogo_plazos` con un `camino` que distinga la parte DUP de la combinada — falta fijar desde qué fecha dispara ese plazo. Corresponde a #892, no a #914.
 
 ---
 
@@ -77,6 +82,8 @@ De la propia solicitud DUP (sin tasa). Obligatoria antes de `INFORMACION_PUBLICA
 | `ACUERDO_CESION_CATASTRALES` | Interno | `REMISION_ACUERDO_DATOS.ELABORAR` | — (se notifica) | Firmado por el/la Delegado/a; fija las obligaciones LOPD |
 | `OFICIO_REQUERIMIENTO_CATASTRALES` | Interno | `REQUERIMIENTO_CATASTRALES.ELABORAR` | — (se notifica) | Requerimiento de subsanación |
 | `OFICIO_TOMA_RAZON_RBDA` | Interno | `TOMA_RAZON_RBDA.ELABORAR` | — (se notifica) | Cierra `DATOS_CATASTRALES`, anuncia inicio de IP |
+| `OFICIO_REQUERIMIENTO_RBDA_DEFINITIVA` | Interno | `REQUERIMIENTO_RBDA_DEFINITIVA.ELABORAR` | — (se notifica) | Requerimiento previo a `RESOLUCION_DUP.ELABORACION` |
+| `RBDA_DEFINITIVA` | Externo | Registro de entrada (`ESPERAR_PLAZO` de `REQUERIMIENTO_RBDA_DEFINITIVA`) | `RESOLUCION_DUP.ELABORACION.ELABORAR` | Solo parcelas a expropiar, con propietarios, DNI y direcciones — o confirmación de la `RBDA` ya publicada en IP. Mismo tipo en ambos casos |
 
 Los `DIAGNOSTICO` de `SOLICITUD_CATASTRALES.ANALIZAR`, `REQUERIMIENTO_CATASTRALES.ANALIZAR` y `ANALISIS_RBDA.ANALIZAR` reutilizan el tipo genérico ya existente (`DIAGNOSTICO`, INTERNO, producido por cualquier `ANALIZAR` — ver `TIPOS_DOCUMENTOS_CATALOGO.md`); no hace falta código propio por trámite. Los justificantes de `NOTIFICAR` reutilizan igualmente el tipo genérico ya existente (p. ej. `JUSTIFICANTE_POSTAL`).
 
@@ -84,7 +91,7 @@ Los `DIAGNOSTICO` de `SOLICITUD_CATASTRALES.ANALIZAR`, `REQUERIMIENTO_CATASTRALE
 
 ## 4. Pendiente de llevar a catálogo
 
-- `ESTRUCTURA_FTT.md`/`.json`: añadir ambas fases con este contenido.
-- `ESTRUCTURA_ESF.md`/`.json`: `RESOLUCION_DUP` y `DATOS_CATASTRALES` en las tablas de `DUP`, `AAC+DUP`, `AAP+AAC+DUP`, `AAP+DUP`; sustituir `RESOLUCION` por `RESOLUCION_DUP` en `DUP` sola.
-- `TIPOS_DOCUMENTOS_CATALOGO.md`: las 8 filas nuevas de §3.
-- Issues de implementación: `tipos_fases` (nueva fila), `tipos_tramites`/`tipos_tareas` (nuevas filas), `reglas_motor` (duplicado + CREAR/82.1 + #891), `_FASE_FINALIZADORA_POR_SIGLAS` a listas, `_SUSTITUCIONES` en `nombres_documentos.py`, `_TRAMITES_CON_NOTIFICACION_MULTIPLE` en `api_expedientes.py`, `catalogo_plazos` (converge con #892).
+- ~~`ESTRUCTURA_FTT.md`/`.json`: añadir ambas fases con este contenido.~~ Hecho (#914, v6.4; `REQUERIMIENTO_RBDA_DEFINITIVA` añadido después en v6.5).
+- ~~`ESTRUCTURA_ESF.md`/`.json`: `RESOLUCION_DUP` y `DATOS_CATASTRALES` en las tablas de `DUP`, `AAC+DUP`, `AAP+AAC+DUP`, `AAP+DUP`; sustituir `RESOLUCION` por `RESOLUCION_DUP` en `DUP` sola.~~ Hecho (#914, v2.4).
+- `TIPOS_DOCUMENTOS_CATALOGO.md`: las 10 filas nuevas de §3 (8 + `OFICIO_REQUERIMIENTO_RBDA_DEFINITIVA` + `RBDA_DEFINITIVA`).
+- Issues de implementación (#914 continúa con esto): `tipos_solicitudes` (fila `AAP+DUP`, ex-#911), `tipos_fases` (nuevas filas), `tipos_tramites`/`tipos_tareas` (nuevas filas), `tipos_documentos` (10 filas), `reglas_motor` (duplicado + CREAR/82.1 + #891), `_FASE_FINALIZADORA_POR_SIGLAS` a listas, `_SUSTITUCIONES` en `nombres_documentos.py`, `_TRAMITES_CON_NOTIFICACION_MULTIPLE` en `api_expedientes.py`, `catalogo_plazos` (converge con #892).

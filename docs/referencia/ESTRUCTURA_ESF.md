@@ -1,6 +1,6 @@
 # Estructura Expediente-Solicitud-Fase (ESF)
 
-**Versión:** 2.3 | **Fecha:** 2026-09-11
+**Versión:** 2.4 | **Fecha:** 2026-09-14
 
 Fuente de verdad de qué fases aplican a cada combinación (tipo_solicitud × tipo_expediente). El JSON `ESTRUCTURA_ESF.json` es derivado de este documento; en caso de discrepancia prevalece este MD.
 
@@ -81,6 +81,7 @@ Las fases referenciadas son las definidas en `ESTRUCTURA_FTT.json`. Las restricc
 | Fase | Transp. | Distrib. | D.Ced. | Renov. | L.Dir. | Convenc. | Autocons. | Otros |
 |---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
 | `ANALISIS_SOLICITUD` | ✅¹ | ✅¹ | ✅¹ | ✅¹ | ✅¹ | ✅¹ | 🚫 | 🚫 |
+| `DATOS_CATASTRALES` | ✅⁴ | ✅⁴ | ✅⁴ | ✅⁴ | ✅⁴ | ✅⁴ | 🚫 | 🚫 |
 | `CONSULTA_MINISTERIO` | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 |
 | `COMPATIBILIDAD_AMBIENTAL` | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 |
 | `CONSULTAS` | 🔀² | 🔀² | 🔀² | 🔀² | 🔀² | 🔀² | 🚫 | 🚫 |
@@ -89,11 +90,13 @@ Las fases referenciadas son las definidas en `ESTRUCTURA_FTT.json`. Las restricc
 | `AAU_AAUS_INTEGRADA` | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 |
 | `CONSULTA_OPERADOR_SISTEMA` | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 |
 | `RECONOCIMIENTO_INTERESADO` | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 |
-| `RESOLUCION` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🚫 | 🚫 |
+| `RESOLUCION_DUP` | ✅⁵ | ✅⁵ | ✅⁵ | ✅⁵ | ✅⁵ | ✅⁵ | 🚫 | 🚫 |
 
 ¹ La solicitud debe incluir anejo de afecciones con relación concreta e individualizada de bienes/derechos a expropiar o sobre los que imponer servidumbre (art. 143.3 RD 1955/2000).  
 ² Simultáneas a IP; 30 días, silencio positivo. Si DUP va con AAC, las consultas del art. 127 satisfacen este requisito (art. 146.2 RD 1955/2000).  
-³ 30 días. BOE + BOP de provincias afectadas + prensa + tablones de ayuntamientos. Si la IP se realizó conjuntamente durante la tramitación de la AAP (art. 125 + 143.4), puede no requerirse IP separada — **PENDIENTE CONFIRMACIÓN NORMATIVA**.
+³ 30 días. BOE + BOP de provincias afectadas + prensa + tablones de ayuntamientos. Si la IP se realizó conjuntamente durante la tramitación de la AAP (art. 125 + 143.4), puede no requerirse IP separada — **PENDIENTE CONFIRMACIÓN NORMATIVA**.  
+⁴ Obligatoria en toda solicitud con DUP: media el acceso a datos catastrales de titularidad necesarios para redactar el RBDA (art. 143.3.e RD 1955/2000). Previa a `CONSULTAS`/`INFORMACION_PUBLICA` de esta solicitud. Dos caminos según si el promotor dispone o no de acceso directo al Catastro (ADR-046 §F; detalle en `DISEÑO_RESOLUCION_DUP.md` §2).  
+⁵ Sustituye a `RESOLUCION`: la única finalizadora de la solicitud DUP autónoma es el acto de declaración de utilidad pública (ADR-046 §A-B).
 
 ---
 
@@ -129,6 +132,7 @@ Las fases referenciadas son las definidas en `ESTRUCTURA_FTT.json`. Las restricc
 | Fase | Transp. | Distrib. | D.Ced. | Renov. | L.Dir. | Convenc. | Autocons. | Otros |
 |---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
 | `ANALISIS_SOLICITUD` | ✅ | ✅ | ✅ | ✅¹ | ✅ | ✅ | 🚫 | 🚫 |
+| `DATOS_CATASTRALES` | ✅⁷ | ✅⁷ | ✅⁷ | ✅⁷ | ✅⁷ | ✅⁷ | 🚫 | 🚫 |
 | `CONSULTA_MINISTERIO` | ✅ | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 |
 | `COMPATIBILIDAD_AMBIENTAL` | ⚠️² | ⚠️² | ⚠️² | ⚠️² | ⚠️² | ⚠️² | 🚫 | 🚫 |
 | `CONSULTAS` | 🔀³ | 🔀³ | 🔀³ | 🔀³ | 🔀³ | 🔀³ | 🚫 | 🚫 |
@@ -138,13 +142,16 @@ Las fases referenciadas son las definidas en `ESTRUCTURA_FTT.json`. Las restricc
 | `CONSULTA_OPERADOR_SISTEMA` | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 |
 | `RECONOCIMIENTO_INTERESADO` | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 |
 | `RESOLUCION` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🚫 | 🚫 |
+| `RESOLUCION_DUP` | ✅⁸ | ✅⁸ | ✅⁸ | ✅⁸ | ✅⁸ | ✅⁸ | 🚫 | 🚫 |
 
 ¹ Trámite `COMUNICACION_INICIO` obligatorio — acredita Hito 1 (RD-ley 23/2020 art. 1.2 in fine).  
 ² Solo si `proyecto.ia.siglas ∈ {AAU, AAUS}`.  
 ³ Simultáneas a IP; 30 días. La DUP no reduce el plazo de consultas.  
 ⁴ IP **siempre** obligatoria — la DUP suprime tanto la excepción del DL 26/2021 DF 4ª como la del Decreto 9/2011 DA 1ª.  
 ⁵ Solo si el instrumento ambiental se tramita externamente al procedimiento sustantivo.  
-⁶ Solo si el instrumento ambiental se tramita integrado en el procedimiento sustantivo.
+⁶ Solo si el instrumento ambiental se tramita integrado en el procedimiento sustantivo.  
+⁷ Obligatoria: media el acceso a datos catastrales de titularidad necesarios para redactar el RBDA (art. 143.3.e RD 1955/2000). Previa a `CONSULTAS`/`INFORMACION_PUBLICA` de esta solicitud. Dos caminos según si el promotor dispone o no de acceso directo al Catastro (ADR-046 §F; detalle en `DISEÑO_RESOLUCION_DUP.md` §2).  
+⁸ Convive como fase hermana de `RESOLUCION`: resuelve el acto de declaración de utilidad pública; `RESOLUCION` resuelve la autorización conjunta AAP+AAC (ADR-046 §A-B).
 
 ---
 
@@ -157,6 +164,7 @@ Las fases referenciadas son las definidas en `ESTRUCTURA_FTT.json`. Las restricc
 | Fase | Transp. | Distrib. | D.Ced. | Renov. | L.Dir. | Convenc. | Autocons. | Otros |
 |---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
 | `ANALISIS_SOLICITUD` | ✅ | ✅ | ✅ | ✅¹ | ✅ | ✅ | 🚫 | 🚫 |
+| `DATOS_CATASTRALES` | ✅⁹ | ✅⁹ | ✅⁹ | ✅⁹ | ✅⁹ | ✅⁹ | 🚫 | 🚫 |
 | `CONSULTA_MINISTERIO` | ✅ | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 |
 | `COMPATIBILIDAD_AMBIENTAL` | ⚠️² | ⚠️² | ⚠️² | ⚠️² | ⚠️² | ⚠️² | 🚫 | 🚫 |
 | `CONSULTAS` | 🔀³ | 🔀³ | 🔀³ | 🔀³ | 🔀³ | 🔀³ | 🚫 | 🚫 |
@@ -166,6 +174,7 @@ Las fases referenciadas son las definidas en `ESTRUCTURA_FTT.json`. Las restricc
 | `CONSULTA_OPERADOR_SISTEMA` | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 |
 | `RECONOCIMIENTO_INTERESADO` | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 |
 | `RESOLUCION` | ✅⁷ | ✅⁷ | ✅⁷ | ✅⁷ | ✅⁷ | ✅⁷ | 🚫 | 🚫 |
+| `RESOLUCION_DUP` | ✅⁸ | ✅⁸ | ✅⁸ | ✅⁸ | ✅⁸ | ✅⁸ | 🚫 | 🚫 |
 
 ¹ Trámite `COMUNICACION_INICIO` obligatorio — acredita Hito 1 (RD-ley 23/2020 art. 1.2 in fine).  
 ² Solo si `proyecto.ia.siglas ∈ {AAU, AAUS}`.  
@@ -173,7 +182,9 @@ Las fases referenciadas son las definidas en `ESTRUCTURA_FTT.json`. Las restricc
 ⁴ IP **siempre** obligatoria — la DUP suprime tanto la excepción del DL 26/2021 DF 4ª como la del Decreto 9/2011 DA 1ª.  
 ⁵ Solo si el instrumento ambiental se tramita externamente al procedimiento sustantivo.  
 ⁶ Solo si el instrumento ambiental se tramita integrado en el procedimiento sustantivo.  
-⁷ **La AAP se resuelve con normalidad (art. 128). La parte de DUP no puede resolverse** hasta que conste aprobado el proyecto de ejecución — AAC otorgada en solicitud posterior del mismo expediente, con fecha igual o anterior a la del acto de DUP (art. 143.2 RD 1955/2000; doctrina Morata de Tajuña, ver ADR-045 §C). No es un caso prohibido, es un caso diferido: el acto de DUP queda a la espera.
+⁷ La AAP se resuelve con normalidad (art. 128 RD 1955/2000).  
+⁸ La fase existe desde el alta de la solicitud — no es un caso prohibido. Lo diferido es la *emisión* del acto: la tarea `ELABORACION.ELABORAR` queda bloqueada por regla de motor hasta que conste AAC otorgada en solicitud posterior del mismo expediente, con fecha igual o anterior a la del acto de DUP (art. 143.2 RD 1955/2000; doctrina Morata de Tajuña; ADR-045 §C; #891).  
+⁹ Obligatoria: media el acceso a datos catastrales de titularidad necesarios para redactar el RBDA (art. 143.3.e RD 1955/2000). Previa a `CONSULTAS`/`INFORMACION_PUBLICA` de esta solicitud. Dos caminos según si el promotor dispone o no de acceso directo al Catastro (ADR-046 §F; detalle en `DISEÑO_RESOLUCION_DUP.md` §2).
 
 ---
 
@@ -184,6 +195,7 @@ Las fases referenciadas son las definidas en `ESTRUCTURA_FTT.json`. Las restricc
 | Fase | Transp. | Distrib. | D.Ced. | Renov. | L.Dir. | Convenc. | Autocons. | Otros |
 |---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
 | `ANALISIS_SOLICITUD` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🚫 | 🚫 |
+| `DATOS_CATASTRALES` | ✅³ | ✅³ | ✅³ | ✅³ | ✅³ | ✅³ | 🚫 | 🚫 |
 | `CONSULTA_MINISTERIO` | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 |
 | `COMPATIBILIDAD_AMBIENTAL` | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 |
 | `CONSULTAS` | 🔀¹ | 🔀¹ | 🔀¹ | 🔀¹ | 🔀¹ | 🔀¹ | 🚫 | 🚫 |
@@ -193,9 +205,12 @@ Las fases referenciadas son las definidas en `ESTRUCTURA_FTT.json`. Las restricc
 | `CONSULTA_OPERADOR_SISTEMA` | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 |
 | `RECONOCIMIENTO_INTERESADO` | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 |
 | `RESOLUCION` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🚫 | 🚫 |
+| `RESOLUCION_DUP` | ✅⁴ | ✅⁴ | ✅⁴ | ✅⁴ | ✅⁴ | ✅⁴ | 🚫 | 🚫 |
 
 ¹ Simultáneas a IP; 15 días — AAP ya concedida, sin nueva AAP ni modificación (art. 131.1 RD 1955/2000).  
-² IP obligatoria aunque la AAP ya incluyera IP con igual alcance: los efectos jurídicos de la DUP son distintos a los de la AAP y requieren su propia publicidad (confirmado).
+² IP obligatoria aunque la AAP ya incluyera IP con igual alcance: los efectos jurídicos de la DUP son distintos a los de la AAP y requieren su propia publicidad (confirmado).  
+³ Obligatoria: media el acceso a datos catastrales de titularidad necesarios para redactar el RBDA (art. 143.3.e RD 1955/2000). Previa a `CONSULTAS`/`INFORMACION_PUBLICA` de esta solicitud. Dos caminos según si el promotor dispone o no de acceso directo al Catastro (ADR-046 §F; detalle en `DISEÑO_RESOLUCION_DUP.md` §2).  
+⁴ Convive como fase hermana de `RESOLUCION`: resuelve el acto de declaración de utilidad pública; `RESOLUCION` resuelve la AAC (ADR-046 §A-B).
 
 ---
 

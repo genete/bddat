@@ -3,7 +3,7 @@
     "version": "2.3",
     "descripcion": "Mapa Expediente-Solicitud-Fase (ESF) — derivado de ESTRUCTURA_ESF.md (fuente de verdad). En caso de discrepancia, prevalece el MD.",
     "principio": "S-dominante — la solicitud define el procedimiento; el tipo de expediente actúa como condición modificadora. Cuando el tipo de expediente altera sustancialmente el flujo se crean entradas separadas.",
-    "fecha_actualizacion": "2026-09-11",
+    "fecha_actualizacion": "2026-09-14",
     "ref_ftt": "docs/referencia/ESTRUCTURA_FTT.json",
     "ref_normativa": [
       "docs/referencia/NORMATIVA_MAPA_PROCEDIMENTAL.md",
@@ -11,7 +11,7 @@
       "docs/referencia/NORMATIVA_EXCEPCIONES_AT.md"
     ],
     "nota_finalizadora": "La propiedad es_finalizadora de cada fase está en tipos_fases (FTT). RESOLUCION y RECONOCIMIENTO_INTERESADO son finalizadoras. No se repite aquí.",
-    "nota_estado": "v2.2 — sincronizado con ESTRUCTURA_ESF.md v2.2. Las fases de cada procedimiento son orientativas; las restricciones operativas viven en el motor de reglas (ADR-007)."
+    "nota_estado": "v2.4 — sincronizado con ESTRUCTURA_ESF.md v2.4. Las fases de cada procedimiento son orientativas; las restricciones operativas viven en el motor de reglas (ADR-007)."
   },
 
   "PROCEDIMIENTOS": [
@@ -171,6 +171,12 @@
           "nota_renovable": "Para tipo_expediente == Renovable: el tramite COMUNICACION_INICIO es obligatorio — la notificación de admisión a trámite acredita el Hito 1 del RD-ley 23/2020 (art. 1.2 in fine)."
         },
         {
+          "fase": "DATOS_CATASTRALES",
+          "obligatoria": true,
+          "base_legal": "RD 1955/2000 art. 143.3.e",
+          "nota": "Media el acceso a datos catastrales de titularidad necesarios para redactar el RBDA. Previa a CONSULTAS/INFORMACION_PUBLICA de esta solicitud. Dos caminos según si el promotor dispone o no de acceso directo al Catastro (ADR-046 §F)."
+        },
+        {
           "fase": "CONSULTA_MINISTERIO",
           "obligatoria": false,
           "condicion": "tipo_expediente == Transporte",
@@ -208,6 +214,12 @@
           "fase": "RESOLUCION",
           "obligatoria": true,
           "base_legal": "RD 1955/2000 arts. 128, 131.7, 143"
+        },
+        {
+          "fase": "RESOLUCION_DUP",
+          "obligatoria": true,
+          "base_legal": "RD 1955/2000 art. 148",
+          "nota": "Fase hermana de RESOLUCION: resuelve el acto de declaración de utilidad pública; RESOLUCION resuelve la autorización conjunta AAP+AAC (ADR-046 §A-B)."
         }
       ]
     },
@@ -225,6 +237,12 @@
           "obligatoria": true,
           "base_legal": "LPACAP art. 68; RD 1955/2000 arts. 122-123, 143",
           "nota_renovable": "Para tipo_expediente == Renovable: el tramite COMUNICACION_INICIO es obligatorio — la notificación de admisión a trámite acredita el Hito 1 del RD-ley 23/2020 (art. 1.2 in fine)."
+        },
+        {
+          "fase": "DATOS_CATASTRALES",
+          "obligatoria": true,
+          "base_legal": "RD 1955/2000 art. 143.3.e",
+          "nota": "Media el acceso a datos catastrales de titularidad necesarios para redactar el RBDA. Previa a CONSULTAS/INFORMACION_PUBLICA de esta solicitud. Dos caminos según si el promotor dispone o no de acceso directo al Catastro (ADR-046 §F)."
         },
         {
           "fase": "CONSULTA_MINISTERIO",
@@ -263,8 +281,14 @@
         {
           "fase": "RESOLUCION",
           "obligatoria": true,
-          "base_legal": "RD 1955/2000 arts. 128, 143.2",
-          "nota": "La AAP se resuelve con normalidad. La parte de DUP no puede resolverse hasta que conste aprobado el proyecto de ejecución — AAC otorgada en solicitud posterior del mismo expediente, con fecha igual o anterior a la del acto de DUP (art. 143.2; doctrina Morata de Tajuña, ADR-045 §C). No prohibido, diferido: el acto de DUP queda a la espera de la AAC."
+          "base_legal": "RD 1955/2000 art. 128",
+          "nota": "La AAP se resuelve con normalidad."
+        },
+        {
+          "fase": "RESOLUCION_DUP",
+          "obligatoria": true,
+          "base_legal": "RD 1955/2000 art. 143.2, 148",
+          "nota": "La fase existe desde el alta de la solicitud — no es un caso prohibido. Lo diferido es la emisión del acto: la tarea ELABORACION.ELABORAR queda bloqueada por regla de motor hasta que conste AAC otorgada en solicitud posterior del mismo expediente, con fecha igual o anterior a la del acto de DUP (doctrina Morata de Tajuña; ADR-045 §C; #891)."
         }
       ]
     },
@@ -283,6 +307,12 @@
           "nota": "La solicitud incluye obligatoriamente un anejo de afecciones con relación concreta e individualizada de bienes y derechos a expropiar o sobre los que imponer servidumbre (art. 143.3)."
         },
         {
+          "fase": "DATOS_CATASTRALES",
+          "obligatoria": true,
+          "base_legal": "RD 1955/2000 art. 143.3.e",
+          "nota": "Media el acceso a datos catastrales de titularidad necesarios para redactar el RBDA. Previa a CONSULTAS/INFORMACION_PUBLICA de esta solicitud. Dos caminos según si el promotor dispone o no de acceso directo al Catastro (ADR-046 §F)."
+        },
+        {
           "fase": "INFORMACION_PUBLICA",
           "obligatoria": true,
           "base_legal": "RD 1955/2000 art. 144",
@@ -295,10 +325,10 @@
           "nota": "Opcional (🔀); simultáneas a IP. AAPP, organismos y empresas de servicios con bienes o intereses afectados. Plazo 30 días, silencio positivo (art. 146.1). Si DUP se tramita con AAC, las consultas del art. 127 satisfacen este requisito (art. 146.2)."
         },
         {
-          "fase": "RESOLUCION",
+          "fase": "RESOLUCION_DUP",
           "obligatoria": true,
           "base_legal": "RD 1955/2000 arts. 145-146; LSE art. 54",
-          "nota": "La resolución de DUP habilita la expropiación forzosa y/o imposición de servidumbre de paso. Competencia de la Consejería para instalaciones intra-CCAA."
+          "nota": "Sustituye a RESOLUCION: la única finalizadora de la solicitud DUP autónoma (ADR-046 §A-B). Habilita la expropiación forzosa y/o imposición de servidumbre de paso. Competencia de la Consejería para instalaciones intra-CCAA."
         }
       ]
     },
@@ -316,6 +346,12 @@
           "base_legal": "LPACAP art. 68; RD 1955/2000 arts. 130, 143.2"
         },
         {
+          "fase": "DATOS_CATASTRALES",
+          "obligatoria": true,
+          "base_legal": "RD 1955/2000 art. 143.3.e",
+          "nota": "Media el acceso a datos catastrales de titularidad necesarios para redactar el RBDA. Previa a CONSULTAS/INFORMACION_PUBLICA de esta solicitud. Dos caminos según si el promotor dispone o no de acceso directo al Catastro (ADR-046 §F)."
+        },
+        {
           "fase": "CONSULTAS",
           "obligatoria": false,
           "base_legal": "RD 1955/2000 art. 131",
@@ -331,6 +367,12 @@
           "fase": "RESOLUCION",
           "obligatoria": true,
           "base_legal": "RD 1955/2000 arts. 131.7, 143.2"
+        },
+        {
+          "fase": "RESOLUCION_DUP",
+          "obligatoria": true,
+          "base_legal": "RD 1955/2000 art. 148",
+          "nota": "Fase hermana de RESOLUCION: resuelve el acto de declaración de utilidad pública; RESOLUCION resuelve la AAC (ADR-046 §A-B)."
         }
       ]
     },
