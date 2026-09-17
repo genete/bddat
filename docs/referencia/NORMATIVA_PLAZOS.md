@@ -409,6 +409,8 @@ La resolución debe publicarse en BOE y en el Boletín Oficial de las provincias
 
 La autorización fija un **plazo** para que el titular solicite la AAC (aprobación del proyecto de ejecución): si vence sin solicitarla → **caducidad de la AAP** (art. 128.4). El titular puede pedir prórrogas por razones justificadas.
 
+> **Solicitud combinada `AAP+AAC` resuelta partida (ADR-047, #918):** cuando el técnico resuelve AAP y AAC en actos separados, cada uno lleva su propio plazo de 3 meses (art. 128 para AAP, art. 131.7 para AAC) desde la misma fecha de entrada de la solicitud — no un único plazo de 3 meses para toda la solicitud. `catalogo_plazos` hoy solo fija un plazo único (`camino='ANY/AAP+AAC'`, art. 131.7) pensado para el acto conjunto; el desglose para el camino partido no se siembra en #918 — converge con el hueco de plazo/cierre único que #892 ya documentó (`solicitudes.documento_cierre_id` es una FK única, no dos).
+
 ---
 
 #### Procedimiento de Autorización Administrativa de Construcción — AAC / Aprobación proyecto ejecución (arts. 130-131)

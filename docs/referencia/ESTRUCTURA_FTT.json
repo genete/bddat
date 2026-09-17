@@ -1,9 +1,9 @@
 {
   "metadata": {
-    "version": "6.5",
+    "version": "6.6",
     "descripcion": "Estructura jerárquica de fases, trámites y tareas para expedientes de AT",
     "principio": "Minimalismo estructural — la semántica vive en los TIPOS",
-    "fecha_actualizacion": "2026-09-14",
+    "fecha_actualizacion": "2026-09-17",
     "ref_diseño": [
       "docs/referencia/DISEÑO_ANALISIS_SOLICITUD.md",
       "docs/referencia/DISEÑO_CONSULTAS_ORGANISMOS.md",
@@ -558,6 +558,62 @@
           "tareas_indicativas": ["NOTIFICAR", "ESPERAR_PLAZO", "ESPERAR_PLAZO"],
           "patron": "F+F",
           "nota": "Art. 148.2 RD 1955/2000, de rango superior a la Instrucción 1/2016 (que no lo cita para la resolución, solo para la IP). Se interpreta el silencio de la Instrucción como omisión, no excepción (ADR-046 §D)."
+        }
+      ]
+    },
+    {
+      "codigo": "RESOLUCION_AAP",
+      "nombre": "Resolución de Autorización Administrativa Previa",
+      "descripcion": "Resolución finalizadora del acto de AAP cuando la solicitud AAP+AAC(+DUP) se resuelve partida en vez de conjunta (ADR-047 §A). RESOLUCION conserva su código y significado para el acto conjunto; RESOLUCION_AAP/RESOLUCION_AAC son la alternativa partida, elección del técnico, mutuamente excluyente con RESOLUCION (ver ESTRUCTURA_ESF.md).",
+      "tramites": [
+        {
+          "codigo": "ELABORACION",
+          "nombre": "Elaboración de Resolución de AAP",
+          "descripcion": "Elaboración de la resolución de la autorización administrativa previa, con validez jurídica.",
+          "tareas_indicativas": ["ELABORAR"],
+          "patron": "B (sin NOTIFICAR)",
+          "documento_consumido": "CERT_FIN_INSTRUCCION de la solicitud",
+          "nota": "Mismo tipo_tramite código ELABORACION que RESOLUCION — colisión de nombre de fichero resuelta vía nombres_documentos.py:_SUSTITUCIONES ('Resolución de AAP', #918). Bloqueos de motor: duplicado quirúrgico de los 5 de RESOLUCION (sujeto ANY/ANY/RESOLUCION_AAP) — organismos_todos_terminados, fase_ip_finalizada, tramite_requerimiento_sin_respuesta, instrumento_ambiental=AAU, solicitud_tiene_cert_fin_instruccion. Más la exclusión mutua con RESOLUCION al CREAR la fase (condición existe_resolucion_conjunta, ADR-047 §B)."
+        },
+        {
+          "codigo": "NOTIFICACION",
+          "nombre": "Notificación de Resolución de AAP",
+          "descripcion": "Notificación a interesados de la resolución de AAP adoptada.",
+          "tareas_indicativas": ["NOTIFICAR"],
+          "patron": "B (solo NOTIFICAR)",
+          "nota": "El documento ya fue elaborado y firmado en ELABORACION. El documento consumido (vínculo CONSUMIDO en documentos_tarea) es el producido en ELABORACION."
+        },
+        {
+          "codigo": "PUBLICACION",
+          "nombre": "Publicación de Resolución de AAP",
+          "descripcion": "Publicación en medios oficiales (BOE y BOP, art. 128.3 RD 1955/2000).",
+          "tareas_indicativas": ["ELABORAR", "NOTIFICAR", "ESPERAR_PLAZO"],
+          "patron": "C",
+          "nota": "A diferencia de RESOLUCION_AAC, la AAP sí publica (art. 128.3 RD 1955/2000; #918)."
+        }
+      ]
+    },
+    {
+      "codigo": "RESOLUCION_AAC",
+      "nombre": "Resolución de Autorización Administrativa de Construcción",
+      "descripcion": "Resolución finalizadora del acto de AAC cuando la solicitud AAP+AAC(+DUP) se resuelve partida en vez de conjunta (ADR-047 §A). Solo elaborable con RESOLUCION_AAP de la misma solicitud finalizada favorable (ADR-047 §F).",
+      "tramites": [
+        {
+          "codigo": "ELABORACION",
+          "nombre": "Elaboración de Resolución de AAC",
+          "descripcion": "Elaboración de la resolución de la autorización administrativa de construcción (aprobación de proyecto de ejecución), con validez jurídica.",
+          "tareas_indicativas": ["ELABORAR"],
+          "patron": "B (sin NOTIFICAR)",
+          "documento_consumido": "CERT_FIN_INSTRUCCION de la solicitud",
+          "nota": "Mismo tipo_tramite código ELABORACION que RESOLUCION — colisión de nombre de fichero resuelta vía nombres_documentos.py:_SUSTITUCIONES ('Resolución de AAC', #918). Bloqueos de motor: duplicado quirúrgico de los 5 de RESOLUCION (sujeto ANY/ANY/RESOLUCION_AAC); exclusión mutua con RESOLUCION al CREAR la fase (condición existe_resolucion_conjunta, ADR-047 §B). Más la regla de orden AAP→AAC (ADR-047 §F, RD 1955/2000 arts. 128.4/130.1/131.1 párr. 2): RESOLUCION_AAP de la misma solicitud debe constar finalizada favorable — por límite del motor (no compila sujeto a nivel de tarea), ancla en CREAR este trámite ELABORACION (sujeto ANY/RESOLUCION_AAC/ELABORACION), no en la tarea ELABORAR."
+        },
+        {
+          "codigo": "NOTIFICACION",
+          "nombre": "Notificación de Resolución de AAC",
+          "descripcion": "Notificación a interesados de la resolución de AAC adoptada.",
+          "tareas_indicativas": ["NOTIFICAR"],
+          "patron": "B (solo NOTIFICAR)",
+          "nota": "El documento ya fue elaborado y firmado en ELABORACION. El documento consumido (vínculo CONSUMIDO en documentos_tarea) es el producido en ELABORACION. Sin PUBLICACION: a diferencia de RESOLUCION_AAP, el art. 131.8 RD 1955/2000 solo exige notificar, no publicar (#918)."
         }
       ]
     }
