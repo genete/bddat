@@ -213,20 +213,80 @@ invisible y pasa a ser un hecho que se le puede llevar a IT.
 **Proporcionado aquí:** opciones de montaje + semáforo + `gthread` + medición.
 No: circuit breaker. No: cola de tareas. No: almacén de objetos.
 
-### 3.6 `explorer /select` en el servidor — rompe con el segundo usuario
+### 3.6 `explorer /select` en el servidor — dos necesidades distintas, una ya resuelta
 
-`app/modules/expedientes/routes.py:1106` y `:1137`:
+**Diagnóstico (código verificado 2026-09-17):** `pool_abrir_en_carpeta`
+(`app/modules/expedientes/routes.py:1189-1226`) y `abrir_carpeta_expediente`
+(`:1229-1257`) ejecutan `subprocess.Popen('explorer /select,"<ruta>"',
+shell=True)` **en el servidor**. El propio docstring lo reconoce ("requiere
+que Flask corra en el mismo PC que el navegador"). Con varios usuarios: en
+Linux no existe `explorer`; en Windows abre una ventana en el escritorio del
+*servidor* que nadie mira, y deja un proceso colgado por cada clic.
 
-```python
-subprocess.Popen(f'explorer /select,"{ruta_abs}"', shell=True)
-```
+El feature real tiene dos necesidades separables, con solución distinta cada
+una — no es un único "sustituir por `send_file`" como decía la versión
+anterior de esta sección:
 
-Abre el Explorador **en el servidor**. El propio docstring lo reconoce
-("requiere que Flask corra en el mismo PC que el navegador"). Con varios
-usuarios: en Linux no existe `explorer`; en Windows abre una ventana en el
-escritorio del servidor que nadie ve, y deja un proceso por clic. Hay que
-sustituirlo por una descarga vía `send_file`. **No figura en los artefactos a
-crear de `ANALISIS_DESPLIEGUE.md §9`.**
+1. **Abrir el fichero en sí — ya resuelto, cero cambios.**
+   `pool_descargar_documento` (`:911-952`) ya sirve el fichero vía
+   `send_file(ruta_abs, as_attachment=False, ...)` — el navegador decide
+   inline (PDF) o descarga — y ya despacha correctamente `http(s)://`
+   (`redirect` directo) y `bddat://` (`redirect` a la vista propia:
+   `certificados`→PDF inline, `diagnosticos`→400 explícito, se abre por
+   `diagnostico_modal()` aparte). Todo mediado por el servidor: el cliente
+   nunca necesita ver la red de ficheros directamente.
+
+2. **Abrir la carpeta contenedora con el fichero seleccionado — el bug real.**
+   - **Vía principal — reutilizar el protocolo `bddat-explorador://` ya
+     construido en #231, no inventar nada nuevo.** `scripts/cliente/` instala
+     en el PC cliente (`HKEY_CURRENT_USER`, sin admin) un handler que ejecuta
+     `explorer.exe /select,"<ruta>"` localmente al recibir la URI. Ya
+     funciona en producción para plantillas
+     (`admin_plantillas/routes.py::_rutas_fichero` +
+     `_detalle_fragmento.html`). Aplicar el mismo patrón a
+     `pool_documentos.html`: sustituir el botón que hoy dispara
+     `pool_abrir_en_carpeta` por un enlace `bddat-explorador://` construido
+     desde `doc.ruta_absoluta()`.
+   - **Fallback siempre visible, sin detección JS del fallo del protocolo**
+     (decisión ya tomada en #231 el 2026-07-19: la detección heurística de
+     protocolo-no-instalado es poco fiable entre navegadores y da falsos
+     positivos). El fallback es un segundo enlace que abre el modal
+     "explorador de carpetas" ya existente — `pool_explorador_fs`
+     (`:672-704`, construido en #194) — apuntado a la carpeta contenedora.
+     Sin selección de fichero, pero sin depender de nada instalado en el
+     cliente: mismo modelo de confianza que el punto 1 (servidor media,
+     cliente no necesita acceso directo a la red de ficheros).
+   - Excluir el enlace/botón completo cuando `doc.url` sea `http(s)://` o
+     `bddat://` — no hay carpeta real que abrir. (El guard actual de
+     `pool_abrir_en_carpeta` solo contempla `http(s)://`; falta añadir
+     `bddat://`.)
+   - `pool_abrir_en_carpeta` y `abrir_carpeta_expediente` (el
+     `subprocess.Popen` server-side) se retiran: sin usuarios tras el cambio.
+
+**Alternativa considerada y descartada — `file://` construido con
+`FILESYSTEM_BASE` + ruta relativa, sin protocolo ni handler instalado en el
+cliente:**
+
+- Chrome/Edge bloquean explícitamente los enlaces `file://` con sintaxis de
+  host de red (`file://servidor/recurso/...`, error "Not allowed to load
+  local resource") — restricción de seguridad activa del navegador, no un
+  problema de alcance real de red.
+- El único rodeo conocido es que **cada PC cliente** tenga el recurso mapeado
+  a la **misma letra de unidad** (`file:///W:/...` es sintaxis local, no
+  bloqueada) — viable, `FILESYSTEM_BASE=W:\ALTA TENSION\Expedientes` ya
+  estaba contemplado como forma de producción en `config.py:31` — pero añade
+  una segunda pieza de infraestructura (mapeo de unidad consistente en todo
+  el parque cliente, vía GPO o script de login) sin necesidad, cuando
+  reutilizar `pool_explorador_fs` cubre el mismo caso sin tocar ningún PC
+  cliente.
+- Y aun con la unidad mapeada, `file://` a una carpeta abre el listado propio
+  de Chrome dentro de la pestaña, no el Explorador nativo; y `file://` a un
+  fichero lo abre o descarga, no lo selecciona dentro de una ventana de
+  Explorador. No reproduce en ningún caso el comportamiento pedido.
+
+Este diseño absorbe y sustituye a **#195** (proponía construir desde cero un
+protocolo URI custom — ya existe, es el de #231; issue cerrado como
+duplicado/superado por este análisis y por #853).
 
 ---
 
@@ -400,7 +460,7 @@ escriben ficheros en el share y filas en la BD de desarrollo. Con el historial d
 | #850 | Medir el panel del supervisor y denormalizar el estado agregado | §3.1 |
 | #851 | Workers `gthread` y pool de conexiones | §4 (niveles 1-2) |
 | #852 | Resiliencia del share: montaje `soft`, semáforo, medición | §3.2-§3.5 |
-| #853 | `explorer /select` en el servidor | §3.6 |
+| #853 | `explorer /select` en el servidor (absorbe #195) | §3.6 |
 | #854 | Cachear los context processors | §5 |
 | *(pendiente)* | Instrumentación de tiempos y consultas | §6 |
 
