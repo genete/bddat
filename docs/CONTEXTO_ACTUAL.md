@@ -7,9 +7,9 @@
 
 ---
 
-**Hecho:** **#918 (PR #919, mergeado 2026-09-17) — `RESOLUCION_AAP`/`RESOLUCION_AAC` como acto partido de AAP+AAC (ADR-047).** Dos fases finalizadoras nuevas, alternativa al acto conjunto `RESOLUCION` (elección del técnico, no regla de motor); exclusión mutua en el árbol; duplicado quirúrgico de las 5 reglas de motor de `RESOLUCION`; regla de orden AAP→AAC (ADR-047 §F) con ancla real distinta de la prevista — el motor no compila sujeto a nivel de tarea, así que bloquea en `crear_tramite` (`ELABORACION` de `RESOLUCION_AAC`), no en la tarea `ELABORAR`. `catalogo_plazos` del plazo partido queda fuera de alcance, converge con #892 (comentado ahí). #891 queda desbloqueado (comentado ahí). Detalle completo en el propio #918 (cerrado).
+**Hecho:** **#891 (PR #920, mergeado 2026-09-17) — regla de orden DUP→AAC (ADR-045 §C): `RESOLUCION_DUP` no se elabora sin AAC previa.** Variable `tiene_aac_previa` (fase hermana de la misma solicitud —`RESOLUCION`/`RESOLUCION_AAC`, ADR-047 §E— o de solicitud anterior del expediente, favorable) + regla `BLOQUEAR` con escape en `ANY/RESOLUCION_DUP/ELABORACION`, RD 1955/2000 art. 149.1. Mismo ancla que #918 fijó para `RESOLUCION_AAC` — el motor no compila sujeto a nivel de tarea. `catalogo_plazos` de la DUP queda fuera de alcance, converge con #892. Detalle completo en el propio #891 (cerrado).
 
-**Próximo:** con #918 cerrado, el foco pasa a **#891** (regla de orden ADR-045 §C — la DUP no se resuelve sin proyecto de ejecución aprobado; `tiene_aac_previa` ya puede escribirse correctamente considerando también `RESOLUCION_AAC` partida, ADR-047 §E) y **#892** (cita normativa de la DUP a corregir, plazo propio para la parte DUP de las combinadas, y ahora también el plazo partido de AAP+AAC que #918 dejó documentado en `NORMATIVA_PLAZOS.md`). #801, #912 y #894 quedan detrás en la cadena; #431 en paralelo.
+**Próximo:** con #891 cerrado, el foco pasa a **#892** (cita normativa de la DUP a corregir, plazo propio para la parte DUP de las combinadas, y el plazo partido de AAP+AAC que #918 dejó documentado en `NORMATIVA_PLAZOS.md`). #801, #912 y #894 quedan detrás en la cadena; #431 en paralelo.
 
 ---
 
