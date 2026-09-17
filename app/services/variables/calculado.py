@@ -736,3 +736,46 @@ def _(ctx) -> bool:
         if fase.tipo_fase_id == tipo_fase.id and fase.reformado_id == reformado_id_nueva:
             return True
     return False
+
+
+# ---------------------------------------------------------------------------
+# Exclusión mutua RESOLUCION vs. RESOLUCION_AAP/RESOLUCION_AAC (#918, ADR-047 §B)
+# ---------------------------------------------------------------------------
+
+@variable('existe_resolucion_conjunta')
+def _(ctx) -> bool:
+    """
+    True si la solicitud en contexto ya tiene una fase `RESOLUCION` (acto
+    conjunto de AAP+AAC).
+
+    Sostiene la mitad de la exclusión mutua de ADR-047 §B: no se puede crear
+    `RESOLUCION_AAP` ni `RESOLUCION_AAC` si ya se resolvió por el camino
+    conjunto. Solo dispara al crear fase (`ctx.fase is None`), mismo criterio
+    de guarda que `version_ya_cubierta` — con una fase ya existente en
+    contexto (crear trámite, auditar) devuelve False.
+    """
+    solicitud = ctx.solicitud
+    if solicitud is None or ctx.fase is not None:
+        return False
+    return any(f.tipo_fase and f.tipo_fase.codigo == 'RESOLUCION' for f in solicitud.fases)
+
+
+@variable('existe_resolucion_partida')
+def _(ctx) -> bool:
+    """
+    True si la solicitud en contexto ya tiene una fase `RESOLUCION_AAP` o
+    `RESOLUCION_AAC` (acto partido, cualquiera de las dos mitades).
+
+    Sostiene la otra mitad de la exclusión mutua de ADR-047 §B: no se puede
+    crear `RESOLUCION` conjunta si ya se ha elegido el camino partido, aunque
+    solo se haya creado una de las dos mitades todavía — no hace falta que
+    estén las dos, ni que la creada esté favorable (eso es la regla de orden
+    de §F, ancla distinta). Solo dispara al crear fase (`ctx.fase is None`).
+    """
+    solicitud = ctx.solicitud
+    if solicitud is None or ctx.fase is not None:
+        return False
+    return any(
+        f.tipo_fase and f.tipo_fase.codigo in ('RESOLUCION_AAP', 'RESOLUCION_AAC')
+        for f in solicitud.fases
+    )
