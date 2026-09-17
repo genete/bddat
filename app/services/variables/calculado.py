@@ -827,3 +827,72 @@ def _(ctx) -> bool:
                 and f.resultado_fase.codigo in RESULTADO_FASE_FAVORABLE_CODIGOS):
             return True
     return False
+
+
+# ---------------------------------------------------------------------------
+# Regla de orden DUP→AAC (#891, ADR-045 §C, ADR-046 §E)
+# ---------------------------------------------------------------------------
+
+def _tiene_resolucion_aac_favorable(fases) -> bool:
+    return any(
+        f.tipo_fase
+        and f.tipo_fase.codigo in ('RESOLUCION', 'RESOLUCION_AAC')
+        and f.finalizada
+        and f.resultado_fase
+        and f.resultado_fase.codigo in RESULTADO_FASE_FAVORABLE_CODIGOS
+        for f in fases
+    )
+
+
+@variable('tiene_aac_previa')
+def _(ctx) -> bool:
+    """
+    True si consta aprobado el proyecto de ejecución (AAC) con anterioridad
+    al acto de DUP: AAC otorgada en la misma solicitud, o en solicitud
+    anterior del mismo expediente, finalizada con resultado favorable.
+
+    Sostiene la regla de orden de ADR-045 §C: la DUP no se resuelve
+    favorablemente si no consta aprobado el proyecto de ejecución. Ancla
+    real: `crear_tramite` (bloquea abrir `ELABORACION` bajo
+    `RESOLUCION_DUP`), mismo criterio que #918 usó para `RESOLUCION_AAC` —
+    el motor no compila sujeto a nivel de tarea.
+
+    Dos fuentes, ambas con `tipo_fase.codigo IN ('RESOLUCION',
+    'RESOLUCION_AAC')` porque el proyecto de ejecución se aprueba por el
+    camino conjunto (AAP+AAC, ADR-047) o por el partido (ADR-047 §E):
+
+    - Fase **hermana** en la MISMA solicitud (`AAC+DUP`, `AAP+AAC+DUP`).
+    - Fase finalizadora de OTRA solicitud anterior del expediente que
+      contenga AAC (DUP autónoma tras AAP+AAC o AAC ya resueltas).
+
+    No reutiliza `tiene_aac_resuelta_favorable`: esa excluye siempre la
+    solicitud en contexto y no cubre el caso de fase hermana, que aquí es
+    el caso normal (`AAC+DUP`, `AAP+AAC+DUP`).
+
+    No compara fechas explícitamente: se evalúa al querer abrir la
+    elaboración de `RESOLUCION_DUP`, antes de que exista el acto de DUP —
+    "ya consta favorable" implica fecha anterior por construcción.
+
+    Usa `ctx.fase` (no `ctx.solicitud`, `None` en `crear_tramite`, #895).
+    """
+    fase = ctx.fase
+    if fase is None:
+        return False
+    solicitud = fase.solicitud
+    if solicitud is None:
+        return False
+
+    if _tiene_resolucion_aac_favorable(solicitud.fases):
+        return True
+
+    expediente = solicitud.expediente
+    if expediente is None:
+        return False
+    for sol in expediente.solicitudes:
+        if sol is solicitud:
+            continue
+        if not sol.contiene_tipo('AAC'):
+            continue
+        if _tiene_resolucion_aac_favorable(sol.fases):
+            return True
+    return False
