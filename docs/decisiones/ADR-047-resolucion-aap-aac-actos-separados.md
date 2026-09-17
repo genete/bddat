@@ -80,6 +80,39 @@ La variable de la regla de orden de la DUP considera favorable tanto una `RESOLU
 una `RESOLUCION_AAC` partida — el requisito legal (proyecto de ejecución aprobado) es el mismo acto
 sustantivo; solo cambia el envoltorio de fases que lo representa.
 
+### F — Regla de orden: si se resuelve partido, la AAC no puede emitirse antes que la AAP
+
+Mismo principio que #891 aplica a la DUP, un nivel antes: el proyecto de ejecución que aprueba la
+AAC tiene que ser coherente con lo que la AAP ya fijó (emplazamiento, características básicas), así
+que abrir la posibilidad de resolver partido obliga a imponer el orden entre las dos mitades.
+Formulación operativa, calcada de ADR-045 §C:
+
+> Cuando una solicitud `AAP+AAC`(`+DUP`) se resuelve partida, la fase `RESOLUCION_AAC` no puede
+> elaborarse sin que conste `RESOLUCION_AAP` de la misma solicitud finalizada con resultado
+> favorable.
+
+Es regla de motor, no invariante — mismo razonamiento que #891: admite escape con justificación.
+Ancla en `RESOLUCION_AAC.ELABORACION.ELABORAR`, igual patrón que #891 ancla en
+`RESOLUCION_DUP.ELABORACION.ELABORAR`.
+
+**No aplica** a `RESOLUCION` conjunta (un solo acto, no hay orden que imponer entre sus dos mitades)
+ni a una solicitud `AAC` pura (no hay AAP que esperar en esta solicitud; una AAP favorable previa en
+otra solicitud del expediente ya tiene su propio efecto —sin bloqueo, solo reduce el plazo de
+consultas— vía la condición existente `tiene_solicitud_aap_favorable`, art. 131.1 párr. 2). El
+`sujeto='ANY/ANY/RESOLUCION_AAC'` ya acota esto por construcción: esa fase solo existe cuando se ha
+elegido el camino partido.
+
+**Variable nueva** (nombre a decidir en el issue): existe una fase con `tipo_fase.codigo ==
+'RESOLUCION_AAP'` en la **misma solicitud**, finalizada con resultado favorable. A diferencia de
+`tiene_solicitud_aap_favorable`, debe incluir la solicitud actual — mismo motivo que llevó a no
+reutilizar `tiene_aac_resuelta_favorable` para #891 (§E): AAP y AAC son ahora fases hermanas de la
+misma solicitud cuando se resuelve partido.
+
+**Cita normativa pendiente de leer** (igual criterio que §Contexto): no se fija artículo en este
+ADR. Candidatos a revisar con `/boe` antes de sembrar la migración: arts. 121-131 RD 1955/2000 (la
+relación anteproyecto→proyecto de ejecución) y LPACAP art. 88.2 (congruencia de la resolución con lo
+solicitado e instruido).
+
 ---
 
 ## Consecuencias
@@ -95,7 +128,9 @@ sustantivo; solo cambia el envoltorio de fases que lo representa.
 **Código a tocar (issue de implementación, no en este ADR):**
 - `tipos_fases` — 2 filas nuevas (`RESOLUCION_AAP`, `RESOLUCION_AAC`).
 - `fases_tramites` — entradas para `AAP+AAC` y `AAP+AAC+DUP` con los dos caminos declarados.
-- `reglas_motor` — 10 filas (duplicado de las 5 de `RESOLUCION`, ×2 códigos).
+- `reglas_motor` — 10 filas (duplicado de las 5 de `RESOLUCION`, ×2 códigos) **+ 1 fila más** para la
+  regla de orden de §F sobre `RESOLUCION_AAC` (11 filas en total).
+- `catalogo_variables` — variable nueva de §F (AAP previa en la misma solicitud).
 - `catalogo_plazos` — filas del plazo partido; converge con #892.
 - `app/services/informe_instruccion.py` — `_FASE_FINALIZADORA_POR_SIGLAS`: ADR-046 ya señaló que
   debía pasar "de mapa 1:1 a listas"; este ADR es un motivo más para no aplazarlo.
