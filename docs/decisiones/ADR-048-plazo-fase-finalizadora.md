@@ -5,7 +5,7 @@
 **Depende de:** ADR-041 (plazos y suspensiones, medida única, #788 excluye FASE/TRAMITE) · ADR-046 (`RESOLUCION_DUP` fase propia) · ADR-047 (`RESOLUCION_AAP`/`RESOLUCION_AAC` fases propias)
 **Enmienda:** `app/services/plazos.py` (docstring del módulo, #788) · `app/models/catalogo_plazos.py` (CheckConstraint, comentarios) · `docs/referencia/DISEÑO_FECHAS_PLAZOS.md` · `docs/decisiones/ADR-041-plazos-y-suspensiones-medida-unica.md` (nota) · `docs/referencia/NORMATIVA_PLAZOS.md` §2.2
 **Origen:** Issue #892 — al ir a dar plazo propio a `RESOLUCION_DUP`/`RESOLUCION_AAP`/`RESOLUCION_AAC` (converge con ADR-046 §Consecuencias y ADR-047, tarea pendiente de #918) se encontró que #788 excluyó explícitamente el nivel FASE de `catalogo_plazos`, con un `CheckConstraint` puesto a propósito para impedir la vuelta. Sesión 2026-09-17.
-**Issues:** #892 (implementación)
+**Issues:** #892 (implementación) · #921 (cierre propio por fase) · #922 (UI del plazo de fase)
 
 ---
 
@@ -31,9 +31,9 @@ Camino de 3 segmentos (`<expediente>/<siglas>/<fase>`), entre SOLICITUD (2) y TA
 
 Las dos fases finalizadoras de una misma solicitud (p. ej. `RESOLUCION_AAC` y `RESOLUCION_DUP` en `AAC+DUP`) arrancan su plazo el mismo día — la entrada de la solicitud en registro — y vencen en momentos distintos porque el artículo que les toca es distinto. `campo_fecha={'fk': 'documento_solicitud_id'}` sigue siendo el mismo vocabulario cerrado de #788; lo único nuevo es que `Fase` no tiene esa FK propia, así que `plazos.py._resolver_campo_fecha` sube a `elemento.solicitud` cuando el atributo no está en la propia fase. No es la indirección `via_tarea_tipo` que #788 retiró —aquella bajaba de trámite a tarea sin FK real de por medio; esta sube por una FK real, `Fase.solicitud_id`—.
 
-El cumplimiento (`campo_fecha_cumplimiento`) queda **NULL a propósito**. `Fase.documento_resultado_id` es la fecha de **dictar** el acto, no de **notificarlo**: el art. 21.3.b LPACAP exige las dos, y `Solicitud.documento_cierre_id` existe justo para separar esa segunda fecha de la primera (ver su docstring en `app/models/solicitudes.py`). La Fase no tiene hoy nada equivalente — no hay certificado de cierre por fase, y `RESOLUCION_DUP` encima notifica a tres grupos de destinatarios distintos (ADR-046 §C), el mismo problema de cardinalidad que motivó `documento_cierre_id` en su día para la solicitud. Diseñar ese cierre propio por fase es issue aparte, no de este ADR ni de #892: mientras no exista, el plazo de una fase finalizadora solo alcanza `EN_PLAZO`/`VENCIDO`, nunca `CUMPLIDO` — mismo patrón ya usado en `TABLON_AYUNTAMIENTOS` para un caso distinto.
+El cumplimiento (`campo_fecha_cumplimiento`) queda **NULL a propósito**. `Fase.documento_resultado_id` es la fecha de **dictar** el acto, no de **notificarlo**: el art. 21.3.b LPACAP exige las dos, y `Solicitud.documento_cierre_id` existe justo para separar esa segunda fecha de la primera (ver su docstring en `app/models/solicitudes.py`). La Fase no tiene hoy nada equivalente — no hay certificado de cierre por fase, y `RESOLUCION_DUP` encima notifica a tres grupos de destinatarios distintos (ADR-046 §C), el mismo problema de cardinalidad que motivó `documento_cierre_id` en su día para la solicitud. Diseñar ese cierre propio por fase es #921, no de este ADR ni de #892: mientras no exista, el plazo de una fase finalizadora solo alcanza `EN_PLAZO`/`VENCIDO`, nunca `CUMPLIDO` — mismo patrón ya usado en `TABLON_AYUNTAMIENTOS` para un caso distinto.
 
-Sin suspensión a nivel FASE: el art. 22 suspende el plazo del procedimiento, y decidir si eso debe alargar el plazo de cada acto por separado es alcance de la misma issue futura de cierre propio, no de esta.
+Sin suspensión a nivel FASE: el art. 22 suspende el plazo del procedimiento, y decidir si eso debe alargar el plazo de cada acto por separado es alcance de #921, no de esta.
 
 ### C — No se toca ninguna fila SOLICITUD existente
 
@@ -51,8 +51,8 @@ Las filas de nivel SOLICITUD que ya cubrían `AAP`, `AAC`, `AAP+AAC`, `AAC+DUP`,
 - Migración manual con la corrección de cita de `ANY/DUP` y las tres filas nuevas de FASE.
 
 **Deuda que este ADR destapa pero no asume:**
-- Cierre propio por fase (equivalente a `Solicitud.documento_cierre_id`, pero por acto) — issue nueva, pendiente de abrir.
-- Superficie en UI del plazo de fase (análogo a `plazo_tarea()` en el árbol/inspector) — issue nueva, pendiente de abrir.
+- Cierre propio por fase (equivalente a `Solicitud.documento_cierre_id`, pero por acto) — #921.
+- Superficie en UI del plazo de fase (análogo a `plazo_tarea()` en el árbol/inspector) — #922.
 - Si el art. 22 debe suspender el plazo de cada acto por separado, o solo el de la solicitud — no decidido, converge con el cierre propio por fase.
 
 ---
@@ -64,7 +64,7 @@ Cómo se representa el cierre (notificación) propio de una fase finalizadora. D
 1. Columna `Fase.documento_cierre_id`, paralela a `Solicitud.documento_cierre_id`, con su propio tipo de certificado por fase finalizadora.
 2. Reutilizar `Solicitud.documento_cierre_id` con algún mecanismo de desambiguación (rechazado a primera vista: ya hoy es una FK única que no distingue actos, es la raíz del problema, no la solución).
 
-La decisión se toma cuando se abra la issue de cierre propio por fase.
+La decisión se toma en #921.
 
 ---
 
