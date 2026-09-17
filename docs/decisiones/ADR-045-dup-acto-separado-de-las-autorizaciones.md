@@ -236,9 +236,15 @@ Ninguno de los tres toca el modelado del doble acto; son correcciones sobre lo q
 
 ### #891 — Regla de motor: la DUP no se resuelve antes que el proyecto de ejecución
 
-Variable nueva del tipo `tiene_aac_previa` (hoy solo existe `tiene_aap_previa`) más la fila en
-`reglas_motor` con la cita de §C. Decidir en el issue si el efecto es bloqueo con justificación
-o advertencia.
+Variable nueva `tiene_aac_previa` (el equivalente AAC de `tiene_solicitud_aap_favorable` —no
+`tiene_aap_previa`, nombre provisional del #341 ya renombrado) más la fila en `reglas_motor` con la
+cita de §C. Decidir en el issue si el efecto es bloqueo con justificación o advertencia.
+
+**Bloqueado por ADR-047 / #918 (sesión 2026-09-17):** al diseñar la variable se detectó que
+`RESOLUCION` no permite representar que AAP y AAC se resuelvan en actos separados dentro de la
+misma solicitud (caso real en renovables) — sin eso, `tiene_aac_previa` no puede responder
+correctamente si la AAC está resuelta cuando la AAP no lo está. #891 no puede implementarse hasta
+que #918 quede cerrado.
 
 ### #892 — Plazo de resolución de la DUP
 
