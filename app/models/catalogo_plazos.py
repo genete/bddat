@@ -15,32 +15,39 @@ class CatalogoPlazo(db.Model):
     vencimiento. Permite histórico de cambios normativos sin alterar el
     catálogo de tipos ESFTT.
 
-    CAMPO tipo_elemento: nivel ESFTT ('SOLICITUD' | 'TAREA'), con CheckConstraint.
-        Redundante con la longitud de `camino`, pero se conserva como prefiltro
-        SQL barato — filtrar por número de segmentos de un string no es viable.
-        FASE y TRAMITE quedaron prohibidos en #788: un plazo necesita fecha de
-        inicio, y solo hay dos portadores de fecha administrativa — la Solicitud
-        (documento_solicitud_id) y la Tarea (documentos_tarea, ADR-010). Fase y
-        Trámite son taxonomía ESFTT, no figuras jurídicas: ninguna norma les fija
-        plazo propio, y los `[PENDIENTE REDISEÑO campo_fecha]` que arrastraban
-        eran el síntoma. El constraint no sustituye a la validación del CRUD —
-        cubre lo que escribe sin pasar por él, que es por donde entraron los dos
-        incidentes reales de esta tabla (una migración de seed y un test).
+    CAMPO tipo_elemento: nivel ESFTT ('SOLICITUD' | 'FASE' | 'TAREA'), con
+        CheckConstraint. Redundante con la longitud de `camino`, pero se
+        conserva como prefiltro SQL barato — filtrar por número de segmentos de
+        un string no es viable.
+        TRAMITE queda prohibido desde #788: un plazo necesita fecha de inicio,
+        y el Trámite no porta ninguna — es taxonomía ESFTT, no figura jurídica.
+        FASE volvió a admitirse en ADR-048, pero acotada a fases finalizadoras
+        (RESOLUCION_DUP/AAP/AAC, ADR-046/047): esas SÍ son el acto —la
+        autorización o la declaración—, no taxonomía, y desde que existen tienen
+        su propia fecha administrativa (`documento_resultado_id`). El
+        constraint solo exige el nivel; que la fila apunte a una fase
+        finalizadora de verdad lo valida el CRUD, no la BD (mismo patrón que el
+        resto de invariantes de esta tabla — cubre lo que escribe sin pasar por
+        el CRUD, que es por donde entraron los dos incidentes reales anteriores:
+        una migración de seed y un test).
     CAMPO camino: patrón calificado ESFTT con comodín posicional 'ANY' (#785).
         Mismo formato y mismo matcher (motor_reglas._sujeto_casa) que
         ReglaMotor.sujeto, con un nivel más de profundidad. La longitud codifica
         el nivel, y el último segmento NUNCA es 'ANY' (es el tipo del elemento
         evaluado, siempre conocido):
             SOLICITUD  2 segmentos   <expediente>/<siglas>
+            FASE       3             <expediente>/<siglas>/<fase>
             TAREA      5             <expediente>/<siglas>/<fase>/<tramite>/<tarea>
         Sustituye a tipo_elemento_codigo, que no distinguía dos puntos distintos
         del árbol con el mismo literal (ESPERAR_PLAZO, RESOLUCION). Antes de #785
         esa distinción la hacían condiciones_plazo sobre variables que reexponían
         posición en el árbol — FK disfrazada, retirada en la misma migración.
     CAMPO campo_fecha: JSONB que indica qué Documento.fecha_administrativa
-        es el inicio del cómputo. Vocabulario cerrado (#788) — no es extensible,
-        porque no hay un tercer portador de fecha al que apuntar:
-            {'fk': 'documento_solicitud_id'}                 -- nivel SOLICITUD, única forma posible
+        es el inicio del cómputo. Vocabulario cerrado (#788, ampliado por
+        ADR-048 sin añadir sintaxis nueva):
+            {'fk': 'documento_solicitud_id'}                 -- nivel SOLICITUD, FK directa;
+                                                                 nivel FASE, la fila no tiene esa FK
+                                                                 y se resuelve subiendo a Fase.solicitud
             {'rol': 'CONSUMIDO'}                             -- nivel TAREA
             {'rol': 'PRODUCIDO'}                             -- nivel TAREA, caso retroactivo (#416)
             {'rol': 'CONSUMIDO',
@@ -54,7 +61,12 @@ class CatalogoPlazo(db.Model):
         `campo_fecha`, apuntando al documento que acredita el cumplimiento
         (ADR-041 §D). Cada plazo se abre y se cierra en el mismo sitio, así que
         para una tarea es casi siempre `{'rol': 'PRODUCIDO'}` y para la solicitud
-        `{'fk': 'documento_cierre_id'}`.
+        `{'fk': 'documento_cierre_id'}`. A nivel FASE queda NULL a propósito
+        (ADR-048 §B): `documento_resultado_id` es la fecha de dictar, no de
+        notificar (art. 21.3.b LPACAP exige las dos, ver Solicitud.documento_cierre_id),
+        y la fase no tiene hoy un cierre propio equivalente — issue pendiente de
+        abrir. Con NULL el plazo de fase nunca alcanza CUMPLIDO, solo
+        EN_PLAZO/VENCIDO (mismo patrón que TABLON_AYUNTAMIENTOS).
         `JSONB` igual que su gemela `campo_fecha` (#802): nació como `db.JSON`
         en `778a_plazos_medida_unica.py` por una portabilidad que no sostiene la
         decisión —ni `json` ni `jsonb` existen fuera de PostgreSQL entre los
@@ -87,7 +99,7 @@ class CatalogoPlazo(db.Model):
     """
     __tablename__ = 'catalogo_plazos'
     __table_args__ = (
-        db.CheckConstraint("tipo_elemento IN ('SOLICITUD', 'TAREA')",
+        db.CheckConstraint("tipo_elemento IN ('SOLICITUD', 'FASE', 'TAREA')",
                            name='ck_catalogo_plazos_tipo_elemento'),
         db.CheckConstraint("NOT suspende_plazo_solicitud OR tipo_elemento = 'TAREA'",
                            name='ck_catalogo_plazos_suspende_solo_tarea'),
@@ -99,7 +111,7 @@ class CatalogoPlazo(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     tipo_elemento = db.Column(
         db.String(20), nullable=False,
-        comment='Nivel ESFTT: SOLICITUD | TAREA (los únicos que portan fecha, #788)',
+        comment='Nivel ESFTT: SOLICITUD | TAREA (#788) | FASE finalizadora (ADR-048)',
     )
     camino = db.Column(
         db.String(250), nullable=False,
@@ -110,7 +122,8 @@ class CatalogoPlazo(db.Model):
     campo_fecha = db.Column(
         JSONB, nullable=True,
         comment='Referencia al Documento.fecha_administrativa de inicio: '
-                '{"fk":"documento_solicitud_id"} (nivel SOLICITUD) o '
+                '{"fk":"documento_solicitud_id"} (nivel SOLICITUD o FASE, resuelto '
+                'via Fase.solicitud en este último) o '
                 '{"rol":"CONSUMIDO|PRODUCIDO"[,"tipo_documento":"..."]} (nivel TAREA)',
     )
     campo_fecha_cumplimiento = db.Column(
