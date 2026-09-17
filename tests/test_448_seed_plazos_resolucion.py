@@ -16,6 +16,13 @@ Reescrito dos veces:
   de solicitud —que es cuando empieza legalmente— y no desde que alguien crea la
   última fase del procedimiento.
 
+  #892 — dos correcciones más, sin tocar el conteo de 11 filas SOLICITUD:
+  (a) la cita de DUP sola cambia de "Art. 145.4" (inexistente: el art. 145 es
+  "Alegaciones", párrafo único) a "Art. 148.1", y el plazo de 3 a 6 meses; (b)
+  ADR-048 reabre FASE como nivel posible, acotado a fases finalizadoras — tres
+  filas nuevas de ese nivel (bloque F) que esta suite no contaba como
+  "entradas de resolución de nivel SOLICITUD" y siguen sin contarlas.
+
 Verifica:
   A) Variable tipo_solicitud sigue activa (la usan condiciones_requisito, #192);
      lo que ya no existe es su uso como discriminador de posición en plazos.
@@ -23,8 +30,9 @@ Verifica:
   C) Para cada combinación cubierta, _seleccionar_catalogo devuelve la correcta
      partiendo del elemento (sin dict de variables).
   D) Combinaciones fuera de scope → None (deuda de #247).
+  F) #892/ADR-048 — las tres filas nuevas de nivel FASE (RESOLUCION_DUP/AAP/AAC).
 
-Requieren BD con las migraciones 785 y 788 aplicadas y fixture app_ctx (conftest.py).
+Requieren BD con las migraciones 785, 788 y 892 aplicadas y fixture app_ctx (conftest.py).
 """
 from unittest.mock import MagicMock
 
@@ -46,7 +54,7 @@ _COMBINACIONES_CUBIERTAS = {
     'AAC+DUP':            (3, 'MESES', 'Art. 131.7 RD 1955/2000'),
     'AAT':                (3, 'MESES', 'Art. 133 RD 1955/2000'),
     'CIERRE':             (3, 'MESES', 'Art. 138 RD 1955/2000 (mod. RD 88/2026)'),
-    'DUP':                (3, 'MESES', 'Art. 145.4 RD 1955/2000'),
+    'DUP':                (6, 'MESES', 'Art. 148.1 RD 1955/2000'),  # #892: cita corregida
 }
 
 _FUERA_DE_SCOPE = [
@@ -173,7 +181,7 @@ def test_normas_origen_esperadas_presentes(app_ctx):
         'Art. 131.7 RD 1955/2000',
         'Art. 133 RD 1955/2000',
         'Art. 138 RD 1955/2000 (mod. RD 88/2026)',
-        'Art. 145.4 RD 1955/2000',
+        'Art. 148.1 RD 1955/2000',
     }
     assert normas_bd == normas_esperadas
 
@@ -260,3 +268,61 @@ def test_cobertura_de_combinaciones_es_completa():
     assert not faltantes, (
         f'Combinaciones no clasificadas (cubiertas ni fuera de scope): {faltantes}'
     )
+
+
+# ---------------------------------------------------------------------------
+# F) #892/ADR-048 — plazo propio de las fases finalizadoras
+# ---------------------------------------------------------------------------
+
+_FASES_FINALIZADORAS_CUBIERTAS = {
+    'RESOLUCION_DUP': (6, 'MESES', 'Art. 148.1 RD 1955/2000'),
+    'RESOLUCION_AAP': (3, 'MESES', 'Art. 128 RD 1955/2000'),
+    'RESOLUCION_AAC': (3, 'MESES', 'Art. 131.7 RD 1955/2000'),
+}
+
+
+def _fase(codigo):
+    solicitud = MagicMock()
+    solicitud.tipo_solicitud = MagicMock(siglas='AAC+DUP')
+    solicitud.expediente.tipo_expediente = MagicMock(tipo='Distribucion')
+    fase = MagicMock()
+    fase.tipo_fase = MagicMock(codigo=codigo)
+    fase.solicitud = solicitud
+    return fase
+
+
+def test_hay_exactamente_3_entradas_fase(app_ctx):
+    from app.models.catalogo_plazos import CatalogoPlazo
+    entradas = CatalogoPlazo.query.filter_by(tipo_elemento='FASE', activo=True).all()
+    assert len(entradas) == 3, (
+        f'Esperadas 3 entradas de plazo de fase finalizadora, hay {len(entradas)}: '
+        f'{[e.camino for e in entradas]}'
+    )
+
+
+@pytest.mark.parametrize('codigo,esperado', list(_FASES_FINALIZADORAS_CUBIERTAS.items()))
+def test_seleccionar_catalogo_fase_finalizadora(app_ctx, codigo, esperado):
+    from app.services.plazos import _seleccionar_catalogo
+    valor_esp, unidad_esp, norma_esp = esperado
+    entrada = _seleccionar_catalogo(_fase(codigo), 'FASE', {})
+    assert entrada is not None, f'Sin plazo para fase {codigo}'
+    assert entrada.plazo_valor == valor_esp
+    assert entrada.plazo_unidad == unidad_esp
+    assert entrada.norma_origen == norma_esp
+
+
+def test_plazo_de_fase_no_depende_del_tipo_solicitud(app_ctx):
+    """El camino usa 'ANY' en el segmento de solicitud a propósito: el art. 128
+    no cambia si la AAP viaja sola o dentro de una combinación — RESOLUCION_AAP
+    es la misma fase, con el mismo plazo, la incluya AAP+AAC o AAP+AAC+DUP."""
+    from app.services.plazos import _seleccionar_catalogo
+
+    fase_ap_ac = _fase('RESOLUCION_AAP')
+    fase_ap_ac.solicitud.tipo_solicitud = MagicMock(siglas='AAP+AAC')
+    fase_ap_ac_dup = _fase('RESOLUCION_AAP')
+    fase_ap_ac_dup.solicitud.tipo_solicitud = MagicMock(siglas='AAP+AAC+DUP')
+
+    e1 = _seleccionar_catalogo(fase_ap_ac, 'FASE', {})
+    e2 = _seleccionar_catalogo(fase_ap_ac_dup, 'FASE', {})
+    assert e1 is not None and e2 is not None
+    assert e1.id == e2.id

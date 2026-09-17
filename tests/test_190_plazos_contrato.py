@@ -21,10 +21,20 @@ class _StubCtx:
 
 
 class _StubFase:
-    """Duck-type de Fase: tiene solicitud y tramites, NO fases ni fase ni tramite."""
+    """Duck-type de Fase: tiene solicitud y tramites, NO fases ni fase ni tramite.
+    Sin `tipo_fase`: _get_tipo_elemento_codigo no encuentra tipo y el nivel FASE
+    (ADR-048) devuelve SIN_PLAZO igual que antes, pero ahora pasando por
+    plazos.obtener_estado_plazo_fase en vez de cortarse en variables/plazo.py."""
     def __init__(self):
         self.solicitud = MagicMock()
         self.tramites = []
+
+
+class _StubFaseFinalizadora(_StubFase):
+    """Fase con tipo_fase — la forma real de una RESOLUCION_DUP/AAP/AAC."""
+    def __init__(self, codigo='RESOLUCION_DUP'):
+        super().__init__()
+        self.tipo_fase = MagicMock(codigo=codigo)
 
 
 class _StubTramite:
@@ -154,6 +164,28 @@ def test_estado_plazo_con_tarea():
     from app.services.variables import _REGISTRY
     fn = _REGISTRY['estado_plazo']
     assert fn(_StubCtx(objeto=_StubTarea())) == 'SIN_PLAZO'
+
+
+def test_estado_plazo_con_fase_finalizadora_delega_en_plazos(monkeypatch):
+    """ADR-048: una Fase se resuelve a nivel 'FASE' (no None) y delega en
+    `plazos.obtener_estado_plazo_fase` — no es SIN_PLAZO ciego, es lo que esa
+    función responda."""
+    import app.services.variables.plazo  # noqa: F401
+    from app.services.variables import _REGISTRY
+    from app.services.plazos import EstadoPlazo
+
+    llamada = {}
+
+    def _fake(fase, ctx=None, variables=None):
+        llamada['fase'] = fase
+        return EstadoPlazo(estado='VENCIDO', efecto='NINGUNO', fecha_limite=None, dias_restantes=None)
+
+    monkeypatch.setattr('app.services.plazos.obtener_estado_plazo_fase', _fake)
+
+    fase = _StubFaseFinalizadora()
+    fn = _REGISTRY['estado_plazo']
+    assert fn(_StubCtx(objeto=fase)) == 'VENCIDO'
+    assert llamada['fase'] is fase
 
 
 # ---------------------------------------------------------------------------
