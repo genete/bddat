@@ -37,7 +37,7 @@ Activa una vista de sub-lista de destinatarios (uno por fila, con su propio just
 
 **Bloqueos de motor (duplicado quirúrgico de los 5 de `RESOLUCION`, sujeto `ANY/ANY/RESOLUCION_DUP`):** `organismos_todos_terminados`, `fase_ip_finalizada`, `tramite_requerimiento_sin_respuesta`, `instrumento_ambiental=AAU`, `solicitud_tiene_cert_fin_instruccion`. Más la regla de orden de #891 (no resolver sin AAC previa aprobada), que ahora tiene dónde enganchar: `ELABORACION.ELABORAR`.
 
-**Plazo:** propio, 6 meses (art. 148.1 RD 1955/2000) — converge con #892, no se resuelve aquí.
+**Plazo:** propio, 6 meses (art. 148.1 RD 1955/2000). Resuelto en #892/ADR-048: fila de nivel FASE en `catalogo_plazos` (`camino='ANY/ANY/RESOLUCION_DUP'`), disparo heredado de `Fase.solicitud.documento_solicitud`, cumplimiento NULL a propósito (sin cierre propio por fase todavía — issue pendiente de abrir).
 
 **Hueco detectado en #914 (sesión 2026-09-14):** en `AAC+DUP`/`AAP+AAC+DUP`, la solicitud tiene dos actos resolutorios con plazos distintos, pero `catalogo_plazos` (tipo_elemento `SOLICITUD`) y `Solicitud.documento_cierre_id` asumen un único plazo/cierre por solicitud — diseñados antes de que existiera esta dualidad. La solicitud no queda cerrada hasta que vence el plazo más largo, pero hoy no hay forma de representar dos plazos paralelos de la misma solicitud. Pista de partida, no decidida: columna `documento_cierre_dup_id` en `Solicitud` (mismo patrón que `documento_fin_instruccion_id`, #827) + fila propia en `catalogo_plazos` con un `camino` que distinga la parte DUP de la combinada — falta fijar desde qué fecha dispara ese plazo. Corresponde a #892, no a #914.
 
