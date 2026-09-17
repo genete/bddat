@@ -116,10 +116,15 @@ elegido el camino partido.
 reutilizar `tiene_aac_resuelta_favorable` para #891 (§E): AAP y AAC son ahora fases hermanas de la
 misma solicitud cuando se resuelve partido.
 
-**Cita normativa pendiente de leer** (igual criterio que §Contexto): no se fija artículo en este
-ADR. Candidatos a revisar con `/boe` antes de sembrar la migración: arts. 121-131 RD 1955/2000 (la
-relación anteproyecto→proyecto de ejecución) y LPACAP art. 88.2 (congruencia de la resolución con lo
-solicitado e instruido).
+**Cita normativa confirmada** (leída en sesión 2026-09-17): RD 1955/2000 arts. 128.4, 130.1 y 131.1
+párr. 2. La Sección 2.ª del Título VII (aprobación de proyecto de ejecución, AAC) está construida
+normativamente como una fase que sigue a la AAP ya resuelta, no paralela a ella: el art. 128.4 fija
+el plazo, contado desde el otorgamiento de la AAP, dentro del cual debe solicitarse la aprobación del
+proyecto de ejecución, con caducidad de la AAP si no se solicita a tiempo; el art. 130.1 atribuye esa
+solicitud a "el peticionario o **el titular de la autorización**" (la AAP ya otorgada); y el art.
+131.1 párr. 2 regula expresamente el caso de tramitación bajo la Sección 2.ª cuando "la instalación
+**cuenta con una resolución de autorización administrativa previa**". No hace falta acudir a LPACAP
+art. 88.2 — el fundamento sectorial específico basta.
 
 ---
 
