@@ -114,10 +114,26 @@ _FASES_FINALIZADORAS_POR_SIGLAS = {
     'INTERESADO': ['RECONOCIMIENTO_INTERESADO'],
     'DUP': ['RESOLUCION_DUP'],
     'AAC+DUP': ['RESOLUCION', 'RESOLUCION_DUP'],
-    'AAP+AAC+DUP': ['RESOLUCION', 'RESOLUCION_DUP'],
     'AAP+DUP': ['RESOLUCION', 'RESOLUCION_DUP'],
 }
 _FASE_FINALIZADORA_DEFECTO = 'RESOLUCION'
+
+# AAP+AAC y AAP+AAC+DUP NO están en el dict estático de arriba (#918, ADR-047 §B):
+# a diferencia de las combinaciones DUP (RESOLUCION + RESOLUCION_DUP siempre las
+# dos, sin elección), aquí conjunta vs. partida es una elección del técnico en
+# tiempo de ejecución — no cabe en un lookup estático por siglas. Se mira el árbol:
+# si ya existe RESOLUCION_AAP o RESOLUCION_AAC, esas; si no hay elección todavía,
+# conjunta por defecto (RESOLUCION), mismo criterio que el resto de la creación de
+# fases en el árbol (nadie fuerza la elección antes de tiempo).
+_SIGLAS_RESOLUCION_PARTIBLE = {'AAP+AAC', 'AAP+AAC+DUP'}
+
+
+def _codigos_resolucion_autorizacion(solicitud) -> list[str]:
+    """RESOLUCION (conjunta) o RESOLUCION_AAP/RESOLUCION_AAC (partida, las que
+    ya consten creadas) — #918, ADR-047 §B. Sin elección todavía, conjunta."""
+    existentes = {f.tipo_fase.codigo for f in solicitud.fases if f.tipo_fase}
+    partida = [c for c in ('RESOLUCION_AAP', 'RESOLUCION_AAC') if c in existentes]
+    return partida if partida else ['RESOLUCION']
 
 # Cómo se llama cada tipo de tarea dentro de una frase. `TipoTarea.nombre` es una
 # descripción, no un nombre —«Revisión técnica o jurídica de documentación con
@@ -225,10 +241,19 @@ def codigos_fase_finalizadora(solicitud) -> list[str]:
     """Códigos de los `TipoFase` finalizadores que esta solicitud abrirá.
 
     Casi siempre una lista de un elemento; dos en las combinaciones con DUP
-    que llevan RESOLUCION y RESOLUCION_DUP como hermanas (#914, ADR-046).
+    que llevan RESOLUCION y RESOLUCION_DUP como hermanas (#914, ADR-046), o
+    en AAP+AAC/AAP+AAC+DUP resueltas partidas (RESOLUCION_AAP+RESOLUCION_AAC,
+    #918, ADR-047 §B) — ahí no es lookup estático, mira el árbol.
     """
     tipo_sol = solicitud.tipo_solicitud
     siglas = tipo_sol.siglas if tipo_sol else None
+
+    if siglas in _SIGLAS_RESOLUCION_PARTIBLE:
+        codigos = _codigos_resolucion_autorizacion(solicitud)
+        if siglas == 'AAP+AAC+DUP':
+            codigos = codigos + ['RESOLUCION_DUP']
+        return codigos
+
     return _FASES_FINALIZADORAS_POR_SIGLAS.get(siglas, [_FASE_FINALIZADORA_DEFECTO])
 
 

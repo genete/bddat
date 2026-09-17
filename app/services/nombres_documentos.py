@@ -54,6 +54,9 @@ ALCANCE POBLADO (#698, primera pasada):
     - RESOLUCION_DUP.ELABORACION (sustitución, #914: mismo tipo_tramite
       ELABORACION que RESOLUCION, nombre_en_plantilla compartido — sin
       sustitución los dos actos generarían el mismo nombre de fichero)
+    - RESOLUCION_AAP.ELABORACION / RESOLUCION_AAC.ELABORACION (sustitución,
+      #918, mismo motivo que RESOLUCION_DUP — evita colisión de nombre en
+      una solicitud AAP+AAC resuelta partida)
     El resto de fases/trámites cae al fallback de código crudo mientras su
     tipos_tramites.nombre_en_plantilla siga vacío — issue de seguimiento #809
     para ir poblando el dato (y añadir ajuste/sustitución solo si el trámite
@@ -109,6 +112,20 @@ def _sustitucion_resolucion_dup(tramite) -> str:
     return 'Resolución de Utilidad Pública'
 
 
+def _sustitucion_resolucion_aap(tramite) -> str:
+    """SUSTITUCIÓN: RESOLUCION_AAP.ELABORACION comparte tipo_tramite ELABORACION
+    con RESOLUCION (mismo nombre_en_plantilla='Resolución'). Sin esto, una
+    solicitud AAP+AAC resuelta partida generaría el mismo nombre de fichero
+    para las dos resoluciones — mismo problema que #914 resolvió para
+    RESOLUCION_DUP (#918, ADR-047 §A)."""
+    return 'Resolución de AAP'
+
+
+def _sustitucion_resolucion_aac(tramite) -> str:
+    """SUSTITUCIÓN: mismo motivo que _sustitucion_resolucion_aap, para AAC."""
+    return 'Resolución de AAC'
+
+
 # AJUSTES: combinan tipos_tramites.nombre_en_plantilla con algo calculado.
 # Firma: (tramite, texto_base) -> str
 _AJUSTES: dict[tuple[str, str], Callable[[object, str], str]] = {
@@ -122,6 +139,8 @@ _AJUSTES: dict[tuple[str, str], Callable[[object, str], str]] = {
 _SUSTITUCIONES: dict[tuple[str, str], Callable[[object], str]] = {
     ('ANALISIS_SOLICITUD', 'COMUNICACION_INICIO_ADMISION'): _sustitucion_comunicacion_inicio_admision,
     ('RESOLUCION_DUP', 'ELABORACION'): _sustitucion_resolucion_dup,
+    ('RESOLUCION_AAP', 'ELABORACION'): _sustitucion_resolucion_aap,
+    ('RESOLUCION_AAC', 'ELABORACION'): _sustitucion_resolucion_aac,
 }
 
 
